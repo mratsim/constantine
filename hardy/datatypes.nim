@@ -6,7 +6,9 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 type
-  HardBase* = SomeUnsignedInt or byte
+  BaseUint* = SomeUnsignedInt or byte
+
+  HardBase*[T: BaseUint] = distinct T
 
   HardBool*[T: HardBase] = range[T(0)..T(1)]
     ## To avoid the compiler replacing bitwise boolean operations
