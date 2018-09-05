@@ -6,7 +6,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  unittest,
-        ../src/hardy
+        ../hardy
 
 suite "Your first test suite":
   test "Your first test":

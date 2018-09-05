@@ -3,6 +3,9 @@ language: c # or other C/C++ variants
 sudo: false
 
 # https://docs.travis-ci.com/user/caching/
+#
+# Caching the whole nim folder is better than relying on ccache - this way, we
+# skip the expensive bootstrap process and linking
 cache:
   directories:
     - nim
@@ -12,10 +15,25 @@ os:
   - osx
 
 install:
-  # build nim from our own branch, to avoid downtime due to nim regressions
+  # build nim from our own branch - this to avoid the day-to-day churn and
+  # regressions of the fast-paced Nim development while maintaining the
+  # flexibility to apply patches
+  #
+  # check version of remote branch
   - "export NIMVER=$(git ls-remote https://github.com/status-im/nim.git HEAD | cut -f 1)"
-  - "{ [ -f nim/$NIMVER/bin/nim ] && [ -f nim/$NIMVER/bin/nimble ] ; } || { rm -rf nim ; mkdir -p nim; git clone https://github.com/status-im/nim.git nim/$NIMVER; cd nim/$NIMVER; sh build_all.sh; cd ../.. ; }"
+
+  # after building nim, wipe csources to save on cache space
+  - "{ [ -f nim/$NIMVER/bin/nim ] && [ -f nim/$NIMVER/bin/nimble ] ; } ||
+      { rm -rf nim ;
+        mkdir -p nim ;
+        git clone --depth=1 https://github.com/status-im/nim.git nim/$NIMVER ;
+        cd nim/$NIMVER ;
+        sh build_all.sh ;
+        rm -rf csources ;
+        cd ../.. ;
+      }"
   - "export PATH=$PWD/nim/$NIMVER/bin:$PATH"
 
 script:
-  - nimble install -dy && nimble test
+  - nimble install -y
+  - nimble test
