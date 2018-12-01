@@ -30,11 +30,11 @@ func `$`*[T](x: Ct[T]): string {.inline.} =
 func `$`*(x: CTBool): string {.inline.} =
   $bool(x)
 
-# #########################
+# ############################################################
 #
-# Constant-time primitives
+#                 Constant-time primitives
 #
-# #########################
+# ############################################################
 
 # The main challenge is to prevent conditional branch/jump
 # in the generated assembly.
