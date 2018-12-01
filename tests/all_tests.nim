@@ -132,3 +132,37 @@ suite "Hardened unsigned integers":
       undistinct(-y1.hard) == undistinct(not(y1.hard) + hard(1'u64))
       undistinct(-y2.hard) == undistinct(not(y2.hard) + hard(1'u64))
       undistinct(-y3.hard) == undistinct(not(y3.hard) + hard(1'u64))
+
+suite "Hardened booleans":
+  test "Boolean not":
+    check:
+      not(htrue(uint32)).bool == false
+      not(hfalse(uint32)).bool == true
+
+  test "Comparison":
+    check:
+      bool(hard(0'u32) != hard(0'u32)) == false
+      bool(hard(0'u32) != hard(1'u32)) == true
+
+      bool(hard(10'u32) == hard(10'u32)) == true
+      bool(hard(10'u32) != hard(20'u32)) == true
+
+      bool(hard(10'u32) <= hard(10'u32)) == true
+      bool(hard(10'u32) <= hard(20'u32)) == true
+      bool(hard(10'u32) <= hard(5'u32)) == false
+      bool(hard(10'u32) <= hard(0xFFFFFFFF'u32)) == true
+
+      bool(hard(10'u32) < hard(10'u32)) == false
+      bool(hard(10'u32) < hard(20'u32)) == true
+      bool(hard(10'u32) < hard(5'u32)) == false
+      bool(hard(10'u32) < hard(0xFFFFFFFF'u32)) == true
+
+      bool(hard(10'u32) > hard(10'u32)) == false
+      bool(hard(10'u32) > hard(20'u32)) == false
+      bool(hard(10'u32) > hard(5'u32)) == true
+      bool(hard(10'u32) > hard(0xFFFFFFFF'u32)) == false
+
+      bool(hard(10'u32) >= hard(10'u32)) == true
+      bool(hard(10'u32) >= hard(20'u32)) == false
+      bool(hard(10'u32) >= hard(5'u32)) == true
+      bool(hard(10'u32) >= hard(0xFFFFFFFF'u32)) == false

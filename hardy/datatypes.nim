@@ -24,10 +24,10 @@ type
     ## Note that constant-time allocation is very involved for
     ## heap-allocated types (i.e. requires a memory pool)
 
-func htrue*(T: type(BaseUint)): auto {.compileTime.}=
+func htrue*(T: type(BaseUint)): auto {.inline.}=
   (HardBool[HardBase[T]])(true)
 
-func hfalse*(T: type(BaseUint)): auto {.compileTime.}=
+func hfalse*(T: type(BaseUint)): auto {.inline.}=
   (HardBool[HardBase[T]])(false)
 
 func hard*[T: BaseUint](x: T): HardBase[T] {.inline.}=

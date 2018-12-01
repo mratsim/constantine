@@ -58,6 +58,17 @@ func `-`*(x: HardBase): HardBase {.inline.}=
 
 # ############################################################
 #
+#                           Bit hacks
+#
+# ############################################################
+
+func isMsbSet*[T: HardBase](x: T): HardBool[T] {.inline.} =
+  ## Returns the most significant bit of an integer
+  const msb_pos = T.sizeof * 8 - 1
+  result = (HardBool[T])(x shr msb_pos)
+
+# ############################################################
+#
 #             Hardened Boolean primitives
 #
 # ############################################################
@@ -77,37 +88,36 @@ func select*[T: HardBase](ctl: HardBool[T], x, y: T): T {.inline.}=
   # is optimized into a branch by Clang :/
   y xor (-ctl.T and (x xor y))
 
-func `!=`*[T: HardBase](x, y: T): HardBool[T] {.inline.}=
+func noteq[T: HardBase](x, y: T): HardBool[T] {.inline.}=
   const msb = T.sizeof * 8 - 1
   let z = x xor y
   result = (type result)((z or -z) shr msb)
 
 func `==`*[T: HardBase](x, y: T): HardBool[T] {.inline.}=
-  not(x != y)
+  not(noteq(x, y))
 
 func `<`*[T: HardBase](x, y: T): HardBool[T] {.inline.}=
-  const msb = T.sizeof * 8 - 1
-  result = (type result)(
-    (
+  result = isMsbSet(
       x xor (
         (x xor y) or ((x - y) xor y)
       )
-    ) shr msb
-  )
+    )
 
 func `<=`*[T: HardBase](x, y: T): HardBool[T] {.inline.}=
   (y < x) xor 1
 
 # ############################################################
 #
-#                           Bit hacks
+#         Workaround system.nim `!=` template
 #
 # ############################################################
 
-func isMsbSet*[T: HardBase](x: T): HardBool[T] {.inline.} =
-  ## Returns the most significant bit of an integer
-  const msb_pos = T.sizeof * 8 - 1
-  result = (HardBool[T])(x shr msb_pos)
+# system.nim defines `!=` as a catchall template
+# in terms of `==` while we define `==` in terms of `!=`
+# So we would have not(not(noteq(x,y)))
+
+template trmFixSystemNotEq*{x != y}[T: HardBase](x, y: T): HardBool[T] =
+  noteq(x, y)
 
 # ############################################################
 #
