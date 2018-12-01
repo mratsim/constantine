@@ -1,19 +1,19 @@
-# Hardy - Hardened big int primitives
+# Constantine - Constant time finitie field primitives for Elliptic Curve Cryptography
 
-[![Build Status (Travis)](https://img.shields.io/travis/status-im/nim-hardy/master.svg?label=Linux%20/%20macOS "Linux/macOS build status (Travis)")](https://travis-ci.org/status-im/nim-hardy)
-[![Windows build status (Appveyor)](https://img.shields.io/appveyor/ci/nimbus/nim-hardy/master.svg?label=Windows "Windows build status (Appveyor)")](https://ci.appveyor.com/project/nimbus/nim-hardy)
+[![Build Status (Travis)](https://img.shields.io/travis/status-im/nim-constantine/master.svg?label=Linux%20/%20macOS "Linux/macOS build status (Travis)")](https://travis-ci.org/status-im/nim-constantine)
+[![Windows build status (Appveyor)](https://img.shields.io/appveyor/ci/nimbus/nim-constantine/master.svg?label=Windows "Windows build status (Appveyor)")](https://ci.appveyor.com/project/nimbus/nim-constantine)
 [![License: Apache](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 ![Stability: experimental](https://img.shields.io/badge/stability-experimental-orange.svg)
 
-This library provides constant time big int primitives.
+This library provides constant time finite field primitives.
 The main use will be for implementation of elliptic curve cryptography
 
 ## Installation
 
 You can install the developement version of the library through nimble with the following command
 ```
-nimble install https://github.com/status-im/nim-hardy@#master
+nimble install https://github.com/status-im/nim-constantine@#master
 ```
 
 ## License

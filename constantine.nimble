@@ -1,4 +1,4 @@
-packageName   = "hardy"
+packageName   = "constantine"
 version       = "0.0.1"
 author        = "Status Research & Development GmbH"
 description   = "This library provides constant time big int primitives."

@@ -1,11 +1,34 @@
-# Hardy
+# Constantine
 # Copyright (c) 2018 Status Research & Development GmbH
 # Licensed and distributed under either of
 #   * MIT license (license terms in the root directory or at http://opensource.org/licenses/MIT).
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import ./datatypes
+type
+  BaseUint* = SomeUnsignedInt or byte
+
+  Ct*[T: BaseUint] = distinct T
+
+  CTBool*[T: Ct] = distinct range[T(0)..T(1)]
+    ## To avoid the compiler replacing bitwise boolean operations
+    ## by conditional branches, we don't use booleans.
+    ## We use an int to prevent compiler "optimization" and introduction of branches
+
+func ctrue*(T: type(BaseUint)): auto {.inline.}=
+  (CTBool[Ct[T]])(true)
+
+func cfalse*(T: type(BaseUint)): auto {.inline.}=
+  (CTBool[Ct[T]])(false)
+
+func ct*[T: BaseUint](x: T): Ct[T] {.inline.}=
+  (Ct[T])(x)
+
+func `$`*[T](x: Ct[T]): string {.inline.} =
+  $T(x)
+
+func `$`*(x: CTBool): string {.inline.} =
+  $bool(x)
 
 # #########################
 #
@@ -22,7 +45,7 @@ import ./datatypes
 # does not guarantee a constant-time conditional move
 # The compiler might introduce branching.
 
-# These primitives are distinct type and internal to Hardy.
+# These primitives are distinct type and internal to Constantine.
 # We don't want to pollute unsuspecting users
 # with `not` and `-` on unsigned ints
 
@@ -32,26 +55,26 @@ import ./datatypes
 #    - https://github.com/nim-lang/Nim/pull/8531
 #    - https://github.com/nim-lang/Nim/issues/4121 (can be workaround with #8531)
 
-func high*(T: typedesc[HardBase]): T {.inline.}=
+func high*(T: typedesc[Ct]): T {.inline.}=
   not T(0)
 
-func `and`*[T: HardBase](x, y: T): T {.magic: "BitandI".}
-func `or`*[T: HardBase](x, y: T): T {.magic: "BitorI".}
-func `xor`*[T: HardBase](x, y: T): T {.magic: "BitxorI".}
-func `not`*[T: HardBase](x: T): T {.magic: "BitnotI".}
-func `+`*[T: HardBase](x, y: T): T {.magic: "AddU".}
-func `-`*[T: HardBase](x, y: T): T {.magic: "SubU".}
-func `shr`*[T: HardBase](x: T, y: SomeInteger): T {.magic: "ShrI".}
-func `shl`*[T: HardBase](x: T, y: SomeInteger): T {.magic: "ShlI".}
+func `and`*[T: Ct](x, y: T): T {.magic: "BitandI".}
+func `or`*[T: Ct](x, y: T): T {.magic: "BitorI".}
+func `xor`*[T: Ct](x, y: T): T {.magic: "BitxorI".}
+func `not`*[T: Ct](x: T): T {.magic: "BitnotI".}
+func `+`*[T: Ct](x, y: T): T {.magic: "AddU".}
+func `-`*[T: Ct](x, y: T): T {.magic: "SubU".}
+func `shr`*[T: Ct](x: T, y: SomeInteger): T {.magic: "ShrI".}
+func `shl`*[T: Ct](x: T, y: SomeInteger): T {.magic: "ShlI".}
 
-func `*`*[T: HardBase](x, y: T): T {.magic: "MulU".}
+func `*`*[T: Ct](x, y: T): T {.magic: "MulU".}
 # Warning ⚠️ : We assume that mul hardware multiplication is constant time
 # but this is not always true, especially on ARMv7 and ARMv9
 
 # We don't implement div/mod as we can't assume the hardware implementation
 # is constant-time
 
-func `-`*(x: HardBase): HardBase {.inline.}=
+func `-`*(x: Ct): Ct {.inline.}=
   ## Unary minus returns the two-complement representation
   ## of an unsigned integer
   {.emit:"`result` = -`x`;".}
@@ -62,10 +85,10 @@ func `-`*(x: HardBase): HardBase {.inline.}=
 #
 # ############################################################
 
-func isMsbSet*[T: HardBase](x: T): HardBool[T] {.inline.} =
+func isMsbSet*[T: Ct](x: T): CTBool[T] {.inline.} =
   ## Returns the most significant bit of an integer
   const msb_pos = T.sizeof * 8 - 1
-  result = (HardBool[T])(x shr msb_pos)
+  result = (CTBool[T])(x shr msb_pos)
 
 # ############################################################
 #
@@ -73,14 +96,14 @@ func isMsbSet*[T: HardBase](x: T): HardBool[T] {.inline.} =
 #
 # ############################################################
 
-template undistinct[T: HardBase](x: HardBool[T]): T =
+template undistinct[T: Ct](x: CTBool[T]): T =
   T(x)
 
-func `not`*(ctl: HardBool): HardBool {.inline.}=
+func `not`*(ctl: CTBool): CTBool {.inline.}=
   ## Negate a constant-time boolean
   (type result)(ctl.undistinct xor (type ctl.undistinct)(1))
 
-template mux*[T: HardBase](ctl: HardBool[T], x, y: T): T =
+template mux*[T: Ct](ctl: CTBool[T], x, y: T): T =
   ## Multiplexer / selector
   ## Returns x if ctl == 1
   ## else returns y
@@ -92,22 +115,22 @@ template mux*[T: HardBase](ctl: HardBool[T], x, y: T): T =
   # the alternative `(x and ctl) or (y and -ctl)`
   # is optimized into a branch by Clang :/
 
-func noteq[T: HardBase](x, y: T): HardBool[T] {.inline.}=
+func noteq[T: Ct](x, y: T): CTBool[T] {.inline.}=
   const msb = T.sizeof * 8 - 1
   let z = x xor y
   result = (type result)((z or -z) shr msb)
 
-func `==`*[T: HardBase](x, y: T): HardBool[T] {.inline.}=
+func `==`*[T: Ct](x, y: T): CTBool[T] {.inline.}=
   not(noteq(x, y))
 
-func `<`*[T: HardBase](x, y: T): HardBool[T] {.inline.}=
+func `<`*[T: Ct](x, y: T): CTBool[T] {.inline.}=
   result = isMsbSet(
       x xor (
         (x xor y) or ((x - y) xor y)
       )
     )
 
-func `<=`*[T: HardBase](x, y: T): HardBool[T] {.inline.}=
+func `<=`*[T: Ct](x, y: T): CTBool[T] {.inline.}=
   not(y < x)
 
 # ############################################################
@@ -120,7 +143,7 @@ func `<=`*[T: HardBase](x, y: T): HardBool[T] {.inline.}=
 # in terms of `==` while we define `==` in terms of `!=`
 # So we would have not(not(noteq(x,y)))
 
-template trmFixSystemNotEq*{x != y}[T: HardBase](x, y: T): HardBool[T] =
+template trmFixSystemNotEq*{x != y}[T: Ct](x, y: T): CTBool[T] =
   noteq(x, y)
 
 # ############################################################
@@ -129,10 +152,10 @@ template trmFixSystemNotEq*{x != y}[T: HardBase](x, y: T): HardBool[T] =
 #
 # ############################################################
 
-func isNonZero*[T: HardBase](x: T): HardBool[T] {.inline.} =
+func isNonZero*[T: Ct](x: T): CTBool[T] {.inline.} =
   isMsbSet(x or -x)
 
-func isZero*[T: HardBase](x: T): HardBool[T] {.inline.} =
+func isZero*[T: Ct](x: T): CTBool[T] {.inline.} =
   not x.isNonZero
 
 # ############################################################
@@ -142,7 +165,7 @@ func isZero*[T: HardBase](x: T): HardBool[T] {.inline.} =
 #
 # ############################################################
 
-template trmIsZero*{x == 0}[T: HardBase](x: T): HardBool[T] = x.isZero
-template trmIsZero*{0 == x}[T: HardBase](x: T): HardBool[T] = x.isZero
-template trmIsNonZero*{x != 0}[T: HardBase](x: T): HardBool[T] = x.isNonZero
-template trmIsNonZero*{0 != x}[T: HardBase](x: T): HardBool[T] = x.isNonZero
+template trmIsZero*{x == 0}[T: Ct](x: T): CTBool[T] = x.isZero
+template trmIsZero*{0 == x}[T: Ct](x: T): CTBool[T] = x.isZero
+template trmIsNonZero*{x != 0}[T: Ct](x: T): CTBool[T] = x.isNonZero
+template trmIsNonZero*{0 != x}[T: Ct](x: T): CTBool[T] = x.isNonZero
