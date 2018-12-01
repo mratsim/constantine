@@ -34,5 +34,11 @@ template hard*(x: static int, T: type BaseUint): HardBase[T] =
   ## For int literals
   (HardBase[T])(x)
 
-template hard*(x: BaseUint): HardBase[type x] =
+func hard*[T: BaseUint](x: T): HardBase[T] {.inline.}=
   (HardBase[T])(x)
+
+func `$`*[T](x: HardBase[T]): string {.inline.} =
+  $T(x)
+
+func `$`*(x: HardBool): string {.inline.} =
+  $bool(x)
