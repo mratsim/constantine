@@ -10,7 +10,7 @@ type
 
   HardBase*[T: BaseUint] = distinct T
 
-  HardBool*[T: HardBase] = range[T(0)..T(1)]
+  HardBool*[T: HardBase] = distinct range[T(0)..T(1)]
     ## To avoid the compiler replacing bitwise boolean operations
     ## by conditional branches, we don't use booleans.
     ## We use an int to prevent compiler "optimization" and introduction of branches

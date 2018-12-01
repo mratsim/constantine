@@ -50,7 +50,7 @@ suite "Hardened unsigned integers":
         not(hard(0'u32)).undistinct == not 0'u32
         not(hard(1'u32)).undistinct == not 1'u32
         not(hard(1234'u64)).undistinct == not 1234'u64
-        not(hard(5678'u64)).undistinct == not 5678'u32
+        not(hard(5678'u64)).undistinct == not 5678'u64
         not(hard(x1)).undistinct == not x1
         not(hard(x2)).undistinct == not x2
         not(hard(x3)).undistinct == not x3
@@ -166,3 +166,15 @@ suite "Hardened booleans":
       bool(hard(10'u32) >= hard(20'u32)) == false
       bool(hard(10'u32) >= hard(5'u32)) == true
       bool(hard(10'u32) >= hard(0xFFFFFFFF'u32)) == false
+
+  test "Multiplexer/selector - select(ctl, x, y) <=> ctl? x: y":
+    let u = 10'u32.hard
+    let v = 20'u32.hard
+    let w = 5'u32.hard
+
+    let y = htrue(uint32)
+    let n = hfalse(uint32)
+
+    check:
+      bool(select(y, u, v) == u)
+

@@ -73,20 +73,24 @@ func isMsbSet*[T: HardBase](x: T): HardBool[T] {.inline.} =
 #
 # ############################################################
 
+template undistinct[T: HardBase](x: HardBool[T]): T =
+  T(x)
+
 func `not`*(ctl: HardBool): HardBool {.inline.}=
   ## Negate a constant-time boolean
-  ctl xor 1
+  (type result)(ctl.undistinct xor (type ctl.undistinct)(1))
 
-func select*[T: HardBase](ctl: HardBool[T], x, y: T): T {.inline.}=
+template select*[T: HardBase](ctl: HardBool[T], x, y: T): T =
   ## Multiplexer / selector
   ## Returns x if ctl == 1
   ## else returns y
   ## So equivalent to ctl? x: y
+  y xor (-T(ctl) and (x xor y))
+
   # TODO verify assembly generated
   # as mentionned in https://cryptocoding.net/index.php/Coding_rules
-  # the alternative `(x and ctl) or (y and -m)`
+  # the alternative `(x and ctl) or (y and -ctl)`
   # is optimized into a branch by Clang :/
-  y xor (-ctl.T and (x xor y))
 
 func noteq[T: HardBase](x, y: T): HardBool[T] {.inline.}=
   const msb = T.sizeof * 8 - 1
@@ -104,7 +108,7 @@ func `<`*[T: HardBase](x, y: T): HardBool[T] {.inline.}=
     )
 
 func `<=`*[T: HardBase](x, y: T): HardBool[T] {.inline.}=
-  (y < x) xor 1
+  not(y < x)
 
 # ############################################################
 #
