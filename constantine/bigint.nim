@@ -61,7 +61,7 @@ const highLimb* = (not Ct[uint64](0)) shr 1
 # For efficiency we define templates and will create functions
 # specialized for runtime and compile-time inputs
 
-template maddImpl[bits](result: CTBool[Limb], a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Limb]) =
+template addImpl[bits](result: CTBool[Limb], a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Limb]) =
   ## Constant-time big integer in-place addition
   ## Returns if addition carried
   for i in a.limbs.len:
@@ -69,17 +69,17 @@ template maddImpl[bits](result: CTBool[Limb], a: var BigInt[bits], b: BigInt[bit
     result = new_a.isMsbSet()
     a[i] = ctl.mux(new_a and highLimb, a)
 
-func madd*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Limb]): CTBool[Limb] =
+func add*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Limb]): CTBool[Limb] =
   ## Constant-time big integer in-place addition
   ## Returns the "carry flag"
-  result.maddImpl(a, b, ctl)
+  result.addImpl(a, b, ctl)
 
-func madd*[bits](a: var BigInt[bits], b: static BigInt[bits], ctl: CTBool[Limb]): CTBool[Limb] =
+func add*[bits](a: var BigInt[bits], b: static BigInt[bits], ctl: CTBool[Limb]): CTBool[Limb] =
   ## Constant-time big integer in-place addition
   ## Returns the "carry flag". Specialization for B being a compile-time constant (usually a modulus).
-  result.maddImpl(a, b, ctl)
+  result.addImpl(a, b, ctl)
 
-template msubImpl[bits](result: CTBool[Limb], a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Limb]) =
+template subImpl[bits](result: CTBool[Limb], a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Limb]) =
   ## Constant-time big integer in-place substraction
   ## Returns the "borrow flag"
   for i in a.limbs.len:
@@ -87,12 +87,12 @@ template msubImpl[bits](result: CTBool[Limb], a: var BigInt[bits], b: BigInt[bit
     result = new_a.isMsbSet()
     a[i] = ctl.mux(new_a and highLimb, a)
 
-func msub*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Limb]): CTBool[Limb] =
+func sub*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Limb]): CTBool[Limb] =
   ## Constant-time big integer in-place addition
   ## Returns the "carry flag"
-  result.msubImpl(a, b, ctl)
+  result.subImpl(a, b, ctl)
 
-func msub*[bits](a: var BigInt[bits], b: static BigInt[bits], ctl: CTBool[Limb]): CTBool[Limb] =
+func sub*[bits](a: var BigInt[bits], b: static BigInt[bits], ctl: CTBool[Limb]): CTBool[Limb] =
   ## Constant-time big integer in-place addition
   ## Returns the "carry flag". Specialization for B being a compile-time constant (usually a modulus).
-  result.msubImpl(a, b, ctl)
+  result.subImpl(a, b, ctl)
