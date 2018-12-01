@@ -35,7 +35,6 @@ import ./datatypes
 func high*(T: typedesc[HardBase]): T {.inline.}=
   not T(0)
 
-
 func `and`*[T: HardBase](x, y: T): T {.magic: "BitandI".}
 func `or`*[T: HardBase](x, y: T): T {.magic: "BitorI".}
 func `xor`*[T: HardBase](x, y: T): T {.magic: "BitxorI".}
@@ -45,22 +44,31 @@ func `-`*[T: HardBase](x, y: T): T {.magic: "SubU".}
 func `shr`*[T: HardBase](x: T, y: SomeInteger): T {.magic: "ShrI".}
 func `shl`*[T: HardBase](x: T, y: SomeInteger): T {.magic: "ShlI".}
 
-# #################################################################
+# ############################################################
+#
+#             Hardened Boolean primitives
+#
+# ############################################################
 
 func `not`*(ctl: HardBool): HardBool {.inline.}=
   ## Negate a constant-time boolean
-  result = ctl xor 1
+  ctl xor 1
 
 func `-`*(x: HardBase): HardBase {.inline.}=
   ## Unary minus returns the two-complement representation
   ## of an unsigned integer
   {.emit:"`result` = -`x`;".}
 
-func mux*[T: HardBase](ctl: HardBool[T], x, y: T): T {.inline.}=
+func select*[T: HardBase](ctl: HardBool[T], x, y: T): T {.inline.}=
   ## Multiplexer / selector
   ## Returns x if ctl == 1
   ## else returns y
-  result = y xor (-ctl.T and (x xor y))
+  ## So equivalent to ctl? x: y
+  # TODO verify assembly generated
+  # as mentionned in https://cryptocoding.net/index.php/Coding_rules
+  # the alternative `(x and ctl) or (y and -m)`
+  # is optimized into a branch by Clang :/
+  y xor (-ctl.T and (x xor y))
 
 func `!=`*[T: HardBase](x, y: T): HardBool[T] {.inline.}=
   const msb = T.sizeof * 8 - 1
@@ -68,7 +76,7 @@ func `!=`*[T: HardBase](x, y: T): HardBool[T] {.inline.}=
   result = (type result)((z or -z) shr msb)
 
 func `==`*[T: HardBase](x, y: T): HardBool[T] {.inline.}=
-  result = not(x != y)
+  not(x != y)
 
 func `<`*[T: HardBase](x, y: T): HardBool[T] {.inline.}=
   const msb = T.sizeof * 8 - 1
@@ -82,3 +90,38 @@ func `<`*[T: HardBase](x, y: T): HardBool[T] {.inline.}=
 
 func `<=`*[T: HardBase](x, y: T): HardBool[T] {.inline.}=
   (y < x) xor 1
+
+# ############################################################
+#
+#                           Bit hacks
+#
+# ############################################################
+
+func isMsbSet*[T: HardBase](x: T): HardBool[T] {.inline.} =
+  ## Returns the most significant bit of an integer
+  const msb_pos = T.sizeof * 8 - 1
+  result = (HardBool[T])(x shr msb_pos)
+
+# ############################################################
+#
+#             Optimized hardened zero comparison
+#
+# ############################################################
+
+func isNonZero*[T: HardBase](x: T): HardBool[T] {.inline.} =
+  isMsbSet(x or -x)
+
+func isZero*[T: HardBase](x: T): HardBool[T] {.inline.} =
+  not x.isNonZero
+
+# ############################################################
+#
+#             Transform x == 0 and x != 0
+#             into their optimized version
+#
+# ############################################################
+
+template trmIsZero*{x == 0}[T: HardBase](x: T): HardBool[T] = x.isZero
+template trmIsZero*{0 == x}[T: HardBase](x: T): HardBool[T] = x.isZero
+template trmIsNonZero*{x != 0}[T: HardBase](x: T): HardBool[T] = x.isNonZero
+template trmIsNonZero*{0 != x}[T: HardBase](x: T): HardBool[T] = x.isNonZero

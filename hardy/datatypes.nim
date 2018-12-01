@@ -23,3 +23,16 @@ type
     ## Allocations is left to the client library.
     ## Note that constant-time allocation is very involved for
     ## heap-allocated types (i.e. requires a memory pool)
+
+func htrue*(T: type(BaseUint)): auto {.compileTime.}=
+  (HardBool[HardBase[T]])(true)
+
+func hfalse*(T: type(BaseUint)): auto {.compileTime.}=
+  (HardBool[HardBase[T]])(false)
+
+template hard*(x: static int, T: type BaseUint): HardBase[T] =
+  ## For int literals
+  (HardBase[T])(x)
+
+template hard*(x: BaseUint): HardBase[type x] =
+  (HardBase[T])(x)
