@@ -30,10 +30,6 @@ func htrue*(T: type(BaseUint)): auto {.compileTime.}=
 func hfalse*(T: type(BaseUint)): auto {.compileTime.}=
   (HardBool[HardBase[T]])(false)
 
-template hard*(x: static int, T: type BaseUint): HardBase[T] =
-  ## For int literals
-  (HardBase[T])(x)
-
 func hard*[T: BaseUint](x: T): HardBase[T] {.inline.}=
   (HardBase[T])(x)
 

@@ -51,6 +51,11 @@ func `*`*[T: HardBase](x, y: T): T {.magic: "MulU".}
 # We don't implement div/mod as we can't assume the hardware implementation
 # is constant-time
 
+func `-`*(x: HardBase): HardBase {.inline.}=
+  ## Unary minus returns the two-complement representation
+  ## of an unsigned integer
+  {.emit:"`result` = -`x`;".}
+
 # ############################################################
 #
 #             Hardened Boolean primitives
@@ -60,11 +65,6 @@ func `*`*[T: HardBase](x, y: T): T {.magic: "MulU".}
 func `not`*(ctl: HardBool): HardBool {.inline.}=
   ## Negate a constant-time boolean
   ctl xor 1
-
-func `-`*(x: HardBase): HardBase {.inline.}=
-  ## Unary minus returns the two-complement representation
-  ## of an unsigned integer
-  {.emit:"`result` = -`x`;".}
 
 func select*[T: HardBase](ctl: HardBool[T], x, y: T): T {.inline.}=
   ## Multiplexer / selector

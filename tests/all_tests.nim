@@ -113,3 +113,22 @@ suite "Hardened unsigned integers":
     operator_check(`+`)
     operator_check(`-`)
     operator_check(`*`)
+
+  test "Unary `-`, returning the 2-complement of an unsigned integer":
+    let x1 = rand(high(int)).uint64
+    let y1 = rand(high(int)).uint64
+    let x2 = rand(high(int)).uint64
+    let y2 = rand(high(int)).uint64
+    let x3 = rand(high(int)).uint64
+    let y3 = rand(high(int)).uint64
+    check:
+      (-hard(0'u32)).undistinct == 0
+      (-high(HardBase[uint32])).undistinct == 1'u32
+      (-hard(0x80000000'u32)).undistinct == 0x80000000'u32 # This is low(int32) == 0b10000..0000
+
+      undistinct(-x1.hard) == undistinct(not(x1.hard) + hard(1'u64))
+      undistinct(-x2.hard) == undistinct(not(x2.hard) + hard(1'u64))
+      undistinct(-x3.hard) == undistinct(not(x3.hard) + hard(1'u64))
+      undistinct(-y1.hard) == undistinct(not(y1.hard) + hard(1'u64))
+      undistinct(-y2.hard) == undistinct(not(y2.hard) + hard(1'u64))
+      undistinct(-y3.hard) == undistinct(not(y3.hard) + hard(1'u64))
