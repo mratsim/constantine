@@ -15,11 +15,11 @@ type
     ## by conditional branches, we don't use booleans.
     ## We use an int to prevent compiler "optimization" and introduction of branches
 
-func ctrue*(T: type(BaseUint)): auto {.inline.}=
-  (CTBool[Ct[T]])(true)
+func ctrue*(T: type(Ct)): auto {.inline.}=
+  (CTBool[T])(true)
 
-func cfalse*(T: type(BaseUint)): auto {.inline.}=
-  (CTBool[Ct[T]])(false)
+func cfalse*(T: type(Ct)): auto {.inline.}=
+  (CTBool[T])(false)
 
 func ct*[T: BaseUint](x: T): Ct[T] {.inline.}=
   (Ct[T])(x)
@@ -102,6 +102,9 @@ template undistinct[T: Ct](x: CTBool[T]): T =
 func `not`*(ctl: CTBool): CTBool {.inline.}=
   ## Negate a constant-time boolean
   (type result)(ctl.undistinct xor (type ctl.undistinct)(1))
+
+func `and`*(x, y: CTBool): CTBool {.magic: "BitandI".}
+func `or`*(x, y: CTBool): CTBool {.magic: "BitorI".}
 
 template mux*[T: Ct](ctl: CTBool[T], x, y: T): T =
   ## Multiplexer / selector

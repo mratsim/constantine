@@ -5,8 +5,13 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-# Big int internal representation.
+
+# ############################################################
 #
+#                    BigInt representation
+#
+# ############################################################
+
 # To avoid carry issues we don't use the
 # most significant bit of each word.
 # i.e. for a uint64 base we only use 63-bit.
@@ -16,6 +21,10 @@
 #    - https://cryptojedi.org/peter/data/pairing-20131122.pdf
 #    - http://docs.milagro.io/en/amcl/milagro-crypto-library-white-paper.html
 #
+# Note that this might also be beneficial in terms of performance.
+# Due to opcode latency, on Nehalem ADC is 6x times slower than ADD
+# if it has dependencies (i.e the ADC depends on a previous ADC result)
+
 # Control flow should only depends on the static maximum number of bits
 # This number is defined per Finite Field/Prime/Elliptic Curve
 #
@@ -58,8 +67,11 @@ const highLimb* = (not Ct[uint64](0)) shr 1
 # if it is a placebo operation. It stills performs the
 # same memory accesses to be side-channel attack resistant
 
-# For efficiency we define templates and will create functions
-# specialized for runtime and compile-time inputs
+# For efficiency we can define templates and will create functions
+# specialised for runtime and compile-time inputs.
+#
+# We don't specialise for the control word, any optimizing compiler
+# will keep it in registers.
 
 template addImpl[bits](result: CTBool[Limb], a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Limb]) =
   ## Constant-time big integer in-place addition
