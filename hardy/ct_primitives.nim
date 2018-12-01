@@ -44,6 +44,13 @@ func `-`*[T: HardBase](x, y: T): T {.magic: "SubU".}
 func `shr`*[T: HardBase](x: T, y: SomeInteger): T {.magic: "ShrI".}
 func `shl`*[T: HardBase](x: T, y: SomeInteger): T {.magic: "ShlI".}
 
+func `*`*[T: HardBase](x, y: T): T {.magic: "MulU".}
+# Warning ⚠️ : We assume that mul hardware multiplication is constant time
+# but this is not always true, especially on ARMv7 and ARMv9
+
+# We don't implement div/mod as we can't assume the hardware implementation
+# is constant-time
+
 # ############################################################
 #
 #             Hardened Boolean primitives
