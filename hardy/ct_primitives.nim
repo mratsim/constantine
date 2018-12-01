@@ -80,7 +80,7 @@ func `not`*(ctl: HardBool): HardBool {.inline.}=
   ## Negate a constant-time boolean
   (type result)(ctl.undistinct xor (type ctl.undistinct)(1))
 
-template select*[T: HardBase](ctl: HardBool[T], x, y: T): T =
+template mux*[T: HardBase](ctl: HardBool[T], x, y: T): T =
   ## Multiplexer / selector
   ## Returns x if ctl == 1
   ## else returns y

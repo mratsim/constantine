@@ -167,7 +167,7 @@ suite "Hardened booleans":
       bool(hard(10'u32) >= hard(5'u32)) == true
       bool(hard(10'u32) >= hard(0xFFFFFFFF'u32)) == false
 
-  test "Multiplexer/selector - select(ctl, x, y) <=> ctl? x: y":
+  test "Multiplexer/selector - mux(ctl, x, y) <=> ctl? x: y":
     let u = 10'u32.hard
     let v = 20'u32.hard
     let w = 5'u32.hard
@@ -176,5 +176,11 @@ suite "Hardened booleans":
     let n = hfalse(uint32)
 
     check:
-      bool(select(y, u, v) == u)
+      bool(mux(y, u, v) == u)
+      bool(mux(n, u, v) == v)
 
+      bool(mux(y, u, w) == u)
+      bool(mux(n, u, w) == w)
+
+      bool(mux(y, v, w) == v)
+      bool(mux(n, v, w) == w)
