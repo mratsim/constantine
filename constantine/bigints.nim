@@ -40,12 +40,11 @@
 import ./word_types
 
 type Limb* = Ct[uint64]
-
-func limbBitSize*(): static int =
-  sizeof(Limb) * 8 - 1
+const LimbBitSize* = sizeof(Limb) * 8 - 1
+  ## Limbs are 63-bit by default
 
 func words_required(bits: static int): static int =
-  (bits + limbBitSize() - 1) div limbBitSize()
+  (bits + LimbBitSize - 1) div LimbBitSize
 
 type
   BigInt*[bits: static int] = object

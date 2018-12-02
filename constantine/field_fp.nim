@@ -74,11 +74,15 @@ from bitops import fastLog2
   # This will only be used at compile-time
   # so no constant-time worries (it is constant-time if using the De Bruijn multiplication)
 
-func montyInv(M: static BigInt): static Limb =
-  ## Returns the Montgomery domain
-  ## magic number: -1/M[0] mod LimbSize
+func montyMagic*(M: static BigInt): static Limb =
+  ## Returns the Montgomery domain magic number for the input modulus:
+  ##   -1/M[0] mod LimbSize
   ## M[0] is the least significant limb of M
-  ## M must be odd.
+  ## M must be odd and greater than 2.
+
+  # Test vectors: https://www.researchgate.net/publication/4107322_Montgomery_modular_multiplication_architecture_for_public_key_cryptosystems
+  # on p354
+  # Reference C impl: http://www.hackersdelight.org/hdcodetxt/mont64.c.txt
 
   # ######################################################################
   # Implementation of modular multiplication inverse
@@ -99,7 +103,7 @@ func montyInv(M: static BigInt): static Limb =
   # For Montgomery magic number, we are in a special case
   # where a = M and m = 2^LimbSize.
   # For a and m to be coprimes, a must be odd.
-  #
+
   # M being a power of 2 greatly simplifies computation:
   #  - https://crypto.stackexchange.com/questions/47493/how-to-determine-the-multiplicative-inverse-modulo-64-or-other-power-of-two
   #  - http://groups.google.com/groups?selm=1994Apr6.093116.27805%40mnemosyne.cs.du.edu
@@ -109,16 +113,14 @@ func montyInv(M: static BigInt): static Limb =
   # We have the following relation
   # ax ≡ 1 (mod 2^k) <=> ax(2 - ax) ≡ 1 (mod 2^(2k))
   #
-  # To get -1/M[0] mod LimbSize
-  #   <=> -1/M0 mod LS
-  #   <=> M0 x ≡ -1 (mod LS)
+  # To get  -1/M0 mod LimbSize
   # we can either negate the resulting x of `ax(2 - ax) ≡ 1 (mod 2^(2k))`
   # or do ax(2 + ax) ≡ 1 (mod 2^(2k))
 
   const
     M0 = M.limbs[0]
-    log2Limb = fastLog2(Limb.sizeof * 8)
+    k = fastLog2(LimbBitSize)
 
-  result = M                 # Start from an inverse of M0 modulo 2, M0 is odd and it's own inverse
-  for _ in 1 ..< log2Limb:
+  result = M0                # Start from an inverse of M0 modulo 2, M0 is odd and it's own inverse
+  for _ in 0 ..< k:
     result *= 2 + M * result # x' = x(2 + ax) (`+` to avoid negating at the end)
