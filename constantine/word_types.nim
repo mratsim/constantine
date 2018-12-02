@@ -63,7 +63,9 @@ func `or`*[T: Ct](x, y: T): T {.magic: "BitorI".}
 func `xor`*[T: Ct](x, y: T): T {.magic: "BitxorI".}
 func `not`*[T: Ct](x: T): T {.magic: "BitnotI".}
 func `+`*[T: Ct](x, y: T): T {.magic: "AddU".}
+func `+=`*[T: Ct](x: var T, y: T): T {.magic: "Inc".}
 func `-`*[T: Ct](x, y: T): T {.magic: "SubU".}
+func `-=`*[T: Ct](x: var T, y: T): T {.magic: "Dec".}
 func `shr`*[T: Ct](x: T, y: SomeInteger): T {.magic: "ShrI".}
 func `shl`*[T: Ct](x: T, y: SomeInteger): T {.magic: "ShlI".}
 

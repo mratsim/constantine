@@ -36,7 +36,7 @@ func asm_x86_64_extMul(hi, lo: var uint64, a, b: uint64) {.inline.}=
     : // no clobbered registers
   """
 
-func unsafe_extendedPrecMul(hi, lo: var Ct[uint64], a, b: Ct[uint64]) {.inline.}=
+func unsafe_extendedPrecMul*(hi, lo: var Ct[uint64], a, b: Ct[uint64]) {.inline.}=
   ## Extended precision multiplication uint64 * uint64 --> uint128
   ##
   ## TODO, at the moment only x86_64 architecture are supported
@@ -47,6 +47,13 @@ func unsafe_extendedPrecMul(hi, lo: var Ct[uint64], a, b: Ct[uint64]) {.inline.}
   # Note, using C/Nim default `*` is inefficient
   # and complicated to make constant-time
   # See at the bottom.
+
+  type T = uint64
+
+  when not defined(amd64):
+    {.error: "At the moment only x86_64 architecture is supported".}
+  else:
+    asm_x86_64_extMul(T(hi), T(lo), T(a), T(b))
 
 func asm_x86_64_div2n1n(q, r: var uint64, n_hi, n_lo, d: uint64) {.inline.}=
   ## Division uint128 by uint64
