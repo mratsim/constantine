@@ -43,7 +43,7 @@ type Word* = Ct[uint64]
 const WordBitSize* = sizeof(Word) * 8 - 1
   ## Limbs are 63-bit by default
 
-func words_required(bits: static int): static int =
+func words_required(bits: int): int {.compileTime.}=
   (bits + WordBitSize - 1) div WordBitSize
 
 type
@@ -58,6 +58,9 @@ const MaxWord* = (not Ct[uint64](0)) shr 1
 
 template `[]`*(a: Bigint, idx: int): Word =
   a.limbs[idx]
+
+template `[]=`*(a: var Bigint, idx: int, w: Word) =
+  a.limbs[idx] = w
 
 # ############################################################
 #
