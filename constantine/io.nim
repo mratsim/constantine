@@ -9,7 +9,9 @@
 #   - Constant-time validation for parsing secret keys
 #   - Burning memory to ensure secrets are not left after dealloc.
 
-import ./word_types, ./bigints
+import
+  endians,
+  ./word_types, ./bigints
 
 # ############################################################
 #
@@ -74,7 +76,7 @@ func readDecChar(c: range['0'..'9']): int {.inline.}=
 # ############################################################
 
 func parseRawUint*(
-        input: openarray[byte],
+        src: openarray[byte],
         bits: static int,
         endian: static Endianness): BigInt[bits] =
   ## Parse an unsigned integer from its canonical
@@ -90,7 +92,7 @@ func parseRawUint*(
     acc_len = 0
 
   template body(){.dirty.} =
-    let src_byte = Word(input[src_idx])
+    let src_byte = Word(src[src_idx])
 
     acc = acc and (src_byte shl acc_len)
     acc_len += 8 # We count bit by bit
@@ -102,10 +104,10 @@ func parseRawUint*(
       acc = src_byte shr (8 - acc_len)
 
   when endian == bigEndian:
-    for src_idx in countdown(input.high, 0):
+    for src_idx in countdown(src.high, 0):
       body()
   else:
-    for src_idx in 0 ..< input.len:
+    for src_idx in 0 ..< src.len:
       body()
 
   if acc_len != 0:
@@ -116,3 +118,75 @@ func parseRawUint*(
 # Serialising from internal representation to canonical format
 #
 # ############################################################
+
+template bigEndian[T: uint16 or uint32 or uint64](outp: pointer, inp: ptr T) =
+  when T is uint64:
+    bigEndian64(outp, inp)
+  elif T is uint32:
+    bigEndian32(outp, inp)
+  elif T is uint16:
+    bigEndian16(outp, inp)
+
+template littleEndian[T: uint16 or uint32 or uint64](outp: pointer, inp: ptr T) =
+  when T is uint64:
+    littleEndian64(outp, inp)
+  elif T is uint32:
+    littleEndian32(outp, inp)
+  elif T is uint16:
+    littleEndian16(outp, inp)
+
+func round_step_up(x: Natural, step: static Natural): int {.inline.} =
+  ## Round the input to the next multiple of "step"
+  assert (step and (step - 1)) == 0, "Step must be a power of 2"
+  result = (x + step - 1) and not(step - 1)
+
+func dumpRawUint*(
+        dst: var openarray[byte],
+        src: BigInt,
+        endian: static Endianness) =
+  ## Serialize a bigint into its canonical big-endian or little endian
+  ## representation.
+  ## A destination buffer of size "BigInt.bits div 8" at minimum is needed.
+  ##
+  ## If the buffer is bigger, output will be zero-padded left for big-endian
+  ## or zero-padded right for little-endian.
+  ## I.e least significant bit is aligned to buffer boundary
+
+  if dst.len < static(BigInt.bits div 8):
+    raise newException(ValueError, "BigInt -> Raw int conversion: destination buffer is too small")
+
+  when BigInt.bits == 0:
+    zeroMem(dst, dst.len)
+  else:
+    var
+      src_idx = 0
+      acc = Word(0)
+      acc_len = 0
+
+    template body(){.dirty.} =
+      let w = if src_idx < src.limbs.len: src[src_idx]
+              else: Word(0)
+      inc src_idx
+
+      if acc_len == 0:
+        # Edge case to avoid shifting by 0
+        acc = w
+        acc_len = WordBitSize
+      else:
+        let lo = (w shr acc_len) or acc
+        dec acc_len
+        acc = w shr (WordBitSize - acc_len)
+        when endian == bigEndian:
+          # We're counting down
+          bigEndian(dst[dst_idx - Word.sizeof], w.unsafeAddr)
+        else:
+          littleEndian(dst[dst_idx], w.unsafeAddr)
+
+    when endian == bigEndian:
+      discard # TODO
+    else:
+      let unroll_stop = round_step_up(dst.len, Word.sizeof)
+      for dst_idx in countup(0, unroll_stop - 1, Word.sizeof):
+        body()
+
+      # Process the tail - TODO
