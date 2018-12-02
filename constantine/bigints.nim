@@ -50,7 +50,7 @@ type
   BigInt*[bits: static int] = object
     limbs*: array[bits.words_required, Word]
 
-const HighLimb* = (not Ct[uint64](0)) shr 1
+const MaxWord* = (not Ct[uint64](0)) shr 1
   ## This represents 0x7F_FF_FF_FF__FF_FF_FF_FF
   ## also 0b0111...1111
   ## This biggest representable number in our limbs.
@@ -81,7 +81,7 @@ template addImpl[bits](result: CTBool[Word], a: var BigInt[bits], b: BigInt[bits
   for i in static(0 ..< a.limbs.len):
     let new_a = a.limbs[i] + b.limbs[i] + Word(result)
     result = new_a.isMsbSet()
-    a[i] = ctl.mux(new_a and HighLimb, a)
+    a[i] = ctl.mux(new_a and MaxWord, a)
 
 func add*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]): CTBool[Word] =
   ## Constant-time big integer in-place addition
@@ -99,7 +99,7 @@ template subImpl[bits](result: CTBool[Word], a: var BigInt[bits], b: BigInt[bits
   for i in static(0 ..< a.limbs.len):
     let new_a = a.limbs[i] - b.limbs[i] - Word(result)
     result = new_a.isMsbSet()
-    a[i] = ctl.mux(new_a and HighLimb, a)
+    a[i] = ctl.mux(new_a and MaxWord, a)
 
 func sub*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]): CTBool[Word] =
   ## Constant-time big integer in-place addition

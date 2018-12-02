@@ -97,11 +97,11 @@ template scaleadd_impl(a: var Fp, c: Word) =
       a[0] = c                                     # and replace the first one by c
       const p0 = Fp.P[^1]
     else:                                          # Need to deal with partial word shifts at the edge.
-      let a1 = ((a[^2] shl (WordBitSize-R)) or (a[^3] shr R)) and HighLimb
-      let a0 = ((a[^1] shl (WordBitSize-R)) or (a[^2] shr R)) and HighLimb
+      let a1 = ((a[^2] shl (WordBitSize-R)) or (a[^3] shr R)) and MaxWord
+      let a0 = ((a[^1] shl (WordBitSize-R)) or (a[^2] shr R)) and MaxWord
       moveMem(a[1], a[0], (len-1) * Word.sizeof)
       a[0] = c
-      const p0 = ((Fp.P[^1] shl (WordBitSize-R)) or (Fp.P[^2] shr R)) and HighLimb
+      const p0 = ((Fp.P[^1] shl (WordBitSize-R)) or (Fp.P[^2] shr R)) and MaxWord
 
     # p0 has its high bit set. (a0, a1)/p0 fits in a limb.
     # Get a quotient q, at most we will be 2 iterations off
@@ -113,7 +113,7 @@ template scaleadd_impl(a: var Fp, c: Word) =
     var q, r: Word
     q = unsafe_div2n1n(q, r, a_hi, a_lo, p0)       # Estimate quotient
     q = mux(                                       # If n_hi == divisor
-          a0 == b0, HighLimb,                      # Quotient == HighLimb (0b0111...1111)
+          a0 == b0, MaxWord,                      # Quotient == MaxWord (0b0111...1111)
           mux(
             q == 0, 0,                             # elif q == 0, true quotient = 0
             q - 1                                  # else instead of being of by 0, 1 or 2
@@ -136,12 +136,12 @@ template scaleadd_impl(a: var Fp, c: Word) =
         let qp_carry = qp_lo.isMsbSet
         carry = mux(qp_carry, qp_hi + Word(1), qp_hi)    # New carry
 
-        qp_lo = qp_lo and HighLimb                       # Normalize to u63
+        qp_lo = qp_lo and MaxWord                       # Normalize to u63
 
       block: # a*2^63 - q*p
         a[i] -= qp_lo
         carry += Word(a[i].isMsbSet)                     # Adjust if borrow
-        a[i] = a[i] and HighLimb                         # Normalize to u63
+        a[i] = a[i] and MaxWord                         # Normalize to u63
 
       over_p = mux(
                 a[i] == Fp.P[i], over_p,
