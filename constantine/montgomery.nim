@@ -18,7 +18,7 @@ from bitops import fastLog2
   # This will only be used at compile-time
   # so no constant-time worries (it is constant-time if using the De Bruijn multiplication)
 
-func montyMagic*(M: static BigInt): static Limb =
+func montyMagic*(M: static BigInt): static Word =
   ## Returns the Montgomery domain magic number for the input modulus:
   ##   -1/M[0] mod LimbSize
   ## M[0] is the least significant limb of M
@@ -63,7 +63,7 @@ func montyMagic*(M: static BigInt): static Limb =
 
   const
     M0 = M.limbs[0]
-    k = fastLog2(LimbBitSize)
+    k = fastLog2(WordBitSize)
 
   result = M0                # Start from an inverse of M0 modulo 2, M0 is odd and it's own inverse
   for _ in static(0 ..< k):

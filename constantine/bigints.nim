@@ -39,16 +39,16 @@
 
 import ./word_types
 
-type Limb* = Ct[uint64]
-const LimbBitSize* = sizeof(Limb) * 8 - 1
+type Word* = Ct[uint64]
+const WordBitSize* = sizeof(Word) * 8 - 1
   ## Limbs are 63-bit by default
 
 func words_required(bits: static int): static int =
-  (bits + LimbBitSize - 1) div LimbBitSize
+  (bits + WordBitSize - 1) div WordBitSize
 
 type
   BigInt*[bits: static int] = object
-    limbs*: array[bits.words_required, Limb]
+    limbs*: array[bits.words_required, Word]
 
 const HighLimb* = (not Ct[uint64](0)) shr 1
   ## This represents 0x7F_FF_FF_FF__FF_FF_FF_FF
@@ -56,7 +56,7 @@ const HighLimb* = (not Ct[uint64](0)) shr 1
   ## This biggest representable number in our limbs.
   ## i.e. The most significant bit is never set at the end of each function
 
-template `[]`*(a: Bigint, idx: int): Limb =
+template `[]`*(a: Bigint, idx: int): Word =
   a.limbs[idx]
 
 # ############################################################
@@ -75,38 +75,38 @@ template `[]`*(a: Bigint, idx: int): Limb =
 # We don't specialise for the control word, any optimizing compiler
 # will keep it in registers.
 
-template addImpl[bits](result: CTBool[Limb], a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Limb]) =
+template addImpl[bits](result: CTBool[Word], a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]) =
   ## Constant-time big integer in-place addition
   ## Returns if addition carried
   for i in static(0 ..< a.limbs.len):
-    let new_a = a.limbs[i] + b.limbs[i] + Limb(result)
+    let new_a = a.limbs[i] + b.limbs[i] + Word(result)
     result = new_a.isMsbSet()
     a[i] = ctl.mux(new_a and HighLimb, a)
 
-func add*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Limb]): CTBool[Limb] =
+func add*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]): CTBool[Word] =
   ## Constant-time big integer in-place addition
   ## Returns the "carry flag"
   result.addImpl(a, b, ctl)
 
-func add*[bits](a: var BigInt[bits], b: static BigInt[bits], ctl: CTBool[Limb]): CTBool[Limb] =
+func add*[bits](a: var BigInt[bits], b: static BigInt[bits], ctl: CTBool[Word]): CTBool[Word] =
   ## Constant-time big integer in-place addition
   ## Returns the "carry flag". Specialization for B being a compile-time constant (usually a modulus).
   result.addImpl(a, b, ctl)
 
-template subImpl[bits](result: CTBool[Limb], a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Limb]) =
+template subImpl[bits](result: CTBool[Word], a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]) =
   ## Constant-time big integer in-place substraction
   ## Returns the "borrow flag"
   for i in static(0 ..< a.limbs.len):
-    let new_a = a.limbs[i] - b.limbs[i] - Limb(result)
+    let new_a = a.limbs[i] - b.limbs[i] - Word(result)
     result = new_a.isMsbSet()
     a[i] = ctl.mux(new_a and HighLimb, a)
 
-func sub*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Limb]): CTBool[Limb] =
+func sub*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]): CTBool[Word] =
   ## Constant-time big integer in-place addition
   ## Returns the "carry flag"
   result.subImpl(a, b, ctl)
 
-func sub*[bits](a: var BigInt[bits], b: static BigInt[bits], ctl: CTBool[Limb]): CTBool[Limb] =
+func sub*[bits](a: var BigInt[bits], b: static BigInt[bits], ctl: CTBool[Word]): CTBool[Word] =
   ## Constant-time big integer in-place addition
   ## Returns the "carry flag". Specialization for B being a compile-time constant (usually a modulus).
   result.subImpl(a, b, ctl)
