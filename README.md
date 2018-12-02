@@ -6,8 +6,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 ![Stability: experimental](https://img.shields.io/badge/stability-experimental-orange.svg)
 
-This library provides constant time finite field primitives.
-The main use will be for implementation of elliptic curve cryptography
+This library provides constant time finite field primitives for implementation of elliptic curve cryptography.
+
+Warning ⚠️: The library is in development state.
 
 ## Installation
 

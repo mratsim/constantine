@@ -69,5 +69,12 @@ func montyMagic*(M: static BigInt): static Limb =
   for _ in static(0 ..< k):
     result *= 2 + M * result # x' = x(2 + ax) (`+` to avoid negating at the end)
 
-# func toMonty*[P: static BigInt](a: Fp[P], montyMagic: Limb): Montgomery[P] =
+func toMonty*[P: static BigInt](a: Fp[P]): Montgomery[P] =
+  ## Convert a big integer over Fp to it's montgomery representation
+  ## over Fp.
+  ## i.e. Does "a * (2^LimbSize)^W (mod p), where W is the number
+  ## of words needed to represent p in base 2^LimbSize
 
+  result = a
+  for i in static(countdown(P.limbs.high, 0)):
+    scaleadd(result, 0)

@@ -160,14 +160,14 @@ template scaleadd_impl(a: var Fp, c: Limb) =
     sub(a, Fp.P, tooBig)
 
 func scaleadd*(a: var Fp, c: Limb) =
-  ## Scale-accumulate
+  ## Scale-accumulate modulo P
   ##
   ## With a word W = 2^LimbBitSize and a field Fp
   ## Does a <- a * W + c (mod p)
   scaleadd_impl(a, c)
 
 func scaleadd*(a: var Fp, c: static Limb) =
-  ## Scale-accumulate
+  ## Scale-accumulate modulo P
   ##
   ## With a word W = 2^LimbBitSize and a field Fp
   ## Does a <- a * W + c (mod p)
