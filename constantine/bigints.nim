@@ -75,7 +75,7 @@ const highLimb* = (not Ct[uint64](0)) shr 1
 template addImpl[bits](result: CTBool[Limb], a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Limb]) =
   ## Constant-time big integer in-place addition
   ## Returns if addition carried
-  for i in a.limbs.len:
+  for i in static(0 ..< a.limbs.len):
     let new_a = a.limbs[i] + b.limbs[i] + Limb(result)
     result = new_a.isMsbSet()
     a[i] = ctl.mux(new_a and highLimb, a)
@@ -93,7 +93,7 @@ func add*[bits](a: var BigInt[bits], b: static BigInt[bits], ctl: CTBool[Limb]):
 template subImpl[bits](result: CTBool[Limb], a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Limb]) =
   ## Constant-time big integer in-place substraction
   ## Returns the "borrow flag"
-  for i in a.limbs.len:
+  for i in static(0 ..< a.limbs.len):
     let new_a = a.limbs[i] - b.limbs[i] - Limb(result)
     result = new_a.isMsbSet()
     a[i] = ctl.mux(new_a and highLimb, a)

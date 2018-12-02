@@ -122,5 +122,5 @@ func montyMagic*(M: static BigInt): static Limb =
     k = fastLog2(LimbBitSize)
 
   result = M0                # Start from an inverse of M0 modulo 2, M0 is odd and it's own inverse
-  for _ in 0 ..< k:
+  for _ in static(0 ..< k):
     result *= 2 + M * result # x' = x(2 + ax) (`+` to avoid negating at the end)
