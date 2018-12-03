@@ -36,8 +36,8 @@ type
 # ############################################################
 
 const
-  True = ctrue(Word)
-  False = cfalse(Word)
+  CtTrue* = ctrue(Word)
+  CtFalse* = cfalse(Word)
 
 template add(a: var Fp, b: Fp, ctl: CTBool[Word]): CTBool[Word] =
   add(a.value, b.value, ctl)
@@ -65,8 +65,8 @@ func `+`*(a, b: Fp): Fp =
   # return m - b_from_p + a
 
   result = a
-  var ctl = add(result, b, True)
-  ctl = ctl or not sub(result, Fp.P, False)
+  var ctl = add(result, b, CtTrue)
+  ctl = ctl or not sub(result, Fp.P, CtFalse)
   sub(result, Fp.P, ctl)
 
 template scaleadd_impl(a: var Fp, c: Word) =
