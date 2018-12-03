@@ -119,7 +119,7 @@ func parseRawUint*(
 #
 # ############################################################
 
-template bigEndian[T: uint16 or uint32 or uint64](outp: pointer, inp: ptr T) =
+template bigEndianXX[T: uint16 or uint32 or uint64](outp: pointer, inp: ptr T) =
   when T is uint64:
     bigEndian64(outp, inp)
   elif T is uint32:
@@ -127,7 +127,7 @@ template bigEndian[T: uint16 or uint32 or uint64](outp: pointer, inp: ptr T) =
   elif T is uint16:
     bigEndian16(outp, inp)
 
-template littleEndian[T: uint16 or uint32 or uint64](outp: pointer, inp: ptr T) =
+template littleEndianXX[T: uint16 or uint32 or uint64](outp: pointer, inp: ptr T) =
   when T is uint64:
     littleEndian64(outp, inp)
   elif T is uint32:
@@ -135,15 +135,55 @@ template littleEndian[T: uint16 or uint32 or uint64](outp: pointer, inp: ptr T) 
   elif T is uint16:
     littleEndian16(outp, inp)
 
-func round_step_up(x: Natural, step: static Natural): int {.inline.} =
-  ## Round the input to the next multiple of "step"
-  assert (step and (step - 1)) == 0, "Step must be a power of 2"
-  result = (x + step - 1) and not(step - 1)
+func dumpRawUintLE(
+        dst: var openarray[byte],
+        src: BigInt) {.inline.}=
+  ## Serialize a bigint into its canonical big-endian representation
+  ## I.e least significant bit is aligned to buffer boundary
+
+  var
+    src_idx, dst_idx = 0
+    acc: BaseType = 0
+    acc_len = 0
+
+  var tail = dst.len
+  while tail > 0:
+    let w = if src_idx < src.limbs.len: src[src_idx].BaseType
+            else: 0
+    inc src_idx
+
+    if acc_len == 0:
+      # Edge case, we need to refill the buffer to output 64-bit
+      # as we can only read 63-bit per word
+      acc = w
+      acc_len = WordBitSize
+    else:
+      let lo = (w shl acc_len) or acc
+      dec acc_len
+      acc = w shr (WordBitSize - acc_len)
+
+      if tail >= sizeof(Word):
+        # Unrolled copy
+        # debugecho src.repr
+        littleEndianXX(dst[dst_idx].addr, lo.unsafeAddr)
+        dst_idx += sizeof(Word)
+        tail -= sizeof(Word)
+      else:
+        # Process the tail
+        when cpuEndian == littleEndian:
+          # When requesting little-endian on little-endian platform
+          # we can just copy each byte
+          for i in dst_idx ..< tail:
+            dst[dst_idx] = byte(lo shr (i-dst_idx))
+        else:
+          # We need to copy from the end
+          for i in 0 ..< tail:
+            dst[dst_idx] = byte(lo shr (tail-i))
 
 func dumpRawUint*(
         dst: var openarray[byte],
         src: BigInt,
-        endian: static Endianness) =
+        order: static Endianness) =
   ## Serialize a bigint into its canonical big-endian or little endian
   ## representation.
   ## A destination buffer of size "BigInt.bits div 8" at minimum is needed.
@@ -157,36 +197,8 @@ func dumpRawUint*(
 
   when BigInt.bits == 0:
     zeroMem(dst, dst.len)
+
+  when order == littleEndian:
+    dumpRawUintLE(dst, src)
   else:
-    var
-      src_idx = 0
-      acc = Word(0)
-      acc_len = 0
-
-    template body(){.dirty.} =
-      let w = if src_idx < src.limbs.len: src[src_idx]
-              else: Word(0)
-      inc src_idx
-
-      if acc_len == 0:
-        # Edge case to avoid shifting by 0
-        acc = w
-        acc_len = WordBitSize
-      else:
-        let lo = (w shr acc_len) or acc
-        dec acc_len
-        acc = w shr (WordBitSize - acc_len)
-        when endian == bigEndian:
-          # We're counting down
-          bigEndian(dst[dst_idx - Word.sizeof], w.unsafeAddr)
-        else:
-          littleEndian(dst[dst_idx], w.unsafeAddr)
-
-    when endian == bigEndian:
-      discard # TODO
-    else:
-      let unroll_stop = round_step_up(dst.len, Word.sizeof)
-      for dst_idx in countup(0, unroll_stop - 1, Word.sizeof):
-        body()
-
-      # Process the tail - TODO
+    {.error: "Not implemented at the moment".}

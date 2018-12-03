@@ -40,6 +40,8 @@
 import ./word_types
 
 type Word* = Ct[uint64]
+type BaseType* = uint64 # Exported type for conversion in "normal integers"
+
 const WordBitSize* = sizeof(Word) * 8 - 1
   ## Limbs are 63-bit by default
 
