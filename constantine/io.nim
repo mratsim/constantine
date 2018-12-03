@@ -75,12 +75,11 @@ func readDecChar(c: range['0'..'9']): int {.inline.}=
 #
 # ############################################################
 
-func parseRawUint*(
+func parseRawUintLE(
         src: openarray[byte],
-        bits: static int,
-        endian: static Endianness): BigInt[bits] =
+        bits: static int): BigInt[bits] {.inline.}=
   ## Parse an unsigned integer from its canonical
-  ## big-endian or little-endian unsigned representation
+  ## little-endian unsigned representation
   ## And store it into a BigInt of size bits
   ##
   ## CT:
@@ -91,27 +90,38 @@ func parseRawUint*(
     acc = Word(0)
     acc_len = 0
 
-  template body(){.dirty.} =
+  for src_idx in 0 ..< src.len:
     let src_byte = Word(src[src_idx])
 
-    acc = acc and (src_byte shl acc_len)
+    # buffer reads
+    acc = acc or (src_byte shl acc_len)
     acc_len += 8 # We count bit by bit
 
+    # if full, dump
     if acc_len >= WordBitSize:
       result[dst_idx] = acc and MaxWord
       inc dst_idx
       acc_len -= WordBitSize
       acc = src_byte shr (8 - acc_len)
 
-  when endian == bigEndian:
-    for src_idx in countdown(src.high, 0):
-      body()
-  else:
-    for src_idx in 0 ..< src.len:
-      body()
-
   if acc_len != 0:
     result[dst_idx] = acc
+
+func parseRawUint*(
+        src: openarray[byte],
+        bits: static int,
+        order: static Endianness): BigInt[bits] =
+  ## Parse an unsigned integer from its canonical
+  ## big-endian or little-endian unsigned representation
+  ## And store it into a BigInt of size bits
+  ##
+  ## CT:
+  ##   - no leaks
+
+  when order == littleEndian:
+    parseRawUintLE(src, bits)
+  else:
+    {.error: "Not implemented at the moment".}
 
 # ############################################################
 #
