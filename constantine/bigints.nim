@@ -45,12 +45,12 @@ type BaseType* = uint64 # Exported type for conversion in "normal integers"
 const WordBitSize* = sizeof(Word) * 8 - 1
   ## Limbs are 63-bit by default
 
-func words_required(bits: int): int {.compileTime.}=
+func wordsRequired(bits: int): int {.compileTime.}=
   (bits + WordBitSize - 1) div WordBitSize
 
 type
   BigInt*[bits: static int] = object
-    limbs*: array[bits.words_required, Word]
+    limbs*: array[bits.wordsRequired, Word]
 
 const MaxWord* = (not Ct[uint64](0)) shr 1
   ## This represents 0x7F_FF_FF_FF__FF_FF_FF_FF

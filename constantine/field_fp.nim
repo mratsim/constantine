@@ -69,8 +69,9 @@ func `+`*(a, b: Fp): Fp =
   ctl = ctl or not sub(result, Fp.P, CtFalse)
   sub(result, Fp.P, ctl)
 
-template scaleadd_impl(a: var Fp, c: Word) =
-  ## Scale-accumulate
+template shiftAddImpl(a: var Fp, c: Word) =
+  ## Shift-accumulate
+  ## Shift input a by a word and add c.
   ##
   ## With a word W = 2^WordBitSize and a field Fp
   ## Does a <- a * W + c (mod p)
@@ -83,7 +84,7 @@ template scaleadd_impl(a: var Fp, c: Word) =
     # (hi, lo) = a * 2^63 + c
     let hi = a[0] shr 1                            # 64 - 63 = 1
     let lo = a[0] shl WordBitSize or c             # Assumes most-significant bit in c is not set
-    unsafe_div2n1n(q, a[0], hi, lo, Fp.P.limbs[0]) # (hi, lo) mod P
+    unsafeDiv2n1n(q, a[0], hi, lo, Fp.P.limbs[0]) # (hi, lo) mod P
 
   else:
     ## Multiple limbs
@@ -111,7 +112,7 @@ template scaleadd_impl(a: var Fp, c: Word) =
       a_hi = a0 shr 1                              # 64 - 63 = 1
       a_lo = (a0 shl WordBitSize) or a1
     var q, r: Word
-    q = unsafe_div2n1n(q, r, a_hi, a_lo, p0)       # Estimate quotient
+    q = unsafeDiv2n1n(q, r, a_hi, a_lo, p0)       # Estimate quotient
     q = mux(                                       # If n_hi == divisor
           a0 == b0, MaxWord,                      # Quotient == MaxWord (0b0111...1111)
           mux(
@@ -129,7 +130,7 @@ template scaleadd_impl(a: var Fp, c: Word) =
 
       block: # q*p
         qp_hi: Word
-        unsafe_extendedPrecMul(qp_hi, qp_lo, q, Fp.P[i]) # q * p
+        unsafeExtendedPrecMul(qp_hi, qp_lo, q, Fp.P[i]) # q * p
         assert qp_lo.isMsbSet.not
         assert carry.isMsbSet.not
         qp_lo += carry                                   # Add carry from previous limb
@@ -159,16 +160,18 @@ template scaleadd_impl(a: var Fp, c: Word) =
     add(a, Fp.P, neg)
     sub(a, Fp.P, tooBig)
 
-func scaleadd*(a: var Fp, c: Word) =
-  ## Scale-accumulate modulo P
+func shiftAdd*(a: var Fp, c: Word) =
+  ## Shift-accumulate modulo P
+  ## Shift input a by a word and add c modulo P
   ##
   ## With a word W = 2^WordBitSize and a field Fp
   ## Does a <- a * W + c (mod p)
-  scaleadd_impl(a, c)
+  shiftAddImpl(a, c)
 
-func scaleadd*(a: var Fp, c: static Word) =
+func shiftAdd*(a: var Fp, c: static Word) =
   ## Scale-accumulate modulo P
+  ## Shift input a by a word and add c modulo P
   ##
   ## With a word W = 2^WordBitSize and a field Fp
   ## Does a <- a * W + c (mod p)
-  scaleadd_impl(a, c)
+  shiftAddImpl(a, c)

@@ -77,4 +77,4 @@ func toMonty*[P: static BigInt](a: Fp[P]): Montgomery[P] =
 
   result = a
   for i in static(countdown(P.limbs.high, 0)):
-    scaleadd(result, 0)
+    shiftAdd(result, 0)

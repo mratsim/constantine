@@ -36,7 +36,7 @@ func asm_x86_64_extMul(hi, lo: var uint64, a, b: uint64) {.inline.}=
     : // no clobbered registers
   """
 
-func unsafe_extendedPrecMul*(hi, lo: var Ct[uint64], a, b: Ct[uint64]) {.inline.}=
+func unsafeExtendedPrecMul*(hi, lo: var Ct[uint64], a, b: Ct[uint64]) {.inline.}=
   ## Extended precision multiplication uint64 * uint64 --> uint128
   ##
   ## TODO, at the moment only x86_64 architecture are supported
@@ -81,7 +81,7 @@ func asm_x86_64_div2n1n(q, r: var uint64, n_hi, n_lo, d: uint64) {.inline.}=
     :  // no register clobbered besides explicitly used RAX and RDX
   """
 
-func unsafe_div2n1n*(q, r: var Ct[uint64], n_hi, n_lo, d: Ct[uint64]) {.inline.}=
+func unsafeDiv2n1n*(q, r: var Ct[uint64], n_hi, n_lo, d: Ct[uint64]) {.inline.}=
   ## Division uint128 by uint64
   ## Warning ⚠️ :
   ##   - if n_hi == d, quotient does not fit in an uint64
