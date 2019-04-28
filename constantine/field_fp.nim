@@ -155,7 +155,7 @@ template shiftAddImpl(a: var Fp, c: Word) =
     # if carry > hi (negative result) we must do "a+= p"
 
     let neg = carry < hi
-    let tooBig = not over and (over_p or (carry < hi))
+    let tooBig = not neg and (over_p or (carry < hi))
 
     add(a, Fp.P, neg)
     sub(a, Fp.P, tooBig)

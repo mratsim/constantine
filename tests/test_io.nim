@@ -60,3 +60,25 @@ suite "IO":
         var r_bytes: array[8, byte]
         dumpRawUint(r_bytes, big, littleEndian)
         check: x_bytes == r_bytes
+
+  test "Round trip on elliptic curve constants":
+    block: # Secp256k1 - https://en.bitcoin.it/wiki/Secp256k1
+      const p = "fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f"
+      let x = fromHex(BigInt[256], p)
+      let hex = x.dumpHex(bigEndian)
+
+      check: p == hex
+
+    block: # alt-BN128 - https://github.com/ethereum/py_ecc/blob/master/py_ecc/fields/field_properties.py
+      const p = "30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"
+      let x = fromHex(BigInt[254], p)
+      let hex = x.dumpHex(bigEndian)
+
+      check: p == hex
+
+    block: # BLS12-381 - https://github.com/ethereum/py_ecc/blob/master/py_ecc/fields/field_properties.py
+      const p = "1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab"
+      let x = fromHex(BigInt[381], p)
+      let hex = x.dumpHex(bigEndian)
+
+      check: p == hex
