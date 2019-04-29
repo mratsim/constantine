@@ -15,11 +15,17 @@ type
     ## by conditional branches, we don't use booleans.
     ## We use an int to prevent compiler "optimization" and introduction of branches
 
-func ctrue*(T: typedesc[BaseUint]): auto {.inline.}=
-  (CTBool[Ct[T]])(true)
+func ctrue*(T: typedesc[Ct or BaseUint]): auto {.inline.}=
+  when T is Ct:
+    (CTBool[T])(true)
+  else:
+    (CTBool[Ct[T]])(true)
 
-func cfalse*(T: typedesc[BaseUint]): auto {.inline.}=
-  (CTBool[Ct[T]])(false)
+func cfalse*(T: typedesc[Ct or BaseUint]): auto {.inline.}=
+  when T is Ct:
+    (CTBool[T])(false)
+  else:
+    (CTBool[Ct[T]])(false)
 
 func ct*[T: BaseUint](x: T): Ct[T] {.inline.}=
   (Ct[T])(x)
