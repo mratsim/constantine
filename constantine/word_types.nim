@@ -16,25 +16,25 @@ type
     ## by conditional branches, we don't use booleans.
     ## We use an int to prevent compiler "optimization" and introduction of branches
 
-func ctrue*(T: typedesc[Ct or BaseUint]): auto {.inline.}=
+func ctrue*(T: typedesc[Ct or BaseUint]): auto {.inline, raises: [].}=
   when T is Ct:
     (CTBool[T])(true)
   else:
     (CTBool[Ct[T]])(true)
 
-func cfalse*(T: typedesc[Ct or BaseUint]): auto {.inline.}=
+func cfalse*(T: typedesc[Ct or BaseUint]): auto {.inline, raises: [].}=
   when T is Ct:
     (CTBool[T])(false)
   else:
     (CTBool[Ct[T]])(false)
 
-func ct*[T: BaseUint](x: T): Ct[T] {.inline.}=
+func ct*[T: BaseUint](x: T): Ct[T] {.inline, raises: [].}=
   (Ct[T])(x)
 
-func `$`*[T](x: Ct[T]): string {.inline.} =
+func `$`*[T](x: Ct[T]): string {.inline, raises: [].} =
   $T(x)
 
-func `$`*(x: CTBool): string {.inline.} =
+func `$`*(x: CTBool): string {.inline, raises: [].} =
   $bool(x)
 
 # ############################################################
@@ -62,7 +62,7 @@ func `$`*(x: CTBool): string {.inline.} =
 #    - https://github.com/nim-lang/Nim/pull/8531
 #    - https://github.com/nim-lang/Nim/issues/4121 (can be workaround with #8531)
 
-func high*(T: typedesc[Ct]): T {.inline.}=
+func high*(T: typedesc[Ct]): T {.inline, raises: [].}=
   not T(0)
 
 func `and`*[T: Ct](x, y: T): T {.magic: "BitandI".}
@@ -87,7 +87,7 @@ func `*`*[T: Ct](x, y: T): T {.magic: "MulU".}
 # We don't implement div/mod as we can't assume the hardware implementation
 # is constant-time
 
-func `-`*(x: Ct): Ct {.inline.}=
+func `-`*(x: Ct): Ct {.inline, raises: [].}=
   ## Unary minus returns the two-complement representation
   ## of an unsigned integer
   {.emit:"`result` = -`x`;".}
@@ -98,7 +98,7 @@ func `-`*(x: Ct): Ct {.inline.}=
 #
 # ############################################################
 
-func isMsbSet*[T: Ct](x: T): CTBool[T] {.inline.} =
+func isMsbSet*[T: Ct](x: T): CTBool[T] {.inline, raises: [].} =
   ## Returns the most significant bit of an integer
   const msb_pos = T.sizeof * 8 - 1
   result = (CTBool[T])(x shr msb_pos)
@@ -112,7 +112,7 @@ func isMsbSet*[T: Ct](x: T): CTBool[T] {.inline.} =
 template undistinct[T: Ct](x: CTBool[T]): T =
   T(x)
 
-func `not`*(ctl: CTBool): CTBool {.inline.}=
+func `not`*(ctl: CTBool): CTBool {.inline, raises: [].}=
   ## Negate a constant-time boolean
   (type result)(ctl.undistinct xor (type ctl.undistinct)(1))
 
@@ -131,22 +131,22 @@ template mux*[T: Ct](ctl: CTBool[T], x, y: T): T =
   # the alternative `(x and ctl) or (y and -ctl)`
   # is optimized into a branch by Clang :/
 
-func noteq[T: Ct](x, y: T): CTBool[T] {.inline.}=
+func noteq[T: Ct](x, y: T): CTBool[T] {.inline, raises: [].}=
   const msb = T.sizeof * 8 - 1
   let z = x xor y
   result = (type result)((z or -z) shr msb)
 
-func `==`*[T: Ct](x, y: T): CTBool[T] {.inline.}=
+func `==`*[T: Ct](x, y: T): CTBool[T] {.inline, raises: [].}=
   not(noteq(x, y))
 
-func `<`*[T: Ct](x, y: T): CTBool[T] {.inline.}=
+func `<`*[T: Ct](x, y: T): CTBool[T] {.inline, raises: [].}=
   result = isMsbSet(
       x xor (
         (x xor y) or ((x - y) xor y)
       )
     )
 
-func `<=`*[T: Ct](x, y: T): CTBool[T] {.inline.}=
+func `<=`*[T: Ct](x, y: T): CTBool[T] {.inline, raises: [].}=
   not(y < x)
 
 # ############################################################
@@ -168,10 +168,10 @@ template trmFixSystemNotEq*{x != y}[T: Ct](x, y: T): CTBool[T] =
 #
 # ############################################################
 
-func isNonZero*[T: Ct](x: T): CTBool[T] {.inline.} =
+func isNonZero*[T: Ct](x: T): CTBool[T] {.inline, raises: [].} =
   isMsbSet(x or -x)
 
-func isZero*[T: Ct](x: T): CTBool[T] {.inline.} =
+func isZero*[T: Ct](x: T): CTBool[T] {.inline, raises: [].} =
   not x.isNonZero
 
 # ############################################################
