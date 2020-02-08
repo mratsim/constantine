@@ -36,7 +36,6 @@
 # We internally order the limbs in little-endian
 # So the least significant limb is limb[0]
 # This is independent from the base type endianness.
-# TODO: hexdumps
 
 import ./word_types
 
@@ -48,6 +47,16 @@ const WordBitSize* = sizeof(Word) * 8 - 1
 
 func wordsRequired(bits: int): int {.compileTime.}=
   (bits + WordBitSize - 1) div WordBitSize
+
+# TODO: Currently the library is instantiation primitives like "add"
+#       for each "bits" size supported. This will lead to duplication
+#       if many sizes (for example for scp256k1, bn254 and BLS12-381)
+#       are required.
+#       It could be avoided by having the bitsize be a runtime field
+#       of the bigint. However the tradeoff would be:
+#       - overhead of this additional field
+#       - limbs have to be stored in an UncheckedArray instead of an array
+#         introducing memory management issues
 
 type
   BigInt*[bits: static int] = object

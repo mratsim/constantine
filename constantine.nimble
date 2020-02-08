@@ -6,16 +6,17 @@ license       = "MIT or Apache License 2.0"
 srcDir        = "src"
 
 ### Dependencies
-requires "nim >= 0.18.0"
+requires "nim >= 1.0.6"
 
 ### Helper functions
-proc test(name: string, defaultLang = "c") =
+proc test(fakeCurves: string, path: string, lang = "c") =
   if not dirExists "build":
     mkDir "build"
-  --run
-  switch("out", ("./build/" & name))
-  setCommand defaultLang, "tests/" & name & ".nim"
+  exec "nim " & lang & fakeCurves & " --outdir:build -r --hints:off --warnings:off " & path
 
 ### tasks
 task test, "Run all tests":
-  test "all_tests"
+  test "",                 "tests/test_word_types.nim"
+  test "",                 "tests/test_io.nim"
+  test "",                 "tests/test_bigints.nim"
+  test "-d:testingCurves", "tests/test_field_fp.nim"

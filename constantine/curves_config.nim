@@ -35,11 +35,18 @@ import
 # - proc MontyMagic(curve: static Curve): static Word =
 #   which returns the Montgomery magic constant
 #   associated with the curve modulus
-declareCurves:
-  # Barreto-Naehrig curve, Prime 254 bit, 128-bit security, https://eprint.iacr.org/2013/879.pdf
-  # Usage: Zero-Knowledge Proofs / zkSNARKs in ZCash and Ethereum 1
-  #        https://eips.ethereum.org/EIPS/eip-196
-  curve BN254:
-    bitsize: 254
-    modulus: "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"
-    # Equation: Y^2 = X^3 + 3
+when not defined(testingCurves):
+  declareCurves:
+    # Barreto-Naehrig curve, Prime 254 bit, 128-bit security, https://eprint.iacr.org/2013/879.pdf
+    # Usage: Zero-Knowledge Proofs / zkSNARKs in ZCash and Ethereum 1
+    #        https://eips.ethereum.org/EIPS/eip-196
+    curve BN254:
+      bitsize: 254
+      modulus: "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"
+      # Equation: Y^2 = X^3 + 3
+else:
+  # Fake curve for testing field arithmetic
+  declareCurves:
+    curve Fake101:
+      bitsize: 101
+      modulus: "0x65" # 101 in hex

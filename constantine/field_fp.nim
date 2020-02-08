@@ -17,8 +17,6 @@
 import ./word_types, ./bigints, ./curves_config
 from ./private/word_types_internal import unsafe_div2n1n
 
-static: echo CurveBitSize
-
 type
   Fp*[C: static Curve] = object
     ## P is the prime modulus of the Curve C
