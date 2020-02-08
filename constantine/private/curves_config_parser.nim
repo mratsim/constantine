@@ -119,8 +119,9 @@ macro declareCurves*(curves: untyped): untyped =
     pure = false
   )
 
+  let cbs = ident("CurveBitSize")
   result.add quote do:
-    const CurveBitSize: array[Curve, int] = `CurveBitSize`
+    const `cbs`*: array[Curve, int] = `CurveBitSize`
 
   result.add curveModStmts
 
@@ -134,7 +135,7 @@ macro declareCurves*(curves: untyped): untyped =
     )
   )
   result.add newProc(
-    name = nnkPostfix.newTree(ident"*", ident"fieldModulus"),
+    name = nnkPostfix.newTree(ident"*", ident"Mod"),
     params = [
       ident"auto",
       newIdentDefs(

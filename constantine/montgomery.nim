@@ -13,7 +13,7 @@
 # ############################################################
 
 import
-  ./word_types, ./bigints, ./field_fp
+  ./word_types, ./bigints, ./field_fp, ./curves_config
 
 from bitops import fastLog2
   # This will only be used at compile-time
@@ -70,12 +70,12 @@ func montyMagic*(M: static BigInt): static Word =
   for _ in static(0 ..< k):
     result *= 2 + M * result # x' = x(2 + ax) (`+` to avoid negating at the end)
 
-func toMonty*[P: static BigInt](a: Fp[P]): Montgomery[P] =
+func toMonty*[C: static Curve](a: Fp[C]): Montgomery[C] =
   ## Convert a big integer over Fp to it's montgomery representation
   ## over Fp.
   ## i.e. Does "a * (2^LimbSize)^W (mod p), where W is the number
   ## of words needed to represent p in base 2^LimbSize
 
   result = a
-  for i in static(countdown(P.limbs.high, 0)):
+  for i in static(countdown(C.Mod.limbs.high, 0)):
     shiftAdd(result, 0)

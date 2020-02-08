@@ -27,6 +27,11 @@ import
 # to name curves according to the length of the prime bit length.
 # i.e. the BN254 was previously named BN128.
 
+# Generates:
+# - type Curve = enum
+# - const CurveBitSize: array[Curve, int]
+# - proc Mod(curve: static Curve): auto
+#   which returns the field modulus of the curve
 declareCurves:
   # Barreto-Naehrig curve, Prime 254 bit, 128-bit security, https://eprint.iacr.org/2013/879.pdf
   # Usage: Zero-Knowledge Proofs / zkSNARKs in ZCash and Ethereum 1
