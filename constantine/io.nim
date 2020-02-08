@@ -198,35 +198,40 @@ func skipPrefixes(current_idx: var int, str: string, radix: static range[2..16])
       current_idx = 2
     else: discard
 
-func nextNonBlank(current_idx: var int, s: string) {.inline.} =
-  ## Move the current index, skipping white spaces and "_" characters.
-  ## CT:
-  ##   - Leaks white-spaces and non-white spaces position
-
-  const blanks = {' ', '_'}
-
-  inc current_idx
-  while current_idx < s.len and s[current_idx] in blanks:
-    inc current_idx
-
 func readDecChar(c: range['0'..'9']): int {.inline.}=
   ## Converts a decimal char to an int
   # specialization without branching for base <= 10.
   ord(c) - ord('0')
+
+func countNonBlanks(hexStr: string, startPos: int): int =
+  ## Count the number of non-blank characters
+  ## ' ' (space) and '_' (underscore) are considered blank
+  ##
+  ## CT:
+  ##   - Leaks white-spaces and non-white spaces position
+  const blanks = {' ', '_'}
+
+  for c in hexStr:
+    if c in blanks:
+      result += 1
 
 func hexToPaddedByteArray(hexStr: string, output: var openArray[byte], order: static[Endianness]) =
   ## Read a hex string and store it in a byte array `output`.
   ## The string may be shorter than the byte array.
   ##
   ## The source string must be hex big-endian.
-  ## The destination array can beb ig or little endian
-  let maxStrSize = output.len * 2
+  ## The destination array can be big or little endian
   var
     skip = 0
     dstIdx: int
     shift = 4
   skipPrefixes(skip, hexStr, 16)
-  let size = hexStr.len - skip
+
+  const blanks = {' ', '_'}
+  let nonBlanksCount = countNonBlanks(hexStr, skip)
+
+  let maxStrSize = output.len * 2
+  let size = hexStr.len - skip - nonBlanksCount
 
   doAssert size <= maxStrSize
 
@@ -237,6 +242,9 @@ func hexToPaddedByteArray(hexStr: string, output: var openArray[byte], order: st
     shift = 4 - size mod 2 * 4
 
   for srcIdx in skip ..< hexStr.len:
+    if hexStr[srcIdx] in blanks:
+      continue
+
     let nibble = hexStr[srcIdx].readHexChar shl shift
     when order == bigEndian:
       output[dstIdx] = output[dstIdx] or nibble
@@ -260,7 +268,6 @@ func toHex(bytes: openarray[byte], order: static[Endianness]): string =
       result[2 + 2*i] = hexChars[int bytes[bytes.high - i] shr 4 and 0xF]
       result[2 + 2*i+1] = hexChars[int bytes[bytes.high - i] and 0xF]
 
-
 # ############################################################
 #
 #                      Hex conversion
@@ -274,6 +281,9 @@ func fromHex*(T: type BigInt, s: string): T =
   ## For example `fromHex(BigInt[256], "0x123456")`
   ##
   ## Hex string is assumed big-endian
+  ##
+  ## This API is intended for configuration and debugging purposes
+  ## Do not pass secret or private data to it.
 
   # 1. Convert to canonical uint
   const canonLen = (T.bits + 8 - 1) div 8
