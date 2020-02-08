@@ -102,3 +102,40 @@ suite "Arithmetic operations - Addition":
       let c = a
       check:
         bool(a == c)
+
+  test "Addition limbs carry":
+    block:
+      var a = fromHex(BigInt[128], "0x00000000_FFFFFFFF_FFFFFFFF_FFFFFFFE")
+      let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
+      let carry = a.add(b, ctrue(Word))
+
+      let c = fromHex(BigInt[128], "0x00000000_FFFFFFFF_FFFFFFFF_FFFFFFFF")
+      check:
+        bool(a == c)
+        not bool(carry)
+
+    block:
+      var a = fromHex(BigInt[128], "0x00000000_FFFFFFFF_FFFFFFFF_FFFFFFFF")
+      let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
+      let carry = a.add(b, ctrue(Word))
+
+      let c = fromHex(BigInt[128], "0x00000001_00000000_00000000_00000000")
+      check:
+        bool(a == c)
+        not bool(carry)
+
+    block:
+      var a = fromHex(BigInt[128], "0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF")
+      let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
+      let carry = a.add(b, ctrue(Word))
+
+      # BigInt[128] takes 3 Words as a BigInt Word is 63-bit
+      var ab: array[3*sizeof(Word), byte]
+      ab.dumpRawUint(a, littleEndian)
+
+      # Given that it uses 3 words, we actually can store 2^128 in BigInt[128]
+      var c: array[3*sizeof(Word), byte]
+      c[16] = 1
+      check:
+        c == ab
+        not bool(carry) # carry can only happen within limbs
