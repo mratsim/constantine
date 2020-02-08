@@ -51,6 +51,17 @@ func wordsRequired(bits: int): int {.compileTime.}=
 
 type
   BigInt*[bits: static int] = object
+    ## Fixed-precision big integer
+    ##
+    ## "limbs" is an internal field that holds the internal representation
+    ## of the big integer. This internal representation can be changed
+    ## without notice and should not be used by external applications or libraries.
+    # Constantine BigInt have a word-size chosen to minimize bigint memory usage
+    # while allowing carry-less operations in a machine-efficient type like uint32
+    # uint64 or uint128 if available.
+    # In practice the word size is 63-bit.
+    #
+    # "Limb-endianess" is little-endian (least significant limb at BigInt.limbs[0])
     limbs*: array[bits.wordsRequired, Word]
 
 const MaxWord* = (not Ct[uint64](0)) shr 1
@@ -71,38 +82,40 @@ template `[]=`*(a: var Bigint, idx: int, w: Word) =
 #
 # ############################################################
 
-# The primitives all accept a control input that indicates
+# TODO: {.inline.} analysis
+
+func isZero*(a: BigInt): CTBool[Word] {.raises: [].} =
+  ## Returns if a big int is equal to zero
+  var accum: Word
+  for i in static(0 ..< a.limbs.len):
+    accum = accum or a.limbs[i]
+  result = accum.isZero()
+
+func `==`*(a, b: BigInt): CTBool[Word] {.raises: [].}=
+  ## Returns true if 2 big ints are equal
+  var accum: Word
+  for i in static(0 ..< a.limbs.len):
+    accum = accum or (a.limbs[i] xor b.limbs[i])
+  result = accum.isZero
+
+# The arithmetic primitives all accept a control input that indicates
 # if it is a placebo operation. It stills performs the
-# same memory accesses to be side-channel attack resistant
+# same memory accesses to be side-channel attack resistant.
 
-# For efficiency we can define templates and will create functions
-# specialised for runtime and compile-time inputs.
-#
-# We don't specialise for the control word, any optimizing compiler
-# will keep it in registers.
-
-template addImpl[bits](result: CTBool[Word], a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]) =
-  ## Constant-time big integer in-place addition
-  ## Returns if addition carried
+func add*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]): CTBool[Word] {.raises: [].}=
+  ## Constant-time big integer in-place optional addition
+  ## The addition is only performed if ctl is "true"
+  ## The result carry is always computed.
   for i in static(0 ..< a.limbs.len):
     let new_a = a.limbs[i] + b.limbs[i] + Word(result)
     result = new_a.isMsbSet()
-    a[i] = ctl.mux(new_a and MaxWord, a)
+    a[i] = ctl.mux(new_a and MaxWord, a[i])
 
-func add*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]): CTBool[Word] =
-  ## Constant-time big integer in-place addition
-  ## Returns the "carry flag"
-  result.addImpl(a, b, ctl)
-
-template subImpl[bits](result: CTBool[Word], a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]) =
-  ## Constant-time big integer in-place substraction
-  ## Returns the "borrow flag"
+func sub*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]): CTBool[Word] {.raises: [].}=
+  ## Constant-time big integer in-place optional substraction
+  ## The substraction is only performed if ctl is "true"
+  ## The result carry is always computed.
   for i in static(0 ..< a.limbs.len):
     let new_a = a.limbs[i] - b.limbs[i] - Word(result)
     result = new_a.isMsbSet()
-    a[i] = ctl.mux(new_a and MaxWord, a)
-
-func sub*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]): CTBool[Word] =
-  ## Constant-time big integer in-place addition
-  ## Returns the "carry flag"
-  result.subImpl(a, b, ctl)
+    a[i] = ctl.mux(new_a and MaxWord, a[i])

@@ -8,4 +8,5 @@
 
 import
   test_word_types,
-  test_io
+  test_io,
+  test_bigints
