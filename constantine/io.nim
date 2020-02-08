@@ -1,5 +1,6 @@
 # Constantine
-# Copyright (c) 2018 Status Research & Development GmbH
+# Copyright (c) 2018-2019    Status Research & Development GmbH
+# Copyright (c) 2020-Present Mamy André-Ratsimbazafy
 # Licensed and distributed under either of
 #   * MIT license (license terms in the root directory or at http://opensource.org/licenses/MIT).
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
@@ -228,10 +229,10 @@ func hexToPaddedByteArray(hexStr: string, output: var openArray[byte], order: st
   let size = hexStr.len - skip
 
   doAssert size <= maxStrSize
-  
+
   if size < maxStrSize:
     # include extra byte if odd length
-    dstIdx = output.len - (size + 1) div 2   
+    dstIdx = output.len - (size + 1) div 2
     # start with shl of 4 if length is even
     shift = 4 - size mod 2 * 4
 
@@ -280,7 +281,7 @@ func fromHex*(T: type BigInt, s: string): T =
 
   # 2. Convert canonical uint to Big Int
   result = parseRawUint(bytes, T.bits, littleEndian)
-  
+
 func dumpHex*(big: BigInt, order: static Endianness = bigEndian): string =
   ## Stringify an int to hex.
   ## Note. Leading zeros are not removed.
@@ -305,4 +306,3 @@ func dumpHex*(big: BigInt, order: static Endianness = bigEndian): string =
 
   # 2 Convert canonical uint to hex
   result = bytes.toHex(order)
-  
