@@ -94,11 +94,6 @@ func add*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]): CTBool
   ## Returns the "carry flag"
   result.addImpl(a, b, ctl)
 
-func add*[bits](a: var BigInt[bits], b: static BigInt[bits], ctl: CTBool[Word]): CTBool[Word] =
-  ## Constant-time big integer in-place addition
-  ## Returns the "carry flag". Specialization for B being a compile-time constant (usually a modulus).
-  result.addImpl(a, b, ctl)
-
 template subImpl[bits](result: CTBool[Word], a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]) =
   ## Constant-time big integer in-place substraction
   ## Returns the "borrow flag"
@@ -110,9 +105,4 @@ template subImpl[bits](result: CTBool[Word], a: var BigInt[bits], b: BigInt[bits
 func sub*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]): CTBool[Word] =
   ## Constant-time big integer in-place addition
   ## Returns the "carry flag"
-  result.subImpl(a, b, ctl)
-
-func sub*[bits](a: var BigInt[bits], b: static BigInt[bits], ctl: CTBool[Word]): CTBool[Word] =
-  ## Constant-time big integer in-place addition
-  ## Returns the "carry flag". Specialization for B being a compile-time constant (usually a modulus).
   result.subImpl(a, b, ctl)
