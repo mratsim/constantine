@@ -68,7 +68,11 @@ func high*(T: typedesc[Ct]): T {.inline.}=
 func `and`*[T: Ct](x, y: T): T {.magic: "BitandI".}
 func `or`*[T: Ct](x, y: T): T {.magic: "BitorI".}
 func `xor`*[T: Ct](x, y: T): T {.magic: "BitxorI".}
-func `not`*[T: Ct](x: T): T {.magic: "BitnotI".}
+# func `not`*[T: Ct](x: T): T {.magic: "BitnotI".} # int128 changes broke the magic
+template `not`*[T: Ct](x: T): T =
+  # Note: T.T is Ct.T is the conversion to the base type
+  T(not T.T(x))
+
 func `+`*[T: Ct](x, y: T): T {.magic: "AddU".}
 func `+=`*[T: Ct](x: var T, y: T): T {.magic: "Inc".}
 func `-`*[T: Ct](x, y: T): T {.magic: "SubU".}

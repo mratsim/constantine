@@ -19,11 +19,11 @@ suite "Constant-time unsigned integers":
   test "High - getting the biggest representable number":
     check:
       high(Ct[byte]).undistinct == 0xFF.byte
-      high(Ct[uint8]).undistinct == 0xFF.uint8
+      high(Ct[uint8]).undistinct == 0xFF'u8
 
-      high(Ct[uint16]).undistinct == 0xFFFF.uint16
-      high(Ct[uint32]).undistinct == 0xFFFFFFFF.uint32
-      high(Ct[uint64]).undistinct == 0xFFFFFFFF_FFFFFFFF.uint64
+      high(Ct[uint16]).undistinct == 0xFFFF'u16
+      high(Ct[uint32]).undistinct == 0xFFFFFFFF'u32
+      high(Ct[uint64]).undistinct == 0xFFFFFFFF_FFFFFFFF'u64
 
   test "bitwise `and`, `or`, `xor`, `not`":
     let x1 = rand(high(int)).uint64
