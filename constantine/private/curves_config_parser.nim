@@ -10,7 +10,7 @@ import
   # Standard library
   macros,
   # Internal
-  ../io, ../bigints
+  ../io, ../bigints, ../montgomery_magic
 
 # Macro to parse declarative curves configuration.
 
@@ -112,6 +112,7 @@ macro declareCurves*(curves: untyped): untyped =
 
   result = newStmtList()
 
+  # type Curve = enum
   result.add newEnum(
     name = ident"Curve",
     fields = Curves,
@@ -119,6 +120,7 @@ macro declareCurves*(curves: untyped): untyped =
     pure = false
   )
 
+  # const CurveBitSize*: array[Curve, int] = ...
   let cbs = ident("CurveBitSize")
   result.add quote do:
     const `cbs`*: array[Curve, int] = `CurveBitSize`
@@ -134,6 +136,8 @@ macro declareCurves*(curves: untyped): untyped =
       )
     )
   )
+
+  # proc Mod(curve: static Curve): auto
   result.add newProc(
     name = nnkPostfix.newTree(ident"*", ident"Mod"),
     params = [
@@ -144,6 +148,24 @@ macro declareCurves*(curves: untyped): untyped =
       )
     ],
     body = curveModWhenStmt,
+    procType = nnkFuncDef,
+    pragmas = nnkPragma.newTree(ident"compileTime")
+  )
+
+  # proc MontyMagic(curve: static Curve): static Word
+  result.add newProc(
+    name = nnkPostfix.newTree(ident"*", ident"MontyMagic"),
+    params = [
+      ident"auto",
+      newIdentDefs(
+        name = ident"curve",
+        kind = nnkStaticTy.newTree(ident"Curve")
+      )
+    ],
+    body = newCall(
+      bindSym"montyMagic",
+      newCall(ident"Mod", ident"curve")
+    ),
     procType = nnkFuncDef,
     pragmas = nnkPragma.newTree(ident"compileTime")
   )

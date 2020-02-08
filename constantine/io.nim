@@ -249,15 +249,16 @@ func toHex(bytes: openarray[byte], order: static[Endianness]): string =
   ## Convert a byte-array to its hex representation
   ## Output is in lowercase and not prefixed.
   const hexChars = "0123456789abcdef"
-
-  result = newString(2 * bytes.len)
+  result = newString(2 + 2 * bytes.len)
+  result[0] = '0'
+  result[1] = 'x'
   for i in 0 ..< bytes.len:
     when order == system.cpuEndian:
-      result[2*i] = hexChars[int bytes[i] shr 4 and 0xF]
-      result[2*i+1] = hexChars[int bytes[i] and 0xF]
+      result[2 + 2*i] = hexChars[int bytes[i] shr 4 and 0xF]
+      result[2 + 2*i+1] = hexChars[int bytes[i] and 0xF]
     else:
-      result[2*i] = hexChars[int bytes[bytes.high - i] shr 4 and 0xF]
-      result[2*i+1] = hexChars[int bytes[bytes.high - i] and 0xF]
+      result[2 + 2*i] = hexChars[int bytes[bytes.high - i] shr 4 and 0xF]
+      result[2 + 2*i+1] = hexChars[int bytes[bytes.high - i] and 0xF]
 
 
 # ############################################################
@@ -285,6 +286,7 @@ func fromHex*(T: type BigInt, s: string): T =
 func dumpHex*(big: BigInt, order: static Endianness = bigEndian): string =
   ## Stringify an int to hex.
   ## Note. Leading zeros are not removed.
+  ## Result is prefixed with 0x
   ##
   ## This is a raw memory dump. Output will be padded with 0
   ## if the big int does not use the full memory allocated for it.

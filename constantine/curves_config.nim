@@ -32,6 +32,9 @@ import
 # - const CurveBitSize: array[Curve, int]
 # - proc Mod(curve: static Curve): auto
 #   which returns the field modulus of the curve
+# - proc MontyMagic(curve: static Curve): static Word =
+#   which returns the Montgomery magic constant
+#   associated with the curve modulus
 declareCurves:
   # Barreto-Naehrig curve, Prime 254 bit, 128-bit security, https://eprint.iacr.org/2013/879.pdf
   # Usage: Zero-Knowledge Proofs / zkSNARKs in ZCash and Ethereum 1

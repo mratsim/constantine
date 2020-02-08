@@ -87,6 +87,7 @@ func shiftAdd*(a: var Fp, c: Word) =
     let hi = a[0] shr 1                               # 64 - 63 = 1
     let lo = (a[0] shl WordBitSize) or c              # Assumes most-significant bit in c is not set
     unsafeDiv2n1n(q, a[0], hi, lo, Fp.C.Mod.limbs[0]) # (hi, lo) mod P
+    return
 
   else:
     ## Multiple limbs
@@ -161,3 +162,4 @@ func shiftAdd*(a: var Fp, c: Word) =
 
     add(a, Fp.C.Mod, neg)
     sub(a, Fp.C.Mod, tooBig)
+    return
