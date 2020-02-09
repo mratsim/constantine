@@ -6,7 +6,7 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import  unittest, random,
+import  unittest, random, strutils,
         ../constantine/[io, bigints, primitives]
 
 suite "isZero":
@@ -139,3 +139,67 @@ suite "Arithmetic operations - Addition":
       check:
         c == ab
         not bool(carry) # carry can only happen within limbs
+
+suite "Modular operations - small modulus":
+  # Vectors taken from Stint - https://github.com/status-im/nim-stint
+  test "100 mod 13":
+    let a = BigInt[32].fromUint(100'u32)
+    let m = BigInt[8].fromUint(13'u8)
+
+    var r: BigInt[8]
+    r.reduce(a, m)
+    check:
+      bool(r == BigInt[8].fromUint(100'u8 mod 13))
+
+  test "2^64 mod 3":
+    let a = BigInt[65].fromHex("0x1_00000000_00000000")
+    let m = BigInt[8].fromUint(3'u8)
+
+    var r: BigInt[8]
+    r.reduce(a, m)
+    check:
+      bool(r == BigInt[8].fromUint(1'u8))
+
+  test "1234567891234567890 mod 10":
+    let a = BigInt[64].fromUint(1234567891234567890'u64)
+    let m = BigInt[8].fromUint(10'u8)
+
+    var r: BigInt[8]
+    r.reduce(a, m)
+    check:
+      bool(r == BigInt[8].fromUint(0'u8))
+
+suite "Modular operations - small modulus - Stint specific failures highlighted by property-based testing":
+  # Vectors taken from Stint - https://github.com/status-im/nim-stint
+  # We need to use hex for the modulus as we can't construct BigInt with bits < 64 from an uint64
+  test "Modulo: 65696211516342324 mod 174261910798982":
+    let u = 65696211516342324'u64
+    let v = "0x9e7d834a8286" # 174261910798982'u64
+
+    let a = BigInt[64].fromUint(u)
+    let m = BigInt[48].fromHex(v)
+
+    var r: BigInt[48]
+    r.reduce(a, m)
+    # Copy the result in a conveniently sized buffer
+    var rr: BigInt[64]
+    copyLimbs(rr, 0, r, 0, r.limbs.len)
+
+    check:
+      bool(rr == BigInt[64].fromUint(u mod v.fromHex[:uint64]))
+
+  test "Modulo: 15080397990160655 mod 600432699691":
+    let u = 15080397990160655'u64
+    let v = "0x8bcc93e92b" # 600432699691'u64
+
+    let a = BigInt[64].fromUint(u)
+    let m = BigInt[40].fromHex(v)
+
+    var r: BigInt[40]
+    r.reduce(a, m)
+    # Copy the result in a conveniently sized buffer
+    var rr: BigInt[64]
+    copyLimbs(rr, 0, r, 0, r.limbs.len)
+
+    check:
+      bool(rr == BigInt[64].fromUint(u mod v.fromHex[:uint64]))

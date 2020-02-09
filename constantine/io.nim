@@ -34,7 +34,7 @@ func fromRawUintLE(
 
   var
     dst_idx = 0
-    acc = Word(0)
+    acc = Zero
     acc_len = 0
 
   for src_idx in 0 ..< src.len:
