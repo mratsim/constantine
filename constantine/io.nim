@@ -20,9 +20,9 @@ import
 #
 # ############################################################
 
-func parseRawUintLE(
-        src: openarray[byte],
-        bits: static int): BigInt[bits] {.inline.}=
+func fromRawUintLE(
+        T: type BigInt,
+        src: openarray[byte]): T =
   ## Parse an unsigned integer from its canonical
   ## little-endian unsigned representation
   ## And store it into a BigInt of size bits
@@ -52,21 +52,28 @@ func parseRawUintLE(
   if acc_len != 0:
     result.limbs[dst_idx] = acc
 
-func parseRawUint*(
+func fromRawUint*(
+        T: type BigInt,
         src: openarray[byte],
-        bits: static int,
-        srcEndianness: static Endianness): BigInt[bits] =
+        srcEndianness: static Endianness): T {.inline.}=
   ## Parse an unsigned integer from its canonical
   ## big-endian or little-endian unsigned representation
-  ## And store it into a BigInt of size bits
+  ## And store it into a BigInt of size `bits`
   ##
   ## CT:
   ##   - no leaks
 
   when srcEndianness == littleEndian:
-    parseRawUintLE(src, bits)
+    fromRawUintLE(T, src)
   else:
     {.error: "Not implemented at the moment".}
+
+func fromUint*(
+        T: type BigInt,
+        src: SomeUnsignedInt): T =
+  ## Parse a regular unsigned integer
+  ## and store it into a BigInt of size `bits`
+  fromRawUint(T, cast[array[sizeof(src), byte]](src), cpuEndian)
 
 # ############################################################
 #
@@ -291,7 +298,7 @@ func fromHex*(T: type BigInt, s: string): T =
   hexToPaddedByteArray(s, bytes, littleEndian)
 
   # 2. Convert canonical uint to Big Int
-  result = parseRawUint(bytes, T.bits, littleEndian)
+  result = T.fromRawUint(bytes, littleEndian)
 
 func dumpHex*(big: BigInt, order: static Endianness = bigEndian): string =
   ## Stringify an int to hex.
