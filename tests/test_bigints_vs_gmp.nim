@@ -88,13 +88,15 @@ proc main() =
   mpz_init(r)
 
   testRandomModSizes(100, aBits, mBits):
-    echo "Testing: Dividend bitsize " & align($aBits, 4) & " -- modulus bitsize " & align($mBits, 4)
+    stdout.write "Testing: Dividend bitsize " & align($aBits, 4) & " -- modulus bitsize " & align($mBits, 4)
 
     # Generate random value in the range 0 ..< 2^aBits
     mpz_urandomb(a, gmpRng, aBits)
     # Generate random modulus and ensure the MSB is set
     mpz_urandomb(m, gmpRng, mBits)
     mpz_setbit(m, mBits-1)
+
+    discard gmp_printf(" -- %#Zx mod %#Zx\n", a.addr, m.addr)
 
     #########################################################
     # Conversion buffers
