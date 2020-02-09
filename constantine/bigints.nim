@@ -131,8 +131,8 @@ func setZero*(a: var BigInt, start, stop: static int) {.inline.} =
   ## The [start, stop] range is inclusive
   ## If stop < start, a is unmodified
   static:
-    doAssert start in 0 ..< a.limbs.len
-    doAssert stop  in 0 ..< a.limbs.len
+    doAssert start in 0 ..< a.limbs.len, $start & " not in 0 ..< " & $a.limbs.len & " (numLimbs)"
+    doAssert stop  in 0 ..< a.limbs.len, $stop & " not in 0 ..< " & $a.limbs.len & " (numLimbs)"
 
   for i in static(start .. stop):
     a.limbs[i] = Zero
