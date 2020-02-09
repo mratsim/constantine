@@ -133,7 +133,7 @@ func dumpRawUintLE(
         dst_idx += sizeof(Word)
         tail -= sizeof(Word)
       else:
-        # Process the tail
+        # Process the tail and exit
         when cpuEndian == littleEndian:
           # When requesting little-endian on little-endian platform
           # we can just copy each byte
@@ -143,6 +143,7 @@ func dumpRawUintLE(
           # We need to copy from the end
           for i in 0 ..< tail:
             dst[dst_idx] = byte(lo shr (tail-i))
+        return
 
 func dumpRawUint*(
         dst: var openarray[byte],
