@@ -44,13 +44,13 @@ func parseRawUintLE(
 
     # if full, dump
     if acc_len >= WordBitSize:
-      result[dst_idx] = acc and MaxWord
+      result.limbs[dst_idx] = acc and MaxWord
       inc dst_idx
       acc_len -= WordBitSize
       acc = src_byte shr (8 - acc_len)
 
   if acc_len != 0:
-    result[dst_idx] = acc
+    result.limbs[dst_idx] = acc
 
 func parseRawUint*(
         src: openarray[byte],
@@ -103,7 +103,7 @@ func dumpRawUintLE(
 
   var tail = dst.len
   while tail > 0:
-    let w = if src_idx < src.limbs.len: src[src_idx].BaseType
+    let w = if src_idx < src.limbs.len: src.limbs[src_idx].BaseType
             else: 0
     inc src_idx
 

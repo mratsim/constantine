@@ -20,8 +20,8 @@ suite "IO":
       let big = parseRawUint(x_bytes, 64, cpuEndian)
 
       check:
-        T(big[0]) == 0
-        T(big[1]) == 0
+        T(big.limbs[0]) == 0
+        T(big.limbs[1]) == 0
 
     block: # 2^63 is properly represented on 2 limbs
       let x = 1'u64 shl 63
@@ -29,8 +29,8 @@ suite "IO":
       let big = parseRawUint(x_bytes, 64, cpuEndian)
 
       check:
-        T(big[0]) == 0
-        T(big[1]) == 1
+        T(big.limbs[0]) == 0
+        T(big.limbs[1]) == 1
 
   test "Parsing and dumping round-trip on uint64":
     block:

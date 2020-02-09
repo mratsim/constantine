@@ -37,7 +37,7 @@
 # So the least significant limb is limb[0]
 # This is independent from the base type endianness.
 
-import ./word_types
+import ./word_types, ./config
 
 type Word* = Ct[uint64]
 type BaseType* = uint64 # Exported type for conversion in "normal integers"
@@ -79,12 +79,6 @@ const MaxWord* = (not Ct[uint64](0)) shr 1
   ## This biggest representable number in our limbs.
   ## i.e. The most significant bit is never set at the end of each function
 
-template `[]`*(a: Bigint, idx: int): Word =
-  a.limbs[idx]
-
-template `[]=`*(a: var Bigint, idx: int, w: Word) =
-  a.limbs[idx] = w
-
 # ############################################################
 #
 #                    BigInt primitives
@@ -113,20 +107,20 @@ func `==`*(a, b: BigInt): CTBool[Word] =
 # if it is a placebo operation. It stills performs the
 # same memory accesses to be side-channel attack resistant.
 
-func add*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]): CTBool[Word] {.raises: [].}=
+func add*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]): CTBool[Word] =
   ## Constant-time big integer in-place optional addition
   ## The addition is only performed if ctl is "true"
   ## The result carry is always computed.
   for i in static(0 ..< a.limbs.len):
     let new_a = a.limbs[i] + b.limbs[i] + Word(result)
     result = new_a.isMsbSet()
-    a[i] = ctl.mux(new_a and MaxWord, a[i])
+    a.limbs[i] = ctl.mux(new_a and MaxWord, a.limbs[i])
 
-func sub*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]): CTBool[Word] {.raises: [].}=
+func sub*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]): CTBool[Word] =
   ## Constant-time big integer in-place optional substraction
   ## The substraction is only performed if ctl is "true"
   ## The result carry is always computed.
   for i in static(0 ..< a.limbs.len):
     let new_a = a.limbs[i] - b.limbs[i] - Word(result)
     result = new_a.isMsbSet()
-    a[i] = ctl.mux(new_a and MaxWord, a[i])
+    a.limbs[i] = ctl.mux(new_a and MaxWord, a.limbs[i])
