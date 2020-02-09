@@ -85,9 +85,9 @@ template `not`*[T: Ct](x: T): T =
   T(not T.T(x))
 
 func `+`*[T: Ct](x, y: T): T {.magic: "AddU".}
-func `+=`*[T: Ct](x: var T, y: T): T {.magic: "Inc".}
+func `+=`*[T: Ct](x: var T, y: T) {.magic: "Inc".}
 func `-`*[T: Ct](x, y: T): T {.magic: "SubU".}
-func `-=`*[T: Ct](x: var T, y: T): T {.magic: "Dec".}
+func `-=`*[T: Ct](x: var T, y: T) {.magic: "Dec".}
 func `shr`*[T: Ct](x: T, y: SomeInteger): T {.magic: "ShrI".}
 func `shl`*[T: Ct](x: T, y: SomeInteger): T {.magic: "ShlI".}
 
@@ -130,20 +130,6 @@ func `not`*(ctl: CTBool): CTBool =
 func `and`*(x, y: CTBool): CTBool {.magic: "BitandI".}
 func `or`*(x, y: CTBool): CTBool {.magic: "BitorI".}
 
-template mux*[T: Ct](ctl: CTBool[T], x, y: T): T =
-  ## Multiplexer / selector
-  ## Returns x if ctl is true
-  ## else returns y
-  ## So equivalent to ctl? x: y
-  y xor (-T(ctl) and (x xor y))
-
-  # TODO verify assembly generated
-  # as mentioned in https://cryptocoding.net/index.php/Coding_rules
-  # the alternative `(x and ctl) or (y and -ctl)`
-  # is optimized into a branch by Clang :/
-
-  # TODO: assembly fastpath for conditional mov
-
 func noteq[T: Ct](x, y: T): CTBool[T] =
   const msb = T.sizeof * 8 - 1
   let z = x xor y
@@ -161,6 +147,33 @@ func `<`*[T: Ct](x, y: T): CTBool[T] =
 
 func `<=`*[T: Ct](x, y: T): CTBool[T] =
   not(y < x)
+
+func `==`*(x, y: CTBool): CTBool =
+  (type result)(x.undistinct == y.undistinct)
+
+func `xor`*(x, y: CTBool): CTBool =
+  (type result)(x.undistinct.noteq(y.undistinct))
+
+template mux*[T: Ct](ctl: CTBool[T], x, y: T): T =
+  ## Multiplexer / selector
+  ## Returns x if ctl is true
+  ## else returns y
+  ## So equivalent to ctl? x: y
+  y xor (-T(ctl) and (x xor y))
+
+  # TODO verify assembly generated
+  # as mentioned in https://cryptocoding.net/index.php/Coding_rules
+  # the alternative `(x and ctl) or (y and -ctl)`
+  # is optimized into a branch by Clang :/
+
+  # TODO: assembly fastpath for conditional mov
+
+template mux*[T: CTBool](ctl: CTBool, x, y: T): T =
+  ## Multiplexer / selector
+  ## Returns x if ctl is true
+  ## else returns y
+  ## So equivalent to ctl? x: y
+  T(T.T(y) xor (-T.T(ctl) and T.T(x xor y)))
 
 # ############################################################
 #
