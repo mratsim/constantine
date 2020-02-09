@@ -139,6 +139,35 @@ when isMainModule:
     doAssert q == 6148914691236517205'u64
     doAssert r == 1
 
+  block: # TODO - support Quotient that doesn't fit in the result
+         # The usual way with normalization by the bitSize difference
+         # is fundamentally non constant-time
+         # it is probable that division is not constant-time at the hardware level as well
+         # as it throws sigfpe when the quotient doesn't fit in the result size
+
+    var q, r: uint64
+
+    let n_hi = 1'u64
+    let n_lo = 0'u64
+    let d = 1'u64
+
+    asm_x86_64_div2n1n(q, r, n_hi, n_lo, d)
+
+    echo "quotient: ", q
+    echo "remainder: ", r
+
+  block:
+    var q, r: uint64
+
+    let n_hi = 4186590388502004879'u64
+    let n_lo = 17852795547484522084'u64
+    let d = 327340459940166448'u64
+
+    asm_x86_64_div2n1n(q, r, n_hi, n_lo, d)
+
+    echo "quotient: ", q
+    echo "remainder: ", r
+
 # ##############################################################
 #
 #  Non-constant-time portable extended precision multiplication

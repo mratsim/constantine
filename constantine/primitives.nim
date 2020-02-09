@@ -85,9 +85,11 @@ template `not`*[T: Ct](x: T): T =
   T(not T.T(x))
 
 func `+`*[T: Ct](x, y: T): T {.magic: "AddU".}
-func `+=`*[T: Ct](x: var T, y: T) {.magic: "Inc".}
+func `+=`*[T: Ct](x: var T, y: T) =
+  T.T(x) += (T.T)(y)
 func `-`*[T: Ct](x, y: T): T {.magic: "SubU".}
-func `-=`*[T: Ct](x: var T, y: T) {.magic: "Dec".}
+func `-=`*[T: Ct](x: var T, y: T) =
+  T.T(x) -= (T.T)(y)
 func `shr`*[T: Ct](x: T, y: SomeInteger): T {.magic: "ShrI".}
 func `shl`*[T: Ct](x: T, y: SomeInteger): T {.magic: "ShlI".}
 
