@@ -13,7 +13,7 @@
 # ############################################################
 
 import
-  ./word_types, ./bigints
+  ./primitives, ./bigints
 
 from bitops import fastLog2
   # This will only be used at compile-time

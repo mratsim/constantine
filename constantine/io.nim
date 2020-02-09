@@ -12,13 +12,15 @@
 
 import
   endians,
-  ./word_types, ./bigints
+  ./primitives, ./bigints
 
 # ############################################################
 #
 #   Parsing from canonical inputs to internal representation
 #
 # ############################################################
+
+# TODO: tag/remove exceptions raised.
 
 func fromRawUintLE(
         T: type BigInt,
@@ -73,6 +75,9 @@ func fromUint*(
         src: SomeUnsignedInt): T =
   ## Parse a regular unsigned integer
   ## and store it into a BigInt of size `bits`
+  static:
+    doAssert T.bits >= sizeof(src) * 8, "The BigInt bitsize (" & $T.bits &
+    ") must be greater or equal the source integer bitsize (" & $(sizeof(src) * 8) & ')'
   fromRawUint(T, cast[array[sizeof(src), byte]](src), cpuEndian)
 
 # ############################################################
@@ -154,8 +159,7 @@ func dumpRawUint*(
   ## or zero-padded right for little-endian.
   ## I.e least significant bit is aligned to buffer boundary
 
-  if dst.len < static(BigInt.bits div 8):
-    raise newException(ValueError, "BigInt -> Raw int conversion: destination buffer is too small")
+  assert dst.len >= static(BigInt.bits div 8), "BigInt -> Raw int conversion: destination buffer is too small"
 
   when BigInt.bits == 0:
     zeroMem(dst, dst.len)

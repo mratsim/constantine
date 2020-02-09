@@ -12,7 +12,7 @@
 #
 # ############################################################
 
-import ../word_types
+import ../primitives
 
 func asm_x86_64_extMul(hi, lo: var uint64, a, b: uint64) {.inline.}=
   ## Extended precision multiplication uint64 * uint64 --> uint128

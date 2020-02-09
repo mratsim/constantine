@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  unittest, random,
-        ../constantine/[io, bigints, word_types]
+        ../constantine/[io, bigints, primitives]
 
 suite "isZero":
   test "isZero for zero":

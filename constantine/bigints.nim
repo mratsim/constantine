@@ -37,7 +37,7 @@
 # So the least significant limb is limb[0]
 # This is independent from the base type endianness.
 
-import ./word_types, ./config
+import ./primitives, ./config
 
 type Word* = Ct[uint64]
 type BaseType* = uint64 # Exported type for conversion in "normal integers"

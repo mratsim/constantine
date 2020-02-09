@@ -13,7 +13,7 @@
 # ############################################################
 
 import
-  ./word_types, ./bigints, ./field_fp, ./curves_config
+  ./primitives, ./bigints, ./field_fp, ./curves_config
 
 # No exceptions allowed
 {.push raises: [].}

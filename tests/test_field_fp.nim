@@ -7,4 +7,4 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  unittest, random,
-        ../constantine/[io, bigints, word_types, field_fp]
+        ../constantine/[io, bigints, primitives, field_fp]
