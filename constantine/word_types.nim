@@ -126,15 +126,17 @@ func `or`*(x, y: CTBool): CTBool {.magic: "BitorI".}
 
 template mux*[T: Ct](ctl: CTBool[T], x, y: T): T =
   ## Multiplexer / selector
-  ## Returns x if ctl == 1
+  ## Returns x if ctl is true
   ## else returns y
   ## So equivalent to ctl? x: y
   y xor (-T(ctl) and (x xor y))
 
   # TODO verify assembly generated
-  # as mentionned in https://cryptocoding.net/index.php/Coding_rules
+  # as mentioned in https://cryptocoding.net/index.php/Coding_rules
   # the alternative `(x and ctl) or (y and -ctl)`
   # is optimized into a branch by Clang :/
+
+  # TODO: assembly fastpath for conditional mov
 
 func noteq[T: Ct](x, y: T): CTBool[T] =
   const msb = T.sizeof * 8 - 1

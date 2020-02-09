@@ -30,11 +30,12 @@ func asm_x86_64_extMul(hi, lo: var uint64, a, b: uint64) {.inline.}=
   #   - High word in RDX
   #   - Low word in RAX
 
+  # Don't forget to dereference the var hidden pointer in hi/lo
   asm """
     mulq %[operand]
-    : "=d" (`*hi`), "=a" (`*lo`) // Don't forget to dereference the var hidden pointer
+    : "=d" (`*hi`), "=a" (`*lo`)
     : "a" (`a`), [operand] "rm" (`b`)
-    : // no clobbered registers
+    :
   """
 
 func unsafeExtendedPrecMul*(hi, lo: var Ct[uint64], a, b: Ct[uint64]) {.inline.}=
@@ -75,11 +76,16 @@ func asm_x86_64_div2n1n(q, r: var uint64, n_hi, n_lo, d: uint64) {.inline.}=
   # Result
   #   - Quotient in RAX
   #   - Remainder in RDX
+
+  # 1. name the register/memory "divisor"
+  # 2. don't forget to dereference the var hidden pointer
+  # 3. -
+  # 4. no clobbered registers beside explectly used RAX and RDX
   asm """
-    divq %[divisor]             // We name the register/memory divisor
-    : "=a" (`*q`), "=d" (`*r`)  // Don't forget to dereference the var hidden pointer
+    divq %[divisor]
+    : "=a" (`*q`), "=d" (`*r`)
     : "d" (`n_hi`), "a" (`n_lo`), [divisor] "rm" (`d`)
-    :  // no register clobbered besides explicitly used RAX and RDX
+    :
   """
 
 func unsafeDiv2n1n*(q, r: var Ct[uint64], n_hi, n_lo, d: Ct[uint64]) {.inline.}=
