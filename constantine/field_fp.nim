@@ -54,7 +54,10 @@ template `[]`(a: Fp, idx: int): Word =
 #
 # ############################################################
 
-func `+`*(a, b: Fp): Fp =
+# No exceptions allowed
+{.push raises: [].}
+
+func `+`*(a, b: Fp): Fp {.noInit.}=
   ## Addition over Fp
 
   # Non-CT implementation from Stint

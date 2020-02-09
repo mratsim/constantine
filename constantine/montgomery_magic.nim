@@ -19,6 +19,9 @@ from bitops import fastLog2
   # This will only be used at compile-time
   # so no constant-time worries (it is constant-time if using the De Bruijn multiplication)
 
+# No exceptions allowed
+{.push raises: [].}
+
 func montyMagic*(M: static BigInt): static Word {.inline.} =
   ## Returns the Montgomery domain magic number for the input modulus:
   ##   -1/M[0] mod LimbSize

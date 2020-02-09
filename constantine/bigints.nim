@@ -91,16 +91,18 @@ template `[]=`*(a: var Bigint, idx: int, w: Word) =
 #
 # ############################################################
 
+# No exceptions allowed
+{.push raises: [].}
 # TODO: {.inline.} analysis
 
-func isZero*(a: BigInt): CTBool[Word] {.raises: [].} =
+func isZero*(a: BigInt): CTBool[Word] =
   ## Returns if a big int is equal to zero
   var accum: Word
   for i in static(0 ..< a.limbs.len):
     accum = accum or a.limbs[i]
   result = accum.isZero()
 
-func `==`*(a, b: BigInt): CTBool[Word] {.raises: [].}=
+func `==`*(a, b: BigInt): CTBool[Word] =
   ## Returns true if 2 big ints are equal
   var accum: Word
   for i in static(0 ..< a.limbs.len):

@@ -15,6 +15,9 @@
 import
   ./word_types, ./bigints, ./field_fp, ./curves_config
 
+# No exceptions allowed
+{.push raises: [].}
+
 func toMonty*[C: static Curve](a: Fp[C]): Montgomery[C] =
   ## Convert a big integer over Fp to it's montgomery representation
   ## over Fp.
