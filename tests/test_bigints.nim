@@ -171,35 +171,34 @@ suite "Modular operations - small modulus":
 
 suite "Modular operations - small modulus - Stint specific failures highlighted by property-based testing":
   # Vectors taken from Stint - https://github.com/status-im/nim-stint
-  # We need to use hex for the modulus as we can't construct BigInt with bits < 64 from an uint64
   test "Modulo: 65696211516342324 mod 174261910798982":
     let u = 65696211516342324'u64
-    let v = "0x9e7d834a8286" # 174261910798982'u64
+    let v = 174261910798982'u64
 
     let a = BigInt[64].fromUint(u)
-    let m = BigInt[48].fromHex(v)
+    let m = BigInt[48].fromUint(v)
 
     var r: BigInt[48]
     r.reduce(a, m)
     # Copy the result in a conveniently sized buffer
-    var rr: BigInt[64]
+    var rr: BigInt[48]
     copyLimbs(rr, 0, r, 0, r.limbs.len)
 
     check:
-      bool(rr == BigInt[64].fromUint(u mod v.fromHex[:uint64]))
+      bool(rr == BigInt[48].fromUint(u mod v))
 
   test "Modulo: 15080397990160655 mod 600432699691":
     let u = 15080397990160655'u64
-    let v = "0x8bcc93e92b" # 600432699691'u64
+    let v = 600432699691'u64
 
     let a = BigInt[64].fromUint(u)
-    let m = BigInt[40].fromHex(v)
+    let m = BigInt[40].fromUint(v)
 
     var r: BigInt[40]
     r.reduce(a, m)
     # Copy the result in a conveniently sized buffer
-    var rr: BigInt[64]
+    var rr: BigInt[40]
     copyLimbs(rr, 0, r, 0, r.limbs.len)
 
     check:
-      bool(rr == BigInt[64].fromUint(u mod v.fromHex[:uint64]))
+      bool(rr == BigInt[40].fromUint(u mod v))

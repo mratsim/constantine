@@ -51,7 +51,7 @@ func fromRawUintLE(
       acc_len -= WordBitSize
       acc = src_byte shr (8 - acc_len)
 
-  if acc_len != 0:
+  if dst_idx < result.limbs.len:
     result.limbs[dst_idx] = acc
 
 func fromRawUint*(
@@ -75,9 +75,6 @@ func fromUint*(
         src: SomeUnsignedInt): T =
   ## Parse a regular unsigned integer
   ## and store it into a BigInt of size `bits`
-  static:
-    doAssert T.bits >= sizeof(src) * 8, "The BigInt bitsize (" & $T.bits &
-    ") must be greater or equal the source integer bitsize (" & $(sizeof(src) * 8) & ')'
   fromRawUint(T, cast[array[sizeof(src), byte]](src), cpuEndian)
 
 # ############################################################
