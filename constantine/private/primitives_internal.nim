@@ -57,6 +57,12 @@ func unsafeExtendedPrecMul*(hi, lo: var Ct[uint64], a, b: Ct[uint64]) {.inline.}
   else:
     asm_x86_64_extMul(T(hi), T(lo), T(a), T(b))
 
+func unsafeExtendedPrecMul*(hi, lo: var Ct[uint32], a, b: Ct[uint32]) {.inline.}=
+  ## Extended precision multiplication uint32 * uint32 --> uint32
+  let extMul = uint64(a) * uint64(b)
+  hi = (Ct[uint32])(extMul shr 32)
+  lo = (Ct[uint32])(extMul and 31)
+
 func asm_x86_64_div2n1n(q, r: var uint64, n_hi, n_lo, d: uint64) {.inline.}=
   ## Division uint128 by uint64
   ## Warning ⚠️ :
@@ -117,6 +123,20 @@ func unsafeDiv2n1n*(q, r: var Ct[uint64], n_hi, n_lo, d: Ct[uint64]) {.inline.}=
     {.error: "At the moment only x86_64 architecture is supported".}
   else:
     asm_x86_64_div2n1n(T(q), T(r), T(n_hi), T(n_lo), T(d))
+
+func unsafeDiv2n1n*(q, r: var Ct[uint32], n_hi, n_lo, d: Ct[uint32]) {.inline.}=
+  ## Division uint64 by uint32
+  ## Warning ⚠️ :
+  ##   - if n_hi == d, quotient does not fit in an uint32
+  ##   - if n_hi > d result is undefined
+  ##
+  ## To avoid issues, n_hi, n_lo, d should be normalized.
+  ## i.e. shifted (== multiplied by the same power of 2)
+  ## so that the most significant bit in d is set.
+  let dividend = (uint64(n_hi) shl 32) or uint64(n_lo)
+  let divisor = uint64(d)
+  q = (Ct[uint32])(dividend div divisor)
+  r = (Ct[uint32])(dividend mod divisor)
 
 when isMainModule:
   block: # Multiplication

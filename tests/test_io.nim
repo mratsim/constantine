@@ -23,15 +23,6 @@ suite "IO":
         T(big.limbs[0]) == 0
         T(big.limbs[1]) == 0
 
-    block: # 2^63 is properly represented on 2 limbs
-      let x = 1'u64 shl 63
-      let x_bytes = cast[array[8, byte]](x)
-      let big = BigInt[64].fromRawUint(x_bytes, cpuEndian)
-
-      check:
-        T(big.limbs[0]) == 0
-        T(big.limbs[1]) == 1
-
   test "Parsing and dumping round-trip on uint64":
     block:
       # "Little-endian" - 2^63

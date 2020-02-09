@@ -124,22 +124,6 @@ suite "Arithmetic operations - Addition":
         bool(a == c)
         not bool(carry)
 
-    block:
-      var a = fromHex(BigInt[128], "0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF")
-      let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
-      let carry = a.add(b, ctrue(Word))
-
-      # BigInt[128] takes 3 Words as a BigInt Word is 63-bit
-      var ab: array[3*sizeof(Word), byte]
-      ab.dumpRawUint(a, littleEndian)
-
-      # Given that it uses 3 words, we actually can store 2^128 in BigInt[128]
-      var c: array[3*sizeof(Word), byte]
-      c[16] = 1
-      check:
-        c == ab
-        not bool(carry) # carry can only happen within limbs
-
 suite "Modular operations - small modulus":
   # Vectors taken from Stint - https://github.com/status-im/nim-stint
   test "100 mod 13":
