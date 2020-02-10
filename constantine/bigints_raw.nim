@@ -418,7 +418,8 @@ func reduce*(r: BigIntViewMut, a: BigIntViewAny, M: BigIntViewConst) =
     # and modular shift-left-add the rest
     let mLen = M.numLimbs()
     let aOffset = aLen - mLen
-    copyMem(r[0].addr, a[aOffset].unsafeAddr, (mLen-1) * sizeof(Word))
+    copyMem(r[0].addr, a[aOffset+1].unsafeAddr, (mLen-1) * sizeof(Word))
     r[^1] = Zero
-    for i in countdown(aOffset-1, 0):
+    # Now shift-left the copied words while adding the new word modulo M
+    for i in countdown(aOffset, 0):
       r.shlAddMod(a[i], M)

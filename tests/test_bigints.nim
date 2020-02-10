@@ -127,13 +127,33 @@ suite "Arithmetic operations - Addition":
 suite "Modular operations - small modulus":
   # Vectors taken from Stint - https://github.com/status-im/nim-stint
   test "100 mod 13":
-    let a = BigInt[32].fromUint(100'u32)
-    let m = BigInt[4].fromUint(13'u8)
+    # Test 1 word and more than 1 word
+    block:
+      let a = BigInt[7].fromUint(100'u32)
+      let m = BigInt[4].fromUint(13'u8)
 
-    var r: BigInt[4]
-    r.reduce(a, m)
-    check:
-      bool(r == BigInt[4].fromUint(100'u8 mod 13))
+      var r: BigInt[4]
+      r.reduce(a, m)
+      check:
+        bool(r == BigInt[4].fromUint(100'u8 mod 13))
+
+    block: #
+      let a = BigInt[32].fromUint(100'u32)
+      let m = BigInt[4].fromUint(13'u8)
+
+      var r: BigInt[4]
+      r.reduce(a, m)
+      check:
+        bool(r == BigInt[4].fromUint(100'u8 mod 13))
+
+    block: #
+      let a = BigInt[64].fromUint(100'u32)
+      let m = BigInt[4].fromUint(13'u8)
+
+      var r: BigInt[4]
+      r.reduce(a, m)
+      check:
+        bool(r == BigInt[4].fromUint(100'u8 mod 13))
 
   test "2^64 mod 3":
     let a = BigInt[65].fromHex("0x1_00000000_00000000")
@@ -159,7 +179,7 @@ suite "Modular operations - small modulus - Stint specific failures highlighted 
     let u = 65696211516342324'u64
     let v = 174261910798982'u64
 
-    let a = BigInt[64].fromUint(u)
+    let a = BigInt[56].fromUint(u)
     let m = BigInt[48].fromUint(v)
 
     var r: BigInt[48]
@@ -172,7 +192,7 @@ suite "Modular operations - small modulus - Stint specific failures highlighted 
     let u = 15080397990160655'u64
     let v = 600432699691'u64
 
-    let a = BigInt[64].fromUint(u)
+    let a = BigInt[54].fromUint(u)
     let m = BigInt[40].fromUint(v)
 
     var r: BigInt[40]
