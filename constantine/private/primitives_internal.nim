@@ -57,11 +57,13 @@ func unsafeExtendedPrecMul*(hi, lo: var Ct[uint64], a, b: Ct[uint64]) {.inline.}
   else:
     asm_x86_64_extMul(T(hi), T(lo), T(a), T(b))
 
+import strutils
+
 func unsafeExtendedPrecMul*(hi, lo: var Ct[uint32], a, b: Ct[uint32]) {.inline.}=
   ## Extended precision multiplication uint32 * uint32 --> uint32
   let extMul = uint64(a) * uint64(b)
   hi = (Ct[uint32])(extMul shr 32)
-  lo = (Ct[uint32])(extMul and 31)
+  lo = (Ct[uint32])(extMul and ((1'u64 shl 32) - 1))
 
 func asm_x86_64_div2n1n(q, r: var uint64, n_hi, n_lo, d: uint64) {.inline.}=
   ## Division uint128 by uint64
