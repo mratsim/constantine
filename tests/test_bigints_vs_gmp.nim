@@ -23,6 +23,8 @@ const CryptoModSizes = [
 
   # RSA
   1024,
+  2048,
+  3072,
   # secp256k1, Curve25519
   256,
   # Barreto-Naehrig
@@ -47,7 +49,7 @@ macro testRandomModSizes(numSizes: static int, aBits, mBits, body: untyped): unt
   result = newStmtList()
 
   for _ in 0 ..< numSizes:
-    let aBitsVal = bitSizeRNG.rand(126 .. 4096)
+    let aBitsVal = bitSizeRNG.rand(126 .. 8192)
     let mBitsVal = block:
       # Pick from curve modulus if odd
       if bool(bitSizeRNG.rand(high(int)) and 1):
@@ -87,9 +89,9 @@ proc main() =
   mpz_init(m)
   mpz_init(r)
 
-  testRandomModSizes(100, aBits, mBits):
-    echo "--------------------------------------------------------------------------------"
-    stdout.write "Testing: Dividend bitsize " & align($aBits, 4) & " -- modulus bitsize " & align($mBits, 4)
+  testRandomModSizes(128, aBits, mBits):
+    # echo "--------------------------------------------------------------------------------"
+    echo "Testing: random dividend (" & align($aBits, 4) & "-bit) -- random modulus (" & align($mBits, 4) & "-bit)"
 
     # Generate random value in the range 0 ..< 2^aBits
     mpz_urandomb(a, gmpRng, aBits)
@@ -97,7 +99,7 @@ proc main() =
     mpz_urandomb(m, gmpRng, mBits)
     mpz_setbit(m, mBits-1)
 
-    discard gmp_printf(" -- %#Zx mod %#Zx\n", a.addr, m.addr)
+    # discard gmp_printf(" -- %#Zx mod %#Zx\n", a.addr, m.addr)
 
     #########################################################
     # Conversion buffers
@@ -136,9 +138,18 @@ proc main() =
     var rConstantine: array[mLen, byte]
     dumpRawUint(rConstantine, rTest, littleEndian)
 
-    echo "rGMP: ", rGMP.toHex()
-    echo "rConstantine: ", rConstantine.toHex()
+    # echo "rGMP: ", rGMP.toHex()
+    # echo "rConstantine: ", rConstantine.toHex()
 
-    doAssert rGMP == rConstantine
+    doAssert rGMP == rConstantine, block:
+      # Reexport as bigEndian for debugging
+      discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
+      discard mpz_export(mBuf[0].addr, mW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, m)
+      "\nModulus with operand\n" &
+      "  a (" & align($aBits, 4) & "-bit):   " & aBuf.toHex & "\n" &
+      "  m (" & align($mBits, 4) & "-bit):   " & mBuf.toHex & "\n" &
+      "failed:" & "\n" &
+      "  GMP:            " & rGMP.toHex() & "\n" &
+      "  Constantine:    " & rConstantine.toHex()
 
 main()

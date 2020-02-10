@@ -379,7 +379,7 @@ func shlAddMod(a: BigIntViewMut, c: Word, M: BigIntViewConst) =
     # if carry < q or carry == q and over_p we must do "a -= p"
     # if carry > hi (negative result) we must do "a += p"
 
-    let neg = carry < hi
+    let neg = carry > hi
     let tooBig = not neg and (over_p or (carry < hi))
 
     discard a.add(M, ctl = neg)
