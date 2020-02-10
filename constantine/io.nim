@@ -12,7 +12,7 @@
 
 import
   endians,
-  ./primitives, ./bigints
+  ./primitives, ./bigints_raw
 
 # ############################################################
 #
@@ -23,14 +23,16 @@ import
 # TODO: tag/remove exceptions raised.
 
 func fromRawUintLE(
-        T: type BigInt,
-        src: openarray[byte]): T =
+        dst: var BigInt,
+        src: openarray[byte]) =
   ## Parse an unsigned integer from its canonical
   ## little-endian unsigned representation
   ## And store it into a BigInt of size bits
   ##
-  ## CT:
+  ## Constant-Time:
   ##   - no leaks
+  ##
+  ## Can work at compile-time
 
   var
     dst_idx = 0
@@ -46,13 +48,33 @@ func fromRawUintLE(
 
     # if full, dump
     if acc_len >= WordBitSize:
-      result.limbs[dst_idx] = acc and MaxWord
+      dst.limbs[dst_idx] = acc and MaxWord
       inc dst_idx
       acc_len -= WordBitSize
       acc = src_byte shr (8 - acc_len)
 
-  if dst_idx < result.limbs.len:
-    result.limbs[dst_idx] = acc
+  if dst_idx < dst.limbs.len:
+    dst.limbs[dst_idx] = acc
+
+func fromRawUint*(
+        dst: var BigInt,
+        src: openarray[byte],
+        srcEndianness: static Endianness) {.inline.}=
+  ## Parse an unsigned integer from its canonical
+  ## big-endian or little-endian unsigned representation
+  ## And store it into a BigInt of size `bits`
+  ##
+  ## Constant-Time:
+  ##   - no leaks
+  ##
+  ## Can work at compile-time to embed curve moduli
+  ## from a canonical integer representation
+
+  when srcEndianness == littleEndian:
+    dst.fromRawUintLE(src)
+  else:
+    {.error: "Not implemented at the moment".}
+  dst.setInternalBitLength()
 
 func fromRawUint*(
         T: type BigInt,
@@ -62,20 +84,19 @@ func fromRawUint*(
   ## big-endian or little-endian unsigned representation
   ## And store it into a BigInt of size `bits`
   ##
-  ## CT:
+  ## Constant-Time:
   ##   - no leaks
-
-  when srcEndianness == littleEndian:
-    fromRawUintLE(T, src)
-  else:
-    {.error: "Not implemented at the moment".}
+  ##
+  ## Can work at compile-time to embed curve moduli
+  ## from a canonical integer representation
+  result.fromRawUint(src, srcEndianness)
 
 func fromUint*(
         T: type BigInt,
         src: SomeUnsignedInt): T =
   ## Parse a regular unsigned integer
   ## and store it into a BigInt of size `bits`
-  fromRawUint(T, cast[array[sizeof(src), byte]](src), cpuEndian)
+  result.fromRawUint(cast[array[sizeof(src), byte]](src), cpuEndian)
 
 # ############################################################
 #
@@ -128,7 +149,6 @@ func dumpRawUintLE(
 
       if tail >= sizeof(Word):
         # Unrolled copy
-        # debugecho src.repr
         littleEndianXX(dst[dst_idx].addr, lo.unsafeAddr)
         dst_idx += sizeof(Word)
         tail -= sizeof(Word)
@@ -293,6 +313,8 @@ func fromHex*(T: type BigInt, s: string): T =
   ##
   ## This API is intended for configuration and debugging purposes
   ## Do not pass secret or private data to it.
+  ##
+  ## Can work at compile-time to declare curve moduli from their hex strings
 
   # 1. Convert to canonical uint
   const canonLen = (T.bits + 8 - 1) div 8
@@ -300,7 +322,7 @@ func fromHex*(T: type BigInt, s: string): T =
   hexToPaddedByteArray(s, bytes, littleEndian)
 
   # 2. Convert canonical uint to Big Int
-  result = T.fromRawUint(bytes, littleEndian)
+  result.fromRawUint(bytes, littleEndian)
 
 func dumpHex*(big: BigInt, order: static Endianness = bigEndian): string =
   ## Stringify an int to hex.

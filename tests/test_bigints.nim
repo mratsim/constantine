@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  unittest, random, strutils,
-        ../constantine/[io, bigints, primitives]
+        ../constantine/[io, bigints_public, bigints_raw, primitives]
 
 suite "isZero":
   test "isZero for zero":
@@ -128,12 +128,12 @@ suite "Modular operations - small modulus":
   # Vectors taken from Stint - https://github.com/status-im/nim-stint
   test "100 mod 13":
     let a = BigInt[32].fromUint(100'u32)
-    let m = BigInt[8].fromUint(13'u8)
+    let m = BigInt[4].fromUint(13'u8)
 
-    var r: BigInt[8]
+    var r: BigInt[4]
     r.reduce(a, m)
     check:
-      bool(r == BigInt[8].fromUint(100'u8 mod 13))
+      bool(r == BigInt[4].fromUint(100'u8 mod 13))
 
   test "2^64 mod 3":
     let a = BigInt[65].fromHex("0x1_00000000_00000000")
@@ -160,29 +160,23 @@ suite "Modular operations - small modulus - Stint specific failures highlighted 
     let v = 174261910798982'u64
 
     let a = BigInt[64].fromUint(u)
-    let m = BigInt[49].fromUint(v)
+    let m = BigInt[48].fromUint(v)
 
-    var r: BigInt[49]
+    var r: BigInt[48]
     r.reduce(a, m)
-    # Copy the result in a conveniently sized buffer
-    var rr: BigInt[49]
-    copyLimbs(rr, 0, r, 0, r.limbs.len)
 
     check:
-      bool(rr == BigInt[49].fromUint(u mod v))
+      bool(r == BigInt[48].fromUint(u mod v))
 
   test "Modulo: 15080397990160655 mod 600432699691":
     let u = 15080397990160655'u64
     let v = 600432699691'u64
 
     let a = BigInt[64].fromUint(u)
-    let m = BigInt[41].fromUint(v)
+    let m = BigInt[40].fromUint(v)
 
-    var r: BigInt[41]
+    var r: BigInt[40]
     r.reduce(a, m)
-    # Copy the result in a conveniently sized buffer
-    var rr: BigInt[41]
-    copyLimbs(rr, 0, r, 0, r.limbs.len)
 
     check:
-      bool(rr == BigInt[41].fromUint(u mod v))
+      bool(r == BigInt[40].fromUint(u mod v))
