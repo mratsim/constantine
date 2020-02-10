@@ -57,6 +57,8 @@ from sugar import distinctBase
 type Word* = Ct[uint32]
   ## Logical BigInt word
   ## A logical BigInt word is of size physical MachineWord-1
+type DoubleWord = Ct[uint64]
+
 type BaseType* = uint32
   ## Physical BigInt for conversion in "normal integers"
 
@@ -357,17 +359,15 @@ func shlAddMod(a: BigIntViewMut, c: Word, M: BigIntViewConst) =
       var qp_lo: Word
 
       block: # q*p
-        var qp_hi: Word
-        unsafeExtendedPrecMul(qp_hi, qp_lo, q, M[i]) # q * p
-        qp_lo += carry                               # Add carry from previous limb
-
-        carry = qp_hi shl 1 + qp_lo.isMsbSet.Word    # New carry
-        qp_lo = qp_lo and MaxWord                    # Normalize to u63
+        # q * p + carry (doubleword) carry from previous limb
+        let qp = unsafeExtPrecMul(q, M[i]) + carry.DoubleWord
+        carry = Word(qp shr WordBitSize)           # New carry: high digit besides LSB
+        qp_lo = qp.Word and MaxWord                # Normalize to u63
 
       block: # a*2^63 - q*p
         a[i] -= qp_lo
-        carry += Word(a[i].isMsbSet)                 # Adjust if borrow
-        a[i] = a[i] and MaxWord                      # Normalize to u63
+        carry += Word(a[i].isMsbSet)               # Adjust if borrow
+        a[i] = a[i] and MaxWord                    # Normalize to u63
 
       over_p = mux(
                 a[i] == M[i], over_p,

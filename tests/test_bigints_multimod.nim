@@ -10,7 +10,7 @@ import
   # Standard library
   unittest, random, strutils,
   # Third-party
-  ../constantine/[io, bigints, primitives]
+  ../constantine/[io, bigints_raw, bigints_public, primitives]
 
 suite "Bigints - Multiprecision modulo":
   test "bitsize 237 mod bitsize 192":
