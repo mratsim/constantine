@@ -157,12 +157,13 @@ func dumpRawUintLE(
         when cpuEndian == littleEndian:
           # When requesting little-endian on little-endian platform
           # we can just copy each byte
-          for i in dst_idx ..< tail:
-            dst[dst_idx] = byte(lo shr (i-dst_idx))
-        else:
+          # tail is inclusive
+          for i in 0 ..< tail:
+            dst[dst_idx+i] = byte(lo shr (i*8))
+        else: # TODO check this
           # We need to copy from the end
           for i in 0 ..< tail:
-            dst[dst_idx] = byte(lo shr (tail-i))
+            dst[dst_idx+i] = byte(lo shr ((tail-i)*8))
         return
 
 func dumpRawUint*(

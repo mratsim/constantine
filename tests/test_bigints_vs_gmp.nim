@@ -12,7 +12,7 @@ import
   # Third-party
   gmp, stew/byteutils,
   # Internal
-  ../constantine/[io, bigints, primitives]
+  ../constantine/[io, bigints_raw, bigints_public, primitives]
 
 # We test up to 1024-bit, more is really slow
 
@@ -88,6 +88,7 @@ proc main() =
   mpz_init(r)
 
   testRandomModSizes(100, aBits, mBits):
+    echo "--------------------------------------------------------------------------------"
     stdout.write "Testing: Dividend bitsize " & align($aBits, 4) & " -- modulus bitsize " & align($mBits, 4)
 
     # Generate random value in the range 0 ..< 2^aBits
@@ -134,6 +135,9 @@ proc main() =
 
     var rConstantine: array[mLen, byte]
     dumpRawUint(rConstantine, rTest, littleEndian)
+
+    echo "rGMP: ", rGMP.toHex()
+    echo "rConstantine: ", rConstantine.toHex()
 
     doAssert rGMP == rConstantine
 
