@@ -160,29 +160,29 @@ suite "Modular operations - small modulus - Stint specific failures highlighted 
     let v = 174261910798982'u64
 
     let a = BigInt[64].fromUint(u)
-    let m = BigInt[48].fromUint(v)
+    let m = BigInt[49].fromUint(v)
 
-    var r: BigInt[48]
+    var r: BigInt[49]
     r.reduce(a, m)
     # Copy the result in a conveniently sized buffer
-    var rr: BigInt[48]
+    var rr: BigInt[49]
     copyLimbs(rr, 0, r, 0, r.limbs.len)
 
     check:
-      bool(rr == BigInt[48].fromUint(u mod v))
+      bool(rr == BigInt[49].fromUint(u mod v))
 
   test "Modulo: 15080397990160655 mod 600432699691":
     let u = 15080397990160655'u64
     let v = 600432699691'u64
 
     let a = BigInt[64].fromUint(u)
-    let m = BigInt[40].fromUint(v)
+    let m = BigInt[41].fromUint(v)
 
-    var r: BigInt[40]
+    var r: BigInt[41]
     r.reduce(a, m)
     # Copy the result in a conveniently sized buffer
-    var rr: BigInt[40]
+    var rr: BigInt[41]
     copyLimbs(rr, 0, r, 0, r.limbs.len)
 
     check:
-      bool(rr == BigInt[40].fromUint(u mod v))
+      bool(rr == BigInt[41].fromUint(u mod v))

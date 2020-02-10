@@ -256,12 +256,9 @@ func shlAddMod[bits](a: var BigInt[bits], c: Word, M: BigInt[bits]) =
       block: # q*p
         var qp_hi: Word
         unsafeExtendedPrecMul(qp_hi, qp_lo, q, M.limbs[i])  # q * p
-        # assert qp_lo.isMsbSet.not.bool
-        # assert carry.isMsbSet.not.bool
         qp_lo += carry                                      # Add carry from previous limb
-        let qp_carry = qp_lo.isMsbSet
-        carry = mux(qp_carry, qp_hi + One, qp_hi)           # New carry
 
+        carry = qp_hi shl 1 + qp_lo.isMsbSet.Word           # New carry
         qp_lo = qp_lo and MaxWord                           # Normalize to u63
 
       block: # a*2^63 - q*p
@@ -312,5 +309,5 @@ func reduce*[aBits, mBits](r: var BigInt[mBits], a: BigInt[aBits], M: BigInt[mBi
     const aOffset = a.limbs.len - M.limbs.len
     copyLimbs(r, 0, a, aOffset, M.limbs.len - 1)
     r.limbs[^1] = Zero
-    for i in countdown(aOffset, 0):
+    for i in countdown(aOffset-1, 0):
       r.shlAddMod(a.limbs[i], M)
