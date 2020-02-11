@@ -117,6 +117,16 @@ template `$`*(x: CTBool): string =
 # We should use {.borrow.} instead:
 #    - https://github.com/nim-lang/Nim/pull/8531
 #    - https://github.com/nim-lang/Nim/issues/4121 (can be workaround with #8531)
+#
+# We use templates to enforce inlining in generated C code.
+# inline proc pollutes the C code with may small proc and
+# compilers might hit inlining limits, especially given
+# that we can have hundreds of calls to those primitives in a single algorithm
+#
+# Note that templates duplicate their input parameters.
+# If a param is used multiple times, it **must** be `let` assigned first
+# to avoid duplicate computation or duplicate side-effect.
+# We append a mnemonic like `mux` or `LT` to help inspecting the C code
 
 template fmap[T: Ct](x: T, op: untyped, y: T): T =
   ## Unwrap x and y from their distinct type
@@ -174,16 +184,19 @@ template `or`*(x, y: CTBool): CTBool = fmap(x, `or`, y)
 
 template noteq[T: Ct](x, y: T): CTBool[T] =
   const msb = T.sizeof * 8 - 1
-  let z = x xor y
-  CTBool[T]((z or -z) shr msb)
+  let z_NEQ = x xor y
+  CTBool[T]((z_NEQ or -z_NEQ) shr msb)
 
 template `==`*[T: Ct](x, y: T): CTBool[T] =
   not(noteq(x, y))
 
 template `<`*[T: Ct](x, y: T): CTBool[T] =
+  let # Templates duplicate input params code
+    x_LT = x
+    y_LT = y
   isMsbSet(
-      x xor (
-        (x xor y) or ((x - y) xor y)
+      x_LT xor (
+        (x_LT xor y_LT) or ((x_LT - y_LT) xor y_LT)
       )
     )
 
@@ -198,22 +211,28 @@ template mux*[T: Ct](ctl: CTBool[T], x, y: T): T =
   ## Returns x if ctl is true
   ## else returns y
   ## So equivalent to ctl? x: y
-  y xor (-T(ctl) and (x xor y))
-
+  #
   # TODO verify assembly generated
   # as mentioned in https://cryptocoding.net/index.php/Coding_rules
   # the alternative `(x and ctl) or (y and -ctl)`
   # is optimized into a branch by Clang :/
   # See also: https://www.cl.cam.ac.uk/~rja14/Papers/whatyouc.pdf
-
+  #
   # TODO: assembly fastpath for conditional mov
+  let # Templates duplicate input params code
+    x_Mux = x
+    y_Mux = y
+  y_Mux xor (-T(ctl) and (x_Mux xor y_Mux))
 
 template mux*[T: CTBool](ctl: CTBool, x, y: T): T =
   ## Multiplexer / selector
   ## Returns x if ctl is true
   ## else returns y
   ## So equivalent to ctl? x: y
-  T(T.T(y) xor (-T.T(ctl) and T.T(x xor y)))
+  let # Templates duplicate input params code
+    x_Mux = x
+    y_Mux = y
+  T(T.T(y_Mux) xor (-T.T(ctl) and T.T(x_Mux xor y_Mux)))
 
 # ############################################################
 #
@@ -235,7 +254,8 @@ template trmFixSystemNotEq*{x != y}[T: Ct](x, y: T): CTBool[T] =
 # ############################################################
 
 template isNonZero*[T: Ct](x: T): CTBool[T] =
-  isMsbSet(x or -x)
+  let x_NZ = x
+  isMsbSet(x_NZ or -x_NZ)
 
 template isZero*[T: Ct](x: T): CTBool[T] =
   not x.isNonZero

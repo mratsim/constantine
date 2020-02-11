@@ -15,7 +15,7 @@
 # This file holds the raw operations done on big ints
 # The representation is optimized for:
 # - constant-time (not leaking secret data via side-channel)
-# - generated code size and datatype size
+# - generated code size, datatype size and stack usage
 # - performance
 # in this order
 
