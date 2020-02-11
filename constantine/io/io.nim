@@ -12,7 +12,9 @@
 
 import
   endians,
-  ./primitives, ./bigints_raw
+  ../primitives/constant_time,
+  ../math/bigints_checked,
+  ../config/common
 
 # ############################################################
 #
@@ -133,7 +135,7 @@ func dumpRawUintLE(
 
   var tail = dst.len
   while tail > 0:
-    let w = if src_idx < src.limbs.len: src.limbs[src_idx].BaseType
+    let w = if src_idx < src.limbs.len: BaseType(src.limbs[src_idx])
             else: 0
     inc src_idx
 

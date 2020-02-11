@@ -13,6 +13,7 @@
 # ############################################################
 
 # We assume that p is prime known at compile-time
+# We assume that p is not even (requirement for Montgomery form)
 
 import ./primitives, ./bigints, ./curves_config
 
@@ -22,21 +23,11 @@ type
     ## All operations on a field are modulo P
     value: BigInt[CurveBitSize[C]]
 
-  Montgomery*[C: static Curve] = object
-    ## P is the prime modulus of the Curve C
-    ## All operations in the Montgomery domain are modulo P
-    ## P **must** be odd
-    value: BigInt[CurveBitSize[C]]
-
 # ############################################################
 #
 #                         Aliases
 #
 # ############################################################
-
-const
-  CtTrue* = ctrue(Word)
-  CtFalse* = cfalse(Word)
 
 template add(a: var Fp, b: Fp, ctl: CTBool[Word]): CTBool[Word] =
   add(a.value, b.value, ctl)

@@ -50,58 +50,30 @@
 # actual computation is deferred to type-erased routines.
 
 import
-  ./primitives, ./common,
-  ./primitives_extprecision
+  ../primitives/constant_time,
+  ../primitives/extended_precision,
+  ../config/common
 from sugar import distinctBase
 
-type Word* = Ct[uint32]
-  ## Logical BigInt word
-  ## A logical BigInt word is of size physical MachineWord-1
-type DoubleWord = Ct[uint64]
+# ############################################################
+#
+#                BigInts type-erased API
+#
+# ############################################################
 
-type BaseType* = uint32
-  ## Physical BigInt for conversion in "normal integers"
-
-const
-  WordPhysBitSize = sizeof(Word) * 8
-  WordBitSize* = WordPhysBitSize - 1
-
-const
-  Zero* = Word(0)
-  One* = Word(1)
-  MaxWord* = (not Zero) shr 1
-    ## This represents 0x7F_FF_FF_FF__FF_FF_FF_FF
-    ## also 0b0111...1111
-    ## This biggest representable number in our limbs.
-    ## i.e. The most significant bit is never set at the end of each function
-
-func wordsRequired(bits: int): int {.compileTime.} =
-  ## Compute the number of limbs required
-  # from the **announced** bit length
-  (bits + WordBitSize - 1) div WordBitSize
+# The "checked" API is exported as a building blocks
+# with enforced compile-time checking of BigInt bitsize
+# and memory ownership.
+#
+# The "raw" compute API uses views to avoid code duplication
+# due to generic/static monomorphization.
+#
+# The "checked" API is a thin wrapper above the "raw" API to get the best of both world:
+# - small code footprint
+# - compiler enforced checks: types, bitsizes
+# - compiler enforced memory: stack allocation and buffer ownership
 
 type
-  BigInt*[bits: static int] = object
-    ## Fixed-precision big integer
-    ##
-    ## - "bits" is the announced bit-length of the BigInt
-    ##   This is public data, usually equal to the curve prime bitlength.
-    ##
-    ## - "bitLength" is the internal bitlength of the integer
-    ##   This differs from the canonical bit-length as
-    ##   Constantine word-size is smaller than a machine word.
-    ##   This value should never be used as-is to prevent leaking secret data.
-    ##   Computing this value requires constant-time operations.
-    ##   Using this value requires converting it to the # of limbs in constant-time
-    ##
-    ## - "limbs" is an internal field that holds the internal representation
-    ##   of the big integer. Least-significant limb first. Within limbs words are native-endian.
-    ##
-    ## This internal representation can be changed
-    ## without notice and should not be used by external applications or libraries.
-    bitLength: uint32
-    limbs*: array[bits.wordsRequired, Word]
-
   BigIntView* = ptr object
     ## Type-erased fixed-precision big integer
     ##
@@ -145,17 +117,9 @@ type
 
 # ############################################################
 #
-#                  Mutability safety
+#                 Deep Mutability safety
 #
 # ############################################################
-
-template view*(a: BigInt): BigIntViewConst =
-  ## Returns a borrowed type-erased immutable view to a bigint
-  BigIntViewConst(cast[BigIntView](a.unsafeAddr))
-
-template view*(a: var BigInt): BigIntViewMut =
-  ## Returns a borrowed type-erased mutable view to a mutable bigint
-  BigIntViewMut(cast[BigIntView](a.addr))
 
 template `[]`*(v: BigIntViewConst, limbIdx: int): Word =
   distinctBase(type v)(v).limbs[limbIdx]
@@ -181,13 +145,13 @@ template setBitLength(v: BigIntViewMut, internalBitLength: uint32) =
 # TODO: Check if repeated v.numLimbs calls are optimized away
 
 template `[]`*(v: BigIntViewConst, limbIdxFromEnd: BackwardsIndex): Word =
-  distinctBase(type v)(v).limbs[v.numLimbs.int - int limbIdxFromEnd]
+  distinctBase(type v)(v).limbs[numLimbs(v).int - int limbIdxFromEnd]
 
 template `[]`*(v: BigIntViewMut, limbIdxFromEnd: BackwardsIndex): var Word =
-  distinctBase(type v)(v).limbs[v.numLimbs.int - int limbIdxFromEnd]
+  distinctBase(type v)(v).limbs[numLimbs(v).int - int limbIdxFromEnd]
 
 template `[]=`*(v: BigIntViewMut, limbIdxFromEnd: BackwardsIndex, val: Word) =
-  distinctBase(type v)(v).limbs[v.numLimbs.int - int limbIdxFromEnd] = val
+  distinctBase(type v)(v).limbs[numLimbs(v).int - int limbIdxFromEnd] = val
 
 # ############################################################
 #
@@ -214,13 +178,6 @@ template checkValidModulus(m: BigIntViewConst) =
     assert not m[^1].isZero.bool, "Internal Error: the modulus must use all declared bits"
 
 debug:
-  func `==`*(a, b: BigInt): CTBool[Word] =
-    ## Returns true if 2 big ints are equal
-    var accum: Word
-    for i in static(0 ..< a.limbs.len):
-      accum = accum or (a.limbs[i] xor b.limbs[i])
-    result = accum.isZero
-
   func `$`*(a: BigIntViewAny): string =
     let len = a.numLimbs()
     result = "["
@@ -237,13 +194,6 @@ debug:
 #                    BigInt primitives
 #
 # ############################################################
-
-func setInternalBitLength*(a: var BigInt) {.inline.} =
-  ## Derive the actual bitsize used internally of a BigInt
-  ## from the announced BigInt bitsize
-  ## and set the bitLength field of that BigInt
-  ## to that computed value.
-  a.bitLength = static(a.bits + a.bits div WordBitSize)
 
 func isZero*(a: BigIntViewAny): CTBool[Word] =
   ## Returns true if a big int is equal to zero
@@ -353,7 +303,7 @@ func shlAddMod(a: BigIntViewMut, c: Word, M: BigIntViewConst) =
 
     # Now substract a*2^63 - q*p
     var carry = Zero
-    var over_p = ctrue(Word)                       # Track if quotient greater than the modulus
+    var over_p = CtTrue                            # Track if quotient greater than the modulus
 
     for i in 0 ..< M.numLimbs():
       var qp_lo: Word

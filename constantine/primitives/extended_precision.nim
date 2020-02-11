@@ -12,7 +12,7 @@
 #
 # ############################################################
 
-import ./primitives
+import ./constant_time
 
 func asm_x86_64_extMul(hi, lo: var uint64, a, b: uint64) {.inline.}=
   ## Extended precision multiplication uint64 * uint64 --> uint128
@@ -115,6 +115,9 @@ func unsafeDiv2n1n*(q, r: var Ct[uint64], n_hi, n_lo, d: Ct[uint64]) {.inline.}=
   # with a fast path that may have branches. It might also
   # be the same at the hardware level.
 
+  # TODO !!! - Replace by constant-time, portable, non-assembly version
+  #          -> use uint128? Compiler might add unwanted branches
+
   type T = uint64
 
   when not defined(amd64):
@@ -131,6 +134,8 @@ func unsafeDiv2n1n*(q, r: var Ct[uint32], n_hi, n_lo, d: Ct[uint32]) {.inline.}=
   ## To avoid issues, n_hi, n_lo, d should be normalized.
   ## i.e. shifted (== multiplied by the same power of 2)
   ## so that the most significant bit in d is set.
+  # TODO !!! - Replace by constant-time, portable, non-assembly version
+  #          -> use uint128? Compiler might add unwanted branches
   let dividend = (uint64(n_hi) shl 32) or uint64(n_lo)
   let divisor = uint64(d)
   q = (Ct[uint32])(dividend div divisor)

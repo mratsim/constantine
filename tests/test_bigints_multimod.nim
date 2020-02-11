@@ -10,7 +10,9 @@ import
   # Standard library
   unittest, random, strutils,
   # Third-party
-  ../constantine/[io, bigints_raw, bigints_public, primitives]
+  ../constantine/io/io,
+  ../constantine/math/[bigints_raw, bigints_checked],
+  ../constantine/primitives/constant_time
 
 suite "Bigints - Multiprecision modulo":
   test "bitsize 237 mod bitsize 192":
@@ -62,26 +64,26 @@ suite "Bigints - Multiprecision modulo":
       check:
         bool(r == expected)
 
-  # test "bitsize 1955 mod bitsize 459":
-  #     let a = BigInt[1955].fromHex("0x4f688e286a7c6e2b64663d8925c2f686994f2b90d58e7a843087c676c2c614ebab3eef9c765a88fe597b23b0e1fb28c812627366020edeafeefd0bf67a95215b4335412e2bd623b4cf7b69e669e1a8e782ab9a3e5fd443f10f459eed4ec9bd61821d94da82e937989245d481612b83b75d6d393e5de2258ac92aec7cd6e4f12c6b035e1fac3ef22851a8e211232b57db7551c03a88e9272411eea86e15c989be9d2962d5ae32ca35b18060212aaf6599b5a5f2416e436f009728b4017f87f70f4e528c9a33042b6810040c1e64457d56695d03b701540a5537c8cf781ff2ea4be2aa6daf1a5f2f0874a1cf495485a01254c2e2f4a")
-  #     let m = BigInt[459].fromHex("0x47304803a4a8c31e18287ad51c1ac7546c42e23206e9dc43e51eff5fa003f44bd08e542ec2659c405bfa4c9eb518ada943412767361029a902b")
+  test "bitsize 1955 mod bitsize 459":
+      let a = BigInt[1955].fromHex("0x4f688e286a7c6e2b64663d8925c2f686994f2b90d58e7a843087c676c2c614ebab3eef9c765a88fe597b23b0e1fb28c812627366020edeafeefd0bf67a95215b4335412e2bd623b4cf7b69e669e1a8e782ab9a3e5fd443f10f459eed4ec9bd61821d94da82e937989245d481612b83b75d6d393e5de2258ac92aec7cd6e4f12c6b035e1fac3ef22851a8e211232b57db7551c03a88e9272411eea86e15c989be9d2962d5ae32ca35b18060212aaf6599b5a5f2416e436f009728b4017f87f70f4e528c9a33042b6810040c1e64457d56695d03b701540a5537c8cf781ff2ea4be2aa6daf1a5f2f0874a1cf495485a01254c2e2f4a")
+      let m = BigInt[459].fromHex("0x47304803a4a8c31e18287ad51c1ac7546c42e23206e9dc43e51eff5fa003f44bd08e542ec2659c405bfa4c9eb518ada943412767361029a902b")
 
-  #     let expected = BigInt[459].fromHex("0x1f039dfe7c9da071d578b3b852db3916f4d79f6169818085994cbc41610abb7abb96e10d1126313cc281a87c309c2dd43bed745a9603f3c606c")
+      let expected = BigInt[459].fromHex("0x1f039dfe7c9da071d578b3b852db3916f4d79f6169818085994cbc41610abb7abb96e10d1126313cc281a87c309c2dd43bed745a9603f3c606c")
 
-  #     var r: BigInt[97]
-  #     r.reduce(a, m)
+      var r: BigInt[459]
+      r.reduce(a, m)
 
-  #     check:
-  #       bool(r == expected)
+      check:
+        bool(r == expected)
 
-  # test "bitsize 2346 mod bitsize 97":
-  #     let a = BigInt[2346].fromHex("0x1b5efa688e4124a71edd035f106c6ea81bafd78f610cd59d46fc6cda548fd970dde6b91c6fa10ab6d198026dea3c46c41495294082f2acc8210fd7ebfb25fdc6ce8131676ab0d749c5a4a83dd08172b3849df30304685192708ff0b510600cbf87be3179ce704adc43f2c9b22ba28c77f0a364fa1a96344d7f338227a8f346c0e721bc1312f53cebfc20fd0763ec039aa83a77ba489056ebee2a462058f1daffec9b5df29474f638185c6684729482a29764b46a5487e159fc4eedda5018d3d18ae1c0c6503ebbbd859b4dff3e09b6567b752d51c9733fc822b2758b69ffd65974a8fbf4ad25a40761bb9b9b6a1f886928fe08f9c1571fe3e3987b15e37208a22f64e2c3ff75a36815b7906fc2a52f7bd32d15e8b0441e8c39ae9127d80946e146db5cd2738")
-  #     let m = BigInt[97].fromHex("0x1100d0717f9fff44c6cc7442e")
+  test "bitsize 2346 mod bitsize 97":
+      let a = BigInt[2346].fromHex("0x1b5efa688e4124a71edd035f106c6ea81bafd78f610cd59d46fc6cda548fd970dde6b91c6fa10ab6d198026dea3c46c41495294082f2acc8210fd7ebfb25fdc6ce8131676ab0d749c5a4a83dd08172b3849df30304685192708ff0b510600cbf87be3179ce704adc43f2c9b22ba28c77f0a364fa1a96344d7f338227a8f346c0e721bc1312f53cebfc20fd0763ec039aa83a77ba489056ebee2a462058f1daffec9b5df29474f638185c6684729482a29764b46a5487e159fc4eedda5018d3d18ae1c0c6503ebbbd859b4dff3e09b6567b752d51c9733fc822b2758b69ffd65974a8fbf4ad25a40761bb9b9b6a1f886928fe08f9c1571fe3e3987b15e37208a22f64e2c3ff75a36815b7906fc2a52f7bd32d15e8b0441e8c39ae9127d80946e146db5cd2738")
+      let m = BigInt[97].fromHex("0x1100d0717f9fff44c6cc7442e")
 
-  #     let expected = BigInt[97].fromHex("0x0104ea05300eeb05cd374197b6")
+      let expected = BigInt[97].fromHex("0x0104ea05300eeb05cd374197b6")
 
-  #     var r: BigInt[97]
-  #     r.reduce(a, m)
+      var r: BigInt[97]
+      r.reduce(a, m)
 
-  #     check:
-  #       bool(r == expected)
+      check:
+        bool(r == expected)

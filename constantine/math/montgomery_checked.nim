@@ -13,17 +13,13 @@
 # ############################################################
 
 import
-  ./primitives, ./bigints
-
-from bitops import fastLog2
-  # This will only be used at compile-time
-  # so no constant-time worries (it is constant-time if using the De Bruijn multiplication)
+  ./primitives, ./bigints, ./primitives
 
 # No exceptions allowed
 {.push raises: [].}
 
 func montyMagic*(M: static BigInt): static Word {.inline.} =
-  ## Returns the Montgomery domain magic number for the input modulus:
+  ## Returns the Montgomery domain magic constant for the input modulus:
   ##   -1/M[0] mod LimbSize
   ## M[0] is the least significant limb of M
   ## M must be odd and greater than 2.
@@ -67,8 +63,27 @@ func montyMagic*(M: static BigInt): static Word {.inline.} =
 
   const
     M0 = M.limbs[0]
-    k = fastLog2(WordBitSize)
+    k = log2(WordBitSize)
 
   result = M0                # Start from an inverse of M0 modulo 2, M0 is odd and it's own inverse
   for _ in static(0 ..< k):
     result *= 2 + M * result # x' = x(2 + ax) (`+` to avoid negating at the end)
+
+# ############################################################
+#
+#                Montgomery domain primitives
+#
+# ############################################################
+
+# No exceptions allowed
+{.push raises: [].}
+
+func toMonty*[C: static Curve](a: Fp[C]): Montgomery[C] =
+  ## Convert a big integer over Fp to it's montgomery representation
+  ## over Fp.
+  ## i.e. Does "a * (2^LimbSize)^W (mod p), where W is the number
+  ## of words needed to represent p in base 2^LimbSize
+
+  result = a
+  for i in static(countdown(C.Mod.limbs.high, 1)):
+    shiftAdd(result, 0)

@@ -12,7 +12,9 @@ import
   # Third-party
   gmp, stew/byteutils,
   # Internal
-  ../constantine/[io, bigints_raw, bigints_public, primitives]
+  ../constantine/io/io,
+  ../constantine/math/[bigints_raw, bigints_checked],
+  ../constantine/primitives/constant_time
 
 # We test up to 1024-bit, more is really slow
 

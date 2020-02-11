@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  unittest, random, math,
-        ../constantine/primitives
+        ../constantine/primitives/constant_time
 
 # Random seed for reproducibility
 randomize(0xDEADBEEF)

@@ -7,7 +7,9 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  unittest, random,
-        ../constantine/[io, bigints_raw]
+        ../constantine/io/io,
+        ../constantine/config/common,
+        ../constantine/math/bigints_checked
 
 randomize(0xDEADBEEF) # Random seed for reproducibility
 type T = BaseType

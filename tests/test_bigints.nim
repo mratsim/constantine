@@ -7,7 +7,10 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  unittest, random, strutils,
-        ../constantine/[io, bigints_public, bigints_raw, primitives]
+        ../constantine/io/io,
+        ../constantine/math/bigints_checked,
+        ../constantine/config/common,
+        ../constantine/primitives/constant_time
 
 suite "isZero":
   test "isZero for zero":
