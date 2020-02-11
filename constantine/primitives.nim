@@ -17,35 +17,80 @@ type
 
   Ct*[T: BaseUint] = distinct T
 
-  CTBool*[T: Ct] = distinct range[T(0)..T(1)]
+  CTBool*[T: Ct] = distinct T # range[T(0)..T(1)]
     ## To avoid the compiler replacing bitwise boolean operations
     ## by conditional branches, we don't use booleans.
     ## We use an int to prevent compiler "optimization" and introduction of branches
+    # Note, we could use "range" but then the codegen
+    # uses machine-sized signed integer types.
+    # signed types and machine-dependent words are undesired
+    # - we don't want compiler optimizing signed "undefined behavior"
+    # - Basic functions like BIgInt add/sub
+    #   return and/or accept CTBool, we don't want them
+    #   to require unnecessarily 8 bytes instead of 4 bytes
+
+# ############################################################
+#
+#                           Bit hacks
+#
+# ############################################################
+
+template isMsbSet*[T: Ct](x: T): CTBool[T] =
+  ## Returns the most significant bit of an integer
+  const msb_pos = T.sizeof * 8 - 1
+  (CTBool[T])(x shr msb_pos)
+
+func log2*(x: uint32): uint32 =
+  ## Find the log base 2 of a 32-bit or less integer.
+  ## using De Bruijn multiplication
+  ## Works at compile-time, guaranteed constant-time.
+  # https://graphics.stanford.edu/%7Eseander/bithacks.html#IntegerLogDeBruijn
+  const lookup: array[32, uint8] = [0'u8, 9, 1, 10, 13, 21, 2, 29, 11, 14, 16, 18,
+    22, 25, 3, 30, 8, 12, 20, 28, 15, 17, 24, 7, 19, 27, 23, 6, 26, 5, 4, 31]
+  var v = x
+  v = v or v shr 1 # first round down to one less than a power of 2
+  v = v or v shr 2
+  v = v or v shr 4
+  v = v or v shr 8
+  v = v or v shr 16
+  lookup[(v * 0x07C4ACDD'u32) shr 27]
+
+# ############################################################
+#
+#                           Pragmas
+#
+# ############################################################
 
 # No exceptions allowed
 {.push raises: [].}
 # Word primitives are inlined
 {.push inline.}
 
-func ctrue*(T: typedesc[Ct or BaseUint]): auto =
+# ############################################################
+#
+#                        Constructors
+#
+# ############################################################
+
+template ctrue*(T: typedesc[Ct or BaseUint]): auto =
   when T is Ct:
     (CTBool[T])(true)
   else:
     (CTBool[Ct[T]])(true)
 
-func cfalse*(T: typedesc[Ct or BaseUint]): auto =
+template cfalse*(T: typedesc[Ct or BaseUint]): auto =
   when T is Ct:
     (CTBool[T])(false)
   else:
     (CTBool[Ct[T]])(false)
 
-func ct*[T: BaseUint](x: T): Ct[T] =
+template ct*[T: BaseUint](x: T): Ct[T] =
   (Ct[T])(x)
 
-func `$`*[T](x: Ct[T]): string =
+template `$`*[T](x: Ct[T]): string =
   $T(x)
 
-func `$`*(x: CTBool): string =
+template `$`*(x: CTBool): string =
   $bool(x)
 
 # ############################################################
@@ -69,67 +114,47 @@ func `$`*(x: CTBool): string =
 
 # #################################################################
 # Hard base borrows
-# We should use {.borrow.} instead of {.magic.} but pending:
+# We should use {.borrow.} instead:
 #    - https://github.com/nim-lang/Nim/pull/8531
 #    - https://github.com/nim-lang/Nim/issues/4121 (can be workaround with #8531)
 
-func high*(T: typedesc[Ct]): T =
-  not T(0)
+template fmap[T: Ct](x: T, op: untyped, y: T): T =
+  ## Unwrap x and y from their distinct type
+  ## Apply op, and rewrap them
+  T(op(T.T(x), T.T(y)))
 
-func `and`*[T: Ct](x, y: T): T {.magic: "BitandI".}
-func `or`*[T: Ct](x, y: T): T {.magic: "BitorI".}
-func `xor`*[T: Ct](x, y: T): T {.magic: "BitxorI".}
-# func `not`*[T: Ct](x: T): T {.magic: "BitnotI".} # int128 changes broke the magic
-template `not`*[T: Ct](x: T): T =
-  # Note: T.T is Ct.T is the conversion to the base type
-  T(not T.T(x))
+template fmapAsgn[T: Ct](x: T, op: untyped, y: T) =
+  ## Unwrap x and y from their distinct type
+  ## Apply assignment op, and rewrap them
+  op(T.T(x), T.T(y))
 
-func `+`*[T: Ct](x, y: T): T {.magic: "AddU".}
-func `+=`*[T: Ct](x: var T, y: T) =
-  T.T(x) += (T.T)(y)
-func `-`*[T: Ct](x, y: T): T {.magic: "SubU".}
-func `-=`*[T: Ct](x: var T, y: T) =
-  T.T(x) -= (T.T)(y)
-func `shr`*[T: Ct](x: T, y: SomeInteger): T {.magic: "ShrI".}
-func `shl`*[T: Ct](x: T, y: SomeInteger): T {.magic: "ShlI".}
+template `and`*[T: Ct](x, y: T): T    = fmap(x, `and`, y)
+template `or`*[T: Ct](x, y: T): T     = fmap(x, `or`, y)
+template `xor`*[T: Ct](x, y: T): T    = fmap(x, `xor`, y)
+template `not`*[T: Ct](x: T): T       = T(not T.T(x))
+template `+`*[T: Ct](x, y: T): T      = fmap(x, `+`, y)
+template `+=`*[T: Ct](x: var T, y: T) = fmapAsgn(x, `+=`, y)
+template `-`*[T: Ct](x, y: T): T      = fmap(x, `-`, y)
+template `-=`*[T: Ct](x: var T, y: T) = fmapAsgn(x, `-=`, y)
+template `shr`*[T: Ct](x: T, y: SomeInteger): T = T(T.T(x) shr y)
+template `shl`*[T: Ct](x: T, y: SomeInteger): T = T(T.T(x) shl y)
 
-func `*`*[T: Ct](x, y: T): T {.magic: "MulU".}
-# Warning ⚠️ : We assume that mul hardware multiplication is constant time
-# but this is not always true, especially on ARMv7 and ARMv9
+template `*`*[T: Ct](x, y: T): T =
+  # Warning ⚠️ : We assume that mul hardware multiplication is constant time
+  # but this is not always true, especially on ARMv7 and ARMv9
+  fmap(x, `*`, y)
 
 # We don't implement div/mod as we can't assume the hardware implementation
 # is constant-time
 
-func `-`*(x: Ct): Ct =
+template `-`*[T: Ct](x: T): T =
   ## Unary minus returns the two-complement representation
   ## of an unsigned integer
-  {.emit:"`result` = -`x`;".}
-
-# ############################################################
-#
-#                           Bit hacks
-#
-# ############################################################
-
-func isMsbSet*[T: Ct](x: T): CTBool[T] =
-  ## Returns the most significant bit of an integer
-  const msb_pos = T.sizeof * 8 - 1
-  result = (CTBool[T])(x shr msb_pos)
-
-func log2*(x: uint32): uint32 =
-  ## Find the log base 2 of a 32-bit or less integer.
-  ## using De Bruijn multiplication
-  ## Works at compile-time, guaranteed constant-time.
-  # https://graphics.stanford.edu/%7Eseander/bithacks.html#IntegerLogDeBruijn
-  const lookup: array[32, uint8] = [0'u8, 9, 1, 10, 13, 21, 2, 29, 11, 14, 16, 18,
-    22, 25, 3, 30, 8, 12, 20, 28, 15, 17, 24, 7, 19, 27, 23, 6, 26, 5, 4, 31]
-  var v = x
-  v = v or v shr 1 # first round down to one less than a power of 2
-  v = v or v shr 2
-  v = v or v shr 4
-  v = v or v shr 8
-  v = v or v shr 16
-  lookup[(v * 0x07C4ACDD'u32) shr 27]
+  # We could use "not(x) + 1" but the codegen is not optimal
+  block:
+    var neg: T
+    {.emit:[neg, " = -", x, ";"].}
+    neg
 
 # ############################################################
 #
@@ -137,39 +162,36 @@ func log2*(x: uint32): uint32 =
 #
 # ############################################################
 
-template undistinct[T: Ct](x: CTBool[T]): T =
-  T(x)
+template fmap[T: Ct](x: CTBool[T], op: untyped, y: CTBool[T]): CTBool[T] =
+  CTBool[T](op(T(x), T(y)))
 
-func `not`*(ctl: CTBool): CTBool =
+template `not`*[T: Ct](ctl: CTBool[T]): CTBool[T] =
   ## Negate a constant-time boolean
-  (type result)(ctl.undistinct xor (type ctl.undistinct)(1))
+  CTBool[T](T(ctl) xor T(1))
 
-func `and`*(x, y: CTBool): CTBool {.magic: "BitandI".}
-func `or`*(x, y: CTBool): CTBool {.magic: "BitorI".}
+template `and`*(x, y: CTBool): CTBool = fmap(x, `and`, y)
+template `or`*(x, y: CTBool): CTBool = fmap(x, `or`, y)
 
-func noteq[T: Ct](x, y: T): CTBool[T] =
+template noteq[T: Ct](x, y: T): CTBool[T] =
   const msb = T.sizeof * 8 - 1
   let z = x xor y
-  result = (type result)((z or -z) shr msb)
+  CTBool[T]((z or -z) shr msb)
 
-func `==`*[T: Ct](x, y: T): CTBool[T] =
+template `==`*[T: Ct](x, y: T): CTBool[T] =
   not(noteq(x, y))
 
-func `<`*[T: Ct](x, y: T): CTBool[T] =
-  result = isMsbSet(
+template `<`*[T: Ct](x, y: T): CTBool[T] =
+  isMsbSet(
       x xor (
         (x xor y) or ((x - y) xor y)
       )
     )
 
-func `<=`*[T: Ct](x, y: T): CTBool[T] =
+template `<=`*[T: Ct](x, y: T): CTBool[T] =
   not(y < x)
 
-func `==`*(x, y: CTBool): CTBool =
-  (type result)(x.undistinct == y.undistinct)
-
-func `xor`*(x, y: CTBool): CTBool =
-  (type result)(x.undistinct.noteq(y.undistinct))
+template `xor`*[T: Ct](x, y: CTBool[T]): CTBool[T] =
+  CTBool[T](noteq(T(x), T(y)))
 
 template mux*[T: Ct](ctl: CTBool[T], x, y: T): T =
   ## Multiplexer / selector
@@ -182,6 +204,7 @@ template mux*[T: Ct](ctl: CTBool[T], x, y: T): T =
   # as mentioned in https://cryptocoding.net/index.php/Coding_rules
   # the alternative `(x and ctl) or (y and -ctl)`
   # is optimized into a branch by Clang :/
+  # See also: https://www.cl.cam.ac.uk/~rja14/Papers/whatyouc.pdf
 
   # TODO: assembly fastpath for conditional mov
 
@@ -211,10 +234,10 @@ template trmFixSystemNotEq*{x != y}[T: Ct](x, y: T): CTBool[T] =
 #
 # ############################################################
 
-func isNonZero*[T: Ct](x: T): CTBool[T] =
+template isNonZero*[T: Ct](x: T): CTBool[T] =
   isMsbSet(x or -x)
 
-func isZero*[T: Ct](x: T): CTBool[T] =
+template isZero*[T: Ct](x: T): CTBool[T] =
   not x.isNonZero
 
 # ############################################################
