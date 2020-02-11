@@ -84,7 +84,11 @@ type
     ##   otherwise each bigint routines would have an instantiation for
     ##   each static `bits` parameter.
     ## - while not forcing the caller to preallocate computation buffers
-    ##   for the high-level API
+    ##   for the high-level API and enforcing bitsizes
+    ## - avoids runtime bound-checks on the view
+    ##   for performance
+    ##   and to ensure exception-free code
+    ##   even when compiled in non "-d:danger" mode
     ##
     ## As with the BigInt type:
     ## - "bitLength" is the internal bitlength of the integer
@@ -239,8 +243,6 @@ func sub*(a: BigIntViewMut, b: BigIntViewAny, ctl: CTBool[Word]): CTBool[Word] =
 #                   Modular BigInt
 #
 # ############################################################
-
-# TODO: push boundsCheck off. They would be extremely costly.
 
 func shlAddMod(a: BigIntViewMut, c: Word, M: BigIntViewConst) =
   ## Fused modular left-shift + add
