@@ -7,11 +7,23 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  unittest, random,
-        ../constantine/math/[io, primitives, finite_fields]
+        ../constantine/math/finite_fields,
+        ../constantine/io/io_fields,
+        ../constantine/config/curves
+
+static: doAssert defined(testingCurves), "This modules requires the -d:testingCurves compile option"
 
 proc main() =
   suite "Basic arithmetic over finite fields":
     test "Addition mod 101":
       block:
-        var x: Fp[Fake101]
-        x.fromUint()
+        var x, y, z: Fp[Fake101]
+
+        x.fromUint(80'u32)
+        y.fromUint(10'u32)
+        z.fromUint(90'u32)
+
+        x += y
+        check: bool(z == x)
+
+main()

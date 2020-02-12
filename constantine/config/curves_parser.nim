@@ -10,7 +10,7 @@ import
   # Standard library
   macros,
   # Internal
-  ../io, ../bigints, ../montgomery_magic
+  ../io/io_bigints, ../math/bigints_checked
 
 # Macro to parse declarative curves configuration.
 
@@ -60,6 +60,8 @@ macro declareCurves*(curves: untyped): untyped =
   var curveModStmts = newStmtList()
   var curveModWhenStmt = nnkWhenStmt.newTree()
 
+  let Fp = ident"Fp"
+
   for curveDesc in curves:
     curveDesc.expectKind(nnkCommand)
     doAssert curveDesc[0].eqIdent"curve"
@@ -86,17 +88,20 @@ macro declareCurves*(curves: untyped): untyped =
       curve, bitSize
     )
 
-    # const BN254_Modulus = fromHex(BigInt[254], "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47")
+    # const BN254_Modulus = Fp[BN254](value: fromHex(BigInt[254], "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"))
     let modulusID = ident($curve & "_Modulus")
     curveModStmts.add newConstStmt(
       modulusID,
-      newCall(
-        bindSym"fromHex",
-        nnkBracketExpr.newTree(
-          bindSym"BigInt",
-          bitSize
-        ),
-        modulus
+      nnkObjConstr.newTree(
+        nnkBracketExpr.newTree(Fp, curve),
+        nnkExprColonExpr.newTree(
+          ident"value",
+          newCall(
+            bindSym"fromHex",
+            nnkBracketExpr.newTree(bindSym"BigInt", bitSize),
+            modulus
+          )
+        )
       )
     )
 
@@ -109,12 +114,14 @@ macro declareCurves*(curves: untyped): untyped =
       ),
       modulusID
     )
+  # end for ---------------------------------------------------
 
   result = newStmtList()
 
   # type Curve = enum
+  let Curve = ident"Curve"
   result.add newEnum(
-    name = ident"Curve",
+    name = Curve,
     fields = Curves,
     public = true,
     pure = false
@@ -122,10 +129,45 @@ macro declareCurves*(curves: untyped): untyped =
 
   # const CurveBitSize*: array[Curve, int] = ...
   let cbs = ident("CurveBitSize")
-  result.add quote do:
-    const `cbs`*: array[Curve, int] = `CurveBitSize`
+  result.add newConstStmt(
+    cbs, CurveBitSize
+  )
 
-  result.add curveModStmts
+  # Need template indirection in the type section to avoid Nim sigmatch bug
+  # template matchingBigInt(C: static Curve): untyped =
+  #   BigInt[CurveBitSize[C]]
+  let C = ident"C"
+  let matchingBigInt = ident"matchingBigInt"
+  result.add newProc(
+    name = matchingBigInt,
+    params = [ident"untyped", newIdentDefs(C, nnkStaticTy.newTree(Curve))],
+    body = nnkBracketExpr.newTree(bindSym"BigInt", nnkBracketExpr.newTree(cbs, C)),
+    procType = nnkTemplateDef
+  )
+
+  # type
+  #   `Fp`*[C: static Curve] = object
+  #     ## All operations on a field are modulo P
+  #     ## P being the prime modulus of the Curve C
+  #     value*: matchingBigInt(C)
+  result.add nnkTypeSection.newTree(
+    nnkTypeDef.newTree(
+      nnkPostfix.newTree(ident"*", Fp),
+      nnkGenericParams.newTree(newIdentDefs(
+        C, nnkStaticTy.newTree(Curve), newEmptyNode()
+      )),
+      nnkObjectTy.newTree(
+        newEmptyNode(),
+        newEmptyNode(),
+        nnkRecList.newTree(
+          newIdentDefs(
+            nnkPostfix.newTree(ident"*", ident"value"),
+            newCall(matchingBigInt, C)
+          )
+        )
+      )
+    )
+  )
 
   # Add 'else: {.error: "Unreachable".}' to the when statements
   curveModWhenStmt.add nnkElse.newTree(
@@ -136,6 +178,8 @@ macro declareCurves*(curves: untyped): untyped =
       )
     )
   )
+
+  result.add curveModStmts
 
   # proc Mod(curve: static Curve): auto
   result.add newProc(
@@ -148,8 +192,7 @@ macro declareCurves*(curves: untyped): untyped =
       )
     ],
     body = curveModWhenStmt,
-    procType = nnkFuncDef,
-    pragmas = nnkPragma.newTree(ident"compileTime")
+    procType = nnkFuncDef
   )
 
   # proc MontyMagic(curve: static Curve): static Word
@@ -163,11 +206,11 @@ macro declareCurves*(curves: untyped): untyped =
       )
     ],
     body = newCall(
-      bindSym"montyMagic",
+      ident"montyMagic",
       newCall(ident"Mod", ident"curve")
     ),
     procType = nnkFuncDef,
     pragmas = nnkPragma.newTree(ident"compileTime")
   )
 
-  # echo result.toStrLit
+  # echo result.toStrLit()

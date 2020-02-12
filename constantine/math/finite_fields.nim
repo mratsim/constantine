@@ -15,13 +15,22 @@
 # We assume that p is prime known at compile-time
 # We assume that p is not even (requirement for Montgomery form)
 
-import ./primitives, ./bigints, ./curves_config
+import
+  ../primitives/constant_time,
+  ../config/[common, curves],
+  ./bigints_checked
 
-type
-  Fp*[C: static Curve] = object
-    ## P is the prime modulus of the Curve C
-    ## All operations on a field are modulo P
-    value: BigInt[CurveBitSize[C]]
+# type
+#   Fp*[C: static Curve] = object
+#     ## P is the prime modulus of the Curve C
+#     ## All operations on a field are modulo P
+#     value*: BigInt[CurveBitSize[C]]
+export Fp # defined in ../config/curves to avoid recursive module dependencies
+
+debug:
+  func `==`*(a, b: Fp): CTBool[Word] =
+    ## Returns true if 2 big ints are equal
+    a.value == b.value
 
 # ############################################################
 #
@@ -30,13 +39,22 @@ type
 # ############################################################
 
 template add(a: var Fp, b: Fp, ctl: CTBool[Word]): CTBool[Word] =
+  ## Constant-time big integer in-place optional addition
+  ## The addition is only performed if ctl is "true"
+  ## The result carry is always computed.
+  ##
+  ## a and b MAY be the same buffer
+  ## a and b MUST have the same announced bitlength (i.e. `bits` static parameters)
   add(a.value, b.value, ctl)
 
 template sub(a: var Fp, b: Fp, ctl: CTBool[Word]): CTBool[Word] =
+  ## Constant-time big integer in-place optional substraction
+  ## The substraction is only performed if ctl is "true"
+  ## The result carry is always computed.
+  ##
+  ## a and b MAY be the same buffer
+  ## a and b MUST have the same announced bitlength (i.e. `bits` static parameters)
   sub(a.value, b.value, ctl)
-
-template `[]`(a: Fp, idx: int): Word =
-  a.value.limbs[idx]
 
 # ############################################################
 #
@@ -47,17 +65,13 @@ template `[]`(a: Fp, idx: int): Word =
 # No exceptions allowed
 {.push raises: [].}
 
-func `+`*(a, b: Fp): Fp {.noInit.}=
+func `+=`*(a: var Fp, b: Fp) =
   ## Addition over Fp
+  var ctl = add(a, b, CtTrue)
+  ctl = ctl or not sub(a, Fp.C.Mod, CtFalse)
+  discard sub(a, Fp.C.Mod, ctl)
 
-  # Non-CT implementation from Stint
-  #
-  # let b_from_p = p - b    # Don't do a + b directly to avoid overflows
-  # if a >= b_from_p:
-  #   return a - b_from_p
-  # return m - b_from_p + a
-
-  result = a
-  var ctl = add(result, b, CtTrue)
-  ctl = ctl or not sub(result, Fp.C.Mod, CtFalse)
-  sub(result, Fp.C.Mod, ctl)
+func `-=`*(a: var Fp, b: Fp) =
+  ## Substraction over Fp
+  let ctl = sub(a, b, CtTrue)
+  discard add(a, Fp.C.Mod, ctl)

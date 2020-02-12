@@ -81,7 +81,7 @@ func setInternalBitLength*(a: var BigInt) {.inline.} =
   ## from the announced BigInt bitsize
   ## and set the bitLength field of that BigInt
   ## to that computed value.
-  a.bitLength = static(a.bits + a.bits div WordBitSize)
+  a.bitLength = uint32 static(a.bits + a.bits div WordBitSize)
 
 func isZero*(a: BigInt): CTBool[Word] =
   ## Returns true if a big int is equal to zero

@@ -31,32 +31,6 @@ type
 
 # ############################################################
 #
-#                           Bit hacks
-#
-# ############################################################
-
-template isMsbSet*[T: Ct](x: T): CTBool[T] =
-  ## Returns the most significant bit of an integer
-  const msb_pos = T.sizeof * 8 - 1
-  (CTBool[T])(x shr msb_pos)
-
-func log2*(x: uint32): uint32 =
-  ## Find the log base 2 of a 32-bit or less integer.
-  ## using De Bruijn multiplication
-  ## Works at compile-time, guaranteed constant-time.
-  # https://graphics.stanford.edu/%7Eseander/bithacks.html#IntegerLogDeBruijn
-  const lookup: array[32, uint8] = [0'u8, 9, 1, 10, 13, 21, 2, 29, 11, 14, 16, 18,
-    22, 25, 3, 30, 8, 12, 20, 28, 15, 17, 24, 7, 19, 27, 23, 6, 26, 5, 4, 31]
-  var v = x
-  v = v or v shr 1 # first round down to one less than a power of 2
-  v = v or v shr 2
-  v = v or v shr 4
-  v = v or v shr 8
-  v = v or v shr 16
-  lookup[(v * 0x07C4ACDD'u32) shr 27]
-
-# ############################################################
-#
 #                           Pragmas
 #
 # ############################################################
@@ -168,6 +142,32 @@ template `-`*[T: Ct](x: T): T =
 
 # ############################################################
 #
+#                           Bit hacks
+#
+# ############################################################
+
+template isMsbSet*[T: Ct](x: T): CTBool[T] =
+  ## Returns the most significant bit of an integer
+  const msb_pos = T.sizeof * 8 - 1
+  (CTBool[T])(x shr msb_pos)
+
+func log2*(x: uint32): uint32 =
+  ## Find the log base 2 of a 32-bit or less integer.
+  ## using De Bruijn multiplication
+  ## Works at compile-time, guaranteed constant-time.
+  # https://graphics.stanford.edu/%7Eseander/bithacks.html#IntegerLogDeBruijn
+  const lookup: array[32, uint8] = [0'u8, 9, 1, 10, 13, 21, 2, 29, 11, 14, 16, 18,
+    22, 25, 3, 30, 8, 12, 20, 28, 15, 17, 24, 7, 19, 27, 23, 6, 26, 5, 4, 31]
+  var v = x
+  v = v or v shr 1 # first round down to one less than a power of 2
+  v = v or v shr 2
+  v = v or v shr 4
+  v = v or v shr 8
+  v = v or v shr 16
+  lookup[(v * 0x07C4ACDD'u32) shr 27]
+
+# ############################################################
+#
 #             Hardened Boolean primitives
 #
 # ############################################################
@@ -258,7 +258,7 @@ template isNonZero*[T: Ct](x: T): CTBool[T] =
   isMsbSet(x_NZ or -x_NZ)
 
 template isZero*[T: Ct](x: T): CTBool[T] =
-  not x.isNonZero
+  not isNonZero(x)
 
 # ############################################################
 #
