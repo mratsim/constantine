@@ -26,4 +26,55 @@ proc main() =
         x += y
         check: bool(z == x)
 
+      block:
+        var x, y, z: Fp[Fake101]
+
+        x.fromUint(80'u32)
+        y.fromUint(21'u32)
+        z.fromUint(0'u32)
+
+        x += y
+        check: bool(z == x)
+
+      block:
+        var x, y, z: Fp[Fake101]
+
+        x.fromUint(80'u32)
+        y.fromUint(22'u32)
+        z.fromUint(1'u32)
+
+        x += y
+        check: bool(z == x)
+
+    test "Substraction mod 101":
+      block:
+        var x, y, z: Fp[Fake101]
+
+        x.fromUint(80'u32)
+        y.fromUint(10'u32)
+        z.fromUint(70'u32)
+
+        x -= y
+        check: bool(z == x)
+
+      block:
+        var x, y, z: Fp[Fake101]
+
+        x.fromUint(80'u32)
+        y.fromUint(80'u32)
+        z.fromUint(0'u32)
+
+        x -= y
+        check: bool(z == x)
+
+      block:
+        var x, y, z: Fp[Fake101]
+
+        x.fromUint(80'u32)
+        y.fromUint(81'u32)
+        z.fromUint(100'u32)
+
+        x -= y
+        check: bool(z == x)
+
 main()
