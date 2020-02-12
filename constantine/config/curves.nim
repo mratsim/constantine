@@ -75,16 +75,19 @@ func montyMagic(M: static BigInt): static Word {.inline.} =
 #
 # ############################################################
 
-# Finite fields are preconfigured in this file
-# To workaround the following limitation https://github.com/nim-lang/Nim/issues/11142
-# i.e. an object can be parametrized by a compiletime bigint
-# we instead have the fields, curve points and Montgomery objects
-# be parametrized over an enum.
+# Curves & their corresponding finite fields are preconfigured in this file
 
 # Note, in the past the convention was to name a curve by its conjectured security level.
 # as this might change with advances in research, the new convention is
 # to name curves according to the length of the prime bit length.
 # i.e. the BN254 was previously named BN128.
+
+# Curves security level were significantly impacted by
+# advances in the Tower Number Field Sieve.
+# in particular BN254 curve security dropped
+# from estimated 128-bit to estimated 100-bit
+# Barbulescu, R. and S. Duquesne, "Updating Key Size Estimations for Pairings",
+# Journal of Cryptology, DOI 10.1007/s00145-018-9280-5, January 2018.
 
 # Generates:
 # - type Curve = enum
@@ -96,7 +99,8 @@ func montyMagic(M: static BigInt): static Word {.inline.} =
 #   associated with the curve modulus
 when not defined(testingCurves):
   declareCurves:
-    # Barreto-Naehrig curve, Prime 254 bit, 128-bit security, https://eprint.iacr.org/2013/879.pdf
+    # Barreto-Naehrig curve, pairing-friendly, Prime 254 bit, ~100-bit security
+    # https://eprint.iacr.org/2013/879.pdf
     # Usage: Zero-Knowledge Proofs / zkSNARKs in ZCash and Ethereum 1
     #        https://eips.ethereum.org/EIPS/eip-196
     curve BN254:
