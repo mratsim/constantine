@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  unittest, random, strutils,
-        ../constantine/io/io,
+        ../constantine/io/io_bigints,
         ../constantine/math/bigints_checked,
         ../constantine/config/common,
         ../constantine/primitives/constant_time

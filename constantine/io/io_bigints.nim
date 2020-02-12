@@ -100,6 +100,13 @@ func fromUint*(
   ## and store it into a BigInt of size `bits`
   result.fromRawUint(cast[array[sizeof(src), byte]](src), cpuEndian)
 
+func fromUint*(
+        dst: var BigInt,
+        src: SomeUnsignedInt) =
+  ## Parse a regular unsigned integer
+  ## and store it into a BigInt of size `bits`
+  dst.fromRawUint(cast[array[sizeof(src), byte]](src), cpuEndian)
+
 # ############################################################
 #
 # Serialising from internal representation to canonical format
@@ -122,7 +129,7 @@ template littleEndianXX[T: uint16 or uint32 or uint64](outp: pointer, inp: ptr T
   elif T is uint16:
     littleEndian16(outp, inp)
 
-func dumpRawUintLE(
+func serializeRawUintLE(
         dst: var openarray[byte],
         src: BigInt) {.inline.}=
   ## Serialize a bigint into its canonical little-endian representation
@@ -168,7 +175,7 @@ func dumpRawUintLE(
             dst[dst_idx+i] = byte(lo shr ((tail-i)*8))
         return
 
-func dumpRawUint*(
+func serializeRawUint*(
         dst: var openarray[byte],
         src: BigInt,
         dstEndianness: static Endianness) =
@@ -186,7 +193,7 @@ func dumpRawUint*(
     zeroMem(dst, dst.len)
 
   when dstEndianness == littleEndian:
-    dumpRawUintLE(dst, src)
+    serializeRawUintLE(dst, src)
   else:
     {.error: "Not implemented at the moment".}
 
@@ -327,7 +334,7 @@ func fromHex*(T: type BigInt, s: string): T =
   # 2. Convert canonical uint to Big Int
   result.fromRawUint(bytes, littleEndian)
 
-func dumpHex*(big: BigInt, order: static Endianness = bigEndian): string =
+func toHex*(big: BigInt, order: static Endianness = bigEndian): string =
   ## Stringify an int to hex.
   ## Note. Leading zeros are not removed.
   ## Result is prefixed with 0x
@@ -338,9 +345,10 @@ func dumpHex*(big: BigInt, order: static Endianness = bigEndian): string =
   ## Regardless of the machine endianness the output will be big-endian hex.
   ##
   ## For example a BigInt representing 10 will be
-  ##   - 0x0A                for BigInt[8]
-  ##   - 0x000A              for BigInt[16]
-  ##   - 0x00000000_0000000A for BigInt[64]
+  ##   - 0x0a                for BigInt[8]
+  ##   - 0x000a              for BigInt[16]
+  ##   - 0x00000000_0000000a for BigInt[64]
+  ## (underscore added for docuentation readability only)
   ##
   ## CT:
   ##   - no leaks
@@ -348,7 +356,7 @@ func dumpHex*(big: BigInt, order: static Endianness = bigEndian): string =
   # 1. Convert Big Int to canonical uint
   const canonLen = (big.bits + 8 - 1) div 8
   var bytes: array[canonLen, byte]
-  dumpRawUint(bytes, big, cpuEndian)
+  serializeRawUint(bytes, big, cpuEndian)
 
   # 2 Convert canonical uint to hex
   result = bytes.toHex(order)

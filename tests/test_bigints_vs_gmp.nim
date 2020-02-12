@@ -12,7 +12,7 @@ import
   # Third-party
   gmp, stew/byteutils,
   # Internal
-  ../constantine/io/io,
+  ../constantine/io/io_bigints,
   ../constantine/math/[bigints_raw, bigints_checked],
   ../constantine/primitives/constant_time
 
@@ -138,7 +138,7 @@ proc main() =
     discard mpz_export(rGMP[0].addr, rW.addr, GMP_LeastSignificantWordFirst, 1, GMP_WordNativeEndian, 0, r)
 
     var rConstantine: array[mLen, byte]
-    dumpRawUint(rConstantine, rTest, littleEndian)
+    serializeRawUint(rConstantine, rTest, littleEndian)
 
     # echo "rGMP: ", rGMP.toHex()
     # echo "rConstantine: ", rConstantine.toHex()

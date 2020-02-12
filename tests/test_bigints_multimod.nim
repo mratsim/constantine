@@ -10,7 +10,7 @@ import
   # Standard library
   unittest, random, strutils,
   # Third-party
-  ../constantine/io/io,
+  ../constantine/io/io_bigints,
   ../constantine/math/[bigints_raw, bigints_checked],
   ../constantine/primitives/constant_time
 

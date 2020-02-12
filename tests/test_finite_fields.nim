@@ -7,4 +7,11 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  unittest, random,
-        ../constantine/[io, bigints, primitives, field_fp]
+        ../constantine/math/[io, primitives, finite_fields]
+
+proc main() =
+  suite "Basic arithmetic over finite fields":
+    test "Addition mod 101":
+      block:
+        var x: Fp[Fake101]
+        x.fromUint()

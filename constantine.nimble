@@ -20,4 +20,4 @@ task test, "Run all tests":
   test "",                  "tests/test_io.nim"
   test "",                  "tests/test_bigints.nim"
   test "",                  "tests/test_bigints_multimod.nim"
-  # test " -d:testingCurves", "tests/test_field_fp.nim"
+  test "",                  "tests/test_bigints_vs_gmp.nim"
