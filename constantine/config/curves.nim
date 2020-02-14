@@ -27,6 +27,7 @@ func montyMagic(M: static BigInt): static Word {.inline.} =
   # Test vectors: https://www.researchgate.net/publication/4107322_Montgomery_modular_multiplication_architecture_for_public_key_cryptosystems
   # on p354
   # Reference C impl: http://www.hackersdelight.org/hdcodetxt/mont64.c.txt
+  # Explanation: https://eprint.iacr.org/2017/1057.pdf
 
   # ######################################################################
   # Implementation of modular multiplicative inverse

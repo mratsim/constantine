@@ -60,7 +60,7 @@ macro declareCurves*(curves: untyped): untyped =
   var curveModStmts = newStmtList()
   var curveModWhenStmt = nnkWhenStmt.newTree()
 
-  let Fp = ident"Fp"
+  let Fq = ident"Fq"
 
   for curveDesc in curves:
     curveDesc.expectKind(nnkCommand)
@@ -88,14 +88,14 @@ macro declareCurves*(curves: untyped): untyped =
       curve, bitSize
     )
 
-    # const BN254_Modulus = Fp[BN254](value: fromHex(BigInt[254], "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"))
+    # const BN254_Modulus = Fq[BN254](value: fromHex(BigInt[254], "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"))
     let modulusID = ident($curve & "_Modulus")
     curveModStmts.add newConstStmt(
       modulusID,
       nnkObjConstr.newTree(
-        nnkBracketExpr.newTree(Fp, curve),
+        nnkBracketExpr.newTree(Fq, curve),
         nnkExprColonExpr.newTree(
-          ident"value",
+          ident"nres",
           newCall(
             bindSym"fromHex",
             nnkBracketExpr.newTree(bindSym"BigInt", bitSize),
@@ -146,13 +146,15 @@ macro declareCurves*(curves: untyped): untyped =
   )
 
   # type
-  #   `Fp`*[C: static Curve] = object
+  #   `Fq`*[C: static Curve] = object
   #     ## All operations on a field are modulo P
   #     ## P being the prime modulus of the Curve C
-  #     value*: matchingBigInt(C)
+  #     ## Internally, data is stored in Montgomery n-residue form
+  #     ## with the magic constant chosen for convenient division (a power of 2 depending on P bitsize)
+  #     nres*: matchingBigInt(C)
   result.add nnkTypeSection.newTree(
     nnkTypeDef.newTree(
-      nnkPostfix.newTree(ident"*", Fp),
+      nnkPostfix.newTree(ident"*", Fq),
       nnkGenericParams.newTree(newIdentDefs(
         C, nnkStaticTy.newTree(Curve), newEmptyNode()
       )),
@@ -160,6 +162,10 @@ macro declareCurves*(curves: untyped): untyped =
         newEmptyNode(),
         newEmptyNode(),
         nnkRecList.newTree(
+          nnkCommentStmt.newTree "All operations on a field are modulo P",
+          nnkCommentStmt.newTree "P being the prime modulus of the Curve C",
+          nnkCommentStmt.newTree "Internally, data is stored in Montgomery n-residue form",
+          nnkCommentStmt.newTree "with the magic constant chosen for convenient division (a power of 2 depending on P bitsize)"
           newIdentDefs(
             nnkPostfix.newTree(ident"*", ident"value"),
             newCall(matchingBigInt, C)

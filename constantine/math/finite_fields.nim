@@ -8,12 +8,17 @@
 
 # ############################################################
 #
-#                 Field arithmetic over Fp
+#          Fq: Finite Field arithmetic over Q
 #
 # ############################################################
 
-# We assume that p is prime known at compile-time
-# We assume that p is not even (requirement for Montgomery form)
+# We assume that q is known at compile-time
+# We assume that q is not even:
+# - Operations are done in the Montgomery domain
+# - The Montgomery domain introduce a Montgomery constant that must be coprime
+#   with the field modulus.
+# - The constant is chosen a power of 2
+# => to be coprime with a power of 2, q must be odd
 
 import
   ../primitives/constant_time,
@@ -21,16 +26,32 @@ import
   ./bigints_checked
 
 # type
-#   Fp*[C: static Curve] = object
-#     ## P is the prime modulus of the Curve C
+#   `Fq`*[C: static Curve] = object
 #     ## All operations on a field are modulo P
-#     value*: BigInt[CurveBitSize[C]]
-export Fp # defined in ../config/curves to avoid recursive module dependencies
+#     ## P being the prime modulus of the Curve C
+#     ## Internally, data is stored in Montgomery n-residue form
+#     ## with the magic constant chosen for convenient division (a power of 2 depending on P bitsize)
+#     nres*: matchingBigInt(C)
+export Fq # defined in ../config/curves to avoid recursive module dependencies
 
 debug:
-  func `==`*(a, b: Fp): CTBool[Word] =
+  func `==`*(a, b: Fq): CTBool[Word] =
     ## Returns true if 2 big ints are equal
-    a.value == b.value
+    a.nres == b.nres
+
+# No exceptions allowed
+{.push raises: [].}
+
+func toMonty*[C: static Curve](a: Fq[C]): Montgomery[C] =
+  ## Convert a big integer over Fq to its montgomery representation
+  ## over Fq.
+  ## i.e. Does "a * (2^LimbSize)^W (mod p), where W is the number
+  ## of words needed to represent p in base 2^LimbSize
+
+  result = a
+  for i in static(countdown(C.Mod.limbs.high, 1)):
+    shiftAdd(result, 0)
+
 
 # ############################################################
 #
@@ -38,7 +59,7 @@ debug:
 #
 # ############################################################
 
-template add(a: var Fp, b: Fp, ctl: CTBool[Word]): CTBool[Word] =
+template add(a: var Fq, b: Fq, ctl: CTBool[Word]): CTBool[Word] =
   ## Constant-time big integer in-place optional addition
   ## The addition is only performed if ctl is "true"
   ## The result carry is always computed.
@@ -47,7 +68,7 @@ template add(a: var Fp, b: Fp, ctl: CTBool[Word]): CTBool[Word] =
   ## a and b MUST have the same announced bitlength (i.e. `bits` static parameters)
   add(a.value, b.value, ctl)
 
-template sub(a: var Fp, b: Fp, ctl: CTBool[Word]): CTBool[Word] =
+template sub(a: var Fq, b: Fq, ctl: CTBool[Word]): CTBool[Word] =
   ## Constant-time big integer in-place optional substraction
   ## The substraction is only performed if ctl is "true"
   ## The result carry is always computed.
@@ -65,13 +86,13 @@ template sub(a: var Fp, b: Fp, ctl: CTBool[Word]): CTBool[Word] =
 # No exceptions allowed
 {.push raises: [].}
 
-func `+=`*(a: var Fp, b: Fp) =
-  ## Addition over Fp
+func `+=`*(a: var Fq, b: Fq) =
+  ## Addition over Fq
   var ctl = add(a, b, CtTrue)
-  ctl = ctl or not sub(a, Fp.C.Mod, CtFalse)
-  discard sub(a, Fp.C.Mod, ctl)
+  ctl = ctl or not sub(a, Fq.C.Mod, CtFalse)
+  discard sub(a, Fq.C.Mod, ctl)
 
-func `-=`*(a: var Fp, b: Fp) =
-  ## Substraction over Fp
+func `-=`*(a: var Fq, b: Fq) =
+  ## Substraction over Fq
   let ctl = sub(a, b, CtTrue)
-  discard add(a, Fp.C.Mod, ctl)
+  discard add(a, Fq.C.Mod, ctl)
