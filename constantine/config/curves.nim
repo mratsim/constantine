@@ -18,42 +18,30 @@ import
 #
 # ############################################################
 
-func montyMagic(M: static BigInt): static Word {.inline.} =
+# Note: The declareCurve macro builds an exported montyMagic*(C: static Curve) on top of the one below
+func montyMagic(M: BigInt): BaseType =
   ## Returns the Montgomery domain magic constant for the input modulus:
   ##   -1/M[0] mod LimbSize
   ## M[0] is the least significant limb of M
   ## M must be odd and greater than 2.
+  # We use BaseType for return value because static distinct type
+  # confuses Nim semchecks [UPSTREAM BUG]
+  # We don't enforce compile-time evaluation here
+  # because static BigInt[bits] also causes semcheck troubles [UPSTREAM BUG]
 
-  # Test vectors: https://www.researchgate.net/publication/4107322_Montgomery_modular_multiplication_architecture_for_public_key_cryptosystems
-  # on p354
-  # Reference C impl: http://www.hackersdelight.org/hdcodetxt/mont64.c.txt
-  # Explanation: https://eprint.iacr.org/2017/1057.pdf
-
-  # ######################################################################
-  # Implementation of modular multiplicative inverse
-  # Assuming 2 positive integers a and m the modulo
-  #
-  # We are looking for z that solves `az ≡ 1 mod m`
-  #
-  # References:
-  #   - Knuth, The Art of Computer Programming, Vol2 p342
-  #   - Menezes, Handbook of Applied Cryptography (HAC), p610
-  #     http://cacr.uwaterloo.ca/hac/about/chap14.pdf
-
-  # Starting from the extended GCD formula (Bezout identity),
-  # `ax + by = gcd(x,y)` with input x,y and outputs a, b, gcd
-  # We assume a and m are coprimes, i.e. gcd is 1, otherwise no inverse
-  # `ax + my = 1` <=> `ax + my ≡ 1 mod m` <=> `ax ≡ 1 mod m`
+  # Modular inverse algorithm:
+  # Explanation p11 "Dumas iterations" based on Newton-Raphson:
+  # - Cetin Kaya Koc (2017), https://eprint.iacr.org/2017/411
+  # - Jean-Guillaume Dumas (2012), https://arxiv.org/pdf/1209.6626v2.pdf
+  # - Colin Plumb (1994), http://groups.google.com/groups?selm=1994Apr6.093116.27805%40mnemosyne.cs.du.edu
+  # Other sources:
+  # - https://crypto.stackexchange.com/questions/47493/how-to-determine-the-multiplicative-inverse-modulo-64-or-other-power-of-two
+  # - https://mumble.net/~campbell/2015/01/21/inverse-mod-power-of-two
+  # - http://marc-b-reynolds.github.io/math/2017/09/18/ModInverse.html
 
   # For Montgomery magic number, we are in a special case
   # where a = M and m = 2^LimbSize.
   # For a and m to be coprimes, a must be odd.
-
-  # `m` (2^LimbSize) being a power of 2 greatly simplifies computation:
-  #  - https://crypto.stackexchange.com/questions/47493/how-to-determine-the-multiplicative-inverse-modulo-64-or-other-power-of-two
-  #  - http://groups.google.com/groups?selm=1994Apr6.093116.27805%40mnemosyne.cs.du.edu
-  #  - https://mumble.net/~campbell/2015/01/21/inverse-mod-power-of-two
-  #  - https://eprint.iacr.org/2017/411
 
   # We have the following relation
   # ax ≡ 1 (mod 2^k) <=> ax(2 - ax) ≡ 1 (mod 2^(2k))
@@ -61,14 +49,20 @@ func montyMagic(M: static BigInt): static Word {.inline.} =
   # To get  -1/M0 mod LimbSize
   # we can either negate the resulting x of `ax(2 - ax) ≡ 1 (mod 2^(2k))`
   # or do ax(2 + ax) ≡ 1 (mod 2^(2k))
+  #
+  # To get the the modular inverse of 2^k' with arbitrary k' (like k=63 in our case)
+  # we can do modInv(a, 2^64) mod 2^63 as mentionned in Koc paper.
 
-  const
-    M0 = M.limbs[0]
-    k = log2(WordBitSize)
+  let
+    M0 = BaseType(M.limbs[0])
+    k = log2(WordPhysBitSize)
 
-  result = M0                # Start from an inverse of M0 modulo 2, M0 is odd and it's own inverse
-  for _ in 0 ..< k:
-    result *= 2 + M * result # x' = x(2 + ax) (`+` to avoid negating at the end)
+  result = M0                 # Start from an inverse of M0 modulo 2, M0 is odd and it's own inverse
+  for _ in 0 ..< k:           # at each iteration we get the inverse mod(2^2k)
+    result *= 2 + M0 * result # x' = x(2 + ax) (`+` to avoid negating at the end)
+
+  # Our actual word size is 2^63 not 2^64
+  result = result and BaseType(MaxWord)
 
 # ############################################################
 #

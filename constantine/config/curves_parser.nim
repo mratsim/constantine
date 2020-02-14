@@ -139,7 +139,7 @@ macro declareCurves*(curves: untyped): untyped =
   let C = ident"C"
   let matchingBigInt = ident"matchingBigInt"
   result.add newProc(
-    name = matchingBigInt,
+    name = nnkPostFix.newTree(ident"*", matchingBigInt),
     params = [ident"untyped", newIdentDefs(C, nnkStaticTy.newTree(Curve))],
     body = nnkBracketExpr.newTree(bindSym"BigInt", nnkBracketExpr.newTree(cbs, C)),
     procType = nnkTemplateDef
@@ -158,16 +158,13 @@ macro declareCurves*(curves: untyped): untyped =
       nnkGenericParams.newTree(newIdentDefs(
         C, nnkStaticTy.newTree(Curve), newEmptyNode()
       )),
+      # TODO: where should I put the nnkCommentStmt?
       nnkObjectTy.newTree(
         newEmptyNode(),
         newEmptyNode(),
         nnkRecList.newTree(
-          nnkCommentStmt.newTree "All operations on a field are modulo P",
-          nnkCommentStmt.newTree "P being the prime modulus of the Curve C",
-          nnkCommentStmt.newTree "Internally, data is stored in Montgomery n-residue form",
-          nnkCommentStmt.newTree "with the magic constant chosen for convenient division (a power of 2 depending on P bitsize)"
           newIdentDefs(
-            nnkPostfix.newTree(ident"*", ident"value"),
+            nnkPostfix.newTree(ident"*", ident"nres"),
             newCall(matchingBigInt, C)
           )
         )
@@ -203,7 +200,7 @@ macro declareCurves*(curves: untyped): untyped =
 
   # proc MontyMagic(curve: static Curve): static Word
   result.add newProc(
-    name = nnkPostfix.newTree(ident"*", ident"MontyMagic"),
+    name = nnkPostfix.newTree(ident"*", ident"montyMagic"),
     params = [
       ident"auto",
       newIdentDefs(
@@ -213,10 +210,14 @@ macro declareCurves*(curves: untyped): untyped =
     ],
     body = newCall(
       ident"montyMagic",
-      newCall(ident"Mod", ident"curve")
+      # curve.Mod().nres
+      nnkDotExpr.newTree(
+        newCall(ident"Mod", ident"curve"),
+        ident"nres"
+      )
+
     ),
-    procType = nnkFuncDef,
-    pragmas = nnkPragma.newTree(ident"compileTime")
+    procType = nnkFuncDef
   )
 
   # echo result.toStrLit()

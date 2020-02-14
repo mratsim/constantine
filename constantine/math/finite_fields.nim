@@ -42,16 +42,21 @@ debug:
 # No exceptions allowed
 {.push raises: [].}
 
-func toMonty*[C: static Curve](a: Fq[C]): Montgomery[C] =
-  ## Convert a big integer over Fq to its montgomery representation
-  ## over Fq.
-  ## i.e. Does "a * (2^LimbSize)^W (mod p), where W is the number
-  ## of words needed to represent p in base 2^LimbSize
+# ############################################################
+#
+#                        Conversion
+#
+# ############################################################
 
-  result = a
-  for i in static(countdown(C.Mod.limbs.high, 1)):
-    shiftAdd(result, 0)
+func fromBig*(T: type Fq, src: BigInt): T =
+  ## Convert a BigInt to its Montgomery form
+  result.nres = src
+  result.nres.unsafeMontgomeryResidue(Fq.C.Mod)
 
+func toBig*[C: static Curve](src: Fq[C]): auto =
+  ## Convert a finite-field element to a BigInt in natral representation
+  result = src.nres
+  result.unsafeRedC(C.Mod.nres, montyMagic(C))
 
 # ############################################################
 #
@@ -66,7 +71,7 @@ template add(a: var Fq, b: Fq, ctl: CTBool[Word]): CTBool[Word] =
   ##
   ## a and b MAY be the same buffer
   ## a and b MUST have the same announced bitlength (i.e. `bits` static parameters)
-  add(a.value, b.value, ctl)
+  add(a.nres, b.nres, ctl)
 
 template sub(a: var Fq, b: Fq, ctl: CTBool[Word]): CTBool[Word] =
   ## Constant-time big integer in-place optional substraction
@@ -75,16 +80,13 @@ template sub(a: var Fq, b: Fq, ctl: CTBool[Word]): CTBool[Word] =
   ##
   ## a and b MAY be the same buffer
   ## a and b MUST have the same announced bitlength (i.e. `bits` static parameters)
-  sub(a.value, b.value, ctl)
+  sub(a.nres, b.nres, ctl)
 
 # ############################################################
 #
 #                Field arithmetic primitives
 #
 # ############################################################
-
-# No exceptions allowed
-{.push raises: [].}
 
 func `+=`*(a: var Fq, b: Fq) =
   ## Addition over Fq

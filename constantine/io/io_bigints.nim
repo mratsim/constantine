@@ -181,13 +181,14 @@ func serializeRawUint*(
         dstEndianness: static Endianness) =
   ## Serialize a bigint into its canonical big-endian or little endian
   ## representation.
-  ## A destination buffer of size "BigInt.bits div 8" at minimum is needed.
+  ## A destination buffer of size "(BigInt.bits + 7) div 8" at minimum is needed,
+  ## i.e. bits -> byte conversion rounded up
   ##
   ## If the buffer is bigger, output will be zero-padded left for big-endian
   ## or zero-padded right for little-endian.
   ## I.e least significant bit is aligned to buffer boundary
 
-  assert dst.len >= static(BigInt.bits div 8), "BigInt -> Raw int conversion: destination buffer is too small"
+  assert dst.len >= (BigInt.bits + 7) div 8, "BigInt -> Raw int conversion: destination buffer is too small"
 
   when BigInt.bits == 0:
     zeroMem(dst, dst.len)
@@ -339,16 +340,7 @@ func toHex*(big: BigInt, order: static Endianness = bigEndian): string =
   ## Note. Leading zeros are not removed.
   ## Result is prefixed with 0x
   ##
-  ## This is a raw memory dump. Output will be padded with 0
-  ## if the big int does not use the full memory allocated for it.
-  ##
-  ## Regardless of the machine endianness the output will be big-endian hex.
-  ##
-  ## For example a BigInt representing 10 will be
-  ##   - 0x0a                for BigInt[8]
-  ##   - 0x000a              for BigInt[16]
-  ##   - 0x00000000_0000000a for BigInt[64]
-  ## (underscore added for docuentation readability only)
+  ## Output will be padded with 0s to maintain constant-time.
   ##
   ## CT:
   ##   - no leaks

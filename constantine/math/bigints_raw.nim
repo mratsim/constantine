@@ -181,6 +181,12 @@ template checkValidModulus(m: BigIntViewConst) =
   debug:
     assert not m[^1].isZero.bool, "Internal Error: the modulus must use all declared bits"
 
+template checkOddModulus(m: BigIntViewConst) =
+  ## CHeck that the modulus is odd
+  ## and valid for use in the Montgomery n-residue representation
+  debug:
+    assert bool(BaseType(m[0]) and 1), "Internal Error: the modulus must be odd to use the Montgomery representation."
+
 debug:
   func `$`*(a: BigIntViewAny): string =
     let len = a.numLimbs()
@@ -375,3 +381,56 @@ func reduce*(r: BigIntViewMut, a: BigIntViewAny, M: BigIntViewConst) =
     # Now shift-left the copied words while adding the new word modulo M
     for i in countdown(aOffset, 0):
       r.shlAddMod(a[i], M)
+
+func montgomeryResidue*(a: BigIntViewMut, N: BigIntViewConst) =
+  ## Transform a bigint ``a`` from it's natural representation (mod N)
+  ## to a the Montgomery n-residue representation
+  ## i.e. Does "a * (2^LimbSize)^W (mod N), where W is the number
+  ## of words needed to represent n in base 2^LimbSize
+  ##
+  ## `a`: The source BigInt in the natural representation. `a` in [0, N) range
+  ## `N`: The field modulus. N must be odd.
+  ##
+  ## Important: `a` is overwritten
+  # Reference: https://eprint.iacr.org/2017/1057.pdf
+  checkValidModulus(N)
+  checkOddModulus(N)
+  checkMatchingBitlengths(a, N)
+
+  let nLen = N.numLimbs()
+  for i in countdown(nLen, 1):
+    a.shlAddMod(Zero, N)
+
+func redc*(a: BigIntViewMut, N: BigIntViewConst, montyMagic: Word) =
+  ## Transform a bigint ``a`` from it's Montgomery N-residue representation (mod N)
+  ## to the regular natural representation (mod N)
+  ##
+  ## i.e. Does "a * ((2^LimbSize)^W)^-1 (mod N), where W is the number
+  ## of words needed to represent n in base 2^LimbSize
+  ##
+  ## This is called a Montgomery Reduction
+  ## The Montgomery Magic Constant is µ = -1/N mod N
+  ## is used internally and can be precomputed with montyMagic(Curve)
+  # References:
+  #   - https://eprint.iacr.org/2017/1057.pdf (Montgomery)
+  #     page: Radix-r interleaved multiplication algorithm
+  #   - https://en.wikipedia.org/wiki/Montgomery_modular_multiplication#Montgomery_arithmetic_on_multiprecision_(variable-radix)_integers
+  #   - http://langevin.univ-tln.fr/cours/MLC/extra/montgomery.pdf
+  #     Montgomery original paper
+  #
+  checkValidModulus(N)
+  checkOddModulus(N)
+  checkMatchingBitlengths(a, N)
+
+  let nLen = N.numLimbs()
+  for i in 0 ..< nLen:
+    let z0 = Word(BaseType(a[0]) * BaseType(montyMagic)) and MaxWord
+
+    var carry = DoubleWord(0)
+    for j in 0 ..< nLen:
+      let z = DoubleWord(a[i]) + unsafeExtPrecMul(z0, N[i]) + carry
+      carry = z shr WordBitSize
+      if j != 0:
+        a[j] = Word(z) and MaxWord
+
+    a[^1] = Word(carry)

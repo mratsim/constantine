@@ -11,6 +11,8 @@ import  unittest, random,
         ../constantine/io/io_fields,
         ../constantine/config/curves
 
+import ../constantine/io/io_bigints
+
 static: doAssert defined(testingCurves), "This modules requires the -d:testingCurves compile option"
 
 proc main() =
@@ -24,7 +26,15 @@ proc main() =
         z.fromUint(90'u32)
 
         x += y
-        check: bool(z == x)
+
+        var x_bytes: array[8, byte]
+        x_bytes.serializeRawUint(x, cpuEndian)
+
+        check:
+          # Check equality in the Montgomery domain
+          bool(z == x)
+          # Check equality when converting back to natural domain
+          90'u64 == cast[uint64](x_bytes)
 
       block:
         var x, y, z: Fq[Fake101]
@@ -44,7 +54,15 @@ proc main() =
         z.fromUint(1'u32)
 
         x += y
-        check: bool(z == x)
+
+        var x_bytes: array[8, byte]
+        x_bytes.serializeRawUint(x, cpuEndian)
+
+        check:
+          # Check equality in the Montgomery domain
+          bool(z == x)
+          # Check equality when converting back to natural domain
+          1'u64 == cast[uint64](x_bytes)
 
     test "Substraction mod 101":
       block:
@@ -55,7 +73,15 @@ proc main() =
         z.fromUint(70'u32)
 
         x -= y
-        check: bool(z == x)
+
+        var x_bytes: array[8, byte]
+        x_bytes.serializeRawUint(x, cpuEndian)
+
+        check:
+          # Check equality in the Montgomery domain
+          bool(z == x)
+          # Check equality when converting back to natural domain
+          70'u64 == cast[uint64](x_bytes)
 
       block:
         var x, y, z: Fq[Fake101]
@@ -65,7 +91,15 @@ proc main() =
         z.fromUint(0'u32)
 
         x -= y
-        check: bool(z == x)
+
+        var x_bytes: array[8, byte]
+        x_bytes.serializeRawUint(x, cpuEndian)
+
+        check:
+          # Check equality in the Montgomery domain
+          bool(z == x)
+          # Check equality when converting back to natural domain
+          0'u64 == cast[uint64](x_bytes)
 
       block:
         var x, y, z: Fq[Fake101]
@@ -75,6 +109,14 @@ proc main() =
         z.fromUint(100'u32)
 
         x -= y
-        check: bool(z == x)
+
+        var x_bytes: array[8, byte]
+        x_bytes.serializeRawUint(x, cpuEndian)
+
+        check:
+          # Check equality in the Montgomery domain
+          bool(z == x)
+          # Check equality when converting back to natural domain
+          100'u64 == cast[uint64](x_bytes)
 
 main()
