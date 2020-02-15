@@ -41,6 +41,7 @@ debug:
 
 # No exceptions allowed
 {.push raises: [].}
+{.push inline.}
 
 # ############################################################
 #
@@ -98,3 +99,12 @@ func `-=`*(a: var Fq, b: Fq) =
   ## Substraction over Fq
   let ctl = sub(a, b, CtTrue)
   discard add(a, Fq.C.Mod, ctl)
+
+func `*`*(a, b: Fq): Fq {.noInit.} =
+  ## Multiplication over Fq
+  ##
+  ## It is recommended to assign with {.noInit.}
+  ## as Fq elements are usually large and this
+  ## routine will zero init internally the result.
+  result.nres.setInternalBitLength()
+  result.nres.montyMul(a.nres, b.nres, Fq.C.Mod.nres, montyMagic(Fq.C))

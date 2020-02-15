@@ -179,7 +179,7 @@ template checkValidModulus(m: BigIntViewConst) =
   ## This is only checked
   ## with "-d:debugConstantine" and when assertions are on.
   debug:
-    assert not m[^1].isZero.bool, "Internal Error: the modulus must use all declared bits"
+    assert not isZero(m[^1]).bool, "Internal Error: the modulus must use all declared bits"
 
 template checkOddModulus(m: BigIntViewConst) =
   ## CHeck that the modulus is odd
@@ -211,6 +211,11 @@ func isZero*(a: BigIntViewAny): CTBool[Word] =
   for i in 0 ..< a.numLimbs():
     accum = accum or a[i]
   result = accum.isZero()
+
+func setZero*(a: BigIntViewMut) =
+  ## Set a BigInt to 0
+  ## It's bit size is unchanged
+  zeroMem(a[0].unsafeAddr, a.numLimbs() * sizeof(Word))
 
 # The arithmetic primitives all accept a control input that indicates
 # if it is a placebo operation. It stills performs the
@@ -382,6 +387,12 @@ func reduce*(r: BigIntViewMut, a: BigIntViewAny, M: BigIntViewConst) =
     for i in countdown(aOffset, 0):
       r.shlAddMod(a[i], M)
 
+# ############################################################
+#
+#                 Montgomery Arithmetic
+#
+# ############################################################
+
 func montgomeryResidue*(a: BigIntViewMut, N: BigIntViewConst) =
   ## Transform a bigint ``a`` from it's natural representation (mod N)
   ## to a the Montgomery n-residue representation
@@ -400,6 +411,9 @@ func montgomeryResidue*(a: BigIntViewMut, N: BigIntViewConst) =
   let nLen = N.numLimbs()
   for i in countdown(nLen, 1):
     a.shlAddMod(Zero, N)
+
+template wordMul(a, b: Word): Word =
+  (a * b) and MaxWord
 
 func redc*(a: BigIntViewMut, N: BigIntViewConst, montyMagic: Word) =
   ## Transform a bigint ``a`` from it's Montgomery N-residue representation (mod N)
@@ -424,9 +438,10 @@ func redc*(a: BigIntViewMut, N: BigIntViewConst, montyMagic: Word) =
 
   let nLen = N.numLimbs()
   for i in 0 ..< nLen:
-    let z0 = Word(BaseType(a[0]) * BaseType(montyMagic)) and MaxWord
 
+    let z0 = wordMul(a[0], montyMagic)
     var carry = DoubleWord(0)
+
     for j in 0 ..< nLen:
       let z = DoubleWord(a[i]) + unsafeExtPrecMul(z0, N[i]) + carry
       carry = z shr WordBitSize
@@ -434,3 +449,44 @@ func redc*(a: BigIntViewMut, N: BigIntViewConst, montyMagic: Word) =
         a[j] = Word(z) and MaxWord
 
     a[^1] = Word(carry)
+
+func montyMul*(
+       r: BigIntViewMut, a, b: distinct BigIntViewAny,
+       M: BigIntViewConst, montyMagic: Word) =
+  ## Compute r <- a*b (mod M) in the Montgomery domain
+  ## `montyMagic` = -1/M (mod Word). Our words are 2^31 or 2^63
+  ##
+  ## This resets r to zero before processing. Use {.noInit.}
+  ## to avoid duplicating with Nim zero-init policy
+  # i.e. c'R <- a'R b'R * R^-1 (mod M) in the natural domain
+  # as in the Montgomery domain all numbers are scaled by R
+
+  checkValidModulus(M)
+  checkOddModulus(M)
+  checkMatchingBitlengths(r, M)
+  checkMatchingBitlengths(a, M)
+  checkMatchingBitlengths(b, M)
+
+  let nLen = M.numLimbs()
+  setZero(r)
+
+  var r_hi = Zero   # represents the high word that is used in intermediate computation before reduction mod M
+  for i in 0 ..< nLen:
+
+    let zi = (r[0] + wordMul(a[i], b[0])).wordMul(montyMagic)
+    var carry = Zero
+
+    for j in 0 ..< nLen:
+      let z = DoubleWord(r[j]) + unsafeExtPrecMul(a[i], b[j]) +
+              unsafeExtPrecMul(zi, M[j]) + DoubleWord(carry)
+      carry = Word(z shr WordBitSize)
+      if j != 0:
+        r[j-1] = Word(z) and MaxWord
+
+    r_hi += carry
+    r[^1] = r_hi and MaxWord
+    r_hi = r_hi shr WordBitSize
+
+  # If the extra word is not zero or if r-M does not borrow (i.e. r > M)
+  # Then substract M
+  discard r.sub(M, r_hi.isNonZero() or not r.sub(M, CtFalse))

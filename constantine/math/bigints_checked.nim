@@ -131,3 +131,10 @@ func unsafeRedc*[mBits](nres: var BigInt[mBits], N: BigInt[mBits], montyMagic: s
   ## Caller must take care of properly switching between
   ## the natural and montgomery domain.
   redc(nres.view, N.view, Word(montyMagic))
+
+func montyMul*[mBits](r: var BigInt[mBits], a, b, M: BigInt[mBits], montyMagic: static BaseType) =
+  ## Compute r <- a*b (mod M) in the Montgomery domain
+  ##
+  ## This resets r to zero before processing. Use {.noInit.}
+  ## to avoid duplicating with Nim zero-init policy
+  montyMul(r.view, a.view, b.view, M.view, Word(montyMagic))
