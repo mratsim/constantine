@@ -22,7 +22,7 @@ func fromUint*(dst: var Fq,
   ## Parse a regular unsigned integer
   ## and store it into a BigInt of size `bits`
   let raw = (type dst.mres).fromRawUint(cast[array[sizeof(src), byte]](src), cpuEndian)
-  dst.mres.unsafeMontyResidue(raw, Fq.C.Mod.mres, Fq.C.getR2modP(), MontyNegInvModWord[Fq.C])
+  dst.mres.unsafeMontyResidue(raw, Fq.C.Mod.mres, Fq.C.getR2modP(), Fq.C.getNegInvModWord())
 
 func serializeRawUint*(dst: var openarray[byte],
                        src: Fq,

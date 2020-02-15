@@ -58,7 +58,6 @@ macro declareCurves*(curves: untyped): untyped =
   var Curves: seq[NimNode]
   var CurveBitSize = nnKBracket.newTree()
   var curveModStmts = newStmtList()
-  var curveModWhenStmt = nnkIfStmt.newTree()
 
   let Fq = ident"Fq"
 
@@ -105,15 +104,6 @@ macro declareCurves*(curves: untyped): untyped =
       )
     )
 
-    # when curve == BN254: BN254_Modulus
-    curveModWhenStmt.add nnkElifBranch.newTree(
-      nnkInfix.newTree(
-        ident"==",
-        ident"curve",
-        curve
-      ),
-      newAssignment(ident"result", modulusID)
-    )
   # end for ---------------------------------------------------
 
   result = newStmtList()
@@ -172,29 +162,6 @@ macro declareCurves*(curves: untyped): untyped =
     )
   )
 
-  # Add 'else: error"Unreachable" to the when statements
-  curveModWhenStmt.add nnkElse.newTree(
-    newCall(
-      bindSym"error",
-      newLit"Unreachable: the curve does not exist."
-    )
-  )
-
   result.add curveModStmts
-
-  # proc Mod(curve: static Curve): auto
-  result.add newProc(
-    name = nnkPostfix.newTree(ident"*", ident"Mod"),
-    params = [
-      ident"auto",
-      newIdentDefs(
-        name = ident"curve",
-        kind = ident"Curve"
-      )
-    ],
-    body = curveModWhenStmt,
-    procType = nnkFuncDef,
-    pragmas = nnkPragma.newTree(ident"compileTime")
-  )
 
   # echo result.toStrLit()

@@ -48,6 +48,10 @@ when not defined(testingCurves):
       bitsize: 254
       modulus: "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"
       # Equation: Y^2 = X^3 + 3
+    curve BLS12_381:
+      bitsize: 381
+      modulus: "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab"
+      # Equation: y^2 = x^3 + 4
 else:
   # Fake curve for testing field arithmetic
   declareCurves:
@@ -57,22 +61,28 @@ else:
 
 # ############################################################
 #
-#    Autogeneration of precomputed constants in ROM
+#              Curve Modulus Accessor
 #
 # ############################################################
 
-const MontyNegInvModWord* = block:
-  ## Store the Montgomery Magic Constant "Negative Inverse mod 2^63" in ROM
-  var buf: array[Curve, BaseType]
-  for curve in Curve:
-    buf[curve] = curve.Mod.mres.negInvModWord
-  buf
-
 {.experimental: "dynamicBindSym".}
 
-macro genR2modP(T: typed): untyped =
-  ## Store the Montgomery Magic Constant "R^2 mod N" in ROM
-  ## For each curve under the private symbol "MyCurve_R2modP"
+macro Mod*(C: static Curve): untyped =
+  ## Get the Modulus associated to a curve
+  result = bindSym($C & "_Modulus")
+
+# ############################################################
+#
+#  Autogeneration of precomputed Montgomery constants in ROM
+#
+# ############################################################
+
+macro genMontyMagics(T: typed): untyped =
+  ## Store
+  ## - the Montgomery magic constant "R^2 mod N" in ROM
+  ##   For each curve under the private symbol "MyCurve_R2modP"
+  ## - the Montgomery magic constant -1/P mod 2^WordBitSize
+  ##   For each curve under the private symbol "MyCurve_NegInvModWord
   T.getImpl.expectKind(nnkTypeDef)
   T.getImpl[2].expectKind(nnkEnumTy)
 
@@ -92,11 +102,26 @@ macro genR2modP(T: typed): untyped =
         )
       )
     )
+    result.add newConstStmt(
+      ident($curve & "_NegInvModWord"), newCall(
+        bindSym"negInvModWord",
+        # The curve parser creates modulus
+        # under symbol "MyCurve_Modulus"
+        nnkDotExpr.newTree(
+          bindSym($curve & "_Modulus"),
+          ident"mres"
+        )
+      )
+    )
 
   # echo result.toStrLit
 
-genR2modP(Curve)
+genMontyMagics(Curve)
 
 macro getR2modP*(C: static Curve): untyped =
-  ## Get the Montgomery Magic Constant Associated to a curve
+  ## Get the Montgomery "R^2 mod P" constant associated to a curve field modulus
   result = bindSym($C & "_R2modP")
+
+macro getNegInvModWord*(C: static Curve): untyped =
+  ## Get the Montgomery "-1/P[0] mod 2^WordBitSize" constant associated to a curve field modulus
+  result = bindSym($C & "_NegInvModWord")

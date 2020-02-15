@@ -51,12 +51,12 @@ debug:
 
 func fromBig*(T: type Fq, src: BigInt): T =
   ## Convert a BigInt to its Montgomery form
-  result.mres.unsafeMontyResidue(src, Fq.C.Mod.mres, Fq.C.getR2modP(), MontyNegInvModWord[Fq.C])
+  result.mres.unsafeMontyResidue(src, Fq.C.Mod.mres, Fq.C.getR2modP(), Fq.C.getNegInvModWord())
 
 func toBig*(src: Fq): auto =
   ## Convert a finite-field element to a BigInt in natral representation
   result = src.mres
-  result.unsafeRedC(Fq.C.Mod.mres, MontyNegInvModWord[Fq.C])
+  result.unsafeRedC(Fq.C.Mod.mres, Fq.C.getNegInvModWord())
 
 # ############################################################
 #
@@ -114,4 +114,4 @@ func `*`*(a, b: Fq): Fq {.noInit.} =
   ## as Fq elements are usually large and this
   ## routine will zero init internally the result.
   result.mres.setInternalBitLength()
-  result.mres.montyMul(a.mres, b.mres, Fq.C.Mod.mres, MontyNegInvModWord[Fq.C])
+  result.mres.montyMul(a.mres, b.mres, Fq.C.Mod.mres, Fq.C.getNegInvModWord())
