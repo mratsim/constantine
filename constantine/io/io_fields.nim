@@ -21,8 +21,8 @@ func fromUint*(dst: var Fq,
                src: SomeUnsignedInt) =
   ## Parse a regular unsigned integer
   ## and store it into a BigInt of size `bits`
-  dst.nres.fromRawUint(cast[array[sizeof(src), byte]](src), cpuEndian)
-  dst.nres.unsafeMontgomeryResidue(Fq.C.Mod.nres)
+  dst.mres.fromRawUint(cast[array[sizeof(src), byte]](src), cpuEndian)
+  dst.mres.unsafeMontyResidue(Fq.C.Mod.mres)
 
 func serializeRawUint*(dst: var openarray[byte],
                        src: Fq,

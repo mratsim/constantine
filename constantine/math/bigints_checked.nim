@@ -111,26 +111,26 @@ func reduce*[aBits, mBits](r: var BigInt[mBits], a: BigInt[aBits], M: BigInt[mBi
   # pass a pointer+length to a fixed session of the BSS.
   reduce(r.view, a.view, M.view)
 
-func unsafeMontgomeryResidue*[mBits](nres: var BigInt[mBits], N: BigInt[mBits]) =
+func unsafeMontyResidue*[mBits](mres: var BigInt[mBits], N: BigInt[mBits]) =
   ## Convert a BigInt from its natural representation
   ## to the Montgomery n-residue form
   ##
-  ## `nres` is modified in-place
+  ## `mres` is modified in-place
   ##
   ## Caller must take care of properly switching between
   ## the natural and montgomery domain.
   ## Nesting Montgomery form is possible by applying this function twice.
-  montgomeryResidue(nres.view, N.view)
+  montyResidue(mres.view, N.view)
 
-func unsafeRedc*[mBits](nres: var BigInt[mBits], N: BigInt[mBits], negInvModWord: static BaseType) =
+func unsafeRedc*[mBits](mres: var BigInt[mBits], N: BigInt[mBits], negInvModWord: static BaseType) =
   ## Convert a BigInt from its Montgomery n-residue form
   ## to the natural representation
   ##
-  ## `nres` is modified in-place
+  ## `mres` is modified in-place
   ##
   ## Caller must take care of properly switching between
   ## the natural and montgomery domain.
-  redc(nres.view, N.view, Word(negInvModWord))
+  redc(mres.view, N.view, Word(negInvModWord))
 
 func montyMul*[mBits](r: var BigInt[mBits], a, b, M: BigInt[mBits], negInvModWord: static BaseType) =
   ## Compute r <- a*b (mod M) in the Montgomery domain

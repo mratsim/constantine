@@ -31,13 +31,13 @@ import
 #     ## P being the prime modulus of the Curve C
 #     ## Internally, data is stored in Montgomery n-residue form
 #     ## with the magic constant chosen for convenient division (a power of 2 depending on P bitsize)
-#     nres*: matchingBigInt(C)
+#     mres*: matchingBigInt(C)
 export Fq # defined in ../config/curves to avoid recursive module dependencies
 
 debug:
   func `==`*(a, b: Fq): CTBool[Word] =
     ## Returns true if 2 big ints are equal
-    a.nres == b.nres
+    a.mres == b.mres
 
 # No exceptions allowed
 {.push raises: [].}
@@ -51,13 +51,13 @@ debug:
 
 func fromBig*(T: type Fq, src: BigInt): T =
   ## Convert a BigInt to its Montgomery form
-  result.nres = src
-  result.nres.unsafeMontgomeryResidue(Fq.C.Mod)
+  result.mres = src
+  result.mres.unsafeMontyResidue(Fq.C.Mod)
 
 func toBig*(src: Fq): auto =
   ## Convert a finite-field element to a BigInt in natral representation
-  result = src.nres
-  result.unsafeRedC(Fq.C.Mod.nres, Fq.C.Mod.nres.negInvModWord())
+  result = src.mres
+  result.unsafeRedC(Fq.C.Mod.mres, Fq.C.Mod.mres.negInvModWord())
 
 # ############################################################
 #
@@ -72,7 +72,7 @@ template add(a: var Fq, b: Fq, ctl: CTBool[Word]): CTBool[Word] =
   ##
   ## a and b MAY be the same buffer
   ## a and b MUST have the same announced bitlength (i.e. `bits` static parameters)
-  add(a.nres, b.nres, ctl)
+  add(a.mres, b.mres, ctl)
 
 template sub(a: var Fq, b: Fq, ctl: CTBool[Word]): CTBool[Word] =
   ## Constant-time big integer in-place optional substraction
@@ -81,7 +81,7 @@ template sub(a: var Fq, b: Fq, ctl: CTBool[Word]): CTBool[Word] =
   ##
   ## a and b MAY be the same buffer
   ## a and b MUST have the same announced bitlength (i.e. `bits` static parameters)
-  sub(a.nres, b.nres, ctl)
+  sub(a.mres, b.mres, ctl)
 
 # ############################################################
 #
@@ -114,5 +114,5 @@ func `*`*(a, b: Fq): Fq {.noInit.} =
   ## It is recommended to assign with {.noInit.}
   ## as Fq elements are usually large and this
   ## routine will zero init internally the result.
-  result.nres.setInternalBitLength()
-  result.nres.montyMul(a.nres, b.nres, Fq.C.Mod.nres, Fq.C.Mod.nres.negInvModWord())
+  result.mres.setInternalBitLength()
+  result.mres.montyMul(a.mres, b.mres, Fq.C.Mod.mres, Fq.C.Mod.mres.negInvModWord())

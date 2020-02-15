@@ -393,7 +393,7 @@ func reduce*(r: BigIntViewMut, a: BigIntViewAny, M: BigIntViewConst) =
 #
 # ############################################################
 
-func montgomeryResidue*(a: BigIntViewMut, N: BigIntViewConst) =
+func montyResidue*(a: BigIntViewMut, N: BigIntViewConst) =
   ## Transform a bigint ``a`` from it's natural representation (mod N)
   ## to a the Montgomery n-residue representation
   ##

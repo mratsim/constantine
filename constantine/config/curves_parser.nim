@@ -95,7 +95,7 @@ macro declareCurves*(curves: untyped): untyped =
       nnkObjConstr.newTree(
         nnkBracketExpr.newTree(Fq, curve),
         nnkExprColonExpr.newTree(
-          ident"nres",
+          ident"mres",
           newCall(
             bindSym"fromHex",
             nnkBracketExpr.newTree(bindSym"BigInt", bitSize),
@@ -151,7 +151,7 @@ macro declareCurves*(curves: untyped): untyped =
   #     ## P being the prime modulus of the Curve C
   #     ## Internally, data is stored in Montgomery n-residue form
   #     ## with the magic constant chosen for convenient division (a power of 2 depending on P bitsize)
-  #     nres*: matchingBigInt(C)
+  #     mres*: matchingBigInt(C)
   result.add nnkTypeSection.newTree(
     nnkTypeDef.newTree(
       nnkPostfix.newTree(ident"*", Fq),
@@ -164,7 +164,7 @@ macro declareCurves*(curves: untyped): untyped =
         newEmptyNode(),
         nnkRecList.newTree(
           newIdentDefs(
-            nnkPostfix.newTree(ident"*", ident"nres"),
+            nnkPostfix.newTree(ident"*", ident"mres"),
             newCall(matchingBigInt, C)
           )
         )
