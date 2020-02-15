@@ -7,6 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  # Standard library
+  macros,
   # Internal
   ./curves_parser, ./common,
   ../math/[precomputed, bigints_checked]
@@ -52,3 +54,49 @@ else:
     curve Fake101:
       bitsize: 7
       modulus: "0x65" # 101 in hex
+
+# ############################################################
+#
+#    Autogeneration of precomputed constants in ROM
+#
+# ############################################################
+
+const MontyNegInvModWord* = block:
+  ## Store the Montgomery Magic Constant "Negative Inverse mod 2^63" in ROM
+  var buf: array[Curve, BaseType]
+  for curve in Curve:
+    buf[curve] = curve.Mod.mres.negInvModWord
+  buf
+
+{.experimental: "dynamicBindSym".}
+
+macro genR2modP(T: typed): untyped =
+  ## Store the Montgomery Magic Constant "R^2 mod N" in ROM
+  ## For each curve under the private symbol "MyCurve_R2modP"
+  T.getImpl.expectKind(nnkTypeDef)
+  T.getImpl[2].expectKind(nnkEnumTy)
+
+  result = newStmtList()
+
+  let E = T.getImpl[2]
+  for i in 1 ..< E.len:
+    let curve = E[i]
+    result.add newConstStmt(
+      ident($curve & "_R2modP"), newCall(
+        bindSym"r2mod",
+        # The curve parser creates modulus
+        # under symbol "MyCurve_Modulus"
+        nnkDotExpr.newTree(
+          bindSym($curve & "_Modulus"),
+          ident"mres"
+        )
+      )
+    )
+
+  # echo result.toStrLit
+
+genR2modP(Curve)
+
+macro getR2modP*(C: static Curve): untyped =
+  ## Get the Montgomery Magic Constant Associated to a curve
+  result = bindSym($C & "_R2modP")

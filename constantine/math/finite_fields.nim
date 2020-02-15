@@ -23,9 +23,7 @@
 import
   ../primitives/constant_time,
   ../config/[common, curves],
-  ./bigints_checked,
-  # TODO: should be a const/proc in curves.nim
-  ./precomputed
+  ./bigints_checked
 
 # type
 #   `Fq`*[C: static Curve] = object
@@ -53,12 +51,12 @@ debug:
 
 func fromBig*(T: type Fq, src: BigInt): T =
   ## Convert a BigInt to its Montgomery form
-  result.mres.unsafeMontyResidue(src, Fq.C.Mod.mres, r2mod(Fq.C.Mod.mres), neginvModWord(Fq.C.Mod.mres))
+  result.mres.unsafeMontyResidue(src, Fq.C.Mod.mres, Fq.C.getR2modP(), MontyNegInvModWord[Fq.C])
 
 func toBig*(src: Fq): auto =
   ## Convert a finite-field element to a BigInt in natral representation
   result = src.mres
-  result.unsafeRedC(Fq.C.Mod.mres, Fq.C.Mod.mres.negInvModWord())
+  result.unsafeRedC(Fq.C.Mod.mres, MontyNegInvModWord[Fq.C])
 
 # ############################################################
 #
@@ -116,4 +114,4 @@ func `*`*(a, b: Fq): Fq {.noInit.} =
   ## as Fq elements are usually large and this
   ## routine will zero init internally the result.
   result.mres.setInternalBitLength()
-  result.mres.montyMul(a.mres, b.mres, Fq.C.Mod.mres, Fq.C.Mod.mres.negInvModWord())
+  result.mres.montyMul(a.mres, b.mres, Fq.C.Mod.mres, MontyNegInvModWord[Fq.C])

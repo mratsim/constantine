@@ -53,7 +53,7 @@ type
     ##
     ## This internal representation can be changed
     ## without notice and should not be used by external applications or libraries.
-    bitLength: uint32
+    bitLength*: uint32
     limbs*: array[bits.wordsRequired, Word]
 
 template view*(a: BigInt): BigIntViewConst =

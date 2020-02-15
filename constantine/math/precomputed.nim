@@ -24,22 +24,30 @@ import
 # They are generic over the bitsize: enabling them at runtime
 # would create a copy for each bitsize used (monomorphization)
 # leading to code-bloat.
+# Thos are NOT compile-time, using CTBool seems to confuse the VM
 
-func double(a: var BigInt): CTBool[Word] =
+# We don't use distinct types here, they confuse the VM
+# Similarly, isMsbSet causes trouble with distinct type in the VM
+
+func isMsbSet(x: BaseType): bool =
+  const msb_pos = BaseType.sizeof * 8 - 1
+  bool(x shr msb_pos)
+
+func double(a: var BigInt): bool =
   ## In-place multiprecision double
   ##   a -> 2a
   for i in 0 ..< a.limbs.len:
-    BaseType(a.limbs[i]) *= 2
-    a.limbs[i] += Word(result)
-    result = a.limbs[i].isMsbSet()
-    a.limbs[i] = a.limbs[i] and MaxWord
+    var z = BaseType(a.limbs[i]) * 2 + BaseType(result)
+    result = z.isMsbSet()
+    a.limbs[i] = Word(z) and MaxWord
 
-func sub(a: var BigInt, b: BigInt, ctl: CTBool[Word]): CTBool[Word] =
+func sub(a: var BigInt, b: BigInt, ctl: bool): bool =
   ## In-place optional substraction
   for i in 0 ..< a.limbs.len:
-    let new_a = a.limbs[i] - b.limbs[i] - Word(result)
+    let new_a = BaseType(a.limbs[i]) - BaseType(b.limbs[i]) - BaseType(result)
     result = new_a.isMsbSet()
-    a.limbs[i] = ctl.mux(new_a and MaxWord, a.limbs[i])
+    a.limbs[i] = if ctl: new_a.Word and MaxWord
+                 else: a.limbs[i]
 
 func doubleMod(a: var BigInt, M: BigInt) =
   ## In-place modular double
@@ -49,8 +57,8 @@ func doubleMod(a: var BigInt, M: BigInt) =
   ## only for compile-time precomputation
   ## of non-secret data.
   var ctl = double(a)
-  ctl = ctl or not a.sub(M, CtFalse)
-  discard a.sub(M, ctl)
+  ctl = ctl or not sub(a, M, false)
+  discard sub(a, M, ctl)
 
 # ############################################################
 #
