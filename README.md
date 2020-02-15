@@ -34,8 +34,9 @@ The library is provided as is, without any guarantees at least until:
 - formal proofs of correctness are produced
 - formal verification of constant-time implementation is possible
 
-Defense against common attack vectors are provided on a best effort basis
-attackers may go to great lengths to retrieve secret data including:
+Defense against common attack vectors are provided on a best effort basis.
+
+Attackers may go to great lengths to retrieve secret data including:
 - Timing the time taken to multiply on an elliptic curve
 - Analysing the power usage of embedded devices
 - Detecting cache misses when using lookup tables

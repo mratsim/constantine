@@ -151,10 +151,12 @@ template isMsbSet*[T: Ct](x: T): CTBool[T] =
   const msb_pos = T.sizeof * 8 - 1
   (CTBool[T])(x shr msb_pos)
 
-func log2*(x: uint32): uint32 =
+func log2*(x: uint32): uint32 {.compileTime.} =
   ## Find the log base 2 of a 32-bit or less integer.
   ## using De Bruijn multiplication
   ## Works at compile-time, guaranteed constant-time.
+  ## Note: at runtime BitScanReverse or CountLeadingZero are more efficient
+  ##       but log2 is never needed at runtime.
   # https://graphics.stanford.edu/%7Eseander/bithacks.html#IntegerLogDeBruijn
   const lookup: array[32, uint8] = [0'u8, 9, 1, 10, 13, 21, 2, 29, 11, 14, 16, 18,
     22, 25, 3, 30, 8, 12, 20, 28, 15, 17, 24, 7, 19, 27, 23, 6, 26, 5, 4, 31]

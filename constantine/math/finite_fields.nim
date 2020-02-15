@@ -57,7 +57,7 @@ func fromBig*(T: type Fq, src: BigInt): T =
 func toBig*[C: static Curve](src: Fq[C]): auto =
   ## Convert a finite-field element to a BigInt in natral representation
   result = src.nres
-  result.unsafeRedC(C.Mod.nres, montyMagic(C))
+  result.unsafeRedC(C.Mod.nres, negInvModWord(C))
 
 # ############################################################
 #
@@ -107,4 +107,4 @@ func `*`*(a, b: Fq): Fq {.noInit.} =
   ## as Fq elements are usually large and this
   ## routine will zero init internally the result.
   result.nres.setInternalBitLength()
-  result.nres.montyMul(a.nres, b.nres, Fq.C.Mod.nres, montyMagic(Fq.C))
+  result.nres.montyMul(a.nres, b.nres, Fq.C.Mod.nres, negInvModWord(Fq.C))

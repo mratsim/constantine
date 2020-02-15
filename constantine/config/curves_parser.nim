@@ -198,9 +198,9 @@ macro declareCurves*(curves: untyped): untyped =
     procType = nnkFuncDef
   )
 
-  # proc MontyMagic(curve: static Curve): static Word
+  # proc negInvModWord(curve: static Curve): static Word
   result.add newProc(
-    name = nnkPostfix.newTree(ident"*", ident"montyMagic"),
+    name = nnkPostfix.newTree(ident"*", ident"negInvModWord"),
     params = [
       ident"auto",
       newIdentDefs(
@@ -209,7 +209,7 @@ macro declareCurves*(curves: untyped): untyped =
       )
     ],
     body = newCall(
-      ident"montyMagic",
+      ident"negInvModWord",
       # curve.Mod().nres
       nnkDotExpr.newTree(
         newCall(ident"Mod", ident"curve"),

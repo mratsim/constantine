@@ -415,7 +415,7 @@ func montgomeryResidue*(a: BigIntViewMut, N: BigIntViewConst) =
 template wordMul(a, b: Word): Word =
   (a * b) and MaxWord
 
-func redc*(a: BigIntViewMut, N: BigIntViewConst, montyMagic: Word) =
+func redc*(a: BigIntViewMut, N: BigIntViewConst, negInvModWord: Word) =
   ## Transform a bigint ``a`` from it's Montgomery N-residue representation (mod N)
   ## to the regular natural representation (mod N)
   ##
@@ -424,7 +424,7 @@ func redc*(a: BigIntViewMut, N: BigIntViewConst, montyMagic: Word) =
   ##
   ## This is called a Montgomery Reduction
   ## The Montgomery Magic Constant is µ = -1/N mod N
-  ## is used internally and can be precomputed with montyMagic(Curve)
+  ## is used internally and can be precomputed with negInvModWord(Curve)
   # References:
   #   - https://eprint.iacr.org/2017/1057.pdf (Montgomery)
   #     page: Radix-r interleaved multiplication algorithm
@@ -439,7 +439,7 @@ func redc*(a: BigIntViewMut, N: BigIntViewConst, montyMagic: Word) =
   let nLen = N.numLimbs()
   for i in 0 ..< nLen:
 
-    let z0 = wordMul(a[0], montyMagic)
+    let z0 = wordMul(a[0], negInvModWord)
     var carry = DoubleWord(0)
 
     for j in 0 ..< nLen:
@@ -452,9 +452,9 @@ func redc*(a: BigIntViewMut, N: BigIntViewConst, montyMagic: Word) =
 
 func montyMul*(
        r: BigIntViewMut, a, b: distinct BigIntViewAny,
-       M: BigIntViewConst, montyMagic: Word) =
+       M: BigIntViewConst, negInvModWord: Word) =
   ## Compute r <- a*b (mod M) in the Montgomery domain
-  ## `montyMagic` = -1/M (mod Word). Our words are 2^31 or 2^63
+  ## `negInvModWord` = -1/M (mod Word). Our words are 2^31 or 2^63
   ##
   ## This resets r to zero before processing. Use {.noInit.}
   ## to avoid duplicating with Nim zero-init policy
@@ -473,7 +473,7 @@ func montyMul*(
   var r_hi = Zero   # represents the high word that is used in intermediate computation before reduction mod M
   for i in 0 ..< nLen:
 
-    let zi = (r[0] + wordMul(a[i], b[0])).wordMul(montyMagic)
+    let zi = (r[0] + wordMul(a[i], b[0])).wordMul(negInvModWord)
     var carry = Zero
 
     for j in 0 ..< nLen:
