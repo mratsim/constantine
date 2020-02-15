@@ -20,10 +20,11 @@ import
 #
 # ############################################################
 
-# Note: The declareCurve macro builds an exported negInvModWord*(C: static Curve) on top of the one below
 func negInvModWord*(M: BigInt): BaseType =
   ## Returns the Montgomery domain magic constant for the input modulus:
-  ##   -1/M[0] mod LimbSize
+  ##
+  ##   µ = -1/M[0] mod M
+  ##
   ## M[0] is the least significant limb of M
   ## M must be odd and greater than 2.
   # We use BaseType for return value because static distinct type

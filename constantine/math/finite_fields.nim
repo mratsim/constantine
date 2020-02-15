@@ -23,7 +23,7 @@
 import
   ../primitives/constant_time,
   ../config/[common, curves],
-  ./bigints_checked
+  ./bigints_checked, ./precomputed
 
 # type
 #   `Fq`*[C: static Curve] = object
@@ -54,10 +54,10 @@ func fromBig*(T: type Fq, src: BigInt): T =
   result.nres = src
   result.nres.unsafeMontgomeryResidue(Fq.C.Mod)
 
-func toBig*[C: static Curve](src: Fq[C]): auto =
+func toBig*(src: Fq): auto =
   ## Convert a finite-field element to a BigInt in natral representation
   result = src.nres
-  result.unsafeRedC(C.Mod.nres, negInvModWord(C))
+  result.unsafeRedC(Fq.C.Mod.nres, Fq.C.Mod.nres.negInvModWord())
 
 # ############################################################
 #
@@ -88,6 +88,14 @@ template sub(a: var Fq, b: Fq, ctl: CTBool[Word]): CTBool[Word] =
 #                Field arithmetic primitives
 #
 # ############################################################
+#
+# Note: the library currently implements generic routine for odd field modulus.
+#       Routines for special field modulus form:
+#       - Mersenne Prime (2^k - 1),
+#       - Generalized Mersenne Prime (NIST Prime P256: 2^256 - 2^224 + 2^192 + 2^96 - 1)
+#       - Pseudo-Mersenne Prime (2^m - k for example Curve25519: 2^255 - 19)
+#       - Golden Primes (φ^2 - φ - 1 with φ = 2^k for example Ed448-Goldilocks: 2^448 - 2^224 - 1)
+#       exist and can be implemented with compile-time specialization.
 
 func `+=`*(a: var Fq, b: Fq) =
   ## Addition over Fq
@@ -107,4 +115,4 @@ func `*`*(a, b: Fq): Fq {.noInit.} =
   ## as Fq elements are usually large and this
   ## routine will zero init internally the result.
   result.nres.setInternalBitLength()
-  result.nres.montyMul(a.nres, b.nres, Fq.C.Mod.nres, negInvModWord(Fq.C))
+  result.nres.montyMul(a.nres, b.nres, Fq.C.Mod.nres, Fq.C.Mod.nres.negInvModWord())

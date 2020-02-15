@@ -396,8 +396,11 @@ func reduce*(r: BigIntViewMut, a: BigIntViewAny, M: BigIntViewConst) =
 func montgomeryResidue*(a: BigIntViewMut, N: BigIntViewConst) =
   ## Transform a bigint ``a`` from it's natural representation (mod N)
   ## to a the Montgomery n-residue representation
-  ## i.e. Does "a * (2^LimbSize)^W (mod N), where W is the number
-  ## of words needed to represent n in base 2^LimbSize
+  ##
+  ## with W = N.numLimbs()
+  ## and R = (2^WordBitSize)^W
+  ##
+  ## Does "a * R (mod N)"
   ##
   ## `a`: The source BigInt in the natural representation. `a` in [0, N) range
   ## `N`: The field modulus. N must be odd.
@@ -419,8 +422,10 @@ func redc*(a: BigIntViewMut, N: BigIntViewConst, negInvModWord: Word) =
   ## Transform a bigint ``a`` from it's Montgomery N-residue representation (mod N)
   ## to the regular natural representation (mod N)
   ##
-  ## i.e. Does "a * ((2^LimbSize)^W)^-1 (mod N), where W is the number
-  ## of words needed to represent n in base 2^LimbSize
+  ## with W = N.numLimbs()
+  ## and R = (2^WordBitSize)^W
+  ##
+  ## Does "a * R^-1 (mod N)"
   ##
   ## This is called a Montgomery Reduction
   ## The Montgomery Magic Constant is µ = -1/N mod N

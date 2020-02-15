@@ -127,7 +127,7 @@ macro declareCurves*(curves: untyped): untyped =
     pure = false
   )
 
-  # const CurveBitSize*: array[Curve, int] = ...
+  # const CurveBitSize: array[Curve, int] = ...
   let cbs = ident("CurveBitSize")
   result.add newConstStmt(
     cbs, CurveBitSize
@@ -137,9 +137,9 @@ macro declareCurves*(curves: untyped): untyped =
   # template matchingBigInt(C: static Curve): untyped =
   #   BigInt[CurveBitSize[C]]
   let C = ident"C"
-  let matchingBigInt = ident"matchingBigInt"
+  let matchingBigInt = genSym(nskTemplate, "matchingBigInt")
   result.add newProc(
-    name = nnkPostFix.newTree(ident"*", matchingBigInt),
+    name = matchingBigInt,
     params = [ident"untyped", newIdentDefs(C, nnkStaticTy.newTree(Curve))],
     body = nnkBracketExpr.newTree(bindSym"BigInt", nnkBracketExpr.newTree(cbs, C)),
     procType = nnkTemplateDef
@@ -195,28 +195,6 @@ macro declareCurves*(curves: untyped): untyped =
       )
     ],
     body = curveModWhenStmt,
-    procType = nnkFuncDef
-  )
-
-  # proc negInvModWord(curve: static Curve): static Word
-  result.add newProc(
-    name = nnkPostfix.newTree(ident"*", ident"negInvModWord"),
-    params = [
-      ident"auto",
-      newIdentDefs(
-        name = ident"curve",
-        kind = nnkStaticTy.newTree(ident"Curve")
-      )
-    ],
-    body = newCall(
-      ident"negInvModWord",
-      # curve.Mod().nres
-      nnkDotExpr.newTree(
-        newCall(ident"Mod", ident"curve"),
-        ident"nres"
-      )
-
-    ),
     procType = nnkFuncDef
   )
 
