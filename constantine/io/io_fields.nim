@@ -9,7 +9,9 @@
 import
   ./io_bigints,
   ../config/curves,
-  ../math/[bigints_checked, finite_fields]
+  ../math/[bigints_checked, finite_fields],
+  # TODO: should be a const/proc in curves.nim
+  ../math/precomputed
 
 # ############################################################
 #
@@ -21,8 +23,8 @@ func fromUint*(dst: var Fq,
                src: SomeUnsignedInt) =
   ## Parse a regular unsigned integer
   ## and store it into a BigInt of size `bits`
-  dst.mres.fromRawUint(cast[array[sizeof(src), byte]](src), cpuEndian)
-  dst.mres.unsafeMontyResidue(Fq.C.Mod.mres)
+  let raw = (type dst.mres).fromRawUint(cast[array[sizeof(src), byte]](src), cpuEndian)
+  dst.mres.unsafeMontyResidue(raw, Fq.C.Mod.mres, r2mod(Fq.C.Mod.mres), neginvModWord(Fq.C.Mod.mres))
 
 func serializeRawUint*(dst: var openarray[byte],
                        src: Fq,

@@ -16,17 +16,71 @@ import
 
 # ############################################################
 #
+#                   Modular primitives
+#
+# ############################################################
+#
+# Those primitives are intended to be compile-time only
+# They are generic over the bitsize: enabling them at runtime
+# would create a copy for each bitsize used (monomorphization)
+# leading to code-bloat.
+
+func double(a: var BigInt): CTBool[Word] =
+  ## In-place multiprecision double
+  ##   a -> 2a
+  for i in 0 ..< a.limbs.len:
+    BaseType(a.limbs[i]) *= 2
+    a.limbs[i] += Word(result)
+    result = a.limbs[i].isMsbSet()
+    a.limbs[i] = a.limbs[i] and MaxWord
+
+func sub(a: var BigInt, b: BigInt, ctl: CTBool[Word]): CTBool[Word] =
+  ## In-place optional substraction
+  for i in 0 ..< a.limbs.len:
+    let new_a = a.limbs[i] - b.limbs[i] - Word(result)
+    result = new_a.isMsbSet()
+    a.limbs[i] = ctl.mux(new_a and MaxWord, a.limbs[i])
+
+func doubleMod(a: var BigInt, M: BigInt) =
+  ## In-place modular double
+  ##   a -> 2a (mod M)
+  ##
+  ## It is NOT constant-time and is intended
+  ## only for compile-time precomputation
+  ## of non-secret data.
+  var ctl = double(a)
+  ctl = ctl or not a.sub(M, CtFalse)
+  discard a.sub(M, ctl)
+
+# ############################################################
+#
 #          Montgomery Magic Constants precomputation
 #
 # ############################################################
 
+func checkOddModulus(M: BigInt) =
+  doAssert bool(BaseType(M.limbs[0]) and 1), "Internal Error: the modulus must be odd to use the Montgomery representation."
+
+import strutils
+
+func checkValidModulus(M: BigInt) =
+  const expectedMsb = M.bits-1 - WordBitSize * (M.limbs.len - 1)
+  let msb = log2(BaseType(M.limbs[^1]))
+
+  doAssert msb == expectedMsb, "Internal Error: the modulus must use all declared bits and only those"
+
 func negInvModWord*(M: BigInt): BaseType =
   ## Returns the Montgomery domain magic constant for the input modulus:
   ##
-  ##   µ = -1/M[0] mod M
+  ##   µ ≡ -1/M[0] (mod Word)
   ##
   ## M[0] is the least significant limb of M
   ## M must be odd and greater than 2.
+  ##
+  ## Assuming 63-bit words:
+  ##
+  ## µ ≡ -1/M[0] (mod 2^63)
+
   # We use BaseType for return value because static distinct type
   # confuses Nim semchecks [UPSTREAM BUG]
   # We don't enforce compile-time evaluation here
@@ -43,7 +97,7 @@ func negInvModWord*(M: BigInt): BaseType =
   # - http://marc-b-reynolds.github.io/math/2017/09/18/ModInverse.html
 
   # For Montgomery magic number, we are in a special case
-  # where a = M and m = 2^LimbSize.
+  # where a = M and m = 2^WordBitsize.
   # For a and m to be coprimes, a must be odd.
 
   # We have the following relation
@@ -56,6 +110,9 @@ func negInvModWord*(M: BigInt): BaseType =
   # To get the the modular inverse of 2^k' with arbitrary k' (like k=63 in our case)
   # we can do modInv(a, 2^64) mod 2^63 as mentionned in Koc paper.
 
+  checkOddModulus(M)
+  checkValidModulus(M)
+
   let
     M0 = BaseType(M.limbs[0])
     k = log2(WordPhysBitSize)
@@ -66,3 +123,37 @@ func negInvModWord*(M: BigInt): BaseType =
 
   # Our actual word size is 2^63 not 2^64
   result = result and BaseType(MaxWord)
+
+func r2mod*(M: BigInt): BigInt =
+  ## Returns the Montgomery domain magic constant for the input modulus:
+  ##
+  ##   R² ≡ R² (mod M) with R = (2^WordBitSize)^numWords
+  ##
+  ## Assuming a field modulus of size 256-bit with 63-bit words, we require 5 words
+  ##   R² ≡ ((2^63)^5)^2 (mod M) = 2^630 (mod M)
+
+  # Algorithm
+  # Bos and Montgomery, Montgomery Arithmetic from a Software Perspective
+  # https://eprint.iacr.org/2017/1057.pdf
+  #
+  # For R = r^n = 2^wn and 2^(wn − 1) ≤ N < 2^wn
+  # r^n = 2^63 in on 64-bit and w the number of words
+  #
+  # 1. C0 = 2^(wn - 1), the power of two immediately less than N
+  # 2. for i in 1 ... wn+1
+  #      Ci = C(i-1) + C(i-1) (mod M)
+  #
+  # Thus: C(wn+1) ≡ 2^(wn+1) C0 ≡ 2^(wn + 1) 2^(wn - 1) ≡ 2^(2wn) ≡ (2^wn)^2 ≡ R² (mod M)
+
+  checkOddModulus(M)
+  checkValidModulus(M)
+
+  result.setInternalBitLength()
+
+  const
+    w = M.limbs.len
+    msb = M.bits-1 - WordBitSize * (w - 1)
+
+  result.limbs[^1] = Word(1 shl msb) # C0 = 2^(wn-1), the power of 2 immediatly less than the modulus
+  for _ in (w-1)*WordBitSize + msb ..< w * WordBitSize * 2:
+    result.doubleMod(M)

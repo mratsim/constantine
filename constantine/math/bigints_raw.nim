@@ -393,30 +393,60 @@ func reduce*(r: BigIntViewMut, a: BigIntViewAny, M: BigIntViewConst) =
 #
 # ############################################################
 
-func montyResidue*(a: BigIntViewMut, N: BigIntViewConst) =
-  ## Transform a bigint ``a`` from it's natural representation (mod N)
-  ## to a the Montgomery n-residue representation
-  ##
-  ## with W = N.numLimbs()
-  ## and R = (2^WordBitSize)^W
-  ##
-  ## Does "a * R (mod N)"
-  ##
-  ## `a`: The source BigInt in the natural representation. `a` in [0, N) range
-  ## `N`: The field modulus. N must be odd.
-  ##
-  ## Important: `a` is overwritten
-  # Reference: https://eprint.iacr.org/2017/1057.pdf
-  checkValidModulus(N)
-  checkOddModulus(N)
-  checkMatchingBitlengths(a, N)
-
-  let nLen = N.numLimbs()
-  for i in countdown(nLen, 1):
-    a.shlAddMod(Zero, N)
-
 template wordMul(a, b: Word): Word =
   (a * b) and MaxWord
+
+func montyMul*(
+       r: BigIntViewMut, a, b: distinct BigIntViewAny,
+       M: BigIntViewConst, negInvModWord: Word) =
+  ## Compute r <- a*b (mod M) in the Montgomery domain
+  ## `negInvModWord` = -1/M (mod Word). Our words are 2^31 or 2^63
+  ##
+  ## This resets r to zero before processing. Use {.noInit.}
+  ## to avoid duplicating with Nim zero-init policy
+  ## The result `r` buffer size MUST be at least the size of `M` buffer
+  ##
+  ##
+  ## Assuming 63-bit wors, the magic constant should be:
+  ##
+  ## - µ ≡ -1/M[0] (mod 2^63) for a general multiplication
+  ##   This can be precomputed with `negInvModWord`
+  ## - 1 for conversion from Montgomery to canonical representation
+  ##   The library implements a faster `redc` primitive for that use-case
+  ## - R^2 (mod M) for conversion from canonical to Montgomery representation
+  ##
+  # i.e. c'R <- a'R b'R * R^-1 (mod M) in the natural domain
+  # as in the Montgomery domain all numbers are scaled by R
+
+  checkValidModulus(M)
+  checkOddModulus(M)
+  checkMatchingBitlengths(a, M)
+  checkMatchingBitlengths(b, M)
+
+  let nLen = M.numLimbs()
+  r.setBitLength(bitSizeof(M))
+  setZero(r)
+
+  var r_hi = Zero   # represents the high word that is used in intermediate computation before reduction mod M
+  for i in 0 ..< nLen:
+
+    let zi = (r[0] + wordMul(a[i], b[0])).wordMul(negInvModWord)
+    var carry = Zero
+
+    for j in 0 ..< nLen:
+      let z = DoubleWord(r[j]) + unsafeExtPrecMul(a[i], b[j]) +
+              unsafeExtPrecMul(zi, M[j]) + DoubleWord(carry)
+      carry = Word(z shr WordBitSize)
+      if j != 0:
+        r[j-1] = Word(z) and MaxWord
+
+    r_hi += carry
+    r[^1] = r_hi and MaxWord
+    r_hi = r_hi shr WordBitSize
+
+  # If the extra word is not zero or if r-M does not borrow (i.e. r > M)
+  # Then substract M
+  discard r.sub(M, r_hi.isNonZero() or not r.sub(M, CtFalse))
 
 func redc*(a: BigIntViewMut, N: BigIntViewConst, negInvModWord: Word) =
   ## Transform a bigint ``a`` from it's Montgomery N-residue representation (mod N)
@@ -455,43 +485,54 @@ func redc*(a: BigIntViewMut, N: BigIntViewConst, negInvModWord: Word) =
 
     a[^1] = Word(carry)
 
-func montyMul*(
-       r: BigIntViewMut, a, b: distinct BigIntViewAny,
-       M: BigIntViewConst, negInvModWord: Word) =
-  ## Compute r <- a*b (mod M) in the Montgomery domain
-  ## `negInvModWord` = -1/M (mod Word). Our words are 2^31 or 2^63
+# TODO: benchmark Montgomery Multiplication vs Shift-Left (after constant-time division)
+
+func montyResidue*(
+       r: BigIntViewMut, a: BigIntViewAny,
+       N, r2modN: BigIntViewConst, negInvModWord: Word) =
+  ## Transform a bigint ``a`` from it's natural representation (mod N)
+  ## to a the Montgomery n-residue representation
   ##
-  ## This resets r to zero before processing. Use {.noInit.}
-  ## to avoid duplicating with Nim zero-init policy
-  # i.e. c'R <- a'R b'R * R^-1 (mod M) in the natural domain
-  # as in the Montgomery domain all numbers are scaled by R
+  ## Montgomery-Multiplication - based
+  ##
+  ## with W = N.numLimbs()
+  ## and R = (2^WordBitSize)^W
+  ##
+  ## Does "a * R (mod N)"
+  ##
+  ## `a`: The source BigInt in the natural representation. `a` in [0, N) range
+  ## `N`: The field modulus. N must be odd.
+  ## `r2modN`: 2^WordBitSize mod `N`. Can be precomputed with `r2mod` function
+  ##
+  ## Important: `r` is overwritten
+  ## The result `r` buffer size MUST be at least the size of `M` buffer
+  # Reference: https://eprint.iacr.org/2017/1057.pdf
+  checkValidModulus(N)
+  checkOddModulus(N)
+  checkMatchingBitlengths(a, N)
 
-  checkValidModulus(M)
-  checkOddModulus(M)
-  checkMatchingBitlengths(r, M)
-  checkMatchingBitlengths(a, M)
-  checkMatchingBitlengths(b, M)
+  montyMul(r, a, r2ModN, N, negInvModWord)
 
-  let nLen = M.numLimbs()
-  setZero(r)
+func montyResidue*(a: BigIntViewMut, N: BigIntViewConst) =
+  ## Transform a bigint ``a`` from it's natural representation (mod N)
+  ## to a the Montgomery n-residue representation
+  ##
+  ## Modular shift - based
+  ##
+  ## with W = N.numLimbs()
+  ## and R = (2^WordBitSize)^W
+  ##
+  ## Does "a * R (mod N)"
+  ##
+  ## `a`: The source BigInt in the natural representation. `a` in [0, N) range
+  ## `N`: The field modulus. N must be odd.
+  ##
+  ## Important: `a` is overwritten
+  # Reference: https://eprint.iacr.org/2017/1057.pdf
+  checkValidModulus(N)
+  checkOddModulus(N)
+  checkMatchingBitlengths(a, N)
 
-  var r_hi = Zero   # represents the high word that is used in intermediate computation before reduction mod M
-  for i in 0 ..< nLen:
-
-    let zi = (r[0] + wordMul(a[i], b[0])).wordMul(negInvModWord)
-    var carry = Zero
-
-    for j in 0 ..< nLen:
-      let z = DoubleWord(r[j]) + unsafeExtPrecMul(a[i], b[j]) +
-              unsafeExtPrecMul(zi, M[j]) + DoubleWord(carry)
-      carry = Word(z shr WordBitSize)
-      if j != 0:
-        r[j-1] = Word(z) and MaxWord
-
-    r_hi += carry
-    r[^1] = r_hi and MaxWord
-    r_hi = r_hi shr WordBitSize
-
-  # If the extra word is not zero or if r-M does not borrow (i.e. r > M)
-  # Then substract M
-  discard r.sub(M, r_hi.isNonZero() or not r.sub(M, CtFalse))
+  let nLen = N.numLimbs()
+  for i in countdown(nLen, 1):
+    a.shlAddMod(Zero, N)

@@ -23,7 +23,9 @@
 import
   ../primitives/constant_time,
   ../config/[common, curves],
-  ./bigints_checked, ./precomputed
+  ./bigints_checked,
+  # TODO: should be a const/proc in curves.nim
+  ./precomputed
 
 # type
 #   `Fq`*[C: static Curve] = object
@@ -51,8 +53,7 @@ debug:
 
 func fromBig*(T: type Fq, src: BigInt): T =
   ## Convert a BigInt to its Montgomery form
-  result.mres = src
-  result.mres.unsafeMontyResidue(Fq.C.Mod)
+  result.mres.unsafeMontyResidue(src, Fq.C.Mod.mres, r2mod(Fq.C.Mod.mres), neginvModWord(Fq.C.Mod.mres))
 
 func toBig*(src: Fq): auto =
   ## Convert a finite-field element to a BigInt in natral representation
