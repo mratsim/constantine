@@ -131,3 +131,32 @@ macro getR2modP*(C: static Curve): untyped =
 macro getNegInvModWord*(C: static Curve): untyped =
   ## Get the Montgomery "-1/P[0] mod 2^WordBitSize" constant associated to a curve field modulus
   result = bindSym($C & "_NegInvModWord")
+
+# ############################################################
+#
+#                Debug info printed at compile-time
+#
+# ############################################################
+
+macro debugConsts(): untyped =
+  let curves = bindSym("Curve")
+  let E = curves.getImpl[2]
+
+  result = newStmtList()
+  for i in 1 ..< E.len:
+    let curve = E[i]
+    let curveName = $curve
+    let modulus = bindSym(curveName & "_Modulus")
+    let r2modp = bindSym(curveName & "_R2modP")
+    let negInvModWord = bindSym(curveName & "_NegInvModWord")
+
+    result.add quote do:
+      echo "Curve ", `curveName`,':'
+      echo "  Field Modulus:                 ", `modulus`
+      echo "  Montgomery R² (mod P):         ", `r2modp`
+      echo "  Montgomery -1/P[0] (mod 2^", WordBitSize, "): ", `negInvModWord`
+  result.add quote do:
+    echo "----------------------------------------------------------------------------"
+
+debug:
+  debugConsts()

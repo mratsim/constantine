@@ -330,7 +330,6 @@ func fromHex*(T: type BigInt, s: string): T =
   # 1. Convert to canonical uint
   const canonLen = (T.bits + 8 - 1) div 8
   var bytes: array[canonLen, byte]
-  debugEcho "canonLen: ", canonLen
   hexToPaddedByteArray(s, bytes, littleEndian)
 
   # 2. Convert canonical uint to Big Int
