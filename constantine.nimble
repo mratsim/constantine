@@ -17,7 +17,7 @@ proc test(fakeCurves: string, path: string, lang = "c") =
 ### tasks
 task test, "Run all tests":
   test "",                  "tests/test_primitives.nim"
-  test "",                  "tests/test_io.nim"
+  test "",                  "tests/test_io_bigints.nim"
   test "",                  "tests/test_bigints.nim"
   test "",                  "tests/test_bigints_multimod.nim"
   test "",                  "tests/test_bigints_vs_gmp.nim"

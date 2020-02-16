@@ -273,7 +273,7 @@ func hexToPaddedByteArray(hexStr: string, output: var openArray[byte], order: st
   let maxStrSize = output.len * 2
   let size = hexStr.len - skip - nonBlanksCount
 
-  doAssert size <= maxStrSize
+  doAssert size <= maxStrSize, "size: " & $size & " (without blanks or prefix), maxSize: " & $maxStrSize
 
   if size < maxStrSize:
     # include extra byte if odd length
@@ -330,6 +330,7 @@ func fromHex*(T: type BigInt, s: string): T =
   # 1. Convert to canonical uint
   const canonLen = (T.bits + 8 - 1) div 8
   var bytes: array[canonLen, byte]
+  debugEcho "canonLen: ", canonLen
   hexToPaddedByteArray(s, bytes, littleEndian)
 
   # 2. Convert canonical uint to Big Int
