@@ -261,7 +261,7 @@ proc main() =
           # Check equality when converting back to natural domain
           new_x == 1'u64 shl 61 - 2
 
-    test "Multiplication mod 101":
+    test "Multiplication mod 2^61 - 1":
       block:
         var x, y, z: Fq[Mersenne61]
 
