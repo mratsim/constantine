@@ -233,7 +233,7 @@ func add*(a: BigIntViewMut, b: BigIntViewAny, ctl: CTBool[Word]): CTBool[Word] =
   for i in 0 ..< a.numLimbs():
     let new_a = a[i] + b[i] + Word(result)
     result = new_a.isMsbSet()
-    a[i] = ctl.mux(new_a and MaxWord, a[i])
+    a[i] = ctl.cmov(new_a and MaxWord, a[i])
 
 func sub*(a: BigIntViewMut, b: BigIntViewAny, ctl: CTBool[Word]): CTBool[Word] =
   ## Constant-time big integer in-place optional substraction
@@ -247,7 +247,7 @@ func sub*(a: BigIntViewMut, b: BigIntViewAny, ctl: CTBool[Word]): CTBool[Word] =
   for i in 0 ..< a.numLimbs():
     let new_a = a[i] - b[i] - Word(result)
     result = new_a.isMsbSet()
-    a[i] = ctl.mux(new_a and MaxWord, a[i])
+    a[i] = ctl.cmov(new_a and MaxWord, a[i])
 
 # ############################################################
 #
@@ -306,9 +306,9 @@ func shlAddMod(a: BigIntViewMut, c: Word, M: BigIntViewConst) =
       a_lo = (a0 shl WordBitSize) or a1
     var q, r: Word
     unsafeDiv2n1n(q, r, a_hi, a_lo, m0)            # Estimate quotient
-    q = mux(                                       # If n_hi == divisor
+    q = cmov(                                       # If n_hi == divisor
           a0 == m0, MaxWord,                       # Quotient == MaxWord (0b0111...1111)
-          mux(
+          cmov(
             q.isZero, Zero,                        # elif q == 0, true quotient = 0
             q - One                                # else instead of being of by 0, 1 or 2
           )                                        # we returning q-1 to be off by -1, 0 or 1
@@ -332,7 +332,7 @@ func shlAddMod(a: BigIntViewMut, c: Word, M: BigIntViewConst) =
         carry += Word(a[i].isMsbSet)               # Adjust if borrow
         a[i] = a[i] and MaxWord                    # Normalize to u63
 
-      over_p = mux(
+      over_p = cmov(
                 a[i] == M[i], over_p,
                 a[i] > M[i]
               )
@@ -392,6 +392,13 @@ func reduce*(r: BigIntViewMut, a: BigIntViewAny, M: BigIntViewConst) =
 #                 Montgomery Arithmetic
 #
 # ############################################################
+
+# TODO: when not optimizing for code-size we can benefit from
+#       specialized implementations of
+#       - Montgomery Multiplication by 1 (redc)
+#       - Montgomery squaring
+#       - Almost Montgomery Multiplication for Modular exponentiation:
+#         https://eprint.iacr.org/2011/239.pdf
 
 template wordMul(a, b: Word): Word =
   (a * b) and MaxWord

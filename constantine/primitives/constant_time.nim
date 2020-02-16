@@ -100,7 +100,7 @@ template `$`*(x: CTBool): string =
 # Note that templates duplicate their input parameters.
 # If a param is used multiple times, it **must** be `let` assigned first
 # to avoid duplicate computation or duplicate side-effect.
-# We append a mnemonic like `mux` or `LT` to help inspecting the C code
+# We append a mnemonic like `cmov` or `LT` to help inspecting the C code
 
 template fmap[T: Ct](x: T, op: untyped, y: T): T =
   ## Unwrap x and y from their distinct type
@@ -208,8 +208,8 @@ template `<=`*[T: Ct](x, y: T): CTBool[T] =
 template `xor`*[T: Ct](x, y: CTBool[T]): CTBool[T] =
   CTBool[T](noteq(T(x), T(y)))
 
-template mux*[T: Ct](ctl: CTBool[T], x, y: T): T =
-  ## Multiplexer / selector
+template cmov*[T: Ct](ctl: CTBool[T], x, y: T): T =
+  ## Conditional Move / Multiplexer / selector /
   ## Returns x if ctl is true
   ## else returns y
   ## So equivalent to ctl? x: y
@@ -222,19 +222,19 @@ template mux*[T: Ct](ctl: CTBool[T], x, y: T): T =
   #
   # TODO: assembly fastpath for conditional mov
   let # Templates duplicate input params code
-    x_Mux = x
-    y_Mux = y
-  y_Mux xor (-T(ctl) and (x_Mux xor y_Mux))
+    x_cmov = x
+    y_cmov = y
+  y_cmov xor (-T(ctl) and (x_cmov xor y_cmov))
 
-template mux*[T: CTBool](ctl: CTBool, x, y: T): T =
+template cmov*[T: CTBool](ctl: CTBool, x, y: T): T =
   ## Multiplexer / selector
   ## Returns x if ctl is true
   ## else returns y
   ## So equivalent to ctl? x: y
   let # Templates duplicate input params code
-    x_Mux = x
-    y_Mux = y
-  T(T.T(y_Mux) xor (-T.T(ctl) and T.T(x_Mux xor y_Mux)))
+    x_cmov = x
+    y_cmov = y
+  T(T.T(y_cmov) xor (-T.T(ctl) and T.T(x_cmov xor y_cmov)))
 
 # ############################################################
 #
