@@ -31,7 +31,7 @@ macro randomTests(numTests: static int, curveSym, body: untyped): untyped =
   result = newStmtList()
 
   for _ in 0 ..< numTests:
-    let curve = RNG.rand(Curve.low .. Curve.high)
+    let curve = RNG.rand([BN254, BLS12_381])
 
     result.add quote do:
       block:
@@ -67,8 +67,6 @@ proc main() =
   randomTests(128, curve):
     # echo "--------------------------------------------------------------------------------"
     echo "Testing: random input on ", $curve
-
-    static: echo typeof(CurveParams[curve])
 
     const bits = CurveParams[curve][0]
 
