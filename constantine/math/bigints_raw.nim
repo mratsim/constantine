@@ -217,6 +217,16 @@ func setZero*(a: BigIntViewMut) =
   ## It's bit size is unchanged
   zeroMem(a[0].unsafeAddr, a.numLimbs() * sizeof(Word))
 
+
+func cmov*(a: BigIntViewMut, b: BigIntViewAny, ctl: CTBool[Word]) =
+  ## Constant-time conditional copy
+  ## If ctl is true: b is copied into a
+  ## if ctl is false: b is not copied and a is untouched
+  ## Time and memory accesses are the same whether a copy occurs or not
+  checkMatchingBitlengths(a, b)
+  for i in 0 ..< a.numLimbs():
+    a[i] = ctl.mux(b[i], a[i])
+
 # The arithmetic primitives all accept a control input that indicates
 # if it is a placebo operation. It stills performs the
 # same memory accesses to be side-channel attack resistant.
