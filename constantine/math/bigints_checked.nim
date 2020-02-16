@@ -72,6 +72,18 @@ debug:
       accum = accum or (a.limbs[i] xor b.limbs[i])
     result = accum.isZero
 
+  func `$`*(a: BigInt): string =
+    result = "BigInt["
+    result.add $BigInt.bits
+    result.add "](bitLength: "
+    result.add $a.bitLength
+    result.add ", limbs: ["
+    result.add $BaseType(a.limbs[0])
+    for i in 1 ..< a.limbs.len:
+      result.add ", "
+      result.add $BaseType(a.limbs[i])
+    result.add "])"
+
 # No exceptions allowed
 {.push raises: [].}
 {.push inline.}

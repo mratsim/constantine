@@ -58,6 +58,12 @@ else:
     curve Fake101:
       bitsize: 7
       modulus: "0x65" # 101 in hex
+    curve Mersenne61:
+      bitsize: 61
+      modulus: "0x1fffffffffffffff" # 2^61 - 1
+    curve Mersenne127:
+      bitsize: 127
+      modulus: "0x7fffffffffffffffffffffffffffffff" # 2^127 - 1
 
 # ############################################################
 #

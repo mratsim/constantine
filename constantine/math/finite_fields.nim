@@ -39,6 +39,12 @@ debug:
     ## Returns true if 2 big ints are equal
     a.mres == b.mres
 
+  func `$`*[C: static Curve](a: Fq[C]): string =
+    result = "Fq[" & $C
+    result.add "]("
+    result.add $a.mres
+    result.add ')'
+
 # No exceptions allowed
 {.push raises: [].}
 {.push inline.}
