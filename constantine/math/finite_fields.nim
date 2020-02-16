@@ -49,11 +49,11 @@ debug:
 #
 # ############################################################
 
-func fromBig*(T: type Fq, src: BigInt): T =
+func fromBig*[C: static Curve](T: type Fq[C], src: BigInt): Fq[C] {.noInit.} =
   ## Convert a BigInt to its Montgomery form
-  result.mres.unsafeMontyResidue(src, Fq.C.Mod.mres, Fq.C.getR2modP(), Fq.C.getNegInvModWord())
+  result.mres.unsafeMontyResidue(src, C.Mod.mres, C.getR2modP(), C.getNegInvModWord())
 
-func toBig*(src: Fq): auto =
+func toBig*(src: Fq): auto {.noInit.} =
   ## Convert a finite-field element to a BigInt in natral representation
   result = src.mres
   result.unsafeRedC(Fq.C.Mod.mres, Fq.C.getNegInvModWord())

@@ -120,14 +120,7 @@ func unsafeMontyResidue*[mBits](mres: var BigInt[mBits], a, N, r2modN: BigInt[mB
   ## Caller must take care of properly switching between
   ## the natural and montgomery domain.
   ## Nesting Montgomery form is possible by applying this function twice.
-  # TODO: benchmark
-  when true:
-    # Montgomery multiplication based
-    montyResidue(mres.view, a.view, N.view, r2modN.view, Word(negInvModWord))
-  else:
-    # Modular left shift based
-    mres = a
-    montyResidue(mres.view, N.view)
+  montyResidue(mres.view, a.view, N.view, r2modN.view, Word(negInvModWord))
 
 func unsafeRedc*[mBits](mres: var BigInt[mBits], N: BigInt[mBits], negInvModWord: static BaseType) =
   ## Convert a BigInt from its Montgomery n-residue form
