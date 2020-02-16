@@ -448,7 +448,7 @@ func montyMul*(
   # Then substract M
   discard r.sub(M, r_hi.isNonZero() or not r.sub(M, CtFalse))
 
-func redc*(a: BigIntViewMut, N: BigIntViewConst, negInvModWord: Word) =
+func redc*(r: BigIntViewMut, a: BigIntViewAny, one, N: BigIntViewConst, negInvModWord: Word) {.inline.} =
   ## Transform a bigint ``a`` from it's Montgomery N-residue representation (mod N)
   ## to the regular natural representation (mod N)
   ##
@@ -471,25 +471,12 @@ func redc*(a: BigIntViewMut, N: BigIntViewConst, negInvModWord: Word) =
   checkOddModulus(N)
   checkMatchingBitlengths(a, N)
 
-  let nLen = N.numLimbs()
-  for i in 0 ..< nLen:
-
-    let z0 = wordMul(a[0], negInvModWord)
-    var carry = DoubleWord(0)
-
-    for j in 0 ..< nLen:
-      let z = DoubleWord(a[i]) + unsafeExtPrecMul(z0, N[i]) + carry
-      carry = z shr WordBitSize
-      if j != 0:
-        a[j] = Word(z) and MaxWord
-
-    a[^1] = Word(carry)
-
-# TODO: benchmark Montgomery Multiplication vs Shift-Left (after constant-time division)
+  # TODO: This is a Montgomery multiplication by 1 and can be specialized
+  montyMul(r, a, one, N, negInvModWord)
 
 func montyResidue*(
        r: BigIntViewMut, a: BigIntViewAny,
-       N, r2modN: BigIntViewConst, negInvModWord: Word) =
+       N, r2modN: BigIntViewConst, negInvModWord: Word) {.inline.} =
   ## Transform a bigint ``a`` from it's natural representation (mod N)
   ## to a the Montgomery n-residue representation
   ##
@@ -512,27 +499,3 @@ func montyResidue*(
   checkMatchingBitlengths(a, N)
 
   montyMul(r, a, r2ModN, N, negInvModWord)
-
-func montyResidue*(a: BigIntViewMut, N: BigIntViewConst) =
-  ## Transform a bigint ``a`` from it's natural representation (mod N)
-  ## to a the Montgomery n-residue representation
-  ##
-  ## Modular shift - based
-  ##
-  ## with W = N.numLimbs()
-  ## and R = (2^WordBitSize)^W
-  ##
-  ## Does "a * R (mod N)"
-  ##
-  ## `a`: The source BigInt in the natural representation. `a` in [0, N) range
-  ## `N`: The field modulus. N must be odd.
-  ##
-  ## Important: `a` is overwritten
-  # Reference: https://eprint.iacr.org/2017/1057.pdf
-  checkValidModulus(N)
-  checkOddModulus(N)
-  checkMatchingBitlengths(a, N)
-
-  let nLen = N.numLimbs()
-  for i in countdown(nLen, 1):
-    a.shlAddMod(Zero, N)

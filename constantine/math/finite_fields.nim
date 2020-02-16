@@ -57,12 +57,17 @@ debug:
 
 func fromBig*[C: static Curve](T: type Fq[C], src: BigInt): Fq[C] {.noInit.} =
   ## Convert a BigInt to its Montgomery form
-  result.mres.unsafeMontyResidue(src, C.Mod.mres, C.getR2modP(), C.getNegInvModWord())
+  result.mres.montyResidue(src, C.Mod.mres, C.getR2modP(), C.getNegInvModWord())
+
+func fromBig*[C: static Curve](dst: var Fq[C], src: BigInt) {.noInit.} =
+  ## Convert a BigInt to its Montgomery form
+  dst.mres.montyResidue(src, C.Mod.mres, C.getR2modP(), C.getNegInvModWord())
 
 func toBig*(src: Fq): auto {.noInit.} =
   ## Convert a finite-field element to a BigInt in natral representation
-  result = src.mres
-  result.unsafeRedC(Fq.C.Mod.mres, Fq.C.getNegInvModWord())
+  var r {.noInit.}: typeof(src.mres)
+  r.redc(src.mres, Fq.C.Mod.mres, Fq.C.getNegInvModWord())
+  return r
 
 # ############################################################
 #

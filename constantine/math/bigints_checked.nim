@@ -65,6 +65,8 @@ template view*(a: var BigInt): BigIntViewMut =
   BigIntViewMut(cast[BigIntView](a.addr))
 
 debug:
+  import strutils
+
   func `==`*(a, b: BigInt): CTBool[Word] =
     ## Returns true if 2 big ints are equal
     var accum: Word
@@ -78,10 +80,10 @@ debug:
     result.add "](bitLength: "
     result.add $a.bitLength
     result.add ", limbs: ["
-    result.add $BaseType(a.limbs[0])
+    result.add $BaseType(a.limbs[0]) & " (0x" & toHex(BaseType(a.limbs[0])) & ')'
     for i in 1 ..< a.limbs.len:
       result.add ", "
-      result.add $BaseType(a.limbs[i])
+      result.add $BaseType(a.limbs[i]) & " (0x" & toHex(BaseType(a.limbs[i])) & ')'
     result.add "])"
 
 # No exceptions allowed
@@ -123,7 +125,7 @@ func reduce*[aBits, mBits](r: var BigInt[mBits], a: BigInt[aBits], M: BigInt[mBi
   # pass a pointer+length to a fixed session of the BSS.
   reduce(r.view, a.view, M.view)
 
-func unsafeMontyResidue*[mBits](mres: var BigInt[mBits], a, N, r2modN: BigInt[mBits], negInvModWord: static BaseType) =
+func montyResidue*[mBits](mres: var BigInt[mBits], a, N, r2modN: BigInt[mBits], negInvModWord: static BaseType) =
   ## Convert a BigInt from its natural representation
   ## to the Montgomery n-residue form
   ##
@@ -134,7 +136,7 @@ func unsafeMontyResidue*[mBits](mres: var BigInt[mBits], a, N, r2modN: BigInt[mB
   ## Nesting Montgomery form is possible by applying this function twice.
   montyResidue(mres.view, a.view, N.view, r2modN.view, Word(negInvModWord))
 
-func unsafeRedc*[mBits](mres: var BigInt[mBits], N: BigInt[mBits], negInvModWord: static BaseType) =
+func redc*[mBits](r: var BigInt[mBits], a, N: BigInt[mBits], negInvModWord: static BaseType) =
   ## Convert a BigInt from its Montgomery n-residue form
   ## to the natural representation
   ##
@@ -142,7 +144,12 @@ func unsafeRedc*[mBits](mres: var BigInt[mBits], N: BigInt[mBits], negInvModWord
   ##
   ## Caller must take care of properly switching between
   ## the natural and montgomery domain.
-  redc(mres.view, N.view, Word(negInvModWord))
+  let one = block:
+    var one: BigInt[mBits]
+    one.setInternalBitLength()
+    one.limbs[0] = Word(1)
+    one
+  redc(r.view, a.view, one.view, N.view, Word(negInvModWord))
 
 func montyMul*[mBits](r: var BigInt[mBits], a, b, M: BigInt[mBits], negInvModWord: static BaseType) =
   ## Compute r <- a*b (mod M) in the Montgomery domain

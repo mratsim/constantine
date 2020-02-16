@@ -161,7 +161,9 @@ func r2mod*(M: BigInt): BigInt =
   const
     w = M.limbs.len
     msb = M.bits-1 - WordBitSize * (w - 1)
+    start = (w-1)*WordBitSize + msb
+    stop = 2*WordBitSize*w
 
   result.limbs[^1] = Word(1 shl msb) # C0 = 2^(wn-1), the power of 2 immediatly less than the modulus
-  for _ in (w-1)*WordBitSize + msb ..< w * WordBitSize * 2:
+  for _ in start ..< stop:
     result.doubleMod(M)

@@ -52,6 +52,9 @@ when not defined(testingCurves):
       bitsize: 381
       modulus: "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab"
       # Equation: y^2 = x^3 + 4
+    curve P256: # secp256r1 / NIST P-256
+      bitsize: 256
+      modulus: "0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff"
 else:
   # Fake curve for testing field arithmetic
   declareCurves:
@@ -64,6 +67,9 @@ else:
     curve Mersenne127:
       bitsize: 127
       modulus: "0x7fffffffffffffffffffffffffffffff" # 2^127 - 1
+    curve P256: # secp256r1 / NIST P-256
+      bitsize: 256
+      modulus: "0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff"
 
 # ############################################################
 #
