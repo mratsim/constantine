@@ -169,7 +169,7 @@ proc main() =
         bool(ct(10'u32) >= ct(5'u32)) == true
         bool(ct(10'u32) >= ct(0xFFFFFFFF'u32)) == false
 
-    test "Multiplexer/selector - cmov(ctl, x, y) <=> ctl? x: y":
+    test "Multiplexer/selector - mux(ctl, x, y) <=> ctl? x: y":
       let u = 10'u32.ct
       let v = 20'u32.ct
       let w = 5'u32.ct
@@ -178,13 +178,13 @@ proc main() =
       let n = cfalse(uint32)
 
       check:
-        bool(cmov(y, u, v) == u)
-        bool(cmov(n, u, v) == v)
+        bool(mux(y, u, v) == u)
+        bool(mux(n, u, v) == v)
 
-        bool(cmov(y, u, w) == u)
-        bool(cmov(n, u, w) == w)
+        bool(mux(y, u, w) == u)
+        bool(mux(n, u, w) == w)
 
-        bool(cmov(y, v, w) == v)
-        bool(cmov(n, v, w) == w)
+        bool(mux(y, v, w) == v)
+        bool(mux(n, v, w) == w)
 
 main()
