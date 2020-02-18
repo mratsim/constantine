@@ -57,6 +57,13 @@ proc main() =
           check: x_bytes == r_bytes
 
     test "Round trip on elliptic curve constants":
+      block: # Secp256r1 - NIST P-256
+        const p = "0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff"
+        let x = BigInt[256].fromHex(p)
+        let hex = x.toHex(bigEndian)
+
+        check: p == hex
+
       block: # Secp256k1 - https://en.bitcoin.it/wiki/Secp256k1
         const p = "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f"
         let x = BigInt[256].fromHex(p)

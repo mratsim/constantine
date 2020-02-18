@@ -29,12 +29,13 @@ func fromRawUintLE(
         src: openarray[byte]) =
   ## Parse an unsigned integer from its canonical
   ## little-endian unsigned representation
-  ## And store it into a BigInt of size bits
+  ## and store it into a BigInt
   ##
   ## Constant-Time:
   ##   - no leaks
   ##
   ## Can work at compile-time
+  # TODO: error on destination to small
 
   var
     dst_idx = 0
@@ -58,10 +59,47 @@ func fromRawUintLE(
   if dst_idx < dst.limbs.len:
     dst.limbs[dst_idx] = acc
 
+func fromRawUintBE(
+        dst: var BigInt,
+        src: openarray[byte]) =
+  ## Parse an unsigned integer from its canonical
+  ## big-endian unsigned representation (octet string)
+  ## and store it into a BigInt.
+  ##
+  ## In cryptography specifications, this is often called
+  ## "Octet string to Integer"
+  ##
+  ## Constant-Time:
+  ##   - no leaks
+  ##
+  ## Can work at compile-time
+
+  var
+    dst_idx = 0
+    acc = Zero
+    acc_len = 0
+
+  for src_idx in countdown(src.len-1, 0):
+    let src_byte = Word(src[src_idx])
+
+    # buffer reads
+    acc = acc or (src_byte shl acc_len)
+    acc_len += 8 # We count bit by bit
+
+    # if full, dump
+    if acc_len >= WordBitSize:
+      dst.limbs[dst_idx] = acc and MaxWord
+      inc dst_idx
+      acc_len -= WordBitSize
+      acc = src_byte shr (8 - acc_len)
+
+  if dst_idx < dst.limbs.len:
+    dst.limbs[dst_idx] = acc
+
 func fromRawUint*(
         dst: var BigInt,
         src: openarray[byte],
-        srcEndianness: static Endianness) {.inline.}=
+        srcEndianness: static Endianness) =
   ## Parse an unsigned integer from its canonical
   ## big-endian or little-endian unsigned representation
   ## And store it into a BigInt of size `bits`
@@ -75,7 +113,7 @@ func fromRawUint*(
   when srcEndianness == littleEndian:
     dst.fromRawUintLE(src)
   else:
-    {.error: "Not implemented at the moment".}
+    dst.fromRawUintBE(src)
   dst.setInternalBitLength()
 
 func fromRawUint*(
@@ -95,14 +133,14 @@ func fromRawUint*(
 
 func fromUint*(
         T: type BigInt,
-        src: SomeUnsignedInt): T =
+        src: SomeUnsignedInt): T {.inline.}=
   ## Parse a regular unsigned integer
   ## and store it into a BigInt of size `bits`
   result.fromRawUint(cast[array[sizeof(src), byte]](src), cpuEndian)
 
 func fromUint*(
         dst: var BigInt,
-        src: SomeUnsignedInt) =
+        src: SomeUnsignedInt) {.inline.}=
   ## Parse a regular unsigned integer
   ## and store it into a BigInt of size `bits`
   dst.fromRawUint(cast[array[sizeof(src), byte]](src), cpuEndian)
@@ -131,9 +169,9 @@ template littleEndianXX[T: uint16 or uint32 or uint64](outp: pointer, inp: ptr T
 
 func serializeRawUintLE(
         dst: var openarray[byte],
-        src: BigInt) {.inline.}=
+        src: BigInt) =
   ## Serialize a bigint into its canonical little-endian representation
-  ## I.e least significant bit is aligned to buffer boundary
+  ## I.e least significant bit first
 
   var
     src_idx, dst_idx = 0
@@ -175,6 +213,57 @@ func serializeRawUintLE(
             dst[dst_idx+i] = byte(lo shr ((tail-i)*8))
         return
 
+func serializeRawUintBE(
+        dst: var openarray[byte],
+        src: BigInt) =
+  ## Serialize a bigint into its canonical big-endian representation
+  ## (octet string)
+  ## I.e most significant bit first
+  ##
+  ## In cryptography specifications, this is often called
+  ## "Octet string to Integer"
+
+  var
+    src_idx = 0
+    dst_idx = dst.len - 1
+    acc: BaseType = 0
+    acc_len = 0
+
+  var tail = dst.len
+  while tail > 0:
+    let w = if src_idx < src.limbs.len: BaseType(src.limbs[src_idx])
+            else: 0
+    inc src_idx
+
+    if acc_len == 0:
+      # Edge case, we need to refill the buffer to output 64-bit
+      # as we can only read 63-bit per word
+      acc = w
+      acc_len = WordBitSize
+    else:
+      let lo = (w shl acc_len) or acc
+      dec acc_len
+      acc = w shr (WordBitSize - acc_len)
+
+      if tail >= sizeof(Word):
+        # Unrolled copy
+        littleEndianXX(dst[dst_idx].addr, lo.unsafeAddr)
+        dst_idx -= sizeof(Word)
+        tail -= sizeof(Word)
+      else:
+        # Process the tail and exit
+        when cpuEndian == littleEndian:
+          # When requesting little-endian on little-endian platform
+          # we can just copy each byte
+          # tail is inclusive
+          for i in 0 ..< tail:
+            dst[dst_idx-i] = byte(lo shr (i*8))
+        else: # TODO check this
+          # We need to copy from the end
+          for i in 0 ..< tail:
+            dst[dst_idx-i] = byte(lo shr ((tail-i)*8))
+        return
+
 func serializeRawUint*(
         dst: var openarray[byte],
         src: BigInt,
@@ -196,7 +285,7 @@ func serializeRawUint*(
   when dstEndianness == littleEndian:
     serializeRawUintLE(dst, src)
   else:
-    {.error: "Not implemented at the moment".}
+    serializeRawUintBE(dst, src)
 
 # ############################################################
 #
@@ -293,9 +382,10 @@ func hexToPaddedByteArray(hexStr: string, output: var openArray[byte], order: st
     shift = (shift + 4) and 4
     dstIdx += shift shr 2
 
-func toHex(bytes: openarray[byte], order: static[Endianness]): string =
+func nativeEndianToHex(bytes: openarray[byte], order: static[Endianness]): string =
   ## Convert a byte-array to its hex representation
   ## Output is in lowercase and not prefixed.
+  ## This assumes that input is in platform native endianness
   const hexChars = "0123456789abcdef"
   result = newString(2 + 2 * bytes.len)
   result[0] = '0'
@@ -330,10 +420,10 @@ func fromHex*(T: type BigInt, s: string): T =
   # 1. Convert to canonical uint
   const canonLen = (T.bits + 8 - 1) div 8
   var bytes: array[canonLen, byte]
-  hexToPaddedByteArray(s, bytes, littleEndian)
+  hexToPaddedByteArray(s, bytes, bigEndian)
 
   # 2. Convert canonical uint to Big Int
-  result.fromRawUint(bytes, littleEndian)
+  result.fromRawUint(bytes, bigEndian)
 
 func toHex*(big: BigInt, order: static Endianness = bigEndian): string =
   ## Stringify an int to hex.
@@ -351,4 +441,4 @@ func toHex*(big: BigInt, order: static Endianness = bigEndian): string =
   serializeRawUint(bytes, big, cpuEndian)
 
   # 2 Convert canonical uint to hex
-  result = bytes.toHex(order)
+  result = bytes.nativeEndianToHex(order)
