@@ -31,11 +31,14 @@ const
 
   Zero* = Word(0)
   One* = Word(1)
-  MaxWord* = (not Zero) shr 1
+  MaxWord* = (not Zero) shr (WordPhysBitSize - WordBitSize)
     ## This represents 0x7F_FF_FF_FF__FF_FF_FF_FF
     ## also 0b0111...1111
     ## This biggest representable number in our limbs.
     ## i.e. The most significant bit is never set at the end of each function
+
+template mask*(w: Word): Word =
+  w and MaxWord
 
 # ############################################################
 #

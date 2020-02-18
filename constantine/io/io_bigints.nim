@@ -51,7 +51,7 @@ func fromRawUintLE(
 
     # if full, dump
     if acc_len >= WordBitSize:
-      dst.limbs[dst_idx] = acc and MaxWord
+      dst.limbs[dst_idx] = mask(acc)
       inc dst_idx
       acc_len -= WordBitSize
       acc = src_byte shr (8 - acc_len)
@@ -88,7 +88,7 @@ func fromRawUintBE(
 
     # if full, dump
     if acc_len >= WordBitSize:
-      dst.limbs[dst_idx] = acc and MaxWord
+      dst.limbs[dst_idx] = mask(acc)
       inc dst_idx
       acc_len -= WordBitSize
       acc = src_byte shr (8 - acc_len)

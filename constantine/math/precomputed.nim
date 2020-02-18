@@ -39,14 +39,14 @@ func double(a: var BigInt): bool =
   for i in 0 ..< a.limbs.len:
     var z = BaseType(a.limbs[i]) * 2 + BaseType(result)
     result = z.isMsbSet()
-    a.limbs[i] = Word(z) and MaxWord
+    a.limbs[i] = mask(Word(z))
 
 func sub(a: var BigInt, b: BigInt, ctl: bool): bool =
   ## In-place optional substraction
   for i in 0 ..< a.limbs.len:
     let new_a = BaseType(a.limbs[i]) - BaseType(b.limbs[i]) - BaseType(result)
     result = new_a.isMsbSet()
-    a.limbs[i] = if ctl: new_a.Word and MaxWord
+    a.limbs[i] = if ctl: new_a.Word.mask()
                  else: a.limbs[i]
 
 func doubleMod(a: var BigInt, M: BigInt) =
