@@ -28,7 +28,7 @@ proc main() =
         x += y
 
         var x_bytes: array[8, byte]
-        x_bytes.serializeRawUint(x, cpuEndian)
+        x_bytes.exportRawUint(x, cpuEndian)
 
         check:
           # Check equality in the Montgomery domain
@@ -46,7 +46,7 @@ proc main() =
         x += y
 
         var x_bytes: array[8, byte]
-        x_bytes.serializeRawUint(x, cpuEndian)
+        x_bytes.exportRawUint(x, cpuEndian)
 
         check:
           # Check equality in the Montgomery domain
@@ -64,7 +64,7 @@ proc main() =
         x += y
 
         var x_bytes: array[8, byte]
-        x_bytes.serializeRawUint(x, cpuEndian)
+        x_bytes.exportRawUint(x, cpuEndian)
 
         check:
           # Check equality in the Montgomery domain
@@ -83,7 +83,7 @@ proc main() =
         x -= y
 
         var x_bytes: array[8, byte]
-        x_bytes.serializeRawUint(x, cpuEndian)
+        x_bytes.exportRawUint(x, cpuEndian)
 
         check:
           # Check equality in the Montgomery domain
@@ -101,7 +101,7 @@ proc main() =
         x -= y
 
         var x_bytes: array[8, byte]
-        x_bytes.serializeRawUint(x, cpuEndian)
+        x_bytes.exportRawUint(x, cpuEndian)
 
         check:
           # Check equality in the Montgomery domain
@@ -119,7 +119,7 @@ proc main() =
         x -= y
 
         var x_bytes: array[8, byte]
-        x_bytes.serializeRawUint(x, cpuEndian)
+        x_bytes.exportRawUint(x, cpuEndian)
 
         check:
           # Check equality in the Montgomery domain
@@ -138,7 +138,7 @@ proc main() =
         let r = x * y
 
         var r_bytes: array[8, byte]
-        r_bytes.serializeRawUint(r, cpuEndian)
+        r_bytes.exportRawUint(r, cpuEndian)
 
         check:
           # Check equality in the Montgomery domain
@@ -156,7 +156,7 @@ proc main() =
         let r = x * y
 
         var r_bytes: array[8, byte]
-        r_bytes.serializeRawUint(r, cpuEndian)
+        r_bytes.exportRawUint(r, cpuEndian)
 
         check:
           # Check equality in the Montgomery domain
@@ -175,7 +175,7 @@ proc main() =
         x += y
 
         var x_bytes: array[8, byte]
-        x_bytes.serializeRawUint(x, cpuEndian)
+        x_bytes.exportRawUint(x, cpuEndian)
         let new_x = cast[uint64](x_bytes)
 
         check:
@@ -194,7 +194,7 @@ proc main() =
         x += y
 
         var x_bytes: array[8, byte]
-        x_bytes.serializeRawUint(x, cpuEndian)
+        x_bytes.exportRawUint(x, cpuEndian)
         let new_x = cast[uint64](x_bytes)
 
         check:
@@ -213,7 +213,7 @@ proc main() =
         x += y
 
         var x_bytes: array[8, byte]
-        x_bytes.serializeRawUint(x, cpuEndian)
+        x_bytes.exportRawUint(x, cpuEndian)
         let new_x = cast[uint64](x_bytes)
 
         check:
@@ -233,7 +233,7 @@ proc main() =
         x -= y
 
         var x_bytes: array[8, byte]
-        x_bytes.serializeRawUint(x, cpuEndian)
+        x_bytes.exportRawUint(x, cpuEndian)
         let new_x = cast[uint64](x_bytes)
 
         check:
@@ -252,7 +252,7 @@ proc main() =
         x -= y
 
         var x_bytes: array[8, byte]
-        x_bytes.serializeRawUint(x, cpuEndian)
+        x_bytes.exportRawUint(x, cpuEndian)
         let new_x = cast[uint64](x_bytes)
 
         check:
@@ -272,7 +272,7 @@ proc main() =
         let r = x * y
 
         var r_bytes: array[8, byte]
-        r_bytes.serializeRawUint(r, cpuEndian)
+        r_bytes.exportRawUint(r, cpuEndian)
         let new_r = cast[uint64](r_bytes)
 
         check:
@@ -291,7 +291,7 @@ proc main() =
         let r = x * y
 
         var r_bytes: array[8, byte]
-        r_bytes.serializeRawUint(r, cpuEndian)
+        r_bytes.exportRawUint(r, cpuEndian)
         let new_r = cast[uint64](r_bytes)
 
         check:

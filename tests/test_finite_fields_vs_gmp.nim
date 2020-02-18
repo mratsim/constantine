@@ -111,7 +111,7 @@ proc main() =
     discard mpz_export(rGMP[0].addr, rW.addr, GMP_LeastSignificantWordFirst, 1, GMP_WordNativeEndian, 0, r)
 
     var rConstantine: array[len, byte]
-    serializeRawUint(rConstantine, rTest, littleEndian)
+    exportRawUint(rConstantine, rTest, littleEndian)
 
     # echo "rGMP: ", rGMP.toHex()
     # echo "rConstantine: ", rConstantine.toHex()

@@ -28,7 +28,7 @@ func fromUint*(dst: var Fq,
   let raw = (type dst.mres).fromRawUint(cast[array[sizeof(src), byte]](src), cpuEndian)
   dst.fromBig(raw)
 
-func serializeRawUint*(dst: var openarray[byte],
+func exportRawUint*(dst: var openarray[byte],
                        src: Fq,
                        dstEndianness: static Endianness) =
   ## Serialize a finite field element to its canonical big-endian or little-endian
@@ -40,7 +40,7 @@ func serializeRawUint*(dst: var openarray[byte],
   ## If the buffer is bigger, output will be zero-padded left for big-endian
   ## or zero-padded right for little-endian.
   ## I.e least significant bit is aligned to buffer boundary
-  serializeRawUint(dst, src.toBig(), dstEndianness)
+  exportRawUint(dst, src.toBig(), dstEndianness)
 
 func toHex*(f: Fq, order: static Endianness = bigEndian): string =
   ## Stringify a finite field element to hex.
@@ -51,4 +51,4 @@ func toHex*(f: Fq, order: static Endianness = bigEndian): string =
   ##
   ## CT:
   ##   - no leaks
-  result = f.toBig().toHex()
+  result = f.toBig().toHex(order)

@@ -11,7 +11,7 @@
 #   - Burning memory to ensure secrets are not left after dealloc.
 
 import
-  endians,
+  ./endians2,
   ../primitives/constant_time,
   ../math/bigints_checked,
   ../config/common
@@ -151,23 +151,16 @@ func fromUint*(
 #
 # ############################################################
 
-template bigEndianXX[T: uint16 or uint32 or uint64](outp: pointer, inp: ptr T) =
-  when T is uint64:
-    bigEndian64(outp, inp)
-  elif T is uint32:
-    bigEndian32(outp, inp)
-  elif T is uint16:
-    bigEndian16(outp, inp)
+template blobFrom*(dst: var openArray[byte], src: SomeEndianInt, startIdx: int, endian: static Endianness) =
+  ## Write an integer into a raw binary blob
+  ## Swapping endianness if needed
+  let s = when endian == cpuEndian: src
+          else: swapBytes(src)
 
-template littleEndianXX[T: uint16 or uint32 or uint64](outp: pointer, inp: ptr T) =
-  when T is uint64:
-    littleEndian64(outp, inp)
-  elif T is uint32:
-    littleEndian32(outp, inp)
-  elif T is uint16:
-    littleEndian16(outp, inp)
+  for i in 0 ..< sizeof(src):
+    dst[startIdx+i] = byte((s shr (i * 8)))
 
-func serializeRawUintLE(
+func exportRawUintLE(
         dst: var openarray[byte],
         src: BigInt) =
   ## Serialize a bigint into its canonical little-endian representation
@@ -196,7 +189,7 @@ func serializeRawUintLE(
 
       if tail >= sizeof(Word):
         # Unrolled copy
-        littleEndianXX(dst[dst_idx].addr, lo.unsafeAddr)
+        dst.blobFrom(src = lo, dst_idx, littleEndian)
         dst_idx += sizeof(Word)
         tail -= sizeof(Word)
       else:
@@ -213,7 +206,7 @@ func serializeRawUintLE(
             dst[dst_idx+i] = byte(lo shr ((tail-i)*8))
         return
 
-func serializeRawUintBE(
+func exportRawUintBE(
         dst: var openarray[byte],
         src: BigInt) =
   ## Serialize a bigint into its canonical big-endian representation
@@ -247,7 +240,7 @@ func serializeRawUintBE(
 
       if tail >= sizeof(Word):
         # Unrolled copy
-        littleEndianXX(dst[dst_idx].addr, lo.unsafeAddr)
+        dst.blobFrom(src = lo, dst_idx, littleEndian)
         dst_idx -= sizeof(Word)
         tail -= sizeof(Word)
       else:
@@ -264,7 +257,7 @@ func serializeRawUintBE(
             dst[dst_idx-i] = byte(lo shr ((tail-i)*8))
         return
 
-func serializeRawUint*(
+func exportRawUint*(
         dst: var openarray[byte],
         src: BigInt,
         dstEndianness: static Endianness) =
@@ -283,9 +276,9 @@ func serializeRawUint*(
     zeroMem(dst, dst.len)
 
   when dstEndianness == littleEndian:
-    serializeRawUintLE(dst, src)
+    exportRawUintLE(dst, src)
   else:
-    serializeRawUintBE(dst, src)
+    exportRawUintBE(dst, src)
 
 # ############################################################
 #
@@ -438,7 +431,7 @@ func toHex*(big: BigInt, order: static Endianness = bigEndian): string =
   # 1. Convert Big Int to canonical uint
   const canonLen = (big.bits + 8 - 1) div 8
   var bytes: array[canonLen, byte]
-  serializeRawUint(bytes, big, cpuEndian)
+  exportRawUint(bytes, big, cpuEndian)
 
   # 2 Convert canonical uint to hex
   result = bytes.nativeEndianToHex(order)

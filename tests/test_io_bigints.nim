@@ -34,7 +34,7 @@ proc main() =
         let big = BigInt[64].fromRawUint(x_bytes, littleEndian) # It's fine even on big-endian platform. We only want the byte-pattern
 
         var r_bytes: array[8, byte]
-        serializeRawUint(r_bytes, big, littleEndian)
+        exportRawUint(r_bytes, big, littleEndian)
         check: x_bytes == r_bytes
 
       block: # "Little-endian" - single random
@@ -43,7 +43,7 @@ proc main() =
         let big = BigInt[64].fromRawUint(x_bytes, littleEndian) # It's fine even on big-endian platform. We only want the byte-pattern
 
         var r_bytes: array[8, byte]
-        serializeRawUint(r_bytes, big, littleEndian)
+        exportRawUint(r_bytes, big, littleEndian)
         check: x_bytes == r_bytes
 
       block: # "Little-endian" - 10 random cases
@@ -53,7 +53,7 @@ proc main() =
           let big = BigInt[64].fromRawUint(x_bytes, littleEndian) # It's fine even on big-endian platform. We only want the byte-pattern
 
           var r_bytes: array[8, byte]
-          serializeRawUint(r_bytes, big, littleEndian)
+          exportRawUint(r_bytes, big, littleEndian)
           check: x_bytes == r_bytes
 
     test "Round trip on elliptic curve constants":
