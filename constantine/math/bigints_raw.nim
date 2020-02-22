@@ -606,7 +606,9 @@ func montyPowPrologue(
        a: BigIntViewMut, M, one: BigIntViewConst,
        negInvModWord: Word,
        scratchspace: openarray[BigIntViewMut]
-     ): tuple[window: uint, bigIntSize: int] =
+     ): tuple[window: uint, bigIntSize: int] {.inline.}=
+  # Due to the high number of parameters,
+  # forcing this inline actually reduces the code size
 
   result.window = scratchspace.len.getWindowLen()
   result.bigIntSize = a.numLimbs() * sizeof(Word) + sizeof(BigIntView.bitLength)
@@ -637,13 +639,15 @@ func montyPowSquarings(
         bigIntSize: int,
         acc, acc_len: var uint,
         e: var int,
-      ): tuple[k, bits: uint] =
+      ): tuple[k, bits: uint] {.inline.}=
   ## Squaring step of exponentiation by squaring
   ## Get the next k bits in range [1, window)
   ## Square k times
   ## Returns the number of squarings done and the corresponding bits
   ##
   ## Updates iteration variables and accumulators
+  # Due to the high number of parameters,
+  # forcing this inline actually reduces the code size
 
   # Get the next bits
   var k = window
