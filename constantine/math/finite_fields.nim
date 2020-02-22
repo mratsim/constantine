@@ -135,3 +135,17 @@ func pow*(a: var Fq, exponent: BigInt) =
   ## ``exponent``: a big integer
   const windowSize = 5 # TODO: find best window size for each curves
   a.mres.montyPow(exponent, Fq.C.Mod.mres, Fq.C.getMontyOne(), Fq.C.getNegInvModWord(), windowSize)
+
+func powUnsafeExponent*(a: var Fq, exponent: BigInt) =
+  ## Exponentiation over Fq
+  ## ``a``: a field element to be exponentiated
+  ## ``exponent``: a big integer
+  ##
+  ## Warning ⚠️ :
+  ## This is an optimization for public exponent
+  ## Otherwise bits of the exponent can be retrieved with:
+  ## - memory access analysis
+  ## - power analysis
+  ## - timing analysis
+  const windowSize = 5 # TODO: find best window size for each curves
+  a.mres.montyPowUnsafeExponent(exponent, Fq.C.Mod.mres, Fq.C.getMontyOne(), Fq.C.getNegInvModWord(), windowSize)

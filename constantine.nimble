@@ -23,3 +23,4 @@ task test, "Run all tests":
   test "",                  "tests/test_bigints_vs_gmp.nim"
   test "",                  "tests/test_finite_fields.nim"
   test "",                  "tests/test_finite_fields_vs_gmp.nim"
+  test "",                  "tests/test_finite_fields_powinv.nim"

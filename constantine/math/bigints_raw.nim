@@ -602,6 +602,69 @@ func getWindowLen(bufLen: int): uint =
   while (1 shl result) + 1 > bufLen:
     dec result
 
+func montyPowPrologue(
+       a: BigIntViewMut, M, one: BigIntViewConst,
+       negInvModWord: Word,
+       scratchspace: openarray[BigIntViewMut]
+     ): tuple[window: uint, bigIntSize: int] =
+
+  result.window = scratchspace.len.getWindowLen()
+  result.bigIntSize = a.numLimbs() * sizeof(Word) + sizeof(BigIntView.bitLength)
+
+  # Precompute window content, special case for window = 1
+  # (i.e scratchspace has only space for 2 temporaries)
+  # The content scratchspace[2+k] is set at a^k
+  # with scratchspace[0] untouched
+  if result.window == 1:
+    copyMem(pointer scratchspace[1], pointer a, result.bigIntSize)
+  else:
+    copyMem(pointer scratchspace[2], pointer a, result.bigIntSize)
+    for k in 2 ..< 1 shl result.window:
+      scratchspace[k+1].montyMul(scratchspace[k], a, M, negInvModWord)
+
+    scratchspace[1].setBitLength(bitSizeof(M))
+
+  # Set a to one
+  copyMem(pointer a, pointer one, result.bigIntSize)
+
+func montyPowSquarings(
+        a: BigIntViewMut,
+        exponent: openarray[byte],
+        M: BigIntViewConst,
+        negInvModWord: Word,
+        tmp: BigIntViewMut,
+        window: uint,
+        bigIntSize: int,
+        acc, acc_len: var uint,
+        e: var int,
+      ): tuple[k, bits: uint] =
+  ## Squaring step of exponentiation by squaring
+  ## Get the next k bits in range [1, window)
+  ## Square k times
+  ## Returns the number of squarings done and the corresponding bits
+  ##
+  ## Updates iteration variables and accumulators
+
+  # Get the next bits
+  var k = window
+  if acc_len < window:
+    if e < exponent.len:
+      acc = (acc shl 8) or exponent[e].uint
+      inc e
+      acc_len += 8
+    else: # Drained all exponent bits
+      k = acc_len
+
+  let bits = (acc shr (acc_len - k)) and ((1'u32 shl k) - 1)
+  acc_len -= k
+
+  # We have k bits and can do k squaring
+  for i in 0 ..< k:
+    tmp.montyMul(a, a, M, negInvModWord)
+    copyMem(pointer a, pointer tmp, bigIntSize)
+
+  return (k, bits)
+
 func montyPow*(
        a: BigIntViewMut,
        exponent: openarray[byte],
@@ -610,7 +673,7 @@ func montyPow*(
        scratchspace: openarray[BigIntViewMut]
       ) =
   ## Modular exponentiation r = a^exponent mod M
-  ## in the montgomery domain
+  ## in the Montgomery domain
   ##
   ## This uses fixed-window optimization if possible
   ##
@@ -635,24 +698,7 @@ func montyPow*(
   ## A window of size 5 requires (2^5 + 1)*(381 + 7)/8 = 33 * 48 bytes = 1584 bytes
   ## of scratchspace (on the stack).
 
-  let window = scratchspace.len.getWindowLen()
-  let bigIntSize = a.numLimbs() * sizeof(Word) + sizeof(BigIntView.bitLength)
-
-  # Precompute window content, special case for window = 1
-  # (i.e scratchspace has only space for 2 temporaries)
-  # The content scratchspace[2+k] is set at a^k
-  # with scratchspace[0] untouched
-  if window == 1:
-    copyMem(pointer scratchspace[1], pointer a, bigIntSize)
-  else:
-    copyMem(pointer scratchspace[2], pointer a, bigIntSize)
-    for k in 2 ..< 1 shl window:
-      scratchspace[k+1].montyMul(scratchspace[k], a, M, negInvModWord)
-
-  scratchspace[1].setBitLength(bitSizeof(M))
-
-  # Set a to one
-  copyMem(pointer a, pointer one, bigIntSize)
+  let (window, bigIntSize) = montyPowPrologue(a, M, one, negInvModWord, scratchspace)
 
   # We process bits with from most to least significant.
   # At each loop iteration with have acc_len bits in acc.
@@ -663,23 +709,12 @@ func montyPow*(
     acc, acc_len: uint
     e = 0
   while acc_len > 0 or e < exponent.len:
-    # Get the next bits
-    var k = window
-    if acc_len < window:
-      if e < exponent.len:
-        acc = (acc shl 8) or exponent[e].uint
-        inc e
-        acc_len += 8
-      else: # Drained all exponent bits
-        k = acc_len
+    let (k, bits) = montyPowSquarings(
+      a, exponent, M, negInvModWord,
+      scratchspace[0], window, bigIntSize,
+      acc, acc_len, e
+    )
 
-    let bits = (acc shr (acc_len - k)) and ((1'u32 shl k) - 1)
-    acc_len -= k
-
-    # We have k bits and can do k squaring
-    for i in 0 ..< k:
-      scratchspace[0].montyMul(a, a, M, negInvModWord)
-      copyMem(pointer a, pointer scratchspace[0], bigIntSize)
     # Window lookup: we set scratchspace[1] to the lookup value.
     # If the window length is 1, then it's already set.
     if window > 1:
@@ -694,3 +729,44 @@ func montyPow*(
     # we keep the product only if the exponent bits are not all zero
     scratchspace[0].montyMul(a, scratchspace[1], M, negInvModWord)
     a.cmov(scratchspace[0], Word(bits) != Zero)
+
+func montyPowUnsafeExponent*(
+       a: BigIntViewMut,
+       exponent: openarray[byte],
+       M, one: BigIntViewConst,
+       negInvModWord: Word,
+       scratchspace: openarray[BigIntViewMut]
+      ) =
+  ## Modular exponentiation r = a^exponent mod M
+  ## in the Montgomery domain
+  ##
+  ## Warning ⚠️ :
+  ## This is an optimization for public exponent
+  ## Otherwise bits of the exponent can be retrieved with:
+  ## - memory access analysis
+  ## - power analysis
+  ## - timing analysis
+
+  # TODO: scratchspace[1] is unused when window > 1
+
+  let (window, bigIntSize) = montyPowPrologue(
+         a, M, one, negInvModWord, scratchspace)
+
+  var
+    acc, acc_len: uint
+    e = 0
+  while acc_len > 0 or e < exponent.len:
+    let (k, bits) = montyPowSquarings(
+      a, exponent, M, negInvModWord,
+      scratchspace[0], window, bigIntSize,
+      acc, acc_len, e
+    )
+
+    ## Warning ⚠️: Exposes the exponent bits
+    if bits != 0:
+      if window > 1:
+        scratchspace[0].montyMul(a, scratchspace[1+bits], M, negInvModWord)
+      else:
+        # scratchspace[1] holds the original `a`
+        scratchspace[0].montyMul(a, scratchspace[1], M, negInvModWord)
+      copyMem(pointer a, pointer scratchspace[0], bigIntSize)

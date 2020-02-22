@@ -93,19 +93,36 @@ proc main() =
           20'u64 == r
 
     test "x^(p-2) mod p (modular inversion if p prime)":
-      var x: Fq[BLS12_381]
+      block:
+        var x: Fq[BLS12_381]
 
-      # BN254 field modulus
-      x.fromHex("0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47")
-      # BLS12-381 prime - 2
-      let exponent = BigInt[381].fromHex("0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaa9")
+        # BN254 field modulus
+        x.fromHex("0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47")
+        # BLS12-381 prime - 2
+        let exponent = BigInt[381].fromHex("0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaa9")
 
-      let expected = "0x0636759a0f3034fa47174b2c0334902f11e9915b7bd89c6a2b3082b109abbc9837da17201f6d8286fe6203caa1b9d4c8"
+        let expected = "0x0636759a0f3034fa47174b2c0334902f11e9915b7bd89c6a2b3082b109abbc9837da17201f6d8286fe6203caa1b9d4c8"
 
-      x.pow(exponent)
-      let computed = x.toHex()
+        x.pow(exponent)
+        let computed = x.toHex()
 
-      check:
-        computed == expected
+        check:
+          computed == expected
+
+      block:
+        var x: Fq[BLS12_381]
+
+        # BN254 field modulus
+        x.fromHex("0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47")
+        # BLS12-381 prime - 2
+        let exponent = BigInt[381].fromHex("0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaa9")
+
+        let expected = "0x0636759a0f3034fa47174b2c0334902f11e9915b7bd89c6a2b3082b109abbc9837da17201f6d8286fe6203caa1b9d4c8"
+
+        x.powUnsafeExponent(exponent)
+        let computed = x.toHex()
+
+        check:
+          computed == expected
 
 main()
