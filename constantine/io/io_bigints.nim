@@ -399,7 +399,7 @@ func nativeEndianToHex(bytes: openarray[byte], order: static[Endianness]): strin
 #
 # ############################################################
 
-func fromHex*(T: type BigInt, s: string): T =
+func fromHex*(T: type BigInt, s: string): T {.noInit.} =
   ## Convert a hex string to BigInt that can hold
   ## the specified number of bits
   ##

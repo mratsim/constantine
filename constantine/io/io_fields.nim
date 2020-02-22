@@ -25,7 +25,7 @@ func fromUint*(dst: var Fq,
                src: SomeUnsignedInt) =
   ## Parse a regular unsigned integer
   ## and store it into a BigInt of size `bits`
-  let raw = (type dst.mres).fromRawUint(cast[array[sizeof(src), byte]](src), cpuEndian)
+  let raw {.noinit.} = (type dst.mres).fromRawUint(cast[array[sizeof(src), byte]](src), cpuEndian)
   dst.fromBig(raw)
 
 func exportRawUint*(dst: var openarray[byte],
@@ -52,3 +52,8 @@ func toHex*(f: Fq, order: static Endianness = bigEndian): string =
   ## CT:
   ##   - no leaks
   result = f.toBig().toHex(order)
+
+func fromHex*(dst: var Fq, s: string) {.raises: [ValueError].}=
+  ## Convert a hex string to a element of Fq
+  let raw {.noinit.} = fromHex(dst.mres.typeof, s)
+  dst.fromBig(raw)
