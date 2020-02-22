@@ -70,6 +70,9 @@ else:
     curve P256: # secp256r1 / NIST P-256
       bitsize: 256
       modulus: "0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff"
+    curve BLS12_381:
+      bitsize: 381
+      modulus: "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab"
 
 # ############################################################
 #
@@ -103,22 +106,30 @@ macro genMontyMagics(T: typed): untyped =
   let E = T.getImpl[2]
   for i in 1 ..< E.len:
     let curve = E[i]
+    # const MyCurve_R2modP = r2mod(MyCurve_Modulus)
     result.add newConstStmt(
       ident($curve & "_R2modP"), newCall(
         bindSym"r2mod",
-        # The curve parser creates modulus
-        # under symbol "MyCurve_Modulus"
         nnkDotExpr.newTree(
           bindSym($curve & "_Modulus"),
           ident"mres"
         )
       )
     )
+    # const MyCurve_NegInvModWord = negInvModWord(MyCurve_Modulus)
     result.add newConstStmt(
       ident($curve & "_NegInvModWord"), newCall(
         bindSym"negInvModWord",
-        # The curve parser creates modulus
-        # under symbol "MyCurve_Modulus"
+        nnkDotExpr.newTree(
+          bindSym($curve & "_Modulus"),
+          ident"mres"
+        )
+      )
+    )
+    # const MyCurve_montyOne = montyOne(MyCurve_Modulus)
+    result.add newConstStmt(
+      ident($curve & "_MontyOne"), newCall(
+        bindSym"montyOne",
         nnkDotExpr.newTree(
           bindSym($curve & "_Modulus"),
           ident"mres"
@@ -137,6 +148,10 @@ macro getR2modP*(C: static Curve): untyped =
 macro getNegInvModWord*(C: static Curve): untyped =
   ## Get the Montgomery "-1/P[0] mod 2^WordBitSize" constant associated to a curve field modulus
   result = bindSym($C & "_NegInvModWord")
+
+macro getMontyOne*(C: static Curve): untyped =
+  ## Get one in Montgomery representation (i.e. R mod P)
+  result = bindSym($C & "_MontyOne")
 
 # ############################################################
 #

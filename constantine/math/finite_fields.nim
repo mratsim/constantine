@@ -25,6 +25,8 @@ import
   ../config/[common, curves],
   ./bigints_checked
 
+from ../io/io_bigints import exportRawUint # for "pow"
+
 # type
 #   `Fq`*[C: static Curve] = object
 #     ## All operations on a field are modulo P
@@ -126,3 +128,10 @@ func `*`*(a, b: Fq): Fq {.noInit.} =
   ## routine will zero init internally the result.
   result.mres.setInternalBitLength()
   result.mres.montyMul(a.mres, b.mres, Fq.C.Mod.mres, Fq.C.getNegInvModWord())
+
+func pow*(a: var Fq, exponent: BigInt) =
+  ## Exponentiation over Fq
+  ## ``a``: a field element to be exponentiated
+  ## ``exponent``: a big integer
+  const windowSize = 5 # TODO: find best window size for each curves
+  a.mres.montyPow(exponent, Fq.C.Mod.mres, Fq.C.getMontyOne(), Fq.C.getNegInvModWord(), windowSize)

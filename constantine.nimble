@@ -6,7 +6,7 @@ license       = "MIT or Apache License 2.0"
 srcDir        = "src"
 
 ### Dependencies
-requires "nim >= 1.0.6"
+requires "nim >= 1.1.0"
 
 ### Helper functions
 proc test(fakeCurves: string, path: string, lang = "c") =

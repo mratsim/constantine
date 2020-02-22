@@ -157,3 +157,31 @@ func montyMul*[mBits](r: var BigInt[mBits], a, b, M: BigInt[mBits], negInvModWor
   ## This resets r to zero before processing. Use {.noInit.}
   ## to avoid duplicating with Nim zero-init policy
   montyMul(r.view, a.view, b.view, M.view, Word(negInvModWord))
+
+import stew/byteutils
+
+func montyPow*[mBits, eBits: static int](
+       a: var BigInt[mBits], exponent: BigInt[eBits],
+       M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int) =
+  ## Compute a <- a^exponent (mod M)
+  ## ``a`` in the Montgomery domain
+  ## ``exponent`` is any BigInt, in the canonical domain
+  ##
+  ## This uses fixed window optimization
+  ## A window size in the range [1, 5] must be chosen
+  ##
+  ## This is constant-time: the window optimization does
+  ## not reveal the exponent bits or hamming weight
+  mixin exportRawUint # exported in io_bigints which depends on this module ...
+
+  var expBE {.noInit.}: array[(ebits + 7) div 8, byte]
+  expBE.exportRawUint(exponent, bigEndian)
+
+  const scratchLen = if windowSize == 1: 2
+                     else: (1 shl windowSize) + 1
+  var scratchSpace {.noInit.}: array[scratchLen, BigInt[mBits]]
+  var scratchPtrs {.noInit.}: array[scratchLen, BigIntViewMut]
+  for i in 0 ..< scratchLen:
+    scratchPtrs[i] = scratchSpace[i].view()
+
+  montyPow(a.view, expBE, M.view, one.view, Word(negInvModWord), scratchPtrs)

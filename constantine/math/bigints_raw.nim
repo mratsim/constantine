@@ -54,7 +54,6 @@ import
   ../primitives/extended_precision,
   ../config/common
 from sugar import distinctBase
-from bitops import countSetBits # only used on modulus and public values
 
 # ############################################################
 #
@@ -117,16 +116,6 @@ type
     ## Mutable view into a BigInt
   BigIntViewAny* = BigIntViewConst or BigIntViewMut
 
-  BigIntLeakedConst* = distinct BigIntViewConst
-    ## BigInt which information will be leaked
-    ## besides the announced bit length
-    ## This is only suitable for values
-    ## that are publicly known
-
-  SensitiveInt* = distinct int
-    ## Integer that contains sensitive information
-    ## and will not be manipulated in a constant-time manner
-
 # No exceptions allowed
 {.push raises: [].}
 
@@ -146,6 +135,7 @@ template `[]=`*(v: BigIntViewMut, limbIdx: int, val: Word) =
   distinctBase(type v)(v).limbs[limbIdx] = val
 
 template bitSizeof(v: BigIntViewAny): uint32 =
+  bind BigIntView
   distinctBase(type v)(v).bitLength
 
 const divShiftor = log2(WordPhysBitSize)
@@ -203,6 +193,10 @@ template checkWordShift(k: int) =
   debug:
     assert k <= WordBitSize, "Internal Error: the shift must be less than the word bit size"
 
+template checkPowScratchSpaceLen(len: int) =
+  ## Checks that there is a minimum of scratchspace to hold the temporaries
+  debug:
+    assert len >= 2, "Internal Error: the scratchspace for powmod should be equal or greater than 2"
 
 debug:
   func `$`*(a: BigIntViewAny): string =
@@ -221,9 +215,6 @@ debug:
 #                    BigInt primitives
 #
 # ############################################################
-
-template mask*(w: Word): Word =
-  w and MaxWord
 
 func isZero*(a: BigIntViewAny): CTBool[Word] =
   ## Returns true if a big int is equal to zero
@@ -340,7 +331,7 @@ func shlAddMod(a: BigIntViewMut, c: Word, M: BigIntViewConst) =
   else:
     ## Multiple limbs
     let hi = a[^1]                                          # Save the high word to detect carries
-    let R = mBits and WordBitSize                           # R = mBits mod 64
+    let R = mBits and WordBitSize                       # R = mBits mod 64
 
     var a0, a1, m0: Word
     if R == 0:                                              # If the number of mBits is a multiple of 64
@@ -559,39 +550,147 @@ func montyResidue*(
 
   montyMul(r, a, r2ModN, N, negInvModWord)
 
-# ############################################################
+# Montgomery Modular Exponentiation
+# ------------------------------------------
+# We use fixed-window based exponentiation
+# that is constant-time: i.e. the number of multiplications
+# does not depend on the number of set bits in the exponents
+# those are always done and conditionally copied.
 #
-#                  Sensitive Primitives
+# TODO: analyze cost difference with naive exponentiation
+#       with n being the number of words to represent a number in Fp
+#       and k the window-size
+#       - we always multiply even for unused multiplications
+#       - conditional copy only save a small fraction of time
+#         (multiplication O(n²), cmov O(n), doing nothing i.e. non constant-time O(n))
+#       - Table lookup is O(kn) copy time since we need to access the whole table to
+#         defeat cache attacks. Without windows, we don't have table lookups at all.
 #
-# ############################################################
-# Warning: Primitives that expose bits of information
-#          due to non-constant time.
-# Proper usage is enforced by compiler.
-# Only apply explicitly to public data like the field modulus
+# The exponent MUST NOT be private data (until audited otherwise)
+# - Power attack on RSA, https://www.di.ens.fr/~fouque/pub/ches06.pdf
+# - Flush-and-reload on Sliding window exponentiation: https://tutcris.tut.fi/portal/files/8966761/p1639_pereida_garcia.pdf
+# - Sliding right into disaster, https://eprint.iacr.org/2017/627.pdf
+# - Fixed window leak: https://www.scirp.org/pdf/JCC_2019102810331929.pdf
+# - Constructing sliding-windows leak, https://easychair.org/publications/open/fBNC
+#
+# For pairing curves, this is the case since exponentiation is only
+# used for inversion via the Little Fermat theorem.
+# For RSA, some exponentiations uses private exponents.
+#
+# Note:
+# - Implementation closely follows Thomas Pornin's BearSSL
+# - Apache Milagro Crypto has an alternative implementation
+#   that is more straightforward however:
+#   - the exponent hamming weight is used as loop bounds
+#   - the base^k is stored at each index of a temp table of size k
+#   - the base^k to use is indexed by the hamming weight
+#     of the exponent, leaking this to cache attacks
+#   - in contrast BearSSL touches the whole table to
+#     hide the actual selection
+#
+# Directly using the Hamming weight would probably
+# significantly improve pairing-friendly curves as
+# they are chosen for their low Hamming-Weight (see BLS12-381 x factor)
+# --> Expose an exponent-leaky powMod?
+#     If so, create distinct type for leaked bits and BigInt
+#     so that sensitive data use is compiler-checked
 
-template bitSizeof(v: BigIntLeakedConst): uint32 =
-  distinctBase(type v)(v).bitLength
+func getWindowLen(bufLen: int): uint =
+  ## Compute the maximum window size that fits in the scratchspace buffer
+  checkPowScratchSpaceLen(bufLen)
+  result = 5
+  while (1 shl result) + 1 > bufLen:
+    dec result
 
-template numLimbs*(v: BigIntLeakedConst): int =
-  ## Compute the number of limbs from
-  ## the **internal** bitlength
-  (bitSizeof(v).int + WordPhysBitSize - 1) shr divShiftor
+func montyPow*(
+       a: BigIntViewMut,
+       exponent: openarray[byte],
+       M, one: BigIntViewConst,
+       negInvModWord: Word,
+       scratchspace: openarray[BigIntViewMut]
+      ) =
+  ## Modular exponentiation r = a^exponent mod M
+  ## in the montgomery domain
+  ##
+  ## This uses fixed-window optimization if possible
+  ##
+  ## - On input ``a`` is the base, on ``output`` a = a^exponent (mod M)
+  ##   ``a`` is in the Montgomery domain
+  ## - ``exponent`` is the exponent in big-endian canonical format (octet-string)
+  ##   Use ``exportRawUint`` for conversion
+  ## - ``M`` is the modulus
+  ## - ``one`` is 1 (mod M) in montgomery representation
+  ## - ``negInvModWord`` is the montgomery magic constant "-1/M[0] mod 2^WordBitSize"
+  ## - ``scratchspace`` with k the window bitsize of size up to 5
+  ##   This is a buffer that can hold between 2^k + 1 big-ints
+  ##   A window of of 1-bit (no window optimization) requires only 2 big-ints
+  ##
+  ## Note that the best window size require benchmarking and is a tradeoff between
+  ## - performance
+  ## - stack usage
+  ## - precomputation
+  ##
+  ## For example BLS12-381 window size of 5 is 30% faster than no window,
+  ## but windows of size 2, 3, 4 bring no performance benefit, only increased stack space.
+  ## A window of size 5 requires (2^5 + 1)*(381 + 7)/8 = 33 * 48 bytes = 1584 bytes
+  ## of scratchspace (on the stack).
 
-template `[]`*(v: BigIntLeakedConst, limbIdx: int): SensitiveInt =
-  SensitiveInt distinctBase(type v)(v).limbs[limbIdx]
+  let window = scratchspace.len.getWindowLen()
+  let bigIntSize = a.numLimbs() * sizeof(Word) + sizeof(BigIntView.bitLength)
 
-func popcount(a: BigIntLeakedConst): SensitiveInt =
-  ## Count the number of bits set in an integer
-  ## also called popcount or Hamming Weight
-  ## ⚠️⚠️⚠️: This is only intended for use on public data
-  var accum: int
-  for i in 0 ..< a.numLimbs:
-    accum += countSetBits(a[i].BaseType)
-  return SensitiveInt accum
+  # Precompute window content, special case for window = 1
+  # (i.e scratchspace has only space for 2 temporaries)
+  # The content scratchspace[2+k] is set at a^k
+  # with scratchspace[0] untouched
+  if window == 1:
+    copyMem(pointer scratchspace[1], pointer a, bigIntSize)
+  else:
+    copyMem(pointer scratchspace[2], pointer a, bigIntSize)
+    for k in 2 ..< 1 shl window:
+      scratchspace[k+1].montyMul(scratchspace[k], a, M, negInvModWord)
 
-func lastBits(a: BigIntLeakedConst, k: int): SensitiveInt =
-  ## Returns the last bits of an integer
-  ## k MUST be less than the base word size (2^31 or 2^63)
-  checkWordShift(k)
-  let mask = BaseType((1 shl k) - 1)
-  return SensitiveInt(a[0].BaseType and mask)
+  scratchspace[1].setBitLength(bitSizeof(M))
+
+  # Set a to one
+  copyMem(pointer a, pointer one, bigIntSize)
+
+  # We process bits with from most to least significant.
+  # At each loop iteration with have acc_len bits in acc.
+  # To maintain constant-time the number of iterations
+  # or the number of operations or memory accesses should be the same
+  # regardless of acc & acc_len
+  var
+    acc, acc_len: uint
+    e = 0
+  while acc_len > 0 or e < exponent.len:
+    # Get the next bits
+    var k = window
+    if acc_len < window:
+      if e < exponent.len:
+        acc = (acc shl 8) or exponent[e].uint
+        inc e
+        acc_len += 8
+      else: # Drained all exponent bits
+        k = acc_len
+
+    let bits = (acc shr (acc_len - k)) and ((1'u32 shl k) - 1)
+    acc_len -= k
+
+    # We have k bits and can do k squaring
+    for i in 0 ..< k:
+      scratchspace[0].montyMul(a, a, M, negInvModWord)
+      copyMem(pointer a, pointer scratchspace[0], bigIntSize)
+    # Window lookup: we set scratchspace[1] to the lookup value.
+    # If the window length is 1, then it's already set.
+    if window > 1:
+      # otherwise we need a constant-time lookup
+      # in particular we need the same memory accesses, we can't
+      # just index the openarray with the bits to avoid cache attacks.
+      for i in 1 ..< 1 shl k:
+        let ctl = Word(i) == Word(bits)
+        scratchspace[1].cmov(scratchspace[1+i], ctl)
+
+    # Multiply with the looked-up value
+    # we keep the product only if the exponent bits are not all zero
+    scratchspace[0].montyMul(a, scratchspace[1], M, negInvModWord)
+    a.cmov(scratchspace[0], Word(bits) != Zero)

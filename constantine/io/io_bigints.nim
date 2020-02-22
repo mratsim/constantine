@@ -11,7 +11,6 @@
 #   - Burning memory to ensure secrets are not left after dealloc.
 
 import
-  ./endians2,
   ../primitives/constant_time,
   ../math/bigints_checked,
   ../config/common
@@ -150,15 +149,20 @@ func fromUint*(
 # Serialising from internal representation to canonical format
 #
 # ############################################################
+import strutils
 
-template blobFrom*(dst: var openArray[byte], src: SomeEndianInt, startIdx: int, endian: static Endianness) =
+template blobFrom(dst: var openArray[byte], src: SomeUnsignedInt, startIdx: int, endian: static Endianness) =
   ## Write an integer into a raw binary blob
   ## Swapping endianness if needed
-  let s = when endian == cpuEndian: src
-          else: swapBytes(src)
 
-  for i in 0 ..< sizeof(src):
-    dst[startIdx+i] = byte((s shr (i * 8)))
+  const bits = sizeof(src) * 8
+
+  when endian == cpuEndian:
+    for i in 0 ..< sizeof(src):
+      dst[startIdx+i] = byte((src shr (i * 8)))
+  else:
+    for i in 0 ..< sizeof(src):
+      dst[startIdx+sizeof(src)-1-i] = byte((src shr (i * 8)))
 
 func exportRawUintLE(
         dst: var openarray[byte],
@@ -218,7 +222,6 @@ func exportRawUintBE(
 
   var
     src_idx = 0
-    dst_idx = dst.len - 1
     acc: BaseType = 0
     acc_len = 0
 
@@ -240,9 +243,8 @@ func exportRawUintBE(
 
       if tail >= sizeof(Word):
         # Unrolled copy
-        dst.blobFrom(src = lo, dst_idx, littleEndian)
-        dst_idx -= sizeof(Word)
         tail -= sizeof(Word)
+        dst.blobFrom(src = lo, tail, bigEndian)
       else:
         # Process the tail and exit
         when cpuEndian == littleEndian:
@@ -250,11 +252,11 @@ func exportRawUintBE(
           # we can just copy each byte
           # tail is inclusive
           for i in 0 ..< tail:
-            dst[dst_idx-i] = byte(lo shr (i*8))
+            dst[tail-i] = byte(lo shr (i*8))
         else: # TODO check this
           # We need to copy from the end
           for i in 0 ..< tail:
-            dst[dst_idx-i] = byte(lo shr ((tail-i)*8))
+            dst[tail-i] = byte(lo shr ((tail-i)*8))
         return
 
 func exportRawUint*(

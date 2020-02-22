@@ -43,6 +43,10 @@ func double(a: var BigInt): bool =
 
 func sub(a: var BigInt, b: BigInt, ctl: bool): bool =
   ## In-place optional substraction
+  ##
+  ## It is NOT constant-time and is intended
+  ## only for compile-time precomputation
+  ## of non-secret data.
   for i in 0 ..< a.limbs.len:
     let new_a = BaseType(a.limbs[i]) - BaseType(b.limbs[i]) - BaseType(result)
     result = new_a.isMsbSet()
@@ -132,9 +136,11 @@ func negInvModWord*(M: BigInt): BaseType =
   # Our actual word size is 2^63 not 2^64
   result = result and BaseType(MaxWord)
 
-func r2mod*(M: BigInt): BigInt =
+func r_powmod(n: static int, M: BigInt): BigInt =
   ## Returns the Montgomery domain magic constant for the input modulus:
   ##
+  ##   R ≡ R (mod M) with R = (2^WordBitSize)^numWords
+  ##   or
   ##   R² ≡ R² (mod M) with R = (2^WordBitSize)^numWords
   ##
   ## Assuming a field modulus of size 256-bit with 63-bit words, we require 5 words
@@ -162,8 +168,22 @@ func r2mod*(M: BigInt): BigInt =
     w = M.limbs.len
     msb = M.bits-1 - WordBitSize * (w - 1)
     start = (w-1)*WordBitSize + msb
-    stop = 2*WordBitSize*w
+    stop = n*WordBitSize*w
 
   result.limbs[^1] = Word(1 shl msb) # C0 = 2^(wn-1), the power of 2 immediatly less than the modulus
   for _ in start ..< stop:
     result.doubleMod(M)
+
+func r2mod*(M: BigInt): BigInt =
+  ## Returns the Montgomery domain magic constant for the input modulus:
+  ##
+  ##   R² ≡ R² (mod M) with R = (2^WordBitSize)^numWords
+  ##
+  ## Assuming a field modulus of size 256-bit with 63-bit words, we require 5 words
+  ##   R² ≡ ((2^63)^5)^2 (mod M) = 2^630 (mod M)
+  r_powmod(2, M)
+
+func montyOne*(M: BigInt): BigInt =
+  ## Returns "1 (mod M)" in the Montgomery domain.
+  ## This is equivalent to R (mod M) in the natural domain
+  r_powmod(1, M)
