@@ -151,6 +151,15 @@ func fromUint*(
 # ############################################################
 import strutils
 
+template toByte(x: SomeUnsignedInt): byte =
+  ## At compile-time, conversion to bytes checks the range
+  ## we want to ensure this is done at the register level
+  ## at runtime in a single "mov byte" instruction
+  when nimvm:
+    byte(x and 0xFF)
+  else:
+    byte(x)
+
 template blobFrom(dst: var openArray[byte], src: SomeUnsignedInt, startIdx: int, endian: static Endianness) =
   ## Write an integer into a raw binary blob
   ## Swapping endianness if needed
@@ -159,10 +168,10 @@ template blobFrom(dst: var openArray[byte], src: SomeUnsignedInt, startIdx: int,
 
   when endian == cpuEndian:
     for i in 0 ..< sizeof(src):
-      dst[startIdx+i] = byte((src shr (i * 8)))
+      dst[startIdx+i] = toByte((src shr (i * 8)))
   else:
     for i in 0 ..< sizeof(src):
-      dst[startIdx+sizeof(src)-1-i] = byte((src shr (i * 8)))
+      dst[startIdx+sizeof(src)-1-i] = toByte((src shr (i * 8)))
 
 func exportRawUintLE(
         dst: var openarray[byte],
@@ -203,11 +212,11 @@ func exportRawUintLE(
           # we can just copy each byte
           # tail is inclusive
           for i in 0 ..< tail:
-            dst[dst_idx+i] = byte(lo shr (i*8))
+            dst[dst_idx+i] = toByte(lo shr (i*8))
         else: # TODO check this
           # We need to copy from the end
           for i in 0 ..< tail:
-            dst[dst_idx+i] = byte(lo shr ((tail-i)*8))
+            dst[dst_idx+i] = toByte(lo shr ((tail-i)*8))
         return
 
 func exportRawUintBE(
@@ -251,12 +260,13 @@ func exportRawUintBE(
           # When requesting little-endian on little-endian platform
           # we can just copy each byte
           # tail is inclusive
+          debugEcho "tail: "
           for i in 0 ..< tail:
-            dst[tail-i] = byte(lo shr (i*8))
+            dst[tail-1-i] = toByte(lo shr (i*8))
         else: # TODO check this
           # We need to copy from the end
           for i in 0 ..< tail:
-            dst[tail-i] = byte(lo shr ((tail-i)*8))
+            dst[tail-1-i] = toByte(lo shr ((tail-i)*8))
         return
 
 func exportRawUint*(

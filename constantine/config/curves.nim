@@ -136,6 +136,16 @@ macro genMontyMagics(T: typed): untyped =
         )
       )
     )
+    # const MyCurve_InvModExponent = primeMinus2_BE(MyCurve_Modulus)
+    result.add newConstStmt(
+      ident($curve & "_InvModExponent"), newCall(
+        bindSym"primeMinus2_BE",
+        nnkDotExpr.newTree(
+          bindSym($curve & "_Modulus"),
+          ident"mres"
+        )
+      )
+    )
 
   # echo result.toStrLit
 
@@ -152,6 +162,10 @@ macro getNegInvModWord*(C: static Curve): untyped =
 macro getMontyOne*(C: static Curve): untyped =
   ## Get one in Montgomery representation (i.e. R mod P)
   result = bindSym($C & "_MontyOne")
+
+macro getInvModExponent*(C: static Curve): untyped =
+  ## Get modular inversion exponent (Modulus-2 in canonical representation)
+  result = bindSym($C & "_InvModExponent")
 
 # ############################################################
 #

@@ -9,7 +9,8 @@
 import
   ./bigints_checked,
   ../primitives/constant_time,
-  ../config/common
+  ../config/common,
+  ../io/io_bigints
 
 # Precomputed constants
 # ############################################################
@@ -187,3 +188,15 @@ func montyOne*(M: BigInt): BigInt =
   ## Returns "1 (mod M)" in the Montgomery domain.
   ## This is equivalent to R (mod M) in the natural domain
   r_powmod(1, M)
+
+func primeMinus2_BE*[bits: static int](
+       P: BigInt[bits]
+     ): array[(bits+7) div 8, byte] {.noInit.} =
+  ## Compute an input prime-2
+  ## and return the result as a canonical byte array / octet string
+  ## For use to precompute modular inverse exponent.
+
+  var tmp = P
+  discard tmp.sub(BigInt[bits].fromRawUint([byte 2], bigEndian), true)
+
+  result.exportRawUint(tmp, bigEndian)

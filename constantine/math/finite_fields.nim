@@ -134,7 +134,11 @@ func pow*(a: var Fq, exponent: BigInt) =
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a big integer
   const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.montyPow(exponent, Fq.C.Mod.mres, Fq.C.getMontyOne(), Fq.C.getNegInvModWord(), windowSize)
+  a.mres.montyPow(
+    exponent,
+    Fq.C.Mod.mres, Fq.C.getMontyOne(),
+    Fq.C.getNegInvModWord(), windowSize
+  )
 
 func powUnsafeExponent*(a: var Fq, exponent: BigInt) =
   ## Exponentiation over Fq
@@ -148,4 +152,20 @@ func powUnsafeExponent*(a: var Fq, exponent: BigInt) =
   ## - power analysis
   ## - timing analysis
   const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.montyPowUnsafeExponent(exponent, Fq.C.Mod.mres, Fq.C.getMontyOne(), Fq.C.getNegInvModWord(), windowSize)
+  a.mres.montyPowUnsafeExponent(
+    exponent,
+    Fq.C.Mod.mres, Fq.C.getMontyOne(),
+    Fq.C.getNegInvModWord(), windowSize
+  )
+
+func inv*(a: var Fq) =
+  ## Modular inversion
+  ## Warning ⚠️ :
+  ##   - This assumes that `Fq` is a prime field
+
+  const windowSize = 5 # TODO: find best window size for each curves
+  a.mres.montyPowUnsafeExponent(
+    Fq.C.getInvModExponent(),
+    Fq.C.Mod.mres, Fq.C.getMontyOne(),
+    Fq.C.getNegInvModWord(), windowSize
+  )

@@ -215,3 +215,29 @@ func montyPowUnsafeExponent*[mBits, eBits: static int](
     scratchPtrs[i] = scratchSpace[i].view()
 
   montyPowUnsafeExponent(a.view, expBE, M.view, one.view, Word(negInvModWord), scratchPtrs)
+
+func montyPowUnsafeExponent*[mBits: static int](
+       a: var BigInt[mBits], exponent: openarray[byte],
+       M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int) =
+  ## Compute a <- a^exponent (mod M)
+  ## ``a`` in the Montgomery domain
+  ## ``exponent`` is a BigInt in canonical representation
+  ##
+  ## Warning ⚠️ :
+  ## This is an optimization for public exponent
+  ## Otherwise bits of the exponent can be retrieved with:
+  ## - memory access analysis
+  ## - power analysis
+  ## - timing analysis
+  ##
+  ## This uses fixed window optimization
+  ## A window size in the range [1, 5] must be chosen
+
+  const scratchLen = if windowSize == 1: 2
+                     else: (1 shl windowSize) + 1
+  var scratchSpace {.noInit.}: array[scratchLen, BigInt[mBits]]
+  var scratchPtrs {.noInit.}: array[scratchLen, BigIntViewMut]
+  for i in 0 ..< scratchLen:
+    scratchPtrs[i] = scratchSpace[i].view()
+
+  montyPowUnsafeExponent(a.view, exponent, M.view, one.view, Word(negInvModWord), scratchPtrs)

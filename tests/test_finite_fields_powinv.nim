@@ -125,4 +125,18 @@ proc main() =
         check:
           computed == expected
 
+  suite "Modular inversion over prime fields":
+    test "x^(-1) mod p":
+        var x: Fq[BLS12_381]
+
+        # BN254 field modulus
+        x.fromHex("0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47")
+
+        let expected = "0x0636759a0f3034fa47174b2c0334902f11e9915b7bd89c6a2b3082b109abbc9837da17201f6d8286fe6203caa1b9d4c8"
+        x.inv()
+        let computed = x.toHex()
+
+        check:
+          computed == expected
+
 main()
