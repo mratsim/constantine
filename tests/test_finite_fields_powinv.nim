@@ -42,7 +42,7 @@ proc main() =
         var n, expected: Fq[Fake101]
 
         n.fromUint(2'u32)
-        expected = n
+        expected.fromUint(4'u32)
 
         n.pow(exponent)
 
@@ -60,7 +60,7 @@ proc main() =
         var n, expected: Fq[Fake101]
 
         n.fromUint(10'u32)
-        expected = n
+        expected.fromUint(100'u32)
 
         n.pow(exponent)
 
@@ -77,8 +77,8 @@ proc main() =
       block: # 11^2 mod 101
         var n, expected: Fq[Fake101]
 
-        n.fromUint(10'u32)
-        expected = n
+        n.fromUint(11'u32)
+        expected.fromUint(20'u32)
 
         n.pow(exponent)
 
