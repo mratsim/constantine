@@ -187,11 +187,11 @@ steps:
       export ucpu=${UCPU}
       nimble test
     displayName: 'Testing the package (including GMP)'
-    # condition: ne(variables['Agent.OS'], 'Windows_NT')
+    condition: ne(variables['Agent.OS'], 'Windows_NT')
 
-  # - bash: |
-  #     echo "PATH=${PATH}"
-  #     export ucpu=${UCPU}
-  #     nimble test_no_gmp
-  #   displayName: 'Testing the package (without GMP)'
-  #   condition: eq(variables['Agent.OS'], 'Windows_NT')
+  - bash: |
+      echo "PATH=${PATH}"
+      export ucpu=${UCPU}
+      nimble test_no_gmp
+    displayName: 'Testing the package (without GMP)'
+    condition: eq(variables['Agent.OS'], 'Windows_NT')
