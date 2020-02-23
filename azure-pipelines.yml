@@ -147,28 +147,35 @@ steps:
       echo "##vso[task.prependpath]$PWD/NimBinaries/nim-${CHANNEL}/bin"
     displayName: 'Building Nim'
 
-  - bash: |
-      echo "PATH=${PATH}"
-      sudo apt-get install libgmp-dev
-    displayName: 'Downloading GMP (Linux)'
-    condition: eq(variables['Agent.OS'], 'Linux')
+  # GMP is preinstalled on Azure
+  # - bash: |
+  #     echo "PATH=${PATH}"
+  #     sudo apt-get install libgmp-dev
+  #   displayName: 'Downloading GMP (Linux)'
+  #   condition: eq(variables['Agent.OS'], 'Linux')
+  #
+  # - bash: |
+  #     echo "PATH=${PATH}"
+  #     brew install gmp
+  #   displayName: 'Downloading GMP (MacOS)'
+  #   condition: eq(variables['Agent.OS'], 'Darwin')
 
   - bash: |
       echo "PATH=${PATH}"
-      brew install gmp
-    displayName: 'Downloading GMP (MacOS)'
-    condition: eq(variables['Agent.OS'], 'Darwin')
+      nimble refresh
+      nimble install gmp
+    displayName: 'Intalling the Nim dependencies'
 
   - bash: |
       echo "PATH=${PATH}"
       export ucpu=${UCPU}
       nimble test
     displayName: 'Testing the package (including GMP)'
-    condition: ne(variables['Agent.OS'], 'Windows_NT')
+    # condition: ne(variables['Agent.OS'], 'Windows_NT')
 
-  - bash: |
-      echo "PATH=${PATH}"
-      export ucpu=${UCPU}
-      nimble test_no_gmp
-    displayName: 'Testing the package (without GMP)'
-    condition: eq(variables['Agent.OS'], 'Windows_NT')
+  # - bash: |
+  #     echo "PATH=${PATH}"
+  #     export ucpu=${UCPU}
+  #     nimble test_no_gmp
+  #   displayName: 'Testing the package (without GMP)'
+  #   condition: eq(variables['Agent.OS'], 'Windows_NT')
