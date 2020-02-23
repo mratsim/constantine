@@ -13,21 +13,21 @@ strategy:
       UCPU: amd64
       CHANNEL: devel
       TEST_LANG: c
-    # Windows_cpp_devel_64bit:
-    #   VM: 'windows-latest'
-    #   UCPU: amd64
-    #   CHANNEL: devel
-    #   TEST_LANG: cpp
+    Windows_cpp_devel_64bit:
+      VM: 'windows-latest'
+      UCPU: amd64
+      CHANNEL: devel
+      TEST_LANG: cpp
     Linux_devel_64bit:
       VM: 'ubuntu-16.04'
       UCPU: amd64
       CHANNEL: devel
       TEST_LANG: c
-    # Linux_cpp_devel_64bit:
-    #   VM: 'ubuntu-16.04'
-    #   UCPU: amd64
-    #   CHANNEL: devel
-    #   WEAVE_TEST_LANG: cpp
+    Linux_cpp_devel_64bit:
+      VM: 'ubuntu-16.04'
+      UCPU: amd64
+      CHANNEL: devel
+      WEAVE_TEST_LANG: cpp
 
     # Linux_devel_32bit:
     #   VM: 'ubuntu-16.04'
@@ -163,4 +163,12 @@ steps:
       echo "PATH=${PATH}"
       export ucpu=${UCPU}
       nimble test
-    displayName: 'Testing the package'
+    displayName: 'Testing the package (including GMP)'
+    condition: ne(variables['Agent.OS'], 'Windows_NT')
+
+  - bash: |
+      echo "PATH=${PATH}"
+      export ucpu=${UCPU}
+      nimble test_no_gmp
+    displayName: 'Testing the package (without GMP)'
+    condition: eq(variables['Agent.OS'], 'Windows_NT')

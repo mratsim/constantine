@@ -9,10 +9,18 @@ srcDir        = "src"
 requires "nim >= 1.1.0"
 
 ### Helper functions
-proc test(fakeCurves: string, path: string, lang = "c") =
+proc test(path: string) =
   if not dirExists "build":
     mkDir "build"
-  exec "nim " & lang & fakeCurves & " --outdir:build -r --hints:off --warnings:off " & path
+  # Compilation language is controlled by WEAVE_TEST_LANG
+  var lang = "c"
+  if existsEnv"TEST_LANG":
+    lang = getEnv"TEST_LANG"
+
+  echo "\n========================================================================================"
+  echo "Running ", path
+  echo "========================================================================================"
+  exec "nim " & lang & " --verbosity:0 --outdir:build -r --hints:off --warnings:off " & path
 
 ### tasks
 task test, "Run all tests":
