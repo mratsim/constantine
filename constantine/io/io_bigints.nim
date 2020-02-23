@@ -260,7 +260,6 @@ func exportRawUintBE(
           # When requesting little-endian on little-endian platform
           # we can just copy each byte
           # tail is inclusive
-          debugEcho "tail: "
           for i in 0 ..< tail:
             dst[tail-1-i] = toByte(lo shr (i*8))
         else: # TODO check this
