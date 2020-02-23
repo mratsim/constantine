@@ -71,6 +71,10 @@ From Ben Edgington, https://hackmd.io/@benjaminion/bls12-381
   Naomi Benger and Michael Scott, 2009\
   https://eprint.iacr.org/2009/556
 
+- Choosing and generating parameters for low level pairing implementation on BN curves\
+  Sylvain Duquesne and Nadia El Mrabet and Safia Haloui and Franck Rondepierre\
+  https://eprint.iacr.org/2015/1212
+
 ### Presentations
 
 - BLS12-381 For The Rest Of Us\
