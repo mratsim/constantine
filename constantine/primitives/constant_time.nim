@@ -215,10 +215,9 @@ template mux*[T: Ct](ctl: CTBool[T], x, y: T): T =
   ## So equivalent to ctl? x: y
   #
   # TODO verify assembly generated
-  # as mentioned in https://cryptocoding.net/index.php/Coding_rules
-  # the alternative `(x and ctl) or (y and -ctl)`
-  # is optimized into a branch by Clang :/
-  # See also: https://www.cl.cam.ac.uk/~rja14/Papers/whatyouc.pdf
+  # Alternatives:
+  # - https://cryptocoding.net/index.php/Coding_rules
+  # - https://www.cl.cam.ac.uk/~rja14/Papers/whatyouc.pdf
   #
   # TODO: assembly fastpath for conditional mov
   let # Templates duplicate input params code
