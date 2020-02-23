@@ -8,6 +8,14 @@
 
   https://tools.ietf.org/html/draft-irtf-cfrg-pairing-friendly-curves-00#ref-KB16
 
+- On the Implementation of Pairing-based Cryptosystems
+
+  PhD Thesis
+
+  Ben Lynn, 2007
+
+  https://crypto.stanford.edu/pbc/thesis.pdf
+
 - Pairings for beginners
 
   Craig Costello, 2012 (?)
@@ -21,6 +29,16 @@
   Craig Costello, 2012
 
   https://eprints.qut.edu.au/61037/1/Craig_Costello_Thesis.pdf
+
+- Efficient Implementations of Pairing-Based Cryptography on Embedded Systems
+
+  Master Thesis
+
+  Rajeev Verma, 2015
+
+  https://scholarworks.rit.edu/cgi/viewcontent.cgi?referer=&httpsredir=1&article=10083&context=theses
+
+  https://github.com/rajeevakarv/FiniteFieldComputations
 
 - Introduction to pairings
 
