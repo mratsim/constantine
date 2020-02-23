@@ -11,14 +11,16 @@ Note: The BLS signature scheme should not be confused
 
 ## References
 
-### ECDSA
+### Normative references
+
+#### ECDSA
 
 - RFC 6979 Deterministic Usage of the Digital Signature Algorithm (DSA) and
            Elliptic Curve Digital Signature Algorithm (ECDSA)
 
   https://tools.ietf.org/html/rfc6979
 
-### BLS signatures
+#### BLS signatures
 
 - BLS Signature Scheme
 

@@ -57,6 +57,8 @@ From Ben Edgington, https://hackmd.io/@benjaminion/bls12-381
 
 ## References
 
+### Research
+
 - Optimal Extension Fields for Fast Arithmetic in Public-Key Algorithms
 
   Daniel V. Bailey and Christof Paar, 1998
@@ -74,6 +76,8 @@ From Ben Edgington, https://hackmd.io/@benjaminion/bls12-381
   Naomi Benger and Michael Scott, 2009
 
   https://eprint.iacr.org/2009/556
+
+### Presentations
 
 - BLS12-381 For The Rest Of Us
 
