@@ -14,116 +14,15 @@
 
 import ./constant_time
 
-func asm_x86_64_extMul(hi, lo: var uint64, a, b: uint64) {.inline.}=
-  ## Extended precision multiplication uint64 * uint64 --> uint128
-
-  # TODO !!! - Replace by constant-time, portable, non-assembly version
-  #          -> use uint128? Compiler might add unwanted branches
-
-  # MUL r/m64
-  # Multiply RAX by r/m64
-  #
-  # Inputs:
-  #   - RAX
-  #   - r/m
-  # Outputs:
-  #   - High word in RDX
-  #   - Low word in RAX
-
-  # Don't forget to dereference the var hidden pointer in hi/lo
-  asm """
-    mulq %[operand]
-    : "=d" (`*hi`), "=a" (`*lo`)
-    : "a" (`a`), [operand] "rm" (`b`)
-    :
-  """
-
-func unsafeExtPrecMul*(hi, lo: var Ct[uint64], a, b: Ct[uint64]) {.inline.}=
-  ## Extended precision multiplication uint64 * uint64 --> uint128
-  ##
-  ## TODO, at the moment only x86_64 architecture are supported
-  ##       as we use assembly.
-  ##       Also we assume that the native integer division
-  ##       provided by the PU is constant-time
-
-  # Note, using C/Nim default `*` is inefficient
-  # and complicated to make constant-time
-  # See at the bottom.
-
-  type T = uint64
-
-  when not defined(amd64):
-    {.error: "At the moment only x86_64 architecture is supported".}
-  else:
-    asm_x86_64_extMul(T(hi), T(lo), T(a), T(b))
+# ############################################################
+#
+#                     32-bit words
+#
+# ############################################################
 
 template unsafeExtPrecMul*(a, b: Ct[uint32]): Ct[uint64] =
   ## Extended precision multiplication uint32 * uint32 --> uint64
   Ct[uint64](uint64(a) * uint64(b))
-
-func asm_x86_64_div2n1n(q, r: var uint64, n_hi, n_lo, d: uint64) {.inline.}=
-  ## Division uint128 by uint64
-  ## Warning ⚠️ :
-  ##   - if n_hi == d, quotient does not fit in an uint64
-  ##   - if n_hi > d result is undefined
-
-  # TODO !!! - Replace by constant-time, portable, non-assembly version
-  #          -> use uint128? Compiler might add unwanted branches
-
-  # DIV r/m64
-  # Divide RDX:RAX (n_hi:n_lo) by r/m64
-  #
-  # Inputs
-  #   - numerator high word in RDX,
-  #   - numerator low word in RAX,
-  #   - divisor as r/m parameter (register or memory at the compiler discretion)
-  # Result
-  #   - Quotient in RAX
-  #   - Remainder in RDX
-
-  # 1. name the register/memory "divisor"
-  # 2. don't forget to dereference the var hidden pointer
-  # 3. -
-  # 4. no clobbered registers beside explectly used RAX and RDX
-  asm """
-    divq %[divisor]
-    : "=a" (`*q`), "=d" (`*r`)
-    : "d" (`n_hi`), "a" (`n_lo`), [divisor] "rm" (`d`)
-    :
-  """
-
-func unsafeDiv2n1n*(q, r: var Ct[uint64], n_hi, n_lo, d: Ct[uint64]) {.inline.}=
-  ## Division uint128 by uint64
-  ## Warning ⚠️ :
-  ##   - if n_hi == d, quotient does not fit in an uint64
-  ##   - if n_hi > d result is undefined
-  ##
-  ## To avoid issues, n_hi, n_lo, d should be normalized.
-  ## i.e. shifted (== multiplied by the same power of 2)
-  ## so that the most significant bit in d is set.
-  ##
-  ## TODO, at the moment only x86_64 architecture are supported
-  ##       as we use assembly.
-  ##       Also we assume that the native integer division
-  ##       provided by the PU is constant-time
-
-  # Note, using C/Nim default `div` is inefficient
-  # and complicated to make constant-time
-  # See at the bottom.
-  #
-  # Furthermore compilers may try to substitute division
-  # with a fast path that may have branches. It might also
-  # be the same at the hardware level.
-
-  # TODO !!! - Replace by constant-time, portable, non-assembly version
-  #          -> use uint128? Compiler might add unwanted branches
-
-  type T = uint64
-
-  when not defined(amd64):
-    {.error: "At the moment only x86_64 architecture is supported".}
-  else:
-    asm_x86_64_div2n1n(T(q), T(r), T(n_hi), T(n_lo), T(d))
 
 func unsafeDiv2n1n*(q, r: var Ct[uint32], n_hi, n_lo, d: Ct[uint32]) {.inline.}=
   ## Division uint64 by uint32
@@ -140,6 +39,119 @@ func unsafeDiv2n1n*(q, r: var Ct[uint32], n_hi, n_lo, d: Ct[uint32]) {.inline.}=
   let divisor = uint64(d)
   q = (Ct[uint32])(dividend div divisor)
   r = (Ct[uint32])(dividend mod divisor)
+
+# ############################################################
+#
+#                     64-bit words
+#
+# ############################################################
+
+# func asm_x86_64_extMul(hi, lo: var uint64, a, b: uint64) {.inline.}=
+#   ## Extended precision multiplication uint64 * uint64 --> uint128
+
+#   # TODO !!! - Replace by constant-time, portable, non-assembly version
+#   #          -> use uint128? Compiler might add unwanted branches
+
+#   # MUL r/m64
+#   # Multiply RAX by r/m64
+#   #
+#   # Inputs:
+#   #   - RAX
+#   #   - r/m
+#   # Outputs:
+#   #   - High word in RDX
+#   #   - Low word in RAX
+
+#   # Don't forget to dereference the var hidden pointer in hi/lo
+#   asm """
+#     mulq %[operand]
+#     : "=d" (`*hi`), "=a" (`*lo`)
+#     : "a" (`a`), [operand] "rm" (`b`)
+#     :
+#   """
+
+# func unsafeExtPrecMul*(hi, lo: var Ct[uint64], a, b: Ct[uint64]) {.inline.}=
+#   ## Extended precision multiplication uint64 * uint64 --> uint128
+#   ##
+#   ## TODO, at the moment only x86_64 architecture are supported
+#   ##       as we use assembly.
+#   ##       Also we assume that the native integer division
+#   ##       provided by the PU is constant-time
+
+#   # Note, using C/Nim default `*` is inefficient
+#   # and complicated to make constant-time
+#   # See at the bottom.
+
+#   type T = uint64
+
+#   when not defined(amd64):
+#     {.error: "At the moment only x86_64 architecture is supported".}
+#   else:
+#     asm_x86_64_extMul(T(hi), T(lo), T(a), T(b))
+
+# func asm_x86_64_div2n1n(q, r: var uint64, n_hi, n_lo, d: uint64) {.inline.}=
+#   ## Division uint128 by uint64
+#   ## Warning ⚠️ :
+#   ##   - if n_hi == d, quotient does not fit in an uint64
+#   ##   - if n_hi > d result is undefined
+
+#   # TODO !!! - Replace by constant-time, portable, non-assembly version
+#   #          -> use uint128? Compiler might add unwanted branches
+
+#   # DIV r/m64
+#   # Divide RDX:RAX (n_hi:n_lo) by r/m64
+#   #
+#   # Inputs
+#   #   - numerator high word in RDX,
+#   #   - numerator low word in RAX,
+#   #   - divisor as r/m parameter (register or memory at the compiler discretion)
+#   # Result
+#   #   - Quotient in RAX
+#   #   - Remainder in RDX
+
+#   # 1. name the register/memory "divisor"
+#   # 2. don't forget to dereference the var hidden pointer
+#   # 3. -
+#   # 4. no clobbered registers beside explectly used RAX and RDX
+#   asm """
+#     divq %[divisor]
+#     : "=a" (`*q`), "=d" (`*r`)
+#     : "d" (`n_hi`), "a" (`n_lo`), [divisor] "rm" (`d`)
+#     :
+#   """
+
+# func unsafeDiv2n1n*(q, r: var Ct[uint64], n_hi, n_lo, d: Ct[uint64]) {.inline.}=
+#   ## Division uint128 by uint64
+#   ## Warning ⚠️ :
+#   ##   - if n_hi == d, quotient does not fit in an uint64
+#   ##   - if n_hi > d result is undefined
+#   ##
+#   ## To avoid issues, n_hi, n_lo, d should be normalized.
+#   ## i.e. shifted (== multiplied by the same power of 2)
+#   ## so that the most significant bit in d is set.
+#   ##
+#   ## TODO, at the moment only x86_64 architecture are supported
+#   ##       as we use assembly.
+#   ##       Also we assume that the native integer division
+#   ##       provided by the PU is constant-time
+
+#   # Note, using C/Nim default `div` is inefficient
+#   # and complicated to make constant-time
+#   # See at the bottom.
+#   #
+#   # Furthermore compilers may try to substitute division
+#   # with a fast path that may have branches. It might also
+#   # be the same at the hardware level.
+
+#   # TODO !!! - Replace by constant-time, portable, non-assembly version
+#   #          -> use uint128? Compiler might add unwanted branches
+
+#   type T = uint64
+
+#   when not defined(amd64):
+#     {.error: "At the moment only x86_64 architecture is supported".}
+#   else:
+#     asm_x86_64_div2n1n(T(q), T(r), T(n_hi), T(n_lo), T(d))
 
 when isMainModule:
   block: # Multiplication
