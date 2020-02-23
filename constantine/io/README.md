@@ -1,4 +1,4 @@
-# I/O and serialization
+# I/O, serialization, encoding/decoding
 
 ## References
 

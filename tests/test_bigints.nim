@@ -8,7 +8,7 @@
 
 import  unittest, random, strutils,
         ../constantine/io/io_bigints,
-        ../constantine/math/bigints_checked,
+        ../constantine/arithmetic/bigints_checked,
         ../constantine/config/common,
         ../constantine/primitives/constant_time
 

@@ -12,7 +12,7 @@
 
 import
   ../primitives/constant_time,
-  ../math/bigints_checked,
+  ../arithmetic/bigints_checked,
   ../config/common
 
 # ############################################################

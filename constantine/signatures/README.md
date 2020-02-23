@@ -13,4 +13,17 @@ Note: The BLS signature scheme should not be confused
 
 ### ECDSA
 
-- 
+- RFC 6979 Deterministic Usage of the Digital Signature Algorithm (DSA) and
+           Elliptic Curve Digital Signature Algorithm (ECDSA)
+
+  https://tools.ietf.org/html/rfc6979
+
+### BLS signatures
+
+- BLS Signature Scheme
+
+  (Draft, expires Feb 9, 2020)
+
+  https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-00
+
+  https://github.com/cfrg/draft-irtf-cfrg-bls-signature

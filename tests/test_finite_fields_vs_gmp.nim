@@ -13,7 +13,7 @@ import
   gmp, stew/byteutils,
   # Internal
   ../constantine/io/[io_bigints, io_fields],
-  ../constantine/math/[finite_fields, bigints_checked],
+  ../constantine/arithmetic/[finite_fields, bigints_checked],
   ../constantine/primitives/constant_time,
   ../constantine/config/curves
 
