@@ -4,6 +4,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 ![Stability: experimental](https://img.shields.io/badge/stability-experimental-orange.svg)
 
+[![Build Status: Travis](https://img.shields.io/travis/com/mratsim/constantine/master?label=Travis%20%28Linux%20x86_64%2FARM64,%20MacOS%20x86_64%29)](https://travis-ci.com/mratsim/constantine)
+
 This library provides constant-time implementation of elliptic curve cryptography.
 
 > Warning ⚠️: The library is in development state and cannot be used at the moment
