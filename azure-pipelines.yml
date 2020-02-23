@@ -179,7 +179,7 @@ steps:
   - bash: |
       echo "PATH=${PATH}"
       nimble refresh
-      nimble install gmp
+      nimble install gmp stew
     displayName: 'Intalling package and testing dependencies'
 
   - bash: |
