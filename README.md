@@ -26,6 +26,7 @@ The library focuses on following properties:
 - constant-time (not leaking secret data via side-channels)
 - generated code size, datatype size and stack usage
 - performance
+
 in this order
 
 ## Security
