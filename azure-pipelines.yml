@@ -31,8 +31,6 @@ strategy:
 
     # Linux_devel_32bit:
     #   VM: 'ubuntu-16.04'
-    #   ARCH: x86
-    #   PLATFORM: x86
     #   UCPU: i686
     #   CHANNEL: devel
     #   TEST_LANG: c
@@ -55,7 +53,7 @@ steps:
   - task: CacheBeta@1
     displayName: 'cache MinGW-w64'
     inputs:
-      key: mingwCache | 8_1_0 | $(PLATFORM)
+      key: mingwCache | 8_1_0 | $(UCPU)
       path: mingwCache
     condition: eq(variables['Agent.OS'], 'Windows_NT')
 
@@ -67,7 +65,7 @@ steps:
       echo "PATH=${PATH}"
       set -e
       echo "Installing MinGW-w64"
-      if [[ $PLATFORM == "x86" ]]; then
+      if [[ $UCPU == "i686" ]]; then
         MINGW_FILE="i686-8.1.0-release-posix-dwarf-rt_v6-rev0.7z"
         MINGW_URL="https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win32/Personal%20Builds/mingw-builds/8.1.0/threads-posix/dwarf/${MINGW_FILE}"
         MINGW_DIR="mingw32"
@@ -157,11 +155,11 @@ steps:
     displayName: 'Building Nim'
 
   - powershell: |
-      echo "##vso[task.prependpath]$pwd\Nim\bin"
+      echo "##vso[task.prependpath]$pwd\NimBinaries\nim-$(CHANNEL)\Nim\bin"
     displayName: 'Set env variable (Windows)'
     condition: eq(variables['Agent.OS'], 'Windows_NT')
   - bash: |
-      echo "##vso[task.prependpath]$PWD/Nim/bin"
+      echo "##vso[task.prependpath]$PWD/NimBinaries/nim-${CHANNEL}/Nim/bin"
     displayName: 'Set env variable (Posix)'
     condition: ne(variables['Agent.OS'], 'Windows_NT')
 
