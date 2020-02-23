@@ -89,7 +89,7 @@ before_script:
     - export PATH="$PWD/nim-${CHANNEL}/bin${PATH:+:$PATH}"
 script:
     - nimble refresh
-    - nimble install gmp
+    - nimble install gmp stew
     - nimble test
 branches:
   except:
