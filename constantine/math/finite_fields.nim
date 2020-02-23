@@ -129,6 +129,15 @@ func `*`*(a, b: Fq): Fq {.noInit.} =
   result.mres.setInternalBitLength()
   result.mres.montyMul(a.mres, b.mres, Fq.C.Mod.mres, Fq.C.getNegInvModWord())
 
+func square*(a: Fq): Fq {.noInit.} =
+  ## Squaring over Fq
+  ##
+  ## It is recommended to assign with {.noInit.}
+  ## as Fq elements are usually large and this
+  ## routine will zero init internally the result.
+  result.mres.setInternalBitLength()
+  result.mres.montySquare(a.mres, Fq.C.Mod.mres, Fq.C.getNegInvModWord())
+
 func pow*(a: var Fq, exponent: BigInt) =
   ## Exponentiation over Fq
   ## ``a``: a field element to be exponentiated

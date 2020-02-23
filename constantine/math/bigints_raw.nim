@@ -550,6 +550,17 @@ func montyResidue*(
 
   montyMul(r, a, r2ModN, N, negInvModWord)
 
+func montySquare(
+       r: BigIntViewMut, a: BigIntViewAny,
+       M: BigIntViewConst, negInvModWord: Word) {.inline.} =
+  ## Compute r <- a^2 (mod M) in the Montgomery domain
+  ## `negInvModWord` = -1/M (mod Word). Our words are 2^31 or 2^63
+
+  # TODO: specialized implementation when optimizing for speed
+  #       and montyMul when optimizing for size
+  # - https://www.intel.com/content/dam/www/public/us/en/documents/white-papers/ia-large-integer-arithmetic-paper.pdf
+  montyMul(r, a, a, M, negInvModWord)
+
 # Montgomery Modular Exponentiation
 # ------------------------------------------
 # We use fixed-window based exponentiation
@@ -664,7 +675,7 @@ func montyPowSquarings(
 
   # We have k bits and can do k squaring
   for i in 0 ..< k:
-    tmp.montyMul(a, a, M, negInvModWord)
+    tmp.montySquare(a, M, negInvModWord)
     copyMem(pointer a, pointer tmp, bigIntSize)
 
   return (k, bits)

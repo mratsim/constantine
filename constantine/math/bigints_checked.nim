@@ -158,7 +158,12 @@ func montyMul*[mBits](r: var BigInt[mBits], a, b, M: BigInt[mBits], negInvModWor
   ## to avoid duplicating with Nim zero-init policy
   montyMul(r.view, a.view, b.view, M.view, Word(negInvModWord))
 
-import stew/byteutils
+func montySquare*[mBits](r: var BigInt[mBits], a, M: BigInt[mBits], negInvModWord: static BaseType) =
+  ## Compute r <- a^2 (mod M) in the Montgomery domain
+  ##
+  ## This resets r to zero before processing. Use {.noInit.}
+  ## to avoid duplicating with Nim zero-init policy
+  montySquare(r.view, a.view, M.view, Word(negInvModWord))
 
 func montyPow*[mBits, eBits: static int](
        a: var BigInt[mBits], exponent: BigInt[eBits],
