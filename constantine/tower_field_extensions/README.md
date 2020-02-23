@@ -59,28 +59,20 @@ From Ben Edgington, https://hackmd.io/@benjaminion/bls12-381
 
 ### Research
 
-- Optimal Extension Fields for Fast Arithmetic in Public-Key Algorithms
-
-  Daniel V. Bailey and Christof Paar, 1998
-
+- Optimal Extension Fields for Fast Arithmetic in Public-Key Algorithms\
+  Daniel V. Bailey and Christof Paar, 1998\
   https://www.emsec.ruhr-uni-bochum.de/media/crypto/veroeffentlichungen/2015/03/26/crypto98rc9.pdf
 
-- Multiplication and Squaring on Pairing-Friendly Fields
-
-  Augusto Jun Devegili and Colm Ó~hÉigeartaigh and Michael Scott and Ricardo Dahab, 2006
-
+- Multiplication and Squaring on Pairing-Friendly Fields\
+  Augusto Jun Devegili and Colm Ó~hÉigeartaigh and Michael Scott and Ricardo Dahab, 2006\
   https://eprint.iacr.org/2006/471
 
-- Constructing Tower Extensions for the implementation of Pairing-Based Cryptography
-
-  Naomi Benger and Michael Scott, 2009
-
+- Constructing Tower Extensions for the implementation of Pairing-Based Cryptography\
+  Naomi Benger and Michael Scott, 2009\
   https://eprint.iacr.org/2009/556
 
 ### Presentations
 
-- BLS12-381 For The Rest Of Us
-
-  Ben Edgington, 2019
-
+- BLS12-381 For The Rest Of Us\
+  Ben Edgington, 2019\
   https://hackmd.io/@benjaminion/bls12-381

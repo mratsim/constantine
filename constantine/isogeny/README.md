@@ -9,10 +9,7 @@ hashing to elliptic curve
 
 ### Normative references
 
-- Hashing to Elliptic Curve
-
-  (Draft, expires May 5, 2020)
-
-  https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05
-
+- Hashing to Elliptic Curve\
+  (Draft, expires May 5, 2020)\
+  https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05 \
   https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve
