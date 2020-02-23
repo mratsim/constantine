@@ -149,7 +149,6 @@ func fromUint*(
 # Serialising from internal representation to canonical format
 #
 # ############################################################
-import strutils
 
 template toByte(x: SomeUnsignedInt): byte =
   ## At compile-time, conversion to bytes checks the range

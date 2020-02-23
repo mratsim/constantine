@@ -126,7 +126,6 @@ func `*`*(a, b: Fq): Fq {.noInit.} =
   ## It is recommended to assign with {.noInit.}
   ## as Fq elements are usually large and this
   ## routine will zero init internally the result.
-  result.mres.setInternalBitLength()
   result.mres.montyMul(a.mres, b.mres, Fq.C.Mod.mres, Fq.C.getNegInvModWord())
 
 func square*(a: Fq): Fq {.noInit.} =
@@ -135,7 +134,6 @@ func square*(a: Fq): Fq {.noInit.} =
   ## It is recommended to assign with {.noInit.}
   ## as Fq elements are usually large and this
   ## routine will zero init internally the result.
-  result.mres.setInternalBitLength()
   result.mres.montySquare(a.mres, Fq.C.Mod.mres, Fq.C.getNegInvModWord())
 
 func pow*(a: var Fq, exponent: BigInt) =
@@ -171,7 +169,6 @@ func inv*(a: var Fq) =
   ## Modular inversion
   ## Warning ⚠️ :
   ##   - This assumes that `Fq` is a prime field
-
   const windowSize = 5 # TODO: find best window size for each curves
   a.mres.montyPowUnsafeExponent(
     Fq.C.getInvModExponent(),

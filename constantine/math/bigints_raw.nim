@@ -271,7 +271,7 @@ func sub*(a: BigIntViewMut, b: BigIntViewAny, ctl: CTBool[Word]): CTBool[Word] =
 
 func dec*(a: BigIntViewMut, w: Word): CTBool[Word] =
   ## Decrement a big int by a small word
-  # returns the result carry
+  ## Returns the result carry
 
   a[0] -= w
   result = a[0].isMsbSet()

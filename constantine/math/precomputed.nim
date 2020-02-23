@@ -74,8 +74,6 @@ func doubleMod(a: var BigInt, M: BigInt) =
 func checkOddModulus(M: BigInt) =
   doAssert bool(BaseType(M.limbs[0]) and 1), "Internal Error: the modulus must be odd to use the Montgomery representation."
 
-import strutils
-
 func checkValidModulus(M: BigInt) =
   const expectedMsb = M.bits-1 - WordBitSize * (M.limbs.len - 1)
   let msb = log2(BaseType(M.limbs[^1]))
