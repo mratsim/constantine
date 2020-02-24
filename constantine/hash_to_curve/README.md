@@ -19,6 +19,10 @@
   Laura Fuentes-Castañeda, Edward Knapp, Francisco Rodríguez-Henríquez, 2011\
   https://link.springer.com/chapter/10.1007%2F978-3-642-28496-0_25
 
+- Indifferentiable Hashing to Barreto–Naehrig Curves\
+  Pierre-Alain Fouque, Mehdi Tibouchi, 2012\
+  https://hal.inria.fr/hal-01094321/file/FT12.pdf
+
 - Hashing to $G_2$ on BLS pairing-friendly curves\
   Alessandro Budroni, Federico Pintore, 2019\
   https://doi.org/10.1145/3313880.3313884

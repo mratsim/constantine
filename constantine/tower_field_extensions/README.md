@@ -64,7 +64,7 @@ From Ben Edgington, https://hackmd.io/@benjaminion/bls12-381
   https://www.emsec.ruhr-uni-bochum.de/media/crypto/veroeffentlichungen/2015/03/26/crypto98rc9.pdf
 
 - Multiplication and Squaring on Pairing-Friendly Fields\
-  Augusto Jun Devegili and Colm Ó~hÉigeartaigh and Michael Scott and Ricardo Dahab, 2006\
+  Augusto Jun Devegili and Colm Ó hÉigeartaigh and Michael Scott and Ricardo Dahab, 2006\
   https://eprint.iacr.org/2006/471
 
 - Constructing Tower Extensions for the implementation of Pairing-Based Cryptography\
@@ -72,7 +72,7 @@ From Ben Edgington, https://hackmd.io/@benjaminion/bls12-381
   https://eprint.iacr.org/2009/556
 
 - Choosing and generating parameters for low level pairing implementation on BN curves\
-  Sylvain Duquesne and Nadia El Mrabet and Safia Haloui and Franck Rondepierre\
+  Sylvain Duquesne and Nadia El Mrabet and Safia Haloui and Franck Rondepierre, 2015\
   https://eprint.iacr.org/2015/1212
 
 ### Presentations
