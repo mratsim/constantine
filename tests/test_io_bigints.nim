@@ -9,7 +9,7 @@
 import  unittest, random,
         ../constantine/io/io_bigints,
         ../constantine/config/common,
-        ../constantine/math/bigints_checked
+        ../constantine/arithmetic/bigints_checked
 
 randomize(0xDEADBEEF) # Random seed for reproducibility
 type T = BaseType

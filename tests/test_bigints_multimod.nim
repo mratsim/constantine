@@ -11,7 +11,7 @@ import
   unittest, random, strutils,
   # Third-party
   ../constantine/io/io_bigints,
-  ../constantine/math/[bigints_raw, bigints_checked],
+  ../constantine/arithmetic/[bigints_raw, bigints_checked],
   ../constantine/primitives/constant_time
 
 proc main() =

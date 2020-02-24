@@ -11,7 +11,7 @@ import
   macros,
   # Internal
   ./curves_parser, ./common,
-  ../math/[precomputed, bigints_checked]
+  ../arithmetic/[precomputed, bigints_checked]
 
 
 # ############################################################
