@@ -21,7 +21,7 @@ import
 #
 # ############################################################
 
-func fromUint*(dst: var Fq,
+func fromUint*(dst: var Fp,
                src: SomeUnsignedInt) =
   ## Parse a regular unsigned integer
   ## and store it into a BigInt of size `bits`
@@ -29,7 +29,7 @@ func fromUint*(dst: var Fq,
   dst.fromBig(raw)
 
 func exportRawUint*(dst: var openarray[byte],
-                       src: Fq,
+                       src: Fp,
                        dstEndianness: static Endianness) =
   ## Serialize a finite field element to its canonical big-endian or little-endian
   ## representation
@@ -42,7 +42,7 @@ func exportRawUint*(dst: var openarray[byte],
   ## I.e least significant bit is aligned to buffer boundary
   exportRawUint(dst, src.toBig(), dstEndianness)
 
-func toHex*(f: Fq, order: static Endianness = bigEndian): string =
+func toHex*(f: Fp, order: static Endianness = bigEndian): string =
   ## Stringify a finite field element to hex.
   ## Note. Leading zeros are not removed.
   ## Result is prefixed with 0x
@@ -53,7 +53,7 @@ func toHex*(f: Fq, order: static Endianness = bigEndian): string =
   ##   - no leaks
   result = f.toBig().toHex(order)
 
-func fromHex*(dst: var Fq, s: string) {.raises: [ValueError].}=
-  ## Convert a hex string to a element of Fq
+func fromHex*(dst: var Fp, s: string) {.raises: [ValueError].}=
+  ## Convert a hex string to a element of Fp
   let raw {.noinit.} = fromHex(dst.mres.typeof, s)
   dst.fromBig(raw)

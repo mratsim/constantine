@@ -59,7 +59,7 @@ macro declareCurves*(curves: untyped): untyped =
   var CurveBitSize = nnKBracket.newTree()
   var curveModStmts = newStmtList()
 
-  let Fq = ident"Fq"
+  let Fp = ident"Fp"
 
   for curveDesc in curves:
     curveDesc.expectKind(nnkCommand)
@@ -87,12 +87,12 @@ macro declareCurves*(curves: untyped): untyped =
       curve, bitSize
     )
 
-    # const BN254_Modulus = Fq[BN254](value: fromHex(BigInt[254], "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"))
+    # const BN254_Modulus = Fp[BN254](value: fromHex(BigInt[254], "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"))
     let modulusID = ident($curve & "_Modulus")
     curveModStmts.add newConstStmt(
       modulusID,
       nnkObjConstr.newTree(
-        nnkBracketExpr.newTree(Fq, curve),
+        nnkBracketExpr.newTree(Fp, curve),
         nnkExprColonExpr.newTree(
           ident"mres",
           newCall(
@@ -136,7 +136,7 @@ macro declareCurves*(curves: untyped): untyped =
   )
 
   # type
-  #   `Fq`*[C: static Curve] = object
+  #   `Fp`*[C: static Curve] = object
   #     ## All operations on a field are modulo P
   #     ## P being the prime modulus of the Curve C
   #     ## Internally, data is stored in Montgomery n-residue form
@@ -144,7 +144,7 @@ macro declareCurves*(curves: untyped): untyped =
   #     mres*: matchingBigInt(C)
   result.add nnkTypeSection.newTree(
     nnkTypeDef.newTree(
-      nnkPostfix.newTree(ident"*", Fq),
+      nnkPostfix.newTree(ident"*", Fp),
       nnkGenericParams.newTree(newIdentDefs(
         C, nnkStaticTy.newTree(Curve), newEmptyNode()
       )),

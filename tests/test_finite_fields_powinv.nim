@@ -21,7 +21,7 @@ proc main() =
       let exponent = BigInt[64].fromUint(2'u64)
 
       block: # 1^2 mod 101
-        var n, expected: Fq[Fake101]
+        var n, expected: Fp[Fake101]
 
         n.fromUint(1'u32)
         expected = n
@@ -39,7 +39,7 @@ proc main() =
           1'u64 == r
 
       block: # 2^2 mod 101
-        var n, expected: Fq[Fake101]
+        var n, expected: Fp[Fake101]
 
         n.fromUint(2'u32)
         expected.fromUint(4'u32)
@@ -57,7 +57,7 @@ proc main() =
           4'u64 == r
 
       block: # 10^2 mod 101
-        var n, expected: Fq[Fake101]
+        var n, expected: Fp[Fake101]
 
         n.fromUint(10'u32)
         expected.fromUint(100'u32)
@@ -75,7 +75,7 @@ proc main() =
           100'u64 == r
 
       block: # 11^2 mod 101
-        var n, expected: Fq[Fake101]
+        var n, expected: Fp[Fake101]
 
         n.fromUint(11'u32)
         expected.fromUint(20'u32)
@@ -94,7 +94,7 @@ proc main() =
 
     test "x^(p-2) mod p (modular inversion if p prime)":
       block:
-        var x: Fq[BLS12_381]
+        var x: Fp[BLS12_381]
 
         # BN254 field modulus
         x.fromHex("0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47")
@@ -110,7 +110,7 @@ proc main() =
           computed == expected
 
       block:
-        var x: Fq[BLS12_381]
+        var x: Fp[BLS12_381]
 
         # BN254 field modulus
         x.fromHex("0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47")
@@ -127,7 +127,7 @@ proc main() =
 
   suite "Modular inversion over prime fields":
     test "x^(-1) mod p":
-        var x: Fq[BLS12_381]
+        var x: Fp[BLS12_381]
 
         # BN254 field modulus
         x.fromHex("0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47")

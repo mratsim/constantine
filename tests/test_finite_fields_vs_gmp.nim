@@ -94,8 +94,8 @@ proc mainMul() =
     doAssert len >= bW, "Expected at most " & $len & " bytes but wrote " & $bW & " for " & toHex(bBuf) & " (little-endian)"
 
     # Build the bigint - TODO more fields codecs
-    let aTest = Fq[curve].fromBig BigInt[bits].fromRawUint(aBuf, littleEndian)
-    let bTest = Fq[curve].fromBig BigInt[bits].fromRawUint(bBuf, littleEndian)
+    let aTest = Fp[curve].fromBig BigInt[bits].fromRawUint(aBuf, littleEndian)
+    let bTest = Fp[curve].fromBig BigInt[bits].fromRawUint(bBuf, littleEndian)
 
     #########################################################
     # Modular multiplication
@@ -169,7 +169,7 @@ proc mainInv() =
     doAssert len >= aW, "Expected at most " & $len & " bytes but wrote " & $aW & " for " & toHex(aBuf) & " (little-endian)"
 
     # Build the bigint - TODO more fields codecs
-    let aTest = Fq[curve].fromBig BigInt[bits].fromRawUint(aBuf[0 ..< aW], bigEndian)
+    let aTest = Fp[curve].fromBig BigInt[bits].fromRawUint(aBuf[0 ..< aW], bigEndian)
 
     #########################################################
     # Modular inversion

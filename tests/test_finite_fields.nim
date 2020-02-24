@@ -19,7 +19,7 @@ proc main() =
   suite "Basic arithmetic over finite fields":
     test "Addition mod 101":
       block:
-        var x, y, z: Fq[Fake101]
+        var x, y, z: Fp[Fake101]
 
         x.fromUint(80'u32)
         y.fromUint(10'u32)
@@ -37,7 +37,7 @@ proc main() =
           90'u64 == cast[uint64](x_bytes)
 
       block:
-        var x, y, z: Fq[Fake101]
+        var x, y, z: Fp[Fake101]
 
         x.fromUint(80'u32)
         y.fromUint(21'u32)
@@ -55,7 +55,7 @@ proc main() =
           0'u64 == cast[uint64](x_bytes)
 
       block:
-        var x, y, z: Fq[Fake101]
+        var x, y, z: Fp[Fake101]
 
         x.fromUint(80'u32)
         y.fromUint(22'u32)
@@ -74,7 +74,7 @@ proc main() =
 
     test "Substraction mod 101":
       block:
-        var x, y, z: Fq[Fake101]
+        var x, y, z: Fp[Fake101]
 
         x.fromUint(80'u32)
         y.fromUint(10'u32)
@@ -92,7 +92,7 @@ proc main() =
           70'u64 == cast[uint64](x_bytes)
 
       block:
-        var x, y, z: Fq[Fake101]
+        var x, y, z: Fp[Fake101]
 
         x.fromUint(80'u32)
         y.fromUint(80'u32)
@@ -110,7 +110,7 @@ proc main() =
           0'u64 == cast[uint64](x_bytes)
 
       block:
-        var x, y, z: Fq[Fake101]
+        var x, y, z: Fp[Fake101]
 
         x.fromUint(80'u32)
         y.fromUint(81'u32)
@@ -129,7 +129,7 @@ proc main() =
 
     test "Multiplication mod 101":
       block:
-        var x, y, z: Fq[Fake101]
+        var x, y, z: Fp[Fake101]
 
         x.fromUint(10'u32)
         y.fromUint(10'u32)
@@ -147,7 +147,7 @@ proc main() =
           100'u64 == cast[uint64](r_bytes)
 
       block:
-        var x, y, z: Fq[Fake101]
+        var x, y, z: Fp[Fake101]
 
         x.fromUint(10'u32)
         y.fromUint(11'u32)
@@ -166,7 +166,7 @@ proc main() =
 
     test "Addition mod 2^61 - 1":
       block:
-        var x, y, z: Fq[Mersenne61]
+        var x, y, z: Fp[Mersenne61]
 
         x.fromUint(80'u64)
         y.fromUint(10'u64)
@@ -185,7 +185,7 @@ proc main() =
           new_x == 90'u64
 
       block:
-        var x, y, z: Fq[Mersenne61]
+        var x, y, z: Fp[Mersenne61]
 
         x.fromUint(1'u64 shl 61 - 2)
         y.fromUint(1'u32)
@@ -204,7 +204,7 @@ proc main() =
           new_x == 0'u64
 
       block:
-        var x, y, z: Fq[Mersenne61]
+        var x, y, z: Fp[Mersenne61]
 
         x.fromUint(1'u64 shl 61 - 2)
         y.fromUint(2'u64)
@@ -224,7 +224,7 @@ proc main() =
 
     test "Substraction mod 2^61 - 1":
       block:
-        var x, y, z: Fq[Mersenne61]
+        var x, y, z: Fp[Mersenne61]
 
         x.fromUint(80'u64)
         y.fromUint(10'u64)
@@ -243,7 +243,7 @@ proc main() =
           new_x == 70'u64
 
       block:
-        var x, y, z: Fq[Mersenne61]
+        var x, y, z: Fp[Mersenne61]
 
         x.fromUint(0'u64)
         y.fromUint(1'u64)
@@ -263,7 +263,7 @@ proc main() =
 
     test "Multiplication mod 2^61 - 1":
       block:
-        var x, y, z: Fq[Mersenne61]
+        var x, y, z: Fp[Mersenne61]
 
         x.fromUint(10'u32)
         y.fromUint(10'u32)
@@ -282,7 +282,7 @@ proc main() =
           cast[uint64](r_bytes) == 100'u64
 
       block:
-        var x, y, z: Fq[Mersenne61]
+        var x, y, z: Fp[Mersenne61]
 
         x.fromUint(1'u32 shl 31)
         y.fromUint(1'u32 shl 31)

@@ -8,17 +8,21 @@
 
 # ############################################################
 #
-#          Fq: Finite Field arithmetic over Q
+#    Fp: Finite Field arithmetic with prime field modulus P
 #
 # ############################################################
 
-# We assume that q is known at compile-time
-# We assume that q is not even:
-# - Operations are done in the Montgomery domain
-# - The Montgomery domain introduce a Montgomery constant that must be coprime
-#   with the field modulus.
-# - The constant is chosen a power of 2
-# => to be coprime with a power of 2, q must be odd
+# Constraints:
+# - We assume that p is known at compile-time
+# - We assume that p is not even:
+#   - Operations are done in the Montgomery domain
+#   - The Montgomery domain introduce a Montgomery constant that must be coprime
+#     with the field modulus.
+#   - The constant is chosen a power of 2
+#   => to be coprime with a power of 2, p must be odd
+# - We assume that p is a prime
+#   - Modular inversion uses the Fermat's little theorem
+#     which requires a prime
 
 import
   ../primitives/constant_time,
@@ -28,21 +32,21 @@ import
 from ../io/io_bigints import exportRawUint # for "pow"
 
 # type
-#   `Fq`*[C: static Curve] = object
+#   `Fp`*[C: static Curve] = object
 #     ## All operations on a field are modulo P
 #     ## P being the prime modulus of the Curve C
 #     ## Internally, data is stored in Montgomery n-residue form
 #     ## with the magic constant chosen for convenient division (a power of 2 depending on P bitsize)
 #     mres*: matchingBigInt(C)
-export Fq # defined in ../config/curves to avoid recursive module dependencies
+export Fp # defined in ../config/curves to avoid recursive module dependencies
 
 debug:
-  func `==`*(a, b: Fq): CTBool[Word] =
+  func `==`*(a, b: Fp): CTBool[Word] =
     ## Returns true if 2 big ints are equal
     a.mres == b.mres
 
-  func `$`*[C: static Curve](a: Fq[C]): string =
-    result = "Fq[" & $C
+  func `$`*[C: static Curve](a: Fp[C]): string =
+    result = "Fp[" & $C
     result.add "]("
     result.add $a.mres
     result.add ')'
@@ -57,18 +61,18 @@ debug:
 #
 # ############################################################
 
-func fromBig*[C: static Curve](T: type Fq[C], src: BigInt): Fq[C] {.noInit.} =
+func fromBig*[C: static Curve](T: type Fp[C], src: BigInt): Fp[C] {.noInit.} =
   ## Convert a BigInt to its Montgomery form
   result.mres.montyResidue(src, C.Mod.mres, C.getR2modP(), C.getNegInvModWord())
 
-func fromBig*[C: static Curve](dst: var Fq[C], src: BigInt) {.noInit.} =
+func fromBig*[C: static Curve](dst: var Fp[C], src: BigInt) {.noInit.} =
   ## Convert a BigInt to its Montgomery form
   dst.mres.montyResidue(src, C.Mod.mres, C.getR2modP(), C.getNegInvModWord())
 
-func toBig*(src: Fq): auto {.noInit.} =
+func toBig*(src: Fp): auto {.noInit.} =
   ## Convert a finite-field element to a BigInt in natral representation
   var r {.noInit.}: typeof(src.mres)
-  r.redc(src.mres, Fq.C.Mod.mres, Fq.C.getNegInvModWord())
+  r.redc(src.mres, Fp.C.Mod.mres, Fp.C.getNegInvModWord())
   return r
 
 # ############################################################
@@ -77,7 +81,7 @@ func toBig*(src: Fq): auto {.noInit.} =
 #
 # ############################################################
 
-template add(a: var Fq, b: Fq, ctl: CTBool[Word]): CTBool[Word] =
+template add(a: var Fp, b: Fp, ctl: CTBool[Word]): CTBool[Word] =
   ## Constant-time big integer in-place optional addition
   ## The addition is only performed if ctl is "true"
   ## The result carry is always computed.
@@ -86,7 +90,7 @@ template add(a: var Fq, b: Fq, ctl: CTBool[Word]): CTBool[Word] =
   ## a and b MUST have the same announced bitlength (i.e. `bits` static parameters)
   add(a.mres, b.mres, ctl)
 
-template sub(a: var Fq, b: Fq, ctl: CTBool[Word]): CTBool[Word] =
+template sub(a: var Fp, b: Fp, ctl: CTBool[Word]): CTBool[Word] =
   ## Constant-time big integer in-place optional substraction
   ## The substraction is only performed if ctl is "true"
   ## The result carry is always computed.
@@ -109,46 +113,46 @@ template sub(a: var Fq, b: Fq, ctl: CTBool[Word]): CTBool[Word] =
 #       - Golden Primes (φ^2 - φ - 1 with φ = 2^k for example Ed448-Goldilocks: 2^448 - 2^224 - 1)
 #       exist and can be implemented with compile-time specialization.
 
-func `+=`*(a: var Fq, b: Fq) =
-  ## Addition over Fq
+func `+=`*(a: var Fp, b: Fp) =
+  ## Addition over Fp
   var ctl = add(a, b, CtTrue)
-  ctl = ctl or not sub(a, Fq.C.Mod, CtFalse)
-  discard sub(a, Fq.C.Mod, ctl)
+  ctl = ctl or not sub(a, Fp.C.Mod, CtFalse)
+  discard sub(a, Fp.C.Mod, ctl)
 
-func `-=`*(a: var Fq, b: Fq) =
-  ## Substraction over Fq
+func `-=`*(a: var Fp, b: Fp) =
+  ## Substraction over Fp
   let ctl = sub(a, b, CtTrue)
-  discard add(a, Fq.C.Mod, ctl)
+  discard add(a, Fp.C.Mod, ctl)
 
-func `*`*(a, b: Fq): Fq {.noInit.} =
-  ## Multiplication over Fq
+func `*`*(a, b: Fp): Fp {.noInit.} =
+  ## Multiplication over Fp
   ##
   ## It is recommended to assign with {.noInit.}
-  ## as Fq elements are usually large and this
+  ## as Fp elements are usually large and this
   ## routine will zero init internally the result.
-  result.mres.montyMul(a.mres, b.mres, Fq.C.Mod.mres, Fq.C.getNegInvModWord())
+  result.mres.montyMul(a.mres, b.mres, Fp.C.Mod.mres, Fp.C.getNegInvModWord())
 
-func square*(a: Fq): Fq {.noInit.} =
-  ## Squaring over Fq
+func square*(a: Fp): Fp {.noInit.} =
+  ## Squaring over Fp
   ##
   ## It is recommended to assign with {.noInit.}
-  ## as Fq elements are usually large and this
+  ## as Fp elements are usually large and this
   ## routine will zero init internally the result.
-  result.mres.montySquare(a.mres, Fq.C.Mod.mres, Fq.C.getNegInvModWord())
+  result.mres.montySquare(a.mres, Fp.C.Mod.mres, Fp.C.getNegInvModWord())
 
-func pow*(a: var Fq, exponent: BigInt) =
-  ## Exponentiation over Fq
+func pow*(a: var Fp, exponent: BigInt) =
+  ## Exponentiation over Fp
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a big integer
   const windowSize = 5 # TODO: find best window size for each curves
   a.mres.montyPow(
     exponent,
-    Fq.C.Mod.mres, Fq.C.getMontyOne(),
-    Fq.C.getNegInvModWord(), windowSize
+    Fp.C.Mod.mres, Fp.C.getMontyOne(),
+    Fp.C.getNegInvModWord(), windowSize
   )
 
-func powUnsafeExponent*(a: var Fq, exponent: BigInt) =
-  ## Exponentiation over Fq
+func powUnsafeExponent*(a: var Fp, exponent: BigInt) =
+  ## Exponentiation over Fp
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a big integer
   ##
@@ -161,17 +165,17 @@ func powUnsafeExponent*(a: var Fq, exponent: BigInt) =
   const windowSize = 5 # TODO: find best window size for each curves
   a.mres.montyPowUnsafeExponent(
     exponent,
-    Fq.C.Mod.mres, Fq.C.getMontyOne(),
-    Fq.C.getNegInvModWord(), windowSize
+    Fp.C.Mod.mres, Fp.C.getMontyOne(),
+    Fp.C.getNegInvModWord(), windowSize
   )
 
-func inv*(a: var Fq) =
+func inv*(a: var Fp) =
   ## Modular inversion
   ## Warning ⚠️ :
-  ##   - This assumes that `Fq` is a prime field
+  ##   - This assumes that `Fp` is a prime field
   const windowSize = 5 # TODO: find best window size for each curves
   a.mres.montyPowUnsafeExponent(
-    Fq.C.getInvModExponent(),
-    Fq.C.Mod.mres, Fq.C.getMontyOne(),
-    Fq.C.getNegInvModWord(), windowSize
+    Fp.C.getInvModExponent(),
+    Fp.C.Mod.mres, Fp.C.getMontyOne(),
+    Fp.C.getNegInvModWord(), windowSize
   )

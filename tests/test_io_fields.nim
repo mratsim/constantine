@@ -22,7 +22,7 @@ proc main() =
         # "Little-endian" - 0
         let x = 0'u64
         let x_bytes = cast[array[8, byte]](x)
-        var f: Fq[Mersenne61]
+        var f: Fp[Mersenne61]
         f.fromUint(x)
 
         var r_bytes: array[8, byte]
@@ -33,7 +33,7 @@ proc main() =
         # "Little-endian" - 1
         let x = 1'u64
         let x_bytes = cast[array[8, byte]](x)
-        var f: Fq[Mersenne61]
+        var f: Fp[Mersenne61]
         f.fromUint(x)
 
         var r_bytes: array[8, byte]
@@ -44,7 +44,7 @@ proc main() =
         # "Little-endian" - 2^31
         let x = 1'u64 shl 31
         let x_bytes = cast[array[8, byte]](x)
-        var f: Fq[Mersenne61]
+        var f: Fp[Mersenne61]
         f.fromUint(x)
 
         var r_bytes: array[8, byte]
@@ -55,7 +55,7 @@ proc main() =
         # "Little-endian" - 2^32
         let x = 1'u64 shl 32
         let x_bytes = cast[array[8, byte]](x)
-        var f: Fq[Mersenne61]
+        var f: Fp[Mersenne61]
         f.fromUint(x)
 
         var r_bytes: array[8, byte]
@@ -67,7 +67,7 @@ proc main() =
         # "Little-endian" - 2^63
         let x = 1'u64 shl 63
         let x_bytes = cast[array[8, byte]](x)
-        var f: Fq[Mersenne127]
+        var f: Fp[Mersenne127]
         f.fromUint(x)
 
         var r_bytes: array[16, byte]
@@ -77,7 +77,7 @@ proc main() =
       block: # "Little-endian" - single random
         let x = uint64 rand(0..high(int))
         let x_bytes = cast[array[8, byte]](x)
-        var f: Fq[Mersenne127]
+        var f: Fp[Mersenne127]
         f.fromUint(x)
 
         var r_bytes: array[16, byte]
@@ -88,7 +88,7 @@ proc main() =
         for _ in 0 ..< 10:
           let x = uint64 rand(0..high(int))
           let x_bytes = cast[array[8, byte]](x)
-          var f: Fq[Mersenne127]
+          var f: Fp[Mersenne127]
           f.fromUint(x)
 
           var r_bytes: array[16, byte]
@@ -98,7 +98,7 @@ proc main() =
     test "Round trip on large constant":
       block: # 2^126
         const p = "0x40000000000000000000000000000000"
-        let x = Fq[Mersenne127].fromBig BigInt[127].fromHex(p)
+        let x = Fp[Mersenne127].fromBig BigInt[127].fromHex(p)
         let hex = x.toHex(bigEndian)
 
         check: p == hex
