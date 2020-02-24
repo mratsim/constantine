@@ -101,6 +101,18 @@ func isZero*(a: BigInt): CTBool[Word] =
   ## Returns true if a big int is equal to zero
   a.view.isZero
 
+func setZero*(a: var BigInt) =
+  ## Set a BigInt to 0
+  a.setInternalBitLength()
+  zeroMem(a.limbs[0].unsafeAddr, a.limbs.len * sizeof(Word))
+
+func setOne*(a: var BigInt) =
+  ## Set a BigInt to 1
+  a.setInternalBitLength()
+  a.limbs[0] = Word(1)
+  when a.limbs.len > 1:
+    zeroMem(a.limbs[1].unsafeAddr, (a.limbs.len-1) * sizeof(Word))
+
 func add*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]): CTBool[Word] =
   ## Constant-time big integer in-place optional addition
   ## The addition is only performed if ctl is "true"
@@ -112,6 +124,12 @@ func sub*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]): CTBool
   ## The addition is only performed if ctl is "true"
   ## The result carry is always computed.
   sub(a.view, b.view, ctl)
+
+func double*[bits](a: var BigInt[bits], ctl: CTBool[Word]): CTBool[Word] =
+  ## Constant-time big integer in-place optional doubling
+  ## The doubling is only performed if ctl is "true"
+  ## The result carry is always computed.
+  add(a.view, a.view, ctl)
 
 func reduce*[aBits, mBits](r: var BigInt[mBits], a: BigInt[aBits], M: BigInt[mBits]) =
   ## Reduce `a` modulo `M` and store the result in `r`
@@ -145,9 +163,8 @@ func redc*[mBits](r: var BigInt[mBits], a, N: BigInt[mBits], negInvModWord: stat
   ## Caller must take care of properly switching between
   ## the natural and montgomery domain.
   let one = block:
-    var one: BigInt[mBits]
-    one.setInternalBitLength()
-    one.limbs[0] = Word(1)
+    var one {.noInit.}: BigInt[mBits]
+    one.setOne()
     one
   redc(r.view, a.view, one.view, N.view, Word(negInvModWord))
 

@@ -113,27 +113,54 @@ template sub(a: var Fp, b: Fp, ctl: CTBool[Word]): CTBool[Word] =
 #       - Golden Primes (φ^2 - φ - 1 with φ = 2^k for example Ed448-Goldilocks: 2^448 - 2^224 - 1)
 #       exist and can be implemented with compile-time specialization.
 
+func setZero*(a: var Fp) =
+  ## Set ``a`` to zero
+  a.setZero()
+
+func setOne*(a: var Fp) =
+  ## Set ``a`` to one
+  # Note: we need 1 in Montgomery residue form
+  a = Fp.C.getMontyOne()
+
 func `+=`*(a: var Fp, b: Fp) =
-  ## Addition over Fp
+  ## Addition modulo p
   var ctl = add(a, b, CtTrue)
   ctl = ctl or not sub(a, Fp.C.Mod, CtFalse)
   discard sub(a, Fp.C.Mod, ctl)
 
 func `-=`*(a: var Fp, b: Fp) =
-  ## Substraction over Fp
+  ## Substraction modulo p
   let ctl = sub(a, b, CtTrue)
   discard add(a, Fp.C.Mod, ctl)
 
+func double*(a: var Fp) =
+  ## Double ``a`` modulo p
+  var ctl = double(a, CtTrue)
+  ctl = ctl or not sub(a, Fp.C.Mod, CtFalse)
+  discard sub(a, Fp.C.Mod, ctl)
+
 func `*`*(a, b: Fp): Fp {.noInit.} =
-  ## Multiplication over Fp
+  ## Multiplication modulo p
   ##
   ## It is recommended to assign with {.noInit.}
   ## as Fp elements are usually large and this
   ## routine will zero init internally the result.
   result.mres.montyMul(a.mres, b.mres, Fp.C.Mod.mres, Fp.C.getNegInvModWord())
 
+func `*=`*(a: var Fp, b: Fp) =
+  ## Multiplication modulo p
+  ##
+  ## Implementation note:
+  ## - This requires a temporary field element
+  ##
+  ## Cost
+  ## Stack: 1 * ModulusBitSize
+  var tmp{.noInit.}: Fp
+  tmp.mres.montyMul(a.mres, b.mres, Fp.C.Mod.mres, Fp.C.getNegInvModWord())
+  a = tmp
+
 func square*(a: Fp): Fp {.noInit.} =
-  ## Squaring over Fp
+  ## Squaring modulo p
   ##
   ## It is recommended to assign with {.noInit.}
   ## as Fp elements are usually large and this
@@ -141,7 +168,7 @@ func square*(a: Fp): Fp {.noInit.} =
   result.mres.montySquare(a.mres, Fp.C.Mod.mres, Fp.C.getNegInvModWord())
 
 func pow*(a: var Fp, exponent: BigInt) =
-  ## Exponentiation over Fp
+  ## Exponentiation modulo p
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a big integer
   const windowSize = 5 # TODO: find best window size for each curves
@@ -152,7 +179,7 @@ func pow*(a: var Fp, exponent: BigInt) =
   )
 
 func powUnsafeExponent*(a: var Fp, exponent: BigInt) =
-  ## Exponentiation over Fp
+  ## Exponentiation modulo p
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a big integer
   ##
@@ -170,7 +197,7 @@ func powUnsafeExponent*(a: var Fp, exponent: BigInt) =
   )
 
 func inv*(a: var Fp) =
-  ## Modular inversion
+  ## Inversion modulo p
   ## Warning ⚠️ :
   ##   - This assumes that `Fp` is a prime field
   const windowSize = 5 # TODO: find best window size for each curves

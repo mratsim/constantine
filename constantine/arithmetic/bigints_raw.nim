@@ -223,7 +223,7 @@ func isZero*(a: BigIntViewAny): CTBool[Word] =
     accum = accum or a[i]
   result = accum.isZero()
 
-func setZero*(a: BigIntViewMut) =
+func setZero(a: BigIntViewMut) =
   ## Set a BigInt to 0
   ## It's bit size is unchanged
   zeroMem(a[0].unsafeAddr, a.numLimbs() * sizeof(Word))
