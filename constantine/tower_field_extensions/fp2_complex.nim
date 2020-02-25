@@ -47,7 +47,7 @@ import
   ./abelian_groups
 
 type
-  Fp2[C: static Curve] = object
+  Fp2*[C: static Curve] = object
     ## Element of the extension field
     ## 𝔽p2 = 𝔽p[𝑖] of a prime p
     ##
@@ -125,7 +125,7 @@ func prod*(r: var Fp2, a, b: Fp2) =
 
   r.c0.sum(a.c0, a.c1)  # r0 = (a0 + a1)                        # [2 Mul, 1 Add]
   r.c1.sum(b.c0, b.c1)  # r1 = (b0 + b1)                        # [2 Mul, 2 Add]
-  r.c1 *= c.c0          # r1 = (b0 + b1)(a0 + a1)               # [3 Mul, 2 Add] - 𝔽p temporary
+  r.c1 *= r.c0          # r1 = (b0 + b1)(a0 + a1)               # [3 Mul, 2 Add] - 𝔽p temporary
 
   r.c0.diff(a0b0, a1b1) # r0 = a0 b0 - a1 b1                    # [3 Mul, 2 Add, 1 Sub]
   r.c1 -= a0b0          # r1 = (b0 + b1)(a0 + a1) - a0b0        # [3 Mul, 2 Add, 2 Sub]
