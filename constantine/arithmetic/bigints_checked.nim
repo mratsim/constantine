@@ -90,7 +90,7 @@ debug:
 {.push raises: [].}
 {.push inline.}
 
-func setInternalBitLength*(a: var BigInt) {.inline.} =
+func setInternalBitLength*(a: var BigInt) =
   ## Derive the actual bitsize used internally of a BigInt
   ## from the announced BigInt bitsize
   ## and set the bitLength field of that BigInt

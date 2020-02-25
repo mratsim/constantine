@@ -102,7 +102,8 @@ proc mainMul() =
     mpz_mul(r, a, b)
     mpz_mod(r, r, p)
 
-    let rTest = aTest * bTest
+    var rTest {.noInit.}: Fp[curve]
+    rTest.prod(aTest, bTest)
 
     #########################################################
     # Check

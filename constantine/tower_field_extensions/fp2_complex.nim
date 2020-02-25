@@ -58,8 +58,9 @@ type
     ## be a square (mod p)
     c0*, c1*: Fp[C]
 
-func square*(a: Fp2): Fp2 {.noInit.} =
-  ## Return a^2 in 𝔽p2
+func square*(r: var Fp2, a: Fp2) =
+  ## Return a^2 in 𝔽p2 in ``r``
+  ## ``r`` is initialized/overwritten
   # (c0, c1)² => (c0 + c1𝑖)²
   #           => c0² + 2 c0 c1𝑖 + (c1𝑖)²
   #           => c0²-c1² + 2 c0 c1𝑖
@@ -85,8 +86,8 @@ func square*(a: Fp2): Fp2 {.noInit.} =
   # as multiplications require a (shared) internal temporary
 
   var c0mc1 {.noInit.}: typeof(a.c0)
-  c0mc1.diff(a.c0, a.c1)           # c0mc1 = c0 - c1                               [1 Sub]
-  result.c1.double(a.c1)           # result.c1 = 2 c1                              [1 Dbl, 1 Sub]
-  result.c0.sum(c0mc1, result.c1)  # result.c0 = c0 - c1 + 2 c1                    [1 Add, 1 Dbl, 1 Sub]
-  result.c0 *= c0mc1               # result.c0 = (c0 + c1)(c0 - c1) = c0² - c1²    [1 Mul, 1 Add, 1 Dbl, 1 Sub]
-  result.c1 *= a.c0                # result.c1 = 2 c1 c0                           [2 Mul, 1 Add, 1 Dbl, 1 Sub]
+  c0mc1.diff(a.c0, a.c1) # c0mc1 = c0 - c1                            [1 Sub]
+  r.c1.double(a.c1)      # result.c1 = 2 c1                           [1 Dbl, 1 Sub]
+  r.c0.sum(c0mc1, r.c1)  # result.c0 = c0 - c1 + 2 c1                 [1 Add, 1 Dbl, 1 Sub]
+  r.c0 *= c0mc1          # result.c0 = (c0 + c1)(c0 - c1) = c0² - c1² [1 Mul, 1 Add, 1 Dbl, 1 Sub]
+  r.c1 *= a.c0           # result.c1 = 2 c1 c0                        [2 Mul, 1 Add, 1 Dbl, 1 Sub]

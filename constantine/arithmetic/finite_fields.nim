@@ -94,6 +94,8 @@ func setZero*(a: var Fp) =
 func setOne*(a: var Fp) =
   ## Set ``a`` to one
   # Note: we need 1 in Montgomery residue form
+  # TODO: Nim codegen is not optimal it uses a temporary
+  #       Check if the compiler optimizes it away
   a.mres = Fp.C.getMontyOne()
 
 func `+=`*(a: var Fp, b: Fp) =
@@ -133,46 +135,22 @@ func double*(r: var Fp, a: Fp) =
   overflowed = overflowed or not csub(r.mres, Fp.C.Mod.mres, CtFalse) # r >= P
   discard csub(r.mres, Fp.C.Mod.mres, overflowed)
 
-func `+`*(a, b: Fp): Fp {.noInit.} =
-  ## Addition modulo p
-  result.sum(a, b)
-
-func `-`*(a, b: Fp): Fp {.noInit.} =
-  ## Substraction modulo p
-  result.diff(a, b)
-
 func prod*(r: var Fp, a, b: Fp) =
   ## Store the product of ``a`` by ``b`` modulo p into ``r``
   ## ``r`` is initialized / overwritten
   r.mres.montyMul(a.mres, b.mres, Fp.C.Mod.mres, Fp.C.getNegInvModWord())
 
-func `*`*(a, b: Fp): Fp {.noInit.} =
-  ## Multiplication modulo p
-  ##
-  ## It is recommended to assign with {.noInit.}
-  ## as Fp elements are usually large and this
-  ## routine will zero init internally the result.
-  result.prod(a, b)
-
-func `*=`*(a: var Fp, b: Fp) =
-  ## Multiplication modulo p
-  ##
-  ## Implementation note:
-  ## - This requires a temporary field element
-  ##
-  ## Cost
-  ## Stack: 1 * ModulusBitSize
-  var tmp{.noInit.}: Fp
-  tmp.prod(a, b)
-  a = tmp
-
-func square*(a: Fp): Fp {.noInit.} =
+func square*(r: var Fp, a: Fp): Fp =
   ## Squaring modulo p
-  ##
-  ## It is recommended to assign with {.noInit.}
-  ## as Fp elements are usually large and this
-  ## routine will zero init internally the result.
-  result.mres.montySquare(a.mres, Fp.C.Mod.mres, Fp.C.getNegInvModWord())
+  r.mres.montySquare(a.mres, Fp.C.Mod.mres, Fp.C.getNegInvModWord())
+
+# ############################################################
+#
+#         Field arithmetic exponentiation and inversion
+#
+# ############################################################
+#
+# Internally those procedures will allocate extra scratchspace on the stack
 
 func pow*(a: var Fp, exponent: BigInt) =
   ## Exponentiation modulo p
@@ -213,3 +191,43 @@ func inv*(a: var Fp) =
     Fp.C.Mod.mres, Fp.C.getMontyOne(),
     Fp.C.getNegInvModWord(), windowSize
   )
+
+# ############################################################
+#
+#            Field arithmetic ergonomic primitives
+#
+# ############################################################
+#
+# This implements extra primitives for ergonomics.
+# The in-place ones should be preferred as they avoid copies on assignment
+# Two kinds:
+# - Those that return a field element
+# - Those that internally allocate a temporary field element
+
+func `+`*(a, b: Fp): Fp {.noInit.} =
+  ## Addition modulo p
+  result.sum(a, b)
+
+func `-`*(a, b: Fp): Fp {.noInit.} =
+  ## Substraction modulo p
+  result.diff(a, b)
+
+func `*`*(a, b: Fp): Fp {.noInit.} =
+  ## Multiplication modulo p
+  ##
+  ## It is recommended to assign with {.noInit.}
+  ## as Fp elements are usually large and this
+  ## routine will zero init internally the result.
+  result.prod(a, b)
+
+func `*=`*(a: var Fp, b: Fp) =
+  ## Multiplication modulo p
+  ##
+  ## Implementation note:
+  ## - This requires a temporary field element
+  ##
+  ## Cost
+  ## Stack: 1 * ModulusBitSize
+  var tmp{.noInit.}: Fp
+  tmp.prod(a, b)
+  a = tmp
