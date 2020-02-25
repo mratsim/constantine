@@ -67,7 +67,7 @@ func square*(r: var Fp2, a: Fp2) =
   #           => (c0²-c1², 2 c0 c1)
   #           or
   #           => ((c0-c1)(c0+c1), 2 c0 c1)
-  #           => ((c0-c1)(c0-c1 + 2 c1), 2 c0 c1)
+  #           => ((c0-c1)(c0-c1 + 2 c1), c0 * 2 c1)
   #
   # Costs (naive implementation)
   # - 1 Multiplication 𝔽p
@@ -82,12 +82,51 @@ func square*(r: var Fp2, a: Fp2) =
   # - 1 Addition 𝔽p
   # - 1 Doubling 𝔽p
   # - 1 Substraction 𝔽p
-  # Stack: 6 * ModulusBitSize (4x 𝔽p element + 1 named temporaries + 1 multiplication temporary)
-  # as multiplications require a (shared) internal temporary
+  # Stack: 6 * ModulusBitSize (4x 𝔽p element + 1 named temporaries + 1 in-place multiplication temporary)
+  # as in-place multiplications require a (shared) internal temporary
 
   var c0mc1 {.noInit.}: typeof(a.c0)
   c0mc1.diff(a.c0, a.c1) # c0mc1 = c0 - c1                            [1 Sub]
   r.c1.double(a.c1)      # result.c1 = 2 c1                           [1 Dbl, 1 Sub]
   r.c0.sum(c0mc1, r.c1)  # result.c0 = c0 - c1 + 2 c1                 [1 Add, 1 Dbl, 1 Sub]
-  r.c0 *= c0mc1          # result.c0 = (c0 + c1)(c0 - c1) = c0² - c1² [1 Mul, 1 Add, 1 Dbl, 1 Sub]
-  r.c1 *= a.c0           # result.c1 = 2 c1 c0                        [2 Mul, 1 Add, 1 Dbl, 1 Sub]
+  r.c0 *= c0mc1          # result.c0 = (c0 + c1)(c0 - c1) = c0² - c1² [1 Mul, 1 Add, 1 Dbl, 1 Sub] - 𝔽p temporary
+  r.c1 *= a.c0           # result.c1 = 2 c1 c0                        [2 Mul, 1 Add, 1 Dbl, 1 Sub] - 𝔽p temporary
+
+func prod*(r: var Fp2, a, b: Fp2) =
+  ## Return a * b in 𝔽p2 in ``r``
+  ## ``r`` is initialized/overwritten
+  # (a0, a1) (b0, b1) => (a0 + a1𝑖) (b0 + b1𝑖)
+  #                   => (a0 b0 - a1 b1) + (a0 b1 + a1 b0) 𝑖
+  #
+  # In Fp, multiplication has cost O(n²) with n the number of limbs
+  # while addition has cost O(3n) (n for addition, n for overflow, n for conditional substraction)
+  # and substraction has cost O(2n) (n for substraction + underflow, n for conditional addition)
+  #
+  # Even for 256-bit primes, we are looking at always a minimum of n=5 limbs (with 2^63 words)
+  # where addition/substraction are significantly cheaper than multiplication
+  #
+  # So we always reframe the imaginary part using Karatsuba approach to save a multiplication
+  # (a0, a1) (b0, b1) => (a0 b0 - a1 b1) + 𝑖( (a0 + a1)(b0 + b1) - a0 b0 - a1 b1 )
+  #
+  # Costs (naive implementation)
+  # - 4 Multiplications 𝔽p
+  # - 1 Addition 𝔽p
+  # - 1 Substraction 𝔽p
+  # Stack: 6 * ModulusBitSize (4x 𝔽p element + 2x named temporaries)
+  #
+  # Costs (Karatsuba)
+  # - 3 Multiplications 𝔽p
+  # - 3 Substraction 𝔽p (2 are fused)
+  # - 2 Addition 𝔽p
+  # Stack: 6 * ModulusBitSize (4x 𝔽p element + 2x named temporaries + 1 in-place multiplication temporary)
+  var a0b0 {.noInit.}, a1b1 {.noInit.}: typeof(a.c0)
+  a0b0.prod(a.c0, b.c0)                                         # [1 Mul]
+  a1b1.prod(a.c1, b.c1)                                         # [2 Mul]
+
+  r.c0.sum(a.c0, a.c1)  # r0 = (a0 + a1)                        # [2 Mul, 1 Add]
+  r.c1.sum(b.c0, b.c1)  # r1 = (b0 + b1)                        # [2 Mul, 2 Add]
+  r.c1 *= c.c0          # r1 = (b0 + b1)(a0 + a1)               # [3 Mul, 2 Add] - 𝔽p temporary
+
+  r.c0.diff(a0b0, a1b1) # r0 = a0 b0 - a1 b1                    # [3 Mul, 2 Add, 1 Sub]
+  r.c1 -= a0b0          # r1 = (b0 + b1)(a0 + a1) - a0b0        # [3 Mul, 2 Add, 2 Sub]
+  r.c1 -= a1b1          # r1 = (b0 + b1)(a0 + a1) - a0b0 - a1b1 # [3 Mul, 2 Add, 3 Sub]
