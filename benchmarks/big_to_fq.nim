@@ -18,7 +18,7 @@
 
 import
   ../constantine/config/[common, curves],
-  ../constantine/math/[bigints_checked, finite_fields],
+  ../constantine/arithmetic/[bigints_checked, finite_fields],
   random, std/monotimes, times, strformat
 
 const Iters = 1_000_000

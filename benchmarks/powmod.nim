@@ -23,7 +23,7 @@
 
 import
   ../constantine/config/[common, curves],
-  ../constantine/math/[bigints_checked, finite_fields],
+  ../constantine/arithmetic/[bigints_checked, finite_fields],
   ../constantine/io/[io_bigints, io_fields],
   random, std/monotimes, times, strformat
 
@@ -32,7 +32,7 @@ const Iters = 10_000
 randomize(1234)
 
 proc mainCT() =
-  var x: Fq[BLS12_381]
+  var x: Fp[BLS12_381]
   # BN254 field modulus
   x.fromHex("0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47")
   # BLS12-381 prime - 2
@@ -47,7 +47,7 @@ proc mainCT() =
   echo &"Time for {Iters} iterations (constant-time 381-bit): {inMilliseconds(stop-start)} ms"
 
 proc mainUnsafe() =
-  var x: Fq[BLS12_381]
+  var x: Fp[BLS12_381]
   # BN254 field modulus
   x.fromHex("0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47")
   # BLS12-381 prime - 2
