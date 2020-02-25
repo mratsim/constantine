@@ -75,6 +75,11 @@ From Ben Edgington, https://hackmd.io/@benjaminion/bls12-381
   Sylvain Duquesne and Nadia El Mrabet and Safia Haloui and Franck Rondepierre, 2015\
   https://eprint.iacr.org/2015/1212
 
+- Arithmetic of Finite Fields\
+  Chapter 5 of Guide to Pairing-Based Cryptography\
+  Jean Luc Beuchat, Luis J. Dominguez Perez, Sylvain Duquesne, Nadia El Mrabet, Laura Fuentes-Castañeda, Francisco Rodríguez-Henríquez, 2017\
+  https://www.researchgate.net/publication/319538235_Arithmetic_of_Finite_Fields
+
 ### Presentations
 
 - BLS12-381 For The Rest Of Us\
