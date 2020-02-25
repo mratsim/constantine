@@ -77,30 +77,6 @@ func toBig*(src: Fp): auto {.noInit.} =
 
 # ############################################################
 #
-#                         Aliases
-#
-# ############################################################
-
-template cadd(a: var Fp, b: Fp, ctl: CTBool[Word]): CTBool[Word] =
-  ## Constant-time in-place conditional addition
-  ## The addition is only performed if ctl is "true"
-  ## The result carry is always computed.
-  ##
-  ## a and b MAY be the same buffer
-  ## a and b MUST have the same announced bitlength (i.e. `bits` static parameters)
-  cadd(a.mres, b.mres, ctl)
-
-template csub(a: var Fp, b: Fp, ctl: CTBool[Word]): CTBool[Word] =
-  ## Constant-time in-place conditional substraction
-  ## The substraction is only performed if ctl is "true"
-  ## The result carry is always computed.
-  ##
-  ## a and b MAY be the same buffer
-  ## a and b MUST have the same announced bitlength (i.e. `bits` static parameters)
-  csub(a.mres, b.mres, ctl)
-
-# ############################################################
-#
 #                Field arithmetic primitives
 #
 # ############################################################
@@ -124,20 +100,20 @@ func setOne*(a: var Fp) =
 
 func `+=`*(a: var Fp, b: Fp) =
   ## Addition modulo p
-  var ctl = cadd(a, b, CtTrue)
-  ctl = ctl or not csub(a, Fp.C.Mod, CtFalse)
-  discard csub(a, Fp.C.Mod, ctl)
+  var overflowed = add(a.mres, b.mres)
+  overflowed = overflowed or not csub(a.mres, Fp.C.Mod.mres, CtFalse) # a >= P
+  discard csub(a.mres, Fp.C.Mod.mres, overflowed)
 
 func `-=`*(a: var Fp, b: Fp) =
   ## Substraction modulo p
-  let ctl = csub(a, b, CtTrue)
-  discard cadd(a, Fp.C.Mod, ctl)
+  let underflowed = sub(a.mres, b.mres)
+  discard cadd(a.mres, Fp.C.Mod.mres, underflowed)
 
 func double*(a: var Fp) =
   ## Double ``a`` modulo p
-  var ctl = cdouble(a, CtTrue)
-  ctl = ctl or not csub(a, Fp.C.Mod, CtFalse)
-  discard csub(a, Fp.C.Mod, ctl)
+  var overflowed = double(a.mres)
+  overflowed = overflowed or not csub(a.mres, Fp.C.Mod.mres, CtFalse) # a >= P
+  discard csub(a.mres, Fp.C.Mod.mres, overflowed)
 
 func `*`*(a, b: Fp): Fp {.noInit.} =
   ## Multiplication modulo p

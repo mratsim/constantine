@@ -34,7 +34,7 @@ func isMsbSet(x: BaseType): bool =
   const msb_pos = BaseType.sizeof * 8 - 1
   bool(x shr msb_pos)
 
-func double(a: var BigInt): bool =
+func dbl(a: var BigInt): bool =
   ## In-place multiprecision double
   ##   a -> 2a
   for i in 0 ..< a.limbs.len:
@@ -61,7 +61,7 @@ func doubleMod(a: var BigInt, M: BigInt) =
   ## It is NOT constant-time and is intended
   ## only for compile-time precomputation
   ## of non-secret data.
-  var ctl = double(a)
+  var ctl = dbl(a)
   ctl = ctl or not sub(a, M, false)
   discard sub(a, M, ctl)
 

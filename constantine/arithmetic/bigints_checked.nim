@@ -113,23 +113,76 @@ func setOne*(a: var BigInt) =
   when a.limbs.len > 1:
     zeroMem(a.limbs[1].unsafeAddr, (a.limbs.len-1) * sizeof(Word))
 
-func cadd*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]): CTBool[Word] =
+func cadd*(a: var BigInt, b: BigInt, ctl: CTBool[Word]): CTBool[Word] =
   ## Constant-time in-place conditional addition
   ## The addition is only performed if ctl is "true"
   ## The result carry is always computed.
   cadd(a.view, b.view, ctl)
 
-func csub*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]): CTBool[Word] =
+func csub*(a: var BigInt, b: BigInt, ctl: CTBool[Word]): CTBool[Word] =
   ## Constant-time in-place conditional addition
   ## The addition is only performed if ctl is "true"
   ## The result carry is always computed.
   csub(a.view, b.view, ctl)
 
-func cdouble*[bits](a: var BigInt[bits], ctl: CTBool[Word]): CTBool[Word] =
+func cdouble*(a: var BigInt, ctl: CTBool[Word]): CTBool[Word] =
   ## Constant-time in-place conditional doubling
   ## The doubling is only performed if ctl is "true"
   ## The result carry is always computed.
   cadd(a.view, a.view, ctl)
+
+# ############################################################
+#
+#          BigInt Primitives Optimized for speed
+#
+# ############################################################
+#
+# TODO: fallback to cadd / csub with a "size" compile-option
+
+func add*(a: var BigInt, b: BigInt): CTBool[Word] =
+  ## Constant-time in-place addition
+  ## Returns the carry
+  add(a.view, b.view)
+
+func sub*(a: var BigInt, b: BigInt): CTBool[Word] =
+  ## Constant-time in-place substraction
+  ## Returns the borrow
+  sub(a.view, b.view)
+
+func double*(a: var BigInt): CTBool[Word] =
+  ## Constant-time in-place doubling
+  ## Returns the carry
+  add(a.view, a.view)
+
+func sum*(r: var BigInt, a, b: BigInt): CTBool[Word] =
+  ## Sum `a` and `b` into `r`.
+  ## `r` is initialized/overwritten
+  ##
+  ## Returns the carry
+  sum(r.view, a.view, b.view)
+
+func diff*(r: var BigInt, a, b: BigInt): CTBool[Word] =
+  ## Substract `b` from `a` and store the result into `r`.
+  ## `r` is initialized/overwritten
+  ##
+  ## Returns the borrow
+  diff(r.view, a.view, b.view)
+
+# ############################################################
+#
+#                    Comparisons
+#
+# ############################################################
+
+# Use "csub", which unfortunately requires the first operand to be mutable.
+# for example for a <= b, we now that if a-b borrows then b > a and so a<=b is false
+# This can be tested with "not csub(a, b, CtFalse)"
+
+# ############################################################
+#
+#                   Modular BigInt
+#
+# ############################################################
 
 func reduce*[aBits, mBits](r: var BigInt[mBits], a: BigInt[aBits], M: BigInt[mBits]) =
   ## Reduce `a` modulo `M` and store the result in `r`
@@ -143,7 +196,7 @@ func reduce*[aBits, mBits](r: var BigInt[mBits], a: BigInt[aBits], M: BigInt[mBi
   # pass a pointer+length to a fixed session of the BSS.
   reduce(r.view, a.view, M.view)
 
-func montyResidue*[mBits](mres: var BigInt[mBits], a, N, r2modN: BigInt[mBits], negInvModWord: static BaseType) =
+func montyResidue*(mres: var BigInt, a, N, r2modN: BigInt, negInvModWord: static BaseType) =
   ## Convert a BigInt from its natural representation
   ## to the Montgomery n-residue form
   ##
@@ -168,14 +221,20 @@ func redc*[mBits](r: var BigInt[mBits], a, N: BigInt[mBits], negInvModWord: stat
     one
   redc(r.view, a.view, one.view, N.view, Word(negInvModWord))
 
-func montyMul*[mBits](r: var BigInt[mBits], a, b, M: BigInt[mBits], negInvModWord: static BaseType) =
+# ############################################################
+#
+#                 Montgomery Arithmetic
+#
+# ############################################################
+
+func montyMul*(r: var BigInt, a, b, M: BigInt, negInvModWord: static BaseType) =
   ## Compute r <- a*b (mod M) in the Montgomery domain
   ##
   ## This resets r to zero before processing. Use {.noInit.}
   ## to avoid duplicating with Nim zero-init policy
   montyMul(r.view, a.view, b.view, M.view, Word(negInvModWord))
 
-func montySquare*[mBits](r: var BigInt[mBits], a, M: BigInt[mBits], negInvModWord: static BaseType) =
+func montySquare*(r: var BigInt, a, M: BigInt, negInvModWord: static BaseType) =
   ## Compute r <- a^2 (mod M) in the Montgomery domain
   ##
   ## This resets r to zero before processing. Use {.noInit.}

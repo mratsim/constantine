@@ -301,6 +301,71 @@ func shiftRight*(a: BigIntViewMut, k: int) =
 
 # ############################################################
 #
+#          BigInt Primitives Optimized for speed
+#
+# ############################################################
+#
+# This section implements primitives that improve the speed
+# of common use-cases at the expense of a slight increase in code-size.
+# Where code size is a concern, the high-level API should use
+# copy and/or the conditional operations.
+
+func add*(a: BigIntViewMut, b: BigIntViewAny): CTBool[Word] =
+  ## Constant-time in-place addition
+  ## Returns the carry
+  ##
+  ## a and b MAY be the same buffer
+  ## a and b MUST have the same announced bitlength (i.e. `bits` static parameters)
+  checkMatchingBitlengths(a, b)
+
+  for i in 0 ..< a.numLimbs():
+    a[i] = a[i] + b[i] + Word(result)
+    result = a[i].isMsbSet()
+    a[i] = a[i].mask()
+
+func sub*(a: BigIntViewMut, b: BigIntViewAny): CTBool[Word] =
+  ## Constant-time in-place substraction
+  ## Returns the borrow
+  ##
+  ## a and b MAY be the same buffer
+  ## a and b MUST have the same announced bitlength (i.e. `bits` static parameters)
+  checkMatchingBitlengths(a, b)
+
+  for i in 0 ..< a.numLimbs():
+    a[i] = a[i] - b[i] - Word(result)
+    result = a[i].isMsbSet()
+    a[i] = a[i].mask()
+
+func sum*(r: BigIntViewMut, a, b: BigIntViewAny): CTBool[Word] =
+  ## Sum `a` and `b` into `r`.
+  ## `r` is initialized/overwritten
+  ##
+  ## Returns the carry
+  checkMatchingBitlengths(a, b)
+
+  r.setBitLength(bitSizeof(M))
+
+  for i in 0 ..< a.numLimbs():
+    r[i] = a[i] + b[i] + Word(result)
+    result = a[i].isMsbSet()
+    r[i] = r[i].mask()
+
+func diff*(r: BigIntViewMut, a, b: BigIntViewAny): CTBool[Word] =
+  ## Substract `b` from `a` and store the result into `r`.
+  ## `r` is initialized/overwritten
+  ##
+  ## Returns the borrow
+  checkMatchingBitlengths(a, b)
+
+  r.setBitLength(bitSizeof(M))
+
+  for i in 0 ..< a.numLimbs():
+    r[i] = a[i] - b[i] - Word(result)
+    result = a[i].isMsbSet()
+    r[i] = r[i].mask()
+
+# ############################################################
+#
 #                   Modular BigInt
 #
 # ############################################################
@@ -550,7 +615,7 @@ func montyResidue*(
 
   montyMul(r, a, r2ModN, N, negInvModWord)
 
-func montySquare(
+func montySquare*(
        r: BigIntViewMut, a: BigIntViewAny,
        M: BigIntViewConst, negInvModWord: Word) {.inline.} =
   ## Compute r <- a^2 (mod M) in the Montgomery domain
@@ -598,13 +663,6 @@ func montySquare(
 #     of the exponent, leaking this to cache attacks
 #   - in contrast BearSSL touches the whole table to
 #     hide the actual selection
-#
-# Directly using the Hamming weight would probably
-# significantly improve pairing-friendly curves as
-# they are chosen for their low Hamming-Weight (see BLS12-381 x factor)
-# --> Expose an exponent-leaky powMod?
-#     If so, create distinct type for leaked bits and BigInt
-#     so that sensitive data use is compiler-checked
 
 func getWindowLen(bufLen: int): uint =
   ## Compute the maximum window size that fits in the scratchspace buffer
