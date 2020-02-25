@@ -55,6 +55,9 @@ when not defined(testingCurves):
     curve P256: # secp256r1 / NIST P-256
       bitsize: 256
       modulus: "0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff"
+    curve Secp256k1: # Bitcoin curve
+      bitsize: 256
+      modulus: "0xFFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2F"
 else:
   # Fake curve for testing field arithmetic
   declareCurves:
