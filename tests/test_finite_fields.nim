@@ -25,6 +25,7 @@ proc main() =
         y.fromUint(10'u32)
         z.fromUint(90'u32)
 
+        let u = x + y
         x += y
 
         var x_bytes: array[8, byte]
@@ -33,6 +34,7 @@ proc main() =
         check:
           # Check equality in the Montgomery domain
           bool(z == x)
+          bool(z == u)
           # Check equality when converting back to natural domain
           90'u64 == cast[uint64](x_bytes)
 
@@ -43,6 +45,7 @@ proc main() =
         y.fromUint(21'u32)
         z.fromUint(0'u32)
 
+        let u = x + y
         x += y
 
         var x_bytes: array[8, byte]
@@ -51,6 +54,7 @@ proc main() =
         check:
           # Check equality in the Montgomery domain
           bool(z == x)
+          bool(z == u)
           # Check equality when converting back to natural domain
           0'u64 == cast[uint64](x_bytes)
 
@@ -61,6 +65,7 @@ proc main() =
         y.fromUint(22'u32)
         z.fromUint(1'u32)
 
+        let u = x + y
         x += y
 
         var x_bytes: array[8, byte]
@@ -69,6 +74,7 @@ proc main() =
         check:
           # Check equality in the Montgomery domain
           bool(z == x)
+          bool(z == u)
           # Check equality when converting back to natural domain
           1'u64 == cast[uint64](x_bytes)
 
@@ -80,6 +86,7 @@ proc main() =
         y.fromUint(10'u32)
         z.fromUint(70'u32)
 
+        let u = x - y
         x -= y
 
         var x_bytes: array[8, byte]
@@ -88,6 +95,7 @@ proc main() =
         check:
           # Check equality in the Montgomery domain
           bool(z == x)
+          bool(z == u)
           # Check equality when converting back to natural domain
           70'u64 == cast[uint64](x_bytes)
 
@@ -98,6 +106,7 @@ proc main() =
         y.fromUint(80'u32)
         z.fromUint(0'u32)
 
+        let u = x - y
         x -= y
 
         var x_bytes: array[8, byte]
@@ -106,6 +115,7 @@ proc main() =
         check:
           # Check equality in the Montgomery domain
           bool(z == x)
+          bool(z == u)
           # Check equality when converting back to natural domain
           0'u64 == cast[uint64](x_bytes)
 
@@ -116,6 +126,7 @@ proc main() =
         y.fromUint(81'u32)
         z.fromUint(100'u32)
 
+        let u = x - y
         x -= y
 
         var x_bytes: array[8, byte]
@@ -124,6 +135,7 @@ proc main() =
         check:
           # Check equality in the Montgomery domain
           bool(z == x)
+          bool(z == u)
           # Check equality when converting back to natural domain
           100'u64 == cast[uint64](x_bytes)
 

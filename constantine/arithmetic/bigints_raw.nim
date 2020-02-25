@@ -343,7 +343,7 @@ func sum*(r: BigIntViewMut, a, b: BigIntViewAny): CTBool[Word] =
   ## Returns the carry
   checkMatchingBitlengths(a, b)
 
-  r.setBitLength(bitSizeof(M))
+  r.setBitLength(bitSizeof(a))
 
   for i in 0 ..< a.numLimbs():
     r[i] = a[i] + b[i] + Word(result)
@@ -357,7 +357,7 @@ func diff*(r: BigIntViewMut, a, b: BigIntViewAny): CTBool[Word] =
   ## Returns the borrow
   checkMatchingBitlengths(a, b)
 
-  r.setBitLength(bitSizeof(M))
+  r.setBitLength(bitSizeof(a))
 
   for i in 0 ..< a.numLimbs():
     r[i] = a[i] - b[i] - Word(result)

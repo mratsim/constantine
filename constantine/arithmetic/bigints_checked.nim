@@ -168,6 +168,13 @@ func diff*(r: var BigInt, a, b: BigInt): CTBool[Word] =
   ## Returns the borrow
   diff(r.view, a.view, b.view)
 
+func double*(r: var BigInt, a: BigInt): CTBool[Word] =
+  ## Double `a` into `r`.
+  ## `r` is initialized/overwritten
+  ##
+  ## Returns the carry
+  sum(r.view, a.view, a.view)
+
 # ############################################################
 #
 #                    Comparisons

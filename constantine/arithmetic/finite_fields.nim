@@ -99,13 +99,13 @@ func setOne*(a: var Fp) =
   a = Fp.C.getMontyOne()
 
 func `+=`*(a: var Fp, b: Fp) =
-  ## Addition modulo p
+  ## In-place addition modulo p
   var overflowed = add(a.mres, b.mres)
   overflowed = overflowed or not csub(a.mres, Fp.C.Mod.mres, CtFalse) # a >= P
   discard csub(a.mres, Fp.C.Mod.mres, overflowed)
 
 func `-=`*(a: var Fp, b: Fp) =
-  ## Substraction modulo p
+  ## In-place substraction modulo p
   let underflowed = sub(a.mres, b.mres)
   discard cadd(a.mres, Fp.C.Mod.mres, underflowed)
 
@@ -115,13 +115,46 @@ func double*(a: var Fp) =
   overflowed = overflowed or not csub(a.mres, Fp.C.Mod.mres, CtFalse) # a >= P
   discard csub(a.mres, Fp.C.Mod.mres, overflowed)
 
+func sum*(r: var Fp, a, b: Fp) =
+  ## Sum ``a`` and ``b`` into ``r`` module p
+  ## r is initialized/overwritten
+  var overflowed = r.mres.sum(a.mres, b.mres)
+  overflowed = overflowed or not csub(r.mres, Fp.C.Mod.mres, CtFalse) # r >= P
+  discard csub(r.mres, Fp.C.Mod.mres, overflowed)
+
+func diff*(r: var Fp, a, b: Fp) =
+  ## Substract `b` from `a` and store the result into `r`.
+  ## `r` is initialized/overwritten
+  var underflowed = r.mres.diff(a.mres, b.mres)
+  discard cadd(r.mres, Fp.C.Mod.mres, underflowed)
+
+func double*(r: var Fp, a: Fp) =
+  ## Double ``a`` into ``r``
+  ## `r` is initialized/overwritten
+  var overflowed = r.mres.double(a.mres)
+  overflowed = overflowed or not csub(r.mres, Fp.C.Mod.mres, CtFalse) # r >= P
+  discard csub(r.mres, Fp.C.Mod.mres, overflowed)
+
+func `+`*(a, b: Fp): Fp {.noInit.} =
+  ## Addition modulo p
+  result.sum(a, b)
+
+func `-`*(a, b: Fp): Fp {.noInit.} =
+  ## Substraction modulo p
+  result.diff(a, b)
+
+func prod*(r: var Fp, a, b: Fp) =
+  ## Store the product of ``a`` by ``b`` modulo p into ``r``
+  ## ``r`` is initialized / overwritten
+  r.mres.montyMul(a.mres, b.mres, Fp.C.Mod.mres, Fp.C.getNegInvModWord())
+
 func `*`*(a, b: Fp): Fp {.noInit.} =
   ## Multiplication modulo p
   ##
   ## It is recommended to assign with {.noInit.}
   ## as Fp elements are usually large and this
   ## routine will zero init internally the result.
-  result.mres.montyMul(a.mres, b.mres, Fp.C.Mod.mres, Fp.C.getNegInvModWord())
+  result.prod(a, b)
 
 func `*=`*(a: var Fp, b: Fp) =
   ## Multiplication modulo p
@@ -132,7 +165,7 @@ func `*=`*(a: var Fp, b: Fp) =
   ## Cost
   ## Stack: 1 * ModulusBitSize
   var tmp{.noInit.}: Fp
-  tmp.mres.montyMul(a.mres, b.mres, Fp.C.Mod.mres, Fp.C.getNegInvModWord())
+  tmp.prod(a, b)
   a = tmp
 
 func square*(a: Fp): Fp {.noInit.} =
