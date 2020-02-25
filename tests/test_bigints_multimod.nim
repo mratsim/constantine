@@ -8,7 +8,7 @@
 
 import
   # Standard library
-  unittest, random, strutils,
+  unittest,
   # Third-party
   ../constantine/io/io_bigints,
   ../constantine/arithmetic/[bigints_raw, bigints_checked],
