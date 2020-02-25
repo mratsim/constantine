@@ -162,9 +162,6 @@ template toByte(x: SomeUnsignedInt): byte =
 template blobFrom(dst: var openArray[byte], src: SomeUnsignedInt, startIdx: int, endian: static Endianness) =
   ## Write an integer into a raw binary blob
   ## Swapping endianness if needed
-
-  const bits = sizeof(src) * 8
-
   when endian == cpuEndian:
     for i in 0 ..< sizeof(src):
       dst[startIdx+i] = toByte((src shr (i * 8)))
@@ -329,11 +326,6 @@ func skipPrefixes(current_idx: var int, str: string, radix: static range[2..16])
       assert radix == 2, "Parsing mismatch, 0b prefix is only valid for a binary number (base 2)"
       current_idx = 2
     else: discard
-
-func readDecChar(c: range['0'..'9']): int {.inline.}=
-  ## Converts a decimal char to an int
-  # specialization without branching for base <= 10.
-  ord(c) - ord('0')
 
 func countNonBlanks(hexStr: string, startPos: int): int =
   ## Count the number of non-blank characters

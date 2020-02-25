@@ -84,7 +84,7 @@ func square*(a: Fp2): Fp2 {.noInit.} =
   # Stack: 6 * ModulusBitSize (4x 𝔽p element + 1 named temporaries + 1 multiplication temporary)
   # as multiplications require a (shared) internal temporary
 
-  var c0mc1 {.noInit.}: Fp
+  var c0mc1 {.noInit.}: typeof(a.c0)
   c0mc1.diff(a.c0, a.c1)           # c0mc1 = c0 - c1                               [1 Sub]
   result.c1.double(a.c1)           # result.c1 = 2 c1                              [1 Dbl, 1 Sub]
   result.c0.sum(c0mc1, result.c1)  # result.c0 = c0 - c1 + 2 c1                    [1 Add, 1 Dbl, 1 Sub]

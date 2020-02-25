@@ -53,7 +53,7 @@ import
   ../primitives/constant_time,
   ../primitives/extended_precision,
   ../config/common
-from sugar import distinctBase
+from typetraits import distinctBase
 
 # ############################################################
 #

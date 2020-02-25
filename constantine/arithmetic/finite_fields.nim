@@ -29,8 +29,6 @@ import
   ../config/[common, curves],
   ./bigints_checked
 
-from ../io/io_bigints import exportRawUint # for "pow"
-
 # type
 #   `Fp`*[C: static Curve] = object
 #     ## All operations on a field are modulo P

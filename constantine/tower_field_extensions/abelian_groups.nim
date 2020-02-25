@@ -7,7 +7,6 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/curves,
   ../arithmetic/finite_fields
 
 # ############################################################
@@ -35,10 +34,11 @@ import
 # ############################################################
 
 type
-  QuadExtAddGroup*[T] = concept x
+  QuadExtAddGroup* = concept x
     ## Quadratic extension fields - Abelian Additive Group concept
-    x.c0 is T
-    x.c1 is T
+    type BaseField = auto
+    x.c0 is BaseField
+    x.c1 is BaseField
 
 func setZero*(a: var QuadExtAddGroup) =
   ## Set ``a`` to zero in the extension field
@@ -86,11 +86,12 @@ func diff*(r: var QuadExtAddGroup, a, b: QuadExtAddGroup) =
 # ############################################################
 
 type
-  CubicExtAddGroup*[T] = concept x
+  CubicExtAddGroup* = concept x
     ## Cubic extension fields - Abelian Additive Group concept
-    x.c0 is T
-    x.c1 is T
-    x.c2 is T
+    type BaseField = auto
+    x.c0 is BaseField
+    x.c1 is BaseField
+    x.c2 is BaseField
 
 func setZero*(a: var CubicExtAddGroup) =
   ## Set ``a`` to zero in the extension field
