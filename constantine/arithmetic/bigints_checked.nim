@@ -113,23 +113,23 @@ func setOne*(a: var BigInt) =
   when a.limbs.len > 1:
     zeroMem(a.limbs[1].unsafeAddr, (a.limbs.len-1) * sizeof(Word))
 
-func add*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]): CTBool[Word] =
-  ## Constant-time big integer in-place optional addition
+func cadd*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]): CTBool[Word] =
+  ## Constant-time in-place conditional addition
   ## The addition is only performed if ctl is "true"
   ## The result carry is always computed.
-  add(a.view, b.view, ctl)
+  cadd(a.view, b.view, ctl)
 
-func sub*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]): CTBool[Word] =
-  ## Constant-time big integer in-place optional addition
+func csub*[bits](a: var BigInt[bits], b: BigInt[bits], ctl: CTBool[Word]): CTBool[Word] =
+  ## Constant-time in-place conditional addition
   ## The addition is only performed if ctl is "true"
   ## The result carry is always computed.
-  sub(a.view, b.view, ctl)
+  csub(a.view, b.view, ctl)
 
-func double*[bits](a: var BigInt[bits], ctl: CTBool[Word]): CTBool[Word] =
-  ## Constant-time big integer in-place optional doubling
+func cdouble*[bits](a: var BigInt[bits], ctl: CTBool[Word]): CTBool[Word] =
+  ## Constant-time in-place conditional doubling
   ## The doubling is only performed if ctl is "true"
   ## The result carry is always computed.
-  add(a.view, a.view, ctl)
+  cadd(a.view, a.view, ctl)
 
 func reduce*[aBits, mBits](r: var BigInt[mBits], a: BigInt[aBits], M: BigInt[mBits]) =
   ## Reduce `a` modulo `M` and store the result in `r`

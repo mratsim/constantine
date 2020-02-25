@@ -81,23 +81,23 @@ func toBig*(src: Fp): auto {.noInit.} =
 #
 # ############################################################
 
-template add(a: var Fp, b: Fp, ctl: CTBool[Word]): CTBool[Word] =
-  ## Constant-time big integer in-place optional addition
+template cadd(a: var Fp, b: Fp, ctl: CTBool[Word]): CTBool[Word] =
+  ## Constant-time in-place conditional addition
   ## The addition is only performed if ctl is "true"
   ## The result carry is always computed.
   ##
   ## a and b MAY be the same buffer
   ## a and b MUST have the same announced bitlength (i.e. `bits` static parameters)
-  add(a.mres, b.mres, ctl)
+  cadd(a.mres, b.mres, ctl)
 
-template sub(a: var Fp, b: Fp, ctl: CTBool[Word]): CTBool[Word] =
-  ## Constant-time big integer in-place optional substraction
+template csub(a: var Fp, b: Fp, ctl: CTBool[Word]): CTBool[Word] =
+  ## Constant-time in-place conditional substraction
   ## The substraction is only performed if ctl is "true"
   ## The result carry is always computed.
   ##
   ## a and b MAY be the same buffer
   ## a and b MUST have the same announced bitlength (i.e. `bits` static parameters)
-  sub(a.mres, b.mres, ctl)
+  csub(a.mres, b.mres, ctl)
 
 # ############################################################
 #
@@ -124,20 +124,20 @@ func setOne*(a: var Fp) =
 
 func `+=`*(a: var Fp, b: Fp) =
   ## Addition modulo p
-  var ctl = add(a, b, CtTrue)
-  ctl = ctl or not sub(a, Fp.C.Mod, CtFalse)
-  discard sub(a, Fp.C.Mod, ctl)
+  var ctl = cadd(a, b, CtTrue)
+  ctl = ctl or not csub(a, Fp.C.Mod, CtFalse)
+  discard csub(a, Fp.C.Mod, ctl)
 
 func `-=`*(a: var Fp, b: Fp) =
   ## Substraction modulo p
-  let ctl = sub(a, b, CtTrue)
-  discard add(a, Fp.C.Mod, ctl)
+  let ctl = csub(a, b, CtTrue)
+  discard cadd(a, Fp.C.Mod, ctl)
 
 func double*(a: var Fp) =
   ## Double ``a`` modulo p
-  var ctl = double(a, CtTrue)
-  ctl = ctl or not sub(a, Fp.C.Mod, CtFalse)
-  discard sub(a, Fp.C.Mod, ctl)
+  var ctl = cdouble(a, CtTrue)
+  ctl = ctl or not csub(a, Fp.C.Mod, CtFalse)
+  discard csub(a, Fp.C.Mod, ctl)
 
 func `*`*(a, b: Fp): Fp {.noInit.} =
   ## Multiplication modulo p

@@ -32,14 +32,14 @@ proc main() =
     test "Adding 2 zeros":
       var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
       let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
-      let carry = a.add(b, ctrue(Word))
+      let carry = a.cadd(b, ctrue(Word))
       check: a.isZero().bool
 
     test "Adding 1 zero - real addition":
       block:
         var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
         let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
-        let carry = a.add(b, ctrue(Word))
+        let carry = a.cadd(b, ctrue(Word))
 
         let c = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
         check:
@@ -47,7 +47,7 @@ proc main() =
       block:
         var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
         let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
-        let carry = a.add(b, ctrue(Word))
+        let carry = a.cadd(b, ctrue(Word))
 
         let c = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
         check:
@@ -57,7 +57,7 @@ proc main() =
       block:
         var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
         let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
-        let carry = a.add(b, cfalse(Word))
+        let carry = a.cadd(b, cfalse(Word))
 
         let c = a
         check:
@@ -65,7 +65,7 @@ proc main() =
       block:
         var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
         let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
-        let carry = a.add(b, cfalse(Word))
+        let carry = a.cadd(b, cfalse(Word))
 
         let c = a
         check:
@@ -75,7 +75,7 @@ proc main() =
       block:
         var a = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000000")
         let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
-        let carry = a.add(b, ctrue(Word))
+        let carry = a.cadd(b, ctrue(Word))
 
         let c = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000001")
         check:
@@ -83,7 +83,7 @@ proc main() =
       block:
         var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
         let b = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000000")
-        let carry = a.add(b, ctrue(Word))
+        let carry = a.cadd(b, ctrue(Word))
 
         let c = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000001")
         check:
@@ -93,7 +93,7 @@ proc main() =
       block:
         var a = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000000")
         let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
-        let carry = a.add(b, cfalse(Word))
+        let carry = a.cadd(b, cfalse(Word))
 
         let c = a
         check:
@@ -101,7 +101,7 @@ proc main() =
       block:
         var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
         let b = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000000")
-        let carry = a.add(b, cfalse(Word))
+        let carry = a.cadd(b, cfalse(Word))
 
         let c = a
         check:
@@ -111,7 +111,7 @@ proc main() =
       block:
         var a = fromHex(BigInt[128], "0x00000000_FFFFFFFF_FFFFFFFF_FFFFFFFE")
         let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
-        let carry = a.add(b, ctrue(Word))
+        let carry = a.cadd(b, ctrue(Word))
 
         let c = fromHex(BigInt[128], "0x00000000_FFFFFFFF_FFFFFFFF_FFFFFFFF")
         check:
@@ -121,7 +121,7 @@ proc main() =
       block:
         var a = fromHex(BigInt[128], "0x00000000_FFFFFFFF_FFFFFFFF_FFFFFFFF")
         let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
-        let carry = a.add(b, ctrue(Word))
+        let carry = a.cadd(b, ctrue(Word))
 
         let c = fromHex(BigInt[128], "0x00000001_00000000_00000000_00000000")
         check:

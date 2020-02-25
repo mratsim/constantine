@@ -228,7 +228,7 @@ func setZero(a: BigIntViewMut) =
   ## It's bit size is unchanged
   zeroMem(a[0].unsafeAddr, a.numLimbs() * sizeof(Word))
 
-func cmov*(a: BigIntViewMut, b: BigIntViewAny, ctl: CTBool[Word]) =
+func ccopy*(a: BigIntViewMut, b: BigIntViewAny, ctl: CTBool[Word]) =
   ## Constant-time conditional copy
   ## If ctl is true: b is copied into a
   ## if ctl is false: b is not copied and a is untouched
@@ -241,8 +241,8 @@ func cmov*(a: BigIntViewMut, b: BigIntViewAny, ctl: CTBool[Word]) =
 # if it is a placebo operation. It stills performs the
 # same memory accesses to be side-channel attack resistant.
 
-func add*(a: BigIntViewMut, b: BigIntViewAny, ctl: CTBool[Word]): CTBool[Word] =
-  ## Constant-time big integer in-place optional addition
+func cadd*(a: BigIntViewMut, b: BigIntViewAny, ctl: CTBool[Word]): CTBool[Word] =
+  ## Constant-time in-place conditional addition
   ## The addition is only performed if ctl is "true"
   ## The result carry is always computed.
   ##
@@ -255,8 +255,8 @@ func add*(a: BigIntViewMut, b: BigIntViewAny, ctl: CTBool[Word]): CTBool[Word] =
     result = new_a.isMsbSet()
     a[i] = ctl.mux(new_a.mask(), a[i])
 
-func sub*(a: BigIntViewMut, b: BigIntViewAny, ctl: CTBool[Word]): CTBool[Word] =
-  ## Constant-time big integer in-place optional substraction
+func csub*(a: BigIntViewMut, b: BigIntViewAny, ctl: CTBool[Word]): CTBool[Word] =
+  ## Constant-time in-place conditional substraction
   ## The substraction is only performed if ctl is "true"
   ## The result carry is always computed.
   ##
@@ -395,8 +395,8 @@ func shlAddMod(a: BigIntViewMut, c: Word, M: BigIntViewConst) =
     let neg = carry > hi
     let tooBig = not neg and (over_p or (carry < hi))
 
-    discard a.add(M, ctl = neg)
-    discard a.sub(M, ctl = tooBig)
+    discard a.cadd(M, ctl = neg)
+    discard a.csub(M, ctl = tooBig)
     return
 
 func reduce*(r: BigIntViewMut, a: BigIntViewAny, M: BigIntViewConst) =
@@ -496,7 +496,7 @@ func montyMul*(
 
   # If the extra word is not zero or if r-M does not borrow (i.e. r > M)
   # Then substract M
-  discard r.sub(M, r_hi.isNonZero() or not r.sub(M, CtFalse))
+  discard r.csub(M, r_hi.isNonZero() or not r.csub(M, CtFalse))
 
 func redc*(r: BigIntViewMut, a: BigIntViewAny, one, N: BigIntViewConst, negInvModWord: Word) {.inline.} =
   ## Transform a bigint ``a`` from it's Montgomery N-residue representation (mod N)
@@ -573,7 +573,7 @@ func montySquare(
 #       and k the window-size
 #       - we always multiply even for unused multiplications
 #       - conditional copy only save a small fraction of time
-#         (multiplication O(n²), cmov O(n), doing nothing i.e. non constant-time O(n))
+#         (multiplication O(n²), ccopy O(n), doing nothing i.e. non constant-time O(n))
 #       - Table lookup is O(kn) copy time since we need to access the whole table to
 #         defeat cache attacks. Without windows, we don't have table lookups at all.
 #
@@ -738,12 +738,12 @@ func montyPow*(
       # just index the openarray with the bits to avoid cache attacks.
       for i in 1 ..< 1 shl k:
         let ctl = Word(i) == Word(bits)
-        scratchspace[1].cmov(scratchspace[1+i], ctl)
+        scratchspace[1].ccopy(scratchspace[1+i], ctl)
 
     # Multiply with the looked-up value
     # we keep the product only if the exponent bits are not all zero
     scratchspace[0].montyMul(a, scratchspace[1], M, negInvModWord)
-    a.cmov(scratchspace[0], Word(bits) != Zero)
+    a.ccopy(scratchspace[0], Word(bits) != Zero)
 
 func montyPowUnsafeExponent*(
        a: BigIntViewMut,
