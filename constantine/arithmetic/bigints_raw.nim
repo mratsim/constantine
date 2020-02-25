@@ -216,6 +216,15 @@ debug:
 #
 # ############################################################
 
+func `==`*(a, b: distinct BigIntViewAny): CTBool[Word] =
+  ## Returns true if 2 big ints are equal
+  ## Comparison is constant-time
+  checkMatchingBitlengths(a, b)
+  var accum: Word
+  for i in 0 ..< a.numLimbs():
+    accum = accum or (a[i] xor b[i])
+  result = accum.isZero
+
 func isZero*(a: BigIntViewAny): CTBool[Word] =
   ## Returns true if a big int is equal to zero
   var accum: Word
@@ -336,7 +345,7 @@ func sub*(a: BigIntViewMut, b: BigIntViewAny): CTBool[Word] =
     result = a[i].isMsbSet()
     a[i] = a[i].mask()
 
-func sum*(r: BigIntViewMut, a, b: BigIntViewAny): CTBool[Word] =
+func sum*(r: BigIntViewMut, a, b: distinct BigIntViewAny): CTBool[Word] =
   ## Sum `a` and `b` into `r`.
   ## `r` is initialized/overwritten
   ##
@@ -350,7 +359,7 @@ func sum*(r: BigIntViewMut, a, b: BigIntViewAny): CTBool[Word] =
     result = a[i].isMsbSet()
     r[i] = r[i].mask()
 
-func diff*(r: BigIntViewMut, a, b: BigIntViewAny): CTBool[Word] =
+func diff*(r: BigIntViewMut, a, b: distinct BigIntViewAny): CTBool[Word] =
   ## Substract `b` from `a` and store the result into `r`.
   ## `r` is initialized/overwritten
   ##

@@ -67,13 +67,6 @@ template view*(a: var BigInt): BigIntViewMut =
 debug:
   import strutils
 
-  func `==`*(a, b: BigInt): CTBool[Word] =
-    ## Returns true if 2 big ints are equal
-    var accum: Word
-    for i in static(0 ..< a.limbs.len):
-      accum = accum or (a.limbs[i] xor b.limbs[i])
-    result = accum.isZero
-
   func `$`*(a: BigInt): string =
     result = "BigInt["
     result.add $BigInt.bits
@@ -96,6 +89,14 @@ func setInternalBitLength*(a: var BigInt) =
   ## and set the bitLength field of that BigInt
   ## to that computed value.
   a.bitLength = uint32 static(a.bits + a.bits div WordBitSize)
+
+func `==`*(a, b: BigInt): CTBool[Word] =
+  ## Returns true if 2 big ints are equal
+  ## Comparison is constant-time
+  var accum: Word
+  for i in static(0 ..< a.limbs.len):
+    accum = accum or (a.limbs[i] xor b.limbs[i])
+  result = accum.isZero
 
 func isZero*(a: BigInt): CTBool[Word] =
   ## Returns true if a big int is equal to zero

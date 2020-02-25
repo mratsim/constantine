@@ -39,10 +39,6 @@ import
 export Fp # defined in ../config/curves to avoid recursive module dependencies
 
 debug:
-  func `==`*(a, b: Fp): CTBool[Word] =
-    ## Returns true if 2 big ints are equal
-    a.mres == b.mres
-
   func `$`*[C: static Curve](a: Fp[C]): string =
     result = "Fp[" & $C
     result.add "]("
@@ -86,6 +82,10 @@ func toBig*(src: Fp): auto {.noInit.} =
 #       - Pseudo-Mersenne Prime (2^m - k for example Curve25519: 2^255 - 19)
 #       - Golden Primes (φ^2 - φ - 1 with φ = 2^k for example Ed448-Goldilocks: 2^448 - 2^224 - 1)
 #       exist and can be implemented with compile-time specialization.
+
+func `==`*(a, b: Fp): CTBool[Word] =
+  ## Constant-time equality check
+  a.mres == b.mres
 
 func setZero*(a: var Fp) =
   ## Set ``a`` to zero

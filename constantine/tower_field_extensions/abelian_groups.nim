@@ -7,7 +7,9 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../arithmetic/finite_fields
+  ../arithmetic/finite_fields,
+  ../config/common,
+  ../primitives/constant_time
 
 # ############################################################
 #
@@ -39,6 +41,10 @@ type
     type BaseField = auto
     x.c0 is BaseField
     x.c1 is BaseField
+
+func `==`*(a, b: QuadExtAddGroup): CTBool[Word] =
+  ## Constant-time equality check
+  (a.c0 == b.c0) and (a.c1 == b.c1)
 
 func setZero*(a: var QuadExtAddGroup) =
   ## Set ``a`` to zero in the extension field
@@ -92,6 +98,10 @@ type
     x.c0 is BaseField
     x.c1 is BaseField
     x.c2 is BaseField
+
+func `==`*(a, b: CubicExtAddGroup): CTBool[Word] =
+  ## Constant-time equality check
+  (a.c0 == b.c0) and (a.c1 == b.c1) and (a.c2 == b.c2)
 
 func setZero*(a: var CubicExtAddGroup) =
   ## Set ``a`` to zero in the extension field
