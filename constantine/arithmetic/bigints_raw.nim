@@ -552,7 +552,7 @@ func montyMul*(
       let z = DoubleWord(r[j]) + unsafeExtPrecMul(a[i], b[j]) +
               unsafeExtPrecMul(zi, M[j]) + DoubleWord(carry)
       carry = Word(z shr WordBitSize)
-      if j != 0:
+      if j != 0: # "division" by a physical word 2^32 or 2^64
         r[j-1] = Word(z).mask()
 
     r_hi += carry
@@ -582,11 +582,6 @@ func redc*(r: BigIntViewMut, a: BigIntViewAny, one, N: BigIntViewConst, negInvMo
   #   - http://langevin.univ-tln.fr/cours/MLC/extra/montgomery.pdf
   #     Montgomery original paper
   #
-  checkValidModulus(N)
-  checkOddModulus(N)
-  checkMatchingBitlengths(a, N)
-
-  # TODO: This is a Montgomery multiplication by 1 and can be specialized
   montyMul(r, a, one, N, negInvModWord)
 
 func montyResidue*(
@@ -609,10 +604,6 @@ func montyResidue*(
   ## Important: `r` is overwritten
   ## The result `r` buffer size MUST be at least the size of `M` buffer
   # Reference: https://eprint.iacr.org/2017/1057.pdf
-  checkValidModulus(N)
-  checkOddModulus(N)
-  checkMatchingBitlengths(a, N)
-
   montyMul(r, a, r2ModN, N, negInvModWord)
 
 func montySquare*(
@@ -620,10 +611,6 @@ func montySquare*(
        M: BigIntViewConst, negInvModWord: Word) {.inline.} =
   ## Compute r <- a^2 (mod M) in the Montgomery domain
   ## `negInvModWord` = -1/M (mod Word). Our words are 2^31 or 2^63
-
-  # TODO: specialized implementation when optimizing for speed
-  #       and montyMul when optimizing for size
-  # - https://www.intel.com/content/dam/www/public/us/en/documents/white-papers/ia-large-integer-arithmetic-paper.pdf
   montyMul(r, a, a, M, negInvModWord)
 
 # Montgomery Modular Exponentiation
@@ -632,15 +619,6 @@ func montySquare*(
 # that is constant-time: i.e. the number of multiplications
 # does not depend on the number of set bits in the exponents
 # those are always done and conditionally copied.
-#
-# TODO: analyze cost difference with naive exponentiation
-#       with n being the number of words to represent a number in Fp
-#       and k the window-size
-#       - we always multiply even for unused multiplications
-#       - conditional copy only save a small fraction of time
-#         (multiplication O(n²), ccopy O(n), doing nothing i.e. non constant-time O(n))
-#       - Table lookup is O(kn) copy time since we need to access the whole table to
-#         defeat cache attacks. Without windows, we don't have table lookups at all.
 #
 # The exponent MUST NOT be private data (until audited otherwise)
 # - Power attack on RSA, https://www.di.ens.fr/~fouque/pub/ches06.pdf
