@@ -43,7 +43,8 @@
 
 import
   ../arithmetic/finite_fields,
-  ../config/curves
+  ../config/curves,
+  ./abelian_groups
 
 type
   Fp2[C: static Curve] = object
@@ -55,29 +56,7 @@ type
     ##
     ## This requires 𝑖² = -1 to not
     ## be a square (mod p)
-    c0, c1: Fp[Curve]
-
-func setZero*(a: var Fp2) =
-  ## Set ``a`` to zero in 𝔽p2
-  ## Coordinates 0 + 0𝑖
-  a.c0.setZero()
-  a.c1.setZero()
-
-func setOne*(a: var Fp2) =
-  ## Set ``a`` to one in 𝔽p2
-  ## Coordinates 1 + 0𝑖
-  a.c0.setOne()
-  a.c1.setZero()
-
-func `+=`*(a: var Fp2, b: Fp2) =
-  ## Addition over 𝔽p2
-  a.c0 += b.c0
-  a.c1 += b.c1
-
-func `-=`*(a: var Fp2, b: Fp2) =
-  ## Substraction over 𝔽p2
-  a.c0 -= b.c0
-  a.c1 -= b.c1
+    c0*, c1*: Fp[C]
 
 func square*(a: Fp2): Fp2 {.noInit.} =
   ## Return a^2 in 𝔽p2

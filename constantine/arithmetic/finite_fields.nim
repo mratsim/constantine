@@ -91,12 +91,12 @@ func toBig*(src: Fp): auto {.noInit.} =
 
 func setZero*(a: var Fp) =
   ## Set ``a`` to zero
-  a.setZero()
+  a.mres.setZero()
 
 func setOne*(a: var Fp) =
   ## Set ``a`` to one
   # Note: we need 1 in Montgomery residue form
-  a = Fp.C.getMontyOne()
+  a.mres = Fp.C.getMontyOne()
 
 func `+=`*(a: var Fp, b: Fp) =
   ## In-place addition modulo p
