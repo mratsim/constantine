@@ -31,11 +31,36 @@ echo "test_fp2 xoshiro512** seed: ", seed
 #         will significantly slow down testing (100x is possible)
 
 suite "𝔽p2 = 𝔽p[𝑖] (irreducible polynomial x²+1)":
+  test "Fp2 '1' coordinates in canonical domain":
+    template test(C: static Curve) =
+      block:
+        proc testInstance() =
+          let oneFp2 = block:
+            var O{.noInit.}: Fp2[C]
+            O.setOne()
+            O
+          let oneBig = block:
+            var O{.noInit.}: typeof(C.Mod.mres)
+            O.setOne()
+            O
+
+          var r: typeof(C.Mod.mres)
+          r.redc(oneFp2.c0.mres, C.Mod.mres, C.getNegInvModWord())
+
+          check:
+            bool(r == oneBig)
+            bool(oneFp2.c1.mres.isZero())
+
+    test(BN254)
+    test(BLS12_381)
+    test(P256)
+    test(Secp256k1)
+
   test "Squaring 1 returns 1":
     template test(C: static Curve) =
       block:
         proc testInstance() =
-          let One {.inject.} = block:
+          let One = block:
             var O{.noInit.}: Fp2[C]
             O.setOne()
             O
