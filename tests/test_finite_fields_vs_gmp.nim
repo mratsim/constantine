@@ -278,16 +278,16 @@ proc mainAdd() =
     # echo "rGMP: ", rGMP.toHex()
     # echo "rConstantine: ", rConstantine.toHex()
 
-    # doAssert rGMP == rConstantine, block:
-    #   # Reexport as bigEndian for debugging
-    #   discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
-    #   discard mpz_export(bBuf[0].addr, bW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, b)
-    #   "\nModular Addition on curve " & $curve & " with operands\n" &
-    #   "  a:   " & aBuf.toHex & "\n" &
-    #   "  b:   " & bBuf.toHex & "\n" &
-    #   "failed:" & "\n" &
-    #   "  GMP:            " & rGMP.toHex() & "\n" &
-    #   "  Constantine:    " & rConstantine.toHex()
+    doAssert rGMP == rConstantine, block:
+      # Reexport as bigEndian for debugging
+      discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
+      discard mpz_export(bBuf[0].addr, bW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, b)
+      "\nModular Addition on curve " & $curve & " with operands\n" &
+      "  a:   " & aBuf.toHex & "\n" &
+      "  b:   " & bBuf.toHex & "\n" &
+      "failed:" & "\n" &
+      "  GMP:            " & rGMP.toHex() & "\n" &
+      "  Constantine:    " & rConstantine.toHex()
 
     doAssert rGMP == r2Constantine, block:
       # Reexport as bigEndian for debugging
@@ -375,16 +375,16 @@ proc mainSub() =
     # echo "rGMP: ", rGMP.toHex()
     # echo "rConstantine: ", rConstantine.toHex()
 
-    # doAssert rGMP == rConstantine, block:
-    #   # Reexport as bigEndian for debugging
-    #   discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
-    #   discard mpz_export(bBuf[0].addr, bW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, b)
-    #   "\nModular Substraction on curve " & $curve & " with operands\n" &
-    #   "  a:   " & aBuf.toHex & "\n" &
-    #   "  b:   " & bBuf.toHex & "\n" &
-    #   "failed:" & "\n" &
-    #   "  GMP:            " & rGMP.toHex() & "\n" &
-    #   "  Constantine:    " & rConstantine.toHex()
+    doAssert rGMP == rConstantine, block:
+      # Reexport as bigEndian for debugging
+      discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
+      discard mpz_export(bBuf[0].addr, bW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, b)
+      "\nModular Substraction on curve " & $curve & " with operands\n" &
+      "  a:   " & aBuf.toHex & "\n" &
+      "  b:   " & bBuf.toHex & "\n" &
+      "failed:" & "\n" &
+      "  GMP:            " & rGMP.toHex() & "\n" &
+      "  Constantine:    " & rConstantine.toHex()
 
     doAssert rGMP == r2Constantine, block:
       # Reexport as bigEndian for debugging

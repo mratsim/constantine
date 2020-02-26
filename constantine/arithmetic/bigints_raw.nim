@@ -356,7 +356,7 @@ func sum*(r: BigIntViewMut, a, b: distinct BigIntViewAny): CTBool[Word] =
 
   for i in 0 ..< a.numLimbs():
     r[i] = a[i] + b[i] + Word(result)
-    result = a[i].isMsbSet()
+    result = r[i].isMsbSet()
     r[i] = r[i].mask()
 
 func diff*(r: BigIntViewMut, a, b: distinct BigIntViewAny): CTBool[Word] =
@@ -370,7 +370,7 @@ func diff*(r: BigIntViewMut, a, b: distinct BigIntViewAny): CTBool[Word] =
 
   for i in 0 ..< a.numLimbs():
     r[i] = a[i] - b[i] - Word(result)
-    result = a[i].isMsbSet()
+    result = r[i].isMsbSet()
     r[i] = r[i].mask()
 
 # ############################################################
