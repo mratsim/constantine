@@ -16,7 +16,7 @@ import
   # Test utilities
   ./prng
 
-const Iters = 1
+const Iters = 128
 
 var rng: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
@@ -93,7 +93,7 @@ suite "𝔽p2 = 𝔽p[𝑖] (irreducible polynomial x²+1)":
             O.setOne()
             O
 
-          for i in 0 ..< Iters:
+          for _ in 0 ..< Iters:
             let x {.inject.} = rng.random(Fp2[C])
             var r{.noinit, inject.}: Fp2[C]
             body
@@ -148,3 +148,97 @@ suite "𝔽p2 = 𝔽p[𝑖] (irreducible polynomial x²+1)":
     test(Secp256k1):
       r.prod(One, x)
       check: bool(r == x)
+
+  test "𝔽p2 = 𝔽p[𝑖] addition is associative and commutative":
+    proc abelianGroup(curve: static Curve) =
+      for _ in 0 ..< Iters:
+        let a = rng.random(Fp2[curve])
+        let b = rng.random(Fp2[curve])
+        let c = rng.random(Fp2[curve])
+
+        var tmp1{.noInit.}, tmp2{.noInit.}: Fp2[curve]
+
+        # r0 = (a + b) + c
+        tmp1.sum(a, b)
+        tmp2.sum(tmp1, c)
+        let r0 = tmp2
+
+        # r1 = a + (b + c)
+        tmp1.sum(b, c)
+        tmp2.sum(a, tmp1)
+        let r1 = tmp2
+
+        # r2 = (a + c) + b
+        tmp1.sum(a, c)
+        tmp2.sum(tmp1, b)
+        let r2 = tmp2
+
+        # r3 = a + (c + b)
+        tmp1.sum(c, b)
+        tmp2.sum(a, tmp1)
+        let r3 = tmp2
+
+        # r4 = (c + a) + b
+        tmp1.sum(c, a)
+        tmp2.sum(tmp1, b)
+        let r4 = tmp2
+
+        # ...
+
+        check:
+          bool(r0 == r1)
+          bool(r0 == r2)
+          bool(r0 == r3)
+          bool(r0 == r4)
+
+    abelianGroup(BN254)
+    abelianGroup(BLS12_381)
+    abelianGroup(Secp256k1)
+    abelianGroup(P256)
+
+  test "𝔽p2 = 𝔽p[𝑖] multiplication is associative and commutative":
+    proc commutativeRing(curve: static Curve) =
+      for _ in 0 ..< Iters:
+        let a = rng.random(Fp2[curve])
+        let b = rng.random(Fp2[curve])
+        let c = rng.random(Fp2[curve])
+
+        var tmp1{.noInit.}, tmp2{.noInit.}: Fp2[curve]
+
+        # r0 = (a * b) * c
+        tmp1.prod(a, b)
+        tmp2.prod(tmp1, c)
+        let r0 = tmp2
+
+        # r1 = a * (b * c)
+        tmp1.prod(b, c)
+        tmp2.prod(a, tmp1)
+        let r1 = tmp2
+
+        # r2 = (a * c) * b
+        tmp1.prod(a, c)
+        tmp2.prod(tmp1, b)
+        let r2 = tmp2
+
+        # r3 = a * (c * b)
+        tmp1.prod(c, b)
+        tmp2.prod(a, tmp1)
+        let r3 = tmp2
+
+        # r4 = (c * a) * b
+        tmp1.prod(c, a)
+        tmp2.prod(tmp1, b)
+        let r4 = tmp2
+
+        # ...
+
+        check:
+          bool(r0 == r1)
+          bool(r0 == r2)
+          bool(r0 == r3)
+          bool(r0 == r4)
+
+    commutativeRing(BN254)
+    commutativeRing(BLS12_381)
+    commutativeRing(Secp256k1)
+    commutativeRing(P256)
