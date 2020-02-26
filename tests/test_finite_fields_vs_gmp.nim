@@ -25,6 +25,181 @@ const CurveParams = [
   BLS12_381: (381, "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab")
 ]
 
+const # https://gmplib.org/manual/Integer-Import-and-Export.html
+  GMP_WordLittleEndian = -1'i32
+  GMP_WordNativeEndian = 0'i32
+  GMP_WordBigEndian = 1'i32
+
+  GMP_MostSignificantWordFirst = 1'i32
+  GMP_LeastSignificantWordFirst = -1'i32
+
+# ############################################################
+#
+#                         Helpers
+#
+# ############################################################
+#
+# Factor common things in proc to avoid generating 100k+ lines of C code
+
+proc binary_prologue[C: static Curve, N: static int](
+        gmpRng: var gmp_randstate_t,
+        a, b, p: var mpz_t,
+        aTest, bTest: var Fp[C],
+        aBuf, bBuf: var array[N, byte]) =
+  const bits = CurveParams[C][0]
+
+  # Generate random value in the range 0 ..< 2^(bits-1)
+  mpz_urandomb(a, gmpRng, uint bits)
+  mpz_urandomb(b, gmpRng, uint bits)
+  # Set modulus to curve modulus
+  let err = mpz_set_str(p, CurveParams[C][1], 0)
+  doAssert err == 0
+
+  #########################################################
+  # Conversion buffers
+  const len = (bits + 7) div 8
+
+  static: doAssert N >= len
+
+  var aW, bW: csize # Word written by GMP
+  discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
+  discard mpz_export(bBuf[0].addr, bW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, b)
+
+  # Since the modulus is using all bits, it's we can test for exact amount copy
+  doAssert len >= aW, "Expected at most " & $len & " bytes but wrote " & $aW & " for " & toHex(aBuf) & " (big-endian)"
+  doAssert len >= bW, "Expected at most " & $len & " bytes but wrote " & $bW & " for " & toHex(bBuf) & " (big-endian)"
+
+  # Build the bigint - TODO more fields codecs
+  aTest = Fp[C].fromBig BigInt[bits].fromRawUint(aBuf.toOpenArray(0, aW-1), bigEndian)
+  bTest = Fp[C].fromBig BigInt[bits].fromRawUint(bBuf.toOpenArray(0, bW-1), bigEndian)
+
+proc binary_epilogue[C: static Curve, N: static int](
+        r, a, b: mpz_t,
+        rTest: Fp[C],
+        aBuf, bBuf: array[N, byte],
+        operation: string
+      ) =
+
+  #########################################################
+  # Check
+  var rGMP: array[N, byte]
+  var rW: csize # Word written by GMP
+  discard mpz_export(rGMP[0].addr, rW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, r)
+
+  var rConstantine: array[N, byte]
+  exportRawUint(rConstantine, rTest, bigEndian)
+
+  # Note: in bigEndian, GMP aligns left while constantine aligns right
+  doAssert rGMP.toOpenArray(0, rW-1) == rConstantine.toOpenArray(N-rW, N-1), block:
+    # Reexport as bigEndian for debugging
+    var aW, bW: csize
+    discard mpz_export(aBuf[0].unsafeAddr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
+    discard mpz_export(bBuf[0].unsafeAddr, bW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, b)
+    "\nModular " & operation & " on curve " & $C & " with operands\n" &
+    "  a:   " & aBuf.toHex & "\n" &
+    "  b:   " & bBuf.toHex & "\n" &
+    "failed:" & "\n" &
+    "  GMP:            " & rGMP.toHex() & "\n" &
+    "  Constantine:    " & rConstantine.toHex() &
+    "(Note that GMP aligns bytes left while constantine aligns bytes right)"
+
+# ############################################################
+#
+#                   Test Definitions
+#
+# ############################################################
+
+proc addTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curve) =
+  # echo "Testing: random modular addition on ", $C
+
+  const
+    bits = CurveParams[C][0]
+    bufLen = (bits + 7) div 8
+  var
+    aTest, bTest{.noInit.}: Fp[C]
+    aBuf, bBuf: array[bufLen, byte]
+  binary_prologue(gmpRng, a, b, p, aTest, bTest, aBuf, bBuf)
+
+  mpz_add(r, a, b)
+  mpz_mod(r, r, p)
+
+  var rTest {.noInit.}: Fp[C]
+  rTest.sum(aTest, bTest)
+
+  var r2Test = aTest
+  r2Test += bTest
+
+  binary_epilogue(r, a, b, rTest, aBuf, bBuf, "Addition (with result)")
+  binary_epilogue(r, a, b, rTest, aBuf, bBuf, "Addition (in-place)")
+
+proc subTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curve) =
+  # echo "Testing: random modular substraction on ", $C
+
+  const
+    bits = CurveParams[C][0]
+    bufLen = (bits + 7) div 8
+  var
+    aTest, bTest{.noInit.}: Fp[C]
+    aBuf, bBuf: array[bufLen, byte]
+  binary_prologue(gmpRng, a, b, p, aTest, bTest, aBuf, bBuf)
+
+  mpz_sub(r, a, b)
+  mpz_mod(r, r, p)
+
+  var rTest {.noInit.}: Fp[C]
+  rTest.diff(aTest, bTest)
+
+  var r2Test = aTest
+  r2Test -= bTest
+
+  binary_epilogue(r, a, b, rTest, aBuf, bBuf, "Substraction (with result)")
+  binary_epilogue(r, a, b, rTest, aBuf, bBuf, "Substraction (in-place)")
+
+proc mulTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curve) =
+  # echo "Testing: random modular multiplication on ", $C
+
+  const
+    bits = CurveParams[C][0]
+    bufLen = (bits + 7) div 8
+  var
+    aTest, bTest{.noInit.}: Fp[C]
+    aBuf, bBuf: array[bufLen, byte]
+  binary_prologue(gmpRng, a, b, p, aTest, bTest, aBuf, bBuf)
+
+  mpz_mul(r, a, b)
+  mpz_mod(r, r, p)
+
+  var rTest {.noInit.}: Fp[C]
+  rTest.prod(aTest, bTest)
+
+  binary_epilogue(r, a, b, rTest, aBuf, bBuf, "Multiplication")
+
+proc invTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curve) =
+  # We use the binary prologue epilogue but the "b" parameter is actual unused
+  # echo "Testing: random modular inversion on ", $C
+
+  const
+    bits = CurveParams[C][0]
+    bufLen = (bits + 7) div 8
+  var
+    aTest, bTest{.noInit.}: Fp[C]
+    aBuf, bBuf: array[bufLen, byte]
+  binary_prologue(gmpRng, a, b, p, aTest, bTest, aBuf, bBuf)
+
+  let exist = mpz_invert(r, a, p)
+  doAssert exist != 0
+
+  var rTest = aTest
+  rTest.inv()
+
+  binary_epilogue(r, a, b, rTest, aBuf, bBuf, "Inversion (b is unused)")
+
+# ############################################################
+#
+#                   Test Runners
+#
+# ############################################################
+
 macro randomTests(numTests: static int, curveSym, body: untyped): untyped =
   ## Generate `num` random tests at compile-time to test against GMP
   ## for A mod M
@@ -39,365 +214,49 @@ macro randomTests(numTests: static int, curveSym, body: untyped): untyped =
         block:
           `body`
 
-const # https://gmplib.org/manual/Integer-Import-and-Export.html
-  GMP_WordLittleEndian = -1'i32
-  GMP_WordNativeEndian = 0'i32
-  GMP_WordBigEndian = 1'i32
+template testSetup {.dirty.} =
+  var gmpRng: gmp_randstate_t
+  gmp_randinit_mt(gmpRng)
+  # The GMP seed varies between run so that
+  # test coverage increases as the library gets tested.
+  # This requires to dump the seed in the console or the function inputs
+  # to be able to reproduce a bug
+  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  echo "GMP seed: ", seed
+  gmp_randseed_ui(gmpRng, seed)
 
-  GMP_MostSignificantWordFirst = 1'i32
-  GMP_LeastSignificantWordFirst = -1'i32
+  var a, b, p, r: mpz_t
+  mpz_init(a)
+  mpz_init(b)
+  mpz_init(p)
+  mpz_init(r)
 
 proc mainMul() =
-  var gmpRng: gmp_randstate_t
-  gmp_randinit_mt(gmpRng)
-  # The GMP seed varies between run so that
-  # test coverage increases as the library gets tested.
-  # This requires to dump the seed in the console or the function inputs
-  # to be able to reproduce a bug
-  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
-  echo "GMP seed: ", seed
-  gmp_randseed_ui(gmpRng, seed)
-
-  var a, b, p, r: mpz_t
-  mpz_init(a)
-  mpz_init(b)
-  mpz_init(p)
-  mpz_init(r)
-
+  testSetup()
+  echo "Testing modular multiplications vs GMP"
   randomTests(128, curve):
-    # echo "--------------------------------------------------------------------------------"
-    echo "Testing: random modular multiplication on ", $curve
-
-    const bits = CurveParams[curve][0]
-
-    # Generate random value in the range 0 ..< 2^(bits-1)
-    mpz_urandomb(a, gmpRng, uint bits)
-    mpz_urandomb(b, gmpRng, uint bits)
-    # Set modulus to curve modulus
-    let err = mpz_set_str(p, CurveParams[curve][1], 0)
-    doAssert err == 0
-
-    #########################################################
-    # Conversion buffers
-    const len = csize (bits + 7) div 8
-
-    var aBuf: array[len, byte]
-    var bBuf: array[len, byte]
-
-    var aW, bW: csize # Word written by GMP
-
-    discard mpz_export(aBuf[0].addr, aW.addr, GMP_LeastSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
-    discard mpz_export(bBuf[0].addr, bW.addr, GMP_LeastSignificantWordFirst, 1, GMP_WordNativeEndian, 0, b)
-
-    # Since the modulus is using all bits, it's we can test for exact amount copy
-    doAssert len >= aW, "Expected at most " & $len & " bytes but wrote " & $aW & " for " & toHex(aBuf) & " (little-endian)"
-    doAssert len >= bW, "Expected at most " & $len & " bytes but wrote " & $bW & " for " & toHex(bBuf) & " (little-endian)"
-
-    # Build the bigint - TODO more fields codecs
-    let aTest = Fp[curve].fromBig BigInt[bits].fromRawUint(aBuf, littleEndian)
-    let bTest = Fp[curve].fromBig BigInt[bits].fromRawUint(bBuf, littleEndian)
-
-    #########################################################
-    # Modular multiplication
-    mpz_mul(r, a, b)
-    mpz_mod(r, r, p)
-
-    var rTest {.noInit.}: Fp[curve]
-    rTest.prod(aTest, bTest)
-
-    #########################################################
-    # Check
-    var rGMP: array[len, byte]
-    var rW: csize # Word written by GMP
-    discard mpz_export(rGMP[0].addr, rW.addr, GMP_LeastSignificantWordFirst, 1, GMP_WordNativeEndian, 0, r)
-
-    var rConstantine: array[len, byte]
-    exportRawUint(rConstantine, rTest, littleEndian)
-
-    # echo "rGMP: ", rGMP.toHex()
-    # echo "rConstantine: ", rConstantine.toHex()
-
-    doAssert rGMP == rConstantine, block:
-      # Reexport as bigEndian for debugging
-      discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
-      discard mpz_export(bBuf[0].addr, bW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, b)
-      "\nModular Multiplication on curve " & $curve & " with operands\n" &
-      "  a:   " & aBuf.toHex & "\n" &
-      "  b:   " & bBuf.toHex & "\n" &
-      "failed:" & "\n" &
-      "  GMP:            " & rGMP.toHex() & "\n" &
-      "  Constantine:    " & rConstantine.toHex()
-
-proc mainInv() =
-  var gmpRng: gmp_randstate_t
-  gmp_randinit_mt(gmpRng)
-  # The GMP seed varies between run so that
-  # test coverage increases as the library gets tested.
-  # This requires to dump the seed in the console or the function inputs
-  # to be able to reproduce a bug
-  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
-  echo "GMP seed: ", seed
-  gmp_randseed_ui(gmpRng, seed)
-
-  var a, p, r: mpz_t
-  mpz_init(a)
-  mpz_init(p)
-  mpz_init(r)
-
-  randomTests(128, curve):
-    # echo "--------------------------------------------------------------------------------"
-    echo "Testing: random modular inversion on ", $curve
-
-    const bits = CurveParams[curve][0]
-
-    # Generate random value in the range 0 ..< 2^(bits-1)
-    mpz_urandomb(a, gmpRng, uint bits)
-    # Set modulus to curve modulus
-    let err = mpz_set_str(p, CurveParams[curve][1], 0)
-    doAssert err == 0
-
-    #########################################################
-    # Conversion buffers
-    const len = csize (bits + 7) div 8
-
-    # Note: GMP does not pad right the bigendian numbers if there is extra space
-    var aBuf: array[len, byte]
-
-    var aW: csize # Word written by GMP
-    discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
-
-    # Since the modulus is using all bits, it's we can test for exact amount copy
-    doAssert len >= aW, "Expected at most " & $len & " bytes but wrote " & $aW & " for " & toHex(aBuf) & " (little-endian)"
-
-    # Build the bigint - TODO more fields codecs
-    let aTest = Fp[curve].fromBig BigInt[bits].fromRawUint(aBuf[0 ..< aW], bigEndian)
-
-    #########################################################
-    # Modular inversion
-    let exist = mpz_invert(r, a, p)
-    doAssert exist != 0
-
-    var rTest = aTest
-    rTest.inv()
-
-    #########################################################
-    # Check
-    var rGMP: array[len, byte]
-    var rW: csize # Word written by GMP
-    discard mpz_export(rGMP[0].addr, rW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, r)
-
-    var rConstantine: array[len, byte]
-    exportRawUint(rConstantine, rTest, bigEndian)
-
-    # echo "rGMP: ", rGMP.toHex()
-    # echo "rConstantine: ", rConstantine.toHex()
-
-    doAssert rGMP[0 ..< rW] == rConstantine[^rW..^1], block:
-      # Reexport as bigEndian for debugging
-      discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
-      "\nModular Inversion on curve " & $curve & " with operands\n" &
-      "  a:   0x" & aBuf.toHex & "\n" &
-      "  p:   " & CurveParams[curve][1] & "\n" &
-      "failed:" & "\n" &
-      "  GMP:            " & rGMP.toHex() & "\n" &
-      "  Constantine:    " & rConstantine.toHex()
-
+    mulTests(gmpRng, a, b, p, r, curve)
 
 proc mainAdd() =
-  var gmpRng: gmp_randstate_t
-  gmp_randinit_mt(gmpRng)
-  # The GMP seed varies between run so that
-  # test coverage increases as the library gets tested.
-  # This requires to dump the seed in the console or the function inputs
-  # to be able to reproduce a bug
-  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
-  echo "GMP seed: ", seed
-  gmp_randseed_ui(gmpRng, seed)
-
-  var a, b, p, r: mpz_t
-  mpz_init(a)
-  mpz_init(b)
-  mpz_init(p)
-  mpz_init(r)
-
+  testSetup()
+  echo "Testing modular additions vs GMP"
   randomTests(128, curve):
-    # echo "--------------------------------------------------------------------------------"
-    echo "Testing: random modular addition on ", $curve
-
-    const bits = CurveParams[curve][0]
-
-    # Generate random value in the range 0 ..< 2^(bits-1)
-    mpz_urandomb(a, gmpRng, uint bits)
-    mpz_urandomb(b, gmpRng, uint bits)
-    # Set modulus to curve modulus
-    let err = mpz_set_str(p, CurveParams[curve][1], 0)
-    doAssert err == 0
-
-    #########################################################
-    # Conversion buffers
-    const len = csize (bits + 7) div 8
-
-    var aBuf: array[len, byte]
-    var bBuf: array[len, byte]
-
-    var aW, bW: csize # Word written by GMP
-
-    discard mpz_export(aBuf[0].addr, aW.addr, GMP_LeastSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
-    discard mpz_export(bBuf[0].addr, bW.addr, GMP_LeastSignificantWordFirst, 1, GMP_WordNativeEndian, 0, b)
-
-    # Since the modulus is using all bits, it's we can test for exact amount copy
-    doAssert len >= aW, "Expected at most " & $len & " bytes but wrote " & $aW & " for " & toHex(aBuf) & " (little-endian)"
-    doAssert len >= bW, "Expected at most " & $len & " bytes but wrote " & $bW & " for " & toHex(bBuf) & " (little-endian)"
-
-    # Build the bigint - TODO more fields codecs
-    let aTest = Fp[curve].fromBig BigInt[bits].fromRawUint(aBuf, littleEndian)
-    let bTest = Fp[curve].fromBig BigInt[bits].fromRawUint(bBuf, littleEndian)
-
-    #########################################################
-    # Modular Addition
-    mpz_add(r, a, b)
-    mpz_mod(r, r, p)
-
-    var rTest {.noInit.}: Fp[curve]
-    rTest.sum(aTest, bTest)
-
-    var r2Test = aTest
-    r2Test += bTest
-
-    #########################################################
-    # Check
-    var rGMP: array[len, byte]
-    var rW: csize # Word written by GMP
-    discard mpz_export(rGMP[0].addr, rW.addr, GMP_LeastSignificantWordFirst, 1, GMP_WordNativeEndian, 0, r)
-
-    var rConstantine: array[len, byte]
-    exportRawUint(rConstantine, rTest, littleEndian)
-    var r2Constantine: array[len, byte]
-    exportRawUint(r2Constantine, r2Test, littleEndian)
-
-    # echo "rGMP: ", rGMP.toHex()
-    # echo "rConstantine: ", rConstantine.toHex()
-
-    doAssert rGMP == rConstantine, block:
-      # Reexport as bigEndian for debugging
-      discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
-      discard mpz_export(bBuf[0].addr, bW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, b)
-      "\nModular Addition on curve " & $curve & " with operands\n" &
-      "  a:   " & aBuf.toHex & "\n" &
-      "  b:   " & bBuf.toHex & "\n" &
-      "failed:" & "\n" &
-      "  GMP:            " & rGMP.toHex() & "\n" &
-      "  Constantine:    " & rConstantine.toHex()
-
-    doAssert rGMP == r2Constantine, block:
-      # Reexport as bigEndian for debugging
-      discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
-      discard mpz_export(bBuf[0].addr, bW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, b)
-      "\nModular Addition on curve " & $curve & " with operands\n" &
-      "  a:   " & aBuf.toHex & "\n" &
-      "  b:   " & bBuf.toHex & "\n" &
-      "failed:" & "\n" &
-      "  GMP:            " & rGMP.toHex() & "\n" &
-      "  Constantine:    " & r2Constantine.toHex()
+    addTests(gmpRng, a, b, p, r, curve)
 
 proc mainSub() =
-  var gmpRng: gmp_randstate_t
-  gmp_randinit_mt(gmpRng)
-  # The GMP seed varies between run so that
-  # test coverage increases as the library gets tested.
-  # This requires to dump the seed in the console or the function inputs
-  # to be able to reproduce a bug
-  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
-  echo "GMP seed: ", seed
-  gmp_randseed_ui(gmpRng, seed)
-
-  var a, b, p, r: mpz_t
-  mpz_init(a)
-  mpz_init(b)
-  mpz_init(p)
-  mpz_init(r)
-
+  testSetup()
+  echo "Testing modular substractions vs GMP"
   randomTests(128, curve):
-    # echo "--------------------------------------------------------------------------------"
-    echo "Testing: random modular substraction on ", $curve
+    subTests(gmpRng, a, b, p, r, curve)
 
-    const bits = CurveParams[curve][0]
+proc mainInv() =
+  testSetup()
+  echo "Testing modular inversions vs GMP"
+  randomTests(128, curve):
+    invTests(gmpRng, a, b, p, r, curve)
 
-    # Generate random value in the range 0 ..< 2^(bits-1)
-    mpz_urandomb(a, gmpRng, uint bits)
-    mpz_urandomb(b, gmpRng, uint bits)
-    # Set modulus to curve modulus
-    let err = mpz_set_str(p, CurveParams[curve][1], 0)
-    doAssert err == 0
-
-    #########################################################
-    # Conversion buffers
-    const len = csize (bits + 7) div 8
-
-    var aBuf: array[len, byte]
-    var bBuf: array[len, byte]
-
-    var aW, bW: csize # Word written by GMP
-
-    discard mpz_export(aBuf[0].addr, aW.addr, GMP_LeastSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
-    discard mpz_export(bBuf[0].addr, bW.addr, GMP_LeastSignificantWordFirst, 1, GMP_WordNativeEndian, 0, b)
-
-    # Since the modulus is using all bits, it's we can test for exact amount copy
-    doAssert len >= aW, "Expected at most " & $len & " bytes but wrote " & $aW & " for " & toHex(aBuf) & " (little-endian)"
-    doAssert len >= bW, "Expected at most " & $len & " bytes but wrote " & $bW & " for " & toHex(bBuf) & " (little-endian)"
-
-    # Build the bigint - TODO more fields codecs
-    let aTest = Fp[curve].fromBig BigInt[bits].fromRawUint(aBuf, littleEndian)
-    let bTest = Fp[curve].fromBig BigInt[bits].fromRawUint(bBuf, littleEndian)
-
-    #########################################################
-    # Modular Substraction
-    mpz_sub(r, a, b)
-    mpz_mod(r, r, p)
-
-    var rTest {.noInit.}: Fp[curve]
-    rTest.diff(aTest, bTest)
-
-    var r2Test = aTest
-    r2Test -= bTest
-
-    #########################################################
-    # Check
-    var rGMP: array[len, byte]
-    var rW: csize # Word written by GMP
-    discard mpz_export(rGMP[0].addr, rW.addr, GMP_LeastSignificantWordFirst, 1, GMP_WordNativeEndian, 0, r)
-
-    var rConstantine: array[len, byte]
-    exportRawUint(rConstantine, rTest, littleEndian)
-    var r2Constantine: array[len, byte]
-    exportRawUint(r2Constantine, r2Test, littleEndian)
-
-    # echo "rGMP: ", rGMP.toHex()
-    # echo "rConstantine: ", rConstantine.toHex()
-
-    doAssert rGMP == rConstantine, block:
-      # Reexport as bigEndian for debugging
-      discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
-      discard mpz_export(bBuf[0].addr, bW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, b)
-      "\nModular Substraction on curve " & $curve & " with operands\n" &
-      "  a:   " & aBuf.toHex & "\n" &
-      "  b:   " & bBuf.toHex & "\n" &
-      "failed:" & "\n" &
-      "  GMP:            " & rGMP.toHex() & "\n" &
-      "  Constantine:    " & rConstantine.toHex()
-
-    doAssert rGMP == r2Constantine, block:
-      # Reexport as bigEndian for debugging
-      discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
-      discard mpz_export(bBuf[0].addr, bW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, b)
-      "\nModular Substraction on curve " & $curve & " with operands\n" &
-      "  a:   " & aBuf.toHex & "\n" &
-      "  b:   " & bBuf.toHex & "\n" &
-      "failed:" & "\n" &
-      "  GMP:            " & rGMP.toHex() & "\n" &
-      "  Constantine:    " & r2Constantine.toHex()
 
 mainMul()
-mainInv()
 mainAdd()
 mainSub()
+mainInv()
