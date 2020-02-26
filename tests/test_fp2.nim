@@ -106,49 +106,45 @@ suite "𝔽p2 = 𝔽p[𝑖] (irreducible polynomial x²+1)":
     test(BN254):
       r.prod(Zero, x)
       check: bool(r == Zero)
-    # test(BN254):
-    #   r.prod(x, One)
-    #   echo "r: ", r
-    #   echo "x: ", x
-    #   check: bool(r == x)
-    # test(BN254):
-    #   r.prod(One, x)
-    #   echo "r: ", r
-    #   echo "x: ", x
-    #   check: bool(r == x)
+    test(BN254):
+      r.prod(x, One)
+      check: bool(r == x)
+    test(BN254):
+      r.prod(One, x)
+      check: bool(r == x)
     test(BLS12_381):
       r.prod(x, Zero)
       check: bool(r == Zero)
     test(BLS12_381):
       r.prod(Zero, x)
       check: bool(r == Zero)
-    # test(BLS12_381):
-    #   r.prod(x, One)
-    #   check: bool(r == x)
-    # test(BLS12_381):
-    #   r.prod(One, x)
-    #   check: bool(r == x)
+    test(BLS12_381):
+      r.prod(x, One)
+      check: bool(r == x)
+    test(BLS12_381):
+      r.prod(One, x)
+      check: bool(r == x)
     test(P256):
       r.prod(x, Zero)
       check: bool(r == Zero)
     test(P256):
       r.prod(Zero, x)
       check: bool(r == Zero)
-    # test(P256):
-    #   r.prod(x, One)
-    #   check: bool(r == x)
-    # test(P256):
-    #   r.prod(One, x)
-    #   check: bool(r == x)
+    test(P256):
+      r.prod(x, One)
+      check: bool(r == x)
+    test(P256):
+      r.prod(One, x)
+      check: bool(r == x)
     test(Secp256k1):
       r.prod(x, Zero)
       check: bool(r == Zero)
     test(Secp256k1):
       r.prod(Zero, x)
       check: bool(r == Zero)
-    # test(Secp256k1):
-    #   r.prod(x, One)
-    #   check: bool(r == x)
-    # test(Secp256k1):
-    #   r.prod(One, x)
-    #   check: bool(r == x)
+    test(Secp256k1):
+      r.prod(x, One)
+      check: bool(r == x)
+    test(Secp256k1):
+      r.prod(One, x)
+      check: bool(r == x)

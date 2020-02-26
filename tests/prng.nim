@@ -84,14 +84,15 @@ func next(rng: var RngState): uint64 =
 func random[T](rng: var RngState, a: var T, C: static Curve) {.noInit.}=
   ## Recursively initialize a BigInt or Field element
   when T is BigInt:
-    var unreduced{.noInit.}: T
+    var reduced, unreduced{.noInit.}: T
 
     unreduced.setInternalBitLength()
     for i in 0 ..< unreduced.limbs.len:
       unreduced.limbs[i] = Word(rng.next())
 
     # Note: a simple modulo will be biaised but it's simple and "fast"
-    a.reduce(unreduced, C.Mod.mres)
+    reduced.reduce(unreduced, C.Mod.mres)
+    a.montyResidue(reduced, C.Mod.mres, C.getR2modP(), C.getNegInvModWord())
 
   else:
     for field in fields(a):
