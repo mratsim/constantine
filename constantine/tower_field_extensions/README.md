@@ -71,6 +71,10 @@ From Ben Edgington, https://hackmd.io/@benjaminion/bls12-381
   Naomi Benger and Michael Scott, 2009\
   https://eprint.iacr.org/2009/556
 
+- High-Speed Software Implementation of the Optimal Ate Pairing over Barreto-Naehrig Curves\
+  Jean-Luc Beuchat and Jorge Enrique González Díaz and Shigeo Mitsunari and Eiji Okamoto and Francisco Rodríguez-Henríquez and Tadanori Teruya, 2010\
+  https://eprint.iacr.org/2010/354
+
 - Choosing and generating parameters for low level pairing implementation on BN curves\
   Sylvain Duquesne and Nadia El Mrabet and Safia Haloui and Franck Rondepierre, 2015\
   https://eprint.iacr.org/2015/1212
