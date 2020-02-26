@@ -67,6 +67,10 @@ From Ben Edgington, https://hackmd.io/@benjaminion/bls12-381
   Augusto Jun Devegili and Colm Ó hÉigeartaigh and Michael Scott and Ricardo Dahab, 2006\
   https://eprint.iacr.org/2006/471
 
+- Software Implementation of Pairings\
+  D. Hankerson, A. Menezes, and M. Scott, 2009\
+  http://cacr.uwaterloo.ca/~ajmeneze/publications/pairings_software.pdf
+
 - Constructing Tower Extensions for the implementation of Pairing-Based Cryptography\
   Naomi Benger and Michael Scott, 2009\
   https://eprint.iacr.org/2009/556
