@@ -140,9 +140,13 @@ func prod*(r: var Fp, a, b: Fp) =
   ## ``r`` is initialized / overwritten
   r.mres.montyMul(a.mres, b.mres, Fp.C.Mod.mres, Fp.C.getNegInvModWord())
 
-func square*(r: var Fp, a: Fp): Fp =
+func square*(r: var Fp, a: Fp) =
   ## Squaring modulo p
   r.mres.montySquare(a.mres, Fp.C.Mod.mres, Fp.C.getNegInvModWord())
+
+func neg*(r: var Fp, a: Fp) =
+  ## Negate modulo p
+  discard r.mres.diff(Fp.C.Mod.mres, a.mres)
 
 # ############################################################
 #

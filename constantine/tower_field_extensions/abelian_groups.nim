@@ -85,6 +85,11 @@ func diff*(r: var QuadExtAddGroup, a, b: QuadExtAddGroup) =
   r.c0.diff(a.c0, b.c0)
   r.c1.diff(a.c1, b.c1)
 
+func neg*(r: var QuadExtAddGroup, a: QuadExtAddGroup) =
+  ## Negate ``a`` into ``r``
+  r.c0.neg(a.c0)
+  r.c1.neg(a.c1)
+
 # ############################################################
 #
 #                 Cubic Extension fields

@@ -41,6 +41,8 @@
 #     Sylvain Duquesne and Nadia El Mrabet and Safia Haloui and Franck Rondepierre, 2015\
 #     https://eprint.iacr.org/2015/1212
 
+# TODO: Clarify some assumptions about the prime p ≡ 3 (mod 4)
+
 import
   ../arithmetic/finite_fields,
   ../config/curves,
@@ -59,7 +61,7 @@ type
     c0*, c1*: Fp[C]
 
 func square*(r: var Fp2, a: Fp2) =
-  ## Return a^2 in 𝔽p2 in ``r``
+  ## Return a^2 in 𝔽p2 = 𝔽p[𝑖] in ``r``
   ## ``r`` is initialized/overwritten
   # (c0, c1)² => (c0 + c1𝑖)²
   #           => c0² + 2 c0 c1𝑖 + (c1𝑖)²
@@ -85,7 +87,7 @@ func square*(r: var Fp2, a: Fp2) =
   # Stack: 6 * ModulusBitSize (4x 𝔽p element + 1 named temporaries + 1 in-place multiplication temporary)
   # as in-place multiplications require a (shared) internal temporary
 
-  var c0mc1 {.noInit.}: typeof(a.c0)
+  var c0mc1 {.noInit.}: Fp[Fp2.C]
   c0mc1.diff(a.c0, a.c1) # c0mc1 = c0 - c1                            [1 Sub]
   r.c1.double(a.c1)      # result.c1 = 2 c1                           [1 Dbl, 1 Sub]
   r.c0.sum(c0mc1, r.c1)  # result.c0 = c0 - c1 + 2 c1                 [1 Add, 1 Dbl, 1 Sub]
@@ -93,7 +95,7 @@ func square*(r: var Fp2, a: Fp2) =
   r.c1 *= a.c0           # result.c1 = 2 c1 c0                        [2 Mul, 1 Add, 1 Dbl, 1 Sub] - 𝔽p temporary
 
 func prod*(r: var Fp2, a, b: Fp2) =
-  ## Return a * b in 𝔽p2 in ``r``
+  ## Return a * b in 𝔽p2 = 𝔽p[𝑖] in ``r``
   ## ``r`` is initialized/overwritten
   # (a0, a1) (b0, b1) => (a0 + a1𝑖) (b0 + b1𝑖)
   #                   => (a0 b0 - a1 b1) + (a0 b1 + a1 b0) 𝑖
@@ -119,7 +121,7 @@ func prod*(r: var Fp2, a, b: Fp2) =
   # - 3 Substraction 𝔽p (2 are fused)
   # - 2 Addition 𝔽p
   # Stack: 6 * ModulusBitSize (4x 𝔽p element + 2x named temporaries + 1 in-place multiplication temporary)
-  var a0b0 {.noInit.}, a1b1 {.noInit.}: typeof(a.c0)
+  var a0b0 {.noInit.}, a1b1 {.noInit.}: Fp[Fp2.C]
   a0b0.prod(a.c0, b.c0)                                         # [1 Mul]
   a1b1.prod(a.c1, b.c1)                                         # [2 Mul]
 
@@ -130,3 +132,28 @@ func prod*(r: var Fp2, a, b: Fp2) =
   r.c0.diff(a0b0, a1b1) # r0 = a0 b0 - a1 b1                    # [3 Mul, 2 Add, 1 Sub]
   r.c1 -= a0b0          # r1 = (b0 + b1)(a0 + a1) - a0b0        # [3 Mul, 2 Add, 2 Sub]
   r.c1 -= a1b1          # r1 = (b0 + b1)(a0 + a1) - a0b0 - a1b1 # [3 Mul, 2 Add, 3 Sub]
+
+func inv*(r: var Fp2, a: Fp2) =
+  ## Compute the modular multiplicative inverse of ``a``
+  ## in 𝔽p2 = 𝔽p[𝑖]
+  #
+  # Algorithm: (the inverse exist if a != 0 which might cause constant-time issue)
+  #
+  # 1 / (a0 + a1 x) <=> (a0 - a1 x) / (a0 + a1 x)(a0 - a1 x)
+  #                 <=> (a0 - a1 x) / (a0² - a1² x²)
+  # In our case 𝔽p2 = 𝔽p[𝑖], we have x = 𝑖
+  # So the inverse is (a0 - a1 𝑖) / (a0² + a1²)
+
+  # [2 Sqr, 1 Add]
+  var t0 {.noInit.}, t1 {.noInit.}: Fp[Fp2.C]
+  t0.square(a.c0)
+  t1.square(a.c1)
+  t0 += t1             # t0 = a0² + a1² (the norm / squared magnitude of a)
+
+  # [1 Inv, 2 Sqr, 1 Add]
+  inv(t0)              # t0 = 1 / (a0² + a1²)
+
+  # [1 Inv, 2 Mul, 2 Sqr, 1 Add, 1 Neg]
+  r.c0.prod(a.c0, t0)  # r0 = a0 / (a0² + a1²)
+  t1.neg(t0)           # t0 = -1 / (a0² + a1²)
+  r.c1.prod(a.c1, t1)  # r1 = -a1 / (a0² + a1²)

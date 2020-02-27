@@ -242,3 +242,23 @@ suite "𝔽p2 = 𝔽p[𝑖] (irreducible polynomial x²+1)":
     commutativeRing(BLS12_381)
     commutativeRing(Secp256k1)
     commutativeRing(P256)
+
+  test "𝔽p2 = 𝔽p[𝑖] extension field multiplicative inverse":
+    proc mulInvOne(curve: static Curve) =
+      var one: Fp2[curve]
+      one.setOne()
+
+      var aInv, r{.noInit.}: Fp2[curve]
+
+      for _ in 0 ..< Iters:
+        let a = rng.random(Fp2[curve])
+        aInv.inv(a)
+        r.prod(a, aInv)
+        check: bool(r == one)
+        r.prod(aInv, a)
+        check: bool(r == one)
+
+    mulInvOne(BN254)
+    mulInvOne(BLS12_381)
+    mulInvOne(Secp256k1)
+    mulInvOne(P256)
