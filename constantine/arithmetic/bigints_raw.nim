@@ -551,26 +551,28 @@ func montyMul*(
   r.setBitLength(bitSizeof(M))
   setZero(r)
 
-  var r_hi = Zero   # represents the high word that is used in intermediate computation before reduction mod M
+  var partials: array[14, DoubleWord]
+
   for i in 0 ..< nLen:
 
-    let zi = (r[0] + wordMul(a[i], b[0])).wordMul(negInvModWord)
-    var carry = Zero
+    let zi = (Word(partials[0]) + wordMul(a[i], b[0])).wordMul(negInvModWord)
 
     for j in 0 ..< nLen:
-      let z = DoubleWord(r[j]) + unsafeExtPrecMul(a[i], b[j]) +
-              unsafeExtPrecMul(zi, M[j]) + DoubleWord(carry)
-      carry = Word(z shr WordBitSize)
-      if j != 0: # "division" by a physical word 2^32 or 2^64
-        r[j-1] = Word(z).mask()
+      partials[j] += unsafeExtPrecMul(a[i], b[j]) + unsafeExtPrecMul(zi, M[j])
 
-    r_hi += carry
-    r[^1] = r_hi.mask()
-    r_hi = r_hi shr WordBitSize
+    var carry = partials[0] shr WordBitSize
+    for j in 1 .. nlen: # we need 1 extra temporary at nlen
+      partials[j] += carry
+      carry = partials[j] shr WordBitSize
+      partials[j-1] = partials[j] and DoubleWord(MaxWord)
+    partials[nlen] = partials[nlen] shr WordBitSize
+
+  for i in 0 ..< nLen:
+    r[i] = Word(partials[i])
 
   # If the extra word is not zero or if r-M does not borrow (i.e. r > M)
   # Then substract M
-  discard r.csub(M, r_hi.isNonZero() or not r.csub(M, CtFalse))
+  discard r.csub(M, CTBool[Word](partials[nLen].isNonZero()) or not r.csub(M, CtFalse))
 
 func redc*(r: BigIntViewMut, a: BigIntViewAny, one, N: BigIntViewConst, negInvModWord: Word) {.inline.} =
   ## Transform a bigint ``a`` from it's Montgomery N-residue representation (mod N)
