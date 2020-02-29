@@ -662,7 +662,9 @@ func montyPowPrologue(
   # forcing this inline actually reduces the code size
 
   result.window = scratchspace.len.getWindowLen()
-  result.bigIntSize = a.numLimbs() * sizeof(Word) + sizeof(BigIntView.bitLength)
+  result.bigIntSize = a.numLimbs() * sizeof(Word) +
+                      offsetof(BigIntView, limbs) +
+                      sizeof(BigIntView.bitLength)
 
   # Precompute window content, special case for window = 1
   # (i.e scratchspace has only space for 2 temporaries)
@@ -671,11 +673,10 @@ func montyPowPrologue(
   if result.window == 1:
     copyMem(pointer scratchspace[1], pointer a, result.bigIntSize)
   else:
+    scratchspace[1].setBitLength(bitSizeof(M))
     copyMem(pointer scratchspace[2], pointer a, result.bigIntSize)
     for k in 2 ..< 1 shl result.window:
       scratchspace[k+1].montyMul(scratchspace[k], a, M, negInvModWord)
-
-    scratchspace[1].setBitLength(bitSizeof(M))
 
   # Set a to one
   copyMem(pointer a, pointer one, result.bigIntSize)

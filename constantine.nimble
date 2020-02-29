@@ -26,19 +26,26 @@ proc test(path: string) =
 task test, "Run all tests":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   test "tests/test_primitives.nim"
+
   test "tests/test_io_bigints.nim"
   test "tests/test_bigints.nim"
   test "tests/test_bigints_multimod.nim"
-  test "tests/test_bigints_vs_gmp.nim"
+
+  test "tests/test_io_fields"
   test "tests/test_finite_fields.nim"
-  test "tests/test_finite_fields_vs_gmp.nim"
   test "tests/test_finite_fields_powinv.nim"
+
+  test "tests/test_bigints_vs_gmp.nim"
+  test "tests/test_finite_fields_vs_gmp.nim"
 
 task test_no_gmp, "Run tests that don't require GMP":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   test "tests/test_primitives.nim"
+
   test "tests/test_io_bigints.nim"
   test "tests/test_bigints.nim"
   test "tests/test_bigints_multimod.nim"
+
+  test "tests/test_io_fields"
   test "tests/test_finite_fields.nim"
   test "tests/test_finite_fields_powinv.nim"

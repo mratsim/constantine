@@ -123,8 +123,8 @@ when defined(gcc) or defined(clang) or defined(llvm_gcc):
                        " + (unsigned __int128)", a2," * (unsigned __int128)", b2,
                        " + (unsigned __int128)", c1,
                        " + (unsigned __int128)", c2, ";"].}
-      {.emit:[hi, " = (NU64)", dblPrec," >> ", 63'u64, ";"].}
-      {.emit:[lo, " = (NU64)", dblPrec," & ", 1'u64 shl 63 - 1, ";"].}
+      {.emit:[hi, " = (NU64)(", dblPrec," >> ", 63'u64, ");"].}
+      {.emit:[lo, " = (NU64)", dblPrec," & ", (1'u64 shl 63 - 1), ";"].}
 
 else:
   {.error: "Compiler not implemented".}

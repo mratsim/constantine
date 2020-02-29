@@ -20,6 +20,25 @@ proc main() =
     test "n² mod 101":
       let exponent = BigInt[64].fromUint(2'u64)
 
+      block: # 1*1 mod 101
+        var n, expected: Fp[Fake101]
+
+        n.fromUint(1'u32)
+        expected = n
+
+        var r: Fp[Fake101]
+        r.prod(n, n)
+
+        var r_bytes: array[8, byte]
+        r_bytes.exportRawUint(r, cpuEndian)
+        let rU64 = cast[uint64](r_bytes)
+
+        check:
+          # Check equality in the Montgomery domain
+          bool(r == expected)
+          # Check equality when converting back to natural domain
+          1'u64 == rU64
+
       block: # 1^2 mod 101
         var n, expected: Fp[Fake101]
 
