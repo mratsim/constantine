@@ -227,7 +227,7 @@ template `<=`*[T: Ct](x, y: T): CTBool[T] =
 template `xor`*[T: Ct](x, y: CTBool[T]): CTBool[T] =
   CTBool[T](noteq(T(x), T(y)))
 
-template mux*[T: Ct](ctl: CTBool[T], x, y: T): T =
+func mux*[T](ctl: CTBool[T], x, y: T): T {.inline.}=
   ## Multiplexer / selector
   ## Returns x if ctl is true
   ## else returns y
@@ -237,22 +237,68 @@ template mux*[T: Ct](ctl: CTBool[T], x, y: T): T =
   # Alternatives:
   # - https://cryptocoding.net/index.php/Coding_rules
   # - https://www.cl.cam.ac.uk/~rja14/Papers/whatyouc.pdf
-  #
-  # TODO: assembly fastpath for conditional mov
-  let # Templates duplicate input params code
-    x_Mux = x
-    y_Mux = y
-  y_Mux xor (-T(ctl) and (x_Mux xor y_Mux))
+  when defined(amd64) or defined(i386):
+    when sizeof(T) == 8:
+      var muxed = x
+      asm """
+        testq %[ctl], %[ctl]
+        cmovzq %[y], %[muxed]
+        : [muxed] "+r" (`muxed`)
+        : [ctl] "r" (`ctl`), [y] "r" (`y`)
+        : "cc"
+      """
+      muxed
+    elif sizeof(T) == 4:
+      var muxed = x
+      asm """
+        testl %[ctl], %[ctl]
+        cmovzl %[y], %[muxed]
+        : [muxed] "+r" (`muxed`)
+        : [ctl] "r" (`ctl`), [y] "r" (`y`)
+        : "cc"
+      """
+      muxed
+    else:
+      {.error: "Unsupported word size".}
+  else:
+    let # Templates duplicate input params code
+      x_Mux = x
+      y_Mux = y
+    y_Mux xor (-T(ctl) and (x_Mux xor y_Mux))
 
-template mux*[T: CTBool](ctl: CTBool, x, y: T): T =
+func mux*[T: CTBool](ctl: CTBool, x, y: T): T {.inline.}=
   ## Multiplexer / selector
   ## Returns x if ctl is true
   ## else returns y
   ## So equivalent to ctl? x: y
-  let # Templates duplicate input params code
-    x_Mux = x
-    y_Mux = y
-  T(T.T(y_Mux) xor (-T.T(ctl) and T.T(x_Mux xor y_Mux)))
+  when defined(amd64) or defined(i386):
+    when sizeof(T) == 8:
+      var muxed = x
+      asm """
+        testq %[ctl], %[ctl]
+        cmovzq %[y], %[muxed]
+        : [muxed] "+r" (`muxed`)
+        : [ctl] "r" (`ctl`), [y] "r" (`y`)
+        : "cc"
+      """
+      muxed
+    elif sizeof(T) == 4:
+      var muxed = x
+      asm """
+        testl %[ctl], %[ctl]
+        cmovzl %[y], %[muxed]
+        : [muxed] "+r" (`muxed`)
+        : [ctl] "r" (`ctl`), [y] "r" (`y`)
+        : "cc"
+      """
+      muxed
+    else:
+      {.error: "Unsupported word size".}
+  else:
+    let # Templates duplicate input params code
+      x_Mux = x
+      y_Mux = y
+    T(T.T(y_Mux) xor (-T.T(ctl) and T.T(x_Mux xor y_Mux)))
 
 # ############################################################
 #

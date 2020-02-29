@@ -43,8 +43,8 @@ proc addBench() =
     x += y
   let stop = getMonotime()
 
-  echo &"Time for {Iters} conditional additions (constant-time 381-bit): {inMilliseconds(stop-start)} ms"
-  echo &"Time for 1 conditional addition ==> {inNanoseconds((stop-start) div Iters)} ns"
+  echo &"Time for {Iters} additions in 𝔽p (constant-time 381-bit): {inMilliseconds(stop-start)} ms"
+  echo &"Time for 1 addition in 𝔽p ==> {inNanoseconds((stop-start) div Iters)} ns"
 
 addBench()
 
@@ -60,7 +60,7 @@ proc mulBench() =
     r.prod(x, y)
   let stop = getMonotime()
 
-  echo &"Time for {Iters} multiplications (constant-time 381-bit): {inMilliseconds(stop-start)} ms"
-  echo &"Time for 1 multiplication ==> {inNanoseconds((stop-start) div Iters)} ns"
+  echo &"Time for {Iters} multiplications 𝔽p (constant-time 381-bit): {inMilliseconds(stop-start)} ms"
+  echo &"Time for 1 multiplication 𝔽p ==> {inNanoseconds((stop-start) div Iters)} ns"
 
 mulBench()
