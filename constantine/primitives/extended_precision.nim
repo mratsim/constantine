@@ -37,7 +37,7 @@ func unsafeDiv2n1n*(q, r: var Ct[uint32], n_hi, n_lo, d: Ct[uint32]) {.inline.}=
   q = (Ct[uint32])(dividend div divisor)
   r = (Ct[uint32])(dividend mod divisor)
 
-template unsafeFMA*(hi, lo: var Ct[uint32], a, b, c: Ct[uint32]) =
+func unsafeFMA*(hi, lo: var Ct[uint32], a, b, c: Ct[uint32]) {.inline.} =
   ## Extended precision multiplication + addition
   ## This is constant-time on most hardware except some specific one like Cortex M0
   ## (hi, lo) <- a*b + c
@@ -48,7 +48,7 @@ template unsafeFMA*(hi, lo: var Ct[uint32], a, b, c: Ct[uint32]) =
     hi = Ct[uint32](dblPrec shr 31)
     lo = Ct[uint32](dblPrec) and Ct[uint32](1 shl 31 - 1)
 
-template unsafeFMA2*(hi, lo: var Ct[uint32], a1, b1, a2, b2, c1, c2: Ct[uint32]) =
+func unsafeFMA2*(hi, lo: var Ct[uint32], a1, b1, a2, b2, c1, c2: Ct[uint32]) {.inline.}=
   ## (hi, lo) <- a1 * b1 + a2 * b2 + c1 + c2
   block:
     # TODO: Can this overflow?
@@ -59,7 +59,7 @@ template unsafeFMA2*(hi, lo: var Ct[uint32], a1, b1, a2, b2, c1, c2: Ct[uint32])
     hi = Ct[uint32](dblPrec shr 31)
     lo = Ct[uint32](dblPrec) and Ct[uint32](1 shl 31 - 1)
 
-template unsafeFMA2_hi*(hi: var Ct[uint32], a1, b1, a2, b2, c1: Ct[uint32]) =
+func unsafeFMA2_hi*(hi: var Ct[uint32], a1, b1, a2, b2, c1: Ct[uint32]) {.inline.}=
   ## Returns the high word of the sum of extended precision multiply-adds
   ## (hi, _) <- a1 * b1 + a2 * b2 + c
   block:
@@ -111,7 +111,7 @@ when defined(gcc) or defined(clang) or defined(llvm_gcc):
       :
     """
 
-  template unsafeFMA*(hi, lo: var Ct[uint64], a, b, c: Ct[uint64]) =
+  func unsafeFMA*(hi, lo: var Ct[uint64], a, b, c: Ct[uint64]) {.inline.}=
     ## Extended precision multiplication + addition
     ## This is constant-time on most hardware except some specific one like Cortex M0
     ## (hi, lo) <- a*b + c
@@ -121,10 +121,11 @@ when defined(gcc) or defined(clang) or defined(llvm_gcc):
       var dblPrec {.noInit.}: uint128
       {.emit:[dblPrec, " = (unsigned __int128)", a," * (unsigned __int128)", b, " + (unsigned __int128)",c,";"].}
 
-      {.emit:[hi, " = (NU64)(", dblPrec," >> ", 63'u64, ");"].}
-      {.emit:[lo, " = (NU64)", dblPrec," & ", 1'u64 shl 63 - 1, ";"].}
+      # Don't forget to dereference the var param
+      {.emit:["*",hi, " = (NU64)(", dblPrec," >> ", 63'u64, ");"].}
+      {.emit:["*",lo, " = (NU64)", dblPrec," & ", 1'u64 shl 63 - 1, ";"].}
 
-  template unsafeFMA2*(hi, lo: var Ct[uint64], a1, b1, a2, b2, c1, c2: Ct[uint64]) =
+  func unsafeFMA2*(hi, lo: var Ct[uint64], a1, b1, a2, b2, c1, c2: Ct[uint64]) {.inline.}=
     ## (hi, lo) <- a1 * b1 + a2 * b2 + c1 + c2
     block:
       # TODO: Can this overflow?
@@ -133,10 +134,11 @@ when defined(gcc) or defined(clang) or defined(llvm_gcc):
                        " + (unsigned __int128)", a2," * (unsigned __int128)", b2,
                        " + (unsigned __int128)", c1,
                        " + (unsigned __int128)", c2, ";"].}
-      {.emit:[hi, " = (NU64)(", dblPrec," >> ", 63'u64, ");"].}
-      {.emit:[lo, " = (NU64)", dblPrec," & ", (1'u64 shl 63 - 1), ";"].}
+      # Don't forget to dereference the var param
+      {.emit:["*",hi, " = (NU64)(", dblPrec," >> ", 63'u64, ");"].}
+      {.emit:["*",lo, " = (NU64)", dblPrec," & ", (1'u64 shl 63 - 1), ";"].}
 
-  template unsafeFMA2_hi*(hi: var Ct[uint64], a1, b1, a2, b2, c: Ct[uint64]) =
+  func unsafeFMA2_hi*(hi: var Ct[uint64], a1, b1, a2, b2, c: Ct[uint64]) {.inline.}=
     ## Returns the high word of the sum of extended precision multiply-adds
     ## (hi, _) <- a1 * b1 + a2 * b2 + c
     block:
@@ -144,7 +146,8 @@ when defined(gcc) or defined(clang) or defined(llvm_gcc):
       {.emit:[dblPrec, " = (unsigned __int128)", a1," * (unsigned __int128)", b1,
                        " + (unsigned __int128)", a2," * (unsigned __int128)", b2,
                        " + (unsigned __int128)", c, ";"].}
-      {.emit:[hi, " = (NU64)(", dblPrec," >> ", 63'u64, ");"].}
+      # Don't forget to dereference the var param
+      {.emit:["*",hi, " = (NU64)(", dblPrec," >> ", 63'u64, ");"].}
 
 else:
   {.error: "Compiler not implemented".}
