@@ -25,11 +25,15 @@ import
   ../constantine/config/[common, curves],
   ../constantine/arithmetic/[bigints_checked, finite_fields],
   ../constantine/io/[io_bigints, io_fields],
-  random, std/monotimes, times, strformat
+  random, std/monotimes, times, strformat,
+  ./timers
 
 const Iters = 1_000_000
 
 randomize(1234)
+
+echo "\n⚠️ Measurements are approximate and use the CPU nominal clock: Turbo-Boost and overclocking will skew them."
+echo "==========================================================================================================\n"
 
 proc addBench() =
   var r, x, y: Fp[BLS12_381]
@@ -39,12 +43,15 @@ proc addBench() =
   y.fromHex("0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaa9")
 
   let start = getMonotime()
+  let startClk = getTicks()
   for _ in 0 ..< Iters:
     x += y
+  let stopClk = getTicks()
   let stop = getMonotime()
 
   echo &"Time for {Iters} additions in 𝔽p (constant-time 381-bit): {inMilliseconds(stop-start)} ms"
   echo &"Time for 1 addition in 𝔽p ==> {inNanoseconds((stop-start) div Iters)} ns"
+  echo &"Cycles per addition 𝔽p ==> {(stopClk - startClk) div Iters} cycles"
 
 addBench()
 
@@ -56,11 +63,14 @@ proc mulBench() =
   y.fromHex("0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaa9")
 
   let start = getMonotime()
+  let startClk = getTicks()
   for _ in 0 ..< Iters:
     r.prod(x, y)
+  let stopClk = getTicks()
   let stop = getMonotime()
 
   echo &"Time for {Iters} multiplications 𝔽p (constant-time 381-bit): {inMilliseconds(stop-start)} ms"
   echo &"Time for 1 multiplication 𝔽p ==> {inNanoseconds((stop-start) div Iters)} ns"
+  echo &"Cycles per multiplication 𝔽p ==> {(stopClk - startClk) div Iters} cycles"
 
 mulBench()
