@@ -553,10 +553,12 @@ func montyMul*(
   for i in 0 ..< nLen:
 
     let zi = (r[0] + wordMul(a[i], b[0])).wordMul(negInvModWord)
-    var carry, z = Zero
-    unsafeFMA2(carry, z, a[i], b[0], zi, M[0], r[0], carry)
+    var carry: Word
+    # (carry, _) <- a[i] * b[0] + zi * M[0] + r[0]
+    unsafeFMA2_hi(carry, a[i], b[0], zi, M[0], r[0])
 
     for j in 1 ..< nLen:
+      # (carry, r[j-1]) <- a[i] * b[j] + zi * M[j] + r[j] + carry
       unsafeFMA2(carry, r[j-1], a[i], b[j], zi, M[j], r[j], carry)
 
     r_hi += carry

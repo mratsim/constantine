@@ -59,6 +59,16 @@ template unsafeFMA2*(hi, lo: var Ct[uint32], a1, b1, a2, b2, c1, c2: Ct[uint32])
     hi = Ct[uint32](dblPrec shr 31)
     lo = Ct[uint32](dblPrec) and Ct[uint32](1 shl 31 - 1)
 
+template unsafeFMA2_hi*(hi: var Ct[uint32], a1, b1, a2, b2, c1: Ct[uint32]) =
+  ## Returns the high word of the sum of extended precision multiply-adds
+  ## (hi, _) <- a1 * b1 + a2 * b2 + c
+  block:
+    # TODO: Can this overflow?
+    let dblPrec = uint64(a1) * uint64(b1) +
+                  uint64(a2) * uint64(b2) +
+                  uint64(c1)
+    hi = Ct[uint32](dblPrec shr 31)
+
 # ############################################################
 #
 #                     64-bit words
@@ -125,6 +135,16 @@ when defined(gcc) or defined(clang) or defined(llvm_gcc):
                        " + (unsigned __int128)", c2, ";"].}
       {.emit:[hi, " = (NU64)(", dblPrec," >> ", 63'u64, ");"].}
       {.emit:[lo, " = (NU64)", dblPrec," & ", (1'u64 shl 63 - 1), ";"].}
+
+  template unsafeFMA2_hi*(hi: var Ct[uint64], a1, b1, a2, b2, c: Ct[uint64]) =
+    ## Returns the high word of the sum of extended precision multiply-adds
+    ## (hi, _) <- a1 * b1 + a2 * b2 + c
+    block:
+      var dblPrec: uint128
+      {.emit:[dblPrec, " = (unsigned __int128)", a1," * (unsigned __int128)", b1,
+                       " + (unsigned __int128)", a2," * (unsigned __int128)", b2,
+                       " + (unsigned __int128)", c, ";"].}
+      {.emit:[hi, " = (NU64)(", dblPrec," >> ", 63'u64, ");"].}
 
 else:
   {.error: "Compiler not implemented".}

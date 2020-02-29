@@ -14,16 +14,17 @@
 
 import ../primitives/constant_time
 
-type Word* = Ct[uint64]
-  ## Logical BigInt word
-  ## A logical BigInt word is of size physical MachineWord-1
-
-type BaseType* = uint64
-  ## Physical BigInt for conversion in "normal integers"
+type
+  BaseType* = uint64
+    ## Physical BigInt for conversion in "normal integers"
+  Word* = Ct[BaseType]
+    ## Logical BigInt word
+    ## A logical BigInt word is of size physical MachineWord-1
 
 const
+  ExcessBits = 1
   WordPhysBitSize* = sizeof(Word) * 8
-  WordBitSize* = WordPhysBitSize - 1
+  WordBitSize* = WordPhysBitSize - ExcessBits
 
   CtTrue* = ctrue(Word)
   CtFalse* = cfalse(Word)
