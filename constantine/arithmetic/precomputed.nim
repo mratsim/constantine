@@ -126,7 +126,7 @@ func negInvModWord*(M: BigInt): BaseType =
 
   let
     M0 = BaseType(M.limbs[0])
-    k = log2(WordPhysBitSize)
+    k = log2(uint32(WordPhysBitSize))
 
   result = M0                 # Start from an inverse of M0 modulo 2, M0 is odd and it's own inverse
   for _ in 0 ..< k:           # at each iteration we get the inverse mod(2^2k)

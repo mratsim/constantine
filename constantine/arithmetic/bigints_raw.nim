@@ -138,7 +138,7 @@ template bitSizeof(v: BigIntViewAny): uint32 =
   bind BigIntView
   distinctBase(type v)(v).bitLength
 
-const divShiftor = log2(WordPhysBitSize)
+const divShiftor = log2(uint32(WordPhysBitSize))
 template numLimbs*(v: BigIntViewAny): int =
   ## Compute the number of limbs from
   ## the **internal** bitlength
@@ -447,9 +447,7 @@ func shlAddMod(a: BigIntViewMut, c: Word, M: BigIntViewConst) =
 
       block: # q*p
         # q * p + carry (doubleword) carry from previous limb
-        let qp = unsafeExtPrecMul(q, M[i]) + carry.DoubleWord
-        carry = Word(qp shr WordBitSize)           # New carry: high digit besides LSB
-        qp_lo = qp.Word.mask()                     # Normalize to u63
+        unsafeFMA(carry, qp_lo, q, M[i], carry)
 
       block: # a*2^63 - q*p
         a[i] -= qp_lo
@@ -551,28 +549,23 @@ func montyMul*(
   r.setBitLength(bitSizeof(M))
   setZero(r)
 
-  var partials: array[14, DoubleWord]
-
+  var r_hi = Zero   # represents the high word that is used in intermediate computation before reduction mod M
   for i in 0 ..< nLen:
 
-    let zi = (Word(partials[0]) + wordMul(a[i], b[0])).wordMul(negInvModWord)
+    let zi = (r[0] + wordMul(a[i], b[0])).wordMul(negInvModWord)
+    var carry, z = Zero
+    unsafeFMA2(carry, z, a[i], b[0], zi, M[0], r[0], carry)
 
-    for j in 0 ..< nLen:
-      partials[j] += unsafeExtPrecMul(a[i], b[j]) + unsafeExtPrecMul(zi, M[j])
+    for j in 1 ..< nLen:
+      unsafeFMA2(carry, r[j-1], a[i], b[j], zi, M[j], r[j], carry)
 
-    var carry = partials[0] shr WordBitSize
-    for j in 1 .. nlen: # we need 1 extra temporary at nlen
-      partials[j] += carry
-      carry = partials[j] shr WordBitSize
-      partials[j-1] = partials[j] and DoubleWord(MaxWord)
-    partials[nlen] = partials[nlen] shr WordBitSize
-
-  for i in 0 ..< nLen:
-    r[i] = Word(partials[i])
+    r_hi += carry
+    r[^1] = r_hi.mask()
+    r_hi = r_hi shr WordBitSize
 
   # If the extra word is not zero or if r-M does not borrow (i.e. r > M)
   # Then substract M
-  discard r.csub(M, CTBool[Word](partials[nLen].isNonZero()) or not r.csub(M, CtFalse))
+  discard r.csub(M, r_hi.isNonZero() or not r.csub(M, CtFalse))
 
 func redc*(r: BigIntViewMut, a: BigIntViewAny, one, N: BigIntViewConst, negInvModWord: Word) {.inline.} =
   ## Transform a bigint ``a`` from it's Montgomery N-residue representation (mod N)

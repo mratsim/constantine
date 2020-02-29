@@ -14,12 +14,11 @@
 
 import ../primitives/constant_time
 
-type Word* = Ct[uint32]
+type Word* = Ct[uint64]
   ## Logical BigInt word
   ## A logical BigInt word is of size physical MachineWord-1
-type DoubleWord* = Ct[uint64]
 
-type BaseType* = uint32
+type BaseType* = uint64
   ## Physical BigInt for conversion in "normal integers"
 
 const
