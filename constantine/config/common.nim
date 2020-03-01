@@ -14,9 +14,16 @@
 
 import ../primitives/constant_time
 
+when sizeof(int) == 8:
+  type
+    BaseType* = uint64
+      ## Physical BigInt for conversion in "normal integers"
+else:
+  type
+    BaseType* = uint32
+      ## Physical BigInt for conversion in "normal integers"
+
 type
-  BaseType* = uint64
-    ## Physical BigInt for conversion in "normal integers"
   Word* = Ct[BaseType]
     ## Logical BigInt word
     ## A logical BigInt word is of size physical MachineWord-1
