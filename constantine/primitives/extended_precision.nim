@@ -75,7 +75,9 @@ func unsafeFMA2_hi*(hi: var Ct[uint32], a1, b1, a2, b2, c1: Ct[uint32]) {.inline
 #
 # ############################################################
 
-when defined(gcc) or defined(clang) or defined(llvm_gcc):
+const GccCompatible = defined(gcc) or defined(clang) or defined(llvm_gcc)
+
+when sizeof(int) == 8 and GccCompatible:
   type
     uint128*{.importc: "unsigned __int128".} = object
 
@@ -104,12 +106,20 @@ when defined(gcc) or defined(clang) or defined(llvm_gcc):
     # 2. don't forget to dereference the var hidden pointer
     # 3. -
     # 4. no clobbered registers beside explectly used RAX and RDX
-    asm """
-      divq %[divisor]
-      : "=a" (`*q`), "=d" (`*r`)
-      : "d" (`n_hi`), "a" (`n_lo`), [divisor] "rm" (`d`)
-      :
-    """
+    when defined(amd64):
+      asm """
+        divq %[divisor]
+        : "=a" (`*q`), "=d" (`*r`)
+        : "d" (`n_hi`), "a" (`n_lo`), [divisor] "rm" (`d`)
+        :
+      """
+    else:
+      var dblPrec {.noInit.}: uint128
+      {.emit:[dblPrec, " = (unsigned __int128)", n_hi," << 64 | (unsigned __int128)",n_lo,";"].}
+
+      # Don't forget to dereference the var param
+      {.emit:["*",q, " = (NU64)(", dblPrec," / ", d, ");"].}
+      {.emit:["*",r, " = (NU64)(", dblPrec," % ", d, ");"].}
 
   func unsafeFMA*(hi, lo: var Ct[uint64], a, b, c: Ct[uint64]) {.inline.}=
     ## Extended precision multiplication + addition
