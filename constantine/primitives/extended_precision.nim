@@ -108,19 +108,31 @@ when sizeof(int) == 8:
       # 3. -
       # 4. no clobbered registers beside explectly used RAX and RDX
       when defined(amd64):
-        asm """
-          divq %[divisor]
-          : "=a" (`*q`), "=d" (`*r`)
-          : "d" (`n_hi`), "a" (`n_lo`), [divisor] "rm" (`d`)
-          :
-        """
+        when defined(cpp):
+          asm """
+            divq %[divisor]
+            : "=a" (`q`), "=d" (`r`)
+            : "d" (`n_hi`), "a" (`n_lo`), [divisor] "rm" (`d`)
+            :
+          """
+        else:
+          asm """
+            divq %[divisor]
+            : "=a" (`*q`), "=d" (`*r`)
+            : "d" (`n_hi`), "a" (`n_lo`), [divisor] "rm" (`d`)
+            :
+          """
       else:
         var dblPrec {.noInit.}: uint128
         {.emit:[dblPrec, " = (unsigned __int128)", n_hi," << 64 | (unsigned __int128)",n_lo,";"].}
 
-        # Don't forget to dereference the var param
-        {.emit:["*",q, " = (NU64)(", dblPrec," / ", d, ");"].}
-        {.emit:["*",r, " = (NU64)(", dblPrec," % ", d, ");"].}
+        # Don't forget to dereference the var param in C mode
+        when defined(cpp):
+          {.emit:[q, " = (NU64)(", dblPrec," / ", d, ");"].}
+          {.emit:[r, " = (NU64)(", dblPrec," % ", d, ");"].}
+        else:
+          {.emit:["*",q, " = (NU64)(", dblPrec," / ", d, ");"].}
+          {.emit:["*",r, " = (NU64)(", dblPrec," % ", d, ");"].}
 
     func unsafeFMA*(hi, lo: var Ct[uint64], a, b, c: Ct[uint64]) {.inline.}=
       ## Extended precision multiplication + addition
@@ -132,9 +144,13 @@ when sizeof(int) == 8:
         var dblPrec {.noInit.}: uint128
         {.emit:[dblPrec, " = (unsigned __int128)", a," * (unsigned __int128)", b, " + (unsigned __int128)",c,";"].}
 
-        # Don't forget to dereference the var param
-        {.emit:["*",hi, " = (NU64)(", dblPrec," >> ", 63'u64, ");"].}
-        {.emit:["*",lo, " = (NU64)", dblPrec," & ", 1'u64 shl 63 - 1, ";"].}
+        # Don't forget to dereference the var param in C mode
+        when defined(cpp):
+          {.emit:[hi, " = (NU64)(", dblPrec," >> ", 63'u64, ");"].}
+          {.emit:[lo, " = (NU64)", dblPrec," & ", 1'u64 shl 63 - 1, ";"].}
+        else:
+          {.emit:["*",hi, " = (NU64)(", dblPrec," >> ", 63'u64, ");"].}
+          {.emit:["*",lo, " = (NU64)", dblPrec," & ", 1'u64 shl 63 - 1, ";"].}
 
     func unsafeFMA2*(hi, lo: var Ct[uint64], a1, b1, a2, b2, c1, c2: Ct[uint64]) {.inline.}=
       ## (hi, lo) <- a1 * b1 + a2 * b2 + c1 + c2
@@ -145,9 +161,13 @@ when sizeof(int) == 8:
                         " + (unsigned __int128)", a2," * (unsigned __int128)", b2,
                         " + (unsigned __int128)", c1,
                         " + (unsigned __int128)", c2, ";"].}
-        # Don't forget to dereference the var param
-        {.emit:["*",hi, " = (NU64)(", dblPrec," >> ", 63'u64, ");"].}
-        {.emit:["*",lo, " = (NU64)", dblPrec," & ", (1'u64 shl 63 - 1), ";"].}
+         # Don't forget to dereference the var param in C mode
+        when defined(cpp):
+          {.emit:[hi, " = (NU64)(", dblPrec," >> ", 63'u64, ");"].}
+          {.emit:[lo, " = (NU64)", dblPrec," & ", (1'u64 shl 63 - 1), ";"].}
+        else:
+          {.emit:["*",hi, " = (NU64)(", dblPrec," >> ", 63'u64, ");"].}
+          {.emit:["*",lo, " = (NU64)", dblPrec," & ", (1'u64 shl 63 - 1), ";"].}
 
     func unsafeFMA2_hi*(hi: var Ct[uint64], a1, b1, a2, b2, c: Ct[uint64]) {.inline.}=
       ## Returns the high word of the sum of extended precision multiply-adds
@@ -157,8 +177,11 @@ when sizeof(int) == 8:
         {.emit:[dblPrec, " = (unsigned __int128)", a1," * (unsigned __int128)", b1,
                         " + (unsigned __int128)", a2," * (unsigned __int128)", b2,
                         " + (unsigned __int128)", c, ";"].}
-        # Don't forget to dereference the var param
-        {.emit:["*",hi, " = (NU64)(", dblPrec," >> ", 63'u64, ");"].}
+         # Don't forget to dereference the var param in C mode
+        when defined(cpp):
+          {.emit:[hi, " = (NU64)(", dblPrec," >> ", 63'u64, ");"].}
+        else:
+          {.emit:["*",hi, " = (NU64)(", dblPrec," >> ", 63'u64, ");"].}
 
   elif defined(vcc):
     func udiv128(highDividend, lowDividend, divisor: uint64, remainder: var uint64): uint64 {.importc:"_udiv128", header: "<immintrin.h>", nodecl.}
