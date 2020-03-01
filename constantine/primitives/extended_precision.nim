@@ -46,7 +46,7 @@ func unsafeFMA*(hi, lo: var Ct[uint32], a, b, c: Ct[uint32]) {.inline.} =
     # the result is 62-bit and carrying cannot overflow
     let dblPrec = uint64(a) * uint64(b) + uint64(c)
     hi = Ct[uint32](dblPrec shr 31)
-    lo = Ct[uint32](dblPrec) and Ct[uint32](1 shl 31 - 1)
+    lo = Ct[uint32](dblPrec) and Ct[uint32](1'u32 shl 31 - 1)
 
 func unsafeFMA2*(hi, lo: var Ct[uint32], a1, b1, a2, b2, c1, c2: Ct[uint32]) {.inline.}=
   ## (hi, lo) <- a1 * b1 + a2 * b2 + c1 + c2
@@ -57,7 +57,7 @@ func unsafeFMA2*(hi, lo: var Ct[uint32], a1, b1, a2, b2, c1, c2: Ct[uint32]) {.i
                   uint64(c1) +
                   uint64(c2)
     hi = Ct[uint32](dblPrec shr 31)
-    lo = Ct[uint32](dblPrec) and Ct[uint32](1 shl 31 - 1)
+    lo = Ct[uint32](dblPrec) and Ct[uint32](1'u32 shl 31 - 1)
 
 func unsafeFMA2_hi*(hi: var Ct[uint32], a1, b1, a2, b2, c1: Ct[uint32]) {.inline.}=
   ## Returns the high word of the sum of extended precision multiply-adds
