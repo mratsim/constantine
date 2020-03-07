@@ -72,7 +72,7 @@ proc subBench() =
   let stop = getMonotime()
   report("Substraction", "Fp[BLS12_381]", start, stop, startClk, stopClk, Iters)
 
-# subBench()
+subBench()
 
 proc negBench() =
   var r, x: Fp[BLS12_381]
