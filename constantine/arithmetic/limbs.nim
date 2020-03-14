@@ -36,10 +36,12 @@ import
 # The limb-endianess is little-endian, less significant limb is at index 0.
 # The word-endianness is native-endian.
 
-type Limbs*[N: static int] = distinct array[N, Word]
+type Limbs*[N: static int] = array[N, Word]
   ## Limbs-type
-  ## distinct type to avoid builtins to use non-constant time
+  ## Should be distinct type to avoid builtins to use non-constant time
   ## implementation, for example for comparison.
+  ##
+  ## but for unknown reason, it prevents semchecking `bits`
 
 # No exceptions allowed
 {.push raises: [].}
@@ -49,15 +51,17 @@ type Limbs*[N: static int] = distinct array[N, Word]
 #                      Accessors
 #
 # ############################################################
+#
+# Commented out since we don't use a distinct type
 
-template `[]`*[N](v: Limbs[N], idx: int): Word =
-  (array[N, Word])(v)[idx]
-
-template `[]`*[N](v: var Limbs, idx: int): var Word =
-  (array[N, Word])(v)[idx]
-
-template `[]=`*(v: Limbs, idx: int, val: Word) =
-  (array[N, Word])(v)[idx] = val
+# template `[]`[N](v: Limbs[N], idx: int): Word =
+#   (array[N, Word])(v)[idx]
+#
+# template `[]`[N](v: var Limbs[N], idx: int): var Word =
+#   (array[N, Word])(v)[idx]
+#
+# template `[]=`[N](v: Limbs[N], idx: int, val: Word) =
+#   (array[N, Word])(v)[idx] = val
 
 # ############################################################
 #
@@ -82,14 +86,14 @@ func `==`*(a, b: Limbs): CTBool[Word] =
   ## Returns true if 2 limbs are equal
   ## Comparison is constant-time
   var accum = Zero
-  for i in 0 ..< Limbs.N:
+  for i in 0 ..< a.len:
     accum = accum or (a[i] xor b[i])
   result = accum.isZero()
 
 func isZero*(a: Limbs): CTBool[Word] =
   ## Returns true if ``a`` is equal to zero
   var accum = Zero
-  for i in 0 ..< Limbs.N:
+  for i in 0 ..< a.len:
     accum = accum or a[i]
   result = accum.isZero()
 
@@ -100,8 +104,8 @@ func setZero*(a: var Limbs) =
 func setOne*(a: var Limbs) =
   ## Set ``a`` to 1
   a[0] = Word(1)
-  when Limbs.N > 1:
-    zeroMem(a[1].addr, (Limbs.N - 1) * sizeof(Word))
+  when a.len > 1:
+    zeroMem(a[1].addr, (a.len - 1) * sizeof(Word))
 
 func ccopy*(a: var Limbs, b: Limbs, ctl: CTBool[Word]) =
   ## Constant-time conditional copy
@@ -111,14 +115,14 @@ func ccopy*(a: var Limbs, b: Limbs, ctl: CTBool[Word]) =
   # TODO: on x86, we use inline assembly for CMOV
   #       the codegen is a bit inefficient as the condition `ctl`
   #       is tested for each limb.
-  for i in 0 ..< Limbs.N:
+  for i in 0 ..< a.len:
     ctl.ccopy(a[i], b[i])
 
 func add*(a: var Limbs, b: Limbs): Carry =
   ## Limbs addition
   ## Returns the carry
   result = Carry(0)
-  for i in 0 ..< Limbs.N:
+  for i in 0 ..< a.len:
     addC(result, a[i], a[i], b[i], result)
 
 func cadd*(a: var Limbs, b: Limbs, ctl: CTBool[Word]): Carry =
@@ -132,7 +136,7 @@ func cadd*(a: var Limbs, b: Limbs, ctl: CTBool[Word]): Carry =
   ## Time and memory accesses are the same whether a copy occurs or not
   result = Carry(0)
   var sum: Word
-  for i in 0 ..< Limbs.N:
+  for i in 0 ..< a.len:
     addC(result, sum, a[i], b[i], result)
     ctl.ccopy(a[i], sum)
 
@@ -142,14 +146,14 @@ func sum*(r: var Limbs, a, b: Limbs): Carry =
   ##
   ## Returns the carry
   result = Carry(0)
-  for i in 0 ..< Limbs.N:
+  for i in 0 ..< a.len:
     addC(result, r[i], a[i], b[i], result)
 
 func sub*(a: var Limbs, b: Limbs): Borrow =
   ## Limbs substraction
   ## Returns the borrow
   result = Borrow(0)
-  for i in 0 ..< Limbs.N:
+  for i in 0 ..< a.len:
     subB(result, a[i], a[i], b[i], result)
 
 func csub*(a: var Limbs, b: Limbs, ctl: CTBool[Word]): Borrow =
@@ -163,7 +167,7 @@ func csub*(a: var Limbs, b: Limbs, ctl: CTBool[Word]): Borrow =
   ## Time and memory accesses are the same whether a copy occurs or not
   result = Borrow(0)
   var diff: Word
-  for i in 0 ..< Limbs.N:
+  for i in 0 ..< a.len:
     subB(result, diff, a[i], b[i], result)
     ctl.ccopy(a[i], diff)
 
@@ -173,7 +177,7 @@ func diff*(r: var Limbs, a, b: Limbs): Borrow =
   ##
   ## Returns the borrow
   result = Borrow(0)
-  for i in 0 ..< Limbs.N:
+  for i in 0 ..< a.len:
     subB(result, r[i], a[i], b[i], result)
 
 {.pop.} # inline
@@ -193,7 +197,7 @@ func diff*(r: var Limbs, a, b: Limbs): Borrow =
 # ------------------------------------------------------------
 
 type
-  LimbsView = ptr object
+  LimbsView = ptr UncheckedArray[Word]
     ## Type-erased fixed-precision limbs
     ##
     ## This type mirrors the Limb type and is used
@@ -205,7 +209,6 @@ type
     ##
     ## Accesses should be done via BigIntViewConst / BigIntViewConst
     ## to have the compiler check for mutability
-    limbs: UncheckedArray[Word]
 
   # "Indirection" to enforce pointer types deep immutability
   LimbsViewConst = distinct LimbsView
@@ -225,14 +228,14 @@ template view(a: var Limbs): LimbsViewMut =
   ## Returns a borrowed type-erased mutable view to a mutable bigint
   LimbsViewMut(cast[LimbsView](a.addr))
 
-template `[]`(v: LimbsViewConst, limbIdx: int): Word =
-  LimbsView(v).limbs[limbIdx]
+template `[]`*(v: LimbsViewConst, limbIdx: int): Word =
+  LimbsView(v)[limbIdx]
 
-template `[]`(v: LimbsViewMut, limbIdx: int): var Word =
-  LimbsView(v).limbs[limbIdx]
+template `[]`*(v: LimbsViewMut, limbIdx: int): var Word =
+  LimbsView(v)[limbIdx]
 
-template `[]=`(v: LimbsViewMut, limbIdx: int, val: Word) =
-  LimbsView(v).limbs[limbIdx] = val
+template `[]=`*(v: LimbsViewMut, limbIdx: int, val: Word) =
+  LimbsView(v)[limbIdx] = val
 
 # Type-erased add-sub
 # ------------------------------------------------------------
@@ -293,8 +296,6 @@ func shlAddMod_estimate(a: LimbsViewMut, aLen: int,
   template `[]`(v: untyped, limbIdxFromEnd: BackwardsIndex): Word {.dirty.}=
     v[`v Len` - limbIdxFromEnd.int]
 
-  template `[]=`(v: untyped, limbIdxFromEnd: BackwardsIndex, val: Word) {.dirty.}=
-    v[`v Len` - limbIdxFromEnd.int] = val
   # ----------------------------------------------------------------------
                                                           # Assuming 64-bit words
   let hi = a[^1]                                          # Save the high word to detect carries
@@ -382,6 +383,7 @@ func reduce(r: LimbsViewMut,
   ## Reduce `a` modulo `M` and store the result in `r`
   let aLen = numWordsFromBits(aBits)
   let mLen = numWordsFromBits(mBits)
+  let rLen = mLen
 
   if aBits < mBits:
     # if a uses less bits than the modulus,
@@ -396,10 +398,10 @@ func reduce(r: LimbsViewMut,
     # and modular shift-left-add the rest
     let aOffset = aLen - mLen
     copyMem(r[0].addr, a[aOffset+1].unsafeAddr, (mLen-1) * sizeof(Word))
-    r[^1] = Zero
+    r[rLen - 1] = Zero
     # Now shift-left the copied words while adding the new word modulo M
     for i in countdown(aOffset, 0):
-      r.shlAddMod(a[i], M)
+      shlAddMod(r, rLen, a[i], M, mBits)
 
 func reduce*[aLen, mLen](r: var Limbs[mLen],
                          a: Limbs[aLen], aBits: static int,

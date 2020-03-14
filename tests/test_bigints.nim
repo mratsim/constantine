@@ -8,9 +8,9 @@
 
 import  unittest,
         ../constantine/io/io_bigints,
-        ../constantine/arithmetic/bigints_checked,
+        ../constantine/arithmetic/bigints,
         ../constantine/config/common,
-        ../constantine/primitives/constant_time
+        ../constantine/primitives
 
 proc main() =
   suite "isZero":

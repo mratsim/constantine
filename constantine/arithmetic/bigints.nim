@@ -72,7 +72,13 @@ type
     ##
     ## This internal representation can be changed
     ## without notice and should not be used by external applications or libraries.
-    limbs: array[bits.wordsRequired, Word]
+    limbs*: array[bits.wordsRequired, Word]
+
+# For unknown reason, `bits` doesn't semcheck if
+#   `limbs: Limbs[bits.wordsRequired]`
+# with
+#   `Limbs[N: static int] = distinct array[N, Word]`
+# so we don't set Limbs as a distinct type
 
 debug:
   import strutils
@@ -179,3 +185,21 @@ func double*(r: var BigInt, a: BigInt): CTBool[Word] =
 # Use "csub", which unfortunately requires the first operand to be mutable.
 # for example for a <= b, we now that if a-b borrows then b > a and so a<=b is false
 # This can be tested with "not csub(a, b, CtFalse)"
+
+# ############################################################
+#
+#                   Modular BigInt
+#
+# ############################################################
+
+func reduce*[aBits, mBits](r: var BigInt[mBits], a: BigInt[aBits], M: BigInt[mBits]) =
+  ## Reduce `a` modulo `M` and store the result in `r`
+  ##
+  ## The modulus `M` **must** use `mBits` bits (bits at position mBits-1 must be set)
+  ##
+  ## CT: Depends only on the length of the modulus `M`
+
+  # Note: for all cryptographic intents and purposes the modulus is known at compile-time
+  # but we don't want to inline it as it would increase codesize, better have Nim
+  # pass a pointer+length to a fixed session of the BSS.
+  reduce(r.limbs, a.limbs, aBits, M.limbs, mBits)

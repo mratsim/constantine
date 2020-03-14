@@ -9,7 +9,7 @@
 import  unittest, random,
         ../constantine/io/io_bigints,
         ../constantine/config/common,
-        ../constantine/arithmetic/bigints_checked
+        ../constantine/arithmetic/bigints
 
 randomize(0xDEADBEEF) # Random seed for reproducibility
 type T = BaseType
@@ -24,7 +24,6 @@ proc main() =
 
         check:
           T(big.limbs[0]) == 0
-          T(big.limbs[1]) == 0
 
     test "Parsing and dumping round-trip on uint64":
       block:
