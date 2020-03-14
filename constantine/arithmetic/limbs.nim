@@ -274,8 +274,8 @@ func csub(a: LimbsViewMut, b: LimbsViewAny, ctl: CTBool[Word], len: int): Borrow
 # ------------------------------------------------------------
 
 func numWordsFromBits(bits: int): int {.inline.} =
-  const divShiftor = log2(uint32(sizeof(Word)))
-  result = (bits + sizeof(Word) - 1) shr divShiftor
+  const divShiftor = log2(uint32(WordBitWidth))
+  result = (bits + WordBitWidth - 1) shr divShiftor
 
 func shlAddMod_estimate(a: LimbsViewMut, aLen: int,
                         c: Word, M: LimbsViewConst, mBits: int
@@ -369,8 +369,26 @@ func shlAddMod(a: LimbsViewMut, aLen: int,
   ## The modulus `M` most-significant bit at `mBits` MUST be set.
   if mBits <= WordBitWidth:
     # If M fits in a single limb
-    var q: Word
-    unsafeDiv2n1n(q, a[0], a[0], c, M[0])  # (hi, lo) mod M
+    when true:
+      var q: Word
+      unsafeDiv2n1n(q, a[0], a[0], c, M[0])  # (hi, lo) mod M
+
+    else: # Unneeded (?)
+      # We normalize M with R so that the MSB is set
+      # And normalize (a * 2^64 + c) by R as well to maintain the result
+      # This ensures that (a0, a1)/p0 fits in a limb.
+      let R = mBits and (WordBitWidth - 1)
+
+      # (hi, lo) = a * 2^64 + c
+      let hi = (a[0] shl (WordBitWidth-R)) or (c shr R)
+      let lo = c shl (WordBitWidth-R)
+      let m0 = M[0] shl (WordBitWidth-R)
+
+      var q, r: Word
+      unsafeDiv2n1n(q, r, hi, lo, m0)  # (hi, lo) mod M
+
+      a[0] = r shr (WordBitWidth-R)
+
   else:
     ## Multiple limbs
     let (neg, tooBig) = shlAddMod_estimate(a, aLen, c, M, mBits)
