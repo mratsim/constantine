@@ -84,3 +84,8 @@ add256:
         adcq    %rax, 24(%rdi)
         retq
 ```
+
+### Inline assembly
+
+Using inline assembly will sacrifice code readability, portability, auditability and maintainability.
+That said the performance might be worth it.
