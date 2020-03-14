@@ -23,8 +23,8 @@ type
     #   return and/or accept CTBool, we don't want them
     #   to require unnecessarily 8 bytes instead of 4 bytes
 
-  Carry* = distinct uint8
-  Borrow* = distinct uint8
+  Carry* = Ct[uint8]
+  Borrow* = Ct[uint8]
 
 const GCC_Compatible* = defined(gcc) or defined(clang) or defined(llvm_gcc)
 const X86* = defined(amd64) or defined(i386)

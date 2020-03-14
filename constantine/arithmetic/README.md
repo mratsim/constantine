@@ -4,6 +4,17 @@ This folder contains the implementation of
 - big integers
 - finite field arithmetic (i.e. modular arithmetic)
 
+As a tradeoff between speed, code size and compiler-enforced dependent type checking, the library is structured the following way:
+- Finite Field: statically parametrized by an elliptic curve
+- Big Integers: statically parametrized by the bit width of the field modulus
+- Limbs: statically parametrized by the number of words to handle the bitwidth
+
+This allows to reuse the same implementation at the limbs-level for
+curves that required the same number of words to save on code size,
+for example secp256k1 and BN254.
+It also enables compiler unrolling, inlining and register optimization,
+where code size is not an issue for example for multi-precision addition.
+
 ## References
 
 - Analyzing and Comparing Montgomery Multiplication Algorithms
