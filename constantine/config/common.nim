@@ -14,7 +14,7 @@
 
 import ../primitives
 
-when sizeof(int) == 8:
+when sizeof(int) == 8 and not defined(Constantine32):
   type
     BaseType* = uint64
       ## Physical BigInt for conversion in "normal integers"
