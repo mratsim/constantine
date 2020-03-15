@@ -104,9 +104,9 @@ func negInvModWord*(M: BigInt): BaseType =
   ## M[0] is the least significant limb of M
   ## M must be odd and greater than 2.
   ##
-  ## Assuming 63-bit words:
+  ## Assuming 64-bit words:
   ##
-  ## µ ≡ -1/M[0] (mod 2^63)
+  ## µ ≡ -1/M[0] (mod 2^64)
 
   # We use BaseType for return value because static distinct type
   # confuses Nim semchecks [UPSTREAM BUG]
@@ -131,10 +131,10 @@ func negInvModWord*(M: BigInt): BaseType =
   # ax ≡ 1 (mod 2^k) <=> ax(2 - ax) ≡ 1 (mod 2^(2k))
   #
   # To get  -1/M0 mod LimbSize
-  # we can either negate the resulting x of `ax(2 - ax) ≡ 1 (mod 2^(2k))`
-  # or do ax(2 + ax) ≡ 1 (mod 2^(2k))
+  # we can negate the result x of `ax(2 - ax) ≡ 1 (mod 2^(2k))`
+  # or if k is odd: do ax(2 + ax) ≡ 1 (mod 2^(2k))
   #
-  # To get the the modular inverse of 2^k' with arbitrary k' (like k=63 in our case)
+  # To get the the modular inverse of 2^k' with arbitrary k'
   # we can do modInv(a, 2^64) mod 2^63 as mentionned in Koc paper.
 
   checkOddModulus(M)
@@ -146,7 +146,10 @@ func negInvModWord*(M: BigInt): BaseType =
 
   result = M0                 # Start from an inverse of M0 modulo 2, M0 is odd and it's own inverse
   for _ in 0 ..< k:           # at each iteration we get the inverse mod(2^2k)
-    result *= 2 + M0 * result # x' = x(2 + ax) (`+` to avoid negating at the end)
+    result *= 2 - M0 * result # x' = x(2 - ax)
+
+  # negate to obtain the negative inverse
+  result = not(result) + 1
 
 func r_powmod(n: static int, M: BigInt): BigInt =
   ## Returns the Montgomery domain magic constant for the input modulus:
