@@ -187,7 +187,7 @@ func `<`*(a, b: Limbs): CTBool[Word] =
   var borrow: Borrow
   for i in 0 ..< a.len:
     subB(borrow, diff, a[i], b[i], borrow)
-    
+
   result = (CTBool[Word])(borrow)
 
 func `<=`*(a, b: Limbs): CTBool[Word] =
@@ -384,25 +384,21 @@ func shlAddMod(a: LimbsViewMut, aLen: int,
   ## The modulus `M` most-significant bit at `mBits` MUST be set.
   if mBits <= WordBitWidth:
     # If M fits in a single limb
-    when true:
-      var q: Word
-      unsafeDiv2n1n(q, a[0], a[0], c, M[0])  # (hi, lo) mod M
 
-    else: # Unneeded (?)
-      # We normalize M with R so that the MSB is set
-      # And normalize (a * 2^64 + c) by R as well to maintain the result
-      # This ensures that (a0, a1)/p0 fits in a limb.
-      let R = mBits and (WordBitWidth - 1)
+    # We normalize M with R so that the MSB is set
+    # And normalize (a * 2^64 + c) by R as well to maintain the result
+    # This ensures that (a0, a1)/p0 fits in a limb.
+    let R = mBits and (WordBitWidth - 1)
 
-      # (hi, lo) = a * 2^64 + c
-      let hi = (a[0] shl (WordBitWidth-R)) or (c shr R)
-      let lo = c shl (WordBitWidth-R)
-      let m0 = M[0] shl (WordBitWidth-R)
+    # (hi, lo) = a * 2^64 + c
+    let hi = (a[0] shl (WordBitWidth-R)) or (c shr R)
+    let lo = c shl (WordBitWidth-R)
+    let m0 = M[0] shl (WordBitWidth-R)
 
-      var q, r: Word
-      unsafeDiv2n1n(q, r, hi, lo, m0)  # (hi, lo) mod M
+    var q, r: Word
+    unsafeDiv2n1n(q, r, hi, lo, m0)  # (hi, lo) mod M
 
-      a[0] = r shr (WordBitWidth-R)
+    a[0] = r shr (WordBitWidth-R)
 
   else:
     ## Multiple limbs
