@@ -143,7 +143,7 @@ func montyMul_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
     staticFor j, 0, N:
       # (C, t[j]) <- a[j] * b[i] + t[j] + C
       muladd2(C, t[j], a[j], b[i], t[j], C)
-      addC(tNp1, tN, tN, C, Carry(0))
+    addC(tNp1, tN, tN, C, Carry(0))
 
     # Reduction
     #  m        <- (t[0] * m0ninv) mod 2^w
