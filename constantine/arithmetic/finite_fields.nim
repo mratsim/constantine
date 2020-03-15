@@ -25,9 +25,9 @@
 #     which requires a prime
 
 import
-  ../primitives/constant_time,
+  ../primitives,
   ../config/[common, curves],
-  ./bigints_checked
+  ./bigints
 
 # type
 #   `Fp`*[C: static Curve] = object

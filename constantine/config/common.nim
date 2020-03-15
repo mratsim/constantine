@@ -30,6 +30,7 @@ type
 
 const
   WordBitWidth* = sizeof(Word) * 8
+    ## Logical word size
 
   CtTrue* = ctrue(Word)
   CtFalse* = cfalse(Word)

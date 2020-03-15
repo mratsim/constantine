@@ -11,7 +11,7 @@ import
   macros,
   # Internal
   ./curves_parser, ./common,
-  ../arithmetic/[precomputed, bigints_checked]
+  ../arithmetic/[precomputed, bigints]
 
 
 # ############################################################
@@ -192,7 +192,7 @@ macro debugConsts(): untyped =
       echo "Curve ", `curveName`,':'
       echo "  Field Modulus:                 ", `modulus`
       echo "  Montgomery R² (mod P):         ", `r2modp`
-      echo "  Montgomery -1/P[0] (mod 2^", WordBitSize, "): ", `negInvModWord`
+      echo "  Montgomery -1/P[0] (mod 2^", WordBitWidth, "): ", `negInvModWord`
   result.add quote do:
     echo "----------------------------------------------------------------------------"
 

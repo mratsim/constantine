@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ./bigints_checked,
+  ./bigints,
   ../primitives/constant_time,
   ../config/common,
   ../io/io_bigints
@@ -22,36 +22,44 @@ import
 # ############################################################
 #
 # Those primitives are intended to be compile-time only
-# They are generic over the bitsize: enabling them at runtime
-# would create a copy for each bitsize used (monomorphization)
-# leading to code-bloat.
-# Thos are NOT compile-time, using CTBool seems to confuse the VM
+# Those are NOT tagged compile-time, using CTBool seems to confuse the VM
 
 # We don't use distinct types here, they confuse the VM
-# Similarly, isMsbSet causes trouble with distinct type in the VM
-
-func isMsbSet(x: BaseType): bool =
-  const msb_pos = BaseType.sizeof * 8 - 1
-  bool(x shr msb_pos)
+# Similarly, using addC / subB confuses the VM
 
 func dbl(a: var BigInt): bool =
   ## In-place multiprecision double
   ##   a -> 2a
-  for i in 0 ..< a.limbs.len:
-    var z = BaseType(a.limbs[i]) * 2 + BaseType(result)
-    result = z.isMsbSet()
-    a.limbs[i] = mask(Word(z))
 
-func sub(a: var BigInt, b: BigInt, ctl: bool): bool =
+  # Handling carries in the VM/without intrinsics is a pain ...
+  for i in 0 ..< a.limbs.len:
+    let carry = BaseType(result)
+    let ai = BaseType(a.limbs[i])
+    var new_a = ai
+    new_a += carry
+    result = new_a < ai
+    new_a += ai
+    result = result or (new_a < ai)
+    a.limbs[i] = Word(new_a)
+
+func csub(a: var BigInt, b: BigInt, ctl: bool): bool =
   ## In-place optional substraction
   ##
   ## It is NOT constant-time and is intended
   ## only for compile-time precomputation
   ## of non-secret data.
+
+  # Handling borrow in the VM/without intrinsics is a pain ...
   for i in 0 ..< a.limbs.len:
-    let new_a = BaseType(a.limbs[i]) - BaseType(b.limbs[i]) - BaseType(result)
-    result = new_a.isMsbSet()
-    a.limbs[i] = if ctl: new_a.Word.mask()
+    let ai = BaseType(a.limbs[i])
+    let bi = BaseType(b.limbs[i])
+    let borrow = BaseType(result)
+    var new_a = ai
+    result = bi > ai
+    new_a -= bi
+    result = result or (borrow > ai) # if bi + borrow overflow
+    new_a -= borrow
+    a.limbs[i] = if ctl: Word(new_a)
                  else: a.limbs[i]
 
 func doubleMod(a: var BigInt, M: BigInt) =
@@ -62,8 +70,8 @@ func doubleMod(a: var BigInt, M: BigInt) =
   ## only for compile-time precomputation
   ## of non-secret data.
   var ctl = dbl(a)
-  ctl = ctl or not sub(a, M, false)
-  discard sub(a, M, ctl)
+  ctl = ctl or not a.csub(M, false)
+  discard csub(a, M, ctl)
 
 # ############################################################
 #
@@ -75,7 +83,7 @@ func checkOddModulus(M: BigInt) =
   doAssert bool(BaseType(M.limbs[0]) and 1), "Internal Error: the modulus must be odd to use the Montgomery representation."
 
 func checkValidModulus(M: BigInt) =
-  const expectedMsb = M.bits-1 - WordBitSize * (M.limbs.len - 1)
+  const expectedMsb = M.bits-1 - WordBitWidth * (M.limbs.len - 1)
   let msb = log2(BaseType(M.limbs[^1]))
 
   doAssert msb == expectedMsb, "Internal Error: the modulus must use all declared bits and only those"
@@ -108,7 +116,7 @@ func negInvModWord*(M: BigInt): BaseType =
   # - http://marc-b-reynolds.github.io/math/2017/09/18/ModInverse.html
 
   # For Montgomery magic number, we are in a special case
-  # where a = M and m = 2^WordBitsize.
+  # where a = M and m = 2^WordBitWidth.
   # For a and m to be coprimes, a must be odd.
 
   # We have the following relation
@@ -126,21 +134,18 @@ func negInvModWord*(M: BigInt): BaseType =
 
   let
     M0 = BaseType(M.limbs[0])
-    k = log2(uint32(WordPhysBitSize))
+    k = log2(uint32(sizeof(BaseType)))
 
   result = M0                 # Start from an inverse of M0 modulo 2, M0 is odd and it's own inverse
   for _ in 0 ..< k:           # at each iteration we get the inverse mod(2^2k)
     result *= 2 + M0 * result # x' = x(2 + ax) (`+` to avoid negating at the end)
 
-  # Our actual word size is 2^63 not 2^64
-  result = result and BaseType(MaxWord)
-
 func r_powmod(n: static int, M: BigInt): BigInt =
   ## Returns the Montgomery domain magic constant for the input modulus:
   ##
-  ##   R ≡ R (mod M) with R = (2^WordBitSize)^numWords
+  ##   R ≡ R (mod M) with R = (2^WordBitWidth)^numWords
   ##   or
-  ##   R² ≡ R² (mod M) with R = (2^WordBitSize)^numWords
+  ##   R² ≡ R² (mod M) with R = (2^WordBitWidth)^numWords
   ##
   ## Assuming a field modulus of size 256-bit with 63-bit words, we require 5 words
   ##   R² ≡ ((2^63)^5)^2 (mod M) = 2^630 (mod M)
@@ -161,22 +166,20 @@ func r_powmod(n: static int, M: BigInt): BigInt =
   checkOddModulus(M)
   checkValidModulus(M)
 
-  result.setInternalBitLength()
-
   const
     w = M.limbs.len
-    msb = M.bits-1 - WordBitSize * (w - 1)
-    start = (w-1)*WordBitSize + msb
-    stop = n*WordBitSize*w
+    msb = M.bits-1 - WordBitWidth * (w - 1)
+    start = (w-1)*WordBitWidth + msb
+    stop = n*WordBitWidth*w
 
-  result.limbs[^1] = Word(1 shl msb) # C0 = 2^(wn-1), the power of 2 immediatly less than the modulus
+  result.limbs[^1] = Word(BaseType(1) shl msb) # C0 = 2^(wn-1), the power of 2 immediatly less than the modulus
   for _ in start ..< stop:
     result.doubleMod(M)
 
 func r2mod*(M: BigInt): BigInt =
   ## Returns the Montgomery domain magic constant for the input modulus:
   ##
-  ##   R² ≡ R² (mod M) with R = (2^WordBitSize)^numWords
+  ##   R² ≡ R² (mod M) with R = (2^WordBitWidth)^numWords
   ##
   ## Assuming a field modulus of size 256-bit with 63-bit words, we require 5 words
   ##   R² ≡ ((2^63)^5)^2 (mod M) = 2^630 (mod M)
@@ -195,6 +198,6 @@ func primeMinus2_BE*[bits: static int](
   ## For use to precompute modular inverse exponent.
 
   var tmp = P
-  discard tmp.sub(BigInt[bits].fromRawUint([byte 2], bigEndian), true)
+  discard tmp.csub(BigInt[bits].fromRawUint([byte 2], bigEndian), true)
 
   result.exportRawUint(tmp, bigEndian)

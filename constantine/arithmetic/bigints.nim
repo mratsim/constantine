@@ -9,7 +9,8 @@
 import
   ../config/common,
   ../primitives,
-  ./limbs
+  ./limbs,
+  ./montgomery
 
 # ############################################################
 #
@@ -182,9 +183,9 @@ func double*(r: var BigInt, a: BigInt): CTBool[Word] =
 #
 # ############################################################
 
-# Use "csub", which unfortunately requires the first operand to be mutable.
-# for example for a <= b, we now that if a-b borrows then b > a and so a<=b is false
-# This can be tested with "not csub(a, b, CtFalse)"
+func GT*(a, b: BigInt): CTBool[Word] =
+  ## Returns true if a > b
+  a.limbs.GT(b.limbs)
 
 # ############################################################
 #
@@ -203,3 +204,40 @@ func reduce*[aBits, mBits](r: var BigInt[mBits], a: BigInt[aBits], M: BigInt[mBi
   # but we don't want to inline it as it would increase codesize, better have Nim
   # pass a pointer+length to a fixed session of the BSS.
   reduce(r.limbs, a.limbs, aBits, M.limbs, mBits)
+
+# ############################################################
+#
+#                 Montgomery Arithmetic
+#
+# ############################################################
+
+func montyResidue*(mres: var BigInt, a: BigInt, N, r2modM: static BigInt, m0ninv: static BaseType) =
+  ## Convert a BigInt from its natural representation
+  ## to the Montgomery n-residue form
+  ##
+  ## `mres` is overwritten. It's bitlength must be properly set before calling this procedure.
+  ##
+  ## Caller must take care of properly switching between
+  ## the natural and montgomery domain.
+  ## Nesting Montgomery form is possible by applying this function twice.
+  ##
+  ## The Montgomery Magic Constants:
+  ## - `m0ninv` is µ = -1/N (mod M)
+  ## - `r2modM` is R² (mod M)
+  ## with W = M.len
+  ## and R = (2^WordBitSize)^W
+  montyResidue(mres.limbs, a.limbs, N.limbs, r2modM.limbs, Word(m0ninv))
+
+func redc*[mBits](r: var BigInt[mBits], a: BigInt[mBits], N: static BigInt[mBits], m0ninv: static BaseType) =
+  ## Convert a BigInt from its Montgomery n-residue form
+  ## to the natural representation
+  ##
+  ## `mres` is modified in-place
+  ##
+  ## Caller must take care of properly switching between
+  ## the natural and montgomery domain.
+  const one = block:
+    var one {.noInit.}: BigInt[mBits]
+    one.setOne()
+    one
+  redc(r.limbs, a.limbs, one.limbs, N.limbs, Word(m0ninv))

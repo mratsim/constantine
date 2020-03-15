@@ -180,6 +180,15 @@ func diff*(r: var Limbs, a, b: Limbs): Borrow =
   for i in 0 ..< a.len:
     subB(result, r[i], a[i], b[i], result)
 
+func GT*(a, b: Limbs): CTBool[Word] =
+  ## Returns true if a > b
+  var diff: Word
+  var borrow: Borrow
+  for i in 0 ..< a.len:
+    subB(borrow, diff, a[i], b[i], borrow)
+
+  result = not (CTBool[Word])(borrow)
+
 {.pop.} # inline
 
 # ############################################################

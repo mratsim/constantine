@@ -9,7 +9,7 @@
 import
   ./io_bigints,
   ../config/curves,
-  ../arithmetic/[bigints_checked, finite_fields]
+  ../arithmetic/[bigints, finite_fields]
 
 # No exceptions allowed
 {.push raises: [].}
