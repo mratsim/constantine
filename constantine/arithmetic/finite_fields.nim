@@ -83,6 +83,12 @@ func toBig*(src: Fp): auto {.noInit.} =
 #       - Golden Primes (φ^2 - φ - 1 with φ = 2^k for example Ed448-Goldilocks: 2^448 - 2^224 - 1)
 #       exist and can be implemented with compile-time specialization.
 
+# Note: for `+=`, double, sum
+#       not(a.mres < Fp.C.Mod.mres) is unnecessary if the prime has the form
+#       (2^64)^w - 1 (if using uint64 words).
+# In practice I'm not aware of such prime being using in elliptic curves.
+# 2^127 - 1 and 2^521 - 1 are used but 127 and 521 are not multiple of 32/64
+
 func `==`*(a, b: Fp): CTBool[Word] =
   ## Constant-time equality check
   a.mres == b.mres
@@ -101,7 +107,6 @@ func setOne*(a: var Fp) =
 func `+=`*(a: var Fp, b: Fp) =
   ## In-place addition modulo p
   var overflowed = add(a.mres, b.mres)
-  # (a.mres >= Fp.C.Mod.mres) is unnecessary for moduli of the form (2^64)^w - 1
   overflowed = overflowed or not(a.mres < Fp.C.Mod.mres)
   discard csub(a.mres, Fp.C.Mod.mres, overflowed)
 
@@ -113,15 +118,14 @@ func `-=`*(a: var Fp, b: Fp) =
 func double*(a: var Fp) =
   ## Double ``a`` modulo p
   var overflowed = double(a.mres)
-  overflowed = overflowed or not csub(a.mres, Fp.C.Mod.mres, CtFalse) # a >= P
+  overflowed = overflowed or not(a.mres < Fp.C.Mod.mres)
   discard csub(a.mres, Fp.C.Mod.mres, overflowed)
 
 func sum*(r: var Fp, a, b: Fp) =
   ## Sum ``a`` and ``b`` into ``r`` module p
   ## r is initialized/overwritten
   var overflowed = r.mres.sum(a.mres, b.mres)
-  # (a.mres >= Fp.C.Mod.mres) is unnecessary for moduli of the form (2^64)^w - 1
-  overflowed = overflowed or not(a.mres < Fp.C.Mod.mres)
+  overflowed = overflowed or not(r.mres < Fp.C.Mod.mres)
   discard csub(r.mres, Fp.C.Mod.mres, overflowed)
 
 func diff*(r: var Fp, a, b: Fp) =
@@ -134,8 +138,7 @@ func double*(r: var Fp, a: Fp) =
   ## Double ``a`` into ``r``
   ## `r` is initialized/overwritten
   var overflowed = r.mres.double(a.mres)
-  # (a.mres >= Fp.C.Mod.mres) is unnecessary for moduli of the form (2^64)^w - 1
-  overflowed = overflowed or not(a.mres < Fp.C.Mod.mres)
+  overflowed = overflowed or not(r.mres < Fp.C.Mod.mres)
   discard csub(r.mres, Fp.C.Mod.mres, overflowed)
 
 func prod*(r: var Fp, a, b: Fp) =
