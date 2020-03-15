@@ -190,16 +190,15 @@ func exportRawUintLE(
     inc src_idx
 
     if acc_len == 0:
-      # Edge case, we need to refill the buffer to output 64-bit
-      # as we can only read 63-bit per word
+      # We need to refill the buffer to output 64-bit
       acc = w
       acc_len = WordBitWidth
     else:
-      when WordBitWidth == sizeof(Word):
+      when WordBitWidth == sizeof(Word) * 8:
         let lo = acc
         dec acc_len
         acc = w
-      else:
+      else: # If using 63-bit (or less) out of uint64
         let lo = (w shl acc_len) or acc
         dec acc_len
         acc = w shr (WordBitWidth - acc_len)
@@ -245,8 +244,7 @@ func exportRawUintBE(
     inc src_idx
 
     if acc_len == 0:
-      # Edge case, we need to refill the buffer to output 64-bit
-      # as we can only read 63-bit per word
+      # We need to refill the buffer to output 64-bit
       acc = w
       acc_len = WordBitWidth
     else:
