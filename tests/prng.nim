@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../constantine/arithmetic/bigints_checked,
+  ../constantine/arithmetic/bigints,
   ../constantine/config/[common, curves]
 
 # ############################################################
@@ -86,13 +86,12 @@ func random[T](rng: var RngState, a: var T, C: static Curve) {.noInit.}=
   when T is BigInt:
     var reduced, unreduced{.noInit.}: T
 
-    unreduced.setInternalBitLength()
     for i in 0 ..< unreduced.limbs.len:
       unreduced.limbs[i] = Word(rng.next())
 
     # Note: a simple modulo will be biaised but it's simple and "fast"
     reduced.reduce(unreduced, C.Mod.mres)
-    a.montyResidue(reduced, C.Mod.mres, C.getR2modP(), C.getNegInvModWord())
+    a.montyResidue(reduced, C.Mod.mres, C.getR2modP(), C.getNegInvModWord(), C.canUseNoCarryMontyMul())
 
   else:
     for field in fields(a):

@@ -129,7 +129,7 @@ proc main() =
 
     test "Round trip on prime field of NIST P256 (secp256r1) curve":
       block: # 2^126
-        const p = "0x40000000000000000000000000000000"
+        const p = "0x0000000000000000000000000000000040000000000000000000000000000000"
         let x = Fp[P256].fromBig BigInt[256].fromHex(p)
         let hex = x.toHex(bigEndian)
 
@@ -137,7 +137,7 @@ proc main() =
 
     test "Round trip on prime field of BLS12_381 curve":
       block: # 2^126
-        const p = "0x40000000000000000000000000000000"
+        const p = "0x000000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000"
         let x = Fp[BLS12_381].fromBig BigInt[381].fromHex(p)
         let hex = x.toHex(bigEndian)
 
