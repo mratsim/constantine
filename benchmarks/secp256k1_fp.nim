@@ -23,7 +23,7 @@
 
 import
   ../constantine/config/[common, curves],
-  ../constantine/arithmetic/[bigints_checked, finite_fields],
+  ../constantine/arithmetic/[bigints, finite_fields],
   ../constantine/io/[io_bigints, io_fields],
   random, std/monotimes, times, strformat,
   ./timers
