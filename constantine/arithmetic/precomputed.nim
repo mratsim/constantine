@@ -88,6 +88,14 @@ func checkValidModulus(M: BigInt) =
 
   doAssert msb == expectedMsb, "Internal Error: the modulus must use all declared bits and only those"
 
+func useNoCarryMontyMul*(M: BigInt): bool =
+  ## Returns if the modulus is compatible
+  ## with the no-carry Montgomery Multiplication
+  ## from https://hackmd.io/@zkteam/modular_multiplication
+  # Indirection needed because static object are buggy
+  # https://github.com/nim-lang/Nim/issues/9679
+  BaseType(M.limbs[^1]) < high(BaseType) shr 1
+
 func negInvModWord*(M: BigInt): BaseType =
   ## Returns the Montgomery domain magic constant for the input modulus:
   ##
