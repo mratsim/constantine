@@ -33,6 +33,21 @@ const InvIters = 1000
 
 randomize(1234)
 
+# warmup
+proc warmup*() =
+  # Warmup - make sure cpu is on max perf
+  let start = cpuTime()
+  var foo = 123
+  for i in 0 ..< 300_000_000:
+    foo += i*i mod 456
+    foo = foo mod 789
+
+  # Compiler shouldn't optimize away the results as cpuTime rely on sideeffects
+  let stop = cpuTime()
+  echo &"\n\nWarmup: {stop - start:>4.4f} s, result {foo} (displayed to avoid compiler optimizing warmup away)\n"
+
+warmup()
+
 echo "\n⚠️ Measurements are approximate and use the CPU nominal clock: Turbo-Boost and overclocking will skew them."
 echo "==========================================================================================================\n"
 
