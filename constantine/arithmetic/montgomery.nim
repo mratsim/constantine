@@ -86,7 +86,7 @@ macro staticFor(idx: untyped{nkIdent}, start, stopEx: static int, body: untyped)
 #       the code generated is already big enough for curve with different
 #       limb sizes, we want to use the same codepath when limbs lenght are compatible.
 
-func montyMul_CIOS_nocarry_unrolled(r: var Limbs, a, b, M: Limbs, m0ninv: Word) =
+func montyMul_CIOS_nocarry_unrolled(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   ## Montgomery Multiplication using Coarse Grained Operand Scanning (CIOS)
   ## and no-carry optimization.
   ## This requires the most significant word of the Modulus
@@ -103,7 +103,7 @@ func montyMul_CIOS_nocarry_unrolled(r: var Limbs, a, b, M: Limbs, m0ninv: Word) 
     # (C, _)    <- m * M[0] + t[0]
     var A: Word
     muladd1(A, t[0], a[0], b[i], t[0])
-    let m = t[0] * m0ninv
+    let m = t[0] * Word(m0ninv)
     var C, lo: Word
     muladd1(C, lo, m, M[0], t[0])
 
@@ -118,7 +118,7 @@ func montyMul_CIOS_nocarry_unrolled(r: var Limbs, a, b, M: Limbs, m0ninv: Word) 
   discard t.csub(M, t.GT(M))
   r = t
 
-func montyMul_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: Word) =
+func montyMul_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   ## Montgomery Multiplication using Coarse Grained Operand Scanning (CIOS)
   # - Analyzing and Comparing Montgomery Multiplication Algorithms
   #   Cetin Kaya Koc and Tolga Acar and Burton S. Kaliski Jr.
@@ -150,7 +150,7 @@ func montyMul_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: Word) =
     # (C, _)    <- m * M[0] + t[0]
     var lo: Word
     C = Zero
-    let m = t[0] * m0ninv
+    let m = t[0] * Word(m0ninv)
     muladd1(C, lo, m, M[0], t[0])
     staticFor j, 1, N:
       # (C, t[j]) <- a[j] * b[i] + t[j] + C
@@ -196,11 +196,11 @@ func montyMul*(
   # Nim doesn't like static Word, so we passe static BaseType up to here
   # Then we passe them as Word again for the final processing
   when canUseNoCarryMontyMul:
-    montyMul_CIOS_nocarry_unrolled(r, a, b, M, Word(m0ninv))
+    montyMul_CIOS_nocarry_unrolled(r, a, b, M, m0ninv)
   else:
-    montyMul_CIOS(r, a, b, M, Word(m0ninv))
+    montyMul_CIOS(r, a, b, M, m0ninv)
 
-func montySquare*(r: var Limbs, a: Limbs, M: static Limbs,
+func montySquare*(r: var Limbs, a, M: Limbs,
                   m0ninv: static BaseType, canUseNoCarryMontyMul: static bool) {.inline.} =
   ## Compute r <- a^2 (mod M) in the Montgomery domain
   ## `negInvModWord` = -1/M (mod Word). Our words are 2^31 or 2^63
@@ -303,11 +303,11 @@ func montyPowPrologue(
   # (i.e scratchspace has only space for 2 temporaries)
   # The content scratchspace[2+k] is set at a^k
   # with scratchspace[0] untouched
-  if result.window == 1:
+  if result == 1:
     scratchspace[1] = a
   else:
     scratchspace[2] = a
-    for k in 2 ..< 1 shl result.window:
+    for k in 2 ..< 1 shl result:
       scratchspace[k+1].montyMul(scratchspace[k], a, M, m0ninv, canUseNoCarryMontyMul)
 
   # Set a to one
@@ -317,7 +317,7 @@ func montyPowSquarings(
         a: var Limbs,
         exponent: openarray[byte],
         M: Limbs,
-        negInvModWord: static Word,
+        negInvModWord: static BaseType,
         tmp: var Limbs,
         window: uint,
         acc, acc_len: var uint,
@@ -357,7 +357,7 @@ func montyPow*(
        a: var Limbs,
        exponent: openarray[byte],
        M, one: Limbs,
-       negInvModWord: static Word,
+       negInvModWord: static BaseType,
        scratchspace: var openarray[Limbs],
        canUseNoCarryMontyMul: static bool
       ) =
@@ -424,8 +424,8 @@ func montyPowUnsafeExponent*(
        a: var Limbs,
        exponent: openarray[byte],
        M, one: Limbs,
-       negInvModWord: static Word,
-       scratchspace: openarray[Limbs],
+       negInvModWord: static BaseType,
+       scratchspace: var openarray[Limbs],
        canUseNoCarryMontyMul: static bool
       ) =
   ## Modular exponentiation r = a^exponent mod M
@@ -449,7 +449,8 @@ func montyPowUnsafeExponent*(
     let (k, bits) = montyPowSquarings(
       a, exponent, M, negInvModWord,
       scratchspace[0], window,
-      acc, acc_len, e
+      acc, acc_len, e,
+      canUseNoCarryMontyMul
     )
 
     ## Warning ⚠️: Exposes the exponent bits
