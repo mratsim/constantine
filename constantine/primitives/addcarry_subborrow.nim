@@ -114,7 +114,7 @@ func subB*(bOut: var Borrow, diff: var Ct[uint32], a, b: Ct[uint32], bIn: Borrow
   when X86:
     bOut = subborrow_u32(bIn, a, b, diff)
   else:
-    let dblPrec = uint64(a) - uint64(b) - bIn
+    let dblPrec = uint64(a) - uint64(b) - uint64(bIn)
     diff = (Ct[uint32])(dblPrec)
     bOut = Borrow(dblPrec shr 32)
 
