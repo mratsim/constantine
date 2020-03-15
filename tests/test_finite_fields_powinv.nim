@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  unittest,
-        ../constantine/arithmetic/[bigints_checked, finite_fields],
+        ../constantine/arithmetic/[bigints, finite_fields],
         ../constantine/io/io_fields,
         ../constantine/config/curves
 

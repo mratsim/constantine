@@ -282,7 +282,7 @@ func montyPow*[mBits, eBits: static int](
   const scratchLen = if windowSize == 1: 2
                      else: (1 shl windowSize) + 1
   var scratchSpace {.noInit.}: array[scratchLen, Limbs[mBits.wordsRequired]]
-  montyPow(a.limbs, expBE, M.limbs, one.limbs, Word(negInvModWord), scratchSpace, canUseNoCarryMontyMul)
+  montyPow(a.limbs, expBE, M.limbs, one.limbs, negInvModWord, scratchSpace, canUseNoCarryMontyMul)
 
 func montyPowUnsafeExponent*[mBits, eBits: static int](
        a: var BigInt[mBits], exponent: BigInt[eBits],

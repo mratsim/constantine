@@ -387,7 +387,7 @@ func montyPow*(
   ## A window of size 5 requires (2^5 + 1)*(381 + 7)/8 = 33 * 48 bytes = 1584 bytes
   ## of scratchspace (on the stack).
 
-  let window = montyPowPrologue(a, M, one, negInvModWord, scratchspace)
+  let window = montyPowPrologue(a, M, one, negInvModWord, scratchspace, canUseNoCarryMontyMul)
 
   # We process bits with from most to least significant.
   # At each loop iteration with have acc_len bits in acc.
