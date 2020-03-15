@@ -115,7 +115,7 @@ func montyMul_CIOS_nocarry_unrolled(r: var Limbs, a, b, M: Limbs, m0ninv: BaseTy
 
     t[N-1] = C + A
 
-  discard t.csub(M, t.GT(M))
+  discard t.csub(M, not(t < M))
   r = t
 
 func montyMul_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
@@ -165,7 +165,7 @@ func montyMul_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   # t[N+1] can only be non-zero in the intermediate computation
   # since it is immediately reduce to t[N] at the end of each "i" iteration
   # However if t[N] is non-zero we have t > M
-  discard t.csub(M, tN.isNonZero() or t.GT(M))
+  discard t.csub(M, tN.isNonZero() or not(t < M)) # TODO: (t >= M) is unnecessary for prime in the form (2^64)^w
   r = t
 
 # Exported API

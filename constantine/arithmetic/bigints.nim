@@ -183,9 +183,13 @@ func double*(r: var BigInt, a: BigInt): CTBool[Word] =
 #
 # ############################################################
 
-func GT*(a, b: BigInt): CTBool[Word] =
-  ## Returns true if a > b
-  a.limbs.GT(b.limbs)
+func `<`*(a, b: BigInt): CTBool[Word] =
+  ## Returns true if a < b
+  a.limbs < b.limbs
+
+func `<=`*(a, b: BigInt): CTBool[Word] =
+  ## Returns true if a <= b
+  a.limbs <= b.limbs
 
 # ############################################################
 #

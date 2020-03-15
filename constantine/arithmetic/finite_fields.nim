@@ -101,7 +101,9 @@ func setOne*(a: var Fp) =
 func `+=`*(a: var Fp, b: Fp) =
   ## In-place addition modulo p
   var overflowed = add(a.mres, b.mres)
-  overflowed = overflowed or not csub(a.mres, Fp.C.Mod.mres, CtFalse) # a >= P
+  when BaseType(Fp.C.Mod.mres.limbs[^1]) != high(BaseType):
+    # (a.mres >= Fp.C.Mod.mres) is unnecessary for moduli of the form (2^64)^w - 1
+    overflowed = overflowed or not(a.mres < Fp.C.Mod.mres)
   discard csub(a.mres, Fp.C.Mod.mres, overflowed)
 
 func `-=`*(a: var Fp, b: Fp) =
