@@ -21,23 +21,23 @@ proc main() =
       # 101 ---------------------------------
       block:
         # "Little-endian" - 0
-        let x = 0'u64
-        let x_bytes = cast[array[8, byte]](x)
+        let x = BaseType(0)
+        let x_bytes = cast[array[sizeof(BaseType), byte]](x)
         var f: Fp[Fake101]
         f.fromUint(x)
 
-        var r_bytes: array[8, byte]
+        var r_bytes: array[sizeof(BaseType), byte]
         exportRawUint(r_bytes, f, littleEndian)
         check: x_bytes == r_bytes
 
       block:
         # "Little-endian" - 1
-        let x = 1'u64
-        let x_bytes = cast[array[8, byte]](x)
+        let x = BaseType(1)
+        let x_bytes = cast[array[sizeof(BaseType), byte]](x)
         var f: Fp[Fake101]
         f.fromUint(x)
 
-        var r_bytes: array[8, byte]
+        var r_bytes: array[sizeof(BaseType), byte]
         exportRawUint(r_bytes, f, littleEndian)
         check: x_bytes == r_bytes
 
