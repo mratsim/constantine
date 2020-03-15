@@ -101,9 +101,8 @@ func setOne*(a: var Fp) =
 func `+=`*(a: var Fp, b: Fp) =
   ## In-place addition modulo p
   var overflowed = add(a.mres, b.mres)
-  when BaseType(Fp.C.Mod.mres.limbs[^1]) != high(BaseType):
-    # (a.mres >= Fp.C.Mod.mres) is unnecessary for moduli of the form (2^64)^w - 1
-    overflowed = overflowed or not(a.mres < Fp.C.Mod.mres)
+  # (a.mres >= Fp.C.Mod.mres) is unnecessary for moduli of the form (2^64)^w - 1
+  overflowed = overflowed or not(a.mres < Fp.C.Mod.mres)
   discard csub(a.mres, Fp.C.Mod.mres, overflowed)
 
 func `-=`*(a: var Fp, b: Fp) =
@@ -121,7 +120,8 @@ func sum*(r: var Fp, a, b: Fp) =
   ## Sum ``a`` and ``b`` into ``r`` module p
   ## r is initialized/overwritten
   var overflowed = r.mres.sum(a.mres, b.mres)
-  overflowed = overflowed or not csub(r.mres, Fp.C.Mod.mres, CtFalse) # r >= P
+  # (a.mres >= Fp.C.Mod.mres) is unnecessary for moduli of the form (2^64)^w - 1
+  overflowed = overflowed or not(a.mres < Fp.C.Mod.mres)
   discard csub(r.mres, Fp.C.Mod.mres, overflowed)
 
 func diff*(r: var Fp, a, b: Fp) =
@@ -134,7 +134,8 @@ func double*(r: var Fp, a: Fp) =
   ## Double ``a`` into ``r``
   ## `r` is initialized/overwritten
   var overflowed = r.mres.double(a.mres)
-  overflowed = overflowed or not csub(r.mres, Fp.C.Mod.mres, CtFalse) # r >= P
+  # (a.mres >= Fp.C.Mod.mres) is unnecessary for moduli of the form (2^64)^w - 1
+  overflowed = overflowed or not(a.mres < Fp.C.Mod.mres)
   discard csub(r.mres, Fp.C.Mod.mres, overflowed)
 
 func prod*(r: var Fp, a, b: Fp) =
