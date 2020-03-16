@@ -14,7 +14,12 @@
 
 import ../primitives
 
-when sizeof(int) == 8 and not defined(Constantine32):
+# TODO:
+#   The uint128 division builtin "__udivti4" seems to generate incorrect code on ARM64
+#   For now we use 32-bit limbs on ARM even ARM64.
+# The division will be replaced by a constant-time version anyway.
+
+when sizeof(int) == 8 and not defined(Constantine32) and not defined(arm64):
   type
     BaseType* = uint64
       ## Physical BigInt for conversion in "normal integers"
