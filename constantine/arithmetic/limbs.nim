@@ -292,8 +292,6 @@ func numWordsFromBits(bits: int): int {.inline.} =
   const divShiftor = log2(uint32(WordBitWidth))
   result = (bits + WordBitWidth - 1) shr divShiftor
 
-from strutils import tohex
-
 func shlAddMod_estimate(a: LimbsViewMut, aLen: int,
                         c: Word, M: LimbsViewConst, mBits: int
                       ): tuple[neg, tooBig: CTBool[Word]] =
@@ -319,20 +317,6 @@ func shlAddMod_estimate(a: LimbsViewMut, aLen: int,
   let R = mBits and (WordBitWidth - 1)                    # R = mBits mod 64
 
   var a0, a1, m0: Word
-
-  func toString(a: LimbsViewMut, aLen: int): string  =
-    # Debug why reduction fails on Linux/Ubuntu 16.04 in Travis and Azure Pipelines
-    # and not on Windows or Mac or my own machine. moveMem bug in Glibc?
-    result = "LimbsViewMut["
-    result.add $BaseType(a[0]) & " (0x" & toHex(BaseType(a[0])) & ')'
-    for i in 1 ..< aLen:
-      result.add ", "
-      result.add $BaseType(a[i]) & " (0x" & toHex(BaseType(a[i])) & ')'
-    result.add "]"
-
-  debugEcho "shlAddMod_estimate:"
-  debugEcho "  before move: ", toString(a, aLen)
-
   if R == 0:                                              # If the number of mBits is a multiple of 64
     a0 = a[^1]                                            #
     moveMem(a[1].addr, a[0].addr, (aLen-1) * Word.sizeof) # we can just shift words
@@ -349,9 +333,6 @@ func shlAddMod_estimate(a: LimbsViewMut, aLen: int,
   # m0 has its high bit set. (a0, a1)/p0 fits in a limb.
   # Get a quotient q, at most we will be 2 iterations off
   # from the true quotient
-
-  debugEcho "  after move: ", toString(a, aLen)
-
   var q, r: Word
   unsafeDiv2n1n(q, r, a0, a1, m0)                # Estimate quotient
   q = mux(                                       # If n_hi == divisor

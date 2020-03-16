@@ -54,7 +54,7 @@ template mux_x86_impl() {.dirty.} =
     asm """
       testq %[ctl], %[ctl]
       cmovzq %[y], %[muxed]
-      : [muxed] "+r" (`muxed`)
+      : [muxed] "+%r" (`muxed`)
       : [ctl] "r" (`ctl`), [y] "r" (`y`)
       : "cc"
     """
@@ -64,7 +64,7 @@ template mux_x86_impl() {.dirty.} =
     asm """
       testl %[ctl], %[ctl]
       cmovzl %[y], %[muxed]
-      : [muxed] "+r" (`muxed`)
+      : [muxed] "+%r" (`muxed`)
       : [ctl] "r" (`ctl`), [y] "r" (`y`)
       : "cc"
     """
@@ -97,7 +97,7 @@ func ccopy_x86[T](ctl: CTBool[T], x: var T, y: T) {.inline.}=
       asm """
         testq %[ctl], %[ctl]
         cmovnzq %[y], %[x]
-        : [x] "+r" (`x`)
+        : [x] "+%r" (`x`)
         : [ctl] "r" (`ctl`), [y] "r" (`y`)
         : "cc"
       """
@@ -105,7 +105,7 @@ func ccopy_x86[T](ctl: CTBool[T], x: var T, y: T) {.inline.}=
       asm """
         testq %[ctl], %[ctl]
         cmovnzq %[y], %[x]
-        : [x] "+r" (`*x`)
+        : [x] "+%r" (`*x`)
         : [ctl] "r" (`ctl`), [y] "r" (`y`)
         : "cc"
       """
@@ -114,7 +114,7 @@ func ccopy_x86[T](ctl: CTBool[T], x: var T, y: T) {.inline.}=
       asm """
         testl %[ctl], %[ctl]
         cmovnzl %[y], %[x]
-        : [x] "+r" (`x`)
+        : [x] "+%r" (`x`)
         : [ctl] "r" (`ctl`), [y] "r" (`y`)
         : "cc"
       """
@@ -122,7 +122,7 @@ func ccopy_x86[T](ctl: CTBool[T], x: var T, y: T) {.inline.}=
       asm """
         testl %[ctl], %[ctl]
         cmovnzl %[y], %[x]
-        : [x] "+r" (`*x`)
+        : [x] "+%r" (`*x`)
         : [ctl] "r" (`ctl`), [y] "r" (`y`)
         : "cc"
       """
