@@ -20,9 +20,6 @@ matrix:
         - CHANNEL=devel
       compiler: gcc
 
-    # The uint128 division builtin "__udivti4" seems to generate incorrect code on ARM64
-    # For now we use 32-bit limbs on ARM
-
     - dist: bionic
       arch: arm64
       env:
