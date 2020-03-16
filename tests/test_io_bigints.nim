@@ -9,7 +9,7 @@
 import  unittest, random,
         ../constantine/io/io_bigints,
         ../constantine/config/common,
-        ../constantine/arithmetic/bigints_checked
+        ../constantine/arithmetic/bigints
 
 randomize(0xDEADBEEF) # Random seed for reproducibility
 type T = BaseType
@@ -24,7 +24,6 @@ proc main() =
 
         check:
           T(big.limbs[0]) == 0
-          T(big.limbs[1]) == 0
 
     test "Parsing and dumping round-trip on uint64":
       block:
@@ -84,5 +83,12 @@ proc main() =
         let hex = x.toHex(bigEndian)
 
         check: p == hex
+
+    test "Round trip on 3072-bit integer":
+      const n = "0x75be9187192dccf08bedcb06c7fba60830840cb8a5c3a5895e63ffd78073f2f7e0ccc72ae2f91c2be9fe51e48373bf4426e6e1babb9bc5374747a0e24b982a27359cf403a6bb900800b6dd52b309788df7f599f3db6f5b5ba5fbe88b8d03ab32fbe8d75dbbad0178f70dc4dfbc39008e5c8a4975f08060f4af1718e1a8811b0b73daabf67bf971c1fa79d678e3e2bf878a844004d1ab5b11a2c3e4fa8abbbe15b75a4a15a4c0eecd128ad7b13571545a967cac88d1b1e88c3b09723849c54adede6b36dd21000f41bc404083bf01902d2d3591c2e51fe0cc26d691cbc9ba6ea3137bd977745cc8761c828f7d54899841701faeca7ff5fc975968693284c2dcaf68e9852a67b5782810834f2eed0ba8e69d18c2a9d8aa1d81528110f0156610febe5ee2db65add65006a9f91370828e356c7751fa50bb49f43b408cd2f4767a43bc57888afe01d2a85d457c68a3eb60de713b79c318b92cb1b2837cf78f9e6e5ec0091d2810a34a1c75400190f8582a8b42f436b799db088689f8187b6db8530d"
+      let x = BigInt[3072].fromHex(n)
+      let h = x.toHex(bigEndian)
+
+      check: n == h
 
 main()

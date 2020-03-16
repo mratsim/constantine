@@ -10,7 +10,7 @@ import
   # Standard library
   macros,
   # Internal
-  ../io/io_bigints, ../arithmetic/bigints_checked
+  ../io/io_bigints, ../arithmetic/bigints
 
 # Macro to parse declarative curves configuration.
 

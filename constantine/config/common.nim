@@ -12,9 +12,9 @@
 #
 # ############################################################
 
-import ../primitives/constant_time
+import ../primitives
 
-when sizeof(int) == 8:
+when sizeof(int) == 8 and not defined(Constantine32):
   type
     BaseType* = uint64
       ## Physical BigInt for conversion in "normal integers"
@@ -29,23 +29,15 @@ type
     ## A logical BigInt word is of size physical MachineWord-1
 
 const
-  ExcessBits = 1
-  WordPhysBitSize* = sizeof(Word) * 8
-  WordBitSize* = WordPhysBitSize - ExcessBits
+  WordBitWidth* = sizeof(Word) * 8
+    ## Logical word size
 
   CtTrue* = ctrue(Word)
   CtFalse* = cfalse(Word)
 
   Zero* = Word(0)
   One* = Word(1)
-  MaxWord* = (not Zero) shr (WordPhysBitSize - WordBitSize)
-    ## This represents 0x7F_FF_FF_FF__FF_FF_FF_FF
-    ## also 0b0111...1111
-    ## This biggest representable number in our limbs.
-    ## i.e. The most significant bit is never set at the end of each function
-
-template mask*(w: Word): Word =
-  w and MaxWord
+  MaxWord* = Word(high(BaseType))
 
 # ############################################################
 #

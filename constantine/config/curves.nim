@@ -11,7 +11,7 @@ import
   macros,
   # Internal
   ./curves_parser, ./common,
-  ../arithmetic/[precomputed, bigints_checked]
+  ../arithmetic/[precomputed, bigints]
 
 
 # ############################################################
@@ -109,6 +109,17 @@ macro genMontyMagics(T: typed): untyped =
   let E = T.getImpl[2]
   for i in 1 ..< E.len:
     let curve = E[i]
+    # const MyCurve_CanUseNoCarryMontyMul = useNoCarryMontyMul(MyCurve_Modulus)
+    result.add newConstStmt(
+      ident($curve & "_CanUseNoCarryMontyMul"), newCall(
+        bindSym"useNoCarryMontyMul",
+        nnkDotExpr.newTree(
+          bindSym($curve & "_Modulus"),
+          ident"mres"
+        )
+      )
+    )
+
     # const MyCurve_R2modP = r2mod(MyCurve_Modulus)
     result.add newConstStmt(
       ident($curve & "_R2modP"), newCall(
@@ -154,6 +165,11 @@ macro genMontyMagics(T: typed): untyped =
 
 genMontyMagics(Curve)
 
+macro canUseNoCarryMontyMul*(C: static Curve): untyped =
+  ## Returns true if the Modulus is compatible with a fast
+  ## Montgomery multiplication that avoids many carries
+  result = bindSym($C & "_CanUseNoCarryMontyMul")
+
 macro getR2modP*(C: static Curve): untyped =
   ## Get the Montgomery "R^2 mod P" constant associated to a curve field modulus
   result = bindSym($C & "_R2modP")
@@ -192,7 +208,7 @@ macro debugConsts(): untyped =
       echo "Curve ", `curveName`,':'
       echo "  Field Modulus:                 ", `modulus`
       echo "  Montgomery R² (mod P):         ", `r2modp`
-      echo "  Montgomery -1/P[0] (mod 2^", WordBitSize, "): ", `negInvModWord`
+      echo "  Montgomery -1/P[0] (mod 2^", WordBitWidth, "): ", `negInvModWord`
   result.add quote do:
     echo "----------------------------------------------------------------------------"
 

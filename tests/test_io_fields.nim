@@ -10,7 +10,7 @@ import  unittest, random,
         ../constantine/io/[io_bigints, io_fields],
         ../constantine/config/curves,
         ../constantine/config/common,
-        ../constantine/arithmetic/[bigints_checked, finite_fields]
+        ../constantine/arithmetic/[bigints, finite_fields]
 
 randomize(0xDEADBEEF) # Random seed for reproducibility
 type T = BaseType
@@ -18,6 +18,30 @@ type T = BaseType
 proc main() =
   suite "IO - Finite fields":
     test "Parsing and serializing round-trip on uint64":
+      # 101 ---------------------------------
+      block:
+        # "Little-endian" - 0
+        let x = BaseType(0)
+        let x_bytes = cast[array[sizeof(BaseType), byte]](x)
+        var f: Fp[Fake101]
+        f.fromUint(x)
+
+        var r_bytes: array[sizeof(BaseType), byte]
+        exportRawUint(r_bytes, f, littleEndian)
+        check: x_bytes == r_bytes
+
+      block:
+        # "Little-endian" - 1
+        let x = BaseType(1)
+        let x_bytes = cast[array[sizeof(BaseType), byte]](x)
+        var f: Fp[Fake101]
+        f.fromUint(x)
+
+        var r_bytes: array[sizeof(BaseType), byte]
+        exportRawUint(r_bytes, f, littleEndian)
+        check: x_bytes == r_bytes
+
+      # Mersenne 61 ---------------------------------
       block:
         # "Little-endian" - 0
         let x = 0'u64
@@ -99,6 +123,22 @@ proc main() =
       block: # 2^126
         const p = "0x40000000000000000000000000000000"
         let x = Fp[Mersenne127].fromBig BigInt[127].fromHex(p)
+        let hex = x.toHex(bigEndian)
+
+        check: p == hex
+
+    test "Round trip on prime field of NIST P256 (secp256r1) curve":
+      block: # 2^126
+        const p = "0x0000000000000000000000000000000040000000000000000000000000000000"
+        let x = Fp[P256].fromBig BigInt[256].fromHex(p)
+        let hex = x.toHex(bigEndian)
+
+        check: p == hex
+
+    test "Round trip on prime field of BLS12_381 curve":
+      block: # 2^126
+        const p = "0x000000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000"
+        let x = Fp[BLS12_381].fromBig BigInt[381].fromHex(p)
         let hex = x.toHex(bigEndian)
 
         check: p == hex

@@ -13,7 +13,7 @@ import
   gmp, stew/byteutils,
   # Internal
   ../constantine/io/io_bigints,
-  ../constantine/arithmetic/[bigints_raw, bigints_checked],
+  ../constantine/arithmetic/bigints,
   ../constantine/primitives/constant_time
 
 # We test up to 1024-bit, more is really slow
@@ -113,16 +113,16 @@ proc main() =
 
     var aW, mW: csize # Word written by GMP
 
-    discard mpz_export(aBuf[0].addr, aW.addr, GMP_LeastSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
-    discard mpz_export(mBuf[0].addr, mW.addr, GMP_LeastSignificantWordFirst, 1, GMP_WordNativeEndian, 0, m)
+    discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
+    discard mpz_export(mBuf[0].addr, mW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, m)
 
     # Since the modulus is using all bits, it's we can test for exact amount copy
-    doAssert aLen >= aW, "Expected at most " & $aLen & " bytes but wrote " & $aW & " for " & toHex(aBuf) & " (little-endian)"
-    doAssert mLen == mW, "Expected " & $mLen & " bytes but wrote " & $mW & " for " & toHex(mBuf) & " (little-endian)"
+    doAssert aLen >= aW, "Expected at most " & $aLen & " bytes but wrote " & $aW & " for " & toHex(aBuf) & " (big-endian)"
+    doAssert mLen == mW, "Expected " & $mLen & " bytes but wrote " & $mW & " for " & toHex(mBuf) & " (big-endian)"
 
     # Build the bigint
-    let aTest = BigInt[aBits].fromRawUint(aBuf, littleEndian)
-    let mTest = BigInt[mBits].fromRawUint(mBuf, littleEndian)
+    let aTest = BigInt[aBits].fromRawUint(aBuf.toOpenArray(0, aW-1), bigEndian)
+    let mTest = BigInt[mBits].fromRawUint(mBuf.toOpenArray(0, mW-1), bigEndian)
 
     #########################################################
     # Modulus
@@ -135,15 +135,16 @@ proc main() =
     # Check
     var rGMP: array[mLen, byte]
     var rW: csize # Word written by GMP
-    discard mpz_export(rGMP[0].addr, rW.addr, GMP_LeastSignificantWordFirst, 1, GMP_WordNativeEndian, 0, r)
+    discard mpz_export(rGMP[0].addr, rW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, r)
 
     var rConstantine: array[mLen, byte]
-    exportRawUint(rConstantine, rTest, littleEndian)
+    exportRawUint(rConstantine, rTest, bigEndian)
 
     # echo "rGMP: ", rGMP.toHex()
     # echo "rConstantine: ", rConstantine.toHex()
 
-    doAssert rGMP == rConstantine, block:
+    # Note: in bigEndian, GMP aligns left while constantine aligns right
+    doAssert rGMP.toOpenArray(0, rW-1) == rConstantine.toOpenArray(mLen-rW, mLen-1), block:
       # Reexport as bigEndian for debugging
       discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
       discard mpz_export(mBuf[0].addr, mW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, m)
@@ -152,6 +153,7 @@ proc main() =
       "  m (" & align($mBits, 4) & "-bit):   " & mBuf.toHex & "\n" &
       "failed:" & "\n" &
       "  GMP:            " & rGMP.toHex() & "\n" &
-      "  Constantine:    " & rConstantine.toHex()
+      "  Constantine:    " & rConstantine.toHex() & "\n" &
+      "(Note that GMP aligns bytes left while constantine aligns bytes right)"
 
 main()

@@ -6,27 +6,7 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-# ############################################################
-#
-#                Constant-time primitives
-#
-# ############################################################
-type
-  BaseUint* = SomeUnsignedInt or byte
-
-  Ct*[T: BaseUint] = distinct T
-
-  CTBool*[T: Ct] = distinct T # range[T(0)..T(1)]
-    ## To avoid the compiler replacing bitwise boolean operations
-    ## by conditional branches, we don't use booleans.
-    ## We use an int to prevent compiler "optimization" and introduction of branches
-    # Note, we could use "range" but then the codegen
-    # uses machine-sized signed integer types.
-    # signed types and machine-dependent words are undesired
-    # - we don't want compiler optimizing signed "undefined behavior"
-    # - Basic functions like BIgInt add/sub
-    #   return and/or accept CTBool, we don't want them
-    #   to require unnecessarily 8 bytes instead of 4 bytes
+import ./constant_time_types
 
 # ############################################################
 #
@@ -226,79 +206,6 @@ template `<=`*[T: Ct](x, y: T): CTBool[T] =
 
 template `xor`*[T: Ct](x, y: CTBool[T]): CTBool[T] =
   CTBool[T](noteq(T(x), T(y)))
-
-func mux*[T](ctl: CTBool[T], x, y: T): T {.inline.}=
-  ## Multiplexer / selector
-  ## Returns x if ctl is true
-  ## else returns y
-  ## So equivalent to ctl? x: y
-  #
-  # TODO verify assembly generated
-  # Alternatives:
-  # - https://cryptocoding.net/index.php/Coding_rules
-  # - https://www.cl.cam.ac.uk/~rja14/Papers/whatyouc.pdf
-  when defined(amd64) or defined(i386):
-    when sizeof(T) == 8:
-      var muxed = x
-      asm """
-        testq %[ctl], %[ctl]
-        cmovzq %[y], %[muxed]
-        : [muxed] "+r" (`muxed`)
-        : [ctl] "r" (`ctl`), [y] "r" (`y`)
-        : "cc"
-      """
-      muxed
-    elif sizeof(T) == 4:
-      var muxed = x
-      asm """
-        testl %[ctl], %[ctl]
-        cmovzl %[y], %[muxed]
-        : [muxed] "+r" (`muxed`)
-        : [ctl] "r" (`ctl`), [y] "r" (`y`)
-        : "cc"
-      """
-      muxed
-    else:
-      {.error: "Unsupported word size".}
-  else:
-    let # Templates duplicate input params code
-      x_Mux = x
-      y_Mux = y
-    y_Mux xor (-T(ctl) and (x_Mux xor y_Mux))
-
-func mux*[T: CTBool](ctl: CTBool, x, y: T): T {.inline.}=
-  ## Multiplexer / selector
-  ## Returns x if ctl is true
-  ## else returns y
-  ## So equivalent to ctl? x: y
-  when defined(amd64) or defined(i386):
-    when sizeof(T) == 8:
-      var muxed = x
-      asm """
-        testq %[ctl], %[ctl]
-        cmovzq %[y], %[muxed]
-        : [muxed] "+r" (`muxed`)
-        : [ctl] "r" (`ctl`), [y] "r" (`y`)
-        : "cc"
-      """
-      muxed
-    elif sizeof(T) == 4:
-      var muxed = x
-      asm """
-        testl %[ctl], %[ctl]
-        cmovzl %[y], %[muxed]
-        : [muxed] "+r" (`muxed`)
-        : [ctl] "r" (`ctl`), [y] "r" (`y`)
-        : "cc"
-      """
-      muxed
-    else:
-      {.error: "Unsupported word size".}
-  else:
-    let # Templates duplicate input params code
-      x_Mux = x
-      y_Mux = y
-    T(T.T(y_Mux) xor (-T.T(ctl) and T.T(x_Mux xor y_Mux)))
 
 # ############################################################
 #

@@ -12,7 +12,7 @@
 
 import
   ../primitives/constant_time,
-  ../arithmetic/bigints_checked,
+  ../arithmetic/bigints,
   ../config/common
 
 # ############################################################
@@ -20,6 +20,10 @@ import
 #   Parsing from canonical inputs to internal representation
 #
 # ############################################################
+
+# Note: the parsing/serialization routines were initially developed
+#       with an internal representation that used 31 bits out of a uint32
+#       or 63-bits out of an uint64
 
 # TODO: tag/remove exceptions raised.
 
@@ -49,10 +53,10 @@ func fromRawUintLE(
     acc_len += 8 # We count bit by bit
 
     # if full, dump
-    if acc_len >= WordBitSize:
-      dst.limbs[dst_idx] = mask(acc)
+    if acc_len >= WordBitWidth:
+      dst.limbs[dst_idx] = acc
       inc dst_idx
-      acc_len -= WordBitSize
+      acc_len -= WordBitWidth
       acc = src_byte shr (8 - acc_len)
 
   if dst_idx < dst.limbs.len:
@@ -86,10 +90,10 @@ func fromRawUintBE(
     acc_len += 8 # We count bit by bit
 
     # if full, dump
-    if acc_len >= WordBitSize:
-      dst.limbs[dst_idx] = mask(acc)
+    if acc_len >= WordBitWidth:
+      dst.limbs[dst_idx] = acc
       inc dst_idx
-      acc_len -= WordBitSize
+      acc_len -= WordBitWidth
       acc = src_byte shr (8 - acc_len)
 
   if dst_idx < dst.limbs.len:
@@ -113,7 +117,6 @@ func fromRawUint*(
     dst.fromRawUintLE(src)
   else:
     dst.fromRawUintBE(src)
-  dst.setInternalBitLength()
 
 func fromRawUint*(
         T: type BigInt,
@@ -187,14 +190,17 @@ func exportRawUintLE(
     inc src_idx
 
     if acc_len == 0:
-      # Edge case, we need to refill the buffer to output 64-bit
-      # as we can only read 63-bit per word
+      # We need to refill the buffer to output 64-bit
       acc = w
-      acc_len = WordBitSize
+      acc_len = WordBitWidth
     else:
-      let lo = (w shl acc_len) or acc
-      dec acc_len
-      acc = w shr (WordBitSize - acc_len)
+      when WordBitWidth == sizeof(Word) * 8:
+        let lo = acc
+        acc = w
+      else: # If using 63-bit (or less) out of uint64
+        let lo = (w shl acc_len) or acc
+        dec acc_len
+        acc = w shr (WordBitWidth - acc_len)
 
       if tail >= sizeof(Word):
         # Unrolled copy
@@ -237,14 +243,17 @@ func exportRawUintBE(
     inc src_idx
 
     if acc_len == 0:
-      # Edge case, we need to refill the buffer to output 64-bit
-      # as we can only read 63-bit per word
+      # We need to refill the buffer to output 64-bit
       acc = w
-      acc_len = WordBitSize
+      acc_len = WordBitWidth
     else:
-      let lo = (w shl acc_len) or acc
-      dec acc_len
-      acc = w shr (WordBitSize - acc_len)
+      when WordBitWidth == sizeof(Word) * 8:
+        let lo = acc
+        acc = w
+      else: # If using 63-bit (or less) out of uint64
+        let lo = (w shl acc_len) or acc
+        dec acc_len
+        acc = w shr (WordBitWidth - acc_len)
 
       if tail >= sizeof(Word):
         # Unrolled copy

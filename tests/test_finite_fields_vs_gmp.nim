@@ -13,7 +13,7 @@ import
   gmp, stew/byteutils,
   # Internal
   ../constantine/io/[io_bigints, io_fields],
-  ../constantine/arithmetic/[finite_fields, bigints_checked],
+  ../constantine/arithmetic/[finite_fields, bigints],
   ../constantine/primitives/constant_time,
   ../constantine/config/curves
 
@@ -100,7 +100,7 @@ proc binary_epilogue[C: static Curve, N: static int](
     "  b:   " & bBuf.toHex & "\n" &
     "failed:" & "\n" &
     "  GMP:            " & rGMP.toHex() & "\n" &
-    "  Constantine:    " & rConstantine.toHex() &
+    "  Constantine:    " & rConstantine.toHex() & "\n" &
     "(Note that GMP aligns bytes left while constantine aligns bytes right)"
 
 # ############################################################

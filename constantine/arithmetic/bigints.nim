@@ -7,32 +7,59 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ./bigints_raw,
-  ../primitives/constant_time,
-  ../config/common
+  ../config/common,
+  ../primitives,
+  ./limbs,
+  ./montgomery
 
 # ############################################################
 #
-#                BigInts type-checked API
+#                        BigInts
 #
 # ############################################################
 
-# The "checked" API is exported as a building blocks
-# with enforced compile-time checking of BigInt bitsize
+# The API is exported as a building block
+# with enforced compile-time checking of BigInt bitwidth
 # and memory ownership.
+
+# ############################################################
+# Design
 #
-# The "raw" compute API uses views to avoid code duplication
-# due to generic/static monomorphization.
+# Control flow should only depends on the static maximum number of bits
+# This number is defined per Finite Field/Prime/Elliptic Curve
 #
-# The "checked" API is a thin wrapper above the "raw" API to get the best of both world:
-# - small code footprint
-# - compiler enforced checks: types, bitsizes (dependant types)
-# - compiler enforced memory: stack allocation and buffer ownership
+# Data Layout
+#
+# The previous implementation of Constantine used type-erased views
+# to optimized code-size (1)
+# Also instead of using the full 64-bit of an uint64 it used
+# 63-bit with the last bit to handle carries (2)
+#
+# (1) brought an advantage in terms of code-size if multiple curves
+# were supported.
+# However it prevented unrolling for some performance critical routines
+# like addition and Montgomery multiplication. Furthermore, addition
+# is only 1 or 2 instructions per limbs meaning unrolling+inlining
+# is probably smaller in code-size than a function call.
+#
+# (2) Not using the full 64-bit eased carry and borrow handling.
+# Also on older x86 Arch, the add-with-carry "ADC" instruction
+# may be up to 6x slower than plain "ADD" with memory operand in a carry-chain.
+#
+# However, recent CPUs (less than 5 years) have reasonable or lower ADC latencies
+# compared to the shifting and masking required when using 63 bits.
+# Also we save on words to iterate on (1 word for BN254, secp256k1, BLS12-381)
+#
+# Furthermore, pairing curves are not fast-reduction friendly
+# meaning that lazy reductions and lazy carries are impractical
+# and so it's simpler to always carry additions instead of
+# having redundant representations that forces costly reductions before multiplications.
+# https://github.com/mratsim/constantine/issues/15
 
 func wordsRequired(bits: int): int {.compileTime.} =
   ## Compute the number of limbs required
   # from the **announced** bit length
-  (bits + WordBitSize - 1) div WordBitSize
+  (bits + WordBitWidth - 1) div WordBitWidth
 
 type
   BigInt*[bits: static int] = object
@@ -41,28 +68,18 @@ type
     ## - "bits" is the announced bit-length of the BigInt
     ##   This is public data, usually equal to the curve prime bitlength.
     ##
-    ## - "bitLength" is the internal bitlength of the integer
-    ##   This differs from the canonical bit-length as
-    ##   Constantine word-size is smaller than a machine word.
-    ##   This value should never be used as-is to prevent leaking secret data.
-    ##   Computing this value requires constant-time operations.
-    ##   Using this value requires converting it to the # of limbs in constant-time
-    ##
     ## - "limbs" is an internal field that holds the internal representation
     ##   of the big integer. Least-significant limb first. Within limbs words are native-endian.
     ##
     ## This internal representation can be changed
     ## without notice and should not be used by external applications or libraries.
-    bitLength*: uint32
     limbs*: array[bits.wordsRequired, Word]
 
-template view*(a: BigInt): BigIntViewConst =
-  ## Returns a borrowed type-erased immutable view to a bigint
-  BigIntViewConst(cast[BigIntView](a.unsafeAddr))
-
-template view*(a: var BigInt): BigIntViewMut =
-  ## Returns a borrowed type-erased mutable view to a mutable bigint
-  BigIntViewMut(cast[BigIntView](a.addr))
+# For unknown reason, `bits` doesn't semcheck if
+#   `limbs: Limbs[bits.wordsRequired]`
+# with
+#   `Limbs[N: static int] = distinct array[N, Word]`
+# so we don't set Limbs as a distinct type
 
 debug:
   import strutils
@@ -70,9 +87,7 @@ debug:
   func `$`*(a: BigInt): string =
     result = "BigInt["
     result.add $BigInt.bits
-    result.add "](bitLength: "
-    result.add $a.bitLength
-    result.add ", limbs: ["
+    result.add "](limbs: ["
     result.add $BaseType(a.limbs[0]) & " (0x" & toHex(BaseType(a.limbs[0])) & ')'
     for i in 1 ..< a.limbs.len:
       result.add ", "
@@ -83,54 +98,40 @@ debug:
 {.push raises: [].}
 {.push inline.}
 
-func setInternalBitLength*(a: var BigInt) =
-  ## Derive the actual bitsize used internally of a BigInt
-  ## from the announced BigInt bitsize
-  ## and set the bitLength field of that BigInt
-  ## to that computed value.
-  a.bitLength = uint32 static(a.bits + a.bits div WordBitSize)
-
 func `==`*(a, b: BigInt): CTBool[Word] =
   ## Returns true if 2 big ints are equal
   ## Comparison is constant-time
-  var accum: Word
-  for i in static(0 ..< a.limbs.len):
-    accum = accum or (a.limbs[i] xor b.limbs[i])
-  result = accum.isZero
+  a.limbs == b.limbs
 
 func isZero*(a: BigInt): CTBool[Word] =
   ## Returns true if a big int is equal to zero
-  a.view.isZero
+  a.limbs.isZero
 
 func setZero*(a: var BigInt) =
   ## Set a BigInt to 0
-  a.setInternalBitLength()
-  zeroMem(a.limbs[0].unsafeAddr, a.limbs.len * sizeof(Word))
+  a.limbs.setZero()
 
 func setOne*(a: var BigInt) =
   ## Set a BigInt to 1
-  a.setInternalBitLength()
-  a.limbs[0] = Word(1)
-  when a.limbs.len > 1:
-    zeroMem(a.limbs[1].unsafeAddr, (a.limbs.len-1) * sizeof(Word))
+  a.limbs.setOne()
 
 func cadd*(a: var BigInt, b: BigInt, ctl: CTBool[Word]): CTBool[Word] =
   ## Constant-time in-place conditional addition
   ## The addition is only performed if ctl is "true"
   ## The result carry is always computed.
-  cadd(a.view, b.view, ctl)
+  (CTBool[Word]) cadd(a.limbs, b.limbs, ctl)
 
 func csub*(a: var BigInt, b: BigInt, ctl: CTBool[Word]): CTBool[Word] =
   ## Constant-time in-place conditional addition
   ## The addition is only performed if ctl is "true"
   ## The result carry is always computed.
-  csub(a.view, b.view, ctl)
+  (CTBool[Word]) csub(a.limbs, b.limbs, ctl)
 
 func cdouble*(a: var BigInt, ctl: CTBool[Word]): CTBool[Word] =
   ## Constant-time in-place conditional doubling
   ## The doubling is only performed if ctl is "true"
   ## The result carry is always computed.
-  cadd(a.view, a.view, ctl)
+  (CTBool[Word]) cadd(a.limbs, a.limbs, ctl)
 
 # ############################################################
 #
@@ -143,38 +144,38 @@ func cdouble*(a: var BigInt, ctl: CTBool[Word]): CTBool[Word] =
 func add*(a: var BigInt, b: BigInt): CTBool[Word] =
   ## Constant-time in-place addition
   ## Returns the carry
-  add(a.view, b.view)
+  (CTBool[Word]) add(a.limbs, b.limbs)
 
 func sub*(a: var BigInt, b: BigInt): CTBool[Word] =
   ## Constant-time in-place substraction
   ## Returns the borrow
-  sub(a.view, b.view)
+  (CTBool[Word]) sub(a.limbs, b.limbs)
 
 func double*(a: var BigInt): CTBool[Word] =
   ## Constant-time in-place doubling
   ## Returns the carry
-  add(a.view, a.view)
+  (CTBool[Word]) add(a.limbs, a.limbs)
 
 func sum*(r: var BigInt, a, b: BigInt): CTBool[Word] =
   ## Sum `a` and `b` into `r`.
   ## `r` is initialized/overwritten
   ##
   ## Returns the carry
-  sum(r.view, a.view, b.view)
+  (CTBool[Word]) sum(r.limbs, a.limbs, b.limbs)
 
 func diff*(r: var BigInt, a, b: BigInt): CTBool[Word] =
   ## Substract `b` from `a` and store the result into `r`.
   ## `r` is initialized/overwritten
   ##
   ## Returns the borrow
-  diff(r.view, a.view, b.view)
+  (CTBool[Word]) diff(r.limbs, a.limbs, b.limbs)
 
 func double*(r: var BigInt, a: BigInt): CTBool[Word] =
   ## Double `a` into `r`.
   ## `r` is initialized/overwritten
   ##
   ## Returns the carry
-  sum(r.view, a.view, a.view)
+  (CTBool[Word]) sum(r.limbs, a.limbs, a.limbs)
 
 # ############################################################
 #
@@ -182,9 +183,13 @@ func double*(r: var BigInt, a: BigInt): CTBool[Word] =
 #
 # ############################################################
 
-# Use "csub", which unfortunately requires the first operand to be mutable.
-# for example for a <= b, we now that if a-b borrows then b > a and so a<=b is false
-# This can be tested with "not csub(a, b, CtFalse)"
+func `<`*(a, b: BigInt): CTBool[Word] =
+  ## Returns true if a < b
+  a.limbs < b.limbs
+
+func `<=`*(a, b: BigInt): CTBool[Word] =
+  ## Returns true if a <= b
+  a.limbs <= b.limbs
 
 # ############################################################
 #
@@ -202,9 +207,15 @@ func reduce*[aBits, mBits](r: var BigInt[mBits], a: BigInt[aBits], M: BigInt[mBi
   # Note: for all cryptographic intents and purposes the modulus is known at compile-time
   # but we don't want to inline it as it would increase codesize, better have Nim
   # pass a pointer+length to a fixed session of the BSS.
-  reduce(r.view, a.view, M.view)
+  reduce(r.limbs, a.limbs, aBits, M.limbs, mBits)
 
-func montyResidue*(mres: var BigInt, a, N, r2modN: BigInt, negInvModWord: static BaseType) =
+# ############################################################
+#
+#                 Montgomery Arithmetic
+#
+# ############################################################
+
+func montyResidue*(mres: var BigInt, a, N, r2modM: BigInt, m0ninv: static BaseType, canUseNoCarryMontyMul: static bool) =
   ## Convert a BigInt from its natural representation
   ## to the Montgomery n-residue form
   ##
@@ -213,9 +224,15 @@ func montyResidue*(mres: var BigInt, a, N, r2modN: BigInt, negInvModWord: static
   ## Caller must take care of properly switching between
   ## the natural and montgomery domain.
   ## Nesting Montgomery form is possible by applying this function twice.
-  montyResidue(mres.view, a.view, N.view, r2modN.view, Word(negInvModWord))
+  ##
+  ## The Montgomery Magic Constants:
+  ## - `m0ninv` is µ = -1/N (mod M)
+  ## - `r2modM` is R² (mod M)
+  ## with W = M.len
+  ## and R = (2^WordBitSize)^W
+  montyResidue(mres.limbs, a.limbs, N.limbs, r2modM.limbs, m0ninv, canUseNoCarryMontyMul)
 
-func redc*[mBits](r: var BigInt[mBits], a, N: BigInt[mBits], negInvModWord: static BaseType) =
+func redc*[mBits](r: var BigInt[mBits], a, M: BigInt[mBits], m0ninv: static BaseType, canUseNoCarryMontyMul: static bool) =
   ## Convert a BigInt from its Montgomery n-residue form
   ## to the natural representation
   ##
@@ -227,31 +244,27 @@ func redc*[mBits](r: var BigInt[mBits], a, N: BigInt[mBits], negInvModWord: stat
     var one {.noInit.}: BigInt[mBits]
     one.setOne()
     one
-  redc(r.view, a.view, one.view, N.view, Word(negInvModWord))
+  redc(r.limbs, a.limbs, one.limbs, M.limbs, m0ninv, canUseNoCarryMontyMul)
 
-# ############################################################
-#
-#                 Montgomery Arithmetic
-#
-# ############################################################
-
-func montyMul*(r: var BigInt, a, b, M: BigInt, negInvModWord: static BaseType) =
+func montyMul*(r: var BigInt, a, b, M: BigInt, negInvModWord: static BaseType, canUseNoCarryMontyMul: static bool) =
   ## Compute r <- a*b (mod M) in the Montgomery domain
   ##
   ## This resets r to zero before processing. Use {.noInit.}
   ## to avoid duplicating with Nim zero-init policy
-  montyMul(r.view, a.view, b.view, M.view, Word(negInvModWord))
+  montyMul(r.limbs, a.limbs, b.limbs, M.limbs, negInvModWord, canUseNoCarryMontyMul)
 
-func montySquare*(r: var BigInt, a, M: BigInt, negInvModWord: static BaseType) =
+func montySquare*(r: var BigInt, a, M: BigInt, negInvModWord: static BaseType, canUseNoCarryMontyMul: static bool) =
   ## Compute r <- a^2 (mod M) in the Montgomery domain
   ##
   ## This resets r to zero before processing. Use {.noInit.}
   ## to avoid duplicating with Nim zero-init policy
-  montySquare(r.view, a.view, M.view, Word(negInvModWord))
+  montySquare(r.limbs, a.limbs, M.limbs, negInvModWord, canUseNoCarryMontyMul)
 
 func montyPow*[mBits, eBits: static int](
        a: var BigInt[mBits], exponent: BigInt[eBits],
-       M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int) =
+       M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,
+       canUseNoCarryMontyMul: static bool
+      ) =
   ## Compute a <- a^exponent (mod M)
   ## ``a`` in the Montgomery domain
   ## ``exponent`` is any BigInt, in the canonical domain
@@ -268,16 +281,14 @@ func montyPow*[mBits, eBits: static int](
 
   const scratchLen = if windowSize == 1: 2
                      else: (1 shl windowSize) + 1
-  var scratchSpace {.noInit.}: array[scratchLen, BigInt[mBits]]
-  var scratchPtrs {.noInit.}: array[scratchLen, BigIntViewMut]
-  for i in 0 ..< scratchLen:
-    scratchPtrs[i] = scratchSpace[i].view()
-
-  montyPow(a.view, expBE, M.view, one.view, Word(negInvModWord), scratchPtrs)
+  var scratchSpace {.noInit.}: array[scratchLen, Limbs[mBits.wordsRequired]]
+  montyPow(a.limbs, expBE, M.limbs, one.limbs, negInvModWord, scratchSpace, canUseNoCarryMontyMul)
 
 func montyPowUnsafeExponent*[mBits, eBits: static int](
        a: var BigInt[mBits], exponent: BigInt[eBits],
-       M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int) =
+       M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,
+       canUseNoCarryMontyMul: static bool
+      ) =
   ## Compute a <- a^exponent (mod M)
   ## ``a`` in the Montgomery domain
   ## ``exponent`` is any BigInt, in the canonical domain
@@ -298,16 +309,14 @@ func montyPowUnsafeExponent*[mBits, eBits: static int](
 
   const scratchLen = if windowSize == 1: 2
                      else: (1 shl windowSize) + 1
-  var scratchSpace {.noInit.}: array[scratchLen, BigInt[mBits]]
-  var scratchPtrs {.noInit.}: array[scratchLen, BigIntViewMut]
-  for i in 0 ..< scratchLen:
-    scratchPtrs[i] = scratchSpace[i].view()
-
-  montyPowUnsafeExponent(a.view, expBE, M.view, one.view, Word(negInvModWord), scratchPtrs)
+  var scratchSpace {.noInit.}: array[scratchLen, Limbs[mBits.wordsRequired]]
+  montyPowUnsafeExponent(a.limbs, expBE, M.limbs, one.limbs, negInvModWord, scratchSpace, canUseNoCarryMontyMul)
 
 func montyPowUnsafeExponent*[mBits: static int](
        a: var BigInt[mBits], exponent: openarray[byte],
-       M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int) =
+       M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,
+       canUseNoCarryMontyMul: static bool
+      ) =
   ## Compute a <- a^exponent (mod M)
   ## ``a`` in the Montgomery domain
   ## ``exponent`` is a BigInt in canonical representation
@@ -324,9 +333,5 @@ func montyPowUnsafeExponent*[mBits: static int](
 
   const scratchLen = if windowSize == 1: 2
                      else: (1 shl windowSize) + 1
-  var scratchSpace {.noInit.}: array[scratchLen, BigInt[mBits]]
-  var scratchPtrs {.noInit.}: array[scratchLen, BigIntViewMut]
-  for i in 0 ..< scratchLen:
-    scratchPtrs[i] = scratchSpace[i].view()
-
-  montyPowUnsafeExponent(a.view, exponent, M.view, one.view, Word(negInvModWord), scratchPtrs)
+  var scratchSpace {.noInit.}: array[scratchLen, Limbs[mBits.wordsRequired]]
+  montyPowUnsafeExponent(a.limbs, exponent, M.limbs, one.limbs, negInvModWord, scratchSpace, canUseNoCarryMontyMul)

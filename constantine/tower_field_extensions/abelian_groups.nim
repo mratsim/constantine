@@ -9,7 +9,7 @@
 import
   ../arithmetic/finite_fields,
   ../config/common,
-  ../primitives/constant_time
+  ../primitives
 
 # ############################################################
 #

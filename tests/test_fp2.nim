@@ -12,7 +12,7 @@ import
   # Internals
   ../constantine/tower_field_extensions/[abelian_groups, fp2_complex],
   ../constantine/config/[common, curves],
-  ../constantine/arithmetic/bigints_checked,
+  ../constantine/arithmetic/bigints,
   # Test utilities
   ./prng
 
@@ -45,7 +45,7 @@ suite "𝔽p2 = 𝔽p[𝑖] (irreducible polynomial x²+1)":
             O
 
           var r: typeof(C.Mod.mres)
-          r.redc(oneFp2.c0.mres, C.Mod.mres, C.getNegInvModWord())
+          r.redc(oneFp2.c0.mres, C.Mod.mres, C.getNegInvModWord(), canUseNoCarryMontyMul = false)
 
           check:
             bool(r == oneBig)

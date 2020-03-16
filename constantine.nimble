@@ -9,7 +9,7 @@ srcDir        = "src"
 requires "nim >= 1.1.0"
 
 ### Helper functions
-proc test(path: string) =
+proc test(flags, path: string) =
   if not dirExists "build":
     mkDir "build"
   # Compilation language is controlled by WEAVE_TEST_LANG
@@ -17,35 +17,64 @@ proc test(path: string) =
   if existsEnv"TEST_LANG":
     lang = getEnv"TEST_LANG"
 
+  var cc = ""
+  if existsEnv"CC":
+    cc = " --cc:" & getEnv"CC"
+
   echo "\n========================================================================================"
-  echo "Running ", path
+  echo "Running [flags: ", flags, "] ", path
   echo "========================================================================================"
-  exec "nim " & lang & " --verbosity:0 --outdir:build -r --hints:off --warnings:off " & path
+  exec "nim " & lang & cc & " " & flags & " --verbosity:0 --outdir:build -r --hints:off --warnings:off " & path
 
 ### tasks
 task test, "Run all tests":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
-  test "tests/test_primitives.nim"
+  test "", "tests/test_primitives.nim"
 
-  test "tests/test_io_bigints.nim"
-  test "tests/test_bigints.nim"
-  test "tests/test_bigints_multimod.nim"
+  test "", "tests/test_io_bigints.nim"
+  test "", "tests/test_bigints.nim"
+  test "", "tests/test_bigints_multimod.nim"
 
-  test "tests/test_io_fields"
-  test "tests/test_finite_fields.nim"
-  test "tests/test_finite_fields_powinv.nim"
+  test "", "tests/test_io_fields"
+  test "", "tests/test_finite_fields.nim"
+  test "", "tests/test_finite_fields_powinv.nim"
 
-  test "tests/test_bigints_vs_gmp.nim"
-  test "tests/test_finite_fields_vs_gmp.nim"
+  test "", "tests/test_bigints_vs_gmp.nim"
+  test "", "tests/test_finite_fields_vs_gmp.nim"
+
+  if sizeof(int) == 8: # 32-bit tests
+    test "-d:Constantine32", "tests/test_primitives.nim"
+
+    test "-d:Constantine32", "tests/test_io_bigints.nim"
+    test "-d:Constantine32", "tests/test_bigints.nim"
+    test "-d:Constantine32", "tests/test_bigints_multimod.nim"
+
+    test "-d:Constantine32", "tests/test_io_fields"
+    test "-d:Constantine32", "tests/test_finite_fields.nim"
+    test "-d:Constantine32", "tests/test_finite_fields_powinv.nim"
+
+    test "-d:Constantine32", "tests/test_bigints_vs_gmp.nim"
+    test "-d:Constantine32", "tests/test_finite_fields_vs_gmp.nim"
 
 task test_no_gmp, "Run tests that don't require GMP":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
-  test "tests/test_primitives.nim"
+  test "", "tests/test_primitives.nim"
 
-  test "tests/test_io_bigints.nim"
-  test "tests/test_bigints.nim"
-  test "tests/test_bigints_multimod.nim"
+  test "", "tests/test_io_bigints.nim"
+  test "", "tests/test_bigints.nim"
+  test "", "tests/test_bigints_multimod.nim"
 
-  test "tests/test_io_fields"
-  test "tests/test_finite_fields.nim"
-  test "tests/test_finite_fields_powinv.nim"
+  test "", "tests/test_io_fields"
+  test "", "tests/test_finite_fields.nim"
+  test "", "tests/test_finite_fields_powinv.nim"
+
+  if sizeof(int) == 8: # 32-bit tests
+    test "-d:Constantine32", "tests/test_primitives.nim"
+
+    test "-d:Constantine32", "tests/test_io_bigints.nim"
+    test "-d:Constantine32", "tests/test_bigints.nim"
+    test "-d:Constantine32", "tests/test_bigints_multimod.nim"
+
+    test "-d:Constantine32", "tests/test_io_fields"
+    test "-d:Constantine32", "tests/test_finite_fields.nim"
+    test "-d:Constantine32", "tests/test_finite_fields_powinv.nim"
