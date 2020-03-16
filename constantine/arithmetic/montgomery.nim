@@ -193,8 +193,17 @@ func montyMul*(
   # i.e. c'R <- a'R b'R * R^-1 (mod M) in the natural domain
   # as in the Montgomery domain all numbers are scaled by R
 
-  # Nim doesn't like static Word, so we passe static BaseType up to here
-  # Then we passe them as Word again for the final processing
+  # Nim doesn't like static Word, so we pass static BaseType up to here
+  # Then we passe them as Word again for the final processing.
+
+  # Many curve moduli are "Montgomery-friendly" which means that m0inv is 1
+  # This saves N basic type multiplication and potentially many register mov
+  # as well as unless using "mulx" instruction, x86 "mul" requires very specific registers.
+  # Compilers should be able to constant-propagate, but this prevents reusing code
+  # for example between secp256k1 (friendly) and BN254 (non-friendly).
+  # Here, as "montyMul" is inlined at the call site, the compiler shouldn't constant fold, saving size.
+  # Inlining the implementation instead (and no-inline this "montyMul" proc) would allow constant propagation
+  # of Montgomery-friendly m0ninv.
   when canUseNoCarryMontyMul:
     montyMul_CIOS_nocarry_unrolled(r, a, b, M, m0ninv)
   else:
