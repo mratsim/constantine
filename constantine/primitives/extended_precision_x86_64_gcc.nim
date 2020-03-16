@@ -44,9 +44,9 @@ func unsafeDiv2n1n*(q, r: var Ct[uint64], n_hi, n_lo, d: Ct[uint64]) {.inline.}=
   # 2. don't forget to dereference the var hidden pointer
   # 3. -
   # 4. no clobbered registers beside explectly used RAX and RDX
-  debugEcho "unsafeDiv2n1n_gcc_128by64: "
-  debugEcho "  (n_hi, nlo): (", uint64 n_hi, ", ", uint64 n_lo, ")"
-  debugEcho "  divisor: ", uint64 d
+  debugEcho "  unsafeDiv2n1n_gcc_128by64: "
+  debugEcho "    (n_hi, nlo): (", uint64 n_hi, ", ", uint64 n_lo, ")"
+  debugEcho "    divisor: ", uint64 d
   when defined(cpp):
     asm """
       divq %[divisor]
@@ -61,3 +61,5 @@ func unsafeDiv2n1n*(q, r: var Ct[uint64], n_hi, n_lo, d: Ct[uint64]) {.inline.}=
       : "d" (`n_hi`), "a" (`n_lo`), [divisor] "rm" (`d`)
       :
     """
+  debugEcho "    q: ", uint64 q
+  debugEcho "    r: ", uint64 r
