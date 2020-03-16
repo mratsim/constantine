@@ -28,3 +28,7 @@ type
 
 const GCC_Compatible* = defined(gcc) or defined(clang) or defined(llvm_gcc)
 const X86* = defined(amd64) or defined(i386)
+
+when sizeof(int) == 8 and GCC_Compatible:
+  type
+    uint128*{.importc: "unsigned __int128".} = object

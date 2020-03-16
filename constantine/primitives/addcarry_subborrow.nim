@@ -125,6 +125,10 @@ func addC*(cOut: var Carry, sum: var Ct[uint64], a, b: Ct[uint64], cIn: Carry) {
     cOut = addcarry_u64(cIn, a, b, sum)
   else:
     block:
+      static:
+        doAssert GCC_Compatible
+        doAssert sizeof(int) == 8
+
       var dblPrec {.noInit.}: uint128
       {.emit:[dblPrec, " = (unsigned __int128)", a," + (unsigned __int128)", b, " + (unsigned __int128)",c,";"].}
 
@@ -143,6 +147,10 @@ func subB*(bOut: var Borrow, diff: var Ct[uint64], a, b: Ct[uint64], bIn: Borrow
     bOut = subborrow_u64(bIn, a, b, diff)
   else:
     block:
+      static:
+        doAssert GCC_Compatible
+        doAssert sizeof(int) == 8
+
       var dblPrec {.noInit.}: uint128
       {.emit:[dblPrec, " = (unsigned __int128)", a," - (unsigned __int128)", b, " - (unsigned __int128)",c,";"].}
 

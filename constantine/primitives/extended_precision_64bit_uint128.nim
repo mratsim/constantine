@@ -18,9 +18,6 @@ static:
   doAssert GCC_Compatible
   doAssert sizeof(int) == 8
 
-type
-  uint128*{.importc: "unsigned __int128".} = object
-
 func unsafeDiv2n1n*(q, r: var Ct[uint64], n_hi, n_lo, d: Ct[uint64]) {.inline.}=
   ## Division uint128 by uint64
   ## Warning ⚠️ :
