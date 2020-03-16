@@ -196,7 +196,6 @@ func exportRawUintLE(
     else:
       when WordBitWidth == sizeof(Word) * 8:
         let lo = acc
-        dec acc_len
         acc = w
       else: # If using 63-bit (or less) out of uint64
         let lo = (w shl acc_len) or acc
@@ -250,7 +249,6 @@ func exportRawUintBE(
     else:
       when WordBitWidth == sizeof(Word) * 8:
         let lo = acc
-        dec acc_len
         acc = w
       else: # If using 63-bit (or less) out of uint64
         let lo = (w shl acc_len) or acc
