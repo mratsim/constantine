@@ -203,7 +203,8 @@ func montyMul*(
   # for example between secp256k1 (friendly) and BN254 (non-friendly).
   # Here, as "montyMul" is inlined at the call site, the compiler shouldn't constant fold, saving size.
   # Inlining the implementation instead (and no-inline this "montyMul" proc) would allow constant propagation
-  # of Montgomery-friendly m0ninv.
+  # of Montgomery-friendly m0ninv if the compiler deems it interesting,
+  # or we use `when m0ninv == 1` and enforce the inlining.
   when canUseNoCarryMontyMul:
     montyMul_CIOS_nocarry_unrolled(r, a, b, M, m0ninv)
   else:

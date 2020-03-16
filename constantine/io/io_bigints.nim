@@ -442,7 +442,7 @@ func toHex*(big: BigInt, order: static Endianness = bigEndian): string =
   # 1. Convert Big Int to canonical uint
   const canonLen = (big.bits + 8 - 1) div 8
   var bytes: array[canonLen, byte]
-  exportRawUint(bytes, big, bigEndian)
+  exportRawUint(bytes, big, cpuEndian)
 
   # 2 Convert canonical uint to hex
-  result = bytes.nativeEndianToHex(cpuEndian)
+  result = bytes.nativeEndianToHex(order)
