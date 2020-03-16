@@ -114,7 +114,7 @@ func ccopy_x86[T](ctl: CTBool[T], x: var T, y: T) {.inline.}=
       asm """
         testl %[ctl], %[ctl]
         cmovnzl %[y], %[x]
-        : [x] "+r" (`*x`)
+        : [x] "+r" (`x`)
         : [ctl] "r" (`ctl`), [y] "r" (`y`)
         : "cc"
       """
@@ -122,7 +122,7 @@ func ccopy_x86[T](ctl: CTBool[T], x: var T, y: T) {.inline.}=
       asm """
         testl %[ctl], %[ctl]
         cmovnzl %[y], %[x]
-        : [x] "+r" (`x`)
+        : [x] "+r" (`*x`)
         : [ctl] "r" (`ctl`), [y] "r" (`y`)
         : "cc"
       """
