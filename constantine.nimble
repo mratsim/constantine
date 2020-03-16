@@ -17,10 +17,14 @@ proc test(flags, path: string) =
   if existsEnv"TEST_LANG":
     lang = getEnv"TEST_LANG"
 
+  var cc = ""
+  if existsEnv"CC":
+    cc = " --cc:" & getEnv"CC"
+
   echo "\n========================================================================================"
   echo "Running [flags: ", flags, "] ", path
   echo "========================================================================================"
-  exec "nim " & lang & " " & flags & " --verbosity:0 --outdir:build -r --hints:off --warnings:off " & path
+  exec "nim " & lang & cc & " " & flags & " --verbosity:0 --outdir:build -r --hints:off --warnings:off " & path
 
 ### tasks
 task test, "Run all tests":

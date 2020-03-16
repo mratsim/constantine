@@ -11,21 +11,23 @@ matrix:
     # Constantine only works with Nim devel
     # Build and test using both gcc and clang
     # Build and test on both x86-64 and ARM64
-    - os: linux
+    # Ubuntu Bionic (18.04) is needed, it includes
+    # GCC 7 codegen fixes to addcarry_u64.
+    - dist: bionic
       arch: amd64
       env:
         - ARCH=amd64
         - CHANNEL=devel
       compiler: gcc
 
-    - os: linux
+    - dist: bionic
       arch: arm64
       env:
         - ARCH=arm64
         - CHANNEL=devel
       compiler: gcc
 
-    - os: linux
+    - dist: bionic
       arch: amd64
       env:
         - ARCH=amd64

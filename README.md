@@ -18,6 +18,12 @@ You can install the developement version of the library through nimble with the 
 nimble install https://github.com/mratsim/constantine@#master
 ```
 
+For speed it is recommended to prefer Clang, MSVC or ICC over GCC.
+GCC does not properly optimize add-with-carry and sub-with-borrow loops (see [Compiler-caveats](#Compiler-caveats)).
+
+Further if using GCC, GCC 7 at minimum is required, previous versions
+generated incorrect add-with-carry code.
+
 ## Target audience
 
 The library aims to be a portable, compact and hardened library for elliptic curve cryptography needs, in particular for blockchain protocols and zero-knowledge proofs system.

@@ -80,6 +80,9 @@ import ./constant_time_types
 #
 # ############################################################
 
+# Note: GCC before 2017 had incorrect codegen in some cases:
+# - https://gcc.gnu.org/bugzilla/show_bug.cgi?id=81300
+
 when X86:
   when defined(windows):
     {.pragma: intrinsics, header:"<intrin.h>", nodecl.}
