@@ -27,20 +27,56 @@ import
 # We don't use distinct types here, they confuse the VM
 # Similarly, using addC / subB confuses the VM
 
+# As we choose to use the full 32/64 bits of the integers and there is no carry flag
+# in the compile-time VM we need a portable (and slow) "adc" and "sbb".
+# Hopefully compilation time stays decent.
+
+const
+  HalfWidth = WordBitWidth shr 1
+  HalfBase = (BaseType(1) shl HalfWidth)
+  HalfMask = HalfBase - 1
+
+func split(n: BaseType): tuple[hi, lo: BaseType] =
+  result.hi = n shr HalfWidth
+  result.lo = n and HalfMask
+
+func merge(hi, lo: BaseType): BaseType =
+  (hi shl HalfWidth) or lo
+
+func addC(cOut, sum: var BaseType, a, b, cIn: BaseType) =
+  # Add with carry, fallback for the Compile-Time VM
+  # (CarryOut, Sum) <- a + b + CarryIn
+  let (aHi, aLo) = split(a)
+  let (bHi, bLo) = split(b)
+  let tLo = aLo + bLo + cIn
+  let (cLo, rLo) = split(tLo)
+  let tHi = aHi + bHi + cLo
+  let (cHi, rHi) = split(tHi)
+  cOut = cHi
+  sum = merge(rHi, rLo)
+
+func subB(bOut, diff: var BaseType, a, b, bIn: BaseType) =
+  # Substract with borrow, fallback for the Compile-Time VM
+  # (BorrowOut, Sum) <- a - b - BorrowIn
+  let (aHi, aLo) = split(a)
+  let (bHi, bLo) = split(b)
+  let tLo = HalfBase + aLo - bLo - bIn
+  let (noBorrowLo, rLo) = split(tLo)
+  let tHi = HalfBase + aHi - bHi - BaseType(noBorrowLo == 0)
+  let (noBorrowHi, rHi) = split(tHi)
+  bOut = BaseType(noBorrowHi == 0)
+  diff = merge(rHi, rLo)
+
 func dbl(a: var BigInt): bool =
   ## In-place multiprecision double
   ##   a -> 2a
-
-  # Handling carries in the VM/without intrinsics is a pain ...
+  var carry, sum: BaseType
   for i in 0 ..< a.limbs.len:
-    let carry = BaseType(result)
     let ai = BaseType(a.limbs[i])
-    var new_a = ai
-    new_a += carry
-    result = new_a < ai
-    new_a += ai
-    result = result or (new_a < ai)
-    a.limbs[i] = Word(new_a)
+    addC(carry, sum, ai, ai, carry)
+    a.limbs[i] = Word(sum)
+
+  result = bool(carry)
 
 func csub(a: var BigInt, b: BigInt, ctl: bool): bool =
   ## In-place optional substraction
@@ -48,19 +84,15 @@ func csub(a: var BigInt, b: BigInt, ctl: bool): bool =
   ## It is NOT constant-time and is intended
   ## only for compile-time precomputation
   ## of non-secret data.
-
-  # Handling borrow in the VM/without intrinsics is a pain ...
+  var borrow, diff: BaseType
   for i in 0 ..< a.limbs.len:
     let ai = BaseType(a.limbs[i])
     let bi = BaseType(b.limbs[i])
-    let borrow = BaseType(result)
-    var new_a = ai
-    result = bi > ai
-    new_a -= bi
-    result = result or (borrow > ai) # if bi + borrow overflow
-    new_a -= borrow
-    a.limbs[i] = if ctl: Word(new_a)
-                 else: a.limbs[i]
+    subB(borrow, diff, ai, bi, borrow)
+    if ctl:
+      a.limbs[i] = Word(diff)
+
+  result = bool(borrow)
 
 func doubleMod(a: var BigInt, M: BigInt) =
   ## In-place modular double
