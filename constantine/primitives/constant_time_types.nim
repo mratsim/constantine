@@ -22,9 +22,16 @@ type
     # - Basic functions like BigInt add/sub
     #   return and/or accept CTBool, we don't want them
     #   to require unnecessarily 8 bytes instead of 4 bytes
+    #
+    # Also Nim adds tests everywhere a range type is used which is great
+    # except in a crypto library:
+    # - We don't want exceptions
+    # - Nim will be helpful and return the offending value, which might be secret data
+    # - This will hint the underlying C compiler about the value range
+    #   and seeing 0/1 it might want to use branches again.
 
-  Carry* = Ct[uint8]
-  Borrow* = Ct[uint8]
+  Carry* = Ct[uint8]  # distinct range[0'u8 .. 1]
+  Borrow* = Ct[uint8] # distinct range[0'u8 .. 1]
 
 const GCC_Compatible* = defined(gcc) or defined(clang) or defined(llvm_gcc)
 const X86* = defined(amd64) or defined(i386)

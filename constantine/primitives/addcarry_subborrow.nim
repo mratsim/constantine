@@ -119,7 +119,8 @@ func subB*(bOut: var Borrow, diff: var Ct[uint32], a, b: Ct[uint32], bIn: Borrow
   else:
     let dblPrec = uint64(a) - uint64(b) - uint64(bIn)
     diff = (Ct[uint32])(dblPrec)
-    bOut = Borrow(dblPrec shr 32)
+    # On borrow the high word will be 0b1111...1111 and needs to be masked
+    bOut = Borrow((dblPrec shr 32) and 1)
 
 func addC*(cOut: var Carry, sum: var Ct[uint64], a, b: Ct[uint64], cIn: Carry) {.inline.} =
   ## Addition with carry
@@ -158,9 +159,10 @@ func subB*(bOut: var Borrow, diff: var Ct[uint64], a, b: Ct[uint64], bIn: Borrow
       {.emit:[dblPrec, " = (unsigned __int128)", a," - (unsigned __int128)", b, " - (unsigned __int128)",bIn,";"].}
 
       # Don't forget to dereference the var param in C mode
+      # On borrow the high word will be 0b1111...1111 and needs to be masked
       when defined(cpp):
-        {.emit:[bOut, " = (NU64)(", dblPrec," >> ", 64'u64, ");"].}
+        {.emit:[bOut, " = (NU64)(", dblPrec," >> ", 64'u64, ") & 1;"].}
         {.emit:[diff, " = (NU64)", dblPrec,";"].}
       else:
-        {.emit:["*",bOut, " = (NU64)(", dblPrec," >> ", 64'u64, ");"].}
+        {.emit:["*",bOut, " = (NU64)(", dblPrec," >> ", 64'u64, ") & 1;"].}
         {.emit:["*",diff, " = (NU64)", dblPrec,";"].}
