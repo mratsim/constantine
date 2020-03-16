@@ -130,7 +130,7 @@ func addC*(cOut: var Carry, sum: var Ct[uint64], a, b: Ct[uint64], cIn: Carry) {
         doAssert sizeof(int) == 8
 
       var dblPrec {.noInit.}: uint128
-      {.emit:[dblPrec, " = (unsigned __int128)", a," + (unsigned __int128)", b, " + (unsigned __int128)",c,";"].}
+      {.emit:[dblPrec, " = (unsigned __int128)", a," + (unsigned __int128)", b, " + (unsigned __int128)",cIn,";"].}
 
       # Don't forget to dereference the var param in C mode
       when defined(cpp):
@@ -152,7 +152,7 @@ func subB*(bOut: var Borrow, diff: var Ct[uint64], a, b: Ct[uint64], bIn: Borrow
         doAssert sizeof(int) == 8
 
       var dblPrec {.noInit.}: uint128
-      {.emit:[dblPrec, " = (unsigned __int128)", a," - (unsigned __int128)", b, " - (unsigned __int128)",c,";"].}
+      {.emit:[dblPrec, " = (unsigned __int128)", a," - (unsigned __int128)", b, " - (unsigned __int128)",bIn,";"].}
 
       # Don't forget to dereference the var param in C mode
       when defined(cpp):

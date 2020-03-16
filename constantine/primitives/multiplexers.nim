@@ -93,21 +93,39 @@ func ccopy_x86[T](ctl: CTBool[T], x: var T, y: T) {.inline.}=
   static: doAssert(GCC_Compatible)
 
   when sizeof(T) == 8:
-    asm """
-      testq %[ctl], %[ctl]
-      cmovnzq %[y], %[x]
-      : [x] "+r" (`*x`)
-      : [ctl] "r" (`ctl`), [y] "r" (`y`)
-      : "cc"
-    """
+    when defined(cpp):
+      asm """
+        testq %[ctl], %[ctl]
+        cmovnzq %[y], %[x]
+        : [x] "+r" (`x`)
+        : [ctl] "r" (`ctl`), [y] "r" (`y`)
+        : "cc"
+      """
+    else:
+      asm """
+        testq %[ctl], %[ctl]
+        cmovnzq %[y], %[x]
+        : [x] "+r" (`*x`)
+        : [ctl] "r" (`ctl`), [y] "r" (`y`)
+        : "cc"
+      """
   elif sizeof(T) == 4:
-    asm """
-      testl %[ctl], %[ctl]
-      cmovnzl %[y], %[x]
-      : [x] "+r" (`*x`)
-      : [ctl] "r" (`ctl`), [y] "r" (`y`)
-      : "cc"
-    """
+    when defined(cpp):
+      asm """
+        testl %[ctl], %[ctl]
+        cmovnzl %[y], %[x]
+        : [x] "+r" (`*x`)
+        : [ctl] "r" (`ctl`), [y] "r" (`y`)
+        : "cc"
+      """
+    else:
+      asm """
+        testl %[ctl], %[ctl]
+        cmovnzl %[y], %[x]
+        : [x] "+r" (`x`)
+        : [ctl] "r" (`ctl`), [y] "r" (`y`)
+        : "cc"
+      """
   else:
     {.error: "Unsupported word size".}
 
