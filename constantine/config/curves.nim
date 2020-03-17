@@ -52,6 +52,9 @@ when not defined(testingCurves):
       bitsize: 381
       modulus: "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab"
       # Equation: y^2 = x^3 + 4
+    curve P224: # NIST P-224
+      bitsize: 224
+      modulus: "0xffffffff_ffffffff_ffffffff_ffffffff_00000000_00000000_00000001"
     curve P256: # secp256r1 / NIST P-256
       bitsize: 256
       modulus: "0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff"
@@ -70,6 +73,9 @@ else:
     curve Mersenne127:
       bitsize: 127
       modulus: "0x7fffffffffffffffffffffffffffffff" # 2^127 - 1
+    curve P224: # NIST P-224
+      bitsize: 224
+      modulus: "0xffffffff_ffffffff_ffffffff_ffffffff_00000000_00000000_00000001"
     curve P256: # secp256r1 / NIST P-256
       bitsize: 256
       modulus: "0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff"
@@ -113,6 +119,17 @@ macro genMontyMagics(T: typed): untyped =
     result.add newConstStmt(
       ident($curve & "_CanUseNoCarryMontyMul"), newCall(
         bindSym"useNoCarryMontyMul",
+        nnkDotExpr.newTree(
+          bindSym($curve & "_Modulus"),
+          ident"mres"
+        )
+      )
+    )
+
+    # const MyCurve_CanUseNoCarryMontySquare = useNoCarryMontySquare(MyCurve_Modulus)
+    result.add newConstStmt(
+      ident($curve & "_CanUseNoCarryMontySquare"), newCall(
+        bindSym"useNoCarryMontySquare",
         nnkDotExpr.newTree(
           bindSym($curve & "_Modulus"),
           ident"mres"
@@ -169,6 +186,11 @@ macro canUseNoCarryMontyMul*(C: static Curve): untyped =
   ## Returns true if the Modulus is compatible with a fast
   ## Montgomery multiplication that avoids many carries
   result = bindSym($C & "_CanUseNoCarryMontyMul")
+
+macro canUseNoCarryMontySquare*(C: static Curve): untyped =
+  ## Returns true if the Modulus is compatible with a fast
+  ## Montgomery squaring that avoids many carries
+  result = bindSym($C & "_CanUseNoCarryMontySquare")
 
 macro getR2modP*(C: static Curve): untyped =
   ## Get the Montgomery "R^2 mod P" constant associated to a curve field modulus

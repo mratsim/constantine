@@ -43,6 +43,14 @@ func unsafeDiv2n1n*(q, r: var Ct[uint64], n_hi, n_lo, d: Ct[uint64]) {.inline.}=
     #          -> use uint128? Compiler might add unwanted branches
     q = udiv128(n_hi, n_lo, d, r)
 
+func mul*(hi, lo: var Ct[uint64], a, b: Ct[uint64]) {.inline.} =
+  ## Extended precision multiplication
+  ## (hi, lo) <- a*b
+  ##
+  ## This is constant-time on most hardware
+  ## See: https://www.bearssl.org/ctmul.html
+  lo = umul128(a, b, hi)
+
 func muladd1*(hi, lo: var Ct[uint64], a, b, c: Ct[uint64]) {.inline.} =
   ## Extended precision multiplication + addition
   ## (hi, lo) <- a*b + c
