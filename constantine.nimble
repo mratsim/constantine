@@ -29,64 +29,84 @@ proc test(flags, path: string) =
 ### tasks
 task test, "Run all tests":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
+
+  # Primitives
   test "", "tests/test_primitives.nim"
 
+  # Big ints
   test "", "tests/test_io_bigints.nim"
   test "", "tests/test_bigints.nim"
   test "", "tests/test_bigints_multimod.nim"
 
+  test "", "tests/test_bigints_vs_gmp.nim"
+
+  # Field
   test "", "tests/test_io_fields"
   test "", "tests/test_finite_fields.nim"
   test "", "tests/test_finite_fields_mulsquare.nim"
   test "", "tests/test_finite_fields_powinv.nim"
 
-  test "", "tests/test_bigints_vs_gmp.nim"
   test "", "tests/test_finite_fields_vs_gmp.nim"
 
+  # 𝔽p2
   test "", "tests/test_fp2.nim"
 
   if sizeof(int) == 8: # 32-bit tests
+    # Primitives
     test "-d:Constantine32", "tests/test_primitives.nim"
 
+    # Big ints
     test "-d:Constantine32", "tests/test_io_bigints.nim"
     test "-d:Constantine32", "tests/test_bigints.nim"
     test "-d:Constantine32", "tests/test_bigints_multimod.nim"
 
+    test "-d:Constantine32", "tests/test_bigints_vs_gmp.nim"
+
+    # Field
     test "-d:Constantine32", "tests/test_io_fields"
     test "-d:Constantine32", "tests/test_finite_fields.nim"
     test "-d:Constantine32", "tests/test_finite_fields_mulsquare.nim"
     test "-d:Constantine32", "tests/test_finite_fields_powinv.nim"
 
-    test "-d:Constantine32", "tests/test_bigints_vs_gmp.nim"
     test "-d:Constantine32", "tests/test_finite_fields_vs_gmp.nim"
 
+    # 𝔽p2
     test "", "tests/test_fp2.nim"
 
 task test_no_gmp, "Run tests that don't require GMP":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
+
+  # Primitives
   test "", "tests/test_primitives.nim"
 
+  # Big ints
   test "", "tests/test_io_bigints.nim"
   test "", "tests/test_bigints.nim"
   test "", "tests/test_bigints_multimod.nim"
 
+  # Field
   test "", "tests/test_io_fields"
   test "", "tests/test_finite_fields.nim"
   test "", "tests/test_finite_fields_mulsquare.nim"
   test "", "tests/test_finite_fields_powinv.nim"
 
+  # 𝔽p2
   test "", "tests/test_fp2.nim"
 
   if sizeof(int) == 8: # 32-bit tests
+    # Primitives
     test "-d:Constantine32", "tests/test_primitives.nim"
 
+    # Big ints
     test "-d:Constantine32", "tests/test_io_bigints.nim"
     test "-d:Constantine32", "tests/test_bigints.nim"
     test "-d:Constantine32", "tests/test_bigints_multimod.nim"
 
+    # Field
     test "-d:Constantine32", "tests/test_io_fields"
     test "-d:Constantine32", "tests/test_finite_fields.nim"
     test "-d:Constantine32", "tests/test_finite_fields_mulsquare.nim"
     test "-d:Constantine32", "tests/test_finite_fields_powinv.nim"
 
+    # 𝔽p2
     test "", "tests/test_fp2.nim"

@@ -24,221 +24,49 @@ static: doAssert defined(testingCurves), "This modules requires the -d:testingCu
 
 import ../constantine/config/common
 
+proc sanity(C: static Curve) =
+  test "Squaring 0,1,2 with "& $C & " [FastSquaring = " & $Fake101.canUseNoCarryMontySquare & "]":
+        block: # 0² mod
+          var n: Fp[C]
+
+          n.fromUint(0'u32)
+          let expected = n
+
+          var r: Fp[C]
+          r.square(n)
+
+          check: bool(r == expected)
+
+        block: # 1² mod
+          var n: Fp[C]
+
+          n.fromUint(1'u32)
+          let expected = n
+
+          var r: Fp[C]
+          r.square(n)
+
+          check: bool(r == expected)
+
+        block: # 2² mod
+          var n, expected: Fp[C]
+
+          n.fromUint(2'u32)
+          expected.fromUint(4'u32)
+
+          var r: Fp[C]
+          r.square(n)
+
+          check: bool(r == expected)
+
 proc mainSanity() =
   suite "Modular squaring is consistent with multiplication on special elements":
-    test "Squaring 0,1,2 mod 101 [FastSquaring = " & $Fake101.canUseNoCarryMontySquare & "]":
-      block: # 0² mod
-        var n: Fp[Fake101]
-
-        n.fromUint(0'u32)
-        let expected = n
-
-        var r: Fp[Fake101]
-        r.square(n)
-
-        check: bool(r == expected)
-
-      block: # 1² mod
-        var n: Fp[Fake101]
-
-        n.fromUint(1'u32)
-        let expected = n
-
-        var r: Fp[Fake101]
-        r.square(n)
-
-        check: bool(r == expected)
-
-      block: # 2² mod
-        var n, expected: Fp[Fake101]
-
-        n.fromUint(2'u32)
-        expected.fromUint(4'u32)
-
-        var r: Fp[Fake101]
-        r.square(n)
-
-        check: bool(r == expected)
-
-    test "Squaring 0,1,2 mod 2^61-1 [FastSquaring = " & $Mersenne61.canUseNoCarryMontySquare & "]":
-      block: # 0² mod
-        var n: Fp[Mersenne61]
-
-        n.fromUint(0'u32)
-        let expected = n
-
-        var r: Fp[Mersenne61]
-        r.square(n)
-
-        check: bool(r == expected)
-
-      block: # 1² mod
-        var n: Fp[Mersenne61]
-
-        n.fromUint(1'u32)
-        let expected = n
-
-        var r: Fp[Mersenne61]
-        r.square(n)
-
-        check: bool(r == expected)
-
-      block: # 2² mod
-        var n, expected: Fp[Mersenne61]
-
-        n.fromUint(2'u32)
-        expected.fromUint(4'u32)
-
-        var r: Fp[Mersenne61]
-        r.square(n)
-
-        check: bool(r == expected)
-
-    test "Squaring 0,1,2 mod 2^127-1 [FastSquaring = " & $Mersenne127.canUseNoCarryMontySquare & "]":
-      block: # 0² mod
-        var n: Fp[Mersenne127]
-
-        n.fromUint(0'u32)
-        let expected = n
-
-        var r: Fp[Mersenne127]
-        r.square(n)
-
-        check: bool(r == expected)
-
-      block: # 1² mod
-        var n: Fp[Mersenne127]
-
-        n.fromUint(1'u32)
-        let expected = n
-
-        var r: Fp[Mersenne127]
-        r.square(n)
-
-        check: bool(r == expected)
-
-      block: # 2² mod
-        var n, expected: Fp[Mersenne127]
-
-        n.fromUint(2'u32)
-        expected.fromUint(4'u32)
-
-        var r: Fp[Mersenne127]
-        r.square(n)
-
-        check: bool(r == expected)
-
-    test "Squaring 0,1,2 mod P-224 [FastSquaring = " & $P224.canUseNoCarryMontySquare & "]":
-      # P224 can use the fast path in 32-bit mode but not in 64-bit mode
-      block: # 0² mod
-        var n: Fp[P224]
-
-        n.fromUint(0'u32)
-        let expected = n
-
-        var r: Fp[P224]
-        r.square(n)
-
-        check: bool(r == expected)
-
-      block: # 1² mod
-        var n: Fp[P224]
-
-        n.fromUint(1'u32)
-        let expected = n
-
-        var r: Fp[P224]
-        r.square(n)
-
-        var r2: Fp[P224]
-        r2.prod(n, n)
-
-        check: bool(r == expected)
-
-      block: # 2² mod
-        var n, expected: Fp[P224]
-
-        n.fromUint(2'u32)
-        expected.fromUint(4'u32)
-
-        var r: Fp[P224]
-        r.square(n)
-
-        check: bool(r == expected)
-
-    test "Squaring 0,1,2 mod P-256 [FastSquaring = " & $P256.canUseNoCarryMontySquare & "]":
-      block: # 0² mod
-        var n: Fp[P256]
-
-        n.fromUint(0'u32)
-        let expected = n
-
-        var r: Fp[P256]
-        r.square(n)
-
-        check: bool(r == expected)
-
-      block: # 1² mod
-        var n: Fp[P256]
-
-        n.fromUint(1'u32)
-        let expected = n
-
-        var r: Fp[P256]
-        r.square(n)
-
-        var r2: Fp[P256]
-        r2.prod(n, n)
-
-        check: bool(r == expected)
-
-      block: # 2² mod
-        var n, expected: Fp[P256]
-
-        n.fromUint(2'u32)
-        expected.fromUint(4'u32)
-
-        var r: Fp[P256]
-        r.square(n)
-
-        check: bool(r == expected)
-
-    test "Squaring 0,1,2 mod BLS12_381 [FastSquaring = " & $BLS12_381.canUseNoCarryMontySquare & "]":
-      block: # 0² mod
-        var n: Fp[BLS12_381]
-
-        n.fromUint(0'u32)
-        let expected = n
-
-        var r: Fp[BLS12_381]
-        r.square(n)
-
-        check: bool(r == expected)
-
-      block: # 1² mod
-        var n: Fp[BLS12_381]
-
-        n.fromUint(1'u32)
-        let expected = n
-
-        var r: Fp[BLS12_381]
-        r.square(n)
-
-        var r2: Fp[BLS12_381]
-        r2.prod(n, n)
-
-        check: bool(r == expected)
-
-      block: # 2² mod
-        var n, expected: Fp[BLS12_381]
-
-        n.fromUint(2'u32)
-        expected.fromUint(4'u32)
-
-        var r: Fp[BLS12_381]
-        r.square(n)
-
-        check: bool(r == expected)
+    sanity Fake101
+    sanity Mersenne61
+    sanity Mersenne127
+    sanity P224         # P224 uses the fast-path with 64-bit words and the slow path with 32-bit words
+    sanity P256
+    sanity BLS12_381
 
 mainSanity()
 
