@@ -86,7 +86,7 @@ macro staticFor(idx: untyped{nkIdent}, start, stopEx: static int, body: untyped)
 #       the code generated is already big enough for curve with different
 #       limb sizes, we want to use the same codepath when limbs lenght are compatible.
 
-func montyMul_CIOS_nocarry_unrolled(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
+func montyMul_CIOS_nocarry(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   ## Montgomery Multiplication using Coarse Grained Operand Scanning (CIOS)
   ## and no-carry optimization.
   ## This requires the most significant word of the Modulus
@@ -137,23 +137,21 @@ func montyMul_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   var tNp1: Carry
 
   staticFor i, 0, N:
-    var C = Zero
-
+    var A = Zero
     # Multiplication
     staticFor j, 0, N:
-      # (C, t[j]) <- a[j] * b[i] + t[j] + C
-      muladd2(C, t[j], a[j], b[i], t[j], C)
-    addC(tNp1, tN, tN, C, Carry(0))
+      # (A, t[j]) <- a[j] * b[i] + t[j] + A
+      muladd2(A, t[j], a[j], b[i], t[j], A)
+    addC(tNp1, tN, tN, A, Carry(0))
 
     # Reduction
     #  m        <- (t[0] * m0ninv) mod 2^w
     # (C, _)    <- m * M[0] + t[0]
-    var lo: Word
-    C = Zero
+    var C, lo = Zero
     let m = t[0] * Word(m0ninv)
     muladd1(C, lo, m, M[0], t[0])
     staticFor j, 1, N:
-      # (C, t[j]) <- a[j] * b[i] + t[j] + C
+      # (C, t[j-1]) <- m*M[j] + t[j] + C
       muladd2(C, t[j-1], m, M[j], t[j], C)
 
     #  (C,t[N-1]) <- t[N] + C
@@ -165,6 +163,98 @@ func montyMul_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   # t[N+1] can only be non-zero in the intermediate computation
   # since it is immediately reduce to t[N] at the end of each "i" iteration
   # However if t[N] is non-zero we have t > M
+  discard t.csub(M, tN.isNonZero() or not(t < M)) # TODO: (t >= M) is unnecessary for prime in the form (2^64)^w
+  r = t
+
+func montySquare_CIOS_nocarry(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
+  ## Montgomery Multiplication using Coarse Grained Operand Scanning (CIOS)
+  ## and no-carry optimization.
+  ## This requires the most significant word of the Modulus
+  ##   M[^1] < high(Word) shr 2 (i.e. less than 0b00111...1111)
+  ## https://hackmd.io/@zkteam/modular_multiplication
+
+  # We want all the computation to be kept in registers
+  # hence we use a temporary `t`, hoping that the compiler does it.
+  var t: typeof(M) # zero-init
+  const N = t.len
+  staticFor i, 0, N:
+    # Squaring
+    var
+      A1: Carry
+      A0: Word
+    # (A0, t[i]) <- a[i] * a[i] + t[i]
+    muladd1(A0, t[i], a[i], a[i], t[i])
+    staticFor j, i+1, N:
+      # (A1, A0, t[j]) <- 2*a[j]*a[i] + t[j] + (A1, A0)
+      # 2*a[j]*a[i] can spill 1-bit on a 3rd word
+      mulDoubleAdd2(A1, A0, t[j], a[j], a[i], t[j], A1, A0)
+
+    # Reduction
+    #  m        <- (t[0] * m0ninv) mod 2^w
+    # (C, _)    <- m * M[0] + t[0]
+    let m = t[0] * Word(m0ninv)
+    var C, lo: Word
+    muladd1(C, lo, m, M[0], t[0])
+    staticFor j, 1, N:
+      # (C, t[j-1]) <- m*M[j] + t[j] + C
+      muladd2(C, t[j-1], m, M[j], t[j], C)
+
+    t[N-1] = C + A0
+
+  discard t.csub(M, not(t < M))
+  r = t
+
+func montySquare_CIOS(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
+  ## Montgomery Multiplication using Coarse Grained Operand Scanning (CIOS)
+  ##
+  ## Architectural Support for Long Integer Modulo Arithmetic on Risc-Based Smart Cards
+  ## Johann Großschädl, 2003
+  ## https://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=95950BAC26A728114431C0C7B425E022?doi=10.1.1.115.3276&rep=rep1&type=pdf
+  ##
+  ## Analyzing and Comparing Montgomery Multiplication Algorithms
+  ## Koc, Acar, Kaliski, 1996
+  ## https://www.semanticscholar.org/paper/Analyzing-and-comparing-Montgomery-multiplication-Ko%C3%A7-Acar/5e3941ff482ec3ee41dc53c3298f0be085c69483
+
+  # We want all the computation to be kept in registers
+  # hence we use a temporary `t`, hoping that the compiler does it.
+  var t: typeof(M) # zero-init
+  const N = t.len
+  # Extra words to handle up to 2 carries t[N] and t[N+1]
+  var tNp1: Word
+  var tN: Word
+
+  staticFor i, 0, N:
+    # Squaring
+    var
+      A1: Carry
+      A0: Word
+    # (A0, t[i]) <- a[i] * a[i] + t[i]
+    muladd1(A0, t[i], a[i], a[i], t[i])
+    staticFor j, i+1, N:
+      # (A1, A0, t[j]) <- 2*a[j]*a[i] + t[j] + (A1, A0)
+      # 2*a[j]*a[i] can spill 1-bit on a 3rd word
+      mulDoubleAdd2(A1, A0, t[j], a[j], a[i], t[j], A1, A0)
+
+    var carryS: Carry
+    addC(carryS, tN, tN, A0, Carry(0))
+    addC(carryS, tNp1, Word(A1), Zero, carryS)
+
+    # Reduction
+    #  m        <- (t[0] * m0ninv) mod 2^w
+    # (C, _)    <- m * M[0] + t[0]
+    var C, lo: Word
+    let m = t[0] * Word(m0ninv)
+    muladd1(C, lo, m, M[0], t[0])
+    staticFor j, 1, N:
+      # (C, t[j-1]) <- m*M[j] + t[j] + C
+      muladd2(C, t[j-1], m, M[j], t[j], C)
+
+    #  (C,t[N-1]) <- t[N] + C
+    #  (_, t[N])  <- t[N+1] + C
+    var carryR: Carry
+    addC(carryR, t[N-1], tN, C, Carry(0))
+    addC(carryR, tN, Word(tNp1), Zero, carryR)
+
   discard t.csub(M, tN.isNonZero() or not(t < M)) # TODO: (t >= M) is unnecessary for prime in the form (2^64)^w
   r = t
 
@@ -206,15 +296,19 @@ func montyMul*(
   # of Montgomery-friendly m0ninv if the compiler deems it interesting,
   # or we use `when m0ninv == 1` and enforce the inlining.
   when canUseNoCarryMontyMul:
-    montyMul_CIOS_nocarry_unrolled(r, a, b, M, m0ninv)
+    montyMul_CIOS_nocarry(r, a, b, M, m0ninv)
   else:
     montyMul_CIOS(r, a, b, M, m0ninv)
 
 func montySquare*(r: var Limbs, a, M: Limbs,
-                  m0ninv: static BaseType, canUseNoCarryMontyMul: static bool) {.inline.} =
+                  m0ninv: static BaseType, canUseNoCarryMontySquare: static bool) {.inline.} =
   ## Compute r <- a^2 (mod M) in the Montgomery domain
   ## `negInvModWord` = -1/M (mod Word). Our words are 2^31 or 2^63
-  montyMul(r, a, a, M, m0ninv, canUseNoCarryMontyMul)
+
+  when canUseNoCarryMontySquare:
+    montySquare_CIOS_nocarry(r, a, M, m0ninv)
+  else:
+    montySquare_CIOS(r, a, M, m0ninv)
 
 func redc*(r: var Limbs, a, one, M: Limbs,
            m0ninv: static BaseType, canUseNoCarryMontyMul: static bool) {.inline.} =

@@ -148,7 +148,7 @@ func prod*(r: var Fp, a, b: Fp) =
 
 func square*(r: var Fp, a: Fp) =
   ## Squaring modulo p
-  r.mres.montySquare(a.mres, Fp.C.Mod.mres, Fp.C.getNegInvModWord(), Fp.C.canUseNoCarryMontyMul())
+  r.mres.montySquare(a.mres, Fp.C.Mod.mres, Fp.C.getNegInvModWord(), Fp.C.canUseNoCarryMontySquare())
 
 func neg*(r: var Fp, a: Fp) =
   ## Negate modulo p

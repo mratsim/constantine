@@ -12,7 +12,7 @@
 #
 # ############################################################
 
-import ./constant_time_types
+import ./constant_time_types, ./addcarry_subborrow
 
 # ############################################################
 #
@@ -36,6 +36,16 @@ func unsafeDiv2n1n*(q, r: var Ct[uint32], n_hi, n_lo, d: Ct[uint32]) {.inline.}=
   let divisor = uint64(d)
   q = (Ct[uint32])(dividend div divisor)
   r = (Ct[uint32])(dividend mod divisor)
+
+func mul*(hi, lo: var Ct[uint32], a, b: Ct[uint32]) {.inline.} =
+  ## Extended precision multiplication
+  ## (hi, lo) <- a*b
+  ##
+  ## This is constant-time on most hardware
+  ## See: https://www.bearssl.org/ctmul.html
+  let dblPrec = uint64(a) * uint64(b)
+  lo = (Ct[uint32])(dblPrec)
+  hi = (Ct[uint32])(dblPrec shr 32)
 
 func muladd1*(hi, lo: var Ct[uint32], a, b, c: Ct[uint32]) {.inline.} =
   ## Extended precision multiplication + addition
@@ -70,13 +80,49 @@ func muladd2*(hi, lo: var Ct[uint32], a, b, c1, c2: Ct[uint32]) {.inline.}=
 
 when sizeof(int) == 8:
   when defined(vcc):
-    from ./extended_precision_x86_64_msvc import unsafeDiv2n1n, muladd1, muladd2
+    from ./extended_precision_x86_64_msvc import unsafeDiv2n1n, mul, muladd1, muladd2
   elif GCCCompatible:
     # TODO: constant-time div2n1n
     when X86:
       from ./extended_precision_x86_64_gcc import unsafeDiv2n1n
-      from ./extended_precision_64bit_uint128 import muladd1, muladd2
+      from ./extended_precision_64bit_uint128 import mul, muladd1, muladd2
     else:
-      from ./extended_precision_64bit_uint128 import unsafeDiv2n1n, muladd1, muladd2
-
+      from ./extended_precision_64bit_uint128 import unsafeDiv2n1n, mul, muladd1, muladd2
   export unsafeDiv2n1n, muladd1, muladd2
+
+# ############################################################
+#
+#                  Composite primitives
+#
+# ############################################################
+
+func mulDoubleAdd2*[T: Ct[uint32]|Ct[uint64]](r2: var Carry, r1, r0: var T, a, b, c: T, dHi: Carry, dLo: T) {.inline.} =
+  ## (r2, r1, r0) <- 2*a*b + c + (dHi, dLo)
+  ## with r = (r2, r1, r0) a triple-word number
+  ## and d = (dHi, dLo) a double-word number
+  ## r2 and dHi are carries, either 0 or 1
+
+  var carry: Carry
+
+  # (r1, r0) <- a*b
+  # Note: 0xFFFFFFFF_FFFFFFFF² -> (hi: 0xFFFFFFFF_FFFFFFFE, lo: 0x00000000_00000001)
+  mul(r1, r0, a, b)
+
+  # (r2, r1, r0) <- 2*a*b
+  # Then  (hi: 0xFFFFFFFF_FFFFFFFE, lo: 0x00000000_00000001) * 2
+  #       (carry: 1, hi: 0xFFFFFFFF_FFFFFFFC, lo: 0x00000000_00000002)
+  addC(carry, r0, r0, r0, Carry(0))
+  addC(r2, r1, r1, r1, carry)
+
+  # (r1, r0) <- (r1, r0) + c
+  # Adding any uint64 cannot overflow into r2 for example Adding 2^64-1
+  #       (carry: 1, hi: 0xFFFFFFFF_FFFFFFFD, lo: 0x00000000_00000001)
+  addC(carry, r0, r0, c, Carry(0))
+  addC(carry, r1, r1, T(0), carry)
+
+  # (r1, r0) <- (r1, r0) + (dHi, dLo) with dHi a carry (previous limb r2)
+  # (dHi, dLo) is at most (dhi: 1, dlo: 0xFFFFFFFF_FFFFFFFF)
+  # summing into (carry: 1, hi: 0xFFFFFFFF_FFFFFFFD, lo: 0x00000000_00000001)
+  # result at most in (carry: 1, hi: 0xFFFFFFFF_FFFFFFFF, lo: 0x00000000_00000000)
+  addC(carry, r0, r0, dLo, Carry(0))
+  addC(carry, r1, r1, T(dHi), carry)

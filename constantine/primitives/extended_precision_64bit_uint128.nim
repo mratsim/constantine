@@ -36,6 +36,24 @@ func unsafeDiv2n1n*(q, r: var Ct[uint64], n_hi, n_lo, d: Ct[uint64]) {.inline.}=
     {.emit:["*",q, " = (NU64)(", dblPrec," / ", d, ");"].}
     {.emit:["*",r, " = (NU64)(", dblPrec," % ", d, ");"].}
 
+func mul*(hi, lo: var Ct[uint64], a, b: Ct[uint64]) {.inline.} =
+  ## Extended precision multiplication
+  ## (hi, lo) <- a*b
+  ##
+  ## This is constant-time on most hardware
+  ## See: https://www.bearssl.org/ctmul.html
+  block:
+    var dblPrec {.noInit.}: uint128
+    {.emit:[dblPrec, " = (unsigned __int128)", a," * (unsigned __int128)", b,";"].}
+
+    # Don't forget to dereference the var param in C mode
+    when defined(cpp):
+      {.emit:[hi, " = (NU64)(", dblPrec," >> ", 64'u64, ");"].}
+      {.emit:[lo, " = (NU64)", dblPrec,";"].}
+    else:
+      {.emit:["*",hi, " = (NU64)(", dblPrec," >> ", 64'u64, ");"].}
+      {.emit:["*",lo, " = (NU64)", dblPrec,";"].}
+
 func muladd1*(hi, lo: var Ct[uint64], a, b, c: Ct[uint64]) {.inline.} =
   ## Extended precision multiplication + addition
   ## (hi, lo) <- a*b + c
