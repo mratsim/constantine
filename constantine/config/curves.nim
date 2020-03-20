@@ -13,6 +13,7 @@ import
   ./curves_parser, ./common,
   ../arithmetic/[precomputed, bigints]
 
+{.push used.}
 
 # ############################################################
 #
@@ -40,27 +41,23 @@ import
 #   which returns the field modulus of the curve
 when not defined(testingCurves):
   declareCurves:
-    # Barreto-Naehrig curve, pairing-friendly, Prime 254 bit, ~100-bit security
-    # https://eprint.iacr.org/2013/879.pdf
-    # Usage: Zero-Knowledge Proofs / zkSNARKs in ZCash and Ethereum 1
-    #        https://eips.ethereum.org/EIPS/eip-196
+    curve P224: # NIST P-224
+      bitsize: 224
+      modulus: "0xffffffff_ffffffff_ffffffff_ffffffff_00000000_00000000_00000001"
     curve BN254:
       bitsize: 254
       modulus: "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"
       # Equation: Y^2 = X^3 + 3
-    curve BLS12_381:
-      bitsize: 381
-      modulus: "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab"
-      # Equation: y^2 = x^3 + 4
-    curve P224: # NIST P-224
-      bitsize: 224
-      modulus: "0xffffffff_ffffffff_ffffffff_ffffffff_00000000_00000000_00000001"
     curve P256: # secp256r1 / NIST P-256
       bitsize: 256
       modulus: "0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff"
     curve Secp256k1: # Bitcoin curve
       bitsize: 256
       modulus: "0xFFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2F"
+    curve BLS12_381:
+      bitsize: 381
+      modulus: "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab"
+      # Equation: y^2 = x^3 + 4
 else:
   # Fake curve for testing field arithmetic
   declareCurves:
@@ -76,12 +73,75 @@ else:
     curve P224: # NIST P-224
       bitsize: 224
       modulus: "0xffffffff_ffffffff_ffffffff_ffffffff_00000000_00000000_00000001"
+    curve BN254: # Zero-Knowledge proofs curve (SNARKS, STARKS)
+      bitsize: 254
+      modulus: "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"
+      # Equation: Y^2 = X^3 + 3
     curve P256: # secp256r1 / NIST P-256
       bitsize: 256
       modulus: "0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff"
+    curve Secp256k1: # Bitcoin curve
+      bitsize: 256
+      modulus: "0xFFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2F"
     curve BLS12_381:
       bitsize: 381
       modulus: "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab"
+      # Equation: y^2 = x^3 + 4
+
+# ############################################################
+#
+#                   Curve Families
+#
+# ############################################################
+type CurveFamily = enum
+  None
+  BN   # Barreto-Naehrig
+  BLS  # Barreto-Lynn-Scott
+
+func family*(curve: Curve): CurveFamily =
+  case curve
+  of BN254:
+    BN
+  of BLS12_381:
+    BLS
+  else:
+    None
+
+# ############################################################
+#
+#              Curve Specific Parameters
+#
+# ############################################################
+#
+# In the form CurveXXX_ParameterName where CurveXXX is the curve name + number of bits
+# of the field modulus
+
+# BN Curves
+# ------------------------------------------------------------
+# See https://tools.ietf.org/id/draft-yonezawa-pairing-friendly-curves-00.html
+#
+# The prime p and order r are primes and of the form
+# p = 36u^4 + 36u^3 + 24u^2 + 6u + 1
+# r = 36u^4 + 36u^3 + 18u^2 + 6u + 1
+#
+# https://eprint.iacr.org/2010/429.pdf
+# https://eprint.iacr.org/2013/879.pdf
+# Usage: Zero-Knowledge Proofs / zkSNARKs in ZCash and Ethereum 1
+#        https://eips.ethereum.org/EIPS/eip-196
+
+# BLS Curves
+# ------------------------------------------------------------
+# See https://tools.ietf.org/id/draft-yonezawa-pairing-friendly-curves-00.html
+#
+# BLS12 curves
+#   The prime p and order r are primes and of the form
+#   p = (u - 1)^2 (u^4 - u^2 + 1)/3 + u
+#   r = u^4 - u^2 + 1
+#
+# BLS48 curves
+#   The prime p and order r are primes and of the form
+#   p = (u - 1)^2 (u^16 - u^8 + 1)/3 + u
+#   r = u^16 - u^8 + 1
 
 # ############################################################
 #
@@ -147,6 +207,7 @@ macro genMontyMagics(T: typed): untyped =
         )
       )
     )
+
     # const MyCurve_NegInvModWord = negInvModWord(MyCurve_Modulus)
     result.add newConstStmt(
       ident($curve & "_NegInvModWord"), newCall(
@@ -171,6 +232,16 @@ macro genMontyMagics(T: typed): untyped =
     result.add newConstStmt(
       ident($curve & "_InvModExponent"), newCall(
         bindSym"primeMinus2_BE",
+        nnkDotExpr.newTree(
+          bindSym($curve & "_Modulus"),
+          ident"mres"
+        )
+      )
+    )
+    # const MyCurve_PrimePlus1div2 = primePlus1div2(MyCurve_Modulus)
+    result.add newConstStmt(
+      ident($curve & "_PrimePlus1div2"), newCall(
+        bindSym"primePlus1div2",
         nnkDotExpr.newTree(
           bindSym($curve & "_Modulus"),
           ident"mres"
@@ -208,6 +279,10 @@ macro getInvModExponent*(C: static Curve): untyped =
   ## Get modular inversion exponent (Modulus-2 in canonical representation)
   result = bindSym($C & "_InvModExponent")
 
+macro getPrimePlus1div2*(C: static Curve): untyped =
+  ## Get (P+1) / 2 for an odd prime
+  result = bindSym($C & "_PrimePlus1div2")
+
 # ############################################################
 #
 #                Debug info printed at compile-time
@@ -234,5 +309,5 @@ macro debugConsts(): untyped =
   result.add quote do:
     echo "----------------------------------------------------------------------------"
 
-debug:
-  debugConsts()
+# debug:
+#   debugConsts()

@@ -13,8 +13,8 @@ import
   gmp, stew/byteutils,
   # Internal
   ../constantine/io/io_bigints,
-  ../constantine/arithmetic/bigints,
-  ../constantine/primitives/constant_time
+  ../constantine/arithmetic,
+  ../constantine/primitives
 
 # We test up to 1024-bit, more is really slow
 

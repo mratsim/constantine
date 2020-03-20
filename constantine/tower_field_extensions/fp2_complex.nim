@@ -44,7 +44,7 @@
 # TODO: Clarify some assumptions about the prime p ≡ 3 (mod 4)
 
 import
-  ../arithmetic/finite_fields,
+  ../arithmetic,
   ../config/curves,
   ./abelian_groups
 
@@ -151,7 +151,7 @@ func inv*(r: var Fp2, a: Fp2) =
   t0 += t1             # t0 = a0² + a1² (the norm / squared magnitude of a)
 
   # [1 Inv, 2 Sqr, 1 Add]
-  inv(t0)              # t0 = 1 / (a0² + a1²)
+  t0.inv(t0)           # t0 = 1 / (a0² + a1²)
 
   # [1 Inv, 2 Mul, 2 Sqr, 1 Add, 1 Neg]
   r.c0.prod(a.c0, t0)  # r0 = a0 / (a0² + a1²)

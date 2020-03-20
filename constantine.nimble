@@ -110,3 +110,18 @@ task test_no_gmp, "Run tests that don't require GMP":
 
     # 𝔽p2
     test "", "tests/test_fp2.nim"
+
+task bench, "Run benchmark with your default compiler":
+  if not dirExists "build":
+    mkDir "build"
+  exec "nim c -d:danger --verbosity:0 -o:build/bench_finite_fields_default -r --hints:off --warnings:off benchmarks/bench_finite_fields"
+
+task bench_gcc, "Run benchmark with gcc":
+  if not dirExists "build":
+    mkDir "build"
+  exec "nim c --cc:gcc -d:danger --verbosity:0 -o:build/bench_finite_fields_gcc -r --hints:off --warnings:off benchmarks/bench_finite_fields"
+
+task bench_clang, "Run benchmark with clang":
+  if not dirExists "build":
+    mkDir "build"
+  exec "nim c --cc:clang -d:danger --verbosity:0 -o:build/bench_finite_fields_clang -r --hints:off --warnings:off benchmarks/bench_finite_fields"

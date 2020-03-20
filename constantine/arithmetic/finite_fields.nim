@@ -27,7 +27,7 @@
 import
   ../primitives,
   ../config/[common, curves],
-  ./bigints, ./montgomery
+  ./bigints, ./limbs_montgomery
 
 # type
 #   `Fp`*[C: static Curve] = object
@@ -64,7 +64,7 @@ func fromBig*[C: static Curve](dst: var Fp[C], src: BigInt) {.noInit.} =
   dst.mres.montyResidue(src, C.Mod.mres, C.getR2modP(), C.getNegInvModWord(), C.canUseNoCarryMontyMul())
 
 func toBig*(src: Fp): auto {.noInit.} =
-  ## Convert a finite-field element to a BigInt in natral representation
+  ## Convert a finite-field element to a BigInt in natural representation
   var r {.noInit.}: typeof(src.mres)
   r.redc(src.mres, Fp.C.Mod.mres, Fp.C.getNegInvModWord(), Fp.C.canUseNoCarryMontyMul())
   return r
@@ -193,17 +193,6 @@ func powUnsafeExponent*(a: var Fp, exponent: BigInt) =
     Fp.C.canUseNoCarryMontyMul()
   )
 
-func inv*(a: var Fp) =
-  ## Inversion modulo p
-  ## Warning ⚠️ :
-  ##   - This assumes that `Fp` is a prime field
-  const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.montyPowUnsafeExponent(
-    Fp.C.getInvModExponent(),
-    Fp.C.Mod.mres, Fp.C.getMontyOne(),
-    Fp.C.getNegInvModWord(), windowSize,
-    Fp.C.canUseNoCarryMontyMul()
-  )
 
 # ############################################################
 #
@@ -235,12 +224,8 @@ func `*`*(a, b: Fp): Fp {.noInit.} =
 
 func `*=`*(a: var Fp, b: Fp) =
   ## Multiplication modulo p
-  ##
-  ## Implementation note:
-  ## - This requires a temporary field element
-  ##
-  ## Cost
-  ## Stack: 1 * ModulusBitSize
-  var tmp{.noInit.}: Fp
-  tmp.prod(a, b)
-  a = tmp
+  a.prod(a, b)
+
+func square*(a: var Fp) =
+  ## Squaring modulo p
+  a.mres.montySquare(a.mres, Fp.C.Mod.mres, Fp.C.getNegInvModWord(), Fp.C.canUseNoCarryMontySquare())

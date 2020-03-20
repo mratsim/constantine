@@ -11,7 +11,7 @@ import
   unittest,
   # Third-party
   ../constantine/io/io_bigints,
-  ../constantine/arithmetic/bigints,
+  ../constantine/arithmetic,
   ../constantine/primitives
 
 proc main() =

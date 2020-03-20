@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  unittest,
-        ../constantine/arithmetic/finite_fields,
+        ../constantine/arithmetic,
         ../constantine/io/io_fields,
         ../constantine/config/curves
 

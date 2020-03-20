@@ -33,7 +33,7 @@
 
 
 import
-  ../arithmetic/finite_fields,
+  ../arithmetic,
   ../config/curves,
   ./abelian_groups
 

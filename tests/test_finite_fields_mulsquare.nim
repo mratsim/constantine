@@ -7,11 +7,11 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  std/unittest, std/times,
-        ../constantine/arithmetic/[bigints, finite_fields],
+        ../constantine/arithmetic,
         ../constantine/io/[io_bigints, io_fields],
         ../constantine/config/curves,
         # Test utilities
-        ./prng
+        ../helpers/prng
 
 const Iters = 128
 
@@ -25,17 +25,22 @@ static: doAssert defined(testingCurves), "This modules requires the -d:testingCu
 import ../constantine/config/common
 
 proc sanity(C: static Curve) =
-  test "Squaring 0,1,2 with "& $C & " [FastSquaring = " & $Fake101.canUseNoCarryMontySquare & "]":
+  test "Squaring 0,1,2 with "& $Curve(C) & " [FastSquaring = " & $C.canUseNoCarryMontySquare & "]":
         block: # 0² mod
           var n: Fp[C]
 
           n.fromUint(0'u32)
           let expected = n
 
+          # Out-of-place
           var r: Fp[C]
           r.square(n)
+          # In-place
+          n.square()
 
-          check: bool(r == expected)
+          check:
+            bool(r == expected)
+            bool(n == expected)
 
         block: # 1² mod
           var n: Fp[C]
@@ -43,10 +48,15 @@ proc sanity(C: static Curve) =
           n.fromUint(1'u32)
           let expected = n
 
+          # Out-of-place
           var r: Fp[C]
           r.square(n)
+          # In-place
+          n.square()
 
-          check: bool(r == expected)
+          check:
+            bool(r == expected)
+            bool(n == expected)
 
         block: # 2² mod
           var n, expected: Fp[C]
@@ -54,10 +64,15 @@ proc sanity(C: static Curve) =
           n.fromUint(2'u32)
           expected.fromUint(4'u32)
 
+          # Out-of-place
           var r: Fp[C]
           r.square(n)
+          # In-place
+          n.square()
 
-          check: bool(r == expected)
+          check:
+            bool(r == expected)
+            bool(n == expected)
 
 proc mainSanity() =
   suite "Modular squaring is consistent with multiplication on special elements":

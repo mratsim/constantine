@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  unittest,
-        ../constantine/arithmetic/[bigints, finite_fields],
+        ../constantine/arithmetic,
         ../constantine/io/[io_bigints, io_fields],
         ../constantine/config/curves
 
@@ -144,14 +144,14 @@ proc main() =
 
   suite "Modular inversion over prime fields":
     test "x^(-1) mod p":
-        var x: Fp[BLS12_381]
+        var r, x: Fp[BLS12_381]
 
         # BN254 field modulus
         x.fromHex("0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47")
 
         let expected = "0x0636759a0f3034fa47174b2c0334902f11e9915b7bd89c6a2b3082b109abbc9837da17201f6d8286fe6203caa1b9d4c8"
-        x.inv()
-        let computed = x.toHex()
+        r.inv(x)
+        let computed = r.toHex()
 
         check:
           computed == expected

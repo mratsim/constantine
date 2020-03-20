@@ -10,7 +10,7 @@ import  unittest, random,
         ../constantine/io/[io_bigints, io_fields],
         ../constantine/config/curves,
         ../constantine/config/common,
-        ../constantine/arithmetic/[bigints, finite_fields]
+        ../constantine/arithmetic
 
 randomize(0xDEADBEEF) # Random seed for reproducibility
 type T = BaseType

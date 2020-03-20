@@ -21,7 +21,7 @@ import
 # Note: Montgomery multiplications and squarings are the biggest bottlenecks
 #       of an elliptic curve library, asymptotically 100% of the costly algorithms:
 #       - field exponentiation
-#       - field inversion
+#       - field inversion via Little Fermat
 #       - extension towers multiplication, squarings, inversion
 #       - elliptic curve point addition
 #       - elliptic curve point doubling
@@ -79,6 +79,9 @@ macro staticFor(idx: untyped{nkIdent}, start, stopEx: static int, body: untyped)
       ident("unrolledIter_" & $idx & $i),
       body.replaceNodes(idx, newLit i)
     )
+
+# No exceptions allowed
+{.push raises: [].}
 
 # Implementation
 # ------------------------------------------------------------
@@ -565,3 +568,5 @@ func montyPowUnsafeExponent*(
         # scratchspace[1] holds the original `a`
         scratchspace[0].montyMul(a, scratchspace[1], M, negInvModWord, canUseNoCarryMontyMul)
       a = scratchspace[0]
+
+{.pop.} # raises no exceptions

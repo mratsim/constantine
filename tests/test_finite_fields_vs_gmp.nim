@@ -13,17 +13,20 @@ import
   gmp, stew/byteutils,
   # Internal
   ../constantine/io/[io_bigints, io_fields],
-  ../constantine/arithmetic/[finite_fields, bigints],
-  ../constantine/primitives/constant_time,
+  ../constantine/arithmetic,
+  ../constantine/primitives,
   ../constantine/config/curves
-
-# We test up to 1024-bit, more is really slow
 
 var RNG {.compileTime.} = initRand(1234)
 const CurveParams = [
+  P224: (224, "0xffffffffffffffffffffffffffffffff000000000000000000000001"),
   BN254: (254, "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"),
+  P256: (256, "0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff"),
+  Secp256k1: (256, "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F"),
   BLS12_381: (381, "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab")
 ]
+
+const AvailableCurves = [P224, BN254, P256, Secp256k1, BLS12_381]
 
 const # https://gmplib.org/manual/Integer-Import-and-Export.html
   GMP_WordLittleEndian = -1'i32
@@ -53,7 +56,7 @@ proc binary_prologue[C: static Curve, N: static int](
   mpz_urandomb(b, gmpRng, uint bits)
   # Set modulus to curve modulus
   let err = mpz_set_str(p, CurveParams[C][1], 0)
-  doAssert err == 0
+  doAssert err == 0, "Error on prime for curve " & $Curve(C)
 
   #########################################################
   # Conversion buffers
@@ -189,8 +192,8 @@ proc invTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curv
   let exist = mpz_invert(r, a, p)
   doAssert exist != 0
 
-  var rTest = aTest
-  rTest.inv()
+  var rTest {.noInit.}: Fp[C]
+  rTest.inv(aTest)
 
   binary_epilogue(r, a, b, rTest, aBuf, bBuf, "Inversion (b is unused)")
 
@@ -206,7 +209,7 @@ macro randomTests(numTests: static int, curveSym, body: untyped): untyped =
   result = newStmtList()
 
   for _ in 0 ..< numTests:
-    let curve = RNG.rand([BN254, BLS12_381])
+    let curve = RNG.rand(AvailableCurves)
 
     result.add quote do:
       block:

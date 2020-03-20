@@ -12,9 +12,9 @@ import
   # Internals
   ../constantine/tower_field_extensions/[abelian_groups, fp2_complex],
   ../constantine/config/[common, curves],
-  ../constantine/arithmetic/bigints,
+  ../constantine/arithmetic,
   # Test utilities
-  ./prng
+  ../helpers/prng
 
 const Iters = 128
 

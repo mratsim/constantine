@@ -32,7 +32,7 @@
 #     https://eprint.iacr.org/2010/354
 
 import
-  ../arithmetic/finite_fields,
+  ../arithmetic,
   ../config/curves,
   ./abelian_groups
 

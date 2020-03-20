@@ -9,8 +9,7 @@
 import
   ../config/common,
   ../primitives,
-  ./limbs,
-  ./montgomery
+  ./limbs, ./limbs_montgomery, ./limbs_modular
 
 # ############################################################
 #
@@ -87,25 +86,16 @@ debug:
   func `$`*(a: BigInt): string =
     result = "BigInt["
     result.add $BigInt.bits
-    result.add "](limbs: ["
-    result.add $BaseType(a.limbs[0]) & " (0x" & toHex(BaseType(a.limbs[0])) & ')'
-    for i in 1 ..< a.limbs.len:
-      result.add ", "
-      result.add $BaseType(a.limbs[i]) & " (0x" & toHex(BaseType(a.limbs[i])) & ')'
-    result.add "])"
+    result.add "](limbs: "
+    result.add a.limbs.toString()
+    result.add ")"
 
 # No exceptions allowed
 {.push raises: [].}
 {.push inline.}
 
-func `==`*(a, b: BigInt): CTBool[Word] =
-  ## Returns true if 2 big ints are equal
-  ## Comparison is constant-time
-  a.limbs == b.limbs
-
-func isZero*(a: BigInt): CTBool[Word] =
-  ## Returns true if a big int is equal to zero
-  a.limbs.isZero
+# Initialization
+# ------------------------------------------------------------
 
 func setZero*(a: var BigInt) =
   ## Set a BigInt to 0
@@ -114,6 +104,51 @@ func setZero*(a: var BigInt) =
 func setOne*(a: var BigInt) =
   ## Set a BigInt to 1
   a.limbs.setOne()
+
+# Copy
+# ------------------------------------------------------------
+
+func ccopy*(a: var BigInt, b: BigInt, ctl: CTBool[Word]) =
+  ## Constant-time conditional copy
+  ## If ctl is true: b is copied into a
+  ## if ctl is false: b is not copied and a is untouched
+  ## Time and memory accesses are the same whether a copy occurs or not
+  ccopy(a.limbs, b.limbs, ctl)
+
+func cswap*(a, b: var BigInt, ctl: CTBool) =
+  ## Swap ``a`` and ``b`` if ``ctl`` is true
+  ##
+  ## Constant-time:
+  ## Whether ``ctl`` is true or not, the same
+  ## memory accesses are done (unless the compiler tries to be clever)
+  cswap(a.limbs, b.limbs, ctl)
+
+# Comparison
+# ------------------------------------------------------------
+
+func `==`*(a, b: BigInt): CTBool[Word] =
+  ## Returns true if 2 big ints are equal
+  ## Comparison is constant-time
+  a.limbs == b.limbs
+
+func `<`*(a, b: BigInt): CTBool[Word] =
+  ## Returns true if a < b
+  a.limbs < b.limbs
+
+func `<=`*(a, b: BigInt): CTBool[Word] =
+  ## Returns true if a <= b
+  a.limbs <= b.limbs
+
+func isZero*(a: BigInt): CTBool[Word] =
+  ## Returns true if a big int is equal to zero
+  a.limbs.isZero
+
+func isOdd*(a: BigInt): CTBool[Word] =
+  ## Returns true if a is odd
+  a.limbs.isOdd
+
+# Arithmetic
+# ------------------------------------------------------------
 
 func cadd*(a: var BigInt, b: BigInt, ctl: CTBool[Word]): CTBool[Word] =
   ## Constant-time in-place conditional addition
@@ -133,18 +168,15 @@ func cdouble*(a: var BigInt, ctl: CTBool[Word]): CTBool[Word] =
   ## The result carry is always computed.
   (CTBool[Word]) cadd(a.limbs, a.limbs, ctl)
 
-# ############################################################
-#
-#          BigInt Primitives Optimized for speed
-#
-# ############################################################
-#
-# TODO: fallback to cadd / csub with a "size" compile-option
-
 func add*(a: var BigInt, b: BigInt): CTBool[Word] =
   ## Constant-time in-place addition
   ## Returns the carry
   (CTBool[Word]) add(a.limbs, b.limbs)
+
+func add*(a: var BigInt, b: Word): CTBool[Word] =
+  ## Constant-time in-place addition
+  ## Returns the carry
+  (CTBool[Word]) add(a.limbs, b)
 
 func sub*(a: var BigInt, b: BigInt): CTBool[Word] =
   ## Constant-time in-place substraction
@@ -177,19 +209,23 @@ func double*(r: var BigInt, a: BigInt): CTBool[Word] =
   ## Returns the carry
   (CTBool[Word]) sum(r.limbs, a.limbs, a.limbs)
 
-# ############################################################
-#
-#                    Comparisons
-#
-# ############################################################
+func div2*(a: var BigInt) =
+  ## In-place divide ``a`` by 2
+  a.limbs.shiftRight(1)
 
-func `<`*(a, b: BigInt): CTBool[Word] =
-  ## Returns true if a < b
-  a.limbs < b.limbs
+func cneg*(a: var BigInt, ctl: CTBool) =
+  ## Conditional negation.
+  ## Negate if ``ctl`` is true
+  a.limbs.cneg(ctl)
 
-func `<=`*(a, b: BigInt): CTBool[Word] =
-  ## Returns true if a <= b
-  a.limbs <= b.limbs
+# Bit Manipulation
+# ------------------------------------------------------------
+
+func shiftRight*(a: var BigInt, k: int) =
+  ## Shift right by k.
+  ##
+  ## k MUST be less than the base word size (2^31 or 2^63)
+  a.limbs.shiftRight(k)
 
 # ############################################################
 #
@@ -208,6 +244,22 @@ func reduce*[aBits, mBits](r: var BigInt[mBits], a: BigInt[aBits], M: BigInt[mBi
   # but we don't want to inline it as it would increase codesize, better have Nim
   # pass a pointer+length to a fixed session of the BSS.
   reduce(r.limbs, a.limbs, aBits, M.limbs, mBits)
+
+func steinsGCD*[bits](r: var BigInt[bits], a, F, M, mp1div2: BigInt[bits]) =
+  ## Compute F multiplied the modular inverse of ``a`` modulo M
+  ## r ≡ F . a^-1 (mod M)
+  ##
+  ## M MUST be odd, M does not need to be prime.
+  ## ``a`` MUST be less than M.
+  r.limbs.steinsGCD(a.limbs, F.limbs, M.limbs, bits, mp1div2.limbs)
+
+func invmod*[bits](r: var BigInt[bits], a, M, mp1div2: BigInt[bits]) =
+  ## Compute the modular inverse of ``a`` modulo M
+  ##
+  ## The modulus ``M`` MUST be odd
+  var one {.noInit.}: BigInt[bits]
+  one.setOne()
+  r.steinsGCD(a, one, M, mp1div2)
 
 # ############################################################
 #
@@ -335,3 +387,6 @@ func montyPowUnsafeExponent*[mBits: static int](
                      else: (1 shl windowSize) + 1
   var scratchSpace {.noInit.}: array[scratchLen, Limbs[mBits.wordsRequired]]
   montyPowUnsafeExponent(a.limbs, exponent, M.limbs, one.limbs, negInvModWord, scratchSpace, canUseNoCarryMontyMul)
+
+{.pop.} # inline
+{.pop.} # raises no exceptions

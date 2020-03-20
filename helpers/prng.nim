@@ -98,5 +98,5 @@ func random[T](rng: var RngState, a: var T, C: static Curve) {.noInit.}=
       rng.random(field, C)
 
 func random*(rng: var RngState, T: typedesc): T =
-  ## Create a random Field or Extension FIeld Element
+  ## Create a random Field or Extension Field Element
   rng.random(result, T.C)

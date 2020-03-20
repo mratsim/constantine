@@ -67,6 +67,19 @@ func subB(bOut, diff: var BaseType, a, b, bIn: BaseType) =
   bOut = BaseType(noBorrowHi == 0)
   diff = merge(rHi, rLo)
 
+func add(a: var BigInt, w: BaseType): bool =
+  ## Limbs addition, add a number that fits in a word
+  ## Returns the carry
+  var carry, sum: BaseType
+  addC(carry, sum, BaseType(a.limbs[0]), w, carry)
+  a.limbs[0] = Word(sum)
+  for i in 1 ..< a.limbs.len:
+    let ai = BaseType(a.limbs[i])
+    addC(carry, sum, ai, 0, carry)
+    a.limbs[i] = Word(sum)
+
+  result = bool(carry)
+
 func dbl(a: var BigInt): bool =
   ## In-place multiprecision double
   ##   a -> 2a
@@ -246,9 +259,24 @@ func primeMinus2_BE*[bits: static int](
      ): array[(bits+7) div 8, byte] {.noInit.} =
   ## Compute an input prime-2
   ## and return the result as a canonical byte array / octet string
-  ## For use to precompute modular inverse exponent.
+  ## For use to precompute modular inverse exponent
+  ## when using inversion by Little Fermat Theorem a^-1 = a^(p-2) mod p
 
   var tmp = P
   discard tmp.csub(BigInt[bits].fromRawUint([byte 2], bigEndian), true)
 
   result.exportRawUint(tmp, bigEndian)
+
+func primePlus1div2*(P: BigInt): BigInt =
+  ## Compute (P+1)/2, assumes P is odd
+  ## For use in constant-time modular inversion
+  checkOddModulus(P)
+
+  # (P+1)/2 = P/2 + 1 if P is odd,
+  # this avoids overflowing if the prime uses all bits
+  # i.e. in the form (2^64)^w - 1 or (2^32)^w - 1
+
+  result = P
+  result.shiftRight(1)
+  let carry = result.add(1)
+  doAssert not carry
