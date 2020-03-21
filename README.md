@@ -38,7 +38,7 @@ in this order
 ## Curves supported
 
 At the moment the following curves are supported, adding a new curve only requires adding the prime modulus
-and its bitsize in [constantine/config/curves.nim]().
+and its bitsize in [constantine/config/curves.nim](constantine/config/curves.nim).
 
 The following curves are configured:
 
