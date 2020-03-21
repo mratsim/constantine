@@ -71,38 +71,45 @@ macro declareCurves*(curves: untyped): untyped =
 
     let curve = curveDesc[1]
 
-    let sizeSection = curveDesc[2][0]
+    var offset = 0
+    var testCurve = false
+    if curveDesc[2][0][0].eqident"testingCurve":
+      offset = 1
+      testCurve = curveDesc[2][0][1].boolVal
+
+    let sizeSection = curveDesc[2][offset]
     doAssert sizeSection[0].eqIdent"bitsize"
     sizeSection[1].expectKind(nnkStmtList)
     let bitSize = sizeSection[1][0]
 
-    let modSection = curveDesc[2][1]
+    let modSection = curveDesc[2][offset+1]
     doAssert modSection[0].eqIdent"modulus"
     modSection[1].expectKind(nnkStmtList)
     let modulus = modSection[1][0]
 
-    Curves.add curve
-    # "BN254: 254" for array construction
-    CurveBitSize.add nnkExprColonExpr.newTree(
-      curve, bitSize
-    )
+    if not testCurve or defined(testingCurves):
+      Curves.add curve
+      # "BN254: 254" for array construction
+      CurveBitSize.add nnkExprColonExpr.newTree(
+        curve, bitSize
+      )
 
-    # const BN254_Modulus = Fp[BN254](value: fromHex(BigInt[254], "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"))
-    let modulusID = ident($curve & "_Modulus")
-    curveModStmts.add newConstStmt(
-      modulusID,
-      nnkObjConstr.newTree(
-        nnkBracketExpr.newTree(Fp, curve),
-        nnkExprColonExpr.newTree(
-          ident"mres",
-          newCall(
-            bindSym"fromHex",
-            nnkBracketExpr.newTree(bindSym"BigInt", bitSize),
-            modulus
+      # const BN254_Modulus = Fp[BN254](value: fromHex(BigInt[254], "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"))
+      let modulusID = ident($curve & "_Modulus")
+      curveModStmts.add newConstStmt(
+        modulusID,
+        nnkObjConstr.newTree(
+          nnkBracketExpr.newTree(Fp, curve),
+          nnkExprColonExpr.newTree(
+            ident"mres",
+            newCall(
+              bindSym"fromHex",
+              nnkBracketExpr.newTree(bindSym"BigInt", bitSize),
+              modulus
+            )
           )
         )
       )
-    )
 
   # end for ---------------------------------------------------
 

@@ -15,6 +15,10 @@
   Ben Lynn, 2007\
   https://crypto.stanford.edu/pbc/thesis.pdf
 
+- An Analysis of Affine Coordinates for Pairing Computation\
+  Kristin Lauter, Peter L. Montgomery, and Michael Naehrig, 2010\
+  https://eprint.iacr.org/2010/363.pdf
+
 - Pairings for beginners\
   Craig Costello, 2012 (?)\
   http://www.craigcostello.com.au/pairings/PairingsForBeginners.pdf
@@ -30,10 +34,13 @@
   https://scholarworks.rit.edu/cgi/viewcontent.cgi?referer=&httpsredir=1&article=10083&context=theses
   https://github.com/rajeevakarv/FiniteFieldComputations
 
-
 - A taxonomy of pairings, their security, their complexity\
   Razvan Barbulescu, Nadia El Mrabet, and Loubna Ghammam, 2019\
   https://hal.archives-ouvertes.fr/hal-02129868/file/2019-485.pdf
+
+- A short-list of pairing-friendly curves resistantto Special TNFS at the 128-bit security level\
+  Aurore Guillevic\
+  https://eprint.iacr.org/2019/1371.pdf
 
 ### Presentations
 

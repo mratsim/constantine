@@ -35,6 +35,36 @@ The library focuses on following properties:
 
 in this order
 
+## Curves supported
+
+At the moment the following curves are supported, adding a new curve only requires adding the prime modulus
+and its bitsize in [constantine/config/curves.nim]().
+
+The following curves are configured:
+
+### ECDH / ECDSA curves
+
+- NIST P-224
+- Curve25519
+- NIST P-256 / Secp256r1
+- Secp256k1 (Bitcoin, Ethereum 1)
+
+### Pairing-Friendly curves
+
+Families:
+- BN: Barreto-Naerig
+- BLS: Barreto-Lynn-Scott
+- FKM: Fotiadis-Konstantinou-Martindale
+
+Curves:
+- BN254 (Zero-Knowledge Proofs, Snarks, Starks, Zcash, Ethereum 1)
+- BLS12-377 (Zexe)
+- BLS12-381 (Algorand, Chia Networks, Dfinity, Ethereum 2, Filecoin, Zcash Sapling)
+- BN446
+- FKM12-447
+- BLS12-461
+- BN462
+
 ## Security
 
 Hardening an implementation against all existing and upcoming attack vectors is an extremely complex task.
@@ -81,6 +111,50 @@ a 16-core CPU can prove 20 transfers/second or 10 transactions/second.
 The previous implementation was 15x slower and one of the key optimizations
 was changing the elliptic curve cryptography backend.
 It had a direct implication on hardware cost and/or cloud computing resources required.
+
+## Measuring performance
+
+To measure the performance of Constantine
+
+```bash
+git clone https://github.com/mratsim/constantine
+nimble bench_fp_clang
+nimble bench_fp2_clang
+```
+
+As mentioned in the [Compiler caveats](#compiler-caveats) section, GCC is up to 2x slower than Clang due to mishandling of carries and register usage.
+
+On my machine, for selected benchmarks on the prime field for popular pairing-friendly curves.
+
+```
+⚠️ Measurements are approximate and use the CPU nominal clock: Turbo-Boost and overclocking will skew them.
+==========================================================================================================
+
+All benchmarks are using constant-time implementations to protect against side-channel attacks.
+
+Compiled with Clang
+Running on Intel(R) Core(TM) i9-9980XE CPU @ 3.00GHz (overclocked all-core Turbo @4.1GHz)
+
+--------------------------------------------------------------------------------
+Addition        Fp[BN254]               0 ns         0 cycles
+Substraction    Fp[BN254]               0 ns         0 cycles
+Negation        Fp[BN254]               0 ns         0 cycles
+Multiplication  Fp[BN254]              21 ns        65 cycles
+Squaring        Fp[BN254]              18 ns        55 cycles
+Inversion       Fp[BN254]            6266 ns     18799 cycles
+--------------------------------------------------------------------------------
+Addition        Fp[BLS12_381]           0 ns         0 cycles
+Substraction    Fp[BLS12_381]           0 ns         0 cycles
+Negation        Fp[BLS12_381]           0 ns         0 cycles
+Multiplication  Fp[BLS12_381]          45 ns       136 cycles
+Squaring        Fp[BLS12_381]          39 ns       118 cycles
+Inversion       Fp[BLS12_381]       15683 ns     47050 cycles
+--------------------------------------------------------------------------------
+
+Notes:
+  GCC is significantly slower than Clang on multiprecision arithmetic.
+  The simplest operations might be optimized away by the compiler.
+```
 
 ### Compiler caveats
 

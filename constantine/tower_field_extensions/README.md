@@ -79,6 +79,10 @@ From Ben Edgington, https://hackmd.io/@benjaminion/bls12-381
   Naomi Benger and Michael Scott, 2009\
   https://eprint.iacr.org/2009/556
 
+- Faster Squaring in the Cyclotomic Subgroup of Sixth Degree Extensions\
+  Robert Granger and Michael Scott, 2009\
+  https://eprint.iacr.org/2009/565.pdf
+
 - High-Speed Software Implementation of the Optimal Ate Pairing over Barreto-Naehrig Curves\
   Jean-Luc Beuchat and Jorge Enrique González Díaz and Shigeo Mitsunari and Eiji Okamoto and Francisco Rodríguez-Henríquez and Tadanori Teruya, 2010\
   https://eprint.iacr.org/2010/354

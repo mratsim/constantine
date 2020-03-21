@@ -76,9 +76,14 @@ suite "𝔽p2 = 𝔽p[𝑖] (irreducible polynomial x²+1)":
         testInstance()
 
     test(BN254)
-    test(BLS12_381)
     test(P256)
     test(Secp256k1)
+    test(BLS12_377)
+    test(BLS12_381)
+    test(BN446)
+    test(FKM12_447)
+    test(BLS12_461)
+    test(BN462)
 
   test "Multiplication by 0 and 1":
     template test(C: static Curve, body: untyped) =
@@ -192,9 +197,14 @@ suite "𝔽p2 = 𝔽p[𝑖] (irreducible polynomial x²+1)":
           bool(r0 == r4)
 
     abelianGroup(BN254)
-    abelianGroup(BLS12_381)
-    abelianGroup(Secp256k1)
     abelianGroup(P256)
+    abelianGroup(Secp256k1)
+    abelianGroup(BLS12_377)
+    abelianGroup(BLS12_381)
+    abelianGroup(BN446)
+    abelianGroup(FKM12_447)
+    abelianGroup(BLS12_461)
+    abelianGroup(BN462)
 
   test "𝔽p2 = 𝔽p[𝑖] multiplication is associative and commutative":
     proc commutativeRing(curve: static Curve) =
@@ -239,9 +249,14 @@ suite "𝔽p2 = 𝔽p[𝑖] (irreducible polynomial x²+1)":
           bool(r0 == r4)
 
     commutativeRing(BN254)
-    commutativeRing(BLS12_381)
-    commutativeRing(Secp256k1)
     commutativeRing(P256)
+    commutativeRing(Secp256k1)
+    commutativeRing(BLS12_377)
+    commutativeRing(BLS12_381)
+    commutativeRing(BN446)
+    commutativeRing(FKM12_447)
+    commutativeRing(BLS12_461)
+    commutativeRing(BN462)
 
   test "𝔽p2 = 𝔽p[𝑖] extension field multiplicative inverse":
     proc mulInvOne(curve: static Curve) =
@@ -259,6 +274,11 @@ suite "𝔽p2 = 𝔽p[𝑖] (irreducible polynomial x²+1)":
         check: bool(r == one)
 
     mulInvOne(BN254)
-    mulInvOne(BLS12_381)
-    mulInvOne(Secp256k1)
     mulInvOne(P256)
+    mulInvOne(Secp256k1)
+    mulInvOne(BLS12_377)
+    mulInvOne(BLS12_381)
+    mulInvOne(BN446)
+    mulInvOne(FKM12_447)
+    mulInvOne(BLS12_461)
+    mulInvOne(BN462)

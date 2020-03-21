@@ -19,11 +19,17 @@ import
 
 var RNG {.compileTime.} = initRand(1234)
 const CurveParams = [
-  P224: (224, "0xffffffffffffffffffffffffffffffff000000000000000000000001"),
-  BN254: (254, "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"),
-  P256: (256, "0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff"),
-  Secp256k1: (256, "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F"),
-  BLS12_381: (381, "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab")
+  P224,
+  BN254,
+  Curve25519,
+  P256,
+  Secp256k1,
+  BLS12_377,
+  BLS12_381,
+  BN446,
+  FKM12_447,
+  BLS12_461,
+  BN462
 ]
 
 const AvailableCurves = [P224, BN254, P256, Secp256k1, BLS12_381]
@@ -49,13 +55,13 @@ proc binary_prologue[C: static Curve, N: static int](
         a, b, p: var mpz_t,
         aTest, bTest: var Fp[C],
         aBuf, bBuf: var array[N, byte]) =
-  const bits = CurveParams[C][0]
+  const bits = C.getCurveBitSize()
 
   # Generate random value in the range 0 ..< 2^(bits-1)
   mpz_urandomb(a, gmpRng, uint bits)
   mpz_urandomb(b, gmpRng, uint bits)
   # Set modulus to curve modulus
-  let err = mpz_set_str(p, CurveParams[C][1], 0)
+  let err = mpz_set_str(p, Curve(C).Mod.mres.toHex(), 0)
   doAssert err == 0, "Error on prime for curve " & $Curve(C)
 
   #########################################################
@@ -116,7 +122,7 @@ proc addTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curv
   # echo "Testing: random modular addition on ", $C
 
   const
-    bits = CurveParams[C][0]
+    bits = C.getCurveBitSize()
     bufLen = (bits + 7) div 8
   var
     aTest, bTest{.noInit.}: Fp[C]
@@ -139,7 +145,7 @@ proc subTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curv
   # echo "Testing: random modular substraction on ", $C
 
   const
-    bits = CurveParams[C][0]
+    bits = C.getCurveBitSize()
     bufLen = (bits + 7) div 8
   var
     aTest, bTest{.noInit.}: Fp[C]
@@ -162,7 +168,7 @@ proc mulTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curv
   # echo "Testing: random modular multiplication on ", $C
 
   const
-    bits = CurveParams[C][0]
+    bits = C.getCurveBitSize()
     bufLen = (bits + 7) div 8
   var
     aTest, bTest{.noInit.}: Fp[C]
@@ -182,7 +188,7 @@ proc invTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curv
   # echo "Testing: random modular inversion on ", $C
 
   const
-    bits = CurveParams[C][0]
+    bits = C.getCurveBitSize()
     bufLen = (bits + 7) div 8
   var
     aTest, bTest{.noInit.}: Fp[C]

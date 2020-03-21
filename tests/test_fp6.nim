@@ -51,7 +51,14 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
         testInstance()
 
     test(BN254)
+    test(P256)
+    test(Secp256k1)
+    test(BLS12_377)
     test(BLS12_381)
+    test(BN446)
+    test(FKM12_447)
+    test(BLS12_461)
+    test(BN462)
 
   test "Squaring 2 returns 4":
     template test(C: static Curve) =
@@ -76,7 +83,14 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
         testInstance()
 
     test(BN254)
+    test(P256)
+    test(Secp256k1)
+    test(BLS12_377)
     test(BLS12_381)
+    test(BN446)
+    test(FKM12_447)
+    test(BLS12_461)
+    test(BN462)
 
   test "Squaring 3 returns 9":
     template test(C: static Curve) =
@@ -103,7 +117,14 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
         testInstance()
 
     test(BN254)
+    test(P256)
+    test(Secp256k1)
+    test(BLS12_377)
     test(BLS12_381)
+    test(BN446)
+    test(FKM12_447)
+    test(BLS12_461)
+    test(BN462)
 
   test "Squaring -3 returns 9":
     template test(C: static Curve) =
@@ -130,4 +151,11 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
         testInstance()
 
     test(BN254)
+    test(P256)
+    test(Secp256k1)
+    test(BLS12_377)
     test(BLS12_381)
+    test(BN446)
+    test(FKM12_447)
+    test(BLS12_461)
+    test(BN462)
