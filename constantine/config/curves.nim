@@ -63,6 +63,7 @@ declareCurves:
     bitsize: 254
     modulus: "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"
     # Equation: Y^2 = X^3 + 3
+    # u: -(2^62 + 2^55 + 1)
   curve Curve25519: # Bernstein curve
     bitsize: 255
     modulus: "0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed"
@@ -82,6 +83,7 @@ declareCurves:
     bitsize: 381
     modulus: "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab"
     # Equation: y^2 = x^3 + 4
+    # u: -(2^63 + 2^62 + 2^60 + 2^57 + 2^48 + 2^16)
   curve BN446:
     bitsize: 446
     modulus: "0x2400000000000000002400000002d00000000d800000021c0000001800000000870000000b0400000057c00000015c000000132000000067"
@@ -125,7 +127,7 @@ declareCurves:
     # https://hal.archives-ouvertes.fr/hal-01534101/file/main.pdf
     bitsize: 462
     modulus: "0x240480360120023ffffffffff6ff0cf6b7d9bfca0000000000d812908f41c8020ffffffffff6ff66fc6ff687f640000000002401b00840138013"
-    # u = 2^114 + 2^101 − 2^14 − 1
+    # u = 2^114 + 2^101 - 2^14 - 1
 
 # ############################################################
 #
