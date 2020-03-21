@@ -40,10 +40,10 @@ proc main() =
   echo "-".repeat(80)
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
-    # addBench(Fp6[curve], Iters)
-    # subBench(Fp6[curve], Iters)
-    # negBench(Fp6[curve], Iters)
-    # mulBench(Fp6[curve], Iters)
+    addBench(Fp6[curve], Iters)
+    subBench(Fp6[curve], Iters)
+    negBench(Fp6[curve], Iters)
+    mulBench(Fp6[curve], Iters)
     sqrBench(Fp6[curve], Iters)
     # invBench(Fp6[curve], InvIters)
     echo "-".repeat(80)

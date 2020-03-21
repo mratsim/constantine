@@ -99,6 +99,19 @@ func diff*(r: var CubicExtAddGroup, a, b: CubicExtAddGroup) =
   r.c1.diff(a.c1, b.c1)
   r.c2.diff(a.c2, b.c2)
 
+func neg*(r: var CubicExtAddGroup, a: CubicExtAddGroup) =
+  ## Negate ``a`` and store the result into r
+  r.c0.neg(a.c0)
+  r.c1.neg(a.c1)
+  r.c2.neg(a.c2)
+
+# TODO: The type system is lost with out-of-place result concepts
+# func `+`*(a, b: CubicExtAddGroup): CubicExtAddGroup =
+#   result.sum(a, b)
+#
+# func `-`*(a, b: CubicExtAddGroup): CubicExtAddGroup =
+#   result.sum(a, b)
+
 # ############################################################
 #
 #                 Quadratic Extension fields
@@ -165,3 +178,10 @@ func neg*(r: var QuadExtAddGroup, a: QuadExtAddGroup) =
   ## Negate ``a`` into ``r``
   r.c0.neg(a.c0)
   r.c1.neg(a.c1)
+
+# TODO: The type system is lost with out-of-place result concepts
+# func `+`*(a, b: CubicExtAddGroup): CubicExtAddGroup =
+#   result.sum(a, b)
+#
+# func `-`*(a, b: CubicExtAddGroup): CubicExtAddGroup =
+#   result.sum(a, b)

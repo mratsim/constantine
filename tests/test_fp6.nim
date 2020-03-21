@@ -43,16 +43,14 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
             var r{.noinit.}: Fp6[C]
             r.square(One)
             check: bool(r == One)
-          # block:
-          #   var r{.noinit.}: Fp6[C]
-          #   r.prod(One, One)
-          #   check: bool(r == One)
+          block:
+            var r{.noinit.}: Fp6[C]
+            r.prod(One, One)
+            check: bool(r == One)
 
         testInstance()
 
     test(BN254)
-    test(P256)
-    test(Secp256k1)
     test(BLS12_377)
     test(BLS12_381)
     test(BN446)
@@ -75,16 +73,20 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
           var Four: Fp6[C]
           Four.double(Two)
 
-          var r: Fp6[C]
-          r.square(Two)
+          block:
+            var r: Fp6[C]
+            r.square(Two)
 
-          check: bool(r == Four)
+            check: bool(r == Four)
+          block:
+            var r: Fp6[C]
+            r.prod(Two, Two)
+
+            check: bool(r == Four)
 
         testInstance()
 
     test(BN254)
-    test(P256)
-    test(Secp256k1)
     test(BLS12_377)
     test(BLS12_381)
     test(BN446)
@@ -109,16 +111,20 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
           for _ in 0 ..< 9:
             Nine += One
 
-          var u: Fp6[C]
-          u.square(Three)
+          block:
+            var u: Fp6[C]
+            u.square(Three)
 
-          check: bool(u == Nine)
+            check: bool(u == Nine)
+          block:
+            var u: Fp6[C]
+            u.prod(Three, Three)
+
+            check: bool(u == Nine)
 
         testInstance()
 
     test(BN254)
-    test(P256)
-    test(Secp256k1)
     test(BLS12_377)
     test(BLS12_381)
     test(BN446)
@@ -143,19 +149,80 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
           for _ in 0 ..< 9:
             Nine += One
 
-          var u: Fp6[C]
-          u.square(MinusThree)
+          block:
+            var u: Fp6[C]
+            u.square(MinusThree)
 
-          check: bool(u == Nine)
+            check: bool(u == Nine)
+          block:
+            var u: Fp6[C]
+            u.prod(MinusThree, MinusThree)
+
+            check: bool(u == Nine)
 
         testInstance()
 
     test(BN254)
-    test(P256)
-    test(Secp256k1)
     test(BLS12_377)
     test(BLS12_381)
     test(BN446)
     test(FKM12_447)
     test(BLS12_461)
     test(BN462)
+
+  test "Multiplication by 0 and 1":
+    template test(C: static Curve, body: untyped) =
+      block:
+        proc testInstance() =
+          let Zero {.inject.} = block:
+            var Z{.noInit.}: Fp6[C]
+            Z.setZero()
+            Z
+          let One {.inject.} = block:
+            var O{.noInit.}: Fp6[C]
+            O.setOne()
+            O
+
+          for _ in 0 ..< 1: # Iters:
+            let x {.inject.} = rng.random(Fp6[C])
+            var r{.noinit, inject.}: Fp6[C]
+            body
+
+        testInstance()
+
+    test(BN254):
+      r.prod(x, Zero)
+      check: bool(r == Zero)
+    test(BN254):
+      r.prod(Zero, x)
+      check: bool(r == Zero)
+    test(BN254):
+      r.prod(x, One)
+      check: bool(r == x)
+    test(BN254):
+      r.prod(One, x)
+      check: bool(r == x)
+    test(BLS12_381):
+      r.prod(x, Zero)
+      check: bool(r == Zero)
+    test(BLS12_381):
+      r.prod(Zero, x)
+      check: bool(r == Zero)
+    test(BLS12_381):
+      r.prod(x, One)
+      check: bool(r == x)
+    test(BLS12_381):
+      r.prod(One, x)
+      check: bool(r == x)
+    test(BN462):
+      r.prod(x, Zero)
+      check: bool(r == Zero)
+    test(BN462):
+      r.prod(Zero, x)
+      check: bool(r == Zero)
+    test(BN462):
+      r.prod(x, One)
+      check: bool(r == x)
+    test(BN462):
+      r.prod(One, x)
+      check: bool(r == x)

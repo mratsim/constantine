@@ -157,3 +157,9 @@ func inv*(r: var Fp2, a: Fp2) =
   r.c0.prod(a.c0, t0)  # r0 = a0 / (a0² + a1²)
   t1.neg(t0)           # t0 = -1 / (a0² + a1²)
   r.c1.prod(a.c1, t1)  # r1 = -a1 / (a0² + a1²)
+
+func `*=`*(a: var Fp2, b: Fp2) {.inline.} =
+  a.prod(a, b)
+
+func `*`*(a, b: Fp2): Fp2 {.inline.} =
+  result.prod(a, b)

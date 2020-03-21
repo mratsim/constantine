@@ -50,17 +50,25 @@ func `*`(_: typedesc[Xi], a: Fp2): Fp2 =
   ## Multiply an element of 𝔽p2 by 𝔽p6 cubic non-residue 1 + 𝑖
   ## (c0 + c1 𝑖) (1 + 𝑖) => c0 + (c0 + c1)𝑖 + c1 𝑖²
   ##                     => c0 - c1 + (c0 + c1) 𝑖
-  result.c0 = a.c0 - a.c1
-  result.c1 = a.c0 + a.c1
+  result.c0.diff(a.c0, a.c1)
+  result.c1.sum(a.c0, a.c1)
 
 template `*`(a: Fp2, _: typedesc[Xi]): Fp2 =
   Xi * a
 
+func `*=`(a: var Fp2, _: typedesc[Xi]) =
+  ## Inplace multiply an element of 𝔽p2 by 𝔽p6 cubic non-residue 1 + 𝑖
+  let t = a.c0
+  a.c0 -= a.c1
+  a.c1 += t
+
 func square*[C](r: var Fp6[C], a: Fp6[C]) =
-  ## Return a²
-  ##
-  # Algorithm is Chung-Hasan Squaring SQR3
+  ## Returns r = a²
+  # Algorithm is Chung-Hasan Squaring SQR2
   # http://cacr.uwaterloo.ca/techreports/2006/cacr2006-24.pdf
+  #
+  # TODO: change to SQR1 or SQR3 (requires div2)
+  #       which are faster for the sizes we are interested in.
   var v2{.noInit.}, v3{.noInit.}, v4{.noInit.}, v5{.noInit.}: Fp2[C]
 
   v4.prod(a.c0, a.c1)
@@ -80,3 +88,37 @@ func square*[C](r: var Fp6[C], a: Fp6[C]) =
   r.c2.sum(v2, v4)
   r.c2 += v5
   r.c2 -= v3
+
+func prod*[C](r: var Fp6[C], a, b: Fp6[C]) =
+  ## Returns r = a * b
+  # Algorithm is Karatsuba
+  var v0{.noInit.}, v1{.noInit.}, v2{.noInit.}, t{.noInit.}: Fp2[C]
+
+  v0.prod(a.c0, b.c0)
+  v1.prod(a.c1, b.c1)
+  v2.prod(a.c2, b.c2)
+
+  # r.c0 = ((a.c1 + a.c2) * (b.c1 + b.c2) - v1 - v2) * Xi + v0
+  r.c0.sum(a.c1, a.c2)
+  t.sum(b.c1, b.c2)
+  r.c0 *= t
+  r.c0 -= v1
+  r.c0 -= v2
+  r.c0 *= Xi
+  r.c0 += v0
+
+  # r.c1 = (a.c0 + a.c1) * (b.c0 + b.c1) - v0 - v1 + Xi * v2
+  r.c1.sum(a.c0, a.c1)
+  t.sum(b.c0, b.c1)
+  r.c1 *= t
+  r.c1 -= v0
+  r.c1 -= v1
+  r.c1 += Xi * v2
+
+  # r.c2 = (a.c0 + a.c2) * (b.c0 + b.c2) - v0 - v2 + v1
+  r.c2.sum(a.c0, a.c2)
+  t.sum(b.c0, b.c2)
+  r.c2 *= t
+  r.c2 -= v0
+  r.c2 -= v2
+  r.c2 += v1
