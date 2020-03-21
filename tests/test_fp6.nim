@@ -183,7 +183,7 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
             O.setOne()
             O
 
-          for _ in 0 ..< 1: # Iters:
+          for _ in 0 ..< Iters:
             let x {.inject.} = rng.random(Fp6[C])
             var r{.noinit, inject.}: Fp6[C]
             body
@@ -226,3 +226,135 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
     test(BN462):
       r.prod(One, x)
       check: bool(r == x)
+
+  test "𝔽p6 = 𝔽p2[∛(1+𝑖)] addition is associative and commutative":
+    proc abelianGroup(curve: static Curve) =
+      for _ in 0 ..< Iters:
+        let a = rng.random(Fp6[curve])
+        let b = rng.random(Fp6[curve])
+        let c = rng.random(Fp6[curve])
+
+        var tmp1{.noInit.}, tmp2{.noInit.}: Fp6[curve]
+
+        # r0 = (a + b) + c
+        tmp1.sum(a, b)
+        tmp2.sum(tmp1, c)
+        let r0 = tmp2
+
+        # r1 = a + (b + c)
+        tmp1.sum(b, c)
+        tmp2.sum(a, tmp1)
+        let r1 = tmp2
+
+        # r2 = (a + c) + b
+        tmp1.sum(a, c)
+        tmp2.sum(tmp1, b)
+        let r2 = tmp2
+
+        # r3 = a + (c + b)
+        tmp1.sum(c, b)
+        tmp2.sum(a, tmp1)
+        let r3 = tmp2
+
+        # r4 = (c + a) + b
+        tmp1.sum(c, a)
+        tmp2.sum(tmp1, b)
+        let r4 = tmp2
+
+        # ...
+
+        check:
+          bool(r0 == r1)
+          bool(r0 == r2)
+          bool(r0 == r3)
+          bool(r0 == r4)
+
+    abelianGroup(BN254)
+    abelianGroup(P256)
+    abelianGroup(Secp256k1)
+    abelianGroup(BLS12_377)
+    abelianGroup(BLS12_381)
+    abelianGroup(BN446)
+    abelianGroup(FKM12_447)
+    abelianGroup(BLS12_461)
+    abelianGroup(BN462)
+
+  test "𝔽p6 = 𝔽p2[∛(1+𝑖)] multiplication is associative and commutative":
+    proc commutativeRing(curve: static Curve) =
+      for _ in 0 ..< Iters:
+        let a = rng.random(Fp6[curve])
+        let b = rng.random(Fp6[curve])
+        let c = rng.random(Fp6[curve])
+
+        var tmp1{.noInit.}, tmp2{.noInit.}: Fp6[curve]
+
+        # r0 = (a * b) * c
+        tmp1.prod(a, b)
+        tmp2.prod(tmp1, c)
+        let r0 = tmp2
+
+        # r1 = a * (b * c)
+        tmp1.prod(b, c)
+        tmp2.prod(a, tmp1)
+        let r1 = tmp2
+
+        # r2 = (a * c) * b
+        tmp1.prod(a, c)
+        tmp2.prod(tmp1, b)
+        let r2 = tmp2
+
+        # r3 = a * (c * b)
+        tmp1.prod(c, b)
+        tmp2.prod(a, tmp1)
+        let r3 = tmp2
+
+        # r4 = (c * a) * b
+        tmp1.prod(c, a)
+        tmp2.prod(tmp1, b)
+        let r4 = tmp2
+
+        # ...
+
+        check:
+          bool(r0 == r1)
+          bool(r0 == r2)
+          bool(r0 == r3)
+          bool(r0 == r4)
+
+    commutativeRing(BN254)
+    commutativeRing(BLS12_377)
+    commutativeRing(BLS12_381)
+    commutativeRing(BN446)
+    commutativeRing(FKM12_447)
+    commutativeRing(BLS12_461)
+    commutativeRing(BN462)
+
+  test "𝔽p6 = 𝔽p2[∛(1+𝑖)] extension field multiplicative inverse":
+    proc mulInvOne(curve: static Curve) =
+      var one: Fp6[curve]
+      one.setOne()
+
+      block: # Inverse of 1 is 1
+        var r {.noInit.}: Fp6[curve]
+        r.inv(one)
+        check: bool(r == one)
+
+      var aInv, r{.noInit.}: Fp6[curve]
+
+      for _ in 0 ..< 1: # Iters:
+        let a = rng.random(Fp6[curve])
+
+        aInv.inv(a)
+        r.prod(a, aInv)
+        check: bool(r == one)
+
+        r.prod(aInv, a)
+        check: bool(r == one)
+
+    mulInvOne(BN254)
+    mulInvOne(BLS12_377)
+    mulInvOne(BLS12_381)
+    mulInvOne(BN446)
+    mulInvOne(FKM12_447)
+    mulInvOne(BLS12_461)
+    mulInvOne(BN462)

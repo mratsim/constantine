@@ -134,7 +134,7 @@ func prod*(r: var Fp2, a, b: Fp2) =
   r.c1 -= a1b1          # r1 = (b0 + b1)(a0 + a1) - a0b0 - a1b1 # [3 Mul, 2 Add, 3 Sub]
 
 func inv*(r: var Fp2, a: Fp2) =
-  ## Compute the modular multiplicative inverse of ``a``
+  ## Compute the multiplicative inverse of ``a``
   ## in 𝔽p2 = 𝔽p[𝑖]
   #
   # Algorithm: (the inverse exist if a != 0 which might cause constant-time issue)

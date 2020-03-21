@@ -45,7 +45,7 @@ proc main() =
     negBench(Fp6[curve], Iters)
     mulBench(Fp6[curve], Iters)
     sqrBench(Fp6[curve], Iters)
-    # invBench(Fp6[curve], InvIters)
+    invBench(Fp6[curve], InvIters)
     echo "-".repeat(80)
 
 main()

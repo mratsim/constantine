@@ -46,7 +46,7 @@ type
   Xi = object
     ## ξ (Xi) the cubic non-residue
 
-func `*`(_: typedesc[Xi], a: Fp2): Fp2 =
+func `*`(_: typedesc[Xi], a: Fp2): Fp2 {.inline.}=
   ## Multiply an element of 𝔽p2 by 𝔽p6 cubic non-residue 1 + 𝑖
   ## (c0 + c1 𝑖) (1 + 𝑖) => c0 + (c0 + c1)𝑖 + c1 𝑖²
   ##                     => c0 - c1 + (c0 + c1) 𝑖
@@ -56,7 +56,7 @@ func `*`(_: typedesc[Xi], a: Fp2): Fp2 =
 template `*`(a: Fp2, _: typedesc[Xi]): Fp2 =
   Xi * a
 
-func `*=`(a: var Fp2, _: typedesc[Xi]) =
+func `*=`(a: var Fp2, _: typedesc[Xi]) {.inline.}=
   ## Inplace multiply an element of 𝔽p2 by 𝔽p6 cubic non-residue 1 + 𝑖
   let t = a.c0
   a.c0 -= a.c1
@@ -122,3 +122,56 @@ func prod*[C](r: var Fp6[C], a, b: Fp6[C]) =
   r.c2 -= v0
   r.c2 -= v2
   r.c2 += v1
+
+func inv*[C](r: var Fp6[C], a: Fp6[C]) =
+  ## Compute the multiplicative inverse of ``a``
+  ## in 𝔽p6 = 𝔽p2[∛(1 + 𝑖)]
+  #
+  # Algorithm 5.23
+  #
+  # Arithmetic of Finite Fields
+  # Chapter 5 of Guide to Pairing-Based Cryptography
+  # Jean Luc Beuchat, Luis J. Dominguez Perez, Sylvain Duquesne, Nadia El Mrabet, Laura Fuentes-Castañeda, Francisco Rodríguez-Henríquez, 2017\
+  # https://www.researchgate.net/publication/319538235_Arithmetic_of_Finite_Fields
+  #
+  # We optimize for stack usage and use 4 temporaries (+r as temporary)
+  # instead of 9, because 5 * 2 (𝔽p2) * Bitsize would be:
+  # - ~2540 bits for BN254
+  # - ~3810 bits for BLS12-381
+  var
+    v1 {.noInit.}, v2 {.noInit.}, v3 {.noInit.}: Fp2[C]
+
+  # A in r0
+  # A <- a0² - ξ(a1 a2)
+  r.c0.square(a.c0)
+  v1.prod(a.c1, a.c2)
+  v1 *= Xi
+  r.c0 -= v1
+
+  # B in v1
+  # B <- ξ a2² - a0 a1
+  v1.square(a.c2)
+  v1 *= Xi
+  v2.prod(a.c0, a.c1)
+  v1 -= v2
+
+  # C in v2
+  # C <- a1² - a0 a2
+  v2.square(a.c1)
+  v3.prod(a.c0, a.c2)
+  v2 -= v3
+
+  # F in v3
+  # F <- ξ a1 C + a0 A + ξ a2 B
+  r.c1.prod(v1, Xi * a.c2)
+  r.c2.prod(v2, Xi * a.c1)
+  v3.prod(r.c0, a.c0)
+  v3 += r.c1
+  v3 += r.c2
+
+  v3.inv(v3)
+
+  # (a0 + a1 ξ + a2 ξ²)^-1 = (A + B ξ + C ξ²) / F
+  r.c0 *= v3
+  r.c1.prod(v1, v3)
+  r.c2.prod(v2, v3)

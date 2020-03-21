@@ -48,10 +48,9 @@ debug:
 
   func toString*(a: Limbs): string =
     result = "["
-    result.add $BaseType(a[0]) & " (0x" & toHex(BaseType(a[0])) & ')'
+    result.add " 0x" & toHex(BaseType(a[0]))
     for i in 1 ..< a.len:
-      result.add ", "
-      result.add $BaseType(a[i]) & " (0x" & toHex(BaseType(a[i])) & ')'
+      result.add ", 0x" & toHex(BaseType(a[i]))
     result.add "])"
 
   func toHex*(a: Limbs): string =
