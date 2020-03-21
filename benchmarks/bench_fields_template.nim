@@ -18,25 +18,16 @@ import
   ../constantine/arithmetic,
   ../constantine/io/[io_bigints, io_fields],
   ../constantine/primitives,
+  ../constantine/tower_field_extensions/[abelian_groups, fp2_complex, fp6_1_plus_i],
   # Helpers
   ../helpers/[timers, prng, static_for],
   # Standard library
   std/[monotimes, times, strformat, strutils, macros]
 
-const Iters = 1_000_000
-const InvIters = 1000
-const AvailableCurves = [
-  P224,
-  BN254,
-  P256,
-  Secp256k1,
-  BLS12_381
-]
-
 var rng: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
 rng.seed(seed)
-echo "bench_finite_field xoshiro512** seed: ", seed
+echo "bench xoshiro512** seed: ", seed
 
 # warmup
 proc warmup*() =
@@ -82,9 +73,6 @@ macro fixFieldDisplay(T: typedesc): untyped =
   name.add "[" & $Curve(instantiated[1][1].intVal) & "]"
   result = newLit name
 
-# Compilers are smart with dead code (but not with multiprecision arithmetic :/)
-var globalsAreNotOptimizedAway: Word
-
 template bench(op: string, T: typedesc, iters: int, body: untyped): untyped =
   let start = getMonotime()
   let startClk = getTicks()
@@ -95,63 +83,43 @@ template bench(op: string, T: typedesc, iters: int, body: untyped): untyped =
 
   report(op, fixFieldDisplay(T), start, stop, startClk, stopClk, iters)
 
-proc addBench(T: typedesc) =
+proc addBench*(T: typedesc, iters: int) =
   var x = rng.random(T)
   let y = rng.random(T)
-  bench("Addition", T, Iters):
+  bench("Addition", T, iters):
     x += y
-  globalsAreNotOptimizedAway += x.mres.limbs[^1]
 
-proc subBench(T: typedesc) =
+proc subBench*(T: typedesc, iters: int) =
   var x = rng.random(T)
   let y = rng.random(T)
   preventOptimAway(x)
-  bench("Substraction", T, Iters):
+  bench("Substraction", T, iters):
     x -= y
-  globalsAreNotOptimizedAway += x.mres.limbs[^1]
 
-proc negBench(T: typedesc) =
+proc negBench*(T: typedesc, iters: int) =
   var r: T
   let x = rng.random(T)
-  bench("Negation", T, Iters):
+  bench("Negation", T, iters):
     r.neg(x)
-  globalsAreNotOptimizedAway += r.mres.limbs[^1]
 
-proc mulBench(T: typedesc) =
+proc mulBench*(T: typedesc, iters: int) =
   var r: T
   let x = rng.random(T)
   let y = rng.random(T)
   preventOptimAway(r)
-  bench("Multiplication", T, Iters):
+  bench("Multiplication", T, iters):
     r.prod(x, y)
 
-proc sqrBench(T: typedesc) =
+proc sqrBench*(T: typedesc, iters: int) =
   var r: T
   let x = rng.random(T)
   preventOptimAway(r)
-  bench("Squaring", T, Iters):
+  bench("Squaring", T, iters):
     r.square(x)
 
-proc invBench(T: typedesc) =
+proc invBench*(T: typedesc, iters: int) =
   var r: T
   let x = rng.random(T)
   preventOptimAway(r)
-  bench("Inversion", T, InvIters):
+  bench("Inversion", T, iters):
     r.inv(x)
-
-proc main() =
-  echo "-".repeat(80)
-  staticFor i, 0, AvailableCurves.len:
-    const curve = AvailableCurves[i]
-    addBench(Fp[curve])
-    subBench(Fp[curve])
-    negBench(Fp[curve])
-    mulBench(Fp[curve])
-    sqrBench(Fp[curve])
-    invBench(Fp[curve])
-    echo "-".repeat(80)
-
-main()
-
-echo "Notes:"
-echo "  GCC is significantly slower than Clang on multiprecision arithmetic."

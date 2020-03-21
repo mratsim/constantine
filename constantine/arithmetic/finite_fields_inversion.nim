@@ -8,6 +8,7 @@
 
 import
   ../config/[common, curves],
+  ./bigints,
   ./finite_fields
 
 # ############################################################

@@ -111,17 +111,40 @@ task test_no_gmp, "Run tests that don't require GMP":
     # 𝔽p2
     test "", "tests/test_fp2.nim"
 
-task bench, "Run benchmark with your default compiler":
+proc runBench(benchName: string, compiler = "") =
   if not dirExists "build":
     mkDir "build"
-  exec "nim c -d:danger --verbosity:0 -o:build/bench_finite_fields_default -r --hints:off --warnings:off benchmarks/bench_finite_fields"
 
-task bench_gcc, "Run benchmark with gcc":
-  if not dirExists "build":
-    mkDir "build"
-  exec "nim c --cc:gcc -d:danger --verbosity:0 -o:build/bench_finite_fields_gcc -r --hints:off --warnings:off benchmarks/bench_finite_fields"
+  var cc = ""
+  if compiler != "":
+    cc = "--cc:" & compiler
+  exec "nim c " & cc &
+       " -d:danger --verbosity:0 -o:build/" & benchName & "_" & compiler &
+       " -r --hints:off --warnings:off benchmarks/" & benchName & ".nim"
 
-task bench_clang, "Run benchmark with clang":
-  if not dirExists "build":
-    mkDir "build"
-  exec "nim c --cc:clang -d:danger --verbosity:0 -o:build/bench_finite_fields_clang -r --hints:off --warnings:off benchmarks/bench_finite_fields"
+task bench_fp, "Run benchmark 𝔽p with your default compiler":
+  runBench("bench_fp")
+
+task bench_fp_gcc, "Run benchmark 𝔽p with gcc":
+  runBench("bench_fp", "gcc")
+
+task bench_fp_clang, "Run benchmark 𝔽p with clang":
+  runBench("bench_fp", "clang")
+
+task bench_fp2, "Run benchmark with 𝔽p2 your default compiler":
+  runBench("bench_fp2")
+
+task bench_fp2_gcc, "Run benchmark 𝔽p2 with gcc":
+  runBench("bench_fp2", "gcc")
+
+task bench_fp2_clang, "Run benchmark 𝔽p2 with clang":
+  runBench("bench_fp2", "clang")
+
+task bench_fp6, "Run benchmark with 𝔽p6 your default compiler":
+  runBench("bench_fp6")
+
+task bench_fp6_gcc, "Run benchmark 𝔽p6 with gcc":
+  runBench("bench_fp6", "gcc")
+
+task bench_fp6_clang, "Run benchmark 𝔽p6 with clang":
+  runBench("bench_fp6", "clang")
