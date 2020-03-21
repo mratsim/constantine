@@ -31,67 +31,6 @@ import
 
 # ############################################################
 #
-#                 Quadratic Extension fields
-#
-# ############################################################
-
-type
-  QuadExtAddGroup* = concept x
-    ## Quadratic extension fields - Abelian Additive Group concept
-    type BaseField = auto
-    x.c0 is BaseField
-    x.c1 is BaseField
-
-func `==`*(a, b: QuadExtAddGroup): CTBool[Word] =
-  ## Constant-time equality check
-  (a.c0 == b.c0) and (a.c1 == b.c1)
-
-func setZero*(a: var QuadExtAddGroup) =
-  ## Set ``a`` to zero in the extension field
-  ## Coordinates 0 + 0 𝛼
-  ## with 𝛼 the solution of f(x) = x² - µ = 0
-  a.c0.setZero()
-  a.c1.setZero()
-
-func setOne*(a: var QuadExtAddGroup) =
-  ## Set ``a`` to one in the extension field
-  ## Coordinates 1 + 0 𝛼
-  ## with 𝛼 the solution of f(x) = x² - µ = 0
-  a.c0.setOne()
-  a.c1.setZero()
-
-func `+=`*(a: var QuadExtAddGroup, b: QuadExtAddGroup) =
-  ## Addition in the extension field
-  a.c0 += b.c0
-  a.c1 += b.c1
-
-func `-=`*(a: var QuadExtAddGroup, b: QuadExtAddGroup) =
-  ## Substraction in the extension field
-  a.c0 -= b.c0
-  a.c1 -= b.c1
-
-func double*(r: var QuadExtAddGroup, a: QuadExtAddGroup) =
-  ## Double in the extension field
-  r.c0.double(a.c0)
-  r.c1.double(a.c1)
-
-func sum*(r: var QuadExtAddGroup, a, b: QuadExtAddGroup) =
-  ## Sum ``a`` and ``b`` into r
-  r.c0.sum(a.c0, b.c0)
-  r.c1.sum(a.c1, b.c1)
-
-func diff*(r: var QuadExtAddGroup, a, b: QuadExtAddGroup) =
-  ## Difference of ``a`` by `b`` into r
-  r.c0.diff(a.c0, b.c0)
-  r.c1.diff(a.c1, b.c1)
-
-func neg*(r: var QuadExtAddGroup, a: QuadExtAddGroup) =
-  ## Negate ``a`` into ``r``
-  r.c0.neg(a.c0)
-  r.c1.neg(a.c1)
-
-# ############################################################
-#
 #                 Cubic Extension fields
 #
 # ############################################################
@@ -142,6 +81,12 @@ func double*(r: var CubicExtAddGroup, a: CubicExtAddGroup) =
   r.c1.double(a.c1)
   r.c2.double(a.c2)
 
+func double*(a: var CubicExtAddGroup) =
+  ## Double in the extension field
+  double(a.c0)
+  double(a.c1)
+  double(a.c2)
+
 func sum*(r: var CubicExtAddGroup, a, b: CubicExtAddGroup) =
   ## Sum ``a`` and ``b`` into r
   r.c0.sum(a.c0, b.c0)
@@ -153,3 +98,70 @@ func diff*(r: var CubicExtAddGroup, a, b: CubicExtAddGroup) =
   r.c0.diff(a.c0, b.c0)
   r.c1.diff(a.c1, b.c1)
   r.c2.diff(a.c2, b.c2)
+
+# ############################################################
+#
+#                 Quadratic Extension fields
+#
+# ############################################################
+
+type
+  QuadExtAddGroup* = concept x
+    ## Quadratic extension fields - Abelian Additive Group concept
+    not(x is CubicExtAddGroup)
+    type BaseField = auto
+    x.c0 is BaseField
+    x.c1 is BaseField
+
+func `==`*(a, b: QuadExtAddGroup): CTBool[Word] =
+  ## Constant-time equality check
+  (a.c0 == b.c0) and (a.c1 == b.c1)
+
+func setZero*(a: var QuadExtAddGroup) =
+  ## Set ``a`` to zero in the extension field
+  ## Coordinates 0 + 0 𝛼
+  ## with 𝛼 the solution of f(x) = x² - µ = 0
+  a.c0.setZero()
+  a.c1.setZero()
+
+func setOne*(a: var QuadExtAddGroup) =
+  ## Set ``a`` to one in the extension field
+  ## Coordinates 1 + 0 𝛼
+  ## with 𝛼 the solution of f(x) = x² - µ = 0
+  a.c0.setOne()
+  a.c1.setZero()
+
+func `+=`*(a: var QuadExtAddGroup, b: QuadExtAddGroup) =
+  ## Addition in the extension field
+  a.c0 += b.c0
+  a.c1 += b.c1
+
+func `-=`*(a: var QuadExtAddGroup, b: QuadExtAddGroup) =
+  ## Substraction in the extension field
+  a.c0 -= b.c0
+  a.c1 -= b.c1
+
+func double*(r: var QuadExtAddGroup, a: QuadExtAddGroup) =
+  ## Double in the extension field
+  r.c0.double(a.c0)
+  r.c1.double(a.c1)
+
+func double*(a: var QuadExtAddGroup) =
+  ## Double in the extension field
+  double(a.c0)
+  double(a.c1)
+
+func sum*(r: var QuadExtAddGroup, a, b: QuadExtAddGroup) =
+  ## Sum ``a`` and ``b`` into r
+  r.c0.sum(a.c0, b.c0)
+  r.c1.sum(a.c1, b.c1)
+
+func diff*(r: var QuadExtAddGroup, a, b: QuadExtAddGroup) =
+  ## Difference of ``a`` by `b`` into r
+  r.c0.diff(a.c0, b.c0)
+  r.c1.diff(a.c1, b.c1)
+
+func neg*(r: var QuadExtAddGroup, a: QuadExtAddGroup) =
+  ## Negate ``a`` into ``r``
+  r.c0.neg(a.c0)
+  r.c1.neg(a.c1)

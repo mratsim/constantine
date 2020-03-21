@@ -63,6 +63,10 @@ From Ben Edgington, https://hackmd.io/@benjaminion/bls12-381
   Daniel V. Bailey and Christof Paar, 1998\
   https://www.emsec.ruhr-uni-bochum.de/media/crypto/veroeffentlichungen/2015/03/26/crypto98rc9.pdf
 
+- Asymmetric Squaring Formulae\
+  Jaewook Chung and M. Anwar Hasan\
+  http://cacr.uwaterloo.ca/techreports/2006/cacr2006-24.pdf
+
 - Multiplication and Squaring on Pairing-Friendly Fields\
   Augusto Jun Devegili and Colm Ó hÉigeartaigh and Michael Scott and Ricardo Dahab, 2006\
   https://eprint.iacr.org/2006/471

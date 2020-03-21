@@ -61,7 +61,7 @@ type
     c0*, c1*: Fp[C]
 
 func square*(r: var Fp2, a: Fp2) =
-  ## Return a^2 in 𝔽p2 = 𝔽p[𝑖] in ``r``
+  ## Return a² in 𝔽p2 = 𝔽p[𝑖] in ``r``
   ## ``r`` is initialized/overwritten
   # (c0, c1)² => (c0 + c1𝑖)²
   #           => c0² + 2 c0 c1𝑖 + (c1𝑖)²
