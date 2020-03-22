@@ -315,7 +315,7 @@ func montySquare*(r: var BigInt, a, M: BigInt, negInvModWord: static BaseType, c
 func montyPow*[mBits, eBits: static int](
        a: var BigInt[mBits], exponent: BigInt[eBits],
        M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,
-       canUseNoCarryMontyMul: static bool
+       canUseNoCarryMontyMul, canUseNoCarryMontySquare: static bool
       ) =
   ## Compute a <- a^exponent (mod M)
   ## ``a`` in the Montgomery domain
@@ -334,12 +334,12 @@ func montyPow*[mBits, eBits: static int](
   const scratchLen = if windowSize == 1: 2
                      else: (1 shl windowSize) + 1
   var scratchSpace {.noInit.}: array[scratchLen, Limbs[mBits.wordsRequired]]
-  montyPow(a.limbs, expBE, M.limbs, one.limbs, negInvModWord, scratchSpace, canUseNoCarryMontyMul)
+  montyPow(a.limbs, expBE, M.limbs, one.limbs, negInvModWord, scratchSpace, canUseNoCarryMontyMul, canUseNoCarryMontySquare)
 
 func montyPowUnsafeExponent*[mBits, eBits: static int](
        a: var BigInt[mBits], exponent: BigInt[eBits],
        M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,
-       canUseNoCarryMontyMul: static bool
+       canUseNoCarryMontyMul, canUseNoCarryMontySquare: static bool
       ) =
   ## Compute a <- a^exponent (mod M)
   ## ``a`` in the Montgomery domain
@@ -362,12 +362,12 @@ func montyPowUnsafeExponent*[mBits, eBits: static int](
   const scratchLen = if windowSize == 1: 2
                      else: (1 shl windowSize) + 1
   var scratchSpace {.noInit.}: array[scratchLen, Limbs[mBits.wordsRequired]]
-  montyPowUnsafeExponent(a.limbs, expBE, M.limbs, one.limbs, negInvModWord, scratchSpace, canUseNoCarryMontyMul)
+  montyPowUnsafeExponent(a.limbs, expBE, M.limbs, one.limbs, negInvModWord, scratchSpace, canUseNoCarryMontyMul, canUseNoCarryMontySquare)
 
 func montyPowUnsafeExponent*[mBits: static int](
        a: var BigInt[mBits], exponent: openarray[byte],
        M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,
-       canUseNoCarryMontyMul: static bool
+       canUseNoCarryMontyMul, canUseNoCarryMontySquare: static bool
       ) =
   ## Compute a <- a^exponent (mod M)
   ## ``a`` in the Montgomery domain
@@ -386,7 +386,7 @@ func montyPowUnsafeExponent*[mBits: static int](
   const scratchLen = if windowSize == 1: 2
                      else: (1 shl windowSize) + 1
   var scratchSpace {.noInit.}: array[scratchLen, Limbs[mBits.wordsRequired]]
-  montyPowUnsafeExponent(a.limbs, exponent, M.limbs, one.limbs, negInvModWord, scratchSpace, canUseNoCarryMontyMul)
+  montyPowUnsafeExponent(a.limbs, exponent, M.limbs, one.limbs, negInvModWord, scratchSpace, canUseNoCarryMontyMul, canUseNoCarryMontySquare)
 
 {.pop.} # inline
 {.pop.} # raises no exceptions

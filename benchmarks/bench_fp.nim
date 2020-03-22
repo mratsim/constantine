@@ -9,6 +9,7 @@
 import
   # Internals
   ../constantine/config/curves,
+  ../constantine/arithmetic,
   # Helpers
   ../helpers/static_for,
   ./bench_fields_template,

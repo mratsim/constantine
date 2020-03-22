@@ -170,7 +170,8 @@ func pow*(a: var Fp, exponent: BigInt) =
     exponent,
     Fp.C.Mod, Fp.C.getMontyOne(),
     Fp.C.getNegInvModWord(), windowSize,
-    Fp.C.canUseNoCarryMontyMul()
+    Fp.C.canUseNoCarryMontyMul(),
+    Fp.C.canUseNoCarryMontySquare()
   )
 
 func powUnsafeExponent*(a: var Fp, exponent: BigInt) =
@@ -189,9 +190,29 @@ func powUnsafeExponent*(a: var Fp, exponent: BigInt) =
     exponent,
     Fp.C.Mod, Fp.C.getMontyOne(),
     Fp.C.getNegInvModWord(), windowSize,
-    Fp.C.canUseNoCarryMontyMul()
+    Fp.C.canUseNoCarryMontyMul(),
+    Fp.C.canUseNoCarryMontySquare()
   )
 
+func powUnsafeExponent*(a: var Fp, exponent: openarray[byte]) =
+  ## Exponentiation modulo p
+  ## ``a``: a field element to be exponentiated
+  ## ``exponent``: a big integer
+  ##
+  ## Warning ⚠️ :
+  ## This is an optimization for public exponent
+  ## Otherwise bits of the exponent can be retrieved with:
+  ## - memory access analysis
+  ## - power analysis
+  ## - timing analysis
+  const windowSize = 5 # TODO: find best window size for each curves
+  a.mres.montyPowUnsafeExponent(
+    exponent,
+    Fp.C.Mod, Fp.C.getMontyOne(),
+    Fp.C.getNegInvModWord(), windowSize,
+    Fp.C.canUseNoCarryMontyMul(),
+    Fp.C.canUseNoCarryMontySquare()
+  )
 
 # ############################################################
 #
