@@ -29,14 +29,13 @@ import
   ../config/[common, curves],
   ./bigints, ./limbs_montgomery
 
-# type
-#   `Fp`*[C: static Curve] = object
-#     ## All operations on a field are modulo P
-#     ## P being the prime modulus of the Curve C
-#     ## Internally, data is stored in Montgomery n-residue form
-#     ## with the magic constant chosen for convenient division (a power of 2 depending on P bitsize)
-#     mres*: matchingBigInt(C)
-export Fp # defined in ../config/curves to avoid recursive module dependencies
+type
+  Fp*[C: static Curve] = object
+    ## All operations on a field are modulo P
+    ## P being the prime modulus of the Curve C
+    ## Internally, data is stored in Montgomery n-residue form
+    ## with the magic constant chosen for convenient division (a power of 2 depending on P bitsize)
+    mres*: matchingBigInt(C)
 
 debug:
   func `$`*[C: static Curve](a: Fp[C]): string =
@@ -57,16 +56,16 @@ debug:
 
 func fromBig*[C: static Curve](T: type Fp[C], src: BigInt): Fp[C] {.noInit.} =
   ## Convert a BigInt to its Montgomery form
-  result.mres.montyResidue(src, C.Mod.mres, C.getR2modP(), C.getNegInvModWord(), C.canUseNoCarryMontyMul())
+  result.mres.montyResidue(src, C.Mod, C.getR2modP(), C.getNegInvModWord(), C.canUseNoCarryMontyMul())
 
 func fromBig*[C: static Curve](dst: var Fp[C], src: BigInt) {.noInit.} =
   ## Convert a BigInt to its Montgomery form
-  dst.mres.montyResidue(src, C.Mod.mres, C.getR2modP(), C.getNegInvModWord(), C.canUseNoCarryMontyMul())
+  dst.mres.montyResidue(src, C.Mod, C.getR2modP(), C.getNegInvModWord(), C.canUseNoCarryMontyMul())
 
 func toBig*(src: Fp): auto {.noInit.} =
   ## Convert a finite-field element to a BigInt in natural representation
   var r {.noInit.}: typeof(src.mres)
-  r.redc(src.mres, Fp.C.Mod.mres, Fp.C.getNegInvModWord(), Fp.C.canUseNoCarryMontyMul())
+  r.redc(src.mres, Fp.C.Mod, Fp.C.getNegInvModWord(), Fp.C.canUseNoCarryMontyMul())
   return r
 
 # ############################################################
@@ -84,7 +83,7 @@ func toBig*(src: Fp): auto {.noInit.} =
 #       exist and can be implemented with compile-time specialization.
 
 # Note: for `+=`, double, sum
-#       not(a.mres < Fp.C.Mod.mres) is unnecessary if the prime has the form
+#       not(a.mres < Fp.C.Mod) is unnecessary if the prime has the form
 #       (2^64)^w - 1 (if using uint64 words).
 # In practice I'm not aware of such prime being using in elliptic curves.
 # 2^127 - 1 and 2^521 - 1 are used but 127 and 521 are not multiple of 32/64
@@ -107,52 +106,52 @@ func setOne*(a: var Fp) =
 func `+=`*(a: var Fp, b: Fp) =
   ## In-place addition modulo p
   var overflowed = add(a.mres, b.mres)
-  overflowed = overflowed or not(a.mres < Fp.C.Mod.mres)
-  discard csub(a.mres, Fp.C.Mod.mres, overflowed)
+  overflowed = overflowed or not(a.mres < Fp.C.Mod)
+  discard csub(a.mres, Fp.C.Mod, overflowed)
 
 func `-=`*(a: var Fp, b: Fp) =
   ## In-place substraction modulo p
   let underflowed = sub(a.mres, b.mres)
-  discard cadd(a.mres, Fp.C.Mod.mres, underflowed)
+  discard cadd(a.mres, Fp.C.Mod, underflowed)
 
 func double*(a: var Fp) =
   ## Double ``a`` modulo p
   var overflowed = double(a.mres)
-  overflowed = overflowed or not(a.mres < Fp.C.Mod.mres)
-  discard csub(a.mres, Fp.C.Mod.mres, overflowed)
+  overflowed = overflowed or not(a.mres < Fp.C.Mod)
+  discard csub(a.mres, Fp.C.Mod, overflowed)
 
 func sum*(r: var Fp, a, b: Fp) =
   ## Sum ``a`` and ``b`` into ``r`` module p
   ## r is initialized/overwritten
   var overflowed = r.mres.sum(a.mres, b.mres)
-  overflowed = overflowed or not(r.mres < Fp.C.Mod.mres)
-  discard csub(r.mres, Fp.C.Mod.mres, overflowed)
+  overflowed = overflowed or not(r.mres < Fp.C.Mod)
+  discard csub(r.mres, Fp.C.Mod, overflowed)
 
 func diff*(r: var Fp, a, b: Fp) =
   ## Substract `b` from `a` and store the result into `r`.
   ## `r` is initialized/overwritten
   var underflowed = r.mres.diff(a.mres, b.mres)
-  discard cadd(r.mres, Fp.C.Mod.mres, underflowed)
+  discard cadd(r.mres, Fp.C.Mod, underflowed)
 
 func double*(r: var Fp, a: Fp) =
   ## Double ``a`` into ``r``
   ## `r` is initialized/overwritten
   var overflowed = r.mres.double(a.mres)
-  overflowed = overflowed or not(r.mres < Fp.C.Mod.mres)
-  discard csub(r.mres, Fp.C.Mod.mres, overflowed)
+  overflowed = overflowed or not(r.mres < Fp.C.Mod)
+  discard csub(r.mres, Fp.C.Mod, overflowed)
 
 func prod*(r: var Fp, a, b: Fp) =
   ## Store the product of ``a`` by ``b`` modulo p into ``r``
   ## ``r`` is initialized / overwritten
-  r.mres.montyMul(a.mres, b.mres, Fp.C.Mod.mres, Fp.C.getNegInvModWord(), Fp.C.canUseNoCarryMontyMul())
+  r.mres.montyMul(a.mres, b.mres, Fp.C.Mod, Fp.C.getNegInvModWord(), Fp.C.canUseNoCarryMontyMul())
 
 func square*(r: var Fp, a: Fp) =
   ## Squaring modulo p
-  r.mres.montySquare(a.mres, Fp.C.Mod.mres, Fp.C.getNegInvModWord(), Fp.C.canUseNoCarryMontySquare())
+  r.mres.montySquare(a.mres, Fp.C.Mod, Fp.C.getNegInvModWord(), Fp.C.canUseNoCarryMontySquare())
 
 func neg*(r: var Fp, a: Fp) =
   ## Negate modulo p
-  discard r.mres.diff(Fp.C.Mod.mres, a.mres)
+  discard r.mres.diff(Fp.C.Mod, a.mres)
 
 # ############################################################
 #
@@ -169,7 +168,7 @@ func pow*(a: var Fp, exponent: BigInt) =
   const windowSize = 5 # TODO: find best window size for each curves
   a.mres.montyPow(
     exponent,
-    Fp.C.Mod.mres, Fp.C.getMontyOne(),
+    Fp.C.Mod, Fp.C.getMontyOne(),
     Fp.C.getNegInvModWord(), windowSize,
     Fp.C.canUseNoCarryMontyMul()
   )
@@ -188,7 +187,7 @@ func powUnsafeExponent*(a: var Fp, exponent: BigInt) =
   const windowSize = 5 # TODO: find best window size for each curves
   a.mres.montyPowUnsafeExponent(
     exponent,
-    Fp.C.Mod.mres, Fp.C.getMontyOne(),
+    Fp.C.Mod, Fp.C.getMontyOne(),
     Fp.C.getNegInvModWord(), windowSize,
     Fp.C.canUseNoCarryMontyMul()
   )
@@ -228,4 +227,4 @@ func `*=`*(a: var Fp, b: Fp) =
 
 func square*(a: var Fp) =
   ## Squaring modulo p
-  a.mres.montySquare(a.mres, Fp.C.Mod.mres, Fp.C.getNegInvModWord(), Fp.C.canUseNoCarryMontySquare())
+  a.mres.montySquare(a.mres, Fp.C.Mod, Fp.C.getNegInvModWord(), Fp.C.canUseNoCarryMontySquare())

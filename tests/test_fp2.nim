@@ -40,12 +40,12 @@ suite "𝔽p2 = 𝔽p[𝑖] (irreducible polynomial x²+1)":
             O.setOne()
             O
           let oneBig = block:
-            var O{.noInit.}: typeof(C.Mod.mres)
+            var O{.noInit.}: typeof(C.Mod)
             O.setOne()
             O
 
-          var r: typeof(C.Mod.mres)
-          r.redc(oneFp2.c0.mres, C.Mod.mres, C.getNegInvModWord(), canUseNoCarryMontyMul = false)
+          var r: typeof(C.Mod)
+          r.redc(oneFp2.c0.mres, C.Mod, C.getNegInvModWord(), canUseNoCarryMontyMul = false)
 
           check:
             bool(r == oneBig)

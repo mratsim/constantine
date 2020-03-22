@@ -131,62 +131,7 @@ declareCurves:
 
 # ############################################################
 #
-#                   Curve Families
-#
-# ############################################################
-type CurveFamily = enum
-  None
-  BN   # Barreto-Naehrig
-  BLS  # Barreto-Lynn-Scott
-
-func family*(curve: Curve): CurveFamily =
-  case curve
-  of BN254:
-    BN
-  of BLS12_381:
-    BLS
-  else:
-    None
-
-# ############################################################
-#
-#              Curve Specific Parameters
-#
-# ############################################################
-#
-# In the form CurveXXX_ParameterName where CurveXXX is the curve name + number of bits
-# of the field modulus
-
-# BN Curves
-# ------------------------------------------------------------
-# See https://tools.ietf.org/id/draft-yonezawa-pairing-friendly-curves-00.html
-#
-# The prime p and order r are primes and of the form
-# p = 36u^4 + 36u^3 + 24u^2 + 6u + 1
-# r = 36u^4 + 36u^3 + 18u^2 + 6u + 1
-#
-# https://eprint.iacr.org/2010/429.pdf
-# https://eprint.iacr.org/2013/879.pdf
-# Usage: Zero-Knowledge Proofs / zkSNARKs in ZCash and Ethereum 1
-#        https://eips.ethereum.org/EIPS/eip-196
-
-# BLS Curves
-# ------------------------------------------------------------
-# See https://tools.ietf.org/id/draft-yonezawa-pairing-friendly-curves-00.html
-#
-# BLS12 curves
-#   The prime p and order r are primes and of the form
-#   p = (u - 1)^2 (u^4 - u^2 + 1)/3 + u
-#   r = u^4 - u^2 + 1
-#
-# BLS48 curves
-#   The prime p and order r are primes and of the form
-#   p = (u - 1)^2 (u^16 - u^8 + 1)/3 + u
-#   r = u^16 - u^8 + 1
-
-# ############################################################
-#
-#              Curve Modulus Accessor
+#                  Curve characteristics
 #
 # ############################################################
 
@@ -195,6 +140,13 @@ func family*(curve: Curve): CurveFamily =
 macro Mod*(C: static Curve): untyped =
   ## Get the Modulus associated to a curve
   result = bindSym($C & "_Modulus")
+
+func getCurveBitSize*(C: static Curve): static int =
+  ## Returns the number of bits taken by the curve modulus
+  result = static(CurveBitSize[C])
+
+template matchingBigInt*(C: static Curve): untyped =
+  BigInt[CurveBitSize[C]]
 
 # ############################################################
 #
@@ -220,10 +172,7 @@ macro genMontyMagics(T: typed): untyped =
     result.add newConstStmt(
       ident($curve & "_CanUseNoCarryMontyMul"), newCall(
         bindSym"useNoCarryMontyMul",
-        nnkDotExpr.newTree(
-          bindSym($curve & "_Modulus"),
-          ident"mres"
-        )
+        bindSym($curve & "_Modulus")
       )
     )
 
@@ -231,10 +180,7 @@ macro genMontyMagics(T: typed): untyped =
     result.add newConstStmt(
       ident($curve & "_CanUseNoCarryMontySquare"), newCall(
         bindSym"useNoCarryMontySquare",
-        nnkDotExpr.newTree(
-          bindSym($curve & "_Modulus"),
-          ident"mres"
-        )
+        bindSym($curve & "_Modulus")
       )
     )
 
@@ -242,10 +188,7 @@ macro genMontyMagics(T: typed): untyped =
     result.add newConstStmt(
       ident($curve & "_R2modP"), newCall(
         bindSym"r2mod",
-        nnkDotExpr.newTree(
-          bindSym($curve & "_Modulus"),
-          ident"mres"
-        )
+        bindSym($curve & "_Modulus")
       )
     )
 
@@ -253,50 +196,34 @@ macro genMontyMagics(T: typed): untyped =
     result.add newConstStmt(
       ident($curve & "_NegInvModWord"), newCall(
         bindSym"negInvModWord",
-        nnkDotExpr.newTree(
-          bindSym($curve & "_Modulus"),
-          ident"mres"
-        )
+        bindSym($curve & "_Modulus")
       )
     )
     # const MyCurve_montyOne = montyOne(MyCurve_Modulus)
     result.add newConstStmt(
       ident($curve & "_MontyOne"), newCall(
         bindSym"montyOne",
-        nnkDotExpr.newTree(
-          bindSym($curve & "_Modulus"),
-          ident"mres"
-        )
+        bindSym($curve & "_Modulus")
       )
     )
     # const MyCurve_InvModExponent = primeMinus2_BE(MyCurve_Modulus)
     result.add newConstStmt(
       ident($curve & "_InvModExponent"), newCall(
         bindSym"primeMinus2_BE",
-        nnkDotExpr.newTree(
-          bindSym($curve & "_Modulus"),
-          ident"mres"
-        )
+        bindSym($curve & "_Modulus")
       )
     )
     # const MyCurve_PrimePlus1div2 = primePlus1div2(MyCurve_Modulus)
     result.add newConstStmt(
       ident($curve & "_PrimePlus1div2"), newCall(
         bindSym"primePlus1div2",
-        nnkDotExpr.newTree(
-          bindSym($curve & "_Modulus"),
-          ident"mres"
-        )
+        bindSym($curve & "_Modulus")
       )
     )
 
   # echo result.toStrLit
 
 genMontyMagics(Curve)
-
-func getCurveBitSize*(C: static Curve): static int =
-  ## Returns the number of bits taken by the curve modulus
-  result = static(CurveBitSize[C])
 
 macro canUseNoCarryMontyMul*(C: static Curve): untyped =
   ## Returns true if the Modulus is compatible with a fast

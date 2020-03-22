@@ -72,8 +72,8 @@ task test, "Run all tests":
     test "-d:Constantine32", "tests/test_finite_fields_vs_gmp.nim"
 
     # Towers of extension fields
-    test "", "tests/test_fp2.nim"
-    test "", "tests/test_fp6.nim"
+    test "-d:Constantine32", "tests/test_fp2.nim"
+    test "-d:Constantine32", "tests/test_fp6.nim"
 
 task test_no_gmp, "Run tests that don't require GMP":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
@@ -112,8 +112,8 @@ task test_no_gmp, "Run tests that don't require GMP":
     test "-d:Constantine32", "tests/test_finite_fields_powinv.nim"
 
     # Towers of extension fields
-    test "", "tests/test_fp2.nim"
-    test "", "tests/test_fp6.nim"
+    test "-d:Constantine32", "tests/test_fp2.nim"
+    test "-d:Constantine32", "tests/test_fp6.nim"
 
 proc runBench(benchName: string, compiler = "") =
   if not dirExists "build":

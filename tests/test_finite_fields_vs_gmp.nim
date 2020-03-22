@@ -61,7 +61,7 @@ proc binary_prologue[C: static Curve, N: static int](
   mpz_urandomb(a, gmpRng, uint bits)
   mpz_urandomb(b, gmpRng, uint bits)
   # Set modulus to curve modulus
-  let err = mpz_set_str(p, Curve(C).Mod.mres.toHex(), 0)
+  let err = mpz_set_str(p, Curve(C).Mod.toHex(), 0)
   doAssert err == 0, "Error on prime for curve " & $Curve(C)
 
   #########################################################

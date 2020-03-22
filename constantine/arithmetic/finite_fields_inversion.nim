@@ -131,4 +131,4 @@ func inv*(r: var Fp, a: Fp) =
   # For now we don't activate the addition chain.
   # Performance is equal to GCD and it does not pass test on 𝔽p2
   # We need faster squaring/multiplications
-  r.mres.steinsGCD(a.mres, Fp.C.getR2modP(), Fp.C.Mod.mres, Fp.C.getPrimePlus1div2())
+  r.mres.steinsGCD(a.mres, Fp.C.getR2modP(), Fp.C.Mod, Fp.C.getPrimePlus1div2())

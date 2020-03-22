@@ -6,14 +6,35 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
+# This script checks polynomial irreducibility
+#
+# Constructing Tower Extensions for the implementation of Pairing-Based Cryptography
+# Naomi Benger and Michael Scott, 2009
+# https://eprint.iacr.org/2009/556
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # ############################################################
 #
-#             Quadratic and Cubic Non-Residue
+#    Failed experiments of actually instantiating
+#          the tower of extension fields
 #
 # ############################################################
-#
-# This script checks the compatibility of a field modulus
-# with given tower extensions
 
 # ############################################################
 # 1st try
@@ -50,19 +71,20 @@
 # K.<xi, im, p> = NumberField([x^3 - I - 1, x^2 + 1, x - 1])
 
 # ############################################################
-# Let's at least verify Fp6
-print('Verifying non-residues')
+# 4th try, just trying to verify Fp6
+# print('Verifying non-residues')
 
-modulus = Integer('0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47')
+# modulus = Integer('0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47')
 
-Fp.<p> = NumberField(x - 1)
-r1 = Fp(-1).residue_symbol(Fp.ideal(modulus),2)
-print('Fp² = Fp[sqrt(-1)]: ' + str(r1))
+# Fp.<p> = NumberField(x - 1)
+# r1 = Fp(-1).residue_symbol(Fp.ideal(modulus),2)
+# print('Fp² = Fp[sqrt(-1)]: ' + str(r1))
 
-Fp2.<im> = Fp.extension(x^2 + 1)
-xi = Fp2(1+im)
-r2 = xi.residue_symbol(Fp2.ideal(modulus),3)
-# ValueError: The residue symbol to that power is not defined for the number field
-# ^ AFAIK that means that Fp2 doesn't contain the 3rd root of unity
-#   so we are clear
-print('Fp6 = Fp²[cubicRoot(1+I)]: ' + str(r2))
+# Fp2.<im> = Fp.extension(x^2 + 1)
+
+# xi = Fp2(1+im)
+# r2 = xi.residue_symbol(Fp2.ideal(modulus),3)
+# # ValueError: The residue symbol to that power is not defined for the number field
+# # ^ AFAIK that means that Fp2 doesn't contain the 3rd root of unity
+# #   so we are clear
+# print('Fp6 = Fp²[cubicRoot(1+I)]: ' + str(r2))

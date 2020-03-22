@@ -59,8 +59,6 @@ macro declareCurves*(curves: untyped): untyped =
   var CurveBitSize = nnKBracket.newTree()
   var curveModStmts = newStmtList()
 
-  let Fp = ident"Fp"
-
   for curveDesc in curves:
     curveDesc.expectKind(nnkCommand)
     doAssert curveDesc[0].eqIdent"curve"
@@ -94,20 +92,14 @@ macro declareCurves*(curves: untyped): untyped =
         curve, bitSize
       )
 
-      # const BN254_Modulus = Fp[BN254](value: fromHex(BigInt[254], "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"))
+      # const BN254_Modulus = fromHex(BigInt[254], "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47")
       let modulusID = ident($curve & "_Modulus")
       curveModStmts.add newConstStmt(
         modulusID,
-        nnkObjConstr.newTree(
-          nnkBracketExpr.newTree(Fp, curve),
-          nnkExprColonExpr.newTree(
-            ident"mres",
-            newCall(
-              bindSym"fromHex",
-              nnkBracketExpr.newTree(bindSym"BigInt", bitSize),
-              modulus
-            )
-          )
+        newCall(
+          bindSym"fromHex",
+          nnkBracketExpr.newTree(bindSym"BigInt", bitSize),
+          modulus
         )
       )
 
@@ -128,45 +120,6 @@ macro declareCurves*(curves: untyped): untyped =
   let cbs = ident("CurveBitSize")
   result.add newConstStmt(
     cbs, CurveBitSize
-  )
-
-  # Need template indirection in the type section to avoid Nim sigmatch bug
-  # template matchingBigInt(C: static Curve): untyped =
-  #   BigInt[CurveBitSize[C]]
-  let C = ident"C"
-  let matchingBigInt = genSym(nskTemplate, "matchingBigInt")
-  result.add newProc(
-    name = matchingBigInt,
-    params = [ident"untyped", newIdentDefs(C, nnkStaticTy.newTree(Curve))],
-    body = nnkBracketExpr.newTree(bindSym"BigInt", nnkBracketExpr.newTree(cbs, C)),
-    procType = nnkTemplateDef
-  )
-
-  # type
-  #   `Fp`*[C: static Curve] = object
-  #     ## All operations on a field are modulo P
-  #     ## P being the prime modulus of the Curve C
-  #     ## Internally, data is stored in Montgomery n-residue form
-  #     ## with the magic constant chosen for convenient division (a power of 2 depending on P bitsize)
-  #     mres*: matchingBigInt(C)
-  result.add nnkTypeSection.newTree(
-    nnkTypeDef.newTree(
-      nnkPostfix.newTree(ident"*", Fp),
-      nnkGenericParams.newTree(newIdentDefs(
-        C, nnkStaticTy.newTree(Curve), newEmptyNode()
-      )),
-      # TODO: where should I put the nnkCommentStmt?
-      nnkObjectTy.newTree(
-        newEmptyNode(),
-        newEmptyNode(),
-        nnkRecList.newTree(
-          newIdentDefs(
-            nnkPostfix.newTree(ident"*", ident"mres"),
-            newCall(matchingBigInt, C)
-          )
-        )
-      )
-    )
   )
 
   result.add curveModStmts

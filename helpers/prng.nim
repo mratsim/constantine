@@ -90,8 +90,8 @@ func random[T](rng: var RngState, a: var T, C: static Curve) {.noInit.}=
       unreduced.limbs[i] = Word(rng.next())
 
     # Note: a simple modulo will be biaised but it's simple and "fast"
-    reduced.reduce(unreduced, C.Mod.mres)
-    a.montyResidue(reduced, C.Mod.mres, C.getR2modP(), C.getNegInvModWord(), C.canUseNoCarryMontyMul())
+    reduced.reduce(unreduced, C.Mod)
+    a.montyResidue(reduced, C.Mod, C.getR2modP(), C.getNegInvModWord(), C.canUseNoCarryMontyMul())
 
   else:
     for field in fields(a):
