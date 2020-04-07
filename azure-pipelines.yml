@@ -2,7 +2,18 @@ strategy:
   maxParallel: 10
   matrix:
     # TODO: Linux 32-bit requires gcc -m32 setup
-
+    # MacOS host are much faster
+    # Then Linux host, then Windows host
+    Windows_stable_64bit:
+      VM: 'windows-latest'
+      UCPU: amd64
+      CHANNEL: stable
+      TEST_LANG: c
+    Windows_stable_32bit:
+      VM: 'windows-latest'
+      UCPU: i686
+      CHANNEL: stable
+      TEST_LANG: c
     Windows_devel_32bit:
       VM: 'windows-latest'
       UCPU: i686
@@ -13,33 +24,42 @@ strategy:
       UCPU: amd64
       CHANNEL: devel
       TEST_LANG: c
-    Windows_cpp_devel_64bit:
-      VM: 'windows-latest'
+    Linux_stable_64bit:
+      VM: 'ubuntu-16.04'
       UCPU: amd64
-      CHANNEL: devel
-      TEST_LANG: cpp
+      CHANNEL: stable
+      TEST_LANG: c
     Linux_devel_64bit:
       VM: 'ubuntu-18.04'
       UCPU: amd64
       CHANNEL: devel
       TEST_LANG: c
-    Linux_cpp_devel_64bit:
-      VM: 'ubuntu-18.04'
-      UCPU: amd64
-      CHANNEL: devel
-      WEAVE_TEST_LANG: cpp
-
     # Linux_devel_32bit:
     #   VM: 'ubuntu-16.04'
     #   UCPU: i686
     #   CHANNEL: devel
     #   TEST_LANG: c
 
+    MacOS_stable_64bit:
+      VM: 'macOS-10.14'
+      UCPU: amd64
+      CHANNEL: stable
+      TEST_LANG: c
+    MacOS_cpp_stable_64bit:
+      VM: 'macOS-10.14'
+      UCPU: amd64
+      CHANNEL: stable
+      TEST_LANG: cpp
     MacOS_devel_64bit:
       VM: 'macOS-10.14'
       UCPU: amd64
       CHANNEL: devel
       TEST_LANG: c
+    MacOS_cpp_devel_64bit:
+      VM: 'macOS-10.14'
+      UCPU: amd64
+      CHANNEL: devel
+      TEST_LANG: cpp
 pool:
   vmImage: $(VM)
 
@@ -129,7 +149,7 @@ steps:
       fi
       mkdir -p NimBinaries
       pushd NimBinaries
-      if [ ! -x "nim-${CHANNEL}/bin/nim" ]; then
+      if [ ! -x "nim-${CHANNEL}/bin/nim" ] || [ ! -x "nim-${CHANNEL}/bin/nimble" ]; then
         git clone -b "${BRANCH}" https://github.com/nim-lang/nim "nim-${CHANNEL}/"
         pushd "nim-${CHANNEL}"
         git clone --depth 1 https://github.com/nim-lang/csources csources/

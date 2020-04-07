@@ -8,11 +8,32 @@ cache:
 
 matrix:
   include:
-    # Constantine only works with Nim devel
     # Build and test using both gcc and clang
     # Build and test on both x86-64 and ARM64
     # Ubuntu Bionic (18.04) is needed, it includes
     # GCC 7 codegen fixes to addcarry_u64.
+
+    - dist: bionic
+      arch: amd64
+      env:
+        - ARCH=amd64
+        - CHANNEL=stable
+      compiler: gcc
+
+    - dist: bionic
+      arch: arm64
+      env:
+        - ARCH=arm64
+        - CHANNEL=stable
+      compiler: gcc
+
+    - dist: bionic
+      arch: amd64
+      env:
+        - ARCH=amd64
+        - CHANNEL=stable
+      compiler: clang
+
     - dist: bionic
       arch: amd64
       env:
@@ -35,6 +56,12 @@ matrix:
       compiler: clang
 
     # On OSX we only test against clang (gcc is mapped to clang by default)
+    - os: osx
+      arch: amd64
+      env:
+        - ARCH=amd64
+        - CHANNEL=stable
+      compiler: clang
     - os: osx
       arch: amd64
       env:
@@ -72,7 +99,7 @@ before_install:
 install:
   # Detect caching of Nim compiler
   - |
-    if [ ! -x "nim-${CHANNEL}/bin/nim" ]; then
+    if [ ! -x "nim-${CHANNEL}/bin/nim" ] || [ ! -x "nim-${CHANNEL}/bin/nimble" ]; then
       git clone -b "${BRANCH}" https://github.com/nim-lang/nim "nim-${CHANNEL}/"
       pushd "nim-${CHANNEL}"
       git clone --depth 1 https://github.com/nim-lang/csources csources/

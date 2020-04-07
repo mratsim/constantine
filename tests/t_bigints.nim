@@ -13,6 +13,10 @@ import  std/unittest,
         ../constantine/primitives
 
 echo "\n------------------------------------------------------\n"
+proc `==`(a, b: BigInt): bool =
+  # Wrap the constant-time comparison
+  # This allow the ``check`` template to print on failure
+  bool(arithmetic.`==`(a, b))
 
 proc mainArith() =
   suite "isZero" & " [" & $WordBitwidth & "-bit mode]":
@@ -45,7 +49,7 @@ proc mainArith() =
 
         let c = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
         check:
-          bool(a == c)
+          a == c
       block:
         var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
         let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
@@ -53,25 +57,27 @@ proc mainArith() =
 
         let c = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
         check:
-          bool(a == c)
+          a == c
 
     test "Adding 1 zero - fake addition":
       block:
         var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
         let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
+        let c = a
+
         let carry = a.cadd(b, CtFalse)
 
-        let c = a
         check:
-          bool(a == c)
+          a == c
       block:
         var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
         let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
+        let c = a
+
         let carry = a.cadd(b, CtFalse)
 
-        let c = a
         check:
-          bool(a == c)
+          a == c
 
     test "Adding non-zeros - real addition":
       block:
@@ -81,7 +87,7 @@ proc mainArith() =
 
         let c = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000001")
         check:
-          bool(a == c)
+          a == c
       block:
         var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
         let b = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000000")
@@ -89,25 +95,26 @@ proc mainArith() =
 
         let c = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000001")
         check:
-          bool(a == c)
+          a == c
 
     test "Adding non-zeros - fake addition":
       block:
         var a = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000000")
         let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
+        let c = a
         let carry = a.cadd(b, CtFalse)
 
-        let c = a
         check:
-          bool(a == c)
+          a == c
       block:
         var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
         let b = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000000")
+        let c = a
+
         let carry = a.cadd(b, CtFalse)
 
-        let c = a
         check:
-          bool(a == c)
+          a == c
 
     test "Addition limbs carry":
       block:
@@ -117,7 +124,7 @@ proc mainArith() =
 
         let c = fromHex(BigInt[128], "0x00000000_FFFFFFFF_FFFFFFFF_FFFFFFFF")
         check:
-          bool(a == c)
+          a == c
           not bool(carry)
 
       block:
@@ -127,7 +134,7 @@ proc mainArith() =
 
         let c = fromHex(BigInt[128], "0x00000001_00000000_00000000_00000000")
         check:
-          bool(a == c)
+          a == c
           not bool(carry)
 
   suite "BigInt + SecretWord" & " [" & $WordBitwidth & "-bit mode]":
@@ -138,7 +145,7 @@ proc mainArith() =
         let expected = BigInt[256].fromHex"7fffffff80000000800000000000000000000000800000000000000000000000"
 
         discard a.add(SecretWord 1)
-        check: bool(a == expected)
+        check: a == expected
 
   suite "Multi-precision multiplication" & " [" & $WordBitwidth & "-bit mode]":
     test "Same size operand into double size result":
@@ -276,7 +283,7 @@ proc mainArith() =
         var r: BigInt[4]
         r.reduce(a, m)
         check:
-          bool(r == BigInt[4].fromUint(100'u8 mod 13))
+          r == BigInt[4].fromUint(100'u8 mod 13)
 
       block: #
         let a = BigInt[32].fromUint(100'u32)
@@ -285,7 +292,7 @@ proc mainArith() =
         var r: BigInt[4]
         r.reduce(a, m)
         check:
-          bool(r == BigInt[4].fromUint(100'u8 mod 13))
+          r == BigInt[4].fromUint(100'u8 mod 13)
 
       block: #
         let a = BigInt[64].fromUint(100'u32)
@@ -294,7 +301,7 @@ proc mainArith() =
         var r: BigInt[4]
         r.reduce(a, m)
         check:
-          bool(r == BigInt[4].fromUint(100'u8 mod 13))
+          r == BigInt[4].fromUint(100'u8 mod 13)
 
     test "2^64 mod 3":
       let a = BigInt[65].fromHex("0x1_00000000_00000000")
@@ -303,7 +310,7 @@ proc mainArith() =
       var r: BigInt[8]
       r.reduce(a, m)
       check:
-        bool(r == BigInt[8].fromUint(1'u8))
+        r == BigInt[8].fromUint(1'u8)
 
     test "1234567891234567890 mod 10":
       let a = BigInt[64].fromUint(1234567891234567890'u64)
@@ -312,7 +319,7 @@ proc mainArith() =
       var r: BigInt[8]
       r.reduce(a, m)
       check:
-        bool(r == BigInt[8].fromUint(0'u8))
+        r == BigInt[8].fromUint(0'u8)
 
   suite "Modular operations - small modulus - Stint specific failures highlighted by property-based testing" & " [" & $WordBitwidth & "-bit mode]":
     # Vectors taken from Stint - https://github.com/status-im/nim-stint
@@ -327,7 +334,7 @@ proc mainArith() =
       r.reduce(a, m)
 
       check:
-        bool(r == BigInt[48].fromUint(u mod v))
+        r == BigInt[48].fromUint(u mod v)
 
     test "Modulo: 15080397990160655 mod 600432699691":
       let u = 15080397990160655'u64
@@ -340,7 +347,7 @@ proc mainArith() =
       r.reduce(a, m)
 
       check:
-        bool(r == BigInt[40].fromUint(u mod v))
+        r == BigInt[40].fromUint(u mod v)
 
 proc mainNeg() =
   suite "Conditional negation" & " [" & $WordBitwidth & "-bit mode]":
@@ -373,8 +380,8 @@ proc mainNeg() =
         b.cneg(CtFalse)
 
         check:
-          bool(a == a2)
-          bool(b == b2)
+          a == a2
+          b == b2
 
     test "Conditional negation with carries":
       block:
@@ -405,8 +412,8 @@ proc mainNeg() =
         b.cneg(CtFalse)
 
         check:
-          bool(a == a2)
-          bool(b == b2)
+          a == a2
+          b == b2
 
     test "Conditional all-zero bit or all-one bit":
       block:
@@ -437,8 +444,8 @@ proc mainNeg() =
         b.cneg(CtFalse)
 
         check:
-          bool(a == a2)
-          bool(b == b2)
+          a == a2
+          b == b2
 
 proc mainCopySwap() =
   suite "Copy and Swap" & " [" & $WordBitwidth & "-bit mode]":
@@ -450,7 +457,7 @@ proc mainCopySwap() =
         var expected = a
         a.ccopy(b, CtFalse)
 
-        check: bool(expected == a)
+        check: expected == a
 
       block:
         var a = fromHex(BigInt[128], "0x00000000_FFFFFFFF_FFFFFFFF_FFFFFFFF")
@@ -459,7 +466,7 @@ proc mainCopySwap() =
         var expected = b
         a.ccopy(b, CtTrue)
 
-        check: bool(expected == b)
+        check: expected == b
 
     test "Conditional swap":
       block:
@@ -471,8 +478,8 @@ proc mainCopySwap() =
 
         a.cswap(b, CtFalse)
         check:
-          bool(eA == a)
-          bool(eB == b)
+          eA == a
+          eB == b
 
       block:
         var a = fromHex(BigInt[128], "0x00000000_FFFFFFFF_FFFFFFFF_FFFFFFFF")
@@ -483,8 +490,8 @@ proc mainCopySwap() =
 
         a.cswap(b, CtTrue)
         check:
-          bool(eA == a)
-          bool(eB == b)
+          eA == a
+          eB == b
 
 proc mainModularInverse() =
   suite "Modular Inverse (with odd modulus)" & " [" & $WordBitwidth & "-bit mode]":
@@ -505,7 +512,7 @@ proc mainModularInverse() =
 
         r.invmod(a, M, mp1div2)
 
-        check: bool(r == expected)
+        check: r == expected
 
       block: # huge int
         let a = BigInt[381].fromUint(42'u16)
@@ -520,7 +527,7 @@ proc mainModularInverse() =
 
         r.invmod(a, M, mp1div2)
 
-        check: bool(r == expected)
+        check: r == expected
 
     test "271^-1 (mod 383) = 106":
       block: # small int
@@ -536,7 +543,7 @@ proc mainModularInverse() =
 
         r.invmod(a, M, mp1div2)
 
-        check: bool(r == expected)
+        check: r == expected
 
       block: # huge int
         let a = BigInt[381].fromUint(271'u16)
@@ -551,7 +558,7 @@ proc mainModularInverse() =
 
         r.invmod(a, M, mp1div2)
 
-        check: bool(r == expected)
+        check: r == expected
 
     test "BN254_Modulus^-1 (mod BLS12_381)":
       let a = BigInt[381].fromHex("0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47")
@@ -566,7 +573,7 @@ proc mainModularInverse() =
       var r {.noInit.}: BigInt[381]
       r.invmod(a, M, mp1div2)
 
-      check: bool(r == expected)
+      check: r == expected
 
     test "0^-1 (mod any) = 0 (need for tower of extension fields)":
       block:
@@ -582,7 +589,7 @@ proc mainModularInverse() =
 
         r.invmod(a, M, mp1div2)
 
-        check: bool(r == expected)
+        check: r == expected
 
       block:
         let a = BigInt[381].fromUint(0'u16)
