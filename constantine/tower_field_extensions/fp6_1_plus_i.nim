@@ -8,23 +8,22 @@
 
 # ############################################################
 #
-#        Cubic Extension field over base field 𝔽p2
+#      Cubic Extension field over extension field 𝔽p2
 #             𝔽p6 = 𝔽p2[∛(1 + 𝑖)]
 #
 # ############################################################
 
-# This implements a quadratic extension field over 𝔽p2 = 𝔽p[𝑖]
-# the base field 𝔽p:
+# This implements a quadratic extension field over
 #   𝔽p6 = 𝔽p2[∛(1 + 𝑖)]
-# with element A of coordinates (a0, a1) represented
-# by a0 + a1 ξ + a2 ξ²
+# with element A of coordinates (a0, a1, a2) represented
+# by a0 + a1 v + a2 v²
 #
 # The irreducible polynomial chosen is
-#   x³ - ξ with ξ = 𝑖+1
+#   v³ - ξ with ξ = 𝑖+1
 #
 #
-# Consequently, for this file Fp2 to be valid
-# 𝑖+1 MUST not be a square in 𝔽p2
+# Consequently, for this file 𝔽p6 to be valid
+# 𝑖+1 MUST not be a cube in 𝔽p2
 
 import
   ../arithmetic,
@@ -38,25 +37,25 @@ type
     ## 𝔽p6 = 𝔽p2[∛(1 + 𝑖)]
     ##
     ## with coordinates (c0, c1, c2) such as
-    ## c0 + c1 ξ + c2 ξ²
+    ## c0 + c1 v + c2 v² and v³ = ξ = 1+𝑖
     ##
     ## This requires 1 + 𝑖 to not be a cube in 𝔽p2
     c0*, c1*, c2*: Fp2[C]
 
-  Xi = object
-    ## ξ (Xi) the cubic non-residue
+  Xi* = object
+    ## ξ (Xi) the cubic non-residue of 𝔽p2
 
-func `*`(_: typedesc[Xi], a: Fp2): Fp2 {.inline.}=
-  ## Multiply an element of 𝔽p2 by 𝔽p6 cubic non-residue 1 + 𝑖
+func `*`*(_: typedesc[Xi], a: Fp2): Fp2 {.inline.}=
+  ## Multiply an element of 𝔽p2 by 𝔽p6 cubic non-residue ξ = 1 + 𝑖
   ## (c0 + c1 𝑖) (1 + 𝑖) => c0 + (c0 + c1)𝑖 + c1 𝑖²
-  ##                     => c0 - c1 + (c0 + c1) 𝑖
+  ##                    => c0 - c1 + (c0 + c1) 𝑖
   result.c0.diff(a.c0, a.c1)
   result.c1.sum(a.c0, a.c1)
 
-template `*`(a: Fp2, _: typedesc[Xi]): Fp2 =
+template `*`*(a: Fp2, _: typedesc[Xi]): Fp2 =
   Xi * a
 
-func `*=`(a: var Fp2, _: typedesc[Xi]) {.inline.}=
+func `*=`*(a: var Fp2, _: typedesc[Xi]) {.inline.}=
   ## Inplace multiply an element of 𝔽p2 by 𝔽p6 cubic non-residue 1 + 𝑖
   let t = a.c0
   a.c0 -= a.c1
@@ -171,7 +170,7 @@ func inv*[C](r: var Fp6[C], a: Fp6[C]) =
 
   v3.inv(v3)
 
-  # (a0 + a1 ξ + a2 ξ²)^-1 = (A + B ξ + C ξ²) / F
+  # (a0 + a1 v + a2 v²)^-1 = (A + B v + C v²) / F
   r.c0 *= v3
   r.c1.prod(v1, v3)
   r.c2.prod(v2, v3)
