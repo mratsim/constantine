@@ -149,6 +149,75 @@ suite "𝔽p2 = 𝔽p[𝑖] (irreducible polynomial x²+1)":
     test(BLS12_461)
     test(BN462)
 
+  test "Squaring the opposite gives the same result":
+    template test(C: static Curve) =
+      block:
+        proc testInstance() =
+          for _ in 0 ..< Iters:
+            let a = rng.random(Fp2[C])
+            var na{.noInit.}: Fp2[C]
+            na.neg(a)
+
+            var rSqr{.noInit.}, rNegSqr{.noInit.}: Fp2[C]
+
+            rSqr.square(a)
+            rNegSqr.square(na)
+
+            check: bool(rSqr == rNegSqr)
+
+        testInstance()
+
+    test(BN254)
+    test(BLS12_377)
+    test(BLS12_381)
+    test(BN446)
+    test(FKM12_447)
+    test(BLS12_461)
+    test(BN462)
+
+  test "Multiplication and Addition/Substraction are consistent":
+    template test(C: static Curve) =
+      block:
+        proc testInstance() =
+          for _ in 0 ..< Iters:
+            let factor = rand(-30..30)
+
+            let a = rng.random(Fp2[C])
+
+            if factor == 0: continue
+
+            var sum{.noInit.}, one{.noInit.}, f{.noInit.}: Fp2[C]
+            one.setOne()
+
+            if factor < 0:
+              sum.neg(a)
+              f.neg(one)
+              for i in 1 ..< -factor:
+                sum -= a
+                f -= one
+            else:
+              sum = a
+              f = one
+              for i in 1 ..< factor:
+                sum += a
+                f += one
+
+            var r{.noInit.}: Fp2[C]
+
+            r.prod(a, f)
+
+            check: bool(r == sum)
+
+        testInstance()
+
+    test(BN254)
+    test(BLS12_377)
+    test(BLS12_381)
+    test(BN446)
+    test(FKM12_447)
+    test(BLS12_461)
+    test(BN462)
+
   test "𝔽p2 = 𝔽p[𝑖] addition is associative and commutative":
     proc abelianGroup(curve: static Curve) =
       for _ in 0 ..< Iters:
