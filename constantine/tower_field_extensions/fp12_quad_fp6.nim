@@ -109,6 +109,8 @@ func square*(r: var Fp12, a: Fp12) =
 
 func prod*[C](r: var Fp12[C], a, b: Fp12[C]) =
   ## Returns r = a * b
+  # r0 = a0 b0 + γ a1 b1
+  # r1 = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1 (Karatsuba)
   var t {.noInit.}: Fp6[C]
 
   # r1 <- (a0 + a1)(b0 + b1)
@@ -116,7 +118,7 @@ func prod*[C](r: var Fp12[C], a, b: Fp12[C]) =
   t.sum(b.c0, b.c1)
   r.c1.prod(r.c0, t)
 
-  # r0 <- a0 b0 + γ a1 b1
+  # r0 <- a0 b0
   # r1 <- (a0 + a1)(b0 + b1) - a0 b0 - a1 b1
   r.c0.prod(a.c0, b.c0)
   t.prod(a.c1, b.c1)
@@ -124,4 +126,4 @@ func prod*[C](r: var Fp12[C], a, b: Fp12[C]) =
   r.c1 -= t
 
   # r0 <- a0 b0 + γ a1 b1
-  r.c0 -= Gamma * t
+  r.c0 += Gamma * t

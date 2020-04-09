@@ -231,7 +231,7 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
     template test(C: static Curve) =
       block:
         proc testInstance() =
-          for _ in 0 ..< 1: # Iters:
+          for _ in 0 ..< Iters:
             let a = rng.random(Fp6[C])
             var rMul{.noInit.}, rSqr{.noInit.}: Fp6[C]
 
