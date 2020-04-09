@@ -71,7 +71,7 @@ template `*`(a: Fp6, _: typedesc[Gamma]): Fp6 =
 func `*=`(a: var Fp6, _: typedesc[Gamma]) {.inline.} =
   a = Gamma * a
 
-func square*[C](r: var Fp12[C], a: Fp12[C]) =
+func square*(r: var Fp12, a: Fp12) =
   ## Return a² in ``r``
   ## ``r`` is initialized/overwritten
   # (c0, c1)² => (c0 + c1 w)²
@@ -106,3 +106,22 @@ func square*[C](r: var Fp12[C], a: Fp12[C]) =
 
   # r1 = 2 c0c1
   r.c1.double()
+
+func prod*[C](r: var Fp12[C], a, b: Fp12[C]) =
+  ## Returns r = a * b
+  var t {.noInit.}: Fp6[C]
+
+  # r1 <- (a0 + a1)(b0 + b1)
+  r.c0.sum(a.c0, a.c1)
+  t.sum(b.c0, b.c1)
+  r.c1.prod(r.c0, t)
+
+  # r0 <- a0 b0 + γ a1 b1
+  # r1 <- (a0 + a1)(b0 + b1) - a0 b0 - a1 b1
+  r.c0.prod(a.c0, b.c0)
+  t.prod(a.c1, b.c1)
+  r.c1 -= r.c0
+  r.c1 -= t
+
+  # r0 <- a0 b0 + γ a1 b1
+  r.c0 -= Gamma * t

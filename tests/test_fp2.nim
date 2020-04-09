@@ -53,8 +53,6 @@ suite "𝔽p2 = 𝔽p[𝑖] (irreducible polynomial x²+1)":
 
     test(BN254)
     test(BLS12_381)
-    test(P256)
-    test(Secp256k1)
 
   test "Squaring 1 returns 1":
     template test(C: static Curve) =
@@ -76,8 +74,6 @@ suite "𝔽p2 = 𝔽p[𝑖] (irreducible polynomial x²+1)":
         testInstance()
 
     test(BN254)
-    test(P256)
-    test(Secp256k1)
     test(BLS12_377)
     test(BLS12_381)
     test(BN446)
@@ -129,30 +125,29 @@ suite "𝔽p2 = 𝔽p[𝑖] (irreducible polynomial x²+1)":
     test(BLS12_381):
       r.prod(One, x)
       check: bool(r == x)
-    test(P256):
-      r.prod(x, Zero)
-      check: bool(r == Zero)
-    test(P256):
-      r.prod(Zero, x)
-      check: bool(r == Zero)
-    test(P256):
-      r.prod(x, One)
-      check: bool(r == x)
-    test(P256):
-      r.prod(One, x)
-      check: bool(r == x)
-    test(Secp256k1):
-      r.prod(x, Zero)
-      check: bool(r == Zero)
-    test(Secp256k1):
-      r.prod(Zero, x)
-      check: bool(r == Zero)
-    test(Secp256k1):
-      r.prod(x, One)
-      check: bool(r == x)
-    test(Secp256k1):
-      r.prod(One, x)
-      check: bool(r == x)
+
+  test "Multiplication and Squaring are consistent":
+    template test(C: static Curve) =
+      block:
+        proc testInstance() =
+          for _ in 0 ..< Iters:
+            let a = rng.random(Fp2[C])
+            var rMul{.noInit.}, rSqr{.noInit.}: Fp2[C]
+
+            rMul.prod(a, a)
+            rSqr.square(a)
+
+            check: bool(rMul == rSqr)
+
+        testInstance()
+
+    test(BN254)
+    test(BLS12_377)
+    test(BLS12_381)
+    test(BN446)
+    test(FKM12_447)
+    test(BLS12_461)
+    test(BN462)
 
   test "𝔽p2 = 𝔽p[𝑖] addition is associative and commutative":
     proc abelianGroup(curve: static Curve) =
@@ -197,8 +192,6 @@ suite "𝔽p2 = 𝔽p[𝑖] (irreducible polynomial x²+1)":
           bool(r0 == r4)
 
     abelianGroup(BN254)
-    abelianGroup(P256)
-    abelianGroup(Secp256k1)
     abelianGroup(BLS12_377)
     abelianGroup(BLS12_381)
     abelianGroup(BN446)
@@ -249,8 +242,6 @@ suite "𝔽p2 = 𝔽p[𝑖] (irreducible polynomial x²+1)":
           bool(r0 == r4)
 
     commutativeRing(BN254)
-    commutativeRing(P256)
-    commutativeRing(Secp256k1)
     commutativeRing(BLS12_377)
     commutativeRing(BLS12_381)
     commutativeRing(BN446)
@@ -274,8 +265,6 @@ suite "𝔽p2 = 𝔽p[𝑖] (irreducible polynomial x²+1)":
         check: bool(r == one)
 
     mulInvOne(BN254)
-    mulInvOne(P256)
-    mulInvOne(Secp256k1)
     mulInvOne(BLS12_377)
     mulInvOne(BLS12_381)
     mulInvOne(BN446)

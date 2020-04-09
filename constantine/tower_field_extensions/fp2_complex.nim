@@ -158,8 +158,12 @@ func inv*(r: var Fp2, a: Fp2) =
   t1.neg(t0)           # t0 = -1 / (a0² + a1²)
   r.c1.prod(a.c1, t1)  # r1 = -a1 / (a0² + a1²)
 
+func square*(a: var Fp2) {.inline.} =
+  let t = a
+  a.square(t)
+
 func `*=`*(a: var Fp2, b: Fp2) {.inline.} =
   a.prod(a, b)
 
-func `*`*(a, b: Fp2): Fp2 {.inline.} =
+func `*`*(a, b: Fp2): Fp2 {.inline, noInit.} =
   result.prod(a, b)

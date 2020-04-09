@@ -227,6 +227,29 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
       r.prod(One, x)
       check: bool(r == x)
 
+  test "Multiplication and Squaring are consistent":
+    template test(C: static Curve) =
+      block:
+        proc testInstance() =
+          for _ in 0 ..< 1: # Iters:
+            let a = rng.random(Fp6[C])
+            var rMul{.noInit.}, rSqr{.noInit.}: Fp6[C]
+
+            rMul.prod(a, a)
+            rSqr.square(a)
+
+            check: bool(rMul == rSqr)
+
+        testInstance()
+
+    test(BN254)
+    test(BLS12_377)
+    test(BLS12_381)
+    test(BN446)
+    test(FKM12_447)
+    test(BLS12_461)
+    test(BN462)
+
   test "𝔽p6 = 𝔽p2[∛(1+𝑖)] addition is associative and commutative":
     proc abelianGroup(curve: static Curve) =
       for _ in 0 ..< Iters:
@@ -270,8 +293,6 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
           bool(r0 == r4)
 
     abelianGroup(BN254)
-    abelianGroup(P256)
-    abelianGroup(Secp256k1)
     abelianGroup(BLS12_377)
     abelianGroup(BLS12_381)
     abelianGroup(BN446)

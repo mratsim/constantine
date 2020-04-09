@@ -81,7 +81,7 @@ func square*[C](r: var Fp6[C], a: Fp6[C]) =
   v4 += a.c2
   v5.prod(a.c1, a.c2)
   v5.double()
-  v4.square(v4)
+  v4.square()
   r.c0 = Xi * v5
   r.c0 += v3
   r.c2.sum(v2, v4)
@@ -178,9 +178,9 @@ func inv*[C](r: var Fp6[C], a: Fp6[C]) =
   r.c2.prod(v2, v3)
 
 func `*=`*(a: var Fp6, b: Fp6) {.inline.} =
-  var t: Fp6
-  t.prod(a, b)
-  a = t
+  # Need to ensure different buffers for ``a`` and result
+  let t = a
+  a.prod(t, b)
 
-func `*`*(a, b: Fp6): Fp6 {.inline.} =
+func `*`*(a, b: Fp6): Fp6 {.inline, noInit.} =
   result.prod(a, b)
