@@ -9,7 +9,7 @@
 import
   # Internals
   ../constantine/config/curves,
-  ../constantine/tower_field_extensions/[abelian_groups, fp6_1_plus_i],
+  ../constantine/tower_field_extensions/[abelian_groups, fp12_quad_fp6],
   # Helpers
   ../helpers/static_for,
   ./bench_fields_template,
@@ -18,12 +18,12 @@ import
 
 # ############################################################
 #
-#                    Benchmark of 𝔽p6
+#                   Benchmark of 𝔽p12
 #
 # ############################################################
 
 
-const Iters = 1_000_000
+const Iters = 10_000
 const InvIters = 1000
 const AvailableCurves = [
   # Pairing-Friendly curves
@@ -40,12 +40,12 @@ proc main() =
   echo "-".repeat(80)
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
-    addBench(Fp6[curve], Iters)
-    subBench(Fp6[curve], Iters)
-    negBench(Fp6[curve], Iters)
-    mulBench(Fp6[curve], Iters)
-    sqrBench(Fp6[curve], Iters)
-    invBench(Fp6[curve], InvIters)
+    addBench(Fp12[curve], Iters)
+    subBench(Fp12[curve], Iters)
+    negBench(Fp12[curve], Iters)
+    mulBench(Fp12[curve], Iters)
+    sqrBench(Fp12[curve], Iters)
+    invBench(Fp12[curve], InvIters)
     echo "-".repeat(80)
 
 main()

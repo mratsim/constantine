@@ -51,6 +51,7 @@ task test, "Run all tests":
   # Towers of extension fields
   test "", "tests/test_fp2.nim"
   test "", "tests/test_fp6.nim"
+  test "", "tests/test_fp12.nim"
 
   if sizeof(int) == 8: # 32-bit tests
     # Primitives
@@ -74,6 +75,7 @@ task test, "Run all tests":
     # Towers of extension fields
     test "-d:Constantine32", "tests/test_fp2.nim"
     test "-d:Constantine32", "tests/test_fp6.nim"
+    test "-d:Constantine32", "tests/test_fp12.nim"
 
 task test_no_gmp, "Run tests that don't require GMP":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
@@ -95,6 +97,7 @@ task test_no_gmp, "Run tests that don't require GMP":
   # Towers of extension fields
   test "", "tests/test_fp2.nim"
   test "", "tests/test_fp6.nim"
+  test "", "tests/test_fp12.nim"
 
   if sizeof(int) == 8: # 32-bit tests
     # Primitives
@@ -114,6 +117,7 @@ task test_no_gmp, "Run tests that don't require GMP":
     # Towers of extension fields
     test "-d:Constantine32", "tests/test_fp2.nim"
     test "-d:Constantine32", "tests/test_fp6.nim"
+    test "-d:Constantine32", "tests/test_fp12.nim"
 
 proc runBench(benchName: string, compiler = "") =
   if not dirExists "build":
@@ -152,3 +156,12 @@ task bench_fp6_gcc, "Run benchmark 𝔽p6 with gcc":
 
 task bench_fp6_clang, "Run benchmark 𝔽p6 with clang":
   runBench("bench_fp6", "clang")
+
+task bench_fp12, "Run benchmark with 𝔽p12 your default compiler":
+  runBench("bench_fp12")
+
+task bench_fp12_gcc, "Run benchmark 𝔽p12 with gcc":
+  runBench("bench_fp12", "gcc")
+
+task bench_fp12_clang, "Run benchmark 𝔽p12 with clang":
+  runBench("bench_fp12", "clang")

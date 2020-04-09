@@ -127,3 +127,27 @@ func prod*[C](r: var Fp12[C], a, b: Fp12[C]) =
 
   # r0 <- a0 b0 + γ a1 b1
   r.c0 += Gamma * t
+
+func inv*[C](r: var Fp12[C], a: Fp12[C]) =
+  ## Compute the multiplicative inverse of ``a``
+  #
+  # Algorithm: (the inverse exist if a != 0 which might cause constant-time issue)
+  #
+  # 1 / (a0 + a1 w) <=> (a0 - a1 w) / (a0 + a1 w)(a0 - a1 w)
+  #                 <=> (a0 - a1 w) / (a0² - a1² w²)
+  # In our case 𝔽p12 = 𝔽p6[γ], we have w² = γ
+  # So the inverse is (a0 - a1 w) / (a0² - γ a1²)
+
+  # [2 Sqr, 1 Add]
+  var v0 {.noInit.}, v1 {.noInit.}: Fp6[C]
+  v0.square(a.c0)
+  v1.square(a.c1)
+  v0 -= Gamma * v1     # v0 = a0² - γ a1² (the norm / squared magnitude of a)
+
+  # [1 Inv, 2 Sqr, 1 Add]
+  v1.inv(v0)           # v1 = 1 / (a0² - γ a1²)
+
+  # [1 Inv, 2 Mul, 2 Sqr, 1 Add, 1 Neg]
+  r.c0.prod(a.c0, v1)  # r0 = a0 / (a0² - γ a1²)
+  v0.neg(v1)           # v0 = -1 / (a0² - γ a1²)
+  r.c1.prod(a.c1, v0)  # r1 = -a1 / (a0² - γ a1²)

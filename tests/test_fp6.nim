@@ -431,7 +431,7 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
 
       var aInv, r{.noInit.}: Fp6[curve]
 
-      for _ in 0 ..< 1: # Iters:
+      for _ in 0 ..< Iters:
         let a = rng.random(Fp6[curve])
 
         aInv.inv(a)

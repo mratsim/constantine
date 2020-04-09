@@ -418,3 +418,33 @@ suite "𝔽p12 = 𝔽p6[√∛(1+𝑖)]":
     commutativeRing(FKM12_447)
     commutativeRing(BLS12_461)
     commutativeRing(BN462)
+
+  test "𝔽p6 = 𝔽p2[∛(1+𝑖)] extension field multiplicative inverse":
+    proc mulInvOne(curve: static Curve) =
+      var one: Fp12[curve]
+      one.setOne()
+
+      block: # Inverse of 1 is 1
+        var r {.noInit.}: Fp12[curve]
+        r.inv(one)
+        check: bool(r == one)
+
+      var aInv, r{.noInit.}: Fp12[curve]
+
+      for _ in 0 ..< Iters:
+        let a = rng.random(Fp12[curve])
+
+        aInv.inv(a)
+        r.prod(a, aInv)
+        check: bool(r == one)
+
+        r.prod(aInv, a)
+        check: bool(r == one)
+
+    mulInvOne(BN254)
+    mulInvOne(BLS12_377)
+    mulInvOne(BLS12_381)
+    mulInvOne(BN446)
+    mulInvOne(FKM12_447)
+    mulInvOne(BLS12_461)
+    mulInvOne(BN462)
