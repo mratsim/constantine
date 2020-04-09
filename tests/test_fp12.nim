@@ -86,13 +86,13 @@ suite "𝔽p12 = 𝔽p6[√∛(1+𝑖)]":
 
         testInstance()
 
-    # test(BN254)
-    # test(BLS12_377)
-    # test(BLS12_381)
-    # test(BN446)
-    # test(FKM12_447)
-    # test(BLS12_461)
-    # test(BN462)
+    test(BN254)
+    test(BLS12_377)
+    test(BLS12_381)
+    test(BN446)
+    test(FKM12_447)
+    test(BLS12_461)
+    test(BN462)
 
   test "Squaring 3 returns 9":
     template test(C: static Curve) =
@@ -124,13 +124,13 @@ suite "𝔽p12 = 𝔽p6[√∛(1+𝑖)]":
 
         testInstance()
 
-    # test(BN254)
-    # test(BLS12_377)
-    # test(BLS12_381)
-    # test(BN446)
-    # test(FKM12_447)
-    # test(BLS12_461)
-    # test(BN462)
+    test(BN254)
+    test(BLS12_377)
+    test(BLS12_381)
+    test(BN446)
+    test(FKM12_447)
+    test(BLS12_461)
+    test(BN462)
 
   test "Squaring -3 returns 9":
     template test(C: static Curve) =
@@ -162,10 +162,10 @@ suite "𝔽p12 = 𝔽p6[√∛(1+𝑖)]":
 
         testInstance()
 
-    # test(BN254)
-    # test(BLS12_377)
-    # test(BLS12_381)
-    # test(BN446)
-    # test(FKM12_447)
-    # test(BLS12_461)
-    # test(BN462)
+    test(BN254)
+    test(BLS12_377)
+    test(BLS12_381)
+    test(BN446)
+    test(FKM12_447)
+    test(BLS12_461)
+    test(BN462)

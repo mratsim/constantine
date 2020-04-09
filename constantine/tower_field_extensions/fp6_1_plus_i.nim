@@ -90,6 +90,8 @@ func square*[C](r: var Fp6[C], a: Fp6[C]) =
 
 func prod*[C](r: var Fp6[C], a, b: Fp6[C]) =
   ## Returns r = a * b
+  ##
+  ## r MUST not share a buffer with a
   # Algorithm is Karatsuba
   var v0{.noInit.}, v1{.noInit.}, v2{.noInit.}, t{.noInit.}: Fp2[C]
 
@@ -174,3 +176,11 @@ func inv*[C](r: var Fp6[C], a: Fp6[C]) =
   r.c0 *= v3
   r.c1.prod(v1, v3)
   r.c2.prod(v2, v3)
+
+func `*=`*(a: var Fp6, b: Fp6) {.inline.} =
+  var t: Fp6
+  t.prod(a, b)
+  a = t
+
+func `*`*(a, b: Fp6): Fp6 {.inline.} =
+  result.prod(a, b)

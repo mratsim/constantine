@@ -59,6 +59,7 @@ func `*`(_: typedesc[Gamma], a: Fp6): Fp6 {.noInit, inline.} =
   ## Conveniently γ = v with v the factor in for 𝔽p6 coordinate
   ## and v³ = ξ
   ## (c0 + c1 v + c2 v²) v => ξ c2 + c0 v + c1 v²
+  discard
 
   result.c0 = a.c2 * Xi
   result.c1 = a.c0
@@ -70,7 +71,7 @@ template `*`(a: Fp6, _: typedesc[Gamma]): Fp6 =
 func `*=`(a: var Fp6, _: typedesc[Gamma]) {.inline.} =
   a = Gamma * a
 
-func square*(r: var Fp12, a: Fp12) =
+func square*[C](r: var Fp12[C], a: Fp12[C]) =
   ## Return a² in ``r``
   ## ``r`` is initialized/overwritten
   # (c0, c1)² => (c0 + c1 w)²
@@ -91,17 +92,17 @@ func square*(r: var Fp12, a: Fp12) =
   # Alternative 2:
   #   c0² + γ c1² <=> (c0 + c1)(c0 + γ c1) - γ c0c1 - c0c1
 
-  # r0 <- (c0 - c1)(c0 - γ c1)
-  r.c0.diff(a.c0, a.c1)
-  r.c1.diff(a.c0, Gamma * a.c1)
-  r.c0.prod(r.c0, r.c1)
+  # r0 <- (c0 + c1)(c0 + γ c1)
+  r.c0.sum(a.c0, a.c1)
+  r.c1.sum(a.c0, Gamma * a.c1)
+  r.c0 *= r.c1
 
   # r1 <- c0 c1
   r.c1.prod(a.c0, a.c1)
 
-  # r0 = (c0 - c1)(c0 - γ c1) + γ c0c1 + c0c1
-  r.c0 += Gamma * r.c1
-  r.c0 += r.c1
+  # r0 = (c0 + c1)(c0 + γ c1) - γ c0c1 - c0c1
+  r.c0 -= Gamma * r.c1
+  r.c0 -= r.c1
 
   # r1 = 2 c0c1
   r.c1.double()
