@@ -170,6 +170,42 @@ declareCurves:
 
 # ############################################################
 #
+#                        Twists
+#
+# ############################################################
+
+type TwistKind* = enum
+  ## The twist type of the current elliptic curve
+  ##
+  ## Assuming a standard curve `E` over the prime field `𝔽p`
+  ## denoted `E(𝔽p)` in Short Weierstrass form
+  ##   y² = x³ + Ax + B
+  ##
+  ## If E(𝔽p^k), the elliptic curve defined over the extension field
+  ## of degree k, the embedding degree, admits an isomorphism
+  ## to a curve E'(Fp^(k/d)), we call E' a twisted curve.
+  ##
+  ## For pairing they have the following equation
+  ##   y² = x³ + Ax/µ² + B/µ³ for a D-Twist (Divisor)
+  ## or
+  ##   y² = x³ + µ²Ax + µ³B for a M-Twist (Multiplicand)
+  ## with the polynomial x^k - µ being irreducible.
+  ##
+  ## i.e. if d == 2, E' is a quadratic twist and µ is a quadratic non-residue
+  ## if d == 4, E' is a quartic twist
+  ## if d == 6, E' is a sextic twist
+  ##
+  ## Reference:
+  ##
+  ## A note on twists for pairing friendly curves\
+  ## Michael Scott, 2009\
+  ## http://indigo.ie/~mscott/twists.pdf
+  NotTwisted
+  D_Twist
+  M_Twist
+
+# ############################################################
+#
 #                  Curve characteristics
 #
 # ############################################################
