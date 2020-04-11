@@ -9,7 +9,7 @@
 import  std/unittest, std/times,
         ../constantine/arithmetic,
         ../constantine/io/[io_bigints, io_fields],
-        ../constantine/config/[curves, common]
+        ../constantine/config/[curves, common],
         # Test utilities
         ../helpers/prng
 
