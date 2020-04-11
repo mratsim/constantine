@@ -116,7 +116,7 @@ func isZero*(a: Fp): CTBool[Word] =
 
 func isOne*(a: Fp): CTBool[Word] =
   ## Constant-time check if one
-  a.mres.isOne()
+  a.mres == Fp.C.getMontyOne()
 
 func setZero*(a: var Fp) =
   ## Set ``a`` to zero
@@ -250,7 +250,7 @@ func isSquare*[C](a: Fp[C]): CTBool[Word] =
   ## Returns true if ``a`` is a square (quadratic residue) in 𝔽p
   ##
   ## Assumes that the prime modulus ``p`` is public.
-  # Implementation: we use exponentiation by (p-1)/2
+  # Implementation: we use exponentiation by (p-1)/2 (Euler(s criterion)
   #                 as it can reuse the exponentiation implementation
   #                 Note that we don't care about leaking the bits of p
   #                 as we assume that
@@ -258,7 +258,7 @@ func isSquare*[C](a: Fp[C]): CTBool[Word] =
   xi.powUnsafeExponent(C.getPrimeMinus1div2_BE())
   result = xi.isOne()
   # 0 is also a square
-  result or xi.isZero()
+  result = result or xi.isZero()
 
 func sqrt_p3mod4*[C](a: var Fp[C]) =
   ## Compute the square root of ``a``
@@ -267,8 +267,12 @@ func sqrt_p3mod4*[C](a: var Fp[C]) =
   ## and the prime field modulus ``p``: p ≡ 3 (mod 4)
   ##
   ## The result is undefined otherwise
-  static: doAssert C.Mod[0] mod 4 == 3
-  a.powUnsafeExponent(C.getPrimePlus1div4())
+  ##
+  ## The square root, if it exist is multivalued,
+  ## i.e. both x² == (-x)²
+  ## This procedure returns a deterministic result
+  static: doAssert C.Mod.limbs[0].BaseType mod 4 == 3
+  a.powUnsafeExponent(C.getPrimePlus1div4_BE())
 
 func sqrt_if_square_p3mod4*[C](a: var Fp[C]): CTBool[Word] =
   ## If ``a`` is a square, compute the square root of ``a``
@@ -277,7 +281,11 @@ func sqrt_if_square_p3mod4*[C](a: var Fp[C]): CTBool[Word] =
   ## This assumes that the prime field modulus ``p``: p ≡ 3 (mod 4)
   ##
   ## The result is undefined otherwise
-  static: doAssert C.Mod[0] mod 4 == 3
+  ##
+  ## The square root, if it exist is multivalued,
+  ## i.e. both x² == (-x)²
+  ## This procedure returns a deterministic result
+  static: doAssert C.Mod.limbs[0].BaseType mod 4 == 3
 
   var a1 {.noInit.} = a
   a1.powUnsafeExponent(C.getPrimeMinus3div4_BE())
@@ -288,7 +296,7 @@ func sqrt_if_square_p3mod4*[C](a: var Fp[C]): CTBool[Word] =
   var a0 {.noInit.}: Fp[C]
   a0.prod(a1a, a1)
 
-  result = a0 != C.getPrimeMinus1()
+  result = not(a0.mres == C.getMontyPrimeMinus1())
   a.ccopy(a1a, result)
 
 # ############################################################

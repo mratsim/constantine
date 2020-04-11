@@ -267,6 +267,12 @@ func montyOne*(M: BigInt): BigInt =
   ## This is equivalent to R (mod M) in the natural domain
   r_powmod(1, M)
 
+func montyPrimeMinus1*(P: BigInt): BigInt =
+  ## Compute P-1 in the Montgomery domain
+  ## For use in constant-time sqrt
+  result = P
+  discard result.csub(P.montyOne(), true)
+
 func primeMinus2_BE*[bits: static int](
        P: BigInt[bits]
      ): array[(bits+7) div 8, byte] {.noInit.} =
@@ -283,6 +289,8 @@ func primeMinus2_BE*[bits: static int](
 func primePlus1div2*(P: BigInt): BigInt =
   ## Compute (P+1)/2, assumes P is odd
   ## For use in constant-time modular inversion
+  ##
+  ## Warning ⚠️: Result is in the canonical domain (not Montgomery)
   checkOddModulus(P)
 
   # (P+1)/2 = P/2 + 1 if P is odd,
@@ -293,12 +301,6 @@ func primePlus1div2*(P: BigInt): BigInt =
   result.shiftRight(1)
   let carry = result.add(1)
   doAssert not carry
-
-func primeMinus1*(P: BigInt): BigInt =
-  ## Compute P-1
-  ## For use in constant-time sqrt
-  result = P
-  discard result.sub(1)
 
 func primeMinus1div2_BE*[bits: static int](
        P: BigInt[bits]

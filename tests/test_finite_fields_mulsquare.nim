@@ -9,7 +9,7 @@
 import  std/unittest, std/times,
         ../constantine/arithmetic,
         ../constantine/io/[io_bigints, io_fields],
-        ../constantine/config/curves,
+        ../constantine/config/[curves, common]
         # Test utilities
         ../helpers/prng
 
@@ -21,8 +21,6 @@ rng.seed(seed)
 echo "test_finite_fields_mulsquare xoshiro512** seed: ", seed
 
 static: doAssert defined(testingCurves), "This modules requires the -d:testingCurves compile option"
-
-import ../constantine/config/common
 
 proc sanity(C: static Curve) =
   test "Squaring 0,1,2 with "& $Curve(C) & " [FastSquaring = " & $C.canUseNoCarryMontySquare & "]":

@@ -47,6 +47,18 @@ declareCurves:
     testingCurve: true
     bitsize: 7
     modulus: "0x65" # 101 in hex
+  curve Fake103: # 103 ≡ 3 (mod 4)
+    testingCurve: true
+    bitsize: 7
+    modulus: "0x67" # 103 in hex
+  curve Fake10007: # 10007 ≡ 3 (mod 4)
+    testingCurve: true
+    bitsize: 14
+    modulus: "0x2717" # 10007 in hex
+  curve Fake65519: # 65519 ≡ 3 (mod 4)
+    testingCurve: true
+    bitsize: 16
+    modulus: "0xFFEF" # 65519 in hex
   curve Mersenne61:
     testingCurve: true
     bitsize: 61
@@ -206,17 +218,17 @@ macro genMontyMagics(T: typed): untyped =
         bindSym($curve & "_Modulus")
       )
     )
+    # const MyCurve_MontyPrimeMinus1 = montyPrimeMinus1(MyCurve_Modulus)
+    result.add newConstStmt(
+      ident($curve & "_MontyPrimeMinus1"), newCall(
+        bindSym"montyPrimeMinus1",
+        bindSym($curve & "_Modulus")
+      )
+    )
     # const MyCurve_InvModExponent = primeMinus2_BE(MyCurve_Modulus)
     result.add newConstStmt(
       ident($curve & "_InvModExponent"), newCall(
         bindSym"primeMinus2_BE",
-        bindSym($curve & "_Modulus")
-      )
-    )
-    # const MyCurve_PrimeMinus1 = primeMinus1(MyCurve_Modulus)
-    result.add newConstStmt(
-      ident($curve & "_PrimeMinus1"), newCall(
-        bindSym"primeMinus1",
         bindSym($curve & "_Modulus")
       )
     )
@@ -231,6 +243,13 @@ macro genMontyMagics(T: typed): untyped =
     result.add newConstStmt(
       ident($curve & "_PrimeMinus1div2_BE"), newCall(
         bindSym"primeMinus1div2_BE",
+        bindSym($curve & "_Modulus")
+      )
+    )
+    # const MyCurve_PrimeMinus3div4_BE = primeMinus3div4_BE(MyCurve_Modulus)
+    result.add newConstStmt(
+      ident($curve & "_PrimeMinus3div4_BE"), newCall(
+        bindSym"primeMinus3div4_BE",
         bindSym($curve & "_Modulus")
       )
     )
@@ -268,21 +287,26 @@ macro getMontyOne*(C: static Curve): untyped =
   ## Get one in Montgomery representation (i.e. R mod P)
   result = bindSym($C & "_MontyOne")
 
+macro getMontyPrimeMinus1*(C: static Curve): untyped =
+  ## Get (P+1) / 2 for an odd prime
+  result = bindSym($C & "_MontyPrimeMinus1")
+
 macro getInvModExponent*(C: static Curve): untyped =
   ## Get modular inversion exponent (Modulus-2 in canonical representation)
   result = bindSym($C & "_InvModExponent")
 
-macro getPrimeMinus1*(C: static Curve): untyped =
-  ## Get (P+1) / 2 for an odd prime
-  result = bindSym($C & "_PrimePlus1")
-
 macro getPrimePlus1div2*(C: static Curve): untyped =
   ## Get (P+1) / 2 for an odd prime
+  ## Warning ⚠️: Result in canonical domain (not Montgomery)
   result = bindSym($C & "_PrimePlus1div2")
 
 macro getPrimeMinus1div2_BE*(C: static Curve): untyped =
   ## Get (P-1) / 2 in big-endian serialized format
   result = bindSym($C & "_PrimeMinus1div2_BE")
+
+macro getPrimeMinus3div4_BE*(C: static Curve): untyped =
+  ## Get (P-3) / 2 in big-endian serialized format
+  result = bindSym($C & "_PrimeMinus3div4_BE")
 
 macro getPrimePlus1div4_BE*(C: static Curve): untyped =
   ## Get (P+1) / 4 for an odd prime in big-endian serialized format
