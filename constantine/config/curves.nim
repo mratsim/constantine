@@ -174,8 +174,8 @@ declareCurves:
 #
 # ############################################################
 
-type TwistKind* = enum
-  ## The twist type of the current elliptic curve
+type SexticTwist* = enum
+  ## The sectic twist type of the current elliptic curve
   ##
   ## Assuming a standard curve `E` over the prime field `𝔽p`
   ## denoted `E(𝔽p)` in Short Weierstrass form
@@ -195,11 +195,14 @@ type TwistKind* = enum
   ## if d == 4, E' is a quartic twist
   ## if d == 6, E' is a sextic twist
   ##
-  ## Reference:
+  ## References:
+  ## - Efficient Pairings on Twisted Elliptic Curve
+  ##   Yasuyuki Nogami, Masataka Akane, Yumi Sakemi and Yoshitaka Morikawa, 2010
+  ##   https://www.researchgate.net/publication/221908359_Efficient_Pairings_on_Twisted_Elliptic_Curve
   ##
-  ## A note on twists for pairing friendly curves\
-  ## Michael Scott, 2009\
-  ## http://indigo.ie/~mscott/twists.pdf
+  ## - A note on twists for pairing friendly curves\
+  ##   Michael Scott, 2009\
+  ##   http://indigo.ie/~mscott/twists.pdf
   NotTwisted
   D_Twist
   M_Twist

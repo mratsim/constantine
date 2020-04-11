@@ -21,7 +21,7 @@ in Costello2009 and Ionica2017 including an overview of which coordinate system 
 
 In particular for sextic twist (applicable to BN and BLS12 families), the projective coordinates are more efficient while for quadratic and quartic twists, jacobian coordinates ar emore efficient.
 
-When the addition law requires the `a` or `b` parameter from the curve Scott2009 gives the parameter relevant to the twisted curve for the M-Twist (multiplication by non-residue) or D-Twist (Division by non-residue) cases.
+When the addition law requires the `a` or `b` parameter from the curve Scott2009 and Nogami2010 give the parameter relevant to the twisted curve for the M-Twist (multiplication by non-residue) or D-Twist (Division by non-residue) cases.
 
 ## Side-Channel resistance
 
@@ -120,6 +120,10 @@ We use the complete addition law from Bos2014 for Jacobian coordinates, note tha
 - State-of-the-art of secure ECC implementations:a survey on known side-channel attacks and countermeasures\
   Junfeng Fan,XuGuo, Elke De Mulder, Patrick Schaumont, Bart Preneel and Ingrid Verbauwhede, 2010
   https://www.esat.kuleuven.be/cosic/publications/article-1461.pdf
+
+- Efficient Pairings on Twisted Elliptic Curve\
+  Yasuyuki Nogami, Masataka Akane, Yumi Sakemi and Yoshitaka Morikawa, 2010\
+  https://www.researchgate.net/publication/221908359_Efficient_Pairings_on_Twisted_Elliptic_Curve
 
 - A note on twists for pairing friendly curves\
   Michael Scott, 2009\

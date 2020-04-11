@@ -100,23 +100,34 @@ func sum[F; Twist: static TwistKind](
     t4.sum(Q.x, Q.y)          # 5.  t4 <- X2 + Y2
     t3 *= t4                  # 6.  t3 <- t3 * t4
     t4.sum(t0, t1)            # 7.  t4 <- t0 + t1
-    t3 -= t4                  # 8.  t3 <- t3 - t4
+    t3 -= t4                  # 8.  t3 <- t3 - t4   t3 = (X1 + Y1)(X2 + Y2) - (X1 X2 + Y1 Y2) = X1.Y2 + X2.Y1
+    when SexticTwist == D_Twist:
+      t3 *= F.sexticNonResidue()
     t4.sum(P.y, P.z)          # 9.  t4 <- Y1 + Z1
     r.x.sum(Q.y, Q.z)         # 10. X3 <- Y2 + Z2
     t4 *= r.x                 # 11. t4 <- t4 X3
     r.x.sum(t1, t2)           # 12. X3 <- t1 + t2
-    t4 -= r.x                 # 13. t4 <- t4 - X3
+    t4 -= r.x                 # 13. t4 <- t4 - X3   t4 = (Y1 + Z1)(Y2 + Z2) - (Y1 Y2 + Z1 Z2) = Y1 Z2 + Y2 Z1
+    when SexticTwist == D_Twist:
+      t4 *= F.sexticNonResidue()
     r.x.sum(P.x, P.z)         # 14. X3 <- X1 + Z1
     r.y.sum(Q.x, Q.Z)         # 15. Y3 <- X2 + Z2
     r.x *= r.y                # 16. X3 <- X3 Y3
     r.y.sum(t0, t2)           # 17. Y3 <- t0 + t2
     r.y.diff(r.x, r.y)        # 18. Y3 <- X3 - Y3
+    when SexticTwist == D_Twist:
+      t0 *= F.sexticNonResidue()
+      t1 *= F.sexticNonResidue()
     r.x.double(t0)            # 19. X3 <- t0 + t0
     t0 += r.x                 # 20. t0 <- X3 + t0
     t2 *= b3                  # 21. t2 <- b3 t2
+    when SexticTwist == M_Twist:
+      t2 *= F.sexticNonResidue()
     r.z.sum(t1, t2)           # 22. Z3 <- t1 + t2
     t1 -= t2                  # 23. t1 <- t1 - t2
     r.y *= b3                 # 24. Y3 <- b3 Y3
+    when SexticTwist == M_Twist:
+      r.y *= F.sexticNonResidue()
     r.x.prod(t4, r.y)         # 25. X3 <- t4 Y3
     t2.prod(t3, t1)           # 26. t2 <- t3 t1
     r.x.diff(t2, r.x)         # 27. X3 <- t2 - X3
