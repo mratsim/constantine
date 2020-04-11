@@ -91,6 +91,19 @@ func dbl(a: var BigInt): bool =
 
   result = bool(carry)
 
+func sub(a: var BigInt, w: BaseType): bool =
+  ## Limbs substraction, sub a number that fits in a word
+  ## Returns the carry
+  var borrow, diff: BaseType
+  subB(borrow, diff, BaseType(a.limbs[0]), w, borrow)
+  a.limbs[0] = Word(diff)
+  for i in 1 ..< a.limbs.len:
+    let ai = BaseType(a.limbs[i])
+    subB(borrow, diff, ai, 0, borrow)
+    a.limbs[i] = Word(diff)
+
+  result = bool(borrow)
+
 func csub(a: var BigInt, b: BigInt, ctl: bool): bool =
   ## In-place optional substraction
   ##
@@ -254,6 +267,12 @@ func montyOne*(M: BigInt): BigInt =
   ## This is equivalent to R (mod M) in the natural domain
   r_powmod(1, M)
 
+func montyPrimeMinus1*(P: BigInt): BigInt =
+  ## Compute P-1 in the Montgomery domain
+  ## For use in constant-time sqrt
+  result = P
+  discard result.csub(P.montyOne(), true)
+
 func primeMinus2_BE*[bits: static int](
        P: BigInt[bits]
      ): array[(bits+7) div 8, byte] {.noInit.} =
@@ -263,13 +282,15 @@ func primeMinus2_BE*[bits: static int](
   ## when using inversion by Little Fermat Theorem a^-1 = a^(p-2) mod p
 
   var tmp = P
-  discard tmp.csub(BigInt[bits].fromRawUint([byte 2], bigEndian), true)
+  discard tmp.sub(2)
 
   result.exportRawUint(tmp, bigEndian)
 
 func primePlus1div2*(P: BigInt): BigInt =
   ## Compute (P+1)/2, assumes P is odd
   ## For use in constant-time modular inversion
+  ##
+  ## Warning ⚠️: Result is in the canonical domain (not Montgomery)
   checkOddModulus(P)
 
   # (P+1)/2 = P/2 + 1 if P is odd,
@@ -280,3 +301,63 @@ func primePlus1div2*(P: BigInt): BigInt =
   result.shiftRight(1)
   let carry = result.add(1)
   doAssert not carry
+
+func primeMinus1div2_BE*[bits: static int](
+       P: BigInt[bits]
+     ): array[(bits+7) div 8, byte] {.noInit.} =
+  ## For an input prime `p`, compute (p-1)/2
+  ## and return the result as a canonical byte array / octet string
+  ## For use to check if a number is a square (quadratic residue)
+  ## in a field by Euler's criterion
+  ##
+  # Output size:
+  # - (bits + 7) div 8: bits => byte conversion rounded up
+  # - (bits + 7 - 1): dividing by 2 means 1 bit is unused
+  # => TODO: reduce the output size (to potentially save a byte and corresponding multiplication/squarings)
+
+  var tmp = P
+  discard tmp.sub(1)
+  tmp.shiftRight(1)
+
+  result.exportRawUint(tmp, bigEndian)
+
+func primeMinus3div4_BE*[bits: static int](
+       P: BigInt[bits]
+     ): array[(bits+7) div 8, byte] {.noInit.} =
+  ## For an input prime `p`, compute (p-3)/4
+  ## and return the result as a canonical byte array / octet string
+  ## For use to check if a number is a square (quadratic residue)
+  ## and if so compute the square root in a fused manner
+  ##
+  # Output size:
+  # - (bits + 7) div 8: bits => byte conversion rounded up
+  # - (bits + 7 - 2): dividing by 4 means 2 bits is unused
+  # => TODO: reduce the output size (to potentially save a byte and corresponding multiplication/squarings)
+
+  var tmp = P
+  discard tmp.sub(3)
+  tmp.shiftRight(2)
+
+  result.exportRawUint(tmp, bigEndian)
+
+func primePlus1Div4_BE*[bits: static int](
+       P: BigInt[bits]
+     ): array[(bits+7) div 8, byte] {.noInit.} =
+  ## For an input prime `p`, compute (p+1)/4
+  ## and return the result as a canonical byte array / octet string
+  ## For use to check if a number is a square (quadratic residue)
+  ## in a field by Euler's criterion
+  ##
+  # Output size:
+  # - (bits + 7) div 8: bits => byte conversion rounded up
+  # - (bits + 7 - 1): dividing by 4 means 2 bits are unused
+  #                   but we also add 1 to an odd number so using an extra bit
+  # => TODO: reduce the output size (to potentially save a byte and corresponding multiplication/squarings)
+  checkOddModulus(P)
+
+  # First we do P+1/2 in a way that guarantees no overflow
+  var tmp = primePlus1div2(P)
+  # then divide by 2
+  tmp.shiftRight(1)
+
+  result.exportRawUint(tmp, bigEndian)

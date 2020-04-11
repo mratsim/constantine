@@ -44,6 +44,7 @@ task test, "Run all tests":
   test "", "tests/test_io_fields"
   test "", "tests/test_finite_fields.nim"
   test "", "tests/test_finite_fields_mulsquare.nim"
+  test "", "tests/test_finite_fields_sqrt.nim"
   test "", "tests/test_finite_fields_powinv.nim"
 
   test "", "tests/test_finite_fields_vs_gmp.nim"
@@ -68,6 +69,7 @@ task test, "Run all tests":
     test "-d:Constantine32", "tests/test_io_fields"
     test "-d:Constantine32", "tests/test_finite_fields.nim"
     test "-d:Constantine32", "tests/test_finite_fields_mulsquare.nim"
+    test "-d:Constantine32", "tests/test_finite_fields_sqrt.nim"
     test "-d:Constantine32", "tests/test_finite_fields_powinv.nim"
 
     test "-d:Constantine32", "tests/test_finite_fields_vs_gmp.nim"
@@ -92,6 +94,7 @@ task test_no_gmp, "Run tests that don't require GMP":
   test "", "tests/test_io_fields"
   test "", "tests/test_finite_fields.nim"
   test "", "tests/test_finite_fields_mulsquare.nim"
+  test "", "tests/test_finite_fields_sqrt.nim"
   test "", "tests/test_finite_fields_powinv.nim"
 
   # Towers of extension fields
@@ -112,6 +115,7 @@ task test_no_gmp, "Run tests that don't require GMP":
     test "-d:Constantine32", "tests/test_io_fields"
     test "-d:Constantine32", "tests/test_finite_fields.nim"
     test "-d:Constantine32", "tests/test_finite_fields_mulsquare.nim"
+    test "-d:Constantine32", "tests/test_finite_fields_sqrt.nim"
     test "-d:Constantine32", "tests/test_finite_fields_powinv.nim"
 
     # Towers of extension fields

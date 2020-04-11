@@ -143,6 +143,10 @@ func isZero*(a: BigInt): CTBool[Word] =
   ## Returns true if a big int is equal to zero
   a.limbs.isZero
 
+func isOne*(a: BigInt): CTBool[Word] =
+  ## Returns true if a big int is equal to one
+  a.limbs.isOne
+
 func isOdd*(a: BigInt): CTBool[Word] =
   ## Returns true if a is odd
   a.limbs.isOdd
