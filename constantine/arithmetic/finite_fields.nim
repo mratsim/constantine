@@ -68,6 +68,24 @@ func toBig*(src: Fp): auto {.noInit.} =
   r.redc(src.mres, Fp.C.Mod, Fp.C.getNegInvModWord(), Fp.C.canUseNoCarryMontyMul())
   return r
 
+# Copy
+# ------------------------------------------------------------
+
+func ccopy*(a: var Fp, b: Fp, ctl: CTBool[Word]) =
+  ## Constant-time conditional copy
+  ## If ctl is true: b is copied into a
+  ## if ctl is false: b is not copied and a is untouched
+  ## Time and memory accesses are the same whether a copy occurs or not
+  ccopy(a.mres, b.mres, ctl)
+
+func cswap*(a, b: var Fp, ctl: CTBool) =
+  ## Swap ``a`` and ``b`` if ``ctl`` is true
+  ##
+  ## Constant-time:
+  ## Whether ``ctl`` is true or not, the same
+  ## memory accesses are done (unless the compiler tries to be clever)
+  cswap(a.mres, b.mres, ctl)
+
 # ############################################################
 #
 #                Field arithmetic primitives
@@ -91,6 +109,14 @@ func toBig*(src: Fp): auto {.noInit.} =
 func `==`*(a, b: Fp): CTBool[Word] =
   ## Constant-time equality check
   a.mres == b.mres
+
+func isZero*(a: Fp): CTBool[Word] =
+  ## Constant-time check if zero
+  a.mres.isZero()
+
+func isOne*(a: Fp): CTBool[Word] =
+  ## Constant-time check if one
+  a.mres.isOne()
 
 func setZero*(a: var Fp) =
   ## Set ``a`` to zero
@@ -213,6 +239,57 @@ func powUnsafeExponent*(a: var Fp, exponent: openarray[byte]) =
     Fp.C.canUseNoCarryMontyMul(),
     Fp.C.canUseNoCarryMontySquare()
   )
+
+# ############################################################
+#
+#                Field arithmetic square roots
+#
+# ############################################################
+
+func isSquare*[C](a: Fp[C]): CTBool[Word] =
+  ## Returns true if ``a`` is a square (quadratic residue) in 𝔽p
+  ##
+  ## Assumes that the prime modulus ``p`` is public.
+  # Implementation: we use exponentiation by (p-1)/2
+  #                 as it can reuse the exponentiation implementation
+  #                 Note that we don't care about leaking the bits of p
+  #                 as we assume that
+  var xi {.noInit.} = a # TODO: is noInit necessary? see https://github.com/mratsim/constantine/issues/21
+  xi.powUnsafeExponent(C.getPrimeMinus1div2_BE())
+  result = xi.isOne()
+  # 0 is also a square
+  result or xi.isZero()
+
+func sqrt_p3mod4*[C](a: var Fp[C]) =
+  ## Compute the square root of ``a``
+  ##
+  ## This requires ``a`` to be a square
+  ## and the prime field modulus ``p``: p ≡ 3 (mod 4)
+  ##
+  ## The result is undefined otherwise
+  static: doAssert C.Mod[0] mod 4 == 3
+  a.powUnsafeExponent(C.getPrimePlus1div4())
+
+func sqrt_if_square_p3mod4*[C](a: var Fp[C]): CTBool[Word] =
+  ## If ``a`` is a square, compute the square root of ``a``
+  ## if not, ``a`` is unmodified.
+  ##
+  ## This assumes that the prime field modulus ``p``: p ≡ 3 (mod 4)
+  ##
+  ## The result is undefined otherwise
+  static: doAssert C.Mod[0] mod 4 == 3
+
+  var a1 {.noInit.} = a
+  a1.powUnsafeExponent(C.getPrimeMinus3div4_BE())
+
+  var a1a {.noInit.}: Fp[C]
+  a1a.prod(a1, a)
+
+  var a0 {.noInit.}: Fp[C]
+  a0.prod(a1a, a1)
+
+  result = a0 != C.getPrimeMinus1()
+  a.ccopy(a1a, result)
 
 # ############################################################
 #

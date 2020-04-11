@@ -213,10 +213,31 @@ macro genMontyMagics(T: typed): untyped =
         bindSym($curve & "_Modulus")
       )
     )
+    # const MyCurve_PrimeMinus1 = primeMinus1(MyCurve_Modulus)
+    result.add newConstStmt(
+      ident($curve & "_PrimeMinus1"), newCall(
+        bindSym"primeMinus1",
+        bindSym($curve & "_Modulus")
+      )
+    )
     # const MyCurve_PrimePlus1div2 = primePlus1div2(MyCurve_Modulus)
     result.add newConstStmt(
       ident($curve & "_PrimePlus1div2"), newCall(
         bindSym"primePlus1div2",
+        bindSym($curve & "_Modulus")
+      )
+    )
+    # const MyCurve_PrimeMinus1div2_BE = primeMinus1div2_BE(MyCurve_Modulus)
+    result.add newConstStmt(
+      ident($curve & "_PrimeMinus1div2_BE"), newCall(
+        bindSym"primeMinus1div2_BE",
+        bindSym($curve & "_Modulus")
+      )
+    )
+    # const MyCurve_PrimePlus1div4_BE = primePlus1div4_BE(MyCurve_Modulus)
+    result.add newConstStmt(
+      ident($curve & "_PrimePlus1div4_BE"), newCall(
+        bindSym"primePlus1div4_BE",
         bindSym($curve & "_Modulus")
       )
     )
@@ -251,9 +272,21 @@ macro getInvModExponent*(C: static Curve): untyped =
   ## Get modular inversion exponent (Modulus-2 in canonical representation)
   result = bindSym($C & "_InvModExponent")
 
+macro getPrimeMinus1*(C: static Curve): untyped =
+  ## Get (P+1) / 2 for an odd prime
+  result = bindSym($C & "_PrimePlus1")
+
 macro getPrimePlus1div2*(C: static Curve): untyped =
   ## Get (P+1) / 2 for an odd prime
   result = bindSym($C & "_PrimePlus1div2")
+
+macro getPrimeMinus1div2_BE*(C: static Curve): untyped =
+  ## Get (P-1) / 2 in big-endian serialized format
+  result = bindSym($C & "_PrimeMinus1div2_BE")
+
+macro getPrimePlus1div4_BE*(C: static Curve): untyped =
+  ## Get (P+1) / 4 for an odd prime in big-endian serialized format
+  result = bindSym($C & "_PrimePlus1div4_BE")
 
 # ############################################################
 #
