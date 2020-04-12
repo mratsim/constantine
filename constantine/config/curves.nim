@@ -187,7 +187,7 @@ func getCurveBitSize*(C: static Curve): static int =
 template matchingBigInt*(C: static Curve): untyped =
   BigInt[CurveBitSize[C]]
 
-func getCurveFamily*(C: static Curve): CurveFamily =
+func family*(C: static Curve): CurveFamily =
   result = static(CurveFamilies[C])
 
 # ############################################################
@@ -371,9 +371,9 @@ macro getPrimePlus1div4_BE*(C: static Curve): untyped =
 # -------------------------------------------------------
 macro canUseFast_BN_Inversion*(C: static Curve): untyped =
   ## A BN curve can use the fast BN inversion if the parameter "u" is positive
-  if CurveFamilies[C] == BarretoNaehrig:
+  if CurveFamilies[C] != BarretoNaehrig:
     return newLit false
-  return newCall(ident"declared", ident($C & "_BN_param_u"))
+  return bindSym($C & "_BN_can_use_fast_inversion")
 
 macro getBN_param_u_BE*(C: static Curve): untyped =
   ## Get the ``u`` parameter of a BN curve in canonical big-endian representation
@@ -382,7 +382,7 @@ macro getBN_param_u_BE*(C: static Curve): untyped =
 macro getBN_param_6u_minus_1_BE*(C: static Curve): untyped =
   ## Get the ``6u-1`` from the ``u`` parameter
   ## of a BN curve in canonical big-endian representation
-  result = bindSym($C & "bn_6u_minus_1_BE")
+  result = bindSym($C & "_BN_6u_minus_1_BE")
 
 # ############################################################
 #

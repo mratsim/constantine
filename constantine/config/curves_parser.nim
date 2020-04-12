@@ -124,22 +124,37 @@ macro declareCurves*(curves: untyped): untyped =
         curve, family
       )
 
-      if offset + 5 == curveParams.len:
-        if family.eqIdent"BarretoNaehrig" and
-              curveParams[offset+3][0].eqIdent"bn_u_bitwidth" and
-              curveParams[offset+4][0].eqIdent"bn_u":
+      # BN curves
+      # -----------------------------------------------
+      if family.eqIdent"BarretoNaehrig":
+        if offset + 5 == curveParams.len:
+          if curveParams[offset+3][0].eqIdent"bn_u_bitwidth" and
+            curveParams[offset+4][0].eqIdent"bn_u":
 
-          let bn_u_bitwidth = curveParams[offset+3][1][0]
-          let bn_u = curveParams[offset+4][1][0]
+            let bn_u_bitwidth = curveParams[offset+3][1][0]
+            let bn_u = curveParams[offset+4][1][0]
 
-          # const BN254_Snarks_BN_param_u = fromHex(BigInt[63], "0x44E992B44A6909F1")
-          curveExtraStmts.add newConstStmt(
-            ident($curve & "_BN_param_u"),
-            newCall(
-              bindSym"fromHex",
-              nnkBracketExpr.newTree(bindSym"BigInt", bn_u_bitwidth),
-              bn_u
+            # const BN254_Snarks_BN_can_use_fast_inversion = ...
+            curveExtraStmts.add newConstStmt(
+              ident($curve & "_BN_can_use_fast_inversion"),
+              if ($bn_u)[0] == '-': newLit false # negative ``u`` can use the specialized fast inversion
+              else:                 newLit true
             )
+
+            # const BN254_Snarks_BN_param_u = fromHex(BigInt[63], "0x44E992B44A6909F1")
+            curveExtraStmts.add newConstStmt(
+              ident($curve & "_BN_param_u"),
+              newCall(
+                bindSym"fromHex",
+                nnkBracketExpr.newTree(bindSym"BigInt", bn_u_bitwidth),
+                bn_u
+              )
+            )
+        else:
+          # const BN254_Snarks_BN_can_use_fast_inversion = ...
+          curveExtraStmts.add newConstStmt(
+            ident($curve & "_BN_can_use_fast_inversion"),
+            newLit false
           )
 
     else:

@@ -120,6 +120,30 @@ func invmod_addchain(r: var Fp[Secp256k1], a: Fp[Secp256k1]) =
 # Note: it only works for u positive, in particular BN254 doesn't work :/
 #       Is there a way to only use a^-u or even powers?
 
+func invmod_addchain_bn[C](r: var Fp[C], a: Fp[C]) =
+  ## Inversion on BN prime fields with positive base parameter `u`
+  ## via Little Fermat theorem and leveraging the prime low Hamming weight
+  ##
+  ## Requires a `bn` curve with a positive parameter `u`
+  # TODO: debug for input "0x0d2007d8aaface1b8501bfbe792974166e8f9ad6106e5b563604f0aea9ab06f6"
+  #       see test suite
+  static: doAssert C.canUseFast_BN_Inversion()
+
+  var v0 {.noInit.}, v1 {.noInit.}: Fp[C]
+
+  v0 = a
+  v0.powUnsafeExponent(C.getBN_param_6u_minus_1_BE()) # v0 <- a^(6u-1)
+  v1.prod(v0, a)                                      # v1 <- a^(6u)
+  v1.powUnsafeExponent(C.getBN_param_u_BE())          # v1 <- a^(6u²)
+  r.square(v1)                                        # r  <- a^(12u²)
+  v1.square(r)                                        # v1 <- a^(24u²)
+  v0 *= v1                                            # v0 <- a^(24u²) a^(6u-1)
+  v1 *= r                                             # v1 <- a^(24u²) a^(12u²) = a^(36u²)
+  v1.powUnsafeExponent(C.getBN_param_u_BE())          # v1 <- a^(36u³)
+  r.prod(v0, v1)                                      # r  <- a^(36u³) a^(24u²) a^(6u-1)
+  v1.powUnsafeExponent(C.getBN_param_u_BE())          # v1 <- a^(36u⁴)
+  r *= v1                                             # r  <- a^(36u⁴) a^(36u³) a^(24u²) a^(6u-1) = a^(p-2) = a^(-1)
+
 # ############################################################
 #
 #                         Dispatch
@@ -128,7 +152,8 @@ func invmod_addchain(r: var Fp[Secp256k1], a: Fp[Secp256k1]) =
 
 func inv*(r: var Fp, a: Fp) =
   ## Inversion modulo p
-  # For now we don't activate the addition chain.
-  # Performance is equal to GCD and it does not pass test on 𝔽p2
-  # We need faster squaring/multiplications
+  # For now we don't activate the addition chains
+  # neither for Secp256k1 nor BN curves
+  # Performance is slower than GCD
+  # To be revisited with faster squaring/multiplications
   r.mres.steinsGCD(a.mres, Fp.C.getR2modP(), Fp.C.Mod, Fp.C.getPrimePlus1div2())

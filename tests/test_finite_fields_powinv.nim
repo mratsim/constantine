@@ -6,12 +6,22 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import  unittest,
-        ../constantine/arithmetic,
+import  ../constantine/arithmetic,
         ../constantine/io/[io_bigints, io_fields],
-        ../constantine/config/curves
+        ../constantine/config/curves,
+        # Test utilities
+        ../helpers/prng,
+        # Standard library
+        std/unittest, std/times
 
 static: doAssert defined(testingCurves), "This modules requires the -d:testingCurves compile option"
+
+const Iters = 512
+
+var rng: RngState
+let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+rng.seed(seed)
+echo "test_finite_fields_powinv xoshiro512** seed: ", seed
 
 proc main() =
   suite "Modular exponentiation over finite fields":
@@ -143,17 +153,65 @@ proc main() =
           computed == expected
 
   suite "Modular inversion over prime fields":
-    test "x^(-1) mod p":
-        var r, x: Fp[BLS12_381]
+    test "Specific test on Fp[BLS12_381]":
+      var r, x: Fp[BLS12_381]
 
-        # BN254 field modulus
-        x.fromHex("0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47")
+      # BN254 field modulus
+      x.fromHex("0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47")
 
-        let expected = "0x0636759a0f3034fa47174b2c0334902f11e9915b7bd89c6a2b3082b109abbc9837da17201f6d8286fe6203caa1b9d4c8"
+      let expected = "0x0636759a0f3034fa47174b2c0334902f11e9915b7bd89c6a2b3082b109abbc9837da17201f6d8286fe6203caa1b9d4c8"
+      r.inv(x)
+      let computed = r.toHex()
+
+      check:
+        computed == expected
+
+    test "Specific tests on Fp[BN254_Snarks]":
+      block:
+        var r, x: Fp[BN254_Snarks]
+        x.setOne()
         r.inv(x)
-        let computed = r.toHex()
+        check: bool r.isOne()
 
-        check:
-          computed == expected
+      block:
+        var r, x, expected: Fp[BN254_Snarks]
+        x.fromHex"0x076ef96647587df443d86a7ac8aa12f3f52d5d775287a6f5e47764a59d378309"
+        expected.fromHex"2d2ef0cd23dd8ec9e9b47c130942ecd7d7fda5e2dd5af19114bc34565ee355b8"
+
+        r.inv(x)
+        check: bool(r == expected)
+
+      block:
+        var r, x, expected: Fp[BN254_Snarks]
+        x.fromHex"0x0d2007d8aaface1b8501bfbe792974166e8f9ad6106e5b563604f0aea9ab06f6"
+        expected.fromHex"1b632d8aa572c4356debe80f772228dee49c203f34066a998fba5194b98e56c3"
+
+        r.inv(x)
+        check: bool(r == expected)
+
+    proc testRandomInv(curve: static Curve) =
+      test "Random inversion testing on " & $Curve(curve):
+        var aInv, r: Fp[curve]
+
+        for _ in 0 ..< Iters:
+          let a = rng.random(Fp[curve])
+          aInv.inv(a)
+          r.prod(a, aInv)
+          check: bool r.isOne()
+          r.prod(aInv, a)
+          check: bool r.isOne()
+
+    testRandomInv P224
+    testRandomInv BN254_Nogami
+    testRandomInv BN254_Snarks
+    testRandomInv Curve25519
+    testRandomInv P256
+    testRandomInv Secp256k1
+    testRandomInv BLS12_377
+    testRandomInv BLS12_381
+    testRandomInv BN446
+    testRandomInv FKM12_447
+    testRandomInv BLS12_461
+    testRandomInv BN462
 
 main()
