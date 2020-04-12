@@ -13,7 +13,10 @@ import
   ./curves_parser, ./common,
   ../arithmetic/[precomputed, bigints]
 
+# TODO: Is this restricted to this file?
+{.hint[XDeclaredButNotUsed]:off.}
 {.push used.}
+{.used.}
 
 # ############################################################
 #
@@ -39,6 +42,22 @@ import
 # - type Curve* = enum
 # - proc Mod*(curve: static Curve): auto
 #   which returns the field modulus of the curve
+# - proc Family*(curve: static Curve): CurveFamily
+#   which returns the curve family
+# - proc get_BN_param_u_BE*(curve: static Curve): array[N, byte]
+#   which returns the "u" parameter of a BN curve
+#   as a big-endian canonical integer representation
+#   if it's a BN curve and u is positive
+# - proc get_BN_param_6u_minus1_BE*(curve: static Curve): array[N, byte]
+#   which returns the "6u-1" parameter of a BN curve
+#   as a big-endian canonical integer representation
+#   if it's a BN curve and u is positive.
+#   This is used for optimized field inversion for BN curves
+
+type
+  CurveFamily* = enum
+    NoFamily
+    BarretoNaehrig # BN curve
 
 declareCurves:
   # -----------------------------------------------------------------------------
@@ -74,11 +93,15 @@ declareCurves:
   curve BN254_Nogami: # Integer Variable χ–Based Ate Pairing, 2008, Nogami et al
     bitsize: 254
     modulus: "0x2523648240000001ba344d80000000086121000000000013a700000000000013"
+    family: BarretoNaehrig
     # Equation: Y^2 = X^3 + 2
     # u: -(2^62 + 2^55 + 1)
   curve BN254_Snarks: # Zero-Knowledge proofs curve (SNARKS, STARKS, Ethereum)
     bitsize: 254
     modulus: "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"
+    family: BarretoNaehrig
+    bn_u_bitwidth: 63
+    bn_u: "0x44E992B44A6909F1"
     # Equation: Y^2 = X^3 + 3
     # u: 4965661367192848881
   curve Curve25519: # Bernstein curve
@@ -96,6 +119,8 @@ declareCurves:
     # https://github.com/ethereum/EIPs/blob/41dea9615/EIPS/eip-2539.md
     bitsize: 377
     modulus: "0x01ae3a4617c510eac63b05c06ca1493b1a22d9f300f5138f1ef3622fba094800170b5d44300000008508c00000000001"
+    # u: 3 * 2^46 * (7 * 13 * 499) + 1
+    # u: 0x8508c00000000001
   curve BLS12_381:
     bitsize: 381
     modulus: "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab"
@@ -104,6 +129,7 @@ declareCurves:
   curve BN446:
     bitsize: 446
     modulus: "0x2400000000000000002400000002d00000000d800000021c0000001800000000870000000b0400000057c00000015c000000132000000067"
+    family: BarretoNaehrig
     # u = 2^110 + 2^36 + 1
   curve FKM12_447: # Fotiadis-Konstantinou-Martindale
     bitsize: 447
@@ -144,6 +170,7 @@ declareCurves:
     # https://hal.archives-ouvertes.fr/hal-01534101/file/main.pdf
     bitsize: 462
     modulus: "0x240480360120023ffffffffff6ff0cf6b7d9bfca0000000000d812908f41c8020ffffffffff6ff66fc6ff687f640000000002401b00840138013"
+    family: BarretoNaehrig
     # u = 2^114 + 2^101 - 2^14 - 1
 
 # ############################################################
@@ -164,6 +191,9 @@ func getCurveBitSize*(C: static Curve): static int =
 
 template matchingBigInt*(C: static Curve): untyped =
   BigInt[CurveBitSize[C]]
+
+func getCurveFamily*(C: static Curve): CurveFamily =
+  result = static(CurveFamilies[C])
 
 # ############################################################
 #
