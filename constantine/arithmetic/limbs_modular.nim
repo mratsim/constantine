@@ -276,7 +276,7 @@ func shlAddMod_estimate(a: LimbsViewMut, aLen: int,
 
     block: # q*p
       # q * p + carry (doubleword) carry from previous limb
-      muladd1(carry, qp_lo, q, M[i], Word carry)
+      muladd1(carry, qp_lo, q, M[i], carry)
 
     block: # a*2^64 - q*p
       var borrow: Borrow
@@ -293,8 +293,8 @@ func shlAddMod_estimate(a: LimbsViewMut, aLen: int,
   # if carry < q or carry == q and over_p we must do "a -= p"
   # if carry > hi (negative result) we must do "a += p"
 
-  result.neg = Word(carry) > hi
-  result.tooBig = not(result.neg) and (over_p or (Word(carry) < hi))
+  result.neg = carry > hi
+  result.tooBig = not(result.neg) and (over_p or (carry < hi))
 
 func shlAddMod(a: LimbsViewMut, aLen: int,
                c: Word, M: LimbsViewConst, mBits: int) =

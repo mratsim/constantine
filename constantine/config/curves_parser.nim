@@ -172,4 +172,4 @@ macro declareCurves*(curves: untyped): untyped =
   result.add curveModStmts
   result.add curveExtraStmts
 
-  echo result.toStrLit()
+  # echo result.toStrLit()
