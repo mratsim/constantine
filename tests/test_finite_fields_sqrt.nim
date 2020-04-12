@@ -6,14 +6,14 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import  std/unittest, std/times,
-        ../constantine/[arithmetic, primitives],
+import  ../constantine/[arithmetic, primitives],
         ../constantine/io/[io_fields],
         ../constantine/config/[curves, common],
         # Test utilities
         ../helpers/prng,
         # Standard library
-        std/tables
+        std/tables,
+        std/unittest, std/times
 
 const Iters = 128
 

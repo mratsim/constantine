@@ -13,8 +13,6 @@ import
   ./curves_parser, ./common,
   ../arithmetic/[precomputed, bigints]
 
-{.push used.}
-
 # ############################################################
 #
 #           Configuration of finite fields
@@ -39,6 +37,22 @@ import
 # - type Curve* = enum
 # - proc Mod*(curve: static Curve): auto
 #   which returns the field modulus of the curve
+# - proc Family*(curve: static Curve): CurveFamily
+#   which returns the curve family
+# - proc get_BN_param_u_BE*(curve: static Curve): array[N, byte]
+#   which returns the "u" parameter of a BN curve
+#   as a big-endian canonical integer representation
+#   if it's a BN curve and u is positive
+# - proc get_BN_param_6u_minus1_BE*(curve: static Curve): array[N, byte]
+#   which returns the "6u-1" parameter of a BN curve
+#   as a big-endian canonical integer representation
+#   if it's a BN curve and u is positive.
+#   This is used for optimized field inversion for BN curves
+
+type
+  CurveFamily* = enum
+    NoFamily
+    BarretoNaehrig # BN curve
 
 declareCurves:
   # -----------------------------------------------------------------------------
@@ -74,11 +88,15 @@ declareCurves:
   curve BN254_Nogami: # Integer Variable χ–Based Ate Pairing, 2008, Nogami et al
     bitsize: 254
     modulus: "0x2523648240000001ba344d80000000086121000000000013a700000000000013"
+    family: BarretoNaehrig
     # Equation: Y^2 = X^3 + 2
     # u: -(2^62 + 2^55 + 1)
   curve BN254_Snarks: # Zero-Knowledge proofs curve (SNARKS, STARKS, Ethereum)
     bitsize: 254
     modulus: "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"
+    family: BarretoNaehrig
+    bn_u_bitwidth: 63
+    bn_u: "0x44E992B44A6909F1"
     # Equation: Y^2 = X^3 + 3
     # u: 4965661367192848881
   curve Curve25519: # Bernstein curve
@@ -96,6 +114,8 @@ declareCurves:
     # https://github.com/ethereum/EIPs/blob/41dea9615/EIPS/eip-2539.md
     bitsize: 377
     modulus: "0x01ae3a4617c510eac63b05c06ca1493b1a22d9f300f5138f1ef3622fba094800170b5d44300000008508c00000000001"
+    # u: 3 * 2^46 * (7 * 13 * 499) + 1
+    # u: 0x8508c00000000001
   curve BLS12_381:
     bitsize: 381
     modulus: "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab"
@@ -104,6 +124,7 @@ declareCurves:
   curve BN446:
     bitsize: 446
     modulus: "0x2400000000000000002400000002d00000000d800000021c0000001800000000870000000b0400000057c00000015c000000132000000067"
+    family: BarretoNaehrig
     # u = 2^110 + 2^36 + 1
   curve FKM12_447: # Fotiadis-Konstantinou-Martindale
     bitsize: 447
@@ -144,6 +165,7 @@ declareCurves:
     # https://hal.archives-ouvertes.fr/hal-01534101/file/main.pdf
     bitsize: 462
     modulus: "0x240480360120023ffffffffff6ff0cf6b7d9bfca0000000000d812908f41c8020ffffffffff6ff66fc6ff687f640000000002401b00840138013"
+    family: BarretoNaehrig
     # u = 2^114 + 2^101 - 2^14 - 1
 
 # ############################################################
@@ -165,29 +187,34 @@ func getCurveBitSize*(C: static Curve): static int =
 template matchingBigInt*(C: static Curve): untyped =
   BigInt[CurveBitSize[C]]
 
+func family*(C: static Curve): CurveFamily =
+  result = static(CurveFamilies[C])
+
 # ############################################################
 #
-#  Autogeneration of precomputed Montgomery constants in ROM
+#  Autogeneration of precomputed constants in ROM
 #
 # ############################################################
 
-macro genMontyMagics(T: typed): untyped =
+macro genConstants(): untyped =
   ## Store
   ## - the Montgomery magic constant "R^2 mod N" in ROM
   ##   For each curve under the private symbol "MyCurve_R2modP"
   ## - the Montgomery magic constant -1/P mod 2^WordBitSize
   ##   For each curve under the private symbol "MyCurve_NegInvModWord
-  T.getImpl.expectKind(nnkTypeDef)
-  T.getImpl[2].expectKind(nnkEnumTy)
-
+  ## - ...
   result = newStmtList()
 
-  let E = T.getImpl[2]
-  for i in 1 ..< E.len:
-    let curve = E[i]
+  template used(name: string): NimNode =
+    nnkPragmaExpr.newTree(
+      ident(name),
+      nnkPragma.newTree(ident"used")
+    )
+
+  for curve in Curve.low .. Curve.high:
     # const MyCurve_CanUseNoCarryMontyMul = useNoCarryMontyMul(MyCurve_Modulus)
     result.add newConstStmt(
-      ident($curve & "_CanUseNoCarryMontyMul"), newCall(
+      used($curve & "_CanUseNoCarryMontyMul"), newCall(
         bindSym"useNoCarryMontyMul",
         bindSym($curve & "_Modulus")
       )
@@ -195,7 +222,7 @@ macro genMontyMagics(T: typed): untyped =
 
     # const MyCurve_CanUseNoCarryMontySquare = useNoCarryMontySquare(MyCurve_Modulus)
     result.add newConstStmt(
-      ident($curve & "_CanUseNoCarryMontySquare"), newCall(
+      used($curve & "_CanUseNoCarryMontySquare"), newCall(
         bindSym"useNoCarryMontySquare",
         bindSym($curve & "_Modulus")
       )
@@ -203,7 +230,7 @@ macro genMontyMagics(T: typed): untyped =
 
     # const MyCurve_R2modP = r2mod(MyCurve_Modulus)
     result.add newConstStmt(
-      ident($curve & "_R2modP"), newCall(
+      used($curve & "_R2modP"), newCall(
         bindSym"r2mod",
         bindSym($curve & "_Modulus")
       )
@@ -211,64 +238,87 @@ macro genMontyMagics(T: typed): untyped =
 
     # const MyCurve_NegInvModWord = negInvModWord(MyCurve_Modulus)
     result.add newConstStmt(
-      ident($curve & "_NegInvModWord"), newCall(
+      used($curve & "_NegInvModWord"), newCall(
         bindSym"negInvModWord",
         bindSym($curve & "_Modulus")
       )
     )
     # const MyCurve_montyOne = montyOne(MyCurve_Modulus)
     result.add newConstStmt(
-      ident($curve & "_MontyOne"), newCall(
+      used($curve & "_MontyOne"), newCall(
         bindSym"montyOne",
         bindSym($curve & "_Modulus")
       )
     )
     # const MyCurve_MontyPrimeMinus1 = montyPrimeMinus1(MyCurve_Modulus)
     result.add newConstStmt(
-      ident($curve & "_MontyPrimeMinus1"), newCall(
+      used($curve & "_MontyPrimeMinus1"), newCall(
         bindSym"montyPrimeMinus1",
         bindSym($curve & "_Modulus")
       )
     )
     # const MyCurve_InvModExponent = primeMinus2_BE(MyCurve_Modulus)
     result.add newConstStmt(
-      ident($curve & "_InvModExponent"), newCall(
+      used($curve & "_InvModExponent"), newCall(
         bindSym"primeMinus2_BE",
         bindSym($curve & "_Modulus")
       )
     )
     # const MyCurve_PrimePlus1div2 = primePlus1div2(MyCurve_Modulus)
     result.add newConstStmt(
-      ident($curve & "_PrimePlus1div2"), newCall(
+      used($curve & "_PrimePlus1div2"), newCall(
         bindSym"primePlus1div2",
         bindSym($curve & "_Modulus")
       )
     )
     # const MyCurve_PrimeMinus1div2_BE = primeMinus1div2_BE(MyCurve_Modulus)
     result.add newConstStmt(
-      ident($curve & "_PrimeMinus1div2_BE"), newCall(
+      used($curve & "_PrimeMinus1div2_BE"), newCall(
         bindSym"primeMinus1div2_BE",
         bindSym($curve & "_Modulus")
       )
     )
     # const MyCurve_PrimeMinus3div4_BE = primeMinus3div4_BE(MyCurve_Modulus)
     result.add newConstStmt(
-      ident($curve & "_PrimeMinus3div4_BE"), newCall(
+      used($curve & "_PrimeMinus3div4_BE"), newCall(
         bindSym"primeMinus3div4_BE",
         bindSym($curve & "_Modulus")
       )
     )
     # const MyCurve_PrimePlus1div4_BE = primePlus1div4_BE(MyCurve_Modulus)
     result.add newConstStmt(
-      ident($curve & "_PrimePlus1div4_BE"), newCall(
+      used($curve & "_PrimePlus1div4_BE"), newCall(
         bindSym"primePlus1div4_BE",
         bindSym($curve & "_Modulus")
       )
     )
 
-  # echo result.toStrLit
+    if CurveFamilies[curve] == BarretoNaehrig:
+      # when declared(MyCurve_BN_param_u):
+      #   const MyCurve_BN_u_BE = toCanonicalIntRepr(MyCurve_BN_param_u)
+      #   const MyCurve_BN_6u_minus_1_BE = bn_6u_minus_1_BE(MyCurve_BN_param_u)
+      var bnStmts = newStmtList()
+      bnStmts.add newConstStmt(
+        used($curve & "_BN_u_BE"), newCall(
+          bindSym"toCanonicalIntRepr",
+          ident($curve & "_BN_param_u")
+        )
+      )
+      bnStmts.add newConstStmt(
+        used($curve & "_BN_6u_minus_1_BE"), newCall(
+          bindSym"bn_6u_minus_1_BE",
+          ident($curve & "_BN_param_u")
+        )
+      )
 
-genMontyMagics(Curve)
+      result.add nnkWhenStmt.newTree(
+        nnkElifBranch.newTree(
+          newCall(ident"declared", ident($curve & "_BN_param_u")),
+          bnStmts
+        )
+      )
+
+genConstants()
 
 macro canUseNoCarryMontyMul*(C: static Curve): untyped =
   ## Returns true if the Modulus is compatible with a fast
@@ -317,13 +367,30 @@ macro getPrimePlus1div4_BE*(C: static Curve): untyped =
   ## Get (P+1) / 4 for an odd prime in big-endian serialized format
   result = bindSym($C & "_PrimePlus1div4_BE")
 
+# Family specific
+# -------------------------------------------------------
+macro canUseFast_BN_Inversion*(C: static Curve): untyped =
+  ## A BN curve can use the fast BN inversion if the parameter "u" is positive
+  if CurveFamilies[C] != BarretoNaehrig:
+    return newLit false
+  return bindSym($C & "_BN_can_use_fast_inversion")
+
+macro getBN_param_u_BE*(C: static Curve): untyped =
+  ## Get the ``u`` parameter of a BN curve in canonical big-endian representation
+  result = bindSym($C & "_BN_u_BE")
+
+macro getBN_param_6u_minus_1_BE*(C: static Curve): untyped =
+  ## Get the ``6u-1`` from the ``u`` parameter
+  ## of a BN curve in canonical big-endian representation
+  result = bindSym($C & "_BN_6u_minus_1_BE")
+
 # ############################################################
 #
 #                Debug info printed at compile-time
 #
 # ############################################################
 
-macro debugConsts(): untyped =
+macro debugConsts(): untyped {.used.} =
   let curves = bindSym("Curve")
   let E = curves.getImpl[2]
 
@@ -343,5 +410,5 @@ macro debugConsts(): untyped =
   result.add quote do:
     echo "----------------------------------------------------------------------------"
 
-# debug:
+# debug: # displayed with -d:debugConstantine
 #   debugConsts()
