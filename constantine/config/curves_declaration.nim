@@ -90,9 +90,19 @@ declareCurves:
     modulus: "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"
     family: BarretoNaehrig
     bn_u_bitwidth: 63
-    bn_u: "0x44E992B44A6909F1"
-    # Equation: Y^2 = X^3 + 3
-    # u: 4965661367192848881
+    bn_u: "0x44E992B44A6909F1" # u: 4965661367192848881
+
+    # G1 Equation: Y^2 = X^3 + 3
+    # G2 Equation: Y^2 = X^3 + 3/(9+𝑖)
+    eq_form: ShortWeierstrass
+    coef_a: 0
+    coef_b: 3
+    nonresidue_quad_fp: -1       #      -1   is not a square in 𝔽p
+    nonresidue_cube_fp2: (9, 1)  # 9+𝑖   9+𝑖  is not a cube in 𝔽p²
+
+    sexticTwist: D_Twist
+    sexticNonResidue_fp2: (9, 1) # 9+𝑖
+
   curve Curve25519: # Bernstein curve
     bitwidth: 255
     modulus: "0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed"
@@ -108,13 +118,38 @@ declareCurves:
     # https://github.com/ethereum/EIPs/blob/41dea9615/EIPS/eip-2539.md
     bitwidth: 377
     modulus: "0x01ae3a4617c510eac63b05c06ca1493b1a22d9f300f5138f1ef3622fba094800170b5d44300000008508c00000000001"
+    family: BarretoLynnScott
     # u: 3 * 2^46 * (7 * 13 * 499) + 1
     # u: 0x8508c00000000001
+
+    # G1 Equation: y² = x³ + 1
+    # G2 Equation: y² = x³ + 1/𝑗 with 𝑗 = √-5
+    eq_form: ShortWeierstrass
+    coef_a: 0
+    coef_b: 1
+    nonresidue_quad_fp: -5       #      -5   is not a square in 𝔽p
+    nonresidue_cube_fp2: (0, 1)  # √-5  √-5  is not a cube in 𝔽p²
+
+    sexticTwist: D_Twist
+    sexticNonResidue_fp2: (0, 1) # √-5
+
   curve BLS12_381:
     bitwidth: 381
     modulus: "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab"
-    # Equation: y^2 = x^3 + 4
+    family: BarretoLynnScott
     # u: -(2^63 + 2^62 + 2^60 + 2^57 + 2^48 + 2^16)
+
+    # G1 Equation: y² = x³ + 4
+    # G2 Equation: y² = x³ + 4 (1+i)
+    eq_form: ShortWeierstrass
+    coef_a: 0
+    coef_b: 4
+    nonresidue_quad_fp: -1       #      -1   is not a square in 𝔽p
+    nonresidue_cube_fp2: (1, 1)  # 1+𝑖   1+𝑖  is not a cube in 𝔽p²
+
+    sexticTwist: M_Twist
+    sexticNonResidue_fp2: (1, 1) # 1+𝑖
+
   curve BN446:
     bitwidth: 446
     modulus: "0x2400000000000000002400000002d00000000d800000021c0000001800000000870000000b0400000057c00000015c000000132000000067"
@@ -149,6 +184,9 @@ declareCurves:
     modulus: "0x15555545554d5a555a55d69414935fbd6f1e32d8bacca47b14848b42a8dffa5c1cc00f26aa91557f00400020000555554aaaaaac0000aaaaaaab"
     # u = −2^77 + 2^50 + 2^33
     # p = (u - 1)^2 (u^4 - u^2 + 1)/3 + u
+
+    # Note there is another BLS12-461 proposed here:
+    # https://tools.ietf.org/id/draft-yonezawa-pairing-friendly-curves-00.html#rfc.section.4.2
   curve BN462:
     # Pairing-Friendly Curves
     # IETF Draft

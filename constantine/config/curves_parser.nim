@@ -47,7 +47,7 @@ type
     of Small: coef: int64
     of Large: coefHex: string
 
-  CurveKind* = enum
+  CurveEquationForm* = enum
     ShortWeierstrass
 
   SexticTwist* = enum
@@ -86,7 +86,7 @@ type
   CurveParams = object
     ## All the curve parameters that may be defined
     # Note: we don't use case object here, the transition is annoying
-    #       and would force use to scan all "kind" field (curveKind, family, ...)
+    #       and would force use to scan all "kind" field (eq_form, family, ...)
     #       before instantiating the object.
     name: NimNode
 
@@ -94,12 +94,17 @@ type
     bitWidth: NimNode # nnkIntLit
     modulus: NimNode  # nnkStrLit (hex)
 
+    # Towering
+    nonresidue_quad_fp: NimNode # nnkIntLit
+    nonresidue_cube_fp2: NimNode # nnkPar(nnkIntLit, nnkIntLit)
+
     # Curve parameters
-    curveKind: CurveKind
+    eq_form: CurveEquationForm
     coef_A: CurveCoef
     coef_B: CurveCoef
 
     sexticTwist: SexticTwist
+    sexticNonResidue_fp2: NimNode # nnkPar(nnkIntLit, nnkIntLit)
 
     family: CurveFamily
     # BN family
@@ -174,6 +179,26 @@ proc parseCurveDecls(defs: var seq[CurveParams], curves: NimNode) =
         params.bn_u_bitwidth = sectionVal
       elif sectionId.eqIdent"bn_u":
         params.bn_u = sectionVal
+      elif sectionId.eqIdent"eq_form":
+        params.eq_form = parseEnum[CurveEquationForm]($sectionVal)
+      elif sectionId.eqIdent"coef_a":
+        if sectionVal.kind == nnkIntLit:
+          params.coef_A = CurveCoef(kind: Small, coef: sectionVal.intVal)
+        else:
+          params.coef_A = CurveCoef(kind: Large, coefHex: sectionVal.strVal)
+      elif sectionId.eqIdent"coef_b":
+        if sectionVal.kind == nnkIntLit:
+          params.coef_B = CurveCoef(kind: Small, coef: sectionVal.intVal)
+        else:
+          params.coef_B = CurveCoef(kind: Large, coefHex: sectionVal.strVal)
+      elif sectionId.eqIdent"nonresidue_quad_fp":
+        params.nonresidue_quad_fp = sectionVal
+      elif sectionId.eqIdent"nonresidue_cube_fp2":
+        params.nonresidue_cube_fp2 = sectionVal
+      elif sectionId.eqIdent"sexticTwist":
+        params.sexticTwist = parseEnum[SexticTwist]($sectionVal)
+      elif sectionId.eqIdent"sexticNonResidue_fp2":
+        params.sexticNonResidue_fp2 = sectionVal
       else:
         error "Invalid section: \n", curveParams[i].toStrLit()
 
