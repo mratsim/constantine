@@ -109,7 +109,8 @@ proc main() =
     exhaustiveCheck_p3mod4 Fake65519, 65519
     randomSqrtCheck_p3mod4 Mersenne61
     randomSqrtCheck_p3mod4 Mersenne127
-    randomSqrtCheck_p3mod4 BN254
+    randomSqrtCheck_p3mod4 BN254_Nogami
+    randomSqrtCheck_p3mod4 BN254_Snarks
     randomSqrtCheck_p3mod4 P256
     randomSqrtCheck_p3mod4 Secp256k1
     randomSqrtCheck_p3mod4 BLS12_381

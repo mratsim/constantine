@@ -20,7 +20,8 @@ import
 var RNG {.compileTime.} = initRand(1234)
 const CurveParams = [
   P224,
-  BN254,
+  BN254_Nogami,
+  BN254_Snarks,
   Curve25519,
   P256,
   Secp256k1,
@@ -32,7 +33,7 @@ const CurveParams = [
   BN462
 ]
 
-const AvailableCurves = [P224, BN254, P256, Secp256k1, BLS12_381]
+const AvailableCurves = [P224, BN254_Nogami, BN254_Snarks, P256, Secp256k1, BLS12_381]
 
 const # https://gmplib.org/manual/Integer-Import-and-Export.html
   GMP_WordLittleEndian = -1'i32

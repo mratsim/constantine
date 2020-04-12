@@ -27,7 +27,8 @@ const Iters = 1_000_000
 const InvIters = 1000
 const AvailableCurves = [
   P224,
-  BN254,
+  BN254_Nogami,
+  BN254_Snarks,
   Curve25519,
   P256,
   Secp256k1,

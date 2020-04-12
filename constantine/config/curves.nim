@@ -71,11 +71,16 @@ declareCurves:
   curve P224: # NIST P-224
     bitsize: 224
     modulus: "0xffffffff_ffffffff_ffffffff_ffffffff_00000000_00000000_00000001"
-  curve BN254: # Zero-Knowledge proofs curve (SNARKS, STARKS)
+  curve BN254_Nogami: # Integer Variable χ–Based Ate Pairing, 2008, Nogami et al
+    bitsize: 254
+    modulus: "0x2523648240000001ba344d80000000086121000000000013a700000000000013"
+    # Equation: Y^2 = X^3 + 2
+    # u: -(2^62 + 2^55 + 1)
+  curve BN254_Snarks: # Zero-Knowledge proofs curve (SNARKS, STARKS, Ethereum)
     bitsize: 254
     modulus: "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"
     # Equation: Y^2 = X^3 + 3
-    # u: -(2^62 + 2^55 + 1)
+    # u: 4965661367192848881
   curve Curve25519: # Bernstein curve
     bitsize: 255
     modulus: "0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed"

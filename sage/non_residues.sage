@@ -18,7 +18,8 @@
 #       trigger "carry" code-paths that are not triggered by pairing-friendly moduli.
 Curves = {
     'P224': Integer('0xffffffffffffffffffffffffffffffff000000000000000000000001'),
-    'BN254': Integer('0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47'),
+    'BN254_Nogami': Integer('0x2523648240000001ba344d80000000086121000000000013a700000000000013'),
+    'BN254_Snarks': Integer('0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47'),
     'Curve25519': Integer('0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed'),
     'P256': Integer('0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff'),
     'Secp256k1': Integer('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F'),

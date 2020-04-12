@@ -50,7 +50,8 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
 
         testInstance()
 
-    test(BN254)
+    test(BN254_Nogami)
+    test(BN254_Snarks)
     test(BLS12_377)
     test(BLS12_381)
     test(BN446)
@@ -86,7 +87,8 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
 
         testInstance()
 
-    test(BN254)
+    test(BN254_Nogami)
+    test(BN254_Snarks)
     test(BLS12_377)
     test(BLS12_381)
     test(BN446)
@@ -124,7 +126,8 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
 
         testInstance()
 
-    test(BN254)
+    test(BN254_Nogami)
+    test(BN254_Snarks)
     test(BLS12_377)
     test(BLS12_381)
     test(BN446)
@@ -162,7 +165,8 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
 
         testInstance()
 
-    test(BN254)
+    test(BN254_Nogami)
+    test(BN254_Snarks)
     test(BLS12_377)
     test(BLS12_381)
     test(BN446)
@@ -190,16 +194,28 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
 
         testInstance()
 
-    test(BN254):
+    test(BN254_Nogami):
       r.prod(x, Zero)
       check: bool(r == Zero)
-    test(BN254):
+    test(BN254_Nogami):
       r.prod(Zero, x)
       check: bool(r == Zero)
-    test(BN254):
+    test(BN254_Nogami):
       r.prod(x, One)
       check: bool(r == x)
-    test(BN254):
+    test(BN254_Nogami):
+      r.prod(One, x)
+      check: bool(r == x)
+    test(BN254_Snarks):
+      r.prod(x, Zero)
+      check: bool(r == Zero)
+    test(BN254_Snarks):
+      r.prod(Zero, x)
+      check: bool(r == Zero)
+    test(BN254_Snarks):
+      r.prod(x, One)
+      check: bool(r == x)
+    test(BN254_Snarks):
       r.prod(One, x)
       check: bool(r == x)
     test(BLS12_381):
@@ -242,7 +258,8 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
 
         testInstance()
 
-    test(BN254)
+    test(BN254_Nogami)
+    test(BN254_Snarks)
     test(BLS12_377)
     test(BLS12_381)
     test(BN446)
@@ -268,7 +285,8 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
 
         testInstance()
 
-    test(BN254)
+    test(BN254_Nogami)
+    test(BN254_Snarks)
     test(BLS12_377)
     test(BLS12_381)
     test(BN446)
@@ -311,7 +329,8 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
 
         testInstance()
 
-    test(BN254)
+    test(BN254_Nogami)
+    test(BN254_Snarks)
     test(BLS12_377)
     test(BLS12_381)
     test(BN446)
@@ -361,7 +380,8 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
           bool(r0 == r3)
           bool(r0 == r4)
 
-    abelianGroup(BN254)
+    abelianGroup(BN254_Nogami)
+    abelianGroup(BN254_Snarks)
     abelianGroup(BLS12_377)
     abelianGroup(BLS12_381)
     abelianGroup(BN446)
@@ -411,7 +431,8 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
           bool(r0 == r3)
           bool(r0 == r4)
 
-    commutativeRing(BN254)
+    commutativeRing(BN254_Nogami)
+    commutativeRing(BN254_Snarks)
     commutativeRing(BLS12_377)
     commutativeRing(BLS12_381)
     commutativeRing(BN446)
@@ -441,7 +462,8 @@ suite "𝔽p6 = 𝔽p2[∛(1+𝑖)] (irreducible polynomial x³ - (1+𝑖))":
         r.prod(aInv, a)
         check: bool(r == one)
 
-    mulInvOne(BN254)
+    mulInvOne(BN254_Nogami)
+    mulInvOne(BN254_Snarks)
     mulInvOne(BLS12_377)
     mulInvOne(BLS12_381)
     mulInvOne(BN446)
