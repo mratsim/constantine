@@ -210,6 +210,20 @@ proc exported(id: string): NimNode =
     ident(id)
   )
 
+template getCoef(c: CurveCoef, width: NimNode): untyped {.dirty.}=
+  case c.kind
+  of NoCoef:
+    error "Unreachable"
+    nnkDiscardStmt.newTree(newLit "Dummy")
+  of Small:
+    newLit c.coef
+  of Large:
+    newCall(
+      bindSym"fromHex",
+      nnkBracketExpr.newTree(bindSym"BigInt", width),
+      newLit c.coefHex
+    )
+
 proc genMainConstants(defs: var seq[CurveParams]): NimNode =
   ## Generate curves and fields main constants
 
@@ -217,6 +231,7 @@ proc genMainConstants(defs: var seq[CurveParams]): NimNode =
   var MapCurveBitWidth = nnkBracket.newTree()
   var MapCurveFamily = nnkBracket.newTree()
   var curveModStmts = newStmtList()
+  var curveEllipticStmts = newStmtList()
   var curveExtraStmts = newStmtList()
 
   for curveDef in defs:
@@ -248,6 +263,37 @@ proc genMainConstants(defs: var seq[CurveParams]): NimNode =
     MapCurveFamily.add nnkExprColonExpr.newTree(
         curve, newLit(family)
     )
+    # Curve equation
+    # -----------------------------------------------
+    curveEllipticStmts.add newConstStmt(
+      exported($curve & "_equation_form"),
+      newLit curveDef.eq_form
+    )
+    if curveDef.coef_A.kind != NoCoef and curveDef.coef_B.kind != NoCoef:
+      curveEllipticStmts.add newConstStmt(
+        exported($curve & "_coef_A"),
+        curveDef.coef_A.getCoef(bitWidth)
+      )
+      curveEllipticStmts.add newConstStmt(
+        exported($curve & "_coef_B"),
+        curveDef.coef_B.getCoef(bitWidth)
+      )
+      curveEllipticStmts.add newConstStmt(
+        exported($curve & "_nonresidue_quad_fp"),
+        curveDef.nonresidue_quad_fp
+      )
+      curveEllipticStmts.add newConstStmt(
+        exported($curve & "_nonresidue_cube_fp2"),
+        curveDef.nonresidue_cube_fp2
+      )
+      curveEllipticStmts.add newConstStmt(
+        exported($curve & "_sexticTwist"),
+        newLit curveDef.sexticTwist
+      )
+      curveEllipticStmts.add newConstStmt(
+        exported($curve & "_sexticNonResidue_fp2"),
+        curveDef.sexticNonResidue_fp2
+      )
 
     # BN curves
     # -----------------------------------------------
@@ -287,6 +333,7 @@ proc genMainConstants(defs: var seq[CurveParams]): NimNode =
   )
 
   result.add curveModStmts
+  result.add curveEllipticStmts
   result.add curveExtraStmts
 
   # echo result.toStrLit()

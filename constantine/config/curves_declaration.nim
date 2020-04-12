@@ -123,7 +123,7 @@ declareCurves:
     # u: 0x8508c00000000001
 
     # G1 Equation: y² = x³ + 1
-    # G2 Equation: y² = x³ + 1/𝑗 with 𝑗 = √-5
+    # G2 Equation: y² = x³ + 1/ with 𝑗 = √-5
     eq_form: ShortWeierstrass
     coef_a: 0
     coef_b: 1
