@@ -8,7 +8,8 @@
 
 import
   ../constantine/arithmetic/bigints,
-  ../constantine/config/[common, curves]
+  ../constantine/config/[common, curves],
+  ../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective]
 
 # ############################################################
 #
@@ -75,11 +76,8 @@ func next(rng: var RngState): uint64 =
 
   rng.s[7] = rotl(rng.s[7], 21);
 
-# ############################################################
-#
-#            Create a random BigInt or Field element
-#
-# ############################################################
+# BigInts and Fields
+# ------------------------------------------------------------
 
 func random[T](rng: var RngState, a: var T, C: static Curve) {.noInit.}=
   ## Recursively initialize a BigInt or Field element
@@ -97,6 +95,44 @@ func random[T](rng: var RngState, a: var T, C: static Curve) {.noInit.}=
     for field in fields(a):
       rng.random(field, C)
 
+# Elliptic curves
+# ------------------------------------------------------------
+
+func random[F](rng: var RngState, a: var ECP_SWei_Proj[F]) =
+  ## Initialize a random curve point with Z coordinate == 1
+
+  var fieldElem {.noInit.}: F
+  var success = CtFalse
+
+  while not bool(success):
+    # Euler's criterion: there are (p-1)/2 squares in a field with modulus `p`
+    #                    so we have a probability of ~0.5 to get a good point
+    rng.random(fieldElem, F.C)
+    success = trySetFromCoordX(a, fieldElem)
+
+func random_with_randZ[F](rng: var RngState, a: var ECP_SWei_Proj[F]) =
+  ## Initialize a random curve point with Z coordinate being random
+
+  var Z{.noInit.}: F
+  rng.random(Z, F.C) # If Z is zero, X will be zero and that will be an infinity point
+
+  var fieldElem {.noInit.}: F
+  var success = CtFalse
+
+  while not bool(success):
+    rng.random(fieldElem, F.C)
+    success = trySetFromCoordsXandZ(a, fieldElem, Z)
+
+# Generic over any supported type
+# ------------------------------------------------------------
+
 func random*(rng: var RngState, T: typedesc): T =
-  ## Create a random Field or Extension Field Element
-  rng.random(result, T.C)
+  ## Create a random Field or Extension Field or Curve Element
+  when T is ECP_SWei_Proj:
+    rng.random(result)
+  else:
+    rng.random(result, T.C)
+
+func random_with_randZ*(rng: var RngState, T: typedesc[ECP_SWei_Proj]): T =
+  ## Create a random curve element with a random Z coordinate
+  rng.random_with_randZ(result)

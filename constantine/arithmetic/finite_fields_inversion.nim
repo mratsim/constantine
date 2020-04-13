@@ -127,7 +127,7 @@ func invmod_addchain_bn[C](r: var Fp[C], a: Fp[C]) =
   ## Requires a `bn` curve with a positive parameter `u`
   # TODO: debug for input "0x0d2007d8aaface1b8501bfbe792974166e8f9ad6106e5b563604f0aea9ab06f6"
   #       see test suite
-  static: doAssert C.canUseFast_BN_Inversion()
+  static: doAssert C.canUse_BN_AddchainInversion()
 
   var v0 {.noInit.}, v1 {.noInit.}: Fp[C]
 
