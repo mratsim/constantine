@@ -141,11 +141,11 @@ macro getPrimePlus1div4_BE*(C: static Curve): untyped =
 
 # Family specific
 # -------------------------------------------------------
-macro canUseFast_BN_Inversion*(C: static Curve): untyped =
+macro canUse_BN_AddchainInversion*(C: static Curve): untyped =
   ## A BN curve can use the fast BN inversion if the parameter "u" is positive
   if CurveFamilies[C] != BarretoNaehrig:
     return newLit false
-  return bindSym($C & "_BN_can_use_fast_inversion")
+  return bindSym($C & "_BN_can_use_addchain_inversion")
 
 macro getBN_param_u_BE*(C: static Curve): untyped =
   ## Get the ``u`` parameter of a BN curve in canonical big-endian representation
