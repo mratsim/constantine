@@ -147,36 +147,38 @@ func sum*[F](
     t4.sum(P.y, P.z)          # 9.  t4 <- Y1 + Z1
     r.x.sum(Q.y, Q.z)         # 10. X3 <- Y2 + Z2
     t4 *= r.x                 # 11. t4 <- t4 X3
-    r.x.sum(t1, t2)           # 12. X3 <- t1 + t2
+    r.x.sum(t1, t2)           # 12. X3 <- t1 + t2   X3 = Y1 Y2 + Z1 Z2
     t4 -= r.x                 # 13. t4 <- t4 - X3   t4 = (Y1 + Z1)(Y2 + Z2) - (Y1 Y2 + Z1 Z2) = Y1 Z2 + Y2 Z1
     when F is Fp2 and F.C.getSexticTwist() == D_Twist:
       t4 *= F.sexticNonResidue()
     r.x.sum(P.x, P.z)         # 14. X3 <- X1 + Z1
     r.y.sum(Q.x, Q.z)         # 15. Y3 <- X2 + Z2
-    r.x *= r.y                # 16. X3 <- X3 Y3
-    r.y.sum(t0, t2)           # 17. Y3 <- t0 + t2
-    r.y.diff(r.x, r.y)        # 18. Y3 <- X3 - Y3
+    r.x *= r.y                # 16. X3 <- X3 Y3     X3 = (X1 Z1)(X2 Z2)
+    r.y.sum(t0, t2)           # 17. Y3 <- t0 + t2   Y3 = X1 X2 + Z1 Z2
+    r.y.diff(r.x, r.y)        # 18. Y3 <- X3 - Y3   Y3 = (X1 + Z1)(X2 + Z2) - (X1 X2 + Z1 Z2) = X1 Z2 + X2 Z1
     when F is Fp2 and F.C.getSexticTwist() == D_Twist:
       t0 *= F.sexticNonResidue()
       t1 *= F.sexticNonResidue()
-    r.x.double(t0)            # 19. X3 <- t0 + t0
-    t0 += r.x                 # 20. t0 <- X3 + t0
-    t2 *= b3                  # 21. t2 <- b3 t2
+    r.x.double(t0)            # 19. X3 <- t0 + t0   X3 = 2 X1 X2
+    t0 += r.x                 # 20. t0 <- X3 + t0   t0 = 3 X1 X2
+    t2 *= b3                  # 21. t2 <- b3 t2     t2 = 3b Z1 Z2
     when F is Fp2 and F.C.getSexticTwist() == M_Twist:
       t2 *= F.sexticNonResidue()
-    r.z.sum(t1, t2)           # 22. Z3 <- t1 + t2
-    t1 -= t2                  # 23. t1 <- t1 - t2
-    r.y *= b3                 # 24. Y3 <- b3 Y3
+    r.z.sum(t1, t2)           # 22. Z3 <- t1 + t2   Z3 = Y1 Y2 + 3b Z1 Z2
+    t1 -= t2                  # 23. t1 <- t1 - t2   t1 = Y1 Y2 - 3b Z1 Z2
+    r.y *= b3                 # 24. Y3 <- b3 Y3     Y3 = 3b(X1 Z2 + X2 Z1)
     when F is Fp2 and F.C.getSexticTwist() == M_Twist:
       r.y *= F.sexticNonResidue()
-    r.x.prod(t4, r.y)         # 25. X3 <- t4 Y3
-    t2.prod(t3, t1)           # 26. t2 <- t3 t1
-    r.x.diff(t2, r.x)         # 27. X3 <- t2 - X3
-    r.y *= t0                 # 28. Y3 <- Y3 t0
-    t1 *= r.z                 # 29. t1 <- t1 Z3
-    r.y += t1                 # 30. Y3 <- t1 + Y3
-    t0 *= t3                  # 31. t0 <- t0 t3
-    r.z *= t4                 # 32. Z3 <- Z3 t4
-    r.z += t0                 # 33. Z3 <- Z3 + t0
+    r.x.prod(t4, r.y)         # 25. X3 <- t4 Y3     X3 = 3b(Y1 Z2 + Y2 Z1)(X1 Z2 + X2 Z1)
+    t2.prod(t3, t1)           # 26. t2 <- t3 t1     t2 = (X1.Y2 + X2.Y1) (Y1 Y2 - 3b Z1 Z2)
+    r.x.diff(t2, r.x)         # 27. X3 <- t2 - X3   X3 = (X1.Y2 + X2.Y1) (Y1 Y2 - 3b Z1 Z2) - 3b(Y1 Z2 + Y2 Z1)(X1 Z2 + X2 Z1)
+    r.y *= t0                 # 28. Y3 <- Y3 t0     Y3 = 9b X1 X2 (X1 Z2 + X2 Z1)
+    t1 *= r.z                 # 29. t1 <- t1 Z3     t1 = (Y1 Y2 - 3b Z1 Z2)(Y1 Y2 + 3b Z1 Z2)
+    debugEcho "t1 : ", t1
+    debugEcho "r.y: ", r.y
+    r.y += t1                 # 30. Y3 <- t1 + Y3   Y3 = (Y1 Y2 + 3b Z1 Z2)(Y1 Y2 - 3b Z1 Z2) + 9b X1 X2 (X1 Z2 + X2 Z1)
+    t0 *= t3                  # 31. t0 <- t0 t3     t0 = 3 X1 X2 (X1.Y2 + X2.Y1)
+    r.z *= t4                 # 32. Z3 <- Z3 t4     Z3 = (Y1 Y2 + 3b Z1 Z2)(Y1 Z2 + Y2 Z1)
+    r.z += t0                 # 33. Z3 <- Z3 + t0   Z3 = (Y1 Z2 + Y2 Z1)(Y1 Y2 + 3b Z1 Z2) + 3 X1 X2 (X1.Y2 + X2.Y1)
   else:
     {.error: "Not implemented.".}
