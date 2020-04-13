@@ -49,9 +49,9 @@ suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with project
 
     test(Fp[BLS12_381])
 
-  test "Adding opposites gives the infinity point":
+  test "Adding opposites gives an infinity point":
     proc test(F: typedesc) =
-      for _ in 0 ..< 1: # Iters:
+      for _ in 0 ..< Iters:
         var r{.noInit.}: ECP_SWei_Proj[F]
         let P = rng.random(ECP_SWei_Proj[F])
         var Q = P
@@ -61,63 +61,63 @@ suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with project
         check: bool r.isInf()
 
         r.sum(Q, P)
-        check: bool r.isInf
+        check: bool r.isInf()
 
     test(Fp[BLS12_381])
 
-  # test "EC add is commutative":
-  #   proc test(F: typedesc) =
-  #     for _ in 0 ..< Iters:
-  #       var r0{.noInit.}, r1{.noInit.}: ECP_SWei_Proj[F]
-  #       let P = rng.random(ECP_SWei_Proj[F])
-  #       let Q = rng.random(ECP_SWei_Proj[F])
+  test "EC add is commutative":
+    proc test(F: typedesc) =
+      for _ in 0 ..< Iters:
+        var r0{.noInit.}, r1{.noInit.}: ECP_SWei_Proj[F]
+        let P = rng.random(ECP_SWei_Proj[F])
+        let Q = rng.random(ECP_SWei_Proj[F])
 
-  #       r0.sum(P, Q)
-  #       r1.sum(Q, P)
-  #       check: bool(r0 == r1)
+        r0.sum(P, Q)
+        r1.sum(Q, P)
+        check: bool(r0 == r1)
 
-  #   test(Fp[BLS12_381])
+    test(Fp[BLS12_381])
 
-  # test "EC add is associative":
-  #   proc test(F: typedesc) =
-  #     for _ in 0 ..< Iters:
-  #       let a = rng.random(ECP_SWei_Proj[F])
-  #       let b = rng.random(ECP_SWei_Proj[F])
-  #       let c = rng.random(ECP_SWei_Proj[F])
+  test "EC add is associative":
+    proc test(F: typedesc) =
+      for _ in 0 ..< Iters:
+        let a = rng.random(ECP_SWei_Proj[F])
+        let b = rng.random(ECP_SWei_Proj[F])
+        let c = rng.random(ECP_SWei_Proj[F])
 
-  #       var tmp1{.noInit.}, tmp2{.noInit.}: ECP_SWei_Proj[F]
+        var tmp1{.noInit.}, tmp2{.noInit.}: ECP_SWei_Proj[F]
 
-  #       # r0 = (a + b) + c
-  #       tmp1.sum(a, b)
-  #       tmp2.sum(tmp1, c)
-  #       let r0 = tmp2
+        # r0 = (a + b) + c
+        tmp1.sum(a, b)
+        tmp2.sum(tmp1, c)
+        let r0 = tmp2
 
-  #       # r1 = a + (b + c)
-  #       tmp1.sum(b, c)
-  #       tmp2.sum(a, tmp1)
-  #       let r1 = tmp2
+        # r1 = a + (b + c)
+        tmp1.sum(b, c)
+        tmp2.sum(a, tmp1)
+        let r1 = tmp2
 
-  #       # r2 = (a + c) + b
-  #       tmp1.sum(a, c)
-  #       tmp2.sum(tmp1, b)
-  #       let r2 = tmp2
+        # r2 = (a + c) + b
+        tmp1.sum(a, c)
+        tmp2.sum(tmp1, b)
+        let r2 = tmp2
 
-  #       # r3 = a + (c + b)
-  #       tmp1.sum(c, b)
-  #       tmp2.sum(a, tmp1)
-  #       let r3 = tmp2
+        # r3 = a + (c + b)
+        tmp1.sum(c, b)
+        tmp2.sum(a, tmp1)
+        let r3 = tmp2
 
-  #       # r4 = (c + a) + b
-  #       tmp1.sum(c, a)
-  #       tmp2.sum(tmp1, b)
-  #       let r4 = tmp2
+        # r4 = (c + a) + b
+        tmp1.sum(c, a)
+        tmp2.sum(tmp1, b)
+        let r4 = tmp2
 
-  #       # ...
+        # ...
 
-  #       check:
-  #         bool(r0 == r1)
-  #         bool(r0 == r2)
-  #         bool(r0 == r3)
-  #         bool(r0 == r4)
+        check:
+          bool(r0 == r1)
+          bool(r0 == r2)
+          bool(r0 == r3)
+          bool(r0 == r4)
 
-  #   test(Fp[BLS12_381])
+    test(Fp[BLS12_381])

@@ -47,9 +47,14 @@ func `==`*[F](P, Q: ECP_SWei_Proj[F]): CTBool[Word] =
   result = result and a == b
 
 func isInf*(P: ECP_SWei_Proj): CTBool[Word] =
-  ## Returns true if P is the infinity point
+  ## Returns true if P is an infinity point
   ## and false otherwise
-  result = P.x.isZero() and P.y.isOne() and P.z.isZero()
+  ##
+  ## Note: the projective coordinates equation is
+  ##       Y²Z = X³ + aXZ² + bZ³
+  ## A "zero" point is any point with coordinates X and Z = 0
+  ## Y can be anything
+  result = P.x.isZero() and P.z.isZero()
 
 func setInf*(P: var ECP_SWei_Proj) =
   ## Set ``P`` to infinity
@@ -72,6 +77,7 @@ func trySetFromCoordsXandZ*[F](P: var ECP_SWei_Proj[F], x, z: F): CTBool[Word] =
 
   P.x.prod(x, z)
   P.y *= z
+  P.z = z
 
 func trySetFromCoordX*[F](P: var ECP_SWei_Proj[F], x: F): CTBool[Word] =
   ## Try to create a point the elliptic curve
@@ -88,7 +94,7 @@ func trySetFromCoordX*[F](P: var ECP_SWei_Proj[F], x: F): CTBool[Word] =
   # TODO: supports non p ≡ 3 (mod 4) modulus like BLS12-377
   result = sqrt_if_square_p3mod4(P.y)
   P.x = x
-
+  P.z.setOne()
 
 func neg*(P: var ECP_SWei_Proj) =
   ## Negate ``P``
@@ -134,6 +140,11 @@ func sum*[F](
   when F.C.getCoefA() == 0:
     # Algorithm 7 for curves: y² = x³ + b
     # 12M + 2 mul(3b) + 19A
+    # X3 = (X1 Y2 + X2 Y1)(Y1 Y2 − 3b Z1 Z2)
+    #     − 3b(Y1 Z2 + Y2 Z1)(X1 Z2 + X2 Z1)
+    # Y3 = (Y1 Y2 + 3b Z1 Z2)(Y1 Y2 − 3b Z1 Z2)
+    #     + 9b X1 X2 (X1 Z2 + X2 Z1)
+    # Z3= (Y1 Z2 + Y2 Z1)(Y1 Y2 + 3b Z1 Z2) + 3 X1 X2 (X1 Y2 + X2 Y1)
     t0.prod(P.x, Q.x)         # 1.  t0 <- X1 X2
     t1.prod(P.y, Q.y)         # 2.  t1 <- Y1 Y2
     t2.prod(P.z, Q.z)         # 3.  t2 <- Z1 Z2
@@ -170,12 +181,10 @@ func sum*[F](
     when F is Fp2 and F.C.getSexticTwist() == M_Twist:
       r.y *= F.sexticNonResidue()
     r.x.prod(t4, r.y)         # 25. X3 <- t4 Y3     X3 = 3b(Y1 Z2 + Y2 Z1)(X1 Z2 + X2 Z1)
-    t2.prod(t3, t1)           # 26. t2 <- t3 t1     t2 = (X1.Y2 + X2.Y1) (Y1 Y2 - 3b Z1 Z2)
-    r.x.diff(t2, r.x)         # 27. X3 <- t2 - X3   X3 = (X1.Y2 + X2.Y1) (Y1 Y2 - 3b Z1 Z2) - 3b(Y1 Z2 + Y2 Z1)(X1 Z2 + X2 Z1)
+    t2.prod(t3, t1)           # 26. t2 <- t3 t1     t2 = (X1 Y2 + X2 Y1) (Y1 Y2 - 3b Z1 Z2)
+    r.x.diff(t2, r.x)         # 27. X3 <- t2 - X3   X3 = (X1 Y2 + X2 Y1) (Y1 Y2 - 3b Z1 Z2) - 3b(Y1 Z2 + Y2 Z1)(X1 Z2 + X2 Z1)
     r.y *= t0                 # 28. Y3 <- Y3 t0     Y3 = 9b X1 X2 (X1 Z2 + X2 Z1)
     t1 *= r.z                 # 29. t1 <- t1 Z3     t1 = (Y1 Y2 - 3b Z1 Z2)(Y1 Y2 + 3b Z1 Z2)
-    debugEcho "t1 : ", t1
-    debugEcho "r.y: ", r.y
     r.y += t1                 # 30. Y3 <- t1 + Y3   Y3 = (Y1 Y2 + 3b Z1 Z2)(Y1 Y2 - 3b Z1 Z2) + 9b X1 X2 (X1 Z2 + X2 Z1)
     t0 *= t3                  # 31. t0 <- t0 t3     t0 = 3 X1 X2 (X1.Y2 + X2.Y1)
     r.z *= t4                 # 32. Z3 <- Z3 t4     Z3 = (Y1 Y2 + 3b Z1 Z2)(Y1 Z2 + Y2 Z1)
