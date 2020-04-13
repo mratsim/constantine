@@ -43,8 +43,8 @@ func square_complex(r: var QuadraticExt, a: QuadraticExt) =
   # - 1 Substraction 𝔽p
   # Stack: 6 * ModulusBitSize (4x 𝔽p element + 1 named temporaries + 1 in-place multiplication temporary)
   # as in-place multiplications require a (shared) internal temporary
-  mixin isComplexExtension
-  static: doAssert r.isComplexExtension()
+  mixin fromComplexExtension
+  static: doAssert r.fromComplexExtension()
 
   var c0mc1 {.noInit.}: typeof(r.c0)
   c0mc1.diff(a.c0, a.c1) # c0mc1 = c0 - c1                            [1 Sub]
@@ -82,8 +82,8 @@ func prod_complex(r: var QuadraticExt, a, b: QuadraticExt) =
   # - 3 Substraction 𝔽p (2 are fused)
   # - 2 Addition 𝔽p
   # Stack: 6 * ModulusBitSize (4x 𝔽p element + 2x named temporaries + 1 in-place multiplication temporary)
-  mixin isComplexExtension
-  static: doAssert r.isComplexExtension()
+  mixin fromComplexExtension
+  static: doAssert r.fromComplexExtension()
 
   var a0b0 {.noInit.}, a1b1 {.noInit.}: typeof(r.c0)
   a0b0.prod(a.c0, b.c0)                                         # [1 Mul]
@@ -168,15 +168,15 @@ func prod_generic(r: var QuadraticExt, a, b: QuadraticExt) =
 # -------------------------------------------------------------------
 
 func square*(r: var QuadraticExt, a: QuadraticExt) {.inline.} =
-  mixin isComplexExtension
-  when r.isComplexExtension():
+  mixin fromComplexExtension
+  when r.fromComplexExtension():
     r.square_complex(a)
   else:
     r.square_generic(a)
 
 func prod*(r: var QuadraticExt, a, b: QuadraticExt) {.inline.} =
-  mixin isComplexExtension
-  when r.isComplexExtension():
+  mixin fromComplexExtension
+  when r.fromComplexExtension():
     r.prod_complex(a, b)
   else:
     r.prod_generic(a, b)
@@ -196,13 +196,13 @@ func inv*(r: var QuadraticExt, a: QuadraticExt) =
   # with w being our coordinate system and β the quadratic non-residue
   # we have w² = β
   # So the inverse is (a0 - a1 w) / (a0² - β a1²)
-  mixin isComplexExtension
+  mixin fromComplexExtension
 
   # [2 Sqr, 1 Add]
   var v0 {.noInit.}, v1 {.noInit.}: typeof(r.c0)
   v0.square(a.c0)
   v1.square(a.c1)
-  when r.isComplexExtension():
+  when r.fromComplexExtension():
     v0 += v1
   else:
     v0 -= β * v1     # v0 = a0² - β a1² (the norm / squared magnitude of a)

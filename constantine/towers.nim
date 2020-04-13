@@ -24,7 +24,7 @@ type
   Fp2*[C: static Curve] = object
     c0*, c1*: Fp[C]
 
-template isComplexExtension*[F](elem: F): static bool =
+template fromComplexExtension*[F](elem: F): static bool =
   ## Returns true if the input is a complex extension
   ## i.e. the irreducible polynomial chosen is
   ##   x² - µ with µ = -1
@@ -69,7 +69,7 @@ func `*`*(_: typedesc[β], a: Fp2): Fp2 {.inline, noInit.} =
   #
   # (c0 + c1 x) (u + v x) => u c0 + (u c0 + u c1)x + v c1 x²
   #                       => u c0 + β v c1 + (v c0 + u c1) x
-  when a.isComplexExtension():
+  when a.fromComplexExtension():
     result.c0.diff(u * a.c0, v * a.c1)
   else:
     result.c0.sum(u * a.c0, (Beta * v) * a.c1)
