@@ -54,7 +54,10 @@ task test, "Run all tests":
   test "", "tests/test_fp6.nim"
   test "", "tests/test_fp12.nim"
 
-  if sizeof(int) == 8: # 32-bit tests
+  # Elliptic curve arithmetic
+  test "", "tests/test_ec_weierstrass_projective_g1.nim"
+
+  if sizeof(int) == 8: # 32-bit tests on 64-bit arch
     # Primitives
     test "-d:Constantine32", "tests/test_primitives.nim"
 
@@ -79,6 +82,9 @@ task test, "Run all tests":
     test "-d:Constantine32", "tests/test_fp6.nim"
     test "-d:Constantine32", "tests/test_fp12.nim"
 
+    # Elliptic curve arithmetic
+    test "-d:Constantine32", "tests/test_ec_weierstrass_projective_g1.nim"
+
 task test_no_gmp, "Run tests that don't require GMP":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
 
@@ -102,6 +108,9 @@ task test_no_gmp, "Run tests that don't require GMP":
   test "", "tests/test_fp6.nim"
   test "", "tests/test_fp12.nim"
 
+  # Elliptic curve arithmetic
+  test "", "tests/test_ec_weierstrass_projective_g1.nim"
+
   if sizeof(int) == 8: # 32-bit tests
     # Primitives
     test "-d:Constantine32", "tests/test_primitives.nim"
@@ -122,6 +131,9 @@ task test_no_gmp, "Run tests that don't require GMP":
     test "-d:Constantine32", "tests/test_fp2.nim"
     test "-d:Constantine32", "tests/test_fp6.nim"
     test "-d:Constantine32", "tests/test_fp12.nim"
+
+    # Elliptic curve arithmetic
+    test "-d:Constantine32", "tests/test_ec_weierstrass_projective_g1.nim"
 
 proc runBench(benchName: string, compiler = "") =
   if not dirExists "build":

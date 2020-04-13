@@ -32,14 +32,17 @@ echo "test_ec_weierstrass_projective_g1 xoshiro512** seed: ", seed
 
 suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with projective coordinates (X, Y, Z): Y²Z = X³ + aXZ² + bZ³ i.e. X = xZ, Y = yZ":
   test "The infinity point is the neutral element w.r.t. to EC addition":
-    proc test(F: typedesc) =
+    proc test(F: typedesc, randZ: static bool) =
       var inf {.noInit.}: ECP_SWei_Proj[F]
       inf.setInf()
       check: bool inf.isInf()
 
       for _ in 0 ..< Iters:
         var r{.noInit.}: ECP_SWei_Proj[F]
-        let P = rng.random(ECP_SWei_Proj[F])
+        when randZ:
+          let P = rng.random_with_randZ(ECP_SWei_Proj[F])
+        else:
+          let P = rng.random(ECP_SWei_Proj[F])
 
         r.sum(P, inf)
         check: bool(r == P)
@@ -47,13 +50,17 @@ suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with project
         r.sum(inf, P)
         check: bool(r == P)
 
-    test(Fp[BLS12_381])
+    test(Fp[BLS12_381], randZ = false)
+    test(Fp[BLS12_381], randZ = true)
 
   test "Adding opposites gives an infinity point":
-    proc test(F: typedesc) =
+    proc test(F: typedesc, randZ: static bool) =
       for _ in 0 ..< Iters:
         var r{.noInit.}: ECP_SWei_Proj[F]
-        let P = rng.random(ECP_SWei_Proj[F])
+        when randZ:
+          let P = rng.random_with_randZ(ECP_SWei_Proj[F])
+        else:
+          let P = rng.random(ECP_SWei_Proj[F])
         var Q = P
         Q.neg()
 
@@ -63,27 +70,38 @@ suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with project
         r.sum(Q, P)
         check: bool r.isInf()
 
-    test(Fp[BLS12_381])
+    test(Fp[BLS12_381], randZ = false)
+    test(Fp[BLS12_381], randZ = true)
 
   test "EC add is commutative":
-    proc test(F: typedesc) =
+    proc test(F: typedesc, randZ: static bool) =
       for _ in 0 ..< Iters:
         var r0{.noInit.}, r1{.noInit.}: ECP_SWei_Proj[F]
-        let P = rng.random(ECP_SWei_Proj[F])
-        let Q = rng.random(ECP_SWei_Proj[F])
+        when randZ:
+          let P = rng.random_with_randZ(ECP_SWei_Proj[F])
+          let Q = rng.random_with_randZ(ECP_SWei_Proj[F])
+        else:
+          let P = rng.random(ECP_SWei_Proj[F])
+          let Q = rng.random(ECP_SWei_Proj[F])
 
         r0.sum(P, Q)
         r1.sum(Q, P)
         check: bool(r0 == r1)
 
-    test(Fp[BLS12_381])
+    test(Fp[BLS12_381], randZ = false)
+    test(Fp[BLS12_381], randZ = true)
 
   test "EC add is associative":
-    proc test(F: typedesc) =
+    proc test(F: typedesc, randZ: static bool) =
       for _ in 0 ..< Iters:
-        let a = rng.random(ECP_SWei_Proj[F])
-        let b = rng.random(ECP_SWei_Proj[F])
-        let c = rng.random(ECP_SWei_Proj[F])
+        when randZ:
+          let a = rng.random_with_randZ(ECP_SWei_Proj[F])
+          let b = rng.random_with_randZ(ECP_SWei_Proj[F])
+          let c = rng.random_with_randZ(ECP_SWei_Proj[F])
+        else:
+          let a = rng.random(ECP_SWei_Proj[F])
+          let b = rng.random(ECP_SWei_Proj[F])
+          let c = rng.random(ECP_SWei_Proj[F])
 
         var tmp1{.noInit.}, tmp2{.noInit.}: ECP_SWei_Proj[F]
 
@@ -120,4 +138,5 @@ suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with project
           bool(r0 == r3)
           bool(r0 == r4)
 
-    test(Fp[BLS12_381])
+    test(Fp[BLS12_381], randZ = false)
+    test(Fp[BLS12_381], randZ = true)

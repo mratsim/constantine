@@ -114,11 +114,7 @@ func random_with_randZ[F](rng: var RngState, a: var ECP_SWei_Proj[F]) =
   ## Initialize a random curve point with Z coordinate being random
 
   var Z{.noInit.}: F
-  rng.random(Z, F.C)
-  doAssert bool not Z.isZero(), (
-    "Whoops, you had a probability of 2^-" &
-    $F.C.getCurveBitSize() & " to get the 0 element randomly."
-  )
+  rng.random(Z, F.C) # If Z is zero, X will be zero and that will be an infinity point
 
   var fieldElem {.noInit.}: F
   var success = CtFalse
@@ -136,3 +132,7 @@ func random*(rng: var RngState, T: typedesc): T =
     rng.random(result)
   else:
     rng.random(result, T.C)
+
+func random_with_randZ*(rng: var RngState, T: typedesc[ECP_SWei_Proj]): T =
+  ## Create a random curve element with a random Z coordinate
+  rng.random_with_randZ(result)
