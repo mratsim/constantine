@@ -334,3 +334,85 @@ func `*=`*(a: var Fp, b: Fp) =
 func square*(a: var Fp) =
   ## Squaring modulo p
   a.mres.montySquare(a.mres, Fp.C.Mod, Fp.C.getNegInvModWord(), Fp.C.canUseNoCarryMontySquare())
+
+func `*=`*(a: var Fp, b: static int) {.inline.} =
+  ## Multiplication by a small integer known at compile-time
+  # Implementation:
+  # We don't want to go convert the integer to the Montgomery domain (O(n²))
+  # and then multiply by ``b`` (another O(n²)
+  #
+  # So we hardcode addition chains for small integer
+  #
+  # In terms of cost a doubling/addition is 3 passes over the data:
+  # - addition + check if > prime + conditional substraction
+  # A full multiplication, assuming b is projected to Montgomery domain beforehand is:
+  # - n² passes over the data, each of 5~6 elementary addition/multiplication
+  # - a conditional substraction
+  #
+  const negate = b < 0
+  const b = if negate: -b
+            else: b
+  when negate:
+    a.neg(a)
+  when b == 0:
+    a.setZero()
+  elif b == 1:
+    return
+  elif b == 2:
+    a.double()
+  elif b == 3:
+    let t1 = a
+    a.double()
+    a += t1
+  elif b == 4:
+    a.double()
+    a.double()
+  elif b == 5:
+    let t1 = a
+    a.double()
+    a.double()
+    a += t1
+  elif b == 6:
+    a.double()
+    let t2 = a
+    a.double() # 4
+    a += t2
+  elif b == 7:
+    let t1 = a
+    a.double()
+    let t2 = a
+    a.double() # 4
+    a += t2
+    a += t1
+  elif b == 8:
+    a.double()
+    a.double()
+    a.double()
+  elif b == 9:
+    let t1 = a
+    a.double()
+    a.double()
+    a.double() # 8
+    a += t1
+  elif b == 10:
+    a.double()
+    let t2 = a
+    a.double()
+    a.double() # 8
+    a += t2
+  elif b == 11:
+    let t1 = a
+    a.double()
+    let t2 = a
+    a.double()
+    a.double() # 8
+    a += t2
+    a += t1
+  elif b == 12:
+    a.double()
+    a.double() # 4
+    let t4 = a
+    a.double() # 8
+    a += t4
+  else:
+    {.error: "Multiplication by this small int not implemented".}

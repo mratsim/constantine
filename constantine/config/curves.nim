@@ -10,10 +10,10 @@ import
   # Standard library
   macros,
   # Internal
-  ./curves_declaration, ./curves_derived,
+  ./curves_declaration, ./curves_derived, ./curves_parser,
   ../arithmetic/bigints
 
-export CurveFamily, Curve
+export CurveFamily, Curve, SexticTwist
 
 # ############################################################
 #

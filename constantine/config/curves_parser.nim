@@ -44,7 +44,7 @@ type
   CurveCoef* = object
     case kind: CurveCoefKind
     of NoCoef: discard
-    of Small: coef: int64
+    of Small: coef: int
     of Large: coefHex: string
 
   CurveEquationForm* = enum
@@ -183,12 +183,12 @@ proc parseCurveDecls(defs: var seq[CurveParams], curves: NimNode) =
         params.eq_form = parseEnum[CurveEquationForm]($sectionVal)
       elif sectionId.eqIdent"coef_a":
         if sectionVal.kind == nnkIntLit:
-          params.coef_A = CurveCoef(kind: Small, coef: sectionVal.intVal)
+          params.coef_A = CurveCoef(kind: Small, coef: sectionVal.intVal.int)
         else:
           params.coef_A = CurveCoef(kind: Large, coefHex: sectionVal.strVal)
       elif sectionId.eqIdent"coef_b":
         if sectionVal.kind == nnkIntLit:
-          params.coef_B = CurveCoef(kind: Small, coef: sectionVal.intVal)
+          params.coef_B = CurveCoef(kind: Small, coef: sectionVal.intVal.int)
         else:
           params.coef_B = CurveCoef(kind: Large, coefHex: sectionVal.strVal)
       elif sectionId.eqIdent"nonresidue_quad_fp":

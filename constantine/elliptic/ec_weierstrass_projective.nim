@@ -8,7 +8,10 @@
 
 import
   ../primitives,
-  ../config/[common, curves]
+  ../config/[common, curves],
+  ../arithmetic,
+  ../towers,
+  ../io/io_bigints
 
 # ############################################################
 #
@@ -17,7 +20,7 @@ import
 #
 # ############################################################
 
-type ECP_ShortWei_Proj[F] = object
+type ECP_ShortWei_Proj*[F] = object
   ## Elliptic curve point for a curve in Short Weierstrass form
   ##   y² = x³ + a x + b
   ##
@@ -53,7 +56,36 @@ func neg*(P: var ECP_ShortWei_Proj) =
   ## Negate ``P``
   P.y.neg(P.y)
 
-func sum[F](
+func curve_eq_rhs*[F](y2: var F, x: F) =
+  ## Compute the curve equation right-hand-side from field element `x`
+  ## i.e.  `y²` in `y² = x³ + a x + b`
+  ## or on sextic twists for pairing curves `y² = x³ + b/µ` or `y² = x³ + µ b`
+  ## with µ the chosen sextic non-residue
+
+  var t{.noInit.}: F
+  t.square(x)
+  t *= x
+
+  # No need to precompute `b` in 𝔽p or 𝔽p² or `b/µ` `µ b`
+  # This procedure is not use in perf critcal situation like signing/verification
+  # but for testing to quickly create points on a curve.
+  y2 = F.fromBig F.C.matchingBigInt().fromUint F.C.getCoefB()
+  when F is Fp2:
+    when F.C.getSexticTwist() == D_Twist:
+      y2 /= F.C.get_SNR_Fp2()
+    elif F.C.getSexticTwist() == M_Twist:
+      y2 *= F.C.get_SNR_Fp2()
+    else:
+      {.error: "Only tiwsted curves are supported on extension field 𝔽p²".}
+
+  y2 += t
+
+  when F.C.getCoefA() != 0:
+    t = x
+    t *= F.C.getCoefA()
+    y2 += t
+
+func sum*[F](
        r: var ECP_ShortWei_Proj[F],
        P, Q: ECP_ShortWei_Proj[F]
      ) =
@@ -88,7 +120,7 @@ func sum[F](
 
   # TODO: static doAssert odd order
   var t0 {.noInit.}, t1 {.noInit.}, t2 {.noInit.}, t3 {.noInit.}, t4 {.noInit.}: F
-  let b3 = 3 * F.C.getCoefB()
+  const b3 = 3 * F.C.getCoefB()
 
   when F.C.getCoefA() == 0:
     # Algorithm 7 for curves: y² = x³ + b
@@ -111,7 +143,7 @@ func sum[F](
     when F is Fp2 and F.C.getSexticTwist() == D_Twist:
       t4 *= F.sexticNonResidue()
     r.x.sum(P.x, P.z)         # 14. X3 <- X1 + Z1
-    r.y.sum(Q.x, Q.Z)         # 15. Y3 <- X2 + Z2
+    r.y.sum(Q.x, Q.z)         # 15. Y3 <- X2 + Z2
     r.x *= r.y                # 16. X3 <- X3 Y3
     r.y.sum(t0, t2)           # 17. Y3 <- t0 + t2
     r.y.diff(r.x, r.y)        # 18. Y3 <- X3 - Y3
