@@ -9,7 +9,7 @@
 import
   # Internals
   ../constantine/config/curves,
-  ../constantine/tower_field_extensions/[abelian_groups, fp2_complex],
+  ../constantine/towers,
   # Helpers
   ../helpers/static_for,
   ./bench_fields_template,
@@ -27,14 +27,14 @@ const Iters = 1_000_000
 const InvIters = 1000
 const AvailableCurves = [
   # Pairing-Friendly curves
-  BN254_Nogami,
+  # BN254_Nogami,
   BN254_Snarks,
   BLS12_377,
-  BLS12_381,
-  BN446,
-  FKM12_447,
-  BLS12_461,
-  BN462
+  BLS12_381
+  # BN446,
+  # FKM12_447,
+  # BLS12_461,
+  # BN462
 ]
 
 proc main() =
@@ -52,4 +52,6 @@ proc main() =
 main()
 
 echo "Notes:"
-echo "  GCC is significantly slower than Clang on multiprecision arithmetic."
+echo "  - GCC is significantly slower than Clang on multiprecision arithmetic."
+echo "  - Fast Squaring and Fast Multiplication are possible if there are spare bits in the prime representation (i.e. the prime uses 254 bits out of 256 bits)"
+echo "  - The tower of extension fields chosen can lead to a large difference of performance between primes of similar bitwidth."
