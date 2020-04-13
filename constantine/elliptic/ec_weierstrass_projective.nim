@@ -11,7 +11,7 @@ import
   ../config/[common, curves],
   ../arithmetic,
   ../towers,
-  ../io/io_bigints
+  ./ec_weierstrass_affine
 
 # ############################################################
 #
@@ -20,7 +20,7 @@ import
 #
 # ############################################################
 
-type ECP_ShortWei_Proj*[F] = object
+type ECP_SWei_Proj*[F] = object
   ## Elliptic curve point for a curve in Short Weierstrass form
   ##   y² = x³ + a x + b
   ##
@@ -32,7 +32,7 @@ type ECP_ShortWei_Proj*[F] = object
   ## Note that projective coordinates are not unique
   x, y, z: F
 
-func `==`*[F](P, Q: ECP_ShortWei_Proj[F]): CTBool[Word] =
+func `==`*[F](P, Q: ECP_SWei_Proj[F]): CTBool[Word] =
   ## Constant-time equality check
   # Reminder: the representation is not unique
 
@@ -46,48 +46,52 @@ func `==`*[F](P, Q: ECP_ShortWei_Proj[F]): CTBool[Word] =
   b.prod(Q.y, P.z)
   result = result and a == b
 
-func setInf*(P: var ECP_ShortWei_Proj) =
+func setInf*(P: var ECP_SWei_Proj) =
   ## Set ``P`` to infinity
   P.x.setZero()
   P.y.setOne()
   P.z.setZero()
 
-func neg*(P: var ECP_ShortWei_Proj) =
+func trySetFromCoordsXandZ*[F](P: var ECP_SWei_Proj[F], x, z: F): CTBool[Word] =
+  ## Try to create a point the elliptic curve
+  ## Y²Z = X³ + aXZ² + bZ³ (projective coordinates)
+  ## y² = x³ + a x + b     (affine coordinate)
+  ## return true and update `P` if `x` leads to a valid point
+  ## return false otherwise, in that case `P` is undefined.
+  ##
+  ## Note: Dedicated robust procedures for hashing-to-curve
+  ##       will be provided, this is intended for testing purposes.
+  P.y.curve_eq_rhs(x)
+  # TODO: supports non p ≡ 3 (mod 4) modulus like BLS12-377
+  result = sqrt_if_square_p3mod4(P.y)
+
+  P.x.prod(x, z)
+  P.y *= z
+
+func trySetFromCoordX*[F](P: var ECP_SWei_Proj[F], x: F): CTBool[Word] =
+  ## Try to create a point the elliptic curve
+  ## y² = x³ + a x + b     (affine coordinate)
+  ##
+  ## The `Z` coordinates is set to 1
+  ##
+  ## return true and update `P` if `x` leads to a valid point
+  ## return false otherwise, in that case `P` is undefined.
+  ##
+  ## Note: Dedicated robust procedures for hashing-to-curve
+  ##       will be provided, this is intended for testing purposes.
+  P.y.curve_eq_rhs(x)
+  # TODO: supports non p ≡ 3 (mod 4) modulus like BLS12-377
+  result = sqrt_if_square_p3mod4(P.y)
+  P.x = x
+
+
+func neg*(P: var ECP_SWei_Proj) =
   ## Negate ``P``
   P.y.neg(P.y)
 
-func curve_eq_rhs*[F](y2: var F, x: F) =
-  ## Compute the curve equation right-hand-side from field element `x`
-  ## i.e.  `y²` in `y² = x³ + a x + b`
-  ## or on sextic twists for pairing curves `y² = x³ + b/µ` or `y² = x³ + µ b`
-  ## with µ the chosen sextic non-residue
-
-  var t{.noInit.}: F
-  t.square(x)
-  t *= x
-
-  # No need to precompute `b` in 𝔽p or 𝔽p² or `b/µ` `µ b`
-  # This procedure is not use in perf critcal situation like signing/verification
-  # but for testing to quickly create points on a curve.
-  y2 = F.fromBig F.C.matchingBigInt().fromUint F.C.getCoefB()
-  when F is Fp2:
-    when F.C.getSexticTwist() == D_Twist:
-      y2 /= F.C.get_SNR_Fp2()
-    elif F.C.getSexticTwist() == M_Twist:
-      y2 *= F.C.get_SNR_Fp2()
-    else:
-      {.error: "Only tiwsted curves are supported on extension field 𝔽p²".}
-
-  y2 += t
-
-  when F.C.getCoefA() != 0:
-    t = x
-    t *= F.C.getCoefA()
-    y2 += t
-
 func sum*[F](
-       r: var ECP_ShortWei_Proj[F],
-       P, Q: ECP_ShortWei_Proj[F]
+       r: var ECP_SWei_Proj[F],
+       P, Q: ECP_SWei_Proj[F]
      ) =
   ## Elliptic curve point addition for Short Weierstrass curves in projective coordinate
   ## Short Weierstrass curves have the following equation in projective coordinates
