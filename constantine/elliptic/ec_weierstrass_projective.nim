@@ -46,6 +46,11 @@ func `==`*[F](P, Q: ECP_SWei_Proj[F]): CTBool[Word] =
   b.prod(Q.y, P.z)
   result = result and a == b
 
+func isInf*(P: ECP_SWei_Proj): CTBool[Word] =
+  ## Returns true if P is the infinity point
+  ## and false otherwise
+  result = P.x.isZero() and P.y.isOne() and P.z.isZero()
+
 func setInf*(P: var ECP_SWei_Proj) =
   ## Set ``P`` to infinity
   P.x.setZero()
