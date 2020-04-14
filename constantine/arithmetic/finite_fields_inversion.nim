@@ -152,6 +152,11 @@ func invmod_addchain_bn[C](r: var Fp[C], a: Fp[C]) =
 
 func inv*(r: var Fp, a: Fp) =
   ## Inversion modulo p
+  ##
+  ## The inverse of 0 is 0.
+  ## Incidentally this avoids extra check
+  ## to convert Jacobian and Projective coordinates
+  ## to affine for elliptic curve
   # For now we don't activate the addition chains
   # neither for Secp256k1 nor BN curves
   # Performance is slower than GCD

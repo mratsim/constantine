@@ -416,3 +416,8 @@ func `*=`*(a: var Fp, b: static int) {.inline.} =
     a += t4
   else:
     {.error: "Multiplication by this small int not implemented".}
+
+func `*`*(b: static int, a: Fp): Fp {.noinit, inline.} =
+  ## Multiplication by a small integer known at compile-time
+  result = a
+  result *= b

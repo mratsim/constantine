@@ -14,11 +14,9 @@
 
 import
   # Internals
-  ../constantine/config/[common, curves],
+  ../constantine/config/curves,
   ../constantine/arithmetic,
-  ../constantine/io/[io_bigints, io_fields],
-  ../constantine/primitives,
-  ../constantine/tower_field_extensions/[abelian_groups, fp2_complex, fp6_1_plus_i],
+  ../constantine/towers,
   # Helpers
   ../helpers/[timers, prng, static_for],
   # Standard library

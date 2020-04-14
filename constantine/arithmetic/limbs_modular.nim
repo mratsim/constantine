@@ -65,6 +65,8 @@ func steinsGCD*(v: var Limbs, a: Limbs, F, M: Limbs, bits: int, mp1div2: Limbs) 
   ##
   ## This takes (M+1)/2 (mp1div2) as a precomputed parameter as a slight optimization
   ## in stack size and speed.
+  ##
+  ## The inverse of 0 is 0.
 
   # Ideally we need registers for a, b, u, v
   # but:
