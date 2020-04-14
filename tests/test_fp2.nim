@@ -30,7 +30,19 @@ echo "test_fp2 xoshiro512** seed: ", seed
 #         having too many elements on the stack (a couple kB)
 #         will significantly slow down testing (100x is possible)
 
-suite "𝔽p2 = 𝔽p[𝑖] (irreducible polynomial x²+1)":
+suite "𝔽p2 = 𝔽p[µ] (irreducible polynomial x²+µ)":
+  test "Comparison sanity checks":
+    proc test(C: static Curve) =
+      var z, o {.noInit.}: Fp2[C]
+
+      z.setZero()
+      o.setOne()
+
+      check: not bool(z == o)
+
+    test(BN254_Snarks)
+    test(BLS12_381)
+
   test "Fp2 '1' coordinates in canonical domain":
     template test(C: static Curve) =
       block:
@@ -235,7 +247,7 @@ suite "𝔽p2 = 𝔽p[𝑖] (irreducible polynomial x²+1)":
     # test(BLS12_461)
     # test(BN462)
 
-  test "𝔽p2 = 𝔽p[𝑖] addition is associative and commutative":
+  test "Addition is associative and commutative":
     proc abelianGroup(curve: static Curve) =
       for _ in 0 ..< Iters:
         let a = rng.random(Fp2[curve])
@@ -286,7 +298,7 @@ suite "𝔽p2 = 𝔽p[𝑖] (irreducible polynomial x²+1)":
     # abelianGroup(BLS12_461)
     # abelianGroup(BN462)
 
-  test "𝔽p2 = 𝔽p[𝑖] multiplication is associative and commutative":
+  test "Multiplication is associative and commutative":
     proc commutativeRing(curve: static Curve) =
       for _ in 0 ..< Iters:
         let a = rng.random(Fp2[curve])
@@ -337,7 +349,7 @@ suite "𝔽p2 = 𝔽p[𝑖] (irreducible polynomial x²+1)":
     # commutativeRing(BLS12_461)
     # commutativeRing(BN462)
 
-  test "𝔽p2 = 𝔽p[𝑖] extension field multiplicative inverse":
+  test "Extension field multiplicative inverse":
     proc mulInvOne(curve: static Curve) =
       var one: Fp2[curve]
       one.setOne()
@@ -360,3 +372,22 @@ suite "𝔽p2 = 𝔽p[𝑖] (irreducible polynomial x²+1)":
     # mulInvOne(FKM12_447)
     # mulInvOne(BLS12_461)
     # mulInvOne(BN462)
+
+  test "0 does not have a multiplicative inverse and should return 0 for projective/jacobian => affine coordinates conversion":
+    proc test(curve: static Curve) =
+      var z: Fp2[curve]
+      z.setZero()
+
+      var zInv{.noInit.}: Fp2[curve]
+
+      zInv.inv(z)
+      check: bool zInv.isZero()
+
+    # test(BN254_Nogami)
+    test(BN254_Snarks)
+    test(BLS12_377)
+    test(BLS12_381)
+    # test(BN446)
+    # test(FKM12_447)
+    # test(BLS12_461)
+    # test(BN462)

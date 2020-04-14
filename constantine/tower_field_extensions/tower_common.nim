@@ -61,9 +61,24 @@ func setOne*(a: var ExtensionField) =
 
 func `==`*(a, b: ExtensionField): CTBool[Word] =
   ## Constant-time equality check
-  result = CtFalse
+  result = CtTrue
   for fA, fB in fields(a, b):
-    result = result or (fA == fB)
+    result = result and (fA == fB)
+
+func isZero*(a: ExtensionField): CTBool[Word] =
+  ## Constant-time check if zero
+  result = CtTrue
+  for fA in fields(a):
+    result = result and fA.isZero()
+
+func isOne*(a: ExtensionField): CTBool[Word] =
+  ## Constant-time check if one
+  result = CtTrue
+  for fieldName, fA in fields(a):
+    when fieldName == "c0":
+      result = result and fA.isOne()
+    else:
+      result = result and fA.isZero()
 
 # Abelian group
 # -------------------------------------------------------------------
