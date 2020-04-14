@@ -89,7 +89,7 @@ func random_unsafe[T](rng: var RngState, a: var T, C: static Curve) {.noInit.}=
     var reduced, unreduced{.noInit.}: T
 
     for i in 0 ..< unreduced.limbs.len:
-      unreduced.limbs[i] = Word(rng.next())
+      unreduced.limbs[i] = SecretWord(rng.next())
 
     # Note: a simple modulo will be biaised but it's simple and "fast"
     reduced.reduce(unreduced, C.Mod)

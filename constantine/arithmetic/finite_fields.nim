@@ -71,7 +71,7 @@ func toBig*(src: Fp): auto {.noInit.} =
 # Copy
 # ------------------------------------------------------------
 
-func ccopy*(a: var Fp, b: Fp, ctl: CTBool[Word]) =
+func ccopy*(a: var Fp, b: Fp, ctl: SecretBool) =
   ## Constant-time conditional copy
   ## If ctl is true: b is copied into a
   ## if ctl is false: b is not copied and a is untouched
@@ -106,15 +106,15 @@ func cswap*(a, b: var Fp, ctl: CTBool) =
 # In practice I'm not aware of such prime being using in elliptic curves.
 # 2^127 - 1 and 2^521 - 1 are used but 127 and 521 are not multiple of 32/64
 
-func `==`*(a, b: Fp): CTBool[Word] =
+func `==`*(a, b: Fp): SecretBool =
   ## Constant-time equality check
   a.mres == b.mres
 
-func isZero*(a: Fp): CTBool[Word] =
+func isZero*(a: Fp): SecretBool =
   ## Constant-time check if zero
   a.mres.isZero()
 
-func isOne*(a: Fp): CTBool[Word] =
+func isOne*(a: Fp): SecretBool =
   ## Constant-time check if one
   a.mres == Fp.C.getMontyOne()
 
@@ -246,7 +246,7 @@ func powUnsafeExponent*(a: var Fp, exponent: openarray[byte]) =
 #
 # ############################################################
 
-func isSquare*[C](a: Fp[C]): CTBool[Word] =
+func isSquare*[C](a: Fp[C]): SecretBool =
   ## Returns true if ``a`` is a square (quadratic residue) in 𝔽p
   ##
   ## Assumes that the prime modulus ``p`` is public.
@@ -274,7 +274,7 @@ func sqrt_p3mod4*[C](a: var Fp[C]) =
   static: doAssert C.Mod.limbs[0].BaseType mod 4 == 3
   a.powUnsafeExponent(C.getPrimePlus1div4_BE())
 
-func sqrt_if_square_p3mod4*[C](a: var Fp[C]): CTBool[Word] =
+func sqrt_if_square_p3mod4*[C](a: var Fp[C]): SecretBool =
   ## If ``a`` is a square, compute the square root of ``a``
   ## if not, ``a`` is unmodified.
   ##

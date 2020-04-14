@@ -32,7 +32,7 @@ type ECP_SWei_Proj*[F] = object
   ## Note that projective coordinates are not unique
   x, y, z: F
 
-func `==`*[F](P, Q: ECP_SWei_Proj[F]): CTBool[Word] =
+func `==`*[F](P, Q: ECP_SWei_Proj[F]): SecretBool =
   ## Constant-time equality check
   # Reminder: the representation is not unique
 
@@ -46,7 +46,7 @@ func `==`*[F](P, Q: ECP_SWei_Proj[F]): CTBool[Word] =
   b.prod(Q.y, P.z)
   result = result and a == b
 
-func isInf*(P: ECP_SWei_Proj): CTBool[Word] =
+func isInf*(P: ECP_SWei_Proj): SecretBool =
   ## Returns true if P is an infinity point
   ## and false otherwise
   ##
@@ -62,7 +62,7 @@ func setInf*(P: var ECP_SWei_Proj) =
   P.y.setOne()
   P.z.setZero()
 
-func trySetFromCoordsXandZ*[F](P: var ECP_SWei_Proj[F], x, z: F): CTBool[Word] =
+func trySetFromCoordsXandZ*[F](P: var ECP_SWei_Proj[F], x, z: F): SecretBool =
   ## Try to create a point the elliptic curve
   ## Y²Z = X³ + aXZ² + bZ³ (projective coordinates)
   ## y² = x³ + a x + b     (affine coordinate)
@@ -79,7 +79,7 @@ func trySetFromCoordsXandZ*[F](P: var ECP_SWei_Proj[F], x, z: F): CTBool[Word] =
   P.y *= z
   P.z = z
 
-func trySetFromCoordX*[F](P: var ECP_SWei_Proj[F], x: F): CTBool[Word] =
+func trySetFromCoordX*[F](P: var ECP_SWei_Proj[F], x: F): SecretBool =
   ## Try to create a point the elliptic curve
   ## y² = x³ + a x + b     (affine coordinate)
   ##

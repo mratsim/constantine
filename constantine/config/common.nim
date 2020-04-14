@@ -24,20 +24,22 @@ else:
       ## Physical BigInt for conversion in "normal integers"
 
 type
-  Word* = Ct[BaseType]
+  SecretWord* = Ct[BaseType]
     ## Logical BigInt word
     ## A logical BigInt word is of size physical MachineWord-1
 
+  SecretBool* = CTBool[SecretWord]
+
 const
-  WordBitWidth* = sizeof(Word) * 8
+  WordBitWidth* = sizeof(SecretWord) * 8
     ## Logical word size
 
-  CtTrue* = ctrue(Word)
-  CtFalse* = cfalse(Word)
+  CtTrue* = ctrue(SecretWord)
+  CtFalse* = cfalse(SecretWord)
 
-  Zero* = Word(0)
-  One* = Word(1)
-  MaxWord* = Word(high(BaseType))
+  Zero* = SecretWord(0)
+  One* = SecretWord(1)
+  MaxWord* = SecretWord(high(BaseType))
 
 # ############################################################
 #

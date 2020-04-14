@@ -16,9 +16,9 @@ import ./constant_time_types
 
 # For efficiency, those are implemented in inline assembly if possible
 # API:
-# - mux(CTBool, Word, Word)
+# - mux(CTBool, SecretWord, SecretWord)
 # - mux(CTBool, CTBool, CTBool)
-# - ccopy(CTBool, var Word, Word)
+# - ccopy(CTBool, var SecretWord, SecretWord)
 #
 # Those prevents the compiler from introducing branches and leaking secret data:
 # - https://www.cl.cam.ac.uk/~rja14/Papers/whatyouc.pdf
