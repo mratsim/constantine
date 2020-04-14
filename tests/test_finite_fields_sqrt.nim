@@ -10,7 +10,7 @@ import  ../constantine/[arithmetic, primitives],
         ../constantine/io/[io_fields],
         ../constantine/config/[curves, common],
         # Test utilities
-        ../helpers/prng,
+        ../helpers/prng_unsafe,
         # Standard library
         std/tables,
         std/unittest, std/times
@@ -82,7 +82,7 @@ proc exhaustiveCheck_p3mod4(C: static Curve, modulus: static int) =
 proc randomSqrtCheck_p3mod4(C: static Curve) =
   test "Random square root check for p ≡ 3 (mod 4) on " & $Curve(C):
     for _ in 0 ..< Iters:
-      let a = rng.random(Fp[C])
+      let a = rng.random_unsafe(Fp[C])
       var na{.noInit.}: Fp[C]
       na.neg(a)
 

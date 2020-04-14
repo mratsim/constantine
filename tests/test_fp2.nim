@@ -14,7 +14,7 @@ import
   ../constantine/config/[common, curves],
   ../constantine/arithmetic,
   # Test utilities
-  ../helpers/prng
+  ../helpers/prng_unsafe
 
 const Iters = 128
 
@@ -74,12 +74,12 @@ suite "𝔽p2 = 𝔽p[µ] (irreducible polynomial x²+µ)":
       var accum {.noInit.}, One {.noInit.}, a{.noInit.}, na{.noInit.}, b{.noInit.}, nb{.noInit.}, a2 {.noInit.}, b2 {.noInit.}: Fp2[C]
 
       One.setOne()
-      a = rng.random(Fp2[C])
+      a = rng.random_unsafe(Fp2[C])
       a2 = a
       a2.double()
       na.neg(a)
 
-      b = rng.random(Fp2[C])
+      b = rng.random_unsafe(Fp2[C])
       b2.double(b)
       nb.neg(b)
 
@@ -146,7 +146,7 @@ suite "𝔽p2 = 𝔽p[µ] (irreducible polynomial x²+µ)":
             O
 
           for _ in 0 ..< Iters:
-            let x {.inject.} = rng.random(Fp2[C])
+            let x {.inject.} = rng.random_unsafe(Fp2[C])
             var r{.noinit, inject.}: Fp2[C]
             body
 
@@ -194,7 +194,7 @@ suite "𝔽p2 = 𝔽p[µ] (irreducible polynomial x²+µ)":
       block:
         proc testInstance() =
           for _ in 0 ..< Iters:
-            let a = rng.random(Fp2[C])
+            let a = rng.random_unsafe(Fp2[C])
             var rMul{.noInit.}, rSqr{.noInit.}: Fp2[C]
 
             rMul.prod(a, a)
@@ -218,7 +218,7 @@ suite "𝔽p2 = 𝔽p[µ] (irreducible polynomial x²+µ)":
       block:
         proc testInstance() =
           for _ in 0 ..< Iters:
-            let a = rng.random(Fp2[C])
+            let a = rng.random_unsafe(Fp2[C])
             var na{.noInit.}: Fp2[C]
             na.neg(a)
 
@@ -247,7 +247,7 @@ suite "𝔽p2 = 𝔽p[µ] (irreducible polynomial x²+µ)":
           for _ in 0 ..< Iters:
             let factor = rand(-30..30)
 
-            let a = rng.random(Fp2[C])
+            let a = rng.random_unsafe(Fp2[C])
 
             if factor == 0: continue
 
@@ -287,9 +287,9 @@ suite "𝔽p2 = 𝔽p[µ] (irreducible polynomial x²+µ)":
   test "Addition is associative and commutative":
     proc abelianGroup(curve: static Curve) =
       for _ in 0 ..< Iters:
-        let a = rng.random(Fp2[curve])
-        let b = rng.random(Fp2[curve])
-        let c = rng.random(Fp2[curve])
+        let a = rng.random_unsafe(Fp2[curve])
+        let b = rng.random_unsafe(Fp2[curve])
+        let c = rng.random_unsafe(Fp2[curve])
 
         var tmp1{.noInit.}, tmp2{.noInit.}: Fp2[curve]
 
@@ -338,9 +338,9 @@ suite "𝔽p2 = 𝔽p[µ] (irreducible polynomial x²+µ)":
   test "Multiplication is associative and commutative":
     proc commutativeRing(curve: static Curve) =
       for _ in 0 ..< Iters:
-        let a = rng.random(Fp2[curve])
-        let b = rng.random(Fp2[curve])
-        let c = rng.random(Fp2[curve])
+        let a = rng.random_unsafe(Fp2[curve])
+        let b = rng.random_unsafe(Fp2[curve])
+        let c = rng.random_unsafe(Fp2[curve])
 
         var tmp1{.noInit.}, tmp2{.noInit.}: Fp2[curve]
 
@@ -394,7 +394,7 @@ suite "𝔽p2 = 𝔽p[µ] (irreducible polynomial x²+µ)":
       var aInv, r{.noInit.}: Fp2[curve]
 
       for _ in 0 ..< Iters:
-        let a = rng.random(Fp2[curve])
+        let a = rng.random_unsafe(Fp2[curve])
         aInv.inv(a)
         r.prod(a, aInv)
         check: bool(r == one)
