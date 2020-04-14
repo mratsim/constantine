@@ -10,7 +10,7 @@ import  ../constantine/arithmetic,
         ../constantine/io/[io_bigints, io_fields],
         ../constantine/config/curves,
         # Test utilities
-        ../helpers/prng,
+        ../helpers/prng_unsafe,
         # Standard library
         std/unittest, std/times
 
@@ -207,7 +207,7 @@ proc main() =
         var aInv, r: Fp[curve]
 
         for _ in 0 ..< Iters:
-          let a = rng.random(Fp[curve])
+          let a = rng.random_unsafe(Fp[curve])
           aInv.inv(a)
           r.prod(a, aInv)
           check: bool r.isOne()

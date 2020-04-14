@@ -11,7 +11,7 @@ import  std/unittest, std/times,
         ../constantine/io/[io_bigints, io_fields],
         ../constantine/config/[curves, common],
         # Test utilities
-        ../helpers/prng
+        ../helpers/prng_unsafe
 
 const Iters = 128
 
@@ -102,7 +102,7 @@ proc mainSelectCases() =
 mainSelectCases()
 
 proc randomCurve(C: static Curve) =
-  let a = rng.random(Fp[C])
+  let a = rng.random_unsafe(Fp[C])
 
   var r_mul, r_sqr: Fp[C]
 

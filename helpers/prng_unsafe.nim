@@ -14,6 +14,7 @@ import
 # ############################################################
 #
 #              Pseudo-Random Number Generator
+#       Unsafe: for testing and benchmarking purposes
 #
 # ############################################################
 #
@@ -29,6 +30,8 @@ import
 # We use 2^512 to cover the range the base field elements
 
 type RngState* = object
+  ## This is the state of a Xoshiro512** PRNG
+  ## Unsafe: for testing and benchmarking purposes only
   s: array[8, uint64]
 
 func splitMix64(state: var uint64): uint64 =
@@ -79,8 +82,9 @@ func next(rng: var RngState): uint64 =
 # BigInts and Fields
 # ------------------------------------------------------------
 
-func random[T](rng: var RngState, a: var T, C: static Curve) {.noInit.}=
+func random_unsafe[T](rng: var RngState, a: var T, C: static Curve) {.noInit.}=
   ## Recursively initialize a BigInt or Field element
+  ## Unsafe: for testing and benchmarking purposes only
   when T is BigInt:
     var reduced, unreduced{.noInit.}: T
 
@@ -93,46 +97,104 @@ func random[T](rng: var RngState, a: var T, C: static Curve) {.noInit.}=
 
   else:
     for field in fields(a):
-      rng.random(field, C)
+      rng.random_unsafe(field, C)
 
 # Elliptic curves
 # ------------------------------------------------------------
 
-func random[F](rng: var RngState, a: var ECP_SWei_Proj[F]) =
+func random_unsafe[F](rng: var RngState, a: var ECP_SWei_Proj[F]) =
   ## Initialize a random curve point with Z coordinate == 1
-
+  ## Unsafe: for testing and benchmarking purposes only
   var fieldElem {.noInit.}: F
   var success = CtFalse
 
   while not bool(success):
     # Euler's criterion: there are (p-1)/2 squares in a field with modulus `p`
     #                    so we have a probability of ~0.5 to get a good point
-    rng.random(fieldElem, F.C)
+    rng.random_unsafe(fieldElem, F.C)
     success = trySetFromCoordX(a, fieldElem)
 
-func random_with_randZ[F](rng: var RngState, a: var ECP_SWei_Proj[F]) =
+func random_unsafe_with_randZ[F](rng: var RngState, a: var ECP_SWei_Proj[F]) =
   ## Initialize a random curve point with Z coordinate being random
-
+  ## Unsafe: for testing and benchmarking purposes only
   var Z{.noInit.}: F
-  rng.random(Z, F.C) # If Z is zero, X will be zero and that will be an infinity point
+  rng.random_unsafe(Z, F.C) # If Z is zero, X will be zero and that will be an infinity point
 
   var fieldElem {.noInit.}: F
   var success = CtFalse
 
   while not bool(success):
-    rng.random(fieldElem, F.C)
+    rng.random_unsafe(fieldElem, F.C)
     success = trySetFromCoordsXandZ(a, fieldElem, Z)
+
+# Integer ranges
+# ------------------------------------------------------------
+
+func random_unsafe(rng: var RngState, maxExclusive: uint32): uint32 =
+  ## Generate a random integer in 0 ..< maxExclusive
+  ## Uses an unbiaised generation method
+  ## See Lemire's algorithm modified by Melissa O'Neill
+  ##   https://www.pcg-random.org/posts/bounded-rands.html
+  let max = maxExclusive
+  var x = uint32 rng.next()
+  var m = x.uint64 * max.uint64
+  var l = uint32 m
+  if l < max:
+    var t = not(max) + 1 # -max
+    if t >= max:
+      t -= max
+      if t >= max:
+        t = t mod max
+    while l < t:
+      x = uint32 rng.next()
+      m = x.uint64 * max.uint64
+      l = uint32 m
+  return uint32(m shr 32)
 
 # Generic over any supported type
 # ------------------------------------------------------------
 
-func random*(rng: var RngState, T: typedesc): T =
-  ## Create a random Field or Extension Field or Curve Element
-  when T is ECP_SWei_Proj:
-    rng.random(result)
-  else:
-    rng.random(result, T.C)
+func random_unsafe*[T: SomeInteger](rng: var RngState, inclRange: Slice[T]): T =
+  ## Return a random integer in the given range.
+  ## The range bounds must fit in an int32.
+  let maxExclusive = inclRange.b + 1 - inclRange.a
+  result = T(rng.random_unsafe(uint32 maxExclusive))
+  result += inclRange.a
 
-func random_with_randZ*(rng: var RngState, T: typedesc[ECP_SWei_Proj]): T =
+func random_unsafe*(rng: var RngState, T: typedesc): T =
+  ## Create a random Field or Extension Field or Curve Element
+  ## Unsafe: for testing and benchmarking purposes only
+  when T is ECP_SWei_Proj:
+    rng.random_unsafe(result)
+  else:
+    rng.random_unsafe(result, T.C)
+
+func random_unsafe_with_randZ*(rng: var RngState, T: typedesc[ECP_SWei_Proj]): T =
   ## Create a random curve element with a random Z coordinate
-  rng.random_with_randZ(result)
+  ## Unsafe: for testing and benchmarking purposes only
+  rng.random_unsafe_with_randZ(result)
+
+# Sanity checks
+# ------------------------------------------------------------
+
+when isMainModule:
+  import std/[tables, times]
+
+  var rng: RngState
+  let timeSeed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  rng.seed(timeSeed)
+  echo "prng_sanity_checks xoshiro512** seed: ", timeSeed
+
+
+  proc test[T](s: Slice[T]) =
+    var c = initCountTable[int]()
+
+    for _ in 0 ..< 1_000_000:
+      c.inc(rng.random_unsafe(s))
+
+    echo "1'000'000 pseudo-random outputs from ", s.a, " to ", s.b, " (incl): ", c
+
+  test(0..1)
+  test(0..2)
+  test(1..52)
+  test(-10..10)

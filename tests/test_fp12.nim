@@ -14,7 +14,7 @@ import
   ../constantine/config/[common, curves],
   ../constantine/arithmetic,
   # Test utilities
-  ../helpers/prng
+  ../helpers/prng_unsafe
 
 const Iters = 128
 
@@ -50,12 +50,12 @@ suite "𝔽p12 = 𝔽p6[w] (irreducible polynomial w² - γ)":
       var accum {.noInit.}, One {.noInit.}, a{.noInit.}, na{.noInit.}, b{.noInit.}, nb{.noInit.}, a2 {.noInit.}, b2 {.noInit.}: Fp12[C]
 
       One.setOne()
-      a = rng.random(Fp12[C])
+      a = rng.random_unsafe(Fp12[C])
       a2 = a
       a2.double()
       na.neg(a)
 
-      b = rng.random(Fp12[C])
+      b = rng.random_unsafe(Fp12[C])
       b2.double(b)
       nb.neg(b)
 
@@ -237,7 +237,7 @@ suite "𝔽p12 = 𝔽p6[w] (irreducible polynomial w² - γ)":
             O
 
           for _ in 0 ..< Iters:
-            let x {.inject.} = rng.random(Fp12[C])
+            let x {.inject.} = rng.random_unsafe(Fp12[C])
             var r{.noinit, inject.}: Fp12[C]
             body
 
@@ -297,7 +297,7 @@ suite "𝔽p12 = 𝔽p6[w] (irreducible polynomial w² - γ)":
       block:
         proc testInstance() =
           for _ in 0 ..< Iters:
-            let a = rng.random(Fp12[C])
+            let a = rng.random_unsafe(Fp12[C])
             var rMul{.noInit.}, rSqr{.noInit.}: Fp12[C]
 
             rMul.prod(a, a)
@@ -321,7 +321,7 @@ suite "𝔽p12 = 𝔽p6[w] (irreducible polynomial w² - γ)":
       block:
         proc testInstance() =
           for _ in 0 ..< Iters:
-            let a = rng.random(Fp12[C])
+            let a = rng.random_unsafe(Fp12[C])
             var na{.noInit.}: Fp12[C]
             na.neg(a)
 
@@ -350,7 +350,7 @@ suite "𝔽p12 = 𝔽p6[w] (irreducible polynomial w² - γ)":
           for _ in 0 ..< Iters:
             let factor = rand(-30..30)
 
-            let a = rng.random(Fp12[C])
+            let a = rng.random_unsafe(Fp12[C])
 
             if factor == 0: continue
 
@@ -390,9 +390,9 @@ suite "𝔽p12 = 𝔽p6[w] (irreducible polynomial w² - γ)":
   test "Addition is associative and commutative":
     proc abelianGroup(curve: static Curve) =
       for _ in 0 ..< Iters:
-        let a = rng.random(Fp12[curve])
-        let b = rng.random(Fp12[curve])
-        let c = rng.random(Fp12[curve])
+        let a = rng.random_unsafe(Fp12[curve])
+        let b = rng.random_unsafe(Fp12[curve])
+        let c = rng.random_unsafe(Fp12[curve])
 
         var tmp1{.noInit.}, tmp2{.noInit.}: Fp12[curve]
 
@@ -441,9 +441,9 @@ suite "𝔽p12 = 𝔽p6[w] (irreducible polynomial w² - γ)":
   test "Multiplication is associative and commutative":
     proc commutativeRing(curve: static Curve) =
       for _ in 0 ..< Iters:
-        let a = rng.random(Fp12[curve])
-        let b = rng.random(Fp12[curve])
-        let c = rng.random(Fp12[curve])
+        let a = rng.random_unsafe(Fp12[curve])
+        let b = rng.random_unsafe(Fp12[curve])
+        let c = rng.random_unsafe(Fp12[curve])
 
         var tmp1{.noInit.}, tmp2{.noInit.}: Fp12[curve]
 
@@ -502,7 +502,7 @@ suite "𝔽p12 = 𝔽p6[w] (irreducible polynomial w² - γ)":
       var aInv, r{.noInit.}: Fp12[curve]
 
       for _ in 0 ..< Iters:
-        let a = rng.random(Fp12[curve])
+        let a = rng.random_unsafe(Fp12[curve])
 
         aInv.inv(a)
         r.prod(a, aInv)

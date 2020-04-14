@@ -8,13 +8,13 @@
 
 import
   # Standard library
-  unittest, times, random,
+  unittest, times,
   # Internals
   ../constantine/config/[common, curves],
   ../constantine/arithmetic,
   ../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective],
   # Test utilities
-  ../helpers/prng
+  ../helpers/prng_unsafe
 
 const Iters = 128
 
@@ -40,9 +40,9 @@ suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with project
       for _ in 0 ..< Iters:
         var r{.noInit.}: ECP_SWei_Proj[F]
         when randZ:
-          let P = rng.random_with_randZ(ECP_SWei_Proj[F])
+          let P = rng.random_unsafe_with_randZ(ECP_SWei_Proj[F])
         else:
-          let P = rng.random(ECP_SWei_Proj[F])
+          let P = rng.random_unsafe(ECP_SWei_Proj[F])
 
         r.sum(P, inf)
         check: bool(r == P)
@@ -58,9 +58,9 @@ suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with project
       for _ in 0 ..< Iters:
         var r{.noInit.}: ECP_SWei_Proj[F]
         when randZ:
-          let P = rng.random_with_randZ(ECP_SWei_Proj[F])
+          let P = rng.random_unsafe_with_randZ(ECP_SWei_Proj[F])
         else:
-          let P = rng.random(ECP_SWei_Proj[F])
+          let P = rng.random_unsafe(ECP_SWei_Proj[F])
         var Q = P
         Q.neg()
 
@@ -78,11 +78,11 @@ suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with project
       for _ in 0 ..< Iters:
         var r0{.noInit.}, r1{.noInit.}: ECP_SWei_Proj[F]
         when randZ:
-          let P = rng.random_with_randZ(ECP_SWei_Proj[F])
-          let Q = rng.random_with_randZ(ECP_SWei_Proj[F])
+          let P = rng.random_unsafe_with_randZ(ECP_SWei_Proj[F])
+          let Q = rng.random_unsafe_with_randZ(ECP_SWei_Proj[F])
         else:
-          let P = rng.random(ECP_SWei_Proj[F])
-          let Q = rng.random(ECP_SWei_Proj[F])
+          let P = rng.random_unsafe(ECP_SWei_Proj[F])
+          let Q = rng.random_unsafe(ECP_SWei_Proj[F])
 
         r0.sum(P, Q)
         r1.sum(Q, P)
@@ -95,13 +95,13 @@ suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with project
     proc test(F: typedesc, randZ: static bool) =
       for _ in 0 ..< Iters:
         when randZ:
-          let a = rng.random_with_randZ(ECP_SWei_Proj[F])
-          let b = rng.random_with_randZ(ECP_SWei_Proj[F])
-          let c = rng.random_with_randZ(ECP_SWei_Proj[F])
+          let a = rng.random_unsafe_with_randZ(ECP_SWei_Proj[F])
+          let b = rng.random_unsafe_with_randZ(ECP_SWei_Proj[F])
+          let c = rng.random_unsafe_with_randZ(ECP_SWei_Proj[F])
         else:
-          let a = rng.random(ECP_SWei_Proj[F])
-          let b = rng.random(ECP_SWei_Proj[F])
-          let c = rng.random(ECP_SWei_Proj[F])
+          let a = rng.random_unsafe(ECP_SWei_Proj[F])
+          let b = rng.random_unsafe(ECP_SWei_Proj[F])
+          let c = rng.random_unsafe(ECP_SWei_Proj[F])
 
         var tmp1{.noInit.}, tmp2{.noInit.}: ECP_SWei_Proj[F]
 
