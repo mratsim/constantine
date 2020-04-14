@@ -67,6 +67,43 @@ suite "𝔽p2 = 𝔽p[µ] (irreducible polynomial x²+µ)":
     test(BN254_Snarks)
     test(BLS12_381)
 
+  test "Addition, substraction negation are consistent":
+    proc test(C: static Curve) =
+      # Try to exercise all code paths for in-place/out-of-place add/sum/sub/diff/double/neg
+      # (1 - (-a) - b + (-a) - 2a) + (2a + 2b + (-b))  == 1
+      var accum {.noInit.}, One {.noInit.}, a{.noInit.}, na{.noInit.}, b{.noInit.}, nb{.noInit.}, a2 {.noInit.}, b2 {.noInit.}: Fp2[C]
+
+      One.setOne()
+      a = rng.random(Fp2[C])
+      a2 = a
+      a2.double()
+      na.neg(a)
+
+      b = rng.random(Fp2[C])
+      b2.double(b)
+      nb.neg(b)
+
+      accum.diff(One, na)
+      accum -= b
+      accum += na
+      accum -= a2
+
+      var t{.noInit.}: Fp2[C]
+      t.sum(a2, b2)
+      t += nb
+
+      accum += t
+      check: bool accum.isOne()
+
+    # test(BN254_Nogami)
+    test(BN254_Snarks)
+    test(BLS12_377)
+    test(BLS12_381)
+    # test(BN446)
+    # test(FKM12_447)
+    # test(BLS12_461)
+    # test(BN462)
+
   test "Squaring 1 returns 1":
     template test(C: static Curve) =
       block:

@@ -74,7 +74,7 @@ func isZero*(a: ExtensionField): CTBool[Word] =
 func isOne*(a: ExtensionField): CTBool[Word] =
   ## Constant-time check if one
   result = CtTrue
-  for fieldName, fA in fields(a):
+  for fieldName, fA in fieldPairs(a):
     when fieldName == "c0":
       result = result and fA.isOne()
     else:
@@ -121,11 +121,11 @@ func sum*(r: var CubicExt, a, b: CubicExt) =
 
 func diff*(r: var QuadraticExt, a, b: QuadraticExt) =
   ## Diff ``a`` and ``b`` into ``r``
-  r.c0.sum(a.c0, b.c0)
-  r.c1.sum(a.c1, b.c1)
+  r.c0.diff(a.c0, b.c0)
+  r.c1.diff(a.c1, b.c1)
 
 func diff*(r: var CubicExt, a, b: CubicExt) =
   ## Diff ``a`` and ``b`` into ``r``
-  r.c0.sum(a.c0, b.c0)
-  r.c1.sum(a.c1, b.c1)
-  r.c2.sum(a.c2, b.c2)
+  r.c0.diff(a.c0, b.c0)
+  r.c1.diff(a.c1, b.c1)
+  r.c2.diff(a.c2, b.c2)

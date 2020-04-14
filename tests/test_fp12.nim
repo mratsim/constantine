@@ -31,7 +31,6 @@ echo "test_fp12 xoshiro512** seed: ", seed
 #         will significantly slow down testing (100x is possible)
 
 suite "𝔽p12 = 𝔽p6[w] (irreducible polynomial w² - γ)":
-
   test "Comparison sanity checks":
     proc test(C: static Curve) =
       var z, o {.noInit.}: Fp12[C]
@@ -43,6 +42,43 @@ suite "𝔽p12 = 𝔽p6[w] (irreducible polynomial w² - γ)":
 
     test(BN254_Snarks)
     test(BLS12_381)
+
+  test "Addition, substraction negation are consistent":
+    proc test(C: static Curve) =
+      # Try to exercise all code paths for in-place/out-of-place add/sum/sub/diff/double/neg
+      # (1 - (-a) - b + (-a) - 2a) + (2a + 2b + (-b))  == 1
+      var accum {.noInit.}, One {.noInit.}, a{.noInit.}, na{.noInit.}, b{.noInit.}, nb{.noInit.}, a2 {.noInit.}, b2 {.noInit.}: Fp12[C]
+
+      One.setOne()
+      a = rng.random(Fp12[C])
+      a2 = a
+      a2.double()
+      na.neg(a)
+
+      b = rng.random(Fp12[C])
+      b2.double(b)
+      nb.neg(b)
+
+      accum.diff(One, na)
+      accum -= b
+      accum += na
+      accum -= a2
+
+      var t{.noInit.}: Fp12[C]
+      t.sum(a2, b2)
+      t += nb
+
+      accum += t
+      check: bool accum.isOne()
+
+    # test(BN254_Nogami)
+    test(BN254_Snarks)
+    test(BLS12_377)
+    test(BLS12_381)
+    # test(BN446)
+    # test(FKM12_447)
+    # test(BLS12_461)
+    # test(BN462)
 
   test "Squaring 1 returns 1":
     template test(C: static Curve) =
@@ -489,7 +525,7 @@ suite "𝔽p12 = 𝔽p6[w] (irreducible polynomial w² - γ)":
       var z: Fp12[curve]
       z.setZero()
 
-      var zInv{.noInit.}: Fp6[curve]
+      var zInv{.noInit.}: Fp12[curve]
 
       zInv.inv(z)
       check: bool zInv.isZero()
