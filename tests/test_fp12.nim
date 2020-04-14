@@ -8,7 +8,7 @@
 
 import
   # Standard library
-  unittest, times, random,
+  unittest, times,
   # Internals
   ../constantine/towers,
   ../constantine/config/[common, curves],
@@ -18,6 +18,7 @@ import
 
 const Iters = 128
 
+# Random seed for reproducibility
 var rng: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
 rng.seed(seed)
@@ -348,7 +349,7 @@ suite "𝔽p12 = 𝔽p6[w] (irreducible polynomial w² - γ)":
       block:
         proc testInstance() =
           for _ in 0 ..< Iters:
-            let factor = rand(-30..30)
+            let factor = rng.random_unsafe(-30..30)
 
             let a = rng.random_unsafe(Fp12[C])
 

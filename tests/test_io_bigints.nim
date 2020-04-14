@@ -6,12 +6,18 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import  unittest, random,
+import  std/[unittest,times],
         ../constantine/io/io_bigints,
         ../constantine/config/common,
-        ../constantine/arithmetic
+        ../constantine/arithmetic,
+        ../helpers/prng_unsafe
 
-randomize(0xDEADBEEF) # Random seed for reproducibility
+# Random seed for reproducibility
+var rng: RngState
+let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+rng.seed(seed)
+echo "test_io_bigints xoshiro512** seed: ", seed
+
 type T = BaseType
 
 proc main() =
@@ -37,7 +43,7 @@ proc main() =
         check: x_bytes == r_bytes
 
       block: # "Little-endian" - single random
-        let x = uint64 rand(0..high(int))
+        let x = rng.random_unsafe(uint64)
         let x_bytes = cast[array[8, byte]](x)
         let big = BigInt[64].fromRawUint(x_bytes, littleEndian) # It's fine even on big-endian platform. We only want the byte-pattern
 
@@ -47,7 +53,7 @@ proc main() =
 
       block: # "Little-endian" - 10 random cases
         for _ in 0 ..< 10:
-          let x = uint64 rand(0..high(int))
+          let x = rng.random_unsafe(uint64)
           let x_bytes = cast[array[8, byte]](x)
           let big = BigInt[64].fromRawUint(x_bytes, littleEndian) # It's fine even on big-endian platform. We only want the byte-pattern
 
