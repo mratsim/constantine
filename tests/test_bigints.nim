@@ -441,21 +441,36 @@ proc mainModularInverse() =
 
       check: bool(r == expected)
 
-    test "0^-1 (mod 0) = 0 (need for tower of extension fields)":
-      let a = BigInt[16].fromUint(0'u16)
-      let M = BigInt[16].fromUint(2017'u16)
+    test "0^-1 (mod any) = 0 (need for tower of extension fields)":
+      block:
+        let a = BigInt[16].fromUint(0'u16)
+        let M = BigInt[16].fromUint(2017'u16)
 
-      var mp1div2 = M
-      mp1div2.shiftRight(1)
-      discard mp1div2.add(Word 1)
+        var mp1div2 = M
+        mp1div2.shiftRight(1)
+        discard mp1div2.add(Word 1)
 
-      let expected = BigInt[16].fromUint(0'u16)
-      var r {.noInit.}: BigInt[16]
+        let expected = BigInt[16].fromUint(0'u16)
+        var r {.noInit.}: BigInt[16]
 
-      r.invmod(a, M, mp1div2)
+        r.invmod(a, M, mp1div2)
 
-      check: bool(r == expected)
+        check: bool(r == expected)
 
+      block:
+        let a = BigInt[381].fromUint(0'u16)
+        let M = BigInt[381].fromHex("0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab")
+
+        var mp1div2 = M
+        mp1div2.shiftRight(1)
+        discard mp1div2.add(Word 1)
+
+        let expected = BigInt[381].fromUint(0'u16)
+        var r {.noInit.}: BigInt[381]
+
+        r.invmod(a, M, mp1div2)
+
+        check: bool(r == expected)
 
 mainArith()
 mainNeg()

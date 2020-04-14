@@ -153,18 +153,31 @@ proc main() =
           computed == expected
 
   suite "Modular inversion over prime fields":
-    test "Specific test on Fp[BLS12_381]":
-      var r, x: Fp[BLS12_381]
+    test "Specific tests on Fp[BLS12_381]":
+      block: # No inverse exist for 0 --> should return 0 for projective/jacobian to affine coordinate conversion
+        var r, x: Fp[BLS12_381]
+        x.setZero()
+        r.inv(x)
+        check: bool r.isZero()
 
-      # BN254 field modulus
-      x.fromHex("0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47")
+      block:
+        var r, x: Fp[BLS12_381]
+        x.setOne()
+        r.inv(x)
+        check: bool r.isOne()
 
-      let expected = "0x0636759a0f3034fa47174b2c0334902f11e9915b7bd89c6a2b3082b109abbc9837da17201f6d8286fe6203caa1b9d4c8"
-      r.inv(x)
-      let computed = r.toHex()
+      block:
+        var r, x: Fp[BLS12_381]
 
-      check:
-        computed == expected
+        # BN254 field modulus
+        x.fromHex("0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47")
+
+        let expected = "0x0636759a0f3034fa47174b2c0334902f11e9915b7bd89c6a2b3082b109abbc9837da17201f6d8286fe6203caa1b9d4c8"
+        r.inv(x)
+        let computed = r.toHex()
+
+        check:
+          computed == expected
 
     test "Specific tests on Fp[BN254_Snarks]":
       block:
