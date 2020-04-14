@@ -92,7 +92,7 @@ func steinsGCD*(v: var Limbs, a: Limbs, F, M: Limbs, bits: int, mp1div2: Limbs) 
     let isOddA = a.isOdd()
 
     # if isOddA: a -= b
-    let aLessThanB = isOddA and (CTBool[Word]) a.csub(b, isOddA)
+    let aLessThanB = isOddA and (SecretBool) a.csub(b, isOddA)
     # if a < b and the sub was processed
     # in that case, b <- a = a - b + b
     discard b.cadd(a, aLessThanB)
@@ -104,7 +104,7 @@ func steinsGCD*(v: var Limbs, a: Limbs, F, M: Limbs, bits: int, mp1div2: Limbs) 
     # Swap u and v is a < b
     u.cswap(v, aLessThanB)
     # if isOddA: u -= v (mod M)
-    let neg = isOddA and (CTBool[Word]) u.csub(v, isOddA)
+    let neg = isOddA and (SecretBool) u.csub(v, isOddA)
     let corrected = u.cadd(M, neg)
 
     let isOddU = u.isOdd()
@@ -141,7 +141,7 @@ func steinsGCD*(v: var Limbs, a: Limbs, F, M: Limbs, bits: int, mp1div2: Limbs) 
 # ------------------------------------------------------------
 
 type
-  LimbsView = ptr UncheckedArray[Word]
+  LimbsView = ptr UncheckedArray[SecretWord]
     ## Type-erased fixed-precision limbs
     ##
     ## This type mirrors the Limb type and is used
@@ -172,19 +172,19 @@ template view(a: var Limbs): LimbsViewMut =
   ## Returns a borrowed type-erased mutable view to a mutable bigint
   LimbsViewMut(cast[LimbsView](a.addr))
 
-template `[]`*(v: LimbsViewConst, limbIdx: int): Word =
+template `[]`*(v: LimbsViewConst, limbIdx: int): SecretWord =
   LimbsView(v)[limbIdx]
 
-template `[]`*(v: LimbsViewMut, limbIdx: int): var Word =
+template `[]`*(v: LimbsViewMut, limbIdx: int): var SecretWord =
   LimbsView(v)[limbIdx]
 
-template `[]=`*(v: LimbsViewMut, limbIdx: int, val: Word) =
+template `[]=`*(v: LimbsViewMut, limbIdx: int, val: SecretWord) =
   LimbsView(v)[limbIdx] = val
 
 # Type-erased add-sub
 # ------------------------------------------------------------
 
-func cadd(a: LimbsViewMut, b: LimbsViewAny, ctl: CTBool[Word], len: int): Carry =
+func cadd(a: LimbsViewMut, b: LimbsViewAny, ctl: SecretBool, len: int): Carry =
   ## Type-erased conditional addition
   ## Returns the carry
   ##
@@ -194,12 +194,12 @@ func cadd(a: LimbsViewMut, b: LimbsViewAny, ctl: CTBool[Word], len: int): Carry 
   ##
   ## Time and memory accesses are the same whether a copy occurs or not
   result = Carry(0)
-  var sum: Word
+  var sum: SecretWord
   for i in 0 ..< len:
     addC(result, sum, a[i], b[i], result)
     ctl.ccopy(a[i], sum)
 
-func csub(a: LimbsViewMut, b: LimbsViewAny, ctl: CTBool[Word], len: int): Borrow =
+func csub(a: LimbsViewMut, b: LimbsViewAny, ctl: SecretBool, len: int): Borrow =
   ## Type-erased conditional addition
   ## Returns the borrow
   ##
@@ -209,7 +209,7 @@ func csub(a: LimbsViewMut, b: LimbsViewAny, ctl: CTBool[Word], len: int): Borrow
   ##
   ## Time and memory accesses are the same whether a copy occurs or not
   result = Borrow(0)
-  var diff: Word
+  var diff: SecretWord
   for i in 0 ..< len:
     subB(result, diff, a[i], b[i], result)
     ctl.ccopy(a[i], diff)
@@ -222,8 +222,8 @@ func numWordsFromBits(bits: int): int {.inline.} =
   result = (bits + WordBitWidth - 1) shr divShiftor
 
 func shlAddMod_estimate(a: LimbsViewMut, aLen: int,
-                        c: Word, M: LimbsViewConst, mBits: int
-                      ): tuple[neg, tooBig: CTBool[Word]] =
+                        c: SecretWord, M: LimbsViewConst, mBits: int
+                      ): tuple[neg, tooBig: SecretBool] =
   ## Estimate a <- a shl 2^w + c (mod M)
   ##
   ## with w the base word width, usually 32 on 32-bit platforms and 64 on 64-bit platforms
@@ -237,7 +237,7 @@ func shlAddMod_estimate(a: LimbsViewMut, aLen: int,
   let MLen = numWordsFromBits(mBits)
 
   # Captures aLen and MLen
-  template `[]`(v: untyped, limbIdxFromEnd: BackwardsIndex): Word {.dirty.}=
+  template `[]`(v: untyped, limbIdxFromEnd: BackwardsIndex): SecretWord {.dirty.}=
     v[`v Len` - limbIdxFromEnd.int]
 
   # ----------------------------------------------------------------------
@@ -245,16 +245,16 @@ func shlAddMod_estimate(a: LimbsViewMut, aLen: int,
   let hi = a[^1]                                          # Save the high word to detect carries
   let R = mBits and (WordBitWidth - 1)                    # R = mBits mod 64
 
-  var a0, a1, m0: Word
+  var a0, a1, m0: SecretWord
   if R == 0:                                              # If the number of mBits is a multiple of 64
     a0 = a[^1]                                            #
-    moveMem(a[1].addr, a[0].addr, (aLen-1) * Word.sizeof) # we can just shift words
+    moveMem(a[1].addr, a[0].addr, (aLen-1) * SecretWord.sizeof) # we can just shift words
     a[0] = c                                              # and replace the first one by c
     a1 = a[^1]
     m0 = M[^1]
   else:                                                   # Else: need to deal with partial word shifts at the edge.
     a0 = (a[^1] shl (WordBitWidth-R)) or (a[^2] shr R)
-    moveMem(a[1].addr, a[0].addr, (aLen-1) * Word.sizeof)
+    moveMem(a[1].addr, a[0].addr, (aLen-1) * SecretWord.sizeof)
     a[0] = c
     a1 = (a[^1] shl (WordBitWidth-R)) or (a[^2] shr R)
     m0 = (M[^1] shl (WordBitWidth-R)) or (M[^2] shr R)
@@ -262,7 +262,7 @@ func shlAddMod_estimate(a: LimbsViewMut, aLen: int,
   # m0 has its high bit set. (a0, a1)/p0 fits in a limb.
   # Get a quotient q, at most we will be 2 iterations off
   # from the true quotient
-  var q, r: Word
+  var q, r: SecretWord
   unsafeDiv2n1n(q, r, a0, a1, m0)                # Estimate quotient
   q = mux(                                       # If n_hi == divisor
         a0 == m0, MaxWord,                       # Quotient == MaxWord (0b1111...1111)
@@ -277,7 +277,7 @@ func shlAddMod_estimate(a: LimbsViewMut, aLen: int,
   var over_p = CtTrue                            # Track if quotient greater than the modulus
 
   for i in 0 ..< MLen:
-    var qp_lo: Word
+    var qp_lo: SecretWord
 
     block: # q*p
       # q * p + carry (doubleword) carry from previous limb
@@ -286,7 +286,7 @@ func shlAddMod_estimate(a: LimbsViewMut, aLen: int,
     block: # a*2^64 - q*p
       var borrow: Borrow
       subB(borrow, a[i], a[i], qp_lo, Borrow(0))
-      carry += Word(borrow) # Adjust if borrow
+      carry += SecretWord(borrow) # Adjust if borrow
 
     over_p = mux(
               a[i] == M[i], over_p,
@@ -302,7 +302,7 @@ func shlAddMod_estimate(a: LimbsViewMut, aLen: int,
   result.tooBig = not(result.neg) and (over_p or (carry < hi))
 
 func shlAddMod(a: LimbsViewMut, aLen: int,
-               c: Word, M: LimbsViewConst, mBits: int) =
+               c: SecretWord, M: LimbsViewConst, mBits: int) =
   ## Fused modular left-shift + add
   ## Shift input `a` by a word and add `c` modulo `M`
   ##
@@ -323,7 +323,7 @@ func shlAddMod(a: LimbsViewMut, aLen: int,
     let lo = c shl (WordBitWidth-R)
     let m0 = M[0] shl (WordBitWidth-R)
 
-    var q, r: Word
+    var q, r: SecretWord
     unsafeDiv2n1n(q, r, hi, lo, m0)  # (hi, lo) mod M
 
     a[0] = r shr (WordBitWidth-R)
@@ -346,7 +346,7 @@ func reduce(r: LimbsViewMut,
     # if a uses less bits than the modulus,
     # it is guaranteed < modulus.
     # This relies on the precondition that the modulus uses all declared bits
-    copyMem(r[0].addr, a[0].unsafeAddr, aLen * sizeof(Word))
+    copyMem(r[0].addr, a[0].unsafeAddr, aLen * sizeof(SecretWord))
     for i in aLen ..< mLen:
       r[i] = Zero
   else:
@@ -354,7 +354,7 @@ func reduce(r: LimbsViewMut,
     # we can copy modulus.limbs-1 words
     # and modular shift-left-add the rest
     let aOffset = aLen - mLen
-    copyMem(r[0].addr, a[aOffset+1].unsafeAddr, (mLen-1) * sizeof(Word))
+    copyMem(r[0].addr, a[aOffset+1].unsafeAddr, (mLen-1) * sizeof(SecretWord))
     r[rLen - 1] = Zero
     # Now shift-left the copied words while adding the new word modulo M
     for i in countdown(aOffset, 0):

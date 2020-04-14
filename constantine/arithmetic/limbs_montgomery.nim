@@ -90,7 +90,7 @@ func montyMul_CIOS_nocarry(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   ## Montgomery Multiplication using Coarse Grained Operand Scanning (CIOS)
   ## and no-carry optimization.
   ## This requires the most significant word of the Modulus
-  ##   M[^1] < high(Word) shr 1 (i.e. less than 0b01111...1111)
+  ##   M[^1] < high(SecretWord) shr 1 (i.e. less than 0b01111...1111)
   ## https://hackmd.io/@zkteam/modular_multiplication
 
   # We want all the computation to be kept in registers
@@ -101,10 +101,10 @@ func montyMul_CIOS_nocarry(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
     # (A, t[0]) <- a[0] * b[i] + t[0]
     #  m        <- (t[0] * m0ninv) mod 2^w
     # (C, _)    <- m * M[0] + t[0]
-    var A: Word
+    var A: SecretWord
     muladd1(A, t[0], a[0], b[i], t[0])
-    let m = t[0] * Word(m0ninv)
-    var C, lo: Word
+    let m = t[0] * SecretWord(m0ninv)
+    var C, lo: SecretWord
     muladd1(C, lo, m, M[0], t[0])
 
     staticFor j, 1, N:
@@ -133,7 +133,7 @@ func montyMul_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   var t: typeof(M)   # zero-init
   const N = t.len
   # Extra words to handle up to 2 carries t[N] and t[N+1]
-  var tN: Word
+  var tN: SecretWord
   var tNp1: Carry
 
   staticFor i, 0, N:
@@ -148,7 +148,7 @@ func montyMul_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
     #  m        <- (t[0] * m0ninv) mod 2^w
     # (C, _)    <- m * M[0] + t[0]
     var C, lo = Zero
-    let m = t[0] * Word(m0ninv)
+    let m = t[0] * SecretWord(m0ninv)
     muladd1(C, lo, m, M[0], t[0])
     staticFor j, 1, N:
       # (C, t[j-1]) <- m*M[j] + t[j] + C
@@ -158,7 +158,7 @@ func montyMul_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
     #  (_, t[N])  <- t[N+1] + C
     var carry: Carry
     addC(carry, t[N-1], tN, C, Carry(0))
-    addC(carry, tN, Word(tNp1), Zero, carry)
+    addC(carry, tN, SecretWord(tNp1), Zero, carry)
 
   # t[N+1] can only be non-zero in the intermediate computation
   # since it is immediately reduce to t[N] at the end of each "i" iteration
@@ -170,7 +170,7 @@ func montySquare_CIOS_nocarry(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
   ## Montgomery Multiplication using Coarse Grained Operand Scanning (CIOS)
   ## and no-carry optimization.
   ## This requires the most significant word of the Modulus
-  ##   M[^1] < high(Word) shr 2 (i.e. less than 0b00111...1111)
+  ##   M[^1] < high(SecretWord) shr 2 (i.e. less than 0b00111...1111)
   ## https://hackmd.io/@zkteam/modular_multiplication
 
   # We want all the computation to be kept in registers
@@ -181,7 +181,7 @@ func montySquare_CIOS_nocarry(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
     # Squaring
     var
       A1: Carry
-      A0: Word
+      A0: SecretWord
     # (A0, t[i]) <- a[i] * a[i] + t[i]
     muladd1(A0, t[i], a[i], a[i], t[i])
     staticFor j, i+1, N:
@@ -192,8 +192,8 @@ func montySquare_CIOS_nocarry(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
     # Reduction
     #  m        <- (t[0] * m0ninv) mod 2^w
     # (C, _)    <- m * M[0] + t[0]
-    let m = t[0] * Word(m0ninv)
-    var C, lo: Word
+    let m = t[0] * SecretWord(m0ninv)
+    var C, lo: SecretWord
     muladd1(C, lo, m, M[0], t[0])
     staticFor j, 1, N:
       # (C, t[j-1]) <- m*M[j] + t[j] + C
@@ -220,14 +220,14 @@ func montySquare_CIOS(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
   var t: typeof(M) # zero-init
   const N = t.len
   # Extra words to handle up to 2 carries t[N] and t[N+1]
-  var tNp1: Word
-  var tN: Word
+  var tNp1: SecretWord
+  var tN: SecretWord
 
   staticFor i, 0, N:
     # Squaring
     var
       A1: Carry
-      A0: Word
+      A0: SecretWord
     # (A0, t[i]) <- a[i] * a[i] + t[i]
     muladd1(A0, t[i], a[i], a[i], t[i])
     staticFor j, i+1, N:
@@ -237,13 +237,13 @@ func montySquare_CIOS(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
 
     var carryS: Carry
     addC(carryS, tN, tN, A0, Carry(0))
-    addC(carryS, tNp1, Word(A1), Zero, carryS)
+    addC(carryS, tNp1, SecretWord(A1), Zero, carryS)
 
     # Reduction
     #  m        <- (t[0] * m0ninv) mod 2^w
     # (C, _)    <- m * M[0] + t[0]
-    var C, lo: Word
-    let m = t[0] * Word(m0ninv)
+    var C, lo: SecretWord
+    let m = t[0] * SecretWord(m0ninv)
     muladd1(C, lo, m, M[0], t[0])
     staticFor j, 1, N:
       # (C, t[j-1]) <- m*M[j] + t[j] + C
@@ -253,7 +253,7 @@ func montySquare_CIOS(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
     #  (_, t[N])  <- t[N+1] + C
     var carryR: Carry
     addC(carryR, t[N-1], tN, C, Carry(0))
-    addC(carryR, tN, Word(tNp1), Zero, carryR)
+    addC(carryR, tN, SecretWord(tNp1), Zero, carryR)
 
   discard t.csub(M, tN.isNonZero() or not(t < M)) # TODO: (t >= M) is unnecessary for prime in the form (2^64)^w
   r = t
@@ -265,7 +265,7 @@ func montyMul*(
         r: var Limbs, a, b, M: Limbs,
         m0ninv: static BaseType, canUseNoCarryMontyMul: static bool) =
   ## Compute r <- a*b (mod M) in the Montgomery domain
-  ## `m0ninv` = -1/M (mod Word). Our words are 2^32 or 2^64
+  ## `m0ninv` = -1/M (mod SecretWord). Our words are 2^32 or 2^64
   ##
   ## This resets r to zero before processing. Use {.noInit.}
   ## to avoid duplicating with Nim zero-init policy
@@ -298,7 +298,7 @@ func montyMul*(
 func montySquare*(r: var Limbs, a, M: Limbs,
                   m0ninv: static BaseType, canUseNoCarryMontySquare: static bool) =
   ## Compute r <- a^2 (mod M) in the Montgomery domain
-  ## `m0ninv` = -1/M (mod Word). Our words are 2^31 or 2^63
+  ## `m0ninv` = -1/M (mod SecretWord). Our words are 2^31 or 2^63
 
   when canUseNoCarryMontySquare:
     montySquare_CIOS_nocarry(r, a, M, m0ninv)
@@ -512,13 +512,13 @@ func montyPow*(
       # in particular we need the same memory accesses, we can't
       # just index the openarray with the bits to avoid cache attacks.
       for i in 1 ..< 1 shl k:
-        let ctl = Word(i) == Word(bits)
+        let ctl = SecretWord(i) == SecretWord(bits)
         scratchspace[1].ccopy(scratchspace[1+i], ctl)
 
     # Multiply with the looked-up value
     # we keep the product only if the exponent bits are not all zero
     scratchspace[0].montyMul(a, scratchspace[1], M, m0ninv, canUseNoCarryMontyMul)
-    a.ccopy(scratchspace[0], Word(bits).isNonZero())
+    a.ccopy(scratchspace[0], SecretWord(bits).isNonZero())
 
 func montyPowUnsafeExponent*(
        a: var Limbs,

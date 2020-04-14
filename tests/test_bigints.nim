@@ -32,14 +32,14 @@ proc mainArith() =
     test "Adding 2 zeros":
       var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
       let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
-      let carry = a.cadd(b, ctrue(Word))
+      let carry = a.cadd(b, CtTrue)
       check: a.isZero().bool
 
     test "Adding 1 zero - real addition":
       block:
         var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
         let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
-        let carry = a.cadd(b, ctrue(Word))
+        let carry = a.cadd(b, CtTrue)
 
         let c = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
         check:
@@ -47,7 +47,7 @@ proc mainArith() =
       block:
         var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
         let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
-        let carry = a.cadd(b, ctrue(Word))
+        let carry = a.cadd(b, CtTrue)
 
         let c = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
         check:
@@ -57,7 +57,7 @@ proc mainArith() =
       block:
         var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
         let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
-        let carry = a.cadd(b, cfalse(Word))
+        let carry = a.cadd(b, CtFalse)
 
         let c = a
         check:
@@ -65,7 +65,7 @@ proc mainArith() =
       block:
         var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
         let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
-        let carry = a.cadd(b, cfalse(Word))
+        let carry = a.cadd(b, CtFalse)
 
         let c = a
         check:
@@ -75,7 +75,7 @@ proc mainArith() =
       block:
         var a = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000000")
         let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
-        let carry = a.cadd(b, ctrue(Word))
+        let carry = a.cadd(b, CtTrue)
 
         let c = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000001")
         check:
@@ -83,7 +83,7 @@ proc mainArith() =
       block:
         var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
         let b = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000000")
-        let carry = a.cadd(b, ctrue(Word))
+        let carry = a.cadd(b, CtTrue)
 
         let c = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000001")
         check:
@@ -93,7 +93,7 @@ proc mainArith() =
       block:
         var a = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000000")
         let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
-        let carry = a.cadd(b, cfalse(Word))
+        let carry = a.cadd(b, CtFalse)
 
         let c = a
         check:
@@ -101,7 +101,7 @@ proc mainArith() =
       block:
         var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
         let b = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000000")
-        let carry = a.cadd(b, cfalse(Word))
+        let carry = a.cadd(b, CtFalse)
 
         let c = a
         check:
@@ -111,7 +111,7 @@ proc mainArith() =
       block:
         var a = fromHex(BigInt[128], "0x00000000_FFFFFFFF_FFFFFFFF_FFFFFFFE")
         let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
-        let carry = a.cadd(b, ctrue(Word))
+        let carry = a.cadd(b, CtTrue)
 
         let c = fromHex(BigInt[128], "0x00000000_FFFFFFFF_FFFFFFFF_FFFFFFFF")
         check:
@@ -121,21 +121,21 @@ proc mainArith() =
       block:
         var a = fromHex(BigInt[128], "0x00000000_FFFFFFFF_FFFFFFFF_FFFFFFFF")
         let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
-        let carry = a.cadd(b, ctrue(Word))
+        let carry = a.cadd(b, CtTrue)
 
         let c = fromHex(BigInt[128], "0x00000001_00000000_00000000_00000000")
         check:
           bool(a == c)
           not bool(carry)
 
-  suite "BigInt + Word":
+  suite "BigInt + SecretWord":
     test "Addition limbs carry":
       block: # P256 / 2
         var a = BigInt[256].fromhex"0x7fffffff800000008000000000000000000000007fffffffffffffffffffffff"
 
         let expected = BigInt[256].fromHex"7fffffff80000000800000000000000000000000800000000000000000000000"
 
-        discard a.add(Word 1)
+        discard a.add(SecretWord 1)
         check: bool(a == expected)
 
   suite "Modular operations - small modulus":
@@ -370,7 +370,7 @@ proc mainModularInverse() =
         let M = BigInt[16].fromUint(2017'u16)
 
         var mp1div2 = M
-        discard mp1div2.add(Word 1)
+        discard mp1div2.add(SecretWord 1)
         mp1div2.shiftRight(1)
 
         let expected = BigInt[16].fromUint(1969'u16)
@@ -385,7 +385,7 @@ proc mainModularInverse() =
         let M = BigInt[381].fromUint(2017'u16)
 
         var mp1div2 = M
-        discard mp1div2.add(Word 1)
+        discard mp1div2.add(SecretWord 1)
         mp1div2.shiftRight(1)
 
         let expected = BigInt[381].fromUint(1969'u16)
@@ -401,7 +401,7 @@ proc mainModularInverse() =
         let M = BigInt[16].fromUint(383'u16)
 
         var mp1div2 = M
-        discard mp1div2.add(Word 1)
+        discard mp1div2.add(SecretWord 1)
         mp1div2.shiftRight(1)
 
         let expected = BigInt[16].fromUint(106'u16)
@@ -416,7 +416,7 @@ proc mainModularInverse() =
         let M = BigInt[381].fromUint(383'u16)
 
         var mp1div2 = M
-        discard mp1div2.add(Word 1)
+        discard mp1div2.add(SecretWord 1)
         mp1div2.shiftRight(1)
 
         let expected = BigInt[381].fromUint(106'u16)
@@ -431,7 +431,7 @@ proc mainModularInverse() =
       let M = BigInt[381].fromHex("0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab")
 
       var mp1div2 = M
-      discard mp1div2.add(Word 1)
+      discard mp1div2.add(SecretWord 1)
       mp1div2.shiftRight(1)
 
       let expected = BigInt[381].fromHex("0x0636759a0f3034fa47174b2c0334902f11e9915b7bd89c6a2b3082b109abbc9837da17201f6d8286fe6203caa1b9d4c8")
@@ -448,7 +448,7 @@ proc mainModularInverse() =
 
         var mp1div2 = M
         mp1div2.shiftRight(1)
-        discard mp1div2.add(Word 1)
+        discard mp1div2.add(SecretWord 1)
 
         let expected = BigInt[16].fromUint(0'u16)
         var r {.noInit.}: BigInt[16]
@@ -463,7 +463,7 @@ proc mainModularInverse() =
 
         var mp1div2 = M
         mp1div2.shiftRight(1)
-        discard mp1div2.add(Word 1)
+        discard mp1div2.add(SecretWord 1)
 
         let expected = BigInt[381].fromUint(0'u16)
         var r {.noInit.}: BigInt[381]

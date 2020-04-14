@@ -16,7 +16,7 @@ import ./constant_time_types
 
 # No exceptions allowed
 {.push raises: [].}
-# Word primitives are inlined
+# SecretWord primitives are inlined
 {.push inline.}
 
 # ############################################################

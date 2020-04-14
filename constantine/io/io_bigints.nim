@@ -46,7 +46,7 @@ func fromRawUintLE(
     acc_len = 0
 
   for src_idx in 0 ..< src.len:
-    let src_byte = Word(src[src_idx])
+    let src_byte = SecretWord(src[src_idx])
 
     # buffer reads
     acc = acc or (src_byte shl acc_len)
@@ -83,7 +83,7 @@ func fromRawUintBE(
     acc_len = 0
 
   for src_idx in countdown(src.len-1, 0):
-    let src_byte = Word(src[src_idx])
+    let src_byte = SecretWord(src[src_idx])
 
     # buffer reads
     acc = acc or (src_byte shl acc_len)
@@ -194,7 +194,7 @@ func exportRawUintLE(
       acc = w
       acc_len = WordBitWidth
     else:
-      when WordBitWidth == sizeof(Word) * 8:
+      when WordBitWidth == sizeof(SecretWord) * 8:
         let lo = acc
         acc = w
       else: # If using 63-bit (or less) out of uint64
@@ -202,11 +202,11 @@ func exportRawUintLE(
         dec acc_len
         acc = w shr (WordBitWidth - acc_len)
 
-      if tail >= sizeof(Word):
+      if tail >= sizeof(SecretWord):
         # Unrolled copy
         dst.blobFrom(src = lo, dst_idx, littleEndian)
-        dst_idx += sizeof(Word)
-        tail -= sizeof(Word)
+        dst_idx += sizeof(SecretWord)
+        tail -= sizeof(SecretWord)
       else:
         # Process the tail and exit
         when cpuEndian == littleEndian:
@@ -247,7 +247,7 @@ func exportRawUintBE(
       acc = w
       acc_len = WordBitWidth
     else:
-      when WordBitWidth == sizeof(Word) * 8:
+      when WordBitWidth == sizeof(SecretWord) * 8:
         let lo = acc
         acc = w
       else: # If using 63-bit (or less) out of uint64
@@ -255,9 +255,9 @@ func exportRawUintBE(
         dec acc_len
         acc = w shr (WordBitWidth - acc_len)
 
-      if tail >= sizeof(Word):
+      if tail >= sizeof(SecretWord):
         # Unrolled copy
-        tail -= sizeof(Word)
+        tail -= sizeof(SecretWord)
         dst.blobFrom(src = lo, tail, bigEndian)
       else:
         # Process the tail and exit

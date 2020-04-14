@@ -59,19 +59,19 @@ func setOne*(a: var ExtensionField) =
 # Comparison
 # -------------------------------------------------------------------
 
-func `==`*(a, b: ExtensionField): CTBool[Word] =
+func `==`*(a, b: ExtensionField): SecretBool =
   ## Constant-time equality check
   result = CtTrue
   for fA, fB in fields(a, b):
     result = result and (fA == fB)
 
-func isZero*(a: ExtensionField): CTBool[Word] =
+func isZero*(a: ExtensionField): SecretBool =
   ## Constant-time check if zero
   result = CtTrue
   for fA in fields(a):
     result = result and fA.isZero()
 
-func isOne*(a: ExtensionField): CTBool[Word] =
+func isOne*(a: ExtensionField): SecretBool =
   ## Constant-time check if one
   result = CtTrue
   for fieldName, fA in fieldPairs(a):

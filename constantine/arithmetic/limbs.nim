@@ -36,7 +36,7 @@ import
 # The limb-endianess is little-endian, less significant limb is at index 0.
 # The word-endianness is native-endian.
 
-type Limbs*[N: static int] = array[N, Word]
+type Limbs*[N: static int] = array[N, SecretWord]
   ## Limbs-type
   ## Should be distinct type to avoid builtins to use non-constant time
   ## implementation, for example for comparison.
@@ -69,14 +69,14 @@ debug:
 #
 # Commented out since we don't use a distinct type
 
-# template `[]`[N](v: Limbs[N], idx: int): Word =
-#   (array[N, Word])(v)[idx]
+# template `[]`[N](v: Limbs[N], idx: int): SecretWord =
+#   (array[N, SecretWord])(v)[idx]
 #
-# template `[]`[N](v: var Limbs[N], idx: int): var Word =
-#   (array[N, Word])(v)[idx]
+# template `[]`[N](v: var Limbs[N], idx: int): var SecretWord =
+#   (array[N, SecretWord])(v)[idx]
 #
-# template `[]=`[N](v: Limbs[N], idx: int, val: Word) =
-#   (array[N, Word])(v)[idx] = val
+# template `[]=`[N](v: Limbs[N], idx: int, val: SecretWord) =
+#   (array[N, SecretWord])(v)[idx] = val
 
 # ############################################################
 #
@@ -106,14 +106,14 @@ func setZero*(a: var Limbs) =
 
 func setOne*(a: var Limbs) =
   ## Set ``a`` to 1
-  a[0] = Word(1)
+  a[0] = SecretWord(1)
   when a.len > 1:
-    zeroMem(a[1].addr, (a.len - 1) * sizeof(Word))
+    zeroMem(a[1].addr, (a.len - 1) * sizeof(SecretWord))
 
 # Copy
 # ------------------------------------------------------------
 
-func ccopy*(a: var Limbs, b: Limbs, ctl: CTBool[Word]) =
+func ccopy*(a: var Limbs, b: Limbs, ctl: SecretBool) =
   ## Constant-time conditional copy
   ## If ctl is true: b is copied into a
   ## if ctl is false: b is not copied and a is untouched
@@ -131,7 +131,7 @@ func cswap*(a, b: var Limbs, ctl: CTBool) =
   ## Whether ``ctl`` is true or not, the same
   ## memory accesses are done (unless the compiler tries to be clever)
 
-  var mask = -(Word ctl)
+  var mask = -(SecretWord ctl)
   for i in 0 ..< a.len:
     let t = mask and (a[i] xor b[i])
     a[i] = a[i] xor t
@@ -140,7 +140,7 @@ func cswap*(a, b: var Limbs, ctl: CTBool) =
 # Comparison
 # ------------------------------------------------------------
 
-func `==`*(a, b: Limbs): CTBool[Word] =
+func `==`*(a, b: Limbs): SecretBool =
   ## Returns true if 2 limbs are equal
   ## Comparison is constant-time
   var accum = Zero
@@ -148,37 +148,37 @@ func `==`*(a, b: Limbs): CTBool[Word] =
     accum = accum or (a[i] xor b[i])
   result = accum.isZero()
 
-func `<`*(a, b: Limbs): CTBool[Word] =
+func `<`*(a, b: Limbs): SecretBool =
   ## Returns true if a < b
   ## Comparison is constant-time
-  var diff: Word
+  var diff: SecretWord
   var borrow: Borrow
   for i in 0 ..< a.len:
     subB(borrow, diff, a[i], b[i], borrow)
 
-  result = (CTBool[Word])(borrow)
+  result = (SecretBool)(borrow)
 
-func `<=`*(a, b: Limbs): CTBool[Word] =
+func `<=`*(a, b: Limbs): SecretBool =
   ## Returns true if a <= b
   ## Comparison is constant-time
   not(b < a)
 
-func isZero*(a: Limbs): CTBool[Word] =
+func isZero*(a: Limbs): SecretBool =
   ## Returns true if ``a`` is equal to zero
   var accum = Zero
   for i in 0 ..< a.len:
     accum = accum or a[i]
   result = accum.isZero()
 
-func isOne*(a: Limbs): CTBool[Word] =
+func isOne*(a: Limbs): SecretBool =
   ## Returns true if ``a`` is equal to one
-  result = a[0] == Word(1)
+  result = a[0] == SecretWord(1)
   for i in 1 ..< a.len:
     result = result and a[i].isZero()
 
-func isOdd*(a: Limbs): CTBool[Word] =
+func isOdd*(a: Limbs): SecretBool =
   ## Returns true if a is odd
-  CTBool[Word](a[0] and Word(1))
+  SecretBool(a[0] and SecretWord(1))
 
 # Arithmetic
 # ------------------------------------------------------------
@@ -190,7 +190,7 @@ func add*(a: var Limbs, b: Limbs): Carry =
   for i in 0 ..< a.len:
     addC(result, a[i], a[i], b[i], result)
 
-func add*(a: var Limbs, w: Word): Carry =
+func add*(a: var Limbs, w: SecretWord): Carry =
   ## Limbs addition, add a number that fits in a word
   ## Returns the carry
   result = Carry(0)
@@ -198,7 +198,7 @@ func add*(a: var Limbs, w: Word): Carry =
   for i in 1 ..< a.len:
     addC(result, a[i], a[i], Zero, result)
 
-func cadd*(a: var Limbs, b: Limbs, ctl: CTBool[Word]): Carry =
+func cadd*(a: var Limbs, b: Limbs, ctl: SecretBool): Carry =
   ## Limbs conditional addition
   ## Returns the carry
   ##
@@ -208,7 +208,7 @@ func cadd*(a: var Limbs, b: Limbs, ctl: CTBool[Word]): Carry =
   ##
   ## Time and memory accesses are the same whether a copy occurs or not
   result = Carry(0)
-  var sum: Word
+  var sum: SecretWord
   for i in 0 ..< a.len:
     addC(result, sum, a[i], b[i], result)
     ctl.ccopy(a[i], sum)
@@ -229,7 +229,7 @@ func sub*(a: var Limbs, b: Limbs): Borrow =
   for i in 0 ..< a.len:
     subB(result, a[i], a[i], b[i], result)
 
-func csub*(a: var Limbs, b: Limbs, ctl: CTBool[Word]): Borrow =
+func csub*(a: var Limbs, b: Limbs, ctl: SecretBool): Borrow =
   ## Limbs conditional substraction
   ## Returns the borrow
   ##
@@ -239,7 +239,7 @@ func csub*(a: var Limbs, b: Limbs, ctl: CTBool[Word]): Borrow =
   ##
   ## Time and memory accesses are the same whether a copy occurs or not
   result = Borrow(0)
-  var diff: Word
+  var diff: SecretWord
   for i in 0 ..< a.len:
     subB(result, diff, a[i], b[i], result)
     ctl.ccopy(a[i], diff)
@@ -266,11 +266,11 @@ func cneg*(a: var Limbs, ctl: CTBool) =
   # So we need to xor all words and then add 1
   # The "+1" might carry
   # So we fuse the 2 steps
-  let mask = -Word(ctl)              # Obtain a 0xFF... or 0x00... mask
-  var carry = Word(ctl)
+  let mask = -SecretWord(ctl)              # Obtain a 0xFF... or 0x00... mask
+  var carry = SecretWord(ctl)
   for i in 0 ..< a.len:
     let t = (a[i] xor mask) + carry  # XOR with mask and add 0x01 or 0x00 respectively
-    carry = Word(t < carry)          # Carry on
+    carry = SecretWord(t < carry)          # Carry on
     a[i] = t
 
 # Bit manipulation

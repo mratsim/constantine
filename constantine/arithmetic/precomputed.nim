@@ -72,11 +72,11 @@ func add(a: var BigInt, w: BaseType): bool =
   ## Returns the carry
   var carry, sum: BaseType
   addC(carry, sum, BaseType(a.limbs[0]), w, carry)
-  a.limbs[0] = Word(sum)
+  a.limbs[0] = SecretWord(sum)
   for i in 1 ..< a.limbs.len:
     let ai = BaseType(a.limbs[i])
     addC(carry, sum, ai, 0, carry)
-    a.limbs[i] = Word(sum)
+    a.limbs[i] = SecretWord(sum)
 
   result = bool(carry)
 
@@ -87,7 +87,7 @@ func dbl(a: var BigInt): bool =
   for i in 0 ..< a.limbs.len:
     let ai = BaseType(a.limbs[i])
     addC(carry, sum, ai, ai, carry)
-    a.limbs[i] = Word(sum)
+    a.limbs[i] = SecretWord(sum)
 
   result = bool(carry)
 
@@ -96,11 +96,11 @@ func sub(a: var BigInt, w: BaseType): bool =
   ## Returns the carry
   var borrow, diff: BaseType
   subB(borrow, diff, BaseType(a.limbs[0]), w, borrow)
-  a.limbs[0] = Word(diff)
+  a.limbs[0] = SecretWord(diff)
   for i in 1 ..< a.limbs.len:
     let ai = BaseType(a.limbs[i])
     subB(borrow, diff, ai, 0, borrow)
-    a.limbs[i] = Word(diff)
+    a.limbs[i] = SecretWord(diff)
 
   result = bool(borrow)
 
@@ -116,7 +116,7 @@ func cadd(a: var BigInt, b: BigInt, ctl: bool): bool =
     let bi = BaseType(b.limbs[i])
     addC(carry, sum, ai, bi, carry)
     if ctl:
-      a.limbs[i] = Word(sum)
+      a.limbs[i] = SecretWord(sum)
 
   result = bool(carry)
 
@@ -132,7 +132,7 @@ func csub(a: var BigInt, b: BigInt, ctl: bool): bool =
     let bi = BaseType(b.limbs[i])
     subB(borrow, diff, ai, bi, borrow)
     if ctl:
-      a.limbs[i] = Word(diff)
+      a.limbs[i] = SecretWord(diff)
 
   result = bool(borrow)
 
@@ -181,7 +181,7 @@ func useNoCarryMontySquare*(M: BigInt): bool =
 func negInvModWord*(M: BigInt): BaseType =
   ## Returns the Montgomery domain magic constant for the input modulus:
   ##
-  ##   µ ≡ -1/M[0] (mod Word)
+  ##   µ ≡ -1/M[0] (mod SecretWord)
   ##
   ## M[0] is the least significant limb of M
   ## M must be odd and greater than 2.
@@ -265,7 +265,7 @@ func r_powmod(n: static int, M: BigInt): BigInt =
     start = (w-1)*WordBitWidth + msb
     stop = n*WordBitWidth*w
 
-  result.limbs[^1] = Word(BaseType(1) shl msb) # C0 = 2^(wn-1), the power of 2 immediatly less than the modulus
+  result.limbs[^1] = SecretWord(BaseType(1) shl msb) # C0 = 2^(wn-1), the power of 2 immediatly less than the modulus
   for _ in start ..< stop:
     result.doubleMod(M)
 

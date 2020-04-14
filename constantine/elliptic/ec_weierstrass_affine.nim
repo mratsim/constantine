@@ -42,7 +42,7 @@ func curve_eq_rhs*[F](y2: var F, x: F) =
     t *= F.C.getCoefA()
     y2 += t
 
-func isOnCurve*[F](x, y: F): CTBool[Word] =
+func isOnCurve*[F](x, y: F): SecretBool =
   ## Returns true if the (x, y) coordinates
   ## represents a point of the elliptic curve
 

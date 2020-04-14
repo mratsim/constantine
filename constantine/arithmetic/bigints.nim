@@ -72,12 +72,12 @@ type
     ##
     ## This internal representation can be changed
     ## without notice and should not be used by external applications or libraries.
-    limbs*: array[bits.wordsRequired, Word]
+    limbs*: array[bits.wordsRequired, SecretWord]
 
 # For unknown reason, `bits` doesn't semcheck if
 #   `limbs: Limbs[bits.wordsRequired]`
 # with
-#   `Limbs[N: static int] = distinct array[N, Word]`
+#   `Limbs[N: static int] = distinct array[N, SecretWord]`
 # so we don't set Limbs as a distinct type
 
 debug:
@@ -108,7 +108,7 @@ func setOne*(a: var BigInt) =
 # Copy
 # ------------------------------------------------------------
 
-func ccopy*(a: var BigInt, b: BigInt, ctl: CTBool[Word]) =
+func ccopy*(a: var BigInt, b: BigInt, ctl: SecretBool) =
   ## Constant-time conditional copy
   ## If ctl is true: b is copied into a
   ## if ctl is false: b is not copied and a is untouched
@@ -126,92 +126,92 @@ func cswap*(a, b: var BigInt, ctl: CTBool) =
 # Comparison
 # ------------------------------------------------------------
 
-func `==`*(a, b: BigInt): CTBool[Word] =
+func `==`*(a, b: BigInt): SecretBool =
   ## Returns true if 2 big ints are equal
   ## Comparison is constant-time
   a.limbs == b.limbs
 
-func `<`*(a, b: BigInt): CTBool[Word] =
+func `<`*(a, b: BigInt): SecretBool =
   ## Returns true if a < b
   a.limbs < b.limbs
 
-func `<=`*(a, b: BigInt): CTBool[Word] =
+func `<=`*(a, b: BigInt): SecretBool =
   ## Returns true if a <= b
   a.limbs <= b.limbs
 
-func isZero*(a: BigInt): CTBool[Word] =
+func isZero*(a: BigInt): SecretBool =
   ## Returns true if a big int is equal to zero
   a.limbs.isZero
 
-func isOne*(a: BigInt): CTBool[Word] =
+func isOne*(a: BigInt): SecretBool =
   ## Returns true if a big int is equal to one
   a.limbs.isOne
 
-func isOdd*(a: BigInt): CTBool[Word] =
+func isOdd*(a: BigInt): SecretBool =
   ## Returns true if a is odd
   a.limbs.isOdd
 
 # Arithmetic
 # ------------------------------------------------------------
 
-func cadd*(a: var BigInt, b: BigInt, ctl: CTBool[Word]): CTBool[Word] =
+func cadd*(a: var BigInt, b: BigInt, ctl: SecretBool): SecretBool =
   ## Constant-time in-place conditional addition
   ## The addition is only performed if ctl is "true"
   ## The result carry is always computed.
-  (CTBool[Word]) cadd(a.limbs, b.limbs, ctl)
+  (SecretBool) cadd(a.limbs, b.limbs, ctl)
 
-func csub*(a: var BigInt, b: BigInt, ctl: CTBool[Word]): CTBool[Word] =
+func csub*(a: var BigInt, b: BigInt, ctl: SecretBool): SecretBool =
   ## Constant-time in-place conditional addition
   ## The addition is only performed if ctl is "true"
   ## The result carry is always computed.
-  (CTBool[Word]) csub(a.limbs, b.limbs, ctl)
+  (SecretBool) csub(a.limbs, b.limbs, ctl)
 
-func cdouble*(a: var BigInt, ctl: CTBool[Word]): CTBool[Word] =
+func cdouble*(a: var BigInt, ctl: SecretBool): SecretBool =
   ## Constant-time in-place conditional doubling
   ## The doubling is only performed if ctl is "true"
   ## The result carry is always computed.
-  (CTBool[Word]) cadd(a.limbs, a.limbs, ctl)
+  (SecretBool) cadd(a.limbs, a.limbs, ctl)
 
-func add*(a: var BigInt, b: BigInt): CTBool[Word] =
+func add*(a: var BigInt, b: BigInt): SecretBool =
   ## Constant-time in-place addition
   ## Returns the carry
-  (CTBool[Word]) add(a.limbs, b.limbs)
+  (SecretBool) add(a.limbs, b.limbs)
 
-func add*(a: var BigInt, b: Word): CTBool[Word] =
+func add*(a: var BigInt, b: SecretWord): SecretBool =
   ## Constant-time in-place addition
   ## Returns the carry
-  (CTBool[Word]) add(a.limbs, b)
+  (SecretBool) add(a.limbs, b)
 
-func sub*(a: var BigInt, b: BigInt): CTBool[Word] =
+func sub*(a: var BigInt, b: BigInt): SecretBool =
   ## Constant-time in-place substraction
   ## Returns the borrow
-  (CTBool[Word]) sub(a.limbs, b.limbs)
+  (SecretBool) sub(a.limbs, b.limbs)
 
-func double*(a: var BigInt): CTBool[Word] =
+func double*(a: var BigInt): SecretBool =
   ## Constant-time in-place doubling
   ## Returns the carry
-  (CTBool[Word]) add(a.limbs, a.limbs)
+  (SecretBool) add(a.limbs, a.limbs)
 
-func sum*(r: var BigInt, a, b: BigInt): CTBool[Word] =
+func sum*(r: var BigInt, a, b: BigInt): SecretBool =
   ## Sum `a` and `b` into `r`.
   ## `r` is initialized/overwritten
   ##
   ## Returns the carry
-  (CTBool[Word]) sum(r.limbs, a.limbs, b.limbs)
+  (SecretBool) sum(r.limbs, a.limbs, b.limbs)
 
-func diff*(r: var BigInt, a, b: BigInt): CTBool[Word] =
+func diff*(r: var BigInt, a, b: BigInt): SecretBool =
   ## Substract `b` from `a` and store the result into `r`.
   ## `r` is initialized/overwritten
   ##
   ## Returns the borrow
-  (CTBool[Word]) diff(r.limbs, a.limbs, b.limbs)
+  (SecretBool) diff(r.limbs, a.limbs, b.limbs)
 
-func double*(r: var BigInt, a: BigInt): CTBool[Word] =
+func double*(r: var BigInt, a: BigInt): SecretBool =
   ## Double `a` into `r`.
   ## `r` is initialized/overwritten
   ##
   ## Returns the carry
-  (CTBool[Word]) sum(r.limbs, a.limbs, a.limbs)
+  (SecretBool) sum(r.limbs, a.limbs, a.limbs)
 
 func div2*(a: var BigInt) =
   ## In-place divide ``a`` by 2
