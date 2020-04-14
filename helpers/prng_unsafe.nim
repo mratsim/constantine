@@ -130,7 +130,7 @@ func random_unsafe_with_randZ[F](rng: var RngState, a: var ECP_SWei_Proj[F]) =
 # Integer ranges
 # ------------------------------------------------------------
 
-func random_unsafe(rng: var RngState, maxExclusive: uint32): uint32 =
+func random_unsafe*(rng: var RngState, maxExclusive: uint32): uint32 =
   ## Generate a random integer in 0 ..< maxExclusive
   ## Uses an unbiaised generation method
   ## See Lemire's algorithm modified by Melissa O'Neill
@@ -154,6 +154,10 @@ func random_unsafe(rng: var RngState, maxExclusive: uint32): uint32 =
 # Generic over any supported type
 # ------------------------------------------------------------
 
+func sample_unsafe*[T](rng: var RngState, src: openarray[T]): T =
+  ## Return a random sample from an array
+  result = src[rng.random_unsafe(uint32 src.len)]
+
 func random_unsafe*[T: SomeInteger](rng: var RngState, inclRange: Slice[T]): T =
   ## Return a random integer in the given range.
   ## The range bounds must fit in an int32.
@@ -166,6 +170,8 @@ func random_unsafe*(rng: var RngState, T: typedesc): T =
   ## Unsafe: for testing and benchmarking purposes only
   when T is ECP_SWei_Proj:
     rng.random_unsafe(result)
+  elif T is SomeNumber:
+    cast[T](rng.next()) # TODO: Rely on casting integer actually converting in C (i.e. uint64->uint32 is valid)
   else:
     rng.random_unsafe(result, T.C)
 

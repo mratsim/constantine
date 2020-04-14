@@ -6,11 +6,15 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import  unittest, random, math,
-        ../constantine/primitives
+import  std/[unittest, times, math],
+        ../constantine/primitives,
+        ../helpers/prng_unsafe
 
 # Random seed for reproducibility
-randomize(0xDEADBEEF)
+var rng: RngState
+let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+rng.seed(seed)
+echo "test_primitives xoshiro512** seed: ", seed
 
 template undistinct[T](x: Ct[T]): T =
   T(x)
@@ -27,12 +31,12 @@ proc main() =
         high(Ct[uint64]).undistinct == 0xFFFFFFFF_FFFFFFFF'u64
 
     test "bitwise `and`, `or`, `xor`, `not`":
-      let x1 = rand(high(int)).uint64
-      let y1 = rand(high(int)).uint64
-      let x2 = rand(high(int)).uint64
-      let y2 = rand(high(int)).uint64
-      let x3 = rand(high(int)).uint64
-      let y3 = rand(high(int)).uint64
+      let x1 = rng.random_unsafe(uint64)
+      let y1 = rng.random_unsafe(uint64)
+      let x2 = rng.random_unsafe(uint64)
+      let y2 = rng.random_unsafe(uint64)
+      let x3 = rng.random_unsafe(uint64)
+      let y3 = rng.random_unsafe(uint64)
       template bitwise_check(op: untyped): untyped =
         block:
           check:
@@ -61,16 +65,16 @@ proc main() =
           not(ct(y3)).undistinct == not y3
 
     test "Logical shifts":
-      let x1 = rand(high(int)).uint64
-      let y1 = rand(high(int)).uint64
-      let x2 = rand(high(int)).uint64
-      let y2 = rand(high(int32)).uint64
-      let x3 = rand(high(int32)).uint64
-      let y3 = rand(high(int32)).uint64
+      let x1 = rng.random_unsafe(uint64)
+      let y1 = rng.random_unsafe(uint64)
+      let x2 = rng.random_unsafe(uint64)
+      let y2 = rng.random_unsafe(uint64)
+      let x3 = rng.random_unsafe(uint64)
+      let y3 = rng.random_unsafe(uint64)
 
-      let s1 = rand(10)
-      let s2 = rand(10)
-      let s3 = rand(10)
+      let s1 = uint64 rng.random_unsafe(10)
+      let s2 = uint64 rng.random_unsafe(10)
+      let s3 = uint64 rng.random_unsafe(10)
 
       template shift_check(op: untyped): untyped =
         block:
@@ -96,12 +100,12 @@ proc main() =
 
 
     test "Operators `+`, `-`, `*`":
-      let x1 = rand(high(int)).uint64
-      let y1 = rand(high(int)).uint64
-      let x2 = rand(high(int)).uint64
-      let y2 = rand(high(int)).uint64
-      let x3 = rand(high(int)).uint64
-      let y3 = rand(high(int)).uint64
+      let x1 = rng.random_unsafe(uint64)
+      let y1 = rng.random_unsafe(uint64)
+      let x2 = rng.random_unsafe(uint64)
+      let y2 = rng.random_unsafe(uint64)
+      let x3 = rng.random_unsafe(uint64)
+      let y3 = rng.random_unsafe(uint64)
       template operator_check(op: untyped): untyped =
         block:
           check:
@@ -117,12 +121,12 @@ proc main() =
       operator_check(`*`)
 
     test "Unary `-`, returning the 2-complement of an unsigned integer":
-      let x1 = rand(high(int)).uint64
-      let y1 = rand(high(int)).uint64
-      let x2 = rand(high(int)).uint64
-      let y2 = rand(high(int)).uint64
-      let x3 = rand(high(int)).uint64
-      let y3 = rand(high(int)).uint64
+      let x1 = rng.random_unsafe(uint64)
+      let y1 = rng.random_unsafe(uint64)
+      let x2 = rng.random_unsafe(uint64)
+      let y2 = rng.random_unsafe(uint64)
+      let x3 = rng.random_unsafe(uint64)
+      let y3 = rng.random_unsafe(uint64)
       check:
         (-ct(0'u32)).undistinct == 0
         (-high(Ct[uint32])).undistinct == 1'u32

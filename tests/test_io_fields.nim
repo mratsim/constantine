@@ -6,14 +6,18 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import  unittest, random,
+import  std/[unittest, times],
         ../constantine/io/[io_bigints, io_fields],
         ../constantine/config/curves,
         ../constantine/config/common,
-        ../constantine/arithmetic
+        ../constantine/arithmetic,
+        ../helpers/prng_unsafe
 
-randomize(0xDEADBEEF) # Random seed for reproducibility
-type T = BaseType
+# Random seed for reproducibility
+var rng: RngState
+let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+rng.seed(seed)
+echo "test_io_fields xoshiro512** seed: ", seed
 
 proc main() =
   suite "IO - Finite fields":
@@ -99,7 +103,7 @@ proc main() =
         check: x_bytes == r_bytes[0 ..< 8]
 
       block: # "Little-endian" - single random
-        let x = uint64 rand(0..high(int))
+        let x = rng.random_unsafe(uint64)
         let x_bytes = cast[array[8, byte]](x)
         var f: Fp[Mersenne127]
         f.fromUint(x)
@@ -110,7 +114,7 @@ proc main() =
 
       block: # "Little-endian" - 10 random cases
         for _ in 0 ..< 10:
-          let x = uint64 rand(0..high(int))
+          let x = rng.random_unsafe(uint64)
           let x_bytes = cast[array[8, byte]](x)
           var f: Fp[Mersenne127]
           f.fromUint(x)
