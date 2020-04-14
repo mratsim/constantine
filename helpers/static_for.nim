@@ -26,3 +26,17 @@ macro staticFor*(idx: untyped{nkIdent}, start, stopEx: static int, body: untyped
       ident("unrolledIter_" & $idx & $i),
       body.replaceNodes(idx, newLit i)
     )
+
+{.experimental: "dynamicBindSym".}
+
+macro staticFor*(ident: untyped{nkIdent}, choices: typed, body: untyped): untyped =
+  ## matches
+  ##   staticFor(curve, TestCurves):
+  ##     body
+  ## and unroll the body for each curve in TestCurves
+  result = newStmtList()
+  for choice in choices:
+    result.add nnkBlockStmt.newTree(
+      ident($ident & "_" & $choice.intVal),
+      body.replaceNodes(ident, choice)
+    )
