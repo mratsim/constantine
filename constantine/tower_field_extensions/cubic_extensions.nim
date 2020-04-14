@@ -18,18 +18,26 @@ func square*(r: var CubicExt, a: CubicExt) =
   ## Returns r = a²
   # Algorithm is Chung-Hasan Squaring SQR2
   # http://cacr.uwaterloo.ca/techreports/2006/cacr2006-24.pdf
+  # https://www.lirmm.fr/arith18/papers/Chung-Squaring.pdf
   #
-  # TODO: change to SQR1 or SQR3 (requires div2)
-  #       which are faster for the sizes we are interested in.
+  # Cost in base field operation
+  # M -> Mul, S -> Square, B -> Bitshift (doubling/div2), A -> Add
+  #
+  # SQR1:        3M + 2S + 5B + 9A
+  # SQR2:        2M + 3S + 5B + 11A
+  # SQR3:        1M + 4S + 6B + 15A
+  # Schoolbook:  3S + 3M + 6B + 2A
+  #
+  # TODO: Implement all variants, bench and select one depending on number of limbs and extension degree.
   mixin prod, square, sum
-  var v2{.noInit.}, v3{.noInit.}, v4{.noInit.}, v5{.noInit.}: typeof(r.c0)
+  var v3{.noInit.}, v4{.noInit.}, v5{.noInit.}: typeof(r.c0)
 
   v4.prod(a.c0, a.c1)
   v4.double()
   v5.square(a.c2)
   r.c1 = β * v5
   r.c1 += v4
-  v2.diff(v4, v5)
+  r.c2.diff(v4, v5)
   v3.square(a.c0)
   v4.diff(a.c0, a.c1)
   v4 += a.c2
@@ -38,7 +46,7 @@ func square*(r: var CubicExt, a: CubicExt) =
   v4.square()
   r.c0 = β * v5
   r.c0 += v3
-  r.c2.sum(v2, v4)
+  r.c2 += v4
   r.c2 += v5
   r.c2 -= v3
 
