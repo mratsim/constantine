@@ -13,22 +13,37 @@ import
 
 # Commutative ring implementation for Cubic Extension Fields
 # -------------------------------------------------------------------
+# Cubic extensions can use specific squaring procedures
+# beyond Schoolbook and Karatsuba:
+# - Chung-Hasan (3 different algorithms)
+# - Toom-Cook-3x
+#
+# Chung-Hasan papers
+# http://cacr.uwaterloo.ca/techreports/2006/cacr2006-24.pdf
+# https://www.lirmm.fr/arith18/papers/Chung-Squaring.pdf
+#
+# The papers focus on polynomial squaring, they have been adapted
+# to towered extension fields with the relevant costs in
+#
+# - Multiplication and Squaring on Pairing-Friendly Fields
+#   Augusto Jun Devegili and Colm Ó hÉigeartaigh and Michael Scott and Ricardo Dahab, 2006
+#   https://eprint.iacr.org/2006/471
+#
+# Costs in the underlying field
+# M: Mul, S: Square, A: Add/Sub, B: Mul by non-residue
+#
+# | Method      | > Linear | Linear            |
+# |-------------|----------|-------------------|
+# | Schoolbook  | 3M + 3S  | 6A + 2B           |
+# | Karatsuba   | 6S       | 13A + 2B          |
+# | Tom-Cook-3x | 5S       | 33A + 2B          |
+# | CH-SQR1     | 3M + 2S  | 11A + 2B          |
+# | CH-SQR2     | 2M + 3S  | 10A + 2B          |
+# | CH-SQR3     | 1M + 4S  | 11A + 2B + 1 Div2 |
+# | CH-SQR3x    | 1M + 4S  | 14A + 2B          |
 
-func square*(r: var CubicExt, a: CubicExt) =
+func square_Chung_Hasan_SQR2(r: var CubicExt, a: CubicExt) =
   ## Returns r = a²
-  # Algorithm is Chung-Hasan Squaring SQR2
-  # http://cacr.uwaterloo.ca/techreports/2006/cacr2006-24.pdf
-  # https://www.lirmm.fr/arith18/papers/Chung-Squaring.pdf
-  #
-  # Cost in base field operation
-  # M -> Mul, S -> Square, B -> Bitshift (doubling/div2), A -> Add
-  #
-  # SQR1:        3M + 2S + 5B + 9A
-  # SQR2:        2M + 3S + 5B + 11A
-  # SQR3:        1M + 4S + 6B + 15A
-  # Schoolbook:  3S + 3M + 6B + 2A
-  #
-  # TODO: Implement all variants, bench and select one depending on number of limbs and extension degree.
   mixin prod, square, sum
   var v3{.noInit.}, v4{.noInit.}, v5{.noInit.}: typeof(r.c0)
 
@@ -49,6 +64,39 @@ func square*(r: var CubicExt, a: CubicExt) =
   r.c2 += v4
   r.c2 += v5
   r.c2 -= v3
+
+func square_Chung_Hasan_SQR3(r: var CubicExt, a: CubicExt) =
+  ## Returns r = a²
+  mixin prod, square, sum
+  var v0{.noInit.}, v2{.noInit.}: typeof(r.c0)
+
+  r.c1.sum(a.c0, a.c2)  # r1 = a0 + a2
+  v2.diff(r.c1, a.c1)   # v2 = a0 - a1 + a2
+  r.c1 += a.c1          # r1 = a0 + a1 + a2
+  r.c1.square()         # r1 = (a0 + a1 + a2)²
+  v2.square()           # v2 = (a0 - a1 + a2)²
+
+  r.c2.sum(r.c1, v2)    # r2 = (a0 + a1 + a2)² + (a0 - a1 + a2)²
+  r.c2.div2()           # r2 = ((a0 + a1 + a2)² + (a0 - a1 + a2)²)/2
+
+  r.c0.prod(a.c1, a.c2) # r0 = a1 a2
+  r.c0.double()         # r0 = 2 a1 a2
+
+  v2.square(a.c2)       # v2 = a2²
+  r.c1 += β * v2        # r1 = (a0 + a1 + a2)² + β a2²
+  r.c1 -= r.c0          # r1 = (a0 + a1 + a2)² - 2 a1 a2 + β a2²
+  r.c1 -= r.c2          # r1 = (a0 + a1 + a2)² - 2 a1 a2 - ((a0 + a1 + a2)² + (a0 - a1 + a2)²)/2 + β a2²
+
+  v0.square(a.c0)       # v0 = a0²
+  r.c0 *= β             # r0 = β 2 a1 a2
+  r.c0 += v0            # r0 = a0² + β 2 a1 a2
+
+  r.c2 -= v0            # r2 = ((a0 + a1 + a2)² + (a0 - a1 + a2)²)/2 - a0²
+  r.c2 -= v2            # r2 = ((a0 + a1 + a2)² + (a0 - a1 + a2)²)/2 - a0² - a2²
+
+func square*(r: var CubicExt, a: CubicExt) {.inline.} =
+  ## Returns r = a²
+  square_Chung_Hasan_SQR3(r, a)
 
 func prod*(r: var CubicExt, a, b: CubicExt) =
   ## Returns r = a * b
