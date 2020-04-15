@@ -98,7 +98,13 @@ template bench(op: string, T: typedesc, iters: int, body: untyped): untyped =
 
 proc addBench*(T: typedesc, iters: int) =
   var r {.noInit.}: T
-  let x = rng.random_unsafe(T)
-  let y = rng.random_unsafe(T)
+  let P = rng.random_unsafe(T)
+  let Q = rng.random_unsafe(T)
   bench("EC Add G1", T, iters):
-    r.sum(x, y)
+    r.sum(P, Q)
+
+proc doublingBench*(T: typedesc, iters: int) =
+  var r {.noInit.}: T
+  let P = rng.random_unsafe(T)
+  bench("EC Double G1", T, iters):
+    r.double(P)

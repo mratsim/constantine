@@ -105,6 +105,9 @@ func sum*[F](
        P, Q: ECP_SWei_Proj[F]
      ) =
   ## Elliptic curve point addition for Short Weierstrass curves in projective coordinate
+  ##
+  ##   R = P + Q
+  ##
   ## Short Weierstrass curves have the following equation in projective coordinates
   ##   Y²Z = X³ + aXZ² + bZ³
   ## from the affine equation
@@ -121,8 +124,8 @@ func sum*[F](
   #
   # Implementation:
   # Algorithms 1 (generic case), 4 (a == -3), 7 (a == 0) of
-  #   Complete addition formulas for prime order elliptic curves\
-  #   Joost Renes and Craig Costello and Lejla Batina, 2015\
+  #   Complete addition formulas for prime order elliptic curves
+  #   Joost Renes and Craig Costello and Lejla Batina, 2015
   #   https://eprint.iacr.org/2015/1060
   #
   # with the indices 1 corresponding to ``P``, 2 to ``Q`` and 3 to the result ``r``
@@ -132,14 +135,18 @@ func sum*[F](
   # Y3 = (3 X1 X2 + a Z1 Z2)(a X1 X2 + 3b (X1 Z2 + X2 Z1) - a² Z1 Z2)
   #      + (Y1 Y2 + a (X1 Z2 + X2 Z1) + 3b Z1 Z2)(Y1 Y2 - a(X1 Z2 + X2 Z1) - 3b Z1 Z2)
   # Z3 = (Y1 Z2 + Y2 Z1)(Y1 Y2 + a(X1 Z2 + X2 Z1) + 3b Z1 Z2) + (X1 Y2 + X2 Y1)(3 X1 X2 + a Z1 Z2)
+  #
+  # Cost: 12M + 3 mul(a) + 2 mul(3b) + 23 a
 
   # TODO: static doAssert odd order
-  var t0 {.noInit.}, t1 {.noInit.}, t2 {.noInit.}, t3 {.noInit.}, t4 {.noInit.}: F
-  const b3 = 3 * F.C.getCoefB()
 
   when F.C.getCoefA() == 0:
+    var t0 {.noInit.}, t1 {.noInit.}, t2 {.noInit.}, t3 {.noInit.}, t4 {.noInit.}: F
+    const b3 = 3 * F.C.getCoefB()
+
     # Algorithm 7 for curves: y² = x³ + b
     # 12M + 2 mul(3b) + 19A
+    #
     # X3 = (X1 Y2 + X2 Y1)(Y1 Y2 − 3b Z1 Z2)
     #     − 3b(Y1 Z2 + Y2 Z1)(X1 Z2 + X2 Z1)
     # Y3 = (Y1 Y2 + 3b Z1 Z2)(Y1 Y2 − 3b Z1 Z2)
@@ -189,5 +196,72 @@ func sum*[F](
     t0 *= t3                  # 31. t0 <- t0 t3     t0 = 3 X1 X2 (X1.Y2 + X2.Y1)
     r.z *= t4                 # 32. Z3 <- Z3 t4     Z3 = (Y1 Y2 + 3b Z1 Z2)(Y1 Z2 + Y2 Z1)
     r.z += t0                 # 33. Z3 <- Z3 + t0   Z3 = (Y1 Z2 + Y2 Z1)(Y1 Y2 + 3b Z1 Z2) + 3 X1 X2 (X1.Y2 + X2.Y1)
+  else:
+    {.error: "Not implemented.".}
+
+func double*[F](
+       r: var ECP_SWei_Proj[F],
+       P: ECP_SWei_Proj[F]
+     ) =
+  ## Elliptic curve point doubling for Short Weierstrass curves in projective coordinate
+  ##
+  ##   R = [2] P
+  ##
+  ## Short Weierstrass curves have the following equation in projective coordinates
+  ##   Y²Z = X³ + aXZ² + bZ³
+  ## from the affine equation
+  ##   y² = x³ + a x + b
+  ##
+  ## ``r`` is initialized/overwritten with the sum
+  ##
+  ## Implementation is constant-time, in particular it will not expose
+  ## that `P` is an infinity point.
+  ## This is done by using a "complete" or "exception-free" addition law.
+  ##
+  ## This requires the order of the curve to be odd
+  #
+  # Implementation:
+  # Algorithms 3 (generic case), 6 (a == -3), 9 (a == 0) of
+  #   Complete addition formulas for prime order elliptic curves
+  #   Joost Renes and Craig Costello and Lejla Batina, 2015
+  #   https://eprint.iacr.org/2015/1060
+  #
+  # X3 = 2XY (Y² - 2aXZ - 3bZ²)
+  #      - 2YZ (aX² + 6bXZ - a²Z²)
+  # Y3 = (Y² + 2aXZ + 3bZ²)(Y² - 2aXZ - 3bZ²)
+  #      + (3X² + aZ²)(aX² + 6bXZ - a²Z²)
+  # Z3 = 8Y³Z
+  #
+  # Cost: 8M + 3S + 3 mul(a) + 2 mul(3b) + 15a
+
+  when F.C.getCoefA() == 0:
+    var t0 {.noInit.}, t1 {.noInit.}, t2 {.noInit.}: F
+    const b3 = 3 * F.C.getCoefB()
+
+    # Algorithm 9 for curves:
+    # 6M + 2S + 1 mul(3b) + 9a
+    #
+    # X3 = 2XY(Y² - 9bZ²)
+    # Y3 = (Y² - 9bZ²)(Y² + 3bZ²) + 24bY²Z²
+    # Z3 = 8Y³Z
+
+    t0.square(P.y)            # 1.  t0 <- Y Y
+    r.z.double(t0)            # 2.  Z3 <- t0 + t0
+    r.z.double()              # 3.  Z3 <- Z3 + Z3
+    r.z.double()              # 4.  Z3 <- Z3 + Z3   Z3 = 8Y²
+    t1.prod(P.y, P.z)         # 5.  t1 <- Y Z
+    t2.square(P.z)            # 6.  t2 <- Z Z
+    t2 *= b3                  # 7.  t2 <- b3 t2
+    r.x.prod(t2, r.z)         # 8.  X3 <- t2 Z3
+    r.y.sum(t0, t2)           # 9.  Y3 <- t0 + t2
+    r.z *= t1                 # 10. Z3 <- t1 Z3
+    t1.double(t2)             # 11. t1 <- t2 + t2
+    t2 += t1                  # 12. t2 <- t1 + t2
+    t0 -= t2                  # 13. t0 <- t0 - t2
+    r.y *= t0                 # 14. Y3 <- t0 Y3
+    r.y += r.x                # 15. Y3 <- X3 + Y3
+    t1.prod(P.x, P.y)         # 16. t1 <- X Y
+    r.x.prod(t0, t1)          # 17. X3 <- t0 t1
+    r.x.double()              # 18. X3 <- X3 + X3
   else:
     {.error: "Not implemented.".}

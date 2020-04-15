@@ -50,6 +50,9 @@ suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with project
         r.sum(inf, P)
         check: bool(r == P)
 
+
+    test(Fp[BN254_Snarks], randZ = false)
+    test(Fp[BN254_Snarks], randZ = true)
     test(Fp[BLS12_381], randZ = false)
     test(Fp[BLS12_381], randZ = true)
 
@@ -70,6 +73,8 @@ suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with project
         r.sum(Q, P)
         check: bool r.isInf()
 
+    test(Fp[BN254_Snarks], randZ = false)
+    test(Fp[BN254_Snarks], randZ = true)
     test(Fp[BLS12_381], randZ = false)
     test(Fp[BLS12_381], randZ = true)
 
@@ -88,6 +93,8 @@ suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with project
         r1.sum(Q, P)
         check: bool(r0 == r1)
 
+    test(Fp[BN254_Snarks], randZ = false)
+    test(Fp[BN254_Snarks], randZ = true)
     test(Fp[BLS12_381], randZ = false)
     test(Fp[BLS12_381], randZ = true)
 
@@ -138,5 +145,27 @@ suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with project
           bool(r0 == r3)
           bool(r0 == r4)
 
+    test(Fp[BN254_Snarks], randZ = false)
+    test(Fp[BN254_Snarks], randZ = true)
+    test(Fp[BLS12_381], randZ = false)
+    test(Fp[BLS12_381], randZ = true)
+
+  test "EC double and EC add are consistent":
+    proc test(F: typedesc, randZ: static bool) =
+      for _ in 0 ..< Iters:
+        when randZ:
+          let a = rng.random_unsafe_with_randZ(ECP_SWei_Proj[F])
+        else:
+          let a = rng.random_unsafe(ECP_SWei_Proj[F])
+
+        var r0{.noInit.}, r1{.noInit.}: ECP_SWei_Proj[F]
+
+        r0.double(a)
+        r1.sum(a, a)
+
+        check: bool(r0 == r1)
+
+    test(Fp[BN254_Snarks], randZ = false)
+    test(Fp[BN254_Snarks], randZ = true)
     test(Fp[BLS12_381], randZ = false)
     test(Fp[BLS12_381], randZ = true)

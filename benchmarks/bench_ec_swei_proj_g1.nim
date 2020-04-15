@@ -49,6 +49,8 @@ proc main() =
     const curve = AvailableCurves[i]
     addBench(ECP_SWei_Proj[Fp[curve]], Iters)
     separator()
+    doublingBench(ECP_SWei_Proj[Fp[curve]], Iters)
+    separator()
 
 main()
 
