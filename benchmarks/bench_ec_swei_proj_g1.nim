@@ -9,16 +9,19 @@
 import
   # Internals
   ../constantine/config/curves,
-  ../constantine/towers,
+  ../constantine/arithmetic,
+  ../constantine/elliptic/ec_weierstrass_projective,
   # Helpers
   ../helpers/static_for,
-  ./bench_fields_template,
+  ./bench_elliptic_template,
   # Standard library
   std/strutils
 
 # ############################################################
 #
-#                    Benchmark of 𝔽p6
+#               Benchmark of the G1 group of
+#            Short Weierstrass elliptic curves
+#          in (homogeneous) projective coordinates
 #
 # ############################################################
 
@@ -26,11 +29,14 @@ import
 const Iters = 1_000_000
 const InvIters = 1000
 const AvailableCurves = [
-  # Pairing-Friendly curves
+  # P224,
   # BN254_Nogami,
   BN254_Snarks,
-  BLS12_377,
-  BLS12_381
+  # Curve25519,
+  # P256,
+  # Secp256k1,
+  # BLS12_377,
+  BLS12_381,
   # BN446,
   # FKM12_447,
   # BLS12_461,
@@ -41,17 +47,12 @@ proc main() =
   separator()
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
-    addBench(Fp6[curve], Iters)
-    subBench(Fp6[curve], Iters)
-    negBench(Fp6[curve], Iters)
-    mulBench(Fp6[curve], Iters)
-    sqrBench(Fp6[curve], Iters)
-    invBench(Fp6[curve], InvIters)
+    addBench(ECP_SWei_Proj[Fp[curve]], Iters)
     separator()
 
 main()
 
 echo "Notes:"
 echo "  - GCC is significantly slower than Clang on multiprecision arithmetic."
+echo "  - The simplest operations might be optimized away by the compiler."
 echo "  - Fast Squaring and Fast Multiplication are possible if there are spare bits in the prime representation (i.e. the prime uses 254 bits out of 256 bits)"
-echo "  - The tower of extension fields chosen can lead to a large difference of performance between primes of similar bitwidth."

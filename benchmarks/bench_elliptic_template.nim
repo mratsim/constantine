@@ -8,15 +8,13 @@
 
 # ############################################################
 #
-#             Benchmark of finite fields
+#             Benchmark of elliptic curves
 #
 # ############################################################
 
 import
   # Internals
   ../constantine/config/curves,
-  ../constantine/arithmetic,
-  ../constantine/towers,
   # Helpers
   ../helpers/[timers, prng_unsafe, static_for],
   # Standard library
@@ -61,19 +59,21 @@ when defined(i386) or defined(amd64):
   echo "Running on ", cpuName(), "\n\n"
 
 proc separator*() =
-  echo "-".repeat(107)
+  echo "-".repeat(132)
 
-proc report(op, field: string, start, stop: MonoTime, startClk, stopClk: int64, iters: int) =
+proc report(op, elliptic: string, start, stop: MonoTime, startClk, stopClk: int64, iters: int) =
   let ns = inNanoseconds((stop-start) div iters)
   let throughput = 1e9 / float64(ns)
-  echo &"{op:<15} {field:<15} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
+  echo &"{op:<15} {elliptic:<40} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
 
-macro fixFieldDisplay(T: typedesc): untyped =
+macro fixEllipticDisplay(T: typedesc): untyped =
   # At compile-time, enums are integers and their display is buggy
   # we get the Curve ID instead of the curve name.
   let instantiated = T.getTypeInst()
-  var name = $instantiated[1][0] # Fp
-  name.add "[" & $Curve(instantiated[1][1].intVal) & "]"
+  var name = $instantiated[1][0] # EllipticEquationFormCoordinates
+  let fieldName = $instantiated[1][1][0]
+  let curveName = $Curve(instantiated[1][1][1].intVal)
+  name.add "[" & fieldName & "[" & curveName & "]]"
   result = newLit name
 
 template bench(op: string, T: typedesc, iters: int, body: untyped): untyped =
@@ -84,45 +84,11 @@ template bench(op: string, T: typedesc, iters: int, body: untyped): untyped =
   let stopClk = getTicks()
   let stop = getMonotime()
 
-  report(op, fixFieldDisplay(T), start, stop, startClk, stopClk, iters)
+  report(op, fixEllipticDisplay(T), start, stop, startClk, stopClk, iters)
 
 proc addBench*(T: typedesc, iters: int) =
-  var x = rng.random_unsafe(T)
-  let y = rng.random_unsafe(T)
-  bench("Addition", T, iters):
-    x += y
-
-proc subBench*(T: typedesc, iters: int) =
-  var x = rng.random_unsafe(T)
-  let y = rng.random_unsafe(T)
-  preventOptimAway(x)
-  bench("Substraction", T, iters):
-    x -= y
-
-proc negBench*(T: typedesc, iters: int) =
-  var r: T
-  let x = rng.random_unsafe(T)
-  bench("Negation", T, iters):
-    r.neg(x)
-
-proc mulBench*(T: typedesc, iters: int) =
-  var r: T
+  var r {.noInit.}: T
   let x = rng.random_unsafe(T)
   let y = rng.random_unsafe(T)
-  preventOptimAway(r)
-  bench("Multiplication", T, iters):
-    r.prod(x, y)
-
-proc sqrBench*(T: typedesc, iters: int) =
-  var r: T
-  let x = rng.random_unsafe(T)
-  preventOptimAway(r)
-  bench("Squaring", T, iters):
-    r.square(x)
-
-proc invBench*(T: typedesc, iters: int) =
-  var r: T
-  let x = rng.random_unsafe(T)
-  preventOptimAway(r)
-  bench("Inversion", T, iters):
-    r.inv(x)
+  bench("EC Add G1", T, iters):
+    r.sum(x, y)

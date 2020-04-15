@@ -289,7 +289,7 @@ func sqrt_if_square_p3mod4*[C](a: var Fp[C]): SecretBool =
   ## The square root, if it exist is multivalued,
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
-  static: doAssert C.Mod.limbs[0].BaseType mod 4 == 3
+  static: doAssert BaseType(C.Mod.limbs[0]) mod 4 == 3
 
   var a1 {.noInit.} = a
   a1.powUnsafeExponent(C.getPrimeMinus3div4_BE())
