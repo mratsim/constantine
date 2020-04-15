@@ -181,3 +181,12 @@ task bench_fp12_gcc, "Run benchmark 𝔽p12 with gcc":
 
 task bench_fp12_clang, "Run benchmark 𝔽p12 with clang":
   runBench("bench_fp12", "clang")
+
+task bench_ec_swei_proj_g1, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weierstrass with Projective Coordinates - GCC":
+  runBench("bench_ec_swei_proj_g1")
+
+task bench_ec_swei_proj_g1_gcc, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weierstrass with Projective Coordinates - GCC":
+  runBench("bench_ec_swei_proj_g1", "gcc")
+
+task bench_ec_swei_proj_g1_clang, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weierstrass with Projective Coordinates - Clang":
+  runBench("bench_ec_swei_proj_g1", "clang")
