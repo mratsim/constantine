@@ -26,6 +26,17 @@ proc test(flags, path: string) =
   echo "========================================================================================"
   exec "nim " & lang & cc & " " & flags & " --verbosity:0 --outdir:build -r --hints:off --warnings:off " & path
 
+proc runBench(benchName: string, compiler = "") =
+  if not dirExists "build":
+    mkDir "build"
+
+  var cc = ""
+  if compiler != "":
+    cc = "--cc:" & compiler
+  exec "nim c " & cc &
+       " -d:danger --verbosity:0 -o:build/" & benchName & "_" & compiler &
+       " -r --hints:off --warnings:off benchmarks/" & benchName & ".nim"
+
 ### tasks
 task test, "Run all tests":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
@@ -85,6 +96,13 @@ task test, "Run all tests":
     # Elliptic curve arithmetic
     test "-d:Constantine32", "tests/test_ec_weierstrass_projective_g1.nim"
 
+  # Benchmarks compile and run
+  runBench("bench_fp")
+  runBench("bench_fp2")
+  runBench("bench_fp6")
+  runBench("bench_fp12")
+  runBench("bench_ec_swei_proj_g1")
+
 task test_no_gmp, "Run tests that don't require GMP":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
 
@@ -135,16 +153,12 @@ task test_no_gmp, "Run tests that don't require GMP":
     # Elliptic curve arithmetic
     test "-d:Constantine32", "tests/test_ec_weierstrass_projective_g1.nim"
 
-proc runBench(benchName: string, compiler = "") =
-  if not dirExists "build":
-    mkDir "build"
-
-  var cc = ""
-  if compiler != "":
-    cc = "--cc:" & compiler
-  exec "nim c " & cc &
-       " -d:danger --verbosity:0 -o:build/" & benchName & "_" & compiler &
-       " -r --hints:off --warnings:off benchmarks/" & benchName & ".nim"
+  # Benchmarks compile and run
+  runBench("bench_fp")
+  runBench("bench_fp2")
+  runBench("bench_fp6")
+  runBench("bench_fp12")
+  runBench("bench_ec_swei_proj_g1")
 
 task bench_fp, "Run benchmark 𝔽p with your default compiler":
   runBench("bench_fp")
