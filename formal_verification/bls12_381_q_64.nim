@@ -128,7 +128,7 @@ func fromHex(output: var openArray[byte], hexStr: string, order: static[Endianne
 # -------------------------------------------------------------------------
 
 when isMainModule:
-  import random, std/monotimes, times, strformat, ../helpers/timers
+  import random, std/monotimes, times, strformat, ../benchmarks/platforms
 
   const Iters = 1_000_000
   const InvIters = 1000

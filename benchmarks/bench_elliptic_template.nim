@@ -16,7 +16,8 @@ import
   # Internals
   ../constantine/config/curves,
   # Helpers
-  ../helpers/[timers, prng_unsafe, static_for],
+  ../helpers/[prng_unsafe, static_for],
+  ./platforms,
   # Standard library
   std/[monotimes, times, strformat, strutils, macros]
 
@@ -40,9 +41,6 @@ proc warmup*() =
 
 warmup()
 
-echo "\n⚠️ Measurements are approximate and use the CPU nominal clock: Turbo-Boost and overclocking will skew them."
-echo "==========================================================================================================\n"
-echo "All benchmarks are using constant-time implementations to protect against side-channel attacks."
 when defined(gcc):
   echo "\nCompiled with GCC"
 elif defined(clang):
@@ -54,9 +52,21 @@ elif defined(icc):
 else:
   echo "\nCompiled with an unknown compiler"
 
-when defined(i386) or defined(amd64):
-  import ../helpers/x86
-  echo "Running on ", cpuName(), "\n\n"
+echo "Optimization level => no optimization: ", not defined(release), " | release: ", defined(release), " | danger: ", defined(danger)
+
+when (sizeof(int) == 4) or defined(Constantine32):
+  echo "⚠️ Warning: using Constantine with 32-bit limbs"
+else:
+  echo "Using Constantine with 64-bit limbs"
+
+when SupportsCPUName:
+  echo "Running on ", cpuName(), ""
+
+when SupportsGetTicks:
+  echo "\n⚠️ Cycles measurements are approximate and use the CPU nominal clock: Turbo-Boost and overclocking will skew them."
+  echo "i.e. a 20% overclock will be about 20% off (assuming no dynamic frequency scaling)"
+
+echo "\n=================================================================================================================\n"
 
 proc separator*() =
   echo "-".repeat(132)

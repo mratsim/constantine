@@ -18,7 +18,8 @@ import
   ../constantine/arithmetic,
   ../constantine/towers,
   # Helpers
-  ../helpers/[timers, prng_unsafe, static_for],
+  ../helpers/[prng_unsafe, static_for],
+  ./platforms,
   # Standard library
   std/[monotimes, times, strformat, strutils, macros]
 
@@ -42,9 +43,6 @@ proc warmup*() =
 
 warmup()
 
-echo "\n⚠️ Measurements are approximate and use the CPU nominal clock: Turbo-Boost and overclocking will skew them."
-echo "==========================================================================================================\n"
-echo "All benchmarks are using constant-time implementations to protect against side-channel attacks."
 when defined(gcc):
   echo "\nCompiled with GCC"
 elif defined(clang):
@@ -56,17 +54,29 @@ elif defined(icc):
 else:
   echo "\nCompiled with an unknown compiler"
 
-when defined(i386) or defined(amd64):
-  import ../helpers/x86
-  echo "Running on ", cpuName(), "\n\n"
+echo "Optimization level => no optimization: ", not defined(release), " | release: ", defined(release), " | danger: ", defined(danger)
+
+when (sizeof(int) == 4) or defined(Constantine32):
+  echo "⚠️ Warning: using Constantine with 32-bit limbs"
+else:
+  echo "Using Constantine with 64-bit limbs"
+
+when SupportsCPUName:
+  echo "Running on ", cpuName(), ""
+
+when SupportsGetTicks:
+  echo "\n⚠️ Cycles measurements are approximate and use the CPU nominal clock: Turbo-Boost and overclocking will skew them."
+  echo "i.e. a 20% overclock will be about 20% off (assuming no dynamic frequency scaling)"
+
+echo "\n=================================================================================================================\n"
 
 proc separator*() =
-  echo "-".repeat(107)
+  echo "-".repeat(110)
 
 proc report(op, field: string, start, stop: MonoTime, startClk, stopClk: int64, iters: int) =
   let ns = inNanoseconds((stop-start) div iters)
   let throughput = 1e9 / float64(ns)
-  echo &"{op:<15} {field:<15} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
+  echo &"{op:<15} {field:<18} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
 
 macro fixFieldDisplay(T: typedesc): untyped =
   # At compile-time, enums are integers and their display is buggy
