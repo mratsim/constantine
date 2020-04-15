@@ -83,6 +83,11 @@ func isOne*(a: ExtensionField): SecretBool =
 # Abelian group
 # -------------------------------------------------------------------
 
+func neg*(r: var ExtensionField, a: ExtensionField) =
+  ## Field out-of-place negation
+  for fR, fA in fields(r, a):
+    fR.neg(fA)
+
 func `+=`*(a: var ExtensionField, b: ExtensionField) =
   ## Addition in the extension field
   for fA, fB in fields(a, b):
@@ -103,10 +108,10 @@ func double*(a: var ExtensionField) =
   for fA in fields(a):
     fA.double()
 
-func neg*(r: var ExtensionField, a: ExtensionField) =
-  ## Field out-of-place negation
-  for fR, fA in fields(r, a):
-    fR.neg(fA)
+func div2*(a: var ExtensionField) =
+  ## Field in-place division by 2
+  for fA in fields(a):
+    fA.div2()
 
 func sum*(r: var QuadraticExt, a, b: QuadraticExt) =
   ## Sum ``a`` and ``b`` into ``r``

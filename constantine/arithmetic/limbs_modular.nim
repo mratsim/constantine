@@ -16,6 +16,34 @@ import
 
 # ############################################################
 #
+#                  Modular division by 2
+#
+# ############################################################
+
+func div2mod*(a: var Limbs, mp1div2: Limbs) {.inline.}=
+  ## Modular Division by 2
+  ## `a` will be divided in-place
+  ## `mp1div2` is the modulus (M+1)/2
+  ##
+  ## Normally if `a` is odd we add the modulus before dividing by 2
+  ## but this may overflow and we might lose a bit before shifting.
+  ## Instead we shift first and then add half the modulus rounded up
+  ##
+  ## Assuming M is odd, `mp1div2` can be precomputed without
+  ## overflowing the "Limbs" by dividing by 2 first
+  ## and add 1
+  ## Otherwise `mp1div2` should be M/2
+
+  # if a.isOdd:
+  #   a += M
+  # a = a shr 1
+  let wasOdd = a.isOdd()
+  a.shiftRight(1)
+  let carry = a.cadd(mp1div2, wasOdd)
+  debug: doAssert not carry.bool
+
+# ############################################################
+#
 #                    Modular inversion
 #
 # ############################################################
@@ -107,17 +135,8 @@ func steinsGCD*(v: var Limbs, a: Limbs, F, M: Limbs, bits: int, mp1div2: Limbs) 
     let neg = isOddA and (SecretBool) u.csub(v, isOddA)
     let corrected = u.cadd(M, neg)
 
-    let isOddU = u.isOdd()
-    # if u.isOdd:
-    #   u += n
-    # u = u shr 1
-    #
-    # Warning ⚠️: u += n will overflow the BigInt
-    #   and we might lose a bit on the next shift
-    #   Instead we shift first and then add hald the modulus rounded up
-    u.shiftRight(1)
-    let carry = u.cadd(mp1div2, isOddU)
-    debug: doAssert not carry.bool
+    # u = u/2 (mod M)
+    u.div2mod(mp1div2)
 
   debug:
     doAssert bool a.isZero()

@@ -18,7 +18,7 @@ import
   ../constantine/arithmetic,
   ../constantine/towers,
   # Helpers
-  ../helpers/[timers, prng, static_for],
+  ../helpers/[timers, prng_unsafe, static_for],
   # Standard library
   std/[monotimes, times, strformat, strutils, macros]
 
@@ -82,42 +82,42 @@ template bench(op: string, T: typedesc, iters: int, body: untyped): untyped =
   report(op, fixFieldDisplay(T), start, stop, startClk, stopClk, iters)
 
 proc addBench*(T: typedesc, iters: int) =
-  var x = rng.random(T)
-  let y = rng.random(T)
+  var x = rng.random_unsafe(T)
+  let y = rng.random_unsafe(T)
   bench("Addition", T, iters):
     x += y
 
 proc subBench*(T: typedesc, iters: int) =
-  var x = rng.random(T)
-  let y = rng.random(T)
+  var x = rng.random_unsafe(T)
+  let y = rng.random_unsafe(T)
   preventOptimAway(x)
   bench("Substraction", T, iters):
     x -= y
 
 proc negBench*(T: typedesc, iters: int) =
   var r: T
-  let x = rng.random(T)
+  let x = rng.random_unsafe(T)
   bench("Negation", T, iters):
     r.neg(x)
 
 proc mulBench*(T: typedesc, iters: int) =
   var r: T
-  let x = rng.random(T)
-  let y = rng.random(T)
+  let x = rng.random_unsafe(T)
+  let y = rng.random_unsafe(T)
   preventOptimAway(r)
   bench("Multiplication", T, iters):
     r.prod(x, y)
 
 proc sqrBench*(T: typedesc, iters: int) =
   var r: T
-  let x = rng.random(T)
+  let x = rng.random_unsafe(T)
   preventOptimAway(r)
   bench("Squaring", T, iters):
     r.square(x)
 
 proc invBench*(T: typedesc, iters: int) =
   var r: T
-  let x = rng.random(T)
+  let x = rng.random_unsafe(T)
   preventOptimAway(r)
   bench("Inversion", T, iters):
     r.inv(x)

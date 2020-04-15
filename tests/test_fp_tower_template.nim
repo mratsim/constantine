@@ -61,35 +61,51 @@ proc runTowerTests*[N](
         test(ExtField(ExtDegree, curve))
 
     test "Addition, substraction negation are consistent":
-      proc test(Field: typedesc) =
+      proc test(Field: typedesc, Iters: static int) =
         # Try to exercise all code paths for in-place/out-of-place add/sum/sub/diff/double/neg
         # (1 - (-a) - b + (-a) - 2a) + (2a + 2b + (-b))  == 1
         var accum {.noInit.}, One {.noInit.}, a{.noInit.}, na{.noInit.}, b{.noInit.}, nb{.noInit.}, a2 {.noInit.}, b2 {.noInit.}: Field
 
-        One.setOne()
-        a = rng.random_unsafe(Field)
-        a2 = a
-        a2.double()
-        na.neg(a)
+        for _ in 0 ..< Iters:
+          One.setOne()
+          a = rng.random_unsafe(Field)
+          a2 = a
+          a2.double()
+          na.neg(a)
 
-        b = rng.random_unsafe(Field)
-        b2.double(b)
-        nb.neg(b)
+          b = rng.random_unsafe(Field)
+          b2.double(b)
+          nb.neg(b)
 
-        accum.diff(One, na)
-        accum -= b
-        accum += na
-        accum -= a2
+          accum.diff(One, na)
+          accum -= b
+          accum += na
+          accum -= a2
 
-        var t{.noInit.}: Field
-        t.sum(a2, b2)
-        t += nb
+          var t{.noInit.}: Field
+          t.sum(a2, b2)
+          t += nb
 
-        accum += t
-        check: bool accum.isOne()
+          accum += t
+          check: bool accum.isOne()
 
       staticFor(curve, TestCurves):
-        test(ExtField(ExtDegree, curve))
+        test(ExtField(ExtDegree, curve), Iters)
+
+    test "Division by 2":
+      proc test(Field: typedesc, Iters: static int) =
+        for _ in 0 ..< Iters:
+          let a = rng.random_unsafe(Field)
+          var a2 = a
+          a2.double()
+          a2.div2()
+          check: bool(a == a2)
+          a2.div2()
+          a2.double()
+          check: bool(a == a2)
+
+      staticFor(curve, TestCurves):
+        test(ExtField(ExtDegree, curve), Iters)
 
     test "Squaring 1 returns 1":
       proc test(Field: typedesc) =

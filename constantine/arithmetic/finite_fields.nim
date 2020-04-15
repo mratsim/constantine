@@ -179,9 +179,13 @@ func neg*(r: var Fp, a: Fp) =
   ## Negate modulo p
   discard r.mres.diff(Fp.C.Mod, a.mres)
 
+func div2*(a: var Fp) =
+  ## Modular division by 2
+  a.mres.div2mod(Fp.C.getPrimePlus1div2())
+
 # ############################################################
 #
-#         Field arithmetic exponentiation and inversion
+#               Field arithmetic exponentiation
 #
 # ############################################################
 #

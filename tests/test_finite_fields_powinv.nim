@@ -152,6 +152,32 @@ proc main() =
         check:
           computed == expected
 
+  suite "Modular division by 2":
+    proc testRandomDiv2(curve: static Curve) =
+      test "Random modular div2 testing on " & $Curve(curve):
+        for _ in 0 ..< Iters:
+          let a = rng.random_unsafe(Fp[curve])
+          var a2 = a
+          a2.double()
+          a2.div2()
+          check: bool(a == a2)
+          a2.div2()
+          a2.double()
+          check: bool(a == a2)
+
+    testRandomDiv2 P224
+    testRandomDiv2 BN254_Nogami
+    testRandomDiv2 BN254_Snarks
+    testRandomDiv2 Curve25519
+    testRandomDiv2 P256
+    testRandomDiv2 Secp256k1
+    testRandomDiv2 BLS12_377
+    testRandomDiv2 BLS12_381
+    testRandomDiv2 BN446
+    testRandomDiv2 FKM12_447
+    testRandomDiv2 BLS12_461
+    testRandomDiv2 BN462
+
   suite "Modular inversion over prime fields":
     test "Specific tests on Fp[BLS12_381]":
       block: # No inverse exist for 0 --> should return 0 for projective/jacobian to affine coordinate conversion
