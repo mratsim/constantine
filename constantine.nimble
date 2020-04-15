@@ -97,11 +97,14 @@ task test, "Run all tests":
     test "-d:Constantine32", "tests/test_ec_weierstrass_projective_g1.nim"
 
   # Benchmarks compile and run
-  runBench("bench_fp")
-  runBench("bench_fp2")
-  runBench("bench_fp6")
-  runBench("bench_fp12")
-  runBench("bench_ec_swei_proj_g1")
+  # ignore Windows 32-bit for the moment
+  # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
+  if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
+    runBench("bench_fp")
+    runBench("bench_fp2")
+    runBench("bench_fp6")
+    runBench("bench_fp12")
+    runBench("bench_ec_swei_proj_g1")
 
 task test_no_gmp, "Run tests that don't require GMP":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
@@ -154,11 +157,14 @@ task test_no_gmp, "Run tests that don't require GMP":
     test "-d:Constantine32", "tests/test_ec_weierstrass_projective_g1.nim"
 
   # Benchmarks compile and run
-  runBench("bench_fp")
-  runBench("bench_fp2")
-  runBench("bench_fp6")
-  runBench("bench_fp12")
-  runBench("bench_ec_swei_proj_g1")
+  # ignore Windows 32-bit for the moment
+  # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
+  if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
+    runBench("bench_fp")
+    runBench("bench_fp2")
+    runBench("bench_fp6")
+    runBench("bench_fp12")
+    runBench("bench_ec_swei_proj_g1")
 
 task bench_fp, "Run benchmark 𝔽p with your default compiler":
   runBench("bench_fp")
