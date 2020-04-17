@@ -74,7 +74,7 @@ func toBig*(src: Fp): auto {.noInit.} =
 func ccopy*(a: var Fp, b: Fp, ctl: SecretBool) =
   ## Constant-time conditional copy
   ## If ctl is true: b is copied into a
-  ## if ctl is false: b is not copied and a is untouched
+  ## if ctl is false: b is not copied and a is unmodified
   ## Time and memory accesses are the same whether a copy occurs or not
   ccopy(a.mres, b.mres, ctl)
 

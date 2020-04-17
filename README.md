@@ -90,6 +90,24 @@ actively hinder you by:
 A growing number of attack vectors is being collected for your viewing pleasure
 at https://github.com/mratsim/constantine/wiki/Constant-time-arithmetics
 
+### Disclaimer
+
+Constantine's authors do their utmost to implement a secure cryptographic library
+in particular against remote attack vectors like timing attacks.
+
+Please note that Constantine is provided as-is without guarantees.
+Use at your own risks.
+
+Thorough evaluation of your threat model, the security of any cryptographic library you are considering,
+and the secrets you put in jeopardy is strongly advised before putting data at risk.
+The author would like to remind users that the best code can only mitigate
+but not protect against human failures which are the weakest link and largest
+backdoors to secrets exploited today.
+
+### Security disclosure
+
+TODO
+
 ## Performance
 
 High-performance is a sought out property.

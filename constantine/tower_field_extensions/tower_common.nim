@@ -80,6 +80,17 @@ func isOne*(a: ExtensionField): SecretBool =
     else:
       result = result and fA.isZero()
 
+# Copies
+# -------------------------------------------------------------------
+
+func ccopy*(a: var ExtensionField, b: ExtensionField, ctl: SecretBool) =
+  ## Constant-time conditional copy
+  ## If ctl is true: b is copied into a
+  ## if ctl is false: b is not copied and a is unmodified
+  ## Time and memory accesses are the same whether a copy occurs or not
+  for fA, fB in fields(a, b):
+    ccopy(fA, fB, ctl)
+
 # Abelian group
 # -------------------------------------------------------------------
 

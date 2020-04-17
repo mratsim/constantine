@@ -431,8 +431,18 @@ func montyPowSquarings(
   ## Updates iteration variables and accumulators
   # Due to the high number of parameters,
   # forcing this inline actually reduces the code size
+  #
+  # ⚠️: Extreme care should be used to not leak
+  #    the exponent bits nor its real bitlength
+  #    i.e. if the exponent is zero but encoded in a
+  #    256-bit integer, only "256" should leak
+  #    as for some application like RSA
+  #    the exponent might be the user secret key.
 
   # Get the next bits
+  # acc/acc_len must be uint to avoid Nim runtime checks leaking bits
+  # acc/acc_len must be uint to avoid Nim runtime checks leaking bits
+  # e is public
   var k = window
   if acc_len < window:
     if e < exponent.len:
@@ -516,7 +526,7 @@ func montyPow*(
         scratchspace[1].ccopy(scratchspace[1+i], ctl)
 
     # Multiply with the looked-up value
-    # we keep the product only if the exponent bits are not all zero
+    # we keep the product only if the exponent bits are not all zeroes
     scratchspace[0].montyMul(a, scratchspace[1], M, m0ninv, canUseNoCarryMontyMul)
     a.ccopy(scratchspace[0], SecretWord(bits).isNonZero())
 

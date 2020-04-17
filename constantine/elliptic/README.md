@@ -117,6 +117,10 @@ We use the complete addition law from Bos2014 for Jacobian coordinates, note tha
   https://eprint.iacr.org/2014/130
   https://www.imsc.res.in/~ecc14/slides/costello.pdf
 
+- Remote Timing Attacks are Still Practical\
+  Billy Bob Brumley and Nicola Tuveri\
+  https://eprint.iacr.org/2011/232
+
 - State-of-the-art of secure ECC implementations:a survey on known side-channel attacks and countermeasures\
   Junfeng Fan,XuGuo, Elke De Mulder, Patrick Schaumont, Bart Preneel and Ingrid Verbauwhede, 2010
   https://www.esat.kuleuven.be/cosic/publications/article-1461.pdf
