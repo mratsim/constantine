@@ -30,6 +30,11 @@ def compute_curve_characteristic(u_str):
   else:
       print('  Parameter u (hex):  0x' + u.hex())
 
+  print(f'  p mod 4:           ' + str(p % 4))
+  print(f'  p mod 8:           ' + str(p % 8))
+  print(f'  p mod 12:          ' + str(p % 12))
+  print(f'  p mod 16:          ' + str(p % 16))
+
 if __name__ == "__main__":
   # Usage
   # sage sage/curve_family_bn.sage '-(2^62 + 2^55 + 1)'
