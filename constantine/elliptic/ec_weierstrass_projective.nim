@@ -30,7 +30,7 @@ type ECP_SWei_Proj*[F] = object
   ## corresponding to (x, y) with X = xZ and Y = yZ
   ##
   ## Note that projective coordinates are not unique
-  x, y, z: F
+  x*, y*, z*: F
 
 func `==`*[F](P, Q: ECP_SWei_Proj[F]): SecretBool =
   ## Constant-time equality check
