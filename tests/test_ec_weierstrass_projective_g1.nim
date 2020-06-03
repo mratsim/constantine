@@ -12,9 +12,11 @@ import
   # Internals
   ../constantine/config/[common, curves],
   ../constantine/arithmetic,
+  ../constantine/io/io_bigints,
   ../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective],
   # Test utilities
-  ../helpers/prng_unsafe
+  ../helpers/prng_unsafe,
+  ./support/ec_reference_scalar_mult
 
 const Iters = 128
 
@@ -169,3 +171,30 @@ suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with project
     test(Fp[BN254_Snarks], randZ = true)
     test(Fp[BLS12_381], randZ = false)
     test(Fp[BLS12_381], randZ = true)
+
+  test "EC mul constant-time is equivalent to a simple double-and-add algorithm":
+    proc test(F: typedesc, bits: static int, randZ: static bool) =
+      for _ in 0 ..< Iters:
+        when randZ:
+          let a = rng.random_unsafe_with_randZ(ECP_SWei_Proj[F])
+        else:
+          let a = rng.random_unsafe(ECP_SWei_Proj[F])
+
+        let exponent = rng.random_unsafe(BigInt[bits])
+        var exponentCanonical: array[(bits+7) div 8, byte]
+        exponentCanonical.exportRawUint(exponent, bigEndian)
+
+        var
+          impl = a
+          reference = a
+          scratchSpace: array[1 shl 4, ECP_SWei_Proj[F]]
+
+        impl.scalarMul(exponentCanonical, scratchSpace)
+        reference.unsafe_ECmul_double_add(exponentCanonical)
+
+        check: bool(impl == reference)
+
+    test(Fp[BN254_Snarks], bits = 253, randZ = false) # BN254 curve order is 254-bit
+    test(Fp[BN254_Snarks], bits = 253, randZ = true)  # BN254 curve order is 254-bit
+    test(Fp[BLS12_381], bits = 254, randZ = false)    # BLS curve order is 255-bit
+    test(Fp[BLS12_381], bits = 254, randZ = true)     # BLS curve order is 255-bit

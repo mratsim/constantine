@@ -62,6 +62,14 @@ func setInf*(P: var ECP_SWei_Proj) =
   P.y.setOne()
   P.z.setZero()
 
+func ccopy*(P: var ECP_SWei_Proj, Q: ECP_SWei_Proj, ctl: SecretBool) =
+  ## Constant-time conditional copy
+  ## If ctl is true: Q is copied into P
+  ## if ctl is false: Q is not copied and P is unmodified
+  ## Time and memory accesses are the same whether a copy occurs or not
+  for fP, fQ in fields(P, Q):
+    ccopy(fP, fQ, ctl)
+
 func trySetFromCoordsXandZ*[F](P: var ECP_SWei_Proj[F], x, z: F): SecretBool =
   ## Try to create a point the elliptic curve
   ## Y²Z = X³ + aXZ² + bZ³ (projective coordinates)
@@ -319,7 +327,7 @@ func scalarMulPrologue(
      ): uint =
   ## Setup the scratchspace
   ## Returns the fixed-window size for scalar mul with window optimization
-  result = result.scratchspace.len.getWindowLen()
+  result = scratchspace.len.getWindowLen()
   # Precompute window content, special case for window = 1
   # (i.e scratchspace has only space for 2 temporaries)
   # The content scratchspace[2+k] is set at [k]P
@@ -341,11 +349,11 @@ func scalarMulDoubling(
        window: uint,
        acc, acc_len: var uint,
        e: var int
-     ) =
+     ): tuple[k, bits: uint] {.inline.} =
   ## Doubling steps of doubling and add for scalar multiplication
   ## Get the next k bits in range [1, window)
   ## and double k times
-  ## Returns the niumber of doubling done and the corresponding bits.
+  ## Returns the number of doubling done and the corresponding bits.
   ##
   ## Updates iteration variables and accumulators
   #

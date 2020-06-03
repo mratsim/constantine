@@ -82,8 +82,8 @@ func next(rng: var RngState): uint64 =
 # BigInts and Fields
 # ------------------------------------------------------------
 
-func random_unsafe[T](rng: var RngState, a: var T, C: static Curve) {.noInit.}=
-  ## Recursively initialize a BigInt or Field element
+func random_unsafe[T](rng: var RngState, a: var T, C: static Curve) =
+  ## Recursively initialize a BigInt (part of a field) or Field element
   ## Unsafe: for testing and benchmarking purposes only
   when T is BigInt:
     var reduced, unreduced{.noInit.}: T
@@ -98,6 +98,11 @@ func random_unsafe[T](rng: var RngState, a: var T, C: static Curve) {.noInit.}=
   else:
     for field in fields(a):
       rng.random_unsafe(field, C)
+
+func random_unsafe(rng: var RngState, a: var BigInt) =
+  ## Initialize a standalone BigInt
+  for i in 0 ..< a.limbs.len:
+    a.limbs[i] = SecretWord(rng.next())
 
 # Elliptic curves
 # ------------------------------------------------------------
@@ -172,7 +177,9 @@ func random_unsafe*(rng: var RngState, T: typedesc): T =
     rng.random_unsafe(result)
   elif T is SomeNumber:
     cast[T](rng.next()) # TODO: Rely on casting integer actually converting in C (i.e. uint64->uint32 is valid)
-  else:
+  elif T is BigInt:
+    rng.random_unsafe(result)
+  else: # Fields
     rng.random_unsafe(result, T.C)
 
 func random_unsafe_with_randZ*(rng: var RngState, T: typedesc[ECP_SWei_Proj]): T =
