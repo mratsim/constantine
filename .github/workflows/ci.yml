@@ -190,7 +190,8 @@ jobs:
       - name: Install test dependencies
         shell: bash
         run: |
-          nimble install gmp stew
+          nimble refresh
+          nimble install -y gmp stew
       - name: Run constantine tests (without GMP)
         shell: bash
         run: |
