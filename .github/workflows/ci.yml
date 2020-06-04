@@ -21,12 +21,13 @@ jobs:
           - os: linux
             cpu: i386
             TEST_LANG: cpp
-          - os: macos
-            cpu: amd64
-            TEST_LANG: c
-          - os: macos
-            cpu: amd64
-            TEST_LANG: cpp
+          # TODO: spurious failures - https://github.com/actions/virtual-environments/issues/841
+          # - os: macos
+          #   cpu: amd64
+          #   TEST_LANG: c
+          # - os: macos
+          #   cpu: amd64
+          #   TEST_LANG: cpp
           - os: windows
             cpu: i386
           - os: windows
@@ -45,9 +46,9 @@ jobs:
           - target:
               os: linux
             builder: ubuntu-18.04
-          - target:
-              os: macos
-            builder: macos-10.15
+          # - target:
+          #     os: macos
+          #   builder: macos-10.15
           - target:
               os: windows
             builder: windows-2019
