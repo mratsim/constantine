@@ -13,24 +13,24 @@
 # ############################################################
 
 # Parameters
-u = Integer('0x44E992B44A6909F1')
-p = 36*u^4 + 36*u^3 + 24*u^2 + 6*u + 1
-r = 36*u^4 + 36*u^3 + 18*u^2 + 6*u + 1
-cofactor = 1
+u = -(2^63 + 2^62 + 2^60 + 2^57 + 2^48 + 2^16)
+p = (u - 1)^2 * (u^4 - u^2 + 1)//3 + u
+r = u^4 - u^2 + 1
+cofactor = Integer('0x396c8c005555e1568c00aaab0000aaab')
 
 # Finite fields
 F       = GF(p)
 K2.<u>  = PolynomialRing(F)
-# F2.<beta>  = F.extension(u^2+9)
+# F2.<beta>  = F.extension(u^2+1)
 # K6.<v>  = PolynomialRing(F2)
 # F6.<eta>  = F2.extension(v^3-beta)
 # K12.<w> = PolynomialRing(F6)
 # K12.<gamma> = F6.extension(w^2-eta)
 
 # Curves
-b = 3
+b = 4
 G1 = EllipticCurve(F, [0, b])
-# G2 = EllipticCurve(F2, [0, b/beta])
+# G2 = EllipticCurve(F2, [0, b*beta])
 
 # Test generator
 set_random_seed(1337)
@@ -50,6 +50,7 @@ for i in range(10):
     print('Qx: ' + Integer(Qx).hex())
     print('Qy: ' + Integer(Qy).hex())
     print('Qz: ' + Integer(Qz).hex())
+
 
 # CurveOrder sanity check
 #

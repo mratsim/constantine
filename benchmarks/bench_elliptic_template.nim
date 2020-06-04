@@ -15,6 +15,8 @@
 import
   # Internals
   ../constantine/config/curves,
+  ../constantine/arithmetic,
+  ../constantine/io/io_bigints,
   # Helpers
   ../helpers/[prng_unsafe, static_for],
   ./platforms,
@@ -69,12 +71,12 @@ when SupportsGetTicks:
 echo "\n=================================================================================================================\n"
 
 proc separator*() =
-  echo "-".repeat(132)
+  echo "-".repeat(157)
 
 proc report(op, elliptic: string, start, stop: MonoTime, startClk, stopClk: int64, iters: int) =
   let ns = inNanoseconds((stop-start) div iters)
   let throughput = 1e9 / float64(ns)
-  echo &"{op:<15} {elliptic:<40} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
+  echo &"{op:<40} {elliptic:<40} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
 
 macro fixEllipticDisplay(T: typedesc): untyped =
   # At compile-time, enums are integers and their display is buggy
@@ -108,3 +110,35 @@ proc doublingBench*(T: typedesc, iters: int) =
   let P = rng.random_unsafe(T)
   bench("EC Double G1", T, iters):
     r.double(P)
+
+proc scalarMulBench*(T: typedesc, scratchSpaceSize: static int, iters: int) =
+  const bits = T.F.C.getCurveOrderBitwidth()
+
+  var r {.noInit.}: T
+  let P = rng.random_unsafe(T)
+
+  let exponent = rng.random_unsafe(BigInt[bits])
+  var exponentCanonical{.noInit.}: array[(bits+7) div 8, byte]
+  exponentCanonical.exportRawUint(exponent, bigEndian)
+
+  var scratchSpace{.noInit.}: array[scratchSpaceSize, T]
+
+  bench("EC ScalarMul G1 (scratchsize = " & $scratchSpaceSize & ')', T, iters):
+    r = P
+    r.scalarMul(exponentCanonical, scratchSpace)
+
+# import ../tests/support/ec_reference_scalar_mult
+#
+# proc scalarMulUnsafeDoubleAddBench*(T: typedesc, iters: int) =
+#   const bits = T.F.C.getCurveOrderBitwidth()
+#
+#   var r {.noInit.}: T
+#   let P = rng.random_unsafe(T)
+#
+#   let exponent = rng.random_unsafe(BigInt[bits])
+#   var exponentCanonical{.noInit.}: array[(bits+7) div 8, byte]
+#   exponentCanonical.exportRawUint(exponent, bigEndian)
+#
+#   bench("EC ScalarMul G1 (unsafe DoubleAdd)", T, iters):
+#     r = P
+#     r.unsafe_ECmul_double_add(exponentCanonical)

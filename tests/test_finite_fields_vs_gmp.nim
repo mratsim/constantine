@@ -56,7 +56,7 @@ proc binary_prologue[C: static Curve, N: static int](
         a, b, p: var mpz_t,
         aTest, bTest: var Fp[C],
         aBuf, bBuf: var array[N, byte]) =
-  const bits = C.getCurveBitSize()
+  const bits = C.getCurveBitwidth()
 
   # Generate random value in the range 0 ..< 2^(bits-1)
   mpz_urandomb(a, gmpRng, uint bits)
@@ -123,7 +123,7 @@ proc addTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curv
   # echo "Testing: random modular addition on ", $C
 
   const
-    bits = C.getCurveBitSize()
+    bits = C.getCurveBitwidth()
     bufLen = (bits + 7) div 8
   var
     aTest, bTest{.noInit.}: Fp[C]
@@ -146,7 +146,7 @@ proc subTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curv
   # echo "Testing: random modular substraction on ", $C
 
   const
-    bits = C.getCurveBitSize()
+    bits = C.getCurveBitwidth()
     bufLen = (bits + 7) div 8
   var
     aTest, bTest{.noInit.}: Fp[C]
@@ -169,7 +169,7 @@ proc mulTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curv
   # echo "Testing: random modular multiplication on ", $C
 
   const
-    bits = C.getCurveBitSize()
+    bits = C.getCurveBitwidth()
     bufLen = (bits + 7) div 8
   var
     aTest, bTest{.noInit.}: Fp[C]
@@ -189,7 +189,7 @@ proc invTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curv
   # echo "Testing: random modular inversion on ", $C
 
   const
-    bits = C.getCurveBitSize()
+    bits = C.getCurveBitwidth()
     bufLen = (bits + 7) div 8
   var
     aTest, bTest{.noInit.}: Fp[C]
