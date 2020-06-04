@@ -76,7 +76,10 @@ proc separator*() =
 proc report(op, field: string, start, stop: MonoTime, startClk, stopClk: int64, iters: int) =
   let ns = inNanoseconds((stop-start) div iters)
   let throughput = 1e9 / float64(ns)
-  echo &"{op:<15} {field:<18} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
+  when SupportsGetTicks:
+    echo &"{op:<15} {field:<18} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
+  else:
+    echo &"{op:<15} {field:<18} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
 
 macro fixFieldDisplay(T: typedesc): untyped =
   # At compile-time, enums are integers and their display is buggy
@@ -88,11 +91,17 @@ macro fixFieldDisplay(T: typedesc): untyped =
 
 template bench(op: string, T: typedesc, iters: int, body: untyped): untyped =
   let start = getMonotime()
-  let startClk = getTicks()
+  when SupportsGetTicks:
+    let startClk = getTicks()
   for _ in 0 ..< iters:
     body
-  let stopClk = getTicks()
+  when SupportsGetTicks:
+    let stopClk = getTicks()
   let stop = getMonotime()
+
+  when not SupportsGetTicks:
+    let startClk = -1'i64
+    let stopClk = -1'i64
 
   report(op, fixFieldDisplay(T), start, stop, startClk, stopClk, iters)
 
