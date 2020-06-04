@@ -39,14 +39,14 @@ func unsafe_ECmul_double_add*(
   ## This is highly VULNERABLE to timing attacks and power analysis attacks
   ##
   ## `scalar` is in canonical representation in BigEndian (octet string)
-  var Q{.noInit.}, tmp{.noInit.}: typeof(P)
-  Q.setInf()
-  tmp.setInf()
+  var t0{.noInit.}, t1{.noInit.}: typeof(P)
+  t0.setInf()
+  t1.setInf()
   for scalarByte in scalar:
     for bit in unpack(scalarByte):
-      Q.double(tmp)
+      t1.double(t0)
       if bit:
-        tmp.sum(Q, P)
+        t0.sum(t1, P)
       else:
-        tmp = Q
-  P = Q
+        t0 = t1
+  P = t0
