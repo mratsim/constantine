@@ -27,7 +27,7 @@ import
 
 
 const Iters = 1_000_000
-const InvIters = 1000
+const MulIters = 1000
 const AvailableCurves = [
   # P224,
   # BN254_Nogami,
@@ -51,10 +51,19 @@ proc main() =
     separator()
     doublingBench(ECP_SWei_Proj[Fp[curve]], Iters)
     separator()
+    scalarMulBench(ECP_SWei_Proj[Fp[curve]], scratchSpaceSize = 1 shl 2, MulIters)
+    separator()
+    scalarMulBench(ECP_SWei_Proj[Fp[curve]], scratchSpaceSize = 1 shl 3, MulIters)
+    separator()
+    scalarMulBench(ECP_SWei_Proj[Fp[curve]], scratchSpaceSize = 1 shl 4, MulIters)
+    separator()
+    # scalarMulUnsafeDoubleAddBench(ECP_SWei_Proj[Fp[curve]], MulIters)
+    # separator()
+  separator()
 
 main()
 
-echo "Notes:"
+echo "\nNotes:"
 echo "  - GCC is significantly slower than Clang on multiprecision arithmetic."
 echo "  - The simplest operations might be optimized away by the compiler."
 echo "  - Fast Squaring and Fast Multiplication are possible if there are spare bits in the prime representation (i.e. the prime uses 254 bits out of 256 bits)"

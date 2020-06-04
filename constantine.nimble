@@ -67,6 +67,8 @@ task test, "Run all tests":
 
   # Elliptic curve arithmetic
   test "", "tests/test_ec_weierstrass_projective_g1.nim"
+  test "", "tests/test_ec_bn254.nim"
+  test "", "tests/test_ec_bls12_381.nim"
 
   if sizeof(int) == 8: # 32-bit tests on 64-bit arch
     # Primitives
@@ -95,6 +97,8 @@ task test, "Run all tests":
 
     # Elliptic curve arithmetic
     test "-d:Constantine32", "tests/test_ec_weierstrass_projective_g1.nim"
+    test "-d:Constantine32", "tests/test_ec_bn254.nim"
+    test "-d:Constantine32", "tests/test_ec_bls12_381.nim"
 
   # Benchmarks compile and run
   # ignore Windows 32-bit for the moment
@@ -131,6 +135,8 @@ task test_no_gmp, "Run tests that don't require GMP":
 
   # Elliptic curve arithmetic
   test "", "tests/test_ec_weierstrass_projective_g1.nim"
+  test "", "tests/test_ec_bn254.nim"
+  test "", "tests/test_ec_bls12_381.nim"
 
   if sizeof(int) == 8: # 32-bit tests
     # Primitives
@@ -155,6 +161,8 @@ task test_no_gmp, "Run tests that don't require GMP":
 
     # Elliptic curve arithmetic
     test "-d:Constantine32", "tests/test_ec_weierstrass_projective_g1.nim"
+    test "-d:Constantine32", "tests/test_ec_bn254.nim"
+    test "-d:Constantine32", "tests/test_ec_bls12_381.nim"
 
   # Benchmarks compile and run
   # ignore Windows 32-bit for the moment

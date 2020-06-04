@@ -94,6 +94,9 @@ declareCurves:
 
     # G1 Equation: Y^2 = X^3 + 3
     # G2 Equation: Y^2 = X^3 + 3/(9+𝑖)
+    order: "0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001"
+    orderBitwidth: 254
+    cofactor: 1
     eq_form: ShortWeierstrass
     coef_a: 0
     coef_b: 3
@@ -141,6 +144,9 @@ declareCurves:
 
     # G1 Equation: y² = x³ + 4
     # G2 Equation: y² = x³ + 4 (1+i)
+    order: "0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001"
+    orderBitwidth: 255
+    cofactor: "0x396c8c005555e1568c00aaab0000aaab"
     eq_form: ShortWeierstrass
     coef_a: 0
     coef_b: 4

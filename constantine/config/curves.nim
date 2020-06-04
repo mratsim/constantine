@@ -27,7 +27,7 @@ macro Mod*(C: static Curve): untyped =
   ## Get the Modulus associated to a curve
   result = bindSym($C & "_Modulus")
 
-func getCurveBitSize*(C: static Curve): static int =
+func getCurveBitwidth*(C: static Curve): static int =
   ## Returns the number of bits taken by the curve modulus
   result = static(CurveBitWidth[C])
 
@@ -43,8 +43,22 @@ func family*(C: static Curve): CurveFamily =
 #
 # ############################################################
 
+macro getCurveOrder*(C: static Curve): untyped =
+  ## Get the curve order `r`
+  ## i.e. the number of points on the elliptic curve
+  result = bindSym($C & "_Order")
+
+macro getCurveOrderBitwidth*(C: static Curve): untyped =
+  ## Get the curve order `r`
+  ## i.e. the number of points on the elliptic curve
+  result = nnkDotExpr.newTree(
+    getAST(getCurveOrder(C)),
+    ident"bits"
+  )
+
 macro getEquationForm*(C: static Curve): untyped =
   ## Returns the equation form
+  ## (ShortWeierstrass, Montgomery, Twisted Edwards, Weierstrass, ...)
   result = bindSym($C & "_equation_form")
 
 macro getCoefA*(C: static Curve): untyped =

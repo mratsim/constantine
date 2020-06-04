@@ -102,6 +102,8 @@ type
     eq_form: CurveEquationForm
     coef_A: CurveCoef
     coef_B: CurveCoef
+    order: NimNode # nnkStrLit (hex)
+    orderBitwidth: NimNode # nnkIntLit
 
     sexticTwist: SexticTwist
     sexticNonResidue_fp2: NimNode # nnkPar(nnkIntLit, nnkIntLit)
@@ -191,6 +193,12 @@ proc parseCurveDecls(defs: var seq[CurveParams], curves: NimNode) =
           params.coef_B = CurveCoef(kind: Small, coef: sectionVal.intVal.int)
         else:
           params.coef_B = CurveCoef(kind: Large, coefHex: sectionVal.strVal)
+      elif sectionId.eqIdent"order":
+        params.order = sectionVal
+      elif sectionId.eqIdent"orderBitwidth":
+        params.orderBitwidth = sectionVal
+      elif sectionId.eqIdent"cofactor":
+        discard "TODO"
       elif sectionId.eqIdent"nonresidue_quad_fp":
         params.nonresidue_quad_fp = sectionVal
       elif sectionId.eqIdent"nonresidue_cube_fp2":
@@ -269,6 +277,16 @@ proc genMainConstants(defs: var seq[CurveParams]): NimNode =
       exported($curve & "_equation_form"),
       newLit curveDef.eq_form
     )
+    if not curveDef.order.isNil:
+      curveDef.orderBitwidth.expectKind(nnkIntLit)
+      curveEllipticStmts.add newConstStmt(
+        exported($curve & "_Order"),
+        newCall(
+          bindSym"fromHex",
+          nnkBracketExpr.newTree(bindSym"BigInt", curveDef.orderBitwidth),
+          curveDef.order
+        )
+      )
     if curveDef.coef_A.kind != NoCoef and curveDef.coef_B.kind != NoCoef:
       curveEllipticStmts.add newConstStmt(
         exported($curve & "_coef_A"),
