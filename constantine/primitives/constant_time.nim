@@ -37,7 +37,7 @@ template cfalse*(T: typedesc[Ct or BaseUint]): auto =
   else:
     (CTBool[Ct[T]])(false)
 
-template ct*[T: BaseUint](x: T): Ct[T] =
+template ct*[T: BaseUint](x: auto): Ct[T] =
   (Ct[T])(x)
 
 template `$`*[T](x: Ct[T]): string =

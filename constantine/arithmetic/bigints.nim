@@ -182,6 +182,11 @@ func add*(a: var BigInt, b: SecretWord): SecretBool =
   ## Returns the carry
   (SecretBool) add(a.limbs, b)
 
+func `+=`*(a: var BigInt, b: SecretWord) =
+  ## Constant-time in-pace addition
+  ## Discards the carry
+  discard add(a.limbs, b)
+
 func sub*(a: var BigInt, b: BigInt): SecretBool =
   ## Constant-time in-place substraction
   ## Returns the borrow
@@ -230,6 +235,24 @@ func shiftRight*(a: var BigInt, k: int) =
   ##
   ## k MUST be less than the base word size (2^31 or 2^63)
   a.limbs.shiftRight(k)
+
+func bit*[bits: static int](a: BigInt[bits], index: int): Ct[uint8] =
+  ## Access an individual bit of `a`
+  ## Bits are accessed as-if the bit representation is bigEndian
+  ## for a 8-bit "big-integer" we have
+  ## (b7, b6, b5, b4, b3, b2, b1, b0)
+  ## for a 256-bit big-integer
+  ## (b255, b254, ..., b1, b0)
+  const SlotShift = log2(WordBitWidth.uint32)
+  const SelectMask = WordBitWidth - 1
+  const BitMask = SecretWord 1
+
+  let slot = a.limbs[index shr SlotShift] # LimbEndianness is littleEndian
+  result = ct[uint8](slot shr (index and SelectMask) and BitMask)
+
+func bit0*(a: BigInt): Ct[uint8] =
+  ## Access the least significant bit
+  ct[uint8](a.limbs[0] and SecretWord(1))
 
 # ############################################################
 #
