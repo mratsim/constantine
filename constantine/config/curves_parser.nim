@@ -10,7 +10,8 @@ import
   # Standard library
   std/[macros, strutils],
   # Internal
-  ../io/io_bigints, ../arithmetic/[bigints, precomputed]
+  ../io/io_bigints,
+  ./type_bigint, ./precompute
 
 # Parsing is done in 2 steps:
 # 1. All declared parameters are collected in a {.compileTime.} seq[CurveParams]
@@ -98,6 +99,9 @@ type
     nonresidue_quad_fp: NimNode # nnkIntLit
     nonresidue_cube_fp2: NimNode # nnkPar(nnkIntLit, nnkIntLit)
 
+    # Endomorphisms
+    cubicRootOfUnity: NimNode # nnkStrLit
+
     # Curve parameters
     eq_form: CurveEquationForm
     coef_A: CurveCoef
@@ -181,6 +185,8 @@ proc parseCurveDecls(defs: var seq[CurveParams], curves: NimNode) =
         params.bn_u_bitwidth = sectionVal
       elif sectionId.eqIdent"bn_u":
         params.bn_u = sectionVal
+      elif sectionId.eqident"cubicRootOfUnity":
+        params.cubicRootOfUnity = sectionVal
       elif sectionId.eqIdent"eq_form":
         params.eq_form = parseEnum[CurveEquationForm]($sectionVal)
       elif sectionId.eqIdent"coef_a":
@@ -271,6 +277,14 @@ proc genMainConstants(defs: var seq[CurveParams]): NimNode =
     MapCurveFamily.add nnkExprColonExpr.newTree(
         curve, newLit(family)
     )
+    # Endomorphisms
+    # -----------------------------------------------
+    if not curveDef.cubicRootOfUnity.isNil:
+      curveExtraStmts.add newConstStmt(
+        exported($curve & "_cubicRootOfUnityHex"),
+        curveDef.cubicRootOfUnity
+      )
+
     # Curve equation
     # -----------------------------------------------
     curveEllipticStmts.add newConstStmt(

@@ -30,14 +30,18 @@ def compute_curve_characteristic(u_str):
   else:
       print('  Parameter u (hex):  0x' + u.hex())
 
+  print(f'  p mod 3:           ' + str(p % 3))
   print(f'  p mod 4:           ' + str(p % 4))
   print(f'  p mod 8:           ' + str(p % 8))
   print(f'  p mod 12:          ' + str(p % 12))
   print(f'  p mod 16:          ' + str(p % 16))
 
+  print(f'  cube roots of unity: ' + str(['0x' + Integer(root).hex() for root in GF(p)(1).nth_root(3, all=True)]))
+
 if __name__ == "__main__":
   # Usage
   # sage sage/curve_family_bn.sage '-(2^62 + 2^55 + 1)'
+  # sage sage/curve_family_bn.sage 4965661367192848881
 
   from argparse import ArgumentParser
 

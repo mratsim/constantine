@@ -10,8 +10,10 @@ import
   # Standard library
   macros,
   # Internal
-  ../arithmetic/precomputed,
-  ./curves_declaration
+  ./precompute,
+  ./curves_declaration,
+  ./type_fp,
+  ../io/io_bigints
 
 {.experimental: "dynamicBindSym".}
 
@@ -124,6 +126,24 @@ macro genDerivedConstants*(): untyped =
       )
     )
 
+    # const MyCurve_cubicRootOfUnity
+    block:
+      let cubicHex = ident(curve & "_cubicRootOfUnityHex")
+      let cubic = used(curve & "_cubicRootOfUnity")
+      let M = bindSym(curve & "_Modulus")
+      let r2modM = ident(curve & "_R2modP")
+      let m0ninv = ident(curve & "_NegInvModWord")
+      result.add quote do:
+        when declared(`cubichex`):
+          const `cubic` = block:
+            var cubic: Fp[Curve(`curveSym`)]
+            montyResidue_precompute(
+              cubic.mres,
+              fromHex(cubic.mres.typeof, `cubicHex`),
+              `M`, `r2modM`, `m0ninv`
+            )
+            cubic
+
     if CurveFamilies[curveSym] == BarretoNaehrig:
       # when declared(MyCurve_BN_param_u):
       #   const MyCurve_BN_u_BE = toCanonicalIntRepr(MyCurve_BN_param_u)
@@ -148,3 +168,5 @@ macro genDerivedConstants*(): untyped =
           bnStmts
         )
       )
+
+  # echo result.toStrLit()

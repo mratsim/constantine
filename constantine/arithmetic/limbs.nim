@@ -43,21 +43,6 @@ type Limbs*[N: static int] = array[N, SecretWord]
   ##
   ## but for unknown reason, it prevents semchecking `bits`
 
-debug:
-  import strutils
-
-  func toString*(a: Limbs): string =
-    result = "["
-    result.add " 0x" & toHex(BaseType(a[0]))
-    for i in 1 ..< a.len:
-      result.add ", 0x" & toHex(BaseType(a[i]))
-    result.add "])"
-
-  func toHex*(a: Limbs): string =
-    result = "0x"
-    for i in countdown(a.len-1, 0):
-      result.add toHex(BaseType(a[i]))
-
 # No exceptions allowed
 {.push raises: [].}
 

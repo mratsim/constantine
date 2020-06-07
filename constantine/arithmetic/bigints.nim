@@ -7,9 +7,11 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/common,
+  ../config/[common, type_bigint],
   ../primitives,
   ./limbs, ./limbs_montgomery, ./limbs_modular
+
+export BigInt
 
 # ############################################################
 #
@@ -54,41 +56,6 @@ import
 # and so it's simpler to always carry additions instead of
 # having redundant representations that forces costly reductions before multiplications.
 # https://github.com/mratsim/constantine/issues/15
-
-func wordsRequired(bits: int): int {.compileTime.} =
-  ## Compute the number of limbs required
-  # from the **announced** bit length
-  (bits + WordBitWidth - 1) div WordBitWidth
-
-type
-  BigInt*[bits: static int] = object
-    ## Fixed-precision big integer
-    ##
-    ## - "bits" is the announced bit-length of the BigInt
-    ##   This is public data, usually equal to the curve prime bitlength.
-    ##
-    ## - "limbs" is an internal field that holds the internal representation
-    ##   of the big integer. Least-significant limb first. Within limbs words are native-endian.
-    ##
-    ## This internal representation can be changed
-    ## without notice and should not be used by external applications or libraries.
-    limbs*: array[bits.wordsRequired, SecretWord]
-
-# For unknown reason, `bits` doesn't semcheck if
-#   `limbs: Limbs[bits.wordsRequired]`
-# with
-#   `Limbs[N: static int] = distinct array[N, SecretWord]`
-# so we don't set Limbs as a distinct type
-
-debug:
-  import strutils
-
-  func `$`*(a: BigInt): string =
-    result = "BigInt["
-    result.add $BigInt.bits
-    result.add "](limbs: "
-    result.add a.limbs.toString()
-    result.add ")"
 
 # No exceptions allowed
 {.push raises: [].}
@@ -248,11 +215,11 @@ func bit*[bits: static int](a: BigInt[bits], index: int): Ct[uint8] =
   const BitMask = SecretWord 1
 
   let slot = a.limbs[index shr SlotShift] # LimbEndianness is littleEndian
-  result = ct[uint8](slot shr (index and SelectMask) and BitMask)
+  result = ct(slot shr (index and SelectMask) and BitMask, uint8)
 
 func bit0*(a: BigInt): Ct[uint8] =
   ## Access the least significant bit
-  ct[uint8](a.limbs[0] and SecretWord(1))
+  ct(a.limbs[0] and SecretWord(1), uint8)
 
 # ############################################################
 #

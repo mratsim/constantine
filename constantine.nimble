@@ -70,6 +70,9 @@ task test, "Run all tests":
 
   test "", "tests/test_finite_fields_vs_gmp.nim"
 
+  # Precompute
+  test "", "tests/test_precomputed"
+
   # Towers of extension fields
   test "", "tests/test_fp2.nim"
   test "", "tests/test_fp6.nim"
@@ -99,6 +102,9 @@ task test, "Run all tests":
     test "-d:Constantine32", "tests/test_finite_fields_powinv.nim"
 
     test "-d:Constantine32", "tests/test_finite_fields_vs_gmp.nim"
+
+    # Precompute
+    test "-d:Constantine32", "tests/test_precomputed"
 
     # Towers of extension fields
     test "-d:Constantine32", "tests/test_fp2.nim"
@@ -138,6 +144,9 @@ task test_no_gmp, "Run tests that don't require GMP":
   test "", "tests/test_finite_fields_sqrt.nim"
   test "", "tests/test_finite_fields_powinv.nim"
 
+  # Precompute
+  test "", "tests/test_precomputed"
+
   # Towers of extension fields
   test "", "tests/test_fp2.nim"
   test "", "tests/test_fp6.nim"
@@ -163,6 +172,9 @@ task test_no_gmp, "Run tests that don't require GMP":
     test "-d:Constantine32", "tests/test_finite_fields_mulsquare.nim"
     test "-d:Constantine32", "tests/test_finite_fields_sqrt.nim"
     test "-d:Constantine32", "tests/test_finite_fields_powinv.nim"
+
+    # Precompute
+    test "-d:Constantine32", "tests/test_precomputed"
 
     # Towers of extension fields
     test "-d:Constantine32", "tests/test_fp2.nim"

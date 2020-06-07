@@ -6,11 +6,22 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import
-  arithmetic/[limbs, limbs_modular, limbs_montgomery],
-  arithmetic/bigints,
-  arithmetic/[finite_fields, finite_fields_inversion]
+import  unittest,
+        ../constantine/arithmetic,
+        ../constantine/config/curves,
+        ../constantine/io/io_fields
 
-export
-  bigints,
-  finite_fields, finite_fields_inversion
+proc checkCubeRootOfUnity(curve: static Curve) =
+  test $curve & " cube root of unity":
+    var cru = curve.getCubicRootOfUnity()
+    cru.square()
+    cru *= curve.getCubicRootOfUnity()
+
+    check: bool cru.isOne()
+
+proc main() =
+  suite "Sanity checks on precomputed values":
+    checkCubeRootOfUnity(BN254_Snarks)
+    checkCubeRootOfUnity(BLS12_381)
+
+main()

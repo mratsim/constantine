@@ -9,7 +9,6 @@
 import
   ./io_bigints, ./io_fields,
   ../config/curves,
-  ../arithmetic/[bigints, finite_fields],
   ../elliptic/[
     ec_weierstrass_affine,
     ec_weierstrass_projective

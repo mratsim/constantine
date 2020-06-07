@@ -7,13 +7,14 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ./bigints,
+  ./type_bigint, ./common,
   ../primitives/constant_time,
-  ../config/common,
   ../io/io_bigints
 
 # Precomputed constants
-# ############################################################
+# We need alternate code paths for the VM
+# for various reasons
+# ------------------------------------------------------------
 
 # ############################################################
 #
@@ -25,7 +26,7 @@ import
 # Those are NOT tagged compile-time, using CTBool seems to confuse the VM
 
 # We don't use distinct types here, they confuse the VM
-# Similarly, using addC / subB confuses the VM
+# Similarly, using addC / subB from primitives confuses the VM
 
 # As we choose to use the full 32/64 bits of the integers and there is no carry flag
 # in the compile-time VM we need a portable (and slow) "adc" and "sbb".
@@ -36,9 +37,15 @@ const
   HalfBase = (BaseType(1) shl HalfWidth)
   HalfMask = HalfBase - 1
 
+func hi(n: BaseType): BaseType =
+  result = n shr HalfWidth
+
+func lo(n: BaseType): BaseType =
+  result = n and HalfMask
+
 func split(n: BaseType): tuple[hi, lo: BaseType] =
-  result.hi = n shr HalfWidth
-  result.lo = n and HalfMask
+  result.hi = n.hi
+  result.lo = n.lo
 
 func merge(hi, lo: BaseType): BaseType =
   (hi shl HalfWidth) or lo
@@ -104,6 +111,56 @@ func sub(a: var BigInt, w: BaseType): bool =
 
   result = bool(borrow)
 
+func mul(hi, lo: var BaseType, u, v: BaseType) =
+  ## Extended precision multiplication
+  ## (hi, lo) <- u * v
+  var x0, x1, x2, x3: BaseType
+
+  let
+    (uh, ul) = u.split()
+    (vh, vl) = v.split()
+
+  x0 = ul * vl
+  x1 = ul * vh
+  x2 = uh * vl
+  x3 = uh * vh
+
+  x1 += hi(x0)          # This can't carry
+  x1 += x2              # but this can
+  if x1 < x2:           # if carry, add it to x3
+    x3 += HalfBase
+
+  hi = x3 + hi(x1)
+  lo = merge(x1, lo(x0))
+
+func muladd1(hi, lo: var BaseType, a, b, c: BaseType) {.inline.} =
+  ## Extended precision multiplication + addition
+  ## (hi, lo) <- a*b + c
+  ##
+  ## Note: 0xFFFFFFFF_FFFFFFFF² -> (hi: 0xFFFFFFFFFFFFFFFE, lo: 0x0000000000000001)
+  ##       so adding any c cannot overflow
+  var carry: BaseType
+  mul(hi, lo, a, b)
+  addC(carry, lo, lo, c, 0)
+  addC(carry, hi, hi, 0, carry)
+
+func muladd2(hi, lo: var BaseType, a, b, c1, c2: BaseType) {.inline.}=
+  ## Extended precision multiplication + addition + addition
+  ## (hi, lo) <- a*b + c1 + c2
+  ##
+  ## Note: 0xFFFFFFFF_FFFFFFFF² -> (hi: 0xFFFFFFFFFFFFFFFE, lo: 0x0000000000000001)
+  ##       so adding 0xFFFFFFFFFFFFFFFF leads to (hi: 0xFFFFFFFFFFFFFFFF, lo: 0x0000000000000000)
+  ##       and we have enough space to add again 0xFFFFFFFFFFFFFFFF without overflowing
+  var carry1, carry2: BaseType
+
+  mul(hi, lo, a, b)
+  # Carry chain 1
+  addC(carry1, lo, lo, c1, 0)
+  addC(carry1, hi, hi, 0, carry1)
+  # Carry chain 2
+  addC(carry2, lo, lo, c2, 0)
+  addC(carry2, hi, hi, 0, carry2)
+
 func cadd(a: var BigInt, b: BigInt, ctl: bool): bool =
   ## In-place optional addition
   ##
@@ -146,6 +203,22 @@ func doubleMod(a: var BigInt, M: BigInt) =
   var ctl = dbl(a)
   ctl = ctl or not a.csub(M, false)
   discard csub(a, M, ctl)
+
+func `<`(a, b: BigInt): bool =
+  var diff, borrow: BaseType
+  for i in 0 ..< a.limbs.len:
+    subB(borrow, diff, BaseType(a.limbs[i]), BaseType(b.limbs[i]), borrow)
+
+  result = bool borrow
+
+func shiftRight*(a: var BigInt, k: int) =
+  ## Shift right by k.
+  ##
+  ## k MUST be less than the base word size (2^32 or 2^64)
+
+  for i in 0 ..< a.limbs.len-1:
+    a.limbs[i] = (a.limbs[i] shr k) or (a.limbs[i+1] shl (WordBitWidth - k))
+  a.limbs[a.limbs.len-1] = a.limbs[a.limbs.len-1] shr k
 
 # ############################################################
 #
@@ -413,3 +486,48 @@ func bn_6u_minus_1_BE*[bits: static int](
 
   # Export
   result.exportRawUint(u_ext, bigEndian)
+
+# ############################################################
+#
+#       Compile-time Conversion to Montgomery domain
+#
+# ############################################################
+# This is needed to avoid recursive dependencies
+
+func montyMul_precompute(r: var BigInt, a, b, M: BigInt, m0ninv: BaseType) =
+  ## Montgomery Multiplication using Coarse Grained Operand Scanning (CIOS)
+  var t: typeof(M)   # zero-init
+  const N = t.limbs.len
+  var tN: BaseType
+  var tNp1: BaseType
+
+  var tmp: BaseType # Distinct types bug in the VM are a huge pain ...
+
+  for i in 0 ..< N:
+    var A: BaseType
+    for j in 0 ..< N:
+      muladd2(A, tmp, BaseType(a.limbs[j]), BaseType(b.limbs[i]), BaseType(t.limbs[j]), A)
+      t.limbs[j] = SecretWord(tmp)
+    addC(tNp1, tN, tN, A, 0)
+
+    var C, lo: BaseType
+    let m = BaseType(t.limbs[0]) * m0ninv
+    muladd1(C, lo, m, BaseType(M.limbs[0]), BaseType(t.limbs[0]))
+    for j in 1 ..< N:
+      muladd2(C, tmp, m, BaseType(M.limbs[j]), BaseType(t.limbs[j]), C)
+      t.limbs[j-1] = SecretWord(tmp)
+
+    var carry: BaseType
+    addC(carry, tmp, tN, C, 0)
+    t.limbs[N-1] = SecretWord(tmp)
+    addC(carry, tN, tNp1, 0, carry)
+
+  discard t.csub(M, (tN != 0) or not(t < M))
+  r = t
+
+func montyResidue_precompute*(r: var BigInt, a, M, r2modM: BigInt,
+                              m0ninv: BaseType) =
+  ## Transform a bigint ``a`` from it's natural representation (mod N)
+  ## to a the Montgomery n-residue representation
+  ## This is intended for compile-time precomputations-only
+  montyMul_precompute(r, a, r2ModM, M, m0ninv)
