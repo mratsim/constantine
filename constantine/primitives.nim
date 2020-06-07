@@ -19,5 +19,5 @@ export
   constant_time,
   multiplexers,
   addcarry_subborrow,
-  extended_precision
+  extended_precision,
   bithacks

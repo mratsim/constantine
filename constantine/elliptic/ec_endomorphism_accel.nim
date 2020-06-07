@@ -8,7 +8,7 @@
 
 import
   # Standard Library
-  typetraits,
+  std/typetraits,
   # Internal
   ../primitives,
   ../config/[common, curves],
@@ -223,15 +223,6 @@ func nDimMultiScalarRecoding[M, LengthInBits, LengthInDigits: static int](
       k[j].div2()
       k[j] += SecretWord -bji.ashr(1)
 
-iterator bits(u: SomeInteger): tuple[bitIndex: int32, bitValue: uint8] =
-  ## bit iterator, starts from the least significant bit
-  var u = u
-  var idx = 0'i32
-  while u != 0:
-    yield (idx, uint8(u and 1))
-    u = u shr 1
-    inc idx
-
 func buildLookupTable[M: static int, F](
        P: ECP_SWei_Proj[F],
        endomorphisms: array[M-1, ECP_SWei_Proj[F]],
@@ -239,9 +230,32 @@ func buildLookupTable[M: static int, F](
      ) =
   ## Build the lookup table from the base point P
   ## and the curve endomorphism
+  #
+  # Algorithm
+  # Compute P[u] = P0 + u0 P1 +...+ um−2 Pm−1 for all 0≤u<2^m−1, where
+  # u= (um−2,...,u0)_2.
+  #
+  # Traduction:
+  #   for u in 0 ..< 2^(m-1)
+  #     lut[u] = P0
+  #     iterate on the bit representation of u
+  #       if the bit is set, add the matching endomorphism to lut[u]
+  #
   # Note: This is for variable/unknown point P
   #       when P is fixed at compile-time (for example is the generator point)
-  #       alternative algorithm are more efficient.
+  #       alternative algorithms are more efficient.
+  #
+  # Implementation:
+  #   We optimize the basic algorithm to reuse already computed table entries
+  #   by noticing for example that:
+  #   - 6 represented as 0b0110 requires P0 + P2 + P3
+  #   - 2 represented as 0b0010 already required P0 + P2
+  #   To find the already computed table entry, we can index
+  #   the table with the current `u` with the MSB unset
+  #   and add to it the endormorphism at the index matching the MSB position
+  #
+  #   This scheme ensures 1 addition per table entry instead of a number
+  #   of addition dependent on `u` Hamming Weight
   #
   # TODO:
   # 1. Window method for M == 2
@@ -250,14 +264,11 @@ func buildLookupTable[M: static int, F](
   #    (if table is big enough/inversion cost is amortized)
   # 3. Use Montgomery simultaneous inversion to have the table in
   #    affine coordinate so that we can use mixed addition in teh main loop
-  for u in 0 ..< 1 shl (M-1):
+  lut[0] = P
+  for u in 1 ..< 1 shl (M-1):
     # The recoding allows usage of 2^(n-1) table instead of the usual 2^n with NAF
-    lut[u] = P
-  for u in 0 ..< 1 shl (M-1):
-    for idx, bit in bits(u):
-      # TODO: we can reuse older table entries
-      if bit == 1:
-        lut[u] += endomorphisms[idx]
+    let msb = u.log2() # No undefined, u != 0
+    lut[u].sum(lut[u.clearBit(msb)], endomorphisms[msb-1])
 
 # Sanity checks
 # ----------------------------------------------------------------
@@ -286,19 +297,46 @@ when isMainModule:
         ) # " # Unbreak VSCode highlighting bug
       result.add " ]\n"
 
-  func buildLookupTable[M: static int](
+
+  iterator bits(u: SomeInteger): tuple[bitIndex: int32, bitValue: uint8] =
+    ## bit iterator, starts from the least significant bit
+    var u = u
+    var idx = 0'i32
+    while u != 0:
+      yield (idx, uint8(u and 1))
+      u = u shr 1
+      inc idx
+
+  func buildLookupTable_naive[M: static int](
          P: string,
          endomorphisms: array[M-1, string],
          lut: var array[1 shl (M-1), string],
        ) =
-    # Checking the LUT by building strings of endomorphisms additions
+    ## Checking the LUT by building strings of endomorphisms additions
+    ## This naively translates the lookup table algorithm
+    ## Compute P[u] = P0 + u0 P1 +...+ um−2 Pm−1 for all 0≤u<2m−1, where
+    ## u= (um−2,...,u0)_2.
+    ## The number of additions done per entries is equal to the
+    ## iteration variable `u` Hamming Weight
     for u in 0 ..< 1 shl (M-1):
-      # The recoding allows usage of 2^(n-1) table instead of the usual 2^n with NAF
       lut[u] = P
     for u in 0 ..< 1 shl (M-1):
       for idx, bit in bits(u):
         if bit == 1:
           lut[u] &= " + " & endomorphisms[idx]
+
+  func buildLookupTable_reuse[M: static int](
+         P: string,
+         endomorphisms: array[M-1, string],
+         lut: var array[1 shl (M-1), string],
+       ) =
+    ## Checking the LUT by building strings of endomorphisms additions
+    ## This reuses previous table entries so that only one addition is done
+    ## per new entries
+    lut[0] = P
+    for u in 1'u32 ..< 1 shl (M-1):
+      let msb = u.log2() # No undefined, u != 0
+      lut[u] = lut[u.clearBit(msb)] & " + " & endomorphisms[msb]
 
   proc main() =
     const M = 4              # GLS-4 decomposition
@@ -321,7 +359,7 @@ when isMainModule:
       P = "P0"
       endomorphisms = ["P1", "P2", "P3"]
 
-    buildLookupTable(P, endomorphisms, lut)
+    buildLookupTable_naive(P, endomorphisms, lut)
     echo lut
     doAssert lut[0] == "P0"
     doAssert lut[1] == "P0 + P1"
@@ -331,5 +369,10 @@ when isMainModule:
     doAssert lut[5] == "P0 + P1 + P3"
     doAssert lut[6] == "P0 + P2 + P3"
     doAssert lut[7] == "P0 + P1 + P2 + P3"
+
+    var lut_reuse: array[1 shl (M-1), string]
+    buildLookupTable_reuse(P, endomorphisms, lut_reuse)
+    echo lut_reuse
+    doAssert lut == lut_reuse
 
   main()

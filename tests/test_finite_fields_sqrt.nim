@@ -14,7 +14,7 @@ import
   ../constantine/io/[io_fields],
   ../constantine/config/[curves, common],
   # Test utilities
-  ../helpers/prng_unsafe,
+  ../helpers/prng_unsafe
 
 
 const Iters = 128

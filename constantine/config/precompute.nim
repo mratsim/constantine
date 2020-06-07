@@ -8,7 +8,7 @@
 
 import
   ./type_bigint, ./common,
-  ../primitives/constant_time,
+  ../primitives,
   ../io/io_bigints
 
 # Precomputed constants

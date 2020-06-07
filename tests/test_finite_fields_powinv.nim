@@ -14,7 +14,7 @@ import
   ../constantine/io/[io_bigints, io_fields],
   ../constantine/config/curves,
   # Test utilities
-  ../helpers/prng_unsafe,
+  ../helpers/prng_unsafe
 
 
 static: doAssert defined(testingCurves), "This modules requires the -d:testingCurves compile option"
