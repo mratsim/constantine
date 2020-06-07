@@ -60,7 +60,7 @@ addons:
 
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-      brew install parallel
+      brew install parallel;
     fi
   - |
     if [ "${CHANNEL}" = stable ]; then
