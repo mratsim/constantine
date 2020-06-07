@@ -274,6 +274,11 @@ func double*[F](
   else:
     {.error: "Not implemented.".}
 
+func `+=`*[F](P: var ECP_SWei_Proj[F], Q: ECP_SWei_Proj[F]) =
+  var tmp {.noInit.}: ECP_SWei_Proj[F]
+  tmp.sum(P, Q)
+  P = tmp
+
 # ############################################################
 #                                                            #
 #                   Scalar Multiplication                    #

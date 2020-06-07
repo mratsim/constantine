@@ -223,13 +223,54 @@ func nDimMultiScalarRecoding[M, LengthInBits, LengthInDigits: static int](
       k[j].div2()
       k[j] += SecretWord -bji.ashr(1)
 
+iterator bits(u: SomeInteger): tuple[bitIndex: int32, bitValue: uint8] =
+  ## bit iterator, starts from the least significant bit
+  var u = u
+  var idx = 0'i32
+  while u != 0:
+    yield (idx, uint8(u and 1))
+    u = u shr 1
+    inc idx
+
+func buildLookupTable[M: static int, F](
+       P: ECP_SWei_Proj[F],
+       endomorphisms: array[M-1, ECP_SWei_Proj[F]],
+       lut: var array[1 shl (M-1), ECP_SWei_Proj[F]],
+     ) =
+  ## Build the lookup table from the base point P
+  ## and the curve endomorphism
+  # Note: This is for variable/unknown point P
+  #       when P is fixed at compile-time (for example is the generator point)
+  #       alternative algorithm are more efficient.
+  #
+  # TODO:
+  # 1. Window method for M == 2
+  # 2. Have P in affine coordinate and build the table with mixed addition
+  #    assuming endomorphism φi(P) do not affect the Z coordinates
+  #    (if table is big enough/inversion cost is amortized)
+  # 3. Use Montgomery simultaneous inversion to have the table in
+  #    affine coordinate so that we can use mixed addition in teh main loop
+  for u in 0 ..< 1 shl (M-1):
+    # The recoding allows usage of 2^(n-1) table instead of the usual 2^n with NAF
+    lut[u] = P
+  for u in 0 ..< 1 shl (M-1):
+    for idx, bit in bits(u):
+      # TODO: we can reuse older table entries
+      if bit == 1:
+        lut[u] += endomorphisms[idx]
 
 # Sanity checks
 # ----------------------------------------------------------------
+# See page 7 of
+#
+# - Efficient and Secure Algorithms for GLV-Based Scalar
+#   Multiplication and their Implementation on GLV-GLS
+#   Curves (Extended Version)
+#   Armando Faz-Hernández, Patrick Longa, Ana H. Sánchez, 2013
+#   https://eprint.iacr.org/2013/158.pdf
 
 when isMainModule:
   import ../io/io_bigints
-
 
   proc toString(glvSac: GLV_SAC): string =
     for j in 0 ..< glvSac.M:
@@ -245,10 +286,26 @@ when isMainModule:
         ) # " # Unbreak VSCode highlighting bug
       result.add " ]\n"
 
+  func buildLookupTable[M: static int](
+         P: string,
+         endomorphisms: array[M-1, string],
+         lut: var array[1 shl (M-1), string],
+       ) =
+    # Checking the LUT by building strings of endomorphisms additions
+    for u in 0 ..< 1 shl (M-1):
+      # The recoding allows usage of 2^(n-1) table instead of the usual 2^n with NAF
+      lut[u] = P
+    for u in 0 ..< 1 shl (M-1):
+      for idx, bit in bits(u):
+        if bit == 1:
+          lut[u] &= " + " & endomorphisms[idx]
 
   proc main() =
-    var k: MultiScalar[4, 4]
-    var kRecoded: GLV_SAC[4, 5]
+    const M = 4              # GLS-4 decomposition
+    const miniBitwidth = 4   # Bitwidth of the miniscalars resulting from scalar decomposition
+
+    var k: MultiScalar[M, miniBitwidth]
+    var kRecoded: GLV_SAC[M, miniBitwidth+1]
 
     k[0].fromUint(11)
     k[1].fromUint(6)
@@ -258,5 +315,21 @@ when isMainModule:
     kRecoded.nDimMultiScalarRecoding(k)
 
     echo kRecoded.toString()
+
+    var lut: array[1 shl (M-1), string]
+    let
+      P = "P0"
+      endomorphisms = ["P1", "P2", "P3"]
+
+    buildLookupTable(P, endomorphisms, lut)
+    echo lut
+    doAssert lut[0] == "P0"
+    doAssert lut[1] == "P0 + P1"
+    doAssert lut[2] == "P0 + P2"
+    doAssert lut[3] == "P0 + P1 + P2"
+    doAssert lut[4] == "P0 + P3"
+    doAssert lut[5] == "P0 + P1 + P3"
+    doAssert lut[6] == "P0 + P2 + P3"
+    doAssert lut[7] == "P0 + P1 + P2 + P3"
 
   main()
