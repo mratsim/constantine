@@ -55,9 +55,13 @@ addons:
   homebrew:
     packages:
       - gmp
-      - parallel
+      # Travis `bundle` bug: https://travis-ci.community/t/macos-build-fails-because-of-homebrew-bundle-unknown-command/7296/28
+      # - parallel
 
 before_install:
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+      brew install parallel
+    fi
   - |
     if [ "${CHANNEL}" = stable ]; then
       BRANCH="v$(curl https://nim-lang.org/channels/stable)"
