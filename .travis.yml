@@ -51,9 +51,11 @@ addons:
   apt:
     packages:
       - libgmp-dev
+      - parallel
   homebrew:
     packages:
       - gmp
+      - parallel
 
 before_install:
   - |
@@ -92,7 +94,7 @@ before_script:
 script:
     - nimble refresh
     - nimble install gmp stew
-    - nimble test
+    - nimble test_parallel
 branches:
   except:
     - gh-pages
