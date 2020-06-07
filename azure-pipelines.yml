@@ -185,7 +185,7 @@ steps:
   - bash: |
       echo "PATH=${PATH}"
       export ucpu=${UCPU}
-      nimble test
+      nimble test_parallel
     displayName: 'Testing the package (including GMP)'
     condition: ne(variables['Agent.OS'], 'Windows_NT')
 

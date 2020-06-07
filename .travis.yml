@@ -51,11 +51,17 @@ addons:
   apt:
     packages:
       - libgmp-dev
+      - parallel
   homebrew:
     packages:
       - gmp
+      # Travis `bundle` bug: https://travis-ci.community/t/macos-build-fails-because-of-homebrew-bundle-unknown-command/7296/28
+      # - parallel
 
 before_install:
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+      HOMEBREW_NO_AUTO_UPDATE=1 brew install parallel;
+    fi
   - |
     if [ "${CHANNEL}" = stable ]; then
       BRANCH="v$(curl https://nim-lang.org/channels/stable)"
@@ -92,7 +98,7 @@ before_script:
 script:
     - nimble refresh
     - nimble install gmp stew
-    - nimble test
+    - nimble test_parallel
 branches:
   except:
     - gh-pages

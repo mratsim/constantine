@@ -12,3 +12,6 @@ build/
 
 # Sage
 *.sage.py
+
+# Tests
+test_*.txt
