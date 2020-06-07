@@ -11,7 +11,8 @@ import
   primitives/constant_time,
   primitives/multiplexers,
   primitives/addcarry_subborrow,
-  primitives/extended_precision
+  primitives/extended_precision,
+  primitives/bithacks
 
 export
   constant_time_types,
@@ -19,3 +20,4 @@ export
   multiplexers,
   addcarry_subborrow,
   extended_precision
+  bithacks
