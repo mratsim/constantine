@@ -8,7 +8,7 @@
 
 import
   # Standard library
-  macros,
+  std/macros,
   # Internal
   ./precompute,
   ./curves_declaration,

@@ -19,6 +19,8 @@ type
     mres*: matchingBigInt(C)
 
 debug:
+  import ./type_bigint
+
   func `$`*[C: static Curve](a: Fp[C]): string =
     result = "Fp[" & $C
     result.add "]("

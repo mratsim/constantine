@@ -6,13 +6,16 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import  ../constantine/arithmetic,
-        ../constantine/io/[io_bigints, io_fields],
-        ../constantine/config/curves,
-        # Test utilities
-        ../helpers/prng_unsafe,
-        # Standard library
-        std/unittest, std/times
+import
+  # Standard library
+  std/[unittest, times],
+  # Internal
+  ../constantine/arithmetic,
+  ../constantine/io/[io_bigints, io_fields],
+  ../constantine/config/curves,
+  # Test utilities
+  ../helpers/prng_unsafe,
+
 
 static: doAssert defined(testingCurves), "This modules requires the -d:testingCurves compile option"
 

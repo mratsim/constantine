@@ -7,10 +7,12 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  # Stadard library
+  std/macros,
+  # Internal
   ../config/common,
   ../primitives,
-  ./limbs,
-  macros
+  ./limbs
 
 # ############################################################
 #

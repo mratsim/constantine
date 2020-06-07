@@ -8,7 +8,7 @@
 
 import
   # Standard library
-  macros,
+  std/macros,
   # Internal
   ./type_bigint, ./common,
   ./curves_declaration, ./curves_derived, ./curves_parser

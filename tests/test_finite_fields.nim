@@ -6,12 +6,10 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import  unittest,
+import  std/unittest,
         ../constantine/arithmetic,
         ../constantine/io/io_fields,
         ../constantine/config/curves
-
-import ../constantine/io/io_bigints
 
 static: doAssert defined(testingCurves), "This modules requires the -d:testingCurves compile option"
 

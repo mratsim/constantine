@@ -8,7 +8,7 @@
 
 import
   # Standard library
-  random, macros, times, strutils,
+  std/[random, macros, times, strutils],
   # Third-party
   gmp, stew/byteutils,
   # Internal

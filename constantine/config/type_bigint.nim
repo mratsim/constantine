@@ -29,7 +29,7 @@ type
 
 
 debug:
-  import strutils
+  import std/strutils
 
   type Limbs[N: static int] = array[N, SecretWord]
 

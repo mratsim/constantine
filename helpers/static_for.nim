@@ -1,4 +1,4 @@
-import macros
+import std/macros
 
 proc replaceNodes(ast: NimNode, what: NimNode, by: NimNode): NimNode =
   # Replace "what" ident node by "by"
