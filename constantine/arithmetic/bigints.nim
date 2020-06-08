@@ -90,6 +90,14 @@ func cswap*(a, b: var BigInt, ctl: CTBool) =
   ## memory accesses are done (unless the compiler tries to be clever)
   cswap(a.limbs, b.limbs, ctl)
 
+func copyTruncatedFrom*[dBits, sBits: static int](dst: var BigInt[dBits], src: BigInt[sBits]) =
+  ## Copy `src` into `dst`
+  ## if `dst` is not big enough, only the low words are copied
+  ## if `src` is smaller than `dst` the higher words of `dst` will NOT be overwritten
+
+  for wordIdx in 0 ..< min(dst.limbs.len, src.limbs.len):
+    dst.limbs[wordIdx] = src.limbs[wordIdx]
+
 # Comparison
 # ------------------------------------------------------------
 
@@ -149,8 +157,13 @@ func add*(a: var BigInt, b: SecretWord): SecretBool =
   ## Returns the carry
   (SecretBool) add(a.limbs, b)
 
+func `+=`*(a: var BigInt, b: BigInt) =
+  ## Constant-time in-place addition
+  ## Discards the carry
+  discard add(a.limbs, b.limbs)
+
 func `+=`*(a: var BigInt, b: SecretWord) =
-  ## Constant-time in-pace addition
+  ## Constant-time in-place addition
   ## Discards the carry
   discard add(a.limbs, b)
 
@@ -158,6 +171,16 @@ func sub*(a: var BigInt, b: BigInt): SecretBool =
   ## Constant-time in-place substraction
   ## Returns the borrow
   (SecretBool) sub(a.limbs, b.limbs)
+
+func `-=`*(a: var BigInt, b: BigInt) =
+  ## Constant-time in-place substraction
+  ## Discards the borrow
+  discard sub(a.limbs, b.limbs)
+
+func `-=`*(a: var BigInt, b: SecretWord) =
+  ## Constant-time in-place substraction
+  ## Discards the borrow
+  discard sub(a.limbs, b)
 
 func double*(a: var BigInt): SecretBool =
   ## Constant-time in-place doubling

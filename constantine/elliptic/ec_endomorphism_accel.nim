@@ -10,9 +10,11 @@ import
   # Standard Library
   std/typetraits,
   # Internal
+  ../../helpers/static_for,
   ../primitives,
-  ../config/[common, curves],
+  ../config/[common, curves, type_bigint],
   ../arithmetic,
+  ../io/io_bigints,
   ../towers,
   ./ec_weierstrass_affine,
   ./ec_weierstrass_projective
@@ -269,6 +271,62 @@ func buildLookupTable[M: static int, F](
     # The recoding allows usage of 2^(n-1) table instead of the usual 2^n with NAF
     let msb = u.log2() # No undefined, u != 0
     lut[u].sum(lut[u.clearBit(msb)], endomorphisms[msb-1])
+    # } # highlight bug, ...
+
+# Chapter 6.3.1 - Guide to Pairing-based Cryptography
+const Lattice_BN254_Snarks_G1: array[2, array[2, tuple[b: BigInt[127], isNeg: bool]]] = [
+  # Curve of order 254 -> mini scalars of size 127
+  # u = 0x44E992B44A6909F1
+  [(BigInt[127].fromHex"0x89d3256894d213e3", false),                  # 2u + 1
+   (BigInt[127].fromHex"0x6f4d8248eeb859fd0be4e1541221250b", false)], # 6u² + 4u + 1
+  [(BigInt[127].fromHex"0x6f4d8248eeb859fc8211bbeb7d4f1128", false),  # 6u² + 2u
+   (BigInt[127].fromHex"0x89d3256894d213e3", true)]                   # -2u - 1
+]
+
+const Babai_BN254_Snarks_G1 = [
+  # Vector for Babai rounding
+  BigInt[127].fromHex"0x89d3256894d213e3",                            # 2u + 1
+  BigInt[127].fromHex"0x6f4d8248eeb859fd0be4e1541221250b"             # 6u² + 4u + 1
+]
+
+func decomposeScalar_BN254_Snarks_G1[M, scalBits, miniBits: static int](
+       scalar: BigInt[scalBits],
+       miniScalars: var MultiScalar[M, miniBits]
+     ) =
+  ## Decompose a secret scalar into mini-scalar exploiting
+  ## BN254_Snarks specificities.
+  ##
+  ## TODO: Generalize to all BN curves
+  ##       - needs a Lattice type
+  ##       - needs to better support negative bigints, (extra bit for sign?)
+
+  static: doAssert miniBits == (scalBits + M - 1) div M
+  # 𝛼0 = (0x2d91d232ec7e0b3d7 * s) >> 256
+  # 𝛼1 = (0x24ccef014a773d2d25398fd0300ff6565 * s) >> 256
+  const
+    w = BN254_Snarks.getCurveOrderBitwidth().wordsRequired()
+    alphaHats = (BigInt[66].fromHex"0x2d91d232ec7e0b3d7",
+                 BigInt[130].fromHex"0x24ccef014a773d2d25398fd0300ff6565")
+
+  var alphas{.noInit.} : array[M, BigInt[scalBits]] # TODO size 66+254 and 130+254
+
+  staticFor i, 0, M:
+    alphas[i].prod_high_words(alphaHats[i], scalar, w)
+
+  # We have k0 = s - 𝛼0 b00 - 𝛼1 b10
+  # and kj = 0 - 𝛼j b0j - 𝛼1 b1j
+  var k: array[M, BigInt[scalBits]]
+  k[0] = scalar
+  for miniScalarIdx in 0 ..< M:
+    for basisIdx in 0 ..< M:
+      var alphaB {.noInit.}: BigInt[scalBits]
+      alphaB.prod(alphas[basisIdx], Lattice_BN254_Snarks_G1[basisIdx][miniScalarIdx].b) # TODO small lattice size
+      if Lattice_BN254_Snarks_G1[basisIdx][miniScalarIdx].isNeg:
+        k[miniScalarIdx] += alphaB
+      else:
+        k[miniScalarIdx] -= alphaB
+
+    miniScalars[miniScalarIdx].copyTruncatedFrom(k[miniScalarIdx])
 
 # Sanity checks
 # ----------------------------------------------------------------
@@ -338,7 +396,7 @@ when isMainModule:
       let msb = u.log2() # No undefined, u != 0
       lut[u] = lut[u.clearBit(msb)] & " + " & endomorphisms[msb]
 
-  proc main() =
+  proc main_lut() =
     const M = 4              # GLS-4 decomposition
     const miniBitwidth = 4   # Bitwidth of the miniscalars resulting from scalar decomposition
 
@@ -375,4 +433,46 @@ when isMainModule:
     echo lut_reuse
     doAssert lut == lut_reuse
 
-  main()
+  main_lut()
+  echo "---------------------------------------------"
+
+  proc main_decomp() =
+    const M = 2
+    const scalBits = BN254_Snarks.getCurveOrderBitwidth()
+    const miniBits = (scalBits+M-1) div M
+
+    block:
+      let scalar = BigInt[scalBits].fromHex(
+        "0x24a0b87203c7a8def0018c95d7fab106373aebf920265c696f0ae08f8229b3f3"
+      )
+
+      var decomp: MultiScalar[M, miniBits]
+      decomposeScalar_BN254_Snarks_G1(scalar, decomp)
+
+      doAssert: bool(decomp[0] == BigInt[127].fromHex"14928105460c820ccc9a25d0d953dbfe")
+      doAssert: bool(decomp[1] == BigInt[127].fromHex"13a2f911eb48a578844b901de6f41660")
+
+    block:
+      let scalar = BigInt[scalBits].fromHex(
+        "24554fa6d0c06f6dc51c551dea8b058cd737fc8d83f7692fcebdd1842b3092c4"
+      )
+
+      var decomp: MultiScalar[M, miniBits]
+      decomposeScalar_BN254_Snarks_G1(scalar, decomp)
+
+      doAssert: bool(decomp[0] == BigInt[127].fromHex"28cf7429c3ff8f7e82fc419e90cc3a2")
+      doAssert: bool(decomp[1] == BigInt[127].fromHex"457efc201bdb3d2e6087df36430a6db6")
+
+    block:
+      let scalar = BigInt[scalBits].fromHex(
+        "288c20b297b9808f4e56aeb70eabf269e75d055567ff4e05fe5fb709881e6717"
+      )
+
+      var decomp: MultiScalar[M, miniBits]
+      decomposeScalar_BN254_Snarks_G1(scalar, decomp)
+
+      doAssert: bool(decomp[0] == BigInt[127].fromHex"4da8c411566c77e00c902eb542aaa66b")
+      doAssert: bool(decomp[1] == BigInt[127].fromHex"5aa8f2f15afc3217f06677702bd4e41a")
+
+
+  main_decomp()
