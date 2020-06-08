@@ -21,7 +21,7 @@ import
 
 var bitSizeRNG {.compileTime.} = initRand(1234)
 
-macro testRandomModSizes(numSizes: static int, rBits, aBits, bBits, body: untyped): untyped =
+macro testRandomModSizes(numSizes: static int, rBits, aBits, bBits, wordsStartIndex, body: untyped): untyped =
   ## Generate `numSizes` random bit sizes known at compile-time to test against GMP
   ## for A mod M
   result = newStmtList()
@@ -30,12 +30,15 @@ macro testRandomModSizes(numSizes: static int, rBits, aBits, bBits, body: untype
     let aBitsVal = bitSizeRNG.rand(126 .. 2048)
     let bBitsVal = bitSizeRNG.rand(126 .. 2048)
     let rBitsVal = bitSizeRNG.rand(62 .. 4096+128)
+    let wordsStartIndexVal = bitSizeRNG.rand(1 .. wordsRequired(4096+128))
 
     result.add quote do:
       block:
         const `aBits` = `aBitsVal`
         const `bBits` = `bBitsVal`
         const `rBits` = `rBitsVal`
+        const `wordsStartIndex` = `wordsStartIndexVal`
+
         block:
           `body`
 
@@ -63,9 +66,13 @@ proc main() =
   mpz_init(a)
   mpz_init(b)
 
-  testRandomModSizes(128, rBits, aBits, bBits):
+  testRandomModSizes(128, rBits, aBits, bBits, wordsStartIndex):
     # echo "--------------------------------------------------------------------------------"
-    echo "Testing: random mul  r (", align($rBits, 4), "-bit) <- a (", align($aBits, 4), "-bit) * b (", align($bBits, 4), "-bit) (full mul bits: ", align($(aBits+bBits), 4), "), r large enough? ", rBits >= aBits+bBits
+    echo "Testing: random mul_high_words  r (", align($rBits, 4),
+      "-bit, keeping from ", wordsStartIndex,
+      " word index) <- a (", align($aBits, 4),
+      "-bit) * b (", align($bBits, 4), "-bit) (full mul bits: ", align($(aBits+bBits), 4),
+      "), r large enough? ", wordsRequired(rBits) >= wordsRequired(aBits+bBits) - wordsStartIndex
 
     # Generate random value in the range 0 ..< 2^aBits
     mpz_urandomb(a, gmpRng, aBits)
@@ -99,8 +106,11 @@ proc main() =
     let bTest = BigInt[bBits].fromRawUint(bBuf.toOpenArray(0, bW-1), bigEndian)
 
     #########################################################
-    # Multiplication
+    # Multiplication + drop low words
     mpz_mul(r, a, b)
+    var shift: mpz_t
+    mpz_init(shift)
+    r.mpz_tdiv_q_2exp(r, WordBitwidth * wordsStartIndex)
 
     # If a*b overflow the result size we truncate
     const numWords = wordsRequired(rBits)
@@ -110,7 +120,7 @@ proc main() =
 
     # Constantine
     var rTest: BigInt[rBits]
-    rTest.prod(aTest, bTest)
+    rTest.prod_high_words(aTest, bTest, wordsStartIndex)
 
     #########################################################
     # Check
@@ -132,6 +142,7 @@ proc main() =
       "\nMultiplication with operands\n" &
       "  a (" & align($aBits, 4) & "-bit):   " & aBuf.toHex & "\n" &
       "  b (" & align($bBits, 4) & "-bit):   " & bBuf.toHex & "\n" &
+      "  keeping words starting from:   " & $wordsStartIndex & "\n" &
       "into r of size " & align($rBits, 4) & "-bit failed:" & "\n" &
       "  GMP:            " & rGMP.toHex() & "\n" &
       "  Constantine:    " & rConstantine.toHex() & "\n" &

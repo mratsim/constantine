@@ -48,7 +48,7 @@ proc test(
     doAssert: bool(Q == reference)
     doAssert: bool(Q == impl)
 
-suite "BN254 implementation (and unsafe reference impl) vs SageMath":
+suite "Scalar Multiplication: BN254 implementation (and unsafe reference impl) vs SageMath":
   # Generated via sage sage/testgen_bn254_snarks.sage
   test(
     id = 1,

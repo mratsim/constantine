@@ -166,7 +166,28 @@ func isOdd*(a: Limbs): SecretBool =
   ## Returns true if a is odd
   SecretBool(a[0] and SecretWord(1))
 
-# Arithmetic
+# Bit manipulation
+# ------------------------------------------------------------
+
+func shiftRight*(a: var Limbs, k: int) {.inline.}=
+  ## Shift right by k.
+  ##
+  ## k MUST be less than the base word size (2^32 or 2^64)
+  # We don't reuse shr as this is an in-place operation
+  # Do we need to return the shifted out part?
+  #
+  # Note: for speed, loading a[i] and a[i+1]
+  #       instead of a[i-1] and a[i]
+  #       is probably easier to parallelize for the compiler
+  #       (antidependence WAR vs loop-carried dependence RAW)
+
+  # checkWordShift(k)
+
+  for i in 0 ..< a.len-1:
+    a[i] = (a[i] shr k) or (a[i+1] shl (WordBitWidth - k))
+  a[a.len-1] = a[a.len-1] shr k
+
+# Basic Arithmetic
 # ------------------------------------------------------------
 
 func add*(a: var Limbs, b: Limbs): Carry =
@@ -252,12 +273,17 @@ func cneg*(a: var Limbs, ctl: CTBool) =
   # So we need to xor all words and then add 1
   # The "+1" might carry
   # So we fuse the 2 steps
-  let mask = -SecretWord(ctl)              # Obtain a 0xFF... or 0x00... mask
+  let mask = -SecretWord(ctl)        # Obtain a 0xFF... or 0x00... mask
   var carry = SecretWord(ctl)
   for i in 0 ..< a.len:
     let t = (a[i] xor mask) + carry  # XOR with mask and add 0x01 or 0x00 respectively
-    carry = SecretWord(t < carry)          # Carry on
+    carry = SecretWord(t < carry)    # Carry on
     a[i] = t
+
+{.pop.} # inline
+
+# Multiplication
+# ------------------------------------------------------------
 
 func prod*[rLen, aLen, bLen](r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) =
   ## Multi-precision multiplication
@@ -282,26 +308,50 @@ func prod*[rLen, aLen, bLen](r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen])
     u = t
     t = SecretWord(0)
 
-# Bit manipulation
-# ------------------------------------------------------------
+  staticFor i, a.len+b.len, r.len:
+    r[i] = SecretWord(0)
 
-func shiftRight*(a: var Limbs, k: int) =
-  ## Shift right by k.
+func prod_high_words*[rLen, aLen, bLen](
+       r: var Limbs[rLen],
+       a: Limbs[aLen], b: Limbs[bLen],
+       lowestWordIndex: static int) =
+  ## Multi-precision multiplication keeping only high words
+  ## r <- a*b >> (2^WordBitWidth)^lowestWordIndex
   ##
-  ## k MUST be less than the base word size (2^32 or 2^64)
-  # We don't reuse shr as this is an in-place operation
-  # Do we need to return the shifted out part?
+  ## `a`, `b`, `r` can have a different number of limbs
+  ## if `r`.limbs.len < a.limbs.len + b.limbs.len - lowestWordIndex
+  ## The result will be truncated, i.e. it will be
+  ## a * b >> (2^WordBitWidth)^lowestWordIndex (mod (2^WordBitwidth)^r.limbs.len)
   #
-  # Note: for speed, loading a[i] and a[i+1]
-  #       instead of a[i-1] and a[i]
-  #       is probably easier to parallelize for the compiler
-  #       (antidependence WAR vs loop-carried dependence RAW)
+  # This is useful for
+  # - Barret reduction
+  # - Approximating multiplication by a fractional constant in the form f(a) = K/C * a
+  #   with K and C known at compile-time.
+  #   We can instead find a well chosen M = (2^WordBitWidth)^w, with M > C (i.e. M is a power of 2 bigger than C)
+  #   Precompute P = K*M/C at compile-time
+  #   and at runtime do P*a/M <=> P*a >> (WordBitWidth*w)
+  #   i.e. prod_high_words(result, P, a, w)
 
-  # checkWordShift(k)
+  # We use Product Scanning / Comba multiplication
+  var t, u, v = SecretWord(0) # Will raise warning on empty iterations
 
-  for i in 0 ..< a.len-1:
-    a[i] = (a[i] shr k) or (a[i+1] shl (WordBitWidth - k))
-  a[a.len-1] = a[a.len-1] shr k
+  # The previous 2 columns can affect the lowest word due to carries
+  # but not the ones before (we accumulate in 3 words (t, u, v))
+  const w = lowestWordIndex - 2
 
-{.pop.} # inline
+  staticFor i, max(0, w), min(a.len+b.len, r.len+lowestWordIndex):
+    const ib = min(b.len-1, i)
+    const ia = i - ib
+    staticFor j, 0, min(a.len - ia, ib+1):
+      mulAcc(t, u, v, a[ia+j], b[ib-j])
+
+    when i >= lowestWordIndex:
+      r[i-lowestWordIndex] = v
+    v = u
+    u = t
+    t = SecretWord(0)
+
+  staticFor i, max(0, a.len+b.len-lowestWordIndex), r.len:
+    r[i] = SecretWord(0)
+
 {.pop.} # raises no exceptions

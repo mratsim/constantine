@@ -203,6 +203,25 @@ func prod*[rBits, aBits, bBits](r: var BigInt[rBits], a: BigInt[aBits], b: BigIn
   ## It will be truncated if it cannot fit in r limbs.
   r.limbs.prod(a.limbs, b.limbs)
 
+func prod_high_words*[rBits, aBits, bBits](r: var BigInt[rBits], a: BigInt[aBits], b: BigInt[bBits], lowestWordIndex: static int) =
+  ## Multi-precision multiplication keeping only high words
+  ## r <- a*b >> (2^WordBitWidth)^lowestWordIndex
+  ##
+  ## `a`, `b`, `r` can have a different number of limbs
+  ## if `r`.limbs.len < a.limbs.len + b.limbs.len - lowestWordIndex
+  ## The result will be truncated, i.e. it will be
+  ## a * b >> (2^WordBitWidth)^lowestWordIndex (mod (2^WordBitwidth)^r.limbs.len)
+  ##
+  # This is useful for
+  # - Barret reduction
+  # - Approximating multiplication by a fractional constant in the form f(a) = K/C * a
+  #   with K and C known at compile-time.
+  #   We can instead find a well chosen M = (2^WordBitWidth)^w, with M > C (i.e. M is a power of 2 bigger than C)
+  #   Precompute P = K*M/C at compile-time
+  #   and at runtime do P*a/M <=> P*a >> WordBitWidth*w
+  #   i.e. prod_high_words(result, P, a, w)
+  r.limbs.prod_high_words(a.limbs, b.limbs, lowestWordIndex)
+
 # Bit Manipulation
 # ------------------------------------------------------------
 
