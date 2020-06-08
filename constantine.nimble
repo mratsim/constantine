@@ -59,7 +59,7 @@ task test, "Run all tests":
   test "", "tests/test_bigints.nim"
   test "", "tests/test_bigints_multimod.nim"
 
-  test "", "tests/test_bigints_vs_gmp.nim"
+  test "", "tests/test_bigints_mod_vs_gmp.nim"
 
   # Field
   test "", "tests/test_io_fields"
@@ -92,7 +92,7 @@ task test, "Run all tests":
     test "-d:Constantine32", "tests/test_bigints.nim"
     test "-d:Constantine32", "tests/test_bigints_multimod.nim"
 
-    test "-d:Constantine32", "tests/test_bigints_vs_gmp.nim"
+    test "-d:Constantine32", "tests/test_bigints_mod_vs_gmp.nim"
 
     # Field
     test "-d:Constantine32", "tests/test_io_fields"
@@ -209,7 +209,8 @@ task test_parallel, "Run all tests in parallel (via GNU parallel)":
   test "", "tests/test_bigints.nim", cmdFile
   test "", "tests/test_bigints_multimod.nim", cmdFile
 
-  test "", "tests/test_bigints_vs_gmp.nim", cmdFile
+  test "", "tests/test_bigints_mul_vs_gmp.nim", cmdFile
+  test "", "tests/test_bigints_mod_vs_gmp.nim", cmdFile
 
   # Field
   test "", "tests/test_io_fields", cmdFile
@@ -245,7 +246,8 @@ task test_parallel, "Run all tests in parallel (via GNU parallel)":
     test "-d:Constantine32", "tests/test_bigints.nim", cmdFile
     test "-d:Constantine32", "tests/test_bigints_multimod.nim", cmdFile
 
-    test "-d:Constantine32", "tests/test_bigints_vs_gmp.nim", cmdFile
+    test "-d:Constantine32", "tests/test_bigints_mul_vs_gmp.nim", cmdFile
+    test "-d:Constantine32", "tests/test_bigints_mod_vs_gmp.nim", cmdFile
 
     # Field
     test "-d:Constantine32", "tests/test_io_fields", cmdFile

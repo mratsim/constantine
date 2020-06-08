@@ -148,7 +148,7 @@ proc main() =
       # Reexport as bigEndian for debugging
       discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
       discard mpz_export(mBuf[0].addr, mW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, m)
-      "\nModulus with operand\n" &
+      "\nModulus with operands\n" &
       "  a (" & align($aBits, 4) & "-bit):   " & aBuf.toHex & "\n" &
       "  m (" & align($mBits, 4) & "-bit):   " & mBuf.toHex & "\n" &
       "failed:" & "\n" &

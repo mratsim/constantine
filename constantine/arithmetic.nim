@@ -7,7 +7,6 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  arithmetic/[limbs, limbs_modular, limbs_montgomery],
   arithmetic/bigints,
   arithmetic/[finite_fields, finite_fields_inversion]
 

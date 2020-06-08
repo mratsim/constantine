@@ -138,6 +138,33 @@ proc mainArith() =
         discard a.add(SecretWord 1)
         check: bool(a == expected)
 
+  suite "Multi-precision multiplication":
+    test "Same size operand into double size result":
+      block:
+        var r: BigInt[256]
+        let a = BigInt[128].fromHex"0x12345678_FF11FFAA_00321321_CAFECAFE"
+        let b = BigInt[128].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF"
+
+        let expected = BigInt[256].fromHex"fd5bdef43d64113f371ab5d8843beca889c07fd549b84d8a5001a8f102e0722"
+
+        r.prod(a, b)
+        check: bool(r == expected)
+        r.prod(b, a)
+        check: bool(r == expected)
+
+    test "Different size into large result":
+      block:
+        var r: BigInt[200]
+        let a = BigInt[29].fromHex"0x12345678"
+        let b = BigInt[128].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF"
+
+        let expected = BigInt[200].fromHex"fd5bdee65f787f665f787f665f787f65621ca08"
+
+        r.prod(a, b)
+        check: bool(r == expected)
+        r.prod(b, a)
+        check: bool(r == expected)
+
   suite "Modular operations - small modulus":
     # Vectors taken from Stint - https://github.com/status-im/nim-stint
     test "100 mod 13":

@@ -8,7 +8,8 @@
 
 import
   ../config/common,
-  ../primitives
+  ../primitives,
+  ../../helpers/static_for
 
 # ############################################################
 #
@@ -257,6 +258,29 @@ func cneg*(a: var Limbs, ctl: CTBool) =
     let t = (a[i] xor mask) + carry  # XOR with mask and add 0x01 or 0x00 respectively
     carry = SecretWord(t < carry)          # Carry on
     a[i] = t
+
+func prod*[rLen, aLen, bLen](r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) =
+  ## Multi-precision multiplication
+  ## r <- a*b
+  ##
+  ## `a`, `b`, `r` can have a different number of limbs
+  ## if `r`.limbs.len < a.limbs.len + b.limbs.len
+  ## The result will be truncated, i.e. it will be
+  ## a * b (mod (2^WordBitwidth)^r.limbs.len)
+
+  # We use Product Scanning / Comba multiplication
+  var t, u, v = SecretWord(0)
+
+  staticFor i, 0, min(a.len+b.len, r.len):
+    const ib = min(b.len-1, i)
+    const ia = i - ib
+    staticFor j, 0, min(a.len - ia, ib+1):
+      mulAcc(t, u, v, a[ia+j], b[ib-j])
+
+    r[i] = v
+    v = u
+    u = t
+    t = SecretWord(0)
 
 # Bit manipulation
 # ------------------------------------------------------------

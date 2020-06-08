@@ -32,8 +32,6 @@ macro genDerivedConstants*(): untyped =
   # "for curve in low(Curve) .. high(Curve):"
   # As an ugly workaround, we count
   # The item at position 0 is a pragma
-  let curveList = Curve.getType[1].getType
-
   result = newStmtList()
 
   template used(name: string): NimNode =

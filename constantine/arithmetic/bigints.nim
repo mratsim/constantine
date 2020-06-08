@@ -194,6 +194,15 @@ func cneg*(a: var BigInt, ctl: CTBool) =
   ## Negate if ``ctl`` is true
   a.limbs.cneg(ctl)
 
+func prod*[rBits, aBits, bBits](r: var BigInt[rBits], a: BigInt[aBits], b: BigInt[bBits]) =
+  ## Multi-precision multiplication
+  ## r <- a*b
+  ## `a`, `b`, `r` can have different sizes
+  ## if r.bits < a.bits + b.bits
+  ## the multiplication will overflow.
+  ## It will be truncated if it cannot fit in r limbs.
+  r.limbs.prod(a.limbs, b.limbs)
+
 # Bit Manipulation
 # ------------------------------------------------------------
 

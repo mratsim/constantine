@@ -11,7 +11,7 @@ import
   std/[macros, strutils],
   # Internal
   ../io/io_bigints,
-  ./type_bigint, ./precompute
+  ./type_bigint
 
 # Parsing is done in 2 steps:
 # 1. All declared parameters are collected in a {.compileTime.} seq[CurveParams]
