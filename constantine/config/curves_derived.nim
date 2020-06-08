@@ -124,15 +124,15 @@ macro genDerivedConstants*(): untyped =
       )
     )
 
-    # const MyCurve_cubicRootOfUnity
+    # const MyCurve_cubicRootOfUnity_mod_p
     block:
-      let cubicHex = ident(curve & "_cubicRootOfUnityHex")
-      let cubic = used(curve & "_cubicRootOfUnity")
+      let cubicHex = ident(curve & "_cubicRootOfUnity_modP_Hex")
+      let cubic = used(curve & "_cubicRootOfUnity_mod_p")
       let M = bindSym(curve & "_Modulus")
       let r2modM = ident(curve & "_R2modP")
       let m0ninv = ident(curve & "_NegInvModWord")
       result.add quote do:
-        when declared(`cubichex`):
+        when declared(`cubicHex`):
           const `cubic` = block:
             var cubic: Fp[Curve(`curveSym`)]
             montyResidue_precompute(
@@ -141,6 +141,16 @@ macro genDerivedConstants*(): untyped =
               `M`, `r2modM`, `m0ninv`
             )
             cubic
+    # const MyCurve_cubicRootOfUnity_mod_r
+    block: # For scalar decomposition sanity checks
+      let cubicHex = ident(curve & "_cubicRootOfUnity_modR_Hex")
+      let cubic = used(curve & "_cubicRootOfUnity_mod_r")
+      let getCurveOrderBitwidth = ident"getCurveOrderBitwidth"
+      result.add quote do:
+        when declared(`cubicHex`):
+          const `cubic` = fromHex(BigInt[
+            `getCurveOrderBitwidth`(Curve(`curveSym`))
+          ], `cubicHex`)
 
     if CurveFamilies[curveSym] == BarretoNaehrig:
       # when declared(MyCurve_BN_param_u):

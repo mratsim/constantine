@@ -296,6 +296,7 @@ func prod*[rLen, aLen, bLen](r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen])
 
   # We use Product Scanning / Comba multiplication
   var t, u, v = SecretWord(0)
+  var z: Limbs[rLen] # zero-init, ensure on stack and removes in-place problems
 
   staticFor i, 0, min(a.len+b.len, r.len):
     const ib = min(b.len-1, i)
@@ -303,13 +304,12 @@ func prod*[rLen, aLen, bLen](r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen])
     staticFor j, 0, min(a.len - ia, ib+1):
       mulAcc(t, u, v, a[ia+j], b[ib-j])
 
-    r[i] = v
+    z[i] = v
     v = u
     u = t
     t = SecretWord(0)
 
-  staticFor i, a.len+b.len, r.len:
-    r[i] = SecretWord(0)
+  r = z
 
 func prod_high_words*[rLen, aLen, bLen](
        r: var Limbs[rLen],
@@ -334,6 +334,7 @@ func prod_high_words*[rLen, aLen, bLen](
 
   # We use Product Scanning / Comba multiplication
   var t, u, v = SecretWord(0) # Will raise warning on empty iterations
+  var z: Limbs[rLen] # zero-init, ensure on stack and removes in-place problems
 
   # The previous 2 columns can affect the lowest word due to carries
   # but not the ones before (we accumulate in 3 words (t, u, v))
@@ -346,12 +347,11 @@ func prod_high_words*[rLen, aLen, bLen](
       mulAcc(t, u, v, a[ia+j], b[ib-j])
 
     when i >= lowestWordIndex:
-      r[i-lowestWordIndex] = v
+      z[i-lowestWordIndex] = v
     v = u
     u = t
     t = SecretWord(0)
 
-  staticFor i, max(0, a.len+b.len-lowestWordIndex), r.len:
-    r[i] = SecretWord(0)
+  r = z
 
 {.pop.} # raises no exceptions

@@ -172,9 +172,13 @@ macro getBN_param_6u_minus_1_BE*(C: static Curve): untyped =
 
 # Endomorphism
 # -------------------------------------------------------
-macro getCubicRootOfUnity*(C: static Curve): untyped =
-  ## Get a non-trivial cubic root of unity
-  result = bindSym($C & "_cubicRootOfUnity")
+macro getCubicRootOfUnity_mod_p*(C: static Curve): untyped =
+  ## Get a non-trivial cubic root of unity (mod p) with p the prime field
+  result = bindSym($C & "_cubicRootOfUnity_mod_p")
+
+macro getCubicRootOfUnity_mod_r*(C: static Curve): untyped =
+  ## Get a non-trivial cubic root of unity (mod r) with r the curve order
+  result = bindSym($C & "_cubicRootOfUnity_mod_r")
 
 # ############################################################
 #

@@ -9,19 +9,29 @@
 import  std/unittest,
         ../constantine/arithmetic,
         ../constantine/config/curves,
-        ../constantine/io/io_fields
+        ../constantine/io/[io_bigints, io_fields]
 
 proc checkCubeRootOfUnity(curve: static Curve) =
-  test $curve & " cube root of unity":
-    var cru = curve.getCubicRootOfUnity()
+  test $curve & " cube root of unity (mod p)":
+    var cru = curve.getCubicRootOfUnity_mod_p()
     cru.square()
-    cru *= curve.getCubicRootOfUnity()
+    cru *= curve.getCubicRootOfUnity_mod_p()
 
     check: bool cru.isOne()
+
+  test $curve & " cube root of unity (mod r)":
+    var cru: BigInt[3 * curve.getCurveOrderBitwidth()]
+    cru.prod(curve.getCubicRootOfUnity_mod_r(), curve.getCubicRootOfUnity_mod_r())
+    cru.prod(cru, curve.getCubicRootOfUnity_mod_r())
+
+    var r: BigInt[curve.getCurveOrderBitwidth()]
+    r.reduce(cru, curve.getCurveOrder)
+
+    check: bool r.isOne()
 
 proc main() =
   suite "Sanity checks on precomputed values":
     checkCubeRootOfUnity(BN254_Snarks)
-    checkCubeRootOfUnity(BLS12_381)
+    # checkCubeRootOfUnity(BLS12_381)
 
 main()

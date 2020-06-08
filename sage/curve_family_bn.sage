@@ -22,8 +22,8 @@ def compute_curve_characteristic(u_str):
   r = 36*u^4 + 36*u^3 + 18*u^2 + 6*u + 1
 
   print(f'BN family - {p.nbits()} bits')
-  print('  Prime modulus:     0x' + p.hex())
-  print('  Curve order:       0x' + r.hex())
+  print('  Prime modulus p:     0x' + p.hex())
+  print('  Curve order r:       0x' + r.hex())
   print('  Parameter u:       ' + u_str)
   if u < 0:
       print('  Parameter u (hex): -0x' + (-u).hex())
@@ -43,11 +43,13 @@ def compute_curve_characteristic(u_str):
   print(f'      Rationale:')
   print(f'        curve equation is y² = x³ + b, and y² = (x𝜑)³ + b <=> y² = x³ + b (with 𝜑³ == 1) so we are still on the curve')
   print(f'        this means that multiplying by 𝜑 the x-coordinate is equivalent to a scalar multiplication by some λᵩ')
-  print(f'        with λᵩ² + λᵩ + 1 ≡ 0 (mod CurveOrder), see below. Hence we have a 2 dimensional decomposition of the scalar multiplication')
+  print(f'        with λᵩ² + λᵩ + 1 ≡ 0 (mod r) and 𝜑² + 𝜑 + 1 ≡ 0 (mod p), see below.')
+  print(f'        Hence we have a 2 dimensional decomposition of the scalar multiplication')
   print(f'        i.e. For any [s]P, we can find a corresponding [k1]P + [k2][λᵩ]P with [λᵩ]P being a simple field multiplication by 𝜑')
   print(f'      Finding cube roots:')
   print(f'         x³−1=0 <=> (x−1)(x²+x+1) = 0, if x != 1, x solves (x²+x+1) = 0 <=> x = (-1±√3)/2')
-  print(f'         cube roots of unity: ' + str(['0x' + Integer(root).hex() for root in GF(p)(1).nth_root(3, all=True)]))
+  print(f'         cube roots of unity 𝜑 (mod p): ' + str(['0x' + Integer(root).hex() for root in GF(p)(1).nth_root(3, all=True)]))
+  print(f'         cube roots of unity λᵩ (mod r): ' + str(['0x' + Integer(root).hex() for root in GF(r)(1).nth_root(3, all=True)]))
   print(f'    GLV-2 decomposition of s into (k1, k2) on G1')
   print(f'      (k1, k2) = (s, 0) - 𝛼1 b1 - 𝛼2 b2')
   print(f'      𝛼i = 𝛼\u0302i * s / r')
