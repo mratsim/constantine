@@ -236,6 +236,14 @@ func sub*(a: var Limbs, b: Limbs): Borrow =
   for i in 0 ..< a.len:
     subB(result, a[i], a[i], b[i], result)
 
+func sub*(a: var Limbs, w: SecretWord): Borrow =
+  ## Limbs substraction, sub a number that fits in a word
+  ## Returns the borrow
+  result = Borrow(0)
+  subB(result, a[0], a[0], w, result)
+  for i in 1 ..< a.len:
+    subB(result, a[i], a[i], Zero, result)
+
 func csub*(a: var Limbs, b: Limbs, ctl: SecretBool): Borrow =
   ## Limbs conditional substraction
   ## Returns the borrow
@@ -249,6 +257,17 @@ func csub*(a: var Limbs, b: Limbs, ctl: SecretBool): Borrow =
   var diff: SecretWord
   for i in 0 ..< a.len:
     subB(result, diff, a[i], b[i], result)
+    ctl.ccopy(a[i], diff)
+
+func csub*(a: var Limbs, w: SecretWord, ctl: SecretBool): Borrow =
+  ## Limbs conditional substraction, sub a number that fits in a word
+  ## Returns the borrow
+  result = Carry(0)
+  var diff: SecretWord
+  subB(result, diff, a[0], w, result)
+  ctl.ccopy(a[0], diff)
+  for i in 1 ..< a.len:
+    subB(result, diff, a[i], Zero, result)
     ctl.ccopy(a[i], diff)
 
 func diff*(r: var Limbs, a, b: Limbs): Borrow =

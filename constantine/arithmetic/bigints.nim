@@ -136,10 +136,16 @@ func cadd*(a: var BigInt, b: BigInt, ctl: SecretBool): SecretBool =
   (SecretBool) cadd(a.limbs, b.limbs, ctl)
 
 func csub*(a: var BigInt, b: BigInt, ctl: SecretBool): SecretBool =
-  ## Constant-time in-place conditional addition
-  ## The addition is only performed if ctl is "true"
-  ## The result carry is always computed.
+  ## Constant-time in-place conditional substraction
+  ## The substraction is only performed if ctl is "true"
+  ## The result borrow is always computed.
   (SecretBool) csub(a.limbs, b.limbs, ctl)
+
+func csub*(a: var BigInt, b: SecretWord, ctl: SecretBool): SecretBool =
+  ## Constant-time in-place conditional substraction
+  ## The substraction is only performed if ctl is "true"
+  ## The result borrow is always computed.
+  (SecretBool) csub(a.limbs, b, ctl)
 
 func cdouble*(a: var BigInt, ctl: SecretBool): SecretBool =
   ## Constant-time in-place conditional doubling
@@ -171,6 +177,11 @@ func sub*(a: var BigInt, b: BigInt): SecretBool =
   ## Constant-time in-place substraction
   ## Returns the borrow
   (SecretBool) sub(a.limbs, b.limbs)
+
+func sub*(a: var BigInt, b: SecretWord): SecretBool =
+  ## Constant-time in-place substraction
+  ## Returns the borrow
+  (SecretBool) sub(a.limbs, b)
 
 func `-=`*(a: var BigInt, b: BigInt) =
   ## Constant-time in-place substraction

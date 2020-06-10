@@ -114,7 +114,8 @@ type
     ## http://graphics.stanford.edu/~seander/bithacks.html#FixedSignExtend
     digit {.bitsize:2.}: int8
 
-
+# TODO: use unsigned to avoid checks and potentially leaking secrets
+#       or push checks off (or prove that checks can be elided once Nim has Z3 in the compiler)
 proc `[]`(recoding: Recoded,
           digitIdx: int): int8 {.inline.}=
   ## 0 <= digitIdx < LengthInDigits
@@ -202,7 +203,9 @@ func nDimMultiScalarRecoding[M, LengthInBits, LengthInDigits: static int](
   #   For that floored division, bji may be negative!!!
   # In particular floored division of -1 is -1 not 0.
   # This means that arithmetic right shift must be used instead of logical right shift
-  static: doAssert LengthInDigits == LengthInBits + 1
+  static: doAssert LengthInDigits == LengthInBits,
+    "Length in digits: " & $LengthInDigits & " Length in bits: " & $LengthInBits
+  # " # VScode broken highlight
   # assert src[0].isOdd - Only happen on implementation error, we don't want to leak a single bit
 
   var k = src # Keep the source multiscalar in registers
@@ -267,10 +270,10 @@ func buildLookupTable[M: static int, F](
   # 3. Use Montgomery simultaneous inversion to have the table in
   #    affine coordinate so that we can use mixed addition in teh main loop
   lut[0] = P
-  for u in 1 ..< 1 shl (M-1):
+  for u in 1'u32 ..< 1 shl (M-1):
     # The recoding allows usage of 2^(n-1) table instead of the usual 2^n with NAF
     let msb = u.log2() # No undefined, u != 0
-    lut[u].sum(lut[u.clearBit(msb)], endomorphisms[msb-1])
+    lut[u].sum(lut[u.clearBit(msb)], endomorphisms[msb])
     # } # highlight bug, ...
 
 # Chapter 6.3.1 - Guide to Pairing-based Cryptography
@@ -308,7 +311,7 @@ func decomposeScalar_BN254_Snarks_G1[M, scalBits, miniBits: static int](
     alphaHats = (BigInt[66].fromHex"0x2d91d232ec7e0b3d7",
                  BigInt[130].fromHex"0x24ccef014a773d2d25398fd0300ff6565")
 
-  var alphas{.noInit.} : array[M, BigInt[scalBits]] # TODO size 66+254 and 130+254
+  var alphas{.noInit.}: array[M, BigInt[scalBits]] # TODO size 66+254 and 130+254
 
   staticFor i, 0, M:
     alphas[i].prod_high_words(alphaHats[i], scalar, w)
@@ -327,6 +330,90 @@ func decomposeScalar_BN254_Snarks_G1[M, scalBits, miniBits: static int](
         k[miniScalarIdx] -= alphaB
 
     miniScalars[miniScalarIdx].copyTruncatedFrom(k[miniScalarIdx])
+
+func tableIndex(glv: GLV_SAC, bit: int): SecretWord =
+  ## Compose the secret table index from
+  ## the GLV-SAC representation and the "bit" accessed
+  # TODO:
+  #   We are currently storing 2-bit for 0, 1, -1 in the GLV-SAC representation
+  #   but since columns have all the same sign, determined by k0,
+  #   we only need 0 and 1 dividing storage per 2
+  staticFor i, 1, GLV_SAC.M:
+    result = result or SecretWord((glv[i][bit] and 1) shl i)
+
+func isNeg(glv: GLV_SAC, bit: int): SecretBool =
+  ## Returns true if the bit requires substraction
+  SecretBool(glv[0][bit] < 0)
+
+func secretLookup[T](dst: var T, table: openArray[T], index: SecretWord) =
+  ## Load a table[index] into `dst`
+  ## This is constant-time, whatever the `index`, its value is not leaked
+  ## This is also protected against cache-timing attack by always scanning the whole table
+  for i in 0 ..< table.len:
+    let selector = SecretWord(i) == index
+    dst.ccopy(table[i], selector)
+
+func scalarMulGLV_BN254*(
+       P: var ECP_SWei_Proj,
+       scalar: BigInt[BN254_Snarks.getCurveOrderBitwidth()]
+     ) =
+  ## Elliptic Curve Scalar Multiplication
+  ##
+  ##   P <- [k] P
+  ##
+  ## This is a scalar multiplication accelerated by an endomorphism
+  ## via the GLV (Gallant-lambert-Vanstone) decomposition.
+  const M = 2
+
+  # 1. Compute endomorphisms
+  var endomorphisms{.noInit.}: array[M-1, typeof(P)]
+  endomorphisms[0] = P
+  endomorphisms[0].x *= BN254_Snarks.getCubicRootOfUnity_mod_p()
+
+  # 2. Decompose scalar into mini-scalars
+  const L = (BN254_Snarks.getCurveOrderBitwidth() + M - 1) div M
+  var miniScalars {.noInit.}: array[M, BigInt[L]]
+  scalar.decomposeScalar_BN254_Snarks_G1(
+    miniScalars
+  )
+
+  # 3. TODO: handle negative mini-scalars
+  #    Either negate the associated base and the scalar (in the `endomorphisms` array)
+  #    Or use Algorithm 3 from Faz et al which can encode the sign
+  #    in the GLV representation at the low low price of 1 bit
+
+  # 4. Precompute lookup table
+  var lut: array[1 shl (M-1), ECP_SWei_Proj]
+  buildLookupTable(P, endomorphisms, lut)
+  # TODO: Montgomery simultaneous inversion (or other simultaneous inversion techniques)
+  #       so that we use mixed addition formulas in the main loop
+
+  # 5. Recode the miniscalars
+  #    we need the base miniscalar (that encodes the sign)
+  #    to be odd, and this in constant-time to protect the secret least-significant bit.
+  var k0isOdd = miniScalars[0].isOdd()
+  discard miniScalars[0].csub(SecretWord(1), not k0isOdd)
+
+  var recoded {.noInit.}: GLV_SAC[2, L]
+  recoded.nDimMultiScalarRecoding(miniScalars)
+
+  # 6. Proceed to GLV accelerated scalar multiplication
+  var Q {.noInit.}: typeof(P)
+  Q.secretLookup(lut, recoded.tableIndex(L-1))
+  Q.cneg(recoded.isNeg(L-1))
+
+  for i in countdown(L-2, 0):
+    Q.double()
+    var tmp {.noInit.}: typeof(Q)
+    tmp.secretLookup(lut, recoded.tableIndex(i))
+    tmp.cneg(recoded.isNeg(i))
+    Q += tmp
+
+  # Now we need to correct if the sign miniscalar was not odd
+  # we missed an addition
+  lut[0] += Q # Contains Q + P0
+  P = Q
+  P.ccopy(lut[0], not k0isOdd)
 
 # Sanity checks
 # ----------------------------------------------------------------

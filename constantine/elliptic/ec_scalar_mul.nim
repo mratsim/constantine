@@ -212,7 +212,17 @@ func scalarMulGeneric*(
 func scalarMul*(
        P: var ECP_SWei_Proj,
        scalar: BigInt
-     ) =
+     ) {.inline.} =
   ## Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P
+  # This calls endomorphism accelerated scalar mul if available
+  # or the generic scalar mul otherwise
+  when ECP_SWei_Proj.F.C == BN254_Snarks:
+    scalarMulGLV_BN254(P, scalar)
+  else:
+    var
+      scratchSpace: array[1 shl 4, ECP_SWei_Proj]
+      scalarCanonicalBE: array[(scalar.bits+7)div 8, byte] # canonical big endian representation
+    scalarCanonicalBE.exportRawUint(scalar, bigEndian)   # Export is constant-time
+    P.scalarMulGeneric(scratchSpace)
