@@ -120,7 +120,7 @@ proc doublingBench*(T: typedesc, iters: int) =
   bench("EC Double G1", T, iters):
     r.double(P)
 
-proc scalarMulBench*(T: typedesc, scratchSpaceSize: static int, iters: int) =
+proc scalarMulGenericBench*(T: typedesc, scratchSpaceSize: static int, iters: int) =
   const bits = T.F.C.getCurveOrderBitwidth()
 
   var r {.noInit.}: T
@@ -132,9 +132,9 @@ proc scalarMulBench*(T: typedesc, scratchSpaceSize: static int, iters: int) =
 
   var scratchSpace{.noInit.}: array[scratchSpaceSize, T]
 
-  bench("EC ScalarMul G1 (scratchsize = " & $scratchSpaceSize & ')', T, iters):
+  bench("EC ScalarMul Generic G1 (scratchsize = " & $scratchSpaceSize & ')', T, iters):
     r = P
-    r.scalarMul(exponentCanonical, scratchSpace)
+    r.scalarMulGeneric(exponentCanonical, scratchSpace)
 
 # import ../tests/support/ec_reference_scalar_mult
 #

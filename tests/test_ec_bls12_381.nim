@@ -13,7 +13,7 @@ import
   ../constantine/config/[common, curves],
   ../constantine/arithmetic,
   ../constantine/io/[io_bigints, io_ec],
-  ../constantine/elliptic/[ec_weierstrass_projective],
+  ../constantine/elliptic/[ec_weierstrass_projective, ec_scalar_mul],
   # Test utilities
   ./support/ec_reference_scalar_mult
 
@@ -42,7 +42,7 @@ proc test(
       reference = P
       scratchSpace: array[1 shl 4, EC]
 
-    impl.scalarMul(exponentCanonical, scratchSpace)
+    impl.scalarMulGeneric(exponentCanonical, scratchSpace)
     reference.unsafe_ECmul_double_add(exponentCanonical)
 
     doAssert: bool(Q == reference)

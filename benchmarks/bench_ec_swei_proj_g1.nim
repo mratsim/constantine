@@ -10,7 +10,7 @@ import
   # Internals
   ../constantine/config/curves,
   ../constantine/arithmetic,
-  ../constantine/elliptic/ec_weierstrass_projective,
+  ../constantine/elliptic/[ec_weierstrass_projective, ec_scalar_mul],
   # Helpers
   ../helpers/static_for,
   ./bench_elliptic_template,
@@ -51,11 +51,11 @@ proc main() =
     separator()
     doublingBench(ECP_SWei_Proj[Fp[curve]], Iters)
     separator()
-    scalarMulBench(ECP_SWei_Proj[Fp[curve]], scratchSpaceSize = 1 shl 2, MulIters)
+    scalarMulGenericBench(ECP_SWei_Proj[Fp[curve]], scratchSpaceSize = 1 shl 2, MulIters)
     separator()
-    scalarMulBench(ECP_SWei_Proj[Fp[curve]], scratchSpaceSize = 1 shl 3, MulIters)
+    scalarMulGenericBench(ECP_SWei_Proj[Fp[curve]], scratchSpaceSize = 1 shl 3, MulIters)
     separator()
-    scalarMulBench(ECP_SWei_Proj[Fp[curve]], scratchSpaceSize = 1 shl 4, MulIters)
+    scalarMulGenericBench(ECP_SWei_Proj[Fp[curve]], scratchSpaceSize = 1 shl 4, MulIters)
     separator()
     # scalarMulUnsafeDoubleAddBench(ECP_SWei_Proj[Fp[curve]], MulIters)
     # separator()
