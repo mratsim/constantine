@@ -203,7 +203,7 @@ func nDimMultiScalarRecoding[M, LengthInBits, LengthInDigits: static int](
   #   For that floored division, bji may be negative!!!
   # In particular floored division of -1 is -1 not 0.
   # This means that arithmetic right shift must be used instead of logical right shift
-  static: doAssert LengthInDigits == LengthInBits,
+  static: doAssert LengthInDigits == LengthInBits+1,
     "Length in digits: " & $LengthInDigits & " Length in bits: " & $LengthInBits
   # " # VScode broken highlight
   # assert src[0].isOdd - Only happen on implementation error, we don't want to leak a single bit
@@ -339,7 +339,7 @@ func tableIndex(glv: GLV_SAC, bit: int): SecretWord =
   #   but since columns have all the same sign, determined by k0,
   #   we only need 0 and 1 dividing storage per 2
   staticFor i, 1, GLV_SAC.M:
-    result = result or SecretWord((glv[i][bit] and 1) shl i)
+    result = result or SecretWord((glv[i][bit] and 1) shl (i-1))
 
 func isNeg(glv: GLV_SAC, bit: int): SecretBool =
   ## Returns true if the bit requires substraction
@@ -366,13 +366,13 @@ func scalarMulGLV_BN254*(
   const M = 2
 
   # 1. Compute endomorphisms
-  var endomorphisms{.noInit.}: array[M-1, typeof(P)]
+  var endomorphisms: array[M-1, typeof(P)] # TODO: zero-init not required
   endomorphisms[0] = P
   endomorphisms[0].x *= BN254_Snarks.getCubicRootOfUnity_mod_p()
 
   # 2. Decompose scalar into mini-scalars
   const L = (BN254_Snarks.getCurveOrderBitwidth() + M - 1) div M
-  var miniScalars {.noInit.}: array[M, BigInt[L]]
+  var miniScalars: array[M, BigInt[L]] # TODO: zero-init not required
   scalar.decomposeScalar_BN254_Snarks_G1(
     miniScalars
   )
@@ -383,7 +383,7 @@ func scalarMulGLV_BN254*(
   #    in the GLV representation at the low low price of 1 bit
 
   # 4. Precompute lookup table
-  var lut: array[1 shl (M-1), ECP_SWei_Proj]
+  var lut: array[1 shl (M-1), ECP_SWei_Proj] # TODO: zero-init not required
   buildLookupTable(P, endomorphisms, lut)
   # TODO: Montgomery simultaneous inversion (or other simultaneous inversion techniques)
   #       so that we use mixed addition formulas in the main loop
@@ -394,17 +394,17 @@ func scalarMulGLV_BN254*(
   var k0isOdd = miniScalars[0].isOdd()
   discard miniScalars[0].csub(SecretWord(1), not k0isOdd)
 
-  var recoded {.noInit.}: GLV_SAC[2, L]
+  var recoded: GLV_SAC[2, L+1] # zero-init required
   recoded.nDimMultiScalarRecoding(miniScalars)
 
   # 6. Proceed to GLV accelerated scalar multiplication
-  var Q {.noInit.}: typeof(P)
+  var Q: typeof(P) # TODO: zero-init not required
   Q.secretLookup(lut, recoded.tableIndex(L-1))
   Q.cneg(recoded.isNeg(L-1))
 
   for i in countdown(L-2, 0):
     Q.double()
-    var tmp {.noInit.}: typeof(Q)
+    var tmp: typeof(Q) # TODO: zero-init not required
     tmp.secretLookup(lut, recoded.tableIndex(i))
     tmp.cneg(recoded.isNeg(i))
     Q += tmp
@@ -563,3 +563,87 @@ when isMainModule:
 
 
   main_decomp()
+
+  echo "---------------------------------------------"
+
+  # This tests the multiplication against the Table 1
+  # of the paper
+
+  # Coef       Decimal    Binary        GLV-SAC recoded
+  # | k0 |     | 11 |   | 0 1 0 1 1 |   | 1 -1 1 -1 1 |
+  # | k1 |  =  |  6 | = | 0 0 1 1 0 | = | 1 -1 0 -1 0 |
+  # | k2 |     | 14 |   | 0 1 1 1 0 |   | 1  0 0 -1 0 |
+  # | k3 |     |  3 |   | 0 0 0 1 1 |   | 0  0 1 -1 1 |
+
+  #   i                |         3               2             1             0
+  # -------------------+----------------------------------------------------------------------
+  #  2Q                |   2P0+2P1+2P2    2P0+2P1+4P2    6P0+4P1+8P2+2P3  10P0+6P1+14P2+2P3
+  # Q + sign_i T[ki]   |    P0+P1+2P2   3P0+2P1+4P2+P3   5P0+3P1+7P2+P3   11P0+6P1+14P2+3P3
+
+  type Endo = enum
+    P0
+    P1
+    P2
+    P3
+
+  func buildLookupTable_reuse[M: static int](
+         P: Endo,
+         endomorphisms: array[M-1, Endo],
+         lut: var array[1 shl (M-1), set[Endo]],
+       ) =
+    ## Checking the LUT by building strings of endomorphisms additions
+    ## This reuses previous table entries so that only one addition is done
+    ## per new entries
+    lut[0].incl P
+    for u in 1'u32 ..< 1 shl (M-1):
+      let msb = u.log2() # No undefined, u != 0
+      lut[u] = lut[u.clearBit(msb)] + {endomorphisms[msb]}
+
+
+  proc mainFullMul() =
+    const M = 4                # GLS-4 decomposition
+    const miniBitwidth = 4     # Bitwidth of the miniscalars resulting from scalar decomposition
+    const L = miniBitwidth + 1 # Bitwidth of the recoded scalars
+
+    var k: MultiScalar[M, miniBitwidth]
+    var kRecoded: GLV_SAC[M, L]
+
+    k[0].fromUint(11)
+    k[1].fromUint(6)
+    k[2].fromuint(14)
+    k[3].fromUint(3)
+
+    kRecoded.nDimMultiScalarRecoding(k)
+
+    echo kRecoded.toString()
+
+    var lut: array[1 shl (M-1), set[Endo]]
+    let
+      P = P0
+      endomorphisms = [P1, P2, P3]
+
+    buildLookupTable_reuse(P, endomorphisms, lut)
+    echo lut
+
+    var Q: array[Endo, int]
+
+    # Multiplication
+    assert bool k[0].isOdd()
+    # Q = sign_l-1 P[K_l-1]
+    let idx = kRecoded.tableIndex(L-1)
+    for p in lut[int(idx)]:
+      Q[p] = if kRecoded.isNeg(L-1).bool: -1 else: 1
+    # Loop
+    for i in countdown(L-2, 0):
+      # Q = 2Q
+      for val in Q.mitems: val *= 2
+      echo "2Q:                    ", Q
+      # Q = Q + sign_l-1 P[K_l-1]
+      let idx = kRecoded.tableIndex(i)
+      for p in lut[int(idx)]:
+        Q[p] += (if kRecoded.isNeg(i).bool: -1 else: 1)
+      echo "Q + sign_l-1 P[K_l-1]: ", Q
+
+    echo Q
+
+  mainFullMul()

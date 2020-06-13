@@ -51,7 +51,6 @@ proc test(
     echo "reference: ", reference.toHex()
     echo "impl: ", impl.toHex()
     echo "endo: ", endo.toHex()
-    doAssert 
 
     doAssert: bool(Q == reference)
     doAssert: bool(Q == impl)
