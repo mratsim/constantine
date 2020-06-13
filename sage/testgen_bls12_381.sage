@@ -50,7 +50,7 @@ for i in range(10):
     print('Qx: ' + Integer(Qx).hex())
     print('Qy: ' + Integer(Qy).hex())
     print('Qz: ' + Integer(Qz).hex())
-
+print('=========================================')
 
 # CurveOrder sanity check
 #

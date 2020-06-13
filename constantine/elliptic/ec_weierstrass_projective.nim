@@ -114,6 +114,7 @@ func cneg*(P: var ECP_SWei_Proj, ctl: CTBool) =
   var Q{.noInit.}: typeof(P)
   Q.x = P.x
   Q.y.neg(P.y)
+  Q.z = P.z
   P.ccopy(Q, ctl)
 
 func sum*[F](

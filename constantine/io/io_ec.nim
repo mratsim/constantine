@@ -42,7 +42,7 @@ func toHex*(P: ECP_SWei_Proj): string =
   result &= ", y: "
   result &= P.y.tohex(bigEndian)
   result &= ", z: "
-  result &= P.y.tohex(bigEndian)
+  result &= P.z.tohex(bigEndian)
   result &= ')'
 
 func fromHex*(dst: var ECP_SWei_Proj, x, y: string): bool {.raises: [ValueError].}=
