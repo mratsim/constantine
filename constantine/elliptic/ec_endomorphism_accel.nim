@@ -371,8 +371,8 @@ func scalarMulGLV_BN254*(
   endomorphisms[0].x *= BN254_Snarks.getCubicRootOfUnity_mod_p()
 
   # 2. Decompose scalar into mini-scalars
-  const L = (BN254_Snarks.getCurveOrderBitwidth() + M - 1) div M
-  var miniScalars: array[M, BigInt[L]] # TODO: zero-init not required
+  const L = (BN254_Snarks.getCurveOrderBitwidth() + M - 1) div M + 1
+  var miniScalars: array[M, BigInt[L-1]] # TODO: zero-init not required
   scalar.decomposeScalar_BN254_Snarks_G1(
     miniScalars
   )
@@ -394,7 +394,7 @@ func scalarMulGLV_BN254*(
   var k0isOdd = miniScalars[0].isOdd()
   discard miniScalars[0].csub(SecretWord(1), not k0isOdd)
 
-  var recoded: GLV_SAC[2, L+1] # zero-init required
+  var recoded: GLV_SAC[2, L] # zero-init required
   recoded.nDimMultiScalarRecoding(miniScalars)
 
   # 6. Proceed to GLV accelerated scalar multiplication

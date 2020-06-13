@@ -292,3 +292,14 @@ func double*[F](P: var ECP_SWei_Proj[F]) =
   var tmp {.noInit.}: ECP_SWei_Proj[F]
   tmp.double(P)
   P = tmp
+
+func affineFromProjective*[F](aff: var ECP_SWei_Proj[F], proj: ECP_SWei_Proj) =
+  # TODO: for now we reuse projective coordinate backend
+  # TODO: simultaneous inversion
+
+  var invZ {.noInit.}: F
+  invZ.inv(proj.z)
+
+  aff.z.setOne()
+  aff.x.prod(proj.x, invZ)
+  aff.y.prod(proj.y, invZ)

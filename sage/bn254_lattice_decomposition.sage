@@ -96,26 +96,91 @@ def getGLV2_decomp(scalar):
 
     return k0, k1
 
-def scalarMulGLV():
-    scalar = randrange(r) # Pick an integer below curve order
+def recodeScalars(k):
+    m = 2
+    l = ((int(r).bit_length() + m-1) // m) + 1 # l = ⌈log2 r/m⌉ + 1
+
+    b = [[0] * l, [0] * l]
+    b[0][l-1] = 1
+    for i in range(0, l-1): # l-2 inclusive
+        b[0][i] = 2 * ((k[0] >> (i+1)) & 1) - 1
+    for j in range(1, m):
+        for i in range(0, l):
+            b[j][i] = b[0][i] * (k[j] & 1)
+            k[j] = (k[j]//2) - (b[j][i] // 2)
+
+    return b
+
+def buildLut(P0, P1):
+    m = 2
+    lut = [0] * (1 << (m-1))
+    lut[0] = P0
+    lut[1] = P0 + P1
+    return lut
+
+def pointToString(P):
+    (Px, Py, Pz) = P
+    return '(x: ' + Integer(Px).hex() + ', y: ' + Integer(Py).hex() + ', z: ' + Integer(Pz).hex() + ')'
+
+def scalarMulGLV(scalar, P0):
+    m = 2
+    L = ((int(r).bit_length() + m-1) // m) + 1 # l = ⌈log2 r/m⌉ + 1
+
+    print('L: ' + str(L))
+
     print('scalar: ' + Integer(scalar).hex())
 
     k0, k1 = getGLV2_decomp(scalar)
     print('k0: ' + k0.hex())
     print('k1: ' + k1.hex())
 
-    P0 = G1.random_point()
     P1 = (lambda1_r % r) * P0
     (Px, Py, Pz) = P0
     P1_endo = G1([Px*phi1 % p, Py, Pz])
+    assert P1 == P1_endo
 
     expected = scalar * P0
     decomp = k0*P0 + k1*P1
     assert expected == decomp
+
+    print('------ recode scalar -----------')
+    even = k0 & 1 == 1
+    if even:
+        k0 -= 1
+
+    b = recodeScalars([k0, k1])
+    print('b0: ' + str(list(reversed(b[0]))))
+    print('b1: ' + str(list(reversed(b[1]))))
+
+    print('------------ lut ---------------')
+
+    lut = buildLut(P0, P1)
+
+    print('------------ mul ---------------')
+    print('b0 L-1: ' + str(b[0][L-1]))
+    Q = b[0][L-1] * lut[b[1][L-1] & 1]
+    for i in range(L-2, -1, -1):
+        Q *= 2
+        Q += b[0][i] * lut[b[1][i] & 1]
+
+    if even:
+        Q += P0
+
+    print('final Q: ' + pointToString(Q))
+    print('expected: ' + pointToString(expected))
+    assert Q == expected # TODO debug
 
 # Test generator
 set_random_seed(1337)
 
 for i in range(1):
     print('---------------------------------------')
-    scalarMulGLV()
+    # scalar = randrange(r) # Pick an integer below curve order
+    # P = G1.random_point()
+    scalar = Integer('0x0e08a292f940cfb361cc82bc24ca564f51453708c9745a9cf8707b11c84bc448')
+    P = G1([
+        Integer('0x22d3af0f3ee310df7fc1a2a204369ac13eb4a48d969a27fcd2861506b2dc0cd7'),
+        Integer('0x1c994169687886ccd28dd587c29c307fb3cab55d796d73a5be0bbf9aab69912e'),
+        Integer(1)
+    ])
+    scalarMulGLV(scalar, P)
