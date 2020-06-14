@@ -194,7 +194,7 @@ task test_no_gmp, "Run tests that don't require GMP":
     runBench("bench_fp2")
     runBench("bench_fp6")
     runBench("bench_fp12")
-    runBench("bench_ec_swei_proj_g1")
+    runBench("bench_ec_g1")
 
 task test_parallel, "Run all tests in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
@@ -282,7 +282,7 @@ task test_parallel, "Run all tests in parallel (via GNU parallel)":
     runBench("bench_fp2")
     runBench("bench_fp6")
     runBench("bench_fp12")
-    runBench("bench_ec_swei_proj_g1")
+    runBench("bench_ec_g1")
 
 task bench_fp, "Run benchmark 𝔽p with your default compiler":
   runBench("bench_fp")
