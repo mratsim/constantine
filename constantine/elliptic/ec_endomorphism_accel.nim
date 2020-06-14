@@ -17,7 +17,8 @@ import
   ../io/io_bigints,
   ../towers,
   ./ec_weierstrass_affine,
-  ./ec_weierstrass_projective
+  ./ec_weierstrass_projective,
+  ./ec_endomorphism_params
 
 # ############################################################
 #
@@ -70,9 +71,6 @@ type
     ## This means that GLV_SAC uses twice the size of a canonical integer
     ##
     ## Digit-Endianness is bigEndian
-
-  MultiScalar[M, LengthInBits: static int] = array[M, BigInt[LengthInBits]]
-    ## Decomposition of a secret scalar in multiple scalars
 
 const
   BitSize   = 2
@@ -149,9 +147,9 @@ proc `[]=`(recoding: var Recoded,
   slot[] = slot[] or shifted
 
 
-func nDimMultiScalarRecoding[M, LengthInBits, LengthInDigits: static int](
-    dst: var GLV_SAC[M, LengthInDigits],
-    src: MultiScalar[M, LengthInBits]
+func nDimMultiScalarRecoding[M, L: static int](
+    dst: var GLV_SAC[M, L],
+    src: MultiScalar[M, L]
   ) =
   ## This recodes N scalar for GLV multi-scalar multiplication
   ## with side-channel resistance.
@@ -203,19 +201,17 @@ func nDimMultiScalarRecoding[M, LengthInBits, LengthInDigits: static int](
   #   For that floored division, bji may be negative!!!
   # In particular floored division of -1 is -1 not 0.
   # This means that arithmetic right shift must be used instead of logical right shift
-  static: doAssert LengthInDigits == LengthInBits+1,
-    "Length in digits: " & $LengthInDigits & " Length in bits: " & $LengthInBits
-  # " # VScode broken highlight
+
   # assert src[0].isOdd - Only happen on implementation error, we don't want to leak a single bit
 
   var k = src # Keep the source multiscalar in registers
   template b: untyped {.dirty.} = dst
 
-  b[0][LengthInDigits-1] = 1
-  for i in 0 .. LengthInDigits-2:
+  b[0][L-1] = 1
+  for i in 0 .. L-2:
     b[0][i] = 2 * k[0].bit(i+1).int8 - 1
   for j in 1 .. M-1:
-    for i in 0 .. LengthInDigits-1:
+    for i in 0 .. L-1:
       let bji = b[0][i] * k[j].bit0.int8
       b[j][i] = bji
       # In the following equation
@@ -276,61 +272,6 @@ func buildLookupTable[M: static int, F](
     lut[u].sum(lut[u.clearBit(msb)], endomorphisms[msb])
     # } # highlight bug, ...
 
-# Chapter 6.3.1 - Guide to Pairing-based Cryptography
-const Lattice_BN254_Snarks_G1: array[2, array[2, tuple[b: BigInt[127], isNeg: bool]]] = [
-  # Curve of order 254 -> mini scalars of size 127
-  # u = 0x44E992B44A6909F1
-  [(BigInt[127].fromHex"0x89d3256894d213e3", false),                  # 2u + 1
-   (BigInt[127].fromHex"0x6f4d8248eeb859fd0be4e1541221250b", false)], # 6u² + 4u + 1
-  [(BigInt[127].fromHex"0x6f4d8248eeb859fc8211bbeb7d4f1128", false),  # 6u² + 2u
-   (BigInt[127].fromHex"0x89d3256894d213e3", true)]                   # -2u - 1
-]
-
-const Babai_BN254_Snarks_G1 = [
-  # Vector for Babai rounding
-  BigInt[127].fromHex"0x89d3256894d213e3",                            # 2u + 1
-  BigInt[127].fromHex"0x6f4d8248eeb859fd0be4e1541221250b"             # 6u² + 4u + 1
-]
-
-func decomposeScalar_BN254_Snarks_G1[M, scalBits, miniBits: static int](
-       scalar: BigInt[scalBits],
-       miniScalars: var MultiScalar[M, miniBits]
-     ) =
-  ## Decompose a secret scalar into mini-scalar exploiting
-  ## BN254_Snarks specificities.
-  ##
-  ## TODO: Generalize to all BN curves
-  ##       - needs a Lattice type
-  ##       - needs to better support negative bigints, (extra bit for sign?)
-
-  static: doAssert miniBits == (scalBits + M - 1) div M
-  # 𝛼0 = (0x2d91d232ec7e0b3d7 * s) >> 256
-  # 𝛼1 = (0x24ccef014a773d2d25398fd0300ff6565 * s) >> 256
-  const
-    w = BN254_Snarks.getCurveOrderBitwidth().wordsRequired()
-    alphaHats = (BigInt[66].fromHex"0x2d91d232ec7e0b3d7",
-                 BigInt[130].fromHex"0x24ccef014a773d2d25398fd0300ff6565")
-
-  var alphas{.noInit.}: array[M, BigInt[scalBits]] # TODO size 66+254 and 130+254
-
-  staticFor i, 0, M:
-    alphas[i].prod_high_words(alphaHats[i], scalar, w)
-
-  # We have k0 = s - 𝛼0 b00 - 𝛼1 b10
-  # and kj = 0 - 𝛼j b0j - 𝛼1 b1j
-  var k: array[M, BigInt[scalBits]]
-  k[0] = scalar
-  for miniScalarIdx in 0 ..< M:
-    for basisIdx in 0 ..< M:
-      var alphaB {.noInit.}: BigInt[scalBits]
-      alphaB.prod(alphas[basisIdx], Lattice_BN254_Snarks_G1[basisIdx][miniScalarIdx].b) # TODO small lattice size
-      if Lattice_BN254_Snarks_G1[basisIdx][miniScalarIdx].isNeg:
-        k[miniScalarIdx] += alphaB
-      else:
-        k[miniScalarIdx] -= alphaB
-
-    miniScalars[miniScalarIdx].copyTruncatedFrom(k[miniScalarIdx])
-
 func tableIndex(glv: GLV_SAC, bit: int): SecretWord =
   ## Compose the secret table index from
   ## the GLV-SAC representation and the "bit" accessed
@@ -353,9 +294,9 @@ func secretLookup[T](dst: var T, table: openArray[T], index: SecretWord) =
     let selector = SecretWord(i) == index
     dst.ccopy(table[i], selector)
 
-func scalarMulGLV_BN254*(
+func scalarMulGLV*[scalBits](
        P: var ECP_SWei_Proj,
-       scalar: BigInt[BN254_Snarks.getCurveOrderBitwidth()]
+       scalar: BigInt[scalBits]
      ) =
   ## Elliptic Curve Scalar Multiplication
   ##
@@ -363,19 +304,29 @@ func scalarMulGLV_BN254*(
   ##
   ## This is a scalar multiplication accelerated by an endomorphism
   ## via the GLV (Gallant-lambert-Vanstone) decomposition.
-  const M = 2
+  const C = P.F.C # curve
+  static: doAssert: scalBits == C.getCurveOrderBitwidth()
+  when P.F is Fp:
+    const M = 2
 
   # 1. Compute endomorphisms
   var endomorphisms: array[M-1, typeof(P)] # TODO: zero-init not required
   endomorphisms[0] = P
-  endomorphisms[0].x *= BN254_Snarks.getCubicRootOfUnity_mod_p()
+  endomorphisms[0].x *= C.getCubicRootOfUnity_mod_p()
 
   # 2. Decompose scalar into mini-scalars
-  const L = (BN254_Snarks.getCurveOrderBitwidth() + M - 1) div M + 1
-  var miniScalars: array[M, BigInt[L-1]] # TODO: zero-init not required
-  scalar.decomposeScalar_BN254_Snarks_G1(
-    miniScalars
-  )
+  const L = (C.getCurveOrderBitwidth() + M - 1) div M + 1
+  var miniScalars: array[M, BigInt[L]] # TODO: zero-init not required
+  when C == BN254_Snarks:
+    scalar.decomposeScalar_BN254_Snarks_G1(
+      miniScalars
+    )
+  elif C == BLS12_381:
+    scalar.decomposeScalar_BLS12_381_G1(
+      miniScalars
+    )
+  else:
+    {.error: "Unsupported curve for GLV acceleration".}
 
   # 3. TODO: handle negative mini-scalars
   #    Either negate the associated base and the scalar (in the `endomorphisms` array)

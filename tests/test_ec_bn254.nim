@@ -45,7 +45,7 @@ proc test(
 
     impl.scalarMulGeneric(exponentCanonical, scratchSpace)
     reference.unsafe_ECmul_double_add(exponentCanonical)
-    endo.scalarMulGLV_BN254(exponent)
+    endo.scalarMulGLV(exponent)
 
     doAssert: bool(Q == reference)
     doAssert: bool(Q == impl)

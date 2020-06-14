@@ -17,11 +17,14 @@ import
   ../constantine/config/curves,
   ../constantine/arithmetic,
   ../constantine/io/io_bigints,
+  ../constantine/elliptic/[ec_weierstrass_projective, ec_scalar_mul, ec_endomorphism_accel],
   # Helpers
   ../helpers/[prng_unsafe, static_for],
   ./platforms,
   # Standard library
-  std/[monotimes, times, strformat, strutils, macros]
+  std/[monotimes, times, strformat, strutils, macros],
+  # Reference unsafe scalar multiplication
+  ../tests/support/ec_reference_scalar_mult
 
 var rng: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
@@ -71,15 +74,15 @@ when SupportsGetTicks:
 echo "\n=================================================================================================================\n"
 
 proc separator*() =
-  echo "-".repeat(157)
+  echo "-".repeat(177)
 
 proc report(op, elliptic: string, start, stop: MonoTime, startClk, stopClk: int64, iters: int) =
   let ns = inNanoseconds((stop-start) div iters)
   let throughput = 1e9 / float64(ns)
   when SupportsGetTicks:
-    echo &"{op:<40} {elliptic:<40} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
+    echo &"{op:<60} {elliptic:<40} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
   else:
-    echo &"{op:<40} {elliptic:<40} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
+    echo &"{op:<60} {elliptic:<40} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
 
 macro fixEllipticDisplay(T: typedesc): untyped =
   # At compile-time, enums are integers and their display is buggy
@@ -124,7 +127,7 @@ proc scalarMulGenericBench*(T: typedesc, scratchSpaceSize: static int, iters: in
   const bits = T.F.C.getCurveOrderBitwidth()
 
   var r {.noInit.}: T
-  let P = rng.random_unsafe(T)
+  let P = rng.random_unsafe(T) # TODO: clear cofactor
 
   let exponent = rng.random_unsafe(BigInt[bits])
   var exponentCanonical{.noInit.}: array[(bits+7) div 8, byte]
@@ -136,18 +139,28 @@ proc scalarMulGenericBench*(T: typedesc, scratchSpaceSize: static int, iters: in
     r = P
     r.scalarMulGeneric(exponentCanonical, scratchSpace)
 
-# import ../tests/support/ec_reference_scalar_mult
-#
-# proc scalarMulUnsafeDoubleAddBench*(T: typedesc, iters: int) =
-#   const bits = T.F.C.getCurveOrderBitwidth()
-#
-#   var r {.noInit.}: T
-#   let P = rng.random_unsafe(T)
-#
-#   let exponent = rng.random_unsafe(BigInt[bits])
-#   var exponentCanonical{.noInit.}: array[(bits+7) div 8, byte]
-#   exponentCanonical.exportRawUint(exponent, bigEndian)
-#
-#   bench("EC ScalarMul G1 (unsafe DoubleAdd)", T, iters):
-#     r = P
-#     r.unsafe_ECmul_double_add(exponentCanonical)
+proc scalarMulGLV*(T: typedesc, iters: int) =
+  const bits = T.F.C.getCurveOrderBitwidth()
+
+  var r {.noInit.}: T
+  let P = rng.random_unsafe(T) # TODO: clear cofactor
+
+  let exponent = rng.random_unsafe(BigInt[bits])
+
+  bench("EC ScalarMul G1 (GLV endomorphism accelerated)", T, iters):
+    r = P
+    r.scalarMulGLV(exponent)
+
+proc scalarMulUnsafeDoubleAddBench*(T: typedesc, iters: int) =
+  const bits = T.F.C.getCurveOrderBitwidth()
+
+  var r {.noInit.}: T
+  let P = rng.random_unsafe(T) # TODO: clear cofactor
+
+  let exponent = rng.random_unsafe(BigInt[bits])
+  var exponentCanonical{.noInit.}: array[(bits+7) div 8, byte]
+  exponentCanonical.exportRawUint(exponent, bigEndian)
+
+  bench("EC ScalarMul G1 (unsafe reference DoubleAdd)", T, iters):
+    r = P
+    r.unsafe_ECmul_double_add(exponentCanonical)

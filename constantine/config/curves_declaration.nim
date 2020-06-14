@@ -144,7 +144,7 @@ declareCurves:
     modulus: "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab"
     family: BarretoLynnScott
     # u: -(2^63 + 2^62 + 2^60 + 2^57 + 2^48 + 2^16)
-    cubicRootOfUnity_mod_p: "0x5f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffe"
+    cubicRootOfUnity_mod_p: "0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaac"
 
     # G1 Equation: y² = x³ + 4
     # G2 Equation: y² = x³ + 4 (1+i)

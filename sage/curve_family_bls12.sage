@@ -55,8 +55,8 @@ def compute_curve_characteristic(u_str):
   print(f'        Lattice b2: ' + str(['0x' + b.hex() for b in [1, u^2]]))
 
   # Babai rounding
-  ahat1 = 2*u+1
-  ahat2 = 6*u^2+4*u+1
+  ahat1 = u^2
+  ahat2 = 1
   # We want a1 = ahat1 * s/r with m = 2 (for a 2-dim decomposition) and r the curve order
   # To handle rounding errors we instead multiply by
   # 𝜈 = (2^WordBitWidth)^w (i.e. the same as the R magic constant for Montgomery arithmetic)
@@ -70,8 +70,8 @@ def compute_curve_characteristic(u_str):
   print(f'        𝛼\u03021: ' + '0x' + ahat1.hex())
   print(f'        𝛼\u03022: ' + '0x' + ahat2.hex())
   print(f'      Handle rounding errors')
-  print(f'        𝛼1 = 𝛼\u03021 * s / r with 𝛼1 = (𝛼\u03021 * 𝜈/r) * s/𝜈')
-  print(f'        𝛼2 = 𝛼\u03022 * s / r with 𝛼2 = (𝛼\u03022 * 𝜈/r) * s/𝜈')
+  print(f'        𝛼\u03051 = 𝛼\u03021 * s / r with 𝛼1 = (𝛼\u03021 * 𝜈/r) * s/𝜈')
+  print(f'        𝛼\u03052 = 𝛼\u03022 * s / r with 𝛼2 = (𝛼\u03022 * 𝜈/r) * s/𝜈')
   print(f'        -----------------------------------------------------')
   l1 = Integer(ahat1 << v) // r
   l2 = Integer(ahat2 << v) // r

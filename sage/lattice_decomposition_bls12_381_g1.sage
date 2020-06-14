@@ -14,19 +14,20 @@
 # ############################################################
 
 # Parameters
-u = Integer('0x44E992B44A6909F1')
-p = 36*u^4 + 36*u^3 + 24*u^2 + 6*u + 1
-r = 36*u^4 + 36*u^3 + 18*u^2 + 6*u + 1
-cofactor = 1
+u = -(2^63 + 2^62 + 2^60 + 2^57 + 2^48 + 2^16)
+p = (u - 1)^2 * (u^4 - u^2 + 1)//3 + u
+r = u^4 - u^2 + 1
+cofactor = Integer('0x396c8c005555e1568c00aaab0000aaab')
+print('p  : ' + p.hex())
+print('r  : ' + r.hex())
 
-# Cube root of unity (mod r) formula for any BN curves
-lambda1_r = (-(36*u^3+18*u^2+6*u+2))
+# Cube root of unity (mod r) formula for any BLS12 curves
+lambda1_r = u^2 - 1
 assert lambda1_r^3 % r == 1
 print('λᵩ1  : ' + lambda1_r.hex())
 print('λᵩ1+r: ' + (lambda1_r+r).hex())
-print('λᵩ1+r: ' + (lambda1_r+r).hex())
 
-lambda2_r = (36*u^4-1)
+lambda2_r = u^4
 assert lambda2_r^3 % r == 1
 print('λᵩ2  : ' + lambda2_r.hex())
 
@@ -40,17 +41,27 @@ F       = GF(p)
 # K12.<gamma> = F6.extension(w^2-eta)
 
 # Curves
-b = 3
+b = 4
 G1 = EllipticCurve(F, [0, b])
-# G2 = EllipticCurve(F2, [0, b/beta])
+# G2 = EllipticCurve(F2, [0, b*beta])
 
 (phi1, phi2) = (root for root in GF(p)(1).nth_root(3, all=True) if root != 1)
 print('𝜑1  :' + Integer(phi1).hex())
 print('𝜑2  :' + Integer(phi2).hex())
+assert phi1^3 % p == 1
+assert phi2^3 % p == 1
+
+# Test generator
+set_random_seed(1337)
 
 # Check
 def checkEndo():
-    P = G1.random_point()
+    Prand = G1.random_point()
+    assert Prand != G1([0, 1, 0]) # Infinity
+
+    # Clear cofactor
+    P = Prand * cofactor
+
     (Px, Py, Pz) = P
     Qendo1 = G1([Px*phi1 % p, Py, Pz])
     Qendo2 = G1([Px*phi2 % p, Py, Pz])
@@ -61,24 +72,29 @@ def checkEndo():
     assert P != Q1
     assert P != Q2
 
-    assert Q1 == Qendo1
-    assert Q2 == Qendo1
+    assert (F(Px)*F(phi1))^3 == F(Px)^3
+    assert (F(Px)*F(phi2))^3 == F(Px)^3
 
-    print('Endomorphism OK with 𝜑1')
+    assert Q1 == Qendo2
+    assert Q2 == Qendo2
+
+    print('Endomorphism OK with 𝜑2')
 
 checkEndo()
 
 # Lattice
 b = [
-  [2*u+1, 6*u^2+4*u+1],
-  [6*u^2+2*u,  -2*u-1]
+  [u^2-1, -1],
+  [1,  u^2]
 ]
 # Babai rounding
-ahat = [2*u+1, 6*u^2+4*u+1]
+ahat = [u^2, 1]
 v = int(r).bit_length()
 v = int(((v + 64 - 1) // 64) * 64) # round to next multiple of 64
 
 l = [Integer(a << v) // r for a in ahat]
+print('𝛼\u03051: ' + l[0].hex())
+print('𝛼\u03052: ' + l[1].hex())
 
 def getGLV2_decomp(scalar):
 
@@ -98,14 +114,14 @@ def getGLV2_decomp(scalar):
 
 def recodeScalars(k):
     m = 2
-    l = ((int(r).bit_length() + m-1) // m) + 1 # l = ⌈log2 r/m⌉ + 1
+    L = ((int(r).bit_length() + m-1) // m) + 1 # l = ⌈log2 r/m⌉ + 1
 
-    b = [[0] * l, [0] * l]
-    b[0][l-1] = 1
-    for i in range(0, l-1): # l-2 inclusive
+    b = [[0] * L, [0] * L]
+    b[0][L-1] = 1
+    for i in range(0, L-1): # l-2 inclusive
         b[0][i] = 2 * ((k[0] >> (i+1)) & 1) - 1
     for j in range(1, m):
-        for i in range(0, l):
+        for i in range(0, L):
             b[j][i] = b[0][i] * (k[j] & 1)
             k[j] = (k[j]//2) - (b[j][i] // 2)
 
@@ -136,7 +152,7 @@ def scalarMulGLV(scalar, P0):
 
     P1 = (lambda1_r % r) * P0
     (Px, Py, Pz) = P0
-    P1_endo = G1([Px*phi1 % p, Py, Pz])
+    P1_endo = G1([Px*phi2 % p, Py, Pz])
     assert P1 == P1_endo
 
     expected = scalar * P0
@@ -177,10 +193,10 @@ for i in range(1):
     print('---------------------------------------')
     # scalar = randrange(r) # Pick an integer below curve order
     # P = G1.random_point()
-    scalar = Integer('0x0e08a292f940cfb361cc82bc24ca564f51453708c9745a9cf8707b11c84bc448')
+    scalar = Integer('0xf7e60a832eb77ac47374bc93251360d6c81c21add62767ff816caf11a20d8db')
     P = G1([
-        Integer('0x22d3af0f3ee310df7fc1a2a204369ac13eb4a48d969a27fcd2861506b2dc0cd7'),
-        Integer('0x1c994169687886ccd28dd587c29c307fb3cab55d796d73a5be0bbf9aab69912e'),
+        Integer('0xf9679bb02ee7f352fff6a6467a5e563ec8dd38c86a48abd9e8f7f241f1cdd29d54bc3ddea3a33b62e0d7ce22f3d244a'),
+        Integer('0x50189b992cf856846b30e52205ff9ef72dc081e9680726586231cbc29a81a162120082585f401e00382d5c86fb1083f'),
         Integer(1)
     ])
     scalarMulGLV(scalar, P)
