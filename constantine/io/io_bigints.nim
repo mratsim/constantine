@@ -12,8 +12,7 @@
 
 import
   ../primitives/constant_time,
-  ../arithmetic/bigints,
-  ../config/common
+  ../config/[common, type_bigint]
 
 # ############################################################
 #

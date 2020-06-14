@@ -6,7 +6,7 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import  unittest,
+import  std/unittest,
         ../constantine/io/io_bigints,
         ../constantine/arithmetic,
         ../constantine/config/common,
@@ -137,6 +137,131 @@ proc mainArith() =
 
         discard a.add(SecretWord 1)
         check: bool(a == expected)
+
+  suite "Multi-precision multiplication":
+    test "Same size operand into double size result":
+      block:
+        var r: BigInt[256]
+        let a = BigInt[128].fromHex"0x12345678_FF11FFAA_00321321_CAFECAFE"
+        let b = BigInt[128].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF"
+
+        let expected = BigInt[256].fromHex"fd5bdef43d64113f371ab5d8843beca889c07fd549b84d8a5001a8f102e0722"
+
+        r.prod(a, b)
+        check: bool(r == expected)
+        r.prod(b, a)
+        check: bool(r == expected)
+
+    test "Different size into large result":
+      block:
+        var r: BigInt[200]
+        let a = BigInt[29].fromHex"0x12345678"
+        let b = BigInt[128].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF"
+
+        let expected = BigInt[200].fromHex"fd5bdee65f787f665f787f665f787f65621ca08"
+
+        r.prod(a, b)
+        check: bool(r == expected)
+        r.prod(b, a)
+        check: bool(r == expected)
+
+    test "Destination is properly zero-padded if multiplicands are too short":
+      block:
+        var r = BigInt[200].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF_DE"
+        let a = BigInt[29].fromHex"0x12345678"
+        let b = BigInt[128].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF"
+
+        let expected = BigInt[200].fromHex"fd5bdee65f787f665f787f665f787f65621ca08"
+
+        r.prod(a, b)
+        check: bool(r == expected)
+        r.prod(b, a)
+        check: bool(r == expected)
+
+  suite "Multi-precision multiplication keeping only high words":
+    test "Same size operand into double size result - discard first word":
+      block:
+        var r: BigInt[256]
+        let a = BigInt[128].fromHex"0x12345678_FF11FFAA_00321321_CAFECAFE"
+        let b = BigInt[128].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF"
+
+        when WordBitWidth == 32:
+          let expected = BigInt[256].fromHex"fd5bdef43d64113f371ab5d8843beca889c07fd549b84d8a5001a8f"
+        else:
+          let expected = BigInt[256].fromHex"fd5bdef43d64113f371ab5d8843beca889c07fd549b84d8"
+
+        r.prod_high_words(a, b, 1)
+        check: bool(r == expected)
+        r.prod_high_words(b, a, 1)
+        check: bool(r == expected)
+
+    test "Same size operand into double size result - discard first 3 words":
+      block:
+        var r: BigInt[256]
+        let a = BigInt[128].fromHex"0x12345678_FF11FFAA_00321321_CAFECAFE"
+        let b = BigInt[128].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF"
+
+        when WordBitWidth == 32:
+          let expected = BigInt[256].fromHex"fd5bdef43d64113f371ab5d8843beca889c07fd"
+        else:
+          let expected = BigInt[256].fromHex"fd5bdef43d64113"
+
+        r.prod_high_words(a, b, 3)
+        check: bool(r == expected)
+        r.prod_high_words(b, a, 3)
+        check: bool(r == expected)
+
+    test "All lower words trigger a carry":
+      block:
+        var r: BigInt[256]
+        let a = BigInt[256].fromHex"0xFFFFF000_FFFFF111_FFFFFFFA_FFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF"
+        let b = BigInt[256].fromHex"0xFFFFFFFF_FFFFF222_FFFFFFFB_FFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF"
+
+        # Full product:
+        # fffff000_ffffe335_00ddc21a_00cf3972_00008109_00000013_ffffffff_fffffffe
+        # 00000fff_00001ccb_00000009_00000000_00000000_00000000_00000000_00000001
+        let expected = BigInt[256].fromHex"0xfffff000_ffffe335_00ddc21a_00cf3972_00008109_00000013_ffffffff_fffffffe"
+        when WordBitWidth == 32:
+          const startWord = 8
+        else:
+          const startWord = 4
+
+        r.prod_high_words(a, b, startWord)
+        check: bool(r == expected)
+        r.prod_high_words(b, a, startWord)
+        check: bool(r == expected)
+
+    test "Different size into large result":
+      block:
+        var r: BigInt[200]
+        let a = BigInt[29].fromHex"0x12345678"
+        let b = BigInt[128].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF"
+
+        when WordBitWidth == 32:
+          let expected = BigInt[200].fromHex"fd5bdee65f787f665f787f6"
+        else:
+          let expected = BigInt[200].fromHex"fd5bdee"
+
+        r.prod_high_words(a, b, 2)
+        check: bool(r == expected)
+        r.prod_high_words(b, a, 2)
+        check: bool(r == expected)
+
+    test "Destination is properly zero-padded if multiplicands are too short":
+      block:
+        var r = BigInt[200].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF_DE"
+        let a = BigInt[29].fromHex"0x12345678"
+        let b = BigInt[128].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF"
+
+        when WordBitWidth == 32:
+          let expected = BigInt[200].fromHex"fd5bdee65f787f665f787f6"
+        else:
+          let expected = BigInt[200].fromHex"fd5bdee"
+
+        r.prod_high_words(a, b, 2)
+        check: bool(r == expected)
+        r.prod_high_words(b, a, 2)
+        check: bool(r == expected)
 
   suite "Modular operations - small modulus":
     # Vectors taken from Stint - https://github.com/status-im/nim-stint

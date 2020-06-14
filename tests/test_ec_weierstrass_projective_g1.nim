@@ -8,12 +8,12 @@
 
 import
   # Standard library
-  unittest, times,
+  std/[unittest, times],
   # Internals
   ../constantine/config/[common, curves],
   ../constantine/arithmetic,
   ../constantine/io/io_bigints,
-  ../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective],
+  ../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective, ec_scalar_mul],
   # Test utilities
   ../helpers/prng_unsafe,
   ./support/ec_reference_scalar_mult
@@ -194,7 +194,7 @@ suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with project
           reference = a
           scratchSpace{.noInit.}: array[1 shl 4, ECP_SWei_Proj[F]]
 
-        impl.scalarMul(exponentCanonical, scratchSpace)
+        impl.scalarMulGeneric(exponentCanonical, scratchSpace)
         reference.unsafe_ECmul_double_add(exponentCanonical)
 
         check:
@@ -223,7 +223,7 @@ suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with project
           reference = a
           scratchSpace{.noInit.}: array[1 shl 4, ECP_SWei_Proj[F]]
 
-        impl.scalarMul(exponentCanonical, scratchSpace)
+        impl.scalarMulGeneric(exponentCanonical, scratchSpace)
         reference.unsafe_ECmul_double_add(exponentCanonical)
 
         check:
@@ -256,7 +256,7 @@ suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with project
           reference = a
           scratchSpace{.noInit.}: array[1 shl 4, ECP_SWei_Proj[F]]
 
-        impl.scalarMul(exponentCanonical, scratchSpace)
+        impl.scalarMulGeneric(exponentCanonical, scratchSpace)
         reference.unsafe_ECmul_double_add(exponentCanonical)
 
         check:
@@ -288,7 +288,7 @@ suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with project
           reference = a
           scratchSpace{.noInit.}: array[1 shl 4, ECP_SWei_Proj[F]]
 
-        impl.scalarMul(exponentCanonical, scratchSpace)
+        impl.scalarMulGeneric(exponentCanonical, scratchSpace)
         reference.unsafe_ECmul_double_add(exponentCanonical)
 
         check:
@@ -323,20 +323,20 @@ suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with project
         fImpl.sum(a, b)
         fReference.sum(a, b)
 
-        fImpl.scalarMul(exponentCanonical, scratchSpace)
+        fImpl.scalarMulGeneric(exponentCanonical, scratchSpace)
         fReference.unsafe_ECmul_double_add(exponentCanonical)
 
         # [k]a + [k]b - Distributed
         var kaImpl = a
         var kaRef = a
 
-        kaImpl.scalarMul(exponentCanonical, scratchSpace)
+        kaImpl.scalarMulGeneric(exponentCanonical, scratchSpace)
         kaRef.unsafe_ECmul_double_add(exponentCanonical)
 
         var kbImpl = b
         var kbRef = b
 
-        kbImpl.scalarMul(exponentCanonical, scratchSpace)
+        kbImpl.scalarMulGeneric(exponentCanonical, scratchSpace)
         kbRef.unsafe_ECmul_double_add(exponentCanonical)
 
         var kakbImpl{.noInit.}, kakbRef{.noInit.}: ECP_SWei_Proj[F]
@@ -370,7 +370,7 @@ suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with project
           reference = a
           scratchSpace{.noInit.}: array[1 shl 4, ECP_SWei_Proj[F]]
 
-        impl.scalarMul(exponentCanonical, scratchSpace)
+        impl.scalarMulGeneric(exponentCanonical, scratchSpace)
         reference.unsafe_ECmul_double_add(exponentCanonical)
 
         check: bool(impl == reference)

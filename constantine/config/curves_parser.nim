@@ -10,7 +10,8 @@ import
   # Standard library
   std/[macros, strutils],
   # Internal
-  ../io/io_bigints, ../arithmetic/[bigints, precomputed]
+  ../io/io_bigints,
+  ./type_bigint
 
 # Parsing is done in 2 steps:
 # 1. All declared parameters are collected in a {.compileTime.} seq[CurveParams]
@@ -108,6 +109,10 @@ type
     sexticTwist: SexticTwist
     sexticNonResidue_fp2: NimNode # nnkPar(nnkIntLit, nnkIntLit)
 
+    # Endomorphisms
+    cubicRootOfUnity_modP: NimNode # nnkStrLit
+    cubicRootOfUnity_modR: NimNode # nnkStrLit
+
     family: CurveFamily
     # BN family
     # ------------------------
@@ -181,6 +186,10 @@ proc parseCurveDecls(defs: var seq[CurveParams], curves: NimNode) =
         params.bn_u_bitwidth = sectionVal
       elif sectionId.eqIdent"bn_u":
         params.bn_u = sectionVal
+      elif sectionId.eqident"cubicRootOfUnity_modP":
+        params.cubicRootOfUnity_modP = sectionVal
+      elif sectionId.eqident"cubicRootOfUnity_modR":
+        params.cubicRootOfUnity_modR = sectionVal
       elif sectionId.eqIdent"eq_form":
         params.eq_form = parseEnum[CurveEquationForm]($sectionVal)
       elif sectionId.eqIdent"coef_a":
@@ -271,6 +280,7 @@ proc genMainConstants(defs: var seq[CurveParams]): NimNode =
     MapCurveFamily.add nnkExprColonExpr.newTree(
         curve, newLit(family)
     )
+
     # Curve equation
     # -----------------------------------------------
     curveEllipticStmts.add newConstStmt(
@@ -311,6 +321,19 @@ proc genMainConstants(defs: var seq[CurveParams]): NimNode =
       curveEllipticStmts.add newConstStmt(
         exported($curve & "_sexticNonResidue_fp2"),
         curveDef.sexticNonResidue_fp2
+      )
+
+    # Endomorphisms
+    # -----------------------------------------------
+    if not curveDef.cubicRootOfUnity_modP.isNil:
+      curveExtraStmts.add newConstStmt(
+        exported($curve & "_cubicRootOfUnity_modP_Hex"),
+        curveDef.cubicRootOfUnity_modP
+      )
+    if not curveDef.cubicRootOfUnity_modR.isNil:
+      curveExtraStmts.add newConstStmt(
+        exported($curve & "_cubicRootOfUnity_modR_Hex"),
+        curveDef.cubicRootOfUnity_modR
       )
 
     # BN curves

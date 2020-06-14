@@ -8,7 +8,6 @@
 
 import
   ../arithmetic,
-  ../config/common,
   ../primitives,
   ./tower_common
 

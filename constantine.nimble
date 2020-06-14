@@ -59,7 +59,7 @@ task test, "Run all tests":
   test "", "tests/test_bigints.nim"
   test "", "tests/test_bigints_multimod.nim"
 
-  test "", "tests/test_bigints_vs_gmp.nim"
+  test "", "tests/test_bigints_mod_vs_gmp.nim"
 
   # Field
   test "", "tests/test_io_fields"
@@ -69,6 +69,9 @@ task test, "Run all tests":
   test "", "tests/test_finite_fields_powinv.nim"
 
   test "", "tests/test_finite_fields_vs_gmp.nim"
+
+  # Precompute
+  test "", "tests/test_precomputed"
 
   # Towers of extension fields
   test "", "tests/test_fp2.nim"
@@ -89,7 +92,7 @@ task test, "Run all tests":
     test "-d:Constantine32", "tests/test_bigints.nim"
     test "-d:Constantine32", "tests/test_bigints_multimod.nim"
 
-    test "-d:Constantine32", "tests/test_bigints_vs_gmp.nim"
+    test "-d:Constantine32", "tests/test_bigints_mod_vs_gmp.nim"
 
     # Field
     test "-d:Constantine32", "tests/test_io_fields"
@@ -99,6 +102,9 @@ task test, "Run all tests":
     test "-d:Constantine32", "tests/test_finite_fields_powinv.nim"
 
     test "-d:Constantine32", "tests/test_finite_fields_vs_gmp.nim"
+
+    # Precompute
+    test "-d:Constantine32", "tests/test_precomputed"
 
     # Towers of extension fields
     test "-d:Constantine32", "tests/test_fp2.nim"
@@ -118,7 +124,7 @@ task test, "Run all tests":
     runBench("bench_fp2")
     runBench("bench_fp6")
     runBench("bench_fp12")
-    runBench("bench_ec_swei_proj_g1")
+    runBench("bench_ec_g1")
 
 task test_no_gmp, "Run tests that don't require GMP":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
@@ -137,6 +143,9 @@ task test_no_gmp, "Run tests that don't require GMP":
   test "", "tests/test_finite_fields_mulsquare.nim"
   test "", "tests/test_finite_fields_sqrt.nim"
   test "", "tests/test_finite_fields_powinv.nim"
+
+  # Precompute
+  test "", "tests/test_precomputed"
 
   # Towers of extension fields
   test "", "tests/test_fp2.nim"
@@ -164,6 +173,9 @@ task test_no_gmp, "Run tests that don't require GMP":
     test "-d:Constantine32", "tests/test_finite_fields_sqrt.nim"
     test "-d:Constantine32", "tests/test_finite_fields_powinv.nim"
 
+    # Precompute
+    test "-d:Constantine32", "tests/test_precomputed"
+
     # Towers of extension fields
     test "-d:Constantine32", "tests/test_fp2.nim"
     test "-d:Constantine32", "tests/test_fp6.nim"
@@ -182,7 +194,7 @@ task test_no_gmp, "Run tests that don't require GMP":
     runBench("bench_fp2")
     runBench("bench_fp6")
     runBench("bench_fp12")
-    runBench("bench_ec_swei_proj_g1")
+    runBench("bench_ec_g1")
 
 task test_parallel, "Run all tests in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
@@ -197,7 +209,8 @@ task test_parallel, "Run all tests in parallel (via GNU parallel)":
   test "", "tests/test_bigints.nim", cmdFile
   test "", "tests/test_bigints_multimod.nim", cmdFile
 
-  test "", "tests/test_bigints_vs_gmp.nim", cmdFile
+  test "", "tests/test_bigints_mul_vs_gmp.nim", cmdFile
+  test "", "tests/test_bigints_mod_vs_gmp.nim", cmdFile
 
   # Field
   test "", "tests/test_io_fields", cmdFile
@@ -233,7 +246,8 @@ task test_parallel, "Run all tests in parallel (via GNU parallel)":
     test "-d:Constantine32", "tests/test_bigints.nim", cmdFile
     test "-d:Constantine32", "tests/test_bigints_multimod.nim", cmdFile
 
-    test "-d:Constantine32", "tests/test_bigints_vs_gmp.nim", cmdFile
+    test "-d:Constantine32", "tests/test_bigints_mul_vs_gmp.nim", cmdFile
+    test "-d:Constantine32", "tests/test_bigints_mod_vs_gmp.nim", cmdFile
 
     # Field
     test "-d:Constantine32", "tests/test_io_fields", cmdFile
@@ -268,7 +282,7 @@ task test_parallel, "Run all tests in parallel (via GNU parallel)":
     runBench("bench_fp2")
     runBench("bench_fp6")
     runBench("bench_fp12")
-    runBench("bench_ec_swei_proj_g1")
+    runBench("bench_ec_g1")
 
 task bench_fp, "Run benchmark 𝔽p with your default compiler":
   runBench("bench_fp")
@@ -306,11 +320,11 @@ task bench_fp12_gcc, "Run benchmark 𝔽p12 with gcc":
 task bench_fp12_clang, "Run benchmark 𝔽p12 with clang":
   runBench("bench_fp12", "clang")
 
-task bench_ec_swei_proj_g1, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weierstrass with Projective Coordinates - GCC":
-  runBench("bench_ec_swei_proj_g1")
+task bench_ec_g1, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weierstrass with Projective Coordinates - GCC":
+  runBench("bench_ec_g1")
 
-task bench_ec_swei_proj_g1_gcc, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weierstrass with Projective Coordinates - GCC":
-  runBench("bench_ec_swei_proj_g1", "gcc")
+task bench_ec_gcc, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weierstrass with Projective Coordinates - GCC":
+  runBench("bench_ec_g1", "gcc")
 
-task bench_ec_swei_proj_g1_clang, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weierstrass with Projective Coordinates - Clang":
-  runBench("bench_ec_swei_proj_g1", "clang")
+task bench_ec_g1_clang, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weierstrass with Projective Coordinates - Clang":
+  runBench("bench_ec_g1", "clang")

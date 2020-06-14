@@ -37,7 +37,11 @@ set_random_seed(1337)
 
 for i in range(10):
     print('---------------------------------------')
-    P = G1.random_point()
+    Prand = G1.random_point()
+
+    # Clear cofactor
+    P = Prand * cofactor
+
     (Px, Py, Pz) = P
     print('Px: ' + Integer(Px).hex())
     print('Py: ' + Integer(Py).hex())
@@ -50,7 +54,7 @@ for i in range(10):
     print('Qx: ' + Integer(Qx).hex())
     print('Qy: ' + Integer(Qy).hex())
     print('Qz: ' + Integer(Qz).hex())
-
+print('=========================================')
 
 # CurveOrder sanity check
 #

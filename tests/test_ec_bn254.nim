@@ -8,12 +8,12 @@
 
 import
   # Standard library
-  unittest, times,
+  std/[unittest, times],
   # Internals
   ../constantine/config/[common, curves],
   ../constantine/arithmetic,
   ../constantine/io/[io_bigints, io_ec],
-  ../constantine/elliptic/[ec_weierstrass_projective],
+  ../constantine/elliptic/[ec_weierstrass_projective, ec_scalar_mul, ec_endomorphism_accel],
   # Test utilities
   ./support/ec_reference_scalar_mult
 
@@ -33,22 +33,25 @@ proc test(
     var Q: EC
     let qOK = Q.fromHex(Qx, Qy)
 
-    let exponent = EC.F.C.matchingBigInt.fromHex(scalar)
+    let exponent = BigInt[EC.F.C.getCurveOrderBitwidth()].fromHex(scalar)
     var exponentCanonical: array[(exponent.bits+7) div 8, byte]
     exponentCanonical.exportRawUint(exponent, bigEndian)
 
     var
       impl = P
       reference = P
+      endo = P
       scratchSpace: array[1 shl 4, EC]
 
-    impl.scalarMul(exponentCanonical, scratchSpace)
+    impl.scalarMulGeneric(exponentCanonical, scratchSpace)
     reference.unsafe_ECmul_double_add(exponentCanonical)
+    endo.scalarMulGLV(exponent)
 
     doAssert: bool(Q == reference)
     doAssert: bool(Q == impl)
+    doAssert: bool(Q == endo)
 
-suite "BN254 implementation (and unsafe reference impl) vs SageMath":
+suite "Scalar Multiplication: BN254 implementation (and unsafe reference impl) vs SageMath":
   # Generated via sage sage/testgen_bn254_snarks.sage
   test(
     id = 1,

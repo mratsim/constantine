@@ -12,7 +12,10 @@
 #
 # ############################################################
 
-import ./constant_time_types, ./addcarry_subborrow
+import
+  ./constant_time_types,
+  ./addcarry_subborrow,
+  ./constant_time
 
 # ############################################################
 #
@@ -88,7 +91,7 @@ when sizeof(int) == 8:
       from ./extended_precision_64bit_uint128 import mul, muladd1, muladd2
     else:
       from ./extended_precision_64bit_uint128 import unsafeDiv2n1n, mul, muladd1, muladd2
-  export unsafeDiv2n1n, muladd1, muladd2
+  export unsafeDiv2n1n, mul, muladd1, muladd2
 
 # ############################################################
 #
@@ -126,3 +129,12 @@ func mulDoubleAdd2*[T: Ct[uint32]|Ct[uint64]](r2: var Carry, r1, r0: var T, a, b
   # result at most in (carry: 1, hi: 0xFFFFFFFF_FFFFFFFF, lo: 0x00000000_00000000)
   addC(carry, r0, r0, dLo, Carry(0))
   addC(carry, r1, r1, T(dHi), carry)
+
+func mulAcc*[T: Ct[uint32]|Ct[uint64]](t, u, v: var T, a, b: T) {.inline.} =
+  ## (t, u, v) <- (t, u, v) + a * b
+  var UV: array[2, T]
+  var carry: Carry
+  mul(UV[1], UV[0], a, b)
+  addC(carry, v, v, UV[0], Carry(0))
+  addC(carry, u, u, UV[1], carry)
+  t += T(carry)

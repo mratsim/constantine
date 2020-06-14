@@ -9,7 +9,6 @@
 import
   ./io_bigints, ./io_fields,
   ../config/curves,
-  ../arithmetic/[bigints, finite_fields],
   ../elliptic/[
     ec_weierstrass_affine,
     ec_weierstrass_projective
@@ -38,12 +37,14 @@ func toHex*(P: ECP_SWei_Proj): string =
   ## TODO: only normalize and don't display the Z coordinate
   ##
   ## This proc output may change format in the future
-  result = $P.F.C & "(x: "
-  result &= P.x.tohex(bigEndian)
+
+  var aff {.noInit.}: typeof(P)
+  aff.affineFromProjective(P)
+
+  result = $aff.F.C & "(x: "
+  result &= aff.x.tohex(bigEndian)
   result &= ", y: "
-  result &= P.y.tohex(bigEndian)
-  result &= ", z: "
-  result &= P.y.tohex(bigEndian)
+  result &= aff.y.tohex(bigEndian)
   result &= ')'
 
 func fromHex*(dst: var ECP_SWei_Proj, x, y: string): bool {.raises: [ValueError].}=

@@ -24,7 +24,7 @@ template repeat(num: int, body: untyped) =
 
 # Secp256k1
 # ------------------------------------------------------------
-func invmod_addchain(r: var Fp[Secp256k1], a: Fp[Secp256k1]) =
+func invmod_addchain(r: var Fp[Secp256k1], a: Fp[Secp256k1]) {.used.}=
   ## We invert via Little Fermat's theorem
   ## a^(-1) ≡ a^(p-2) (mod p)
   ## with p = "0xFFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2F"
@@ -120,7 +120,7 @@ func invmod_addchain(r: var Fp[Secp256k1], a: Fp[Secp256k1]) =
 # Note: it only works for u positive, in particular BN254 doesn't work :/
 #       Is there a way to only use a^-u or even powers?
 
-func invmod_addchain_bn[C](r: var Fp[C], a: Fp[C]) =
+func invmod_addchain_bn[C](r: var Fp[C], a: Fp[C]) {.used.}=
   ## Inversion on BN prime fields with positive base parameter `u`
   ## via Little Fermat theorem and leveraging the prime low Hamming weight
   ##

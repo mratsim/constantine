@@ -7,9 +7,11 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/common,
+  ../config/[common, type_bigint],
   ../primitives,
   ./limbs, ./limbs_montgomery, ./limbs_modular
+
+export BigInt
 
 # ############################################################
 #
@@ -55,41 +57,6 @@ import
 # having redundant representations that forces costly reductions before multiplications.
 # https://github.com/mratsim/constantine/issues/15
 
-func wordsRequired(bits: int): int {.compileTime.} =
-  ## Compute the number of limbs required
-  # from the **announced** bit length
-  (bits + WordBitWidth - 1) div WordBitWidth
-
-type
-  BigInt*[bits: static int] = object
-    ## Fixed-precision big integer
-    ##
-    ## - "bits" is the announced bit-length of the BigInt
-    ##   This is public data, usually equal to the curve prime bitlength.
-    ##
-    ## - "limbs" is an internal field that holds the internal representation
-    ##   of the big integer. Least-significant limb first. Within limbs words are native-endian.
-    ##
-    ## This internal representation can be changed
-    ## without notice and should not be used by external applications or libraries.
-    limbs*: array[bits.wordsRequired, SecretWord]
-
-# For unknown reason, `bits` doesn't semcheck if
-#   `limbs: Limbs[bits.wordsRequired]`
-# with
-#   `Limbs[N: static int] = distinct array[N, SecretWord]`
-# so we don't set Limbs as a distinct type
-
-debug:
-  import strutils
-
-  func `$`*(a: BigInt): string =
-    result = "BigInt["
-    result.add $BigInt.bits
-    result.add "](limbs: "
-    result.add a.limbs.toString()
-    result.add ")"
-
 # No exceptions allowed
 {.push raises: [].}
 {.push inline.}
@@ -122,6 +89,14 @@ func cswap*(a, b: var BigInt, ctl: CTBool) =
   ## Whether ``ctl`` is true or not, the same
   ## memory accesses are done (unless the compiler tries to be clever)
   cswap(a.limbs, b.limbs, ctl)
+
+func copyTruncatedFrom*[dBits, sBits: static int](dst: var BigInt[dBits], src: BigInt[sBits]) =
+  ## Copy `src` into `dst`
+  ## if `dst` is not big enough, only the low words are copied
+  ## if `src` is smaller than `dst` the higher words of `dst` will NOT be overwritten
+
+  for wordIdx in 0 ..< min(dst.limbs.len, src.limbs.len):
+    dst.limbs[wordIdx] = src.limbs[wordIdx]
 
 # Comparison
 # ------------------------------------------------------------
@@ -161,10 +136,16 @@ func cadd*(a: var BigInt, b: BigInt, ctl: SecretBool): SecretBool =
   (SecretBool) cadd(a.limbs, b.limbs, ctl)
 
 func csub*(a: var BigInt, b: BigInt, ctl: SecretBool): SecretBool =
-  ## Constant-time in-place conditional addition
-  ## The addition is only performed if ctl is "true"
-  ## The result carry is always computed.
+  ## Constant-time in-place conditional substraction
+  ## The substraction is only performed if ctl is "true"
+  ## The result borrow is always computed.
   (SecretBool) csub(a.limbs, b.limbs, ctl)
+
+func csub*(a: var BigInt, b: SecretWord, ctl: SecretBool): SecretBool =
+  ## Constant-time in-place conditional substraction
+  ## The substraction is only performed if ctl is "true"
+  ## The result borrow is always computed.
+  (SecretBool) csub(a.limbs, b, ctl)
 
 func cdouble*(a: var BigInt, ctl: SecretBool): SecretBool =
   ## Constant-time in-place conditional doubling
@@ -182,10 +163,35 @@ func add*(a: var BigInt, b: SecretWord): SecretBool =
   ## Returns the carry
   (SecretBool) add(a.limbs, b)
 
+func `+=`*(a: var BigInt, b: BigInt) =
+  ## Constant-time in-place addition
+  ## Discards the carry
+  discard add(a.limbs, b.limbs)
+
+func `+=`*(a: var BigInt, b: SecretWord) =
+  ## Constant-time in-place addition
+  ## Discards the carry
+  discard add(a.limbs, b)
+
 func sub*(a: var BigInt, b: BigInt): SecretBool =
   ## Constant-time in-place substraction
   ## Returns the borrow
   (SecretBool) sub(a.limbs, b.limbs)
+
+func sub*(a: var BigInt, b: SecretWord): SecretBool =
+  ## Constant-time in-place substraction
+  ## Returns the borrow
+  (SecretBool) sub(a.limbs, b)
+
+func `-=`*(a: var BigInt, b: BigInt) =
+  ## Constant-time in-place substraction
+  ## Discards the borrow
+  discard sub(a.limbs, b.limbs)
+
+func `-=`*(a: var BigInt, b: SecretWord) =
+  ## Constant-time in-place substraction
+  ## Discards the borrow
+  discard sub(a.limbs, b)
 
 func double*(a: var BigInt): SecretBool =
   ## Constant-time in-place doubling
@@ -222,6 +228,34 @@ func cneg*(a: var BigInt, ctl: CTBool) =
   ## Negate if ``ctl`` is true
   a.limbs.cneg(ctl)
 
+func prod*[rBits, aBits, bBits](r: var BigInt[rBits], a: BigInt[aBits], b: BigInt[bBits]) =
+  ## Multi-precision multiplication
+  ## r <- a*b
+  ## `a`, `b`, `r` can have different sizes
+  ## if r.bits < a.bits + b.bits
+  ## the multiplication will overflow.
+  ## It will be truncated if it cannot fit in r limbs.
+  r.limbs.prod(a.limbs, b.limbs)
+
+func prod_high_words*[rBits, aBits, bBits](r: var BigInt[rBits], a: BigInt[aBits], b: BigInt[bBits], lowestWordIndex: static int) =
+  ## Multi-precision multiplication keeping only high words
+  ## r <- a*b >> (2^WordBitWidth)^lowestWordIndex
+  ##
+  ## `a`, `b`, `r` can have a different number of limbs
+  ## if `r`.limbs.len < a.limbs.len + b.limbs.len - lowestWordIndex
+  ## The result will be truncated, i.e. it will be
+  ## a * b >> (2^WordBitWidth)^lowestWordIndex (mod (2^WordBitwidth)^r.limbs.len)
+  ##
+  # This is useful for
+  # - Barret reduction
+  # - Approximating multiplication by a fractional constant in the form f(a) = K/C * a
+  #   with K and C known at compile-time.
+  #   We can instead find a well chosen M = (2^WordBitWidth)^w, with M > C (i.e. M is a power of 2 bigger than C)
+  #   Precompute P = K*M/C at compile-time
+  #   and at runtime do P*a/M <=> P*a >> WordBitWidth*w
+  #   i.e. prod_high_words(result, P, a, w)
+  r.limbs.prod_high_words(a.limbs, b.limbs, lowestWordIndex)
+
 # Bit Manipulation
 # ------------------------------------------------------------
 
@@ -230,6 +264,24 @@ func shiftRight*(a: var BigInt, k: int) =
   ##
   ## k MUST be less than the base word size (2^31 or 2^63)
   a.limbs.shiftRight(k)
+
+func bit*[bits: static int](a: BigInt[bits], index: int): Ct[uint8] =
+  ## Access an individual bit of `a`
+  ## Bits are accessed as-if the bit representation is bigEndian
+  ## for a 8-bit "big-integer" we have
+  ## (b7, b6, b5, b4, b3, b2, b1, b0)
+  ## for a 256-bit big-integer
+  ## (b255, b254, ..., b1, b0)
+  const SlotShift = log2(WordBitWidth.uint32)
+  const SelectMask = WordBitWidth - 1
+  const BitMask = SecretWord 1
+
+  let slot = a.limbs[index shr SlotShift] # LimbEndianness is littleEndian
+  result = ct(slot shr (index and SelectMask) and BitMask, uint8)
+
+func bit0*(a: BigInt): Ct[uint8] =
+  ## Access the least significant bit
+  ct(a.limbs[0] and SecretWord(1), uint8)
 
 # ############################################################
 #

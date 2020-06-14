@@ -26,23 +26,10 @@
 
 import
   ../primitives,
-  ../config/[common, curves],
+  ../config/[common, type_fp, curves],
   ./bigints, ./limbs_montgomery
 
-type
-  Fp*[C: static Curve] = object
-    ## All operations on a field are modulo P
-    ## P being the prime modulus of the Curve C
-    ## Internally, data is stored in Montgomery n-residue form
-    ## with the magic constant chosen for convenient division (a power of 2 depending on P bitsize)
-    mres*: matchingBigInt(C)
-
-debug:
-  func `$`*[C: static Curve](a: Fp[C]): string =
-    result = "Fp[" & $C
-    result.add "]("
-    result.add $a.mres
-    result.add ')'
+export Fp
 
 # No exceptions allowed
 {.push raises: [].}

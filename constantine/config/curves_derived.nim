@@ -8,10 +8,12 @@
 
 import
   # Standard library
-  macros,
+  std/macros,
   # Internal
-  ../arithmetic/precomputed,
-  ./curves_declaration
+  ./precompute,
+  ./curves_declaration,
+  ./type_fp,
+  ../io/io_bigints
 
 {.experimental: "dynamicBindSym".}
 
@@ -30,8 +32,6 @@ macro genDerivedConstants*(): untyped =
   # "for curve in low(Curve) .. high(Curve):"
   # As an ugly workaround, we count
   # The item at position 0 is a pragma
-  let curveList = Curve.getType[1].getType
-
   result = newStmtList()
 
   template used(name: string): NimNode =
@@ -124,6 +124,34 @@ macro genDerivedConstants*(): untyped =
       )
     )
 
+    # const MyCurve_cubicRootOfUnity_mod_p
+    block:
+      let cubicHex = ident(curve & "_cubicRootOfUnity_modP_Hex")
+      let cubic = used(curve & "_cubicRootOfUnity_mod_p")
+      let M = bindSym(curve & "_Modulus")
+      let r2modM = ident(curve & "_R2modP")
+      let m0ninv = ident(curve & "_NegInvModWord")
+      result.add quote do:
+        when declared(`cubicHex`):
+          const `cubic` = block:
+            var cubic: Fp[Curve(`curveSym`)]
+            montyResidue_precompute(
+              cubic.mres,
+              fromHex(cubic.mres.typeof, `cubicHex`),
+              `M`, `r2modM`, `m0ninv`
+            )
+            cubic
+    # const MyCurve_cubicRootOfUnity_mod_r
+    block: # For scalar decomposition sanity checks
+      let cubicHex = ident(curve & "_cubicRootOfUnity_modR_Hex")
+      let cubic = used(curve & "_cubicRootOfUnity_mod_r")
+      let getCurveOrderBitwidth = ident"getCurveOrderBitwidth"
+      result.add quote do:
+        when declared(`cubicHex`):
+          const `cubic` = fromHex(BigInt[
+            `getCurveOrderBitwidth`(Curve(`curveSym`))
+          ], `cubicHex`)
+
     if CurveFamilies[curveSym] == BarretoNaehrig:
       # when declared(MyCurve_BN_param_u):
       #   const MyCurve_BN_u_BE = toCanonicalIntRepr(MyCurve_BN_param_u)
@@ -148,3 +176,5 @@ macro genDerivedConstants*(): untyped =
           bnStmts
         )
       )
+
+  # echo result.toStrLit()

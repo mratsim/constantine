@@ -8,72 +8,47 @@
 
 import
   # Standard library
-  random, macros, times, strutils,
+  std/[random, macros, times, strutils],
   # Third-party
   gmp, stew/byteutils,
   # Internal
   ../constantine/io/io_bigints,
   ../constantine/arithmetic,
-  ../constantine/primitives
+  ../constantine/primitives,
+  ../constantine/config/[common, type_bigint]
 
 # We test up to 1024-bit, more is really slow
 
 var bitSizeRNG {.compileTime.} = initRand(1234)
-const CryptoModSizes = [
-  # Modulus sizes occuring in crypto
-  # To be tested more often
 
-  # RSA
-  1024,
-  2048,
-  3072,
-  # secp256k1, Curve25519
-  256,
-  # Barreto-Naehrig
-  254, # BN254
-  # Barreto-Lynn-Scott
-  381, # BLS12-381
-  383, # BLS12-383
-  461, # BLS12-461
-  480, # BLS24-480
-  # NIST recommended curves for US Federal Government (FIPS)
-  # https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-4.pdf
-  192,
-  224,
-  # 256
-  384,
-  521
-]
-
-macro testRandomModSizes(numSizes: static int, aBits, mBits, body: untyped): untyped =
+macro testRandomModSizes(numSizes: static int, rBits, aBits, bBits, wordsStartIndex, body: untyped): untyped =
   ## Generate `numSizes` random bit sizes known at compile-time to test against GMP
   ## for A mod M
   result = newStmtList()
 
   for _ in 0 ..< numSizes:
-    let aBitsVal = bitSizeRNG.rand(126 .. 8192)
-    let mBitsVal = block:
-      # Pick from curve modulus if odd
-      if bool(bitSizeRNG.rand(high(int)) and 1):
-        bitSizeRNG.sample(CryptoModSizes)
-      else:
-        # range 62..1024 to highlight edge effects of the WordBitSize (63)
-        bitSizeRNG.rand(62 .. 1024)
+    let aBitsVal = bitSizeRNG.rand(126 .. 2048)
+    let bBitsVal = bitSizeRNG.rand(126 .. 2048)
+    let rBitsVal = bitSizeRNG.rand(62 .. 4096+128)
+    let wordsStartIndexVal = bitSizeRNG.rand(1 .. wordsRequired(4096+128))
 
     result.add quote do:
       block:
         const `aBits` = `aBitsVal`
-        const `mBits` = `mBitsVal`
+        const `bBits` = `bBitsVal`
+        const `rBits` = `rBitsVal`
+        const `wordsStartIndex` = `wordsStartIndexVal`
+
         block:
           `body`
 
 const # https://gmplib.org/manual/Integer-Import-and-Export.html
-  GMP_WordLittleEndian = -1'i32
-  GMP_WordNativeEndian = 0'i32
-  GMP_WordBigEndian = 1'i32
+  GMP_WordLittleEndian {.used.} = -1'i32
+  GMP_WordNativeEndian {.used.} = 0'i32
+  GMP_WordBigEndian {.used.} = 1'i32
 
   GMP_MostSignificantWordFirst = 1'i32
-  GMP_LeastSignificantWordFirst = -1'i32
+  GMP_LeastSignificantWordFirst {.used.} = -1'i32
 
 proc main() =
   var gmpRng: gmp_randstate_t
@@ -86,72 +61,89 @@ proc main() =
   echo "GMP seed: ", seed
   gmp_randseed_ui(gmpRng, seed)
 
-  var a, m, r: mpz_t
-  mpz_init(a)
-  mpz_init(m)
+  var r, a, b: mpz_t
   mpz_init(r)
+  mpz_init(a)
+  mpz_init(b)
 
-  testRandomModSizes(128, aBits, mBits):
+  testRandomModSizes(128, rBits, aBits, bBits, wordsStartIndex):
     # echo "--------------------------------------------------------------------------------"
-    echo "Testing: random dividend (" & align($aBits, 4) & "-bit) -- random modulus (" & align($mBits, 4) & "-bit)"
+    echo "Testing: random mul_high_words  r (", align($rBits, 4),
+      "-bit, keeping from ", wordsStartIndex,
+      " word index) <- a (", align($aBits, 4),
+      "-bit) * b (", align($bBits, 4), "-bit) (full mul bits: ", align($(aBits+bBits), 4),
+      "), r large enough? ", wordsRequired(rBits) >= wordsRequired(aBits+bBits) - wordsStartIndex
 
     # Generate random value in the range 0 ..< 2^aBits
     mpz_urandomb(a, gmpRng, aBits)
     # Generate random modulus and ensure the MSB is set
-    mpz_urandomb(m, gmpRng, mBits)
-    mpz_setbit(m, mBits-1)
+    mpz_urandomb(b, gmpRng, bBits)
+    mpz_setbit(r, aBits+bBits)
 
     # discard gmp_printf(" -- %#Zx mod %#Zx\n", a.addr, m.addr)
 
     #########################################################
     # Conversion buffers
     const aLen = (aBits + 7) div 8
-    const mLen = (mBits + 7) div 8
+    const bLen = (bBits + 7) div 8
 
     var aBuf: array[aLen, byte]
-    var mBuf: array[mLen, byte]
+    var bBuf: array[bLen, byte]
 
-    var aW, mW: csize # Word written by GMP
+    {.push warnings: off.} # deprecated csize
+    var aW, bW: csize # Word written by GMP
+    {.pop.}
 
     discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
-    discard mpz_export(mBuf[0].addr, mW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, m)
+    discard mpz_export(bBuf[0].addr, bW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, b)
 
     # Since the modulus is using all bits, it's we can test for exact amount copy
     doAssert aLen >= aW, "Expected at most " & $aLen & " bytes but wrote " & $aW & " for " & toHex(aBuf) & " (big-endian)"
-    doAssert mLen == mW, "Expected " & $mLen & " bytes but wrote " & $mW & " for " & toHex(mBuf) & " (big-endian)"
+    doAssert bLen >= bW, "Expected at most " & $bLen & " bytes but wrote " & $bW & " for " & toHex(bBuf) & " (big-endian)"
 
     # Build the bigint
     let aTest = BigInt[aBits].fromRawUint(aBuf.toOpenArray(0, aW-1), bigEndian)
-    let mTest = BigInt[mBits].fromRawUint(mBuf.toOpenArray(0, mW-1), bigEndian)
+    let bTest = BigInt[bBits].fromRawUint(bBuf.toOpenArray(0, bW-1), bigEndian)
 
     #########################################################
-    # Modulus
-    mpz_mod(r, a, m)
+    # Multiplication + drop low words
+    mpz_mul(r, a, b)
+    var shift: mpz_t
+    mpz_init(shift)
+    r.mpz_tdiv_q_2exp(r, WordBitwidth * wordsStartIndex)
 
-    var rTest: BigInt[mBits]
-    rTest.reduce(aTest, mTest)
+    # If a*b overflow the result size we truncate
+    const numWords = wordsRequired(rBits)
+    when numWords < wordsRequired(aBits+bBits):
+      echo "  truncating from ", wordsRequired(aBits+bBits), " words to ", numWords, " (2^", WordBitwidth * numWords, ")"
+      r.mpz_tdiv_r_2exp(r, WordBitwidth * numWords)
+
+    # Constantine
+    var rTest: BigInt[rBits]
+    rTest.prod_high_words(aTest, bTest, wordsStartIndex)
 
     #########################################################
     # Check
-    var rGMP: array[mLen, byte]
+    const rLen = numWords * WordBitWidth
+    var rGMP: array[rLen, byte]
+    {.push warnings: off.} # deprecated csize
     var rW: csize # Word written by GMP
+    {.pop.}
     discard mpz_export(rGMP[0].addr, rW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, r)
 
-    var rConstantine: array[mLen, byte]
+    var rConstantine: array[rLen, byte]
     exportRawUint(rConstantine, rTest, bigEndian)
 
-    # echo "rGMP: ", rGMP.toHex()
-    # echo "rConstantine: ", rConstantine.toHex()
-
     # Note: in bigEndian, GMP aligns left while constantine aligns right
-    doAssert rGMP.toOpenArray(0, rW-1) == rConstantine.toOpenArray(mLen-rW, mLen-1), block:
+    doAssert rGMP.toOpenArray(0, rW-1) == rConstantine.toOpenArray(rLen-rW, rLen-1), block:
       # Reexport as bigEndian for debugging
       discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
-      discard mpz_export(mBuf[0].addr, mW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, m)
-      "\nModulus with operand\n" &
+      discard mpz_export(bBuf[0].addr, bW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, b)
+      "\nMultiplication with operands\n" &
       "  a (" & align($aBits, 4) & "-bit):   " & aBuf.toHex & "\n" &
-      "  m (" & align($mBits, 4) & "-bit):   " & mBuf.toHex & "\n" &
-      "failed:" & "\n" &
+      "  b (" & align($bBits, 4) & "-bit):   " & bBuf.toHex & "\n" &
+      "  keeping words starting from:   " & $wordsStartIndex & "\n" &
+      "into r of size " & align($rBits, 4) & "-bit failed:" & "\n" &
       "  GMP:            " & rGMP.toHex() & "\n" &
       "  Constantine:    " & rConstantine.toHex() & "\n" &
       "(Note that GMP aligns bytes left while constantine aligns bytes right)"

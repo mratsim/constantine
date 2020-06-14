@@ -8,7 +8,7 @@
 
 import
   # Standard library
-  unittest,
+  std/unittest,
   # Third-party
   ../constantine/io/io_bigints,
   ../constantine/arithmetic,

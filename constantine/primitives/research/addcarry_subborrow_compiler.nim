@@ -17,7 +17,7 @@
 #
 # This overcome the bad GCC codegen aven with addcary_u64 intrinsic.
 
-import macros
+import std/macros
 
 func wordsRequired(bits: int): int {.compileTime.} =
   ## Compute the number of limbs required
@@ -86,7 +86,7 @@ func `+=`(a: var BigInt, b: BigInt) {.noinline.}=
 
 # #############################################
 when isMainModule:
-  import random
+  import std/random
   proc rand(T: typedesc[BigInt]): T =
     for i in 0 ..< result.limbs.len:
       result.limbs[i] = uint64(rand(high(int)))

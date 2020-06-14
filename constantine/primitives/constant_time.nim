@@ -40,6 +40,9 @@ template cfalse*(T: typedesc[Ct or BaseUint]): auto =
 template ct*[T: BaseUint](x: T): Ct[T] =
   (Ct[T])(x)
 
+template ct*(x: auto, T: typedesc[BaseUint]): Ct[T] =
+  (Ct[T])(x)
+
 template `$`*[T](x: Ct[T]): string =
   $T(x)
 
@@ -121,57 +124,14 @@ template `-`*[T: Ct](x: T): T =
 
 # ############################################################
 #
-#                           Bit hacks
-#
-# ############################################################
-
-template isMsbSet*[T: Ct](x: T): CTBool[T] =
-  ## Returns the most significant bit of an integer
-  const msb_pos = T.sizeof * 8 - 1
-  (CTBool[T])(x shr msb_pos)
-
-func log2*(x: uint32): uint32 =
-  ## Find the log base 2 of a 32-bit or less integer.
-  ## using De Bruijn multiplication
-  ## Works at compile-time, guaranteed constant-time.
-  ## Note: at runtime BitScanReverse or CountLeadingZero are more efficient
-  ##       but log2 is never needed at runtime.
-  # https://graphics.stanford.edu/%7Eseander/bithacks.html#IntegerLogDeBruijn
-  const lookup: array[32, uint8] = [0'u8, 9, 1, 10, 13, 21, 2, 29, 11, 14, 16, 18,
-    22, 25, 3, 30, 8, 12, 20, 28, 15, 17, 24, 7, 19, 27, 23, 6, 26, 5, 4, 31]
-  var v = x
-  v = v or v shr 1 # first round down to one less than a power of 2
-  v = v or v shr 2
-  v = v or v shr 4
-  v = v or v shr 8
-  v = v or v shr 16
-  lookup[(v * 0x07C4ACDD'u32) shr 27]
-
-func log2*(x: uint64): uint64 {.inline, noSideEffect.} =
-  ## Find the log base 2 of a 32-bit or less integer.
-  ## using De Bruijn multiplication
-  ## Works at compile-time, guaranteed constant-time.
-  ## Note: at runtime BitScanReverse or CountLeadingZero are more efficient
-  ##       but log2 is never needed at runtime.
-  # https://graphics.stanford.edu/%7Eseander/bithacks.html#IntegerLogDeBruijn
-  const lookup: array[64, uint8] = [0'u8, 58, 1, 59, 47, 53, 2, 60, 39, 48, 27, 54,
-    33, 42, 3, 61, 51, 37, 40, 49, 18, 28, 20, 55, 30, 34, 11, 43, 14, 22, 4, 62,
-    57, 46, 52, 38, 26, 32, 41, 50, 36, 17, 19, 29, 10, 13, 21, 56, 45, 25, 31,
-    35, 16, 9, 12, 44, 24, 15, 8, 23, 7, 6, 5, 63]
-  var v = x
-  v = v or v shr 1 # first round down to one less than a power of 2
-  v = v or v shr 2
-  v = v or v shr 4
-  v = v or v shr 8
-  v = v or v shr 16
-  v = v or v shr 32
-  lookup[(v * 0x03F6EAF2CD271461'u64) shr 58]
-
-# ############################################################
-#
 #             Hardened Boolean primitives
 #
 # ############################################################
+
+template isMsbSet[T: Ct](x: T): CTBool[T] =
+  ## Returns the most significant bit of an integer
+  const msb_pos = T.sizeof * 8 - 1
+  (CTBool[T])(x shr msb_pos)
 
 template fmap[T: Ct](x: CTBool[T], op: untyped, y: CTBool[T]): CTBool[T] =
   CTBool[T](op(T(x), T(y)))

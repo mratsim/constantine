@@ -7,10 +7,12 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  # Stadard library
+  std/macros,
+  # Internal
   ../config/common,
   ../primitives,
-  ./limbs,
-  macros
+  ./limbs
 
 # ############################################################
 #
@@ -118,7 +120,7 @@ func montyMul_CIOS_nocarry(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   discard t.csub(M, not(t < M))
   r = t
 
-func montyMul_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
+func montyMul_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) {.used.} =
   ## Montgomery Multiplication using Coarse Grained Operand Scanning (CIOS)
   # - Analyzing and Comparing Montgomery Multiplication Algorithms
   #   Cetin Kaya Koc and Tolga Acar and Burton S. Kaliski Jr.
@@ -165,6 +167,43 @@ func montyMul_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   # However if t[N] is non-zero we have t > M
   discard t.csub(M, tN.isNonZero() or not(t < M)) # TODO: (t >= M) is unnecessary for prime in the form (2^64)^w
   r = t
+
+func montyMul_FIPS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
+  ## Montgomery Multiplication using Finely Integrated Product Scanning (FIPS)
+  # - Architectural Enhancements for Montgomery
+  #   Multiplication on Embedded RISC Processors
+  #   Johann Großschädl and Guy-Armand Kamendje, 2003
+  #   https://pure.tugraz.at/ws/portalfiles/portal/2887154/ACNS2003_AEM.pdf
+  #
+  # - New Speed Records for Montgomery Modular
+  #   Multiplication on 8-bit AVR Microcontrollers
+  #   Zhe Liu and Johann Großschädl, 2013
+  #   https://eprint.iacr.org/2013/882.pdf
+  var z: typeof(r) # zero-init, ensure on stack and removes in-place problems in tower fields
+  const L = r.len
+  var t, u, v = SecretWord(0)
+
+  staticFor i, 0, L:
+    staticFor j, 0, i:
+      mulAcc(t, u, v, a[j], b[i-j])
+      mulAcc(t, u, v, z[j], M[i-j])
+    mulAcc(t, u, v, a[i], b[0])
+    z[i] = v * SecretWord(m0ninv)
+    mulAcc(t, u, v, z[i], M[0])
+    v = u
+    u = t
+    t = SecretWord(0)
+  staticFor i, L, 2*L:
+    staticFor j, i-L+1, L:
+      mulAcc(t, u, v, a[j], b[i-j])
+      mulAcc(t, u, v, z[j], M[i-j])
+    z[i-L] = v
+    v = u
+    u = t
+    t = SecretWord(0)
+
+  discard z.csub(M, v.isNonZero() or not(z < M))
+  r = z
 
 func montySquare_CIOS_nocarry(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
   ## Montgomery Multiplication using Coarse Grained Operand Scanning (CIOS)
@@ -253,7 +292,7 @@ func montySquare_CIOS(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
     #  (_, t[N])  <- t[N+1] + C
     var carryR: Carry
     addC(carryR, t[N-1], tN, C, Carry(0))
-    addC(carryR, tN, SecretWord(tNp1), Zero, carryR)
+    addC(carryR, tN, tNp1, Zero, carryR)
 
   discard t.csub(M, tN.isNonZero() or not(t < M)) # TODO: (t >= M) is unnecessary for prime in the form (2^64)^w
   r = t
@@ -293,7 +332,7 @@ func montyMul*(
   when canUseNoCarryMontyMul:
     montyMul_CIOS_nocarry(r, a, b, M, m0ninv)
   else:
-    montyMul_CIOS(r, a, b, M, m0ninv)
+    montyMul_FIPS(r, a, b, M, m0ninv)
 
 func montySquare*(r: var Limbs, a, M: Limbs,
                   m0ninv: static BaseType, canUseNoCarryMontySquare: static bool) =
