@@ -6,13 +6,15 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
+
 import
-  ./io_bigints, ./io_fields, ./io_towers,
+  # Standard library
+  std/typetraits,
+  # Internal
+  ./io_bigints, ./io_fields,
   ../config/curves,
-  ../elliptic/[
-    ec_weierstrass_affine,
-    ec_weierstrass_projective
-  ]
+  ../arithmetic/finite_fields,
+  ../towers
 
 # No exceptions allowed
 {.push raises: [].}
@@ -24,8 +26,18 @@ import
 #
 # ############################################################
 
-func toHex*(P: ECP_SWei_Proj): string =
-  ## Stringify an elliptic curve point to Hex
+func appendHex*(accum: var string, f: Fp2 or Fp6 or Fp12, order: static Endianness = bigEndian) =
+  ## Hex accumulator
+  accum.add static($f.typeof.genericHead() & '(')
+  for fieldName, fieldValue in fieldPairs(f):
+    when fieldName != "c0":
+      accum.add ", "
+    accum.add fieldName & ": "
+    accum.appendHex(fieldValue, order)
+  accum.add ")"
+
+func toHex*(f: Fp2 or Fp6 or Fp12, order: static Endianness = bigEndian): string =
+  ## Stringify a tower field element to hex.
   ## Note. Leading zeros are not removed.
   ## Result is prefixed with 0x
   ##
@@ -33,26 +45,4 @@ func toHex*(P: ECP_SWei_Proj): string =
   ##
   ## CT:
   ##   - no leaks
-  ##
-  ## TODO: only normalize and don't display the Z coordinate
-  ##
-  ## This proc output may change format in the future
-
-  var aff {.noInit.}: typeof(P)
-  aff.affineFromProjective(P)
-
-  result = "ECP[" & $aff.F & "](\n  x: "
-  result.appendHex(aff.x, bigEndian)
-  result &= ",\n  y: "
-  result.appendHex(aff.y, bigEndian)
-  result &= "\n)"
-
-func fromHex*(dst: var ECP_SWei_Proj, x, y: string): bool {.raises: [ValueError].}=
-  ## Convert hex strings to a curve point
-  ## Returns `false`
-  ## if there is no point with coordinates (`x`, `y`) on the curve
-  ## In that case, `dst` content is undefined.
-  dst.x.fromHex(x)
-  dst.y.fromHex(y)
-  dst.z.setOne()
-  return bool(isOnCurve(dst.x, dst.y))
+  result.appendHex(f, order)
