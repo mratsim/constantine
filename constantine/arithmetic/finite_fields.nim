@@ -45,7 +45,7 @@ func fromBig*[C: static Curve](T: type Fp[C], src: BigInt): Fp[C] {.noInit.} =
   ## Convert a BigInt to its Montgomery form
   result.mres.montyResidue(src, C.Mod, C.getR2modP(), C.getNegInvModWord(), C.canUseNoCarryMontyMul())
 
-func fromBig*[C: static Curve](dst: var Fp[C], src: BigInt) {.noInit.} =
+func fromBig*[C: static Curve](dst: var Fp[C], src: BigInt) =
   ## Convert a BigInt to its Montgomery form
   dst.mres.montyResidue(src, C.Mod, C.getR2modP(), C.getNegInvModWord(), C.canUseNoCarryMontyMul())
 

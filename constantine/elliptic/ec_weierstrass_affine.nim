@@ -24,14 +24,14 @@ func curve_eq_rhs*[F](y2: var F, x: F) =
   t *= x
 
   # No need to precompute `b` in 𝔽p or 𝔽p² or `b/µ` `µ b`
-  # This procedure is not use in perf critcal situation like signing/verification
+  # This procedure is not use in perf critical situation like signing/verification
   # but for testing to quickly create points on a curve.
-  y2 = F.fromBig F.C.matchingBigInt().fromUint F.C.getCoefB()
+  y2.fromBig F.C.matchingBigInt().fromUint F.C.getCoefB()
   when F is Fp2:
     when F.C.getSexticTwist() == D_Twist:
-      y2 /= F.C.get_SNR_Fp2()
+      y2 /= SexticNonResidue
     elif F.C.getSexticTwist() == M_Twist:
-      y2 *= F.C.get_SNR_Fp2()
+      y2 *= SexticNonResidue
     else:
       {.error: "Only twisted curves are supported on extension field 𝔽p²".}
 

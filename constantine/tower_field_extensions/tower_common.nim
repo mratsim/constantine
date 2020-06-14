@@ -18,10 +18,10 @@ import
 # -------------------------------------------------------------------
 
 type
-  β* = object
-    ## Non-Residue β
+  NonResidue* = object
+    ## Non-Residue
     ##
-    ## Placeholder for the appropriate quadratic or cubic non-residue
+    ## Placeholder for the appropriate quadratic, cubic or sectic non-residue
 
   CubicExt* = concept x
     ## Cubic Extension field concept
@@ -53,6 +53,14 @@ func setOne*(a: var ExtensionField) =
   for fieldName, fA in fieldPairs(a):
     when fieldName == "c0":
       fA.setOne()
+    else:
+      fA.setZero()
+
+func fromBig*(a: var ExtensionField, src: BigInt) =
+  ## Set ``a`` to the bigint value int eh extension field
+  for fieldName, fA in fieldPairs(a):
+    when fieldName == "c0":
+      fA.fromBig(src)
     else:
       fA.setZero()
 

@@ -24,6 +24,8 @@ type
   Fp2*[C: static Curve] = object
     c0*, c1*: Fp[C]
 
+  β = NonResidue
+
 template fromComplexExtension*[F](elem: F): static bool =
   ## Returns true if the input is a complex extension
   ## i.e. the irreducible polynomial chosen is
@@ -45,6 +47,55 @@ func `*`*(_: typedesc[β], a: Fp): Fp {.inline, noInit.} =
   ## chosen to construct 𝔽p2
   result = a
   result *= β
+
+type
+  SexticNonResidue* = object
+
+func `*=`*(a: var Fp2, _: typedesc[SexticNonResidue]) {.inline.} =
+  ## Multiply an element of 𝔽p2 by the sextic non-residue
+  ## chosen to construct the sextic twist
+  # Yet another const tuple unpacking bug
+  const u = Fp2.C.get_SNR_Fp2()[0] # Sextic non-residue to construct 𝔽p12
+  const v = Fp2.C.get_SNR_Fp2()[1]
+  const Beta = Fp2.C.get_QNR_Fp()  # Quadratic non-residue to construct 𝔽p2
+  # ξ = u + v x
+  # and x² = β
+  #
+  # (c0 + c1 x) (u + v x) => u c0 + (u c0 + u c1)x + v c1 x²
+  #                       => u c0 + β v c1 + (v c0 + u c1) x
+  when a.fromComplexExtension() and u == 1 and v == 1:
+    let t = a.c0
+    a.c0 -= a.c1
+    a.c1 += t
+  else:
+    {.error: "Not implemented".}
+
+func `/=`*(a: var Fp2, _: typedesc[SexticNonResidue]) {.inline.} =
+  ## Multiply an element of 𝔽p by the quadratic non-residue
+  ## chosen to construct sextic twist
+  # Yet another const tuple unpacking bug
+  const u = Fp2.C.get_SNR_Fp2()[0] # Sextic non-residue to construct 𝔽p12
+  const v = Fp2.C.get_SNR_Fp2()[1]
+  const Beta = Fp2.C.get_QNR_Fp()  # Quadratic non-residue to construct 𝔽p2
+  # ξ = u + v x
+  # and x² = β
+  #
+  # (c0 + c1 x) / (u + v x) => (c0 + c1 x)(u - v x) / ((u + vx)(u-vx))
+  #                         => u c0 - v c1 x² + (u c1 - v c0) x / (u² - x²v²)
+  #                         => 1/(u² - βv²) * (uc0 - β v c1, u c1 - v c0)
+  # With β = 𝑖 = √-1
+  #   1/(u² + v²) * (u c0 + v c1, u c1 - v c0)
+  #
+  # With β = 𝑖 = √-1 and ξ = 1 + 𝑖
+  #   1/2 * (c0 + c1, c1 - c0)
+
+  when a.fromComplexExtension() and u == 1 and v == 1:
+    let t = a.c0
+    a.c0 += a.c1
+    a.c1 -= t
+    a.div2()
+  else:
+    {.error: "Not implemented".}
 
 # 𝔽p6
 # ----------------------------------------------------------------
@@ -82,8 +133,8 @@ func `*`*(_: typedesc[β], a: Fp2): Fp2 {.inline, noInit.} =
   result.c1.sum(v * a.c0, u * a.c1 )
 
 func `*=`*(a: var Fp2, _: typedesc[ξ]) {.inline.} =
-  ## Multiply an element of 𝔽p by the quadratic non-residue
-  ## chosen to construct 𝔽p2
+  ## Multiply an element of 𝔽p2 by the quadratic non-residue
+  ## chosen to construct 𝔽p6
   # Yet another const tuple unpacking bug
   const u = Fp2.C.get_CNR_Fp2()[0] # Cubic non-residue to construct 𝔽p6
   const v = Fp2.C.get_CNR_Fp2()[1]

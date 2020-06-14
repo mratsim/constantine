@@ -50,7 +50,7 @@ func square_Chung_Hasan_SQR2(r: var CubicExt, a: CubicExt) =
   v4.prod(a.c0, a.c1)
   v4.double()
   v5.square(a.c2)
-  r.c1 = β * v5
+  r.c1 = NonResidue * v5
   r.c1 += v4
   r.c2.diff(v4, v5)
   v3.square(a.c0)
@@ -59,7 +59,7 @@ func square_Chung_Hasan_SQR2(r: var CubicExt, a: CubicExt) =
   v5.prod(a.c1, a.c2)
   v5.double()
   v4.square()
-  r.c0 = β * v5
+  r.c0 = NonResidue * v5
   r.c0 += v3
   r.c2 += v4
   r.c2 += v5
@@ -70,29 +70,29 @@ func square_Chung_Hasan_SQR3(r: var CubicExt, a: CubicExt) =
   mixin prod, square, sum
   var v0{.noInit.}, v2{.noInit.}: typeof(r.c0)
 
-  r.c1.sum(a.c0, a.c2)  # r1 = a0 + a2
-  v2.diff(r.c1, a.c1)   # v2 = a0 - a1 + a2
-  r.c1 += a.c1          # r1 = a0 + a1 + a2
-  r.c1.square()         # r1 = (a0 + a1 + a2)²
-  v2.square()           # v2 = (a0 - a1 + a2)²
+  r.c1.sum(a.c0, a.c2)    # r1 = a0 + a2
+  v2.diff(r.c1, a.c1)     # v2 = a0 - a1 + a2
+  r.c1 += a.c1            # r1 = a0 + a1 + a2
+  r.c1.square()           # r1 = (a0 + a1 + a2)²
+  v2.square()             # v2 = (a0 - a1 + a2)²
 
-  r.c2.sum(r.c1, v2)    # r2 = (a0 + a1 + a2)² + (a0 - a1 + a2)²
-  r.c2.div2()           # r2 = ((a0 + a1 + a2)² + (a0 - a1 + a2)²)/2
+  r.c2.sum(r.c1, v2)      # r2 = (a0 + a1 + a2)² + (a0 - a1 + a2)²
+  r.c2.div2()             # r2 = ((a0 + a1 + a2)² + (a0 - a1 + a2)²)/2
 
-  r.c0.prod(a.c1, a.c2) # r0 = a1 a2
-  r.c0.double()         # r0 = 2 a1 a2
+  r.c0.prod(a.c1, a.c2)   # r0 = a1 a2
+  r.c0.double()           # r0 = 2 a1 a2
 
-  v2.square(a.c2)       # v2 = a2²
-  r.c1 += β * v2        # r1 = (a0 + a1 + a2)² + β a2²
-  r.c1 -= r.c0          # r1 = (a0 + a1 + a2)² - 2 a1 a2 + β a2²
-  r.c1 -= r.c2          # r1 = (a0 + a1 + a2)² - 2 a1 a2 - ((a0 + a1 + a2)² + (a0 - a1 + a2)²)/2 + β a2²
+  v2.square(a.c2)         # v2 = a2²
+  r.c1 += NonResidue * v2 # r1 = (a0 + a1 + a2)² + β a2²
+  r.c1 -= r.c0            # r1 = (a0 + a1 + a2)² - 2 a1 a2 + β a2²
+  r.c1 -= r.c2            # r1 = (a0 + a1 + a2)² - 2 a1 a2 - ((a0 + a1 + a2)² + (a0 - a1 + a2)²)/2 + β a2²
 
-  v0.square(a.c0)       # v0 = a0²
-  r.c0 *= β             # r0 = β 2 a1 a2
-  r.c0 += v0            # r0 = a0² + β 2 a1 a2
+  v0.square(a.c0)         # v0 = a0²
+  r.c0 *= NonResidue      # r0 = β 2 a1 a2
+  r.c0 += v0              # r0 = a0² + β 2 a1 a2
 
-  r.c2 -= v0            # r2 = ((a0 + a1 + a2)² + (a0 - a1 + a2)²)/2 - a0²
-  r.c2 -= v2            # r2 = ((a0 + a1 + a2)² + (a0 - a1 + a2)²)/2 - a0² - a2²
+  r.c2 -= v0              # r2 = ((a0 + a1 + a2)² + (a0 - a1 + a2)²)/2 - a0²
+  r.c2 -= v2              # r2 = ((a0 + a1 + a2)² + (a0 - a1 + a2)²)/2 - a0² - a2²
 
 func square*(r: var CubicExt, a: CubicExt) {.inline.} =
   ## Returns r = a²
@@ -115,7 +115,7 @@ func prod*(r: var CubicExt, a, b: CubicExt) =
   r.c0 *= t
   r.c0 -= v1
   r.c0 -= v2
-  r.c0 *= β
+  r.c0 *= NonResidue
   r.c0 += v0
 
   # r.c1 = (a.c0 + a.c1) * (b.c0 + b.c1) - v0 - v1 + β v2
@@ -124,7 +124,7 @@ func prod*(r: var CubicExt, a, b: CubicExt) =
   r.c1 *= t
   r.c1 -= v0
   r.c1 -= v1
-  r.c1 += β * v2
+  r.c1 += NonResidue * v2
 
   # r.c2 = (a.c0 + a.c2) * (b.c0 + b.c2) - v0 - v2 + v1
   r.c2.sum(a.c0, a.c2)
@@ -159,13 +159,13 @@ func inv*(r: var CubicExt, a: CubicExt) =
   # A <- a0² - β a1 a2
   r.c0.square(a.c0)
   v1.prod(a.c1, a.c2)
-  v1 *= β
+  v1 *= NonResidue
   r.c0 -= v1
 
   # B in v1
   # B <- β a2² - a0 a1
   v1.square(a.c2)
-  v1 *= β
+  v1 *= NonResidue
   v2.prod(a.c0, a.c1)
   v1 -= v2
 
@@ -177,8 +177,8 @@ func inv*(r: var CubicExt, a: CubicExt) =
 
   # F in v3
   # F <- β a1 C + a0 A + β a2 B
-  r.c1.prod(v1, β * a.c2)
-  r.c2.prod(v2, β * a.c1)
+  r.c1.prod(v1, NonResidue * a.c2)
+  r.c2.prod(v2, NonResidue * a.c1)
   v3.prod(r.c0, a.c0)
   v3 += r.c1
   v3 += r.c2
