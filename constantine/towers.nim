@@ -12,10 +12,11 @@ import
   ./tower_field_extensions/[
     tower_common,
     quadratic_extensions,
-    cubic_extensions
+    cubic_extensions,
+    exponentiations
   ]
 
-export tower_common, quadratic_extensions, cubic_extensions
+export tower_common, quadratic_extensions, cubic_extensions, exponentiations
 
 # 𝔽p2
 # ----------------------------------------------------------------

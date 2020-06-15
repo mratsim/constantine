@@ -38,7 +38,7 @@ type
     x.c0 is BaseField
     x.c1 is BaseField
 
-  ExtensionField = QuadraticExt or CubicExt
+  ExtensionField* = QuadraticExt or CubicExt
 
 # Initialization
 # -------------------------------------------------------------------

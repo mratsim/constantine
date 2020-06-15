@@ -38,6 +38,14 @@ def compute_curve_characteristic(u_str):
 
   print()
 
+  print(f'  p^2 mod 3:           ' + str(p^2 % 3))
+  print(f'  p^2 mod 4:           ' + str(p^2 % 4))
+  print(f'  p^2 mod 8:           ' + str(p^2 % 8))
+  print(f'  p^2 mod 12:          ' + str(p^2 % 12))
+  print(f'  p^2 mod 16:          ' + str(p^2 % 16))
+
+  print()
+
   print(f'  Endomorphism-based acceleration when p mod 3 == 1')
   print(f'    Endomorphism can be field multiplication by one of the non-trivial cube root of unity 𝜑')
   print(f'      Rationale:')

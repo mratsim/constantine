@@ -65,7 +65,7 @@ func scalarMulPrologue(
        P: var ECP_SWei_Proj,
        scratchspace: var openarray[ECP_SWei_Proj]
      ): uint =
-  ## Setup the scratchspace
+  ## Setup the scratchspace then set P to infinity
   ## Returns the fixed-window size for scalar mul with window optimization
   result = scratchspace.len.getWindowLen()
   # Precompute window content, special case for window = 1

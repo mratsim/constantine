@@ -20,7 +20,7 @@ import
 #
 # ############################################################
 
-func div2mod*(a: var Limbs, mp1div2: Limbs) {.inline.}=
+func div2_modular*(a: var Limbs, mp1div2: Limbs) {.inline.}=
   ## Modular Division by 2
   ## `a` will be divided in-place
   ## `mp1div2` is the modulus (M+1)/2
@@ -136,7 +136,7 @@ func steinsGCD*(v: var Limbs, a: Limbs, F, M: Limbs, bits: int, mp1div2: Limbs) 
     let corrected = u.cadd(M, neg)
 
     # u = u/2 (mod M)
-    u.div2mod(mp1div2)
+    u.div2_modular(mp1div2)
 
   debug:
     doAssert bool a.isZero()

@@ -168,7 +168,7 @@ func neg*(r: var Fp, a: Fp) =
 
 func div2*(a: var Fp) =
   ## Modular division by 2
-  a.mres.div2mod(Fp.C.getPrimePlus1div2())
+  a.mres.div2_modular(Fp.C.getPrimePlus1div2())
 
 # ############################################################
 #
@@ -247,9 +247,11 @@ func isSquare*[C](a: Fp[C]): SecretBool =
   #                 as we assume that
   var xi {.noInit.} = a # TODO: is noInit necessary? see https://github.com/mratsim/constantine/issues/21
   xi.powUnsafeExponent(C.getPrimeMinus1div2_BE())
-  result = xi.isOne()
-  # 0 is also a square
-  result = result or xi.isZero()
+  result = not(xi.mres == C.getMontyPrimeMinus1())
+  # xi can be:
+  # -  1  if a square
+  # -  0  if 0
+  # - -1  if a quadratic non-residue
 
 func sqrt_p3mod4*[C](a: var Fp[C]) =
   ## Compute the square root of ``a``
@@ -262,7 +264,7 @@ func sqrt_p3mod4*[C](a: var Fp[C]) =
   ## The square root, if it exist is multivalued,
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
-  static: doAssert C.Mod.limbs[0].BaseType mod 4 == 3
+  static: doAssert BaseType(C.Mod.limbs[0]) mod 4 == 3
   a.powUnsafeExponent(C.getPrimePlus1div4_BE())
 
 func sqrt_if_square_p3mod4*[C](a: var Fp[C]): SecretBool =
