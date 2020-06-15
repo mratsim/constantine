@@ -17,6 +17,8 @@ import
   ../constantine/primitives,
   ../constantine/config/curves
 
+echo "\n------------------------------------------------------\n"
+
 var RNG {.compileTime.} = initRand(1234)
 const CurveParams = [
   P224,

@@ -12,8 +12,10 @@ import  std/unittest,
         ../constantine/config/common,
         ../constantine/primitives
 
+echo "\n------------------------------------------------------\n"
+
 proc mainArith() =
-  suite "isZero":
+  suite "isZero" & " [" & $WordBitwidth & "-bit mode]":
     test "isZero for zero":
       var x: BigInt[128]
       check: x.isZero().bool
@@ -28,7 +30,7 @@ proc mainArith() =
         var x = fromHex(BigInt[128], "0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF")
         check: not x.isZero().bool
 
-  suite "Arithmetic operations - Addition":
+  suite "Arithmetic operations - Addition" & " [" & $WordBitwidth & "-bit mode]":
     test "Adding 2 zeros":
       var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
       let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
@@ -128,7 +130,7 @@ proc mainArith() =
           bool(a == c)
           not bool(carry)
 
-  suite "BigInt + SecretWord":
+  suite "BigInt + SecretWord" & " [" & $WordBitwidth & "-bit mode]":
     test "Addition limbs carry":
       block: # P256 / 2
         var a = BigInt[256].fromhex"0x7fffffff800000008000000000000000000000007fffffffffffffffffffffff"
@@ -138,7 +140,7 @@ proc mainArith() =
         discard a.add(SecretWord 1)
         check: bool(a == expected)
 
-  suite "Multi-precision multiplication":
+  suite "Multi-precision multiplication" & " [" & $WordBitwidth & "-bit mode]":
     test "Same size operand into double size result":
       block:
         var r: BigInt[256]
@@ -178,7 +180,7 @@ proc mainArith() =
         r.prod(b, a)
         check: bool(r == expected)
 
-  suite "Multi-precision multiplication keeping only high words":
+  suite "Multi-precision multiplication keeping only high words" & " [" & $WordBitwidth & "-bit mode]":
     test "Same size operand into double size result - discard first word":
       block:
         var r: BigInt[256]
@@ -263,7 +265,7 @@ proc mainArith() =
         r.prod_high_words(b, a, 2)
         check: bool(r == expected)
 
-  suite "Modular operations - small modulus":
+  suite "Modular operations - small modulus" & " [" & $WordBitwidth & "-bit mode]":
     # Vectors taken from Stint - https://github.com/status-im/nim-stint
     test "100 mod 13":
       # Test 1 word and more than 1 word
@@ -312,7 +314,7 @@ proc mainArith() =
       check:
         bool(r == BigInt[8].fromUint(0'u8))
 
-  suite "Modular operations - small modulus - Stint specific failures highlighted by property-based testing":
+  suite "Modular operations - small modulus - Stint specific failures highlighted by property-based testing" & " [" & $WordBitwidth & "-bit mode]":
     # Vectors taken from Stint - https://github.com/status-im/nim-stint
     test "Modulo: 65696211516342324 mod 174261910798982":
       let u = 65696211516342324'u64
@@ -341,7 +343,7 @@ proc mainArith() =
         bool(r == BigInt[40].fromUint(u mod v))
 
 proc mainNeg() =
-  suite "Conditional negation":
+  suite "Conditional negation" & " [" & $WordBitwidth & "-bit mode]":
     test "Conditional negation":
       block:
         var a = fromHex(BigInt[128], "0x12345678_FF11FFAA_00321321_CAFECAFE")
@@ -439,7 +441,7 @@ proc mainNeg() =
           bool(b == b2)
 
 proc mainCopySwap() =
-  suite "Copy and Swap":
+  suite "Copy and Swap" & " [" & $WordBitwidth & "-bit mode]":
     test "Conditional copy":
       block:
         var a = fromHex(BigInt[128], "0x12345678_FF11FFAA_00321321_CAFECAFE")
@@ -485,7 +487,7 @@ proc mainCopySwap() =
           bool(eB == b)
 
 proc mainModularInverse() =
-  suite "Modular Inverse (with odd modulus)":
+  suite "Modular Inverse (with odd modulus)" & " [" & $WordBitwidth & "-bit mode]":
     # Note: We don't define multi-precision multiplication
     #       because who needs it when you have Montgomery?
     #       ¯\_(ツ)_/¯

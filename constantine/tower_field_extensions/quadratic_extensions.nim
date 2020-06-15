@@ -126,14 +126,14 @@ func square_generic(r: var QuadraticExt, a: QuadraticExt) =
 
   # r0 <- (c0 + c1)(c0 + β c1)
   r.c0.sum(a.c0, a.c1)
-  r.c1.sum(a.c0, β * a.c1)
+  r.c1.sum(a.c0, NonResidue * a.c1)
   r.c0 *= r.c1
 
   # r1 <- c0 c1
   r.c1.prod(a.c0, a.c1)
 
   # r0 = (c0 + c1)(c0 + β c1) - β c0c1 - c0c1
-  r.c0 -= β * r.c1
+  r.c0 -= NonResidue * r.c1
   r.c0 -= r.c1
 
   # r1 = 2 c0c1
@@ -161,7 +161,7 @@ func prod_generic(r: var QuadraticExt, a, b: QuadraticExt) =
   r.c1 -= t
 
   # r0 <- a0 b0 + β a1 b1
-  r.c0 += β * t
+  r.c0 += NonResidue * t
 
 # Exported symbols
 # -------------------------------------------------------------------
@@ -204,15 +204,15 @@ func inv*(r: var QuadraticExt, a: QuadraticExt) =
   when r.fromComplexExtension():
     v0 += v1
   else:
-    v0 -= β * v1     # v0 = a0² - β a1² (the norm / squared magnitude of a)
+    v0 -= NonResidue * v1 # v0 = a0² - β a1² (the norm / squared magnitude of a)
 
   # [1 Inv, 2 Sqr, 1 Add]
-  v1.inv(v0)           # v1 = 1 / (a0² - β a1²)
+  v1.inv(v0)              # v1 = 1 / (a0² - β a1²)
 
   # [1 Inv, 2 Mul, 2 Sqr, 1 Add, 1 Neg]
-  r.c0.prod(a.c0, v1)  # r0 = a0 / (a0² - β a1²)
-  v0.neg(v1)           # v0 = -1 / (a0² - β a1²)
-  r.c1.prod(a.c1, v0)  # r1 = -a1 / (a0² - β a1²)
+  r.c0.prod(a.c0, v1)     # r0 = a0 / (a0² - β a1²)
+  v0.neg(v1)              # v0 = -1 / (a0² - β a1²)
+  r.c1.prod(a.c1, v0)     # r1 = -a1 / (a0² - β a1²)
 
 func `*=`*(a: var QuadraticExt, b: QuadraticExt) {.inline.} =
   ## In-place multiplication

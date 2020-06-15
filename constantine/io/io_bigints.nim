@@ -428,6 +428,27 @@ func fromHex*(T: type BigInt, s: string): T {.noInit.} =
   # 2. Convert canonical uint to Big Int
   result.fromRawUint(bytes, bigEndian)
 
+func appendHex*(dst: var string, big: BigInt, order: static Endianness = bigEndian) =
+  ## Append the BigInt hex into an accumulator
+  ## Note. Leading zeros are not removed.
+  ## Result is prefixed with 0x
+  ##
+  ## Output will be padded with 0s to maintain constant-time.
+  ##
+  ## CT:
+  ##   - no leaks
+  ##
+  ## This is useful to reduce the number of allocations when serializing
+  ## Fp towers
+
+  # 1. Convert Big Int to canonical uint
+  const canonLen = (big.bits + 8 - 1) div 8
+  var bytes: array[canonLen, byte]
+  exportRawUint(bytes, big, cpuEndian)
+
+  # 2 Convert canonical uint to hex
+  dst.add bytes.nativeEndianToHex(order)
+
 func toHex*(big: BigInt, order: static Endianness = bigEndian): string =
   ## Stringify an int to hex.
   ## Note. Leading zeros are not removed.
@@ -437,11 +458,4 @@ func toHex*(big: BigInt, order: static Endianness = bigEndian): string =
   ##
   ## CT:
   ##   - no leaks
-
-  # 1. Convert Big Int to canonical uint
-  const canonLen = (big.bits + 8 - 1) div 8
-  var bytes: array[canonLen, byte]
-  exportRawUint(bytes, big, cpuEndian)
-
-  # 2 Convert canonical uint to hex
-  result = bytes.nativeEndianToHex(order)
+  result.appendHex(big, order)

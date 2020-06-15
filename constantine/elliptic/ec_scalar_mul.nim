@@ -65,7 +65,7 @@ func scalarMulPrologue(
        P: var ECP_SWei_Proj,
        scratchspace: var openarray[ECP_SWei_Proj]
      ): uint =
-  ## Setup the scratchspace
+  ## Setup the scratchspace then set P to infinity
   ## Returns the fixed-window size for scalar mul with window optimization
   result = scratchspace.len.getWindowLen()
   # Precompute window content, special case for window = 1
@@ -218,7 +218,7 @@ func scalarMul*(
   ##   P <- [k] P
   # This calls endomorphism accelerated scalar mul if available
   # or the generic scalar mul otherwise
-  when ECP_SWei_Proj.F.C in {BN254_Snarks, BLS12_381}:
+  when ECP_SWei_Proj.F is Fp and ECP_SWei_Proj.F.C in {BN254_Snarks, BLS12_381}:
     # ⚠️ This requires the cofactor to be cleared
     scalarMulGLV(P, scalar)
   else:

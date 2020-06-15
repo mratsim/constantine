@@ -301,7 +301,7 @@ func reduce*[aBits, mBits](r: var BigInt[mBits], a: BigInt[aBits], M: BigInt[mBi
   # pass a pointer+length to a fixed session of the BSS.
   reduce(r.limbs, a.limbs, aBits, M.limbs, mBits)
 
-func div2mod*[bits](a: var BigInt[bits], mp1div2: BigInt[bits]) =
+func div2_modular*[bits](a: var BigInt[bits], mp1div2: BigInt[bits]) =
   ## Compute a <- a/2 (mod M)
   ## `mp1div2` is the modulus (M+1)/2
   ##
@@ -313,7 +313,7 @@ func div2mod*[bits](a: var BigInt[bits], mp1div2: BigInt[bits]) =
   ## overflowing the "Limbs" by dividing by 2 first
   ## and add 1
   ## Otherwise `mp1div2` should be M/2
-  a.limbs.div2mod(mp1div2.limbs)
+  a.limbs.div2_modular(mp1div2.limbs)
 
 func steinsGCD*[bits](r: var BigInt[bits], a, F, M, mp1div2: BigInt[bits]) =
   ## Compute F multiplied the modular inverse of ``a`` modulo M

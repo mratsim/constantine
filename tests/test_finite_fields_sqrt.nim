@@ -22,6 +22,7 @@ const Iters = 128
 var rng: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
 rng.seed(seed)
+echo "\n------------------------------------------------------\n"
 echo "test_finite_fields_sqrt xoshiro512** seed: ", seed
 
 static: doAssert defined(testingCurves), "This modules requires the -d:testingCurves compile option"
@@ -59,11 +60,11 @@ proc exhaustiveCheck_p3mod4(C: static Curve, modulus: static int) =
         var a2 = a
         check:
           bool a.isSquare()
-          bool a.sqrt_if_square_p3mod4()
+          bool a.sqrt_if_square()
 
         # 2 different code paths have the same result
         # (despite 2 square roots existing per square)
-        a2.sqrt_p3mod4()
+        a2.sqrt()
         check: bool(a == a2)
 
         var r_bytes: array[8, byte]
@@ -78,7 +79,7 @@ proc exhaustiveCheck_p3mod4(C: static Curve, modulus: static int) =
 
         check:
           bool not a.isSquare()
-          bool not a.sqrt_if_square_p3mod4()
+          bool not a.sqrt_if_square()
           bool (a == a2) # a shouldn't be modified
 
 proc randomSqrtCheck_p3mod4(C: static Curve) =
@@ -97,15 +98,15 @@ proc randomSqrtCheck_p3mod4(C: static Curve) =
         bool a2.isSquare()
 
       var r, s = a2
-      r.sqrt_p3mod4()
-      let ok = s.sqrt_if_square_p3mod4()
+      r.sqrt()
+      let ok = s.sqrt_if_square()
       check:
         bool ok
         bool(r == s)
         bool(r == a or r == na)
 
 proc main() =
-  suite "Modular square root":
+  suite "Modular square root" & " [" & $WordBitwidth & "-bit mode]":
     exhaustiveCheck_p3mod4 Fake103, 103
     exhaustiveCheck_p3mod4 Fake10007, 10007
     exhaustiveCheck_p3mod4 Fake65519, 65519

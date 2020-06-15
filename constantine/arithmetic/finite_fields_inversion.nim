@@ -162,3 +162,18 @@ func inv*(r: var Fp, a: Fp) =
   # Performance is slower than GCD
   # To be revisited with faster squaring/multiplications
   r.mres.steinsGCD(a.mres, Fp.C.getR2modP(), Fp.C.Mod, Fp.C.getPrimePlus1div2())
+
+func inv*(a: var Fp) =
+  ## Inversion modulo p
+  ##
+  ## The inverse of 0 is 0.
+  ## Incidentally this avoids extra check
+  ## to convert Jacobian and Projective coordinates
+  ## to affine for elliptic curve
+  # For now we don't activate the addition chains
+  # neither for Secp256k1 nor BN curves
+  # Performance is slower than GCD
+  # To be revisited with faster squaring/multiplications
+  var t: typeof(a) # TODO: zero-init needed?
+  t.mres.steinsGCD(a.mres, Fp.C.getR2modP(), Fp.C.Mod, Fp.C.getPrimePlus1div2())
+  a = t

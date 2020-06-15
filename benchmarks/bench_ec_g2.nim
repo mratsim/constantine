@@ -10,6 +10,7 @@ import
   # Internals
   ../constantine/config/curves,
   ../constantine/arithmetic,
+  ../constantine/towers,
   ../constantine/elliptic/ec_weierstrass_projective,
   # Helpers
   ../helpers/static_for,
@@ -26,8 +27,8 @@ import
 # ############################################################
 
 
-const Iters = 1_000_000
-const MulIters = 1000
+const Iters = 500_000
+const MulIters = 500
 const AvailableCurves = [
   # P224,
   # BN254_Nogami,
@@ -47,20 +48,20 @@ proc main() =
   separator()
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
-    addBench(ECP_SWei_Proj[Fp[curve]], Iters)
+    addBench(ECP_SWei_Proj[Fp2[curve]], Iters)
     separator()
-    doublingBench(ECP_SWei_Proj[Fp[curve]], Iters)
+    doublingBench(ECP_SWei_Proj[Fp2[curve]], Iters)
     separator()
-    scalarMulUnsafeDoubleAddBench(ECP_SWei_Proj[Fp[curve]], MulIters)
+    scalarMulUnsafeDoubleAddBench(ECP_SWei_Proj[Fp2[curve]], MulIters)
     separator()
-    scalarMulGenericBench(ECP_SWei_Proj[Fp[curve]], scratchSpaceSize = 1 shl 2, MulIters)
+    scalarMulGenericBench(ECP_SWei_Proj[Fp2[curve]], scratchSpaceSize = 1 shl 2, MulIters)
     separator()
-    scalarMulGenericBench(ECP_SWei_Proj[Fp[curve]], scratchSpaceSize = 1 shl 3, MulIters)
+    scalarMulGenericBench(ECP_SWei_Proj[Fp2[curve]], scratchSpaceSize = 1 shl 3, MulIters)
     separator()
-    scalarMulGenericBench(ECP_SWei_Proj[Fp[curve]], scratchSpaceSize = 1 shl 4, MulIters)
+    scalarMulGenericBench(ECP_SWei_Proj[Fp2[curve]], scratchSpaceSize = 1 shl 4, MulIters)
     separator()
-    scalarMulEndo(ECP_SWei_Proj[Fp[curve]], MulIters)
-    separator()
+    # scalarMulEndo(ECP_SWei_Proj[Fp2[curve]], MulIters)
+    # separator()
   separator()
 
 main()

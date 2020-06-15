@@ -14,20 +14,13 @@ import
   ./test_fp_tower_template
 
 const TestCurves = [
-    # BN254_Nogami
-    BN254_Snarks,
-    BLS12_377,
-    BLS12_381,
-    # BN446
-    # FKM12_447
-    # BLS12_461
-    # BN462
+    BLS12_381
   ]
 
 runTowerTests(
   ExtDegree = 6,
   Iters = 128,
   TestCurves = TestCurves,
-  moduleName = "test_fp6",
-  testSuiteDesc = "𝔽p6 = 𝔽p2[v] (irreducible polynomial v³-ξ = 0) -> 𝔽p6 point (a, b, c) with coordinate a + bv + cv² and ξ cubic non-residue in 𝔽p2"
+  moduleName = "test_fp6_" & $BLS12_381,
+  testSuiteDesc = "𝔽p6 = 𝔽p2[v] " & $BLS12_381
 )

@@ -10,6 +10,7 @@ import
   # Standard library
   std/[unittest, times],
   # Internal
+  ../constantine/config/common,
   ../constantine/arithmetic,
   ../constantine/io/[io_bigints, io_fields],
   ../constantine/config/curves,
@@ -24,10 +25,11 @@ const Iters = 512
 var rng: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
 rng.seed(seed)
+echo "\n------------------------------------------------------\n"
 echo "test_finite_fields_powinv xoshiro512** seed: ", seed
 
 proc main() =
-  suite "Modular exponentiation over finite fields":
+  suite "Modular exponentiation over finite fields" & " [" & $WordBitwidth & "-bit mode]":
     test "n² mod 101":
       let exponent = BigInt[64].fromUint(2'u64)
 
@@ -181,7 +183,7 @@ proc main() =
     testRandomDiv2 BLS12_461
     testRandomDiv2 BN462
 
-  suite "Modular inversion over prime fields":
+  suite "Modular inversion over prime fields" & " [" & $WordBitwidth & "-bit mode]":
     test "Specific tests on Fp[BLS12_381]":
       block: # No inverse exist for 0 --> should return 0 for projective/jacobian to affine coordinate conversion
         var r, x: Fp[BLS12_381]

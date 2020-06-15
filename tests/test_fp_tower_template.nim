@@ -23,6 +23,8 @@ import
   # Test utilities
   ../helpers/[prng_unsafe, static_for]
 
+echo "\n------------------------------------------------------\n"
+
 template ExtField(degree: static int, curve: static Curve): untyped =
   when degree == 2:
     Fp2[curve]
@@ -47,7 +49,7 @@ proc runTowerTests*[N](
   rng.seed(seed)
   echo moduleName, " xoshiro512** seed: ", seed
 
-  suite testSuiteDesc:
+  suite testSuiteDesc & " [" & $WordBitwidth & "-bit mode]":
     test "Comparison sanity checks":
       proc test(Field: typedesc) =
         var z, o {.noInit.}: Field

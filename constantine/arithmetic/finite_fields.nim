@@ -45,7 +45,7 @@ func fromBig*[C: static Curve](T: type Fp[C], src: BigInt): Fp[C] {.noInit.} =
   ## Convert a BigInt to its Montgomery form
   result.mres.montyResidue(src, C.Mod, C.getR2modP(), C.getNegInvModWord(), C.canUseNoCarryMontyMul())
 
-func fromBig*[C: static Curve](dst: var Fp[C], src: BigInt) {.noInit.} =
+func fromBig*[C: static Curve](dst: var Fp[C], src: BigInt) =
   ## Convert a BigInt to its Montgomery form
   dst.mres.montyResidue(src, C.Mod, C.getR2modP(), C.getNegInvModWord(), C.canUseNoCarryMontyMul())
 
@@ -168,7 +168,7 @@ func neg*(r: var Fp, a: Fp) =
 
 func div2*(a: var Fp) =
   ## Modular division by 2
-  a.mres.div2mod(Fp.C.getPrimePlus1div2())
+  a.mres.div2_modular(Fp.C.getPrimePlus1div2())
 
 # ############################################################
 #
@@ -247,11 +247,13 @@ func isSquare*[C](a: Fp[C]): SecretBool =
   #                 as we assume that
   var xi {.noInit.} = a # TODO: is noInit necessary? see https://github.com/mratsim/constantine/issues/21
   xi.powUnsafeExponent(C.getPrimeMinus1div2_BE())
-  result = xi.isOne()
-  # 0 is also a square
-  result = result or xi.isZero()
+  result = not(xi.mres == C.getMontyPrimeMinus1())
+  # xi can be:
+  # -  1  if a square
+  # -  0  if 0
+  # - -1  if a quadratic non-residue
 
-func sqrt_p3mod4*[C](a: var Fp[C]) =
+func sqrt_p3mod4[C](a: var Fp[C]) =
   ## Compute the square root of ``a``
   ##
   ## This requires ``a`` to be a square
@@ -262,10 +264,10 @@ func sqrt_p3mod4*[C](a: var Fp[C]) =
   ## The square root, if it exist is multivalued,
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
-  static: doAssert C.Mod.limbs[0].BaseType mod 4 == 3
+  static: doAssert BaseType(C.Mod.limbs[0]) mod 4 == 3
   a.powUnsafeExponent(C.getPrimePlus1div4_BE())
 
-func sqrt_if_square_p3mod4*[C](a: var Fp[C]): SecretBool =
+func sqrt_if_square_p3mod4[C](a: var Fp[C]): SecretBool =
   ## If ``a`` is a square, compute the square root of ``a``
   ## if not, ``a`` is unmodified.
   ##
@@ -289,6 +291,33 @@ func sqrt_if_square_p3mod4*[C](a: var Fp[C]): SecretBool =
 
   result = not(a0.mres == C.getMontyPrimeMinus1())
   a.ccopy(a1a, result)
+
+func sqrt*[C](a: var Fp[C]) =
+  ## Compute the square root of ``a``
+  ##
+  ## This requires ``a`` to be a square
+  ##
+  ## The result is undefined otherwise
+  ##
+  ## The square root, if it exist is multivalued,
+  ## i.e. both x² == (-x)²
+  ## This procedure returns a deterministic result
+  when BaseType(C.Mod.limbs[0]) mod 4 == 3:
+    sqrt_p3mod4(a)
+  else:
+    {.error: "Square root is only implemented for p ≡ 3 (mod 4)".}
+
+func sqrt_if_square*[C](a: var Fp[C]): SecretBool =
+  ## If ``a`` is a square, compute the square root of ``a``
+  ## if not, ``a`` is unmodified.
+  ##
+  ## The square root, if it exist is multivalued,
+  ## i.e. both x² == (-x)²
+  ## This procedure returns a deterministic result
+  when BaseType(C.Mod.limbs[0]) mod 4 == 3:
+    result = sqrt_if_square_p3mod4(a)
+  else:
+    {.error: "Square root is only implemented for p ≡ 3 (mod 4)".}
 
 # ############################################################
 #

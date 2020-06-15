@@ -23,15 +23,29 @@ func curve_eq_rhs*[F](y2: var F, x: F) =
   t.square(x)
   t *= x
 
-  # No need to precompute `b` in 𝔽p or 𝔽p² or `b/µ` `µ b`
-  # This procedure is not use in perf critcal situation like signing/verification
+  # This procedure is not use in perf critical situation like signing/verification
   # but for testing to quickly create points on a curve.
-  y2 = F.fromBig F.C.matchingBigInt().fromUint F.C.getCoefB()
+  # That said D-Twists require an inversion
+  # and we could avoid doing `b/µ` or `µ*b` at runtime on 𝔽p²
+  # which would accelerate random point generation
+  #
+  # This is preferred to generating random point
+  # via random scalar multiplication of the curve generator
+  # as the latter assumes:
+  # - point addition, doubling work
+  # - scalar multiplication works
+  # - a generator point is defined
+  # i.e. you can't test unless everything is already working
+  #
+  # TODO: precomputation needed when deserializing points
+  #       to check if a point is on-curve and prevent denial-of-service
+  #       using slow inversion.
+  y2.fromBig F.C.matchingBigInt().fromUint F.C.getCoefB()
   when F is Fp2:
     when F.C.getSexticTwist() == D_Twist:
-      y2 /= F.C.get_SNR_Fp2()
+      y2 /= SexticNonResidue
     elif F.C.getSexticTwist() == M_Twist:
-      y2 *= F.C.get_SNR_Fp2()
+      y2 *= SexticNonResidue
     else:
       {.error: "Only twisted curves are supported on extension field 𝔽p²".}
 

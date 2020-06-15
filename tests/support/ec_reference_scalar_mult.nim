@@ -10,7 +10,7 @@ import
   # Internals
   ../../constantine/config/[common, curves],
   ../../constantine/arithmetic,
-  ../../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective]
+  ../../constantine/elliptic/ec_weierstrass_projective
 
 # Support files for testing Elliptic Curve arithmetic
 # ------------------------------------------------------------------------------

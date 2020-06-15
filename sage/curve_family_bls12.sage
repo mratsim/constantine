@@ -30,11 +30,21 @@ def compute_curve_characteristic(u_str):
   else:
       print('  Parameter u (hex):  0x' + u.hex())
 
+  print()
+
   print(f'  p mod 3:           ' + str(p % 3))
   print(f'  p mod 4:           ' + str(p % 4))
   print(f'  p mod 8:           ' + str(p % 8))
   print(f'  p mod 12:          ' + str(p % 12))
   print(f'  p mod 16:          ' + str(p % 16))
+
+  print()
+
+  print(f'  p^2 mod 3:           ' + str(p^2 % 3))
+  print(f'  p^2 mod 4:           ' + str(p^2 % 4))
+  print(f'  p^2 mod 8:           ' + str(p^2 % 8))
+  print(f'  p^2 mod 12:          ' + str(p^2 % 12))
+  print(f'  p^2 mod 16:          ' + str(p^2 % 16))
 
   print()
 

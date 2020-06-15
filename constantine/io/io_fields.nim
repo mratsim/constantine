@@ -42,6 +42,17 @@ func exportRawUint*(dst: var openarray[byte],
   ## I.e least significant bit is aligned to buffer boundary
   exportRawUint(dst, src.toBig(), dstEndianness)
 
+func appendHex*(dst: var string, f: Fp, order: static Endianness = bigEndian) =
+  ## Stringify a finite field element to hex.
+  ## Note. Leading zeros are not removed.
+  ## Result is prefixed with 0x
+  ##
+  ## Output will be padded with 0s to maintain constant-time.
+  ##
+  ## CT:
+  ##   - no leaks
+  dst.appendHex(f.toBig(), order)
+
 func toHex*(f: Fp, order: static Endianness = bigEndian): string =
   ## Stringify a finite field element to hex.
   ## Note. Leading zeros are not removed.
@@ -51,7 +62,7 @@ func toHex*(f: Fp, order: static Endianness = bigEndian): string =
   ##
   ## CT:
   ##   - no leaks
-  result = f.toBig().toHex(order)
+  result.appendHex(f, order)
 
 func fromHex*(dst: var Fp, s: string) {.raises: [ValueError].}=
   ## Convert a hex string to a element of Fp

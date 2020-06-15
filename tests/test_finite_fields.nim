@@ -13,6 +13,8 @@ import  std/unittest,
 
 static: doAssert defined(testingCurves), "This modules requires the -d:testingCurves compile option"
 
+echo "\n------------------------------------------------------\n"
+
 proc main() =
   suite "Basic arithmetic over finite fields":
     test "Addition mod 101":

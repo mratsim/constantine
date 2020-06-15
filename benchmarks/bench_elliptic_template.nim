@@ -111,20 +111,23 @@ template bench(op: string, T: typedesc, iters: int, body: untyped): untyped =
   report(op, fixEllipticDisplay(T), start, stop, startClk, stopClk, iters)
 
 proc addBench*(T: typedesc, iters: int) =
+  const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
   var r {.noInit.}: T
   let P = rng.random_unsafe(T)
   let Q = rng.random_unsafe(T)
-  bench("EC Add G1", T, iters):
+  bench("EC Add " & G1_or_G2, T, iters):
     r.sum(P, Q)
 
 proc doublingBench*(T: typedesc, iters: int) =
+  const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
   var r {.noInit.}: T
   let P = rng.random_unsafe(T)
-  bench("EC Double G1", T, iters):
+  bench("EC Double " & G1_or_G2, T, iters):
     r.double(P)
 
 proc scalarMulGenericBench*(T: typedesc, scratchSpaceSize: static int, iters: int) =
   const bits = T.F.C.getCurveOrderBitwidth()
+  const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
 
   var r {.noInit.}: T
   let P = rng.random_unsafe(T) # TODO: clear cofactor
@@ -135,24 +138,29 @@ proc scalarMulGenericBench*(T: typedesc, scratchSpaceSize: static int, iters: in
 
   var scratchSpace{.noInit.}: array[scratchSpaceSize, T]
 
-  bench("EC ScalarMul Generic G1 (scratchsize = " & $scratchSpaceSize & ')', T, iters):
+  bench("EC ScalarMul Generic " & G1_or_G2 & " (scratchsize = " & $scratchSpaceSize & ')', T, iters):
     r = P
     r.scalarMulGeneric(exponentCanonical, scratchSpace)
 
-proc scalarMulGLV*(T: typedesc, iters: int) =
+proc scalarMulEndo*(T: typedesc, iters: int) =
   const bits = T.F.C.getCurveOrderBitwidth()
+  const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
 
   var r {.noInit.}: T
   let P = rng.random_unsafe(T) # TODO: clear cofactor
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
-  bench("EC ScalarMul G1 (GLV endomorphism accelerated)", T, iters):
+  bench("EC ScalarMul " & G1_or_G2 & " (endomorphism accelerated)", T, iters):
     r = P
-    r.scalarMulGLV(exponent)
+    when T.F is Fp:
+      r.scalarMulGLV(exponent)
+    else:
+      {.error: "Not implemented".}
 
 proc scalarMulUnsafeDoubleAddBench*(T: typedesc, iters: int) =
   const bits = T.F.C.getCurveOrderBitwidth()
+  const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
 
   var r {.noInit.}: T
   let P = rng.random_unsafe(T) # TODO: clear cofactor
@@ -161,6 +169,6 @@ proc scalarMulUnsafeDoubleAddBench*(T: typedesc, iters: int) =
   var exponentCanonical{.noInit.}: array[(bits+7) div 8, byte]
   exponentCanonical.exportRawUint(exponent, bigEndian)
 
-  bench("EC ScalarMul G1 (unsafe reference DoubleAdd)", T, iters):
+  bench("EC ScalarMul " & G1_or_G2 & " (unsafe reference DoubleAdd)", T, iters):
     r = P
     r.unsafe_ECmul_double_add(exponentCanonical)

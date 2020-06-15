@@ -17,6 +17,8 @@ import
   # Test utilities
   ./support/ec_reference_scalar_mult
 
+echo "\n------------------------------------------------------\n"
+
 proc test(
        id: int,
        EC: typedesc[ECP_SWei_Proj],
@@ -51,7 +53,7 @@ proc test(
     doAssert: bool(Q == impl)
     doAssert: bool(Q == endo)
 
-suite "Scalar Multiplication: BN254 implementation (and unsafe reference impl) vs SageMath":
+suite "Scalar Multiplication: BN254 implementation vs SageMath" & " [" & $WordBitwidth & "-bit mode]":
   # Generated via sage sage/testgen_bn254_snarks.sage
   test(
     id = 1,
