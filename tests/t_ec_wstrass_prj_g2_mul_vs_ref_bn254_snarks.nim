@@ -7,20 +7,25 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  # Standard library
+  std/[unittest, times],
   # Internals
+  ../constantine/config/[common, curves],
+  ../constantine/arithmetic,
   ../constantine/towers,
-  ../constantine/config/curves,
+  ../constantine/io/io_bigints,
+  ../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective, ec_scalar_mul],
   # Test utilities
-  ./test_fp_tower_template
+  ../helpers/prng_unsafe,
+  ./support/ec_reference_scalar_mult,
+  ./t_ec_template
 
-const TestCurves = [
-    BN254_Snarks,
-  ]
+const
+  Iters = 128
+  ItersMul = Iters div 4
 
-runTowerTests(
-  ExtDegree = 6,
-  Iters = 128,
-  TestCurves = TestCurves,
-  moduleName = "test_fp6_" & $BN254_Snarks,
-  testSuiteDesc = "𝔽p6 = 𝔽p2[w] " & $BN254_Snarks
-)
+run_EC_mul_vs_ref_impl(
+    ec = ECP_SWei_Proj[Fp2[BN254_Snarks]],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_weierstrass_projective_g2_mul_vs_ref_" & $BN254_Snarks
+  )

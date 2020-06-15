@@ -11,16 +11,16 @@ import
   ../constantine/towers,
   ../constantine/config/curves,
   # Test utilities
-  ./test_fp_tower_template
+  ./t_fp_tower_template
 
 const TestCurves = [
     BLS12_377,
   ]
 
 runTowerTests(
-  ExtDegree = 12,
+  ExtDegree = 6,
   Iters = 128,
   TestCurves = TestCurves,
-  moduleName = "test_fp12_" & $BLS12_377,
-  testSuiteDesc = "𝔽p12 = 𝔽p6[w] " & $BLS12_377
+  moduleName = "test_fp6_" & $BLS12_377,
+  testSuiteDesc = "𝔽p6 = 𝔽p2[v] " & $BLS12_377
 )

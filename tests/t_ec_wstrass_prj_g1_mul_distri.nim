@@ -12,18 +12,25 @@ import
   # Internals
   ../constantine/config/[common, curves],
   ../constantine/arithmetic,
-  ../constantine/towers,
   ../constantine/io/io_bigints,
-  ../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective],
+  ../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective, ec_scalar_mul],
   # Test utilities
   ../helpers/prng_unsafe,
-  ./test_ec_template
+  ./support/ec_reference_scalar_mult,
+  ./t_ec_template
 
 const
   Iters = 128
+  ItersMul = Iters div 4
 
-run_EC_addition_tests(
-    ec = ECP_SWei_Proj[Fp2[BLS12_381]],
-    Iters = Iters,
-    moduleName = "test_ec_weierstrass_projective_g2_add_double_" & $BLS12_381
+run_EC_mul_distributive_tests(
+    ec = ECP_SWei_Proj[Fp[BN254_Snarks]],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_weierstrass_projective_g1_mul_distributive_" & $BN254_Snarks
+  )
+
+run_EC_mul_distributive_tests(
+    ec = ECP_SWei_Proj[Fp[BLS12_381]],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_weierstrass_projective_g1_mul_distributive_" & $BLS12_381
   )

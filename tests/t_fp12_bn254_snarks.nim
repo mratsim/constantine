@@ -11,23 +11,16 @@ import
   ../constantine/towers,
   ../constantine/config/curves,
   # Test utilities
-  ./test_fp_tower_template
+  ./t_fp_tower_template
 
 const TestCurves = [
-    # BN254_Nogami
     BN254_Snarks,
-    BLS12_377,
-    BLS12_381,
-    # BN446
-    # FKM12_447
-    # BLS12_461
-    # BN462
   ]
 
 runTowerTests(
-  ExtDegree = 2,
+  ExtDegree = 12,
   Iters = 128,
   TestCurves = TestCurves,
-  moduleName = "test_fp2",
-  testSuiteDesc = "𝔽p2 = 𝔽p[u] (irreducible polynomial u²-β = 0) -> 𝔽p2 point (a, b) with coordinate a + bu and β quadratic non-residue in 𝔽p"
+  moduleName = "test_fp12_" & $BN254_Snarks,
+  testSuiteDesc = "𝔽p12 = 𝔽p6[w] " & $BN254_Snarks
 )

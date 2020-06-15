@@ -7,20 +7,23 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  # Standard library
+  std/[unittest, times],
   # Internals
+  ../constantine/config/[common, curves],
+  ../constantine/arithmetic,
   ../constantine/towers,
-  ../constantine/config/curves,
+  ../constantine/io/io_bigints,
+  ../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective],
   # Test utilities
-  ./test_fp_tower_template
+  ../helpers/prng_unsafe,
+  ./t_ec_template
 
-const TestCurves = [
-    BLS12_377,
-  ]
+const
+  Iters = 128
 
-runTowerTests(
-  ExtDegree = 6,
-  Iters = 128,
-  TestCurves = TestCurves,
-  moduleName = "test_fp6_" & $BLS12_377,
-  testSuiteDesc = "𝔽p6 = 𝔽p2[v] " & $BLS12_377
-)
+run_EC_addition_tests(
+    ec = ECP_SWei_Proj[Fp2[BLS12_381]],
+    Iters = Iters,
+    moduleName = "test_ec_weierstrass_projective_g2_add_double_" & $BLS12_381
+  )

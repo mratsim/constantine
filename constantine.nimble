@@ -17,50 +17,50 @@ const buildParallel = "test_parallel.txt"
 
 const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Primitives
-  ("tests/test_primitives.nim", false),
+  ("tests/t_primitives.nim", false),
   # Big ints
-  ("tests/test_io_bigints.nim", false),
-  ("tests/test_bigints.nim", false),
-  ("tests/test_bigints_multimod.nim", false),
-  ("tests/test_bigints_mod_vs_gmp.nim", true),
-  ("tests/test_bigints_mul_vs_gmp.nim", true),
-  ("tests/test_bigints_mul_high_words_vs_gmp.nim", true),
+  ("tests/t_io_bigints.nim", false),
+  ("tests/t_bigints.nim", false),
+  ("tests/t_bigints_multimod.nim", false),
+  ("tests/t_bigints_mod_vs_gmp.nim", true),
+  ("tests/t_bigints_mul_vs_gmp.nim", true),
+  ("tests/t_bigints_mul_high_words_vs_gmp.nim", true),
   # Field
-  ("tests/test_io_fields", false),
-  ("tests/test_finite_fields.nim", false),
-  ("tests/test_finite_fields_mulsquare.nim", false),
-  ("tests/test_finite_fields_sqrt.nim", false),
-  ("tests/test_finite_fields_powinv.nim", false),
-  ("tests/test_finite_fields_vs_gmp.nim", true),
+  ("tests/t_io_fields", false),
+  ("tests/t_finite_fields.nim", false),
+  ("tests/t_finite_fields_mulsquare.nim", false),
+  ("tests/t_finite_fields_sqrt.nim", false),
+  ("tests/t_finite_fields_powinv.nim", false),
+  ("tests/t_finite_fields_vs_gmp.nim", true),
   # Precompute
-  ("tests/test_precomputed", false),
+  ("tests/t_precomputed", false),
   # Towers of extension fields
-  ("tests/test_fp2.nim", false),
-  ("tests/test_fp2_sqrt.nim", false),
-  ("tests/test_fp6_bn254_snarks.nim", false),
-  ("tests/test_fp6_bls12_377.nim", false),
-  ("tests/test_fp6_bls12_381.nim", false),
-  ("tests/test_fp12_bn254_snarks.nim", false),
-  ("tests/test_fp12_bls12_377.nim", false),
-  ("tests/test_fp12_bls12_381.nim", false),
+  ("tests/t_fp2.nim", false),
+  ("tests/t_fp2_sqrt.nim", false),
+  ("tests/t_fp6_bn254_snarks.nim", false),
+  ("tests/t_fp6_bls12_377.nim", false),
+  ("tests/t_fp6_bls12_381.nim", false),
+  ("tests/t_fp12_bn254_snarks.nim", false),
+  ("tests/t_fp12_bls12_377.nim", false),
+  ("tests/t_fp12_bls12_381.nim", false),
   # Elliptic curve arithmetic G1
-  ("tests/test_ec_weierstrass_projective_g1_add_double.nim", false),
-  ("tests/test_ec_weierstrass_projective_g1_mul_sanity.nim", false),
-  ("tests/test_ec_weierstrass_projective_g1_mul_distributive.nim", false),
-  ("tests/test_ec_weierstrass_projective_g1_mul_vs_ref.nim", false),
+  ("tests/t_ec_wstrass_prj_g1_add_double.nim", false),
+  ("tests/t_ec_wstrass_prj_g1_mul_sanity.nim", false),
+  ("tests/t_ec_wstrass_prj_g1_mul_distri.nim", false),
+  ("tests/t_ec_wstrass_prj_g1_mul_vs_ref.nim", false),
   # Elliptic curve arithmetic G2
-  ("tests/test_ec_weierstrass_projective_g2_add_double_bn254_snarks.nim", false),
-  ("tests/test_ec_weierstrass_projective_g2_mul_sanity_bn254_snarks.nim", false),
-  ("tests/test_ec_weierstrass_projective_g2_mul_distributive_bn254_snarks.nim", false),
-  ("tests/test_ec_weierstrass_projective_g2_mul_vs_ref_bn254_snarks.nim", false),
+  ("tests/t_ec_wstrass_prj_g2_add_double_bn254_snarks.nim", false),
+  ("tests/t_ec_wstrass_prj_g2_mul_sanity_bn254_snarks.nim", false),
+  ("tests/t_ec_wstrass_prj_g2_mul_distri_bn254_snarks.nim", false),
+  ("tests/t_ec_wstrass_prj_g2_mul_vs_ref_bn254_snarks.nim", false),
 
-  ("tests/test_ec_weierstrass_projective_g2_add_double_bls12_381.nim", false),
-  ("tests/test_ec_weierstrass_projective_g2_mul_sanity_bls12_381.nim", false),
-  ("tests/test_ec_weierstrass_projective_g2_mul_distributive_bls12_381.nim", false),
-  ("tests/test_ec_weierstrass_projective_g2_mul_vs_ref_bls12_381.nim", false),
+  ("tests/t_ec_wstrass_prj_g2_add_double_bls12_381.nim", false),
+  ("tests/t_ec_wstrass_prj_g2_mul_sanity_bls12_381.nim", false),
+  ("tests/t_ec_wstrass_prj_g2_mul_distri_bls12_381.nim", false),
+  ("tests/t_ec_wstrass_prj_g2_mul_vs_ref_bls12_381.nim", false),
   # Elliptic curve arithmetic vs Sagemath
-  ("tests/test_ec_sage_bn254.nim", false),
-  ("tests/test_ec_sage_bls12_381.nim", false)
+  ("tests/t_ec_sage_bn254.nim", false),
+  ("tests/t_ec_sage_bls12_381.nim", false)
 ]
 
 # Helper functions

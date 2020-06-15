@@ -18,14 +18,14 @@ import
   # Test utilities
   ../helpers/prng_unsafe,
   ./support/ec_reference_scalar_mult,
-  ./test_ec_template
+  ./t_ec_template
 
 const
   Iters = 128
   ItersMul = Iters div 4
 
 run_EC_mul_distributive_tests(
-    ec = ECP_SWei_Proj[Fp2[BLS12_381]],
+    ec = ECP_SWei_Proj[Fp2[BN254_Snarks]],
     ItersMul = ItersMul,
-    moduleName = "test_ec_weierstrass_projective_g2_mul_distributive_" & $BLS12_381
+    moduleName = "test_ec_weierstrass_projective_g2_mul_distributive_" & $BN254_Snarks
   )

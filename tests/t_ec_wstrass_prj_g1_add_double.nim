@@ -16,7 +16,7 @@ import
   ../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective],
   # Test utilities
   ../helpers/prng_unsafe,
-  ./test_ec_template
+  ./t_ec_template
 
 const
   Iters = 128

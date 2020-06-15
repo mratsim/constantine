@@ -17,7 +17,7 @@ import
   # Test utilities
   ../helpers/prng_unsafe,
   ./support/ec_reference_scalar_mult,
-  ./test_ec_template
+  ./t_ec_template
 
 const
   Iters = 128
