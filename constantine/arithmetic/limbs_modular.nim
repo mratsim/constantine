@@ -39,7 +39,7 @@ func div2_modular*(a: var Limbs, mp1div2: Limbs) {.inline.}=
   # a = a shr 1
   let wasOdd = a.isOdd()
   a.shiftRight(1)
-  let carry = a.cadd(mp1div2, wasOdd)
+  let carry {.used.} = a.cadd(mp1div2, wasOdd)
   debug: doAssert not carry.bool
 
 # ############################################################
@@ -133,7 +133,7 @@ func steinsGCD*(v: var Limbs, a: Limbs, F, M: Limbs, bits: int, mp1div2: Limbs) 
     u.cswap(v, aLessThanB)
     # if isOddA: u -= v (mod M)
     let neg = isOddA and (SecretBool) u.csub(v, isOddA)
-    let corrected = u.cadd(M, neg)
+    discard u.cadd(M, neg)
 
     # u = u/2 (mod M)
     u.div2_modular(mp1div2)

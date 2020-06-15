@@ -130,7 +130,7 @@ func powUnsafeExponent(
     acc, acc_len: uint
     e = 0
   while acc_len > 0 or e < exponent.len:
-    let (k, bits) = powSquarings(
+    let (_, bits) = powSquarings(
       a, exponent,
       scratchspace[0], window,
       acc, acc_len, e

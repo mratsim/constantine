@@ -596,7 +596,7 @@ func montyPowUnsafeExponent*(
     acc, acc_len: uint
     e = 0
   while acc_len > 0 or e < exponent.len:
-    let (k, bits) = montyPowSquarings(
+    let (_, bits) = montyPowSquarings(
       a, exponent, M, m0ninv,
       scratchspace[0], window,
       acc, acc_len, e,
