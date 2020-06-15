@@ -54,10 +54,12 @@ suite "Elliptic curve in Short Weierstrass form with projective coordinates on t
         r.sum(inf, P)
         check: bool(r == P)
 
+    test(Fp2[BN254_Snarks], randZ = false)
+    test(Fp2[BN254_Snarks], randZ = true)
     test(Fp2[BLS12_381], randZ = false)
     test(Fp2[BLS12_381], randZ = true)
 
-  test "Adding opposites gives an infinity point":
+  test "G2 Adding opposites gives an infinity point":
     proc test(F: typedesc, randZ: static bool) =
       for _ in 0 ..< Iters:
         var r{.noInit.}: ECP_SWei_Proj[F]
@@ -74,10 +76,12 @@ suite "Elliptic curve in Short Weierstrass form with projective coordinates on t
         r.sum(Q, P)
         check: bool r.isInf()
 
+    test(Fp2[BN254_Snarks], randZ = false)
+    test(Fp2[BN254_Snarks], randZ = true)
     test(Fp2[BLS12_381], randZ = false)
     test(Fp2[BLS12_381], randZ = true)
 
-  test "EC add is commutative":
+  test "EC G2 add is commutative":
     proc test(F: typedesc, randZ: static bool) =
       for _ in 0 ..< Iters:
         var r0{.noInit.}, r1{.noInit.}: ECP_SWei_Proj[F]
@@ -92,10 +96,12 @@ suite "Elliptic curve in Short Weierstrass form with projective coordinates on t
         r1.sum(Q, P)
         check: bool(r0 == r1)
 
+    test(Fp2[BN254_Snarks], randZ = false)
+    test(Fp2[BN254_Snarks], randZ = true)
     test(Fp2[BLS12_381], randZ = false)
     test(Fp2[BLS12_381], randZ = true)
 
-  test "EC add is associative":
+  test "EC G2 add is associative":
     proc test(F: typedesc, randZ: static bool) =
       for _ in 0 ..< Iters:
         when randZ:
@@ -142,10 +148,12 @@ suite "Elliptic curve in Short Weierstrass form with projective coordinates on t
           bool(r0 == r3)
           bool(r0 == r4)
 
+    test(Fp2[BN254_Snarks], randZ = false)
+    test(Fp2[BN254_Snarks], randZ = true)
     test(Fp2[BLS12_381], randZ = false)
     test(Fp2[BLS12_381], randZ = true)
 
-  test "EC double and EC add are consistent":
+  test "EC G2 double and EC G2 add are consistent":
     proc test(F: typedesc, randZ: static bool) =
       for _ in 0 ..< Iters:
         when randZ:
@@ -160,5 +168,7 @@ suite "Elliptic curve in Short Weierstrass form with projective coordinates on t
 
         check: bool(r0 == r1)
 
+    test(Fp2[BN254_Snarks], randZ = false)
+    test(Fp2[BN254_Snarks], randZ = true)
     test(Fp2[BLS12_381], randZ = false)
     test(Fp2[BLS12_381], randZ = true)

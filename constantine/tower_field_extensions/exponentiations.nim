@@ -155,6 +155,7 @@ func powUnsafeExponent(
 #
 #   In Fp2 in particular p² ≡ 1 (mod 4) always hold
 #   and p² ≡ 5 (mod 8) is not possible
+#   if Fp2 = Fp[v]/(v² − β) with β a quadratic non-residue in Fp
 
 func isSquare*(a: QuadraticExt): SecretBool =
   ## Returns true if ``a`` is a square (quadratic residue) in 𝔽p2

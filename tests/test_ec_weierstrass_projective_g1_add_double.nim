@@ -19,7 +19,6 @@ import
 
 const
   Iters = 128
-  ItersMul = Iters div 4
 
 var rng: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
@@ -34,7 +33,7 @@ echo "test_ec_weierstrass_projective_g1_add_double xoshiro512** seed: ", seed
 #         will significantly slow down testing (100x is possible)
 
 suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with projective coordinates (X, Y, Z): Y²Z = X³ + aXZ² + bZ³ i.e. X = xZ, Y = yZ":
-  test "The infinity point is the neutral element w.r.t. to EC addition":
+  test "The infinity point is the neutral element w.r.t. to EC G1 addition":
     proc test(F: typedesc, randZ: static bool) =
       var inf {.noInit.}: ECP_SWei_Proj[F]
       inf.setInf()
@@ -59,7 +58,7 @@ suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with project
     test(Fp[BLS12_381], randZ = false)
     test(Fp[BLS12_381], randZ = true)
 
-  test "Adding opposites gives an infinity point":
+  test "G1 Adding opposites gives an infinity point":
     proc test(F: typedesc, randZ: static bool) =
       for _ in 0 ..< Iters:
         var r{.noInit.}: ECP_SWei_Proj[F]
@@ -81,7 +80,7 @@ suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with project
     test(Fp[BLS12_381], randZ = false)
     test(Fp[BLS12_381], randZ = true)
 
-  test "EC add is commutative":
+  test "EC G1 add is commutative":
     proc test(F: typedesc, randZ: static bool) =
       for _ in 0 ..< Iters:
         var r0{.noInit.}, r1{.noInit.}: ECP_SWei_Proj[F]
@@ -101,7 +100,7 @@ suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with project
     test(Fp[BLS12_381], randZ = false)
     test(Fp[BLS12_381], randZ = true)
 
-  test "EC add is associative":
+  test "EC G1 add is associative":
     proc test(F: typedesc, randZ: static bool) =
       for _ in 0 ..< Iters:
         when randZ:
@@ -153,7 +152,7 @@ suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with project
     test(Fp[BLS12_381], randZ = false)
     test(Fp[BLS12_381], randZ = true)
 
-  test "EC double and EC add are consistent":
+  test "EC G1 double and EC G1 add are consistent":
     proc test(F: typedesc, randZ: static bool) =
       for _ in 0 ..< Iters:
         when randZ:

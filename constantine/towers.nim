@@ -9,6 +9,7 @@
 import
   ./arithmetic,
   ./config/curves,
+  ./io/io_fields,
   ./tower_field_extensions/[
     tower_common,
     quadratic_extensions,
@@ -69,7 +70,13 @@ func `*=`*(a: var Fp2, _: typedesc[SexticNonResidue]) {.inline.} =
     a.c0 -= a.c1
     a.c1 += t
   else:
-    {.error: "Not implemented".}
+    let a0 = a.c0
+    let a1 = a.c1
+    when a.fromComplexExtension():
+      a.c0.diff(u * a0, v * a1)
+    else:
+      a.c0.sum(u * a0, (Beta * v) * a1)
+    a.c1.sum(v * a0, u * a1)
 
 func `/=`*(a: var Fp2, _: typedesc[SexticNonResidue]) {.inline.} =
   ## Multiply an element of 𝔽p by the quadratic non-residue
@@ -96,7 +103,19 @@ func `/=`*(a: var Fp2, _: typedesc[SexticNonResidue]) {.inline.} =
     a.c1 -= t
     a.div2()
   else:
-    {.error: "Not implemented".}
+    let a0 = a.c0
+    let a1 = a.c1
+    const u2v2 = u*u - Beta*v*v # (u² - βv²)
+    # TODO can be precomputed (or precompute b/µ the twist coefficient)
+    #      and use faster non-constant-time inversion in the VM
+    var u2v2inv {.noInit.}: a.c0.typeof
+    u2v2inv.fromUint(u2v2)
+    u2v2inv.inv()
+
+    a.c0.diff(u * a0, (Beta * v) * a1)
+    a.c1.diff(u * a1, v * a0)
+    a.c0 *= u2v2inv
+    a.c1 *= u2v2inv
 
 # 𝔽p6
 # ----------------------------------------------------------------

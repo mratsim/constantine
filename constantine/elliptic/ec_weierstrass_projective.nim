@@ -252,7 +252,7 @@ func double*[F](
   # Cost: 8M + 3S + 3 mul(a) + 2 mul(3b) + 15a
 
   when F.C.getCoefA() == 0:
-    var t0 {.noInit.}, t1 {.noInit.}, t2 {.noInit.}: F
+    var t0 {.noInit.}, t1 {.noInit.}, t2 {.noInit.}, snrY {.noInit.}: F
     const b3 = 3 * F.C.getCoefB()
 
     # Algorithm 9 for curves:
@@ -261,17 +261,17 @@ func double*[F](
     # X3 = 2XY(Y² - 9bZ²)
     # Y3 = (Y² - 9bZ²)(Y² + 3bZ²) + 24bY²Z²
     # Z3 = 8Y³Z
+    snrY = P.y
     when F is Fp2 and F.C.getSexticTwist() == D_Twist:
-      r.y = P.y
-      r.y *= SexticNonResidue
-      t0.square(r.y)
+      snrY *= SexticNonResidue
+      t0.square(P.y)
       t0 *= SexticNonResidue
     else:
       t0.square(P.y)          # 1.  t0 <- Y Y
     r.z.double(t0)            # 2.  Z3 <- t0 + t0
     r.z.double()              # 3.  Z3 <- Z3 + Z3
     r.z.double()              # 4.  Z3 <- Z3 + Z3   Z3 = 8Y²
-    t1.prod(P.y, P.z)         # 5.  t1 <- Y Z
+    t1.prod(snrY, P.z)        # 5.  t1 <- Y Z
     t2.square(P.z)            # 6.  t2 <- Z Z
     t2 *= b3                  # 7.  t2 <- b3 t2
     when F is Fp2 and F.C.getSexticTwist() == M_Twist:
@@ -284,7 +284,7 @@ func double*[F](
     t0 -= t2                  # 13. t0 <- t0 - t2
     r.y *= t0                 # 14. Y3 <- t0 Y3
     r.y += r.x                # 15. Y3 <- X3 + Y3
-    t1.prod(P.x, P.y)         # 16. t1 <- X Y
+    t1.prod(P.x, snrY)        # 16. t1 <- X Y
     r.x.prod(t0, t1)          # 17. X3 <- t0 t1
     r.x.double()              # 18. X3 <- X3 + X3
   else:
