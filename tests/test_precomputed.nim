@@ -7,9 +7,12 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  std/unittest,
+        ../constantine/config/common,
         ../constantine/arithmetic,
         ../constantine/config/curves,
         ../constantine/io/[io_bigints, io_fields]
+
+echo "\n------------------------------------------------------\n"
 
 proc checkCubeRootOfUnity(curve: static Curve) =
   test $curve & " cube root of unity (mod p)":
@@ -30,7 +33,7 @@ proc checkCubeRootOfUnity(curve: static Curve) =
     check: bool r.isOne()
 
 proc main() =
-  suite "Sanity checks on precomputed values":
+  suite "Sanity checks on precomputed values" & " [" & $WordBitwidth & "-bit mode]":
     checkCubeRootOfUnity(BN254_Snarks)
     # checkCubeRootOfUnity(BLS12_381)
 

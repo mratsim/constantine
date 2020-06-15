@@ -16,147 +16,59 @@ import
   ../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective, ec_scalar_mul],
   # Test utilities
   ../helpers/prng_unsafe,
-  ./support/ec_reference_scalar_mult
+  ./support/ec_reference_scalar_mult,
+  ./test_ec_template
 
 const
   Iters = 128
   ItersMul = Iters div 4
 
-var rng: RngState
-let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
-rng.seed(seed)
-echo "test_ec_weierstrass_projective_g1_mul_sanity xoshiro512** seed: ", seed
+run_EC_mul_sanity_tests(
+    ec = ECP_SWei_Proj[Fp[BN254_Snarks]],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_weierstrass_projective_g1_mul_sanity_" & $BN254_Snarks
+  )
 
-# Import: wrap in elliptic curve tests in small procedures
-#         otherwise they will become globals,
-#         and will create binary size issues.
-#         Also due to Nim stack scanning,
-#         having too many elements on the stack (a couple kB)
-#         will significantly slow down testing (100x is possible)
+run_EC_mul_sanity_tests(
+    ec = ECP_SWei_Proj[Fp[BLS12_381]],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_weierstrass_projective_g1_mul_sanity_" & $BLS12_381
+  )
 
-suite "Elliptic curve in Short Weierstrass form y² = x³ + a x + b with projective coordinates (X, Y, Z): Y²Z = X³ + aXZ² + bZ³ i.e. X = xZ, Y = yZ":
 
-  const BN254_Snarks_order_bits = BN254_Snarks.getCurveOrderBitwidth()
-  const BLS12_381_order_bits = BLS12_381.getCurveOrderBitwidth()
+test "EC mul [Order]P == Inf":
+  var rng: RngState
+  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  rng.seed(seed)
+  echo "test_ec_weierstrass_projective_g1_mul_sanity_extra_curve_order_mul_sanity xoshiro512** seed: ", seed
 
-  test "EC mul [0]P == Inf":
-    proc test(F: typedesc, bits: static int, randZ: static bool) =
-      for _ in 0 ..< ItersMul:
-        when randZ:
-          let a = rng.random_unsafe_with_randZ(ECP_SWei_Proj[F])
-        else:
-          let a = rng.random_unsafe(ECP_SWei_Proj[F])
+  proc test(EC: typedesc, bits: static int, randZ: static bool) =
+    for _ in 0 ..< ItersMul:
+      when randZ:
+        let a = rng.random_unsafe_with_randZ(EC)
+      else:
+        let a = rng.random_unsafe(EC)
 
-        # zeroInit
-        var exponentCanonical: array[(bits+7) div 8, byte]
+      let exponent = EC.F.C.getCurveOrder()
+      var exponentCanonical{.noInit.}: array[(bits+7) div 8, byte]
+      exponentCanonical.exportRawUint(exponent, bigEndian)
 
-        var
-          impl = a
-          reference = a
-          scratchSpace{.noInit.}: array[1 shl 4, ECP_SWei_Proj[F]]
+      var
+        impl = a
+        reference = a
+        scratchSpace{.noInit.}: array[1 shl 4, EC]
 
-        impl.scalarMulGeneric(exponentCanonical, scratchSpace)
-        reference.unsafe_ECmul_double_add(exponentCanonical)
+      impl.scalarMulGeneric(exponentCanonical, scratchSpace)
+      reference.unsafe_ECmul_double_add(exponentCanonical)
 
-        check:
-          bool(impl.isInf())
-          bool(reference.isInf())
+      check:
+        bool(impl.isInf())
+        bool(reference.isInf())
 
-    test(Fp[BN254_Snarks], bits = BN254_Snarks_order_bits, randZ = false)
-    test(Fp[BN254_Snarks], bits = BN254_Snarks_order_bits, randZ = true)
-    test(Fp[BLS12_381], bits = BLS12_381_order_bits, randZ = false)
-    test(Fp[BLS12_381], bits = BLS12_381_order_bits, randZ = true)
-
-  test "EC mul [Order]P == Inf":
-    proc test(F: typedesc, bits: static int, randZ: static bool) =
-      for _ in 0 ..< ItersMul:
-        when randZ:
-          let a = rng.random_unsafe_with_randZ(ECP_SWei_Proj[F])
-        else:
-          let a = rng.random_unsafe(ECP_SWei_Proj[F])
-
-        let exponent = F.C.getCurveOrder()
-        var exponentCanonical{.noInit.}: array[(bits+7) div 8, byte]
-        exponentCanonical.exportRawUint(exponent, bigEndian)
-
-        var
-          impl = a
-          reference = a
-          scratchSpace{.noInit.}: array[1 shl 4, ECP_SWei_Proj[F]]
-
-        impl.scalarMulGeneric(exponentCanonical, scratchSpace)
-        reference.unsafe_ECmul_double_add(exponentCanonical)
-
-        check:
-          bool(impl.isInf())
-          bool(reference.isInf())
-
-    test(Fp[BN254_Snarks], bits = BN254_Snarks_order_bits, randZ = false)
-    test(Fp[BN254_Snarks], bits = BN254_Snarks_order_bits, randZ = true)
-    # TODO: BLS12 is using a subgroup of order "r" such as r*h = CurveOrder
-    #       with h the curve cofactor
-    #       instead of the full group
-    # test(Fp[BLS12_381], bits = BLS12_381_order_bits, randZ = false)
-    # test(Fp[BLS12_381], bits = BLS12_381_order_bits, randZ = true)
-
-  test "EC mul [1]P == P":
-    proc test(F: typedesc, bits: static int, randZ: static bool) =
-      for _ in 0 ..< ItersMul:
-        when randZ:
-          let a = rng.random_unsafe_with_randZ(ECP_SWei_Proj[F])
-        else:
-          let a = rng.random_unsafe(ECP_SWei_Proj[F])
-
-        var exponent{.noInit.}: BigInt[bits]
-        exponent.setOne()
-        var exponentCanonical{.noInit.}: array[(bits+7) div 8, byte]
-        exponentCanonical.exportRawUint(exponent, bigEndian)
-
-        var
-          impl = a
-          reference = a
-          scratchSpace{.noInit.}: array[1 shl 4, ECP_SWei_Proj[F]]
-
-        impl.scalarMulGeneric(exponentCanonical, scratchSpace)
-        reference.unsafe_ECmul_double_add(exponentCanonical)
-
-        check:
-          bool(impl == a)
-          bool(reference == a)
-
-    test(Fp[BN254_Snarks], bits = BN254_Snarks_order_bits, randZ = false)
-    test(Fp[BN254_Snarks], bits = BN254_Snarks_order_bits, randZ = true)
-    test(Fp[BLS12_381], bits = BLS12_381_order_bits, randZ = false)
-    test(Fp[BLS12_381], bits = BLS12_381_order_bits, randZ = true)
-
-  test "EC mul [2]P == P.double()":
-    proc test(F: typedesc, bits: static int, randZ: static bool) =
-      for _ in 0 ..< ItersMul:
-        when randZ:
-          let a = rng.random_unsafe_with_randZ(ECP_SWei_Proj[F])
-        else:
-          let a = rng.random_unsafe(ECP_SWei_Proj[F])
-
-        var doubleA{.noInit.}: ECP_SWei_Proj[F]
-        doubleA.double(a)
-
-        let exponent = BigInt[bits].fromUint(2)
-        var exponentCanonical{.noInit.}: array[(bits+7) div 8, byte]
-        exponentCanonical.exportRawUint(exponent, bigEndian)
-
-        var
-          impl = a
-          reference = a
-          scratchSpace{.noInit.}: array[1 shl 4, ECP_SWei_Proj[F]]
-
-        impl.scalarMulGeneric(exponentCanonical, scratchSpace)
-        reference.unsafe_ECmul_double_add(exponentCanonical)
-
-        check:
-          bool(impl == doubleA)
-          bool(reference == doubleA)
-
-    test(Fp[BN254_Snarks], bits = BN254_Snarks_order_bits, randZ = false)
-    test(Fp[BN254_Snarks], bits = BN254_Snarks_order_bits, randZ = true)
-    test(Fp[BLS12_381], bits = BLS12_381_order_bits, randZ = false)
-    test(Fp[BLS12_381], bits = BLS12_381_order_bits, randZ = true)
+  test(ECP_SWei_Proj[Fp[BN254_Snarks]], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = false)
+  test(ECP_SWei_Proj[Fp[BN254_Snarks]], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = true)
+  # TODO: BLS12 is using a subgroup of order "r" such as r*h = CurveOrder
+  #       with h the curve cofactor
+  #       instead of the full group
+  # test(Fp[BLS12_381], bits = BLS12_381.getCurveOrderBitwidth(), randZ = false)
+  # test(Fp[BLS12_381], bits = BLS12_381.getCurveOrderBitwidth(), randZ = true)

@@ -17,10 +17,11 @@ import  std/[unittest, times],
 var rng: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
 rng.seed(seed)
+echo "\n------------------------------------------------------\n"
 echo "test_io_fields xoshiro512** seed: ", seed
 
 proc main() =
-  suite "IO - Finite fields":
+  suite "IO - Finite fields" & " [" & $WordBitwidth & "-bit mode]":
     test "Parsing and serializing round-trip on uint64":
       # 101 ---------------------------------
       block:

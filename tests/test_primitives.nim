@@ -7,6 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  std/[unittest, times, math],
+        ../constantine/config/common,
         ../constantine/primitives,
         ../helpers/prng_unsafe
 
@@ -14,13 +15,14 @@ import  std/[unittest, times, math],
 var rng: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
 rng.seed(seed)
+echo "\n------------------------------------------------------\n"
 echo "test_primitives xoshiro512** seed: ", seed
 
 template undistinct[T](x: Ct[T]): T =
   T(x)
 
 proc main() =
-  suite "Constant-time unsigned integers":
+  suite "Constant-time unsigned integers" & " [" & $WordBitwidth & "-bit mode]":
     test "High - getting the biggest representable number":
       check:
         high(Ct[byte]).undistinct == 0xFF.byte

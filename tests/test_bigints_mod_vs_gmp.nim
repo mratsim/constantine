@@ -16,6 +16,7 @@ import
   ../constantine/arithmetic,
   ../constantine/primitives
 
+echo "\n------------------------------------------------------\n"
 # We test up to 1024-bit, more is really slow
 
 var bitSizeRNG {.compileTime.} = initRand(1234)

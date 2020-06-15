@@ -22,6 +22,7 @@ const Iters = 128
 var rng: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
 rng.seed(seed)
+echo "\n------------------------------------------------------\n"
 echo "test_finite_fields_sqrt xoshiro512** seed: ", seed
 
 static: doAssert defined(testingCurves), "This modules requires the -d:testingCurves compile option"
@@ -105,7 +106,7 @@ proc randomSqrtCheck_p3mod4(C: static Curve) =
         bool(r == a or r == na)
 
 proc main() =
-  suite "Modular square root":
+  suite "Modular square root" & " [" & $WordBitwidth & "-bit mode]":
     exhaustiveCheck_p3mod4 Fake103, 103
     exhaustiveCheck_p3mod4 Fake10007, 10007
     exhaustiveCheck_p3mod4 Fake65519, 65519

@@ -17,6 +17,7 @@ import
   ../constantine/primitives,
   ../constantine/config/[common, type_bigint]
 
+echo "\n------------------------------------------------------\n"
 # We test up to 1024-bit, more is really slow
 
 var bitSizeRNG {.compileTime.} = initRand(1234)

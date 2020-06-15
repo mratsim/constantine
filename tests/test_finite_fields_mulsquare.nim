@@ -21,6 +21,7 @@ const Iters = 128
 var rng: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
 rng.seed(seed)
+echo "\n------------------------------------------------------\n"
 echo "test_finite_fields_mulsquare xoshiro512** seed: ", seed
 
 static: doAssert defined(testingCurves), "This modules requires the -d:testingCurves compile option"
@@ -76,7 +77,7 @@ proc sanity(C: static Curve) =
             bool(n == expected)
 
 proc mainSanity() =
-  suite "Modular squaring is consistent with multiplication on special elements":
+  suite "Modular squaring is consistent with multiplication on special elements" & " [" & $WordBitwidth & "-bit mode]":
     sanity Fake101
     sanity Mersenne61
     sanity Mersenne127
@@ -87,7 +88,7 @@ proc mainSanity() =
 mainSanity()
 
 proc mainSelectCases() =
-  suite "Modular Squaring: selected tricky cases":
+  suite "Modular Squaring: selected tricky cases" & " [" & $WordBitwidth & "-bit mode]":
     test "P-256 [FastSquaring = " & $P256.canUseNoCarryMontySquare & "]":
       block:
         # Triggered an issue in the (t[N+1], t[N]) = t[N] + (A1, A0)
@@ -114,7 +115,7 @@ proc randomCurve(C: static Curve) =
 
   doAssert bool(r_mul == r_sqr)
 
-suite "Random Modular Squaring is consistent with Modular Multiplication":
+suite "Random Modular Squaring is consistent with Modular Multiplication" & " [" & $WordBitwidth & "-bit mode]":
   test "Random squaring mod P-224 [FastSquaring = " & $P224.canUseNoCarryMontySquare & "]":
     for _ in 0 ..< Iters:
       randomCurve(P224)

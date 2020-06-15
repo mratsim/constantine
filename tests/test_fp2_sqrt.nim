@@ -10,6 +10,7 @@ import
   # Standard library
   std/[tables, unittest, times],
   # Internals
+  ../constantine/config/common,
   ../constantine/[arithmetic, primitives],
   ../constantine/towers,
   ../constantine/config/curves,
@@ -21,6 +22,7 @@ const Iters = 128
 var rng: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
 rng.seed(seed)
+echo "\n------------------------------------------------------\n"
 echo "test_fp2_sqrt xoshiro512** seed: ", seed
 
 proc randomSqrtCheck_p3mod4(C: static Curve) =
@@ -47,7 +49,7 @@ proc randomSqrtCheck_p3mod4(C: static Curve) =
         bool(s == a or s == na)
 
 proc main() =
-  suite "Modular square root":
+  suite "Modular square root" & " [" & $WordBitwidth & "-bit mode]":
     randomSqrtCheck_p3mod4 BN254_Snarks
     randomSqrtCheck_p3mod4 BLS12_381
 
