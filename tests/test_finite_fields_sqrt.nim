@@ -59,11 +59,11 @@ proc exhaustiveCheck_p3mod4(C: static Curve, modulus: static int) =
         var a2 = a
         check:
           bool a.isSquare()
-          bool a.sqrt_if_square_p3mod4()
+          bool a.sqrt_if_square()
 
         # 2 different code paths have the same result
         # (despite 2 square roots existing per square)
-        a2.sqrt_p3mod4()
+        a2.sqrt()
         check: bool(a == a2)
 
         var r_bytes: array[8, byte]
@@ -78,7 +78,7 @@ proc exhaustiveCheck_p3mod4(C: static Curve, modulus: static int) =
 
         check:
           bool not a.isSquare()
-          bool not a.sqrt_if_square_p3mod4()
+          bool not a.sqrt_if_square()
           bool (a == a2) # a shouldn't be modified
 
 proc randomSqrtCheck_p3mod4(C: static Curve) =
@@ -97,8 +97,8 @@ proc randomSqrtCheck_p3mod4(C: static Curve) =
         bool a2.isSquare()
 
       var r, s = a2
-      r.sqrt_p3mod4()
-      let ok = s.sqrt_if_square_p3mod4()
+      r.sqrt()
+      let ok = s.sqrt_if_square()
       check:
         bool ok
         bool(r == s)

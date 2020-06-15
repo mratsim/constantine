@@ -253,7 +253,7 @@ func isSquare*[C](a: Fp[C]): SecretBool =
   # -  0  if 0
   # - -1  if a quadratic non-residue
 
-func sqrt_p3mod4*[C](a: var Fp[C]) =
+func sqrt_p3mod4[C](a: var Fp[C]) =
   ## Compute the square root of ``a``
   ##
   ## This requires ``a`` to be a square
@@ -267,7 +267,7 @@ func sqrt_p3mod4*[C](a: var Fp[C]) =
   static: doAssert BaseType(C.Mod.limbs[0]) mod 4 == 3
   a.powUnsafeExponent(C.getPrimePlus1div4_BE())
 
-func sqrt_if_square_p3mod4*[C](a: var Fp[C]): SecretBool =
+func sqrt_if_square_p3mod4[C](a: var Fp[C]): SecretBool =
   ## If ``a`` is a square, compute the square root of ``a``
   ## if not, ``a`` is unmodified.
   ##
@@ -291,6 +291,33 @@ func sqrt_if_square_p3mod4*[C](a: var Fp[C]): SecretBool =
 
   result = not(a0.mres == C.getMontyPrimeMinus1())
   a.ccopy(a1a, result)
+
+func sqrt*[C](a: var Fp[C]) =
+  ## Compute the square root of ``a``
+  ##
+  ## This requires ``a`` to be a square
+  ##
+  ## The result is undefined otherwise
+  ##
+  ## The square root, if it exist is multivalued,
+  ## i.e. both x² == (-x)²
+  ## This procedure returns a deterministic result
+  when BaseType(C.Mod.limbs[0]) mod 4 == 3:
+    sqrt_p3mod4(a)
+  else:
+    {.error: "Square root is only implemented for p ≡ 3 (mod 4)".}
+
+func sqrt_if_square*[C](a: var Fp[C]): SecretBool =
+  ## If ``a`` is a square, compute the square root of ``a``
+  ## if not, ``a`` is unmodified.
+  ##
+  ## The square root, if it exist is multivalued,
+  ## i.e. both x² == (-x)²
+  ## This procedure returns a deterministic result
+  when BaseType(C.Mod.limbs[0]) mod 4 == 3:
+    result = sqrt_if_square_p3mod4(a)
+  else:
+    {.error: "Square root is only implemented for p ≡ 3 (mod 4)".}
 
 # ############################################################
 #

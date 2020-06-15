@@ -10,6 +10,7 @@
 import
   ../arithmetic,
   ../config/[common, curves],
+  ../primitives,
   ./tower_common,
   ./quadratic_extensions,
   ./cubic_extensions
@@ -201,7 +202,7 @@ func sqrt_if_square*(a: var QuadraticExt): SecretBool =
   t2.square(a.c1) # - β a1² with β = 𝑖² in a complex extension field
 
   t1 += t2        # a0 - (-1) a1²
-  result = t1.sqrt_if_square_p3mod4()
+  result = t1.sqrt_if_square()
 
   t2.sum(a.c0, t1)
   t2.div2()
@@ -212,7 +213,7 @@ func sqrt_if_square*(a: var QuadraticExt): SecretBool =
   let quadResidTest = t2.isSquare()
   t2.ccopy(t3, not quadResidTest)
 
-  t2.sqrt_p3mod4()
+  t2.sqrt()
   a.c0.ccopy(t2, result)
 
   t2.double()

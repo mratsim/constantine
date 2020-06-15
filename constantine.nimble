@@ -83,6 +83,9 @@ task test, "Run all tests":
   test "", "tests/test_ec_weierstrass_projective_g1_mul_sanity.nim"
   test "", "tests/test_ec_weierstrass_projective_g1_mul_distributive.nim"
   test "", "tests/test_ec_weierstrass_projective_g1_mul_vs_ref.nim"
+
+  test "", "tests/test_ec_weierstrass_projective_g2_add_double.nim"
+
   test "", "tests/test_ec_bn254.nim"
   test "", "tests/test_ec_bls12_381.nim"
 
@@ -119,6 +122,9 @@ task test, "Run all tests":
     test "-d:Constantine32", "tests/test_ec_weierstrass_projective_g1_mul_sanity.nim"
     test "-d:Constantine32", "tests/test_ec_weierstrass_projective_g1_mul_distributive.nim"
     test "-d:Constantine32", "tests/test_ec_weierstrass_projective_g1_mul_vs_ref.nim"
+
+    test "-d:Constantine32", "tests/test_ec_weierstrass_projective_g2_add_double.nim"
+
     test "-d:Constantine32", "tests/test_ec_bn254.nim"
     test "-d:Constantine32", "tests/test_ec_bls12_381.nim"
 
@@ -163,6 +169,9 @@ task test_no_gmp, "Run tests that don't require GMP":
   test "", "tests/test_ec_weierstrass_projective_g1_mul_sanity.nim"
   test "", "tests/test_ec_weierstrass_projective_g1_mul_distributive.nim"
   test "", "tests/test_ec_weierstrass_projective_g1_mul_vs_ref.nim"
+
+  test "", "tests/test_ec_weierstrass_projective_g1_add_double.nim"
+
   test "", "tests/test_ec_bn254.nim"
   test "", "tests/test_ec_bls12_381.nim"
 
@@ -195,6 +204,9 @@ task test_no_gmp, "Run tests that don't require GMP":
     test "-d:Constantine32", "tests/test_ec_weierstrass_projective_g1_mul_sanity.nim"
     test "-d:Constantine32", "tests/test_ec_weierstrass_projective_g1_mul_distributive.nim"
     test "-d:Constantine32", "tests/test_ec_weierstrass_projective_g1_mul_vs_ref.nim"
+
+    test "-d:Constantine32", "tests/test_ec_weierstrass_projective_g1_add_double.nim"
+
     test "-d:Constantine32", "tests/test_ec_bn254.nim"
     test "-d:Constantine32", "tests/test_ec_bls12_381.nim"
 
@@ -243,6 +255,9 @@ task test_parallel, "Run all tests in parallel (via GNU parallel)":
   test "", "tests/test_ec_weierstrass_projective_g1_mul_sanity.nim", cmdFile
   test "", "tests/test_ec_weierstrass_projective_g1_mul_distributive.nim", cmdFile
   test "", "tests/test_ec_weierstrass_projective_g1_mul_vs_ref.nim", cmdFile
+
+  test "", "tests/test_ec_weierstrass_projective_g2_add_double.nim", cmdFile
+
   test "", "tests/test_ec_bn254.nim", cmdFile
   test "", "tests/test_ec_bls12_381.nim", cmdFile
 
@@ -283,6 +298,9 @@ task test_parallel, "Run all tests in parallel (via GNU parallel)":
     test "-d:Constantine32", "tests/test_ec_weierstrass_projective_g1_mul_sanity.nim", cmdFile
     test "-d:Constantine32", "tests/test_ec_weierstrass_projective_g1_mul_distributive.nim", cmdFile
     test "-d:Constantine32", "tests/test_ec_weierstrass_projective_g1_mul_vs_ref.nim", cmdFile
+
+    test "-d:Constantine32", "tests/test_ec_weierstrass_projective_g2_add_double.nim", cmdFile
+
     test "-d:Constantine32", "tests/test_ec_bn254.nim", cmdFile
     test "-d:Constantine32", "tests/test_ec_bls12_381.nim", cmdFile
 

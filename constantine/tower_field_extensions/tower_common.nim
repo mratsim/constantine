@@ -153,3 +153,77 @@ func diff*(r: var CubicExt, a, b: CubicExt) =
   r.c0.diff(a.c0, b.c0)
   r.c1.diff(a.c1, b.c1)
   r.c2.diff(a.c2, b.c2)
+
+# Multiplication by a small integer known at compile-time
+# -------------------------------------------------------------------
+
+func `*=`*(a: var ExtensionField, b: static int) {.inline.} =
+  ## Multiplication by a small integer known at compile-time
+
+  const negate = b < 0
+  const b = if negate: -b
+            else: b
+  when negate:
+    a.neg(a)
+  when b == 0:
+    a.setZero()
+  elif b == 1:
+    return
+  elif b == 2:
+    a.double()
+  elif b == 3:
+    let t1 = a
+    a.double()
+    a += t1
+  elif b == 4:
+    a.double()
+    a.double()
+  elif b == 5:
+    let t1 = a
+    a.double()
+    a.double()
+    a += t1
+  elif b == 6:
+    a.double()
+    let t2 = a
+    a.double() # 4
+    a += t2
+  elif b == 7:
+    let t1 = a
+    a.double()
+    let t2 = a
+    a.double() # 4
+    a += t2
+    a += t1
+  elif b == 8:
+    a.double()
+    a.double()
+    a.double()
+  elif b == 9:
+    let t1 = a
+    a.double()
+    a.double()
+    a.double() # 8
+    a += t1
+  elif b == 10:
+    a.double()
+    let t2 = a
+    a.double()
+    a.double() # 8
+    a += t2
+  elif b == 11:
+    let t1 = a
+    a.double()
+    let t2 = a
+    a.double()
+    a.double() # 8
+    a += t2
+    a += t1
+  elif b == 12:
+    a.double()
+    a.double() # 4
+    let t4 = a
+    a.double() # 8
+    a += t4
+  else:
+    {.error: "Multiplication by this small int not implemented".}
