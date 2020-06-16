@@ -124,11 +124,11 @@ type
   Fp6*[C: static Curve] = object
     c0*, c1*, c2*: Fp2[C]
 
-  ξ = β
+  ξ = NonResidue
     # We call the non-residue ξ on 𝔽p6 to avoid confusion between non-residue
     # of different tower level
 
-func `*`*(_: typedesc[β], a: Fp2): Fp2 {.inline, noInit.} =
+func `*`*(_: typedesc[ξ], a: Fp2): Fp2 {.inline, noInit.} =
   ## Multiply an element of 𝔽p2 by the cubic non-residue
   ## chosen to construct 𝔽p6
   # Yet another const tuple unpacking bug
@@ -178,7 +178,7 @@ type
   Fp12*[C: static Curve] = object
     c0*, c1*: Fp6[C]
 
-  γ = β
+  γ = NonResidue
     # We call the non-residue γ (Gamma) on 𝔽p6 to avoid confusion between non-residue
     # of different tower level
 
