@@ -191,6 +191,19 @@ func pow*(a: var Fp, exponent: BigInt) =
     Fp.C.canUseNoCarryMontySquare()
   )
 
+func pow*(a: var Fp, exponent: openarray[byte]) =
+  ## Exponentiation modulo p
+  ## ``a``: a field element to be exponentiated
+  ## ``exponent``: a big integer in canonical big endian representation
+  const windowSize = 5 # TODO: find best window size for each curves
+  a.mres.montyPow(
+    exponent,
+    Fp.C.Mod, Fp.C.getMontyOne(),
+    Fp.C.getNegInvModWord(), windowSize,
+    Fp.C.canUseNoCarryMontyMul(),
+    Fp.C.canUseNoCarryMontySquare()
+  )
+
 func powUnsafeExponent*(a: var Fp, exponent: BigInt) =
   ## Exponentiation modulo p
   ## ``a``: a field element to be exponentiated
@@ -214,7 +227,7 @@ func powUnsafeExponent*(a: var Fp, exponent: BigInt) =
 func powUnsafeExponent*(a: var Fp, exponent: openarray[byte]) =
   ## Exponentiation modulo p
   ## ``a``: a field element to be exponentiated
-  ## ``exponent``: a big integer
+  ## ``exponent``: a big integer a big integer in canonical big endian representation
   ##
   ## Warning ⚠️ :
   ## This is an optimization for public exponent
@@ -241,7 +254,7 @@ func isSquare*[C](a: Fp[C]): SecretBool =
   ## Returns true if ``a`` is a square (quadratic residue) in 𝔽p
   ##
   ## Assumes that the prime modulus ``p`` is public.
-  # Implementation: we use exponentiation by (p-1)/2 (Euler(s criterion)
+  # Implementation: we use exponentiation by (p-1)/2 (Euler's criterion)
   #                 as it can reuse the exponentiation implementation
   #                 Note that we don't care about leaking the bits of p
   #                 as we assume that
@@ -267,6 +280,39 @@ func sqrt_p3mod4[C](a: var Fp[C]) =
   static: doAssert BaseType(C.Mod.limbs[0]) mod 4 == 3
   a.powUnsafeExponent(C.getPrimePlus1div4_BE())
 
+func sqrt_invsqrt_p3mod4[C](sqrt, invsqrt: var Fp[C], a: Fp[C]) =
+  ## If ``a`` is a square, compute the square root of ``a`` in sqrt
+  ## and the inverse square root of a in invsqrt
+  ##
+  ## This assumes that the prime field modulus ``p``: p ≡ 3 (mod 4)
+  # TODO: deterministic sign
+  #
+  # Algorithm
+  #
+  #
+  # From Euler's criterion:   a^((p-1)/2)) ≡ 1 (mod p) if square
+  # a^((p-1)/2)) * a^-1 ≡ 1/a  (mod p)
+  # a^((p-3)/2))        ≡ 1/a  (mod p)
+  # a^((p-3)/4))        ≡ 1/√a (mod p)      # Requires p ≡ 3 (mod 4)
+  static: doAssert BaseType(C.Mod.limbs[0]) mod 4 == 3
+
+  invsqrt = a
+  invsqrt.powUnsafeExponent(C.getPrimeMinus3div4_BE())
+  # √a ≡ a * 1/√a ≡ a^((p+1)/4) (mod p)
+  sqrt.prod(invsqrt, a)
+
+func sqrt_invsqrt_if_square_p3mod4[C](sqrt, invsqrt: var Fp[C], a: Fp[C]): SecretBool =
+  ## If ``a`` is a square, compute the square root of ``a`` in sqrt
+  ## and the inverse square root of a in invsqrt
+  ##
+  ## If a is not square, sqrt and invsqrt are undefined
+  ##
+  ## This assumes that the prime field modulus ``p``: p ≡ 3 (mod 4)
+  sqrt_invsqrt_p3mod4(sqrt, invsqrt, a)
+  var euler {.noInit.}: Fp[C]
+  euler.prod(sqrt, invsqrt)
+  result = not(euler.mres == C.getMontyPrimeMinus1())
+
 func sqrt_if_square_p3mod4[C](a: var Fp[C]): SecretBool =
   ## If ``a`` is a square, compute the square root of ``a``
   ## if not, ``a`` is unmodified.
@@ -278,19 +324,9 @@ func sqrt_if_square_p3mod4[C](a: var Fp[C]): SecretBool =
   ## The square root, if it exist is multivalued,
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
-  static: doAssert BaseType(C.Mod.limbs[0]) mod 4 == 3
-
-  var a1 {.noInit.} = a
-  a1.powUnsafeExponent(C.getPrimeMinus3div4_BE())
-
-  var a1a {.noInit.}: Fp[C]
-  a1a.prod(a1, a)
-
-  var a0 {.noInit.}: Fp[C]
-  a0.prod(a1a, a1)
-
-  result = not(a0.mres == C.getMontyPrimeMinus1())
-  a.ccopy(a1a, result)
+  var sqrt {.noInit.}, invsqrt {.noInit.}: Fp[C]
+  result = sqrt_invsqrt_if_square_p3mod4(sqrt, invsqrt, a)
+  a.ccopy(sqrt, result)
 
 func sqrt*[C](a: var Fp[C]) =
   ## Compute the square root of ``a``
@@ -316,6 +352,36 @@ func sqrt_if_square*[C](a: var Fp[C]): SecretBool =
   ## This procedure returns a deterministic result
   when BaseType(C.Mod.limbs[0]) mod 4 == 3:
     result = sqrt_if_square_p3mod4(a)
+  else:
+    {.error: "Square root is only implemented for p ≡ 3 (mod 4)".}
+
+func sqrt_invsqrt*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]) =
+  ## Compute the square root and inverse square root of ``a``
+  ##
+  ## This requires ``a`` to be a square
+  ##
+  ## The result is undefined otherwise
+  ##
+  ## The square root, if it exist is multivalued,
+  ## i.e. both x² == (-x)²
+  ## This procedure returns a deterministic result
+  when BaseType(C.Mod.limbs[0]) mod 4 == 3:
+    sqrt_invsqrt_p3mod4(sqrt, invsqrt, a)
+  else:
+    {.error: "Square root is only implemented for p ≡ 3 (mod 4)".}
+
+func sqrt_invsqrt_if_square*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]): SecretBool =
+  ## Compute the square root and ivnerse square root of ``a``
+  ##
+  ## This returns true if ``a`` is square and sqrt/invsqrt contains the square root/inverse square root
+  ##
+  ## The result is undefined otherwise
+  ##
+  ## The square root, if it exist is multivalued,
+  ## i.e. both x² == (-x)²
+  ## This procedure returns a deterministic result
+  when BaseType(C.Mod.limbs[0]) mod 4 == 3:
+    result = sqrt_invsqrt_if_square_p3mod4(sqrt, invsqrt, a)
   else:
     {.error: "Square root is only implemented for p ≡ 3 (mod 4)".}
 

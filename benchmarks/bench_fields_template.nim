@@ -71,15 +71,15 @@ when SupportsGetTicks:
 echo "\n=================================================================================================================\n"
 
 proc separator*() =
-  echo "-".repeat(110)
+  echo "-".repeat(145)
 
 proc report(op, field: string, start, stop: MonoTime, startClk, stopClk: int64, iters: int) =
   let ns = inNanoseconds((stop-start) div iters)
   let throughput = 1e9 / float64(ns)
   when SupportsGetTicks:
-    echo &"{op:<15} {field:<18} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
+    echo &"{op:<50} {field:<18} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
   else:
-    echo &"{op:<15} {field:<18} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
+    echo &"{op:<50} {field:<18} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
 
 macro fixFieldDisplay(T: typedesc): untyped =
   # At compile-time, enums are integers and their display is buggy
@@ -143,5 +143,31 @@ proc invBench*(T: typedesc, iters: int) =
   var r: T
   let x = rng.random_unsafe(T)
   preventOptimAway(r)
-  bench("Inversion", T, iters):
+  bench("Inversion (constant-time Euclid)", T, iters):
     r.inv(x)
+
+proc powFermatInversionBench*(T: typedesc, iters: int) =
+  let x = rng.random_unsafe(T)
+  bench("Inversion via exponentiation p-2 (Little Fermat)", T, iters):
+    var r = x
+    r.powUnsafeExponent(T.C.getInvModExponent())
+
+proc sqrtBench*(T: typedesc, iters: int) =
+  let x = rng.random_unsafe(T)
+  bench("Square Root + square check (constant-time)", T, iters):
+    var r = x
+    discard r.sqrt_if_square()
+
+proc powBench*(T: typedesc, iters: int) =
+  let x = rng.random_unsafe(T)
+  let exponent = rng.random_unsafe(BigInt[T.C.getCurveOrderBitwidth()])
+  bench("Exp curve order (constant-time) - " & $exponent.bits & "-bit", T, iters):
+    var r = x
+    r.pow(exponent)
+
+proc powUnsafeBench*(T: typedesc, iters: int) =
+  let x = rng.random_unsafe(T)
+  let exponent = rng.random_unsafe(BigInt[T.C.getCurveOrderBitwidth()])
+  bench("Exp curve order (Leak exponent bits) - " & $exponent.bits & "-bit", T, iters):
+    var r = x
+    r.powUnsafeExponent(exponent)

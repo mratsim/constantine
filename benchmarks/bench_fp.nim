@@ -10,6 +10,7 @@ import
   # Internals
   ../constantine/config/curves,
   ../constantine/arithmetic,
+  ../constantine/io/io_bigints,
   # Helpers
   ../helpers/static_for,
   ./bench_fields_template,
@@ -24,20 +25,20 @@ import
 
 
 const Iters = 1_000_000
-const InvIters = 1000
+const ExponentIters = 1000
 const AvailableCurves = [
-  P224,
-  BN254_Nogami,
+  # P224,
+  # BN254_Nogami,
   BN254_Snarks,
-  Curve25519,
-  P256,
-  Secp256k1,
-  BLS12_377,
+  # Curve25519,
+  # P256,
+  # Secp256k1,
+  # BLS12_377,
   BLS12_381,
-  BN446,
-  FKM12_447,
-  BLS12_461,
-  BN462
+  # BN446,
+  # FKM12_447,
+  # BLS12_461,
+  # BN462
 ]
 
 proc main() =
@@ -49,7 +50,12 @@ proc main() =
     negBench(Fp[curve], Iters)
     mulBench(Fp[curve], Iters)
     sqrBench(Fp[curve], Iters)
-    invBench(Fp[curve], InvIters)
+    invBench(Fp[curve], ExponentIters)
+    powFermatInversionBench(Fp[curve], ExponentIters)
+    sqrtBench(Fp[curve], ExponentIters)
+    # Exponentiation by a "secret" of size ~the curve order
+    powBench(Fp[curve], ExponentIters)
+    powUnsafeBench(Fp[curve], ExponentIters)
     separator()
 
 main()

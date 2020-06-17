@@ -434,6 +434,30 @@ func montyPowUnsafeExponent*[mBits, eBits: static int](
   var scratchSpace {.noInit.}: array[scratchLen, Limbs[mBits.wordsRequired]]
   montyPowUnsafeExponent(a.limbs, expBE, M.limbs, one.limbs, negInvModWord, scratchSpace, canUseNoCarryMontyMul, canUseNoCarryMontySquare)
 
+func montyPow*[mBits: static int](
+       a: var BigInt[mBits], exponent: openarray[byte],
+       M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,
+       canUseNoCarryMontyMul, canUseNoCarryMontySquare: static bool
+      ) =
+  ## Compute a <- a^exponent (mod M)
+  ## ``a`` in the Montgomery domain
+  ## ``exponent`` is a BigInt in canonical big-endian representation
+  ##
+  ## Warning ⚠️ :
+  ## This is an optimization for public exponent
+  ## Otherwise bits of the exponent can be retrieved with:
+  ## - memory access analysis
+  ## - power analysis
+  ## - timing analysis
+  ##
+  ## This uses fixed window optimization
+  ## A window size in the range [1, 5] must be chosen
+
+  const scratchLen = if windowSize == 1: 2
+                     else: (1 shl windowSize) + 1
+  var scratchSpace {.noInit.}: array[scratchLen, Limbs[mBits.wordsRequired]]
+  montyPow(a.limbs, exponent, M.limbs, one.limbs, negInvModWord, scratchSpace, canUseNoCarryMontyMul, canUseNoCarryMontySquare)
+
 func montyPowUnsafeExponent*[mBits: static int](
        a: var BigInt[mBits], exponent: openarray[byte],
        M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,
@@ -441,7 +465,7 @@ func montyPowUnsafeExponent*[mBits: static int](
       ) =
   ## Compute a <- a^exponent (mod M)
   ## ``a`` in the Montgomery domain
-  ## ``exponent`` is a BigInt in canonical representation
+  ## ``exponent`` is a BigInt in canonical big-endian representation
   ##
   ## Warning ⚠️ :
   ## This is an optimization for public exponent

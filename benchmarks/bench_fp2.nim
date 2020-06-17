@@ -29,7 +29,7 @@ const AvailableCurves = [
   # Pairing-Friendly curves
   # BN254_Nogami,
   BN254_Snarks,
-  BLS12_377,
+  # BLS12_377,
   BLS12_381
   # BN446,
   # FKM12_447,
@@ -47,6 +47,7 @@ proc main() =
     mulBench(Fp2[curve], Iters)
     sqrBench(Fp2[curve], Iters)
     invBench(Fp2[curve], InvIters)
+    sqrtBench(Fp2[curve], InvIters)
     separator()
 
 main()

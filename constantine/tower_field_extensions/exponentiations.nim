@@ -214,10 +214,9 @@ func sqrt_if_square*(a: var QuadraticExt): SecretBool =
   let quadResidTest = t2.isSquare()
   t2.ccopy(t3, not quadResidTest)
 
-  t2.sqrt()
-  a.c0.ccopy(t2, result)
+  sqrt_invsqrt(sqrt = t1, invsqrt = t3, t2)
+  a.c0.ccopy(t1, result)
 
-  t2.double()
-  t1.inv(t2)
-  t1 *= a.c1
-  a.c1.ccopy(t1, result)
+  t3.div2()
+  t3 *= a.c1
+  a.c1.ccopy(t3, result)
