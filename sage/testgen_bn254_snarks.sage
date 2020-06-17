@@ -13,35 +13,37 @@
 # ############################################################
 
 # Parameters
-u = Integer('0x44E992B44A6909F1')
-p = 36*u^4 + 36*u^3 + 24*u^2 + 6*u + 1
-r = 36*u^4 + 36*u^3 + 18*u^2 + 6*u + 1
+x = Integer('0x44E992B44A6909F1')
+p = 36*x^4 + 36*x^3 + 24*x^2 + 6*x + 1
+r = 36*x^4 + 36*x^3 + 18*x^2 + 6*x + 1
 cofactor = 1
 
 # Finite fields
-F       = GF(p)
-K2.<u>  = PolynomialRing(F)
-# F2.<beta>  = F.extension(u^2+9)
-# K6.<v>  = PolynomialRing(F2)
-# F6.<eta>  = F2.extension(v^3-beta)
+Fp       = GF(p)
+K2.<u>  = PolynomialRing(Fp)
+Fp2.<beta>  = Fp.extension(u^2+1)
+# K6.<v>  = PolynomialRing(Fp2)
+# Fp6.<eta>  = Fp2.extension(v^3-Fp2([9, 1]))
 # K12.<w> = PolynomialRing(F6)
-# K12.<gamma> = F6.extension(w^2-eta)
+# K12.<gamma> = Fp6.extension(w^2-eta)
 
 # Curves
 b = 3
-G1 = EllipticCurve(F, [0, b])
-# G2 = EllipticCurve(F2, [0, b/beta])
+SNR = Fp2([9, 1])
+G1 = EllipticCurve(Fp, [0, b])
+G2 = EllipticCurve(Fp2, [0, b/SNR])
 
 # Test generator
 set_random_seed(1337)
 
+print('=========================================')
+print('G1 vectors: ')
 for i in range(10):
-    print('---------------------------------------')
     P = G1.random_point()
     (Px, Py, Pz) = P
     print('Px: ' + Integer(Px).hex())
     print('Py: ' + Integer(Py).hex())
-    print('Pz: ' + Integer(Pz).hex())
+    # print('Pz: ' + Integer(Pz).hex())
     exponent = randrange(r) # Pick an integer below curve order
     print('scalar: ' + Integer(exponent).hex())
 
@@ -49,7 +51,30 @@ for i in range(10):
     (Qx, Qy, Qz) = Q
     print('Qx: ' + Integer(Qx).hex())
     print('Qy: ' + Integer(Qy).hex())
-    print('Qz: ' + Integer(Qz).hex())
+    # print('Qz: ' + Integer(Qz).hex())
+    print('---------------------------------------')
+print('=========================================')
+print('G2 vectors: ')
+
+for i in range(10):
+    P = G2.random_point()
+    (Px, Py, Pz) = P
+    vPx = vector(Px)
+    vPy = vector(Py)
+    # Pz = vector(Pz)
+    print('Px: ' + Integer(vPx[0]).hex() + ' + β * ' + Integer(vPx[1]).hex())
+    print('Py: ' + Integer(vPy[0]).hex() + ' + β * ' + Integer(vPy[1]).hex())
+
+    exponent = randrange(r) # Pick an integer below curve order
+    print('scalar: ' + Integer(exponent).hex())
+
+    Q = exponent * P
+    (Qx, Qy, Qz) = Q
+    Qx = vector(Qx)
+    Qy = vector(Qy)
+    print('Qx: ' + Integer(Qx[0]).hex() + ' + β * ' + Integer(Qx[1]).hex())
+    print('Qy: ' + Integer(Qy[0]).hex() + ' + β * ' + Integer(Qy[1]).hex())
+    print('---------------------------------------')
 print('=========================================')
 
 # CurveOrder sanity check

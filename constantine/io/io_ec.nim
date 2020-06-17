@@ -9,6 +9,8 @@
 import
   ./io_bigints, ./io_fields, ./io_towers,
   ../config/curves,
+  ../arithmetic,
+  ../towers,
   ../elliptic/[
     ec_weierstrass_affine,
     ec_weierstrass_projective
@@ -48,11 +50,23 @@ func toHex*(P: ECP_SWei_Proj): string =
   result &= "\n)"
 
 func fromHex*(dst: var ECP_SWei_Proj, x, y: string): bool {.raises: [ValueError].}=
-  ## Convert hex strings to a curve point
+  ## Convert hex strings to a G1 curve point
   ## Returns `false`
   ## if there is no point with coordinates (`x`, `y`) on the curve
   ## In that case, `dst` content is undefined.
+  static: doAssert dst.F is Fp, "dst must be on G1, an elliptic curve over 𝔽p"
   dst.x.fromHex(x)
   dst.y.fromHex(y)
+  dst.z.setOne()
+  return bool(isOnCurve(dst.x, dst.y))
+
+func fromHex*(dst: var ECP_SWei_Proj, x0, x1, y0, y1: string): bool {.raises: [ValueError].}=
+  ## Convert hex strings to a G2 curve point
+  ## Returns `false`
+  ## if there is no point with coordinates (`x`, `y`) on the curve
+  ## In that case, `dst` content is undefined.
+  static: doAssert dst.F is Fp2, "dst must be on G2, an elliptic curve over 𝔽p2"
+  dst.x.fromHex(x0, x1)
+  dst.y.fromHex(y0, y1)
   dst.z.setOne()
   return bool(isOnCurve(dst.x, dst.y))
