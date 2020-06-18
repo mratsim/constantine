@@ -6,7 +6,7 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-when defined(i386) or defined(amd64):
+when defined(amd64): # TODO defined(i386) but it seems lie RDTSC call is misconfigured
   import platforms/x86
   export getTicks, cpuName
 
