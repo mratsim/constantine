@@ -218,7 +218,7 @@ macro randomTests(numTests: static int, curveSym, body: untyped): untyped =
   result = newStmtList()
 
   for _ in 0 ..< numTests:
-    let curve = RNG.rand(AvailableCurves)
+    let curve = RNG.sample(AvailableCurves)
 
     result.add quote do:
       block:
