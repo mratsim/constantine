@@ -7,7 +7,7 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        branch: [version-1-2, devel]
+        branch: devel # [version-1-2, devel] - # 1.2 doesn't compile https://github.com/mratsim/constantine/pull/20#issuecomment-646327952
         target:
           - os: linux
             cpu: amd64
