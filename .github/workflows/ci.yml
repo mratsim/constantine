@@ -49,9 +49,9 @@ jobs:
           - target:
               os: macos
             builder: macos-10.15
-          - target:
-              os: windows
-            builder: windows-2019
+          # - target:
+          #     os: windows
+          #   builder: windows-2019
     name: '${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ matrix.target.TEST_LANG }} (${{ matrix.branch }})'
     runs-on: ${{ matrix.builder }}
     steps:
