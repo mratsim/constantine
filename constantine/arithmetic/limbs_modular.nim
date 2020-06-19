@@ -200,6 +200,23 @@ template `[]`*(v: LimbsViewMut, limbIdx: int): var SecretWord =
 template `[]=`*(v: LimbsViewMut, limbIdx: int, val: SecretWord) =
   LimbsView(v)[limbIdx] = val
 
+# Copy
+# ------------------------------------------------------------
+
+func copyWords(
+       a: LimbsViewMut, startA: int,
+       b: LimbsViewAny, startB: int,
+       numWords: int
+     ) =
+  ## Copy a slice of B into A. This properly deals
+  ## with overlaps when A and B are slices of the same buffer
+  if startA > startB:
+    for i in countdown(numWords-1, 0):
+      a[startA+i] = b[startB+i]
+  else:
+    for i in 0 ..< numWords:
+      a[startA+i] = b[startB+i]
+
 # Type-erased add-sub
 # ------------------------------------------------------------
 
@@ -260,20 +277,20 @@ func shlAddMod_estimate(a: LimbsViewMut, aLen: int,
     v[`v Len` - limbIdxFromEnd.int]
 
   # ----------------------------------------------------------------------
-                                                          # Assuming 64-bit words
-  let hi = a[^1]                                          # Save the high word to detect carries
-  let R = mBits and (WordBitWidth - 1)                    # R = mBits mod 64
+                                                 # Assuming 64-bit words
+  let hi = a[^1]                                 # Save the high word to detect carries
+  let R = mBits and (WordBitWidth - 1)           # R = mBits mod 64
 
   var a0, a1, m0: SecretWord
-  if R == 0:                                              # If the number of mBits is a multiple of 64
-    a0 = a[^1]                                            #
-    moveMem(a[1].addr, a[0].addr, (aLen-1) * SecretWord.sizeof) # we can just shift words
-    a[0] = c                                              # and replace the first one by c
+  if R == 0:                                     # If the number of mBits is a multiple of 64
+    a0 = a[^1]                                   #
+    copyWords(a, 1, a, 0, aLen-1)                # we can just shift words
+    a[0] = c                                     # and replace the first one by c
     a1 = a[^1]
     m0 = M[^1]
-  else:                                                   # Else: need to deal with partial word shifts at the edge.
+  else:                                          # Else: need to deal with partial word shifts at the edge.
     a0 = (a[^1] shl (WordBitWidth-R)) or (a[^2] shr R)
-    moveMem(a[1].addr, a[0].addr, (aLen-1) * SecretWord.sizeof)
+    copyWords(a, 1, a, 0, aLen-1)
     a[0] = c
     a1 = (a[^1] shl (WordBitWidth-R)) or (a[^2] shr R)
     m0 = (M[^1] shl (WordBitWidth-R)) or (M[^2] shr R)
@@ -365,7 +382,7 @@ func reduce(r: LimbsViewMut,
     # if a uses less bits than the modulus,
     # it is guaranteed < modulus.
     # This relies on the precondition that the modulus uses all declared bits
-    copyMem(r[0].addr, a[0].unsafeAddr, aLen * sizeof(SecretWord))
+    copyWords(r, 0, a, 0, aLen)
     for i in aLen ..< mLen:
       r[i] = Zero
   else:
@@ -373,7 +390,7 @@ func reduce(r: LimbsViewMut,
     # we can copy modulus.limbs-1 words
     # and modular shift-left-add the rest
     let aOffset = aLen - mLen
-    copyMem(r[0].addr, a[aOffset+1].unsafeAddr, (mLen-1) * sizeof(SecretWord))
+    copyWords(r, 0, a, aOffset+1, mLen-1)
     r[rLen - 1] = Zero
     # Now shift-left the copied words while adding the new word modulo M
     for i in countdown(aOffset, 0):
