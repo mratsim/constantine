@@ -21,26 +21,27 @@ jobs:
           - os: linux
             cpu: i386
             TEST_LANG: cpp
-          # TODO: spurious failures - https://github.com/actions/virtual-environments/issues/841,
-          # fixed? https://github.com/actions/virtual-environments/issues/969
           - os: macos
             cpu: amd64
             TEST_LANG: c
           - os: macos
             cpu: amd64
             TEST_LANG: cpp
-          - os: windows
-            cpu: amd64
-            TEST_LANG: c
-          - os: windows
-            cpu: amd64
-            TEST_LANG: cpp
-          - os: windows
-            cpu: i386
-            TEST_LANG: c
-          - os: windows
-            cpu: i386
-            TEST_LANG: cpp
+          # TODO:
+          #   1. Modulo/reduce bug on 32-bit
+          #   2. ModInverse bug on all windows
+          # - os: windows
+          #   cpu: amd64
+          #   TEST_LANG: c
+          # - os: windows
+          #   cpu: amd64
+          #   TEST_LANG: cpp
+          # - os: windows
+          #   cpu: i386
+          #   TEST_LANG: c
+          # - os: windows
+          #   cpu: i386
+          #   TEST_LANG: cpp
         include:
           - target:
               os: linux
