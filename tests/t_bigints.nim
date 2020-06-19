@@ -6,11 +6,16 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import  std/unittest,
-        ../constantine/io/io_bigints,
-        ../constantine/arithmetic,
-        ../constantine/config/common,
-        ../constantine/primitives
+import
+  # Standard library
+  std/unittest,
+  # Internal
+  ../constantine/io/io_bigints,
+  ../constantine/arithmetic,
+  ../constantine/config/[common, type_bigint],
+  ../constantine/primitives,
+  # Test utilities,
+  support/canaries
 
 echo "\n------------------------------------------------------\n"
 
@@ -143,7 +148,7 @@ proc mainArith() =
   suite "Multi-precision multiplication" & " [" & $WordBitwidth & "-bit mode]":
     test "Same size operand into double size result":
       block:
-        var r: BigInt[256]
+        var r = canary(BigInt[256])
         let a = BigInt[128].fromHex"0x12345678_FF11FFAA_00321321_CAFECAFE"
         let b = BigInt[128].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF"
 
@@ -156,7 +161,7 @@ proc mainArith() =
 
     test "Different size into large result":
       block:
-        var r: BigInt[200]
+        var r = canary(BigInt[200])
         let a = BigInt[29].fromHex"0x12345678"
         let b = BigInt[128].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF"
 
@@ -183,7 +188,7 @@ proc mainArith() =
   suite "Multi-precision multiplication keeping only high words" & " [" & $WordBitwidth & "-bit mode]":
     test "Same size operand into double size result - discard first word":
       block:
-        var r: BigInt[256]
+        var r = canary(BigInt[256])
         let a = BigInt[128].fromHex"0x12345678_FF11FFAA_00321321_CAFECAFE"
         let b = BigInt[128].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF"
 
@@ -199,7 +204,7 @@ proc mainArith() =
 
     test "Same size operand into double size result - discard first 3 words":
       block:
-        var r: BigInt[256]
+        var r = canary(BigInt[256])
         let a = BigInt[128].fromHex"0x12345678_FF11FFAA_00321321_CAFECAFE"
         let b = BigInt[128].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF"
 
@@ -215,7 +220,7 @@ proc mainArith() =
 
     test "All lower words trigger a carry":
       block:
-        var r: BigInt[256]
+        var r = canary(BigInt[256])
         let a = BigInt[256].fromHex"0xFFFFF000_FFFFF111_FFFFFFFA_FFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF"
         let b = BigInt[256].fromHex"0xFFFFFFFF_FFFFF222_FFFFFFFB_FFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF"
 
@@ -235,7 +240,7 @@ proc mainArith() =
 
     test "Different size into large result":
       block:
-        var r: BigInt[200]
+        var r = canary(BigInt[200])
         let a = BigInt[29].fromHex"0x12345678"
         let b = BigInt[128].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF"
 
@@ -273,46 +278,56 @@ proc mainArith() =
         let a = BigInt[7].fromUint(100'u32)
         let m = BigInt[4].fromUint(13'u8)
 
-        var r: BigInt[4]
+        var r = canary(BigInt[4])
         r.reduce(a, m)
-        check:
-          bool(r == BigInt[4].fromUint(100'u8 mod 13))
+        let expected = BigInt[4].fromUint(100'u8 mod 13)
+        doAssert bool(r == expected),
+          "\n  r (low-level repr): " & $r &
+          "\n  expected (ll repr): " & $expected
 
       block: #
         let a = BigInt[32].fromUint(100'u32)
         let m = BigInt[4].fromUint(13'u8)
 
-        var r: BigInt[4]
+        var r = canary(BigInt[4])
         r.reduce(a, m)
-        check:
-          bool(r == BigInt[4].fromUint(100'u8 mod 13))
+        let expected = BigInt[4].fromUint(100'u8 mod 13)
+        doAssert bool(r == expected),
+          "\n  r (low-level repr): " & $r &
+          "\n  expected (ll repr): " & $expected
 
       block: #
         let a = BigInt[64].fromUint(100'u32)
         let m = BigInt[4].fromUint(13'u8)
 
-        var r: BigInt[4]
+        var r = canary(BigInt[4])
         r.reduce(a, m)
-        check:
-          bool(r == BigInt[4].fromUint(100'u8 mod 13))
+        let expected = BigInt[4].fromUint(100'u8 mod 13)
+        doAssert bool(r == expected),
+          "\n  r (low-level repr): " & $r &
+          "\n  expected (ll repr): " & $expected
 
     test "2^64 mod 3":
       let a = BigInt[65].fromHex("0x1_00000000_00000000")
       let m = BigInt[8].fromUint(3'u8)
 
-      var r: BigInt[8]
+      var r = canary(BigInt[8])
       r.reduce(a, m)
-      check:
-        bool(r == BigInt[8].fromUint(1'u8))
+      let expected = BigInt[8].fromUint(1'u8)
+      doAssert bool(r == expected),
+        "\n  r (low-level repr): " & $r &
+        "\n  expected (ll repr): " & $expected
 
     test "1234567891234567890 mod 10":
       let a = BigInt[64].fromUint(1234567891234567890'u64)
       let m = BigInt[8].fromUint(10'u8)
 
-      var r: BigInt[8]
+      var r = canary(BigInt[8])
       r.reduce(a, m)
-      check:
-        bool(r == BigInt[8].fromUint(0'u8))
+      let expected = BigInt[8].fromUint(0'u8)
+      doAssert bool(r == expected),
+        "\n  r (low-level repr): " & $r &
+        "\n  expected (ll repr): " & $expected
 
   suite "Modular operations - small modulus - Stint specific failures highlighted by property-based testing" & " [" & $WordBitwidth & "-bit mode]":
     # Vectors taken from Stint - https://github.com/status-im/nim-stint
@@ -323,11 +338,13 @@ proc mainArith() =
       let a = BigInt[56].fromUint(u)
       let m = BigInt[48].fromUint(v)
 
-      var r: BigInt[48]
+      var r = canary(BigInt[48])
       r.reduce(a, m)
 
-      check:
-        bool(r == BigInt[48].fromUint(u mod v))
+      let expected = BigInt[48].fromUint(u mod v)
+      doAssert bool(r == expected),
+        "\n  r (low-level repr): " & $r &
+        "\n  expected (ll repr): " & $expected
 
     test "Modulo: 15080397990160655 mod 600432699691":
       let u = 15080397990160655'u64
@@ -336,11 +353,13 @@ proc mainArith() =
       let a = BigInt[54].fromUint(u)
       let m = BigInt[40].fromUint(v)
 
-      var r: BigInt[40]
+      var r = canary(BigInt[40])
       r.reduce(a, m)
 
-      check:
-        bool(r == BigInt[40].fromUint(u mod v))
+      let expected = BigInt[40].fromUint(u mod v)
+      doAssert bool(r == expected),
+        "\n  r (low-level repr): " & $r &
+        "\n  expected (ll repr): " & $expected
 
 proc mainNeg() =
   suite "Conditional negation" & " [" & $WordBitwidth & "-bit mode]":
@@ -501,7 +520,7 @@ proc mainModularInverse() =
         mp1div2.shiftRight(1)
 
         let expected = BigInt[16].fromUint(1969'u16)
-        var r {.noInit.}: BigInt[16]
+        var r = canary(BigInt[16])
 
         r.invmod(a, M, mp1div2)
 
@@ -516,7 +535,7 @@ proc mainModularInverse() =
         mp1div2.shiftRight(1)
 
         let expected = BigInt[381].fromUint(1969'u16)
-        var r {.noInit.}: BigInt[381]
+        var r = canary(BigInt[381])
 
         r.invmod(a, M, mp1div2)
 
@@ -532,7 +551,7 @@ proc mainModularInverse() =
         mp1div2.shiftRight(1)
 
         let expected = BigInt[16].fromUint(106'u16)
-        var r {.noInit.}: BigInt[16]
+        var r = canary(BigInt[16])
 
         r.invmod(a, M, mp1div2)
 
@@ -547,7 +566,7 @@ proc mainModularInverse() =
         mp1div2.shiftRight(1)
 
         let expected = BigInt[381].fromUint(106'u16)
-        var r {.noInit.}: BigInt[381]
+        var r = canary(BigInt[381])
 
         r.invmod(a, M, mp1div2)
 
@@ -563,7 +582,7 @@ proc mainModularInverse() =
 
       let expected = BigInt[381].fromHex("0x0636759a0f3034fa47174b2c0334902f11e9915b7bd89c6a2b3082b109abbc9837da17201f6d8286fe6203caa1b9d4c8")
 
-      var r {.noInit.}: BigInt[381]
+      var r = canary(BigInt[381])
       r.invmod(a, M, mp1div2)
 
       check: bool(r == expected)
@@ -578,7 +597,7 @@ proc mainModularInverse() =
         discard mp1div2.add(SecretWord 1)
 
         let expected = BigInt[16].fromUint(0'u16)
-        var r {.noInit.}: BigInt[16]
+        var r = canary(BigInt[16])
 
         r.invmod(a, M, mp1div2)
 
@@ -593,7 +612,7 @@ proc mainModularInverse() =
         discard mp1div2.add(SecretWord 1)
 
         let expected = BigInt[381].fromUint(0'u16)
-        var r {.noInit.}: BigInt[381]
+        var r = canary(BigInt[381])
 
         r.invmod(a, M, mp1div2)
 

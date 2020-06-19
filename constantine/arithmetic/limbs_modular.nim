@@ -143,7 +143,7 @@ func steinsGCD*(v: var Limbs, a: Limbs, F, M: Limbs, bits: int, mp1div2: Limbs) 
     # GCD exist (always true if a and M are relatively prime)
     doAssert bool b.isOne() or
       # or not (on prime fields iff input was zero) and no GCD fallback output is zero
-      (a.isZero() and v.isZero())
+      v.isZero()
 
 # ############################################################
 #

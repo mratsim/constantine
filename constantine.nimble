@@ -63,6 +63,12 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_ec_sage_bls12_381.nim", false)
 ]
 
+# For temporary (hopefully) investigation that can only be reproduced in CI
+const useDebug = [
+  "tests/t_bigints.nim"
+]
+
+
 # Helper functions
 # ----------------------------------------------------------------
 
@@ -109,11 +115,17 @@ task test, "Run all tests":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
 
   for td in testDesc:
-    test "", td.path
+    if td.path in useDebug:
+      test "-d:debugConstantine", td.path
+    else:
+      test "", td.path
 
   if sizeof(int) == 8: # 32-bit tests on 64-bit arch
     for td in testDesc:
-      test "-d:Constantine32", td.path
+      if td.path in useDebug:
+        test "-d:Constantine32 -d:debugConstantine", td.path
+      else:
+        test "-d:Constantine32", td.path
 
   # Benchmarks compile and run
   # ignore Windows 32-bit for the moment
@@ -130,12 +142,19 @@ task test_no_gmp, "Run tests that don't require GMP":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   for td in testDesc:
     if not td.useGMP:
-      test "", td.path
+      if td.path in useDebug:
+        test "-d:debugConstantine", td.path
+      else:
+        test "", td.path
 
   if sizeof(int) == 8: # 32-bit tests on 64-bit arch
     for td in testDesc:
       if not td.useGMP:
-        test "-d:Constantine32", td.path
+        if td.path in useDebug:
+          test "-d:Constantine32 -d:debugConstantine", td.path
+        else:
+          test "-d:Constantine32", td.path
+
 
   # Benchmarks compile and run
   # ignore Windows 32-bit for the moment
@@ -154,7 +173,10 @@ task test_parallel, "Run all tests in parallel (via GNU parallel)":
   exec "> " & buildParallel
 
   for td in testDesc:
-    test "", td.path, cmdFile
+    if td.path in useDebug:
+      test "-d:debugConstantine", td.path, cmdFile
+    else:
+      test "", td.path, cmdFile
 
   # cmdFile.close()
   # Execute everything in parallel with GNU parallel
@@ -163,7 +185,10 @@ task test_parallel, "Run all tests in parallel (via GNU parallel)":
   exec "> " & buildParallel
   if sizeof(int) == 8: # 32-bit tests on 64-bit arch
     for td in testDesc:
-      test "-d:Constantine32", td.path, cmdFile
+      if td.path in useDebug:
+        test "-d:Constantine32 -d:debugConstantine", td.path, cmdFile
+      else:
+        test "-d:Constantine32", td.path, cmdFile
     # cmdFile.close()
     # Execute everything in parallel with GNU parallel
     exec "parallel --keep-order --group < " & buildParallel
