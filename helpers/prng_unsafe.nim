@@ -356,7 +356,7 @@ func random_long01Seq*(rng: var RngState, T: typedesc): T =
   else: # Fields
     rng.random_long01Seq(result, T.C)
 
-func random_long01Seq*(rng: var RngState, T: typedesc[ECP_SWei_Proj]): T =
+func random_long01Seq_with_randZ*(rng: var RngState, T: typedesc[ECP_SWei_Proj]): T =
   ## Create a random curve element with a random Z coordinate
   ## Skewed towards long bitstrings of 0 or 1
   rng.random_long01Seq_with_randZ(result)
