@@ -147,4 +147,11 @@ proc main() =
         bool(not a.isSquare())
         bool(not a.sqrt_if_square())
 
+    test "Fused modular square root on 32-bit - inconsistent with isSquare - #43":
+      var a: Fp[BLS12_381]
+      a.fromHex"0x0f16d7854229d8804bcadd889f70411d6a482bde840d238033bf868e89558d39d52f9df60b2d745e02584375f16c34a3"
+      check:
+        bool(not a.isSquare())
+        bool(not a.sqrt_if_square())
+
 main()
