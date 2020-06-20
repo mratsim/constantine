@@ -10,7 +10,8 @@ import
   ../constantine/arithmetic/bigints,
   ../constantine/primitives,
   ../constantine/config/[common, curves],
-  ../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective]
+  ../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective],
+  ../constantine/io/io_bigints
 
 # ############################################################
 #
@@ -128,14 +129,17 @@ func sample_unsafe*[T](rng: var RngState, src: openarray[T]): T =
 # - A bias is a result that is consistently off from the true value i.e.
 #   a deviation of an estimate from the quantity under observation
 
+func random_unsafe(rng: var RngState, a: var BigInt) =
+  ## Initialize a standalone BigInt
+  for i in 0 ..< a.limbs.len:
+    a.limbs[i] = SecretWord(rng.next())
+
 func random_unsafe[T](rng: var RngState, a: var T, C: static Curve) =
   ## Recursively initialize a BigInt (part of a field) or Field element
   ## Unsafe: for testing and benchmarking purposes only
   when T is BigInt:
     var reduced, unreduced{.noInit.}: T
-
-    for i in 0 ..< unreduced.limbs.len:
-      unreduced.limbs[i] = SecretWord(rng.next())
+    rng.random_unsafe(unreduced)
 
     # Note: a simple modulo will be biaised but it's simple and "fast"
     reduced.reduce(unreduced, C.Mod)
@@ -145,16 +149,18 @@ func random_unsafe[T](rng: var RngState, a: var T, C: static Curve) =
     for field in fields(a):
       rng.random_unsafe(field, C)
 
-func random_unsafe(rng: var RngState, a: var BigInt) =
-  ## Initialize a standalone BigInt
-  for i in 0 ..< a.limbs.len:
-    a.limbs[i] = SecretWord(rng.next())
-
 func random_word_highHammingWeight(rng: var RngState): BaseType =
   let numZeros = rng.random_unsafe(WordBitWidth div 3) # Average Hamming Weight is 1-0.33/2 = 0.83
   result = high(BaseType)
   for _ in 0 ..< numZeros:
     result = result.clearBit rng.random_unsafe(WordBitWidth)
+
+func random_highHammingWeight(rng: var RngState, a: var BigInt) =
+  ## Initialize a standalone BigInt
+  ## with high Hamming weight
+  ## to have a higher probability of triggering carries
+  for i in 0 ..< a.limbs.len:
+    a.limbs[i] = SecretWord rng.random_word_highHammingWeight()
 
 func random_highHammingWeight[T](rng: var RngState, a: var T, C: static Curve) =
   ## Recursively initialize a BigInt (part of a field) or Field element
@@ -163,9 +169,7 @@ func random_highHammingWeight[T](rng: var RngState, a: var T, C: static Curve) =
   ## to have a higher probability of triggering carries
   when T is BigInt:
     var reduced, unreduced{.noInit.}: T
-
-    for i in 0 ..< unreduced.limbs.len:
-      unreduced.limbs[i] = SecretWord rng.random_word_highHammingWeight()
+    rng.random_word_highHammingWeight(unreduced)
 
     # Note: a simple modulo will be biaised but it's simple and "fast"
     reduced.reduce(unreduced, C.Mod)
@@ -175,12 +179,49 @@ func random_highHammingWeight[T](rng: var RngState, a: var T, C: static Curve) =
     for field in fields(a):
       rng.random_highHammingWeight(field, C)
 
-func random_highHammingWeight(rng: var RngState, a: var BigInt) =
-  ## Initialize a standalone BigInt
-  ## with high Hamming weight
-  ## to have a higher probability of triggering carries
-  for i in 0 ..< a.limbs.len:
-    a.limbs[i] = SecretWord rng.random_word_highHammingWeight()
+func random_long01Seq(rng: var RngState, a: var openArray[byte]) =
+  ## Initialize a bytearray
+  ## It is skewed towards producing strings of 1111... and 0000
+  ## to trigger edge cases
+  # See libsecp256k1: https://github.com/bitcoin-core/secp256k1/blob/dbd41db1/src/testrand_impl.h#L90-L104
+  let Bits = a.len * 8
+  var bit = 0
+  zeroMem(a[0].addr, a.len)
+  while bit < Bits :
+    var now = 1 + (rng.random_unsafe(1 shl 6) * rng.random_unsafe(1 shl 5) + 16) div 31
+    let val = rng.sample_unsafe([0, 1])
+    while now > 0 and bit < Bits:
+      a[bit shr 3] = a[bit shr 3] or byte(val shl (bit and 7))
+      dec now
+      inc bit
+
+func random_long01Seq(rng: var RngState, a: var BigInt) =
+  ## Initialize a bigint
+  ## It is skewed towards producing strings of 1111... and 0000
+  ## to trigger edge cases
+  var buf: array[(a.bits + 7) div 8, byte]
+  rng.random_long01Seq(buf)
+  let order = rng.sample_unsafe([bigEndian, littleEndian])
+  if order == bigEndian:
+    a.fromRawUint(buf, bigEndian)
+  else:
+    a.fromRawUint(buf, littleEndian)
+
+func random_long01Seq[T](rng: var RngState, a: var T, C: static Curve) =
+  ## Recursively initialize a BigInt (part of a field) or Field element
+  ## It is skewed towards producing strings of 1111... and 0000
+  ## to trigger edge cases
+  when T is BigInt:
+    var reduced, unreduced{.noInit.}: T
+    rng.random_long01Seq(unreduced)
+
+    # Note: a simple modulo will be biaised but it's simple and "fast"
+    reduced.reduce(unreduced, C.Mod)
+    a.montyResidue(reduced, C.Mod, C.getR2modP(), C.getNegInvModWord(), C.canUseNoCarryMontyMul())
+
+  else:
+    for field in fields(a):
+      rng.random_highHammingWeight(field, C)
 
 # Elliptic curves
 # ------------------------------------------------------------
@@ -237,6 +278,35 @@ func random_highHammingWeight_with_randZ[F](rng: var RngState, a: var ECP_SWei_P
     rng.random_highHammingWeight(fieldElem, F.C)
     success = trySetFromCoordsXandZ(a, fieldElem, Z)
 
+func random_long01Seq[F](rng: var RngState, a: var ECP_SWei_Proj[F]) =
+  ## Initialize a random curve point with Z coordinate == 1
+  ## This will be generated with a biaised RNG
+  ## that produces long bitstrings of 0 and 1
+  ## to trigger edge cases
+  var fieldElem {.noInit.}: F
+  var success = CtFalse
+
+  while not bool(success):
+    # Euler's criterion: there are (p-1)/2 squares in a field with modulus `p`
+    #                    so we have a probability of ~0.5 to get a good point
+    rng.random_long01Seq(fieldElem, F.C)
+    success = trySetFromCoordX(a, fieldElem)
+
+func random_long01Seq_with_randZ[F](rng: var RngState, a: var ECP_SWei_Proj[F]) =
+  ## Initialize a random curve point with Z coordinate == 1
+  ## This will be generated with a biaised RNG
+  ## that produces long bitstrings of 0 and 1
+  ## to trigger edge cases
+  var Z{.noInit.}: F
+  rng.random_long01Seq(Z, F.C) # If Z is zero, X will be zero and that will be an infinity point
+
+  var fieldElem {.noInit.}: F
+  var success = CtFalse
+
+  while not bool(success):
+    rng.random_long01Seq(fieldElem, F.C)
+    success = trySetFromCoordsXandZ(a, fieldElem, Z)
+
 # Generic over any Constantine type
 # ------------------------------------------------------------
 
@@ -259,7 +329,7 @@ func random_unsafe_with_randZ*(rng: var RngState, T: typedesc[ECP_SWei_Proj]): T
 
 func random_highHammingWeight*(rng: var RngState, T: typedesc): T =
   ## Create a random Field or Extension Field or Curve Element
-  ## Unsafe: for testing and benchmarking purposes only
+  ## Skewed towards high Hamming Weight
   when T is ECP_SWei_Proj:
     rng.random_highHammingWeight(result)
   elif T is SomeNumber:
@@ -271,8 +341,25 @@ func random_highHammingWeight*(rng: var RngState, T: typedesc): T =
 
 func random_highHammingWeight_with_randZ*(rng: var RngState, T: typedesc[ECP_SWei_Proj]): T =
   ## Create a random curve element with a random Z coordinate
-  ## Unsafe: for testing and benchmarking purposes only
+  ## Skewed towards high Hamming Weight
   rng.random_highHammingWeight_with_randZ(result)
+
+func random_long01Seq*(rng: var RngState, T: typedesc): T =
+  ## Create a random Field or Extension Field or Curve Element
+  ## Skewed towards long bitstrings of 0 or 1
+  when T is ECP_SWei_Proj:
+    rng.random_long01Seq(result)
+  elif T is SomeNumber:
+    cast[T](rng.next()) # TODO: Rely on casting integer actually converting in C (i.e. uint64->uint32 is valid)
+  elif T is BigInt:
+    rng.random_long01Seq(result)
+  else: # Fields
+    rng.random_long01Seq(result, T.C)
+
+func random_long01Seq*(rng: var RngState, T: typedesc[ECP_SWei_Proj]): T =
+  ## Create a random curve element with a random Z coordinate
+  ## Skewed towards long bitstrings of 0 or 1
+  rng.random_long01Seq_with_randZ(result)
 
 # Sanity checks
 # ------------------------------------------------------------
@@ -304,3 +391,16 @@ when isMainModule:
   for _ in 0 ..< 10:
     let word = rng.random_word_highHammingWeight()
     echo "0b", cast[BiggestInt](word).toBin(WordBitWidth), " - 0x", word.toHex()
+
+  echo "\n-----------------------------\n"
+  echo "Long strings of 0 or 1 check"
+  for _ in 0 ..< 10:
+    var a: BigInt[127]
+    rng.random_long01seq(a)
+    stdout.write "0b"
+    for word in a.limbs:
+      stdout.write cast[BiggestInt](word).toBin(WordBitWidth)
+    stdout.write " - 0x"
+    for word in a.limbs:
+      stdout.write word.BaseType.toHex()
+    stdout.write '\n'
