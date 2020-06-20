@@ -8,6 +8,7 @@
 
 import
   ../constantine/arithmetic/bigints,
+  ../constantine/primitives,
   ../constantine/config/[common, curves],
   ../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective]
 
@@ -79,8 +80,53 @@ func next(rng: var RngState): uint64 =
 
   rng.s[7] = rotl(rng.s[7], 21);
 
+# Integer ranges
+# ------------------------------------------------------------
+
+func random_unsafe*(rng: var RngState, maxExclusive: uint32): uint32 =
+  ## Generate a random integer in 0 ..< maxExclusive
+  ## Uses an unbiaised generation method
+  ## See Lemire's algorithm modified by Melissa O'Neill
+  ##   https://www.pcg-random.org/posts/bounded-rands.html
+  let max = maxExclusive
+  var x = uint32 rng.next()
+  var m = x.uint64 * max.uint64
+  var l = uint32 m
+  if l < max:
+    var t = not(max) + 1 # -max
+    if t >= max:
+      t -= max
+      if t >= max:
+        t = t mod max
+    while l < t:
+      x = uint32 rng.next()
+      m = x.uint64 * max.uint64
+      l = uint32 m
+  return uint32(m shr 32)
+
+func random_unsafe*[T: SomeInteger](rng: var RngState, inclRange: Slice[T]): T =
+  ## Return a random integer in the given range.
+  ## The range bounds must fit in an int32.
+  let maxExclusive = inclRange.b + 1 - inclRange.a
+  result = T(rng.random_unsafe(uint32 maxExclusive))
+  result += inclRange.a
+
+# Containers
+# ------------------------------------------------------------
+
+func sample_unsafe*[T](rng: var RngState, src: openarray[T]): T =
+  ## Return a random sample from an array
+  result = src[rng.random_unsafe(uint32 src.len)]
+
 # BigInts and Fields
 # ------------------------------------------------------------
+#
+# Statistics note:
+# - A skewed distribution is not symmetric, it has a longer tail in one direction.
+#   for example a RNG that is not centered over 0.5 distribution of 0 and 1 but
+#   might produces more 1 than 0 or vice-versa.
+# - A bias is a result that is consistently off from the true value i.e.
+#   a deviation of an estimate from the quantity under observation
 
 func random_unsafe[T](rng: var RngState, a: var T, C: static Curve) =
   ## Recursively initialize a BigInt (part of a field) or Field element
@@ -103,6 +149,38 @@ func random_unsafe(rng: var RngState, a: var BigInt) =
   ## Initialize a standalone BigInt
   for i in 0 ..< a.limbs.len:
     a.limbs[i] = SecretWord(rng.next())
+
+func random_word_highHammingWeight(rng: var RngState): BaseType =
+  let numZeros = rng.random_unsafe(WordBitWidth div 3) # Average Hamming Weight is 1-0.33/2 = 0.83
+  result = high(BaseType)
+  for _ in 0 ..< numZeros:
+    result = result.clearBit rng.random_unsafe(WordBitWidth)
+
+func random_highHammingWeight[T](rng: var RngState, a: var T, C: static Curve) =
+  ## Recursively initialize a BigInt (part of a field) or Field element
+  ## Unsafe: for testing and benchmarking purposes only
+  ## The result will have a high Hamming Weight
+  ## to have a higher probability of triggering carries
+  when T is BigInt:
+    var reduced, unreduced{.noInit.}: T
+
+    for i in 0 ..< unreduced.limbs.len:
+      unreduced.limbs[i] = SecretWord rng.random_word_highHammingWeight()
+
+    # Note: a simple modulo will be biaised but it's simple and "fast"
+    reduced.reduce(unreduced, C.Mod)
+    a.montyResidue(reduced, C.Mod, C.getR2modP(), C.getNegInvModWord(), C.canUseNoCarryMontyMul())
+
+  else:
+    for field in fields(a):
+      rng.random_highHammingWeight(field, C)
+
+func random_highHammingWeight(rng: var RngState, a: var BigInt) =
+  ## Initialize a standalone BigInt
+  ## with high Hamming weight
+  ## to have a higher probability of triggering carries
+  for i in 0 ..< a.limbs.len:
+    a.limbs[i] = SecretWord rng.random_word_highHammingWeight()
 
 # Elliptic curves
 # ------------------------------------------------------------
@@ -132,43 +210,35 @@ func random_unsafe_with_randZ[F](rng: var RngState, a: var ECP_SWei_Proj[F]) =
     rng.random_unsafe(fieldElem, F.C)
     success = trySetFromCoordsXandZ(a, fieldElem, Z)
 
-# Integer ranges
+func random_highHammingWeight[F](rng: var RngState, a: var ECP_SWei_Proj[F]) =
+  ## Initialize a random curve point with Z coordinate == 1
+  ## This will be generated with a biaised RNG with high Hamming Weight
+  ## to trigger carry bugs
+  var fieldElem {.noInit.}: F
+  var success = CtFalse
+
+  while not bool(success):
+    # Euler's criterion: there are (p-1)/2 squares in a field with modulus `p`
+    #                    so we have a probability of ~0.5 to get a good point
+    rng.random_highHammingWeight(fieldElem, F.C)
+    success = trySetFromCoordX(a, fieldElem)
+
+func random_highHammingWeight_with_randZ[F](rng: var RngState, a: var ECP_SWei_Proj[F]) =
+  ## Initialize a random curve point with Z coordinate == 1
+  ## This will be generated with a biaised RNG with high Hamming Weight
+  ## to trigger carry bugs
+  var Z{.noInit.}: F
+  rng.random_highHammingWeight(Z, F.C) # If Z is zero, X will be zero and that will be an infinity point
+
+  var fieldElem {.noInit.}: F
+  var success = CtFalse
+
+  while not bool(success):
+    rng.random_highHammingWeight(fieldElem, F.C)
+    success = trySetFromCoordsXandZ(a, fieldElem, Z)
+
+# Generic over any Constantine type
 # ------------------------------------------------------------
-
-func random_unsafe*(rng: var RngState, maxExclusive: uint32): uint32 =
-  ## Generate a random integer in 0 ..< maxExclusive
-  ## Uses an unbiaised generation method
-  ## See Lemire's algorithm modified by Melissa O'Neill
-  ##   https://www.pcg-random.org/posts/bounded-rands.html
-  let max = maxExclusive
-  var x = uint32 rng.next()
-  var m = x.uint64 * max.uint64
-  var l = uint32 m
-  if l < max:
-    var t = not(max) + 1 # -max
-    if t >= max:
-      t -= max
-      if t >= max:
-        t = t mod max
-    while l < t:
-      x = uint32 rng.next()
-      m = x.uint64 * max.uint64
-      l = uint32 m
-  return uint32(m shr 32)
-
-# Generic over any supported type
-# ------------------------------------------------------------
-
-func sample_unsafe*[T](rng: var RngState, src: openarray[T]): T =
-  ## Return a random sample from an array
-  result = src[rng.random_unsafe(uint32 src.len)]
-
-func random_unsafe*[T: SomeInteger](rng: var RngState, inclRange: Slice[T]): T =
-  ## Return a random integer in the given range.
-  ## The range bounds must fit in an int32.
-  let maxExclusive = inclRange.b + 1 - inclRange.a
-  result = T(rng.random_unsafe(uint32 maxExclusive))
-  result += inclRange.a
 
 func random_unsafe*(rng: var RngState, T: typedesc): T =
   ## Create a random Field or Extension Field or Curve Element
@@ -187,11 +257,28 @@ func random_unsafe_with_randZ*(rng: var RngState, T: typedesc[ECP_SWei_Proj]): T
   ## Unsafe: for testing and benchmarking purposes only
   rng.random_unsafe_with_randZ(result)
 
+func random_highHammingWeight*(rng: var RngState, T: typedesc): T =
+  ## Create a random Field or Extension Field or Curve Element
+  ## Unsafe: for testing and benchmarking purposes only
+  when T is ECP_SWei_Proj:
+    rng.random_highHammingWeight(result)
+  elif T is SomeNumber:
+    cast[T](rng.next()) # TODO: Rely on casting integer actually converting in C (i.e. uint64->uint32 is valid)
+  elif T is BigInt:
+    rng.random_highHammingWeight(result)
+  else: # Fields
+    rng.random_highHammingWeight(result, T.C)
+
+func random_highHammingWeight_with_randZ*(rng: var RngState, T: typedesc[ECP_SWei_Proj]): T =
+  ## Create a random curve element with a random Z coordinate
+  ## Unsafe: for testing and benchmarking purposes only
+  rng.random_highHammingWeight_with_randZ(result)
+
 # Sanity checks
 # ------------------------------------------------------------
 
 when isMainModule:
-  import std/[tables, times]
+  import std/[tables, times, strutils]
 
   var rng: RngState
   let timeSeed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
@@ -211,3 +298,9 @@ when isMainModule:
   test(0..2)
   test(1..52)
   test(-10..10)
+
+  echo "\n-----------------------------\n"
+  echo "High Hamming Weight check"
+  for _ in 0 ..< 10:
+    let word = rng.random_word_highHammingWeight()
+    echo "0b", cast[BiggestInt](word).toBin(WordBitWidth), " - 0x", word.toHex()
