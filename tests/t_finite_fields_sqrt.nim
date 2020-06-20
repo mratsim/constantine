@@ -117,21 +117,21 @@ proc randomSqrtCheck_p3mod4(C: static Curve) =
       testImpl(a)
 
 proc main() =
-  # suite "Modular square root" & " [" & $WordBitwidth & "-bit mode]":
-  #   exhaustiveCheck_p3mod4 Fake103, 103
-  #   exhaustiveCheck_p3mod4 Fake10007, 10007
-  #   exhaustiveCheck_p3mod4 Fake65519, 65519
-  #   randomSqrtCheck_p3mod4 Mersenne61
-  #   randomSqrtCheck_p3mod4 Mersenne127
-  #   randomSqrtCheck_p3mod4 BN254_Nogami
-  #   randomSqrtCheck_p3mod4 BN254_Snarks
-  #   randomSqrtCheck_p3mod4 P256
-  #   randomSqrtCheck_p3mod4 Secp256k1
-  #   randomSqrtCheck_p3mod4 BLS12_381
-  #   randomSqrtCheck_p3mod4 BN446
-  #   randomSqrtCheck_p3mod4 FKM12_447
-  #   randomSqrtCheck_p3mod4 BLS12_461
-  #   randomSqrtCheck_p3mod4 BN462
+  suite "Modular square root" & " [" & $WordBitwidth & "-bit mode]":
+    exhaustiveCheck_p3mod4 Fake103, 103
+    exhaustiveCheck_p3mod4 Fake10007, 10007
+    exhaustiveCheck_p3mod4 Fake65519, 65519
+    randomSqrtCheck_p3mod4 Mersenne61
+    randomSqrtCheck_p3mod4 Mersenne127
+    randomSqrtCheck_p3mod4 BN254_Nogami
+    randomSqrtCheck_p3mod4 BN254_Snarks
+    randomSqrtCheck_p3mod4 P256
+    randomSqrtCheck_p3mod4 Secp256k1
+    randomSqrtCheck_p3mod4 BLS12_381
+    randomSqrtCheck_p3mod4 BN446
+    randomSqrtCheck_p3mod4 FKM12_447
+    randomSqrtCheck_p3mod4 BLS12_461
+    randomSqrtCheck_p3mod4 BN462
 
   suite "Modular square root - 32-bit bugs highlighted by property-based testing " & " [" & $WordBitwidth & "-bit mode]":
     test "FKM12_447 - #30":
