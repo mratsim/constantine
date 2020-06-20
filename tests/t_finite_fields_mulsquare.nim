@@ -115,15 +115,47 @@ proc randomCurve(C: static Curve) =
 
   doAssert bool(r_mul == r_sqr)
 
+proc randomHighHammingWeight(C: static Curve) =
+  let a = rng.random_highHammingWeight(Fp[C])
+
+  var r_mul, r_sqr: Fp[C]
+
+  r_mul.prod(a, a)
+  r_sqr.square(a)
+
+  doAssert bool(r_mul == r_sqr)
+
+proc random_long01Seq(C: static Curve) =
+  let a = rng.random_long01Seq(Fp[C])
+
+  var r_mul, r_sqr: Fp[C]
+
+  r_mul.prod(a, a)
+  r_sqr.square(a)
+
+  doAssert bool(r_mul == r_sqr)
+
 suite "Random Modular Squaring is consistent with Modular Multiplication" & " [" & $WordBitwidth & "-bit mode]":
   test "Random squaring mod P-224 [FastSquaring = " & $P224.canUseNoCarryMontySquare & "]":
     for _ in 0 ..< Iters:
       randomCurve(P224)
+    for _ in 0 ..< Iters:
+      randomHighHammingWeight(P224)
+    for _ in 0 ..< Iters:
+      random_long01Seq(P224)
 
   test "Random squaring mod P-256 [FastSquaring = " & $P256.canUseNoCarryMontySquare & "]":
     for _ in 0 ..< Iters:
       randomCurve(P256)
+    for _ in 0 ..< Iters:
+      randomHighHammingWeight(P256)
+    for _ in 0 ..< Iters:
+      random_long01Seq(P256)
 
   test "Random squaring mod BLS12_381 [FastSquaring = " & $BLS12_381.canUseNoCarryMontySquare & "]":
     for _ in 0 ..< Iters:
       randomCurve(BLS12_381)
+    for _ in 0 ..< Iters:
+      randomHighHammingWeight(BLS12_381)
+    for _ in 0 ..< Iters:
+      random_long01Seq(BLS12_381)

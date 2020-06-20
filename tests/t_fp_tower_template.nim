@@ -35,6 +35,20 @@ template ExtField(degree: static int, curve: static Curve): untyped =
   else:
     {.error: "Unconfigured extension degree".}
 
+type
+  RandomGen = enum
+    Uniform
+    HighHammingWeight
+    Long01Sequence
+
+func random_elem(rng: var RngState, F: typedesc, gen: static RandomGen): F {.inline, noInit.} =
+  when gen == Uniform:
+    result = rng.random_unsafe(F)
+  elif gen == HighHammingWeight:
+    result = rng.random_highHammingWeight(F)
+  else:
+    result = rng.random_long01Seq(F)
+
 proc runTowerTests*[N](
       ExtDegree: static int,
       Iters: static int,
@@ -63,19 +77,19 @@ proc runTowerTests*[N](
         test(ExtField(ExtDegree, curve))
 
     test "Addition, substraction negation are consistent":
-      proc test(Field: typedesc, Iters: static int) =
+      proc test(Field: typedesc, Iters: static int, gen: static RandomGen) =
         # Try to exercise all code paths for in-place/out-of-place add/sum/sub/diff/double/neg
         # (1 - (-a) - b + (-a) - 2a) + (2a + 2b + (-b))  == 1
         var accum {.noInit.}, One {.noInit.}, a{.noInit.}, na{.noInit.}, b{.noInit.}, nb{.noInit.}, a2 {.noInit.}, b2 {.noInit.}: Field
 
         for _ in 0 ..< Iters:
           One.setOne()
-          a = rng.random_unsafe(Field)
+          a = rng.random_elem(Field, gen)
           a2 = a
           a2.double()
           na.neg(a)
 
-          b = rng.random_unsafe(Field)
+          b = rng.random_elem(Field, gen)
           b2.double(b)
           nb.neg(b)
 
@@ -92,12 +106,14 @@ proc runTowerTests*[N](
           check: bool accum.isOne()
 
       staticFor(curve, TestCurves):
-        test(ExtField(ExtDegree, curve), Iters)
+        test(ExtField(ExtDegree, curve), Iters, gen = Uniform)
+        test(ExtField(ExtDegree, curve), Iters, gen = HighHammingWeight)
+        test(ExtField(ExtDegree, curve), Iters, gen = Long01Sequence)
 
     test "Division by 2":
-      proc test(Field: typedesc, Iters: static int) =
+      proc test(Field: typedesc, Iters: static int, gen: static RandomGen) =
         for _ in 0 ..< Iters:
-          let a = rng.random_unsafe(Field)
+          let a = rng.random_elem(Field, gen)
           var a2 = a
           a2.double()
           a2.div2()
@@ -107,7 +123,9 @@ proc runTowerTests*[N](
           check: bool(a == a2)
 
       staticFor(curve, TestCurves):
-        test(ExtField(ExtDegree, curve), Iters)
+        test(ExtField(ExtDegree, curve), Iters, gen = Uniform)
+        test(ExtField(ExtDegree, curve), Iters, gen = HighHammingWeight)
+        test(ExtField(ExtDegree, curve), Iters, gen = Long01Sequence)
 
     test "Squaring 1 returns 1":
       proc test(Field: typedesc) =
@@ -247,9 +265,9 @@ proc runTowerTests*[N](
           check: bool(r == x)
 
     test "Multiplication and Squaring are consistent":
-      proc test(Field: typedesc, Iters: static int) =
+      proc test(Field: typedesc, Iters: static int, gen: static RandomGen) =
         for _ in 0 ..< Iters:
-          let a = rng.random_unsafe(Field)
+          let a = rng.random_elem(Field, gen)
           var rMul{.noInit.}, rSqr{.noInit.}: Field
 
           rMul.prod(a, a)
@@ -258,12 +276,14 @@ proc runTowerTests*[N](
           check: bool(rMul == rSqr)
 
       staticFor(curve, TestCurves):
-        test(ExtField(ExtDegree, curve), Iters)
+        test(ExtField(ExtDegree, curve), Iters, gen = Uniform)
+        test(ExtField(ExtDegree, curve), Iters, gen = HighHammingWeight)
+        test(ExtField(ExtDegree, curve), Iters, gen = Long01Sequence)
 
     test "Squaring the opposite gives the same result":
-      proc test(Field: typedesc, Iters: static int) =
+      proc test(Field: typedesc, Iters: static int, gen: static RandomGen) =
         for _ in 0 ..< Iters:
-          let a = rng.random_unsafe(Field)
+          let a = rng.random_elem(Field, gen)
           var na{.noInit.}: Field
           na.neg(a)
 
@@ -275,14 +295,16 @@ proc runTowerTests*[N](
           check: bool(rSqr == rNegSqr)
 
       staticFor(curve, TestCurves):
-        test(ExtField(ExtDegree, curve), Iters)
+        test(ExtField(ExtDegree, curve), Iters, gen = Uniform)
+        test(ExtField(ExtDegree, curve), Iters, gen = HighHammingWeight)
+        test(ExtField(ExtDegree, curve), Iters, gen = Long01Sequence)
 
     test "Multiplication and Addition/Substraction are consistent":
-      proc test(Field: typedesc, Iters: static int) =
+      proc test(Field: typedesc, Iters: static int, gen: static RandomGen) =
         for _ in 0 ..< Iters:
           let factor = rng.random_unsafe(-30..30)
 
-          let a = rng.random_unsafe(Field)
+          let a = rng.random_elem(Field, gen)
 
           if factor == 0: continue
 
@@ -309,14 +331,16 @@ proc runTowerTests*[N](
           check: bool(r == sum)
 
       staticFor(curve, TestCurves):
-        test(ExtField(ExtDegree, curve), Iters)
+        test(ExtField(ExtDegree, curve), Iters, gen = Uniform)
+        test(ExtField(ExtDegree, curve), Iters, gen = HighHammingWeight)
+        test(ExtField(ExtDegree, curve), Iters, gen = Long01Sequence)
 
     test "Addition is associative and commutative":
-      proc test(Field: typedesc, Iters: static int) =
+      proc test(Field: typedesc, Iters: static int, gen: static RandomGen) =
         for _ in 0 ..< Iters:
-          let a = rng.random_unsafe(Field)
-          let b = rng.random_unsafe(Field)
-          let c = rng.random_unsafe(Field)
+          let a = rng.random_elem(Field, gen)
+          let b = rng.random_elem(Field, gen)
+          let c = rng.random_elem(Field, gen)
 
           var tmp1{.noInit.}, tmp2{.noInit.}: Field
 
@@ -354,14 +378,16 @@ proc runTowerTests*[N](
             bool(r0 == r4)
 
       staticFor(curve, TestCurves):
-        test(ExtField(ExtDegree, curve), Iters)
+        test(ExtField(ExtDegree, curve), Iters, gen = Uniform)
+        test(ExtField(ExtDegree, curve), Iters, gen = HighHammingWeight)
+        test(ExtField(ExtDegree, curve), Iters, gen = Long01Sequence)
 
     test "Multiplication is associative and commutative":
-      proc test(Field: typedesc, Iters: static int) =
+      proc test(Field: typedesc, Iters: static int, gen: static RandomGen) =
         for _ in 0 ..< Iters:
-          let a = rng.random_unsafe(Field)
-          let b = rng.random_unsafe(Field)
-          let c = rng.random_unsafe(Field)
+          let a = rng.random_elem(Field, gen)
+          let b = rng.random_elem(Field, gen)
+          let c = rng.random_elem(Field, gen)
 
           var tmp1{.noInit.}, tmp2{.noInit.}: Field
 
@@ -399,14 +425,16 @@ proc runTowerTests*[N](
             bool(r0 == r4)
 
       staticFor(curve, TestCurves):
-        test(ExtField(ExtDegree, curve), Iters)
+        test(ExtField(ExtDegree, curve), Iters, gen = Uniform)
+        test(ExtField(ExtDegree, curve), Iters, gen = HighHammingWeight)
+        test(ExtField(ExtDegree, curve), Iters, gen = Long01Sequence)
 
     test "Extension field multiplicative inverse":
-      proc test(Field: typedesc, Iters: static int) =
+      proc test(Field: typedesc, Iters: static int, gen: static RandomGen) =
         var aInv, r{.noInit.}: Field
 
         for _ in 0 ..< Iters:
-          let a = rng.random_unsafe(Field)
+          let a = rng.random_elem(Field, gen)
           aInv.inv(a)
           r.prod(a, aInv)
           check: bool(r.isOne())
@@ -414,7 +442,9 @@ proc runTowerTests*[N](
           check: bool(r.isOne())
 
       staticFor(curve, TestCurves):
-        test(ExtField(ExtDegree, curve), Iters)
+        test(ExtField(ExtDegree, curve), Iters, gen = Uniform)
+        test(ExtField(ExtDegree, curve), Iters, gen = HighHammingWeight)
+        test(ExtField(ExtDegree, curve), Iters, gen = Long01Sequence)
 
     test "0 does not have a multiplicative inverse and should return 0 for projective/jacobian => affine coordinates conversion":
       proc test(Field: typedesc) =
