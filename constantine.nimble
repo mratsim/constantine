@@ -206,6 +206,47 @@ task test_parallel, "Run all tests in parallel (via GNU parallel)":
     runBench("bench_ec_g1")
     runBench("bench_ec_g2")
 
+task test_parallel_no_gmp, "Run all tests in parallel (via GNU parallel)":
+  # -d:testingCurves is configured in a *.nim.cfg for convenience
+  let cmdFile = true # open(buildParallel, mode = fmWrite) # Nimscript doesn't support IO :/
+  exec "> " & buildParallel
+
+  for td in testDesc:
+    if not td.useGMP:
+      if td.path in useDebug:
+        test "-d:debugConstantine", td.path, cmdFile
+      else:
+        test "", td.path, cmdFile
+
+  # cmdFile.close()
+  # Execute everything in parallel with GNU parallel
+  exec "parallel --keep-order --group < " & buildParallel
+
+  exec "> " & buildParallel
+  if sizeof(int) == 8: # 32-bit tests on 64-bit arch
+    for td in testDesc:
+      if not td.useGMP:
+        if td.path in useDebug:
+          test "-d:Constantine32 -d:debugConstantine", td.path, cmdFile
+        else:
+          test "-d:Constantine32", td.path, cmdFile
+    # cmdFile.close()
+    # Execute everything in parallel with GNU parallel
+    exec "parallel --keep-order --group < " & buildParallel
+
+  # Now run the benchmarks
+  #
+  # Benchmarks compile and run
+  # ignore Windows 32-bit for the moment
+  # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
+  if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
+    runBench("bench_fp")
+    runBench("bench_fp2")
+    runBench("bench_fp6")
+    runBench("bench_fp12")
+    runBench("bench_ec_g1")
+    runBench("bench_ec_g2")
+
 task bench_fp, "Run benchmark 𝔽p with your default compiler":
   runBench("bench_fp")
 

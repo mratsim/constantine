@@ -197,8 +197,17 @@ jobs:
         run: |
           nimble refresh
           nimble install -y gmp stew
-      - name: Run Constantine tests
+      - name: Run Constantine tests (with GMP)
+        if: (runner.os == 'Linux' || runner.os == 'macOS') && matrix.target.cpu == 'amd64'
         shell: bash
         run: |
+          export UCPU="$cpu"
           cd constantine
           nimble test_parallel
+      - name: Run Constantine tests (without GMP)
+        if: runner.os == 'Linux' && matrix.target.cpu == 'i386'
+        shell: bash
+        run: |
+          export UCPU="$cpu"
+          cd constantine
+          nimble test_parallel_no_gmp
