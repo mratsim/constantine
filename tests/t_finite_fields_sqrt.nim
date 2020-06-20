@@ -117,27 +117,34 @@ proc randomSqrtCheck_p3mod4(C: static Curve) =
       testImpl(a)
 
 proc main() =
-  suite "Modular square root" & " [" & $WordBitwidth & "-bit mode]":
-    exhaustiveCheck_p3mod4 Fake103, 103
-    exhaustiveCheck_p3mod4 Fake10007, 10007
-    exhaustiveCheck_p3mod4 Fake65519, 65519
-    randomSqrtCheck_p3mod4 Mersenne61
-    randomSqrtCheck_p3mod4 Mersenne127
-    randomSqrtCheck_p3mod4 BN254_Nogami
-    randomSqrtCheck_p3mod4 BN254_Snarks
-    randomSqrtCheck_p3mod4 P256
-    randomSqrtCheck_p3mod4 Secp256k1
-    randomSqrtCheck_p3mod4 BLS12_381
-    randomSqrtCheck_p3mod4 BN446
-    randomSqrtCheck_p3mod4 FKM12_447
-    randomSqrtCheck_p3mod4 BLS12_461
-    randomSqrtCheck_p3mod4 BN462
+  # suite "Modular square root" & " [" & $WordBitwidth & "-bit mode]":
+  #   exhaustiveCheck_p3mod4 Fake103, 103
+  #   exhaustiveCheck_p3mod4 Fake10007, 10007
+  #   exhaustiveCheck_p3mod4 Fake65519, 65519
+  #   randomSqrtCheck_p3mod4 Mersenne61
+  #   randomSqrtCheck_p3mod4 Mersenne127
+  #   randomSqrtCheck_p3mod4 BN254_Nogami
+  #   randomSqrtCheck_p3mod4 BN254_Snarks
+  #   randomSqrtCheck_p3mod4 P256
+  #   randomSqrtCheck_p3mod4 Secp256k1
+  #   randomSqrtCheck_p3mod4 BLS12_381
+  #   randomSqrtCheck_p3mod4 BN446
+  #   randomSqrtCheck_p3mod4 FKM12_447
+  #   randomSqrtCheck_p3mod4 BLS12_461
+  #   randomSqrtCheck_p3mod4 BN462
 
   suite "Modular square root - 32-bit bugs highlighted by property-based testing " & " [" & $WordBitwidth & "-bit mode]":
     test "FKM12_447 - #30":
       var a: Fp[FKM12_447]
-      a.fromHex("0x406e5e74ee09c84fa0c59f2db3ac814a4937e2f57ecd3c0af4265e04598d643c5b772a6549a2d9b825445c34b8ba100fe8d912e61cfda43d")
+      a.fromHex"0x406e5e74ee09c84fa0c59f2db3ac814a4937e2f57ecd3c0af4265e04598d643c5b772a6549a2d9b825445c34b8ba100fe8d912e61cfda43d"
       a.square()
       check: bool a.isSquare()
+
+    test "Fused modular square root on 32-bit - inconsistent with isSquare - #42":
+      var a: Fp[BLS12_381]
+      a.fromHex"0x184d02ce4f24d5e59b4150a57a31b202fd40a4b41d7518c22b84bee475fbcb7763100448ef6b17a6ea603cf062e5db51"
+      check:
+        bool(not a.isSquare())
+        bool(not a.sqrt_if_square())
 
 main()
