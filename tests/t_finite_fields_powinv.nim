@@ -170,6 +170,26 @@ proc main() =
           a2.double()
           check: bool(a == a2)
 
+        for _ in 0 ..< Iters:
+          let a = rng.randomHighHammingWeight(Fp[curve])
+          var a2 = a
+          a2.double()
+          a2.div2()
+          check: bool(a == a2)
+          a2.div2()
+          a2.double()
+          check: bool(a == a2)
+
+        for _ in 0 ..< Iters:
+          let a = rng.random_long01Seq(Fp[curve])
+          var a2 = a
+          a2.double()
+          a2.div2()
+          check: bool(a == a2)
+          a2.div2()
+          a2.double()
+          check: bool(a == a2)
+
     testRandomDiv2 P224
     testRandomDiv2 BN254_Nogami
     testRandomDiv2 BN254_Snarks
@@ -239,6 +259,22 @@ proc main() =
 
         for _ in 0 ..< Iters:
           let a = rng.random_unsafe(Fp[curve])
+          aInv.inv(a)
+          r.prod(a, aInv)
+          check: bool r.isOne()
+          r.prod(aInv, a)
+          check: bool r.isOne()
+
+        for _ in 0 ..< Iters:
+          let a = rng.randomHighHammingWeight(Fp[curve])
+          aInv.inv(a)
+          r.prod(a, aInv)
+          check: bool r.isOne()
+          r.prod(aInv, a)
+          check: bool r.isOne()
+
+        for _ in 0 ..< Iters:
+          let a = rng.random_long01Seq(Fp[curve])
           aInv.inv(a)
           r.prod(a, aInv)
           check: bool r.isOne()

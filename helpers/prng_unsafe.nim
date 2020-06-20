@@ -169,7 +169,7 @@ func random_highHammingWeight[T](rng: var RngState, a: var T, C: static Curve) =
   ## to have a higher probability of triggering carries
   when T is BigInt:
     var reduced, unreduced{.noInit.}: T
-    rng.random_word_highHammingWeight(unreduced)
+    rng.random_highHammingWeight(unreduced)
 
     # Note: a simple modulo will be biaised but it's simple and "fast"
     reduced.reduce(unreduced, C.Mod)
