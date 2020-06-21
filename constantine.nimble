@@ -18,6 +18,7 @@ const buildParallel = "test_parallel.txt"
 const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Primitives
   ("tests/t_primitives.nim", false),
+  ("tests/t_primitives_extended_precision.nim", false),
   # Big ints
   ("tests/t_io_bigints.nim", false),
   ("tests/t_bigints.nim", false),
