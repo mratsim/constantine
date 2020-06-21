@@ -65,4 +65,14 @@ proc main() =
         bool not a.isSquare()
         bool not a.sqrt_if_square()
 
+    test "sqrt_if_square invalid square BLS12_381 - #65-3":
+      var a: Fp2[BLS12_381]
+      a.fromHex(
+        "0x061bd0f645de26f928386c9393711ba30cabcee5b493f1c3502b33d1cf4e80ed6a9433fe51ec48ce3b28fa748a5cbf93",
+        "0x105eddcc7fca28805a016b5a01723c632bad32dd8d5de66457dfe73807e226772e653b3e37c3dea0248f98847efa9a85"
+      )
+      check:
+        bool not a.isSquare()
+        bool not a.sqrt_if_square()
+
 main()
