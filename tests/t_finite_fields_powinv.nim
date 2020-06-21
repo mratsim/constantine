@@ -294,13 +294,62 @@ proc main() =
     testRandomInv BLS12_461
     testRandomInv BN462
 
-  suite "Bug highlighted by property-based testing" & " [" & $WordBitwidth & "-bit mode]":
-    test "#30 - Euler's Criterion should be 1 for square on FKM12_447":
-      var a: Fp[FKM12_447]
-      # square of "0x406e5e74ee09c84fa0c59f2db3ac814a4937e2f57ecd3c0af4265e04598d643c5b772a6549a2d9b825445c34b8ba100fe8d912e61cfda43d"
-      a.fromHex("0x1e6511b2bfabd7d32d8df7492c66df29ade7fdb21bb0d8f6cacfccb05e45a812a27cd087e1bbb2d202ee29f75a021a6a68d990a2a5e73410")
-
-      a.powUnsafeExponent(FKM12_447.getPrimeMinus1div2_BE())
-      check: bool a.isOne()
-
 main()
+
+proc main_anti_regression =
+  suite "Bug highlighted by property-based testing" & " [" & $WordBitwidth & "-bit mode]":
+    # test "#30 - Euler's Criterion should be 1 for square on FKM12_447":
+    #   var a: Fp[FKM12_447]
+    #   # square of "0x406e5e74ee09c84fa0c59f2db3ac814a4937e2f57ecd3c0af4265e04598d643c5b772a6549a2d9b825445c34b8ba100fe8d912e61cfda43d"
+    #   a.fromHex("0x1e6511b2bfabd7d32d8df7492c66df29ade7fdb21bb0d8f6cacfccb05e45a812a27cd087e1bbb2d202ee29f75a021a6a68d990a2a5e73410")
+
+    #   a.powUnsafeExponent(FKM12_447.getPrimeMinus1div2_BE())
+    #   check: bool a.isOne()
+
+    test "#42 - a^(p-3)/4 (inverse square root)":
+      # x = -(2^63 + 2^62 + 2^60 + 2^57 + 2^48 + 2^16)
+      # p = (x - 1)^2 * (x^4 - x^2 + 1)//3 + x
+      # Fp       = GF(p)
+      # a = Fp(Integer('0x184d02ce4f24d5e59b4150a57a31b202fd40a4b41d7518c22b84bee475fbcb7763100448ef6b17a6ea603cf062e5db51'))
+      # inv = a^((p-3)/4)
+      # print('a^((p-3)/4): ' + Integer(inv).hex())
+
+      var a: Fp[BLS12_381]
+      a.fromHex"0x184d02ce4f24d5e59b4150a57a31b202fd40a4b41d7518c22b84bee475fbcb7763100448ef6b17a6ea603cf062e5db51"
+
+
+      var pm3div4 = BLS12_381.Mod
+      discard pm3div4.sub SecretWord(3)
+      pm3div4.shiftRight(2)
+
+      a.powUnsafeExponent(pm3div4)
+
+      var expected: Fp[BLS12_381]
+      expected.fromHex"ec6fc6cd4d8a3afe1114d5288759b40a87b6b2f001c8c41693f13132be04de21ca22ea38bded36f3748e06d7b4c348c"
+
+      check: bool(a == expected)
+
+    test "#43 - a^(p-3)/4 (inverse square root)":
+      # x = -(2^63 + 2^62 + 2^60 + 2^57 + 2^48 + 2^16)
+      # p = (x - 1)^2 * (x^4 - x^2 + 1)//3 + x
+      # Fp       = GF(p)
+      # a = Fp(Integer('0x0f16d7854229d8804bcadd889f70411d6a482bde840d238033bf868e89558d39d52f9df60b2d745e02584375f16c34a3'))
+      # inv = a^((p-3)/4)
+      # print('a^((p-3)/4): ' + Integer(inv).hex())
+
+      var a: Fp[BLS12_381]
+      a.fromHex"0x0f16d7854229d8804bcadd889f70411d6a482bde840d238033bf868e89558d39d52f9df60b2d745e02584375f16c34a3"
+
+
+      var pm3div4 = BLS12_381.Mod
+      discard pm3div4.sub SecretWord(3)
+      pm3div4.shiftRight(2)
+
+      a.powUnsafeExponent(pm3div4)
+
+      var expected: Fp[BLS12_381]
+      expected.fromHex"16bf380e9b6d01aa6961c4fcee02a00cb827b52d0eb2b541ea8b598d32100d0bd7dc9a600852b49f0379e63ba9c5d35e"
+
+      check: bool(a == expected)
+
+main_anti_regression()
