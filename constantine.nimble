@@ -60,7 +60,9 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_ec_wstrass_prj_g2_mul_vs_ref_bls12_381.nim", false),
   # Elliptic curve arithmetic vs Sagemath
   ("tests/t_ec_sage_bn254.nim", false),
-  ("tests/t_ec_sage_bls12_381.nim", false)
+  ("tests/t_ec_sage_bls12_381.nim", false),
+  # Edge cases highlighted by past bugs
+  ("tests/t_ec_wstrass_prj_edge_cases.nim", false)
 ]
 
 # For temporary (hopefully) investigation that can only be reproduced in CI
