@@ -212,3 +212,29 @@ suite "Modular squaring - bugs highlighted by property-based testing":
       bool(a2 == na2)
       bool(a2 == a)
       bool(a2 == na)
+
+  test "32-bit fast squaring on BLS12-381 - #42":
+    var a{.noInit.}: Fp[BLS12_381]
+    a.fromHex"0x091F02EFA1C9B99C004329E94CD3C6B308164CBE02037333D78B6C10415286F7C51B5CD7F917F77B25667AB083314B1B"
+
+    var a2mul = a
+    var a2sqr = a
+
+    a2mul.prod(a, a)
+    a2sqr.square(a)
+
+    check:
+      bool(a2mul == a2sqr)
+
+  test "32-bit fast squaring on BLS12-381 - #43":
+    var a{.noInit.}: Fp[BLS12_381]
+    a.fromHex"0x0B7C8AFE5D43E9A973AF8649AD8C733B97D06A78CFACD214CBE9946663C3F682362E0605BC8318714305B249B505AFD9"
+
+    var a2mul = a
+    var a2sqr = a
+
+    a2mul.prod(a, a)
+    a2sqr.square(a)
+
+    check:
+      bool(a2mul == a2sqr)
