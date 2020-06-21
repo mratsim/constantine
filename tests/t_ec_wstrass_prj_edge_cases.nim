@@ -98,3 +98,41 @@ suite "Short Weierstrass Elliptic Curve - Edge cases [" & $WordBitwidth & "-bit 
     doAssert bool c.trySetFromCoordsXandZ(cx, cz)
 
     testAddAssociativity(a, b, c)
+
+  test "EC Add G2 is associative - #65-1":
+
+    var a, b, c: ECP_SWei_Proj[Fp2[BLS12_381]]
+    var ax, az, bx, bz, cx, cz: Fp2[BLS12_381]
+
+    ax.fromHex(
+      c0 = "0x13d97382a3e097623d191172ec2972f3a4b436e24ae18f8394c9103a37c43b2747d5f7c597eff7bda406000000017ffd",
+      c1 = "0x11eca90d537eabf01ead08dce5d4f63822941ce7255cc7bfc62483dceb5d148f23f7bfcaeb7f5ffccd767ff5ffffdffe"
+    )
+    az.fromHex(
+      c0 = "0x15f65ec3fa7ce4935c071a97a256ec6d77ce385370513744df48944613b748b2a8e3bfdb035bfb7a7608ffc00002ff7c",
+      c1 = "0x15f646c3fa80e4835bd70a57a196ac6d57ce1653705247455f48983753c758bae9f3800ba3ebeff024c8cbd78002fdfc"
+    )
+
+    bx.fromHex(
+      c0 = "0x146e5ab3ea40d392d3868086a256ec2d524ce85345c237434ec0904f52d753b1ebf4000bc40c00026607fc000002fffc",
+      c1 = "0x15f65ebfb267a4935007168f6256ec6d75c11633705252c55f489857437e08a2ebf3b7a7c40c000275e7fff9f0025ffa"
+    )
+    bz.fromHex(
+      c0 = "0x0da4dec3fa76cb905c071a13a1d2c39906ce502d70085744df48985140be37fa6bd1ffdac407fff27608dfffde60fedc",
+      c1 = "0x0df55883b636e29344071a7aa255dc6d25a258126bbe0a455b48985753c4377aeaf3a3f6c40c00027307ffb7ffbdefdc"
+    )
+
+    cx.fromHex(
+      c0 = "0x11fcc7014aee3c2f1ead04bd25d8996fd29a1d71002e97bdca6d881d13ad1d937ff6ee83c8025feed202fffffbdcfffe",
+      c1 = "0x09ee82982d80b1c7bf3e69b228ee461c30bce73d574478841da0bd7941294503292b7809222bfe7d4606f976400244d2"
+    )
+    cz.fromHex(
+      c0 = "0x09ee82982d80b1c7bf3e69b228ee461c30bce73d574478841da0bd7941294503292b7809222bfe7d4606f976400244d2",
+      c1 = "0x15f35eab6e70e2922b85d257a256ec6d43794851f05257452de3965753474ca66bf3f923c10bfe022d07d7f60000fffb"
+    )
+
+    doAssert bool a.trySetFromCoordsXandZ(ax, az)
+    doAssert bool b.trySetFromCoordsXandZ(bx, bz)
+    doAssert bool c.trySetFromCoordsXandZ(cx, cz)
+
+    testAddAssociativity(a, b, c)
