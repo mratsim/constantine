@@ -12,7 +12,7 @@ import
   # Internal
   ../constantine/arithmetic,
   ../constantine/io/[io_bigints, io_fields],
-  ../constantine/config/[curves, common],
+  ../constantine/config/[curves, common, type_bigint],
   # Test utilities
   ../helpers/prng_unsafe
 

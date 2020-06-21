@@ -254,48 +254,66 @@ func montySquare_CIOS(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
   ## Koc, Acar, Kaliski, 1996
   ## https://www.semanticscholar.org/paper/Analyzing-and-comparing-Montgomery-multiplication-Ko%C3%A7-Acar/5e3941ff482ec3ee41dc53c3298f0be085c69483
 
+  # TODO: Deactivated
+  # Off-by one on 32-bit for Fp[2^127 - 1] with inputs
+  # - -0x75bfffefbfffffff7fd9dfd800000000
+  # - -0x7ff7ffffffffffff1dfb7fafc0000000
+  # Squaring the number and its opposite
+  # should give the same result, but those are off-by-one
+
   # We want all the computation to be kept in registers
   # hence we use a temporary `t`, hoping that the compiler does it.
-  var t: typeof(M) # zero-init
-  const N = t.len
+  var z: typeof(r) # zero-init
+  const L = z.len
   # Extra words to handle up to 2 carries t[N] and t[N+1]
-  var tNp1: SecretWord
-  var tN: SecretWord
+  var zLp1: SecretWord
+  var zL: SecretWord
 
-  staticFor i, 0, N:
+  staticFor i, 0, L:
     # Squaring
-    var
-      A1: Carry
-      A0: SecretWord
-    # (A0, t[i]) <- a[i] * a[i] + t[i]
-    muladd1(A0, t[i], a[i], a[i], t[i])
-    staticFor j, i+1, N:
-      # (A1, A0, t[j]) <- 2*a[j]*a[i] + t[j] + (A1, A0)
+    var t: Carry
+    var u, v: SecretWord
+    # (u, v) <- a[i] * a[i] + z[i]
+    muladd1(u, v, a[i], a[i], z[i])
+    z[i] = v
+    staticFor j, i+1, L:
+      # (t, u, v) <- 2*a[j]*a[i] + z[j] + (t, u)
       # 2*a[j]*a[i] can spill 1-bit on a 3rd word
-      mulDoubleAdd2(A1, A0, t[j], a[j], a[i], t[j], A1, A0)
+      mulDoubleAdd2(t, u, v, a[j], a[i], z[j], t, u)
+      z[j] = v
 
-    var carryS: Carry
-    addC(carryS, tN, tN, A0, Carry(0))
-    addC(carryS, tNp1, SecretWord(A1), Zero, carryS)
+    block:
+      # (u, v) <- zs + (t, u)
+      # zL   <- v
+      # zL+1 <- u
+      var C: Carry
+      addC(C, v,   zL,             u, Carry(0))
+      addC(C, u, zLp1, SecretWord(t),        C)
+      zL = v
+      zLp1 = u
 
     # Reduction
-    #  m        <- (t[0] * m0ninv) mod 2^w
-    # (C, _)    <- m * M[0] + t[0]
-    var C, lo: SecretWord
-    let m = t[0] * SecretWord(m0ninv)
-    muladd1(C, lo, m, M[0], t[0])
-    staticFor j, 1, N:
-      # (C, t[j-1]) <- m*M[j] + t[j] + C
-      muladd2(C, t[j-1], m, M[j], t[j], C)
+    #  m        <- (z[0] * m0ninv) mod 2^w
+    # (u, v)    <- m * M[0] + z[0]
+    let m = z[0] * SecretWord(m0ninv)
+    muladd1(u, v, m, M[0], z[0])
+    staticFor j, 1, L:
+      # (u, v) <- m*M[j] + z[j] + u
+      # z[j-1] <- v
+      muladd2(u, v, m, M[j], z[j], u)
+      z[j-1] = v
 
-    #  (C,t[N-1]) <- t[N] + C
-    #  (_, t[N])  <- t[N+1] + C
-    var carryR: Carry
-    addC(carryR, t[N-1], tN, C, Carry(0))
-    addC(carryR, tN, tNp1, Zero, carryR)
+    block:
+      #  (u, v) <- zL + u
+      #  z[L-1] <- v
+      #  z[L]   <- zL+1 + u
+      var C: Carry
+      addC(C, v, zL, u, Carry(0))
+      z[L-1] = v
+      addC(C, zL, zLp1, Zero, C)
 
-  discard t.csub(M, tN.isNonZero() or not(t < M)) # TODO: (t >= M) is unnecessary for prime in the form (2^64)^w
-  r = t
+  discard z.csub(M, zL.isNonZero() or not(z < M)) # TODO: (z >= M) is unnecessary for prime in the form (2^64)^w - 1
+  r = z
 
 # Exported API
 # ------------------------------------------------------------
@@ -342,7 +360,15 @@ func montySquare*(r: var Limbs, a, M: Limbs,
   when canUseNoCarryMontySquare:
     montySquare_CIOS_nocarry(r, a, M, m0ninv)
   else:
-    montySquare_CIOS(r, a, M, m0ninv)
+    # TODO: Deactivated
+    # Off-by one on 32-bit for Fp[2^127 - 1] with inputs
+    # - -0x75bfffefbfffffff7fd9dfd800000000
+    # - -0x7ff7ffffffffffff1dfb7fafc0000000
+    # Squaring the number and its opposite
+    # should give the same result, but those are off-by-one
+
+    # montySquare_CIOS(r, a, M, m0ninv) # TODO <--- Fix this
+    montyMul_FIPS(r, a, a, M, m0ninv)
 
 func redc*(r: var Limbs, a, one, M: Limbs,
            m0ninv: static BaseType, canUseNoCarryMontyMul: static bool) =
