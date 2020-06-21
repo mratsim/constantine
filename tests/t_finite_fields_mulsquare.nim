@@ -186,3 +186,29 @@ suite "Modular squaring - bugs highlighted by property-based testing":
       bool(a2 == na2)
       bool(a2 == a)
       bool(a2 == na)
+
+  test "a² == (-a)² on for Fp[2^127 - 1] - #62":
+    var a{.noInit.}: Fp[Mersenne127]
+    a.fromHex"0x7ff7ffffffffffff1dfb7fafc0000000"
+
+    var na{.noInit.}: Fp[Mersenne127]
+
+    na.neg(a)
+
+    a.square()
+    na.square()
+
+    check:
+      bool(a == na)
+
+    var a2{.noInit.}, na2{.noInit.}: Fp[Mersenne127]
+    a2.fromHex"0x7ff7ffffffffffff1dfb7fafc0000000"
+    na2.neg(a2)
+
+    a2 *= a2
+    na2 *= na2
+
+    check:
+      bool(a2 == na2)
+      bool(a2 == a)
+      bool(a2 == na)

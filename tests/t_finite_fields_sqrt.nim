@@ -82,27 +82,27 @@ proc exhaustiveCheck_p3mod4(C: static Curve, modulus: static int) =
           bool not a.sqrt_if_square()
           bool (a == a2) # a shouldn't be modified
 
+template testImpl(a: untyped): untyped {.dirty.} =
+  var na{.noInit.}: typeof(a)
+  na.neg(a)
+
+  var a2 = a
+  var na2 = na
+  a2.square()
+  na2.square()
+  check:
+    bool a2 == na2
+    bool a2.isSquare()
+
+  var r, s = a2
+  r.sqrt()
+  let ok = s.sqrt_if_square()
+  check:
+    bool ok
+    bool(r == s)
+    bool(r == a or r == na)
+
 proc randomSqrtCheck_p3mod4(C: static Curve) =
-  template testImpl(a: untyped): untyped {.dirty.} =
-    var na{.noInit.}: Fp[C]
-    na.neg(a)
-
-    var a2 = a
-    var na2 = na
-    a2.square()
-    na2.square()
-    check:
-      bool a2 == na2
-      bool a2.isSquare()
-
-    var r, s = a2
-    r.sqrt()
-    let ok = s.sqrt_if_square()
-    check:
-      bool ok
-      bool(r == s)
-      bool(r == a or r == na)
-
   test "Random square root check for p ≡ 3 (mod 4) on " & $Curve(C):
     for _ in 0 ..< Iters:
       let a = rng.random_unsafe(Fp[C])
@@ -153,5 +153,15 @@ proc main() =
       check:
         bool(not a.isSquare())
         bool(not a.sqrt_if_square())
+
+    test "Fp[2^127 - 1] - #61":
+      var a: Fp[Mersenne127]
+      a.fromHex"0x75bfffefbfffffff7fd9dfd800000000"
+      testImpl(a)
+
+    test "Fp[2^127 - 1] - #62":
+      var a: Fp[Mersenne127]
+      a.fromHex"0x7ff7ffffffffffff1dfb7fafc0000000"
+      testImpl(a)
 
 main()
