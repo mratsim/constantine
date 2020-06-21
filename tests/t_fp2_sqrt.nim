@@ -14,6 +14,7 @@ import
   ../constantine/[arithmetic, primitives],
   ../constantine/towers,
   ../constantine/config/curves,
+  ../constantine/io/io_towers,
   # Test utilities
   ../helpers/prng_unsafe
 
@@ -52,5 +53,16 @@ proc main() =
   suite "Modular square root" & " [" & $WordBitwidth & "-bit mode]":
     randomSqrtCheck_p3mod4 BN254_Snarks
     randomSqrtCheck_p3mod4 BLS12_381
+
+  suite "Modular square root - 32-bit bugs highlighted by property-based testing " & " [" & $WordBitwidth & "-bit mode]":
+    test "sqrt_if_square invalid square BLS12_381 - #64":
+      var a: Fp2[BLS12_381]
+      a.fromHex(
+        "0x09f7034e1d37628dec7be400ddd098110c9160e1de63637d73bd93796f311fb50d438ef357a9349d245fbcfcb6fccf01",
+        "0x033c9b2f17988d8bea494fde020f54fb33cc780bba53e4f6746783ac659d472d9f616516fcf87f0d9a980243d38afeee"
+      )
+      check:
+        bool not a.isSquare()
+        bool not a.sqrt_if_square()
 
 main()
