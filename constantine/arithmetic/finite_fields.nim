@@ -265,6 +265,12 @@ func isSquare*[C](a: Fp[C]): SecretBool =
   # -  1  if a square
   # -  0  if 0
   # - -1  if a quadratic non-residue
+  debug:
+    doAssert: bool(
+      xi.isZero or
+      xi.isOne or
+      xi.mres == C.getMontyPrimeMinus1()
+    )
 
 func sqrt_p3mod4[C](a: var Fp[C]) =
   ## Compute the square root of ``a``

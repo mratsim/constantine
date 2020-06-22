@@ -12,7 +12,7 @@ import
   # Internal
   ../constantine/arithmetic,
   ../constantine/io/[io_bigints, io_fields],
-  ../constantine/config/[curves, common],
+  ../constantine/config/[curves, common, type_bigint],
   # Test utilities
   ../helpers/prng_unsafe
 
@@ -159,3 +159,100 @@ suite "Random Modular Squaring is consistent with Modular Multiplication" & " ["
       randomHighHammingWeight(BLS12_381)
     for _ in 0 ..< Iters:
       random_long01Seq(BLS12_381)
+
+suite "Modular squaring - bugs highlighted by property-based testing":
+  test "a² == (-a)² on for Fp[2^127 - 1] - #61":
+    var a{.noInit.}: Fp[Mersenne127]
+    a.fromHex"0x75bfffefbfffffff7fd9dfd800000000"
+
+    var na{.noInit.}: Fp[Mersenne127]
+
+    na.neg(a)
+
+    a.square()
+    na.square()
+
+    check:
+      bool(a == na)
+
+    var a2{.noInit.}, na2{.noInit.}: Fp[Mersenne127]
+    a2.fromHex"0x75bfffefbfffffff7fd9dfd800000000"
+    na2.neg(a2)
+
+    a2 *= a2
+    na2 *= na2
+
+    check:
+      bool(a2 == na2)
+      bool(a2 == a)
+      bool(a2 == na)
+
+  test "a² == (-a)² on for Fp[2^127 - 1] - #62":
+    var a{.noInit.}: Fp[Mersenne127]
+    a.fromHex"0x7ff7ffffffffffff1dfb7fafc0000000"
+
+    var na{.noInit.}: Fp[Mersenne127]
+
+    na.neg(a)
+
+    a.square()
+    na.square()
+
+    check:
+      bool(a == na)
+
+    var a2{.noInit.}, na2{.noInit.}: Fp[Mersenne127]
+    a2.fromHex"0x7ff7ffffffffffff1dfb7fafc0000000"
+    na2.neg(a2)
+
+    a2 *= a2
+    na2 *= na2
+
+    check:
+      bool(a2 == na2)
+      bool(a2 == a)
+      bool(a2 == na)
+
+  test "32-bit fast squaring on BLS12-381 - #42":
+    # x = -(2^63 + 2^62 + 2^60 + 2^57 + 2^48 + 2^16)
+    # p = (x - 1)^2 * (x^4 - x^2 + 1)//3 + x
+    # Fp       = GF(p)
+    # a = Fp(Integer('0x091F02EFA1C9B99C004329E94CD3C6B308164CBE02037333D78B6C10415286F7C51B5CD7F917F77B25667AB083314B1B'))
+    # a2 = a*a
+    # print('a²: ' + Integer(a2).hex())
+
+    var a{.noInit.}, expected{.noInit.}: Fp[BLS12_381]
+    a.fromHex"0x091F02EFA1C9B99C004329E94CD3C6B308164CBE02037333D78B6C10415286F7C51B5CD7F917F77B25667AB083314B1B"
+    expected.fromHex"0x129e84715b197f76766c8604002cfc287fbe3d16774e18c599853ce48d03dc26bf882e159323ee3d25e52e4809ff4ccc"
+
+    var a2mul = a
+    var a2sqr = a
+
+    a2mul.prod(a, a)
+    a2sqr.square(a)
+
+    check:
+      bool(a2mul == expected)
+      bool(a2sqr == expected)
+
+  test "32-bit fast squaring on BLS12-381 - #43":
+    # x = -(2^63 + 2^62 + 2^60 + 2^57 + 2^48 + 2^16)
+    # p = (x - 1)^2 * (x^4 - x^2 + 1)//3 + x
+    # Fp       = GF(p)
+    # a = Fp(Integer('0x0B7C8AFE5D43E9A973AF8649AD8C733B97D06A78CFACD214CBE9946663C3F682362E0605BC8318714305B249B505AFD9'))
+    # a2 = a*a
+    # print('a²: ' + Integer(a2).hex())
+
+    var a{.noInit.}, expected{.noInit.}: Fp[BLS12_381]
+    a.fromHex"0x0B7C8AFE5D43E9A973AF8649AD8C733B97D06A78CFACD214CBE9946663C3F682362E0605BC8318714305B249B505AFD9"
+    expected.fromHex"0x94b12b599042198a4ad5ad05ed4da1a3332fe50518b6eb718d258d7e3c60a48a89f7417a0b413b92537c24c9e94e038"
+
+    var a2mul = a
+    var a2sqr = a
+
+    a2mul.prod(a, a)
+    a2sqr.square(a)
+
+    check:
+      bool(a2mul == expected)
+      bool(a2sqr == expected)

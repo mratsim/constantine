@@ -212,6 +212,12 @@ func montySquare_CIOS_nocarry(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
   ##   M[^1] < high(SecretWord) shr 2 (i.e. less than 0b00111...1111)
   ## https://hackmd.io/@zkteam/modular_multiplication
 
+  # TODO: Deactivated
+  # Off-by one on 32-bit on the least significant bit
+  # for Fp[BLS12-381] with inputs
+  # - -0x091F02EFA1C9B99C004329E94CD3C6B308164CBE02037333D78B6C10415286F7C51B5CD7F917F77B25667AB083314B1B
+  # - -0x0B7C8AFE5D43E9A973AF8649AD8C733B97D06A78CFACD214CBE9946663C3F682362E0605BC8318714305B249B505AFD9
+
   # We want all the computation to be kept in registers
   # hence we use a temporary `t`, hoping that the compiler does it.
   var t: typeof(M) # zero-init
@@ -254,6 +260,14 @@ func montySquare_CIOS(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
   ## Koc, Acar, Kaliski, 1996
   ## https://www.semanticscholar.org/paper/Analyzing-and-comparing-Montgomery-multiplication-Ko%C3%A7-Acar/5e3941ff482ec3ee41dc53c3298f0be085c69483
 
+  # TODO: Deactivated
+  # Off-by one on 32-bit on the least significant bit
+  # for Fp[2^127 - 1] with inputs
+  # - -0x75bfffefbfffffff7fd9dfd800000000
+  # - -0x7ff7ffffffffffff1dfb7fafc0000000
+  # Squaring the number and its opposite
+  # should give the same result, but those are off-by-one
+
   # We want all the computation to be kept in registers
   # hence we use a temporary `t`, hoping that the compiler does it.
   var t: typeof(M) # zero-init
@@ -264,9 +278,8 @@ func montySquare_CIOS(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
 
   staticFor i, 0, N:
     # Squaring
-    var
-      A1: Carry
-      A0: SecretWord
+    var A1 = Carry(0)
+    var A0: SecretWord
     # (A0, t[i]) <- a[i] * a[i] + t[i]
     muladd1(A0, t[i], a[i], a[i], t[i])
     staticFor j, i+1, N:
@@ -340,9 +353,24 @@ func montySquare*(r: var Limbs, a, M: Limbs,
   ## `m0ninv` = -1/M (mod SecretWord). Our words are 2^31 or 2^63
 
   when canUseNoCarryMontySquare:
-    montySquare_CIOS_nocarry(r, a, M, m0ninv)
+    # TODO: Deactivated
+    # Off-by one on 32-bit on the least significant bit
+    # for Fp[BLS12-381] with inputs
+    # - -0x091F02EFA1C9B99C004329E94CD3C6B308164CBE02037333D78B6C10415286F7C51B5CD7F917F77B25667AB083314B1B
+    # - -0x0B7C8AFE5D43E9A973AF8649AD8C733B97D06A78CFACD214CBE9946663C3F682362E0605BC8318714305B249B505AFD9
+
+    # montySquare_CIOS_nocarry(r, a, M, m0ninv)
+    montyMul_CIOS_nocarry(r, a, a, M, m0ninv)
   else:
-    montySquare_CIOS(r, a, M, m0ninv)
+    # TODO: Deactivated
+    # Off-by one on 32-bit for Fp[2^127 - 1] with inputs
+    # - -0x75bfffefbfffffff7fd9dfd800000000
+    # - -0x7ff7ffffffffffff1dfb7fafc0000000
+    # Squaring the number and its opposite
+    # should give the same result, but those are off-by-one
+
+    # montySquare_CIOS(r, a, M, m0ninv) # TODO <--- Fix this
+    montyMul_FIPS(r, a, a, M, m0ninv)
 
 func redc*(r: var Limbs, a, one, M: Limbs,
            m0ninv: static BaseType, canUseNoCarryMontyMul: static bool) =
