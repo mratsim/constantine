@@ -41,6 +41,11 @@ const
   One* = SecretWord(1)
   MaxWord* = SecretWord(high(BaseType))
 
+# TODO, we restrict assembly to 64-bit words
+# We need to support register spills for large limbs
+const ConstantineASM {.booldefine.} = true
+const UseASM* = WordBitWidth == 64 and ConstantineASM and X86 and GCC_Compatible
+
 # ############################################################
 #
 #                  Instrumentation

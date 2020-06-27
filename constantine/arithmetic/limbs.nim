@@ -104,9 +104,6 @@ func ccopy*(a: var Limbs, b: Limbs, ctl: SecretBool) =
   ## If ctl is true: b is copied into a
   ## if ctl is false: b is not copied and a is untouched
   ## Time and memory accesses are the same whether a copy occurs or not
-  # TODO: on x86, we use inline assembly for CMOV
-  #       the codegen is a bit inefficient as the condition `ctl`
-  #       is tested for each limb.
   for i in 0 ..< a.len:
     ctl.ccopy(a[i], b[i])
 
