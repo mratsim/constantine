@@ -138,12 +138,16 @@ macro addmod_gen[N: static int](a: var Limbs[N], b, M: Limbs[N]): untyped =
     var `t`{.noinit.}, `tsub` {.noInit.}: typeof(`a`)
   result.add ctx.generate
 
-func addmod_asm*(a: var Limbs, b, M: Limbs) {.noinline.}=
+func addmod_asm*(a: var Limbs, b, M: Limbs) {.inline.}=
   ## Constant-time conditional copy
   ## If ctl is true: b is copied into a
   ## if ctl is false: b is not copied and a is untouched
   ## Time and memory accesses are the same whether a copy occurs or not
   addmod_gen(a, b, M)
+
+
+# Sanity checks
+# ----------------------------------------------------------
 
 when isMainModule:
   import ../config/type_bigint, algorithm, strutils
@@ -179,6 +183,46 @@ when isMainModule:
     M.reverse()
 
     debugecho "--------------------------------"
+    debugecho "before:"
+    debugecho "  a: ", a.toHex()
+    debugecho "  b: ", b.toHex()
+    debugecho "  m: ", M.toHex()
+    addmod_asm(a, b, M)
+    debugecho "after:"
+    debugecho "  a: ", a.toHex().tolower
+    debugecho "  s: ", s
+    debugecho " ok: ", a.toHex().tolower == s
+
+    a = [SecretWord 0x1c7d810f37fc6e0b'u64, SecretWord 0xb91aba4ce339cea3'u64, SecretWord 0xd9f5571ccc4dfd1a'u64, SecretWord 0xf5906ee9df91f554'u64]
+    b = [SecretWord 0x18394ffe94874c9f'u64, SecretWord 0x6e8a8ad032fc5f15'u64, SecretWord 0x7533a2b46b7e9530'u64, SecretWord 0x2849996b4bb61b48'u64]
+    M = [SecretWord 0x2523648240000001'u64, SecretWord 0xba344d8000000008'u64, SecretWord 0x6121000000000013'u64, SecretWord 0xa700000000000013'u64]
+    s = "0x0f936c8b8c83baa96d70f79d16362db0ee07f9d137cc923776da08552b481089"
+
+    a.reverse()
+    b.reverse()
+    M.reverse()
+
+    debugecho "--------------------------"
+    debugecho "before:"
+    debugecho "  a: ", a.toHex()
+    debugecho "  b: ", b.toHex()
+    debugecho "  m: ", M.toHex()
+    addmod_asm(a, b, M)
+    debugecho "after:"
+    debugecho "  a: ", a.toHex().tolower
+    debugecho "  s: ", s
+    debugecho " ok: ", a.toHex().tolower == s
+
+    a = [SecretWord 0xe9d55643'u64, SecretWord 0x580ec4cc3f91cef3'u64, SecretWord 0x11ecbb7d35b36449'u64, SecretWord 0x35535ca31c5dc2ba'u64]
+    b = [SecretWord 0x97f7ed94'u64, SecretWord 0xbad96eb98204a622'u64, SecretWord 0xbba94400f9a061d6'u64, SecretWord 0x60d3521a0d3dd9eb'u64]
+    M = [SecretWord 0xffffffff'u64, SecretWord 0xffffffffffffffff'u64, SecretWord 0xffffffff00000000'u64, SecretWord 0x0000000000000001'u64]
+    s = "0x0000000081cd43d812e83385c1967515cd95ff7f2f53c61f9626aebd299b9ca4"
+
+    a.reverse()
+    b.reverse()
+    M.reverse()
+
+    debugecho "--------------------------"
     debugecho "before:"
     debugecho "  a: ", a.toHex()
     debugecho "  b: ", b.toHex()

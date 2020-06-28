@@ -144,7 +144,7 @@ func generate*(a: Assembler_x86): NimNode =
   var
     outOperands: seq[string]
     inOperands: seq[string]
-    asmStmt: string
+    memClobbered = false
 
   for odesc in a.operands.items():
     var decl: string
@@ -167,18 +167,41 @@ func generate*(a: Assembler_x86): NimNode =
     else:
       outOperands.add decl
 
-  asmStmt = a.code
-  asmStmt.add ": " & outOperands.join(", ") & '\n'
-  asmStmt.add ": " & inOperands.join(", ") & '\n'
+    if odesc.rm == PointerInReg and odesc.constraint in {Output_Overwrite, Output_EarlyClobber, InputOutput}:
+      memClobbered = true
 
-  if a.areFlagsClobbered:
-    asmStmt.add ": \"cc\""
+  var params: string
+  params.add ": " & outOperands.join(", ") & '\n'
+  params.add ": " & inOperands.join(", ") & '\n'
+
+  if a.areFlagsClobbered and memClobbered:
+    params.add ": \"cc\", \"memory\""
+  elif a.areFlagsClobbered:
+    params.add ": \"cc\""
+  elif memClobbered:
+    params.add ": \"memory\""
   else:
-    asmStmt.add ": "
+    params.add ": "
 
-  result = nnkAsmStmt.newTree(
-    newEmptyNode(),
-    newLit asmStmt
+  # GCC will optimize ASM away if there are no
+  # memory operand or volatile + memory clobber
+  # https://stackoverflow.com/questions/34244185/looping-over-arrays-with-inline-assembly
+
+  # result = nnkAsmStmt.newTree(
+  #   newEmptyNode(),
+  #   newLit(asmStmt & params)
+  # )
+
+  var asmStmt = "\"" & a.code.replace("\n", "\\n\"\n\"")
+  asmStmt.setLen(asmStmt.len - 1) # drop the last quote
+
+  result = nnkPragma.newTree(
+    nnkExprColonExpr.newTree(
+      ident"emit",
+      newLit(
+        "asm volatile(" & asmStmt & params & ");"
+      )
+    )
   )
 
 func getStrOffset(a: Assembler_x86, op: Operand): string =
