@@ -61,6 +61,10 @@ type
     nimSymbol*: NimNode
     buf: seq[Operand]
 
+  OperandReuse* = object
+    # Allow reusing a register
+    asmId*: string
+
   Assembler_x86* = object
     code: string
     operands: HashSet[OperandDesc]
@@ -294,6 +298,31 @@ func codeFragment(a: var Assembler_x86, instr: string, reg0, reg1: Register) =
   else:
     a.code &= instr & "l %%" & $reg0 & ", %%" & $reg1 & '\n'
 
+func codeFragment(a: var Assembler_x86, instr: string, imm: int, reg: OperandReuse) =
+  # Generate a code fragment
+  # ⚠️ Warning:
+  # The caller should deal with destination/source operand
+  # so that it fits GNU Assembly
+  if a.wordBitWidth == 64:
+    a.code &= instr & "q $" & $imm & ", %" & $reg.asmId & '\n'
+  else:
+    a.code &= instr & "l $" & $imm & ", %" & $reg.asmId & '\n'
+
+func codeFragment(a: var Assembler_x86, instr: string, reg0, reg1: OperandReuse) =
+  # Generate a code fragment
+  # ⚠️ Warning:
+  # The caller should deal with destination/source operand
+  # so that it fits GNU Assembly
+  if a.wordBitWidth == 64:
+    a.code &= instr & "q %" & $reg0.asmId & ", %" & $reg1.asmId & '\n'
+  else:
+    a.code &= instr & "l %" & $reg0.asmId & ", %" & $reg1.asmId & '\n'
+
+func reuseRegister*(reg: OperandArray): OperandReuse =
+  # TODO: disable the reg input
+  doAssert reg.buf[0].desc.constraint == InputOutput
+  result.asmId = reg.buf[0].desc.asmId
+
 # Instructions
 # ------------------------------------------------------------------------------------------------------------
 
@@ -351,6 +380,16 @@ func sbb*(a: var Assembler_x86, dst: Register, imm: int) =
   a.areFlagsClobbered = true
 
 func sbb*(a: var Assembler_x86, dst, src: Register) =
+  # Does: dst <- dst - imm - borrow
+  a.codeFragment("sbb", src, dst)
+  a.areFlagsClobbered = true
+
+func sbb*(a: var Assembler_x86, dst: OperandReuse, imm: int) =
+  # Does: dst <- dst - imm - borrow
+  a.codeFragment("sbb", imm, dst)
+  a.areFlagsClobbered = true
+
+func sbb*(a: var Assembler_x86, dst, src: OperandReuse) =
   # Does: dst <- dst - imm - borrow
   a.codeFragment("sbb", src, dst)
   a.areFlagsClobbered = true

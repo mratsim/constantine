@@ -86,22 +86,13 @@ macro addmod_gen[N: static int](a: var Limbs[N], b, M: Limbs[N]): untyped =
   var ctx = init(Assembler_x86, BaseType)
   let
     arrA = init(OperandArray, nimSymbol = a, N, PointerInReg, InputOutput)
-    arrB = init(OperandArray, nimSymbol = b, N, PointerInReg, Input)
+    # We reuse the reg used for B for overflow detection
+    arrB = init(OperandArray, nimSymbol = b, N, PointerInReg, InputOutput)
     # We could force M as immediate by specializing per moduli
     arrM = init(OperandArray, nimSymbol = M, N, PointerInReg, Input)
     # If N is too big, we need to spill registers. TODO.
     arrT = init(OperandArray, nimSymbol = ident"t", N, ElemsInReg, Output_EarlyClobber)
     arrTsub = init(OperandArray, nimSymbol = ident"tsub", N, ElemsInReg, Output_EarlyClobber)
-
-    overflowed = Operand(
-      desc: OperandDesc(
-        asmId: "[overflowed]",
-        nimSymbol: ident"overflowed",
-        rm: Reg,
-        constraint: Output_Overwrite,
-        cEmit: "overflowed"
-      )
-    )
 
   # Addition
   for i in 0 ..< N:
@@ -113,6 +104,7 @@ macro addmod_gen[N: static int](a: var Limbs[N], b, M: Limbs[N]): untyped =
     # Interleaved copy in a second buffer as well
     ctx.mov arrTsub[i], arrT[i]
 
+  let overflowed = arrB.reuseRegister()
   ctx.sbb overflowed, overflowed
 
   # Now substract the modulus
@@ -132,19 +124,16 @@ macro addmod_gen[N: static int](a: var Limbs[N], b, M: Limbs[N]): untyped =
 
   let t = arrT.nimSymbol
   let tsub = arrTsub.nimSymbol
-  let ov = overflowed.desc.nimSymbol
   result.add quote do:
-    var `ov`: SecretWord
     var `t`{.noinit.}, `tsub` {.noInit.}: typeof(`a`)
   result.add ctx.generate
 
-func addmod_asm*(a: var Limbs, b, M: Limbs) {.inline.}=
+func addmod_asm*(a: var Limbs, b, M: Limbs) {.noinline.}=
   ## Constant-time conditional copy
   ## If ctl is true: b is copied into a
   ## if ctl is false: b is not copied and a is untouched
   ## Time and memory accesses are the same whether a copy occurs or not
   addmod_gen(a, b, M)
-
 
 # Sanity checks
 # ----------------------------------------------------------
