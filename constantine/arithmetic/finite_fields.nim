@@ -191,7 +191,13 @@ func square*(r: var Fp, a: Fp) {.inline.} =
 
 func neg*(r: var Fp, a: Fp) {.inline.} =
   ## Negate modulo p
-  discard r.mres.diff(Fp.C.Mod, a.mres)
+  when UseASM and defined(gcc):
+    # Clang and every compiler besides GCC
+    # can cleanly optimized this
+    # especially on Fp2
+    negmod_asm(r.mres.limbs, a.mres.limbs, Fp.C.Mod.limbs)
+  else:
+    discard r.mres.diff(Fp.C.Mod, a.mres)
 
 func div2*(a: var Fp) {.inline.} =
   ## Modular division by 2

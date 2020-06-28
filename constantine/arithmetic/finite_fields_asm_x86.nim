@@ -198,6 +198,35 @@ func submod_asm*(a: var Limbs, b, M: Limbs) =
   ## Warning, does not handle aliasing of a and b
   submod_gen(a, b, M)
 
+# Field negation
+# ------------------------------------------------------------
+
+macro negmod_gen[N: static int](r: var Limbs[N], a, M: Limbs[N]): untyped =
+  ## Generate an optimized modular negation kernel
+
+  result = newStmtList()
+
+  var ctx = init(Assembler_x86, BaseType)
+  let
+    arrA = init(OperandArray, nimSymbol = a, N, PointerInReg, Input)
+    arrR = init(OperandArray, nimSymbol = r, N, ElemsInReg, InputOutput)
+    # We could force M as immediate by specializing per moduli
+    arrM = init(OperandArray, nimSymbol = M, N, PointerInReg, Input)
+
+  # Addition
+  for i in 0 ..< N:
+    ctx.mov arrR[i], arrM[i]
+    if i == 0:
+      ctx.sub arrR[0], arrA[0]
+    else:
+      ctx.sbb arrR[i], arrA[i]
+
+  result.add ctx.generate
+
+func negmod_asm*(r: var Limbs, a, M: Limbs) {.inline.} =
+  ## Constant-time modular negation
+  negmod_gen(r, a, M)
+
 # Sanity checks
 # ----------------------------------------------------------
 
