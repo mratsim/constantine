@@ -123,9 +123,12 @@ func setOne*(a: var Fp) {.inline.} =
 
 func `+=`*(a: var Fp, b: Fp) {.inline.} =
   ## In-place addition modulo p
-  var overflowed = add(a.mres, b.mres)
-  overflowed = overflowed or not(a.mres < Fp.C.Mod)
-  discard csub(a.mres, Fp.C.Mod, overflowed)
+  when UseASM and a.mres.limbs.len <= 6: # TODO: handle spilling
+    addmod_asm(a.mres.limbs, b.mres.limbs, Fp.C.Mod.limbs)
+  else:
+    var overflowed = add(a.mres, b.mres)
+    overflowed = overflowed or not(a.mres < Fp.C.Mod)
+    discard csub(a.mres, Fp.C.Mod, overflowed)
 
 func `-=`*(a: var Fp, b: Fp) {.inline.} =
   ## In-place substraction modulo p
@@ -134,16 +137,23 @@ func `-=`*(a: var Fp, b: Fp) {.inline.} =
 
 func double*(a: var Fp) {.inline.} =
   ## Double ``a`` modulo p
-  var overflowed = double(a.mres)
-  overflowed = overflowed or not(a.mres < Fp.C.Mod)
-  discard csub(a.mres, Fp.C.Mod, overflowed)
+  when UseASM and a.mres.limbs.len <= 6: # TODO: handle spilling
+    addmod_asm(a.mres.limbs, a.mres.limbs, Fp.C.Mod.limbs)
+  else:
+    var overflowed = double(a.mres)
+    overflowed = overflowed or not(a.mres < Fp.C.Mod)
+    discard csub(a.mres, Fp.C.Mod, overflowed)
 
 func sum*(r: var Fp, a, b: Fp) {.inline.} =
   ## Sum ``a`` and ``b`` into ``r`` module p
   ## r is initialized/overwritten
-  var overflowed = r.mres.sum(a.mres, b.mres)
-  overflowed = overflowed or not(r.mres < Fp.C.Mod)
-  discard csub(r.mres, Fp.C.Mod, overflowed)
+  when UseASM and a.mres.limbs.len <= 6: # TODO: handle spilling
+    r = a
+    addmod_asm(r.mres.limbs, b.mres.limbs, Fp.C.Mod.limbs)
+  else:
+    var overflowed = r.mres.sum(a.mres, b.mres)
+    overflowed = overflowed or not(r.mres < Fp.C.Mod)
+    discard csub(r.mres, Fp.C.Mod, overflowed)
 
 func diff*(r: var Fp, a, b: Fp) {.inline.} =
   ## Substract `b` from `a` and store the result into `r`.
@@ -154,9 +164,13 @@ func diff*(r: var Fp, a, b: Fp) {.inline.} =
 func double*(r: var Fp, a: Fp) {.inline.} =
   ## Double ``a`` into ``r``
   ## `r` is initialized/overwritten
-  var overflowed = r.mres.double(a.mres)
-  overflowed = overflowed or not(r.mres < Fp.C.Mod)
-  discard csub(r.mres, Fp.C.Mod, overflowed)
+  when UseASM and a.mres.limbs.len <= 6: # TODO: handle spilling
+    r = a
+    addmod_asm(r.mres.limbs, r.mres.limbs, Fp.C.Mod.limbs)
+  else:
+    var overflowed = r.mres.double(a.mres)
+    overflowed = overflowed or not(r.mres < Fp.C.Mod)
+    discard csub(r.mres, Fp.C.Mod, overflowed)
 
 func prod*(r: var Fp, a, b: Fp) {.inline.} =
   ## Store the product of ``a`` by ``b`` modulo p into ``r``

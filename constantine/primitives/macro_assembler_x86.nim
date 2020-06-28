@@ -13,9 +13,14 @@ import macros, strutils, sets, hashes
 type
   RM* = enum
     ## Register or Memory operand
-    Register    = "r"
-    Memory      = "m"
-    AnyRegOrMem = "rm" # use "r, m" instead?
+    # https://gcc.gnu.org/onlinedocs/gcc/Simple-Constraints.html
+    Register          = "r"
+    Memory            = "m"
+    AnyRegOrMem       = "rm" # use "r, m" instead?
+    Immediate         = "i"
+    MemoryOffsettable = "o"
+    AnyRegMemImm      = "g"
+    AnyMemOffImm      = "oi"
 
   Constraint* = enum
     ## GCC extended assembly modifier
@@ -207,6 +212,15 @@ func adc*(a: var Assembler_x86, dst, src: Operand) =
   if dst.desc.rm != Register:
     {.warning: "Using addcarry with a memory destination, this incurs significant performance penalties.".}
 
+func adc*(a: var Assembler_x86, dst: Operand, imm: int) =
+  # Does: dst <- dst + imm + borrow
+  doAssert dst.desc.constraint in {Output_EarlyClobber, InputOutput, Output_Overwrite}
+  a.codeFragment("adc", imm, dst)
+  a.areFlagsClobbered = true
+
+  if dst.desc.rm != Register:
+    {.warning: "Using addcarry with a memory destination, this incurs significant performance penalties.".}
+
 func sub*(a: var Assembler_x86, dst, src: Operand) =
   # Does: dst <- dst - src
   doAssert dst.desc.constraint in {Output_EarlyClobber, InputOutput, Output_Overwrite}
@@ -250,6 +264,22 @@ func cmovc*(a: var Assembler_x86, dst, src: Operand) =
   doAssert dst.desc.constraint in {Output_EarlyClobber, InputOutput, Output_Overwrite}
 
   a.codeFragment("cmovc", src, dst)
+  # No clobber
+
+func cmovnc*(a: var Assembler_x86, dst, src: Operand) =
+  # Does: dst <- src if the carry flag is not set
+  doAssert dst.desc.rm == Register, "The destination operand must be a register"
+  doAssert dst.desc.constraint in {Output_EarlyClobber, InputOutput, Output_Overwrite}
+
+  a.codeFragment("cmovnc", src, dst)
+  # No clobber
+
+func cmovz*(a: var Assembler_x86, dst, src: Operand) =
+  # Does: dst <- src if the zero flag is not set
+  doAssert dst.desc.rm == Register, "The destination operand must be a register"
+  doAssert dst.desc.constraint in {Output_EarlyClobber, InputOutput, Output_Overwrite}
+
+  a.codeFragment("cmovz", src, dst)
   # No clobber
 
 func cmovnz*(a: var Assembler_x86, dst, src: Operand) =
