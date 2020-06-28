@@ -53,7 +53,7 @@ type
   Assembler_x86* = object
     code: string
     operands: HashSet[OperandDesc]
-    wordBitWidth: int
+    wordBitWidth*: int
     wordSize: int
     areFlagsClobbered: bool
 
@@ -245,6 +245,12 @@ func sbb*(a: var Assembler_x86, dst: Operand, imm: int) =
   if dst.desc.rm != Register:
     {.warning: "Using subborrow with a memory destination, this incurs significant performance penalties.".}
 
+func sar*(a: var Assembler_x86, loc: Operand, imm: int) =
+  # Does Arithmetic Right Shift (i.e. with sign extension)
+  doAssert loc.desc.constraint in {Output_EarlyClobber, InputOutput, Output_Overwrite}
+  a.codeFragment("sar", imm, loc)
+  a.areFlagsClobbered = true
+
 func test*(a: var Assembler_x86, x, y: Operand) =
   # COmpute the bitwise AND of x and y and
   # set the Sign, Zero and Parity flags
@@ -288,4 +294,12 @@ func cmovnz*(a: var Assembler_x86, dst, src: Operand) =
   doAssert dst.desc.constraint in {Output_EarlyClobber, InputOutput, Output_Overwrite}
 
   a.codeFragment("cmovnz", src, dst)
+  # No clobber
+
+func cmovs*(a: var Assembler_x86, dst, src: Operand) =
+  # Does: dst <- src if the sign flag
+  doAssert dst.desc.rm == Register, "The destination operand must be a register"
+  doAssert dst.desc.constraint in {Output_EarlyClobber, InputOutput, Output_Overwrite}
+
+  a.codeFragment("cmovs", src, dst)
   # No clobber
