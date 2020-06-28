@@ -14,13 +14,24 @@ type
   RM* = enum
     ## Register or Memory operand
     # https://gcc.gnu.org/onlinedocs/gcc/Simple-Constraints.html
-    Register          = "r"
-    Memory            = "m"
-    AnyRegOrMem       = "rm" # use "r, m" instead?
-    Immediate         = "i"
-    MemoryOffsettable = "o"
-    AnyRegMemImm      = "g"
-    AnyMemOffImm      = "oi"
+    Reg            = "r"
+    Mem            = "m"
+    AnyRegOrMem    = "rm" # use "r, m" instead?
+    Imm            = "i"
+    MemOffsettable = "o"
+    AnyRegMemImm   = "g"
+    AnyMemOffImm   = "oi"
+
+    PointerInReg   = "r" # Store an array pointer
+    ElemsInReg     = "r" # Store each individual array element in reg
+
+    # Specific registers
+    RCX            = "rcx"
+    RDX            = "rdx"
+    R8             = "r8"
+
+  Register* = enum
+    rbx, rdx, r8
 
   Constraint* = enum
     ## GCC extended assembly modifier
@@ -57,6 +68,8 @@ type
     wordSize: int
     areFlagsClobbered: bool
 
+const SpecificRegisters = {RCX, RDX, R8}
+
 func hash(od: OperandDesc): Hash =
   {.noSideEffect.}:
     hash($od.nimSymbol)
@@ -72,6 +85,13 @@ func init*(T: type Assembler_x86, Word: typedesc[SomeUnsignedInt]): Assembler_x8
   result.wordBitWidth = result.wordSize * 8
 
 func init*(T: type OperandArray, nimSymbol: NimNode, len: int, rm: RM, constraint: Constraint): OperandArray =
+  doAssert rm in {
+    MemOffsettable,
+    AnyMemOffImm,
+    PointerInReg,
+    ElemsInReg
+  } or rm in SpecificRegisters
+
   result.buf.setLen(len)
 
   # We need to dereference the hidden pointer of var param
@@ -83,13 +103,14 @@ func init*(T: type OperandArray, nimSymbol: NimNode, len: int, rm: RM, constrain
 
   result.nimSymbol = nimSymbol
 
-  if rm != Register:
+  if rm in {PointerInReg, MemOffsettable, AnyMemOffImm} or
+     rm in SpecificRegisters:
     let desc = OperandDesc(
                   asmId: "[" & symStr & "]",
                   nimSymbol: nimSymbol,
                   rm: rm,
                   constraint: constraint,
-                  cEmit: "*" & symStr # Deref C arrays
+                  cEmit: symStr
                 )
     for i in 0 ..< len:
       result.buf[i] = Operand(
@@ -100,17 +121,18 @@ func init*(T: type OperandArray, nimSymbol: NimNode, len: int, rm: RM, constrain
   else:
     # We can't store an array in register so we create assign individual register
     # per array elements instead
-      for i in 0 ..< len:
-        result.buf[i] = Operand(
-          desc: OperandDesc(
-                    asmId: "[" & symStr & $i & "]",
-                    nimSymbol: ident(symStr & $i),
-                    rm: rm,
-                    constraint: constraint,
-                    cEmit: symStr & "[" & $i & "]"
-                ),
-          fromArray: false
-        )
+    for i in 0 ..< len:
+      result.buf[i] = Operand(
+        desc: OperandDesc(
+                  asmId: "[" & symStr & $i & "]",
+                  nimSymbol: ident(symStr & $i),
+                  rm: rm,
+                  constraint: constraint,
+                  cEmit: symStr & "[" & $i & "]"
+              ),
+        fromArray: false
+      )
+
 
 # Code generation
 # ------------------------------------------------------------------------------------------------------------
@@ -125,10 +147,20 @@ func generate*(a: Assembler_x86): NimNode =
     asmStmt: string
 
   for odesc in a.operands.items():
-    let decl =
+    var decl: string
+    if odesc.rm in SpecificRegisters:
+      # "rbx" (`a`)
+      decl = "\"" & $odesc.constraint & $odesc.rm & "\"" &
+             " (`" & odesc.cEmit & "`)"
+    elif odesc.rm in {Mem, AnyRegOrMem, MemOffsettable, AnyRegMemImm, AnyMemOffImm}:
+      # [a] "+r" (`*a`)
+      # We need to deref the pointer to memory
+      decl = odesc.asmId & " \"" & $odesc.constraint & $odesc.rm & "\"" &
+             " (`*" & odesc.cEmit & "`)"
+    else:
       # [a] "+r" (`a[0]`)
-      odesc.asmId & " \"" & $odesc.constraint & $odesc.rm & "\"" &
-      " (`" & odesc.cEmit & "`)"
+      decl = odesc.asmId & " \"" & $odesc.constraint & $odesc.rm & "\"" &
+             " (`" & odesc.cEmit & "`)"
 
     if odesc.constraint in {Input, Input_Commutative}:
       inOperands.add decl
@@ -153,16 +185,41 @@ func getStrOffset(a: Assembler_x86, op: Operand): string =
   if not op.fromArray:
     return "%" & op.desc.asmId
 
-  if op.offset == 0:
-    return "%" & op.desc.asmId
+  # Beware GCC / Clang differences with array offsets
+  # https://lists.llvm.org/pipermail/llvm-dev/2017-August/116202.html
 
-  if defined(gcc):
-    result = $(op.offset * a.wordSize) & "+%" & op.desc.asmId
-  elif defined(clang):
-    # https://lists.llvm.org/pipermail/llvm-dev/2017-August/116202.html
-    result = $(op.offset * a.wordSize) & "%" & op.desc.asmId
+  if op.desc.rm in {Mem, AnyRegOrMem, MemOffsettable, AnyMemOffImm, AnyRegMemImm}:
+    # Directly accessing memory
+    if op.offset == 0:
+      return "%" & op.desc.asmId
+    if defined(gcc):
+      return $(op.offset * a.wordSize) & "+%" & op.desc.asmId
+    elif defined(clang):
+      return $(op.offset * a.wordSize) & "%" & op.desc.asmId
+    else:
+      error "Unconfigured compiler"
+  elif op.desc.rm == PointerInReg:
+    if op.offset == 0:
+      return "(%" & $op.desc.asmId & ')'
+
+    if defined(gcc):
+      return $(op.offset * a.wordSize) & "+(%" & $op.desc.asmId & ')'
+    elif defined(clang):
+      return $(op.offset * a.wordSize) & "(%" & $op.desc.asmId & ')'
+    else:
+      error "Unconfigured compiler"
+  elif op.desc.rm in SpecificRegisters:
+    if op.offset == 0:
+      return "(%%" & $op.desc.rm & ')'
+
+    if defined(gcc):
+      return $(op.offset * a.wordSize) & "+(%%" & $op.desc.rm & ')'
+    elif defined(clang):
+      return $(op.offset * a.wordSize) & "(%%" & $op.desc.rm & ')'
+    else:
+      error "Unconfigured compiler"
   else:
-    error "Unsupported compiler"
+    error "Unsupported: " & $op.desc.rm.ord
 
 func codeFragment(a: var Assembler_x86, instr: string, op0, op1: Operand) =
   # Generate a code fragment
@@ -194,6 +251,26 @@ func codeFragment(a: var Assembler_x86, instr: string, imm: int, op: Operand) =
 
   a.operands.incl op.desc
 
+func codeFragment(a: var Assembler_x86, instr: string, imm: int, reg: Register) =
+  # Generate a code fragment
+  # ⚠️ Warning:
+  # The caller should deal with destination/source operand
+  # so that it fits GNU Assembly
+  if a.wordBitWidth == 64:
+    a.code &= instr & "q $" & $imm & ", %%" & $reg & '\n'
+  else:
+    a.code &= instr & "l $" & $imm & ", %%" & $reg & '\n'
+
+func codeFragment(a: var Assembler_x86, instr: string, reg0, reg1: Register) =
+  # Generate a code fragment
+  # ⚠️ Warning:
+  # The caller should deal with destination/source operand
+  # so that it fits GNU Assembly
+  if a.wordBitWidth == 64:
+    a.code &= instr & "q %%" & $reg0 & ", %%" & $reg1 & '\n'
+  else:
+    a.code &= instr & "l %%" & $reg0 & ", %%" & $reg1 & '\n'
+
 # Instructions
 # ------------------------------------------------------------------------------------------------------------
 
@@ -209,7 +286,7 @@ func adc*(a: var Assembler_x86, dst, src: Operand) =
   a.codeFragment("adc", src, dst)
   a.areFlagsClobbered = true
 
-  if dst.desc.rm != Register:
+  if dst.desc.rm != Reg:
     {.warning: "Using addcarry with a memory destination, this incurs significant performance penalties.".}
 
 func adc*(a: var Assembler_x86, dst: Operand, imm: int) =
@@ -218,7 +295,7 @@ func adc*(a: var Assembler_x86, dst: Operand, imm: int) =
   a.codeFragment("adc", imm, dst)
   a.areFlagsClobbered = true
 
-  if dst.desc.rm != Register:
+  if dst.desc.rm != Reg:
     {.warning: "Using addcarry with a memory destination, this incurs significant performance penalties.".}
 
 func sub*(a: var Assembler_x86, dst, src: Operand) =
@@ -233,7 +310,7 @@ func sbb*(a: var Assembler_x86, dst, src: Operand) =
   a.codeFragment("sbb", src, dst)
   a.areFlagsClobbered = true
 
-  if dst.desc.rm != Register:
+  if dst.desc.rm != Reg:
     {.warning: "Using subborrow with a memory destination, this incurs significant performance penalties.".}
 
 func sbb*(a: var Assembler_x86, dst: Operand, imm: int) =
@@ -242,8 +319,18 @@ func sbb*(a: var Assembler_x86, dst: Operand, imm: int) =
   a.codeFragment("sbb", imm, dst)
   a.areFlagsClobbered = true
 
-  if dst.desc.rm != Register:
+  if dst.desc.rm != Reg:
     {.warning: "Using subborrow with a memory destination, this incurs significant performance penalties.".}
+
+func sbb*(a: var Assembler_x86, dst: Register, imm: int) =
+  # Does: dst <- dst - imm - borrow
+  a.codeFragment("sbb", imm, dst)
+  a.areFlagsClobbered = true
+
+func sbb*(a: var Assembler_x86, dst, src: Register) =
+  # Does: dst <- dst - imm - borrow
+  a.codeFragment("sbb", src, dst)
+  a.areFlagsClobbered = true
 
 func sar*(a: var Assembler_x86, loc: Operand, imm: int) =
   # Does Arithmetic Right Shift (i.e. with sign extension)
@@ -266,7 +353,7 @@ func mov*(a: var Assembler_x86, dst, src: Operand) =
 
 func cmovc*(a: var Assembler_x86, dst, src: Operand) =
   # Does: dst <- src if the carry flag is set
-  doAssert dst.desc.rm == Register, "The destination operand must be a register"
+  doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register"
   doAssert dst.desc.constraint in {Output_EarlyClobber, InputOutput, Output_Overwrite}
 
   a.codeFragment("cmovc", src, dst)
@@ -274,7 +361,7 @@ func cmovc*(a: var Assembler_x86, dst, src: Operand) =
 
 func cmovnc*(a: var Assembler_x86, dst, src: Operand) =
   # Does: dst <- src if the carry flag is not set
-  doAssert dst.desc.rm == Register, "The destination operand must be a register"
+  doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register"
   doAssert dst.desc.constraint in {Output_EarlyClobber, InputOutput, Output_Overwrite}
 
   a.codeFragment("cmovnc", src, dst)
@@ -282,7 +369,7 @@ func cmovnc*(a: var Assembler_x86, dst, src: Operand) =
 
 func cmovz*(a: var Assembler_x86, dst, src: Operand) =
   # Does: dst <- src if the zero flag is not set
-  doAssert dst.desc.rm == Register, "The destination operand must be a register"
+  doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register"
   doAssert dst.desc.constraint in {Output_EarlyClobber, InputOutput, Output_Overwrite}
 
   a.codeFragment("cmovz", src, dst)
@@ -290,7 +377,7 @@ func cmovz*(a: var Assembler_x86, dst, src: Operand) =
 
 func cmovnz*(a: var Assembler_x86, dst, src: Operand) =
   # Does: dst <- src if the zero flag is not set
-  doAssert dst.desc.rm == Register, "The destination operand must be a register"
+  doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register"
   doAssert dst.desc.constraint in {Output_EarlyClobber, InputOutput, Output_Overwrite}
 
   a.codeFragment("cmovnz", src, dst)
@@ -298,7 +385,7 @@ func cmovnz*(a: var Assembler_x86, dst, src: Operand) =
 
 func cmovs*(a: var Assembler_x86, dst, src: Operand) =
   # Does: dst <- src if the sign flag
-  doAssert dst.desc.rm == Register, "The destination operand must be a register"
+  doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register"
   doAssert dst.desc.constraint in {Output_EarlyClobber, InputOutput, Output_Overwrite}
 
   a.codeFragment("cmovs", src, dst)
