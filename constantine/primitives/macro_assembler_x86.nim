@@ -318,6 +318,18 @@ func codeFragment(a: var Assembler_x86, instr: string, reg0, reg1: OperandReuse)
   else:
     a.code &= instr & "l %" & $reg0.asmId & ", %" & $reg1.asmId & '\n'
 
+func codeFragment(a: var Assembler_x86, instr: string, reg0: OperandReuse, reg1: Operand) =
+  # Generate a code fragment
+  # ⚠️ Warning:
+  # The caller should deal with destination/source operand
+  # so that it fits GNU Assembly
+  if a.wordBitWidth == 64:
+    a.code &= instr & "q %" & $reg0.asmId & ", %" & $reg1.desc.asmId & '\n'
+  else:
+    a.code &= instr & "l %" & $reg0.asmId & ", %" & $reg1.desc.asmId & '\n'
+
+  a.operands.incl reg1.desc
+
 func reuseRegister*(reg: OperandArray): OperandReuse =
   # TODO: disable the reg input
   doAssert reg.buf[0].desc.constraint == InputOutput
@@ -394,14 +406,32 @@ func sbb*(a: var Assembler_x86, dst, src: OperandReuse) =
   a.codeFragment("sbb", src, dst)
   a.areFlagsClobbered = true
 
-func sar*(a: var Assembler_x86, loc: Operand, imm: int) =
+func sar*(a: var Assembler_x86, dst: Operand, imm: int) =
   # Does Arithmetic Right Shift (i.e. with sign extension)
-  doAssert loc.desc.constraint in {Output_EarlyClobber, InputOutput, Output_Overwrite}
-  a.codeFragment("sar", imm, loc)
+  doAssert dst.desc.constraint in {Output_EarlyClobber, InputOutput, Output_Overwrite}
+  a.codeFragment("sar", imm, dst)
+  a.areFlagsClobbered = true
+
+func `and`*(a: var Assembler_x86, dst: OperandReuse, imm: int) =
+  # Compute the bitwise AND of x and y and
+  # set the Sign, Zero and Parity flags
+  a.codeFragment("and", imm, dst)
+  a.areFlagsClobbered = true
+
+func `and`*(a: var Assembler_x86, dst, src: Operand) =
+  # Compute the bitwise AND of x and y and
+  # set the Sign, Zero and Parity flags
+  a.codeFragment("and", src, dst)
+  a.areFlagsClobbered = true
+
+func `and`*(a: var Assembler_x86, dst: Operand, src: OperandReuse) =
+  # Compute the bitwise AND of x and y and
+  # set the Sign, Zero and Parity flags
+  a.codeFragment("and", src, dst)
   a.areFlagsClobbered = true
 
 func test*(a: var Assembler_x86, x, y: Operand) =
-  # COmpute the bitwise AND of x and y and
+  # Compute the bitwise AND of x and y and
   # set the Sign, Zero and Parity flags
   a.codeFragment("test", x, y)
   a.areFlagsClobbered = true

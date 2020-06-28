@@ -132,8 +132,11 @@ func `+=`*(a: var Fp, b: Fp) {.inline.} =
 
 func `-=`*(a: var Fp, b: Fp) {.inline.} =
   ## In-place substraction modulo p
-  let underflowed = sub(a.mres, b.mres)
-  discard cadd(a.mres, Fp.C.Mod, underflowed)
+  when UseASM and a.mres.limbs.len <= 6: # TODO: handle spilling
+    submod_asm(a.mres.limbs, b.mres.limbs, Fp.C.Mod.limbs)
+  else:
+    let underflowed = sub(a.mres, b.mres)
+    discard cadd(a.mres, Fp.C.Mod, underflowed)
 
 func double*(a: var Fp) {.inline.} =
   ## Double ``a`` modulo p
@@ -158,8 +161,13 @@ func sum*(r: var Fp, a, b: Fp) {.inline.} =
 func diff*(r: var Fp, a, b: Fp) {.inline.} =
   ## Substract `b` from `a` and store the result into `r`.
   ## `r` is initialized/overwritten
-  var underflowed = r.mres.diff(a.mres, b.mres)
-  discard cadd(r.mres, Fp.C.Mod, underflowed)
+  when UseASM and a.mres.limbs.len <= 6: # TODO: handle spilling
+    var t = a # Handle aliasing r == b
+    submod_asm(t.mres.limbs, b.mres.limbs, Fp.C.Mod.limbs)
+    r = t
+  else:
+    var underflowed = r.mres.diff(a.mres, b.mres)
+    discard cadd(r.mres, Fp.C.Mod, underflowed)
 
 func double*(r: var Fp, a: Fp) {.inline.} =
   ## Double ``a`` into ``r``

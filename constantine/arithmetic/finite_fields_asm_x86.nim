@@ -106,6 +106,7 @@ macro addmod_gen[N: static int](a: var Limbs[N], b, M: Limbs[N]): untyped =
     # Interleaved copy in a second buffer as well
     ctx.mov arrTsub[i], arrT[i]
 
+  # Mask: overflowed contains 0xFFFF or 0x0000
   let overflowed = arrB.reuseRegister()
   ctx.sbb overflowed, overflowed
 
@@ -116,6 +117,8 @@ macro addmod_gen[N: static int](a: var Limbs[N], b, M: Limbs[N]): untyped =
     else:
       ctx.sbb arrTsub[i], arrM[i]
 
+  # If it overflows here, it means that it was
+  # smaller than the modulus and we don't need arrTsub
   ctx.sbb overflowed, 0
 
   # Conditional Mov and
@@ -131,11 +134,69 @@ macro addmod_gen[N: static int](a: var Limbs[N], b, M: Limbs[N]): untyped =
   result.add ctx.generate
 
 func addmod_asm*(a: var Limbs, b, M: Limbs) =
-  ## Constant-time conditional copy
-  ## If ctl is true: b is copied into a
-  ## if ctl is false: b is not copied and a is untouched
-  ## Time and memory accesses are the same whether a copy occurs or not
+  ## Constant-time modular addition
   addmod_gen(a, b, M)
+
+# Field substraction
+# ------------------------------------------------------------
+
+macro submod_gen[N: static int](a: var Limbs[N], b, M: Limbs[N]): untyped =
+  ## Generate an optimized modular addition kernel
+  # Register pressure note:
+  #   We could generate a kernel per modulus M by hardocing it as immediate
+  #   however this requires
+  #     - duplicating the kernel and also
+  #     - 64-bit immediate encoding is quite large
+
+  result = newStmtList()
+
+  var ctx = init(Assembler_x86, BaseType)
+  let
+    arrA = init(OperandArray, nimSymbol = a, N, PointerInReg, InputOutput)
+    # We reuse the reg used for B for overflow detection
+    arrB = init(OperandArray, nimSymbol = b, N, PointerInReg, InputOutput)
+    # We could force M as immediate by specializing per moduli
+    arrM = init(OperandArray, nimSymbol = M, N, PointerInReg, Input)
+    # If N is too big, we need to spill registers. TODO.
+    arrT = init(OperandArray, nimSymbol = ident"t", N, ElemsInReg, Output_EarlyClobber)
+    arrTadd = init(OperandArray, nimSymbol = ident"tadd", N, ElemsInReg, Output_EarlyClobber)
+
+  # Addition
+  for i in 0 ..< N:
+    ctx.mov arrT[i], arrA[i]
+    if i == 0:
+      ctx.sub arrT[0], arrB[0]
+    else:
+      ctx.sbb arrT[i], arrB[i]
+    # Interleaved copy the modulus to hide SBB latencies
+    ctx.mov arrTadd[i], arrM[i]
+
+  # Mask: undeflowed contains 0xFFFF or 0x0000
+  let underflowed = arrB.reuseRegister()
+  ctx.sbb underflowed, underflowed
+
+  # Now mask the adder, with 0 or the modulus limbs
+  for i in 0 ..< N:
+    ctx.`and` arrTadd[i], underflowed
+
+  # Add the masked modulus
+  for i in 0 ..< N:
+    if i == 0:
+      ctx.add arrT[0], arrTadd[0]
+    else:
+      ctx.adc arrT[i], arrTadd[i]
+    ctx.mov arrA[i], arrT[i]
+
+  let t = arrT.nimSymbol
+  let tadd = arrTadd.nimSymbol
+  result.add quote do:
+    var `t`{.noinit.}, `tadd` {.noInit.}: typeof(`a`)
+  result.add ctx.generate
+
+func submod_asm*(a: var Limbs, b, M: Limbs) =
+  ## Constant-time modular substraction
+  ## Warning, does not handle aliasing of a and b
+  submod_gen(a, b, M)
 
 # Sanity checks
 # ----------------------------------------------------------
@@ -143,7 +204,7 @@ func addmod_asm*(a: var Limbs, b, M: Limbs) =
 when isMainModule:
   import ../config/type_bigint, algorithm, strutils
 
-  proc main() =
+  proc mainAdd() =
     var a = [SecretWord 0xE3DF60E8F6D0AF9A'u64, SecretWord 0x7B2665C2258A7625'u64, SecretWord 0x68FC9A1D0977C8E0'u64, SecretWord 0xF3DC61ED7DE76883'u64]
     var b = [SecretWord 0x78E9C2EF58BB6B78'u64, SecretWord 0x547F65BD19014254'u64, SecretWord 0x556A115819EAD4B5'u64, SecretWord 0x8CA844A546935DC3'u64]
     var M = [SecretWord 0xFFFFFFFF00000001'u64, SecretWord 0x0000000000000000'u64, SecretWord 0x00000000FFFFFFFF'u64, SecretWord 0xFFFFFFFFFFFFFFFF'u64]
@@ -224,4 +285,27 @@ when isMainModule:
     debugecho "  s: ", s
     debugecho " ok: ", a.toHex().tolower == s
 
-  main()
+  mainAdd()
+
+  proc mainSub() =
+    var a = [SecretWord 0xf9c32e89b80b17bd'u64, SecretWord 0xdbd3069d4ca0e1c3'u64, SecretWord 0x980d4c70d39d5e17'u64, SecretWord 0xd9f0252845f18c3a'u64]
+    var b = [SecretWord 0x215075604bfd64de'u64, SecretWord 0x36dc488149fc5d3e'u64, SecretWord 0x91fff665385d20fd'u64, SecretWord 0xe980a5a203b43179'u64]
+    var M = [SecretWord 0xFFFFFFFFFFFFFFFF'u64, SecretWord 0xFFFFFFFFFFFFFFFF'u64, SecretWord 0xFFFFFFFFFFFFFFFF'u64, SecretWord 0xFFFFFFFEFFFFFC2F'u64]
+    var s = "0xd872b9296c0db2dfa4f6be1c02a48485060d560b9b403d19f06f7f86423d5ac1"
+
+    a.reverse()
+    b.reverse()
+    M.reverse()
+
+    debugecho "--------------------------------"
+    debugecho "before:"
+    debugecho "  a: ", a.toHex()
+    debugecho "  b: ", b.toHex()
+    debugecho "  m: ", M.toHex()
+    submod_asm(a, b, M)
+    debugecho "after:"
+    debugecho "  a: ", a.toHex().tolower
+    debugecho "  s: ", s
+    debugecho " ok: ", a.toHex().tolower == s
+
+  mainSub()
