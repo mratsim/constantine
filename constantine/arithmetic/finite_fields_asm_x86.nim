@@ -27,6 +27,8 @@ import
 
 static: doAssert UseASM
 
+{.localPassC:"-O3".} # Needed so that the compiler finds enough registers
+
 # Copy
 # ------------------------------------------------------------
 macro ccopy_gen[N: static int](a: var Limbs[N], b: Limbs[N], ctl: SecretBool): untyped =
@@ -128,7 +130,7 @@ macro addmod_gen[N: static int](a: var Limbs[N], b, M: Limbs[N]): untyped =
     var `t`{.noinit.}, `tsub` {.noInit.}: typeof(`a`)
   result.add ctx.generate
 
-func addmod_asm*(a: var Limbs, b, M: Limbs) {.noinline.}=
+func addmod_asm*(a: var Limbs, b, M: Limbs) =
   ## Constant-time conditional copy
   ## If ctl is true: b is copied into a
   ## if ctl is false: b is not copied and a is untouched
