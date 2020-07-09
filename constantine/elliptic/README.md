@@ -48,7 +48,7 @@ Scalar multiplication for elliptic curve presents the same constant-time challen
 
 #### Exceptions in elliptic curve group laws.
 
-For an elliptic curve in short Weierstrass form: `y² = x³ + ax + b)`
+For an elliptic curve in short Weierstrass form: `y² = x³ + ax + b`
 
 The equation for elliptic curve addition is in affine (x, y) coordinates:
 
