@@ -14,7 +14,7 @@
 
 import
   # Internals
-  ../constantine/config/curves,
+  ../constantine/config/[curves, common],
   ../constantine/arithmetic,
   ../constantine/io/io_bigints,
   ../constantine/elliptic/[ec_weierstrass_projective, ec_scalar_mul, ec_endomorphism_accel],
