@@ -43,7 +43,7 @@ type
     Input_EarlyClobber  = "&"
     Output_Overwrite    = "="
     Output_EarlyClobber = "=&"
-    InputOutput         = "+"
+    InputOutput         = "+&"
 
   OpKind = enum
     kRegister

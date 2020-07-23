@@ -27,8 +27,10 @@ import
 
 static: doAssert UseX86ASM
 
-# -O3 Needed so that the compiler finds enough registers
-{.localPassC:"-O3 -madx -mbmi2".}
+# MULX/ADCX/ADOX
+{.localPassC:"-madx -mbmi2".}
+# Necessary for the compiler to find enough registers (enabled at -O1)
+{.localPassC:"-fomit-frame-pointer".}
 
 # Montgomery Multiplication
 # ------------------------------------------------------------
