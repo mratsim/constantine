@@ -15,7 +15,7 @@ import
   ./limbs
 
 when UseX86ASM:
-  import ./finite_fields_asm_x86_adx_bmi2
+  import ./finite_fields_asm_mul_x86_adx_bmi2
 
 # ############################################################
 #

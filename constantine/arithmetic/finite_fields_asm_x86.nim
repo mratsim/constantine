@@ -20,14 +20,14 @@ import
 #
 # ############################################################
 
-# Note: We can use at most 30 registers in inline assembly
+# Note: We can refer to at most 30 registers in inline assembly
 #       and "InputOutput" registers count double
 #       They are nice to let the compiler deals with mov
 #       but too constraining so we move things ourselves.
 
 static: doAssert UseX86ASM
 
-{.localPassC:"-O3".} # Needed so that the compiler finds enough registers
+{.localPassC:"-fomit-frame-pointer".} # Needed so that the compiler finds enough registers
 
 # Copy
 # ------------------------------------------------------------

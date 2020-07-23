@@ -12,7 +12,8 @@ import
   # Internal
   ../config/common,
   ../primitives,
-  ./limbs
+  ./limbs,
+  ./finite_fields_asm_mul_x86
 
 # ############################################################
 #
@@ -20,7 +21,7 @@ import
 #
 # ############################################################
 
-# Note: We can use at most 30 registers in inline assembly
+# Note: We can refer to at most 30 registers in inline assembly
 #       and "InputOutput" registers count double
 #       They are nice to let the compiler deals with mov
 #       but too constraining so we move things ourselves.
@@ -167,26 +168,6 @@ proc partialRedx(
     ctx.mov S, 0
     ctx.adcx t[N-1], S
     ctx.adox t[N-1], C
-
-proc finalSub(
-       ctx: var Assembler_x86,
-       r, t, M, scratch: OperandArray
-     ) =
-  ## Reduce `t` into `r` modulo `M`
-  let N = M.len
-  ctx.comment "Final substraction"
-  for i in 0 ..< N:
-    ctx.mov scratch[i], t[i]
-    if i == 0:
-      ctx.sub scratch[i], M[i]
-    else:
-      ctx.sbb scratch[i], M[i]
-
-  # If we borrowed it means that we were smaller than
-  # the modulus and we don't need "scratch"
-  for i in 0 ..< N:
-    ctx.cmovnc t[i], scratch[i]
-    ctx.mov r[i], t[i]
 
 macro montMul_nocarry_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_MM: Limbs[N], m0ninv_MM: BaseType): untyped =
   ## Generate an optimized Montgomery Multiplication kernel

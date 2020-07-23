@@ -283,6 +283,19 @@ func getStrOffset(a: Assembler_x86, op: Operand): string =
   else:
     error "Unsupported: " & $op.desc.rm.ord
 
+func codeFragment(a: var Assembler_x86, instr: string, op: Operand) =
+  # Generate a code fragment
+  let off = a.getStrOffset(op)
+
+  if a.wordBitWidth == 64:
+    a.code &= instr & "q " & off & '\n'
+  elif a.wordBitWidth == 32:
+    a.code &= instr & "l " & off & '\n'
+  else:
+    error "Unsupported bitwidth: " & $a.wordBitWidth
+
+  a.operands.incl op.desc
+
 func codeFragment(a: var Assembler_x86, instr: string, op0, op1: Operand) =
   # Generate a code fragment
   # ⚠️ Warning:
@@ -306,10 +319,12 @@ func codeFragment(a: var Assembler_x86, instr: string, imm: int, op: Operand) =
   # ⚠️ Warning:
   # The caller should deal with destination/source operand
   # so that it fits GNU Assembly
+  let off = a.getStrOffset(op)
+
   if a.wordBitWidth == 64:
-    a.code &= instr & "q $" & $imm & ", %" & op.desc.asmId & '\n'
+    a.code &= instr & "q $" & $imm & ", " & off & '\n'
   else:
-    a.code &= instr & "l $" & $imm & ", %" & op.desc.asmId & '\n'
+    a.code &= instr & "l $" & $imm & ", " & off & '\n'
 
   a.operands.incl op.desc
 
@@ -534,6 +549,21 @@ func cmovs*(a: var Assembler_x86, dst, src: Operand) =
 
   a.codeFragment("cmovs", src, dst)
   # No clobber
+
+func mul*(a: var Assembler_x86, dHi, dLo: Register, src0: Operand, src1: Register) =
+  ## Does (dHi, dLo) <- src0 * src1
+  doAssert src1 == rax, "MUL requires the RAX register"
+  doAssert dHi == rdx,  "MUL requires the RDX register"
+  doAssert dLo == rax,   "MUL requires the RAX register"
+
+  a.codeFragment("mul", src0)
+
+func imul*(a: var Assembler_x86, dst, src: Operand) =
+  ## Does dst <- dst * src, keeping only the low half
+  doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register: " & $dst.repr
+  doAssert dst.desc.constraint in {Output_EarlyClobber, InputOutput, Output_Overwrite}, $dst.repr
+
+  a.codeFragment("imul", src, dst)
 
 func mulx*(a: var Assembler_x86, dHi, dLo, src0: Operand, src1: Register) =
   ## Does (dHi, dLo) <- src0 * src1
