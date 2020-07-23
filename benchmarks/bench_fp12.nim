@@ -50,8 +50,4 @@ proc main() =
     separator()
 
 main()
-
-echo "Notes:"
-echo "  - GCC is significantly slower than Clang on multiprecision arithmetic."
-echo "  - Fast Squaring and Fast Multiplication are possible if there are spare bits in the prime representation (i.e. the prime uses 254 bits out of 256 bits)"
-echo "  - The tower of extension fields chosen can lead to a large difference of performance between primes of similar bitwidth."
+notes()

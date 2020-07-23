@@ -25,7 +25,7 @@ import
 #       They are nice to let the compiler deals with mov
 #       but too constraining so we move things ourselves.
 
-static: doAssert UseASM
+static: doAssert UseX86ASM
 
 {.localPassC:"-O3".} # Needed so that the compiler finds enough registers
 

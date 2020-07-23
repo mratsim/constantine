@@ -29,7 +29,7 @@ import
   ../config/[common, type_fp, curves],
   ./bigints, ./limbs_montgomery
 
-when UseASM:
+when UseX86ASM:
   import ./finite_fields_asm_x86
 
 export Fp
@@ -65,7 +65,7 @@ func ccopy*(a: var Fp, b: Fp, ctl: SecretBool) {.inline.} =
   ## If ctl is true: b is copied into a
   ## if ctl is false: b is not copied and a is unmodified
   ## Time and memory accesses are the same whether a copy occurs or not
-  when UseASM:
+  when UseX86ASM:
     ccopy_asm(a.mres.limbs, b.mres.limbs, ctl)
   else:
     ccopy(a.mres, b.mres, ctl)
@@ -123,7 +123,7 @@ func setOne*(a: var Fp) {.inline.} =
 
 func `+=`*(a: var Fp, b: Fp) {.inline.} =
   ## In-place addition modulo p
-  when UseASM and a.mres.limbs.len <= 6: # TODO: handle spilling
+  when UseX86ASM and a.mres.limbs.len <= 6: # TODO: handle spilling
     addmod_asm(a.mres.limbs, b.mres.limbs, Fp.C.Mod.limbs)
   else:
     var overflowed = add(a.mres, b.mres)
@@ -132,7 +132,7 @@ func `+=`*(a: var Fp, b: Fp) {.inline.} =
 
 func `-=`*(a: var Fp, b: Fp) {.inline.} =
   ## In-place substraction modulo p
-  when UseASM and a.mres.limbs.len <= 6: # TODO: handle spilling
+  when UseX86ASM and a.mres.limbs.len <= 6: # TODO: handle spilling
     submod_asm(a.mres.limbs, b.mres.limbs, Fp.C.Mod.limbs)
   else:
     let underflowed = sub(a.mres, b.mres)
@@ -140,7 +140,7 @@ func `-=`*(a: var Fp, b: Fp) {.inline.} =
 
 func double*(a: var Fp) {.inline.} =
   ## Double ``a`` modulo p
-  when UseASM and a.mres.limbs.len <= 6: # TODO: handle spilling
+  when UseX86ASM and a.mres.limbs.len <= 6: # TODO: handle spilling
     addmod_asm(a.mres.limbs, a.mres.limbs, Fp.C.Mod.limbs)
   else:
     var overflowed = double(a.mres)
@@ -150,7 +150,7 @@ func double*(a: var Fp) {.inline.} =
 func sum*(r: var Fp, a, b: Fp) {.inline.} =
   ## Sum ``a`` and ``b`` into ``r`` module p
   ## r is initialized/overwritten
-  when UseASM and a.mres.limbs.len <= 6: # TODO: handle spilling
+  when UseX86ASM and a.mres.limbs.len <= 6: # TODO: handle spilling
     r = a
     addmod_asm(r.mres.limbs, b.mres.limbs, Fp.C.Mod.limbs)
   else:
@@ -161,7 +161,7 @@ func sum*(r: var Fp, a, b: Fp) {.inline.} =
 func diff*(r: var Fp, a, b: Fp) {.inline.} =
   ## Substract `b` from `a` and store the result into `r`.
   ## `r` is initialized/overwritten
-  when UseASM and a.mres.limbs.len <= 6: # TODO: handle spilling
+  when UseX86ASM and a.mres.limbs.len <= 6: # TODO: handle spilling
     var t = a # Handle aliasing r == b
     submod_asm(t.mres.limbs, b.mres.limbs, Fp.C.Mod.limbs)
     r = t
@@ -172,9 +172,9 @@ func diff*(r: var Fp, a, b: Fp) {.inline.} =
 func double*(r: var Fp, a: Fp) {.inline.} =
   ## Double ``a`` into ``r``
   ## `r` is initialized/overwritten
-  when UseASM and a.mres.limbs.len <= 6: # TODO: handle spilling
+  when UseX86ASM and a.mres.limbs.len <= 6: # TODO: handle spilling
     r = a
-    addmod_asm(r.mres.limbs, r.mres.limbs, Fp.C.Mod.limbs)
+    addmod_asm(r.mres.limbs, a.mres.limbs, Fp.C.Mod.limbs)
   else:
     var overflowed = r.mres.double(a.mres)
     overflowed = overflowed or not(r.mres < Fp.C.Mod)
@@ -191,7 +191,7 @@ func square*(r: var Fp, a: Fp) {.inline.} =
 
 func neg*(r: var Fp, a: Fp) {.inline.} =
   ## Negate modulo p
-  when UseASM and defined(gcc):
+  when UseX86ASM and defined(gcc):
     # Clang and every compiler besides GCC
     # can cleanly optimized this
     # especially on Fp2

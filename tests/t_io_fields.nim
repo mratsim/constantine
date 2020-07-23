@@ -140,6 +140,14 @@ proc main() =
 
         check: p == hex
 
+    test "Round trip on prime field of BN254 Snarks curve":
+      block: # 2^126
+        const p = "0x0000000000000000000000000000000040000000000000000000000000000000"
+        let x = Fp[BN254_Snarks].fromBig BigInt[254].fromHex(p)
+        let hex = x.toHex(bigEndian)
+
+        check: p == hex
+
     test "Round trip on prime field of BLS12_381 curve":
       block: # 2^126
         const p = "0x000000000000000000000000000000000000000000000000000000000000000040000000000000000000000000000000"

@@ -57,7 +57,11 @@ elif defined(icc):
 else:
   echo "\nCompiled with an unknown compiler"
 
-echo "Optimization level => no optimization: ", not defined(release), " | release: ", defined(release), " | danger: ", defined(danger)
+echo "Optimization level => "
+echo "  no optimization: ", not defined(release)
+echo "  release: ", defined(release)
+echo "  danger: ", defined(danger)
+echo "  inline assembly: ", UseX86ASM
 
 when (sizeof(int) == 4) or defined(Constantine32):
   echo "⚠️ Warning: using Constantine with 32-bit limbs"
@@ -83,6 +87,16 @@ proc report(op, elliptic: string, start, stop: MonoTime, startClk, stopClk: int6
     echo &"{op:<60} {elliptic:<40} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
   else:
     echo &"{op:<60} {elliptic:<40} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
+
+proc notes*() =
+  echo "Notes:"
+  echo "  - Compilers:"
+  echo "    Compilers are severely limited on multiprecision arithmetic."
+  echo "    Inline Assembly is used by default (nimble bench_fp)."
+  echo "    Bench without assembly can use \"nimble bench_fp_gcc\" or \"nimble bench_fp_clang\"."
+  echo "    GCC is significantly slower than Clang on multiprecision arithmetic due to catastrophic handling of carries."
+  echo "  - The simplest operations might be optimized away by the compiler."
+  echo "  - Fast Squaring and Fast Multiplication are possible if there are spare bits in the prime representation (i.e. the prime uses 254 bits out of 256 bits)"
 
 macro fixEllipticDisplay(T: typedesc): untyped =
   # At compile-time, enums are integers and their display is buggy

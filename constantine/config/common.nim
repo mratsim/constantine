@@ -44,7 +44,7 @@ const
 # TODO, we restrict assembly to 64-bit words
 # We need to support register spills for large limbs
 const ConstantineASM {.booldefine.} = true
-const UseASM* = WordBitWidth == 64 and ConstantineASM and X86 and GCC_Compatible
+const UseX86ASM* = WordBitWidth == 64 and ConstantineASM and X86 and GCC_Compatible
 
 # ############################################################
 #
