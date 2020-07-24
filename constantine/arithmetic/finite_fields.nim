@@ -30,7 +30,7 @@ import
   ./bigints, ./limbs_montgomery
 
 when UseX86ASM:
-  import ./finite_fields_asm_x86
+  import ./limbs_asm_modular_x86
 
 export Fp
 
@@ -65,10 +65,7 @@ func ccopy*(a: var Fp, b: Fp, ctl: SecretBool) {.inline.} =
   ## If ctl is true: b is copied into a
   ## if ctl is false: b is not copied and a is unmodified
   ## Time and memory accesses are the same whether a copy occurs or not
-  when UseX86ASM:
-    ccopy_asm(a.mres.limbs, b.mres.limbs, ctl)
-  else:
-    ccopy(a.mres, b.mres, ctl)
+  ccopy(a.mres, b.mres, ctl)
 
 func cswap*(a, b: var Fp, ctl: CTBool) {.inline.} =
   ## Swap ``a`` and ``b`` if ``ctl`` is true

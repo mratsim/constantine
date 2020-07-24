@@ -12,8 +12,8 @@ import
   # Internal
   ../config/common,
   ../primitives,
-  ./limbs,
-  ./finite_fields_asm_mul_x86
+  ./limbs_generic,
+  ./limbs_asm_montmul_x86
 
 # ############################################################
 #

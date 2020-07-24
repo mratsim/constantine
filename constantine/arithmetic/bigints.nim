@@ -9,7 +9,12 @@
 import
   ../config/[common, type_bigint],
   ../primitives,
-  ./limbs, ./limbs_montgomery, ./limbs_modular
+  ./limbs_generic,
+  ./limbs_generic_modular,
+  ./limbs_montgomery
+
+when UseX86ASM:
+  import ./limbs_asm_x86
 
 export BigInt
 
@@ -80,7 +85,10 @@ func ccopy*(a: var BigInt, b: BigInt, ctl: SecretBool) =
   ## If ctl is true: b is copied into a
   ## if ctl is false: b is not copied and a is untouched
   ## Time and memory accesses are the same whether a copy occurs or not
-  ccopy(a.limbs, b.limbs, ctl)
+  when UseX86ASM:
+    ccopy_asm(a.limbs, b.limbs, ctl)
+  else:
+    ccopy(a.limbs, b.limbs, ctl)
 
 func cswap*(a, b: var BigInt, ctl: CTBool) =
   ## Swap ``a`` and ``b`` if ``ctl`` is true

@@ -12,12 +12,12 @@ import
   # Internal
   ../config/common,
   ../primitives,
-  ./limbs
+  ./limbs_generic
 
 when UseX86ASM:
   import
-    ./finite_fields_asm_mul_x86,
-    ./finite_fields_asm_mul_x86_adx_bmi2
+    ./limbs_asm_montmul_x86,
+    ./limbs_asm_montmul_x86_adx_bmi2
 
 # ############################################################
 #

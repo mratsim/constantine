@@ -9,7 +9,7 @@
 import
   ../config/common,
   ../primitives,
-  ./limbs
+  ./limbs_generic
 
 # No exceptions allowed
 {.push raises: [].}

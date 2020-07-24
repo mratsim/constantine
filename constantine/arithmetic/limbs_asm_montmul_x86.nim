@@ -12,7 +12,7 @@ import
   # Internal
   ../config/common,
   ../primitives,
-  ./limbs
+  ./limbs_generic
 
 # ############################################################
 #
