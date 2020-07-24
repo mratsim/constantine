@@ -21,3 +21,7 @@ export
   addcarry_subborrow,
   extended_precision,
   bithacks
+
+when X86 and GCC_Compatible:
+  import primitives/[cpuinfo_x86, macro_assembler_x86]
+  export cpuinfo_x86, macro_assembler_x86

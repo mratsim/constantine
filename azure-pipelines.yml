@@ -186,12 +186,19 @@ steps:
       echo "PATH=${PATH}"
       export ucpu=${UCPU}
       nimble test_parallel
-    displayName: 'Testing the package (including GMP)'
+    displayName: 'Testing Constantine with Assembler and with GMP'
+    condition: ne(variables['Agent.OS'], 'Windows_NT')
+
+  - bash: |
+      echo "PATH=${PATH}"
+      export ucpu=${UCPU}
+      nimble test_parallel_no_assembler
+    displayName: 'Testing Constantine without Assembler and with GMP'
     condition: ne(variables['Agent.OS'], 'Windows_NT')
 
   - bash: |
       echo "PATH=${PATH}"
       export ucpu=${UCPU}
       nimble test_no_gmp
-    displayName: 'Testing the package (without GMP)'
+    displayName: 'Testing the package (without Assembler or GMP)'
     condition: eq(variables['Agent.OS'], 'Windows_NT')

@@ -99,6 +99,9 @@ script:
     - nimble refresh
     - nimble install gmp stew
     - nimble test_parallel
+    - if [[ "$ARCH" != "arm64" ]]; then
+        nimble test_parallel_no_assembler;
+      fi
 branches:
   except:
     - gh-pages

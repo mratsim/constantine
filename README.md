@@ -19,11 +19,17 @@ You can install the developement version of the library through nimble with the 
 nimble install https://github.com/mratsim/constantine@#master
 ```
 
-For speed it is recommended to prefer Clang, MSVC or ICC over GCC.
-GCC does not properly optimize add-with-carry and sub-with-borrow loops (see [Compiler-caveats](#Compiler-caveats)).
+For speed it is recommended to prefer Clang, MSVC or ICC over GCC (see [Compiler-caveats](#Compiler-caveats)).
 
 Further if using GCC, GCC 7 at minimum is required, previous versions
 generated incorrect add-with-carry code.
+
+On x86-64, inline assembly is used to workaround compilers having issues optimizing large integer arithmetic,
+and also ensure constant-time code.
+This can be deactivated with `"-d:ConstantineASM=false"`:
+- at a significant performance cost with GCC (~50% slower than Clang).
+- at misssed opportunity on recent CPUs that support MULX/ADCX/ADOX instructions (~60% faster than Clang).
+- There is a 2.4x perf ratio between using plain GCC vs GCC with inline assembly.
 
 ## Target audience
 
@@ -39,9 +45,12 @@ in this order
 ## Curves supported
 
 At the moment the following curves are supported, adding a new curve only requires adding the prime modulus
-and its bitsize in [constantine/config/curves.nim](constantine/config/curves.nim).
+and its bitsize in [constantine/config/curves.nim](constantine/config/curves_declaration.nim).
 
 The following curves are configured:
+
+> Note: At the moment, finite field arithmetic is fully supported
+>       but elliptic curve arithmetic is work-in-progress.
 
 ### ECDH / ECDSA curves
 
@@ -58,7 +67,8 @@ Families:
 - FKM: Fotiadis-Konstantinou-Martindale
 
 Curves:
-- BN254 (Zero-Knowledge Proofs, Snarks, Starks, Zcash, Ethereum 1)
+- BN254_Nogami
+- BN254_Snarks (Zero-Knowledge Proofs, Snarks, Starks, Zcash, Ethereum 1)
 - BLS12-377 (Zexe)
 - BLS12-381 (Algorand, Chia Networks, Dfinity, Ethereum 2, Filecoin, Zcash Sapling)
 - BN446
@@ -137,8 +147,13 @@ To measure the performance of Constantine
 
 ```bash
 git clone https://github.com/mratsim/constantine
-nimble bench_fp_clang
-nimble bench_fp2_clang
+nimble bench_fp       # Using Assembly (+ GCC)
+nimble bench_fp_clang # Using Clang only
+nimble bench_fp_gcc   # Using Clang only (very slow)
+nimble bench_fp2
+# ...
+nimble bench_ec_g1
+nimble bench_ec_g2
 ```
 
 As mentioned in the [Compiler caveats](#compiler-caveats) section, GCC is up to 2x slower than Clang due to mishandling of carries and register usage.
@@ -146,33 +161,51 @@ As mentioned in the [Compiler caveats](#compiler-caveats) section, GCC is up to 
 On my machine, for selected benchmarks on the prime field for popular pairing-friendly curves.
 
 ```
-⚠️ Measurements are approximate and use the CPU nominal clock: Turbo-Boost and overclocking will skew them.
-==========================================================================================================
+Compiled with GCC
+Optimization level =>
+  no optimization: false
+  release: true
+  danger: true
+  inline assembly: true
+Using Constantine with 64-bit limbs
+Running on Intel(R) Core(TM) i9-9980XE CPU @ 3.00GHz
 
-All benchmarks are using constant-time implementations to protect against side-channel attacks.
+⚠️ Cycles measurements are approximate and use the CPU nominal clock: Turbo-Boost and overclocking will skew them.
+i.e. a 20% overclock will be about 20% off (assuming no dynamic frequency scaling)
 
-Compiled with Clang
-Running on Intel(R) Core(TM) i9-9980XE CPU @ 3.00GHz (overclocked all-core Turbo @4.1GHz)
+=================================================================================================================
 
---------------------------------------------------------------------------------
-Addition        Fp[BN254]               0 ns         0 cycles
-Substraction    Fp[BN254]               0 ns         0 cycles
-Negation        Fp[BN254]               0 ns         0 cycles
-Multiplication  Fp[BN254]              21 ns        65 cycles
-Squaring        Fp[BN254]              18 ns        55 cycles
-Inversion       Fp[BN254]            6266 ns     18799 cycles
---------------------------------------------------------------------------------
-Addition        Fp[BLS12_381]           0 ns         0 cycles
-Substraction    Fp[BLS12_381]           0 ns         0 cycles
-Negation        Fp[BLS12_381]           0 ns         0 cycles
-Multiplication  Fp[BLS12_381]          45 ns       136 cycles
-Squaring        Fp[BLS12_381]          39 ns       118 cycles
-Inversion       Fp[BLS12_381]       15683 ns     47050 cycles
---------------------------------------------------------------------------------
-
+-------------------------------------------------------------------------------------------------------------------------------------------------
+Addition                                           Fp[BN254_Snarks]     333333333.333 ops/s             3 ns/op             9 CPU cycles (approx)
+Substraction                                       Fp[BN254_Snarks]     500000000.000 ops/s             2 ns/op             8 CPU cycles (approx)
+Negation                                           Fp[BN254_Snarks]    1000000000.000 ops/s             1 ns/op             3 CPU cycles (approx)
+Multiplication                                     Fp[BN254_Snarks]      71428571.429 ops/s            14 ns/op            44 CPU cycles (approx)
+Squaring                                           Fp[BN254_Snarks]      71428571.429 ops/s            14 ns/op            44 CPU cycles (approx)
+Inversion (constant-time Euclid)                   Fp[BN254_Snarks]        122579.063 ops/s          8158 ns/op         24474 CPU cycles (approx)
+Inversion via exponentiation p-2 (Little Fermat)   Fp[BN254_Snarks]        153822.489 ops/s          6501 ns/op         19504 CPU cycles (approx)
+Square Root + square check (constant-time)         Fp[BN254_Snarks]        153491.942 ops/s          6515 ns/op         19545 CPU cycles (approx)
+Exp curve order (constant-time) - 254-bit          Fp[BN254_Snarks]        104580.632 ops/s          9562 ns/op         28687 CPU cycles (approx)
+Exp curve order (Leak exponent bits) - 254-bit     Fp[BN254_Snarks]        153798.831 ops/s          6502 ns/op         19506 CPU cycles (approx)
+-------------------------------------------------------------------------------------------------------------------------------------------------
+Addition                                           Fp[BLS12_381]        250000000.000 ops/s             4 ns/op            14 CPU cycles (approx)
+Substraction                                       Fp[BLS12_381]        250000000.000 ops/s             4 ns/op            13 CPU cycles (approx)
+Negation                                           Fp[BLS12_381]       1000000000.000 ops/s             1 ns/op             4 CPU cycles (approx)
+Multiplication                                     Fp[BLS12_381]         35714285.714 ops/s            28 ns/op            84 CPU cycles (approx)
+Squaring                                           Fp[BLS12_381]         35714285.714 ops/s            28 ns/op            85 CPU cycles (approx)
+Inversion (constant-time Euclid)                   Fp[BLS12_381]            43763.676 ops/s         22850 ns/op         68552 CPU cycles (approx)
+Inversion via exponentiation p-2 (Little Fermat)   Fp[BLS12_381]            63983.620 ops/s         15629 ns/op         46889 CPU cycles (approx)
+Square Root + square check (constant-time)         Fp[BLS12_381]            63856.960 ops/s         15660 ns/op         46982 CPU cycles (approx)
+Exp curve order (constant-time) - 255-bit          Fp[BLS12_381]            68535.399 ops/s         14591 ns/op         43775 CPU cycles (approx)
+Exp curve order (Leak exponent bits) - 255-bit     Fp[BLS12_381]            93222.709 ops/s         10727 ns/op         32181 CPU cycles (approx)
+-------------------------------------------------------------------------------------------------------------------------------------------------
 Notes:
-  GCC is significantly slower than Clang on multiprecision arithmetic.
-  The simplest operations might be optimized away by the compiler.
+  - Compilers:
+    Compilers are severely limited on multiprecision arithmetic.
+    Inline Assembly is used by default (nimble bench_fp).
+    Bench without assembly can use "nimble bench_fp_gcc" or "nimble bench_fp_clang".
+    GCC is significantly slower than Clang on multiprecision arithmetic due to catastrophic handling of carries.
+  - The simplest operations might be optimized away by the compiler.
+  - Fast Squaring and Fast Multiplication are possible if there are spare bits in the prime representation (i.e. the prime uses 254 bits out of 256 bits)
 ```
 
 ### Compiler caveats
@@ -234,25 +267,15 @@ add256:
         retq
 ```
 
+As a workaround key procedures use inline assembly.
+
 ### Inline assembly
 
-Constantine uses inline assembly for a very restricted use-case: "conditional mov",
-and a temporary use-case "hardware 128-bit division" that will be replaced ASAP (as hardware division is not constant-time).
+While using intrinsics significantly improve code readability, portability, auditability and maintainability,
+Constantine use inline assembly on x86-64 to ensure performance portability despite poor optimization (for GCC)
+and also to use dedicated large integer instructions MULX, ADCX, ADOX that compilers cannot generate.
 
-Using intrinsics otherwise significantly improve code readability, portability, auditability and maintainability.
-
-#### Future optimizations
-
-In the future more inline assembly primitives might be added provided the performance benefit outvalues the significant complexity.
-In particular, multiprecision multiplication and squaring on x86 can use the instructions MULX, ADCX and ADOX
-to multiply-accumulate on 2 carry chains in parallel (with instruction-level parallelism)
-and improve performance by 15~20% over an uint128-based implementation.
-As no compiler is able to generate such code even when using the `_mulx_u64` and `_addcarryx_u64` intrinsics,
-either the assembly for each supported bigint size must be hardcoded
-or a "compiler" must be implemented in macros that will generate the required inline assembly at compile-time.
-
-Such a compiler can also be used to overcome GCC codegen deficiencies, here is an example for add-with-carry:
-https://github.com/mratsim/finite-fields/blob/d7f6d8bb/macro_add_carry.nim
+The speed improvement on finite field arithmetic is up 60% with MULX, ADCX, ADOX on BLS12-381 (6 limbs).
 
 ## Sizes: code size, stack usage
 
@@ -286,3 +309,7 @@ or
 * Apache License, Version 2.0, ([LICENSE-APACHEv2](LICENSE-APACHEv2) or http://www.apache.org/licenses/LICENSE-2.0)
 
 at your option. This file may not be copied, modified, or distributed except according to those terms.
+
+This library has **no external dependencies**.
+In particular GMP is used only for testing and differential fuzzing
+and is not linked in the library.

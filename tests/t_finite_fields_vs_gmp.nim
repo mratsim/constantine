@@ -20,22 +20,13 @@ import
 echo "\n------------------------------------------------------\n"
 
 var RNG {.compileTime.} = initRand(1234)
-const CurveParams = [
-  P224,
-  BN254_Nogami,
-  BN254_Snarks,
-  Curve25519,
-  P256,
-  Secp256k1,
-  BLS12_377,
-  BLS12_381,
-  BN446,
-  FKM12_447,
-  BLS12_461,
-  BN462
-]
 
-const AvailableCurves = [P224, BN254_Nogami, BN254_Snarks, P256, Secp256k1, BLS12_381]
+const AvailableCurves = [
+  P224,
+  BN254_Nogami, BN254_Snarks,
+  P256, Secp256k1,
+  BLS12_381
+]
 
 const # https://gmplib.org/manual/Integer-Import-and-Export.html
   GMP_WordLittleEndian = -1'i32

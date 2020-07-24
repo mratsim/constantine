@@ -7,12 +7,17 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  # Stadard library
+  # Standard library
   std/macros,
   # Internal
   ../config/common,
   ../primitives,
   ./limbs
+
+when UseX86ASM:
+  import
+    ./finite_fields_asm_mul_x86,
+    ./finite_fields_asm_mul_x86_adx_bmi2
 
 # ############################################################
 #
@@ -343,34 +348,43 @@ func montyMul*(
   # - specialize/duplicate code for m0ninv == 1 (especially if only 1 curve is needed)
   # - keep it generic and optimize code size
   when canUseNoCarryMontyMul:
-    montyMul_CIOS_nocarry(r, a, b, M, m0ninv)
+    when UseX86ASM and a.len in {2 .. 6}: # TODO: handle spilling
+      if ({.noSideEffect.}: hasBmi2()) and ({.noSideEffect.}: hasAdx()):
+        montMul_CIOS_nocarry_asm_adx_bmi2(r, a, b, M, m0ninv)
+      else:
+        montMul_CIOS_nocarry_asm(r, a, b, M, m0ninv)
+    else:
+      montyMul_CIOS_nocarry(r, a, b, M, m0ninv)
   else:
     montyMul_FIPS(r, a, b, M, m0ninv)
 
 func montySquare*(r: var Limbs, a, M: Limbs,
-                  m0ninv: static BaseType, canUseNoCarryMontySquare: static bool) =
+                  m0ninv: static BaseType, canUseNoCarryMontySquare: static bool) {.inline.} =
   ## Compute r <- a^2 (mod M) in the Montgomery domain
   ## `m0ninv` = -1/M (mod SecretWord). Our words are 2^31 or 2^63
 
-  when canUseNoCarryMontySquare:
-    # TODO: Deactivated
-    # Off-by one on 32-bit on the least significant bit
-    # for Fp[BLS12-381] with inputs
-    # - -0x091F02EFA1C9B99C004329E94CD3C6B308164CBE02037333D78B6C10415286F7C51B5CD7F917F77B25667AB083314B1B
-    # - -0x0B7C8AFE5D43E9A973AF8649AD8C733B97D06A78CFACD214CBE9946663C3F682362E0605BC8318714305B249B505AFD9
+  # TODO: needs optimization similar to multiplication
+  montyMul(r, a, a, M, m0ninv, canUseNoCarryMontySquare)
 
-    # montySquare_CIOS_nocarry(r, a, M, m0ninv)
-    montyMul_CIOS_nocarry(r, a, a, M, m0ninv)
-  else:
-    # TODO: Deactivated
-    # Off-by one on 32-bit for Fp[2^127 - 1] with inputs
-    # - -0x75bfffefbfffffff7fd9dfd800000000
-    # - -0x7ff7ffffffffffff1dfb7fafc0000000
-    # Squaring the number and its opposite
-    # should give the same result, but those are off-by-one
-
-    # montySquare_CIOS(r, a, M, m0ninv) # TODO <--- Fix this
-    montyMul_FIPS(r, a, a, M, m0ninv)
+  # when canUseNoCarryMontySquare:
+  #   # TODO: Deactivated
+  #   # Off-by one on 32-bit on the least significant bit
+  #   # for Fp[BLS12-381] with inputs
+  #   # - -0x091F02EFA1C9B99C004329E94CD3C6B308164CBE02037333D78B6C10415286F7C51B5CD7F917F77B25667AB083314B1B
+  #   # - -0x0B7C8AFE5D43E9A973AF8649AD8C733B97D06A78CFACD214CBE9946663C3F682362E0605BC8318714305B249B505AFD9
+  #
+  #   # montySquare_CIOS_nocarry(r, a, M, m0ninv)
+  #   montyMul_CIOS_nocarry(r, a, a, M, m0ninv)
+  # else:
+  #   # TODO: Deactivated
+  #   # Off-by one on 32-bit for Fp[2^127 - 1] with inputs
+  #   # - -0x75bfffefbfffffff7fd9dfd800000000
+  #   # - -0x7ff7ffffffffffff1dfb7fafc0000000
+  #   # Squaring the number and its opposite
+  #   # should give the same result, but those are off-by-one
+  #
+  #   # montySquare_CIOS(r, a, M, m0ninv) # TODO <--- Fix this
+  #   montyMul_FIPS(r, a, a, M, m0ninv)
 
 func redc*(r: var Limbs, a, one, M: Limbs,
            m0ninv: static BaseType, canUseNoCarryMontyMul: static bool) =
