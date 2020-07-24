@@ -15,7 +15,9 @@ import
   ./limbs
 
 when UseX86ASM:
-  import ./finite_fields_asm_mul_x86_adx_bmi2
+  import
+    ./finite_fields_asm_mul_x86,
+    ./finite_fields_asm_mul_x86_adx_bmi2
 
 # ############################################################
 #
@@ -347,7 +349,8 @@ func montyMul*(
   # - keep it generic and optimize code size
   when canUseNoCarryMontyMul:
     when UseX86ASM and a.len in {2 .. 6}: # TODO: handle spilling
-      montMul_nocarry_asm(r, a, b, M, m0ninv)
+      montMul_CIOS_nocarry_asm(r, a, b, M, m0ninv)
+      # montMul_CIOS_nocarry_asm_adx_bmi2(r, a, b, M, m0ninv)
     else:
       montyMul_CIOS_nocarry(r, a, b, M, m0ninv)
   else:

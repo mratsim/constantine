@@ -169,8 +169,9 @@ proc partialRedx(
     ctx.adcx t[N-1], S
     ctx.adox t[N-1], C
 
-macro montMul_nocarry_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_MM: Limbs[N], m0ninv_MM: BaseType): untyped =
+macro montMul_CIOS_nocarry_adx_bmi2_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_MM: Limbs[N], m0ninv_MM: BaseType): untyped =
   ## Generate an optimized Montgomery Multiplication kernel
+  ## using the CIOS method
   ## This requires the most significant word of the Modulus
   ##   M[^1] < high(SecretWord) shr 2 (i.e. less than 0b00111...1111)
   ## https://hackmd.io/@zkteam/modular_multiplication
@@ -179,7 +180,7 @@ macro montMul_nocarry_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_MM: L
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    numSlots = max(N, 6)
+    scratchSlots = max(N, 6)
 
     r = init(OperandArray, nimSymbol = r_MM, N, PointerInReg, InputOutput)
     # We could force M as immediate by specializing per moduli
@@ -187,7 +188,7 @@ macro montMul_nocarry_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_MM: L
     # If N is too big, we need to spill registers. TODO.
     t = init(OperandArray, nimSymbol = ident"t", N, ElemsInReg, Output_EarlyClobber)
     # MultiPurpose Register slots
-    scratch = init(OperandArray, nimSymbol = ident"scratch", numSlots, ElemsInReg, InputOutput)
+    scratch = init(OperandArray, nimSymbol = ident"scratch", scratchSlots, ElemsInReg, InputOutput)
 
     # MULX requires RDX
     rRDX = Operand(
@@ -207,7 +208,7 @@ macro montMul_nocarry_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_MM: L
     m0ninv = scratch[4]                 # Modular inverse of M[0]
     lo = scratch[5]                     # Discard "lo" part of partial Montgomery Reduction
 
-  # Register used:
+  # Registers used:
   # - 1 for `r`
   # - 1 for `M`
   # - 6 for `t`     (at most)
@@ -216,6 +217,7 @@ macro montMul_nocarry_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_MM: L
   # Total 15 out of 16
   # We can save 1 by hardcoding M as immediate (and m0ninv)
   # but this prevent reusing the same code for multiple curves like BLS12-377 and BLS12-381
+  # We might be able to save registers by having `r` and `M` be memory operand as well
 
   let tsym = t.nimSymbol
   let scratchSym = scratch.nimSymbol
@@ -225,7 +227,7 @@ macro montMul_nocarry_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_MM: L
 
     var `tsym`: typeof(`r_MM`) # zero init
     # Assumes 64-bit limbs on 64-bit arch (or you can't store an address)
-    var `scratchSym` {.noInit.}: Limbs[`numSlots`]
+    var `scratchSym` {.noInit.}: Limbs[`scratchSlots`]
     var `edx`{.noInit.}: BaseType
 
     `scratchSym`[0] = cast[SecretWord](`a_MM`[0].unsafeAddr)
@@ -275,6 +277,6 @@ macro montMul_nocarry_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_MM: L
 
   result.add ctx.generate
 
-func montMul_nocarry_asm*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
-  ## Constant-time modular addition
-  montmul_nocarry_gen(r, a, b, M, m0ninv)
+func montMul_CIOS_nocarry_asm_adx_bmi2*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
+  ## Constant-time modular multiplication
+  montMul_CIOS_nocarry_adx_bmi2_gen(r, a, b, M, m0ninv)
