@@ -176,12 +176,11 @@ macro montMul_CIOS_nocarry_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_
     ctx.imul m, t[0]
 
     # (C, _)    <- m * M[0] + t[0]
+    ctx.`xor` C, C
     ctx.mov rRAX, M[0]
     ctx.mul rdx, rax, m, rax
     ctx.add rRAX, t[0]
-    # ctx.adc C, rRDX
-    ctx.adc rRDX, 0
-    ctx.mov C, rRDX
+    ctx.adc C, rRDX
 
     for j in 1 ..< N:
       # (A, t[j])   <- a[j] * b[i] + A + t[j]
@@ -192,8 +191,8 @@ macro montMul_CIOS_nocarry_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_
       else:
         ctx.add t[j], A
         ctx.adc rRDX, 0
+      ctx.`xor` A, A
       ctx.add t[j], rRAX
-      ctx.mov A, 0
       ctx.adc A, rRDX
 
       # (C, t[j-1]) <- m * M[j] + C + t[j]
@@ -202,8 +201,6 @@ macro montMul_CIOS_nocarry_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_
       ctx.add C, t[j]
       ctx.adc rRDX, 0
       ctx.add C, rRAX
-      # ctx.mov t[j-1], C
-      # ctx.adc C, rRDX
       ctx.adc rRDX, 0
       ctx.mov t[j-1], C
       ctx.mov C, rRDX
