@@ -349,8 +349,10 @@ func montyMul*(
   # - keep it generic and optimize code size
   when canUseNoCarryMontyMul:
     when UseX86ASM and a.len in {2 .. 6}: # TODO: handle spilling
-      montMul_CIOS_nocarry_asm(r, a, b, M, m0ninv)
-      # montMul_CIOS_nocarry_asm_adx_bmi2(r, a, b, M, m0ninv)
+      if ({.noSideEffect.}: hasBmi2()) and ({.noSideEffect.}: hasAdx()):
+        montMul_CIOS_nocarry_asm_adx_bmi2(r, a, b, M, m0ninv)
+      else:
+        montMul_CIOS_nocarry_asm(r, a, b, M, m0ninv)
     else:
       montyMul_CIOS_nocarry(r, a, b, M, m0ninv)
   else:
