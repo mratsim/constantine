@@ -37,55 +37,7 @@ when UseX86ASM:
 #       - pairing final exponentiation
 #       are bottlenecked by Montgomery multiplications or squarings
 #
-# Unfortunately, the fastest implementation of Montgomery Multiplication
-# on x86 is impossible without resorting to assembly (probably 15~30% faster)
-#
-# It requires implementing 2 parallel pipelines of carry-chains (via instruction-level parallelism)
-# of MULX, ADCX and ADOX instructions, according to Intel paper:
-# https://www.intel.cn/content/dam/www/public/us/en/documents/white-papers/ia-large-integer-arithmetic-paper.pdf
-# and the code generation of MCL
-# https://github.com/herumi/mcl
-#
-# A generic implementation would require implementing a mini-compiler as macro
-# significantly sacrificing code readability, portability, auditability and maintainability.
-#
-# This would however save significant hardware or cloud resources.
-# An example inline assembly compiler for add-with-carry is available in
-# primitives/research/addcarry_subborrow_compiler.nim
-#
-# Instead we follow the optimized high-level implementation of Goff
-# which skips a significant amount of additions for moduli
-# that have their the most significant bit unset.
-
-# Loop unroller
-# ------------------------------------------------------------
-
-proc replaceNodes(ast: NimNode, what: NimNode, by: NimNode): NimNode =
-  # Replace "what" ident node by "by"
-  proc inspect(node: NimNode): NimNode =
-    case node.kind:
-    of {nnkIdent, nnkSym}:
-      if node.eqIdent(what):
-        return by
-      return node
-    of nnkEmpty:
-      return node
-    of nnkLiterals:
-      return node
-    else:
-      var rTree = node.kind.newTree()
-      for child in node:
-        rTree.add inspect(child)
-      return rTree
-  result = inspect(ast)
-
-macro staticFor(idx: untyped{nkIdent}, start, stopEx: static int, body: untyped): untyped =
-  result = newStmtList()
-  for i in start ..< stopEx:
-    result.add nnkBlockStmt.newTree(
-      ident("unrolledIter_" & $idx & $i),
-      body.replaceNodes(idx, newLit i)
-    )
+# Hence we use inline assembly where possible
 
 # No exceptions allowed
 {.push raises: [].}

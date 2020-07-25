@@ -27,15 +27,15 @@ macro Mod*(C: static Curve): untyped =
   ## Get the Modulus associated to a curve
   result = bindSym($C & "_Modulus")
 
-func getCurveBitwidth*(C: static Curve): static int =
+template getCurveBitwidth*(C: Curve): int =
   ## Returns the number of bits taken by the curve modulus
-  result = static(CurveBitWidth[C])
+  CurveBitWidth[C]
 
 template matchingBigInt*(C: static Curve): untyped =
   BigInt[CurveBitWidth[C]]
 
-func family*(C: static Curve): CurveFamily =
-  result = static(CurveFamilies[C])
+template family*(C: Curve): CurveFamily =
+  CurveFamilies[C]
 
 # ############################################################
 #

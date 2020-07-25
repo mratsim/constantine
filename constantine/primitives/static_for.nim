@@ -1,0 +1,36 @@
+# Constantine
+# Copyright (c) 2018-2019    Status Research & Development GmbH
+# Copyright (c) 2020-Present Mamy André-Ratsimbazafy
+# Licensed and distributed under either of
+#   * MIT license (license terms in the root directory or at http://opensource.org/licenses/MIT).
+#   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
+# at your option. This file may not be copied, modified, or distributed except according to those terms.
+
+import std/macros
+
+proc replaceNodes(ast: NimNode, what: NimNode, by: NimNode): NimNode =
+  # Replace "what" ident node by "by"
+  proc inspect(node: NimNode): NimNode =
+    case node.kind:
+    of {nnkIdent, nnkSym}:
+      if node.eqIdent(what):
+        return by
+      return node
+    of nnkEmpty:
+      return node
+    of nnkLiterals:
+      return node
+    else:
+      var rTree = node.kind.newTree()
+      for child in node:
+        rTree.add inspect(child)
+      return rTree
+  result = inspect(ast)
+
+macro staticFor*(idx: untyped{nkIdent}, start, stopEx: static int, body: untyped): untyped =
+  result = newStmtList()
+  for i in start ..< stopEx:
+    result.add nnkBlockStmt.newTree(
+      ident("unrolledIter_" & $idx & $i),
+      body.replaceNodes(idx, newLit i)
+    )

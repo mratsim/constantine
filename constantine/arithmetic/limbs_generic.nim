@@ -8,8 +8,7 @@
 
 import
   ../config/common,
-  ../primitives,
-  ../../helpers/static_for
+  ../primitives
 
 # ############################################################
 #
@@ -301,7 +300,7 @@ func cneg*(a: var Limbs, ctl: CTBool) =
 # Multiplication
 # ------------------------------------------------------------
 
-func prod*[rLen, aLen, bLen](r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) =
+func prod*[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) =
   ## Multi-precision multiplication
   ## r <- a*b
   ##

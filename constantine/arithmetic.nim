@@ -8,8 +8,8 @@
 
 import
   arithmetic/bigints,
-  arithmetic/[finite_fields, finite_fields_inversion]
+  arithmetic/[finite_fields, finite_fields_inversion, finite_fields_double_width]
 
 export
   bigints,
-  finite_fields, finite_fields_inversion
+  finite_fields, finite_fields_inversion, finite_fields_double_width

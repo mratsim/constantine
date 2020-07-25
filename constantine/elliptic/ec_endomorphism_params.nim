@@ -8,7 +8,6 @@
 
 import
   # Internal
-  ../../helpers/static_for,
   ../primitives,
   ../config/[common, curves, type_bigint],
   ../arithmetic,
