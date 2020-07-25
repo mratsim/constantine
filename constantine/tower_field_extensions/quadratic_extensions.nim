@@ -84,17 +84,42 @@ func prod_complex(r: var QuadraticExt, a, b: QuadraticExt) =
   mixin fromComplexExtension
   static: doAssert r.fromComplexExtension()
 
-  var a0b0 {.noInit.}, a1b1 {.noInit.}: typeof(r.c0)
-  a0b0.prod(a.c0, b.c0)                                         # [1 Mul]
-  a1b1.prod(a.c1, b.c1)                                         # [2 Mul]
+  when false: # Single-width implementation
+    var a0b0 {.noInit.}, a1b1 {.noInit.}: typeof(r.c0)
+    a0b0.prod(a.c0, b.c0)                                         # [1 Mul]
+    a1b1.prod(a.c1, b.c1)                                         # [2 Mul]
 
-  r.c0.sum(a.c0, a.c1)  # r0 = (a0 + a1)                        # [2 Mul, 1 Add]
-  r.c1.sum(b.c0, b.c1)  # r1 = (b0 + b1)                        # [2 Mul, 2 Add]
-  r.c1 *= r.c0          # r1 = (b0 + b1)(a0 + a1)               # [3 Mul, 2 Add] - 𝔽p temporary
+    r.c0.sum(a.c0, a.c1)  # r0 = (a0 + a1)                        # [2 Mul, 1 Add]
+    r.c1.sum(b.c0, b.c1)  # r1 = (b0 + b1)                        # [2 Mul, 2 Add]
+    r.c1 *= r.c0          # r1 = (b0 + b1)(a0 + a1)               # [3 Mul, 2 Add] - 𝔽p temporary
 
-  r.c0.diff(a0b0, a1b1) # r0 = a0 b0 - a1 b1                    # [3 Mul, 2 Add, 1 Sub]
-  r.c1 -= a0b0          # r1 = (b0 + b1)(a0 + a1) - a0b0        # [3 Mul, 2 Add, 2 Sub]
-  r.c1 -= a1b1          # r1 = (b0 + b1)(a0 + a1) - a0b0 - a1b1 # [3 Mul, 2 Add, 3 Sub]
+    r.c0.diff(a0b0, a1b1) # r0 = a0 b0 - a1 b1                    # [3 Mul, 2 Add, 1 Sub]
+    r.c1 -= a0b0          # r1 = (b0 + b1)(a0 + a1) - a0b0        # [3 Mul, 2 Add, 2 Sub]
+    r.c1 -= a1b1          # r1 = (b0 + b1)(a0 + a1) - a0b0 - a1b1 # [3 Mul, 2 Add, 3 Sub]
+
+  else: # Double-width implementation with lazy reduction
+    var a0b0 {.noInit.}, a1b1 {.noInit.}: doubleWidth(typeof(r.c0))
+    var d {.noInit.}: doubleWidth(typeof(r.c0))
+    const noCarry = r.c0.typeof.C.canUseNoCarryMontyMul()
+
+    a0b0.mulNoReduce(a.c0, b.c0)
+    a1b1.mulNoReduce(a.c1, b.c1)
+    when noCarry:
+      r.c0.sum(a.c0, a.c1)
+      r.c1.sum(b.c0, b.c1)
+    else:
+      r.c0.sumNoReduce(a.c0, a.c1)
+      r.c1.sumNoReduce(b.c0, b.c1)
+    d.mulNoReduce(r.c0, r.c1)
+    when noCarry:
+      d.diff(d, a0b0)
+      d.diff(d, a1b1)
+    else:
+      d.diffNoReduce(d, a0b0)
+      d.diffNoReduce(d, a1b1)
+    a0b0.diff(a0b0, a1b1)
+    r.c0.reduce(a0b0)
+    r.c1.reduce(d)
 
 # Commutative ring implementation for generic quadratic extension fields
 # -------------------------------------------------------------------

@@ -7,15 +7,12 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/[common, curves, type_bigint],
+  ../config/[common, curves, type_bigint, type_fp],
+  ../primitives,
   ./bigints,
   ./finite_fields,
   ./limbs_generic,
   ./limbs_double_width
-
-template matchingLimbs2x*(C: Curve): untyped =
-  const N2 = wordsRequired(getCurveBitwidth(C)) * 2 # TODO upstream, not precomputing N2 breaks semcheck
-  array[N2, SecretWord] # TODO upstream, using Limbs[N2] breaks semcheck
 
 type FpDbl*[C: static Curve] = object
   ## Double-width Fp element
@@ -23,7 +20,11 @@ type FpDbl*[C: static Curve] = object
   # We directly work with double the number of limbs
   limbs2x*: matchingLimbs2x(C)
 
-func mul*(r: var FpDbl, a, b: Fp) {.inline.} =
+template doubleWidth*(T: typedesc[Fp]): typedesc =
+  ## Return the double-width type matching with Fp
+  FpDbl[T.C]
+
+func mulNoReduce*(r: var FpDbl, a, b: Fp) {.inline.} =
   ## Store the product of ``a`` by ``b`` into ``r``
   r.limbs2x.prod(a.mres.limbs, b.mres.limbs)
 
@@ -31,3 +32,20 @@ func reduce*(r: var Fp, a: FpDbl) {.inline.} =
   ## Reduce a double-width field element into r
   const N = r.mres.limbs.len
   montyRed[N](r.mres.limbs, a.limbs2x, Fp.C.Mod.limbs, Fp.C.getNegInvModWord())
+
+func diffNoReduce*(r: var FpDbl, a, b: FpDbl) {.inline.} =
+  ## Double-width substraction without reduction
+  discard r.limbs2x.diff(a.limbs2x, b.limbs2x)
+
+func diff*(r: var FpDbl, a, b: FpDbl) =
+  ## Double-width modular
+
+  var underflowed = SecretBool r.limbs2x.diff(a.limbs2x, b.limbs2x)
+
+  const N = r.limbs2x.len div 2
+  const M = FpDbl.C.Mod
+  var carry = Carry(0)
+  var sum: SecretWord
+  for i in 0 ..< N:
+    addC(carry, sum, r.limbs2x[i+N], M.limbs[i], carry)
+    underflowed.ccopy(r.limbs2x[i+N], sum)

@@ -32,7 +32,7 @@ proc randomCurve(C: static Curve) =
   var tmpDbl: FpDbl[C]
 
   r_fp.prod(a, b)
-  tmpDbl.mul(a, b)
+  tmpDbl.mulNoReduce(a, b)
   r_fpDbl.reduce(tmpDbl)
 
   doAssert bool(r_fp == r_fpDbl)
@@ -45,7 +45,7 @@ proc randomHighHammingWeight(C: static Curve) =
   var tmpDbl: FpDbl[C]
 
   r_fp.prod(a, b)
-  tmpDbl.mul(a, b)
+  tmpDbl.mulNoReduce(a, b)
   r_fpDbl.reduce(tmpDbl)
 
   doAssert bool(r_fp == r_fpDbl)
@@ -58,7 +58,7 @@ proc random_long01Seq(C: static Curve) =
   var tmpDbl: FpDbl[C]
 
   r_fp.prod(a, b)
-  tmpDbl.mul(a, b)
+  tmpDbl.mulNoReduce(a, b)
   r_fpDbl.reduce(tmpDbl)
 
   doAssert bool(r_fp == r_fpDbl)

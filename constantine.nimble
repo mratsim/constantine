@@ -35,6 +35,8 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_finite_fields_vs_gmp.nim", true),
   # Precompute
   ("tests/t_precomputed", false),
+  # Double-width finite fields
+  ("tests/t_finite_fields_double_width.nim", false),
   # Towers of extension fields
   ("tests/t_fp2.nim", false),
   ("tests/t_fp2_sqrt.nim", false),

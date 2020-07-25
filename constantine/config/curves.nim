@@ -37,6 +37,10 @@ template matchingBigInt*(C: static Curve): untyped =
 template family*(C: Curve): CurveFamily =
   CurveFamilies[C]
 
+template matchingLimbs2x*(C: Curve): untyped =
+  const N2 = wordsRequired(getCurveBitwidth(C)) * 2 # TODO upstream, not precomputing N2 breaks semcheck
+  array[N2, SecretWord] # TODO upstream, using Limbs[N2] breaks semcheck
+
 # ############################################################
 #
 #                   Curve properties

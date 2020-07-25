@@ -145,7 +145,7 @@ func double*(a: var Fp) {.inline.} =
     discard csub(a.mres, Fp.C.Mod, overflowed)
 
 func sum*(r: var Fp, a, b: Fp) {.inline.} =
-  ## Sum ``a`` and ``b`` into ``r`` module p
+  ## Sum ``a`` and ``b`` into ``r`` modulo p
   ## r is initialized/overwritten
   when UseX86ASM and a.mres.limbs.len <= 6: # TODO: handle spilling
     r = a
@@ -154,6 +154,10 @@ func sum*(r: var Fp, a, b: Fp) {.inline.} =
     var overflowed = r.mres.sum(a.mres, b.mres)
     overflowed = overflowed or not(r.mres < Fp.C.Mod)
     discard csub(r.mres, Fp.C.Mod, overflowed)
+
+func sumNoReduce*(r: var Fp, a, b: Fp) {.inline.} =
+  ## Sum ``a`` and ``b`` into ``r`` without reduction
+  discard r.mres.sum(a.mres, b.mres)
 
 func diff*(r: var Fp, a, b: Fp) {.inline.} =
   ## Substract `b` from `a` and store the result into `r`.
@@ -165,6 +169,11 @@ func diff*(r: var Fp, a, b: Fp) {.inline.} =
   else:
     var underflowed = r.mres.diff(a.mres, b.mres)
     discard cadd(r.mres, Fp.C.Mod, underflowed)
+
+func diffNoReduce*(r: var Fp, a, b: Fp) {.inline.} =
+  ## Substract `b` from `a` and store the result into `r`
+  ## without reduction
+  discard r.mres.diff(a.mres, b.mres)
 
 func double*(r: var Fp, a: Fp) {.inline.} =
   ## Double ``a`` into ``r``
