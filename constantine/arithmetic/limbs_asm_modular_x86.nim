@@ -12,7 +12,7 @@ import
   # Internal
   ../config/common,
   ../primitives,
-  ./limbs_generic
+  ./limbs
 
 # ############################################################
 #
@@ -25,7 +25,7 @@ import
 #       They are nice to let the compiler deals with mov
 #       but too constraining so we move things ourselves.
 
-static: doAssert UseX86ASM
+static: doAssert UseASM_X86_64
 
 {.localPassC:"-fomit-frame-pointer".} # Needed so that the compiler finds enough registers
 

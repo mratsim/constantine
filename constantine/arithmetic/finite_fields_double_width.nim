@@ -11,7 +11,7 @@ import
   ../primitives,
   ./bigints,
   ./finite_fields,
-  ./limbs_generic,
+  ./limbs,
   ./limbs_double_width
 
 type FpDbl*[C: static Curve] = object

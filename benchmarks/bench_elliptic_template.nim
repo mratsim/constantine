@@ -61,7 +61,7 @@ echo "Optimization level => "
 echo "  no optimization: ", not defined(release)
 echo "  release: ", defined(release)
 echo "  danger: ", defined(danger)
-echo "  inline assembly: ", UseX86ASM
+echo "  inline assembly: ", UseASM_X86_64
 
 when (sizeof(int) == 4) or defined(Constantine32):
   echo "⚠️ Warning: using Constantine with 32-bit limbs"

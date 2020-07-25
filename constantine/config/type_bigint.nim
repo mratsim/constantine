@@ -31,8 +31,6 @@ type
 debug:
   import std/strutils
 
-  type Limbs[N: static int] = array[N, SecretWord]
-
   func toString*(a: Limbs): string =
     result = "["
     result.add " 0x" & toHex(BaseType(a[0]))

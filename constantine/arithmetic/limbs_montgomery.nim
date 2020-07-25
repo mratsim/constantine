@@ -12,9 +12,9 @@ import
   # Internal
   ../config/common,
   ../primitives,
-  ./limbs_generic
+  ./limbs
 
-when UseX86ASM:
+when UseASM_X86_64:
   import
     ./limbs_asm_montmul_x86,
     ./limbs_asm_montmul_x86_adx_bmi2
@@ -300,7 +300,7 @@ func montyMul*(
   # - specialize/duplicate code for m0ninv == 1 (especially if only 1 curve is needed)
   # - keep it generic and optimize code size
   when canUseNoCarryMontyMul:
-    when UseX86ASM and a.len in {2 .. 6}: # TODO: handle spilling
+    when UseASM_X86_64 and a.len in {2 .. 6}: # TODO: handle spilling
       if ({.noSideEffect.}: hasBmi2()) and ({.noSideEffect.}: hasAdx()):
         montMul_CIOS_nocarry_asm_adx_bmi2(r, a, b, M, m0ninv)
       else:

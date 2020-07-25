@@ -11,8 +11,7 @@ import
   std/macros,
   # Internal
   ../config/common,
-  ../primitives,
-  ./limbs_generic
+  ../primitives
 
 # ############################################################
 #
@@ -25,9 +24,7 @@ import
 #       They are nice to let the compiler deals with mov
 #       but too constraining so we move things ourselves.
 
-static: doAssert UseX86ASM
-
-{.localPassC:"-fomit-frame-pointer".} # Needed so that the compiler finds enough registers
+static: doAssert UseASM_X86_32
 
 # Copy
 # ------------------------------------------------------------
@@ -71,3 +68,117 @@ func ccopy_asm*(a: var Limbs, b: Limbs, ctl: SecretBool) {.inline.}=
   ## if ctl is false: b is not copied and a is untouched
   ## Time and memory accesses are the same whether a copy occurs or not
   ccopy_gen(a, b, ctl)
+
+# Addition
+# ------------------------------------------------------------
+
+macro add_gen[N: static int](carry: var Carry, r: var Limbs[N], a, b: Limbs[N]): untyped =
+  ## Generate an optimized out-of-place addition kernel
+
+  result = newStmtList()
+
+  var ctx = init(Assembler_x86, BaseType)
+  let
+    arrR = init(OperandArray, nimSymbol = r, N, PointerInReg, InputOutput)
+    arrA = init(OperandArray, nimSymbol = a, N, PointerInReg, Input)
+    arrB = init(OperandArray, nimSymbol = b, N, PointerInReg, Input)
+
+  var # Swappable registers to break dependency chains
+    t0 = Operand(
+      desc: OperandDesc(
+        asmId: "[t0]",
+        nimSymbol: ident"t0",
+        rm: Reg,
+        constraint: Output_EarlyClobber,
+        cEmit: "t0"
+      )
+    )
+
+    t1 = Operand(
+      desc: OperandDesc(
+        asmId: "[t1]",
+        nimSymbol: ident"t1",
+        rm: Reg,
+        constraint: Output_EarlyClobber,
+        cEmit: "t1"
+      )
+    )
+
+  # Addition
+  for i in 0 ..< N:
+    ctx.mov t0, arrA[i]
+    if i == 0:
+      ctx.add t0, arrB[0]
+    else:
+      ctx.adc t0, arrB[i]
+    ctx.mov arrR[i], t0
+    swap(t0, t1)
+  ctx.setToCarryFlag(carry)
+
+  # Codegen
+  let t0sym = t0.desc.nimSymbol
+  let t1sym = t1.desc.nimSymbol
+  result.add quote do:
+    var `t0sym`{.noinit.}, `t1sym`{.noinit.}: BaseType
+  result.add ctx.generate
+
+func add_asm*(r: var Limbs, a, b: Limbs): Carry =
+  ## Constant-time addition
+  add_gen(result, r, a, b)
+
+# Substraction
+# ------------------------------------------------------------
+
+macro sub_gen[N: static int](borrow: var Borrow, r: var Limbs[N], a, b: Limbs[N]): untyped =
+  ## Generate an optimized out-of-place addition kernel
+
+  result = newStmtList()
+
+  var ctx = init(Assembler_x86, BaseType)
+  let
+    arrR = init(OperandArray, nimSymbol = r, N, PointerInReg, InputOutput)
+    arrA = init(OperandArray, nimSymbol = a, N, PointerInReg, Input)
+    arrB = init(OperandArray, nimSymbol = b, N, PointerInReg, Input)
+
+  var # Swappable registers to break dependency chains
+    t0 = Operand(
+      desc: OperandDesc(
+        asmId: "[t0]",
+        nimSymbol: ident"t0",
+        rm: Reg,
+        constraint: Output_EarlyClobber,
+        cEmit: "t0"
+      )
+    )
+
+    t1 = Operand(
+      desc: OperandDesc(
+        asmId: "[t1]",
+        nimSymbol: ident"t1",
+        rm: Reg,
+        constraint: Output_EarlyClobber,
+        cEmit: "t1"
+      )
+    )
+
+  # Substraction
+  for i in 0 ..< N:
+    ctx.mov t0, arrA[i]
+    if i == 0:
+      ctx.sub t0, arrB[0]
+    else:
+      ctx.sbb t0, arrB[i]
+    ctx.mov arrR[i], t0
+    swap(t0, t1)
+  ctx.setToCarryFlag(borrow)
+
+  # Codegen
+  let t0sym = t0.desc.nimSymbol
+  let t1sym = t1.desc.nimSymbol
+  result.add quote do:
+    var `t0sym`{.noinit.}, `t1sym`{.noinit.}: BaseType
+  result.add ctx.generate
+
+func sub_asm*(r: var Limbs, a, b: Limbs): Borrow =
+  ## Constant-time addition
+  sub_gen(result, r, a, b)

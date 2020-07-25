@@ -9,7 +9,7 @@
 import
   ../config/common,
   ../primitives,
-  ./limbs_generic
+  ./limbs
 
 # ############################################################
 #

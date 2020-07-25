@@ -10,6 +10,9 @@ import
   ../config/common,
   ../primitives
 
+when UseASM_X86_32:
+  import ./limbs_asm_x86
+
 # ############################################################
 #
 #         Limbs raw representation and operations
@@ -36,38 +39,8 @@ import
 # The limb-endianess is little-endian, less significant limb is at index 0.
 # The word-endianness is native-endian.
 
-type Limbs*[N: static int] = array[N, SecretWord]
-  ## Limbs-type
-  ## Should be distinct type to avoid builtins to use non-constant time
-  ## implementation, for example for comparison.
-  ##
-  ## but for unknown reason, it prevents semchecking `bits`
-
 # No exceptions allowed
 {.push raises: [].}
-
-# ############################################################
-#
-#                      Accessors
-#
-# ############################################################
-#
-# Commented out since we don't use a distinct type
-
-# template `[]`[N](v: Limbs[N], idx: int): SecretWord =
-#   (array[N, SecretWord])(v)[idx]
-#
-# template `[]`[N](v: var Limbs[N], idx: int): var SecretWord =
-#   (array[N, SecretWord])(v)[idx]
-#
-# template `[]=`[N](v: Limbs[N], idx: int, val: SecretWord) =
-#   (array[N, SecretWord])(v)[idx] = val
-
-# ############################################################
-#
-#           Checks and debug/test only primitives
-#
-# ############################################################
 
 # ############################################################
 #
@@ -103,8 +76,11 @@ func ccopy*(a: var Limbs, b: Limbs, ctl: SecretBool) =
   ## If ctl is true: b is copied into a
   ## if ctl is false: b is not copied and a is untouched
   ## Time and memory accesses are the same whether a copy occurs or not
-  for i in 0 ..< a.len:
-    ctl.ccopy(a[i], b[i])
+  when UseASM_X86_32:
+    ccopy_asm(a, b, ctl)
+  else:
+    for i in 0 ..< a.len:
+      ctl.ccopy(a[i], b[i])
 
 func cswap*(a, b: var Limbs, ctl: CTBool) =
   ## Swap ``a`` and ``b`` if ``ctl`` is true
@@ -189,9 +165,12 @@ func shiftRight*(a: var Limbs, k: int) {.inline.}=
 func add*(a: var Limbs, b: Limbs): Carry =
   ## Limbs addition
   ## Returns the carry
-  result = Carry(0)
-  for i in 0 ..< a.len:
-    addC(result, a[i], a[i], b[i], result)
+  when UseASM_X86_32:
+    result = add_asm(a, a, b)
+  else:
+    result = Carry(0)
+    for i in 0 ..< a.len:
+      addC(result, a[i], a[i], b[i], result)
 
 func add*(a: var Limbs, w: SecretWord): Carry =
   ## Limbs addition, add a number that fits in a word
@@ -221,16 +200,22 @@ func sum*(r: var Limbs, a, b: Limbs): Carry =
   ## `r` is initialized/overwritten
   ##
   ## Returns the carry
-  result = Carry(0)
-  for i in 0 ..< a.len:
-    addC(result, r[i], a[i], b[i], result)
+  when UseASM_X86_32:
+    result = add_asm(r, a, b)
+  else:
+    result = Carry(0)
+    for i in 0 ..< a.len:
+      addC(result, r[i], a[i], b[i], result)
 
 func sub*(a: var Limbs, b: Limbs): Borrow =
   ## Limbs substraction
   ## Returns the borrow
-  result = Borrow(0)
-  for i in 0 ..< a.len:
-    subB(result, a[i], a[i], b[i], result)
+  when UseASM_X86_32:
+    result = sub_asm(a, a, b)
+  else:
+    result = Borrow(0)
+    for i in 0 ..< a.len:
+      subB(result, a[i], a[i], b[i], result)
 
 func sub*(a: var Limbs, w: SecretWord): Borrow =
   ## Limbs substraction, sub a number that fits in a word
@@ -271,9 +256,12 @@ func diff*(r: var Limbs, a, b: Limbs): Borrow =
   ## `r` is initialized/overwritten
   ##
   ## Returns the borrow
-  result = Borrow(0)
-  for i in 0 ..< a.len:
-    subB(result, r[i], a[i], b[i], result)
+  when UseASM_X86_32:
+    result = sub_asm(r, a, b)
+  else:
+    result = Borrow(0)
+    for i in 0 ..< a.len:
+      subB(result, r[i], a[i], b[i], result)
 
 func cneg*(a: var Limbs, ctl: CTBool) =
   ## Conditional negation.

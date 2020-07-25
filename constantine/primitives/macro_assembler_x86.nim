@@ -33,6 +33,9 @@ type
 
     RAX            = "a"
 
+    # Flags
+    CarryFlag      = "@ccc"
+
   Register* = enum
     rbx, rdx, r8, rax
 
@@ -180,6 +183,25 @@ func asArrayAddr*(op: Operand, len: int): Operand =
 
 # Code generation
 # ------------------------------------------------------------------------------------------------------------
+
+func setToCarryFlag*(a: var Assembler_x86, carry: NimNode) =
+
+  # We need to dereference the hidden pointer of var param
+  let isHiddenDeref = carry.kind == nnkHiddenDeref
+  let nimSymbol = if isHiddenDeref: carry[0]
+                  else: carry
+  {.noSideEffect.}:
+    let symStr = $nimSymbol
+
+  let desc = OperandDesc(
+    asmId: "",
+    nimSymbol: ident(symStr),
+    rm: CarryFlag,
+    constraint: Output_Overwrite,
+    cEmit: symStr
+  )
+
+  a.operands.incl(desc)
 
 func generate*(a: Assembler_x86): NimNode =
   ## Generate the inline assembly code from
