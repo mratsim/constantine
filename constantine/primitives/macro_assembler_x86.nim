@@ -101,6 +101,9 @@ func hash(od: OperandDesc): Hash =
 func len*(opArray: OperandArray): int =
   opArray.buf.len
 
+func len*(opArray: Operand): int =
+  opArray.buf.len
+
 proc `[]`*(opArray: OperandArray, index: int): Operand =
   opArray.buf[index]
 
