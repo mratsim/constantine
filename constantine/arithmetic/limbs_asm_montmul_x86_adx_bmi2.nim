@@ -13,7 +13,7 @@ import
   ../config/common,
   ../primitives,
   ./limbs,
-  ./limbs_asm_montmul_x86,
+  ./limbs_asm_montred_x86,
   ./limbs_asm_mul_x86_adx_bmi2
 
 # ############################################################
@@ -99,13 +99,13 @@ macro montMul_CIOS_nocarry_adx_bmi2_gen[N: static int](r_MM: var Limbs[N], a_MM,
   let
     scratchSlots = max(N, 6)
 
-    r = init(OperandArray, nimSymbol = r_MM, N, PointerInReg, InputOutput)
+    r = init(OperandArray, nimSymbol = r_MM, N, PointerInReg, InputOutput_EnsureClobber)
     # We could force M as immediate by specializing per moduli
     M = init(OperandArray, nimSymbol = M_MM, N, PointerInReg, Input)
     # If N is too big, we need to spill registers. TODO.
     t = init(OperandArray, nimSymbol = ident"t", N, ElemsInReg, Output_EarlyClobber)
     # MultiPurpose Register slots
-    scratch = init(OperandArray, nimSymbol = ident"scratch", scratchSlots, ElemsInReg, InputOutput)
+    scratch = init(OperandArray, nimSymbol = ident"scratch", scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
 
     # MULX requires RDX
     rRDX = Operand(

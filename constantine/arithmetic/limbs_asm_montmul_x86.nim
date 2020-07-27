@@ -12,7 +12,8 @@ import
   # Internal
   ../config/common,
   ../primitives,
-  ./limbs
+  ./limbs,
+  ./limbs_asm_montred_x86
 
 # ############################################################
 #
@@ -33,28 +34,6 @@ static: doAssert UseASM_X86_64
 # Montgomery multiplication
 # ------------------------------------------------------------
 # Fallback when no ADX and BMI2 support (MULX, ADCX, ADOX)
-
-proc finalSub*(
-       ctx: var Assembler_x86,
-       r: Operand or OperandArray,
-       t, M, scratch: OperandArray
-     ) =
-  ## Reduce `t` into `r` modulo `M`
-  let N = M.len
-  ctx.comment "Final substraction"
-  for i in 0 ..< N:
-    ctx.mov scratch[i], t[i]
-    if i == 0:
-      ctx.sub scratch[i], M[i]
-    else:
-      ctx.sbb scratch[i], M[i]
-
-  # If we borrowed it means that we were smaller than
-  # the modulus and we don't need "scratch"
-  for i in 0 ..< N:
-    ctx.cmovnc t[i], scratch[i]
-    ctx.mov r[i], t[i]
-
 macro montMul_CIOS_nocarry_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_MM: Limbs[N], m0ninv_MM: BaseType): untyped =
   ## Generate an optimized Montgomery Multiplication kernel
   ## using the CIOS method

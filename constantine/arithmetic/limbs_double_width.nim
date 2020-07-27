@@ -11,6 +11,9 @@ import
   ../primitives,
   ./limbs
 
+when UseASM_X86_64:
+  import ./limbs_asm_montred_x86
+
 # ############################################################
 #
 #         Limbs raw representation and operations
@@ -66,23 +69,25 @@ func montyRed*[N: static int](
   # Important note: `t[i+n] += C` should propagate the carry
   # to the higher limb if any, thank you "implementation detail"
   # missing from paper.
+  when UseASM_X86_32 and r.len <= 6:
+    montRed_asm(r, t, M, m0ninv)
+  else:
+    var t = t          # Copy "t" for mutation and ensure on stack
+    var res: typeof(r) # Accumulator
+    staticFor i, 0, N:
+      var C = Zero
+      let m = t[i] * SecretWord(m0ninv)
+      staticFor j, 0, N:
+        muladd2(C, t[i+j], m, M[j], t[i+j], C)
+      res[i] = C
 
-  var t = t          # Copy "t" for mutation and ensure on stack
-  var res: typeof(r) # Accumulator
-  var carry = Carry(0)
-  staticFor i, 0, N:
-    var C = Zero
-    let m = t[i] * SecretWord(m0ninv)
-    staticFor j, 0, N:
-      muladd2(C, t[i+j], m, M[j], t[i+j], C)
-    res[i] = C
+    # This does t[i+n] += C
+    # but in a separate carry chain, fused with the
+    # copy "r[i] = t[i+n]"
+    var carry = Carry(0)
+    staticFor i, 0, N:
+      addC(carry, res[i], t[i+N], res[i], carry)
 
-  # This does t[i+n] += C
-  # but in a separate carry chain, fused with the
-  # copy "r[i] = t[i+n]"
-  staticFor i, 0, N:
-    addC(carry, res[i], t[i+N], res[i], carry)
-
-  # Final substraction
-  discard res.csub(M, SecretWord(carry).isNonZero() or not(res < M))
-  r = res
+    # Final substraction
+    discard res.csub(M, SecretWord(carry).isNonZero() or not(res < M))
+    r = res

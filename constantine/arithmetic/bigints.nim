@@ -239,6 +239,14 @@ func prod*[rBits, aBits, bBits](r: var BigInt[rBits], a: BigInt[aBits], b: BigIn
   ## It will be truncated if it cannot fit in r limbs.
   r.limbs.prod(a.limbs, b.limbs)
 
+func mul*[aBits, bBits](a: var BigInt[aBits], b: BigInt[bBits]) =
+  ## Multi-precision multiplication
+  ## a <- a*b
+  ## `a`, `b`, can have different sizes
+  var t{.noInit.}: typeof(a)
+  t.limbs.prod(a.limbs, b.limbs)
+  a = t
+
 func prod_high_words*[rBits, aBits, bBits](r: var BigInt[rBits], a: BigInt[aBits], b: BigInt[bBits], lowestWordIndex: static int) =
   ## Multi-precision multiplication keeping only high words
   ## r <- a*b >> (2^WordBitWidth)^lowestWordIndex

@@ -81,9 +81,9 @@ proc report(op, field: string, start, stop: MonoTime, startClk, stopClk: int64, 
   let ns = inNanoseconds((stop-start) div iters)
   let throughput = 1e9 / float64(ns)
   when SupportsGetTicks:
-    echo &"{op:<50} {field:<18} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
+    echo &"{op:<28} {field:<40} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
   else:
-    echo &"{op:<50} {field:<18} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
+    echo &"{op:<28} {field:<40} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
 
 proc notes*() =
   echo "Notes:"
@@ -118,9 +118,23 @@ proc mul2xBench*(rLen, aLen, bLen: static int, iters: int) =
   bench("Multiplication", $rLen & " <- " & $aLen & " x " & $bLen, iters):
     r.prod(a, b)
 
+proc reduce2x*(T: typedesc, iters: int) =
+  var r: T
+  var t: doubleWidth(T)
+  let tHi = rng.random_unsafe(T)
+  let tLo = rng.random_unsafe(T)
+  for i in 0 ..< tLo.mres.limbs.len:
+    t.limbs2x[i] = tLo.mres.limbs[i]
+  for i in 0 ..< tHi.mres.limbs.len:
+    t.limbs2x[tLo.mres.limbs.len+i] = tHi.mres.limbs[i]
+
+  bench("Reduce double-width", $T & " <- " & $doubleWidth(T), iters):
+    r.reduce(t)
+
 proc main() =
   separator()
   mul2xBench(768, 384, 384, iters = 128)
+  reduce2x(Fp[BLS12_381], iters = 128)
   separator()
 
 main()
