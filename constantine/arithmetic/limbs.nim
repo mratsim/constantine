@@ -297,22 +297,27 @@ func prod*[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], b: 
   ## The result will be truncated, i.e. it will be
   ## a * b (mod (2^WordBitwidth)^r.limbs.len)
 
-  # We use Product Scanning / Comba multiplication
-  var t, u, v = SecretWord(0)
-  var z: Limbs[rLen] # zero-init, ensure on stack and removes in-place problems
+  when UseASM_X86_32:
+    var z: typeof(r)
+    mul_asm(z, a, b)
+    r = z
+  else:
+    # We use Product Scanning / Comba multiplication
+    var t, u, v = SecretWord(0)
+    var z: Limbs[rLen] # zero-init, ensure on stack and removes in-place problems
 
-  staticFor i, 0, min(a.len+b.len, r.len):
-    const ib = min(b.len-1, i)
-    const ia = i - ib
-    staticFor j, 0, min(a.len - ia, ib+1):
-      mulAcc(t, u, v, a[ia+j], b[ib-j])
+    staticFor i, 0, min(a.len+b.len, r.len):
+      const ib = min(b.len-1, i)
+      const ia = i - ib
+      staticFor j, 0, min(a.len - ia, ib+1):
+        mulAcc(t, u, v, a[ia+j], b[ib-j])
 
-    z[i] = v
-    v = u
-    u = t
-    t = SecretWord(0)
+      z[i] = v
+      v = u
+      u = t
+      t = SecretWord(0)
 
-  r = z
+    r = z
 
 func prod_high_words*[rLen, aLen, bLen](
        r: var Limbs[rLen],
