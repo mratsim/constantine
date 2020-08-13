@@ -61,15 +61,8 @@ macro montyRed_gen[N: static int](
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = init(OperandArray, nimSymbol = r_MR, N, PointerInReg, InputOutput_EnsureClobber)
     # We could force M as immediate by specializing per moduli
     M = init(OperandArray, nimSymbol = M_MR, N, PointerInReg, Input)
-    # If N is too big, we need to spill registers. TODO.
-    t = init(OperandArray, nimSymbol = t_MR, N*2, PointerInReg, InputOutput_EnsureClobber)
-    acc = init(OperandArray, nimSymbol = ident"acc", N, ElemsInReg, Output_EarlyClobber)
-
-    scratchSlots = 4
-    scratch = init(OperandArray, nimSymbol = ident"scratch", scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
 
     # MUL requires RAX and RDX
     rRAX = Operand(
@@ -92,29 +85,29 @@ macro montyRed_gen[N: static int](
       )
     )
 
-    hi = scratch[0]
-    lo = scratch[1]
-    m = scratch[2]
-    m0ninv = scratch[3]
+    m0ninv = Operand(
+      desc: OperandDesc(
+        asmId: "[m0ninv]",
+        nimSymbol: ident"m0ninv",
+        rm: Reg,
+        constraint: Output_EarlyClobber,
+        cEmit: "m0ninv"
+      )
+    )
+
+
+  let scratchSlots = N+2
+  var scratch = init(OperandArray, nimSymbol = ident"scratch", scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
 
   # Prologue
-  let accSym = acc.nimSymbol
   let eax = rRAX.desc.nimSymbol
   let edx = rRDX.desc.nimSymbol
   let scratchSym = scratch.nimSymbol
-  let tShadow = ident($t_MR)
   result.add quote do:
     static: doAssert: sizeof(SecretWord) == sizeof(ByteAddress)
 
     var `eax`{.noInit.}, `edx`{.noInit.}: BaseType
     var `scratchSym` {.noInit.}: Limbs[`scratchSlots`]
-    `scratchSym`[3] = SecretWord `m0ninv_MR`
-
-    var `accSym`{.noInit.}: Limbs[`N`]
-
-    # Mutable shadowing
-    var ts = `t_MR`
-    let `tShadow` = ts.addr
 
   # Algorithm
   # ---------------------------------------------------------
@@ -133,44 +126,78 @@ macro montyRed_gen[N: static int](
   # No register spilling handling
   doAssert N <= 6, "The Assembly-optimized montgomery multiplication requires at most 6 limbs."
 
+  result.add quote do:
+    `eax` = BaseType `t_MR`[0]
+    `scratchSym`[1 .. `N`-1] = `t_MR`.toOpenArray(1, `N`-1)
+
+  ctx.mov scratch[N], rRAX
+  ctx.imul rRAX, m0ninv    # m <- t[i] * m0ninv mod 2^w
+  ctx.mov scratch[0], rRAX
+
+  # scratch: [t[0] * m0, t[1], t[2], t[3], t[0]] for 4 limbs
+
   for i in 0 ..< N:
-    ctx.`xor` acc[i], acc[i]
-    ctx.`xor` hi, hi
-    # m <- t[i] * m0ninv mod 2^w (i.e. simple multiplication)
-    ctx.mov m, m0ninv
-    ctx.imul m, t[i]
+    ctx.comment ""
+    let hi = scratch[N]
+    let next = scratch[N+1]
 
-    # (hi, t[i]) <- m * M[0] + t[i]
-    ctx.mov rRAX, M[0]
-    ctx.mul rdx, rax, m, rax
-    ctx.add rRAX, t[i]
+    ctx.mul rdx, rax, M[0], rax
+    ctx.add hi, rRAX # Guaranteed to be zero
+    ctx.mov rRAX, scratch[0]
     ctx.adc hi, rRDX
-    ctx.mov t[i], rRAX
 
-    for j in 1 ..< N:
-      ctx.mov lo, t[i+j]
-      ctx.mov rRAX, M[j]
-      ctx.mul rdx, rax, m, rax
-      ctx.add lo, hi # t[i+j] + hi
+    for j in 1 ..< N-1:
+      ctx.comment ""
+      ctx.mul rdx, rax, M[j], rax
+      ctx.add scratch[j], rRAX
+      ctx.mov rRAX, scratch[0]
       ctx.adc rRDX, 0
-      ctx.`xor` hi, hi
-      ctx.add lo, rRAX
-      ctx.adc hi, rRDX
-      ctx.mov t[i+j], lo
+      ctx.add scratch[j], hi
+      ctx.adc rRDX, 0
+      ctx.mov hi, rRDX
 
-    ctx.mov acc[i], hi
+    # Next load
+    if i < N-1:
+      ctx.comment ""
+      ctx.mov next, scratch[1]
+      ctx.imul scratch[1], m0ninv
+
+    # Last limb
+    ctx.mul rdx, rax, M[N-1], rax
+    ctx.add scratch[N-1], rRAX
+    ctx.mov rRAX, scratch[1] # Contains next * m0
+    ctx.adc rRDX, 0
+    ctx.add scratch[N-1], hi
+    ctx.adc rRDX, 0
+    ctx.mov hi, rRDX
+
+    scratch.rotateLeft()
+
+  # Code generation
+  result.add ctx.generate()
+
+  # New codegen
+  ctx = init(Assembler_x86, BaseType)
+
+  let r = init(OperandArray, nimSymbol = r_MR, N, PointerInReg, InputOutput_EnsureClobber)
+  let t = init(OperandArray, nimSymbol = t_MR, N*2, PointerInReg, Input)
+  let extraRegNeeded = N-2
+  let tsub = init(OperandArray, nimSymbol = ident"tsub", extraRegNeeded, ElemsInReg, InputOutput_EnsureClobber)
+  let tsubsym = tsub.nimSymbol
+  result.add quote do:
+    var `tsubsym` {.noInit.}: Limbs[`extraRegNeeded`]
 
   # This does t[i+n] += hi
   # but in a separate carry chain, fused with the
   # copy "r[i] = t[i+n]"
   for i in 0 ..< N:
     if i == 0:
-      ctx.add acc[i], t[i+N]
+      ctx.add scratch[i], t[i+N]
     else:
-      ctx.adc acc[i], t[i+N]
+      ctx.adc scratch[i], t[i+N]
 
-  let reuse = repackRegisters(scratch, rRAX, rRDX)
-  ctx.finalSub(r, acc, M, reuse)
+  let reuse = repackRegisters(tsub, scratch[N], scratch[N+1])
+  ctx.finalSub(r, scratch, M, reuse)
 
   # Code generation
   result.add ctx.generate()
@@ -179,6 +206,6 @@ func montRed_asm*[N: static int](
        r: var array[N, SecretWord],
        t: array[N*2, SecretWord],
        M: array[N, SecretWord],
-       m0ninv: BaseType) {.inline.} =
-  ## Constant-time Montegomery reduction
+       m0ninv: BaseType) =
+  ## Constant-time Montgomery reduction
   montyRed_gen(r, t, M, m0ninv)

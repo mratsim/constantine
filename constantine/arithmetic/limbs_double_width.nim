@@ -70,6 +70,7 @@ func montyRed*[N: static int](
   # to the higher limb if any, thank you "implementation detail"
   # missing from paper.
   when UseASM_X86_32 and r.len <= 6:
+    # TODO: Assembly faster than GCC but slower than Clang
     montRed_asm(r, t, M, m0ninv)
   else:
     var t = t          # Copy "t" for mutation and ensure on stack

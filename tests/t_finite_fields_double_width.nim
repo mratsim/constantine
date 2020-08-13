@@ -19,7 +19,7 @@ import
 const Iters = 128
 
 var rng: RngState
-let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+let seed = 0 # uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
 rng.seed(seed)
 echo "\n------------------------------------------------------\n"
 echo "test_finite_fields_double_width xoshiro512** seed: ", seed
@@ -34,6 +34,9 @@ proc randomCurve(C: static Curve) =
   r_fp.prod(a, b)
   tmpDbl.mulNoReduce(a, b)
   r_fpDbl.reduce(tmpDbl)
+
+  echo "expected: ", r_fp.mres.limbs.toString
+  echo "computed: ", r_fpDbl.mres.limbs.toString
 
   doAssert bool(r_fp == r_fpDbl)
 
@@ -64,21 +67,21 @@ proc random_long01Seq(C: static Curve) =
   doAssert bool(r_fp == r_fpDbl)
 
 suite "Field Multiplication via double-width field elements is consistent with single-width." & " [" & $WordBitwidth & "-bit mode]":
-  test "With P-224 field modulus":
-    for _ in 0 ..< Iters:
-      randomCurve(P224)
-    for _ in 0 ..< Iters:
-      randomHighHammingWeight(P224)
-    for _ in 0 ..< Iters:
-      random_long01Seq(P224)
+  # test "With P-224 field modulus":
+  #   for _ in 0 ..< Iters:
+  #     randomCurve(P224)
+  #   for _ in 0 ..< Iters:
+  #     randomHighHammingWeight(P224)
+  #   for _ in 0 ..< Iters:
+  #     random_long01Seq(P224)
 
-  test "With P-256 field modulus":
-    for _ in 0 ..< Iters:
-      randomCurve(P256)
-    for _ in 0 ..< Iters:
-      randomHighHammingWeight(P256)
-    for _ in 0 ..< Iters:
-      random_long01Seq(P256)
+  # test "With P-256 field modulus":
+  #   for _ in 0 ..< Iters:
+  #     randomCurve(P256)
+  #   for _ in 0 ..< Iters:
+  #     randomHighHammingWeight(P256)
+  #   for _ in 0 ..< Iters:
+  #     random_long01Seq(P256)
 
   test "With BN254_Snarks field modulus":
     for _ in 0 ..< Iters:
@@ -88,10 +91,10 @@ suite "Field Multiplication via double-width field elements is consistent with s
     for _ in 0 ..< Iters:
       random_long01Seq(BN254_Snarks)
 
-  test "With BLS12_381 field modulus":
-    for _ in 0 ..< Iters:
-      randomCurve(BLS12_381)
-    for _ in 0 ..< Iters:
-      randomHighHammingWeight(BLS12_381)
-    for _ in 0 ..< Iters:
-      random_long01Seq(BLS12_381)
+  # test "With BLS12_381 field modulus":
+  #   for _ in 0 ..< 1:
+  #     randomCurve(BLS12_381)
+  #   # for _ in 0 ..< Iters:
+  #   #   randomHighHammingWeight(BLS12_381)
+  #   # for _ in 0 ..< Iters:
+  #   #   random_long01Seq(BLS12_381)
