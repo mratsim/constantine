@@ -35,8 +35,8 @@ proc randomCurve(C: static Curve) =
   tmpDbl.mulNoReduce(a, b)
   r_fpDbl.reduce(tmpDbl)
 
-  echo "expected: ", r_fp.mres.limbs.toString
-  echo "computed: ", r_fpDbl.mres.limbs.toString
+  echo "expected: ", r_fp #r_fp.mres.limbs.toString
+  echo "computed: ", r_fpDbl #r_fpDbl.mres.limbs.toString
 
   doAssert bool(r_fp == r_fpDbl)
 
@@ -75,26 +75,26 @@ suite "Field Multiplication via double-width field elements is consistent with s
   #   for _ in 0 ..< Iters:
   #     random_long01Seq(P224)
 
-  # test "With P-256 field modulus":
-  #   for _ in 0 ..< Iters:
-  #     randomCurve(P256)
-  #   for _ in 0 ..< Iters:
-  #     randomHighHammingWeight(P256)
-  #   for _ in 0 ..< Iters:
-  #     random_long01Seq(P256)
+  test "With P-256 field modulus":
+    for _ in 0 ..< 1:
+      randomCurve(P256)
+    for _ in 0 ..< Iters:
+      randomHighHammingWeight(P256)
+    for _ in 0 ..< Iters:
+      random_long01Seq(P256)
 
-  test "With BN254_Snarks field modulus":
-    for _ in 0 ..< Iters:
-      randomCurve(BN254_Snarks)
-    for _ in 0 ..< Iters:
-      randomHighHammingWeight(BN254_Snarks)
-    for _ in 0 ..< Iters:
-      random_long01Seq(BN254_Snarks)
+  # test "With BN254_Snarks field modulus":
+  #   for _ in 0 ..< Iters:
+  #     randomCurve(BN254_Snarks)
+  #   for _ in 0 ..< Iters:
+  #     randomHighHammingWeight(BN254_Snarks)
+  #   for _ in 0 ..< Iters:
+  #     random_long01Seq(BN254_Snarks)
 
   # test "With BLS12_381 field modulus":
-  #   for _ in 0 ..< 1:
+  #   for _ in 0 ..< Iters:
   #     randomCurve(BLS12_381)
-  #   # for _ in 0 ..< Iters:
-  #   #   randomHighHammingWeight(BLS12_381)
-  #   # for _ in 0 ..< Iters:
-  #   #   random_long01Seq(BLS12_381)
+  #   for _ in 0 ..< Iters:
+  #     randomHighHammingWeight(BLS12_381)
+  #   for _ in 0 ..< Iters:
+  #     random_long01Seq(BLS12_381)

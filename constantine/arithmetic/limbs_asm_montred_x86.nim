@@ -70,7 +70,7 @@ macro montyRed_gen[N: static int](
         asmId: "[rax]",
         nimSymbol: ident"rax",
         rm: RAX,
-        constraint: Output_EarlyClobber,
+        constraint: InputOutput_EnsureClobber,
         cEmit: "rax"
       )
     )
@@ -88,9 +88,9 @@ macro montyRed_gen[N: static int](
     m0ninv = Operand(
       desc: OperandDesc(
         asmId: "[m0ninv]",
-        nimSymbol: ident"m0ninv",
+        nimSymbol: m0ninv_MR,
         rm: Reg,
-        constraint: Output_EarlyClobber,
+        constraint: InputOutput_EnsureClobber,
         cEmit: "m0ninv"
       )
     )
@@ -161,8 +161,10 @@ macro montyRed_gen[N: static int](
       ctx.comment ""
       ctx.mov next, scratch[1]
       ctx.imul scratch[1], m0ninv
+      ctx.comment ""
 
     # Last limb
+    ctx.comment ""
     ctx.mul rdx, rax, M[N-1], rax
     ctx.add scratch[N-1], rRAX
     ctx.mov rRAX, scratch[1] # Contains next * m0
