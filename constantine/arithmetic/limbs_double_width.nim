@@ -32,7 +32,7 @@ func montyRed*[N: static int](
        r: var array[N, SecretWord],
        t: array[N*2, SecretWord],
        M: array[N, SecretWord],
-       m0ninv: BaseType) =
+       m0ninv: BaseType, canUseNoCarryMontyMul: static bool) =
   ## Montgomery reduce a double-width bigint modulo M
   # - Analyzing and Comparing Montgomery Multiplication Algorithms
   #   Cetin Kaya Koc and Tolga Acar and Burton S. Kaliski Jr.
@@ -71,7 +71,7 @@ func montyRed*[N: static int](
   # missing from paper.
   when UseASM_X86_32 and r.len <= 6:
     # TODO: Assembly faster than GCC but slower than Clang
-    montRed_asm(r, t, M, m0ninv)
+    montRed_asm(r, t, M, m0ninv, canUseNoCarryMontyMul)
   else:
     var t = t          # Copy "t" for mutation and ensure on stack
     var res: typeof(r) # Accumulator

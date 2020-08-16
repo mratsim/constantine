@@ -190,7 +190,7 @@ macro montMul_CIOS_nocarry_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_
   ctx.mov rRDX, r
   let r2 = rRDX.asArrayAddr(len = N)
 
-  ctx.finalSub(
+  ctx.finalSubNoCarry(
     r2, t, M,
     scratch
   )

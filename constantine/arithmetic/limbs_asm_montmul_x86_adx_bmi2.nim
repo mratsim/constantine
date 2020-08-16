@@ -187,7 +187,7 @@ macro montMul_CIOS_nocarry_adx_bmi2_gen[N: static int](r_MM: var Limbs[N], a_MM,
       lo, C, rRDX
     )
 
-  ctx.finalSub(
+  ctx.finalSubNoCarry(
     r, t, M,
     scratch
   )

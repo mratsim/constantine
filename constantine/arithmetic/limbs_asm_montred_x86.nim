@@ -26,14 +26,14 @@ static: doAssert UseASM_X86_32
 # Necessary for the compiler to find enough registers (enabled at -O1)
 {.localPassC:"-fomit-frame-pointer".}
 
-proc finalSub*(
+proc finalSubNoCarry*(
        ctx: var Assembler_x86,
        r: Operand or OperandArray,
        t, M, scratch: OperandArray
      ) =
   ## Reduce `t` into `r` modulo `M`
   let N = M.len
-  ctx.comment "Final substraction"
+  ctx.comment "Final substraction (no carry)"
   for i in 0 ..< N:
     ctx.mov scratch[i], t[i]
     if i == 0:
@@ -47,6 +47,40 @@ proc finalSub*(
     ctx.cmovnc t[i], scratch[i]
     ctx.mov r[i], t[i]
 
+proc finalSubCanOverflow*(
+       ctx: var Assembler_x86,
+       r: Operand or OperandArray,
+       t, M, scratch: OperandArray,
+       overflowReg: Operand
+     ) =
+  ## Reduce `t` into `r` modulo `M`
+  ## To be used when the final substraction can
+  ## also depend on the carry flag
+  ## This is in particular possible when the MSB
+  ## is set for the prime modulus
+  ## `overflowReg` should be a register that will be used
+  ## to store the carry flag
+
+  ctx.sbb overflowReg, overflowReg
+
+  let N = M.len
+  ctx.comment "Final substraction (may carry)"
+  for i in 0 ..< N:
+    ctx.mov scratch[i], t[i]
+    if i == 0:
+      ctx.sub scratch[i], M[i]
+    else:
+      ctx.sbb scratch[i], M[i]
+
+  ctx.sbb overflowReg, 0
+
+  # If we borrowed it means that we were smaller than
+  # the modulus and we don't need "scratch"
+  for i in 0 ..< N:
+    ctx.cmovnc t[i], scratch[i]
+    ctx.mov r[i], t[i]
+
+
 # Montgomery reduction
 # ------------------------------------------------------------
 
@@ -54,7 +88,9 @@ macro montyRed_gen[N: static int](
        r_MR: var array[N, SecretWord],
        t_MR: array[N*2, SecretWord],
        M_MR: array[N, SecretWord],
-       m0ninv_MR: BaseType) =
+       m0ninv_MR: BaseType,
+       canUseNoCarryMontyMul: static bool
+      ) =
   # TODO, slower than Clang, in particular due to the shadowing
 
   result = newStmtList()
@@ -199,7 +235,11 @@ macro montyRed_gen[N: static int](
       ctx.adc scratch[i], t[i+N]
 
   let reuse = repackRegisters(tsub, scratch[N], scratch[N+1])
-  ctx.finalSub(r, scratch, M, reuse)
+
+  if canUseNoCarryMontyMul:
+    ctx.finalSubNoCarry(r, scratch, M, reuse)
+  else:
+    ctx.finalSubCanOverflow(r, scratch, M, reuse, rRAX)
 
   # Code generation
   result.add ctx.generate()
@@ -208,6 +248,8 @@ func montRed_asm*[N: static int](
        r: var array[N, SecretWord],
        t: array[N*2, SecretWord],
        M: array[N, SecretWord],
-       m0ninv: BaseType) =
+       m0ninv: BaseType,
+       canUseNoCarryMontyMul: static bool
+      ) =
   ## Constant-time Montgomery reduction
-  montyRed_gen(r, t, M, m0ninv)
+  montyRed_gen(r, t, M, m0ninv, canUseNoCarryMontyMul)

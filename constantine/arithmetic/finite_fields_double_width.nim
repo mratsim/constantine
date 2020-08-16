@@ -31,7 +31,13 @@ func mulNoReduce*(r: var FpDbl, a, b: Fp) {.inline.} =
 func reduce*(r: var Fp, a: FpDbl) {.inline.} =
   ## Reduce a double-width field element into r
   const N = r.mres.limbs.len
-  montyRed[N](r.mres.limbs, a.limbs2x, Fp.C.Mod.limbs, Fp.C.getNegInvModWord())
+  montyRed(
+    r.mres.limbs,
+    a.limbs2x,
+    Fp.C.Mod.limbs,
+    Fp.C.getNegInvModWord(),
+    Fp.C.canUseNoCarryMontyMul()
+  )
 
 func diffNoReduce*(r: var FpDbl, a, b: FpDbl) {.inline.} =
   ## Double-width substraction without reduction
