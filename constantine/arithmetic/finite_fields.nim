@@ -162,8 +162,20 @@ func sumNoReduce*(r: var Fp, a, b: Fp) {.inline.} =
 func diff*(r: var Fp, a, b: Fp) {.inline.} =
   ## Substract `b` from `a` and store the result into `r`.
   ## `r` is initialized/overwritten
+  ## Requires r != b
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    var t = a # Handle aliasing r == b
+    r = a
+    submod_asm(r.mres.limbs, b.mres.limbs, Fp.C.Mod.limbs)
+  else:
+    var underflowed = r.mres.diff(a.mres, b.mres)
+    discard cadd(r.mres, Fp.C.Mod, underflowed)
+
+func diffAlias*(r: var Fp, a, b: Fp) {.inline.} =
+  ## Substract `b` from `a` and store the result into `r`.
+  ## `r` is initialized/overwritten
+  ## Handles r == b
+  when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
+    var t = a
     submod_asm(t.mres.limbs, b.mres.limbs, Fp.C.Mod.limbs)
     r = t
   else:

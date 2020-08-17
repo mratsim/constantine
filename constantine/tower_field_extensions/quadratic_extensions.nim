@@ -112,8 +112,8 @@ func prod_complex(r: var QuadraticExt, a, b: QuadraticExt) =
       r.c1.sumNoReduce(b.c0, b.c1)
     d.mulNoReduce(r.c0, r.c1)
     when noCarry:
-      d.diff(d, a0b0)
-      d.diff(d, a1b1)
+      d -= a0b0
+      d -= a1b1
     else:
       d.diffNoReduce(d, a0b0)
       d.diffNoReduce(d, a1b1)

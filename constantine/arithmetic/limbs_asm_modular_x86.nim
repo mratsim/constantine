@@ -119,7 +119,7 @@ macro submod_gen[N: static int](a: var Limbs[N], b, M: Limbs[N]): untyped =
     arrT = init(OperandArray, nimSymbol = ident"t", N, ElemsInReg, Output_EarlyClobber)
     arrTadd = init(OperandArray, nimSymbol = ident"tadd", N, ElemsInReg, Output_EarlyClobber)
 
-  # Addition
+  # Substraction
   for i in 0 ..< N:
     ctx.mov arrT[i], arrA[i]
     if i == 0:

@@ -109,7 +109,7 @@ proc mulaccx_by_word(
   ctx.adcx hi, rRDX
   ctx.adox hi, rRDX
 
-macro mulx_gen[rLen, aLen, bLen: static int](rx: var Limbs[rLen], ax: Limbs[aLen], bx: Limbs[bLen]) {.inline.} =
+macro mulx_gen[rLen, aLen, bLen: static int](rx: var Limbs[rLen], ax: Limbs[aLen], bx: Limbs[bLen]) =
   ## `a`, `b`, `r` can have a different number of limbs
   ## if `r`.limbs.len < a.limbs.len + b.limbs.len
   ## The result will be truncated, i.e. it will be

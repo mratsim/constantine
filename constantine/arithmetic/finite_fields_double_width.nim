@@ -14,6 +14,9 @@ import
   ./limbs,
   ./limbs_double_width
 
+when UseASM_X86_64:
+  import limbs_asm_modular_dbl_width_x86
+
 type FpDbl*[C: static Curve] = object
   ## Double-width Fp element
   ## This allows saving on reductions
@@ -39,19 +42,31 @@ func reduce*(r: var Fp, a: FpDbl) {.inline.} =
     Fp.C.canUseNoCarryMontyMul()
   )
 
-func diffNoReduce*(r: var FpDbl, a, b: FpDbl) {.inline.} =
+func diffNoInline(r: var FpDbl, a, b: FpDbl): Borrow =
+  r.limbs2x.diff(a.limbs2x, b.limbs2x)
+
+func diffNoReduce*(r: var FpDbl, a, b: FpDbl) =
   ## Double-width substraction without reduction
-  discard r.limbs2x.diff(a.limbs2x, b.limbs2x)
+  discard diffNoInline(r, a, b)
 
 func diff*(r: var FpDbl, a, b: FpDbl) =
-  ## Double-width modular
+  ## Double-width modular substraction
+  when false: # TODO slower
+    r = a
+    sub2x_asm(r.limbs2x, b.limbs2x, FpDbl.C.Mod.limbs)
+  else:
+    var underflowed = SecretBool diffNoInline(r, a, b)
 
-  var underflowed = SecretBool r.limbs2x.diff(a.limbs2x, b.limbs2x)
+    const N = r.limbs2x.len div 2
+    const M = FpDbl.C.Mod
+    var carry = Carry(0)
+    var sum: SecretWord
+    for i in 0 ..< N:
+      addC(carry, sum, r.limbs2x[i+N], M.limbs[i], carry)
+      underflowed.ccopy(r.limbs2x[i+N], sum)
 
-  const N = r.limbs2x.len div 2
-  const M = FpDbl.C.Mod
-  var carry = Carry(0)
-  var sum: SecretWord
-  for i in 0 ..< N:
-    addC(carry, sum, r.limbs2x[i+N], M.limbs[i], carry)
-    underflowed.ccopy(r.limbs2x[i+N], sum)
+func `-=`*(a: var FpDbl, b: FpDbl) =
+  when false: # TODO slower
+    sub2x_asm(a.limbs2x, b.limbs2x, FpDbl.C.Mod.limbs)
+  else:
+    a.diff(a, b)

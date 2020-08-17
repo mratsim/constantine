@@ -154,6 +154,19 @@ func diff*(r: var CubicExt, a, b: CubicExt) =
   r.c1.diff(a.c1, b.c1)
   r.c2.diff(a.c2, b.c2)
 
+func diffAlias*(r: var QuadraticExt, a, b: QuadraticExt) =
+  ## Diff ``a`` and ``b`` into ``r``
+  ## Handles r and b aliasing
+  r.c0.diffAlias(a.c0, b.c0)
+  r.c1.diffAlias(a.c1, b.c1)
+
+func diffAlias*(r: var CubicExt, a, b: CubicExt) =
+  ## Diff ``a`` and ``b`` into ``r``
+  ## Handles r and b aliasing
+  r.c0.diffAlias(a.c0, b.c0)
+  r.c1.diffAlias(a.c1, b.c1)
+  r.c2.diffAlias(a.c2, b.c2)
+
 # Multiplication by a small integer known at compile-time
 # -------------------------------------------------------------------
 

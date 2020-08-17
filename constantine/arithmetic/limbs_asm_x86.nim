@@ -159,7 +159,7 @@ func add_asm*(r: var Limbs, a, b: Limbs): Carry {.inline.}=
 # ------------------------------------------------------------
 
 macro sub_gen[N: static int](borrow: var Borrow, r: var Limbs[N], a, b: Limbs[N]): untyped =
-  ## Generate an optimized out-of-place addition kernel
+  ## Generate an optimized out-of-place substraction kernel
 
   result = newStmtList()
 
@@ -211,13 +211,13 @@ macro sub_gen[N: static int](borrow: var Borrow, r: var Limbs[N], a, b: Limbs[N]
   result.add ctx.generate
 
 func sub_asm*(r: var Limbs, a, b: Limbs): Borrow {.inline.}=
-  ## Constant-time addition
+  ## Constant-time substraction
   sub_gen(result, r, a, b)
 
 # Multiplication
 # ------------------------------------------------------------
 
-macro mul_gen[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) {.inline.} =
+macro mul_gen[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) =
   ## Comba multiplication generator
   ## `a`, `b`, `r` can have a different number of limbs
   ## if `r`.limbs.len < a.limbs.len + b.limbs.len
@@ -327,7 +327,7 @@ macro mul_gen[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], 
   # Codegen
   result.add ctx.generate
 
-func mul_asm*[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) {.inline.} =
+func mul_asm*[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) =
   ## Multi-precision Multiplication
   ## Assumes r doesn't alias a or b
   mul_gen(r, a, b)

@@ -111,6 +111,60 @@ template bench(op: string, desc: string, iters: int, body: untyped): untyped =
 
   report(op, desc, start, stop, startClk, stopClk, iters)
 
+func random_unsafe(rng: var RngState, a: var FpDbl, Base: typedesc) =
+  ## Initialize a standalone Double-Width field element
+  ## we don't reduce it modulo p², this is only used for benchmark
+  let aHi = rng.random_unsafe(Base)
+  let aLo = rng.random_unsafe(Base)
+  for i in 0 ..< aLo.mres.limbs.len:
+    a.limbs2x[i] = aLo.mres.limbs[i]
+  for i in 0 ..< aHi.mres.limbs.len:
+    a.limbs2x[aLo.mres.limbs.len+i] = aHi.mres.limbs[i]
+
+proc sumNoReduce(T: typedesc, iters: int) =
+  var r: T
+  let a = rng.random_unsafe(T)
+  let b = rng.random_unsafe(T)
+  bench("Addition no reduce", $T, iters):
+    r.sumNoReduce(a, b)
+
+proc sum(T: typedesc, iters: int) =
+  var r: T
+  let a = rng.random_unsafe(T)
+  let b = rng.random_unsafe(T)
+  bench("Addition", $T, iters):
+    r.sum(a, b)
+
+proc diffNoReduce(T: typedesc, iters: int) =
+  var r: T
+  let a = rng.random_unsafe(T)
+  let b = rng.random_unsafe(T)
+  bench("Substraction no reduce", $T, iters):
+    r.diffNoReduce(a, b)
+
+proc diff(T: typedesc, iters: int) =
+  var r: T
+  let a = rng.random_unsafe(T)
+  let b = rng.random_unsafe(T)
+  bench("Substraction", $T, iters):
+    r.diff(a, b)
+
+proc diff2xNoReduce(T: typedesc, iters: int) =
+  var r, a, b: doubleWidth(T)
+  rng.random_unsafe(r, T)
+  rng.random_unsafe(a, T)
+  rng.random_unsafe(b, T)
+  bench("Substraction 2x no reduce", $doubleWidth(T), iters):
+    r.diffNoReduce(a, b)
+
+proc diff2x(T: typedesc, iters: int) =
+  var r, a, b: doubleWidth(T)
+  rng.random_unsafe(r, T)
+  rng.random_unsafe(a, T)
+  rng.random_unsafe(b, T)
+  bench("Substraction 2x", $doubleWidth(T), iters):
+    r.diff(a, b)
+
 proc mul2xBench*(rLen, aLen, bLen: static int, iters: int) =
   var r: BigInt[rLen]
   let a = rng.random_unsafe(BigInt[aLen])
@@ -121,20 +175,21 @@ proc mul2xBench*(rLen, aLen, bLen: static int, iters: int) =
 proc reduce2x*(T: typedesc, iters: int) =
   var r: T
   var t: doubleWidth(T)
-  let tHi = rng.random_unsafe(T)
-  let tLo = rng.random_unsafe(T)
-  for i in 0 ..< tLo.mres.limbs.len:
-    t.limbs2x[i] = tLo.mres.limbs[i]
-  for i in 0 ..< tHi.mres.limbs.len:
-    t.limbs2x[tLo.mres.limbs.len+i] = tHi.mres.limbs[i]
+  rng.random_unsafe(t, T)
 
-  bench("Reduce double-width", $T & " <- " & $doubleWidth(T), iters):
+  bench("Reduce 2x-width", $T & " <- " & $doubleWidth(T), iters):
     r.reduce(t)
 
 proc main() =
   separator()
-  mul2xBench(768, 384, 384, iters = 128)
-  reduce2x(Fp[BLS12_381], iters = 128)
+  sumNoReduce(Fp[BLS12_381], iters = 10_000_000)
+  diffNoReduce(Fp[BLS12_381], iters = 10_000_000)
+  sum(Fp[BLS12_381], iters = 10_000_000)
+  diff(Fp[BLS12_381], iters = 10_000_000)
+  diff2x(Fp[BLS12_381], iters = 10_000_000)
+  diff2xNoReduce(Fp[BLS12_381], iters = 10_000_000)
+  mul2xBench(768, 384, 384, iters = 10_000_000)
+  reduce2x(Fp[BLS12_381], iters = 10_000_000)
   separator()
 
 main()

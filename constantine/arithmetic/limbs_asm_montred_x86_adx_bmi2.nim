@@ -21,6 +21,7 @@ import
 #
 # ############################################################
 
+# TODO, MCL has an implementation about 14% faster
 
 static: doAssert UseASM_X86_64
 
