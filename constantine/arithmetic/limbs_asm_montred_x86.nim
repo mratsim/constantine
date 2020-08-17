@@ -126,7 +126,7 @@ macro montyRed_gen[N: static int](
         asmId: "[m0ninv]",
         nimSymbol: m0ninv_MR,
         rm: Reg,
-        constraint: InputOutput_EnsureClobber,
+        constraint: Input,
         cEmit: "m0ninv"
       )
     )

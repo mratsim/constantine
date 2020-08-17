@@ -602,9 +602,9 @@ func imul*(a: var Assembler_x86, dst, src: Operand) =
 func mulx*(a: var Assembler_x86, dHi, dLo, src0: Operand, src1: Register) =
   ## Does (dHi, dLo) <- src0 * src1
   doAssert src1 == rdx, "MULX requires the RDX register"
-  doAssert dHi.desc.rm in {Reg, ElemsInReg} or dHi.desc.rm in SpecificRegisters,
+  doAssert dHi.desc.rm in {Reg, ElemsInReg}+SpecificRegisters,
     "The destination operand must be a register " & $dHi.repr
-  doAssert dLo.desc.rm in {Reg, ElemsInReg} or dLo.desc.rm in SpecificRegisters,
+  doAssert dLo.desc.rm in {Reg, ElemsInReg}+SpecificRegisters,
     "The destination operand must be a register " & $dLo.repr
   doAssert dHi.desc.constraint in OutputReg
   doAssert dLo.desc.constraint in OutputReg
@@ -623,7 +623,7 @@ func adcx*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- dst + src + carry
   ## and only sets the carry flag
   doAssert dst.desc.constraint in OutputReg, $dst.repr
-  doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register: " & $dst.repr
+  doAssert dst.desc.rm in {Reg, ElemsInReg}+SpecificRegisters, "The destination operand must be a register: " & $dst.repr
   a.codeFragment("adcx", src, dst)
   a.areFlagsClobbered = true
 
@@ -631,7 +631,7 @@ func adox*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- dst + src + overflow
   ## and only sets the overflow flag
   doAssert dst.desc.constraint in OutputReg, $dst.repr
-  doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register: " & $dst.repr
+  doAssert dst.desc.rm in {Reg, ElemsInReg}+SpecificRegisters, "The destination operand must be a register: " & $dst.repr
   a.codeFragment("adox", src, dst)
   a.areFlagsClobbered = true
 

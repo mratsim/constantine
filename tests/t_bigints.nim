@@ -145,6 +145,7 @@ proc mainArith() =
         discard a.add(SecretWord 1)
         check: bool(a == expected)
 
+proc mainMul() =
   suite "Multi-precision multiplication" & " [" & $WordBitwidth & "-bit mode]":
     test "Same size operand into double size result":
       block:
@@ -185,6 +186,7 @@ proc mainArith() =
         r.prod(b, a)
         check: bool(r == expected)
 
+proc mainMulHigh() =
   suite "Multi-precision multiplication keeping only high words" & " [" & $WordBitwidth & "-bit mode]":
     test "Same size operand into double size result - discard first word":
       block:
@@ -270,6 +272,7 @@ proc mainArith() =
         r.prod_high_words(b, a, 2)
         check: bool(r == expected)
 
+proc mainModular() =
   suite "Modular operations - small modulus" & " [" & $WordBitwidth & "-bit mode]":
     # Vectors taken from Stint - https://github.com/status-im/nim-stint
     test "100 mod 13":
@@ -619,6 +622,9 @@ proc mainModularInverse() =
         check: bool(r == expected)
 
 mainArith()
+mainMul()
+mainMulHigh()
+mainModular()
 mainNeg()
 mainCopySwap()
 mainModularInverse()
