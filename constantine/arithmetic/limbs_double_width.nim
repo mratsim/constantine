@@ -11,8 +11,10 @@ import
   ../primitives,
   ./limbs
 
-when UseASM_X86_64:
+when UseASM_X86_32:
   import ./limbs_asm_montred_x86
+when UseASM_X86_64:
+  import ./limbs_asm_montred_x86_adx_bmi2
 
 # ############################################################
 #
@@ -69,7 +71,12 @@ func montyRed*[N: static int](
   # Important note: `t[i+n] += C` should propagate the carry
   # to the higher limb if any, thank you "implementation detail"
   # missing from paper.
-  when UseASM_X86_32 and r.len <= 6:
+  when UseASM_X86_64 and r.len <= 6:
+    if ({.noSideEffect.}: hasBmi2()) and ({.noSideEffect.}: hasAdx()):
+      montRed_asm_adx_bmi2(r, t, M, m0ninv, canUseNoCarryMontyMul)
+    else:
+      montRed_asm(r, t, M, m0ninv, canUseNoCarryMontyMul)
+  elif UseASM_X86_32 and r.len <= 6:
     # TODO: Assembly faster than GCC but slower than Clang
     montRed_asm(r, t, M, m0ninv, canUseNoCarryMontyMul)
   else:
