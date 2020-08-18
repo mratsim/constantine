@@ -29,6 +29,8 @@ import
 
 static: doAssert UseASM_X86_32
 
+{.localPassC:"-fomit-frame-pointer".} # Mul needs all 8 x86-32 registers
+
 # Copy
 # ------------------------------------------------------------
 macro ccopy_gen[N: static int](a: var Limbs[N], b: Limbs[N], ctl: SecretBool): untyped =
