@@ -13,6 +13,7 @@ matrix:
     # Build and test on both x86-64 and ARM64
     # Ubuntu Bionic (18.04) is needed, it includes
     # GCC 7 codegen fixes to addcarry_u64.
+    # Clang 9 (and GCC-6) are needed for inline assembly "flag output constraints"
     - dist: bionic
       arch: amd64
       env:
@@ -55,6 +56,7 @@ addons:
   homebrew:
     packages:
       - gmp
+      - llvm@9 # or Xcode 11.4.2
       # Travis `bundle` bug: https://travis-ci.community/t/macos-build-fails-because-of-homebrew-bundle-unknown-command/7296/28
       # - parallel
 
@@ -70,6 +72,11 @@ before_install:
     fi
 
 install:
+  # Override default by Clang 9
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
+      export PATH="$(brew --prefix llvm)/bin:$PATH";
+    fi
+
   # Detect caching of Nim compiler
   - |
     if [ ! -x "nim-${CHANNEL}/bin/nim" ]; then
