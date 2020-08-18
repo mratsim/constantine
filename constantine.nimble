@@ -308,6 +308,21 @@ task bench_fp_gcc_noasm, "Run benchmark 𝔽p with gcc - no Assembly":
 task bench_fp_clang_noasm, "Run benchmark 𝔽p with clang - no Assembly":
   runBench("bench_fp", "clang", useAsm = false)
 
+task bench_fpdbl, "Run benchmark 𝔽pDbl with your default compiler":
+  runBench("bench_fp_double_width")
+
+task bench_fpdbl_gcc, "Run benchmark 𝔽p with gcc":
+  runBench("bench_fp_double_width", "gcc")
+
+task bench_fpdbl_clang, "Run benchmark 𝔽p with clang":
+  runBench("bench_fp_double_width", "clang")
+
+task bench_fpdbl_gcc_noasm, "Run benchmark 𝔽p with gcc - no Assembly":
+  runBench("bench_fp_double_width", "gcc", useAsm = false)
+
+task bench_fpdbl_clang_noasm, "Run benchmark 𝔽p with clang - no Assembly":
+  runBench("bench_fp_double_width", "clang", useAsm = false)
+
 task bench_fp2, "Run benchmark with 𝔽p2 your default compiler":
   runBench("bench_fp2")
 
