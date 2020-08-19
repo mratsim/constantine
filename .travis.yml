@@ -33,10 +33,20 @@ matrix:
       env:
         - ARCH=amd64
         - CHANNEL=devel
-      compiler: clang
+      # compiler: clang
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-bionic-9.0
+          packages:
+            - clang-9.0
+      env:
+        - MATRIX_EVAL="CC=clang-9.0 && CXX=clang++-9.0"
 
     # On OSX we only test against clang (gcc is mapped to clang by default)
     - os: osx
+      osx_image: xcode11.5 # Need xcode 11.4.2 min for Clang 9
       arch: amd64
       env:
         - ARCH=amd64
@@ -56,7 +66,6 @@ addons:
   homebrew:
     packages:
       - gmp
-      - llvm@9 # or Xcode 11.4.2
       # Travis `bundle` bug: https://travis-ci.community/t/macos-build-fails-because-of-homebrew-bundle-unknown-command/7296/28
       # - parallel
 
@@ -72,11 +81,6 @@ before_install:
     fi
 
 install:
-  # Override default by Clang 9
-  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
-      export PATH="$(brew --prefix llvm)/bin:$PATH";
-    fi
-
   # Detect caching of Nim compiler
   - |
     if [ ! -x "nim-${CHANNEL}/bin/nim" ]; then
