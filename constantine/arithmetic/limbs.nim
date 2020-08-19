@@ -13,6 +13,7 @@ import
 when UseASM_X86_32:
   import ./limbs_asm_x86
 when UseASM_X86_64:
+  import ./limbs_asm_mul_x86
   import ./limbs_asm_mul_x86_adx_bmi2
 
 # ############################################################
@@ -306,7 +307,7 @@ func prod*[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], b: 
       mul_asm_adx_bmi2(r, a, b)
     else:
       mul_asm(r, a, b)
-  elif UseASM_X86_32:
+  elif UseASM_X86_64:
     mul_asm(r, a, b)
   else:
     # We use Product Scanning / Comba multiplication
