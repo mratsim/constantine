@@ -120,6 +120,7 @@ script:
         if [[ "$ARCH" != "arm64" ]]; then
           nimble test_parallel_no_assembler
         fi
+      fi
 branches:
   except:
     - gh-pages
