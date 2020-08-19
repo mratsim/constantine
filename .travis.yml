@@ -38,11 +38,11 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
-            - llvm-toolchain-bionic-9.0
+            - llvm-toolchain-bionic-10.0 # LLVM 9 repo is disallowed
           packages:
-            - clang-9.0
+            - clang-10.0
       env:
-        - MATRIX_EVAL="CC=clang-9.0 && CXX=clang++-9.0"
+        - MATRIX_EVAL="CC=clang-10.0 && CXX=clang++-10.0"
 
     # On OSX we only test against clang (gcc is mapped to clang by default)
     - os: osx
