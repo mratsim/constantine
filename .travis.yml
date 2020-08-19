@@ -33,16 +33,16 @@ matrix:
       env:
         - ARCH=amd64
         - CHANNEL=devel
-      # compiler: clang
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-            - llvm-toolchain-bionic-10.0 # LLVM 9 repo is disallowed
-          packages:
-            - clang-10.0
-      env:
-        - MATRIX_EVAL="CC=clang-10.0 && CXX=clang++-10.0"
+      compiler: clang
+      # addons:
+      #   apt:
+      #     sources:
+      #       - ubuntu-toolchain-r-test
+      #       - llvm-toolchain-bionic-9.0 # LLVM 9 repo is disallowed
+      #     packages:
+      #       - clang-9.0
+      # env:
+      #   - MATRIX_EVAL="CC=clang-9.0 && CXX=clang++-9.0"
 
     # On OSX we only test against clang (gcc is mapped to clang by default)
     - os: osx
@@ -109,10 +109,17 @@ before_script:
 script:
     - nimble refresh
     - nimble install gmp stew
-    - nimble test_parallel
-    - if [[ "$ARCH" != "arm64" ]]; then
-        nimble test_parallel_no_assembler;
-      fi
+    # Installing Clang9.0 or later is a pain in Travis
+    # for inline assembly "flag output constraint"
+    # Also MacOS build is timing out with 2 series of tests.
+    - |
+      if [[ "$TRAVIS_COMPILER" == clang]]
+        nimble test_parallel_no_assembler
+      else
+        nimble test_parallel
+        if [[ "$ARCH" != "arm64" ]]; then
+          nimble test_parallel_no_assembler
+        fi
 branches:
   except:
     - gh-pages
