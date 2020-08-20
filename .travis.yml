@@ -113,7 +113,7 @@ script:
     # for inline assembly "flag output constraint"
     # Also MacOS build is timing out with 2 series of tests.
     - |
-      if [[ "$TRAVIS_COMPILER" == clang]]
+      if [[ "$TRAVIS_COMPILER" == clang]]; then
         nimble test_parallel_no_assembler
       else
         nimble test_parallel
