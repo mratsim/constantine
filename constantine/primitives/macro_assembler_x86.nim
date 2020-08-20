@@ -6,7 +6,7 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import std/[macros, strutils, sets, hashes]
+import std/[macros, strutils, sets, hashes, algorithm]
 
 # A compile-time inline assembler
 
@@ -32,6 +32,9 @@ type
     R8             = "r8"
 
     RAX            = "a"
+
+    # Flags
+    CarryFlag      = "@ccc"
 
   Register* = enum
     rbx, rdx, r8, rax
@@ -97,6 +100,12 @@ func hash(od: OperandDesc): Hash =
 
 func len*(opArray: OperandArray): int =
   opArray.buf.len
+
+func len*(opArray: Operand): int =
+  opArray.buf.len
+
+func rotateLeft*(opArray: var OperandArray) =
+  opArray.buf.rotateLeft(1)
 
 proc `[]`*(opArray: OperandArray, index: int): Operand =
   opArray.buf[index]
@@ -180,6 +189,25 @@ func asArrayAddr*(op: Operand, len: int): Operand =
 
 # Code generation
 # ------------------------------------------------------------------------------------------------------------
+
+func setToCarryFlag*(a: var Assembler_x86, carry: NimNode) =
+
+  # We need to dereference the hidden pointer of var param
+  let isHiddenDeref = carry.kind == nnkHiddenDeref
+  let nimSymbol = if isHiddenDeref: carry[0]
+                  else: carry
+  {.noSideEffect.}:
+    let symStr = $nimSymbol
+
+  let desc = OperandDesc(
+    asmId: "",
+    nimSymbol: ident(symStr),
+    rm: CarryFlag,
+    constraint: Output_Overwrite,
+    cEmit: symStr
+  )
+
+  a.operands.incl(desc)
 
 func generate*(a: Assembler_x86): NimNode =
   ## Generate the inline assembly code from
@@ -527,7 +555,7 @@ func cmovc*(a: var Assembler_x86, dst, src: Operand) =
 func cmovnc*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- src if the carry flag is not set
   doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register: " & $dst.repr
-  doAssert dst.desc.constraint in {Output_EarlyClobber, InputOutput, Output_Overwrite}, $dst.repr
+  doAssert dst.desc.constraint in OutputReg, $dst.repr
 
   a.codeFragment("cmovnc", src, dst)
   # No clobber
@@ -566,7 +594,7 @@ func mul*(a: var Assembler_x86, dHi, dLo: Register, src0: Operand, src1: Registe
 
 func imul*(a: var Assembler_x86, dst, src: Operand) =
   ## Does dst <- dst * src, keeping only the low half
-  doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register: " & $dst.repr
+  doAssert dst.desc.rm in {Reg, ElemsInReg}+SpecificRegisters, "The destination operand must be a register: " & $dst.repr
   doAssert dst.desc.constraint in OutputReg, $dst.repr
 
   a.codeFragment("imul", src, dst)
@@ -574,9 +602,9 @@ func imul*(a: var Assembler_x86, dst, src: Operand) =
 func mulx*(a: var Assembler_x86, dHi, dLo, src0: Operand, src1: Register) =
   ## Does (dHi, dLo) <- src0 * src1
   doAssert src1 == rdx, "MULX requires the RDX register"
-  doAssert dHi.desc.rm in {Reg, ElemsInReg} or dHi.desc.rm in SpecificRegisters,
+  doAssert dHi.desc.rm in {Reg, ElemsInReg}+SpecificRegisters,
     "The destination operand must be a register " & $dHi.repr
-  doAssert dLo.desc.rm in {Reg, ElemsInReg} or dLo.desc.rm in SpecificRegisters,
+  doAssert dLo.desc.rm in {Reg, ElemsInReg}+SpecificRegisters,
     "The destination operand must be a register " & $dLo.repr
   doAssert dHi.desc.constraint in OutputReg
   doAssert dLo.desc.constraint in OutputReg
@@ -595,7 +623,7 @@ func adcx*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- dst + src + carry
   ## and only sets the carry flag
   doAssert dst.desc.constraint in OutputReg, $dst.repr
-  doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register: " & $dst.repr
+  doAssert dst.desc.rm in {Reg, ElemsInReg}+SpecificRegisters, "The destination operand must be a register: " & $dst.repr
   a.codeFragment("adcx", src, dst)
   a.areFlagsClobbered = true
 
@@ -603,7 +631,7 @@ func adox*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- dst + src + overflow
   ## and only sets the overflow flag
   doAssert dst.desc.constraint in OutputReg, $dst.repr
-  doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register: " & $dst.repr
+  doAssert dst.desc.rm in {Reg, ElemsInReg}+SpecificRegisters, "The destination operand must be a register: " & $dst.repr
   a.codeFragment("adox", src, dst)
   a.areFlagsClobbered = true
 

@@ -8,8 +8,13 @@
 
 import
   ../config/common,
-  ../primitives,
-  ../../helpers/static_for
+  ../primitives
+
+when UseASM_X86_32:
+  import ./limbs_asm_x86
+when UseASM_X86_64:
+  import ./limbs_asm_mul_x86
+  import ./limbs_asm_mul_x86_adx_bmi2
 
 # ############################################################
 #
@@ -37,38 +42,8 @@ import
 # The limb-endianess is little-endian, less significant limb is at index 0.
 # The word-endianness is native-endian.
 
-type Limbs*[N: static int] = array[N, SecretWord]
-  ## Limbs-type
-  ## Should be distinct type to avoid builtins to use non-constant time
-  ## implementation, for example for comparison.
-  ##
-  ## but for unknown reason, it prevents semchecking `bits`
-
 # No exceptions allowed
 {.push raises: [].}
-
-# ############################################################
-#
-#                      Accessors
-#
-# ############################################################
-#
-# Commented out since we don't use a distinct type
-
-# template `[]`[N](v: Limbs[N], idx: int): SecretWord =
-#   (array[N, SecretWord])(v)[idx]
-#
-# template `[]`[N](v: var Limbs[N], idx: int): var SecretWord =
-#   (array[N, SecretWord])(v)[idx]
-#
-# template `[]=`[N](v: Limbs[N], idx: int, val: SecretWord) =
-#   (array[N, SecretWord])(v)[idx] = val
-
-# ############################################################
-#
-#           Checks and debug/test only primitives
-#
-# ############################################################
 
 # ############################################################
 #
@@ -104,8 +79,11 @@ func ccopy*(a: var Limbs, b: Limbs, ctl: SecretBool) =
   ## If ctl is true: b is copied into a
   ## if ctl is false: b is not copied and a is untouched
   ## Time and memory accesses are the same whether a copy occurs or not
-  for i in 0 ..< a.len:
-    ctl.ccopy(a[i], b[i])
+  when UseASM_X86_32:
+    ccopy_asm(a, b, ctl)
+  else:
+    for i in 0 ..< a.len:
+      ctl.ccopy(a[i], b[i])
 
 func cswap*(a, b: var Limbs, ctl: CTBool) =
   ## Swap ``a`` and ``b`` if ``ctl`` is true
@@ -190,9 +168,12 @@ func shiftRight*(a: var Limbs, k: int) {.inline.}=
 func add*(a: var Limbs, b: Limbs): Carry =
   ## Limbs addition
   ## Returns the carry
-  result = Carry(0)
-  for i in 0 ..< a.len:
-    addC(result, a[i], a[i], b[i], result)
+  when UseASM_X86_32:
+    result = add_asm(a, a, b)
+  else:
+    result = Carry(0)
+    for i in 0 ..< a.len:
+      addC(result, a[i], a[i], b[i], result)
 
 func add*(a: var Limbs, w: SecretWord): Carry =
   ## Limbs addition, add a number that fits in a word
@@ -222,16 +203,22 @@ func sum*(r: var Limbs, a, b: Limbs): Carry =
   ## `r` is initialized/overwritten
   ##
   ## Returns the carry
-  result = Carry(0)
-  for i in 0 ..< a.len:
-    addC(result, r[i], a[i], b[i], result)
+  when UseASM_X86_32:
+    result = add_asm(r, a, b)
+  else:
+    result = Carry(0)
+    for i in 0 ..< a.len:
+      addC(result, r[i], a[i], b[i], result)
 
 func sub*(a: var Limbs, b: Limbs): Borrow =
   ## Limbs substraction
   ## Returns the borrow
-  result = Borrow(0)
-  for i in 0 ..< a.len:
-    subB(result, a[i], a[i], b[i], result)
+  when UseASM_X86_32:
+    result = sub_asm(a, a, b)
+  else:
+    result = Borrow(0)
+    for i in 0 ..< a.len:
+      subB(result, a[i], a[i], b[i], result)
 
 func sub*(a: var Limbs, w: SecretWord): Borrow =
   ## Limbs substraction, sub a number that fits in a word
@@ -272,9 +259,12 @@ func diff*(r: var Limbs, a, b: Limbs): Borrow =
   ## `r` is initialized/overwritten
   ##
   ## Returns the borrow
-  result = Borrow(0)
-  for i in 0 ..< a.len:
-    subB(result, r[i], a[i], b[i], result)
+  when UseASM_X86_32:
+    result = sub_asm(r, a, b)
+  else:
+    result = Borrow(0)
+    for i in 0 ..< a.len:
+      subB(result, r[i], a[i], b[i], result)
 
 func cneg*(a: var Limbs, ctl: CTBool) =
   ## Conditional negation.
@@ -301,7 +291,7 @@ func cneg*(a: var Limbs, ctl: CTBool) =
 # Multiplication
 # ------------------------------------------------------------
 
-func prod*[rLen, aLen, bLen](r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) =
+func prod*[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) =
   ## Multi-precision multiplication
   ## r <- a*b
   ##
@@ -309,23 +299,34 @@ func prod*[rLen, aLen, bLen](r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen])
   ## if `r`.limbs.len < a.limbs.len + b.limbs.len
   ## The result will be truncated, i.e. it will be
   ## a * b (mod (2^WordBitwidth)^r.limbs.len)
+  ##
+  ## `r` must not alias ``a`` or ``b``
 
-  # We use Product Scanning / Comba multiplication
-  var t, u, v = SecretWord(0)
-  var z: Limbs[rLen] # zero-init, ensure on stack and removes in-place problems
+  when UseASM_X86_64 and aLen <= 6:
+    if ({.noSideEffect.}: hasBmi2()) and ({.noSideEffect.}: hasAdx()):
+      mul_asm_adx_bmi2(r, a, b)
+    else:
+      mul_asm(r, a, b)
+  elif UseASM_X86_64:
+    mul_asm(r, a, b)
+  else:
+    # We use Product Scanning / Comba multiplication
+    var t, u, v = SecretWord(0)
 
-  staticFor i, 0, min(a.len+b.len, r.len):
-    const ib = min(b.len-1, i)
-    const ia = i - ib
-    staticFor j, 0, min(a.len - ia, ib+1):
-      mulAcc(t, u, v, a[ia+j], b[ib-j])
+    staticFor i, 0, min(a.len+b.len, r.len):
+      const ib = min(b.len-1, i)
+      const ia = i - ib
+      staticFor j, 0, min(a.len - ia, ib+1):
+        mulAcc(t, u, v, a[ia+j], b[ib-j])
 
-    z[i] = v
-    v = u
-    u = t
-    t = SecretWord(0)
+      r[i] = v
+      v = u
+      u = t
+      t = SecretWord(0)
 
-  r = z
+    if aLen+bLen < rLen:
+      for i in aLen+bLen ..< rLen:
+        r[i] = SecretWord 0
 
 func prod_high_words*[rLen, aLen, bLen](
        r: var Limbs[rLen],

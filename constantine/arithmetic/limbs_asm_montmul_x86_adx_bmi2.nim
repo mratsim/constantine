@@ -12,8 +12,8 @@ import
   # Internal
   ../config/common,
   ../primitives,
-  ./limbs_generic,
-  ./limbs_asm_montmul_x86
+  ./limbs,
+  ./limbs_asm_montred_x86
 
 # ############################################################
 #
@@ -26,7 +26,7 @@ import
 #       They are nice to let the compiler deals with mov
 #       but too constraining so we move things ourselves.
 
-static: doAssert UseX86ASM
+static: doAssert UseASM_X86_64
 
 # MULX/ADCX/ADOX
 {.localPassC:"-madx -mbmi2".}
@@ -37,53 +37,58 @@ static: doAssert UseX86ASM
 # ------------------------------------------------------------
 proc mulx_by_word(
        ctx: var Assembler_x86,
-       C: Operand,
+       hi: Operand,
        t: OperandArray,
        a: Operand, # Pointer in scratchspace
-       word: Operand,
-       S, rRDX: Operand
+       word0: Operand,
+       lo, rRDX: Operand
      ) =
   ## Multiply the `a[0..<N]` by `word` and store in `t[0..<N]`
   ## and carry register `C` (t[N])
   ## `t` and `C` overwritten
   ## `S` is a scratchspace carry register
   ## `rRDX` is the RDX register descriptor
-  let N = t.len
+  let N = min(a.len, t.len)
 
-  doAssert N >= 2, "The Assembly-optimized montgomery multiplication requires at least 2 limbs."
   ctx.comment "  Outer loop i = 0"
-  ctx.`xor` rRDX, rRDX # Clear flags - TODO: necessary?
-  ctx.mov rRDX, word
 
   # for j=0 to N-1
   #  (C,t[j])  := t[j] + a[j]*b[i] + C
 
   # First limb
-  ctx.mulx t[1], t[0], a[0], rdx
+  ctx.mov rRDX, word0
+  if N > 1:
+    ctx.mulx t[1], t[0], a[0], rdx
+    ctx.`xor` hi, hi # Clear flags - TODO: necessary?
+  else:
+    ctx.mulx hi, t[0], a[0], rdx
+    return
 
   # Steady state
   for j in 1 ..< N-1:
-    ctx.mulx t[j+1], S, a[j], rdx
-    ctx.adox t[j], S   # TODO, we probably can use ADC here
+    ctx.mulx t[j+1], lo, a[j], rdx
+    if j == 1:
+      ctx.add t[j], lo
+    else:
+      ctx.adc t[j], lo
 
   # Last limb
-  ctx.mulx C, S, a[N-1], rdx
-  ctx.adox t[N-1], S
+  ctx.comment "  Outer loop i = 0, last limb"
+  ctx.mulx hi, lo, a[N-1], rdx
+  ctx.adc t[N-1], lo
 
   # Final carries
-  ctx.comment "  Mul carries i = 0"
-  ctx.mov  rRDX, 0 # Set to 0 without clearing flags
-  ctx.adcx C, rRDX
-  ctx.adox C, rRDX
+  ctx.comment "  Accumulate last carries in hi word"
+  ctx.adc hi, 0
 
 proc mulaccx_by_word(
        ctx: var Assembler_x86,
-       C: Operand,
+       hi: Operand,
        t: OperandArray,
        a: Operand, # Pointer in scratchspace
        i: int,
        word: Operand,
-       S, rRDX: Operand
+       lo, rRDX: Operand
      ) =
   ## Multiply the `a[0..<N]` by `word`
   ## and accumulate in `t[0..<N]`
@@ -91,33 +96,33 @@ proc mulaccx_by_word(
   ## `t` and `C` are multiply-accumulated
   ## `S` is a scratchspace register
   ## `rRDX` is the RDX register descriptor
-  let N = t.len
+  let N = min(a.len, t.len)
 
-  doAssert N >= 2, "The Assembly-optimized montgomery multiplication requires at least 2 limbs."
   doAssert i != 0
 
-  ctx.comment "  Outer loop i = " & $i
-  ctx.`xor` rRDX, rRDX # Clear flags - TODO: necessary?
+  ctx.comment "  Outer loop i = " & $i & ", j in [0, " & $N & ")"
   ctx.mov rRDX, word
+  ctx.`xor` hi, hi # Clear flags - TODO: necessary?
 
   # for j=0 to N-1
   #  (C,t[j])  := t[j] + a[j]*b[i] + C
 
   # Steady state
   for j in 0 ..< N-1:
-    ctx.mulx C, S, a[j], rdx
-    ctx.adox t[j], S
-    ctx.adcx t[j+1], C
+    ctx.mulx hi, lo, a[j], rdx
+    ctx.adox t[j], lo
+    ctx.adcx t[j+1], hi
 
   # Last limb
-  ctx.mulx C, S, a[N-1], rdx
-  ctx.adox t[N-1], S
+  ctx.comment "  Outer loop i = " & $i & ", last limb"
+  ctx.mulx hi, lo, a[N-1], rdx
+  ctx.adox t[N-1], lo
 
   # Final carries
-  ctx.comment "  Mul carries i = " & $i
+  ctx.comment "  Accumulate last carries in hi word"
   ctx.mov  rRDX, 0 # Set to 0 without clearing flags
-  ctx.adcx C, rRDX
-  ctx.adox C, rRDX
+  ctx.adcx hi, rRDX
+  ctx.adox hi, rRDX
 
 proc partialRedx(
        ctx: var Assembler_x86,
@@ -163,7 +168,7 @@ proc partialRedx(
       ctx.adox t[j-1], S
 
     # Last carries
-    # t[N-1} = S + C
+    # t[N-1] = S + C
     ctx.comment "  Reduction carry "
     ctx.mov S, 0
     ctx.adcx t[N-1], S
@@ -182,13 +187,13 @@ macro montMul_CIOS_nocarry_adx_bmi2_gen[N: static int](r_MM: var Limbs[N], a_MM,
   let
     scratchSlots = max(N, 6)
 
-    r = init(OperandArray, nimSymbol = r_MM, N, PointerInReg, InputOutput)
+    r = init(OperandArray, nimSymbol = r_MM, N, PointerInReg, InputOutput_EnsureClobber)
     # We could force M as immediate by specializing per moduli
     M = init(OperandArray, nimSymbol = M_MM, N, PointerInReg, Input)
     # If N is too big, we need to spill registers. TODO.
     t = init(OperandArray, nimSymbol = ident"t", N, ElemsInReg, Output_EarlyClobber)
     # MultiPurpose Register slots
-    scratch = init(OperandArray, nimSymbol = ident"scratch", scratchSlots, ElemsInReg, InputOutput)
+    scratch = init(OperandArray, nimSymbol = ident"scratch", scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
 
     # MULX requires RDX
     rRDX = Operand(
@@ -270,7 +275,7 @@ macro montMul_CIOS_nocarry_adx_bmi2_gen[N: static int](r_MM: var Limbs[N], a_MM,
       lo, C, rRDX
     )
 
-  ctx.finalSub(
+  ctx.finalSubNoCarry(
     r, t, M,
     scratch
   )

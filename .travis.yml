@@ -13,6 +13,7 @@ matrix:
     # Build and test on both x86-64 and ARM64
     # Ubuntu Bionic (18.04) is needed, it includes
     # GCC 7 codegen fixes to addcarry_u64.
+    # Clang 9 (and GCC-6) are needed for inline assembly "flag output constraints"
     - dist: bionic
       arch: amd64
       env:
@@ -33,9 +34,19 @@ matrix:
         - ARCH=amd64
         - CHANNEL=devel
       compiler: clang
+      # addons:
+      #   apt:
+      #     sources:
+      #       - ubuntu-toolchain-r-test
+      #       - llvm-toolchain-bionic-9.0 # LLVM 9 repo is disallowed
+      #     packages:
+      #       - clang-9.0
+      # env:
+      #   - MATRIX_EVAL="CC=clang-9.0 && CXX=clang++-9.0"
 
     # On OSX we only test against clang (gcc is mapped to clang by default)
     - os: osx
+      osx_image: xcode11.5 # Need xcode 11.4.2 min for Clang 9
       arch: amd64
       env:
         - ARCH=amd64
@@ -98,9 +109,17 @@ before_script:
 script:
     - nimble refresh
     - nimble install gmp stew
-    - nimble test_parallel
-    - if [[ "$ARCH" != "arm64" ]]; then
-        nimble test_parallel_no_assembler;
+    # Installing Clang9.0 or later is a pain in Travis
+    # for inline assembly "flag output constraint"
+    # Also MacOS build is timing out with 2 series of tests.
+    - |
+      if [[ "$TRAVIS_COMPILER" == "clang" ]]; then
+        nimble test_parallel_no_assembler
+      else
+        nimble test_parallel
+        if [[ "$ARCH" != "arm64" ]]; then
+          nimble test_parallel_no_assembler
+        fi
       fi
 branches:
   except:

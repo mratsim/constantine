@@ -25,7 +25,7 @@ proc checkCubeRootOfUnity(curve: static Curve) =
   test $curve & " cube root of unity (mod r)":
     var cru: BigInt[3 * curve.getCurveOrderBitwidth()]
     cru.prod(curve.getCubicRootOfUnity_mod_r(), curve.getCubicRootOfUnity_mod_r())
-    cru.prod(cru, curve.getCubicRootOfUnity_mod_r())
+    cru.mul(curve.getCubicRootOfUnity_mod_r())
 
     var r: BigInt[curve.getCurveOrderBitwidth()]
     r.reduce(cru, curve.getCurveOrder)

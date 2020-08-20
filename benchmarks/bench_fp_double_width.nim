@@ -81,9 +81,9 @@ proc report(op, field: string, start, stop: MonoTime, startClk, stopClk: int64, 
   let ns = inNanoseconds((stop-start) div iters)
   let throughput = 1e9 / float64(ns)
   when SupportsGetTicks:
-    echo &"{op:<50} {field:<18} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
+    echo &"{op:<28} {field:<40} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
   else:
-    echo &"{op:<50} {field:<18} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
+    echo &"{op:<28} {field:<40} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
 
 proc notes*() =
   echo "Notes:"
@@ -95,15 +95,7 @@ proc notes*() =
   echo "  - The simplest operations might be optimized away by the compiler."
   echo "  - Fast Squaring and Fast Multiplication are possible if there are spare bits in the prime representation (i.e. the prime uses 254 bits out of 256 bits)"
 
-macro fixFieldDisplay(T: typedesc): untyped =
-  # At compile-time, enums are integers and their display is buggy
-  # we get the Curve ID instead of the curve name.
-  let instantiated = T.getTypeInst()
-  var name = $instantiated[1][0] # Fp
-  name.add "[" & $Curve(instantiated[1][1].intVal) & "]"
-  result = newLit name
-
-template bench(op: string, T: typedesc, iters: int, body: untyped): untyped =
+template bench(op: string, desc: string, iters: int, body: untyped): untyped =
   let start = getMonotime()
   when SupportsGetTicks:
     let startClk = getTicks()
@@ -117,71 +109,88 @@ template bench(op: string, T: typedesc, iters: int, body: untyped): untyped =
     let startClk = -1'i64
     let stopClk = -1'i64
 
-  report(op, fixFieldDisplay(T), start, stop, startClk, stopClk, iters)
+  report(op, desc, start, stop, startClk, stopClk, iters)
 
-proc addBench*(T: typedesc, iters: int) =
-  var x = rng.random_unsafe(T)
-  let y = rng.random_unsafe(T)
-  bench("Addition", T, iters):
-    x += y
+func random_unsafe(rng: var RngState, a: var FpDbl, Base: typedesc) =
+  ## Initialize a standalone Double-Width field element
+  ## we don't reduce it modulo p², this is only used for benchmark
+  let aHi = rng.random_unsafe(Base)
+  let aLo = rng.random_unsafe(Base)
+  for i in 0 ..< aLo.mres.limbs.len:
+    a.limbs2x[i] = aLo.mres.limbs[i]
+  for i in 0 ..< aHi.mres.limbs.len:
+    a.limbs2x[aLo.mres.limbs.len+i] = aHi.mres.limbs[i]
 
-proc subBench*(T: typedesc, iters: int) =
-  var x = rng.random_unsafe(T)
-  let y = rng.random_unsafe(T)
-  preventOptimAway(x)
-  bench("Substraction", T, iters):
-    x -= y
-
-proc negBench*(T: typedesc, iters: int) =
+proc sumNoReduce(T: typedesc, iters: int) =
   var r: T
-  let x = rng.random_unsafe(T)
-  bench("Negation", T, iters):
-    r.neg(x)
+  let a = rng.random_unsafe(T)
+  let b = rng.random_unsafe(T)
+  bench("Addition no reduce", $T, iters):
+    r.sumNoReduce(a, b)
 
-proc mulBench*(T: typedesc, iters: int) =
+proc sum(T: typedesc, iters: int) =
   var r: T
-  let x = rng.random_unsafe(T)
-  let y = rng.random_unsafe(T)
-  preventOptimAway(r)
-  bench("Multiplication", T, iters):
-    r.prod(x, y)
+  let a = rng.random_unsafe(T)
+  let b = rng.random_unsafe(T)
+  bench("Addition", $T, iters):
+    r.sum(a, b)
 
-proc sqrBench*(T: typedesc, iters: int) =
+proc diffNoReduce(T: typedesc, iters: int) =
   var r: T
-  let x = rng.random_unsafe(T)
-  preventOptimAway(r)
-  bench("Squaring", T, iters):
-    r.square(x)
+  let a = rng.random_unsafe(T)
+  let b = rng.random_unsafe(T)
+  bench("Substraction no reduce", $T, iters):
+    r.diffNoReduce(a, b)
 
-proc invBench*(T: typedesc, iters: int) =
+proc diff(T: typedesc, iters: int) =
   var r: T
-  let x = rng.random_unsafe(T)
-  preventOptimAway(r)
-  bench("Inversion (constant-time Euclid)", T, iters):
-    r.inv(x)
+  let a = rng.random_unsafe(T)
+  let b = rng.random_unsafe(T)
+  bench("Substraction", $T, iters):
+    r.diff(a, b)
 
-proc powFermatInversionBench*(T: typedesc, iters: int) =
-  let x = rng.random_unsafe(T)
-  bench("Inversion via exponentiation p-2 (Little Fermat)", T, iters):
-    var r = x
-    r.powUnsafeExponent(T.C.getInvModExponent())
+proc diff2xNoReduce(T: typedesc, iters: int) =
+  var r, a, b: doubleWidth(T)
+  rng.random_unsafe(r, T)
+  rng.random_unsafe(a, T)
+  rng.random_unsafe(b, T)
+  bench("Substraction 2x no reduce", $doubleWidth(T), iters):
+    r.diffNoReduce(a, b)
 
-proc sqrtBench*(T: typedesc, iters: int) =
-  let x = rng.random_unsafe(T)
-  bench("Square Root + square check (constant-time)", T, iters):
-    var r = x
-    discard r.sqrt_if_square()
+proc diff2x(T: typedesc, iters: int) =
+  var r, a, b: doubleWidth(T)
+  rng.random_unsafe(r, T)
+  rng.random_unsafe(a, T)
+  rng.random_unsafe(b, T)
+  bench("Substraction 2x", $doubleWidth(T), iters):
+    r.diff(a, b)
 
-proc powBench*(T: typedesc, iters: int) =
-  let x = rng.random_unsafe(T)
-  let exponent = rng.random_unsafe(BigInt[T.C.getCurveOrderBitwidth()])
-  bench("Exp curve order (constant-time) - " & $exponent.bits & "-bit", T, iters):
-    var r = x
-    r.pow(exponent)
+proc mul2xBench*(rLen, aLen, bLen: static int, iters: int) =
+  var r: BigInt[rLen]
+  let a = rng.random_unsafe(BigInt[aLen])
+  let b = rng.random_unsafe(BigInt[bLen])
+  bench("Multiplication", $rLen & " <- " & $aLen & " x " & $bLen, iters):
+    r.prod(a, b)
 
-proc powUnsafeBench*(T: typedesc, iters: int) =
-  let x = rng.random_unsafe(T)
-  let exponent = rng.random_unsafe(BigInt[T.C.getCurveOrderBitwidth()])
-  bench("Exp curve order (Leak exponent bits) - " & $exponent.bits & "-bit", T, iters):
-    var r = x
-    r.powUnsafeExponent(exponent)
+proc reduce2x*(T: typedesc, iters: int) =
+  var r: T
+  var t: doubleWidth(T)
+  rng.random_unsafe(t, T)
+
+  bench("Reduce 2x-width", $T & " <- " & $doubleWidth(T), iters):
+    r.reduce(t)
+
+proc main() =
+  separator()
+  sumNoReduce(Fp[BLS12_381], iters = 10_000_000)
+  diffNoReduce(Fp[BLS12_381], iters = 10_000_000)
+  sum(Fp[BLS12_381], iters = 10_000_000)
+  diff(Fp[BLS12_381], iters = 10_000_000)
+  diff2x(Fp[BLS12_381], iters = 10_000_000)
+  diff2xNoReduce(Fp[BLS12_381], iters = 10_000_000)
+  mul2xBench(768, 384, 384, iters = 10_000_000)
+  reduce2x(Fp[BLS12_381], iters = 10_000_000)
+  separator()
+
+main()
+notes()

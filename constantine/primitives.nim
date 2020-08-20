@@ -12,7 +12,8 @@ import
   primitives/multiplexers,
   primitives/addcarry_subborrow,
   primitives/extended_precision,
-  primitives/bithacks
+  primitives/bithacks,
+  primitives/static_for
 
 export
   constant_time_types,
@@ -20,7 +21,8 @@ export
   multiplexers,
   addcarry_subborrow,
   extended_precision,
-  bithacks
+  bithacks,
+  staticFor
 
 when X86 and GCC_Compatible:
   import primitives/[cpuinfo_x86, macro_assembler_x86]

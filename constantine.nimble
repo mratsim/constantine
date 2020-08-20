@@ -35,6 +35,8 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_finite_fields_vs_gmp.nim", true),
   # Precompute
   ("tests/t_precomputed", false),
+  # Double-width finite fields
+  ("tests/t_finite_fields_double_width.nim", false),
   # Towers of extension fields
   ("tests/t_fp2.nim", false),
   ("tests/t_fp2_sqrt.nim", false),
@@ -100,13 +102,15 @@ proc test(flags, path: string, commandFile = false) =
     # commandFile.writeLine command
     exec "echo \'" & command & "\' >> " & buildParallel
 
-proc runBench(benchName: string, compiler = "") =
+proc runBench(benchName: string, compiler = "", useAsm = true) =
   if not dirExists "build":
     mkDir "build"
 
   var cc = ""
   if compiler != "":
-    cc = "--cc:" & compiler & " -d:ConstantineASM=false"
+    cc = "--cc:" & compiler
+  if not useAsm:
+    cc &= " -d:ConstantineASM=false"
   exec "nim c " & cc &
        " -d:danger --verbosity:0 -o:build/" & benchName & "_" & compiler &
        " -r --hints:off --warnings:off benchmarks/" & benchName & ".nim"
@@ -298,6 +302,27 @@ task bench_fp_gcc, "Run benchmark 𝔽p with gcc":
 task bench_fp_clang, "Run benchmark 𝔽p with clang":
   runBench("bench_fp", "clang")
 
+task bench_fp_gcc_noasm, "Run benchmark 𝔽p with gcc - no Assembly":
+  runBench("bench_fp", "gcc", useAsm = false)
+
+task bench_fp_clang_noasm, "Run benchmark 𝔽p with clang - no Assembly":
+  runBench("bench_fp", "clang", useAsm = false)
+
+task bench_fpdbl, "Run benchmark 𝔽pDbl with your default compiler":
+  runBench("bench_fp_double_width")
+
+task bench_fpdbl_gcc, "Run benchmark 𝔽p with gcc":
+  runBench("bench_fp_double_width", "gcc")
+
+task bench_fpdbl_clang, "Run benchmark 𝔽p with clang":
+  runBench("bench_fp_double_width", "clang")
+
+task bench_fpdbl_gcc_noasm, "Run benchmark 𝔽p with gcc - no Assembly":
+  runBench("bench_fp_double_width", "gcc", useAsm = false)
+
+task bench_fpdbl_clang_noasm, "Run benchmark 𝔽p with clang - no Assembly":
+  runBench("bench_fp_double_width", "clang", useAsm = false)
+
 task bench_fp2, "Run benchmark with 𝔽p2 your default compiler":
   runBench("bench_fp2")
 
@@ -306,6 +331,12 @@ task bench_fp2_gcc, "Run benchmark 𝔽p2 with gcc":
 
 task bench_fp2_clang, "Run benchmark 𝔽p2 with clang":
   runBench("bench_fp2", "clang")
+
+task bench_fp2_gcc_noasm, "Run benchmark 𝔽p2 with gcc - no Assembly":
+  runBench("bench_fp2", "gcc", useAsm = false)
+
+task bench_fp2_clang_noasm, "Run benchmark 𝔽p2 with clang - no Assembly":
+  runBench("bench_fp2", "clang", useAsm = false)
 
 task bench_fp6, "Run benchmark with 𝔽p6 your default compiler":
   runBench("bench_fp6")
@@ -316,6 +347,12 @@ task bench_fp6_gcc, "Run benchmark 𝔽p6 with gcc":
 task bench_fp6_clang, "Run benchmark 𝔽p6 with clang":
   runBench("bench_fp6", "clang")
 
+task bench_fp6_gcc_noasm, "Run benchmark 𝔽p6 with gcc - no Assembly":
+  runBench("bench_fp6", "gcc", useAsm = false)
+
+task bench_fp6_clang_noasm, "Run benchmark 𝔽p6 with clang - no Assembly":
+  runBench("bench_fp6", "clang", useAsm = false)
+
 task bench_fp12, "Run benchmark with 𝔽p12 your default compiler":
   runBench("bench_fp12")
 
@@ -324,6 +361,12 @@ task bench_fp12_gcc, "Run benchmark 𝔽p12 with gcc":
 
 task bench_fp12_clang, "Run benchmark 𝔽p12 with clang":
   runBench("bench_fp12", "clang")
+
+task bench_fp12_gcc_noasm, "Run benchmark 𝔽p12 with gcc - no Assembly":
+  runBench("bench_fp12", "gcc", useAsm = false)
+
+task bench_fp12_clang_noasm, "Run benchmark 𝔽p12 with clang - no Assembly":
+  runBench("bench_fp12", "clang", useAsm = false)
 
 task bench_ec_g1, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weierstrass with Projective Coordinates - GCC":
   runBench("bench_ec_g1")
@@ -334,6 +377,12 @@ task bench_ec_g1_gcc, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weier
 task bench_ec_g1_clang, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weierstrass with Projective Coordinates - Clang":
   runBench("bench_ec_g1", "clang")
 
+task bench_ec_g1_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weierstrass with Projective Coordinates - GCC no Assembly":
+  runBench("bench_ec_g1", "gcc", useAsm = false)
+
+task bench_ec_g1_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weierstrass with Projective Coordinates - Clang no Assembly":
+  runBench("bench_ec_g1", "clang", useAsm = false)
+
 task bench_ec_g2, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weierstrass with Projective Coordinates - GCC":
   runBench("bench_ec_g2")
 
@@ -342,3 +391,9 @@ task bench_ec_g2_gcc, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weier
 
 task bench_ec_g2_clang, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weierstrass with Projective Coordinates - Clang":
   runBench("bench_ec_g2", "clang")
+
+task bench_ec_g2_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weierstrass with Projective Coordinates - GCC no Assembly":
+  runBench("bench_ec_g2", "gcc", useAsm = false)
+
+task bench_ec_g2_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weierstrass with Projective Coordinates - Clang no Assembly":
+  runBench("bench_ec_g2", "clang", useAsm = false)

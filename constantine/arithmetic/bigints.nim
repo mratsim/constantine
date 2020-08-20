@@ -9,12 +9,9 @@
 import
   ../config/[common, type_bigint],
   ../primitives,
-  ./limbs_generic,
+  ./limbs,
   ./limbs_generic_modular,
   ./limbs_montgomery
-
-when UseX86ASM:
-  import ./limbs_asm_x86
 
 export BigInt
 
@@ -85,10 +82,7 @@ func ccopy*(a: var BigInt, b: BigInt, ctl: SecretBool) =
   ## If ctl is true: b is copied into a
   ## if ctl is false: b is not copied and a is untouched
   ## Time and memory accesses are the same whether a copy occurs or not
-  when UseX86ASM:
-    ccopy_asm(a.limbs, b.limbs, ctl)
-  else:
-    ccopy(a.limbs, b.limbs, ctl)
+  ccopy(a.limbs, b.limbs, ctl)
 
 func cswap*(a, b: var BigInt, ctl: CTBool) =
   ## Swap ``a`` and ``b`` if ``ctl`` is true
@@ -244,6 +238,14 @@ func prod*[rBits, aBits, bBits](r: var BigInt[rBits], a: BigInt[aBits], b: BigIn
   ## the multiplication will overflow.
   ## It will be truncated if it cannot fit in r limbs.
   r.limbs.prod(a.limbs, b.limbs)
+
+func mul*[aBits, bBits](a: var BigInt[aBits], b: BigInt[bBits]) =
+  ## Multi-precision multiplication
+  ## a <- a*b
+  ## `a`, `b`, can have different sizes
+  var t{.noInit.}: typeof(a)
+  t.limbs.prod(a.limbs, b.limbs)
+  a = t
 
 func prod_high_words*[rBits, aBits, bBits](r: var BigInt[rBits], a: BigInt[aBits], b: BigInt[bBits], lowestWordIndex: static int) =
   ## Multi-precision multiplication keeping only high words

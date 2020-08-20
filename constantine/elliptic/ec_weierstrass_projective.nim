@@ -190,7 +190,7 @@ func sum*[F](
     r.y.sum(Q.x, Q.z)         # 15. Y3 <- X2 + Z2
     r.x *= r.y                # 16. X3 <- X3 Y3     X3 = (X1 Z1)(X2 Z2)
     r.y.sum(t0, t2)           # 17. Y3 <- t0 + t2   Y3 = X1 X2 + Z1 Z2
-    r.y.diff(r.x, r.y)        # 18. Y3 <- X3 - Y3   Y3 = (X1 + Z1)(X2 + Z2) - (X1 X2 + Z1 Z2) = X1 Z2 + X2 Z1
+    r.y.diffAlias(r.x, r.y)   # 18. Y3 <- X3 - Y3   Y3 = (X1 + Z1)(X2 + Z2) - (X1 X2 + Z1 Z2) = X1 Z2 + X2 Z1
     when F is Fp2 and F.C.getSexticTwist() == D_Twist:
       t0 *= SexticNonResidue
       t1 *= SexticNonResidue
@@ -206,7 +206,7 @@ func sum*[F](
       r.y *= SexticNonResidue
     r.x.prod(t4, r.y)         # 25. X3 <- t4 Y3     X3 = 3b(Y1 Z2 + Y2 Z1)(X1 Z2 + X2 Z1)
     t2.prod(t3, t1)           # 26. t2 <- t3 t1     t2 = (X1 Y2 + X2 Y1) (Y1 Y2 - 3b Z1 Z2)
-    r.x.diff(t2, r.x)         # 27. X3 <- t2 - X3   X3 = (X1 Y2 + X2 Y1) (Y1 Y2 - 3b Z1 Z2) - 3b(Y1 Z2 + Y2 Z1)(X1 Z2 + X2 Z1)
+    r.x.diffAlias(t2, r.x)    # 27. X3 <- t2 - X3   X3 = (X1 Y2 + X2 Y1) (Y1 Y2 - 3b Z1 Z2) - 3b(Y1 Z2 + Y2 Z1)(X1 Z2 + X2 Z1)
     r.y *= t0                 # 28. Y3 <- Y3 t0     Y3 = 9b X1 X2 (X1 Z2 + X2 Z1)
     t1 *= r.z                 # 29. t1 <- t1 Z3     t1 = (Y1 Y2 - 3b Z1 Z2)(Y1 Y2 + 3b Z1 Z2)
     r.y += t1                 # 30. Y3 <- t1 + Y3   Y3 = (Y1 Y2 + 3b Z1 Z2)(Y1 Y2 - 3b Z1 Z2) + 9b X1 X2 (X1 Z2 + X2 Z1)

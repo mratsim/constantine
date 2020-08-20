@@ -12,7 +12,7 @@ import
   # Internal
   ../config/common,
   ../primitives,
-  ./limbs_generic
+  ./limbs
 
 # ############################################################
 #
@@ -25,7 +25,7 @@ import
 #       They are nice to let the compiler deals with mov
 #       but too constraining so we move things ourselves.
 
-static: doAssert UseX86ASM
+static: doAssert UseASM_X86_64
 
 {.localPassC:"-fomit-frame-pointer".} # Needed so that the compiler finds enough registers
 
@@ -64,6 +64,7 @@ macro addmod_gen[N: static int](a: var Limbs[N], b, M: Limbs[N]): untyped =
     ctx.mov arrTsub[i], arrT[i]
 
   # Mask: overflowed contains 0xFFFF or 0x0000
+  # TODO: unnecessary if MSB never set, i.e. "canUseNoCarryMontyMul"
   let overflowed = arrB.reuseRegister()
   ctx.sbb overflowed, overflowed
 
@@ -118,7 +119,7 @@ macro submod_gen[N: static int](a: var Limbs[N], b, M: Limbs[N]): untyped =
     arrT = init(OperandArray, nimSymbol = ident"t", N, ElemsInReg, Output_EarlyClobber)
     arrTadd = init(OperandArray, nimSymbol = ident"tadd", N, ElemsInReg, Output_EarlyClobber)
 
-  # Addition
+  # Substraction
   for i in 0 ..< N:
     ctx.mov arrT[i], arrA[i]
     if i == 0:

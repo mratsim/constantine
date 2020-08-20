@@ -30,6 +30,14 @@ type
 
   SecretBool* = CTBool[SecretWord]
 
+
+  Limbs*[N: static int] = array[N, SecretWord]
+    ## Limbs-type
+    ## Should be distinct type to avoid builtins to use non-constant time
+    ## implementation, for example for comparison.
+    ##
+    ## but for unknown reason, it prevents semchecking `bits`
+
 const
   WordBitWidth* = sizeof(SecretWord) * 8
     ## Logical word size
@@ -44,7 +52,8 @@ const
 # TODO, we restrict assembly to 64-bit words
 # We need to support register spills for large limbs
 const ConstantineASM {.booldefine.} = true
-const UseX86ASM* = WordBitWidth == 64 and ConstantineASM and X86 and GCC_Compatible
+const UseASM_X86_32* = ConstantineASM and X86 and GCC_Compatible
+const UseASM_X86_64* = WordBitWidth == 64 and UseASM_X86_32
 
 # ############################################################
 #
