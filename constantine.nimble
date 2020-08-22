@@ -91,7 +91,10 @@ proc test(flags, path: string, commandFile = false) =
   if existsEnv"CC":
     cc = " --cc:" & getEnv"CC"
 
-  let command = "nim " & lang & cc & " " & flags & " --verbosity:0 --outdir:build -r --hints:off --warnings:off " & path
+  let command = "nim " & lang & cc & " " & flags &
+    " --verbosity:0 --outdir:build/testsuite -r --hints:off --warnings:off " &
+    " --nimcache:nimcache/" & path & " " &
+    path
 
   if not commandFile:
     echo "\n=============================================================================================="
@@ -112,7 +115,8 @@ proc runBench(benchName: string, compiler = "", useAsm = true) =
   if not useAsm:
     cc &= " -d:ConstantineASM=false"
   exec "nim c " & cc &
-       " -d:danger --verbosity:0 -o:build/" & benchName & "_" & compiler &
+       " -d:danger --verbosity:0 -o:build/bench/" & benchName & "_" & compiler & "_" & (if useAsm: "useASM" else: "noASM") &
+       " --nimcache:nimcache/" & benchName & "_" & compiler & "_" & (if useAsm: "useASM" else: "noASM") &
        " -r --hints:off --warnings:off benchmarks/" & benchName & ".nim"
 
 # Tasks
