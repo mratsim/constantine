@@ -59,64 +59,24 @@ type
     ##     and m the number of dimensions of the GLV endomorphism
     ## (ii) Exactly one subscalar which should be odd
     ##      is expressed by a signed nonzero representation
-    ##      with all digits ∈ {1, −1}
+    ##      with all digits ∈ {1, −1} represented at a lowlevel
+    ##      by bit {0, 1} (0 bit -> positive 1 digit, 1 bit -> negative -1 digit)
     ## (iii) Other subscalars have digits  ∈ {0, 1, −1}
-    ##
-    ## We pack the representation, using 2 bits per digit:
-    ##  0 = 0b00
-    ##  1 = 0b01
-    ## -1 = 0b11
-    ##
-    ## This means that GLV_SAC uses twice the size of a canonical integer
+    ##       with 0 encoded as 0 and 1/-1 encoded as 1
+    ##       and the sign taken from the sign subscalar (at position 0)
     ##
     ## Digit-Endianness is bigEndian
 
 const
-  BitSize   = 2
-  Shift     = 2    # log2(4) - we can store 4 digit per byte
-  ByteMask  = 3    # we need (mod 4) to access a packed bytearray
-  DigitMask = 0b11 # Digits take 2-bit
+  BitSize   = 1
+  Shift     = 1    # log2(2) - we can store 2 digits per byte
+  ByteMask  = 1    # we need (mod 2) to access a packed bytearray
+  DigitMask = 0b1  # Digits take 1-bit
 
-# template signExtend_2bit(recoded: byte): int8 =
-#   ## We need to extend:
-#   ## - 0b00 to 0b0000_0000 ( 0)
-#   ## - 0b01 to 0b0000_0001 ( 1)
-#   ## - 0b11 to 0b1111_1111 (-1)
-#   ##
-#   ## This can be done by shifting left to have
-#   ## - 0b00 to 0b0000_0000
-#   ## - 0b01 to 0b0100_0000
-#   ## - 0b11 to 0b1100_0000
-#   ##
-#   ## And then an arithmetic right shift (SAR)
-#   ##
-#   ## However there is no builtin SAR
-#   ## we can get it in C by right-shifting
-#   ## with the main compilers/platforms
-#   ## (GCC, Clang, MSVC, ...)
-#   ## but this is implementation defined behavior
-#   ## Nim `ashr` uses C signed right shifting
-#   ##
-#   ## We could check the compiler to ensure we only use
-#   ## well documented behaviors: https://gcc.gnu.org/onlinedocs/gcc/Integers-implementation.html#Integers-implementation
-#   ## but if we can avoid that altogether in a crypto library
-#   ##
-#   ## Instead we use signed bitfield which are automatically sign-extended
-#   ## in a portable way as sign extension is automatic for builtin types
-
-type
-  SignExtender = object
-    ## Uses C builtin types sign extension to sign extend 2-bit to 8-bit
-    ## in a portable way as sign extension is automatic for builtin types
-    ## http://graphics.stanford.edu/~seander/bithacks.html#FixedSignExtend
-    digit {.bitsize:2.}: int8
-
-# TODO: use unsigned to avoid checks and potentially leaking secrets
-#       or push checks off (or prove that checks can be elided once Nim has Z3 in the compiler)
 proc `[]`(recoding: Recoded,
-          digitIdx: int): int8 {.inline.}=
+          digitIdx: int): uint8 {.inline.}=
   ## 0 <= digitIdx < LengthInDigits
-  ## returns digit ∈ {0, 1, −1}
+  ## returns digit ∈ {0, 1}
   const len = Recoded.LengthInDigits
   assert digitIdx < len
 
@@ -124,16 +84,12 @@ proc `[]`(recoding: Recoded,
     len-1 - (digitIdx shr Shift)
   ]
   let recoded = slot shr (BitSize*(digitIdx and ByteMask)) and DigitMask
-  var signExtender: SignExtender
-  # Hack with C assignment that return values
-  {.emit: [result, " = ", signExtender, ".digit = ", recoded, ";"].}
-  # " # Fix highlighting bug in VScode
-
+  return recoded
 
 proc `[]=`(recoding: var Recoded,
-           digitIdx: int, value: int8) {.inline.}=
+           digitIdx: int, value: uint8) {.inline.}=
   ## 0 <= digitIdx < LengthInDigits
-  ## returns digit ∈ {0, 1, −1}
+  ## returns digit ∈ {0, 1}
   ## This is write-once
   const len = Recoded.LengthInDigits
   assert digitIdx < Recoded.LengthInDigits
@@ -144,7 +100,6 @@ proc `[]=`(recoding: var Recoded,
 
   let shifted = byte((value and DigitMask) shl (BitSize*(digitIdx and ByteMask)))
   slot[] = slot[] or shifted
-
 
 func nDimMultiScalarRecoding[M, L: static int](
     dst: var GLV_SAC[M, L],
@@ -164,64 +119,25 @@ func nDimMultiScalarRecoding[M, L: static int](
   # Algorithm 1 Protected Recoding Algorithm for the GLV-SAC Representation.
   # ------------------------------------------------------------------------
   #
-  # Input: m l-bit positive integers kj = (kj_l−1, ..., kj_0)_2 for
-  # 0 ≤ j < m, an odd “sign-aligner” kJ ∈ {kj}^m, where
-  # l = ⌈log2 r/m⌉ + 1, m is the GLV dimension and r is
-  # the prime subgroup order.
-  # Output: (bj_l−1 , ..., bj_0)GLV-SAC for 0 ≤ j < m, where
-  # bJ_i ∈ {1, −1}, and bj_i ∈ {0, bJ_i} for 0 ≤ j < m with
-  # j != J.
-  # ------------------------------------------------------------------------
-  #
-  # 1: bJ_l-1 = 1
-  # 2: for i = 0 to (l − 2) do
-  # 3:   bJ_i = 2kJ_i+1 - 1
-  # 4: for j = 0 to (m − 1), j != J do
-  # 5:   for i = 0 to (l − 1) do
-  # 6:     bj_i = bJ_i kj_0
-  # 7:     kj = ⌊kj/2⌋ − ⌊bj_i/2⌋
-  # 8: return (bj_l−1 , . . . , bj_0)_GLV-SAC for 0 ≤ j < m.
-  #
-  # - Guide to Pairing-based Cryptography
-  #   Chapter 6: Scalar Multiplication and Exponentiation in Pairing Groups
-  #   Joppe Bos, Craig Costello, Michael Naehrig
-  #
-  # We choose kJ = k0
-  #
-  # Implementation strategy and points of attention
-  # - The subscalars kj must support extracting the least significant bit
-  # - The subscalars kj must support floor division by 2
-  #   For that floored division, kj is 0 or positive
-  # - The subscalars kj must support individual bit accesses
-  # - The subscalars kj must support addition by a small value (0 or 1)
-  # Hence we choose to use our own BigInt representation.
-  #
-  # - The digit bji must support floor division by 2
-  #   For that floored division, bji may be negative!!!
-  # In particular floored division of -1 is -1 not 0.
-  # This means that arithmetic right shift must be used instead of logical right shift
+  # We modify Algorithm 1 with the last paragraph optimization:
+  # - instead of ternary coding -1, 0, 1 (for negative, 0, positive)
+  # - we use 0, 1 for (0, sign of column)
+  #   and in the sign column 0, 1 for (negative, positive)
 
   # assert src[0].isOdd - Only happen on implementation error, we don't want to leak a single bit
 
   var k = src # Keep the source multiscalar in registers
   template b: untyped {.dirty.} = dst
 
-  b[0][L-1] = 1
+  b[0][L-1] = 0 # means negative column
   for i in 0 .. L-2:
-    b[0][i] = 2 * k[0].bit(i+1).int8 - 1
+    b[0][i] = 1 - k[0].bit(i+1).uint8
   for j in 1 .. M-1:
     for i in 0 .. L-1:
-      let bji = b[0][i] * k[j].bit0.int8
+      let bji = k[j].bit0.uint8
       b[j][i] = bji
-      # In the following equation
-      #   kj = ⌊kj/2⌋ − ⌊bj_i/2⌋
-      # We have ⌊bj_i/2⌋ (floor division)
-      # = -1 if bj_i == -1
-      # = 0  if bj_i ∈ {0, 1}
-      # So we turn that statement in an addition
-      # by the opposite
       k[j].div2()
-      k[j] += SecretWord -bji.ashr(1)
+      k[j] += SecretWord (bji and b[0][i])
 
 func buildLookupTable[M: static int, F](
        P: ECP_SWei_Proj[F],
@@ -281,10 +197,6 @@ func tableIndex(glv: GLV_SAC, bit: int): SecretWord =
   staticFor i, 1, GLV_SAC.M:
     result = result or SecretWord((glv[i][bit] and 1) shl (i-1))
 
-func isNeg(glv: GLV_SAC, bit: int): SecretBool =
-  ## Returns true if the bit requires substraction
-  SecretBool(glv[0][bit] < 0)
-
 func secretLookup[T](dst: var T, table: openArray[T], index: SecretWord) =
   ## Load a table[index] into `dst`
   ## This is constant-time, whatever the `index`, its value is not leaked
@@ -341,8 +253,8 @@ func scalarMulGLV*[scalBits](
   # 5. Recode the miniscalars
   #    we need the base miniscalar (that encodes the sign)
   #    to be odd, and this in constant-time to protect the secret least-significant bit.
-  var k0isOdd = miniScalars[0].isOdd()
-  discard miniScalars[0].csub(SecretWord(1), not k0isOdd)
+  let k0isOdd = miniScalars[0].isOdd()
+  discard miniScalars[0].cadd(SecretWord(1), not k0isOdd)
 
   var recoded: GLV_SAC[2, L] # zero-init required
   recoded.nDimMultiScalarRecoding(miniScalars)
@@ -350,20 +262,17 @@ func scalarMulGLV*[scalBits](
   # 6. Proceed to GLV accelerated scalar multiplication
   var Q: typeof(P) # TODO: zero-init not required
   Q.secretLookup(lut, recoded.tableIndex(L-1))
-  Q.cneg(recoded.isNeg(L-1))
 
   for i in countdown(L-2, 0):
     Q.double()
     var tmp: typeof(Q) # TODO: zero-init not required
     tmp.secretLookup(lut, recoded.tableIndex(i))
-    tmp.cneg(recoded.isNeg(i))
+    tmp.cneg(SecretBool recoded[0][i])
     Q += tmp
 
   # Now we need to correct if the sign miniscalar was not odd
-  # we missed an addition
-  lut[0] += Q # Contains Q + P0
-  P = Q
-  P.ccopy(lut[0], not k0isOdd)
+  P.diff(Q, lut[0]) # Contains Q - P0
+  P.ccopy(Q, k0isOdd)
 
 # Sanity checks
 # ----------------------------------------------------------------
@@ -384,7 +293,6 @@ when isMainModule:
       for i in countdown(glvSac.LengthInDigits-1, 0):
         result.add " " & (block:
           case glvSac[j][i]
-          of -1: "1\u{0305}"
           of 0: "0"
           of 1: "1"
           else:
@@ -583,7 +491,7 @@ when isMainModule:
     # Q = sign_l-1 P[K_l-1]
     let idx = kRecoded.tableIndex(L-1)
     for p in lut[int(idx)]:
-      Q[p] = if kRecoded.isNeg(L-1).bool: -1 else: 1
+      Q[p] = if kRecoded[0][L-1] == 0: 1 else: -1
     # Loop
     for i in countdown(L-2, 0):
       # Q = 2Q
@@ -592,7 +500,7 @@ when isMainModule:
       # Q = Q + sign_l-1 P[K_l-1]
       let idx = kRecoded.tableIndex(i)
       for p in lut[int(idx)]:
-        Q[p] += (if kRecoded.isNeg(i).bool: -1 else: 1)
+        Q[p] += (if kRecoded[0][i] == 0: 1 else: -1)
       echo "Q + sign_l-1 P[K_l-1]: ", Q
 
     echo Q
