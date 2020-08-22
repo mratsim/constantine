@@ -300,6 +300,15 @@ func double*[F](P: var ECP_SWei_Proj[F]) =
   tmp.double(P)
   P = tmp
 
+func diff*[F](r: var ECP_SWei_Proj[F],
+              P, Q: ECP_SWei_Proj[F]
+     ) =
+  ## r = P - Q
+  ## Can handle r and Q aliasing
+  var nQ = Q
+  nQ.neg()
+  r.sum(P, nQ)
+
 func affineFromProjective*[F](aff: var ECP_SWei_Proj[F], proj: ECP_SWei_Proj) =
   # TODO: for now we reuse projective coordinate backend
   # TODO: simultaneous inversion

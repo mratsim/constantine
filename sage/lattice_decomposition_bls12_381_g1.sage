@@ -117,13 +117,13 @@ def recodeScalars(k):
     L = ((int(r).bit_length() + m-1) // m) + 1 # l = ⌈log2 r/m⌉ + 1
 
     b = [[0] * L, [0] * L]
-    b[0][L-1] = 1
+    b[0][L-1] = 0
     for i in range(0, L-1): # l-2 inclusive
-        b[0][i] = 2 * ((k[0] >> (i+1)) & 1) - 1
+        b[0][i] = 1 - ((k[0] >> (i+1)) & 1)
     for j in range(1, m):
         for i in range(0, L):
-            b[j][i] = b[0][i] * (k[j] & 1)
-            k[j] = (k[j]//2) - (b[j][i] // 2)
+            b[j][i] = k[j] & 1
+            k[j] = k[j]//2 + (b[j][i] & b[0][i])
 
     return b
 
@@ -160,9 +160,9 @@ def scalarMulGLV(scalar, P0):
     assert expected == decomp
 
     print('------ recode scalar -----------')
-    even = k0 & 1 == 1
+    even = k0 & 1 == 0
     if even:
-        k0 -= 1
+        k0 += 1
 
     b = recodeScalars([k0, k1])
     print('b0: ' + str(list(reversed(b[0]))))
@@ -173,14 +173,14 @@ def scalarMulGLV(scalar, P0):
     lut = buildLut(P0, P1)
 
     print('------------ mul ---------------')
-    print('b0 L-1: ' + str(b[0][L-1]))
-    Q = b[0][L-1] * lut[b[1][L-1] & 1]
+    # b[0][L-1] is always 0
+    Q = lut[b[1][L-1]]
     for i in range(L-2, -1, -1):
         Q *= 2
-        Q += b[0][i] * lut[b[1][i] & 1]
+        Q += (1 - 2 * b[0][i]) * lut[b[1][i]]
 
     if even:
-        Q += P0
+        Q -= P0
 
     print('final Q: ' + pointToString(Q))
     print('expected: ' + pointToString(expected))

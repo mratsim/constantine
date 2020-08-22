@@ -137,6 +137,12 @@ func cadd*(a: var BigInt, b: BigInt, ctl: SecretBool): SecretBool =
   ## The result carry is always computed.
   (SecretBool) cadd(a.limbs, b.limbs, ctl)
 
+func cadd*(a: var BigInt, b: SecretWord, ctl: SecretBool): SecretBool =
+  ## Constant-time in-place conditional addition
+  ## The addition is only performed if ctl is "true"
+  ## The result carry is always computed.
+  (SecretBool) cadd(a.limbs, b, ctl)
+
 func csub*(a: var BigInt, b: BigInt, ctl: SecretBool): SecretBool =
   ## Constant-time in-place conditional substraction
   ## The substraction is only performed if ctl is "true"
