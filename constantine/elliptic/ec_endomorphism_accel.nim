@@ -119,17 +119,17 @@ func nDimMultiScalarRecoding[M, L: static int](
   # Algorithm 1 Protected Recoding Algorithm for the GLV-SAC Representation.
   # ------------------------------------------------------------------------
   #
-  # We modify Algorithm 1 with the last paragraph optimization:
+  # We modify Algorithm 1 with the last paragraph optimization suggestions:
   # - instead of ternary coding -1, 0, 1 (for negative, 0, positive)
   # - we use 0, 1 for (0, sign of column)
-  #   and in the sign column 0, 1 for (negative, positive)
+  #   and in the sign column 0, 1 for (positive, negative)
 
   # assert src[0].isOdd - Only happen on implementation error, we don't want to leak a single bit
 
   var k = src # Keep the source multiscalar in registers
   template b: untyped {.dirty.} = dst
 
-  b[0][L-1] = 0 # means negative column
+  b[0][L-1] = 0 # means positive column
   for i in 0 .. L-2:
     b[0][i] = 1 - k[0].bit(i+1).uint8
   for j in 1 .. M-1:
