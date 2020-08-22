@@ -221,13 +221,13 @@ func scalarMulGLV*[scalBits](
     const M = 2
 
   # 1. Compute endomorphisms
-  var endomorphisms: array[M-1, typeof(P)] # TODO: zero-init not required
+  var endomorphisms {.noInit.}: array[M-1, typeof(P)]
   endomorphisms[0] = P
   endomorphisms[0].x *= C.getCubicRootOfUnity_mod_p()
 
   # 2. Decompose scalar into mini-scalars
   const L = (C.getCurveOrderBitwidth() + M - 1) div M + 1
-  var miniScalars: array[M, BigInt[L]] # TODO: zero-init not required
+  var miniScalars {.noInit.}: array[M, BigInt[L]]
   when C == BN254_Snarks:
     scalar.decomposeScalar_BN254_Snarks_G1(
       miniScalars
@@ -245,7 +245,7 @@ func scalarMulGLV*[scalBits](
   #    in the GLV representation at the low low price of 1 bit
 
   # 4. Precompute lookup table
-  var lut: array[1 shl (M-1), ECP_SWei_Proj] # TODO: zero-init not required
+  var lut {.noInit.}: array[1 shl (M-1), ECP_SWei_Proj]
   buildLookupTable(P, endomorphisms, lut)
   # TODO: Montgomery simultaneous inversion (or other simultaneous inversion techniques)
   #       so that we use mixed addition formulas in the main loop
@@ -260,12 +260,12 @@ func scalarMulGLV*[scalBits](
   recoded.nDimMultiScalarRecoding(miniScalars)
 
   # 6. Proceed to GLV accelerated scalar multiplication
-  var Q: typeof(P) # TODO: zero-init not required
+  var Q {.noInit.}: typeof(P)
   Q.secretLookup(lut, recoded.tableIndex(L-1))
 
   for i in countdown(L-2, 0):
     Q.double()
-    var tmp: typeof(Q) # TODO: zero-init not required
+    var tmp {.noInit.}: typeof(Q)
     tmp.secretLookup(lut, recoded.tableIndex(i))
     tmp.cneg(SecretBool recoded[0][i])
     Q += tmp
