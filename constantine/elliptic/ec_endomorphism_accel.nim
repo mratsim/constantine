@@ -438,7 +438,7 @@ when isMainModule:
     const miniBitwidth = 4   # Bitwidth of the miniscalars resulting from scalar decomposition
 
     var k: MultiScalar[M, miniBitwidth]
-    var kRecoded: GLV_SAC[M, miniBitwidth+1]
+    var kRecoded: GLV_SAC[M, miniBitwidth]
 
     k[0].fromUint(11)
     k[1].fromUint(6)
@@ -477,39 +477,40 @@ when isMainModule:
     const M = 2
     const scalBits = BN254_Snarks.getCurveOrderBitwidth()
     const miniBits = (scalBits+M-1) div M
+    const L = miniBits + 1
 
     block:
       let scalar = BigInt[scalBits].fromHex(
         "0x24a0b87203c7a8def0018c95d7fab106373aebf920265c696f0ae08f8229b3f3"
       )
 
-      var decomp: MultiScalar[M, miniBits]
+      var decomp: MultiScalar[M, L]
       decomposeScalar_BN254_Snarks_G1(scalar, decomp)
 
-      doAssert: bool(decomp[0] == BigInt[127].fromHex"14928105460c820ccc9a25d0d953dbfe")
-      doAssert: bool(decomp[1] == BigInt[127].fromHex"13a2f911eb48a578844b901de6f41660")
+      doAssert: bool(decomp[0] == BigInt[L].fromHex"14928105460c820ccc9a25d0d953dbfe")
+      doAssert: bool(decomp[1] == BigInt[L].fromHex"13a2f911eb48a578844b901de6f41660")
 
     block:
       let scalar = BigInt[scalBits].fromHex(
         "24554fa6d0c06f6dc51c551dea8b058cd737fc8d83f7692fcebdd1842b3092c4"
       )
 
-      var decomp: MultiScalar[M, miniBits]
+      var decomp: MultiScalar[M, L]
       decomposeScalar_BN254_Snarks_G1(scalar, decomp)
 
-      doAssert: bool(decomp[0] == BigInt[127].fromHex"28cf7429c3ff8f7e82fc419e90cc3a2")
-      doAssert: bool(decomp[1] == BigInt[127].fromHex"457efc201bdb3d2e6087df36430a6db6")
+      doAssert: bool(decomp[0] == BigInt[L].fromHex"28cf7429c3ff8f7e82fc419e90cc3a2")
+      doAssert: bool(decomp[1] == BigInt[L].fromHex"457efc201bdb3d2e6087df36430a6db6")
 
     block:
       let scalar = BigInt[scalBits].fromHex(
         "288c20b297b9808f4e56aeb70eabf269e75d055567ff4e05fe5fb709881e6717"
       )
 
-      var decomp: MultiScalar[M, miniBits]
+      var decomp: MultiScalar[M, L]
       decomposeScalar_BN254_Snarks_G1(scalar, decomp)
 
-      doAssert: bool(decomp[0] == BigInt[127].fromHex"4da8c411566c77e00c902eb542aaa66b")
-      doAssert: bool(decomp[1] == BigInt[127].fromHex"5aa8f2f15afc3217f06677702bd4e41a")
+      doAssert: bool(decomp[0] == BigInt[L].fromHex"4da8c411566c77e00c902eb542aaa66b")
+      doAssert: bool(decomp[1] == BigInt[L].fromHex"5aa8f2f15afc3217f06677702bd4e41a")
 
 
   main_decomp()
@@ -555,7 +556,7 @@ when isMainModule:
     const miniBitwidth = 4     # Bitwidth of the miniscalars resulting from scalar decomposition
     const L = miniBitwidth + 1 # Bitwidth of the recoded scalars
 
-    var k: MultiScalar[M, miniBitwidth]
+    var k: MultiScalar[M, L]
     var kRecoded: GLV_SAC[M, L]
 
     k[0].fromUint(11)

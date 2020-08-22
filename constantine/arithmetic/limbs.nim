@@ -198,6 +198,17 @@ func cadd*(a: var Limbs, b: Limbs, ctl: SecretBool): Carry =
     addC(result, sum, a[i], b[i], result)
     ctl.ccopy(a[i], sum)
 
+func cadd*(a: var Limbs, w: SecretWord, ctl: SecretBool): Borrow =
+  ## Limbs conditional addition, sub a number that fits in a word
+  ## Returns the borrow
+  result = Carry(0)
+  var diff: SecretWord
+  addC(result, diff, a[0], w, result)
+  ctl.ccopy(a[0], diff)
+  for i in 1 ..< a.len:
+    addC(result, diff, a[i], Zero, result)
+    ctl.ccopy(a[i], diff)
+
 func sum*(r: var Limbs, a, b: Limbs): Carry =
   ## Sum `a` and `b` into `r`
   ## `r` is initialized/overwritten
@@ -246,7 +257,7 @@ func csub*(a: var Limbs, b: Limbs, ctl: SecretBool): Borrow =
 func csub*(a: var Limbs, w: SecretWord, ctl: SecretBool): Borrow =
   ## Limbs conditional substraction, sub a number that fits in a word
   ## Returns the borrow
-  result = Carry(0)
+  result = Borrow(0)
   var diff: SecretWord
   subB(result, diff, a[0], w, result)
   ctl.ccopy(a[0], diff)
