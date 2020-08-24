@@ -57,7 +57,7 @@ template checkScalarMulScratchspaceLen(len: int) =
 func getWindowLen(bufLen: int): uint =
   ## Compute the maximum window size that fits in the scratchspace buffer
   checkScalarMulScratchspaceLen(bufLen)
-  result = 4
+  result = 5
   while (1 shl result) + 1 > bufLen:
     dec result
 

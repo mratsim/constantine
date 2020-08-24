@@ -44,15 +44,18 @@ proc test(
       impl = P
       reference = P
       endo = P
+      endoW = P
       scratchSpace: array[1 shl 4, EC]
 
     impl.scalarMulGeneric(exponentCanonical, scratchSpace)
     reference.unsafe_ECmul_double_add(exponentCanonical)
     endo.scalarMulGLV(exponent)
+    endoW.scalarMulGLV_m2w2(exponent)
 
     doAssert: bool(Q == reference)
     doAssert: bool(Q == impl)
     doAssert: bool(Q == endo)
+    doAssert: bool(Q == endoW)
 
 suite "Scalar Multiplication (cofactor cleared): BLS12_381 implementation vs SageMath" & " [" & $WordBitwidth & "-bit mode]":
   # Generated via sage sage/testgen_bls12_381.sage
