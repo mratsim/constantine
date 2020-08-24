@@ -172,6 +172,22 @@ proc scalarMulEndo*(T: typedesc, iters: int) =
     else:
       {.error: "Not implemented".}
 
+proc scalarMulEndoWindow*(T: typedesc, iters: int) =
+  const bits = T.F.C.getCurveOrderBitwidth()
+  const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
+
+  var r {.noInit.}: T
+  let P = rng.random_unsafe(T) # TODO: clear cofactor
+
+  let exponent = rng.random_unsafe(BigInt[bits])
+
+  bench("EC ScalarMul Window-2 " & G1_or_G2 & " (endomorphism accelerated)", T, iters):
+    r = P
+    when T.F is Fp:
+      r.scalarMulGLV_m2w2(exponent)
+    else:
+      {.error: "Not implemented".}
+
 proc scalarMulUnsafeDoubleAddBench*(T: typedesc, iters: int) =
   const bits = T.F.C.getCurveOrderBitwidth()
   const G1_or_G2 = when T.F is Fp: "G1" else: "G2"

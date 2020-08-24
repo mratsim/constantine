@@ -105,7 +105,9 @@ func decomposeScalar_BLS12_381_G1*[M, scalBits, L: static int](
   ##       - needs a Lattice type
   ##       - needs to better support negative bigints, (extra bit for sign?)
 
-  static: doAssert L == (scalBits + M - 1) div M + 1
+  # Equal when no window, greater otherwise
+  static: doAssert L >= (scalBits + M - 1) div M + 1
+
   # 𝛼0 = (0x2d91d232ec7e0b3d7 * s) >> 256
   # 𝛼1 = (0x24ccef014a773d2d25398fd0300ff6565 * s) >> 256
   const
