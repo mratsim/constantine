@@ -49,7 +49,7 @@ import
 # (For example generating a public-key)
 
 type
-  Recoded[LengthInDigits: static int] = distinct array[LengthInDigits, byte]
+  Recoded[LengthInDigits: static int] = distinct array[(LengthInDigits + 7) div 8, byte]
   GLV_SAC[M, LengthInDigits: static int] = array[M, Recoded[LengthInDigits]]
     ## GLV-Based Sign-Aligned-Column representation
     ## see Faz-Hernandez, 2013
@@ -69,9 +69,9 @@ type
 
 const
   BitSize   = 1
-  Shift     = 1    # log2(2) - we can store 2 digits per byte
-  ByteMask  = 1    # we need (mod 2) to access a packed bytearray
-  DigitMask = 0b1  # Digits take 1-bit
+  Shift     = 3                    # log2(sizeof(byte) * 8) - Find the word to read/write
+  WordMask  = sizeof(byte) * 8 - 1 #                        - In the word, shift to the offset to read/write
+  DigitMask = 1 shl BitSize - 1    # Digits take 1-bit      - Once at location, isolate bits to read/write
 
 proc `[]`(recoding: Recoded,
           digitIdx: int): uint8 {.inline.}=
@@ -81,9 +81,9 @@ proc `[]`(recoding: Recoded,
   assert digitIdx < len
 
   let slot = distinctBase(recoding)[
-    len-1 - (digitIdx shr Shift)
+    (len-1 - digitIdx) shr Shift
   ]
-  let recoded = slot shr (BitSize*(digitIdx and ByteMask)) and DigitMask
+  let recoded = slot shr (BitSize*(digitIdx and WordMask)) and DigitMask
   return recoded
 
 proc `[]=`(recoding: var Recoded,
@@ -95,10 +95,10 @@ proc `[]=`(recoding: var Recoded,
   assert digitIdx < Recoded.LengthInDigits
 
   let slot = distinctBase(recoding)[
-    len-1 - (digitIdx shr Shift)
+    (len-1 - digitIdx) shr Shift
   ].addr
 
-  let shifted = byte((value and DigitMask) shl (BitSize*(digitIdx and ByteMask)))
+  let shifted = byte((value and DigitMask) shl (BitSize*(digitIdx and WordMask)))
   slot[] = slot[] or shifted
 
 func nDimMultiScalarRecoding[M, L: static int](
