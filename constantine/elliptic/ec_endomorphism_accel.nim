@@ -168,18 +168,10 @@ func buildLookupTable[M: static int, F](
   #   - 2 represented as 0b0010 already required P0 + P2
   #   To find the already computed table entry, we can index
   #   the table with the current `u` with the MSB unset
-  #   and add to it the endormorphism at the index matching the MSB position
+  #   and add to it the endomorphism at the index matching the MSB position
   #
   #   This scheme ensures 1 addition per table entry instead of a number
   #   of addition dependent on `u` Hamming Weight
-  #
-  # TODO:
-  # 1. Window method for M == 2
-  # 2. Have P in affine coordinate and build the table with mixed addition
-  #    assuming endomorphism φi(P) do not affect the Z coordinates
-  #    (if table is big enough/inversion cost is amortized)
-  # 3. Use Montgomery simultaneous inversion to have the table in
-  #    affine coordinate so that we can use mixed addition in teh main loop
   lut[0] = P
   for u in 1'u32 ..< 1 shl (M-1):
     # The recoding allows usage of 2^(n-1) table instead of the usual 2^n with NAF
@@ -266,7 +258,7 @@ func scalarMulGLV*[scalBits](
     Q += tmp
 
   # Now we need to correct if the sign miniscalar was not odd
-  P.diff(Q, lut[0]) # Contains Q - P0
+  P.diff(Q, P)
   P.ccopy(Q, k0isOdd)
 
 # Windowed GLV

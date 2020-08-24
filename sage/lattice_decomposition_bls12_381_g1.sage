@@ -184,7 +184,7 @@ def scalarMulGLV(scalar, P0):
 
     print('final Q: ' + pointToString(Q))
     print('expected: ' + pointToString(expected))
-    assert Q == expected # TODO debug
+    assert Q == expected
 
 # Test generator
 set_random_seed(1337)
