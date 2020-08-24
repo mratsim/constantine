@@ -311,26 +311,24 @@ func buildLookupTable_m2w2[F](
 
   # with [k0, k1] the mini-scalars with digits of size 2-bit
   #
-  # 0 = 0b000 - encodes [0b01, 0b00] ≡ P0
-  lut[0] = P0
-  # 1 = 0b001 - encodes [0b01, 0b01] ≡ P0 - P1
-  lut[1].diff(lut[0], P1)
-  # 3 = 0b011 - encodes [0b01, 0b11] ≡ P0 + P1
-  lut[3].sum(lut[0], P1)
-  # 2 = 0b010 - encodes [0b01, 0b10] ≡ P0 + 2P1
-  lut[2].sum(lut[3], P1)
+  # 4 = 0b100 - encodes [0b01, 0b00] ≡ P0
+  lut[4] = P0
+  # 5 = 0b101 - encodes [0b01, 0b01] ≡ P0 - P1
+  lut[5].diff(lut[4], P1)
+  # 7 = 0b111 - encodes [0b01, 0b11] ≡ P0 + P1
+  lut[7].sum(lut[4], P1)
+  # 6 = 0b110 - encodes [0b01, 0b10] ≡ P0 + 2P1
+  lut[6].sum(lut[7], P1)
 
-  # 4 = 0b100 - encodes [0b00, 0b00] ≡ 3P0
-  lut[4].double(lut[0])
-  lut[4] += lut[0]
-  # 5 = 0b101 - encodes [0b00, 0b01] ≡ 3P0 + P1
-  lut[5].sum(lut[4], P1)
-  # 6 = 0b110 - encodes [0b00, 0b10] ≡ 3P0 + 2P1
-  lut[6].sum(lut[5], P1)
-  # 7 = 0b111 - encodes [0b00, 0b11] ≡ 3P0 + 3P1
-  lut[7].sum(lut[6], P1)
-
-import strutils
+  # 0 = 0b000 - encodes [0b00, 0b00] ≡ 3P0
+  lut[0].double(lut[4])
+  lut[0] += lut[4]
+  # 1 = 0b001 - encodes [0b00, 0b01] ≡ 3P0 + P1
+  lut[1].sum(lut[0], P1)
+  # 2 = 0b010 - encodes [0b00, 0b10] ≡ 3P0 + 2P1
+  lut[2].sum(lut[1], P1)
+  # 3 = 0b011 - encodes [0b00, 0b11] ≡ 3P0 + 3P1
+  lut[3].sum(lut[2], P1)
 
 func w2Get(recoding: Recoded,
           digitIdx: int): uint8 {.inline.}=
@@ -362,8 +360,8 @@ func w2TableIndex(glv: GLV_SAC, bit2: int, isNeg: var SecretBool): SecretWord {.
   # assert k0 < 4 and k1 < 4
 
   isNeg = SecretBool(k0 shr 1)
-  let notParity = ((k0 shr 1) xor (k0 and 1) xor 1)
-  result = SecretWord((notParity shl 2) or k1)
+  let parity = (k0 shr 1) xor (k0 and 1)
+  result = SecretWord((parity shl 2) or k1)
 
 func computeRecodedLength(bitWidth, window: int): int =
   # Strangely in the paper this doesn't depend
@@ -440,7 +438,7 @@ func scalarMulGLV_m2w2*[scalBits](
     Q += tmp
 
   # Now we need to correct if the sign miniscalar was not odd
-  P0.diff(Q, lut[0]) # Contains Q - P0
+  P0.diff(Q, P0)
   P0.ccopy(Q, k0isOdd)
 
 # Sanity checks
