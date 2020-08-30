@@ -8,7 +8,7 @@
 
 import
   # Standard library
-  std/[unittest, times],
+  std/unittest,
   # Internals
   ../constantine/config/[common, curves],
   ../constantine/arithmetic,

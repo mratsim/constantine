@@ -14,21 +14,23 @@
 # ############################################################
 #
 # This module derives a BN curve parameters from
-# its base parameter u
+# its base parameterx
 
-def compute_curve_characteristic(u_str):
-  u = sage_eval(u_str)
-  p = 36*u^4 + 36*u^3 + 24*u^2 + 6*u + 1
-  r = 36*u^4 + 36*u^3 + 18*u^2 + 6*u + 1
+def compute_curve_characteristic(x_str):
+  x = sage_eval(x_str)
+  p = 36*x^4 + 36*x^3 + 24*x^2 + 6*x + 1
+  r = 36*x^4 + 36*x^3 + 18*x^2 + 6*x + 1
+  t = 6*x^2 + 1
 
   print(f'BN family - {p.nbits()} bits')
   print('  Prime modulus p:     0x' + p.hex())
   print('  Curve order r:       0x' + r.hex())
-  print('  Parameter u:       ' + u_str)
-  if u < 0:
-      print('  Parameter u (hex): -0x' + (-u).hex())
+  print('  trace t:             0x' + t.hex())
+  print('  Parameterx:       ' + x_str)
+  if x < 0:
+      print('  Parameterx (hex): -0x' + (-x).hex())
   else:
-      print('  Parameter u (hex):  0x' + u.hex())
+      print('  Parameterx (hex):  0x' +x.hex())
 
   print(f'  p mod 3:           ' + str(p % 3))
   print(f'  p mod 4:           ' + str(p % 4))
@@ -61,12 +63,12 @@ def compute_curve_characteristic(u_str):
   print(f'    GLV-2 decomposition of s into (k1, k2) on G1')
   print(f'      (k1, k2) = (s, 0) - 𝛼1 b1 - 𝛼2 b2')
   print(f'      𝛼i = 𝛼\u0302i * s / r')
-  print(f'        Lattice b1: ' + str(['0x' + b.hex() for b in [2*u+1, 6*u^2+4*u+1]]))
-  print(f'        Lattice b2: ' + str(['0x' + b.hex() for b in [6*u^2+2*u, -2*u-1]]))
+  print(f'        Lattice b1: ' + str(['0x' + b.hex() for b in [2*x+1, 6*x^2+4*x+1]]))
+  print(f'        Lattice b2: ' + str(['0x' + b.hex() for b in [6*x^2+2*x, -2*x-1]]))
 
   # Babai rounding
-  ahat1 = 2*u+1
-  ahat2 = 6*u^2+4*u+1
+  ahat1 = 2*x+1
+  ahat2 = 6*x^2+4*x+1
   # We want a1 = ahat1 * s/r with m = 2 (for a 2-dim decomposition) and r the curve order
   # To handle rounding errors we instead multiply by
   # 𝜈 = (2^WordBitWidth)^w (i.e. the same as the R magic constant for Montgomery arithmetic)

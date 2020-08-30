@@ -8,18 +8,17 @@
 
 # ############################################################
 #
-#                         BLS12-381
+#                         BLS12-377
 #                   Frobenius Endomorphism
 #              Untwist-Frobenius-Twist isogeny
 #
 # ############################################################
 
 # Parameters
-x = Integer('0x44E992B44A6909F1')
-p = 36*x^4 + 36*x^3 + 24*x^2 + 6*x + 1
-r = 36*x^4 + 36*x^3 + 18*x^2 + 6*x + 1
-t = 6*x^2 + 1
-cofactor = 1
+x = 3 * 2^46 * (7 * 13 * 499) + 1
+p = (x - 1)^2 * (x^4 - x^2 + 1)//3 + x
+r = x^4 - x^2 + 1
+t = x + 1
 print('p  : ' + p.hex())
 print('r  : ' + r.hex())
 print('t  : ' + t.hex())
@@ -27,15 +26,15 @@ print('t  : ' + t.hex())
 # Finite fields
 Fp       = GF(p)
 K2.<u>  = PolynomialRing(Fp)
-Fp2.<beta>  = Fp.extension(u^2+1)
+Fp2.<beta>  = Fp.extension(u^2+5) # √-5 quadratic non-residue
 # K6.<v>  = PolynomialRing(F2)
-# Fp6.<eta>  = Fp2.extension(v^3-Fp2([9, 1]))
+# Fp6.<eta>  = Fp2.extension(v^3-Fp2([0, 1])
 # K12.<w> = PolynomialRing(Fp6)
-# K12.<gamma> = F6.extension(w^2-eta)
+# Fp12.<gamma> = Fp6.extension(w^2-eta)
 
 # Curves
-b = 3
-SNR = Fp2([9, 1])
+b = 1
+SNR = Fp2([0, 1]) # √-5 sextic non-residue
 G1 = EllipticCurve(Fp, [0, b])
 G2 = EllipticCurve(Fp2, [0, b/SNR])
 
@@ -85,11 +84,10 @@ for i in range(4):
     (Px, Py, Pz) = P
     vPx = vector(Px)
     vPy = vector(Py)
-    # vPz = vector(Pz)
+    # Pz = vector(Pz)
     print(f'\nTest {i}')
     print('  Px: ' + Integer(vPx[0]).hex() + ' + β * ' + Integer(vPx[1]).hex())
     print('  Py: ' + Integer(vPy[0]).hex() + ' + β * ' + Integer(vPy[1]).hex())
-    # print('  Pz: ' + Integer(vPz[0]).hex() + ' + β * ' + Integer(vPz[1]).hex())
 
     assert psi(psi(P)) - t*psi(P) + p*P == G2([0, 1, 0])
 

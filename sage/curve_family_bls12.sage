@@ -14,21 +14,23 @@
 # ############################################################
 #
 # This module derives a BLS12 curve parameters from
-# its base parameter u
+# its base parameter x
 
-def compute_curve_characteristic(u_str):
-  u = sage_eval(u_str)
-  p = (u - 1)^2 * (u^4 - u^2 + 1)//3 + u
-  r = u^4 - u^2 + 1
+def compute_curve_characteristic(x_str):
+  x = sage_eval(x_str)
+  p = (x - 1)^2 * (x^4 - x^2 + 1)//3 + x
+  r = x^4 - x^2 + 1
+  t = x + 1
 
   print(f'BLS12 family - {p.nbits()} bits')
-  print('  Prime modulus:     0x' + p.hex())
-  print('  Curve order:       0x' + r.hex())
-  print('  Parameter u:       ' + u_str)
-  if u < 0:
-      print('  Parameter u (hex): -0x' + (-u).hex())
+  print('  Prime modulus p:     0x' + p.hex())
+  print('  Curve order r:       0x' + r.hex())
+  print('  trace t:             0x' + t.hex())
+  print('  Parameter x:       ' + x_str)
+  if x < 0:
+      print('  Parameter x (hex): -0x' + (-x).hex())
   else:
-      print('  Parameter u (hex):  0x' + u.hex())
+      print('  Parameter x (hex):  0x' + x.hex())
 
   print()
 
@@ -61,11 +63,11 @@ def compute_curve_characteristic(u_str):
   print(f'    GLV-2 decomposition of s into (k1, k2) on G1')
   print(f'      (k1, k2) = (s, 0) - 𝛼1 b1 - 𝛼2 b2')
   print(f'      𝛼i = 𝛼\u0302i * s / r')
-  print(f'        Lattice b1: ' + str(['0x' + b.hex() for b in [u^2-1, -1]]))
-  print(f'        Lattice b2: ' + str(['0x' + b.hex() for b in [1, u^2]]))
+  print(f'        Lattice b1: ' + str(['0x' + b.hex() for b in [x^2-1, -1]]))
+  print(f'        Lattice b2: ' + str(['0x' + b.hex() for b in [1, x^2]]))
 
   # Babai rounding
-  ahat1 = u^2
+  ahat1 = x^2
   ahat2 = 1
   # We want a1 = ahat1 * s/r with m = 2 (for a 2-dim decomposition) and r the curve order
   # To handle rounding errors we instead multiply by

@@ -32,6 +32,11 @@ import
 when UseASM_X86_64:
   import ./limbs_asm_modular_x86
 
+when nimvm:
+  from ../config/precompute import montyResidue_precompute
+else:
+  discard
+
 export Fp
 
 # No exceptions allowed
@@ -43,13 +48,16 @@ export Fp
 #
 # ############################################################
 
-func fromBig*[C: static Curve](T: type Fp[C], src: BigInt): Fp[C] {.noInit, inline.} =
-  ## Convert a BigInt to its Montgomery form
-  result.mres.montyResidue(src, C.Mod, C.getR2modP(), C.getNegInvModWord(), C.canUseNoCarryMontyMul())
-
 func fromBig*[C: static Curve](dst: var Fp[C], src: BigInt) {.inline.}=
   ## Convert a BigInt to its Montgomery form
-  dst.mres.montyResidue(src, C.Mod, C.getR2modP(), C.getNegInvModWord(), C.canUseNoCarryMontyMul())
+  when nimvm:
+    dst.mres.montyResidue_precompute(src, C.Mod, C.getR2modP(), C.getNegInvModWord())
+  else:
+    dst.mres.montyResidue(src, C.Mod, C.getR2modP(), C.getNegInvModWord(), C.canUseNoCarryMontyMul())
+
+func fromBig*[C: static Curve](T: type Fp[C], src: BigInt): Fp[C] {.noInit, inline.} =
+  ## Convert a BigInt to its Montgomery form
+  result.fromBig(src)
 
 func toBig*(src: Fp): auto {.noInit, inline.} =
   ## Convert a finite-field element to a BigInt in natural representation

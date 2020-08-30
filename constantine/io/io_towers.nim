@@ -53,3 +53,9 @@ func fromHex*(dst: var Fp2, c0, c1: string) {.raises: [ValueError].}=
   ## β is the quadratic non-residue chosen to construct 𝔽p2
   dst.c0.fromHex(c0)
   dst.c1.fromHex(c1)
+
+func fromHex*(T: typedesc[Fp2], c0, c1: string): T {.raises: [ValueError].}=
+  ## Convert 2 coordinates to an element of 𝔽p2
+  ## with dst = c0 + β * c1
+  ## β is the quadratic non-residue chosen to construct 𝔽p2
+  result.fromHex(c0, c1)
