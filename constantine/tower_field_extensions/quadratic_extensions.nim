@@ -138,6 +138,26 @@ func prod_complex(r: var QuadraticExt, a, b: QuadraticExt) =
   #    - Function calls?
   #    - push/pop stack?
 
+func mul_sparse_complex_by_0y(r: var QuadraticExt, a, sparseB: QuadraticExt) =
+  ## Multiply `a` by `b` with sparse coordinates (0, y)
+  ## On a complex quadratic extension field 𝔽p2 = 𝔽p[𝑖]
+  #
+  # r0 = a0 b0 - a1 b1
+  # r1 = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1 (Karatsuba)
+  #
+  # with b0 = 0, hence
+  #
+  # r0 = - a1 b1
+  # r1 = (a0 + a1) b1 - a1 b1 = a0 b1
+  mixin fromComplexExtension
+  static: doAssert r.fromComplexExtension()
+
+  template b(): untyped = sparseB
+
+  r.c0.prod(a.c1, b.c1)
+  r.c0.neg(r.c0)
+  r.c1.prod(a.c0, b.c1)
+
 # Commutative ring implementation for generic quadratic extension fields
 # -------------------------------------------------------------------
 
@@ -205,6 +225,24 @@ func prod_generic(r: var QuadraticExt, a, b: QuadraticExt) =
   # r0 <- a0 b0 + β a1 b1
   r.c0 += NonResidue * t
 
+func mul_sparse_generic_by_x0(r: var QuadraticExt, a, sparseB: QuadraticExt) =
+  ## Multiply `a` by `b` with sparse coordinates (x, 0)
+  ## On a generic quadratic extension field
+  # Algorithm (with β the non-residue in the base field)
+  #
+  # r0 = a0 b0 + β a1 b1
+  # r1 = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1 (Karatsuba)
+  #
+  # with b1 = 0, hence
+  #
+  # r0 = a0 b0
+  # r1 = (a0 + a1) b0 - a0 b0 = a1 b0
+  mixin prod
+  template b(): untyped = sparseB
+
+  r.c0.prod(a.c0, b.c0)
+  r.c1.prod(a.c1, b.c0)
+
 # Exported symbols
 # -------------------------------------------------------------------
 
@@ -263,6 +301,20 @@ func `*=`*(a: var QuadraticExt, b: QuadraticExt) {.inline.} =
   let t = a
   a.prod(t, b)
 
-func square*(a: var QuadraticExt){.inline.} =
+func square*(a: var QuadraticExt) {.inline.} =
   let t = a
   a.square(t)
+
+func mul_sparse_by_0y*(a: var QuadraticExt, sparseB: QuadraticExt) {.inline.} =
+  ## Sparse in-place multiplication
+  mixin fromComplexExtension
+  when a.fromComplexExtension():
+    let t = a
+    a.mul_sparse_complex_by_0y(t, sparseB)
+  else:
+    {.error: "Not implemented".}
+
+func mul_sparse_by_x0*(a: var QuadraticExt, sparseB: QuadraticExt) {.inline.} =
+  ## Sparse in-place multiplication
+  let t = a
+  a.mul_sparse_generic_by_x0(t, sparseB)

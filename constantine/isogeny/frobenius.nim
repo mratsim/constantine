@@ -106,10 +106,26 @@ const FrobConst_BLS12_381_coef3 = Fp2[BLS12_381].fromHex(
 macro frobConst(C: static Curve, pow: static int): untyped =
   return bindSym("FrobConst_" & $C & "_coef" & $pow)
 
+template mulCheckSparse[Fp2](a: var Fp2, b: Fp2) =
+  when b.c0.isZero().bool:
+    a.mul_sparse_by_0y(b)
+  elif b.c1.isZero().bool:
+    a.mul_sparse_by_x0(b)
+  else:
+    a *= b
+
 func frobenius_psi*[PointG2](r: var PointG2, P: PointG2) =
   ## "Untwist-Frobenius-Twist" endomorphism
   for coordR, coordP in fields(r, P):
     coordR.frobenius(coordP, 1)
 
-  r.x *= frobConst(PointG2.F.C, 2)
-  r.y *= frobConst(PointG2.F.C, 3)
+  r.x.mulCheckSparse frobConst(PointG2.F.C, 2)
+  r.y.mulCheckSparse frobConst(PointG2.F.C, 3)
+
+# TODO: implement psi2.
+#   - This saves of 3 Fp2 conjugate
+#   - With nice sextic non residue like BLS12-381 (1+i)
+#     the r.y coordinate is just a negation
+# AFAIK there is no situation where we need psi2 without psi
+# so the saving are comparing psi(psi(P)) vs psi2(P)
+# assuming we will need to compute psi(P) in any case
