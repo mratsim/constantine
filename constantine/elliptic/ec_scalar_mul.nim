@@ -226,4 +226,4 @@ func scalarMul*(
       scratchSpace: array[1 shl 4, ECP_SWei_Proj]
       scalarCanonicalBE: array[(scalar.bits+7)div 8, byte] # canonical big endian representation
     scalarCanonicalBE.exportRawUint(scalar, bigEndian)   # Export is constant-time
-    P.scalarMulGeneric(scratchSpace)
+    P.scalarMulGeneric(scalarCanonicalBE, scratchSpace)

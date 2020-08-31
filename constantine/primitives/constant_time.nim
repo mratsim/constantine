@@ -117,7 +117,9 @@ template `-`*[T: Ct](x: T): T =
   ## Unary minus returns the two-complement representation
   ## of an unsigned integer
   # We could use "not(x) + 1" but the codegen is not optimal
-  block:
+  when nimvm:
+    not(x) + T(1)
+  else: # Use C so that compiler uses the "neg" instructions
     var neg: T
     {.emit:[neg, " = -", x, ";"].}
     neg

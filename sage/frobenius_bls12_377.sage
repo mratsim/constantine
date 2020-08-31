@@ -44,12 +44,45 @@ def fp2_to_hex(a):
     return Integer(v[0]).hex() + ' + β * ' + Integer(v[1]).hex()
 
 # Frobenius constants (D type: use SNR, M type use 1/SNR)
-FrobConst = SNR**((p-1)/6)
-print('FrobConst   : ' + fp2_to_hex(FrobConst))
-FrobConst2 = FrobConst * FrobConst
-print('FrobConst2  : ' + fp2_to_hex(FrobConst2))
-FrobConst3 = FrobConst2 * FrobConst
-print('FrobConst3  : ' + fp2_to_hex(FrobConst3))
+FrobConst_psi = SNR^((p-1)/6)
+FrobConst_psi_2 = FrobConst_psi * FrobConst_psi
+FrobConst_psi_3 = FrobConst_psi_2 * FrobConst_psi
+print('FrobConst_psi   : ' + fp2_to_hex(FrobConst_psi))
+print('FrobConst_psi_2  : ' + fp2_to_hex(FrobConst_psi_2))
+print('FrobConst_psi_3  : ' + fp2_to_hex(FrobConst_psi_3))
+
+print('')
+FrobConst_psi2_2 = FrobConst_psi_2 * FrobConst_psi_2**p
+FrobConst_psi2_3 = FrobConst_psi_3 * FrobConst_psi_3**p
+print('FrobConst_psi2_2  : ' + fp2_to_hex(FrobConst_psi2_2))
+print('FrobConst_psi2_3  : ' + fp2_to_hex(FrobConst_psi2_3))
+
+print('')
+FrobConst_psi3_2 = FrobConst_psi_2 * FrobConst_psi2_2**p
+FrobConst_psi3_3 = FrobConst_psi_3 * FrobConst_psi2_3**p
+print('FrobConst_psi3_2  : ' + fp2_to_hex(FrobConst_psi3_2))
+print('FrobConst_psi3_3  : ' + fp2_to_hex(FrobConst_psi3_3))
+
+# Recap, with ξ (xi) the sextic non-residue
+# psi_2 = (ξ^((p-1)/6))^2 = ξ^((p-1)/3)
+# psi_3 = psi_2 * ξ^((p-1)/6) = ξ^((p-1)/3) * ξ^((p-1)/6) = ξ^((p-1)/2)
+#
+# Reminder, in 𝔽p2, frobenius(a) = a^p = conj(a)
+# psi2_2 = psi_2 * psi_2^p = ξ^((p-1)/3) * ξ^((p-1)/3)^p = ξ^((p-1)/3) * frobenius(ξ)^((p-1)/3)
+#        = norm(ξ)^((p-1)/3)
+# psi2_3 = psi_3 * psi_3^p = ξ^((p-1)/2) * ξ^((p-1)/2)^p = ξ^((p-1)/2) * frobenius(ξ)^((p-1)/2)
+#        = norm(ξ)^((p-1)/2)
+#
+# In Fp²:
+# - quadratic non-residues respect the equation a^((p²-1)/2) ≡ -1 (mod p²) by the Legendre symbol
+# - sextic non-residues are also quadratic non-residues so ξ^((p²-1)/2) ≡ -1 (mod p²)
+#
+# We have norm(ξ)^((p-1)/2) = (ξ*frobenius(ξ))^((p-1)/2) = (ξ*(ξ^p))^((p-1)/2) = ξ^(p+1)^(p-1)/2
+#                           = ξ^((p²-1)/2)
+# And ξ^((p²-1)/2) ≡ -1 (mod p²)
+# So psi2_3 ≡ -1 (mod p²)
+#
+# TODO: explain why psi3_2 = [0, -1]
 
 # Frobenius Fp2
 A = Fp2([5, 7])
@@ -68,9 +101,17 @@ print('AF3        : ' + fp2_to_hex(AF3))
 def psi(P):
     (Px, Py, Pz) = P
     return G2([
-        FrobConst2 * Px.frobenius(),
-        FrobConst3 * Py.frobenius()
+        FrobConst_psi_2 * Px.frobenius(),
+        FrobConst_psi_3 * Py.frobenius()
         # Pz.frobenius() - Always 1 after extract
+    ])
+
+def psi2(P):
+    (Px, Py, Pz) = P
+    return G2([
+        FrobConst_psi2_2 * Px.frobenius(2),
+        FrobConst_psi2_3 * Py.frobenius(2)
+        # Pz - Always 1 after extract
     ])
 
 # Test generator
@@ -89,7 +130,15 @@ for i in range(4):
     print('  Px: ' + Integer(vPx[0]).hex() + ' + β * ' + Integer(vPx[1]).hex())
     print('  Py: ' + Integer(vPy[0]).hex() + ' + β * ' + Integer(vPy[1]).hex())
 
+    # Galbraith-Lin-Scott, 2008, Theorem 1
+    # Fuentes-Castaneda et al, 2011, Equation (2)
     assert psi(psi(P)) - t*psi(P) + p*P == G2([0, 1, 0])
+
+    # Galbraith-Scott, 2008, Lemma 1
+    # k-th cyclotomic polynomial with k = 12
+    assert psi2(psi2(P)) - psi2(P) + P == G2([0, 1, 0])
+
+    assert psi(psi(P)) == psi2(P)
 
     (Qx, Qy, Qz) = psi(P)
     vQx = vector(Qx)

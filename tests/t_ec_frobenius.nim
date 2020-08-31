@@ -9,15 +9,24 @@
 
 import
   # Standard library
-  std/unittest,
+  std/[times, unittest],
   # Internals
   ../constantine/config/[common, curves],
-  ../constantine/towers,
-  ../constantine/io/io_ec,
-  ../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective],
-  ../constantine/isogeny/frobenius
+  ../constantine/[arithmetic, towers],
+  ../constantine/io/[io_bigints, io_ec],
+  ../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective, ec_scalar_mul],
+  ../constantine/isogeny/frobenius,
+  # Tests
+  ../helpers/prng_unsafe,
+  ./t_ec_template
 
 echo "\n------------------------------------------------------\n"
+
+# Random seed for reproducibility
+var rng: RngState
+let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+rng.seed(seed)
+echo "frobenius xoshiro512** seed: ", seed
 
 proc test(
        id: int,
@@ -203,3 +212,113 @@ suite "ψ (Psi) - Untwist-Frobenius-Twist Endomorphism on G2 vs SageMath" & " ["
     Qy0 = "169027ec8c608a49325edc87b726cec5f768acf48e80bba04d2810a7259d6b834043e65e1775c4d9181aecc4ff1430ec",
     Qy1 = "77ef6850d4a8f181a10196398cd344011a44c50dce00e18578f3526301263492086d44c7c3d1db5b12499b4033116e1"
   )
+
+suite "ψ - psi(psi(P)) == psi2(P) - (Untwist-Frobenius-Twist Endomorphism)" & " [" & $WordBitwidth & "-bit mode]":
+  const Iters = 8
+  proc test(EC: typedesc, randZ: static bool, gen: static RandomGen) =
+    for i in 0 ..< Iters:
+      let P = rng.random_point(EC, randZ, gen)
+
+      var Q1 {.noInit.}: EC
+      Q1.frobenius_psi(P)
+      Q1.frobenius_psi(Q1)
+
+      var Q2 {.noInit.}: EC
+      Q2.frobenius_psi2(P)
+
+      doAssert bool(Q1 == Q2), "\nIters: " & $i & "\n" &
+        "P: " & P.toHex() & "\n" &
+        "Q1: " & Q1.toHex() & "\n" &
+        "Q2: " & Q2.toHex()
+
+  proc testAll(EC: typedesc) =
+    test "psi(psi(P)) == psi2(P) for " & $EC:
+      test(EC, randZ = false, gen = Uniform)
+      test(EC, randZ = true, gen = Uniform)
+      test(EC, randZ = false, gen = HighHammingWeight)
+      test(EC, randZ = true, gen = HighHammingWeight)
+      test(EC, randZ = false, gen = Long01Sequence)
+      test(EC, randZ = true, gen = Long01Sequence)
+
+  testAll(ECP_SWei_Proj[Fp2[BN254_Snarks]])
+  # testAll(ECP_SWei_Proj[Fp2[BLS12_377]])
+  testAll(ECP_SWei_Proj[Fp2[BLS12_381]])
+
+suite "ψ²(P) - [t]ψ(P) + [p]P = Inf" & " [" & $WordBitwidth & "-bit mode]":
+  const Iters = 10
+  proc trace(C: static Curve): auto =
+    # Returns (abs(trace), isNegativeSign)
+    when C == BN254_Snarks:
+      # x = "0x44E992B44A6909F1"
+      # t = 6x²+1
+      return (BigInt[127].fromHex"0x6f4d8248eeb859fbf83e9682e87cfd47", false)
+    elif C == BLS12_381:
+      # x = "-(2^63 + 2^62 + 2^60 + 2^57 + 2^48 + 2^16)"
+      # t = x+1
+      return (BigInt[64].fromHex"0xd20100000000ffff", true)
+    else:
+      {.error: "Not implemented".}
+
+  proc test(EC: typedesc, randZ: static bool, gen: static RandomGen) =
+    let trace = trace(EC.F.C)
+
+    for i in 0 ..< Iters:
+      let P = rng.random_point(EC, randZ, gen)
+
+      var r {.noInit.}, psi2 {.noInit.}, tpsi {.noInit.}, pP {.noInit.}: EC
+
+      psi2.frobenius_psi2(P)
+      tpsi.frobenius_psi(P)
+      tpsi.scalarMul(trace[0]) # Should be valid for GLS scalar mul even if cofactor isn't cleared
+      if trace[1]: # negative trace
+        tpsi.neg()
+      pP = P
+      pP.scalarMul(EC.F.C.Mod) # Should be valid for GLS scalar mul even if cofactor isn't cleared
+
+      # ψ²(P) - [t]ψ(P) + [p]P = InfinityPoint
+      r.diff(psi2, tpsi)
+      r += pP
+
+      doAssert bool(r.isInf())
+
+  proc testAll(EC: typedesc) =
+    test "ψ²(P) - [t]ψ(P) + [p]P = Inf for " & $EC:
+      test(EC, randZ = false, gen = Uniform)
+      test(EC, randZ = true, gen = Uniform)
+      test(EC, randZ = false, gen = HighHammingWeight)
+      test(EC, randZ = true, gen = HighHammingWeight)
+      test(EC, randZ = false, gen = Long01Sequence)
+      test(EC, randZ = true, gen = Long01Sequence)
+
+  testAll(ECP_SWei_Proj[Fp2[BN254_Snarks]])
+  # testAll(ECP_SWei_Proj[Fp2[BLS12_377]])
+  testAll(ECP_SWei_Proj[Fp2[BLS12_381]])
+
+suite "ψ⁴(P) - ψ²(P) + P = Inf (k-th cyclotomic polynomial with embedding degree k=12)" & " [" & $WordBitwidth & "-bit mode]":
+  const Iters = 10
+
+  proc test(EC: typedesc, randZ: static bool, gen: static RandomGen) =
+    for i in 0 ..< Iters:
+      let P = rng.random_point(EC, randZ, gen)
+
+      var r {.noInit.}, psi4 {.noInit.}, psi2 {.noInit.}: EC
+
+      psi2.frobenius_psi2(P)
+      psi4.frobenius_psi2(psi2)
+      r.diff(psi4, psi2)
+      r += P
+
+      doAssert bool(r.isInf())
+
+  proc testAll(EC: typedesc) =
+    test "ψ⁴(P) - ψ²(P) + P = Inf for " & $EC:
+      test(EC, randZ = false, gen = Uniform)
+      test(EC, randZ = true, gen = Uniform)
+      test(EC, randZ = false, gen = HighHammingWeight)
+      test(EC, randZ = true, gen = HighHammingWeight)
+      test(EC, randZ = false, gen = Long01Sequence)
+      test(EC, randZ = true, gen = Long01Sequence)
+
+  testAll(ECP_SWei_Proj[Fp2[BN254_Snarks]])
+  # testAll(ECP_SWei_Proj[Fp2[BLS12_377]])
+  testAll(ECP_SWei_Proj[Fp2[BLS12_381]])

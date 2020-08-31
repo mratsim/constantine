@@ -26,12 +26,12 @@ import
   ./support/ec_reference_scalar_mult
 
 type
-  RandomGen = enum
+  RandomGen* = enum
     Uniform
     HighHammingWeight
     Long01Sequence
 
-func random_point(rng: var RngState, F: typedesc, randZ: static bool, gen: static RandomGen): F {.inline, noInit.} =
+func random_point*(rng: var RngState, F: typedesc, randZ: static bool, gen: static RandomGen): F {.inline, noInit.} =
   when not randZ:
     when gen == Uniform:
       result = rng.random_unsafe(F)
