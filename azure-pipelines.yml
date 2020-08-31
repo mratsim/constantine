@@ -31,11 +31,11 @@ strategy:
       CHANNEL: devel
       WEAVE_TEST_LANG: cpp
 
-    # Linux_devel_32bit:
-    #   VM: 'ubuntu-16.04'
-    #   UCPU: i686
-    #   CHANNEL: devel
-    #   TEST_LANG: c
+    Linux_devel_32bit:
+      VM: 'ubuntu-16.04'
+      UCPU: i686
+      CHANNEL: devel
+      TEST_LANG: c
 
     MacOS_devel_64bit:
       VM: 'macOS-10.15'
@@ -120,6 +120,29 @@ steps:
     displayName: 'Detecting number of cores'
 
   - bash: |
+      sudo dpkg --add-architecture i386
+
+      sudo apt-fast update -qq
+      # `:i386` (e.g. in `libffi-dev:i386`) is needed otherwise you may get:
+      # `could not load: libffi.so` during dynamic loading.
+      DEBIAN_FRONTEND='noninteractive' \
+        sudo apt-fast install --no-install-recommends --allow-downgrades -yq \
+          g++-multilib gcc-multilib libcurl4-openssl-dev:i386 libgc-dev:i386 \
+          libffi-dev:i386
+      cat << EOF > bin/gcc
+      #!/bin/bash
+      exec $(which gcc) -m32 "\$@"
+      EOF
+      cat << EOF > bin/g++
+      #!/bin/bash
+      exec $(which g++) -m32 "\$@"
+      EOF
+      chmod 755 bin/gcc
+      chmod 755 bin/g++
+    displayName: 'Install dependencies (i386 Linux)'
+    condition: and(eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'i686'))
+
+  - bash: |
       echo "PATH=${PATH}"
       gcc -v
       export ucpu=${UCPU}
@@ -177,6 +200,12 @@ steps:
   #     brew install gmp
   #   displayName: 'Downloading GMP (MacOS)'
   #   condition: eq(variables['Agent.OS'], 'Darwin')
+
+  - bash: |
+      echo "PATH=${PATH}"
+      sudo apt-get install libgmp-dev
+    displayName: 'Downloading GMP (Linux 32-bit)'
+    condition: and(eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'i686'))
 
   - bash: |
       echo "PATH=${PATH}"
