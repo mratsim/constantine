@@ -522,7 +522,7 @@ func montyMul_precompute(r: var BigInt, a, b, M: BigInt, m0ninv: BaseType) =
     t.limbs[N-1] = SecretWord(tmp)
     addC(carry, tN, tNp1, 0, carry)
 
-  discard t.csub(M, (tN != 0) or not(t < M))
+  discard t.csub(M, (tN != 0) or not(precompute.`<`(t, M)))
   r = t
 
 func montyResidue_precompute*(r: var BigInt, a, M, r2modM: BigInt,
