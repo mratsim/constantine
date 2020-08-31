@@ -1,13 +1,15 @@
 strategy:
   maxParallel: 10
   matrix:
-    # TODO: Linux 32-bit requires gcc -m32 setup
-
-    Windows_devel_32bit:
-      VM: 'windows-latest'
-      UCPU: i686
-      CHANNEL: devel
-      TEST_LANG: c
+    # TODO: Broken by OpenSSL not found for nimble
+    # https://github.com/nim-lang/Nim/blob/bf320ed172f74f60fd274338e82bdc9ce3520dd9/lib/wrappers/openssl.nim#L61
+    #   could not load: (libcrypto-1_1|libeay32).dll
+    #   (bad format; library may be wrong architecture)
+    # Windows_devel_32bit:
+    #   VM: 'windows-latest'
+    #   UCPU: i686
+    #   CHANNEL: devel
+    #   TEST_LANG: c
     Windows_devel_64bit:
       VM: 'windows-latest'
       UCPU: amd64
