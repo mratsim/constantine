@@ -205,7 +205,7 @@ steps:
       echo "PATH=${PATH}"
       sudo apt-get install libgmp-dev
     displayName: 'Downloading GMP (Linux 32-bit)'
-    condition: and(eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'i686'))
+    condition: and(eq(variables['Agent.OS'], 'Linux'), eq(variables['UCPU'], 'i686'))
 
   - bash: |
       echo "PATH=${PATH}"
