@@ -33,7 +33,7 @@ matrix:
       env:
         - ARCH=amd64
         - CHANNEL=devel
-      compiler: clang
+      compiler: clang # Need Clang 9 for inline ASM test, but can't easily install it
       # addons:
       #   apt:
       #     sources:
@@ -43,6 +43,20 @@ matrix:
       #       - clang-9.0
       # env:
       #   - MATRIX_EVAL="CC=clang-9.0 && CXX=clang++-9.0"
+
+    - dist: bionic
+      arch: ppc64le
+      env:
+        - ARCH=powerpc64el
+        - CHANNEL=devel
+      compiler: gcc
+
+    - dist: bionic
+      arch: s390x
+      env:
+        - ARCH=s390x
+        - CHANNEL=devel
+      compiler: gcc
 
     # On OSX we only test against clang (gcc is mapped to clang by default)
     - os: osx
@@ -117,7 +131,7 @@ script:
         nimble test_parallel_no_assembler
       else
         nimble test_parallel
-        if [[ "$ARCH" != "arm64" ]]; then
+        if [[ "$ARCH" == "amd64" ]]; then
           nimble test_parallel_no_assembler
         fi
       fi
