@@ -51,12 +51,13 @@ matrix:
         - CHANNEL=devel
       compiler: gcc
 
-    - dist: bionic
-      arch: s390x
-      env:
-        - ARCH=s390x
-        - CHANNEL=devel
-      compiler: gcc
+    # "Unknown processor s390x"
+    # - dist: bionic
+    #   arch: s390x
+    #   env:
+    #     - ARCH=s390x
+    #     - CHANNEL=devel
+    #   compiler: gcc
 
     # On OSX we only test against clang (gcc is mapped to clang by default)
     - os: osx
