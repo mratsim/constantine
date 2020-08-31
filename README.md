@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 ![Stability: experimental](https://img.shields.io/badge/stability-experimental-orange.svg)\
 ![Github Actions CI](https://github.com/mratsim/constantine/workflows/Constantine%20CI/badge.svg)\
-[![Build Status: Travis](https://img.shields.io/travis/com/mratsim/constantine/master?label=Travis%20%28Linux%20x86_64%2FARM64,%20MacOS%20x86_64%29)](https://travis-ci.com/mratsim/constantine)\
+[![Build Status: Travis](https://img.shields.io/travis/com/mratsim/constantine/master?label=Travis%20%28Linux%20x86_64%2FARM64%2FPowerPC64,%20MacOS%20x86_64%29)](https://travis-ci.com/mratsim/constantine)\
 [![Build Status: Azure](https://img.shields.io/azure-devops/build/numforge/07a2a7a5-995a-45d3-acd5-f5456fe7b04d/4?label=Azure%20%28Linux%2032%2F64-bit%2C%20Windows%2032%2F64-bit%2C%20MacOS%2064-bit%29)](https://dev.azure.com/numforge/Constantine/_build?definitionId=4&branchName=master)
 
 This library provides constant-time implementation of elliptic curve cryptography.
