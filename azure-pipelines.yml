@@ -129,14 +129,19 @@ steps:
         sudo apt-fast install --no-install-recommends --allow-downgrades -yq \
           g++-multilib gcc-multilib libcurl4-openssl-dev:i386 libgc-dev:i386 \
           libffi-dev:i386
-      cat << EOF > bin/gcc
+
+      mkdir -p bin
+      
+      cat < EOF > bin/gcc
       #!/bin/bash
       exec $(which gcc) -m32 "\$@"
       EOF
-      cat << EOF > bin/g++
+
+      cat < EOF > bin/g++
       #!/bin/bash
       exec $(which g++) -m32 "\$@"
       EOF
+
       chmod 755 bin/gcc
       chmod 755 bin/g++
 
