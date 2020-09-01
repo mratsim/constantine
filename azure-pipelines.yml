@@ -139,6 +139,9 @@ steps:
       EOF
       chmod 755 bin/gcc
       chmod 755 bin/g++
+
+      # Add to path
+      echo '##vso[task.prependpath]$(System.DefaultWorkingDirectory)/bin'
     displayName: 'Install dependencies (i386 Linux)'
     condition: and(eq(variables['Agent.OS'], 'Linux'), eq(variables['CPU'], 'i686'))
 
