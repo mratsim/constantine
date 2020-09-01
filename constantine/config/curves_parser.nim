@@ -346,6 +346,14 @@ proc genMainConstants(defs: var seq[CurveParams]): NimNode =
           exported($curve & "_BN_can_use_addchain_inversion"),
           newLit true
         )
+        curveExtraStmts.add newConstStmt(
+          exported($curve & "_BN_param_u"),
+          newCall(
+            bindSym"fromHex",
+            nnkBracketExpr.newTree(bindSym"BigInt", curveDef.bn_u_bitwidth),
+            curveDef.bn_u
+          )
+        )
       else:
         curveExtraStmts.add newConstStmt(
           exported($curve & "_BN_can_use_addchain_inversion"),

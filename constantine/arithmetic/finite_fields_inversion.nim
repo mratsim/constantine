@@ -161,7 +161,10 @@ func inv*(r: var Fp, a: Fp) =
   # neither for Secp256k1 nor BN curves
   # Performance is slower than GCD
   # To be revisited with faster squaring/multiplications
-  r.mres.steinsGCD(a.mres, Fp.C.getR2modP(), Fp.C.Mod, Fp.C.getPrimePlus1div2())
+  when false: # Fp.C.canUse_BN_AddchainInversion():
+    r.invmod_addchain_bn(a)
+  else:
+    r.mres.steinsGCD(a.mres, Fp.C.getR2modP(), Fp.C.Mod, Fp.C.getPrimePlus1div2())
 
 func inv*(a: var Fp) =
   ## Inversion modulo p
@@ -175,5 +178,5 @@ func inv*(a: var Fp) =
   # Performance is slower than GCD
   # To be revisited with faster squaring/multiplications
   var t: typeof(a) # TODO: zero-init needed?
-  t.mres.steinsGCD(a.mres, Fp.C.getR2modP(), Fp.C.Mod, Fp.C.getPrimePlus1div2())
+  t.inv(a)
   a = t

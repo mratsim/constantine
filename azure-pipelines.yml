@@ -131,13 +131,13 @@ steps:
           libffi-dev:i386
 
       mkdir -p bin
-      
-      cat < EOF > bin/gcc
+
+      cat << EOF > bin/gcc
       #!/bin/bash
       exec $(which gcc) -m32 "\$@"
       EOF
 
-      cat < EOF > bin/g++
+      cat << EOF > bin/g++
       #!/bin/bash
       exec $(which g++) -m32 "\$@"
       EOF
