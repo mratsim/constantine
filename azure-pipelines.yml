@@ -31,11 +31,12 @@ strategy:
       CHANNEL: devel
       WEAVE_TEST_LANG: cpp
 
-    Linux_devel_32bit:
-      VM: 'ubuntu-16.04'
-      UCPU: i686
-      CHANNEL: devel
-      TEST_LANG: c
+    # Deactivated for now, this is cross-compilation and tricky to get right
+    # Linux_devel_32bit:
+    #   VM: 'ubuntu-16.04'
+    #   UCPU: i686
+    #   CHANNEL: devel
+    #   TEST_LANG: c
 
     MacOS_devel_64bit:
       VM: 'macOS-10.15'
