@@ -167,10 +167,7 @@ proc scalarMulEndo*(T: typedesc, iters: int) =
 
   bench("EC ScalarMul " & G1_or_G2 & " (endomorphism accelerated)", T, iters):
     r = P
-    when T.F is Fp:
-      r.scalarMulGLV(exponent)
-    else:
-      {.error: "Not implemented".}
+    r.scalarMulEndo(exponent)
 
 proc scalarMulEndoWindow*(T: typedesc, iters: int) =
   const bits = T.F.C.getCurveOrderBitwidth()

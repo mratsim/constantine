@@ -60,8 +60,8 @@ proc main() =
     separator()
     scalarMulGenericBench(ECP_SWei_Proj[Fp2[curve]], scratchSpaceSize = 1 shl 4, MulIters)
     separator()
-    # scalarMulEndo(ECP_SWei_Proj[Fp2[curve]], MulIters)
-    # separator()
+    scalarMulEndo(ECP_SWei_Proj[Fp2[curve]], MulIters)
+    separator()
   separator()
 
 main()

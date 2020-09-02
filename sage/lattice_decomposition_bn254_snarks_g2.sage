@@ -337,9 +337,16 @@ def scalarMulEndo(scalar, P0):
     if even:
         Q -= P0
 
+    print('----')
     print('final Q: ' + pointToString(Q))
     print('expected: ' + pointToString(expected))
+    print('----')
     printFactors(factors)
+    print('Mul expected:')
+    print('  k0: ' + k0.hex())
+    print('  k1: ' + k1.hex())
+    print('  k2: ' + k2.hex())
+    print('  k3: ' + k3.hex())
 
     assert Q == expected
 

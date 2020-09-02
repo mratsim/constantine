@@ -15,6 +15,7 @@ import
   ../arithmetic,
   ../io/io_bigints,
   ../towers,
+  ../isogeny/frobenius,
   ./ec_weierstrass_affine,
   ./ec_weierstrass_projective,
   ./ec_endomorphism_params
@@ -192,7 +193,7 @@ func secretLookup[T](dst: var T, table: openArray[T], index: SecretWord) =
     let selector = SecretWord(i) == index
     dst.ccopy(table[i], selector)
 
-func scalarMulGLV*[scalBits](
+func scalarMulEndo*[scalBits](
        P: var ECP_SWei_Proj,
        scalar: BigInt[scalBits]
      ) =
@@ -201,28 +202,47 @@ func scalarMulGLV*[scalBits](
   ##   P <- [k] P
   ##
   ## This is a scalar multiplication accelerated by an endomorphism
-  ## via the GLV (Gallant-lambert-Vanstone) decomposition.
+  ## - via the GLV (Gallant-lambert-Vanstone) decomposition on G1
+  ## - via the GLS (Galbraith-Lin-Scott) decomposition on G2
   const C = P.F.C # curve
   static: doAssert: scalBits == C.getCurveOrderBitwidth()
   when P.F is Fp:
     const M = 2
-
-  # 1. Compute endomorphisms
-  var endomorphisms {.noInit.}: array[M-1, typeof(P)]
-  endomorphisms[0] = P
-  endomorphisms[0].x *= C.getCubicRootOfUnity_mod_p()
+    # 1. Compute endomorphisms
+    var endomorphisms {.noInit.}: array[M-1, typeof(P)]
+    endomorphisms[0] = P
+    endomorphisms[0].x *= C.getCubicRootOfUnity_mod_p()
+  elif P.F is Fp2:
+    const M = 4
+    # 1. Compute endomorphisms
+    var endomorphisms {.noInit.}: array[M-1, typeof(P)]
+    endomorphisms[0].frobenius_psi(P)
+    endomorphisms[1].frobenius_psi2(P)
+    endomorphisms[2].frobenius_psi(endomorphisms[1])
+  else:
+    {.error: "Unconfigured".}
 
   # 2. Decompose scalar into mini-scalars
   const L = (C.getCurveOrderBitwidth() + M - 1) div M + 1
   var miniScalars {.noInit.}: array[M, BigInt[L]]
   when C == BN254_Snarks:
-    scalar.decomposeScalar_BN254_Snarks_G1(
-      miniScalars
-    )
+    when P.F is Fp:
+      scalar.decomposeScalar_BN254_Snarks_G1(
+        miniScalars
+      )
+    else:
+      scalar.decomposeScalar_BN254_Snarks_G2(
+        miniScalars
+      )
   elif C == BLS12_381:
-    scalar.decomposeScalar_BLS12_381_G1(
-      miniScalars
-    )
+    when P.F is Fp:
+      scalar.decomposeScalar_BLS12_381_G1(
+        miniScalars
+      )
+    else:
+      scalar.decomposeScalar_BLS12_381_G2(
+        miniScalars
+      )
   else:
     {.error: "Unsupported curve for GLV acceleration".}
 

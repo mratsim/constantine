@@ -54,6 +54,7 @@ set_random_seed(1337)
 print('=========================================')
 print('G1 vectors: ')
 for i in range(10):
+    print(f'--- test {i} ------------------------------')
     P = G1.random_point()
     P = clearCofactorG1(P)
     (Px, Py, Pz) = P
@@ -73,6 +74,7 @@ print('=========================================')
 print('G2 vectors: ')
 
 for i in range(10):
+    print(f'--- test {i} ------------------------------')
     P = G2.random_point()
     P = clearCofactorG2(P)
     (Px, Py, Pz) = P
@@ -84,6 +86,7 @@ for i in range(10):
 
     exponent = randrange(r) # Pick an integer below curve order
     print('scalar: ' + Integer(exponent).hex())
+    assert exponent < r
 
     Q = exponent * P
     (Qx, Qy, Qz) = Q

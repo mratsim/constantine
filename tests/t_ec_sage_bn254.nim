@@ -49,7 +49,7 @@ proc test(
 
     impl.scalarMulGeneric(exponentCanonical, scratchSpace)
     reference.unsafe_ECmul_double_add(exponentCanonical)
-    endo.scalarMulGLV(exponent)
+    endo.scalarMulEndo(exponent)
     endoW.scalarMulGLV_m2w2(exponent)
 
     doAssert: bool(Q == reference)
@@ -60,7 +60,7 @@ proc test(
 suite "Scalar Multiplication G1: BN254 implementation vs SageMath" & " [" & $WordBitwidth & "-bit mode]":
   # Generated via sage sage/testgen_bn254_snarks.sage
   test(
-    id = 1,
+    id = 0,
     EC = ECP_SWei_Proj[Fp[BN254_Snarks]],
     Px = "22d3af0f3ee310df7fc1a2a204369ac13eb4a48d969a27fcd2861506b2dc0cd7",
     Py = "1c994169687886ccd28dd587c29c307fb3cab55d796d73a5be0bbf9aab69912e",
@@ -70,7 +70,7 @@ suite "Scalar Multiplication G1: BN254 implementation vs SageMath" & " [" & $Wor
   )
 
   test(
-    id = 2,
+    id = 1,
     EC = ECP_SWei_Proj[Fp[BN254_Snarks]],
     Px = "2724750abe620fce759b6f18729e40f891a514160d477811a44b222372cc4ea3",
     Py = "105cdcbe363921790a56bf2696e73642447c60b814827ca4dba86c814912c98a",
@@ -80,7 +80,7 @@ suite "Scalar Multiplication G1: BN254 implementation vs SageMath" & " [" & $Wor
   )
 
   test(
-    id = 3,
+    id = 2,
     EC = ECP_SWei_Proj[Fp[BN254_Snarks]],
     Px = "39bc19c41835082f86ca046b71875b051575072e4d6a4aeedac31eee34b07df",
     Py = "1fdbf42fc20421e1e775fd93ed1888d614f7e39067e7443f21b6a4817481c346",
@@ -90,7 +90,7 @@ suite "Scalar Multiplication G1: BN254 implementation vs SageMath" & " [" & $Wor
   )
 
   test(
-    id = 4,
+    id = 3,
     EC = ECP_SWei_Proj[Fp[BN254_Snarks]],
     Px = "157a3e1ff9dabccced9746e19855a9438098be6d734f07d1c069aa1bd05b8d87",
     Py = "1c96bf3e48bc1a6635d93d4f1302a0eba39bd907c5d861f2a9d0c714ee60f04d",
@@ -100,7 +100,7 @@ suite "Scalar Multiplication G1: BN254 implementation vs SageMath" & " [" & $Wor
   )
 
   test(
-    id = 5,
+    id = 4,
     EC = ECP_SWei_Proj[Fp[BN254_Snarks]],
     Px = "2f260967d4cd5d15f98c0a0a9d5abaae0c70d3b8d83e1e884586cd6ece395fe7",
     Py = "2a102c7aebdfaa999d5a99984148ada142f72f5d4158c10368a2e13dded886f6",
@@ -110,7 +110,7 @@ suite "Scalar Multiplication G1: BN254 implementation vs SageMath" & " [" & $Wor
   )
 
   test(
-    id = 6,
+    id = 5,
     EC = ECP_SWei_Proj[Fp[BN254_Snarks]],
     Px = "1b4ccef57f4411360a02b8228e4251896c9492ff93a69ba3720da0cd46a04e83",
     Py = "1fabcb215bd7c06ead2e6b0167497efc2cdd3dbacf69bcb0244142fd63c1e405",
@@ -120,7 +120,7 @@ suite "Scalar Multiplication G1: BN254 implementation vs SageMath" & " [" & $Wor
   )
 
   test(
-    id = 7,
+    id = 6,
     EC = ECP_SWei_Proj[Fp[BN254_Snarks]],
     Px = "2807c88d6759280d6bd83a54d349a533d1a66dc32f72cab8114ab707f10e829b",
     Py = "dbf0d486aeed3d303880f324faa2605aa0219e35661bc88150470c7df1c0b61",
@@ -130,7 +130,7 @@ suite "Scalar Multiplication G1: BN254 implementation vs SageMath" & " [" & $Wor
   )
 
   test(
-    id = 8,
+    id = 7,
     EC = ECP_SWei_Proj[Fp[BN254_Snarks]],
     Px = "2754a174a33a55f2a31573767e9bf5381b47dca1cbebc8b68dd4df58b3f1cc2",
     Py = "f222f59c8893ad87c581dacb3f8b6e7c20e7a13bc5fb6e24262a3436d663b1",
@@ -140,7 +140,7 @@ suite "Scalar Multiplication G1: BN254 implementation vs SageMath" & " [" & $Wor
   )
 
   test(
-    id = 9,
+    id = 8,
     EC = ECP_SWei_Proj[Fp[BN254_Snarks]],
     Px = "273bf6c679d8e880034590d16c007bbabc6c65ed870a263b5d1ce7375c18fd7",
     Py = "2904086cb9e33657999229b082558a74c19b2b619a0499afb2e21d804d8598ee",
@@ -150,7 +150,7 @@ suite "Scalar Multiplication G1: BN254 implementation vs SageMath" & " [" & $Wor
   )
 
   test(
-    id = 10,
+    id = 9,
     EC = ECP_SWei_Proj[Fp[BN254_Snarks]],
     Px = "ec892c09a5f1c68c1bfec7780a1ebd279739383f2698eeefbba745b3e717fd5",
     Py = "23d273a1b9750fe1d4ebd4b7c25f4a8d7d94f6662c436305cca8ff2cdbd3f736",
@@ -187,150 +187,150 @@ proc test(
 
     impl.scalarMulGeneric(exponentCanonical, scratchSpace)
     reference.unsafe_ECmul_double_add(exponentCanonical)
-    # endo.scalarMulGLV(exponent) # TODO GLV+GLS on G2
+    endo.scalarMulEndo(exponent)
 
     doAssert: bool(Q == reference)
     doAssert: bool(Q == impl)
-    # doAssert: bool(Q == endo)
+    doAssert: bool(Q == endo)
 
 suite "Scalar Multiplication G2: BN254 implementation vs SageMath" & " [" & $WordBitwidth & "-bit mode]":
   # Generated via sage sage/testgen_bn254_snarks.sage
   test(
+    id = 0,
+    EC = ECP_SWei_Proj[Fp2[BN254_Snarks]],
+    Px0 = "1dcee2242ae85da43d02d38032b85836660f9a0a8777ab66c84ffbbde3ac3b25",
+    Px1 = "1e2eb4c305e3b6c36a4081888b7a953eb44804b8b5120306331f8c89a3bb950",
+    Py0 = "1db75f495edd522cae161ceeb86ca466ca2efd80ef979028d7aa39679de675fd",
+    Py1 = "b1b6edeb6a7689595098a58a916657dcc09f53f5fc1a1a64b34a2b80447692e",
+    scalar = "3075e23caee5579e5c96f1ca7b206862c2cf3ce21d79182d58b140074b7bd34",
+    Qx0 = "8d63bb4368f94f1629f33ef0c970b3a6fcec6979e423f54ce657f0493c08fde",
+    Qx1 = "29d1af77bb890dcb27e685198f23dffd5ae5733bd6dd55757dcb44ce8c396742",
+    Qy0 = "13c24efab7e517c2337ba9cbb8cfb2166666a44550fc4d314f4c81a4812fb8a",
+    Qy1 = "c3ad1f7a175fa21e1d18595f8fc793688e1a33feda902805a52569ea7a787bb"
+  )
+
+  test(
     id = 1,
     EC = ECP_SWei_Proj[Fp2[BN254_Snarks]],
-    Px0 = "d4ff42fc6d0febc88c9e1bc568d72c80c58438f6295dc598d798c1285f974ed",
-    Px1 = "3845ad0148f76bdf14f752268eafb065c7272721784a8c6bd3a5fa736332b94",
-    Py0 = "13fea1d73f8e06ea57a110f9156a8c876ba42251c7dcf9f203f90839bea3e462",
-    Py1 = "1b722e9557c77e1a74a2ad7236b9b0194dbf80a5c03021ce55649e3082c0cbaf",
-    scalar = "3075e23caee5579e5c96f1ca7b206862c2cf3ce21d79182d58b140074b7bd34",
-    Qx0 = "1811e020b970e8c87c63acc020a27e99e97236f9dd01475ece959fb679c3e2d",
-    Qx1 = "2e7c501387b25ab6fc9b45c8e0944d9685364f5c448b954f370ac80751a25de5",
-    Qy0 = "8d73969c1c49878b450c829a7574d7df69fb0f44f158f1a84a8dda940453f30",
-    Qy1 = "14eda105095dd606285a3b7a2aa9bd269b9193c22726d5a4d8708e02ae217807"
+    Px0 = "5ed8c937273562944e0f1ebfb40e6511202188c1cabf588ed38735016d37b32",
+    Px1 = "23f75e8322c4b540cd5b8fd144a89ab5206a040f498b7b59385770bc841cf012",
+    Py0 = "2150beef17f5c22a65a4129390f47eece8f0c7d0c516790ea2632e7fd594ed8",
+    Py1 = "78281fb396e2b923453fae943af96b57e8b283fc40b0be4be3a1750d0daf121",
+    scalar = "1eac341ad699cba0cb13ae35b8215bfe0f34e931f8e51e33bf90d9849767bb",
+    Qx0 = "1bb6e8c1be4d9da9ef294ab066c82bb6dd805efa0c73f289e25f5cc6fc4f12e4",
+    Qx1 = "8ca44ff91e6484ecadc2a866ec64031e71c4a9d7a902f4280bef3db4dbf1bc9",
+    Qy0 = "39d151a22c49d4c71c8258e9664ead46ddccd49c596056509d9f9e6055def62",
+    Qy1 = "b37a08b453b96880f435d9fb2555960571a76e72a9d0d0ec622b055b7c97cdb"
   )
 
   test(
     id = 2,
     EC = ECP_SWei_Proj[Fp2[BN254_Snarks]],
-    Px0 = "c4bff378e0e78a9094bc8cb224ad7d89266c28d1289098f03226fa84e7905b0",
-    Px1 = "208afbcdfa4243045ad02aea93f275c60e9f838d6a933e9ad5732235e93cec84",
-    Py0 = "178fd343e358c869df8c3b2e2e90c68cb2352c1ce6a6e51516a2ccab5bc191e3",
-    Py1 = "23d122142470d7a5b9a9b456dcd1898ab5130f2274e010a67c0b59d8a06c98a3",
-    scalar = "1eac341ad699cba0cb13ae35b8215bfe0f34e931f8e51e33bf90d9849767bb",
-    Qx0 = "7d2b09ccebc6ea3ab685a2938c3b594bd1e500eb2ab2a4e0337e7f6587026fb",
-    Qx1 = "ac5a99b924aebdbe4ff277ff5c8e1a209059c646fcac221917fbcbf738039ca",
-    Qy0 = "2be1aebafff712ffd677fe1ac78eb2e838fe3bfc0051afb4e1b446b9aecb5939",
-    Qy1 = "16bf0803d6e1d68be0e3e10d25e358e1f89a28c211cdc61def5ef10ea3abec94"
+    Px0 = "2ac4b3d0a70d6686c63d9d63cce1370eafd4dc67f616c13582c6c64f6670513e",
+    Px1 = "f1daeb6a2581ba6c8027a645ab5c10e303db4aee85c70c8fe11f4c1adcc7029",
+    Py0 = "25807ff21967759cab64844741d006e2aa0221d9836613b1239da1a167d15131",
+    Py1 = "148dae725e508dbb43616972e2945f4868b2a193d828ed2efcf9c8a37b6b83f5",
+    scalar = "b29535765163b5d5f2d01c8fcde010d11f3f0f250a2cc84b8bc13dd9083356c",
+    Qx0 = "5f4b3a8a5fe74bf3f2ddc0bc2024f18c7958b2846dab1c602b8256a6035361a",
+    Qx1 = "ba3dad609b1ba8c78cbbfb7fae2d2f9398ef02265e3b4c0f3c8c18d8d0e59d6",
+    Qy0 = "2c226aee4621895d63df069c4b6951e2201ee1508d5d54e6ee860533b73b534a",
+    Qy1 = "2aa5384592339bff0a6e4664c931c0ec9f5a3d2fb2fff87a52245c0d95d3d130"
   )
 
   test(
     id = 3,
     EC = ECP_SWei_Proj[Fp2[BN254_Snarks]],
-    Px0 = "15dd63cf4d0c2d0e21368a72b93f72ed172c413782db489f5d7b4dfcdee061c7",
-    Px1 = "26e5ca7f4b418fc9eb7d7b7f44ed1c4357fa71695ad59299d4404c55a295d64",
-    Py0 = "df8c4bcbb5518b1ea51967f69f61b743be8e58bc9b597b398b51ca7820940af",
-    Py1 = "8a36e75e7058969f4aef0724d9f6317b8b6028870f0e7412baece8073be3477",
-    scalar = "b29535765163b5d5f2d01c8fcde010d11f3f0f250a2cc84b8bc13dd9083356c",
-    Qx0 = "1c329c496b4cb95ee511277fd514a07fb98e313c61f256116d9c071ecc9d9a3a",
-    Qx1 = "11d64f0b3301b18b969f58664801c0de67a295943034e5946b27065ac56581a0",
-    Qy0 = "54787e9bdec726f06896ed90b12a346a2f92e44688b1663911931cd225a1cf3",
-    Qy1 = "1303456cc596e033f1f32f2041bd83fabb8566744c0b4a358097270baa734a48"
+    Px0 = "2a028c1328bb0abf252edfbf7133b84eef2a5f20163fe61685b4b54229ca585d",
+    Px1 = "8f80ad79e8e7e79bbdc645d9f5b339c52dd99a901b90de2494492656f11a9d5",
+    Py0 = "1f04320578e31ffa2e2b59ad8fcb1aba622b5f307ac540cf2ccdab07dec56503",
+    Py1 = "2973900c0fdf651b64f5b1a990baec7c582e0743d501bdb991374776d6c73b28",
+    scalar = "2c02275a71bb41c911faf48cab4f7ac7fc6672a5c15586185c8cff3203181da0",
+    Qx0 = "2f39a0772a0bd75db3e6ec0745b18824118e534fdefec811d0a4ca2ca3ce7606",
+    Qx1 = "23e1601a4338502dbc619a8bde251114272ca87662a851a56035c81d46877d81",
+    Qy0 = "1f0ee85e7c590124f89319f2450f7b8421d9f6d6414fd3b5cc18d781b69b30c9",
+    Qy1 = "29e4ff75afecaf732419409a5e0d8e94df6acec29fb5b298c7aad5ceef63e5f9"
   )
 
   test(
     id = 4,
     EC = ECP_SWei_Proj[Fp2[BN254_Snarks]],
-    Px0 = "9a26b213edf4d6b8b8026e934436d2a99d5cc23a9153abdb101a9bc67ab0b74",
-    Px1 = "1654d9658fb77c7836ef3b41431282834c348d922d424ec4205cc62599b1cff4",
-    Py0 = "13359cc29af8ed4d2a8b3acdc2e1c257bb738a365b020075a0cf387fadc9ee96",
-    Py1 = "16dd9e23d0e5a92a98c57eeb0438412185e602bfb87c464e088933fd418e83fb",
-    scalar = "2c02275a71bb41c911faf48cab4f7ac7fc6672a5c15586185c8cff3203181da0",
-    Qx0 = "263a3327dbcd1d29dc43c428f6f03638a146ae40e06974f2a2bdc97c2239adcc",
-    Qx1 = "21d7f34d76f4b71b3e35138f219af27709c0337d1bcd3a680de34ad191a2ddab",
-    Qy0 = "1b0f2d2d9be7fc91bec9dad3294159834e506cf0d24d319b8282bfde26aa4268",
-    Qy1 = "1bceb12af58dd453e801b6036fad5cf63ee511b00c6b8c5cee7bb3846ef3eb05"
+    Px0 = "1132e63c444e1abce6fc4c39bdf5be5caad586837cbf5ca9d3891482bdefe77",
+    Px1 = "22b71f598dab789f055fc9669ddf66f0d75f581af0e9e8863d7f95a51ef34862",
+    Py0 = "58e39050f64c9948d7238b99ecaee947cb934688a6e9f483c5c36b6e07aa31b",
+    Py1 = "2e64b920f498e12992f2a4ae3f9ced43f3f64705c9008169f3b930a760d055fb",
+    scalar = "24c5b2ce21615dca82231f5fb0fc8d05aa07c6df4bb5aa7c2381ac7b61a6290c",
+    Qx0 = "25a0637163a40813529e8a22a3e8be6db96f6dc1cdb8e1844729cad6be11668e",
+    Qx1 = "16de42461c4db7f9f72eb28bb16da850a42fc153dec64baf021f67f5564f36d8",
+    Qy0 = "27f2d743d3ce0c1f92c51110a6b9ca93a95693161f1d1cd85a0cf5a2492b4901",
+    Qy1 = "2c5a8df4fe93e31e374595c0605b1a8b93bb429232cf40f45c847739790c191e"
   )
 
   test(
     id = 5,
     EC = ECP_SWei_Proj[Fp2[BN254_Snarks]],
-    Px0 = "1a4fb241cdcd2415acca073eaae81ea2e75fbe3122d91a113ee60d6a1f2a882c",
-    Px1 = "1cfac3eb7f51ef5c90fe33469dd55b0641eaf4597cfde95f01fe8d0c16613599",
-    Py0 = "112e05efd8fae9654a20c4a53cb31207176bb6ea7c5ed4c8464a9846e4c6bd56",
-    Py1 = "2b9b15b98d8a2116ffea8886e9399fadf6998f89e2037c423d78c6145beaaed8",
-    scalar = "24c5b2ce21615dca82231f5fb0fc8d05aa07c6df4bb5aa7c2381ac7b61a6290c",
-    Qx0 = "27c16e9546b4383b7d7df55ccc33737866e1e9d12d4f5135bcdbc95514bc5b23",
-    Qx1 = "2e451f8f8f5163dbbd1bf48dce686204511d8cea5bc504a4fcb13d76490589f2",
-    Qy0 = "1c66b04bb04c139b5a6bd40a2a5b20706620b5b54aa69ffc9075dfe14fbbba70",
-    Qy1 = "139f9a895e3e68e57a15b0d6cb01c4101317b4554e196f305f88212ce5cef640"
+    Px0 = "6a20c456e80e2bfe37d8631d41ffed31cba5d1c411e816d64014d0088d16554",
+    Px1 = "9d1555c77222abd79e17e2806386c53aba9609375276e817f52f03dc3f75676",
+    Py0 = "127e76f384726e56dfaa46e6fde6dc644f5fd494d056191059e2bebc525ce835",
+    Py1 = "2d80f2570da62adc61d794ac17c251f9f9f3de2b45f39c8ede5a9e215e60363",
+    scalar = "263e44e282fe22216cc054a39e40d4e38e71780bdc84563c340bdaaf4562534b",
+    Qx0 = "6d7e15b98352e445d1bdacb48826e5a7e8cf854fb9bc18839b30a164a2a9c53",
+    Qx1 = "12aa3294f6a9bb17f91d5875a5a1aa559c29b06134c6d165d83c8e9e02947568",
+    Qy0 = "271b8b552e52bdd310c46e07327a18861c91a739da178be909f0a4fe53ae0d05",
+    Qy1 = "1f4f200de96541e826f0bd536b1401e05e2a7c5a96c567b6dff21a21119bbf7"
   )
 
   test(
     id = 6,
     EC = ECP_SWei_Proj[Fp2[BN254_Snarks]],
-    Px0 = "249d33d9b24b0b9d72753345239bc59ae80557dfb0c86a1f86ec92e749c8722a",
-    Px1 = "cfba4d7f339870b12f9f83eb31a791ae3333d1e984919f5a128f72377f70756",
-    Py0 = "1cc869e4e50855a0c09d6da00687007702f5d8fd9c1b1abc17dc643d5dd40825",
-    Py1 = "19a0e1f64ae604d4591905d73cbeae6e644ddda04628a035d941dd0f94e8a33",
-    scalar = "263e44e282fe22216cc054a39e40d4e38e71780bdc84563c340bdaaf4562534b",
-    Qx0 = "2534d84cba98b2aa589b912f5be6dca6f8bf5fc0538fb0a3bc126c109af36aa8",
-    Qx1 = "13921f40b39312b5a62dd8c2b49f153c331c32fa1d1d5cf31e71e1111ffdc947",
-    Qy0 = "2a61adb49770d50ccc0e84b3561746cd3672a292e4d8e2dc8cb0a48dfc678adc",
-    Qy1 = "d2564831641fd45cd073146cc061b2811d1d1b56289887eeed4ce07827dd3cc"
+    Px0 = "4c591d080257375d6189340185c6fe4c1fa796722d07e1bec0b17080b6b1154",
+    Px1 = "241e2f2eb2a58afc2b5410d4ccbf75b53744ca1ac0bb28d7c60449f8d06204a4",
+    Py0 = "eaddea52f2e884a5e2635965ca4146b12127fe8a8883e07def8e8720f410781",
+    Py1 = "cc60dec6ad90e38c851924cf39ddd11b70eeb3fac95731eafd984e9aba2cae",
+    scalar = "1471f378000d557f0c33c1f8c8313edd53422479440cbd0fdc4cc55f1163deec",
+    Qx0 = "2a86b4867d7f63afdc09048210a3ef6d363c7896ccc1bb248f3aad4174e1f8fa",
+    Qx1 = "84c200018461c84ef9ce6de2c691b95cc2c41edc87107331f107ac49de76656",
+    Qy0 = "2ea1b6d71adb183d9a8dd319a21a679cb0b4e06bc96583d3a786f82b88b5e3ba",
+    Qy1 = "834e2ff738dcb5e8db7e4dae9336dede51524313b476019ea29ebadbb4ba12d"
   )
 
   test(
     id = 7,
     EC = ECP_SWei_Proj[Fp2[BN254_Snarks]],
-    Px0 = "210e0d4ae81d5a5108ecc70c5ea0317455f6d5ae6853938a8fd832b055fb8d4d",
-    Px1 = "d1a120ec549f63e2b67043d5c6a3b7a9a7682ebac87cfda91dcc696c425eee8",
-    Py0 = "830c793ad790d61b9b0cbc83bc63869a1c6dc629e7d8c3bec7049ebe68fbad9",
-    Py1 = "129a312b5e866a67ab15ba01fabbb533dd5a7fd5ba976cad0d0e44743d6efb15",
-    scalar = "1471f378000d557f0c33c1f8c8313edd53422479440cbd0fdc4cc55f1163deec",
-    Qx0 = "2c16f3ee75dcdad425ee694342de2ef1c4f07b29c1b5366173d93013ef426692",
-    Qx1 = "3b7d1258cb99bb20857605d9cd5132c82189f98d78a267e80c583bf840c6eeb",
-    Qy0 = "2afabef1030af27bc3ba6cc378b0f7dcb84a09cae301e580d9103daad28ba71f",
-    Qy1 = "117a37aee6704e3fc36d0dba37822658350c48bde5a0968d9ecf45e346caff22"
+    Px0 = "115e772198e3f0003e31c0a1c48b6ac870d96020a4d634b7f14c15422d001cfe",
+    Px1 = "1913447ff41836e0b6a3b01be670a2457e6119e02ae35903fb71be4369e269f7",
+    Py0 = "14cb779c640aad2731b93b07c623c621a5585d0374f0394e5332f20ac28ca49d",
+    Py1 = "13a4c4b67f5976431158be8137b5017127fdbc312dc49825dae218a9a7878817",
+    scalar = "411315458c0c0cb27a058faf15dcbf2e467128f9c958d92de37902e1912f81",
+    Qx0 = "243a8808a891428d01ef28a77d0766488a98272a5dd394b2992599ff522f264",
+    Qx1 = "1baebf873402812e4345a8b1783fd25272c64d6194bd9f50b32b8e67ee737dc7",
+    Qy0 = "1f1001ba8b8b27159568f72e80662e352adfc00c9341d8b4fb8ef6f75ff628d2",
+    Qy1 = "169af215aa2456c6a65e13ac4df1ba1c982ca791058612679ef26dcb8fb0a989"
   )
 
   test(
     id = 8,
     EC = ECP_SWei_Proj[Fp2[BN254_Snarks]],
-    Px0 = "116f9cd5018206c9e0c20bfd684995d42941ba7d4eff87aec228d5fc593e8893",
-    Px1 = "211a34b8228f4bc48f0849e2e721cdaeb416e5be421e942339b751c5edaed7e7",
-    Py0 = "1a888b9355886760acab22c5f35de566d9f521e28cfde8ef5c6cd771b4c19716",
-    Py1 = "4935e0ab136c85ede2a70c3a4a2429b10e1ee9b259d0ffc5ccd0cbcdcba1351",
-    scalar = "411315458c0c0cb27a058faf15dcbf2e467128f9c958d92de37902e1912f81",
-    Qx0 = "175bcd9b7ac109968b88118e93aac3e44446b8abb9e9a2d50eacc2475f245106",
-    Qx1 = "295dd179211b165f3096be9c44248a525976d9f3757c56083a9f0f69cd9eb75",
-    Qy0 = "f67730f5ced93a2a7dbcd57b073505b496a7eba5eb5b1f6170cfea145ce2f15",
-    Qy1 = "903a6681d15626728d7e36af65fe5d96ae314433de84321410579cba5e5dbec"
+    Px0 = "13faa1f28e6bfe89765c284e67face6ce0a29006ebc1551d4243e754c59f88ad",
+    Px1 = "640cebb80938dfcb998d84a8e5aafd47ffbcba0aa2f8c9b1c585baf119a8942",
+    Py0 = "1de793a9ef8f4dea5dad12fb09ddefa07ce197d4d7389a29ad3d8c6484582afe",
+    Py1 = "fc6e1f8bf75d1b7e48fdb6b2869c2de553663742c151b390cede6712da5a084",
+    scalar = "111e6f761ce48e22970752bd56cab93d47caa252d52948367b21163591f7b7b1",
+    Qx0 = "1c25702bf3b6f5fb453c6473b6dc2d67cd3cc21c65b589df1bfde254d50cffdd",
+    Qx1 = "14d03eb2075d6b5995240cc54a01ebe50b43933863f0316760226fbfa3a0280",
+    Qy0 = "1a075c9f2f6afa6e07e54b143a33c17e81d0ac8b91e0c8e0fdd5082bd6b9a72d",
+    Qy1 = "8e5ef57bb0f95fb6538dfaeac677977e3f3d6f49142c09584d8ec5c2ccd9b2d"
   )
 
   test(
     id = 9,
     EC = ECP_SWei_Proj[Fp2[BN254_Snarks]],
-    Px0 = "16181913b3c03bd61b7e3ba2e05541b492626046533440bced33420cb1d0cfc2",
-    Px1 = "3d505402f6d6eab342473ed2b07313c5b02e2c63f2218e5773df0aa839ce9ba",
-    Py0 = "8b40ff9ba82fbf42f02628600894d112640223759570e87bb721a93da0c2c22",
-    Py1 = "2d8df108c6cb25384b748480f99b9c3e72c256839e227fb22eadc4148e6398eb",
-    scalar = "111e6f761ce48e22970752bd56cab93d47caa252d52948367b21163591f7b7b1",
-    Qx0 = "2a8ea2288308fd73ffa423dbe971e45e4cbadfc977d75cd4ea015adf80f25bac",
-    Qx1 = "491f281ad2faf5b41cb5da93b114310222c6356469b7fb51a8166e8ccc4ab01",
-    Qy0 = "386ae4175f00ba59c45b07f1f47fbeb0359e8fa52f70cc7396d58f2ef06abd9",
-    Qy1 = "525877a41155f9dbd541f5833b0d1543a07089cb4a1842990d01dbb3068e8db"
-  )
-
-  test(
-    id = 10,
-    EC = ECP_SWei_Proj[Fp2[BN254_Snarks]],
-    Px0 = "1ea8eb841a242b478d5ed96da30eb78ac5588964dd0f3405b419747d44795ae8",
-    Px1 = "ee64b54258e687fc9887ca2362b71c50539c881d43097a0578b58c487fd26ca",
-    Py0 = "2ab3b56d071b0ca9934fc031e26dd0ef777b42018e9afa632ba5af8fec4ddeb8",
-    Py1 = "cdf8de134912bb9e9b1e9deec26066028ef099def9c4f3e157cec48f5919295",
+    Px0 = "2fc3da947b78ac524a57670cef36ca89f1dad71b337bc3c18305c582a59648ad",
+    Px1 = "2f7cc845d8c1ef0613f919d8c47f3c62f83608a45b1e186748ac5dcccd4c6baf",
+    Py0 = "18ddc4718a4161f72f8d188fc61a609a3d592e186a65f4158483b719ffb05b8f",
+    Py1 = "45b9c3629ed709784db63ff090e2e891c5b5c6b2222cb6afc56638d7389d689",
     scalar = "6223903d4bc2adea7b0a0db92822b6c2638691e4388df93f567e11edd6f23",
-    Qx0 = "1f30a3adabf28b22f0ca4088fb9cd48688c7c360098d33d0a93800d5b22433db",
-    Qx1 = "e436556e8cf709b4cceb314bf387326f824afdfdc13638dcd5212822543fb1d",
-    Qy0 = "28329f3dff9158be7d166e6063ee6964f2d04810a46ef1e05732fa377b6302b4",
-    Qy1 = "dea3c3263a5914c54be5abcbf9d1aad995dac6a82b88ff46f0a314e8a0c2925"
+    Qx0 = "9ec612ab0cf4a48e1c15d22284bce8e34619bfb9afb688a9a7930afcc1bd0f3",
+    Qx1 = "d796e5f5ae1a15622d2284ada34166b9e7c717bd2ff9b2cf2c6e48c33db5ff2",
+    Qy0 = "2a8ecb09a01cd2f89b316e7569331e9da3bfbd8a40114913b3e5477442c0e4ef",
+    Qy1 = "282b14bc00df2dd1733e3187a9845ef3a123c17ce4f6154e5cad26c3b48d1b98"
   )

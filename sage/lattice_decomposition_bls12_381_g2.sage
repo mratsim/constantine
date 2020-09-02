@@ -251,8 +251,9 @@ def doubleFactors(factors):
         factors[i] *= 2
 
 def printFactors(factors):
+    print('Multiplication done: ')
     for i in range(len(factors)):
-        print(f'f{i}: {factors[i].hex()}')
+        print(f'  f{i}: {factors[i].hex()}')
 
 def scalarMulEndo(scalar, P0):
     m = 4
@@ -312,10 +313,16 @@ def scalarMulEndo(scalar, P0):
 
     if even:
         Q -= P0
-
+    print('----')
     print('final Q: ' + pointToString(Q))
     print('expected: ' + pointToString(expected))
+    print('----')
     printFactors(factors)
+    print('Mul expected:')
+    print('  k0: ' + k0.hex())
+    print('  k1: ' + k1.hex())
+    print('  k2: ' + k2.hex())
+    print('  k3: ' + k3.hex())
 
     assert Q == expected
 
@@ -324,7 +331,24 @@ set_random_seed(1337)
 
 for i in range(1):
     print('---------------------------------------')
-    scalar = randrange(r) # Pick an integer below curve order
-    P = G2.random_point()
-    P = clearCofactorG2(P)
+    # scalar = randrange(r) # Pick an integer below curve order
+    # P = G2.random_point()
+    # P = clearCofactorG2(P)
+
+    # scalar = Integer('0x1f7bef2a74f3bf8ac0225a9edfa514bb5666b15e7be3e929059f2ef75f0035a6')
+    # P = G2([
+    #         Fp2([Integer('0x989f16bcb9da60ef72383e6134ba194f57e30109806304336c0c995e2857ed20bf5b6e03d6fe1424332e9c666cbd10a'),
+    #              Integer('0x16692643cb5e7466e3730d3ea775c7741ac34d670b3be685761a7d6ab722a2673ce374ddab87b7c4d2675ba2199f9121')]),
+    #         Fp2([Integer('0x931e416488bef7cb4a053e4bd86ef44818bc03a5be5b04606b2a4dc1d139a3a452f5f7172f24eeaad84702b73b155bb'),
+    #              Integer('0x192c3e2a6619473216b7bb2447448cdbeb9f7e3c9486b0a05aadf6dcd91d7cb275a5d84c1a362628efffbc8711a62a67')])
+    #     ])
+
+    scalar = Integer('0x6448f296d9b1a8d81319a0b789df04c587c6165776ccf39f50a354204aabe0da')
+    P = G2([
+            Fp2([Integer('0x5adc112fb04bf4ca642d5a7d7343ccd6b93546442d2fff5b9d32c15e456d54884cba49dd7f94ce4ddaad4018e55d0f2'),
+                 Integer('0x5d1c5bbf5d7a833dc76ba206bfa99c281fc37941be050e18f8c6d267b2376b3634d8ad6eb951e52a6d096315abd17d6')]),
+            Fp2([Integer('0x15a959e54981fab9ac3c6f5bfd6fb60a50a916bd43d96a09922a54309b84812736581bfa728670cba864b08b9e391bb9'),
+                 Integer('0xf5d6d74f1dd3d9c07451340b8f6990fe93a28fe5e176564eb920bf17eb02df8b6f1e626eda5542ff415f89d51943001')])
+        ])
+
     scalarMulEndo(scalar, P)

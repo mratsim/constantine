@@ -218,9 +218,9 @@ func scalarMul*(
   ##   P <- [k] P
   # This calls endomorphism accelerated scalar mul if available
   # or the generic scalar mul otherwise
-  when ECP_SWei_Proj.F is Fp and ECP_SWei_Proj.F.C in {BN254_Snarks, BLS12_381}:
+  when ECP_SWei_Proj.F.C in {BN254_Snarks, BLS12_381}:
     # ⚠️ This requires the cofactor to be cleared
-    scalarMulGLV(P, scalar)
+    scalarMulEndo(P, scalar)
   else:
     var
       scratchSpace: array[1 shl 4, ECP_SWei_Proj]
