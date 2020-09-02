@@ -23,21 +23,28 @@ cofactor = 1
 print('p  : ' + p.hex())
 print('r  : ' + r.hex())
 print('t  : ' + t.hex())
+print('p (mod r) == t-1 (mod r) == 0x' + (p % r).hex())
 
 # Finite fields
 Fp       = GF(p)
 K2.<u>  = PolynomialRing(Fp)
 Fp2.<beta>  = Fp.extension(u^2+1)
-# K6.<v>  = PolynomialRing(F2)
-# Fp6.<eta>  = Fp2.extension(v^3-Fp2([9, 1]))
-# K12.<w> = PolynomialRing(Fp6)
-# K12.<gamma> = F6.extension(w^2-eta)
 
 # Curves
 b = 3
 SNR = Fp2([9, 1])
 G1 = EllipticCurve(Fp, [0, b])
 G2 = EllipticCurve(Fp2, [0, b/SNR])
+
+# https://crypto.stackexchange.com/questions/64064/order-of-twisted-curve-in-pairings
+# https://math.stackexchange.com/questions/144194/how-to-find-the-order-of-elliptic-curve-over-finite-field-extension
+cofactorG1 = G1.order() // r
+cofactorG2 = G2.order() // r
+
+print('')
+print('cofactor G1: ' + cofactorG1.hex())
+print('cofactor G2: ' + cofactorG2.hex())
+print('')
 
 # Utilities
 def fp2_to_hex(a):
@@ -100,8 +107,8 @@ print('AF3        : ' + fp2_to_hex(AF3))
 def psi(P):
     (Px, Py, Pz) = P
     return G2([
-        FrobConst_psi_2 * Px.frobenius(),
-        FrobConst_psi_3 * Py.frobenius()
+        FrobConst_psi_2 * Px.frobenius(1),
+        FrobConst_psi_3 * Py.frobenius(1)
         # Pz.frobenius() - Always 1 after extract
     ])
 
@@ -113,6 +120,9 @@ def psi2(P):
         # Pz - Always 1 after extract
     ])
 
+def clearCofactorG2(P):
+    return cofactorG2 * P
+
 # Test generator
 set_random_seed(1337)
 
@@ -120,6 +130,7 @@ set_random_seed(1337)
 print('\nTest vectors:')
 for i in range(4):
     P = G2.random_point()
+    P = clearCofactorG2(P)
 
     (Px, Py, Pz) = P
     vPx = vector(Px)
@@ -145,3 +156,5 @@ for i in range(4):
     vQy = vector(Qy)
     print('  Qx: ' + Integer(vQx[0]).hex() + ' + β * ' + Integer(vQx[1]).hex())
     print('  Qy: ' + Integer(vQy[0]).hex() + ' + β * ' + Integer(vQy[1]).hex())
+
+    assert psi(P) == (p % r) * P, "Can be false if the cofactor was not cleared"

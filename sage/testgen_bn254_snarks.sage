@@ -16,7 +16,6 @@
 x = Integer('0x44E992B44A6909F1')
 p = 36*x^4 + 36*x^3 + 24*x^2 + 6*x + 1
 r = 36*x^4 + 36*x^3 + 18*x^2 + 6*x + 1
-cofactor = 1
 
 # Finite fields
 Fp       = GF(p)
@@ -33,6 +32,22 @@ SNR = Fp2([9, 1])
 G1 = EllipticCurve(Fp, [0, b])
 G2 = EllipticCurve(Fp2, [0, b/SNR])
 
+# https://crypto.stackexchange.com/questions/64064/order-of-twisted-curve-in-pairings
+# https://math.stackexchange.com/questions/144194/how-to-find-the-order-of-elliptic-curve-over-finite-field-extension
+cofactorG1 = G1.order() // r
+cofactorG2 = G2.order() // r
+
+print('')
+print('cofactor G1: ' + cofactorG1.hex())
+print('cofactor G2: ' + cofactorG2.hex())
+print('')
+
+def clearCofactorG1(P):
+    return cofactorG1 * P
+
+def clearCofactorG2(P):
+    return cofactorG2 * P
+
 # Test generator
 set_random_seed(1337)
 
@@ -40,6 +55,7 @@ print('=========================================')
 print('G1 vectors: ')
 for i in range(10):
     P = G1.random_point()
+    P = clearCofactorG1(P)
     (Px, Py, Pz) = P
     print('Px: ' + Integer(Px).hex())
     print('Py: ' + Integer(Py).hex())
@@ -58,6 +74,7 @@ print('G2 vectors: ')
 
 for i in range(10):
     P = G2.random_point()
+    P = clearCofactorG2(P)
     (Px, Py, Pz) = P
     vPx = vector(Px)
     vPy = vector(Py)
