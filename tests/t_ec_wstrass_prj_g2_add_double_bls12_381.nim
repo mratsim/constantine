@@ -20,7 +20,7 @@ import
   ./t_ec_template
 
 const
-  Iters = 128
+  Iters = 24
 
 run_EC_addition_tests(
     ec = ECP_SWei_Proj[Fp2[BLS12_381]],

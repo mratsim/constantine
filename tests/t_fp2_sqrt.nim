@@ -18,7 +18,7 @@ import
   # Test utilities
   ../helpers/prng_unsafe
 
-const Iters = 128
+const Iters = 24
 
 var rng: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32

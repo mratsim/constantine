@@ -64,7 +64,7 @@ proc main() =
   mpz_init(a)
   mpz_init(b)
 
-  testRandomModSizes(128, rBits, aBits, bBits):
+  testRandomModSizes(24, rBits, aBits, bBits):
     # echo "--------------------------------------------------------------------------------"
     echo "Testing: random mul  r (", align($rBits, 4), "-bit) <- a (", align($aBits, 4), "-bit) * b (", align($bBits, 4), "-bit) (full mul bits: ", align($(aBits+bBits), 4), "), r large enough? ", rBits >= aBits+bBits
 

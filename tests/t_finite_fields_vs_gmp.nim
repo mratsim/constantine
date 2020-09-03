@@ -237,25 +237,25 @@ template testSetup {.dirty.} =
 proc mainMul() =
   testSetup()
   echo "Testing modular multiplications vs GMP"
-  randomTests(128, curve):
+  randomTests(24, curve):
     mulTests(gmpRng, a, b, p, r, curve)
 
 proc mainAdd() =
   testSetup()
   echo "Testing modular additions vs GMP"
-  randomTests(128, curve):
+  randomTests(24, curve):
     addTests(gmpRng, a, b, p, r, curve)
 
 proc mainSub() =
   testSetup()
   echo "Testing modular substractions vs GMP"
-  randomTests(128, curve):
+  randomTests(24, curve):
     subTests(gmpRng, a, b, p, r, curve)
 
 proc mainInv() =
   testSetup()
   echo "Testing modular inversions vs GMP"
-  randomTests(128, curve):
+  randomTests(24, curve):
     invTests(gmpRng, a, b, p, r, curve)
 
 
