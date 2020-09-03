@@ -229,26 +229,7 @@ func scalarMulEndo*[scalBits](
   # 2. Decompose scalar into mini-scalars
   const L = (scalBits + M - 1) div M + 1 + 1 # A "+1" to handle negative
   var miniScalars {.noInit.}: array[M, BigInt[L]]
-  when C == BN254_Snarks:
-    when P.F is Fp:
-      scalar.decomposeScalar_BN254_Snarks_G1(
-        miniScalars
-      )
-    else:
-      scalar.decomposeScalar_BN254_Snarks_G2(
-        miniScalars
-      )
-  elif C == BLS12_381:
-    when P.F is Fp:
-      scalar.decomposeScalar_BLS12_381_G1(
-        miniScalars
-      )
-    else:
-      scalar.decomposeScalar_BLS12_381_G2(
-        miniScalars
-      )
-  else:
-    {.error: "Unsupported curve for GLV acceleration".}
+  miniScalars.decomposeEndo(scalar, P.F)
 
   # 3. Handle negative mini-scalars
   # A scalar decomposition might lead to negative miniscalar.
@@ -424,16 +405,7 @@ func scalarMulGLV_m2w2*[scalBits](
   # 2. Decompose scalar into mini-scalars
   const L = computeRecodedLength(C.getCurveOrderBitwidth(), 2)
   var miniScalars {.noInit.}: array[2, BigInt[L]]
-  when C == BN254_Snarks:
-    scalar.decomposeScalar_BN254_Snarks_G1(
-      miniScalars
-    )
-  elif C == BLS12_381:
-    scalar.decomposeScalar_BLS12_381_G1(
-      miniScalars
-    )
-  else:
-    {.error: "Unsupported curve for GLV acceleration".}
+  miniScalars.decomposeEndo(scalar, P0.F)
 
   # 3. TODO: handle negative mini-scalars
   #    Either negate the associated base and the scalar (in the `endomorphisms` array)
@@ -593,7 +565,7 @@ when isMainModule:
       )
 
       var decomp: MultiScalar[M, L]
-      decomposeScalar_BN254_Snarks_G1(scalar, decomp)
+      decomp.decomposeEndo(scalar, Fp[BN254_Snarks])
 
       doAssert: bool(decomp[0] == BigInt[L].fromHex"14928105460c820ccc9a25d0d953dbfe")
       doAssert: bool(decomp[1] == BigInt[L].fromHex"13a2f911eb48a578844b901de6f41660")
@@ -604,7 +576,7 @@ when isMainModule:
       )
 
       var decomp: MultiScalar[M, L]
-      decomposeScalar_BN254_Snarks_G1(scalar, decomp)
+      decomp.decomposeEndo(scalar, Fp[BN254_Snarks])
 
       doAssert: bool(decomp[0] == BigInt[L].fromHex"28cf7429c3ff8f7e82fc419e90cc3a2")
       doAssert: bool(decomp[1] == BigInt[L].fromHex"457efc201bdb3d2e6087df36430a6db6")
@@ -615,7 +587,7 @@ when isMainModule:
       )
 
       var decomp: MultiScalar[M, L]
-      decomposeScalar_BN254_Snarks_G1(scalar, decomp)
+      decomp.decomposeEndo(scalar, Fp[BN254_Snarks])
 
       doAssert: bool(decomp[0] == BigInt[L].fromHex"4da8c411566c77e00c902eb542aaa66b")
       doAssert: bool(decomp[1] == BigInt[L].fromHex"5aa8f2f15afc3217f06677702bd4e41a")

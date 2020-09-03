@@ -7,6 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  std/macros,
   # Internal
   ../primitives,
   ../config/[common, curves, type_bigint],
@@ -51,45 +52,6 @@ const Babai_BN254_Snarks_G1 = (
   (BigInt[130].fromHex"0x24ccef014a773d2d25398fd0300ff6565", false)    # (6u² + 4u + 1) << 2^256 // r
 )
 
-func decomposeScalar_BN254_Snarks_G1*[M, scalBits, L: static int](
-       scalar: BigInt[scalBits],
-       miniScalars: var MultiScalar[M, L]
-     ) =
-  ## Decompose a secret scalar into mini-scalar exploiting
-  ## BN254_Snarks specificities.
-
-  # Equal when no window or no negative handling, greater otherwise
-  static: doAssert L >= (scalBits + M - 1) div M + 1
-  const
-    w = BN254_Snarks.getCurveOrderBitwidth().wordsRequired()
-
-  var alphas{.noInit.}: (
-    BigInt[scalBits + Babai_BN254_Snarks_G1[0][0].bits],
-    BigInt[scalBits + Babai_BN254_Snarks_G1[1][0].bits]
-  )
-
-  staticFor i, 0, M:
-    alphas[i].prod_high_words(Babai_BN254_Snarks_G1[i][0], scalar, w)
-    when Babai_BN254_Snarks_G1[i][1]:
-      # prod_high_words works like shift right
-      # When negative, we should add 1 to properly round toward -infinity
-      alphas[i] += SecretWord(1)
-
-  # We have k0 = s - 𝛼0 b00 - 𝛼1 b10 ... - 𝛼m bm0
-  # and     kj = 0 - 𝛼j b0j - 𝛼1 b1j ... - 𝛼m bmj
-  var k: array[M, BigInt[scalBits]]
-  k[0] = scalar
-  staticFor miniScalarIdx, 0, M:
-    staticFor basisIdx, 0, M:
-      var alphaB {.noInit.}: BigInt[scalBits]
-      alphaB.prod(alphas[basisIdx], Lattice_BN254_Snarks_G1[basisIdx][miniScalarIdx][0])
-      when Lattice_BN254_Snarks_G1[basisIdx][miniScalarIdx][1] xor Babai_BN254_Snarks_G1[basisIdx][1]:
-        k[miniScalarIdx] += alphaB
-      else:
-        k[miniScalarIdx] -= alphaB
-
-    miniScalars[miniScalarIdx].copyTruncatedFrom(k[miniScalarIdx])
-
 # BLS12-381 G1
 # ----------------------------------------------------------------------------------------
 
@@ -107,45 +69,6 @@ const Babai_BLS12_381_G1 = (
   (BigInt[129].fromHex"0x17c6becf1e01faadd63f6e522f6cfee30", false),
   (BigInt[2].fromHex"0x2", false)
 )
-
-func decomposeScalar_BLS12_381_G1*[M, scalBits, L: static int](
-       scalar: BigInt[scalBits],
-       miniScalars: var MultiScalar[M, L]
-     ) =
-  ## Decompose a secret scalar into mini-scalar exploiting
-  ## BLS12_381 specificities.
-
-  # Equal when no window or no negative handling, greater otherwise
-  static: doAssert L >= (scalBits + M - 1) div M + 1
-  const
-    w = BLS12_381.getCurveOrderBitwidth().wordsRequired()
-
-  var alphas{.noInit.}: (
-    BigInt[scalBits + Babai_BLS12_381_G1[0][0].bits],
-    BigInt[scalBits + Babai_BLS12_381_G1[1][0].bits]
-  )
-
-  staticFor i, 0, M:
-    alphas[i].prod_high_words(Babai_BLS12_381_G1[i][0], scalar, w)
-    when Babai_BLS12_381_G1[i][1]:
-      # prod_high_words works like shift right
-      # When negative, we should add 1 to properly round toward -infinity
-      alphas[i] += SecretWord(1)
-
-  # We have k0 = s - 𝛼0 b00 - 𝛼1 b10
-  # and kj = 0 - 𝛼j b0j - 𝛼1 b1j
-  var k: array[M, BigInt[scalBits]]
-  k[0] = scalar
-  staticFor miniScalarIdx, 0, M:
-    staticFor basisIdx, 0, M:
-      var alphaB {.noInit.}: BigInt[scalBits]
-      alphaB.prod(alphas[basisIdx], Lattice_BLS12_381_G1[basisIdx][miniScalarIdx][0])
-      when Lattice_BLS12_381_G1[basisIdx][miniScalarIdx][1] xor Babai_BLS12_381_G1[basisIdx][1]:
-        k[miniScalarIdx] += alphaB
-      else:
-        k[miniScalarIdx] -= alphaB
-
-    miniScalars[miniScalarIdx].copyTruncatedFrom(k[miniScalarIdx])
 
 # BN254 Snarks G2
 # ----------------------------------------------------------------------------------------
@@ -184,47 +107,6 @@ const Babai_BN254_Snarks_G2 = (
   (BigInt[128].fromhex"0xc444fab18d269b9af7ae23ce89afae7d", true)                    # -2x²-x    << 2^256 // r
 )
 
-func decomposeScalar_BN254_Snarks_G2*[M, scalBits, L: static int](
-       scalar: BigInt[scalBits],
-       miniScalars: var MultiScalar[M, L]
-     ) =
-  ## Decompose a secret scalar into mini-scalar exploiting
-  ## BN254_Snarks specificities.
-
-  # Equal when no window or no negative handling, greater otherwise
-  static: doAssert L >= (scalBits + M - 1) div M + 1
-  const
-    w = BN254_Snarks.getCurveOrderBitwidth().wordsRequired()
-
-  var alphas{.noInit.}: (
-    BigInt[scalBits + Babai_BN254_Snarks_G2[0][0].bits],
-    BigInt[scalBits + Babai_BN254_Snarks_G2[1][0].bits],
-    BigInt[scalBits + Babai_BN254_Snarks_G2[2][0].bits],
-    BigInt[scalBits + Babai_BN254_Snarks_G2[3][0].bits],
-  )
-
-  staticFor i, 0, M:
-    alphas[i].prod_high_words(Babai_BN254_Snarks_G2[i][0], scalar, w)
-    when Babai_BN254_Snarks_G2[i][1]:
-      # prod_high_words works like logical right shift
-      # When negative, we should add 1 to properly round toward -infinity
-      alphas[i] += SecretWord(1)
-
-  # We have k0 = s - 𝛼0 b00 - 𝛼1 b10
-  # and kj = 0 - 𝛼j b0j - 𝛼1 b1j
-  var k: array[M, BigInt[scalBits]]
-  k[0] = scalar
-  staticFor miniScalarIdx, 0, M:
-    staticFor basisIdx, 0, M:
-      var alphaB {.noInit.}: BigInt[scalBits]
-      alphaB.prod(alphas[basisIdx], Lattice_BN254_Snarks_G2[basisIdx][miniScalarIdx][0])
-      when Lattice_BN254_Snarks_G2[basisIdx][miniScalarIdx][1] xor Babai_BN254_Snarks_G2[basisIdx][1]:
-        k[miniScalarIdx] += alphaB
-      else:
-        k[miniScalarIdx] -= alphaB
-
-    miniScalars[miniScalarIdx].copyTruncatedFrom(k[miniScalarIdx])
-
 # BLS12-381 G2
 # ----------------------------------------------------------------------------------------
 
@@ -262,14 +144,32 @@ const Babai_BLS12_381_G2 = (
   (BigInt[1].fromhex"0x0", false)
 )
 
-func decomposeScalar_BLS12_381_G2*[M, scalBits, L: static int](
+# Decomposition routine
+# ----------------------------------------------------------------------------------------
+
+{.experimental: "dynamicbindsym".}
+macro dispatch(prefix: static string, C: static Curve, G: static string): untyped =
+  result = bindSym(prefix & $C & "_" & G)
+
+template babai(F: typedesc[Fp or Fp2]): untyped =
+  const G = if F is Fp: "G1"
+            else: "G2"
+  dispatch("Babai_", F.C, G)
+
+template lattice(F: typedesc[Fp or Fp2]): untyped =
+  const G = if F is Fp: "G1"
+            else: "G2"
+  dispatch("Lattice_", F.C, G)
+
+func decomposeEndo*[M, scalBits, L: static int](
+       miniScalars: var MultiScalar[M, L],
        scalar: BigInt[scalBits],
-       miniScalars: var MultiScalar[M, L]
+       F: typedesc[Fp or Fp2]
      ) =
-  ## Decompose a secret scalar into mini-scalar exploiting
-  ## BLS12_381 specificities.
+  ## Decompose a secret scalar into M mini-scalars
+  ## using a curve endomorphism(s) characteristics.
   ##
-  ## A scalar decomposition might lead to negative miniscalar.
+  ## A scalar decomposition might lead to negative miniscalar(s).
   ## For proper handling it requires either:
   ## 1. Negating it and then negating the corresponding curve point P
   ## 2. Adding an extra bit to the recoding, which will do the right thing™
@@ -287,32 +187,37 @@ func decomposeScalar_BLS12_381_G2*[M, scalBits, L: static int](
 
   # Equal when no window or no negative handling, greater otherwise
   static: doAssert L >= (scalBits + M - 1) div M + 1
-  const
-    w = BLS12_381.getCurveOrderBitwidth().wordsRequired()
+  const w = F.C.getCurveOrderBitwidth().wordsRequired()
 
-  var alphas{.noInit.}: (
-    BigInt[scalBits + Babai_BLS12_381_G2[0][0].bits],
-    BigInt[scalBits + Babai_BLS12_381_G2[1][0].bits],
-    BigInt[scalBits + Babai_BLS12_381_G2[2][0].bits],
-    BigInt[scalBits + Babai_BLS12_381_G2[3][0].bits],
-  )
+  when F is Fp:
+    var alphas{.noInit.}: (
+      BigInt[scalBits + babai(F)[0][0].bits],
+      BigInt[scalBits + babai(F)[1][0].bits]
+    )
+  else:
+    var alphas{.noInit.}: (
+      BigInt[scalBits + babai(F)[0][0].bits],
+      BigInt[scalBits + babai(F)[1][0].bits],
+      BigInt[scalBits + babai(F)[2][0].bits],
+      BigInt[scalBits + babai(F)[3][0].bits]
+    )
 
   staticFor i, 0, M:
-    alphas[i].prod_high_words(Babai_BLS12_381_G2[i][0], scalar, w)
-    when Babai_BLS12_381_G2[i][1]:
+    alphas[i].prod_high_words(babai(F)[i][0], scalar, w)
+    when babai(F)[i][1]:
       # prod_high_words works like logical right shift
       # When negative, we should add 1 to properly round toward -infinity
       alphas[i] += SecretWord(1)
 
-  # We have k0 = s - 𝛼0 b00 - 𝛼1 b10
-  # and kj = 0 - 𝛼j b0j - 𝛼1 b1j
+  # We have k0 = s - 𝛼0 b00 - 𝛼1 b10 ... - 𝛼m bm0
+  # and     kj = 0 - 𝛼j b0j - 𝛼1 b1j ... - 𝛼m bmj
   var k: array[M, BigInt[scalBits]]
   k[0] = scalar
   staticFor miniScalarIdx, 0, M:
     staticFor basisIdx, 0, M:
       var alphaB {.noInit.}: BigInt[scalBits]
-      alphaB.prod(alphas[basisIdx], Lattice_BLS12_381_G2[basisIdx][miniScalarIdx][0])
-      when Lattice_BLS12_381_G2[basisIdx][miniScalarIdx][1] xor Babai_BLS12_381_G2[basisIdx][1]:
+      alphaB.prod(alphas[basisIdx], lattice(F)[basisIdx][miniScalarIdx][0])
+      when lattice(F)[basisIdx][miniScalarIdx][1] xor babai(F)[basisIdx][1]:
         k[miniScalarIdx] += alphaB
       else:
         k[miniScalarIdx] -= alphaB
