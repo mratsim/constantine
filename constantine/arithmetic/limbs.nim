@@ -131,11 +131,16 @@ func isZero*(a: Limbs): SecretBool =
     accum = accum or a[i]
   result = accum.isZero()
 
-func isOne*(a: Limbs): SecretBool =
-  ## Returns true if ``a`` is equal to one
-  result = a[0] == SecretWord(1)
+func eq*(a: Limbs, n: SecretWord): SecretBool =
+  ## Returns true if ``a`` is equal
+  ## to the specified small word
+  result = a[0] == n
   for i in 1 ..< a.len:
     result = result and a[i].isZero()
+
+func isOne*(a: Limbs): SecretBool =
+  ## Returns true if ``a`` is equal to one
+  a.eq(SecretWord(1))
 
 func isOdd*(a: Limbs): SecretBool =
   ## Returns true if a is odd

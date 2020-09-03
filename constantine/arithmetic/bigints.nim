@@ -95,10 +95,12 @@ func cswap*(a, b: var BigInt, ctl: CTBool) =
 func copyTruncatedFrom*[dBits, sBits: static int](dst: var BigInt[dBits], src: BigInt[sBits]) =
   ## Copy `src` into `dst`
   ## if `dst` is not big enough, only the low words are copied
-  ## if `src` is smaller than `dst` the higher words of `dst` will NOT be overwritten
+  ## if `src` is smaller than `dst` the higher words of `dst` will be overwritten
 
   for wordIdx in 0 ..< min(dst.limbs.len, src.limbs.len):
     dst.limbs[wordIdx] = src.limbs[wordIdx]
+  for wordIdx in min(dst.limbs.len, src.limbs.len) ..< dst.limbs.len:
+    dst.limbs[wordIdx] = SecretWord(0)
 
 # Comparison
 # ------------------------------------------------------------
@@ -139,6 +141,11 @@ func isMsbSet*(a: BigInt): SecretBool =
   # MSB is at announced bits - (wordsRequired - 1)
   const msb_pos = BigInt.bits-1 - (BigInt.bits.wordsRequired - 1)
   SecretBool((BaseType(a.limbs[a.limbs.len-1]) shr msb_pos) and 1)
+
+func eq*(a: BigInt, n: SecretWord): SecretBool =
+  ## Returns true if ``a`` is equal
+  ## to the specified small word
+  a.limbs.eq n
 
 # Arithmetic
 # ------------------------------------------------------------
