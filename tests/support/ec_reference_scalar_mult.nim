@@ -10,7 +10,8 @@ import
   # Internals
   ../../constantine/config/[common, curves],
   ../../constantine/arithmetic,
-  ../../constantine/elliptic/ec_weierstrass_projective
+  ../../constantine/elliptic/ec_weierstrass_projective,
+  ../../constantine/io/io_bigints
 
 # Support files for testing Elliptic Curve arithmetic
 # ------------------------------------------------------------------------------
@@ -27,7 +28,7 @@ iterator unpack(scalarByte: byte): bool =
 
 func unsafe_ECmul_double_add*(
        P: var ECP_SWei_Proj,
-       scalar: openArray[byte],
+       scalar: BigInt,
      ) =
   ## **Unsafe** Elliptic Curve Scalar Multiplication
   ##
@@ -37,12 +38,13 @@ func unsafe_ECmul_double_add*(
   ## This is UNSAFE to use in production and only intended for testing purposes.
   ##
   ## This is highly VULNERABLE to timing attacks and power analysis attacks
-  ##
-  ## `scalar` is in canonical representation in BigEndian (octet string)
+  var scalarCanonical: array[(scalar.bits+7) div 8, byte]
+  scalarCanonical.exportRawUint(scalar, bigEndian)
+
   var t0{.noInit.}, t1{.noInit.}: typeof(P)
   t0.setInf()
   t1.setInf()
-  for scalarByte in scalar:
+  for scalarByte in scalarCanonical:
     for bit in unpack(scalarByte):
       t1.double(t0)
       if bit:

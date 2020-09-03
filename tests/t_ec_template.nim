@@ -224,16 +224,12 @@ proc run_EC_mul_sanity_tests*(
         for _ in 0 ..< ItersMul:
           let a = rng.random_point(EC, randZ, gen)
 
-          # zeroInit
-          var exponentCanonical: array[(bits+7) div 8, byte]
-
           var
             impl = a
             reference = a
-            scratchSpace{.noInit.}: array[1 shl 4, EC]
 
-          impl.scalarMulGeneric(exponentCanonical, scratchSpace)
-          reference.unsafe_ECmul_double_add(exponentCanonical)
+          impl.scalarMulGeneric(BigInt[bits]())
+          reference.unsafe_ECmul_double_add(BigInt[bits]())
 
           check:
             bool(impl.isInf())
@@ -253,16 +249,13 @@ proc run_EC_mul_sanity_tests*(
 
           var exponent{.noInit.}: BigInt[bits]
           exponent.setOne()
-          var exponentCanonical{.noInit.}: array[(bits+7) div 8, byte]
-          exponentCanonical.exportRawUint(exponent, bigEndian)
 
           var
             impl = a
             reference = a
-            scratchSpace{.noInit.}: array[1 shl 4, EC]
 
-          impl.scalarMulGeneric(exponentCanonical, scratchSpace)
-          reference.unsafe_ECmul_double_add(exponentCanonical)
+          impl.scalarMulGeneric(exponent)
+          reference.unsafe_ECmul_double_add(exponent)
 
           check:
             bool(impl == a)
@@ -284,16 +277,13 @@ proc run_EC_mul_sanity_tests*(
           doubleA.double(a)
 
           let exponent = BigInt[bits].fromUint(2)
-          var exponentCanonical{.noInit.}: array[(bits+7) div 8, byte]
-          exponentCanonical.exportRawUint(exponent, bigEndian)
 
           var
             impl = a
             reference = a
-            scratchSpace{.noInit.}: array[1 shl 4, EC]
 
-          impl.scalarMulGeneric(exponentCanonical, scratchSpace)
-          reference.unsafe_ECmul_double_add(exponentCanonical)
+          impl.scalarMulGeneric(exponent)
+          reference.unsafe_ECmul_double_add(exponent)
 
           check:
             bool(impl == doubleA)
@@ -335,33 +325,30 @@ proc run_EC_mul_distributive_tests*(
           let b = rng.random_point(EC, randZ, gen)
 
           let exponent = rng.random_unsafe(BigInt[bits])
-          var exponentCanonical{.noInit.}: array[(bits+7) div 8, byte]
-          exponentCanonical.exportRawUint(exponent, bigEndian)
 
           # [k](a + b) - Factorized
           var
             fImpl{.noInit.}: EC
             fReference{.noInit.}: EC
-            scratchSpace{.noInit.}: array[1 shl 4, EC]
 
           fImpl.sum(a, b)
           fReference.sum(a, b)
 
-          fImpl.scalarMulGeneric(exponentCanonical, scratchSpace)
-          fReference.unsafe_ECmul_double_add(exponentCanonical)
+          fImpl.scalarMulGeneric(exponent)
+          fReference.unsafe_ECmul_double_add(exponent)
 
           # [k]a + [k]b - Distributed
           var kaImpl = a
           var kaRef = a
 
-          kaImpl.scalarMulGeneric(exponentCanonical, scratchSpace)
-          kaRef.unsafe_ECmul_double_add(exponentCanonical)
+          kaImpl.scalarMulGeneric(exponent)
+          kaRef.unsafe_ECmul_double_add(exponent)
 
           var kbImpl = b
           var kbRef = b
 
-          kbImpl.scalarMulGeneric(exponentCanonical, scratchSpace)
-          kbRef.unsafe_ECmul_double_add(exponentCanonical)
+          kbImpl.scalarMulGeneric(exponent)
+          kbRef.unsafe_ECmul_double_add(exponent)
 
           var kakbImpl{.noInit.}, kakbRef{.noInit.}: EC
           kakbImpl.sum(kaImpl, kbImpl)
@@ -406,16 +393,13 @@ proc run_EC_mul_vs_ref_impl*(
           let a = rng.random_point(EC, randZ, gen)
 
           let exponent = rng.random_unsafe(BigInt[bits])
-          var exponentCanonical{.noInit.}: array[(bits+7) div 8, byte]
-          exponentCanonical.exportRawUint(exponent, bigEndian)
 
           var
             impl = a
             reference = a
-            scratchSpace{.noInit.}: array[1 shl 4, EC]
 
-          impl.scalarMulGeneric(exponentCanonical, scratchSpace)
-          reference.unsafe_ECmul_double_add(exponentCanonical)
+          impl.scalarMulGeneric(exponent)
+          reference.unsafe_ECmul_double_add(exponent)
 
           check: bool(impl == reference)
 

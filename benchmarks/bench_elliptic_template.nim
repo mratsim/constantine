@@ -92,9 +92,12 @@ proc notes*() =
   echo "Notes:"
   echo "  - Compilers:"
   echo "    Compilers are severely limited on multiprecision arithmetic."
-  echo "    Inline Assembly is used by default (nimble bench_fp)."
-  echo "    Bench without assembly can use \"nimble bench_fp_gcc\" or \"nimble bench_fp_clang\"."
+  echo "    Constantine compile-time assembler is used by default (nimble bench_fp)."
   echo "    GCC is significantly slower than Clang on multiprecision arithmetic due to catastrophic handling of carries."
+  echo "    GCC also seems to have issues with large temporaries and register spilling."
+  echo "    This is somewhat alleviated by Constantine compile-time assembler."
+  echo "    Bench on specific compiler with assembler: \"nimble bench_ec_g1_gcc\" or \"nimble bench_ec_g1_clang\"."
+  echo "    Bench on specific compiler with assembler: \"nimble bench_ec_g1_gcc_noasm\" or \"nimble bench_ec_g1_clang_noasm\"."
   echo "  - The simplest operations might be optimized away by the compiler."
   echo "  - Fast Squaring and Fast Multiplication are possible if there are spare bits in the prime representation (i.e. the prime uses 254 bits out of 256 bits)"
 
@@ -139,7 +142,7 @@ proc doublingBench*(T: typedesc, iters: int) =
   bench("EC Double " & G1_or_G2, T, iters):
     r.double(P)
 
-proc scalarMulGenericBench*(T: typedesc, scratchSpaceSize: static int, iters: int) =
+proc scalarMulGenericBench*(T: typedesc, window: static int, iters: int) =
   const bits = T.F.C.getCurveOrderBitwidth()
   const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
 
@@ -147,14 +150,10 @@ proc scalarMulGenericBench*(T: typedesc, scratchSpaceSize: static int, iters: in
   let P = rng.random_unsafe(T) # TODO: clear cofactor
 
   let exponent = rng.random_unsafe(BigInt[bits])
-  var exponentCanonical{.noInit.}: array[(bits+7) div 8, byte]
-  exponentCanonical.exportRawUint(exponent, bigEndian)
 
-  var scratchSpace{.noInit.}: array[scratchSpaceSize, T]
-
-  bench("EC ScalarMul Generic " & G1_or_G2 & " (scratchsize = " & $scratchSpaceSize & ')', T, iters):
+  bench("EC ScalarMul Generic " & G1_or_G2 & " (window = " & $window & ", scratchsize = " & $(1 shl window) & ')', T, iters):
     r = P
-    r.scalarMulGeneric(exponentCanonical, scratchSpace)
+    r.scalarMulGeneric(exponent, window)
 
 proc scalarMulEndo*(T: typedesc, iters: int) =
   const bits = T.F.C.getCurveOrderBitwidth()
@@ -193,9 +192,7 @@ proc scalarMulUnsafeDoubleAddBench*(T: typedesc, iters: int) =
   let P = rng.random_unsafe(T) # TODO: clear cofactor
 
   let exponent = rng.random_unsafe(BigInt[bits])
-  var exponentCanonical{.noInit.}: array[(bits+7) div 8, byte]
-  exponentCanonical.exportRawUint(exponent, bigEndian)
 
   bench("EC ScalarMul " & G1_or_G2 & " (unsafe reference DoubleAdd)", T, iters):
     r = P
-    r.unsafe_ECmul_double_add(exponentCanonical)
+    r.unsafe_ECmul_double_add(exponent)

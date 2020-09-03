@@ -148,6 +148,7 @@ lambda3 = lambda1^3 % r
 def getGLV2_decomp(scalar):
 
     maxLen = (int(r).bit_length() + 3) // 4 + 1
+    maxLen += 1 # Deal with negative miniscalars
 
     a0 = (v[0] * scalar) >> n
     a1 = (v[1] * scalar) >> n
@@ -181,6 +182,7 @@ def getGLV2_decomp(scalar):
 def recodeScalars(k):
     m = 4
     L = ((int(r).bit_length() + m-1) // m) + 1 # l = ⌈log2 r/m⌉ + 1
+    L += 1 # Deal with negative miniscalars
 
     b = [[0] * L, [0] * L, [0] * L, [0] * L]
     b[0][L-1] = 0
@@ -258,6 +260,7 @@ def printFactors(factors):
 def scalarMulEndo(scalar, P0):
     m = 4
     L = ((int(r).bit_length() + m-1) // m) + 1 # l = ⌈log2 r/m⌉ + 1
+    L += 1 # Deal with negative miniscalars
 
     print('L: ' + str(L))
 
@@ -343,12 +346,30 @@ for i in range(1):
     #              Integer('0x192c3e2a6619473216b7bb2447448cdbeb9f7e3c9486b0a05aadf6dcd91d7cb275a5d84c1a362628efffbc8711a62a67')])
     #     ])
 
-    scalar = Integer('0x6448f296d9b1a8d81319a0b789df04c587c6165776ccf39f50a354204aabe0da')
+    # This integer leads to negative miniscalar for proper handling it requires either:
+    # 1. Negating it and then negating the corresponding curve point P
+    # 2. Adding an extra bit to the recoding, which will do the right thing™
+    #
+    # For implementation solution 1 is faster:
+    #   - Double + Add is about 5000~8000 cycles on 6 64-bits limbs (BLS12-381)
+    #   - Conditional negate is about 10 cycles per Fp, on G2 projective we have 3 (coords) * 2 (Fp2) * 10 (cycles) ~= 60 cycles
+    #     We need to test the mini scalar, which is 65 bits so 2 Fp so about 2 cycles
+    #     and negate it as well.
+    # scalar = Integer('0x6448f296d9b1a8d81319a0b789df04c587c6165776ccf39f50a354204aabe0da')
+    # P = G2([
+    #         Fp2([Integer('0x5adc112fb04bf4ca642d5a7d7343ccd6b93546442d2fff5b9d32c15e456d54884cba49dd7f94ce4ddaad4018e55d0f2'),
+    #              Integer('0x5d1c5bbf5d7a833dc76ba206bfa99c281fc37941be050e18f8c6d267b2376b3634d8ad6eb951e52a6d096315abd17d6')]),
+    #         Fp2([Integer('0x15a959e54981fab9ac3c6f5bfd6fb60a50a916bd43d96a09922a54309b84812736581bfa728670cba864b08b9e391bb9'),
+    #              Integer('0xf5d6d74f1dd3d9c07451340b8f6990fe93a28fe5e176564eb920bf17eb02df8b6f1e626eda5542ff415f89d51943001')])
+    #     ])
+
+    scalar = Integer('0x5668a2332db27199dcfb7cbdfca6317c2ff128db26d7df68483e0a095ec8e88f')
     P = G2([
-            Fp2([Integer('0x5adc112fb04bf4ca642d5a7d7343ccd6b93546442d2fff5b9d32c15e456d54884cba49dd7f94ce4ddaad4018e55d0f2'),
-                 Integer('0x5d1c5bbf5d7a833dc76ba206bfa99c281fc37941be050e18f8c6d267b2376b3634d8ad6eb951e52a6d096315abd17d6')]),
-            Fp2([Integer('0x15a959e54981fab9ac3c6f5bfd6fb60a50a916bd43d96a09922a54309b84812736581bfa728670cba864b08b9e391bb9'),
-                 Integer('0xf5d6d74f1dd3d9c07451340b8f6990fe93a28fe5e176564eb920bf17eb02df8b6f1e626eda5542ff415f89d51943001')])
+            Fp2([Integer('0xa8c5649d2df1bae84fd9e8bfcde5113937b3acea22d67ddfedaf1fb8de8c1ef4c70591cf505c24c31e54020c2c510c3'),
+                 Integer('0xa0553f98229a6a067489c3ee204161c11e96f421b3e9c145dc3865b03e9d4ff6cab14c5b5308ecd31173f954463690c')]),
+            Fp2([Integer('0xb29d8dfe18dc41b4826c3a102c1bf8f306cb42433cc36ee38080f47a324c02a678f9daed0a2bc577c18b9865de029f0'),
+                 Integer('0x558cdabf11e37c5c5e8abd668bbdd71bb3f07f320948ccaac8a207359fffe38424bfd9b1ef1d24b28b2fbb9f76faff1')])
         ])
+
 
     scalarMulEndo(scalar, P)

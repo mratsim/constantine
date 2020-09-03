@@ -58,7 +58,8 @@ func decomposeScalar_BN254_Snarks_G1*[M, scalBits, L: static int](
   ## Decompose a secret scalar into mini-scalar exploiting
   ## BN254_Snarks specificities.
 
-  static: doAssert L == (scalBits + M - 1) div M + 1
+  # Equal when no window or no negative handling, greater otherwise
+  static: doAssert L >= (scalBits + M - 1) div M + 1
   const
     w = BN254_Snarks.getCurveOrderBitwidth().wordsRequired()
 
@@ -114,7 +115,7 @@ func decomposeScalar_BLS12_381_G1*[M, scalBits, L: static int](
   ## Decompose a secret scalar into mini-scalar exploiting
   ## BLS12_381 specificities.
 
-  # Equal when no window, greater otherwise
+  # Equal when no window or no negative handling, greater otherwise
   static: doAssert L >= (scalBits + M - 1) div M + 1
   const
     w = BLS12_381.getCurveOrderBitwidth().wordsRequired()
@@ -190,7 +191,8 @@ func decomposeScalar_BN254_Snarks_G2*[M, scalBits, L: static int](
   ## Decompose a secret scalar into mini-scalar exploiting
   ## BN254_Snarks specificities.
 
-  static: doAssert L == (scalBits + M - 1) div M + 1
+  # Equal when no window or no negative handling, greater otherwise
+  static: doAssert L >= (scalBits + M - 1) div M + 1
   const
     w = BN254_Snarks.getCurveOrderBitwidth().wordsRequired()
 
@@ -266,8 +268,25 @@ func decomposeScalar_BLS12_381_G2*[M, scalBits, L: static int](
      ) =
   ## Decompose a secret scalar into mini-scalar exploiting
   ## BLS12_381 specificities.
+  ##
+  ## A scalar decomposition might lead to negative miniscalar.
+  ## For proper handling it requires either:
+  ## 1. Negating it and then negating the corresponding curve point P
+  ## 2. Adding an extra bit to the recoding, which will do the right thing™
+  ##
+  ## For implementation solution 1 is faster:
+  ##   - Double + Add is about 5000~8000 cycles on 6 64-bits limbs (BLS12-381)
+  ##   - Conditional negate is about 10 cycles per Fp, on G2 projective we have 3 (coords) * 2 (Fp2) * 10 (cycles) ~= 60 cycles
+  ##     We need to test the mini scalar, which is 65 bits so 2 Fp so about 2 cycles
+  ##     and negate it as well.
+  ##
+  ## However solution 1 seems to cause issues (TODO)
+  ## with some of the BLS12-381 test cases (6 and 9)
+  ## - 0x5668a2332db27199dcfb7cbdfca6317c2ff128db26d7df68483e0a095ec8e88f
+  ## - 0x644dc62869683f0c93f38eaef2ba6912569dc91ec2806e46b4a3dd6a4421dad1
 
-  static: doAssert L == (scalBits + M - 1) div M + 1
+  # Equal when no window or no negative handling, greater otherwise
+  static: doAssert L >= (scalBits + M - 1) div M + 1
   const
     w = BLS12_381.getCurveOrderBitwidth().wordsRequired()
 

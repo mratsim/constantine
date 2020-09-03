@@ -44,16 +44,13 @@ suite "Order checks on BN254_Snarks":
           let a = rng.random_unsafe(EC)
 
         let exponent = EC.F.C.getCurveOrder()
-        var exponentCanonical{.noInit.}: array[(bits+7) div 8, byte]
-        exponentCanonical.exportRawUint(exponent, bigEndian)
 
         var
           impl = a
           reference = a
-          scratchSpace{.noInit.}: array[1 shl 4, EC]
 
-        impl.scalarMulGeneric(exponentCanonical, scratchSpace)
-        reference.unsafe_ECmul_double_add(exponentCanonical)
+        impl.scalarMulGeneric(exponent)
+        reference.unsafe_ECmul_double_add(exponent)
 
         check:
           bool(impl.isInf())

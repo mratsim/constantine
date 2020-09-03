@@ -37,18 +37,15 @@ proc test(
     let qOK = Q.fromHex(Qx, Qy)
 
     let exponent = BigInt[EC.F.C.getCurveOrderBitwidth()].fromHex(scalar)
-    var exponentCanonical: array[(exponent.bits+7) div 8, byte]
-    exponentCanonical.exportRawUint(exponent, bigEndian)
 
     var
       impl = P
       reference = P
       endo = P
       endoW = P
-      scratchSpace: array[1 shl 4, EC]
 
-    impl.scalarMulGeneric(exponentCanonical, scratchSpace)
-    reference.unsafe_ECmul_double_add(exponentCanonical)
+    impl.scalarMulGeneric(exponent)
+    reference.unsafe_ECmul_double_add(exponent)
     endo.scalarMulEndo(exponent)
     endoW.scalarMulGLV_m2w2(exponent)
 
@@ -183,10 +180,9 @@ proc test(
       impl = P
       reference = P
       endo = P
-      scratchSpace: array[1 shl 4, EC]
 
-    impl.scalarMulGeneric(exponentCanonical, scratchSpace)
-    reference.unsafe_ECmul_double_add(exponentCanonical)
+    impl.scalarMulGeneric(exponent)
+    reference.unsafe_ECmul_double_add(exponent)
     endo.scalarMulEndo(exponent)
 
     doAssert: bool(Q == reference)

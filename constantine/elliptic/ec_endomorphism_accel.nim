@@ -204,8 +204,12 @@ func scalarMulEndo*[scalBits](
   ## This is a scalar multiplication accelerated by an endomorphism
   ## - via the GLV (Gallant-lambert-Vanstone) decomposition on G1
   ## - via the GLS (Galbraith-Lin-Scott) decomposition on G2
+  ##
+  ## Requires:
+  ## - Cofactor to be cleared
+  ## - 0 <= scalar < curve order
   const C = P.F.C # curve
-  static: doAssert: scalBits == C.getCurveOrderBitwidth()
+  static: doAssert scalBits <= C.getCurveOrderBitwidth(), "Do not use endomorphism to multiply beyond the curve order"
   when P.F is Fp:
     const M = 2
     # 1. Compute endomorphisms
@@ -223,7 +227,7 @@ func scalarMulEndo*[scalBits](
     {.error: "Unconfigured".}
 
   # 2. Decompose scalar into mini-scalars
-  const L = (C.getCurveOrderBitwidth() + M - 1) div M + 1
+  const L = (scalBits + M - 1) div M + 1 + 1 # A "+1" to handle negative
   var miniScalars {.noInit.}: array[M, BigInt[L]]
   when C == BN254_Snarks:
     when P.F is Fp:
@@ -246,10 +250,22 @@ func scalarMulEndo*[scalBits](
   else:
     {.error: "Unsupported curve for GLV acceleration".}
 
-  # 3. TODO: handle negative mini-scalars
-  #    Either negate the associated base and the scalar (in the `endomorphisms` array)
-  #    Or use Algorithm 3 from Faz et al which can encode the sign
-  #    in the GLV representation at the low low price of 1 bit
+  # 3. Handle negative mini-scalars
+  # A scalar decomposition might lead to negative miniscalar.
+  # For proper handling it requires either:
+  # 1. Negating it and then negating the corresponding curve point P
+  # 2. Adding an extra bit to the recoding, which will do the right thing™
+  #
+  # For implementation solution 1 is faster:
+  #   - Double + Add is about 5000~8000 cycles on 6 64-bits limbs (BLS12-381)
+  #   - Conditional negate is about 10 cycles per Fp, on G2 projective we have 3 (coords) * 2 (Fp2) * 10 (cycles) ~= 60 cycles
+  #     We need to test the mini scalar, which is 65 bits so 2 Fp so about 2 cycles
+  #     and negate it as well.
+  #
+  # However solution 1 seems to cause issues (TODO)
+  # with some of the BLS12-381 test cases (6 and 9)
+  # - 0x5668a2332db27199dcfb7cbdfca6317c2ff128db26d7df68483e0a095ec8e88f
+  # - 0x644dc62869683f0c93f38eaef2ba6912569dc91ec2806e46b4a3dd6a4421dad1
 
   # 4. Precompute lookup table
   var lut {.noInit.}: array[1 shl (M-1), ECP_SWei_Proj]
@@ -378,8 +394,8 @@ func w2TableIndex(glv: GLV_SAC, bit2: int, isNeg: var SecretBool): SecretWord {.
 func computeRecodedLength(bitWidth, window: int): int =
   # Strangely in the paper this doesn't depend
   # "m", the GLV decomposition dimension.
-  # lw = ⌈log2 r/w⌉+1
-  let lw = ((bitWidth + window - 1) div window + 1)
+  # lw = ⌈log2 r/w⌉+1+1 (a "+1" to handle negative mini scalars)
+  let lw = (bitWidth + window - 1) div window + 1 + 1
   result = (lw mod window) + lw
 
 func scalarMulGLV_m2w2*[scalBits](
@@ -394,6 +410,10 @@ func scalarMulGLV_m2w2*[scalBits](
   ## via the GLV (Gallant-lambert-Vanstone) decomposition.
   ##
   ## For 2-dimensional decomposition with window 2
+  ##
+  ## Requires:
+  ## - Cofactor to be cleared
+  ## - 0 <= scalar < curve order
   const C = P0.F.C # curve
   static: doAssert: scalBits == C.getCurveOrderBitwidth()
 
