@@ -15,6 +15,7 @@ import
   ../arithmetic,
   ../io/io_bigints,
   ../towers,
+  ../isogeny/frobenius,
   ./ec_weierstrass_affine,
   ./ec_weierstrass_projective,
   ./ec_endomorphism_params
@@ -192,7 +193,7 @@ func secretLookup[T](dst: var T, table: openArray[T], index: SecretWord) =
     let selector = SecretWord(i) == index
     dst.ccopy(table[i], selector)
 
-func scalarMulGLV*[scalBits](
+func scalarMulEndo*[scalBits](
        P: var ECP_SWei_Proj,
        scalar: BigInt[scalBits]
      ) =
@@ -201,35 +202,51 @@ func scalarMulGLV*[scalBits](
   ##   P <- [k] P
   ##
   ## This is a scalar multiplication accelerated by an endomorphism
-  ## via the GLV (Gallant-lambert-Vanstone) decomposition.
+  ## - via the GLV (Gallant-lambert-Vanstone) decomposition on G1
+  ## - via the GLS (Galbraith-Lin-Scott) decomposition on G2
+  ##
+  ## Requires:
+  ## - Cofactor to be cleared
+  ## - 0 <= scalar < curve order
   const C = P.F.C # curve
-  static: doAssert: scalBits == C.getCurveOrderBitwidth()
+  static: doAssert scalBits <= C.getCurveOrderBitwidth(), "Do not use endomorphism to multiply beyond the curve order"
   when P.F is Fp:
     const M = 2
-
-  # 1. Compute endomorphisms
-  var endomorphisms {.noInit.}: array[M-1, typeof(P)]
-  endomorphisms[0] = P
-  endomorphisms[0].x *= C.getCubicRootOfUnity_mod_p()
+    # 1. Compute endomorphisms
+    var endomorphisms {.noInit.}: array[M-1, typeof(P)]
+    endomorphisms[0] = P
+    endomorphisms[0].x *= C.getCubicRootOfUnity_mod_p()
+  elif P.F is Fp2:
+    const M = 4
+    # 1. Compute endomorphisms
+    var endomorphisms {.noInit.}: array[M-1, typeof(P)]
+    endomorphisms[0].frobenius_psi(P)
+    endomorphisms[1].frobenius_psi2(P)
+    endomorphisms[2].frobenius_psi(endomorphisms[1])
+  else:
+    {.error: "Unconfigured".}
 
   # 2. Decompose scalar into mini-scalars
-  const L = (C.getCurveOrderBitwidth() + M - 1) div M + 1
+  const L = (scalBits + M - 1) div M + 1 + 1 # A "+1" to handle negative
   var miniScalars {.noInit.}: array[M, BigInt[L]]
-  when C == BN254_Snarks:
-    scalar.decomposeScalar_BN254_Snarks_G1(
-      miniScalars
-    )
-  elif C == BLS12_381:
-    scalar.decomposeScalar_BLS12_381_G1(
-      miniScalars
-    )
-  else:
-    {.error: "Unsupported curve for GLV acceleration".}
+  miniScalars.decomposeEndo(scalar, P.F)
 
-  # 3. TODO: handle negative mini-scalars
-  #    Either negate the associated base and the scalar (in the `endomorphisms` array)
-  #    Or use Algorithm 3 from Faz et al which can encode the sign
-  #    in the GLV representation at the low low price of 1 bit
+  # 3. Handle negative mini-scalars
+  # A scalar decomposition might lead to negative miniscalar.
+  # For proper handling it requires either:
+  # 1. Negating it and then negating the corresponding curve point P
+  # 2. Adding an extra bit to the recoding, which will do the right thing™
+  #
+  # For implementation solution 1 is faster:
+  #   - Double + Add is about 5000~8000 cycles on 6 64-bits limbs (BLS12-381)
+  #   - Conditional negate is about 10 cycles per Fp, on G2 projective we have 3 (coords) * 2 (Fp2) * 10 (cycles) ~= 60 cycles
+  #     We need to test the mini scalar, which is 65 bits so 2 Fp so about 2 cycles
+  #     and negate it as well.
+  #
+  # However solution 1 seems to cause issues (TODO)
+  # with some of the BLS12-381 test cases (6 and 9)
+  # - 0x5668a2332db27199dcfb7cbdfca6317c2ff128db26d7df68483e0a095ec8e88f
+  # - 0x644dc62869683f0c93f38eaef2ba6912569dc91ec2806e46b4a3dd6a4421dad1
 
   # 4. Precompute lookup table
   var lut {.noInit.}: array[1 shl (M-1), ECP_SWei_Proj]
@@ -358,8 +375,8 @@ func w2TableIndex(glv: GLV_SAC, bit2: int, isNeg: var SecretBool): SecretWord {.
 func computeRecodedLength(bitWidth, window: int): int =
   # Strangely in the paper this doesn't depend
   # "m", the GLV decomposition dimension.
-  # lw = ⌈log2 r/w⌉+1
-  let lw = ((bitWidth + window - 1) div window + 1)
+  # lw = ⌈log2 r/w⌉+1+1 (a "+1" to handle negative mini scalars)
+  let lw = (bitWidth + window - 1) div window + 1 + 1
   result = (lw mod window) + lw
 
 func scalarMulGLV_m2w2*[scalBits](
@@ -374,6 +391,10 @@ func scalarMulGLV_m2w2*[scalBits](
   ## via the GLV (Gallant-lambert-Vanstone) decomposition.
   ##
   ## For 2-dimensional decomposition with window 2
+  ##
+  ## Requires:
+  ## - Cofactor to be cleared
+  ## - 0 <= scalar < curve order
   const C = P0.F.C # curve
   static: doAssert: scalBits == C.getCurveOrderBitwidth()
 
@@ -384,16 +405,7 @@ func scalarMulGLV_m2w2*[scalBits](
   # 2. Decompose scalar into mini-scalars
   const L = computeRecodedLength(C.getCurveOrderBitwidth(), 2)
   var miniScalars {.noInit.}: array[2, BigInt[L]]
-  when C == BN254_Snarks:
-    scalar.decomposeScalar_BN254_Snarks_G1(
-      miniScalars
-    )
-  elif C == BLS12_381:
-    scalar.decomposeScalar_BLS12_381_G1(
-      miniScalars
-    )
-  else:
-    {.error: "Unsupported curve for GLV acceleration".}
+  miniScalars.decomposeEndo(scalar, P0.F)
 
   # 3. TODO: handle negative mini-scalars
   #    Either negate the associated base and the scalar (in the `endomorphisms` array)
@@ -553,7 +565,7 @@ when isMainModule:
       )
 
       var decomp: MultiScalar[M, L]
-      decomposeScalar_BN254_Snarks_G1(scalar, decomp)
+      decomp.decomposeEndo(scalar, Fp[BN254_Snarks])
 
       doAssert: bool(decomp[0] == BigInt[L].fromHex"14928105460c820ccc9a25d0d953dbfe")
       doAssert: bool(decomp[1] == BigInt[L].fromHex"13a2f911eb48a578844b901de6f41660")
@@ -564,7 +576,7 @@ when isMainModule:
       )
 
       var decomp: MultiScalar[M, L]
-      decomposeScalar_BN254_Snarks_G1(scalar, decomp)
+      decomp.decomposeEndo(scalar, Fp[BN254_Snarks])
 
       doAssert: bool(decomp[0] == BigInt[L].fromHex"28cf7429c3ff8f7e82fc419e90cc3a2")
       doAssert: bool(decomp[1] == BigInt[L].fromHex"457efc201bdb3d2e6087df36430a6db6")
@@ -575,7 +587,7 @@ when isMainModule:
       )
 
       var decomp: MultiScalar[M, L]
-      decomposeScalar_BN254_Snarks_G1(scalar, decomp)
+      decomp.decomposeEndo(scalar, Fp[BN254_Snarks])
 
       doAssert: bool(decomp[0] == BigInt[L].fromHex"4da8c411566c77e00c902eb542aaa66b")
       doAssert: bool(decomp[1] == BigInt[L].fromHex"5aa8f2f15afc3217f06677702bd4e41a")

@@ -269,11 +269,11 @@ suite "ψ²(P) - [t]ψ(P) + [p]P = Inf" & " [" & $WordBitwidth & "-bit mode]":
 
       psi2.frobenius_psi2(P)
       tpsi.frobenius_psi(P)
-      tpsi.scalarMul(trace[0]) # Should be valid for GLS scalar mul even if cofactor isn't cleared
+      tpsi.scalarMulGeneric(trace[0]) # Cofactor not cleared, invalid for GLS
       if trace[1]: # negative trace
         tpsi.neg()
       pP = P
-      pP.scalarMul(EC.F.C.Mod) # Should be valid for GLS scalar mul even if cofactor isn't cleared
+      pP.scalarMulGeneric(EC.F.C.Mod) # Multiply beyond curve order, invalid for GLS
 
       # ψ²(P) - [t]ψ(P) + [p]P = InfinityPoint
       r.diff(psi2, tpsi)

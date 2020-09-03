@@ -11,6 +11,7 @@ import
   ../config/[common, curves],
   ../arithmetic,
   ../towers,
+  ../io/io_bigints,
   ./ec_weierstrass_projective,
   ./ec_endomorphism_accel
 
@@ -127,7 +128,7 @@ func scalarMulDoubling(
   return (k, bits)
 
 
-func scalarMulGeneric*(
+func scalarMulGeneric(
        P: var ECP_SWei_Proj,
        scalar: openArray[byte],
        scratchspace: var openArray[ECP_SWei_Proj]
@@ -209,6 +210,23 @@ func scalarMulGeneric*(
     scratchspace[0].sum(P, scratchspace[1])
     P.ccopy(scratchspace[0], SecretWord(bits).isNonZero())
 
+func scalarMulGeneric*(P: var ECP_SWei_Proj, scalar: BigInt, window: static int = 5) =
+  ## Elliptic Curve Scalar Multiplication
+  ##
+  ##   P <- [k] P
+  ##
+  ## This scalar multiplication can handle edge cases:
+  ## - When a cofactor is not cleared
+  ## - Multiplying by a number beyond curve order.
+  ##
+  ## A window size will reserve 2^window of scratch space to accelerate
+  ## the scalar multiplication.
+  var
+    scratchSpace: array[1 shl window, ECP_SWei_Proj]
+    scalarCanonicalBE: array[(scalar.bits+7) div 8, byte] # canonical big endian representation
+  scalarCanonicalBE.exportRawUint(scalar, bigEndian)      # Export is constant-time
+  P.scalarMulGeneric(scalarCanonicalBE, scratchSpace)
+
 func scalarMul*(
        P: var ECP_SWei_Proj,
        scalar: BigInt
@@ -216,14 +234,19 @@ func scalarMul*(
   ## Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P
-  # This calls endomorphism accelerated scalar mul if available
-  # or the generic scalar mul otherwise
-  when ECP_SWei_Proj.F is Fp and ECP_SWei_Proj.F.C in {BN254_Snarks, BLS12_381}:
-    # ⚠️ This requires the cofactor to be cleared
-    scalarMulGLV(P, scalar)
+  ##
+  ## This use endomorphism acceleration by default if available
+  ## Endomorphism acceleration requires:
+  ## - Cofactor to be cleared
+  ## - 0 <= scalar < curve order
+  ##   this will not automatically
+  when BigInt.bits <= ECP_SWei_Proj.F.C.getCurveOrderBitwidth() and
+       ECP_SWei_Proj.F.C in {BN254_Snarks, BLS12_381}:
+    when ECP_SWei_Proj.F is Fp:
+      P.scalarMulGLV_m2w2(scalar)
+    elif ECP_SWei_Proj.F is Fp2:
+      P.scalarMulEndo(scalar)
+    else: # Curves defined on Fp^m with m > 2
+      {.error: "Unreachable".}
   else:
-    var
-      scratchSpace: array[1 shl 4, ECP_SWei_Proj]
-      scalarCanonicalBE: array[(scalar.bits+7)div 8, byte] # canonical big endian representation
-    scalarCanonicalBE.exportRawUint(scalar, bigEndian)   # Export is constant-time
-    P.scalarMulGeneric(scalarCanonicalBE, scratchSpace)
+    scalarMulGeneric(P, scalar)
