@@ -160,14 +160,29 @@ proc invBench*(T: typedesc, iters: int) =
   var r: T
   let x = rng.random_unsafe(T)
   preventOptimAway(r)
-  bench("Inversion (constant-time Euclid)", T, iters):
+  bench("Inversion (constant-time default method)", T, iters):
     r.inv(x)
 
-proc powFermatInversionBench*(T: typedesc, iters: int) =
+proc invEuclidBench*(T: typedesc, iters: int) =
+  var r: T
   let x = rng.random_unsafe(T)
+  preventOptimAway(r)
+  bench("Inversion via constant-time Euclid", T, iters):
+    r.inv_euclid(x)
+
+proc invPowFermatBench*(T: typedesc, iters: int) =
+  let x = rng.random_unsafe(T)
+  const exponent = T.C.getInvModExponent()
   bench("Inversion via exponentiation p-2 (Little Fermat)", T, iters):
     var r = x
-    r.powUnsafeExponent(T.C.getInvModExponent())
+    r.powUnsafeExponent(exponent)
+
+proc invAddChainBench*(T: typedesc, iters: int) =
+  var r: T
+  let x = rng.random_unsafe(T)
+  preventOptimAway(r)
+  bench("Inversion via addition chain", T, iters):
+    r.inv_addchain(x)
 
 proc sqrtBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)
