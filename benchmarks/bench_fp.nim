@@ -50,8 +50,9 @@ proc main() =
     negBench(Fp[curve], Iters)
     mulBench(Fp[curve], Iters)
     sqrBench(Fp[curve], Iters)
-    invBench(Fp[curve], ExponentIters)
-    powFermatInversionBench(Fp[curve], ExponentIters)
+    invEuclidBench(Fp[curve], ExponentIters)
+    invPowFermatBench(Fp[curve], ExponentIters)
+    invAddChainBench(Fp[curve], ExponentIters)
     sqrtBench(Fp[curve], ExponentIters)
     # Exponentiation by a "secret" of size ~the curve order
     powBench(Fp[curve], ExponentIters)
