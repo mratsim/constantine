@@ -124,7 +124,7 @@ type
   Fp6*[C: static Curve] = object
     c0*, c1*, c2*: Fp2[C]
 
-  ξ = NonResidue
+  ξ* = NonResidue
     # We call the non-residue ξ on 𝔽p6 to avoid confusion between non-residue
     # of different tower level
 

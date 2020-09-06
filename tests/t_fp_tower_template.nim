@@ -41,8 +41,8 @@ type
     HighHammingWeight
     Long01Sequence
 
-func random_elem(rng: var RngState, F: typedesc, gen: static RandomGen): F {.inline, noInit.} =
-  when gen == Uniform:
+func random_elem(rng: var RngState, F: typedesc, gen: RandomGen): F {.inline, noInit.} =
+  if gen == Uniform:
     result = rng.random_unsafe(F)
   elif gen == HighHammingWeight:
     result = rng.random_highHammingWeight(F)
@@ -77,7 +77,7 @@ proc runTowerTests*[N](
         test(ExtField(ExtDegree, curve))
 
     test "Addition, substraction negation are consistent":
-      proc test(Field: typedesc, Iters: static int, gen: static RandomGen) =
+      proc test(Field: typedesc, Iters: static int, gen: RandomGen) =
         # Try to exercise all code paths for in-place/out-of-place add/sum/sub/diff/double/neg
         # (1 - (-a) - b + (-a) - 2a) + (2a + 2b + (-b))  == 1
         var accum {.noInit.}, One {.noInit.}, a{.noInit.}, na{.noInit.}, b{.noInit.}, nb{.noInit.}, a2 {.noInit.}, b2 {.noInit.}: Field

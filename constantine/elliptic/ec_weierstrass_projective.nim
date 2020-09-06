@@ -15,7 +15,7 @@ import
 
 # ############################################################
 #
-#             Elliptic Curve in Weierstrass form
+#             Elliptic Curve in Short Weierstrass form
 #                 with Projective Coordinates
 #
 # ############################################################

@@ -13,6 +13,20 @@ import
   ../towers,
   ../io/io_bigints
 
+# ############################################################
+#
+#             Elliptic Curve in Short Weierstrass form
+#                 with Projective Coordinates
+#
+# ############################################################
+
+type ECP_SWei_Aff*[F] = object
+  ## Elliptic curve point for a curve in Short Weierstrass form
+  ##   y² = x³ + a x + b
+  ##
+  ## over a field F
+  x*, y*: F
+
 func curve_eq_rhs*[F](y2: var F, x: F) =
   ## Compute the curve equation right-hand-side from field element `x`
   ## i.e.  `y²` in `y² = x³ + a x + b`
