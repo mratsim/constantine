@@ -76,7 +76,7 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
         let x = rng.random_elem(Fp2[C], gen)
         let y = rng.random_elem(Fp2[C], gen)
         let b = Fp6[C](c0: x, c1: y)
-        let line = Line[Fp2[C], xy00z0](x: x, y: y)
+        let line = Line[Fp2[C], M_twist](x: x, y: y)
 
         var r {.noInit.}, r2 {.noInit.}: Fp6[C]
 
@@ -100,14 +100,14 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
         var y = rng.random_elem(Fp2[C], gen)
         var z = rng.random_elem(Fp2[C], gen)
 
-        let line = Line[Fp2[C], xy00z0](x: x, y: y, z: z)
+        let line = Line[Fp2[C], Mtwist](x: x, y: y, z: z)
         let b = Fp12[C](
           c0: Fp6[C](c0: x, c1: y),
           c1: Fp6[C](c1: z)
         )
 
         a *= b
-        a2.mul_by_line_xy00z0(line)
+        a2.mul_sparse_by_line(line)
 
         check: bool(a == a2)
 

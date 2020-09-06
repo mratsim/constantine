@@ -246,6 +246,15 @@ func mul_sparse_generic_by_x0(r: var QuadraticExt, a, sparseB: QuadraticExt) =
 # Exported symbols
 # -------------------------------------------------------------------
 
+func conj*(a: var QuadraticExt) {.inline.} =
+  ## Computes the conjugate in-place
+  a.c1.neg()
+
+func conj*(r: var QuadraticExt, a: QuadraticExt) {.inline.} =
+  ## Computes the conjugate out-of-place
+  r.c0 = a.c0
+  r.c1.neg(a.c1)
+
 func square*(r: var QuadraticExt, a: QuadraticExt) {.inline.} =
   mixin fromComplexExtension
   when r.fromComplexExtension():

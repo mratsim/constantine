@@ -40,7 +40,7 @@ func toHex*(P: ECP_SWei_Proj): string =
   ##
   ## This proc output may change format in the future
 
-  var aff {.noInit.}: typeof(P)
+  var aff {.noInit.}: ECP_SWei_Aff[ECP_SWei_Proj.F]
   aff.affineFromProjective(P)
 
   result = "ECP[" & $aff.F & "](\n  x: "

@@ -72,7 +72,10 @@ func mul_sparse_by_0y0*[C: static Curve](r: var Fp6[C], a: Fp6[C], b: Fp2[C]) =
   r.c1.prod(a.c0, b)
   r.c2.prod(a.c1, b)
 
-func mul_by_line_xy0*[C: static Curve](r: var Fp6[C], a: Fp6[C], b: Line[Fp2[C], xy00z0]) =
+func mul_by_line_xy0*[C: static Curve, twist: static SexticTwist](
+       r: var Fp6[C],
+       a: Fp6[C],
+       b: Line[Fp2[C], twist]) =
   ## Sparse multiplication of an Fp6
   ## with coordinates (a₀, a₁, a₂) by a line (x, y, 0)
   ## The z coordinates in the line will be ignored.
@@ -96,16 +99,16 @@ func mul_by_line_xy0*[C: static Curve](r: var Fp6[C], a: Fp6[C], b: Line[Fp2[C],
   r.c2.prod(a.c2, b.x)
   r.c2 += v1
 
-func mul_by_line_xy00z0*[C: static Curve](f: var FP12[C], l: Line[Fp2[C], xy00z0]) =
+func mul_sparse_by_line*[C: static Curve](f: var FP12[C], l: Line[Fp2[C], M_Twist]) =
   ## Sparse multiplication of an FP12 element
   ## by a sparse FP12 element coming from an M-Twist line function.
   ## The sparse element is represented by a packed Line type
-  ## with coordinate (a,b,c) matching Fp12 coordinates ab00c0
+  ## with coordinate (x,y,z) matching Fp12 coordinates xy00z0
 
   var
     v0 {.noInit.}: Fp6[C]
     v1 {.noInit.}: Fp6[C]
-    v2 {.noInit.}: Line[Fp2[C], xy00z0]
+    v2 {.noInit.}: Line[Fp2[C], M_Twist]
     v3 {.noInit.}: Fp6[C]
 
   v0.mul_by_line_xy0(f.c0, l)

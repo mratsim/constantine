@@ -38,11 +38,10 @@ import
 func frobenius*(r: var Fp2, a: Fp2, k: static int = 1) {.inline.} =
   ## Computes a^(p^k)
   ## The p-power frobenius automorphism on 𝔽p2
-  r.c0 = a.c0
   when (k and 1) == 1:
-    r.c1.neg(a.c1)
+    r.conj(a)
   else:
-    r.c1 = a.c1
+    r = a
 
 # Frobenius endomorphism
 # ------------------------------------------------------------

@@ -309,13 +309,12 @@ func diff*[F](r: var ECP_SWei_Proj[F],
   nQ.neg()
   r.sum(P, nQ)
 
-func affineFromProjective*[F](aff: var ECP_SWei_Proj[F], proj: ECP_SWei_Proj) =
+func affineFromProjective*[F](aff: var ECP_SWei_Aff[F], proj: ECP_SWei_Proj) =
   # TODO: for now we reuse projective coordinate backend
   # TODO: simultaneous inversion
 
   var invZ {.noInit.}: F
   invZ.inv(proj.z)
 
-  aff.z.setOne()
   aff.x.prod(proj.x, invZ)
   aff.y.prod(proj.y, invZ)

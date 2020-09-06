@@ -35,13 +35,15 @@ import
 
 #
 # TODO: Implement fused line doubling and addition
-#       from Costello2009
+#       from Costello2009 or Aranha2010
 #       We don't need the complete formulae in the Miller Loop
 
 type
-  LineSparsity* = enum
-    ## Line are sparse Fp^k elements that
-    ## accept efficient multiplication algorithm.
+  Line*[F; twist: static SexticTwist] = object
+    ## Packed line representation over a E'(Fp^k/d)
+    ## with k the embedding degree and d the twist degree
+    ## i.e. for a curve with embedding degree 12 and sextic twist
+    ## F is Fp2
     ##
     ## Assuming a Sextic Twist
     ##
@@ -54,14 +56,6 @@ type
     ## For a M-Twist
     ##   (x, y, z) corresponds to an sparse element of Fp12
     ##   with Fp2 coordinates: xy00z0
-    xyz000 = "Sparsity xyz000 (D-Twist)"
-    xy00z0 = "Sparsity xy00z0 (M-Twist)"
-
-  Line*[F; S: static LineSparsity] = object
-    ## Packed line representation over a E'(Fp^k/d)
-    ## with k the embedding degree and d the twist degree
-    ## i.e. for a curve with embedding degree 12 and sextic twist
-    ## F is Fp2
     x*, y*, z*: F
 
 # Line evaluation
