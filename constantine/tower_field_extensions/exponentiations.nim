@@ -11,6 +11,7 @@ import
   ../arithmetic,
   ../config/[common, curves],
   ../primitives,
+  ../io/io_bigints,
   ./tower_common,
   ./quadratic_extensions,
   ./cubic_extensions
@@ -60,7 +61,7 @@ func powPrologue[F](a: var F, scratchspace: var openarray[F]): uint =
   else:
     scratchspace[2] = a
     for k in 2 ..< 1 shl result:
-      scratchspace[k+1]
+      scratchspace[k+1].prod(scratchspace[k], a)
   a.setOne()
 
 func powSquarings[F](
@@ -69,7 +70,7 @@ func powSquarings[F](
        tmp: var F,
        window: uint,
        acc, acc_len: var uint,
-       e: var uint
+       e: var int
      ): tuple[k, bits: uint] {.inline.}=
   ## Squaring step of exponentiation by squaring
   ## Get the next k bits in range [1, window)
@@ -109,10 +110,10 @@ func powSquarings[F](
 
   return (k, bits)
 
-func powUnsafeExponent(
-       a: var ExtensionField,
+func powUnsafeExponent[F](
+       a: var F,
        exponent: openArray[byte],
-       scratchspace: var openArray[byte]
+       scratchspace: var openArray[F]
      ) =
   ## Extension field exponentiation r = a^exponent (mod p^m)
   ##
@@ -144,6 +145,55 @@ func powUnsafeExponent(
         # scratchspace[1] holds the original `a`
         scratchspace[0].prod(a, scratchspace[1])
       a = scratchspace[0]
+
+func powUnsafeExponent*[F](
+       a: var F,
+       exponent: openArray[byte],
+       window: static int
+     ) =
+  ## Extension field exponentiation r = a^exponent (mod p^m)
+  ## exponent is an big integer in canonical octet-string format
+  ##
+  ## Window is used for window optimization.
+  ## 2^window field elements are allocated for scratchspace.
+  ##
+  ## - On Fp2, with a 256-bit base field, a window of size 5 requires
+  ##   2*256*2^5 = 16KiB
+  ##
+  ## Warning ⚠️ :
+  ## This is an optimization for public exponent
+  ## Otherwise bits of the exponent can be retrieved with:
+  ## - memory access analysis
+  ## - power analysis
+  ## - timing analysis
+  const scratchLen = if window == 1: 2
+                     else: (1 shl window) + 1
+  var scratchSpace {.noInit.}: array[scratchLen, typeof(a)]
+  a.powUnsafeExponent(exponent, scratchspace)
+
+func powUnsafeExponent*[F; bits: static int](
+       a: var F,
+       exponent: BigInt[bits],
+       window: static int
+     ) =
+  ## Extension field exponentiation r = a^exponent (mod p^m)
+  ## exponent is an big integer in canonical octet-string format
+  ##
+  ## Window is used for window optimization.
+  ## 2^window field elements are allocated for scratchspace.
+  ##
+  ## - On Fp2, with a 256-bit base field, a window of size 5 requires
+  ##   2*256*2^5 = 16KiB
+  ##
+  ## Warning ⚠️ :
+  ## This is an optimization for public exponent
+  ## Otherwise bits of the exponent can be retrieved with:
+  ## - memory access analysis
+  ## - power analysis
+  ## - timing analysis
+  var expBE {.noInit.}: array[(bits + 7) div 8, byte]
+  expBE.exportRawUint(exponent, bigEndian)
+  a.powUnsafeExponent(expBE, window)
 
 # Square root
 # -----------------------------------------------------------

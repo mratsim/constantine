@@ -225,6 +225,10 @@ func neg*(r: var Fp, a: Fp) {.inline.} =
   else:
     discard r.mres.diff(Fp.C.Mod, a.mres)
 
+func neg*(a: var Fp) {.inline.} =
+  ## Negate modulo p
+  a.neg(a)
+
 func div2*(a: var Fp) {.inline.} =
   ## Modular division by 2
   a.mres.div2_modular(Fp.C.getPrimePlus1div2())

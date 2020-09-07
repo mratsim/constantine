@@ -188,7 +188,7 @@ func line_double*(line: var Line, T: var ECP_SWei_Proj, P: ECP_SWei_Aff) =
   ##
   # TODO fused line doubling from Costello 2009, Grewal 2012, Aranha 2013
   line_eval_double(line, T)
-  line.update(P)
+  line.line_update(P)
   T.double()
 
 func line_add*(line: var Line, T: var ECP_SWei_Proj, Q: ECP_SWei_Proj, P: ECP_SWei_Aff) =
@@ -198,7 +198,7 @@ func line_add*(line: var Line, T: var ECP_SWei_Proj, Q: ECP_SWei_Proj, P: ECP_SW
   ## Compute lt,q(P)
   # TODO fused line addition from Costello 2009, Grewal 2012, Aranha 2013
   line_eval_add(line, T, Q)
-  line.update(P)
+  line.line_update(P)
   T += Q
 
 # Line accumulation

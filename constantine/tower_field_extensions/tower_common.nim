@@ -107,6 +107,11 @@ func neg*(r: var ExtensionField, a: ExtensionField) =
   for fR, fA in fields(r, a):
     fR.neg(fA)
 
+func neg*(a: var ExtensionField) =
+  ## Field out-of-place negation
+  for fA in fields(a):
+    fA.neg()
+
 func `+=`*(a: var ExtensionField, b: ExtensionField) =
   ## Addition in the extension field
   for fA, fB in fields(a, b):
