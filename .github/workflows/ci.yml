@@ -27,21 +27,18 @@ jobs:
           - os: macos
             cpu: amd64
             TEST_LANG: cpp
-          # TODO:
-          #   1. Modulo/reduce bug on 32-bit
-          #   2. ModInverse bug on all windows
-          # - os: windows
-          #   cpu: amd64
-          #   TEST_LANG: c
-          # - os: windows
-          #   cpu: amd64
-          #   TEST_LANG: cpp
-          # - os: windows
-          #   cpu: i386
-          #   TEST_LANG: c
-          # - os: windows
-          #   cpu: i386
-          #   TEST_LANG: cpp
+          - os: windows
+            cpu: amd64
+            TEST_LANG: c
+          - os: windows
+            cpu: amd64
+            TEST_LANG: cpp
+          - os: windows
+            cpu: i386
+            TEST_LANG: c
+          - os: windows
+            cpu: i386
+            TEST_LANG: cpp
         include:
           - target:
               os: linux
@@ -49,9 +46,9 @@ jobs:
           - target:
               os: macos
             builder: macos-10.15
-          # - target:
-          #     os: windows
-          #   builder: windows-2019
+          - target:
+              os: windows
+            builder: windows-2019
     name: '${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ matrix.target.TEST_LANG }} (${{ matrix.branch }})'
     runs-on: ${{ matrix.builder }}
     steps:
@@ -60,20 +57,14 @@ jobs:
         with:
           path: constantine
 
-      - name: Install dependencies (Linux amd64)
-        if: runner.os == 'Linux' && matrix.target.cpu == 'amd64'
-        run: |
-          sudo DEBIAN_FRONTEND='noninteractive' apt-fast install \
-            --no-install-recommends -yq libgmp-dev
-
-      - name: Install dependencies (Linux i386)
+      - name: Install build dependencies (Linux i386)
         if: runner.os == 'Linux' && matrix.target.cpu == 'i386'
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-fast update -qq
           sudo DEBIAN_FRONTEND='noninteractive' apt-fast install \
             --no-install-recommends -yq gcc-multilib g++-multilib \
-            libssl-dev:i386 libgmp-dev:i386
+            libssl-dev:i386
           mkdir -p external/bin
           cat << EOF > external/bin/gcc
           #!/bin/bash
@@ -86,11 +77,7 @@ jobs:
           chmod 755 external/bin/gcc external/bin/g++
           echo '::add-path::${{ github.workspace }}/external/bin'
 
-      - name: Install dependencies (macOS)
-        if: runner.os == 'macOS'
-        run: brew install gmp
-
-      - name: Install dependencies (Windows)
+      - name: Install build dependencies (Windows)
         if: runner.os == 'Windows'
         shell: bash
         run: |
@@ -106,9 +93,6 @@ jobs:
           7z x external/windeps.zip -oexternal/dlls
           echo '::add-path::${{ github.workspace }}'"/external/mingw$arch/bin"
           echo '::add-path::${{ github.workspace }}'"/external/dlls"
-
-          choco install msys2
-          pacman -S mingw-w64-x86_64-gmp
 
       - name: Setup environment
         shell: bash
@@ -192,22 +176,42 @@ jobs:
           rm -rf nimcache
           rm -rf dist
           rm -rf .git
+
+      - name: Install library dependencies (Linux amd64)
+        if: runner.os == 'Linux' && matrix.target.cpu == 'amd64'
+        run: |
+          sudo DEBIAN_FRONTEND='noninteractive' apt-fast install \
+            --no-install-recommends -yq libgmp-dev
+
+      - name: Install library dependencies (Linux i386)
+        if: runner.os == 'Linux' && matrix.target.cpu == 'i386'
+        run: |
+          sudo DEBIAN_FRONTEND='noninteractive' apt-fast install \
+            libgmp-dev:i386
+
+      - name: Install library dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: brew install gmp
+
+      - name: Install library dependencies (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+            choco install msys2
+            pacman -S parallel
+            if [[ '${{ matrix.target.cpu }}' == 'amd64' ]]; then
+              pacman -S mingw-w64-x86_64-gmp
+            else
+              pacman -S mingw-w64-i686-gmp
+
       - name: Install test dependencies
         shell: bash
         run: |
           nimble refresh
           nimble install -y gmp stew
       - name: Run Constantine tests (with GMP)
-        if: (runner.os == 'Linux' || runner.os == 'macOS') && matrix.target.cpu == 'amd64'
         shell: bash
         run: |
           export UCPU="$cpu"
           cd constantine
           nimble test_parallel
-      - name: Run Constantine tests (without GMP)
-        if: runner.os == 'Linux' && matrix.target.cpu == 'i386'
-        shell: bash
-        run: |
-          export UCPU="$cpu"
-          cd constantine
-          nimble test_parallel_no_gmp
