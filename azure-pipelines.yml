@@ -1,15 +1,11 @@
 strategy:
   maxParallel: 10
   matrix:
-    # TODO: Broken by OpenSSL not found for nimble
-    # https://github.com/nim-lang/Nim/blob/bf320ed172f74f60fd274338e82bdc9ce3520dd9/lib/wrappers/openssl.nim#L61
-    #   could not load: (libcrypto-1_1|libeay32).dll
-    #   (bad format; library may be wrong architecture)
-    # Windows_devel_32bit:
-    #   VM: 'windows-latest'
-    #   UCPU: i686
-    #   CHANNEL: devel
-    #   TEST_LANG: c
+    Windows_devel_32bit:
+      VM: 'windows-latest'
+      UCPU: i686
+      CHANNEL: devel
+      TEST_LANG: c
     Windows_devel_64bit:
       VM: 'windows-latest'
       UCPU: amd64
@@ -29,7 +25,7 @@ strategy:
       VM: 'ubuntu-18.04'
       UCPU: amd64
       CHANNEL: devel
-      WEAVE_TEST_LANG: cpp
+      TEST_LANG: cpp
 
     # Deactivated for now, this is cross-compilation and tricky to get right
     # Linux_devel_32bit:
@@ -60,6 +56,13 @@ steps:
       path: mingwCache
     condition: eq(variables['Agent.OS'], 'Windows_NT')
 
+  - task: CacheBeta@1
+    displayName: 'cache Windows DLLs'
+    inputs:
+      key: dllsCache
+      path: dllsCache
+    condition: eq(variables['Agent.OS'], 'Windows_NT')
+
   - powershell: |
       Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' -Name 'LongPathsEnabled' -Value 1
     displayName: 'long path support'
@@ -88,6 +91,19 @@ steps:
       mv "$MINGW_DIR" /c/custom/
       popd
 
+      echo "Retrieving Nim required DLLs"
+      mkdir -p dllsCache
+      pushd dllsCache
+      if [[ ! -e "windeps.zip" ]]; then
+        rm -f windeps.zip
+        curl -OLsS "https://nim-lang.org/download/windeps.zip"
+      fi
+
+      7z x -y -bd windeps.zip -odlls >/dev/null
+      mkdir -p /c/custom
+      mv dlls /c/custom/
+      popd
+
       # Workaround https://developercommunity.visualstudio.com/content/problem/891929/windows-2019-cygheap-base-mismatch-detected-git-ba.html
       echo "##vso[task.prependpath]/usr/bin"
       echo "##vso[task.prependpath]/mingw64/bin"
@@ -98,7 +114,9 @@ steps:
   - powershell: |
       # export custom mingw PATH to other tasks
       echo "##vso[task.prependpath]c:\custom\$(MINGW_DIR)\bin"
-    displayName: 'Mingw PATH (Windows)'
+      # export Nim dependencies
+      echo "##vso[task.prependpath]c:\custom\dlls"
+    displayName: 'Mingw PATH and Nim dependencies (Windows)'
     condition: eq(variables['Agent.OS'], 'Windows_NT')
 
   - bash: |

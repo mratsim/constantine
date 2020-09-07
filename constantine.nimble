@@ -83,7 +83,7 @@ proc test(flags, path: string, commandFile = false) =
   # TODO: use a proper runner
   if not dirExists "build":
     mkDir "build"
-  # Compilation language is controlled by WEAVE_TEST_LANG
+  # Compilation language is controlled by TEST_LANG
   var lang = "c"
   if existsEnv"TEST_LANG":
     lang = getEnv"TEST_LANG"
