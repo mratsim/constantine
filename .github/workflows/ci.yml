@@ -187,7 +187,7 @@ jobs:
         if: runner.os == 'Linux' && matrix.target.cpu == 'i386'
         run: |
           sudo DEBIAN_FRONTEND='noninteractive' apt-fast install \
-            libgmp-dev:i386
+            --no-install-recommends -yq libgmp-dev:i386
 
       - name: Install library dependencies (macOS)
         if: runner.os == 'macOS'
@@ -203,6 +203,7 @@ jobs:
               pacman -S mingw-w64-x86_64-gmp
             else
               pacman -S mingw-w64-i686-gmp
+            fi
 
       - name: Install test dependencies
         shell: bash
