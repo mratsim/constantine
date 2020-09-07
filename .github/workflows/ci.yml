@@ -210,7 +210,7 @@ jobs:
             else
               pacman -S mingw-w64-i686-gmp
             fi
-            
+
       - name: Install test dependencies
         shell: bash
         run: |
@@ -218,7 +218,7 @@ jobs:
           nimble install -y gmp stew
 
       - name: Run Constantine tests (with GMP)
-        if: !(runner.os == 'Linux' && matrix.target.cpu == 'i386')
+        if: ${{ !(runner.os == 'Linux' && matrix.target.cpu == 'i386') }}
         shell: bash
         run: |
           export UCPU="$cpu"
