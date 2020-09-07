@@ -193,26 +193,42 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install gmp
 
-      - name: Install library dependencies (Windows)
+      - name: Install extra package manager (Windows)
         if: runner.os == 'Windows'
         shell: bash
         run: |
             choco install msys2
+            # need shell reload for update env variable
+
+      - name: Install library dependencies (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
             pacman -S parallel
             if [[ '${{ matrix.target.cpu }}' == 'amd64' ]]; then
               pacman -S mingw-w64-x86_64-gmp
             else
               pacman -S mingw-w64-i686-gmp
             fi
-
+            
       - name: Install test dependencies
         shell: bash
         run: |
           nimble refresh
           nimble install -y gmp stew
+
       - name: Run Constantine tests (with GMP)
+        if: !(runner.os == 'Linux' && matrix.target.cpu == 'i386')
         shell: bash
         run: |
           export UCPU="$cpu"
           cd constantine
           nimble test_parallel
+      # GMP:i386 segfaults for some reason on Linux, Nim wrapper issue?
+      - name: Run Constantine tests (without GMP)
+        if: (runner.os == 'Linux' && matrix.target.cpu == 'i386')
+        shell: bash
+        run: |
+          export UCPU="$cpu"
+          cd constantine
+          nimble test_parallel_no_gmp
