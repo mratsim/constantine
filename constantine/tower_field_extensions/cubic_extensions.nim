@@ -190,9 +190,31 @@ func inv*(r: var CubicExt, a: CubicExt) =
   r.c1.prod(v1, v3)
   r.c2.prod(v2, v3)
 
+func inv*(a: var CubicExt) =
+  ## Compute the multiplicative inverse of ``a``
+  ##
+  ## The inverse of 0 is 0.
+  ## Incidentally this avoids extra check
+  ## to convert Jacobian and Projective coordinates
+  ## to affine for elliptic curve
+  let t = a
+  a.inv(t)
+
 func `*=`*(a: var CubicExt, b: CubicExt) {.inline.} =
   ## In-place multiplication
   # On higher extension field like 𝔽p6,
   # if `prod` is called on shared in and out buffer, the result is wrong
   let t = a
   a.prod(t, b)
+
+func conj*(a: var CubicExt) {.inline.} =
+  ## Computes the conjugate in-place
+  mixin conj, conjneg
+  a.c0.conj()
+  a.c1.conjneg()
+  a.c2.conj()
+
+func square*(a: var CubicExt) {.inline.} =
+  ## In-place squaring
+  let t = a
+  a.square(t)

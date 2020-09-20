@@ -104,9 +104,15 @@ func trySetFromCoordX*[F](P: var ECP_SWei_Proj[F], x: F): SecretBool =
   P.x = x
   P.z.setOne()
 
+func neg*(P: var ECP_SWei_Proj, Q: ECP_SWei_Proj) =
+  ## Negate ``P``
+  P.x = Q.x
+  P.y.neg(Q.y)
+  P.z = Q.z
+
 func neg*(P: var ECP_SWei_Proj) =
   ## Negate ``P``
-  P.y.neg(P.y)
+  P.y.neg()
 
 func cneg*(P: var ECP_SWei_Proj, ctl: CTBool) =
   ## Conditional negation.

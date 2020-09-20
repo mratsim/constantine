@@ -255,6 +255,10 @@ func conj*(r: var QuadraticExt, a: QuadraticExt) {.inline.} =
   r.c0 = a.c0
   r.c1.neg(a.c1)
 
+func conjneg*(a: var QuadraticExt) {.inline.} =
+  ## Computes the negated conjugate in-place
+  a.c0.neg()
+
 func square*(r: var QuadraticExt, a: QuadraticExt) {.inline.} =
   mixin fromComplexExtension
   when r.fromComplexExtension():
@@ -302,6 +306,15 @@ func inv*(r: var QuadraticExt, a: QuadraticExt) =
   r.c0.prod(a.c0, v1)     # r0 = a0 / (a0² - β a1²)
   v0.neg(v1)              # v0 = -1 / (a0² - β a1²)
   r.c1.prod(a.c1, v0)     # r1 = -a1 / (a0² - β a1²)
+
+func inv*(a: var QuadraticExt) =
+  ## Compute the multiplicative inverse of ``a``
+  ##
+  ## The inverse of 0 is 0.
+  ## Incidentally this avoids extra check
+  ## to convert Jacobian and Projective coordinates
+  ## to affine for elliptic curve
+  a.inv(a)
 
 func `*=`*(a: var QuadraticExt, b: QuadraticExt) {.inline.} =
   ## In-place multiplication

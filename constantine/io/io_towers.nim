@@ -26,7 +26,7 @@ import
 #
 # ############################################################
 
-func appendHex*(accum: var string, f: Fp2 or Fp6 or Fp12, order: static Endianness = bigEndian) =
+func appendHex*(accum: var string, f: Fp2 or Fp4 or Fp6 or Fp12, order: static Endianness = bigEndian) =
   ## Hex accumulator
   accum.add static($f.typeof.genericHead() & '(')
   for fieldName, fieldValue in fieldPairs(f):
@@ -36,7 +36,7 @@ func appendHex*(accum: var string, f: Fp2 or Fp6 or Fp12, order: static Endianne
     accum.appendHex(fieldValue, order)
   accum.add ")"
 
-func toHex*(f: Fp2 or Fp6 or Fp12, order: static Endianness = bigEndian): string =
+func toHex*(f: Fp2 or Fp4 or Fp6 or Fp12, order: static Endianness = bigEndian): string =
   ## Stringify a tower field element to hex.
   ## Note. Leading zeros are not removed.
   ## Result is prefixed with 0x
@@ -59,3 +59,49 @@ func fromHex*(T: typedesc[Fp2], c0, c1: string): T {.raises: [ValueError].}=
   ## with dst = c0 + β * c1
   ## β is the quadratic non-residue chosen to construct 𝔽p2
   result.fromHex(c0, c1)
+
+func fromHex*(dst: var Fp4,
+              c0, c1, c2, c3: string) {.raises: [ValueError].}=
+  ## Convert 4 coordinates to an element of 𝔽p4
+  dst.c0.fromHex(c0, c1)
+  dst.c1.fromHex(c2, c3)
+
+func fromHex*(T: typedesc[Fp4],
+              c0, c1, c2: string,
+              c3, c4, c5: string): T {.raises: [ValueError].}=
+  ## Convert 4 coordinates to an element of 𝔽p4
+  result.fromHex(c0, c1, c2, c3)
+
+func fromHex*(dst: var Fp6,
+              c0, c1, c2: string,
+              c3, c4, c5: string) {.raises: [ValueError].}=
+  ## Convert 6 coordinates to an element of 𝔽p6
+  dst.c0.fromHex(c0, c1)
+  dst.c1.fromHex(c2, c3)
+  dst.c2.fromHex(c4, c5)
+
+func fromHex*(T: typedesc[Fp6],
+              c0, c1, c2: string,
+              c3, c4, c5: string): T {.raises: [ValueError].}=
+  ## Convert 6 coordinates to an element of 𝔽p6
+  result.fromHex(c0, c1, c2, c3, c4, c5)
+
+func fromHex*(dst: var Fp12,
+              c0, c1, c2, c3: string,
+              c4, c5, c6, c7: string,
+              c8, c9, c10, c11: string) {.raises: [ValueError].}=
+  ## Convert 12 coordinates to an element of 𝔽p12
+  when Fp12.c0 is Fp6:
+    dst.c0.fromHex(c0, c1, c2, c3, c4, c5)
+    dst.c1.fromHex(c6, c7, c8, c9, c10, c11)
+  else:
+    dst.c0.fromHex(c0, c1, c2, c3)
+    dst.c1.fromHex(c4, c5, c6, c7)
+    dst.c2.fromHex(c8, c9, c10, c11)
+
+func fromHex*(T: typedesc[Fp12],
+              c0, c1, c2, c3: string,
+              c4, c5, c6, c7: string,
+              c8, c9, c10, c11: string): T {.raises: [ValueError].}=
+  ## Convert 12 coordinates to an element of 𝔽p12
+  result.fromHex(c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11)

@@ -7,6 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  std/typetraits,
   ../primitives,
   ../config/[common, curves],
   ../arithmetic,
@@ -14,7 +15,8 @@ import
   ../elliptic/[
     ec_weierstrass_affine,
     ec_weierstrass_projective
-  ]
+  ],
+  ../io/io_towers
 
 # ############################################################
 #
@@ -52,11 +54,20 @@ type
     ##
     ## For a D-twist,
     ##   (x, y, z) corresponds to an sparse element of Fp12
-    ##   with Fp2 coordinates: xyz000
+    ##   with Fp2 coordinates: xy00z0
     ## For a M-Twist
     ##   (x, y, z) corresponds to an sparse element of Fp12
-    ##   with Fp2 coordinates: xy00z0
+    ##   with Fp2 coordinates: xyz000
     x*, y*, z*: F
+
+func toHex*(line: Line, order: static Endianness = bigEndian): string =
+  result = static($line.typeof.genericHead() & '(')
+  for fieldName, fieldValue in fieldPairs(line):
+    when fieldName != "x":
+      result.add ", "
+    result.add fieldName & ": "
+    result.appendHex(fieldValue, order)
+  result.add ")"
 
 # Line evaluation
 # --------------------------------------------------
@@ -72,9 +83,9 @@ func line_update(line: var Line, P: ECP_SWei_Aff) =
   ## after addition or doubling
   ## P in G1
   line.x *= P.y
-  line.y *= P.x
+  line.z *= P.x
 
-func line_eval_double(line: var Line, T: ECP_SWei_Proj) =
+func line_eval_double*(line: var Line, T: ECP_SWei_Proj) =
   ## Evaluate the line function for doubling
   ## i.e. the tangent at T
   ##
@@ -97,7 +108,22 @@ func line_eval_double(line: var Line, T: ECP_SWei_Proj) =
   ##   A = -2 Y.Z
   ##   B = 3b/ξ Z² - Y²
   ##   C = 3 X²
-
+  ##
+  ## A constant factor will be wiped by the final exponentiation
+  ## as for all non-zero α ∈ GF(pᵐ)
+  ## with
+  ## - p odd prime
+  ## - and gcd(α,pᵐ) = 1 (i.e. the extension field pᵐ is using irreducible polynomials)
+  ##
+  ## Little Fermat holds and we have
+  ## α^(pᵐ - 1) ≡ 1 (mod pᵐ)
+  ##
+  ## The final exponent is of the form
+  ## (pᵏ-1)/r
+  ##
+  ## A constant factor on twisted coordinates pᵏᐟᵈ
+  ## is a constant factor on pᵏ with d the twisting degree
+  ## and so will be elminated. QED.
   var v {.noInit.}: Line.F
   const b3 = 3 * ECP_SWei_Proj.F.C.getCoefB()
 
@@ -132,7 +158,7 @@ func line_eval_double(line: var Line, T: ECP_SWei_Proj) =
   B -= v                # B = 3bξ Z² - Y²  (M-twist)
                         # B = 3b Z² - ξ Y² (D-twist)
 
-func line_eval_add(line: var Line, T, Q: ECP_SWei_Proj) =
+func line_eval_add*(line: var Line, T, Q: ECP_SWei_Proj) =
   ## Evaluate the line function for addition
   ## i.e. the line between T and Q
   ##
@@ -200,6 +226,3 @@ func line_add*(line: var Line, T: var ECP_SWei_Proj, Q: ECP_SWei_Proj, P: ECP_SW
   line_eval_add(line, T, Q)
   line.line_update(P)
   T += Q
-
-# Line accumulation
-# --------------------------------------------------

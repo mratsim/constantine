@@ -77,7 +77,11 @@ suite "Pairing - Optimal Ate on BLS12-381":
         r2.pairing_bls12(P2, Q)
         r3.pairing_bls12(P, Q2)
 
+        echo "r: ", r.toHex()
+
         check:
+          bool(not r.isZero())
+          bool(not r.isOne())
           bool(r == r2)
           bool(r == r3)
           bool(r2 == r3)

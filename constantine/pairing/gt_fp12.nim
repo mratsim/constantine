@@ -76,7 +76,7 @@ func mul_by_line_xy0*[C: static Curve, twist: static SexticTwist](
        r: var Fp6[C],
        a: Fp6[C],
        b: Line[Fp2[C], twist]) =
-  ## Sparse multiplication of an Fp6
+  ## Sparse multiplication of an 𝔽p6
   ## with coordinates (a₀, a₁, a₂) by a line (x, y, 0)
   ## The z coordinates in the line will be ignored.
   ## `r` and `a` must not alias
@@ -99,16 +99,19 @@ func mul_by_line_xy0*[C: static Curve, twist: static SexticTwist](
   r.c2.prod(a.c2, b.x)
   r.c2 += v1
 
-func mul_sparse_by_line*[C: static Curve](f: var FP12[C], l: Line[Fp2[C], M_Twist]) =
-  ## Sparse multiplication of an FP12 element
-  ## by a sparse FP12 element coming from an M-Twist line function.
+func mul_sparse_by_line_xy00z0*[C: static Curve, Tw: static SexticTwist](
+      f: var Fp12[C], l: Line[Fp2[C], Tw]) =
+  ## Sparse multiplication of an 𝔽p12 element
+  ## by a sparse 𝔽p12 element coming from an D-Twist line function.
   ## The sparse element is represented by a packed Line type
-  ## with coordinate (x,y,z) matching Fp12 coordinates xy00z0
+  ## with coordinate (x,y,z) matching 𝔽p12 coordinates xy00z0 (TODO: verify this)
+
+  static: doAssert f.c0.typeof is Fp6, "This assumes 𝔽p12 as a quadratic extension of 𝔽p6"
 
   var
     v0 {.noInit.}: Fp6[C]
     v1 {.noInit.}: Fp6[C]
-    v2 {.noInit.}: Line[Fp2[C], M_Twist]
+    v2 {.noInit.}: Line[Fp2[C], Tw]
     v3 {.noInit.}: Fp6[C]
 
   v0.mul_by_line_xy0(f.c0, l)
@@ -127,6 +130,33 @@ func mul_sparse_by_line*[C: static Curve](f: var FP12[C], l: Line[Fp2[C], M_Twis
   v3.c1.sum(v0.c1, v1.c0)
   v3.c2.sum(v0.c2, v1.c1)
   f.c0 = v3
+
+func mul_sparse_by_line_xyz000*[C: static Curve, Tw: static SexticTwist](
+       f: var Fp12[C], l: Line[Fp2[C], Tw]) =
+  ## Sparse multiplication of an 𝔽p12 element
+  ## by a sparse 𝔽p12 element coming from an D-Twist line function.
+  ## The sparse element is represented by a packed Line type
+  ## with coordinate (x,y,z) matching 𝔽p12 coordinates xyz000
+
+  static: doAssert f.c0.typeof is Fp6, "This assumes 𝔽p12 as a quadratic extension of 𝔽p6"
+
+  # Fp6 are bigs, would the compiler optimize the temporary away
+  # Nim non-ptr casts are done through unions
+  let lineFp6 = cast[ptr Fp6[C]](l.unsafeAddr)
+  f.c0 *= lineFp6[]
+  f.c1 *= lineFp6[]
+
+func mul_sparse_by_line_xy000z*[C: static Curve, Tw: static SexticTwist](
+       f: var Fp12[C], l: Line[Fp2[C], Tw]) =
+
+  static: doAssert f.c0.typeof is Fp4, "This assumes 𝔽p12 as a cubic extension of 𝔽p4"
+
+  var v: Fp12[C]
+  v.c0.c0 = l.x
+  v.c0.c1 = l.y
+  v.c2.c1 = l.z
+
+  f *= v
 
 # Gₜ = 𝔽p12 - Cyclotomic functions
 # ----------------------------------------------------------------

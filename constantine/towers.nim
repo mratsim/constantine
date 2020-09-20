@@ -121,18 +121,22 @@ func `/=`*(a: var Fp2, _: typedesc[SexticNonResidue]) {.inline.} =
 # ----------------------------------------------------------------
 
 type
+  Fp4*[C: static Curve] = object
+    c0*, c1*: Fp2[C]
+
   Fp6*[C: static Curve] = object
     c0*, c1*, c2*: Fp2[C]
 
   ξ* = NonResidue
-    # We call the non-residue ξ on 𝔽p6 to avoid confusion between non-residue
+    # We call the non-residue ξ on 𝔽p4/𝔽p6 to avoid confusion
+    # between non-residue
     # of different tower level
 
 func `*`*(_: typedesc[ξ], a: Fp2): Fp2 {.inline, noInit.} =
-  ## Multiply an element of 𝔽p2 by the cubic non-residue
-  ## chosen to construct 𝔽p6
+  ## Multiply an element of 𝔽p2 by the quadratic and cubic non-residue
+  ## chosen to construct 𝔽p4/𝔽p6
   # Yet another const tuple unpacking bug
-  const u = Fp2.C.get_CNR_Fp2()[0] # Cubic non-residue to construct 𝔽p6
+  const u = Fp2.C.get_CNR_Fp2()[0] # Quadratic & Cubic non-residue to construct 𝔽p4/𝔽p6
   const v = Fp2.C.get_CNR_Fp2()[1]
   const Beta = Fp2.C.get_QNR_Fp()  # Quadratic non-residue to construct 𝔽p2
   # ξ = u + v x
@@ -176,21 +180,20 @@ func `*=`*(a: var Fp2, _: typedesc[ξ]) {.inline.} =
 
 type
   Fp12*[C: static Curve] = object
-    c0*, c1*: Fp6[C]
+    c0*, c1*, c2*: Fp4[C]
 
   γ = NonResidue
     # We call the non-residue γ (Gamma) on 𝔽p6 to avoid confusion between non-residue
     # of different tower level
 
-func `*`*(_: typedesc[γ], a: Fp6): Fp6 {.noInit, inline.} =
+func `*`*(_: typedesc[γ], a: Fp4): Fp4 {.noInit, inline.} =
   ## Multiply an element of 𝔽p6 by the cubic non-residue
   ## chosen to construct 𝔽p12
   ## For all curves γ = v with v the factor for 𝔽p6 coordinate
   ## and v³ = ξ
   ## (c0 + c1 v + c2 v²) v => ξ c2 + c0 v + c1 v²
-  result.c0 = ξ * a.c2
+  result.c0 = ξ * a.c1
   result.c1 = a.c0
-  result.c2 = a.c1
 
-func `*=`*(a: var Fp6, _: typedesc[γ]) {.inline.} =
+func `*=`*(a: var Fp4, _: typedesc[γ]) {.inline.} =
   a = γ * a
