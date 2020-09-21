@@ -92,7 +92,7 @@ proc main() =
   mpz_init(m)
   mpz_init(r)
 
-  testRandomModSizes(24, aBits, mBits):
+  testRandomModSizes(12, aBits, mBits):
     # echo "--------------------------------------------------------------------------------"
     echo "Testing: random dividend (" & align($aBits, 4) & "-bit) -- random modulus (" & align($mBits, 4) & "-bit)"
 
