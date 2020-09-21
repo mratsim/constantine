@@ -79,3 +79,35 @@ func isOnCurve*[F](x, y: F): SecretBool =
   rhs.curve_eq_rhs(x)
 
   return y2 == rhs
+
+func trySetFromCoordX*[F](P: var ECP_SWei_Aff[F], x: F): SecretBool =
+  ## Try to create a point the elliptic curve
+  ## y² = x³ + a x + b     (affine coordinate)
+  ##
+  ## The `Z` coordinates is set to 1
+  ##
+  ## return true and update `P` if `x` leads to a valid point
+  ## return false otherwise, in that case `P` is undefined.
+  ##
+  ## Note: Dedicated robust procedures for hashing-to-curve
+  ##       will be provided, this is intended for testing purposes.
+  P.y.curve_eq_rhs(x)
+  # TODO: supports non p ≡ 3 (mod 4) modulus like BLS12-377
+  result = sqrt_if_square(P.y)
+
+func neg*(P: var ECP_SWei_Aff, Q: ECP_SWei_Aff) =
+  ## Negate ``P``
+  P.x = Q.x
+  P.y.neg(Q.y)
+
+func neg*(P: var ECP_SWei_Aff) =
+  ## Negate ``P``
+  P.y.neg()
+
+func cneg*(P: var ECP_SWei_Aff, ctl: CTBool) =
+  ## Conditional negation.
+  ## Negate if ``ctl`` is true
+  var Q{.noInit.}: typeof(P)
+  Q.x = P.x
+  Q.y.neg(P.y)
+  P.ccopy(Q, ctl)

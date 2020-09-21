@@ -226,7 +226,7 @@ func random_long01Seq[T](rng: var RngState, a: var T, C: static Curve) =
 # Elliptic curves
 # ------------------------------------------------------------
 
-func random_unsafe[F](rng: var RngState, a: var ECP_SWei_Proj[F]) =
+func random_unsafe[F](rng: var RngState, a: var (ECP_SWei_Proj[F] or ECP_SWei_Aff[F])) =
   ## Initialize a random curve point with Z coordinate == 1
   ## Unsafe: for testing and benchmarking purposes only
   var fieldElem {.noInit.}: F
@@ -251,7 +251,7 @@ func random_unsafe_with_randZ[F](rng: var RngState, a: var ECP_SWei_Proj[F]) =
     rng.random_unsafe(fieldElem, F.C)
     success = trySetFromCoordsXandZ(a, fieldElem, Z)
 
-func random_highHammingWeight[F](rng: var RngState, a: var ECP_SWei_Proj[F]) =
+func random_highHammingWeight[F](rng: var RngState, a: var (ECP_SWei_Proj[F] or ECP_SWei_Aff[F])) =
   ## Initialize a random curve point with Z coordinate == 1
   ## This will be generated with a biaised RNG with high Hamming Weight
   ## to trigger carry bugs
@@ -264,7 +264,7 @@ func random_highHammingWeight[F](rng: var RngState, a: var ECP_SWei_Proj[F]) =
     rng.random_highHammingWeight(fieldElem, F.C)
     success = trySetFromCoordX(a, fieldElem)
 
-func random_highHammingWeight_with_randZ[F](rng: var RngState, a: var ECP_SWei_Proj[F]) =
+func random_highHammingWeight_with_randZ[F](rng: var RngState, a: var (ECP_SWei_Proj[F] or ECP_SWei_Aff[F])) =
   ## Initialize a random curve point with Z coordinate == 1
   ## This will be generated with a biaised RNG with high Hamming Weight
   ## to trigger carry bugs
@@ -278,7 +278,7 @@ func random_highHammingWeight_with_randZ[F](rng: var RngState, a: var ECP_SWei_P
     rng.random_highHammingWeight(fieldElem, F.C)
     success = trySetFromCoordsXandZ(a, fieldElem, Z)
 
-func random_long01Seq[F](rng: var RngState, a: var ECP_SWei_Proj[F]) =
+func random_long01Seq[F](rng: var RngState, a: var (ECP_SWei_Proj[F] or ECP_SWei_Aff[F])) =
   ## Initialize a random curve point with Z coordinate == 1
   ## This will be generated with a biaised RNG
   ## that produces long bitstrings of 0 and 1
@@ -313,7 +313,7 @@ func random_long01Seq_with_randZ[F](rng: var RngState, a: var ECP_SWei_Proj[F]) 
 func random_unsafe*(rng: var RngState, T: typedesc): T =
   ## Create a random Field or Extension Field or Curve Element
   ## Unsafe: for testing and benchmarking purposes only
-  when T is ECP_SWei_Proj:
+  when T is (ECP_SWei_Proj or ECP_SWei_Aff):
     rng.random_unsafe(result)
   elif T is SomeNumber:
     cast[T](rng.next()) # TODO: Rely on casting integer actually converting in C (i.e. uint64->uint32 is valid)
@@ -330,7 +330,7 @@ func random_unsafe_with_randZ*(rng: var RngState, T: typedesc[ECP_SWei_Proj]): T
 func random_highHammingWeight*(rng: var RngState, T: typedesc): T =
   ## Create a random Field or Extension Field or Curve Element
   ## Skewed towards high Hamming Weight
-  when T is ECP_SWei_Proj:
+  when T is (ECP_SWei_Proj or ECP_SWei_Aff):
     rng.random_highHammingWeight(result)
   elif T is SomeNumber:
     cast[T](rng.next()) # TODO: Rely on casting integer actually converting in C (i.e. uint64->uint32 is valid)
@@ -347,7 +347,7 @@ func random_highHammingWeight_with_randZ*(rng: var RngState, T: typedesc[ECP_SWe
 func random_long01Seq*(rng: var RngState, T: typedesc): T =
   ## Create a random Field or Extension Field or Curve Element
   ## Skewed towards long bitstrings of 0 or 1
-  when T is ECP_SWei_Proj:
+  when T is (ECP_SWei_Proj or ECP_SWei_Aff):
     rng.random_long01Seq(result)
   elif T is SomeNumber:
     cast[T](rng.next()) # TODO: Rely on casting integer actually converting in C (i.e. uint64->uint32 is valid)

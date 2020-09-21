@@ -324,3 +324,8 @@ func affineFromProjective*[F](aff: var ECP_SWei_Aff[F], proj: ECP_SWei_Proj) =
 
   aff.x.prod(proj.x, invZ)
   aff.y.prod(proj.y, invZ)
+
+func projectiveFromAffine*[F](proj: var ECP_SWei_Proj, aff: ECP_SWei_Aff[F]) {.inline.} =
+  proj.x = aff.x
+  proj.y = aff.y
+  proj.z.setOne()

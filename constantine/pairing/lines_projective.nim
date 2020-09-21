@@ -158,7 +158,7 @@ func line_eval_double*(line: var Line, T: ECP_SWei_Proj) =
   B -= v                # B = 3bξ Z² - Y²  (M-twist)
                         # B = 3b Z² - ξ Y² (D-twist)
 
-func line_eval_add*(line: var Line, T, Q: ECP_SWei_Proj) =
+func line_eval_add*(line: var Line, T: ECP_SWei_Proj, Q: ECP_SWei_Aff) =
   ## Evaluate the line function for addition
   ## i.e. the line between T and Q
   ##
@@ -217,7 +217,10 @@ func line_double*(line: var Line, T: var ECP_SWei_Proj, P: ECP_SWei_Aff) =
   line.line_update(P)
   T.double()
 
-func line_add*(line: var Line, T: var ECP_SWei_Proj, Q: ECP_SWei_Proj, P: ECP_SWei_Aff) =
+func line_add*[C](
+       line: var Line,
+       T: var ECP_SWei_Proj[Fp2[C]],
+       Q: ECP_SWei_Aff[Fp2[C]], P: ECP_SWei_Aff[Fp[C]]) =
   ## Addition step of the Miller loop
   ## T and Q in G2, P in G1
   ##
@@ -225,4 +228,7 @@ func line_add*(line: var Line, T: var ECP_SWei_Proj, Q: ECP_SWei_Proj, P: ECP_SW
   # TODO fused line addition from Costello 2009, Grewal 2012, Aranha 2013
   line_eval_add(line, T, Q)
   line.line_update(P)
-  T += Q
+  # TODO: mixed addition
+  var QProj {.noInit.}: ECP_SWei_Proj[Fp2[C]]
+  QProj.projectiveFromAffine(Q)
+  T += QProj

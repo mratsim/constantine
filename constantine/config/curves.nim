@@ -94,6 +94,7 @@ macro get_CNR_Fp2*(C: static Curve): untyped =
   result = bindSym($C & "_nonresidue_cube_fp2")
 
 macro getSexticTwist*(C: static Curve): untyped =
+  ## Returns if D-Twist or M-Twist
   result = bindSym($C & "_sexticTwist")
 
 macro get_SNR_Fp2*(C: static Curve): untyped =

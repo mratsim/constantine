@@ -14,18 +14,19 @@ import
   ../constantine/[arithmetic, primitives],
   ../constantine/towers,
   ../constantine/config/curves,
-  ../constantine/io/io_towers,
+  ../constantine/io/[io_towers, io_ec],
   ../constantine/elliptic/[ec_weierstrass_projective, ec_scalar_mul],
   ../constantine/pairing/[
     lines_projective,
     gt_fp12,
     pairing_bls12
   ],
+  ../constantine/hash_to_curve/cofactors,
   # Test utilities
   ../helpers/[prng_unsafe, static_for]
 
 const
-  Iters = 2
+  Iters = 8
   TestCurves = [
     BLS12_381
   ]
@@ -46,17 +47,23 @@ func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen)
   if not randZ:
     if gen == Uniform:
       result = rng.random_unsafe(EC)
+      result.clearCofactorReference()
     elif gen == HighHammingWeight:
       result = rng.random_highHammingWeight(EC)
+      result.clearCofactorReference()
     else:
       result = rng.random_long01Seq(EC)
+      result.clearCofactorReference()
   else:
     if gen == Uniform:
       result = rng.random_unsafe_with_randZ(EC)
+      result.clearCofactorReference()
     elif gen == HighHammingWeight:
       result = rng.random_highHammingWeight_with_randZ(EC)
+      result.clearCofactorReference()
     else:
       result = rng.random_long01Seq_with_randZ(EC)
+      result.clearCofactorReference()
 
 suite "Pairing - Optimal Ate on BLS12-381":
   test "Bilinearity e([2]P, Q) = e(P, [2]Q) = e(P, Q)^2":
@@ -72,12 +79,10 @@ suite "Pairing - Optimal Ate on BLS12-381":
         P2.double(P)
         Q2.double(Q)
 
-        r.pairing_bls12(P, Q)
+        r.pairing_bls12_reference(P, Q)
         r.square()
-        r2.pairing_bls12(P2, Q)
-        r3.pairing_bls12(P, Q2)
-
-        echo "r: ", r.toHex()
+        r2.pairing_bls12_reference(P2, Q)
+        r3.pairing_bls12_reference(P, Q2)
 
         check:
           bool(not r.isZero())
