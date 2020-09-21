@@ -46,6 +46,9 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_fp12_bn254_snarks.nim", false),
   ("tests/t_fp12_bls12_377.nim", false),
   ("tests/t_fp12_bls12_381.nim", false),
+  ("tests/t_fp12_exponentiation.nim", false),
+
+  ("tests/t_fp4_frobenius.nim", false),
   # Elliptic curve arithmetic G1
   ("tests/t_ec_wstrass_prj_g1_add_double.nim", false),
   ("tests/t_ec_wstrass_prj_g1_mul_sanity.nim", false),
@@ -66,7 +69,12 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_ec_sage_bn254.nim", false),
   ("tests/t_ec_sage_bls12_381.nim", false),
   # Edge cases highlighted by past bugs
-  ("tests/t_ec_wstrass_prj_edge_cases.nim", false)
+  ("tests/t_ec_wstrass_prj_edge_cases.nim", false),
+  # Pairing
+  ("tests/t_pairing_fp12_sparse.nim", false),
+  ("tests/t_pairing_bn254_nogami_optate.nim", false),
+  ("tests/t_pairing_bn254_snarks_optate.nim", false),
+  ("tests/t_pairing_bls12_381_optate.nim", false)
 ]
 
 # For temporary (hopefully) investigation that can only be reproduced in CI
@@ -139,8 +147,6 @@ task test, "Run all tests":
       else:
         test "-d:Constantine32", td.path
 
-  # Benchmarks compile and run
-  # ignore Windows 32-bit for the moment
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
   if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
     runBench("bench_fp")
@@ -167,9 +173,6 @@ task test_no_gmp, "Run tests that don't require GMP":
         else:
           test "-d:Constantine32", td.path
 
-
-  # Benchmarks compile and run
-  # ignore Windows 32-bit for the moment
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
   if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
     runBench("bench_fp")
@@ -268,6 +271,47 @@ task test_parallel_no_gmp, "Run all tests in parallel (via GNU parallel)":
         test "-d:debugConstantine", td.path, cmdFile
       else:
         test "", td.path, cmdFile
+
+  # cmdFile.close()
+  # Execute everything in parallel with GNU parallel
+  exec "parallel --keep-order --group < " & buildParallel
+
+  exec "> " & buildParallel
+  if sizeof(int) == 8: # 32-bit tests on 64-bit arch
+    for td in testDesc:
+      if not td.useGMP:
+        if td.path in useDebug:
+          test "-d:Constantine32 -d:debugConstantine", td.path, cmdFile
+        else:
+          test "-d:Constantine32", td.path, cmdFile
+    # cmdFile.close()
+    # Execute everything in parallel with GNU parallel
+    exec "parallel --keep-order --group < " & buildParallel
+
+  # Now run the benchmarks
+  #
+  # Benchmarks compile and run
+  # ignore Windows 32-bit for the moment
+  # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
+  if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
+    runBench("bench_fp")
+    runBench("bench_fp2")
+    runBench("bench_fp6")
+    runBench("bench_fp12")
+    runBench("bench_ec_g1")
+    runBench("bench_ec_g2")
+
+task test_parallel_no_gmp_no_assembler, "Run all tests in parallel (via GNU parallel)":
+  # -d:testingCurves is configured in a *.nim.cfg for convenience
+  let cmdFile = true # open(buildParallel, mode = fmWrite) # Nimscript doesn't support IO :/
+  exec "> " & buildParallel
+
+  for td in testDesc:
+    if not td.useGMP:
+      if td.path in useDebug:
+        test "-d:debugConstantine -d:ConstantineASM=false", td.path, cmdFile
+      else:
+        test "-d:ConstantineASM=false", td.path, cmdFile
 
   # cmdFile.close()
   # Execute everything in parallel with GNU parallel

@@ -31,21 +31,21 @@ type
     HighHammingWeight
     Long01Sequence
 
-func random_point*(rng: var RngState, F: typedesc, randZ: static bool, gen: static RandomGen): F {.inline, noInit.} =
-  when not randZ:
-    when gen == Uniform:
-      result = rng.random_unsafe(F)
+func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen): EC {.noInit.} =
+  if not randZ:
+    if gen == Uniform:
+      result = rng.random_unsafe(EC)
     elif gen == HighHammingWeight:
-      result = rng.random_highHammingWeight(F)
+      result = rng.random_highHammingWeight(EC)
     else:
-      result = rng.random_long01Seq(F)
+      result = rng.random_long01Seq(EC)
   else:
-    when gen == Uniform:
-      result = rng.random_unsafe_with_randZ(F)
+    if gen == Uniform:
+      result = rng.random_unsafe_with_randZ(EC)
     elif gen == HighHammingWeight:
-      result = rng.random_highHammingWeight_with_randZ(F)
+      result = rng.random_highHammingWeight_with_randZ(EC)
     else:
-      result = rng.random_long01Seq_with_randZ(F)
+      result = rng.random_long01Seq_with_randZ(EC)
 
 proc run_EC_addition_tests*(
        ec: typedesc,
@@ -69,7 +69,7 @@ proc run_EC_addition_tests*(
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
     test "The infinity point is the neutral element w.r.t. to EC " & G1_or_G2 & " addition":
-      proc test(EC: typedesc, randZ: static bool, gen: static RandomGen) =
+      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         var inf {.noInit.}: EC
         inf.setInf()
         check: bool inf.isInf()
@@ -92,7 +92,7 @@ proc run_EC_addition_tests*(
       test(ec, randZ = true, gen = Long01Sequence)
 
     test "Adding opposites gives an infinity point":
-      proc test(EC: typedesc, randZ: static bool, gen: static RandomGen) =
+      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< Iters:
           var r{.noInit.}: EC
           let P = rng.random_point(EC, randZ, gen)
@@ -113,7 +113,7 @@ proc run_EC_addition_tests*(
       test(ec, randZ = true, gen = Long01Sequence)
 
     test "EC " & G1_or_G2 & " add is commutative":
-      proc test(EC: typedesc, randZ: static bool, gen: static RandomGen) =
+      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< Iters:
           var r0{.noInit.}, r1{.noInit.}: EC
           let P = rng.random_point(EC, randZ, gen)
@@ -131,7 +131,7 @@ proc run_EC_addition_tests*(
       test(ec, randZ = true, gen = Long01Sequence)
 
     test "EC " & G1_or_G2 & " add is associative":
-      proc test(EC: typedesc, randZ: static bool, gen: static RandomGen) =
+      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< Iters:
           let a = rng.random_point(EC, randZ, gen)
           let b = rng.random_point(EC, randZ, gen)
@@ -180,7 +180,7 @@ proc run_EC_addition_tests*(
       test(ec, randZ = true, gen = Long01Sequence)
 
     test "EC " & G1_or_G2 & " double and EC " & G1_or_G2 & " add are consistent":
-      proc test(EC: typedesc, randZ: static bool, gen: static RandomGen) =
+      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< Iters:
           let a = rng.random_point(EC, randZ, gen)
 
@@ -220,7 +220,7 @@ proc run_EC_mul_sanity_tests*(
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
     test "EC " & G1_or_G2 & " mul [0]P == Inf":
-      proc test(EC: typedesc, bits: static int, randZ: static bool, gen: static RandomGen) =
+      proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< ItersMul:
           let a = rng.random_point(EC, randZ, gen)
 
@@ -243,7 +243,7 @@ proc run_EC_mul_sanity_tests*(
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Long01Sequence)
 
     test "EC " & G1_or_G2 & " mul [1]P == P":
-      proc test(EC: typedesc, bits: static int, randZ: static bool, gen: static RandomGen) =
+      proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< ItersMul:
           let a = rng.random_point(EC, randZ, gen)
 
@@ -269,7 +269,7 @@ proc run_EC_mul_sanity_tests*(
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Long01Sequence)
 
     test "EC " & G1_or_G2 & " mul [2]P == P.double()":
-      proc test(EC: typedesc, bits: static int, randZ: static bool, gen: static RandomGen) =
+      proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< ItersMul:
           let a = rng.random_point(EC, randZ, gen)
 
@@ -319,7 +319,7 @@ proc run_EC_mul_distributive_tests*(
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
 
     test "EC " & G1_or_G2 & " mul is distributive over EC add":
-      proc test(EC: typedesc, bits: static int, randZ: static bool, gen: static RandomGen) =
+      proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< ItersMul:
           let a = rng.random_point(EC, randZ, gen)
           let b = rng.random_point(EC, randZ, gen)
@@ -388,7 +388,7 @@ proc run_EC_mul_vs_ref_impl*(
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
     test "EC " & G1_or_G2 & " mul constant-time is equivalent to a simple double-and-add algorithm":
-      proc test(EC: typedesc, bits: static int, randZ: static bool, gen: static RandomGen) =
+      proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< ItersMul:
           let a = rng.random_point(EC, randZ, gen)
 

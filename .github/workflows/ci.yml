@@ -55,6 +55,11 @@ jobs:
     name: '${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ matrix.target.TEST_LANG }} (${{ matrix.branch }})'
     runs-on: ${{ matrix.builder }}
     steps:
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.5.0
+        with:
+          access_token: ${{ github.token }}
+
       - name: Checkout constantine
         uses: actions/checkout@v2
         with:
@@ -197,13 +202,20 @@ jobs:
         run: |
           nimble refresh
           nimble install -y gmp stew
-      - name: Run Constantine tests (with GMP)
+      - name: Run Constantine tests (with Assembler & with GMP)
         if: (runner.os == 'Linux' || runner.os == 'macOS') && matrix.target.cpu == 'amd64'
         shell: bash
         run: |
           export UCPU="$cpu"
           cd constantine
           nimble test_parallel
+      - name: Run Constantine tests (no Assembler & with GMP)
+        if: (runner.os == 'Linux' || runner.os == 'macOS') && matrix.target.cpu == 'amd64'
+        shell: bash
+        run: |
+          export UCPU="$cpu"
+          cd constantine
+          nimble test_parallel_no_assembler
       - name: Run Constantine tests (without GMP)
         if: runner.os == 'Linux' && matrix.target.cpu == 'i386'
         shell: bash
@@ -211,3 +223,10 @@ jobs:
           export UCPU="$cpu"
           cd constantine
           nimble test_parallel_no_gmp
+      - name: Run Constantine tests (without Assembler or GMP)
+        if: runner.os == 'Linux' && matrix.target.cpu == 'i386'
+        shell: bash
+        run: |
+          export UCPU="$cpu"
+          cd constantine
+          nimble test_parallel_no_gmp_no_assembler

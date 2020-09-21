@@ -27,7 +27,7 @@ import
 # ############################################################
 
 
-const Iters = 500_000
+const Iters = 10_000
 const MulIters = 500
 const AvailableCurves = [
   # P224,

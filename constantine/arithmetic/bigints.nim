@@ -318,6 +318,87 @@ func bit0*(a: BigInt): Ct[uint8] =
   ## Access the least significant bit
   ct(a.limbs[0] and SecretWord(1), uint8)
 
+# Multiplication by small cosntants
+# ------------------------------------------------------------
+
+func `*=`*(a: var BigInt, b: static int) {.inline.} =
+  ## Multiplication by a small integer known at compile-time
+  # Implementation:
+  #
+  # we hardcode addition chains for small integer
+  const negate = b < 0
+  const b = if negate: -b
+            else: b
+  when negate:
+    a.neg(a)
+  when b == 0:
+    a.setZero()
+  elif b == 1:
+    return
+  elif b == 2:
+    discard a.double()
+  elif b == 3:
+    let t1 = a
+    discard a.double()
+    a += t1
+  elif b == 4:
+    discard a.double()
+    discard a.double()
+  elif b == 5:
+    let t1 = a
+    discard a.double()
+    discard a.double()
+    a += t1
+  elif b == 6:
+    discard a.double()
+    let t2 = a
+    discard a.double() # 4
+    a += t2
+  elif b == 7:
+    let t1 = a
+    discard a.double()
+    let t2 = a
+    discard a.double() # 4
+    a += t2
+    a += t1
+  elif b == 8:
+    discard a.double()
+    discard a.double()
+    discard a.double()
+  elif b == 9:
+    let t1 = a
+    discard a.double()
+    discard a.double()
+    discard a.double() # 8
+    a += t1
+  elif b == 10:
+    discard a.double()
+    let t2 = a
+    discard a.double()
+    discard a.double() # 8
+    a += t2
+  elif b == 11:
+    let t1 = a
+    discard a.double()
+    let t2 = a
+    discard a.double()
+    discard a.double() # 8
+    a += t2
+    a += t1
+  elif b == 12:
+    discard a.double()
+    discard a.double() # 4
+    let t4 = a
+    discard a.double() # 8
+    a += t4
+  else:
+    {.error: "Multiplication by this small int not implemented".}
+
+func `*`*(b: static int, a: BigInt): BigInt {.noinit, inline.} =
+  ## Multiplication by a small integer known at compile-time
+  result = a
+  result *= b
+
 # ############################################################
 #
 #                   Modular BigInt
@@ -417,58 +498,6 @@ func montySquare*(r: var BigInt, a, M: BigInt, negInvModWord: static BaseType, c
   ## to avoid duplicating with Nim zero-init policy
   montySquare(r.limbs, a.limbs, M.limbs, negInvModWord, canUseNoCarryMontyMul)
 
-func montyPow*[mBits, eBits: static int](
-       a: var BigInt[mBits], exponent: BigInt[eBits],
-       M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,
-       canUseNoCarryMontyMul, canUseNoCarryMontySquare: static bool
-      ) =
-  ## Compute a <- a^exponent (mod M)
-  ## ``a`` in the Montgomery domain
-  ## ``exponent`` is any BigInt, in the canonical domain
-  ##
-  ## This uses fixed window optimization
-  ## A window size in the range [1, 5] must be chosen
-  ##
-  ## This is constant-time: the window optimization does
-  ## not reveal the exponent bits or hamming weight
-  mixin exportRawUint # exported in io_bigints which depends on this module ...
-
-  var expBE {.noInit.}: array[(ebits + 7) div 8, byte]
-  expBE.exportRawUint(exponent, bigEndian)
-
-  const scratchLen = if windowSize == 1: 2
-                     else: (1 shl windowSize) + 1
-  var scratchSpace {.noInit.}: array[scratchLen, Limbs[mBits.wordsRequired]]
-  montyPow(a.limbs, expBE, M.limbs, one.limbs, negInvModWord, scratchSpace, canUseNoCarryMontyMul, canUseNoCarryMontySquare)
-
-func montyPowUnsafeExponent*[mBits, eBits: static int](
-       a: var BigInt[mBits], exponent: BigInt[eBits],
-       M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,
-       canUseNoCarryMontyMul, canUseNoCarryMontySquare: static bool
-      ) =
-  ## Compute a <- a^exponent (mod M)
-  ## ``a`` in the Montgomery domain
-  ## ``exponent`` is any BigInt, in the canonical domain
-  ##
-  ## Warning ⚠️ :
-  ## This is an optimization for public exponent
-  ## Otherwise bits of the exponent can be retrieved with:
-  ## - memory access analysis
-  ## - power analysis
-  ## - timing analysis
-  ##
-  ## This uses fixed window optimization
-  ## A window size in the range [1, 5] must be chosen
-  mixin exportRawUint # exported in io_bigints which depends on this module ...
-
-  var expBE {.noInit.}: array[(ebits + 7) div 8, byte]
-  expBE.exportRawUint(exponent, bigEndian)
-
-  const scratchLen = if windowSize == 1: 2
-                     else: (1 shl windowSize) + 1
-  var scratchSpace {.noInit.}: array[scratchLen, Limbs[mBits.wordsRequired]]
-  montyPowUnsafeExponent(a.limbs, expBE, M.limbs, one.limbs, negInvModWord, scratchSpace, canUseNoCarryMontyMul, canUseNoCarryMontySquare)
-
 func montyPow*[mBits: static int](
        a: var BigInt[mBits], exponent: openarray[byte],
        M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,
@@ -516,6 +545,52 @@ func montyPowUnsafeExponent*[mBits: static int](
                      else: (1 shl windowSize) + 1
   var scratchSpace {.noInit.}: array[scratchLen, Limbs[mBits.wordsRequired]]
   montyPowUnsafeExponent(a.limbs, exponent, M.limbs, one.limbs, negInvModWord, scratchSpace, canUseNoCarryMontyMul, canUseNoCarryMontySquare)
+
+func montyPow*[mBits, eBits: static int](
+       a: var BigInt[mBits], exponent: BigInt[eBits],
+       M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,
+       canUseNoCarryMontyMul, canUseNoCarryMontySquare: static bool
+      ) =
+  ## Compute a <- a^exponent (mod M)
+  ## ``a`` in the Montgomery domain
+  ## ``exponent`` is any BigInt, in the canonical domain
+  ##
+  ## This uses fixed window optimization
+  ## A window size in the range [1, 5] must be chosen
+  ##
+  ## This is constant-time: the window optimization does
+  ## not reveal the exponent bits or hamming weight
+  mixin exportRawUint # exported in io_bigints which depends on this module ...
+
+  var expBE {.noInit.}: array[(ebits + 7) div 8, byte]
+  expBE.exportRawUint(exponent, bigEndian)
+
+  montyPow(a, expBE, M, one, negInvModWord, windowSize, canUseNoCarryMontyMul, canUseNoCarryMontySquare)
+
+func montyPowUnsafeExponent*[mBits, eBits: static int](
+       a: var BigInt[mBits], exponent: BigInt[eBits],
+       M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,
+       canUseNoCarryMontyMul, canUseNoCarryMontySquare: static bool
+      ) =
+  ## Compute a <- a^exponent (mod M)
+  ## ``a`` in the Montgomery domain
+  ## ``exponent`` is any BigInt, in the canonical domain
+  ##
+  ## Warning ⚠️ :
+  ## This is an optimization for public exponent
+  ## Otherwise bits of the exponent can be retrieved with:
+  ## - memory access analysis
+  ## - power analysis
+  ## - timing analysis
+  ##
+  ## This uses fixed window optimization
+  ## A window size in the range [1, 5] must be chosen
+  mixin exportRawUint # exported in io_bigints which depends on this module ...
+
+  var expBE {.noInit.}: array[(ebits + 7) div 8, byte]
+  expBE.exportRawUint(exponent, bigEndian)
+
+  montyPowUnsafeExponent(a, expBE, M, one, negInvModWord, windowSize, canUseNoCarryMontyMul, canUseNoCarryMontySquare)
 
 {.pop.} # inline
 {.pop.} # raises no exceptions

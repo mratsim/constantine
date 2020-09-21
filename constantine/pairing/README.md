@@ -15,9 +15,27 @@
   Ben Lynn, 2007\
   https://crypto.stanford.edu/pbc/thesis.pdf
 
+- Faster Pairing Computations on Curves with High-Degree Twists
+  Craig Costello, Tanja Lange, and Michael Naehrig, 2009
+  https://eprint.iacr.org/2009/615.pdf
+
+- High-Speed Software Implementation of the Optimal Ate Pairing over Barreto-Naehrig Curves\
+  Jean-Luc Beuchat and Jorge Enrique González Díaz and Shigeo Mitsunari and Eiji Okamoto and Francisco Rodríguez-Henríquez and Tadanori Teruya, 2010\
+  https://eprint.iacr.org/2010/354
+
 - An Analysis of Affine Coordinates for Pairing Computation\
   Kristin Lauter, Peter L. Montgomery, and Michael Naehrig, 2010\
   https://eprint.iacr.org/2010/363.pdf
+
+- Faster Explicit Formulas for Computing Pairings over Ordinary Curves\
+  Diego F. Aranha and Koray Karabina and Patrick Longa and Catherine H. Gebotys and Julio López, 2010\
+  https://eprint.iacr.org/2010/526.pdf\
+  https://www.iacr.org/archive/eurocrypt2011/66320047/66320047.pdf
+
+- Avoiding Full Extension Field Arithmetic in Pairing Computations
+  Craig Costello, Colin Boyd,
+  Juan Manuel Gonzalez Nieto, and Kenneth Koon-Ho Wong, 2010
+  https://eprint.iacr.org/2010/104.pdf
 
 - Pairings for beginners\
   Craig Costello, 2012 (?)\
@@ -27,6 +45,16 @@
   PhD Thesis\
   Craig Costello, 2012\
   https://eprints.qut.edu.au/61037/1/Craig_Costello_Thesis.pdf
+
+- Efficient Implementation of Bilinear Pairings on ARM Processors
+  Gurleen Grewal, Reza Azarderakhsh,
+  Patrick Longa, Shi Hu, and David Jao, 2012
+  https://eprint.iacr.org/2012/408.pdf
+
+- The Realm of the Pairings\
+  Diego F. Aranha and Paulo S. L. M. Barreto and Patrick Longa and Jefferson E. Ricardini\
+  https://eprint.iacr.org/2013/722.pdf\
+  http://sac2013.irmacs.sfu.ca/slides/s1.pdf
 
 - Efficient Implementations of Pairing-Based Cryptography on Embedded Systems\
   Master Thesis\
@@ -38,9 +66,20 @@
   Razvan Barbulescu, Nadia El Mrabet, and Loubna Ghammam, 2019\
   https://hal.archives-ouvertes.fr/hal-02129868/file/2019-485.pdf
 
-- A short-list of pairing-friendly curves resistantto Special TNFS at the 128-bit security level\
-  Aurore Guillevic\
+- Pairing Implementation Revisited\
+  Mike Scott, 2019\
+  https://eprint.iacr.org/2019/077.pdf
+
+- A short-list of pairing-friendly curves resistant to Special TNFS at the 128-bit security level\
+  Aurore Guillevic, 2019\
   https://eprint.iacr.org/2019/1371.pdf
+
+- Efficient Final Exponentiation
+  via Cyclotomic Structure for Pairings
+  over Families of Elliptic Curves
+  Daiki Hayashida and Kenichiro Hayasaka
+  and Tadanori Teruya, 2020
+  https://eprint.iacr.org/2020/875.pdf
 
 ### Presentations
 

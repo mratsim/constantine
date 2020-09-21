@@ -67,7 +67,7 @@ proc main() =
   mpz_init(a)
   mpz_init(b)
 
-  testRandomModSizes(24, rBits, aBits, bBits, wordsStartIndex):
+  testRandomModSizes(12, rBits, aBits, bBits, wordsStartIndex):
     # echo "--------------------------------------------------------------------------------"
     echo "Testing: random mul_high_words  r (", align($rBits, 4),
       "-bit, keeping from ", wordsStartIndex,

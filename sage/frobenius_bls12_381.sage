@@ -50,7 +50,15 @@ def fp2_to_hex(a):
     v = vector(a)
     return Integer(v[0]).hex() + ' + β * ' + Integer(v[1]).hex()
 
-# Frobenius constants (D type: use SNR, M type use 1/SNR)
+# Frobenius map constants (D type: use SNR, M type use 1/SNR)
+print('\nFrobenius extension field constants')
+FrobConst_map = SNR^((p-1)/6)
+print('FrobConst_map     : ' + fp2_to_hex(FrobConst_map))
+FrobConst_map_fp4 = FrobConst_map^(12//4)
+print('FrobConst_map_fp4_y : ' + fp2_to_hex(FrobConst_map_fp4))
+
+# Frobenius psi constants (D type: use SNR, M type use 1/SNR)
+print('\nψ (Psi) - Untwist-Frobenius-Twist constants')
 print('1/sextic_non_residue: ' + fp2_to_hex(1/SNR))
 FrobConst_psi = (1/SNR)^((p-1)/6)
 FrobConst_psi_2 = FrobConst_psi * FrobConst_psi

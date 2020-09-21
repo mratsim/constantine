@@ -8,7 +8,7 @@
 
 # ############################################################
 #
-#                         BLS12-381
+#                         BN254-Snarks
 #                   Frobenius Endomorphism
 #              Untwist-Frobenius-Twist isogeny
 #

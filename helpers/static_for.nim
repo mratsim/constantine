@@ -34,6 +34,14 @@ macro staticFor*(ident: untyped{nkIdent}, choices: typed, body: untyped): untype
   ##   staticFor(curve, TestCurves):
   ##     body
   ## and unroll the body for each curve in TestCurves
+
+  let choices = if choices.kind == nnkSym:
+                  # Unpack symbol
+                  choices.getImpl()
+                else:
+                  choices.expectKind(nnkBracket)
+                  choices
+
   result = newStmtList()
   for choice in choices:
     result.add nnkBlockStmt.newTree(

@@ -7,20 +7,9 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  # Internals
-  ../constantine/towers,
   ../constantine/config/curves,
+  ../constantine/pairing/pairing_bn,
   # Test utilities
-  ./t_fp_tower_template
+  ./t_pairing_template
 
-const TestCurves = [
-    BN254_Snarks,
-  ]
-
-runTowerTests(
-  ExtDegree = 12,
-  Iters = 12,
-  TestCurves = TestCurves,
-  moduleName = "test_fp12_" & $BN254_Snarks,
-  testSuiteDesc = "𝔽p12 = 𝔽p6[w] " & $BN254_Snarks
-)
+runPairingTests(4, BN254_Snarks, pairing_bn_reference)

@@ -15,7 +15,7 @@ import
 
 # ############################################################
 #
-#             Elliptic Curve in Weierstrass form
+#             Elliptic Curve in Short Weierstrass form
 #                 with Projective Coordinates
 #
 # ############################################################
@@ -104,9 +104,15 @@ func trySetFromCoordX*[F](P: var ECP_SWei_Proj[F], x: F): SecretBool =
   P.x = x
   P.z.setOne()
 
+func neg*(P: var ECP_SWei_Proj, Q: ECP_SWei_Proj) =
+  ## Negate ``P``
+  P.x = Q.x
+  P.y.neg(Q.y)
+  P.z = Q.z
+
 func neg*(P: var ECP_SWei_Proj) =
   ## Negate ``P``
-  P.y.neg(P.y)
+  P.y.neg()
 
 func cneg*(P: var ECP_SWei_Proj, ctl: CTBool) =
   ## Conditional negation.
@@ -309,13 +315,17 @@ func diff*[F](r: var ECP_SWei_Proj[F],
   nQ.neg()
   r.sum(P, nQ)
 
-func affineFromProjective*[F](aff: var ECP_SWei_Proj[F], proj: ECP_SWei_Proj) =
+func affineFromProjective*[F](aff: var ECP_SWei_Aff[F], proj: ECP_SWei_Proj) =
   # TODO: for now we reuse projective coordinate backend
   # TODO: simultaneous inversion
 
   var invZ {.noInit.}: F
   invZ.inv(proj.z)
 
-  aff.z.setOne()
   aff.x.prod(proj.x, invZ)
   aff.y.prod(proj.y, invZ)
+
+func projectiveFromAffine*[F](proj: var ECP_SWei_Proj, aff: ECP_SWei_Aff[F]) {.inline.} =
+  proj.x = aff.x
+  proj.y = aff.y
+  proj.z.setOne()

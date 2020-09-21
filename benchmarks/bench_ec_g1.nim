@@ -26,8 +26,8 @@ import
 # ############################################################
 
 
-const Iters = 1_000_000
-const MulIters = 1000
+const Iters = 10_000
+const MulIters = 100
 const AvailableCurves = [
   # P224,
   # BN254_Nogami,

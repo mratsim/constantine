@@ -40,7 +40,7 @@ func toHex*(P: ECP_SWei_Proj): string =
   ##
   ## This proc output may change format in the future
 
-  var aff {.noInit.}: typeof(P)
+  var aff {.noInit.}: ECP_SWei_Aff[ECP_SWei_Proj.F]
   aff.affineFromProjective(P)
 
   result = "ECP[" & $aff.F & "](\n  x: "
@@ -69,4 +69,24 @@ func fromHex*(dst: var ECP_SWei_Proj, x0, x1, y0, y1: string): bool {.raises: [V
   dst.x.fromHex(x0, x1)
   dst.y.fromHex(y0, y1)
   dst.z.setOne()
+  return bool(isOnCurve(dst.x, dst.y))
+
+func fromHex*(dst: var ECP_SWei_Aff, x, y: string): bool {.raises: [ValueError].}=
+  ## Convert hex strings to a G1 curve point
+  ## Returns `false`
+  ## if there is no point with coordinates (`x`, `y`) on the curve
+  ## In that case, `dst` content is undefined.
+  static: doAssert dst.F is Fp, "dst must be on G1, an elliptic curve over 𝔽p"
+  dst.x.fromHex(x)
+  dst.y.fromHex(y)
+  return bool(isOnCurve(dst.x, dst.y))
+
+func fromHex*(dst: var ECP_SWei_Aff, x0, x1, y0, y1: string): bool {.raises: [ValueError].}=
+  ## Convert hex strings to a G2 curve point
+  ## Returns `false`
+  ## if there is no point with coordinates (`x`, `y`) on the curve
+  ## In that case, `dst` content is undefined.
+  static: doAssert dst.F is Fp2, "dst must be on G2, an elliptic curve over 𝔽p2"
+  dst.x.fromHex(x0, x1)
+  dst.y.fromHex(y0, y1)
   return bool(isOnCurve(dst.x, dst.y))

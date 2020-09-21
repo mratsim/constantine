@@ -16,9 +16,20 @@ import
   ../constantine/config/curves,
   ../constantine/io/io_towers,
   # Test utilities
-  ../helpers/prng_unsafe
+  ../helpers/[prng_unsafe, static_for]
 
-const Iters = 24
+const
+  Iters = 8
+  TestCurves = [
+    BN254_Snarks,
+    BLS12_381
+  ]
+
+type
+  RandomGen = enum
+    Uniform
+    HighHammingWeight
+    Long01Sequence
 
 var rng: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
@@ -26,33 +37,43 @@ rng.seed(seed)
 echo "\n------------------------------------------------------\n"
 echo "test_fp2_sqrt xoshiro512** seed: ", seed
 
-proc randomSqrtCheck_p3mod4(C: static Curve) =
-  test "[𝔽p2] Random square root check for p ≡ 3 (mod 4) on " & $Curve(C):
-    for _ in 0 ..< Iters:
-      let a = rng.random_unsafe(Fp2[C])
-      var na{.noInit.}: Fp2[C]
-      na.neg(a)
+func random_elem(rng: var RngState, F: typedesc, gen: RandomGen): F {.inline, noInit.} =
+  if gen == Uniform:
+    result = rng.random_unsafe(F)
+  elif gen == HighHammingWeight:
+    result = rng.random_highHammingWeight(F)
+  else:
+    result = rng.random_long01Seq(F)
 
-      var a2 = a
-      var na2 = na
-      a2.square()
-      na2.square()
-      check:
-        bool a2 == na2
-        bool a2.isSquare()
+proc randomSqrtCheck_p3mod4(C: static Curve, gen: RandomGen) =
+  for _ in 0 ..< Iters:
+    let a = rng.random_elem(Fp2[C], gen)
+    var na{.noInit.}: Fp2[C]
+    na.neg(a)
 
-      var r, s = a2
-      # r.sqrt()
-      let ok = s.sqrt_if_square()
-      check:
-        bool ok
-        # bool(r == s)
-        bool(s == a or s == na)
+    var a2 = a
+    var na2 = na
+    a2.square()
+    na2.square()
+    check:
+      bool a2 == na2
+      bool a2.isSquare()
+
+    var r, s = a2
+    # r.sqrt()
+    let ok = s.sqrt_if_square()
+    check:
+      bool ok
+      # bool(r == s)
+      bool(s == a or s == na)
 
 proc main() =
   suite "Modular square root" & " [" & $WordBitwidth & "-bit mode]":
-    randomSqrtCheck_p3mod4 BN254_Snarks
-    randomSqrtCheck_p3mod4 BLS12_381
+    staticFor(curve, TestCurves):
+      test "[𝔽p2] Random square root check for p ≡ 3 (mod 4) on " & $curve:
+        randomSqrtCheck_p3mod4(curve, gen = Uniform)
+        randomSqrtCheck_p3mod4(curve, gen = HighHammingWeight)
+        randomSqrtCheck_p3mod4(curve, gen = Long01Sequence)
 
   suite "Modular square root - 32-bit bugs highlighted by property-based testing " & " [" & $WordBitwidth & "-bit mode]":
     test "sqrt_if_square invalid square BLS12_381 - #64":

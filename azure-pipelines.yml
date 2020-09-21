@@ -240,5 +240,5 @@ steps:
       echo "PATH=${PATH}"
       export ucpu=${UCPU}
       nimble test_no_gmp
-    displayName: 'Testing the package (without Assembler or GMP)'
+    displayName: 'Testing the package (without GMP and ASM on Windows)'
     condition: eq(variables['Agent.OS'], 'Windows_NT')

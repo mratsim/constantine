@@ -23,7 +23,7 @@ import
 # ############################################################
 
 
-const Iters = 1_000_000
+const Iters = 100_000
 const InvIters = 1000
 const AvailableCurves = [
   # Pairing-Friendly curves

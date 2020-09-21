@@ -11,16 +11,23 @@ import
   ../constantine/towers,
   ../constantine/config/curves,
   # Test utilities
-  ./t_fp_tower_template
+  ./t_fp_tower_frobenius_template
 
 const TestCurves = [
+    # BN254_Nogami
     BN254_Snarks,
+    BLS12_377,
+    BLS12_381,
+    # BN446
+    # FKM12_447
+    # BLS12_461
+    # BN462
   ]
 
-runTowerTests(
-  ExtDegree = 12,
-  Iters = 12,
+runFrobeniusTowerTests(
+  ExtDegree = 2,
+  Iters = 8,
   TestCurves = TestCurves,
-  moduleName = "test_fp12_" & $BN254_Snarks,
-  testSuiteDesc = "𝔽p12 = 𝔽p6[w] " & $BN254_Snarks
+  moduleName = "test_fp2_frobenius",
+  testSuiteDesc = "𝔽p2 Frobenius map: Frobenius(a, k) = a^(p^k) (mod p²)"
 )
