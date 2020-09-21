@@ -85,6 +85,19 @@ declareCurves:
     family: BarretoNaehrig
     # Equation: Y^2 = X^3 + 2
     # u: -(2^62 + 2^55 + 1)
+
+    order: "0x2523648240000001ba344d8000000007ff9f800000000010a10000000000000d"
+    orderBitwidth: 254
+    cofactor: 1
+    eq_form: ShortWeierstrass
+    coef_a: 0
+    coef_b: 2
+    nonresidue_quad_fp: -1       #      -1   is not a square in 𝔽p
+    nonresidue_cube_fp2: (1, 1)  # 1+𝑖   1+𝑖  is not a cube in 𝔽p²
+
+    sexticTwist: D_Twist
+    sexticNonResidue_fp2: (1, 1) # 1+𝑖
+
   curve BN254_Snarks: # Zero-Knowledge proofs curve (SNARKS, STARKS, Ethereum)
     bitwidth: 254
     modulus: "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"

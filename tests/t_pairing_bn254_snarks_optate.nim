@@ -12,4 +12,4 @@ import
   # Test utilities
   ./t_pairing_template
 
-runPairingTests(8, BLS12_381, pairing_bls12_reference)
+runPairingTests(8, BN254_Snarks, pairing_bn_reference)

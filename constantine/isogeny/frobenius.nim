@@ -103,6 +103,27 @@ const FrobPsiConst_BN254_Snarks_psi2_coef2 = Fp2[BN254_Snarks].fromHex(
   "0x0"
 )
 
+#   BN254_Nogami is a D-Twist: SNR^((p-1)/6)
+const FrobPsiConst_BN254_Nogami_psi1_coef1 = Fp2[BN254_Nogami].fromHex(
+  "0x1b377619212e7c8cb6499b50a846953f850974924d3f77c2e17de6c06f2a6de9",
+  "0x9ebee691ed1837503eab22f57b96ac8dc178b6db2c08850c582193f90d5922a"
+)
+#  SNR^((p-1)/3)
+const FrobPsiConst_BN254_Nogami_psi1_coef2 = Fp2[BN254_Nogami].fromHex(
+  "0x0",
+  "0x25236482400000017080eb4000000006181800000000000cd98000000000000b"
+)
+#  SNR^((p-1)/2)
+const FrobPsiConst_BN254_Nogami_psi1_coef3 = Fp2[BN254_Nogami].fromHex(
+  "0x23dfc9d1a39f4db8c69b87a8848aa075a7333a0e62d78cbf4b1b8eeae58b81c5",
+  "0x23dfc9d1a39f4db8c69b87a8848aa075a7333a0e62d78cbf4b1b8eeae58b81c5"
+)
+#  norm(SNR)^((p-1)/3)
+const FrobPsiConst_BN254_Nogami_psi2_coef2 = Fp2[BN254_Nogami].fromHex(
+  "0x49b36240000000024909000000000006cd80000000000007",
+  "0x0"
+)
+
 #   BLS12_377 is a D-Twist: SNR^((p-1)/6)
 const FrobPsiConst_BLS12_377_psi1_coef1 = Fp2[BLS12_377].fromHex(
   "0x9a9975399c019633c1e30682567f915c8a45e0f94ebc8ec681bf34a3aa559db57668e558eb0188e938a9d1104f2031",

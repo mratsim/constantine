@@ -136,15 +136,16 @@ func mul_sparse_by_line_xyz000*[C: static Curve, Tw: static SexticTwist](
   ## Sparse multiplication of an 𝔽p12 element
   ## by a sparse 𝔽p12 element coming from an D-Twist line function.
   ## The sparse element is represented by a packed Line type
-  ## with coordinate (x,y,z) matching 𝔽p12 coordinates xyz000
+  ## with coordinates (x,y,z) matching 𝔽p12 coordinates xyz000
 
-  static: doAssert f.c0.typeof is Fp6, "This assumes 𝔽p12 as a quadratic extension of 𝔽p6"
+  static: doAssert f.c0.typeof is Fp4, "This assumes 𝔽p12 as a cubic extension of 𝔽p4"
 
-  # Fp6 are bigs, would the compiler optimize the temporary away
-  # Nim non-ptr casts are done through unions
-  let lineFp6 = cast[ptr Fp6[C]](l.unsafeAddr)
-  f.c0 *= lineFp6[]
-  f.c1 *= lineFp6[]
+  var v: Fp12[C]
+  v.c0.c0 = l.x
+  v.c0.c1 = l.y
+  v.c1.c0 = l.z
+
+  f *= v
 
 func mul_sparse_by_line_xy000z*[C: static Curve, Tw: static SexticTwist](
        f: var Fp12[C], l: Line[Fp2[C], Tw]) =
