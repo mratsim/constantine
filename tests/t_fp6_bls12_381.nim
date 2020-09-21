@@ -19,7 +19,7 @@ const TestCurves = [
 
 runTowerTests(
   ExtDegree = 6,
-  Iters = 24,
+  Iters = 12,
   TestCurves = TestCurves,
   moduleName = "test_fp6_" & $BLS12_381,
   testSuiteDesc = "𝔽p6 = 𝔽p2[v] " & $BLS12_381

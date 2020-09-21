@@ -21,7 +21,7 @@ import
   ./t_ec_template
 
 const
-  Iters = 24
+  Iters = 12
   ItersMul = Iters div 4
 
 run_EC_mul_distributive_tests(

@@ -71,7 +71,7 @@ proc runFrobeniusTowerTests*[N](
         for _ in 0 ..< Iters:
           var a = rng.random_elem(Field, gen)
           var fa {.noInit.}: typeof(a)
-          fa.frobenius(a, k = 1)
+          fa.frobenius_map(a, k = 1)
 
           a.powUnsafeExponent(Field.C.Mod, window = 3)
           check: bool(a == fa)
@@ -86,7 +86,7 @@ proc runFrobeniusTowerTests*[N](
     #     for _ in 0 ..< Iters:
     #       var a = rng.random_elem(Field, gen)
     #       var fa {.noInit.}: typeof(a)
-    #       fa.frobenius(a, k = 2)
+    #       fa.frobenius_map(a, k = 2)
 
     #       a.powUnsafeExponent(Field.C.Mod, window = 3)
     #       a.powUnsafeExponent(Field.C.Mod, window = 3)
@@ -102,7 +102,7 @@ proc runFrobeniusTowerTests*[N](
     #     for _ in 0 ..< Iters:
     #       var a = rng.random_elem(Field, gen)
     #       var fa {.noInit.}: typeof(a)
-    #       fa.frobenius(a, k = 3)
+    #       fa.frobenius_map(a, k = 3)
 
     #       a.powUnsafeExponent(Field.C.Mod, window = 3)
     #       a.powUnsafeExponent(Field.C.Mod, window = 3)

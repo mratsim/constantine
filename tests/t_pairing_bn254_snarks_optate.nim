@@ -8,8 +8,8 @@
 
 import
   ../constantine/config/curves,
-  ../constantine/pairing/pairing_bls12,
+  ../constantine/pairing/pairing_bn,
   # Test utilities
   ./t_pairing_template
 
-runPairingTests(8, BN254_Snarks, pairing_bn_reference)
+runPairingTests(4, BN254_Snarks, pairing_bn_reference)

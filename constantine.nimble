@@ -46,6 +46,9 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_fp12_bn254_snarks.nim", false),
   ("tests/t_fp12_bls12_377.nim", false),
   ("tests/t_fp12_bls12_381.nim", false),
+  ("tests/t_fp12_exponentiation.nim", false),
+
+  ("tests/t_fp4_frobenius.nim", false),
   # Elliptic curve arithmetic G1
   ("tests/t_ec_wstrass_prj_g1_add_double.nim", false),
   ("tests/t_ec_wstrass_prj_g1_mul_sanity.nim", false),
@@ -68,7 +71,10 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Edge cases highlighted by past bugs
   ("tests/t_ec_wstrass_prj_edge_cases.nim", false),
   # Pairing
-  ("tests/t_pairing_fp12_sparse.nim", false)
+  ("tests/t_pairing_fp12_sparse.nim", false),
+  ("tests/t_pairing_bn254_nogami_optate.nim", false),
+  ("tests/t_pairing_bn254_snarks_optate.nim", false),
+  ("tests/t_pairing_bls12_381_optate.nim", false)
 ]
 
 # For temporary (hopefully) investigation that can only be reproduced in CI
@@ -141,8 +147,6 @@ task test, "Run all tests":
       else:
         test "-d:Constantine32", td.path
 
-  # Benchmarks compile and run
-  # ignore Windows 32-bit for the moment
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
   if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
     runBench("bench_fp")
@@ -169,9 +173,6 @@ task test_no_gmp, "Run tests that don't require GMP":
         else:
           test "-d:Constantine32", td.path
 
-
-  # Benchmarks compile and run
-  # ignore Windows 32-bit for the moment
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
   if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
     runBench("bench_fp")

@@ -19,7 +19,7 @@ import
   ./t_ec_template
 
 const
-  Iters = 24
+  Iters = 8
 
 run_EC_addition_tests(
     ec = ECP_SWei_Proj[Fp[BN254_Snarks]],
