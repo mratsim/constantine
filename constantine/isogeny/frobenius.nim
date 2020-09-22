@@ -47,13 +47,13 @@ template mulCheckSparse[Fp2](a: var Fp2, b: Fp2) =
   when b.c0.isOne().bool and b.c1.isZero().bool:
     discard
   elif b.c0.isZero().bool and b.c1.isOne().bool:
-    var t {.noInit.}: type(b.c0)
-    when fromComplexExtension(b.c0):
+    var t {.noInit.}: type(a.c0)
+    when fromComplexExtension(b):
       t.neg(a.c1)
       a.c1 = a.c0
       a.c0 = t
     else:
-      t = a.c1 * NonResidue
+      t = NonResidue * a.c1
       a.c1 = a.c0
       a.c0 = t
   elif b.c0.isZero().bool:
@@ -152,6 +152,21 @@ func frobenius_map*(r: var Fp4, a: Fp4, k: static int = 1) {.inline.} =
   r.c0.frobenius_map(a.c0, k)
   r.c1.frobenius_map(a.c1, k)
   r.c1.mulCheckSparse FrobMapConst_BLS12_381[k-1][4-1]
+
+func frobenius_map*(r: var Fp12, a: Fp12, k: static int = 1) {.inline.} =
+  ## Computes a^(p^k)
+  ## The p-power frobenius automorphism on 𝔽p4
+  static: doAssert r.c0 is Fp4
+  for r_fp4, a_fp4 in fields(r, a):
+    for r_fp2, a_fp2 in fields(r_fp4, a_fp4):
+      r_fp2.frobenius_map(a_fp2)
+
+  r.c0.c0.mulCheckSparse FrobMapConst_BLS12_381[k-1][0]
+  r.c0.c1.mulCheckSparse FrobMapConst_BLS12_381[k-1][3]
+  r.c1.c0.mulCheckSparse FrobMapConst_BLS12_381[k-1][1]
+  r.c1.c1.mulCheckSparse FrobMapConst_BLS12_381[k-1][4]
+  r.c2.c0.mulCheckSparse FrobMapConst_BLS12_381[k-1][2]
+  r.c2.c1.mulCheckSparse FrobMapConst_BLS12_381[k-1][5]
 
 # ψ (Psi) - Untwist-Frobenius-Twist Endomorphisms on twisted curves
 # -----------------------------------------------------------------

@@ -10,10 +10,23 @@
 
 ### Research
 
+- Compressed Pairings\
+  Scott, Barreto, 2004\
+  https://eprint.iacr.org/2004/032.pdf
+
 - On the Implementation of Pairing-based Cryptosystems\
   PhD Thesis\
   Ben Lynn, 2007\
   https://crypto.stanford.edu/pbc/thesis.pdf
+
+- On the final exponentiation for calculating\
+  pairings on ordinary elliptic curves\
+  Scott, Benger, Charlemagne, Perez, Kachisa, 2008\
+  https://eprint.iacr.org/2008/490.pdf
+
+- Faster Squaring in the Cyclotomic Subgroup ofSixth Degree Extensions\
+  Granger, Scott, 2009\
+  https://eprint.iacr.org/2009/565.pdf
 
 - Faster Pairing Computations on Curves with High-Degree Twists
   Craig Costello, Tanja Lange, and Michael Naehrig, 2009
