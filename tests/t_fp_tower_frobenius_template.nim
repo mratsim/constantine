@@ -81,35 +81,43 @@ proc runFrobeniusTowerTests*[N](
         test(ExtField(ExtDegree, curve), Iters, gen = HighHammingWeight)
         test(ExtField(ExtDegree, curve), Iters, gen = Long01Sequence)
 
-    # test "Frobenius(a, 2) = a^(p^2) (mod p^" & $ExtDegree & ")":
-    #   proc test(Field: typedesc, Iters: static int, gen: RandomGen) =
-    #     for _ in 0 ..< Iters:
-    #       var a = rng.random_elem(Field, gen)
-    #       var fa {.noInit.}: typeof(a)
-    #       fa.frobenius_map(a, k = 2)
+    test "Frobenius(a, 2) = a^(p^2) (mod p^" & $ExtDegree & ")":
+      proc test(Field: typedesc, Iters: static int, gen: RandomGen) =
+        for _ in 0 ..< 1:
+          var a = rng.random_elem(Field, gen)
+          var fa {.noInit.}: typeof(a)
+          fa.frobenius_map(a, k = 2)
 
-    #       a.powUnsafeExponent(Field.C.Mod, window = 3)
-    #       a.powUnsafeExponent(Field.C.Mod, window = 3)
-    #       check: bool(a == fa)
+          var fa2 {.noInit.}: typeof(a)
+          fa2.frobenius_map(a, k = 1)
+          fa2.frobenius_map(fa2, k = 1)
 
-    #   staticFor(curve, TestCurves):
-    #     test(ExtField(ExtDegree, curve), Iters, gen = Uniform)
-    #     test(ExtField(ExtDegree, curve), Iters, gen = HighHammingWeight)
-    #     test(ExtField(ExtDegree, curve), Iters, gen = Long01Sequence)
+          a.powUnsafeExponent(Field.C.Mod, window = 3)
+          a.powUnsafeExponent(Field.C.Mod, window = 3)
 
-    # test "Frobenius(a, 3) = a^(p^3) (mod p^" & $ExtDegree & ")":
-    #   proc test(Field: typedesc, Iters: static int, gen: RandomGen) =
-    #     for _ in 0 ..< Iters:
-    #       var a = rng.random_elem(Field, gen)
-    #       var fa {.noInit.}: typeof(a)
-    #       fa.frobenius_map(a, k = 3)
+          check:
+            bool(a == fa)
+            bool(a == fa2)
+            bool(fa == fa2)
 
-    #       a.powUnsafeExponent(Field.C.Mod, window = 3)
-    #       a.powUnsafeExponent(Field.C.Mod, window = 3)
-    #       a.powUnsafeExponent(Field.C.Mod, window = 3)
-    #       check: bool(a == fa)
+      staticFor(curve, TestCurves):
+        test(ExtField(ExtDegree, curve), Iters, gen = Uniform)
+        test(ExtField(ExtDegree, curve), Iters, gen = HighHammingWeight)
+        test(ExtField(ExtDegree, curve), Iters, gen = Long01Sequence)
 
-    #   staticFor(curve, TestCurves):
-    #     test(ExtField(ExtDegree, curve), Iters, gen = Uniform)
-    #     test(ExtField(ExtDegree, curve), Iters, gen = HighHammingWeight)
-    #     test(ExtField(ExtDegree, curve), Iters, gen = Long01Sequence)
+    test "Frobenius(a, 3) = a^(p^3) (mod p^" & $ExtDegree & ")":
+      proc test(Field: typedesc, Iters: static int, gen: RandomGen) =
+        for _ in 0 ..< Iters:
+          var a = rng.random_elem(Field, gen)
+          var fa {.noInit.}: typeof(a)
+          fa.frobenius_map(a, k = 3)
+
+          a.powUnsafeExponent(Field.C.Mod, window = 3)
+          a.powUnsafeExponent(Field.C.Mod, window = 3)
+          a.powUnsafeExponent(Field.C.Mod, window = 3)
+          check: bool(a == fa)
+
+      staticFor(curve, TestCurves):
+        test(ExtField(ExtDegree, curve), Iters, gen = Uniform)
+        test(ExtField(ExtDegree, curve), Iters, gen = HighHammingWeight)
+        test(ExtField(ExtDegree, curve), Iters, gen = Long01Sequence)
