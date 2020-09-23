@@ -72,8 +72,26 @@ suite "Pairing - Cyclotomic subgroup - GΦ₁₂(p) = {α ∈ Fp¹² : α^Φ₁�
       test_final_exp_easy_cycl(curve, gen = HighHammingWeight)
       test_final_exp_easy_cycl(curve, gen = Long01Sequence)
 
-  test "Cyclotomic squaring is consistent with squaring":
-    proc test_cycl_squaring(C: static Curve, gen: static RandomGen) =
+  test "Cyclotomic inverse":
+    proc test_cycl_inverse(C: static Curve, gen: static RandomGen) =
+      for _ in 0 ..< Iters:
+        var f = rng.random_elem(Fp12[C], gen)
+
+        f.finalExpEasy()
+        var g = f
+
+        f.cyclotomic_inv()
+        f *= g
+
+        check: bool(f.isOne())
+
+    staticFor(curve, TestCurves):
+      test_cycl_inverse(curve, gen = Uniform)
+      test_cycl_inverse(curve, gen = HighHammingWeight)
+      test_cycl_inverse(curve, gen = Long01Sequence)
+
+  test "Cyclotomic squaring":
+    proc test_cycl_squaring_in_place(C: static Curve, gen: static RandomGen) =
       for _ in 0 ..< Iters:
         var f = rng.random_elem(Fp12[C], gen)
 
@@ -86,6 +104,24 @@ suite "Pairing - Cyclotomic subgroup - GΦ₁₂(p) = {α ∈ Fp¹² : α^Φ₁�
         check: bool(f == g)
 
     staticFor(curve, TestCurves):
-      test_cycl_squaring(curve, gen = Uniform)
-      test_cycl_squaring(curve, gen = HighHammingWeight)
-      test_cycl_squaring(curve, gen = Long01Sequence)
+      test_cycl_squaring_in_place(curve, gen = Uniform)
+      test_cycl_squaring_in_place(curve, gen = HighHammingWeight)
+      test_cycl_squaring_in_place(curve, gen = Long01Sequence)
+
+    proc test_cycl_squaring_out_place(C: static Curve, gen: static RandomGen) =
+      for _ in 0 ..< Iters:
+        var f = rng.random_elem(Fp12[C], gen)
+
+        f.finalExpEasy()
+        var g = f
+        var r: typeof(f)
+
+        f.square()
+        r.cyclotomic_square(g)
+
+        check: bool(f == r)
+
+    staticFor(curve, TestCurves):
+      test_cycl_squaring_out_place(curve, gen = Uniform)
+      test_cycl_squaring_out_place(curve, gen = HighHammingWeight)
+      test_cycl_squaring_out_place(curve, gen = Long01Sequence)

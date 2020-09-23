@@ -119,6 +119,58 @@ func finalExpEasy*[C: static Curve](f: var Fp12[C]) =
 #
 # The result of any pairing is in a cyclotomic subgroup
 
+func cyclotomic_inv*[C](a: var Fp12[C]) =
+  ## Fast inverse for a
+  ## `a` MUST be in the cyclotomic subgroup
+  ## consequently `a` MUST be unitary
+  a.conj()
+
+func cyclotomic_square*[C](r: var Fp12[C], a: Fp12[C]) =
+  ## Square `a` into `r`
+  ## `a` MUST be in the cyclotomic subgroup
+  ## consequently `a` MUST be unitary
+  #
+  # Faster Squaring in the Cyclotomic Subgroup of Sixth Degree Extensions
+  # Granger, Scott, 2009
+  # https://eprint.iacr.org/2009/565.pdf
+
+  when a.c0 is Fp4:
+    # Cubic over quadratic
+    # A = 3a² − 2 ̄a
+    # B = 3 √i c² + 2 ̄b
+    # C = 3b² − 2 ̄c
+    var A{.noinit.}, B{.noinit.}, C{.noinit.}, D{.noinit.}: Fp4[C]
+
+    A = a.c0
+
+    r.c0.square(a.c0)  # r0 = a²
+    D.double(r.c0)     # D  = 2a²
+    r.c0 += D          # r0 = 3a²
+
+    A.conjneg()        # A = − ̄a
+    A.double()         # A = − 2 ̄a
+    r.c0 += A          # r0 = 3a² − 2 ̄a
+
+    B.square(a.c2)     # B = c²
+    B *= NonResidue    # B = √i c²
+    D.double(B)        # B = 2 √i c²
+    B += D             # B = 3 √i c²
+
+    r.c1.conj(a.c1)    # r1 = ̄b
+    r.c1.double()      # r1 = 2 ̄b
+    r.c1 += B          # r1 = 3 √i c² + 2 ̄b
+
+    C.square(a.c1)     # C = b²
+    D.double(C)        # D = 2b²
+    C += D             # C = 3b²
+
+    r.c2.conjneg(a.c2) # r2 = - ̄c
+    r.c2.double()      # r2 = - 2 ̄c
+    r.c2 += C          # r2 = 3b² - 2 ̄c
+
+  else:
+    {.error: "Not implemented".}
+
 func cyclotomic_square*[C](a: var Fp12[C]) =
   ## Square `a` into `r`
   ## `a` MUST be in the cyclotomic subgroup
