@@ -158,8 +158,8 @@ func cycl_sqr_repeated(f: var Fp12, num: int) =
   for _ in 0 ..< num:
     f.cyclotomic_square()
 
-func pow_x(r: var Fp12[BLS12_381], a: Fp12[BLS12_381]) =
-  ## f^x with x the curve parameter
+func pow_xdiv2(r: var Fp12[BLS12_381], a: Fp12[BLS12_381], invert = BLS12_381_param_isNeg) =
+  ## f^(x/2) with x the curve parameter
   ## For BLS12_381 f^-0xd201000000010000
 
   r.cyclotomic_square(a)
@@ -170,10 +170,18 @@ func pow_x(r: var Fp12[BLS12_381], a: Fp12[BLS12_381]) =
   r *= a
   r.cycl_sqr_repeated(9)
   r *= a
-  r.cycl_sqr_repeated(32) # TODO: use Karabina?
+  r.cycl_sqr_repeated(32)   # TODO: use Karabina?
   r *= a
-  r.cycl_sqr_repeated(16)
-  r.cyclotomic_inv()
+  r.cycl_sqr_repeated(16-1) # Don't do the last iteration
+
+  if invert:
+    r.cyclotomic_inv()
+
+func pow_x(r: var Fp12[BLS12_381], a: Fp12[BLS12_381], invert = BLS12_381_param_isNeg) =
+  ## f^x with x the curve parameter
+  ## For BLS12_381 f^-0xd201000000010000
+  r.pow_xdiv2(a, invert)
+  r.cyclotomic_square()
 
 func finalExpHard_BLS12*[C: static Curve](f: var Fp12[C]) =
   ## Hard part of the final exponentiation
@@ -200,33 +208,35 @@ func finalExpHard_BLS12*[C: static Curve](f: var Fp12[C]) =
 
   var v0 {.noInit.}, v1 {.noInit.}, v2 {.noInit.}: Fp12[C]
 
+  # Save for f³ and (x−1)²
+  v2.cyclotomic_square(f)      # v2 = f²
+
   # (x−1)²
-  v0.pow_x(f)             # v0 = f^x
-  v1.cyclotomic_inv(f)    # v1 = f^-1
-  v0 *= v1                # v0 = f^(x-1)
-  v1.pow_x(v0)            # v1 = (f^(x-1))^x
-  v0.cyclotomic_inv()     # v0 = (f^(x-1))^-1
-  v0 *= v1                # v0 = (f^(x-1))^(x-1) = f^((x-1)*(x-1)) = f^((x-1)²)
+  v0.pow_xdiv2(v2)             # v0 = (f²)^(x/2) = f^x
+  v1.cyclotomic_inv(f)         # v1 = f^-1
+  v0 *= v1                     # v0 = f^(x-1)
+  v1.pow_x(v0)                 # v1 = (f^(x-1))^x
+  v0.cyclotomic_inv()          # v0 = (f^(x-1))^-1
+  v0 *= v1                     # v0 = (f^(x-1))^(x-1) = f^((x-1)*(x-1)) = f^((x-1)²)
 
-  # (x+p) - we build on top of (x−1)² to limit Fp12 multiplication
-  v1.pow_x(v0)            # v1 = f^((x-1)².x)
-  v0.frobenius_map(v0)    # v0 = f^((x-1)².p)
-  v0 *= v1                # v0 = f^((x-1)².(x+p))
-
-  # (x²+p²−1)
-  v2.pow_x(v0)
-  v1.pow_x(v2)            # v1 = f^((x-1)².(x+p).x²)
-  v2.frobenius_map(v0, 2) # v2 = f^((x-1)².(x+p).p²)
-  v0.cyclotomic_inv()     # v0 = f^((x-1)².(x+p).-1)
-  v0 *= v1                # v0 = f^((x-1)².(x+p).(x²-1))
-  v0 *= v2                # v0 = f^((x-1)².(x+p).(x²+p²-1))
+  # (x+p)
+  v1.pow_x(v0)                 # v1 = f^((x-1)².x)
+  v0.frobenius_map(v0)         # v0 = f^((x-1)².p)
+  v0 *= v1                     # v0 = f^((x-1)².(x+p))
 
   # + 3
-  v1.cyclotomic_square(f)
-  v1 *= f
+  f *= v2                      # f = f³
+
+  # (x²+p²−1)
+  v2.pow_x(v0, invert = false)
+  v1.pow_x(v2, invert = false) # v1 = f^((x-1)².(x+p).x²)
+  v2.frobenius_map(v0, 2)      # v2 = f^((x-1)².(x+p).p²)
+  v0.cyclotomic_inv()          # v0 = f^((x-1)².(x+p).-1)
+  v0 *= v1                     # v0 = f^((x-1)².(x+p).(x²-1))
+  v0 *= v2                     # v0 = f^((x-1)².(x+p).(x²+p²-1))
 
   # (x−1)².(x+p).(x²+p²−1) + 3
-  f.prod(v0, v1)
+  f *= v0
 
 func pairing_bls12*[C](gt: var Fp12[C], P: ECP_SWei_Proj[Fp[C]], Q: ECP_SWei_Proj[Fp2[C]]) =
   ## Compute the optimal Ate Pairing for BLS12 curves
