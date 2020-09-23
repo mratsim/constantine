@@ -71,7 +71,8 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Edge cases highlighted by past bugs
   ("tests/t_ec_wstrass_prj_edge_cases.nim", false),
   # Pairing
-  ("tests/t_pairing_fp12_sparse.nim", false),
+  ("tests/t_pairing_mul_fp12_by_lines.nim", false),
+  ("tests/t_pairing_cyclotomic_fp12.nim", false),
   ("tests/t_pairing_bn254_nogami_optate.nim", false),
   ("tests/t_pairing_bn254_snarks_optate.nim", false),
   ("tests/t_pairing_bls12_381_optate.nim", false)

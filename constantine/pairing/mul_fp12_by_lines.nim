@@ -13,11 +13,11 @@ import
   ../towers,
   ./lines_projective
 
+
 # ############################################################
 #
 #                 Sparse Multiplication
-#                and cyclotomic squaring
-#              for elements of Gₜ = E(Fp¹²)
+#                        by lines
 #
 # ############################################################
 
@@ -38,14 +38,7 @@ import
 #   Craig Costello, Tanja Lange, and Michael Naehrig, 2009
 #   https://eprint.iacr.org/2009/615.pdf
 
-# TODO: we assume an embedding degree k of 12 and a sextic twist.
-#       -> Generalize to KSS (k=18), BLS24 and BLS48 curves
-#
-# TODO: we assume a 2-3-2 towering scheme
-#
-# TODO: merge that in the quadratic/cubic files
-
-# 𝔽p12 - Sparse functions
+# 𝔽p12 by line - Sparse functions
 # ----------------------------------------------------------------
 
 func mul_sparse_by_0y0*[C: static Curve](r: var Fp6[C], a: Fp6[C], b: Fp2[C]) =
@@ -158,11 +151,3 @@ func mul_sparse_by_line_xy000z*[C: static Curve, Tw: static SexticTwist](
   v.c2.c1 = l.z
 
   f *= v
-
-# Gₜ = 𝔽p12 - Cyclotomic functions
-# ----------------------------------------------------------------
-# A cyclotomic group is a subgroup of Fp^n defined by
-#
-# GΦₙ(p) = {α ∈ Fpⁿ : α^Φₙ(p) = 1}
-#
-# The result of any pairing is in a cyclotomic subgroup

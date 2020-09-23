@@ -16,8 +16,10 @@ import
     ec_weierstrass_affine,
     ec_weierstrass_projective
   ],
+  ../isogeny/frobenius,
   ./lines_projective,
-  ./gt_fp12
+  ./mul_fp12_by_lines,
+  ./cyclotomic_fp12
 
 # ############################################################
 #
@@ -47,6 +49,9 @@ const BLS12_381_param = block:
   BigInt[64+2].fromHex("0xd201000000010000") # +2 so that we can take *3 and NAF encode it
 
 const BLS12_381_param_isNeg = true
+
+# Generic slow pairing implementation
+# ----------------------------------------------------------------
 
 const BLS12_381_finalexponent = block:
   # (p^12 - 1) / r
@@ -140,13 +145,5 @@ func pairing_bls12_reference*[C](gt: var Fp12[C], P: ECP_SWei_Proj[Fp[C]], Q: EC
   gt.millerLoopGenericBLS12(Paff, Qaff)
   gt.finalExpGeneric()
 
-func finalExpEasy[C: static Curve](f: var Fp12[C]) =
-  ## Easy part of the final exponentiation
-  ## We need to clear the GT cofactor to obtain
-  ## an unique GT representation
-  ## (reminder, GT is a multiplicative group hence we exponentiate by the cofactor)
-  ##
-  ## With an embedding degree of 12, the easy part of final exponentiation is
-  ##
-  ##  f^(p⁶−1)(p²+1)
-  discard
+# Optimized pairing implementation
+# ----------------------------------------------------------------

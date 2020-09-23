@@ -24,7 +24,7 @@
   Scott, Benger, Charlemagne, Perez, Kachisa, 2008\
   https://eprint.iacr.org/2008/490.pdf
 
-- Faster Squaring in the Cyclotomic Subgroup ofSixth Degree Extensions\
+- Faster Squaring in the Cyclotomic Subgroup of Sixth Degree Extensions\
   Granger, Scott, 2009\
   https://eprint.iacr.org/2009/565.pdf
 

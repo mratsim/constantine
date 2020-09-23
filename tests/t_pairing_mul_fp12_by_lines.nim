@@ -17,7 +17,7 @@ import
   ../constantine/io/io_towers,
   ../constantine/pairing/[
     lines_projective,
-    gt_fp12
+    mul_fp12_by_lines
   ],
   # Test utilities
   ../helpers/[prng_unsafe, static_for]
