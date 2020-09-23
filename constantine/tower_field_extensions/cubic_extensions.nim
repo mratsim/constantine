@@ -214,6 +214,13 @@ func conj*(a: var CubicExt) {.inline.} =
   a.c1.conjneg()
   a.c2.conj()
 
+func conj*(r: var CubicExt, a: CubicExt) {.inline.} =
+  ## Computes the conjugate out-of-place
+  mixin conj, conjneg
+  r.c0.conj(a.c0)
+  r.c1.conjneg(a.c1)
+  r.c2.conj(a.c2)
+
 func square*(a: var CubicExt) {.inline.} =
   ## In-place squaring
   let t = a

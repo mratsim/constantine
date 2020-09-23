@@ -87,6 +87,11 @@
   Aurore Guillevic, 2019\
   https://eprint.iacr.org/2019/1371.pdf
 
+- Improving the computation of the optimal ate pairing
+  for a high security level.
+  Loubna Ghammam, Emmanuel Fouotsa
+  J. Appl. Math. Comput.59, 21–36 (2019)
+
 - Efficient Final Exponentiation
   via Cyclotomic Structure for Pairings
   over Families of Elliptic Curves

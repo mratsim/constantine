@@ -35,6 +35,11 @@ import
 #   and Tadanori Teruya, 2020
 #   https://eprint.iacr.org/2020/875.pdf
 #
+# - Improving the computation of the optimal ate pairing
+#   for a high security level.
+#   Loubna Ghammam, Emmanuel Fouotsa
+#   J. Appl. Math. Comput.59, 21–36 (2019)
+#
 # - Faster Pairing Computations on Curves with High-Degree Twists
 #   Craig Costello, Tanja Lange, and Michael Naehrig, 2009
 #   https://eprint.iacr.org/2009/615.pdf
@@ -147,3 +152,92 @@ func pairing_bls12_reference*[C](gt: var Fp12[C], P: ECP_SWei_Proj[Fp[C]], Q: EC
 
 # Optimized pairing implementation
 # ----------------------------------------------------------------
+
+func cycl_sqr_repeated(f: var Fp12, num: int) =
+  ## Repeated cyclotomic squarings
+  for _ in 0 ..< num:
+    f.cyclotomic_square()
+
+func pow_x(r: var Fp12[BLS12_381], a: Fp12[BLS12_381]) =
+  ## f^x with x the curve parameter
+  ## For BLS12_381 f^-0xd201000000010000
+
+  r.cyclotomic_square(a)
+  r *= a
+  r.cycl_sqr_repeated(2)
+  r *= a
+  r.cycl_sqr_repeated(3)
+  r *= a
+  r.cycl_sqr_repeated(9)
+  r *= a
+  r.cycl_sqr_repeated(32) # TODO: use Karabina?
+  r *= a
+  r.cycl_sqr_repeated(16)
+  r.cyclotomic_inv()
+
+func finalExpHard_BLS12*[C: static Curve](f: var Fp12[C]) =
+  ## Hard part of the final exponentiation
+  ## Specialized for BLS12 curves
+  ##
+  # - Efficient Final Exponentiation
+  #   via Cyclotomic Structure for Pairings
+  #   over Families of Elliptic Curves
+  #   Daiki Hayashida and Kenichiro Hayasaka
+  #   and Tadanori Teruya, 2020
+  #   https://eprint.iacr.org/2020/875.pdf
+  #
+  # p14: 3 Φ₁₂(p(x))/r(x) = (x−1)² (x+p) (x²+p²−1) + 3
+  #
+  # TODO: paper costs are 4Eₓ+Eₓ/₂+7M₁₂+S₁₂+F₁+F₂
+  #       so we have an extra cyclotomic squaring since we use 5Eₓ
+  #
+  # with
+  # - Eₓ being f^x
+  # - Eₓ/₂ being f^(x/2)
+  # - M₁₂ being mul in Fp12
+  # - S₁₂ being cyclotomic squaring
+  # - Fₙ being n Frobenius applications
+
+  var v0 {.noInit.}, v1 {.noInit.}, v2 {.noInit.}: Fp12[C]
+
+  # (x−1)²
+  v0.pow_x(f)             # v0 = f^x
+  v1.cyclotomic_inv(f)    # v1 = f^-1
+  v0 *= v1                # v0 = f^(x-1)
+  v1.pow_x(v0)            # v1 = (f^(x-1))^x
+  v0.cyclotomic_inv()     # v0 = (f^(x-1))^-1
+  v0 *= v1                # v0 = (f^(x-1))^(x-1) = f^((x-1)*(x-1)) = f^((x-1)²)
+
+  # (x+p) - we build on top of (x−1)² to limit Fp12 multiplication
+  v1.pow_x(v0)            # v1 = f^((x-1)².x)
+  v0.frobenius_map(v0)    # v0 = f^((x-1)².p)
+  v0 *= v1                # v0 = f^((x-1)².(x+p))
+
+  # (x²+p²−1)
+  v2.pow_x(v0)
+  v1.pow_x(v2)            # v1 = f^((x-1)².(x+p).x²)
+  v2.frobenius_map(v0, 2) # v2 = f^((x-1)².(x+p).p²)
+  v0.cyclotomic_inv()     # v0 = f^((x-1)².(x+p).-1)
+  v0 *= v1                # v0 = f^((x-1)².(x+p).(x²-1))
+  v0 *= v2                # v0 = f^((x-1)².(x+p).(x²+p²-1))
+
+  # + 3
+  v1.cyclotomic_square(f)
+  v1 *= f
+
+  # (x−1)².(x+p).(x²+p²−1) + 3
+  f.prod(v0, v1)
+
+func pairing_bls12*[C](gt: var Fp12[C], P: ECP_SWei_Proj[Fp[C]], Q: ECP_SWei_Proj[Fp2[C]]) =
+  ## Compute the optimal Ate Pairing for BLS12 curves
+  ## Input: P ∈ G1, Q ∈ G2
+  ## Output: e(P, Q) ∈ Gt
+  ##
+  ## Reference implementation
+  var Paff {.noInit.}: ECP_SWei_Aff[Fp[C]]
+  var Qaff {.noInit.}: ECP_SWei_Aff[Fp2[C]]
+  Paff.affineFromProjective(P)
+  Qaff.affineFromProjective(Q)
+  gt.millerLoopGenericBLS12(Paff, Qaff)
+  gt.finalExpEasy()
+  gt.finalExpHard_BLS12()

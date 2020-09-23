@@ -75,12 +75,11 @@ template runPairingTests*(Iters: static int, C: static Curve, pairing_fn: untype
       r2.pairing_fn(P2, Q)
       r3.pairing_fn(P, Q2)
 
-      check:
-        bool(not r.isZero())
-        bool(not r.isOne())
-        bool(r == r2)
-        bool(r == r3)
-        bool(r2 == r3)
+      doAssert bool(not r.isZero())
+      doAssert bool(not r.isOne())
+      doAssert bool(r == r2)
+      doAssert bool(r == r3)
+      doAssert bool(r2 == r3)
 
   suite "Pairing - Optimal Ate on " & $C:
     test "Bilinearity e([2]P, Q) = e(P, [2]Q) = e(P, Q)^2":

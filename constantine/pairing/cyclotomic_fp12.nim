@@ -119,11 +119,17 @@ func finalExpEasy*[C: static Curve](f: var Fp12[C]) =
 #
 # The result of any pairing is in a cyclotomic subgroup
 
-func cyclotomic_inv*[C](a: var Fp12[C]) =
+func cyclotomic_inv*(a: var Fp12) =
   ## Fast inverse for a
   ## `a` MUST be in the cyclotomic subgroup
   ## consequently `a` MUST be unitary
   a.conj()
+
+func cyclotomic_inv*(r: var Fp12, a: Fp12) =
+  ## Fast inverse for a
+  ## `a` MUST be in the cyclotomic subgroup
+  ## consequently `a` MUST be unitary
+  r.conj(a)
 
 func cyclotomic_square*[C](r: var Fp12[C], a: Fp12[C]) =
   ## Square `a` into `r`
