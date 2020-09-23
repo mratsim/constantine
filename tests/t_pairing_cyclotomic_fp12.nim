@@ -79,12 +79,11 @@ suite "Pairing - Cyclotomic subgroup - GΦ₁₂(p) = {α ∈ Fp¹² : α^Φ₁�
 
         f.finalExpEasy()
         var g = f
-        var r: typeof(g)
 
         f.square()
-        r.cyclotomic_square(g)
+        g.cyclotomic_square()
 
-        check: bool(f == r)
+        check: bool(f == g)
 
     staticFor(curve, TestCurves):
       test_cycl_squaring(curve, gen = Uniform)
