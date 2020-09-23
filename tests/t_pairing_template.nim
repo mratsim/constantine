@@ -10,6 +10,7 @@ import
   # Standard library
   std/unittest, times,
   # Internals
+  ../constantine/config/common,
   ../constantine/[arithmetic, primitives],
   ../constantine/towers,
   ../constantine/config/curves,
@@ -81,7 +82,7 @@ template runPairingTests*(Iters: static int, C: static Curve, pairing_fn: untype
       doAssert bool(r == r3)
       doAssert bool(r2 == r3)
 
-  suite "Pairing - Optimal Ate on " & $C:
+  suite "Pairing - Optimal Ate on " & $C & " [" & $WordBitwidth & "-bit mode]":
     test "Bilinearity e([2]P, Q) = e(P, [2]Q) = e(P, Q)^2":
       test_bilinearity_double_impl(randZ = false, gen = Uniform)
       test_bilinearity_double_impl(randZ = true, gen = Uniform)

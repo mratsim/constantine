@@ -7,6 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  ../constantine/config/common,
   ../constantine/config/curves,
   ../constantine/pairing/pairing_bn,
   # Test utilities

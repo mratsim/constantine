@@ -49,7 +49,7 @@ func random_elem(rng: var RngState, F: typedesc, gen: RandomGen): F {.inline, no
   else:
     result = rng.random_long01Seq(F)
 
-suite "Pairing - Cyclotomic subgroup - GΦ₁₂(p) = {α ∈ Fp¹² : α^Φ₁₂(p) ≡ 1 (mod p¹²)}":
+suite "Pairing - Cyclotomic subgroup - GΦ₁₂(p) = {α ∈ Fp¹² : α^Φ₁₂(p) ≡ 1 (mod p¹²)}" & " [" & $WordBitwidth & "-bit mode]":
   test "Easy part of the final exponentiation maps to the cyclotomic subgroup":
     proc test_final_exp_easy_cycl(C: static Curve, gen: static RandomGen) =
       for _ in 0 ..< Iters:
