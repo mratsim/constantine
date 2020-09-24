@@ -19,9 +19,8 @@ import
 
 # ############################################################
 #
-#               Benchmark of the G1 group of
-#            Short Weierstrass elliptic curves
-#          in (homogeneous) projective coordinates
+#               Benchmark of pairings
+#                   for BLS12-381
 #
 # ############################################################
 
