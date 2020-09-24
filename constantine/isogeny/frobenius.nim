@@ -68,7 +68,7 @@ template mulCheckSparse[Fp2](a: var Fp2, b: Fp2) =
 
 # c = (SNR^((p-1)/6)^coef).
 # Then for frobenius(2): c * conjugate(c)
-# And for frobenius(2): c² * conjugate(c)
+# And for frobenius(3): c² * conjugate(c)
 const FrobMapConst_BLS12_381 = [
   # frobenius(1)
   [Fp2[BLS12_381].fromHex( # SNR^((p-1)/6)^0
@@ -146,23 +146,105 @@ const FrobMapConst_BLS12_381 = [
     "0x135203e60180a68ee2e9c448d77a2cd91c3dedd930b1cf60ef396489f61eb45e304466cf3e67fa0af1ee7b04121bdea2"
   )]]
 
-func frobenius_map*(r: var Fp4, a: Fp4, k: static int = 1) {.inline.} =
+const FrobMapConst_BN254_Nogami = [
+  # frobenius(1)
+  [Fp2[BN254_Nogami].fromHex( # SNR^((p-1)/6)^0
+    "0x1",
+    "0x0"
+  ),
+  Fp2[BN254_Nogami].fromHex(  # SNR^((p-1)/6)^1
+    "0x1b377619212e7c8cb6499b50a846953f850974924d3f77c2e17de6c06f2a6de9",
+    "0x9ebee691ed1837503eab22f57b96ac8dc178b6db2c08850c582193f90d5922a"
+  ),
+  Fp2[BN254_Nogami].fromHex(  # SNR^((p-1)/6)^2 = SNR^((p-1)/3)
+    "0x0",
+    "0x25236482400000017080eb4000000006181800000000000cd98000000000000b"
+  ),
+  Fp2[BN254_Nogami].fromHex( # SNR^((p-1)/6)^3 = SNR^((p-1)/2)
+    "0x23dfc9d1a39f4db8c69b87a8848aa075a7333a0e62d78cbf4b1b8eeae58b81c5",
+    "0x23dfc9d1a39f4db8c69b87a8848aa075a7333a0e62d78cbf4b1b8eeae58b81c5"
+  ),
+  Fp2[BN254_Nogami].fromHex( # SNR^((p-1)/6)^4 = SNR^(2(p-1)/3)
+    "0x25236482400000017080eb4000000006181800000000000cd98000000000000c",
+    "0x0"
+  ),
+  Fp2[BN254_Nogami].fromHex( # SNR^((p-1)/6)^5
+    "0x19f3db6884cdca43c2b0d5792cd135accb1baea0b017046e859975ab54b5ef9b",
+    "0xb2f8919bb3235bdf7837806d32eca5b9605515f4fe8fba521668a54ab4a1078"
+  )],
+  # frobenius(2)
+  [Fp2[BN254_Nogami].fromHex( # norm(SNR)^((p-1)/6)^1
+    "0x1",
+    "0x0"
+  ),
+  Fp2[BN254_Nogami].fromHex( # norm(SNR)^((p-1)/6)^2
+    "0x49b36240000000024909000000000006cd80000000000008",
+    "0x0"
+  ),
+  Fp2[BN254_Nogami].fromHex(
+    "0x49b36240000000024909000000000006cd80000000000007",
+    "0x0"
+  ),
+  Fp2[BN254_Nogami].fromHex(
+    "0x2523648240000001ba344d80000000086121000000000013a700000000000012",
+    "0x0"
+  ),
+  Fp2[BN254_Nogami].fromHex(
+    "0x25236482400000017080eb4000000006181800000000000cd98000000000000b",
+    "0x0"
+  ),
+  Fp2[BN254_Nogami].fromHex(
+    "0x25236482400000017080eb4000000006181800000000000cd98000000000000c",
+    "0x0"
+  )],
+  # frobenius(3)
+  [Fp2[BN254_Nogami].fromHex(
+    "0x1",
+    "0x0"
+  ),
+  Fp2[BN254_Nogami].fromHex(
+    "0x1439ab09c60b248f398c5d77b755f92b9edc5f19d2873545be471151a747e4e",
+    "0x23dfc9d1a39f4db8c69b87a8848aa075a7333a0e62d78cbf4b1b8eeae58b81c5"
+  ),
+  Fp2[BN254_Nogami].fromHex(
+    "0x0",
+    "0x1"
+  ),
+  Fp2[BN254_Nogami].fromHex(
+    "0x1439ab09c60b248f398c5d77b755f92b9edc5f19d2873545be471151a747e4e",
+    "0x1439ab09c60b248f398c5d77b755f92b9edc5f19d2873545be471151a747e4e"
+  ),
+  Fp2[BN254_Nogami].fromHex(
+    "0x2523648240000001ba344d80000000086121000000000013a700000000000012",
+    "0x0"
+  ),
+  Fp2[BN254_Nogami].fromHex(
+    "0x23dfc9d1a39f4db8c69b87a8848aa075a7333a0e62d78cbf4b1b8eeae58b81c5",
+    "0x1439ab09c60b248f398c5d77b755f92b9edc5f19d2873545be471151a747e4e"
+  )]]
+
+{.experimental: "dynamicBindSym".}
+
+macro frobMapConst(C: static Curve): untyped =
+  return bindSym("FrobMapConst_" & $C)
+
+func frobenius_map*[C](r: var Fp4[C], a: Fp4[C], k: static int = 1) {.inline.} =
   ## Computes a^(p^k)
   ## The p-power frobenius automorphism on 𝔽p4
   r.c0.frobenius_map(a.c0, k)
   r.c1.frobenius_map(a.c1, k)
-  r.c1.mulCheckSparse FrobMapConst_BLS12_381[k-1][3]
+  r.c1.mulCheckSparse frobMapConst(C)[k-1][3]
 
-func frobenius_map*(r: var Fp6, a: Fp6, k: static int = 1) {.inline.} =
+func frobenius_map*[C](r: var Fp6[C], a: Fp6[C], k: static int = 1) {.inline.} =
   ## Computes a^(p^k)
   ## The p-power frobenius automorphism on 𝔽p6
   r.c0.frobenius_map(a.c0, k)
   r.c1.frobenius_map(a.c1, k)
   r.c2.frobenius_map(a.c2, k)
-  r.c1.mulCheckSparse FrobMapConst_BLS12_381[k-1][2]
-  r.c2.mulCheckSparse FrobMapConst_BLS12_381[k-1][4]
+  r.c1.mulCheckSparse frobMapConst(C)[k-1][2]
+  r.c2.mulCheckSparse frobMapConst(C)[k-1][4]
 
-func frobenius_map*(r: var Fp12, a: Fp12, k: static int = 1) {.inline.} =
+func frobenius_map*[C](r: var Fp12[C], a: Fp12[C], k: static int = 1) {.inline.} =
   ## Computes a^(p^k)
   ## The p-power frobenius automorphism on 𝔽p12
   static: doAssert r.c0 is Fp4
@@ -170,12 +252,12 @@ func frobenius_map*(r: var Fp12, a: Fp12, k: static int = 1) {.inline.} =
     for r_fp2, a_fp2 in fields(r_fp4, a_fp4):
       r_fp2.frobenius_map(a_fp2, k)
 
-  r.c0.c0.mulCheckSparse FrobMapConst_BLS12_381[k-1][0]
-  r.c0.c1.mulCheckSparse FrobMapConst_BLS12_381[k-1][3]
-  r.c1.c0.mulCheckSparse FrobMapConst_BLS12_381[k-1][1]
-  r.c1.c1.mulCheckSparse FrobMapConst_BLS12_381[k-1][4]
-  r.c2.c0.mulCheckSparse FrobMapConst_BLS12_381[k-1][2]
-  r.c2.c1.mulCheckSparse FrobMapConst_BLS12_381[k-1][5]
+  r.c0.c0.mulCheckSparse frobMapConst(C)[k-1][0]
+  r.c0.c1.mulCheckSparse frobMapConst(C)[k-1][3]
+  r.c1.c0.mulCheckSparse frobMapConst(C)[k-1][1]
+  r.c1.c1.mulCheckSparse frobMapConst(C)[k-1][4]
+  r.c2.c0.mulCheckSparse frobMapConst(C)[k-1][2]
+  r.c2.c1.mulCheckSparse frobMapConst(C)[k-1][5]
 
 # ψ (Psi) - Untwist-Frobenius-Twist Endomorphisms on twisted curves
 # -----------------------------------------------------------------
@@ -269,8 +351,6 @@ const FrobPsiConst_BLS12_381_psi2_coef2 = Fp2[BLS12_381].fromHex(
   "0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaac",
   "0x0"
 )
-
-{.experimental: "dynamicBindSym".}
 
 macro frobPsiConst(C: static Curve, psipow, coefpow: static int): untyped =
   return bindSym("FrobPsiConst_" & $C & "_psi" & $psipow & "_coef" & $coefpow)

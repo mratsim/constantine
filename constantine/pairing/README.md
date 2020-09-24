@@ -75,6 +75,10 @@
   https://scholarworks.rit.edu/cgi/viewcontent.cgi?referer=&httpsredir=1&article=10083&context=theses
   https://github.com/rajeevakarv/FiniteFieldComputations
 
+- Memory-saving computation of the pairing final exponentiation on BN curves\
+  Sylvain Duquesne and Loubna Ghammam, 2015\
+  https://eprint.iacr.org/2015/192
+
 - A taxonomy of pairings, their security, their complexity\
   Razvan Barbulescu, Nadia El Mrabet, and Loubna Ghammam, 2019\
   https://hal.archives-ouvertes.fr/hal-02129868/file/2019-485.pdf

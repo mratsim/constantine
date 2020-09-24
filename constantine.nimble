@@ -451,14 +451,29 @@ task bench_ec_g2_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾2 - Sho
 task bench_pairing_bls12_381, "Run pairings benchmarks for BLS12-381 - Default compiler":
   runBench("bench_pairing_bls12_381")
 
-task bench_pairing_bls12_381_gcc, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weierstrass with Projective Coordinates - GCC":
+task bench_pairing_bls12_381_gcc, "Run pairings benchmarks for BLS12-381 - GCC":
   runBench("bench_pairing_bls12_381", "gcc")
 
-task bench_pairing_bls12_381_clang, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weierstrass with Projective Coordinates - Clang":
+task bench_pairing_bls12_381_clang, "Run pairings benchmarks for BLS12-381 - Clang":
   runBench("bench_pairing_bls12_381", "clang")
 
-task bench_pairing_bls12_381_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weierstrass with Projective Coordinates - GCC no Assembly":
+task bench_pairing_bls12_381_gcc_noasm, "Run pairings benchmarks for BLS12-381 - GCC no Assembly":
   runBench("bench_pairing_bls12_381", "gcc", useAsm = false)
 
-task bench_pairing_bls12_381_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weierstrass with Projective Coordinates - Clang no Assembly":
+task bench_pairing_bls12_381_clang_noasm, "Run pairings benchmarks for BLS12-381 - Clang no Assembly":
   runBench("bench_pairing_bls12_381", "clang", useAsm = false)
+
+task bench_pairing_bn254_nogami, "Run pairings benchmarks for BN254-Nogami - Default compiler":
+  runBench("bench_pairing_bn254_nogami")
+
+task bench_pairing_bn254_nogami_gcc, "Run pairings benchmarks for BN254-Nogami - GCC":
+  runBench("bench_pairing_bn254_nogami", "gcc")
+
+task bench_pairing_bn254_nogami_clang, "Run pairings benchmarks for BN254-Nogami - Clang":
+  runBench("bench_pairing_bn254_nogami", "clang")
+
+task bench_pairing_bn254_nogami_gcc_noasm, "Run pairings benchmarks for BN254-Nogami - GCC no Assembly":
+  runBench("bench_pairing_bn254_nogami", "gcc", useAsm = false)
+
+task bench_pairing_bn254_nogami_clang_noasm, "Run pairings benchmarks for BN254-Nogami - Clang no Assembly":
+  runBench("bench_pairing_bn254_nogami", "clang", useAsm = false)

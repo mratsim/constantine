@@ -242,8 +242,6 @@ func pairing_bls12*[C](gt: var Fp12[C], P: ECP_SWei_Proj[Fp[C]], Q: ECP_SWei_Pro
   ## Compute the optimal Ate Pairing for BLS12 curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
-  ##
-  ## Reference implementation
   var Paff {.noInit.}: ECP_SWei_Aff[Fp[C]]
   var Qaff {.noInit.}: ECP_SWei_Aff[Fp2[C]]
   Paff.affineFromProjective(P)

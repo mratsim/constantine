@@ -103,7 +103,7 @@ declareCurves:
     modulus: "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"
     family: BarretoNaehrig
     bn_u_bitwidth: 63
-    bn_u: "0x44E992B44A6909F1" # u: 4965661367192848881
+    bn_u: "0x44e992b44a6909f1" # u: 4965661367192848881
     cubicRootOfUnity_modP: "0x30644e72e131a0295e6dd9e7e0acccb0c28f069fbb966e3de4bd44e5607cfd48"
     # For sanity checks
     cubicRootOfUnity_modR: "0x30644e72e131a029048b6e193fd84104cc37a73fec2bc5e9b8ca0b2d36636f23"
