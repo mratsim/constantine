@@ -418,7 +418,7 @@ task bench_fp12_gcc_noasm, "Run benchmark 𝔽p12 with gcc - no Assembly":
 task bench_fp12_clang_noasm, "Run benchmark 𝔽p12 with clang - no Assembly":
   runBench("bench_fp12", "clang", useAsm = false)
 
-task bench_ec_g1, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weierstrass with Projective Coordinates - GCC":
+task bench_ec_g1, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weierstrass with Projective Coordinates - Default compiler":
   runBench("bench_ec_g1")
 
 task bench_ec_g1_gcc, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weierstrass with Projective Coordinates - GCC":
@@ -433,7 +433,7 @@ task bench_ec_g1_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾1 - Short
 task bench_ec_g1_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weierstrass with Projective Coordinates - Clang no Assembly":
   runBench("bench_ec_g1", "clang", useAsm = false)
 
-task bench_ec_g2, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weierstrass with Projective Coordinates - GCC":
+task bench_ec_g2, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weierstrass with Projective Coordinates - Default compiler":
   runBench("bench_ec_g2")
 
 task bench_ec_g2_gcc, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weierstrass with Projective Coordinates - GCC":
@@ -447,3 +447,18 @@ task bench_ec_g2_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾2 - Short
 
 task bench_ec_g2_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weierstrass with Projective Coordinates - Clang no Assembly":
   runBench("bench_ec_g2", "clang", useAsm = false)
+
+task bench_pairing_bls12_381, "Run pairings benchmarks for BLS12-381 - Default compiler":
+  runBench("bench_pairing_bls12_381")
+
+task bench_pairing_bls12_381_gcc, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weierstrass with Projective Coordinates - GCC":
+  runBench("bench_pairing_bls12_381", "gcc")
+
+task bench_pairing_bls12_381_clang, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weierstrass with Projective Coordinates - Clang":
+  runBench("bench_pairing_bls12_381", "clang")
+
+task bench_pairing_bls12_381_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weierstrass with Projective Coordinates - GCC no Assembly":
+  runBench("bench_pairing_bls12_381", "gcc", useAsm = false)
+
+task bench_pairing_bls12_381_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weierstrass with Projective Coordinates - Clang no Assembly":
+  runBench("bench_pairing_bls12_381", "clang", useAsm = false)
