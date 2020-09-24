@@ -79,28 +79,28 @@ const FrobMapConst_BLS12_381 = [
     "0x1904d3bf02bb0667c231beb4202c0d1f0fd603fd3cbd5f4f7b2443d784bab9c4f67ea53d63e7813d8d0775ed92235fb8",
     "0xfc3e2b36c4e03288e9e902231f9fb854a14787b6c7b36fec0c8ec971f63c5f282d5ac14d6c7ec22cf78a126ddc4af3"
   ),
-  Fp2[BLS12_381].fromHex(
+  Fp2[BLS12_381].fromHex(  # SNR^((p-1)/6)^2 = SNR^((p-1)/3)
     "0x0",
     "0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaac"
   ),
-  Fp2[BLS12_381].fromHex(
+  Fp2[BLS12_381].fromHex( # SNR^((p-1)/6)^3 = SNR^((p-1)/2)
     "0x6af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09",
     "0x6af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09"
   ),
-  Fp2[BLS12_381].fromHex(
+  Fp2[BLS12_381].fromHex( # SNR^((p-1)/6)^4 = SNR^(2(p-1)/3)
     "0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaad",
     "0x0"
   ),
-  Fp2[BLS12_381].fromHex(
+  Fp2[BLS12_381].fromHex( # SNR^((p-1)/6)^5
     "0x5b2cfd9013a5fd8df47fa6b48b1e045f39816240c0b8fee8beadf4d8e9c0566c63a3e6e257f87329b18fae980078116",
     "0x144e4211384586c16bd3ad4afa99cc9170df3560e77982d0db45f3536814f0bd5871c1908bd478cd1ee605167ff82995"
   )],
   # frobenius(2)
-  [Fp2[BLS12_381].fromHex(
+  [Fp2[BLS12_381].fromHex( # norm(SNR)^((p-1)/6)^1
     "0x1",
     "0x0"
   ),
-  Fp2[BLS12_381].fromHex(
+  Fp2[BLS12_381].fromHex( # norm(SNR)^((p-1)/6)^2
     "0x5f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffeffff",
     "0x0"
   ),
@@ -151,15 +151,24 @@ func frobenius_map*(r: var Fp4, a: Fp4, k: static int = 1) {.inline.} =
   ## The p-power frobenius automorphism on 𝔽p4
   r.c0.frobenius_map(a.c0, k)
   r.c1.frobenius_map(a.c1, k)
-  r.c1.mulCheckSparse FrobMapConst_BLS12_381[k-1][4-1]
+  r.c1.mulCheckSparse FrobMapConst_BLS12_381[k-1][3]
+
+func frobenius_map*(r: var Fp6, a: Fp6, k: static int = 1) {.inline.} =
+  ## Computes a^(p^k)
+  ## The p-power frobenius automorphism on 𝔽p6
+  r.c0.frobenius_map(a.c0, k)
+  r.c1.frobenius_map(a.c1, k)
+  r.c2.frobenius_map(a.c2, k)
+  r.c1.mulCheckSparse FrobMapConst_BLS12_381[k-1][2]
+  r.c2.mulCheckSparse FrobMapConst_BLS12_381[k-1][4]
 
 func frobenius_map*(r: var Fp12, a: Fp12, k: static int = 1) {.inline.} =
   ## Computes a^(p^k)
-  ## The p-power frobenius automorphism on 𝔽p4
+  ## The p-power frobenius automorphism on 𝔽p12
   static: doAssert r.c0 is Fp4
   for r_fp4, a_fp4 in fields(r, a):
     for r_fp2, a_fp2 in fields(r_fp4, a_fp4):
-      r_fp2.frobenius_map(a_fp2)
+      r_fp2.frobenius_map(a_fp2, k)
 
   r.c0.c0.mulCheckSparse FrobMapConst_BLS12_381[k-1][0]
   r.c0.c1.mulCheckSparse FrobMapConst_BLS12_381[k-1][3]

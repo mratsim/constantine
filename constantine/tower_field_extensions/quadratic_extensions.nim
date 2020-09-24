@@ -259,6 +259,11 @@ func conjneg*(a: var QuadraticExt) {.inline.} =
   ## Computes the negated conjugate in-place
   a.c0.neg()
 
+func conjneg*(r: var QuadraticExt, a: QuadraticExt) {.inline.} =
+  ## Computes the negated conjugate out-of-place
+  r.c0.neg(a.c0)
+  r.c1 = a.c1
+
 func square*(r: var QuadraticExt, a: QuadraticExt) {.inline.} =
   mixin fromComplexExtension
   when r.fromComplexExtension():

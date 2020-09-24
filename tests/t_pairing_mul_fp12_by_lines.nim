@@ -17,7 +17,7 @@ import
   ../constantine/io/io_towers,
   ../constantine/pairing/[
     lines_projective,
-    gt_fp12
+    mul_fp12_by_lines
   ],
   # Test utilities
   ../helpers/[prng_unsafe, static_for]
@@ -50,6 +50,25 @@ func random_elem(rng: var RngState, F: typedesc, gen: RandomGen): F {.inline, no
     result = rng.random_long01Seq(F)
 
 suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent with dense 𝔽p12 mul":
+  test "Dense 𝔽p4 by Sparse 0y":
+    proc test_fp4_0y(C: static Curve, gen: static RandomGen) =
+      for _ in 0 ..< Iters:
+        let a = rng.random_elem(Fp4[C], gen)
+        let y = rng.random_elem(Fp2[C], gen)
+        let b = Fp4[C](c1: y)
+
+        var r {.noInit.}, r2 {.noInit.}: Fp4[C]
+
+        r.prod(a, b)
+        r2.mul_sparse_by_0y(a, y)
+
+        check: bool(r == r2)
+
+    staticFor(curve, TestCurves):
+      test_fp4_0y(curve, gen = Uniform)
+      test_fp4_0y(curve, gen = HighHammingWeight)
+      test_fp4_0y(curve, gen = Long01Sequence)
+
   test "Dense 𝔽p6 by Sparse 0y0":
     proc test_fp6_0y0(C: static Curve, gen: static RandomGen) =
       for _ in 0 ..< Iters:
@@ -91,7 +110,7 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
       test_fp6_0y0(curve, gen = Long01Sequence)
 
   when Fp12[BN254_Snarks]().c0.typeof is Fp6:
-    test "Sparse 𝔽p12 resulting from xy00z0 line function":
+    test "Sparse 𝔽p12/𝔽p6 resulting from xy00z0 line function":
       proc test_fp12_xy00z0(C: static Curve, gen: static RandomGen) =
         for _ in 0 ..< Iters:
           var a = rng.random_elem(Fp12[C], gen)
@@ -117,7 +136,7 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
         test_fp12_xy00z0(curve, gen = HighHammingWeight)
         test_fp12_xy00z0(curve, gen = Long01Sequence)
 
-    test "Sparse 𝔽p12 resulting from xyz000 line function":
+    test "Sparse 𝔽p12/𝔽p6 resulting from xyz000 line function":
       proc test_fp12_xyz000(C: static Curve, gen: static RandomGen) =
         for _ in 0 ..< Iters:
           var a = rng.random_elem(Fp12[C], gen)
@@ -141,3 +160,32 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
         test_fp12_xyz000(curve, gen = Uniform)
         test_fp12_xyz000(curve, gen = HighHammingWeight)
         test_fp12_xyz000(curve, gen = Long01Sequence)
+  else:
+    static: doAssert Fp12[BN254_Snarks]().c0.typeof is Fp4
+
+    test "Sparse 𝔽p12/𝔽p4 resulting from xy000z line function":
+      proc test_fp12_xy000z(C: static Curve, gen: static RandomGen) =
+        for _ in 0 ..< Iters:
+          var a = rng.random_elem(Fp12[C], gen)
+          var a2 = a
+
+          var x = rng.random_elem(Fp2[C], gen)
+          var y = rng.random_elem(Fp2[C], gen)
+          var z = rng.random_elem(Fp2[C], gen)
+
+          let line = Line[Fp2[C], Mtwist](x: x, y: y, z: z)
+          let b = Fp12[C](
+            c0: Fp4[C](c0: x, c1: y),
+            # c1
+            c2: Fp4[C](       c1: z),
+          )
+
+          a *= b
+          a2.mul_sparse_by_line_xy000z(line)
+
+          check: bool(a == a2)
+
+      staticFor(curve, TestCurves):
+        test_fp12_xy000z(curve, gen = Uniform)
+        test_fp12_xy000z(curve, gen = HighHammingWeight)
+        test_fp12_xy000z(curve, gen = Long01Sequence)

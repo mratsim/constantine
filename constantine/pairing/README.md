@@ -24,7 +24,7 @@
   Scott, Benger, Charlemagne, Perez, Kachisa, 2008\
   https://eprint.iacr.org/2008/490.pdf
 
-- Faster Squaring in the Cyclotomic Subgroup ofSixth Degree Extensions\
+- Faster Squaring in the Cyclotomic Subgroup of Sixth Degree Extensions\
   Granger, Scott, 2009\
   https://eprint.iacr.org/2009/565.pdf
 
@@ -86,6 +86,11 @@
 - A short-list of pairing-friendly curves resistant to Special TNFS at the 128-bit security level\
   Aurore Guillevic, 2019\
   https://eprint.iacr.org/2019/1371.pdf
+
+- Improving the computation of the optimal ate pairing
+  for a high security level.
+  Loubna Ghammam, Emmanuel Fouotsa
+  J. Appl. Math. Comput.59, 21–36 (2019)
 
 - Efficient Final Exponentiation
   via Cyclotomic Structure for Pairings

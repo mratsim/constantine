@@ -7,10 +7,27 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../constantine/config/common,
+  # Internals
+  ../constantine/towers,
   ../constantine/config/curves,
-  ../constantine/pairing/pairing_bn,
   # Test utilities
-  ./t_pairing_template
+  ./t_fp_tower_frobenius_template
 
-runPairingTests(4, BN254_Nogami, pairing_bn_reference)
+const TestCurves = [
+    # BN254_Nogami
+    # BN254_Snarks,
+    # BLS12_377,
+    BLS12_381,
+    # BN446
+    # FKM12_447
+    # BLS12_461
+    # BN462
+  ]
+
+runFrobeniusTowerTests(
+  ExtDegree =6,
+  Iters = 8,
+  TestCurves = TestCurves,
+  moduleName = "test_fp6_frobenius",
+  testSuiteDesc = "𝔽p6 Frobenius map: Frobenius(a, k) = a^(p^k) (mod p⁶)"
+)

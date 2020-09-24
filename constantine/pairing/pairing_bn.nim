@@ -18,7 +18,8 @@ import
     ec_weierstrass_projective
   ],
   ./lines_projective,
-  ./gt_fp12,
+  ./mul_fp12_by_lines,
+  ./cyclotomic_fp12,
   ../isogeny/frobenius
 
 # ############################################################

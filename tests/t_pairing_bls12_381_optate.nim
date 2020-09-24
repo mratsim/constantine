@@ -7,9 +7,11 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  ../constantine/config/common,
   ../constantine/config/curves,
   ../constantine/pairing/pairing_bls12,
   # Test utilities
   ./t_pairing_template
 
-runPairingTests(4, BLS12_381, pairing_bls12_reference)
+# runPairingTests(4, BLS12_381, pairing_bls12_reference)
+runPairingTests(4, BLS12_381, pairing_bls12)
