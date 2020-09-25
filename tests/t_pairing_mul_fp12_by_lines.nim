@@ -25,7 +25,8 @@ import
 const
   Iters = 8
   TestCurves = [
-    # BN254_Snarks,
+    BN254_Nogami,
+    BN254_Snarks,
     BLS12_381
   ]
 
@@ -182,6 +183,33 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
 
           a *= b
           a2.mul_sparse_by_line_xy000z(line)
+
+          check: bool(a == a2)
+
+      staticFor(curve, TestCurves):
+        test_fp12_xy000z(curve, gen = Uniform)
+        test_fp12_xy000z(curve, gen = HighHammingWeight)
+        test_fp12_xy000z(curve, gen = Long01Sequence)
+
+    test "Sparse 𝔽p12/𝔽p4 resulting from xyz000 line function":
+      proc test_fp12_xy000z(C: static Curve, gen: static RandomGen) =
+        for _ in 0 ..< Iters:
+          var a = rng.random_elem(Fp12[C], gen)
+          var a2 = a
+
+          var x = rng.random_elem(Fp2[C], gen)
+          var y = rng.random_elem(Fp2[C], gen)
+          var z = rng.random_elem(Fp2[C], gen)
+
+          let line = Line[Fp2[C], Dtwist](x: x, y: y, z: z)
+          let b = Fp12[C](
+            c0: Fp4[C](c0: x, c1: y),
+            c1: Fp4[C](c0: z       ),
+            # c2:
+          )
+
+          a *= b
+          a2.mul_sparse_by_line_xyz000(line)
 
           check: bool(a == a2)
 

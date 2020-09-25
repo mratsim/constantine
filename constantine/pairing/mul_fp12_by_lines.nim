@@ -41,9 +41,15 @@ import
 # 𝔽p12 by line - Sparse functions
 # ----------------------------------------------------------------
 
+func mul_sparse_by_y0*[C: static Curve](r: var Fp4[C], a: Fp4[C], b: Fp2[C]) =
+  ## Sparse multiplication of an Fp4 element
+  ## with coordinates (a₀, a₁) by (b₀, 0)
+  r.c0.prod(a.c0, b)
+  r.c1.prod(a.c1, b)
+
 func mul_sparse_by_0y*[C: static Curve](r: var Fp4[C], a: Fp4[C], b: Fp2[C]) =
   ## Sparse multiplication of an Fp4 element
-  ## with coordinates (a₀, a₁) by (0, b₁, 0)
+  ## with coordinates (a₀, a₁) by (0, b₁)
   r.c0.prod(a.c1, b)
   r.c0 *= NonResidue
   r.c1.prod(a.c0, b)
@@ -140,12 +146,49 @@ func mul_sparse_by_line_xyz000*[C: static Curve, Tw: static SexticTwist](
 
   static: doAssert f.c0.typeof is Fp4, "This assumes 𝔽p12 as a cubic extension of 𝔽p4"
 
-  var v: Fp12[C]
-  v.c0.c0 = l.x
-  v.c0.c1 = l.y
-  v.c1.c0 = l.z
+  # In the following equations (taken from cubic extension implementation)
+  # a = f
+  # b0 = (x, y)
+  # b1 = (z, 0)
+  # b2 = (0, 0)
+  #
+  # v0 = a0 b0 = (f00, f01).(x, y)
+  # v1 = a1 b1 = (f10, f11).(z, 0)
+  # v2 = a2 b2 = (f20, f21).(0, 0)
+  #
+  # r0 = ξ ((a1 + a2) * (b1 + b2) - v1 - v2) + v0
+  #    = ξ (a1 b1 + a2 b1 - v1) + v0
+  #    = ξ a2 b1 + v0
+  # r1 = (a0 + a1) * (b0 + b1) - v0 - v1 + ξ v2
+  #    = (a0 + a1) * (b0 + b1) - v0 - v1
+  # r2 = (a0 + a2) * (b0 + b2) - v0 - v2 + v1
+  #    = a0 b0 + a2 b0 - v0 + v1
+  #    = a2 b0 + v1
 
-  f *= v
+  var b0 {.noInit.}, v0{.noInit.}, v1{.noInit.}, t{.noInit.}: Fp4[C]
+
+  b0.c0 = l.x
+  b0.c1 = l.y
+
+  v0.prod(f.c0, b0)
+  v1.mul_sparse_by_y0(f.c1, l.z)
+
+  # r1 = (a0 + a1) * (b0 + b1) - v0 - v1
+  f.c1 += f.c0 # r1 = a0 + a1
+  t = b0
+  t.c0 += l.z  # t = b0 + b1
+  f.c1 *= t    # r2 = (a0 + a1)(b0 + b1)
+  f.c1 -= v0
+  f.c1 -= v1   # r2 = (a0 + a1)(b0 + b1) - v0 - v1
+
+  # r0 = ξ a2 b1 + v0
+  f.c0.mul_sparse_by_y0(f.c2, l.z)
+  f.c0 *= NonResidue
+  f.c0 += v0
+
+  # r2 = a2 b0 + v1
+  f.c2 *= b0
+  f.c2 += v1
 
 func mul_sparse_by_line_xy000z*[C: static Curve, Tw: static SexticTwist](
        f: var Fp12[C], l: Line[Fp2[C], Tw]) =
