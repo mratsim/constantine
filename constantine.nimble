@@ -54,6 +54,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_ec_wstrass_prj_g1_mul_sanity.nim", false),
   ("tests/t_ec_wstrass_prj_g1_mul_distri.nim", false),
   ("tests/t_ec_wstrass_prj_g1_mul_vs_ref.nim", false),
+  ("tests/t_ec_wstrass_prj_g1_mixed_add.nim", false),
   # Elliptic curve arithmetic G2
   ("tests/t_ec_wstrass_prj_g2_add_double_bn254_snarks.nim", false),
   ("tests/t_ec_wstrass_prj_g2_mul_sanity_bn254_snarks.nim", false),

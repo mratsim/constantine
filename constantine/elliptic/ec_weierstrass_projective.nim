@@ -202,12 +202,12 @@ func sum*[F](
       t1 *= SexticNonResidue
     r.x.double(t0)            # 19. X₃ <- t₀ + t₀   X₃ = 2 X₁X₂
     t0 += r.x                 # 20. t₀ <- X₃ + t₀   t₀ = 3 X₁X₂
-    t2 *= b3                  # 21. t₂ <- b3 t₂     t₂ = 3bZ₁Z₂
+    t2 *= b3                  # 21. t₂ <- 3b t₂     t₂ = 3bZ₁Z₂
     when F is Fp2 and F.C.getSexticTwist() == M_Twist:
       t2 *= SexticNonResidue
     r.z.sum(t1, t2)           # 22. Z₃ <- t₁ + t₂   Z₃ = Y₁Y₂ + 3bZ₁Z₂
     t1 -= t2                  # 23. t₁ <- t₁ - t₂   t₁ = Y₁Y₂ - 3bZ₁Z₂
-    r.y *= b3                 # 24. Y₃ <- b3 Y₃     Y₃ = 3b(X₁Z₂ + X₂Z₁)
+    r.y *= b3                 # 24. Y₃ <- 3b Y₃     Y₃ = 3b(X₁Z₂ + X₂Z₁)
     when F is Fp2 and F.C.getSexticTwist() == M_Twist:
       r.y *= SexticNonResidue
     r.x.prod(t4, r.y)         # 25. X₃ <- t₄ Y₃     X₃ = 3b(Y₁Z₂ + Y₂Z₁)(X₁Z₂ + X₂Z₁)
@@ -219,6 +219,68 @@ func sum*[F](
     t0 *= t3                  # 31. t₀ <- t₀ t₃     t₀ = 3X₁X₂ (X₁Y₂ + X₂Y₁)
     r.z *= t4                 # 32. Z₃ <- Z₃ t₄     Z₃ = (Y₁Y₂ + 3bZ₁Z₂)(Y₁Z₂ + Y₂Z₁)
     r.z += t0                 # 33. Z₃ <- Z₃ + t₀   Z₃ = (Y₁Z₂ + Y₂Z₁)(Y₁Y₂ + 3bZ₁Z₂) + 3X₁X₂ (X₁Y₂ + X₂Y₁)
+  else:
+    {.error: "Not implemented.".}
+
+func madd*[F](
+       r: var ECP_SWei_Proj[F],
+       P: ECP_SWei_Proj[F], Q: ECP_SWei_Aff[F]
+     ) =
+  ## Elliptic curve mixed addition for Short Weierstrass curves
+  ## with p in Projective coordinates and Q in affine coordinates
+  ##
+  ##   R = P + Q
+
+  # TODO: static doAssert odd order
+
+  when F.C.getCoefA() == 0:
+    var t0 {.noInit.}, t1 {.noInit.}, t2 {.noInit.}, t3 {.noInit.}, t4 {.noInit.}: F
+    const b3 = 3 * F.C.getCoefB()
+
+    # Algorithm 8 for curves: y² = x³ + b
+    # X₃ = (X₁Y₂ + X₂Y₁)(Y₁Y₂ − 3bZ₁)
+    #     − 3b(Y₁ + Y₂Z₁)(X₁ + X₂Z₁)
+    # Y₃ = (Y₁Y₂ + 3bZ₁)(Y₁Y₂ − 3bZ₁)
+    #     + 9bX₁X₂ (X₁ + X₂Z₁)
+    # Z₃= (Y₁ + Y₂Z₁)(Y₁Y₂ + 3bZ₁) + 3 X₁X₂ (X₁Y₂ + X₂Y₁)
+    t0.prod(P.x, Q.x)         # 1.  t₀ <- X₁ X₂
+    t1.prod(P.y, Q.y)         # 2.  t₁ <- Y₁ Y₂
+    t3.sum(P.x, P.y)          # 3.  t₃ <- X₁ + Y₁ ! error in paper
+    t4.sum(Q.x, Q.y)          # 4.  t₄ <- X₂ + Y₂ ! error in paper
+    t3 *= t4                  # 5.  t₃ <- t₃ * t₄
+    t4.sum(t0, t1)            # 6.  t₄ <- t₀ + t₁
+    t3 -= t4                  # 7.  t₃ <- t₃ - t₄, t₃ = (X₁ + Y₁)(X₂ + Y₂) - (X₁ X₂ + Y₁ Y₂) = X₁Y₂ + X₂Y₁
+    when F is Fp2 and F.C.getSexticTwist() == D_Twist:
+      t3 *= SexticNonResidue
+    t4.prod(Q.y, P.z)         # 8.  t₄ <- Y₂ Z₁
+    t4 += P.y                 # 9.  t₄ <- t₄ + Y₁, t₄ = Y₁+Y₂Z₁
+    when F is Fp2 and F.C.getSexticTwist() == D_Twist:
+      t4 *= SexticNonResidue
+    r.y.prod(Q.x, P.z)        # 10. Y₃ <- X₂ Z₁
+    r.y += P.x                # 11. Y₃ <- Y₃ + X₁, Y₃ = X₁ + X₂Z₁
+    when F is Fp2 and F.C.getSexticTwist() == D_Twist:
+      t0 *= SexticNonResidue
+      t1 *= SexticNonResidue
+    r.x.double(t0)            # 12. X₃ <- t₀ + t₀
+    t0 += r.x                 # 13. t₀ <- X₃ + t₀, t₀ = 3X₁X₂
+    t2 = P.z
+    t2 *= b3                  # 14. t₂ <- 3bZ₁
+    when F is Fp2 and F.C.getSexticTwist() == M_Twist:
+      t2 *= SexticNonResidue
+    r.z.sum(t1, t2)           # 15. Z₃ <- t₁ + t₂, Z₃ = Y₁Y₂ + 3bZ₁
+    t1 -= t2                  # 16. t₁ <- t₁ - t₂, t₁ = Y₁Y₂ - 3bZ₁
+    r.y *= b3                 # 17. Y₃ <- 3bY₃,    Y₃ = 3b(X₁ + X₂Z₁)
+    when F is Fp2 and F.C.getSexticTwist() == M_Twist:
+      r.y *= SexticNonResidue
+    r.x.prod(t4, r.y)         # 18. X₃ <- t₄ Y₃,   X₃ = (Y₁ + Y₂Z₁) 3b(X₁ + X₂Z₁)
+    t2.prod(t3, t1)           # 19. t₂ <- t₃ t₁,   t₂ = (X₁Y₂ + X₂Y₁)(Y₁Y₂ - 3bZ₁)
+    r.x.diffAlias(t2, r.x)    # 20. X₃ <- t₂ - X₃, X₃ = (X₁Y₂ + X₂Y₁)(Y₁Y₂ - 3bZ₁) - 3b(Y₁ + Y₂Z₁)(X₁ + X₂Z₁)
+    r.y *= t0                 # 21. Y₃ <- Y₃ t₀,   Y₃ = 9bX₁X₂ (X₁ + X₂Z₁)
+    t1 *= r.z                 # 22. t₁ <- t₁ Z₃,   t₁ = (Y₁Y₂ - 3bZ₁)(Y₁Y₂ + 3bZ₁)
+    r.y += t1                 # 23. Y₃ <- t₁ + Y₃, Y₃ = (Y₁Y₂ + 3bZ₁)(Y₁Y₂ - 3bZ₁) + 9bX₁X₂ (X₁ + X₂Z₁)
+    t0 *= t3                  # 31. t₀ <- t₀ t₃,   t₀ = 3X₁X₂ (X₁Y₂ + X₂Y₁)
+    r.z *= t4                 # 32. Z₃ <- Z₃ t₄,   Z₃ = (Y₁Y₂ + 3bZ₁)(Y₁ + Y₂Z₁)
+    r.z += t0                 # 33. Z₃ <- Z₃ + t₀, Z₃ = (Y₁ + Y₂Z₁)(Y₁Y₂ + 3bZ₁) + 3X₁X₂ (X₁Y₂ + X₂Y₁)
   else:
     {.error: "Not implemented.".}
 
@@ -316,9 +378,6 @@ func diff*[F](r: var ECP_SWei_Proj[F],
   r.sum(P, nQ)
 
 func affineFromProjective*[F](aff: var ECP_SWei_Aff[F], proj: ECP_SWei_Proj) =
-  # TODO: for now we reuse projective coordinate backend
-  # TODO: simultaneous inversion
-
   var invZ {.noInit.}: F
   invZ.inv(proj.z)
 
