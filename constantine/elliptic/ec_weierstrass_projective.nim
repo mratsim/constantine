@@ -359,9 +359,16 @@ func double*[F](
     {.error: "Not implemented.".}
 
 func `+=`*[F](P: var ECP_SWei_Proj[F], Q: ECP_SWei_Proj[F]) =
+  ## In-place point addition
+  # TODO test for aliasing support
   var tmp {.noInit.}: ECP_SWei_Proj[F]
   tmp.sum(P, Q)
   P = tmp
+
+func `+=`*[F](P: var ECP_SWei_Proj[F], Q: ECP_SWei_Aff[F]) =
+  ## In-place mixed point addition
+  # used in line_addition
+  P.madd(P, Q)
 
 func double*[F](P: var ECP_SWei_Proj[F]) =
   var tmp {.noInit.}: ECP_SWei_Proj[F]

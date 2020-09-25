@@ -228,7 +228,4 @@ func line_add*[C](
   # TODO fused line addition from Costello 2009, Grewal 2012, Aranha 2013
   line_eval_add(line, T, Q)
   line.line_update(P)
-  # TODO: mixed addition
-  var QProj {.noInit.}: ECP_SWei_Proj[Fp2[C]]
-  QProj.projectiveFromAffine(Q)
-  T += QProj
+  T += Q
