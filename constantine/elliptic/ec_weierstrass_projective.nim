@@ -153,11 +153,11 @@ func sum*[F](
   #
   # with the indices 1 corresponding to ``P``, 2 to ``Q`` and 3 to the result ``r``
   #
-  # X3 = (X1 Y2 + X2 Y1)(Y1 Y2 - a(X1 Z2 + X2 Z1) - 3b Z1 Z2)
-  #      - (Y1 Z2 + Y2 Z1)(a X1 X2 + 3b(X1 Z2 + X2 Z1) - a² Z1 Z2)
-  # Y3 = (3 X1 X2 + a Z1 Z2)(a X1 X2 + 3b (X1 Z2 + X2 Z1) - a² Z1 Z2)
-  #      + (Y1 Y2 + a (X1 Z2 + X2 Z1) + 3b Z1 Z2)(Y1 Y2 - a(X1 Z2 + X2 Z1) - 3b Z1 Z2)
-  # Z3 = (Y1 Z2 + Y2 Z1)(Y1 Y2 + a(X1 Z2 + X2 Z1) + 3b Z1 Z2) + (X1 Y2 + X2 Y1)(3 X1 X2 + a Z1 Z2)
+  # X₃ = (X₁Y₂ + X₂Y₁)(Y₁Y₂ - a (X₁Z₂ + X₂Z₁) - 3bZ₁Z₂)
+  #      - (Y₁Z₂ + Y₂Z₁)(aX₁X₂ + 3b(X₁Z₂ + X₂Z₁) - a²Z₁Z₂)
+  # Y₃ = (3X₁X₂ + aZ₁Z₂)(aX₁X₂ + 3b(X₁Z₂ + X₂Z₁) - a²Z₁Z₂)
+  #      + (Y₁Y₂ + a (X₁Z₂ + X₂Z₁) + 3bZ₁Z₂)(Y₁Y₂ - a(X₁Z₂ + X₂Z₁) - 3bZ₁Z₂)
+  # Z₃ = (Y₁Z₂ + Y₂Z₁)(Y₁Y₂ + a(X₁Z₂ + X₂Z₁) + 3bZ₁Z₂) + (X₁Y₂ + X₂Y₁)(3X₁X₂ + aZ₁Z₂)
   #
   # Cost: 12M + 3 mul(a) + 2 mul(3b) + 23 a
 
@@ -170,55 +170,55 @@ func sum*[F](
     # Algorithm 7 for curves: y² = x³ + b
     # 12M + 2 mul(3b) + 19A
     #
-    # X3 = (X1 Y2 + X2 Y1)(Y1 Y2 − 3b Z1 Z2)
-    #     − 3b(Y1 Z2 + Y2 Z1)(X1 Z2 + X2 Z1)
-    # Y3 = (Y1 Y2 + 3b Z1 Z2)(Y1 Y2 − 3b Z1 Z2)
-    #     + 9b X1 X2 (X1 Z2 + X2 Z1)
-    # Z3= (Y1 Z2 + Y2 Z1)(Y1 Y2 + 3b Z1 Z2) + 3 X1 X2 (X1 Y2 + X2 Y1)
-    t0.prod(P.x, Q.x)         # 1.  t0 <- X1 X2
-    t1.prod(P.y, Q.y)         # 2.  t1 <- Y1 Y2
-    t2.prod(P.z, Q.z)         # 3.  t2 <- Z1 Z2
-    t3.sum(P.x, P.y)          # 4.  t3 <- X1 + Y1
-    t4.sum(Q.x, Q.y)          # 5.  t4 <- X2 + Y2
-    t3 *= t4                  # 6.  t3 <- t3 * t4
-    t4.sum(t0, t1)            # 7.  t4 <- t0 + t1
-    t3 -= t4                  # 8.  t3 <- t3 - t4   t3 = (X1 + Y1)(X2 + Y2) - (X1 X2 + Y1 Y2) = X1.Y2 + X2.Y1
+    # X₃ = (X₁Y₂ + X₂Y₁)(Y₁Y₂ − 3bZ₁Z₂)
+    #     − 3b(Y₁Z₂ + Y₂Z₁)(X₁Z₂ + X₂Z₁)
+    # Y₃ = (Y₁Y₂ + 3bZ₁Z₂)(Y₁Y₂ − 3bZ₁Z₂)
+    #     + 9bX₁X₂ (X₁Z₂ + X₂Z₁)
+    # Z₃= (Y₁Z₂ + Y₂Z₁)(Y₁Y₂ + 3bZ₁Z₂) + 3X₁X₂ (X₁Y₂ + X₂Y₁)
+    t0.prod(P.x, Q.x)         # 1.  t₀ <- X₁X₂
+    t1.prod(P.y, Q.y)         # 2.  t₁ <- Y₁Y₂
+    t2.prod(P.z, Q.z)         # 3.  t₂ <- Z₁Z₂
+    t3.sum(P.x, P.y)          # 4.  t₃ <- X₁ + Y₁
+    t4.sum(Q.x, Q.y)          # 5.  t₄ <- X₂ + Y₂
+    t3 *= t4                  # 6.  t₃ <- t₃ * t₄
+    t4.sum(t0, t1)            # 7.  t₄ <- t₀ + t₁
+    t3 -= t4                  # 8.  t₃ <- t₃ - t₄   t₃ = (X₁ + Y₁)(X₂ + Y₂) - (X₁X₂ + Y₁Y₂) = X₁Y₂ + X₂Y₁
     when F is Fp2 and F.C.getSexticTwist() == D_Twist:
       t3 *= SexticNonResidue
-    t4.sum(P.y, P.z)          # 9.  t4 <- Y1 + Z1
-    r.x.sum(Q.y, Q.z)         # 10. X3 <- Y2 + Z2
-    t4 *= r.x                 # 11. t4 <- t4 X3
-    r.x.sum(t1, t2)           # 12. X3 <- t1 + t2   X3 = Y1 Y2 + Z1 Z2
-    t4 -= r.x                 # 13. t4 <- t4 - X3   t4 = (Y1 + Z1)(Y2 + Z2) - (Y1 Y2 + Z1 Z2) = Y1 Z2 + Y2 Z1
+    t4.sum(P.y, P.z)          # 9.  t₄ <- Y₁ + Z₁
+    r.x.sum(Q.y, Q.z)         # 10. X₃ <- Y₂ + Z₂
+    t4 *= r.x                 # 11. t₄ <- t₄ X₃
+    r.x.sum(t1, t2)           # 12. X₃ <- t₁ + t₂   X₃ = Y₁Y₂ + Z₁Z₂
+    t4 -= r.x                 # 13. t₄ <- t₄ - X₃   t₄ = (Y₁ + Z₁)(Y₂ + Z₂) - (Y₁Y₂ + Z₁Z₂) = Y₁Z₂ + Y₂Z₁
     when F is Fp2 and F.C.getSexticTwist() == D_Twist:
       t4 *= SexticNonResidue
-    r.x.sum(P.x, P.z)         # 14. X3 <- X1 + Z1
-    r.y.sum(Q.x, Q.z)         # 15. Y3 <- X2 + Z2
-    r.x *= r.y                # 16. X3 <- X3 Y3     X3 = (X1 Z1)(X2 Z2)
-    r.y.sum(t0, t2)           # 17. Y3 <- t0 + t2   Y3 = X1 X2 + Z1 Z2
-    r.y.diffAlias(r.x, r.y)   # 18. Y3 <- X3 - Y3   Y3 = (X1 + Z1)(X2 + Z2) - (X1 X2 + Z1 Z2) = X1 Z2 + X2 Z1
+    r.x.sum(P.x, P.z)         # 14. X₃ <- X₁ + Z₁
+    r.y.sum(Q.x, Q.z)         # 15. Y₃ <- X₂ + Z₂
+    r.x *= r.y                # 16. X₃ <- X₃ Y₃     X₃ = (X₁Z₁)(X₂Z₂)
+    r.y.sum(t0, t2)           # 17. Y₃ <- t₀ + t₂   Y₃ = X₁ X₂ + Z₁ Z₂
+    r.y.diffAlias(r.x, r.y)   # 18. Y₃ <- X₃ - Y₃   Y₃ = (X₁ + Z₁)(X₂ + Z₂) - (X₁ X₂ + Z₁ Z₂) = X₁Z₂ + X₂Z₁
     when F is Fp2 and F.C.getSexticTwist() == D_Twist:
       t0 *= SexticNonResidue
       t1 *= SexticNonResidue
-    r.x.double(t0)            # 19. X3 <- t0 + t0   X3 = 2 X1 X2
-    t0 += r.x                 # 20. t0 <- X3 + t0   t0 = 3 X1 X2
-    t2 *= b3                  # 21. t2 <- b3 t2     t2 = 3b Z1 Z2
+    r.x.double(t0)            # 19. X₃ <- t₀ + t₀   X₃ = 2 X₁X₂
+    t0 += r.x                 # 20. t₀ <- X₃ + t₀   t₀ = 3 X₁X₂
+    t2 *= b3                  # 21. t₂ <- b3 t₂     t₂ = 3bZ₁Z₂
     when F is Fp2 and F.C.getSexticTwist() == M_Twist:
       t2 *= SexticNonResidue
-    r.z.sum(t1, t2)           # 22. Z3 <- t1 + t2   Z3 = Y1 Y2 + 3b Z1 Z2
-    t1 -= t2                  # 23. t1 <- t1 - t2   t1 = Y1 Y2 - 3b Z1 Z2
-    r.y *= b3                 # 24. Y3 <- b3 Y3     Y3 = 3b(X1 Z2 + X2 Z1)
+    r.z.sum(t1, t2)           # 22. Z₃ <- t₁ + t₂   Z₃ = Y₁Y₂ + 3bZ₁Z₂
+    t1 -= t2                  # 23. t₁ <- t₁ - t₂   t₁ = Y₁Y₂ - 3bZ₁Z₂
+    r.y *= b3                 # 24. Y₃ <- b3 Y₃     Y₃ = 3b(X₁Z₂ + X₂Z₁)
     when F is Fp2 and F.C.getSexticTwist() == M_Twist:
       r.y *= SexticNonResidue
-    r.x.prod(t4, r.y)         # 25. X3 <- t4 Y3     X3 = 3b(Y1 Z2 + Y2 Z1)(X1 Z2 + X2 Z1)
-    t2.prod(t3, t1)           # 26. t2 <- t3 t1     t2 = (X1 Y2 + X2 Y1) (Y1 Y2 - 3b Z1 Z2)
-    r.x.diffAlias(t2, r.x)    # 27. X3 <- t2 - X3   X3 = (X1 Y2 + X2 Y1) (Y1 Y2 - 3b Z1 Z2) - 3b(Y1 Z2 + Y2 Z1)(X1 Z2 + X2 Z1)
-    r.y *= t0                 # 28. Y3 <- Y3 t0     Y3 = 9b X1 X2 (X1 Z2 + X2 Z1)
-    t1 *= r.z                 # 29. t1 <- t1 Z3     t1 = (Y1 Y2 - 3b Z1 Z2)(Y1 Y2 + 3b Z1 Z2)
-    r.y += t1                 # 30. Y3 <- t1 + Y3   Y3 = (Y1 Y2 + 3b Z1 Z2)(Y1 Y2 - 3b Z1 Z2) + 9b X1 X2 (X1 Z2 + X2 Z1)
-    t0 *= t3                  # 31. t0 <- t0 t3     t0 = 3 X1 X2 (X1.Y2 + X2.Y1)
-    r.z *= t4                 # 32. Z3 <- Z3 t4     Z3 = (Y1 Y2 + 3b Z1 Z2)(Y1 Z2 + Y2 Z1)
-    r.z += t0                 # 33. Z3 <- Z3 + t0   Z3 = (Y1 Z2 + Y2 Z1)(Y1 Y2 + 3b Z1 Z2) + 3 X1 X2 (X1.Y2 + X2.Y1)
+    r.x.prod(t4, r.y)         # 25. X₃ <- t₄ Y₃     X₃ = 3b(Y₁Z₂ + Y₂Z₁)(X₁Z₂ + X₂Z₁)
+    t2.prod(t3, t1)           # 26. t₂ <- t₃ t₁     t₂ = (X₁Y₂ + X₂Y₁) (Y₁Y₂ - 3bZ₁Z₂)
+    r.x.diffAlias(t2, r.x)    # 27. X₃ <- t₂ - X₃   X₃ = (X₁Y₂ + X₂Y₁) (Y₁Y₂ - 3bZ₁Z₂) - 3b(Y₁Z₂ + Y₂Z₁)(X₁Z₂ + X₂Z₁)
+    r.y *= t0                 # 28. Y₃ <- Y₃ t₀     Y₃ = 9bX₁X₂ (X₁Z₂ + X₂Z₁)
+    t1 *= r.z                 # 29. t₁ <- t₁ Z₃     t₁ = (Y₁Y₂ - 3bZ₁Z₂)(Y₁Y₂ + 3bZ₁Z₂)
+    r.y += t1                 # 30. Y₃ <- t₁ + Y₃   Y₃ = (Y₁Y₂ + 3bZ₁Z₂)(Y₁Y₂ - 3bZ₁Z₂) + 9bX₁X₂ (X₁Z₂ + X₂Z₁)
+    t0 *= t3                  # 31. t₀ <- t₀ t₃     t₀ = 3X₁X₂ (X₁Y₂ + X₂Y₁)
+    r.z *= t4                 # 32. Z₃ <- Z₃ t₄     Z₃ = (Y₁Y₂ + 3bZ₁Z₂)(Y₁Z₂ + Y₂Z₁)
+    r.z += t0                 # 33. Z₃ <- Z₃ + t₀   Z₃ = (Y₁Z₂ + Y₂Z₁)(Y₁Y₂ + 3bZ₁Z₂) + 3X₁X₂ (X₁Y₂ + X₂Y₁)
   else:
     {.error: "Not implemented.".}
 
@@ -249,11 +249,11 @@ func double*[F](
   #   Joost Renes and Craig Costello and Lejla Batina, 2015
   #   https://eprint.iacr.org/2015/1060
   #
-  # X3 = 2XY (Y² - 2aXZ - 3bZ²)
+  # X₃ = 2XY (Y² - 2aXZ - 3bZ²)
   #      - 2YZ (aX² + 6bXZ - a²Z²)
-  # Y3 = (Y² + 2aXZ + 3bZ²)(Y² - 2aXZ - 3bZ²)
+  # Y₃ = (Y² + 2aXZ + 3bZ²)(Y² - 2aXZ - 3bZ²)
   #      + (3X² + aZ²)(aX² + 6bXZ - a²Z²)
-  # Z3 = 8Y³Z
+  # Z₃ = 8Y³Z
   #
   # Cost: 8M + 3S + 3 mul(a) + 2 mul(3b) + 15a
 
@@ -264,35 +264,35 @@ func double*[F](
     # Algorithm 9 for curves:
     # 6M + 2S + 1 mul(3b) + 9a
     #
-    # X3 = 2XY(Y² - 9bZ²)
-    # Y3 = (Y² - 9bZ²)(Y² + 3bZ²) + 24bY²Z²
-    # Z3 = 8Y³Z
+    # X₃ = 2XY(Y² - 9bZ²)
+    # Y₃ = (Y² - 9bZ²)(Y² + 3bZ²) + 24bY²Z²
+    # Z₃ = 8Y³Z
     snrY = P.y
     when F is Fp2 and F.C.getSexticTwist() == D_Twist:
       snrY *= SexticNonResidue
       t0.square(P.y)
       t0 *= SexticNonResidue
     else:
-      t0.square(P.y)          # 1.  t0 <- Y Y
-    r.z.double(t0)            # 2.  Z3 <- t0 + t0
-    r.z.double()              # 3.  Z3 <- Z3 + Z3
-    r.z.double()              # 4.  Z3 <- Z3 + Z3   Z3 = 8Y²
-    t1.prod(snrY, P.z)        # 5.  t1 <- Y Z
-    t2.square(P.z)            # 6.  t2 <- Z Z
-    t2 *= b3                  # 7.  t2 <- b3 t2
+      t0.square(P.y)          # 1.  t₀ <- Y Y
+    r.z.double(t0)            # 2.  Z₃ <- t₀ + t₀
+    r.z.double()              # 3.  Z₃ <- Z₃ + Z₃
+    r.z.double()              # 4.  Z₃ <- Z₃ + Z₃   Z₃ = 8Y²
+    t1.prod(snrY, P.z)        # 5.  t₁ <- Y Z
+    t2.square(P.z)            # 6.  t₂ <- Z Z
+    t2 *= b3                  # 7.  t₂ <- 3b t₂
     when F is Fp2 and F.C.getSexticTwist() == M_Twist:
       t2 *= SexticNonResidue
-    r.x.prod(t2, r.z)         # 8.  X3 <- t2 Z3
-    r.y.sum(t0, t2)           # 9.  Y3 <- t0 + t2
-    r.z *= t1                 # 10. Z3 <- t1 Z3
-    t1.double(t2)             # 11. t1 <- t2 + t2
-    t2 += t1                  # 12. t2 <- t1 + t2
-    t0 -= t2                  # 13. t0 <- t0 - t2
-    r.y *= t0                 # 14. Y3 <- t0 Y3
-    r.y += r.x                # 15. Y3 <- X3 + Y3
-    t1.prod(P.x, snrY)        # 16. t1 <- X Y
-    r.x.prod(t0, t1)          # 17. X3 <- t0 t1
-    r.x.double()              # 18. X3 <- X3 + X3
+    r.x.prod(t2, r.z)         # 8.  X₃ <- t₂ Z₃
+    r.y.sum(t0, t2)           # 9.  Y₃ <- t₀ + t₂
+    r.z *= t1                 # 10. Z₃ <- t₁ Z₃
+    t1.double(t2)             # 11. t₁ <- t₂ + t₂
+    t2 += t1                  # 12. t₂ <- t₁ + t₂
+    t0 -= t2                  # 13. t₀ <- t₀ - t₂
+    r.y *= t0                 # 14. Y₃ <- t₀ Y₃
+    r.y += r.x                # 15. Y₃ <- X₃ + Y₃
+    t1.prod(P.x, snrY)        # 16. t₁ <- X Y
+    r.x.prod(t0, t1)          # 17. X₃ <- t₀ t₁
+    r.x.double()              # 18. X₃ <- X₃ + X₃
   else:
     {.error: "Not implemented.".}
 
