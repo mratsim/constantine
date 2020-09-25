@@ -24,7 +24,8 @@ import
     cyclotomic_fp12,
     lines_projective,
     mul_fp12_by_lines,
-    pairing_bls12
+    pairing_bls12,
+    pairing_bn
   ],
   # Helpers
   ../helpers/[prng_unsafe, static_for],
@@ -150,7 +151,20 @@ proc lineAddBench*(C: static Curve, iters: int) =
   bench("Line add", C, iters):
     line.line_add(T, Qaff, Paff)
 
-proc mulFp12byLineBench*(C: static Curve, iters: int) =
+proc mulFp12byLine_xyz000_Bench*(C: static Curve, iters: int) =
+  var line: Line[Fp2[C], C.getSexticTwist()]
+  var T = rng.random_point(ECP_SWei_Proj[Fp2[C]])
+  let P = rng.random_point(ECP_SWei_Proj[Fp[C]])
+  var Paff: ECP_SWei_Aff[Fp[C]]
+  Paff.affineFromProjective(P)
+
+  line.line_double(T, Paff)
+  var f = rng.random_unsafe(Fp12[C])
+
+  bench("Mul 𝔽p12 by line xyz000", C, iters):
+    f.mul_sparse_by_line_xyz000(line)
+
+proc mulFp12byLine_xy000z_Bench*(C: static Curve, iters: int) =
   var line: Line[Fp2[C], C.getSexticTwist()]
   var T = rng.random_point(ECP_SWei_Proj[Fp2[C]])
   let P = rng.random_point(ECP_SWei_Proj[Fp[C]])
@@ -178,6 +192,21 @@ proc millerLoopBLS12Bench*(C: static Curve, iters: int) =
   bench("Miller Loop BLS12", C, iters):
     f.millerLoopGenericBLS12(Paff, Qaff)
 
+proc millerLoopBNBench*(C: static Curve, iters: int) =
+  let
+    P = rng.random_point(ECP_SWei_Proj[Fp[C]])
+    Q = rng.random_point(ECP_SWei_Proj[Fp2[C]])
+  var
+    Paff: ECP_SWei_Aff[Fp[C]]
+    Qaff: ECP_SWei_Aff[Fp2[C]]
+  Paff.affineFromProjective(P)
+  Qaff.affineFromProjective(Q)
+
+  var f: Fp12[C]
+
+  bench("Miller Loop BN", C, iters):
+    f.millerLoopGenericBN(Paff, Qaff)
+
 proc finalExpEasyBench*(C: static Curve, iters: int) =
   var r = rng.random_unsafe(Fp12[C])
   bench("Final Exponentiation Easy", C, iters):
@@ -189,11 +218,23 @@ proc finalExpHardBLS12Bench*(C: static Curve, iters: int) =
   bench("Final Exponentiation Hard BLS12", C, iters):
     r.finalExpHard_BLS12()
 
+proc finalExpHardBNBench*(C: static Curve, iters: int) =
+  var r = rng.random_unsafe(Fp12[C])
+  r.finalExpEasy()
+  bench("Final Exponentiation Hard BN", C, iters):
+    r.finalExpHard_BN()
+
 proc finalExpBLS12Bench*(C: static Curve, iters: int) =
   var r = rng.random_unsafe(Fp12[C])
   bench("Final Exponentiation BLS12", C, iters):
     r.finalExpEasy()
     r.finalExpHard_BLS12()
+
+proc finalExpBNBench*(C: static Curve, iters: int) =
+  var r = rng.random_unsafe(Fp12[C])
+  bench("Final Exponentiation BN", C, iters):
+    r.finalExpEasy()
+    r.finalExpHard_BN()
 
 proc pairingBLS12Bench*(C: static Curve, iters: int) =
   let
@@ -204,3 +245,13 @@ proc pairingBLS12Bench*(C: static Curve, iters: int) =
 
   bench("Pairing BLS12", C, iters):
     f.pairing_bls12(P, Q)
+
+proc pairingBNBench*(C: static Curve, iters: int) =
+  let
+    P = rng.random_point(ECP_SWei_Proj[Fp[C]])
+    Q = rng.random_point(ECP_SWei_Proj[Fp2[C]])
+
+  var f: Fp12[C]
+
+  bench("Pairing BN", C, iters):
+    f.pairing_bn(P, Q)

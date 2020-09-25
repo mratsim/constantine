@@ -13,4 +13,5 @@ import
   # Test utilities
   ./t_pairing_template
 
-runPairingTests(4, BN254_Nogami, pairing_bn_reference)
+# runPairingTests(4, BN254_Nogami, pairing_bn_reference)
+runPairingTests(4, BN254_Nogami, pairing_bn)

@@ -29,20 +29,18 @@ import
 #
 # ############################################################
 
-# - Efficient Final Exponentiation
-#   via Cyclotomic Structure for Pairings
-#   over Families of Elliptic Curves
-#   Daiki Hayashida and Kenichiro Hayasaka
-#   and Tadanori Teruya, 2020
-#   https://eprint.iacr.org/2020/875.pdf
+# - Memory-saving computation of the pairing final exponentiation on BN curves
+#   Sylvain Duquesne and Loubna Ghammam, 2015
+#   https://eprint.iacr.org/2015/192
+#
+# - Faster hashing to G2
+#   Laura Fuentes-Castañeda, Edward Knapp,
+#   Francisco Jose Rodríguez-Henríquez, 2011
+#   https://link.springer.com/content/pdf/10.1007%2F978-3-642-28496-0_25.pdf
 #
 # - Faster Pairing Computations on Curves with High-Degree Twists
 #   Craig Costello, Tanja Lange, and Michael Naehrig, 2009
 #   https://eprint.iacr.org/2009/615.pdf
-
-# TODO: implement quadruple-and-add and octuple-and-add
-#       from Costello2009 to trade multiplications in Fpᵏ
-#       for multiplications in Fp
 
 # TODO: should be part of curve parameters
 const BN254_Snarks_ate_param = block:
@@ -51,15 +49,18 @@ const BN254_Snarks_ate_param = block:
 
 const BN254_Snarks_ate_param_isNeg = false
 
-const BN254_Snarks_finalexponent = block:
-  # (p^12 - 1) / r
-  BigInt[2790].fromHex"0x2f4b6dc97020fddadf107d20bc842d43bf6369b1ff6a1c71015f3f7be2e1e30a73bb94fec0daf15466b2383a5d3ec3d15ad524d8f70c54efee1bd8c3b21377e563a09a1b705887e72eceaddea3790364a61f676baaf977870e88d5c6c8fef0781361e443ae77f5b63a2a2264487f2940a8b1ddb3d15062cd0fb2015dfc6668449aed3cc48a82d0d602d268c7daab6a41294c0cc4ebe5664568dfc50e1648a45a4a1e3a5195846a3ed011a337a02088ec80e0ebae8755cfe107acf3aafb40494e406f804216bb10cf430b0f37856b42db8dc5514724ee93dfb10826f0dd4a0364b9580291d2cd65664814fde37ca80bb4ea44eacc5e641bbadf423f9a2cbf813b8d145da90029baee7ddadda71c7f3811c4105262945bba1668c3be69a3c230974d83561841d766f9c9d570bb7fbe04c7e8a6c3c760c0de81def35692da361102b6b9b2b918837fa97896e84abb40a4efb7e54523a486964b64ca86f120"
-
 const BN254_Nogami_ate_param = block:
   # BN Miller loop is parametrized by 6u+2
   BigInt[67].fromHex"0x18300000000000004" # 65+2 bit for NAF x3 encoding
 
 const BN254_Nogami_ate_param_isNeg = true
+
+# Generic slow pairing implementation
+# ----------------------------------------------------------------
+
+const BN254_Snarks_finalexponent = block:
+  # (p^12 - 1) / r
+  BigInt[2790].fromHex"0x2f4b6dc97020fddadf107d20bc842d43bf6369b1ff6a1c71015f3f7be2e1e30a73bb94fec0daf15466b2383a5d3ec3d15ad524d8f70c54efee1bd8c3b21377e563a09a1b705887e72eceaddea3790364a61f676baaf977870e88d5c6c8fef0781361e443ae77f5b63a2a2264487f2940a8b1ddb3d15062cd0fb2015dfc6668449aed3cc48a82d0d602d268c7daab6a41294c0cc4ebe5664568dfc50e1648a45a4a1e3a5195846a3ed011a337a02088ec80e0ebae8755cfe107acf3aafb40494e406f804216bb10cf430b0f37856b42db8dc5514724ee93dfb10826f0dd4a0364b9580291d2cd65664814fde37ca80bb4ea44eacc5e641bbadf423f9a2cbf813b8d145da90029baee7ddadda71c7f3811c4105262945bba1668c3be69a3c230974d83561841d766f9c9d570bb7fbe04c7e8a6c3c760c0de81def35692da361102b6b9b2b918837fa97896e84abb40a4efb7e54523a486964b64ca86f120"
 
 const BN254_Nogami_finalexponent = block:
   # (p^12 - 1) / r
@@ -70,7 +71,7 @@ const BN254_Nogami_finalexponent = block:
 macro get(C: static Curve, value: untyped): untyped =
   return bindSym($C & "_" & $value)
 
-func millerLoopGenericBN[C: static Curve](
+func millerLoopGenericBN*[C: static Curve](
        f: var Fp12[C],
        P: ECP_SWei_Aff[Fp[C]],
        Q: ECP_SWei_Aff[Fp2[C]]
@@ -167,13 +168,169 @@ func pairing_bn_reference*[C](gt: var Fp12[C], P: ECP_SWei_Proj[Fp[C]], Q: ECP_S
   gt.millerLoopGenericBN(Paff, Qaff)
   gt.finalExpGeneric()
 
-func finalExpEasy[C: static Curve](f: var Fp12[C]) =
-  ## Easy part of the final exponentiation
-  ## We need to clear the GT cofactor to obtain
-  ## an unique GT representation
-  ## (reminder, GT is a multiplicative group hence we exponentiate by the cofactor)
+# Optimized pairing implementation
+# ----------------------------------------------------------------
+
+func cycl_sqr_repeated(f: var Fp12, num: int) =
+  ## Repeated cyclotomic squarings
+  for _ in 0 ..< num:
+    f.cyclotomic_square()
+
+func pow_u(r: var Fp12[BN254_Nogami], a: Fp12[BN254_Nogami], invert = BN254_Nogami_ate_param_isNeg) =
+  ## f^u with u the curve parameter
+  ## For BN254_Nogami f^-0x4080000000000001
+  r = a
+  r.cycl_sqr_repeated(7)
+  r *= a
+  r.cycl_sqr_repeated(55)
+  r *= a
+
+  if invert:
+    r.cyclotomic_inv()
+
+func pow_u(r: var Fp12[BN254_Snarks], a: Fp12[BN254_Snarks], invert = BN254_Snarks_ate_param_isNeg) =
+  ## f^u with u the curve parameter
+  ## For BN254_Snarks f^0x44e992b44a6909f1
+  when false:
+    cyclotomic_exp(
+      r, a,
+      BigInt[63].fromHex("0x44e992b44a6909f1"),
+      invert
+    )
+  else:
+    var # Hopefully the compiler optimizes away unused Fp12
+        # because those are huge
+      x10       {.noInit.}: Fp12[BN254_Snarks]
+      x11       {.noInit.}: Fp12[BN254_Snarks]
+      x100      {.noInit.}: Fp12[BN254_Snarks]
+      x110      {.noInit.}: Fp12[BN254_Snarks]
+      x1100     {.noInit.}: Fp12[BN254_Snarks]
+      x1111     {.noInit.}: Fp12[BN254_Snarks]
+      x10010    {.noInit.}: Fp12[BN254_Snarks]
+      x10110    {.noInit.}: Fp12[BN254_Snarks]
+      x11100    {.noInit.}: Fp12[BN254_Snarks]
+      x101110   {.noInit.}: Fp12[BN254_Snarks]
+      x1001010  {.noInit.}: Fp12[BN254_Snarks]
+      x1111000  {.noInit.}: Fp12[BN254_Snarks]
+      x10001110 {.noInit.}: Fp12[BN254_Snarks]
+
+    x10       .cyclotomic_square(a)
+    x11       .prod(x10, a)
+    x100      .prod(x11, a)
+    x110      .prod(x10, x100)
+    x1100     .cyclotomic_square(x110)
+    x1111     .prod(x11, x1100)
+    x10010    .prod(x11, x1111)
+    x10110    .prod(x100, x10010)
+    x11100    .prod(x110, x10110)
+    x101110   .prod(x10010, x11100)
+    x1001010  .prod(x11100, x101110)
+    x1111000  .prod(x101110, x1001010)
+    x10001110 .prod(x10110, x1111000)
+
+    var
+      i15 {.noInit.}: Fp12[BN254_Snarks]
+      i16 {.noInit.}: Fp12[BN254_Snarks]
+      i17 {.noInit.}: Fp12[BN254_Snarks]
+      i18 {.noInit.}: Fp12[BN254_Snarks]
+      i20 {.noInit.}: Fp12[BN254_Snarks]
+      i21 {.noInit.}: Fp12[BN254_Snarks]
+      i22 {.noInit.}: Fp12[BN254_Snarks]
+      i26 {.noInit.}: Fp12[BN254_Snarks]
+      i27 {.noInit.}: Fp12[BN254_Snarks]
+      i61 {.noInit.}: Fp12[BN254_Snarks]
+
+    i15.cyclotomic_square(x10001110)
+    i15 *= x1001010
+    i16.prod(x10001110, i15)
+    i17.prod(x1111, i16)
+    i18.prod(i16, i17)
+
+    i20.cyclotomic_square(i18)
+    i20 *= i17
+    i21.prod(x1111000, i20)
+    i22.prod(i15, i21)
+
+    i26.cyclotomic_square(i22)
+    i26.cyclotomic_square()
+    i26 *= i22
+    i26 *= i18
+
+    i27.prod(i22, i26)
+
+    i61.prod(i26, i27)
+    i61.cycl_sqr_repeated(17)
+    i61 *= i27
+    i61.cycl_sqr_repeated(14)
+    i61 *= i21
+
+    r = i61
+    r.cycl_sqr_repeated(16)
+    r *= i20
+
+    if invert:
+      r.cyclotomic_inv()
+
+func finalExpHard_BN*[C: static Curve](f: var Fp12[C]) =
+  ## Hard part of the final exponentiation
+  ## Specialized for BN curves
   ##
-  ## With an embedding degree of 12, the easy part of final exponentiation is
-  ##
-  ##  f^(p⁶−1)(p²+1)
-  discard
+  # - Memory-saving computation of the pairing final exponentiation on BN curves
+  #   Sylvain Duquesne and Loubna Ghammam, 2015
+  #   https://eprint.iacr.org/2015/192
+  # - Faster hashing to G2
+  #   Laura Fuentes-Castañeda, Edward Knapp,
+  #   Francisco Jose Rodríguez-Henríquez, 2011
+  #   https://link.springer.com/content/pdf/10.1007%2F978-3-642-28496-0_25.pdf
+  #
+  # We use the Fuentes-Castañeda et al algorithm without
+  # memory saving optimization
+  # as that variant has an exponentiation by -2u-1
+  # that requires another addition chain
+  var t0 {.noInit.}, t1 {.noinit.}, t2 {.noinit.}, t3 {.noinit.}, t4 {.noinit.}: Fp12[C]
+
+  t0.pow_u(f, invert = false)  # t0 = f^|u|
+  t0.cyclotomic_square()       # t0 = f^2|u|
+  t1.cyclotomic_square(t0)     # t1 = f^4|u|
+  t1 *= t0                     # t1 = f^6|u|
+  t2.pow_u(t1, invert = false) # t2 = f^6u²
+
+  if C.get(ate_param_is_Neg):
+    t3.cyclotomic_inv(t1)      # t3 = f^6u
+  else:
+    t3 = t1                    # t3 = f^6u
+  t1.prod(t2, t3)              # t1 = f^6u.f^6u²
+  t3.cyclotomic_square(t2)     # t3 = f^12u²
+  t4.pow_u(t3)                 # t4 = f^12u³
+  t4 *= t1                     # t4 = f^(6u + 6u² + 12u³) = f^λ₂
+
+  if not C.get(ate_param_is_Neg):
+    t0.cyclotomic_inv()        # t0 = f^-2u
+  t3.prod(t4, t0)              # t3 = f^(4u + 6u² + 12u³)
+
+  t0.prod(t2, t4)              # t0 = f^6u.f^12u².f^12u³
+  t0 *= f                      # t0 = f^(1 + 6u + 12u² + 12u³) = f^λ₀
+
+  t2.frobenius_map(t3)         # t2 = f^(4u + 6u² + 12u³)p = f^λ₁p
+  t0 *= t2                     # t0 = f^(λ₀+λ₁p)
+
+  t2.frobenius_map(t4, 2)      # t2 = f^λ₂p²
+  t0 *= t2                     # t0 = f^(λ₀ + λ₁p + λ₂p²)
+
+  t2.cyclotomic_inv(f)         # t2 = f⁻¹
+  t2 *= t3                     # t3 = f^(-1 + 4u + 6u² + 12u³) = f^λ₃
+
+  f.frobenius_map(t2, 3)       # r = f^λ₃p³
+  f *= t0                      # r = f^(λ₀ + λ₁p + λ₂p² + λ₃p³) = f^((p⁴-p²+1)/r)
+
+func pairing_bn*[C](gt: var Fp12[C], P: ECP_SWei_Proj[Fp[C]], Q: ECP_SWei_Proj[Fp2[C]]) =
+  ## Compute the optimal Ate Pairing for BLS12 curves
+  ## Input: P ∈ G1, Q ∈ G2
+  ## Output: e(P, Q) ∈ Gt
+  var Paff {.noInit.}: ECP_SWei_Aff[Fp[C]]
+  var Qaff {.noInit.}: ECP_SWei_Aff[Fp2[C]]
+  Paff.affineFromProjective(P)
+  Qaff.affineFromProjective(Q)
+  gt.millerLoopGenericBN(Paff, Qaff)
+  gt.finalExpEasy()
+  gt.finalExpHard_BN()

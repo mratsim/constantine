@@ -50,7 +50,7 @@ def fp2_to_hex(a):
     v = vector(a)
     return '0x' + Integer(v[0]).hex() + ' + β * ' + '0x' + Integer(v[1]).hex()
 
-# Frobenius map constants (D type: use SNR, M type use 1/SNR)
+# Frobenius map constants
 print('\nFrobenius extension field constants')
 FrobConst_map = SNR^((p-1)/6)
 FrobConst_map_list = []

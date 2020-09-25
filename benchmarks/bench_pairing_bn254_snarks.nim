@@ -20,14 +20,14 @@ import
 # ############################################################
 #
 #               Benchmark of pairings
-#                   for BLS12-381
+#                 for BN254-Snarks
 #
 # ############################################################
 
 
 const Iters = 50
 const AvailableCurves = [
-  BLS12_381,
+  BN254_Snarks,
 ]
 
 proc main() =
@@ -36,15 +36,15 @@ proc main() =
     const curve = AvailableCurves[i]
     lineDoubleBench(curve, Iters)
     lineAddBench(curve, Iters)
-    mulFp12byLine_xy000z_Bench(curve, Iters)
+    mulFp12byLine_xyz000_Bench(curve, Iters)
     separator()
     finalExpEasyBench(curve, Iters)
-    finalExpHardBLS12Bench(curve, Iters)
+    finalExpHardBNBench(curve, Iters)
     separator()
-    millerLoopBLS12Bench(curve, Iters)
-    finalExpBLS12Bench(curve, Iters)
+    millerLoopBNBench(curve, Iters)
+    finalExpBNBench(curve, Iters)
     separator()
-    pairingBLS12Bench(curve, Iters)
+    pairingBNBench(curve, Iters)
     separator()
 
 main()

@@ -49,9 +49,27 @@ print('')
 # Utilities
 def fp2_to_hex(a):
     v = vector(a)
-    return Integer(v[0]).hex() + ' + β * ' + Integer(v[1]).hex()
+    return '0x' + Integer(v[0]).hex() + ' + β * ' + '0x' + Integer(v[1]).hex()
 
-# Frobenius constants (D type: use SNR, M type use 1/SNR)
+# Frobenius map constants
+print('\nFrobenius extension field constants')
+FrobConst_map = SNR^((p-1)/6)
+FrobConst_map_list = []
+cur = Fp2([1, 0])
+
+for i in range(6):
+    FrobConst_map_list.append(cur)
+    print(f'FrobConst_map_{i}     : {fp2_to_hex(cur)}')
+    cur *= FrobConst_map
+print('')
+for i in range(6):
+    print(f'FrobConst_map_{i}_pow2     : {fp2_to_hex(FrobConst_map_list[i]*conjugate(FrobConst_map_list[i]))}')
+print('')
+for i in range(6):
+    print(f'FrobConst_map_{i}_pow3     : {fp2_to_hex(FrobConst_map_list[i]**2 * conjugate(FrobConst_map_list[i]))}')
+
+# Frobenius psi constants (D type: use SNR, M type use 1/SNR)
+print('\nψ (Psi) - Untwist-Frobenius-Twist constants')
 FrobConst_psi = SNR^((p-1)/6)
 FrobConst_psi_2 = FrobConst_psi * FrobConst_psi
 FrobConst_psi_3 = FrobConst_psi_2 * FrobConst_psi

@@ -44,10 +44,6 @@ import
 #   Craig Costello, Tanja Lange, and Michael Naehrig, 2009
 #   https://eprint.iacr.org/2009/615.pdf
 
-# TODO: implement quadruple-and-add and octuple-and-add
-#       from Costello2009 to trade multiplications in Fpᵏ
-#       for multiplications in Fp
-
 # TODO: should be part of curve parameters
 const BLS12_381_param = block:
   # BLS Miller loop is parametrized by u
@@ -242,8 +238,6 @@ func pairing_bls12*[C](gt: var Fp12[C], P: ECP_SWei_Proj[Fp[C]], Q: ECP_SWei_Pro
   ## Compute the optimal Ate Pairing for BLS12 curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
-  ##
-  ## Reference implementation
   var Paff {.noInit.}: ECP_SWei_Aff[Fp[C]]
   var Qaff {.noInit.}: ECP_SWei_Aff[Fp2[C]]
   Paff.affineFromProjective(P)

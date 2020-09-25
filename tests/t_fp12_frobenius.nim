@@ -14,8 +14,8 @@ import
   ./t_fp_tower_frobenius_template
 
 const TestCurves = [
-    # BN254_Nogami
-    # BN254_Snarks,
+    BN254_Nogami,
+    BN254_Snarks,
     # BLS12_377,
     BLS12_381,
     # BN446
