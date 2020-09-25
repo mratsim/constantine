@@ -50,6 +50,11 @@
   Juan Manuel Gonzalez Nieto, and Kenneth Koon-Ho Wong, 2010
   https://eprint.iacr.org/2010/104.pdf
 
+- Faster hashing to G2\
+  Laura Fuentes-Castañeda, Edward Knapp,\
+  Francisco Jose Rodríguez-Henríquez, 2011\
+  https://link.springer.com/content/pdf/10.1007%2F978-3-642-28496-0_25.pdf
+
 - Pairings for beginners\
   Craig Costello, 2012 (?)\
   http://www.craigcostello.com.au/pairings/PairingsForBeginners.pdf
@@ -65,7 +70,8 @@
   https://eprint.iacr.org/2012/408.pdf
 
 - The Realm of the Pairings\
-  Diego F. Aranha and Paulo S. L. M. Barreto and Patrick Longa and Jefferson E. Ricardini\
+  Diego F. Aranha and Paulo S. L. M. Barreto\
+  and Patrick Longa and Jefferson E. Ricardini, 2013\
   https://eprint.iacr.org/2013/722.pdf\
   http://sac2013.irmacs.sfu.ca/slides/s1.pdf
 

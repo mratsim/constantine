@@ -477,3 +477,18 @@ task bench_pairing_bn254_nogami_gcc_noasm, "Run pairings benchmarks for BN254-No
 
 task bench_pairing_bn254_nogami_clang_noasm, "Run pairings benchmarks for BN254-Nogami - Clang no Assembly":
   runBench("bench_pairing_bn254_nogami", "clang", useAsm = false)
+
+task bench_pairing_bn254_snarks, "Run pairings benchmarks for BN254-Snarks - Default compiler":
+  runBench("bench_pairing_bn254_snarks")
+
+task bench_pairing_bn254_snarks_gcc, "Run pairings benchmarks for BN254-Snarks - GCC":
+  runBench("bench_pairing_bn254_snarks", "gcc")
+
+task bench_pairing_bn254_snarks_clang, "Run pairings benchmarks for BN254-Snarks - Clang":
+  runBench("bench_pairing_bn254_snarks", "clang")
+
+task bench_pairing_bn254_snarks_gcc_noasm, "Run pairings benchmarks for BN254-Snarks - GCC no Assembly":
+  runBench("bench_pairing_bn254_snarks", "gcc", useAsm = false)
+
+task bench_pairing_bn254_snarks_clang_noasm, "Run pairings benchmarks for BN254-Snarks - Clang no Assembly":
+  runBench("bench_pairing_bn254_snarks", "clang", useAsm = false)

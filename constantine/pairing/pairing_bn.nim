@@ -192,76 +192,88 @@ func pow_u(r: var Fp12[BN254_Nogami], a: Fp12[BN254_Nogami], invert = BN254_Noga
   if invert:
     r.cyclotomic_inv()
 
-func pow_u(r: var Fp12[BN254_Snarks], a: Fp12[BN254_Snarks], invert = BN254_Nogami_ate_param_isNeg) =
+func pow_u(r: var Fp12[BN254_Snarks], a: Fp12[BN254_Snarks], invert = BN254_Snarks_ate_param_isNeg) =
   ## f^u with u the curve parameter
-  ## For BN254_Nogami f^0x44e992b44a6909f1
-  var # Hopefully the compiler optimizes away unused Fp12
-      # because those are huge
-    x10       {.noInit.}: Fp12[BN254_Snarks]
-    x11       {.noInit.}: Fp12[BN254_Snarks]
-    x100      {.noInit.}: Fp12[BN254_Snarks]
-    x110      {.noInit.}: Fp12[BN254_Snarks]
-    x1100     {.noInit.}: Fp12[BN254_Snarks]
-    x1111     {.noInit.}: Fp12[BN254_Snarks]
-    x10010    {.noInit.}: Fp12[BN254_Snarks]
-    x10110    {.noInit.}: Fp12[BN254_Snarks]
-    x11100    {.noInit.}: Fp12[BN254_Snarks]
-    x101110   {.noInit.}: Fp12[BN254_Snarks]
-    x1001010  {.noInit.}: Fp12[BN254_Snarks]
-    x1111000  {.noInit.}: Fp12[BN254_Snarks]
-    x10001110 {.noInit.}: Fp12[BN254_Snarks]
+  ## For BN254_Snarks f^0x44e992b44a6909f1
+  when false:
+    cyclotomic_exp(
+      r, a,
+      BigInt[63].fromHex("0x44e992b44a6909f1"),
+      invert
+    )
+  else:
+    var # Hopefully the compiler optimizes away unused Fp12
+        # because those are huge
+      x10       {.noInit.}: Fp12[BN254_Snarks]
+      x11       {.noInit.}: Fp12[BN254_Snarks]
+      x100      {.noInit.}: Fp12[BN254_Snarks]
+      x110      {.noInit.}: Fp12[BN254_Snarks]
+      x1100     {.noInit.}: Fp12[BN254_Snarks]
+      x1111     {.noInit.}: Fp12[BN254_Snarks]
+      x10010    {.noInit.}: Fp12[BN254_Snarks]
+      x10110    {.noInit.}: Fp12[BN254_Snarks]
+      x11100    {.noInit.}: Fp12[BN254_Snarks]
+      x101110   {.noInit.}: Fp12[BN254_Snarks]
+      x1001010  {.noInit.}: Fp12[BN254_Snarks]
+      x1111000  {.noInit.}: Fp12[BN254_Snarks]
+      x10001110 {.noInit.}: Fp12[BN254_Snarks]
 
-  x10       .cyclotomic_square(a)
-  x11       .prod(x10, a)
-  x100      .prod(x11, a)
-  x110      .prod(x10, x100)
-  x1100     .cyclotomic_square(x110)
-  x1111     .prod(x11, x1100)
-  x10010    .prod(x11, x1111)
-  x10110    .prod(x100, x10010)
-  x11100    .prod(x110, x10110)
-  x101110   .prod(x10010, x11100)
-  x1001010  .prod(x11100, x101110)
-  x1111000  .prod(x101110, x1001010)
-  x10001110 .prod(x10110, x1111000)
+    x10       .cyclotomic_square(a)
+    x11       .prod(x10, a)
+    x100      .prod(x11, a)
+    x110      .prod(x10, x100)
+    x1100     .cyclotomic_square(x110)
+    x1111     .prod(x11, x1100)
+    x10010    .prod(x11, x1111)
+    x10110    .prod(x100, x10010)
+    x11100    .prod(x110, x10110)
+    x101110   .prod(x10010, x11100)
+    x1001010  .prod(x11100, x101110)
+    x1111000  .prod(x101110, x1001010)
+    x10001110 .prod(x10110, x1111000)
 
-  var
-    i15 {.noInit.}: Fp12[BN254_Snarks]
-    i16 {.noInit.}: Fp12[BN254_Snarks]
-    i17 {.noInit.}: Fp12[BN254_Snarks]
-    i18 {.noInit.}: Fp12[BN254_Snarks]
-    i20 {.noInit.}: Fp12[BN254_Snarks]
-    i21 {.noInit.}: Fp12[BN254_Snarks]
-    i22 {.noInit.}: Fp12[BN254_Snarks]
-    i26 {.noInit.}: Fp12[BN254_Snarks]
-    i27 {.noInit.}: Fp12[BN254_Snarks]
-    i61 {.noInit.}: Fp12[BN254_Snarks]
+    var
+      i15 {.noInit.}: Fp12[BN254_Snarks]
+      i16 {.noInit.}: Fp12[BN254_Snarks]
+      i17 {.noInit.}: Fp12[BN254_Snarks]
+      i18 {.noInit.}: Fp12[BN254_Snarks]
+      i20 {.noInit.}: Fp12[BN254_Snarks]
+      i21 {.noInit.}: Fp12[BN254_Snarks]
+      i22 {.noInit.}: Fp12[BN254_Snarks]
+      i26 {.noInit.}: Fp12[BN254_Snarks]
+      i27 {.noInit.}: Fp12[BN254_Snarks]
+      i61 {.noInit.}: Fp12[BN254_Snarks]
 
-  i15.cyclotomic_square(x10001110)
-  i15 *= x1001010
-  i16.prod(x10001110, i15)
-  i17.prod(x1111, i16)
-  i18.prod(i16, i17)
-  i20.cyclotomic_square(i18)
-  i20 *= i17
-  i21.prod(x1111000, i20)
-  i22.prod(i15, i21)
-  i26.cyclotomic_square(i22)
-  i26 *= i22
-  i26 *= i18
-  i27.prod(i22, i26)
-  i61.prod(i26, i27)
-  i61.cycl_sqr_repeated(17)
-  i61 *= i27
-  i61.cycl_sqr_repeated(14)
-  i61 *= i21
+    i15.cyclotomic_square(x10001110)
+    i15 *= x1001010
+    i16.prod(x10001110, i15)
+    i17.prod(x1111, i16)
+    i18.prod(i16, i17)
 
-  r = i61
-  r.cycl_sqr_repeated(16)
-  r *= i20
+    i20.cyclotomic_square(i18)
+    i20 *= i17
+    i21.prod(x1111000, i20)
+    i22.prod(i15, i21)
 
-  if invert:
-    r.cyclotomic_inv()
+    i26.cyclotomic_square(i22)
+    i26.cyclotomic_square()
+    i26 *= i22
+    i26 *= i18
+
+    i27.prod(i22, i26)
+
+    i61.prod(i26, i27)
+    i61.cycl_sqr_repeated(17)
+    i61 *= i27
+    i61.cycl_sqr_repeated(14)
+    i61 *= i21
+
+    r = i61
+    r.cycl_sqr_repeated(16)
+    r *= i20
+
+    if invert:
+      r.cyclotomic_inv()
 
 func finalExpHard_BN*[C: static Curve](f: var Fp12[C]) =
   ## Hard part of the final exponentiation
