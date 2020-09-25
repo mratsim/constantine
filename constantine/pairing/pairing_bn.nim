@@ -42,10 +42,6 @@ import
 #   Craig Costello, Tanja Lange, and Michael Naehrig, 2009
 #   https://eprint.iacr.org/2009/615.pdf
 
-# TODO: implement quadruple-and-add and octuple-and-add
-#       from Costello2009 to trade multiplications in Fpᵏ
-#       for multiplications in Fp
-
 # TODO: should be part of curve parameters
 const BN254_Snarks_ate_param = block:
   # BN Miller loop is parametrized by 6u+2
