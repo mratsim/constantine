@@ -35,7 +35,7 @@ const AvailableCurves = [
   # Curve25519,
   # P256,
   # Secp256k1,
-  # BLS12_377,
+  BLS12_377,
   BLS12_381,
   # BN446,
   # FKM12_447,
@@ -48,23 +48,17 @@ proc main() =
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
     addBench(ECP_SWei_Proj[Fp[curve]], Iters)
-    separator()
     mixedAddBench(ECP_SWei_Proj[Fp[curve]], Iters)
-    separator()
     doublingBench(ECP_SWei_Proj[Fp[curve]], Iters)
     separator()
     scalarMulUnsafeDoubleAddBench(ECP_SWei_Proj[Fp[curve]], MulIters)
     separator()
     scalarMulGenericBench(ECP_SWei_Proj[Fp[curve]], window = 2, MulIters)
-    separator()
     scalarMulGenericBench(ECP_SWei_Proj[Fp[curve]], window = 3, MulIters)
-    separator()
     scalarMulGenericBench(ECP_SWei_Proj[Fp[curve]], window = 4, MulIters)
-    separator()
     scalarMulGenericBench(ECP_SWei_Proj[Fp[curve]], window = 5, MulIters)
     separator()
     scalarMulEndo(ECP_SWei_Proj[Fp[curve]], MulIters)
-    separator()
     scalarMulEndoWindow(ECP_SWei_Proj[Fp[curve]], MulIters)
     separator()
     separator()

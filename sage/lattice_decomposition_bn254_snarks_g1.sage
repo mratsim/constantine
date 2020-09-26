@@ -101,6 +101,19 @@ print('  𝛼\u03050: 0x' + v[0].hex())
 print('  𝛼\u03051: 0x' + v[1].hex())
 print('')
 
+maxInfNorm = abs(6*x^2+6*x+2)
+print('\nmax infinity norm:')
+print('  ||(a0, a1)||∞ ≤ 0x' + str(maxInfNorm.hex()))
+print('  infinity norm bitlength: ' + str(int(maxInfNorm).bit_length()))
+
+# Contrary to Faz2013 paper, we use the max infinity norm
+# to properly dimension our recoding instead of ⌈log2 r/m⌉ + 1
+# which fails for some inputs
+# +1 for signed column
+# Optional +1 for handling negative miniscalars
+L = int(maxInfNorm).bit_length() + 1
+L += 1
+
 def getGLV2_decomp(scalar):
 
     maxLen = (int(r).bit_length() + 1) // 2 + 1
@@ -121,7 +134,6 @@ def getGLV2_decomp(scalar):
 
 def recodeScalars(k):
     m = 2
-    L = ((int(r).bit_length() + m-1) // m) + 1 # l = ⌈log2 r/m⌉ + 1
 
     b = [[0] * L, [0] * L]
     b[0][L-1] = 0
@@ -147,8 +159,6 @@ def pointToString(P):
 
 def scalarMulEndo(scalar, P0):
     m = 2
-    L = ((int(r).bit_length() + m-1) // m) + 1 # l = ⌈log2 r/m⌉ + 1
-
     print('L: ' + str(L))
 
     print('scalar: ' + Integer(scalar).hex())
