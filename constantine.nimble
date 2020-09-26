@@ -72,6 +72,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Elliptic curve arithmetic vs Sagemath
   ("tests/t_ec_frobenius.nim", false),
   ("tests/t_ec_sage_bn254.nim", false),
+  ("tests/t_ec_sage_bls12_377.nim", false),
   ("tests/t_ec_sage_bls12_381.nim", false),
   # Edge cases highlighted by past bugs
   ("tests/t_ec_wstrass_prj_edge_cases.nim", false),
@@ -80,6 +81,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_pairing_cyclotomic_fp12.nim", false),
   ("tests/t_pairing_bn254_nogami_optate.nim", false),
   ("tests/t_pairing_bn254_snarks_optate.nim", false),
+  ("tests/t_pairing_bls12_377_optate.nim", false)
   ("tests/t_pairing_bls12_381_optate.nim", false)
 ]
 

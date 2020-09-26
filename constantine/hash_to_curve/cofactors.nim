@@ -32,6 +32,12 @@ const Cofactor_Eff_BN254_Snarks_G1 = BigInt[1].fromHex"0x1"
 const Cofactor_Eff_BN254_Snarks_G2 = BigInt[254].fromHex"0x30644e72e131a029b85045b68181585e06ceecda572a2489345f2299c0f9fa8d"
   ## G2.order // r
 
+# TODO effective cofactors as per H2C draft like BLS12-381 curve
+const Cofactor_Eff_BLS12_377_G1 = BigInt[125].fromHex"0x170b5d44300000000000000000000000"
+  ## P -> (1 - x) P
+const Cofactor_Eff_BLS12_377_G2 = BigInt[502].fromHex"0x26ba558ae9562addd88d99a6f6a829fbb36b00e1dcc40c8c505634fae2e189d693e8c36676bd09a0f3622fba094800452217cc900000000000000000000001"
+  ## P -> (x^2 - x - 1) P + (x - 1) psi(P) + psi(psi(2P))
+
 # https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-09#section-8.8
 const Cofactor_Eff_BLS12_381_G1 = BigInt[64].fromHex"0xd201000000010001"
   ## P -> (1 - x) P
@@ -58,9 +64,17 @@ func clearCofactorReference*(P: var ECP_SWei_Proj[Fp2[BN254_Snarks]]) {.inline.}
   # Endomorphism acceleration cannot be used if cofactor is not cleared
   P.scalarMulGeneric(Cofactor_Eff_BN254_Snarks_G2)
 
+func clearCofactorReference*(P: var ECP_SWei_Proj[Fp[BLS12_377]]) {.inline.} =
+  ## Clear the cofactor of BLS12_377 G1
+  P.scalarMulGeneric(Cofactor_Eff_BLS12_377_G1)
+
+func clearCofactorReference*(P: var ECP_SWei_Proj[Fp2[BLS12_377]]) {.inline.} =
+  ## Clear the cofactor of BLS12_377 G2
+  # Endomorphism acceleration cannot be used if cofactor is not cleared
+  P.scalarMulGeneric(Cofactor_Eff_BLS12_377_G2)
+
 func clearCofactorReference*(P: var ECP_SWei_Proj[Fp[BLS12_381]]) {.inline.} =
   ## Clear the cofactor of BLS12_381 G1
-  ## BN curve have a G1 cofactor of 1 so this is a no-op
   P.scalarMulGeneric(Cofactor_Eff_BLS12_381_G1)
 
 func clearCofactorReference*(P: var ECP_SWei_Proj[Fp2[BLS12_381]]) {.inline.} =
