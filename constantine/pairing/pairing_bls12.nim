@@ -201,6 +201,35 @@ func pow_x(r: var Fp12[BLS12_381], a: Fp12[BLS12_381], invert = BLS12_381_ate_pa
   r.pow_xdiv2(a, invert)
   r.cyclotomic_square()
 
+func pow_x(r: var Fp12[BLS12_377], a: Fp12[BLS12_377], invert = BLS12_377_ate_param_isNeg) =
+  ## f^x with x the curve parameter
+  ## For BLS12_377 f^-0x8508c00000000001
+  ## Warning: The parameter is odd and needs a correction
+  r.cyclotomic_square(a)
+  r *= a
+  r.cyclotomic_square()
+  r *= a
+  let t111 = r
+
+  r.cycl_sqr_repeated(2)
+  let t111000 = r
+
+  r *= t111
+  let t100011 = r
+
+  r.cyclotomic_square()
+  r *= t100011
+  r *= t111000
+
+  r.cycl_sqr_repeated(10)
+  r *= t100011
+
+  r.cycl_sqr_repeated(46)
+  r *= a
+
+  if invert:
+    r.cyclotomic_inv()
+
 func finalExpHard_BLS12*[C: static Curve](f: var Fp12[C]) =
   ## Hard part of the final exponentiation
   ## Specialized for BLS12 curves
@@ -230,7 +259,10 @@ func finalExpHard_BLS12*[C: static Curve](f: var Fp12[C]) =
   v2.cyclotomic_square(f)      # v2 = f²
 
   # (x−1)²
-  v0.pow_xdiv2(v2)             # v0 = (f²)^(x/2) = f^x
+  when C.get(ate_param).isEven.bool:
+    v0.pow_xdiv2(v2)           # v0 = (f²)^(x/2) = f^x
+  else:
+    v0.pow_x(f)
   v1.cyclotomic_inv(f)         # v1 = f^-1
   v0 *= v1                     # v0 = f^(x-1)
   v1.pow_x(v0)                 # v1 = (f^(x-1))^x

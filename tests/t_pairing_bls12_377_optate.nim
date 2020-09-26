@@ -13,4 +13,4 @@ import
   # Test utilities
   ./t_pairing_template
 
-runPairingTests(4, BLS12_377, pairing_bls12_reference)
+runPairingTests(4, BLS12_377, pairing_bls12)

@@ -130,6 +130,10 @@ func isOdd*(a: BigInt): SecretBool =
   ## Returns true if a is odd
   a.limbs.isOdd
 
+func isEven*(a: BigInt): SecretBool =
+  ## Returns true if a is even
+  a.limbs.isEven
+
 func isMsbSet*(a: BigInt): SecretBool =
   ## Returns true if MSB is set
   ## i.e. if a BigInt is interpreted
