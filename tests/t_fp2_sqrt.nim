@@ -21,7 +21,9 @@ import
 const
   Iters = 8
   TestCurves = [
+    BN254_Nogami,
     BN254_Snarks,
+    BLS12_377,
     BLS12_381
   ]
 
@@ -45,7 +47,7 @@ func random_elem(rng: var RngState, F: typedesc, gen: RandomGen): F {.inline, no
   else:
     result = rng.random_long01Seq(F)
 
-proc randomSqrtCheck_p3mod4(C: static Curve, gen: RandomGen) =
+proc randomSqrtCheck(C: static Curve, gen: RandomGen) =
   for _ in 0 ..< Iters:
     let a = rng.random_elem(Fp2[C], gen)
     var na{.noInit.}: Fp2[C]
@@ -70,10 +72,10 @@ proc randomSqrtCheck_p3mod4(C: static Curve, gen: RandomGen) =
 proc main() =
   suite "Modular square root" & " [" & $WordBitwidth & "-bit mode]":
     staticFor(curve, TestCurves):
-      test "[𝔽p2] Random square root check for p ≡ 3 (mod 4) on " & $curve:
-        randomSqrtCheck_p3mod4(curve, gen = Uniform)
-        randomSqrtCheck_p3mod4(curve, gen = HighHammingWeight)
-        randomSqrtCheck_p3mod4(curve, gen = Long01Sequence)
+      test "[𝔽p2] Random square root check for " & $curve:
+        randomSqrtCheck(curve, gen = Uniform)
+        randomSqrtCheck(curve, gen = HighHammingWeight)
+        randomSqrtCheck(curve, gen = Long01Sequence)
 
   suite "Modular square root - 32-bit bugs highlighted by property-based testing " & " [" & $WordBitwidth & "-bit mode]":
     test "sqrt_if_square invalid square BLS12_381 - #64":
