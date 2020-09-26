@@ -92,7 +92,10 @@ def compute_curve_characteristic(x_str):
 
 if __name__ == "__main__":
   # Usage
+  # BLS12-381
   # sage sage/curve_family_bls12.sage '-(2^63 + 2^62 + 2^60 + 2^57 + 2^48 + 2^16)'
+  # BLS12-377
+  # sage sage/curve_family_bls12.sage '3 * 2^46 * (7 * 13 * 499) + 1'
 
   from argparse import ArgumentParser
 
