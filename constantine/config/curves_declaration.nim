@@ -143,6 +143,8 @@ declareCurves:
 
     # G1 Equation: y² = x³ + 1
     # G2 Equation: y² = x³ + 1/ with 𝑗 = √-5
+    order: "0x12ab655e9a2ca55660b44d1e5c37b00159aa76fed00000010a11800000000001"
+    orderBitwidth: 253
     eq_form: ShortWeierstrass
     coef_a: 0
     coef_b: 1

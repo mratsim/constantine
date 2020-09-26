@@ -34,3 +34,9 @@ run_EC_mul_distributive_tests(
     ItersMul = ItersMul,
     moduleName = "test_ec_weierstrass_projective_g1_mul_distributive_" & $BLS12_381
   )
+
+run_EC_mul_distributive_tests(
+    ec = ECP_SWei_Proj[Fp[BLS12_377]],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_weierstrass_projective_g1_mul_distributive_" & $BLS12_377
+  )

@@ -32,3 +32,9 @@ run_EC_addition_tests(
     Iters = Iters,
     moduleName = "test_ec_weierstrass_projective_g1_add_double_" & $BLS12_381
   )
+
+run_EC_addition_tests(
+    ec = ECP_SWei_Proj[Fp[BLS12_377]],
+    Iters = Iters,
+    moduleName = "test_ec_weierstrass_projective_g1_add_double_" & $BLS12_377
+  )
