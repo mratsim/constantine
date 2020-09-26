@@ -114,8 +114,6 @@ def precomp_ts(Fq):
     ##
     ## Returns (s, e) such as
     ## q == s * 2^e + 1
-    ##
-    ## And c = QNR^
     s = Fq.order() - 1
     e = 0
     while s & 1 == 0:
@@ -151,10 +149,10 @@ qnr = find_any_qnr(Fp)
 root_unity = qnr^s
 exponent = sqrt_exponent_precomp(Fp, e)
 
-print('tonelli        s: 0x' + Integer(s).hex())
-print('tonelli        e: ' + str(e))
-print('tonelli     root: 0x' + Integer(root_unity).hex())
-print('tonelli exponent: 0x' + Integer(exponent).hex())
+# print('tonelli        s: 0x' + Integer(s).hex())
+print('tonelli e (2-adicity): ' + str(e))
+print('tonelli          root: 0x' + Integer(root_unity).hex())
+print('tonelli      exponent: 0x' + Integer(exponent).hex())
 
 def legendre_symbol_impl(a, e, a_pre_exp):
     ## Legendre symbol χ(a) = a^(q-1)/2

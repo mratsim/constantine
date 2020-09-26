@@ -546,6 +546,9 @@ func montyPowUnsafeExponent*[mBits: static int](
   var scratchSpace {.noInit.}: array[scratchLen, Limbs[mBits.wordsRequired]]
   montyPowUnsafeExponent(a.limbs, exponent, M.limbs, one.limbs, negInvModWord, scratchSpace, canUseNoCarryMontyMul, canUseNoCarryMontySquare)
 
+from ../io/io_bigints import exportRawUint
+# Workaround recursive dependencies
+
 func montyPow*[mBits, eBits: static int](
        a: var BigInt[mBits], exponent: BigInt[eBits],
        M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,
@@ -560,8 +563,6 @@ func montyPow*[mBits, eBits: static int](
   ##
   ## This is constant-time: the window optimization does
   ## not reveal the exponent bits or hamming weight
-  mixin exportRawUint # exported in io_bigints which depends on this module ...
-
   var expBE {.noInit.}: array[(ebits + 7) div 8, byte]
   expBE.exportRawUint(exponent, bigEndian)
 
@@ -585,8 +586,6 @@ func montyPowUnsafeExponent*[mBits, eBits: static int](
   ##
   ## This uses fixed window optimization
   ## A window size in the range [1, 5] must be chosen
-  mixin exportRawUint # exported in io_bigints which depends on this module ...
-
   var expBE {.noInit.}: array[(ebits + 7) div 8, byte]
   expBE.exportRawUint(exponent, bigEndian)
 
