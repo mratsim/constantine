@@ -28,12 +28,12 @@ const Iters = 1_000_000
 const ExponentIters = 1000
 const AvailableCurves = [
   # P224,
-  # BN254_Nogami,
+  BN254_Nogami,
   BN254_Snarks,
   # Curve25519,
   # P256,
   # Secp256k1,
-  # BLS12_377,
+  BLS12_377,
   BLS12_381,
   # BN446,
   # FKM12_447,
@@ -52,7 +52,8 @@ proc main() =
     sqrBench(Fp[curve], Iters)
     invEuclidBench(Fp[curve], ExponentIters)
     invPowFermatBench(Fp[curve], ExponentIters)
-    invAddChainBench(Fp[curve], ExponentIters)
+    when curve in {BN254_Snarks, BLS12_381}:
+      invAddChainBench(Fp[curve], ExponentIters)
     sqrtBench(Fp[curve], ExponentIters)
     # Exponentiation by a "secret" of size ~the curve order
     powBench(Fp[curve], ExponentIters)
