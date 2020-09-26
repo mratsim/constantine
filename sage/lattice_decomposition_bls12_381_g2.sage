@@ -390,12 +390,25 @@ for i in range(1):
     # The following input fails in Constantine when negating the base point
     # but not when adding an extra bit
 
-    scalar = Integer('0x5668a2332db27199dcfb7cbdfca6317c2ff128db26d7df68483e0a095ec8e88f')
+    # scalar = Integer('0x5668a2332db27199dcfb7cbdfca6317c2ff128db26d7df68483e0a095ec8e88f')
+    # P = G2([
+    #         Fp2([Integer('0xa8c5649d2df1bae84fd9e8bfcde5113937b3acea22d67ddfedaf1fb8de8c1ef4c70591cf505c24c31e54020c2c510c3'),
+    #              Integer('0xa0553f98229a6a067489c3ee204161c11e96f421b3e9c145dc3865b03e9d4ff6cab14c5b5308ecd31173f954463690c')]),
+    #         Fp2([Integer('0xb29d8dfe18dc41b4826c3a102c1bf8f306cb42433cc36ee38080f47a324c02a678f9daed0a2bc577c18b9865de029f0'),
+    #              Integer('0x558cdabf11e37c5c5e8abd668bbdd71bb3f07f320948ccaac8a207359fffe38424bfd9b1ef1d24b28b2fbb9f76faff1')])
+    #     ])
+
+    # The following fails when we have both extra bit and negation of the first
+    # scalar if it is negative.
+    # it also uses 65 bits instead of teh expected max of 64
+    # And triggers an off by 1 when negating
+
+    scalar = Integer('0x6448f296d9b1a8d81319a0b789df04c587c6165776ccf39f50a354204aabe0da')
     P = G2([
-            Fp2([Integer('0xa8c5649d2df1bae84fd9e8bfcde5113937b3acea22d67ddfedaf1fb8de8c1ef4c70591cf505c24c31e54020c2c510c3'),
-                 Integer('0xa0553f98229a6a067489c3ee204161c11e96f421b3e9c145dc3865b03e9d4ff6cab14c5b5308ecd31173f954463690c')]),
-            Fp2([Integer('0xb29d8dfe18dc41b4826c3a102c1bf8f306cb42433cc36ee38080f47a324c02a678f9daed0a2bc577c18b9865de029f0'),
-                 Integer('0x558cdabf11e37c5c5e8abd668bbdd71bb3f07f320948ccaac8a207359fffe38424bfd9b1ef1d24b28b2fbb9f76faff1')])
+            Fp2([Integer('0x5adc112fb04bf4ca642d5a7d7343ccd6b93546442d2fff5b9d32c15e456d54884cba49dd7f94ce4ddaad4018e55d0f2'),
+                 Integer('0x5d1c5bbf5d7a833dc76ba206bfa99c281fc37941be050e18f8c6d267b2376b3634d8ad6eb951e52a6d096315abd17d6')]),
+            Fp2([Integer('0x15a959e54981fab9ac3c6f5bfd6fb60a50a916bd43d96a09922a54309b84812736581bfa728670cba864b08b9e391bb9'),
+                 Integer('0xf5d6d74f1dd3d9c07451340b8f6990fe93a28fe5e176564eb920bf17eb02df8b6f1e626eda5542ff415f89d51943001')])
         ])
 
     subgroup_check(P)

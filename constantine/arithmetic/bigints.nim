@@ -138,9 +138,9 @@ func isMsbSet*(a: BigInt): SecretBool =
   ## This is equivalent to checking
   ## if the number is negative
 
-  # MSB is at announced bits - (wordsRequired - 1)
-  const msb_pos = BigInt.bits-1 - (BigInt.bits.wordsRequired - 1)
-  SecretBool((BaseType(a.limbs[a.limbs.len-1]) shr msb_pos) and 1)
+  # MSB is at announced bits - (wordsRequired-1)*WordBitWidth - 1
+  const msb_in_msw = BigInt.bits - (BigInt.bits.wordsRequired-1)*WordBitWidth - 1
+  SecretBool((BaseType(a.limbs[a.limbs.len-1]) shr msb_in_msw) and 1)
 
 func eq*(a: BigInt, n: SecretWord): SecretBool =
   ## Returns true if ``a`` is equal
