@@ -37,7 +37,7 @@ F       = GF(p)
 b = 1
 G1 = EllipticCurve(F, [0, b])
 
-cofactorG1 = Integer('0x170b5d44300000000000000000000000') # G1.order() // r
+cofactorG1 = G1.order() // r
 
 print('')
 print('cofactor G1: ' + cofactorG1.hex())

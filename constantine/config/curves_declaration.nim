@@ -140,6 +140,7 @@ declareCurves:
     family: BarretoLynnScott
     # u: 3 * 2^46 * (7 * 13 * 499) + 1
     # u: 0x8508c00000000001
+    cubicRootOfUnity_mod_p: "0x9b3af05dd14f6ec619aaf7d34594aabc5ed1347970dec00452217cc900000008508c00000000001"
 
     # G1 Equation: y² = x³ + 1
     # G2 Equation: y² = x³ + 1/ with 𝑗 = √-5
