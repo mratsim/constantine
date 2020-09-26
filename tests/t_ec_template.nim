@@ -19,8 +19,7 @@ import
   ../constantine/config/[common, curves],
   ../constantine/arithmetic,
   ../constantine/towers,
-  ../constantine/io/io_bigints,
-  ../constantine/elliptic/[ec_weierstrass_projective, ec_scalar_mul],
+  ../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective, ec_scalar_mul],
   # Test utilities
   ../helpers/prng_unsafe,
   ./support/ec_reference_scalar_mult
@@ -402,6 +401,49 @@ proc run_EC_mul_vs_ref_impl*(
           reference.unsafe_ECmul_double_add(exponent)
 
           check: bool(impl == reference)
+
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Uniform)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = HighHammingWeight)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = HighHammingWeight)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Long01Sequence)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Long01Sequence)
+
+proc run_EC_mixed_add_impl*(
+       ec: typedesc,
+       Iters: static int,
+       moduleName: string
+     ) =
+
+  # Random seed for reproducibility
+  var rng: RngState
+  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  rng.seed(seed)
+  echo "\n------------------------------------------------------\n"
+  echo moduleName, " xoshiro512** seed: ", seed
+
+  when ec.F is Fp:
+    const G1_or_G2 = "G1"
+  else:
+    const G1_or_G2 = "G2"
+
+  const testSuiteDesc = "Elliptic curve mixed addition for Short Weierstrass form"
+
+  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
+    test "EC " & G1_or_G2 & " mixed addition is consistent with general addition":
+      proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
+        for _ in 0 ..< Iters:
+          let a = rng.random_point(EC, randZ, gen)
+          let b = rng.random_point(EC, randZ, gen)
+          var bAff: ECP_SWei_Aff[EC.F]
+          bAff.affineFromProjective(b)
+
+          var r_generic, r_mixed: EC
+
+          r_generic.sum(a, b)
+          r_mixed.madd(a, bAff)
+
+          check: bool(r_generic == r_mixed)
 
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Uniform)

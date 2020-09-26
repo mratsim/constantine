@@ -50,6 +50,8 @@ proc main() =
     const curve = AvailableCurves[i]
     addBench(ECP_SWei_Proj[Fp2[curve]], Iters)
     separator()
+    mixedAddBench(ECP_SWei_Proj[Fp2[curve]], Iters)
+    separator()
     doublingBench(ECP_SWei_Proj[Fp2[curve]], Iters)
     separator()
     scalarMulUnsafeDoubleAddBench(ECP_SWei_Proj[Fp2[curve]], MulIters)
