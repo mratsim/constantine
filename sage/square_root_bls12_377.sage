@@ -91,12 +91,175 @@ def sqrt_tonelli_shanks(x, p):
         b = t
     return z
 
+# for a in range(2, 30):
+#     if kronecker(a, p) != 1:
+#         continue
+#     # print(f'{a}^(p-1)/2 = ' + str(GF(p)(a)^((p-1)/2)))
+#     print(f'{a} is a quadratic residue mod p')
+#     b = sqrt_tonelli_shanks(a, p)
+#     # print(f'{b}² = {a} mod p')
+#     # print('b*b = ' + str(b*b))
+#     assert b*b == a
+
+# Optimized Tonelli Shanks
+# --------------------------------------------------------
+
+# Finite fields
+Fp       = GF(p)
+K2.<u>  = PolynomialRing(Fp)
+Fp2.<beta>  = Fp.extension(u^2+5)
+
+def precomp_ts(Fq):
+    ## From q = p^m with p the prime characteristic of the field Fp^m
+    ##
+    ## Returns (s, e) such as
+    ## q == s * 2^e + 1
+    ##
+    ## And c = QNR^
+    s = Fq.order() - 1
+    e = 0
+    while s & 1 == 0:
+        s >>= 1
+        e += 1
+    return s, e
+
+def find_any_qnr(Fq):
+    ## Find a quadratic Non-Residue
+    ## in GF(p^m)
+    qnr = Fq(Fq.gen())
+    r = Fq.order()
+    while qnr.is_square():
+        qnr += 1
+    return qnr
+
+def sqrt_exponent_precomp(Fq, e):
+    ## Returns precomputation a^((q-1-2^e)/(2*2^e))
+    ##
+    ## With 2^e the largest power of 2 that divides q-1
+    ##
+    ## For all sqrt related functions
+    ## - legendre symbol
+    ## - SQRT
+    ## - inverse SQRT
+    r = Fq.order()
+    precomp = (r - 1) >> e       # (q-1) / 2^e
+    precomp = (precomp - 1) >> 1 # ((q-1) / 2^e) - 1) / 2 = (q-1-2^e)/2^e / 2
+    return precomp
+
+s, e = precomp_ts(Fp)
+qnr = find_any_qnr(Fp)
+root_unity = qnr^s
+exponent = sqrt_exponent_precomp(Fp, e)
+
+print('tonelli        s: 0x' + Integer(s).hex())
+print('tonelli        e: ' + str(e))
+print('tonelli     root: 0x' + Integer(root_unity).hex())
+print('tonelli exponent: 0x' + Integer(exponent).hex())
+
+def legendre_symbol_impl(a, e, a_pre_exp):
+    ## Legendre symbol χ(a) = a^(q-1)/2
+    ## -1 if a is non-square
+    ## 0 if a is 0
+    ## 1 if a is square
+    ##
+    ## a_pre_exp = a^((q-1-2^e)/(2*2^e))
+    ## with
+    ##  s and e, precomputed values
+    ##  such as q == s * 2^e + 1
+    ##
+    ## a_pre_exp is used in square root
+    ## and or inverse square root computation
+    ##
+    ## for fused operations
+    r = a_pre_exp * a_pre_exp # a^((q-1-2^e)/2^e) = a^((q-1)/2^e - 1)
+    r *= a                    # a^((q-1)/2^e)
+    for i in range(0, e-1):
+        r *= r                # a^((q-1)/2)
+
+    return r
+
+def legendre_symbol(a):
+    a_pre_exp = a^exponent
+    return legendre_symbol_impl(a, e, a_pre_exp)
+
+for a in range(20):
+    assert kronecker(a, p) == legendre_symbol(GF(p)(a))
+
+def sqrt_tonelli_shanks_impl(a, a_pre_exp, s, e, root_of_unity):
+    ## Square root for any `a` in a field of prime characteristic p
+    ##
+    ## a_pre_exp = a^((q-1-2^e)/(2*2^e))
+    ## with
+    ##  s and e, precomputed values
+    ##  such as q == s * 2^e + 1
+    z = a_pre_exp
+    t = z*z*a
+    r = z * a
+    b = t
+    root = root_of_unity
+    for i in range(e, 1, -1):   # e .. 2
+        for j in range(1, i-1): # 1 .. i-2
+            b *= b
+        doCopy = b != 1
+        r = ccopy(r, r * root, doCopy)
+        root *= root
+        t = ccopy(t, t * root, doCopy)
+        b = t
+    return r
+
+def sqrt_tonelli_shanks_opt(a):
+    a_pre_exp = a^exponent
+    return sqrt_tonelli_shanks_impl(a, a_pre_exp, s, e, root_unity)
+
+# for a in range(2, 30):
+#     if kronecker(a, p) != 1:
+#         continue
+#     # print(f'{a}^(p-1)/2 = ' + str(GF(p)(a)^((p-1)/2)))
+#     print(f'{a} is a quadratic residue mod p')
+#     b = sqrt_tonelli_shanks_opt(GF(p)(a))
+#     # print(f'{b}² = {a} mod p')
+#     # print('b*b = ' + str(b*b))
+#     assert b*b == a
+
+def sqrt_inv_sqrt_tonelli_shanks_impl(a, a_pre_exp, s, e, root_of_unity):
+    ## Square root and inverse square root for any `a` in a field of prime characteristic p
+    ##
+    ## a_pre_exp = a^((q-1-2^e)/(2*2^e))
+    ## with
+    ##  s and e, precomputed values
+    ##  such as q == s * 2^e + 1
+
+    # Implementation
+    # 1/√a * a = √a
+    # Notice that in Tonelli Shanks, the result `r` is bootstrapped by "z*a"
+    # We bootstrap it instead by just z to get invsqrt for free
+
+    z = a_pre_exp
+    t = z*z*a
+    r = z
+    b = t
+    root = root_of_unity
+    for i in range(e, 1, -1):   # e .. 2
+        for j in range(1, i-1): # 1 .. i-2
+            b *= b
+        doCopy = b != 1
+        r = ccopy(r, r * root, doCopy)
+        root *= root
+        t = ccopy(t, t * root, doCopy)
+        b = t
+    return r*a, r
+
+def sqrt_invsqrt_tonelli_shanks_opt(a):
+    a_pre_exp = a^exponent
+    return sqrt_inv_sqrt_tonelli_shanks_impl(a, a_pre_exp, s, e, root_unity)
+
 for a in range(2, 30):
     if kronecker(a, p) != 1:
         continue
     # print(f'{a}^(p-1)/2 = ' + str(GF(p)(a)^((p-1)/2)))
     print(f'{a} is a quadratic residue mod p')
-    b = sqrt_tonelli_shanks(a, p)
+    b, invb = sqrt_invsqrt_tonelli_shanks_opt(GF(p)(a))
     # print(f'{b}² = {a} mod p')
     # print('b*b = ' + str(b*b))
     assert b*b == a
+    assert invb*a == b
