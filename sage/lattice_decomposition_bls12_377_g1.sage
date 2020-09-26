@@ -14,7 +14,7 @@
 # ############################################################
 
 # Parameters
-x = -(2^63 + 2^62 + 2^60 + 2^57 + 2^48 + 2^16)
+x = 3 * 2^46 * (7 * 13 * 499) + 1
 p = (x - 1)^2 * (x^4 - x^2 + 1)//3 + x
 r = x^4 - x^2 + 1
 print('p  : ' + p.hex())
@@ -34,10 +34,10 @@ print('λᵩ2  : ' + lambda2_r.hex())
 F       = GF(p)
 
 # Curves
-b = 4
+b = 1
 G1 = EllipticCurve(F, [0, b])
 
-cofactorG1 = G1.order() // r
+cofactorG1 = Integer('0x170b5d44300000000000000000000000') # G1.order() // r
 
 print('')
 print('cofactor G1: ' + cofactorG1.hex())
@@ -74,10 +74,10 @@ def checkEndo():
     assert (F(Px)*F(phi1))^3 == F(Px)^3
     assert (F(Px)*F(phi2))^3 == F(Px)^3
 
-    assert Q1 == Qendo2
-    assert Q2 == Qendo2
+    assert Q1 == Qendo1
+    assert Q2 == Qendo1
 
-    print('Endomorphism OK with 𝜑2')
+    print('Endomorphism OK with 𝜑1')
 
 checkEndo()
 
@@ -166,7 +166,7 @@ def scalarMulEndo(scalar, P0):
 
     P1 = (lambda1_r % r) * P0
     (Px, Py, Pz) = P0
-    P1_endo = G1([Px*phi2 % p, Py, Pz])
+    P1_endo = G1([Px*phi1 % p, Py, Pz])
     assert P1 == P1_endo
 
     expected = scalar * P0
@@ -205,13 +205,7 @@ set_random_seed(1337)
 
 for i in range(1):
     print('---------------------------------------')
-    # scalar = randrange(r) # Pick an integer below curve order
-    # P = G1.random_point()
-    # P = clearCofactorG1(P)
-    scalar = Integer('0xf7e60a832eb77ac47374bc93251360d6c81c21add62767ff816caf11a20d8db')
-    P = G1([
-        Integer('0xf9679bb02ee7f352fff6a6467a5e563ec8dd38c86a48abd9e8f7f241f1cdd29d54bc3ddea3a33b62e0d7ce22f3d244a'),
-        Integer('0x50189b992cf856846b30e52205ff9ef72dc081e9680726586231cbc29a81a162120082585f401e00382d5c86fb1083f'),
-        Integer(1)
-    ])
+    scalar = randrange(r) # Pick an integer below curve order
+    P = G1.random_point()
+    P = clearCofactorG1(P)
     scalarMulEndo(scalar, P)
