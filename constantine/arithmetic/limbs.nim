@@ -146,6 +146,10 @@ func isOdd*(a: Limbs): SecretBool =
   ## Returns true if a is odd
   SecretBool(a[0] and SecretWord(1))
 
+func isEven*(a: Limbs): SecretBool =
+  ## Returns true if a is even
+  not SecretBool(a[0] and SecretWord(1))
+
 # Bit manipulation
 # ------------------------------------------------------------
 

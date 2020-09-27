@@ -78,3 +78,9 @@ run_EC_mul_sanity_tests(
     ItersMul = ItersMul,
     moduleName = "test_ec_weierstrass_projective_g1_mul_sanity_" & $BLS12_381
   )
+
+run_EC_mul_sanity_tests(
+    ec = ECP_SWei_Proj[Fp[BLS12_377]],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_weierstrass_projective_g1_mul_sanity_" & $BLS12_377
+  )

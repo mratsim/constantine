@@ -52,6 +52,24 @@ const Babai_BN254_Snarks_G1 = (
   (BigInt[130].fromHex"0x24ccef014a773d2d25398fd0300ff6565", false)    # (6u² + 4u + 1) << 2^256 // r
 )
 
+# BLS12-377 G1
+# ----------------------------------------------------------------------------------------
+
+const Lattice_BLS12_377_G1 = (
+  # (BigInt, isNeg)
+  ((BigInt[127].fromHex"0x452217cc900000010a11800000000000", false), # u² - 1
+   (BigInt[1].fromHex"0x1", true)),                                  # -1
+  ((BigInt[1].fromHex"0x1", false),                                  # 1
+   (BigInt[127].fromHex"0x452217cc900000010a11800000000001", false)) # u²
+)
+
+const Babai_BLS12_377_G1 = (
+  # Vector for Babai rounding
+  # (BigInt, isNeg)
+  (BigInt[130].fromHex"0x3b3f7aa969fd371607f72ed32af90182c", false),
+  (BigInt[4].fromHex"0xd", false)
+)
+
 # BLS12-381 G1
 # ----------------------------------------------------------------------------------------
 
@@ -105,6 +123,43 @@ const Babai_BN254_Snarks_G2 = (
   (BigInt[193].fromHex"0x13d00631561b2572922df9f942d7d77c7001378f5ee78976d", false), # 3x³+8x²+x << 2^256 // r
   (BigInt[192].fromhex"0x9e80318ab0d92b94916fcfca16bebbe436510546a93478ab", false),  # 6x³+4x²+x << 2^256 // r
   (BigInt[128].fromhex"0xc444fab18d269b9af7ae23ce89afae7d", true)                    # -2x²-x    << 2^256 // r
+)
+
+# BLS12-377 G2
+# ----------------------------------------------------------------------------------------
+
+const Lattice_BLS12_377_G2 = (
+  # Curve of order 254 -> mini scalars of size 65
+  # x = -0xd201000000010000
+  # Value, isNeg
+  ((BigInt[64].fromHex"0x8508c00000000001", true),  # -x
+   (BigInt[1].fromHex"0x1", false),                 #  1
+   (BigInt[1].fromHex"0x0", false),                 #  0
+   (BigInt[1].fromHex"0x0", false)),                #  0
+
+  ((BigInt[1].fromHex"0x0", false),                 #  0
+   (BigInt[64].fromHex"0x8508c00000000001", true),  # -x
+   (BigInt[1].fromHex"0x1", false),                 #  1
+   (BigInt[1].fromHex"0x0", false)),                #  0
+
+  ((BigInt[1].fromHex"0x0", false),                 #  0
+   (BigInt[1].fromHex"0x0", false),                 #  0
+   (BigInt[64].fromHex"0x8508c00000000001", true),  # -x
+   (BigInt[1].fromHex"0x1", false)),                #  1
+
+  ((BigInt[1].fromHex"0x1", false),                 #  1
+   (BigInt[1].fromHex"0x0", false),                 #  0
+   (BigInt[1].fromHex"0x1", true),                  # -1
+   (BigInt[64].fromHex"0x8508c00000000001", true))  # -x
+)
+
+const Babai_BLS12_377_G2 = (
+  # Vector for Babai rounding
+  # Value, isNeg
+  (BigInt[193].fromHex"0x1eca0125755aed064f63abaff9084ce152979759b442f60d1", true),
+  (BigInt[130].fromHex"0x3b3f7aa969fd371607f72ed32af90181f", true),
+  (BigInt[67].fromhex"0x72030ba8ee9c06415", true),
+  (BigInt[1].fromhex"0x0", false)
 )
 
 # BLS12-381 G2

@@ -64,7 +64,11 @@ func toHex*(f: Fp, order: static Endianness = bigEndian): string =
   ##   - no leaks
   result.appendHex(f, order)
 
-func fromHex*(dst: var Fp, s: string) {.raises: [ValueError].}=
+func fromHex*(dst: var Fp, hexString: string) {.raises: [ValueError].}=
   ## Convert a hex string to a element of Fp
-  let raw {.noinit.} = fromHex(dst.mres.typeof, s)
+  let raw {.noinit.} = fromHex(dst.mres.typeof, hexString)
   dst.fromBig(raw)
+
+func fromHex*(T: type Fp, hexString: string): T {.noInit, raises: [ValueError].}=
+  ## Convert a hex string to a element of Fp
+  result.fromHex(hexString)

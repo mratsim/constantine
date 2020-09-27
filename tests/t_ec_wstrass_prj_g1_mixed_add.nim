@@ -28,3 +28,9 @@ run_EC_mixed_add_impl(
     Iters = Iters,
     moduleName = "test_ec_weierstrass_projective_mixed_add_" & $BLS12_381
   )
+
+run_EC_mixed_add_impl(
+    ec = ECP_SWei_Proj[Fp[BLS12_377]],
+    Iters = Iters,
+    moduleName = "test_ec_weierstrass_projective_mixed_add_" & $BLS12_377
+  )

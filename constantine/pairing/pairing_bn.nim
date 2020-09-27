@@ -43,15 +43,16 @@ import
 #   https://eprint.iacr.org/2009/615.pdf
 
 # TODO: should be part of curve parameters
+# The bit count must be exact for the Miller loop
 const BN254_Snarks_ate_param = block:
   # BN Miller loop is parametrized by 6u+2
-  BigInt[67].fromHex"0x19d797039be763ba8"
+  BigInt[65+2].fromHex"0x19d797039be763ba8"
 
 const BN254_Snarks_ate_param_isNeg = false
 
 const BN254_Nogami_ate_param = block:
   # BN Miller loop is parametrized by 6u+2
-  BigInt[67].fromHex"0x18300000000000004" # 65+2 bit for NAF x3 encoding
+  BigInt[65+2].fromHex"0x18300000000000004" # 65+2 bit for NAF x3 encoding
 
 const BN254_Nogami_ate_param_isNeg = true
 
@@ -116,22 +117,28 @@ func millerLoopGenericBN*[C: static Curve](
   nQ.neg(Q)
   f.setOne()
 
+  template mul(f, line): untyped =
+    when C.getSexticTwist() == D_Twist:
+      f.mul_sparse_by_line_xyz000(line)
+    else:
+      f.mul_sparse_by_line_xy000z(line)
+
   template u: untyped = C.get(ate_param)
   let u3 = 3*C.get(ate_param)
   for i in countdown(u3.bits - 2, 1):
     f.square()
     line.line_double(T, P)
-    f.mul_sparse_by_line_xyz000(line)
+    f.mul(line)
 
     let naf = u3.bit(i).int8 - u.bit(i).int8 # This can throw exception
     if naf == 1:
       line.line_add(T, Q, P)
-      f.mul_sparse_by_line_xyz000(line)
+      f.mul(line)
     elif naf == -1:
       line.line_add(T, nQ, P)
-      f.mul_sparse_by_line_xyz000(line)
+      f.mul(line)
 
-  when C.get(ate_param_isNeg): # TODO generic
+  when C.get(ate_param_isNeg):
     # In GT, x^-1 == conjugate(x)
     # Remark 7.1, chapter 7.1.1 of Guide to Pairing-Based Cryptography, El Mrabet, 2017
     f.conj()

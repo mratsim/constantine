@@ -8,26 +8,17 @@
 
 import
   # Internals
-  ../constantine/towers,
   ../constantine/config/curves,
+  ../constantine/elliptic/ec_weierstrass_projective,
+  ../constantine/towers,
   # Test utilities
-  ./t_fp_tower_frobenius_template
+  ./t_ec_template
 
-const TestCurves = [
-    BN254_Nogami,
-    BN254_Snarks,
-    BLS12_377,
-    BLS12_381,
-    # BN446
-    # FKM12_447
-    # BLS12_461
-    # BN462
-  ]
+const
+  Iters = 12
 
-runFrobeniusTowerTests(
-  ExtDegree = 12,
-  Iters = 8,
-  TestCurves = TestCurves,
-  moduleName = "test_fp12_frobenius",
-  testSuiteDesc = "𝔽p12 Frobenius map: Frobenius(a, k) = a^(p^k) (mod p^12)"
-)
+run_EC_mixed_add_impl(
+    ec = ECP_SWei_Proj[Fp2[BLS12_377]],
+    Iters = Iters,
+    moduleName = "test_ec_weierstrass_projective_mixed_add_" & $BLS12_377
+  )

@@ -244,9 +244,15 @@ func scalarMulEndo*[scalBits](
   #     and negate it as well.
   #
   # However solution 1 seems to cause issues (TODO)
-  # with some of the BLS12-381 test cases (6 and 9)
+  # with some of the BLS12-381 G2 test cases (6 and 9) as one of the miniscalars is 65 bits
+  # instead of the expected maximum of 64.
   # - 0x5668a2332db27199dcfb7cbdfca6317c2ff128db26d7df68483e0a095ec8e88f
   # - 0x644dc62869683f0c93f38eaef2ba6912569dc91ec2806e46b4a3dd6a4421dad1
+  #
+  # Furthermore solution 2 isn't enough on BLS12-377 G2 as test fails when miniScalars[0] is negative
+  let isNeg0 = miniscalars[0].isMsbSet()
+  miniscalars[0].cneg(isNeg0)
+  P.cneg(isNeg0)
 
   # 4. Precompute lookup table
   var lut {.noInit.}: array[1 shl (M-1), ECP_SWei_Proj]

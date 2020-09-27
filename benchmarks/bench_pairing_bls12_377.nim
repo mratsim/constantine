@@ -9,44 +9,42 @@
 import
   # Internals
   ../constantine/config/curves,
+  ../constantine/arithmetic,
   ../constantine/towers,
   # Helpers
   ../helpers/static_for,
-  ./bench_fields_template,
+  ./bench_pairing_template,
   # Standard library
   std/strutils
 
 # ############################################################
 #
-#                   Benchmark of 𝔽p12
+#               Benchmark of pairings
+#                   for BLS12-381
 #
 # ############################################################
 
 
-const Iters = 10_000
-const InvIters = 1000
+const Iters = 50
 const AvailableCurves = [
-  # Pairing-Friendly curves
-  BN254_Nogami,
-  BN254_Snarks,
   BLS12_377,
-  BLS12_381
-  # BN446,
-  # FKM12_447,
-  # BLS12_461,
-  # BN462
 ]
 
 proc main() =
   separator()
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
-    addBench(Fp12[curve], Iters)
-    subBench(Fp12[curve], Iters)
-    negBench(Fp12[curve], Iters)
-    mulBench(Fp12[curve], Iters)
-    sqrBench(Fp12[curve], Iters)
-    invBench(Fp12[curve], InvIters)
+    lineDoubleBench(curve, Iters)
+    lineAddBench(curve, Iters)
+    mulFp12byLine_xyz000_Bench(curve, Iters)
+    separator()
+    finalExpEasyBench(curve, Iters)
+    finalExpHardBLS12Bench(curve, Iters)
+    separator()
+    millerLoopBLS12Bench(curve, Iters)
+    finalExpBLS12Bench(curve, Iters)
+    separator()
+    pairingBLS12Bench(curve, Iters)
     separator()
 
 main()

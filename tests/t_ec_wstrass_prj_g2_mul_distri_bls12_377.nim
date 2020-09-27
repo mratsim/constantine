@@ -12,6 +12,7 @@ import
   # Internals
   ../constantine/config/[common, curves],
   ../constantine/arithmetic,
+  ../constantine/towers,
   ../constantine/io/io_bigints,
   ../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective, ec_scalar_mul],
   # Test utilities
@@ -23,20 +24,8 @@ const
   Iters = 12
   ItersMul = Iters div 4
 
-run_EC_mul_vs_ref_impl(
-    ec = ECP_SWei_Proj[Fp[BN254_Snarks]],
+run_EC_mul_distributive_tests(
+    ec = ECP_SWei_Proj[Fp2[BLS12_377]],
     ItersMul = ItersMul,
-    moduleName = "test_ec_weierstrass_projective_g1_mul_vs_ref_" & $BN254_Snarks
-  )
-
-run_EC_mul_vs_ref_impl(
-    ec = ECP_SWei_Proj[Fp[BLS12_381]],
-    ItersMul = ItersMul,
-    moduleName = "test_ec_weierstrass_projective_g1_mul_vs_ref_" & $BLS12_381
-  )
-
-run_EC_mul_vs_ref_impl(
-    ec = ECP_SWei_Proj[Fp[BLS12_377]],
-    ItersMul = ItersMul,
-    moduleName = "test_ec_weierstrass_projective_g1_mul_vs_ref_" & $BLS12_377
+    moduleName = "test_ec_weierstrass_projective_g2_mul_distributive_" & $BLS12_377
   )

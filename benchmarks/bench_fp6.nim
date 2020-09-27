@@ -27,7 +27,7 @@ const Iters = 100_000
 const InvIters = 1000
 const AvailableCurves = [
   # Pairing-Friendly curves
-  # BN254_Nogami,
+  BN254_Nogami,
   BN254_Snarks,
   BLS12_377,
   BLS12_381

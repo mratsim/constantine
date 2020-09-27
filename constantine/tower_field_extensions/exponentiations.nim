@@ -221,16 +221,18 @@ func isSquare*(a: QuadraticExt): SecretBool =
   #
   # https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-08#appendix-G.5
   # https://eprint.iacr.org/2012/685
-
-  mixin fromComplexExtension # TODO: relax this
-  static: doAssert a.fromComplexExtension()
+  mixin fromComplexExtension
 
   var tv1{.noInit.}, tv2{.noInit.}: typeof(a.c0)
 
   tv1.square(a.c0) #     a0²
   tv2.square(a.c1) # - β a1² with β = 𝑖² in a complex extension field
+  when a.fromComplexExtension():
+    tv1 += tv2     # a0 - (-1) a1²
+  else:
+    tv2 *= NonResidue
+    tv1 -= tv2
 
-  tv1 += tv2       # a0 - (-1) a1²
   result = tv1.isSquare()
 
 func sqrt_if_square*(a: var QuadraticExt): SecretBool =
@@ -243,16 +245,18 @@ func sqrt_if_square*(a: var QuadraticExt): SecretBool =
   #
   # Implementation via the complex method (which confusingly does not require a complex field)
   # We make it constant-time via conditional copies
-
-  mixin fromComplexExtension # TODO: relax this
-  static: doAssert a.fromComplexExtension()
+  mixin fromComplexExtension
 
   var t1{.noInit.}, t2{.noInit.}, t3{.noInit.}: typeof(a.c0)
 
   t1.square(a.c0) #     a0²
   t2.square(a.c1) # - β a1² with β = 𝑖² in a complex extension field
+  when a.fromComplexExtension():
+    t1 += t2    # a0 - (-1) a1²
+  else:
+    t2 *= NonResidue
+    t1 -= t2
 
-  t1 += t2        # a0 - (-1) a1²
   result = t1.sqrt_if_square()
 
   t2.sum(a.c0, t1)

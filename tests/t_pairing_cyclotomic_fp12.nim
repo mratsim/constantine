@@ -23,9 +23,9 @@ import
 const
   Iters = 4
   TestCurves = [
-    # BN254_Nogami,
-    # BN254_Snarks,
-    # BLS12_377,
+    BN254_Nogami,
+    BN254_Snarks,
+    BLS12_377,
     BLS12_381
   ]
 

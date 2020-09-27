@@ -65,9 +65,14 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_ec_wstrass_prj_g2_mul_sanity_bls12_381.nim", false),
   ("tests/t_ec_wstrass_prj_g2_mul_distri_bls12_381.nim", false),
   ("tests/t_ec_wstrass_prj_g2_mul_vs_ref_bls12_381.nim", false),
+  ("tests/t_ec_wstrass_prj_g2_add_double_bls12_377.nim", false),
+  ("tests/t_ec_wstrass_prj_g2_mul_sanity_bls12_377.nim", false),
+  ("tests/t_ec_wstrass_prj_g2_mul_distri_bls12_377.nim", false),
+  ("tests/t_ec_wstrass_prj_g2_mul_vs_ref_bls12_377.nim", false),
   # Elliptic curve arithmetic vs Sagemath
   ("tests/t_ec_frobenius.nim", false),
   ("tests/t_ec_sage_bn254.nim", false),
+  ("tests/t_ec_sage_bls12_377.nim", false),
   ("tests/t_ec_sage_bls12_381.nim", false),
   # Edge cases highlighted by past bugs
   ("tests/t_ec_wstrass_prj_edge_cases.nim", false),
@@ -76,7 +81,8 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_pairing_cyclotomic_fp12.nim", false),
   ("tests/t_pairing_bn254_nogami_optate.nim", false),
   ("tests/t_pairing_bn254_snarks_optate.nim", false),
-  ("tests/t_pairing_bls12_381_optate.nim", false)
+  ("tests/t_pairing_bls12_377_optate.nim", false),
+  ("tests/t_pairing_bls12_381_optate.nim", false),
 ]
 
 # For temporary (hopefully) investigation that can only be reproduced in CI
@@ -152,11 +158,16 @@ task test, "Run all tests":
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
   if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
     runBench("bench_fp")
+    runBench("bench_fp_double_width")
     runBench("bench_fp2")
     runBench("bench_fp6")
     runBench("bench_fp12")
     runBench("bench_ec_g1")
     runBench("bench_ec_g2")
+    runBench("bench_pairing_bls12_377")
+    runBench("bench_pairing_bls12_381")
+    runBench("bench_pairing_bn254_nogami")
+    runBench("bench_pairing_bn254_snarks")
 
 task test_no_gmp, "Run tests that don't require GMP":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
@@ -448,6 +459,21 @@ task bench_ec_g2_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾2 - Short
 
 task bench_ec_g2_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weierstrass with Projective Coordinates - Clang no Assembly":
   runBench("bench_ec_g2", "clang", useAsm = false)
+
+task bench_pairing_bls12_377, "Run pairings benchmarks for BLS12-377 - Default compiler":
+  runBench("bench_pairing_bls12_377")
+
+task bench_pairing_bls12_377_gcc, "Run pairings benchmarks for BLS12-377 - GCC":
+  runBench("bench_pairing_bls12_377", "gcc")
+
+task bench_pairing_bls12_377_clang, "Run pairings benchmarks for BLS12-377 - Clang":
+  runBench("bench_pairing_bls12_377", "clang")
+
+task bench_pairing_bls12_377_gcc_noasm, "Run pairings benchmarks for BLS12-377 - GCC no Assembly":
+  runBench("bench_pairing_bls12_377", "gcc", useAsm = false)
+
+task bench_pairing_bls12_377_clang_noasm, "Run pairings benchmarks for BLS12-377 - Clang no Assembly":
+  runBench("bench_pairing_bls12_377", "clang", useAsm = false)
 
 task bench_pairing_bls12_381, "Run pairings benchmarks for BLS12-381 - Default compiler":
   runBench("bench_pairing_bls12_381")

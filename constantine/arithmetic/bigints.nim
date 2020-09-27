@@ -130,6 +130,10 @@ func isOdd*(a: BigInt): SecretBool =
   ## Returns true if a is odd
   a.limbs.isOdd
 
+func isEven*(a: BigInt): SecretBool =
+  ## Returns true if a is even
+  a.limbs.isEven
+
 func isMsbSet*(a: BigInt): SecretBool =
   ## Returns true if MSB is set
   ## i.e. if a BigInt is interpreted
@@ -138,9 +142,9 @@ func isMsbSet*(a: BigInt): SecretBool =
   ## This is equivalent to checking
   ## if the number is negative
 
-  # MSB is at announced bits - (wordsRequired - 1)
-  const msb_pos = BigInt.bits-1 - (BigInt.bits.wordsRequired - 1)
-  SecretBool((BaseType(a.limbs[a.limbs.len-1]) shr msb_pos) and 1)
+  # MSB is at announced bits - (wordsRequired-1)*WordBitWidth - 1
+  const msb_in_msw = BigInt.bits - (BigInt.bits.wordsRequired-1)*WordBitWidth - 1
+  SecretBool((BaseType(a.limbs[a.limbs.len-1]) shr msb_in_msw) and 1)
 
 func eq*(a: BigInt, n: SecretWord): SecretBool =
   ## Returns true if ``a`` is equal
@@ -546,6 +550,9 @@ func montyPowUnsafeExponent*[mBits: static int](
   var scratchSpace {.noInit.}: array[scratchLen, Limbs[mBits.wordsRequired]]
   montyPowUnsafeExponent(a.limbs, exponent, M.limbs, one.limbs, negInvModWord, scratchSpace, canUseNoCarryMontyMul, canUseNoCarryMontySquare)
 
+from ../io/io_bigints import exportRawUint
+# Workaround recursive dependencies
+
 func montyPow*[mBits, eBits: static int](
        a: var BigInt[mBits], exponent: BigInt[eBits],
        M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,
@@ -560,8 +567,6 @@ func montyPow*[mBits, eBits: static int](
   ##
   ## This is constant-time: the window optimization does
   ## not reveal the exponent bits or hamming weight
-  mixin exportRawUint # exported in io_bigints which depends on this module ...
-
   var expBE {.noInit.}: array[(ebits + 7) div 8, byte]
   expBE.exportRawUint(exponent, bigEndian)
 
@@ -585,8 +590,6 @@ func montyPowUnsafeExponent*[mBits, eBits: static int](
   ##
   ## This uses fixed window optimization
   ## A window size in the range [1, 5] must be chosen
-  mixin exportRawUint # exported in io_bigints which depends on this module ...
-
   var expBE {.noInit.}: array[(ebits + 7) div 8, byte]
   expBE.exportRawUint(exponent, bigEndian)
 

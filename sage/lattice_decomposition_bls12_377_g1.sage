@@ -8,23 +8,25 @@
 
 # ############################################################
 #
-#                  BN254-Snarks GLV Endomorphism
+#                  BLS12-381 GLS Endomorphism
 #                     Lattice Decomposition
 #
 # ############################################################
 
 # Parameters
-x = Integer('0x44E992B44A6909F1')
-p = 36*x^4 + 36*x^3 + 24*x^2 + 6*x + 1
-r = 36*x^4 + 36*x^3 + 18*x^2 + 6*x + 1
+x = 3 * 2^46 * (7 * 13 * 499) + 1
+p = (x - 1)^2 * (x^4 - x^2 + 1)//3 + x
+r = x^4 - x^2 + 1
+print('p  : ' + p.hex())
+print('r  : ' + r.hex())
 
-# Cube root of unity (mod r) formula for any BN curves
-lambda1_r = (-(36*x^3+18*x^2+6*x+2))
+# Cube root of unity (mod r) formula for any BLS12 curves
+lambda1_r = x^2 - 1
 assert lambda1_r^3 % r == 1
 print('λᵩ1  : ' + lambda1_r.hex())
 print('λᵩ1+r: ' + (lambda1_r+r).hex())
 
-lambda2_r = (36*x^4-1)
+lambda2_r = x^4
 assert lambda2_r^3 % r == 1
 print('λᵩ2  : ' + lambda2_r.hex())
 
@@ -32,11 +34,10 @@ print('λᵩ2  : ' + lambda2_r.hex())
 F       = GF(p)
 
 # Curves
-b = 3
+b = 1
 G1 = EllipticCurve(F, [0, b])
 
 cofactorG1 = G1.order() // r
-assert cofactorG1 == 1, "BN curve have a prime order"
 
 print('')
 print('cofactor G1: ' + cofactorG1.hex())
@@ -45,13 +46,19 @@ print('')
 (phi1, phi2) = (root for root in GF(p)(1).nth_root(3, all=True) if root != 1)
 print('𝜑1  :' + Integer(phi1).hex())
 print('𝜑2  :' + Integer(phi2).hex())
+assert phi1^3 % p == 1
+assert phi2^3 % p == 1
+
+def clearCofactorG1(P):
+    return cofactorG1 * P
 
 # Test generator
 set_random_seed(1337)
 
 # Check
 def checkEndo():
-    P = G1.random_point()
+    Prand = G1.random_point()
+    P = clearCofactorG1(Prand)
     assert P != G1([0, 1, 0]) # Infinity
 
     (Px, Py, Pz) = P
@@ -78,10 +85,10 @@ checkEndo()
 # to solve the Shortest (Basis) Vector Problem
 # Lattice from Guide to Pairing-Based Cryptography
 Lat = [
-  [2*x+1, 6*x^2+4*x+1],
-  [6*x^2+2*x,  -2*x-1]
+  [x^2-1, -1],
+  [1,  x^2]
 ]
-ahat = [2*x+1, 6*x^2+4*x+1]
+ahat = [x^2, 1]
 n = int(r).bit_length()
 n = int(((n + 64 - 1) // 64) * 64) # round to next multiple of 64
 v = [Integer(a << n) // r for a in ahat]
@@ -101,20 +108,21 @@ print('  𝛼\u03050: 0x' + v[0].hex())
 print('  𝛼\u03051: 0x' + v[1].hex())
 print('')
 
-maxInfNorm = abs(6*x^2+6*x+2)
+maxInfNorm = abs(x^2 + 1)
 print('\nmax infinity norm:')
-print('  ||(a0, a1)||∞ ≤ 0x' + str(maxInfNorm.hex()))
+print('  ||(a0 , a1)||∞ ≤ 0x' + str(maxInfNorm.hex()))
 print('  infinity norm bitlength: ' + str(int(maxInfNorm).bit_length()))
 
 # Contrary to Faz2013 paper, we use the max infinity norm
 # to properly dimension our recoding instead of ⌈log2 r/m⌉ + 1
 # which fails for some inputs
+#
 # +1 for signed column
 # Optional +1 for handling negative miniscalars
 L = int(maxInfNorm).bit_length() + 1
 L += 1
 
-def getGLV2_decomp(scalar):
+def getGLV1_decomp(scalar):
 
     maxLen = (int(r).bit_length() + 1) // 2 + 1
 
@@ -159,11 +167,12 @@ def pointToString(P):
 
 def scalarMulEndo(scalar, P0):
     m = 2
+
     print('L: ' + str(L))
 
     print('scalar: ' + Integer(scalar).hex())
 
-    k0, k1 = getGLV2_decomp(scalar)
+    k0, k1 = getGLV1_decomp(scalar)
     print('k0: ' + k0.hex())
     print('k1: ' + k1.hex())
 
@@ -208,12 +217,7 @@ set_random_seed(1337)
 
 for i in range(1):
     print('---------------------------------------')
-    # scalar = randrange(r) # Pick an integer below curve order
-    # P = G1.random_point()
-    scalar = Integer('0x0e08a292f940cfb361cc82bc24ca564f51453708c9745a9cf8707b11c84bc448')
-    P = G1([
-        Integer('0x22d3af0f3ee310df7fc1a2a204369ac13eb4a48d969a27fcd2861506b2dc0cd7'),
-        Integer('0x1c994169687886ccd28dd587c29c307fb3cab55d796d73a5be0bbf9aab69912e'),
-        Integer(1)
-    ])
+    scalar = randrange(r) # Pick an integer below curve order
+    P = G1.random_point()
+    P = clearCofactorG1(P)
     scalarMulEndo(scalar, P)

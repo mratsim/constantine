@@ -241,7 +241,7 @@ func scalarMul*(
   ## - 0 <= scalar < curve order
   ##   this will not automatically
   when BigInt.bits <= ECP_SWei_Proj.F.C.getCurveOrderBitwidth() and
-       ECP_SWei_Proj.F.C in {BN254_Snarks, BLS12_381}:
+       ECP_SWei_Proj.F.C in {BN254_Snarks, BLS12_377, BLS12_381}:
     when ECP_SWei_Proj.F is Fp:
       P.scalarMulGLV_m2w2(scalar)
     elif ECP_SWei_Proj.F is Fp2:
