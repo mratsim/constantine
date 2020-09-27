@@ -9,8 +9,20 @@
 
 This library provides constant-time implementation of elliptic curve cryptography.
 
-> Warning ⚠️: The library is in development state and cannot be used at the moment
->            except as a showcase or to start a discussion on modular big integers internals.
+The implementation is accompanied with SAGE code used as reference implementation and test vectors generators before high speed implementation.
+
+> The library is in development state and high-level wrappers or example protocols are not available yet.
+
+## Target audience
+
+The library aims to be a portable, compact and hardened library for elliptic curve cryptography needs, in particular for blockchain protocols and zero-knowledge proofs system.
+
+The library focuses on following properties:
+- constant-time (not leaking secret data via side-channels)
+- performance
+- generated code size, datatype size and stack usage
+
+in this order
 
 ## Installation
 
@@ -31,17 +43,6 @@ This can be deactivated with `"-d:ConstantineASM=false"`:
 - at misssed opportunity on recent CPUs that support MULX/ADCX/ADOX instructions (~60% faster than Clang).
 - There is a 2.4x perf ratio between using plain GCC vs GCC with inline assembly.
 
-## Target audience
-
-The library aims to be a portable, compact and hardened library for elliptic curve cryptography needs, in particular for blockchain protocols and zero-knowledge proofs system.
-
-The library focuses on following properties:
-- constant-time (not leaking secret data via side-channels)
-- performance
-- generated code size, datatype size and stack usage
-
-in this order
-
 ## Curves supported
 
 At the moment the following curves are supported, adding a new curve only requires adding the prime modulus
@@ -49,11 +50,9 @@ and its bitsize in [constantine/config/curves.nim](constantine/config/curves_dec
 
 The following curves are configured:
 
-> Note: At the moment, finite field arithmetic is fully supported
->       but elliptic curve arithmetic is work-in-progress.
+### ECDH / ECDSA / EdDSA curves
 
-### ECDH / ECDSA curves
-
+WIP:
 - NIST P-224
 - Curve25519
 - NIST P-256 / Secp256r1
@@ -61,20 +60,22 @@ The following curves are configured:
 
 ### Pairing-Friendly curves
 
+Supports:
+- [x] Field arithmetics
+- [x] Curve arithmetic
+- [x] Pairing
+- [ ] Multi-Pairing
+- [ ] Hash-To-Curve
+
 Families:
-- BN: Barreto-Naerig
+- BN: Barreto-Naehrig
 - BLS: Barreto-Lynn-Scott
-- FKM: Fotiadis-Konstantinou-Martindale
 
 Curves:
 - BN254_Nogami
 - BN254_Snarks (Zero-Knowledge Proofs, Snarks, Starks, Zcash, Ethereum 1)
 - BLS12-377 (Zexe)
 - BLS12-381 (Algorand, Chia Networks, Dfinity, Ethereum 2, Filecoin, Zcash Sapling)
-- BN446
-- FKM12-447
-- BLS12-461
-- BN462
 
 ## Security
 
@@ -141,72 +142,71 @@ The previous implementation was 15x slower and one of the key optimizations
 was changing the elliptic curve cryptography backend.
 It had a direct implication on hardware cost and/or cloud computing resources required.
 
-## Measuring performance
+### Measuring performance
 
 To measure the performance of Constantine
 
 ```bash
 git clone https://github.com/mratsim/constantine
-nimble bench_fp       # Using Assembly (+ GCC)
-nimble bench_fp_clang # Using Clang only
-nimble bench_fp_gcc   # Using Clang only (very slow)
+nimble bench_fp             # Using default compiler + Assembly
+nimble bench_fp_clang       # Using Clang + Assembly (recommended)
+nimble bench_fp_gcc         # Using GCC + Assembly (very slow)
+nimble bench_fp_clang_noasm # Using Clang only
+nimble bench_fp_gcc         # Using GCC only (slowest)
 nimble bench_fp2
 # ...
 nimble bench_ec_g1
 nimble bench_ec_g2
+nimble bench_pairing_bn254_nogami
+nimble bench_pairing_bn254_snarks
+nimble bench_pairing_bls12_377
+nimble bench_pairing_bls12_381
 ```
+
+"Unsafe" lines uses a non-constant-time algorithm.
 
 As mentioned in the [Compiler caveats](#compiler-caveats) section, GCC is up to 2x slower than Clang due to mishandling of carries and register usage.
 
-On my machine, for selected benchmarks on the prime field for popular pairing-friendly curves.
+On my machine i9-9980XE, for selected benchmarks with Clang + Assembly
 
 ```
-Compiled with GCC
-Optimization level =>
-  no optimization: false
-  release: true
-  danger: true
-  inline assembly: true
-Using Constantine with 64-bit limbs
-Running on Intel(R) Core(TM) i9-9980XE CPU @ 3.00GHz
-
-⚠️ Cycles measurements are approximate and use the CPU nominal clock: Turbo-Boost and overclocking will skew them.
-i.e. a 20% overclock will be about 20% off (assuming no dynamic frequency scaling)
-
-=================================================================================================================
-
--------------------------------------------------------------------------------------------------------------------------------------------------
-Addition                                           Fp[BN254_Snarks]     333333333.333 ops/s             3 ns/op             9 CPU cycles (approx)
-Substraction                                       Fp[BN254_Snarks]     500000000.000 ops/s             2 ns/op             8 CPU cycles (approx)
-Negation                                           Fp[BN254_Snarks]    1000000000.000 ops/s             1 ns/op             3 CPU cycles (approx)
-Multiplication                                     Fp[BN254_Snarks]      71428571.429 ops/s            14 ns/op            44 CPU cycles (approx)
-Squaring                                           Fp[BN254_Snarks]      71428571.429 ops/s            14 ns/op            44 CPU cycles (approx)
-Inversion (constant-time Euclid)                   Fp[BN254_Snarks]        122579.063 ops/s          8158 ns/op         24474 CPU cycles (approx)
-Inversion via exponentiation p-2 (Little Fermat)   Fp[BN254_Snarks]        153822.489 ops/s          6501 ns/op         19504 CPU cycles (approx)
-Square Root + square check (constant-time)         Fp[BN254_Snarks]        153491.942 ops/s          6515 ns/op         19545 CPU cycles (approx)
-Exp curve order (constant-time) - 254-bit          Fp[BN254_Snarks]        104580.632 ops/s          9562 ns/op         28687 CPU cycles (approx)
-Exp curve order (Leak exponent bits) - 254-bit     Fp[BN254_Snarks]        153798.831 ops/s          6502 ns/op         19506 CPU cycles (approx)
--------------------------------------------------------------------------------------------------------------------------------------------------
-Addition                                           Fp[BLS12_381]        250000000.000 ops/s             4 ns/op            14 CPU cycles (approx)
-Substraction                                       Fp[BLS12_381]        250000000.000 ops/s             4 ns/op            13 CPU cycles (approx)
-Negation                                           Fp[BLS12_381]       1000000000.000 ops/s             1 ns/op             4 CPU cycles (approx)
-Multiplication                                     Fp[BLS12_381]         35714285.714 ops/s            28 ns/op            84 CPU cycles (approx)
-Squaring                                           Fp[BLS12_381]         35714285.714 ops/s            28 ns/op            85 CPU cycles (approx)
-Inversion (constant-time Euclid)                   Fp[BLS12_381]            43763.676 ops/s         22850 ns/op         68552 CPU cycles (approx)
-Inversion via exponentiation p-2 (Little Fermat)   Fp[BLS12_381]            63983.620 ops/s         15629 ns/op         46889 CPU cycles (approx)
-Square Root + square check (constant-time)         Fp[BLS12_381]            63856.960 ops/s         15660 ns/op         46982 CPU cycles (approx)
-Exp curve order (constant-time) - 255-bit          Fp[BLS12_381]            68535.399 ops/s         14591 ns/op         43775 CPU cycles (approx)
-Exp curve order (Leak exponent bits) - 255-bit     Fp[BLS12_381]            93222.709 ops/s         10727 ns/op         32181 CPU cycles (approx)
--------------------------------------------------------------------------------------------------------------------------------------------------
-Notes:
-  - Compilers:
-    Compilers are severely limited on multiprecision arithmetic.
-    Inline Assembly is used by default (nimble bench_fp).
-    Bench without assembly can use "nimble bench_fp_gcc" or "nimble bench_fp_clang".
-    GCC is significantly slower than Clang on multiprecision arithmetic due to catastrophic handling of carries.
-  - The simplest operations might be optimized away by the compiler.
-  - Fast Squaring and Fast Multiplication are possible if there are spare bits in the prime representation (i.e. the prime uses 254 bits out of 256 bits)
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Line double                                                  BLS12_381            649350.649 ops/s          1540 ns/op          4617 CPU cycles (approx)
+Line add                                                     BLS12_381            482858.522 ops/s          2071 ns/op          6211 CPU cycles (approx)
+Mul 𝔽p12 by line xy000z                                      BLS12_381            543478.261 ops/s          1840 ns/op          5518 CPU cycles (approx)
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Final Exponentiation Easy                                    BLS12_381             39411.973 ops/s         25373 ns/op         76119 CPU cycles (approx)
+Final Exponentiation Hard BLS12                              BLS12_381              2141.603 ops/s        466940 ns/op       1400833 CPU cycles (approx)
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Miller Loop BLS12                                            BLS12_381              2731.576 ops/s        366089 ns/op       1098278 CPU cycles (approx)
+Final Exponentiation BLS12                                   BLS12_381              2033.045 ops/s        491873 ns/op       1475634 CPU cycles (approx)
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Pairing BLS12                                                BLS12_381              1131.391 ops/s        883868 ns/op       2651631 CPU cycles (approx)
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ```
+
+```
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+EC Add G1                                                    ECP_SWei_Proj[Fp[BLS12_381]]                 2118644.068 ops/s           472 ns/op          1416 CPU cycles (approx)
+EC Mixed Addition G1                                         ECP_SWei_Proj[Fp[BLS12_381]]                 2439024.390 ops/s           410 ns/op          1232 CPU cycles (approx)
+EC Double G1                                                 ECP_SWei_Proj[Fp[BLS12_381]]                 3448275.862 ops/s           290 ns/op           871 CPU cycles (approx)
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+EC ScalarMul G1 (unsafe reference DoubleAdd)                 ECP_SWei_Proj[Fp[BLS12_381]]                    7147.094 ops/s        139917 ns/op        419756 CPU cycles (approx)
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+EC ScalarMul Generic G1 (window = 2, scratchsize = 4)        ECP_SWei_Proj[Fp[BLS12_381]]                    5048.975 ops/s        198060 ns/op        594188 CPU cycles (approx)
+EC ScalarMul Generic G1 (window = 3, scratchsize = 8)        ECP_SWei_Proj[Fp[BLS12_381]]                    7148.269 ops/s        139894 ns/op        419685 CPU cycles (approx)
+EC ScalarMul Generic G1 (window = 4, scratchsize = 16)       ECP_SWei_Proj[Fp[BLS12_381]]                    8112.735 ops/s        123263 ns/op        369791 CPU cycles (approx)
+EC ScalarMul Generic G1 (window = 5, scratchsize = 32)       ECP_SWei_Proj[Fp[BLS12_381]]                    8464.534 ops/s        118140 ns/op        354424 CPU cycles (approx)
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+EC ScalarMul G1 (endomorphism accelerated)                   ECP_SWei_Proj[Fp[BLS12_381]]                    9679.418 ops/s        103312 ns/op        309939 CPU cycles (approx)
+EC ScalarMul Window-2 G1 (endomorphism accelerated)          ECP_SWei_Proj[Fp[BLS12_381]]                   13089.348 ops/s         76398 ns/op        229195 CPU cycles (approx)
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+```
+
+
+
 
 ### Compiler caveats
 

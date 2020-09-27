@@ -7,23 +7,17 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  # Internals
-  ../constantine/towers,
-  ../constantine/config/curves,
-  # Test utilities
-  ./t_fp_tower_template
+  std/macros,
+  ../config/curves,
+  ./bls12_377_pairing,
+  ./bls12_381_pairing,
+  ./bn254_nogami_pairing,
+  ./bn254_snarks_pairing
 
-const TestCurves = [
-    BN254_Nogami,
-    BN254_Snarks,
-    BLS12_377,
-    BLS12_381,
-  ]
+{.experimental: "dynamicBindSym".}
 
-runTowerTests(
-  ExtDegree = 2,
-  Iters = 24,
-  TestCurves = TestCurves,
-  moduleName = "test_fp2",
-  testSuiteDesc = "𝔽p2 = 𝔽p[u] (irreducible polynomial u²-β = 0) -> 𝔽p2 point (a, b) with coordinate a + bu and β quadratic non-residue in 𝔽p"
-)
+macro pairing*(C: static Curve, value: untyped): untyped =
+  ## Get pairing related constants
+  return bindSym($C & "_pairing_" & $value)
+
+export pow_x, pow_xdiv2, pow_u

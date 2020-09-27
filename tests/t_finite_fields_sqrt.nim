@@ -129,17 +129,13 @@ proc main() =
     randomSqrtCheck Secp256k1
     randomSqrtCheck BLS12_377 # p ≢ 3 (mod 4)
     randomSqrtCheck BLS12_381
-    randomSqrtCheck BN446
-    randomSqrtCheck FKM12_447
-    randomSqrtCheck BLS12_461
-    randomSqrtCheck BN462
 
   suite "Modular square root - 32-bit bugs highlighted by property-based testing " & " [" & $WordBitwidth & "-bit mode]":
-    test "FKM12_447 - #30":
-      var a: Fp[FKM12_447]
-      a.fromHex"0x406e5e74ee09c84fa0c59f2db3ac814a4937e2f57ecd3c0af4265e04598d643c5b772a6549a2d9b825445c34b8ba100fe8d912e61cfda43d"
-      a.square()
-      check: bool a.isSquare()
+    # test "FKM12_447 - #30": - Deactivated, we don't support the curve as no one uses it.
+    #   var a: Fp[FKM12_447]
+    #   a.fromHex"0x406e5e74ee09c84fa0c59f2db3ac814a4937e2f57ecd3c0af4265e04598d643c5b772a6549a2d9b825445c34b8ba100fe8d912e61cfda43d"
+    #   a.square()
+    #   check: bool a.isSquare()
 
     test "Fused modular square root on 32-bit - inconsistent with isSquare - #42":
       var a: Fp[BLS12_381]

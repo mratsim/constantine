@@ -12,13 +12,13 @@ import
   # Internal
   ../primitives,
   ../config/[common, curves, type_bigint],
+  ../curves/zoo_glv,
   ../arithmetic,
   ../io/io_bigints,
   ../towers,
   ../isogeny/frobenius,
   ./ec_weierstrass_affine,
-  ./ec_weierstrass_projective,
-  ./ec_endomorphism_params
+  ./ec_weierstrass_projective
 
 # ############################################################
 #
@@ -33,6 +33,84 @@ import
 # - GLV and GLS endomorphisms on G2 (Galbraith-Lin-Scott)
 # - NAF recoding (windowed Non-Adjacent-Form)
 
+# Decomposition into scalars -> miniscalars
+# ----------------------------------------------------------------------------------------
+
+type
+  MultiScalar[M, LengthInBits: static int] = array[M, BigInt[LengthInBits]]
+    ## Decomposition of a secret scalar in multiple scalars
+
+func decomposeEndo*[M, scalBits, L: static int](
+       miniScalars: var MultiScalar[M, L],
+       scalar: BigInt[scalBits],
+       F: typedesc[Fp or Fp2]
+     ) =
+  ## Decompose a secret scalar into M mini-scalars
+  ## using a curve endomorphism(s) characteristics.
+  ##
+  ## A scalar decomposition might lead to negative miniscalar(s).
+  ## For proper handling it requires either:
+  ## 1. Negating it and then negating the corresponding curve point P
+  ## 2. Adding an extra bit to the recoding, which will do the right thing™
+  ##
+  ## For implementation solution 1 is faster:
+  ##   - Double + Add is about 5000~8000 cycles on 6 64-bits limbs (BLS12-381)
+  ##   - Conditional negate is about 10 cycles per Fp, on G2 projective we have 3 (coords) * 2 (Fp2) * 10 (cycles) ~= 60 cycles
+  ##     We need to test the mini scalar, which is 65 bits so 2 Fp so about 2 cycles
+  ##     and negate it as well.
+  ##
+  ## However solution 1 seems to cause issues (TODO)
+  ## with some of the BLS12-381 test cases (6 and 9)
+  ## - 0x5668a2332db27199dcfb7cbdfca6317c2ff128db26d7df68483e0a095ec8e88f
+  ## - 0x644dc62869683f0c93f38eaef2ba6912569dc91ec2806e46b4a3dd6a4421dad1
+
+  # Equal when no window or no negative handling, greater otherwise
+  static: doAssert L >= (scalBits + M - 1) div M + 1
+  const w = F.C.getCurveOrderBitwidth().wordsRequired()
+
+  when F is Fp:
+    var alphas{.noInit.}: (
+      BigInt[scalBits + babai(F)[0][0].bits],
+      BigInt[scalBits + babai(F)[1][0].bits]
+    )
+  else:
+    var alphas{.noInit.}: (
+      BigInt[scalBits + babai(F)[0][0].bits],
+      BigInt[scalBits + babai(F)[1][0].bits],
+      BigInt[scalBits + babai(F)[2][0].bits],
+      BigInt[scalBits + babai(F)[3][0].bits]
+    )
+
+  staticFor i, 0, M:
+    when bool babai(F)[i][0].isZero():
+      alphas[i].setZero()
+    else:
+      alphas[i].prod_high_words(babai(F)[i][0], scalar, w)
+    when babai(F)[i][1]:
+      # prod_high_words works like logical right shift
+      # When negative, we should add 1 to properly round toward -infinity
+      alphas[i] += SecretWord(1)
+
+  # We have k0 = s - 𝛼0 b00 - 𝛼1 b10 ... - 𝛼m bm0
+  # and     kj = 0 - 𝛼j b0j - 𝛼1 b1j ... - 𝛼m bmj
+  var
+    k: array[M, BigInt[scalBits]] # zero-init required
+    alphaB {.noInit.}: BigInt[scalBits]
+  k[0] = scalar
+  staticFor miniScalarIdx, 0, M:
+    staticFor basisIdx, 0, M:
+      when not bool lattice(F)[basisIdx][miniScalarIdx][0].isZero():
+        when bool lattice(F)[basisIdx][miniScalarIdx][0].isOne():
+          alphaB.copyTruncatedFrom(alphas[basisIdx])
+        else:
+          alphaB.prod(alphas[basisIdx], lattice(F)[basisIdx][miniScalarIdx][0])
+
+        when lattice(F)[basisIdx][miniScalarIdx][1] xor babai(F)[basisIdx][1]:
+          k[miniScalarIdx] += alphaB
+        else:
+          k[miniScalarIdx] -= alphaB
+
+    miniScalars[miniScalarIdx].copyTruncatedFrom(k[miniScalarIdx])
 
 # Secret scalar + dynamic point
 # ----------------------------------------------------------------

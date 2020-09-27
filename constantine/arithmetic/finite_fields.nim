@@ -31,7 +31,7 @@ import
   ./bigints, ./limbs_montgomery
 
 when UseASM_X86_64:
-  import ./limbs_asm_modular_x86
+  import ./assembly/limbs_asm_modular_x86
 
 when nimvm:
   from ../config/precompute import montyResidue_precompute
@@ -340,9 +340,14 @@ func `*=`*(a: var Fp, b: Fp) {.inline.} =
   ## Multiplication modulo p
   a.prod(a, b)
 
-func square*(a: var Fp) {.inline.}=
+func square*(a: var Fp) {.inline.} =
   ## Squaring modulo p
   a.mres.montySquare(a.mres, Fp.C.Mod, Fp.C.getNegInvModWord(), Fp.C.canUseNoCarryMontySquare())
+
+func square_repeated*(r: var Fp, num: int) {.inline.} =
+  ## Repeated squarings
+  for _ in 0 ..< num:
+    r.square()
 
 func `*=`*(a: var Fp, b: static int) {.inline.} =
   ## Multiplication by a small integer known at compile-time

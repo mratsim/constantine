@@ -10,7 +10,7 @@ import  std/unittest,
         ../constantine/config/common,
         ../constantine/arithmetic,
         ../constantine/config/curves,
-        ../constantine/io/[io_bigints, io_fields]
+        ../constantine/curves/zoo_glv
 
 echo "\n------------------------------------------------------\n"
 
@@ -22,19 +22,10 @@ proc checkCubeRootOfUnity(curve: static Curve) =
 
     check: bool cru.isOne()
 
-  test $curve & " cube root of unity (mod r)":
-    var cru: BigInt[3 * curve.getCurveOrderBitwidth()]
-    cru.prod(curve.getCubicRootOfUnity_mod_r(), curve.getCubicRootOfUnity_mod_r())
-    cru.mul(curve.getCubicRootOfUnity_mod_r())
-
-    var r: BigInt[curve.getCurveOrderBitwidth()]
-    r.reduce(cru, curve.getCurveOrder)
-
-    check: bool r.isOne()
-
 proc main() =
   suite "Sanity checks on precomputed values" & " [" & $WordBitwidth & "-bit mode]":
     checkCubeRootOfUnity(BN254_Snarks)
-    # checkCubeRootOfUnity(BLS12_381)
+    checkCubeRootOfUnity(BLS12_377)
+    checkCubeRootOfUnity(BLS12_381)
 
 main()

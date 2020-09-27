@@ -33,8 +33,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_finite_fields_sqrt.nim", false),
   ("tests/t_finite_fields_powinv.nim", false),
   ("tests/t_finite_fields_vs_gmp.nim", true),
-  # Precompute
-  ("tests/t_precomputed", false),
+  ("tests/t_fp_cubic_root.nim", false),
   # Double-width finite fields
   ("tests/t_finite_fields_double_width.nim", false),
   # Towers of extension fields

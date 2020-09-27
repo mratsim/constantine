@@ -458,35 +458,6 @@ func toCanonicalIntRepr*[bits: static int](
   ## (octet-string)
   result.exportRawUint(a, bigEndian)
 
-func bn_6u_minus_1_BE*[bits: static int](
-       u: BigInt[bits]
-     ): array[(bits+7+3) div 8, byte] {.noInit.} =
-  ## For a BN curve
-  ## Precompute 6u-1 (for Little Fermat inversion)
-  ## and store it in canonical integer representation
-  # TODO: optimize output size
-  #       each extra 0-bit is an extra useless squaring for a public exponent
-  #       For example, for BN254-Snarks, u = 0x44E992B44A6909F1 (63-bit)
-  #       and 6u+1 is 65-bit (not 66 as inferred)
-
-  # Zero-extend "u"
-  var u_ext: BigInt[bits+3]
-
-  for i in 0 ..< u.limbs.len:
-    u_ext.limbs[i] = u.limbs[i]
-
-  # Addition chain to u -> 6u
-  discard u_ext.dbl()              # u_ext = 2u
-  let u_ext2 = u_ext               # u_ext2 = 2u
-  discard u_ext.dbl()              # u_ext = 4u
-  discard u_ext.cadd(u_ext2, true)  # u_ext = 6u
-
-  # Sustract 1
-  discard u_ext.sub(1)
-
-  # Export
-  result.exportRawUint(u_ext, bigEndian)
-
 # ############################################################
 #
 #       Compile-time Conversion to Montgomery domain

@@ -7,23 +7,12 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  # Internals
-  ../constantine/towers,
-  ../constantine/config/curves,
-  # Test utilities
-  ./t_fp_tower_template
+  std/macros,
+  ../config/curves,
+  ./bls12_377_square_root
 
-const TestCurves = [
-    BN254_Nogami,
-    BN254_Snarks,
-    BLS12_377,
-    BLS12_381,
-  ]
+{.experimental: "dynamicBindSym".}
 
-runTowerTests(
-  ExtDegree = 2,
-  Iters = 24,
-  TestCurves = TestCurves,
-  moduleName = "test_fp2",
-  testSuiteDesc = "𝔽p2 = 𝔽p[u] (irreducible polynomial u²-β = 0) -> 𝔽p2 point (a, b) with coordinate a + bu and β quadratic non-residue in 𝔽p"
-)
+macro tonelliShanks*(C: static Curve, value: untyped): untyped =
+  ## Get Square Root via Tonelli-Shanks related constants
+  return bindSym($C & "_TonelliShanks_" & $value)

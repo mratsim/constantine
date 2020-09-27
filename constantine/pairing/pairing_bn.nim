@@ -7,10 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  std/macros,
-  ../primitives,
-  ../config/[common, curves],
-  ../arithmetic,
+  ../config/[curves, type_fp],
   ../towers,
   ../io/io_bigints,
   ../elliptic/[
@@ -20,7 +17,8 @@ import
   ./lines_projective,
   ./mul_fp12_by_lines,
   ./cyclotomic_fp12,
-  ../isogeny/frobenius
+  ../isogeny/frobenius,
+  ../curves/zoo_pairings
 
 # ############################################################
 #
@@ -42,37 +40,10 @@ import
 #   Craig Costello, Tanja Lange, and Michael Naehrig, 2009
 #   https://eprint.iacr.org/2009/615.pdf
 
-# TODO: should be part of curve parameters
-# The bit count must be exact for the Miller loop
-const BN254_Snarks_ate_param = block:
-  # BN Miller loop is parametrized by 6u+2
-  BigInt[65+2].fromHex"0x19d797039be763ba8"
-
-const BN254_Snarks_ate_param_isNeg = false
-
-const BN254_Nogami_ate_param = block:
-  # BN Miller loop is parametrized by 6u+2
-  BigInt[65+2].fromHex"0x18300000000000004" # 65+2 bit for NAF x3 encoding
-
-const BN254_Nogami_ate_param_isNeg = true
-
-# Generic slow pairing implementation
+# Generic pairing implementation
 # ----------------------------------------------------------------
 
-const BN254_Snarks_finalexponent = block:
-  # (p^12 - 1) / r
-  BigInt[2790].fromHex"0x2f4b6dc97020fddadf107d20bc842d43bf6369b1ff6a1c71015f3f7be2e1e30a73bb94fec0daf15466b2383a5d3ec3d15ad524d8f70c54efee1bd8c3b21377e563a09a1b705887e72eceaddea3790364a61f676baaf977870e88d5c6c8fef0781361e443ae77f5b63a2a2264487f2940a8b1ddb3d15062cd0fb2015dfc6668449aed3cc48a82d0d602d268c7daab6a41294c0cc4ebe5664568dfc50e1648a45a4a1e3a5195846a3ed011a337a02088ec80e0ebae8755cfe107acf3aafb40494e406f804216bb10cf430b0f37856b42db8dc5514724ee93dfb10826f0dd4a0364b9580291d2cd65664814fde37ca80bb4ea44eacc5e641bbadf423f9a2cbf813b8d145da90029baee7ddadda71c7f3811c4105262945bba1668c3be69a3c230974d83561841d766f9c9d570bb7fbe04c7e8a6c3c760c0de81def35692da361102b6b9b2b918837fa97896e84abb40a4efb7e54523a486964b64ca86f120"
-
-const BN254_Nogami_finalexponent = block:
-  # (p^12 - 1) / r
-  BigInt[2786].fromHex"0x2928fbb36b391596ee3fe4cbe857330da83e46fedf04d235a4a8daf5ff9f6eabcb4e3f20aa06f0a0d96b24f9af0cbbce750d61627dcbf5fec9139b8f1c46c86b49b4f8a202af26e4504f2c0f56570e9bd5b94c403f385d1908556486e24b396ddc2cdf13d06542f84fe8e82ccbad7b7423fc1ef4e8cc73d605e3e867c0a75f45ea7f6356d9846ce35d5a34f30396938818ad41914b97b99c289a7259b5d2e09477a77bd3c409b19f19e893f8ade90b0aed1b5fc8a07a3cebb41d4e9eee96b21a832ddb1e93e113edfb704fa532848c18593cd0ee90444a1b3499a800177ea38bdec62ec5191f2b6bbee449722f98d2173ad33077545c2ad10347e125a56fb40f086e9a4e62ad336a72c8b202ac3c1473d73b93d93dc0795ca0ca39226e7b4c1bb92f99248ec0806e0ad70744e9f2238736790f5185ea4c70808442a7d530c6ccd56b55a6973867ec6c73599bbd020bbe105da9c6b5c009ad8946cd6f0"
-
-{.experimental: "dynamicBindSym".}
-
-macro get(C: static Curve, value: untyped): untyped =
-  return bindSym($C & "_" & $value)
-
-func millerLoopGenericBN*[C: static Curve](
+func millerLoopGenericBN*[C](
        f: var Fp12[C],
        P: ECP_SWei_Aff[Fp[C]],
        Q: ECP_SWei_Aff[Fp2[C]]
@@ -123,8 +94,8 @@ func millerLoopGenericBN*[C: static Curve](
     else:
       f.mul_sparse_by_line_xy000z(line)
 
-  template u: untyped = C.get(ate_param)
-  let u3 = 3*C.get(ate_param)
+  template u: untyped = C.pairing(ate_param)
+  let u3 = 3*C.pairing(ate_param)
   for i in countdown(u3.bits - 2, 1):
     f.square()
     line.line_double(T, P)
@@ -138,13 +109,13 @@ func millerLoopGenericBN*[C: static Curve](
       line.line_add(T, nQ, P)
       f.mul(line)
 
-  when C.get(ate_param_isNeg):
+  when C.pairing(ate_param_isNeg):
     # In GT, x^-1 == conjugate(x)
     # Remark 7.1, chapter 7.1.1 of Guide to Pairing-Based Cryptography, El Mrabet, 2017
     f.conj()
 
   # Ate pairing for BN curves need adjustment after Miller loop
-  when C.get(ate_param_isNeg):
+  when C.pairing(ate_param_isNeg):
     T.neg()
   var V {.noInit.}: typeof(Q)
 
@@ -160,7 +131,7 @@ func millerLoopGenericBN*[C: static Curve](
 func finalExpGeneric[C: static Curve](f: var Fp12[C]) =
   ## A generic and slow implementation of final exponentiation
   ## for sanity checks purposes.
-  f.powUnsafeExponent(C.get(finalexponent), window = 3)
+  f.powUnsafeExponent(C.pairing(finalexponent), window = 3)
 
 func pairing_bn_reference*[C](gt: var Fp12[C], P: ECP_SWei_Proj[Fp[C]], Q: ECP_SWei_Proj[Fp2[C]]) =
   ## Compute the optimal Ate Pairing for BN curves
@@ -177,106 +148,6 @@ func pairing_bn_reference*[C](gt: var Fp12[C], P: ECP_SWei_Proj[Fp[C]], Q: ECP_S
 
 # Optimized pairing implementation
 # ----------------------------------------------------------------
-
-func cycl_sqr_repeated(f: var Fp12, num: int) =
-  ## Repeated cyclotomic squarings
-  for _ in 0 ..< num:
-    f.cyclotomic_square()
-
-func pow_u(r: var Fp12[BN254_Nogami], a: Fp12[BN254_Nogami], invert = BN254_Nogami_ate_param_isNeg) =
-  ## f^u with u the curve parameter
-  ## For BN254_Nogami f^-0x4080000000000001
-  r = a
-  r.cycl_sqr_repeated(7)
-  r *= a
-  r.cycl_sqr_repeated(55)
-  r *= a
-
-  if invert:
-    r.cyclotomic_inv()
-
-func pow_u(r: var Fp12[BN254_Snarks], a: Fp12[BN254_Snarks], invert = BN254_Snarks_ate_param_isNeg) =
-  ## f^u with u the curve parameter
-  ## For BN254_Snarks f^0x44e992b44a6909f1
-  when false:
-    cyclotomic_exp(
-      r, a,
-      BigInt[63].fromHex("0x44e992b44a6909f1"),
-      invert
-    )
-  else:
-    var # Hopefully the compiler optimizes away unused Fp12
-        # because those are huge
-      x10       {.noInit.}: Fp12[BN254_Snarks]
-      x11       {.noInit.}: Fp12[BN254_Snarks]
-      x100      {.noInit.}: Fp12[BN254_Snarks]
-      x110      {.noInit.}: Fp12[BN254_Snarks]
-      x1100     {.noInit.}: Fp12[BN254_Snarks]
-      x1111     {.noInit.}: Fp12[BN254_Snarks]
-      x10010    {.noInit.}: Fp12[BN254_Snarks]
-      x10110    {.noInit.}: Fp12[BN254_Snarks]
-      x11100    {.noInit.}: Fp12[BN254_Snarks]
-      x101110   {.noInit.}: Fp12[BN254_Snarks]
-      x1001010  {.noInit.}: Fp12[BN254_Snarks]
-      x1111000  {.noInit.}: Fp12[BN254_Snarks]
-      x10001110 {.noInit.}: Fp12[BN254_Snarks]
-
-    x10       .cyclotomic_square(a)
-    x11       .prod(x10, a)
-    x100      .prod(x11, a)
-    x110      .prod(x10, x100)
-    x1100     .cyclotomic_square(x110)
-    x1111     .prod(x11, x1100)
-    x10010    .prod(x11, x1111)
-    x10110    .prod(x100, x10010)
-    x11100    .prod(x110, x10110)
-    x101110   .prod(x10010, x11100)
-    x1001010  .prod(x11100, x101110)
-    x1111000  .prod(x101110, x1001010)
-    x10001110 .prod(x10110, x1111000)
-
-    var
-      i15 {.noInit.}: Fp12[BN254_Snarks]
-      i16 {.noInit.}: Fp12[BN254_Snarks]
-      i17 {.noInit.}: Fp12[BN254_Snarks]
-      i18 {.noInit.}: Fp12[BN254_Snarks]
-      i20 {.noInit.}: Fp12[BN254_Snarks]
-      i21 {.noInit.}: Fp12[BN254_Snarks]
-      i22 {.noInit.}: Fp12[BN254_Snarks]
-      i26 {.noInit.}: Fp12[BN254_Snarks]
-      i27 {.noInit.}: Fp12[BN254_Snarks]
-      i61 {.noInit.}: Fp12[BN254_Snarks]
-
-    i15.cyclotomic_square(x10001110)
-    i15 *= x1001010
-    i16.prod(x10001110, i15)
-    i17.prod(x1111, i16)
-    i18.prod(i16, i17)
-
-    i20.cyclotomic_square(i18)
-    i20 *= i17
-    i21.prod(x1111000, i20)
-    i22.prod(i15, i21)
-
-    i26.cyclotomic_square(i22)
-    i26.cyclotomic_square()
-    i26 *= i22
-    i26 *= i18
-
-    i27.prod(i22, i26)
-
-    i61.prod(i26, i27)
-    i61.cycl_sqr_repeated(17)
-    i61 *= i27
-    i61.cycl_sqr_repeated(14)
-    i61 *= i21
-
-    r = i61
-    r.cycl_sqr_repeated(16)
-    r *= i20
-
-    if invert:
-      r.cyclotomic_inv()
 
 func finalExpHard_BN*[C: static Curve](f: var Fp12[C]) =
   ## Hard part of the final exponentiation
@@ -302,7 +173,7 @@ func finalExpHard_BN*[C: static Curve](f: var Fp12[C]) =
   t1 *= t0                     # t1 = f^6|u|
   t2.pow_u(t1, invert = false) # t2 = f^6u²
 
-  if C.get(ate_param_is_Neg):
+  if C.pairing(ate_param_is_Neg):
     t3.cyclotomic_inv(t1)      # t3 = f^6u
   else:
     t3 = t1                    # t3 = f^6u
@@ -311,7 +182,7 @@ func finalExpHard_BN*[C: static Curve](f: var Fp12[C]) =
   t4.pow_u(t3)                 # t4 = f^12u³
   t4 *= t1                     # t4 = f^(6u + 6u² + 12u³) = f^λ₂
 
-  if not C.get(ate_param_is_Neg):
+  if not C.pairing(ate_param_is_Neg):
     t0.cyclotomic_inv()        # t0 = f^-2u
   t3.prod(t4, t0)              # t3 = f^(4u + 6u² + 12u³)
 

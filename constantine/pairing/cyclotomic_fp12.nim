@@ -225,6 +225,11 @@ func cyclotomic_square*[C](a: var Fp12[C]) =
   else:
     {.error: "Not implemented".}
 
+func cycl_sqr_repeated*(f: var Fp12, num: int) {.inline.} =
+  ## Repeated cyclotomic squarings
+  for _ in 0 ..< num:
+    f.cyclotomic_square()
+
 iterator unpack(scalarByte: byte): bool =
   yield bool((scalarByte and 0b10000000) shr 7)
   yield bool((scalarByte and 0b01000000) shr 6)

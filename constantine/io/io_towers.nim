@@ -12,8 +12,6 @@ import
   std/typetraits,
   # Internal
   ./io_bigints, ./io_fields,
-  ../config/curves,
-  ../arithmetic/finite_fields,
   ../towers
 
 # No exceptions allowed

@@ -109,15 +109,7 @@ type
     sexticTwist: SexticTwist
     sexticNonResidue_fp2: NimNode # nnkPar(nnkIntLit, nnkIntLit)
 
-    # Endomorphisms
-    cubicRootOfUnity_modP: NimNode # nnkStrLit
-    cubicRootOfUnity_modR: NimNode # nnkStrLit
-
     family: CurveFamily
-    # BN family
-    # ------------------------
-    bn_u_bitwidth: NimNode # nnkIntLit
-    bn_u: NimNode          # nnkStrLit (hex)
 
 var curvesDefinitions {.compileTime.}: seq[CurveParams]
 
@@ -182,14 +174,6 @@ proc parseCurveDecls(defs: var seq[CurveParams], curves: NimNode) =
         params.modulus = sectionVal
       elif sectionId.eqIdent"family":
         params.family = parseEnum[CurveFamily]($sectionVal)
-      elif sectionId.eqIdent"bn_u_bitwidth":
-        params.bn_u_bitwidth = sectionVal
-      elif sectionId.eqIdent"bn_u":
-        params.bn_u = sectionVal
-      elif sectionId.eqident"cubicRootOfUnity_modP":
-        params.cubicRootOfUnity_modP = sectionVal
-      elif sectionId.eqident"cubicRootOfUnity_modR":
-        params.cubicRootOfUnity_modR = sectionVal
       elif sectionId.eqIdent"eq_form":
         params.eq_form = parseEnum[CurveEquationForm]($sectionVal)
       elif sectionId.eqIdent"coef_a":
@@ -323,42 +307,6 @@ proc genMainConstants(defs: var seq[CurveParams]): NimNode =
         curveDef.sexticNonResidue_fp2
       )
 
-    # Endomorphisms
-    # -----------------------------------------------
-    if not curveDef.cubicRootOfUnity_modP.isNil:
-      curveExtraStmts.add newConstStmt(
-        exported($curve & "_cubicRootOfUnity_modP_Hex"),
-        curveDef.cubicRootOfUnity_modP
-      )
-    if not curveDef.cubicRootOfUnity_modR.isNil:
-      curveExtraStmts.add newConstStmt(
-        exported($curve & "_cubicRootOfUnity_modR_Hex"),
-        curveDef.cubicRootOfUnity_modR
-      )
-
-    # BN curves
-    # -----------------------------------------------
-    if family == BarretoNaehrig:
-      if not curveDef.bn_u_bitwidth.isNil and
-         not curveDef.bn_u.isNil and
-         ($curveDef.bn_u)[0] != '-': # The parameter must be positive
-        curveExtraStmts.add newConstStmt(
-          exported($curve & "_BN_can_use_addchain_inversion"),
-          newLit true
-        )
-        curveExtraStmts.add newConstStmt(
-          exported($curve & "_BN_param_u"),
-          newCall(
-            bindSym"fromHex",
-            nnkBracketExpr.newTree(bindSym"BigInt", curveDef.bn_u_bitwidth),
-            curveDef.bn_u
-          )
-        )
-      else:
-        curveExtraStmts.add newConstStmt(
-          exported($curve & "_BN_can_use_addchain_inversion"),
-          newLit false
-        )
   # end for ---------------------------------------------------
 
   result = newStmtList()

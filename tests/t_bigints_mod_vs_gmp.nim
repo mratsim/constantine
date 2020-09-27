@@ -33,10 +33,15 @@ const CryptoModSizes = [
   # Barreto-Naehrig
   254, # BN254
   # Barreto-Lynn-Scott
+  377, # BLS12-377
   381, # BLS12-381
-  383, # BLS12-383
-  461, # BLS12-461
-  480, # BLS24-480
+  # Brezing-Weng
+  761, # BW6-761
+  # Cocks-Pinch
+  782, # CP6-782
+  # Miyaji-Nakabayashi-Takano
+  298, # MNT4-298, MNT6-298
+  753, # MNT4-753, MNT6-753
   # NIST recommended curves for US Federal Government (FIPS)
   # https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.186-4.pdf
   192,
