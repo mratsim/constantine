@@ -13,7 +13,7 @@ import
   ../constantine/config/[common, curves],
   ../constantine/arithmetic,
   ../constantine/io/io_bigints,
-  ../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective],
+  ../constantine/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
   # Test utilities
   ../helpers/prng_unsafe,
   ./t_ec_template
@@ -22,19 +22,19 @@ const
   Iters = 8
 
 run_EC_addition_tests(
-    ec = ECP_SWei_Proj[Fp[BN254_Snarks]],
+    ec = ECP_ShortW_Proj[Fp[BN254_Snarks]],
     Iters = Iters,
-    moduleName = "test_ec_weierstrass_projective_g1_add_double_" & $BN254_Snarks
+    moduleName = "test_ec_shortweierstrass_projective_g1_add_double_" & $BN254_Snarks
   )
 
 run_EC_addition_tests(
-    ec = ECP_SWei_Proj[Fp[BLS12_381]],
+    ec = ECP_ShortW_Proj[Fp[BLS12_381]],
     Iters = Iters,
-    moduleName = "test_ec_weierstrass_projective_g1_add_double_" & $BLS12_381
+    moduleName = "test_ec_shortweierstrass_projective_g1_add_double_" & $BLS12_381
   )
 
 run_EC_addition_tests(
-    ec = ECP_SWei_Proj[Fp[BLS12_377]],
+    ec = ECP_ShortW_Proj[Fp[BLS12_377]],
     Iters = Iters,
-    moduleName = "test_ec_weierstrass_projective_g1_add_double_" & $BLS12_377
+    moduleName = "test_ec_shortweierstrass_projective_g1_add_double_" & $BLS12_377
   )

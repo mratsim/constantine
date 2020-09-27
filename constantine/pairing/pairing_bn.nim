@@ -11,8 +11,8 @@ import
   ../towers,
   ../io/io_bigints,
   ../elliptic/[
-    ec_weierstrass_affine,
-    ec_weierstrass_projective
+    ec_shortweierstrass_affine,
+    ec_shortweierstrass_projective
   ],
   ./lines_projective,
   ./mul_fp12_by_lines,
@@ -45,8 +45,8 @@ import
 
 func millerLoopGenericBN*[C](
        f: var Fp12[C],
-       P: ECP_SWei_Aff[Fp[C]],
-       Q: ECP_SWei_Aff[Fp2[C]]
+       P: ECP_ShortW_Aff[Fp[C]],
+       Q: ECP_ShortW_Aff[Fp2[C]]
      ) =
   ## Generic Miller Loop for BN curves
   ## Computes f{6u+2,Q}(P) with u the BN curve parameter
@@ -80,7 +80,7 @@ func millerLoopGenericBN*[C](
   #      than the curve order which is the case for BN curves
 
   var
-    T {.noInit.}: ECP_SWei_Proj[Fp2[C]]
+    T {.noInit.}: ECP_ShortW_Proj[Fp2[C]]
     line {.noInit.}: Line[Fp2[C], C.getSexticTwist()]
     nQ{.noInit.}: typeof(Q)
 
@@ -133,14 +133,14 @@ func finalExpGeneric[C: static Curve](f: var Fp12[C]) =
   ## for sanity checks purposes.
   f.powUnsafeExponent(C.pairing(finalexponent), window = 3)
 
-func pairing_bn_reference*[C](gt: var Fp12[C], P: ECP_SWei_Proj[Fp[C]], Q: ECP_SWei_Proj[Fp2[C]]) =
+func pairing_bn_reference*[C](gt: var Fp12[C], P: ECP_ShortW_Proj[Fp[C]], Q: ECP_ShortW_Proj[Fp2[C]]) =
   ## Compute the optimal Ate Pairing for BN curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
   ##
   ## Reference implementation
-  var Paff {.noInit.}: ECP_SWei_Aff[Fp[C]]
-  var Qaff {.noInit.}: ECP_SWei_Aff[Fp2[C]]
+  var Paff {.noInit.}: ECP_ShortW_Aff[Fp[C]]
+  var Qaff {.noInit.}: ECP_ShortW_Aff[Fp2[C]]
   Paff.affineFromProjective(P)
   Qaff.affineFromProjective(Q)
   gt.millerLoopGenericBN(Paff, Qaff)
@@ -201,12 +201,12 @@ func finalExpHard_BN*[C: static Curve](f: var Fp12[C]) =
   f.frobenius_map(t2, 3)       # r = f^λ₃p³
   f *= t0                      # r = f^(λ₀ + λ₁p + λ₂p² + λ₃p³) = f^((p⁴-p²+1)/r)
 
-func pairing_bn*[C](gt: var Fp12[C], P: ECP_SWei_Proj[Fp[C]], Q: ECP_SWei_Proj[Fp2[C]]) =
+func pairing_bn*[C](gt: var Fp12[C], P: ECP_ShortW_Proj[Fp[C]], Q: ECP_ShortW_Proj[Fp2[C]]) =
   ## Compute the optimal Ate Pairing for BLS12 curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
-  var Paff {.noInit.}: ECP_SWei_Aff[Fp[C]]
-  var Qaff {.noInit.}: ECP_SWei_Aff[Fp2[C]]
+  var Paff {.noInit.}: ECP_ShortW_Aff[Fp[C]]
+  var Qaff {.noInit.}: ECP_ShortW_Aff[Fp2[C]]
   Paff.affineFromProjective(P)
   Qaff.affineFromProjective(Q)
   gt.millerLoopGenericBN(Paff, Qaff)

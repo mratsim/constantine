@@ -18,7 +18,7 @@ import
   ../constantine/arithmetic,
   ../constantine/io/io_bigints,
   ../constantine/towers,
-  ../constantine/elliptic/[ec_weierstrass_projective, ec_weierstrass_affine],
+  ../constantine/elliptic/[ec_shortweierstrass_projective, ec_shortweierstrass_affine],
   ../constantine/hash_to_curve/cofactors,
   ../constantine/pairing/[
     cyclotomic_fp12,
@@ -130,22 +130,22 @@ func random_point*(rng: var RngState, EC: typedesc): EC {.noInit.} =
 
 proc lineDoubleBench*(C: static Curve, iters: int) =
   var line: Line[Fp2[C], C.getSexticTwist()]
-  var T = rng.random_point(ECP_SWei_Proj[Fp2[C]])
-  let P = rng.random_point(ECP_SWei_Proj[Fp[C]])
-  var Paff: ECP_SWei_Aff[Fp[C]]
+  var T = rng.random_point(ECP_ShortW_Proj[Fp2[C]])
+  let P = rng.random_point(ECP_ShortW_Proj[Fp[C]])
+  var Paff: ECP_ShortW_Aff[Fp[C]]
   Paff.affineFromProjective(P)
   bench("Line double", C, iters):
     line.line_double(T, Paff)
 
 proc lineAddBench*(C: static Curve, iters: int) =
   var line: Line[Fp2[C], C.getSexticTwist()]
-  var T = rng.random_point(ECP_SWei_Proj[Fp2[C]])
+  var T = rng.random_point(ECP_ShortW_Proj[Fp2[C]])
   let
-    P = rng.random_point(ECP_SWei_Proj[Fp[C]])
-    Q = rng.random_point(ECP_SWei_Proj[Fp2[C]])
+    P = rng.random_point(ECP_ShortW_Proj[Fp[C]])
+    Q = rng.random_point(ECP_ShortW_Proj[Fp2[C]])
   var
-    Paff: ECP_SWei_Aff[Fp[C]]
-    Qaff: ECP_SWei_Aff[Fp2[C]]
+    Paff: ECP_ShortW_Aff[Fp[C]]
+    Qaff: ECP_ShortW_Aff[Fp2[C]]
   Paff.affineFromProjective(P)
   Qaff.affineFromProjective(Q)
   bench("Line add", C, iters):
@@ -153,9 +153,9 @@ proc lineAddBench*(C: static Curve, iters: int) =
 
 proc mulFp12byLine_xyz000_Bench*(C: static Curve, iters: int) =
   var line: Line[Fp2[C], C.getSexticTwist()]
-  var T = rng.random_point(ECP_SWei_Proj[Fp2[C]])
-  let P = rng.random_point(ECP_SWei_Proj[Fp[C]])
-  var Paff: ECP_SWei_Aff[Fp[C]]
+  var T = rng.random_point(ECP_ShortW_Proj[Fp2[C]])
+  let P = rng.random_point(ECP_ShortW_Proj[Fp[C]])
+  var Paff: ECP_ShortW_Aff[Fp[C]]
   Paff.affineFromProjective(P)
 
   line.line_double(T, Paff)
@@ -166,9 +166,9 @@ proc mulFp12byLine_xyz000_Bench*(C: static Curve, iters: int) =
 
 proc mulFp12byLine_xy000z_Bench*(C: static Curve, iters: int) =
   var line: Line[Fp2[C], C.getSexticTwist()]
-  var T = rng.random_point(ECP_SWei_Proj[Fp2[C]])
-  let P = rng.random_point(ECP_SWei_Proj[Fp[C]])
-  var Paff: ECP_SWei_Aff[Fp[C]]
+  var T = rng.random_point(ECP_ShortW_Proj[Fp2[C]])
+  let P = rng.random_point(ECP_ShortW_Proj[Fp[C]])
+  var Paff: ECP_ShortW_Aff[Fp[C]]
   Paff.affineFromProjective(P)
 
   line.line_double(T, Paff)
@@ -179,11 +179,11 @@ proc mulFp12byLine_xy000z_Bench*(C: static Curve, iters: int) =
 
 proc millerLoopBLS12Bench*(C: static Curve, iters: int) =
   let
-    P = rng.random_point(ECP_SWei_Proj[Fp[C]])
-    Q = rng.random_point(ECP_SWei_Proj[Fp2[C]])
+    P = rng.random_point(ECP_ShortW_Proj[Fp[C]])
+    Q = rng.random_point(ECP_ShortW_Proj[Fp2[C]])
   var
-    Paff: ECP_SWei_Aff[Fp[C]]
-    Qaff: ECP_SWei_Aff[Fp2[C]]
+    Paff: ECP_ShortW_Aff[Fp[C]]
+    Qaff: ECP_ShortW_Aff[Fp2[C]]
   Paff.affineFromProjective(P)
   Qaff.affineFromProjective(Q)
 
@@ -194,11 +194,11 @@ proc millerLoopBLS12Bench*(C: static Curve, iters: int) =
 
 proc millerLoopBNBench*(C: static Curve, iters: int) =
   let
-    P = rng.random_point(ECP_SWei_Proj[Fp[C]])
-    Q = rng.random_point(ECP_SWei_Proj[Fp2[C]])
+    P = rng.random_point(ECP_ShortW_Proj[Fp[C]])
+    Q = rng.random_point(ECP_ShortW_Proj[Fp2[C]])
   var
-    Paff: ECP_SWei_Aff[Fp[C]]
-    Qaff: ECP_SWei_Aff[Fp2[C]]
+    Paff: ECP_ShortW_Aff[Fp[C]]
+    Qaff: ECP_ShortW_Aff[Fp2[C]]
   Paff.affineFromProjective(P)
   Qaff.affineFromProjective(Q)
 
@@ -238,8 +238,8 @@ proc finalExpBNBench*(C: static Curve, iters: int) =
 
 proc pairingBLS12Bench*(C: static Curve, iters: int) =
   let
-    P = rng.random_point(ECP_SWei_Proj[Fp[C]])
-    Q = rng.random_point(ECP_SWei_Proj[Fp2[C]])
+    P = rng.random_point(ECP_ShortW_Proj[Fp[C]])
+    Q = rng.random_point(ECP_ShortW_Proj[Fp2[C]])
 
   var f: Fp12[C]
 
@@ -248,8 +248,8 @@ proc pairingBLS12Bench*(C: static Curve, iters: int) =
 
 proc pairingBNBench*(C: static Curve, iters: int) =
   let
-    P = rng.random_point(ECP_SWei_Proj[Fp[C]])
-    Q = rng.random_point(ECP_SWei_Proj[Fp2[C]])
+    P = rng.random_point(ECP_ShortW_Proj[Fp[C]])
+    Q = rng.random_point(ECP_ShortW_Proj[Fp2[C]])
 
   var f: Fp12[C]
 

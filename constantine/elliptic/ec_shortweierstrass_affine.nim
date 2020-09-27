@@ -20,7 +20,7 @@ import
 #
 # ############################################################
 
-type ECP_SWei_Aff*[F] = object
+type ECP_ShortW_Aff*[F] = object
   ## Elliptic curve point for a curve in Short Weierstrass form
   ##   y² = x³ + a x + b
   ##
@@ -80,7 +80,7 @@ func isOnCurve*[F](x, y: F): SecretBool =
 
   return y2 == rhs
 
-func trySetFromCoordX*[F](P: var ECP_SWei_Aff[F], x: F): SecretBool =
+func trySetFromCoordX*[F](P: var ECP_ShortW_Aff[F], x: F): SecretBool =
   ## Try to create a point the elliptic curve
   ## y² = x³ + a x + b     (affine coordinate)
   ##
@@ -95,16 +95,16 @@ func trySetFromCoordX*[F](P: var ECP_SWei_Aff[F], x: F): SecretBool =
   # TODO: supports non p ≡ 3 (mod 4) modulus like BLS12-377
   result = sqrt_if_square(P.y)
 
-func neg*(P: var ECP_SWei_Aff, Q: ECP_SWei_Aff) =
+func neg*(P: var ECP_ShortW_Aff, Q: ECP_ShortW_Aff) =
   ## Negate ``P``
   P.x = Q.x
   P.y.neg(Q.y)
 
-func neg*(P: var ECP_SWei_Aff) =
+func neg*(P: var ECP_ShortW_Aff) =
   ## Negate ``P``
   P.y.neg()
 
-func cneg*(P: var ECP_SWei_Aff, ctl: CTBool) =
+func cneg*(P: var ECP_ShortW_Aff, ctl: CTBool) =
   ## Conditional negation.
   ## Negate if ``ctl`` is true
   var Q{.noInit.}: typeof(P)

@@ -12,8 +12,8 @@ import
   ../arithmetic,
   ../towers,
   ../elliptic/[
-    ec_weierstrass_affine,
-    ec_weierstrass_projective
+    ec_shortweierstrass_affine,
+    ec_shortweierstrass_projective
   ]
 
 # No exceptions allowed
@@ -26,7 +26,7 @@ import
 #
 # ############################################################
 
-func toHex*(P: ECP_SWei_Proj): string =
+func toHex*(P: ECP_ShortW_Proj): string =
   ## Stringify an elliptic curve point to Hex
   ## Note. Leading zeros are not removed.
   ## Result is prefixed with 0x
@@ -40,7 +40,7 @@ func toHex*(P: ECP_SWei_Proj): string =
   ##
   ## This proc output may change format in the future
 
-  var aff {.noInit.}: ECP_SWei_Aff[ECP_SWei_Proj.F]
+  var aff {.noInit.}: ECP_ShortW_Aff[ECP_ShortW_Proj.F]
   aff.affineFromProjective(P)
 
   result = "ECP[" & $aff.F & "](\n  x: "
@@ -49,7 +49,7 @@ func toHex*(P: ECP_SWei_Proj): string =
   result.appendHex(aff.y, bigEndian)
   result &= "\n)"
 
-func fromHex*(dst: var ECP_SWei_Proj, x, y: string): bool {.raises: [ValueError].}=
+func fromHex*(dst: var ECP_ShortW_Proj, x, y: string): bool {.raises: [ValueError].}=
   ## Convert hex strings to a G1 curve point
   ## Returns `false`
   ## if there is no point with coordinates (`x`, `y`) on the curve
@@ -60,7 +60,7 @@ func fromHex*(dst: var ECP_SWei_Proj, x, y: string): bool {.raises: [ValueError]
   dst.z.setOne()
   return bool(isOnCurve(dst.x, dst.y))
 
-func fromHex*(dst: var ECP_SWei_Proj, x0, x1, y0, y1: string): bool {.raises: [ValueError].}=
+func fromHex*(dst: var ECP_ShortW_Proj, x0, x1, y0, y1: string): bool {.raises: [ValueError].}=
   ## Convert hex strings to a G2 curve point
   ## Returns `false`
   ## if there is no point with coordinates (`x`, `y`) on the curve
@@ -71,7 +71,7 @@ func fromHex*(dst: var ECP_SWei_Proj, x0, x1, y0, y1: string): bool {.raises: [V
   dst.z.setOne()
   return bool(isOnCurve(dst.x, dst.y))
 
-func fromHex*(dst: var ECP_SWei_Aff, x, y: string): bool {.raises: [ValueError].}=
+func fromHex*(dst: var ECP_ShortW_Aff, x, y: string): bool {.raises: [ValueError].}=
   ## Convert hex strings to a G1 curve point
   ## Returns `false`
   ## if there is no point with coordinates (`x`, `y`) on the curve
@@ -81,7 +81,7 @@ func fromHex*(dst: var ECP_SWei_Aff, x, y: string): bool {.raises: [ValueError].
   dst.y.fromHex(y)
   return bool(isOnCurve(dst.x, dst.y))
 
-func fromHex*(dst: var ECP_SWei_Aff, x0, x1, y0, y1: string): bool {.raises: [ValueError].}=
+func fromHex*(dst: var ECP_ShortW_Aff, x0, x1, y0, y1: string): bool {.raises: [ValueError].}=
   ## Convert hex strings to a G2 curve point
   ## Returns `false`
   ## if there is no point with coordinates (`x`, `y`) on the curve

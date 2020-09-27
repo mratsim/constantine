@@ -16,7 +16,7 @@ import
   ../towers,
   ../config/curves,
   ../io/io_bigints,
-  ../elliptic/[ec_weierstrass_projective, ec_scalar_mul]
+  ../elliptic/[ec_shortweierstrass_projective, ec_scalar_mul]
 
 # ############################################################
 #
@@ -44,40 +44,40 @@ const Cofactor_Eff_BLS12_381_G1 = BigInt[64].fromHex"0xd201000000010001"
 const Cofactor_Eff_BLS12_381_G2 = BigInt[636].fromHex"0xbc69f08f2ee75b3584c6a0ea91b352888e2a8e9145ad7689986ff031508ffe1329c2f178731db956d82bf015d1212b02ec0ec69d7477c1ae954cbc06689f6a359894c0adebbf6b4e8020005aaa95551"
   ## P -> (x^2 - x - 1) P + (x - 1) psi(P) + psi(psi(2P))
 
-func clearCofactorReference*(P: var ECP_SWei_Proj[Fp[BN254_Nogami]]) {.inline.} =
+func clearCofactorReference*(P: var ECP_ShortW_Proj[Fp[BN254_Nogami]]) {.inline.} =
   ## Clear the cofactor of BN254_Nogami G1
   ## BN curve have a G1 cofactor of 1 so this is a no-op
   discard
 
-func clearCofactorReference*(P: var ECP_SWei_Proj[Fp2[BN254_Nogami]]) {.inline.} =
+func clearCofactorReference*(P: var ECP_ShortW_Proj[Fp2[BN254_Nogami]]) {.inline.} =
   ## Clear the cofactor of BN254_Snarks G2
   # Endomorphism acceleration cannot be used if cofactor is not cleared
   P.scalarMulGeneric(Cofactor_Eff_BN254_Nogami_G2)
 
-func clearCofactorReference*(P: var ECP_SWei_Proj[Fp[BN254_Snarks]]) {.inline.} =
+func clearCofactorReference*(P: var ECP_ShortW_Proj[Fp[BN254_Snarks]]) {.inline.} =
   ## Clear the cofactor of BN254_Snarks G1
   ## BN curve have a G1 cofactor of 1 so this is a no-op
   discard
 
-func clearCofactorReference*(P: var ECP_SWei_Proj[Fp2[BN254_Snarks]]) {.inline.} =
+func clearCofactorReference*(P: var ECP_ShortW_Proj[Fp2[BN254_Snarks]]) {.inline.} =
   ## Clear the cofactor of BN254_Snarks G2
   # Endomorphism acceleration cannot be used if cofactor is not cleared
   P.scalarMulGeneric(Cofactor_Eff_BN254_Snarks_G2)
 
-func clearCofactorReference*(P: var ECP_SWei_Proj[Fp[BLS12_377]]) {.inline.} =
+func clearCofactorReference*(P: var ECP_ShortW_Proj[Fp[BLS12_377]]) {.inline.} =
   ## Clear the cofactor of BLS12_377 G1
   P.scalarMulGeneric(Cofactor_Eff_BLS12_377_G1)
 
-func clearCofactorReference*(P: var ECP_SWei_Proj[Fp2[BLS12_377]]) {.inline.} =
+func clearCofactorReference*(P: var ECP_ShortW_Proj[Fp2[BLS12_377]]) {.inline.} =
   ## Clear the cofactor of BLS12_377 G2
   # Endomorphism acceleration cannot be used if cofactor is not cleared
   P.scalarMulGeneric(Cofactor_Eff_BLS12_377_G2)
 
-func clearCofactorReference*(P: var ECP_SWei_Proj[Fp[BLS12_381]]) {.inline.} =
+func clearCofactorReference*(P: var ECP_ShortW_Proj[Fp[BLS12_381]]) {.inline.} =
   ## Clear the cofactor of BLS12_381 G1
   P.scalarMulGeneric(Cofactor_Eff_BLS12_381_G1)
 
-func clearCofactorReference*(P: var ECP_SWei_Proj[Fp2[BLS12_381]]) {.inline.} =
+func clearCofactorReference*(P: var ECP_ShortW_Proj[Fp2[BLS12_381]]) {.inline.} =
   ## Clear the cofactor of BLS12_381 G2
   # Endomorphism acceleration cannot be used if cofactor is not cleared
   P.scalarMulGeneric(Cofactor_Eff_BLS12_381_G2)

@@ -9,7 +9,7 @@
 import
   ../../constantine/arithmetic/bigints,
   ../../constantine/config/[common, curves],
-  ../../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective]
+  ../../constantine/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective]
 
 # Canaries
 # --------------------------------------------------------------

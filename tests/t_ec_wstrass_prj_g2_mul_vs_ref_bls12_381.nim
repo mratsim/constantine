@@ -14,7 +14,7 @@ import
   ../constantine/arithmetic,
   ../constantine/towers,
   ../constantine/io/io_bigints,
-  ../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective, ec_scalar_mul],
+  ../constantine/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective, ec_scalar_mul],
   # Test utilities
   ../helpers/prng_unsafe,
   ./support/ec_reference_scalar_mult,
@@ -25,7 +25,7 @@ const
   ItersMul = Iters div 4
 
 run_EC_mul_vs_ref_impl(
-    ec = ECP_SWei_Proj[Fp2[BLS12_381]],
+    ec = ECP_ShortW_Proj[Fp2[BLS12_381]],
     ItersMul = ItersMul,
-    moduleName = "test_ec_weierstrass_projective_g2_mul_vs_ref_" & $BLS12_381
+    moduleName = "test_ec_shortweierstrass_projective_g2_mul_vs_ref_" & $BLS12_381
   )

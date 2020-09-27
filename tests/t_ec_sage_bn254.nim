@@ -14,7 +14,7 @@ import
   ../constantine/arithmetic,
   ../constantine/towers,
   ../constantine/io/[io_bigints, io_ec],
-  ../constantine/elliptic/[ec_weierstrass_projective, ec_scalar_mul, ec_endomorphism_accel],
+  ../constantine/elliptic/[ec_shortweierstrass_projective, ec_scalar_mul, ec_endomorphism_accel],
   # Test utilities
   ./support/ec_reference_scalar_mult
 
@@ -22,7 +22,7 @@ echo "\n------------------------------------------------------\n"
 
 proc test(
        id: int,
-       EC: typedesc[ECP_SWei_Proj],
+       EC: typedesc[ECP_ShortW_Proj],
        Px, Py: string,
        scalar: string,
        Qx, Qy: string
@@ -58,7 +58,7 @@ suite "Scalar Multiplication G1: BN254 implementation vs SageMath" & " [" & $Wor
   # Generated via sage sage/testgen_bn254_snarks.sage
   test(
     id = 0,
-    EC = ECP_SWei_Proj[Fp[BN254_Snarks]],
+    EC = ECP_ShortW_Proj[Fp[BN254_Snarks]],
     Px = "22d3af0f3ee310df7fc1a2a204369ac13eb4a48d969a27fcd2861506b2dc0cd7",
     Py = "1c994169687886ccd28dd587c29c307fb3cab55d796d73a5be0bbf9aab69912e",
     scalar = "e08a292f940cfb361cc82bc24ca564f51453708c9745a9cf8707b11c84bc448",
@@ -68,7 +68,7 @@ suite "Scalar Multiplication G1: BN254 implementation vs SageMath" & " [" & $Wor
 
   test(
     id = 1,
-    EC = ECP_SWei_Proj[Fp[BN254_Snarks]],
+    EC = ECP_ShortW_Proj[Fp[BN254_Snarks]],
     Px = "2724750abe620fce759b6f18729e40f891a514160d477811a44b222372cc4ea3",
     Py = "105cdcbe363921790a56bf2696e73642447c60b814827ca4dba86c814912c98a",
     scalar = "2f5c2960850eabadab1e5595ff0bf841206885653e7f2024248b281a86744790",
@@ -78,7 +78,7 @@ suite "Scalar Multiplication G1: BN254 implementation vs SageMath" & " [" & $Wor
 
   test(
     id = 2,
-    EC = ECP_SWei_Proj[Fp[BN254_Snarks]],
+    EC = ECP_ShortW_Proj[Fp[BN254_Snarks]],
     Px = "39bc19c41835082f86ca046b71875b051575072e4d6a4aeedac31eee34b07df",
     Py = "1fdbf42fc20421e1e775fd93ed1888d614f7e39067e7443f21b6a4817481c346",
     scalar = "29e140c33f706c0111443699b0b8396d8ead339a3d6f3c212b08749cf2a16f6b",
@@ -88,7 +88,7 @@ suite "Scalar Multiplication G1: BN254 implementation vs SageMath" & " [" & $Wor
 
   test(
     id = 3,
-    EC = ECP_SWei_Proj[Fp[BN254_Snarks]],
+    EC = ECP_ShortW_Proj[Fp[BN254_Snarks]],
     Px = "157a3e1ff9dabccced9746e19855a9438098be6d734f07d1c069aa1bd05b8d87",
     Py = "1c96bf3e48bc1a6635d93d4f1302a0eba39bd907c5d861f2a9d0c714ee60f04d",
     scalar = "29b05bd55963e262e0fa458c76297fb5be3ec1421fdb1354789f68fdce81dc2c",
@@ -98,7 +98,7 @@ suite "Scalar Multiplication G1: BN254 implementation vs SageMath" & " [" & $Wor
 
   test(
     id = 4,
-    EC = ECP_SWei_Proj[Fp[BN254_Snarks]],
+    EC = ECP_ShortW_Proj[Fp[BN254_Snarks]],
     Px = "2f260967d4cd5d15f98c0a0a9d5abaae0c70d3b8d83e1e884586cd6ece395fe7",
     Py = "2a102c7aebdfaa999d5a99984148ada142f72f5d4158c10368a2e13dded886f6",
     scalar = "1796de74c1edac90d102e7c33f3fad94304eaff4a67a018cae678774d377f6cd",
@@ -108,7 +108,7 @@ suite "Scalar Multiplication G1: BN254 implementation vs SageMath" & " [" & $Wor
 
   test(
     id = 5,
-    EC = ECP_SWei_Proj[Fp[BN254_Snarks]],
+    EC = ECP_ShortW_Proj[Fp[BN254_Snarks]],
     Px = "1b4ccef57f4411360a02b8228e4251896c9492ff93a69ba3720da0cd46a04e83",
     Py = "1fabcb215bd7c06ead2e6b0167497efc2cdd3dbacf69bcb0244142fd63c1e405",
     scalar = "116741cd19dac61c5e77877fc6fef40f363b164b501dfbdbc09e17ea51d6beb0",
@@ -118,7 +118,7 @@ suite "Scalar Multiplication G1: BN254 implementation vs SageMath" & " [" & $Wor
 
   test(
     id = 6,
-    EC = ECP_SWei_Proj[Fp[BN254_Snarks]],
+    EC = ECP_ShortW_Proj[Fp[BN254_Snarks]],
     Px = "2807c88d6759280d6bd83a54d349a533d1a66dc32f72cab8114ab707f10e829b",
     Py = "dbf0d486aeed3d303880f324faa2605aa0219e35661bc88150470c7df1c0b61",
     scalar = "2a5976268563870739ced3e6efd8cf53887e8e4426803377095708509dd156ca",
@@ -128,7 +128,7 @@ suite "Scalar Multiplication G1: BN254 implementation vs SageMath" & " [" & $Wor
 
   test(
     id = 7,
-    EC = ECP_SWei_Proj[Fp[BN254_Snarks]],
+    EC = ECP_ShortW_Proj[Fp[BN254_Snarks]],
     Px = "2754a174a33a55f2a31573767e9bf5381b47dca1cbebc8b68dd4df58b3f1cc2",
     Py = "f222f59c8893ad87c581dacb3f8b6e7c20e7a13bc5fb6e24262a3436d663b1",
     scalar = "25d596bf6caf4565fbfd22d81f9cef40c8f89b1e5939f20caa1b28056e0e4f58",
@@ -138,7 +138,7 @@ suite "Scalar Multiplication G1: BN254 implementation vs SageMath" & " [" & $Wor
 
   test(
     id = 8,
-    EC = ECP_SWei_Proj[Fp[BN254_Snarks]],
+    EC = ECP_ShortW_Proj[Fp[BN254_Snarks]],
     Px = "273bf6c679d8e880034590d16c007bbabc6c65ed870a263b5d1ce7375c18fd7",
     Py = "2904086cb9e33657999229b082558a74c19b2b619a0499afb2e21d804d8598ee",
     scalar = "67a499a389129f3902ba6140660c431a56811b53de01d043e924711bd341e53",
@@ -148,7 +148,7 @@ suite "Scalar Multiplication G1: BN254 implementation vs SageMath" & " [" & $Wor
 
   test(
     id = 9,
-    EC = ECP_SWei_Proj[Fp[BN254_Snarks]],
+    EC = ECP_ShortW_Proj[Fp[BN254_Snarks]],
     Px = "ec892c09a5f1c68c1bfec7780a1ebd279739383f2698eeefbba745b3e717fd5",
     Py = "23d273a1b9750fe1d4ebd4b7c25f4a8d7d94f6662c436305cca8ff2cdbd3f736",
     scalar = "d2f09ceaa2638b7ac3d7d4aa9eff7a12e93dc85db0f9676e5f19fb86d6273e9",
@@ -158,7 +158,7 @@ suite "Scalar Multiplication G1: BN254 implementation vs SageMath" & " [" & $Wor
 
 proc test(
        id: int,
-       EC: typedesc[ECP_SWei_Proj],
+       EC: typedesc[ECP_ShortW_Proj],
        Px0, Px1, Py0, Py1: string,
        scalar: string,
        Qx0, Qx1, Qy0, Qy1: string
@@ -193,7 +193,7 @@ suite "Scalar Multiplication G2: BN254 implementation vs SageMath" & " [" & $Wor
   # Generated via sage sage/testgen_bn254_snarks.sage
   test(
     id = 0,
-    EC = ECP_SWei_Proj[Fp2[BN254_Snarks]],
+    EC = ECP_ShortW_Proj[Fp2[BN254_Snarks]],
     Px0 = "1dcee2242ae85da43d02d38032b85836660f9a0a8777ab66c84ffbbde3ac3b25",
     Px1 = "1e2eb4c305e3b6c36a4081888b7a953eb44804b8b5120306331f8c89a3bb950",
     Py0 = "1db75f495edd522cae161ceeb86ca466ca2efd80ef979028d7aa39679de675fd",
@@ -207,7 +207,7 @@ suite "Scalar Multiplication G2: BN254 implementation vs SageMath" & " [" & $Wor
 
   test(
     id = 1,
-    EC = ECP_SWei_Proj[Fp2[BN254_Snarks]],
+    EC = ECP_ShortW_Proj[Fp2[BN254_Snarks]],
     Px0 = "5ed8c937273562944e0f1ebfb40e6511202188c1cabf588ed38735016d37b32",
     Px1 = "23f75e8322c4b540cd5b8fd144a89ab5206a040f498b7b59385770bc841cf012",
     Py0 = "2150beef17f5c22a65a4129390f47eece8f0c7d0c516790ea2632e7fd594ed8",
@@ -221,7 +221,7 @@ suite "Scalar Multiplication G2: BN254 implementation vs SageMath" & " [" & $Wor
 
   test(
     id = 2,
-    EC = ECP_SWei_Proj[Fp2[BN254_Snarks]],
+    EC = ECP_ShortW_Proj[Fp2[BN254_Snarks]],
     Px0 = "2ac4b3d0a70d6686c63d9d63cce1370eafd4dc67f616c13582c6c64f6670513e",
     Px1 = "f1daeb6a2581ba6c8027a645ab5c10e303db4aee85c70c8fe11f4c1adcc7029",
     Py0 = "25807ff21967759cab64844741d006e2aa0221d9836613b1239da1a167d15131",
@@ -235,7 +235,7 @@ suite "Scalar Multiplication G2: BN254 implementation vs SageMath" & " [" & $Wor
 
   test(
     id = 3,
-    EC = ECP_SWei_Proj[Fp2[BN254_Snarks]],
+    EC = ECP_ShortW_Proj[Fp2[BN254_Snarks]],
     Px0 = "2a028c1328bb0abf252edfbf7133b84eef2a5f20163fe61685b4b54229ca585d",
     Px1 = "8f80ad79e8e7e79bbdc645d9f5b339c52dd99a901b90de2494492656f11a9d5",
     Py0 = "1f04320578e31ffa2e2b59ad8fcb1aba622b5f307ac540cf2ccdab07dec56503",
@@ -249,7 +249,7 @@ suite "Scalar Multiplication G2: BN254 implementation vs SageMath" & " [" & $Wor
 
   test(
     id = 4,
-    EC = ECP_SWei_Proj[Fp2[BN254_Snarks]],
+    EC = ECP_ShortW_Proj[Fp2[BN254_Snarks]],
     Px0 = "1132e63c444e1abce6fc4c39bdf5be5caad586837cbf5ca9d3891482bdefe77",
     Px1 = "22b71f598dab789f055fc9669ddf66f0d75f581af0e9e8863d7f95a51ef34862",
     Py0 = "58e39050f64c9948d7238b99ecaee947cb934688a6e9f483c5c36b6e07aa31b",
@@ -263,7 +263,7 @@ suite "Scalar Multiplication G2: BN254 implementation vs SageMath" & " [" & $Wor
 
   test(
     id = 5,
-    EC = ECP_SWei_Proj[Fp2[BN254_Snarks]],
+    EC = ECP_ShortW_Proj[Fp2[BN254_Snarks]],
     Px0 = "6a20c456e80e2bfe37d8631d41ffed31cba5d1c411e816d64014d0088d16554",
     Px1 = "9d1555c77222abd79e17e2806386c53aba9609375276e817f52f03dc3f75676",
     Py0 = "127e76f384726e56dfaa46e6fde6dc644f5fd494d056191059e2bebc525ce835",
@@ -277,7 +277,7 @@ suite "Scalar Multiplication G2: BN254 implementation vs SageMath" & " [" & $Wor
 
   test(
     id = 6,
-    EC = ECP_SWei_Proj[Fp2[BN254_Snarks]],
+    EC = ECP_ShortW_Proj[Fp2[BN254_Snarks]],
     Px0 = "4c591d080257375d6189340185c6fe4c1fa796722d07e1bec0b17080b6b1154",
     Px1 = "241e2f2eb2a58afc2b5410d4ccbf75b53744ca1ac0bb28d7c60449f8d06204a4",
     Py0 = "eaddea52f2e884a5e2635965ca4146b12127fe8a8883e07def8e8720f410781",
@@ -291,7 +291,7 @@ suite "Scalar Multiplication G2: BN254 implementation vs SageMath" & " [" & $Wor
 
   test(
     id = 7,
-    EC = ECP_SWei_Proj[Fp2[BN254_Snarks]],
+    EC = ECP_ShortW_Proj[Fp2[BN254_Snarks]],
     Px0 = "115e772198e3f0003e31c0a1c48b6ac870d96020a4d634b7f14c15422d001cfe",
     Px1 = "1913447ff41836e0b6a3b01be670a2457e6119e02ae35903fb71be4369e269f7",
     Py0 = "14cb779c640aad2731b93b07c623c621a5585d0374f0394e5332f20ac28ca49d",
@@ -305,7 +305,7 @@ suite "Scalar Multiplication G2: BN254 implementation vs SageMath" & " [" & $Wor
 
   test(
     id = 8,
-    EC = ECP_SWei_Proj[Fp2[BN254_Snarks]],
+    EC = ECP_ShortW_Proj[Fp2[BN254_Snarks]],
     Px0 = "13faa1f28e6bfe89765c284e67face6ce0a29006ebc1551d4243e754c59f88ad",
     Px1 = "640cebb80938dfcb998d84a8e5aafd47ffbcba0aa2f8c9b1c585baf119a8942",
     Py0 = "1de793a9ef8f4dea5dad12fb09ddefa07ce197d4d7389a29ad3d8c6484582afe",
@@ -319,7 +319,7 @@ suite "Scalar Multiplication G2: BN254 implementation vs SageMath" & " [" & $Wor
 
   test(
     id = 9,
-    EC = ECP_SWei_Proj[Fp2[BN254_Snarks]],
+    EC = ECP_ShortW_Proj[Fp2[BN254_Snarks]],
     Px0 = "2fc3da947b78ac524a57670cef36ca89f1dad71b337bc3c18305c582a59648ad",
     Px1 = "2f7cc845d8c1ef0613f919d8c47f3c62f83608a45b1e186748ac5dcccd4c6baf",
     Py0 = "18ddc4718a4161f72f8d188fc61a609a3d592e186a65f4158483b719ffb05b8f",

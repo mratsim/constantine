@@ -12,7 +12,7 @@ import
   ../arithmetic,
   ../towers,
   ../io/io_bigints,
-  ./ec_weierstrass_projective,
+  ./ec_shortweierstrass_projective,
   ./ec_endomorphism_accel
 
 # ############################################################
@@ -63,8 +63,8 @@ func getWindowLen(bufLen: int): uint =
     dec result
 
 func scalarMulPrologue(
-       P: var ECP_SWei_Proj,
-       scratchspace: var openarray[ECP_SWei_Proj]
+       P: var ECP_ShortW_Proj,
+       scratchspace: var openarray[ECP_ShortW_Proj]
      ): uint =
   ## Setup the scratchspace then set P to infinity
   ## Returns the fixed-window size for scalar mul with window optimization
@@ -84,9 +84,9 @@ func scalarMulPrologue(
   P.setInf()
 
 func scalarMulDoubling(
-       P: var ECP_SWei_Proj,
+       P: var ECP_ShortW_Proj,
        exponent: openArray[byte],
-       tmp: var ECP_SWei_Proj,
+       tmp: var ECP_ShortW_Proj,
        window: uint,
        acc, acc_len: var uint,
        e: var int
@@ -129,9 +129,9 @@ func scalarMulDoubling(
 
 
 func scalarMulGeneric(
-       P: var ECP_SWei_Proj,
+       P: var ECP_ShortW_Proj,
        scalar: openArray[byte],
-       scratchspace: var openArray[ECP_SWei_Proj]
+       scratchspace: var openArray[ECP_ShortW_Proj]
      ) =
   ## Elliptic Curve Scalar Multiplication
   ##
@@ -210,7 +210,7 @@ func scalarMulGeneric(
     scratchspace[0].sum(P, scratchspace[1])
     P.ccopy(scratchspace[0], SecretWord(bits).isNonZero())
 
-func scalarMulGeneric*(P: var ECP_SWei_Proj, scalar: BigInt, window: static int = 5) =
+func scalarMulGeneric*(P: var ECP_ShortW_Proj, scalar: BigInt, window: static int = 5) =
   ## Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P
@@ -222,13 +222,13 @@ func scalarMulGeneric*(P: var ECP_SWei_Proj, scalar: BigInt, window: static int 
   ## A window size will reserve 2^window of scratch space to accelerate
   ## the scalar multiplication.
   var
-    scratchSpace: array[1 shl window, ECP_SWei_Proj]
+    scratchSpace: array[1 shl window, ECP_ShortW_Proj]
     scalarCanonicalBE: array[(scalar.bits+7) div 8, byte] # canonical big endian representation
   scalarCanonicalBE.exportRawUint(scalar, bigEndian)      # Export is constant-time
   P.scalarMulGeneric(scalarCanonicalBE, scratchSpace)
 
 func scalarMul*(
-       P: var ECP_SWei_Proj,
+       P: var ECP_ShortW_Proj,
        scalar: BigInt
      ) {.inline.} =
   ## Elliptic Curve Scalar Multiplication
@@ -240,11 +240,11 @@ func scalarMul*(
   ## - Cofactor to be cleared
   ## - 0 <= scalar < curve order
   ##   this will not automatically
-  when BigInt.bits <= ECP_SWei_Proj.F.C.getCurveOrderBitwidth() and
-       ECP_SWei_Proj.F.C in {BN254_Snarks, BLS12_377, BLS12_381}:
-    when ECP_SWei_Proj.F is Fp:
+  when BigInt.bits <= ECP_ShortW_Proj.F.C.getCurveOrderBitwidth() and
+       ECP_ShortW_Proj.F.C in {BN254_Snarks, BLS12_377, BLS12_381}:
+    when ECP_ShortW_Proj.F is Fp:
       P.scalarMulGLV_m2w2(scalar)
-    elif ECP_SWei_Proj.F is Fp2:
+    elif ECP_ShortW_Proj.F is Fp2:
       P.scalarMulEndo(scalar)
     else: # Curves defined on Fp^m with m > 2
       {.error: "Unreachable".}

@@ -13,8 +13,8 @@ import
   ../arithmetic,
   ../towers,
   ../elliptic/[
-    ec_weierstrass_affine,
-    ec_weierstrass_projective
+    ec_shortweierstrass_affine,
+    ec_shortweierstrass_projective
   ],
   ../io/io_towers
 
@@ -78,14 +78,14 @@ func `*=`(a: var Fp2, b: Fp) =
   a.c0 *= b
   a.c1 *= b
 
-func line_update(line: var Line, P: ECP_SWei_Aff) =
+func line_update(line: var Line, P: ECP_ShortW_Aff) =
   ## Update the line evaluation with P
   ## after addition or doubling
   ## P in G1
   line.x *= P.y
   line.z *= P.x
 
-func line_eval_double*(line: var Line, T: ECP_SWei_Proj) =
+func line_eval_double*(line: var Line, T: ECP_ShortW_Proj) =
   ## Evaluate the line function for doubling
   ## i.e. the tangent at T
   ##
@@ -125,7 +125,7 @@ func line_eval_double*(line: var Line, T: ECP_SWei_Proj) =
   ## is a constant factor on pᵏ with d the twisting degree
   ## and so will be elminated. QED.
   var v {.noInit.}: Line.F
-  const b3 = 3 * ECP_SWei_Proj.F.C.getCoefB()
+  const b3 = 3 * ECP_ShortW_Proj.F.C.getCoefB()
 
   template A: untyped = line.x
   template B: untyped = line.y
@@ -147,9 +147,9 @@ func line_eval_double*(line: var Line, T: ECP_SWei_Proj) =
 
   B *= b3               # B = 3b Z²
   C *= 3                # C = 3X²
-  when ECP_SWei_Proj.F.C.getSexticTwist() == M_Twist:
+  when ECP_ShortW_Proj.F.C.getSexticTwist() == M_Twist:
     B *= SexticNonResidue # B = 3b' Z² = 3bξ Z²
-  elif ECP_SWei_Proj.F.C.getSexticTwist() == D_Twist:
+  elif ECP_ShortW_Proj.F.C.getSexticTwist() == D_Twist:
     v *= SexticNonResidue # v =  ξ Y²
     C *= SexticNonResidue # C = 3ξ X²
   else:
@@ -158,7 +158,7 @@ func line_eval_double*(line: var Line, T: ECP_SWei_Proj) =
   B -= v                # B = 3bξ Z² - Y²  (M-twist)
                         # B = 3b Z² - ξ Y² (D-twist)
 
-func line_eval_add*(line: var Line, T: ECP_SWei_Proj, Q: ECP_SWei_Aff) =
+func line_eval_add*(line: var Line, T: ECP_ShortW_Proj, Q: ECP_ShortW_Aff) =
   ## Evaluate the line function for addition
   ## i.e. the line between T and Q
   ##
@@ -196,7 +196,7 @@ func line_eval_add*(line: var Line, T: ECP_SWei_Proj, Q: ECP_SWei_Aff) =
   C -= v      # C = Y₁-Z₁Y₂
 
   v = A       # v = X₁-Z₁X₂
-  when ECP_SWei_Proj.F.C.getSexticTwist() == M_Twist:
+  when ECP_ShortW_Proj.F.C.getSexticTwist() == M_Twist:
     A *= SexticNonResidue # A = ξ (X₁ - Z₁X₂)
 
   v *= Q.y    # v = (X₁-Z₁X₂) Y₂
@@ -206,7 +206,7 @@ func line_eval_add*(line: var Line, T: ECP_SWei_Proj, Q: ECP_SWei_Aff) =
 
   C.neg()     # C = -(Y₁-Z₁Y₂)
 
-func line_double*(line: var Line, T: var ECP_SWei_Proj, P: ECP_SWei_Aff) =
+func line_double*(line: var Line, T: var ECP_ShortW_Proj, P: ECP_ShortW_Aff) =
   ## Doubling step of the Miller loop
   ## T in G2, P in G1
   ##
@@ -219,8 +219,8 @@ func line_double*(line: var Line, T: var ECP_SWei_Proj, P: ECP_SWei_Aff) =
 
 func line_add*[C](
        line: var Line,
-       T: var ECP_SWei_Proj[Fp2[C]],
-       Q: ECP_SWei_Aff[Fp2[C]], P: ECP_SWei_Aff[Fp[C]]) =
+       T: var ECP_ShortW_Proj[Fp2[C]],
+       Q: ECP_ShortW_Aff[Fp2[C]], P: ECP_ShortW_Aff[Fp[C]]) =
   ## Addition step of the Miller loop
   ## T and Q in G2, P in G1
   ##

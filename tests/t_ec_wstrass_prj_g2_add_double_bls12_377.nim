@@ -14,7 +14,7 @@ import
   ../constantine/arithmetic,
   ../constantine/towers,
   ../constantine/io/io_bigints,
-  ../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective],
+  ../constantine/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
   # Test utilities
   ../helpers/prng_unsafe,
   ./t_ec_template
@@ -23,7 +23,7 @@ const
   Iters = 8
 
 run_EC_addition_tests(
-    ec = ECP_SWei_Proj[Fp2[BLS12_377]],
+    ec = ECP_ShortW_Proj[Fp2[BLS12_377]],
     Iters = Iters,
-    moduleName = "test_ec_weierstrass_projective_g2_add_double_" & $BLS12_377
+    moduleName = "test_ec_shortweierstrass_projective_g2_add_double_" & $BLS12_377
   )

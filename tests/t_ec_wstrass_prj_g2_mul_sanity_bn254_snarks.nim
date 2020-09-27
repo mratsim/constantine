@@ -14,7 +14,7 @@ import
   ../constantine/arithmetic,
   ../constantine/towers,
   ../constantine/io/io_bigints,
-  ../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective, ec_scalar_mul],
+  ../constantine/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective, ec_scalar_mul],
   # Test utilities
   ../helpers/prng_unsafe,
   ./support/ec_reference_scalar_mult,
@@ -25,9 +25,9 @@ const
   ItersMul = Iters div 4
 
 run_EC_mul_sanity_tests(
-    ec = ECP_SWei_Proj[Fp2[BN254_Snarks]],
+    ec = ECP_ShortW_Proj[Fp2[BN254_Snarks]],
     ItersMul = ItersMul,
-    moduleName = "test_ec_weierstrass_projective_g2_mul_sanity_" & $BN254_Snarks
+    moduleName = "test_ec_shortweierstrass_projective_g2_mul_sanity_" & $BN254_Snarks
   )
 
 # TODO: the order on E'(Fp2) for BN curve is r∗(2p−r) with r the order on E(Fp)
@@ -36,7 +36,7 @@ run_EC_mul_sanity_tests(
 #   var rng: RngState
 #   let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
 #   rng.seed(seed)
-#   echo "test_ec_weierstrass_projective_g1_mul_sanity_extra_curve_order_mul_sanity xoshiro512** seed: ", seed
+#   echo "test_ec_shortweierstrass_projective_g1_mul_sanity_extra_curve_order_mul_sanity xoshiro512** seed: ", seed
 #
 #   proc test(EC: typedesc, bits: static int, randZ: static bool) =
 #     for _ in 0 ..< ItersMul:
@@ -58,5 +58,5 @@ run_EC_mul_sanity_tests(
 #         bool(impl.isInf())
 #         bool(reference.isInf())
 #
-#   test(ECP_SWei_Proj[Fp2[BN254_Snarks]], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = false)
-#   test(ECP_SWei_Proj[Fp2[BN254_Snarks]], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = true)
+#   test(ECP_ShortW_Proj[Fp2[BN254_Snarks]], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = false)
+#   test(ECP_ShortW_Proj[Fp2[BN254_Snarks]], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = true)

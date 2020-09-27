@@ -19,7 +19,7 @@ import
   ../constantine/config/[common, curves],
   ../constantine/arithmetic,
   ../constantine/towers,
-  ../constantine/elliptic/[ec_weierstrass_affine, ec_weierstrass_projective, ec_scalar_mul],
+  ../constantine/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective, ec_scalar_mul],
   # Test utilities
   ../helpers/prng_unsafe,
   ./support/ec_reference_scalar_mult
@@ -435,7 +435,7 @@ proc run_EC_mixed_add_impl*(
         for _ in 0 ..< Iters:
           let a = rng.random_point(EC, randZ, gen)
           let b = rng.random_point(EC, randZ, gen)
-          var bAff: ECP_SWei_Aff[EC.F]
+          var bAff: ECP_ShortW_Aff[EC.F]
           bAff.affineFromProjective(b)
 
           var r_generic, r_mixed: EC

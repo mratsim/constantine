@@ -10,7 +10,7 @@ import
   # Internals
   ../../constantine/config/[common, curves],
   ../../constantine/arithmetic,
-  ../../constantine/elliptic/ec_weierstrass_projective,
+  ../../constantine/elliptic/ec_shortweierstrass_projective,
   ../../constantine/io/io_bigints
 
 # Support files for testing Elliptic Curve arithmetic
@@ -27,7 +27,7 @@ iterator unpack(scalarByte: byte): bool =
   yield bool( scalarByte and 0b00000001)
 
 func unsafe_ECmul_double_add*(
-       P: var ECP_SWei_Proj,
+       P: var ECP_ShortW_Proj,
        scalar: BigInt,
      ) =
   ## **Unsafe** Elliptic Curve Scalar Multiplication

@@ -9,7 +9,7 @@
 import
   # Internals
   ../constantine/config/curves,
-  ../constantine/elliptic/ec_weierstrass_projective,
+  ../constantine/elliptic/ec_shortweierstrass_projective,
   ../constantine/towers,
   # Test utilities
   ./t_ec_template
@@ -18,7 +18,7 @@ const
   Iters = 12
 
 run_EC_mixed_add_impl(
-    ec = ECP_SWei_Proj[Fp2[BN254_Snarks]],
+    ec = ECP_ShortW_Proj[Fp2[BN254_Snarks]],
     Iters = Iters,
-    moduleName = "test_ec_weierstrass_projective_mixed_add_" & $BN254_Snarks
+    moduleName = "test_ec_shortweierstrass_projective_mixed_add_" & $BN254_Snarks
   )

@@ -14,14 +14,14 @@ import
   ../constantine/[arithmetic, primitives],
   ../constantine/towers,
   ../constantine/config/curves,
-  ../constantine/elliptic/ec_weierstrass_projective,
+  ../constantine/elliptic/ec_shortweierstrass_projective,
   ../constantine/hash_to_curve/cofactors,
   # Test utilities
   ../helpers/[prng_unsafe, static_for]
 
 export
   prng_unsafe, times, unittest,
-  ec_weierstrass_projective, arithmetic, towers,
+  ec_shortweierstrass_projective, arithmetic, towers,
   primitives
 
 type
@@ -61,8 +61,8 @@ template runPairingTests*(Iters: static int, C: static Curve, pairing_fn: untype
 
   proc test_bilinearity_double_impl(randZ: bool, gen: RandomGen) =
     for _ in 0 ..< Iters:
-      let P = rng.random_point(ECP_SWei_Proj[Fp[C]], randZ, gen)
-      let Q = rng.random_point(ECP_SWei_Proj[Fp2[C]], randZ, gen)
+      let P = rng.random_point(ECP_ShortW_Proj[Fp[C]], randZ, gen)
+      let Q = rng.random_point(ECP_ShortW_Proj[Fp2[C]], randZ, gen)
       var P2: typeof(P)
       var Q2: typeof(Q)
 
