@@ -12,9 +12,9 @@ import
   ./limbs
 
 when UseASM_X86_32:
-  import ./limbs_asm_montred_x86
+  import ./assembly/limbs_asm_montred_x86
 when UseASM_X86_64:
-  import ./limbs_asm_montred_x86_adx_bmi2
+  import ./assembly/limbs_asm_montred_x86_adx_bmi2
 
 # ############################################################
 #

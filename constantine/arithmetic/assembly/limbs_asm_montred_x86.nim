@@ -10,9 +10,9 @@ import
   # Standard library
   std/macros,
   # Internal
-  ../config/common,
-  ../primitives,
-  ./limbs
+  ../../config/common,
+  ../../primitives,
+  ../limbs
 
 # ############################################################
 #

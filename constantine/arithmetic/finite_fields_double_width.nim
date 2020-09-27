@@ -15,7 +15,7 @@ import
   ./limbs_double_width
 
 when UseASM_X86_64:
-  import limbs_asm_modular_dbl_width_x86
+  import assembly/limbs_asm_modular_dbl_width_x86
 
 type FpDbl*[C: static Curve] = object
   ## Double-width Fp element

@@ -31,7 +31,7 @@ import
   ./bigints, ./limbs_montgomery
 
 when UseASM_X86_64:
-  import ./limbs_asm_modular_x86
+  import ./assembly/limbs_asm_modular_x86
 
 when nimvm:
   from ../config/precompute import montyResidue_precompute

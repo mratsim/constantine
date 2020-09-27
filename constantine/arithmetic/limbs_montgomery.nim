@@ -16,8 +16,8 @@ import
 
 when UseASM_X86_64:
   import
-    ./limbs_asm_montmul_x86,
-    ./limbs_asm_montmul_x86_adx_bmi2
+    ./assembly/limbs_asm_montmul_x86,
+    ./assembly/limbs_asm_montmul_x86_adx_bmi2
 
 # ############################################################
 #
