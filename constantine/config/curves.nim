@@ -158,23 +158,6 @@ macro getPrimePlus1div4_BE*(C: static Curve): untyped =
   ## Get (P+1) / 4 for an odd prime in big-endian serialized format
   result = bindSym($C & "_PrimePlus1div4_BE")
 
-# Family specific
-# -------------------------------------------------------
-macro canUse_BN_AddchainInversion*(C: static Curve): untyped =
-  ## A BN curve can use the fast BN inversion if the parameter "u" is positive
-  if CurveFamilies[C] != BarretoNaehrig:
-    return newLit false
-  return bindSym($C & "_BN_can_use_addchain_inversion")
-
-macro getBN_param_u_BE*(C: static Curve): untyped =
-  ## Get the ``u`` parameter of a BN curve in canonical big-endian representation
-  result = bindSym($C & "_BN_u_BE")
-
-macro getBN_param_6u_minus_1_BE*(C: static Curve): untyped =
-  ## Get the ``6u-1`` from the ``u`` parameter
-  ## of a BN curve in canonical big-endian representation
-  result = bindSym($C & "_BN_6u_minus_1_BE")
-
 # ############################################################
 #
 #                Debug info printed at compile-time
@@ -192,15 +175,12 @@ macro debugConsts(): untyped {.used.} =
     let modulus = bindSym(curveName & "_Modulus")
     let r2modp = bindSym(curveName & "_R2modP")
     let negInvModWord = bindSym(curveName & "_NegInvModWord")
-    let cubeRootOfUnity = ident(curveName & "_cubicRootOfUnity")
 
     result.add quote do:
       echo "Curve ", `curveName`,':'
       echo "  Field Modulus:                 ", `modulus`
       echo "  Montgomery R² (mod P):         ", `r2modp`
       echo "  Montgomery -1/P[0] (mod 2^", WordBitWidth, "): ", `negInvModWord`
-      when declared(`cubeRootOfUnity`):
-        echo "  Cube root of unity:            ", `cubeRootOfUnity`
 
   result.add quote do:
     echo "----------------------------------------------------------------------------"

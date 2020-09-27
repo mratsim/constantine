@@ -124,29 +124,4 @@ macro genDerivedConstants*(): untyped =
       )
     )
 
-    if CurveFamilies[curveSym] == BarretoNaehrig:
-      # when declared(MyCurve_BN_param_u):
-      #   const MyCurve_BN_u_BE = toCanonicalIntRepr(MyCurve_BN_param_u)
-      #   const MyCurve_BN_6u_minus_1_BE = bn_6u_minus_1_BE(MyCurve_BN_param_u)
-      var bnStmts = newStmtList()
-      bnStmts.add newConstStmt(
-        used(curve & "_BN_u_BE"), newCall(
-          bindSym"toCanonicalIntRepr",
-          ident(curve & "_BN_param_u")
-        )
-      )
-      bnStmts.add newConstStmt(
-        used(curve & "_BN_6u_minus_1_BE"), newCall(
-          bindSym"bn_6u_minus_1_BE",
-          ident(curve & "_BN_param_u")
-        )
-      )
-
-      result.add nnkWhenStmt.newTree(
-        nnkElifBranch.newTree(
-          newCall(ident"declared", ident(curve & "_BN_param_u")),
-          bnStmts
-        )
-      )
-
   # echo result.toStrLit()
