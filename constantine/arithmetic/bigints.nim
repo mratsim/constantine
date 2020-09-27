@@ -10,7 +10,7 @@ import
   ../config/[common, type_bigint],
   ../primitives,
   ./limbs,
-  ./limbs_generic_modular,
+  ./limbs_modular,
   ./limbs_montgomery
 
 export BigInt
