@@ -9,7 +9,7 @@
 import
   ../primitives,
   ../config/[common, type_fp, curves],
-  ../curves/addchain_square_roots,
+  ../curves/zoo_square_roots,
   ../io/[io_bigints, io_fields],
   ./bigints, ./finite_fields, ./limbs_montgomery
 

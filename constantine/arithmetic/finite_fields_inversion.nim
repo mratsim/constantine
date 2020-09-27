@@ -9,9 +9,9 @@
 import
   ../config/[common, curves, type_fp],
   ./bigints,
-  ../curves/addchain_inversions
+  ../curves/zoo_inversions
 
-export addchain_inversions
+export zoo_inversions
 
 # ############################################################
 #

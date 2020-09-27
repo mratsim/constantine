@@ -12,7 +12,7 @@ import
   # Internal
   ../primitives,
   ../config/[common, curves, type_bigint],
-  ../curves/constants_glv,
+  ../curves/zoo_glv,
   ../arithmetic,
   ../io/io_bigints,
   ../towers,

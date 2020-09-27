@@ -14,4 +14,5 @@ import
 {.experimental: "dynamicBindSym".}
 
 macro tonelliShanks*(C: static Curve, value: untyped): untyped =
+  ## Get Square Root via Tonelli-Shanks related constants
   return bindSym($C & "_TonelliShanks_" & $value)

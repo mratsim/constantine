@@ -16,12 +16,6 @@ import
 #
 # ############################################################
 
-# Field-specific inversion routines
-func square_repeated(r: var Fp, num: int) =
-  ## Repeated squarings
-  for _ in 0 ..< num:
-    r.square()
-
 func inv_addchain*(r: var Fp[BLS12_381], a: Fp[BLS12_381]) =
   var
     x10       {.noinit.}: Fp[BLS12_381]

@@ -10,7 +10,7 @@ import
   std/macros,
   ../arithmetic,
   ../towers,
-  ../curves/constants_frobenius
+  ../curves/zoo_frobenius
 
 # Frobenius Map
 # ------------------------------------------------------------

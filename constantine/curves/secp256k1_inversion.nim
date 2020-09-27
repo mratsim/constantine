@@ -16,12 +16,6 @@ import
 #
 # ############################################################
 
-# Field-specific inversion routines
-func square_repeated(r: var Fp, num: int) =
-  ## Repeated squarings
-  for _ in 0 ..< num:
-    r.square()
-
 func inv_addchain*(r: var Fp[Secp256k1], a: Fp[Secp256k1]) {.used.}=
   ## We invert via Little Fermat's theorem
   ## a^(-1) ≡ a^(p-2) (mod p)

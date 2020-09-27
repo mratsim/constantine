@@ -340,9 +340,14 @@ func `*=`*(a: var Fp, b: Fp) {.inline.} =
   ## Multiplication modulo p
   a.prod(a, b)
 
-func square*(a: var Fp) {.inline.}=
+func square*(a: var Fp) {.inline.} =
   ## Squaring modulo p
   a.mres.montySquare(a.mres, Fp.C.Mod, Fp.C.getNegInvModWord(), Fp.C.canUseNoCarryMontySquare())
+
+func square_repeated*(r: var Fp, num: int) {.inline.} =
+  ## Repeated squarings
+  for _ in 0 ..< num:
+    r.square()
 
 func `*=`*(a: var Fp, b: static int) {.inline.} =
   ## Multiplication by a small integer known at compile-time
