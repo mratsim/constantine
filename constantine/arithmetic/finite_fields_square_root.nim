@@ -7,9 +7,9 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  std/macros,
   ../primitives,
   ../config/[common, type_fp, curves],
+  ../curves/addchain_square_roots,
   ../io/[io_bigints, io_fields],
   ./bigints, ./finite_fields, ./limbs_montgomery
 
@@ -112,25 +112,11 @@ func sqrt_if_square_p3mod4[C](a: var Fp[C]): SecretBool {.inline.} =
 # Tonelli Shanks for any prime
 # ------------------------------------------------------------
 
-const
-  # with e = 2adicity
-  # p == s * 2^e + 1
-  # root_of_unity = smallest_quadratic_nonresidue^s
-  # exponent = (p-1-2^e)/2^e / 2
-  TonelliShanks_exponent_BLS12_377 = BigInt[330].fromHex"0x35c748c2f8a21d58c760b80d94292763445b3e601ea271e3de6c45f741290002e16ba88600000010a11"
-  TonelliShanks_twoAdicity_BLS12_377 = 46
-  TonelliShanks_root_of_unity_BLS12_377 = Fp[BLS12_377].fromHex"0x382d3d99cdbc5d8fe9dee6aa914b0ad14fcaca7022110ec6eaa2bc56228ac41ea03d28cc795186ba6b5ef26b00bbe8"
-
-{.experimental: "dynamicBindSym".}
-
-macro tsGet(C: static Curve, value: untyped): untyped =
-  return bindSym("TonelliShanks_" & $value & "_" & $C)
-
 func precompute_tonelli_shanks[C](
        a_pre_exp: var Fp[C],
        a: Fp[C]) =
   a_pre_exp = a
-  a_pre_exp.powUnsafeExponent(C.tsGet(exponent))
+  a_pre_exp.powUnsafeExponent(C.tonelliShanks(exponent))
 
 func isSquare_tonelli_shanks[C](
        a, a_pre_exp: Fp[C]): SecretBool =
@@ -139,7 +125,7 @@ func isSquare_tonelli_shanks[C](
   ## Tonelli-Shanks based square root and inverse square root
   ##
   ## a^((p-1-2^e)/(2*2^e))
-  const e = C.tsGet(twoAdicity)
+  const e = C.tonelliShanks(twoAdicity)
   var r {.noInit.}: Fp[C]
   r.square(a_pre_exp) # a^(2(q-1-2^e)/(2*2^e)) = a^((q-1)/2^e - 1)
   r *= a              # a^((q-1)/2^e)
@@ -169,13 +155,13 @@ func sqrt_invsqrt_tonelli_shanks[C](
   template z: untyped = a_pre_exp
   template r: untyped = invsqrt
   var t {.noInit.}: Fp[C]
-  const e = C.tsGet(twoAdicity)
+  const e = C.tonelliShanks(twoAdicity)
 
   t.square(z)
   t *= a
   r = z
   var b = t
-  var root = C.tsGet(root_of_unity)
+  var root = C.tonelliShanks(root_of_unity)
 
   var buf {.noInit.}: Fp[C]
 
