@@ -8,7 +8,6 @@
 
 import
   std/macros,
-  ../config/curves,
   ../arithmetic,
   ../towers,
   ../curves/constants_frobenius
