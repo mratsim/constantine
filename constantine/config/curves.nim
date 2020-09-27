@@ -175,16 +175,6 @@ macro getBN_param_6u_minus_1_BE*(C: static Curve): untyped =
   ## of a BN curve in canonical big-endian representation
   result = bindSym($C & "_BN_6u_minus_1_BE")
 
-# Endomorphism
-# -------------------------------------------------------
-macro getCubicRootOfUnity_mod_p*(C: static Curve): untyped =
-  ## Get a non-trivial cubic root of unity (mod p) with p the prime field
-  result = bindSym($C & "_cubicRootOfUnity_mod_p")
-
-macro getCubicRootOfUnity_mod_r*(C: static Curve): untyped =
-  ## Get a non-trivial cubic root of unity (mod r) with r the curve order
-  result = bindSym($C & "_cubicRootOfUnity_mod_r")
-
 # ############################################################
 #
 #                Debug info printed at compile-time

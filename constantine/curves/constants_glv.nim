@@ -29,3 +29,7 @@ template lattice*(F: typedesc[Fp or Fp2]): untyped =
   const G = if F is Fp: "G1"
             else: "G2"
   dispatch("Lattice_", F.C, G)
+
+macro getCubicRootOfUnity_mod_p*(C: static Curve): untyped =
+  ## Get a non-trivial cubic root of unity (mod p) with p the prime field
+  result = bindSym($C & "_cubicRootOfUnity_mod_p")

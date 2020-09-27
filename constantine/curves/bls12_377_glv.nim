@@ -7,11 +7,14 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/type_bigint,
-  ../io/io_bigints
+  ../config/[curves, type_bigint, type_fp],
+  ../io/[io_bigints, io_fields]
 
 # BLS12-377 G1
 # ----------------------------------------------------------------------------------------
+
+const BLS12_377_cubicRootofUnity_mod_p* =
+  Fp[BLS12_377].fromHex"0x9b3af05dd14f6ec619aaf7d34594aabc5ed1347970dec00452217cc900000008508c00000000001"
 
 const Lattice_BLS12_377_G1* = (
   # (BigInt, isNeg)

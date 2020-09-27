@@ -104,9 +104,6 @@ declareCurves:
     family: BarretoNaehrig
     bn_u_bitwidth: 63
     bn_u: "0x44e992b44a6909f1" # u: 4965661367192848881
-    cubicRootOfUnity_modP: "0x30644e72e131a0295e6dd9e7e0acccb0c28f069fbb966e3de4bd44e5607cfd48"
-    # For sanity checks
-    cubicRootOfUnity_modR: "0x30644e72e131a029048b6e193fd84104cc37a73fec2bc5e9b8ca0b2d36636f23"
 
     # G1 Equation: Y^2 = X^3 + 3
     # G2 Equation: Y^2 = X^3 + 3/(9+𝑖)
@@ -140,7 +137,6 @@ declareCurves:
     family: BarretoLynnScott
     # u: 3 * 2^46 * (7 * 13 * 499) + 1
     # u: 0x8508c00000000001
-    cubicRootOfUnity_mod_p: "0x9b3af05dd14f6ec619aaf7d34594aabc5ed1347970dec00452217cc900000008508c00000000001"
 
     # G1 Equation: y² = x³ + 1
     # G2 Equation: y² = x³ + 1/ with 𝑗 = √-5
@@ -160,7 +156,6 @@ declareCurves:
     modulus: "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab"
     family: BarretoLynnScott
     # u: -(2^63 + 2^62 + 2^60 + 2^57 + 2^48 + 2^16)
-    cubicRootOfUnity_mod_p: "0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaac"
 
     # G1 Equation: y² = x³ + 4
     # G2 Equation: y² = x³ + 4 (1+i)

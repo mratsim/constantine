@@ -7,11 +7,14 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/type_bigint,
-  ../io/io_bigints
+  ../config/[curves, type_bigint, type_fp],
+  ../io/[io_bigints, io_fields]
 
 # BN254 Snarks G1
 # ----------------------------------------------------------------------------------------
+
+const BN254_Snarks_cubicRootofUnity_mod_p* =
+  Fp[BN254_Snarks].fromHex"0x30644e72e131a0295e6dd9e7e0acccb0c28f069fbb966e3de4bd44e5607cfd48"
 
 # Chapter 6.3.1 - Guide to Pairing-based Cryptography
 const Lattice_BN254_Snarks_G1* = (
