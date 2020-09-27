@@ -67,17 +67,12 @@ template mulCheckSparse[Fp2](a: var Fp2, b: Fp2) =
 # Frobenius map - on extension fields
 # -----------------------------------------------------------------
 
-{.experimental: "dynamicBindSym".}
-
-macro frobMapConst(C: static Curve): untyped =
-  return bindSym("FrobMapConst_" & $C)
-
 func frobenius_map*[C](r: var Fp4[C], a: Fp4[C], k: static int = 1) {.inline.} =
   ## Computes a^(p^k)
   ## The p-power frobenius automorphism on 𝔽p4
   r.c0.frobenius_map(a.c0, k)
   r.c1.frobenius_map(a.c1, k)
-  r.c1.mulCheckSparse frobMapConst(C)[k-1][3]
+  r.c1.mulCheckSparse frobMapConst(C, 3, k)
 
 func frobenius_map*[C](r: var Fp6[C], a: Fp6[C], k: static int = 1) {.inline.} =
   ## Computes a^(p^k)
@@ -85,8 +80,8 @@ func frobenius_map*[C](r: var Fp6[C], a: Fp6[C], k: static int = 1) {.inline.} =
   r.c0.frobenius_map(a.c0, k)
   r.c1.frobenius_map(a.c1, k)
   r.c2.frobenius_map(a.c2, k)
-  r.c1.mulCheckSparse frobMapConst(C)[k-1][2]
-  r.c2.mulCheckSparse frobMapConst(C)[k-1][4]
+  r.c1.mulCheckSparse frobMapConst(C, 2, k)
+  r.c2.mulCheckSparse frobMapConst(C, 4, k)
 
 func frobenius_map*[C](r: var Fp12[C], a: Fp12[C], k: static int = 1) {.inline.} =
   ## Computes a^(p^k)
@@ -96,12 +91,12 @@ func frobenius_map*[C](r: var Fp12[C], a: Fp12[C], k: static int = 1) {.inline.}
     for r_fp2, a_fp2 in fields(r_fp4, a_fp4):
       r_fp2.frobenius_map(a_fp2, k)
 
-  r.c0.c0.mulCheckSparse frobMapConst(C)[k-1][0]
-  r.c0.c1.mulCheckSparse frobMapConst(C)[k-1][3]
-  r.c1.c0.mulCheckSparse frobMapConst(C)[k-1][1]
-  r.c1.c1.mulCheckSparse frobMapConst(C)[k-1][4]
-  r.c2.c0.mulCheckSparse frobMapConst(C)[k-1][2]
-  r.c2.c1.mulCheckSparse frobMapConst(C)[k-1][5]
+  r.c0.c0.mulCheckSparse frobMapConst(C, 0, k)
+  r.c0.c1.mulCheckSparse frobMapConst(C, 3, k)
+  r.c1.c0.mulCheckSparse frobMapConst(C, 1, k)
+  r.c1.c1.mulCheckSparse frobMapConst(C, 4, k)
+  r.c2.c0.mulCheckSparse frobMapConst(C, 2, k)
+  r.c2.c1.mulCheckSparse frobMapConst(C, 5, k)
 
 # ψ (Psi) - Untwist-Frobenius-Twist Endomorphisms on twisted curves
 # -----------------------------------------------------------------
@@ -110,9 +105,6 @@ func frobenius_map*[C](r: var Fp12[C], a: Fp12[C], k: static int = 1) {.inline.}
 #   Assuming embedding degree of 12 and a sextic twist
 #   with SNR the sextic non-residue
 #
-
-macro frobPsiConst(C: static Curve, psipow, coefpow: static int): untyped =
-  return bindSym("FrobPsiConst_" & $C & "_psi" & $psipow & "_coef" & $coefpow)
 
 func frobenius_psi*[PointG2](r: var PointG2, P: PointG2) =
   ## "Untwist-Frobenius-Twist" endomorphism
