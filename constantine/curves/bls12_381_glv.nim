@@ -16,7 +16,7 @@ import
 const BLS12_381_cubicRootOfUnity_mod_p* =
   Fp[BLS12_381].fromHex"0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaac"
 
-const Lattice_BLS12_381_G1* = (
+const BLS12_381_Lattice_G1* = (
   # (BigInt, isNeg)
   ((BigInt[128].fromHex"0xac45a4010001a40200000000ffffffff", false), # u² - 1
    (BigInt[1].fromHex"0x1", true)),                                  # -1
@@ -24,7 +24,7 @@ const Lattice_BLS12_381_G1* = (
    (BigInt[128].fromHex"0xac45a4010001a4020000000100000000", false)) # u²
 )
 
-const Babai_BLS12_381_G1* = (
+const BLS12_381_Babai_G1* = (
   # Vector for Babai rounding
   # (BigInt, isNeg)
   (BigInt[129].fromHex"0x17c6becf1e01faadd63f6e522f6cfee30", false),
@@ -34,7 +34,7 @@ const Babai_BLS12_381_G1* = (
 # BLS12-381 G2
 # ----------------------------------------------------------------------------------------
 
-const Lattice_BLS12_381_G2* = (
+const BLS12_381_Lattice_G2* = (
   # Curve of order 254 -> mini scalars of size 65
   # x = -0xd201000000010000
   # Value, isNeg
@@ -59,7 +59,7 @@ const Lattice_BLS12_381_G2* = (
    (BigInt[64].fromHex"0xd201000000010000", false)) # -x
 )
 
-const Babai_BLS12_381_G2* = (
+const BLS12_381_Babai_G2* = (
   # Vector for Babai rounding
   # Value, isNeg
   (BigInt[193].fromHex"0x1381204ca56cd56b533cfcc0d3e76ec2892078a5e8573b29c", false),

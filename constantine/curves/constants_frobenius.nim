@@ -24,11 +24,11 @@ macro frobMapConst*(C: static Curve, coef, p_pow: static int): untyped =
   ## With pow the
   return nnkBracketExpr.newTree(
     nnkBracketExpr.newTree(
-      bindSym("FrobMapConst_" & $C),
+      bindSym($C & "_FrobeniusMapCoefficients"),
       newLit(p_pow-1)
     ),
     newLit coef
   )
 
 macro frobPsiConst*(C: static Curve, psipow, coefpow: static int): untyped =
-  return bindSym("FrobPsiConst_" & $C & "_psi" & $psipow & "_coef" & $coefpow)
+  return bindSym($C & "_FrobeniusPsi_psi" & $psipow & "_coef" & $coefpow)

@@ -17,7 +17,7 @@ import
 # c = (SNR^((p-1)/6)^coef).
 # Then for frobenius(2): c * conjugate(c)
 # And for frobenius(3): c² * conjugate(c)
-const FrobMapConst_BN254_Snarks* = [
+const BN254_Snarks_FrobeniusMapCoefficients* = [
   # frobenius(1)
   [Fp2[BN254_Snarks].fromHex( # SNR^((p-1)/6)^0
     "0x1",
@@ -98,22 +98,22 @@ const FrobMapConst_BN254_Snarks* = [
 # -----------------------------------------------------------------
 
 #   BN254_Snarks is a D-Twist: SNR^((p-1)/6)
-const FrobPsiConst_BN254_Snarks_psi1_coef1* = Fp2[BN254_Snarks].fromHex(
+const BN254_Snarks_FrobeniusPsi_psi1_coef1* = Fp2[BN254_Snarks].fromHex(
   "0x1284b71c2865a7dfe8b99fdd76e68b605c521e08292f2176d60b35dadcc9e470",
   "0x246996f3b4fae7e6a6327cfe12150b8e747992778eeec7e5ca5cf05f80f362ac"
 )
 #  SNR^((p-1)/3)
-const FrobPsiConst_BN254_Snarks_psi1_coef2* = Fp2[BN254_Snarks].fromHex(
+const BN254_Snarks_FrobeniusPsi_psi1_coef2* = Fp2[BN254_Snarks].fromHex(
   "0x2fb347984f7911f74c0bec3cf559b143b78cc310c2c3330c99e39557176f553d",
   "0x16c9e55061ebae204ba4cc8bd75a079432ae2a1d0b7c9dce1665d51c640fcba2"
 )
 #  SNR^((p-1)/2)
-const FrobPsiConst_BN254_Snarks_psi1_coef3* = Fp2[BN254_Snarks].fromHex(
+const BN254_Snarks_FrobeniusPsi_psi1_coef3* = Fp2[BN254_Snarks].fromHex(
   "0x63cf305489af5dcdc5ec698b6e2f9b9dbaae0eda9c95998dc54014671a0135a",
   "0x7c03cbcac41049a0704b5a7ec796f2b21807dc98fa25bd282d37f632623b0e3"
 )
 #  norm(SNR)^((p-1)/3)
-const FrobPsiConst_BN254_Snarks_psi2_coef2* = Fp2[BN254_Snarks].fromHex(
+const BN254_Snarks_FrobeniusPsi_psi2_coef2* = Fp2[BN254_Snarks].fromHex(
   "0x30644e72e131a0295e6dd9e7e0acccb0c28f069fbb966e3de4bd44e5607cfd48",
   "0x0"
 )

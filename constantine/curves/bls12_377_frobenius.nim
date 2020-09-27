@@ -17,7 +17,7 @@ import
 # c = (SNR^((p-1)/6)^coef).
 # Then for frobenius(2): c * conjugate(c)
 # And for frobenius(3): c² * conjugate(c)
-const FrobMapConst_BLS12_377* = [
+const BLS12_377_FrobeniusMapCoefficients* = [
   # frobenius(1)
   [Fp2[BLS12_377].fromHex( # SNR^((p-1)/6)^0
     "0x1",
@@ -98,22 +98,22 @@ const FrobMapConst_BLS12_377* = [
 # -----------------------------------------------------------------
 
 #   BLS12_377 is a D-Twist: SNR^((p-1)/6)
-const FrobPsiConst_BLS12_377_psi1_coef1* = Fp2[BLS12_377].fromHex(
+const BLS12_377_FrobeniusPsi_psi1_coef1* = Fp2[BLS12_377].fromHex(
   "0x9a9975399c019633c1e30682567f915c8a45e0f94ebc8ec681bf34a3aa559db57668e558eb0188e938a9d1104f2031",
   "0x0"
 )
 #  SNR^((p-1)/3)
-const FrobPsiConst_BLS12_377_psi1_coef2* = Fp2[BLS12_377].fromHex(
+const BLS12_377_FrobeniusPsi_psi1_coef2* = Fp2[BLS12_377].fromHex(
   "0x9b3af05dd14f6ec619aaf7d34594aabc5ed1347970dec00452217cc900000008508c00000000002",
   "0x0"
 )
 #  SNR^((p-1)/2)
-const FrobPsiConst_BLS12_377_psi1_coef3* = Fp2[BLS12_377].fromHex(
+const BLS12_377_FrobeniusPsi_psi1_coef3* = Fp2[BLS12_377].fromHex(
   "0x1680a40796537cac0c534db1a79beb1400398f50ad1dec1bce649cf436b0f6299588459bff27d8e6e76d5ecf1391c63",
   "0x0"
 )
 #  norm(SNR)^((p-1)/3)
-const FrobPsiConst_BLS12_377_psi2_coef2* = Fp2[BLS12_377].fromHex(
+const BLS12_377_FrobeniusPsi_psi2_coef2* = Fp2[BLS12_377].fromHex(
   "0x9b3af05dd14f6ec619aaf7d34594aabc5ed1347970dec00452217cc900000008508c00000000001",
   "0x0"
 )

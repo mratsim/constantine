@@ -17,7 +17,7 @@ const BN254_Snarks_cubicRootofUnity_mod_p* =
   Fp[BN254_Snarks].fromHex"0x30644e72e131a0295e6dd9e7e0acccb0c28f069fbb966e3de4bd44e5607cfd48"
 
 # Chapter 6.3.1 - Guide to Pairing-based Cryptography
-const Lattice_BN254_Snarks_G1* = (
+const BN254_Snarks_Lattice_G1* = (
   # Curve of order 254 -> mini scalars of size 127
   # u = 0x44E992B44A6909F1
   # (BigInt, isNeg)
@@ -27,7 +27,7 @@ const Lattice_BN254_Snarks_G1* = (
    (BigInt[64].fromHex"0x89d3256894d213e3", true))                    # -2u - 1
 )
 
-const Babai_BN254_Snarks_G1* = (
+const BN254_Snarks_Babai_G1* = (
   # Vector for Babai rounding
   # (BigInt, isNeg)
   (BigInt[66].fromHex"0x2d91d232ec7e0b3d7", false),                    # (2u + 1)       << 2^256 // r
@@ -37,7 +37,7 @@ const Babai_BN254_Snarks_G1* = (
 # BN254 Snarks G2
 # ----------------------------------------------------------------------------------------
 
-const Lattice_BN254_Snarks_G2* = (
+const BN254_Snarks_Lattice_G2* = (
   # Curve of order 254 -> mini scalars of size 65
   # x = 0x44E992B44A6909F1
   # Value, isNeg
@@ -62,7 +62,7 @@ const Lattice_BN254_Snarks_G2* = (
    (BigInt[63].fromHex"0x44e992b44a6909f0", false)), # x-1
   )
 
-const Babai_BN254_Snarks_G2* = (
+const BN254_Snarks_Babai_G2* = (
   # Vector for Babai rounding
   # Value, isNeg
   (BigInt[128].fromHex"0xc444fab18d269b9dd0cb46fd51906254", false),                  # 2x²+3x+1  << 2^256 // r

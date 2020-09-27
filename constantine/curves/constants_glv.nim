@@ -17,18 +17,20 @@ import
 
 {.experimental: "dynamicBindSym".}
 
-macro dispatch(prefix: static string, C: static Curve, G: static string): untyped =
-  result = bindSym(prefix & $C & "_" & G)
+macro dispatch(C: static Curve, tag: static string, G: static string): untyped =
+  result = bindSym($C & "_" & tag & "_" & G)
 
 template babai*(F: typedesc[Fp or Fp2]): untyped =
+  ## Return the GLV Babai roundings vector
   const G = if F is Fp: "G1"
             else: "G2"
-  dispatch("Babai_", F.C, G)
+  dispatch(F.C, "Babai", G)
 
 template lattice*(F: typedesc[Fp or Fp2]): untyped =
+  ## Returns the GLV Decomposition Lattice
   const G = if F is Fp: "G1"
             else: "G2"
-  dispatch("Lattice_", F.C, G)
+  dispatch(F.C, "Lattice", G)
 
 macro getCubicRootOfUnity_mod_p*(C: static Curve): untyped =
   ## Get a non-trivial cubic root of unity (mod p) with p the prime field
