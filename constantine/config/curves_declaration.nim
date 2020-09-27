@@ -38,15 +38,6 @@ export CurveFamily
 #   which returns the field modulus of the curve
 # - proc Family*(curve: static Curve): CurveFamily
 #   which returns the curve family
-# - proc get_BN_param_u_BE*(curve: static Curve): array[N, byte]
-#   which returns the "u" parameter of a BN curve
-#   as a big-endian canonical integer representation
-#   if it's a BN curve and u is positive
-# - proc get_BN_param_6u_minus1_BE*(curve: static Curve): array[N, byte]
-#   which returns the "6u-1" parameter of a BN curve
-#   as a big-endian canonical integer representation
-#   if it's a BN curve and u is positive.
-#   This is used for optimized field inversion for BN curves
 
 declareCurves:
   # -----------------------------------------------------------------------------
@@ -102,8 +93,6 @@ declareCurves:
     bitwidth: 254
     modulus: "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47"
     family: BarretoNaehrig
-    bn_u_bitwidth: 63
-    bn_u: "0x44e992b44a6909f1" # u: 4965661367192848881
 
     # G1 Equation: Y^2 = X^3 + 3
     # G2 Equation: Y^2 = X^3 + 3/(9+𝑖)

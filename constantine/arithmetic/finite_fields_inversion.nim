@@ -310,48 +310,6 @@ func inv_addchain*(r: var Fp[BLS12_381], a: Fp[BLS12_381]) =
 
 # BN Curves
 # ------------------------------------------------------------
-# Efficient Pairings and ECC for Embedded Systems
-# Thomas Unterluggauer and Erich Wenger
-# https://eprint.iacr.org/2014/800.pdf
-#
-# BN curve field modulus are of the form:
-#   p = 36u^4 + 36u^3 + 24u^2 + 6u + 1
-#
-# We construct the following multiplication-squaring chain
-# a^-1 mod p = a^(p-2) mod p                 (Little Fermat Theorem)
-#            = a^(36 u^4 + 36 u^3 + 24 u^2 + 6u + 1 - 2) mod p
-#            = a^(36 u^4) . a^(36 u^3) . a^(24 u^2) . a^(6u-1) mod p
-#
-# Note: it only works for u positive, in particular BN254_Nogami doesn't work :/
-#       Is there a way to only use a^-u or even powers?
-
-func inv_addchain_bn[C](r: var Fp[C], a: Fp[C]) {.used.}=
-  ## Inversion on BN prime fields with positive base parameter `u`
-  ## via Little Fermat theorem and leveraging the prime low Hamming weight
-  ##
-  ## Requires a `bn` curve with a positive parameter `u`
-  # TODO: debug for input "0x0d2007d8aaface1b8501bfbe792974166e8f9ad6106e5b563604f0aea9ab06f6"
-  #       on BN254_Snarks see test suite (but works in Sage so aliasing issue?)
-  #
-  # For BN254_Snarks `u` and `6u-1` exponentiation are not fast enough
-  # (even with dedicated addchains)
-  # compared to an addchain on the full prime modulus
-  static: doAssert C.canUse_BN_AddchainInversion()
-
-  var v0 {.noInit.}, v1 {.noInit.}: Fp[C]
-
-  v0 = a
-  v0.powUnsafeExponent(C.getBN_param_6u_minus_1_BE()) # v0 <- a^(6u-1)
-  v1.prod(v0, a)                                      # v1 <- a^(6u)
-  v1.powUnsafeExponent(C.getBN_param_u_BE())          # v1 <- a^(6u²)
-  r.square(v1)                                        # r  <- a^(12u²)
-  v1.square(r)                                        # v1 <- a^(24u²)
-  v0 *= v1                                            # v0 <- a^(24u²) a^(6u-1)
-  v1 *= r                                             # v1 <- a^(24u²) a^(12u²) = a^(36u²)
-  v1.powUnsafeExponent(C.getBN_param_u_BE())          # v1 <- a^(36u³)
-  r.prod(v0, v1)                                      # r  <- a^(36u³) a^(24u²) a^(6u-1)
-  v1.powUnsafeExponent(C.getBN_param_u_BE())          # v1 <- a^(36u⁴)
-  r *= v1                                             # r  <- a^(36u⁴) a^(36u³) a^(24u²) a^(6u-1) = a^(p-2) = a^(-1)
 
 func inv_addchain*(r: var Fp[BN254_Snarks], a: Fp[BN254_Snarks]) =
   var
