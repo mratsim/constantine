@@ -198,10 +198,6 @@ proc main() =
     testRandomDiv2 Secp256k1
     testRandomDiv2 BLS12_377
     testRandomDiv2 BLS12_381
-    testRandomDiv2 BN446
-    testRandomDiv2 FKM12_447
-    testRandomDiv2 BLS12_461
-    testRandomDiv2 BN462
 
   suite "Modular inversion over prime fields" & " [" & $WordBitwidth & "-bit mode]":
     test "Specific tests on Fp[BLS12_381]":
@@ -289,10 +285,6 @@ proc main() =
     testRandomInv Secp256k1
     testRandomInv BLS12_377
     testRandomInv BLS12_381
-    testRandomInv BN446
-    testRandomInv FKM12_447
-    testRandomInv BLS12_461
-    testRandomInv BN462
 
 main()
 

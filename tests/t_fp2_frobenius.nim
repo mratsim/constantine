@@ -18,10 +18,6 @@ const TestCurves = [
     BN254_Snarks,
     BLS12_377,
     BLS12_381,
-    # BN446
-    # FKM12_447
-    # BLS12_461
-    # BN462
   ]
 
 runFrobeniusTowerTests(
