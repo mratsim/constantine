@@ -48,6 +48,8 @@ proc main() =
     mixedAddBench(ECP_ShortW_Proj[Fp2[curve]], Iters)
     doublingBench(ECP_ShortW_Proj[Fp2[curve]], Iters)
     separator()
+    affFromProjBench(ECP_ShortW_Proj[Fp2[curve]], MulIters)
+    separator()
     scalarMulUnsafeDoubleAddBench(ECP_ShortW_Proj[Fp2[curve]], MulIters)
     separator()
     scalarMulGenericBench(ECP_ShortW_Proj[Fp2[curve]], window = 2, MulIters)

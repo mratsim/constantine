@@ -152,6 +152,13 @@ proc doublingBench*(T: typedesc, iters: int) =
   bench("EC Double " & G1_or_G2, T, iters):
     r.double(P)
 
+proc affFromProjBench*(T: typedesc, iters: int) =
+  const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
+  var r {.noInit.}: ECP_ShortW_Aff[T.F]
+  let P = rng.random_unsafe(T)
+  bench("EC Projective to Affine " & G1_or_G2, T, iters):
+    r.affineFromProjective(P)
+
 proc scalarMulGenericBench*(T: typedesc, window: static int, iters: int) =
   const bits = T.F.C.getCurveOrderBitwidth()
   const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
