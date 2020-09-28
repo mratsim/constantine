@@ -40,6 +40,8 @@ proc main() =
     addBench(Fp2[curve], Iters)
     subBench(Fp2[curve], Iters)
     negBench(Fp2[curve], Iters)
+    ccopyBench(Fp2[curve], Iters)
+    div2Bench(Fp2[curve], Iters)
     mulBench(Fp2[curve], Iters)
     sqrBench(Fp2[curve], Iters)
     invBench(Fp2[curve], InvIters)

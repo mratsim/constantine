@@ -143,6 +143,10 @@ We use the complete addition law from Bos2014 for Jacobian coordinates, note tha
   Craig Costello and Tanja Lange and Michael Naehrig, 2009,
   https://eprint.iacr.org/2009/615
 
+- Weierstraß Elliptic Curves and Side-Channel Attacks
+  Éric Brier and Marc Joye, 2002
+  http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.2.273&rep=rep1&type=pdf
+
 - Complete systems of Two Addition Laws for Elliptic Curve\
   Bosma and Lenstra, 1995
   http://www.mat.uniroma3.it/users/pappa/CORSI/CR510_13_14/BosmaLenstra.pdf
