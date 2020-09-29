@@ -29,6 +29,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Field
   ("tests/t_io_fields", false),
   ("tests/t_finite_fields.nim", false),
+  ("tests/t_finite_fields_conditional_arithmetic.nim", false),
   ("tests/t_finite_fields_mulsquare.nim", false),
   ("tests/t_finite_fields_sqrt.nim", false),
   ("tests/t_finite_fields_powinv.nim", false),

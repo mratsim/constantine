@@ -13,7 +13,8 @@ import
   ../towers,
   ../elliptic/[
     ec_shortweierstrass_affine,
-    ec_shortweierstrass_projective
+    ec_shortweierstrass_projective,
+    ec_shortweierstrass_jacobian
   ]
 
 # No exceptions allowed

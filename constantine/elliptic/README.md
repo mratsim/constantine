@@ -140,13 +140,17 @@ We use the complete addition law from Bos2014 for Jacobian coordinates, note tha
   http://indigo.ie/~mscott/twists.pdf
 
 - Faster Pairing Computations on Curves withHigh-Degree Twists\
-  Craig Costello and Tanja Lange and Michael Naehrig, 2009,
+  Craig Costello and Tanja Lange and Michael Naehrig, 2009
   https://eprint.iacr.org/2009/615
 
-- Weierstraß Elliptic Curves and Side-Channel Attacks
-  Éric Brier and Marc Joye, 2002
+- Weierstraß Elliptic Curves and Side-Channel Attacks\
+  Éric Brier and Marc Joye, 2002\
   http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.2.273&rep=rep1&type=pdf
 
+- Efficient Elliptic Curve Exponentiation Using Mixed Coordinates\
+  Henri Cohen, Atsuko Miyaji, Takatoshi Ono, 1998\
+  https://link.springer.com/content/pdf/10.1007%2F3-540-49649-1_6.pdf
+
 - Complete systems of Two Addition Laws for Elliptic Curve\
-  Bosma and Lenstra, 1995
+  Bosma and Lenstra, 1995\
   http://www.mat.uniroma3.it/users/pappa/CORSI/CR510_13_14/BosmaLenstra.pdf

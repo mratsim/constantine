@@ -108,7 +108,7 @@ func neg*(r: var ExtensionField, a: ExtensionField) =
     fR.neg(fA)
 
 func neg*(a: var ExtensionField) =
-  ## Field out-of-place negation
+  ## Field in-place negation
   for fA in fields(a):
     fA.neg()
 
@@ -171,6 +171,25 @@ func diffAlias*(r: var CubicExt, a, b: CubicExt) =
   r.c0.diffAlias(a.c0, b.c0)
   r.c1.diffAlias(a.c1, b.c1)
   r.c2.diffAlias(a.c2, b.c2)
+
+# Conditional arithmetic
+# -------------------------------------------------------------------
+
+func cneg*(a: var ExtensionField, ctl: SecretBool) =
+  ## Constant-time in-place conditional negation
+  ## Only negate if ctl is true
+  for fA in fields(a):
+    fA.cneg(ctl)
+
+func cadd*(a: var ExtensionField, b: ExtensionField, ctl: SecretBool) =
+  ## Constant-time in-place conditional addition
+  for fA, fB in fields(a, b):
+    fA.cadd(fB, ctl)
+
+func csub*(a: var ExtensionField, b: ExtensionField, ctl: SecretBool) =
+  ## Constant-time in-place conditional substraction
+  for fA, fB in fields(a, b):
+    fA.csub(fB, ctl)
 
 # Multiplication by a small integer known at compile-time
 # -------------------------------------------------------------------

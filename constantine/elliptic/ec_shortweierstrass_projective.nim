@@ -34,6 +34,7 @@ type ECP_ShortW_Proj*[F] = object
 
 func `==`*[F](P, Q: ECP_ShortW_Proj[F]): SecretBool =
   ## Constant-time equality check
+  ## This is a costly operation
   # Reminder: the representation is not unique
 
   var a{.noInit.}, b{.noInit.}: F
@@ -117,17 +118,13 @@ func neg*(P: var ECP_ShortW_Proj) =
 func cneg*(P: var ECP_ShortW_Proj, ctl: CTBool) =
   ## Conditional negation.
   ## Negate if ``ctl`` is true
-  var Q{.noInit.}: typeof(P)
-  Q.x = P.x
-  Q.y.neg(P.y)
-  Q.z = P.z
-  P.ccopy(Q, ctl)
+  P.y.cneg(ctl)
 
 func sum*[F](
        r: var ECP_ShortW_Proj[F],
        P, Q: ECP_ShortW_Proj[F]
      ) =
-  ## Elliptic curve point addition for Short Weierstrass curves in projective coordinate
+  ## Elliptic curve point addition for Short Weierstrass curves in projective coordinates
   ##
   ##   R = P + Q
   ##

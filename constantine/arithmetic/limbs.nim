@@ -192,32 +192,6 @@ func add*(a: var Limbs, w: SecretWord): Carry =
   for i in 1 ..< a.len:
     addC(result, a[i], a[i], Zero, result)
 
-func cadd*(a: var Limbs, b: Limbs, ctl: SecretBool): Carry =
-  ## Limbs conditional addition
-  ## Returns the carry
-  ##
-  ## if ctl is true: a <- a + b
-  ## if ctl is false: a <- a
-  ## The carry is always computed whether ctl is true or false
-  ##
-  ## Time and memory accesses are the same whether a copy occurs or not
-  result = Carry(0)
-  var sum: SecretWord
-  for i in 0 ..< a.len:
-    addC(result, sum, a[i], b[i], result)
-    ctl.ccopy(a[i], sum)
-
-func cadd*(a: var Limbs, w: SecretWord, ctl: SecretBool): Borrow =
-  ## Limbs conditional addition, sub a number that fits in a word
-  ## Returns the borrow
-  result = Carry(0)
-  var diff: SecretWord
-  addC(result, diff, a[0], w, result)
-  ctl.ccopy(a[0], diff)
-  for i in 1 ..< a.len:
-    addC(result, diff, a[i], Zero, result)
-    ctl.ccopy(a[i], diff)
-
 func sum*(r: var Limbs, a, b: Limbs): Carry =
   ## Sum `a` and `b` into `r`
   ## `r` is initialized/overwritten
@@ -248,32 +222,6 @@ func sub*(a: var Limbs, w: SecretWord): Borrow =
   for i in 1 ..< a.len:
     subB(result, a[i], a[i], Zero, result)
 
-func csub*(a: var Limbs, b: Limbs, ctl: SecretBool): Borrow =
-  ## Limbs conditional substraction
-  ## Returns the borrow
-  ##
-  ## if ctl is true: a <- a - b
-  ## if ctl is false: a <- a
-  ## The borrow is always computed whether ctl is true or false
-  ##
-  ## Time and memory accesses are the same whether a copy occurs or not
-  result = Borrow(0)
-  var diff: SecretWord
-  for i in 0 ..< a.len:
-    subB(result, diff, a[i], b[i], result)
-    ctl.ccopy(a[i], diff)
-
-func csub*(a: var Limbs, w: SecretWord, ctl: SecretBool): Borrow =
-  ## Limbs conditional substraction, sub a number that fits in a word
-  ## Returns the borrow
-  result = Borrow(0)
-  var diff: SecretWord
-  subB(result, diff, a[0], w, result)
-  ctl.ccopy(a[0], diff)
-  for i in 1 ..< a.len:
-    subB(result, diff, a[i], Zero, result)
-    ctl.ccopy(a[i], diff)
-
 func diff*(r: var Limbs, a, b: Limbs): Borrow =
   ## Diff `a` and `b` into `r`
   ## `r` is initialized/overwritten
@@ -285,6 +233,49 @@ func diff*(r: var Limbs, a, b: Limbs): Borrow =
     result = Borrow(0)
     for i in 0 ..< a.len:
       subB(result, r[i], a[i], b[i], result)
+
+# Conditional arithmetic
+# ------------------------------------------------------------
+
+func cadd*(a: var Limbs, b: Limbs, ctl: SecretBool): Carry =
+  ## Limbs conditional addition
+  ## Returns the carry
+  ##
+  ## if ctl is true: a <- a + b
+  ## if ctl is false: a <- a
+  ## The carry is always computed whether ctl is true or false
+  ##
+  ## Time and memory accesses are the same whether a copy occurs or not
+  var t = a
+  result = t.add(b)
+  a.ccopy(t, ctl)
+
+func cadd*(a: var Limbs, w: SecretWord, ctl: SecretBool): Borrow =
+  ## Limbs conditional addition, sub a number that fits in a word
+  ## Returns the borrow
+  var t = a
+  result = t.add(w)
+  a.ccopy(t, ctl)
+
+func csub*(a: var Limbs, b: Limbs, ctl: SecretBool): Borrow =
+  ## Limbs conditional substraction
+  ## Returns the borrow
+  ##
+  ## if ctl is true: a <- a - b
+  ## if ctl is false: a <- a
+  ## The borrow is always computed whether ctl is true or false
+  ##
+  ## Time and memory accesses are the same whether a copy occurs or not
+  var t = a
+  result = t.sub(b)
+  a.ccopy(t, ctl)
+
+func csub*(a: var Limbs, w: SecretWord, ctl: SecretBool): Borrow =
+  ## Limbs conditional substraction, sub a number that fits in a word
+  ## Returns the borrow
+  var t = a
+  result = t.sub(w)
+  a.ccopy(t, ctl)
 
 func cneg*(a: var Limbs, ctl: CTBool) =
   ## Conditional negation.

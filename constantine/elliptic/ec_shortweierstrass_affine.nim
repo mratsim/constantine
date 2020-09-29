@@ -107,7 +107,4 @@ func neg*(P: var ECP_ShortW_Aff) =
 func cneg*(P: var ECP_ShortW_Aff, ctl: CTBool) =
   ## Conditional negation.
   ## Negate if ``ctl`` is true
-  var Q{.noInit.}: typeof(P)
-  Q.x = P.x
-  Q.y.neg(P.y)
-  P.ccopy(Q, ctl)
+  P.y.cneg(ctl)

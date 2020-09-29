@@ -10,7 +10,9 @@ import
   # Internals
   ../constantine/config/curves,
   ../constantine/arithmetic,
-  ../constantine/elliptic/ec_shortweierstrass_projective,
+  ../constantine/elliptic/[
+    ec_shortweierstrass_projective,
+    ec_shortweierstrass_jacobian],
   # Helpers
   ../helpers/static_for,
   ./bench_elliptic_template,
@@ -44,6 +46,7 @@ proc main() =
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
     addBench(ECP_ShortW_Proj[Fp[curve]], Iters)
+    addBench(ECP_ShortW_Jac[Fp[curve]], Iters)
     mixedAddBench(ECP_ShortW_Proj[Fp[curve]], Iters)
     doublingBench(ECP_ShortW_Proj[Fp[curve]], Iters)
     separator()

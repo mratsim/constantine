@@ -236,6 +236,37 @@ func div2*(a: var Fp) {.inline.} =
 
 # ############################################################
 #
+#                Field arithmetic conditional
+#
+# ############################################################
+
+func cneg*(r: var Fp, a: Fp, ctl: SecretBool) =
+  ## Constant-time in-place conditional negation
+  ## The negation is only performed if ctl is "true"
+  r = a
+  r.mres.cneg(ctl)
+
+func cneg*(a: var Fp, ctl: SecretBool) =
+  ## Constant-time in-place conditional negation
+  ## The negation is only performed if ctl is "true"
+  a.mres.cneg(ctl)
+
+func cadd*(a: var Fp, b: Fp, ctl: SecretBool) =
+  ## Constant-time in-place conditional addition
+  ## The addition is only performed if ctl is "true"
+  var t = a
+  t += b
+  a.ccopy(t, ctl)
+
+func csub*(a: var Fp, b: Fp, ctl: SecretBool) =
+  ## Constant-time in-place conditional substraction
+  ## The substraction is only performed if ctl is "true"
+  var t = a
+  t -= b
+  a.ccopy(t, ctl)
+
+# ############################################################
+#
 #               Field arithmetic exponentiation
 #
 # ############################################################
