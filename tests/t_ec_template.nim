@@ -183,24 +183,24 @@ proc run_EC_addition_tests*(
       test(ec, randZ = false, gen = Long01Sequence)
       test(ec, randZ = true, gen = Long01Sequence)
 
-    # test "EC " & G1_or_G2 & " double and EC " & G1_or_G2 & " add are consistent":
-    #   proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
-    #     for _ in 0 ..< Iters:
-    #       let a = rng.random_point(EC, randZ, gen)
+    test "EC " & G1_or_G2 & " double and EC " & G1_or_G2 & " add are consistent":
+      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
+        for _ in 0 ..< Iters:
+          let a = rng.random_point(EC, randZ, gen)
 
-    #       var r0{.noInit.}, r1{.noInit.}: EC
+          var r0{.noInit.}, r1{.noInit.}: EC
 
-    #       r0.double(a)
-    #       r1.sum(a, a)
+          r0.double(a)
+          r1.sum(a, a)
 
-    #       check: bool(r0 == r1)
+          check: bool(r0 == r1)
 
-    #   test(ec, randZ = false, gen = Uniform)
-    #   test(ec, randZ = true, gen = Uniform)
-    #   test(ec, randZ = false, gen = HighHammingWeight)
-    #   test(ec, randZ = true, gen = HighHammingWeight)
-    #   test(ec, randZ = false, gen = Long01Sequence)
-    #   test(ec, randZ = true, gen = Long01Sequence)
+      test(ec, randZ = false, gen = Uniform)
+      test(ec, randZ = true, gen = Uniform)
+      test(ec, randZ = false, gen = HighHammingWeight)
+      test(ec, randZ = true, gen = HighHammingWeight)
+      test(ec, randZ = false, gen = Long01Sequence)
+      test(ec, randZ = true, gen = Long01Sequence)
 
 proc run_EC_mul_sanity_tests*(
        ec: typedesc,

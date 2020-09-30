@@ -290,6 +290,82 @@ func sum*[F](
     r.ccopy(Q, P.isInf())
     r.ccopy(P, Q.isInf())
 
+func double*[F](
+       r: var ECP_ShortW_Jac[F],
+       P: ECP_ShortW_Jac[F]
+     ) =
+  ## Elliptic curve point doubling for Short Weierstrass curves in projective coordinate
+  ##
+  ##   R = [2] P
+  ##
+  ## Short Weierstrass curves have the following equation in Jacobian coordinates
+  ##   Y² = X³ + aXZ⁴ + bZ⁶
+  ## from the affine equation
+  ##   y² = x³ + a x + b
+  ##
+  ## ``r`` is initialized/overwritten with the sum
+  ##
+  ## Implementation is constant-time.
+  # "dbl-2009-l" doubling formula - https://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#doubling-dbl-2009-l
+  #
+  #     Cost: 2M + 5S + 6add + 3*2 + 1*3 + 1*8.
+  #     Source: 2009.04.01 Lange.
+  #     Explicit formulas:
+  #
+  #           A = X₁²
+  #           B = Y₁²
+  #           C = B²
+  #           D = 2*((X₁+B)²-A-C)
+  #           E = 3*A
+  #           F = E²
+  #           X₃ = F-2*D
+  #           Y₃ = E*(D-X₃)-8*C
+  #           Z₃ = 2*Y₁*Z₁
+  #
+  var A {.noInit.}, B{.noInit.}, C {.noInit.}, D{.noInit.}: F
+  A.square(P.x)
+  B.square(P.y)
+  C.square(B)
+  D.sum(P.x, B)
+  D.square()
+  D -= A
+  D -= C
+  D *= 2             # D = 2*((X₁+B)²-A-C)
+  A *= 3             # E = 3*A
+  r.x.square(A)      # F = E²
+
+  B.double(D)
+  r.x -= B           # X₃ = F-2*D
+
+  B.diff(D, r.x)     # (D-X₃)
+  r.y.prod(A, B)     # E*(D-X₃)
+  C *= 8
+  r.y -= C           # Y₃ = E*(D-X₃)-8*C
+
+  r.z.prod(P.y, P.z)
+  r.z *= 2           # Z₃ = 2*Y₁*Z₁
+
+func `+=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac) =
+  ## In-place point addition
+  # TODO test for aliasing support
+  var tmp {.noInit.}: ECP_ShortW_Jac
+  tmp.sum(P, Q)
+  P = tmp
+
+func double*(P: var ECP_ShortW_Jac) =
+  var tmp {.noInit.}: ECP_ShortW_Jac
+  tmp.double(P)
+  P = tmp
+
+func diff*(r: var ECP_ShortW_Jac,
+           P, Q: ECP_ShortW_Jac
+     ) =
+  ## r = P - Q
+  ## Can handle r and Q aliasing
+  var nQ = Q
+  nQ.neg()
+  r.sum(P, nQ)
+
 func affineFromJacobian*[F](aff: var ECP_ShortW_Aff[F], jac: ECP_ShortW_Jac) =
   var invZ {.noInit.}, invZ2: F
   invZ.inv(jac.z)
@@ -510,24 +586,24 @@ func projectiveFromJacobian*[F](jac: var ECP_ShortW_Jac, aff: ECP_ShortW_Aff[F])
 # we would use this formula:
 #
 # ```
-# |    Addition (Bernstein et al)    |     Doubling any a (Bernstein et al)     |  Doubling = -3  | Doubling a = 0 |
-# |      12M + 4S + 6add + 1*2       | 3M + 6S + 1*a + 4add + 1*2 + 1*3 + 1half |                 |                |
-# | -------------------------------- | ---------------------------------------- | --------------- | -------------- |
-# | Z₁Z₁ = Z₁²                       | Z₁Z₁ = Z₁²                               |                 |                |
-# | Z₂Z₂ = Z₂²                       |                                          |                 |                |
-# |                                  |                                          |                 |                |
-# | U₁ = X₁*Z₂Z₂                     |                                          |                 |                |
-# | U₂ = X₂*Z₁Z₁                     |                                          |                 |                |
-# | S₁ = Y₁*Z₂*Z₂Z₂                  |                                          |                 |                |
-# | S₂ = Y₂*Z₁*Z₁Z₁                  |                                          |                 |                |
-# | H = U₂-U₁     # P=-Q, P=Inf, P=Q |                                          |                 |                |
-# | R = 2*(S₂-S₁) # Q=Inf            |                                          |                 |                |
-# |                                  |                                          |                 |                |
-# | I = (2*H)²                       | YY = Y₁²                                 |                 |                |
-# | J = H*I                          | M  = 3*X₁²+a*ZZ²                         | 3(X₁-Z₁)(X₁+Z₁) | 3*X₁²          |
-# | V = U₁*I                         | S  = 4*X₁*YY                             |                 |                |
-# |                                  |                                          |                 |                |
-# | X₃ = R²-J-2*V                    | X₃ = M²-2*S                              |                 |                |
-# | Y₃ = R*(V-X₃)-2*S₁*J             | Y₃ = M*(S-X₃)-8*YY*YY                    |                 |                |
-# | Z₃ = ((Z₁+Z₂)²-Z₁Z₁-Z₂Z₂)*H      | Z₃ = (Y₁+Z₁)² - YY - ZZ                  |                 |                |
+# | Addition (adapted Bernstein et al) |     Doubling any a (Bernstein et al)     |  Doubling = -3  | Doubling a = 0 |
+# |       12M + 4S + 6add + 1*2        | 3M + 6S + 1*a + 4add + 1*2 + 1*3 + 1half |                 |                |
+# | ---------------------------------- | ---------------------------------------- | --------------- | -------------- |
+# | Z₁Z₁ = Z₁²                         | Z₁Z₁ = Z₁²                               |                 |                |
+# | Z₂Z₂ = Z₂²                         |                                          |                 |                |
+# |                                    |                                          |                 |                |
+# | U₁ = X₁*Z₂Z₂                       |                                          |                 |                |
+# | U₂ = X₂*Z₁Z₁                       |                                          |                 |                |
+# | S₁ = Y₁*Z₂*Z₂Z₂                    |                                          |                 |                |
+# | S₂ = Y₂*Z₁*Z₁Z₁                    |                                          |                 |                |
+# | H = U₂-U₁     # P=-Q, P=Inf, P=Q   |                                          |                 |                |
+# | R = 2*(S₂-S₁) # Q=Inf              |                                          |                 |                |
+# |                                    |                                          |                 |                |
+# | I = (2*H)²                         | YY = Y₁²                                 |                 |                |
+# | J = H*I                            | M  = 3*X₁²+a*ZZ²                         | 3(X₁-Z₁)(X₁+Z₁) | 3*X₁²          |
+# | V = U₁*I                           | S  = 4*X₁*YY                             |                 |                |
+# |                                    |                                          |                 |                |
+# | X₃ = R²-J-2*V                      | X₃ = M²-2*S                              |                 |                |
+# | Y₃ = R*(V-X₃)-2*S₁*J               | Y₃ = M*(S-X₃)-8*YY*YY                    |                 |                |
+# | Z₃ = ((Z₁+Z₂)²-Z₁Z₁-Z₂Z₂)*H        | Z₃ = (Y₁+Z₁)² - YY - ZZ                  |                 |                |
 # ```

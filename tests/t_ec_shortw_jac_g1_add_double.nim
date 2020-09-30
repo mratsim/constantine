@@ -27,14 +27,14 @@ run_EC_addition_tests(
     moduleName = "test_ec_shortweierstrass_jacobian_g1_add_double_" & $BN254_Snarks
   )
 
-# run_EC_addition_tests(
-#     ec = ECP_ShortW_Jac[Fp[BLS12_381]],
-#     Iters = Iters,
-#     moduleName = "test_ec_shortweierstrass_jacobian_g1_add_double_" & $BLS12_381
-#   )
+run_EC_addition_tests(
+    ec = ECP_ShortW_Jac[Fp[BLS12_381]],
+    Iters = Iters,
+    moduleName = "test_ec_shortweierstrass_jacobian_g1_add_double_" & $BLS12_381
+  )
 
-# run_EC_addition_tests(
-#     ec = ECP_ShortW_Jac[Fp[BLS12_377]],
-#     Iters = Iters,
-#     moduleName = "test_ec_shortweierstrass_jacobian_g1_add_double_" & $BLS12_377
-#   )
+run_EC_addition_tests(
+    ec = ECP_ShortW_Jac[Fp[BLS12_377]],
+    Iters = Iters,
+    moduleName = "test_ec_shortweierstrass_jacobian_g1_add_double_" & $BLS12_377
+  )
