@@ -7,23 +7,18 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  # Standard library
-  std/[unittest, times],
   # Internals
-  ../constantine/config/[common, curves],
-  ../constantine/arithmetic,
-  ../constantine/towers,
-  ../constantine/io/io_bigints,
-  ../constantine/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
+  ../constantine/config/[type_fp, curves],
+  ../constantine/elliptic/ec_shortweierstrass_projective,
   # Test utilities
-  ../helpers/prng_unsafe,
   ./t_ec_template
 
 const
-  Iters = 8
+  Iters = 12
+  ItersMul = Iters div 4
 
-run_EC_addition_tests(
-    ec = ECP_ShortW_Proj[Fp2[BLS12_381]],
-    Iters = Iters,
-    moduleName = "test_ec_shortweierstrass_projective_g2_add_double_" & $BLS12_381
+run_EC_mul_vs_ref_impl(
+    ec = ECP_ShortW_Proj[Fp2[BN254_Snarks]],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_shortweierstrass_projective_g2_mul_vs_ref_" & $BN254_Snarks
   )

@@ -27,7 +27,7 @@ import
 #
 # ############################################################
 
-func toHex*(P: ECP_ShortW_Proj): string =
+func toHex*[EC](P: EC): string =
   ## Stringify an elliptic curve point to Hex
   ## Note. Leading zeros are not removed.
   ## Result is prefixed with 0x
@@ -41,8 +41,13 @@ func toHex*(P: ECP_ShortW_Proj): string =
   ##
   ## This proc output may change format in the future
 
-  var aff {.noInit.}: ECP_ShortW_Aff[ECP_ShortW_Proj.F]
-  aff.affineFromProjective(P)
+  var aff {.noInit.}: ECP_ShortW_Aff[EC.F]
+  when EC is ECP_ShortW_Proj:
+    aff.affineFromProjective(P)
+  elif EC is ECP_ShortW_Jac:
+    aff.affineFromJacobian(P)
+  else:
+    aff = P
 
   result = "ECP[" & $aff.F & "](\n  x: "
   result.appendHex(aff.x, bigEndian)
@@ -50,7 +55,7 @@ func toHex*(P: ECP_ShortW_Proj): string =
   result.appendHex(aff.y, bigEndian)
   result &= "\n)"
 
-func fromHex*(dst: var ECP_ShortW_Proj, x, y: string): bool {.raises: [ValueError].}=
+func fromHex*(dst: var (ECP_ShortW_Proj or ECP_ShortW_Jac), x, y: string): bool {.raises: [ValueError].}=
   ## Convert hex strings to a G1 curve point
   ## Returns `false`
   ## if there is no point with coordinates (`x`, `y`) on the curve
@@ -61,7 +66,7 @@ func fromHex*(dst: var ECP_ShortW_Proj, x, y: string): bool {.raises: [ValueErro
   dst.z.setOne()
   return bool(isOnCurve(dst.x, dst.y))
 
-func fromHex*(dst: var ECP_ShortW_Proj, x0, x1, y0, y1: string): bool {.raises: [ValueError].}=
+func fromHex*(dst: var (ECP_ShortW_Proj or ECP_ShortW_Jac), x0, x1, y0, y1: string): bool {.raises: [ValueError].}=
   ## Convert hex strings to a G2 curve point
   ## Returns `false`
   ## if there is no point with coordinates (`x`, `y`) on the curve

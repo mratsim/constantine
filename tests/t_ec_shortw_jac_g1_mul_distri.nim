@@ -7,16 +7,10 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  # Standard library
-  std/[unittest, times],
   # Internals
-  ../constantine/config/[common, curves],
-  ../constantine/arithmetic,
-  ../constantine/io/io_bigints,
-  ../constantine/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective, ec_scalar_mul],
+  ../constantine/config/[type_fp, curves],
+  ../constantine/elliptic/ec_shortweierstrass_jacobian,
   # Test utilities
-  ../helpers/prng_unsafe,
-  ./support/ec_reference_scalar_mult,
   ./t_ec_template
 
 const
@@ -24,19 +18,19 @@ const
   ItersMul = Iters div 4
 
 run_EC_mul_distributive_tests(
-    ec = ECP_ShortW_Proj[Fp[BN254_Snarks]],
+    ec = ECP_ShortW_Jac[Fp[BN254_Snarks]],
     ItersMul = ItersMul,
-    moduleName = "test_ec_shortweierstrass_projective_g1_mul_distributive_" & $BN254_Snarks
+    moduleName = "test_ec_shortweierstrass_jacobian_g1_mul_distributive_" & $BN254_Snarks
   )
 
 run_EC_mul_distributive_tests(
-    ec = ECP_ShortW_Proj[Fp[BLS12_381]],
+    ec = ECP_ShortW_Jac[Fp[BLS12_381]],
     ItersMul = ItersMul,
-    moduleName = "test_ec_shortweierstrass_projective_g1_mul_distributive_" & $BLS12_381
+    moduleName = "test_ec_shortweierstrass_jacobian_g1_mul_distributive_" & $BLS12_381
   )
 
 run_EC_mul_distributive_tests(
-    ec = ECP_ShortW_Proj[Fp[BLS12_377]],
+    ec = ECP_ShortW_Jac[Fp[BLS12_377]],
     ItersMul = ItersMul,
-    moduleName = "test_ec_shortweierstrass_projective_g1_mul_distributive_" & $BLS12_377
+    moduleName = "test_ec_shortweierstrass_jacobian_g1_mul_distributive_" & $BLS12_377
   )

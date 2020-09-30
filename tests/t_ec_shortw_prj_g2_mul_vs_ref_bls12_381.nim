@@ -9,27 +9,16 @@
 import
   # Internals
   ../constantine/config/[type_fp, curves],
-  ../constantine/elliptic/ec_shortweierstrass_jacobian,
+  ../constantine/elliptic/ec_shortweierstrass_projective,
   # Test utilities
   ./t_ec_template
 
 const
-  Iters = 8
+  Iters = 12
+  ItersMul = Iters div 4
 
-run_EC_addition_tests(
-    ec = ECP_ShortW_Jac[Fp[BN254_Snarks]],
-    Iters = Iters,
-    moduleName = "test_ec_shortweierstrass_jacobian_g1_add_double_" & $BN254_Snarks
-  )
-
-run_EC_addition_tests(
-    ec = ECP_ShortW_Jac[Fp[BLS12_381]],
-    Iters = Iters,
-    moduleName = "test_ec_shortweierstrass_jacobian_g1_add_double_" & $BLS12_381
-  )
-
-run_EC_addition_tests(
-    ec = ECP_ShortW_Jac[Fp[BLS12_377]],
-    Iters = Iters,
-    moduleName = "test_ec_shortweierstrass_jacobian_g1_add_double_" & $BLS12_377
+run_EC_mul_vs_ref_impl(
+    ec = ECP_ShortW_Proj[Fp2[BLS12_381]],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_shortweierstrass_projective_g2_mul_vs_ref_" & $BLS12_381
   )

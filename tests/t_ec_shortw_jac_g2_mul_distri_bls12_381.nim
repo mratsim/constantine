@@ -7,17 +7,11 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  # Standard library
-  std/[unittest, times],
   # Internals
-  ../constantine/config/[common, curves],
-  ../constantine/arithmetic,
+  ../constantine/config/curves,
+  ../constantine/elliptic/ec_shortweierstrass_jacobian,
   ../constantine/towers,
-  ../constantine/io/io_bigints,
-  ../constantine/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective, ec_scalar_mul],
   # Test utilities
-  ../helpers/prng_unsafe,
-  ./support/ec_reference_scalar_mult,
   ./t_ec_template
 
 const
@@ -25,7 +19,7 @@ const
   ItersMul = Iters div 4
 
 run_EC_mul_distributive_tests(
-    ec = ECP_ShortW_Proj[Fp2[BLS12_377]],
+    ec = ECP_ShortW_Jac[Fp2[BLS12_381]],
     ItersMul = ItersMul,
-    moduleName = "test_ec_shortweierstrass_projective_g2_mul_distributive_" & $BLS12_377
+    moduleName = "test_ec_shortweierstrass_jacobian_g2_mul_distributive_" & $BLS12_381
   )

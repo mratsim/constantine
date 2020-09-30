@@ -13,7 +13,7 @@ import
   ../constantine/config/[common, curves],
   ../constantine/[arithmetic, primitives],
   ../constantine/io/[io_bigints, io_fields, io_ec],
-  ../constantine/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective, ec_scalar_mul],
+  ../constantine/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_scalar_mul],
   # Test utilities
   ../helpers/prng_unsafe,
   ./support/ec_reference_scalar_mult,
@@ -24,9 +24,9 @@ const
   ItersMul = Iters div 4
 
 run_EC_mul_sanity_tests(
-    ec = ECP_ShortW_Proj[Fp[BN254_Snarks]],
+    ec = ECP_ShortW_Jac[Fp[BN254_Snarks]],
     ItersMul = ItersMul,
-    moduleName = "test_ec_shortweierstrass_projective_g1_mul_sanity_" & $BN254_Snarks
+    moduleName = "test_ec_shortweierstrass_jacobian_g1_mul_sanity_" & $BN254_Snarks
   )
 
 suite "Order checks on BN254_Snarks":
@@ -34,7 +34,7 @@ suite "Order checks on BN254_Snarks":
     var rng: RngState
     let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
     rng.seed(seed)
-    echo "test_ec_shortweierstrass_projective_g1_mul_sanity_extra_curve_order_mul_sanity xoshiro512** seed: ", seed
+    echo "test_ec_shortweierstrass_jacobian_g1_mul_sanity_extra_curve_order_mul_sanity xoshiro512** seed: ", seed
 
     proc test(EC: typedesc, bits: static int, randZ: static bool) =
       for _ in 0 ..< ItersMul:
@@ -56,8 +56,8 @@ suite "Order checks on BN254_Snarks":
           bool(impl.isInf())
           bool(reference.isInf())
 
-    test(ECP_ShortW_Proj[Fp[BN254_Snarks]], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = false)
-    test(ECP_ShortW_Proj[Fp[BN254_Snarks]], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = true)
+    test(ECP_ShortW_Jac[Fp[BN254_Snarks]], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = false)
+    test(ECP_ShortW_Jac[Fp[BN254_Snarks]], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = true)
     # TODO: BLS12 is using a subgroup of order "r" such as r*h = CurveOrder
     #       with h the curve cofactor
     #       instead of the full group
@@ -74,13 +74,13 @@ suite "Order checks on BN254_Snarks":
       bool not ay.sqrt_if_square()
 
 run_EC_mul_sanity_tests(
-    ec = ECP_ShortW_Proj[Fp[BLS12_381]],
+    ec = ECP_ShortW_Jac[Fp[BLS12_381]],
     ItersMul = ItersMul,
-    moduleName = "test_ec_shortweierstrass_projective_g1_mul_sanity_" & $BLS12_381
+    moduleName = "test_ec_shortweierstrass_jacobian_g1_mul_sanity_" & $BLS12_381
   )
 
 run_EC_mul_sanity_tests(
-    ec = ECP_ShortW_Proj[Fp[BLS12_377]],
+    ec = ECP_ShortW_Jac[Fp[BLS12_377]],
     ItersMul = ItersMul,
-    moduleName = "test_ec_shortweierstrass_projective_g1_mul_sanity_" & $BLS12_377
+    moduleName = "test_ec_shortweierstrass_jacobian_g1_mul_sanity_" & $BLS12_377
   )
