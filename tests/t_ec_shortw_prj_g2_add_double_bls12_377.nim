@@ -8,11 +8,12 @@
 
 import
   # Internals
-  ../constantine/config/[type_fp, curves],
+  ../constantine/config/curves,
   ../constantine/elliptic/ec_shortweierstrass_projective,
+  ../constantine/towers,
   # Test utilities
   ./t_ec_template
-  
+
 const
   Iters = 8
 

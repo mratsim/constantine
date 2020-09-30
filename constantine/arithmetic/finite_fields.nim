@@ -243,13 +243,14 @@ func div2*(a: var Fp) {.inline.} =
 func cneg*(r: var Fp, a: Fp, ctl: SecretBool) =
   ## Constant-time in-place conditional negation
   ## The negation is only performed if ctl is "true"
-  r = a
-  r.mres.cneg(ctl)
+  r.neg(a)
+  r.ccopy(a, not ctl)
 
 func cneg*(a: var Fp, ctl: SecretBool) =
   ## Constant-time in-place conditional negation
   ## The negation is only performed if ctl is "true"
-  a.mres.cneg(ctl)
+  var t = a
+  a.cneg(t, ctl)
 
 func cadd*(a: var Fp, b: Fp, ctl: SecretBool) =
   ## Constant-time in-place conditional addition

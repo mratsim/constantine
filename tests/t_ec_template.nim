@@ -24,7 +24,7 @@ import
     ec_shortweierstrass_jacobian,
     ec_shortweierstrass_projective,
     ec_scalar_mul],
-    ../constantine/io/io_fields,
+    ../constantine/io/[io_bigints, io_fields],
   # Test utilities
   ../helpers/prng_unsafe,
   ./support/ec_reference_scalar_mult

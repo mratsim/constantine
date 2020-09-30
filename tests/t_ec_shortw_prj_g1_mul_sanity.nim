@@ -7,10 +7,16 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  # Standard library
+  std/[unittest, times],
   # Internals
-  ../constantine/config/[type_fp, curves],
-  ../constantine/elliptic/ec_shortweierstrass_projective,
+  ../constantine/config/[common, curves],
+  ../constantine/[arithmetic, primitives],
+  ../constantine/io/[io_bigints, io_fields, io_ec],
+  ../constantine/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective, ec_scalar_mul],
   # Test utilities
+  ../helpers/prng_unsafe,
+  ./support/ec_reference_scalar_mult,
   ./t_ec_template
 
 const
