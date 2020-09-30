@@ -155,31 +155,31 @@ func sum*[F](
   # We fuse addition and doubling with condition copy by swapping
   # terms with the following table
   #
-  # |         Addition              |              Doubling any a              |   Doubling = -3   | Doubling a = 0 |
-  # |  12M + 4S + 6add + 1*2        | 3M + 6S + 1*a + 4add + 1*2 + 1*3 + 1half |                   |                |
-  # | ----------------------------- | -----------------------------------------| ----------------- | -------------- |
-  # | Z₁Z₁ = Z₁²                    | Z₁Z₁ = Z₁²                               |                   |                |
-  # | Z₂Z₂ = Z₂²                    |                                          |                   |                |
-  # |                               |                                          |                   |                |
-  # | U₁ = X₁*Z₂Z₂                  |                                          |                   |                |
-  # | U₂ = X₂*Z₁Z₁                  |                                          |                   |                |
-  # | S₁ = Y₁*Z₂*Z₂Z₂               |                                          |                   |                |
-  # | S₂ = Y₂*Z₁*Z₁Z₁               |                                          |                   |                |
-  # | H  = U₂-U₁ # P=-Q, P=Inf, P=Q |                                          |                   |                |
-  # | R  = S₂-S₁ # Q=Inf            |                                          |                   |                |
-  # |                               |                                          |                   |                |
-  # | HH  = H²                      | YY = Y₁²                                 |                   |                |
-  # | V   = U₁*HH                   | S  = X₁*YY                               |                   |                |
-  # | HHH = H*HH                    | M  = (3*X₁²+a*ZZ²)/2                     | 3(X₁-ZZ)(X₁+ZZ)/2 | 3X₁²/2         |
-  # |                               |                                          |                   |                |
-  # | X₃ = R²-HHH-2*V               | X₃ = M²-2*S                              |                   |                |
-  # | Y₃ = R*(V-X₃)-S₁*HHH          | Y₃ = M*(S-X₃)-YY*YY                      |                   |                |
-  # | Z₃ = Z₁*Z₂*H                  | Z₃ = Y₁*Z₁                               |                   |                |
+  # |    Addition, Cohen et al, 1998     | Doubling, modified from Lange, 2009 |
+  # |       12M + 4S + 6add + 1*2        |    3M + 4S + 4add + 1*2 + 1*half    |
+  # | ---------------------------------- | ----------------------------------- |
+  # | Z₁Z₁ = Z₁²                         |                                     |
+  # | Z₂Z₂ = Z₂²                         |                                     |
+  # |                                    |                                     |
+  # | U₁ = X₁*Z₂Z₂                       |                                     |
+  # | U₂ = X₂*Z₁Z₁                       |                                     |
+  # | S₁ = Y₁*Z₂*Z₂Z₂                    |                                     |
+  # | S₂ = Y₂*Z₁*Z₁Z₁                    |                                     |
+  # | H  = U₂-U₁      # P=-Q, P=Inf, P=Q |                                     |
+  # | R  = S₂-S₁      # Q=Inf            |                                     |
+  # |                                    |                                     |
+  # | Z₃ = Z₁*Z₂*H                       | Z₃ = Y₁*Z₁                          |
+  # |                                    |                                     |
+  # |                                    |                                     |
+  # | HH  = H²                           | B  = Y₁²                            |
+  # | V   = U₁*HH                        | D  = X₁*B                           |
+  # | HHH = H*HH                         | A  = X₁²                            |
+  # | S₁HHH = S₁*HHH                     | C  = B²                             |
+  # |                                    | E  = 3A/2                           |
+  # |                                    |                                     |
+  # | X₃ = R²-2*V-HHH                    | X₃ = E²-2*D                         |
+  # | Y₃ = R*(V-X₃)-S₁HHH                | Y₃ = E*(D-X₃)-C                     |
 
-  # TODO: we can use less temporary variables but keeping the variable names is convenient.
-  #       hopefully the compiler can reorder statements/temporary though
-  #       I wouldn't count on it due to "asm volatile" field arithmetic,
-  #       So we hint the compiler by scoping blocks tightly
   var Z1Z1 {.noInit.}, U1 {.noInit.}, S1 {.noInit.}, H {.noInit.}, R {.noinit.}: F
 
   block: # Addition-only, check for exceptional cases
@@ -206,84 +206,57 @@ func sum*[F](
   let isDbl = H.isZero() and R.isZero()
 
   # Rename buffers under the form (add_or_dbl)
-  template R_or_M: untyped = R
   template H_or_Y: untyped = H
-  template V_or_S: untyped = U1
-  var HH_or_YY {.noInit.}: F
-  var HHH_or_Mpre {.noInit.}: F
+  H.ccopy(P.y, isDbl)
 
-  H_or_Y.ccopy(P.y, isDbl) # H         (add) or Y₁        (dbl)
-  HH_or_YY.square(H_or_Y)  # H²        (add) or Y₁²       (dbl)
+  block: # Z₃ = Z₁*Z₂*H
+    var t{.noInit.}: F
+    t.prod(P.z, H_or_Y)       #      Z₁H   (add) or Y₁Z₁ (dbl)
+    r.z = t
+    t *= Q.z                  #      Z₁Z₂H (add) or garbage (dbl)
+    r.z.ccopy(t, not isDbl)   # Z₃ = Z₁Z₂H (add) or Y₁Z₁ (dbl)
 
-  V_or_S.ccopy(P.x, isDbl) # U₁        (add) or X₁        (dbl)
-  V_or_S *= HH_or_YY       # V = U₁*HH (add) or S = X₁*YY (dbl)
+  # Rename buffers under the form (add_or_dbl)
+  template H_or_X1: untyped = H_or_Y
+  template V_or_D: untyped = U1
+  template HHH_or_A: untyped = H
+  template S1HHH_or_C: untyped = S1
+  template R_or_E: untyped = R
+  block:
+    var t{.noInit.}: F
+    t.square(H_or_Y)             # HH  = H²   (add) or B = Y₁² (dbl)
 
-  block: # Compute M for doubling
-    when F.C.getCoefA() == 0:
-      var a = H
-      var b = HH_or_YY
-      a.ccopy(P.x, isDbl)           # H or X₁
-      b.ccopy(P.x, isDbl)           # HH or X₁
-      HHH_or_Mpre.prod(a, b)        # HHH or X₁²
+    U1.ccopy(P.x, isDbl)         # U₁         (add) or X₁      (dbl)
+    V_or_D *= t                  # V = U₁*HH  (add) or D = X₁B (dbl)
 
-      var M = HHH_or_Mpre           # Assuming on doubling path
-      M.div2()                      #  X₁²/2
-      M += HHH_or_Mpre              # 3X₁²/2
-      R_or_M.ccopy(M, isDbl)
+    let B = t
 
-    elif F.C.getCoefA() == -3:
-      var a{.noInit.}, b{.noInit.}: F
-      a.sum(P.x, Z1Z1)
-      b.diff(P.z, Z1Z1)
-      a.ccopy(H_or_Y, not isDbl)    # H   or X₁+ZZ
-      b.ccopy(HH_or_YY, not isDbl)  # HH  or X₁-ZZ
-      HHH_or_Mpre.prod(a, b)        # HHH or X₁²-ZZ²
+    HHH_or_A.ccopy(P.x, isDbl)   # H          (add) or X₁      (dbl)
+    t.ccopy(P.x, isDbl)          # HH         (add) or X₁      (dbl)
+    HHH_or_A *= t                # HHH = H*HH (add) or A = X₁² (dbl)
 
-      var M = HHH_or_Mpre           # Assuming on doubling path
-      M.div2()                      # (X₁²-ZZ²)/2
-      M += HHH_or_Mpre              # 3(X₁²-ZZ²)/2
-      R_or_M.ccopy(M, isDbl)
+    block:
+      var E = HHH_or_A
+      E.div2()
+      E += HHH_or_A
+      R_or_E.ccopy(E, isDbl)       # R = S₂-S₁  (add) or E = 3A/2 (dbl)
 
-    else:
-      var a = H
-      var b = HH
-      a.ccopy(P.x, isDbl)
-      b.ccopy(P.x, isDbl)
-      HHH_or_Mpre.prod(a, b)        # HHH or X₁²
+    t = HHH_or_A
+    t.ccopy(B, isDbl)            # HHH   (add) or B = Y₁² (dbl)
+    S1HHH_or_C.ccopy(B, isDbl)   # S₁    (add) or B = Y₁² (dbl)
+    S1HHH_or_C *= t              # S₁HHH (add) or C = B²  (dbl)
 
-      # Assuming doubling path
-      a.square(HHH_or_Mpre)
-      a *= HHH_or_Mpre              # a = 3X₁²
-      b.square(Z1Z1)
-      b *= F.C.getCoefA()           # b = αZZ, with α the "a" coefficient of the curve
+  block:
+    r.y = V_or_D
 
-      a += b
-      a.div2()
-      R_or_M.ccopy(a, isDbl)        # (3X₁² - αZZ)/2
+    V_or_D *= 2
+    r.x.square(R_or_E)
+    r.x -= V_or_D
+    r.x.csub(HHH_or_A, not isDbl) # X₃ = R²-2*V-HHH (add) or X₃ = E²-2*D (dbl)
 
-  # Let's count our horses, at this point:
-  # - R_or_M is set with R (add) or M (dbl)
-  # - HHH_or_Mpre contains HHH (add) or garbage precomputation (dbl)
-  # - V_or_S is set with V = U₁*HH (add) or S = X₁*YY (dbl)
-  block: # Finishing line
-    var t {.noInit.}: F
-    t.double(V_or_S)
-    r.x.square(R_or_M)
-    r.x -= t                           # X₃ = R²-2*V (add) or M²-2*S (dbl)
-    r.x.csub(HHH_or_Mpre, not isDbl)   # X₃ = R²-HHH-2*V (add) or M²-2*S (dbl)
-
-    V_or_S -= r.x                      # V-X₃ (add) or S-X₃ (dbl)
-    r.y.prod(R_or_M, V_or_S)           # Y₃ = R(V-X₃) (add) or M(S-X₃) (dbl)
-    HHH_or_Mpre.ccopy(HH_or_YY, isDbl) # HHH (add) or YY (dbl)
-    S1.ccopy(HH_or_YY, isDbl)          # S1 (add) or YY (dbl)
-    HHH_or_Mpre *= S1                  # HHH*S1 (add) or YY² (dbl)
-    r.y -= HHH_or_Mpre                 # Y₃ = R(V-X₃)-S₁*HHH (add) or M(S-X₃)-YY² (dbl)
-
-    t = Q.z
-    t.ccopy(H_or_Y, isDbl)             # Z₂ (add) or Y₁ (dbl)
-    t *= P.z                           # Z₁Z₂ (add) or Y₁Z₁ (dbl)
-    r.z.prod(t, H_or_Y)                # Z₁Z₂H (add) or garbage (dbl)
-    r.z.ccopy(t, isDbl)                # Z₁Z₂H (add) or Y₁Z₁ (dbl)
+    r.y -= r.x
+    r.y *= R_or_E
+    r.y -= S1HHH_or_C             # Y₃ = R*(V-X₃)-S₁HHH or Y₃ = E*(D-X₃)-C
 
   # if P or R were infinity points they would have spread 0 with Z₁Z₂
   block: # Infinity points
@@ -413,7 +386,7 @@ func projectiveFromJacobian*[F](jac: var ECP_ShortW_Jac, aff: ECP_ShortW_Aff[F])
 # Concretely, that means that it is non-trivial to make the code constant-time
 # whichever case we are.
 # Furthermore, Renes et al 2015 which introduced complete addition formulae for projective coordinates
-# demonstrated that such a law cannot exist for the Jacobian coordinates we are interested in.
+# demonstrated that such a law cannot be as efficient for the Jacobian coordinates we are interested in.
 #
 # Since we can't rely on math, we will need to rely on implementation "details" to achieve our goals.
 # First we look back in history at Brier and Joye 2002 unified formulae which uses the same code for addition and doubling:
@@ -488,7 +461,7 @@ func projectiveFromJacobian*[F](jac: var ECP_ShortW_Jac, aff: ECP_ShortW_Aff[F])
 # |                                  | YYYY (no matching op in addition, extra 2 squares)  |                 |       |
 # |                                  |                                                     |                 |       |
 # | I = (2*H)²                       | YY = Y₁²                                            |                 |       |
-# | J = H*I                          | M = 3*X₁²+a*ZZ²                                         | 3(X₁-Z₁)(X₁+Z₁) | 3*X₁² |
+# | J = H*I                          | M = 3*X₁²+a*ZZ²                                     | 3(X₁-Z₁)(X₁+Z₁) | 3*X₁² |
 # | V = U₁*I                         | S = 2*((X₁+YY)²-XX-YYYY) = 4*X₁*YY                  |                 |       |
 # |                                  |                                                     |                 |       |
 # | X₃ = R²-J-2*V                    | X₃ = M²-2*S                                         |                 |       |
@@ -505,7 +478,7 @@ func projectiveFromJacobian*[F](jac: var ECP_ShortW_Jac, aff: ECP_ShortW_Aff[F])
 # The second thing to note is that in the addition, they had to scale Z₃ by 2
 # which scaled X₃ by 4 and Y₃ by 8, leading to the doubling in I, r coefficients
 #
-# Ultimately, it saves 1 mul but it costs 1S 3A 3*2.
+# Ultimately, it saves 1 mul but it costs 1S 3A 3*2. Here are some benchmarks for reference
 #
 # | Operation | Fp[BLS12_381] (cycles) | Fp2[BLS12_381] (cycles) | Fp4[BLS12_381] (cycles) |
 # |-----------|------------------------|-------------------------|-------------------------|
@@ -575,19 +548,19 @@ func projectiveFromJacobian*[F](jac: var ECP_ShortW_Jac, aff: ECP_ShortW_Aff[F])
 # | V   = U₁*HH                   | S  = X₁*YY                                      |                   |                |
 # |                               |                                                 |                   |                |
 # | X₃ = R²-HHH-2*V               | X₃ = M²-2*S                                     |                   |                |
-# | Y₃ = R*(V-X₃)-S₁*HHH          | Y₃ = M*(S-X₃)-YY*YY                             |                   |                |
+# | Y₃ = R*(V-X₃)-S₁*HHH          | Y₃ = M*(S-X₃)-YY²                               |                   |                |
 # | Z₃ = Z₁*Z₂*H                  | Z₃ = Y₁*Z₁                                      |                   |                |
 # ```
 #
 # So we actually replaced 1 doubling, 1 quadrupling, 1 octupling by 1 halving, which has the same cost as doubling/addition.
-# We will use that for elliptic curve over Fp and Fp2.
+# We could use that for elliptic curve over Fp and Fp2.
 # For elliptic curve over Fp4 and Fp8 (BLS24 and BLS48) the gap between multiplication and square is large enough
 # that replacing a multiplication by squaring + 2 substractions and extra bookkeeping is worth it,
-# we would use this formula:
+# we could use this formula instead:
 #
 # ```
-# | Addition (adapted Bernstein et al) |     Doubling any a (Bernstein et al)     |  Doubling = -3  | Doubling a = 0 |
-# |       12M + 4S + 6add + 1*2        | 3M + 6S + 1*a + 4add + 1*2 + 1*3 + 1half |                 |                |
+# | Addition (adapted Bernstein et al) |     Doubling any a (adapted Bernstein)   |  Doubling = -3  | Doubling a = 0 |
+# |       11M + 5S + 9add + 4*2        | 2M + 7S + 1*a + 7add + 2*2+1*3+1*4+1*8   |                 |                |
 # | ---------------------------------- | ---------------------------------------- | --------------- | -------------- |
 # | Z₁Z₁ = Z₁²                         | Z₁Z₁ = Z₁²                               |                 |                |
 # | Z₂Z₂ = Z₂²                         |                                          |                 |                |
@@ -604,6 +577,51 @@ func projectiveFromJacobian*[F](jac: var ECP_ShortW_Jac, aff: ECP_ShortW_Aff[F])
 # | V = U₁*I                           | S  = 4*X₁*YY                             |                 |                |
 # |                                    |                                          |                 |                |
 # | X₃ = R²-J-2*V                      | X₃ = M²-2*S                              |                 |                |
-# | Y₃ = R*(V-X₃)-2*S₁*J               | Y₃ = M*(S-X₃)-8*YY*YY                    |                 |                |
+# | Y₃ = R*(V-X₃)-2*S₁*J               | Y₃ = M*(S-X₃)-8*YY²                      |                 |                |
 # | Z₃ = ((Z₁+Z₂)²-Z₁Z₁-Z₂Z₂)*H        | Z₃ = (Y₁+Z₁)² - YY - ZZ                  |                 |                |
 # ```
+#
+# Can we do better? Actually yes, Lange introduced a doubling formula
+# in 2009 that didn't use the `a` curve coefficient and only used 2M and 5S and no more additions!
+# "dbl-2009-l" doubling formula - https://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#doubling-dbl-2009-l
+#
+#     Cost: 2M + 5S + 6add + 3*2 + 1*3 + 1*8.
+#     Source: 2009.04.01 Lange.
+#     Explicit formulas:
+#
+#           A = X₁²
+#           B = Y₁²
+#           C = B²
+#           D = 2*((X₁+B)²-A-C)
+#           E = 3*A
+#           F = E²
+#           X₃ = F-2*D
+#           Y₃ = E*(D-X₃)-8*C
+#           Z₃ = 2*Y₁*Z₁
+#
+# We can scale Z₃ by ½ and obtain our ultimate formula with no special case depending on "a"
+#
+# |    Addition, Cohen et al, 1998     | Doubling, modified from Lange, 2009 |
+# |       12M + 4S + 6add + 1*2        |    3M + 4S + 4add + 1*2 + 1*half    |
+# | ---------------------------------- | ----------------------------------- |
+# | Z₁Z₁ = Z₁²                         |                                     |
+# | Z₂Z₂ = Z₂²                         |                                     |
+# |                                    |                                     |
+# | U₁ = X₁*Z₂Z₂                       |                                     |
+# | U₂ = X₂*Z₁Z₁                       |                                     |
+# | S₁ = Y₁*Z₂*Z₂Z₂                    |                                     |
+# | S₂ = Y₂*Z₁*Z₁Z₁                    |                                     |
+# | H  = U₂-U₁      # P=-Q, P=Inf, P=Q |                                     |
+# | R  = S₂-S₁      # Q=Inf            |                                     |
+# |                                    |                                     |
+# | Z₃ = Z₁*Z₂*H                       | Z₃ = Y₁*Z₁                          |
+# |                                    |                                     |
+# |                                    |                                     |
+# | HH  = H²                           | B  = Y₁²                            |
+# | HHH = H*HH                         | A  = X₁²                            |
+# | S₁HHH = S₁*HHH                     | C  = B²                             |
+# | V   = U₁*HH                        | D  = X₁*B                           |
+# |                                    | E  = 3A/2                           |
+# |                                    |                                     |
+# | X₃ = R²-2*V-HHH                    | X₃ = E²-2*D                         |
+# | Y₃ = R*(V-X₃)-S₁HHH                | Y₃ = E*(D-X₃)-C                     |
