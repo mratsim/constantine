@@ -218,10 +218,10 @@ func nDimMultiScalarRecoding[M, L: static int](
       k[j].div2()
       k[j] += SecretWord (bji and b[0][i])
 
-func buildLookupTable[M: static int, F](
-       P: ECP_ShortW_Proj[F],
-       endomorphisms: array[M-1, ECP_ShortW_Proj[F]],
-       lut: var array[1 shl (M-1), ECP_ShortW_Proj[F]],
+func buildLookupTable[M: static int, EC](
+       P: EC,
+       endomorphisms: array[M-1, EC],
+       lut: var array[1 shl (M-1), EC],
      ) =
   ## Build the lookup table from the base point P
   ## and the curve endomorphism
@@ -271,8 +271,8 @@ func secretLookup[T](dst: var T, table: openArray[T], index: SecretWord) =
     let selector = SecretWord(i) == index
     dst.ccopy(table[i], selector)
 
-func scalarMulEndo*[scalBits](
-       P: var ECP_ShortW_Proj,
+func scalarMulEndo*[scalBits; EC](
+       P: var EC,
        scalar: BigInt[scalBits]
      ) =
   ## Elliptic Curve Scalar Multiplication
@@ -333,7 +333,7 @@ func scalarMulEndo*[scalBits](
   P.cneg(isNeg0)
 
   # 4. Precompute lookup table
-  var lut {.noInit.}: array[1 shl (M-1), ECP_ShortW_Proj]
+  var lut {.noInit.}: array[1 shl (M-1), typeof(P)]
   buildLookupTable(P, endomorphisms, lut)
   # TODO: Montgomery simultaneous inversion (or other simultaneous inversion techniques)
   #       so that we use mixed addition formulas in the main loop
@@ -394,10 +394,10 @@ func scalarMulEndo*[scalBits](
 #   -  0t10   ->  0b10  is  2
 #   -  0t11   ->  0b11  is  3
 
-func buildLookupTable_m2w2[F](
-       P0: ECP_ShortW_Proj[F],
-       P1: ECP_ShortW_Proj[F],
-       lut: var array[8, ECP_ShortW_Proj[F]],
+func buildLookupTable_m2w2[EC](
+       P0: EC,
+       P1: EC,
+       lut: var array[8, EC],
      ) =
   ## Build a lookup table for GLV with 2-dimensional decomposition
   ## and window of size 2
@@ -463,8 +463,8 @@ func computeRecodedLength(bitWidth, window: int): int =
   let lw = (bitWidth + window - 1) div window + 1 + 1
   result = (lw mod window) + lw
 
-func scalarMulGLV_m2w2*[scalBits](
-       P0: var ECP_ShortW_Proj,
+func scalarMulGLV_m2w2*[scalBits; EC](
+       P0: var EC,
        scalar: BigInt[scalBits]
      ) =
   ## Elliptic Curve Scalar Multiplication
@@ -497,7 +497,7 @@ func scalarMulGLV_m2w2*[scalBits](
   #    in the GLV representation at the low low price of 1 bit
 
   # 4. Precompute lookup table
-  var lut {.noInit.}: array[8, ECP_ShortW_Proj]
+  var lut {.noInit.}: array[8, EC]
   buildLookupTable_m2w2(P0, P1, lut)
   # TODO: Montgomery simultaneous inversion (or other simultaneous inversion techniques)
   #       so that we use mixed addition formulas in the main loop

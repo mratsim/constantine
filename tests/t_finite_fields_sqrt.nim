@@ -121,12 +121,8 @@ proc main() =
     exhaustiveCheck Fake103, 103
     exhaustiveCheck Fake10007, 10007
     exhaustiveCheck Fake65519, 65519
-    randomSqrtCheck Mersenne61
-    randomSqrtCheck Mersenne127
     randomSqrtCheck BN254_Nogami
     randomSqrtCheck BN254_Snarks
-    randomSqrtCheck P256
-    randomSqrtCheck Secp256k1
     randomSqrtCheck BLS12_377 # p ≢ 3 (mod 4)
     randomSqrtCheck BLS12_381
 

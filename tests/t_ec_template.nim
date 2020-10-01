@@ -19,7 +19,12 @@ import
   ../constantine/config/[common, curves],
   ../constantine/arithmetic,
   ../constantine/towers,
-  ../constantine/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective, ec_scalar_mul],
+  ../constantine/elliptic/[
+    ec_shortweierstrass_affine,
+    ec_shortweierstrass_jacobian,
+    ec_shortweierstrass_projective,
+    ec_scalar_mul],
+    ../constantine/io/[io_bigints, io_fields],
   # Test utilities
   ../helpers/prng_unsafe,
   ./support/ec_reference_scalar_mult
@@ -215,7 +220,7 @@ proc run_EC_mul_sanity_tests*(
   else:
     const G1_or_G2 = "G2"
 
-  const testSuiteDesc = "Elliptic curve in Short Weierstrass form with projective coordinates"
+  const testSuiteDesc = "Elliptic curve in Short Weierstrass form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
     test "EC " & G1_or_G2 & " mul [0]P == Inf":
@@ -313,7 +318,7 @@ proc run_EC_mul_distributive_tests*(
   else:
     const G1_or_G2 = "G2"
 
-  const testSuiteDesc = "Elliptic curve in Short Weierstrass form with projective coordinates"
+  const testSuiteDesc = "Elliptic curve in Short Weierstrass form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
 
@@ -383,7 +388,7 @@ proc run_EC_mul_vs_ref_impl*(
   else:
     const G1_or_G2 = "G2"
 
-  const testSuiteDesc = "Elliptic curve in Short Weierstrass form with projective coordinates"
+  const testSuiteDesc = "Elliptic curve in Short Weierstrass form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
     test "EC " & G1_or_G2 & " mul constant-time is equivalent to a simple double-and-add algorithm":

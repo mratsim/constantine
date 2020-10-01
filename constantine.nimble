@@ -29,6 +29,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Field
   ("tests/t_io_fields", false),
   ("tests/t_finite_fields.nim", false),
+  ("tests/t_finite_fields_conditional_arithmetic.nim", false),
   ("tests/t_finite_fields_mulsquare.nim", false),
   ("tests/t_finite_fields_sqrt.nim", false),
   ("tests/t_finite_fields_powinv.nim", false),
@@ -49,32 +50,53 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
 
   ("tests/t_fp4_frobenius.nim", false),
   # Elliptic curve arithmetic G1
-  ("tests/t_ec_wstrass_prj_g1_add_double.nim", false),
-  ("tests/t_ec_wstrass_prj_g1_mul_sanity.nim", false),
-  ("tests/t_ec_wstrass_prj_g1_mul_distri.nim", false),
-  ("tests/t_ec_wstrass_prj_g1_mul_vs_ref.nim", false),
-  ("tests/t_ec_wstrass_prj_g1_mixed_add.nim", false),
-  # Elliptic curve arithmetic G2
-  ("tests/t_ec_wstrass_prj_g2_add_double_bn254_snarks.nim", false),
-  ("tests/t_ec_wstrass_prj_g2_mul_sanity_bn254_snarks.nim", false),
-  ("tests/t_ec_wstrass_prj_g2_mul_distri_bn254_snarks.nim", false),
-  ("tests/t_ec_wstrass_prj_g2_mul_vs_ref_bn254_snarks.nim", false),
+  ("tests/t_ec_shortw_prj_g1_add_double.nim", false),
+  ("tests/t_ec_shortw_prj_g1_mul_sanity.nim", false),
+  ("tests/t_ec_shortw_prj_g1_mul_distri.nim", false),
+  ("tests/t_ec_shortw_prj_g1_mul_vs_ref.nim", false),
+  ("tests/t_ec_shortw_prj_g1_mixed_add.nim", false),
 
-  ("tests/t_ec_wstrass_prj_g2_add_double_bls12_381.nim", false),
-  ("tests/t_ec_wstrass_prj_g2_mul_sanity_bls12_381.nim", false),
-  ("tests/t_ec_wstrass_prj_g2_mul_distri_bls12_381.nim", false),
-  ("tests/t_ec_wstrass_prj_g2_mul_vs_ref_bls12_381.nim", false),
-  ("tests/t_ec_wstrass_prj_g2_add_double_bls12_377.nim", false),
-  ("tests/t_ec_wstrass_prj_g2_mul_sanity_bls12_377.nim", false),
-  ("tests/t_ec_wstrass_prj_g2_mul_distri_bls12_377.nim", false),
-  ("tests/t_ec_wstrass_prj_g2_mul_vs_ref_bls12_377.nim", false),
+  ("tests/t_ec_shortw_jac_g1_add_double.nim", false),
+  ("tests/t_ec_shortw_jac_g1_mul_sanity.nim", false),
+  ("tests/t_ec_shortw_jac_g1_mul_distri.nim", false),
+  ("tests/t_ec_shortw_jac_g1_mul_vs_ref.nim", false),
+  # Elliptic curve arithmetic G2
+  ("tests/t_ec_shortw_prj_g2_add_double_bn254_snarks.nim", false),
+  ("tests/t_ec_shortw_prj_g2_mul_sanity_bn254_snarks.nim", false),
+  ("tests/t_ec_shortw_prj_g2_mul_distri_bn254_snarks.nim", false),
+  ("tests/t_ec_shortw_prj_g2_mul_vs_ref_bn254_snarks.nim", false),
+
+  ("tests/t_ec_shortw_prj_g2_add_double_bls12_381.nim", false),
+  ("tests/t_ec_shortw_prj_g2_mul_sanity_bls12_381.nim", false),
+  ("tests/t_ec_shortw_prj_g2_mul_distri_bls12_381.nim", false),
+  ("tests/t_ec_shortw_prj_g2_mul_vs_ref_bls12_381.nim", false),
+
+  ("tests/t_ec_shortw_prj_g2_add_double_bls12_377.nim", false),
+  ("tests/t_ec_shortw_prj_g2_mul_sanity_bls12_377.nim", false),
+  ("tests/t_ec_shortw_prj_g2_mul_distri_bls12_377.nim", false),
+  ("tests/t_ec_shortw_prj_g2_mul_vs_ref_bls12_377.nim", false),
+
+  ("tests/t_ec_shortw_jac_g2_add_double_bn254_snarks.nim", false),
+  ("tests/t_ec_shortw_jac_g2_mul_sanity_bn254_snarks.nim", false),
+  ("tests/t_ec_shortw_jac_g2_mul_distri_bn254_snarks.nim", false),
+  ("tests/t_ec_shortw_jac_g2_mul_vs_ref_bn254_snarks.nim", false),
+
+  ("tests/t_ec_shortw_jac_g2_add_double_bls12_381.nim", false),
+  ("tests/t_ec_shortw_jac_g2_mul_sanity_bls12_381.nim", false),
+  ("tests/t_ec_shortw_jac_g2_mul_distri_bls12_381.nim", false),
+  ("tests/t_ec_shortw_jac_g2_mul_vs_ref_bls12_381.nim", false),
+
+  ("tests/t_ec_shortw_jac_g2_add_double_bls12_377.nim", false),
+  ("tests/t_ec_shortw_jac_g2_mul_sanity_bls12_377.nim", false),
+  ("tests/t_ec_shortw_jac_g2_mul_distri_bls12_377.nim", false),
+  ("tests/t_ec_shortw_jac_g2_mul_vs_ref_bls12_377.nim", false),
   # Elliptic curve arithmetic vs Sagemath
   ("tests/t_ec_frobenius.nim", false),
   ("tests/t_ec_sage_bn254.nim", false),
   ("tests/t_ec_sage_bls12_377.nim", false),
   ("tests/t_ec_sage_bls12_381.nim", false),
   # Edge cases highlighted by past bugs
-  ("tests/t_ec_wstrass_prj_edge_cases.nim", false),
+  ("tests/t_ec_shortw_prj_edge_cases.nim", false),
   # Pairing
   ("tests/t_pairing_mul_fp12_by_lines.nim", false),
   ("tests/t_pairing_cyclotomic_fp12.nim", false),
@@ -398,6 +420,21 @@ task bench_fp2_gcc_noasm, "Run benchmark 𝔽p2 with gcc - no Assembly":
 
 task bench_fp2_clang_noasm, "Run benchmark 𝔽p2 with clang - no Assembly":
   runBench("bench_fp2", "clang", useAsm = false)
+
+task bench_fp4, "Run benchmark with 𝔽p4 your default compiler":
+  runBench("bench_fp4")
+
+task bench_fp4_gcc, "Run benchmark 𝔽p4 with gcc":
+  runBench("bench_fp4", "gcc")
+
+task bench_fp4_clang, "Run benchmark 𝔽p4 with clang":
+  runBench("bench_fp4", "clang")
+
+task bench_fp4_gcc_noasm, "Run benchmark 𝔽p4 with gcc - no Assembly":
+  runBench("bench_fp4", "gcc", useAsm = false)
+
+task bench_fp4_clang_noasm, "Run benchmark 𝔽p4 with clang - no Assembly":
+  runBench("bench_fp4", "clang", useAsm = false)
 
 task bench_fp6, "Run benchmark with 𝔽p6 your default compiler":
   runBench("bench_fp6")

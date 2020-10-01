@@ -11,7 +11,9 @@ import
   ../constantine/config/curves,
   ../constantine/arithmetic,
   ../constantine/towers,
-  ../constantine/elliptic/ec_shortweierstrass_projective,
+  ../constantine/elliptic/[
+    ec_shortweierstrass_projective,
+    ec_shortweierstrass_jacobian],
   # Helpers
   ../helpers/static_for,
   ./bench_elliptic_template,
@@ -45,20 +47,30 @@ proc main() =
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
     addBench(ECP_ShortW_Proj[Fp2[curve]], Iters)
+    addBench(ECP_ShortW_Jac[Fp2[curve]], Iters)
     mixedAddBench(ECP_ShortW_Proj[Fp2[curve]], Iters)
     doublingBench(ECP_ShortW_Proj[Fp2[curve]], Iters)
+    doublingBench(ECP_ShortW_Jac[Fp2[curve]], Iters)
+    separator()
+    affFromProjBench(ECP_ShortW_Proj[Fp2[curve]], MulIters)
+    affFromJacBench(ECP_ShortW_Jac[Fp2[curve]], MulIters)
     separator()
     scalarMulUnsafeDoubleAddBench(ECP_ShortW_Proj[Fp2[curve]], MulIters)
+    scalarMulUnsafeDoubleAddBench(ECP_ShortW_Jac[Fp2[curve]], MulIters)
     separator()
     scalarMulGenericBench(ECP_ShortW_Proj[Fp2[curve]], window = 2, MulIters)
     scalarMulGenericBench(ECP_ShortW_Proj[Fp2[curve]], window = 3, MulIters)
     scalarMulGenericBench(ECP_ShortW_Proj[Fp2[curve]], window = 4, MulIters)
     scalarMulGenericBench(ECP_ShortW_Proj[Fp2[curve]], window = 5, MulIters)
+    scalarMulGenericBench(ECP_ShortW_Jac[Fp2[curve]], window = 2, MulIters)
+    scalarMulGenericBench(ECP_ShortW_Jac[Fp2[curve]], window = 3, MulIters)
+    scalarMulGenericBench(ECP_ShortW_Jac[Fp2[curve]], window = 4, MulIters)
+    scalarMulGenericBench(ECP_ShortW_Jac[Fp2[curve]], window = 5, MulIters)
     separator()
     scalarMulEndo(ECP_ShortW_Proj[Fp2[curve]], MulIters)
+    scalarMulEndo(ECP_ShortW_Jac[Fp2[curve]], MulIters)
     separator()
     separator()
-  separator()
 
 main()
 notes()

@@ -7,17 +7,11 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  # Standard library
-  std/[unittest, times],
   # Internals
-  ../constantine/config/[common, curves],
-  ../constantine/arithmetic,
+  ../constantine/config/curves,
+  ../constantine/elliptic/ec_shortweierstrass_projective,
   ../constantine/towers,
-  ../constantine/io/io_bigints,
-  ../constantine/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective, ec_scalar_mul],
   # Test utilities
-  ../helpers/prng_unsafe,
-  ./support/ec_reference_scalar_mult,
   ./t_ec_template
 
 const
@@ -25,12 +19,12 @@ const
   ItersMul = Iters div 4
 
 run_EC_mul_sanity_tests(
-    ec = ECP_ShortW_Proj[Fp2[BLS12_381]],
+    ec = ECP_ShortW_Proj[Fp2[BN254_Snarks]],
     ItersMul = ItersMul,
-    moduleName = "test_ec_shortweierstrass_projective_g2_mul_sanity_" & $BLS12_381
+    moduleName = "test_ec_shortweierstrass_projective_g2_mul_sanity_" & $BN254_Snarks
   )
 
-# TODO: the order on E'(Fp2) for BLS curves is ??? with r the order on E(Fp)
+# TODO: the order on E'(Fp2) for BN curve is r∗(2p−r) with r the order on E(Fp)
 #
 # test "EC mul [Order]P == Inf":
 #   var rng: RngState
@@ -58,5 +52,5 @@ run_EC_mul_sanity_tests(
 #         bool(impl.isInf())
 #         bool(reference.isInf())
 #
-#   test(ECP_ShortW_Proj[Fp2[BLS12_381]], bits = BLS12_381.getCurveOrderBitwidth(), randZ = false)
-#   test(ECP_ShortW_Proj[Fp2[BLS12_381]], bits = BLS12_381.getCurveOrderBitwidth(), randZ = true)
+#   test(ECP_ShortW_Proj[Fp2[BN254_Snarks]], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = false)
+#   test(ECP_ShortW_Proj[Fp2[BN254_Snarks]], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = true)

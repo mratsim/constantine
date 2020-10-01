@@ -141,6 +141,17 @@ proc negBench*(T: typedesc, iters: int) =
   bench("Negation", T, iters):
     r.neg(x)
 
+proc ccopyBench*(T: typedesc, iters: int) =
+  var r: T
+  let x = rng.random_unsafe(T)
+  bench("Conditional Copy", T, iters):
+    r.ccopy(x, CtFalse)
+
+proc div2Bench*(T: typedesc, iters: int) =
+  var x = rng.random_unsafe(T)
+  bench("Division by 2", T, iters):
+    x.div2()
+
 proc mulBench*(T: typedesc, iters: int) =
   var r: T
   let x = rng.random_unsafe(T)

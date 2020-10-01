@@ -37,15 +37,14 @@ proc main() =
   separator()
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
-    addBench(Fp2[curve], Iters)
-    subBench(Fp2[curve], Iters)
-    negBench(Fp2[curve], Iters)
-    ccopyBench(Fp2[curve], Iters)
-    div2Bench(Fp2[curve], Iters)
-    mulBench(Fp2[curve], Iters)
-    sqrBench(Fp2[curve], Iters)
-    invBench(Fp2[curve], InvIters)
-    sqrtBench(Fp2[curve], InvIters)
+    addBench(Fp4[curve], Iters)
+    subBench(Fp4[curve], Iters)
+    negBench(Fp4[curve], Iters)
+    ccopyBench(Fp4[curve], Iters)
+    div2Bench(Fp4[curve], Iters)
+    mulBench(Fp4[curve], Iters)
+    sqrBench(Fp4[curve], Iters)
+    invBench(Fp4[curve], InvIters)
     separator()
 
 main()
