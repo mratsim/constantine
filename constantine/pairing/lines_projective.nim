@@ -37,11 +37,11 @@ export lines_common
 #   and Patrick Longa and Jefferson E. Ricardini, 2013
 #   https://eprint.iacr.org/2013/722.pdf
 #   http://sac2013.irmacs.sfu.ca/slides/s1.pdf
-
 #
-# TODO: Implement fused line doubling and addition
-#       from Costello2009 or Aranha2010
-#       We don't need the complete formulae in the Miller Loop
+# - Efficient Implementation of Bilinear Pairings on ARM Processors
+#   Gurleen Grewal, Reza Azarderakhsh,
+#   Patrick Longa, Shi Hu, and David Jao, 2012
+#   https://eprint.iacr.org/2012/408.pdf
 
 # Line evaluation only
 # -----------------------------------------------------------------------------
@@ -167,6 +167,53 @@ func line_eval_add(line: var Line, T: ECP_ShortW_Proj, Q: ECP_ShortW_Aff) =
 
   C.neg()     # C = -(Y₁-Z₁Y₂)
 
+func line_eval_fused_double(line: var Line, T: var ECP_ShortW_Proj) =
+  ## Fused line evaluation and line doubling
+  # Grewal et al, 2012 adapted to Scott 2019 line notation
+  var A {.noInit.}, B {.noInit.}, C {.noInit.}: Line.F
+  var E {.noInit.}, F {.noInit.}, G {.noInit.}: Line.F
+  template H: untyped = line.x
+  const b3 = 3*Line.F.C.getCoefB()
+
+  A.prod(T.x, T.y)
+  A.div2()          # A = XY/2
+  B.square(T.y)     # B = Y²
+  C.square(T.z)     # C = Z²
+
+  E = C
+  E *= b3
+  when Line.F.C.getSexticTwist() == M_Twist:
+    E *= SexticNonResidue # E = 3b'Z² = 3bξ Z²
+
+  F = E
+  F *= 3            # F = 3E
+  G.sum(B, F)
+  G.div2()          # G = (B+F)/2
+  H.sum(T.y, T.z)
+  H.square()
+  H -= B
+  H -= C            # lx = H = (Y+Z)²-(B+C)= 2YZ
+
+  line.z.square(T.x)
+  line.z *= 3       # lz = 3X²
+
+  line.y.diff(E, B) # ly = E-B = 3b'Z² - Y²
+
+  # In-place modification: invalidates `T.` calls
+  T.x.diff(B, F)
+  T.x *= A          # X₃ = A(B-F) = XY/2.(Y²-9b'Z²)
+
+  T.y.square(G)
+  E.square()
+  E *= 3
+  T.y -= E          # Y₃ = G² - 3E² = (Y²+9b'Z²)²/4 - 3*(3b'Z²)²
+
+  T.z.prod(B, H)    # Z₃ = BH = Y²((Y+Z)² - (Y²+Z²)) = 2Y³Z
+
+  # Correction for Fp4 towering
+  H.neg()               # lx = -H
+  H *= SexticNonResidue # lx = -ξH = -2 ξ Y.Z
+
 # Public proc
 # -----------------------------------------------------------------------------
 
@@ -175,11 +222,13 @@ func line_double*(line: var Line, T: var ECP_ShortW_Proj, P: ECP_ShortW_Aff) =
   ## T in G2, P in G1
   ##
   ## Compute lt,t(P)
-  ##
-  # TODO fused line doubling from Costello 2009, Grewal 2012, Aranha 2013
-  line_eval_double(line, T)
-  line.line_update(P)
-  T.double()
+  when true:
+    line_eval_fused_double(line, T)
+    line.line_update(P)
+  else:
+    line_eval_double(line, T)
+    line.line_update(P)
+    T.double()
 
 func line_add*[C](
        line: var Line,
