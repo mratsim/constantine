@@ -168,7 +168,7 @@ func line_eval_add(line: var Line, T: ECP_ShortW_Proj, Q: ECP_ShortW_Aff) =
   C.neg()     # C = -(Y₁-Z₁Y₂)
 
 func line_eval_fused_double(line: var Line, T: var ECP_ShortW_Proj) =
-  ## Fused line evaluation and line doubling
+  ## Fused line evaluation and elliptic point doubling
   # Grewal et al, 2012 adapted to Scott 2019 line notation
   var A {.noInit.}, B {.noInit.}, C {.noInit.}: Line.F
   var E {.noInit.}, F {.noInit.}, G {.noInit.}: Line.F
@@ -234,6 +234,56 @@ func line_eval_fused_double(line: var Line, T: var ECP_ShortW_Proj) =
     H *= SexticNonResidue
     # else: the SNR is already integrated in H
 
+func line_eval_fused_add(line: var Line, T: var ECP_ShortW_Proj, Q: ECP_ShortW_Aff) =
+  ## Fused line evaluation and elliptic point addition
+  # Grewal et al, 2012 adapted to Scott 2019 line notation
+  var
+    A {.noInit.}: Line.F
+    B {.noInit.}: Line.F
+    C {.noInit.}: Line.F
+    D {.noInit.}: Line.F
+    E {.noInit.}: Line.F
+    F {.noInit.}: Line.F
+    G {.noInit.}: Line.F
+    H {.noInit.}: Line.F
+    I {.noInit.}: Line.F
+
+  template lambda: untyped = line.x
+  template theta: untyped = line.z
+  template J: untyped = line.y
+
+  A.prod(Q.y, T.z)
+  B.prod(Q.x, T.z)
+  theta.diff(T.y, A)  # θ = Y₁ - Z₁X₂
+  lambda.diff(T.x, B) # λ = X₁ - Z₁X₂
+  C.square(theta)
+  D.square(lambda)
+  E.prod(D, lambda)
+  F.prod(T.z, C)
+  G.prod(T.x, D)
+  H.double(G)
+  H.diffAlias(F, H)
+  H += E
+  I.prod(T.y, E)
+
+  T.x.prod(theta, Q.x)
+  T.y.prod(lambda, Q.y)
+  J.diff(T.x, T.y)
+
+  # EC addition
+  T.x.prod(lambda, H)
+
+  T.y.diff(G, H)
+  T.y *= theta
+  T.y -= I
+
+  T.z *= E
+
+  # Line evaluation
+  theta.neg()
+  when ECP_ShortW_Proj.F.C.getSexticTwist() == M_Twist:
+    lambda *= SexticNonResidue # A = ξ (X₁ - Z₁X₂)
+
 # Public proc
 # -----------------------------------------------------------------------------
 
@@ -258,7 +308,10 @@ func line_add*[C](
   ## T and Q in G2, P in G1
   ##
   ## Compute lt,q(P)
-  # TODO fused line addition from Costello 2009, Grewal 2012, Aranha 2013
-  line_eval_add(line, T, Q)
-  line.line_update(P)
-  T += Q
+  when true:
+    line_eval_fused_add(line, T, Q)
+    line.line_update(P)
+  else:
+    line_eval_add(line, T, Q)
+    line.line_update(P)
+    T += Q
