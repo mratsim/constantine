@@ -175,10 +175,18 @@ func line_eval_fused_double(line: var Line, T: var ECP_ShortW_Proj) =
   template H: untyped = line.x
   const b3 = 3*Line.F.C.getCoefB()
 
-  A.prod(T.x, T.y)
+  var snrY = T.y
+  when Line.F.C.getSexticTwist() == D_Twist:
+    snrY *= SexticNonResidue
+
+  A.prod(T.x, snrY)
   A.div2()          # A = XY/2
   B.square(T.y)     # B = Y²
   C.square(T.z)     # C = Z²
+
+  var snrB = B
+  when Line.F.C.getSexticTwist() == D_Twist:
+    snrB *= SexticNonResidue
 
   E = C
   E *= b3
@@ -186,8 +194,8 @@ func line_eval_fused_double(line: var Line, T: var ECP_ShortW_Proj) =
     E *= SexticNonResidue # E = 3b'Z² = 3bξ Z²
 
   F = E
-  F *= 3            # F = 3E
-  G.sum(B, F)
+  F *= 3            # F = 3E = 9bZ²
+  G.sum(snrB, F)
   G.div2()          # G = (B+F)/2
   H.sum(T.y, T.z)
   H.square()
@@ -196,23 +204,35 @@ func line_eval_fused_double(line: var Line, T: var ECP_ShortW_Proj) =
 
   line.z.square(T.x)
   line.z *= 3       # lz = 3X²
+  when Line.F.C.getSexticTwist() == D_Twist:
+    line.z *= SexticNonResidue
 
-  line.y.diff(E, B) # ly = E-B = 3b'Z² - Y²
+  line.y.diff(E, snrB) # ly = E-B = 3b'Z² - Y²
 
   # In-place modification: invalidates `T.` calls
-  T.x.diff(B, F)
+  T.x.diff(snrB, F)
   T.x *= A          # X₃ = A(B-F) = XY/2.(Y²-9b'Z²)
+                    # M-twist: XY/2.(Y²-9bξZ²)
+                    # D-Twist: ξXY/2.(Y²ξ-9bZ²)
 
   T.y.square(G)
   E.square()
   E *= 3
   T.y -= E          # Y₃ = G² - 3E² = (Y²+9b'Z²)²/4 - 3*(3b'Z²)²
+                    # M-twist: (Y²+9bξZ²)²/4 - 3*(3bξZ²)²
+                    # D-Twist: (ξY²+9bZ²)²/4 - 3*(3bZ²)²
 
-  T.z.prod(B, H)    # Z₃ = BH = Y²((Y+Z)² - (Y²+Z²)) = 2Y³Z
+  when Line.F.C.getSexticTwist() == D_Twist:
+    H *= SexticNonResidue
+  T.z.prod(snrB, H) # Z₃ = BH = Y²((Y+Z)² - (Y²+Z²)) = 2Y³Z
+                    # M-twist: 2Y³Z
+                    # D-twist: 2ξ²Y³Z
 
   # Correction for Fp4 towering
-  H.neg()               # lx = -H
-  H *= SexticNonResidue # lx = -ξH = -2 ξ Y.Z
+  H.neg()           # lx = -H
+  when Line.F.C.getSexticTwist() == M_Twist:
+    H *= SexticNonResidue
+    # else: the SNR is already integrated in H
 
 # Public proc
 # -----------------------------------------------------------------------------
