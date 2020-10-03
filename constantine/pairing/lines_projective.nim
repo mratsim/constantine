@@ -16,7 +16,10 @@ import
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective
   ],
-  ../io/io_towers
+  ../io/io_towers,
+  ./lines_common
+
+export lines_common
 
 # ############################################################
 #
@@ -40,52 +43,10 @@ import
 #       from Costello2009 or Aranha2010
 #       We don't need the complete formulae in the Miller Loop
 
-type
-  Line*[F; twist: static SexticTwist] = object
-    ## Packed line representation over a E'(Fp^k/d)
-    ## with k the embedding degree and d the twist degree
-    ## i.e. for a curve with embedding degree 12 and sextic twist
-    ## F is Fp2
-    ##
-    ## Assuming a Sextic Twist
-    ##
-    ## Out of 6 Fp2 coordinates, 3 are 0 and
-    ## the non-zero coordinates depend on the twist kind.
-    ##
-    ## For a D-twist,
-    ##   (x, y, z) corresponds to an sparse element of Fp12
-    ##   with Fp2 coordinates: xy00z0
-    ## For a M-Twist
-    ##   (x, y, z) corresponds to an sparse element of Fp12
-    ##   with Fp2 coordinates: xyz000
-    x*, y*, z*: F
+# Line evaluation only
+# -----------------------------------------------------------------------------
 
-func toHex*(line: Line, order: static Endianness = bigEndian): string =
-  result = static($line.typeof.genericHead() & '(')
-  for fieldName, fieldValue in fieldPairs(line):
-    when fieldName != "x":
-      result.add ", "
-    result.add fieldName & ": "
-    result.appendHex(fieldValue, order)
-  result.add ")"
-
-# Line evaluation
-# --------------------------------------------------
-
-func `*=`(a: var Fp2, b: Fp) =
-  ## Multiply an element of Fp2 by an element of Fp
-  # TODO: make generic and move to tower_field_extensions
-  a.c0 *= b
-  a.c1 *= b
-
-func line_update(line: var Line, P: ECP_ShortW_Aff) =
-  ## Update the line evaluation with P
-  ## after addition or doubling
-  ## P in G1
-  line.x *= P.y
-  line.z *= P.x
-
-func line_eval_double*(line: var Line, T: ECP_ShortW_Proj) =
+func line_eval_double(line: var Line, T: ECP_ShortW_Proj) =
   ## Evaluate the line function for doubling
   ## i.e. the tangent at T
   ##
@@ -158,7 +119,7 @@ func line_eval_double*(line: var Line, T: ECP_ShortW_Proj) =
   B -= v                # B = 3bξ Z² - Y²  (M-twist)
                         # B = 3b Z² - ξ Y² (D-twist)
 
-func line_eval_add*(line: var Line, T: ECP_ShortW_Proj, Q: ECP_ShortW_Aff) =
+func line_eval_add(line: var Line, T: ECP_ShortW_Proj, Q: ECP_ShortW_Aff) =
   ## Evaluate the line function for addition
   ## i.e. the line between T and Q
   ##
@@ -205,6 +166,9 @@ func line_eval_add*(line: var Line, T: ECP_ShortW_Proj, Q: ECP_ShortW_Aff) =
   B -= v      # B = (Y₁-Z₁Y₂) X₂ - (X₁-Z₁X₂) Y₂
 
   C.neg()     # C = -(Y₁-Z₁Y₂)
+
+# Public proc
+# -----------------------------------------------------------------------------
 
 func line_double*(line: var Line, T: var ECP_ShortW_Proj, P: ECP_ShortW_Aff) =
   ## Doubling step of the Miller loop

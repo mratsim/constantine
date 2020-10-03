@@ -41,43 +41,6 @@ import
 # 𝔽p12 by line - Sparse functions
 # ----------------------------------------------------------------
 
-func mul_sparse_by_y0*[C: static Curve](r: var Fp4[C], a: Fp4[C], b: Fp2[C]) =
-  ## Sparse multiplication of an Fp4 element
-  ## with coordinates (a₀, a₁) by (b₀, 0)
-  r.c0.prod(a.c0, b)
-  r.c1.prod(a.c1, b)
-
-func mul_sparse_by_0y*[C: static Curve](r: var Fp4[C], a: Fp4[C], b: Fp2[C]) =
-  ## Sparse multiplication of an Fp4 element
-  ## with coordinates (a₀, a₁) by (0, b₁)
-  r.c0.prod(a.c1, b)
-  r.c0 *= NonResidue
-  r.c1.prod(a.c0, b)
-
-func mul_sparse_by_0y0*[C: static Curve](r: var Fp6[C], a: Fp6[C], b: Fp2[C]) =
-  ## Sparse multiplication of an Fp6 element
-  ## with coordinates (a₀, a₁, a₂) by (0, b₁, 0)
-  # TODO: make generic and move to tower_field_extensions
-
-  # v0 = a0 b0 = 0
-  # v1 = a1 b1
-  # v2 = a2 b2 = 0
-  #
-  # r0 = ξ ((a1 + a2) * (b1 + b2) - v1 - v2) + v0
-  #    = ξ (a1 b1 + a2 b1 - v1)
-  #    = ξ a2 b1
-  # r1 = (a0 + a1) * (b0 + b1) - v0 - v1 + ξ v2
-  #    = a0 b1 + a1 b1 - v1
-  #    = a0 b1
-  # r2 = (a0 + a2) * (b0 + b2) - v0 - v2 + v1
-  #    = v1
-  #    = a1 b1
-
-  r.c0.prod(a.c2, b)
-  r.c0 *= ξ
-  r.c1.prod(a.c0, b)
-  r.c2.prod(a.c1, b)
-
 func mul_by_line_xy0*[C: static Curve, twist: static SexticTwist](
        r: var Fp6[C],
        a: Fp6[C],
