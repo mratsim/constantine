@@ -9,7 +9,7 @@
 
 import
   ../arithmetic,
-  ../config/[common, curves],
+  ../config/common,
   ../primitives,
   ../io/io_bigints,
   ./tower_common,

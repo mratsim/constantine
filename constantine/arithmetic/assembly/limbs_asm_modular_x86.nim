@@ -11,8 +11,7 @@ import
   std/macros,
   # Internal
   ../../config/common,
-  ../../primitives,
-  ../limbs
+  ../../primitives
 
 # ############################################################
 #

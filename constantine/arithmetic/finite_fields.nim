@@ -27,7 +27,6 @@
 import
   ../primitives,
   ../config/[common, type_fp, curves],
-  ../io/io_bigints,
   ./bigints, ./limbs_montgomery
 
 when UseASM_X86_64:

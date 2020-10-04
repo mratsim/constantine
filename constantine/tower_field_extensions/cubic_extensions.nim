@@ -42,7 +42,7 @@ import
 # | CH-SQR3     | 1M + 4S  | 11A + 2B + 1 Div2 |
 # | CH-SQR3x    | 1M + 4S  | 14A + 2B          |
 
-func square_Chung_Hasan_SQR2(r: var CubicExt, a: CubicExt) =
+func square_Chung_Hasan_SQR2(r: var CubicExt, a: CubicExt) {.used.}=
   ## Returns r = a²
   mixin prod, square, sum
   var v3{.noInit.}, v4{.noInit.}, v5{.noInit.}: typeof(r.c0)

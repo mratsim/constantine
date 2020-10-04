@@ -9,13 +9,10 @@
 import
   std/typetraits,
   ../primitives,
-  ../config/[common, curves],
+  ../config/curves,
   ../arithmetic,
   ../towers,
-  ../elliptic/[
-    ec_shortweierstrass_affine,
-    ec_shortweierstrass_projective
-  ],
+  ../elliptic/ec_shortweierstrass_affine,
   ../io/io_towers
 
 type
