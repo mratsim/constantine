@@ -8,7 +8,6 @@
 
 import
   ./io_bigints,
-  ../config/curves,
   ../arithmetic/finite_fields
 
 # No exceptions allowed

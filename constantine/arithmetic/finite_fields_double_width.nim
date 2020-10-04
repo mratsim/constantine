@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/[common, curves, type_bigint, type_fp],
+  ../config/[common, curves, type_fp],
   ../primitives,
   ./bigints,
   ./finite_fields,

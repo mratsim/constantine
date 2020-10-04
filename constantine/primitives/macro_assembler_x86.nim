@@ -438,7 +438,7 @@ func adc*(a: var Assembler_x86, dst, src: Operand) =
   a.codeFragment("adc", src, dst)
   a.areFlagsClobbered = true
 
-  if dst.desc.rm != Reg:
+  if dst.desc.rm in {Mem, MemOffsettable, AnyRegOrMem}:
     {.warning: "Using addcarry with a memory destination, this incurs significant performance penalties.".}
 
 func adc*(a: var Assembler_x86, dst: Operand, imm: int) =
@@ -447,7 +447,7 @@ func adc*(a: var Assembler_x86, dst: Operand, imm: int) =
   a.codeFragment("adc", imm, dst)
   a.areFlagsClobbered = true
 
-  if dst.desc.rm != Reg:
+  if dst.desc.rm in {Mem, MemOffsettable, AnyRegOrMem}:
     {.warning: "Using addcarry with a memory destination, this incurs significant performance penalties.".}
 
 func sub*(a: var Assembler_x86, dst, src: Operand) =

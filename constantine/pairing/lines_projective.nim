@@ -7,16 +7,14 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  std/typetraits,
   ../primitives,
-  ../config/[common, curves],
+  ../config/curves,
   ../arithmetic,
   ../towers,
   ../elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective
   ],
-  ../io/io_towers,
   ./lines_common
 
 export lines_common

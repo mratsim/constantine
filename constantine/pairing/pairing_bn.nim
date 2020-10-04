@@ -9,7 +9,6 @@
 import
   ../config/[curves, type_fp],
   ../towers,
-  ../io/io_bigints,
   ../elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective

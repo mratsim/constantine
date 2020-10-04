@@ -17,7 +17,7 @@ import
   ../constantine/elliptic/ec_shortweierstrass_projective,
   ../constantine/hash_to_curve/cofactors,
   # Test utilities
-  ../helpers/[prng_unsafe, static_for]
+  ../helpers/prng_unsafe
 
 export
   prng_unsafe, times, unittest,

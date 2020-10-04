@@ -11,9 +11,7 @@ import
   std/macros,
   # Internal
   ./precompute,
-  ./curves_declaration,
-  ./type_fp,
-  ../io/io_bigints
+  ./curves_declaration
 
 {.experimental: "dynamicBindSym".}
 

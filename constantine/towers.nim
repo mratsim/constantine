@@ -59,7 +59,7 @@ func `*=`*(a: var Fp2, _: typedesc[SexticNonResidue]) {.inline.} =
   # Yet another const tuple unpacking bug
   const u = Fp2.C.get_SNR_Fp2()[0] # Sextic non-residue to construct 𝔽p12
   const v = Fp2.C.get_SNR_Fp2()[1]
-  const Beta = Fp2.C.get_QNR_Fp()  # Quadratic non-residue to construct 𝔽p2
+  const Beta {.used.} = Fp2.C.get_QNR_Fp()  # Quadratic non-residue to construct 𝔽p2
   # ξ = u + v x
   # and x² = β
   #
@@ -136,9 +136,9 @@ func `*`*(_: typedesc[ξ], a: Fp2): Fp2 {.inline, noInit.} =
   ## Multiply an element of 𝔽p2 by the quadratic and cubic non-residue
   ## chosen to construct 𝔽p4/𝔽p6
   # Yet another const tuple unpacking bug
-  const u = Fp2.C.get_CNR_Fp2()[0] # Quadratic & Cubic non-residue to construct 𝔽p4/𝔽p6
+  const u = Fp2.C.get_CNR_Fp2()[0]         # Quadratic & Cubic non-residue to construct 𝔽p4/𝔽p6
   const v = Fp2.C.get_CNR_Fp2()[1]
-  const Beta = Fp2.C.get_QNR_Fp()  # Quadratic non-residue to construct 𝔽p2
+  const Beta {.used.} = Fp2.C.get_QNR_Fp() # Quadratic non-residue to construct 𝔽p2
   # ξ = u + v x
   # and x² = β
   #
@@ -162,7 +162,7 @@ func `*=`*(a: var Fp2, _: typedesc[ξ]) {.inline.} =
   # Yet another const tuple unpacking bug
   const u = Fp2.C.get_CNR_Fp2()[0] # Cubic non-residue to construct 𝔽p6
   const v = Fp2.C.get_CNR_Fp2()[1]
-  const Beta = Fp2.C.get_QNR_Fp()  # Quadratic non-residue to construct 𝔽p2
+  const Beta {.used.} = Fp2.C.get_QNR_Fp()  # Quadratic non-residue to construct 𝔽p2
   # ξ = u + v x
   # and x² = β
   #

@@ -162,7 +162,7 @@ func montyMul_FIPS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   discard z.csub(M, v.isNonZero() or not(z < M))
   r = z
 
-func montySquare_CIOS_nocarry(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
+func montySquare_CIOS_nocarry(r: var Limbs, a, M: Limbs, m0ninv: BaseType) {.used.}=
   ## Montgomery Multiplication using Coarse Grained Operand Scanning (CIOS)
   ## and no-carry optimization.
   ## This requires the most significant word of the Modulus
@@ -206,7 +206,7 @@ func montySquare_CIOS_nocarry(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
   discard t.csub(M, not(t < M))
   r = t
 
-func montySquare_CIOS(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
+func montySquare_CIOS(r: var Limbs, a, M: Limbs, m0ninv: BaseType) {.used.}=
   ## Montgomery Multiplication using Coarse Grained Operand Scanning (CIOS)
   ##
   ## Architectural Support for Long Integer Modulo Arithmetic on Risc-Based Smart Cards

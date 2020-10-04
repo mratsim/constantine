@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/[common, curves, type_fp],
+  ../config/[curves, type_fp],
   ./bigints,
   ../curves/zoo_inversions
 

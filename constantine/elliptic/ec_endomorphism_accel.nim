@@ -14,11 +14,8 @@ import
   ../config/[common, curves, type_bigint],
   ../curves/zoo_glv,
   ../arithmetic,
-  ../io/io_bigints,
   ../towers,
-  ../isogeny/frobenius,
-  ./ec_shortweierstrass_affine,
-  ./ec_shortweierstrass_projective
+  ../isogeny/frobenius
 
 # ############################################################
 #

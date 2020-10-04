@@ -8,7 +8,7 @@
 
 import
   ../primitives,
-  ../config/[common, curves],
+  ../config/curves,
   ../arithmetic,
   ../towers,
   ./lines_projective

@@ -13,8 +13,6 @@ import
   ../towers,
   ./ec_shortweierstrass_affine
 
-import ../io/io_fields
-
 # ############################################################
 #
 #             Elliptic Curve in Short Weierstrass form
