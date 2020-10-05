@@ -26,6 +26,6 @@ else:
 func canary*(T: typedesc): T =
   when T is BigInt:
     for i in 0 ..< result.limbs.len:
-      result.limbs[0] = Canary
+      result.limbs[i] = Canary
   else:
     {.error: "Not implemented".}
