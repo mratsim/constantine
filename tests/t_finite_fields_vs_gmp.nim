@@ -25,7 +25,7 @@ const AvailableCurves = [
   P224,
   BN254_Nogami, BN254_Snarks,
   P256, Secp256k1,
-  BLS12_381
+  BLS12_381, BW6_761
 ]
 
 const # https://gmplib.org/manual/Integer-Import-and-Export.html

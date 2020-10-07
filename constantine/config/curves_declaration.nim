@@ -128,7 +128,7 @@ declareCurves:
     # u: 0x8508c00000000001
 
     # G1 Equation: y² = x³ + 1
-    # G2 Equation: y² = x³ + 1/ with 𝑗 = √-5
+    # G2 Equation: y² = x³ + 1/𝑗 with 𝑗 = √-5
     order: "0x12ab655e9a2ca55660b44d1e5c37b00159aa76fed00000010a11800000000001"
     orderBitwidth: 253
     eq_form: ShortWeierstrass
@@ -159,3 +159,25 @@ declareCurves:
 
     sexticTwist: M_Twist
     sexticNonResidue_fp2: (1, 1) # 1+𝑖
+
+  curve BW6_761:
+    bitwidth: 761
+    modulus: "0x122e824fb83ce0ad187c94004faff3eb926186a81d14688528275ef8087be41707ba638e584e91903cebaff25b423048689c8ed12f9fd9071dcd3dc73ebff2e98a116c25667a8f8160cf8aeeaf0a437e6913e6870000082f49d00000000008b"
+    family: BrezingWeng
+    # Curve that embeds BLS12-377, see https://eprint.iacr.org/2020/351.pdf
+    # u: 3 * 2^46 * (7 * 13 * 499) + 1
+    # u: 0x8508c00000000001
+    # r = p_BLS12-377 = (x⁶−2x⁵+2x³+x+1)/3
+    # p = 103x¹²−379x¹¹+250x¹⁰+691x⁹−911x⁸−79x⁷+623x⁶−640x⁵+274x⁴+763x³+73x²+254x+229)/9
+
+    # G1 Equation: y² = x³ - 1
+    # G6 Equation: y² = x³ + 4 (M-Twist)
+    order: "0x01ae3a4617c510eac63b05c06ca1493b1a22d9f300f5138f1ef3622fba094800170b5d44300000008508c00000000001"
+    orderBitwidth: 377
+    coef_a: 0
+    coef_b: -1
+    nonresidue_quad_fp: -4       # -4   is not a square in 𝔽p
+    nonresidue_cube_fp2: (0, 1)  # -4   is not a cube in 𝔽p²
+
+    sexticTwist: M_Twist
+    sexticNonResidue_fp2: (0, 1)  # -4
