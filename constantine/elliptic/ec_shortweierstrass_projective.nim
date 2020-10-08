@@ -13,6 +13,8 @@ import
   ../towers,
   ./ec_shortweierstrass_affine
 
+export Twisted
+
 # ############################################################
 #
 #             Elliptic Curve in Short Weierstrass form
@@ -20,7 +22,7 @@ import
 #
 # ############################################################
 
-type ECP_ShortW_Proj*[F] = object
+type ECP_ShortW_Proj*[F; Tw: static Twisted] = object
   ## Elliptic curve point for a curve in Short Weierstrass form
   ##   y² = x³ + a x + b
   ##
@@ -32,10 +34,11 @@ type ECP_ShortW_Proj*[F] = object
   ## Note that projective coordinates are not unique
   x*, y*, z*: F
 
-func `==`*[F](P, Q: ECP_ShortW_Proj[F]): SecretBool =
+func `==`*(P, Q: ECP_ShortW_Proj): SecretBool =
   ## Constant-time equality check
   ## This is a costly operation
   # Reminder: the representation is not unique
+  type F = ECP_ShortW_Proj.F
 
   var a{.noInit.}, b{.noInit.}: F
 
@@ -71,7 +74,9 @@ func ccopy*(P: var ECP_ShortW_Proj, Q: ECP_ShortW_Proj, ctl: SecretBool) =
   for fP, fQ in fields(P, Q):
     ccopy(fP, fQ, ctl)
 
-func trySetFromCoordsXandZ*[F](P: var ECP_ShortW_Proj[F], x, z: F): SecretBool =
+func trySetFromCoordsXandZ*[F; Tw](
+       P: var ECP_ShortW_Proj[F, Tw],
+       x, z: F): SecretBool =
   ## Try to create a point the elliptic curve
   ## Y²Z = X³ + aXZ² + bZ³ (projective coordinates)
   ## y² = x³ + a x + b     (affine coordinate)
@@ -80,7 +85,7 @@ func trySetFromCoordsXandZ*[F](P: var ECP_ShortW_Proj[F], x, z: F): SecretBool =
   ##
   ## Note: Dedicated robust procedures for hashing-to-curve
   ##       will be provided, this is intended for testing purposes.
-  P.y.curve_eq_rhs(x)
+  P.y.curve_eq_rhs(x, Tw)
   # TODO: supports non p ≡ 3 (mod 4) modulus like BLS12-377
   result = sqrt_if_square(P.y)
 
@@ -88,7 +93,9 @@ func trySetFromCoordsXandZ*[F](P: var ECP_ShortW_Proj[F], x, z: F): SecretBool =
   P.y *= z
   P.z = z
 
-func trySetFromCoordX*[F](P: var ECP_ShortW_Proj[F], x: F): SecretBool =
+func trySetFromCoordX*[F; Tw](
+       P: var ECP_ShortW_Proj[F, Tw],
+       x: F): SecretBool =
   ## Try to create a point the elliptic curve
   ## y² = x³ + a x + b     (affine coordinate)
   ##
@@ -99,7 +106,7 @@ func trySetFromCoordX*[F](P: var ECP_ShortW_Proj[F], x: F): SecretBool =
   ##
   ## Note: Dedicated robust procedures for hashing-to-curve
   ##       will be provided, this is intended for testing purposes.
-  P.y.curve_eq_rhs(x)
+  P.y.curve_eq_rhs(x, Tw)
   # TODO: supports non p ≡ 3 (mod 4) modulus like BLS12-377
   result = sqrt_if_square(P.y)
   P.x = x
@@ -120,9 +127,9 @@ func cneg*(P: var ECP_ShortW_Proj, ctl: CTBool) =
   ## Negate if ``ctl`` is true
   P.y.cneg(ctl)
 
-func sum*[F](
-       r: var ECP_ShortW_Proj[F],
-       P, Q: ECP_ShortW_Proj[F]
+func sum*[F; Tw: static Twisted](
+       r: var ECP_ShortW_Proj[F, Tw],
+       P, Q: ECP_ShortW_Proj[F, Tw]
      ) =
   ## Elliptic curve point addition for Short Weierstrass curves in projective coordinates
   ##
@@ -180,32 +187,32 @@ func sum*[F](
     t3 *= t4                  # 6.  t₃ <- t₃ * t₄
     t4.sum(t0, t1)            # 7.  t₄ <- t₀ + t₁
     t3 -= t4                  # 8.  t₃ <- t₃ - t₄   t₃ = (X₁ + Y₁)(X₂ + Y₂) - (X₁X₂ + Y₁Y₂) = X₁Y₂ + X₂Y₁
-    when F is Fp2 and F.C.getSexticTwist() == D_Twist:
+    when Tw == OnTwist and F.C.getSexticTwist() == D_Twist:
       t3 *= SexticNonResidue
     t4.sum(P.y, P.z)          # 9.  t₄ <- Y₁ + Z₁
     r.x.sum(Q.y, Q.z)         # 10. X₃ <- Y₂ + Z₂
     t4 *= r.x                 # 11. t₄ <- t₄ X₃
     r.x.sum(t1, t2)           # 12. X₃ <- t₁ + t₂   X₃ = Y₁Y₂ + Z₁Z₂
     t4 -= r.x                 # 13. t₄ <- t₄ - X₃   t₄ = (Y₁ + Z₁)(Y₂ + Z₂) - (Y₁Y₂ + Z₁Z₂) = Y₁Z₂ + Y₂Z₁
-    when F is Fp2 and F.C.getSexticTwist() == D_Twist:
+    when Tw == OnTwist and F.C.getSexticTwist() == D_Twist:
       t4 *= SexticNonResidue
     r.x.sum(P.x, P.z)         # 14. X₃ <- X₁ + Z₁
     r.y.sum(Q.x, Q.z)         # 15. Y₃ <- X₂ + Z₂
     r.x *= r.y                # 16. X₃ <- X₃ Y₃     X₃ = (X₁Z₁)(X₂Z₂)
     r.y.sum(t0, t2)           # 17. Y₃ <- t₀ + t₂   Y₃ = X₁ X₂ + Z₁ Z₂
     r.y.diffAlias(r.x, r.y)   # 18. Y₃ <- X₃ - Y₃   Y₃ = (X₁ + Z₁)(X₂ + Z₂) - (X₁ X₂ + Z₁ Z₂) = X₁Z₂ + X₂Z₁
-    when F is Fp2 and F.C.getSexticTwist() == D_Twist:
+    when Tw == OnTwist and F.C.getSexticTwist() == D_Twist:
       t0 *= SexticNonResidue
       t1 *= SexticNonResidue
     r.x.double(t0)            # 19. X₃ <- t₀ + t₀   X₃ = 2 X₁X₂
     t0 += r.x                 # 20. t₀ <- X₃ + t₀   t₀ = 3 X₁X₂
     t2 *= b3                  # 21. t₂ <- 3b t₂     t₂ = 3bZ₁Z₂
-    when F is Fp2 and F.C.getSexticTwist() == M_Twist:
+    when Tw == OnTwist and F.C.getSexticTwist() == M_Twist:
       t2 *= SexticNonResidue
     r.z.sum(t1, t2)           # 22. Z₃ <- t₁ + t₂   Z₃ = Y₁Y₂ + 3bZ₁Z₂
     t1 -= t2                  # 23. t₁ <- t₁ - t₂   t₁ = Y₁Y₂ - 3bZ₁Z₂
     r.y *= b3                 # 24. Y₃ <- 3b Y₃     Y₃ = 3b(X₁Z₂ + X₂Z₁)
-    when F is Fp2 and F.C.getSexticTwist() == M_Twist:
+    when Tw == OnTwist and F.C.getSexticTwist() == M_Twist:
       r.y *= SexticNonResidue
     r.x.prod(t4, r.y)         # 25. X₃ <- t₄ Y₃     X₃ = 3b(Y₁Z₂ + Y₂Z₁)(X₁Z₂ + X₂Z₁)
     t2.prod(t3, t1)           # 26. t₂ <- t₃ t₁     t₂ = (X₁Y₂ + X₂Y₁) (Y₁Y₂ - 3bZ₁Z₂)
@@ -219,9 +226,10 @@ func sum*[F](
   else:
     {.error: "Not implemented.".}
 
-func madd*[F](
-       r: var ECP_ShortW_Proj[F],
-       P: ECP_ShortW_Proj[F], Q: ECP_ShortW_Aff[F]
+func madd*[F; Tw: static Twisted](
+       r: var ECP_ShortW_Proj[F, Tw],
+       P: ECP_ShortW_Proj[F, Tw],
+       Q: ECP_ShortW_Aff[F, Tw]
      ) =
   ## Elliptic curve mixed addition for Short Weierstrass curves
   ## with p in Projective coordinates and Q in affine coordinates
@@ -247,27 +255,27 @@ func madd*[F](
     t3 *= t4                  # 5.  t₃ <- t₃ * t₄
     t4.sum(t0, t1)            # 6.  t₄ <- t₀ + t₁
     t3 -= t4                  # 7.  t₃ <- t₃ - t₄, t₃ = (X₁ + Y₁)(X₂ + Y₂) - (X₁ X₂ + Y₁ Y₂) = X₁Y₂ + X₂Y₁
-    when F is Fp2 and F.C.getSexticTwist() == D_Twist:
+    when Tw == OnTwist and F.C.getSexticTwist() == D_Twist:
       t3 *= SexticNonResidue
     t4.prod(Q.y, P.z)         # 8.  t₄ <- Y₂ Z₁
     t4 += P.y                 # 9.  t₄ <- t₄ + Y₁, t₄ = Y₁+Y₂Z₁
-    when F is Fp2 and F.C.getSexticTwist() == D_Twist:
+    when Tw == OnTwist and F.C.getSexticTwist() == D_Twist:
       t4 *= SexticNonResidue
     r.y.prod(Q.x, P.z)        # 10. Y₃ <- X₂ Z₁
     r.y += P.x                # 11. Y₃ <- Y₃ + X₁, Y₃ = X₁ + X₂Z₁
-    when F is Fp2 and F.C.getSexticTwist() == D_Twist:
+    when Tw == OnTwist and F.C.getSexticTwist() == D_Twist:
       t0 *= SexticNonResidue
       t1 *= SexticNonResidue
     r.x.double(t0)            # 12. X₃ <- t₀ + t₀
     t0 += r.x                 # 13. t₀ <- X₃ + t₀, t₀ = 3X₁X₂
     t2 = P.z
     t2 *= b3                  # 14. t₂ <- 3bZ₁
-    when F is Fp2 and F.C.getSexticTwist() == M_Twist:
+    when Tw == OnTwist and F.C.getSexticTwist() == M_Twist:
       t2 *= SexticNonResidue
     r.z.sum(t1, t2)           # 15. Z₃ <- t₁ + t₂, Z₃ = Y₁Y₂ + 3bZ₁
     t1 -= t2                  # 16. t₁ <- t₁ - t₂, t₁ = Y₁Y₂ - 3bZ₁
     r.y *= b3                 # 17. Y₃ <- 3bY₃,    Y₃ = 3b(X₁ + X₂Z₁)
-    when F is Fp2 and F.C.getSexticTwist() == M_Twist:
+    when Tw == OnTwist and F.C.getSexticTwist() == M_Twist:
       r.y *= SexticNonResidue
     r.x.prod(t4, r.y)         # 18. X₃ <- t₄ Y₃,   X₃ = (Y₁ + Y₂Z₁) 3b(X₁ + X₂Z₁)
     t2.prod(t3, t1)           # 19. t₂ <- t₃ t₁,   t₂ = (X₁Y₂ + X₂Y₁)(Y₁Y₂ - 3bZ₁)
@@ -281,9 +289,9 @@ func madd*[F](
   else:
     {.error: "Not implemented.".}
 
-func double*[F](
-       r: var ECP_ShortW_Proj[F],
-       P: ECP_ShortW_Proj[F]
+func double*[F; Tw: static Twisted](
+       r: var ECP_ShortW_Proj[F, Tw],
+       P: ECP_ShortW_Proj[F, Tw]
      ) =
   ## Elliptic curve point doubling for Short Weierstrass curves in projective coordinate
   ##
@@ -327,7 +335,7 @@ func double*[F](
     # Y₃ = (Y² - 9bZ²)(Y² + 3bZ²) + 24bY²Z²
     # Z₃ = 8Y³Z
     snrY = P.y
-    when F is Fp2 and F.C.getSexticTwist() == D_Twist:
+    when Tw == OnTwist and F.C.getSexticTwist() == D_Twist:
       snrY *= SexticNonResidue
       t0.square(P.y)
       t0 *= SexticNonResidue
@@ -339,7 +347,7 @@ func double*[F](
     t1.prod(snrY, P.z)        # 5.  t₁ <- Y Z
     t2.square(P.z)            # 6.  t₂ <- Z Z
     t2 *= b3                  # 7.  t₂ <- 3b t₂
-    when F is Fp2 and F.C.getSexticTwist() == M_Twist:
+    when Tw == OnTwist and F.C.getSexticTwist() == M_Twist:
       t2 *= SexticNonResidue
     r.x.prod(t2, r.z)         # 8.  X₃ <- t₂ Z₃
     r.y.sum(t0, t2)           # 9.  Y₃ <- t₀ + t₂
@@ -355,25 +363,25 @@ func double*[F](
   else:
     {.error: "Not implemented.".}
 
-func `+=`*[F](P: var ECP_ShortW_Proj[F], Q: ECP_ShortW_Proj[F]) =
+func `+=`*(P: var ECP_ShortW_Proj, Q: ECP_ShortW_Proj) =
   ## In-place point addition
   # TODO test for aliasing support
-  var tmp {.noInit.}: ECP_ShortW_Proj[F]
+  var tmp {.noInit.}: ECP_ShortW_Proj
   tmp.sum(P, Q)
   P = tmp
 
-func `+=`*[F](P: var ECP_ShortW_Proj[F], Q: ECP_ShortW_Aff[F]) =
+func `+=`*(P: var ECP_ShortW_Proj, Q: ECP_ShortW_Aff) =
   ## In-place mixed point addition
   # used in line_addition
   P.madd(P, Q)
 
-func double*[F](P: var ECP_ShortW_Proj[F]) =
-  var tmp {.noInit.}: ECP_ShortW_Proj[F]
+func double*(P: var ECP_ShortW_Proj) =
+  var tmp {.noInit.}: ECP_ShortW_Proj
   tmp.double(P)
   P = tmp
 
-func diff*[F](r: var ECP_ShortW_Proj[F],
-              P, Q: ECP_ShortW_Proj[F]
+func diff*(r: var ECP_ShortW_Proj,
+              P, Q: ECP_ShortW_Proj
      ) =
   ## r = P - Q
   ## Can handle r and Q aliasing
@@ -381,14 +389,18 @@ func diff*[F](r: var ECP_ShortW_Proj[F],
   nQ.neg()
   r.sum(P, nQ)
 
-func affineFromProjective*[F](aff: var ECP_ShortW_Aff[F], proj: ECP_ShortW_Proj) =
+func affineFromProjective*[F, Tw](
+       aff: var ECP_ShortW_Aff[F, Tw],
+       proj: ECP_ShortW_Proj[F, Tw]) =
   var invZ {.noInit.}: F
   invZ.inv(proj.z)
 
   aff.x.prod(proj.x, invZ)
   aff.y.prod(proj.y, invZ)
 
-func projectiveFromAffine*[F](proj: var ECP_ShortW_Proj, aff: ECP_ShortW_Aff[F]) {.inline.} =
+func projectiveFromAffine*[F, Tw](
+       proj: var ECP_ShortW_Proj[F, Tw],
+       aff: ECP_ShortW_Aff[F, Tw]) {.inline.} =
   proj.x = aff.x
   proj.y = aff.y
   proj.z.setOne()

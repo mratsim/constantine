@@ -62,7 +62,7 @@ suite "Scalar Multiplication (cofactor cleared): BLS12_381 implementation vs Sag
   # Generated via sage sage/testgen_bls12_381.sage
   test(
     id = 0,
-    EC = ECP_ShortW_Proj[Fp[BLS12_381]],
+    EC = ECP_ShortW_Proj[Fp[BLS12_381], NotOnTwist],
     Px = "f9679bb02ee7f352fff6a6467a5e563ec8dd38c86a48abd9e8f7f241f1cdd29d54bc3ddea3a33b62e0d7ce22f3d244a",
     Py = "50189b992cf856846b30e52205ff9ef72dc081e9680726586231cbc29a81a162120082585f401e00382d5c86fb1083f",
     scalar = "f7e60a832eb77ac47374bc93251360d6c81c21add62767ff816caf11a20d8db",
@@ -72,7 +72,7 @@ suite "Scalar Multiplication (cofactor cleared): BLS12_381 implementation vs Sag
 
   test(
     id = 1,
-    EC = ECP_ShortW_Proj[Fp[BLS12_381]],
+    EC = ECP_ShortW_Proj[Fp[BLS12_381], NotOnTwist],
     Px = "17d71835ff84f150fabf5c77ac90bf7f6249143abd1f5d8a46a76f243d424d82e1e258fc7983ba8af97a2462adebe090",
     Py = "d3e108ee1332067cbe4f4193eae10381acb69f493b40e53d9dee59506b49c6564c9056494a7f987982eb4069512c1c6",
     scalar = "5f10367bdae7aa872d90b5ac209321ce5a15181ce22848d032a8d452055cbfd0",
@@ -82,7 +82,7 @@ suite "Scalar Multiplication (cofactor cleared): BLS12_381 implementation vs Sag
 
   test(
     id = 2,
-    EC = ECP_ShortW_Proj[Fp[BLS12_381]],
+    EC = ECP_ShortW_Proj[Fp[BLS12_381], NotOnTwist],
     Px = "f92c9572692e8f3d450483a7a9bb4694e3b54c9cd09441a4dd7f579b0a6984e47f8090c31c172b33d87f3de186d6b58",
     Py = "286ede4cb2ae19ead4932d5550c5d3ec8ce3a3ada5e1ed6d202e93dd1b16d3513f0f9b62adc6323f18e272a426ee955",
     scalar = "4c321d72220c098fc0fd52306de98f8be9446bf854cf1e4d8dbae62375d18faf",
@@ -92,7 +92,7 @@ suite "Scalar Multiplication (cofactor cleared): BLS12_381 implementation vs Sag
 
   test(
     id = 3,
-    EC = ECP_ShortW_Proj[Fp[BLS12_381]],
+    EC = ECP_ShortW_Proj[Fp[BLS12_381], NotOnTwist],
     Px = "ec23ff3435b8ebd5e8e0a879d432e11eb974161664b1341fd28f1ffc4c228bf6ada2ae4a565f18c9b66f67a7573502d",
     Py = "10c4b647be08db0b49b75320ae891f9f9c5d7bb7c798947e800d681d205d1b24b12e4dfa993d1bd16851b00356627cc1",
     scalar = "1738857afb76c55f615c2a20b44ca90dcb3267d804ec23fddea431dbee4eb37f",
@@ -102,7 +102,7 @@ suite "Scalar Multiplication (cofactor cleared): BLS12_381 implementation vs Sag
 
   test(
     id = 4,
-    EC = ECP_ShortW_Proj[Fp[BLS12_381]],
+    EC = ECP_ShortW_Proj[Fp[BLS12_381], NotOnTwist],
     Px = "df127083c2a5ef2388b02af913c0e4002a52a82db9e5ecbf23ee4f557d3b61c91ebcfe9d4973070b46bc5ea6897bca1",
     Py = "318960aeea262ec23ffdd42ec1ba72ae6fa2186a1e2a0fc2659073fb7b5adfb50d581a4d998a94d1accf78b1b3a0163",
     scalar = "19c47811813444020c999a2b263940b5054cf45bb8ad8e086ff126bfcd5507e1",
@@ -112,7 +112,7 @@ suite "Scalar Multiplication (cofactor cleared): BLS12_381 implementation vs Sag
 
   test(
     id = 5,
-    EC = ECP_ShortW_Proj[Fp[BLS12_381]],
+    EC = ECP_ShortW_Proj[Fp[BLS12_381], NotOnTwist],
     Px = "101123de23c0f240c583c2368c4118dc942db219c55f58cf54acd500c1fcfa06f651ad75319ebf840cbdb6bddea7fde4",
     Py = "5268587d4b844b0708e0336d1bbf48da185aaf5b948eccc3b565d00a856dd55882b9bb31c52af0e275b168cb35eb7b0",
     scalar = "43ffcda71e45a3e90b7502d92b30a0b06c54c95a91aa21e0438677b1c2714ecb",
@@ -122,7 +122,7 @@ suite "Scalar Multiplication (cofactor cleared): BLS12_381 implementation vs Sag
 
   test(
     id = 6,
-    EC = ECP_ShortW_Proj[Fp[BLS12_381]],
+    EC = ECP_ShortW_Proj[Fp[BLS12_381], NotOnTwist],
     Px = "1457ba1bae6eb3afae3261941c65c93e3ae7d784907d15b8d559100da5e13fd29e4a4d6e3103b781a95237b7b2d80a8e",
     Py = "6a869a47cb48d01e7d29660932afd7617720262b55de5f430b8aa3d74f9fd2b9d3a07ce192425da58014764fc9532cd",
     scalar = "64ad0d6c36dba5368e71f0010aebf860288f54611e5aaf18082bae7a404ebfd8",
@@ -132,7 +132,7 @@ suite "Scalar Multiplication (cofactor cleared): BLS12_381 implementation vs Sag
 
   test(
     id = 7,
-    EC = ECP_ShortW_Proj[Fp[BLS12_381]],
+    EC = ECP_ShortW_Proj[Fp[BLS12_381], NotOnTwist],
     Px = "2615f843e8fe68d4c337bcf83b2cf13cbae638edd0740f1eac520dc2146afa3b8d36c540878c1d207ef913634b1e593",
     Py = "1787d6eeeceb6e7793073f0bbe7bae522529c126b650c43d5d41e732c581a57df1bfb818061b7b4e6c9145da5df2c43e",
     scalar = "b0ac3d0e685583075aa46c03a00859dfbec24ccb36e2cae3806d82275adcc03",
@@ -142,7 +142,7 @@ suite "Scalar Multiplication (cofactor cleared): BLS12_381 implementation vs Sag
 
   test(
     id = 8,
-    EC = ECP_ShortW_Proj[Fp[BLS12_381]],
+    EC = ECP_ShortW_Proj[Fp[BLS12_381], NotOnTwist],
     Px = "10bc0c4e1ed87246a9d4d7d38546369f275a245f6e1d3b882e8c9a7f05bc6ee8ff97a96a54084c2bef15ed8bfefb1465",
     Py = "1782377e5f588576b5ab42fea224e88873dda957202f0c6d72ce8728c2d58dc654be77226fbda385d5f269354e4a176a",
     scalar = "23941bb3c3659423d6fdafb7cff52e0e02de0ac91e64c537c6203d64905b63d0",
@@ -152,7 +152,7 @@ suite "Scalar Multiplication (cofactor cleared): BLS12_381 implementation vs Sag
 
   test(
     id = 9,
-    EC = ECP_ShortW_Proj[Fp[BLS12_381]],
+    EC = ECP_ShortW_Proj[Fp[BLS12_381], NotOnTwist],
     Px = "be4f9f721d98a761a5562bd80ea06f369e9cbb7d33bbb2f0191d4b77d0fd2a10c4083b54157b525f36c522ca3a6ca09",
     Py = "166c315ecdd20acb3c5efcc7e038b17d0b37a06ffbf77873f15fc0cd091a1e4102a8b8bf5507919453759e744391b04d",
     scalar = "4203156dcf70582ea8cbd0388104f47fd5a18ae336b2fed8458e1e4e74d7baf5",
@@ -164,7 +164,7 @@ suite "Scalar Multiplication (cofactor cleared): BLS12_381 implementation vs Sag
 
   test(
     id = 0,
-    EC = ECP_ShortW_Jac[Fp[BLS12_381]],
+    EC = ECP_ShortW_Jac[Fp[BLS12_381], NotOnTwist],
     Px = "f9679bb02ee7f352fff6a6467a5e563ec8dd38c86a48abd9e8f7f241f1cdd29d54bc3ddea3a33b62e0d7ce22f3d244a",
     Py = "50189b992cf856846b30e52205ff9ef72dc081e9680726586231cbc29a81a162120082585f401e00382d5c86fb1083f",
     scalar = "f7e60a832eb77ac47374bc93251360d6c81c21add62767ff816caf11a20d8db",
@@ -174,7 +174,7 @@ suite "Scalar Multiplication (cofactor cleared): BLS12_381 implementation vs Sag
 
   test(
     id = 1,
-    EC = ECP_ShortW_Jac[Fp[BLS12_381]],
+    EC = ECP_ShortW_Jac[Fp[BLS12_381], NotOnTwist],
     Px = "17d71835ff84f150fabf5c77ac90bf7f6249143abd1f5d8a46a76f243d424d82e1e258fc7983ba8af97a2462adebe090",
     Py = "d3e108ee1332067cbe4f4193eae10381acb69f493b40e53d9dee59506b49c6564c9056494a7f987982eb4069512c1c6",
     scalar = "5f10367bdae7aa872d90b5ac209321ce5a15181ce22848d032a8d452055cbfd0",
@@ -184,7 +184,7 @@ suite "Scalar Multiplication (cofactor cleared): BLS12_381 implementation vs Sag
 
   test(
     id = 2,
-    EC = ECP_ShortW_Jac[Fp[BLS12_381]],
+    EC = ECP_ShortW_Jac[Fp[BLS12_381], NotOnTwist],
     Px = "f92c9572692e8f3d450483a7a9bb4694e3b54c9cd09441a4dd7f579b0a6984e47f8090c31c172b33d87f3de186d6b58",
     Py = "286ede4cb2ae19ead4932d5550c5d3ec8ce3a3ada5e1ed6d202e93dd1b16d3513f0f9b62adc6323f18e272a426ee955",
     scalar = "4c321d72220c098fc0fd52306de98f8be9446bf854cf1e4d8dbae62375d18faf",
@@ -194,7 +194,7 @@ suite "Scalar Multiplication (cofactor cleared): BLS12_381 implementation vs Sag
 
   test(
     id = 3,
-    EC = ECP_ShortW_Jac[Fp[BLS12_381]],
+    EC = ECP_ShortW_Jac[Fp[BLS12_381], NotOnTwist],
     Px = "ec23ff3435b8ebd5e8e0a879d432e11eb974161664b1341fd28f1ffc4c228bf6ada2ae4a565f18c9b66f67a7573502d",
     Py = "10c4b647be08db0b49b75320ae891f9f9c5d7bb7c798947e800d681d205d1b24b12e4dfa993d1bd16851b00356627cc1",
     scalar = "1738857afb76c55f615c2a20b44ca90dcb3267d804ec23fddea431dbee4eb37f",
@@ -204,7 +204,7 @@ suite "Scalar Multiplication (cofactor cleared): BLS12_381 implementation vs Sag
 
   test(
     id = 4,
-    EC = ECP_ShortW_Jac[Fp[BLS12_381]],
+    EC = ECP_ShortW_Jac[Fp[BLS12_381], NotOnTwist],
     Px = "df127083c2a5ef2388b02af913c0e4002a52a82db9e5ecbf23ee4f557d3b61c91ebcfe9d4973070b46bc5ea6897bca1",
     Py = "318960aeea262ec23ffdd42ec1ba72ae6fa2186a1e2a0fc2659073fb7b5adfb50d581a4d998a94d1accf78b1b3a0163",
     scalar = "19c47811813444020c999a2b263940b5054cf45bb8ad8e086ff126bfcd5507e1",
@@ -214,7 +214,7 @@ suite "Scalar Multiplication (cofactor cleared): BLS12_381 implementation vs Sag
 
   test(
     id = 5,
-    EC = ECP_ShortW_Jac[Fp[BLS12_381]],
+    EC = ECP_ShortW_Jac[Fp[BLS12_381], NotOnTwist],
     Px = "101123de23c0f240c583c2368c4118dc942db219c55f58cf54acd500c1fcfa06f651ad75319ebf840cbdb6bddea7fde4",
     Py = "5268587d4b844b0708e0336d1bbf48da185aaf5b948eccc3b565d00a856dd55882b9bb31c52af0e275b168cb35eb7b0",
     scalar = "43ffcda71e45a3e90b7502d92b30a0b06c54c95a91aa21e0438677b1c2714ecb",
@@ -224,7 +224,7 @@ suite "Scalar Multiplication (cofactor cleared): BLS12_381 implementation vs Sag
 
   test(
     id = 6,
-    EC = ECP_ShortW_Jac[Fp[BLS12_381]],
+    EC = ECP_ShortW_Jac[Fp[BLS12_381], NotOnTwist],
     Px = "1457ba1bae6eb3afae3261941c65c93e3ae7d784907d15b8d559100da5e13fd29e4a4d6e3103b781a95237b7b2d80a8e",
     Py = "6a869a47cb48d01e7d29660932afd7617720262b55de5f430b8aa3d74f9fd2b9d3a07ce192425da58014764fc9532cd",
     scalar = "64ad0d6c36dba5368e71f0010aebf860288f54611e5aaf18082bae7a404ebfd8",
@@ -234,7 +234,7 @@ suite "Scalar Multiplication (cofactor cleared): BLS12_381 implementation vs Sag
 
   test(
     id = 7,
-    EC = ECP_ShortW_Jac[Fp[BLS12_381]],
+    EC = ECP_ShortW_Jac[Fp[BLS12_381], NotOnTwist],
     Px = "2615f843e8fe68d4c337bcf83b2cf13cbae638edd0740f1eac520dc2146afa3b8d36c540878c1d207ef913634b1e593",
     Py = "1787d6eeeceb6e7793073f0bbe7bae522529c126b650c43d5d41e732c581a57df1bfb818061b7b4e6c9145da5df2c43e",
     scalar = "b0ac3d0e685583075aa46c03a00859dfbec24ccb36e2cae3806d82275adcc03",
@@ -244,7 +244,7 @@ suite "Scalar Multiplication (cofactor cleared): BLS12_381 implementation vs Sag
 
   test(
     id = 8,
-    EC = ECP_ShortW_Jac[Fp[BLS12_381]],
+    EC = ECP_ShortW_Jac[Fp[BLS12_381], NotOnTwist],
     Px = "10bc0c4e1ed87246a9d4d7d38546369f275a245f6e1d3b882e8c9a7f05bc6ee8ff97a96a54084c2bef15ed8bfefb1465",
     Py = "1782377e5f588576b5ab42fea224e88873dda957202f0c6d72ce8728c2d58dc654be77226fbda385d5f269354e4a176a",
     scalar = "23941bb3c3659423d6fdafb7cff52e0e02de0ac91e64c537c6203d64905b63d0",
@@ -254,7 +254,7 @@ suite "Scalar Multiplication (cofactor cleared): BLS12_381 implementation vs Sag
 
   test(
     id = 9,
-    EC = ECP_ShortW_Jac[Fp[BLS12_381]],
+    EC = ECP_ShortW_Jac[Fp[BLS12_381], NotOnTwist],
     Px = "be4f9f721d98a761a5562bd80ea06f369e9cbb7d33bbb2f0191d4b77d0fd2a10c4083b54157b525f36c522ca3a6ca09",
     Py = "166c315ecdd20acb3c5efcc7e038b17d0b37a06ffbf77873f15fc0cd091a1e4102a8b8bf5507919453759e744391b04d",
     scalar = "4203156dcf70582ea8cbd0388104f47fd5a18ae336b2fed8458e1e4e74d7baf5",
@@ -298,7 +298,7 @@ suite "Scalar Multiplication G2: BLS12-381 implementation vs SageMath" & " [" & 
   # Generated via sage sage/testgen_bls12_381.sage
   test(
     id = 0,
-    EC = ECP_ShortW_Proj[Fp2[BLS12_381]],
+    EC = ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist],
     Px0 = "10fbddd49246ac4b0faa489e3474507ebc96a5da194b2f7a706fad6bf8435021e1598700088abfe0ae7343296c1b7f52",
     Px1 = "324102fa5bd71d9048c3c6a6c62d1f35195d7067bf00dc5eaedd14eecc688383446aba4e8fda059d3f619f00be7890",
     Py0 = "f3e974aafa7a3fb3a1209f3af4492c9d9c52f1ae738e1e08309dd0f438f131f8ddd8b934eb8ff2cb078b8c524c11fab",
@@ -312,7 +312,7 @@ suite "Scalar Multiplication G2: BLS12-381 implementation vs SageMath" & " [" & 
 
   test(
     id = 1,
-    EC = ECP_ShortW_Proj[Fp2[BLS12_381]],
+    EC = ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist],
     Px0 = "4b472ab5d0995a22c95f0805eb459b147d2033b8c13c1c07c857a97e66952d4df3e3b5f346997cc7bd19886492fae83",
     Px1 = "12228345592511c7327176258097c70dffad1ff53b37163cbd4747d0085ed0bcfe90b9150d2f7e49580a42110b1d9c6b",
     Py0 = "19220ed4e423d3274a8e9a58624b8762d7831d6f65fcaf6718b933bf77a0c41d3bb713a2224dbc448cfc735101a5bb1e",
@@ -326,7 +326,7 @@ suite "Scalar Multiplication G2: BLS12-381 implementation vs SageMath" & " [" & 
 
   test(
     id = 2,
-    EC = ECP_ShortW_Proj[Fp2[BLS12_381]],
+    EC = ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist],
     Px0 = "11c9f03cd130f7b4d6675b902d9b4dddfa41577b7673c31a508760675ca083abedfe3f6c1c69eb46737d4877adb527c6",
     Px1 = "c64be8d22d478378784c4f38e386635a8ab606d2b35101ebecfe97b3bb5132d26e9a7ea9690d07a78a22f458045a8c5",
     Py0 = "6253c05b48fde95024644efd87cdf0cf15414c36c35625e383ea7b5ab839eaa783563918cd9e5e391ef1512a6ac28e0",
@@ -340,7 +340,7 @@ suite "Scalar Multiplication G2: BLS12-381 implementation vs SageMath" & " [" & 
 
   test(
     id = 3,
-    EC = ECP_ShortW_Proj[Fp2[BLS12_381]],
+    EC = ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist],
     Px0 = "5adc112fb04bf4ca642d5a7d7343ccd6b93546442d2fff5b9d32c15e456d54884cba49dd7f94ce4ddaad4018e55d0f2",
     Px1 = "5d1c5bbf5d7a833dc76ba206bfa99c281fc37941be050e18f8c6d267b2376b3634d8ad6eb951e52a6d096315abd17d6",
     Py0 = "15a959e54981fab9ac3c6f5bfd6fb60a50a916bd43d96a09922a54309b84812736581bfa728670cba864b08b9e391bb9",
@@ -354,7 +354,7 @@ suite "Scalar Multiplication G2: BLS12-381 implementation vs SageMath" & " [" & 
 
   test(
     id = 4,
-    EC = ECP_ShortW_Proj[Fp2[BLS12_381]],
+    EC = ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist],
     Px0 = "99f8b62e82892d323847f64ab2b422478d207b780fbb097cdca6a1a89e70ff09213dee8534eaf63dac9f7f7feff2548",
     Px1 = "12e7b53d802fa9cd897b5470614d57b1620bfe53f36158466f83e7cc6a6cccb1ac7557a8d5a2208c7c1366835c2cba59",
     Py0 = "115d6b7a8bc5628690ec750207b3252d4121c20c2106d0277cd41dee7b1d4ed1ff856883719bccb545054b9a745a53e2",
@@ -368,7 +368,7 @@ suite "Scalar Multiplication G2: BLS12-381 implementation vs SageMath" & " [" & 
 
   test(
     id = 5,
-    EC = ECP_ShortW_Proj[Fp2[BLS12_381]],
+    EC = ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist],
     Px0 = "7f56aa6111f341d6381090f058835b3d60200032b382108194188c40afe4225eb6fecaba734084283771923e004b5ca",
     Px1 = "18abca4d9eca6d3ef3c720ca6b27f824fdd12dcac72c167f0212f707fa22752f291c9c20a4b92417d05c64207b8e6da6",
     Py0 = "10e08fc323d2ef92c5fd9a0ba38e32e16068ac5a4a0f95b0390c2e8ad6caa446adebe16bbf628a0c2de007bfa1218317",
@@ -382,7 +382,7 @@ suite "Scalar Multiplication G2: BLS12-381 implementation vs SageMath" & " [" & 
 
   test(
     id = 6,
-    EC = ECP_ShortW_Proj[Fp2[BLS12_381]],
+    EC = ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist],
     Px0 = "a8c5649d2df1bae84fd9e8bfcde5113937b3acea22d67ddfedaf1fb8de8c1ef4c70591cf505c24c31e54020c2c510c3",
     Px1 = "a0553f98229a6a067489c3ee204161c11e96f421b3e9c145dc3865b03e9d4ff6cab14c5b5308ecd31173f954463690c",
     Py0 = "b29d8dfe18dc41b4826c3a102c1bf8f306cb42433cc36ee38080f47a324c02a678f9daed0a2bc577c18b9865de029f0",
@@ -396,7 +396,7 @@ suite "Scalar Multiplication G2: BLS12-381 implementation vs SageMath" & " [" & 
 
   test(
     id = 7,
-    EC = ECP_ShortW_Proj[Fp2[BLS12_381]],
+    EC = ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist],
     Px0 = "eb79d9e425feb105ec09ce60949721b12dac5e6721c8a6b505aa2d83270d2a3e6c6bcce16a1b510f6822504c5e86416",
     Px1 = "9f5d2dc403a2e96c3f59c7bb98a36cc8be68500510fd88b09f55938efd192d9653f4bcfd1451518c535e9d1996a924",
     Py0 = "114825899129828ee0b946811ff98a79af1b53c4511bc45a8e41a07a7d9600c824ed7c5cd608781d0a98a13e69b0c002",
@@ -410,7 +410,7 @@ suite "Scalar Multiplication G2: BLS12-381 implementation vs SageMath" & " [" & 
 
   test(
     id = 8,
-    EC = ECP_ShortW_Proj[Fp2[BLS12_381]],
+    EC = ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist],
     Px0 = "17ce8a849a475599245ad6b84cf5284cd15d6346ae52a833954ec50d5cf7f0be1cd8473fdc9dfd500d7f1d80bf6fa6ca",
     Px1 = "15d8128bc60c8e83846bf6748982a7188df6393a9379b2959fa7e1cb72f1c1da066fe3a6d927f97ecec3725fac65eb10",
     Py0 = "a05421595b36750e134b91500962201e9f57ac068732b9fb34ec50ff22f274d395d34d133e131e6dc7bc42d66149767",
@@ -424,7 +424,7 @@ suite "Scalar Multiplication G2: BLS12-381 implementation vs SageMath" & " [" & 
 
   test(
     id = 9,
-    EC = ECP_ShortW_Proj[Fp2[BLS12_381]],
+    EC = ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist],
     Px0 = "13eb9e9906446be49345c08de406cd104d6bb9901ee12af0b80a8351027152d6f6d158d5a906e4a58c5602e97347cfd5",
     Px1 = "1218df3f2a9cd7685325a4a7bb6a3636a458a52ea7f1e1d73c2429acb74a2a9beb838c109541120b095118c90868eb0f",
     Py0 = "3ac16edac6898f11ff8ddb48fad6f59f4842cd427d72fa964171801be172b8ecd2fdffb4882d4aa6f1e730f6e53f8c5",
@@ -440,7 +440,7 @@ suite "Scalar Multiplication G2: BLS12-381 implementation vs SageMath" & " [" & 
 
   test(
     id = 0,
-    EC = ECP_ShortW_Jac[Fp2[BLS12_381]],
+    EC = ECP_ShortW_Jac[Fp2[BLS12_381], OnTwist],
     Px0 = "10fbddd49246ac4b0faa489e3474507ebc96a5da194b2f7a706fad6bf8435021e1598700088abfe0ae7343296c1b7f52",
     Px1 = "324102fa5bd71d9048c3c6a6c62d1f35195d7067bf00dc5eaedd14eecc688383446aba4e8fda059d3f619f00be7890",
     Py0 = "f3e974aafa7a3fb3a1209f3af4492c9d9c52f1ae738e1e08309dd0f438f131f8ddd8b934eb8ff2cb078b8c524c11fab",
@@ -454,7 +454,7 @@ suite "Scalar Multiplication G2: BLS12-381 implementation vs SageMath" & " [" & 
 
   test(
     id = 1,
-    EC = ECP_ShortW_Jac[Fp2[BLS12_381]],
+    EC = ECP_ShortW_Jac[Fp2[BLS12_381], OnTwist],
     Px0 = "4b472ab5d0995a22c95f0805eb459b147d2033b8c13c1c07c857a97e66952d4df3e3b5f346997cc7bd19886492fae83",
     Px1 = "12228345592511c7327176258097c70dffad1ff53b37163cbd4747d0085ed0bcfe90b9150d2f7e49580a42110b1d9c6b",
     Py0 = "19220ed4e423d3274a8e9a58624b8762d7831d6f65fcaf6718b933bf77a0c41d3bb713a2224dbc448cfc735101a5bb1e",
@@ -468,7 +468,7 @@ suite "Scalar Multiplication G2: BLS12-381 implementation vs SageMath" & " [" & 
 
   test(
     id = 2,
-    EC = ECP_ShortW_Jac[Fp2[BLS12_381]],
+    EC = ECP_ShortW_Jac[Fp2[BLS12_381], OnTwist],
     Px0 = "11c9f03cd130f7b4d6675b902d9b4dddfa41577b7673c31a508760675ca083abedfe3f6c1c69eb46737d4877adb527c6",
     Px1 = "c64be8d22d478378784c4f38e386635a8ab606d2b35101ebecfe97b3bb5132d26e9a7ea9690d07a78a22f458045a8c5",
     Py0 = "6253c05b48fde95024644efd87cdf0cf15414c36c35625e383ea7b5ab839eaa783563918cd9e5e391ef1512a6ac28e0",
@@ -482,7 +482,7 @@ suite "Scalar Multiplication G2: BLS12-381 implementation vs SageMath" & " [" & 
 
   test(
     id = 3,
-    EC = ECP_ShortW_Jac[Fp2[BLS12_381]],
+    EC = ECP_ShortW_Jac[Fp2[BLS12_381], OnTwist],
     Px0 = "5adc112fb04bf4ca642d5a7d7343ccd6b93546442d2fff5b9d32c15e456d54884cba49dd7f94ce4ddaad4018e55d0f2",
     Px1 = "5d1c5bbf5d7a833dc76ba206bfa99c281fc37941be050e18f8c6d267b2376b3634d8ad6eb951e52a6d096315abd17d6",
     Py0 = "15a959e54981fab9ac3c6f5bfd6fb60a50a916bd43d96a09922a54309b84812736581bfa728670cba864b08b9e391bb9",
@@ -496,7 +496,7 @@ suite "Scalar Multiplication G2: BLS12-381 implementation vs SageMath" & " [" & 
 
   test(
     id = 4,
-    EC = ECP_ShortW_Jac[Fp2[BLS12_381]],
+    EC = ECP_ShortW_Jac[Fp2[BLS12_381], OnTwist],
     Px0 = "99f8b62e82892d323847f64ab2b422478d207b780fbb097cdca6a1a89e70ff09213dee8534eaf63dac9f7f7feff2548",
     Px1 = "12e7b53d802fa9cd897b5470614d57b1620bfe53f36158466f83e7cc6a6cccb1ac7557a8d5a2208c7c1366835c2cba59",
     Py0 = "115d6b7a8bc5628690ec750207b3252d4121c20c2106d0277cd41dee7b1d4ed1ff856883719bccb545054b9a745a53e2",
@@ -510,7 +510,7 @@ suite "Scalar Multiplication G2: BLS12-381 implementation vs SageMath" & " [" & 
 
   test(
     id = 5,
-    EC = ECP_ShortW_Jac[Fp2[BLS12_381]],
+    EC = ECP_ShortW_Jac[Fp2[BLS12_381], OnTwist],
     Px0 = "7f56aa6111f341d6381090f058835b3d60200032b382108194188c40afe4225eb6fecaba734084283771923e004b5ca",
     Px1 = "18abca4d9eca6d3ef3c720ca6b27f824fdd12dcac72c167f0212f707fa22752f291c9c20a4b92417d05c64207b8e6da6",
     Py0 = "10e08fc323d2ef92c5fd9a0ba38e32e16068ac5a4a0f95b0390c2e8ad6caa446adebe16bbf628a0c2de007bfa1218317",
@@ -524,7 +524,7 @@ suite "Scalar Multiplication G2: BLS12-381 implementation vs SageMath" & " [" & 
 
   test(
     id = 6,
-    EC = ECP_ShortW_Jac[Fp2[BLS12_381]],
+    EC = ECP_ShortW_Jac[Fp2[BLS12_381], OnTwist],
     Px0 = "a8c5649d2df1bae84fd9e8bfcde5113937b3acea22d67ddfedaf1fb8de8c1ef4c70591cf505c24c31e54020c2c510c3",
     Px1 = "a0553f98229a6a067489c3ee204161c11e96f421b3e9c145dc3865b03e9d4ff6cab14c5b5308ecd31173f954463690c",
     Py0 = "b29d8dfe18dc41b4826c3a102c1bf8f306cb42433cc36ee38080f47a324c02a678f9daed0a2bc577c18b9865de029f0",
@@ -538,7 +538,7 @@ suite "Scalar Multiplication G2: BLS12-381 implementation vs SageMath" & " [" & 
 
   test(
     id = 7,
-    EC = ECP_ShortW_Jac[Fp2[BLS12_381]],
+    EC = ECP_ShortW_Jac[Fp2[BLS12_381], OnTwist],
     Px0 = "eb79d9e425feb105ec09ce60949721b12dac5e6721c8a6b505aa2d83270d2a3e6c6bcce16a1b510f6822504c5e86416",
     Px1 = "9f5d2dc403a2e96c3f59c7bb98a36cc8be68500510fd88b09f55938efd192d9653f4bcfd1451518c535e9d1996a924",
     Py0 = "114825899129828ee0b946811ff98a79af1b53c4511bc45a8e41a07a7d9600c824ed7c5cd608781d0a98a13e69b0c002",
@@ -552,7 +552,7 @@ suite "Scalar Multiplication G2: BLS12-381 implementation vs SageMath" & " [" & 
 
   test(
     id = 8,
-    EC = ECP_ShortW_Jac[Fp2[BLS12_381]],
+    EC = ECP_ShortW_Jac[Fp2[BLS12_381], OnTwist],
     Px0 = "17ce8a849a475599245ad6b84cf5284cd15d6346ae52a833954ec50d5cf7f0be1cd8473fdc9dfd500d7f1d80bf6fa6ca",
     Px1 = "15d8128bc60c8e83846bf6748982a7188df6393a9379b2959fa7e1cb72f1c1da066fe3a6d927f97ecec3725fac65eb10",
     Py0 = "a05421595b36750e134b91500962201e9f57ac068732b9fb34ec50ff22f274d395d34d133e131e6dc7bc42d66149767",
@@ -566,7 +566,7 @@ suite "Scalar Multiplication G2: BLS12-381 implementation vs SageMath" & " [" & 
 
   test(
     id = 9,
-    EC = ECP_ShortW_Jac[Fp2[BLS12_381]],
+    EC = ECP_ShortW_Jac[Fp2[BLS12_381], OnTwist],
     Px0 = "13eb9e9906446be49345c08de406cd104d6bb9901ee12af0b80a8351027152d6f6d158d5a906e4a58c5602e97347cfd5",
     Px1 = "1218df3f2a9cd7685325a4a7bb6a3636a458a52ea7f1e1d73c2429acb74a2a9beb838c109541120b095118c90868eb0f",
     Py0 = "3ac16edac6898f11ff8ddb48fad6f59f4842cd427d72fa964171801be172b8ecd2fdffb4882d4aa6f1e730f6e53f8c5",

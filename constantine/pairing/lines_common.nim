@@ -47,9 +47,10 @@ func toHex*(line: Line, order: static Endianness = bigEndian): string =
 # Line evaluation
 # --------------------------------------------------
 
-func line_update*(line: var Line, P: ECP_ShortW_Aff) =
+func line_update*[F1, F2, twist](line: var Line[F2, twist], P: ECP_ShortW_Aff[F1, NotOnTwist]) =
   ## Update the line evaluation with P
   ## after addition or doubling
   ## P in G1
+  static: doAssert F1.C == F2.C
   line.x *= P.y
   line.z *= P.x

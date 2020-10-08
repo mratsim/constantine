@@ -229,85 +229,85 @@ func random_long01Seq[T](rng: var RngState, a: var T, C: static Curve) =
 # Elliptic curves
 # ------------------------------------------------------------
 
-func random_unsafe[F](rng: var RngState, a: var (ECP_ShortW_Proj[F] or ECP_ShortW_Aff[F] or ECP_ShortW_Jac[F])) =
+func random_unsafe(rng: var RngState, a: var (ECP_ShortW_Proj or ECP_ShortW_Aff or ECP_ShortW_Jac)) =
   ## Initialize a random curve point with Z coordinate == 1
   ## Unsafe: for testing and benchmarking purposes only
-  var fieldElem {.noInit.}: F
+  var fieldElem {.noInit.}: a.F
   var success = CtFalse
 
   while not bool(success):
     # Euler's criterion: there are (p-1)/2 squares in a field with modulus `p`
     #                    so we have a probability of ~0.5 to get a good point
-    rng.random_unsafe(fieldElem, F.C)
+    rng.random_unsafe(fieldElem, a.F.C)
     success = trySetFromCoordX(a, fieldElem)
 
-func random_unsafe_with_randZ[F](rng: var RngState, a: var (ECP_ShortW_Proj[F] or ECP_ShortW_Jac[F])) =
+func random_unsafe_with_randZ(rng: var RngState, a: var (ECP_ShortW_Proj or ECP_ShortW_Jac)) =
   ## Initialize a random curve point with Z coordinate being random
   ## Unsafe: for testing and benchmarking purposes only
-  var Z{.noInit.}: F
-  rng.random_unsafe(Z, F.C) # If Z is zero, X will be zero and that will be an infinity point
+  var Z{.noInit.}: a.F
+  rng.random_unsafe(Z, a.F.C) # If Z is zero, X will be zero and that will be an infinity point
 
-  var fieldElem {.noInit.}: F
+  var fieldElem {.noInit.}: a.F
   var success = CtFalse
 
   while not bool(success):
-    rng.random_unsafe(fieldElem, F.C)
+    rng.random_unsafe(fieldElem, a.F.C)
     success = trySetFromCoordsXandZ(a, fieldElem, Z)
 
-func random_highHammingWeight[F](rng: var RngState, a: var (ECP_ShortW_Proj[F] or ECP_ShortW_Aff[F] or ECP_ShortW_Jac[F])) =
+func random_highHammingWeight(rng: var RngState, a: var (ECP_ShortW_Proj or ECP_ShortW_Aff or ECP_ShortW_Jac)) =
   ## Initialize a random curve point with Z coordinate == 1
   ## This will be generated with a biaised RNG with high Hamming Weight
   ## to trigger carry bugs
-  var fieldElem {.noInit.}: F
+  var fieldElem {.noInit.}: a.F
   var success = CtFalse
 
   while not bool(success):
     # Euler's criterion: there are (p-1)/2 squares in a field with modulus `p`
     #                    so we have a probability of ~0.5 to get a good point
-    rng.random_highHammingWeight(fieldElem, F.C)
+    rng.random_highHammingWeight(fieldElem, a.F.C)
     success = trySetFromCoordX(a, fieldElem)
 
-func random_highHammingWeight_with_randZ[F](rng: var RngState, a: var (ECP_ShortW_Proj[F] or ECP_ShortW_Jac[F])) =
+func random_highHammingWeight_with_randZ(rng: var RngState, a: var (ECP_ShortW_Proj or ECP_ShortW_Jac)) =
   ## Initialize a random curve point with Z coordinate == 1
   ## This will be generated with a biaised RNG with high Hamming Weight
   ## to trigger carry bugs
-  var Z{.noInit.}: F
-  rng.random_highHammingWeight(Z, F.C) # If Z is zero, X will be zero and that will be an infinity point
+  var Z{.noInit.}: a.F
+  rng.random_highHammingWeight(Z, a.F.C) # If Z is zero, X will be zero and that will be an infinity point
 
-  var fieldElem {.noInit.}: F
+  var fieldElem {.noInit.}: a.F
   var success = CtFalse
 
   while not bool(success):
-    rng.random_highHammingWeight(fieldElem, F.C)
+    rng.random_highHammingWeight(fieldElem, a.F.C)
     success = trySetFromCoordsXandZ(a, fieldElem, Z)
 
-func random_long01Seq[F](rng: var RngState, a: var (ECP_ShortW_Proj[F] or ECP_ShortW_Aff[F] or ECP_ShortW_Jac[F])) =
+func random_long01Seq(rng: var RngState, a: var (ECP_ShortW_Proj or ECP_ShortW_Aff or ECP_ShortW_Jac)) =
   ## Initialize a random curve point with Z coordinate == 1
   ## This will be generated with a biaised RNG
   ## that produces long bitstrings of 0 and 1
   ## to trigger edge cases
-  var fieldElem {.noInit.}: F
+  var fieldElem {.noInit.}: a.F
   var success = CtFalse
 
   while not bool(success):
     # Euler's criterion: there are (p-1)/2 squares in a field with modulus `p`
     #                    so we have a probability of ~0.5 to get a good point
-    rng.random_long01Seq(fieldElem, F.C)
+    rng.random_long01Seq(fieldElem, a.F.C)
     success = trySetFromCoordX(a, fieldElem)
 
-func random_long01Seq_with_randZ[F](rng: var RngState, a: var (ECP_ShortW_Proj[F] or ECP_ShortW_Jac[F])) =
+func random_long01Seq_with_randZ(rng: var RngState, a: var (ECP_ShortW_Proj or ECP_ShortW_Jac)) =
   ## Initialize a random curve point with Z coordinate == 1
   ## This will be generated with a biaised RNG
   ## that produces long bitstrings of 0 and 1
   ## to trigger edge cases
-  var Z{.noInit.}: F
-  rng.random_long01Seq(Z, F.C) # If Z is zero, X will be zero and that will be an infinity point
+  var Z{.noInit.}: a.F
+  rng.random_long01Seq(Z, a.F.C) # If Z is zero, X will be zero and that will be an infinity point
 
-  var fieldElem {.noInit.}: F
+  var fieldElem {.noInit.}: a.F
   var success = CtFalse
 
   while not bool(success):
-    rng.random_long01Seq(fieldElem, F.C)
+    rng.random_long01Seq(fieldElem, a.F.C)
     success = trySetFromCoordsXandZ(a, fieldElem, Z)
 
 # Generic over any Constantine type
