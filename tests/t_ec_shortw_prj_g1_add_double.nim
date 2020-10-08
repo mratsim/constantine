@@ -14,7 +14,7 @@ import
   ./t_ec_template
 
 const
-  Iters = 8
+  Iters = 1
 
 run_EC_addition_tests(
     ec = ECP_ShortW_Proj[Fp[BN254_Snarks]],
@@ -32,4 +32,10 @@ run_EC_addition_tests(
     ec = ECP_ShortW_Proj[Fp[BLS12_377]],
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_projective_g1_add_double_" & $BLS12_377
+  )
+
+run_EC_addition_tests(
+    ec = ECP_ShortW_Proj[Fp[BW6_761]],
+    Iters = Iters,
+    moduleName = "test_ec_shortweierstrass_projective_g1_add_double_" & $BW6_761
   )

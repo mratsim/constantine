@@ -34,3 +34,9 @@ run_EC_mixed_add_impl(
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_projective_mixed_add_" & $BLS12_377
   )
+
+run_EC_mixed_add_impl(
+    ec = ECP_ShortW_Proj[Fp[BW6_761]],
+    Iters = Iters,
+    moduleName = "test_ec_shortweierstrass_projective_mixed_add_" & $BW6_761
+  )

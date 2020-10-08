@@ -34,3 +34,9 @@ run_EC_mul_vs_ref_impl(
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_jacobian_g1_mul_vs_ref_" & $BLS12_377
   )
+
+run_EC_mul_vs_ref_impl(
+    ec = ECP_ShortW_Jac[Fp[BW6_761]],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_shortweierstrass_jacobian_g1_mul_vs_ref_" & $BLS12_377
+  )

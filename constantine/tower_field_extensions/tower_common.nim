@@ -57,7 +57,7 @@ func setOne*(a: var ExtensionField) =
       fA.setZero()
 
 func fromBig*(a: var ExtensionField, src: BigInt) =
-  ## Set ``a`` to the bigint value int eh extension field
+  ## Set ``a`` to the bigint value in the extension field
   for fieldName, fA in fieldPairs(a):
     when fieldName == "c0":
       fA.fromBig(src)

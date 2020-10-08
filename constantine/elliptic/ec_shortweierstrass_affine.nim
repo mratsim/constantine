@@ -11,7 +11,7 @@ import
   ../config/[common, curves],
   ../arithmetic,
   ../towers,
-  ../io/io_bigints
+  ../io/[io_fields, io_towers]
 
 # ############################################################
 #
@@ -54,16 +54,28 @@ func curve_eq_rhs*[F](y2: var F, x: F) =
   # TODO: precomputation needed when deserializing points
   #       to check if a point is on-curve and prevent denial-of-service
   #       using slow inversion.
-  y2.fromBig F.C.matchingBigInt().fromUint F.C.getCoefB()
-  when F is Fp2:
-    when F.C.getSexticTwist() == D_Twist:
-      y2 /= SexticNonResidue
-    elif F.C.getSexticTwist() == M_Twist:
-      y2 *= SexticNonResidue
-    else:
-      {.error: "Only twisted curves are supported on extension field 𝔽p²".}
+  when F.C.getCoefB() >= 0:
+    y2.fromUint F.C.getCoefB()
+    when F is Fp2:
+      when F.C.getSexticTwist() == D_Twist:
+        y2 /= SexticNonResidue
+      elif F.C.getSexticTwist() == M_Twist:
+        y2 *= SexticNonResidue
+      else:
+        {.error: "Only twisted curves are supported on extension field 𝔽p²".}
 
-  y2 += t
+    y2 += t
+  else:
+    y2.fromInt -F.C.getCoefB()
+    when F is Fp2:
+      when F.C.getSexticTwist() == D_Twist:
+        y2 /= SexticNonResidue
+      elif F.C.getSexticTwist() == M_Twist:
+        y2 *= SexticNonResidue
+      else:
+        {.error: "Only twisted curves are supported on extension field 𝔽p²".}
+
+    y2.diffAlias(t, y2)
 
   when F.C.getCoefA() != 0:
     t = x

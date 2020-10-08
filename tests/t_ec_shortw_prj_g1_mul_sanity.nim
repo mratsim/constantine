@@ -84,3 +84,9 @@ run_EC_mul_sanity_tests(
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_projective_g1_mul_sanity_" & $BLS12_377
   )
+
+run_EC_mul_sanity_tests(
+    ec = ECP_ShortW_Proj[Fp[BW6_761]],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_shortweierstrass_projective_g1_mul_sanity_" & $BW6_761
+  )

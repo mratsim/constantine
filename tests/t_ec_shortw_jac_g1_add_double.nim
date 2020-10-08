@@ -33,3 +33,9 @@ run_EC_addition_tests(
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_jacobian_g1_add_double_" & $BLS12_377
   )
+
+run_EC_addition_tests(
+    ec = ECP_ShortW_Jac[Fp[BW6_761]],
+    Iters = Iters,
+    moduleName = "test_ec_shortweierstrass_jacobian_g1_add_double_" & $BLS12_377
+  )

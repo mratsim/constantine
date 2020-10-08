@@ -12,6 +12,7 @@ import
   std/typetraits,
   # Internal
   ./io_bigints, ./io_fields,
+  ../arithmetic/finite_fields,
   ../towers
 
 # No exceptions allowed
@@ -103,3 +104,21 @@ func fromHex*(T: typedesc[Fp12],
               c8, c9, c10, c11: string): T {.raises: [ValueError].}=
   ## Convert 12 coordinates to an element of 𝔽p12
   result.fromHex(c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11)
+
+func fromUint*(a: var ExtensionField, src: SomeUnsignedInt) =
+  ## Set ``a`` to the bigint value int eh extension field
+  for fieldName, fA in fieldPairs(a):
+    when fieldName == "c0":
+      fA.fromUint(src)
+    else:
+      fA.setZero()
+
+func fromInt*(a: var ExtensionField, src: SomeInteger) =
+  ## Parse a regular signed integer
+  ## and store it into a Fp^n
+  ## A negative integer will be instantiated as a negated number (mod p^n)
+  for fieldName, fA in fieldPairs(a):
+    when fieldName == "c0":
+      fA.fromInt(src)
+    else:
+      fA.setZero()
