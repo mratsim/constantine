@@ -44,8 +44,8 @@ export lines_common
 # Line evaluation only
 # -----------------------------------------------------------------------------
 
-func line_eval_double[F, twist](
-       line: var Line[F, twist],
+func line_eval_double[F](
+       line: var Line[F],
        T: ECP_ShortW_Proj[F, OnTwist]) =
   ## Evaluate the line function for doubling
   ## i.e. the tangent at T
@@ -108,9 +108,9 @@ func line_eval_double[F, twist](
 
   B *= b3               # B = 3b Z²
   C *= 3                # C = 3X²
-  when ECP_ShortW_Proj.F.C.getSexticTwist() == M_Twist:
+  when F.C.getSexticTwist() == M_Twist:
     B *= SexticNonResidue # B = 3b' Z² = 3bξ Z²
-  elif ECP_ShortW_Proj.F.C.getSexticTwist() == D_Twist:
+  elif F.C.getSexticTwist() == D_Twist:
     v *= SexticNonResidue # v =  ξ Y²
     C *= SexticNonResidue # C = 3ξ X²
   else:
@@ -119,8 +119,8 @@ func line_eval_double[F, twist](
   B -= v                # B = 3bξ Z² - Y²  (M-twist)
                         # B = 3b Z² - ξ Y² (D-twist)
 
-func line_eval_add[F, twist](
-       line: var Line[F, twist],
+func line_eval_add[F](
+       line: var Line[F],
        T: ECP_ShortW_Proj[F, OnTwist],
        Q: ECP_ShortW_Aff[F, OnTwist]) =
   ## Evaluate the line function for addition
@@ -170,8 +170,8 @@ func line_eval_add[F, twist](
 
   C.neg()     # C = -(Y₁-Z₁Y₂)
 
-func line_eval_fused_double[F, twist](
-       line: var Line[F, twist],
+func line_eval_fused_double[F](
+       line: var Line[F],
        T: var ECP_ShortW_Proj[F, OnTwist]) =
   ## Fused line evaluation and elliptic point doubling
   # Grewal et al, 2012 adapted to Scott 2019 line notation
@@ -239,8 +239,8 @@ func line_eval_fused_double[F, twist](
     H *= SexticNonResidue
     # else: the SNR is already integrated in H
 
-func line_eval_fused_add[F, twist](
-       line: var Line[F, twist],
+func line_eval_fused_add[F](
+       line: var Line[F],
        T: var ECP_ShortW_Proj[F, OnTwist],
        Q: ECP_ShortW_Aff[F, OnTwist]) =
   ## Fused line evaluation and elliptic point addition
@@ -289,14 +289,14 @@ func line_eval_fused_add[F, twist](
 
   # Line evaluation
   theta.neg()
-  when twist == M_Twist:
+  when F.C.getSexticTwist() == M_Twist:
     lambda *= SexticNonResidue # A = ξ (X₁ - Z₁X₂)
 
 # Public proc
 # -----------------------------------------------------------------------------
 
-func line_double*[F1, F2, twist](
-       line: var Line[F2, twist],
+func line_double*[F1, F2](
+       line: var Line[F2],
        T: var ECP_ShortW_Proj[F2, OnTwist],
        P: ECP_ShortW_Aff[F1, NotOnTwist]) =
   ## Doubling step of the Miller loop
@@ -312,8 +312,8 @@ func line_double*[F1, F2, twist](
     line.line_update(P)
     T.double()
 
-func line_add*[F1, F2, twist](
-       line: var Line[F2, twist],
+func line_add*[F1, F2](
+       line: var Line[F2],
        T: var ECP_ShortW_Proj[F2, OnTwist],
        Q: ECP_ShortW_Aff[F2, OnTwist],
        P: ECP_ShortW_Aff[F1, NotOnTwist]) =

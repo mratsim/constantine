@@ -82,18 +82,12 @@ func millerLoopGenericBLS12*[C](
   #      than the curve order which is the case for BLS12 curves
   var
     T {.noInit.}: ECP_ShortW_Proj[Fp2[C], OnTwist]
-    line {.noInit.}: Line[Fp2[C], C.getSexticTwist()]
+    line {.noInit.}: Line[Fp2[C]]
     nQ{.noInit.}: typeof(Q)
 
   T.projectiveFromAffine(Q)
   nQ.neg(Q)
   f.setOne()
-
-  template mul(f, line): untyped =
-    when C.getSexticTwist() == D_Twist:
-      f.mul_sparse_by_line_xyz000(line)
-    else:
-      f.mul_sparse_by_line_xy000z(line)
 
   template u: untyped = C.pairing(ate_param)
   let u3 = 3*C.pairing(ate_param)

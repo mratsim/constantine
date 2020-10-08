@@ -72,7 +72,7 @@ suite "Pairing - Line Functions on BLS12-381" & " [" & $WordBitwidth & "-bit mod
         let P = rng.random_point(ECP_ShortW_Aff[Fp[C], NotOnTwist], gen)
         var T = rng.random_point(ECP_ShortW_Proj[Fp2[C], OnTwist], randZ, gen)
         let Q = rng.random_point(ECP_ShortW_Proj[Fp2[C], OnTwist], randZ, gen)
-        var l: Line[Fp2[C], C.getSexticTwist()]
+        var l: Line[Fp2[C]]
 
         var T2: typeof(Q)
         T2.double(T)
@@ -94,7 +94,7 @@ suite "Pairing - Line Functions on BLS12-381" & " [" & $WordBitwidth & "-bit mod
         let P = rng.random_point(ECP_ShortW_Aff[Fp[C], NotOnTwist], gen)
         let Q = rng.random_point(ECP_ShortW_Proj[Fp2[C], OnTwist], randZ, gen)
         var T = rng.random_point(ECP_ShortW_Proj[Fp2[C], OnTwist], randZ, gen)
-        var l: Line[Fp2[C], C.getSexticTwist()]
+        var l: Line[Fp2[C]]
 
         var TQ{.noInit.}: typeof(T)
         TQ.sum(T, Q)

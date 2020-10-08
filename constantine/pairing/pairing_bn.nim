@@ -80,18 +80,12 @@ func millerLoopGenericBN*[C](
 
   var
     T {.noInit.}: ECP_ShortW_Proj[Fp2[C], OnTwist]
-    line {.noInit.}: Line[Fp2[C], C.getSexticTwist()]
+    line {.noInit.}: Line[Fp2[C]]
     nQ{.noInit.}: typeof(Q)
 
   T.projectiveFromAffine(Q)
   nQ.neg(Q)
   f.setOne()
-
-  template mul(f, line): untyped =
-    when C.getSexticTwist() == D_Twist:
-      f.mul_sparse_by_line_xyz000(line)
-    else:
-      f.mul_sparse_by_line_xy000z(line)
 
   template u: untyped = C.pairing(ate_param)
   let u3 = 3*C.pairing(ate_param)
@@ -120,12 +114,12 @@ func millerLoopGenericBN*[C](
 
   V.frobenius_psi(Q)
   line.line_add(T, V, P)
-  f.mul_sparse_by_line_xyz000(line)
+  f.mul(line)
 
   V.frobenius_psi2(Q)
   V.neg()
   line.line_add(T, V, P)
-  f.mul_sparse_by_line_xyz000(line)
+  f.mul(line)
 
 func finalExpGeneric[C: static Curve](f: var Fp12[C]) =
   ## A generic and slow implementation of final exponentiation
