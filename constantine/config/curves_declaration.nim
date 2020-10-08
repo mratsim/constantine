@@ -176,6 +176,8 @@ declareCurves:
     orderBitwidth: 377
     coef_a: 0
     coef_b: -1
+
+    # TODO: rework the quad/cube/sextic non residue declaration
     nonresidue_quad_fp: -4       # -4   is not a square in 𝔽p
     nonresidue_cube_fp2: (0, 1)  # -4   is not a cube in 𝔽p²
 

@@ -27,6 +27,9 @@ type
     c0*, c1*: Fp[C]
 
   β = NonResidue
+    # Quadratic or Cubic non-residue
+
+  SexticNonResidue* = object
 
 template fromComplexExtension*[F](elem: F): static bool =
   ## Returns true if the input is a complex extension
@@ -50,8 +53,18 @@ func `*`*(_: typedesc[β], a: Fp): Fp {.inline, noInit.} =
   result = a
   result *= β
 
-type
-  SexticNonResidue* = object
+# TODO: rework the quad/cube/sextic non residue declaration
+
+func `*=`*(a: var Fp, _: typedesc[SexticNonResidue]) {.inline.} =
+  ## Multiply an element of 𝔽p by the sextic non-residue
+  ## chosen to construct 𝔽p6
+  a *= Fp.C.get_QNR_Fp()
+
+func `*`*(_: typedesc[SexticNonResidue], a: Fp): Fp {.inline, noInit.} =
+  ## Multiply an element of 𝔽p by the sextic non-residue
+  ## chosen to construct 𝔽p6
+  result = a
+  result *= SexticNonResidue
 
 func `*=`*(a: var Fp2, _: typedesc[SexticNonResidue]) {.inline.} =
   ## Multiply an element of 𝔽p2 by the sextic non-residue
