@@ -82,7 +82,7 @@ func mul_sparse_by_line_xy00z0*[C: static Curve](
   var
     v0 {.noInit.}: Fp6[C]
     v1 {.noInit.}: Fp6[C]
-    v2 {.noInit.}: Line[Fp2[C], Tw]
+    v2 {.noInit.}: Line[Fp2[C]]
     v3 {.noInit.}: Fp6[C]
 
   v0.mul_by_line_xy0(f.c0, l)
