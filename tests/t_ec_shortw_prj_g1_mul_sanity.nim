@@ -24,7 +24,7 @@ const
   ItersMul = Iters div 4
 
 run_EC_mul_sanity_tests(
-    ec = ECP_ShortW_Proj[Fp[BN254_Snarks]],
+    ec = ECP_ShortW_Proj[Fp[BN254_Snarks], NotOnTwist],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_projective_g1_mul_sanity_" & $BN254_Snarks
   )
@@ -56,31 +56,37 @@ suite "Order checks on BN254_Snarks":
           bool(impl.isInf())
           bool(reference.isInf())
 
-    test(ECP_ShortW_Proj[Fp[BN254_Snarks]], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = false)
-    test(ECP_ShortW_Proj[Fp[BN254_Snarks]], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = true)
+    test(ECP_ShortW_Proj[Fp[BN254_Snarks], NotOnTwist], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = false)
+    test(ECP_ShortW_Proj[Fp[BN254_Snarks], NotOnTwist], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = true)
     # TODO: BLS12 is using a subgroup of order "r" such as r*h = CurveOrder
     #       with h the curve cofactor
     #       instead of the full group
-    # test(Fp[BLS12_381], bits = BLS12_381.getCurveOrderBitwidth(), randZ = false)
+    # test(Fp[BLS12_381], bits = BLS12_381.getCurveOrderBitwidth(), randZ = NotOnTwist)
     # test(Fp[BLS12_381], bits = BLS12_381.getCurveOrderBitwidth(), randZ = true)
 
   test "Not a point on the curve / not a square - #67":
     var ax, ay: Fp[BN254_Snarks]
     ax.fromHex"0x2a74c9ca553cd5f3437b41e77ca0c8cc77567a7eca5e7debc55b146b0bee324b"
-    ay.curve_eq_rhs(ax)
+    ay.curve_eq_rhs(ax, NotOnTwist)
 
     check:
       bool not ay.isSquare()
       bool not ay.sqrt_if_square()
 
 run_EC_mul_sanity_tests(
-    ec = ECP_ShortW_Proj[Fp[BLS12_381]],
+    ec = ECP_ShortW_Proj[Fp[BLS12_381], NotOnTwist],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_projective_g1_mul_sanity_" & $BLS12_381
   )
 
 run_EC_mul_sanity_tests(
-    ec = ECP_ShortW_Proj[Fp[BLS12_377]],
+    ec = ECP_ShortW_Proj[Fp[BLS12_377], NotOnTwist],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_projective_g1_mul_sanity_" & $BLS12_377
+  )
+
+run_EC_mul_sanity_tests(
+    ec = ECP_ShortW_Proj[Fp[BW6_761], NotOnTwist],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_shortweierstrass_projective_g1_mul_sanity_" & $BW6_761
   )

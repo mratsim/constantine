@@ -13,13 +13,13 @@ import
   ../constantine/towers,
   # Test utilities
   ./t_ec_template
-  
+
 const
   Iters = 12
   ItersMul = Iters div 4
 
 run_EC_mul_sanity_tests(
-    ec = ECP_ShortW_Jac[Fp2[BLS12_377]],
+    ec = ECP_ShortW_Jac[Fp2[BLS12_377], OnTwist],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_jacobian_g2_mul_sanity_" & $BLS12_377
   )

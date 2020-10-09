@@ -8,17 +8,16 @@
 
 import
   # Internals
-  ../constantine/config/curves,
-  ../constantine/elliptic/ec_shortweierstrass_projective,
-  ../constantine/towers,
+  ../constantine/config/[type_fp, curves],
+  ../constantine/elliptic/ec_shortweierstrass_jacobian,
   # Test utilities
   ./t_ec_template
 
 const
-  Iters = 8
+  Iters = 12
 
-run_EC_addition_tests(
-    ec = ECP_ShortW_Proj[Fp2[BN254_Snarks], OnTwist],
+run_EC_mixed_add_impl(
+    ec = ECP_ShortW_Jac[Fp[BW6_761], OnTwist],
     Iters = Iters,
-    moduleName = "test_ec_shortweierstrass_projective_g2_add_double_" & $BN254_Snarks
+    moduleName = "test_ec_shortweierstrass_jacobian_mixed_add_" & $BW6_761
   )

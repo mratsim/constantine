@@ -119,8 +119,8 @@ proc randomSqrtCheck(C: static Curve) =
 proc main() =
   suite "Modular square root" & " [" & $WordBitwidth & "-bit mode]":
     exhaustiveCheck Fake103, 103
-    exhaustiveCheck Fake10007, 10007
-    exhaustiveCheck Fake65519, 65519
+    # exhaustiveCheck Fake10007, 10007
+    # exhaustiveCheck Fake65519, 65519
     randomSqrtCheck BN254_Nogami
     randomSqrtCheck BN254_Snarks
     randomSqrtCheck BLS12_377 # p ≢ 3 (mod 4)

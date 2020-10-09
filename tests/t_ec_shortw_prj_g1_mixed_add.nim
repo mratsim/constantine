@@ -18,19 +18,25 @@ const
   Iters = 12
 
 run_EC_mixed_add_impl(
-    ec = ECP_ShortW_Proj[Fp[BN254_Snarks]],
+    ec = ECP_ShortW_Proj[Fp[BN254_Snarks], NotOnTwist],
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_projective_mixed_add_" & $BN254_Snarks
   )
 
 run_EC_mixed_add_impl(
-    ec = ECP_ShortW_Proj[Fp[BLS12_381]],
+    ec = ECP_ShortW_Proj[Fp[BLS12_381], NotOnTwist],
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_projective_mixed_add_" & $BLS12_381
   )
 
 run_EC_mixed_add_impl(
-    ec = ECP_ShortW_Proj[Fp[BLS12_377]],
+    ec = ECP_ShortW_Proj[Fp[BLS12_377], NotOnTwist],
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_projective_mixed_add_" & $BLS12_377
+  )
+
+run_EC_mixed_add_impl(
+    ec = ECP_ShortW_Proj[Fp[BW6_761], NotOnTwist],
+    Iters = Iters,
+    moduleName = "test_ec_shortweierstrass_projective_mixed_add_" & $BW6_761
   )

@@ -40,11 +40,11 @@ func finalExpEasy*[C: static Curve](f: var Fp12[C]) =
   ## an unique Gₜ representation
   ## (reminder, Gₜ is a multiplicative group hence we exponentiate by the cofactor)
   ##
-  ## i.e. Fp^12 --> (fexp easy) --> Gϕ₁₂ --> (fexp hard) --> Gₜ
+  ## i.e. Fp¹² --> (fexp easy) --> Gϕ₁₂ --> (fexp hard) --> Gₜ
   ##
-  ## The final exponentiation is fexp = f^((p^12 - 1) / r)
+  ## The final exponentiation is fexp = f^((p¹² - 1) / r)
   ## It is separated into:
-  ## f^((p^12 - 1) / r) = (p^12 - 1) / ϕ₁₂(p)  * ϕ₁₂(p) / r
+  ## f^((p¹² - 1) / r) = (p¹² - 1) / ϕ₁₂(p)  * ϕ₁₂(p) / r
   ##
   ## with the cyclotomic polynomial ϕ₁₂(p) = (p⁴-p²+1)
   ##
@@ -53,10 +53,10 @@ func finalExpEasy*[C: static Curve](f: var Fp12[C]) =
   ##  f^(p⁶−1)(p²+1)
   ##
   ## And properties are
-  ## 0. f^(p⁶) ≡ conj(f) (mod p^12) for all f in Fp12
+  ## 0. f^(p⁶) ≡ conj(f) (mod p¹²) for all f in Fp12
   ##
   ## After g = f^(p⁶−1) the result g is on the cyclotomic subgroup
-  ## 1. g^(-1) ≡ g^(p⁶) (mod p^12)
+  ## 1. g^(-1) ≡ g^(p⁶) (mod p¹²)
   ## 2. Inversion can be done with conjugate
   ## 3. g is unitary, its norm |g| (the product of conjugates) is 1
   ## 4. Squaring has a fast compressed variant.
@@ -66,43 +66,43 @@ func finalExpEasy*[C: static Curve](f: var Fp12[C]) =
   # Fp12 can be defined as a quadratic extension over Fp⁶
   # with g = g₀ + x g₁ with x a quadratic non-residue
   #
-  # with q = p⁶
+  # with q = p⁶, q² = p¹²
   # The frobenius map f^q ≡ (f₀ + x f₁)^q (mod q²)
   #                       ≡ f₀^q + x^q f₁^q (mod q²)
   #                       ≡ f₀ + x^q f₁ (mod q²)
   #                       ≡ f₀ - x f₁ (mod q²)
   # hence
-  # f^p⁶ ≡ conj(f) (mod p^12)
+  # f^p⁶ ≡ conj(f) (mod p¹²)
   # Q.E.D. of (0)
   #
   # ----------------
   #
-  # p^12 - 1 = (p⁶−1)(p⁶+1) = (p⁶−1)(p²+1)(p⁴-p²+1)
+  # p¹² - 1 = (p⁶−1)(p⁶+1) = (p⁶−1)(p²+1)(p⁴-p²+1)
   # by Fermat's little theorem we have
-  # f^(p^12 - 1) ≡ 1 (mod p^12)
+  # f^(p¹² - 1) ≡ 1 (mod p¹²)
   #
-  # Hence f^(p⁶−1)(p⁶+1) ≡ 1 (mod p^12)
+  # Hence f^(p⁶−1)(p⁶+1) ≡ 1 (mod p¹²)
   #
   # We call g = f^(p⁶−1) we have
-  # g^(p⁶+1) ≡ 1 (mod p^12) <=> g^(p⁶) * g ≡ 1 (mod p^12)
-  # hence g^(-1) ≡ g^(p⁶) (mod p^12)
+  # g^(p⁶+1) ≡ 1 (mod p¹²) <=> g^(p⁶) * g ≡ 1 (mod p¹²)
+  # hence g^(-1) ≡ g^(p⁶) (mod p¹²)
   # Q.E.D. of (1)
   #
   # --
   #
-  # From (1) g^(-1) ≡ g^(p⁶) (mod p^12) for g = f^(p⁶−1)
-  # and  (0) f^p⁶ ≡ conj(f) (mod p^12)  for all f in fp12
+  # From (1) g^(-1) ≡ g^(p⁶) (mod p¹²) for g = f^(p⁶−1)
+  # and  (0) f^p⁶ ≡ conj(f) (mod p¹²)  for all f in fp12
   #
-  # so g^(-1) ≡ conj(g) (mod p^12) for g = f^(p⁶−1)
+  # so g^(-1) ≡ conj(g) (mod p¹²) for g = f^(p⁶−1)
   # Q.E.D. of (2)
   #
   # --
   #
-  # f^(p^12 - 1) ≡ 1 (mod p^12) by Fermat's Little Theorem
-  # f^(p⁶−1)(p⁶+1) ≡ 1 (mod p^12)
-  # g^(p⁶+1) ≡ 1 (mod p^12)
-  # g * g^p⁶ ≡ 1 (mod p^12)
-  # g * conj(g) ≡ 1 (mod p^12)
+  # f^(p¹² - 1) ≡ 1 (mod p¹²) by Fermat's Little Theorem
+  # f^(p⁶−1)(p⁶+1) ≡ 1 (mod p¹²)
+  # g^(p⁶+1) ≡ 1 (mod p¹²)
+  # g * g^p⁶ ≡ 1 (mod p¹²)
+  # g * conj(g) ≡ 1 (mod p¹²)
   # Q.E.D. of (3)
   var g {.noinit.}: typeof(f)
   g.inv(f)              # g = f^-1

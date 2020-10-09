@@ -43,6 +43,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_fp6_bn254_snarks.nim", false),
   ("tests/t_fp6_bls12_377.nim", false),
   ("tests/t_fp6_bls12_381.nim", false),
+  ("tests/t_fp6_bw6_761.nim", false),
   ("tests/t_fp12_bn254_snarks.nim", false),
   ("tests/t_fp12_bls12_377.nim", false),
   ("tests/t_fp12_bls12_381.nim", false),
@@ -60,36 +61,57 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_ec_shortw_jac_g1_mul_sanity.nim", false),
   ("tests/t_ec_shortw_jac_g1_mul_distri.nim", false),
   ("tests/t_ec_shortw_jac_g1_mul_vs_ref.nim", false),
+  # mixed_add
+
   # Elliptic curve arithmetic G2
   ("tests/t_ec_shortw_prj_g2_add_double_bn254_snarks.nim", false),
   ("tests/t_ec_shortw_prj_g2_mul_sanity_bn254_snarks.nim", false),
   ("tests/t_ec_shortw_prj_g2_mul_distri_bn254_snarks.nim", false),
   ("tests/t_ec_shortw_prj_g2_mul_vs_ref_bn254_snarks.nim", false),
+  ("tests/t_ec_shortw_prj_g2_mixed_add_bn254_snarks.nim", false),
 
   ("tests/t_ec_shortw_prj_g2_add_double_bls12_381.nim", false),
   ("tests/t_ec_shortw_prj_g2_mul_sanity_bls12_381.nim", false),
   ("tests/t_ec_shortw_prj_g2_mul_distri_bls12_381.nim", false),
   ("tests/t_ec_shortw_prj_g2_mul_vs_ref_bls12_381.nim", false),
+  ("tests/t_ec_shortw_prj_g2_mixed_add_bls12_381.nim", false),
 
   ("tests/t_ec_shortw_prj_g2_add_double_bls12_377.nim", false),
   ("tests/t_ec_shortw_prj_g2_mul_sanity_bls12_377.nim", false),
   ("tests/t_ec_shortw_prj_g2_mul_distri_bls12_377.nim", false),
   ("tests/t_ec_shortw_prj_g2_mul_vs_ref_bls12_377.nim", false),
+  ("tests/t_ec_shortw_prj_g2_mixed_add_bls12_377.nim", false),
+
+  ("tests/t_ec_shortw_prj_g2_add_double_bw6_761.nim", false),
+  ("tests/t_ec_shortw_prj_g2_mul_sanity_bw6_761.nim", false),
+  ("tests/t_ec_shortw_prj_g2_mul_distri_bw6_761.nim", false),
+  ("tests/t_ec_shortw_prj_g2_mul_vs_ref_bw6_761.nim", false),
+  ("tests/t_ec_shortw_prj_g2_mixed_add_bw6_761.nim", false),
 
   ("tests/t_ec_shortw_jac_g2_add_double_bn254_snarks.nim", false),
   ("tests/t_ec_shortw_jac_g2_mul_sanity_bn254_snarks.nim", false),
   ("tests/t_ec_shortw_jac_g2_mul_distri_bn254_snarks.nim", false),
   ("tests/t_ec_shortw_jac_g2_mul_vs_ref_bn254_snarks.nim", false),
+  # mixed_add
 
   ("tests/t_ec_shortw_jac_g2_add_double_bls12_381.nim", false),
   ("tests/t_ec_shortw_jac_g2_mul_sanity_bls12_381.nim", false),
   ("tests/t_ec_shortw_jac_g2_mul_distri_bls12_381.nim", false),
   ("tests/t_ec_shortw_jac_g2_mul_vs_ref_bls12_381.nim", false),
+  # mixed_add
 
   ("tests/t_ec_shortw_jac_g2_add_double_bls12_377.nim", false),
   ("tests/t_ec_shortw_jac_g2_mul_sanity_bls12_377.nim", false),
   ("tests/t_ec_shortw_jac_g2_mul_distri_bls12_377.nim", false),
   ("tests/t_ec_shortw_jac_g2_mul_vs_ref_bls12_377.nim", false),
+  # mixed_add
+
+  ("tests/t_ec_shortw_jac_g2_add_double_bw6_761.nim", false),
+  ("tests/t_ec_shortw_jac_g2_mul_sanity_bw6_761.nim", false),
+  ("tests/t_ec_shortw_jac_g2_mul_distri_bw6_761.nim", false),
+  ("tests/t_ec_shortw_jac_g2_mul_vs_ref_bw6_761.nim", false),
+  # mixed_add
+
   # Elliptic curve arithmetic vs Sagemath
   ("tests/t_ec_frobenius.nim", false),
   ("tests/t_ec_sage_bn254.nim", false),
@@ -217,6 +239,10 @@ task test_no_gmp, "Run tests that don't require GMP":
     runBench("bench_fp12")
     runBench("bench_ec_g1")
     runBench("bench_ec_g2")
+    runBench("bench_pairing_bls12_377")
+    runBench("bench_pairing_bls12_381")
+    runBench("bench_pairing_bn254_nogami")
+    runBench("bench_pairing_bn254_snarks")
 
 task test_parallel, "Run all tests in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
@@ -256,6 +282,10 @@ task test_parallel, "Run all tests in parallel (via GNU parallel)":
     runBench("bench_fp12")
     runBench("bench_ec_g1")
     runBench("bench_ec_g2")
+    runBench("bench_pairing_bls12_377")
+    runBench("bench_pairing_bls12_381")
+    runBench("bench_pairing_bn254_nogami")
+    runBench("bench_pairing_bn254_snarks")
 
 task test_parallel_no_assembler, "Run all tests (without macro assembler) in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
@@ -295,6 +325,10 @@ task test_parallel_no_assembler, "Run all tests (without macro assembler) in par
     runBench("bench_fp12")
     runBench("bench_ec_g1")
     runBench("bench_ec_g2")
+    runBench("bench_pairing_bls12_377")
+    runBench("bench_pairing_bls12_381")
+    runBench("bench_pairing_bn254_nogami")
+    runBench("bench_pairing_bn254_snarks")
 
 task test_parallel_no_gmp, "Run all tests in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
@@ -336,6 +370,10 @@ task test_parallel_no_gmp, "Run all tests in parallel (via GNU parallel)":
     runBench("bench_fp12")
     runBench("bench_ec_g1")
     runBench("bench_ec_g2")
+    runBench("bench_pairing_bls12_377")
+    runBench("bench_pairing_bls12_381")
+    runBench("bench_pairing_bn254_nogami")
+    runBench("bench_pairing_bn254_snarks")
 
 task test_parallel_no_gmp_no_assembler, "Run all tests in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
@@ -377,6 +415,10 @@ task test_parallel_no_gmp_no_assembler, "Run all tests in parallel (via GNU para
     runBench("bench_fp12")
     runBench("bench_ec_g1")
     runBench("bench_ec_g2")
+    runBench("bench_pairing_bls12_377")
+    runBench("bench_pairing_bls12_381")
+    runBench("bench_pairing_bn254_nogami")
+    runBench("bench_pairing_bn254_snarks")
 
 task bench_fp, "Run benchmark 𝔽p with your default compiler":
   runBench("bench_fp")

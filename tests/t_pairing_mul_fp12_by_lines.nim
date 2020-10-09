@@ -97,7 +97,7 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
         let x = rng.random_elem(Fp2[C], gen)
         let y = rng.random_elem(Fp2[C], gen)
         let b = Fp6[C](c0: x, c1: y)
-        let line = Line[Fp2[C], M_twist](x: x, y: y)
+        let line = Line[Fp2[C]](x: x, y: y)
 
         var r {.noInit.}, r2 {.noInit.}: Fp6[C]
 
@@ -122,7 +122,7 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
           var y = rng.random_elem(Fp2[C], gen)
           var z = rng.random_elem(Fp2[C], gen)
 
-          let line = Line[Fp2[C], Mtwist](x: x, y: y, z: z)
+          let line = Line[Fp2[C]](x: x, y: y, z: z)
           let b = Fp12[C](
             c0: Fp6[C](c0: x, c1: y),
             c1: Fp6[C](c1: z)
@@ -148,7 +148,7 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
           var y = rng.random_elem(Fp2[C], gen)
           var z = rng.random_elem(Fp2[C], gen)
 
-          let line = Line[Fp2[C], Mtwist](x: x, y: y, z: z)
+          let line = Line[Fp2[C]](x: x, y: y, z: z)
           let b = Fp12[C](
             c0: Fp6[C](c0: x, c1: y, c2: z)
           )
@@ -165,54 +165,56 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
   else:
     static: doAssert Fp12[BN254_Snarks]().c0.typeof is Fp4
 
-    test "Sparse 𝔽p12/𝔽p4 resulting from xy000z line function":
+    test "Sparse 𝔽p12/𝔽p4 resulting from xy000z line function (M-twist only)":
       proc test_fp12_xy000z(C: static Curve, gen: static RandomGen) =
-        for _ in 0 ..< Iters:
-          var a = rng.random_elem(Fp12[C], gen)
-          var a2 = a
+        when C.getSexticTwist() == M_Twist:
+          for _ in 0 ..< Iters:
+            var a = rng.random_elem(Fp12[C], gen)
+            var a2 = a
 
-          var x = rng.random_elem(Fp2[C], gen)
-          var y = rng.random_elem(Fp2[C], gen)
-          var z = rng.random_elem(Fp2[C], gen)
+            var x = rng.random_elem(Fp2[C], gen)
+            var y = rng.random_elem(Fp2[C], gen)
+            var z = rng.random_elem(Fp2[C], gen)
 
-          let line = Line[Fp2[C], Mtwist](x: x, y: y, z: z)
-          let b = Fp12[C](
-            c0: Fp4[C](c0: x, c1: y),
-            # c1
-            c2: Fp4[C](       c1: z),
-          )
+            let line = Line[Fp2[C]](x: x, y: y, z: z)
+            let b = Fp12[C](
+              c0: Fp4[C](c0: x, c1: y),
+              # c1
+              c2: Fp4[C](       c1: z),
+            )
 
-          a *= b
-          a2.mul_sparse_by_line_xy000z(line)
+            a *= b
+            a2.mul_sparse_by_line_xy000z(line)
 
-          check: bool(a == a2)
+            check: bool(a == a2)
 
       staticFor(curve, TestCurves):
         test_fp12_xy000z(curve, gen = Uniform)
         test_fp12_xy000z(curve, gen = HighHammingWeight)
         test_fp12_xy000z(curve, gen = Long01Sequence)
 
-    test "Sparse 𝔽p12/𝔽p4 resulting from xyz000 line function":
+    test "Sparse 𝔽p12/𝔽p4 resulting from xyz000 line function (D-twist only)":
       proc test_fp12_xy000z(C: static Curve, gen: static RandomGen) =
-        for _ in 0 ..< Iters:
-          var a = rng.random_elem(Fp12[C], gen)
-          var a2 = a
+        when C.getSexticTwist() == D_Twist:
+          for _ in 0 ..< Iters:
+            var a = rng.random_elem(Fp12[C], gen)
+            var a2 = a
 
-          var x = rng.random_elem(Fp2[C], gen)
-          var y = rng.random_elem(Fp2[C], gen)
-          var z = rng.random_elem(Fp2[C], gen)
+            var x = rng.random_elem(Fp2[C], gen)
+            var y = rng.random_elem(Fp2[C], gen)
+            var z = rng.random_elem(Fp2[C], gen)
 
-          let line = Line[Fp2[C], Dtwist](x: x, y: y, z: z)
-          let b = Fp12[C](
-            c0: Fp4[C](c0: x, c1: y),
-            c1: Fp4[C](c0: z       ),
-            # c2:
-          )
+            let line = Line[Fp2[C]](x: x, y: y, z: z)
+            let b = Fp12[C](
+              c0: Fp4[C](c0: x, c1: y),
+              c1: Fp4[C](c0: z       ),
+              # c2:
+            )
 
-          a *= b
-          a2.mul_sparse_by_line_xyz000(line)
+            a *= b
+            a2.mul_sparse_by_line_xyz000(line)
 
-          check: bool(a == a2)
+            check: bool(a == a2)
 
       staticFor(curve, TestCurves):
         test_fp12_xy000z(curve, gen = Uniform)

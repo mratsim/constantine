@@ -65,18 +65,20 @@ func decomposeEndo*[M, scalBits, L: static int](
   static: doAssert L >= (scalBits + M - 1) div M + 1
   const w = F.C.getCurveOrderBitwidth().wordsRequired()
 
-  when F is Fp:
+  when M == 2:
     var alphas{.noInit.}: (
       BigInt[scalBits + babai(F)[0][0].bits],
       BigInt[scalBits + babai(F)[1][0].bits]
     )
-  else:
+  elif M == 4:
     var alphas{.noInit.}: (
       BigInt[scalBits + babai(F)[0][0].bits],
       BigInt[scalBits + babai(F)[1][0].bits],
       BigInt[scalBits + babai(F)[2][0].bits],
       BigInt[scalBits + babai(F)[3][0].bits]
     )
+  else:
+    {.error: "The decomposition degree " & $M & " is not configured".}
 
   staticFor i, 0, M:
     when bool babai(F)[i][0].isZero():

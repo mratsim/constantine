@@ -25,7 +25,7 @@ const AvailableCurves = [
   P224,
   BN254_Nogami, BN254_Snarks,
   P256, Secp256k1,
-  BLS12_381
+  BLS12_377, BLS12_381, BW6_761
 ]
 
 const # https://gmplib.org/manual/Integer-Import-and-Export.html
@@ -133,7 +133,7 @@ proc addTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curv
   r2Test += bTest
 
   binary_epilogue(r, a, b, rTest, aBuf, bBuf, "Addition (with result)")
-  binary_epilogue(r, a, b, rTest, aBuf, bBuf, "Addition (in-place)")
+  binary_epilogue(r, a, b, r2Test, aBuf, bBuf, "Addition (in-place)")
 
 proc subTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curve) =
   # echo "Testing: random modular substraction on ", $C
@@ -155,8 +155,12 @@ proc subTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curv
   var r2Test = aTest
   r2Test -= bTest
 
+  var r3Test = bTest
+  r3Test.diffAlias(aTest, r3Test)
+
   binary_epilogue(r, a, b, rTest, aBuf, bBuf, "Substraction (with result)")
-  binary_epilogue(r, a, b, rTest, aBuf, bBuf, "Substraction (in-place)")
+  binary_epilogue(r, a, b, r2Test, aBuf, bBuf, "Substraction (in-place)")
+  binary_epilogue(r, a, b, r3Test, aBuf, bBuf, "Substraction (result aliasing)")
 
 proc mulTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curve) =
   # echo "Testing: random modular multiplication on ", $C
@@ -175,7 +179,11 @@ proc mulTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curv
   var rTest {.noInit.}: Fp[C]
   rTest.prod(aTest, bTest)
 
-  binary_epilogue(r, a, b, rTest, aBuf, bBuf, "Multiplication")
+  var r2Test = aTest
+  r2Test *= bTest
+
+  binary_epilogue(r, a, b, rTest, aBuf, bBuf, "Multiplication (with result)")
+  binary_epilogue(r, a, b, r2Test, aBuf, bBuf, "Multiplication (in-place)")
 
 proc invTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curve) =
   # We use the binary prologue epilogue but the "b" parameter is actual unused

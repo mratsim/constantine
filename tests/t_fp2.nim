@@ -18,6 +18,7 @@ const TestCurves = [
     BN254_Snarks,
     BLS12_377,
     BLS12_381,
+    BW6_761
   ]
 
 runTowerTests(

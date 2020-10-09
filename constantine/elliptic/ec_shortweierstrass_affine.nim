@@ -11,7 +11,7 @@ import
   ../config/[common, curves],
   ../arithmetic,
   ../towers,
-  ../io/io_bigints
+  ../io/[io_fields, io_towers]
 
 # ############################################################
 #
@@ -20,14 +20,19 @@ import
 #
 # ############################################################
 
-type ECP_ShortW_Aff*[F] = object
-  ## Elliptic curve point for a curve in Short Weierstrass form
-  ##   y² = x³ + a x + b
-  ##
-  ## over a field F
-  x*, y*: F
+type
+  Twisted* = enum
+    NotOnTwist
+    OnTwist
 
-func curve_eq_rhs*[F](y2: var F, x: F) =
+  ECP_ShortW_Aff*[F; Tw: static Twisted] = object
+    ## Elliptic curve point for a curve in Short Weierstrass form
+    ##   y² = x³ + a x + b
+    ##
+    ## over a field F
+    x*, y*: F
+
+func curve_eq_rhs*[F](y2: var F, x: F, Tw: static Twisted) =
   ## Compute the curve equation right-hand-side from field element `x`
   ## i.e.  `y²` in `y² = x³ + a x + b`
   ## or on sextic twists for pairing curves `y² = x³ + b/µ` or `y² = x³ + µ b`
@@ -54,33 +59,47 @@ func curve_eq_rhs*[F](y2: var F, x: F) =
   # TODO: precomputation needed when deserializing points
   #       to check if a point is on-curve and prevent denial-of-service
   #       using slow inversion.
-  y2.fromBig F.C.matchingBigInt().fromUint F.C.getCoefB()
-  when F is Fp2:
-    when F.C.getSexticTwist() == D_Twist:
-      y2 /= SexticNonResidue
-    elif F.C.getSexticTwist() == M_Twist:
-      y2 *= SexticNonResidue
-    else:
-      {.error: "Only twisted curves are supported on extension field 𝔽p²".}
+  when F.C.getCoefB() >= 0:
+    y2.fromInt F.C.getCoefB()
+    when Tw == OnTwist:
+      when F.C.getSexticTwist() == D_Twist:
+        y2 /= SexticNonResidue
+      elif F.C.getSexticTwist() == M_Twist:
+        y2 *= SexticNonResidue
+      else:
+        {.error: "Only twisted curves are supported on extension field 𝔽p²".}
 
-  y2 += t
+    y2 += t
+  else:
+    y2.fromInt -F.C.getCoefB()
+    when Tw == OnTwist:
+      when F.C.getSexticTwist() == D_Twist:
+        y2 /= SexticNonResidue
+      elif F.C.getSexticTwist() == M_Twist:
+        y2 *= SexticNonResidue
+      else:
+        {.error: "Only twisted curves are supported on extension field 𝔽p²".}
+
+    y2.diffAlias(t, y2)
 
   when F.C.getCoefA() != 0:
     t = x
     t *= F.C.getCoefA()
     y2 += t
 
-func isOnCurve*[F](x, y: F): SecretBool =
+func isOnCurve*[F](x, y: F, Tw: static Twisted): SecretBool =
   ## Returns true if the (x, y) coordinates
   ## represents a point of the elliptic curve
 
   var y2, rhs {.noInit.}: F
   y2.square(y)
-  rhs.curve_eq_rhs(x)
+  rhs.curve_eq_rhs(x, Tw)
 
   return y2 == rhs
 
-func trySetFromCoordX*[F](P: var ECP_ShortW_Aff[F], x: F): SecretBool =
+func trySetFromCoordX*[F, Tw](
+       P: var ECP_ShortW_Aff[F, Tw],
+       x: F): SecretBool =
   ## Try to create a point the elliptic curve
   ## y² = x³ + a x + b     (affine coordinate)
   ##
@@ -91,7 +110,7 @@ func trySetFromCoordX*[F](P: var ECP_ShortW_Aff[F], x: F): SecretBool =
   ##
   ## Note: Dedicated robust procedures for hashing-to-curve
   ##       will be provided, this is intended for testing purposes.
-  P.y.curve_eq_rhs(x)
+  P.y.curve_eq_rhs(x, Tw)
   # TODO: supports non p ≡ 3 (mod 4) modulus like BLS12-377
   result = sqrt_if_square(P.y)
 

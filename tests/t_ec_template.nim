@@ -64,7 +64,7 @@ proc run_EC_addition_tests*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  when ec.F is Fp:
+  when ec.Tw == NotOnTwist:
     const G1_or_G2 = "G1"
   else:
     const G1_or_G2 = "G2"
@@ -215,7 +215,7 @@ proc run_EC_mul_sanity_tests*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  when ec.F is Fp:
+  when ec.Tw == NotOnTwist:
     const G1_or_G2 = "G1"
   else:
     const G1_or_G2 = "G2"
@@ -313,7 +313,7 @@ proc run_EC_mul_distributive_tests*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  when ec.F is Fp:
+  when ec.Tw == NotOnTwist:
     const G1_or_G2 = "G1"
   else:
     const G1_or_G2 = "G2"
@@ -383,7 +383,7 @@ proc run_EC_mul_vs_ref_impl*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  when ec.F is Fp:
+  when ec.Tw == NotOnTwist:
     const G1_or_G2 = "G1"
   else:
     const G1_or_G2 = "G2"
@@ -427,7 +427,7 @@ proc run_EC_mixed_add_impl*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  when ec.F is Fp:
+  when ec.Tw == NotOnTwist:
     const G1_or_G2 = "G1"
   else:
     const G1_or_G2 = "G2"
@@ -440,7 +440,7 @@ proc run_EC_mixed_add_impl*(
         for _ in 0 ..< Iters:
           let a = rng.random_point(EC, randZ, gen)
           let b = rng.random_point(EC, randZ, gen)
-          var bAff: ECP_ShortW_Aff[EC.F]
+          var bAff: ECP_ShortW_Aff[EC.F, EC.Tw]
           bAff.affineFromProjective(b)
 
           var r_generic, r_mixed: EC

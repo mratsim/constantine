@@ -1,4 +1,4 @@
-# Constantine - Constant Time Elliptic Curve Cryptography
+# Constantine - Constant Time Pairing-Based & Elliptic Curve Cryptography
 
 [![License: Apache](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
@@ -7,9 +7,10 @@
 [![Build Status: Travis](https://img.shields.io/travis/com/mratsim/constantine/master?label=Travis%20%28Linux%20x86_64%2FARM64%2FPowerPC64,%20MacOS%20x86_64%29)](https://travis-ci.com/mratsim/constantine)\
 [![Build Status: Azure](https://img.shields.io/azure-devops/build/numforge/07a2a7a5-995a-45d3-acd5-f5456fe7b04d/4?label=Azure%20%28Linux%2032%2F64-bit%2C%20Windows%2032%2F64-bit%2C%20MacOS%2064-bit%29)](https://dev.azure.com/numforge/Constantine/_build?definitionId=4&branchName=master)
 
-This library provides constant-time implementation of elliptic curve cryptography.
+This library provides [constant-time](https://en.wikipedia.org/wiki/Side-channel_attack) implementation of elliptic curve cryptography
+with a particular focus on pairing-based cryptography.
 
-The implementation is accompanied with SAGE code used as reference implementation and test vectors generators before high speed implementation.
+The implementations are accompanied with SAGE code used as reference implementation and test vectors generators before writing highly optimized routines implemented in the [Nim language](https://nim-lang.org/)
 
 > The library is in development state and high-level wrappers or example protocols are not available yet.
 
@@ -43,20 +44,29 @@ This can be deactivated with `"-d:ConstantineASM=false"`:
 - at misssed opportunity on recent CPUs that support MULX/ADCX/ADOX instructions (~60% faster than Clang).
 - There is a 2.4x perf ratio between using plain GCC vs GCC with inline assembly.
 
+## Why Nim
+
+The Nim language offers the following benefits for cryptography:
+- Compilation to machine code via C or C++ or alternatively compilation to Javascript. Easy FFI to those languages.
+  - Obscure embedded devices with proprietary C compilers can be targeted.
+  - WASM can be targeted.
+- Performance reachable in C is reachable in Nim, easily.
+- Rich type system: generics, dependent types, mutability-tracking and side-effect analysis, borrow-checking, distinct types (Miles != Meters, SecretBool != bool SecretWord != uint64).
+- Compile-time evaluation, including parsing hex string, converting them to BigInt or Finite Field elements and doing bigint operations.
+- Assembly support either inline or ``__attribute__((naked))`` or a simple `{.compile: "myasm.S".}` away
+- No GC if no GC-ed types are used (automatic memory management is set at the type level and optimized for latency/soft-realtime by default and can be totally deactivated).
+- Procedural macros working directly on AST to
+  - create generic curve configuration,
+  - derive constants
+  - write a size-independent inline assembly code generator
+- Upcoming proof system for formal verification via Z3 ([DrNim](https://nim-lang.org/docs/drnim.html), [Correct-by-Construction RFC](https://github.com/nim-lang/RFCs/issues/222))
+
 ## Curves supported
 
 At the moment the following curves are supported, adding a new curve only requires adding the prime modulus
 and its bitsize in [constantine/config/curves.nim](constantine/config/curves_declaration.nim).
 
 The following curves are configured:
-
-### ECDH / ECDSA / EdDSA curves
-
-WIP:
-- NIST P-224
-- Curve25519
-- NIST P-256 / Secp256r1
-- Secp256k1 (Bitcoin, Ethereum 1)
 
 ### Pairing-Friendly curves
 
@@ -76,6 +86,7 @@ Curves:
 - BN254_Snarks (Zero-Knowledge Proofs, Snarks, Starks, Zcash, Ethereum 1)
 - BLS12-377 (Zexe)
 - BLS12-381 (Algorand, Chia Networks, Dfinity, Ethereum 2, Filecoin, Zcash Sapling)
+- BW6-671 (Celo, EY Blockchain) (Pairings are WIP)
 
 ## Security
 
@@ -97,7 +108,7 @@ This is would be incomplete without mentioning that the hardware, OS and compile
 actively hinder you by:
 - Hardware: sometimes not implementing multiplication in constant-time.
 - OS: not providing a way to prevent memory paging to disk, core dumps, a debugger attaching to your process or a context switch (coroutines) leaking register data.
-- Compiler: optimizing away your carefully crafted branchless code and leaking server secrets or optimizing away your secure erasure routine which is "useless" because at the end of the function the data is not used anymore.
+- Compiler: optimizing away your carefully crafted branchless code and leaking server secrets or optimizing away your secure erasure routine which is deemed "useless" because at the end of the function the data is not used anymore.
 
 A growing number of attack vectors is being collected for your viewing pleasure
 at https://github.com/mratsim/constantine/wiki/Constant-time-arithmetics
@@ -167,40 +178,51 @@ nimble bench_pairing_bls12_381
 
 As mentioned in the [Compiler caveats](#compiler-caveats) section, GCC is up to 2x slower than Clang due to mishandling of carries and register usage.
 
-On my machine i9-9980XE, for selected benchmarks with Clang + Assembly
+On my machine i9-9980XE, for selected benchmarks with Clang + Assembly, all being constant-time (or tagged unsafe).
 
 ```
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Line double                                                  BLS12_381            649350.649 ops/s          1540 ns/op          4617 CPU cycles (approx)
-Line add                                                     BLS12_381            482858.522 ops/s          2071 ns/op          6211 CPU cycles (approx)
-Mul 𝔽p12 by line xy000z                                      BLS12_381            543478.261 ops/s          1840 ns/op          5518 CPU cycles (approx)
+Line double                                                  BLS12_381            872600.349 ops/s          1146 ns/op          3434 CPU cycles (approx)
+Line add                                                     BLS12_381            616522.811 ops/s          1622 ns/op          4864 CPU cycles (approx)
+Mul 𝔽p12 by line xy000z                                      BLS12_381            535905.681 ops/s          1866 ns/op          5597 CPU cycles (approx)
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Final Exponentiation Easy                                    BLS12_381             39411.973 ops/s         25373 ns/op         76119 CPU cycles (approx)
-Final Exponentiation Hard BLS12                              BLS12_381              2141.603 ops/s        466940 ns/op       1400833 CPU cycles (approx)
+Final Exponentiation Easy                                    BLS12_381             39443.064 ops/s         25353 ns/op         76058 CPU cycles (approx)
+Final Exponentiation Hard BLS12                              BLS12_381              2139.367 ops/s        467428 ns/op       1402299 CPU cycles (approx)
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Miller Loop BLS12                                            BLS12_381              2731.576 ops/s        366089 ns/op       1098278 CPU cycles (approx)
-Final Exponentiation BLS12                                   BLS12_381              2033.045 ops/s        491873 ns/op       1475634 CPU cycles (approx)
+Miller Loop BLS12                                            BLS12_381              2971.512 ops/s        336529 ns/op       1009596 CPU cycles (approx)
+Final Exponentiation BLS12                                   BLS12_381              2029.365 ops/s        492765 ns/op       1478310 CPU cycles (approx)
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Pairing BLS12                                                BLS12_381              1131.391 ops/s        883868 ns/op       2651631 CPU cycles (approx)
+Pairing BLS12                                                BLS12_381              1164.051 ops/s        859069 ns/op       2577234 CPU cycles (approx)
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ```
 
 ```
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+EC Add G1                                                    ECP_ShortW_Proj[Fp[BLS12_381]]               2118644.068 ops/s           472 ns/op          1416 CPU cycles (approx)
+EC Add G1                                                    ECP_ShortW_Jac[Fp[BLS12_381]]                1818181.818 ops/s           550 ns/op          1652 CPU cycles (approx)
+EC Mixed Addition G1                                         ECP_ShortW_Proj[Fp[BLS12_381]]               2427184.466 ops/s           412 ns/op          1236 CPU cycles (approx)
+EC Double G1                                                 ECP_ShortW_Proj[Fp[BLS12_381]]               3460207.612 ops/s           289 ns/op           867 CPU cycles (approx)
+EC Double G1                                                 ECP_ShortW_Jac[Fp[BLS12_381]]                3717472.119 ops/s           269 ns/op           809 CPU cycles (approx)
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-EC Add G1                                                    ECP_ShortW_Proj[Fp[BLS12_381]]                 2118644.068 ops/s           472 ns/op          1416 CPU cycles (approx)
-EC Mixed Addition G1                                         ECP_ShortW_Proj[Fp[BLS12_381]]                 2439024.390 ops/s           410 ns/op          1232 CPU cycles (approx)
-EC Double G1                                                 ECP_ShortW_Proj[Fp[BLS12_381]]                 3448275.862 ops/s           290 ns/op           871 CPU cycles (approx)
+EC Projective to Affine G1                                   ECP_ShortW_Proj[Fp[BLS12_381]]                 72020.166 ops/s         13885 ns/op         41656 CPU cycles (approx)
+EC Jacobian to Affine G1                                     ECP_ShortW_Jac[Fp[BLS12_381]]                  71989.058 ops/s         13891 ns/op         41673 CPU cycles (approx)
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-EC ScalarMul G1 (unsafe reference DoubleAdd)                 ECP_ShortW_Proj[Fp[BLS12_381]]                    7147.094 ops/s        139917 ns/op        419756 CPU cycles (approx)
+EC ScalarMul G1 (unsafe reference DoubleAdd)                 ECP_ShortW_Proj[Fp[BLS12_381]]                  7260.266 ops/s        137736 ns/op        413213 CPU cycles (approx)
+EC ScalarMul G1 (unsafe reference DoubleAdd)                 ECP_ShortW_Jac[Fp[BLS12_381]]                   7140.970 ops/s        140037 ns/op        420115 CPU cycles (approx)
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-EC ScalarMul Generic G1 (window = 2, scratchsize = 4)        ECP_ShortW_Proj[Fp[BLS12_381]]                    5048.975 ops/s        198060 ns/op        594188 CPU cycles (approx)
-EC ScalarMul Generic G1 (window = 3, scratchsize = 8)        ECP_ShortW_Proj[Fp[BLS12_381]]                    7148.269 ops/s        139894 ns/op        419685 CPU cycles (approx)
-EC ScalarMul Generic G1 (window = 4, scratchsize = 16)       ECP_ShortW_Proj[Fp[BLS12_381]]                    8112.735 ops/s        123263 ns/op        369791 CPU cycles (approx)
-EC ScalarMul Generic G1 (window = 5, scratchsize = 32)       ECP_ShortW_Proj[Fp[BLS12_381]]                    8464.534 ops/s        118140 ns/op        354424 CPU cycles (approx)
+EC ScalarMul Generic G1 (window = 2, scratchsize = 4)        ECP_ShortW_Proj[Fp[BLS12_381]]                  5036.946 ops/s        198533 ns/op        595606 CPU cycles (approx)
+EC ScalarMul Generic G1 (window = 3, scratchsize = 8)        ECP_ShortW_Proj[Fp[BLS12_381]]                  7080.799 ops/s        141227 ns/op        423684 CPU cycles (approx)
+EC ScalarMul Generic G1 (window = 4, scratchsize = 16)       ECP_ShortW_Proj[Fp[BLS12_381]]                  8062.631 ops/s        124029 ns/op        372091 CPU cycles (approx)
+EC ScalarMul Generic G1 (window = 5, scratchsize = 32)       ECP_ShortW_Proj[Fp[BLS12_381]]                  8377.244 ops/s        119371 ns/op        358116 CPU cycles (approx)
+EC ScalarMul Generic G1 (window = 2, scratchsize = 4)        ECP_ShortW_Jac[Fp[BLS12_381]]                   4703.359 ops/s        212614 ns/op        637847 CPU cycles (approx)
+EC ScalarMul Generic G1 (window = 3, scratchsize = 8)        ECP_ShortW_Jac[Fp[BLS12_381]]                   6901.407 ops/s        144898 ns/op        434697 CPU cycles (approx)
+EC ScalarMul Generic G1 (window = 4, scratchsize = 16)       ECP_ShortW_Jac[Fp[BLS12_381]]                   8022.720 ops/s        124646 ns/op        373940 CPU cycles (approx)
+EC ScalarMul Generic G1 (window = 5, scratchsize = 32)       ECP_ShortW_Jac[Fp[BLS12_381]]                   8433.552 ops/s        118574 ns/op        355725 CPU cycles (approx)
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-EC ScalarMul G1 (endomorphism accelerated)                   ECP_ShortW_Proj[Fp[BLS12_381]]                    9679.418 ops/s        103312 ns/op        309939 CPU cycles (approx)
-EC ScalarMul Window-2 G1 (endomorphism accelerated)          ECP_ShortW_Proj[Fp[BLS12_381]]                   13089.348 ops/s         76398 ns/op        229195 CPU cycles (approx)
+EC ScalarMul G1 (endomorphism accelerated)                   ECP_ShortW_Proj[Fp[BLS12_381]]                  9703.933 ops/s        103051 ns/op        309155 CPU cycles (approx)
+EC ScalarMul Window-2 G1 (endomorphism accelerated)          ECP_ShortW_Proj[Fp[BLS12_381]]                 13160.839 ops/s         75983 ns/op        227950 CPU cycles (approx)
+EC ScalarMul G1 (endomorphism accelerated)                   ECP_ShortW_Jac[Fp[BLS12_381]]                   9064.868 ops/s        110316 ns/op        330951 CPU cycles (approx)
+EC ScalarMul Window-2 G1 (endomorphism accelerated)          ECP_ShortW_Jac[Fp[BLS12_381]]                  12722.484 ops/s         78601 ns/op        235806 CPU cycles (approx)
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ```

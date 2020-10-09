@@ -8,7 +8,9 @@
 
 import
   ./io_bigints,
-  ../arithmetic/finite_fields
+  ../config/common,
+  ../arithmetic/finite_fields,
+  ../primitives
 
 # No exceptions allowed
 {.push raises: [].}
@@ -23,9 +25,24 @@ import
 func fromUint*(dst: var Fp,
                src: SomeUnsignedInt) =
   ## Parse a regular unsigned integer
-  ## and store it into a BigInt of size `bits`
+  ## and store it into a Fp
   let raw {.noinit.} = (type dst.mres).fromRawUint(cast[array[sizeof(src), byte]](src), cpuEndian)
   dst.fromBig(raw)
+
+func fromInt*(dst: var Fp,
+               src: SomeInteger) =
+  ## Parse a regular signed integer
+  ## and store it into a Fp
+  ## A negative integer will be instantiated as a negated number (mod p)
+  when src is SomeUnsignedInt:
+    dst.fromUint(src)
+  else:
+    const msb_pos = src.sizeof * 8 - 1
+    let isNeg = SecretBool((src shr msb_pos) and 1)
+
+    let src = isNeg.mux(SecretWord -src, SecretWord src)
+    let raw {.noinit.} = (type dst.mres).fromRawUint(cast[array[sizeof(src), byte]](src), cpuEndian)
+    dst.fromBig(raw)
 
 func exportRawUint*(dst: var openarray[byte],
                        src: Fp,

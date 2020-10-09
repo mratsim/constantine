@@ -13,6 +13,8 @@ import
   ../towers,
   ./ec_shortweierstrass_affine
 
+export Twisted
+
 # ############################################################
 #
 #             Elliptic Curve in Short Weierstrass form
@@ -20,7 +22,7 @@ import
 #
 # ############################################################
 
-type ECP_ShortW_Jac*[F] = object
+type ECP_ShortW_Jac*[F; Tw: static Twisted] = object
   ## Elliptic curve point for a curve in Short Weierstrass form
   ##   y² = x³ + a x + b
   ##
@@ -32,10 +34,11 @@ type ECP_ShortW_Jac*[F] = object
   ## Note that jacobian coordinates are not unique
   x*, y*, z*: F
 
-func `==`*[F](P, Q: ECP_ShortW_Jac[F]): SecretBool =
+func `==`*(P, Q: ECP_ShortW_Jac): SecretBool =
   ## Constant-time equality check
   ## This is a costly operation
   # Reminder: the representation is not unique
+  type F = ECP_ShortW_Jac.F
 
   var z1z1 {.noInit.}, z2z2 {.noInit.}: F
   var a{.noInit.}, b{.noInit.}: F
@@ -77,7 +80,9 @@ func ccopy*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac, ctl: SecretBool) =
   for fP, fQ in fields(P, Q):
     ccopy(fP, fQ, ctl)
 
-func trySetFromCoordsXandZ*[F](P: var ECP_ShortW_Jac[F], x, z: F): SecretBool =
+func trySetFromCoordsXandZ*[F; Tw](
+       P: var ECP_ShortW_Jac[F, Tw],
+       x, z: F): SecretBool =
   ## Try to create a point the elliptic curve
   ## Y² = X³ + aXZ⁴ + bZ⁶  (Jacobian coordinates)
   ## y² = x³ + a x + b     (affine coordinate)
@@ -86,7 +91,7 @@ func trySetFromCoordsXandZ*[F](P: var ECP_ShortW_Jac[F], x, z: F): SecretBool =
   ##
   ## Note: Dedicated robust procedures for hashing-to-curve
   ##       will be provided, this is intended for testing purposes.
-  P.y.curve_eq_rhs(x)
+  P.y.curve_eq_rhs(x, Tw)
   # TODO: supports non p ≡ 3 (mod 4) modulus like BLS12-377
   result = sqrt_if_square(P.y)
 
@@ -97,7 +102,9 @@ func trySetFromCoordsXandZ*[F](P: var ECP_ShortW_Jac[F], x, z: F): SecretBool =
   P.y *= z
   P.z = z
 
-func trySetFromCoordX*[F](P: var ECP_ShortW_Jac[F], x: F): SecretBool =
+func trySetFromCoordX*[F; Tw](
+       P: var ECP_ShortW_Jac[F, Tw],
+       x: F): SecretBool =
   ## Try to create a point the elliptic curve
   ## y² = x³ + a x + b     (affine coordinate)
   ##
@@ -108,7 +115,7 @@ func trySetFromCoordX*[F](P: var ECP_ShortW_Jac[F], x: F): SecretBool =
   ##
   ## Note: Dedicated robust procedures for hashing-to-curve
   ##       will be provided, this is intended for testing purposes.
-  P.y.curve_eq_rhs(x)
+  P.y.curve_eq_rhs(x, Tw)
   # TODO: supports non p ≡ 3 (mod 4) modulus like BLS12-377
   result = sqrt_if_square(P.y)
   P.x = x
@@ -129,9 +136,9 @@ func cneg*(P: var ECP_ShortW_Jac, ctl: CTBool) =
   ## Negate if ``ctl`` is true
   P.y.cneg(ctl)
 
-func sum*[F](
-       r: var ECP_ShortW_Jac[F],
-       P, Q: ECP_ShortW_Jac[F]
+func sum*[F; Tw: static Twisted](
+       r: var ECP_ShortW_Jac[F, Tw],
+       P, Q: ECP_ShortW_Jac[F, Tw]
      ) =
   ## Elliptic curve point addition for Short Weierstrass curves in Jacobian coordinates
   ##
@@ -286,9 +293,9 @@ func sum*[F](
     r.ccopy(Q, P.isInf())
     r.ccopy(P, Q.isInf())
 
-func double*[F](
-       r: var ECP_ShortW_Jac[F],
-       P: ECP_ShortW_Jac[F]
+func double*[F; Tw: static Twisted](
+       r: var ECP_ShortW_Jac[F, Tw],
+       P: ECP_ShortW_Jac[F, Tw]
      ) =
   ## Elliptic curve point doubling for Short Weierstrass curves in projective coordinate
   ##
@@ -365,7 +372,9 @@ func diff*(r: var ECP_ShortW_Jac,
   nQ.neg()
   r.sum(P, nQ)
 
-func affineFromJacobian*[F](aff: var ECP_ShortW_Aff[F], jac: ECP_ShortW_Jac) =
+func affineFromJacobian*[F; Tw](
+       aff: var ECP_ShortW_Aff[F, Tw],
+       jac: ECP_ShortW_Jac[F, Tw]) =
   var invZ {.noInit.}, invZ2: F
   invZ.inv(jac.z)
   invZ2.square(invZ)
@@ -374,7 +383,9 @@ func affineFromJacobian*[F](aff: var ECP_ShortW_Aff[F], jac: ECP_ShortW_Jac) =
   aff.y.prod(jac.y, invZ)
   aff.y.prod(jac.y, invZ2)
 
-func projectiveFromJacobian*[F](jac: var ECP_ShortW_Jac, aff: ECP_ShortW_Aff[F]) {.inline.} =
+func projectiveFromJacobian*[F; Tw](
+       jac: var ECP_ShortW_Jac[F, Tw],
+       aff: ECP_ShortW_Aff[F, Tw]) {.inline.} =
   jac.x = aff.x
   jac.y = aff.y
   jac.z.setOne()

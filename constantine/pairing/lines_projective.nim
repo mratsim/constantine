@@ -44,7 +44,9 @@ export lines_common
 # Line evaluation only
 # -----------------------------------------------------------------------------
 
-func line_eval_double(line: var Line, T: ECP_ShortW_Proj) =
+func line_eval_double[F](
+       line: var Line[F],
+       T: ECP_ShortW_Proj[F, OnTwist]) =
   ## Evaluate the line function for doubling
   ## i.e. the tangent at T
   ##
@@ -83,8 +85,8 @@ func line_eval_double(line: var Line, T: ECP_ShortW_Proj) =
   ## A constant factor on twisted coordinates pᵏᐟᵈ
   ## is a constant factor on pᵏ with d the twisting degree
   ## and so will be elminated. QED.
-  var v {.noInit.}: Line.F
-  const b3 = 3 * ECP_ShortW_Proj.F.C.getCoefB()
+  var v {.noInit.}: F
+  const b3 = 3 * F.C.getCoefB()
 
   template A: untyped = line.x
   template B: untyped = line.y
@@ -106,9 +108,9 @@ func line_eval_double(line: var Line, T: ECP_ShortW_Proj) =
 
   B *= b3               # B = 3b Z²
   C *= 3                # C = 3X²
-  when ECP_ShortW_Proj.F.C.getSexticTwist() == M_Twist:
+  when F.C.getSexticTwist() == M_Twist:
     B *= SexticNonResidue # B = 3b' Z² = 3bξ Z²
-  elif ECP_ShortW_Proj.F.C.getSexticTwist() == D_Twist:
+  elif F.C.getSexticTwist() == D_Twist:
     v *= SexticNonResidue # v =  ξ Y²
     C *= SexticNonResidue # C = 3ξ X²
   else:
@@ -117,7 +119,10 @@ func line_eval_double(line: var Line, T: ECP_ShortW_Proj) =
   B -= v                # B = 3bξ Z² - Y²  (M-twist)
                         # B = 3b Z² - ξ Y² (D-twist)
 
-func line_eval_add(line: var Line, T: ECP_ShortW_Proj, Q: ECP_ShortW_Aff) =
+func line_eval_add[F](
+       line: var Line[F],
+       T: ECP_ShortW_Proj[F, OnTwist],
+       Q: ECP_ShortW_Aff[F, OnTwist]) =
   ## Evaluate the line function for addition
   ## i.e. the line between T and Q
   ##
@@ -137,7 +142,7 @@ func line_eval_add(line: var Line, T: ECP_ShortW_Proj, Q: ECP_ShortW_Aff) =
   ## Note: There is no need for complete formula as
   ## we have T ∉ [Q, -Q] in the Miller loop doubling-and-add
   ## i.e. the line cannot be vertical
-  var v {.noInit.}: Line.F
+  var v {.noInit.}: F
 
   template A: untyped = line.x
   template B: untyped = line.y
@@ -155,7 +160,7 @@ func line_eval_add(line: var Line, T: ECP_ShortW_Proj, Q: ECP_ShortW_Aff) =
   C -= v      # C = Y₁-Z₁Y₂
 
   v = A       # v = X₁-Z₁X₂
-  when ECP_ShortW_Proj.F.C.getSexticTwist() == M_Twist:
+  when F.C.getSexticTwist() == M_Twist:
     A *= SexticNonResidue # A = ξ (X₁ - Z₁X₂)
 
   v *= Q.y    # v = (X₁-Z₁X₂) Y₂
@@ -165,16 +170,18 @@ func line_eval_add(line: var Line, T: ECP_ShortW_Proj, Q: ECP_ShortW_Aff) =
 
   C.neg()     # C = -(Y₁-Z₁Y₂)
 
-func line_eval_fused_double(line: var Line, T: var ECP_ShortW_Proj) =
+func line_eval_fused_double[F](
+       line: var Line[F],
+       T: var ECP_ShortW_Proj[F, OnTwist]) =
   ## Fused line evaluation and elliptic point doubling
   # Grewal et al, 2012 adapted to Scott 2019 line notation
-  var A {.noInit.}, B {.noInit.}, C {.noInit.}: Line.F
-  var E {.noInit.}, F {.noInit.}, G {.noInit.}: Line.F
+  var A {.noInit.}, B {.noInit.}, C {.noInit.}: F
+  var E {.noInit.}, F {.noInit.}, G {.noInit.}: F
   template H: untyped = line.x
-  const b3 = 3*Line.F.C.getCoefB()
+  const b3 = 3*F.C.getCoefB()
 
   var snrY = T.y
-  when Line.F.C.getSexticTwist() == D_Twist:
+  when F.C.getSexticTwist() == D_Twist:
     snrY *= SexticNonResidue
 
   A.prod(T.x, snrY)
@@ -183,12 +190,12 @@ func line_eval_fused_double(line: var Line, T: var ECP_ShortW_Proj) =
   C.square(T.z)     # C = Z²
 
   var snrB = B
-  when Line.F.C.getSexticTwist() == D_Twist:
+  when F.C.getSexticTwist() == D_Twist:
     snrB *= SexticNonResidue
 
   E = C
   E *= b3
-  when Line.F.C.getSexticTwist() == M_Twist:
+  when F.C.getSexticTwist() == M_Twist:
     E *= SexticNonResidue # E = 3b'Z² = 3bξ Z²
 
   F = E
@@ -202,7 +209,7 @@ func line_eval_fused_double(line: var Line, T: var ECP_ShortW_Proj) =
 
   line.z.square(T.x)
   line.z *= 3       # lz = 3X²
-  when Line.F.C.getSexticTwist() == D_Twist:
+  when F.C.getSexticTwist() == D_Twist:
     line.z *= SexticNonResidue
 
   line.y.diff(E, snrB) # ly = E-B = 3b'Z² - Y²
@@ -220,7 +227,7 @@ func line_eval_fused_double(line: var Line, T: var ECP_ShortW_Proj) =
                     # M-twist: (Y²+9bξZ²)²/4 - 3*(3bξZ²)²
                     # D-Twist: (ξY²+9bZ²)²/4 - 3*(3bZ²)²
 
-  when Line.F.C.getSexticTwist() == D_Twist:
+  when F.C.getSexticTwist() == D_Twist:
     H *= SexticNonResidue
   T.z.prod(snrB, H) # Z₃ = BH = Y²((Y+Z)² - (Y²+Z²)) = 2Y³Z
                     # M-twist: 2Y³Z
@@ -228,23 +235,26 @@ func line_eval_fused_double(line: var Line, T: var ECP_ShortW_Proj) =
 
   # Correction for Fp4 towering
   H.neg()           # lx = -H
-  when Line.F.C.getSexticTwist() == M_Twist:
+  when F.C.getSexticTwist() == M_Twist:
     H *= SexticNonResidue
     # else: the SNR is already integrated in H
 
-func line_eval_fused_add(line: var Line, T: var ECP_ShortW_Proj, Q: ECP_ShortW_Aff) =
+func line_eval_fused_add[F](
+       line: var Line[F],
+       T: var ECP_ShortW_Proj[F, OnTwist],
+       Q: ECP_ShortW_Aff[F, OnTwist]) =
   ## Fused line evaluation and elliptic point addition
   # Grewal et al, 2012 adapted to Scott 2019 line notation
   var
-    A {.noInit.}: Line.F
-    B {.noInit.}: Line.F
-    C {.noInit.}: Line.F
-    D {.noInit.}: Line.F
-    E {.noInit.}: Line.F
-    F {.noInit.}: Line.F
-    G {.noInit.}: Line.F
-    H {.noInit.}: Line.F
-    I {.noInit.}: Line.F
+    A {.noInit.}: F
+    B {.noInit.}: F
+    C {.noInit.}: F
+    D {.noInit.}: F
+    E {.noInit.}: F
+    F {.noInit.}: F
+    G {.noInit.}: F
+    H {.noInit.}: F
+    I {.noInit.}: F
 
   template lambda: untyped = line.x
   template theta: untyped = line.z
@@ -279,17 +289,21 @@ func line_eval_fused_add(line: var Line, T: var ECP_ShortW_Proj, Q: ECP_ShortW_A
 
   # Line evaluation
   theta.neg()
-  when ECP_ShortW_Proj.F.C.getSexticTwist() == M_Twist:
+  when F.C.getSexticTwist() == M_Twist:
     lambda *= SexticNonResidue # A = ξ (X₁ - Z₁X₂)
 
 # Public proc
 # -----------------------------------------------------------------------------
 
-func line_double*(line: var Line, T: var ECP_ShortW_Proj, P: ECP_ShortW_Aff) =
+func line_double*[F1, F2](
+       line: var Line[F2],
+       T: var ECP_ShortW_Proj[F2, OnTwist],
+       P: ECP_ShortW_Aff[F1, NotOnTwist]) =
   ## Doubling step of the Miller loop
   ## T in G2, P in G1
   ##
   ## Compute lt,t(P)
+  static: doAssert F1.C == F2.C
   when true:
     line_eval_fused_double(line, T)
     line.line_update(P)
@@ -298,14 +312,16 @@ func line_double*(line: var Line, T: var ECP_ShortW_Proj, P: ECP_ShortW_Aff) =
     line.line_update(P)
     T.double()
 
-func line_add*[C](
-       line: var Line,
-       T: var ECP_ShortW_Proj[Fp2[C]],
-       Q: ECP_ShortW_Aff[Fp2[C]], P: ECP_ShortW_Aff[Fp[C]]) =
+func line_add*[F1, F2](
+       line: var Line[F2],
+       T: var ECP_ShortW_Proj[F2, OnTwist],
+       Q: ECP_ShortW_Aff[F2, OnTwist],
+       P: ECP_ShortW_Aff[F1, NotOnTwist]) =
   ## Addition step of the Miller loop
   ## T and Q in G2, P in G1
   ##
   ## Compute lt,q(P)
+  static: doAssert F1.C == F2.C
   when true:
     line_eval_fused_add(line, T, Q)
     line.line_update(P)

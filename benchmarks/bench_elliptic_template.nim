@@ -140,7 +140,7 @@ proc mixedAddBench*(T: typedesc, iters: int) =
   var r {.noInit.}: T
   let P = rng.random_unsafe(T)
   let Q = rng.random_unsafe(T)
-  var Qaff: ECP_ShortW_Aff[T.F]
+  var Qaff: ECP_ShortW_Aff[T.F, T.Tw]
   Qaff.affineFromProjective(Q)
   bench("EC Mixed Addition " & G1_or_G2, T, iters):
     r.madd(P, Qaff)
@@ -154,14 +154,14 @@ proc doublingBench*(T: typedesc, iters: int) =
 
 proc affFromProjBench*(T: typedesc, iters: int) =
   const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
-  var r {.noInit.}: ECP_ShortW_Aff[T.F]
+  var r {.noInit.}: ECP_ShortW_Aff[T.F, T.Tw]
   let P = rng.random_unsafe(T)
   bench("EC Projective to Affine " & G1_or_G2, T, iters):
     r.affineFromProjective(P)
 
 proc affFromJacBench*(T: typedesc, iters: int) =
   const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
-  var r {.noInit.}: ECP_ShortW_Aff[T.F]
+  var r {.noInit.}: ECP_ShortW_Aff[T.F, T.Tw]
   let P = rng.random_unsafe(T)
   bench("EC Jacobian to Affine " & G1_or_G2, T, iters):
     r.affineFromJacobian(P)

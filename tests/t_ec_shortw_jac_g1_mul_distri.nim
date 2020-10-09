@@ -18,19 +18,25 @@ const
   ItersMul = Iters div 4
 
 run_EC_mul_distributive_tests(
-    ec = ECP_ShortW_Jac[Fp[BN254_Snarks]],
+    ec = ECP_ShortW_Jac[Fp[BN254_Snarks], NotOnTwist],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_jacobian_g1_mul_distributive_" & $BN254_Snarks
   )
 
 run_EC_mul_distributive_tests(
-    ec = ECP_ShortW_Jac[Fp[BLS12_381]],
+    ec = ECP_ShortW_Jac[Fp[BLS12_381], NotOnTwist],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_jacobian_g1_mul_distributive_" & $BLS12_381
   )
 
 run_EC_mul_distributive_tests(
-    ec = ECP_ShortW_Jac[Fp[BLS12_377]],
+    ec = ECP_ShortW_Jac[Fp[BLS12_377], NotOnTwist],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_shortweierstrass_jacobian_g1_mul_distributive_" & $BLS12_377
+  )
+
+run_EC_mul_distributive_tests(
+    ec = ECP_ShortW_Jac[Fp[BW6_761], NotOnTwist],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_jacobian_g1_mul_distributive_" & $BLS12_377
   )
