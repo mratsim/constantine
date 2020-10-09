@@ -8,13 +8,17 @@
 
 import
   ../config/[curves, type_bigint],
-  ../towers,
   ../io/io_bigints,
+  ../towers,
   ../pairing/cyclotomic_fp12
+
+# Slow generic implementation
+# ------------------------------------------------------------
 
 # The bit count must be exact for the Miller loop
 const BN254_Snarks_pairing_ate_param* = block:
   # BN Miller loop is parametrized by 6u+2
+  # +2 to bitlength so that we can mul by 3 for NAF encoding
   BigInt[65+2].fromHex"0x19d797039be763ba8"
 
 const BN254_Snarks_pairing_ate_param_isNeg* = false
@@ -22,6 +26,9 @@ const BN254_Snarks_pairing_ate_param_isNeg* = false
 const BN254_Snarks_pairing_finalexponent* = block:
   # (p^12 - 1) / r
   BigInt[2790].fromHex"0x2f4b6dc97020fddadf107d20bc842d43bf6369b1ff6a1c71015f3f7be2e1e30a73bb94fec0daf15466b2383a5d3ec3d15ad524d8f70c54efee1bd8c3b21377e563a09a1b705887e72eceaddea3790364a61f676baaf977870e88d5c6c8fef0781361e443ae77f5b63a2a2264487f2940a8b1ddb3d15062cd0fb2015dfc6668449aed3cc48a82d0d602d268c7daab6a41294c0cc4ebe5664568dfc50e1648a45a4a1e3a5195846a3ed011a337a02088ec80e0ebae8755cfe107acf3aafb40494e406f804216bb10cf430b0f37856b42db8dc5514724ee93dfb10826f0dd4a0364b9580291d2cd65664814fde37ca80bb4ea44eacc5e641bbadf423f9a2cbf813b8d145da90029baee7ddadda71c7f3811c4105262945bba1668c3be69a3c230974d83561841d766f9c9d570bb7fbe04c7e8a6c3c760c0de81def35692da361102b6b9b2b918837fa97896e84abb40a4efb7e54523a486964b64ca86f120"
+
+# Addition chain
+# ------------------------------------------------------------
 
 func pow_u*(r: var Fp12[BN254_Snarks], a: Fp12[BN254_Snarks], invert = BN254_Snarks_pairing_ate_param_isNeg) =
   ## f^u with u the curve parameter
