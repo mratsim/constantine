@@ -39,6 +39,7 @@ type
 
 func decomposeEndo*[M, scalBits, L: static int](
        miniScalars: var MultiScalar[M, L],
+       negatePoints: var array[M, SecretBool],
        scalar: BigInt[scalBits],
        F: typedesc[Fp or Fp2]
      ) =
@@ -109,6 +110,9 @@ func decomposeEndo*[M, scalBits, L: static int](
         else:
           k[miniScalarIdx] -= alphaB
 
+    let isNeg = k[miniScalarIdx].isMsbSet()
+    negatePoints[miniScalarIdx] = isNeg
+    k[miniScalarIdx].cneg(isNeg)
     miniScalars[miniScalarIdx].copyTruncatedFrom(k[miniScalarIdx])
 
 # Secret scalar + dynamic point
@@ -304,9 +308,10 @@ func scalarMulEndo*[scalBits; EC](
     {.error: "Unconfigured".}
 
   # 2. Decompose scalar into mini-scalars
-  const L = (scalBits + M - 1) div M + 1 + 1 # A "+1" to handle negative
+  const L = (scalBits + M - 1) div M + 1 # Alternatively, negative can be handled with an extra "+1"
   var miniScalars {.noInit.}: array[M, BigInt[L]]
-  miniScalars.decomposeEndo(scalar, P.F)
+  var negatePoints {.noInit.}: array[M, SecretBool]
+  miniScalars.decomposeEndo(negatePoints, scalar, P.F)
 
   # 3. Handle negative mini-scalars
   # A scalar decomposition might lead to negative miniscalar.
@@ -319,17 +324,10 @@ func scalarMulEndo*[scalBits; EC](
   #   - Conditional negate is about 10 cycles per Fp, on G2 projective we have 3 (coords) * 2 (Fp2) * 10 (cycles) ~= 60 cycles
   #     We need to test the mini scalar, which is 65 bits so 2 Fp so about 2 cycles
   #     and negate it as well.
-  #
-  # However solution 1 seems to cause issues (TODO)
-  # with some of the BLS12-381 G2 test cases (6 and 9) as one of the miniscalars is 65 bits
-  # instead of the expected maximum of 64.
-  # - 0x5668a2332db27199dcfb7cbdfca6317c2ff128db26d7df68483e0a095ec8e88f
-  # - 0x644dc62869683f0c93f38eaef2ba6912569dc91ec2806e46b4a3dd6a4421dad1
-  #
-  # Furthermore solution 2 isn't enough on BLS12-377 G2 as test fails when miniScalars[0] is negative
-  let isNeg0 = miniscalars[0].isMsbSet()
-  miniscalars[0].cneg(isNeg0)
-  P.cneg(isNeg0)
+  block:
+    P.cneg(negatePoints[0])
+    staticFor i, 1, M:
+      endomorphisms[i-1].cneg(negatePoints[i])
 
   # 4. Precompute lookup table
   var lut {.noInit.}: array[1 shl (M-1), typeof(P)]
@@ -458,8 +456,8 @@ func w2TableIndex(glv: GLV_SAC, bit2: int, isNeg: var SecretBool): SecretWord {.
 func computeRecodedLength(bitWidth, window: int): int =
   # Strangely in the paper this doesn't depend
   # "m", the GLV decomposition dimension.
-  # lw = ⌈log2 r/w⌉+1+1 (a "+1" to handle negative mini scalars)
-  let lw = (bitWidth + window - 1) div window + 1 + 1
+  # lw = ⌈log2 r/w⌉+1 (optionally a second "+1" to handle negative mini scalars)
+  let lw = (bitWidth + window - 1) div window + 1
   result = (lw mod window) + lw
 
 func scalarMulGLV_m2w2*[scalBits; EC](
@@ -488,12 +486,16 @@ func scalarMulGLV_m2w2*[scalBits; EC](
   # 2. Decompose scalar into mini-scalars
   const L = computeRecodedLength(C.getCurveOrderBitwidth(), 2)
   var miniScalars {.noInit.}: array[2, BigInt[L]]
-  miniScalars.decomposeEndo(scalar, P0.F)
+  var negatePoints {.noInit.}: array[2, SecretBool]
+  miniScalars.decomposeEndo(negatePoints, scalar, P0.F)
 
-  # 3. TODO: handle negative mini-scalars
+  # 3. Handle negative mini-scalars
   #    Either negate the associated base and the scalar (in the `endomorphisms` array)
   #    Or use Algorithm 3 from Faz et al which can encode the sign
   #    in the GLV representation at the low low price of 1 bit
+  block:
+    P0.cneg(negatePoints[0])
+    P1.cneg(negatePoints[1])
 
   # 4. Precompute lookup table
   var lut {.noInit.}: array[8, EC]

@@ -123,7 +123,7 @@ before_script:
     - export PATH="$PWD/nim-${CHANNEL}/bin${PATH:+:$PATH}"
 script:
     - nimble refresh
-    - nimble install gmp stew
+    - nimble install -y gmp stew serialization json_serialization
     # Installing Clang9.0 or later is a pain in Travis
     # for inline assembly "flag output constraint"
     # Also MacOS build is timing out with 2 series of tests.

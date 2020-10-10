@@ -175,7 +175,7 @@ proc scalarMulGenericBench*(T: typedesc, window: static int, iters: int) =
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
-  bench("EC ScalarMul Generic " & G1_or_G2 & " (window = " & $window & ", scratchsize = " & $(1 shl window) & ')', T, iters):
+  bench("EC ScalarMul " & $bits & "-bit Generic " & G1_or_G2 & " (window = " & $window & ')', T, iters):
     r = P
     r.scalarMulGeneric(exponent, window)
 
@@ -188,7 +188,7 @@ proc scalarMulEndo*(T: typedesc, iters: int) =
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
-  bench("EC ScalarMul " & G1_or_G2 & " (endomorphism accelerated)", T, iters):
+  bench("EC ScalarMul " & $bits & "-bit " & G1_or_G2 & " (endomorphism accelerated)", T, iters):
     r = P
     r.scalarMulEndo(exponent)
 
@@ -201,7 +201,7 @@ proc scalarMulEndoWindow*(T: typedesc, iters: int) =
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
-  bench("EC ScalarMul Window-2 " & G1_or_G2 & " (endomorphism accelerated)", T, iters):
+  bench("EC ScalarMul " & $bits & "-bit " & G1_or_G2 & " (window-2, endomorphism accelerated)", T, iters):
     r = P
     when T.F is Fp:
       r.scalarMulGLV_m2w2(exponent)
@@ -217,6 +217,6 @@ proc scalarMulUnsafeDoubleAddBench*(T: typedesc, iters: int) =
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
-  bench("EC ScalarMul " & G1_or_G2 & " (unsafe reference DoubleAdd)", T, iters):
+  bench("EC ScalarMul " & $bits & "-bit " & G1_or_G2 & " (unsafe reference DoubleAdd)", T, iters):
     r = P
     r.unsafe_ECmul_double_add(exponent)

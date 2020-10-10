@@ -8,7 +8,6 @@
 
 import
   # Internals
-  ../../constantine/config/[common, curves],
   ../../constantine/arithmetic,
   ../../constantine/io/io_bigints
 
