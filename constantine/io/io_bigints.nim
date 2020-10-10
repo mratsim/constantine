@@ -407,7 +407,7 @@ func nativeEndianToHex(bytes: openarray[byte], order: static[Endianness]): strin
 #
 # ############################################################
 
-func fromHex*(T: type BigInt, s: string): T {.noInit.} =
+func fromHex*(a: var BigInt, s: string) =
   ## Convert a hex string to BigInt that can hold
   ## the specified number of bits
   ##
@@ -421,12 +421,26 @@ func fromHex*(T: type BigInt, s: string): T {.noInit.} =
   ## Can work at compile-time to declare curve moduli from their hex strings
 
   # 1. Convert to canonical uint
-  const canonLen = (T.bits + 8 - 1) div 8
+  const canonLen = (BigInt.bits + 8 - 1) div 8
   var bytes: array[canonLen, byte]
   hexToPaddedByteArray(s, bytes, bigEndian)
 
   # 2. Convert canonical uint to Big Int
-  result.fromRawUint(bytes, bigEndian)
+  a.fromRawUint(bytes, bigEndian)
+
+func fromHex*(T: type BigInt, s: string): T {.noInit.} =
+  ## Convert a hex string to BigInt that can hold
+  ## the specified number of bits
+  ##
+  ## For example `fromHex(BigInt[256], "0x123456")`
+  ##
+  ## Hex string is assumed big-endian
+  ##
+  ## This API is intended for configuration and debugging purposes
+  ## Do not pass secret or private data to it.
+  ##
+  ## Can work at compile-time to declare curve moduli from their hex strings
+  result.fromHex(s)
 
 func appendHex*(dst: var string, big: BigInt, order: static Endianness = bigEndian) =
   ## Append the BigInt hex into an accumulator

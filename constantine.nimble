@@ -114,7 +114,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
 
   # Elliptic curve arithmetic vs Sagemath
   ("tests/t_ec_frobenius.nim", false),
-  ("tests/t_ec_sage_bn254.nim", false),
+  ("tests/t_ec_sage_bn254_snarks.nim", false),
   ("tests/t_ec_sage_bls12_377.nim", false),
   ("tests/t_ec_sage_bls12_381.nim", false),
   # Edge cases highlighted by past bugs

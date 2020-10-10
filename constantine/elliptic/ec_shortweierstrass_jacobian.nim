@@ -383,7 +383,7 @@ func affineFromJacobian*[F; Tw](
   aff.y.prod(jac.y, invZ)
   aff.y.prod(jac.y, invZ2)
 
-func projectiveFromJacobian*[F; Tw](
+func jacobianFromAffine*[F; Tw](
        jac: var ECP_ShortW_Jac[F, Tw],
        aff: ECP_ShortW_Aff[F, Tw]) {.inline.} =
   jac.x = aff.x

@@ -8,7 +8,6 @@
 
 import
   ./io_bigints, ./io_fields, ./io_towers,
-  ../config/curves,
   ../arithmetic,
   ../towers,
   ../elliptic/[
