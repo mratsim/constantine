@@ -29,6 +29,9 @@ os.chdir(os.path.dirname(__file__))
 
 # Sage imports
 # ---------------------------------------------------------
+# Accelerate arithmetic by accepting probabilistic proofs
+from sage.structure.proof.all import arithmetic
+arithmetic(False)
 
 load('curves.sage')
 
