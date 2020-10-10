@@ -35,6 +35,12 @@ import
 # whether u = √-1 = i
 # or          √-2 or √-5
 
+func frobenius_map*(r: var Fp, a: Fp, k: static int = 1) {.inline.} =
+  ## Computes a^(p^k)
+  ## The p-power frobenius automorphism on 𝔽p
+  ## This is identity per Fermat's little theorem
+  r = a
+
 func frobenius_map*(r: var Fp2, a: Fp2, k: static int = 1) {.inline.} =
   ## Computes a^(p^k)
   ## The p-power frobenius automorphism on 𝔽p2
@@ -43,7 +49,15 @@ func frobenius_map*(r: var Fp2, a: Fp2, k: static int = 1) {.inline.} =
   else:
     r = a
 
-template mulCheckSparse[Fp2](a: var Fp2, b: Fp2) =
+template mulCheckSparse(a: var Fp, b: Fp) =
+  when b.isOne().bool:
+    discard
+  elif b.isZero().bool:
+    a.setZero()
+  else:
+    a *= b
+
+template mulCheckSparse(a: var Fp2, b: Fp2) =
   when b.c0.isOne().bool and b.c1.isZero().bool:
     discard
   elif b.c0.isZero().bool and b.c1.isOne().bool:
@@ -158,4 +172,9 @@ func frobenius_psi2*[PointG2](r: var PointG2, P: PointG2) =
   # QED
 
   r.x.mulCheckSparse frobPsiConst(PointG2.F.C, psipow=2, coefpow=2)
-  r.y.neg(r.y)
+  when PointG2.F is Fp:
+    discard
+  elif PointG2.F is Fp2:
+    r.y.neg(r.y)
+  else:
+    {.error: "Not implemented".}

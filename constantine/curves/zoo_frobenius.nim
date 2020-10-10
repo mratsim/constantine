@@ -12,7 +12,8 @@ import
   ./bls12_377_frobenius,
   ./bls12_381_frobenius,
   ./bn254_nogami_frobenius,
-  ./bn254_snarks_frobenius
+  ./bn254_snarks_frobenius,
+  ./bw6_761_frobenius
 
 {.experimental: "dynamicBindSym".}
 

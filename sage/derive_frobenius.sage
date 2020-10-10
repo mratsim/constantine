@@ -43,20 +43,26 @@ def fp2_to_hex(a):
     return '0x' + Integer(v[0]).hex() + ' + β * ' + '0x' + Integer(v[1]).hex()
 
 def field_to_nim(value, field, curve, prefix = "", comment_above = "", comment_right = ""):
+  result = '# ' + comment_above + '\n' if comment_above else ''
+  comment_right = ' # ' + comment_right if comment_right else ''
+
   if field == 'Fp2':
     v = vector(value)
-
-    result = '# ' + comment_above + '\n' if comment_above else ''
-    comment_right = ' # ' + comment_right if comment_right else ''
 
     result += inspect.cleandoc(f"""
       {prefix}Fp2[{curve}].fromHex( {comment_right}
         "0x{Integer(v[0]).hex()}",
         "0x{Integer(v[1]).hex()}"
       )""")
-    return result
+  elif field == 'Fp':
+    result += inspect.cleandoc(f"""
+      {prefix}Fp[{curve}].fromHex( {comment_right}
+        "0x{Integer(value).hex()}")
+      """)
   else:
-    raise newException(NotImplementedError)
+    raise NotImplementedError()
+
+  return result
 
 # Code generators
 # ---------------------------------------------------------
@@ -73,11 +79,12 @@ def genFrobeniusMapConstants(curve_name, curve_config):
     QNR_Fp = curve_config[curve_name]['tower']['QNR_Fp']
     Fp2.<beta> = Fp.extension(u^2 - QNR_Fp)
 
-  SNR = curve_config[curve_name]['tower']['SNR_Fp2']
   if g2field == 'Fp2':
+    SNR = curve_config[curve_name]['tower']['SNR_Fp2']
     cur = Fp2([1, 0])
     SNR = Fp2(SNR)
   else:
+    SNR = curve_config[curve_name]['tower']['SNR_Fp']
     cur = Fp(1)
     SNR = Fp(SNR)
 
@@ -113,7 +120,12 @@ def genFrobeniusMapConstants(curve_name, curve_config):
       arr += '# frobenius(2) -----------------------\n'
       arr += '['
 
-    val = FrobConst_map_list[i]*conjugate(FrobConst_map_list[i])
+    if g2field == 'Fp2':
+      val = FrobConst_map_list[i] * conjugate(FrobConst_map_list[i])
+    elif g2field == 'Fp':
+      val = FrobConst_map_list[i]^2
+    else:
+      raise NotImplementedError()
     arr += field_to_nim(val, g2field, curve_name, comment_right = f'norm(SNR)^((p-1)/{twdeg})^{i}')
 
     if i == twdeg - 1:
@@ -125,7 +137,12 @@ def genFrobeniusMapConstants(curve_name, curve_config):
       arr += '# frobenius(3) -----------------------\n'
       arr += '['
 
-    val = FrobConst_map_list[i]^2 * conjugate(FrobConst_map_list[i])
+    if g2field == 'Fp2':
+      val = FrobConst_map_list[i]^2 * conjugate(FrobConst_map_list[i])
+    elif g2field == 'Fp':
+      val = FrobConst_map_list[i]^3
+    else:
+      raise NotImplementedError()
     arr += field_to_nim(val, g2field, curve_name, comment_right = f'(SNR²)^((p-1)/{twdeg})^{i}')
 
     if i == twdeg - 1:
@@ -149,11 +166,12 @@ def genFrobeniusPsiConstants(curve_name, curve_config):
     QNR_Fp = curve_config[curve_name]['tower']['QNR_Fp']
     Fp2.<beta> = Fp.extension(u^2 - QNR_Fp)
 
-  SNR = curve_config[curve_name]['tower']['SNR_Fp2']
   if g2field == 'Fp2':
+    SNR = curve_config[curve_name]['tower']['SNR_Fp2']
     cur = Fp2([1, 0])
     SNR = Fp2(SNR)
   else:
+    SNR = curve_config[curve_name]['tower']['SNR_Fp']
     cur = Fp(1)
     SNR = Fp(SNR)
 
@@ -241,6 +259,9 @@ if __name__ == "__main__":
       str(Curves.keys())
     )
   else:
+    trace = Curves[curve]['field']['trace']
+    print(f'trace of Frobenius ({int(trace).bit_length()}-bit): 0x{Integer(trace).hex()}')
+
     FrobMap = genFrobeniusMapConstants(curve, Curves)
     FrobPsi = genFrobeniusPsiConstants(curve, Curves)
 
