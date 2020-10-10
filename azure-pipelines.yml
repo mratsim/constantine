@@ -29,7 +29,7 @@ strategy:
       VM: 'ubuntu-18.04'
       UCPU: amd64
       CHANNEL: devel
-      WEAVE_TEST_LANG: cpp
+      TEST_LANG: cpp
 
     # Deactivated for now, this is cross-compilation and tricky to get right
     # Linux_devel_32bit:
@@ -219,7 +219,7 @@ steps:
   - bash: |
       echo "PATH=${PATH}"
       nimble refresh
-      nimble install gmp stew
+      nimble install gmp stew serialization json_serialization
     displayName: 'Installing package and testing dependencies'
 
   - bash: |
