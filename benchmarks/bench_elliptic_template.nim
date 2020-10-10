@@ -175,7 +175,7 @@ proc scalarMulGenericBench*(T: typedesc, window: static int, iters: int) =
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
-  bench("EC ScalarMul " & $bits & "-bit Generic " & G1_or_G2 & " (window = " & $window & ')', T, iters):
+  bench("EC ScalarMul " & $bits & "-bit " & G1_or_G2 & " (window-" & $window & ", generic)", T, iters):
     r = P
     r.scalarMulGeneric(exponent, window)
 
