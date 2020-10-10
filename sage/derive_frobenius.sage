@@ -256,3 +256,18 @@ if __name__ == "__main__":
       f.write(FrobPsi)
 
     print(f'Successfully created {curve}_frobenius.nim')
+
+    print(inspect.cleandoc("""\n
+        For testing you can verify the following invariants:
+
+        Galbraith-Lin-Scott, 2008, Theorem 1
+        Fuentes-Castaneda et al, 2011, Equation (2)
+          ψ(ψ(P)) - t*ψ(P) + p*P == Infinity
+
+        Galbraith-Scott, 2008, Lemma 1
+        The cyclotomic polynomial with GΦ(ψ(P)) == Infinity
+        Hence for embedding degree k=12
+          ψ⁴(P) - ψ²(P) + P == Infinity
+        for embedding degree k=6
+          ψ²(P) - ψ(P) + P == Infinity
+      """))
