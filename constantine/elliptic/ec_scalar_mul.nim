@@ -12,6 +12,7 @@ import
   ../arithmetic,
   ../towers,
   ../io/io_bigints,
+  ../curves/zoo_glv,
   ./ec_endomorphism_accel
 
 # ############################################################
@@ -238,9 +239,9 @@ func scalarMul*[EC](
   ## Endomorphism acceleration requires:
   ## - Cofactor to be cleared
   ## - 0 <= scalar < curve order
-  ##   this will not automatically
+  ## Those will be assumed to maintain constant-time property
   when BigInt.bits <= EC.F.C.getCurveOrderBitwidth() and
-       EC.F.C in {BN254_Snarks, BLS12_377, BLS12_381}:
+       EC.F.C.hasEndomorphismAcceleration():
     when EC.F is Fp:
       P.scalarMulGLV_m2w2(scalar)
     elif EC.F is Fp2:

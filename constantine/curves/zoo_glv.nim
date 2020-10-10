@@ -12,7 +12,7 @@ import
   ../towers,
   ./bls12_377_glv,
   ./bls12_381_glv,
-  # ./bn254_nogami_glv,
+  ./bn254_nogami_glv,
   ./bn254_snarks_glv
 
 {.experimental: "dynamicBindSym".}
@@ -35,3 +35,11 @@ template lattice*(F: typedesc[Fp or Fp2]): untyped =
 macro getCubicRootOfUnity_mod_p*(C: static Curve): untyped =
   ## Get a non-trivial cubic root of unity (mod p) with p the prime field
   result = bindSym($C & "_cubicRootOfUnity_mod_p")
+
+func hasEndomorphismAcceleration*(C: static Curve): bool =
+  C in {
+    BN254_Nogami,
+    BN254_Snarks,
+    BLS12_377,
+    BLS12_381
+  }

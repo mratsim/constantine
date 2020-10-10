@@ -33,7 +33,7 @@ const Iters = 10_000
 const MulIters = 500
 const AvailableCurves = [
   # P224,
-  # BN254_Nogami,
+  BN254_Nogami,
   BN254_Snarks,
   # Curve25519,
   # P256,
