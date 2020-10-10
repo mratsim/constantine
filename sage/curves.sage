@@ -57,6 +57,7 @@ Curves = {
   'BN254_Nogami': {
     'field': derive_BN_field(-(2^62 + 2^55 + 1)),
     'curve': {
+      'form': 'short_weierstrass',
       'a': 0,
       'b': 2
     },
@@ -71,6 +72,7 @@ Curves = {
   'BN254_Snarks': {
     'field': derive_BN_field(Integer('0x44e992b44a6909f1')),
     'curve': {
+      'form': 'short_weierstrass',
       'a': 0,
       'b': 3
     },
@@ -85,6 +87,7 @@ Curves = {
   'BLS12_377': {
     'field': derive_BLS12_field(3 * 2^46 * (7 * 13 * 499) + 1),
     'curve': {
+      'form': 'short_weierstrass',
       'a': 0,
       'b': 1
     },
@@ -99,6 +102,7 @@ Curves = {
   'BLS12_381': {
     'field': derive_BLS12_field(-(2^63 + 2^62 + 2^60 + 2^57 + 2^48 + 2^16)),
     'curve': {
+      'form': 'short_weierstrass',
       'a': 0,
       'b': 4
     },

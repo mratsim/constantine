@@ -232,11 +232,11 @@ if __name__ == "__main__":
   curve = args.curve[0]
 
   if curve not in Curves:
-      raise ValueError(
-        curve +
-        ' is not one of the available curves: ' +
-        str(Curves.keys())
-      )
+    raise ValueError(
+      curve +
+      ' is not one of the available curves: ' +
+      str(Curves.keys())
+    )
   else:
     FrobMap = genFrobeniusMapConstants(curve, Curves)
     FrobPsi = genFrobeniusPsiConstants(curve, Curves)
