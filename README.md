@@ -51,7 +51,7 @@ The Nim language offers the following benefits for cryptography:
   - Obscure embedded devices with proprietary C compilers can be targeted.
   - WASM can be targeted.
 - Performance reachable in C is reachable in Nim, easily.
-- Rich type system: generics, dependent types, mutability-tracking and side-effect analysis, borrow-checking, distinct types (Miles != Meters, SecretBool != bool SecretWord != uint64).
+- Rich type system: generics, dependent types, mutability-tracking and side-effect analysis, borrow-checking, compiler enforced distinct types (Miles != Meters, SecretBool != bool and SecretWord != uint64).
 - Compile-time evaluation, including parsing hex string, converting them to BigInt or Finite Field elements and doing bigint operations.
 - Assembly support either inline or ``__attribute__((naked))`` or a simple `{.compile: "myasm.S".}` away
 - No GC if no GC-ed types are used (automatic memory management is set at the type level and optimized for latency/soft-realtime by default and can be totally deactivated).

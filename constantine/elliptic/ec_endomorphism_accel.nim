@@ -456,8 +456,8 @@ func w2TableIndex(glv: GLV_SAC, bit2: int, isNeg: var SecretBool): SecretWord {.
 func computeRecodedLength(bitWidth, window: int): int =
   # Strangely in the paper this doesn't depend
   # "m", the GLV decomposition dimension.
-  # lw = ⌈log2 r/w⌉+1+1 (a "+1" to handle negative mini scalars)
-  let lw = (bitWidth + window - 1) div window + 1 + 1
+  # lw = ⌈log2 r/w⌉+1 (optionally a second "+1" to handle negative mini scalars)
+  let lw = (bitWidth + window - 1) div window + 1
   result = (lw mod window) + lw
 
 func scalarMulGLV_m2w2*[scalBits; EC](
