@@ -219,7 +219,7 @@ steps:
   - bash: |
       echo "PATH=${PATH}"
       nimble refresh
-      nimble install gmp stew serialization json_serialization
+      nimble install -y gmp stew serialization json_serialization
     displayName: 'Installing package and testing dependencies'
 
   - bash: |
