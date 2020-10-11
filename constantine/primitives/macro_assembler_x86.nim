@@ -302,12 +302,11 @@ func getStrOffset(a: Assembler_x86, op: Operand): string =
        (op.desc.rm == ElemsInReg and op.kind == kFromArray):
     if op.offset == 0:
       return "(%" & $op.desc.asmId & ')'
-    if defined(gcc):
-      return $(op.offset * a.wordSize) & "+(%" & $op.desc.asmId & ')'
-    elif defined(clang):
-      return $(op.offset * a.wordSize) & "(%" & $op.desc.asmId & ')'
-    else:
-      error "Unconfigured compiler"
+    # GCC & Clang seemed to disagree on pointer indexing
+    # in the past and required different codegen
+    # if defined(gcc):
+    #   return $(op.offset * a.wordSize) & "+(%" & $op.desc.asmId & ')'
+    return $(op.offset * a.wordSize) & "(%" & $op.desc.asmId & ')'
   else:
     error "Unsupported: " & $op.desc.rm.ord
 
