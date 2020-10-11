@@ -52,7 +52,6 @@ func millerLoopGenericBLS12*[C](
      ) =
   ## Generic Miller Loop for BLS12 curve
   ## Computes f{u,Q}(P) with u the BLS curve parameter
-  # TODO: retrieve the curve parameter from the curve declaration
 
   # Boundary cases
   #   Loop start
@@ -146,9 +145,6 @@ func finalExpHard_BLS12*[C](f: var Fp12[C]) =
   #   https://eprint.iacr.org/2020/875.pdf
   #
   # p14: 3 Φ₁₂(p(x))/r(x) = (x−1)² (x+p) (x²+p²−1) + 3
-  #
-  # TODO: paper costs are 4Eₓ+Eₓ/₂+7M₁₂+S₁₂+F₁+F₂
-  #       so we have an extra cyclotomic squaring since we use 5Eₓ
   #
   # with
   # - Eₓ being f^x

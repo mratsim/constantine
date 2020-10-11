@@ -49,7 +49,6 @@ func millerLoopGenericBN*[C](
      ) =
   ## Generic Miller Loop for BN curves
   ## Computes f{6u+2,Q}(P) with u the BN curve parameter
-  # TODO: retrieve the curve parameter from the curve declaration
 
   # TODO - boundary cases
   #   Loop start

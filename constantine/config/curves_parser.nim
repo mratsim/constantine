@@ -22,7 +22,6 @@ import
 # - properly cross the compile-time -> runtime boundary
 # - avoid inlining large const arrays at the call site
 #   for example when using the `r2modP` constant in multiple overloads in the same module
-#   TODO: check that those constants use extern const to avoid duplication across modules
 
 type
   CurveFamily* = enum
@@ -352,9 +351,9 @@ macro declareCurves*(curves: untyped): untyped =
   ##   ...
   ## ]
   ##
-  ## TODO: Ensure that
-  ##       1. the modulus is not inlined at runtime to avoid codesize explosion.
-  ##       2. is not duplicated across compilation modules.
+  ## Ensure that
+  ##   1. the modulus is not inlined at runtime to avoid codesize explosion.
+  ##   2. is not duplicated across compilation modules.
 
   curves.expectKind(nnkStmtList)
   curvesDefinitions.parseCurveDecls(curves)

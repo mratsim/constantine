@@ -56,11 +56,6 @@ func decomposeEndo*[M, scalBits, L: static int](
   ##   - Conditional negate is about 10 cycles per Fp, on G2 projective we have 3 (coords) * 2 (Fp2) * 10 (cycles) ~= 60 cycles
   ##     We need to test the mini scalar, which is 65 bits so 2 Fp so about 2 cycles
   ##     and negate it as well.
-  ##
-  ## However solution 1 seems to cause issues (TODO)
-  ## with some of the BLS12-381 test cases (6 and 9)
-  ## - 0x5668a2332db27199dcfb7cbdfca6317c2ff128db26d7df68483e0a095ec8e88f
-  ## - 0x644dc62869683f0c93f38eaef2ba6912569dc91ec2806e46b4a3dd6a4421dad1
 
   # Equal when no window or no negative handling, greater otherwise
   static: doAssert L >= (scalBits + M - 1) div M + 1

@@ -72,7 +72,7 @@ proc binary_prologue[C: static Curve, N: static int](
   doAssert len >= aW, "Expected at most " & $len & " bytes but wrote " & $aW & " for " & toHex(aBuf) & " (big-endian)"
   doAssert len >= bW, "Expected at most " & $len & " bytes but wrote " & $bW & " for " & toHex(bBuf) & " (big-endian)"
 
-  # Build the bigint - TODO more fields codecs
+  # Build the bigint
   aTest = Fp[C].fromBig BigInt[bits].fromRawUint(aBuf.toOpenArray(0, aW-1), bigEndian)
   bTest = Fp[C].fromBig BigInt[bits].fromRawUint(bBuf.toOpenArray(0, bW-1), bigEndian)
 

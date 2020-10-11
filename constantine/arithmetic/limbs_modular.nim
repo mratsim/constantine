@@ -107,8 +107,6 @@ func steinsGCD*(v: var Limbs, a: Limbs, F, M: Limbs, bits: int, mp1div2: Limbs) 
 
   # TODO: the inlining of primitives like `csub` is bad for codesize
   #       but there is a 80% slowdown without it.
-  # TODO: The `cmov` in `cadd` and `csub` always retest the condition
-  #       which is probably costly here given how many we have.
 
   var a = a
   var b = M

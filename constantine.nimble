@@ -142,7 +142,6 @@ const useDebug = [
 
 proc test(flags, path: string, commandFile = false) =
   # commandFile should be a "file" but Nimscript doesn't support IO
-  # TODO: use a proper runner
   if not dirExists "build":
     mkDir "build"
   # Compilation language is controlled by WEAVE_TEST_LANG

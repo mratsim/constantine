@@ -86,7 +86,6 @@ func trySetFromCoordsXandZ*[F; Tw](
   ## Note: Dedicated robust procedures for hashing-to-curve
   ##       will be provided, this is intended for testing purposes.
   P.y.curve_eq_rhs(x, Tw)
-  # TODO: supports non p ≡ 3 (mod 4) modulus like BLS12-377
   result = sqrt_if_square(P.y)
 
   P.x.prod(x, z)
@@ -107,7 +106,6 @@ func trySetFromCoordX*[F; Tw](
   ## Note: Dedicated robust procedures for hashing-to-curve
   ##       will be provided, this is intended for testing purposes.
   P.y.curve_eq_rhs(x, Tw)
-  # TODO: supports non p ≡ 3 (mod 4) modulus like BLS12-377
   result = sqrt_if_square(P.y)
   P.x = x
   P.z.setOne()

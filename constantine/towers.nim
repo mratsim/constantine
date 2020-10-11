@@ -216,7 +216,6 @@ func `*=`*(a: var Fp4, _: typedesc[γ]) {.inline.} =
 
 func `*=`*(a: var Fp2, b: Fp) =
   ## Multiply an element of Fp2 by an element of Fp
-  # TODO: make generic and move to tower_field_extensions
   a.c0 *= b
   a.c1 *= b
 

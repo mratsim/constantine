@@ -36,8 +36,6 @@ func toHex*[EC](P: EC): string =
   ## CT:
   ##   - no leaks
   ##
-  ## TODO: only normalize and don't display the Z coordinate
-  ##
   ## This proc output may change format in the future
 
   var aff {.noInit.}: ECP_ShortW_Aff[EC.F, EC.Tw]
