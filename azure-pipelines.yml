@@ -197,6 +197,12 @@ steps:
     displayName: 'Set env variable (Posix)'
     condition: ne(variables['Agent.OS'], 'Windows_NT')
 
+  - bash: |
+      choco install msys2
+      pacman -S parallel mingw-w64-x86_64-gmp
+    displayName: 'Set up GNU Parallel & GMP (Windows)'
+    condition: eq(variables['Agent.OS'], 'Windows_NT')
+
   # GMP is preinstalled on Azure
   # - bash: |
   #     echo "PATH=${PATH}"
@@ -227,18 +233,9 @@ steps:
       export ucpu=${UCPU}
       nimble test_parallel
     displayName: 'Testing Constantine with Assembler and with GMP'
-    condition: ne(variables['Agent.OS'], 'Windows_NT')
 
   - bash: |
       echo "PATH=${PATH}"
       export ucpu=${UCPU}
       nimble test_parallel_no_assembler
     displayName: 'Testing Constantine without Assembler and with GMP'
-    condition: ne(variables['Agent.OS'], 'Windows_NT')
-
-  - bash: |
-      echo "PATH=${PATH}"
-      export ucpu=${UCPU}
-      nimble test_no_gmp
-    displayName: 'Testing the package (without GMP and ASM on Windows)'
-    condition: eq(variables['Agent.OS'], 'Windows_NT')
