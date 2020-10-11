@@ -286,6 +286,9 @@ func getStrOffset(a: Assembler_x86, op: Operand): string =
 
   # Beware GCC / Clang differences with array offsets
   # https://lists.llvm.org/pipermail/llvm-dev/2017-August/116202.html
+  # - 8+%rax works with GCC
+  # - 8%rax works with Clang
+  # - 8(%rax) works with both
 
   if op.desc.rm in {Mem, AnyRegOrMem, MemOffsettable, AnyMemOffImm, AnyRegMemImm}:
     # Directly accessing memory
