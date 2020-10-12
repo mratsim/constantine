@@ -98,18 +98,23 @@ const BLS12_381_FrobeniusMapCoefficients* = [
 # -----------------------------------------------------------------
 # BLS12_381 is a M-Twist: psi1_coef1 = (1/SNR)^((p-1)/6)
 
-# (1/SNR)^((p-1)/3)
+# (1/SNR)^(2(p-1)/6)
 const BLS12_381_FrobeniusPsi_psi1_coef2* = Fp2[BLS12_381].fromHex( 
   "0x0",
   "0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaad"
 )
-# (1/SNR)^((p-1)/2)
+# (1/SNR)^(3(p-1)/6)
 const BLS12_381_FrobeniusPsi_psi1_coef3* = Fp2[BLS12_381].fromHex( 
   "0x135203e60180a68ee2e9c448d77a2cd91c3dedd930b1cf60ef396489f61eb45e304466cf3e67fa0af1ee7b04121bdea2",
   "0x6af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09"
 )
-# norm((1/SNR))^((p-1)/3)
+# norm((1/SNR))^(2(p-1)/6)
 const BLS12_381_FrobeniusPsi_psi2_coef2* = Fp2[BLS12_381].fromHex( 
   "0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaac",
+  "0x0"
+)
+# norm((1/SNR))^(3(p-1)/6)
+const BLS12_381_FrobeniusPsi_psi2_coef3* = Fp2[BLS12_381].fromHex( 
+  "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaa",
   "0x0"
 )

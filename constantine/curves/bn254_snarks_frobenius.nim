@@ -98,18 +98,23 @@ const BN254_Snarks_FrobeniusMapCoefficients* = [
 # -----------------------------------------------------------------
 # BN254_Snarks is a D-Twist: psi1_coef1 = SNR^((p-1)/6)
 
-# SNR^((p-1)/3)
+# SNR^(2(p-1)/6)
 const BN254_Snarks_FrobeniusPsi_psi1_coef2* = Fp2[BN254_Snarks].fromHex( 
   "0x2fb347984f7911f74c0bec3cf559b143b78cc310c2c3330c99e39557176f553d",
   "0x16c9e55061ebae204ba4cc8bd75a079432ae2a1d0b7c9dce1665d51c640fcba2"
 )
-# SNR^((p-1)/2)
+# SNR^(3(p-1)/6)
 const BN254_Snarks_FrobeniusPsi_psi1_coef3* = Fp2[BN254_Snarks].fromHex( 
   "0x63cf305489af5dcdc5ec698b6e2f9b9dbaae0eda9c95998dc54014671a0135a",
   "0x7c03cbcac41049a0704b5a7ec796f2b21807dc98fa25bd282d37f632623b0e3"
 )
-# norm(SNR)^((p-1)/3)
+# norm(SNR)^(2(p-1)/6)
 const BN254_Snarks_FrobeniusPsi_psi2_coef2* = Fp2[BN254_Snarks].fromHex( 
   "0x30644e72e131a0295e6dd9e7e0acccb0c28f069fbb966e3de4bd44e5607cfd48",
+  "0x0"
+)
+# norm(SNR)^(3(p-1)/6)
+const BN254_Snarks_FrobeniusPsi_psi2_coef3* = Fp2[BN254_Snarks].fromHex( 
+  "0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd46",
   "0x0"
 )

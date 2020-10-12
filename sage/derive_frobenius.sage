@@ -88,18 +88,20 @@ def genFrobeniusMapConstants(curve_name, curve_config):
     cur = Fp(1)
     SNR = Fp(SNR)
 
+  halfK = embdeg//2
+
   print('\n----> Frobenius extension field constants <----\n')
   buf = inspect.cleandoc(f"""
       # Frobenius map - on extension fields
       # -----------------------------------------------------------------
 
-      # c = (SNR^((p-1)/{twdeg})^coef).
+      # c = (SNR^((p-1)/{halfK})^coef).
       # Then for frobenius(2): c  * conjugate(c)
       # And for frobenius(3):  c² * conjugate(c)
       const {curve_name}_FrobeniusMapCoefficients* = [
   """)
 
-  FrobConst_map = SNR^((p-1)/6)
+  FrobConst_map = SNR^((p-1)/halfK)
   FrobConst_map_list = []
 
   arr = ""
@@ -108,7 +110,7 @@ def genFrobeniusMapConstants(curve_name, curve_config):
     if i == 0:
       arr += '\n# frobenius(1) -----------------------\n'
       arr += '['
-    arr += field_to_nim(cur, g2field, curve_name, comment_right = f'SNR^((p-1)/{twdeg})^{i}')
+    arr += field_to_nim(cur, g2field, curve_name, comment_right = f'SNR^((p-1)/{halfK})^{i}')
     FrobConst_map_list.append(cur)
     cur *= FrobConst_map
     if i == twdeg - 1:
@@ -126,7 +128,7 @@ def genFrobeniusMapConstants(curve_name, curve_config):
       val = FrobConst_map_list[i]^2
     else:
       raise NotImplementedError()
-    arr += field_to_nim(val, g2field, curve_name, comment_right = f'norm(SNR)^((p-1)/{twdeg})^{i}')
+    arr += field_to_nim(val, g2field, curve_name, comment_right = f'norm(SNR)^((p-1)/{halfK})^{i}')
 
     if i == twdeg - 1:
       arr += ']'
@@ -143,7 +145,7 @@ def genFrobeniusMapConstants(curve_name, curve_config):
       val = FrobConst_map_list[i]^3
     else:
       raise NotImplementedError()
-    arr += field_to_nim(val, g2field, curve_name, comment_right = f'(SNR²)^((p-1)/{twdeg})^{i}')
+    arr += field_to_nim(val, g2field, curve_name, comment_right = f'(SNR²)^((p-1)/{halfK})^{i}')
 
     if i == twdeg - 1:
       arr += ']]'
@@ -175,6 +177,8 @@ def genFrobeniusPsiConstants(curve_name, curve_config):
     cur = Fp(1)
     SNR = Fp(SNR)
 
+  halfK = embdeg//2
+
   print('\n----> ψ (Psi) - Untwist-Frobenius-Twist Endomorphism constants <----\n')
   buf = inspect.cleandoc(f"""
       # ψ (Psi) - Untwist-Frobenius-Twist Endomorphisms on twisted curves
@@ -182,11 +186,11 @@ def genFrobeniusPsiConstants(curve_name, curve_config):
   """)
   buf += '\n'
   if twkind == 'D_Twist':
-    buf += f'# {curve_name} is a D-Twist: psi1_coef1 = SNR^((p-1)/{twdeg})\n\n'
+    buf += f'# {curve_name} is a D-Twist: psi1_coef1 = SNR^((p-1)/{halfK})\n\n'
     FrobConst_psi = SNR^((p-1)/twdeg)
     snrUsed = 'SNR'
   else:
-    buf += f'# {curve_name} is a M-Twist: psi1_coef1 = (1/SNR)^((p-1)/{twdeg})\n\n'
+    buf += f'# {curve_name} is a M-Twist: psi1_coef1 = (1/SNR)^((p-1)/{halfK})\n\n'
     FrobConst_psi = (1/SNR)^((p-1)/twdeg)
     snrUsed = '(1/SNR)'
 
@@ -196,13 +200,13 @@ def genFrobeniusPsiConstants(curve_name, curve_config):
   buf += field_to_nim(
     FrobConst_psi1_coef2, g2field, curve_name,
     prefix = f'const {curve_name}_FrobeniusPsi_psi1_coef2* = ',
-    comment_above = f'{snrUsed}^((p-1)/{twdeg//2})'
+    comment_above = f'{snrUsed}^(2(p-1)/{halfK})'
   ) + '\n'
 
   buf += field_to_nim(
     FrobConst_psi1_coef3, g2field, curve_name,
     prefix = f'const {curve_name}_FrobeniusPsi_psi1_coef3* = ',
-    comment_above = f'{snrUsed}^((p-1)/{twdeg//3})'
+    comment_above = f'{snrUsed}^(3(p-1)/{halfK})'
   ) + '\n'
 
   FrobConst_psi2_coef2 = FrobConst_psi1_coef2 * FrobConst_psi1_coef2**p
@@ -210,9 +214,11 @@ def genFrobeniusPsiConstants(curve_name, curve_config):
   buf += field_to_nim(
     FrobConst_psi2_coef2, g2field, curve_name,
     prefix = f'const {curve_name}_FrobeniusPsi_psi2_coef2* = ',
-    comment_above = f'norm({snrUsed})^((p-1)/{twdeg//2})'
-  )
+    comment_above = f'norm({snrUsed})^(2(p-1)/{halfK})'
+  ) + '\n'
 
+  # For an embedding degree of 12
+  #
   # psi2_coef3 is always -1 (mod p^m) with m = embdeg/twdeg
   # Recap, with ξ (xi) the sextic non-residue
   # psi_2 = ((1/ξ)^((p-1)/6))^2 = (1/ξ)^((p-1)/3)
@@ -233,6 +239,17 @@ def genFrobeniusPsiConstants(curve_name, curve_config):
   #                           = ξ^((p²-1)/2)
   # And ξ^((p²-1)/2) ≡ -1 (mod p²)
   # So psi2_3 ≡ -1 (mod p²)
+  #
+  # For an embedding degree of 6
+  # We get norm(ξ)^(3(p-1)/3) which is 1 by Fermat's Little Theorem
+
+  FrobConst_psi2_coef3 = FrobConst_psi1_coef3 * FrobConst_psi1_coef3**p
+
+  buf += field_to_nim(
+    FrobConst_psi2_coef3, g2field, curve_name,
+    prefix = f'const {curve_name}_FrobeniusPsi_psi2_coef3* = ',
+    comment_above = f'norm({snrUsed})^(3(p-1)/{halfK})'
+  )
 
   return buf
 

@@ -360,7 +360,7 @@ suite "ψ²(P) - ψ(P) + P = Inf (k-th cyclotomic polynomial with embedding degr
       doAssert bool(r.isInf())
 
   proc testAll(EC: typedesc) =
-    test "ψ⁴(P) - ψ²(P) + P = Inf for " & $EC:
+    test "ψ²(P) - ψ(P) + P = Inf " & $EC:
       test(EC, randZ = false, gen = Uniform)
       test(EC, randZ = true, gen = Uniform)
       test(EC, randZ = false, gen = HighHammingWeight)

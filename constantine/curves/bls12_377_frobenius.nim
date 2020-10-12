@@ -98,18 +98,23 @@ const BLS12_377_FrobeniusMapCoefficients* = [
 # -----------------------------------------------------------------
 # BLS12_377 is a D-Twist: psi1_coef1 = SNR^((p-1)/6)
 
-# SNR^((p-1)/3)
+# SNR^(2(p-1)/6)
 const BLS12_377_FrobeniusPsi_psi1_coef2* = Fp2[BLS12_377].fromHex( 
   "0x9b3af05dd14f6ec619aaf7d34594aabc5ed1347970dec00452217cc900000008508c00000000002",
   "0x0"
 )
-# SNR^((p-1)/2)
+# SNR^(3(p-1)/6)
 const BLS12_377_FrobeniusPsi_psi1_coef3* = Fp2[BLS12_377].fromHex( 
   "0x1680a40796537cac0c534db1a79beb1400398f50ad1dec1bce649cf436b0f6299588459bff27d8e6e76d5ecf1391c63",
   "0x0"
 )
-# norm(SNR)^((p-1)/3)
+# norm(SNR)^(2(p-1)/6)
 const BLS12_377_FrobeniusPsi_psi2_coef2* = Fp2[BLS12_377].fromHex( 
   "0x9b3af05dd14f6ec619aaf7d34594aabc5ed1347970dec00452217cc900000008508c00000000001",
+  "0x0"
+)
+# norm(SNR)^(3(p-1)/6)
+const BLS12_377_FrobeniusPsi_psi2_coef3* = Fp2[BLS12_377].fromHex( 
+  "0x1ae3a4617c510eac63b05c06ca1493b1a22d9f300f5138f1ef3622fba094800170b5d44300000008508c00000000000",
   "0x0"
 )

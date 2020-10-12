@@ -26,7 +26,7 @@ import
 #
 # ############################################################
 
-func toHex*[EC](P: EC): string =
+func toHex*[EC: ECP_ShortW_Proj or ECP_ShortW_Jac or ECP_ShortW_Aff](P: EC): string =
   ## Stringify an elliptic curve point to Hex
   ## Note. Leading zeros are not removed.
   ## Result is prefixed with 0x

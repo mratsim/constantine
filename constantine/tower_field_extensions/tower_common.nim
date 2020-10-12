@@ -88,6 +88,15 @@ func isOne*(a: ExtensionField): SecretBool =
     else:
       result = result and fA.isZero()
 
+func isMinusOne*(a: ExtensionField): SecretBool =
+  ## Constant-time check if -1
+  result = CtTrue
+  for fieldName, fA in fieldPairs(a):
+    when fieldName == "c0":
+      result = result and fA.isMinusOne()
+    else:
+      result = result and fA.isZero()
+
 # Copies
 # -------------------------------------------------------------------
 

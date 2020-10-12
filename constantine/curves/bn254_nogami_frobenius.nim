@@ -98,18 +98,23 @@ const BN254_Nogami_FrobeniusMapCoefficients* = [
 # -----------------------------------------------------------------
 # BN254_Nogami is a D-Twist: psi1_coef1 = SNR^((p-1)/6)
 
-# SNR^((p-1)/3)
+# SNR^(2(p-1)/6)
 const BN254_Nogami_FrobeniusPsi_psi1_coef2* = Fp2[BN254_Nogami].fromHex( 
   "0x0",
   "0x25236482400000017080eb4000000006181800000000000cd98000000000000b"
 )
-# SNR^((p-1)/2)
+# SNR^(3(p-1)/6)
 const BN254_Nogami_FrobeniusPsi_psi1_coef3* = Fp2[BN254_Nogami].fromHex( 
   "0x23dfc9d1a39f4db8c69b87a8848aa075a7333a0e62d78cbf4b1b8eeae58b81c5",
   "0x23dfc9d1a39f4db8c69b87a8848aa075a7333a0e62d78cbf4b1b8eeae58b81c5"
 )
-# norm(SNR)^((p-1)/3)
+# norm(SNR)^(2(p-1)/6)
 const BN254_Nogami_FrobeniusPsi_psi2_coef2* = Fp2[BN254_Nogami].fromHex( 
   "0x49b36240000000024909000000000006cd80000000000007",
+  "0x0"
+)
+# norm(SNR)^(3(p-1)/6)
+const BN254_Nogami_FrobeniusPsi_psi2_coef3* = Fp2[BN254_Nogami].fromHex( 
+  "0x2523648240000001ba344d80000000086121000000000013a700000000000012",
   "0x0"
 )

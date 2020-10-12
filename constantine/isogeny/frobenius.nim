@@ -54,12 +54,16 @@ template mulCheckSparse(a: var Fp, b: Fp) =
     discard
   elif b.isZero().bool:
     a.setZero()
+  elif b.isMinusOne().bool:
+    a.neg()
   else:
     a *= b
 
 template mulCheckSparse(a: var Fp2, b: Fp2) =
-  when b.c0.isOne().bool and b.c1.isZero().bool:
+  when b.isOne().bool:
     discard
+  elif b.isMinusOne().bool:
+    a.neg()
   elif b.c0.isZero().bool and b.c1.isOne().bool:
     var t {.noInit.}: type(a.c0)
     when fromComplexExtension(b):
@@ -70,6 +74,16 @@ template mulCheckSparse(a: var Fp2, b: Fp2) =
       t = NonResidue * a.c1
       a.c1 = a.c0
       a.c0 = t
+  elif b.c0.isZero().bool and b.c1.isMinusOne().bool:
+    var t {.noInit.}: type(a.c0)
+    when fromComplexExtension(b):
+      t = a.c1
+      a.c1.neg(a.c0)
+      a.c0 = t
+    else:
+      t = NonResidue * a.c1
+      a.c1.neg(a.c0)
+      a.c0.neg(t)
   elif b.c0.isZero().bool:
     a.mul_sparse_by_0y(b)
   elif b.c1.isZero().bool:
@@ -141,6 +155,7 @@ func frobenius_psi2*[PointG2](r: var PointG2, P: PointG2) =
   for coordR, coordP in fields(r, P):
     coordR.frobenius_map(coordP, 2)
 
+  # For an embedding degree of 12
   # With ξ (xi) the sextic non-residue
   # c = ξ for D-Twist
   # c = (1/ξ) for M-Twist
@@ -172,9 +187,4 @@ func frobenius_psi2*[PointG2](r: var PointG2, P: PointG2) =
   # QED
 
   r.x.mulCheckSparse frobPsiConst(PointG2.F.C, psipow=2, coefpow=2)
-  when PointG2.F is Fp:
-    discard
-  elif PointG2.F is Fp2:
-    r.y.neg(r.y)
-  else:
-    {.error: "Not implemented".}
+  r.y.mulCheckSparse frobPsiConst(PointG2.F.C, psipow=2, coefpow=3)
