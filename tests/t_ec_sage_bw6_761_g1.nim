@@ -9,11 +9,16 @@
 import
   # Internals
   ../constantine/config/[type_fp, curves],
-  ../constantine/towers,
   ../constantine/elliptic/ec_shortweierstrass_jacobian,
   ../constantine/elliptic/ec_shortweierstrass_projective,
   # Test utilities
   ./t_ec_sage_template
+
+# When ECP_ShortW_Aff[Fp[Foo], NotOnTwist]
+# and ECP_ShortW_Aff[Fp[Foo], OnTwist]
+# are generated in the same file (i.e. twists and base curve are both on Fp)
+# this creates bad codegen, in the C code, the `value`parameter gets the wrong type
+# TODO: upstream
 
 run_scalar_mul_test_vs_sage(
   ECP_ShortW_Proj[Fp[BW6_761], NotOnTwist],

@@ -70,6 +70,27 @@ macro matchingScalar*(EC: type ECP_ShortW_Aff): untyped =
     bitwidth
   )
 
+macro matchingNonResidueType*(EC: type ECP_ShortW_Aff): untyped =
+  ## Workaround the annoying type system
+  ## 1. Higher-kinded type
+  ## 2. Computation in type section needs template or macro indirection
+  ## 3. Converting NimNode to typedesc
+  ##      https://github.com/nim-lang/Nim/issues/6785
+  let ec = EC.getTypeImpl()
+  doAssert ec[0].eqIdent"typedesc"
+  doAssert ec[1][0].eqIdent"ECP_ShortW_Aff"
+  ec[1][1].expectkind(nnkBracketExpr)
+  doAssert ($ec[1][1][0]).startsWith"Fp"
+
+  # int or array[2, int]
+  if ec[1][1][0].eqIdent"Fp":
+    return bindSym"int"
+  elif ec[1][1][0].eqIdent"Fp":
+    return nnkBracketExpr.newTree(
+      newLit 2,
+      bindSym"int"
+    )
+
 type
   TestVector*[EC: ECP_ShortW_Aff] = object
     id: int
@@ -115,7 +136,7 @@ type
     twist: string
     non_residue_fp: int
     G2_field: string
-    non_residue_twist: array[2, int]
+    non_residue_twist: matchingNonResidueType(EC) # int or array[2, int]
     # vectors ------------------
     vectors: seq[TestVector[EC]]
 
@@ -127,6 +148,11 @@ proc readValue*(reader: var JsonReader, value: var BigInt) =
   value.fromHex(reader.readValue(string))
 
 proc readValue*(reader: var JsonReader, value: var ECP_ShortW_Aff) =
+  # When ECP_ShortW_Aff[Fp[Foo], NotOnTwist]
+  # and ECP_ShortW_Aff[Fp[Foo], OnTwist]
+  # are generated in the same file (i.e. twists and base curve are both on Fp)
+  # this creates bad codegen, in the C code, the `value`parameter gets the wrong type
+  # TODO: upstream
   when ECP_ShortW_Aff.F is Fp:
     let P = reader.readValue(EC_G1_hex)
     let ok = value.fromHex(P.x, P.y)
