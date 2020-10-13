@@ -78,15 +78,18 @@ def genFrobeniusMapConstants(curve_name, curve_config):
   if g2field == 'Fp2':
     QNR_Fp = curve_config[curve_name]['tower']['QNR_Fp']
     Fp2.<beta> = Fp.extension(u^2 - QNR_Fp)
+  else:
+    SNR_Fp = curve_config[curve_name]['tower']['SNR_Fp']
+    Fp2.<beta> = Fp.extension(u^2 - SNR_Fp)
 
   if g2field == 'Fp2':
     SNR = curve_config[curve_name]['tower']['SNR_Fp2']
-    cur = Fp2([1, 0])
     SNR = Fp2(SNR)
   else:
-    SNR = curve_config[curve_name]['tower']['SNR_Fp']
-    cur = Fp(1)
-    SNR = Fp(SNR)
+    # To build the Fp6 extension, since we use a SexticNonResidue
+    # to build Fp2, we can reuse it as a cubic non-residue
+    # It always has [0, 1] coordinates in Fp2
+    SNR = Fp2([0, 1])
 
   halfK = embdeg//2
 
@@ -95,64 +98,58 @@ def genFrobeniusMapConstants(curve_name, curve_config):
       # Frobenius map - on extension fields
       # -----------------------------------------------------------------
 
-      # c = (SNR^((p-1)/{halfK})^coef).
-      # Then for frobenius(2): c  * conjugate(c)
-      # And for frobenius(3):  c² * conjugate(c)
+      # We start from base frobenius constant for a {embdeg} embedding degree.
+      # with
+      # - a sextic twist, SNR being the Sextic Non-Residue.
+      # - coef being the Frobenius coefficient "ID"
+      # c = SNR^((p-1)/{halfK})^coef
+      #
+      # On Fp2 frobenius(c) = conj(c) so we have
+      # For n=2, with n the number of Frobenius applications
+      # c2 = c * (c^p) = c * frobenius(c) = c * conj(c)
+      # c2 = (SNR * conj(SNR))^((p-1)/{halfK})^coef)
+      # c2 = (norm(SNR))^((p-1)/{halfK})^coef)
+      # For k=3
+      # c3 = c * c2^p = c * frobenius(c2) = c * conj(c2)
+      # with conj(norm(SNR)) = norm(SNR) as a norm is strictly on the base field.
+      # c3 = (SNR * norm(SNR))^((p-1)/{halfK})^coef)
+      #
+      # A more generic formula can be derieved by observing that
+      # c3 = c * c2^p = c * (c * c^p)^p
+      # c3 = c * c^p * c^p²
+      # with 4, we have
+      # c4 = c * c3^p = c * (c * c^p * c^p²)^p
+      # c4 = c * c^p * c^p² * c^p³
+      # with n we have
+      # cn = c * c^p * c^p² ... * c^p^(n-1)
+      # cn = c^(1+p+p² + ... + p^(n-1))
+      # This is the sum of first n terms of a geometric series
+      # hence cn = c^((p^n-1)/(p-1))
+      # We now expand c
+      # cn = SNR^((p-1)/{halfK})^coef^((p^n-1)/(p-1))
+      # cn = SNR^((p^n-1)/{halfK})^coef
+      # cn = SNR^(coef * (p^n-1)/{halfK})
+
       const {curve_name}_FrobeniusMapCoefficients* = [
   """)
 
-  FrobConst_map = SNR^((p-1)/halfK)
-  FrobConst_map_list = []
-
   arr = ""
+  maxN = 3 # We only need up to f^(p^3) in final exponentiation
 
-  for i in range(twdeg):
-    if i == 0:
-      arr += '\n# frobenius(1) -----------------------\n'
-      arr += '['
-    arr += field_to_nim(cur, g2field, curve_name, comment_right = f'SNR^((p-1)/{halfK})^{i}')
-    FrobConst_map_list.append(cur)
-    cur *= FrobConst_map
-    if i == twdeg - 1:
-      arr += ']'
-    arr += ',\n'
-
-  for i in range(twdeg):
-    if i == 0:
-      arr += '# frobenius(2) -----------------------\n'
-      arr += '['
-
-    if g2field == 'Fp2':
-      val = FrobConst_map_list[i] * conjugate(FrobConst_map_list[i])
-    elif g2field == 'Fp':
-      val = FrobConst_map_list[i]^2
-    else:
-      raise NotImplementedError()
-    arr += field_to_nim(val, g2field, curve_name, comment_right = f'norm(SNR)^((p-1)/{halfK})^{i}')
-
-    if i == twdeg - 1:
-      arr += ']'
-    arr += ',\n'
-
-  for i in range(twdeg):
-    if i == 0:
-      arr += '# frobenius(3) -----------------------\n'
-      arr += '['
-
-    if g2field == 'Fp2':
-      val = FrobConst_map_list[i]^2 * conjugate(FrobConst_map_list[i])
-    elif g2field == 'Fp':
-      val = FrobConst_map_list[i]^3
-    else:
-      raise NotImplementedError()
-    arr += field_to_nim(val, g2field, curve_name, comment_right = f'(SNR²)^((p-1)/{halfK})^{i}')
-
-    if i == twdeg - 1:
-      arr += ']]'
-    else:
-      arr += ',\n'
+  for n in range(1, maxN + 1):
+    for coef in range(halfK):
+      if coef == 0:
+        arr += f'\n# frobenius({n}) -----------------------\n'
+        arr += '['
+      frobmapcoef = SNR^(coef*((p^n-1)/halfK))
+      hatN = '^' + str(n) if n>1 else ''
+      arr += field_to_nim(frobmapcoef, 'Fp2', curve_name, comment_right = f'SNR^((p{hatN}-1)/{halfK})^{coef}')
+      if coef != halfK - 1:
+        arr += ',\n'
+    arr += '],\n'
 
   buf += textwrap.indent(arr, '  ')
+  buf += ']'
   return buf
 
 def genFrobeniusPsiConstants(curve_name, curve_config):
@@ -170,11 +167,9 @@ def genFrobeniusPsiConstants(curve_name, curve_config):
 
   if g2field == 'Fp2':
     SNR = curve_config[curve_name]['tower']['SNR_Fp2']
-    cur = Fp2([1, 0])
     SNR = Fp2(SNR)
   else:
     SNR = curve_config[curve_name]['tower']['SNR_Fp']
-    cur = Fp(1)
     SNR = Fp(SNR)
 
   halfK = embdeg//2
@@ -187,69 +182,59 @@ def genFrobeniusPsiConstants(curve_name, curve_config):
   buf += '\n'
   if twkind == 'D_Twist':
     buf += f'# {curve_name} is a D-Twist: psi1_coef1 = SNR^((p-1)/{halfK})\n\n'
-    FrobConst_psi = SNR^((p-1)/twdeg)
+    xi = SNR
     snrUsed = 'SNR'
   else:
     buf += f'# {curve_name} is a M-Twist: psi1_coef1 = (1/SNR)^((p-1)/{halfK})\n\n'
-    FrobConst_psi = (1/SNR)^((p-1)/twdeg)
+    xi = 1/SNR
     snrUsed = '(1/SNR)'
 
-  FrobConst_psi1_coef2 = FrobConst_psi^2
-  FrobConst_psi1_coef3 = FrobConst_psi1_coef2 * FrobConst_psi
+  maxPsi = CyclotomicField(embdeg).degree()
 
-  buf += field_to_nim(
-    FrobConst_psi1_coef2, g2field, curve_name,
-    prefix = f'const {curve_name}_FrobeniusPsi_psi1_coef2* = ',
-    comment_above = f'{snrUsed}^(2(p-1)/{halfK})'
-  ) + '\n'
+  for n in range(1, maxPsi+1):
+    for coef in range(2, 3+1):
+      # Same formula as FrobeniusMap constants
+      # except that we only need 2 coefs for elliptic curve twists
+      # and xi = SNR or 1/SNR depending on D-Twist or M-Twist respectively
+      frobpsicoef = xi^(coef*(p^n - 1)/halfK)
+      hatN = '^' + str(n) if n>1 else ''
+      buf += field_to_nim(
+        frobpsicoef, g2field, curve_name,
+        prefix = f'const {curve_name}_FrobeniusPsi_psi{n}_coef{coef}* = ',
+        comment_above = f'{snrUsed}^({coef}(p{hatN}-1)/{halfK})'
+      ) + '\n'
 
-  buf += field_to_nim(
-    FrobConst_psi1_coef3, g2field, curve_name,
-    prefix = f'const {curve_name}_FrobeniusPsi_psi1_coef3* = ',
-    comment_above = f'{snrUsed}^(3(p-1)/{halfK})'
-  ) + '\n'
+  buf += '\n'
 
-  FrobConst_psi2_coef2 = FrobConst_psi1_coef2 * FrobConst_psi1_coef2**p
-
-  buf += field_to_nim(
-    FrobConst_psi2_coef2, g2field, curve_name,
-    prefix = f'const {curve_name}_FrobeniusPsi_psi2_coef2* = ',
-    comment_above = f'norm({snrUsed})^(2(p-1)/{halfK})'
-  ) + '\n'
-
-  # For an embedding degree of 12
-  #
-  # psi2_coef3 is always -1 (mod p^m) with m = embdeg/twdeg
-  # Recap, with ξ (xi) the sextic non-residue
-  # psi_2 = ((1/ξ)^((p-1)/6))^2 = (1/ξ)^((p-1)/3)
-  # psi_3 = psi_2 * (1/ξ)^((p-1)/6) = (1/ξ)^((p-1)/3) * (1/ξ)^((p-1)/6) = (1/ξ)^((p-1)/2)
-  #
-  # Reminder, in 𝔽p2, frobenius(a) = a^p = conj(a)
-  # psi2_2 = psi_2 * psi_2^p = (1/ξ)^((p-1)/3) * (1/ξ)^((p-1)/3)^p = (1/ξ)^((p-1)/3) * frobenius((1/ξ))^((p-1)/3)
-  #        = norm(1/ξ)^((p-1)/3)
-  # psi2_3 = psi_3 * psi_3^p = (1/ξ)^((p-1)/2) * (1/ξ)^((p-1)/2)^p = (1/ξ)^((p-1)/2) * frobenius((1/ξ))^((p-1)/2)
-  #        = norm(1/ξ)^((p-1)/2)
-  #
-  # In Fp²:
-  # - quadratic non-residues respect the equation a^((p²-1)/2) ≡ -1 (mod p²) by the Legendre symbol
-  # - sextic non-residues are also quadratic non-residues so ξ^((p²-1)/2) ≡ -1 (mod p²)
-  # - QRT(1/a) = QRT(a) with QRT the quadratic residuosity test
-  #
-  # We have norm(ξ)^((p-1)/2) = (ξ*frobenius(ξ))^((p-1)/2) = (ξ*(ξ^p))^((p-1)/2) = ξ^(p+1)^(p-1)/2
-  #                           = ξ^((p²-1)/2)
-  # And ξ^((p²-1)/2) ≡ -1 (mod p²)
-  # So psi2_3 ≡ -1 (mod p²)
-  #
-  # For an embedding degree of 6
-  # We get norm(ξ)^(3(p-1)/3) which is 1 by Fermat's Little Theorem
-
-  FrobConst_psi2_coef3 = FrobConst_psi1_coef3 * FrobConst_psi1_coef3**p
-
-  buf += field_to_nim(
-    FrobConst_psi2_coef3, g2field, curve_name,
-    prefix = f'const {curve_name}_FrobeniusPsi_psi2_coef3* = ',
-    comment_above = f'norm({snrUsed})^(3(p-1)/{halfK})'
-  )
+  buf += inspect.cleandoc(f"""
+    # For an embedding degree of 12
+    #
+    # psi2_coef3 is always -1 (mod p^m) with m = embdeg/twdeg
+    # Recap, with ξ (xi) the sextic non-residue for D-Twist or 1/SNR for M-Twist
+    # psi_2 = ξ^((p-1)/6)^2 = ξ^((p-1)/3)
+    # psi_3 = psi_2 * ξ^((p-1)/6) = ξ^((p-1)/3) * ξ^((p-1)/6) = ξ^((p-1)/2)
+    #
+    # In Fp²:
+    # - quadratic non-residues respect the equation a^((p²-1)/2) ≡ -1 (mod p²) by the Legendre symbol
+    # - sextic non-residues are also quadratic non-residues so ξ^((p²-1)/2) ≡ -1 (mod p²)
+    # - QRT(1/a) = QRT(a) with QRT the quadratic residuosity test
+    #
+    # We have psi2_3 = psi_3 * psi_3^p = psi_3^(p+1)
+    #                = (ξ^(p-1)/2)^(p+1)
+    #                = ξ^((p-1)(p+1)/2)
+    #                = ξ^((p²-1)/2)
+    # And ξ^((p²-1)/2) ≡ -1 (mod p²) since ξ is a quadratic non-residue
+    # So psi2_3 ≡ -1 (mod p²)
+    #
+    #
+    # For an embedding degree of 6
+    #
+    # psi_2 = ξ^((p-1)/3)^2 = ξ^(2(p-1)/3)
+    # psi_3 = psi_2 * ξ^((p-1)/3) = ξ^(2(p-1)/3) * ξ^((p-1)/3) = ξ^(p-1)
+    #
+    # psi2_3 = psi_3^(p+1) = ξ^(p²-1) (mod p²)
+    # which is 1 by Fermat's Little Theorem
+  """)
 
   return buf
 
@@ -285,12 +270,24 @@ if __name__ == "__main__":
     with open(f'{curve.lower()}_frobenius.nim', 'w') as f:
       f.write(copyright())
       f.write('\n\n')
-      f.write(inspect.cleandoc("""
-        import
-          ../config/curves,
-          ../towers,
-          ../io/io_towers
-      """))
+
+      embdeg = Curves[curve]['tower']['embedding_degree']
+      twdeg = Curves[curve]['tower']['twist_degree']
+
+      if embdeg//twdeg >= 2:
+        f.write(inspect.cleandoc("""
+          import
+            ../config/curves,
+            ../towers,
+            ../io/io_towers
+        """))
+      else:
+        f.write(inspect.cleandoc("""
+          import
+            ../config/[curves, type_fp],
+            ../towers,
+            ../io/[io_fields, io_towers]
+        """))
       f.write('\n\n')
       f.write(FrobMap)
       f.write('\n\n')

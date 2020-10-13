@@ -243,6 +243,24 @@ func mul_sparse_generic_by_x0(r: var QuadraticExt, a, sparseB: QuadraticExt) =
   r.c0.prod(a.c0, b.c0)
   r.c1.prod(a.c1, b.c0)
 
+func mul_sparse_generic_by_0y(r: var QuadraticExt, a, sparseB: QuadraticExt) =
+  ## Multiply `a` by `b` with sparse coordinates (0, y)
+  ## On a generic quadratic extension field
+  # Algorithm (with β the non-residue in the base field)
+  #
+  # r0 = a0 b0 + β a1 b1
+  # r1 = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1 (Karatsuba)
+  #
+  # with b0 = 0, hence
+  #
+  # r0 = β a1 b1
+  # r1 = (a0 + a1) b1 - a1 b1 = a0 b1
+  template b(): untyped = sparseB
+
+  r.c0.prod(a.c1, b.c1)
+  r.c0 *= NonResidue
+  r.c1.prod(a.c0, b.c1)
+
 # Exported symbols
 # -------------------------------------------------------------------
 
@@ -339,7 +357,8 @@ func mul_sparse_by_0y*(a: var QuadraticExt, sparseB: QuadraticExt) {.inline.} =
     let t = a
     a.mul_sparse_complex_by_0y(t, sparseB)
   else:
-    {.error: "Not implemented".}
+    let t = a
+    a.mul_sparse_generic_by_0y(t, sparseB)
 
 func mul_sparse_by_x0*(a: var QuadraticExt, sparseB: QuadraticExt) {.inline.} =
   ## Sparse in-place multiplication

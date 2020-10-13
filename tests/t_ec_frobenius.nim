@@ -224,7 +224,7 @@ suite "ψ - psi(psi(P)) == psi2(P) - (Untwist-Frobenius-Twist Endomorphism)" & "
       Q1.frobenius_psi(Q1)
 
       var Q2 {.noInit.}: EC
-      Q2.frobenius_psi2(P)
+      Q2.frobenius_psi(P, 2)
 
       doAssert bool(Q1 == Q2), "\nIters: " & $i & "\n" &
         "P: " & P.toHex() & "\n" &
@@ -284,7 +284,7 @@ suite "ψ²(P) - [t]ψ(P) + [p]P = Inf" & " [" & $WordBitwidth & "-bit mode]":
 
       var r {.noInit.}, psi2 {.noInit.}, tpsi {.noInit.}, pP {.noInit.}: EC
 
-      psi2.frobenius_psi2(P)
+      psi2.frobenius_psi(P, 2)
       tpsi.frobenius_psi(P)
       tpsi.scalarMulGeneric(trace[0]) # Cofactor not cleared, invalid for GLS
       if trace[1]: # negative trace
@@ -322,8 +322,8 @@ suite "ψ⁴(P) - ψ²(P) + P = Inf (k-th cyclotomic polynomial with embedding d
 
       var r {.noInit.}, psi4 {.noInit.}, psi2 {.noInit.}: EC
 
-      psi2.frobenius_psi2(P)
-      psi4.frobenius_psi2(psi2)
+      psi2.frobenius_psi(P, 2)
+      psi4.frobenius_psi(P, 4)
       r.diff(psi4, psi2)
       r += P
 
@@ -352,7 +352,7 @@ suite "ψ²(P) - ψ(P) + P = Inf (k-th cyclotomic polynomial with embedding degr
 
       var r {.noInit.}, psi2 {.noInit.}, psi {.noInit.}: EC
 
-      psi2.frobenius_psi2(P)
+      psi2.frobenius_psi(P, 2)
       psi.frobenius_psi(P)
       r.diff(psi2, psi)
       r += P

@@ -93,6 +93,10 @@ macro get_CNR_Fp2*(C: static Curve): untyped =
   ##      if -2 is chosen as a quadratic non-residue 𝑗 = √-2
   result = bindSym($C & "_nonresidue_cube_fp2")
 
+macro getEmbeddingDegree*(C: static Curve): untyped =
+  ## Returns if D-Twist or M-Twist
+  result = bindSym($C & "_embedding_degree")
+
 macro getSexticTwist*(C: static Curve): untyped =
   ## Returns if D-Twist or M-Twist
   result = bindSym($C & "_sexticTwist")

@@ -86,6 +86,7 @@ declareCurves:
     nonresidue_quad_fp: -1       #      -1   is not a square in 𝔽p
     nonresidue_cube_fp2: (1, 1)  # 1+𝑖   1+𝑖  is not a cube in 𝔽p²
 
+    embedding_degree: 12
     sexticTwist: D_Twist
     sexticNonResidue_fp2: (1, 1) # 1+𝑖
 
@@ -105,6 +106,7 @@ declareCurves:
     nonresidue_quad_fp: -1       #      -1   is not a square in 𝔽p
     nonresidue_cube_fp2: (9, 1)  # 9+𝑖   9+𝑖  is not a cube in 𝔽p²
 
+    embedding_degree: 12
     sexticTwist: D_Twist
     sexticNonResidue_fp2: (9, 1) # 9+𝑖
 
@@ -137,6 +139,7 @@ declareCurves:
     nonresidue_quad_fp: -5       #      -5   is not a square in 𝔽p
     nonresidue_cube_fp2: (0, 1)  # √-5  √-5  is not a cube in 𝔽p²
 
+    embedding_degree: 12
     sexticTwist: D_Twist
     sexticNonResidue_fp2: (0, 1) # √-5
 
@@ -157,6 +160,7 @@ declareCurves:
     nonresidue_quad_fp: -1       #      -1   is not a square in 𝔽p
     nonresidue_cube_fp2: (1, 1)  # 1+𝑖   1+𝑖  is not a cube in 𝔽p²
 
+    embedding_degree: 12
     sexticTwist: M_Twist
     sexticNonResidue_fp2: (1, 1) # 1+𝑖
 
@@ -181,5 +185,6 @@ declareCurves:
     nonresidue_quad_fp: -4       # -4   is not a square in 𝔽p
     nonresidue_cube_fp2: (0, 1)  # -4   is not a cube in 𝔽p²
 
+    embedding_degree: 6
     sexticTwist: M_Twist
     sexticNonResidue_fp2: (0, 1)  # -4

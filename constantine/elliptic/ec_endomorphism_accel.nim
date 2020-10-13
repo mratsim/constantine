@@ -297,8 +297,8 @@ func scalarMulEndo*[scalBits; EC](
     # 1. Compute endomorphisms
     var endomorphisms {.noInit.}: array[M-1, typeof(P)]
     endomorphisms[0].frobenius_psi(P)
-    endomorphisms[1].frobenius_psi2(P)
-    endomorphisms[2].frobenius_psi(endomorphisms[1])
+    endomorphisms[1].frobenius_psi(P, 2)
+    endomorphisms[2].frobenius_psi(P, 3)
   else:
     {.error: "Unconfigured".}
 

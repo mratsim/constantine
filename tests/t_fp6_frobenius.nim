@@ -18,12 +18,12 @@ const TestCurves = [
     BN254_Snarks,
     BLS12_377,
     BLS12_381,
-    # BW6_761 - TODO frobenius_map needs the twist base degree
+    BW6_761
   ]
 
 runFrobeniusTowerTests(
-  ExtDegree =6,
-  Iters = 8,
+  ExtDegree = 6,
+  Iters = 1,
   TestCurves = TestCurves,
   moduleName = "test_fp6_frobenius",
   testSuiteDesc = "𝔽p6 Frobenius map: Frobenius(a, k) = a^(p^k) (mod p⁶)"
