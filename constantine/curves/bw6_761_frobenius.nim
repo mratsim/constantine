@@ -30,7 +30,7 @@ import
 # with conj(norm(SNR)) = norm(SNR) as a norm is strictly on the base field.
 # c3 = (SNR * norm(SNR))^((p-1)/3)^coef)
 #
-# A more generic formula can be derieved by observing that
+# A more generic formula can be derived by observing that
 # c3 = c * c2^p = c * (c * c^p)^p
 # c3 = c * c^p * c^p²
 # with 4, we have
@@ -95,16 +95,16 @@ const BW6_761_FrobeniusMapCoefficients* = [
 # BW6_761 is a M-Twist: psi1_coef1 = (1/SNR)^((p-1)/6)
 
 # (1/SNR)^(2(p-1)/6)
-const BW6_761_FrobeniusPsi_psi1_coef2* = Fp[BW6_761].fromHex( 
+const BW6_761_FrobeniusPsi_psi1_coef2* = Fp[BW6_761].fromHex(
   "0x531dc16c6ecd27aa846c61024e4cca6c1f31e53bd9603c2d17be416c5e4426ee4a737f73b6f952ab5e57926fa701848e0a235a0a398300c65759fc45183151f2f082d4dcb5e37cb6290012d96f8819c547ba8a4000002f962140000000002a")
 # (1/SNR)^(3(p-1)/6)
-const BW6_761_FrobeniusPsi_psi1_coef3* = Fp[BW6_761].fromHex( 
+const BW6_761_FrobeniusPsi_psi1_coef3* = Fp[BW6_761].fromHex(
   "0x122e824fb83ce0ad187c94004faff3eb926186a81d14688528275ef8087be41707ba638e584e91903cebaff25b423048689c8ed12f9fd9071dcd3dc73ebff2e98a116c25667a8f8160cf8aeeaf0a437e6913e6870000082f49d00000000008a")
 # (1/SNR)^(2(p^2-1)/6)
-const BW6_761_FrobeniusPsi_psi2_coef2* = Fp[BW6_761].fromHex( 
+const BW6_761_FrobeniusPsi_psi2_coef2* = Fp[BW6_761].fromHex(
   "0xcfca638f1500e327035cdf02acb2744d06e68545f7e64c256ab7ae14297a1a823132b971cdefc65870636cb60d217ff87fa59308c07a8fab8579e02ed3cddca5b093ed79b1c57b5fe3f89c11811c1e214983de300000535e7bc00000000060")
 # (1/SNR)^(3(p^2-1)/6)
-const BW6_761_FrobeniusPsi_psi2_coef3* = Fp[BW6_761].fromHex( 
+const BW6_761_FrobeniusPsi_psi2_coef3* = Fp[BW6_761].fromHex(
   "0x1")
 
 # For a sextic twist

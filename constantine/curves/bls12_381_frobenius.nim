@@ -30,7 +30,7 @@ import
 # with conj(norm(SNR)) = norm(SNR) as a norm is strictly on the base field.
 # c3 = (SNR * norm(SNR))^((p-1)/6)^coef)
 #
-# A more generic formula can be derieved by observing that
+# A more generic formula can be derived by observing that
 # c3 = c * c2^p = c * (c * c^p)^p
 # c3 = c * c^p * c^p²
 # with 4, we have
@@ -131,42 +131,42 @@ const BLS12_381_FrobeniusMapCoefficients* = [
 # BLS12_381 is a M-Twist: psi1_coef1 = (1/SNR)^((p-1)/6)
 
 # (1/SNR)^(2(p-1)/6)
-const BLS12_381_FrobeniusPsi_psi1_coef2* = Fp2[BLS12_381].fromHex( 
+const BLS12_381_FrobeniusPsi_psi1_coef2* = Fp2[BLS12_381].fromHex(
   "0x0",
   "0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaad"
 )
 # (1/SNR)^(3(p-1)/6)
-const BLS12_381_FrobeniusPsi_psi1_coef3* = Fp2[BLS12_381].fromHex( 
+const BLS12_381_FrobeniusPsi_psi1_coef3* = Fp2[BLS12_381].fromHex(
   "0x135203e60180a68ee2e9c448d77a2cd91c3dedd930b1cf60ef396489f61eb45e304466cf3e67fa0af1ee7b04121bdea2",
   "0x6af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09"
 )
 # (1/SNR)^(2(p^2-1)/6)
-const BLS12_381_FrobeniusPsi_psi2_coef2* = Fp2[BLS12_381].fromHex( 
+const BLS12_381_FrobeniusPsi_psi2_coef2* = Fp2[BLS12_381].fromHex(
   "0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaac",
   "0x0"
 )
 # (1/SNR)^(3(p^2-1)/6)
-const BLS12_381_FrobeniusPsi_psi2_coef3* = Fp2[BLS12_381].fromHex( 
+const BLS12_381_FrobeniusPsi_psi2_coef3* = Fp2[BLS12_381].fromHex(
   "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaa",
   "0x0"
 )
 # (1/SNR)^(2(p^3-1)/6)
-const BLS12_381_FrobeniusPsi_psi3_coef2* = Fp2[BLS12_381].fromHex( 
+const BLS12_381_FrobeniusPsi_psi3_coef2* = Fp2[BLS12_381].fromHex(
   "0x0",
   "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaa"
 )
 # (1/SNR)^(3(p^3-1)/6)
-const BLS12_381_FrobeniusPsi_psi3_coef3* = Fp2[BLS12_381].fromHex( 
+const BLS12_381_FrobeniusPsi_psi3_coef3* = Fp2[BLS12_381].fromHex(
   "0x6af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09",
   "0x135203e60180a68ee2e9c448d77a2cd91c3dedd930b1cf60ef396489f61eb45e304466cf3e67fa0af1ee7b04121bdea2"
 )
 # (1/SNR)^(2(p^4-1)/6)
-const BLS12_381_FrobeniusPsi_psi4_coef2* = Fp2[BLS12_381].fromHex( 
+const BLS12_381_FrobeniusPsi_psi4_coef2* = Fp2[BLS12_381].fromHex(
   "0x5f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffe",
   "0x0"
 )
 # (1/SNR)^(3(p^4-1)/6)
-const BLS12_381_FrobeniusPsi_psi4_coef3* = Fp2[BLS12_381].fromHex( 
+const BLS12_381_FrobeniusPsi_psi4_coef3* = Fp2[BLS12_381].fromHex(
   "0x1",
   "0x0"
 )

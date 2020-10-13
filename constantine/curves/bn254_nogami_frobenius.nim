@@ -30,7 +30,7 @@ import
 # with conj(norm(SNR)) = norm(SNR) as a norm is strictly on the base field.
 # c3 = (SNR * norm(SNR))^((p-1)/6)^coef)
 #
-# A more generic formula can be derieved by observing that
+# A more generic formula can be derived by observing that
 # c3 = c * c2^p = c * (c * c^p)^p
 # c3 = c * c^p * c^p²
 # with 4, we have
@@ -131,42 +131,42 @@ const BN254_Nogami_FrobeniusMapCoefficients* = [
 # BN254_Nogami is a D-Twist: psi1_coef1 = SNR^((p-1)/6)
 
 # SNR^(2(p-1)/6)
-const BN254_Nogami_FrobeniusPsi_psi1_coef2* = Fp2[BN254_Nogami].fromHex( 
+const BN254_Nogami_FrobeniusPsi_psi1_coef2* = Fp2[BN254_Nogami].fromHex(
   "0x0",
   "0x25236482400000017080eb4000000006181800000000000cd98000000000000b"
 )
 # SNR^(3(p-1)/6)
-const BN254_Nogami_FrobeniusPsi_psi1_coef3* = Fp2[BN254_Nogami].fromHex( 
+const BN254_Nogami_FrobeniusPsi_psi1_coef3* = Fp2[BN254_Nogami].fromHex(
   "0x23dfc9d1a39f4db8c69b87a8848aa075a7333a0e62d78cbf4b1b8eeae58b81c5",
   "0x23dfc9d1a39f4db8c69b87a8848aa075a7333a0e62d78cbf4b1b8eeae58b81c5"
 )
 # SNR^(2(p^2-1)/6)
-const BN254_Nogami_FrobeniusPsi_psi2_coef2* = Fp2[BN254_Nogami].fromHex( 
+const BN254_Nogami_FrobeniusPsi_psi2_coef2* = Fp2[BN254_Nogami].fromHex(
   "0x49b36240000000024909000000000006cd80000000000007",
   "0x0"
 )
 # SNR^(3(p^2-1)/6)
-const BN254_Nogami_FrobeniusPsi_psi2_coef3* = Fp2[BN254_Nogami].fromHex( 
+const BN254_Nogami_FrobeniusPsi_psi2_coef3* = Fp2[BN254_Nogami].fromHex(
   "0x2523648240000001ba344d80000000086121000000000013a700000000000012",
   "0x0"
 )
 # SNR^(2(p^3-1)/6)
-const BN254_Nogami_FrobeniusPsi_psi3_coef2* = Fp2[BN254_Nogami].fromHex( 
+const BN254_Nogami_FrobeniusPsi_psi3_coef2* = Fp2[BN254_Nogami].fromHex(
   "0x0",
   "0x1"
 )
 # SNR^(3(p^3-1)/6)
-const BN254_Nogami_FrobeniusPsi_psi3_coef3* = Fp2[BN254_Nogami].fromHex( 
+const BN254_Nogami_FrobeniusPsi_psi3_coef3* = Fp2[BN254_Nogami].fromHex(
   "0x1439ab09c60b248f398c5d77b755f92b9edc5f19d2873545be471151a747e4e",
   "0x1439ab09c60b248f398c5d77b755f92b9edc5f19d2873545be471151a747e4e"
 )
 # SNR^(2(p^4-1)/6)
-const BN254_Nogami_FrobeniusPsi_psi4_coef2* = Fp2[BN254_Nogami].fromHex( 
+const BN254_Nogami_FrobeniusPsi_psi4_coef2* = Fp2[BN254_Nogami].fromHex(
   "0x25236482400000017080eb4000000006181800000000000cd98000000000000b",
   "0x0"
 )
 # SNR^(3(p^4-1)/6)
-const BN254_Nogami_FrobeniusPsi_psi4_coef3* = Fp2[BN254_Nogami].fromHex( 
+const BN254_Nogami_FrobeniusPsi_psi4_coef3* = Fp2[BN254_Nogami].fromHex(
   "0x1",
   "0x0"
 )

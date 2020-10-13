@@ -114,7 +114,7 @@ def genFrobeniusMapConstants(curve_name, curve_config):
       # with conj(norm(SNR)) = norm(SNR) as a norm is strictly on the base field.
       # c3 = (SNR * norm(SNR))^((p-1)/{halfK})^coef)
       #
-      # A more generic formula can be derieved by observing that
+      # A more generic formula can be derived by observing that
       # c3 = c * c2^p = c * (c * c^p)^p
       # c3 = c * c^p * c^p²
       # with 4, we have
