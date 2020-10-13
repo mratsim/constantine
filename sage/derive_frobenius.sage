@@ -172,8 +172,6 @@ def genFrobeniusPsiConstants(curve_name, curve_config):
     SNR = curve_config[curve_name]['tower']['SNR_Fp']
     SNR = Fp(SNR)
 
-  halfK = embdeg//2
-
   print('\n----> ψ (Psi) - Untwist-Frobenius-Twist Endomorphism constants <----\n')
   buf = inspect.cleandoc(f"""
       # ψ (Psi) - Untwist-Frobenius-Twist Endomorphisms on twisted curves
@@ -181,11 +179,11 @@ def genFrobeniusPsiConstants(curve_name, curve_config):
   """)
   buf += '\n'
   if twkind == 'D_Twist':
-    buf += f'# {curve_name} is a D-Twist: psi1_coef1 = SNR^((p-1)/{halfK})\n\n'
+    buf += f'# {curve_name} is a D-Twist: psi1_coef1 = SNR^((p-1)/{twdeg})\n\n'
     xi = SNR
     snrUsed = 'SNR'
   else:
-    buf += f'# {curve_name} is a M-Twist: psi1_coef1 = (1/SNR)^((p-1)/{halfK})\n\n'
+    buf += f'# {curve_name} is a M-Twist: psi1_coef1 = (1/SNR)^((p-1)/{twdeg})\n\n'
     xi = 1/SNR
     snrUsed = '(1/SNR)'
 
@@ -194,46 +192,49 @@ def genFrobeniusPsiConstants(curve_name, curve_config):
   for n in range(1, maxPsi+1):
     for coef in range(2, 3+1):
       # Same formula as FrobeniusMap constants
-      # except that we only need 2 coefs for elliptic curve twists
-      # and xi = SNR or 1/SNR depending on D-Twist or M-Twist respectively
-      frobpsicoef = xi^(coef*(p^n - 1)/halfK)
+      # except that
+      # - we only need 2 coefs for elliptic curve twists
+      # - xi = SNR or 1/SNR depending on D-Twist or M-Twist respectively
+      # - the divisor is the twist degree isntead of half the embedding degree
+      frobpsicoef = xi^(coef*(p^n - 1)/twdeg)
       hatN = '^' + str(n) if n>1 else ''
       buf += field_to_nim(
         frobpsicoef, g2field, curve_name,
         prefix = f'const {curve_name}_FrobeniusPsi_psi{n}_coef{coef}* = ',
-        comment_above = f'{snrUsed}^({coef}(p{hatN}-1)/{halfK})'
+        comment_above = f'{snrUsed}^({coef}(p{hatN}-1)/{twdeg})'
       ) + '\n'
 
   buf += '\n'
 
   buf += inspect.cleandoc(f"""
-    # For an embedding degree of 12
+    # For a sextic twist
+    # - p ≡ 1 (mod 2)
+    # - p ≡ 1 (mod 3)
     #
     # psi2_coef3 is always -1 (mod p^m) with m = embdeg/twdeg
     # Recap, with ξ (xi) the sextic non-residue for D-Twist or 1/SNR for M-Twist
-    # psi_2 = ξ^((p-1)/6)^2 = ξ^((p-1)/3)
-    # psi_3 = psi_2 * ξ^((p-1)/6) = ξ^((p-1)/3) * ξ^((p-1)/6) = ξ^((p-1)/2)
+    # psi_2 ≡ ξ^((p-1)/6)^2 ≡ ξ^((p-1)/3)
+    # psi_3 ≡ psi_2 * ξ^((p-1)/6) ≡ ξ^((p-1)/3) * ξ^((p-1)/6) ≡ ξ^((p-1)/2)
     #
-    # In Fp²:
+    # In Fp² (i.e. embedding degree of 12, G2 on Fp2)
     # - quadratic non-residues respect the equation a^((p²-1)/2) ≡ -1 (mod p²) by the Legendre symbol
     # - sextic non-residues are also quadratic non-residues so ξ^((p²-1)/2) ≡ -1 (mod p²)
     # - QRT(1/a) = QRT(a) with QRT the quadratic residuosity test
     #
-    # We have psi2_3 = psi_3 * psi_3^p = psi_3^(p+1)
-    #                = (ξ^(p-1)/2)^(p+1)
-    #                = ξ^((p-1)(p+1)/2)
-    #                = ξ^((p²-1)/2)
+    # We have psi2_3 ≡ psi_3 * psi_3^p ≡ psi_3^(p+1)
+    #                ≡ (ξ^(p-1)/2)^(p+1) (mod p²)
+    #                ≡ ξ^((p-1)(p+1)/2) (mod p²)
+    #                ≡ ξ^((p²-1)/2) (mod p²)
     # And ξ^((p²-1)/2) ≡ -1 (mod p²) since ξ is a quadratic non-residue
     # So psi2_3 ≡ -1 (mod p²)
     #
     #
-    # For an embedding degree of 6
+    # In Fp (i.e. embedding degree of 6, G2 on Fp)
+    # - Fermat's Little Theorem gives us a^(p-1) ≡ 1 (mod p)
     #
-    # psi_2 = ξ^((p-1)/3)^2 = ξ^(2(p-1)/3)
-    # psi_3 = psi_2 * ξ^((p-1)/3) = ξ^(2(p-1)/3) * ξ^((p-1)/3) = ξ^(p-1)
-    #
-    # psi2_3 = psi_3^(p+1) = ξ^(p²-1) (mod p²)
-    # which is 1 by Fermat's Little Theorem
+    # psi2_3 ≡ ξ^((p-1)(p+1)/2) (mod p)
+    #        ≡ ξ^((p+1)/2)^(p-1) (mod p) as we have 2|p+1
+    #        ≡ 1 (mod p) by Fermat's Little Theorem
   """)
 
   return buf

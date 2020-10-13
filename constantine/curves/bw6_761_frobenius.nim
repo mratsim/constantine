@@ -92,45 +92,46 @@ const BW6_761_FrobeniusMapCoefficients* = [
 
 # ψ (Psi) - Untwist-Frobenius-Twist Endomorphisms on twisted curves
 # -----------------------------------------------------------------
-# BW6_761 is a M-Twist: psi1_coef1 = (1/SNR)^((p-1)/3)
+# BW6_761 is a M-Twist: psi1_coef1 = (1/SNR)^((p-1)/6)
 
-# (1/SNR)^(2(p-1)/3)
+# (1/SNR)^(2(p-1)/6)
 const BW6_761_FrobeniusPsi_psi1_coef2* = Fp[BW6_761].fromHex( 
-  "0xcfca638f1500e327035cdf02acb2744d06e68545f7e64c256ab7ae14297a1a823132b971cdefc65870636cb60d217ff87fa59308c07a8fab8579e02ed3cddca5b093ed79b1c57b5fe3f89c11811c1e214983de300000535e7bc00000000060")
-# (1/SNR)^(3(p-1)/3)
-const BW6_761_FrobeniusPsi_psi1_coef3* = Fp[BW6_761].fromHex( 
-  "0x1")
-# (1/SNR)^(2(p^2-1)/3)
-const BW6_761_FrobeniusPsi_psi2_coef2* = Fp[BW6_761].fromHex( 
   "0x531dc16c6ecd27aa846c61024e4cca6c1f31e53bd9603c2d17be416c5e4426ee4a737f73b6f952ab5e57926fa701848e0a235a0a398300c65759fc45183151f2f082d4dcb5e37cb6290012d96f8819c547ba8a4000002f962140000000002a")
-# (1/SNR)^(3(p^2-1)/3)
+# (1/SNR)^(3(p-1)/6)
+const BW6_761_FrobeniusPsi_psi1_coef3* = Fp[BW6_761].fromHex( 
+  "0x122e824fb83ce0ad187c94004faff3eb926186a81d14688528275ef8087be41707ba638e584e91903cebaff25b423048689c8ed12f9fd9071dcd3dc73ebff2e98a116c25667a8f8160cf8aeeaf0a437e6913e6870000082f49d00000000008a")
+# (1/SNR)^(2(p^2-1)/6)
+const BW6_761_FrobeniusPsi_psi2_coef2* = Fp[BW6_761].fromHex( 
+  "0xcfca638f1500e327035cdf02acb2744d06e68545f7e64c256ab7ae14297a1a823132b971cdefc65870636cb60d217ff87fa59308c07a8fab8579e02ed3cddca5b093ed79b1c57b5fe3f89c11811c1e214983de300000535e7bc00000000060")
+# (1/SNR)^(3(p^2-1)/6)
 const BW6_761_FrobeniusPsi_psi2_coef3* = Fp[BW6_761].fromHex( 
   "0x1")
 
-# For an embedding degree of 12
+# For a sextic twist
+# - p ≡ 1 (mod 2)
+# - p ≡ 1 (mod 3)
 #
 # psi2_coef3 is always -1 (mod p^m) with m = embdeg/twdeg
 # Recap, with ξ (xi) the sextic non-residue for D-Twist or 1/SNR for M-Twist
-# psi_2 = ξ^((p-1)/6)^2 = ξ^((p-1)/3)
-# psi_3 = psi_2 * ξ^((p-1)/6) = ξ^((p-1)/3) * ξ^((p-1)/6) = ξ^((p-1)/2)
+# psi_2 ≡ ξ^((p-1)/6)^2 ≡ ξ^((p-1)/3)
+# psi_3 ≡ psi_2 * ξ^((p-1)/6) ≡ ξ^((p-1)/3) * ξ^((p-1)/6) ≡ ξ^((p-1)/2)
 #
-# In Fp²:
+# In Fp² (i.e. embedding degree of 12, G2 on Fp2)
 # - quadratic non-residues respect the equation a^((p²-1)/2) ≡ -1 (mod p²) by the Legendre symbol
 # - sextic non-residues are also quadratic non-residues so ξ^((p²-1)/2) ≡ -1 (mod p²)
 # - QRT(1/a) = QRT(a) with QRT the quadratic residuosity test
 #
-# We have psi2_3 = psi_3 * psi_3^p = psi_3^(p+1)
-#                = (ξ^(p-1)/2)^(p+1)
-#                = ξ^((p-1)(p+1)/2)
-#                = ξ^((p²-1)/2)
+# We have psi2_3 ≡ psi_3 * psi_3^p ≡ psi_3^(p+1)
+#                ≡ (ξ^(p-1)/2)^(p+1) (mod p²)
+#                ≡ ξ^((p-1)(p+1)/2) (mod p²)
+#                ≡ ξ^((p²-1)/2) (mod p²)
 # And ξ^((p²-1)/2) ≡ -1 (mod p²) since ξ is a quadratic non-residue
 # So psi2_3 ≡ -1 (mod p²)
 #
 #
-# For an embedding degree of 6
+# In Fp (i.e. embedding degree of 6, G2 on Fp)
+# - Fermat's Little Theorem gives us a^(p-1) ≡ 1 (mod p)
 #
-# psi_2 = ξ^((p-1)/3)^2 = ξ^(2(p-1)/3)
-# psi_3 = psi_2 * ξ^((p-1)/3) = ξ^(2(p-1)/3) * ξ^((p-1)/3) = ξ^(p-1)
-#
-# psi2_3 = psi_3^(p+1) = ξ^(p²-1) (mod p²)
-# which is 1 by Fermat's Little Theorem
+# psi2_3 ≡ ξ^((p-1)(p+1)/2) (mod p)
+#        ≡ ξ^((p+1)/2)^(p-1) (mod p) as we have 2|p+1
+#        ≡ 1 (mod p) by Fermat's Little Theorem
