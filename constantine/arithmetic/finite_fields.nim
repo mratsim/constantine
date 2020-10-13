@@ -116,7 +116,7 @@ func isOne*(a: Fp): SecretBool {.inline.} =
   a.mres == Fp.C.getMontyOne()
 
 func isMinusOne*(a: Fp): SecretBool {.inline.} =
-  ## Constant-time check if one
+  ## Constant-time check if -1 (mod p)
   a.mres == Fp.C.getMontyPrimeMinus1()
 
 func setZero*(a: var Fp) {.inline.} =
