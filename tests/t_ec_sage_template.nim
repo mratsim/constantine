@@ -84,9 +84,10 @@ macro matchingNonResidueType*(EC: type ECP_ShortW_Aff): untyped =
 
   # int or array[2, int]
   if ec[1][1][0].eqIdent"Fp":
-    return bindSym"int"
-  elif ec[1][1][0].eqIdent"Fp":
-    return nnkBracketExpr.newTree(
+    result = bindSym"int"
+  elif ec[1][1][0].eqIdent"Fp2":
+    result = nnkBracketExpr.newTree(
+      bindSym"array",
       newLit 2,
       bindSym"int"
     )
