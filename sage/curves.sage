@@ -42,6 +42,27 @@ def derive_BLS12_field(x):
   }
   return params
 
+def derive_BW6_compose_BLS12_field(x, cofactor_trace, cofactor_y):
+  # Brezing-Weng input
+  r = (x^6 - 2*x^5 + 2*x^3 + x + 1) // 3 # BLS12 modulus
+
+  # 6-th root of unity output + cofactors
+  t = x^5 - 3*x^4 + 3*x^3 - x + 3 + cofactor_trace*r
+  y = (x^5 - 3*x^4 + 3*x^3 - x + 3)//3 + cofactor_y*r
+
+  # Curve parameters
+  p = (t^2 + 3*y^2)/4
+  trace = p+1-r # (3*y+t)/2
+
+  params = {
+    'param': x,
+    'modulus': p,
+    'order': r,
+    'trace': trace,
+    'family': 'BW6'
+  }
+  return params
+
 def copyright():
   return inspect.cleandoc("""
     # Constantine
@@ -111,6 +132,24 @@ Curves = {
       'twist_degree': 6,
       'QNR_Fp': -1,
       'SNR_Fp2': [1, 1],
+      'twist': 'M_Twist'
+    }
+  },
+  'BW6_761': {
+    'field': derive_BW6_compose_BLS12_field(
+        3 * 2^46 * (7 * 13 * 499) + 1,
+        cofactor_trace = 13,
+        cofactor_y = 9
+    ),
+    'curve': {
+      'form': 'short_weierstrass',
+      'a': 0,
+      'b': -1
+    },
+    'tower': {
+      'embedding_degree': 6,
+      'twist_degree': 6,
+      'SNR_Fp': -4,
       'twist': 'M_Twist'
     }
   }

@@ -13,7 +13,8 @@ import
   ./bls12_377_glv,
   ./bls12_381_glv,
   ./bn254_nogami_glv,
-  ./bn254_snarks_glv
+  ./bn254_snarks_glv,
+  ./bw6_761_glv
 
 {.experimental: "dynamicBindSym".}
 
@@ -41,5 +42,6 @@ func hasEndomorphismAcceleration*(C: static Curve): bool =
     BN254_Nogami,
     BN254_Snarks,
     BLS12_377,
-    BLS12_381
+    BLS12_381,
+    BW6_761
   }

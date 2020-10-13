@@ -54,7 +54,7 @@ def progressbar(it, prefix="", size=60, file=sys.stdout):
 def serialize_bigint(x):
   return '0x' + Integer(x).hex()
 
-def serialize_G1(P):
+def serialize_EC_Fp(P):
   (Px, Py, Pz) = P
   coords = {
     'x': serialize_bigint(Px),
@@ -62,7 +62,7 @@ def serialize_G1(P):
   }
   return coords
 
-def serialize_G2(P):
+def serialize_EC_Fp2(P):
   (Px, Py, Pz) = P
   Px = vector(Px)
   Py = vector(Py)
@@ -112,13 +112,12 @@ def genScalarMulG1(curve_name, curve_config, count, seed):
     scalar = randrange(r)
 
     P *= cofactor # clear cofactor
+    Q = scalar * P
 
     v['id'] = i
-    v['P'] = serialize_G1(P)
+    v['P'] = serialize_EC_Fp(P)
     v['scalar'] = serialize_bigint(scalar)
-
-    Q = scalar * P
-    v['Q'] = serialize_G1(Q)
+    v['Q'] = serialize_EC_Fp(Q)
     vectors.append(v)
 
   out['vectors'] = vectors
@@ -139,6 +138,12 @@ def genScalarMulG2(curve_name, curve_config, count, seed):
 
   if G2_field_degree == 2:
     non_residue_fp = curve_config[curve_name]['tower']['QNR_Fp']
+  elif G2_field_degree == 1:
+    if twist_degree == 6:
+      # Only for complete serialization
+      non_residue_fp = curve_config[curve_name]['tower']['SNR_Fp']
+    else:
+      raise NotImplementedError()
   else:
     raise NotImplementedError()
 
@@ -152,8 +157,13 @@ def genScalarMulG2(curve_name, curve_config, count, seed):
       non_residue_twist = curve_config[curve_name]['tower']['SNR_Fp2']
     else:
       raise NotImplementedError()
-  else:
+  elif G2_field == 'Fp':
     G2F = Fp
+    if twist_degree == 6:
+      non_residue_twist = curve_config[curve_name]['tower']['SNR_Fp']
+    else:
+      raise NotImplementedError()
+  else:
     raise NotImplementedError()
 
   if twist == 'D_Twist':
@@ -190,13 +200,17 @@ def genScalarMulG2(curve_name, curve_config, count, seed):
       scalar = randrange(r)
 
       P *= cofactor # clear cofactor
+      Q = scalar * P
 
       v['id'] = i
-      v['P'] = serialize_G2(P)
-      v['scalar'] = serialize_bigint(scalar)
-
-      Q = scalar * P
-      v['Q'] = serialize_G2(Q)
+      if G2_field == 'Fp2':
+        v['P'] = serialize_EC_Fp2(P)
+        v['scalar'] = serialize_bigint(scalar)
+        v['Q'] = serialize_EC_Fp2(Q)
+      elif G2_field == 'Fp':
+        v['P'] = serialize_EC_Fp(P)
+        v['scalar'] = serialize_bigint(scalar)
+        v['Q'] = serialize_EC_Fp(Q)
       vectors.append(v)
 
   out['vectors'] = vectors

@@ -15,7 +15,8 @@ import
   ../curves/zoo_glv,
   ../arithmetic,
   ../towers,
-  ../isogeny/frobenius
+  ../isogeny/frobenius,
+  ./ec_shortweierstrass_affine
 
 # ############################################################
 #
@@ -290,15 +291,19 @@ func scalarMulEndo*[scalBits; EC](
     const M = 2
     # 1. Compute endomorphisms
     var endomorphisms {.noInit.}: array[M-1, typeof(P)]
-    endomorphisms[0] = P
-    endomorphisms[0].x *= C.getCubicRootOfUnity_mod_p()
+    when P.Tw == NotOnTwist:
+      endomorphisms[0] = P
+      endomorphisms[0].x *= C.getCubicRootOfUnity_mod_p()
+    else:
+      endomorphisms[0].frobenius_psi(P, 2)
+
   elif P.F is Fp2:
     const M = 4
     # 1. Compute endomorphisms
     var endomorphisms {.noInit.}: array[M-1, typeof(P)]
     endomorphisms[0].frobenius_psi(P)
-    endomorphisms[1].frobenius_psi2(P)
-    endomorphisms[2].frobenius_psi(endomorphisms[1])
+    endomorphisms[1].frobenius_psi(P, 2)
+    endomorphisms[2].frobenius_psi(P, 3)
   else:
     {.error: "Unconfigured".}
 
@@ -475,8 +480,12 @@ func scalarMulGLV_m2w2*[scalBits; EC](
   static: doAssert: scalBits == C.getCurveOrderBitwidth()
 
   # 1. Compute endomorphisms
-  var P1 = P0
-  P1.x *= C.getCubicRootOfUnity_mod_p()
+  when P0.Tw == NotOnTwist:
+    var P1 = P0
+    P1.x *= C.getCubicRootOfUnity_mod_p()
+  else:
+    var P1 {.noInit.}: typeof(P0)
+    P1.frobenius_psi(P0, 2)
 
   # 2. Decompose scalar into mini-scalars
   const L = computeRecodedLength(C.getCurveOrderBitwidth(), 2)

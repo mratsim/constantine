@@ -31,7 +31,7 @@ func isSquare*[C](a: Fp[C]): SecretBool {.inline.} =
   #                 as we assume that
   var xi {.noInit.} = a # TODO: is noInit necessary? see https://github.com/mratsim/constantine/issues/21
   xi.powUnsafeExponent(C.getPrimeMinus1div2_BE())
-  result = not(xi.mres == C.getMontyPrimeMinus1())
+  result = not(xi.isMinusOne())
   # xi can be:
   # -  1  if a square
   # -  0  if 0
@@ -40,7 +40,7 @@ func isSquare*[C](a: Fp[C]): SecretBool {.inline.} =
     doAssert: bool(
       xi.isZero or
       xi.isOne or
-      xi.mres == C.getMontyPrimeMinus1()
+      xi.isMinusOne()
     )
 
 # Specialized routine for p ≡ 3 (mod 4)
@@ -91,7 +91,7 @@ func sqrt_invsqrt_if_square_p3mod4[C](sqrt, invsqrt: var Fp[C], a: Fp[C]): Secre
   sqrt_invsqrt_p3mod4(sqrt, invsqrt, a)
   var euler {.noInit.}: Fp[C]
   euler.prod(sqrt, invsqrt)
-  result = not(euler.mres == C.getMontyPrimeMinus1())
+  result = not(euler.isMinusOne())
 
 func sqrt_if_square_p3mod4[C](a: var Fp[C]): SecretBool {.inline.} =
   ## If ``a`` is a square, compute the square root of ``a``
@@ -131,7 +131,7 @@ func isSquare_tonelli_shanks[C](
   for _ in 0 ..< e-1:
     r.square()        # a^((q-1)/2)
 
-  result = not(r.mres == C.getMontyPrimeMinus1())
+  result = not(r.isMinusOne())
   # r can be:
   # -  1  if a square
   # -  0  if 0
@@ -140,7 +140,7 @@ func isSquare_tonelli_shanks[C](
     doAssert: bool(
       r.isZero or
       r.isOne or
-      r.mres == C.getMontyPrimeMinus1()
+      r.isMinusOne()
     )
 
 func sqrt_invsqrt_tonelli_shanks[C](

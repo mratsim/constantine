@@ -224,7 +224,7 @@ suite "ψ - psi(psi(P)) == psi2(P) - (Untwist-Frobenius-Twist Endomorphism)" & "
       Q1.frobenius_psi(Q1)
 
       var Q2 {.noInit.}: EC
-      Q2.frobenius_psi2(P)
+      Q2.frobenius_psi(P, 2)
 
       doAssert bool(Q1 == Q2), "\nIters: " & $i & "\n" &
         "P: " & P.toHex() & "\n" &
@@ -244,6 +244,7 @@ suite "ψ - psi(psi(P)) == psi2(P) - (Untwist-Frobenius-Twist Endomorphism)" & "
   testAll(ECP_ShortW_Proj[Fp2[BN254_Snarks], OnTwist])
   testAll(ECP_ShortW_Proj[Fp2[BLS12_377], OnTwist])
   testAll(ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist])
+  testAll(ECP_ShortW_Proj[Fp[BW6_761], OnTwist])
 
 suite "ψ²(P) - [t]ψ(P) + [p]P = Inf" & " [" & $WordBitwidth & "-bit mode]":
   const Iters = 10
@@ -266,6 +267,12 @@ suite "ψ²(P) - [t]ψ(P) + [p]P = Inf" & " [" & $WordBitwidth & "-bit mode]":
       # x = "-(2^63 + 2^62 + 2^60 + 2^57 + 2^48 + 2^16)"
       # t = x+1
       return (BigInt[64].fromHex"0xd20100000000ffff", true)
+    elif C == BW6_761:
+      # x = 3 * 2^46 * (7 * 13 * 499) + 1
+      # x = 0x8508c00000000001
+      # t = x^5 - 3*x^4 + 3*x^3 - x + 3 + cofactor_trace*r
+      # t = 0x15d8f58f3501dbec1ab2f9cb6145aeecb55fc0d440cb48f058490fb40986940170b5d44300000007467a800000000010
+      return (BigInt[381].fromHex"0x15d8f58f3501dbec1ab2f9cb6145aeecb55fc0d440cb48f058490fb40986940170b5d44300000007467a800000000010", false)
     else:
       {.error: "Not implemented".}
 
@@ -277,7 +284,7 @@ suite "ψ²(P) - [t]ψ(P) + [p]P = Inf" & " [" & $WordBitwidth & "-bit mode]":
 
       var r {.noInit.}, psi2 {.noInit.}, tpsi {.noInit.}, pP {.noInit.}: EC
 
-      psi2.frobenius_psi2(P)
+      psi2.frobenius_psi(P, 2)
       tpsi.frobenius_psi(P)
       tpsi.scalarMulGeneric(trace[0]) # Cofactor not cleared, invalid for GLS
       if trace[1]: # negative trace
@@ -304,6 +311,7 @@ suite "ψ²(P) - [t]ψ(P) + [p]P = Inf" & " [" & $WordBitwidth & "-bit mode]":
   testAll(ECP_ShortW_Proj[Fp2[BN254_Snarks], OnTwist])
   testAll(ECP_ShortW_Proj[Fp2[BLS12_377], OnTwist])
   testAll(ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist])
+  testAll(ECP_ShortW_Proj[Fp[BW6_761], OnTwist])
 
 suite "ψ⁴(P) - ψ²(P) + P = Inf (k-th cyclotomic polynomial with embedding degree k=12)" & " [" & $WordBitwidth & "-bit mode]":
   const Iters = 10
@@ -314,8 +322,8 @@ suite "ψ⁴(P) - ψ²(P) + P = Inf (k-th cyclotomic polynomial with embedding d
 
       var r {.noInit.}, psi4 {.noInit.}, psi2 {.noInit.}: EC
 
-      psi2.frobenius_psi2(P)
-      psi4.frobenius_psi2(psi2)
+      psi2.frobenius_psi(P, 2)
+      psi4.frobenius_psi(P, 4)
       r.diff(psi4, psi2)
       r += P
 
@@ -334,3 +342,30 @@ suite "ψ⁴(P) - ψ²(P) + P = Inf (k-th cyclotomic polynomial with embedding d
   testAll(ECP_ShortW_Proj[Fp2[BN254_Snarks], OnTwist])
   testAll(ECP_ShortW_Proj[Fp2[BLS12_377], OnTwist])
   testAll(ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist])
+
+suite "ψ²(P) - ψ(P) + P = Inf (k-th cyclotomic polynomial with embedding degree k=6)" & " [" & $WordBitwidth & "-bit mode]":
+  const Iters = 10
+
+  proc test(EC: typedesc, randZ: static bool, gen: static RandomGen) =
+    for i in 0 ..< Iters:
+      let P = rng.random_point(EC, randZ, gen)
+
+      var r {.noInit.}, psi2 {.noInit.}, psi {.noInit.}: EC
+
+      psi2.frobenius_psi(P, 2)
+      psi.frobenius_psi(P)
+      r.diff(psi2, psi)
+      r += P
+
+      doAssert bool(r.isInf())
+
+  proc testAll(EC: typedesc) =
+    test "ψ²(P) - ψ(P) + P = Inf " & $EC:
+      test(EC, randZ = false, gen = Uniform)
+      test(EC, randZ = true, gen = Uniform)
+      test(EC, randZ = false, gen = HighHammingWeight)
+      test(EC, randZ = true, gen = HighHammingWeight)
+      test(EC, randZ = false, gen = Long01Sequence)
+      test(EC, randZ = true, gen = Long01Sequence)
+
+  testAll(ECP_ShortW_Proj[Fp[BW6_761], OnTwist])

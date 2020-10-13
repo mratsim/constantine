@@ -35,6 +35,12 @@ import
 # whether u = √-1 = i
 # or          √-2 or √-5
 
+func frobenius_map*(r: var Fp, a: Fp, k: static int = 1) {.inline.} =
+  ## Computes a^(p^k)
+  ## The p-power frobenius automorphism on 𝔽p
+  ## This is identity per Fermat's little theorem
+  r = a
+
 func frobenius_map*(r: var Fp2, a: Fp2, k: static int = 1) {.inline.} =
   ## Computes a^(p^k)
   ## The p-power frobenius automorphism on 𝔽p2
@@ -43,9 +49,21 @@ func frobenius_map*(r: var Fp2, a: Fp2, k: static int = 1) {.inline.} =
   else:
     r = a
 
-template mulCheckSparse[Fp2](a: var Fp2, b: Fp2) =
-  when b.c0.isOne().bool and b.c1.isZero().bool:
+template mulCheckSparse(a: var Fp, b: Fp) =
+  when b.isOne().bool:
     discard
+  elif b.isZero().bool:
+    a.setZero()
+  elif b.isMinusOne().bool:
+    a.neg()
+  else:
+    a *= b
+
+template mulCheckSparse(a: var Fp2, b: Fp2) =
+  when b.isOne().bool:
+    discard
+  elif b.isMinusOne().bool:
+    a.neg()
   elif b.c0.isZero().bool and b.c1.isOne().bool:
     var t {.noInit.}: type(a.c0)
     when fromComplexExtension(b):
@@ -56,6 +74,16 @@ template mulCheckSparse[Fp2](a: var Fp2, b: Fp2) =
       t = NonResidue * a.c1
       a.c1 = a.c0
       a.c0 = t
+  elif b.c0.isZero().bool and b.c1.isMinusOne().bool:
+    var t {.noInit.}: type(a.c0)
+    when fromComplexExtension(b):
+      t = a.c1
+      a.c1.neg(a.c0)
+      a.c0 = t
+    else:
+      t = NonResidue * a.c1
+      a.c1.neg(a.c0)
+      a.c0.neg(t)
   elif b.c0.isZero().bool:
     a.mul_sparse_by_0y(b)
   elif b.c1.isZero().bool:
@@ -79,8 +107,15 @@ func frobenius_map*[C](r: var Fp6[C], a: Fp6[C], k: static int = 1) {.inline.} =
   r.c0.frobenius_map(a.c0, k)
   r.c1.frobenius_map(a.c1, k)
   r.c2.frobenius_map(a.c2, k)
-  r.c1.mulCheckSparse frobMapConst(C, 2, k)
-  r.c2.mulCheckSparse frobMapConst(C, 4, k)
+
+  when C.getEmbeddingDegree == 12:
+    r.c1.mulCheckSparse frobMapConst(C, 2, k)
+    r.c2.mulCheckSparse frobMapConst(C, 4, k)
+  elif C.getEmbeddingDegree == 6:
+    r.c1.mulCheckSparse frobMapConst(C, 1, k)
+    r.c2.mulCheckSparse frobMapConst(C, 2, k)
+  else:
+    {.error: "Not Implemented".}
 
 func frobenius_map*[C](r: var Fp12[C], a: Fp12[C], k: static int = 1) {.inline.} =
   ## Computes a^(p^k)
@@ -105,57 +140,11 @@ func frobenius_map*[C](r: var Fp12[C], a: Fp12[C], k: static int = 1) {.inline.}
 #   with SNR the sextic non-residue
 #
 
-func frobenius_psi*[PointG2](r: var PointG2, P: PointG2) =
-  ## "Untwist-Frobenius-Twist" endomorphism
+func frobenius_psi*[PointG2](r: var PointG2, P: PointG2, k: static int = 1) =
+  ## "Untwist-Frobenius-Twist" endomorphism applied k times
   ## r = ψ(P)
   for coordR, coordP in fields(r, P):
-    coordR.frobenius_map(coordP, 1)
+    coordR.frobenius_map(coordP, k)
 
-  # With ξ (xi) the sextic non-residue
-  # c = ξ^((p-1)/6) for D-Twist
-  # c = (1/ξ)^((p-1)/6) for M-Twist
-  #
-  # c1_2 = c²
-  # c1_3 = c³
-
-  r.x.mulCheckSparse frobPsiConst(PointG2.F.C, psipow=1, coefpow=2)
-  r.y.mulCheckSparse frobPsiConst(PointG2.F.C, psipow=1, coefpow=3)
-
-func frobenius_psi2*[PointG2](r: var PointG2, P: PointG2) =
-  ## "Untwist-Frobenius-Twist" endomorphism applied twice
-  ## r = ψ(ψ(P))
-  for coordR, coordP in fields(r, P):
-    coordR.frobenius_map(coordP, 2)
-
-  # With ξ (xi) the sextic non-residue
-  # c = ξ for D-Twist
-  # c = (1/ξ) for M-Twist
-  #
-  # frobenius(a) = conj(a) = a^p
-  #
-  # c1_2 = (c^((p-1)/6))² = c^((p-1)/3)
-  # c1_3 = (c^((p-1)/6))³ = c^((p-1)/2)
-  #
-  # c2_2 = c1_2 * frobenius(c1_2) = c^((p-1)/3) * c^((p-1)/3)^p
-  #      = c^((p-1)/3) * conj(c)^((p-1)/3)
-  #      = norm(c)^((p-1)/3)
-  #
-  # c2_3 = c1_3 * frobenius(c1_3) = c^((p-1)/2) * c^((p-1)/2)^p
-  #      = c^((p-1)/2) * conj(c)^((p-1)/2)
-  #      = norm(c)^((p-1)/2)
-  # We prove that c2_3 ≡ -1 (mod p²) with the following:
-  #
-  # - Whether c = ξ or c = (1/ξ), c is a quadratic non-residue (QNR) in 𝔽p2
-  #   because:
-  #   - ξ is quadratic non-residue as it is a sextic non-residue
-  #     by construction of the tower extension
-  #   - if a is QNR then 1/a is also a QNR
-  # - Then c^((p²-1)/2) ≡ -1 (mod p²) from the Legendre symbol in 𝔽p2
-  #
-  # c2_3 = c^((p-1)/2) * c^((p-1)/2)^p = c^((p+1)*(p-1)/2)
-  #      = c^((p²-1)/2)
-  # c2_3 ≡ -1 (mod p²)
-  # QED
-
-  r.x.mulCheckSparse frobPsiConst(PointG2.F.C, psipow=2, coefpow=2)
-  r.y.neg(r.y)
+  r.x.mulCheckSparse frobPsiConst(PointG2.F.C, psipow=k, coefpow=2)
+  r.y.mulCheckSparse frobPsiConst(PointG2.F.C, psipow=k, coefpow=3)

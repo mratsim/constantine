@@ -115,7 +115,7 @@ func millerLoopGenericBN*[C](
   line.line_add(T, V, P)
   f.mul(line)
 
-  V.frobenius_psi2(Q)
+  V.frobenius_psi(Q, 2)
   V.neg()
   line.line_add(T, V, P)
   f.mul(line)

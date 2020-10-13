@@ -116,12 +116,23 @@ def genCubicRootEndo(curve_name, curve_config):
   r = curve_config[curve_name]['field']['order']
   b = curve_config[curve_name]['curve']['b']
 
+  print('Constructing G1')
   Fp = GF(p)
   G1 = EllipticCurve(Fp, [0, b])
+  print('Computing cofactor')
   cofactor = G1.order() // r
 
-  (phi1, phi2) = (Fp(root) for root in Fp(1).nth_root(3, all=True) if root != 1)
-  (lambda1, lambda2) = (GF(r)(root) for root in GF(r)(1).nth_root(3, all=True) if root != 1)
+  # slow for large inputs - https://pari.math.u-bordeaux.fr/archives/pari-dev-0412/msg00020.html
+  if curve_name != 'BW6_761':
+    print('Finding cube roots')
+    (phi1, phi2) = (Fp(root) for root in Fp(1).nth_root(3, all=True) if root != 1)
+    (lambda1, lambda2) = (GF(r)(root) for root in GF(r)(1).nth_root(3, all=True) if root != 1)
+  else:
+    print('Skip finding cube roots for BW6_761, too slow, use values from paper https://eprint.iacr.org/2020/351')
+    phi1 = Integer('0x531dc16c6ecd27aa846c61024e4cca6c1f31e53bd9603c2d17be416c5e4426ee4a737f73b6f952ab5e57926fa701848e0a235a0a398300c65759fc45183151f2f082d4dcb5e37cb6290012d96f8819c547ba8a4000002f962140000000002a')
+    phi2 = Integer('0xcfca638f1500e327035cdf02acb2744d06e68545f7e64c256ab7ae14297a1a823132b971cdefc65870636cb60d217ff87fa59308c07a8fab8579e02ed3cddca5b093ed79b1c57b5fe3f89c11811c1e214983de300000535e7bc00000000060')
+    lambda1 = Integer('0x9b3af05dd14f6ec619aaf7d34594aabc5ed1347970dec00452217cc900000008508c00000000001')
+    lambda2 = Integer('-0x9b3af05dd14f6ec619aaf7d34594aabc5ed1347970dec00452217cc900000008508c00000000002')
 
   print('𝜑1 (mod p):  0x' + Integer(phi1).hex())
   print('λᵩ1 (mod r): 0x' + Integer(lambda1).hex())
@@ -149,9 +160,11 @@ def genCubicRootEndo(curve_name, curve_config):
     print('  𝜑 (mod p):  0x' + Integer(phi1).hex())
     print('  λᵩ (mod r): 0x' + Integer(lambda1).hex())
 
+  print('Deriving Lattice')
   lattice = derive_lattice(r, lambda1, 2)
   pretty_print_lattice(lattice)
 
+  print('Deriving Babai basis')
   babai = derive_babai(r, lattice, 2)
   pretty_print_babai(babai)
 
@@ -170,9 +183,11 @@ def genPsiEndo(curve_name, curve_config):
   # λψ is the trace of Frobenius - 1
   lambda_psi = t - 1
 
+  print('Deriving Lattice')
   lattice = derive_lattice(r, lambda_psi, m)
   pretty_print_lattice(lattice)
 
+  print('Deriving Babai basis')
   babai = derive_babai(r, lattice, m)
   pretty_print_babai(babai)
 

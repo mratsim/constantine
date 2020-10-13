@@ -61,7 +61,7 @@ proc runFrobeniusTowerTests*[N](
     ) =
   # Random seed for reproducibility
   var rng: RngState
-  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  let seed = 0 # uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
   rng.seed(seed)
   echo moduleName, " xoshiro512** seed: ", seed
 
@@ -77,6 +77,7 @@ proc runFrobeniusTowerTests*[N](
           check: bool(a == fa)
 
       staticFor(curve, TestCurves):
+        echo "    Frobenius(a) for ", $ExtField(ExtDegree, curve)
         test(ExtField(ExtDegree, curve), Iters, gen = Uniform)
         test(ExtField(ExtDegree, curve), Iters, gen = HighHammingWeight)
         test(ExtField(ExtDegree, curve), Iters, gen = Long01Sequence)
@@ -95,6 +96,7 @@ proc runFrobeniusTowerTests*[N](
             bool(a == fa)
 
       staticFor(curve, TestCurves):
+        echo "    Frobenius(a, 2) for ", $ExtField(ExtDegree, curve)
         test(ExtField(ExtDegree, curve), Iters, gen = Uniform)
         test(ExtField(ExtDegree, curve), Iters, gen = HighHammingWeight)
         test(ExtField(ExtDegree, curve), Iters, gen = Long01Sequence)
@@ -112,6 +114,7 @@ proc runFrobeniusTowerTests*[N](
           check: bool(a == fa)
 
       staticFor(curve, TestCurves):
+        echo "    Frobenius(a, 3) for ", $ExtField(ExtDegree, curve)
         test(ExtField(ExtDegree, curve), Iters, gen = Uniform)
         test(ExtField(ExtDegree, curve), Iters, gen = HighHammingWeight)
         test(ExtField(ExtDegree, curve), Iters, gen = Long01Sequence)
