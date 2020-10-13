@@ -24,8 +24,6 @@ import
   # Test utilities
   ../helpers/[prng_unsafe, static_for]
 
-import ../constantine/io/io_towers
-
 echo "\n------------------------------------------------------\n"
 
 template ExtField(degree: static int, curve: static Curve): untyped =
