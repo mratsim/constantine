@@ -43,16 +43,22 @@ def derive_BLS12_field(x):
   return params
 
 def derive_BW6_compose_BLS12_field(x, cofactor_trace, cofactor_y):
+  # Brezing-Weng input
   r = (x^6 - 2*x^5 + 2*x^3 + x + 1) // 3 # BLS12 modulus
+
+  # 6-th root of unity output + cofactors
   t = x^5 - 3*x^4 + 3*x^3 - x + 3 + cofactor_trace*r
   y = (x^5 - 3*x^4 + 3*x^3 - x + 3)//3 + cofactor_y*r
+
+  # Curve parameters
   p = (t^2 + 3*y^2)/4
+  trace = p+1-r # (3*y+t)/2
 
   params = {
     'param': x,
     'modulus': p,
     'order': r,
-    'trace': t,
+    'trace': trace,
     'family': 'BW6'
   }
   return params
