@@ -13,20 +13,20 @@ import
 # Slow generic implementation
 # ------------------------------------------------------------
 
-# 1st part: fu,Q(P)
+# 1st part: f_{u+1,Q}(P)
 const BW6_761_pairing_ate_param_1* = block:
-  # BW6 Miller loop first part is parametrized by u
+  # BW6 Miller loop first part is parametrized by u+1
   # +1 to bitlength so that we can mul by 3 for NAF encoding
-  BigInt[64+1].fromHex"0x8508c00000000001"
+  BigInt[64+1].fromHex"0x8508c00000000002"
 
-const BW6_761_pairing_ate_param_isNeg* = false
+const BW6_761_pairing_ate_param_1_isNeg* = false
 
 
-# 2nd part: f(u²-u-1),Q(P)
+# 2nd part: f_{u³-u²-u,Q}(P) followed by Frobenius application
 const BW6_761_pairing_ate_param_2* = block:
-  # BW6 Miller loop second part is parametrized by u²-u-1
+  # BW6 Miller loop second part is parametrized by u³-u²-u
   # +1 to bitlength so that we can mul by 3 for NAF encoding
-  BigInt[127+1].fromHex"0x452217cc900000008508bfffffffffff"
+  BigInt[190+1].fromHex"0x23ed1347970dec008a442f991fffffffffffffffffffffff"
 
 const BW6_761_pairing_ate_param_2_isNeg* = false
 

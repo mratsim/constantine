@@ -56,10 +56,14 @@ func millerLoopGenericBLS12*[C](
   var
     T {.noInit.}: ECP_ShortW_Prj[Fp2[C], OnTwist]
     line {.noInit.}: Line[Fp2[C]]
+    nQ{.noInit.}: typeof(Q)
+
+  T.projectiveFromAffine(Q)
+  nQ.neg(Q)
 
   basicMillerLoop(
     f, T, line,
-    P, Q,
+    P, Q, nQ,
     ate_param, ate_param_isNeg
   )
 

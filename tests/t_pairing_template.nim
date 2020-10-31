@@ -52,7 +52,7 @@ func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen)
       result = rng.random_long01Seq_with_randZ(EC)
       result.clearCofactorReference()
 
-template runPairingTests*(Iters: static int, C: static Curve, pairing_fn: untyped): untyped {.dirty.}=
+template runPairingTests*(Iters: static int, C: static Curve, G1, G2, GT: typedesc, pairing_fn: untyped): untyped {.dirty.}=
   var rng: RngState
   let timeseed = uint32(toUnix(getTime()) and (1'i64 shl 32 - 1)) # unixTime mod 2^32
   seed(rng, timeseed)
@@ -61,12 +61,12 @@ template runPairingTests*(Iters: static int, C: static Curve, pairing_fn: untype
 
   proc test_bilinearity_double_impl(randZ: bool, gen: RandomGen) =
     for _ in 0 ..< Iters:
-      let P = rng.random_point(ECP_ShortW_Prj[Fp[C], NotOnTwist], randZ, gen)
-      let Q = rng.random_point(ECP_ShortW_Prj[Fp2[C], OnTwist], randZ, gen)
+      let P = rng.random_point(G1, randZ, gen)
+      let Q = rng.random_point(G2, randZ, gen)
       var P2: typeof(P)
       var Q2: typeof(Q)
 
-      var r {.noInit.}, r2 {.noInit.}, r3 {.noInit.}: Fp12[C]
+      var r {.noInit.}, r2 {.noInit.}, r3 {.noInit.}: GT
 
       P2.double(P)
       Q2.double(Q)

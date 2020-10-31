@@ -13,5 +13,9 @@ import
   # Test utilities
   ./t_pairing_template
 
-# runPairingTests(4, BN254_Nogami, pairing_bn_reference)
-runPairingTests(4, BN254_Nogami, pairing_bn)
+runPairingTests(
+  4, BN254_Nogami,
+  G1 = ECP_ShortW_Proj[Fp[BN254_Nogami], NotOnTwist],
+  G2 = ECP_ShortW_Proj[Fp2[BN254_Nogami], OnTwist],
+  GT = Fp12[BN254_Nogami],
+  pairing_bn)
