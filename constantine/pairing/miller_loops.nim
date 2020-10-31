@@ -45,20 +45,20 @@ template basicMillerLoop*[FT, F1, F2](
   var u3 = pairing(C, ate_param)
   u3 *= 3
   for i in countdown(u3.bits - 2, 1):
-    f.square()
+    square(f)
     line_double(line, T, P)
 
-    f.mul(line)
+    mul(f, line)
 
-    let naf = u3.bit(i).int8 - u.bit(i).int8 # This can throw exception
+    let naf = bit(u3, i).int8 - bit(u, i).int8 # This can throw exception
     if naf == 1:
       line_add(line, T, Q, P)
-      f.mul(line)
+      mul(f, line)
     elif naf == -1:
       line_add(line, T, nQ, P)
-      f.mul(line)
+      mul(f, line)
 
   when pairing(C, ate_param_isNeg):
     # In GT, x^-1 == conjugate(x)
     # Remark 7.1, chapter 7.1.1 of Guide to Pairing-Based Cryptography, El Mrabet, 2017
-    f.conj()
+    conj(f)
