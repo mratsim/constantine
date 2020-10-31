@@ -193,12 +193,12 @@ task test, "Run all tests":
     else:
       test "", td.path
 
-  if sizeof(int) == 8: # 32-bit tests on 64-bit arch
-    for td in testDesc:
-      if td.path in useDebug:
-        test "-d:Constantine32 -d:debugConstantine", td.path
-      else:
-        test "-d:Constantine32", td.path
+  # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
+  #   for td in testDesc:
+  #     if td.path in useDebug:
+  #       test "-d:Constantine32 -d:debugConstantine", td.path
+  #     else:
+  #       test "-d:Constantine32", td.path
 
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
   if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
