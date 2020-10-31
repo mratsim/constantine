@@ -14,10 +14,10 @@ import
     ec_shortweierstrass_projective
   ],
   ../isogeny/frobenius,
-  ./lines_projective,
-  ./mul_fp12_by_lines,
+  ../curves/zoo_pairings,
   ./cyclotomic_fp12,
-  ../curves/zoo_pairings
+  ./lines_common,
+  ./miller_loops
 
 # ############################################################
 #
@@ -53,62 +53,15 @@ func millerLoopGenericBLS12*[C](
   ## Generic Miller Loop for BLS12 curve
   ## Computes f{u,Q}(P) with u the BLS curve parameter
 
-  # Boundary cases
-  #   Loop start
-  #     The litterature starts from both L-1 or L-2:
-  #     L-1:
-  #     - Scott2019, Pairing Implementation Revisited, Algorithm 1
-  #     - Aranha2010, Faster Explicit Formulas ..., Algorithm 1
-  #     L-2
-  #     - Beuchat2010, High-Speed Software Implementation ..., Algorithm 1
-  #     - Aranha2013, The Realm of The Pairings, Algorithm 1
-  #     - Costello, Thesis, Algorithm 2.1
-  #     - Costello2012, Pairings for Beginners, Algorithm 5.1
-  #
-  #     Even the guide to pairing based cryptography has both
-  #     Chapter 3: L-1 (Algorithm 3.1)
-  #     Chapter 11: L-2 (Algorithm 11.1) but it explains why L-2 (unrolling)
-  #  Loop end
-  #    - Some implementation, for example Beuchat2010 or the Guide to Pairing-Based Cryptography
-  #      have extra line additions after the main loop,
-  #      this is needed for BN curves.
-  #    - With r the order of G1 / G2 / GT,
-  #      we have [r]T = Inf
-  #      Hence, [r-1]T = -T
-  #      so either we use complete addition
-  #      or we special case line addition of T and -T (it's a vertical line)
-  #      or we ensure the loop is done for a number of iterations strictly less
-  #      than the curve order which is the case for BLS12 curves
   var
     T {.noInit.}: ECP_ShortW_Prj[Fp2[C], OnTwist]
     line {.noInit.}: Line[Fp2[C]]
-    nQ{.noInit.}: typeof(Q)
 
-  T.projectiveFromAffine(Q)
-  nQ.neg(Q)
-  f.setOne()
-
-  template u: untyped = C.pairing(ate_param)
-  var u3 = C.pairing(ate_param)
-  u3 *= 3
-  for i in countdown(u3.bits - 2, 1):
-    f.square()
-    line.line_double(T, P)
-
-    f.mul(line)
-
-    let naf = u3.bit(i).int8 - u.bit(i).int8 # This can throw exception
-    if naf == 1:
-      line.line_add(T, Q, P)
-      f.mul(line)
-    elif naf == -1:
-      line.line_add(T, nQ, P)
-      f.mul(line)
-
-  when C.pairing(ate_param_isNeg):
-    # In GT, x^-1 == conjugate(x)
-    # Remark 7.1, chapter 7.1.1 of Guide to Pairing-Based Cryptography, El Mrabet, 2017
-    f.conj()
+  basicMillerLoop(
+    f, T, line,
+    P, Q,
+    ate_param, ate_param_isNeg
+  )
 
 func finalExpGeneric[C: static Curve](f: var Fp12[C]) =
   ## A generic and slow implementation of final exponentiation
