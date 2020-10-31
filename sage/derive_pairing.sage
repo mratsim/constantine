@@ -50,6 +50,8 @@ def genAteParam(curve_name, curve_config):
   elif family == 'BN':
     ate_param = 6*u+2
     ate_comment = '  # BN Miller loop is parametrized by 6u+2\n'
+  elif family == 'BW6':
+    return genAteParam_BW6(curve_name, curve_config)
   else:
     raise ValueError(f'family: {family} is not implemented')
 
@@ -65,6 +67,51 @@ def genAteParam(curve_name, curve_config):
 
   buf += f'const {curve_name}_pairing_ate_param_isNeg* = {"true" if ate_param < 0 else "false"}'
 
+  return buf
+
+def genAteParam_BW6(curve_name, curve_config):
+  u = curve_config[curve_name]['field']['param']
+  family = curve_config[curve_name]['field']['family']
+  assert family == 'BW6'
+
+  # Algorithm 5 - https://eprint.iacr.org/2020/351.pdf
+  ate_param = u
+  ate_comment = '  # BW6 Miller loop first part is parametrized by u\n'
+  ate_comment_2 = '  # BW6 Miller loop second part is parametrized by u²-u-1\n'
+
+  # fu,Q(P)
+  # ---------------------------------------------------------
+  buf = '# 1st part: fu,Q(P)\n'
+  buf += f'const {curve_name}_pairing_ate_param_1* = block:\n'
+  buf += ate_comment
+
+  ate_bits = int(ate_param).bit_length()
+  naf_bits = int(3*ate_param).bit_length() - ate_bits
+
+  buf += f'  # +{naf_bits} to bitlength so that we can mul by 3 for NAF encoding\n'
+  buf += f'  BigInt[{ate_bits}+{naf_bits}].fromHex"0x{Integer(abs(ate_param)).hex()}"\n\n'
+
+  buf += f'const {curve_name}_pairing_ate_param_isNeg* = {"true" if ate_param < 0 else "false"}'
+
+  # f(u²-u-1),Q(P)
+  # ---------------------------------------------------------
+
+  buf += '\n\n\n'
+  buf += '# 2nd part: f(u²-u-1),Q(P)\n'
+  buf += f'const {curve_name}_pairing_ate_param_2* = block:\n'
+  buf += ate_comment_2
+
+  ate_param_2 = ate_param^2 - ate_param - 1
+
+  ate_2_bits = int(ate_param_2).bit_length()
+  naf_2_bits = int(3*ate_param_2).bit_length() - ate_2_bits
+
+  buf += f'  # +{naf_2_bits} to bitlength so that we can mul by 3 for NAF encoding\n'
+  buf += f'  BigInt[{ate_2_bits}+{naf_2_bits}].fromHex"0x{Integer(abs(ate_param_2)).hex()}"\n\n'
+
+  buf += f'const {curve_name}_pairing_ate_param_2_isNeg* = {"true" if ate_param_2 < 0 else "false"}'
+
+  buf += '\n'
   return buf
 
 def genFinalExp(curve_name, curve_config):
