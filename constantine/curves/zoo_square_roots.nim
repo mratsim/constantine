@@ -9,7 +9,7 @@
 import
   std/macros,
   ../config/curves,
-  ./bls12_377_square_root
+  ./bls12_377_sqrt
 
 {.experimental: "dynamicBindSym".}
 

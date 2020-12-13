@@ -24,11 +24,6 @@ import
 
 # Square root should be implemented in constant-time for hash-to-curve:
 # https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-05#section-4
-#
-# Further non-constant-time optimization may be used
-# - Square Root Computation over Even Extension Fields
-#   Gora Adj,  Francisco Rodríguez-Henríquez, 2012
-#   https://eprint.iacr.org/2012/685
 
 # No exceptions allowed
 {.push raises: [].}
@@ -194,83 +189,3 @@ func powUnsafeExponent*[F; bits: static int](
   var expBE {.noInit.}: array[(bits + 7) div 8, byte]
   expBE.exportRawUint(exponent, bigEndian)
   a.powUnsafeExponent(expBE, window)
-
-# Square root
-# -----------------------------------------------------------
-#
-# Warning ⚠️:
-#   p the characteristic, i.e. the prime modulus of the base field
-#   in extension field we require q = p^m be of special form
-#   i.e. q ≡ 3 (mod 4) or q ≡ 9 (mod 16)
-#
-#   In Fp2 in particular p² ≡ 1 (mod 4) always hold
-#   and p² ≡ 5 (mod 8) is not possible
-#   if Fp2 = Fp[v]/(v² − β) with β a quadratic non-residue in Fp
-
-func isSquare*(a: QuadraticExt): SecretBool =
-  ## Returns true if ``a`` is a square (quadratic residue) in 𝔽p2
-  ##
-  ## Assumes that the prime modulus ``p`` is public.
-  # Implementation:
-  #
-  # (a0, a1) = a in F(p^2)
-  # is_square(a) = is_square(|a|) over F(p)
-  # where |a| = a0^2 + a1^2
-  #
-  # This can be done recursively in an extension tower
-  #
-  # https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-08#appendix-G.5
-  # https://eprint.iacr.org/2012/685
-  mixin fromComplexExtension
-
-  var tv1{.noInit.}, tv2{.noInit.}: typeof(a.c0)
-
-  tv1.square(a.c0) #     a0²
-  tv2.square(a.c1) # - β a1² with β = 𝑖² in a complex extension field
-  when a.fromComplexExtension():
-    tv1 += tv2     # a0 - (-1) a1²
-  else:
-    tv2 *= NonResidue
-    tv1 -= tv2
-
-  result = tv1.isSquare()
-
-func sqrt_if_square*(a: var QuadraticExt): SecretBool =
-  ## If ``a`` is a square, compute the square root of ``a``
-  ## if not, ``a`` is unmodified.
-  ##
-  ## The square root, if it exist is multivalued,
-  ## i.e. both x² == (-x)²
-  ## This procedure returns a deterministic result
-  #
-  # Implementation via the complex method (which confusingly does not require a complex field)
-  # We make it constant-time via conditional copies
-  mixin fromComplexExtension
-
-  var t1{.noInit.}, t2{.noInit.}, t3{.noInit.}: typeof(a.c0)
-
-  t1.square(a.c0) #     a0²
-  t2.square(a.c1) # - β a1² with β = 𝑖² in a complex extension field
-  when a.fromComplexExtension():
-    t1 += t2    # a0 - (-1) a1²
-  else:
-    t2 *= NonResidue
-    t1 -= t2
-
-  result = t1.sqrt_if_square()
-
-  t2.sum(a.c0, t1)
-  t2.div2()
-
-  t3.diff(a.c0, t1)
-  t3.div2()
-
-  let quadResidTest = t2.isSquare()
-  t2.ccopy(t3, not quadResidTest)
-
-  sqrt_invsqrt(sqrt = t1, invsqrt = t3, t2)
-  a.c0.ccopy(t1, result)
-
-  t3.div2()
-  t3 *= a.c1
-  a.c1.ccopy(t3, result)
