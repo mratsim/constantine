@@ -89,9 +89,9 @@ func sqrt_invsqrt_if_square_p3mod4[C](sqrt, invsqrt: var Fp[C], a: Fp[C]): Secre
   ##
   ## This assumes that the prime field modulus ``p``: p ≡ 3 (mod 4)
   sqrt_invsqrt_p3mod4(sqrt, invsqrt, a)
-  var euler {.noInit.}: Fp[C]
-  euler.prod(sqrt, invsqrt)
-  result = not(euler.isMinusOne())
+  var test {.noInit.}: Fp[C]
+  test.square(sqrt)
+  result = test == a
 
 func sqrt_if_square_p3mod4[C](a: var Fp[C]): SecretBool {.inline.} =
   ## If ``a`` is a square, compute the square root of ``a``

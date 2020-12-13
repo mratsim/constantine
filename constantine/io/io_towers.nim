@@ -13,7 +13,9 @@ import
   # Internal
   ./io_bigints, ./io_fields,
   ../arithmetic/finite_fields,
-  ../towers
+  ../tower_field_extensions/tower_instantiation
+
+export tower_instantiation
 
 # No exceptions allowed
 {.push raises: [].}
