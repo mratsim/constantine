@@ -250,7 +250,7 @@ func cadd*(a: var Limbs, b: Limbs, ctl: SecretBool): Carry =
   result = t.add(b)
   a.ccopy(t, ctl)
 
-func cadd*(a: var Limbs, w: SecretWord, ctl: SecretBool): Borrow =
+func cadd*(a: var Limbs, w: SecretWord, ctl: SecretBool): Carry =
   ## Limbs conditional addition, sub a number that fits in a word
   ## Returns the borrow
   var t = a
