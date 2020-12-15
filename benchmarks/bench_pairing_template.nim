@@ -28,101 +28,23 @@ import
     pairing_bn
   ],
   # Helpers
-  ../helpers/[prng_unsafe, static_for],
-  ./platforms,
-  # Standard library
-  std/[monotimes, times, strformat, strutils, macros]
+  ../helpers/prng_unsafe,
+  ./bench_blueprint
 
-var rng: RngState
-let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
-rng.seed(seed)
-echo "bench xoshiro512** seed: ", seed
+export notes
+proc separator*() = separator(177)
 
-# warmup
-proc warmup*() =
-  # Warmup - make sure cpu is on max perf
-  let start = cpuTime()
-  var foo = 123
-  for i in 0 ..< 300_000_000:
-    foo += i*i mod 456
-    foo = foo mod 789
-
-  # Compiler shouldn't optimize away the results as cpuTime rely on sideeffects
-  let stop = cpuTime()
-  echo &"Warmup: {stop - start:>4.4f} s, result {foo} (displayed to avoid compiler optimizing warmup away)\n"
-
-warmup()
-
-when defined(gcc):
-  echo "\nCompiled with GCC"
-elif defined(clang):
-  echo "\nCompiled with Clang"
-elif defined(vcc):
-  echo "\nCompiled with MSVC"
-elif defined(icc):
-  echo "\nCompiled with ICC"
-else:
-  echo "\nCompiled with an unknown compiler"
-
-echo "Optimization level => "
-echo "  no optimization: ", not defined(release)
-echo "  release: ", defined(release)
-echo "  danger: ", defined(danger)
-echo "  inline assembly: ", UseASM_X86_64
-
-when (sizeof(int) == 4) or defined(Constantine32):
-  echo "⚠️ Warning: using Constantine with 32-bit limbs"
-else:
-  echo "Using Constantine with 64-bit limbs"
-
-when SupportsCPUName:
-  echo "Running on ", cpuName(), ""
-
-when SupportsGetTicks:
-  echo "\n⚠️ Cycles measurements are approximate and use the CPU nominal clock: Turbo-Boost and overclocking will skew them."
-  echo "i.e. a 20% overclock will be about 20% off (assuming no dynamic frequency scaling)"
-
-echo "\n=================================================================================================================\n"
-
-proc separator*() =
-  echo "-".repeat(177)
-
-proc report(op, curve: string, start, stop: MonoTime, startClk, stopClk: int64, iters: int) =
-  let ns = inNanoseconds((stop-start) div iters)
+proc report(op, curve: string, startTime, stopTime: MonoTime, startClk, stopClk: int64, iters: int) =
+  let ns = inNanoseconds((stopTime-startTime) div iters)
   let throughput = 1e9 / float64(ns)
   when SupportsGetTicks:
     echo &"{op:<60} {curve:<15} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
   else:
     echo &"{op:<60} {curve:<15} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
 
-proc notes*() =
-  echo "Notes:"
-  echo "  - Compilers:"
-  echo "    Compilers are severely limited on multiprecision arithmetic."
-  echo "    Constantine compile-time assembler is used by default (nimble bench_fp)."
-  echo "    GCC is significantly slower than Clang on multiprecision arithmetic due to catastrophic handling of carries."
-  echo "    GCC also seems to have issues with large temporaries and register spilling."
-  echo "    This is somewhat alleviated by Constantine compile-time assembler."
-  echo "    Bench on specific compiler with assembler: \"nimble bench_ec_g1_gcc\" or \"nimble bench_ec_g1_clang\"."
-  echo "    Bench on specific compiler with assembler: \"nimble bench_ec_g1_gcc_noasm\" or \"nimble bench_ec_g1_clang_noasm\"."
-  echo "  - The simplest operations might be optimized away by the compiler."
-  echo "  - Fast Squaring and Fast Multiplication are possible if there are spare bits in the prime representation (i.e. the prime uses 254 bits out of 256 bits)"
-
 template bench(op: string, C: static Curve, iters: int, body: untyped): untyped =
-  let start = getMonotime()
-  when SupportsGetTicks:
-    let startClk = getTicks()
-  for _ in 0 ..< iters:
-    body
-  when SupportsGetTicks:
-    let stopClk = getTicks()
-  let stop = getMonotime()
-
-  when not SupportsGetTicks:
-    let startClk = -1'i64
-    let stopClk = -1'i64
-
-  report(op, $C, start, stop, startClk, stopClk, iters)
+  measure(iters, startTime, stopTime, startClk, stopClk, body)
+  report(op, $C, startTime, stopTime, startClk, stopClk, iters)
 
 func random_point*(rng: var RngState, EC: typedesc): EC {.noInit.} =
   result = rng.random_unsafe(EC)

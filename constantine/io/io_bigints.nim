@@ -12,7 +12,8 @@
 
 import
   ../primitives/constant_time,
-  ../config/[common, type_bigint]
+  ../config/[common, type_bigint],
+  ./endians
 
 # ############################################################
 #
@@ -152,24 +153,17 @@ func fromUint*(
 #
 # ############################################################
 
-template toByte(x: SomeUnsignedInt): byte =
-  ## At compile-time, conversion to bytes checks the range
-  ## we want to ensure this is done at the register level
-  ## at runtime in a single "mov byte" instruction
-  when nimvm:
-    byte(x and 0xFF)
-  else:
-    byte(x)
-
 template blobFrom(dst: var openArray[byte], src: SomeUnsignedInt, startIdx: int, endian: static Endianness) =
   ## Write an integer into a raw binary blob
   ## Swapping endianness if needed
+  ## startidx is the first written array item if littleEndian is requested
+  ## or the last if bigEndian is requested
   when endian == cpuEndian:
     for i in 0 ..< sizeof(src):
-      dst[startIdx+i] = toByte((src shr (i * 8)))
+      dst[startIdx+i] = toByte(src shr (i * 8))
   else:
     for i in 0 ..< sizeof(src):
-      dst[startIdx+sizeof(src)-1-i] = toByte((src shr (i * 8)))
+      dst[startIdx+sizeof(src)-1-i] = toByte(src shr (i * 8))
 
 func exportRawUintLE(
         dst: var openarray[byte],

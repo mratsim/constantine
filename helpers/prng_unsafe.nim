@@ -364,6 +364,14 @@ func random_long01Seq_with_randZ*(rng: var RngState, T: typedesc[ECP_ShortW_Proj
   ## Skewed towards long bitstrings of 0 or 1
   rng.random_long01Seq_with_randZ(result)
 
+# Byte sequences
+# ------------------------------------------------------------
+
+func random_byte_seq*(rng: var RngState, length: int): seq[byte] =
+  result.newSeq(length)
+  for b in result.mitems:
+    b = byte rng.next()
+
 # Sanity checks
 # ------------------------------------------------------------
 

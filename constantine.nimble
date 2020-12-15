@@ -129,16 +129,39 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_pairing_bn254_snarks_optate.nim", false),
   ("tests/t_pairing_bls12_377_optate.nim", false),
   ("tests/t_pairing_bls12_381_optate.nim", false),
+
+  # Hashing vs OpenSSL
+  ("tests/t_hash_sha256_vs_openssl.nim", true),
 ]
 
 # For temporary (hopefully) investigation that can only be reproduced in CI
 const useDebug = [
-  "tests/t_bigints.nim"
+  "tests/t_bigints.nim",
+  "tests/t_hash_sha256_vs_openssl.nim",
 ]
+
+# Tests that uses sequences require Nim GC, stack scanning and nil pointer passed to openarray
+# In particular the tests that uses the json test vectors, don't sanitize them.
+# we do use gc:none to help
+const skipSanitizers = [
+  "tests/t_ec_sage_bn254_nogami.nim",
+  "tests/t_ec_sage_bn254_snarks.nim",
+  "tests/t_ec_sage_bls12_377.nim",
+  "tests/t_ec_sage_bls12_381.nim",
+]
+
+const sanitizers =
+  " --passC:-fsanitize=undefined --passL:-fsanitize=undefined" &
+  " --passC:-fno-sanitize-recover" & # Enforce crash on undefined behaviour
+  " --gc:none" # The conservative stack scanning of Nim default GC triggers, alignment UB and stack-buffer-overflow check.
+  # " --passC:-fsanitize=address --passL:-fsanitize=address" & # Requires too much stack for the inline assembly
 
 
 # Helper functions
 # ----------------------------------------------------------------
+
+proc clearParallelBuild() =
+  exec "> " & buildParallel
 
 proc test(flags, path: string, commandFile = false) =
   # commandFile should be a "file" but Nimscript doesn't support IO
@@ -153,6 +176,7 @@ proc test(flags, path: string, commandFile = false) =
   if existsEnv"CC":
     cc = " --cc:" & getEnv"CC"
 
+  var flags = flags & " --passC:-fstack-protector-all"
   let command = "nim " & lang & cc & " " & flags &
     " --verbosity:0 --outdir:build/testsuite -r --hints:off --warnings:off " &
     " --nimcache:nimcache/" & path & " " &
@@ -160,11 +184,10 @@ proc test(flags, path: string, commandFile = false) =
 
   if not commandFile:
     echo "\n=============================================================================================="
-    echo "Running [flags: ", flags, "] ", path
+    echo "Running [flags:", flags, "] ", path
     echo "=============================================================================================="
     exec command
   else:
-    # commandFile.writeLine command
     exec "echo \'" & command & "\' >> " & buildParallel
 
 proc runBench(benchName: string, compiler = "", useAsm = true) =
@@ -181,24 +204,29 @@ proc runBench(benchName: string, compiler = "", useAsm = true) =
        " --nimcache:nimcache/" & benchName & "_" & compiler & "_" & (if useAsm: "useASM" else: "noASM") &
        " -r --hints:off --warnings:off benchmarks/" & benchName & ".nim"
 
+proc runTests(requireGMP: bool, dumpCmdFile = false, test32bit = false, testASM = true) =
+  for td in testDesc:
+    if not(td.useGMP and not requireGMP):
+      var flags = ""
+      if not testASM:
+        flags &= " -d:ConstantineASM=false"
+      if test32bit:
+        flags &= " -d:Constantine32"
+      if td.path in useDebug:
+        flags &= " -d:debugConstantine"
+      if td.path notin skipSanitizers:
+        flags &= sanitizers
+      test flags, td.path, dumpCmdFile
+
 # Tasks
 # ----------------------------------------------------------------
 
 task test, "Run all tests":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
-
-  for td in testDesc:
-    if td.path in useDebug:
-      test "-d:debugConstantine", td.path
-    else:
-      test "", td.path
+  runTests(requireGMP = true)
 
   # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
-  #   for td in testDesc:
-  #     if td.path in useDebug:
-  #       test "-d:Constantine32 -d:debugConstantine", td.path
-  #     else:
-  #       test "-d:Constantine32", td.path
+  #   runTests(requireGMP = true, test32bit = true)
 
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
   if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
@@ -213,23 +241,14 @@ task test, "Run all tests":
     runBench("bench_pairing_bls12_381")
     runBench("bench_pairing_bn254_nogami")
     runBench("bench_pairing_bn254_snarks")
+    runBench("bench_sha256")
 
 task test_no_gmp, "Run tests that don't require GMP":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
-  for td in testDesc:
-    if not td.useGMP:
-      if td.path in useDebug:
-        test "-d:debugConstantine", td.path
-      else:
-        test "", td.path
+  runTests(requireGMP = false)
 
-  if sizeof(int) == 8: # 32-bit tests on 64-bit arch
-    for td in testDesc:
-      if not td.useGMP:
-        if td.path in useDebug:
-          test "-d:Constantine32 -d:debugConstantine", td.path
-        else:
-          test "-d:Constantine32", td.path
+  # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
+  #   runTests(requireGMP = true, test32bit = true)
 
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
   if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
@@ -243,31 +262,17 @@ task test_no_gmp, "Run tests that don't require GMP":
     runBench("bench_pairing_bls12_381")
     runBench("bench_pairing_bn254_nogami")
     runBench("bench_pairing_bn254_snarks")
+    runBench("bench_sha256")
 
 task test_parallel, "Run all tests in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
-  let cmdFile = true # open(buildParallel, mode = fmWrite) # Nimscript doesn't support IO :/
-  exec "> " & buildParallel
-
-  for td in testDesc:
-    if td.path in useDebug:
-      test "-d:debugConstantine", td.path, cmdFile
-    else:
-      test "", td.path, cmdFile
-
-  # cmdFile.close()
-  # Execute everything in parallel with GNU parallel
+  clearParallelBuild()
+  runTests(requireGMP = true, dumpCmdFile = true)
   exec "parallel --keep-order --group < " & buildParallel
 
-  exec "> " & buildParallel
   if sizeof(int) == 8: # 32-bit tests on 64-bit arch
-    for td in testDesc:
-      if td.path in useDebug:
-        test "-d:Constantine32 -d:debugConstantine", td.path, cmdFile
-      else:
-        test "-d:Constantine32", td.path, cmdFile
-    # cmdFile.close()
-    # Execute everything in parallel with GNU parallel
+    clearParallelBuild()
+    runTests(requireGMP = true, dumpCmdFile = true, test32bit = true)
     exec "parallel --keep-order --group < " & buildParallel
 
   # Now run the benchmarks
@@ -286,31 +291,18 @@ task test_parallel, "Run all tests in parallel (via GNU parallel)":
     runBench("bench_pairing_bls12_381")
     runBench("bench_pairing_bn254_nogami")
     runBench("bench_pairing_bn254_snarks")
+    runBench("bench_sha256")
 
 task test_parallel_no_assembler, "Run all tests (without macro assembler) in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
-  let cmdFile = true # open(buildParallel, mode = fmWrite) # Nimscript doesn't support IO :/
-  exec "> " & buildParallel
-
-  for td in testDesc:
-    if td.path in useDebug:
-      test "-d:debugConstantine -d:ConstantineASM=false", td.path, cmdFile
-    else:
-      test " -d:ConstantineASM=false", td.path, cmdFile
-
-  # cmdFile.close()
-  # Execute everything in parallel with GNU parallel
+  clearParallelBuild()
+  runTests(requireGMP = true, dumpCmdFile = true, testASM = false)
   exec "parallel --keep-order --group < " & buildParallel
 
   exec "> " & buildParallel
   if sizeof(int) == 8: # 32-bit tests on 64-bit arch
-    for td in testDesc:
-      if td.path in useDebug:
-        test "-d:Constantine32 -d:debugConstantine -d:ConstantineASM=false", td.path, cmdFile
-      else:
-        test "-d:Constantine32 -d:ConstantineASM=false", td.path, cmdFile
-    # cmdFile.close()
-    # Execute everything in parallel with GNU parallel
+    clearParallelBuild()
+    runTests(requireGMP = true, dumpCmdFile = true, test32bit = true, testASM = false)
     exec "parallel --keep-order --group < " & buildParallel
 
   # Now run the benchmarks
@@ -329,33 +321,17 @@ task test_parallel_no_assembler, "Run all tests (without macro assembler) in par
     runBench("bench_pairing_bls12_381")
     runBench("bench_pairing_bn254_nogami")
     runBench("bench_pairing_bn254_snarks")
+    runBench("bench_sha256")
 
 task test_parallel_no_gmp, "Run all tests in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
-  let cmdFile = true # open(buildParallel, mode = fmWrite) # Nimscript doesn't support IO :/
-  exec "> " & buildParallel
-
-  for td in testDesc:
-    if not td.useGMP:
-      if td.path in useDebug:
-        test "-d:debugConstantine", td.path, cmdFile
-      else:
-        test "", td.path, cmdFile
-
-  # cmdFile.close()
-  # Execute everything in parallel with GNU parallel
+  clearParallelBuild()
+  runTests(requireGMP = false, dumpCmdFile = true)
   exec "parallel --keep-order --group < " & buildParallel
 
-  exec "> " & buildParallel
   if sizeof(int) == 8: # 32-bit tests on 64-bit arch
-    for td in testDesc:
-      if not td.useGMP:
-        if td.path in useDebug:
-          test "-d:Constantine32 -d:debugConstantine", td.path, cmdFile
-        else:
-          test "-d:Constantine32", td.path, cmdFile
-    # cmdFile.close()
-    # Execute everything in parallel with GNU parallel
+    clearParallelBuild()
+    runTests(requireGMP = false, dumpCmdFile = true, test32bit = true)
     exec "parallel --keep-order --group < " & buildParallel
 
   # Now run the benchmarks
@@ -374,33 +350,18 @@ task test_parallel_no_gmp, "Run all tests in parallel (via GNU parallel)":
     runBench("bench_pairing_bls12_381")
     runBench("bench_pairing_bn254_nogami")
     runBench("bench_pairing_bn254_snarks")
+    runBench("bench_sha256")
 
 task test_parallel_no_gmp_no_assembler, "Run all tests in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
-  let cmdFile = true # open(buildParallel, mode = fmWrite) # Nimscript doesn't support IO :/
-  exec "> " & buildParallel
-
-  for td in testDesc:
-    if not td.useGMP:
-      if td.path in useDebug:
-        test "-d:debugConstantine -d:ConstantineASM=false", td.path, cmdFile
-      else:
-        test "-d:ConstantineASM=false", td.path, cmdFile
-
-  # cmdFile.close()
-  # Execute everything in parallel with GNU parallel
+  clearParallelBuild()
+  runTests(requireGMP = false, dumpCmdFile = true, testASM = false)
   exec "parallel --keep-order --group < " & buildParallel
 
   exec "> " & buildParallel
   if sizeof(int) == 8: # 32-bit tests on 64-bit arch
-    for td in testDesc:
-      if not td.useGMP:
-        if td.path in useDebug:
-          test "-d:Constantine32 -d:debugConstantine", td.path, cmdFile
-        else:
-          test "-d:Constantine32", td.path, cmdFile
-    # cmdFile.close()
-    # Execute everything in parallel with GNU parallel
+    clearParallelBuild()
+    runTests(requireGMP = false, dumpCmdFile = true, test32bit = true, testASM = false)
     exec "parallel --keep-order --group < " & buildParallel
 
   # Now run the benchmarks
@@ -419,6 +380,7 @@ task test_parallel_no_gmp_no_assembler, "Run all tests in parallel (via GNU para
     runBench("bench_pairing_bls12_381")
     runBench("bench_pairing_bn254_nogami")
     runBench("bench_pairing_bn254_snarks")
+    runBench("bench_sha256")
 
 task bench_fp, "Run benchmark 𝔽p with your default compiler":
   runBench("bench_fp")
@@ -599,3 +561,6 @@ task bench_pairing_bn254_snarks_gcc_noasm, "Run pairings benchmarks for BN254-Sn
 
 task bench_pairing_bn254_snarks_clang_noasm, "Run pairings benchmarks for BN254-Snarks - Clang no Assembly":
   runBench("bench_pairing_bn254_snarks", "clang", useAsm = false)
+
+task bench_sha256, "Run SHA256 benchmarks":
+  runBench("bench_sha256")
