@@ -76,3 +76,9 @@ func dumpRawInt*[T: byte|char](
   else:
     for i in 0'u ..< L:
       dst[cursor+i] = toByte(src shr ((L-i-1) * 8))
+
+func toBytesBE*(num: SomeUnsignedInt): array[sizeof(num), byte] {.inline.}=
+  ## Convert an integer to an array of bytes
+  const L = sizeof(num)
+  for i in 0 ..< L:
+    result[i] = toByte(num shr ((L-1-i) * 8))
