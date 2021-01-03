@@ -105,8 +105,9 @@ func expandMessageXMD*[B1, B2, B3: byte|char](
   # 11. uniform_bytes = b_1 || ... || b_ell
   # 12. return substr(uniform_bytes, 0, len_in_bytes)
   mixin digestSize
-  const DigestSize = digestSize(type(H))
-  const BlockSize = internalBlockSize(type(H))
+  type Hash = H # Otherwise the VM says "cannot evaluate at compiletime H"
+  const DigestSize = Hash.digestSize()
+  const BlockSize = Hash.internalBlockSize()
 
   assert output.len mod 8 == 0
 
@@ -114,11 +115,13 @@ func expandMessageXMD*[B1, B2, B3: byte|char](
   const zPad = default(array[BlockSize, byte])
   let l_i_b_str = output.len.uint16.toBytesBE()
 
-  var ctx{.noInit.}: H
-
   var b0 {.noinit, align: DigestSize.}: array[DigestSize, byte]
-  ctx.init()      # TODO: ctx.init() + ctx.update zPad
-  ctx.update zPad #       can be precomputed
+  func ctZpad(): Hash =
+    # Compile-time precompute
+    # TODO upstream: `toOpenArray` throws "cannot generate code for: mSlice"
+    result.init()
+    result.update zPad
+  var ctx = ctZpad() # static(ctZpad())
   ctx.update augmentation
   ctx.update message
   ctx.update l_i_b_str
