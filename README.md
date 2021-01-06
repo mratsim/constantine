@@ -164,8 +164,8 @@ To measure the performance of Constantine
 git clone https://github.com/mratsim/constantine
 nimble bench_fp             # Using default compiler + Assembly
 nimble bench_fp_clang       # Using Clang + Assembly (recommended)
-nimble bench_fp_gcc         # Using GCC + Assembly (very slow)
-nimble bench_fp_clang_noasm # Using Clang only
+nimble bench_fp_gcc         # Using GCC + Assembly (decent)
+nimble bench_fp_clang_noasm # Using Clang only (acceptable)
 nimble bench_fp_gcc         # Using GCC only (slowest)
 nimble bench_fp2
 # ...
