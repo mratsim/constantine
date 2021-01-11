@@ -3,7 +3,6 @@ version       = "0.0.1"
 author        = "Status Research & Development GmbH"
 description   = "This library provides constant time big int primitives."
 license       = "MIT or Apache License 2.0"
-srcDir        = "src"
 
 # Dependencies
 # ----------------------------------------------------------------
