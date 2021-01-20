@@ -26,7 +26,7 @@
 
 import
   ../primitives,
-  ../config/[common, type_fp, curves],
+  ../config/[common, type_fp, type_fr, curves],
   ./bigints, ./limbs_montgomery
 
 when UseASM_X86_64:
@@ -37,7 +37,7 @@ when nimvm:
 else:
   discard
 
-export Fp
+export Fp, Fr
 
 # No exceptions allowed
 {.push raises: [].}

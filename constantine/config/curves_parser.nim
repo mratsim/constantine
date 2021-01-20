@@ -237,8 +237,12 @@ template getCoef(c: CurveCoef, width: NimNode): untyped {.dirty.}=
 proc genMainConstants(defs: var seq[CurveParams]): NimNode =
   ## Generate curves and fields main constants
 
+  # MapCurveBitWidth & MapCurveOrderBitWidth
+  # are workaround for https://github.com/nim-lang/Nim/issues/16774
+
   var Curves: seq[NimNode]
   var MapCurveBitWidth = nnkBracket.newTree()
+  var MapCurveOrderBitWidth = nnkBracket.newTree()
   var MapCurveFamily = nnkBracket.newTree()
   var curveModStmts = newStmtList()
   var curveEllipticStmts = newStmtList()
@@ -290,6 +294,14 @@ proc genMainConstants(defs: var seq[CurveParams]): NimNode =
           curveDef.order
         )
       )
+      MapCurveOrderBitWidth.add nnkExprColonExpr.newTree(
+        curve, curveDef.orderBitwidth
+      )
+    else: # Dummy
+      MapCurveOrderBitWidth.add nnkExprColonExpr.newTree(
+        curve, newLit 0
+      )
+
     if curveDef.coef_A.kind != NoCoef and curveDef.coef_B.kind != NoCoef:
       curveEllipticStmts.add newConstStmt(
         exported($curve & "_coef_A"),
@@ -346,6 +358,10 @@ proc genMainConstants(defs: var seq[CurveParams]): NimNode =
   # const CurveFamily: array[Curve, CurveFamily] = ...
   result.add newConstStmt(
     exported("CurveFamilies"), MapCurveFamily
+  )
+  # const CurveOrderBitSize: array[Curve, int] = ...
+  result.add newConstStmt(
+    exported("CurveOrderBitWidth"), MapCurveOrderBitWidth
   )
 
   result.add curveModStmts

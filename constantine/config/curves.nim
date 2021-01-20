@@ -32,6 +32,7 @@ template getCurveBitwidth*(C: Curve): int =
   CurveBitWidth[C]
 
 template matchingBigInt*(C: static Curve): untyped =
+  # Workaround: https://github.com/nim-lang/Nim/issues/16774
   BigInt[CurveBitWidth[C]]
 
 template family*(C: Curve): CurveFamily =
@@ -59,6 +60,10 @@ macro getCurveOrderBitwidth*(C: static Curve): untyped =
     getAST(getCurveOrder(C)),
     ident"bits"
   )
+
+template matchingOrderBigInt*(C: static Curve): untyped =
+  # Workaround: https://github.com/nim-lang/Nim/issues/16774
+  BigInt[CurveOrderBitWidth[C]]
 
 macro getEquationForm*(C: static Curve): untyped =
   ## Returns the equation form
