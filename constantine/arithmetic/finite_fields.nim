@@ -26,7 +26,7 @@
 
 import
   ../primitives,
-  ../config/[common, type_fp, type_fr, curves],
+  ../config/[common, type_ff, curves],
   ./bigints, ./limbs_montgomery
 
 when UseASM_X86_64:
@@ -37,7 +37,7 @@ when nimvm:
 else:
   discard
 
-export Fp, Fr
+export Fp, Fr, FF
 
 # No exceptions allowed
 {.push raises: [].}
@@ -48,12 +48,12 @@ export Fp, Fr
 #
 # ############################################################
 
-func fromBig*[C: static Curve](dst: var Fp[C], src: BigInt) {.inline.}=
+func fromBig*(dst: var Fp, src: BigInt) {.inline.}=
   ## Convert a BigInt to its Montgomery form
   when nimvm:
-    dst.mres.montyResidue_precompute(src, C.Mod, C.getR2modP(), C.getNegInvModWord())
+    dst.mres.montyResidue_precompute(src, Fp.C.Mod, Fp.getR2modP(), Fp.getNegInvModWord())
   else:
-    dst.mres.montyResidue(src, C.Mod, C.getR2modP(), C.getNegInvModWord(), C.canUseNoCarryMontyMul())
+    dst.mres.montyResidue(src, Fp.C.Mod, Fp.getR2modP(), Fp.getNegInvModWord(), Fp.canUseNoCarryMontyMul())
 
 func fromBig*[C: static Curve](T: type Fp[C], src: BigInt): Fp[C] {.noInit, inline.} =
   ## Convert a BigInt to its Montgomery form
@@ -62,7 +62,7 @@ func fromBig*[C: static Curve](T: type Fp[C], src: BigInt): Fp[C] {.noInit, inli
 func toBig*(src: Fp): auto {.noInit, inline.} =
   ## Convert a finite-field element to a BigInt in natural representation
   var r {.noInit.}: typeof(src.mres)
-  r.redc(src.mres, Fp.C.Mod, Fp.C.getNegInvModWord(), Fp.C.canUseNoCarryMontyMul())
+  r.redc(src.mres, Fp.C.Mod, Fp.getNegInvModWord(), Fp.canUseNoCarryMontyMul())
   return r
 
 # Copy
@@ -113,11 +113,11 @@ func isZero*(a: Fp): SecretBool {.inline.} =
 
 func isOne*(a: Fp): SecretBool {.inline.} =
   ## Constant-time check if one
-  a.mres == Fp.C.getMontyOne()
+  a.mres == Fp.getMontyOne()
 
 func isMinusOne*(a: Fp): SecretBool {.inline.} =
   ## Constant-time check if -1 (mod p)
-  a.mres == Fp.C.getMontyPrimeMinus1()
+  a.mres == Fp.getMontyPrimeMinus1()
 
 func setZero*(a: var Fp) {.inline.} =
   ## Set ``a`` to zero
@@ -128,7 +128,7 @@ func setOne*(a: var Fp) {.inline.} =
   # Note: we need 1 in Montgomery residue form
   # TODO: Nim codegen is not optimal it uses a temporary
   #       Check if the compiler optimizes it away
-  a.mres = Fp.C.getMontyOne()
+  a.mres = Fp.getMontyOne()
 
 func `+=`*(a: var Fp, b: Fp) {.inline.} =
   ## In-place addition modulo p
@@ -213,11 +213,11 @@ func double*(r: var Fp, a: Fp) {.inline.} =
 func prod*(r: var Fp, a, b: Fp) {.inline.} =
   ## Store the product of ``a`` by ``b`` modulo p into ``r``
   ## ``r`` is initialized / overwritten
-  r.mres.montyMul(a.mres, b.mres, Fp.C.Mod, Fp.C.getNegInvModWord(), Fp.C.canUseNoCarryMontyMul())
+  r.mres.montyMul(a.mres, b.mres, Fp.C.Mod, Fp.getNegInvModWord(), Fp.canUseNoCarryMontyMul())
 
 func square*(r: var Fp, a: Fp) {.inline.} =
   ## Squaring modulo p
-  r.mres.montySquare(a.mres, Fp.C.Mod, Fp.C.getNegInvModWord(), Fp.C.canUseNoCarryMontySquare())
+  r.mres.montySquare(a.mres, Fp.C.Mod, Fp.getNegInvModWord(), Fp.canUseNoCarryMontySquare())
 
 func neg*(r: var Fp, a: Fp) {.inline.} =
   ## Negate modulo p
@@ -235,7 +235,7 @@ func neg*(a: var Fp) {.inline.} =
 
 func div2*(a: var Fp) {.inline.} =
   ## Modular division by 2
-  a.mres.div2_modular(Fp.C.getPrimePlus1div2())
+  a.mres.div2_modular(Fp.getPrimePlus1div2())
 
 # ############################################################
 #
@@ -284,10 +284,10 @@ func pow*(a: var Fp, exponent: BigInt) {.inline.} =
   const windowSize = 5 # TODO: find best window size for each curves
   a.mres.montyPow(
     exponent,
-    Fp.C.Mod, Fp.C.getMontyOne(),
-    Fp.C.getNegInvModWord(), windowSize,
-    Fp.C.canUseNoCarryMontyMul(),
-    Fp.C.canUseNoCarryMontySquare()
+    Fp.C.Mod, Fp.getMontyOne(),
+    Fp.getNegInvModWord(), windowSize,
+    Fp.canUseNoCarryMontyMul(),
+    Fp.canUseNoCarryMontySquare()
   )
 
 func pow*(a: var Fp, exponent: openarray[byte]) {.inline.} =
@@ -297,10 +297,10 @@ func pow*(a: var Fp, exponent: openarray[byte]) {.inline.} =
   const windowSize = 5 # TODO: find best window size for each curves
   a.mres.montyPow(
     exponent,
-    Fp.C.Mod, Fp.C.getMontyOne(),
-    Fp.C.getNegInvModWord(), windowSize,
-    Fp.C.canUseNoCarryMontyMul(),
-    Fp.C.canUseNoCarryMontySquare()
+    Fp.C.Mod, Fp.getMontyOne(),
+    Fp.getNegInvModWord(), windowSize,
+    Fp.canUseNoCarryMontyMul(),
+    Fp.canUseNoCarryMontySquare()
   )
 
 func powUnsafeExponent*(a: var Fp, exponent: BigInt) {.inline.} =
@@ -317,10 +317,10 @@ func powUnsafeExponent*(a: var Fp, exponent: BigInt) {.inline.} =
   const windowSize = 5 # TODO: find best window size for each curves
   a.mres.montyPowUnsafeExponent(
     exponent,
-    Fp.C.Mod, Fp.C.getMontyOne(),
-    Fp.C.getNegInvModWord(), windowSize,
-    Fp.C.canUseNoCarryMontyMul(),
-    Fp.C.canUseNoCarryMontySquare()
+    Fp.C.Mod, Fp.getMontyOne(),
+    Fp.getNegInvModWord(), windowSize,
+    Fp.canUseNoCarryMontyMul(),
+    Fp.canUseNoCarryMontySquare()
   )
 
 func powUnsafeExponent*(a: var Fp, exponent: openarray[byte]) {.inline.} =
@@ -337,10 +337,10 @@ func powUnsafeExponent*(a: var Fp, exponent: openarray[byte]) {.inline.} =
   const windowSize = 5 # TODO: find best window size for each curves
   a.mres.montyPowUnsafeExponent(
     exponent,
-    Fp.C.Mod, Fp.C.getMontyOne(),
-    Fp.C.getNegInvModWord(), windowSize,
-    Fp.C.canUseNoCarryMontyMul(),
-    Fp.C.canUseNoCarryMontySquare()
+    Fp.C.Mod, Fp.getMontyOne(),
+    Fp.getNegInvModWord(), windowSize,
+    Fp.canUseNoCarryMontyMul(),
+    Fp.canUseNoCarryMontySquare()
   )
 
 # ############################################################
@@ -377,7 +377,7 @@ func `*=`*(a: var Fp, b: Fp) {.inline.} =
 
 func square*(a: var Fp) {.inline.} =
   ## Squaring modulo p
-  a.mres.montySquare(a.mres, Fp.C.Mod, Fp.C.getNegInvModWord(), Fp.C.canUseNoCarryMontySquare())
+  a.mres.montySquare(a.mres, Fp.C.Mod, Fp.getNegInvModWord(), Fp.canUseNoCarryMontySquare())
 
 func square_repeated*(r: var Fp, num: int) {.inline.} =
   ## Repeated squarings

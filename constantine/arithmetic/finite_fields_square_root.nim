@@ -8,7 +8,7 @@
 
 import
   ../primitives,
-  ../config/[common, type_fp, curves],
+  ../config/[common, type_ff, curves],
   ../curves/zoo_square_roots,
   ./bigints, ./finite_fields
 
@@ -21,7 +21,7 @@ import
 # Legendre symbol / Euler's Criterion / Kronecker's symbol
 # ------------------------------------------------------------
 
-func isSquare*[C](a: Fp[C]): SecretBool {.inline.} =
+func isSquare*(a: Fp): SecretBool {.inline.} =
   ## Returns true if ``a`` is a square (quadratic residue) in 𝔽p
   ##
   ## Assumes that the prime modulus ``p`` is public.
@@ -30,7 +30,7 @@ func isSquare*[C](a: Fp[C]): SecretBool {.inline.} =
   #                 Note that we don't care about leaking the bits of p
   #                 as we assume that
   var xi {.noInit.} = a # TODO: is noInit necessary? see https://github.com/mratsim/constantine/issues/21
-  xi.powUnsafeExponent(C.getPrimeMinus1div2_BE())
+  xi.powUnsafeExponent(Fp.getPrimeMinus1div2_BE())
   result = not(xi.isMinusOne())
   # xi can be:
   # -  1  if a square
@@ -46,7 +46,7 @@ func isSquare*[C](a: Fp[C]): SecretBool {.inline.} =
 # Specialized routine for p ≡ 3 (mod 4)
 # ------------------------------------------------------------
 
-func sqrt_p3mod4[C](a: var Fp[C]) {.inline.} =
+func sqrt_p3mod4(a: var Fp) {.inline.} =
   ## Compute the square root of ``a``
   ##
   ## This requires ``a`` to be a square
@@ -57,10 +57,10 @@ func sqrt_p3mod4[C](a: var Fp[C]) {.inline.} =
   ## The square root, if it exist is multivalued,
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
-  static: doAssert BaseType(C.Mod.limbs[0]) mod 4 == 3
-  a.powUnsafeExponent(C.getPrimePlus1div4_BE())
+  static: doAssert BaseType(Fp.C.Mod.limbs[0]) mod 4 == 3
+  a.powUnsafeExponent(Fp.getPrimePlus1div4_BE())
 
-func sqrt_invsqrt_p3mod4[C](sqrt, invsqrt: var Fp[C], a: Fp[C]) {.inline.} =
+func sqrt_invsqrt_p3mod4(sqrt, invsqrt: var Fp, a: Fp) {.inline.} =
   ## If ``a`` is a square, compute the square root of ``a`` in sqrt
   ## and the inverse square root of a in invsqrt
   ##
@@ -74,14 +74,14 @@ func sqrt_invsqrt_p3mod4[C](sqrt, invsqrt: var Fp[C], a: Fp[C]) {.inline.} =
   # a^((p-1)/2)) * a^-1 ≡ 1/a  (mod p)
   # a^((p-3)/2))        ≡ 1/a  (mod p)
   # a^((p-3)/4))        ≡ 1/√a (mod p)      # Requires p ≡ 3 (mod 4)
-  static: doAssert BaseType(C.Mod.limbs[0]) mod 4 == 3
+  static: doAssert BaseType(Fp.C.Mod.limbs[0]) mod 4 == 3
 
   invsqrt = a
-  invsqrt.powUnsafeExponent(C.getPrimeMinus3div4_BE())
+  invsqrt.powUnsafeExponent(Fp.getPrimeMinus3div4_BE())
   # √a ≡ a * 1/√a ≡ a^((p+1)/4) (mod p)
   sqrt.prod(invsqrt, a)
 
-func sqrt_invsqrt_if_square_p3mod4[C](sqrt, invsqrt: var Fp[C], a: Fp[C]): SecretBool {.inline.} =
+func sqrt_invsqrt_if_square_p3mod4(sqrt, invsqrt: var Fp, a: Fp): SecretBool {.inline.} =
   ## If ``a`` is a square, compute the square root of ``a`` in sqrt
   ## and the inverse square root of a in invsqrt
   ##
@@ -89,11 +89,11 @@ func sqrt_invsqrt_if_square_p3mod4[C](sqrt, invsqrt: var Fp[C], a: Fp[C]): Secre
   ##
   ## This assumes that the prime field modulus ``p``: p ≡ 3 (mod 4)
   sqrt_invsqrt_p3mod4(sqrt, invsqrt, a)
-  var test {.noInit.}: Fp[C]
+  var test {.noInit.}: Fp
   test.square(sqrt)
   result = test == a
 
-func sqrt_if_square_p3mod4[C](a: var Fp[C]): SecretBool {.inline.} =
+func sqrt_if_square_p3mod4(a: var Fp): SecretBool {.inline.} =
   ## If ``a`` is a square, compute the square root of ``a``
   ## if not, ``a`` is unmodified.
   ##
@@ -104,28 +104,28 @@ func sqrt_if_square_p3mod4[C](a: var Fp[C]): SecretBool {.inline.} =
   ## The square root, if it exist is multivalued,
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
-  var sqrt {.noInit.}, invsqrt {.noInit.}: Fp[C]
+  var sqrt {.noInit.}, invsqrt {.noInit.}: Fp
   result = sqrt_invsqrt_if_square_p3mod4(sqrt, invsqrt, a)
   a.ccopy(sqrt, result)
 
 # Tonelli Shanks for any prime
 # ------------------------------------------------------------
 
-func precompute_tonelli_shanks[C](
-       a_pre_exp: var Fp[C],
-       a: Fp[C]) =
+func precompute_tonelli_shanks(
+       a_pre_exp: var Fp,
+       a: Fp) =
   a_pre_exp = a
-  a_pre_exp.powUnsafeExponent(C.tonelliShanks(exponent))
+  a_pre_exp.powUnsafeExponent(Fp.C.tonelliShanks(exponent))
 
-func isSquare_tonelli_shanks[C](
-       a, a_pre_exp: Fp[C]): SecretBool =
+func isSquare_tonelli_shanks(
+       a, a_pre_exp: Fp): SecretBool =
   ## Returns if `a` is a quadratic residue
   ## This uses common precomputation for
   ## Tonelli-Shanks based square root and inverse square root
   ##
   ## a^((p-1-2^e)/(2*2^e))
-  const e = C.tonelliShanks(twoAdicity)
-  var r {.noInit.}: Fp[C]
+  const e = Fp.C.tonelliShanks(twoAdicity)
+  var r {.noInit.}: Fp
   r.square(a_pre_exp) # a^(2(q-1-2^e)/(2*2^e)) = a^((q-1)/2^e - 1)
   r *= a              # a^((q-1)/2^e)
   for _ in 0 ..< e-1:
@@ -143,9 +143,9 @@ func isSquare_tonelli_shanks[C](
       r.isMinusOne()
     )
 
-func sqrt_invsqrt_tonelli_shanks[C](
-       sqrt, invsqrt: var Fp[C],
-       a, a_pre_exp: Fp[C]) =
+func sqrt_invsqrt_tonelli_shanks(
+       sqrt, invsqrt: var Fp,
+       a, a_pre_exp: Fp) =
   ## Compute the square_root and inverse_square_root
   ## of `a` via constant-time Tonelli-Shanks
   ##
@@ -153,16 +153,16 @@ func sqrt_invsqrt_tonelli_shanks[C](
   ## ThItat is shared with the simultaneous isSquare routine
   template z: untyped = a_pre_exp
   template r: untyped = invsqrt
-  var t {.noInit.}: Fp[C]
-  const e = C.tonelliShanks(twoAdicity)
+  var t {.noInit.}: Fp
+  const e = Fp.C.tonelliShanks(twoAdicity)
 
   t.square(z)
   t *= a
   r = z
   var b = t
-  var root = C.tonelliShanks(root_of_unity)
+  var root = Fp.C.tonelliShanks(root_of_unity)
 
-  var buf {.noInit.}: Fp[C]
+  var buf {.noInit.}: Fp
 
   for i in countdown(e, 2, 1):
     for j in 1 .. i-2:

@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/[curves, type_fp],
+  ../config/[curves, type_ff],
   ../towers,
   ../io/[io_fields, io_towers]
 

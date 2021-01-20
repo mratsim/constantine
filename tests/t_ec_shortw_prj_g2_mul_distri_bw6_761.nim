@@ -8,7 +8,7 @@
 
 import
   # Internals
-  ../constantine/config/[type_fp, curves],
+  ../constantine/config/[type_ff, curves],
   ../constantine/elliptic/ec_shortweierstrass_projective,
   # Test utilities
   ./t_ec_template

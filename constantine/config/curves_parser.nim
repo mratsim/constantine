@@ -298,8 +298,16 @@ proc genMainConstants(defs: var seq[CurveParams]): NimNode =
         curve, curveDef.orderBitwidth
       )
     else: # Dummy
+      curveEllipticStmts.add newConstStmt(
+        exported($curve & "_Order"),
+        newCall(
+          bindSym"fromHex",
+          nnkBracketExpr.newTree(bindSym"BigInt", newLit 1),
+          newLit"0x1"
+        )
+      )
       MapCurveOrderBitWidth.add nnkExprColonExpr.newTree(
-        curve, newLit 0
+        curve, newLit 1
       )
 
     if curveDef.coef_A.kind != NoCoef and curveDef.coef_B.kind != NoCoef:

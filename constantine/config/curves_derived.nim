@@ -15,7 +15,12 @@ import
 
 {.experimental: "dynamicBindSym".}
 
-macro genDerivedConstants*(): untyped =
+type
+  DerivedConstantMode* = enum
+    kModulus
+    kOrder
+
+macro genDerivedConstants*(mode: static DerivedConstantMode): untyped =
   ## Generate constants derived from the main constants
   ##
   ## For example
@@ -38,87 +43,92 @@ macro genDerivedConstants*(): untyped =
       nnkPragma.newTree(ident"used")
     )
 
+  let ff = if mode == kModulus: "_Fp" else: "_Fr"
+
+
   for curveSym in low(Curve) .. high(Curve):
     let curve = $curveSym
+    let M = if mode == kModulus: bindSym(curve & "_Modulus")
+            else: bindSym(curve & "_Order")
 
     # const MyCurve_CanUseNoCarryMontyMul = useNoCarryMontyMul(MyCurve_Modulus)
     result.add newConstStmt(
-      used(curve & "_CanUseNoCarryMontyMul"), newCall(
+      used(curve & ff & "_CanUseNoCarryMontyMul"), newCall(
         bindSym"useNoCarryMontyMul",
-        bindSym(curve & "_Modulus")
+        M
       )
     )
 
     # const MyCurve_CanUseNoCarryMontySquare = useNoCarryMontySquare(MyCurve_Modulus)
     result.add newConstStmt(
-      used(curve & "_CanUseNoCarryMontySquare"), newCall(
+      used(curve & ff & "_CanUseNoCarryMontySquare"), newCall(
         bindSym"useNoCarryMontySquare",
-        bindSym(curve & "_Modulus")
+        M
       )
     )
 
     # const MyCurve_R2modP = r2mod(MyCurve_Modulus)
     result.add newConstStmt(
-      used(curve & "_R2modP"), newCall(
+      used(curve & ff & "_R2modP"), newCall(
         bindSym"r2mod",
-        bindSym(curve & "_Modulus")
+        M
       )
     )
 
     # const MyCurve_NegInvModWord = negInvModWord(MyCurve_Modulus)
     result.add newConstStmt(
-      used(curve & "_NegInvModWord"), newCall(
+      used(curve & ff & "_NegInvModWord"), newCall(
         bindSym"negInvModWord",
-        bindSym(curve & "_Modulus")
+        M
       )
     )
     # const MyCurve_montyOne = montyOne(MyCurve_Modulus)
     result.add newConstStmt(
-      used(curve & "_MontyOne"), newCall(
+      used(curve & ff & "_MontyOne"), newCall(
         bindSym"montyOne",
-        bindSym(curve & "_Modulus")
+        M
       )
     )
     # const MyCurve_MontyPrimeMinus1 = montyPrimeMinus1(MyCurve_Modulus)
     result.add newConstStmt(
-      used(curve & "_MontyPrimeMinus1"), newCall(
+      used(curve & ff & "_MontyPrimeMinus1"), newCall(
         bindSym"montyPrimeMinus1",
-        bindSym(curve & "_Modulus")
+        M
       )
     )
     # const MyCurve_InvModExponent = primeMinus2_BE(MyCurve_Modulus)
     result.add newConstStmt(
-      used(curve & "_InvModExponent"), newCall(
+      used(curve & ff & "_InvModExponent"), newCall(
         bindSym"primeMinus2_BE",
-        bindSym(curve & "_Modulus")
+        M
       )
     )
     # const MyCurve_PrimePlus1div2 = primePlus1div2(MyCurve_Modulus)
     result.add newConstStmt(
-      used(curve & "_PrimePlus1div2"), newCall(
+      used(curve & ff & "_PrimePlus1div2"), newCall(
         bindSym"primePlus1div2",
-        bindSym(curve & "_Modulus")
+        M
       )
     )
     # const MyCurve_PrimeMinus1div2_BE = primeMinus1div2_BE(MyCurve_Modulus)
     result.add newConstStmt(
-      used(curve & "_PrimeMinus1div2_BE"), newCall(
+      used(curve & ff & "_PrimeMinus1div2_BE"), newCall(
         bindSym"primeMinus1div2_BE",
-        bindSym(curve & "_Modulus")
+        M
       )
     )
     # const MyCurve_PrimeMinus3div4_BE = primeMinus3div4_BE(MyCurve_Modulus)
     result.add newConstStmt(
-      used(curve & "_PrimeMinus3div4_BE"), newCall(
+      used(curve & ff & "_PrimeMinus3div4_BE"), newCall(
         bindSym"primeMinus3div4_BE",
-        bindSym(curve & "_Modulus")
+        M
       )
     )
     # const MyCurve_PrimePlus1div4_BE = primePlus1div4_BE(MyCurve_Modulus)
     result.add newConstStmt(
-      used(curve & "_PrimePlus1div4_BE"), newCall(
+      used(curve & ff & "_PrimePlus1div4_BE"), newCall(
         bindSym"primePlus1div4_BE",
-        bindSym(curve & "_Modulus")
+        M
       )
     )
 

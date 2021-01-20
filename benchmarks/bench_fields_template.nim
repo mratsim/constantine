@@ -105,7 +105,7 @@ proc invEuclidBench*(T: typedesc, iters: int) =
 
 proc invPowFermatBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)
-  const exponent = T.C.getInvModExponent()
+  const exponent = T.getInvModExponent()
   bench("Inversion via exponentiation p-2 (Little Fermat)", T, iters):
     var r = x
     r.powUnsafeExponent(exponent)

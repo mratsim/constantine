@@ -12,7 +12,7 @@ import
   # 3rd party
   serialization, json_serialization,
   # Internals
-  ../constantine/config/[common, curves, type_bigint, type_fp],
+  ../constantine/config/[common, curves, type_bigint, type_ff],
   ../constantine/towers,
   ../constantine/io/[io_bigints, io_ec],
   ../constantine/elliptic/[

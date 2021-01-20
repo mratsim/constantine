@@ -8,7 +8,7 @@
 
 import
   std/macros,
-  ../config/[curves, type_fp],
+  ../config/[curves, type_ff],
   ../towers,
   ./bls12_377_glv,
   ./bls12_381_glv,

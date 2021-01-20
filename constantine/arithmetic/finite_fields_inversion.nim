@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/[curves, type_fp],
+  ../config/[curves, type_ff],
   ./bigints,
   ../curves/zoo_inversions
 
@@ -23,7 +23,7 @@ func inv_euclid*(r: var Fp, a: Fp) {.inline.} =
   ## Inversion modulo p via
   ## Niels Moller constant-time version of
   ## Stein's GCD derived from extended binary Euclid algorithm
-  r.mres.steinsGCD(a.mres, Fp.C.getR2modP(), Fp.C.Mod, Fp.C.getPrimePlus1div2())
+  r.mres.steinsGCD(a.mres, Fp.getR2modP(), Fp.C.Mod, Fp.getPrimePlus1div2())
 
 func inv*(r: var Fp, a: Fp) {.inline.} =
   ## Inversion modulo p

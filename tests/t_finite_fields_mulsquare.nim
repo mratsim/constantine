@@ -27,7 +27,7 @@ echo "test_finite_fields_mulsquare xoshiro512** seed: ", seed
 static: doAssert defined(testingCurves), "This modules requires the -d:testingCurves compile option"
 
 proc sanity(C: static Curve) =
-  test "Squaring 0,1,2 with "& $Curve(C) & " [FastSquaring = " & $C.canUseNoCarryMontySquare & "]":
+  test "Squaring 0,1,2 with "& $Curve(C) & " [FastSquaring = " & $Fp[C].canUseNoCarryMontySquare & "]":
         block: # 0² mod
           var n: Fp[C]
 
@@ -89,7 +89,7 @@ mainSanity()
 
 proc mainSelectCases() =
   suite "Modular Squaring: selected tricky cases" & " [" & $WordBitwidth & "-bit mode]":
-    test "P-256 [FastSquaring = " & $P256.canUseNoCarryMontySquare & "]":
+    test "P-256 [FastSquaring = " & $Fp[P256].canUseNoCarryMontySquare & "]":
       block:
         # Triggered an issue in the (t[N+1], t[N]) = t[N] + (A1, A0)
         # between the squaring and reduction step, with t[N+1] and A1 being carry bits.
@@ -136,7 +136,7 @@ proc random_long01Seq(C: static Curve) =
   doAssert bool(r_mul == r_sqr)
 
 suite "Random Modular Squaring is consistent with Modular Multiplication" & " [" & $WordBitwidth & "-bit mode]":
-  test "Random squaring mod P-224 [FastSquaring = " & $P224.canUseNoCarryMontySquare & "]":
+  test "Random squaring mod P-224 [FastSquaring = " & $Fp[P224].canUseNoCarryMontySquare & "]":
     for _ in 0 ..< Iters:
       randomCurve(P224)
     for _ in 0 ..< Iters:
@@ -144,7 +144,7 @@ suite "Random Modular Squaring is consistent with Modular Multiplication" & " ["
     for _ in 0 ..< Iters:
       random_long01Seq(P224)
 
-  test "Random squaring mod P-256 [FastSquaring = " & $P256.canUseNoCarryMontySquare & "]":
+  test "Random squaring mod P-256 [FastSquaring = " & $Fp[P256].canUseNoCarryMontySquare & "]":
     for _ in 0 ..< Iters:
       randomCurve(P256)
     for _ in 0 ..< Iters:
@@ -152,7 +152,7 @@ suite "Random Modular Squaring is consistent with Modular Multiplication" & " ["
     for _ in 0 ..< Iters:
       random_long01Seq(P256)
 
-  test "Random squaring mod BLS12_381 [FastSquaring = " & $BLS12_381.canUseNoCarryMontySquare & "]":
+  test "Random squaring mod BLS12_381 [FastSquaring = " & $Fp[BLS12_381].canUseNoCarryMontySquare & "]":
     for _ in 0 ..< Iters:
       randomCurve(BLS12_381)
     for _ in 0 ..< Iters:
