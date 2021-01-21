@@ -15,11 +15,19 @@ requires "nim >= 1.1.0"
 
 const buildParallel = "test_parallel.txt"
 
+# Testing strategy: to reduce CI time we test leaf functionality
+#   and skip testing codepath that would be exercised by leaves.
+#   While debugging, relevant unit-test can be reactivated.
+#   New features should stay on.
+#   Code refactoring requires re-enabling the full suite.
+#   Basic primitives should stay on to catch compiler regressions.
 const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Primitives
+  # ----------------------------------------------------------
   ("tests/t_primitives.nim", false),
   ("tests/t_primitives_extended_precision.nim", false),
   # Big ints
+  # ----------------------------------------------------------
   ("tests/t_io_bigints.nim", false),
   ("tests/t_bigints.nim", false),
   ("tests/t_bigints_multimod.nim", false),
@@ -27,6 +35,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_bigints_mul_vs_gmp.nim", true),
   ("tests/t_bigints_mul_high_words_vs_gmp.nim", true),
   # Field
+  # ----------------------------------------------------------
   ("tests/t_io_fields", false),
   ("tests/t_finite_fields.nim", false),
   ("tests/t_finite_fields_conditional_arithmetic.nim", false),
@@ -36,79 +45,82 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_finite_fields_vs_gmp.nim", true),
   ("tests/t_fp_cubic_root.nim", false),
   # Double-width finite fields
+  # ----------------------------------------------------------
   ("tests/t_finite_fields_double_width.nim", false),
   # Towers of extension fields
-  ("tests/t_fp2.nim", false),
+  # ----------------------------------------------------------
+  # ("tests/t_fp2.nim", false),
   ("tests/t_fp2_sqrt.nim", false),
-  ("tests/t_fp6_bn254_snarks.nim", false),
-  ("tests/t_fp6_bls12_377.nim", false),
-  ("tests/t_fp6_bls12_381.nim", false),
+  # ("tests/t_fp6_bn254_snarks.nim", false),
+  # ("tests/t_fp6_bls12_377.nim", false),
+  # ("tests/t_fp6_bls12_381.nim", false),
   ("tests/t_fp6_bw6_761.nim", false),
   ("tests/t_fp12_bn254_snarks.nim", false),
   ("tests/t_fp12_bls12_377.nim", false),
   ("tests/t_fp12_bls12_381.nim", false),
   ("tests/t_fp12_exponentiation.nim", false),
-
   ("tests/t_fp4_frobenius.nim", false),
   # Elliptic curve arithmetic G1
-  ("tests/t_ec_shortw_prj_g1_add_double.nim", false),
-  ("tests/t_ec_shortw_prj_g1_mul_sanity.nim", false),
-  ("tests/t_ec_shortw_prj_g1_mul_distri.nim", false),
+  # ----------------------------------------------------------
+  # ("tests/t_ec_shortw_prj_g1_add_double.nim", false),
+  # ("tests/t_ec_shortw_prj_g1_mul_sanity.nim", false),
+  # ("tests/t_ec_shortw_prj_g1_mul_distri.nim", false),
   ("tests/t_ec_shortw_prj_g1_mul_vs_ref.nim", false),
   ("tests/t_ec_shortw_prj_g1_mixed_add.nim", false),
 
-  ("tests/t_ec_shortw_jac_g1_add_double.nim", false),
-  ("tests/t_ec_shortw_jac_g1_mul_sanity.nim", false),
-  ("tests/t_ec_shortw_jac_g1_mul_distri.nim", false),
+  # ("tests/t_ec_shortw_jac_g1_add_double.nim", false),
+  # ("tests/t_ec_shortw_jac_g1_mul_sanity.nim", false),
+  # ("tests/t_ec_shortw_jac_g1_mul_distri.nim", false),
   ("tests/t_ec_shortw_jac_g1_mul_vs_ref.nim", false),
   # mixed_add
 
   # Elliptic curve arithmetic G2
-  ("tests/t_ec_shortw_prj_g2_add_double_bn254_snarks.nim", false),
-  ("tests/t_ec_shortw_prj_g2_mul_sanity_bn254_snarks.nim", false),
-  ("tests/t_ec_shortw_prj_g2_mul_distri_bn254_snarks.nim", false),
+  # ----------------------------------------------------------
+  # ("tests/t_ec_shortw_prj_g2_add_double_bn254_snarks.nim", false),
+  # ("tests/t_ec_shortw_prj_g2_mul_sanity_bn254_snarks.nim", false),
+  # ("tests/t_ec_shortw_prj_g2_mul_distri_bn254_snarks.nim", false),
   ("tests/t_ec_shortw_prj_g2_mul_vs_ref_bn254_snarks.nim", false),
   ("tests/t_ec_shortw_prj_g2_mixed_add_bn254_snarks.nim", false),
 
-  ("tests/t_ec_shortw_prj_g2_add_double_bls12_381.nim", false),
-  ("tests/t_ec_shortw_prj_g2_mul_sanity_bls12_381.nim", false),
-  ("tests/t_ec_shortw_prj_g2_mul_distri_bls12_381.nim", false),
+  # ("tests/t_ec_shortw_prj_g2_add_double_bls12_381.nim", false),
+  # ("tests/t_ec_shortw_prj_g2_mul_sanity_bls12_381.nim", false),
+  # ("tests/t_ec_shortw_prj_g2_mul_distri_bls12_381.nim", false),
   ("tests/t_ec_shortw_prj_g2_mul_vs_ref_bls12_381.nim", false),
   ("tests/t_ec_shortw_prj_g2_mixed_add_bls12_381.nim", false),
 
-  ("tests/t_ec_shortw_prj_g2_add_double_bls12_377.nim", false),
-  ("tests/t_ec_shortw_prj_g2_mul_sanity_bls12_377.nim", false),
-  ("tests/t_ec_shortw_prj_g2_mul_distri_bls12_377.nim", false),
+  # ("tests/t_ec_shortw_prj_g2_add_double_bls12_377.nim", false),
+  # ("tests/t_ec_shortw_prj_g2_mul_sanity_bls12_377.nim", false),
+  # ("tests/t_ec_shortw_prj_g2_mul_distri_bls12_377.nim", false),
   ("tests/t_ec_shortw_prj_g2_mul_vs_ref_bls12_377.nim", false),
   ("tests/t_ec_shortw_prj_g2_mixed_add_bls12_377.nim", false),
 
-  ("tests/t_ec_shortw_prj_g2_add_double_bw6_761.nim", false),
-  ("tests/t_ec_shortw_prj_g2_mul_sanity_bw6_761.nim", false),
-  ("tests/t_ec_shortw_prj_g2_mul_distri_bw6_761.nim", false),
+  # ("tests/t_ec_shortw_prj_g2_add_double_bw6_761.nim", false),
+  # ("tests/t_ec_shortw_prj_g2_mul_sanity_bw6_761.nim", false),
+  # ("tests/t_ec_shortw_prj_g2_mul_distri_bw6_761.nim", false),
   ("tests/t_ec_shortw_prj_g2_mul_vs_ref_bw6_761.nim", false),
   ("tests/t_ec_shortw_prj_g2_mixed_add_bw6_761.nim", false),
 
-  ("tests/t_ec_shortw_jac_g2_add_double_bn254_snarks.nim", false),
-  ("tests/t_ec_shortw_jac_g2_mul_sanity_bn254_snarks.nim", false),
-  ("tests/t_ec_shortw_jac_g2_mul_distri_bn254_snarks.nim", false),
+  # ("tests/t_ec_shortw_jac_g2_add_double_bn254_snarks.nim", false),
+  # ("tests/t_ec_shortw_jac_g2_mul_sanity_bn254_snarks.nim", false),
+  # ("tests/t_ec_shortw_jac_g2_mul_distri_bn254_snarks.nim", false),
   ("tests/t_ec_shortw_jac_g2_mul_vs_ref_bn254_snarks.nim", false),
   # mixed_add
 
-  ("tests/t_ec_shortw_jac_g2_add_double_bls12_381.nim", false),
-  ("tests/t_ec_shortw_jac_g2_mul_sanity_bls12_381.nim", false),
-  ("tests/t_ec_shortw_jac_g2_mul_distri_bls12_381.nim", false),
+  # ("tests/t_ec_shortw_jac_g2_add_double_bls12_381.nim", false),
+  # ("tests/t_ec_shortw_jac_g2_mul_sanity_bls12_381.nim", false),
+  # ("tests/t_ec_shortw_jac_g2_mul_distri_bls12_381.nim", false),
   ("tests/t_ec_shortw_jac_g2_mul_vs_ref_bls12_381.nim", false),
   # mixed_add
 
-  ("tests/t_ec_shortw_jac_g2_add_double_bls12_377.nim", false),
-  ("tests/t_ec_shortw_jac_g2_mul_sanity_bls12_377.nim", false),
-  ("tests/t_ec_shortw_jac_g2_mul_distri_bls12_377.nim", false),
+  # ("tests/t_ec_shortw_jac_g2_add_double_bls12_377.nim", false),
+  # ("tests/t_ec_shortw_jac_g2_mul_sanity_bls12_377.nim", false),
+  # ("tests/t_ec_shortw_jac_g2_mul_distri_bls12_377.nim", false),
   ("tests/t_ec_shortw_jac_g2_mul_vs_ref_bls12_377.nim", false),
   # mixed_add
 
-  ("tests/t_ec_shortw_jac_g2_add_double_bw6_761.nim", false),
-  ("tests/t_ec_shortw_jac_g2_mul_sanity_bw6_761.nim", false),
-  ("tests/t_ec_shortw_jac_g2_mul_distri_bw6_761.nim", false),
+  # ("tests/t_ec_shortw_jac_g2_add_double_bw6_761.nim", false),
+  # ("tests/t_ec_shortw_jac_g2_mul_sanity_bw6_761.nim", false),
+  # ("tests/t_ec_shortw_jac_g2_mul_distri_bw6_761.nim", false),
   ("tests/t_ec_shortw_jac_g2_mul_vs_ref_bw6_761.nim", false),
   # mixed_add
 
@@ -274,10 +286,10 @@ task test_parallel, "Run all tests in parallel (via GNU parallel)":
   runTests(requireGMP = true, dumpCmdFile = true)
   exec "parallel --keep-order --group < " & buildParallel
 
-  if sizeof(int) == 8: # 32-bit tests on 64-bit arch
-    clearParallelBuild()
-    runTests(requireGMP = true, dumpCmdFile = true, test32bit = true)
-    exec "parallel --keep-order --group < " & buildParallel
+  # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
+  #   clearParallelBuild()
+  #   runTests(requireGMP = true, dumpCmdFile = true, test32bit = true)
+  #   exec "parallel --keep-order --group < " & buildParallel
 
   # Now run the benchmarks
   #
@@ -303,11 +315,10 @@ task test_parallel_no_assembler, "Run all tests (without macro assembler) in par
   runTests(requireGMP = true, dumpCmdFile = true, testASM = false)
   exec "parallel --keep-order --group < " & buildParallel
 
-  exec "> " & buildParallel
-  if sizeof(int) == 8: # 32-bit tests on 64-bit arch
-    clearParallelBuild()
-    runTests(requireGMP = true, dumpCmdFile = true, test32bit = true, testASM = false)
-    exec "parallel --keep-order --group < " & buildParallel
+  # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
+  #   clearParallelBuild()
+  #   runTests(requireGMP = true, dumpCmdFile = true, test32bit = true, testASM = false)
+  #   exec "parallel --keep-order --group < " & buildParallel
 
   # Now run the benchmarks
   #
@@ -333,10 +344,10 @@ task test_parallel_no_gmp, "Run all tests in parallel (via GNU parallel)":
   runTests(requireGMP = false, dumpCmdFile = true)
   exec "parallel --keep-order --group < " & buildParallel
 
-  if sizeof(int) == 8: # 32-bit tests on 64-bit arch
-    clearParallelBuild()
-    runTests(requireGMP = false, dumpCmdFile = true, test32bit = true)
-    exec "parallel --keep-order --group < " & buildParallel
+  # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
+  #   clearParallelBuild()
+  #   runTests(requireGMP = false, dumpCmdFile = true, test32bit = true)
+  #   exec "parallel --keep-order --group < " & buildParallel
 
   # Now run the benchmarks
   #
@@ -362,11 +373,10 @@ task test_parallel_no_gmp_no_assembler, "Run all tests in parallel (via GNU para
   runTests(requireGMP = false, dumpCmdFile = true, testASM = false)
   exec "parallel --keep-order --group < " & buildParallel
 
-  exec "> " & buildParallel
-  if sizeof(int) == 8: # 32-bit tests on 64-bit arch
-    clearParallelBuild()
-    runTests(requireGMP = false, dumpCmdFile = true, test32bit = true, testASM = false)
-    exec "parallel --keep-order --group < " & buildParallel
+  # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
+  #   clearParallelBuild()
+  #   runTests(requireGMP = false, dumpCmdFile = true, test32bit = true, testASM = false)
+  #   exec "parallel --keep-order --group < " & buildParallel
 
   # Now run the benchmarks
   #
