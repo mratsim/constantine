@@ -201,7 +201,7 @@ jobs:
         shell: bash
         run: |
           nimble refresh
-          nimble install -y gmp stew serialization json_serialization
+          nimble install -y gmp stew serialization@#217d78a json_serialization
       - name: Run Constantine tests (with Assembler & with GMP)
         if: (runner.os == 'Linux' || runner.os == 'macOS') && matrix.target.cpu == 'amd64'
         shell: bash
