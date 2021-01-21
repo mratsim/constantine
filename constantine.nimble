@@ -149,7 +149,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
 
   # Hashing vs OpenSSL
   # ----------------------------------------------------------
-  ("tests/t_hash_sha256_vs_openssl.nim", false),
+  ("tests/t_hash_sha256_vs_openssl.nim", true), # skip OpenSSL tests on Windows
 
   # Prime order fields
   # ----------------------------------------------------------
