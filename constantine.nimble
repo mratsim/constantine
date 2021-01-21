@@ -192,7 +192,10 @@ proc test(flags, path: string, commandFile = false) =
   if existsEnv"CC":
     cc = " --cc:" & getEnv"CC"
 
-  var flags = flags & " --passC:-fstack-protector-all"
+  var flags = flags
+  when not defined(windows):
+    # Not available in MinGW https://github.com/libressl-portable/portable/issues/54
+    flags &= " --passC:-fstack-protector-all"
   let command = "nim " & lang & cc & " " & flags &
     " --verbosity:0 --outdir:build/testsuite -r --hints:off --warnings:off " &
     " --nimcache:nimcache/" & path & " " &
