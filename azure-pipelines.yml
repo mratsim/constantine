@@ -216,10 +216,15 @@ steps:
     displayName: 'Downloading GMP (Linux 32-bit)'
     condition: and(eq(variables['Agent.OS'], 'Linux'), eq(variables['UCPU'], 'i686'))
 
+  # Workaround #113 and https://github.com/status-im/nim-serialization/issues/33
+  # and nimble flaky pinning / dependency resolution,
+  # json_serialization install would override nim-serialization pinning
   - bash: |
       echo "PATH=${PATH}"
       nimble refresh
-      nimble install -y gmp stew serialization@#217d78a json_serialization
+      nimble install -y gmp stew json_serialization
+      nimble uninstall serialization
+      nimble install serialization@#217d78a
     displayName: 'Installing package and testing dependencies'
 
   - bash: |

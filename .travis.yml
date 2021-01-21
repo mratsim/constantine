@@ -127,7 +127,13 @@ before_script:
     - export PATH="$PWD/nim-${CHANNEL}/bin${PATH:+:$PATH}"
 script:
     - nimble refresh
-    - nimble install -y gmp stew serialization@#217d78a json_serialization
+    - nimble install -y gmp stew json_serialization
+    # Workaround #113 and https://github.com/status-im/nim-serialization/issues/33
+    # and nimble flaky pinning / dependency resolution,
+    # json_serialization install would override nim-serialization pinning
+    - nimble uninstall serialization
+    - nimble install serialization@#217d78a
+
     # Installing Clang9.0 or later is a pain in Travis
     # for inline assembly "flag output constraint"
     # Also MacOS build is timing out with 2 series of tests.
