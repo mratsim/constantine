@@ -23,71 +23,90 @@ import
 genDerivedConstants(kModulus)
 genDerivedConstants(kOrder)
 
-proc prefix(ff: NimNode): string =
-  # Accepts types in the form Fp[BLS12_381] or Fr[BLS12_381]
+proc bindConstant(ff: NimNode, property: string): NimNode =
+  # Need to workaround https://github.com/nim-lang/Nim/issues/14021
+  # which prevents checking if a type FF[C] = Fp[C] or Fr[C]
+  # was instantiated with Fp or Fr.
+  # getTypeInst only returns FF and sameType doesn't work.
+  # so quote do + when checks.
   let T = getTypeInst(ff)
   T.expectKind(nnkBracketExpr)
   doAssert T[0].eqIdent("typedesc")
 
-
   if T[1].kind == nnkBracketExpr: # typedesc[Fp[BLS12_381]]
-    doAssert T[1][0].eqIdent"Fp" or T[1][0].eqIdent"Fr"
+    # doAssert T[1][0].eqIdent"Fp" or T[1][0].eqIdent"Fr", "Found ident: '" & $T[1][0] & "' instead of 'Fp' or 'Fr'"
+
     T[1][1].expectKind(nnkIntLit) # static enum are ints in the VM
 
-    result = $Curve(T[1][1].intVal)
-    result &= "_" & $T[1][0] & '_'
+    let curve = $Curve(T[1][1].intVal)
+    let curve_fp = bindSym(curve & "_Fp_" & property)
+    let curve_fr = bindSym(curve & "_Fr_" & property)
+    result = quote do:
+      when `ff` is Fp:
+        `curve_fp`
+      elif `ff` is Fr:
+        `curve_fr`
+      else:
+        {.error: "Unreachable, received type: " & $`ff`.}
+
   else:
     echo T.repr()
     echo getTypeInst(T[1]).treerepr
     error "getTypeInst didn't return the full instantiation." &
       " Dealing with types in macros is hard, complain at https://github.com/nim-lang/RFCs/issues/44"
 
+template fieldMod*(Field: type FF): auto =
+  when Field is Fp:
+    Field.C.Mod
+  else:
+    Field.C.getCurveOrder()
+
 macro canUseNoCarryMontyMul*(ff: type FF): untyped =
   ## Returns true if the Modulus is compatible with a fast
   ## Montgomery multiplication that avoids many carries
-  result = bindSym(prefix(ff) & "CanUseNoCarryMontyMul")
+  result = bindConstant(ff, "CanUseNoCarryMontyMul")
 
 macro canUseNoCarryMontySquare*(ff: type FF): untyped =
   ## Returns true if the Modulus is compatible with a fast
   ## Montgomery squaring that avoids many carries
-  result = bindSym(prefix(ff) & "CanUseNoCarryMontySquare")
+  result = bindConstant(ff, "CanUseNoCarryMontySquare")
 
 macro getR2modP*(ff: type FF): untyped =
   ## Get the Montgomery "R^2 mod P" constant associated to a curve field modulus
-  result = bindSym(prefix(ff) & "R2modP")
+  result = bindConstant(ff, "R2modP")
 
 macro getNegInvModWord*(ff: type FF): untyped =
   ## Get the Montgomery "-1/P[0] mod 2^Wordbitwidth" constant associated to a curve field modulus
-  result = bindSym(prefix(ff) & "NegInvModWord")
+  result = bindConstant(ff, "NegInvModWord")
 
 macro getMontyOne*(ff: type FF): untyped =
   ## Get one in Montgomery representation (i.e. R mod P)
-  result = bindSym(prefix(ff) & "MontyOne")
+  result = bindConstant(ff, "MontyOne")
 
 macro getMontyPrimeMinus1*(ff: type FF): untyped =
   ## Get (P+1) / 2 for an odd prime
-  result = bindSym(prefix(ff) & "MontyPrimeMinus1")
+  result = bindConstant(ff, "MontyPrimeMinus1")
 
 macro getInvModExponent*(ff: type FF): untyped =
   ## Get modular inversion exponent (Modulus-2 in canonical representation)
-  result = bindSym(prefix(ff) & "InvModExponent")
+  result = bindConstant(ff, "InvModExponent")
 
 macro getPrimePlus1div2*(ff: type FF): untyped =
   ## Get (P+1) / 2 for an odd prime
   ## Warning ⚠️: Result in canonical domain (not Montgomery)
-  result = bindSym(prefix(ff) & "PrimePlus1div2")
+  result = bindConstant(ff, "PrimePlus1div2")
 
 macro getPrimeMinus1div2_BE*(ff: type FF): untyped =
   ## Get (P-1) / 2 in big-endian serialized format
-  result = bindSym(prefix(ff) & "PrimeMinus1div2_BE")
+  result = bindConstant(ff, "PrimeMinus1div2_BE")
 
 macro getPrimeMinus3div4_BE*(ff: type FF): untyped =
   ## Get (P-3) / 2 in big-endian serialized format
-  result = bindSym(prefix(ff) & "PrimeMinus3div4_BE")
+  result = bindConstant(ff, "PrimeMinus3div4_BE")
 
 macro getPrimePlus1div4_BE*(ff: type FF): untyped =
   ## Get (P+1) / 4 for an odd prime in big-endian serialized format
-  result = bindSym(prefix(ff) & "PrimePlus1div4_BE")
+  result = bindConstant(ff, "PrimePlus1div4_BE")
 
 # ############################################################
 #
