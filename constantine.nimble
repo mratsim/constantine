@@ -14,11 +14,19 @@ requires "nim >= 1.1.0"
 
 const buildParallel = "test_parallel.txt"
 
+# Testing strategy: to reduce CI time we test leaf functionality
+#   and skip testing codepath that would be exercised by leaves.
+#   While debugging, relevant unit-test can be reactivated.
+#   New features should stay on.
+#   Code refactoring requires re-enabling the full suite.
+#   Basic primitives should stay on to catch compiler regressions.
 const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Primitives
+  # ----------------------------------------------------------
   ("tests/t_primitives.nim", false),
   ("tests/t_primitives_extended_precision.nim", false),
   # Big ints
+  # ----------------------------------------------------------
   ("tests/t_io_bigints.nim", false),
   ("tests/t_bigints.nim", false),
   ("tests/t_bigints_multimod.nim", false),
@@ -26,6 +34,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_bigints_mul_vs_gmp.nim", true),
   ("tests/t_bigints_mul_high_words_vs_gmp.nim", true),
   # Field
+  # ----------------------------------------------------------
   ("tests/t_io_fields", false),
   ("tests/t_finite_fields.nim", false),
   ("tests/t_finite_fields_conditional_arithmetic.nim", false),
@@ -35,95 +44,104 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_finite_fields_vs_gmp.nim", true),
   ("tests/t_fp_cubic_root.nim", false),
   # Double-width finite fields
+  # ----------------------------------------------------------
   ("tests/t_finite_fields_double_width.nim", false),
   # Towers of extension fields
-  ("tests/t_fp2.nim", false),
+  # ----------------------------------------------------------
+  # ("tests/t_fp2.nim", false),
   ("tests/t_fp2_sqrt.nim", false),
-  ("tests/t_fp6_bn254_snarks.nim", false),
-  ("tests/t_fp6_bls12_377.nim", false),
-  ("tests/t_fp6_bls12_381.nim", false),
+  # ("tests/t_fp6_bn254_snarks.nim", false),
+  # ("tests/t_fp6_bls12_377.nim", false),
+  # ("tests/t_fp6_bls12_381.nim", false),
   ("tests/t_fp6_bw6_761.nim", false),
   ("tests/t_fp12_bn254_snarks.nim", false),
   ("tests/t_fp12_bls12_377.nim", false),
   ("tests/t_fp12_bls12_381.nim", false),
   ("tests/t_fp12_exponentiation.nim", false),
 
-  ("tests/t_fp4_frobenius.nim", false),
+  # ("tests/t_fp4_frobenius.nim", false),
+  # ("tests/t_fp6_frobenius.nim", false),
+  ("tests/t_fp12_frobenius.nim", false),
   # Elliptic curve arithmetic G1
-  ("tests/t_ec_shortw_prj_g1_add_double.nim", false),
-  ("tests/t_ec_shortw_prj_g1_mul_sanity.nim", false),
-  ("tests/t_ec_shortw_prj_g1_mul_distri.nim", false),
+  # ----------------------------------------------------------
+  # ("tests/t_ec_shortw_prj_g1_add_double.nim", false),
+  # ("tests/t_ec_shortw_prj_g1_mul_sanity.nim", false),
+  # ("tests/t_ec_shortw_prj_g1_mul_distri.nim", false),
   ("tests/t_ec_shortw_prj_g1_mul_vs_ref.nim", false),
   ("tests/t_ec_shortw_prj_g1_mixed_add.nim", false),
 
-  ("tests/t_ec_shortw_jac_g1_add_double.nim", false),
-  ("tests/t_ec_shortw_jac_g1_mul_sanity.nim", false),
-  ("tests/t_ec_shortw_jac_g1_mul_distri.nim", false),
+  # ("tests/t_ec_shortw_jac_g1_add_double.nim", false),
+  # ("tests/t_ec_shortw_jac_g1_mul_sanity.nim", false),
+  # ("tests/t_ec_shortw_jac_g1_mul_distri.nim", false),
   ("tests/t_ec_shortw_jac_g1_mul_vs_ref.nim", false),
   # mixed_add
 
   # Elliptic curve arithmetic G2
-  ("tests/t_ec_shortw_prj_g2_add_double_bn254_snarks.nim", false),
-  ("tests/t_ec_shortw_prj_g2_mul_sanity_bn254_snarks.nim", false),
-  ("tests/t_ec_shortw_prj_g2_mul_distri_bn254_snarks.nim", false),
+  # ----------------------------------------------------------
+  # ("tests/t_ec_shortw_prj_g2_add_double_bn254_snarks.nim", false),
+  # ("tests/t_ec_shortw_prj_g2_mul_sanity_bn254_snarks.nim", false),
+  # ("tests/t_ec_shortw_prj_g2_mul_distri_bn254_snarks.nim", false),
   ("tests/t_ec_shortw_prj_g2_mul_vs_ref_bn254_snarks.nim", false),
   ("tests/t_ec_shortw_prj_g2_mixed_add_bn254_snarks.nim", false),
 
-  ("tests/t_ec_shortw_prj_g2_add_double_bls12_381.nim", false),
-  ("tests/t_ec_shortw_prj_g2_mul_sanity_bls12_381.nim", false),
-  ("tests/t_ec_shortw_prj_g2_mul_distri_bls12_381.nim", false),
+  # ("tests/t_ec_shortw_prj_g2_add_double_bls12_381.nim", false),
+  # ("tests/t_ec_shortw_prj_g2_mul_sanity_bls12_381.nim", false),
+  # ("tests/t_ec_shortw_prj_g2_mul_distri_bls12_381.nim", false),
   ("tests/t_ec_shortw_prj_g2_mul_vs_ref_bls12_381.nim", false),
   ("tests/t_ec_shortw_prj_g2_mixed_add_bls12_381.nim", false),
 
-  ("tests/t_ec_shortw_prj_g2_add_double_bls12_377.nim", false),
-  ("tests/t_ec_shortw_prj_g2_mul_sanity_bls12_377.nim", false),
-  ("tests/t_ec_shortw_prj_g2_mul_distri_bls12_377.nim", false),
+  # ("tests/t_ec_shortw_prj_g2_add_double_bls12_377.nim", false),
+  # ("tests/t_ec_shortw_prj_g2_mul_sanity_bls12_377.nim", false),
+  # ("tests/t_ec_shortw_prj_g2_mul_distri_bls12_377.nim", false),
   ("tests/t_ec_shortw_prj_g2_mul_vs_ref_bls12_377.nim", false),
   ("tests/t_ec_shortw_prj_g2_mixed_add_bls12_377.nim", false),
 
-  ("tests/t_ec_shortw_prj_g2_add_double_bw6_761.nim", false),
-  ("tests/t_ec_shortw_prj_g2_mul_sanity_bw6_761.nim", false),
-  ("tests/t_ec_shortw_prj_g2_mul_distri_bw6_761.nim", false),
+  # ("tests/t_ec_shortw_prj_g2_add_double_bw6_761.nim", false),
+  # ("tests/t_ec_shortw_prj_g2_mul_sanity_bw6_761.nim", false),
+  # ("tests/t_ec_shortw_prj_g2_mul_distri_bw6_761.nim", false),
   ("tests/t_ec_shortw_prj_g2_mul_vs_ref_bw6_761.nim", false),
   ("tests/t_ec_shortw_prj_g2_mixed_add_bw6_761.nim", false),
 
-  ("tests/t_ec_shortw_jac_g2_add_double_bn254_snarks.nim", false),
-  ("tests/t_ec_shortw_jac_g2_mul_sanity_bn254_snarks.nim", false),
-  ("tests/t_ec_shortw_jac_g2_mul_distri_bn254_snarks.nim", false),
+  # ("tests/t_ec_shortw_jac_g2_add_double_bn254_snarks.nim", false),
+  # ("tests/t_ec_shortw_jac_g2_mul_sanity_bn254_snarks.nim", false),
+  # ("tests/t_ec_shortw_jac_g2_mul_distri_bn254_snarks.nim", false),
   ("tests/t_ec_shortw_jac_g2_mul_vs_ref_bn254_snarks.nim", false),
   # mixed_add
 
-  ("tests/t_ec_shortw_jac_g2_add_double_bls12_381.nim", false),
-  ("tests/t_ec_shortw_jac_g2_mul_sanity_bls12_381.nim", false),
-  ("tests/t_ec_shortw_jac_g2_mul_distri_bls12_381.nim", false),
+  # ("tests/t_ec_shortw_jac_g2_add_double_bls12_381.nim", false),
+  # ("tests/t_ec_shortw_jac_g2_mul_sanity_bls12_381.nim", false),
+  # ("tests/t_ec_shortw_jac_g2_mul_distri_bls12_381.nim", false),
   ("tests/t_ec_shortw_jac_g2_mul_vs_ref_bls12_381.nim", false),
   # mixed_add
 
-  ("tests/t_ec_shortw_jac_g2_add_double_bls12_377.nim", false),
-  ("tests/t_ec_shortw_jac_g2_mul_sanity_bls12_377.nim", false),
-  ("tests/t_ec_shortw_jac_g2_mul_distri_bls12_377.nim", false),
+  # ("tests/t_ec_shortw_jac_g2_add_double_bls12_377.nim", false),
+  # ("tests/t_ec_shortw_jac_g2_mul_sanity_bls12_377.nim", false),
+  # ("tests/t_ec_shortw_jac_g2_mul_distri_bls12_377.nim", false),
   ("tests/t_ec_shortw_jac_g2_mul_vs_ref_bls12_377.nim", false),
   # mixed_add
 
-  ("tests/t_ec_shortw_jac_g2_add_double_bw6_761.nim", false),
-  ("tests/t_ec_shortw_jac_g2_mul_sanity_bw6_761.nim", false),
-  ("tests/t_ec_shortw_jac_g2_mul_distri_bw6_761.nim", false),
+  # ("tests/t_ec_shortw_jac_g2_add_double_bw6_761.nim", false),
+  # ("tests/t_ec_shortw_jac_g2_mul_sanity_bw6_761.nim", false),
+  # ("tests/t_ec_shortw_jac_g2_mul_distri_bw6_761.nim", false),
   ("tests/t_ec_shortw_jac_g2_mul_vs_ref_bw6_761.nim", false),
   # mixed_add
 
   # Elliptic curve arithmetic vs Sagemath
+  # ----------------------------------------------------------
   ("tests/t_ec_frobenius.nim", false),
   ("tests/t_ec_sage_bn254_nogami.nim", false),
   ("tests/t_ec_sage_bn254_snarks.nim", false),
   ("tests/t_ec_sage_bls12_377.nim", false),
   ("tests/t_ec_sage_bls12_381.nim", false),
   # Edge cases highlighted by past bugs
+  # ----------------------------------------------------------
   ("tests/t_ec_shortw_prj_edge_cases.nim", false),
   # Pairing
-  ("tests/t_pairing_bls12_377_line_functions.nim", false),
-  ("tests/t_pairing_bls12_381_line_functions.nim", false),
-  ("tests/t_pairing_mul_fp12_by_lines.nim", false),
-  ("tests/t_pairing_cyclotomic_fp12.nim", false),
+  # ----------------------------------------------------------
+  # ("tests/t_pairing_bls12_377_line_functions.nim", false),
+  # ("tests/t_pairing_bls12_381_line_functions.nim", false),
+  # ("tests/t_pairing_mul_fp12_by_lines.nim", false),
+  # ("tests/t_pairing_cyclotomic_fp12.nim", false),
   ("tests/t_pairing_bn254_nogami_optate.nim", false),
   ("tests/t_pairing_bn254_snarks_optate.nim", false),
   ("tests/t_pairing_bls12_377_optate.nim", false),
@@ -149,11 +167,15 @@ const skipSanitizers = [
   "tests/t_ec_sage_bls12_381.nim",
 ]
 
-const sanitizers =
-  " --passC:-fsanitize=undefined --passL:-fsanitize=undefined" &
-  " --passC:-fno-sanitize-recover" & # Enforce crash on undefined behaviour
-  " --gc:none" # The conservative stack scanning of Nim default GC triggers, alignment UB and stack-buffer-overflow check.
-  # " --passC:-fsanitize=address --passL:-fsanitize=address" & # Requires too much stack for the inline assembly
+when defined(windows):
+  # UBSAN is not available on mingw
+  const sanitizers = ""
+else:
+  const sanitizers =
+    " --passC:-fsanitize=undefined --passL:-fsanitize=undefined" &
+    " --passC:-fno-sanitize-recover" & # Enforce crash on undefined behaviour
+    " --gc:none" # The conservative stack scanning of Nim default GC triggers, alignment UB and stack-buffer-overflow check.
+    # " --passC:-fsanitize=address --passL:-fsanitize=address" & # Requires too much stack for the inline assembly
 
 
 # Helper functions
@@ -175,7 +197,10 @@ proc test(flags, path: string, commandFile = false) =
   if existsEnv"CC":
     cc = " --cc:" & getEnv"CC"
 
-  var flags = flags & " --passC:-fstack-protector-all"
+  var flags = flags
+  when not defined(windows):
+    # Not available in MinGW https://github.com/libressl-portable/portable/issues/54
+    flags &= " --passC:-fstack-protector-all"
   let command = "nim " & lang & cc & " " & flags &
     " --verbosity:0 --outdir:build/testsuite -r --hints:off --warnings:off " &
     " --nimcache:nimcache/" & path & " " &
@@ -189,9 +214,12 @@ proc test(flags, path: string, commandFile = false) =
   else:
     exec "echo \'" & command & "\' >> " & buildParallel
 
-proc runBench(benchName: string, compiler = "", useAsm = true) =
+proc buildBench(benchName: string, compiler = "", useAsm = true, run = false) =
   if not dirExists "build":
     mkDir "build"
+
+  let runFlag = if run: " -r "
+            else: " "
 
   var cc = ""
   if compiler != "":
@@ -201,7 +229,10 @@ proc runBench(benchName: string, compiler = "", useAsm = true) =
   exec "nim c " & cc &
        " -d:danger --verbosity:0 -o:build/bench/" & benchName & "_" & compiler & "_" & (if useAsm: "useASM" else: "noASM") &
        " --nimcache:nimcache/" & benchName & "_" & compiler & "_" & (if useAsm: "useASM" else: "noASM") &
-       " -r --hints:off --warnings:off benchmarks/" & benchName & ".nim"
+       runFlag & "--hints:off --warnings:off benchmarks/" & benchName & ".nim"
+
+proc runBench(benchName: string, compiler = "", useAsm = true) =
+  buildBench(benchName, compiler, useAsm, run = true)
 
 proc runTests(requireGMP: bool, dumpCmdFile = false, test32bit = false, testASM = true) =
   for td in testDesc:
@@ -217,6 +248,23 @@ proc runTests(requireGMP: bool, dumpCmdFile = false, test32bit = false, testASM 
         flags &= sanitizers
       test flags, td.path, dumpCmdFile
 
+proc buildAllBenches() =
+  echo "\n\n------------------------------------------------------\n"
+  echo "Building benchmarks to ensure they stay relevant ..."
+  buildBench("bench_fp")
+  buildBench("bench_fp_double_width")
+  buildBench("bench_fp2")
+  buildBench("bench_fp6")
+  buildBench("bench_fp12")
+  buildBench("bench_ec_g1")
+  buildBench("bench_ec_g2")
+  buildBench("bench_pairing_bls12_377")
+  buildBench("bench_pairing_bls12_381")
+  buildBench("bench_pairing_bn254_nogami")
+  buildBench("bench_pairing_bn254_snarks")
+  buildBench("bench_sha256")
+  echo "All benchmarks compile successfully."
+  
 # Tasks
 # ----------------------------------------------------------------
 
@@ -229,18 +277,7 @@ task test, "Run all tests":
 
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
   if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
-    runBench("bench_fp")
-    runBench("bench_fp_double_width")
-    runBench("bench_fp2")
-    runBench("bench_fp6")
-    runBench("bench_fp12")
-    runBench("bench_ec_g1")
-    runBench("bench_ec_g2")
-    runBench("bench_pairing_bls12_377")
-    runBench("bench_pairing_bls12_381")
-    runBench("bench_pairing_bn254_nogami")
-    runBench("bench_pairing_bn254_snarks")
-    runBench("bench_sha256")
+    buildAllBenches()
 
 task test_no_gmp, "Run tests that don't require GMP":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
@@ -251,17 +288,7 @@ task test_no_gmp, "Run tests that don't require GMP":
 
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
   if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
-    runBench("bench_fp")
-    runBench("bench_fp2")
-    runBench("bench_fp6")
-    runBench("bench_fp12")
-    runBench("bench_ec_g1")
-    runBench("bench_ec_g2")
-    runBench("bench_pairing_bls12_377")
-    runBench("bench_pairing_bls12_381")
-    runBench("bench_pairing_bn254_nogami")
-    runBench("bench_pairing_bn254_snarks")
-    runBench("bench_sha256")
+    buildAllBenches()
 
 task test_parallel, "Run all tests in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
@@ -269,28 +296,18 @@ task test_parallel, "Run all tests in parallel (via GNU parallel)":
   runTests(requireGMP = true, dumpCmdFile = true)
   exec "parallel --keep-order --group < " & buildParallel
 
-  if sizeof(int) == 8: # 32-bit tests on 64-bit arch
-    clearParallelBuild()
-    runTests(requireGMP = true, dumpCmdFile = true, test32bit = true)
-    exec "parallel --keep-order --group < " & buildParallel
+  # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
+  #   clearParallelBuild()
+  #   runTests(requireGMP = true, dumpCmdFile = true, test32bit = true)
+  #   exec "parallel --keep-order --group < " & buildParallel
 
   # Now run the benchmarks
   #
-  # Benchmarks compile and run
+  # Benchmarks compile
   # ignore Windows 32-bit for the moment
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
   if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
-    runBench("bench_fp")
-    runBench("bench_fp2")
-    runBench("bench_fp6")
-    runBench("bench_fp12")
-    runBench("bench_ec_g1")
-    runBench("bench_ec_g2")
-    runBench("bench_pairing_bls12_377")
-    runBench("bench_pairing_bls12_381")
-    runBench("bench_pairing_bn254_nogami")
-    runBench("bench_pairing_bn254_snarks")
-    runBench("bench_sha256")
+    buildAllBenches()
 
 task test_parallel_no_assembler, "Run all tests (without macro assembler) in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
@@ -298,29 +315,18 @@ task test_parallel_no_assembler, "Run all tests (without macro assembler) in par
   runTests(requireGMP = true, dumpCmdFile = true, testASM = false)
   exec "parallel --keep-order --group < " & buildParallel
 
-  exec "> " & buildParallel
-  if sizeof(int) == 8: # 32-bit tests on 64-bit arch
-    clearParallelBuild()
-    runTests(requireGMP = true, dumpCmdFile = true, test32bit = true, testASM = false)
-    exec "parallel --keep-order --group < " & buildParallel
+  # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
+  #   clearParallelBuild()
+  #   runTests(requireGMP = true, dumpCmdFile = true, test32bit = true, testASM = false)
+  #   exec "parallel --keep-order --group < " & buildParallel
 
   # Now run the benchmarks
   #
-  # Benchmarks compile and run
+  # Benchmarks compile
   # ignore Windows 32-bit for the moment
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
   if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
-    runBench("bench_fp")
-    runBench("bench_fp2")
-    runBench("bench_fp6")
-    runBench("bench_fp12")
-    runBench("bench_ec_g1")
-    runBench("bench_ec_g2")
-    runBench("bench_pairing_bls12_377")
-    runBench("bench_pairing_bls12_381")
-    runBench("bench_pairing_bn254_nogami")
-    runBench("bench_pairing_bn254_snarks")
-    runBench("bench_sha256")
+    buildAllBenches()
 
 task test_parallel_no_gmp, "Run all tests in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
@@ -328,28 +334,18 @@ task test_parallel_no_gmp, "Run all tests in parallel (via GNU parallel)":
   runTests(requireGMP = false, dumpCmdFile = true)
   exec "parallel --keep-order --group < " & buildParallel
 
-  if sizeof(int) == 8: # 32-bit tests on 64-bit arch
-    clearParallelBuild()
-    runTests(requireGMP = false, dumpCmdFile = true, test32bit = true)
-    exec "parallel --keep-order --group < " & buildParallel
+  # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
+  #   clearParallelBuild()
+  #   runTests(requireGMP = false, dumpCmdFile = true, test32bit = true)
+  #   exec "parallel --keep-order --group < " & buildParallel
 
   # Now run the benchmarks
   #
-  # Benchmarks compile and run
+  # Benchmarks compile
   # ignore Windows 32-bit for the moment
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
   if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
-    runBench("bench_fp")
-    runBench("bench_fp2")
-    runBench("bench_fp6")
-    runBench("bench_fp12")
-    runBench("bench_ec_g1")
-    runBench("bench_ec_g2")
-    runBench("bench_pairing_bls12_377")
-    runBench("bench_pairing_bls12_381")
-    runBench("bench_pairing_bn254_nogami")
-    runBench("bench_pairing_bn254_snarks")
-    runBench("bench_sha256")
+    buildAllBenches()
 
 task test_parallel_no_gmp_no_assembler, "Run all tests in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
@@ -357,29 +353,18 @@ task test_parallel_no_gmp_no_assembler, "Run all tests in parallel (via GNU para
   runTests(requireGMP = false, dumpCmdFile = true, testASM = false)
   exec "parallel --keep-order --group < " & buildParallel
 
-  exec "> " & buildParallel
-  if sizeof(int) == 8: # 32-bit tests on 64-bit arch
-    clearParallelBuild()
-    runTests(requireGMP = false, dumpCmdFile = true, test32bit = true, testASM = false)
-    exec "parallel --keep-order --group < " & buildParallel
+  # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
+  #   clearParallelBuild()
+  #   runTests(requireGMP = false, dumpCmdFile = true, test32bit = true, testASM = false)
+  #   exec "parallel --keep-order --group < " & buildParallel
 
   # Now run the benchmarks
   #
-  # Benchmarks compile and run
+  # Benchmarks compile
   # ignore Windows 32-bit for the moment
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
   if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
-    runBench("bench_fp")
-    runBench("bench_fp2")
-    runBench("bench_fp6")
-    runBench("bench_fp12")
-    runBench("bench_ec_g1")
-    runBench("bench_ec_g2")
-    runBench("bench_pairing_bls12_377")
-    runBench("bench_pairing_bls12_381")
-    runBench("bench_pairing_bn254_nogami")
-    runBench("bench_pairing_bn254_snarks")
-    runBench("bench_sha256")
+    buildAllBenches()
 
 task bench_fp, "Run benchmark 𝔽p with your default compiler":
   runBench("bench_fp")
