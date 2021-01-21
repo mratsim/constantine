@@ -22,18 +22,18 @@ import
 #
 # ############################################################
 
-func fromUint*(dst: var Fp,
+func fromUint*(dst: var FF,
                src: SomeUnsignedInt) =
   ## Parse a regular unsigned integer
-  ## and store it into a Fp
-  let raw {.noinit.} = (type dst.mres).fromRawUint(cast[array[sizeof(src), byte]](src), cpuEndian)
+  ## and store it into a Fp or Fr
+  let raw {.noinit.} = (typeof dst.mres).fromRawUint(cast[array[sizeof(src), byte]](src), cpuEndian)
   dst.fromBig(raw)
 
-func fromInt*(dst: var Fp,
+func fromInt*(dst: var FF,
                src: SomeInteger) =
   ## Parse a regular signed integer
-  ## and store it into a Fp
-  ## A negative integer will be instantiated as a negated number (mod p)
+  ## and store it into a Fp or Fr
+  ## A negative integer will be instantiated as a negated number (mod p) or (mod r)
   when src is SomeUnsignedInt:
     dst.fromUint(src)
   else:
@@ -45,7 +45,7 @@ func fromInt*(dst: var Fp,
     dst.fromBig(raw)
 
 func exportRawUint*(dst: var openarray[byte],
-                       src: Fp,
+                       src: FF,
                        dstEndianness: static Endianness) =
   ## Serialize a finite field element to its canonical big-endian or little-endian
   ## representation
@@ -58,7 +58,7 @@ func exportRawUint*(dst: var openarray[byte],
   ## I.e least significant bit is aligned to buffer boundary
   exportRawUint(dst, src.toBig(), dstEndianness)
 
-func appendHex*(dst: var string, f: Fp, order: static Endianness = bigEndian) =
+func appendHex*(dst: var string, f: FF, order: static Endianness = bigEndian) =
   ## Stringify a finite field element to hex.
   ## Note. Leading zeros are not removed.
   ## Result is prefixed with 0x
@@ -69,7 +69,7 @@ func appendHex*(dst: var string, f: Fp, order: static Endianness = bigEndian) =
   ##   - no leaks
   dst.appendHex(f.toBig(), order)
 
-func toHex*(f: Fp, order: static Endianness = bigEndian): string =
+func toHex*(f: FF, order: static Endianness = bigEndian): string =
   ## Stringify a finite field element to hex.
   ## Note. Leading zeros are not removed.
   ## Result is prefixed with 0x
@@ -80,11 +80,11 @@ func toHex*(f: Fp, order: static Endianness = bigEndian): string =
   ##   - no leaks
   result.appendHex(f, order)
 
-func fromHex*(dst: var Fp, hexString: string) {.raises: [ValueError].}=
-  ## Convert a hex string to a element of Fp
+func fromHex*(dst: var FF, hexString: string) {.raises: [ValueError].}=
+  ## Convert a hex string to a element of Fp or Fr
   let raw {.noinit.} = fromHex(dst.mres.typeof, hexString)
   dst.fromBig(raw)
 
-func fromHex*(T: type Fp, hexString: string): T {.noInit, raises: [ValueError].}=
+func fromHex*(T: type FF, hexString: string): T {.noInit, raises: [ValueError].}=
   ## Convert a hex string to a element of Fp
   result.fromHex(hexString)

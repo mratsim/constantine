@@ -145,8 +145,8 @@ func random_unsafe(rng: var RngState, a: var FF) =
   rng.random_unsafe(unreduced)
 
   # Note: a simple modulo will be biaised but it's simple and "fast"
-  reduced.reduce(unreduced, FF.C.Mod)
-  a.mres.montyResidue(reduced, FF.C.Mod, FF.getR2modP(), FF.getNegInvModWord(), FF.canUseNoCarryMontyMul())
+  reduced.reduce(unreduced, FF.fieldMod())
+  a.mres.montyResidue(reduced, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord(), FF.canUseNoCarryMontyMul())
 
 func random_unsafe(rng: var RngState, a: var ExtensionField) =
   ## Recursively initialize an extension Field element
@@ -176,8 +176,8 @@ func random_highHammingWeight(rng: var RngState, a: var FF) =
   rng.random_highHammingWeight(unreduced)
 
   # Note: a simple modulo will be biaised but it's simple and "fast"
-  reduced.reduce(unreduced, FF.C.Mod)
-  a.mres.montyResidue(reduced, FF.C.Mod, FF.getR2modP(), FF.getNegInvModWord(), FF.canUseNoCarryMontyMul())
+  reduced.reduce(unreduced, FF.fieldMod())
+  a.mres.montyResidue(reduced, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord(), FF.canUseNoCarryMontyMul())
 
 func random_highHammingWeight(rng: var RngState, a: var ExtensionField) =
   ## Recursively initialize an extension Field element
@@ -221,8 +221,8 @@ func random_long01Seq(rng: var RngState, a: var FF) =
   rng.random_long01Seq(unreduced)
 
   # Note: a simple modulo will be biaised but it's simple and "fast"
-  reduced.reduce(unreduced, FF.C.Mod)
-  a.mres.montyResidue(reduced, FF.C.Mod, FF.getR2modP(), FF.getNegInvModWord(), FF.canUseNoCarryMontyMul())
+  reduced.reduce(unreduced, FF.fieldMod())
+  a.mres.montyResidue(reduced, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord(), FF.canUseNoCarryMontyMul())
 
 func random_long01Seq(rng: var RngState, a: var ExtensionField) =
   ## Recursively initialize an extension Field element

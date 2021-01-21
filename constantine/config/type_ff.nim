@@ -23,7 +23,7 @@ type
     ## `r` being the prime curve order or subgroup order
     ## Internally, data is stored in Montgomery n-residue form
     ## with the magic constant chosen for convenient division (a power of 2 depending on P bitsize)
-    mres: matchingOrderBigInt(C)
+    mres*: matchingOrderBigInt(C)
 
   FF*[C: static Curve] = Fp[C] or Fr[C]
 
