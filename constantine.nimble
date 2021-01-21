@@ -150,11 +150,15 @@ const skipSanitizers = [
   "tests/t_ec_sage_bls12_381.nim",
 ]
 
-const sanitizers =
-  " --passC:-fsanitize=undefined --passL:-fsanitize=undefined" &
-  " --passC:-fno-sanitize-recover" & # Enforce crash on undefined behaviour
-  " --gc:none" # The conservative stack scanning of Nim default GC triggers, alignment UB and stack-buffer-overflow check.
-  # " --passC:-fsanitize=address --passL:-fsanitize=address" & # Requires too much stack for the inline assembly
+when defined(windows):
+  # UBSAN is not available on mingw
+  const sanitizers = ""
+else:
+  const sanitizers =
+    " --passC:-fsanitize=undefined --passL:-fsanitize=undefined" &
+    " --passC:-fno-sanitize-recover" & # Enforce crash on undefined behaviour
+    " --gc:none" # The conservative stack scanning of Nim default GC triggers, alignment UB and stack-buffer-overflow check.
+    # " --passC:-fsanitize=address --passL:-fsanitize=address" & # Requires too much stack for the inline assembly
 
 
 # Helper functions
