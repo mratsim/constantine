@@ -9,12 +9,13 @@
 import
   ../constantine/arithmetic/bigints,
   ../constantine/primitives,
-  ../constantine/config/[common, curves],
+  ../constantine/config/[common, curves, type_ff],
   ../constantine/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian],
-  ../constantine/io/io_bigints
+  ../constantine/io/io_bigints,
+  ../constantine/tower_field_extensions/tower_common
 
 # ############################################################
 #
@@ -137,20 +138,21 @@ func random_unsafe(rng: var RngState, a: var BigInt) =
   for i in 0 ..< a.limbs.len:
     a.limbs[i] = SecretWord(rng.next())
 
-func random_unsafe[T](rng: var RngState, a: var T, C: static Curve) =
-  ## Recursively initialize a BigInt (part of a field) or Field element
+func random_unsafe(rng: var RngState, a: var FF) =
+  ## Initialize a Field element
   ## Unsafe: for testing and benchmarking purposes only
-  when T is BigInt:
-    var reduced, unreduced{.noInit.}: T
-    rng.random_unsafe(unreduced)
+  var reduced, unreduced{.noInit.}: typeof(a.mres)
+  rng.random_unsafe(unreduced)
 
-    # Note: a simple modulo will be biaised but it's simple and "fast"
-    reduced.reduce(unreduced, C.Mod)
-    a.montyResidue(reduced, C.Mod, C.getR2modP(), C.getNegInvModWord(), C.canUseNoCarryMontyMul())
+  # Note: a simple modulo will be biaised but it's simple and "fast"
+  reduced.reduce(unreduced, FF.fieldMod())
+  a.mres.montyResidue(reduced, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord(), FF.canUseNoCarryMontyMul())
 
-  else:
-    for field in fields(a):
-      rng.random_unsafe(field, C)
+func random_unsafe(rng: var RngState, a: var ExtensionField) =
+  ## Recursively initialize an extension Field element
+  ## Unsafe: for testing and benchmarking purposes only
+  for field in fields(a):
+    rng.random_unsafe(field)
 
 func random_word_highHammingWeight(rng: var RngState): BaseType =
   let numZeros = rng.random_unsafe(WordBitWidth div 3) # Average Hamming Weight is 1-0.33/2 = 0.83
@@ -165,22 +167,23 @@ func random_highHammingWeight(rng: var RngState, a: var BigInt) =
   for i in 0 ..< a.limbs.len:
     a.limbs[i] = SecretWord rng.random_word_highHammingWeight()
 
-func random_highHammingWeight[T](rng: var RngState, a: var T, C: static Curve) =
+func random_highHammingWeight(rng: var RngState, a: var FF) =
   ## Recursively initialize a BigInt (part of a field) or Field element
   ## Unsafe: for testing and benchmarking purposes only
   ## The result will have a high Hamming Weight
   ## to have a higher probability of triggering carries
-  when T is BigInt:
-    var reduced, unreduced{.noInit.}: T
-    rng.random_highHammingWeight(unreduced)
+  var reduced, unreduced{.noInit.}: typeof(a.mres)
+  rng.random_highHammingWeight(unreduced)
 
-    # Note: a simple modulo will be biaised but it's simple and "fast"
-    reduced.reduce(unreduced, C.Mod)
-    a.montyResidue(reduced, C.Mod, C.getR2modP(), C.getNegInvModWord(), C.canUseNoCarryMontyMul())
+  # Note: a simple modulo will be biaised but it's simple and "fast"
+  reduced.reduce(unreduced, FF.fieldMod())
+  a.mres.montyResidue(reduced, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord(), FF.canUseNoCarryMontyMul())
 
-  else:
-    for field in fields(a):
-      rng.random_highHammingWeight(field, C)
+func random_highHammingWeight(rng: var RngState, a: var ExtensionField) =
+  ## Recursively initialize an extension Field element
+  ## Unsafe: for testing and benchmarking purposes only
+  for field in fields(a):
+    rng.random_highHammingWeight(field)
 
 func random_long01Seq(rng: var RngState, a: var openArray[byte]) =
   ## Initialize a bytearray
@@ -210,21 +213,22 @@ func random_long01Seq(rng: var RngState, a: var BigInt) =
   else:
     a.fromRawUint(buf, littleEndian)
 
-func random_long01Seq[T](rng: var RngState, a: var T, C: static Curve) =
+func random_long01Seq(rng: var RngState, a: var FF) =
   ## Recursively initialize a BigInt (part of a field) or Field element
   ## It is skewed towards producing strings of 1111... and 0000
   ## to trigger edge cases
-  when T is BigInt:
-    var reduced, unreduced{.noInit.}: T
-    rng.random_long01Seq(unreduced)
+  var reduced, unreduced{.noInit.}: typeof(a.mres)
+  rng.random_long01Seq(unreduced)
 
-    # Note: a simple modulo will be biaised but it's simple and "fast"
-    reduced.reduce(unreduced, C.Mod)
-    a.montyResidue(reduced, C.Mod, C.getR2modP(), C.getNegInvModWord(), C.canUseNoCarryMontyMul())
+  # Note: a simple modulo will be biaised but it's simple and "fast"
+  reduced.reduce(unreduced, FF.fieldMod())
+  a.mres.montyResidue(reduced, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord(), FF.canUseNoCarryMontyMul())
 
-  else:
-    for field in fields(a):
-      rng.random_highHammingWeight(field, C)
+func random_long01Seq(rng: var RngState, a: var ExtensionField) =
+  ## Recursively initialize an extension Field element
+  ## Unsafe: for testing and benchmarking purposes only
+  for field in fields(a):
+    rng.random_long01Seq(field)
 
 # Elliptic curves
 # ------------------------------------------------------------
@@ -238,20 +242,20 @@ func random_unsafe(rng: var RngState, a: var (ECP_ShortW_Proj or ECP_ShortW_Aff 
   while not bool(success):
     # Euler's criterion: there are (p-1)/2 squares in a field with modulus `p`
     #                    so we have a probability of ~0.5 to get a good point
-    rng.random_unsafe(fieldElem, a.F.C)
+    rng.random_unsafe(fieldElem)
     success = trySetFromCoordX(a, fieldElem)
 
 func random_unsafe_with_randZ(rng: var RngState, a: var (ECP_ShortW_Proj or ECP_ShortW_Jac)) =
   ## Initialize a random curve point with Z coordinate being random
   ## Unsafe: for testing and benchmarking purposes only
   var Z{.noInit.}: a.F
-  rng.random_unsafe(Z, a.F.C) # If Z is zero, X will be zero and that will be an infinity point
+  rng.random_unsafe(Z) # If Z is zero, X will be zero and that will be an infinity point
 
   var fieldElem {.noInit.}: a.F
   var success = CtFalse
 
   while not bool(success):
-    rng.random_unsafe(fieldElem, a.F.C)
+    rng.random_unsafe(fieldElem)
     success = trySetFromCoordsXandZ(a, fieldElem, Z)
 
 func random_highHammingWeight(rng: var RngState, a: var (ECP_ShortW_Proj or ECP_ShortW_Aff or ECP_ShortW_Jac)) =
@@ -264,7 +268,7 @@ func random_highHammingWeight(rng: var RngState, a: var (ECP_ShortW_Proj or ECP_
   while not bool(success):
     # Euler's criterion: there are (p-1)/2 squares in a field with modulus `p`
     #                    so we have a probability of ~0.5 to get a good point
-    rng.random_highHammingWeight(fieldElem, a.F.C)
+    rng.random_highHammingWeight(fieldElem)
     success = trySetFromCoordX(a, fieldElem)
 
 func random_highHammingWeight_with_randZ(rng: var RngState, a: var (ECP_ShortW_Proj or ECP_ShortW_Jac)) =
@@ -272,13 +276,13 @@ func random_highHammingWeight_with_randZ(rng: var RngState, a: var (ECP_ShortW_P
   ## This will be generated with a biaised RNG with high Hamming Weight
   ## to trigger carry bugs
   var Z{.noInit.}: a.F
-  rng.random_highHammingWeight(Z, a.F.C) # If Z is zero, X will be zero and that will be an infinity point
+  rng.random_highHammingWeight(Z) # If Z is zero, X will be zero and that will be an infinity point
 
   var fieldElem {.noInit.}: a.F
   var success = CtFalse
 
   while not bool(success):
-    rng.random_highHammingWeight(fieldElem, a.F.C)
+    rng.random_highHammingWeight(fieldElem)
     success = trySetFromCoordsXandZ(a, fieldElem, Z)
 
 func random_long01Seq(rng: var RngState, a: var (ECP_ShortW_Proj or ECP_ShortW_Aff or ECP_ShortW_Jac)) =
@@ -292,7 +296,7 @@ func random_long01Seq(rng: var RngState, a: var (ECP_ShortW_Proj or ECP_ShortW_A
   while not bool(success):
     # Euler's criterion: there are (p-1)/2 squares in a field with modulus `p`
     #                    so we have a probability of ~0.5 to get a good point
-    rng.random_long01Seq(fieldElem, a.F.C)
+    rng.random_long01Seq(fieldElem)
     success = trySetFromCoordX(a, fieldElem)
 
 func random_long01Seq_with_randZ(rng: var RngState, a: var (ECP_ShortW_Proj or ECP_ShortW_Jac)) =
@@ -301,13 +305,13 @@ func random_long01Seq_with_randZ(rng: var RngState, a: var (ECP_ShortW_Proj or E
   ## that produces long bitstrings of 0 and 1
   ## to trigger edge cases
   var Z{.noInit.}: a.F
-  rng.random_long01Seq(Z, a.F.C) # If Z is zero, X will be zero and that will be an infinity point
+  rng.random_long01Seq(Z) # If Z is zero, X will be zero and that will be an infinity point
 
   var fieldElem {.noInit.}: a.F
   var success = CtFalse
 
   while not bool(success):
-    rng.random_long01Seq(fieldElem, a.F.C)
+    rng.random_long01Seq(fieldElem)
     success = trySetFromCoordsXandZ(a, fieldElem, Z)
 
 # Generic over any Constantine type
@@ -323,7 +327,7 @@ func random_unsafe*(rng: var RngState, T: typedesc): T =
   elif T is BigInt:
     rng.random_unsafe(result)
   else: # Fields
-    rng.random_unsafe(result, T.C)
+    rng.random_unsafe(result)
 
 func random_unsafe_with_randZ*(rng: var RngState, T: typedesc[ECP_ShortW_Proj or ECP_ShortW_Jac]): T =
   ## Create a random curve element with a random Z coordinate
@@ -340,7 +344,7 @@ func random_highHammingWeight*(rng: var RngState, T: typedesc): T =
   elif T is BigInt:
     rng.random_highHammingWeight(result)
   else: # Fields
-    rng.random_highHammingWeight(result, T.C)
+    rng.random_highHammingWeight(result)
 
 func random_highHammingWeight_with_randZ*(rng: var RngState, T: typedesc[ECP_ShortW_Proj or ECP_ShortW_Jac]): T =
   ## Create a random curve element with a random Z coordinate
@@ -357,7 +361,7 @@ func random_long01Seq*(rng: var RngState, T: typedesc): T =
   elif T is BigInt:
     rng.random_long01Seq(result)
   else: # Fields
-    rng.random_long01Seq(result, T.C)
+    rng.random_long01Seq(result)
 
 func random_long01Seq_with_randZ*(rng: var RngState, T: typedesc[ECP_ShortW_Proj or ECP_ShortW_Jac]): T =
   ## Create a random curve element with a random Z coordinate

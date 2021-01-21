@@ -105,7 +105,7 @@ func prod_complex(r: var QuadraticExt, a, b: QuadraticExt) =
         # Deactivated for now Clang 360 cycles on i9-9980XE @4.1 GHz
     var a0b0 {.noInit.}, a1b1 {.noInit.}: doubleWidth(typeof(r.c0))
     var d {.noInit.}: doubleWidth(typeof(r.c0))
-    const msbSet = r.c0.typeof.C.canUseNoCarryMontyMul()
+    const msbSet = r.c0.typeof.canUseNoCarryMontyMul()
 
     a0b0.mulNoReduce(a.c0, b.c0)     # 44 cycles - cumul 44
     a1b1.mulNoReduce(a.c1, b.c1)     # 44 cycles - cumul 88

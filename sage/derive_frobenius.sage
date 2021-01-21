@@ -285,7 +285,7 @@ if __name__ == "__main__":
       else:
         f.write(inspect.cleandoc("""
           import
-            ../config/[curves, type_fp],
+            ../config/[curves, type_ff],
             ../towers,
             ../io/[io_fields, io_towers]
         """))

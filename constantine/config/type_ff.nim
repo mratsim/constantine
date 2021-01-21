@@ -12,17 +12,32 @@ import
 
 type
   Fp*[C: static Curve] = object
-    ## All operations on a field are modulo P
+    ## All operations on a Fp field are modulo P
     ## P being the prime modulus of the Curve C
     ## Internally, data is stored in Montgomery n-residue form
     ## with the magic constant chosen for convenient division (a power of 2 depending on P bitsize)
     mres*: matchingBigInt(C)
+
+  Fr*[C: static Curve] = object
+    ## All operations on a field are modulo `r`
+    ## `r` being the prime curve order or subgroup order
+    ## Internally, data is stored in Montgomery n-residue form
+    ## with the magic constant chosen for convenient division (a power of 2 depending on P bitsize)
+    mres*: matchingOrderBigInt(C)
+
+  FF*[C: static Curve] = Fp[C] or Fr[C]
 
 debug:
   import ./type_bigint
 
   func `$`*[C: static Curve](a: Fp[C]): string =
     result = "Fp[" & $C
+    result.add "]("
+    result.add $a.mres
+    result.add ')'
+
+  func `$`*[C: static Curve](a: Fr[C]): string =
+    result = "Fr[" & $C
     result.add "]("
     result.add $a.mres
     result.add ')'

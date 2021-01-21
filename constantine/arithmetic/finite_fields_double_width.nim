@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/[common, curves, type_fp],
+  ../config/[common, curves, type_ff],
   ../primitives,
   ./bigints,
   ./finite_fields,
@@ -38,8 +38,8 @@ func reduce*(r: var Fp, a: FpDbl) {.inline.} =
     r.mres.limbs,
     a.limbs2x,
     Fp.C.Mod.limbs,
-    Fp.C.getNegInvModWord(),
-    Fp.C.canUseNoCarryMontyMul()
+    Fp.getNegInvModWord(),
+    Fp.canUseNoCarryMontyMul()
   )
 
 func diffNoInline(r: var FpDbl, a, b: FpDbl): Borrow =

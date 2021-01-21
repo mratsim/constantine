@@ -148,7 +148,12 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_pairing_bls12_381_optate.nim", false),
 
   # Hashing vs OpenSSL
-  ("tests/t_hash_sha256_vs_openssl.nim", true),
+  # ----------------------------------------------------------
+  ("tests/t_hash_sha256_vs_openssl.nim", true), # skip OpenSSL tests on Windows
+
+  # Prime order fields
+  # ----------------------------------------------------------
+  ("tests/t_fr.nim", false),
 ]
 
 # For temporary (hopefully) investigation that can only be reproduced in CI
@@ -264,7 +269,7 @@ proc buildAllBenches() =
   buildBench("bench_pairing_bn254_snarks")
   buildBench("bench_sha256")
   echo "All benchmarks compile successfully."
-  
+
 # Tasks
 # ----------------------------------------------------------------
 
