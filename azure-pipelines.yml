@@ -223,7 +223,7 @@ steps:
       echo "PATH=${PATH}"
       nimble refresh
       nimble install -y gmp stew json_serialization
-      nimble uninstall serialization
+      nimble uninstall -y serialization
       nimble install serialization@#217d78a
     displayName: 'Installing package and testing dependencies'
 

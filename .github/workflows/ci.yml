@@ -205,7 +205,7 @@ jobs:
         run: |
           nimble refresh
           nimble install -y gmp stew json_serialization
-          nimble uninstall serialization
+          nimble uninstall -y serialization
           nimble install serialization@#217d78a
       - name: Run Constantine tests (with Assembler & with GMP)
         if: (runner.os == 'Linux' || runner.os == 'macOS') && matrix.target.cpu == 'amd64'

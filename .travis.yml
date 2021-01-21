@@ -131,7 +131,7 @@ script:
     # Workaround #113 and https://github.com/status-im/nim-serialization/issues/33
     # and nimble flaky pinning / dependency resolution,
     # json_serialization install would override nim-serialization pinning
-    - nimble uninstall serialization
+    - nimble uninstall -y serialization
     - nimble install serialization@#217d78a
 
     # Installing Clang9.0 or later is a pain in Travis
