@@ -8,7 +8,7 @@
 
 import
   # Internals
-  ../constantine/config/curves,
+  ../constantine/config/[curves, common],
   ../constantine/arithmetic,
   ../constantine/io/io_bigints,
   # Helpers
@@ -52,7 +52,12 @@ proc main() =
     invPowFermatBench(Fp[curve], ExponentIters)
     when curve in {BN254_Snarks, BLS12_381}:
       invAddChainBench(Fp[curve], ExponentIters)
-    sqrtBench(Fp[curve], ExponentIters)
+    when (BaseType(curve.Mod.limbs[0]) and 3) == 3:
+      sqrtP3mod4Bench(Fp[curve], ExponentIters)
+    when curve in {BLS12_381}:
+      sqrtAddChainBench(Fp[curve], ExponentIters)
+    when curve in {BLS12_377}:
+      sqrtTonelliBench(Fp[curve], ExponentIters)
     # Exponentiation by a "secret" of size ~the curve order
     powBench(Fp[curve], ExponentIters)
     powUnsafeBench(Fp[curve], ExponentIters)

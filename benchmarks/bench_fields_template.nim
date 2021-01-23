@@ -22,15 +22,15 @@ import
   ./bench_blueprint
 
 export notes
-proc separator*() = separator(145)
+proc separator*() = separator(147)
 
 proc report(op, field: string, start, stop: MonoTime, startClk, stopClk: int64, iters: int) =
   let ns = inNanoseconds((stop-start) div iters)
   let throughput = 1e9 / float64(ns)
   when SupportsGetTicks:
-    echo &"{op:<50} {field:<18} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
+    echo &"{op:<52} {field:<18} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
   else:
-    echo &"{op:<50} {field:<18} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
+    echo &"{op:<52} {field:<18} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
 
 macro fixFieldDisplay(T: typedesc): untyped =
   # At compile-time, enums are integers and their display is buggy
@@ -119,9 +119,27 @@ proc invAddChainBench*(T: typedesc, iters: int) =
 
 proc sqrtBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)
-  bench("Square Root + square check (constant-time)", T, iters):
+  bench("Square Root + isSquare (constant-time default impl)", T, iters):
     var r = x
     discard r.sqrt_if_square()
+
+proc sqrtP3mod4Bench*(T: typedesc, iters: int) =
+  let x = rng.random_unsafe(T)
+  bench("SquareRoot + isSquare (p ≡ 3 (mod 4) exponentiation)", T, iters):
+    var r = x
+    discard r.sqrt_if_square_p3mod4()
+
+proc sqrtAddChainBench*(T: typedesc, iters: int) =
+  let x = rng.random_unsafe(T)
+  bench("SquareRoot + isSquare (addition chain)", T, iters):
+    var r = x
+    discard r.sqrt_if_square_addchain()
+
+proc sqrtTonelliBench*(T: typedesc, iters: int) =
+  let x = rng.random_unsafe(T)
+  bench("SquareRoot + isSquare (Tonelli-Shanks)", T, iters):
+    var r = x
+    discard r.sqrt_if_square_tonelli_shanks()
 
 proc powBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)
