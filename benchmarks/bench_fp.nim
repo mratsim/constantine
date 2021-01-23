@@ -54,7 +54,7 @@ proc main() =
       invAddChainBench(Fp[curve], ExponentIters)
     when (BaseType(curve.Mod.limbs[0]) and 3) == 3:
       sqrtP3mod4Bench(Fp[curve], ExponentIters)
-    when curve in {BLS12_381}:
+    when curve in {BLS12_381, BN254_Snarks}:
       sqrtAddChainBench(Fp[curve], ExponentIters)
     when curve in {BLS12_377}:
       sqrtTonelliBench(Fp[curve], ExponentIters)
