@@ -151,7 +151,7 @@ func invsqrt_addchain*(r: var Fp[BN254_Snarks], a: Fp[BN254_Snarks]) =
   r.square_repeated(8)
   r *= x11100111
 
-  # 288 + 15 = 303
+  # 288 + 13 = 301
   r.square_repeated(7)
   r *= x1110101
   r.square_repeated(4)
