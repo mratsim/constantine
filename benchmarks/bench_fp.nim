@@ -51,7 +51,7 @@ proc main() =
     sqrBench(Fp[curve], Iters)
     invEuclidBench(Fp[curve], ExponentIters)
     invPowFermatBench(Fp[curve], ExponentIters)
-    when curve in {BN254_Snarks, BLS12_381}:
+    when curve in {BN254_Nogami, BN254_Snarks, BLS12_381}:
       invAddChainBench(Fp[curve], ExponentIters)
     when (BaseType(curve.Mod.limbs[0]) and 3) == 3:
       sqrtP3mod4Bench(Fp[curve], ExponentIters)

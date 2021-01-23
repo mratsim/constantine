@@ -8,10 +8,12 @@
 
 import
   ./bls12_381_inversion,
+  ./bn254_nogami_inversion,
   ./bn254_snarks_inversion,
   ./secp256k1_inversion
 
 export
   bls12_381_inversion,
+  bn254_nogami_inversion,
   bn254_snarks_inversion,
   secp256k1_inversion
