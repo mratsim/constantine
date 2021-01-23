@@ -94,3 +94,5 @@ func inv_addchain*(r: var Fp[BN254_Nogami], a: Fp[BN254_Nogami]) =
   r.square_repeated(56)
 
   r *= x10001
+
+  # Total 271 operations

@@ -11,12 +11,14 @@ import
   ../config/curves,
   ./bls12_377_sqrt,
   ./bls12_381_sqrt,
+  ./bn254_nogami_sqrt,
   ./bn254_snarks_sqrt,
   ./bw6_761_sqrt
 
 export
   bls12_377_sqrt,
   bls12_381_sqrt,
+  bn254_nogami_sqrt,
   bn254_snarks_sqrt,
   bw6_761_sqrt
 
