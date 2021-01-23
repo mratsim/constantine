@@ -12,7 +12,7 @@ import
 
 # ############################################################
 #
-#           Specialized inversion for BN254-Snarks
+#           Specialized inversion for BN254-Nogami
 #
 # ############################################################
 

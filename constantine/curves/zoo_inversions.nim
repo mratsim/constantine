@@ -7,12 +7,14 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  ./bls12_377_inversion,
   ./bls12_381_inversion,
   ./bn254_nogami_inversion,
   ./bn254_snarks_inversion,
   ./secp256k1_inversion
 
 export
+  bls12_377_inversion,
   bls12_381_inversion,
   bn254_nogami_inversion,
   bn254_snarks_inversion,
