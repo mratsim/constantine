@@ -58,6 +58,7 @@ proc main() =
       sqrtAddChainBench(Fp[curve], ExponentIters)
     when curve in {BLS12_377}:
       sqrtTonelliBench(Fp[curve], ExponentIters)
+      sqrtTonelliAddChainBench(Fp[curve], ExponentIters)
     # Exponentiation by a "secret" of size ~the curve order
     powBench(Fp[curve], ExponentIters)
     powUnsafeBench(Fp[curve], ExponentIters)

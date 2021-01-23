@@ -10,11 +10,11 @@ import
   std/macros,
   ../config/curves,
   ./bls12_377_sqrt,
-
-  bls12_381_sqrt,
-  bn254_snarks_sqrt
+  ./bls12_381_sqrt,
+  ./bn254_snarks_sqrt
 
 export
+  bls12_377_sqrt,
   bls12_381_sqrt,
   bn254_snarks_sqrt
 

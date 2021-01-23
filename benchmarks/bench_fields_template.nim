@@ -22,15 +22,15 @@ import
   ./bench_blueprint
 
 export notes
-proc separator*() = separator(147)
+proc separator*() = separator(148)
 
 proc report(op, field: string, start, stop: MonoTime, startClk, stopClk: int64, iters: int) =
   let ns = inNanoseconds((stop-start) div iters)
   let throughput = 1e9 / float64(ns)
   when SupportsGetTicks:
-    echo &"{op:<52} {field:<18} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
+    echo &"{op:<53} {field:<18} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
   else:
-    echo &"{op:<52} {field:<18} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
+    echo &"{op:<53} {field:<18} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
 
 macro fixFieldDisplay(T: typedesc): untyped =
   # At compile-time, enums are integers and their display is buggy
@@ -93,20 +93,20 @@ proc invBench*(T: typedesc, iters: int) =
   var r: T
   let x = rng.random_unsafe(T)
   preventOptimAway(r)
-  bench("Inversion (constant-time default method)", T, iters):
+  bench("Inversion (constant-time default impl)", T, iters):
     r.inv(x)
 
 proc invEuclidBench*(T: typedesc, iters: int) =
   var r: T
   let x = rng.random_unsafe(T)
   preventOptimAway(r)
-  bench("Inversion via constant-time Euclid", T, iters):
+  bench("Inversion (constant-time Euclid)", T, iters):
     r.inv_euclid(x)
 
 proc invPowFermatBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)
   const exponent = T.getInvModExponent()
-  bench("Inversion via exponentiation p-2 (Little Fermat)", T, iters):
+  bench("Inversion (exponentiation p-2, Little Fermat)", T, iters):
     var r = x
     r.powUnsafeExponent(exponent)
 
@@ -114,7 +114,7 @@ proc invAddChainBench*(T: typedesc, iters: int) =
   var r: T
   let x = rng.random_unsafe(T)
   preventOptimAway(r)
-  bench("Inversion via addition chain", T, iters):
+  bench("Inversion (addition chain)", T, iters):
     r.inv_addchain(x)
 
 proc sqrtBench*(T: typedesc, iters: int) =
@@ -137,9 +137,15 @@ proc sqrtAddChainBench*(T: typedesc, iters: int) =
 
 proc sqrtTonelliBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)
-  bench("SquareRoot + isSquare (Tonelli-Shanks)", T, iters):
+  bench("SquareRoot + isSquare (Tonelli-Shanks exponentiation)", T, iters):
     var r = x
-    discard r.sqrt_if_square_tonelli_shanks()
+    discard r.sqrt_if_square_tonelli_shanks(useAddChain = false)
+
+proc sqrtTonelliAddChainBench*(T: typedesc, iters: int) =
+  let x = rng.random_unsafe(T)
+  bench("SquareRoot + isSquare (Tonelli-Shanks addchain)", T, iters):
+    var r = x
+    discard r.sqrt_if_square_tonelli_shanks(useAddChain = true)
 
 proc powBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)
