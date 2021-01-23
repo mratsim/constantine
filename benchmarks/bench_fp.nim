@@ -11,6 +11,7 @@ import
   ../constantine/config/[curves, common],
   ../constantine/arithmetic,
   ../constantine/io/io_bigints,
+  ../constantine/curves/[zoo_inversions, zoo_square_roots],
   # Helpers
   ../helpers/static_for,
   ./bench_fields_template,
@@ -51,11 +52,11 @@ proc main() =
     sqrBench(Fp[curve], Iters)
     invEuclidBench(Fp[curve], ExponentIters)
     invPowFermatBench(Fp[curve], ExponentIters)
-    when curve in {BN254_Nogami, BN254_Snarks, BLS12_377, BLS12_381}:
+    when curve.hasInversionAddchain():
       invAddChainBench(Fp[curve], ExponentIters)
     when (BaseType(curve.Mod.limbs[0]) and 3) == 3:
       sqrtP3mod4Bench(Fp[curve], ExponentIters)
-    when curve in {BLS12_381, BN254_Nogami, BN254_Snarks, BW6_761}:
+    when curve.hasSqrtAddchain():
       sqrtAddChainBench(Fp[curve], ExponentIters)
     when curve in {BLS12_377}:
       sqrtTonelliBench(Fp[curve], ExponentIters)

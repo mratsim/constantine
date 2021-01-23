@@ -46,6 +46,10 @@ func isSquare*(a: Fp): SecretBool {.inline.} =
 # Specialized routine for p ≡ 3 (mod 4)
 # ------------------------------------------------------------
 
+func hasP3mod4_primeModulus(C: static Curve): static bool =
+  ## Returns true iff p ≡ 3 (mod 4)
+  (BaseType(C.Mod.limbs[0]) and 3) == 3
+
 func sqrt_p3mod4(a: var Fp) {.inline.} =
   ## Compute the square root of ``a``
   ##
@@ -300,14 +304,12 @@ func sqrt*[C](a: var Fp[C]) {.inline.} =
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
   ## This procedure is constant-time
-  when C in {BLS12_381, BN254_Nogami, BN254_Snarks, BW6_761}:
+  when C.hasSqrtAddchain():
     sqrt_addchain(a)
-  elif (BaseType(C.Mod.limbs[0]) and 3) == 3:
+  elif C.hasP3mod4_primeModulus():
     sqrt_p3mod4(a)
-  elif C in {BLS12_377}:
-    sqrt_tonelli_shanks(a, useAddChain = true)
   else:
-    sqrt_tonelli_shanks(a, useAddChain = false)
+    sqrt_tonelli_shanks(a, useAddChain = C.hasTonelliShanksAddchain())
 
 func sqrt_invsqrt*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]) {.inline.} =
   ## Compute the square root and inverse square root of ``a``
@@ -319,14 +321,12 @@ func sqrt_invsqrt*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]) {.inline.} =
   ## The square root, if it exist is multivalued,
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
-  when C in {BLS12_381, BN254_Nogami, BN254_Snarks, BW6_761}:
+  when C.hasSqrtAddchain():
     sqrt_invsqrt_addchain(sqrt, invsqrt, a)
-  elif (BaseType(C.Mod.limbs[0]) and 3) == 3:
+  elif C.hasP3mod4_primeModulus():
     sqrt_invsqrt_p3mod4(sqrt, invsqrt, a)
-  elif C in {BLS12_377}:
-    sqrt_invsqrt_tonelli_shanks(sqrt, invsqrt, a, useAddChain = true)
   else:
-    sqrt_invsqrt_tonelli_shanks(sqrt, invsqrt, a, useAddChain = false)
+    sqrt_invsqrt_tonelli_shanks(sqrt, invsqrt, a, useAddChain = C.hasTonelliShanksAddchain())
 
 func sqrt_invsqrt_if_square*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]): SecretBool  {.inline.} =
   ## Compute the square root and ivnerse square root of ``a``
@@ -338,14 +338,12 @@ func sqrt_invsqrt_if_square*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]): SecretBool 
   ## The square root, if it exist is multivalued,
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
-  when C in {BLS12_381, BN254_Nogami, BN254_Snarks, BW6_761}:
+  when C.hasSqrtAddchain():
     result = sqrt_invsqrt_if_square_addchain(sqrt, invsqrt, a)
-  elif (BaseType(C.Mod.limbs[0]) and 3) == 3:
+  elif C.hasP3mod4_primeModulus():
     result = sqrt_invsqrt_if_square_p3mod4(sqrt, invsqrt, a)
-  elif C in {BLS12_377}:
-    sqrt_invsqrt_if_square_tonelli_shanks(sqrt, invsqrt, a, useAddChain = true)
   else:
-    result = sqrt_invsqrt_if_square_tonelli_shanks(sqrt, invsqrt, a, useAddChain = false)
+    result = sqrt_invsqrt_if_square_tonelli_shanks(sqrt, invsqrt, a, useAddChain = C.hasTonelliShanksAddchain())
 
 func sqrt_if_square*[C](a: var Fp[C]): SecretBool {.inline.} =
   ## If ``a`` is a square, compute the square root of ``a``
@@ -355,11 +353,9 @@ func sqrt_if_square*[C](a: var Fp[C]): SecretBool {.inline.} =
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
   ## This procedure is constant-time
-  when C in {BLS12_381, BN254_Nogami, BN254_Snarks, BW6_761}:
+  when C.hasSqrtAddchain():
     result = sqrt_if_square_addchain(a)
-  elif (BaseType(C.Mod.limbs[0]) and 3) == 3:
+  elif C.hasP3mod4_primeModulus():
     result = sqrt_if_square_p3mod4(a)
-  elif C in {BLS12_377}:
-    sqrt_if_square_tonelli_shanks(a, useAddChain = true)
   else:
-    result = sqrt_if_square_tonelli_shanks(a, useAddChain = false)
+    result = sqrt_if_square_tonelli_shanks(a, useAddChain = C.hasTonelliShanksAddchain())

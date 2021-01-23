@@ -36,7 +36,7 @@ func inv*(r: var Fp, a: Fp) {.inline.} =
   # neither for Secp256k1 nor BN curves
   # Performance is slower than GCD
   # To be revisited with faster squaring/multiplications
-  when Fp.C in {BN254_Nogami, BN254_Snarks, BLS12_377, BLS12_381}:
+  when Fp.C.hasInversionAddchain():
     r.inv_addchain(a)
   else:
     r.inv_euclid(a)
@@ -48,10 +48,7 @@ func inv*(a: var Fp) {.inline.} =
   ## Incidentally this avoids extra check
   ## to convert Jacobian and Projective coordinates
   ## to affine for elliptic curve
-  # For now we don't activate the addition chains
-  # for Secp256k1 nor BN curves
-  # Performance is slower than GCD
-  when Fp.C in {BN254_Nogami, BN254_Snarks, BLS12_377, BLS12_381}:
+  when Fp.C.hasInversionAddchain():
     a.inv_addchain(a)
   else:
     a.inv_euclid(a)
