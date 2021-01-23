@@ -125,6 +125,7 @@ proc main() =
     randomSqrtCheck BN254_Snarks
     randomSqrtCheck BLS12_377 # p ≢ 3 (mod 4)
     randomSqrtCheck BLS12_381
+    randomSqrtCheck BW6_761
 
   suite "Modular square root - 32-bit bugs highlighted by property-based testing " & " [" & $WordBitwidth & "-bit mode]":
     # test "FKM12_447 - #30": - Deactivated, we don't support the curve as no one uses it.

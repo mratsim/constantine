@@ -218,6 +218,7 @@ proc test(flags, path: string, commandFile = false) =
     exec command
   else:
     exec "echo \'" & command & "\' >> " & buildParallel
+    exec "echo \"------------------------------------------------------\""
 
 proc buildBench(benchName: string, compiler = "", useAsm = true, run = false) =
   if not dirExists "build":

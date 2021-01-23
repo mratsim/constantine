@@ -195,7 +195,7 @@ func sqrt_invsqrt_tonelli_shanks_pre(
   ## of `a` via constant-time Tonelli-Shanks
   ##
   ## a_pre_exp is a precomputation a^((p-1-2^e)/(2*2^e))
-  ## ThItat is shared with the simultaneous isSquare routine
+  ## That is shared with the simultaneous isSquare routine
   template z: untyped = a_pre_exp
   template r: untyped = invsqrt
   var t {.noInit.}: Fp
@@ -300,7 +300,7 @@ func sqrt*[C](a: var Fp[C]) {.inline.} =
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
   ## This procedure is constant-time
-  when C in {BLS12_381, BN254_Snarks}:
+  when C in {BLS12_381, BN254_Snarks, BW6_761}:
     sqrt_addchain(a)
   elif (BaseType(C.Mod.limbs[0]) and 3) == 3:
     sqrt_p3mod4(a)
@@ -319,7 +319,7 @@ func sqrt_invsqrt*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]) {.inline.} =
   ## The square root, if it exist is multivalued,
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
-  when C in {BLS12_381, BN254_Snarks}:
+  when C in {BLS12_381, BN254_Snarks, BW6_761}:
     sqrt_invsqrt_addchain(sqrt, invsqrt, a)
   elif (BaseType(C.Mod.limbs[0]) and 3) == 3:
     sqrt_invsqrt_p3mod4(sqrt, invsqrt, a)
@@ -338,7 +338,7 @@ func sqrt_invsqrt_if_square*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]): SecretBool 
   ## The square root, if it exist is multivalued,
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
-  when C in {BLS12_381, BN254_Snarks}:
+  when C in {BLS12_381, BN254_Snarks, BW6_761}:
     result = sqrt_invsqrt_if_square_addchain(sqrt, invsqrt, a)
   elif (BaseType(C.Mod.limbs[0]) and 3) == 3:
     result = sqrt_invsqrt_if_square_p3mod4(sqrt, invsqrt, a)
@@ -355,7 +355,7 @@ func sqrt_if_square*[C](a: var Fp[C]): SecretBool {.inline.} =
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
   ## This procedure is constant-time
-  when C in {BLS12_381, BN254_Snarks}:
+  when C in {BLS12_381, BN254_Snarks, BW6_761}:
     result = sqrt_if_square_addchain(a)
   elif (BaseType(C.Mod.limbs[0]) and 3) == 3:
     result = sqrt_if_square_p3mod4(a)
