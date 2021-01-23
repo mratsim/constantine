@@ -8,11 +8,34 @@
 
 import
   std/macros,
-  ../config/curves,
-  ./bls12_377_sqrt
+  ../config/[curves, type_ff],
+  ./bls12_377_sqrt,
+  ./bls12_381_sqrt,
+  ./bn254_nogami_sqrt,
+  ./bn254_snarks_sqrt,
+  ./bw6_761_sqrt
+
+export
+  bls12_377_sqrt,
+  bls12_381_sqrt,
+  bn254_nogami_sqrt,
+  bn254_snarks_sqrt,
+  bw6_761_sqrt
+
+func hasSqrtAddchain*(C: static Curve): static bool =
+  when C in {BLS12_381, BN254_Nogami, BN254_Snarks, BW6_761}:
+    true
+  else:
+    false
 
 {.experimental: "dynamicBindSym".}
 
 macro tonelliShanks*(C: static Curve, value: untyped): untyped =
   ## Get Square Root via Tonelli-Shanks related constants
   return bindSym($C & "_TonelliShanks_" & $value)
+
+func hasTonelliShanksAddchain*(C: static Curve): static bool =
+  when C in {BLS12_377}:
+    true
+  else:
+    false

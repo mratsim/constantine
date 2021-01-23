@@ -7,30 +7,17 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/[curves, type_bigint, type_ff],
-  ../io/[io_bigints, io_fields],
+  ../config/curves,
   ../arithmetic/finite_fields
 
-const
-  # with e = 2adicity
-  # p == s * 2^e + 1
-  # root_of_unity = smallest_quadratic_nonresidue^s
-  # exponent = (p-1-2^e)/2^e / 2
-  BLS12_377_TonelliShanks_exponent* = BigInt[330].fromHex"0x35c748c2f8a21d58c760b80d94292763445b3e601ea271e3de6c45f741290002e16ba88600000010a11"
-  BLS12_377_TonelliShanks_twoAdicity* = 46
-  BLS12_377_TonelliShanks_root_of_unity* = Fp[BLS12_377].fromHex"0x382d3d99cdbc5d8fe9dee6aa914b0ad14fcaca7022110ec6eaa2bc56228ac41ea03d28cc795186ba6b5ef26b00bbe8"
-
 # ############################################################
 #
-#       Specialized Tonelli-Shanks for BLS12-377
+#           Specialized inversion for BLS12-377
 #
 # ############################################################
 
-func precompute_tonelli_shanks_addchain*(
-       r: var Fp[BLS12_377],
-       a: Fp[BLS12_377]) =
-  ## Does a^BLS12_377_TonelliShanks_exponent
-  ## via an addition-chain
+func inv_addchain*(r: var Fp[BLS12_377], a: Fp[BLS12_377]) =
+  let a = a # ensure a.inv_addchain(a) is OK
 
   var
     x10       {.noInit.}: Fp[BLS12_377]
@@ -201,6 +188,17 @@ func precompute_tonelli_shanks_addchain*(
   r.square_repeated(7)
   r *= x101
 
-  # 376 + 10 = 386 operations
+  # 376 + 16 = 392 operations
   r.square_repeated(9)
   r *= x10001
+  r.square_repeated(6)
+
+  # 392 + 8*6 = 440 operations
+  for _ in 0 ..< 8:
+    r *= x11111
+    r.square_repeated(5)
+
+  r *= x11111
+  r.square()
+  r *= a
+  # Total 443 operations

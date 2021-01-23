@@ -8,9 +8,10 @@
 
 import
   # Internals
-  ../constantine/config/curves,
+  ../constantine/config/[curves, common],
   ../constantine/arithmetic,
   ../constantine/io/io_bigints,
+  ../constantine/curves/[zoo_inversions, zoo_square_roots],
   # Helpers
   ../helpers/static_for,
   ./bench_fields_template,
@@ -24,8 +25,8 @@ import
 # ############################################################
 
 
-const Iters = 1_000_000
-const ExponentIters = 1000
+const Iters = 100_000
+const ExponentIters = 100
 const AvailableCurves = [
   # P224,
   BN254_Nogami,
@@ -35,6 +36,7 @@ const AvailableCurves = [
   # Secp256k1,
   BLS12_377,
   BLS12_381,
+  BW6_761
 ]
 
 proc main() =
@@ -50,9 +52,15 @@ proc main() =
     sqrBench(Fp[curve], Iters)
     invEuclidBench(Fp[curve], ExponentIters)
     invPowFermatBench(Fp[curve], ExponentIters)
-    when curve in {BN254_Snarks, BLS12_381}:
+    when curve.hasInversionAddchain():
       invAddChainBench(Fp[curve], ExponentIters)
-    sqrtBench(Fp[curve], ExponentIters)
+    when (BaseType(curve.Mod.limbs[0]) and 3) == 3:
+      sqrtP3mod4Bench(Fp[curve], ExponentIters)
+    when curve.hasSqrtAddchain():
+      sqrtAddChainBench(Fp[curve], ExponentIters)
+    when curve in {BLS12_377}:
+      sqrtTonelliBench(Fp[curve], ExponentIters)
+      sqrtTonelliAddChainBench(Fp[curve], ExponentIters)
     # Exponentiation by a "secret" of size ~the curve order
     powBench(Fp[curve], ExponentIters)
     powUnsafeBench(Fp[curve], ExponentIters)

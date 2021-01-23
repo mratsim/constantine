@@ -386,6 +386,12 @@ func square_repeated*(r: var FF, num: int) {.inline.} =
   for _ in 0 ..< num:
     r.square()
 
+func square_repeated*(r: var FF, a: FF, num: int) {.inline.} =
+  ## Repeated squarings
+  r.square(a)
+  for _ in 1 ..< num:
+    r.square()
+
 func `*=`*(a: var FF, b: static int) {.inline.} =
   ## Multiplication by a small integer known at compile-time
   # Implementation:

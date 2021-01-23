@@ -71,44 +71,44 @@ func pow_u*(r: var Fp12[BN254_Snarks], a: Fp12[BN254_Snarks], invert = BN254_Sna
     x10001110 .prod(x10110, x1111000)
 
     var
-      i15 {.noInit.}: Fp12[BN254_Snarks]
-      i16 {.noInit.}: Fp12[BN254_Snarks]
-      i17 {.noInit.}: Fp12[BN254_Snarks]
-      i18 {.noInit.}: Fp12[BN254_Snarks]
-      i20 {.noInit.}: Fp12[BN254_Snarks]
-      i21 {.noInit.}: Fp12[BN254_Snarks]
-      i22 {.noInit.}: Fp12[BN254_Snarks]
-      i26 {.noInit.}: Fp12[BN254_Snarks]
-      i27 {.noInit.}: Fp12[BN254_Snarks]
-      i61 {.noInit.}: Fp12[BN254_Snarks]
+      r15 {.noInit.}: Fp12[BN254_Snarks]
+      r16 {.noInit.}: Fp12[BN254_Snarks]
+      r17 {.noInit.}: Fp12[BN254_Snarks]
+      r18 {.noInit.}: Fp12[BN254_Snarks]
+      r20 {.noInit.}: Fp12[BN254_Snarks]
+      r21 {.noInit.}: Fp12[BN254_Snarks]
+      r22 {.noInit.}: Fp12[BN254_Snarks]
+      r26 {.noInit.}: Fp12[BN254_Snarks]
+      r27 {.noInit.}: Fp12[BN254_Snarks]
+      r61 {.noInit.}: Fp12[BN254_Snarks]
 
-    i15.cyclotomic_square(x10001110)
-    i15 *= x1001010
-    i16.prod(x10001110, i15)
-    i17.prod(x1111, i16)
-    i18.prod(i16, i17)
+    r15.cyclotomic_square(x10001110)
+    r15 *= x1001010
+    r16.prod(x10001110, r15)
+    r17.prod(x1111, r16)
+    r18.prod(r16, r17)
 
-    i20.cyclotomic_square(i18)
-    i20 *= i17
-    i21.prod(x1111000, i20)
-    i22.prod(i15, i21)
+    r20.cyclotomic_square(r18)
+    r20 *= r17
+    r21.prod(x1111000, r20)
+    r22.prod(r15, r21)
 
-    i26.cyclotomic_square(i22)
-    i26.cyclotomic_square()
-    i26 *= i22
-    i26 *= i18
+    r26.cyclotomic_square(r22)
+    r26.cyclotomic_square()
+    r26 *= r22
+    r26 *= r18
 
-    i27.prod(i22, i26)
+    r27.prod(r22, r26)
 
-    i61.prod(i26, i27)
-    i61.cycl_sqr_repeated(17)
-    i61 *= i27
-    i61.cycl_sqr_repeated(14)
-    i61 *= i21
+    r61.prod(r26, r27)
+    r61.cycl_sqr_repeated(17)
+    r61 *= r27
+    r61.cycl_sqr_repeated(14)
+    r61 *= r21
 
-    r = i61
+    r = r61
     r.cycl_sqr_repeated(16)
-    r *= i20
+    r *= r20
 
     if invert:
       r.cyclotomic_inv()
