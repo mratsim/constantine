@@ -26,8 +26,11 @@ export
 func hasInversionAddchain*(C: static Curve): static bool =
   # TODO: For now we don't activate the addition chains
   #      for Secp256k1
-  # Performance is slower than GCD
-  when C in {BN254_Nogami, BN254_Snarks, BLS12_377, BLS12_381, BW6_761}:
+  #      Performance is slower than GCD (to investigate)
+  # For BW6-761 the addition chain is over 2x slower than Euclid-based inversion
+  # due to multiplication being so costly with 12 limbs (grows quadratically)
+  # while Euclid costs grows linearly.
+  when C in {BN254_Nogami, BN254_Snarks, BLS12_377, BLS12_381}:
     true
   else:
     false
