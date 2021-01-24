@@ -67,7 +67,7 @@ func setZero*(a: var Limbs) =
 
 func setOne*(a: var Limbs) =
   ## Set ``a`` to 1
-  a[0] = SecretWord(1)
+  a[0] = One
   when a.len > 1:
     zeroMem(a[1].addr, (a.len - 1) * sizeof(SecretWord))
 
@@ -76,7 +76,7 @@ func czero*(a: var Limbs, ctl: SecretBool) =
   # Only used for FF neg in pure Nim fallback
   # so no need for assembly
   for i in 0 ..< a.len:
-    ctl.ccopy(a[i], SecretWord 0)
+    ctl.ccopy(a[i], Zero)
 
 # Copy
 # ------------------------------------------------------------
@@ -147,15 +147,15 @@ func eq*(a: Limbs, n: SecretWord): SecretBool =
 
 func isOne*(a: Limbs): SecretBool =
   ## Returns true if ``a`` is equal to one
-  a.eq(SecretWord(1))
+  a.eq(One)
 
 func isOdd*(a: Limbs): SecretBool =
   ## Returns true if a is odd
-  SecretBool(a[0] and SecretWord(1))
+  SecretBool(a[0] and One)
 
 func isEven*(a: Limbs): SecretBool =
   ## Returns true if a is even
-  not SecretBool(a[0] and SecretWord(1))
+  not SecretBool(a[0] and One)
 
 # Bit manipulation
 # ------------------------------------------------------------
@@ -341,7 +341,7 @@ func prod*[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], b: 
     mul_asm(r, a, b)
   else:
     # We use Product Scanning / Comba multiplication
-    var t, u, v = SecretWord(0)
+    var t, u, v = Zero
 
     staticFor i, 0, min(a.len+b.len, r.len):
       const ib = min(b.len-1, i)
@@ -352,11 +352,11 @@ func prod*[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], b: 
       r[i] = v
       v = u
       u = t
-      t = SecretWord(0)
+      t = Zero
 
     if aLen+bLen < rLen:
       for i in aLen+bLen ..< rLen:
-        r[i] = SecretWord 0
+        r[i] = Zero
 
 func prod_high_words*[rLen, aLen, bLen](
        r: var Limbs[rLen],
@@ -380,7 +380,7 @@ func prod_high_words*[rLen, aLen, bLen](
   #   i.e. prod_high_words(result, P, a, w)
 
   # We use Product Scanning / Comba multiplication
-  var t, u, v = SecretWord(0) # Will raise warning on empty iterations
+  var t, u, v = Zero # Will raise warning on empty iterations
   var z: Limbs[rLen] # zero-init, ensure on stack and removes in-place problems
 
   # The previous 2 columns can affect the lowest word due to carries
@@ -397,7 +397,7 @@ func prod_high_words*[rLen, aLen, bLen](
       z[i-lowestWordIndex] = v
     v = u
     u = t
-    t = SecretWord(0)
+    t = Zero
 
   r = z
 

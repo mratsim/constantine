@@ -138,7 +138,7 @@ func montyMul_FIPS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   #   https://eprint.iacr.org/2013/882.pdf
   var z: typeof(r) # zero-init, ensure on stack and removes in-place problems in tower fields
   const L = r.len
-  var t, u, v = SecretWord(0)
+  var t, u, v = Zero
 
   staticFor i, 0, L:
     staticFor j, 0, i:
@@ -149,7 +149,7 @@ func montyMul_FIPS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
     mulAcc(t, u, v, z[i], M[0])
     v = u
     u = t
-    t = SecretWord(0)
+    t = Zero
   staticFor i, L, 2*L:
     staticFor j, i-L+1, L:
       mulAcc(t, u, v, a[j], b[i-j])
@@ -157,7 +157,7 @@ func montyMul_FIPS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
     z[i-L] = v
     v = u
     u = t
-    t = SecretWord(0)
+    t = Zero
 
   discard z.csub(M, v.isNonZero() or not(z < M))
   r = z

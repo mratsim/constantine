@@ -85,7 +85,7 @@ func decomposeEndo*[M, scalBits, L: static int](
     when babai(F)[i][1]:
       # prod_high_words works like logical right shift
       # When negative, we should add 1 to properly round toward -infinity
-      alphas[i] += SecretWord(1)
+      alphas[i] += One
 
   # We have k0 = s - 𝛼0 b00 - 𝛼1 b10 ... - 𝛼m bm0
   # and     kj = 0 - 𝛼j b0j - 𝛼1 b1j ... - 𝛼m bmj
@@ -339,7 +339,7 @@ func scalarMulEndo*[scalBits; EC](
   #    we need the base miniscalar (that encodes the sign)
   #    to be odd, and this in constant-time to protect the secret least-significant bit.
   let k0isOdd = miniScalars[0].isOdd()
-  discard miniScalars[0].cadd(SecretWord(1), not k0isOdd)
+  discard miniScalars[0].cadd(One, not k0isOdd)
 
   var recoded: GLV_SAC[M, L] # zero-init required
   recoded.nDimMultiScalarRecoding(miniScalars)
@@ -511,7 +511,7 @@ func scalarMulGLV_m2w2*[scalBits; EC](
   #    we need the base miniscalar (that encodes the sign)
   #    to be odd, and this in constant-time to protect the secret least-significant bit.
   let k0isOdd = miniScalars[0].isOdd()
-  discard miniScalars[0].cadd(SecretWord(1), not k0isOdd)
+  discard miniScalars[0].cadd(One, not k0isOdd)
 
   var recoded: GLV_SAC[2, L] # zero-init required
   recoded.nDimMultiScalarRecoding(miniScalars)

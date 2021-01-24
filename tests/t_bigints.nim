@@ -157,7 +157,7 @@ proc mainArith() =
 
         let expected = BigInt[256].fromHex"7fffffff80000000800000000000000000000000800000000000000000000000"
 
-        discard a.add(SecretWord 1)
+        discard a.add(One)
         check: bool(a == expected)
 
 proc mainMul() =
@@ -534,7 +534,7 @@ proc mainModularInverse() =
         let M = BigInt[16].fromUint(2017'u16)
 
         var mp1div2 = M
-        discard mp1div2.add(SecretWord 1)
+        discard mp1div2.add(One)
         mp1div2.shiftRight(1)
 
         let expected = BigInt[16].fromUint(1969'u16)
@@ -549,7 +549,7 @@ proc mainModularInverse() =
         let M = BigInt[381].fromUint(2017'u16)
 
         var mp1div2 = M
-        discard mp1div2.add(SecretWord 1)
+        discard mp1div2.add(One)
         mp1div2.shiftRight(1)
 
         let expected = BigInt[381].fromUint(1969'u16)
@@ -565,7 +565,7 @@ proc mainModularInverse() =
         let M = BigInt[16].fromUint(383'u16)
 
         var mp1div2 = M
-        discard mp1div2.add(SecretWord 1)
+        discard mp1div2.add(One)
         mp1div2.shiftRight(1)
 
         let expected = BigInt[16].fromUint(106'u16)
@@ -580,7 +580,7 @@ proc mainModularInverse() =
         let M = BigInt[381].fromUint(383'u16)
 
         var mp1div2 = M
-        discard mp1div2.add(SecretWord 1)
+        discard mp1div2.add(One)
         mp1div2.shiftRight(1)
 
         let expected = BigInt[381].fromUint(106'u16)
@@ -595,7 +595,7 @@ proc mainModularInverse() =
       let M = BigInt[381].fromHex("0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab")
 
       var mp1div2 = M
-      discard mp1div2.add(SecretWord 1)
+      discard mp1div2.add(One)
       mp1div2.shiftRight(1)
 
       let expected = BigInt[381].fromHex("0x0636759a0f3034fa47174b2c0334902f11e9915b7bd89c6a2b3082b109abbc9837da17201f6d8286fe6203caa1b9d4c8")
@@ -612,7 +612,7 @@ proc mainModularInverse() =
 
         var mp1div2 = M
         mp1div2.shiftRight(1)
-        discard mp1div2.add(SecretWord 1)
+        discard mp1div2.add(One)
 
         let expected = BigInt[16].fromUint(0'u16)
         var r = canary(BigInt[16])
@@ -627,7 +627,7 @@ proc mainModularInverse() =
 
         var mp1div2 = M
         mp1div2.shiftRight(1)
-        discard mp1div2.add(SecretWord 1)
+        discard mp1div2.add(One)
 
         let expected = BigInt[381].fromUint(0'u16)
         var r = canary(BigInt[381])

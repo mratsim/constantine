@@ -104,7 +104,7 @@ func copyTruncatedFrom*[dBits, sBits: static int](dst: var BigInt[dBits], src: B
   for wordIdx in 0 ..< min(dst.limbs.len, src.limbs.len):
     dst.limbs[wordIdx] = src.limbs[wordIdx]
   for wordIdx in min(dst.limbs.len, src.limbs.len) ..< dst.limbs.len:
-    dst.limbs[wordIdx] = SecretWord(0)
+    dst.limbs[wordIdx] = Zero
 
 # Comparison
 # ------------------------------------------------------------
@@ -317,14 +317,14 @@ func bit*[bits: static int](a: BigInt[bits], index: int): Ct[uint8] =
   ## (b255, b254, ..., b1, b0)
   const SlotShift = log2(WordBitWidth.uint32)
   const SelectMask = WordBitWidth - 1
-  const BitMask = SecretWord 1
+  const BitMask = One
 
   let slot = a.limbs[index shr SlotShift] # LimbEndianness is littleEndian
   result = ct(slot shr (index and SelectMask) and BitMask, uint8)
 
 func bit0*(a: BigInt): Ct[uint8] =
   ## Access the least significant bit
-  ct(a.limbs[0] and SecretWord(1), uint8)
+  ct(a.limbs[0] and One, uint8)
 
 # Multiplication by small cosntants
 # ------------------------------------------------------------
