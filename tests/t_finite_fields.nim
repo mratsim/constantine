@@ -314,3 +314,14 @@ proc main() =
 
 
 main()
+
+proc largeField() =
+  suite "Large field":
+    test "Negate 0 returns 0":
+      var a: Fp[BN254_Snarks]
+      var r {.noInit.}: Fp[BN254_Snarks]
+      r.neg(a)
+
+      check: bool r.isZero()
+
+largeField()

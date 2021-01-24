@@ -128,7 +128,7 @@ macro submod_gen[N: static int](a: var Limbs[N], b, M: Limbs[N]): untyped =
     # Interleaved copy the modulus to hide SBB latencies
     ctx.mov arrTadd[i], arrM[i]
 
-  # Mask: undeflowed contains 0xFFFF or 0x0000
+  # Mask: underflowed contains 0xFFFF or 0x0000
   let underflowed = arrB.reuseRegister()
   ctx.sbb underflowed, underflowed
 
@@ -166,21 +166,37 @@ macro negmod_gen[N: static int](r: var Limbs[N], a, M: Limbs[N]): untyped =
   var ctx = init(Assembler_x86, BaseType)
   let
     arrA = init(OperandArray, nimSymbol = a, N, PointerInReg, Input)
-    arrR = init(OperandArray, nimSymbol = r, N, ElemsInReg, InputOutput)
+    arrR = init(OperandArray, nimSymbol = r, N, PointerInReg, InputOutput)
+    arrT = init(OperandArray, nimSymbol = ident"t", N, ElemsInReg, Output_EarlyClobber)
     # We could force M as immediate by specializing per moduli
-    arrM = init(OperandArray, nimSymbol = M, N, PointerInReg, Input)
+    # We reuse the reg used for M for overflow detection
+    arrM = init(OperandArray, nimSymbol = M, N, PointerInReg, InputOutput)
 
-  # Addition
+  # Substraction M - a
   for i in 0 ..< N:
-    ctx.mov arrR[i], arrM[i]
+    ctx.mov arrT[i], arrM[i]
     if i == 0:
-      ctx.sub arrR[0], arrA[0]
+      ctx.sub arrT[0], arrA[0]
     else:
-      ctx.sbb arrR[i], arrA[i]
+      ctx.sbb arrT[i], arrA[i]
 
+  # Deal with a == 0
+  let isZero = arrM.reuseRegister()
+  ctx.mov isZero, arrA[0]
+  for i in 1 ..< N:
+    ctx.`or` isZero, arrA[i]
+
+  # Zero result if a == 0
+  for i in 0 ..< N:
+    ctx.cmovz arrT[i], isZero
+    ctx.mov arrR[i], arrT[i]
+
+  let t = arrT.nimSymbol
+  result.add quote do:
+    var `t`{.noinit.}: typeof(`a`)
   result.add ctx.generate
 
-func negmod_asm*(r: var Limbs, a, M: Limbs) {.inline.} =
+func negmod_asm*(r: var Limbs, a, M: Limbs) =
   ## Constant-time modular negation
   negmod_gen(r, a, M)
 

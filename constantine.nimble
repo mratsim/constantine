@@ -58,6 +58,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_fp12_bls12_377.nim", false),
   ("tests/t_fp12_bls12_381.nim", false),
   ("tests/t_fp12_exponentiation.nim", false),
+  ("tests/t_fp12_anti_regression.nim", false),
 
   # ("tests/t_fp4_frobenius.nim", false),
   # ("tests/t_fp6_frobenius.nim", false),

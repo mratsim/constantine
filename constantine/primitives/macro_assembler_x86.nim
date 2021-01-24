@@ -10,6 +10,9 @@ import std/[macros, strutils, sets, hashes, algorithm]
 
 # A compile-time inline assembler
 
+# No exceptions allowed
+{.push raises: [].}
+
 type
   RM* = enum
     ## Register or Memory operand
@@ -43,7 +46,6 @@ type
     ## GCC extended assembly modifier
     Input               = ""
     Input_Commutative   = "%"
-    Input_EarlyClobber  = "&"
     Output_Overwrite    = "="
     Output_EarlyClobber = "=&"
     InputOutput         = "+"
@@ -94,7 +96,10 @@ const OutputReg = {Output_EarlyClobber, InputOutput, InputOutput_EnsureClobber, 
 
 func hash(od: OperandDesc): Hash =
   {.noSideEffect.}:
-    hash($od.nimSymbol)
+    try: # Why does this raise a generic exception?
+      hash($od.nimSymbol)
+    except:
+      raise newException(Defect, "Broke Nim")
 
 # TODO: remove the need of OperandArray
 
@@ -138,7 +143,10 @@ func init*(T: type OperandArray, nimSymbol: NimNode, len: int, rm: RM, constrain
   let nimSymbol = if isHiddenDeref: nimSymbol[0]
                   else: nimSymbol
   {.noSideEffect.}:
-    let symStr = $nimSymbol
+    let symStr = try: # Why does this raise a generic exception?
+      $nimSymbol
+    except:
+      raise newException(Defect, "Broke Nim!")
 
   result.nimSymbol = nimSymbol
 
@@ -197,7 +205,10 @@ func setToCarryFlag*(a: var Assembler_x86, carry: NimNode) =
   let nimSymbol = if isHiddenDeref: carry[0]
                   else: carry
   {.noSideEffect.}:
-    let symStr = $nimSymbol
+    let symStr = try: # Why does this raise a generic exception?
+      $nimSymbol
+    except:
+      raise newException(Defect, "Broke Nim!")
 
   let desc = OperandDesc(
     asmId: "",
@@ -403,12 +414,28 @@ func codeFragment(a: var Assembler_x86, instr: string, reg0: OperandReuse, reg1:
   # ⚠️ Warning:
   # The caller should deal with destination/source operand
   # so that it fits GNU Assembly
+  let off1 = a.getStrOffset(reg1)
+
   if a.wordBitWidth == 64:
-    a.code &= instr & "q %" & $reg0.asmId & ", %" & $reg1.desc.asmId & '\n'
+    a.code &= instr & "q %" & $reg0.asmId & ", " & off1 & '\n'
   else:
-    a.code &= instr & "l %" & $reg0.asmId & ", %" & $reg1.desc.asmId & '\n'
+    a.code &= instr & "l %" & $reg0.asmId & ", " & off1 & '\n'
 
   a.operands.incl reg1.desc
+
+func codeFragment(a: var Assembler_x86, instr: string, reg0: Operand, reg1: OperandReuse) =
+  # Generate a code fragment
+  # ⚠️ Warning:
+  # The caller should deal with destination/source operand
+  # so that it fits GNU Assembly
+  let off0 = a.getStrOffset(reg0)
+
+  if a.wordBitWidth == 64:
+    a.code &= instr & "q " & off0 & ", %" & $reg1.asmId & '\n'
+  else:
+    a.code &= instr & "l " & off0 & ", %" & $reg1.asmId & '\n'
+
+  a.operands.incl reg0.desc
 
 func reuseRegister*(reg: OperandArray): OperandReuse =
   # TODO: disable the reg input
@@ -526,15 +553,47 @@ func test*(a: var Assembler_x86, x, y: Operand) =
   a.codeFragment("test", x, y)
   a.areFlagsClobbered = true
 
-func `xor`*(a: var Assembler_x86, x, y: Operand) =
+func test*(a: var Assembler_x86, x, y: OperandReuse) =
+  ## Compute the bitwise AND of x and y and
+  ## set the Sign, Zero and Parity flags
+  a.codeFragment("test", x, y)
+  a.areFlagsClobbered = true
+
+func `or`*(a: var Assembler_x86, dst, src: Operand) =
+  ## Compute the bitwise or of x and y and
+  ## reset all flags
+  a.codeFragment("or", src, dst)
+  a.areFlagsClobbered = true
+
+func `or`*(a: var Assembler_x86, dst: OperandReuse, src: Operand) =
+  ## Compute the bitwise or of x and y and
+  ## reset all flags
+  a.codeFragment("or", src, dst)
+  a.areFlagsClobbered = true
+
+func `xor`*(a: var Assembler_x86, dst, src: Operand) =
   ## Compute the bitwise xor of x and y and
   ## reset all flags
-  a.codeFragment("xor", x, y)
+  a.codeFragment("xor", src, dst)
   a.areFlagsClobbered = true
 
 func mov*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- src
   doAssert dst.desc.constraint in OutputReg, $dst.repr
+
+  a.codeFragment("mov", src, dst)
+  # No clobber
+
+func mov*(a: var Assembler_x86, dst: Operand, src: OperandReuse) =
+  ## Does: dst <- src
+  doAssert dst.desc.constraint in OutputReg, $dst.repr
+
+  a.codeFragment("mov", src, dst)
+  # No clobber
+
+func mov*(a: var Assembler_x86, dst: OperandReuse, src: Operand) =
+  ## Does: dst <- src
+  # doAssert dst.desc.constraint in OutputReg, $dst.repr
 
   a.codeFragment("mov", src, dst)
   # No clobber
@@ -570,7 +629,23 @@ func cmovz*(a: var Assembler_x86, dst, src: Operand) =
   a.codeFragment("cmovz", src, dst)
   # No clobber
 
+func cmovz*(a: var Assembler_x86, dst: Operand, src: OperandReuse) =
+  ## Does: dst <- src if the zero flag is not set
+  doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register: " & $dst.repr
+  doAssert dst.desc.constraint in OutputReg, $dst.repr
+
+  a.codeFragment("cmovz", src, dst)
+  # No clobber
+
 func cmovnz*(a: var Assembler_x86, dst, src: Operand) =
+  ## Does: dst <- src if the zero flag is not set
+  doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register: " & $dst.repr
+  doAssert dst.desc.constraint in OutputReg, $dst.repr
+
+  a.codeFragment("cmovnz", src, dst)
+  # No clobber
+
+func cmovnz*(a: var Assembler_x86, dst: Operand, src: OperandReuse) =
   ## Does: dst <- src if the zero flag is not set
   doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register: " & $dst.repr
   doAssert dst.desc.constraint in OutputReg, $dst.repr
