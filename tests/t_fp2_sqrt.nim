@@ -34,7 +34,7 @@ type
     Long01Sequence
 
 var rng: RngState
-let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+let seed = 1611432811 # uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
 rng.seed(seed)
 echo "\n------------------------------------------------------\n"
 echo "test_fp2_sqrt xoshiro512** seed: ", seed
@@ -98,4 +98,35 @@ proc main() =
         bool not a.isSquare()
         bool not a.sqrt_if_square()
 
+  suite "Modular square root - Assembly bugs highlighted by property-based testing " & " [" & $WordBitwidth & "-bit mode]":
+    test "Don't set Neg(Zero) fields to modulus (non-unique Montgomery repr) - #136":
+      # https://github.com/mratsim/constantine/issues/136
+      # and https://github.com/mratsim/constantine/issues/114
+      # The assembly implementation of neg didn't check
+      # after M-a if a was zero and so while in mod M
+      # M ≡ 0 (mod M), the `==` doesn't support unreduced representation.
+      # Seed: 1611432811
+      let a = Fp2[BN254_Snarks].fromHex(
+        "0x0e097bc0990edfae676ba36f7879462c09b7eb28f6450b6dd3de438dc58f0d9c",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      )
+      var na{.noInit.}: Fp2[BN254_Snarks]
+      na.neg(a)
+
+      var a2 = a
+      var na2 = na
+      a2.square()
+      na2.square()
+      check:
+        bool a2 == na2
+        bool a2.isSquare()
+
+      var r, s = a2
+      # r.sqrt()
+      let ok = s.sqrt_if_square()
+
+      check:
+        bool ok
+        # bool(r == s)
+        bool(s == a or s == na)
 main()
