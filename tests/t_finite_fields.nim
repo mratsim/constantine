@@ -317,7 +317,12 @@ main()
 
 proc largeField() =
   suite "Large field":
-    test "Negate 0 returns 0":
+    test "Negate 0 returns 0 (unique Montgomery repr)":
+      # https://github.com/mratsim/constantine/issues/136
+      # and https://github.com/mratsim/constantine/issues/114
+      # The assembly implementation of neg didn't check
+      # after M-a if a was zero and so while in mod M
+      # M ≡ 0 (mod M), the `==` doesn't support unreduced representation.
       var a: Fp[BN254_Snarks]
       var r {.noInit.}: Fp[BN254_Snarks]
       r.neg(a)
