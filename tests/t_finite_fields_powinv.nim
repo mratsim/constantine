@@ -11,7 +11,7 @@ import
   std/[unittest, times],
   # Internal
   ../constantine/config/common,
-  ../constantine/arithmetic,
+  ../constantine/[arithmetic, primitives],
   ../constantine/io/[io_bigints, io_fields],
   ../constantine/config/curves,
   # Test utilities
