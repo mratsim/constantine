@@ -58,6 +58,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_fp12_bls12_377.nim", false),
   ("tests/t_fp12_bls12_381.nim", false),
   ("tests/t_fp12_exponentiation.nim", false),
+  ("tests/t_fp12_anti_regression.nim", false),
 
   # ("tests/t_fp4_frobenius.nim", false),
   # ("tests/t_fp6_frobenius.nim", false),
@@ -277,6 +278,17 @@ proc buildAllBenches() =
 task test, "Run all tests":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   runTests(requireGMP = true)
+
+  # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
+  #   runTests(requireGMP = true, test32bit = true)
+
+  # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
+  if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
+    buildAllBenches()
+
+task test_no_assembler, "Run all tests":
+  # -d:testingCurves is configured in a *.nim.cfg for convenience
+  runTests(requireGMP = true, testASM = false)
 
   # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
   #   runTests(requireGMP = true, test32bit = true)

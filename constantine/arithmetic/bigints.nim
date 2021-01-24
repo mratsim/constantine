@@ -74,6 +74,10 @@ func setOne*(a: var BigInt) =
   ## Set a BigInt to 1
   a.limbs.setOne()
 
+func czero*(a: var BigInt, ctl: SecretBool) =
+  ## Set ``a`` to 0 if ``ctl`` is true
+  a.limbs.czero(ctl)
+
 # Copy
 # ------------------------------------------------------------
 

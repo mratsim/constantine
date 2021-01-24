@@ -92,7 +92,7 @@ func fromHex*(dst: var Fp12,
               c4, c5, c6, c7: string,
               c8, c9, c10, c11: string) {.raises: [ValueError].}=
   ## Convert 12 coordinates to an element of 𝔽p12
-  when Fp12.c0 is Fp6:
+  when dst.c0 is Fp6:
     dst.c0.fromHex(c0, c1, c2, c3, c4, c5)
     dst.c1.fromHex(c6, c7, c8, c9, c10, c11)
   else:

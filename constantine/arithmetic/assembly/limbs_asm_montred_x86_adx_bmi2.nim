@@ -29,6 +29,9 @@ static: doAssert UseASM_X86_64
 # Necessary for the compiler to find enough registers (enabled at -O1)
 {.localPassC:"-fomit-frame-pointer".}
 
+# No exceptions allowed
+{.push raises: [].}
+
 # Montgomery reduction
 # ------------------------------------------------------------
 
