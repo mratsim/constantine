@@ -71,6 +71,13 @@ func setOne*(a: var Limbs) =
   when a.len > 1:
     zeroMem(a[1].addr, (a.len - 1) * sizeof(SecretWord))
 
+func czero*(a: var Limbs, ctl: SecretBool) =
+  ## Set ``a`` to 0 if ``ctl`` is true
+  # Only used for FF neg in pure Nim fallback
+  # so no need for assembly
+  for i in 0 ..< a.len:
+    ctl.ccopy(a[i], SecretWord 0)
+
 # Copy
 # ------------------------------------------------------------
 

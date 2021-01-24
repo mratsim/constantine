@@ -286,6 +286,17 @@ task test, "Run all tests":
   if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
     buildAllBenches()
 
+task test_no_assembler, "Run all tests":
+  # -d:testingCurves is configured in a *.nim.cfg for convenience
+  runTests(requireGMP = true, testASM = false)
+
+  # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
+  #   runTests(requireGMP = true, test32bit = true)
+
+  # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
+  if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
+    buildAllBenches()
+
 task test_no_gmp, "Run tests that don't require GMP":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   runTests(requireGMP = false)

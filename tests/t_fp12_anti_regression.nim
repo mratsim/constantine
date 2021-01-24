@@ -55,6 +55,8 @@ proc test114(factor: int, a: Fp12[BN254_Snarks]): bool =
   result = bool(r == sum)
 
   if not result:
+    echo "Failure for"
+    echo "==================="
     echo "r:   ", r.toHex()
     echo "-------------------"
     echo "sum: ", sum.toHex()

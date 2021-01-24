@@ -229,7 +229,15 @@ func neg*(r: var FF, a: FF) {.inline.} =
     # especially on FF2
     negmod_asm(r.mres.limbs, a.mres.limbs, FF.fieldMod().limbs)
   else:
-    discard r.mres.diff(FF.fieldMod(), a.mres)
+    # If a = 0 we need r = 0 and not r = M
+    # as comparison operator assume unicity
+    # of the modular representation.
+    # Also make sure to handle aliasing where r.addr = a.addr
+    var t {.noInit.}: FF
+    let isZero = a.isZero()
+    discard t.mres.diff(FF.fieldMod(), a.mres)
+    t.mres.czero(isZero)
+    r = t
 
 func neg*(a: var FF) {.inline.} =
   ## Negate modulo p
