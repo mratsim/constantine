@@ -257,25 +257,25 @@ proc main() =
           let a = rng.random_unsafe(Fp[curve])
           aInv.inv(a)
           r.prod(a, aInv)
-          check: bool r.isOne()
+          check: bool r.isOne() or (a.isZero() and r.isZero())
           r.prod(aInv, a)
-          check: bool r.isOne()
+          check: bool r.isOne() or (a.isZero() and r.isZero())
 
         for _ in 0 ..< Iters:
           let a = rng.randomHighHammingWeight(Fp[curve])
           aInv.inv(a)
           r.prod(a, aInv)
-          check: bool r.isOne()
+          check: bool r.isOne() or (a.isZero() and r.isZero())
           r.prod(aInv, a)
-          check: bool r.isOne()
+          check: bool r.isOne() or (a.isZero() and r.isZero())
 
         for _ in 0 ..< Iters:
           let a = rng.random_long01Seq(Fp[curve])
           aInv.inv(a)
           r.prod(a, aInv)
-          check: bool r.isOne()
+          check: bool r.isOne() or (a.isZero() and r.isZero())
           r.prod(aInv, a)
-          check: bool r.isOne()
+          check: bool r.isOne() or (a.isZero() and r.isZero())
 
     testRandomInv P224
     testRandomInv BN254_Nogami
