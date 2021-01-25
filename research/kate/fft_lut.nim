@@ -35,10 +35,10 @@ func buildRootLUT(F: type Fr): array[32, F] =
     result[i-1].square(result[i])
     dec i
 
-  debugEcho "Fr[BLS12_81] - Roots of Unity:"
-  for i in 0 ..< result.len:
-    debugEcho "    ", i, ": ", result[i].toHex()
-  debugEcho "Fr[BLS12_81] - Roots of Unity -- FIN\n"
+  # debugEcho "Fr[BLS12_81] - Roots of Unity:"
+  # for i in 0 ..< result.len:
+  #   debugEcho "    ", i, ": ", result[i].toHex()
+  # debugEcho "Fr[BLS12_81] - Roots of Unity -- FIN\n"
 
 let BLS12_381_Fr_ScaleToRootOfUnity* = buildRootLUT(Fr[BLS12_381])
 

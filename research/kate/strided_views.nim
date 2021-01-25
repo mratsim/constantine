@@ -162,6 +162,25 @@ func reversed*(v: View): View {.inline.} =
 
 # ############################################################
 #
+#                  Debugging helpers
+#
+# ############################################################
+import strformat, strutils
+
+func display*[F](name: string, indent: int, oa: openArray[F]) =
+  debugEcho indent(name & ", openarray of " & $F & " of length " & $oa.len, indent)
+  for i in 0 ..< oa.len:
+    debugEcho indent(&"    {i:>2}: {oa[i].toHex()}", indent)
+  debugEcho indent(name & "  " & $F & " -- FIN\n", indent)
+
+func display*[F](name: string, indent: int, v: View[F]) =
+  debugEcho indent(name & ", view of " & $F & " of length " & $v.len, indent)
+  for i in 0 ..< v.len:
+    debugEcho indent(&"    {i:>2}: {v[i].toHex()}", indent)
+  debugEcho indent(name & "  " & $F & " -- FIN\n", indent)
+
+# ############################################################
+#
 #                    Sanity checks
 #
 # ############################################################
