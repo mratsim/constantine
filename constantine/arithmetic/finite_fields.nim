@@ -29,7 +29,7 @@
 import
   ../primitives,
   ../config/[common, type_ff, curves],
-  ./bigints, ./limbs_montgomery
+  ./bigints, ./bigints_montgomery
 
 when UseASM_X86_64:
   import ./assembly/limbs_asm_modular_x86
