@@ -73,6 +73,10 @@ func setOne*(a: var BigInt) =
   ## Set a BigInt to 1
   a.limbs.setOne()
 
+func setUint*(a: var BigInt, n: SomeUnsignedInt) =
+  ## Set a BigInt to a machine-sized integer ``n``
+  a.limbs.setUint(n)
+
 func czero*(a: var BigInt, ctl: SecretBool) =
   ## Set ``a`` to 0 if ``ctl`` is true
   a.limbs.czero(ctl)

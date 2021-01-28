@@ -344,7 +344,7 @@ func redc*(r: var Limbs, a, one, M: Limbs,
   ## to the regular natural representation (mod N)
   ##
   ## with W = M.len
-  ## and R = (2^WordBitSize)^W
+  ## and R = (2^WordBitWidth)^W
   ##
   ## Does "a * R^-1 (mod M)"
   ##
@@ -368,13 +368,13 @@ func montyResidue*(r: var Limbs, a, M, r2modM: Limbs,
   ## Montgomery-Multiplication - based
   ##
   ## with W = M.len
-  ## and R = (2^WordBitSize)^W
+  ## and R = (2^WordBitWidth)^W
   ##
   ## Does "a * R (mod M)"
   ##
   ## `a`: The source BigInt in the natural representation. `a` in [0, N) range
   ## `M`: The field modulus. M must be odd.
-  ## `r2modM`: 2^WordBitSize mod `M`. Can be precomputed with `r2mod` function
+  ## `r2modM`: 2^WordBitWidth mod `M`. Can be precomputed with `r2mod` function
   ##
   ## Important: `r` is overwritten
   ## The result `r` buffer size MUST be at least the size of `M` buffer
@@ -515,7 +515,7 @@ func montyPow*(
   ##   Use ``exportRawUint`` for conversion
   ## - ``M`` is the modulus
   ## - ``one`` is 1 (mod M) in montgomery representation
-  ## - ``m0ninv`` is the montgomery magic constant "-1/M[0] mod 2^WordBitSize"
+  ## - ``m0ninv`` is the montgomery magic constant "-1/M[0] mod 2^WordBitWidth"
   ## - ``scratchspace`` with k the window bitsize of size up to 5
   ##   This is a buffer that can hold between 2^k + 1 big-ints
   ##   A window of of 1-bit (no window optimization) requires only 2 big-ints

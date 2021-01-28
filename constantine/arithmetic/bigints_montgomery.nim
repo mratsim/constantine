@@ -39,7 +39,7 @@ func montyResidue*(mres: var BigInt, a, N, r2modM: BigInt, m0ninv: static BaseTy
   ## - `m0ninv` is µ = -1/N (mod M)
   ## - `r2modM` is R² (mod M)
   ## with W = M.len
-  ## and R = (2^WordBitSize)^W
+  ## and R = (2^WordBitWidth)^W
   montyResidue(mres.limbs, a.limbs, N.limbs, r2modM.limbs, m0ninv, canUseNoCarryMontyMul)
 
 func redc*[mBits](r: var BigInt[mBits], a, M: BigInt[mBits], m0ninv: static BaseType, canUseNoCarryMontyMul: static bool) =

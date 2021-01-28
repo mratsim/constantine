@@ -41,7 +41,7 @@ proc clearBit*[T: SomeInteger](v: T, bit: T): T {.inline.} =
   ## Returns ``v``, with the bit at position ``bit`` set to 0
   v.clearMask(1.T shl bit)
 
-func log2*(x: uint32): uint32 =
+func log2Impl(x: uint32): uint32 =
   ## Find the log base 2 of a 32-bit or less integer.
   ## using De Bruijn multiplication
   ## Works at compile-time, guaranteed constant-time.
@@ -57,7 +57,7 @@ func log2*(x: uint32): uint32 =
   v = v or v shr 16
   lookup[(v * 0x07C4ACDD'u32) shr 27]
 
-func log2*(x: uint64): uint64 {.inline, noSideEffect.} =
+func log2Impl(x: uint64): uint64 {.inline, noSideEffect.} =
   ## Find the log base 2 of a 32-bit or less integer.
   ## using De Bruijn multiplication
   ## Works at compile-time, guaranteed constant-time.
@@ -75,3 +75,11 @@ func log2*(x: uint64): uint64 {.inline, noSideEffect.} =
   v = v or v shr 16
   v = v or v shr 32
   lookup[(v * 0x03F6EAF2CD271461'u64) shr 58]
+
+func log2*[T: SomeUnsignedInt](n: T): T =
+  ## Find the log base 2 of an integer
+  when sizeof(T) == sizeof(uint64):
+    T(log2Impl(uint64(n)))
+  else:
+    static: doAssert sizeof(T) <= sizeof(uint32)
+    T(log2Impl(uint32(n)))

@@ -63,7 +63,7 @@ macro testRandomModSizes(numSizes: static int, aBits, mBits, body: untyped): unt
       if bool(bitSizeRNG.rand(high(int)) and 1):
         bitSizeRNG.sample(CryptoModSizes)
       else:
-        # range 62..1024 to highlight edge effects of the WordBitSize (63)
+        # range 62..1024 to highlight edge effects of the WordBitWidth (63)
         bitSizeRNG.rand(62 .. 1024)
 
     result.add quote do:

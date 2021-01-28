@@ -340,7 +340,7 @@ func shlAddMod(a: LimbsViewMut, aLen: int,
   ## Fused modular left-shift + add
   ## Shift input `a` by a word and add `c` modulo `M`
   ##
-  ## With a word W = 2^WordBitSize and a modulus M
+  ## With a word W = 2^WordBitWidth and a modulus M
   ## Does a <- a * W + c (mod M)
   ##
   ## The modulus `M` most-significant bit at `mBits` MUST be set.
