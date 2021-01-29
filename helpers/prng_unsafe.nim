@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../constantine/arithmetic/bigints,
+  ../constantine/arithmetic,
   ../constantine/primitives,
   ../constantine/config/[common, curves, type_ff],
   ../constantine/elliptic/[

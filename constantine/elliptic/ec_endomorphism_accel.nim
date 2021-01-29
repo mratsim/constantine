@@ -168,7 +168,8 @@ proc `[]=`(recoding: var Recoded,
            digitIdx: int, value: uint8) {.inline.}=
   ## 0 <= digitIdx < LengthInDigits
   ## returns digit ∈ {0, 1}
-  ## This is write-once
+  ## This is write-once, requires zero-init
+  ## This works in BigEndian mode
   const len = Recoded.LengthInDigits
   # assert digitIdx * BitSize < Recoded.LengthInDigits
 

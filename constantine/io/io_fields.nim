@@ -82,9 +82,56 @@ func toHex*(f: FF, order: static Endianness = bigEndian): string =
 
 func fromHex*(dst: var FF, hexString: string) {.raises: [ValueError].}=
   ## Convert a hex string to a element of Fp or Fr
+  # TODO: review API, should return bool
   let raw {.noinit.} = fromHex(dst.mres.typeof, hexString)
   dst.fromBig(raw)
 
 func fromHex*(T: type FF, hexString: string): T {.noInit, raises: [ValueError].}=
   ## Convert a hex string to a element of Fp
   result.fromHex(hexString)
+
+func toDecimal*(f: FF): string =
+  ## Convert to a decimal string.
+  ##
+  ## It is intended for configuration, prototyping, research and debugging purposes.
+  ## You MUST NOT use it for production.
+  ##
+  ## This function is NOT constant-time at the moment.
+  # TODO constant-time
+  f.toBig().toDecimal()
+
+func fromDecimal*(dst: var FF, decimalString: string) {.raises: [ValueError].}=
+  ## Convert a decimal string. The input must be packed
+  ## with no spaces or underscores.
+  ## This assumes that bits and decimal length are **public.**
+  ##
+  ## This function does approximate validation that the BigInt
+  ## can hold the input string.
+  ##
+  ## It is intended for configuration, prototyping, research and debugging purposes.
+  ## You MUST NOT use it for production.
+  ##
+  ## Return true if conversion is successful
+  ##
+  ## Return false if an error occured:
+  ## - There is not enough space in the BigInt
+  ## - An invalid character was found
+  # TODO: review API, should return bool
+  let raw {.noinit.} = fromDecimal(dst.mres.typeof, decimalString)
+  dst.fromBig(raw)
+
+func fromDecimal*(T: type FF, hexString: string): T {.noInit, raises: [ValueError].}=
+  ## Convert a decimal string. The input must be packed
+  ## with no spaces or underscores.
+  ## This assumes that bits and decimal length are **public.**
+  ##
+  ## This function does approximate validation that the BigInt
+  ## can hold the input string.
+  ##
+  ## It is intended for configuration, prototyping, research and debugging purposes.
+  ## You MUST NOT use it for production.
+  ##
+  ## This function may raise an exception if input is incorrect
+  ## - There is not enough space in the BigInt
+  ## - An invalid character was found
+  result.fromDecimal(hexString)

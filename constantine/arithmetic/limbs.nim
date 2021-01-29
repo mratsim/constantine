@@ -71,6 +71,22 @@ func setOne*(a: var Limbs) =
   when a.len > 1:
     zeroMem(a[1].addr, (a.len - 1) * sizeof(SecretWord))
 
+func setUint*(a: var Limbs, n: SomeUnsignedInt) =
+  ## set ``a`` to an unsigned integer ``n``
+  when sizeof(SecretWord) >= sizeof(n):
+    a[0] = SecretWord(n)
+    when a.len > 1:
+      zeroMem(a[1].addr, (a.len - 1) * sizeof(SecretWord))
+  else:
+    static: doAssert a.len >= 2,
+      "Overflow, trying to store a " & $(sizeof(n)*8) & " integer " &
+      "in ", a.len, " limb of size ", sizeof(SecretWord), "."
+
+    a[0] = SecretWord(n) # Truncate the upper part
+    a[1] = SecretWord(n shr log2(sizeof(SecretWord)))
+    when a.len > 2:
+      zeroMem(a[2].addr, (a.len - 2) * sizeof(SecretWord))
+
 func czero*(a: var Limbs, ctl: SecretBool) =
   ## Set ``a`` to 0 if ``ctl`` is true
   # Only used for FF neg in pure Nim fallback
@@ -400,5 +416,27 @@ func prod_high_words*[rLen, aLen, bLen](
     t = Zero
 
   r = z
+
+# Division
+# ------------------------------------------------------------
+
+func div10*(a: var Limbs): SecretWord =
+  ## Divide `a` by 10 in-place and return the remainder
+  ## TODO constant-time
+  result = Zero
+
+  let clz = WordBitWidth - 1 - log2(10)
+  let norm10 = SecretWord(10) shl clz
+
+  for i in countdown(a.len-1, 0):
+    # dividend = 2^64 * remainder + a[i]
+    var hi = result
+    var lo = a[i]
+    # Normalize
+    hi = (hi shl clz) or (lo shr (WordBitWidth - clz))
+    lo = lo shl clz
+    unsafeDiv2n1n(a[i], result, hi, lo, norm10)
+    # Undo normalization
+    result = result shr clz
 
 {.pop.} # raises no exceptions

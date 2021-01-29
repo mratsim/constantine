@@ -15,7 +15,9 @@ for example secp256k1 and BN254.
 It also enables compiler unrolling, inlining and register optimization,
 where code size is not an issue for example for multi-precision addition.
 
-## References
+## Algorithms
+
+### Finite field multiplication
 
 - Analyzing and Comparing Montgomery Multiplication Algorithms
   Cetin Kaya Koc and Tolga Acar and Burton S. Kaliski Jr.

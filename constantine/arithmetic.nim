@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  arithmetic/bigints,
+  arithmetic/[bigints, bigints_montgomery],
   arithmetic/[
     finite_fields,
     finite_fields_inversion,
@@ -17,6 +17,7 @@ import
 
 export
   bigints,
+  bigints_montgomery,
   finite_fields,
   finite_fields_inversion,
   finite_fields_square_root,
