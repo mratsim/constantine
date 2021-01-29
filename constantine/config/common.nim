@@ -13,6 +13,9 @@
 # ############################################################
 
 import ../primitives
+import ../../metering/tracer
+
+export tracer
 
 when sizeof(int) == 8 and not defined(Constantine32):
   type

@@ -45,7 +45,7 @@ type
     when SupportsGetTicks:
       cumulatedCycles*: int64
 
-var ctMetrics*{.compileTime.}: seq[Metadata]
+var ctMetrics{.compileTime.}: seq[Metadata]
   ## Metrics are collected here, this is just a temporary holder of compileTime values
   ## Unfortunately the "seq" is emptied when passing the compileTime/runtime boundaries
   ## due to Nim bugs
@@ -59,6 +59,15 @@ template mtag(tagname: string){.pragma.}
   ## This will allow tagging proc in the future with
   ## "Fp", "ec", "polynomial"
 
+proc resetMetering*() =
+  Metrics = static(ctMetrics)
+
+const CttMeter {.booldefine.} = off
+
+const CttTrace {.booldefine.} = off # For manual "debug-echo"-style timing.
+when CttTrace:
+  # strformat doesn't work in templates.
+  from strutils import alignLeft, formatFloat
 
 # Symbols
 # --------------------------------------------------
@@ -72,11 +81,6 @@ template fnEntry(name: string, id: int, startTime, startCycle: untyped): untyped
       let startCycle = getTicks()
     else:
       let startCycle = 0
-
-const CttTrace {.booldefine.} = off # For manual "debug-echo"-style timing.
-when CttTrace:
-  # strformat doesn't work in templates.
-  from strutils import alignLeft, formatFloat
 
 template fnExit(name: string, id: int, startTime, startCycle: untyped): untyped =
   ## Bench tracing to insert before each function exit
@@ -107,23 +111,23 @@ macro meterAnnotate(procAst: untyped): untyped =
   procAst.expectKind({nnkProcDef, nnkFuncDef})
 
   let id = ctMetrics.len
-  let name = procAst[0]
+  let name = procAst[0].repr
   # TODO, get the module and the package the proc is coming from
   #       and the tag "Fp", "ec", "polynomial" ...
 
-  ctMetrics.add Metadata(procName: $name)
+  ctMetrics.add Metadata(procName: name)
   var newBody = newStmtList()
-  let startTime = genSym(nskLet, "metering_" & $name & "_startTime_")
-  let startCycle = genSym(nskLet, "metering_" & $name & "_startCycles_")
-  newBody.add getAst(fnEntry($name, id, startTime, startCycle))
-  newbody.add nnkDefer.newTree(getAst(fnExit($name, id, startTime, startCycle)))
+  let startTime = genSym(nskLet, "metering_" & name & "_startTime_")
+  let startCycle = genSym(nskLet, "metering_" & name & "_startCycles_")
+  newBody.add getAst(fnEntry(name, id, startTime, startCycle))
+  newbody.add nnkDefer.newTree(getAst(fnExit(name, id, startTime, startCycle)))
   newBody.add procAst.body
 
   procAst.body = newBody
   result = procAst
 
 template meter*(procBody: untyped): untyped =
-  when CttTrace:
+  when CttMeter or CttTrace:
     meterAnnotate(procBody)
   else:
     procBody
@@ -133,14 +137,14 @@ template meter*(procBody: untyped): untyped =
 
 when isMainModule:
 
-  static: doAssert CttTrace, "CttTrace must be on for tracing"
+  static: doAssert CttMeter or CttTrace, "CttMeter or CttTrace must be on for tracing"
 
   expandMacros:
     proc foo(x: int): int{.meter.} =
       echo "Hey hey hey"
       result = x
 
-  Metrics = static(ctMetrics)
+  resetMetering()
 
   echo Metrics
   discard foo(10)

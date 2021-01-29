@@ -8,7 +8,7 @@
 
 import
   ../primitives,
-  ../config/curves,
+  ../config/[common, curves],
   ../arithmetic,
   ../towers,
   ../isogeny/frobenius
@@ -31,7 +31,7 @@ import
 
 # 𝔽p12 -> Gϕ₁₂ - Mapping to Cyclotomic group
 # ----------------------------------------------------------------
-func finalExpEasy*[C: static Curve](f: var Fp12[C]) =
+func finalExpEasy*[C: static Curve](f: var Fp12[C]) {.meter.} =
   ## Easy part of the final exponentiation
   ##
   ## This maps the result of the Miller loop into the cyclotomic subgroup Gϕ₁₂
@@ -119,19 +119,19 @@ func finalExpEasy*[C: static Curve](f: var Fp12[C]) =
 #
 # The result of any pairing is in a cyclotomic subgroup
 
-func cyclotomic_inv*(a: var Fp12) =
+func cyclotomic_inv*(a: var Fp12) {.meter.} =
   ## Fast inverse for a
   ## `a` MUST be in the cyclotomic subgroup
   ## consequently `a` MUST be unitary
   a.conj()
 
-func cyclotomic_inv*(r: var Fp12, a: Fp12) =
+func cyclotomic_inv*(r: var Fp12, a: Fp12) {.meter.} =
   ## Fast inverse for a
   ## `a` MUST be in the cyclotomic subgroup
   ## consequently `a` MUST be unitary
   r.conj(a)
 
-func cyclotomic_square*[C](r: var Fp12[C], a: Fp12[C]) =
+func cyclotomic_square*[C](r: var Fp12[C], a: Fp12[C]) {.meter.} =
   ## Square `a` into `r`
   ## `a` MUST be in the cyclotomic subgroup
   ## consequently `a` MUST be unitary
@@ -177,7 +177,7 @@ func cyclotomic_square*[C](r: var Fp12[C], a: Fp12[C]) =
   else:
     {.error: "Not implemented".}
 
-func cyclotomic_square*[C](a: var Fp12[C]) =
+func cyclotomic_square*[C](a: var Fp12[C]) {.meter.} =
   ## Square `a` into `r`
   ## `a` MUST be in the cyclotomic subgroup
   ## consequently `a` MUST be unitary
@@ -225,7 +225,7 @@ func cyclotomic_square*[C](a: var Fp12[C]) =
   else:
     {.error: "Not implemented".}
 
-func cycl_sqr_repeated*(f: var Fp12, num: int) {.inline.} =
+func cycl_sqr_repeated*(f: var Fp12, num: int) {.inline, meter.} =
   ## Repeated cyclotomic squarings
   for _ in 0 ..< num:
     f.cyclotomic_square()
@@ -240,7 +240,7 @@ iterator unpack(scalarByte: byte): bool =
   yield bool((scalarByte and 0b00000010) shr 1)
   yield bool( scalarByte and 0b00000001)
 
-func cyclotomic_exp*[C](r: var Fp12[C], a: Fp12[C], exponent: BigInt, invert: bool) =
+func cyclotomic_exp*[C](r: var Fp12[C], a: Fp12[C], exponent: BigInt, invert: bool) {.meter.} =
     var eBytes: array[(exponent.bits+7) div 8, byte]
     eBytes.exportRawUint(exponent, bigEndian)
 
