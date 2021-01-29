@@ -70,14 +70,14 @@ func toBig*(src: FF): auto {.noInit, inline.} =
 # Copy
 # ------------------------------------------------------------
 
-func ccopy*(a: var FF, b: FF, ctl: SecretBool) {.inline.} =
+func ccopy*(a: var FF, b: FF, ctl: SecretBool) {.inline, meter.} =
   ## Constant-time conditional copy
   ## If ctl is true: b is copied into a
   ## if ctl is false: b is not copied and a is unmodified
   ## Time and memory accesses are the same whether a copy occurs or not
   ccopy(a.mres, b.mres, ctl)
 
-func cswap*(a, b: var FF, ctl: CTBool) {.inline.} =
+func cswap*(a, b: var FF, ctl: CTBool) {.inline, meter.} =
   ## Swap ``a`` and ``b`` if ``ctl`` is true
   ##
   ## Constant-time:
@@ -132,7 +132,7 @@ func setOne*(a: var FF) {.inline.} =
   #       Check if the compiler optimizes it away
   a.mres = FF.getMontyOne()
 
-func `+=`*(a: var FF, b: FF) {.inline.} =
+func `+=`*(a: var FF, b: FF) {.inline, meter.} =
   ## In-place addition modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
     addmod_asm(a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs)
@@ -141,7 +141,7 @@ func `+=`*(a: var FF, b: FF) {.inline.} =
     overflowed = overflowed or not(a.mres < FF.fieldMod())
     discard csub(a.mres, FF.fieldMod(), overflowed)
 
-func `-=`*(a: var FF, b: FF) {.inline.} =
+func `-=`*(a: var FF, b: FF) {.inline, meter.} =
   ## In-place substraction modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
     submod_asm(a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs)
@@ -149,7 +149,7 @@ func `-=`*(a: var FF, b: FF) {.inline.} =
     let underflowed = sub(a.mres, b.mres)
     discard cadd(a.mres, FF.fieldMod(), underflowed)
 
-func double*(a: var FF) {.inline.} =
+func double*(a: var FF) {.inline, meter.} =
   ## Double ``a`` modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
     addmod_asm(a.mres.limbs, a.mres.limbs, FF.fieldMod().limbs)
@@ -158,7 +158,7 @@ func double*(a: var FF) {.inline.} =
     overflowed = overflowed or not(a.mres < FF.fieldMod())
     discard csub(a.mres, FF.fieldMod(), overflowed)
 
-func sum*(r: var FF, a, b: FF) {.inline.} =
+func sum*(r: var FF, a, b: FF) {.inline, meter.} =
   ## Sum ``a`` and ``b`` into ``r`` modulo p
   ## r is initialized/overwritten
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
@@ -169,11 +169,11 @@ func sum*(r: var FF, a, b: FF) {.inline.} =
     overflowed = overflowed or not(r.mres < FF.fieldMod())
     discard csub(r.mres, FF.fieldMod(), overflowed)
 
-func sumNoReduce*(r: var FF, a, b: FF) {.inline.} =
+func sumNoReduce*(r: var FF, a, b: FF) {.inline, meter.} =
   ## Sum ``a`` and ``b`` into ``r`` without reduction
   discard r.mres.sum(a.mres, b.mres)
 
-func diff*(r: var FF, a, b: FF) {.inline.} =
+func diff*(r: var FF, a, b: FF) {.inline, meter.} =
   ## Substract `b` from `a` and store the result into `r`.
   ## `r` is initialized/overwritten
   ## Requires r != b
@@ -184,7 +184,7 @@ func diff*(r: var FF, a, b: FF) {.inline.} =
     var underflowed = r.mres.diff(a.mres, b.mres)
     discard cadd(r.mres, FF.fieldMod(), underflowed)
 
-func diffAlias*(r: var FF, a, b: FF) {.inline.} =
+func diffAlias*(r: var FF, a, b: FF) {.inline, meter.} =
   ## Substract `b` from `a` and store the result into `r`.
   ## `r` is initialized/overwritten
   ## Handles r == b
@@ -196,12 +196,12 @@ func diffAlias*(r: var FF, a, b: FF) {.inline.} =
     var underflowed = r.mres.diff(a.mres, b.mres)
     discard cadd(r.mres, FF.fieldMod(), underflowed)
 
-func diffNoReduce*(r: var FF, a, b: FF) {.inline.} =
+func diffNoReduce*(r: var FF, a, b: FF) {.inline, meter.} =
   ## Substract `b` from `a` and store the result into `r`
   ## without reduction
   discard r.mres.diff(a.mres, b.mres)
 
-func double*(r: var FF, a: FF) {.inline.} =
+func double*(r: var FF, a: FF) {.inline, meter.} =
   ## Double ``a`` into ``r``
   ## `r` is initialized/overwritten
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
@@ -212,16 +212,16 @@ func double*(r: var FF, a: FF) {.inline.} =
     overflowed = overflowed or not(r.mres < FF.fieldMod())
     discard csub(r.mres, FF.fieldMod(), overflowed)
 
-func prod*(r: var FF, a, b: FF) {.inline.} =
+func prod*(r: var FF, a, b: FF) {.inline, meter.} =
   ## Store the product of ``a`` by ``b`` modulo p into ``r``
   ## ``r`` is initialized / overwritten
   r.mres.montyMul(a.mres, b.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.canUseNoCarryMontyMul())
 
-func square*(r: var FF, a: FF) {.inline.} =
+func square*(r: var FF, a: FF) {.inline, meter.} =
   ## Squaring modulo p
   r.mres.montySquare(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.canUseNoCarryMontySquare())
 
-func neg*(r: var FF, a: FF) {.inline.} =
+func neg*(r: var FF, a: FF) {.inline, meter.} =
   ## Negate modulo p
   when UseASM_X86_64 and defined(gcc):
     # Clang and every compiler besides GCC
@@ -239,11 +239,11 @@ func neg*(r: var FF, a: FF) {.inline.} =
     t.mres.czero(isZero)
     r = t
 
-func neg*(a: var FF) {.inline.} =
+func neg*(a: var FF) {.inline, meter.} =
   ## Negate modulo p
   a.neg(a)
 
-func div2*(a: var FF) {.inline.} =
+func div2*(a: var FF) {.inline, meter.} =
   ## Modular division by 2
   a.mres.div2_modular(FF.getPrimePlus1div2())
 
@@ -253,26 +253,26 @@ func div2*(a: var FF) {.inline.} =
 #
 # ############################################################
 
-func cneg*(r: var FF, a: FF, ctl: SecretBool) =
+func cneg*(r: var FF, a: FF, ctl: SecretBool) {.meter.} =
   ## Constant-time in-place conditional negation
   ## The negation is only performed if ctl is "true"
   r.neg(a)
   r.ccopy(a, not ctl)
 
-func cneg*(a: var FF, ctl: SecretBool) =
+func cneg*(a: var FF, ctl: SecretBool) {.meter.} =
   ## Constant-time in-place conditional negation
   ## The negation is only performed if ctl is "true"
   var t = a
   a.cneg(t, ctl)
 
-func cadd*(a: var FF, b: FF, ctl: SecretBool) =
+func cadd*(a: var FF, b: FF, ctl: SecretBool) {.meter.} =
   ## Constant-time in-place conditional addition
   ## The addition is only performed if ctl is "true"
   var t = a
   t += b
   a.ccopy(t, ctl)
 
-func csub*(a: var FF, b: FF, ctl: SecretBool) =
+func csub*(a: var FF, b: FF, ctl: SecretBool) {.meter.} =
   ## Constant-time in-place conditional substraction
   ## The substraction is only performed if ctl is "true"
   var t = a
@@ -365,15 +365,15 @@ func powUnsafeExponent*(a: var FF, exponent: openarray[byte]) {.inline.} =
 # - Those that return a field element
 # - Those that internally allocate a temporary field element
 
-func `+`*(a, b: FF): FF {.noInit, inline.} =
+func `+`*(a, b: FF): FF {.noInit, inline, meter.} =
   ## Addition modulo p
   result.sum(a, b)
 
-func `-`*(a, b: FF): FF {.noInit, inline.} =
+func `-`*(a, b: FF): FF {.noInit, inline, meter.} =
   ## Substraction modulo p
   result.diff(a, b)
 
-func `*`*(a, b: FF): FF {.noInit, inline.} =
+func `*`*(a, b: FF): FF {.noInit, inline, meter.} =
   ## Multiplication modulo p
   ##
   ## It is recommended to assign with {.noInit.}
@@ -381,20 +381,20 @@ func `*`*(a, b: FF): FF {.noInit, inline.} =
   ## routine will zero init internally the result.
   result.prod(a, b)
 
-func `*=`*(a: var FF, b: FF) {.inline.} =
+func `*=`*(a: var FF, b: FF) {.inline, meter.} =
   ## Multiplication modulo p
   a.prod(a, b)
 
-func square*(a: var FF) {.inline.} =
+func square*(a: var FF) {.inline, meter.} =
   ## Squaring modulo p
   a.mres.montySquare(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.canUseNoCarryMontySquare())
 
-func square_repeated*(r: var FF, num: int) {.inline.} =
+func square_repeated*(r: var FF, num: int) {.inline, meter.} =
   ## Repeated squarings
   for _ in 0 ..< num:
     r.square()
 
-func square_repeated*(r: var FF, a: FF, num: int) {.inline.} =
+func square_repeated*(r: var FF, a: FF, num: int) {.inline, meter.} =
   ## Repeated squarings
   r.square(a)
   for _ in 1 ..< num:

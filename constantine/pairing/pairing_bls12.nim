@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/[curves, type_ff],
+  ../config/[common, curves, type_ff],
   ../towers,
   ../elliptic/[
     ec_shortweierstrass_affine,
@@ -49,7 +49,7 @@ func millerLoopGenericBLS12*[C](
        f: var Fp12[C],
        P: ECP_ShortW_Aff[Fp[C], NotOnTwist],
        Q: ECP_ShortW_Aff[Fp2[C], OnTwist]
-     ) =
+     ) {.meter.} =
   ## Generic Miller Loop for BLS12 curve
   ## Computes f{u,Q}(P) with u the BLS curve parameter
 
@@ -133,7 +133,7 @@ func pairing_bls12_reference*[C](
 # Optimized pairing implementation
 # ----------------------------------------------------------------
 
-func finalExpHard_BLS12*[C](f: var Fp12[C]) =
+func finalExpHard_BLS12*[C](f: var Fp12[C]) {.meter.} =
   ## Hard part of the final exponentiation
   ## Specialized for BLS12 curves
   ##
@@ -191,7 +191,7 @@ func finalExpHard_BLS12*[C](f: var Fp12[C]) =
 func pairing_bls12*[C](
        gt: var Fp12[C],
        P: ECP_ShortW_Proj[Fp[C], NotOnTwist],
-       Q: ECP_ShortW_Proj[Fp2[C], OnTwist]) =
+       Q: ECP_ShortW_Proj[Fp2[C], OnTwist]) {.meter.} =
   ## Compute the optimal Ate Pairing for BLS12 curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
