@@ -73,3 +73,15 @@ func `$`*(sk: SecretKey): string = "<camouflage>"
 - Standards for Efficient Cryptography Group (SECG),\
   "SEC 1: Elliptic Curve Cryptography", May 2009,\
   http://www.secg.org/sec1-v2.pdf
+
+### Algorithms
+
+#### Continued fractions
+
+Continued fractions are used to convert
+
+`size_in_bits <=> size_in_decimal`
+
+for constant-time buffer preallocation when converting to decimal.
+
+- https://en.wikipedia.org/wiki/Continued_fraction

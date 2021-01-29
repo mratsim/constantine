@@ -257,10 +257,6 @@ func double*(r: var BigInt, a: BigInt): SecretBool =
   ## Returns the carry
   (SecretBool) sum(r.limbs, a.limbs, a.limbs)
 
-func div2*(a: var BigInt) =
-  ## In-place divide ``a`` by 2
-  a.limbs.shiftRight(1)
-
 func cneg*(a: var BigInt, ctl: CTBool) =
   ## Conditional negation.
   ## Negate if ``ctl`` is true
@@ -409,6 +405,18 @@ func `*`*(b: static int, a: BigInt): BigInt {.noinit, inline.} =
   ## Multiplication by a small integer known at compile-time
   result = a
   result *= b
+
+# Division by constants
+# ------------------------------------------------------------
+
+func div2*(a: var BigInt) =
+  ## In-place divide ``a`` by 2
+  a.limbs.shiftRight(1)
+
+func div10*(a: var BigInt): SecretWord =
+  ## In-place divide ``a`` by 10
+  ## and return the remainder
+  a.limbs.div10()
 
 # ############################################################
 #

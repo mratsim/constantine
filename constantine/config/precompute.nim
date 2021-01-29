@@ -226,8 +226,11 @@ func shiftRight*(a: var BigInt, k: int) =
 #
 # ############################################################
 
-func checkOddModulus(M: BigInt) =
-  doAssert bool(BaseType(M.limbs[0]) and 1), "Internal Error: the modulus must be odd to use the Montgomery representation."
+func checkOdd(a: BaseType) =
+  doAssert bool(a and 1), "Internal Error: the modulus must be odd to use the Montgomery representation."
+
+func checkOdd(M: BigInt) =
+  checkOdd(BaseType M.limbs[0])
 
 func checkValidModulus(M: BigInt) =
   const expectedMsb = M.bits-1 - WordBitWidth * (M.limbs.len - 1)
@@ -251,18 +254,7 @@ func useNoCarryMontySquare*(M: BigInt): bool =
   # https://github.com/nim-lang/Nim/issues/9679
   BaseType(M.limbs[^1]) < high(BaseType) shr 2
 
-func negInvModWord*(M: BigInt): BaseType =
-  ## Returns the Montgomery domain magic constant for the input modulus:
-  ##
-  ##   µ ≡ -1/M[0] (mod SecretWord)
-  ##
-  ## M[0] is the least significant limb of M
-  ## M must be odd and greater than 2.
-  ##
-  ## Assuming 64-bit words:
-  ##
-  ## µ ≡ -1/M[0] (mod 2^64)
-
+func invModBitwidth[T: SomeUnsignedInt](a: T): T =
   # We use BaseType for return value because static distinct type
   # confuses Nim semchecks [UPSTREAM BUG]
   # We don't enforce compile-time evaluation here
@@ -278,31 +270,33 @@ func negInvModWord*(M: BigInt): BaseType =
   # - https://mumble.net/~campbell/2015/01/21/inverse-mod-power-of-two
   # - http://marc-b-reynolds.github.io/math/2017/09/18/ModInverse.html
 
-  # For Montgomery magic number, we are in a special case
-  # where a = M and m = 2^WordBitWidth.
+  # We are in a special case
+  # where m = 2^WordBitWidth.
   # For a and m to be coprimes, a must be odd.
-
+  #
   # We have the following relation
   # ax ≡ 1 (mod 2^k) <=> ax(2 - ax) ≡ 1 (mod 2^(2k))
-  #
-  # To get  -1/M0 mod LimbSize
-  # we can negate the result x of `ax(2 - ax) ≡ 1 (mod 2^(2k))`
-  # or if k is odd: do ax(2 + ax) ≡ 1 (mod 2^(2k))
-  #
-  # To get the the modular inverse of 2^k' with arbitrary k'
-  # we can do modInv(a, 2^64) mod 2^63 as mentionned in Koc paper.
+  # which grows in O(log(log(a)))
+  checkOdd(a)
 
-  checkOddModulus(M)
-  checkValidModulus(M)
+  let k = log2(T.sizeof() * 8)
+  result = a                 # Start from an inverse of M0 modulo 2, M0 is odd and it's own inverse
+  for _ in 0 ..< k:          # at each iteration we get the inverse mod(2^2k)
+    result *= 2 - a * result # x' = x(2 - ax)
 
-  let
-    M0 = BaseType(M.limbs[0])
-    k = log2(WordBitWidth.uint32)
+func negInvModWord*(M: BigInt): BaseType =
+  ## Returns the Montgomery domain magic constant for the input modulus:
+  ##
+  ##   µ ≡ -1/M[0] (mod SecretWord)
+  ##
+  ## M[0] is the least significant limb of M
+  ## M must be odd and greater than 2.
+  ##
+  ## Assuming 64-bit words:
+  ##
+  ## µ ≡ -1/M[0] (mod 2^64)
 
-  result = M0                 # Start from an inverse of M0 modulo 2, M0 is odd and it's own inverse
-  for _ in 0 ..< k:           # at each iteration we get the inverse mod(2^2k)
-    result *= 2 - M0 * result # x' = x(2 - ax)
-
+  result = invModBitwidth(BaseType M.limbs[0])
   # negate to obtain the negative inverse
   result = not(result) + 1
 
@@ -329,7 +323,7 @@ func r_powmod(n: static int, M: BigInt): BigInt =
   #
   # Thus: C(wn+1) ≡ 2^(wn+1) C0 ≡ 2^(wn + 1) 2^(wn - 1) ≡ 2^(2wn) ≡ (2^wn)^2 ≡ R² (mod M)
 
-  checkOddModulus(M)
+  checkOdd(M)
   checkValidModulus(M)
 
   const
@@ -380,7 +374,7 @@ func primePlus1div2*(P: BigInt): BigInt =
   ## For use in constant-time modular inversion
   ##
   ## Warning ⚠️: Result is in the canonical domain (not Montgomery)
-  checkOddModulus(P)
+  checkOdd(P)
 
   # (P+1)/2 = P/2 + 1 if P is odd,
   # this avoids overflowing if the prime uses all bits
@@ -442,7 +436,7 @@ func primePlus1Div4_BE*[bits: static int](
   # - (bits + 7 - 1): dividing by 4 means 2 bits are unused
   #                   but we also add 1 to an odd number so using an extra bit
   # => TODO: reduce the output size (to potentially save a byte and corresponding multiplication/squarings)
-  checkOddModulus(P)
+  checkOdd(P)
 
   # First we do P+1/2 in a way that guarantees no overflow
   var tmp = primePlus1div2(P)

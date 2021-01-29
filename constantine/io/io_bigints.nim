@@ -594,7 +594,71 @@ func fromDecimal*(T: type BigInt, s: string): T {.raises: [ValueError].}=
   ## - There is not enough space in the BigInt
   ## - An invalid character was found
   let status = result.fromDecimal(s)
-  if not status:
+  if not status.bool:
     raise newException(ValueError,
       "BigInt could not be parsed from decimal string." &
       " <Potentially secret input withheld>")
+
+# Conversion to decimal
+# ----------------------------------------------------------------
+#
+# The first problem to solve is precomputing the final size
+# We also use continued fractions to approximate log₁₀(2)
+#
+# decimal_length = log₁₀(2) * binary_length
+#
+# sage: [(frac, numerical_approx(frac - log(2,10))) for frac in continued_fraction(log(2,10)).convergents()[0:10]]
+# [(0, -0.301029995663981),
+#  (1/3, 0.0323033376693522),
+#  (3/10, -0.00102999566398115),
+#  (28/93, 0.0000452731532231687),
+#  (59/196, -9.58750071583525e-6),
+#  (146/485, 9.32171070389121e-7),
+#  (643/2136, -3.31171646772432e-8),
+#  (4004/13301, 2.08054934391910e-9),
+#  (8651/28738, -5.35579747218407e-10),
+#  (12655/42039, 2.92154800352051e-10)]
+
+const log10_2_Num = 12655
+const log10_2_Denom = 42039
+
+# Then the naive way to serialize is to repeatedly do
+# const intToCharMap = "0123456789"
+# rest = number
+# while rest != 0:
+#   digitToPrint = rest mod 10
+#   result.add intToCharMap[digitToPrint]
+#   rest /= 10
+#
+# For constant-time we:
+# 1. can't compare with 0 as a stopping condition
+# 2. repeatedly add to a buffer
+# 3. can't use naive indexing (cache timing attacks though very unlikely given the small size)
+# 4. need (fast) constant-time division
+#
+# 1 and 2 is solved by precomputing the length and make the number of add be fixed.
+# 3 is easily solved by doing "digitToPrint + ord('0')" instead
+#
+# For 4 for now we use non-constant-time division (TODO)
+
+func decimalLength(bits: static int): int =
+  doAssert bits < (high(uint) div log10_2_Num),
+    "Constantine does not support that many bits to convert to a decimal string: " & $bits
+    # The next multiplication would overflow
+
+  result = 1 + ((bits * log10_2_Num) div log10_2_Denom)
+
+func toDecimal*(a: BigInt): string =
+  ## Convert to a decimal string.
+  ##
+  ## It is intended for configuration, prototyping, research and debugging purposes.
+  ## You MUST NOT use it for production.
+  ##
+  ## This function is NOT constant-time at the moment.
+  const len = decimalLength(BigInt.bits)
+  result = newString(len)
+
+  var a = a
+  for i in countdown(len-1, 0):
+    let c = ord('0') + a.div10().int
+    result[i] = char(c)

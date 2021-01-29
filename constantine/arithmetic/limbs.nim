@@ -417,4 +417,26 @@ func prod_high_words*[rLen, aLen, bLen](
 
   r = z
 
+# Division
+# ------------------------------------------------------------
+
+func div10*(a: var Limbs): SecretWord =
+  ## Divide `a` by 10 in-place and return the remainder
+  ## TODO constant-time
+  result = Zero
+
+  let clz = WordBitWidth - 1 - log2(10)
+  let norm10 = SecretWord(10) shl clz
+
+  for i in countdown(a.len-1, 0):
+    # dividend = 2^64 * remainder + a[i]
+    var hi = result
+    var lo = a[i]
+    # Normalize
+    hi = (hi shl clz) or (lo shr (WordBitWidth - clz))
+    lo = lo shl clz
+    unsafeDiv2n1n(a[i], result, hi, lo, norm10)
+    # Undo normalization
+    result = result shr clz
+
 {.pop.} # raises no exceptions
