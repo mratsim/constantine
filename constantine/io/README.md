@@ -28,7 +28,7 @@ If you decide to use the internal hex or decimal API, you SHOULD ensure that the
 There is no input validation as those are used for configuration, prototyping, research and debugging purposes.
 If the data is too big for the specified BigInt size, the result is undefined.
 
-The internal API is constant-time and may allocate.
+The internal API is may be constant-time (temporarily) and may allocate.
 
 The hexadecimal API allocates:
 - `toHex` is constant-time
@@ -39,7 +39,7 @@ The hexadecimal API allocates:
   starts with '0x'.
 
 The decimal API allocates:
-- `toDecimal` is constant-time and allocates
+- `toDecimal` is **NOT constant-time** (yet) and allocates
 - `fromDecimal` is constant-time and does not allocate.
 
 ## Avoiding secret mistakes

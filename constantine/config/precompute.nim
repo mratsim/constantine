@@ -295,6 +295,7 @@ func negInvModWord*(M: BigInt): BaseType =
   ## Assuming 64-bit words:
   ##
   ## µ ≡ -1/M[0] (mod 2^64)
+  checkValidModulus(M)
 
   result = invModBitwidth(BaseType M.limbs[0])
   # negate to obtain the negative inverse
