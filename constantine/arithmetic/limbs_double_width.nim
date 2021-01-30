@@ -54,6 +54,9 @@ func prod*[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], b: 
     const stopEx = min(a.len+b.len, r.len)
 
     staticFor i, 0, stopEx:
+      # Invariant for product scanning:
+      # if we multiply accumulate by a[k1] * b[k2]
+      # we have k1+k2 == i
       const ib = min(b.len-1, i)
       const ia = i - ib
       staticFor j, 0, min(a.len - ia, ib+1):
@@ -113,6 +116,50 @@ func prod_high_words*[rLen, aLen, bLen](
       t = Zero
 
   r = z
+
+func square*[rLen, aLen](
+       r: var Limbs[rLen],
+       a: Limbs[aLen]) =
+  ## Multi-precision squaring
+  ## r <- a²
+  ##
+  ## if `r`.limbs.len < a.limbs.len * 2
+  ## The result will be truncated, i.e. it will be
+  ## a² (mod (2^WordBitwidth)^r.limbs.len)
+  ##
+  ## `r` must not alias ``a`` or ``b``
+  when false:
+    discard # insert Assembly
+  else:
+    # We use Product Scanning / Comba squaring
+    var t, u, v = Zero
+    const stopEx = min(a.len * 2, r.len)
+
+    staticFor i, 0, stopEx:
+      # Invariant for product scanning:
+      # if we multiply accumulate by a[k1] * b[k2]
+      # we have k1+k2 == i
+      const ib = min(a.len-1, i)
+      const ia = i - ib
+      staticFor j, 0, min(a.len - ia, ib+1):
+        const k1 = ia+j
+        const k2 = ib-j
+        when k1 < k2:
+          mulDoubleAcc(t, u, v, a[k1], a[k2])
+        elif k1 == k2:
+          mulAcc(t, u, v, a[k1], a[k2])
+        else:
+          discard
+
+      r[i] = v
+      when i < stopEx-1:
+        v = u
+        u = t
+        t = Zero
+
+    if aLen*2 < rLen:
+      for i in aLen*2 ..< rLen:
+        r[i] = Zero
 
 # Montgomery Reduction
 # ------------------------------------------------------------

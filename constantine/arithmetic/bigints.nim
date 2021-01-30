@@ -271,6 +271,10 @@ func prod*[rBits, aBits, bBits](r: var BigInt[rBits], a: BigInt[aBits], b: BigIn
   ## if r.bits < a.bits + b.bits
   ## the multiplication will overflow.
   ## It will be truncated if it cannot fit in r limbs.
+  ##
+  ## Truncation is at limb-level NOT bitlevel
+  ## It is recommended to only use
+  ## rBits >= aBits + bBits unless you know what you are doing.
   r.limbs.prod(a.limbs, b.limbs)
 
 func mul*[aBits, bBits](a: var BigInt[aBits], b: BigInt[bBits]) =
@@ -299,6 +303,19 @@ func prod_high_words*[rBits, aBits, bBits](r: var BigInt[rBits], a: BigInt[aBits
   #   and at runtime do P*a/M <=> P*a >> WordBitWidth*w
   #   i.e. prod_high_words(result, P, a, w)
   r.limbs.prod_high_words(a.limbs, b.limbs, lowestWordIndex)
+
+func square*[rBits, aBits](r: var BigInt[rBits], a: BigInt[aBits]) =
+  ## Multi-precision squaring
+  ## r <- a²
+  ## `a`, `r` can have different sizes
+  ## if r.bits < a.bits * 2
+  ## the multiplication will overflow.
+  ## It will be truncated if it cannot fit in r limbs.
+  ##
+  ## Truncation is at limb-level NOT bitlevel
+  ## It is recommended to only use
+  ## rBits >= aBits * 2 unless you know what you are doing.
+  r.limbs.square(a.limbs)
 
 # Bit Manipulation
 # ------------------------------------------------------------

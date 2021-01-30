@@ -138,3 +138,17 @@ func mulAcc*[T: Ct[uint32]|Ct[uint64]](t, u, v: var T, a, b: T) {.inline.} =
   addC(carry, v, v, UV[0], Carry(0))
   addC(carry, u, u, UV[1], carry)
   t += T(carry)
+
+func mulDoubleAcc*[T: Ct[uint32]|Ct[uint64]](t, u, v: var T, a, b: T) {.inline.} =
+  ## (t, u, v) <- (t, u, v) + 2 * a * b
+  var UV: array[2, T]
+  var carry: Carry
+  mul(UV[1], UV[0], a, b)
+
+  addC(carry, UV[0], UV[0], UV[0], Carry(0))
+  addC(carry, UV[1], UV[1], UV[1], carry)
+  t += T(carry)
+
+  addC(carry, v, v, UV[0], Carry(0))
+  addC(carry, u, u, UV[1], carry)
+  t += T(carry)

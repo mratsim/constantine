@@ -27,9 +27,16 @@ template doubleWidth*(T: typedesc[Fp]): typedesc =
   ## Return the double-width type matching with Fp
   FpDbl[T.C]
 
+func `==`*(a, b: FpDbl): SecretBool {.inline.} =
+  a.limbs2x == b.limbs2x
+
 func mulNoReduce*(r: var FpDbl, a, b: Fp) {.inline.} =
   ## Store the product of ``a`` by ``b`` into ``r``
   r.limbs2x.prod(a.mres.limbs, b.mres.limbs)
+
+func squareNoReduce*(r: var FpDbl, a: Fp) {.inline.} =
+  ## Store the square of ``a`` into ``r``
+  r.limbs2x.square(a.mres.limbs)
 
 func reduce*(r: var Fp, a: FpDbl) {.inline.} =
   ## Reduce a double-width field element into r
