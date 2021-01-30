@@ -128,8 +128,8 @@ func square*[rLen, aLen](
   ## a² (mod (2^WordBitwidth)^r.limbs.len)
   ##
   ## `r` must not alias ``a`` or ``b``
-  when false:
-    discard # insert Assembly
+  when UseASM_X86_64:
+    square_asm(r, a)
   else:
     # We use Product Scanning / Comba squaring
     var t, u, v = Zero
@@ -137,7 +137,7 @@ func square*[rLen, aLen](
 
     staticFor i, 0, stopEx:
       # Invariant for product scanning:
-      # if we multiply accumulate by a[k1] * b[k2]
+      # if we multiply accumulate by a[k1] * a[k2]
       # we have k1+k2 == i
       const ib = min(a.len-1, i)
       const ia = i - ib
