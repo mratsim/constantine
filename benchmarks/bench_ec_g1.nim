@@ -48,6 +48,7 @@ proc main() =
     addBench(ECP_ShortW_Proj[Fp[curve], NotOnTwist], Iters)
     addBench(ECP_ShortW_Jac[Fp[curve], NotOnTwist], Iters)
     mixedAddBench(ECP_ShortW_Proj[Fp[curve], NotOnTwist], Iters)
+    mixedAddBench(ECP_ShortW_Jac[Fp[curve], NotOnTwist], Iters)
     doublingBench(ECP_ShortW_Proj[Fp[curve], NotOnTwist], Iters)
     doublingBench(ECP_ShortW_Jac[Fp[curve], NotOnTwist], Iters)
     separator()

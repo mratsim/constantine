@@ -441,7 +441,10 @@ proc run_EC_mixed_add_impl*(
           let a = rng.random_point(EC, randZ, gen)
           let b = rng.random_point(EC, randZ, gen)
           var bAff: ECP_ShortW_Aff[EC.F, EC.Tw]
-          bAff.affineFromProjective(b)
+          when b is ECP_ShortW_Proj:
+            bAff.affineFromProjective(b)
+          else:
+            bAff.affineFromJacobian(b)
 
           var r_generic, r_mixed: EC
 

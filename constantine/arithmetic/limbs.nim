@@ -63,13 +63,14 @@ when UseASM_X86_64:
 
 func setZero*(a: var Limbs) =
   ## Set ``a`` to 0
-  zeroMem(a[0].addr, sizeof(a))
+  for i in 0 ..< a.len:
+    a[i] = Zero
 
 func setOne*(a: var Limbs) =
   ## Set ``a`` to 1
   a[0] = One
-  when a.len > 1:
-    zeroMem(a[1].addr, (a.len - 1) * sizeof(SecretWord))
+  for i in 1 ..< a.len:
+    a[i] = Zero
 
 func setUint*(a: var Limbs, n: SomeUnsignedInt) =
   ## set ``a`` to an unsigned integer ``n``
