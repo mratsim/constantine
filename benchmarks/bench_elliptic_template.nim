@@ -17,7 +17,11 @@ import
   ../constantine/config/[curves, common],
   ../constantine/arithmetic,
   ../constantine/io/io_bigints,
-  ../constantine/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective, ec_scalar_mul, ec_endomorphism_accel],
+  ../constantine/elliptic/[
+    ec_shortweierstrass_affine,
+    ec_shortweierstrass_projective,
+    ec_shortweierstrass_jacobian,
+    ec_scalar_mul, ec_endomorphism_accel],
   # Helpers
   ../helpers/[prng_unsafe, static_for],
   ./platforms,
@@ -64,7 +68,10 @@ proc mixedAddBench*(T: typedesc, iters: int) =
   let P = rng.random_unsafe(T)
   let Q = rng.random_unsafe(T)
   var Qaff: ECP_ShortW_Aff[T.F, T.Tw]
-  Qaff.affineFromProjective(Q)
+  when Q is ECP_ShortW_Proj:
+    Qaff.affineFromProjective(Q)
+  else:
+    Qaff.affineFromJacobian(Q)
   bench("EC Mixed Addition " & G1_or_G2, T, iters):
     r.madd(P, Qaff)
 

@@ -291,6 +291,85 @@ func sum*[F; Tw: static Twisted](
     r.ccopy(Q, P.isInf())
     r.ccopy(P, Q.isInf())
 
+func madd*[F; Tw: static Twisted](
+       r: var ECP_ShortW_Jac[F, Tw],
+       P: ECP_ShortW_Jac[F, Tw],
+       Q: ECP_ShortW_Aff[F, Tw]
+     ) =
+  ## Elliptic curve mixed addition for Short Weierstrass curves
+  ## with p in Jacobian coordinates and Q in affine coordinates
+  ##
+  ##   R = P + Q
+  # "madd-2007-bl" mixed addition formula - https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#addition-madd-2007-bl
+  # with conditional copies to handle infinity points
+  #  Assumptions: Z2=1.
+  #  Cost: 7M + 4S + 9add + 3*2 + 1*4.
+  #  Source: 2007 Bernstein–Lange.
+  #  Explicit formulas:
+  #
+  #        Z1Z1 = Z1²
+  #        U2 = X2*Z1Z1
+  #        S2 = Y2*Z1*Z1Z1
+  #        H = U2-X1
+  #        HH = H2
+  #        I = 4*HH
+  #        J = H*I
+  #        r = 2*(S2-Y1)
+  #        V = X1*I
+  #        X3 = r²-J-2*V
+  #        Y3 = r*(V-X3)-2*Y1*J
+  #        Z3 = (Z1+H)²-Z1Z1-HH
+  var Z1Z1 {.noInit.}, H {.noInit.}, HH {.noInit.}, I{.noInit.}, J {.noInit.}: F
+
+  # Preload P and Q in cache
+  let pIsInf = P.isInf()
+  let qIsInf = Q.isInf()
+
+  Z1Z1.square(P.z)    # Z₁Z₁ = Z₁²
+  r.z.prod(P.z, Z1Z1) #               P.Z is hot in cache, keep it in same register.
+  r.z *= Q.y          # S₂ = Y₂Z₁Z₁Z₁         -- r.z used as S₂
+
+  H.prod(Q.x, Z1Z1)   # U₂ = X₂Z₁Z₁
+  H -= P.x            # H = U₂ - X₁
+
+  HH.square(H)        # HH = H²
+
+  I.double(HH)
+  I.double()          # I = 4HH
+
+  J.prod(H, I)        # J = H*I
+  r.y.prod(P.x, I)    # V = X₁*I              -- r.y used as V
+
+  r.z -= P.y          #
+  r.z.double()        # r = 2*(S₂-Y₁)         -- r.z used as r
+
+  r.x.square(r.z)     # r²
+  r.x -= J
+  r.x -= r.y
+  r.x -= r.y          # X₃ = r²-J-2*V         -- r.x computed
+
+  r.y -= r.x          # V-X₃
+  r.y *= r.z          # r*(V-X₃)
+
+  J *= P.y            # Y₁J                   -- J reused as Y₁J
+  r.y -= J
+  r.y -= J            # Y₃ = r*(V-X₃) - 2*Y₁J -- r.y computed
+
+  r.z.sum(P.z, H)     # Z₁ + H
+  r.z.square()
+  r.z -= Z1Z1
+  r.z -= HH           # Z₃ = (Z1+H)²-Z1Z1-HH
+
+  # Now handle points at infinity
+  proc one(): F =
+    result.setOne()
+
+  r.x.ccopy(Q.x, pIsInf)
+  r.y.ccopy(Q.y, pIsInf)
+  r.z.ccopy(static(one()), pIsInf)
+
+  r.ccopy(P, qIsInf)
+
 func double*[F; Tw: static Twisted](
        r: var ECP_ShortW_Jac[F, Tw],
        P: ECP_ShortW_Jac[F, Tw]
@@ -373,13 +452,13 @@ func diff*(r: var ECP_ShortW_Jac,
 func affineFromJacobian*[F; Tw](
        aff: var ECP_ShortW_Aff[F, Tw],
        jac: ECP_ShortW_Jac[F, Tw]) =
-  var invZ {.noInit.}, invZ2: F
+  var invZ {.noInit.}, invZ2{.noInit.}: F
   invZ.inv(jac.z)
   invZ2.square(invZ)
 
   aff.x.prod(jac.x, invZ2)
   aff.y.prod(jac.y, invZ)
-  aff.y.prod(jac.y, invZ2)
+  aff.y *= invZ2
 
 func jacobianFromAffine*[F; Tw](
        jac: var ECP_ShortW_Jac[F, Tw],

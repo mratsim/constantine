@@ -32,6 +32,16 @@ type
     ## over a field F
     x*, y*: F
 
+func isInf*(P: ECP_ShortW_Aff): SecretBool =
+  ## Returns true if P is an infinity point
+  ## and false otherwise
+  ##
+  ## Note: the jacobian coordinates equation is
+  ##       Y² = X³ + aXZ⁴ + bZ⁶
+  ## A "zero" point is any point with coordinates X and Z = 0
+  ## Y can be anything
+  result = P.x.isZero() and P.y.isZero()
+
 func curve_eq_rhs*[F](y2: var F, x: F, Tw: static Twisted) =
   ## Compute the curve equation right-hand-side from field element `x`
   ## i.e.  `y²` in `y² = x³ + a x + b`

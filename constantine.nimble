@@ -75,7 +75,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ("tests/t_ec_shortw_jac_g1_mul_sanity.nim", false),
   # ("tests/t_ec_shortw_jac_g1_mul_distri.nim", false),
   ("tests/t_ec_shortw_jac_g1_mul_vs_ref.nim", false),
-  # mixed_add
+  ("tests/t_ec_shortw_jac_g1_mixed_add.nim", false),
 
   # Elliptic curve arithmetic G2
   # ----------------------------------------------------------
@@ -107,25 +107,25 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ("tests/t_ec_shortw_jac_g2_mul_sanity_bn254_snarks.nim", false),
   # ("tests/t_ec_shortw_jac_g2_mul_distri_bn254_snarks.nim", false),
   ("tests/t_ec_shortw_jac_g2_mul_vs_ref_bn254_snarks.nim", false),
-  # mixed_add
+  ("tests/t_ec_shortw_jac_g2_mixed_add_bn254_snarks.nim", false),
 
   # ("tests/t_ec_shortw_jac_g2_add_double_bls12_381.nim", false),
   # ("tests/t_ec_shortw_jac_g2_mul_sanity_bls12_381.nim", false),
   # ("tests/t_ec_shortw_jac_g2_mul_distri_bls12_381.nim", false),
   ("tests/t_ec_shortw_jac_g2_mul_vs_ref_bls12_381.nim", false),
-  # mixed_add
+  ("tests/t_ec_shortw_jac_g2_mixed_add_bls12_381.nim", false),
 
   # ("tests/t_ec_shortw_jac_g2_add_double_bls12_377.nim", false),
   # ("tests/t_ec_shortw_jac_g2_mul_sanity_bls12_377.nim", false),
   # ("tests/t_ec_shortw_jac_g2_mul_distri_bls12_377.nim", false),
   ("tests/t_ec_shortw_jac_g2_mul_vs_ref_bls12_377.nim", false),
-  # mixed_add
+  ("tests/t_ec_shortw_jac_g2_mixed_add_bls12_377.nim", false),
 
   # ("tests/t_ec_shortw_jac_g2_add_double_bw6_761.nim", false),
   # ("tests/t_ec_shortw_jac_g2_mul_sanity_bw6_761.nim", false),
   # ("tests/t_ec_shortw_jac_g2_mul_distri_bw6_761.nim", false),
   ("tests/t_ec_shortw_jac_g2_mul_vs_ref_bw6_761.nim", false),
-  # mixed_add
+  ("tests/t_ec_shortw_jac_g2_mixed_add_bw6_761.nim", false),
 
   # Elliptic curve arithmetic vs Sagemath
   # ----------------------------------------------------------
