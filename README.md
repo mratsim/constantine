@@ -42,7 +42,7 @@ generated incorrect add-with-carry code.
 
 On x86-64, inline assembly is used to workaround compilers having issues optimizing large integer arithmetic,
 and also ensure constant-time code.
-This can be deactivated with `"-d:ConstantineASM=false"`:
+This can be deactivated with `"-d:CttASM=false"`:
 - at a significant performance cost with GCC (~50% slower than Clang).
 - at misssed opportunity on recent CPUs that support MULX/ADCX/ADOX instructions (~60% faster than Clang).
 - There is a 2.4x perf ratio between using plain GCC vs GCC with inline assembly.

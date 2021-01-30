@@ -15,6 +15,8 @@ when UseASM_X86_32:
   import ./assembly/limbs_asm_montred_x86
 when UseASM_X86_64:
   import ./assembly/limbs_asm_montred_x86_adx_bmi2
+  import ./assembly/limbs_asm_mul_x86
+  import ./assembly/limbs_asm_mul_x86_adx_bmi2
 
 # ############################################################
 #
@@ -24,6 +26,93 @@ when UseASM_X86_64:
 
 # No exceptions allowed
 {.push raises: [].}
+
+# Multiplication
+# ------------------------------------------------------------
+
+func prod*[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) =
+  ## Multi-precision multiplication
+  ## r <- a*b
+  ##
+  ## `a`, `b`, `r` can have a different number of limbs
+  ## if `r`.limbs.len < a.limbs.len + b.limbs.len
+  ## The result will be truncated, i.e. it will be
+  ## a * b (mod (2^WordBitwidth)^r.limbs.len)
+  ##
+  ## `r` must not alias ``a`` or ``b``
+
+  when UseASM_X86_64 and aLen <= 6:
+    if ({.noSideEffect.}: hasBmi2()) and ({.noSideEffect.}: hasAdx()):
+      mul_asm_adx_bmi2(r, a, b)
+    else:
+      mul_asm(r, a, b)
+  elif UseASM_X86_64:
+    mul_asm(r, a, b)
+  else:
+    # We use Product Scanning / Comba multiplication
+    var t, u, v = Zero
+    const stopEx = min(a.len+b.len, r.len)
+
+    staticFor i, 0, stopEx:
+      const ib = min(b.len-1, i)
+      const ia = i - ib
+      staticFor j, 0, min(a.len - ia, ib+1):
+        mulAcc(t, u, v, a[ia+j], b[ib-j])
+
+      r[i] = v
+      when i < stopEx-1:
+        v = u
+        u = t
+        t = Zero
+
+    if aLen+bLen < rLen:
+      for i in aLen+bLen ..< rLen:
+        r[i] = Zero
+
+func prod_high_words*[rLen, aLen, bLen](
+       r: var Limbs[rLen],
+       a: Limbs[aLen], b: Limbs[bLen],
+       lowestWordIndex: static int) =
+  ## Multi-precision multiplication keeping only high words
+  ## r <- a*b >> (2^WordBitWidth)^lowestWordIndex
+  ##
+  ## `a`, `b`, `r` can have a different number of limbs
+  ## if `r`.limbs.len < a.limbs.len + b.limbs.len - lowestWordIndex
+  ## The result will be truncated, i.e. it will be
+  ## a * b >> (2^WordBitWidth)^lowestWordIndex (mod (2^WordBitwidth)^r.limbs.len)
+  #
+  # This is useful for
+  # - Barret reduction
+  # - Approximating multiplication by a fractional constant in the form f(a) = K/C * a
+  #   with K and C known at compile-time.
+  #   We can instead find a well chosen M = (2^WordBitWidth)^w, with M > C (i.e. M is a power of 2 bigger than C)
+  #   Precompute P = K*M/C at compile-time
+  #   and at runtime do P*a/M <=> P*a >> (WordBitWidth*w)
+  #   i.e. prod_high_words(result, P, a, w)
+
+  # We use Product Scanning / Comba multiplication
+  var t, u, v = Zero # Will raise warning on empty iterations
+  var z: Limbs[rLen] # zero-init, ensure on stack and removes in-place problems
+
+  # The previous 2 columns can affect the lowest word due to carries
+  # but not the ones before (we accumulate in 3 words (t, u, v))
+  const w = lowestWordIndex - 2
+  const stopEx = min(a.len+b.len, r.len+lowestWordIndex)
+
+  staticFor i, max(0, w), stopEx:
+    const ib = min(b.len-1, i)
+    const ia = i - ib
+    staticFor j, 0, min(a.len - ia, ib+1):
+      mulAcc(t, u, v, a[ia+j], b[ib-j])
+
+    when i >= lowestWordIndex:
+      z[i-lowestWordIndex] = v
+    when i < stopEx-1:
+      v = u
+      u = t
+      t = Zero
+
+  r = z
 
 # Montgomery Reduction
 # ------------------------------------------------------------
