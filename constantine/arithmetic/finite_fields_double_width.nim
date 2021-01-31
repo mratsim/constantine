@@ -12,7 +12,8 @@ import
   ./bigints,
   ./finite_fields,
   ./limbs,
-  ./limbs_double_width
+  ./limbs_double_width,
+  ./limbs_montgomery
 
 when UseASM_X86_64:
   import assembly/limbs_asm_modular_dbl_width_x86

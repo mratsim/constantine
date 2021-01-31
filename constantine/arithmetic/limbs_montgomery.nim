@@ -14,10 +14,13 @@ import
   ../primitives,
   ./limbs
 
+when UseASM_X86_32:
+  import ./assembly/limbs_asm_montred_x86
 when UseASM_X86_64:
   import
     ./assembly/limbs_asm_montmul_x86,
-    ./assembly/limbs_asm_montmul_x86_adx_bmi2
+    ./assembly/limbs_asm_montmul_x86_adx_bmi2,
+    ./assembly/limbs_asm_montred_x86_adx_bmi2
 
 # ############################################################
 #
@@ -42,7 +45,7 @@ when UseASM_X86_64:
 # No exceptions allowed
 {.push raises: [].}
 
-# Implementation
+# Montgomery Multiplication
 # ------------------------------------------------------------
 
 func montyMul_CIOS_nocarry(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
@@ -162,6 +165,9 @@ func montyMul_FIPS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   discard z.csub(M, v.isNonZero() or not(z < M))
   r = z
 
+# Montgomery Squaring
+# ------------------------------------------------------------
+
 func montySquare_CIOS_nocarry(r: var Limbs, a, M: Limbs, m0ninv: BaseType) {.used.}=
   ## Montgomery Multiplication using Coarse Grained Operand Scanning (CIOS)
   ## and no-carry optimization.
@@ -266,6 +272,123 @@ func montySquare_CIOS(r: var Limbs, a, M: Limbs, m0ninv: BaseType) {.used.}=
 
   discard t.csub(M, tN.isNonZero() or not(t < M)) # TODO: (t >= M) is unnecessary for prime in the form (2^64)^w
   r = t
+
+# Montgomery Reduction
+# ------------------------------------------------------------
+func montyRed_CIOS[N: static int](
+       r: var array[N, SecretWord],
+       t: array[N*2, SecretWord],
+       M: array[N, SecretWord],
+       m0ninv: BaseType) =
+  ## Montgomery reduce a double-width bigint modulo M
+  # - Analyzing and Comparing Montgomery Multiplication Algorithms
+  #   Cetin Kaya Koc and Tolga Acar and Burton S. Kaliski Jr.
+  #   http://pdfs.semanticscholar.org/5e39/41ff482ec3ee41dc53c3298f0be085c69483.pdf
+  #
+  # - Arithmetic of Finite Fields
+  #   Chapter 5 of Guide to Pairing-Based Cryptography
+  #   Jean Luc Beuchat, Luis J. Dominguez Perez, Sylvain Duquesne, Nadia El Mrabet, Laura Fuentes-Castañeda, Francisco Rodríguez-Henríquez, 2017
+  #   https://www.researchgate.net/publication/319538235_Arithmetic_of_Finite_Fields
+  #
+  # Algorithm
+  # Inputs:
+  # - N number of limbs
+  # - t[0 ..< 2N] (double-width input to reduce)
+  # - M[0 ..< N] The field modulus (must be odd for Montgomery reduction)
+  # - m0ninv: Montgomery Reduction magic number = -1/M[0]
+  # Output:
+  # - r[0 ..< N], in the Montgomery domain
+  # Parameters:
+  # - w, the word width usually 64 on 64-bit platforms or 32 on 32-bit
+  #
+  # for i in 0 .. n-1:
+  #   C <- 0
+  #   m <- t[i] * m0ninv mod 2^w (i.e. simple multiplication)
+  #   for j in 0 .. n-1:
+  #     (C, S) <- t[i+j] + m * M[j] + C
+  #     t[i+j] <- S
+  #   t[i+n] += C
+  # for i in 0 .. n-1:
+  #   r[i] = t[i+n]
+  # if r >= M:
+  #   r -= M
+  #
+  # Important note: `t[i+n] += C` should propagate the carry
+  # to the higher limb if any, thank you "implementation detail"
+  # missing from paper.
+
+  var t = t          # Copy "t" for mutation and ensure on stack
+  var res: typeof(r) # Accumulator
+  staticFor i, 0, N:
+    var C = Zero
+    let m = t[i] * SecretWord(m0ninv)
+    staticFor j, 0, N:
+      muladd2(C, t[i+j], m, M[j], t[i+j], C)
+    res[i] = C
+
+  # This does t[i+n] += C
+  # but in a separate carry chain, fused with the
+  # copy "r[i] = t[i+n]"
+  var carry = Carry(0)
+  staticFor i, 0, N:
+    addC(carry, res[i], t[i+N], res[i], carry)
+
+  # Final substraction
+  discard res.csub(M, SecretWord(carry).isNonZero() or not(res < M))
+  r = res
+
+# TODO upstream, using Limbs[N] breaks semcheck
+func montyRed*[N: static int](
+       r: var array[N, SecretWord],
+       t: array[N*2, SecretWord],
+       M: array[N, SecretWord],
+       m0ninv: BaseType, canUseNoCarryMontyMul: static bool) =
+  ## Montgomery reduce a double-width bigint modulo M
+  # - Analyzing and Comparing Montgomery Multiplication Algorithms
+  #   Cetin Kaya Koc and Tolga Acar and Burton S. Kaliski Jr.
+  #   http://pdfs.semanticscholar.org/5e39/41ff482ec3ee41dc53c3298f0be085c69483.pdf
+  #
+  # - Arithmetic of Finite Fields
+  #   Chapter 5 of Guide to Pairing-Based Cryptography
+  #   Jean Luc Beuchat, Luis J. Dominguez Perez, Sylvain Duquesne, Nadia El Mrabet, Laura Fuentes-Castañeda, Francisco Rodríguez-Henríquez, 2017
+  #   https://www.researchgate.net/publication/319538235_Arithmetic_of_Finite_Fields
+  #
+  # Algorithm
+  # Inputs:
+  # - N number of limbs
+  # - t[0 ..< 2N] (double-width input to reduce)
+  # - M[0 ..< N] The field modulus (must be odd for Montgomery reduction)
+  # - m0ninv: Montgomery Reduction magic number = -1/M[0]
+  # Output:
+  # - r[0 ..< N], in the Montgomery domain
+  # Parameters:
+  # - w, the word width usually 64 on 64-bit platforms or 32 on 32-bit
+  #
+  # for i in 0 .. n-1:
+  #   C <- 0
+  #   m <- t[i] * m0ninv mod 2^w (i.e. simple multiplication)
+  #   for j in 0 .. n-1:
+  #     (C, S) <- t[i+j] + m * M[j] + C
+  #     t[i+j] <- S
+  #   t[i+n] += C
+  # for i in 0 .. n-1:
+  #   r[i] = t[i+n]
+  # if r >= M:
+  #   r -= M
+  #
+  # Important note: `t[i+n] += C` should propagate the carry
+  # to the higher limb if any, thank you "implementation detail"
+  # missing from paper.
+  when UseASM_X86_64 and r.len <= 6:
+    if ({.noSideEffect.}: hasBmi2()) and ({.noSideEffect.}: hasAdx()):
+      montRed_asm_adx_bmi2(r, t, M, m0ninv, canUseNoCarryMontyMul)
+    else:
+      montRed_asm(r, t, M, m0ninv, canUseNoCarryMontyMul)
+  elif UseASM_X86_32 and r.len <= 6:
+    # TODO: Assembly faster than GCC but slower than Clang
+    montRed_asm(r, t, M, m0ninv, canUseNoCarryMontyMul)
+  else:
+    montyRed_CIOS(r, t, M, m0ninv)
 
 # Exported API
 # ------------------------------------------------------------
