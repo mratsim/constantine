@@ -45,17 +45,27 @@ macro sub2x_gen[N: static int](a: var Limbs[N], b: Limbs[N], M: Limbs[N div 2]):
     arrT = init(OperandArray, nimSymbol = ident"t", N2, ElemsInReg, Output_EarlyClobber)
     arrTadd = init(OperandArray, nimSymbol = ident"tadd", N2, ElemsInReg, Output_EarlyClobber)
 
+  # Fill the temporary workspace
+  for i in 0 ..< N2:
+    ctx.mov arrT[i], arrA[i]
+
   # Substraction
-  for i in 0 ..< N:
-    ctx.mov arrT[i mod N2], arrA[i]
-    if i == 0:
-      ctx.sub arrT[0], arrB[0]
-    else:
-      ctx.sbb arrT[i mod N2], arrB[i]
-    ctx.mov arrA[i], arrT[i mod N2]
-    # Interleaved copy the modulus to hide SBB latencies
-    if i < N2:
-      ctx.mov arrTadd[i], arrM[i]
+  ctx.sub arrT[0], arrB[0]
+  ctx.mov arrA[0], arrT[0]
+
+  for i in 1 ..< N2:
+    ctx.sbb arrT[i], arrB[i]
+    # Interleaved copies to hide SBB latencies
+    ctx.mov arrT[i-1], arrA[i+N2-1]
+    ctx.mov arrA[i], arrT[i]
+
+  for i in N2 ..< N:
+    ctx.sbb arrT[i-N2], arrB[i]
+    # Copy the modulus
+    ctx.mov arrTadd[i-N2], arrM[i-N2]
+    if i == N2:
+      # Leftover from previous loop
+      ctx.mov arrT[N2-1], arrA[N-1]
 
   # Mask: underflowed contains 0xFFFF or 0x0000
   let underflowed = arrB.reuseRegister()
