@@ -135,7 +135,7 @@ func setOne*(a: var FF) {.inline.} =
 func `+=`*(a: var FF, b: FF) {.inline, meter.} =
   ## In-place addition modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    addmod_asm(a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs)
+    addmod_asm(a.mres.limbs, a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs)
   else:
     var overflowed = add(a.mres, b.mres)
     overflowed = overflowed or not(a.mres < FF.fieldMod())
@@ -144,7 +144,7 @@ func `+=`*(a: var FF, b: FF) {.inline, meter.} =
 func `-=`*(a: var FF, b: FF) {.inline, meter.} =
   ## In-place substraction modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    submod_asm(a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs)
+    submod_asm(a.mres.limbs, a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs)
   else:
     let underflowed = sub(a.mres, b.mres)
     discard cadd(a.mres, FF.fieldMod(), underflowed)
@@ -152,7 +152,7 @@ func `-=`*(a: var FF, b: FF) {.inline, meter.} =
 func double*(a: var FF) {.inline, meter.} =
   ## Double ``a`` modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    addmod_asm(a.mres.limbs, a.mres.limbs, FF.fieldMod().limbs)
+    addmod_asm(a.mres.limbs, a.mres.limbs, a.mres.limbs, FF.fieldMod().limbs)
   else:
     var overflowed = double(a.mres)
     overflowed = overflowed or not(a.mres < FF.fieldMod())
@@ -162,8 +162,7 @@ func sum*(r: var FF, a, b: FF) {.inline, meter.} =
   ## Sum ``a`` and ``b`` into ``r`` modulo p
   ## r is initialized/overwritten
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    r = a
-    addmod_asm(r.mres.limbs, b.mres.limbs, FF.fieldMod().limbs)
+    addmod_asm(r.mres.limbs, a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs)
   else:
     var overflowed = r.mres.sum(a.mres, b.mres)
     overflowed = overflowed or not(r.mres < FF.fieldMod())
@@ -178,8 +177,7 @@ func diff*(r: var FF, a, b: FF) {.inline, meter.} =
   ## `r` is initialized/overwritten
   ## Requires r != b
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    r = a
-    submod_asm(r.mres.limbs, b.mres.limbs, FF.fieldMod().limbs)
+    submod_asm(r.mres.limbs, a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs)
   else:
     var underflowed = r.mres.diff(a.mres, b.mres)
     discard cadd(r.mres, FF.fieldMod(), underflowed)
@@ -189,9 +187,7 @@ func diffAlias*(r: var FF, a, b: FF) {.inline, meter.} =
   ## `r` is initialized/overwritten
   ## Handles r == b
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    var t = a
-    submod_asm(t.mres.limbs, b.mres.limbs, FF.fieldMod().limbs)
-    r = t
+    submod_asm(r.mres.limbs, a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs)
   else:
     var underflowed = r.mres.diff(a.mres, b.mres)
     discard cadd(r.mres, FF.fieldMod(), underflowed)
@@ -205,8 +201,7 @@ func double*(r: var FF, a: FF) {.inline, meter.} =
   ## Double ``a`` into ``r``
   ## `r` is initialized/overwritten
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    r = a
-    addmod_asm(r.mres.limbs, a.mres.limbs, FF.fieldMod().limbs)
+    addmod_asm(r.mres.limbs, a.mres.limbs, a.mres.limbs, FF.fieldMod().limbs)
   else:
     var overflowed = r.mres.double(a.mres)
     overflowed = overflowed or not(r.mres < FF.fieldMod())
@@ -223,10 +218,7 @@ func square*(r: var FF, a: FF) {.inline, meter.} =
 
 func neg*(r: var FF, a: FF) {.inline, meter.} =
   ## Negate modulo p
-  when UseASM_X86_64 and defined(gcc):
-    # Clang and every compiler besides GCC
-    # can cleanly optimized this
-    # especially on FF2
+  when UseASM_X86_64:
     negmod_asm(r.mres.limbs, a.mres.limbs, FF.fieldMod().limbs)
   else:
     # If a = 0 we need r = 0 and not r = M

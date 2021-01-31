@@ -87,8 +87,8 @@ func prod_complex(r: var QuadraticExt, a, b: QuadraticExt) =
   # TODO: GCC is adding an unexplainable 30 cycles tax to this function (~10% slow down)
   #       for seemingly no reason
 
-  when true: # Single-width implementation
-             # Clang 330 cycles on i9-9980XE @4.1 GHz
+  when false: # Single-width implementation - BLS12-381
+              # Clang 348 cycles on i9-9980XE @3.9 GHz
     var a0b0 {.noInit.}, a1b1 {.noInit.}: typeof(r.c0)
     a0b0.prod(a.c0, b.c0)                                         # [1 Mul]
     a1b1.prod(a.c1, b.c1)                                         # [2 Mul]
@@ -102,7 +102,7 @@ func prod_complex(r: var QuadraticExt, a, b: QuadraticExt) =
     r.c1 -= a1b1          # r1 = (b0 + b1)(a0 + a1) - a0b0 - a1b1 # [3 Mul, 2 Add, 3 Sub]
 
   else: # Double-width implementation with lazy reduction
-        # Deactivated for now Clang 360 cycles on i9-9980XE @4.1 GHz
+        # Clang 341 cycles on i9-9980XE @3.9 GHz
     var a0b0 {.noInit.}, a1b1 {.noInit.}: doubleWidth(typeof(r.c0))
     var d {.noInit.}: doubleWidth(typeof(r.c0))
     const msbSet = r.c0.typeof.canUseNoCarryMontyMul()
@@ -120,20 +120,19 @@ func prod_complex(r: var QuadraticExt, a, b: QuadraticExt) =
       d -= a0b0
       d -= a1b1
     else:
-      d.diffNoReduce(d, a0b0)        # 10 cycles - cumul 152
-      d.diffNoReduce(d, a1b1)        # 10 cycles - cumul 162
-    a0b0.diff(a0b0, a1b1)            # 18 cycles - cumul 170
-    r.c0.reduce(a0b0)                # 68 cycles - cumul 248
-    r.c1.reduce(d)                   # 68 cycles - cumul 316
+      d.diffNoReduce(d, a0b0)        # 11 cycles - cumul 153
+      d.diffNoReduce(d, a1b1)        # 11 cycles - cumul 164
+    a0b0.diff(a0b0, a1b1)            # 19 cycles - cumul 183
+    r.c0.reduce(a0b0)                # 50 cycles - cumul 233
+    r.c1.reduce(d)                   # 50 cycles - cumul 288
 
   # Single-width [3 Mul, 2 Add, 3 Sub]
-  #    3*81 + 2*14 + 3*12 = 307 theoretical cycles
-  #    330 measured
+  #    3*88 + 2*14 + 3*14 = 334 theoretical cycles
+  #    348 measured
   # Double-Width
-  #    316 theoretical cycles
-  #    365 measured
-  #    Reductions can be 2x10 faster using MCL algorithm
-  #    but there are still unexplained 50 cycles diff between theo and measured
+  #    288 theoretical cycles
+  #    329 measured
+  #    Unexplained 40 cycles diff between theo and measured
   #    and unexplained 30 cycles between Clang and GCC
   #    - Function calls?
   #    - push/pop stack?

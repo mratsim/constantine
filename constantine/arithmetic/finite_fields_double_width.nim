@@ -50,20 +50,19 @@ func reduce*(r: var Fp, a: FpDbl) {.inline.} =
     Fp.canUseNoCarryMontyMul()
   )
 
-func diffNoInline(r: var FpDbl, a, b: FpDbl): Borrow =
-  r.limbs2x.diff(a.limbs2x, b.limbs2x)
-
 func diffNoReduce*(r: var FpDbl, a, b: FpDbl) =
   ## Double-width substraction without reduction
-  discard diffNoInline(r, a, b)
+  discard r.limbs2x.diff(a.limbs2x, b.limbs2x)
 
-func diff*(r: var FpDbl, a, b: FpDbl) =
+func diff*(r: var FpDbl, a, b: FpDbl) {.inline.}=
   ## Double-width modular substraction
-  when false: # TODO slower
+  when true:
+    # This is slower if compiler can inline M.limbs
+    # as an immediate in the code
     r = a
     sub2x_asm(r.limbs2x, b.limbs2x, FpDbl.C.Mod.limbs)
   else:
-    var underflowed = SecretBool diffNoInline(r, a, b)
+    var underflowed = SecretBool r.limbs2x.diff(a.limbs2x, b.limbs2x)
 
     const N = r.limbs2x.len div 2
     const M = FpDbl.C.Mod
@@ -73,8 +72,8 @@ func diff*(r: var FpDbl, a, b: FpDbl) =
       addC(carry, sum, r.limbs2x[i+N], M.limbs[i], carry)
       underflowed.ccopy(r.limbs2x[i+N], sum)
 
-func `-=`*(a: var FpDbl, b: FpDbl) =
-  when false: # TODO slower
+func `-=`*(a: var FpDbl, b: FpDbl) {.inline.}=
+  when true:
     sub2x_asm(a.limbs2x, b.limbs2x, FpDbl.C.Mod.limbs)
   else:
     a.diff(a, b)
