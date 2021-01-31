@@ -182,16 +182,6 @@ func diff*(r: var FF, a, b: FF) {.inline, meter.} =
     var underflowed = r.mres.diff(a.mres, b.mres)
     discard cadd(r.mres, FF.fieldMod(), underflowed)
 
-func diffAlias*(r: var FF, a, b: FF) {.inline, meter.} =
-  ## Substract `b` from `a` and store the result into `r`.
-  ## `r` is initialized/overwritten
-  ## Handles r == b
-  when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    submod_asm(r.mres.limbs, a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs)
-  else:
-    var underflowed = r.mres.diff(a.mres, b.mres)
-    discard cadd(r.mres, FF.fieldMod(), underflowed)
-
 func diffNoReduce*(r: var FF, a, b: FF) {.inline, meter.} =
   ## Substract `b` from `a` and store the result into `r`
   ## without reduction

@@ -198,7 +198,7 @@ func sum*[F; Tw: static Twisted](
     r.y.sum(Q.x, Q.z)         # 15. Y₃ <- X₂ + Z₂
     r.x *= r.y                # 16. X₃ <- X₃ Y₃     X₃ = (X₁Z₁)(X₂Z₂)
     r.y.sum(t0, t2)           # 17. Y₃ <- t₀ + t₂   Y₃ = X₁ X₂ + Z₁ Z₂
-    r.y.diffAlias(r.x, r.y)   # 18. Y₃ <- X₃ - Y₃   Y₃ = (X₁ + Z₁)(X₂ + Z₂) - (X₁ X₂ + Z₁ Z₂) = X₁Z₂ + X₂Z₁
+    r.y.diff(r.x, r.y)        # 18. Y₃ <- X₃ - Y₃   Y₃ = (X₁ + Z₁)(X₂ + Z₂) - (X₁ X₂ + Z₁ Z₂) = X₁Z₂ + X₂Z₁
     when Tw == OnTwist and F.C.getSexticTwist() == D_Twist:
       t0 *= SexticNonResidue
       t1 *= SexticNonResidue
@@ -214,7 +214,7 @@ func sum*[F; Tw: static Twisted](
       r.y *= SexticNonResidue
     r.x.prod(t4, r.y)         # 25. X₃ <- t₄ Y₃     X₃ = 3b(Y₁Z₂ + Y₂Z₁)(X₁Z₂ + X₂Z₁)
     t2.prod(t3, t1)           # 26. t₂ <- t₃ t₁     t₂ = (X₁Y₂ + X₂Y₁) (Y₁Y₂ - 3bZ₁Z₂)
-    r.x.diffAlias(t2, r.x)    # 27. X₃ <- t₂ - X₃   X₃ = (X₁Y₂ + X₂Y₁) (Y₁Y₂ - 3bZ₁Z₂) - 3b(Y₁Z₂ + Y₂Z₁)(X₁Z₂ + X₂Z₁)
+    r.x.diff(t2, r.x)         # 27. X₃ <- t₂ - X₃   X₃ = (X₁Y₂ + X₂Y₁) (Y₁Y₂ - 3bZ₁Z₂) - 3b(Y₁Z₂ + Y₂Z₁)(X₁Z₂ + X₂Z₁)
     r.y *= t0                 # 28. Y₃ <- Y₃ t₀     Y₃ = 9bX₁X₂ (X₁Z₂ + X₂Z₁)
     t1 *= r.z                 # 29. t₁ <- t₁ Z₃     t₁ = (Y₁Y₂ - 3bZ₁Z₂)(Y₁Y₂ + 3bZ₁Z₂)
     r.y += t1                 # 30. Y₃ <- t₁ + Y₃   Y₃ = (Y₁Y₂ + 3bZ₁Z₂)(Y₁Y₂ - 3bZ₁Z₂) + 9bX₁X₂ (X₁Z₂ + X₂Z₁)
@@ -277,7 +277,7 @@ func madd*[F; Tw: static Twisted](
       r.y *= SexticNonResidue
     r.x.prod(t4, r.y)         # 18. X₃ <- t₄ Y₃,   X₃ = (Y₁ + Y₂Z₁) 3b(X₁ + X₂Z₁)
     t2.prod(t3, t1)           # 19. t₂ <- t₃ t₁,   t₂ = (X₁Y₂ + X₂Y₁)(Y₁Y₂ - 3bZ₁)
-    r.x.diffAlias(t2, r.x)    # 20. X₃ <- t₂ - X₃, X₃ = (X₁Y₂ + X₂Y₁)(Y₁Y₂ - 3bZ₁) - 3b(Y₁ + Y₂Z₁)(X₁ + X₂Z₁)
+    r.x.diff(t2, r.x)         # 20. X₃ <- t₂ - X₃, X₃ = (X₁Y₂ + X₂Y₁)(Y₁Y₂ - 3bZ₁) - 3b(Y₁ + Y₂Z₁)(X₁ + X₂Z₁)
     r.y *= t0                 # 21. Y₃ <- Y₃ t₀,   Y₃ = 9bX₁X₂ (X₁ + X₂Z₁)
     t1 *= r.z                 # 22. t₁ <- t₁ Z₃,   t₁ = (Y₁Y₂ - 3bZ₁)(Y₁Y₂ + 3bZ₁)
     r.y += t1                 # 23. Y₃ <- t₁ + Y₃, Y₃ = (Y₁Y₂ + 3bZ₁)(Y₁Y₂ - 3bZ₁) + 9bX₁X₂ (X₁ + X₂Z₁)
