@@ -220,10 +220,10 @@ macro montyRed_gen[N: static int](
   let r = init(OperandArray, nimSymbol = r_MR, N, PointerInReg, InputOutput_EnsureClobber)
   let a = init(OperandArray, nimSymbol = a_MR, N*2, PointerInReg, Input)
   let extraRegNeeded = N-2
-  let tsub = init(OperandArray, nimSymbol = ident"tsub", extraRegNeeded, ElemsInReg, InputOutput_EnsureClobber)
-  let tsubsym = tsub.nimSymbol
+  let t = init(OperandArray, nimSymbol = ident"t", extraRegNeeded, ElemsInReg, InputOutput_EnsureClobber)
+  let tsym = t.nimSymbol
   result.add quote do:
-    var `tsubsym` {.noInit.}: Limbs[`extraRegNeeded`]
+    var `tsym` {.noInit.}: Limbs[`extraRegNeeded`]
 
   # This does a[i+n] += hi
   # but in a separate carry chain, fused with the
@@ -234,7 +234,7 @@ macro montyRed_gen[N: static int](
     else:
       ctx.adc scratch[i], a[i+N]
 
-  let reuse = repackRegisters(tsub, scratch[N], scratch[N+1])
+  let reuse = repackRegisters(t, scratch[N], scratch[N+1])
 
   if canUseNoCarryMontyMul:
     ctx.finalSubNoCarry(r, scratch, M, reuse)

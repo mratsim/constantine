@@ -27,7 +27,7 @@ static: doAssert UseASM_X86_64
 # Substraction
 # ------------------------------------------------------------
 
-macro sub2x_gen[N: static int](a: var Limbs[N], b: Limbs[N], m: Limbs[N div 2]): untyped =
+macro sub2x_gen[N: static int](A: var Limbs[N], B: Limbs[N], m: Limbs[N div 2]): untyped =
   ## Generate an optimized out-of-place double-width substraction kernel
 
   result = newStmtList()
@@ -36,57 +36,57 @@ macro sub2x_gen[N: static int](a: var Limbs[N], b: Limbs[N], m: Limbs[N div 2]):
   let
     H = N div 2
 
-    A = init(OperandArray, nimSymbol = a, N, PointerInReg, InputOutput)
-    # We reuse the reg used for B for overflow detection
-    B = init(OperandArray, nimSymbol = b, N, PointerInReg, InputOutput)
+    a = init(OperandArray, nimSymbol = A, N, PointerInReg, InputOutput)
+    # We reuse the reg used for b for overflow detection
+    b = init(OperandArray, nimSymbol = B, N, PointerInReg, InputOutput)
     # We could force m as immediate by specializing per moduli
     M = init(OperandArray, nimSymbol = m, N, PointerInReg, Input)
     # If N is too big, we need to spill registers. TODO.
-    X = init(OperandArray, nimSymbol = ident"x", H, ElemsInReg, Output_EarlyClobber)
-    Y = init(OperandArray, nimSymbol = ident"y", H, ElemsInReg, Output_EarlyClobber)
+    u = init(OperandArray, nimSymbol = ident"U", H, ElemsInReg, Output_EarlyClobber)
+    v = init(OperandArray, nimSymbol = ident"V", H, ElemsInReg, Output_EarlyClobber)
 
   # Fill the temporary workspace
   for i in 0 ..< H:
-    ctx.mov X[i], A[i]
+    ctx.mov u[i], a[i]
 
   # Substraction
-  # X = A[0..<H] - B[0..<H], Y = A[H..<N]
+  # u = a[0..<H] - b[0..<H], v = a[H..<N]
   for i in 0 ..< H:
     if i == 0:
-      ctx.sub X[0], B[0]
+      ctx.sub u[0], b[0]
     else:
-      ctx.sbb X[i], B[i]
+      ctx.sbb u[i], b[i]
     # Interleaved copies to hide SBB latencies
-    ctx.mov Y[i], A[i+H]
+    ctx.mov v[i], a[i+H]
 
   # Everything should be hot in cache now so movs are cheaper
   # we can try using 2 per SBB
-  # Y = A[H..<N] - B[H..<N], A[0..<H] = X, X = M
+  # v = a[H..<N] - b[H..<N], a[0..<H] = u, u = M
   for i in H ..< N:
-    ctx.mov A[i-H], X[i-H]
-    ctx.sbb Y[i-H], B[i]
-    ctx.mov X[i-H], M[i-H] # TODO, bottleneck 17% perf: prefetch or inline modulus?
+    ctx.mov a[i-H], u[i-H]
+    ctx.sbb v[i-H], b[i]
+    ctx.mov u[i-H], M[i-H] # TODO, bottleneck 17% perf: prefetch or inline modulus?
 
   # Mask: underflowed contains 0xFFFF or 0x0000
-  let underflowed = B.reuseRegister()
+  let underflowed = b.reuseRegister()
   ctx.sbb underflowed, underflowed
 
   # Now mask the adder, with 0 or the modulus limbs
   for i in 0 ..< H:
-    ctx.`and` X[i], underflowed
+    ctx.`and` u[i], underflowed
 
   # Add the masked modulus
   for i in 0 ..< H:
     if i == 0:
-      ctx.add X[0], Y[0]
+      ctx.add u[0], v[0]
     else:
-      ctx.adc X[i], Y[i]
-    ctx.mov A[i+H], X[i]
+      ctx.adc u[i], v[i]
+    ctx.mov a[i+H], u[i]
 
-  let x = X.nimSymbol
-  let y = Y.nimSymbol
+  let usym = u.nimSymbol
+  let vsym = v.nimSymbol
   result.add quote do:
-    var `x`{.noinit.}, `y` {.noInit.}: typeof(`a`)
+    var `usym`{.noinit.}, `vsym` {.noInit.}: typeof(`A`)
   result.add ctx.generate
 
 func sub2x_asm*[N: static int](a: var Limbs[N], b: Limbs[N], M: Limbs[N div 2]) =
