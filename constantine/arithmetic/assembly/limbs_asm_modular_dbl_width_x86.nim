@@ -27,66 +27,66 @@ static: doAssert UseASM_X86_64
 # Substraction
 # ------------------------------------------------------------
 
-macro sub2x_gen[N: static int](a: var Limbs[N], b: Limbs[N], M: Limbs[N div 2]): untyped =
+macro sub2x_gen[N: static int](a: var Limbs[N], b: Limbs[N], m: Limbs[N div 2]): untyped =
   ## Generate an optimized out-of-place double-width substraction kernel
 
   result = newStmtList()
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    N2 = N div 2
+    H = N div 2
 
-    arrA = init(OperandArray, nimSymbol = a, N, PointerInReg, InputOutput)
+    A = init(OperandArray, nimSymbol = a, N, PointerInReg, InputOutput)
     # We reuse the reg used for B for overflow detection
-    arrB = init(OperandArray, nimSymbol = b, N, PointerInReg, InputOutput)
-    # We could force M as immediate by specializing per moduli
-    arrM = init(OperandArray, nimSymbol = M, N, PointerInReg, Input)
+    B = init(OperandArray, nimSymbol = b, N, PointerInReg, InputOutput)
+    # We could force m as immediate by specializing per moduli
+    M = init(OperandArray, nimSymbol = m, N, PointerInReg, Input)
     # If N is too big, we need to spill registers. TODO.
-    arrT = init(OperandArray, nimSymbol = ident"t", N2, ElemsInReg, Output_EarlyClobber)
-    arrTadd = init(OperandArray, nimSymbol = ident"tadd", N2, ElemsInReg, Output_EarlyClobber)
+    X = init(OperandArray, nimSymbol = ident"x", H, ElemsInReg, Output_EarlyClobber)
+    Y = init(OperandArray, nimSymbol = ident"y", H, ElemsInReg, Output_EarlyClobber)
 
   # Fill the temporary workspace
-  for i in 0 ..< N2:
-    ctx.mov arrT[i], arrA[i]
+  for i in 0 ..< H:
+    ctx.mov X[i], A[i]
 
   # Substraction
-  ctx.sub arrT[0], arrB[0]
-  ctx.mov arrA[0], arrT[0]
-
-  for i in 1 ..< N2:
-    ctx.sbb arrT[i], arrB[i]
+  # X = A[0..<H] - B[0..<H], Y = A[H..<N]
+  for i in 0 ..< H:
+    if i == 0:
+      ctx.sub X[0], B[0]
+    else:
+      ctx.sbb X[i], B[i]
     # Interleaved copies to hide SBB latencies
-    ctx.mov arrT[i-1], arrA[i+N2-1]
-    ctx.mov arrA[i], arrT[i]
+    ctx.mov Y[i], A[i+H]
 
-  for i in N2 ..< N:
-    ctx.sbb arrT[i-N2], arrB[i]
-    # Copy the modulus
-    ctx.mov arrTadd[i-N2], arrM[i-N2]
-    if i == N2:
-      # Leftover from previous loop
-      ctx.mov arrT[N2-1], arrA[N-1]
+  # Everything should be hot in cache now so movs are cheaper
+  # we can try using 2 per SBB
+  # Y = A[H..<N] - B[H..<N], A[0..<H] = X, X = M
+  for i in H ..< N:
+    ctx.mov A[i-H], X[i-H]
+    ctx.sbb Y[i-H], B[i]
+    ctx.mov X[i-H], M[i-H] # TODO, bottleneck 17% perf: prefetch or inline modulus?
 
   # Mask: underflowed contains 0xFFFF or 0x0000
-  let underflowed = arrB.reuseRegister()
+  let underflowed = B.reuseRegister()
   ctx.sbb underflowed, underflowed
 
   # Now mask the adder, with 0 or the modulus limbs
-  for i in 0 ..< N2:
-    ctx.`and` arrTadd[i], underflowed
+  for i in 0 ..< H:
+    ctx.`and` X[i], underflowed
 
   # Add the masked modulus
-  for i in 0 ..< N2:
+  for i in 0 ..< H:
     if i == 0:
-      ctx.add arrT[0], arrTadd[0]
+      ctx.add X[0], Y[0]
     else:
-      ctx.adc arrT[i], arrTadd[i]
-    ctx.mov arrA[i+N2], arrT[i]
+      ctx.adc X[i], Y[i]
+    ctx.mov A[i+H], X[i]
 
-  let t = arrT.nimSymbol
-  let tadd = arrTadd.nimSymbol
+  let x = X.nimSymbol
+  let y = Y.nimSymbol
   result.add quote do:
-    var `t`{.noinit.}, `tadd` {.noInit.}: typeof(`a`)
+    var `x`{.noinit.}, `y` {.noInit.}: typeof(`a`)
   result.add ctx.generate
 
 func sub2x_asm*[N: static int](a: var Limbs[N], b: Limbs[N], M: Limbs[N div 2]) =
