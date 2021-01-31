@@ -124,7 +124,8 @@ macro montyRedx_gen[N: static int](
 
   result.add quote do:
     `edx` = BaseType(`m0ninv_MR`)
-    `scratchSym`[0 .. `N`-1] = `a_MR`.toOpenArray(0, `N`-1)
+    staticFor i, 1, `N`: # Do NOT use Nim slice/toOpenArray, they are not inlined
+      `scratchSym`[i] = `a_MR`[i]
 
   for i in 0 ..< N:
     # RDX contains m0ninv at the start of each loop
