@@ -56,11 +56,8 @@ func diffNoReduce*(r: var FpDbl, a, b: FpDbl) =
 
 func diff*(r: var FpDbl, a, b: FpDbl) {.inline.}=
   ## Double-width modular substraction
-  when true:
-    # This is slower if compiler can inline M.limbs
-    # as an immediate in the code
-    r = a
-    sub2x_asm(r.limbs2x, b.limbs2x, FpDbl.C.Mod.limbs)
+  when UseASM_X86_64:
+    sub2x_asm(r.limbs2x, a.limbs2x, b.limbs2x, FpDbl.C.Mod.limbs)
   else:
     var underflowed = SecretBool r.limbs2x.diff(a.limbs2x, b.limbs2x)
 
@@ -73,7 +70,5 @@ func diff*(r: var FpDbl, a, b: FpDbl) {.inline.}=
       underflowed.ccopy(r.limbs2x[i+N], sum)
 
 func `-=`*(a: var FpDbl, b: FpDbl) {.inline.}=
-  when true:
-    sub2x_asm(a.limbs2x, b.limbs2x, FpDbl.C.Mod.limbs)
-  else:
-    a.diff(a, b)
+  ## Double-width modular substraction
+  a.diff(a, b)

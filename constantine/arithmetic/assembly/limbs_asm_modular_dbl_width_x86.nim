@@ -27,7 +27,7 @@ static: doAssert UseASM_X86_64
 # Substraction
 # ------------------------------------------------------------
 
-macro sub2x_gen[N: static int](A: var Limbs[N], B: Limbs[N], m: Limbs[N div 2]): untyped =
+macro sub2x_gen[N: static int](R: var Limbs[N], A, B: Limbs[N], m: Limbs[N div 2]): untyped =
   ## Generate an optimized out-of-place double-width substraction kernel
 
   result = newStmtList()
@@ -36,18 +36,23 @@ macro sub2x_gen[N: static int](A: var Limbs[N], B: Limbs[N], m: Limbs[N div 2]):
   let
     H = N div 2
 
-    a = init(OperandArray, nimSymbol = A, N, PointerInReg, InputOutput)
+    r = init(OperandArray, nimSymbol = R, N, PointerInReg, InputOutput)
     # We reuse the reg used for b for overflow detection
     b = init(OperandArray, nimSymbol = B, N, PointerInReg, InputOutput)
     # We could force m as immediate by specializing per moduli
     M = init(OperandArray, nimSymbol = m, N, PointerInReg, Input)
     # If N is too big, we need to spill registers. TODO.
-    u = init(OperandArray, nimSymbol = ident"U", H, ElemsInReg, Output_EarlyClobber)
-    v = init(OperandArray, nimSymbol = ident"V", H, ElemsInReg, Output_EarlyClobber)
+    u = init(OperandArray, nimSymbol = ident"U", H, ElemsInReg, InputOutput)
+    v = init(OperandArray, nimSymbol = ident"V", H, ElemsInReg, InputOutput)
 
-  # Fill the temporary workspace
-  for i in 0 ..< H:
-    ctx.mov u[i], a[i]
+  let usym = u.nimSymbol
+  let vsym = v.nimSymbol
+  result.add quote do:
+    var `usym`{.noinit.}, `vsym` {.noInit.}: typeof(`A`)
+    staticFor i, 0, `H`:
+      `usym`[i] = `A`[i]
+    staticFor i, `H`, `N`:
+      `vsym`[i-`H`] = `A`[i]
 
   # Substraction
   # u = a[0..<H] - b[0..<H], v = a[H..<N]
@@ -56,14 +61,12 @@ macro sub2x_gen[N: static int](A: var Limbs[N], B: Limbs[N], m: Limbs[N div 2]):
       ctx.sub u[0], b[0]
     else:
       ctx.sbb u[i], b[i]
-    # Interleaved copies to hide SBB latencies
-    ctx.mov v[i], a[i+H]
 
   # Everything should be hot in cache now so movs are cheaper
   # we can try using 2 per SBB
   # v = a[H..<N] - b[H..<N], a[0..<H] = u, u = M
   for i in H ..< N:
-    ctx.mov a[i-H], u[i-H]
+    ctx.mov r[i-H], u[i-H]
     ctx.sbb v[i-H], b[i]
     ctx.mov u[i-H], M[i-H] # TODO, bottleneck 17% perf: prefetch or inline modulus?
 
@@ -81,14 +84,10 @@ macro sub2x_gen[N: static int](A: var Limbs[N], B: Limbs[N], m: Limbs[N div 2]):
       ctx.add u[0], v[0]
     else:
       ctx.adc u[i], v[i]
-    ctx.mov a[i+H], u[i]
+    ctx.mov r[i+H], u[i]
 
-  let usym = u.nimSymbol
-  let vsym = v.nimSymbol
-  result.add quote do:
-    var `usym`{.noinit.}, `vsym` {.noInit.}: typeof(`A`)
   result.add ctx.generate
 
-func sub2x_asm*[N: static int](a: var Limbs[N], b: Limbs[N], M: Limbs[N div 2]) =
+func sub2x_asm*[N: static int](r: var Limbs[N], a, b: Limbs[N], M: Limbs[N div 2]) =
   ## Constant-time double-width substraction
-  sub2x_gen(a, b, M)
+  sub2x_gen(r, a, b, M)
