@@ -40,7 +40,7 @@ type
     CarryFlag      = "@ccc"
 
   Register* = enum
-    rbx, rdx, r8, rax
+    rbx, rdx, r8, rax, xmm0
 
   Constraint* = enum
     ## GCC extended assembly modifier
@@ -369,6 +369,26 @@ func codeFragment(a: var Assembler_x86, instr: string, imm: int, op: Operand) =
 
   a.operands.incl op.desc
 
+func codeFragment(a: var Assembler_x86, instr: string, reg: Register, op: OperandReuse) =
+  # Generate a code fragment
+  # ⚠️ Warning:
+  # The caller should deal with destination/source operand
+  # so that it fits GNU Assembly
+  if a.wordBitWidth == 64:
+    a.code &= instr & "q %%" & $reg & ", %" & $op.asmId & '\n'
+  else:
+    a.code &= instr & "l %%" & $reg & ", %" & $op.asmId & '\n'
+
+func codeFragment(a: var Assembler_x86, instr: string, op: OperandReuse, reg: Register) =
+  # Generate a code fragment
+  # ⚠️ Warning:
+  # The caller should deal with destination/source operand
+  # so that it fits GNU Assembly
+  if a.wordBitWidth == 64:
+    a.code &= instr & "q %" & $op.asmId & ", %%" & $reg & '\n'
+  else:
+    a.code &= instr & "l %" & $op.asmId & ", %%" & $reg & '\n'
+
 func codeFragment(a: var Assembler_x86, instr: string, imm: int, reg: Register) =
   # Generate a code fragment
   # ⚠️ Warning:
@@ -605,6 +625,17 @@ func mov*(a: var Assembler_x86, dst: Operand, imm: int) =
   a.codeFragment("mov", imm, dst)
   # No clobber
 
+func mov*(a: var Assembler_x86, dst: Register, src: OperandReuse) =
+  ## Does: dst <- src with dst a fixed register
+  a.codeFragment("mov", src, dst)
+  # No clobber
+
+func mov*(a: var Assembler_x86, dst: OperandReuse, src: Register) =
+  ## Does: dst <- imm
+  # doAssert dst.desc.constraint in OutputReg, $dst.repr
+  a.codeFragment("mov", src, dst)
+  # No clobber
+
 func cmovc*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- src if the carry flag is set
   doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register: " & $dst.repr
@@ -696,7 +727,24 @@ func mulx*(a: var Assembler_x86, dHi, dLo, src0: Operand, src1: Register) =
 
   a.operands.incl src0.desc
 
-func adcx*(a: var Assembler_x86, dst, src: Operand) =
+func mulx*(a: var Assembler_x86, dHi: OperandReuse, dLo, src0: Operand, src1: Register) =
+  ## Does (dHi, dLo) <- src0 * src1
+  doAssert src1 == rdx, "MULX requires the RDX register"
+  doAssert dLo.desc.rm in {Reg, ElemsInReg}+SpecificRegisters,
+    "The destination operand must be a register " & $dLo.repr
+  doAssert dLo.desc.constraint in OutputReg
+
+  let off0 = a.getStrOffset(src0)
+
+  # Annoying AT&T syntax
+  if a.wordBitWidth == 64:
+    a.code &= "mulxq " & off0 & ", %" & $dLo.desc.asmId & ", %" & $dHi.asmId & '\n'
+  else:
+    a.code &= "mulxl " & off0 & ", %" & $dLo.desc.asmId & ", %" & $dHi.asmId & '\n'
+
+  a.operands.incl src0.desc
+
+func adcx*(a: var Assembler_x86, dst: Operand, src: Operand|OperandReuse) =
   ## Does: dst <- dst + src + carry
   ## and only sets the carry flag
   doAssert dst.desc.constraint in OutputReg, $dst.repr
