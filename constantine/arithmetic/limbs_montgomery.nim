@@ -277,7 +277,7 @@ func montySquare_CIOS(r: var Limbs, a, M: Limbs, m0ninv: BaseType) {.used.}=
 # ------------------------------------------------------------
 func montyRed_CIOS[N: static int](
        r: var array[N, SecretWord],
-       t: array[N*2, SecretWord],
+       a: array[N*2, SecretWord],
        M: array[N, SecretWord],
        m0ninv: BaseType) =
   ## Montgomery reduce a double-width bigint modulo M
@@ -293,7 +293,7 @@ func montyRed_CIOS[N: static int](
   # Algorithm
   # Inputs:
   # - N number of limbs
-  # - t[0 ..< 2N] (double-width input to reduce)
+  # - a[0 ..< 2N] (double-width input to reduce)
   # - M[0 ..< N] The field modulus (must be odd for Montgomery reduction)
   # - m0ninv: Montgomery Reduction magic number = -1/M[0]
   # Output:
@@ -303,27 +303,27 @@ func montyRed_CIOS[N: static int](
   #
   # for i in 0 .. n-1:
   #   C <- 0
-  #   m <- t[i] * m0ninv mod 2^w (i.e. simple multiplication)
+  #   m <- a[i] * m0ninv mod 2^w (i.e. simple multiplication)
   #   for j in 0 .. n-1:
-  #     (C, S) <- t[i+j] + m * M[j] + C
-  #     t[i+j] <- S
-  #   t[i+n] += C
+  #     (C, S) <- a[i+j] + m * M[j] + C
+  #     a[i+j] <- S
+  #   a[i+n] += C
   # for i in 0 .. n-1:
-  #   r[i] = t[i+n]
+  #   r[i] = a[i+n]
   # if r >= M:
   #   r -= M
   #
-  # Important note: `t[i+n] += C` should propagate the carry
+  # Important note: `a[i+n] += C` should propagate the carry
   # to the higher limb if any, thank you "implementation detail"
   # missing from paper.
 
-  var t = t          # Copy "t" for mutation and ensure on stack
+  var a = a          # Copy "t" for mutation and ensure on stack
   var res: typeof(r) # Accumulator
   staticFor i, 0, N:
     var C = Zero
-    let m = t[i] * SecretWord(m0ninv)
+    let m = a[i] * SecretWord(m0ninv)
     staticFor j, 0, N:
-      muladd2(C, t[i+j], m, M[j], t[i+j], C)
+      muladd2(C, a[i+j], m, M[j], a[i+j], C)
     res[i] = C
 
   # This does t[i+n] += C
@@ -331,64 +331,74 @@ func montyRed_CIOS[N: static int](
   # copy "r[i] = t[i+n]"
   var carry = Carry(0)
   staticFor i, 0, N:
-    addC(carry, res[i], t[i+N], res[i], carry)
+    addC(carry, res[i], a[i+N], res[i], carry)
 
   # Final substraction
   discard res.csub(M, SecretWord(carry).isNonZero() or not(res < M))
   r = res
 
+func montyRed_Comba[N: static int](
+       r: var array[N, SecretWord],
+       a: array[N*2, SecretWord],
+       M: array[N, SecretWord],
+       m0ninv: BaseType) =
+  ## Montgomery reduce a double-width bigint modulo M
+  # We use Product Scanning / Comba multiplication
+  var t, u, v = Zero
+  var carry: Carry
+  var z: typeof(r) # zero-init, ensure on stack and removes in-place problems in tower fields
+  staticFor i, 0, N:
+    staticFor j, 0, i:
+      mulAcc(t, u, v, z[j], M[i-j])
+
+    addC(carry, v, v, a[i], Carry(0))
+    addC(carry, u, u, Zero, carry)
+    addC(carry, t, t, Zero, carry)
+
+    z[i] = v * SecretWord(m0ninv)
+    mulAcc(t, u, v, z[i], M[0])
+    v = u
+    u = t
+    t = Zero
+
+  staticFor i, N, 2*N-1:
+    staticFor j, i-N+1, N:
+      mulAcc(t, u, v, z[j], M[i-j])
+
+    addC(carry, v, v, a[i], Carry(0))
+    addC(carry, u, u, Zero, carry)
+    addC(carry, t, t, Zero, carry)
+
+    z[i-N] = v
+
+    v = u
+    u = t
+    t = Zero
+
+  addC(carry, z[N-1], v, a[2*N-1], Carry(0))
+
+  # Final substraction
+  discard z.csub(M, SecretBool(carry) or not(z < M))
+  r = z
+
 # TODO upstream, using Limbs[N] breaks semcheck
 func montyRed*[N: static int](
        r: var array[N, SecretWord],
-       t: array[N*2, SecretWord],
+       a: array[N*2, SecretWord],
        M: array[N, SecretWord],
        m0ninv: BaseType, canUseNoCarryMontyMul: static bool) =
   ## Montgomery reduce a double-width bigint modulo M
-  # - Analyzing and Comparing Montgomery Multiplication Algorithms
-  #   Cetin Kaya Koc and Tolga Acar and Burton S. Kaliski Jr.
-  #   http://pdfs.semanticscholar.org/5e39/41ff482ec3ee41dc53c3298f0be085c69483.pdf
-  #
-  # - Arithmetic of Finite Fields
-  #   Chapter 5 of Guide to Pairing-Based Cryptography
-  #   Jean Luc Beuchat, Luis J. Dominguez Perez, Sylvain Duquesne, Nadia El Mrabet, Laura Fuentes-Castañeda, Francisco Rodríguez-Henríquez, 2017
-  #   https://www.researchgate.net/publication/319538235_Arithmetic_of_Finite_Fields
-  #
-  # Algorithm
-  # Inputs:
-  # - N number of limbs
-  # - t[0 ..< 2N] (double-width input to reduce)
-  # - M[0 ..< N] The field modulus (must be odd for Montgomery reduction)
-  # - m0ninv: Montgomery Reduction magic number = -1/M[0]
-  # Output:
-  # - r[0 ..< N], in the Montgomery domain
-  # Parameters:
-  # - w, the word width usually 64 on 64-bit platforms or 32 on 32-bit
-  #
-  # for i in 0 .. n-1:
-  #   C <- 0
-  #   m <- t[i] * m0ninv mod 2^w (i.e. simple multiplication)
-  #   for j in 0 .. n-1:
-  #     (C, S) <- t[i+j] + m * M[j] + C
-  #     t[i+j] <- S
-  #   t[i+n] += C
-  # for i in 0 .. n-1:
-  #   r[i] = t[i+n]
-  # if r >= M:
-  #   r -= M
-  #
-  # Important note: `t[i+n] += C` should propagate the carry
-  # to the higher limb if any, thank you "implementation detail"
-  # missing from paper.
   when UseASM_X86_64 and r.len <= 6:
     if ({.noSideEffect.}: hasBmi2()) and ({.noSideEffect.}: hasAdx()):
-      montRed_asm_adx_bmi2(r, t, M, m0ninv, canUseNoCarryMontyMul)
+      montRed_asm_adx_bmi2(r, a, M, m0ninv, canUseNoCarryMontyMul)
     else:
-      montRed_asm(r, t, M, m0ninv, canUseNoCarryMontyMul)
+      montRed_asm(r, a, M, m0ninv, canUseNoCarryMontyMul)
   elif UseASM_X86_32 and r.len <= 6:
     # TODO: Assembly faster than GCC but slower than Clang
-    montRed_asm(r, t, M, m0ninv, canUseNoCarryMontyMul)
+    montRed_asm(r, a, M, m0ninv, canUseNoCarryMontyMul)
   else:
-    montyRed_CIOS(r, t, M, m0ninv)
+    montyRed_CIOS(r, a, M, m0ninv)
+    # montyRed_Comba(r, a, M, m0ninv)
 
 # Exported API
 # ------------------------------------------------------------
