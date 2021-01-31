@@ -124,7 +124,7 @@ macro montyRedx_gen[N: static int](
 
   result.add quote do:
     `edx` = BaseType(`m0ninv_MR`)
-    staticFor i, 1, `N`: # Do NOT use Nim slice/toOpenArray, they are not inlined
+    staticFor i, 0, `N`: # Do NOT use Nim slice/toOpenArray, they are not inlined
       `scratchSym`[i] = `a_MR`[i]
 
   for i in 0 ..< N:
