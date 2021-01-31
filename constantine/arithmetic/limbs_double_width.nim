@@ -11,9 +11,8 @@ import
   ../primitives,
   ./limbs
 
-when UseASM_X86_32:
-  import ./assembly/limbs_asm_mul_x86
 when UseASM_X86_64:
+  import ./assembly/limbs_asm_mul_x86
   import ./assembly/limbs_asm_mul_x86_adx_bmi2
 
 # ############################################################
