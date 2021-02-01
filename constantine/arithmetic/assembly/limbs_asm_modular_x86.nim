@@ -31,10 +31,10 @@ static: doAssert UseASM_X86_64
 # Field addition
 # ------------------------------------------------------------
 
-macro addmod_gen[N: static int](a: var Limbs[N], b, M: Limbs[N]): untyped =
+macro addmod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N]): untyped =
   ## Generate an optimized modular addition kernel
   # Register pressure note:
-  #   We could generate a kernel per modulus M by hardocing it as immediate
+  #   We could generate a kernel per modulus m by hardcoding it as immediate
   #   however this requires
   #     - duplicating the kernel and also
   #     - 64-bit immediate encoding is quite large
@@ -43,64 +43,66 @@ macro addmod_gen[N: static int](a: var Limbs[N], b, M: Limbs[N]): untyped =
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    arrA = init(OperandArray, nimSymbol = a, N, PointerInReg, InputOutput)
-    # We reuse the reg used for B for overflow detection
-    arrB = init(OperandArray, nimSymbol = b, N, PointerInReg, InputOutput)
-    # We could force M as immediate by specializing per moduli
-    arrM = init(OperandArray, nimSymbol = M, N, PointerInReg, Input)
+    r = init(OperandArray, nimSymbol = R, N, PointerInReg, InputOutput)
+    # We reuse the reg used for b for overflow detection
+    b = init(OperandArray, nimSymbol = B, N, PointerInReg, InputOutput)
+    # We could force m as immediate by specializing per moduli
+    M = init(OperandArray, nimSymbol = m, N, PointerInReg, Input)
     # If N is too big, we need to spill registers. TODO.
-    arrT = init(OperandArray, nimSymbol = ident"t", N, ElemsInReg, Output_EarlyClobber)
-    arrTsub = init(OperandArray, nimSymbol = ident"tsub", N, ElemsInReg, Output_EarlyClobber)
+    u = init(OperandArray, nimSymbol = ident"u", N, ElemsInReg, InputOutput)
+    v = init(OperandArray, nimSymbol = ident"v", N, ElemsInReg, Output_EarlyClobber)
+
+  let usym = u.nimSymbol
+  let vsym = v.nimSymbol
+  result.add quote do:
+    var `usym`{.noinit.}, `vsym` {.noInit.}: typeof(`A`)
+    staticFor i, 0, `N`:
+      `usym`[i] = `A`[i]
 
   # Addition
   for i in 0 ..< N:
-    ctx.mov arrT[i], arrA[i]
     if i == 0:
-      ctx.add arrT[0], arrB[0]
+      ctx.add u[0], b[0]
     else:
-      ctx.adc arrT[i], arrB[i]
+      ctx.adc u[i], b[i]
     # Interleaved copy in a second buffer as well
-    ctx.mov arrTsub[i], arrT[i]
+    ctx.mov v[i], u[i]
 
   # Mask: overflowed contains 0xFFFF or 0x0000
   # TODO: unnecessary if MSB never set, i.e. "canUseNoCarryMontyMul"
-  let overflowed = arrB.reuseRegister()
+  let overflowed = b.reuseRegister()
   ctx.sbb overflowed, overflowed
 
   # Now substract the modulus
   for i in 0 ..< N:
     if i == 0:
-      ctx.sub arrTsub[0], arrM[0]
+      ctx.sub v[0], M[0]
     else:
-      ctx.sbb arrTsub[i], arrM[i]
+      ctx.sbb v[i], M[i]
 
   # If it overflows here, it means that it was
-  # smaller than the modulus and we don't need arrTsub
+  # smaller than the modulus and we don'u need V
   ctx.sbb overflowed, 0
 
   # Conditional Mov and
   # and store result
   for i in 0 ..< N:
-    ctx.cmovnc arrT[i],  arrTsub[i]
-    ctx.mov arrA[i], arrT[i]
+    ctx.cmovnc u[i],  v[i]
+    ctx.mov r[i], u[i]
 
-  let t = arrT.nimSymbol
-  let tsub = arrTsub.nimSymbol
-  result.add quote do:
-    var `t`{.noinit.}, `tsub` {.noInit.}: typeof(`a`)
   result.add ctx.generate
 
-func addmod_asm*(a: var Limbs, b, M: Limbs) =
+func addmod_asm*(r: var Limbs, a, b, m: Limbs) =
   ## Constant-time modular addition
-  addmod_gen(a, b, M)
+  addmod_gen(r, a, b, m)
 
 # Field substraction
 # ------------------------------------------------------------
 
-macro submod_gen[N: static int](a: var Limbs[N], b, M: Limbs[N]): untyped =
+macro submod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N]): untyped =
   ## Generate an optimized modular addition kernel
   # Register pressure note:
-  #   We could generate a kernel per modulus M by hardocing it as immediate
+  #   We could generate a kernel per modulus m by hardocing it as immediate
   #   however this requires
   #     - duplicating the kernel and also
   #     - 64-bit immediate encoding is quite large
@@ -109,119 +111,121 @@ macro submod_gen[N: static int](a: var Limbs[N], b, M: Limbs[N]): untyped =
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    arrA = init(OperandArray, nimSymbol = a, N, PointerInReg, InputOutput)
-    # We reuse the reg used for B for overflow detection
-    arrB = init(OperandArray, nimSymbol = b, N, PointerInReg, InputOutput)
-    # We could force M as immediate by specializing per moduli
-    arrM = init(OperandArray, nimSymbol = M, N, PointerInReg, Input)
+    r = init(OperandArray, nimSymbol = R, N, PointerInReg, InputOutput)
+    # We reuse the reg used for b for overflow detection
+    b = init(OperandArray, nimSymbol = B, N, PointerInReg, InputOutput)
+    # We could force m as immediate by specializing per moduli
+    M = init(OperandArray, nimSymbol = m, N, PointerInReg, Input)
     # If N is too big, we need to spill registers. TODO.
-    arrT = init(OperandArray, nimSymbol = ident"t", N, ElemsInReg, Output_EarlyClobber)
-    arrTadd = init(OperandArray, nimSymbol = ident"tadd", N, ElemsInReg, Output_EarlyClobber)
+    u = init(OperandArray, nimSymbol = ident"U", N, ElemsInReg, InputOutput)
+    v = init(OperandArray, nimSymbol = ident"V", N, ElemsInReg, Output_EarlyClobber)
+
+  let usym = u.nimSymbol
+  let vsym = v.nimSymbol
+  result.add quote do:
+    var `usym`{.noinit.}, `vsym` {.noInit.}: typeof(`A`)
+    staticFor i, 0, `N`:
+      `usym`[i] = `A`[i]
 
   # Substraction
   for i in 0 ..< N:
-    ctx.mov arrT[i], arrA[i]
     if i == 0:
-      ctx.sub arrT[0], arrB[0]
+      ctx.sub u[0], b[0]
     else:
-      ctx.sbb arrT[i], arrB[i]
+      ctx.sbb u[i], b[i]
     # Interleaved copy the modulus to hide SBB latencies
-    ctx.mov arrTadd[i], arrM[i]
+    ctx.mov v[i], M[i]
 
   # Mask: underflowed contains 0xFFFF or 0x0000
-  let underflowed = arrB.reuseRegister()
+  let underflowed = b.reuseRegister()
   ctx.sbb underflowed, underflowed
 
   # Now mask the adder, with 0 or the modulus limbs
   for i in 0 ..< N:
-    ctx.`and` arrTadd[i], underflowed
+    ctx.`and` v[i], underflowed
 
   # Add the masked modulus
   for i in 0 ..< N:
     if i == 0:
-      ctx.add arrT[0], arrTadd[0]
+      ctx.add u[0], v[0]
     else:
-      ctx.adc arrT[i], arrTadd[i]
-    ctx.mov arrA[i], arrT[i]
+      ctx.adc u[i], v[i]
+    ctx.mov r[i], u[i]
 
-  let t = arrT.nimSymbol
-  let tadd = arrTadd.nimSymbol
-  result.add quote do:
-    var `t`{.noinit.}, `tadd` {.noInit.}: typeof(`a`)
   result.add ctx.generate
 
-func submod_asm*(a: var Limbs, b, M: Limbs) =
+func submod_asm*(r: var Limbs, a, b, M: Limbs) =
   ## Constant-time modular substraction
   ## Warning, does not handle aliasing of a and b
-  submod_gen(a, b, M)
+  submod_gen(r, a, b, M)
 
 # Field negation
 # ------------------------------------------------------------
 
-macro negmod_gen[N: static int](r: var Limbs[N], a, M: Limbs[N]): untyped =
+macro negmod_gen[N: static int](R: var Limbs[N], A, m: Limbs[N]): untyped =
   ## Generate an optimized modular negation kernel
 
   result = newStmtList()
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    arrA = init(OperandArray, nimSymbol = a, N, PointerInReg, Input)
-    arrR = init(OperandArray, nimSymbol = r, N, PointerInReg, InputOutput)
-    arrT = init(OperandArray, nimSymbol = ident"t", N, ElemsInReg, Output_EarlyClobber)
-    # We could force M as immediate by specializing per moduli
-    # We reuse the reg used for M for overflow detection
-    arrM = init(OperandArray, nimSymbol = M, N, PointerInReg, InputOutput)
+    a = init(OperandArray, nimSymbol = A, N, PointerInReg, Input)
+    r = init(OperandArray, nimSymbol = R, N, PointerInReg, InputOutput)
+    u = init(OperandArray, nimSymbol = ident"U", N, ElemsInReg, Output_EarlyClobber)
+    # We could force m as immediate by specializing per moduli
+    # We reuse the reg used for m for overflow detection
+    M = init(OperandArray, nimSymbol = m, N, PointerInReg, InputOutput)
 
-  # Substraction M - a
+  # Substraction m - a
   for i in 0 ..< N:
-    ctx.mov arrT[i], arrM[i]
+    ctx.mov u[i], M[i]
     if i == 0:
-      ctx.sub arrT[0], arrA[0]
+      ctx.sub u[0], a[0]
     else:
-      ctx.sbb arrT[i], arrA[i]
+      ctx.sbb u[i], a[i]
 
   # Deal with a == 0
-  let isZero = arrM.reuseRegister()
-  ctx.mov isZero, arrA[0]
+  let isZero = M.reuseRegister()
+  ctx.mov isZero, a[0]
   for i in 1 ..< N:
-    ctx.`or` isZero, arrA[i]
+    ctx.`or` isZero, a[i]
 
   # Zero result if a == 0
   for i in 0 ..< N:
-    ctx.cmovz arrT[i], isZero
-    ctx.mov arrR[i], arrT[i]
+    ctx.cmovz u[i], isZero
+    ctx.mov r[i], u[i]
 
-  let t = arrT.nimSymbol
+  let usym = u.nimSymbol
   result.add quote do:
-    var `t`{.noinit.}: typeof(`a`)
+    var `usym`{.noinit.}: typeof(`A`)
   result.add ctx.generate
 
-func negmod_asm*(r: var Limbs, a, M: Limbs) =
+func negmod_asm*(r: var Limbs, a, m: Limbs) =
   ## Constant-time modular negation
-  negmod_gen(r, a, M)
+  negmod_gen(r, a, m)
 
 # Sanity checks
 # ----------------------------------------------------------
 
 when isMainModule:
-  import ../config/type_bigint, algorithm, strutils
+  import ../../config/type_bigint, algorithm, strutils
 
   proc mainAdd() =
     var a = [SecretWord 0xE3DF60E8F6D0AF9A'u64, SecretWord 0x7B2665C2258A7625'u64, SecretWord 0x68FC9A1D0977C8E0'u64, SecretWord 0xF3DC61ED7DE76883'u64]
     var b = [SecretWord 0x78E9C2EF58BB6B78'u64, SecretWord 0x547F65BD19014254'u64, SecretWord 0x556A115819EAD4B5'u64, SecretWord 0x8CA844A546935DC3'u64]
-    var M = [SecretWord 0xFFFFFFFF00000001'u64, SecretWord 0x0000000000000000'u64, SecretWord 0x00000000FFFFFFFF'u64, SecretWord 0xFFFFFFFFFFFFFFFF'u64]
+    var m = [SecretWord 0xFFFFFFFF00000001'u64, SecretWord 0x0000000000000000'u64, SecretWord 0x00000000FFFFFFFF'u64, SecretWord 0xFFFFFFFFFFFFFFFF'u64]
     var s = "0x5cc923d94f8c1b11cfa5cb7f3e8bb879be66ab7423629d968084a692c47ac647"
 
     a.reverse()
     b.reverse()
-    M.reverse()
+    m.reverse()
 
     debugecho "--------------------------------"
     debugecho "before:"
     debugecho "  a: ", a.toHex()
     debugecho "  b: ", b.toHex()
-    debugecho "  m: ", M.toHex()
-    addmod_asm(a, b, M)
+    debugecho "  m: ", m.toHex()
+    addmod_asm(a, a, b, m)
     debugecho "after:"
     debugecho "  a: ", a.toHex().tolower
     debugecho "  s: ", s
@@ -229,19 +233,19 @@ when isMainModule:
 
     a = [SecretWord 0x00935a991ca215a6'u64, SecretWord 0x5fbdac6294679337'u64, SecretWord 0x1e41793877b80f12'u64, SecretWord 0x5724cd93cb32932d'u64]
     b = [SecretWord 0x19dd4ecfda64ef80'u64, SecretWord 0x92deeb1532169c3d'u64, SecretWord 0x69ce4ee28421cd30'u64, SecretWord 0x4d90ab5a40295321'u64]
-    M = [SecretWord 0x2523648240000001'u64, SecretWord 0xba344d8000000008'u64, SecretWord 0x6121000000000013'u64, SecretWord 0xa700000000000013'u64]
+    m = [SecretWord 0x2523648240000001'u64, SecretWord 0xba344d8000000008'u64, SecretWord 0x6121000000000013'u64, SecretWord 0xa700000000000013'u64]
     s = "0x1a70a968f7070526f29c9777c67e2f74880fc81afbd9dc42a4b578ee0b5be64e"
 
     a.reverse()
     b.reverse()
-    M.reverse()
+    m.reverse()
 
     debugecho "--------------------------------"
     debugecho "before:"
     debugecho "  a: ", a.toHex()
     debugecho "  b: ", b.toHex()
-    debugecho "  m: ", M.toHex()
-    addmod_asm(a, b, M)
+    debugecho "  m: ", m.toHex()
+    addmod_asm(a, a, b, m)
     debugecho "after:"
     debugecho "  a: ", a.toHex().tolower
     debugecho "  s: ", s
@@ -249,19 +253,19 @@ when isMainModule:
 
     a = [SecretWord 0x1c7d810f37fc6e0b'u64, SecretWord 0xb91aba4ce339cea3'u64, SecretWord 0xd9f5571ccc4dfd1a'u64, SecretWord 0xf5906ee9df91f554'u64]
     b = [SecretWord 0x18394ffe94874c9f'u64, SecretWord 0x6e8a8ad032fc5f15'u64, SecretWord 0x7533a2b46b7e9530'u64, SecretWord 0x2849996b4bb61b48'u64]
-    M = [SecretWord 0x2523648240000001'u64, SecretWord 0xba344d8000000008'u64, SecretWord 0x6121000000000013'u64, SecretWord 0xa700000000000013'u64]
+    m = [SecretWord 0x2523648240000001'u64, SecretWord 0xba344d8000000008'u64, SecretWord 0x6121000000000013'u64, SecretWord 0xa700000000000013'u64]
     s = "0x0f936c8b8c83baa96d70f79d16362db0ee07f9d137cc923776da08552b481089"
 
     a.reverse()
     b.reverse()
-    M.reverse()
+    m.reverse()
 
     debugecho "--------------------------"
     debugecho "before:"
     debugecho "  a: ", a.toHex()
     debugecho "  b: ", b.toHex()
-    debugecho "  m: ", M.toHex()
-    addmod_asm(a, b, M)
+    debugecho "  m: ", m.toHex()
+    addmod_asm(a, a, b, m)
     debugecho "after:"
     debugecho "  a: ", a.toHex().tolower
     debugecho "  s: ", s
@@ -269,19 +273,19 @@ when isMainModule:
 
     a = [SecretWord 0xe9d55643'u64, SecretWord 0x580ec4cc3f91cef3'u64, SecretWord 0x11ecbb7d35b36449'u64, SecretWord 0x35535ca31c5dc2ba'u64]
     b = [SecretWord 0x97f7ed94'u64, SecretWord 0xbad96eb98204a622'u64, SecretWord 0xbba94400f9a061d6'u64, SecretWord 0x60d3521a0d3dd9eb'u64]
-    M = [SecretWord 0xffffffff'u64, SecretWord 0xffffffffffffffff'u64, SecretWord 0xffffffff00000000'u64, SecretWord 0x0000000000000001'u64]
+    m = [SecretWord 0xffffffff'u64, SecretWord 0xffffffffffffffff'u64, SecretWord 0xffffffff00000000'u64, SecretWord 0x0000000000000001'u64]
     s = "0x0000000081cd43d812e83385c1967515cd95ff7f2f53c61f9626aebd299b9ca4"
 
     a.reverse()
     b.reverse()
-    M.reverse()
+    m.reverse()
 
     debugecho "--------------------------"
     debugecho "before:"
     debugecho "  a: ", a.toHex()
     debugecho "  b: ", b.toHex()
-    debugecho "  m: ", M.toHex()
-    addmod_asm(a, b, M)
+    debugecho "  m: ", m.toHex()
+    addmod_asm(a, a, b, m)
     debugecho "after:"
     debugecho "  a: ", a.toHex().tolower
     debugecho "  s: ", s
@@ -292,22 +296,47 @@ when isMainModule:
   proc mainSub() =
     var a = [SecretWord 0xf9c32e89b80b17bd'u64, SecretWord 0xdbd3069d4ca0e1c3'u64, SecretWord 0x980d4c70d39d5e17'u64, SecretWord 0xd9f0252845f18c3a'u64]
     var b = [SecretWord 0x215075604bfd64de'u64, SecretWord 0x36dc488149fc5d3e'u64, SecretWord 0x91fff665385d20fd'u64, SecretWord 0xe980a5a203b43179'u64]
-    var M = [SecretWord 0xFFFFFFFFFFFFFFFF'u64, SecretWord 0xFFFFFFFFFFFFFFFF'u64, SecretWord 0xFFFFFFFFFFFFFFFF'u64, SecretWord 0xFFFFFFFEFFFFFC2F'u64]
+    var m = [SecretWord 0xFFFFFFFFFFFFFFFF'u64, SecretWord 0xFFFFFFFFFFFFFFFF'u64, SecretWord 0xFFFFFFFFFFFFFFFF'u64, SecretWord 0xFFFFFFFEFFFFFC2F'u64]
     var s = "0xd872b9296c0db2dfa4f6be1c02a48485060d560b9b403d19f06f7f86423d5ac1"
 
     a.reverse()
     b.reverse()
-    M.reverse()
+    m.reverse()
 
     debugecho "--------------------------------"
     debugecho "before:"
     debugecho "  a: ", a.toHex()
     debugecho "  b: ", b.toHex()
-    debugecho "  m: ", M.toHex()
-    submod_asm(a, b, M)
+    debugecho "  m: ", m.toHex()
+    submod_asm(a, a, b, m)
     debugecho "after:"
     debugecho "  a: ", a.toHex().tolower
     debugecho "  s: ", s
     debugecho " ok: ", a.toHex().tolower == s
 
   mainSub()
+
+  proc mainSubOutplace() =
+    var a = [SecretWord 0xf9c32e89b80b17bd'u64, SecretWord 0xdbd3069d4ca0e1c3'u64, SecretWord 0x980d4c70d39d5e17'u64, SecretWord 0xd9f0252845f18c3a'u64]
+    var b = [SecretWord 0x215075604bfd64de'u64, SecretWord 0x36dc488149fc5d3e'u64, SecretWord 0x91fff665385d20fd'u64, SecretWord 0xe980a5a203b43179'u64]
+    var m = [SecretWord 0xFFFFFFFFFFFFFFFF'u64, SecretWord 0xFFFFFFFFFFFFFFFF'u64, SecretWord 0xFFFFFFFFFFFFFFFF'u64, SecretWord 0xFFFFFFFEFFFFFC2F'u64]
+    var s = "0xd872b9296c0db2dfa4f6be1c02a48485060d560b9b403d19f06f7f86423d5ac1"
+
+    a.reverse()
+    b.reverse()
+    m.reverse()
+
+    var r: typeof(a)
+
+    debugecho "--------------------------------"
+    debugecho "before:"
+    debugecho "  a: ", a.toHex()
+    debugecho "  b: ", b.toHex()
+    debugecho "  m: ", m.toHex()
+    submod_asm(r, a, b, m)
+    debugecho "after:"
+    debugecho "  r: ", r.toHex().tolower
+    debugecho "  s: ", s
+    debugecho " ok: ", r.toHex().tolower == s
+
+  mainSubOutplace()

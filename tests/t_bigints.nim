@@ -287,6 +287,28 @@ proc mainMulHigh() =
         r.prod_high_words(b, a, 2)
         check: bool(r == expected)
 
+proc mainSquare() =
+  suite "Multi-precision multiplication" & " [" & $WordBitwidth & "-bit mode]":
+    test "Squaring is consistent with multiplication (rBits = 2*aBits)":
+      block:
+        let a = BigInt[200].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF_DE"
+
+        var r_mul, r_sqr: BigInt[400]
+
+        r_mul.prod(a, a)
+        r_sqr.square(a)
+        check: bool(r_mul == r_sqr)
+
+    test "Squaring is consistent with multiplication (truncated)":
+      block:
+        let a = BigInt[200].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF_DE"
+
+        var r_mul, r_sqr: BigInt[256]
+
+        r_mul.prod(a, a)
+        r_sqr.square(a)
+        check: bool(r_mul == r_sqr)
+
 proc mainModular() =
   suite "Modular operations - small modulus" & " [" & $WordBitwidth & "-bit mode]":
     # Vectors taken from Stint - https://github.com/status-im/nim-stint
@@ -637,9 +659,10 @@ proc mainModularInverse() =
         check: bool(r == expected)
 
 mainArith()
-# mainMul()
-# mainMulHigh()
-# mainModular()
-# mainNeg()
-# mainCopySwap()
-# mainModularInverse()
+mainMul()
+mainMulHigh()
+mainSquare()
+mainModular()
+mainNeg()
+mainCopySwap()
+mainModularInverse()

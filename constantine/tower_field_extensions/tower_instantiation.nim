@@ -196,21 +196,32 @@ func `*=`*(a: var Fp2, _: typedesc[ξ]) {.inline.} =
 type
   Fp12*[C: static Curve] = object
     c0*, c1*, c2*: Fp4[C]
+    # c0*, c1*: Fp6[C]
 
   γ = NonResidue
     # We call the non-residue γ (Gamma) on 𝔽p6 to avoid confusion between non-residue
     # of different tower level
 
 func `*`*(_: typedesc[γ], a: Fp4): Fp4 {.noInit, inline.} =
+  ## Multiply an element of 𝔽p4 by the sextic non-residue
+  ## chosen to construct 𝔽p12
+  result.c0 = ξ * a.c1
+  result.c1 = a.c0
+
+func `*=`*(a: var Fp4, _: typedesc[γ]) {.inline.} =
+  a = γ * a
+
+func `*`*(_: typedesc[γ], a: Fp6): Fp6 {.noInit, inline.} =
   ## Multiply an element of 𝔽p6 by the cubic non-residue
   ## chosen to construct 𝔽p12
   ## For all curves γ = v with v the factor for 𝔽p6 coordinate
   ## and v³ = ξ
   ## (c0 + c1 v + c2 v²) v => ξ c2 + c0 v + c1 v²
-  result.c0 = ξ * a.c1
+  result.c0 = ξ * a.c2
   result.c1 = a.c0
+  result.c2 = a.c1
 
-func `*=`*(a: var Fp4, _: typedesc[γ]) {.inline.} =
+func `*=`*(a: var Fp6, _: typedesc[γ]) {.inline.} =
   a = γ * a
 
 # Sparse functions

@@ -90,7 +90,7 @@ func curve_eq_rhs*[F](y2: var F, x: F, Tw: static Twisted) =
       else:
         {.error: "Only twisted curves are supported on extension field 𝔽p²".}
 
-    y2.diffAlias(t, y2)
+    y2.diff(t, y2)
 
   when F.C.getCoefA() != 0:
     t = x

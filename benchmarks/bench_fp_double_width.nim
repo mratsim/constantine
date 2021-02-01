@@ -172,6 +172,12 @@ proc mul2xBench*(rLen, aLen, bLen: static int, iters: int) =
   bench("Multiplication", $rLen & " <- " & $aLen & " x " & $bLen, iters):
     r.prod(a, b)
 
+proc square2xBench*(rLen, aLen: static int, iters: int) =
+  var r: BigInt[rLen]
+  let a = rng.random_unsafe(BigInt[aLen])
+  bench("Squaring", $rLen & " <- " & $aLen & "²", iters):
+    r.square(a)
+
 proc reduce2x*(T: typedesc, iters: int) =
   var r: T
   var t: doubleWidth(T)
@@ -189,6 +195,7 @@ proc main() =
   diff2x(Fp[BLS12_381], iters = 10_000_000)
   diff2xNoReduce(Fp[BLS12_381], iters = 10_000_000)
   mul2xBench(768, 384, 384, iters = 10_000_000)
+  square2xBench(768, 384, iters = 10_000_000)
   reduce2x(Fp[BLS12_381], iters = 10_000_000)
   separator()
 

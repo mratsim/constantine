@@ -37,7 +37,7 @@ static: doAssert UseASM_X86_64
 
 macro montyRedx_gen[N: static int](
        r_MR: var array[N, SecretWord],
-       t_MR: array[N*2, SecretWord],
+       a_MR: array[N*2, SecretWord],
        M_MR: array[N, SecretWord],
        m0ninv_MR: BaseType,
        canUseNoCarryMontyMul: static bool
@@ -109,13 +109,13 @@ macro montyRedx_gen[N: static int](
   # ---------------------------------------------------------
   # for i in 0 .. n-1:
   #   hi <- 0
-  #   m <- t[i] * m0ninv mod 2^w (i.e. simple multiplication)
+  #   m <- a[i] * m0ninv mod 2^w (i.e. simple multiplication)
   #   for j in 0 .. n-1:
-  #     (hi, lo) <- t[i+j] + m * M[j] + hi
-  #     t[i+j] <- lo
-  #   t[i+n] += hi
+  #     (hi, lo) <- a[i+j] + m * M[j] + hi
+  #     a[i+j] <- lo
+  #   a[i+n] += hi
   # for i in 0 .. n-1:
-  #   r[i] = t[i+n]
+  #   r[i] = a[i+n]
   # if r >= M:
   #   r -= M
 
@@ -124,12 +124,13 @@ macro montyRedx_gen[N: static int](
 
   result.add quote do:
     `edx` = BaseType(`m0ninv_MR`)
-    `scratchSym`[0 .. `N`-1] = `t_MR`.toOpenArray(0, `N`-1)
+    staticFor i, 0, `N`: # Do NOT use Nim slice/toOpenArray, they are not inlined
+      `scratchSym`[i] = `a_MR`[i]
 
   for i in 0 ..< N:
     # RDX contains m0ninv at the start of each loop
     ctx.comment ""
-    ctx.imul rRDX, scratch[0] # m <- t[i] * m0ninv mod 2^w
+    ctx.imul rRDX, scratch[0] # m <- a[i] * m0ninv mod 2^w
     ctx.comment "---- Reduction " & $i
     ctx.`xor` scratch[N], scratch[N]
 
@@ -156,23 +157,23 @@ macro montyRedx_gen[N: static int](
   ctx = init(Assembler_x86, BaseType)
 
   let r = init(OperandArray, nimSymbol = r_MR, N, PointerInReg, InputOutput_EnsureClobber)
-  let t = init(OperandArray, nimSymbol = t_MR, N*2, PointerInReg, Input)
+  let a = init(OperandArray, nimSymbol = a_MR, N*2, PointerInReg, Input)
   let extraRegNeeded = N-1
-  let tsub = init(OperandArray, nimSymbol = ident"tsub", extraRegNeeded, ElemsInReg, InputOutput_EnsureClobber)
-  let tsubsym = tsub.nimSymbol
+  let t = init(OperandArray, nimSymbol = ident"t", extraRegNeeded, ElemsInReg, InputOutput_EnsureClobber)
+  let tsym = t.nimSymbol
   result.add quote do:
-    var `tsubsym` {.noInit.}: Limbs[`extraRegNeeded`]
+    var `tsym` {.noInit.}: Limbs[`extraRegNeeded`]
 
-  # This does t[i+n] += hi
+  # This does a[i+n] += hi
   # but in a separate carry chain, fused with the
-  # copy "r[i] = t[i+n]"
+  # copy "r[i] = a[i+n]"
   for i in 0 ..< N:
     if i == 0:
-      ctx.add scratch[i], t[i+N]
+      ctx.add scratch[i], a[i+N]
     else:
-      ctx.adc scratch[i], t[i+N]
+      ctx.adc scratch[i], a[i+N]
 
-  let reuse = repackRegisters(tsub, scratch[N])
+  let reuse = repackRegisters(t, scratch[N])
 
   if canUseNoCarryMontyMul:
     ctx.finalSubNoCarry(r, scratch, M, reuse)
@@ -184,10 +185,10 @@ macro montyRedx_gen[N: static int](
 
 func montRed_asm_adx_bmi2*[N: static int](
        r: var array[N, SecretWord],
-       t: array[N*2, SecretWord],
+       a: array[N*2, SecretWord],
        M: array[N, SecretWord],
        m0ninv: BaseType,
        canUseNoCarryMontyMul: static bool
       ) =
   ## Constant-time Montgomery reduction
-  montyRedx_gen(r, t, M, m0ninv, canUseNoCarryMontyMul)
+  montyRedx_gen(r, a, M, m0ninv, canUseNoCarryMontyMul)

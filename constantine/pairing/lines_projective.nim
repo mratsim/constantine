@@ -270,7 +270,7 @@ func line_eval_fused_add[F](
   F.prod(T.z, C)
   G.prod(T.x, D)
   H.double(G)
-  H.diffAlias(F, H)
+  H.diff(F, H)
   H += E
   I.prod(T.y, E)
 

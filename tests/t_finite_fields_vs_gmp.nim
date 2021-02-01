@@ -155,8 +155,9 @@ proc subTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curv
   var r2Test = aTest
   r2Test -= bTest
 
+  # Substraction with r and b aliasing
   var r3Test = bTest
-  r3Test.diffAlias(aTest, r3Test)
+  r3Test.diff(aTest, r3Test)
 
   binary_epilogue(r, a, b, rTest, aBuf, bBuf, "Substraction (with result)")
   binary_epilogue(r, a, b, r2Test, aBuf, bBuf, "Substraction (in-place)")

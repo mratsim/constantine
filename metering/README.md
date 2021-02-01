@@ -71,7 +71,7 @@ The CPU Cycle Count is indicative only. It cannot be used to compare across syst
 |double*                                           |          7212|   2404000000000.000|          0.003|            0.000|
 |sum*                                              |         21058|   7019333333333.333|          0.003|            0.000|
 |diff*                                             |          8884|   2961333333333.333|          0.003|            0.000|
-|diffAlias*                                        |            10|                 inf|          0.000|            0.000|
+|diff*                                        |            10|                 inf|          0.000|            0.000|
 |double*                                           |          4186|                 inf|          0.000|            0.000|
 |prod*                                             |         14486|   1609555555555.555|          0.009|            0.000|
 |square*                                           |            16|                 inf|          0.000|            0.000|

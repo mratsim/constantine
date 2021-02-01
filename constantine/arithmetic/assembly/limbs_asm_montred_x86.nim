@@ -28,31 +28,31 @@ static: doAssert UseASM_X86_32
 proc finalSubNoCarry*(
        ctx: var Assembler_x86,
        r: Operand or OperandArray,
-       t, M, scratch: OperandArray
+       a, M, scratch: OperandArray
      ) =
-  ## Reduce `t` into `r` modulo `M`
+  ## Reduce `a` into `r` modulo `M`
   let N = M.len
   ctx.comment "Final substraction (no carry)"
   for i in 0 ..< N:
-    ctx.mov scratch[i], t[i]
+    ctx.mov scratch[i], a[i]
     if i == 0:
       ctx.sub scratch[i], M[i]
     else:
       ctx.sbb scratch[i], M[i]
 
   # If we borrowed it means that we were smaller than
-  # the modulus and we don't need "scratch"
+  # the modulus and we don'a need "scratch"
   for i in 0 ..< N:
-    ctx.cmovnc t[i], scratch[i]
-    ctx.mov r[i], t[i]
+    ctx.cmovnc a[i], scratch[i]
+    ctx.mov r[i], a[i]
 
 proc finalSubCanOverflow*(
        ctx: var Assembler_x86,
        r: Operand or OperandArray,
-       t, M, scratch: OperandArray,
+       a, M, scratch: OperandArray,
        overflowReg: Operand
      ) =
-  ## Reduce `t` into `r` modulo `M`
+  ## Reduce `a` into `r` modulo `M`
   ## To be used when the final substraction can
   ## also depend on the carry flag
   ## This is in particular possible when the MSB
@@ -65,7 +65,7 @@ proc finalSubCanOverflow*(
   let N = M.len
   ctx.comment "Final substraction (may carry)"
   for i in 0 ..< N:
-    ctx.mov scratch[i], t[i]
+    ctx.mov scratch[i], a[i]
     if i == 0:
       ctx.sub scratch[i], M[i]
     else:
@@ -74,10 +74,10 @@ proc finalSubCanOverflow*(
   ctx.sbb overflowReg, 0
 
   # If we borrowed it means that we were smaller than
-  # the modulus and we don't need "scratch"
+  # the modulus and we don'a need "scratch"
   for i in 0 ..< N:
-    ctx.cmovnc t[i], scratch[i]
-    ctx.mov r[i], t[i]
+    ctx.cmovnc a[i], scratch[i]
+    ctx.mov r[i], a[i]
 
 
 # Montgomery reduction
@@ -85,7 +85,7 @@ proc finalSubCanOverflow*(
 
 macro montyRed_gen[N: static int](
        r_MR: var array[N, SecretWord],
-       t_MR: array[N*2, SecretWord],
+       a_MR: array[N*2, SecretWord],
        M_MR: array[N, SecretWord],
        m0ninv_MR: BaseType,
        canUseNoCarryMontyMul: static bool
@@ -148,13 +148,13 @@ macro montyRed_gen[N: static int](
   # ---------------------------------------------------------
   # for i in 0 .. n-1:
   #   hi <- 0
-  #   m <- t[i] * m0ninv mod 2^w (i.e. simple multiplication)
+  #   m <- a[i] * m0ninv mod 2^w (i.e. simple multiplication)
   #   for j in 0 .. n-1:
-  #     (hi, lo) <- t[i+j] + m * M[j] + hi
-  #     t[i+j] <- lo
-  #   t[i+n] += hi
+  #     (hi, lo) <- a[i+j] + m * M[j] + hi
+  #     a[i+j] <- lo
+  #   a[i+n] += hi
   # for i in 0 .. n-1:
-  #   r[i] = t[i+n]
+  #   r[i] = a[i+n]
   # if r >= M:
   #   r -= M
 
@@ -162,14 +162,15 @@ macro montyRed_gen[N: static int](
   doAssert N <= 6, "The Assembly-optimized montgomery multiplication requires at most 6 limbs."
 
   result.add quote do:
-    `eax` = BaseType `t_MR`[0]
-    `scratchSym`[1 .. `N`-1] = `t_MR`.toOpenArray(1, `N`-1)
+    `eax` = BaseType `a_MR`[0]
+    staticFor i, 0, `N`: # Do NOT use Nim slice/toOpenArray, they are not inlined
+      `scratchSym`[i] = `a_MR`[i]
 
   ctx.mov scratch[N], rRAX
-  ctx.imul rRAX, m0ninv    # m <- t[i] * m0ninv mod 2^w
+  ctx.imul rRAX, m0ninv    # m <- a[i] * m0ninv mod 2^w
   ctx.mov scratch[0], rRAX
 
-  # scratch: [t[0] * m0, t[1], t[2], t[3], t[0]] for 4 limbs
+  # scratch: [a[0] * m0, a[1], a[2], a[3], a[0]] for 4 limbs
 
   for i in 0 ..< N:
     ctx.comment ""
@@ -217,23 +218,23 @@ macro montyRed_gen[N: static int](
   ctx = init(Assembler_x86, BaseType)
 
   let r = init(OperandArray, nimSymbol = r_MR, N, PointerInReg, InputOutput_EnsureClobber)
-  let t = init(OperandArray, nimSymbol = t_MR, N*2, PointerInReg, Input)
+  let a = init(OperandArray, nimSymbol = a_MR, N*2, PointerInReg, Input)
   let extraRegNeeded = N-2
-  let tsub = init(OperandArray, nimSymbol = ident"tsub", extraRegNeeded, ElemsInReg, InputOutput_EnsureClobber)
-  let tsubsym = tsub.nimSymbol
+  let t = init(OperandArray, nimSymbol = ident"t", extraRegNeeded, ElemsInReg, InputOutput_EnsureClobber)
+  let tsym = t.nimSymbol
   result.add quote do:
-    var `tsubsym` {.noInit.}: Limbs[`extraRegNeeded`]
+    var `tsym` {.noInit.}: Limbs[`extraRegNeeded`]
 
-  # This does t[i+n] += hi
+  # This does a[i+n] += hi
   # but in a separate carry chain, fused with the
-  # copy "r[i] = t[i+n]"
+  # copy "r[i] = a[i+n]"
   for i in 0 ..< N:
     if i == 0:
-      ctx.add scratch[i], t[i+N]
+      ctx.add scratch[i], a[i+N]
     else:
-      ctx.adc scratch[i], t[i+N]
+      ctx.adc scratch[i], a[i+N]
 
-  let reuse = repackRegisters(tsub, scratch[N], scratch[N+1])
+  let reuse = repackRegisters(t, scratch[N], scratch[N+1])
 
   if canUseNoCarryMontyMul:
     ctx.finalSubNoCarry(r, scratch, M, reuse)
@@ -245,10 +246,10 @@ macro montyRed_gen[N: static int](
 
 func montRed_asm*[N: static int](
        r: var array[N, SecretWord],
-       t: array[N*2, SecretWord],
+       a: array[N*2, SecretWord],
        M: array[N, SecretWord],
        m0ninv: BaseType,
        canUseNoCarryMontyMul: static bool
       ) =
   ## Constant-time Montgomery reduction
-  montyRed_gen(r, t, M, m0ninv, canUseNoCarryMontyMul)
+  montyRed_gen(r, a, M, m0ninv, canUseNoCarryMontyMul)

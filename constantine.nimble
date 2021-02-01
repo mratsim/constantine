@@ -232,7 +232,7 @@ proc buildBench(benchName: string, compiler = "", useAsm = true, run = false) =
   if compiler != "":
     cc = "--cc:" & compiler
   if not useAsm:
-    cc &= " -d:ConstantineASM=false"
+    cc &= " -d:CttASM=false"
   exec "nim c " & cc &
        " -d:danger --verbosity:0 -o:build/bench/" & benchName & "_" & compiler & "_" & (if useAsm: "useASM" else: "noASM") &
        " --nimcache:nimcache/" & benchName & "_" & compiler & "_" & (if useAsm: "useASM" else: "noASM") &
@@ -246,7 +246,7 @@ proc runTests(requireGMP: bool, dumpCmdFile = false, test32bit = false, testASM 
     if not(td.useGMP and not requireGMP):
       var flags = ""
       if not testASM:
-        flags &= " -d:ConstantineASM=false"
+        flags &= " -d:CttASM=false"
       if test32bit:
         flags &= " -d:Constantine32"
       if td.path in useDebug:
