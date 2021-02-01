@@ -744,19 +744,21 @@ func mulx*(a: var Assembler_x86, dHi: OperandReuse, dLo, src0: Operand, src1: Re
 
   a.operands.incl src0.desc
 
-func adcx*(a: var Assembler_x86, dst: Operand, src: Operand|OperandReuse) =
+func adcx*(a: var Assembler_x86, dst: Operand|OperandReuse, src: Operand|OperandReuse) =
   ## Does: dst <- dst + src + carry
   ## and only sets the carry flag
-  doAssert dst.desc.constraint in OutputReg, $dst.repr
-  doAssert dst.desc.rm in {Reg, ElemsInReg}+SpecificRegisters, "The destination operand must be a register: " & $dst.repr
+  when dst is Operand:
+    doAssert dst.desc.constraint in OutputReg, $dst.repr
+    doAssert dst.desc.rm in {Reg, ElemsInReg}+SpecificRegisters, "The destination operand must be a register: " & $dst.repr
   a.codeFragment("adcx", src, dst)
   a.areFlagsClobbered = true
 
-func adox*(a: var Assembler_x86, dst, src: Operand) =
+func adox*(a: var Assembler_x86, dst: Operand|OperandReuse, src: Operand|OperandReuse) =
   ## Does: dst <- dst + src + overflow
   ## and only sets the overflow flag
-  doAssert dst.desc.constraint in OutputReg, $dst.repr
-  doAssert dst.desc.rm in {Reg, ElemsInReg}+SpecificRegisters, "The destination operand must be a register: " & $dst.repr
+  when dst is Operand:
+    doAssert dst.desc.constraint in OutputReg, $dst.repr
+    doAssert dst.desc.rm in {Reg, ElemsInReg}+SpecificRegisters, "The destination operand must be a register: " & $dst.repr
   a.codeFragment("adox", src, dst)
   a.areFlagsClobbered = true
 

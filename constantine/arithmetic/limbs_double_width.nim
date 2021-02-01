@@ -114,6 +114,68 @@ func prod_high_words*[rLen, aLen, bLen](
 
   r = z
 
+func square_Comba[rLen, aLen](
+       r: var Limbs[rLen],
+       a: Limbs[aLen]) =
+  ## Multi-precision squaring using Comba / Product Scanning
+  var t, u, v = Zero
+  const stopEx = min(a.len * 2, r.len)
+
+  staticFor i, 0, stopEx:
+    # Invariant for product scanning:
+    # if we multiply accumulate by a[k1] * a[k2]
+    # we have k1+k2 == i
+    const ib = min(a.len-1, i)
+    const ia = i - ib
+    staticFor j, 0, min(a.len - ia, ib+1):
+      const k1 = ia+j
+      const k2 = ib-j
+      when k1 < k2:
+        mulDoubleAcc(t, u, v, a[k1], a[k2])
+      elif k1 == k2:
+        mulAcc(t, u, v, a[k1], a[k2])
+      else:
+        discard
+
+    r[i] = v
+    when i < stopEx-1:
+      v = u
+      u = t
+      t = Zero
+
+  if aLen*2 < rLen:
+    for i in aLen*2 ..< rLen:
+      r[i] = Zero
+
+func square_operandScan[rLen, aLen](
+       r: var Limbs[rLen],
+       a: Limbs[aLen]) =
+  ## Multi-precision squaring using Operand Scanning
+  const stopEx = min(a.len * 2, r.len)
+  var t: typeof(r) # zero-init, ensure on stack
+  var C = Zero
+  static: doAssert aLen * 2 == rLen, "Truncated square operand scanning is not implemented"
+
+  staticFor i, 0, stopEx:
+    staticFor j, i+1, stopEx:
+      muladd2(C, t[i+j], a[j], a[i], t[i+j], C)
+    t[i+stopEx] = C
+
+  staticFor i, 0, aLen:
+    # (t[2*i+1], t[2*i]) <- 2*t[2*i] + a[i]*a[i]
+    var u, v = Zero
+    var carry: Carry
+    # a[i] * a[i]
+    mul(u, v, a[i], a[i])
+    # 2*t[2*i]
+    addC(carry, t[2*i], t[2*i], t[2*i], Carry(0))
+    addC(carry, t[2*i+1], Zero, Zero, carry)
+    # 2*t[2*i] + a[i] * a[i]
+    addC(carry, t[2*i], t[2*i], u, Carry(0))
+    addC(carry, t[2*i+1], Zero, v, carry)
+
+  r = t
+
 func square*[rLen, aLen](
        r: var Limbs[rLen],
        a: Limbs[aLen]) =
@@ -128,32 +190,4 @@ func square*[rLen, aLen](
   when UseASM_X86_64:
     square_asm(r, a)
   else:
-    # We use Product Scanning / Comba squaring
-    var t, u, v = Zero
-    const stopEx = min(a.len * 2, r.len)
-
-    staticFor i, 0, stopEx:
-      # Invariant for product scanning:
-      # if we multiply accumulate by a[k1] * a[k2]
-      # we have k1+k2 == i
-      const ib = min(a.len-1, i)
-      const ia = i - ib
-      staticFor j, 0, min(a.len - ia, ib+1):
-        const k1 = ia+j
-        const k2 = ib-j
-        when k1 < k2:
-          mulDoubleAcc(t, u, v, a[k1], a[k2])
-        elif k1 == k2:
-          mulAcc(t, u, v, a[k1], a[k2])
-        else:
-          discard
-
-      r[i] = v
-      when i < stopEx-1:
-        v = u
-        u = t
-        t = Zero
-
-    if aLen*2 < rLen:
-      for i in aLen*2 ..< rLen:
-        r[i] = Zero
+    square_comba(r, a)
