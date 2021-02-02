@@ -48,11 +48,11 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_finite_fields_double_width.nim", false),
   # Towers of extension fields
   # ----------------------------------------------------------
-  # ("tests/t_fp2.nim", false),
+  ("tests/t_fp2.nim", false),
   ("tests/t_fp2_sqrt.nim", false),
-  # ("tests/t_fp6_bn254_snarks.nim", false),
-  # ("tests/t_fp6_bls12_377.nim", false),
-  # ("tests/t_fp6_bls12_381.nim", false),
+  ("tests/t_fp6_bn254_snarks.nim", false),
+  ("tests/t_fp6_bls12_377.nim", false),
+  ("tests/t_fp6_bls12_381.nim", false),
   ("tests/t_fp6_bw6_761.nim", false),
   ("tests/t_fp12_bn254_snarks.nim", false),
   ("tests/t_fp12_bls12_377.nim", false),
@@ -60,8 +60,8 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_fp12_exponentiation.nim", false),
   ("tests/t_fp12_anti_regression.nim", false),
 
-  # ("tests/t_fp4_frobenius.nim", false),
-  # ("tests/t_fp6_frobenius.nim", false),
+  ("tests/t_fp4_frobenius.nim", false),
+  ("tests/t_fp6_frobenius.nim", false),
   ("tests/t_fp12_frobenius.nim", false),
   # Elliptic curve arithmetic G1
   # ----------------------------------------------------------

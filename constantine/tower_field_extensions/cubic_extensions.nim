@@ -183,7 +183,8 @@ func inv*(r: var CubicExt, a: CubicExt) =
   v3 += r.c1
   v3 += r.c2
 
-  v3.inv(v3)
+  let t = v3 # TODO, support aliasing in all primitives
+  v3.inv(t)
 
   # (a0 + a1 v + a2 v²)^-1 = (A + B v + C v²) / F
   r.c0 *= v3
