@@ -184,17 +184,21 @@ func square_generic(r: var QuadraticExt, a: QuadraticExt) =
   # Alternative 2:
   #   c0² + β c1² <=> (c0 + c1)(c0 + β c1) - β c0c1 - c0c1
   mixin prod
+  var t = a.c1
+  t *= NonResidue
 
   # r0 <- (c0 + c1)(c0 + β c1)
   r.c0.sum(a.c0, a.c1)
-  r.c1.sum(a.c0, NonResidue * a.c1)
+  r.c1.sum(a.c0, t)
   r.c0 *= r.c1
 
   # r1 <- c0 c1
   r.c1.prod(a.c0, a.c1)
 
   # r0 = (c0 + c1)(c0 + β c1) - β c0c1 - c0c1
-  r.c0 -= NonResidue * r.c1
+  t = r.c1
+  t *= NonResidue
+  r.c0 -= t
   r.c0 -= r.c1
 
   # r1 = 2 c0c1
@@ -222,7 +226,8 @@ func prod_generic(r: var QuadraticExt, a, b: QuadraticExt) =
   r.c1 -= t
 
   # r0 <- a0 b0 + β a1 b1
-  r.c0 += NonResidue * t
+  t *= NonResidue
+  r.c0 += t
 
 func mul_sparse_generic_by_x0(r: var QuadraticExt, a, sparseB: QuadraticExt) =
   ## Multiply `a` by `b` with sparse coordinates (x, 0)
@@ -319,7 +324,9 @@ func inv*(r: var QuadraticExt, a: QuadraticExt) =
   when r.fromComplexExtension():
     v0 += v1
   else:
-    v0 -= NonResidue * v1 # v0 = a0² - β a1² (the norm / squared magnitude of a)
+    var t = v1
+    t *= NonResidue
+    v0 -= t               # v0 = a0² - β a1² (the norm / squared magnitude of a)
 
   # [1 Inv, 2 Sqr, 1 Add]
   v1.inv(v0)              # v1 = 1 / (a0² - β a1²)

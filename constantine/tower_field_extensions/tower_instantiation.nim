@@ -21,17 +21,34 @@ import
 
 export tower_common, quadratic_extensions, cubic_extensions, exponentiations
 
+# 𝔽p
+# ----------------------------------------------------------------
+
+type
+  β = NonResidue
+    # Quadratic or Cubic non-residue
+
+  SexticNonResidue* = object
+
+func `*=`*(a: var Fp, _: typedesc[β]) {.inline.} =
+  ## Multiply an element of 𝔽p by the quadratic non-residue
+  ## chosen to construct 𝔽p2
+  static: doAssert Fp.C.get_QNR_Fp() != -1, "𝔽p2 should be specialized for complex extension"
+  a *= Fp.C.get_QNR_Fp()
+
+# TODO: rework the quad/cube/sextic non residue declaration
+
+func `*=`*(a: var Fp, _: typedesc[SexticNonResidue]) {.inline.} =
+  ## Multiply an element of 𝔽p by the sextic non-residue
+  ## chosen to construct 𝔽p6
+  a *= Fp.C.get_QNR_Fp() # TODO, what is calling this? BLS12-377
+
 # 𝔽p2
 # ----------------------------------------------------------------
 
 type
   Fp2*[C: static Curve] = object
     c0*, c1*: Fp[C]
-
-  β = NonResidue
-    # Quadratic or Cubic non-residue
-
-  SexticNonResidue* = object
 
 template fromComplexExtension*[F](elem: F): static bool =
   ## Returns true if the input is a complex extension
@@ -43,30 +60,37 @@ template fromComplexExtension*[F](elem: F): static bool =
   else:
     false
 
-func `*=`*(a: var Fp, _: typedesc[β]) {.inline.} =
-  ## Multiply an element of 𝔽p by the quadratic non-residue
-  ## chosen to construct 𝔽p2
-  static: doAssert Fp.C.get_QNR_Fp() != -1, "𝔽p2 should be specialized for complex extension"
-  a *= Fp.C.get_QNR_Fp()
-
-func `*`*(_: typedesc[β], a: Fp): Fp {.inline, noInit.} =
-  ## Multiply an element of 𝔽p by the quadratic non-residue
-  ## chosen to construct 𝔽p2
-  result = a
-  result *= β
-
-# TODO: rework the quad/cube/sextic non residue declaration
-
-func `*=`*(a: var Fp, _: typedesc[SexticNonResidue]) {.inline.} =
-  ## Multiply an element of 𝔽p by the sextic non-residue
-  ## chosen to construct 𝔽p6
-  a *= Fp.C.get_QNR_Fp()
-
-func `*`*(_: typedesc[SexticNonResidue], a: Fp): Fp {.inline, noInit.} =
-  ## Multiply an element of 𝔽p by the sextic non-residue
-  ## chosen to construct 𝔽p6
-  result = a
-  result *= SexticNonResidue
+template mulCheckSparse*(a: var Fp2, b: Fp2) =
+  when b.isOne().bool:
+    discard
+  elif b.isMinusOne().bool:
+    a.neg()
+  elif b.c0.isZero().bool and b.c1.isOne().bool:
+    var t {.noInit.}: type(a.c0)
+    when fromComplexExtension(b):
+      t.neg(a.c1)
+      a.c1 = a.c0
+      a.c0 = t
+    else:
+      t = NonResidue * a.c1
+      a.c1 = a.c0
+      a.c0 = t
+  elif b.c0.isZero().bool and b.c1.isMinusOne().bool:
+    var t {.noInit.}: type(a.c0)
+    when fromComplexExtension(b):
+      t = a.c1
+      a.c1.neg(a.c0)
+      a.c0 = t
+    else:
+      t = NonResidue * a.c1
+      a.c1.neg(a.c0)
+      a.c0.neg(t)
+  elif b.c0.isZero().bool:
+    a.mul_sparse_by_0y(b)
+  elif b.c1.isZero().bool:
+    a.mul_sparse_by_x0(b)
+  else:
+    a *= b
 
 func `*=`*(a: var Fp2, _: typedesc[SexticNonResidue]) {.inline.} =
   ## Multiply an element of 𝔽p2 by the sextic non-residue
@@ -85,13 +109,20 @@ func `*=`*(a: var Fp2, _: typedesc[SexticNonResidue]) {.inline.} =
     a.c0 -= a.c1
     a.c1 += t
   else:
-    let a0 = a.c0
-    let a1 = a.c1
+    var a0 = a.c0
+    var a1 = a.c1
     when a.fromComplexExtension():
-      a.c0.diff(u * a0, v * a1)
+      a.c0 *= u
+      a.c1 *= v
+      a.c0 -= a.c1
     else:
-      a.c0.sum(u * a0, (Beta * v) * a1)
-    a.c1.sum(v * a0, u * a1)
+      a.c0 *= u
+      a.c1 *= Beta * v
+      a.c0 += a.c1
+
+    a0 *= v
+    a1 *= u
+    a.c1.sum(a0, a1)
 
 func `/=`*(a: var Fp2, _: typedesc[SexticNonResidue]) {.inline.} =
   ## Multiply an element of 𝔽p by the quadratic non-residue
@@ -118,7 +149,7 @@ func `/=`*(a: var Fp2, _: typedesc[SexticNonResidue]) {.inline.} =
     a.c1 -= t
     a.div2()
   else:
-    let a0 = a.c0
+    var a0 = a.c0
     let a1 = a.c1
     const u2v2 = u*u - Beta*v*v # (u² - βv²)
     # TODO can be precomputed (or precompute b/µ the twist coefficient)
@@ -127,8 +158,14 @@ func `/=`*(a: var Fp2, _: typedesc[SexticNonResidue]) {.inline.} =
     u2v2inv.fromUint(u2v2)
     u2v2inv.inv()
 
-    a.c0.diff(u * a0, (Beta * v) * a1)
-    a.c1.diff(u * a1, v * a0)
+    a.c0 *= u
+    a.c1 *= Beta * v
+    a.c0 -= a.c1
+
+    a.c1 = a1
+    a.c1 *= u
+    a0 *= v
+    a.c1 -= a0
     a.c0 *= u2v2inv
     a.c1 *= u2v2inv
 
@@ -147,30 +184,6 @@ type
     # between non-residue
     # of different tower level
 
-func `*`*(_: typedesc[ξ], a: Fp2): Fp2 {.inline, noInit.} =
-  ## Multiply an element of 𝔽p2 by the quadratic and cubic non-residue
-  ## chosen to construct 𝔽p4/𝔽p6
-  # Yet another const tuple unpacking bug
-  const u = Fp2.C.get_CNR_Fp2()[0]         # Quadratic & Cubic non-residue to construct 𝔽p4/𝔽p6
-  const v = Fp2.C.get_CNR_Fp2()[1]
-  const Beta {.used.} = Fp2.C.get_QNR_Fp() # Quadratic non-residue to construct 𝔽p2
-  # ξ = u + v x
-  # and x² = β
-  #
-  # (c0 + c1 x) (u + v x) => u c0 + (u c0 + u c1)x + v c1 x²
-  #                       => u c0 + β v c1 + (v c0 + u c1) x
-
-  # TODO: check code generated when ξ = 1 + 𝑖
-  #       The mul by constant are inline but
-  #       since we don't have __restrict tag
-  #       and we use arrays (which decay into pointer)
-  #       the compiler might not elide the temporary
-  when a.fromComplexExtension():
-    result.c0.diff(u * a.c0, v * a.c1)
-  else:
-    result.c0.sum(u * a.c0, (Beta * v) * a.c1)
-  result.c1.sum(v * a.c0, u * a.c1 )
-
 func `*=`*(a: var Fp2, _: typedesc[ξ]) {.inline.} =
   ## Multiply an element of 𝔽p2 by the quadratic non-residue
   ## chosen to construct 𝔽p6
@@ -188,7 +201,15 @@ func `*=`*(a: var Fp2, _: typedesc[ξ]) {.inline.} =
     a.c0 -= a.c1
     a.c1 += t
   else: # TODO: optim for inline
-    a = ξ * a
+    var a0 = a.c0
+    var a1 = a.c1
+    a.c0 *= u
+    a.c1 *= Beta * v
+    a.c0 += a.c1
+
+    a1 *= u
+    a0 *= v
+    a.c1.sum(a0, a1)
 
 # 𝔽p12
 # ----------------------------------------------------------------
@@ -202,27 +223,25 @@ type
     # We call the non-residue γ (Gamma) on 𝔽p6 to avoid confusion between non-residue
     # of different tower level
 
-func `*`*(_: typedesc[γ], a: Fp4): Fp4 {.noInit, inline.} =
+func `*=`*(a: var Fp4, _: typedesc[γ]) {.inline.} =
   ## Multiply an element of 𝔽p4 by the sextic non-residue
   ## chosen to construct 𝔽p12
-  result.c0 = ξ * a.c1
-  result.c1 = a.c0
+  let a0 = a.c0
+  a.c0 = a.c1
+  a.c0 *= ξ
+  a.c1 = a0
 
-func `*=`*(a: var Fp4, _: typedesc[γ]) {.inline.} =
-  a = γ * a
-
-func `*`*(_: typedesc[γ], a: Fp6): Fp6 {.noInit, inline.} =
+func `*=`*(a: var Fp6, _: typedesc[γ]) {.inline.} =
   ## Multiply an element of 𝔽p6 by the cubic non-residue
   ## chosen to construct 𝔽p12
   ## For all curves γ = v with v the factor for 𝔽p6 coordinate
   ## and v³ = ξ
   ## (c0 + c1 v + c2 v²) v => ξ c2 + c0 v + c1 v²
-  result.c0 = ξ * a.c2
-  result.c1 = a.c0
-  result.c2 = a.c1
-
-func `*=`*(a: var Fp6, _: typedesc[γ]) {.inline.} =
-  a = γ * a
+  let t = a.c2
+  a.c1 = a.c0
+  a.c2 = a.c1
+  a.c0 = t
+  a.c0 *= ξ
 
 # Sparse functions
 # ----------------------------------------------------------------

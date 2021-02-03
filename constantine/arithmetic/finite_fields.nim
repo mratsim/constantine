@@ -464,7 +464,13 @@ func `*=`*(a: var FF, b: static int) {.inline.} =
   else:
     {.error: "Multiplication by this small int not implemented".}
 
-func `*`*(b: static int, a: FF): FF {.noinit, inline.} =
-  ## Multiplication by a small integer known at compile-time
-  result = a
-  result *= b
+template mulCheckSparse*(a: var Fp, b: Fp) =
+  ## Multiplication with optimization for sparse inputs
+  when b.isOne().bool:
+    discard
+  elif b.isZero().bool:
+    a.setZero()
+  elif b.isMinusOne().bool:
+    a.neg()
+  else:
+    a *= b

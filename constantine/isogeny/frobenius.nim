@@ -49,48 +49,6 @@ func frobenius_map*(r: var Fp2, a: Fp2, k: static int = 1) {.inline.} =
   else:
     r = a
 
-template mulCheckSparse(a: var Fp, b: Fp) =
-  when b.isOne().bool:
-    discard
-  elif b.isZero().bool:
-    a.setZero()
-  elif b.isMinusOne().bool:
-    a.neg()
-  else:
-    a *= b
-
-template mulCheckSparse(a: var Fp2, b: Fp2) =
-  when b.isOne().bool:
-    discard
-  elif b.isMinusOne().bool:
-    a.neg()
-  elif b.c0.isZero().bool and b.c1.isOne().bool:
-    var t {.noInit.}: type(a.c0)
-    when fromComplexExtension(b):
-      t.neg(a.c1)
-      a.c1 = a.c0
-      a.c0 = t
-    else:
-      t = NonResidue * a.c1
-      a.c1 = a.c0
-      a.c0 = t
-  elif b.c0.isZero().bool and b.c1.isMinusOne().bool:
-    var t {.noInit.}: type(a.c0)
-    when fromComplexExtension(b):
-      t = a.c1
-      a.c1.neg(a.c0)
-      a.c0 = t
-    else:
-      t = NonResidue * a.c1
-      a.c1.neg(a.c0)
-      a.c0.neg(t)
-  elif b.c0.isZero().bool:
-    a.mul_sparse_by_0y(b)
-  elif b.c1.isZero().bool:
-    a.mul_sparse_by_x0(b)
-  else:
-    a *= b
-
 # Frobenius map - on extension fields
 # -----------------------------------------------------------------
 

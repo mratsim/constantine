@@ -46,11 +46,16 @@ func square_Chung_Hasan_SQR2(r: var CubicExt, a: CubicExt) {.used.}=
   ## Returns r = a²
   mixin prod, square, sum
   var v3{.noInit.}, v4{.noInit.}, v5{.noInit.}: typeof(r.c0)
+  var t {.noInit.}: typeof(r.c0)
 
   v4.prod(a.c0, a.c1)
   v4.double()
   v5.square(a.c2)
-  r.c1 = NonResidue * v5
+
+  t = v5
+  v5 *= NonResidue
+
+  r.c1 = t
   r.c1 += v4
   r.c2.diff(v4, v5)
   v3.square(a.c0)
@@ -59,7 +64,8 @@ func square_Chung_Hasan_SQR2(r: var CubicExt, a: CubicExt) {.used.}=
   v5.prod(a.c1, a.c2)
   v5.double()
   v4.square()
-  r.c0 = NonResidue * v5
+  r.c0 = v5
+  r.c0 *= NonResidue
   r.c0 += v3
   r.c2 += v4
   r.c2 += v5
@@ -83,7 +89,9 @@ func square_Chung_Hasan_SQR3(r: var CubicExt, a: CubicExt) =
   r.c0.double()           # r0 = 2 a1 a2
 
   v2.square(a.c2)         # v2 = a2²
-  r.c1 += NonResidue * v2 # r1 = (a0 + a1 + a2)² + β a2²
+  v0 = v2
+  v0 *= NonResidue
+  r.c1 += v0              # r1 = (a0 + a1 + a2)² + β a2²
   r.c1 -= r.c0            # r1 = (a0 + a1 + a2)² - 2 a1 a2 + β a2²
   r.c1 -= r.c2            # r1 = (a0 + a1 + a2)² - 2 a1 a2 - ((a0 + a1 + a2)² + (a0 - a1 + a2)²)/2 + β a2²
 
@@ -124,7 +132,9 @@ func prod*(r: var CubicExt, a, b: CubicExt) =
   r.c1 *= t
   r.c1 -= v0
   r.c1 -= v1
-  r.c1 += NonResidue * v2
+  t = v2
+  t *= NonResidue
+  r.c1 += t
 
   # r.c2 = (a.c0 + a.c2) * (b.c0 + b.c2) - v0 - v2 + v1
   r.c2.sum(a.c0, a.c2)
@@ -177,8 +187,12 @@ func inv*(r: var CubicExt, a: CubicExt) =
 
   # F in v3
   # F <- β a1 C + a0 A + β a2 B
-  r.c1.prod(v1, NonResidue * a.c2)
-  r.c2.prod(v2, NonResidue * a.c1)
+  v3 = a.c2
+  v3 *= NonResidue
+  r.c1.prod(v1, v3)
+  v3 = a.c1
+  v3 *= NonResidue
+  r.c2.prod(v2, v3)
   v3.prod(r.c0, a.c0)
   v3 += r.c1
   v3 += r.c2
