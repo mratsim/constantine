@@ -35,7 +35,7 @@ func `*=`*(a: var Fp, _: type NonResidue) {.inline.} =
   static: doAssert Fp.C.getNonResidueFp() != -1, "𝔽p2 should be specialized for complex extension"
   a *= Fp.C.getNonResidueFp()
 
-func mulByNonResidue*(r: var Fp, a: Fp){.inline.} =
+func prod*(r: var Fp, a: Fp, _: type NonResidue){.inline.} =
   ## Multiply an element of 𝔽p by the quadratic non-residue
   ## chosen to construct 𝔽p2
   static: doAssert Fp.C.getNonResidueFp() != -1, "𝔽p2 should be specialized for complex extension"
@@ -90,7 +90,7 @@ template mulCheckSparse*(a: var Fp2, b: Fp2) =
   else:
     a *= b
 
-func mulByNonResidue*(r: var Fp2, a: Fp2) {.inline.} =
+func prod*(r: var Fp2, a: Fp2, _: type NonResidue) {.inline.} =
   ## Multiply an element of 𝔽p2 by the non-residue
   ## chosen to construct the next extension or the twist:
   ## - if quadratic non-residue: 𝔽p4
@@ -130,16 +130,16 @@ func mulByNonResidue*(r: var Fp2, a: Fp2) {.inline.} =
       NR.c1.fromUint(uint v)
       r.prod(a, NR)
 
-func `*=`*(a: var Fp2, _: typedesc[NonResidue]) {.inline.} =
+func `*=`*(a: var Fp2, _: type NonResidue) {.inline.} =
   ## Multiply an element of 𝔽p2 by the non-residue
   ## chosen to construct the next extension or the twist:
   ## - if quadratic non-residue: 𝔽p4
   ## - if cubic non-residue: 𝔽p6
   ## - if sextic non-residue: 𝔽p4, 𝔽p6 or 𝔽p12
   # Yet another const tuple unpacking bug
-  a.mulByNonResidue(a)
+  a.prod(a, NonResidue)
 
-func `/=`*(a: var Fp2, _: typedesc[NonResidue]) {.inline.} =
+func `/=`*(a: var Fp2, _: type NonResidue) {.inline.} =
   ## Divide an element of 𝔽p by the non-residue
   ## chosen to construct the next extension or the twist:
   ## - if quadratic non-residue: 𝔽p4
@@ -188,7 +188,7 @@ func `/=`*(a: var Fp2, _: typedesc[NonResidue]) {.inline.} =
     a.c0 *= u2v2inv
     a.c1 *= u2v2inv
 
-# 𝔽p6
+# 𝔽p4 & 𝔽p6
 # ----------------------------------------------------------------
 
 type
@@ -198,6 +198,59 @@ type
   Fp6*[C: static Curve] = object
     c0*, c1*, c2*: Fp2[C]
 
+func prod*(r: var Fp4, a: Fp4, _: type NonResidue) =
+  ## Multiply an element of 𝔽p4 by the non-residue
+  ## chosen to construct the next extension or the twist:
+  ## - if quadratic non-residue: 𝔽p8
+  ## - if cubic non-residue: 𝔽p12
+  ## - if sextic non-residue: 𝔽p8, 𝔽p12 or 𝔽p24
+  ##
+  ## Assumes that it is sqrt(NonResidue_Fp2)
+  let t = a.c0
+  r.c0.prod(a.c1, NonResidue)
+  r.c1 = t
+
+func `*=`*(a: var Fp4, _: type NonResidue) {.inline.} =
+  ## Multiply an element of 𝔽p4 by the non-residue
+  ## chosen to construct the next extension or the twist:
+  ## - if quadratic non-residue: 𝔽p8
+  ## - if cubic non-residue: 𝔽p12
+  ## - if sextic non-residue: 𝔽p8, 𝔽p12 or 𝔽p24
+  ##
+  ## Assumes that it is sqrt(NonResidue_Fp2)
+  a.prod(a, NonResidue)
+
+func prod*(r: var Fp6, a: Fp6, _: type NonResidue) {.inline.} =
+  ## Multiply an element of 𝔽p4 by the non-residue
+  ## chosen to construct the next extension or the twist:
+  ## - if quadratic non-residue: 𝔽p12
+  ## - if cubic non-residue: 𝔽p18
+  ## - if sextic non-residue: 𝔽p12, 𝔽p18 or 𝔽p36
+  ##
+  ## Assumes that it is cube_root(NonResidue_Fp2)
+  ##
+  ## For all curves γ = v with v the factor for 𝔽p6 coordinate
+  ## and v³ = ξ
+  ## (c0 + c1 v + c2 v²) v => ξ c2 + c0 v + c1 v²
+  let t = a.c2
+  r.c1 = a.c0
+  r.c2 = a.c1
+  t.c0.prod(t, NonResidue)
+
+func `*=`*(a: var Fp6, _: type NonResidue) {.inline.} =
+  ## Multiply an element of 𝔽p4 by the non-residue
+  ## chosen to construct the next extension or the twist:
+  ## - if quadratic non-residue: 𝔽p12
+  ## - if cubic non-residue: 𝔽p18
+  ## - if sextic non-residue: 𝔽p12, 𝔽p18 or 𝔽p36
+  ##
+  ## Assumes that it is cube_root(NonResidue_Fp2)
+  ##
+  ## For all curves γ = v with v the factor for 𝔽p6 coordinate
+  ## and v³ = ξ
+  ## (c0 + c1 v + c2 v²) v => ξ c2 + c0 v + c1 v²
+  a.prod(a, NonResidue)
+
 # 𝔽p12
 # ----------------------------------------------------------------
 
@@ -205,30 +258,6 @@ type
   Fp12*[C: static Curve] = object
     c0*, c1*, c2*: Fp4[C]
     # c0*, c1*: Fp6[C]
-
-  γ = NonResidue
-    # We call the non-residue γ (Gamma) on 𝔽p6 to avoid confusion between non-residue
-    # of different tower level
-
-func `*=`*(a: var Fp4, _: typedesc[γ]) {.inline.} =
-  ## Multiply an element of 𝔽p4 by the sextic non-residue
-  ## chosen to construct 𝔽p12
-  let a0 = a.c0
-  a.c0 = a.c1
-  a.c0 *= NonResidue
-  a.c1 = a0
-
-func `*=`*(a: var Fp6, _: typedesc[γ]) {.inline.} =
-  ## Multiply an element of 𝔽p6 by the cubic non-residue
-  ## chosen to construct 𝔽p12
-  ## For all curves γ = v with v the factor for 𝔽p6 coordinate
-  ## and v³ = ξ
-  ## (c0 + c1 v + c2 v²) v => ξ c2 + c0 v + c1 v²
-  let t = a.c2
-  a.c1 = a.c0
-  a.c2 = a.c1
-  a.c0 = t
-  a.c0 *= NonResidue
 
 # Sparse functions
 # ----------------------------------------------------------------
