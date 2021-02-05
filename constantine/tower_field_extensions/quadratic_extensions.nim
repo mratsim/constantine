@@ -192,25 +192,31 @@ func square_generic(r: var QuadraticExt, a: QuadraticExt) =
   # Alternative 2:
   #   c0² + β c1² <=> (c0 + c1)(c0 + β c1) - β c0c1 - c0c1
   mixin prod
-  var t = a.c1
-  t *= NonResidue
+  var v0 {.noInit.}, v1 {.noInit.}: typeof(r.c0)
 
-  # r0 <- (c0 + c1)(c0 + β c1)
-  r.c0.sum(a.c0, a.c1)
-  r.c1.sum(a.c0, t)
-  r.c0 *= r.c1
+  # v1 <- (c0 + β c1)
+  v1 = a.c1
+  v1 *= NonResidue
+  v1 += a.c0
 
-  # r1 <- c0 c1
-  r.c1.prod(a.c0, a.c1)
+  # v0 <- (c0 + c1)(c0 + β c1)
+  v0.sum(a.c0, a.c1)
+  v0 *= v1
 
-  # r0 = (c0 + c1)(c0 + β c1) - β c0c1 - c0c1
-  t = r.c1
-  t *= NonResidue
-  r.c0 -= t
-  r.c0 -= r.c1
+  # v1 <- c0 c1
+  v1.prod(a.c0, a.c1)
+
+  # aliasing: a unneeded now
+
+  # r0 = (c0 + c1)(c0 + β c1) - c0c1
+  v0 -= v1
 
   # r1 = 2 c0c1
-  r.c1.double()
+  r.c1.double(v1)
+
+  # r0 = (c0 + c1)(c0 + β c1) - c0c1 - β c0c1
+  v1 *= NonResidue
+  r.c0.diff(v0, v1)
 
 func prod_generic(r: var QuadraticExt, a, b: QuadraticExt) =
   ## Returns r = a * b
@@ -361,10 +367,9 @@ func `*=`*(a: var QuadraticExt, b: QuadraticExt) {.inline.} =
   ## In-place multiplication
   a.prod(a, b)
 
-func square*(a: var QuadraticExt) =
+func square*(a: var QuadraticExt) {.inline.} =
   ## In-place squaring
-  let t = a
-  a.square(t)
+  a.square(a)
 
 func mul_sparse_by_0y*(a: var QuadraticExt, sparseB: QuadraticExt) {.inline.} =
   ## Sparse in-place multiplication
