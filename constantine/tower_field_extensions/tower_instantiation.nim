@@ -257,13 +257,6 @@ func mul_sparse_by_y0*[C: static Curve](r: var Fp4[C], a: Fp4[C], b: Fp2[C]) =
   r.c0.prod(a.c0, b)
   r.c1.prod(a.c1, b)
 
-func mul_sparse_by_0y*[C: static Curve](r: var Fp4[C], a: Fp4[C], b: Fp2[C]) =
-  ## Sparse multiplication of an Fp4 element
-  ## with coordinates (a₀, a₁) by (0, b₁)
-  r.c0.prod(a.c1, b)
-  r.c0 *= NonResidue
-  r.c1.prod(a.c0, b)
-
 func mul_sparse_by_0y0*[C: static Curve](r: var Fp6[C], a: Fp6[C], b: Fp2[C]) =
   ## Sparse multiplication of an Fp6 element
   ## with coordinates (a₀, a₁, a₂) by (0, b₁, 0)

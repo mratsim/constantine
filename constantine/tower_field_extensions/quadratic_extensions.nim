@@ -145,7 +145,9 @@ func prod_complex(r: var QuadraticExt, a, b: QuadraticExt) =
   #    - Function calls?
   #    - push/pop stack?
 
-func mul_sparse_complex_by_0y(r: var QuadraticExt, a, sparseB: QuadraticExt) =
+func mul_sparse_complex_by_0y(
+       r: var QuadraticExt, a: QuadraticExt,
+       sparseB: auto) =
   ## Multiply `a` by `b` with sparse coordinates (0, y)
   ## On a complex quadratic extension field 𝔽p2 = 𝔽p[𝑖]
   #
@@ -159,11 +161,19 @@ func mul_sparse_complex_by_0y(r: var QuadraticExt, a, sparseB: QuadraticExt) =
   mixin fromComplexExtension
   static: doAssert r.fromComplexExtension()
 
-  template b(): untyped = sparseB
+  when typeof(sparseB) is typeof(a):
+    template b(): untyped = sparseB.c1
+  elif typeof(sparseB) is typeof(a.c0):
+    template b(): untyped = sparseB
+  else:
+    {.error: "sparseB type is " & $typeof(sparseB) &
+      " which does not match with either a (" & $typeof(a) &
+      ") or a.c0 (" & $typeof(a.c0) & ")".}
 
-  r.c0.prod(a.c1, b.c1)
-  r.c0.neg(r.c0)
-  r.c1.prod(a.c0, b.c1)
+  var t{.noInit.}: typeof(a.c0)
+  t.prod(a.c1, b)
+  r.c1.prod(a.c0, b)
+  r.c0.neg(t)
 
 # Commutative ring implementation for generic quadratic extension fields
 # -------------------------------------------------------------------
@@ -265,7 +275,9 @@ func mul_sparse_generic_by_x0(r: var QuadraticExt, a, sparseB: QuadraticExt) =
   r.c0.prod(a.c0, b.c0)
   r.c1.prod(a.c1, b.c0)
 
-func mul_sparse_generic_by_0y(r: var QuadraticExt, a, sparseB: QuadraticExt) =
+func mul_sparse_generic_by_0y(
+       r: var QuadraticExt, a: QuadraticExt,
+       sparseB: auto) =
   ## Multiply `a` by `b` with sparse coordinates (0, y)
   ## On a generic quadratic extension field
   # Algorithm (with β the non-residue in the base field)
@@ -277,54 +289,27 @@ func mul_sparse_generic_by_0y(r: var QuadraticExt, a, sparseB: QuadraticExt) =
   #
   # r0 = β a1 b1
   # r1 = (a0 + a1) b1 - a1 b1 = a0 b1
-  template b(): untyped = sparseB
-
-  r.c0.prod(a.c1, b.c1)
-  r.c0 *= NonResidue
-  r.c1.prod(a.c0, b.c1)
-
-# Exported symbols
-# -------------------------------------------------------------------
-
-func conj*(a: var QuadraticExt) {.inline.} =
-  ## Computes the conjugate in-place
-  a.c1.neg()
-
-func conj*(r: var QuadraticExt, a: QuadraticExt) {.inline.} =
-  ## Computes the conjugate out-of-place
-  r.c0 = a.c0
-  r.c1.neg(a.c1)
-
-func conjneg*(a: var QuadraticExt) {.inline.} =
-  ## Computes the negated conjugate in-place
-  a.c0.neg()
-
-func conjneg*(r: var QuadraticExt, a: QuadraticExt) {.inline.} =
-  ## Computes the negated conjugate out-of-place
-  r.c0.neg(a.c0)
-  r.c1 = a.c1
-
-func square*(r: var QuadraticExt, a: QuadraticExt) {.inline.} =
-  mixin fromComplexExtension
-  when r.fromComplexExtension():
-    r.square_complex(a)
+  when typeof(sparseB) is typeof(a):
+    template b(): untyped = sparseB.c1
+  elif typeof(sparseB) is typeof(a.c0):
+    template b(): untyped = sparseB
   else:
-    r.square_generic(a)
+    {.error: "sparseB type is " & $typeof(sparseB) &
+      " which does not match with either a (" & $typeof(a) &
+      ") or a.c0 (" & $typeof(a.c0) & ")".}
 
-func prod*(r: var QuadraticExt, a, b: QuadraticExt) {.inline.} =
-  mixin fromComplexExtension
-  when r.fromComplexExtension():
-    r.prod_complex(a, b)
-  else:
-    r.prod_generic(a, b)
+  var t{.noInit.}: typeof(a.c0)
 
-func inv*(r: var QuadraticExt, a: QuadraticExt) =
+  t.prod(a.c1, b)
+  t *= NonResidue
+  r.c1.prod(a.c0, b)
+  # aliasing: a unneeded now
+  r.c0 = t
+
+func invImpl(r: var QuadraticExt, a: QuadraticExt) =
   ## Compute the multiplicative inverse of ``a``
   ##
   ## The inverse of 0 is 0.
-  ## Incidentally this avoids extra check
-  ## to convert Jacobian and Projective coordinates
-  ## to affine for elliptic curve
   #
   # Algorithm:
   #
@@ -354,34 +339,84 @@ func inv*(r: var QuadraticExt, a: QuadraticExt) =
   v0.neg(v1)              # v0 = -1 / (a0² - β a1²)
   r.c1.prod(a.c1, v0)     # r1 = -a1 / (a0² - β a1²)
 
-func inv*(a: var QuadraticExt) {.inline.} =
+# Exported symbols
+# -------------------------------------------------------------------
+
+{.push inline.}
+
+func conj*(a: var QuadraticExt) =
+  ## Computes the conjugate in-place
+  a.c1.neg()
+
+func conj*(r: var QuadraticExt, a: QuadraticExt) =
+  ## Computes the conjugate out-of-place
+  r.c0 = a.c0
+  r.c1.neg(a.c1)
+
+func conjneg*(a: var QuadraticExt) =
+  ## Computes the negated conjugate in-place
+  a.c0.neg()
+
+func conjneg*(r: var QuadraticExt, a: QuadraticExt) =
+  ## Computes the negated conjugate out-of-place
+  r.c0.neg(a.c0)
+  r.c1 = a.c1
+
+func square*(r: var QuadraticExt, a: QuadraticExt) =
+  mixin fromComplexExtension
+  when r.fromComplexExtension():
+    r.square_complex(a)
+  else:
+    r.square_generic(a)
+
+func prod*(r: var QuadraticExt, a, b: QuadraticExt) =
+  mixin fromComplexExtension
+  when r.fromComplexExtension():
+    r.prod_complex(a, b)
+  else:
+    r.prod_generic(a, b)
+
+func inv*(r: var QuadraticExt, a: QuadraticExt) =
   ## Compute the multiplicative inverse of ``a``
   ##
   ## The inverse of 0 is 0.
   ## Incidentally this avoids extra check
   ## to convert Jacobian and Projective coordinates
   ## to affine for elliptic curve
-  a.inv(a)
+  r.invImpl(a)
 
-func `*=`*(a: var QuadraticExt, b: QuadraticExt) {.inline.} =
+func inv*(a: var QuadraticExt) =
+  ## Compute the multiplicative inverse of ``a``
+  ##
+  ## The inverse of 0 is 0.
+  ## Incidentally this avoids extra check
+  ## to convert Jacobian and Projective coordinates
+  ## to affine for elliptic curve
+  a.invImpl(a)
+
+func `*=`*(a: var QuadraticExt, b: QuadraticExt) =
   ## In-place multiplication
   a.prod(a, b)
 
-func square*(a: var QuadraticExt) {.inline.} =
+func square*(a: var QuadraticExt) =
   ## In-place squaring
   a.square(a)
 
-func mul_sparse_by_0y*(a: var QuadraticExt, sparseB: QuadraticExt) {.inline.} =
-  ## Sparse in-place multiplication
+func mul_sparse_by_0y*(r: var QuadraticExt, a: QuadraticExt, sparseB: auto) =
+  ## Sparse multiplication
   mixin fromComplexExtension
   when a.fromComplexExtension():
-    let t = a
-    a.mul_sparse_complex_by_0y(t, sparseB)
+    r.mul_sparse_complex_by_0y(a, sparseB)
   else:
-    let t = a
-    a.mul_sparse_generic_by_0y(t, sparseB)
+    r.mul_sparse_generic_by_0y(a, sparseB)
 
-func mul_sparse_by_x0*(a: var QuadraticExt, sparseB: QuadraticExt) {.inline.} =
+func mul_sparse_by_0y*(a: var QuadraticExt, sparseB: auto) =
   ## Sparse in-place multiplication
-  let t = a
-  a.mul_sparse_generic_by_x0(t, sparseB)
+  a.mul_sparse_by_0y(a, sparseB)
+
+func mul_sparse_by_x0*(a: var QuadraticExt, sparseB: QuadraticExt) =
+  ## Sparse in-place multiplication
+  a.mul_sparse_generic_by_x0(a, sparseB)
+
+{.pop.} # inline
+{.pop.} # raises no exceptions
