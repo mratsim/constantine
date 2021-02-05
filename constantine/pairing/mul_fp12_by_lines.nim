@@ -56,7 +56,7 @@ func mul_by_line_xy0*[C: static Curve](
   v0.prod(a.c0, b.x)
   v1.prod(a.c1, b.y)
   r.c0.prod(a.c2, b.y)
-  r.c0 *= ξ
+  r.c0 *= NonResidue
   r.c0 += v0
 
   r.c1.sum(a.c0, a.c1) # Error when r and a alias as r.c0 was updated
@@ -96,7 +96,7 @@ func mul_sparse_by_line_xy00z0*[C: static Curve](
   v3 -= v1
   f.c1 = v3
 
-  v3.c0 = ξ * v1.c2
+  v3.c0 = NonResidue * v1.c2
   v3.c0 += v0.c0
   v3.c1.sum(v0.c1, v1.c0)
   v3.c2.sum(v0.c2, v1.c1)

@@ -306,6 +306,30 @@ func mul_sparse_generic_by_0y(
   # aliasing: a unneeded now
   r.c0 = t
 
+func mul_sparse_generic_by_0y(
+       r: var QuadraticExt, a: QuadraticExt,
+       sparseB: static int) =
+  ## Multiply `a` by `b` with sparse coordinates (0, y)
+  ## On a generic quadratic extension field
+  # Algorithm (with β the non-residue in the base field)
+  #
+  # r0 = a0 b0 + β a1 b1
+  # r1 = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1 (Karatsuba)
+  #
+  # with b0 = 0, hence
+  #
+  # r0 = β a1 b1
+  # r1 = (a0 + a1) b1 - a1 b1 = a0 b1
+  template b(): untyped = sparseB
+
+  var t{.noInit.}: typeof(a.c0)
+
+  t.prod(a.c1, b)
+  t *= NonResidue
+  r.c1.prod(a.c0, b)
+  # aliasing: a unneeded now
+  r.c0 = t
+
 func invImpl(r: var QuadraticExt, a: QuadraticExt) =
   ## Compute the multiplicative inverse of ``a``
   ##
@@ -407,6 +431,14 @@ func mul_sparse_by_0y*(r: var QuadraticExt, a: QuadraticExt, sparseB: auto) =
   mixin fromComplexExtension
   when a.fromComplexExtension():
     r.mul_sparse_complex_by_0y(a, sparseB)
+  else:
+    r.mul_sparse_generic_by_0y(a, sparseB)
+
+func mul_sparse_by_0y*(r: var QuadraticExt, a: QuadraticExt, sparseB: static int) =
+  ## Sparse multiplication
+  mixin fromComplexExtension
+  when a.fromComplexExtension():
+    {.error: "Not implemented.".}
   else:
     r.mul_sparse_generic_by_0y(a, sparseB)
 

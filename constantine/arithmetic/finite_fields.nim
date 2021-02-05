@@ -465,6 +465,17 @@ func `*=`*(a: var FF, b: static int) =
   else:
     {.error: "Multiplication by this small int not implemented".}
 
+func prod*(r: var FF, a: FF, b: static int) =
+  ## Multiplication by a small integer known at compile-time
+  const negate = b < 0
+  const b = if negate: -b
+            else: b
+  when negate:
+    r.neg(a)
+  else:
+    r = a
+  r *= b
+
 template mulCheckSparse*(a: var Fp, b: Fp) =
   ## Multiplication with optimization for sparse inputs
   when b.isOne().bool:

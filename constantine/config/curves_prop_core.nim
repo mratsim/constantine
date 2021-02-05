@@ -82,21 +82,27 @@ macro getCoefB*(C: static Curve): untyped =
   ## or a bigInt depending on the curve
   result = bindSym($C & "_coef_B")
 
-macro get_QNR_Fp*(C: static Curve): untyped =
-  ## Returns the tower extension quadratic non-residue in 𝔽p
-  ## i.e. a number that is not a square in 𝔽p
-  result = bindSym($C & "_nonresidue_quad_fp")
+macro getNonResidueFp*(C: static Curve): untyped =
+  ## Returns the tower extension (and twist) non-residue for 𝔽p
+  ## Depending on the curve it might be:
+  ## - not a square (quadratic non-residue to construct Fp2)
+  ## - not a cube (cubic non-residue to construct Fp3)
+  ## - neither a square or cube (sextic non-residue to construct Fp2, Fp3 or Fp6)
+  result = bindSym($C & "_nonresidue_fp")
 
-macro get_CNR_Fp2*(C: static Curve): untyped =
-  ## Returns the tower extension cubic non-residue 𝔽p²
-  ## i.e. a number that is not a cube in 𝔽p²
+macro getNonResidueFp2*(C: static Curve): untyped =
+  ## Returns the tower extension (and twist) non-residue for 𝔽p²
+  ## Depending on the curve it might be:
+  ## - not a square (quadratic non-residue to construct Fp4)
+  ## - not a cube (cubic non-residue to construct Fp6)
+  ## - neither a square or cube (sextic non-residue to construct Fp4, Fp6 or Fp12)
   ##
   ## The return value is a tuple (a, b)
   ## that corresponds to the number a + b𝑗
   ## with 𝑗 choosen for 𝑗² - QNR_Fp == 0
   ## i.e. if -1 is chosen as a quadratic non-residue 𝑗 = √-1
   ##      if -2 is chosen as a quadratic non-residue 𝑗 = √-2
-  result = bindSym($C & "_nonresidue_cube_fp2")
+  result = bindSym($C & "_nonresidue_fp2")
 
 macro getEmbeddingDegree*(C: static Curve): untyped =
   ## Returns the prime embedding degree,
@@ -108,9 +114,3 @@ macro getEmbeddingDegree*(C: static Curve): untyped =
 macro getSexticTwist*(C: static Curve): untyped =
   ## Returns if D-Twist or M-Twist
   result = bindSym($C & "_sexticTwist")
-
-macro get_SNR_Fp2*(C: static Curve): untyped =
-  ## Returns the sextic non-residue in 𝔽p²
-  ## choosen to build the twisted curve E'(𝔽p²)
-  ## i.e. a number µ so that x⁶ - µ is irreducible
-  result = bindSym($C & "_sexticNonResidue_fp2")

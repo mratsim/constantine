@@ -14,6 +14,10 @@ import
 # Note: to avoid burdening the Nim compiler, we rely on generic extension
 # to complain if the base field procedures don't exist
 
+# No exceptions allowed
+{.push raises: [].}
+{.push inline.}
+
 # Common type definition
 # -------------------------------------------------------------------
 
@@ -191,7 +195,7 @@ func csub*(a: var ExtensionField, b: ExtensionField, ctl: SecretBool) =
 # Multiplication by a small integer known at compile-time
 # -------------------------------------------------------------------
 
-func `*=`*(a: var ExtensionField, b: static int) {.inline.} =
+func `*=`*(a: var ExtensionField, b: static int) =
   ## Multiplication by a small integer known at compile-time
 
   const negate = b < 0
@@ -261,3 +265,17 @@ func `*=`*(a: var ExtensionField, b: static int) {.inline.} =
     a += t4
   else:
     {.error: "Multiplication by this small int not implemented".}
+
+func prod*(r: var ExtensionField, a: ExtensionField, b: static int) =
+  ## Multiplication by a small integer known at compile-time
+  const negate = b < 0
+  const b = if negate: -b
+            else: b
+  when negate:
+    r.neg(a)
+  else:
+    r = a
+  r *= b
+
+{.pop.} # inline
+{.pop.} # raises no exceptions

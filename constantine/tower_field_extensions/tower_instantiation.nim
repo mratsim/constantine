@@ -12,7 +12,7 @@
 
 import
   ../arithmetic,
-  ../config/curves,
+  ../config/[common, curves],
   ../io/io_fields,
   ./tower_common,
   ./quadratic_extensions,
@@ -21,27 +21,25 @@ import
 
 export tower_common, quadratic_extensions, cubic_extensions, exponentiations
 
+# We assume that the sextic non-residues used to construct
+# the elliptic curve twists
+# match with the quadratic and cubic non-residues
+# chosen to construct the tower of extension fields.
+
 # 𝔽p
 # ----------------------------------------------------------------
 
-type
-  β = NonResidue
-    # Quadratic or Cubic non-residue
-
-  SexticNonResidue* = object
-
-func `*=`*(a: var Fp, _: typedesc[β]) {.inline.} =
+func `*=`*(a: var Fp, _: type NonResidue) {.inline.} =
   ## Multiply an element of 𝔽p by the quadratic non-residue
   ## chosen to construct 𝔽p2
-  static: doAssert Fp.C.get_QNR_Fp() != -1, "𝔽p2 should be specialized for complex extension"
-  a *= Fp.C.get_QNR_Fp()
+  static: doAssert Fp.C.getNonResidueFp() != -1, "𝔽p2 should be specialized for complex extension"
+  a *= Fp.C.getNonResidueFp()
 
-# TODO: rework the quad/cube/sextic non residue declaration
-
-func `*=`*(a: var Fp, _: typedesc[SexticNonResidue]) {.inline.} =
-  ## Multiply an element of 𝔽p by the sextic non-residue
-  ## chosen to construct 𝔽p6
-  a *= Fp.C.get_QNR_Fp() # TODO, what is calling this? BLS12-377
+func mulByNonResidue*(r: var Fp, a: Fp){.inline.} =
+  ## Multiply an element of 𝔽p by the quadratic non-residue
+  ## chosen to construct 𝔽p2
+  static: doAssert Fp.C.getNonResidueFp() != -1, "𝔽p2 should be specialized for complex extension"
+  r.prod(a, Fp.C.getNonResidueFp())
 
 # 𝔽p2
 # ----------------------------------------------------------------
@@ -55,7 +53,7 @@ template fromComplexExtension*[F](elem: F): static bool =
   ## i.e. the irreducible polynomial chosen is
   ##   x² - µ with µ = -1
   ## and so 𝔽p2 = 𝔽p[x] / x² - µ = 𝔽p[𝑖]
-  when F is Fp2 and F.C.get_QNR_Fp() == -1:
+  when F is Fp2 and F.C.getNonResidueFp() == -1:
     true
   else:
     false
@@ -92,13 +90,16 @@ template mulCheckSparse*(a: var Fp2, b: Fp2) =
   else:
     a *= b
 
-func `*=`*(a: var Fp2, _: typedesc[SexticNonResidue]) {.inline.} =
-  ## Multiply an element of 𝔽p2 by the sextic non-residue
-  ## chosen to construct the sextic twist
+func mulByNonResidue*(r: var Fp2, a: Fp2) {.inline.} =
+  ## Multiply an element of 𝔽p2 by the non-residue
+  ## chosen to construct the next extension or the twist:
+  ## - if quadratic non-residue: 𝔽p4
+  ## - if cubic non-residue: 𝔽p6
+  ## - if sextic non-residue: 𝔽p4, 𝔽p6 or 𝔽p12
   # Yet another const tuple unpacking bug
-  const u = Fp2.C.get_SNR_Fp2()[0] # Sextic non-residue to construct 𝔽p12
-  const v = Fp2.C.get_SNR_Fp2()[1]
-  const Beta {.used.} = Fp2.C.get_QNR_Fp()  # Quadratic non-residue to construct 𝔽p2
+  const u = Fp2.C.getNonResidueFp2()[0]
+  const v = Fp2.C.getNonResidueFp2()[1]
+  const Beta {.used.} = Fp2.C.getNonResidueFp()
   # ξ = u + v x
   # and x² = β
   #
@@ -106,31 +107,49 @@ func `*=`*(a: var Fp2, _: typedesc[SexticNonResidue]) {.inline.} =
   #                       => u c0 + β v c1 + (v c0 + u c1) x
   when a.fromComplexExtension() and u == 1 and v == 1:
     let t = a.c0
-    a.c0 -= a.c1
-    a.c1 += t
+    r.c0.diff(t, a.c1)
+    r.c1.sum(t, a.c1)
   else:
-    var a0 = a.c0
-    var a1 = a.c1
-    when a.fromComplexExtension():
-      a.c0 *= u
-      a.c1 *= v
-      a.c0 -= a.c1
+    # Case:
+    # - BN254_Snarks, QNR_Fp: -1, SNR_Fp2: 9+1𝑖  (𝑖 = √-1)
+    # - BLS12_377, QNR_Fp: -5, SNR_Fp2: 0+1j    (j = √-5)
+    # - BW6_761, SNR_Fp: -4, CNR_Fp2: 0+1j      (j = √-4)
+    when u == 0:
+      # BLS12_377 and BW6_761, use small addition chain
+      r.mul_sparse_by_0y(a, v)
     else:
-      a.c0 *= u
-      a.c1 *= Beta * v
-      a.c0 += a.c1
+      # BN254_Snarks, u = 9
+      # Full 𝔽p2 multiplication is cheaper than addition chains
+      # for u*c0 and u*c1
+      static:
+        doAssert u >= 0 and uint64(u) <= uint64(high(BaseType))
+        doAssert v >= 0 and uint64(v) <= uint64(high(BaseType))
+      # TODO: compile-time
+      var NR {.noInit.}: Fp2
+      NR.c0.fromUint(uint u)
+      NR.c1.fromUint(uint v)
+      r.prod(a, NR)
 
-    a0 *= v
-    a1 *= u
-    a.c1.sum(a0, a1)
-
-func `/=`*(a: var Fp2, _: typedesc[SexticNonResidue]) {.inline.} =
-  ## Multiply an element of 𝔽p by the quadratic non-residue
-  ## chosen to construct sextic twist
+func `*=`*(a: var Fp2, _: typedesc[NonResidue]) {.inline.} =
+  ## Multiply an element of 𝔽p2 by the non-residue
+  ## chosen to construct the next extension or the twist:
+  ## - if quadratic non-residue: 𝔽p4
+  ## - if cubic non-residue: 𝔽p6
+  ## - if sextic non-residue: 𝔽p4, 𝔽p6 or 𝔽p12
   # Yet another const tuple unpacking bug
-  const u = Fp2.C.get_SNR_Fp2()[0] # Sextic non-residue to construct 𝔽p12
-  const v = Fp2.C.get_SNR_Fp2()[1]
-  const Beta = Fp2.C.get_QNR_Fp()  # Quadratic non-residue to construct 𝔽p2
+  a.mulByNonResidue(a)
+
+func `/=`*(a: var Fp2, _: typedesc[NonResidue]) {.inline.} =
+  ## Divide an element of 𝔽p by the non-residue
+  ## chosen to construct the next extension or the twist:
+  ## - if quadratic non-residue: 𝔽p4
+  ## - if cubic non-residue: 𝔽p6
+  ## - if sextic non-residue: 𝔽p4, 𝔽p6 or 𝔽p12
+  # Yet another const tuple unpacking bug
+  # Yet another const tuple unpacking bug
+  const u = Fp2.C.getNonresidueFp2()[0] # Sextic non-residue to construct 𝔽p12
+  const v = Fp2.C.getNonresidueFp2()[1]
+  const Beta = Fp2.C.getNonResidueFp()  # Quadratic non-residue to construct 𝔽p2
   # ξ = u + v x
   # and x² = β
   #
@@ -179,38 +198,6 @@ type
   Fp6*[C: static Curve] = object
     c0*, c1*, c2*: Fp2[C]
 
-  ξ* = NonResidue
-    # We call the non-residue ξ on 𝔽p4/𝔽p6 to avoid confusion
-    # between non-residue
-    # of different tower level
-
-func `*=`*(a: var Fp2, _: typedesc[ξ]) {.inline.} =
-  ## Multiply an element of 𝔽p2 by the quadratic non-residue
-  ## chosen to construct 𝔽p6
-  # Yet another const tuple unpacking bug
-  const u = Fp2.C.get_CNR_Fp2()[0] # Cubic non-residue to construct 𝔽p6
-  const v = Fp2.C.get_CNR_Fp2()[1]
-  const Beta {.used.} = Fp2.C.get_QNR_Fp()  # Quadratic non-residue to construct 𝔽p2
-  # ξ = u + v x
-  # and x² = β
-  #
-  # (c0 + c1 x) (u + v x) => u c0 + (u c0 + u c1)x + v c1 x²
-  #                       => u c0 + β v c1 + (v c0 + u c1) x
-  when a.fromComplexExtension() and u == 1 and v == 1:
-    let t = a.c0
-    a.c0 -= a.c1
-    a.c1 += t
-  else: # TODO: optim for inline
-    var a0 = a.c0
-    var a1 = a.c1
-    a.c0 *= u
-    a.c1 *= Beta * v
-    a.c0 += a.c1
-
-    a1 *= u
-    a0 *= v
-    a.c1.sum(a0, a1)
-
 # 𝔽p12
 # ----------------------------------------------------------------
 
@@ -228,7 +215,7 @@ func `*=`*(a: var Fp4, _: typedesc[γ]) {.inline.} =
   ## chosen to construct 𝔽p12
   let a0 = a.c0
   a.c0 = a.c1
-  a.c0 *= ξ
+  a.c0 *= NonResidue
   a.c1 = a0
 
 func `*=`*(a: var Fp6, _: typedesc[γ]) {.inline.} =
@@ -241,7 +228,7 @@ func `*=`*(a: var Fp6, _: typedesc[γ]) {.inline.} =
   a.c1 = a.c0
   a.c2 = a.c1
   a.c0 = t
-  a.c0 *= ξ
+  a.c0 *= NonResidue
 
 # Sparse functions
 # ----------------------------------------------------------------
@@ -277,6 +264,6 @@ func mul_sparse_by_0y0*[C: static Curve](r: var Fp6[C], a: Fp6[C], b: Fp2[C]) =
   #    = a1 b1
 
   r.c0.prod(a.c2, b)
-  r.c0 *= ξ
+  r.c0 *= NonResidue
   r.c1.prod(a.c0, b)
   r.c2.prod(a.c1, b)
