@@ -21,13 +21,46 @@ when UseASM_X86_64:
 #
 # ############################################################
 
+# Inlining note:
+# - The public dispatch functions are inlined.
+#   This allows the compiler to check CPU features only once
+#   in the high-level proc and also removes an intermediate function call
+#   to the wrapper function
+# - The ASM procs or internal fallbacks are not inlined
+#   to save on code size.
+
 # No exceptions allowed
 {.push raises: [].}
 
 # Multiplication
 # ------------------------------------------------------------
 
-func prod*[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) =
+func prod_comba[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) =
+  ## Extended precision multiplication
+  # We use Product Scanning / Comba multiplication
+  var t, u, v = Zero
+  const stopEx = min(a.len+b.len, r.len)
+
+  staticFor i, 0, stopEx:
+    # Invariant for product scanning:
+    # if we multiply accumulate by a[k1] * b[k2]
+    # we have k1+k2 == i
+    const ib = min(b.len-1, i)
+    const ia = i - ib
+    staticFor j, 0, min(a.len - ia, ib+1):
+      mulAcc(t, u, v, a[ia+j], b[ib-j])
+
+    r[i] = v
+    when i < stopEx-1:
+      v = u
+      u = t
+      t = Zero
+
+  if aLen+bLen < rLen:
+    for i in aLen+bLen ..< rLen:
+      r[i] = Zero
+
+func prod*[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) {.inline.} =
   ## Multi-precision multiplication
   ## r <- a*b
   ##
@@ -46,28 +79,7 @@ func prod*[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], b: 
   elif UseASM_X86_64:
     mul_asm(r, a, b)
   else:
-    # We use Product Scanning / Comba multiplication
-    var t, u, v = Zero
-    const stopEx = min(a.len+b.len, r.len)
-
-    staticFor i, 0, stopEx:
-      # Invariant for product scanning:
-      # if we multiply accumulate by a[k1] * b[k2]
-      # we have k1+k2 == i
-      const ib = min(b.len-1, i)
-      const ia = i - ib
-      staticFor j, 0, min(a.len - ia, ib+1):
-        mulAcc(t, u, v, a[ia+j], b[ib-j])
-
-      r[i] = v
-      when i < stopEx-1:
-        v = u
-        u = t
-        t = Zero
-
-    if aLen+bLen < rLen:
-      for i in aLen+bLen ..< rLen:
-        r[i] = Zero
+    prod_comba(r, a, b)
 
 func prod_high_words*[rLen, aLen, bLen](
        r: var Limbs[rLen],
@@ -178,7 +190,7 @@ func square_operandScan[rLen, aLen](
 
 func square*[rLen, aLen](
        r: var Limbs[rLen],
-       a: Limbs[aLen]) =
+       a: Limbs[aLen]) {.inline.} =
   ## Multi-precision squaring
   ## r <- a²
   ##

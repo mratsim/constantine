@@ -12,7 +12,7 @@ import
   ./bigints,
   ./finite_fields,
   ./limbs,
-  ./limbs_double_width,
+  ./limbs_extmul,
   ./limbs_montgomery
 
 when UseASM_X86_64:
@@ -28,18 +28,22 @@ template doubleWidth*(T: typedesc[Fp]): typedesc =
   ## Return the double-width type matching with Fp
   FpDbl[T.C]
 
-func `==`*(a, b: FpDbl): SecretBool {.inline.} =
+# No exceptions allowed
+{.push raises: [].}
+{.push inline.}
+
+func `==`*(a, b: FpDbl): SecretBool =
   a.limbs2x == b.limbs2x
 
-func mulNoReduce*(r: var FpDbl, a, b: Fp) {.inline.} =
+func mulNoReduce*(r: var FpDbl, a, b: Fp) =
   ## Store the product of ``a`` by ``b`` into ``r``
   r.limbs2x.prod(a.mres.limbs, b.mres.limbs)
 
-func squareNoReduce*(r: var FpDbl, a: Fp) {.inline.} =
+func squareNoReduce*(r: var FpDbl, a: Fp) =
   ## Store the square of ``a`` into ``r``
   r.limbs2x.square(a.mres.limbs)
 
-func reduce*(r: var Fp, a: FpDbl) {.inline.} =
+func reduce*(r: var Fp, a: FpDbl) =
   ## Reduce a double-width field element into r
   const N = r.mres.limbs.len
   montyRed(
@@ -54,7 +58,7 @@ func diffNoReduce*(r: var FpDbl, a, b: FpDbl) =
   ## Double-width substraction without reduction
   discard r.limbs2x.diff(a.limbs2x, b.limbs2x)
 
-func diff*(r: var FpDbl, a, b: FpDbl) {.inline.}=
+func diff*(r: var FpDbl, a, b: FpDbl) =
   ## Double-width modular substraction
   when UseASM_X86_64:
     sub2x_asm(r.limbs2x, a.limbs2x, b.limbs2x, FpDbl.C.Mod.limbs)
@@ -69,6 +73,9 @@ func diff*(r: var FpDbl, a, b: FpDbl) {.inline.}=
       addC(carry, sum, r.limbs2x[i+N], M.limbs[i], carry)
       underflowed.ccopy(r.limbs2x[i+N], sum)
 
-func `-=`*(a: var FpDbl, b: FpDbl) {.inline.}=
+func `-=`*(a: var FpDbl, b: FpDbl) =
   ## Double-width modular substraction
   a.diff(a, b)
+
+{.pop.} # inline
+{.pop.} # raises no exceptions

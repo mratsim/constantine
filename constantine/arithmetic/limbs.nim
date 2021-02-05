@@ -174,7 +174,7 @@ func isEven*(a: Limbs): SecretBool =
 # Bit manipulation
 # ------------------------------------------------------------
 
-func shiftRight*(a: var Limbs, k: int) {.inline.}=
+func shiftRight*(a: var Limbs, k: int) =
   ## Shift right by k.
   ##
   ## k MUST be less than the base word size (2^32 or 2^64)

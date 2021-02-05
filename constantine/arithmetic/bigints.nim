@@ -10,7 +10,7 @@ import
   ../config/[common, type_bigint],
   ../primitives,
   ./limbs,
-  ./limbs_double_width,
+  ./limbs_extmul,
   ./limbs_modular,
   ./limbs_montgomery
 
@@ -347,7 +347,7 @@ func bit0*(a: BigInt): Ct[uint8] =
 # Multiplication by small cosntants
 # ------------------------------------------------------------
 
-func `*=`*(a: var BigInt, b: static int) {.inline.} =
+func `*=`*(a: var BigInt, b: static int) =
   ## Multiplication by a small integer known at compile-time
   # Implementation:
   #
