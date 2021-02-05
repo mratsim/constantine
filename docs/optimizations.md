@@ -75,6 +75,9 @@ The optimizations can be of algebraic, algorithmic or "implementation details" n
   - [ ] x86: MULX, ADCX, ADOX instructions
   - [ ] no-carry optimization for CIOS (Coarsely Integrated Operand Scanning)
 
+- Addition chains
+  - [ ] unreduced squarings/multiplications in addition chains
+
 - Exponentiation
   - [x] variable-time exponentiation
   - [x] fixed window optimization _(sliding windows are not constant-time)_
@@ -158,19 +161,25 @@ The optimizations can be of algebraic, algorithmic or "implementation details" n
 - Line functions
   - [x] Homogeneous projective coordinates
     - [x] D-Twist
+      - [x] Fused line add + elliptic curve add
+      - [x] Fused line double + elliptic curve double
     - [x] M-Twist
-    - [x] Fused line add + elliptic curve add
-    - [x] Fused line double + elliptic curve double
+      - [x] Fused line add + elliptic curve add
+      - [x] Fused line double + elliptic curve double
   - [ ] Jacobian projective coordinates
     - [ ] D-Twist
+      - [ ] Fused line add + elliptic curve add
+      - [ ] Fused line double + elliptic curve double
     - [ ] M-Twist
-    - [ ] Fused line add + elliptic curve add
-    - [ ] Fused line double + elliptic curve double
+      - [ ] Fused line add + elliptic curve add
+      - [ ] Fused line double + elliptic curve double
   - [x] Sparse multiplication line * Gₜ element
-    - [x] 6-way sparse
-    - [ ] Pseudo 8-sparse
     - [x] D-Twist
+      - [x] 6-way sparse
+      - [ ] Pseudo 8-sparse
     - [x] M-Twist
+      - [x] 6-way sparse
+      - [ ] Pseudo 8-sparse
 
 - Miller Loop
   - [x] NAF recoding
