@@ -11,6 +11,9 @@ import
   ../primitives,
   ./tower_common
 
+# No exceptions allowed
+{.push raises: [].}
+
 # Commutative ring implementation for complex extension fields
 # -------------------------------------------------------------------
 
@@ -40,17 +43,20 @@ func square_complex(r: var QuadraticExt, a: QuadraticExt) =
   # - 1 Addition 𝔽p
   # - 1 Doubling 𝔽p
   # - 1 Substraction 𝔽p
-  # Stack: 6 * ModulusBitSize (4x 𝔽p element + 1 named temporaries + 1 in-place multiplication temporary)
-  # as in-place multiplications require a (shared) internal temporary
+  #
+  # To handle aliasing between r and a, we need
+  # r to be used only when a is unneeded
+  # so we can't use r fields as a temporary
   mixin fromComplexExtension
   static: doAssert r.fromComplexExtension()
 
-  var c0mc1 {.noInit.}: typeof(r.c0)
-  c0mc1.diff(a.c0, a.c1) # c0mc1 = c0 - c1                            [1 Sub]
-  r.c1.double(a.c1)      # result.c1 = 2 c1                           [1 Dbl, 1 Sub]
-  r.c0.sum(c0mc1, r.c1)  # result.c0 = c0 - c1 + 2 c1                 [1 Add, 1 Dbl, 1 Sub]
-  r.c0 *= c0mc1          # result.c0 = (c0 + c1)(c0 - c1) = c0² - c1² [1 Mul, 1 Add, 1 Dbl, 1 Sub] - 𝔽p temporary
-  r.c1 *= a.c0           # result.c1 = 2 c1 c0                        [2 Mul, 1 Add, 1 Dbl, 1 Sub] - 𝔽p temporary
+  var v0 {.noInit.}, v1 {.noInit.}: typeof(r.c0)
+  v0.diff(a.c0, a.c1)    # v0 = c0 - c1               [1 Sub]
+  v1.sum(a.c0, a.c1)     # v1 = c0 + c1               [1 Dbl, 1 Sub]
+  r.c1.prod(a.c0, a.c1)  # r.c1 = c0 c1               [1 Mul, 1 Dbl, 1 Sub]
+  # aliasing: a unneeded now
+  r.c1.double()          # r.c1 = 2 c0 c1             [1 Mul, 2 Dbl, 1 Sub]
+  r.c0.prod(v0, v1)      # r.c0 = (c0 + c1)(c0 - c1)  [2 Mul, 2 Dbl, 1 Sub]
 
 func prod_complex(r: var QuadraticExt, a, b: QuadraticExt) =
   ## Return a * b in 𝔽p2 = 𝔽p[𝑖] in ``r``
@@ -95,6 +101,7 @@ func prod_complex(r: var QuadraticExt, a, b: QuadraticExt) =
 
     r.c0.sum(a.c0, a.c1)  # r0 = (a0 + a1)                        # [2 Mul, 1 Add]
     r.c1.sum(b.c0, b.c1)  # r1 = (b0 + b1)                        # [2 Mul, 2 Add]
+    # aliasing: a and b unneeded now
     r.c1 *= r.c0          # r1 = (b0 + b1)(a0 + a1)               # [3 Mul, 2 Add] - 𝔽p temporary
 
     r.c0.diff(a0b0, a1b1) # r0 = a0 b0 - a1 b1                    # [3 Mul, 2 Add, 1 Sub]
@@ -115,6 +122,7 @@ func prod_complex(r: var QuadraticExt, a, b: QuadraticExt) =
     else:
       r.c0.sumNoReduce(a.c0, a.c1)   # 5 cycles  - cumul 93
       r.c1.sumNoReduce(b.c0, b.c1)   # 5 cycles  - cumul 98
+    # aliasing: a and b unneeded now
     d.mulNoReduce(r.c0, r.c1)        # 44 cycles - cumul 142
     when msbSet:
       d -= a0b0
@@ -211,23 +219,27 @@ func prod_generic(r: var QuadraticExt, a, b: QuadraticExt) =
   # r0 = a0 b0 + β a1 b1
   # r1 = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1 (Karatsuba)
   mixin prod
-  var t {.noInit.}: typeof(r.c0)
+  var v0 {.noInit.}, v1 {.noInit.}, v2 {.noInit.}: typeof(r.c0)
 
-  # r1 <- (a0 + a1)(b0 + b1)
-  r.c0.sum(a.c0, a.c1)
-  t.sum(b.c0, b.c1)
-  r.c1.prod(r.c0, t)
+  # v2 <- (a0 + a1)(b0 + b1)
+  v0.sum(a.c0, a.c1)
+  v1.sum(b.c0, b.c1)
+  v2.prod(v0, v1)
 
-  # r0 <- a0 b0
+  # v0 <- a0 b0
+  # v1 <- a1 b1
+  v0.prod(a.c0, b.c0)
+  v1.prod(a.c1, b.c1)
+
+  # aliasing: a and b unneeded now
+
   # r1 <- (a0 + a1)(b0 + b1) - a0 b0 - a1 b1
-  r.c0.prod(a.c0, b.c0)
-  t.prod(a.c1, b.c1)
-  r.c1 -= r.c0
-  r.c1 -= t
+  r.c1.diff(v2, v1)
+  r.c1 -= v0
 
   # r0 <- a0 b0 + β a1 b1
-  t *= NonResidue
-  r.c0 += t
+  v1 *= NonResidue
+  r.c0.sum(v0, v1)
 
 func mul_sparse_generic_by_x0(r: var QuadraticExt, a, sparseB: QuadraticExt) =
   ## Multiply `a` by `b` with sparse coordinates (x, 0)
@@ -336,7 +348,7 @@ func inv*(r: var QuadraticExt, a: QuadraticExt) =
   v0.neg(v1)              # v0 = -1 / (a0² - β a1²)
   r.c1.prod(a.c1, v0)     # r1 = -a1 / (a0² - β a1²)
 
-func inv*(a: var QuadraticExt) =
+func inv*(a: var QuadraticExt) {.inline.} =
   ## Compute the multiplicative inverse of ``a``
   ##
   ## The inverse of 0 is 0.
@@ -347,12 +359,10 @@ func inv*(a: var QuadraticExt) =
 
 func `*=`*(a: var QuadraticExt, b: QuadraticExt) {.inline.} =
   ## In-place multiplication
-  # On higher extension field like 𝔽p12,
-  # if `prod` is called on shared in and out buffer, the result is wrong
-  let t = a
-  a.prod(t, b)
+  a.prod(a, b)
 
-func square*(a: var QuadraticExt) {.inline.} =
+func square*(a: var QuadraticExt) =
+  ## In-place squaring
   let t = a
   a.square(t)
 
