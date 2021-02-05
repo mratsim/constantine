@@ -205,8 +205,7 @@ func square_generic(r: var QuadraticExt, a: QuadraticExt) =
   var v0 {.noInit.}, v1 {.noInit.}: typeof(r.c0)
 
   # v1 <- (c0 + β c1)
-  v1 = a.c1
-  v1 *= NonResidue
+  v1.prod(a.c1, NonResidue)
   v1 += a.c0
 
   # v0 <- (c0 + c1)(c0 + β c1)
@@ -351,8 +350,8 @@ func invImpl(r: var QuadraticExt, a: QuadraticExt) =
   when r.fromComplexExtension():
     v0 += v1
   else:
-    var t = v1
-    t *= NonResidue
+    var t {.noInit.}: typeof(r.c0)
+    t.prod(v1, NonResidue)
     v0 -= t               # v0 = a0² - β a1² (the norm / squared magnitude of a)
 
   # [1 Inv, 2 Sqr, 1 Add]
