@@ -30,7 +30,7 @@ echo "frobenius xoshiro512** seed: ", seed
 
 proc test(
        id: int,
-       EC: typedesc[ECP_ShortW_Proj],
+       EC: typedesc[ECP_ShortW_Prj],
        Px0, Px1, Py0, Py1: string,
        Qx0, Qx1, Qy0, Qy1: string
      ) =
@@ -55,7 +55,7 @@ suite "ψ (Psi) - Untwist-Frobenius-Twist Endomorphism on G2 vs SageMath" & " ["
   # - sage sage/frobenius_bls12_381.sage
   test(
     id = 0,
-    EC = ECP_ShortW_Proj[Fp2[BN254_Snarks], OnTwist],
+    EC = ECP_ShortW_Prj[Fp2[BN254_Snarks], OnTwist],
     Px0 = "598e4c8c14c24c90834f2debedee4db3d31fed98a5134177704bfec14f46cb5",
     Px1 = "c6fffa61daeb7caaf96983e70f164931d958c6820b205cdde19f2fa1eaaa7b1",
     Py0 = "2f5fa252a27df56f5ca2e9c3382c17e531d317d50396f3fe952704304946a5a",
@@ -68,7 +68,7 @@ suite "ψ (Psi) - Untwist-Frobenius-Twist Endomorphism on G2 vs SageMath" & " ["
 
   test(
     id = 1,
-    EC = ECP_ShortW_Proj[Fp2[BN254_Snarks], OnTwist],
+    EC = ECP_ShortW_Prj[Fp2[BN254_Snarks], OnTwist],
     Px0 = "21014830dd88a0e7961e704cea531200866c5df46cb25aa3e2aac8d4fec64c6e",
     Px1 = "1db17d8364def10443beab6e4a055c210d3e49c7c3af31e9cfb66d829938dca7",
     Py0 = "1394ab8c346ad3eba14fa14789d3bbfc2deed5a7a510da8e9418580515d27bda",
@@ -81,7 +81,7 @@ suite "ψ (Psi) - Untwist-Frobenius-Twist Endomorphism on G2 vs SageMath" & " ["
 
   test(
     id = 2,
-    EC = ECP_ShortW_Proj[Fp2[BN254_Snarks], OnTwist],
+    EC = ECP_ShortW_Prj[Fp2[BN254_Snarks], OnTwist],
     Px0 = "46f2a2be9a3e19c1bb484fc37703ff64c3d7379de22249ccf0881037948beec",
     Px1 = "10a5aaae14cb028f4ff4b81d41b712038b9f620a99e208c23504887e56831806",
     Py0 = "2e6c3ebe0f3dada0063dc59f85fe2264dc3502bf65206336106a8d39d838a7b2",
@@ -94,7 +94,7 @@ suite "ψ (Psi) - Untwist-Frobenius-Twist Endomorphism on G2 vs SageMath" & " ["
 
   test(
     id = 3,
-    EC = ECP_ShortW_Proj[Fp2[BN254_Snarks], OnTwist],
+    EC = ECP_ShortW_Prj[Fp2[BN254_Snarks], OnTwist],
     Px0 = "1cf3af1d41e89d8df378aa81463a978c021f27f4a48387e74655ce2cf5c1f298",
     Px1 = "36553e80e5c7c7360c7a2ae6bf1b8f68eb48804fc7eba7d2f56f09e87bbb0b1",
     Py0 = "25f03e551d74b6be3268bf001905dfbe0bcbe43a2d1aac645a3ca8650b52e551",
@@ -109,7 +109,7 @@ suite "ψ (Psi) - Untwist-Frobenius-Twist Endomorphism on G2 vs SageMath" & " ["
 
   test(
     id = 0,
-    EC = ECP_ShortW_Proj[Fp2[BLS12_377], OnTwist],
+    EC = ECP_ShortW_Prj[Fp2[BLS12_377], OnTwist],
     Px0 = "112de13b7cd42bccdb005f2d4dc2726f360243103335ef6cf5e217e777554ae7c1deff5ddb5bcbb581fc9f13728a439",
     Px1 = "10d1a8963e5c6854d5e610ece9914f9b5619c27652be1e9ec3e87687d63ed5d45b449bf59c2481e18ac6159f75966ac",
     Py0 = "8aaf3a8660cf0edd6e97a2cd7837af1c63ec89e18f9bf4c64638662a661636b928a4f8097e6a2e8dfa11e13c51b075",
@@ -122,7 +122,7 @@ suite "ψ (Psi) - Untwist-Frobenius-Twist Endomorphism on G2 vs SageMath" & " ["
 
   test(
     id = 1,
-    EC = ECP_ShortW_Proj[Fp2[BLS12_377], OnTwist],
+    EC = ECP_ShortW_Prj[Fp2[BLS12_377], OnTwist],
     Px0 = "2f9318360b53c2d706061f527571e91679e6086a72ce8203ba1a04850f83bb192b29307e9b2d63feb1d23979e3f632",
     Px1 = "3cbab0789968a3a35fa5d2e2326baa40c34d11a4af05a4109350944300ce32eef74dc5e47ba46717bd8bf87604696d",
     Py0 = "14ea84922f76f2681fec869dce26141392975dcdb4f21d5fa8aec06b37bf71ba6249c219ecbaef4a266196dafb4ad19",
@@ -135,7 +135,7 @@ suite "ψ (Psi) - Untwist-Frobenius-Twist Endomorphism on G2 vs SageMath" & " ["
 
   test(
     id = 2,
-    EC = ECP_ShortW_Proj[Fp2[BLS12_377], OnTwist],
+    EC = ECP_ShortW_Prj[Fp2[BLS12_377], OnTwist],
     Px0 = "833ca23630be463c388ea6cfcff5b0e3b055065702a84310d2c726aee14d9e140cba05be79b5cb0441816d9e8c8370",
     Px1 = "264a9755524baac8d9e53b0a45789e9dafcb6b453e965061fcfa20bb12a27d9b9417d5277ae2a499b1cfe567d75e2d",
     Py0 = "5b670b9789825e2b48101b5b6e660cf9117e29c521dad54640cb356b674b3946c98cb43909c3495fb6d6d231891b7e",
@@ -148,7 +148,7 @@ suite "ψ (Psi) - Untwist-Frobenius-Twist Endomorphism on G2 vs SageMath" & " ["
 
   test(
     id = 3,
-    EC = ECP_ShortW_Proj[Fp2[BLS12_377], OnTwist],
+    EC = ECP_ShortW_Prj[Fp2[BLS12_377], OnTwist],
     Px0 = "14cd89e2e2755ddc086f63fd62e1f9904c3c1497243455c578a963e81b389f04e95ceafc4f47dc777579cdc82eca79b",
     Px1 = "ba8801beba0654f20ccb78783efa7a911d182ec0eb99abe10f9a3d26b46fb7f90552e4ff6beb4df4611a9072be648b",
     Py0 = "12e23bc97d891f2a047bac9c90e728cb89760c812156f96c95e36c40f1c830cf6ecbb5d407b189070d48a92eb461ea6",
@@ -163,7 +163,7 @@ suite "ψ (Psi) - Untwist-Frobenius-Twist Endomorphism on G2 vs SageMath" & " ["
 
   test(
     id = 0,
-    EC = ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist],
+    EC = ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist],
     Px0 = "d6904be428a0310dbd6e15a744a774bcf9800abe27536267a5383f1ddbd7783e1dc20098a8e045e3cca66b83f6d7f0f",
     Px1 = "12107f6ef71d0d1e3bcba9e00a0675d3080519dd1b6c086bd660eb2d2bca8f276e283a891b5c0615064d7886af625cf2",
     Py0 = "c592a3546d2d61d671070909e97860822db0a389e351c1744bdbb2c472cf52f3ca3e94068b0b6f3b0121923659131f5",
@@ -176,7 +176,7 @@ suite "ψ (Psi) - Untwist-Frobenius-Twist Endomorphism on G2 vs SageMath" & " ["
 
   test(
     id = 1,
-    EC = ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist],
+    EC = ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist],
     Px0 = "112de130b7cd42bccdb005f2d4dc2726f360243103335ef6cf5e217e777554ae7c1deff5ddb5bcbb581fc9f13728a439",
     Px1 = "10d1a89a63e5c6854d5e610ece9914f9b5619c27652be1e9ec3e87687d63ed5d45b449bf59c2481e18ac6159f75966ac",
     Py0 = "11261c8fcb0f4f560479547fe6b2a1c1e8b648d87e54c39f299eba8729294e99b415851d134ca31e8bb861c42e6f1022",
@@ -189,7 +189,7 @@ suite "ψ (Psi) - Untwist-Frobenius-Twist Endomorphism on G2 vs SageMath" & " ["
 
   test(
     id = 2,
-    EC = ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist],
+    EC = ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist],
     Px0 = "2f93183360b53c2d706061f527571e91679e6086a72ce8203ba1a04850f83bb192b29307e9b2d63feb1d23979e3f632",
     Px1 = "3cbab0c789968a3a35fa5d2e2326baa40c34d11a4af05a4109350944300ce32eef74dc5e47ba46717bd8bf87604696d",
     Py0 = "2b8d995b0f2114442b7bbdbe5732fbf94430d6d413e1f388031f3abb956e598cb6764275a75832c1670868c458378b6",
@@ -202,7 +202,7 @@ suite "ψ (Psi) - Untwist-Frobenius-Twist Endomorphism on G2 vs SageMath" & " ["
 
   test(
     id = 3,
-    EC = ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist],
+    EC = ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist],
     Px0 = "d7d1c55ddf8bd03b7a15c3ea4f8f69aee37bf282d4aac82b7bd1fd47139250b9c708997a7ff8f603e48f0471c2cfe03",
     Px1 = "d145a91934a6ad865d24ab556ae1e6c42decdd05d676b80e53365a6ff7536332859c9682e7200e40515f675415d71a3",
     Py0 = "6de67fa12af93813a42612b1e9449c7b1f160c5de004ec26ea61010e48ba38dcf158d2692f347fdc6c6332bbec7106f",
@@ -240,11 +240,11 @@ suite "ψ - psi(psi(P)) == psi2(P) - (Untwist-Frobenius-Twist Endomorphism)" & "
       test(EC, randZ = false, gen = Long01Sequence)
       test(EC, randZ = true, gen = Long01Sequence)
 
-  testAll(ECP_ShortW_Proj[Fp2[BN254_Nogami], OnTwist])
-  testAll(ECP_ShortW_Proj[Fp2[BN254_Snarks], OnTwist])
-  testAll(ECP_ShortW_Proj[Fp2[BLS12_377], OnTwist])
-  testAll(ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist])
-  testAll(ECP_ShortW_Proj[Fp[BW6_761], OnTwist])
+  testAll(ECP_ShortW_Prj[Fp2[BN254_Nogami], OnTwist])
+  testAll(ECP_ShortW_Prj[Fp2[BN254_Snarks], OnTwist])
+  testAll(ECP_ShortW_Prj[Fp2[BLS12_377], OnTwist])
+  testAll(ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist])
+  testAll(ECP_ShortW_Prj[Fp[BW6_761], OnTwist])
 
 suite "ψ²(P) - [t]ψ(P) + [p]P = Inf" & " [" & $WordBitwidth & "-bit mode]":
   const Iters = 10
@@ -307,11 +307,11 @@ suite "ψ²(P) - [t]ψ(P) + [p]P = Inf" & " [" & $WordBitwidth & "-bit mode]":
       test(EC, randZ = false, gen = Long01Sequence)
       test(EC, randZ = true, gen = Long01Sequence)
 
-  testAll(ECP_ShortW_Proj[Fp2[BN254_Nogami], OnTwist])
-  testAll(ECP_ShortW_Proj[Fp2[BN254_Snarks], OnTwist])
-  testAll(ECP_ShortW_Proj[Fp2[BLS12_377], OnTwist])
-  testAll(ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist])
-  testAll(ECP_ShortW_Proj[Fp[BW6_761], OnTwist])
+  testAll(ECP_ShortW_Prj[Fp2[BN254_Nogami], OnTwist])
+  testAll(ECP_ShortW_Prj[Fp2[BN254_Snarks], OnTwist])
+  testAll(ECP_ShortW_Prj[Fp2[BLS12_377], OnTwist])
+  testAll(ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist])
+  testAll(ECP_ShortW_Prj[Fp[BW6_761], OnTwist])
 
 suite "ψ⁴(P) - ψ²(P) + P = Inf (k-th cyclotomic polynomial with embedding degree k=12)" & " [" & $WordBitwidth & "-bit mode]":
   const Iters = 10
@@ -338,10 +338,10 @@ suite "ψ⁴(P) - ψ²(P) + P = Inf (k-th cyclotomic polynomial with embedding d
       test(EC, randZ = false, gen = Long01Sequence)
       test(EC, randZ = true, gen = Long01Sequence)
 
-  testAll(ECP_ShortW_Proj[Fp2[BN254_Nogami], OnTwist])
-  testAll(ECP_ShortW_Proj[Fp2[BN254_Snarks], OnTwist])
-  testAll(ECP_ShortW_Proj[Fp2[BLS12_377], OnTwist])
-  testAll(ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist])
+  testAll(ECP_ShortW_Prj[Fp2[BN254_Nogami], OnTwist])
+  testAll(ECP_ShortW_Prj[Fp2[BN254_Snarks], OnTwist])
+  testAll(ECP_ShortW_Prj[Fp2[BLS12_377], OnTwist])
+  testAll(ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist])
 
 suite "ψ²(P) - ψ(P) + P = Inf (k-th cyclotomic polynomial with embedding degree k=6)" & " [" & $WordBitwidth & "-bit mode]":
   const Iters = 10
@@ -368,4 +368,4 @@ suite "ψ²(P) - ψ(P) + P = Inf (k-th cyclotomic polynomial with embedding degr
       test(EC, randZ = false, gen = Long01Sequence)
       test(EC, randZ = true, gen = Long01Sequence)
 
-  testAll(ECP_ShortW_Proj[Fp[BW6_761], OnTwist])
+  testAll(ECP_ShortW_Prj[Fp[BW6_761], OnTwist])

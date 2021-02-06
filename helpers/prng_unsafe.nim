@@ -233,7 +233,7 @@ func random_long01Seq(rng: var RngState, a: var ExtensionField) =
 # Elliptic curves
 # ------------------------------------------------------------
 
-func random_unsafe(rng: var RngState, a: var (ECP_ShortW_Proj or ECP_ShortW_Aff or ECP_ShortW_Jac)) =
+func random_unsafe(rng: var RngState, a: var (ECP_ShortW_Prj or ECP_ShortW_Aff or ECP_ShortW_Jac)) =
   ## Initialize a random curve point with Z coordinate == 1
   ## Unsafe: for testing and benchmarking purposes only
   var fieldElem {.noInit.}: a.F
@@ -245,7 +245,7 @@ func random_unsafe(rng: var RngState, a: var (ECP_ShortW_Proj or ECP_ShortW_Aff 
     rng.random_unsafe(fieldElem)
     success = trySetFromCoordX(a, fieldElem)
 
-func random_unsafe_with_randZ(rng: var RngState, a: var (ECP_ShortW_Proj or ECP_ShortW_Jac)) =
+func random_unsafe_with_randZ(rng: var RngState, a: var (ECP_ShortW_Prj or ECP_ShortW_Jac)) =
   ## Initialize a random curve point with Z coordinate being random
   ## Unsafe: for testing and benchmarking purposes only
   var Z{.noInit.}: a.F
@@ -258,7 +258,7 @@ func random_unsafe_with_randZ(rng: var RngState, a: var (ECP_ShortW_Proj or ECP_
     rng.random_unsafe(fieldElem)
     success = trySetFromCoordsXandZ(a, fieldElem, Z)
 
-func random_highHammingWeight(rng: var RngState, a: var (ECP_ShortW_Proj or ECP_ShortW_Aff or ECP_ShortW_Jac)) =
+func random_highHammingWeight(rng: var RngState, a: var (ECP_ShortW_Prj or ECP_ShortW_Aff or ECP_ShortW_Jac)) =
   ## Initialize a random curve point with Z coordinate == 1
   ## This will be generated with a biaised RNG with high Hamming Weight
   ## to trigger carry bugs
@@ -271,7 +271,7 @@ func random_highHammingWeight(rng: var RngState, a: var (ECP_ShortW_Proj or ECP_
     rng.random_highHammingWeight(fieldElem)
     success = trySetFromCoordX(a, fieldElem)
 
-func random_highHammingWeight_with_randZ(rng: var RngState, a: var (ECP_ShortW_Proj or ECP_ShortW_Jac)) =
+func random_highHammingWeight_with_randZ(rng: var RngState, a: var (ECP_ShortW_Prj or ECP_ShortW_Jac)) =
   ## Initialize a random curve point with Z coordinate == 1
   ## This will be generated with a biaised RNG with high Hamming Weight
   ## to trigger carry bugs
@@ -285,7 +285,7 @@ func random_highHammingWeight_with_randZ(rng: var RngState, a: var (ECP_ShortW_P
     rng.random_highHammingWeight(fieldElem)
     success = trySetFromCoordsXandZ(a, fieldElem, Z)
 
-func random_long01Seq(rng: var RngState, a: var (ECP_ShortW_Proj or ECP_ShortW_Aff or ECP_ShortW_Jac)) =
+func random_long01Seq(rng: var RngState, a: var (ECP_ShortW_Prj or ECP_ShortW_Aff or ECP_ShortW_Jac)) =
   ## Initialize a random curve point with Z coordinate == 1
   ## This will be generated with a biaised RNG
   ## that produces long bitstrings of 0 and 1
@@ -299,7 +299,7 @@ func random_long01Seq(rng: var RngState, a: var (ECP_ShortW_Proj or ECP_ShortW_A
     rng.random_long01Seq(fieldElem)
     success = trySetFromCoordX(a, fieldElem)
 
-func random_long01Seq_with_randZ(rng: var RngState, a: var (ECP_ShortW_Proj or ECP_ShortW_Jac)) =
+func random_long01Seq_with_randZ(rng: var RngState, a: var (ECP_ShortW_Prj or ECP_ShortW_Jac)) =
   ## Initialize a random curve point with Z coordinate == 1
   ## This will be generated with a biaised RNG
   ## that produces long bitstrings of 0 and 1
@@ -320,7 +320,7 @@ func random_long01Seq_with_randZ(rng: var RngState, a: var (ECP_ShortW_Proj or E
 func random_unsafe*(rng: var RngState, T: typedesc): T =
   ## Create a random Field or Extension Field or Curve Element
   ## Unsafe: for testing and benchmarking purposes only
-  when T is (ECP_ShortW_Proj or ECP_ShortW_Aff or ECP_ShortW_Jac):
+  when T is (ECP_ShortW_Prj or ECP_ShortW_Aff or ECP_ShortW_Jac):
     rng.random_unsafe(result)
   elif T is SomeNumber:
     cast[T](rng.next()) # TODO: Rely on casting integer actually converting in C (i.e. uint64->uint32 is valid)
@@ -329,7 +329,7 @@ func random_unsafe*(rng: var RngState, T: typedesc): T =
   else: # Fields
     rng.random_unsafe(result)
 
-func random_unsafe_with_randZ*(rng: var RngState, T: typedesc[ECP_ShortW_Proj or ECP_ShortW_Jac]): T =
+func random_unsafe_with_randZ*(rng: var RngState, T: typedesc[ECP_ShortW_Prj or ECP_ShortW_Jac]): T =
   ## Create a random curve element with a random Z coordinate
   ## Unsafe: for testing and benchmarking purposes only
   rng.random_unsafe_with_randZ(result)
@@ -337,7 +337,7 @@ func random_unsafe_with_randZ*(rng: var RngState, T: typedesc[ECP_ShortW_Proj or
 func random_highHammingWeight*(rng: var RngState, T: typedesc): T =
   ## Create a random Field or Extension Field or Curve Element
   ## Skewed towards high Hamming Weight
-  when T is (ECP_ShortW_Proj or ECP_ShortW_Aff or ECP_ShortW_Jac):
+  when T is (ECP_ShortW_Prj or ECP_ShortW_Aff or ECP_ShortW_Jac):
     rng.random_highHammingWeight(result)
   elif T is SomeNumber:
     cast[T](rng.next()) # TODO: Rely on casting integer actually converting in C (i.e. uint64->uint32 is valid)
@@ -346,7 +346,7 @@ func random_highHammingWeight*(rng: var RngState, T: typedesc): T =
   else: # Fields
     rng.random_highHammingWeight(result)
 
-func random_highHammingWeight_with_randZ*(rng: var RngState, T: typedesc[ECP_ShortW_Proj or ECP_ShortW_Jac]): T =
+func random_highHammingWeight_with_randZ*(rng: var RngState, T: typedesc[ECP_ShortW_Prj or ECP_ShortW_Jac]): T =
   ## Create a random curve element with a random Z coordinate
   ## Skewed towards high Hamming Weight
   rng.random_highHammingWeight_with_randZ(result)
@@ -354,7 +354,7 @@ func random_highHammingWeight_with_randZ*(rng: var RngState, T: typedesc[ECP_Sho
 func random_long01Seq*(rng: var RngState, T: typedesc): T =
   ## Create a random Field or Extension Field or Curve Element
   ## Skewed towards long bitstrings of 0 or 1
-  when T is (ECP_ShortW_Proj or ECP_ShortW_Aff or ECP_ShortW_Jac):
+  when T is (ECP_ShortW_Prj or ECP_ShortW_Aff or ECP_ShortW_Jac):
     rng.random_long01Seq(result)
   elif T is SomeNumber:
     cast[T](rng.next()) # TODO: Rely on casting integer actually converting in C (i.e. uint64->uint32 is valid)
@@ -363,7 +363,7 @@ func random_long01Seq*(rng: var RngState, T: typedesc): T =
   else: # Fields
     rng.random_long01Seq(result)
 
-func random_long01Seq_with_randZ*(rng: var RngState, T: typedesc[ECP_ShortW_Proj or ECP_ShortW_Jac]): T =
+func random_long01Seq_with_randZ*(rng: var RngState, T: typedesc[ECP_ShortW_Prj or ECP_ShortW_Jac]): T =
   ## Create a random curve element with a random Z coordinate
   ## Skewed towards long bitstrings of 0 or 1
   rng.random_long01Seq_with_randZ(result)

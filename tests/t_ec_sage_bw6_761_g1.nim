@@ -21,7 +21,7 @@ import
 # TODO: upstream
 
 run_scalar_mul_test_vs_sage(
-  ECP_ShortW_Proj[Fp[BW6_761], NotOnTwist],
+  ECP_ShortW_Prj[Fp[BW6_761], NotOnTwist],
   "t_ec_sage_bw6_761_g1_projective"
 )
 
@@ -31,7 +31,7 @@ run_scalar_mul_test_vs_sage(
 )
 
 # run_scalar_mul_test_vs_sage(
-#   ECP_ShortW_Proj[Fp[BW6_761], OnTwist],
+#   ECP_ShortW_Prj[Fp[BW6_761], OnTwist],
 #   "t_ec_sage_bw6_761_g2_projective"
 # )
 

@@ -26,7 +26,7 @@ import
   ./support/ec_reference_scalar_mult
 
 func testAddAssociativity[EC](a, b, c: EC) =
-  var tmp1{.noInit.}, tmp2{.noInit.}: ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist]
+  var tmp1{.noInit.}, tmp2{.noInit.}: ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist]
 
   # r0 = (a + b) + c
   tmp1.sum(a, b)
@@ -63,7 +63,7 @@ func testAddAssociativity[EC](a, b, c: EC) =
 suite "Short Weierstrass Elliptic Curve - Edge cases [" & $WordBitwidth & "-bit mode]":
   test "EC Add G2 is associative - #60":
 
-    var a, b, c: ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist]
+    var a, b, c: ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist]
     var ax, az, bx, bz, cx, cz: Fp2[BLS12_381]
 
     ax.fromHex(
@@ -101,7 +101,7 @@ suite "Short Weierstrass Elliptic Curve - Edge cases [" & $WordBitwidth & "-bit 
 
   test "EC Add G2 is associative - #65-1":
 
-    var a, b, c: ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist]
+    var a, b, c: ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist]
     var ax, az, bx, bz, cx, cz: Fp2[BLS12_381]
 
     ax.fromHex(
@@ -139,7 +139,7 @@ suite "Short Weierstrass Elliptic Curve - Edge cases [" & $WordBitwidth & "-bit 
 
   test "EC Add G2 is associative - #65-2":
 
-    var a, b, c: ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist]
+    var a, b, c: ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist]
     var ax, az, bx, bz, cx, cz: Fp2[BLS12_381]
 
     ax.fromHex(

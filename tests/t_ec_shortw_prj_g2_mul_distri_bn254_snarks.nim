@@ -19,7 +19,7 @@ const
   ItersMul = Iters div 4
 
 run_EC_mul_distributive_tests(
-    ec = ECP_ShortW_Proj[Fp2[BN254_Snarks], OnTwist],
+    ec = ECP_ShortW_Prj[Fp2[BN254_Snarks], OnTwist],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_projective_g2_mul_distributive_" & $BN254_Snarks
   )

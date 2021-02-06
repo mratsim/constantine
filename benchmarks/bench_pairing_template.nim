@@ -52,8 +52,8 @@ func random_point*(rng: var RngState, EC: typedesc): EC {.noInit.} =
 
 proc lineDoubleBench*(C: static Curve, iters: int) =
   var line: Line[Fp2[C]]
-  var T = rng.random_point(ECP_ShortW_Proj[Fp2[C], OnTwist])
-  let P = rng.random_point(ECP_ShortW_Proj[Fp[C], NotOnTwist])
+  var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], OnTwist])
+  let P = rng.random_point(ECP_ShortW_Prj[Fp[C], NotOnTwist])
   var Paff: ECP_ShortW_Aff[Fp[C], NotOnTwist]
   Paff.affineFromProjective(P)
   bench("Line double", C, iters):
@@ -61,10 +61,10 @@ proc lineDoubleBench*(C: static Curve, iters: int) =
 
 proc lineAddBench*(C: static Curve, iters: int) =
   var line: Line[Fp2[C]]
-  var T = rng.random_point(ECP_ShortW_Proj[Fp2[C], OnTwist])
+  var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], OnTwist])
   let
-    P = rng.random_point(ECP_ShortW_Proj[Fp[C], NotOnTwist])
-    Q = rng.random_point(ECP_ShortW_Proj[Fp2[C], OnTwist])
+    P = rng.random_point(ECP_ShortW_Prj[Fp[C], NotOnTwist])
+    Q = rng.random_point(ECP_ShortW_Prj[Fp2[C], OnTwist])
   var
     Paff: ECP_ShortW_Aff[Fp[C], NotOnTwist]
     Qaff: ECP_ShortW_Aff[Fp2[C], OnTwist]
@@ -75,8 +75,8 @@ proc lineAddBench*(C: static Curve, iters: int) =
 
 proc mulFp12byLine_xyz000_Bench*(C: static Curve, iters: int) =
   var line: Line[Fp2[C]]
-  var T = rng.random_point(ECP_ShortW_Proj[Fp2[C], OnTwist])
-  let P = rng.random_point(ECP_ShortW_Proj[Fp[C], NotOnTwist])
+  var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], OnTwist])
+  let P = rng.random_point(ECP_ShortW_Prj[Fp[C], NotOnTwist])
   var Paff: ECP_ShortW_Aff[Fp[C], NotOnTwist]
   Paff.affineFromProjective(P)
 
@@ -88,8 +88,8 @@ proc mulFp12byLine_xyz000_Bench*(C: static Curve, iters: int) =
 
 proc mulFp12byLine_xy000z_Bench*(C: static Curve, iters: int) =
   var line: Line[Fp2[C]]
-  var T = rng.random_point(ECP_ShortW_Proj[Fp2[C], OnTwist])
-  let P = rng.random_point(ECP_ShortW_Proj[Fp[C], NotOnTwist])
+  var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], OnTwist])
+  let P = rng.random_point(ECP_ShortW_Prj[Fp[C], NotOnTwist])
   var Paff: ECP_ShortW_Aff[Fp[C], NotOnTwist]
   Paff.affineFromProjective(P)
 
@@ -101,8 +101,8 @@ proc mulFp12byLine_xy000z_Bench*(C: static Curve, iters: int) =
 
 proc millerLoopBLS12Bench*(C: static Curve, iters: int) =
   let
-    P = rng.random_point(ECP_ShortW_Proj[Fp[C], NotOnTwist])
-    Q = rng.random_point(ECP_ShortW_Proj[Fp2[C], OnTwist])
+    P = rng.random_point(ECP_ShortW_Prj[Fp[C], NotOnTwist])
+    Q = rng.random_point(ECP_ShortW_Prj[Fp2[C], OnTwist])
   var
     Paff: ECP_ShortW_Aff[Fp[C], NotOnTwist]
     Qaff: ECP_ShortW_Aff[Fp2[C], OnTwist]
@@ -116,8 +116,8 @@ proc millerLoopBLS12Bench*(C: static Curve, iters: int) =
 
 proc millerLoopBNBench*(C: static Curve, iters: int) =
   let
-    P = rng.random_point(ECP_ShortW_Proj[Fp[C], NotOnTwist])
-    Q = rng.random_point(ECP_ShortW_Proj[Fp2[C], OnTwist])
+    P = rng.random_point(ECP_ShortW_Prj[Fp[C], NotOnTwist])
+    Q = rng.random_point(ECP_ShortW_Prj[Fp2[C], OnTwist])
   var
     Paff: ECP_ShortW_Aff[Fp[C], NotOnTwist]
     Qaff: ECP_ShortW_Aff[Fp2[C], OnTwist]
@@ -160,8 +160,8 @@ proc finalExpBNBench*(C: static Curve, iters: int) =
 
 proc pairingBLS12Bench*(C: static Curve, iters: int) =
   let
-    P = rng.random_point(ECP_ShortW_Proj[Fp[C], NotOnTwist])
-    Q = rng.random_point(ECP_ShortW_Proj[Fp2[C], OnTwist])
+    P = rng.random_point(ECP_ShortW_Prj[Fp[C], NotOnTwist])
+    Q = rng.random_point(ECP_ShortW_Prj[Fp2[C], OnTwist])
 
   var f: Fp12[C]
 
@@ -170,8 +170,8 @@ proc pairingBLS12Bench*(C: static Curve, iters: int) =
 
 proc pairingBNBench*(C: static Curve, iters: int) =
   let
-    P = rng.random_point(ECP_ShortW_Proj[Fp[C], NotOnTwist])
-    Q = rng.random_point(ECP_ShortW_Proj[Fp2[C], OnTwist])
+    P = rng.random_point(ECP_ShortW_Prj[Fp[C], NotOnTwist])
+    Q = rng.random_point(ECP_ShortW_Prj[Fp2[C], OnTwist])
 
   var f: Fp12[C]
 

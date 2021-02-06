@@ -19,7 +19,7 @@ const
   ItersMul = Iters div 4
 
 run_EC_mul_sanity_tests(
-    ec = ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist],
+    ec = ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_projective_g2_mul_sanity_" & $BLS12_381
   )
@@ -52,5 +52,5 @@ run_EC_mul_sanity_tests(
 #         bool(impl.isInf())
 #         bool(reference.isInf())
 #
-#   test(ECP_ShortW_Proj[Fp2[BLS12_381]], bits = BLS12_381.getCurveOrderBitwidth(), randZ = false)
-#   test(ECP_ShortW_Proj[Fp2[BLS12_381]], bits = BLS12_381.getCurveOrderBitwidth(), randZ = true)
+#   test(ECP_ShortW_Prj[Fp2[BLS12_381]], bits = BLS12_381.getCurveOrderBitwidth(), randZ = false)
+#   test(ECP_ShortW_Prj[Fp2[BLS12_381]], bits = BLS12_381.getCurveOrderBitwidth(), randZ = true)

@@ -17,25 +17,25 @@ const
   Iters = 1
 
 run_EC_addition_tests(
-    ec = ECP_ShortW_Proj[Fp[BN254_Snarks], NotOnTwist],
+    ec = ECP_ShortW_Prj[Fp[BN254_Snarks], NotOnTwist],
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_projective_g1_add_double_" & $BN254_Snarks
   )
 
 run_EC_addition_tests(
-    ec = ECP_ShortW_Proj[Fp[BLS12_381], NotOnTwist],
+    ec = ECP_ShortW_Prj[Fp[BLS12_381], NotOnTwist],
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_projective_g1_add_double_" & $BLS12_381
   )
 
 run_EC_addition_tests(
-    ec = ECP_ShortW_Proj[Fp[BLS12_377], NotOnTwist],
+    ec = ECP_ShortW_Prj[Fp[BLS12_377], NotOnTwist],
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_projective_g1_add_double_" & $BLS12_377
   )
 
 run_EC_addition_tests(
-    ec = ECP_ShortW_Proj[Fp[BW6_761], NotOnTwist],
+    ec = ECP_ShortW_Prj[Fp[BW6_761], NotOnTwist],
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_projective_g1_add_double_" & $BW6_761
   )

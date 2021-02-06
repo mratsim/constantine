@@ -28,8 +28,8 @@ func random_point*(rng: var RngState, EC: typedesc): EC {.noInit.} =
 
 proc pairingBLS12Meter*(C: static Curve) =
   let
-    P = rng.random_point(ECP_ShortW_Proj[Fp[C], NotOnTwist])
-    Q = rng.random_point(ECP_ShortW_Proj[Fp2[C], OnTwist])
+    P = rng.random_point(ECP_ShortW_Prj[Fp[C], NotOnTwist])
+    Q = rng.random_point(ECP_ShortW_Prj[Fp2[C], OnTwist])
 
   var f: Fp12[C]
 

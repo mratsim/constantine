@@ -17,7 +17,7 @@ const
   Iters = 8
 
 run_EC_addition_tests(
-    ec = ECP_ShortW_Proj[Fp[BW6_761], OnTwist],
+    ec = ECP_ShortW_Prj[Fp[BW6_761], OnTwist],
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_projective_g2_add_double_" & $BW6_761
   )

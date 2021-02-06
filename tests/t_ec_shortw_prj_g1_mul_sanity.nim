@@ -24,7 +24,7 @@ const
   ItersMul = Iters div 4
 
 run_EC_mul_sanity_tests(
-    ec = ECP_ShortW_Proj[Fp[BN254_Snarks], NotOnTwist],
+    ec = ECP_ShortW_Prj[Fp[BN254_Snarks], NotOnTwist],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_projective_g1_mul_sanity_" & $BN254_Snarks
   )
@@ -56,8 +56,8 @@ suite "Order checks on BN254_Snarks":
           bool(impl.isInf())
           bool(reference.isInf())
 
-    test(ECP_ShortW_Proj[Fp[BN254_Snarks], NotOnTwist], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = false)
-    test(ECP_ShortW_Proj[Fp[BN254_Snarks], NotOnTwist], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = true)
+    test(ECP_ShortW_Prj[Fp[BN254_Snarks], NotOnTwist], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = false)
+    test(ECP_ShortW_Prj[Fp[BN254_Snarks], NotOnTwist], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = true)
     # TODO: BLS12 is using a subgroup of order "r" such as r*h = CurveOrder
     #       with h the curve cofactor
     #       instead of the full group
@@ -74,19 +74,19 @@ suite "Order checks on BN254_Snarks":
       bool not ay.sqrt_if_square()
 
 run_EC_mul_sanity_tests(
-    ec = ECP_ShortW_Proj[Fp[BLS12_381], NotOnTwist],
+    ec = ECP_ShortW_Prj[Fp[BLS12_381], NotOnTwist],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_projective_g1_mul_sanity_" & $BLS12_381
   )
 
 run_EC_mul_sanity_tests(
-    ec = ECP_ShortW_Proj[Fp[BLS12_377], NotOnTwist],
+    ec = ECP_ShortW_Prj[Fp[BLS12_377], NotOnTwist],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_projective_g1_mul_sanity_" & $BLS12_377
   )
 
 run_EC_mul_sanity_tests(
-    ec = ECP_ShortW_Proj[Fp[BW6_761], NotOnTwist],
+    ec = ECP_ShortW_Prj[Fp[BW6_761], NotOnTwist],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_projective_g1_mul_sanity_" & $BW6_761
   )

@@ -201,29 +201,29 @@ Pairing BLS12                                                BLS12_381          
 
 ```
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-EC Add G1                                                    ECP_ShortW_Proj[Fp[BLS12_381]]               2118644.068 ops/s           472 ns/op          1416 CPU cycles (approx)
+EC Add G1                                                    ECP_ShortW_Prj[Fp[BLS12_381]]               2118644.068 ops/s           472 ns/op          1416 CPU cycles (approx)
 EC Add G1                                                    ECP_ShortW_Jac[Fp[BLS12_381]]                1818181.818 ops/s           550 ns/op          1652 CPU cycles (approx)
-EC Mixed Addition G1                                         ECP_ShortW_Proj[Fp[BLS12_381]]               2427184.466 ops/s           412 ns/op          1236 CPU cycles (approx)
-EC Double G1                                                 ECP_ShortW_Proj[Fp[BLS12_381]]               3460207.612 ops/s           289 ns/op           867 CPU cycles (approx)
+EC Mixed Addition G1                                         ECP_ShortW_Prj[Fp[BLS12_381]]               2427184.466 ops/s           412 ns/op          1236 CPU cycles (approx)
+EC Double G1                                                 ECP_ShortW_Prj[Fp[BLS12_381]]               3460207.612 ops/s           289 ns/op           867 CPU cycles (approx)
 EC Double G1                                                 ECP_ShortW_Jac[Fp[BLS12_381]]                3717472.119 ops/s           269 ns/op           809 CPU cycles (approx)
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-EC Projective to Affine G1                                   ECP_ShortW_Proj[Fp[BLS12_381]]                 72020.166 ops/s         13885 ns/op         41656 CPU cycles (approx)
+EC Projective to Affine G1                                   ECP_ShortW_Prj[Fp[BLS12_381]]                 72020.166 ops/s         13885 ns/op         41656 CPU cycles (approx)
 EC Jacobian to Affine G1                                     ECP_ShortW_Jac[Fp[BLS12_381]]                  71989.058 ops/s         13891 ns/op         41673 CPU cycles (approx)
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-EC ScalarMul G1 (unsafe reference DoubleAdd)                 ECP_ShortW_Proj[Fp[BLS12_381]]                  7260.266 ops/s        137736 ns/op        413213 CPU cycles (approx)
+EC ScalarMul G1 (unsafe reference DoubleAdd)                 ECP_ShortW_Prj[Fp[BLS12_381]]                  7260.266 ops/s        137736 ns/op        413213 CPU cycles (approx)
 EC ScalarMul G1 (unsafe reference DoubleAdd)                 ECP_ShortW_Jac[Fp[BLS12_381]]                   7140.970 ops/s        140037 ns/op        420115 CPU cycles (approx)
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-EC ScalarMul Generic G1 (window = 2, scratchsize = 4)        ECP_ShortW_Proj[Fp[BLS12_381]]                  5036.946 ops/s        198533 ns/op        595606 CPU cycles (approx)
-EC ScalarMul Generic G1 (window = 3, scratchsize = 8)        ECP_ShortW_Proj[Fp[BLS12_381]]                  7080.799 ops/s        141227 ns/op        423684 CPU cycles (approx)
-EC ScalarMul Generic G1 (window = 4, scratchsize = 16)       ECP_ShortW_Proj[Fp[BLS12_381]]                  8062.631 ops/s        124029 ns/op        372091 CPU cycles (approx)
-EC ScalarMul Generic G1 (window = 5, scratchsize = 32)       ECP_ShortW_Proj[Fp[BLS12_381]]                  8377.244 ops/s        119371 ns/op        358116 CPU cycles (approx)
+EC ScalarMul Generic G1 (window = 2, scratchsize = 4)        ECP_ShortW_Prj[Fp[BLS12_381]]                  5036.946 ops/s        198533 ns/op        595606 CPU cycles (approx)
+EC ScalarMul Generic G1 (window = 3, scratchsize = 8)        ECP_ShortW_Prj[Fp[BLS12_381]]                  7080.799 ops/s        141227 ns/op        423684 CPU cycles (approx)
+EC ScalarMul Generic G1 (window = 4, scratchsize = 16)       ECP_ShortW_Prj[Fp[BLS12_381]]                  8062.631 ops/s        124029 ns/op        372091 CPU cycles (approx)
+EC ScalarMul Generic G1 (window = 5, scratchsize = 32)       ECP_ShortW_Prj[Fp[BLS12_381]]                  8377.244 ops/s        119371 ns/op        358116 CPU cycles (approx)
 EC ScalarMul Generic G1 (window = 2, scratchsize = 4)        ECP_ShortW_Jac[Fp[BLS12_381]]                   4703.359 ops/s        212614 ns/op        637847 CPU cycles (approx)
 EC ScalarMul Generic G1 (window = 3, scratchsize = 8)        ECP_ShortW_Jac[Fp[BLS12_381]]                   6901.407 ops/s        144898 ns/op        434697 CPU cycles (approx)
 EC ScalarMul Generic G1 (window = 4, scratchsize = 16)       ECP_ShortW_Jac[Fp[BLS12_381]]                   8022.720 ops/s        124646 ns/op        373940 CPU cycles (approx)
 EC ScalarMul Generic G1 (window = 5, scratchsize = 32)       ECP_ShortW_Jac[Fp[BLS12_381]]                   8433.552 ops/s        118574 ns/op        355725 CPU cycles (approx)
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-EC ScalarMul G1 (endomorphism accelerated)                   ECP_ShortW_Proj[Fp[BLS12_381]]                  9703.933 ops/s        103051 ns/op        309155 CPU cycles (approx)
-EC ScalarMul Window-2 G1 (endomorphism accelerated)          ECP_ShortW_Proj[Fp[BLS12_381]]                 13160.839 ops/s         75983 ns/op        227950 CPU cycles (approx)
+EC ScalarMul G1 (endomorphism accelerated)                   ECP_ShortW_Prj[Fp[BLS12_381]]                  9703.933 ops/s        103051 ns/op        309155 CPU cycles (approx)
+EC ScalarMul Window-2 G1 (endomorphism accelerated)          ECP_ShortW_Prj[Fp[BLS12_381]]                 13160.839 ops/s         75983 ns/op        227950 CPU cycles (approx)
 EC ScalarMul G1 (endomorphism accelerated)                   ECP_ShortW_Jac[Fp[BLS12_381]]                   9064.868 ops/s        110316 ns/op        330951 CPU cycles (approx)
 EC ScalarMul Window-2 G1 (endomorphism accelerated)          ECP_ShortW_Jac[Fp[BLS12_381]]                  12722.484 ops/s         78601 ns/op        235806 CPU cycles (approx)
 ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------

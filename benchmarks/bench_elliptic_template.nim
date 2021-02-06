@@ -68,7 +68,7 @@ proc mixedAddBench*(T: typedesc, iters: int) =
   let P = rng.random_unsafe(T)
   let Q = rng.random_unsafe(T)
   var Qaff: ECP_ShortW_Aff[T.F, T.Tw]
-  when Q is ECP_ShortW_Proj:
+  when Q is ECP_ShortW_Prj:
     Qaff.affineFromProjective(Q)
   else:
     Qaff.affineFromJacobian(Q)

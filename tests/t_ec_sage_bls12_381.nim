@@ -16,7 +16,7 @@ import
   ./t_ec_sage_template
 
 run_scalar_mul_test_vs_sage(
-  ECP_ShortW_Proj[Fp[BLS12_381], NotOnTwist],
+  ECP_ShortW_Prj[Fp[BLS12_381], NotOnTwist],
   "t_ec_sage_bls12_381_g1_projective"
 )
 
@@ -26,7 +26,7 @@ run_scalar_mul_test_vs_sage(
 )
 
 run_scalar_mul_test_vs_sage(
-  ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist],
+  ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist],
   "t_ec_sage_bls12_381_g2_projective"
 )
 

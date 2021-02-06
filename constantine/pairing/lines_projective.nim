@@ -46,7 +46,7 @@ export lines_common
 
 func line_eval_double[F](
        line: var Line[F],
-       T: ECP_ShortW_Proj[F, OnTwist]) =
+       T: ECP_ShortW_Prj[F, OnTwist]) =
   ## Evaluate the line function for doubling
   ## i.e. the tangent at T
   ##
@@ -116,7 +116,7 @@ func line_eval_double[F](
 
 func line_eval_add[F](
        line: var Line[F],
-       T: ECP_ShortW_Proj[F, OnTwist],
+       T: ECP_ShortW_Prj[F, OnTwist],
        Q: ECP_ShortW_Aff[F, OnTwist]) =
   ## Evaluate the line function for addition
   ## i.e. the line between T and Q
@@ -160,7 +160,7 @@ func line_eval_add[F](
 
 func line_eval_fused_double[F](
        line: var Line[F],
-       T: var ECP_ShortW_Proj[F, OnTwist]) =
+       T: var ECP_ShortW_Prj[F, OnTwist]) =
   ## Fused line evaluation and elliptic point doubling
   # Grewal et al, 2012 adapted to Scott 2019 line notation
   var A {.noInit.}, B {.noInit.}, C {.noInit.}: F
@@ -227,7 +227,7 @@ func line_eval_fused_double[F](
 
 func line_eval_fused_add[F](
        line: var Line[F],
-       T: var ECP_ShortW_Proj[F, OnTwist],
+       T: var ECP_ShortW_Prj[F, OnTwist],
        Q: ECP_ShortW_Aff[F, OnTwist]) =
   ## Fused line evaluation and elliptic point addition
   # Grewal et al, 2012 adapted to Scott 2019 line notation
@@ -283,7 +283,7 @@ func line_eval_fused_add[F](
 
 func line_double*[F1, F2](
        line: var Line[F2],
-       T: var ECP_ShortW_Proj[F2, OnTwist],
+       T: var ECP_ShortW_Prj[F2, OnTwist],
        P: ECP_ShortW_Aff[F1, NotOnTwist]) =
   ## Doubling step of the Miller loop
   ## T in G2, P in G1
@@ -300,7 +300,7 @@ func line_double*[F1, F2](
 
 func line_add*[F1, F2](
        line: var Line[F2],
-       T: var ECP_ShortW_Proj[F2, OnTwist],
+       T: var ECP_ShortW_Prj[F2, OnTwist],
        Q: ECP_ShortW_Aff[F2, OnTwist],
        P: ECP_ShortW_Aff[F1, NotOnTwist]) =
   ## Addition step of the Miller loop

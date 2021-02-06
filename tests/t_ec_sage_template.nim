@@ -194,7 +194,7 @@ proc run_scalar_mul_test_vs_sage*(
     const G1_or_G2 = "G2"
     let vec = loadVectors(ScalarMulTestG2[ECP_ShortW_Aff[EC.F, EC.Tw]])
 
-  const coord = when EC is ECP_ShortW_Proj: " Projective coordinates "
+  const coord = when EC is ECP_ShortW_Prj: " Projective coordinates "
                 elif EC is ECP_ShortW_Jac: " Jacobian coordinates "
 
   const testSuiteDesc = "Scalar Multiplication " & $EC.F.C & " " & G1_or_G2 & " vs SageMath"
@@ -209,7 +209,7 @@ proc run_scalar_mul_test_vs_sage*(
           reference {.noInit.}: EC
           endo {.noInit.}: EC
 
-        when EC is ECP_ShortW_Proj:
+        when EC is ECP_ShortW_Prj:
           P.projectiveFromAffine(vec.vectors[i].P)
           Q.projectiveFromAffine(vec.vectors[i].Q)
         else:

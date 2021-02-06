@@ -22,7 +22,7 @@ export Twisted
 #
 # ############################################################
 
-type ECP_ShortW_Proj*[F; Tw: static Twisted] = object
+type ECP_ShortW_Prj*[F; Tw: static Twisted] = object
   ## Elliptic curve point for a curve in Short Weierstrass form
   ##   y² = x³ + a x + b
   ##
@@ -34,11 +34,11 @@ type ECP_ShortW_Proj*[F; Tw: static Twisted] = object
   ## Note that projective coordinates are not unique
   x*, y*, z*: F
 
-func `==`*(P, Q: ECP_ShortW_Proj): SecretBool =
+func `==`*(P, Q: ECP_ShortW_Prj): SecretBool =
   ## Constant-time equality check
   ## This is a costly operation
   # Reminder: the representation is not unique
-  type F = ECP_ShortW_Proj.F
+  type F = ECP_ShortW_Prj.F
 
   var a{.noInit.}, b{.noInit.}: F
 
@@ -50,7 +50,7 @@ func `==`*(P, Q: ECP_ShortW_Proj): SecretBool =
   b.prod(Q.y, P.z)
   result = result and a == b
 
-func isInf*(P: ECP_ShortW_Proj): SecretBool =
+func isInf*(P: ECP_ShortW_Prj): SecretBool =
   ## Returns true if P is an infinity point
   ## and false otherwise
   ##
@@ -60,13 +60,13 @@ func isInf*(P: ECP_ShortW_Proj): SecretBool =
   ## Y can be anything
   result = P.x.isZero() and P.z.isZero()
 
-func setInf*(P: var ECP_ShortW_Proj) =
+func setInf*(P: var ECP_ShortW_Prj) =
   ## Set ``P`` to infinity
   P.x.setZero()
   P.y.setOne()
   P.z.setZero()
 
-func ccopy*(P: var ECP_ShortW_Proj, Q: ECP_ShortW_Proj, ctl: SecretBool) =
+func ccopy*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Prj, ctl: SecretBool) =
   ## Constant-time conditional copy
   ## If ctl is true: Q is copied into P
   ## if ctl is false: Q is not copied and P is unmodified
@@ -75,7 +75,7 @@ func ccopy*(P: var ECP_ShortW_Proj, Q: ECP_ShortW_Proj, ctl: SecretBool) =
     ccopy(fP, fQ, ctl)
 
 func trySetFromCoordsXandZ*[F; Tw](
-       P: var ECP_ShortW_Proj[F, Tw],
+       P: var ECP_ShortW_Prj[F, Tw],
        x, z: F): SecretBool =
   ## Try to create a point the elliptic curve
   ## Y²Z = X³ + aXZ² + bZ³ (projective coordinates)
@@ -93,7 +93,7 @@ func trySetFromCoordsXandZ*[F; Tw](
   P.z = z
 
 func trySetFromCoordX*[F; Tw](
-       P: var ECP_ShortW_Proj[F, Tw],
+       P: var ECP_ShortW_Prj[F, Tw],
        x: F): SecretBool =
   ## Try to create a point the elliptic curve
   ## y² = x³ + a x + b     (affine coordinate)
@@ -110,24 +110,24 @@ func trySetFromCoordX*[F; Tw](
   P.x = x
   P.z.setOne()
 
-func neg*(P: var ECP_ShortW_Proj, Q: ECP_ShortW_Proj) =
+func neg*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Prj) =
   ## Negate ``P``
   P.x = Q.x
   P.y.neg(Q.y)
   P.z = Q.z
 
-func neg*(P: var ECP_ShortW_Proj) =
+func neg*(P: var ECP_ShortW_Prj) =
   ## Negate ``P``
   P.y.neg()
 
-func cneg*(P: var ECP_ShortW_Proj, ctl: CTBool) =
+func cneg*(P: var ECP_ShortW_Prj, ctl: CTBool) =
   ## Conditional negation.
   ## Negate if ``ctl`` is true
   P.y.cneg(ctl)
 
 func sum*[F; Tw: static Twisted](
-       r: var ECP_ShortW_Proj[F, Tw],
-       P, Q: ECP_ShortW_Proj[F, Tw]
+       r: var ECP_ShortW_Prj[F, Tw],
+       P, Q: ECP_ShortW_Prj[F, Tw]
      ) =
   ## Elliptic curve point addition for Short Weierstrass curves in projective coordinates
   ##
@@ -225,8 +225,8 @@ func sum*[F; Tw: static Twisted](
     {.error: "Not implemented.".}
 
 func madd*[F; Tw: static Twisted](
-       r: var ECP_ShortW_Proj[F, Tw],
-       P: ECP_ShortW_Proj[F, Tw],
+       r: var ECP_ShortW_Prj[F, Tw],
+       P: ECP_ShortW_Prj[F, Tw],
        Q: ECP_ShortW_Aff[F, Tw]
      ) =
   ## Elliptic curve mixed addition for Short Weierstrass curves
@@ -288,8 +288,8 @@ func madd*[F; Tw: static Twisted](
     {.error: "Not implemented.".}
 
 func double*[F; Tw: static Twisted](
-       r: var ECP_ShortW_Proj[F, Tw],
-       P: ECP_ShortW_Proj[F, Tw]
+       r: var ECP_ShortW_Prj[F, Tw],
+       P: ECP_ShortW_Prj[F, Tw]
      ) =
   ## Elliptic curve point doubling for Short Weierstrass curves in projective coordinate
   ##
@@ -361,25 +361,25 @@ func double*[F; Tw: static Twisted](
   else:
     {.error: "Not implemented.".}
 
-func `+=`*(P: var ECP_ShortW_Proj, Q: ECP_ShortW_Proj) =
+func `+=`*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Prj) =
   ## In-place point addition
   # TODO test for aliasing support
-  var tmp {.noInit.}: ECP_ShortW_Proj
+  var tmp {.noInit.}: ECP_ShortW_Prj
   tmp.sum(P, Q)
   P = tmp
 
-func `+=`*(P: var ECP_ShortW_Proj, Q: ECP_ShortW_Aff) =
+func `+=`*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Aff) =
   ## In-place mixed point addition
   # used in line_addition
   P.madd(P, Q)
 
-func double*(P: var ECP_ShortW_Proj) =
-  var tmp {.noInit.}: ECP_ShortW_Proj
+func double*(P: var ECP_ShortW_Prj) =
+  var tmp {.noInit.}: ECP_ShortW_Prj
   tmp.double(P)
   P = tmp
 
-func diff*(r: var ECP_ShortW_Proj,
-              P, Q: ECP_ShortW_Proj
+func diff*(r: var ECP_ShortW_Prj,
+              P, Q: ECP_ShortW_Prj
      ) =
   ## r = P - Q
   ## Can handle r and Q aliasing
@@ -389,7 +389,7 @@ func diff*(r: var ECP_ShortW_Proj,
 
 func affineFromProjective*[F, Tw](
        aff: var ECP_ShortW_Aff[F, Tw],
-       proj: ECP_ShortW_Proj[F, Tw]) =
+       proj: ECP_ShortW_Prj[F, Tw]) =
   var invZ {.noInit.}: F
   invZ.inv(proj.z)
 
@@ -397,7 +397,7 @@ func affineFromProjective*[F, Tw](
   aff.y.prod(proj.y, invZ)
 
 func projectiveFromAffine*[F, Tw](
-       proj: var ECP_ShortW_Proj[F, Tw],
+       proj: var ECP_ShortW_Prj[F, Tw],
        aff: ECP_ShortW_Aff[F, Tw]) {.inline.} =
   proj.x = aff.x
   proj.y = aff.y

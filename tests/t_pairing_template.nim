@@ -61,8 +61,8 @@ template runPairingTests*(Iters: static int, C: static Curve, pairing_fn: untype
 
   proc test_bilinearity_double_impl(randZ: bool, gen: RandomGen) =
     for _ in 0 ..< Iters:
-      let P = rng.random_point(ECP_ShortW_Proj[Fp[C], NotOnTwist], randZ, gen)
-      let Q = rng.random_point(ECP_ShortW_Proj[Fp2[C], OnTwist], randZ, gen)
+      let P = rng.random_point(ECP_ShortW_Prj[Fp[C], NotOnTwist], randZ, gen)
+      let Q = rng.random_point(ECP_ShortW_Prj[Fp2[C], OnTwist], randZ, gen)
       var P2: typeof(P)
       var Q2: typeof(Q)
 

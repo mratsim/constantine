@@ -80,7 +80,7 @@ func millerLoopGenericBLS12*[C](
   #      or we ensure the loop is done for a number of iterations strictly less
   #      than the curve order which is the case for BLS12 curves
   var
-    T {.noInit.}: ECP_ShortW_Proj[Fp2[C], OnTwist]
+    T {.noInit.}: ECP_ShortW_Prj[Fp2[C], OnTwist]
     line {.noInit.}: Line[Fp2[C]]
     nQ{.noInit.}: typeof(Q)
 
@@ -117,8 +117,8 @@ func finalExpGeneric[C: static Curve](f: var Fp12[C]) =
 
 func pairing_bls12_reference*[C](
        gt: var Fp12[C],
-       P: ECP_ShortW_Proj[Fp[C], NotOnTwist],
-       Q: ECP_ShortW_Proj[Fp2[C], OnTwist]) =
+       P: ECP_ShortW_Prj[Fp[C], NotOnTwist],
+       Q: ECP_ShortW_Prj[Fp2[C], OnTwist]) =
   ## Compute the optimal Ate Pairing for BLS12 curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
@@ -191,8 +191,8 @@ func finalExpHard_BLS12*[C](f: var Fp12[C]) {.meter.} =
 
 func pairing_bls12*[C](
        gt: var Fp12[C],
-       P: ECP_ShortW_Proj[Fp[C], NotOnTwist],
-       Q: ECP_ShortW_Proj[Fp2[C], OnTwist]) {.meter.} =
+       P: ECP_ShortW_Prj[Fp[C], NotOnTwist],
+       Q: ECP_ShortW_Prj[Fp2[C], OnTwist]) {.meter.} =
   ## Compute the optimal Ate Pairing for BLS12 curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
