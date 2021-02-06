@@ -56,7 +56,7 @@ func `==`*(P, Q: ECP_ShortW_Jac): SecretBool =
   b *= z1z1
   result = result and a == b
 
-func isInf*(P: ECP_ShortW_Jac): SecretBool =
+func isInf*(P: ECP_ShortW_Jac): SecretBool {.inline.} =
   ## Returns true if P is an infinity point
   ## and false otherwise
   ##
@@ -66,13 +66,13 @@ func isInf*(P: ECP_ShortW_Jac): SecretBool =
   ## Y can be anything
   result = P.z.isZero()
 
-func setInf*(P: var ECP_ShortW_Jac) =
+func setInf*(P: var ECP_ShortW_Jac) {.inline.} =
   ## Set ``P`` to infinity
   P.x.setOne()
   P.y.setOne()
   P.z.setZero()
 
-func ccopy*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac, ctl: SecretBool) =
+func ccopy*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac, ctl: SecretBool) {.inline.} =
   ## Constant-time conditional copy
   ## If ctl is true: Q is copied into P
   ## if ctl is false: Q is not copied and P is unmodified
@@ -119,17 +119,17 @@ func trySetFromCoordX*[F; Tw](
   P.x = x
   P.z.setOne()
 
-func neg*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac) =
+func neg*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac) {.inline.} =
   ## Negate ``P``
   P.x = Q.x
   P.y.neg(Q.y)
   P.z = Q.z
 
-func neg*(P: var ECP_ShortW_Jac) =
+func neg*(P: var ECP_ShortW_Jac) {.inline.} =
   ## Negate ``P``
   P.y.neg()
 
-func cneg*(P: var ECP_ShortW_Jac, ctl: CTBool) =
+func cneg*(P: var ECP_ShortW_Jac, ctl: CTBool)  {.inline.} =
   ## Conditional negation.
   ## Negate if ``ctl`` is true
   P.y.cneg(ctl)
@@ -267,6 +267,7 @@ func sum*[F; Tw: static Twisted](
   # - HHH_or_Mpre contains HHH (add) or garbage precomputation (dbl)
   # - V_or_S is set with V = U₁*HH (add) or S = X₁*YY (dbl)
   block: # Finishing line
+    # we can start using r, while carefully handling r and P or Q aliasing
     var t {.noInit.}: F
     t.double(V_or_S)
     r.x.square(R_or_M)
@@ -403,50 +404,50 @@ func double*[F; Tw: static Twisted](
     #           Y₃ = E*(D-X₃)-8*C
     #           Z₃ = 2*Y₁*Z₁
     #
-    var A {.noInit.}, B{.noInit.}, C {.noInit.}, D{.noInit.}: F
+    var A {.noInit.}, B{.noInit.}, C {.noInit.}: F
     A.square(P.x)
     B.square(P.y)
     C.square(B)
-    D.sum(P.x, B)
-    D.square()
-    D -= A
-    D -= C
-    D *= 2             # D = 2*((X₁+B)²-A-C)
+    B += P.x
+    # aliasing: we don't use P.x anymore
+
+    B.square()
+    B -= A
+    B -= C
+    B.double()         # D = 2*((X₁+B)²-A-C)
     A *= 3             # E = 3*A
     r.x.square(A)      # F = E²
 
-    B.double(D)
+    r.x -= B
     r.x -= B           # X₃ = F-2*D
 
-    B.diff(D, r.x)     # (D-X₃)
-    r.y.prod(A, B)     # E*(D-X₃)
+    B -= r.x           # (D-X₃)
+    A *= B             # E*(D-X₃)
     C *= 8
-    r.y -= C           # Y₃ = E*(D-X₃)-8*C
 
-    r.z.prod(P.y, P.z)
-    r.z *= 2           # Z₃ = 2*Y₁*Z₁
+    r.z.prod(P.z, P.y)
+    r.z.double()       # Z₃ = 2*Y₁*Z₁
+    # aliasing: we don't use P.y, P.z anymore
+
+    r.y.diff(A, C)     # Y₃ = E*(D-X₃)-8*C
+
   else:
     {.error: "Not implemented.".}
 
-func `+=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac) =
+func `+=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac) {.inline.} =
   ## In-place point addition
-  # TODO test for aliasing support
-  var tmp {.noInit.}: ECP_ShortW_Jac
-  tmp.sum(P, Q)
-  P = tmp
+  P.sum(P, Q)
 
-func double*(P: var ECP_ShortW_Jac) =
-  var tmp {.noInit.}: ECP_ShortW_Jac
-  tmp.double(P)
-  P = tmp
+func double*(P: var ECP_ShortW_Jac) {.inline.} =
+  ## In-place point doubling
+  P.double(P)
 
 func diff*(r: var ECP_ShortW_Jac,
            P, Q: ECP_ShortW_Jac
-     ) =
+     ) {.inline.} =
   ## r = P - Q
-  ## Can handle r and Q aliasing
-  var nQ = Q
-  nQ.neg()
+  var nQ {.noInit.}: typeof(Q)
+  nQ.neg(Q)
   r.sum(P, nQ)
 
 func affineFromJacobian*[F; Tw](
