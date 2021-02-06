@@ -70,7 +70,7 @@ template mulCheckSparse*(a: var Fp2, b: Fp2) =
       a.c1 = a.c0
       a.c0 = t
     else:
-      t = NonResidue * a.c1
+      t.prod(a.c1, NonResidue)
       a.c1 = a.c0
       a.c0 = t
   elif b.c0.isZero().bool and b.c1.isMinusOne().bool:
@@ -80,7 +80,7 @@ template mulCheckSparse*(a: var Fp2, b: Fp2) =
       a.c1.neg(a.c0)
       a.c0 = t
     else:
-      t = NonResidue * a.c1
+      t.prod(a.c1, NonResidue)
       a.c1.neg(a.c0)
       a.c0.neg(t)
   elif b.c0.isZero().bool:
