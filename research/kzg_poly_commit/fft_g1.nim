@@ -264,39 +264,39 @@ when isMainModule:
     echo &"Warmup: {stop - start:>4.4f} s, result {foo} (displayed to avoid compiler optimizing warmup away)\n"
 
 
-  # proc bench() =
-  #   echo "Starting benchmark ..."
-  #   const NumIters = 100
+  proc bench() =
+    echo "Starting benchmark ..."
+    const NumIters = 3
 
-  #   var rng: RngState
-  #   rng.seed 0x1234
-  #   # TODO: view types complain about mutable borrow
-  #   # in `random_unsafe` due to pseudo view type LimbsViewMut
-  #   # (which was views before Nim properly supported them)
+    var rng: RngState
+    rng.seed 0x1234
+    # TODO: view types complain about mutable borrow
+    # in `random_unsafe` due to pseudo view type LimbsViewMut
+    # (which was views before Nim properly supported them)
 
-  #   warmup()
+    warmup()
 
-  #   for scale in 4 ..< 16:
-  #     # Setup
+    for scale in 4 ..< 16:
+      # Setup
 
-  #     let desc = FFTDescriptor[Fr[BLS12_381]].init(uint8 scale)
-  #     var data = newSeq[Fr[BLS12_381]](desc.maxWidth)
-  #     for i in 0 ..< desc.maxWidth:
-  #       # data[i] = rng.random_unsafe(data[i].typeof())
-  #       data[i].fromUint i.uint64
+      let desc = FFTDescriptor[G1].init(uint8 scale)
+      var data = newSeq[G1](desc.maxWidth)
+      data[0].projectiveFromAffine(Generator1)
+      for i in 1 ..< desc.maxWidth:
+        data[i].madd(data[i-1], Generator1)
 
-  #     var coefsOut = newSeq[Fr[BLS12_381]](data.len)
+      var coefsOut = newSeq[G1](data.len)
 
-  #     # Bench
-  #     let start = getMonotime()
-  #     for i in 0 ..< NumIters:
-  #       let status = desc.fft(coefsOut, data)
-  #       doAssert status == FFTS_Success
-  #     let stop = getMonotime()
+      # Bench
+      let start = getMonotime()
+      for i in 0 ..< NumIters:
+        let status = desc.fft(coefsOut, data)
+        doAssert status == FFTS_Success
+      let stop = getMonotime()
 
-  #     let ns = inNanoseconds((stop-start) div NumIters)
-  #     echo &"FFT scale {scale:>2}     {ns:>8} ns/op"
+      let ns = inNanoseconds((stop-start) div NumIters)
+      echo &"FFT scale {scale:>2}     {ns:>8} ns/op"
 
   roundtrip()
   warmup()
-  # bench()
+  bench()
