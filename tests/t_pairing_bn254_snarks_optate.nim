@@ -15,8 +15,7 @@ import
 
 runPairingTests(
   4, BN254_Snarks,
-  G1 = ECP_ShortW_Proj[Fp[BN254_Snarks], NotOnTwist],
-  G2 = ECP_ShortW_Proj[Fp2[BN254_Snarks], OnTwist],
+  G1 = ECP_ShortW_Prj[Fp[BN254_Snarks], NotOnTwist],
+  G2 = ECP_ShortW_Prj[Fp2[BN254_Snarks], OnTwist],
   GT = Fp12[BN254_Snarks],
   pairing_bn)
-

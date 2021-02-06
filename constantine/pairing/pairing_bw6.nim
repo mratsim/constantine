@@ -37,7 +37,7 @@ func millerLoopGenericBW6*[C](
   ## Generic Miller Loop for BW6 curve
   ## Computes f_{u+1,Q}(P)*Frobenius(f_{u*(u^2-u-1),Q}(P))
   var
-    T {.noInit.}: ECP_ShortW_Proj[Fp[C], OnTwist]
+    T {.noInit.}: ECP_ShortW_Prj[Fp[C], OnTwist]
     line {.noInit.}: Line[Fp[C]]
     nQ{.noInit.}: typeof(Q)
 
@@ -65,7 +65,7 @@ func millerLoopGenericBW6*[C](
   # ------------------------------
   T.projectiveFromAffine(Q)
   var f2 {.noInit.}: typeof(f)
-  
+
   basicMillerLoop(
     f2, T, line,
     P, Q, nQ,
@@ -85,8 +85,8 @@ func finalExpGeneric[C: static Curve](f: var Fp6[C]) =
 
 func pairing_bw6_reference*[C](
        gt: var Fp6[C],
-       P: ECP_ShortW_Proj[Fp[C], NotOnTwist],
-       Q: ECP_ShortW_Proj[Fp[C], OnTwist]) =
+       P: ECP_ShortW_Prj[Fp[C], NotOnTwist],
+       Q: ECP_ShortW_Prj[Fp[C], OnTwist]) =
   ## Compute the optimal Ate Pairing for BW6 curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt

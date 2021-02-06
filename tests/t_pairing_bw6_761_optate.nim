@@ -15,7 +15,7 @@ import
 
 runPairingTests(
   4, BW6_761,
-  G1 = ECP_ShortW_Proj[Fp[BW6_761], NotOnTwist],
-  G2 = ECP_ShortW_Proj[Fp[BW6_761], OnTwist],
+  G1 = ECP_ShortW_Prj[Fp[BW6_761], NotOnTwist],
+  G2 = ECP_ShortW_Prj[Fp[BW6_761], OnTwist],
   GT = Fp6[BW6_761],
   pairing_bw6_reference)

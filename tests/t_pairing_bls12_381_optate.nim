@@ -15,7 +15,7 @@ import
 
 runPairingTests(
   4, BLS12_381,
-  G1 = ECP_ShortW_Proj[Fp[BLS12_381], NotOnTwist],
-  G2 = ECP_ShortW_Proj[Fp2[BLS12_381], OnTwist],
+  G1 = ECP_ShortW_Prj[Fp[BLS12_381], NotOnTwist],
+  G2 = ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist],
   GT = Fp12[BLS12_381],
   pairing_bls12)

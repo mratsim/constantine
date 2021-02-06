@@ -88,11 +88,11 @@ func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist]) {.i
   # Endomorphism acceleration cannot be used if cofactor is not cleared
   P.scalarMulGeneric(Cofactor_Eff_BLS12_381_G2)
 
-func clearCofactorReference*(P: var ECP_ShortW_Proj[Fp[BW6_761], NotOnTwist]) {.inline.} =
+func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp[BW6_761], NotOnTwist]) {.inline.} =
   ## Clear the cofactor of BW6_761 G1
   P.scalarMulGeneric(Cofactor_Eff_BW6_761_G1)
 
-func clearCofactorReference*(P: var ECP_ShortW_Proj[Fp[BW6_761], OnTwist]) {.inline.} =
+func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp[BW6_761], OnTwist]) {.inline.} =
   ## Clear the cofactor of BW6_761 G2
   # Endomorphism acceleration cannot be used if cofactor is not cleared
   P.scalarMulGeneric(Cofactor_Eff_BW6_761_G2)
