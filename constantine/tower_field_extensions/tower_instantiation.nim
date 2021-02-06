@@ -14,12 +14,10 @@ import
   ../arithmetic,
   ../config/[common, curves],
   ../io/io_fields,
-  ./tower_common,
-  ./quadratic_extensions,
-  ./cubic_extensions,
+  ./extension_fields,
   ./exponentiations
 
-export tower_common, quadratic_extensions, cubic_extensions, exponentiations
+export extension_fields, exponentiations
 
 # We assume that the sextic non-residues used to construct
 # the elliptic curve twists

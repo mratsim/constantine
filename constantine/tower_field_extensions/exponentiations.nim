@@ -12,9 +12,7 @@ import
   ../config/common,
   ../primitives,
   ../io/io_bigints,
-  ./tower_common,
-  ./quadratic_extensions,
-  ./cubic_extensions
+  ./extension_fields
 
 # ############################################################
 #

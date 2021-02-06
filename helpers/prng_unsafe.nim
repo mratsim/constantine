@@ -15,7 +15,7 @@ import
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian],
   ../constantine/io/io_bigints,
-  ../constantine/tower_field_extensions/tower_common
+  ../constantine/tower_field_extensions/extension_fields
 
 # ############################################################
 #
