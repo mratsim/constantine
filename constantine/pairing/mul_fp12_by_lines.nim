@@ -93,8 +93,7 @@ func mul_sparse_by_line_xy00z0*[C: static Curve](
   f.c1 += f.c0
   v3.mul_by_line_xy0(f.c1, v2)
   v3 -= v0
-  v3 -= v1
-  f.c1 = v3
+  f.c1.diff(v3, v1)
 
   v3.c0.prod(v1.c2, SexticNonResidue)
   v3.c0 += v0.c0
