@@ -92,15 +92,10 @@ func line_eval_double[F](
   template B: untyped = line.y
   template C: untyped = line.z
 
-  A = T.y               # A = Y
-  v = T.y               # v = Y
-  B = T.z               # B = Z
-  C = T.x               # C = X
-
-  A *= B                # A = Y.Z
-  C.square()            # C = X²
-  v.square()            # v = Y²
-  B.square()            # B = Z²
+  A.prod(T.y, T.z)      # A = Y.Z
+  C.square(T.x)         # C = X²
+  v.square(T.y)         # v = Y²
+  B.square(T.z)         # B = Z²
 
   A.double()            # A =  2 Y.Z
   A.neg()               # A = -2 Y.Z
@@ -148,27 +143,20 @@ func line_eval_add[F](
   template B: untyped = line.y
   template C: untyped = line.z
 
-  A = T.x     # A = X₁
-  v = T.z     # v = Z₁
-  B = T.z     # B = Z₁
-  C = T.y     # C = Y₁
+  v.prod(T.z, Q.y) # v = Z₁Y₂
+  B.prod(T.z, Q.x) # B = Z₁X₂
 
-  v *= Q.y    # v = Z₁Y₂
-  B *= Q.x    # B = Z₁X₂
+  A.diff(T.x, B)   # A = X₁-Z₁X₂
+  C.diff(T.y, v)   # C = Y₁-Z₁Y₂
 
-  A -= B      # A = X₁-Z₁X₂
-  C -= v      # C = Y₁-Z₁Y₂
+  v.prod(A, Q.y)   # v = (X₁-Z₁X₂) Y₂
+  B.prod(C, Q.x)   # B = (Y₁-Z₁Y₂) X₂
+  B -= v           # B = (Y₁-Z₁Y₂) X₂ - (X₁-Z₁X₂) Y₂
 
-  v = A       # v = X₁-Z₁X₂
+  C.neg()          # C = -(Y₁-Z₁Y₂)
+
   when F.C.getSexticTwist() == M_Twist:
     A *= SexticNonResidue # A = ξ (X₁ - Z₁X₂)
-
-  v *= Q.y    # v = (X₁-Z₁X₂) Y₂
-  B = C       # B = Y₁-Z₁Y₂
-  B *= Q.x    # B = (Y₁-Z₁Y₂) X₂
-  B -= v      # B = (Y₁-Z₁Y₂) X₂ - (X₁-Z₁X₂) Y₂
-
-  C.neg()     # C = -(Y₁-Z₁Y₂)
 
 func line_eval_fused_double[F](
        line: var Line[F],
@@ -193,13 +181,11 @@ func line_eval_fused_double[F](
   when F.C.getSexticTwist() == D_Twist:
     snrB *= SexticNonResidue
 
-  E = C
-  E *= b3
+  E.prod(C, b3)
   when F.C.getSexticTwist() == M_Twist:
     E *= SexticNonResidue # E = 3b'Z² = 3bξ Z²
 
-  F = E
-  F *= 3            # F = 3E = 9bZ²
+  F.prod(E, 3)      # F = 3E = 9bZ²
   G.sum(snrB, F)
   G.div2()          # G = (B+F)/2
   H.sum(T.y, T.z)
