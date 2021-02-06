@@ -40,7 +40,13 @@ when UseASM_X86_64:
 #       - pairing final exponentiation
 #       are bottlenecked by Montgomery multiplications or squarings
 #
-# Hence we use inline assembly where possible
+# Inlining note:
+# - The public dispatch functions are inlined.
+#   This allows the compiler to check CPU features only once
+#   in the high-level proc and also removes an intermediate function call
+#   to the wrapper function
+# - The ASM procs or internal fallbacks are not inlined
+#   to save on code size.
 
 # No exceptions allowed
 {.push raises: [].}
@@ -381,31 +387,12 @@ func montyRed_Comba[N: static int](
   discard z.csub(M, SecretBool(carry) or not(z < M))
   r = z
 
-# TODO upstream, using Limbs[N] breaks semcheck
-func montyRed*[N: static int](
-       r: var array[N, SecretWord],
-       a: array[N*2, SecretWord],
-       M: array[N, SecretWord],
-       m0ninv: BaseType, canUseNoCarryMontyMul: static bool) =
-  ## Montgomery reduce a double-width bigint modulo M
-  when UseASM_X86_64 and r.len <= 6:
-    if ({.noSideEffect.}: hasBmi2()) and ({.noSideEffect.}: hasAdx()):
-      montRed_asm_adx_bmi2(r, a, M, m0ninv, canUseNoCarryMontyMul)
-    else:
-      montRed_asm(r, a, M, m0ninv, canUseNoCarryMontyMul)
-  elif UseASM_X86_32 and r.len <= 6:
-    # TODO: Assembly faster than GCC but slower than Clang
-    montRed_asm(r, a, M, m0ninv, canUseNoCarryMontyMul)
-  else:
-    montyRed_CIOS(r, a, M, m0ninv)
-    # montyRed_Comba(r, a, M, m0ninv)
-
 # Exported API
 # ------------------------------------------------------------
 
 func montyMul*(
         r: var Limbs, a, b, M: Limbs,
-        m0ninv: static BaseType, canUseNoCarryMontyMul: static bool) =
+        m0ninv: static BaseType, canUseNoCarryMontyMul: static bool) {.inline.} =
   ## Compute r <- a*b (mod M) in the Montgomery domain
   ## `m0ninv` = -1/M (mod SecretWord). Our words are 2^32 or 2^64
   ##
@@ -470,6 +457,25 @@ func montySquare*(r: var Limbs, a, M: Limbs,
   #
   #   # montySquare_CIOS(r, a, M, m0ninv) # TODO <--- Fix this
   #   montyMul_FIPS(r, a, a, M, m0ninv)
+
+# TODO upstream, using Limbs[N] breaks semcheck
+func montyRed*[N: static int](
+       r: var array[N, SecretWord],
+       a: array[N*2, SecretWord],
+       M: array[N, SecretWord],
+       m0ninv: BaseType, canUseNoCarryMontyMul: static bool) {.inline.} =
+  ## Montgomery reduce a double-width bigint modulo M
+  when UseASM_X86_64 and r.len <= 6:
+    if ({.noSideEffect.}: hasBmi2()) and ({.noSideEffect.}: hasAdx()):
+      montRed_asm_adx_bmi2(r, a, M, m0ninv, canUseNoCarryMontyMul)
+    else:
+      montRed_asm(r, a, M, m0ninv, canUseNoCarryMontyMul)
+  elif UseASM_X86_32 and r.len <= 6:
+    # TODO: Assembly faster than GCC but slower than Clang
+    montRed_asm(r, a, M, m0ninv, canUseNoCarryMontyMul)
+  else:
+    montyRed_CIOS(r, a, M, m0ninv)
+    # montyRed_Comba(r, a, M, m0ninv)
 
 func redc*(r: var Limbs, a, one, M: Limbs,
            m0ninv: static BaseType, canUseNoCarryMontyMul: static bool) =

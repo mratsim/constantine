@@ -32,6 +32,8 @@ type
     ## over a field F
     x*, y*: F
 
+  SexticNonResidue* = NonResidue
+
 func isInf*(P: ECP_ShortW_Aff): SecretBool =
   ## Returns true if P is an infinity point
   ## and false otherwise

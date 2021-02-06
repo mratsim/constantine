@@ -18,10 +18,14 @@ import
 #
 # ############################################################
 
+# No exceptions allowed
+{.push raises: [].}
+{.push inline.}
+
 # Legendre symbol / Euler's Criterion / Kronecker's symbol
 # ------------------------------------------------------------
 
-func isSquare*(a: Fp): SecretBool {.inline.} =
+func isSquare*(a: Fp): SecretBool =
   ## Returns true if ``a`` is a square (quadratic residue) in 𝔽p
   ##
   ## Assumes that the prime modulus ``p`` is public.
@@ -50,7 +54,7 @@ func hasP3mod4_primeModulus(C: static Curve): static bool =
   ## Returns true iff p ≡ 3 (mod 4)
   (BaseType(C.Mod.limbs[0]) and 3) == 3
 
-func sqrt_p3mod4(a: var Fp) {.inline.} =
+func sqrt_p3mod4(a: var Fp) =
   ## Compute the square root of ``a``
   ##
   ## This requires ``a`` to be a square
@@ -64,7 +68,7 @@ func sqrt_p3mod4(a: var Fp) {.inline.} =
   static: doAssert BaseType(Fp.C.Mod.limbs[0]) mod 4 == 3
   a.powUnsafeExponent(Fp.getPrimePlus1div4_BE())
 
-func sqrt_invsqrt_p3mod4(sqrt, invsqrt: var Fp, a: Fp) {.inline.} =
+func sqrt_invsqrt_p3mod4(sqrt, invsqrt: var Fp, a: Fp) =
   ## If ``a`` is a square, compute the square root of ``a`` in sqrt
   ## and the inverse square root of a in invsqrt
   ##
@@ -85,7 +89,7 @@ func sqrt_invsqrt_p3mod4(sqrt, invsqrt: var Fp, a: Fp) {.inline.} =
   # √a ≡ a * 1/√a ≡ a^((p+1)/4) (mod p)
   sqrt.prod(invsqrt, a)
 
-func sqrt_invsqrt_if_square_p3mod4(sqrt, invsqrt: var Fp, a: Fp): SecretBool {.inline.} =
+func sqrt_invsqrt_if_square_p3mod4(sqrt, invsqrt: var Fp, a: Fp): SecretBool =
   ## If ``a`` is a square, compute the square root of ``a`` in sqrt
   ## and the inverse square root of a in invsqrt
   ##
@@ -97,7 +101,7 @@ func sqrt_invsqrt_if_square_p3mod4(sqrt, invsqrt: var Fp, a: Fp): SecretBool {.i
   test.square(sqrt)
   result = test == a
 
-func sqrt_if_square_p3mod4*(a: var Fp): SecretBool {.inline.} =
+func sqrt_if_square_p3mod4*(a: var Fp): SecretBool =
   ## If ``a`` is a square, compute the square root of ``a``
   ## if not, ``a`` is unmodified.
   ##
@@ -115,7 +119,7 @@ func sqrt_if_square_p3mod4*(a: var Fp): SecretBool {.inline.} =
 # Specialized routines for addchain-based square roots
 # ------------------------------------------------------------
 
-func sqrt_addchain(a: var Fp) {.inline.} =
+func sqrt_addchain(a: var Fp) =
   ## Compute the square root of ``a``
   ##
   ## This requires ``a`` to be a square
@@ -128,13 +132,13 @@ func sqrt_addchain(a: var Fp) {.inline.} =
   invsqrt.invsqrt_addchain(a)
   a *= invsqrt
 
-func sqrt_invsqrt_addchain(sqrt, invsqrt: var Fp, a: Fp) {.inline.} =
+func sqrt_invsqrt_addchain(sqrt, invsqrt: var Fp, a: Fp) =
   ## If ``a`` is a square, compute the square root of ``a`` in sqrt
   ## and the inverse square root of a in invsqrt
   invsqrt.invsqrt_addchain(a)
   sqrt.prod(invsqrt, a)
 
-func sqrt_invsqrt_if_square_addchain(sqrt, invsqrt: var Fp, a: Fp): SecretBool {.inline.} =
+func sqrt_invsqrt_if_square_addchain(sqrt, invsqrt: var Fp, a: Fp): SecretBool =
   ## If ``a`` is a square, compute the square root of ``a`` in sqrt
   ## and the inverse square root of a in invsqrt
   ##
@@ -144,7 +148,7 @@ func sqrt_invsqrt_if_square_addchain(sqrt, invsqrt: var Fp, a: Fp): SecretBool {
   test.square(sqrt)
   result = test == a
 
-func sqrt_if_square_addchain*(a: var Fp): SecretBool {.inline.} =
+func sqrt_if_square_addchain*(a: var Fp): SecretBool =
   ## If ``a`` is a square, compute the square root of ``a``
   ## if not, ``a`` is unmodified.
   ##
@@ -154,6 +158,8 @@ func sqrt_if_square_addchain*(a: var Fp): SecretBool {.inline.} =
   var sqrt {.noInit.}, invsqrt {.noInit.}: Fp
   result = sqrt_invsqrt_if_square_addchain(sqrt, invsqrt, a)
   a.ccopy(sqrt, result)
+
+{.pop.} # inline
 
 # Tonelli Shanks for any prime
 # ------------------------------------------------------------
@@ -228,7 +234,7 @@ func sqrt_invsqrt_tonelli_shanks_pre(
 
 # ----------------------------------------------
 
-func sqrt_tonelli_shanks(a: var Fp, useAddChain: static bool) {.inline.} =
+func sqrt_tonelli_shanks(a: var Fp, useAddChain: static bool) =
   ## Compute the square root of ``a``
   ##
   ## This requires ``a`` to be a square
@@ -244,7 +250,7 @@ func sqrt_tonelli_shanks(a: var Fp, useAddChain: static bool) {.inline.} =
   sqrt_invsqrt_tonelli_shanks_pre(sqrt, invsqrt, a, a_pre_exp)
   a = sqrt
 
-func sqrt_invsqrt_tonelli_shanks(sqrt, invsqrt: var Fp, a: Fp, useAddChain: static bool) {.inline.} =
+func sqrt_invsqrt_tonelli_shanks(sqrt, invsqrt: var Fp, a: Fp, useAddChain: static bool) =
   ## Compute the square root and inverse square root of ``a``
   ##
   ## This requires ``a`` to be a square
@@ -258,7 +264,7 @@ func sqrt_invsqrt_tonelli_shanks(sqrt, invsqrt: var Fp, a: Fp, useAddChain: stat
   a_pre_exp.precompute_tonelli_shanks(a, useAddChain)
   sqrt_invsqrt_tonelli_shanks_pre(sqrt, invsqrt, a, a_pre_exp)
 
-func sqrt_invsqrt_if_square_tonelli_shanks(sqrt, invsqrt: var Fp, a: Fp, useAddChain: static bool): SecretBool  {.inline.} =
+func sqrt_invsqrt_if_square_tonelli_shanks(sqrt, invsqrt: var Fp, a: Fp, useAddChain: static bool): SecretBool =
   ## Compute the square root and ivnerse square root of ``a``
   ##
   ## This returns true if ``a`` is square and sqrt/invsqrt contains the square root/inverse square root
@@ -274,7 +280,7 @@ func sqrt_invsqrt_if_square_tonelli_shanks(sqrt, invsqrt: var Fp, a: Fp, useAddC
   sqrt_invsqrt_tonelli_shanks_pre(sqrt, invsqrt, a, a_pre_exp)
   a = sqrt
 
-func sqrt_if_square_tonelli_shanks*(a: var Fp, useAddChain: static bool): SecretBool {.inline.} =
+func sqrt_if_square_tonelli_shanks*(a: var Fp, useAddChain: static bool): SecretBool =
   ## If ``a`` is a square, compute the square root of ``a``
   ## if not, ``a`` is unmodified.
   ##
@@ -293,7 +299,9 @@ func sqrt_if_square_tonelli_shanks*(a: var Fp, useAddChain: static bool): Secret
 # Note: we export the inner sqrt_invsqrt_IMPL
 #       for benchmarking purposes.
 
-func sqrt*[C](a: var Fp[C]) {.inline.} =
+{.push inline.}
+
+func sqrt*[C](a: var Fp[C]) =
   ## Compute the square root of ``a``
   ##
   ## This requires ``a`` to be a square
@@ -311,7 +319,7 @@ func sqrt*[C](a: var Fp[C]) {.inline.} =
   else:
     sqrt_tonelli_shanks(a, useAddChain = C.hasTonelliShanksAddchain())
 
-func sqrt_invsqrt*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]) {.inline.} =
+func sqrt_invsqrt*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]) =
   ## Compute the square root and inverse square root of ``a``
   ##
   ## This requires ``a`` to be a square
@@ -328,7 +336,7 @@ func sqrt_invsqrt*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]) {.inline.} =
   else:
     sqrt_invsqrt_tonelli_shanks(sqrt, invsqrt, a, useAddChain = C.hasTonelliShanksAddchain())
 
-func sqrt_invsqrt_if_square*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]): SecretBool  {.inline.} =
+func sqrt_invsqrt_if_square*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]): SecretBool  =
   ## Compute the square root and ivnerse square root of ``a``
   ##
   ## This returns true if ``a`` is square and sqrt/invsqrt contains the square root/inverse square root
@@ -345,7 +353,7 @@ func sqrt_invsqrt_if_square*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]): SecretBool 
   else:
     result = sqrt_invsqrt_if_square_tonelli_shanks(sqrt, invsqrt, a, useAddChain = C.hasTonelliShanksAddchain())
 
-func sqrt_if_square*[C](a: var Fp[C]): SecretBool {.inline.} =
+func sqrt_if_square*[C](a: var Fp[C]): SecretBool =
   ## If ``a`` is a square, compute the square root of ``a``
   ## if not, ``a`` is unmodified.
   ##
@@ -359,3 +367,6 @@ func sqrt_if_square*[C](a: var Fp[C]): SecretBool {.inline.} =
     result = sqrt_if_square_p3mod4(a)
   else:
     result = sqrt_if_square_tonelli_shanks(a, useAddChain = C.hasTonelliShanksAddchain())
+
+{.pop.} # inline
+{.pop.} # raises no exceptions

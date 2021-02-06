@@ -19,13 +19,17 @@ export zoo_inversions
 #
 # ############################################################
 
-func inv_euclid*(r: var Fp, a: Fp) {.inline.} =
+# No exceptions allowed
+{.push raises: [].}
+{.push inline.}
+
+func inv_euclid*(r: var Fp, a: Fp) =
   ## Inversion modulo p via
   ## Niels Moller constant-time version of
   ## Stein's GCD derived from extended binary Euclid algorithm
   r.mres.steinsGCD(a.mres, Fp.getR2modP(), Fp.C.Mod, Fp.getPrimePlus1div2())
 
-func inv*(r: var Fp, a: Fp) {.inline.} =
+func inv*(r: var Fp, a: Fp) =
   ## Inversion modulo p
   ##
   ## The inverse of 0 is 0.
@@ -41,7 +45,7 @@ func inv*(r: var Fp, a: Fp) {.inline.} =
   else:
     r.inv_euclid(a)
 
-func inv*(a: var Fp) {.inline.} =
+func inv*(a: var Fp) =
   ## Inversion modulo p
   ##
   ## The inverse of 0 is 0.
@@ -52,3 +56,6 @@ func inv*(a: var Fp) {.inline.} =
     a.inv_addchain(a)
   else:
     a.inv_euclid(a)
+
+{.pop.} # inline
+{.pop.} # raises no exceptions

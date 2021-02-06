@@ -43,6 +43,7 @@ export Fp, Fr, FF
 
 # No exceptions allowed
 {.push raises: [].}
+{.push inline.}
 
 # ############################################################
 #
@@ -50,14 +51,14 @@ export Fp, Fr, FF
 #
 # ############################################################
 
-func fromBig*(dst: var FF, src: BigInt) {.inline.}=
+func fromBig*(dst: var FF, src: BigInt) =
   ## Convert a BigInt to its Montgomery form
   when nimvm:
     dst.mres.montyResidue_precompute(src, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord())
   else:
     dst.mres.montyResidue(src, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord(), FF.canUseNoCarryMontyMul())
 
-func fromBig*[C: static Curve](T: type FF[C], src: BigInt): FF[C] {.noInit, inline.} =
+func fromBig*[C: static Curve](T: type FF[C], src: BigInt): FF[C] {.noInit.} =
   ## Convert a BigInt to its Montgomery form
   result.fromBig(src)
 
@@ -70,14 +71,14 @@ func toBig*(src: FF): auto {.noInit, inline.} =
 # Copy
 # ------------------------------------------------------------
 
-func ccopy*(a: var FF, b: FF, ctl: SecretBool) {.inline, meter.} =
+func ccopy*(a: var FF, b: FF, ctl: SecretBool) {.meter.} =
   ## Constant-time conditional copy
   ## If ctl is true: b is copied into a
   ## if ctl is false: b is not copied and a is unmodified
   ## Time and memory accesses are the same whether a copy occurs or not
   ccopy(a.mres, b.mres, ctl)
 
-func cswap*(a, b: var FF, ctl: CTBool) {.inline, meter.} =
+func cswap*(a, b: var FF, ctl: CTBool) {.meter.} =
   ## Swap ``a`` and ``b`` if ``ctl`` is true
   ##
   ## Constant-time:
@@ -105,34 +106,34 @@ func cswap*(a, b: var FF, ctl: CTBool) {.inline, meter.} =
 # In practice I'm not aware of such prime being using in elliptic curves.
 # 2^127 - 1 and 2^521 - 1 are used but 127 and 521 are not multiple of 32/64
 
-func `==`*(a, b: FF): SecretBool {.inline.} =
+func `==`*(a, b: FF): SecretBool =
   ## Constant-time equality check
   a.mres == b.mres
 
-func isZero*(a: FF): SecretBool {.inline.} =
+func isZero*(a: FF): SecretBool =
   ## Constant-time check if zero
   a.mres.isZero()
 
-func isOne*(a: FF): SecretBool {.inline.} =
+func isOne*(a: FF): SecretBool =
   ## Constant-time check if one
   a.mres == FF.getMontyOne()
 
-func isMinusOne*(a: FF): SecretBool {.inline.} =
+func isMinusOne*(a: FF): SecretBool =
   ## Constant-time check if -1 (mod p)
   a.mres == FF.getMontyPrimeMinus1()
 
-func setZero*(a: var FF) {.inline.} =
+func setZero*(a: var FF) =
   ## Set ``a`` to zero
   a.mres.setZero()
 
-func setOne*(a: var FF) {.inline.} =
+func setOne*(a: var FF) =
   ## Set ``a`` to one
   # Note: we need 1 in Montgomery residue form
   # TODO: Nim codegen is not optimal it uses a temporary
   #       Check if the compiler optimizes it away
   a.mres = FF.getMontyOne()
 
-func `+=`*(a: var FF, b: FF) {.inline, meter.} =
+func `+=`*(a: var FF, b: FF) {.meter.} =
   ## In-place addition modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
     addmod_asm(a.mres.limbs, a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs)
@@ -141,7 +142,7 @@ func `+=`*(a: var FF, b: FF) {.inline, meter.} =
     overflowed = overflowed or not(a.mres < FF.fieldMod())
     discard csub(a.mres, FF.fieldMod(), overflowed)
 
-func `-=`*(a: var FF, b: FF) {.inline, meter.} =
+func `-=`*(a: var FF, b: FF) {.meter.} =
   ## In-place substraction modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
     submod_asm(a.mres.limbs, a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs)
@@ -149,7 +150,7 @@ func `-=`*(a: var FF, b: FF) {.inline, meter.} =
     let underflowed = sub(a.mres, b.mres)
     discard cadd(a.mres, FF.fieldMod(), underflowed)
 
-func double*(a: var FF) {.inline, meter.} =
+func double*(a: var FF) {.meter.} =
   ## Double ``a`` modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
     addmod_asm(a.mres.limbs, a.mres.limbs, a.mres.limbs, FF.fieldMod().limbs)
@@ -158,7 +159,7 @@ func double*(a: var FF) {.inline, meter.} =
     overflowed = overflowed or not(a.mres < FF.fieldMod())
     discard csub(a.mres, FF.fieldMod(), overflowed)
 
-func sum*(r: var FF, a, b: FF) {.inline, meter.} =
+func sum*(r: var FF, a, b: FF) {.meter.} =
   ## Sum ``a`` and ``b`` into ``r`` modulo p
   ## r is initialized/overwritten
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
@@ -168,11 +169,11 @@ func sum*(r: var FF, a, b: FF) {.inline, meter.} =
     overflowed = overflowed or not(r.mres < FF.fieldMod())
     discard csub(r.mres, FF.fieldMod(), overflowed)
 
-func sumNoReduce*(r: var FF, a, b: FF) {.inline, meter.} =
+func sumNoReduce*(r: var FF, a, b: FF) {.meter.} =
   ## Sum ``a`` and ``b`` into ``r`` without reduction
   discard r.mres.sum(a.mres, b.mres)
 
-func diff*(r: var FF, a, b: FF) {.inline, meter.} =
+func diff*(r: var FF, a, b: FF) {.meter.} =
   ## Substract `b` from `a` and store the result into `r`.
   ## `r` is initialized/overwritten
   ## Requires r != b
@@ -182,12 +183,12 @@ func diff*(r: var FF, a, b: FF) {.inline, meter.} =
     var underflowed = r.mres.diff(a.mres, b.mres)
     discard cadd(r.mres, FF.fieldMod(), underflowed)
 
-func diffNoReduce*(r: var FF, a, b: FF) {.inline, meter.} =
+func diffNoReduce*(r: var FF, a, b: FF) {.meter.} =
   ## Substract `b` from `a` and store the result into `r`
   ## without reduction
   discard r.mres.diff(a.mres, b.mres)
 
-func double*(r: var FF, a: FF) {.inline, meter.} =
+func double*(r: var FF, a: FF) {.meter.} =
   ## Double ``a`` into ``r``
   ## `r` is initialized/overwritten
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
@@ -197,16 +198,16 @@ func double*(r: var FF, a: FF) {.inline, meter.} =
     overflowed = overflowed or not(r.mres < FF.fieldMod())
     discard csub(r.mres, FF.fieldMod(), overflowed)
 
-func prod*(r: var FF, a, b: FF) {.inline, meter.} =
+func prod*(r: var FF, a, b: FF) {.meter.} =
   ## Store the product of ``a`` by ``b`` modulo p into ``r``
   ## ``r`` is initialized / overwritten
   r.mres.montyMul(a.mres, b.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.canUseNoCarryMontyMul())
 
-func square*(r: var FF, a: FF) {.inline, meter.} =
+func square*(r: var FF, a: FF) {.meter.} =
   ## Squaring modulo p
   r.mres.montySquare(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.canUseNoCarryMontySquare())
 
-func neg*(r: var FF, a: FF) {.inline, meter.} =
+func neg*(r: var FF, a: FF) {.meter.} =
   ## Negate modulo p
   when UseASM_X86_64:
     negmod_asm(r.mres.limbs, a.mres.limbs, FF.fieldMod().limbs)
@@ -221,11 +222,11 @@ func neg*(r: var FF, a: FF) {.inline, meter.} =
     t.mres.czero(isZero)
     r = t
 
-func neg*(a: var FF) {.inline, meter.} =
+func neg*(a: var FF) {.meter.} =
   ## Negate modulo p
   a.neg(a)
 
-func div2*(a: var FF) {.inline, meter.} =
+func div2*(a: var FF) {.meter.} =
   ## Modular division by 2
   a.mres.div2_modular(FF.getPrimePlus1div2())
 
@@ -269,7 +270,7 @@ func csub*(a: var FF, b: FF, ctl: SecretBool) {.meter.} =
 #
 # Internally those procedures will allocate extra scratchspace on the stack
 
-func pow*(a: var FF, exponent: BigInt) {.inline.} =
+func pow*(a: var FF, exponent: BigInt) =
   ## Exponentiation modulo p
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a big integer
@@ -282,7 +283,7 @@ func pow*(a: var FF, exponent: BigInt) {.inline.} =
     FF.canUseNoCarryMontySquare()
   )
 
-func pow*(a: var FF, exponent: openarray[byte]) {.inline.} =
+func pow*(a: var FF, exponent: openarray[byte]) =
   ## Exponentiation modulo p
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a big integer in canonical big endian representation
@@ -295,7 +296,7 @@ func pow*(a: var FF, exponent: openarray[byte]) {.inline.} =
     FF.canUseNoCarryMontySquare()
   )
 
-func powUnsafeExponent*(a: var FF, exponent: BigInt) {.inline.} =
+func powUnsafeExponent*(a: var FF, exponent: BigInt) =
   ## Exponentiation modulo p
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a big integer
@@ -315,7 +316,7 @@ func powUnsafeExponent*(a: var FF, exponent: BigInt) {.inline.} =
     FF.canUseNoCarryMontySquare()
   )
 
-func powUnsafeExponent*(a: var FF, exponent: openarray[byte]) {.inline.} =
+func powUnsafeExponent*(a: var FF, exponent: openarray[byte]) =
   ## Exponentiation modulo p
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a big integer a big integer in canonical big endian representation
@@ -342,47 +343,27 @@ func powUnsafeExponent*(a: var FF, exponent: openarray[byte]) {.inline.} =
 # ############################################################
 #
 # This implements extra primitives for ergonomics.
-# The in-place ones should be preferred as they avoid copies on assignment
-# Two kinds:
-# - Those that return a field element
-# - Those that internally allocate a temporary field element
 
-func `+`*(a, b: FF): FF {.noInit, inline, meter.} =
-  ## Addition modulo p
-  result.sum(a, b)
-
-func `-`*(a, b: FF): FF {.noInit, inline, meter.} =
-  ## Substraction modulo p
-  result.diff(a, b)
-
-func `*`*(a, b: FF): FF {.noInit, inline, meter.} =
-  ## Multiplication modulo p
-  ##
-  ## It is recommended to assign with {.noInit.}
-  ## as FF elements are usually large and this
-  ## routine will zero init internally the result.
-  result.prod(a, b)
-
-func `*=`*(a: var FF, b: FF) {.inline, meter.} =
+func `*=`*(a: var FF, b: FF) {.meter.} =
   ## Multiplication modulo p
   a.prod(a, b)
 
-func square*(a: var FF) {.inline, meter.} =
+func square*(a: var FF) {.meter.} =
   ## Squaring modulo p
   a.mres.montySquare(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.canUseNoCarryMontySquare())
 
-func square_repeated*(r: var FF, num: int) {.inline, meter.} =
+func square_repeated*(r: var FF, num: int) {.meter.} =
   ## Repeated squarings
   for _ in 0 ..< num:
     r.square()
 
-func square_repeated*(r: var FF, a: FF, num: int) {.inline, meter.} =
+func square_repeated*(r: var FF, a: FF, num: int) {.meter.} =
   ## Repeated squarings
   r.square(a)
   for _ in 1 ..< num:
     r.square()
 
-func `*=`*(a: var FF, b: static int) {.inline.} =
+func `*=`*(a: var FF, b: static int) =
   ## Multiplication by a small integer known at compile-time
   # Implementation:
   # We don't want to go convert the integer to the Montgomery domain (O(n²))
@@ -464,7 +445,27 @@ func `*=`*(a: var FF, b: static int) {.inline.} =
   else:
     {.error: "Multiplication by this small int not implemented".}
 
-func `*`*(b: static int, a: FF): FF {.noinit, inline.} =
+func prod*(r: var FF, a: FF, b: static int) =
   ## Multiplication by a small integer known at compile-time
-  result = a
-  result *= b
+  const negate = b < 0
+  const b = if negate: -b
+            else: b
+  when negate:
+    r.neg(a)
+  else:
+    r = a
+  r *= b
+
+template mulCheckSparse*(a: var Fp, b: Fp) =
+  ## Multiplication with optimization for sparse inputs
+  when b.isOne().bool:
+    discard
+  elif b.isZero().bool:
+    a.setZero()
+  elif b.isMinusOne().bool:
+    a.neg()
+  else:
+    a *= b
+
+{.pop.} # inline
+{.pop.} # raises no exceptions

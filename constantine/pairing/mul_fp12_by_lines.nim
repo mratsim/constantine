@@ -56,7 +56,7 @@ func mul_by_line_xy0*[C: static Curve](
   v0.prod(a.c0, b.x)
   v1.prod(a.c1, b.y)
   r.c0.prod(a.c2, b.y)
-  r.c0 *= ξ
+  r.c0 *= SexticNonResidue
   r.c0 += v0
 
   r.c1.sum(a.c0, a.c1) # Error when r and a alias as r.c0 was updated
@@ -93,10 +93,9 @@ func mul_sparse_by_line_xy00z0*[C: static Curve](
   f.c1 += f.c0
   v3.mul_by_line_xy0(f.c1, v2)
   v3 -= v0
-  v3 -= v1
-  f.c1 = v3
+  f.c1.diff(v3, v1)
 
-  v3.c0 = ξ * v1.c2
+  v3.c0.prod(v1.c2, SexticNonResidue)
   v3.c0 += v0.c0
   v3.c1.sum(v0.c1, v1.c0)
   v3.c2.sum(v0.c2, v1.c1)
@@ -150,7 +149,7 @@ func mul_sparse_by_line_xyz000*[C: static Curve](
 
   # r0 = ξ a2 b1 + v0
   f.c0.mul_sparse_by_y0(f.c2, l.z)
-  f.c0 *= NonResidue
+  f.c0 *= SexticNonResidue
   f.c0 += v0
 
   # r2 = a2 b0 + v1
@@ -201,12 +200,12 @@ func mul_sparse_by_line_xy000z*[C: static Curve](
 
   # r0 = ξ a1 b2 + v0
   f.c0.mul_sparse_by_0y(f.c1, l.z)
-  f.c0 *= NonResidue
+  f.c0 *= SexticNonResidue
   f.c0 += v0
 
   # r1 = a1 b0 + ξ v2
   f.c1 *= b0
-  v2 *= NonResidue
+  v2 *= SexticNonResidue
   f.c1 += v2
 
 func mul*[C](f: var Fp12[C], line: Line[Fp2[C]]) {.inline.} =

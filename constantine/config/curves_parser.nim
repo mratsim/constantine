@@ -96,8 +96,8 @@ type
     modulus: NimNode  # nnkStrLit (hex)
 
     # Towering
-    nonresidue_quad_fp: NimNode # nnkIntLit
-    nonresidue_cube_fp2: NimNode # nnkPar(nnkIntLit, nnkIntLit)
+    nonresidue_fp: NimNode # nnkIntLit
+    nonresidue_fp2: NimNode # nnkPar(nnkIntLit, nnkIntLit)
 
     # Curve parameters
     eq_form: CurveEquationForm
@@ -108,7 +108,6 @@ type
 
     embedding_degree: int
     sexticTwist: SexticTwist
-    sexticNonResidue_fp2: NimNode # nnkPar(nnkIntLit, nnkIntLit)
 
     family: CurveFamily
 
@@ -198,17 +197,15 @@ proc parseCurveDecls(defs: var seq[CurveParams], curves: NimNode) =
         params.orderBitwidth = sectionVal
       elif sectionId.eqIdent"cofactor":
         discard "TODO"
-      elif sectionId.eqIdent"nonresidue_quad_fp":
-        params.nonresidue_quad_fp = sectionVal
-      elif sectionId.eqIdent"nonresidue_cube_fp2":
-        params.nonresidue_cube_fp2 = sectionVal
+      elif sectionId.eqIdent"nonresidue_fp":
+        params.nonresidue_fp = sectionVal
+      elif sectionId.eqIdent"nonresidue_fp2":
+        params.nonresidue_fp2 = sectionVal
 
       elif sectionId.eqIdent"embedding_degree":
         params.embedding_degree = sectionVal.intVal.int
       elif sectionId.eqIdent"sexticTwist":
         params.sexticTwist = parseEnum[SexticTwist]($sectionVal)
-      elif sectionId.eqIdent"sexticNonResidue_fp2":
-        params.sexticNonResidue_fp2 = sectionVal
       else:
         error "Invalid section: \n", curveParams[i].toStrLit()
 
@@ -323,12 +320,12 @@ proc genMainConstants(defs: var seq[CurveParams]): NimNode =
       # Towering
       # -----------------------------------------------
       curveEllipticStmts.add newConstStmt(
-        exported($curve & "_nonresidue_quad_fp"),
-        curveDef.nonresidue_quad_fp
+        exported($curve & "_nonresidue_fp"),
+        curveDef.nonresidue_fp
       )
       curveEllipticStmts.add newConstStmt(
-        exported($curve & "_nonresidue_cube_fp2"),
-        curveDef.nonresidue_cube_fp2
+        exported($curve & "_nonresidue_fp2"),
+        curveDef.nonresidue_fp2
       )
 
       # Pairing
@@ -340,10 +337,6 @@ proc genMainConstants(defs: var seq[CurveParams]): NimNode =
       curveEllipticStmts.add newConstStmt(
         exported($curve & "_sexticTwist"),
         newLit curveDef.sexticTwist
-      )
-      curveEllipticStmts.add newConstStmt(
-        exported($curve & "_sexticNonResidue_fp2"),
-        curveDef.sexticNonResidue_fp2
       )
 
   # end for ---------------------------------------------------

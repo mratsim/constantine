@@ -83,12 +83,11 @@ declareCurves:
     eq_form: ShortWeierstrass
     coef_a: 0
     coef_b: 2
-    nonresidue_quad_fp: -1       #      -1   is not a square in 𝔽p
-    nonresidue_cube_fp2: (1, 1)  # 1+𝑖   1+𝑖  is not a cube in 𝔽p²
+    nonresidue_fp: -1       #      -1   is not a square in 𝔽p
+    nonresidue_fp2: (1, 1)  # 1+𝑖   1+𝑖  is not a square or cube in 𝔽p²
 
     embedding_degree: 12
     sexticTwist: D_Twist
-    sexticNonResidue_fp2: (1, 1) # 1+𝑖
 
   curve BN254_Snarks: # Zero-Knowledge proofs curve (SNARKS, STARKS, Ethereum)
     bitwidth: 254
@@ -103,12 +102,11 @@ declareCurves:
     eq_form: ShortWeierstrass
     coef_a: 0
     coef_b: 3
-    nonresidue_quad_fp: -1       #      -1   is not a square in 𝔽p
-    nonresidue_cube_fp2: (9, 1)  # 9+𝑖   9+𝑖  is not a cube in 𝔽p²
+    nonresidue_fp: -1       #      -1   is not a square in 𝔽p
+    nonresidue_fp2: (9, 1)  # 9+𝑖   9+𝑖  is not a square or cube in 𝔽p²
 
     embedding_degree: 12
     sexticTwist: D_Twist
-    sexticNonResidue_fp2: (9, 1) # 9+𝑖
 
   curve Curve25519: # Bernstein curve
     bitwidth: 255
@@ -136,12 +134,11 @@ declareCurves:
     eq_form: ShortWeierstrass
     coef_a: 0
     coef_b: 1
-    nonresidue_quad_fp: -5       #      -5   is not a square in 𝔽p
-    nonresidue_cube_fp2: (0, 1)  # √-5  √-5  is not a cube in 𝔽p²
+    nonresidue_fp: -5       #      -5   is not a square in 𝔽p
+    nonresidue_fp2: (0, 1)  # √-5  √-5  is not a square or cube in 𝔽p²
 
     embedding_degree: 12
     sexticTwist: D_Twist
-    sexticNonResidue_fp2: (0, 1) # √-5
 
   curve BLS12_381:
     bitwidth: 381
@@ -157,12 +154,11 @@ declareCurves:
     eq_form: ShortWeierstrass
     coef_a: 0
     coef_b: 4
-    nonresidue_quad_fp: -1       #      -1   is not a square in 𝔽p
-    nonresidue_cube_fp2: (1, 1)  # 1+𝑖   1+𝑖  is not a cube in 𝔽p²
+    nonresidue_fp: -1       #      -1   is not a square in 𝔽p
+    nonresidue_fp2: (1, 1)  # 1+𝑖   1+𝑖  is not a square or cube in 𝔽p²
 
     embedding_degree: 12
     sexticTwist: M_Twist
-    sexticNonResidue_fp2: (1, 1) # 1+𝑖
 
   curve BW6_761:
     bitwidth: 761
@@ -182,9 +178,8 @@ declareCurves:
     coef_b: -1
 
     # TODO: rework the quad/cube/sextic non residue declaration
-    nonresidue_quad_fp: -4       # -4   is not a square in 𝔽p
-    nonresidue_cube_fp2: (0, 1)  # -4   is not a cube in 𝔽p²
+    nonresidue_fp: -4       # -4   is not a square or cube in 𝔽p
+    nonresidue_fp2: (0, 1)  # -4   is not a cube in 𝔽p²
 
     embedding_degree: 6
     sexticTwist: M_Twist
-    sexticNonResidue_fp2: (0, 1)  # -4

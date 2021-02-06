@@ -35,6 +35,22 @@ type
     ##   with Fp2 coordinates: xyz000
     x*, y*, z*: F
 
+  SexticNonResidue* = NonResidue
+    ## The Sextic non-residue to build
+    ## 𝔽p2 -> 𝔽p12 towering and the G2 sextic twist
+    ## or
+    ## 𝔽p -> 𝔽p6 towering and the G2 sextic twist
+    ##
+    ## Note:
+    ## while the non-residues for
+    ## - 𝔽p2 -> 𝔽p4
+    ## - 𝔽p2 -> 𝔽p6
+    ## are also sextic non-residues by construction.
+    ## the non-residues for
+    ## - 𝔽p4 -> 𝔽p12
+    ## - 𝔽p6 -> 𝔽p12
+    ## are not.
+
 func toHex*(line: Line, order: static Endianness = bigEndian): string =
   result = static($line.typeof.genericHead() & '(')
   for fieldName, fieldValue in fieldPairs(line):
