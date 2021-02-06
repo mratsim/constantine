@@ -78,36 +78,40 @@ func square_Chung_Hasan_SQR2(r: var CubicExt, a: CubicExt) {.used.}=
 func square_Chung_Hasan_SQR3(r: var CubicExt, a: CubicExt) =
   ## Returns r = a²
   mixin prod, square, sum
-  var v0{.noInit.}, v2{.noInit.}: typeof(r.c0)
+  var s0{.noInit.}, t{.noInit.}, m12{.noInit.}: typeof(r.c0)
 
-  r.c1.sum(a.c0, a.c2)    # r1 = a0 + a2
-  v2.diff(r.c1, a.c1)     # v2 = a0 - a1 + a2
-  r.c1 += a.c1            # r1 = a0 + a1 + a2
-  r.c1.square()           # r1 = (a0 + a1 + a2)²
-  v2.square()             # v2 = (a0 - a1 + a2)²
+  # s₀ = (a₀ + a₁ + a₂)²
+  # t = ((a₀ + a₁ + a₂)² + (a₀ - a₁ + a₂)²) / 2
+  s0.sum(a.c0, a.c2)
+  t.diff(s0, a.c1)
+  s0 += a.c1
+  s0.square()
+  t.square()
+  t += s0
+  t.div2()
 
-  r.c2.sum(r.c1, v2)      # r2 = (a0 + a1 + a2)² + (a0 - a1 + a2)²
-  r.c2.div2()             # r2 = ((a0 + a1 + a2)² + (a0 - a1 + a2)²)/2
+  # m12 = 2a₁a₂ and r₁ = a₂²
+  # then a₁ and a₂ are unused for aliasing
+  m12.prod(a.c1, a.c2)
+  m12.double()
+  r.c1.square(a.c2)       # r₁ = a₂²
 
-  r.c0.prod(a.c1, a.c2)   # r0 = a1 a2
-  r.c0.double()           # r0 = 2 a1 a2
+  r.c2.diff(t, r.c1)      # r₂ = t - a₂²
+  r.c1 *= NonResidue      # r₁ = β a₂²
+  r.c1 += s0              # r₁ = (a₀ + a₁ + a₂)² + β a₂²
+  r.c1 -= m12             # r₁ = (a₀ + a₁ + a₂)² - 2a₁a₂ + β a₂²
+  r.c1 -= t               # r₁ = (a₀ + a₁ + a₂)² - 2a₁a₂ - t + β a₂²
 
-  v2.square(a.c2)         # v2 = a2²
-  v0.prod(v2, NonResidue)
-  r.c1 += v0              # r1 = (a0 + a1 + a2)² + β a2²
-  r.c1 -= r.c0            # r1 = (a0 + a1 + a2)² - 2 a1 a2 + β a2²
-  r.c1 -= r.c2            # r1 = (a0 + a1 + a2)² - 2 a1 a2 - ((a0 + a1 + a2)² + (a0 - a1 + a2)²)/2 + β a2²
+  s0.square(a.c0)
+  # aliasing: a₀ unused
 
-  v0.square(a.c0)         # v0 = a0²
-  r.c0 *= NonResidue      # r0 = β 2 a1 a2
-  r.c0 += v0              # r0 = a0² + β 2 a1 a2
-
-  r.c2 -= v0              # r2 = ((a0 + a1 + a2)² + (a0 - a1 + a2)²)/2 - a0²
-  r.c2 -= v2              # r2 = ((a0 + a1 + a2)² + (a0 - a1 + a2)²)/2 - a0² - a2²
+  r.c2 -= s0
+  r.c0.prod(m12, NonResidue)
+  r.c0 += s0
 
 func square*(r: var CubicExt, a: CubicExt) {.inline.} =
   ## Returns r = a²
-  square_Chung_Hasan_SQR2(r, a)
+  square_Chung_Hasan_SQR3(r, a)
 
 func prod*(r: var CubicExt, a, b: CubicExt) =
   ## Returns r = a * b
