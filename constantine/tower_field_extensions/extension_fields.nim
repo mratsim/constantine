@@ -193,6 +193,18 @@ func conjneg*(r: var QuadraticExt, a: QuadraticExt) =
   r.c0.neg(a.c0)
   r.c1 = a.c1
 
+func conj*(a: var CubicExt) =
+  ## Computes the conjugate in-place
+  a.c0.conj()
+  a.c1.conjneg()
+  a.c2.conj()
+
+func conj*(r: var CubicExt, a: CubicExt) =
+  ## Computes the conjugate out-of-place
+  r.c0.conj(a.c0)
+  r.c1.conjneg(a.c1)
+  r.c2.conj(a.c2)
+
 # Conditional arithmetic
 # -------------------------------------------------------------------
 
@@ -641,9 +653,8 @@ func invImpl(r: var QuadraticExt, a: QuadraticExt) =
   when r.fromComplexExtension():
     v0 += v1
   else:
-    var t {.noInit.}: typeof(r.c0)
-    t.prod(v1, NonResidue)
-    v0 -= t               # v0 = a0² - β a1² (the norm / squared magnitude of a)
+    v1 *= NonResidue
+    v0 -= v1              # v0 = a0² - β a1² (the norm / squared magnitude of a)
 
   # [1 Inv, 2 Sqr, 1 Add]
   v1.inv(v0)              # v1 = 1 / (a0² - β a1²)
@@ -831,11 +842,7 @@ func square_Chung_Hasan_SQR3(r: var CubicExt, a: CubicExt) =
   r.c0.prod(m12, NonResidue)
   r.c0 += s0
 
-func square*(r: var CubicExt, a: CubicExt) {.inline.} =
-  ## Returns r = a²
-  square_Chung_Hasan_SQR3(r, a)
-
-func prod*(r: var CubicExt, a, b: CubicExt) =
+func prodImpl(r: var CubicExt, a, b: CubicExt) =
   ## Returns r = a * b  # Algorithm is Karatsuba
   var v0{.noInit.}, v1{.noInit.}, v2{.noInit.}: typeof(r.c0)
   var t0{.noInit.}, t1{.noInit.}, t2{.noInit.}: typeof(r.c0)
@@ -873,7 +880,7 @@ func prod*(r: var CubicExt, a, b: CubicExt) =
   # Finish r₀
   r.c0.sum(t0, v0)
 
-func inv*(r: var CubicExt, a: CubicExt) =
+func invImpl(r: var CubicExt, a: CubicExt) =
   ## Compute the multiplicative inverse of ``a``
   ##
   ## The inverse of 0 is 0.
@@ -888,53 +895,74 @@ func inv*(r: var CubicExt, a: CubicExt) =
   # Jean Luc Beuchat, Luis J. Dominguez Perez, Sylvain Duquesne, Nadia El Mrabet, Laura Fuentes-Castañeda, Francisco Rodríguez-Henríquez, 2017\
   # https://www.researchgate.net/publication/319538235_Arithmetic_of_Finite_Fields
   #
-  # We optimize for stack usage and use 4 temporaries (+r as temporary)
-  # instead of 9, because 5 * 2 (𝔽p2) * Bitsize would be:
-  # - ~2540 bits for BN254
-  # - ~3810 bits for BLS12-381
-  var v1 {.noInit.}, v2 {.noInit.}, v3 {.noInit.}: typeof(r.c0)
+  # We optimize for stack usage and use 4 temporaries
+  # instead of 9, because 4 * 2 (𝔽p2) * Bitsize would be:
+  # - ~2032 bits for BN254
+  # - ~3048 bits for BLS12-381
+  var A {.noInit.}, B {.noInit.}, C {.noInit.}: typeof(r.c0)
+  var t {.noInit.}: typeof(r.c0)
 
-  # A in r0
-  # A <- a0² - β a1 a2
-  r.c0.square(a.c0)
-  v1.prod(a.c1, a.c2)
-  v1 *= NonResidue
-  r.c0 -= v1
+  # A <- a₀² - β a₁ a₂
+  A.square(a.c0)
+  t.prod(a.c1, a.c2)
+  t *= NonResidue
+  A -= t
 
-  # B in v1
-  # B <- β a2² - a0 a1
-  v1.square(a.c2)
-  v1 *= NonResidue
-  v2.prod(a.c0, a.c1)
-  v1 -= v2
+  # B <- β a₂² - a₀ a₁
+  B.square(a.c2)
+  B *= NonResidue
+  t.prod(a.c0, a.c1)
+  B -= t
 
-  # C in v2
-  # C <- a1² - a0 a2
-  v2.square(a.c1)
-  v3.prod(a.c0, a.c2)
-  v2 -= v3
+  # C <- a₁² - a₀ a₂
+  C.square(a.c1)
+  t.prod(a.c0, a.c2)
+  C -= t
 
-  # F in v3
-  # F <- β a1 C + a0 A + β a2 B
-  v3.prod(a.c2, NonResidue)
-  r.c1.prod(v1, v3)
-  v3.prod(a.c1, NonResidue)
-  r.c2.prod(v2, v3)
-  v3.prod(r.c0, a.c0)
-  v3 += r.c1
-  v3 += r.c2
+  # F in t
+  # F <- β a₁ C + a₀ A + β a₂ B
+  t.prod(a.c1, C)
+  r.c2.prod(a.c2, B) # aliasing: last use of a₂, destroy r₂
+  t += r.c2
+  t *= NonResidue
+  r.c0.prod(a.c0, A) # aliasing: last use of a₀, destroy r₀
+  t += r.c0
 
-  let t = v3 # TODO, support aliasing in all primitives
-  v3.inv(t)
+  t.inv()
 
   # (a0 + a1 v + a2 v²)^-1 = (A + B v + C v²) / F
-  r.c0 *= v3
-  r.c1.prod(v1, v3)
-  r.c2.prod(v2, v3)
+  r.c0.prod(A, t)
+  r.c1.prod(B, t)
+  r.c2.prod(C, t)
 
 # Exported cubic symbols
 # -------------------------------------------------------------------
 {.push inline.}
+
+func square*(r: var CubicExt, a: CubicExt) =
+  ## Returns r = a²
+  square_Chung_Hasan_SQR3(r, a)
+
+func square*(a: var CubicExt) =
+  ## In-place squaring
+  a.square(a)
+
+func prod*(r: var CubicExt, a, b: CubicExt) =
+  ## In-place multiplication
+  r.prodImpl(a, b)
+
+func `*=`*(a: var CubicExt, b: CubicExt) =
+  ## In-place multiplication
+  a.prodImpl(a, b)
+
+func inv*(r: var CubicExt, a: CubicExt) =
+  ## Compute the multiplicative inverse of ``a``
+  ##
+  ## The inverse of 0 is 0.
+  ## Incidentally this avoids extra check
+  ## to convert Jacobian and Projective coordinates
+  ## to affine for elliptic curve
+  r.invImpl(a)
 
 func inv*(a: var CubicExt) =
   ## Compute the multiplicative inverse of ``a``
@@ -943,30 +971,7 @@ func inv*(a: var CubicExt) =
   ## Incidentally this avoids extra check
   ## to convert Jacobian and Projective coordinates
   ## to affine for elliptic curve
-  let t = a
-  a.inv(t)
-
-func `*=`*(a: var CubicExt, b: CubicExt) =
-  ## In-place multiplication
-  a.prod(a, b)
-
-func conj*(a: var CubicExt) =
-  ## Computes the conjugate in-place
-  mixin conj, conjneg
-  a.c0.conj()
-  a.c1.conjneg()
-  a.c2.conj()
-
-func conj*(r: var CubicExt, a: CubicExt) =
-  ## Computes the conjugate out-of-place
-  mixin conj, conjneg
-  r.c0.conj(a.c0)
-  r.c1.conjneg(a.c1)
-  r.c2.conj(a.c2)
-
-func square*(a: var CubicExt) =
-  ## In-place squaring
-  a.square(a)
+  a.invImpl(a)
 
 {.pop.} # inline
 {.pop.} # raises no exceptions
