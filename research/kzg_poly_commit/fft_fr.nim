@@ -277,4 +277,6 @@ when isMainModule:
       let ns = inNanoseconds((stop-start) div NumIters)
       echo &"FFT scale {scale:>2}     {ns:>8} ns/op"
 
+  roundtrip()
+  warmup()
   bench()
