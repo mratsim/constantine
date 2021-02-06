@@ -267,6 +267,7 @@ func sum*[F; Tw: static Twisted](
   # - HHH_or_Mpre contains HHH (add) or garbage precomputation (dbl)
   # - V_or_S is set with V = U₁*HH (add) or S = X₁*YY (dbl)
   block: # Finishing line
+    # we can start using r, while carefully handling r and P or Q aliasing
     var t {.noInit.}: F
     t.double(V_or_S)
     r.x.square(R_or_M)
@@ -431,9 +432,7 @@ func double*[F; Tw: static Twisted](
 func `+=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac) =
   ## In-place point addition
   # TODO test for aliasing support
-  var tmp {.noInit.}: ECP_ShortW_Jac
-  tmp.sum(P, Q)
-  P = tmp
+  P.sum(P, Q)
 
 func double*(P: var ECP_ShortW_Jac) =
   var tmp {.noInit.}: ECP_ShortW_Jac
