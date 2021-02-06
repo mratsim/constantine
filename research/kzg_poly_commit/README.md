@@ -1,4 +1,4 @@
-# Kate Polynomial Commitment research
+# KZG Polynomial Commitment research
 
 Research for Ethereum 2.0 phase 1
 to implement the Data Availability Sampling protocol
