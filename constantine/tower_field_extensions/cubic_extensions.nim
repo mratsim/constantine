@@ -117,41 +117,42 @@ func square*(r: var CubicExt, a: CubicExt) {.inline.} =
   square_Chung_Hasan_SQR3(r, a)
 
 func prod*(r: var CubicExt, a, b: CubicExt) =
-  ## Returns r = a * b
-  ##
-  ## r MUST not share a buffer with a
-  # Algorithm is Karatsuba
-  var v0{.noInit.}, v1{.noInit.}, v2{.noInit.}, t{.noInit.}: typeof(r.c0)
+  ## Returns r = a * b  # Algorithm is Karatsuba
+  var v0{.noInit.}, v1{.noInit.}, v2{.noInit.}: typeof(r.c0)
+  var t0{.noInit.}, t1{.noInit.}, t2{.noInit.}: typeof(r.c0)
 
   v0.prod(a.c0, b.c0)
   v1.prod(a.c1, b.c1)
   v2.prod(a.c2, b.c2)
 
-  # r.c0 = β ((a.c1 + a.c2) * (b.c1 + b.c2) - v1 - v2) + v0
-  r.c0.sum(a.c1, a.c2)
-  t.sum(b.c1, b.c2)
-  r.c0 *= t
-  r.c0 -= v1
-  r.c0 -= v2
-  r.c0 *= NonResidue
-  r.c0 += v0
+  # r₀ = β ((a₁ + a₂)(b₁ + b₂) - v₁ - v₂) + v₀
+  t0.sum(a.c1, a.c2)
+  t1.sum(b.c1, b.c2)
+  t0 *= t1
+  t0 -= v1
+  t0 -= v2
+  t0 *= NonResidue
+  # r₀ = t₀ + v₀ at the end to handle aliasing
 
-  # r.c1 = (a.c0 + a.c1) * (b.c0 + b.c1) - v0 - v1 + β v2
-  r.c1.sum(a.c0, a.c1)
-  t.sum(b.c0, b.c1)
-  r.c1 *= t
+  # r₁ = (a₀ + a₁) * (b₀ + b₁) - v₀ - v₁ + β v₂
+  t1.sum(a.c0, a.c1)
+  t2.sum(b.c0, b.c1)
+  r.c1.prod(t1, t2)
   r.c1 -= v0
   r.c1 -= v1
-  t.prod(v2, NonResidue)
-  r.c1 += t
+  t1.prod(v2, NonResidue)
+  r.c1 += t1
 
-  # r.c2 = (a.c0 + a.c2) * (b.c0 + b.c2) - v0 - v2 + v1
-  r.c2.sum(a.c0, a.c2)
-  t.sum(b.c0, b.c2)
-  r.c2 *= t
+  # r₂ = (a₀ + a₂) * (b₀ + b₂) - v₀ - v₂ + v₁
+  t1.sum(a.c0, a.c2)
+  t2.sum(b.c0, b.c2)
+  r.c2.prod(t1, t2)
   r.c2 -= v0
   r.c2 -= v2
   r.c2 += v1
+
+  # Finish r₀
+  r.c0.sum(t0, v0)
 
 func inv*(r: var CubicExt, a: CubicExt) =
   ## Compute the multiplicative inverse of ``a``
@@ -224,10 +225,7 @@ func inv*(a: var CubicExt) =
 
 func `*=`*(a: var CubicExt, b: CubicExt) {.inline.} =
   ## In-place multiplication
-  # On higher extension field like 𝔽p6,
-  # if `prod` is called on shared in and out buffer, the result is wrong
-  let t = a
-  a.prod(t, b)
+  a.prod(a, b)
 
 func conj*(a: var CubicExt) {.inline.} =
   ## Computes the conjugate in-place
