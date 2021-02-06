@@ -45,15 +45,15 @@ import
 func square_Chung_Hasan_SQR2(r: var CubicExt, a: CubicExt) {.used.}=
   ## Returns r = a²
   mixin prod, square, sum
-  var s0{.noInit.}, s2{.noInit.}, m01{.noInit.}, m12{.noInit.}: typeof(r.c0)
+  var s0{.noInit.}, m01{.noInit.}, m12{.noInit.}: typeof(r.c0)
 
   # precomputations that use a
   m01.prod(a.c0, a.c1)
   m01.double()
   m12.prod(a.c1, a.c2)
   m12.double()
-  s0.square(a.c0)
-  s2.square(a.c2)
+  s0.square(a.c2)
+  # aliasing: a₂ unused
 
   # r₂ = (a₀ - a₁ + a₂)²
   r.c2.sum(a.c2, a.c0)
@@ -61,19 +61,22 @@ func square_Chung_Hasan_SQR2(r: var CubicExt, a: CubicExt) {.used.}=
   r.c2.square()
   # aliasing, a almost unneeded now
 
-  # r₂ = (a₀ - a₁ + a₂)² + 2a₀a₁ + 2a₁a₂ - a₀² - a₂²
+  # r₂ = (a₀ - a₁ + a₂)² + 2a₀a₁ + 2a₁a₂ - a₂²
   r.c2 += m01
   r.c2 += m12
   r.c2 -= s0
-  r.c2 -= s2
+
+  # r₁ = 2a₀a₁ + β a₂²
+  r.c1.prod(s0, NonResidue)
+  r.c1 += m01
+
+  # r₂ = (a₀ - a₁ + a₂)² + 2a₀a₁ + 2a₁a₂ - a₀² - a₂²
+  s0.square(a.c0)
+  r.c2 -= s0
 
   # r₀ = a₀² + β 2a₁a₂
   r.c0.prod(m12, NonResidue)
   r.c0 += s0
-
-  # r₁ = 2a₀a₁ + β a₂²
-  r.c1.prod(s2, NonResidue)
-  r.c1 += m01
 
 func square_Chung_Hasan_SQR3(r: var CubicExt, a: CubicExt) =
   ## Returns r = a²
