@@ -27,8 +27,8 @@ template basicMillerLoop*[FT, F1, F2](
        line: var Line[F2],
        P: ECP_ShortW_Aff[F1, NotOnTwist],
        Q, nQ: ECP_ShortW_Aff[F2, OnTwist],
-       param: untyped,
-       param_isNeg: untyped
+       ate_param: untyped,
+       ate_param_isNeg: untyped
     ) =
   ## Basic Miller loop iterations
   static:
