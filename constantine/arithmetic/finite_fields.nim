@@ -343,26 +343,6 @@ func powUnsafeExponent*(a: var FF, exponent: openarray[byte]) =
 # ############################################################
 #
 # This implements extra primitives for ergonomics.
-# The in-place ones should be preferred as they avoid copies on assignment
-# Two kinds:
-# - Those that return a field element
-# - Those that internally allocate a temporary field element
-
-func `+`*(a, b: FF): FF {.noInit, meter.} =
-  ## Addition modulo p
-  result.sum(a, b)
-
-func `-`*(a, b: FF): FF {.noInit, meter.} =
-  ## Substraction modulo p
-  result.diff(a, b)
-
-func `*`*(a, b: FF): FF {.noInit, meter.} =
-  ## Multiplication modulo p
-  ##
-  ## It is recommended to assign with {.noInit.}
-  ## as FF elements are usually large and this
-  ## routine will zero init internally the result.
-  result.prod(a, b)
 
 func `*=`*(a: var FF, b: FF) {.meter.} =
   ## Multiplication modulo p

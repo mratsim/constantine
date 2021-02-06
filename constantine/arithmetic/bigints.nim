@@ -420,11 +420,6 @@ func `*=`*(a: var BigInt, b: static int) =
   else:
     {.error: "Multiplication by this small int not implemented".}
 
-func `*`*(b: static int, a: BigInt): BigInt {.noinit, inline.} =
-  ## Multiplication by a small integer known at compile-time
-  result = a
-  result *= b
-
 # Division by constants
 # ------------------------------------------------------------
 

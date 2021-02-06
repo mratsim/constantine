@@ -87,7 +87,8 @@ func millerLoopGenericBN*[C](
   f.setOne()
 
   template u: untyped = C.pairing(ate_param)
-  let u3 = 3*C.pairing(ate_param)
+  var u3 = C.pairing(ate_param)
+  u3 *= 3
   for i in countdown(u3.bits - 2, 1):
     f.square()
     line.line_double(T, P)
