@@ -404,28 +404,33 @@ func double*[F; Tw: static Twisted](
     #           Y₃ = E*(D-X₃)-8*C
     #           Z₃ = 2*Y₁*Z₁
     #
-    var A {.noInit.}, B{.noInit.}, C {.noInit.}, D{.noInit.}: F
+    var A {.noInit.}, B{.noInit.}, C {.noInit.}: F
     A.square(P.x)
     B.square(P.y)
     C.square(B)
-    D.sum(P.x, B)
-    D.square()
-    D -= A
-    D -= C
-    D *= 2             # D = 2*((X₁+B)²-A-C)
+    B += P.x
+    # aliasing: we don't use P.x anymore
+
+    B.square()
+    B -= A
+    B -= C
+    B.double()         # D = 2*((X₁+B)²-A-C)
     A *= 3             # E = 3*A
     r.x.square(A)      # F = E²
 
-    B.double(D)
+    r.x -= B
     r.x -= B           # X₃ = F-2*D
 
-    B.diff(D, r.x)     # (D-X₃)
-    r.y.prod(A, B)     # E*(D-X₃)
+    B -= r.x           # (D-X₃)
+    A *= B             # E*(D-X₃)
     C *= 8
-    r.y -= C           # Y₃ = E*(D-X₃)-8*C
 
-    r.z.prod(P.y, P.z)
-    r.z *= 2           # Z₃ = 2*Y₁*Z₁
+    r.z.prod(P.z, P.y)
+    r.z.double()       # Z₃ = 2*Y₁*Z₁
+    # aliasing: we don't use P.y, P.z anymore
+
+    r.y.diff(A, C)     # Y₃ = E*(D-X₃)-8*C
+
   else:
     {.error: "Not implemented.".}
 
@@ -435,9 +440,8 @@ func `+=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac) =
   P.sum(P, Q)
 
 func double*(P: var ECP_ShortW_Jac) =
-  var tmp {.noInit.}: ECP_ShortW_Jac
-  tmp.double(P)
-  P = tmp
+  ## In-place point doubling
+  P.double(P)
 
 func diff*(r: var ECP_ShortW_Jac,
            P, Q: ECP_ShortW_Jac
