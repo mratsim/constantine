@@ -9,7 +9,13 @@
 import
   ../../constantine/config/curves,
   ../../constantine/[arithmetic, primitives],
-  ../../constantine/io/io_fields,
+  ../../constantine/elliptic/[
+    ec_endomorphism_accel,
+    ec_shortweierstrass_affine,
+    ec_shortweierstrass_projective,
+    ec_shortweierstrass_jacobian,
+  ],
+  ../../constantine/io/[io_fields, io_ec],
   # Research
   ./strided_views,
   ./fft_lut
@@ -56,12 +62,12 @@ type
     FFTS_TooManyValues = "Input length greater than the field 2-adicity (number of roots of unity)"
     FFTS_SizeNotPowerOfTwo = "Input must be of a power of 2 length"
 
-  FFTDescriptor[F] = object
-    ## Metadata for FFT on field F
+  FFTDescriptor[EC] = object
+    ## Metadata for FFT on Elliptic Curve
     maxWidth: int
-    rootOfUnity: F
+    rootOfUnity: matchingOrderBigInt(EC.F.C)
       ## The root of unity that generates all roots
-    expandedRootsOfUnity: seq[F]
+    expandedRootsOfUnity: seq[matchingOrderBigInt(EC.F.C)]
       ## domain, starting and ending with 1
 
 func isPowerOf2(n: SomeUnsignedInt): bool =
@@ -72,7 +78,7 @@ func nextPowerOf2(n: uint64): uint64 =
   ## or the next biggest power of 2
   1'u64 shl (log2(n-1) + 1)
 
-func expandRootOfUnity[F](rootOfUnity: F): seq[F] =
+func expandRootOfUnity[F](rootOfUnity: F): auto {.noInit.} =
   ## From a generator root of unity
   ## expand to width + 1 values.
   ## (Last value is 1 for the reverse array)
@@ -82,41 +88,46 @@ func expandRootOfUnity[F](rootOfUnity: F): seq[F] =
   # so embrace heap (re-)allocations.
   # Figuring out how to do to right size the buffers
   # in production will be fun.
-  result.setLen(2)
-  result[0].setOne()
-  result[1] = rootOfUnity
-  while not result[^1].isOne().bool:
-    result.setLen(result.len + 1)
-    result[^1].prod(result[^2], rootOfUnity)
+  var r: seq[matchingOrderBigInt(F.C)]
+  r.setLen(2)
+  r[0].setOne()
+  r[1] = rootOfUnity.toBig()
+
+  var cur = rootOfUnity
+  while not r[^1].isOne().bool:
+    cur *= rootOfUnity
+    r.setLen(r.len + 1)
+    r[^1] = cur.toBig()
+
+  return r
 
 # FFT Algorithm
 # ----------------------------------------------------------------
 
-# TODO: research Decimation in Time and Decimation in Frequency
-#       and FFT butterflies
-
-func simpleFT[F](
-       output: var View[F],
-       vals: View[F],
-       rootsOfUnity: View[F]
+func simpleFT[EC; bits: static int](
+       output: var View[EC],
+       vals: View[EC],
+       rootsOfUnity: View[BigInt[bits]]
      ) =
   # FFT is a recursive algorithm
   # This is the base-case using a O(n²) algorithm
 
   let L = output.len
-  var last {.noInit.}, v {.noInit.}: F
+  var last {.noInit.}, v {.noInit.}: EC
 
   for i in 0 ..< L:
-    last.prod(vals[0], rootsOfUnity[0])
+    last = vals[0]
+    last.scalarMulGLV_m2w2(rootsOfUnity[0])
     for j in 1 ..< L:
-      v.prod(vals[j], rootsOfUnity[(i*j) mod L])
+      v = vals[j]
+      v.scalarMulGLV_m2w2(rootsOfUnity[(i*j) mod L])
       last += v
     output[i] = last
 
-func fft_internal[F](
-       output: var View[F],
-       vals: View[F],
-       rootsOfUnity: View[F]
+func fft_internal[EC; bits: static int](
+       output: var View[EC],
+       vals: View[EC],
+       rootsOfUnity: View[BigInt[bits]]
      ) =
   if output.len <= 4:
     simpleFT(output, vals, rootsOfUnity)
@@ -131,18 +142,19 @@ func fft_internal[F](
   fft_internal(outRight, oddVals, halfROI)
 
   let half = outLeft.len
-  var y_times_root{.noinit.}: F
+  var y_times_root{.noinit.}: EC
 
   for i in 0 ..< half:
     # FFT Butterfly
-    y_times_root   .prod(output[i+half], rootsOfUnity[i])
+    y_times_root = output[i+half]
+    y_times_root   .scalarMulGLV_m2w2(rootsOfUnity[i])
     output[i+half] .diff(output[i], y_times_root)
     output[i]      += y_times_root
 
-func fft*[F](
-       desc: FFTDescriptor[F],
-       output: var openarray[F],
-       vals: openarray[F]): FFT_Status =
+func fft*[EC](
+       desc: FFTDescriptor[EC],
+       output: var openarray[EC],
+       vals: openarray[EC]): FFT_Status =
   if vals.len > desc.maxWidth:
     return FFTS_TooManyValues
   if not vals.len.uint64.isPowerOf2():
@@ -156,10 +168,10 @@ func fft*[F](
   fft_internal(voutput, vals.toView(), rootz)
   return FFTS_Success
 
-func ifft*[F](
-       desc: FFTDescriptor[F],
-       output: var openarray[F],
-       vals: openarray[F]): FFT_Status =
+func ifft*[EC](
+       desc: FFTDescriptor[EC],
+       output: var openarray[EC],
+       vals: openarray[EC]): FFT_Status =
   ## Inverse FFT
   if vals.len > desc.maxWidth:
     return FFTS_TooManyValues
@@ -174,12 +186,13 @@ func ifft*[F](
   var voutput = output.toView()
   fft_internal(voutput, vals.toView(), rootz)
 
-  var invLen {.noInit.}: F
+  var invLen {.noInit.}: Fr[EC.F.C]
   invLen.fromUint(vals.len.uint64)
   invLen.inv()
+  let inv = invLen.toBig()
 
   for i in 0..< output.len:
-    output[i] *= invLen
+    output[i].scalarMulGLV_m2w2(inv)
 
   return FFTS_Success
 
@@ -188,9 +201,10 @@ func ifft*[F](
 
 proc init*(T: type FFTDescriptor, maxScale: uint8): T =
   result.maxWidth = 1 shl maxScale
-  result.rootOfUnity = scaleToRootOfUnity(T.F.C)[maxScale]
-  result.expandedRootsOfUnity =
-    result.rootOfUnity.expandRootOfUnity()
+
+  let root = scaleToRootOfUnity(T.EC.F.C)[maxScale]
+  result.rootOfUnity = root.toBig()
+  result.expandedRootsOfUnity = root.expandRootOfUnity()
     # Aren't you tired of reading about unity?
 
 # ############################################################
@@ -206,18 +220,26 @@ when isMainModule:
     std/[times, monotimes, strformat],
     ../../helpers/prng_unsafe
 
-  proc roundtrip() =
-    let fftDesc = FFTDescriptor[Fr[BLS12_381]].init(maxScale = 4)
-    var data = newSeq[Fr[BLS12_381]](fftDesc.maxWidth)
-    for i in 0 ..< fftDesc.maxWidth:
-      data[i].fromUint i.uint64
+  type G1 = ECP_ShortW_Prj[Fp[BLS12_381], NotOnTwist]
+  var Generator1: ECP_ShortW_Aff[Fp[BLS12_381], NotOnTwist]
+  doAssert Generator1.fromHex(
+    "0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb",
+    "0x08b3f481e3aaa0f1a09e30ed741d8ae4fcf5e095d5d00af600db18cb2c04b3edd03cc744a2888ae40caa232946c5e7e1"
+  )
 
-    var coefs = newSeq[Fr[BLS12_381]](data.len)
+  proc roundtrip() =
+    let fftDesc = FFTDescriptor[G1].init(maxScale = 4)
+    var data = newSeq[G1](fftDesc.maxWidth)
+    data[0].projectiveFromAffine(Generator1)
+    for i in 1 ..< fftDesc.maxWidth:
+      data[i].madd(data[i-1], Generator1)
+
+    var coefs = newSeq[G1](data.len)
     let fftOk = fft(fftDesc, coefs, data)
     doAssert fftOk == FFTS_Success
     # display("coefs", 0, coefs)
 
-    var res = newSeq[Fr[BLS12_381]](data.len)
+    var res = newSeq[G1](data.len)
     let ifftOk = ifft(fftDesc, res, coefs)
     doAssert ifftOk == FFTS_Success
     # display("res", 0, coefs)
@@ -242,39 +264,39 @@ when isMainModule:
     echo &"Warmup: {stop - start:>4.4f} s, result {foo} (displayed to avoid compiler optimizing warmup away)\n"
 
 
-  proc bench() =
-    echo "Starting benchmark ..."
-    const NumIters = 100
+  # proc bench() =
+  #   echo "Starting benchmark ..."
+  #   const NumIters = 100
 
-    var rng: RngState
-    rng.seed 0x1234
-    # TODO: view types complain about mutable borrow
-    # in `random_unsafe` due to pseudo view type LimbsViewMut
-    # (which was views before Nim properly supported them)
+  #   var rng: RngState
+  #   rng.seed 0x1234
+  #   # TODO: view types complain about mutable borrow
+  #   # in `random_unsafe` due to pseudo view type LimbsViewMut
+  #   # (which was views before Nim properly supported them)
 
-    warmup()
+  #   warmup()
 
-    for scale in 4 ..< 16:
-      # Setup
+  #   for scale in 4 ..< 16:
+  #     # Setup
 
-      let desc = FFTDescriptor[Fr[BLS12_381]].init(uint8 scale)
-      var data = newSeq[Fr[BLS12_381]](desc.maxWidth)
-      for i in 0 ..< desc.maxWidth:
-        # data[i] = rng.random_unsafe(data[i].typeof())
-        data[i].fromUint i.uint64
+  #     let desc = FFTDescriptor[Fr[BLS12_381]].init(uint8 scale)
+  #     var data = newSeq[Fr[BLS12_381]](desc.maxWidth)
+  #     for i in 0 ..< desc.maxWidth:
+  #       # data[i] = rng.random_unsafe(data[i].typeof())
+  #       data[i].fromUint i.uint64
 
-      var coefsOut = newSeq[Fr[BLS12_381]](data.len)
+  #     var coefsOut = newSeq[Fr[BLS12_381]](data.len)
 
-      # Bench
-      let start = getMonotime()
-      for i in 0 ..< NumIters:
-        let status = desc.fft(coefsOut, data)
-        doAssert status == FFTS_Success
-      let stop = getMonotime()
+  #     # Bench
+  #     let start = getMonotime()
+  #     for i in 0 ..< NumIters:
+  #       let status = desc.fft(coefsOut, data)
+  #       doAssert status == FFTS_Success
+  #     let stop = getMonotime()
 
-      let ns = inNanoseconds((stop-start) div NumIters)
-      echo &"FFT scale {scale:>2}     {ns:>8} ns/op"
+  #     let ns = inNanoseconds((stop-start) div NumIters)
+  #     echo &"FFT scale {scale:>2}     {ns:>8} ns/op"
 
   roundtrip()
   warmup()
-  bench()
+  # bench()
