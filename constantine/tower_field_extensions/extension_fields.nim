@@ -47,11 +47,11 @@ template c1*(a: ExtensionField): auto =
 template c2*(a: CubicExt): auto =
   a.coords[2]
 
-template `c0=`*(a: ExtensionField, v: auto) =
+template `c0=`*(a: var ExtensionField, v: auto) =
   a.coords[0] = v
-template `c1=`*(a: ExtensionField, v: auto) =
+template `c1=`*(a: var ExtensionField, v: auto) =
   a.coords[1] = v
-template `c2=`*(a: CubicExt, v: auto) =
+template `c2=`*(a: var CubicExt, v: auto) =
   a.coords[2] = v
 
 template C*(E: type ExtensionField): Curve =
@@ -306,6 +306,87 @@ func prod*(r: var ExtensionField, a: ExtensionField, b: static int) =
 
 # ############################################################
 #                                                            #
+#              Lazy reduced extension fields                 #
+#                                                            #
+# ############################################################
+
+type
+  QuadraticExt2x[F] = object
+    ## Quadratic Extension field for lazy reduced fields
+    coords: array[2, F]
+
+  CubicExt2x[F] = object
+    ## Cubic Extension field for lazy reduced fields
+    coords: array[3, F]
+
+  ExtensionField2x[F] = QuadraticExt2x[F] or CubicExt2x[F]
+
+template doubleWidth(T: typedesc[QuadraticExt]): typedesc =
+  QuadraticExt2x[doubleWidth(T.F)]
+
+template doubleWidth(T: typedesc[CubicExt]): typedesc =
+  CubicExt2x[doubleWidth(T.F)]
+
+template C(E: type ExtensionField2x): Curve =
+  E.F.C
+
+template c0(a: ExtensionField2x): auto =
+  a.coords[0]
+template c1(a: ExtensionField2x): auto =
+  a.coords[1]
+template c2(a: CubicExt2x): auto =
+  a.coords[2]
+
+template `c0=`(a: var ExtensionField2x, v: auto) =
+  a.coords[0] = v
+template `c1=`(a: var ExtensionField2x, v: auto) =
+  a.coords[1] = v
+template `c2=`(a: var CubicExt2x, v: auto) =
+  a.coords[2] = v
+
+# ############################################################
+#                                                            #
+#          Quadratic extensions - Lazy Reductions            #
+#                                                            #
+# ############################################################
+
+func prod2x_complex(r: var QuadraticExt2x, a, b: QuadraticExt) =
+  ## Double-width unreduced multiplication
+  # r and a or b cannot alias
+
+  mixin fromComplexExtension
+  static: doAssert a.fromComplexExtension()
+
+  var d {.noInit.}: typeof(r.c0)
+  var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0)
+  const msbSet = a.c0.typeof.canUseNoCarryMontyMul()
+
+  r.c0.prod2x(a.c0, b.c0)        # r0 = a0 b0
+  d.prod2x(a.c1, b.c1)           # d =  a1 b1
+  when msbSet:
+    t0.sum(a.c0, a.c1)
+    t1.sum(b.c0, b.c1)
+  else:
+    t0.sumUnred(a.c0, a.c1)
+    t1.sumUnred(b.c0, b.c1)
+  r.c1.prod2x(t0, t1)            # r1 = (b0 + b1)(a0 + a1)
+  when msbSet:
+    r.c1.diff2xMod(r.c1, r.c0)   # r1 = (b0 + b1)(a0 + a1) - a0 b0
+    r.c1.diff2xMod(r.c1, d)      # r1 = (b0 + b1)(a0 + a1) - a0 b0 - a1b1
+  else:
+    r.c1.diff2xUnred(r.c1, r.c0)
+    r.c1.diff2xUnred(r.c1, d)
+  r.c0.diff2xMod(r.c0, d)        # r0 = a0 b0 - a1 b1
+
+# ############################################################
+#                                                            #
+#            Cubic extensions - Lazy Reductions              #
+#                                                            #
+# ############################################################
+
+
+# ############################################################
+#                                                            #
 #                Quadratic extensions                        #
 #                                                            #
 # ############################################################
@@ -386,11 +467,7 @@ func prod_complex(r: var QuadraticExt, a, b: QuadraticExt) =
   mixin fromComplexExtension
   static: doAssert r.fromComplexExtension()
 
-  # TODO: GCC is adding an unexplainable 30 cycles tax to this function (~10% slow down)
-  #       for seemingly no reason
-
-  when false: # Single-width implementation - BLS12-381
-              # Clang 348 cycles on i9-9980XE @3.9 GHz
+  when false: # Single-width implementation
     var a0b0 {.noInit.}, a1b1 {.noInit.}: typeof(r.c0)
     a0b0.prod(a.c0, b.c0)                                         # [1 Mul]
     a1b1.prod(a.c1, b.c1)                                         # [2 Mul]
@@ -403,43 +480,12 @@ func prod_complex(r: var QuadraticExt, a, b: QuadraticExt) =
     r.c0.diff(a0b0, a1b1) # r0 = a0 b0 - a1 b1                    # [3 Mul, 2 Add, 1 Sub]
     r.c1 -= a0b0          # r1 = (b0 + b1)(a0 + a1) - a0b0        # [3 Mul, 2 Add, 2 Sub]
     r.c1 -= a1b1          # r1 = (b0 + b1)(a0 + a1) - a0b0 - a1b1 # [3 Mul, 2 Add, 3 Sub]
-
   else: # Double-width implementation with lazy reduction
         # Clang 341 cycles on i9-9980XE @3.9 GHz
-    var a0b0 {.noInit.}, a1b1 {.noInit.}: doubleWidth(typeof(r.c0))
-    var d {.noInit.}: doubleWidth(typeof(r.c0))
-    const msbSet = r.c0.typeof.canUseNoCarryMontyMul()
-
-    a0b0.prod2x(a.c0, b.c0)      # 44 cycles - cumul 44
-    a1b1.prod2x(a.c1, b.c1)      # 44 cycles - cumul 88
-    when msbSet:
-      r.c0.sum(a.c0, a.c1)
-      r.c1.sum(b.c0, b.c1)
-    else:
-      r.c0.sumUnred(a.c0, a.c1) # 5 cycles  - cumul 93
-      r.c1.sumUnred(b.c0, b.c1) # 5 cycles  - cumul 98
-    # aliasing: a and b unneeded now
-    d.prod2x(r.c0, r.c1)         # 44 cycles - cumul 142
-    when msbSet:
-      d.diff2xMod(d, a0b0)
-      d.diff2xMod(d, a1b1)
-    else:
-      d.diff2xUnred(d, a0b0)    # 11 cycles - cumul 153
-      d.diff2xUnred(d, a1b1)    # 11 cycles - cumul 164
-    a0b0.diff2xMod(a0b0, a1b1)  # 19 cycles - cumul 183
-    r.c0.redc2x(a0b0)           # 50 cycles - cumul 233
-    r.c1.redc2x(d)              # 50 cycles - cumul 288
-
-  # Single-width [3 Mul, 2 Add, 3 Sub]
-  #    3*88 + 2*14 + 3*14 = 334 theoretical cycles
-  #    348 measured
-  # Double-Width
-  #    288 theoretical cycles
-  #    329 measured
-  #    Unexplained 40 cycles diff between theo and measured
-  #    and unexplained 30 cycles between Clang and GCC
-  #    - Function calls?
-  #    - push/pop stack?
+    var d {.noInit.}: doubleWidth(typeof(r))
+    d.prod2x_complex(a, b)
+    r.c0.redc2x(d.c0)
+    r.c1.redc2x(d.c1)
 
 func mul_sparse_complex_by_0y(
        r: var QuadraticExt, a: QuadraticExt,
