@@ -32,11 +32,11 @@ type
 
   QuadraticExt*[F] = object
     ## Quadratic Extension field
-    coords*{.align: 16.}: array[2, F]
+    coords*: array[2, F]
 
   CubicExt*[F] = object
     ## Cubic Extension field
-    coords*{.align: 16.}: array[3, F]
+    coords*: array[3, F]
 
   ExtensionField*[F] = QuadraticExt[F] or CubicExt[F]
 
