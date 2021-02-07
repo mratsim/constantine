@@ -51,7 +51,10 @@ def genAteParam(curve_name, curve_config):
     ate_param = 6*u+2
     ate_comment = '  # BN Miller loop is parametrized by 6u+2\n'
   elif family == 'BW6':
-    return genAteParam_BW6(curve_name, curve_config)
+    result = genAteParam_BW6_unoptimized(curve_name, curve_config)
+    result += '\n\n'
+    result += genAteParam_BW6_opt(curve_name, curve_config)
+    return result
   else:
     raise ValueError(f'family: {family} is not implemented')
 
@@ -69,7 +72,61 @@ def genAteParam(curve_name, curve_config):
 
   return buf
 
-def genAteParam_BW6(curve_name, curve_config):
+def genAteParam_BW6_unoptimized(curve_name, curve_config):
+  u = curve_config[curve_name]['field']['param']
+  family = curve_config[curve_name]['field']['family']
+  assert family == 'BW6'
+
+  # Algorithm 5 - https://eprint.iacr.org/2020/351.pdf
+  ate_param = u+1
+  ate_param_2 = u*(u^2 - u - 1)
+
+  ate_comment = '  # BW6-761 unoptimized Miller loop first part is parametrized by u+1\n'
+  ate_comment_2 = '  # BW6 unoptimized Miller loop second part is parametrized by u*(u²-u-1)\n'
+
+  # Note we can use the fact that
+  #  f_{u+1,Q}(P) = f_{u,Q}(P) . l_{[u]Q,Q}(P)
+  #  f_{u³-u²-u,Q}(P) = f_{u (u²-u-1),Q}(P)
+  #                   = (f_{u,Q}(P))^(u²-u-1) * f_{v,[u]Q}(P)
+  #
+  #  to have a common computation f_{u,Q}(P)
+  # but this require a scalar mul [u]Q
+  # and then its inversion to plug it back in the second Miller loop
+
+  # f_{u+1,Q}(P)
+  # ---------------------------------------------------------
+  buf = '# 1st part: f_{u+1,Q}(P)\n'
+  buf += f'const {curve_name}_pairing_ate_param_1_unopt* = block:\n'
+  buf += ate_comment
+
+  ate_bits = int(ate_param).bit_length()
+  naf_bits = int(3*ate_param).bit_length() - ate_bits
+
+  buf += f'  # +{naf_bits} to bitlength so that we can mul by 3 for NAF encoding\n'
+  buf += f'  BigInt[{ate_bits}+{naf_bits}].fromHex"0x{Integer(abs(ate_param)).hex()}"\n\n'
+
+  buf += f'const {curve_name}_pairing_ate_param_1_unopt_isNeg* = {"true" if ate_param < 0 else "false"}'
+
+  # frobenius(f_{u*(u²-u-1),Q}(P))
+  # ---------------------------------------------------------
+
+  buf += '\n\n\n'
+  buf += '# 2nd part: f_{u*(u²-u-1),Q}(P) followed by Frobenius application\n'
+  buf += f'const {curve_name}_pairing_ate_param_2_unopt* = block:\n'
+  buf += ate_comment_2
+
+  ate_2_bits = int(ate_param_2).bit_length()
+  naf_2_bits = int(3*ate_param_2).bit_length() - ate_2_bits
+
+  buf += f'  # +{naf_2_bits} to bitlength so that we can mul by 3 for NAF encoding\n'
+  buf += f'  BigInt[{ate_2_bits}+{naf_2_bits}].fromHex"0x{Integer(abs(ate_param_2)).hex()}"\n\n'
+
+  buf += f'const {curve_name}_pairing_ate_param_2_unopt_isNeg* = {"true" if ate_param_2 < 0 else "false"}'
+
+  buf += '\n'
+  return buf
+
+def genAteParam_BW6_opt(curve_name, curve_config):
   u = curve_config[curve_name]['field']['param']
   family = curve_config[curve_name]['field']['family']
   assert family == 'BW6'
@@ -93,23 +150,23 @@ def genAteParam_BW6(curve_name, curve_config):
   # f_{u,Q}(P)
   # ---------------------------------------------------------
   buf = '# 1st part: f_{u,Q}(P)\n'
-  buf += f'const {curve_name}_pairing_ate_param_1* = block:\n'
+  buf += f'const {curve_name}_pairing_ate_param_1_opt* = block:\n'
   buf += ate_comment
 
   ate_bits = int(ate_param).bit_length()
   naf_bits = 0 # int(3*ate_param).bit_length() - ate_bits
 
-  buf += f'  # no NAF for the first Miller loop\n'
+  buf += f'  # no NAF for the optimized first Miller loop\n'
   buf += f'  BigInt[{ate_bits}].fromHex"0x{Integer(abs(ate_param)).hex()}"\n\n'
 
-  buf += f'const {curve_name}_pairing_ate_param_1_isNeg* = {"true" if ate_param < 0 else "false"}'
+  buf += f'const {curve_name}_pairing_ate_param_1_opt_isNeg* = {"true" if ate_param < 0 else "false"}'
 
   # frobenius(f_{u²-u-1,Q}(P))
   # ---------------------------------------------------------
 
   buf += '\n\n\n'
   buf += '# 2nd part: f_{u²-u-1,Q}(P) followed by Frobenius application\n'
-  buf += f'const {curve_name}_pairing_ate_param_2* = block:\n'
+  buf += f'const {curve_name}_pairing_ate_param_opt_2* = block:\n'
   buf += ate_comment_2
 
   ate_2_bits = int(ate_param_2).bit_length()
@@ -118,7 +175,7 @@ def genAteParam_BW6(curve_name, curve_config):
   buf += f'  # +{naf_2_bits} to bitlength so that we can mul by 3 for NAF encoding\n'
   buf += f'  BigInt[{ate_2_bits}+{naf_2_bits}].fromHex"0x{Integer(abs(ate_param_2)).hex()}"\n\n'
 
-  buf += f'const {curve_name}_pairing_ate_param_2_isNeg* = {"true" if ate_param_2 < 0 else "false"}'
+  buf += f'const {curve_name}_pairing_ate_param_2_opt_isNeg* = {"true" if ate_param_2 < 0 else "false"}'
 
   buf += '\n'
   return buf

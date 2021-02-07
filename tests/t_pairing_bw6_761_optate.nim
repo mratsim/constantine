@@ -9,7 +9,7 @@
 import
   ../constantine/config/common,
   ../constantine/config/curves,
-  ../constantine/pairing/pairing_bw6,
+  ../constantine/pairing/pairing_bw6_761,
   # Test utilities
   ./t_pairing_template
 
@@ -18,4 +18,4 @@ runPairingTests(
   G1 = ECP_ShortW_Prj[Fp[BW6_761], NotOnTwist],
   G2 = ECP_ShortW_Prj[Fp[BW6_761], OnTwist],
   GT = Fp6[BW6_761],
-  pairing_bw6_reference)
+  pairing_bw6_761_reference)

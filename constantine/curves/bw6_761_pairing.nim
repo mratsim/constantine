@@ -13,22 +13,40 @@ import
 # Slow generic implementation
 # ------------------------------------------------------------
 
+# 1st part: f_{u+1,Q}(P)
+const BW6_761_pairing_ate_param_1_unopt* = block:
+  # BW6-761 unoptimized Miller loop first part is parametrized by u+1
+  # +1 to bitlength so that we can mul by 3 for NAF encoding
+  BigInt[64+1].fromHex"0x8508c00000000002"
+
+const BW6_761_pairing_ate_param_1_unopt_isNeg* = false
+
+
+# 2nd part: f_{u*(u²-u-1),Q}(P) followed by Frobenius application
+const BW6_761_pairing_ate_param_2_unopt* = block:
+  # BW6 unoptimized Miller loop second part is parametrized by u*(u²-u-1)
+  # +1 to bitlength so that we can mul by 3 for NAF encoding
+  BigInt[190+1].fromHex"0x23ed1347970dec008a442f991fffffffffffffffffffffff"
+
+const BW6_761_pairing_ate_param_2_unopt_isNeg* = false
+
+
 # 1st part: f_{u,Q}(P)
-const BW6_761_pairing_ate_param_1* = block:
+const BW6_761_pairing_ate_param_1_opt* = block:
   # BW6 Miller loop first part is parametrized by u
-  # no NAF for the first Miller loop
+  # no NAF for the optimized first Miller loop
   BigInt[64].fromHex"0x8508c00000000001"
 
-const BW6_761_pairing_ate_param_1_isNeg* = false
+const BW6_761_pairing_ate_param_1_opt_isNeg* = false
 
 
 # 2nd part: f_{u²-u-1,Q}(P) followed by Frobenius application
-const BW6_761_pairing_ate_param_2* = block:
+const BW6_761_pairing_ate_param_opt_2* = block:
   # BW6 Miller loop second part is parametrized by u²-u-1
   # +1 to bitlength so that we can mul by 3 for NAF encoding
   BigInt[127+1].fromHex"0x452217cc900000008508bfffffffffff"
 
-const BW6_761_pairing_ate_param_2_isNeg* = false
+const BW6_761_pairing_ate_param_2_opt_isNeg* = false
 
 
 const BW6_761_pairing_finalexponent* = block:

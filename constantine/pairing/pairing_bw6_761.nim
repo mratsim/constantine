@@ -23,29 +23,63 @@ import
 # ############################################################
 #
 #                 Optimal ATE pairing for
-#                      BW6 curves
+#                      BW6-761 curve
 #
 # ############################################################
 
 # Generic pairing implementation
 # ----------------------------------------------------------------
+# TODO: debug this
 
-func millerLoopGenericBW6*[C](
+func millerLoopBW6_761_naive[C](
        f: var Fp6[C],
        P: ECP_ShortW_Aff[Fp[C], NotOnTwist],
        Q: ECP_ShortW_Aff[Fp[C], OnTwist]
      ) =
-  ## Generic Miller Loop for BW6 curve
+  ## Miller Loop for BW6_761 curve
   ## Computes f_{u+1,Q}(P)*Frobenius(f_{u*(u^2-u-1),Q}(P))
 
-  # Note we can use the fact that
-  #  f_{u+1,Q}(P) = f_{u,Q}(P) . l_{[u]Q,Q}(P)
-  #  f_{u³-u²-u,Q}(P) = f_{u (u²-u-1),Q}(P)
-  #                   = (f_{u,Q}(P))^(u²-u-1) * f_{v,[u]Q}(P)
-  #
-  # to have a common computation f_{u,Q}(P)
-  # but this require a scalar mul [u]Q
-  # and then its inversion to plug it back in the second Miller loop
+  var
+    T {.noInit.}: ECP_ShortW_Prj[Fp[C], OnTwist]
+    line {.noInit.}: Line[Fp[C]]
+    nQ{.noInit.}: typeof(Q)
+
+  T.projectiveFromAffine(Q)
+  nQ.neg(Q)
+
+  basicMillerLoop(
+    f, T, line,
+    P, Q, nQ,
+    ate_param_1_unopt, ate_param_1_unopt_isNeg
+  )
+
+  var f2 {.noInit.}: typeof(f)
+  T.projectiveFromAffine(Q)
+
+  basicMillerLoop(
+    f2, T, line,
+    P, Q, nQ,
+    ate_param_1_unopt, ate_param_1_unopt_isNeg
+  )
+
+  let t = f2
+  f2.frobenius_map(t)
+  f *= f2
+
+func finalExpGeneric[C: static Curve](f: var Fp6[C]) =
+  ## A generic and slow implementation of final exponentiation
+  ## for sanity checks purposes.
+  f.powUnsafeExponent(C.pairing(finalexponent), window = 3)
+
+# Optimized pairing implementation
+# ----------------------------------------------------------------
+
+func millerLoopBW6_761_opt_to_debug[C](
+       f: var Fp6[C],
+       P: ECP_ShortW_Aff[Fp[C], NotOnTwist],
+       Q: ECP_ShortW_Aff[Fp[C], OnTwist]
+     ) {.used.} =
+  ## Miller Loop Otpimized for BW6_761 curve
 
   # 1st part: f_{u,Q}(P)
   # ------------------------------
@@ -56,7 +90,7 @@ func millerLoopGenericBW6*[C](
   T.projectiveFromAffine(Q)
   f.setOne()
 
-  template u: untyped = pairing(C, ate_param_1)
+  template u: untyped = pairing(C, ate_param_1_opt)
   for i in countdown(u.bits - 2, 1):
     square(f)
     line_double(line, T, P)
@@ -87,8 +121,8 @@ func millerLoopGenericBW6*[C](
   # We restart from `f` and `T`
   T.projectiveFromAffine(Qu)
 
-  template u: untyped = pairing(C, ate_param_2)
-  var u3 = pairing(C, ate_param_2)
+  template u: untyped = pairing(C, ate_param_2_opt)
+  var u3 = pairing(C, ate_param_2_opt)
   u3 *= 3
   for i in countdown(u3.bits - 2, 1):
     square(f)
@@ -111,12 +145,10 @@ func millerLoopGenericBW6*[C](
   f.frobenius_map(t)
   f *= muplusone
 
-func finalExpGeneric[C: static Curve](f: var Fp6[C]) =
-  ## A generic and slow implementation of final exponentiation
-  ## for sanity checks purposes.
-  f.powUnsafeExponent(C.pairing(finalexponent), window = 3)
+# Public
+# ----------------------------------------------------------------
 
-func pairing_bw6_reference*[C](
+func pairing_bw6_761_reference*[C](
        gt: var Fp6[C],
        P: ECP_ShortW_Prj[Fp[C], NotOnTwist],
        Q: ECP_ShortW_Prj[Fp[C], OnTwist]) =
@@ -129,5 +161,5 @@ func pairing_bw6_reference*[C](
   var Qaff {.noInit.}: ECP_ShortW_Aff[Fp[C], OnTwist]
   Paff.affineFromProjective(P)
   Qaff.affineFromProjective(Q)
-  gt.millerLoopGenericBW6(Paff, Qaff)
+  gt.millerLoopBW6_761_naive(Paff, Qaff)
   gt.finalExpGeneric()
