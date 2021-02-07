@@ -151,8 +151,8 @@ func random_unsafe(rng: var RngState, a: var FF) =
 func random_unsafe(rng: var RngState, a: var ExtensionField) =
   ## Recursively initialize an extension Field element
   ## Unsafe: for testing and benchmarking purposes only
-  for field in fields(a):
-    rng.random_unsafe(field)
+  for i in 0 ..< a.coords.len:
+    rng.random_unsafe(a.coords[i])
 
 func random_word_highHammingWeight(rng: var RngState): BaseType =
   let numZeros = rng.random_unsafe(WordBitWidth div 3) # Average Hamming Weight is 1-0.33/2 = 0.83
@@ -182,8 +182,8 @@ func random_highHammingWeight(rng: var RngState, a: var FF) =
 func random_highHammingWeight(rng: var RngState, a: var ExtensionField) =
   ## Recursively initialize an extension Field element
   ## Unsafe: for testing and benchmarking purposes only
-  for field in fields(a):
-    rng.random_highHammingWeight(field)
+  for i in 0 ..< a.coords.len:
+    rng.random_highHammingWeight(a.coords[i])
 
 func random_long01Seq(rng: var RngState, a: var openArray[byte]) =
   ## Initialize a bytearray
@@ -227,8 +227,8 @@ func random_long01Seq(rng: var RngState, a: var FF) =
 func random_long01Seq(rng: var RngState, a: var ExtensionField) =
   ## Recursively initialize an extension Field element
   ## Unsafe: for testing and benchmarking purposes only
-  for field in fields(a):
-    rng.random_long01Seq(field)
+  for i in 0 ..< a.coords.len:
+    rng.random_long01Seq(a.coords[i])
 
 # Elliptic curves
 # ------------------------------------------------------------

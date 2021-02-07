@@ -12,6 +12,7 @@ import
   std/typetraits,
   # Internal
   ./io_bigints, ./io_fields,
+  ../primitives,
   ../arithmetic/finite_fields,
   ../tower_field_extensions/tower_instantiation
 
@@ -30,11 +31,11 @@ export tower_instantiation
 func appendHex*(accum: var string, f: Fp2 or Fp4 or Fp6 or Fp12, order: static Endianness = bigEndian) =
   ## Hex accumulator
   accum.add static($f.typeof.genericHead() & '(')
-  for fieldName, fieldValue in fieldPairs(f):
-    when fieldName != "c0":
+  staticFor i, 0, f.coords.len:
+    when i != 0:
       accum.add ", "
-    accum.add fieldName & ": "
-    accum.appendHex(fieldValue, order)
+    accum.add "c" & $i & ": "
+    accum.appendHex(f.coords[i], order)
   accum.add ")"
 
 func toHex*(f: Fp2 or Fp4 or Fp6 or Fp12, order: static Endianness = bigEndian): string =
@@ -109,18 +110,14 @@ func fromHex*(T: typedesc[Fp12],
 
 func fromUint*(a: var ExtensionField, src: SomeUnsignedInt) =
   ## Set ``a`` to the bigint value int eh extension field
-  for fieldName, fA in fieldPairs(a):
-    when fieldName == "c0":
-      fA.fromUint(src)
-    else:
-      fA.setZero()
+  a.coords[0].fromUint(src)
+  staticFor i, 1, a.coords.len:
+    a.coords[i].setZero()
 
 func fromInt*(a: var ExtensionField, src: SomeInteger) =
   ## Parse a regular signed integer
   ## and store it into a Fp^n
   ## A negative integer will be instantiated as a negated number (mod p^n)
-  for fieldName, fA in fieldPairs(a):
-    when fieldName == "c0":
-      fA.fromInt(src)
-    else:
-      fA.setZero()
+  a.coords[0].fromInt(src)
+  staticFor i, 1, a.coords.len:
+    a.coords[i].setZero()

@@ -43,8 +43,8 @@ func prod*(r: var Fp, a: Fp, _: type NonResidue){.inline.} =
 # ----------------------------------------------------------------
 
 type
-  Fp2*[C: static Curve] = object
-    c0*, c1*: Fp[C]
+  Fp2*[C: static Curve] =
+    QuadraticExt[Fp[C]]
 
 template fromComplexExtension*[F](elem: F): static bool =
   ## Returns true if the input is a complex extension
@@ -190,11 +190,11 @@ func `/=`*(a: var Fp2, _: type NonResidue) {.inline.} =
 # ----------------------------------------------------------------
 
 type
-  Fp4*[C: static Curve] = object
-    c0*, c1*: Fp2[C]
+  Fp4*[C: static Curve] =
+    QuadraticExt[Fp2[C]]
 
-  Fp6*[C: static Curve] = object
-    c0*, c1*, c2*: Fp2[C]
+  Fp6*[C: static Curve] =
+    CubicExt[Fp2[C]]
 
 func prod*(r: var Fp4, a: Fp4, _: type NonResidue) =
   ## Multiply an element of 𝔽p4 by the non-residue
@@ -253,9 +253,8 @@ func `*=`*(a: var Fp6, _: type NonResidue) {.inline.} =
 # ----------------------------------------------------------------
 
 type
-  Fp12*[C: static Curve] = object
-    c0*, c1*, c2*: Fp4[C]
-    # c0*, c1*: Fp6[C]
+  Fp12*[C: static Curve] =
+    CubicExt[Fp4[C]]
 
 # Sparse functions
 # ----------------------------------------------------------------

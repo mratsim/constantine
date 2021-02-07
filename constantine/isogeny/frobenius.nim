@@ -10,6 +10,7 @@ import
   std/macros,
   ../arithmetic,
   ../towers,
+  ../primitives,
   ../curves/zoo_frobenius
 
 # Frobenius Map
@@ -79,9 +80,9 @@ func frobenius_map*[C](r: var Fp12[C], a: Fp12[C], k: static int = 1) {.inline.}
   ## Computes a^(p^k)
   ## The p-power frobenius automorphism on 𝔽p12
   static: doAssert r.c0 is Fp4
-  for r_fp4, a_fp4 in fields(r, a):
-    for r_fp2, a_fp2 in fields(r_fp4, a_fp4):
-      r_fp2.frobenius_map(a_fp2, k)
+  staticFor i, 0, r.coords.len:
+    staticFor j, 0, r.coords[0].coords.len:
+      r.coords[i].coords[j].frobenius_map(a.coords[i].coords[j], k)
 
   r.c0.c0.mulCheckSparse frobMapConst(C, 0, k)
   r.c0.c1.mulCheckSparse frobMapConst(C, 3, k)

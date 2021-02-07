@@ -158,18 +158,18 @@ func line_eval_add[F](
   when F.C.getSexticTwist() == M_Twist:
     A *= SexticNonResidue # A = ξ (X₁ - Z₁X₂)
 
-func line_eval_fused_double[F](
-       line: var Line[F],
-       T: var ECP_ShortW_Prj[F, OnTwist]) =
+func line_eval_fused_double[Field](
+       line: var Line[Field],
+       T: var ECP_ShortW_Prj[Field, OnTwist]) =
   ## Fused line evaluation and elliptic point doubling
   # Grewal et al, 2012 adapted to Scott 2019 line notation
-  var A {.noInit.}, B {.noInit.}, C {.noInit.}: F
-  var E {.noInit.}, F {.noInit.}, G {.noInit.}: F
+  var A {.noInit.}, B {.noInit.}, C {.noInit.}: Field
+  var E {.noInit.}, F {.noInit.}, G {.noInit.}: Field
   template H: untyped = line.x
-  const b3 = 3*F.C.getCoefB()
+  const b3 = 3*Field.C.getCoefB()
 
   var snrY = T.y
-  when F.C.getSexticTwist() == D_Twist:
+  when Field.C.getSexticTwist() == D_Twist:
     snrY *= SexticNonResidue
 
   A.prod(T.x, snrY)
@@ -178,11 +178,11 @@ func line_eval_fused_double[F](
   C.square(T.z)     # C = Z²
 
   var snrB = B
-  when F.C.getSexticTwist() == D_Twist:
+  when Field.C.getSexticTwist() == D_Twist:
     snrB *= SexticNonResidue
 
   E.prod(C, b3)
-  when F.C.getSexticTwist() == M_Twist:
+  when Field.C.getSexticTwist() == M_Twist:
     E *= SexticNonResidue # E = 3b'Z² = 3bξ Z²
 
   F.prod(E, 3)      # F = 3E = 9bZ²
@@ -195,7 +195,7 @@ func line_eval_fused_double[F](
 
   line.z.square(T.x)
   line.z *= 3       # lz = 3X²
-  when F.C.getSexticTwist() == D_Twist:
+  when Field.C.getSexticTwist() == D_Twist:
     line.z *= SexticNonResidue
 
   line.y.diff(E, snrB) # ly = E-B = 3b'Z² - Y²
@@ -213,7 +213,7 @@ func line_eval_fused_double[F](
                     # M-twist: (Y²+9bξZ²)²/4 - 3*(3bξZ²)²
                     # D-Twist: (ξY²+9bZ²)²/4 - 3*(3bZ²)²
 
-  when F.C.getSexticTwist() == D_Twist:
+  when Field.C.getSexticTwist() == D_Twist:
     H *= SexticNonResidue
   T.z.prod(snrB, H) # Z₃ = BH = Y²((Y+Z)² - (Y²+Z²)) = 2Y³Z
                     # M-twist: 2Y³Z
@@ -221,26 +221,26 @@ func line_eval_fused_double[F](
 
   # Correction for Fp4 towering
   H.neg()           # lx = -H
-  when F.C.getSexticTwist() == M_Twist:
+  when Field.C.getSexticTwist() == M_Twist:
     H *= SexticNonResidue
     # else: the SNR is already integrated in H
 
-func line_eval_fused_add[F](
-       line: var Line[F],
-       T: var ECP_ShortW_Prj[F, OnTwist],
-       Q: ECP_ShortW_Aff[F, OnTwist]) =
+func line_eval_fused_add[Field](
+       line: var Line[Field],
+       T: var ECP_ShortW_Prj[Field, OnTwist],
+       Q: ECP_ShortW_Aff[Field, OnTwist]) =
   ## Fused line evaluation and elliptic point addition
   # Grewal et al, 2012 adapted to Scott 2019 line notation
   var
-    A {.noInit.}: F
-    B {.noInit.}: F
-    C {.noInit.}: F
-    D {.noInit.}: F
-    E {.noInit.}: F
-    F {.noInit.}: F
-    G {.noInit.}: F
-    H {.noInit.}: F
-    I {.noInit.}: F
+    A {.noInit.}: Field
+    B {.noInit.}: Field
+    C {.noInit.}: Field
+    D {.noInit.}: Field
+    E {.noInit.}: Field
+    F {.noInit.}: Field
+    G {.noInit.}: Field
+    H {.noInit.}: Field
+    I {.noInit.}: Field
 
   template lambda: untyped = line.x
   template theta: untyped = line.z
@@ -275,7 +275,7 @@ func line_eval_fused_add[F](
 
   # Line evaluation
   theta.neg()
-  when F.C.getSexticTwist() == M_Twist:
+  when Field.C.getSexticTwist() == M_Twist:
     lambda *= SexticNonResidue # A = ξ (X₁ - Z₁X₂)
 
 # Public proc
