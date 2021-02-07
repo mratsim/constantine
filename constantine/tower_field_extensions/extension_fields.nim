@@ -333,6 +333,10 @@ template doubleWidth(T: type ExtensionField): type =
     when T.F is QuadraticExt: # Fp6Dbl
       CubicExt2x[QuadraticExt2x[doubleWidth(T.F.F)]]
 
+func has1extraBit(E: type ExtensionField): bool =
+  ## We construct extensions only on Fp (and not Fr)
+  canUseNoCarryMontyMul(Fp[E.C])
+
 func has2extraBits(E: type ExtensionField): bool =
   ## We construct extensions only on Fp (and not Fr)
   canUseNoCarryMontySquare(Fp[E.C])
@@ -353,6 +357,14 @@ template `c1=`(a: var ExtensionField2x, v: auto) =
   a.coords[1] = v
 template `c2=`(a: var CubicExt2x, v: auto) =
   a.coords[2] = v
+
+# Initialization
+# -------------------------------------------------------------------
+
+func setZero*(a: var ExtensionField2x) =
+  ## Set ``a`` to 0 in the extension field
+  staticFor i, 0, a.coords.len:
+    a.coords[i].setZero()
 
 # Abelian group
 # -------------------------------------------------------------------
@@ -401,12 +413,13 @@ func prod(
   const negate = b < 0
   const b = if negate: -b
             else: b
+
   when negate:
     r.diff2xMod(typeof(a)(), a)
   when b == 0:
     r.setZero()
   elif b == 1:
-    return
+    r = a
   elif b == 2:
     r.sum2xMod(a, a)
   elif b == 3:
@@ -439,18 +452,18 @@ func prod(
     r.sum2xMod(r, r) # 8
     r.sum2xMod(r, a)
   elif b == 10:
-    a.sum2xMod(a, a)
+    r.sum2xMod(a, a)
     r.sum2xMod(r, r)
     r.sum2xMod(r, a) # 5
     r.sum2xMod(r, r)
   elif b == 11:
-    a.sum2xMod(a, a)
+    r.sum2xMod(a, a)
     r.sum2xMod(r, r)
     r.sum2xMod(r, a) # 5
     r.sum2xMod(r, r)
     r.sum2xMod(r, a)
   elif b == 12:
-    a.sum2xMod(a, a)
+    r.sum2xMod(a, a)
     r.sum2xMod(r, r) # 4
     let t4 = a
     r.sum2xMod(r, r) # 8
@@ -460,6 +473,12 @@ func prod(
 
 # NonResidue
 # ----------------------------------------------------------------------
+
+func prod2x(r: var FpDbl, a: FpDbl, _: type NonResidue){.inline.} =
+  ## Multiply an element of 𝔽p by the quadratic non-residue
+  ## chosen to construct 𝔽p2
+  static: doAssert FpDbl.C.getNonResidueFp() != -1, "𝔽p2 should be specialized for complex extension"
+  r.prod2x(a, FpDbl.C.getNonResidueFp())
 
 func prod2x[C: static Curve](
        r {.noalias.}: var QuadraticExt2x[FpDbl[C]],
@@ -483,14 +502,15 @@ func prod2x[C: static Curve](
     #                       => u c0 + β v c1 + (v c0 + u c1) x
     var t {.noInit.}: FpDbl[C]
 
-    t.prod(a.c1, V)
-    r.c0.prod(t, Beta)
-    t.prod(a.c0, U)
-    r.c0.sum2xMod(t)   # r0 = u c0 + β v c1
+    r.c0.prod2x(a.c0, U)
+    when V == 1 and Beta == -1:  # Case BN254_Snarks
+      r.c0.diff2xMod(r.c0, a.c1) # r0 = u c0 + β v c1
+    else:
+      {.error: "Unimplemented".}
 
-    r.c1.prod(a.c0, V)
-    t.prod(a.c1, U)
-    r.c1.sum2xMod(t)   # r1 = v c0 + u c1
+    r.c1.prod2x(a.c0, V)
+    t.prod2x(a.c1, U)
+    r.c1.sum2xMod(r.c1, t) # r1 = v c0 + u c1
 
 # ############################################################
 #                                                            #
@@ -508,26 +528,25 @@ func prod2x_complex(r: var QuadraticExt2x, a, b: QuadraticExt) =
   mixin fromComplexExtension
   static: doAssert a.fromComplexExtension()
 
-  var d {.noInit.}: typeof(r.c0)
+  var D {.noInit.}: typeof(r.c0)
   var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0)
-  const msbSet = a.c0.typeof.canUseNoCarryMontyMul()
 
   r.c0.prod2x(a.c0, b.c0)        # r0 = a0 b0
-  d.prod2x(a.c1, b.c1)           # d =  a1 b1
-  when msbSet:
-    t0.sum(a.c0, a.c1)
-    t1.sum(b.c0, b.c1)
-  else:
+  D.prod2x(a.c1, b.c1)           # d =  a1 b1
+  when QuadraticExt.has1extraBit():
     t0.sumUnred(a.c0, a.c1)
     t1.sumUnred(b.c0, b.c1)
-  r.c1.prod2x(t0, t1)            # r1 = (b0 + b1)(a0 + a1)
-  when msbSet:
-    r.c1.diff2xMod(r.c1, r.c0)   # r1 = (b0 + b1)(a0 + a1) - a0 b0
-    r.c1.diff2xMod(r.c1, d)      # r1 = (b0 + b1)(a0 + a1) - a0 b0 - a1b1
   else:
-    r.c1.diff2xUnred(r.c1, r.c0)
-    r.c1.diff2xUnred(r.c1, d)
-  r.c0.diff2xMod(r.c0, d)        # r0 = a0 b0 - a1 b1
+    t0.sum(a.c0, a.c1)
+    t1.sum(b.c0, b.c1)
+  r.c1.prod2x(t0, t1)            # r1 = (b0 + b1)(a0 + a1)
+  when QuadraticExt.has1extraBit():
+    r.c1.diff2xUnred(r.c1, r.c0) # r1 = (b0 + b1)(a0 + a1) - a0 b0
+    r.c1.diff2xUnred(r.c1, D)    # r1 = (b0 + b1)(a0 + a1) - a0 b0 - a1b1
+  else:
+    r.c1.diff2xMod(r.c1, r.c0)
+    r.c1.diff2xMod(r.c1, D)
+  r.c0.diff2xMod(r.c0, D)        # r0 = a0 b0 - a1 b1
 
 func square2x_complex(r: var QuadraticExt2x, a: QuadraticExt) =
   ## Double-width unreduced complex squaring
@@ -539,10 +558,10 @@ func square2x_complex(r: var QuadraticExt2x, a: QuadraticExt) =
 
   # Require 2 extra bits
   when QuadraticExt.has2extraBits():
-    t0.double(a.c1)
+    t0.sumUnred(a.c1, a.c1)
     t1.sum(a.c0, a.c1)
   else:
-    t0.sumUnred(a.c1, a.c1)
+    t0.double(a.c1)
     t1.sum(a.c0, a.c1)
 
   r.c1.prod2x(t0, a.c0)     # r1 = 2a0a1
@@ -556,26 +575,44 @@ func prod2x(r: var QuadraticExt2x, a, b: QuadraticExt) =
   else:
     {.error: "Not Implementated".}
 
+func square2x_disjoint[Fdbl, F](
+       r: var QuadraticExt2x[FDbl],
+       a0, a1: F)
+
+func square2x(r: var QuadraticExt2x, a: QuadraticExt) =
+  mixin fromComplexExtension, square2x_disjoint
+  when a.fromComplexExtension():
+    r.square2x_complex(a)
+  else:
+    r.square2x_disjoint(a.c0, a.c1)
+
 # Commutative ring implementation for generic quadratic extension fields
 # ----------------------------------------------------------------------
 #
 # Some sparse functions, reconstruct a Fp4 from disjoint pieces
 # to limit copies, we provide versions with disjoint elements
+# prod2x_disjoint:
+# - 2 products in mul_sparse_by_line_xyz000 (Fp4)
+# - 2 products in mul_sparse_by_line_xy000z (Fp4)
+# - mul_by_line_xy0 in mul_sparse_by_line_xy00z0 (Fp6)
+#
+# square2x_disjoint:
+# - cyclotomic square in Fp2 -> Fp6 -> Fp12 towering
+#   needs Fp4 as special case
 
 func prod2x_disjoint[Fdbl, F](
        r: var QuadraticExt2x[FDbl],
        a: QuadraticExt[F],
-       b0, b1: F
-     ) =
+       b0, b1: F) =
   ## Return a * (b0, b1) in r
   static: doAssert Fdbl is doubleWidth(F)
 
-  var v0 {.noInit.}, v1 {.noInit.}: typeof(r.c0) # Double-width
+  var V0 {.noInit.}, V1 {.noInit.}: typeof(r.c0) # Double-width
   var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0) # Single-width
 
   # Require 2 extra bits
-  v0.prod2x(a.c0, b0)
-  v1.prod2x(a.c1, b1)
+  V0.prod2x(a.c0, b0)
+  V1.prod2x(a.c1, b1)
   when F.has2extraBits():
     t0.sumUnred(b0, b1)
     t1.sumUnred(a.c0, a.c1)
@@ -584,12 +621,35 @@ func prod2x_disjoint[Fdbl, F](
     t1.sum(a.c0, a.c1)
 
   r.c1.prod2x(t0, t1)         # r1 = (a0 + a1)(b0 + b1)              , and at most 2 extra bits
-  r.c1.diff2xMod(r.c1, v0)    # r1 = (a0 + a1)(b0 + b1) - a0b0       , and at most 1 extra bit
-  r.c1.diff2xMod(r.c1, v1)    # r1 = (a0 + a1)(b0 + b1) - a0b0 - a1b1, and 0 extra bit
+  r.c1.diff2xMod(r.c1, V0)    # r1 = (a0 + a1)(b0 + b1) - a0b0       , and at most 1 extra bit
+  r.c1.diff2xMod(r.c1, V1)    # r1 = (a0 + a1)(b0 + b1) - a0b0 - a1b1, and 0 extra bit
 
   # TODO: This is correct modulo p, but we have some extra bits still here.
-  r.c0.prod2x(v1, NonResidue) # r0 = β a1 b1
-  r.c0.sum2xUnred(r.c0, v0)   # r0 = a0 b0 + β a1 b1
+  r.c0.prod2x(V1, NonResidue) # r0 = β a1 b1
+  r.c0.sum2xMod(r.c0, V0)     # r0 = a0 b0 + β a1 b1
+
+func square2x_disjoint[Fdbl, F](
+       r: var QuadraticExt2x[FDbl],
+       a0, a1: F) =
+  ## Return (a0, a1)² in r
+  var V0 {.noInit.}, V1 {.noInit.}: typeof(r.c0) # Double-width
+  var t {.noInit.}: F # Single-width
+
+  # TODO: which is the best formulation? 3 squarings or 2 Mul?
+  # It seems like the higher the tower the better squarings are
+  # So for Fp12 = 2xFp6, prefer squarings.
+  V0.square2x(a0)
+  V1.square2x(a1)
+  t.sum(a0, a1)
+
+  # r0 = a0² + β a1² (option 1) <=> (a0 + a1)(a0 + β a1) - β a0a1 - a0a1 (option 2)
+  r.c0.prod2x(V1, NonResidue)
+  r.c0.sum2xMod(r.c0, V0)
+
+  # r1 = 2 a0 a1 (option 1) = (a0 + a1)² - a0² - a1² (option 2)
+  r.c1.square2x(t)
+  r.c1.diff2xMod(r.c1, V0)
+  r.c1.diff2xMod(r.c1, V1)
 
 # ############################################################
 #                                                            #
@@ -921,7 +981,19 @@ func square*(r: var QuadraticExt, a: QuadraticExt) =
       r.c0.redc2x(d.c0)
       r.c1.redc2x(d.c1)
   else:
-    r.square_generic(a)
+    when true: # r.typeof.F.C in {BLS12_377, BW6_761}:
+      # BW6-761 requires too many registers for Dbl width path
+      r.square_generic(a)
+    else:
+      # TODO understand why Fp4[BLS12_377]
+      # is so slow in the branch
+      # TODO:
+      # - On Fp4, we can have a.c0.c0 off by p
+      #   a reduction is missing
+      var d {.noInit.}: doubleWidth(typeof(r))
+      d.square2x_disjoint(a.c0, a.c1)
+      r.c0.redc2x(d.c0)
+      r.c1.redc2x(d.c1)
 
 func prod*(r: var QuadraticExt, a, b: QuadraticExt) =
   mixin fromComplexExtension

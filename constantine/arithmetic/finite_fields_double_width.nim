@@ -35,6 +35,9 @@ template doubleWidth*(T: type Fp): type =
 func `==`*(a, b: FpDbl): SecretBool =
   a.limbs2x == b.limbs2x
 
+func setZero*(a: var FpDbl) =
+  a.limbs2x.setZero()
+
 func prod2x*(r: var FpDbl, a, b: Fp) =
   ## Double-precision multiplication
   ## Store the product of ``a`` by ``b`` into ``r``
@@ -93,6 +96,71 @@ func sum2xMod*(r: var FpDbl, a, b: FpDbl) =
     for i in 0 ..< N:
       subB(borrow, diff, r.limbs2x[i+N], M.limbs[i], borrow)
       overflowed.ccopy(r.limbs2x[i+N], diff)
+
+func prod2x*(
+    r {.noAlias.}: var FpDbl,
+    a {.noAlias.}: FpDbl, b: static int) =
+  ## Multiplication by a small integer known at compile-time
+  ## Requires no aliasing
+  const negate = b < 0
+  const b = if negate: -b
+            else: b
+  when negate:
+    r.diff2xMod(typeof(a)(), a)
+  when b == 0:
+    r.setZero()
+  elif b == 1:
+    r = a
+  elif b == 2:
+    r.sum2xMod(a, a)
+  elif b == 3:
+    r.sum2xMod(a, a)
+    r.sum2xMod(a, r)
+  elif b == 4:
+    r.sum2xMod(a, a)
+    r.sum2xMod(r, r)
+  elif b == 5:
+    r.sum2xMod(a, a)
+    r.sum2xMod(r, r)
+    r.sum2xMod(r, a)
+  elif b == 6:
+    r.sum2xMod(a, a)
+    let t2 = r
+    r.sum2xMod(r, r) # 4
+    r.sum2xMod(t, t2)
+  elif b == 7:
+    r.sum2xMod(a, a)
+    r.sum2xMod(r, r) # 4
+    r.sum2xMod(r, r)
+    r.diff2xMod(r, a)
+  elif b == 8:
+    r.sum2xMod(a, a)
+    r.sum2xMod(r, r)
+    r.sum2xMod(r, r)
+  elif b == 9:
+    r.sum2xMod(a, a)
+    r.sum2xMod(r, r)
+    r.sum2xMod(r, r) # 8
+    r.sum2xMod(r, a)
+  elif b == 10:
+    a.sum2xMod(a, a)
+    r.sum2xMod(r, r)
+    r.sum2xMod(r, a) # 5
+    r.sum2xMod(r, r)
+  elif b == 11:
+    a.sum2xMod(a, a)
+    r.sum2xMod(r, r)
+    r.sum2xMod(r, a) # 5
+    r.sum2xMod(r, r)
+    r.sum2xMod(r, a)
+  elif b == 12:
+    a.sum2xMod(a, a)
+    r.sum2xMod(r, r) # 4
+    let t4 = a
+    r.sum2xMod(r, r) # 8
+    r.sum2xMod(r, t4)
+  else:
+    {.error: "Multiplication by this small int not implemented".}
 
 {.pop.} # inline
 {.pop.} # raises no exceptions

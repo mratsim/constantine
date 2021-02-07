@@ -50,6 +50,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ----------------------------------------------------------
   ("tests/t_fp2.nim", false),
   ("tests/t_fp2_sqrt.nim", false),
+  ("tests/t_fp4.nim", false),
   ("tests/t_fp6_bn254_snarks.nim", false),
   ("tests/t_fp6_bls12_377.nim", false),
   ("tests/t_fp6_bls12_381.nim", false),
