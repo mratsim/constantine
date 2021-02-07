@@ -166,7 +166,7 @@ def genAteParam_BW6_opt(curve_name, curve_config):
 
   buf += '\n\n\n'
   buf += '# 2nd part: f_{u²-u-1,Q}(P) followed by Frobenius application\n'
-  buf += f'const {curve_name}_pairing_ate_param_opt_2* = block:\n'
+  buf += f'const {curve_name}_pairing_ate_param_2_opt* = block:\n'
   buf += ate_comment_2
 
   ate_2_bits = int(ate_param_2).bit_length()
@@ -188,14 +188,21 @@ def genFinalExp(curve_name, curve_config):
 
   # For BLS12 and BW6, 3*hard part has a better expression
   # in the q basis with LLL algorithm
-  fexpMul3 = family == 'BLS12' or family == 'BW6'
+  scale = 1
+  scaleDesc = ''
+  if family == 'BLS12':
+    scale = 3
+    scaleDesc = ' * 3'
+  if family == 'BW6':
+    u = curve_config[curve_name]['field']['param']
+    scale = 3*(u^3-u^2+1)
+    scaleDesc = ' * 3*(u^3-u^2+1)'
 
   fexp = (p^k - 1)//r
-  if fexpMul3:
-    fexp *= 3
+  fexp *= scale
 
   buf = f'const {curve_name}_pairing_finalexponent* = block:\n'
-  buf += f'  # (p^{k} - 1) / r' + (' * 3' if fexpMul3 else '')
+  buf += f'  # (p^{k} - 1) / r' + scaleDesc
   buf += '\n'
   buf += f'  BigInt[{int(fexp).bit_length()}].fromHex"0x{Integer(fexp).hex()}"'
 
