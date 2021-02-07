@@ -233,7 +233,7 @@ func prod*(r: var Fp6, a: Fp6, _: type NonResidue) {.inline.} =
   let t = a.c2
   r.c1 = a.c0
   r.c2 = a.c1
-  t.c0.prod(t, NonResidue)
+  r.c0.prod(t, NonResidue)
 
 func `*=`*(a: var Fp6, _: type NonResidue) {.inline.} =
   ## Multiply an element of 𝔽p4 by the non-residue
@@ -255,6 +255,7 @@ func `*=`*(a: var Fp6, _: type NonResidue) {.inline.} =
 type
   Fp12*[C: static Curve] =
     CubicExt[Fp4[C]]
+    # QuadraticExt[Fp6[C]]
 
 # Sparse functions
 # ----------------------------------------------------------------
