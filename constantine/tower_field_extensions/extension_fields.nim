@@ -410,25 +410,25 @@ func prod_complex(r: var QuadraticExt, a, b: QuadraticExt) =
     var d {.noInit.}: doubleWidth(typeof(r.c0))
     const msbSet = r.c0.typeof.canUseNoCarryMontyMul()
 
-    a0b0.mulNoReduce(a.c0, b.c0)     # 44 cycles - cumul 44
-    a1b1.mulNoReduce(a.c1, b.c1)     # 44 cycles - cumul 88
+    a0b0.prod2x(a.c0, b.c0)      # 44 cycles - cumul 44
+    a1b1.prod2x(a.c1, b.c1)      # 44 cycles - cumul 88
     when msbSet:
       r.c0.sum(a.c0, a.c1)
       r.c1.sum(b.c0, b.c1)
     else:
-      r.c0.sumNoReduce(a.c0, a.c1)   # 5 cycles  - cumul 93
-      r.c1.sumNoReduce(b.c0, b.c1)   # 5 cycles  - cumul 98
+      r.c0.sumUnred(a.c0, a.c1) # 5 cycles  - cumul 93
+      r.c1.sumUnred(b.c0, b.c1) # 5 cycles  - cumul 98
     # aliasing: a and b unneeded now
-    d.mulNoReduce(r.c0, r.c1)        # 44 cycles - cumul 142
+    d.prod2x(r.c0, r.c1)         # 44 cycles - cumul 142
     when msbSet:
-      d -= a0b0
-      d -= a1b1
+      d.diff2xMod(d, a0b0)
+      d.diff2xMod(d, a1b1)
     else:
-      d.diffNoReduce(d, a0b0)        # 11 cycles - cumul 153
-      d.diffNoReduce(d, a1b1)        # 11 cycles - cumul 164
-    a0b0.diff(a0b0, a1b1)            # 19 cycles - cumul 183
-    r.c0.reduce(a0b0)                # 50 cycles - cumul 233
-    r.c1.reduce(d)                   # 50 cycles - cumul 288
+      d.diff2xUnred(d, a0b0)    # 11 cycles - cumul 153
+      d.diff2xUnred(d, a1b1)    # 11 cycles - cumul 164
+    a0b0.diff2xMod(a0b0, a1b1)  # 19 cycles - cumul 183
+    r.c0.redc2x(a0b0)           # 50 cycles - cumul 233
+    r.c1.redc2x(d)              # 50 cycles - cumul 288
 
   # Single-width [3 Mul, 2 Add, 3 Sub]
   #    3*88 + 2*14 + 3*14 = 334 theoretical cycles

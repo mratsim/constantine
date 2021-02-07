@@ -281,7 +281,7 @@ func montySquare_CIOS(r: var Limbs, a, M: Limbs, m0ninv: BaseType) {.used.}=
 
 # Montgomery Reduction
 # ------------------------------------------------------------
-func montyRed_CIOS[N: static int](
+func montyRedc2x_CIOS[N: static int](
        r: var array[N, SecretWord],
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
@@ -343,7 +343,7 @@ func montyRed_CIOS[N: static int](
   discard res.csub(M, SecretWord(carry).isNonZero() or not(res < M))
   r = res
 
-func montyRed_Comba[N: static int](
+func montyRedc2x_Comba[N: static int](
        r: var array[N, SecretWord],
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
@@ -459,7 +459,7 @@ func montySquare*(r: var Limbs, a, M: Limbs,
   #   montyMul_FIPS(r, a, a, M, m0ninv)
 
 # TODO upstream, using Limbs[N] breaks semcheck
-func montyRed*[N: static int](
+func montyRedc2x*[N: static int](
        r: var array[N, SecretWord],
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
@@ -474,8 +474,8 @@ func montyRed*[N: static int](
     # TODO: Assembly faster than GCC but slower than Clang
     montRed_asm(r, a, M, m0ninv, canUseNoCarryMontyMul)
   else:
-    montyRed_CIOS(r, a, M, m0ninv)
-    # montyRed_Comba(r, a, M, m0ninv)
+    montyRedc2x_CIOS(r, a, M, m0ninv)
+    # montyRedc2x_Comba(r, a, M, m0ninv)
 
 func redc*(r: var Limbs, a, one, M: Limbs,
            m0ninv: static BaseType, canUseNoCarryMontyMul: static bool) =

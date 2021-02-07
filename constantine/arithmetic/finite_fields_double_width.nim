@@ -35,18 +35,20 @@ template doubleWidth*(T: typedesc[Fp]): typedesc =
 func `==`*(a, b: FpDbl): SecretBool =
   a.limbs2x == b.limbs2x
 
-func mulNoReduce*(r: var FpDbl, a, b: Fp) =
+func prod2x*(r: var FpDbl, a, b: Fp) =
+  ## Double-precision multiplication
   ## Store the product of ``a`` by ``b`` into ``r``
   r.limbs2x.prod(a.mres.limbs, b.mres.limbs)
 
-func squareNoReduce*(r: var FpDbl, a: Fp) =
+func square2x*(r: var FpDbl, a: Fp) =
+  ## Double-precision squaring
   ## Store the square of ``a`` into ``r``
   r.limbs2x.square(a.mres.limbs)
 
-func reduce*(r: var Fp, a: FpDbl) =
-  ## Reduce a double-width field element into r
+func redc2x*(r: var Fp, a: FpDbl) =
+  ## Reduce a double-precision field element into r
   const N = r.mres.limbs.len
-  montyRed(
+  montyRedc2x(
     r.mres.limbs,
     a.limbs2x,
     Fp.C.Mod.limbs,
@@ -54,11 +56,11 @@ func reduce*(r: var Fp, a: FpDbl) =
     Fp.canUseNoCarryMontyMul()
   )
 
-func diffNoReduce*(r: var FpDbl, a, b: FpDbl) =
+func diff2xUnred*(r: var FpDbl, a, b: FpDbl) =
   ## Double-width substraction without reduction
   discard r.limbs2x.diff(a.limbs2x, b.limbs2x)
 
-func diff*(r: var FpDbl, a, b: FpDbl) =
+func diff2xMod*(r: var FpDbl, a, b: FpDbl) =
   ## Double-width modular substraction
   when UseASM_X86_64:
     sub2x_asm(r.limbs2x, a.limbs2x, b.limbs2x, FpDbl.C.Mod.limbs)
@@ -72,10 +74,6 @@ func diff*(r: var FpDbl, a, b: FpDbl) =
     for i in 0 ..< N:
       addC(carry, sum, r.limbs2x[i+N], M.limbs[i], carry)
       underflowed.ccopy(r.limbs2x[i+N], sum)
-
-func `-=`*(a: var FpDbl, b: FpDbl) =
-  ## Double-width modular substraction
-  a.diff(a, b)
 
 {.pop.} # inline
 {.pop.} # raises no exceptions

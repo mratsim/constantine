@@ -169,7 +169,7 @@ func sum*(r: var FF, a, b: FF) {.meter.} =
     overflowed = overflowed or not(r.mres < FF.fieldMod())
     discard csub(r.mres, FF.fieldMod(), overflowed)
 
-func sumNoReduce*(r: var FF, a, b: FF) {.meter.} =
+func sumUnred*(r: var FF, a, b: FF) {.meter.} =
   ## Sum ``a`` and ``b`` into ``r`` without reduction
   discard r.mres.sum(a.mres, b.mres)
 
@@ -183,7 +183,7 @@ func diff*(r: var FF, a, b: FF) {.meter.} =
     var underflowed = r.mres.diff(a.mres, b.mres)
     discard cadd(r.mres, FF.fieldMod(), underflowed)
 
-func diffNoReduce*(r: var FF, a, b: FF) {.meter.} =
+func diffUnred*(r: var FF, a, b: FF) {.meter.} =
   ## Substract `b` from `a` and store the result into `r`
   ## without reduction
   discard r.mres.diff(a.mres, b.mres)

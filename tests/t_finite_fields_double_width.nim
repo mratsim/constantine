@@ -33,8 +33,8 @@ template mulTest(rng_gen: untyped): untyped =
     var tmpDbl{.noInit.}: FpDbl[C]
 
     r_fp.prod(a, b)
-    tmpDbl.mulNoReduce(a, b)
-    r_fpDbl.reduce(tmpDbl)
+    tmpDbl.prod2x(a, b)
+    r_fpDbl.redc2x(tmpDbl)
 
     doAssert bool(r_fp == r_fpDbl)
 
@@ -44,8 +44,8 @@ template sqrTest(rng_gen: untyped): untyped =
 
     var mulDbl{.noInit.}, sqrDbl{.noInit.}: FpDbl[C]
 
-    mulDbl.mulNoReduce(a, a)
-    sqrDbl.squareNoReduce(a)
+    mulDbl.prod2x(a, a)
+    sqrDbl.square2x(a)
 
     doAssert bool(mulDbl == sqrDbl)
 

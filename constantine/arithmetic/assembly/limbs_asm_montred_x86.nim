@@ -83,7 +83,7 @@ proc finalSubCanOverflow*(
 # Montgomery reduction
 # ------------------------------------------------------------
 
-macro montyRed_gen[N: static int](
+macro montyRedc2x_gen[N: static int](
        r_MR: var array[N, SecretWord],
        a_MR: array[N*2, SecretWord],
        M_MR: array[N, SecretWord],
@@ -252,4 +252,4 @@ func montRed_asm*[N: static int](
        canUseNoCarryMontyMul: static bool
       ) =
   ## Constant-time Montgomery reduction
-  montyRed_gen(r, a, M, m0ninv, canUseNoCarryMontyMul)
+  montyRedc2x_gen(r, a, M, m0ninv, canUseNoCarryMontyMul)

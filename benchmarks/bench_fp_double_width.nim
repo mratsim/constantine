@@ -121,12 +121,12 @@ func random_unsafe(rng: var RngState, a: var FpDbl, Base: typedesc) =
   for i in 0 ..< aHi.mres.limbs.len:
     a.limbs2x[aLo.mres.limbs.len+i] = aHi.mres.limbs[i]
 
-proc sumNoReduce(T: typedesc, iters: int) =
+proc sumUnred(T: typedesc, iters: int) =
   var r: T
   let a = rng.random_unsafe(T)
   let b = rng.random_unsafe(T)
-  bench("Addition no reduce", $T, iters):
-    r.sumNoReduce(a, b)
+  bench("Addition unreduced", $T, iters):
+    r.sumUnred(a, b)
 
 proc sum(T: typedesc, iters: int) =
   var r: T
@@ -135,12 +135,12 @@ proc sum(T: typedesc, iters: int) =
   bench("Addition", $T, iters):
     r.sum(a, b)
 
-proc diffNoReduce(T: typedesc, iters: int) =
+proc diffUnred(T: typedesc, iters: int) =
   var r: T
   let a = rng.random_unsafe(T)
   let b = rng.random_unsafe(T)
-  bench("Substraction no reduce", $T, iters):
-    r.diffNoReduce(a, b)
+  bench("Substraction unreduced", $T, iters):
+    r.diffUnred(a, b)
 
 proc diff(T: typedesc, iters: int) =
   var r: T
@@ -154,28 +154,28 @@ proc diff2xNoReduce(T: typedesc, iters: int) =
   rng.random_unsafe(r, T)
   rng.random_unsafe(a, T)
   rng.random_unsafe(b, T)
-  bench("Substraction 2x no reduce", $doubleWidth(T), iters):
-    r.diffNoReduce(a, b)
+  bench("Substraction 2x unreduced", $doubleWidth(T), iters):
+    r.diff2xUnred(a, b)
 
 proc diff2x(T: typedesc, iters: int) =
   var r, a, b: doubleWidth(T)
   rng.random_unsafe(r, T)
   rng.random_unsafe(a, T)
   rng.random_unsafe(b, T)
-  bench("Substraction 2x", $doubleWidth(T), iters):
-    r.diff(a, b)
+  bench("Substraction 2x reduced", $doubleWidth(T), iters):
+    r.diff2xMod(a, b)
 
-proc mul2xBench*(rLen, aLen, bLen: static int, iters: int) =
+proc prod2xBench*(rLen, aLen, bLen: static int, iters: int) =
   var r: BigInt[rLen]
   let a = rng.random_unsafe(BigInt[aLen])
   let b = rng.random_unsafe(BigInt[bLen])
-  bench("Multiplication", $rLen & " <- " & $aLen & " x " & $bLen, iters):
+  bench("Multiplication 2x", $rLen & " <- " & $aLen & " x " & $bLen, iters):
     r.prod(a, b)
 
 proc square2xBench*(rLen, aLen: static int, iters: int) =
   var r: BigInt[rLen]
   let a = rng.random_unsafe(BigInt[aLen])
-  bench("Squaring", $rLen & " <- " & $aLen & "²", iters):
+  bench("Squaring 2x", $rLen & " <- " & $aLen & "²", iters):
     r.square(a)
 
 proc reduce2x*(T: typedesc, iters: int) =
@@ -183,18 +183,18 @@ proc reduce2x*(T: typedesc, iters: int) =
   var t: doubleWidth(T)
   rng.random_unsafe(t, T)
 
-  bench("Reduce 2x-width", $T & " <- " & $doubleWidth(T), iters):
-    r.reduce(t)
+  bench("Redc 2x", $T & " <- " & $doubleWidth(T), iters):
+    r.redc2x(t)
 
 proc main() =
   separator()
-  sumNoReduce(Fp[BLS12_381], iters = 10_000_000)
-  diffNoReduce(Fp[BLS12_381], iters = 10_000_000)
+  sumUnred(Fp[BLS12_381], iters = 10_000_000)
+  diffUnred(Fp[BLS12_381], iters = 10_000_000)
   sum(Fp[BLS12_381], iters = 10_000_000)
   diff(Fp[BLS12_381], iters = 10_000_000)
   diff2x(Fp[BLS12_381], iters = 10_000_000)
   diff2xNoReduce(Fp[BLS12_381], iters = 10_000_000)
-  mul2xBench(768, 384, 384, iters = 10_000_000)
+  prod2xBench(768, 384, 384, iters = 10_000_000)
   square2xBench(768, 384, iters = 10_000_000)
   reduce2x(Fp[BLS12_381], iters = 10_000_000)
   separator()

@@ -35,7 +35,7 @@ static: doAssert UseASM_X86_64
 # Montgomery reduction
 # ------------------------------------------------------------
 
-macro montyRedx_gen[N: static int](
+macro montyRedc2xx_gen[N: static int](
        r_MR: var array[N, SecretWord],
        a_MR: array[N*2, SecretWord],
        M_MR: array[N, SecretWord],
@@ -191,4 +191,4 @@ func montRed_asm_adx_bmi2*[N: static int](
        canUseNoCarryMontyMul: static bool
       ) =
   ## Constant-time Montgomery reduction
-  montyRedx_gen(r, a, M, m0ninv, canUseNoCarryMontyMul)
+  montyRedc2xx_gen(r, a, M, m0ninv, canUseNoCarryMontyMul)
