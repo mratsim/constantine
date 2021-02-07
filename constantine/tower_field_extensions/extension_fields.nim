@@ -235,59 +235,57 @@ func `*=`*(a: var ExtensionField, b: static int) =
   elif b == 2:
     a.double()
   elif b == 3:
-    let t1 = a
-    a.double()
-    a += t1
+    var t {.noInit.}: typeof(a)
+    t.double(a)
+    a += t
   elif b == 4:
     a.double()
     a.double()
   elif b == 5:
-    let t1 = a
-    a.double()
-    a.double()
-    a += t1
+    var t {.noInit.}: typeof(a)
+    t.double(a)
+    t.double()
+    a += t
   elif b == 6:
-    a.double()
-    let t2 = a
-    a.double() # 4
-    a += t2
+    var t {.noInit.}: typeof(a)
+    t.double(a)
+    t += a # 3
+    a.double(t)
   elif b == 7:
-    let t1 = a
-    a.double()
-    let t2 = a
-    a.double() # 4
-    a += t2
-    a += t1
+    var t {.noInit.}: typeof(a)
+    t.double(a)
+    t.double()
+    t.double()
+    a.diff(t, a)
   elif b == 8:
     a.double()
     a.double()
     a.double()
   elif b == 9:
-    let t1 = a
-    a.double()
-    a.double()
-    a.double() # 8
-    a += t1
+    var t {.noInit.}: typeof(a)
+    t.double(a)
+    t.double()
+    t.double()
+    a.sum(t, a)
   elif b == 10:
+    var t {.noInit.}: typeof(a)
+    t.double(a)
+    t.double()
+    a += t     # 5
     a.double()
-    let t2 = a
-    a.double()
-    a.double() # 8
-    a += t2
   elif b == 11:
-    let t1 = a
-    a.double()
-    let t2 = a
-    a.double()
-    a.double() # 8
-    a += t2
-    a += t1
+    var t {.noInit.}: typeof(a)
+    t.double(a)
+    t += a       # 3
+    t.double()   # 6
+    t.double()   # 12
+    a.diff(t, a) # 11
   elif b == 12:
-    a.double()
-    a.double() # 4
-    let t4 = a
-    a.double() # 8
-    a += t4
+    var t {.noInit.}: typeof(a)
+    t.double(a)
+    t += a       # 3
+    t.double()   # 6
+    a.double(t)   # 12
   else:
     {.error: "Multiplication by this small int not implemented".}
 
