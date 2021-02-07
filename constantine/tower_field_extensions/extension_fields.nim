@@ -596,10 +596,9 @@ func mul_sparse_generic_by_0y(
   var t{.noInit.}: typeof(a.c0)
 
   t.prod(a.c1, b)
-  t *= NonResidue
   r.c1.prod(a.c0, b)
   # aliasing: a unneeded now
-  r.c0 = t
+  r.c0.prod(t, NonResidue)
 
 func mul_sparse_generic_by_0y(
        r: var QuadraticExt, a: QuadraticExt,
@@ -620,10 +619,9 @@ func mul_sparse_generic_by_0y(
   var t{.noInit.}: typeof(a.c0)
 
   t.prod(a.c1, b)
-  t *= NonResidue
   r.c1.prod(a.c0, b)
   # aliasing: a unneeded now
-  r.c0 = t
+  r.c0.prod(t, NonResidue)
 
 func invImpl(r: var QuadraticExt, a: QuadraticExt) =
   ## Compute the multiplicative inverse of ``a``
