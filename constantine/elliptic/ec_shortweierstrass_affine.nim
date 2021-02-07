@@ -124,6 +124,7 @@ func trySetFromCoordX*[F, Tw](
   ##       will be provided, this is intended for testing purposes.
   P.y.curve_eq_rhs(x, Tw)
   result = sqrt_if_square(P.y)
+  P.x = x
 
 func neg*(P: var ECP_ShortW_Aff, Q: ECP_ShortW_Aff) =
   ## Negate ``P``
