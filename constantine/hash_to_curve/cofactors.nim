@@ -34,13 +34,21 @@ const Cofactor_Eff_BN254_Snarks_G2 = BigInt[254].fromHex"0x30644e72e131a029b8504
 const Cofactor_Eff_BLS12_377_G1 = BigInt[125].fromHex"0x170b5d44300000000000000000000000"
   ## P -> (1 - x) P
 const Cofactor_Eff_BLS12_377_G2 = BigInt[502].fromHex"0x26ba558ae9562addd88d99a6f6a829fbb36b00e1dcc40c8c505634fae2e189d693e8c36676bd09a0f3622fba094800452217cc900000000000000000000001"
-  ## P -> (x^2 - x - 1) P + (x - 1) psi(P) + psi(psi(2P))
+  ## P -> (x^2 - x - 1) P + (x - 1) ψ(P) + ψ(ψ(2P))
 
 # https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-09#section-8.8
 const Cofactor_Eff_BLS12_381_G1 = BigInt[64].fromHex"0xd201000000010001"
   ## P -> (1 - x) P
 const Cofactor_Eff_BLS12_381_G2 = BigInt[636].fromHex"0xbc69f08f2ee75b3584c6a0ea91b352888e2a8e9145ad7689986ff031508ffe1329c2f178731db956d82bf015d1212b02ec0ec69d7477c1ae954cbc06689f6a359894c0adebbf6b4e8020005aaa95551"
-  ## P -> (x^2 - x - 1) P + (x - 1) psi(P) + psi(psi(2P))
+  ## P -> (x^2 - x - 1) P + (x - 1) ψ(P) + ψ(ψ(2P))
+
+# TODO https://eprint.iacr.org/2020/351.pdf p12
+const Cofactor_Eff_BW6_761_G1 = BigInt[384].fromHex"0xad1972339049ce762c77d5ac34cb12efc856a0853c9db94cc61c554757551c0c832ba4061000003b3de580000000007c"
+  ## P -> 103([u³]P)− 83([u²]P)−40([u]P)+136P + φ(7([u²]P)+89([u]P)+130P)
+
+# TODO https://eprint.iacr.org/2020/351.pdf p13
+const Cofactor_Eff_BW6_761_G2 = BigInt[384].fromHex"0xad1972339049ce762c77d5ac34cb12efc856a0853c9db94cc61c554757551c0c832ba4061000003b3de580000000007c"
+  ## P -> (103([u³]P) − 83([u²]P) − 143([u]P) + 27P) + ψ(7([u²]P) − 117([u]P) − 109P)
 
 func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp[BN254_Nogami], NotOnTwist]) {.inline.} =
   ## Clear the cofactor of BN254_Nogami G1
@@ -79,3 +87,12 @@ func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist]) {.i
   ## Clear the cofactor of BLS12_381 G2
   # Endomorphism acceleration cannot be used if cofactor is not cleared
   P.scalarMulGeneric(Cofactor_Eff_BLS12_381_G2)
+
+func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp[BW6_761], NotOnTwist]) {.inline.} =
+  ## Clear the cofactor of BW6_761 G1
+  P.scalarMulGeneric(Cofactor_Eff_BW6_761_G1)
+
+func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp[BW6_761], OnTwist]) {.inline.} =
+  ## Clear the cofactor of BW6_761 G2
+  # Endomorphism acceleration cannot be used if cofactor is not cleared
+  P.scalarMulGeneric(Cofactor_Eff_BW6_761_G2)

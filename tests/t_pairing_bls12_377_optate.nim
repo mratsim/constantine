@@ -13,4 +13,9 @@ import
   # Test utilities
   ./t_pairing_template
 
-runPairingTests(4, BLS12_377, pairing_bls12)
+runPairingTests(
+  4, BLS12_377,
+  G1 = ECP_ShortW_Prj[Fp[BLS12_377], NotOnTwist],
+  G2 = ECP_ShortW_Prj[Fp2[BLS12_377], OnTwist],
+  GT = Fp12[BLS12_377],
+  pairing_bls12)
