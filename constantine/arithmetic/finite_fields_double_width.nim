@@ -24,7 +24,7 @@ type FpDbl*[C: static Curve] = object
   # We directly work with double the number of limbs
   limbs2x*: matchingLimbs2x(C)
 
-template doubleWidth*(T: typedesc[Fp]): typedesc =
+template doubleWidth*(T: type Fp): type =
   ## Return the double-width type matching with Fp
   FpDbl[T.C]
 
@@ -74,6 +74,25 @@ func diff2xMod*(r: var FpDbl, a, b: FpDbl) =
     for i in 0 ..< N:
       addC(carry, sum, r.limbs2x[i+N], M.limbs[i], carry)
       underflowed.ccopy(r.limbs2x[i+N], sum)
+
+func sum2xUnred*(r: var FpDbl, a, b: FpDbl) =
+  ## Double-width addition without reduction
+  discard r.limbs2x.sum(a.limbs2x, b.limbs2x)
+
+func sum2xMod*(r: var FpDbl, a, b: FpDbl) =
+  ## Double-width modular substraction
+  when false: # TODO: UseASM_X86_64:
+    sum2x_asm(r.limbs2x, a.limbs2x, b.limbs2x, FpDbl.C.Mod.limbs)
+  else:
+    var overflowed = SecretBool r.limbs2x.sum(a.limbs2x, b.limbs2x)
+
+    const N = r.limbs2x.len div 2
+    const M = FpDbl.C.Mod
+    var borrow = Borrow(0)
+    var diff: SecretWord
+    for i in 0 ..< N:
+      subB(borrow, diff, r.limbs2x[i+N], M.limbs[i], borrow)
+      overflowed.ccopy(r.limbs2x[i+N], diff)
 
 {.pop.} # inline
 {.pop.} # raises no exceptions
