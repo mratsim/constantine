@@ -350,8 +350,11 @@ template `c2=`(a: var CubicExt2x, v: auto) =
 #                                                            #
 # ############################################################
 
+# Commutative ring implementation for complex quadratic extension fields
+# ----------------------------------------------------------------------
+
 func prod2x_complex(r: var QuadraticExt2x, a, b: QuadraticExt) =
-  ## Double-width unreduced multiplication
+  ## Double-width unreduced complex multiplication
   # r and a or b cannot alias
 
   mixin fromComplexExtension
@@ -377,6 +380,26 @@ func prod2x_complex(r: var QuadraticExt2x, a, b: QuadraticExt) =
     r.c1.diff2xUnred(r.c1, r.c0)
     r.c1.diff2xUnred(r.c1, d)
   r.c0.diff2xMod(r.c0, d)        # r0 = a0 b0 - a1 b1
+
+func square2x_complex(r: var QuadraticExt2x, a: QuadraticExt) =
+  ## Double-width unreduced complex squaring
+
+  mixin fromComplexExtension
+  static: doAssert a.fromComplexExtension()
+
+  var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0)
+  const msbSet = a.c0.typeof.canUseNoCarryMontyMul()
+
+  when msbSet:
+    t0.double(a.c1)
+    t1.sum(a.c0, a.c1)
+  else:
+    t0.sumUnred(a.c1, a.c1)
+    t1.sum(a.c0, a.c1)
+
+  r.c1.prod2x(t0, a.c0)     # r1 = 2a0a1
+  t0.diff(a.c0, a.c1)
+  r.c0.prod2x(t0, t1)       # r0 = (a0 + a1)(a0 - a1)
 
 # ############################################################
 #                                                            #
@@ -467,25 +490,18 @@ func prod_complex(r: var QuadraticExt, a, b: QuadraticExt) =
   mixin fromComplexExtension
   static: doAssert r.fromComplexExtension()
 
-  when false: # Single-width implementation
-    var a0b0 {.noInit.}, a1b1 {.noInit.}: typeof(r.c0)
-    a0b0.prod(a.c0, b.c0)                                         # [1 Mul]
-    a1b1.prod(a.c1, b.c1)                                         # [2 Mul]
+  var a0b0 {.noInit.}, a1b1 {.noInit.}: typeof(r.c0)
+  a0b0.prod(a.c0, b.c0)                                         # [1 Mul]
+  a1b1.prod(a.c1, b.c1)                                         # [2 Mul]
 
-    r.c0.sum(a.c0, a.c1)  # r0 = (a0 + a1)                        # [2 Mul, 1 Add]
-    r.c1.sum(b.c0, b.c1)  # r1 = (b0 + b1)                        # [2 Mul, 2 Add]
-    # aliasing: a and b unneeded now
-    r.c1 *= r.c0          # r1 = (b0 + b1)(a0 + a1)               # [3 Mul, 2 Add] - 𝔽p temporary
+  r.c0.sum(a.c0, a.c1)  # r0 = (a0 + a1)                        # [2 Mul, 1 Add]
+  r.c1.sum(b.c0, b.c1)  # r1 = (b0 + b1)                        # [2 Mul, 2 Add]
+  # aliasing: a and b unneeded now
+  r.c1 *= r.c0          # r1 = (b0 + b1)(a0 + a1)               # [3 Mul, 2 Add] - 𝔽p temporary
 
-    r.c0.diff(a0b0, a1b1) # r0 = a0 b0 - a1 b1                    # [3 Mul, 2 Add, 1 Sub]
-    r.c1 -= a0b0          # r1 = (b0 + b1)(a0 + a1) - a0b0        # [3 Mul, 2 Add, 2 Sub]
-    r.c1 -= a1b1          # r1 = (b0 + b1)(a0 + a1) - a0b0 - a1b1 # [3 Mul, 2 Add, 3 Sub]
-  else: # Double-width implementation with lazy reduction
-        # Clang 341 cycles on i9-9980XE @3.9 GHz
-    var d {.noInit.}: doubleWidth(typeof(r))
-    d.prod2x_complex(a, b)
-    r.c0.redc2x(d.c0)
-    r.c1.redc2x(d.c1)
+  r.c0.diff(a0b0, a1b1) # r0 = a0 b0 - a1 b1                    # [3 Mul, 2 Add, 1 Sub]
+  r.c1 -= a0b0          # r1 = (b0 + b1)(a0 + a1) - a0b0        # [3 Mul, 2 Add, 2 Sub]
+  r.c1 -= a1b1          # r1 = (b0 + b1)(a0 + a1) - a0b0 - a1b1 # [3 Mul, 2 Add, 3 Sub]
 
 func mul_sparse_complex_by_0y(
        r: var QuadraticExt, a: QuadraticExt,
@@ -704,21 +720,33 @@ func invImpl(r: var QuadraticExt, a: QuadraticExt) =
 # Exported quadratic symbols
 # -------------------------------------------------------------------
 
-{.push inline.}
-
 func square*(r: var QuadraticExt, a: QuadraticExt) =
   mixin fromComplexExtension
   when r.fromComplexExtension():
-    r.square_complex(a)
+    when true:
+      r.square_complex(a)
+    else: # slower
+      var d {.noInit.}: doubleWidth(typeof(r))
+      d.square2x_complex(a)
+      r.c0.redc2x(d.c0)
+      r.c1.redc2x(d.c1)
   else:
     r.square_generic(a)
 
 func prod*(r: var QuadraticExt, a, b: QuadraticExt) =
   mixin fromComplexExtension
   when r.fromComplexExtension():
-    r.prod_complex(a, b)
+    when false:
+      r.prod_complex(a, b)
+    else: # faster
+      var d {.noInit.}: doubleWidth(typeof(r))
+      d.prod2x_complex(a, b)
+      r.c0.redc2x(d.c0)
+      r.c1.redc2x(d.c1)
   else:
     r.prod_generic(a, b)
+
+{.push inline.}
 
 func inv*(r: var QuadraticExt, a: QuadraticExt) =
   ## Compute the multiplicative inverse of ``a``
