@@ -73,7 +73,7 @@ proc runFrobeniusTowerTests*[N](
           var fa {.noInit.}: typeof(a)
           fa.frobenius_map(a, k = 1)
 
-          a.powUnsafeExponent(Field.C.Mod, window = 3)
+          a.powUnsafeExponent(Field.fieldMod(), window = 3)
           check: bool(a == fa)
 
       staticFor(curve, TestCurves):
@@ -89,8 +89,8 @@ proc runFrobeniusTowerTests*[N](
           var fa {.noInit.}: typeof(a)
           fa.frobenius_map(a, k = 2)
 
-          a.powUnsafeExponent(Field.C.Mod, window = 3)
-          a.powUnsafeExponent(Field.C.Mod, window = 3)
+          a.powUnsafeExponent(Field.fieldMod(), window = 3)
+          a.powUnsafeExponent(Field.fieldMod(), window = 3)
 
           check:
             bool(a == fa)
@@ -108,9 +108,9 @@ proc runFrobeniusTowerTests*[N](
           var fa {.noInit.}: typeof(a)
           fa.frobenius_map(a, k = 3)
 
-          a.powUnsafeExponent(Field.C.Mod, window = 3)
-          a.powUnsafeExponent(Field.C.Mod, window = 3)
-          a.powUnsafeExponent(Field.C.Mod, window = 3)
+          a.powUnsafeExponent(Field.fieldMod(), window = 3)
+          a.powUnsafeExponent(Field.fieldMod(), window = 3)
+          a.powUnsafeExponent(Field.fieldMod(), window = 3)
           check: bool(a == fa)
 
       staticFor(curve, TestCurves):

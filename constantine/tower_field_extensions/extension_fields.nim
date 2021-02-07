@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/common,
+  ../config/[common, curves],
   ../primitives,
   ../arithmetic
 
@@ -30,46 +30,55 @@ type
     ##
     ## Placeholder for the appropriate quadratic, cubic or sectic non-residue
 
-  CubicExt* = concept x
-    ## Cubic Extension field concept
-    type BaseField = auto
-    x.c0 is BaseField
-    x.c1 is BaseField
-    x.c2 is BaseField
+  QuadraticExt*[F] = object
+    ## Quadratic Extension field
+    coords*: array[2, F]
 
-  QuadraticExt* = concept x
-    ## Quadratic Extension field concept
-    not(x is CubicExt)
+  CubicExt*[F] = object
+    ## Cubic Extension field
+    coords*: array[3, F]
 
-    type BaseField = auto
-    x.c0 is BaseField
-    x.c1 is BaseField
+  ExtensionField*[F] = QuadraticExt[F] or CubicExt[F]
 
-  ExtensionField* = QuadraticExt or CubicExt
+template c0*(a: ExtensionField): auto =
+  a.coords[0]
+template c1*(a: ExtensionField): auto =
+  a.coords[1]
+template c2*(a: CubicExt): auto =
+  a.coords[2]
+
+template `c0=`*(a: ExtensionField, v: auto) =
+  a.coords[0] = v
+template `c1=`*(a: ExtensionField, v: auto) =
+  a.coords[1] = v
+template `c2=`*(a: CubicExt, v: auto) =
+  a.coords[2] = v
+
+template C*(E: type ExtensionField): Curve =
+  E.F.C
+
+template fieldMod*(E: type ExtensionField): auto =
+  Fp[E.F.C].fieldMod()
 
 # Initialization
 # -------------------------------------------------------------------
 
 func setZero*(a: var ExtensionField) =
   ## Set ``a`` to 0 in the extension field
-  for field in fields(a):
-    field.setZero()
+  staticFor i, 0, a.coords.len:
+    a.coords[i].setZero()
 
 func setOne*(a: var ExtensionField) =
   ## Set ``a`` to 1 in the extension field
-  for fieldName, fA in fieldPairs(a):
-    when fieldName == "c0":
-      fA.setOne()
-    else:
-      fA.setZero()
+  a.coords[0].setOne()
+  staticFor i, 1, a.coords.len:
+    a.coords[i].setZero()
 
 func fromBig*(a: var ExtensionField, src: BigInt) =
   ## Set ``a`` to the bigint value in the extension field
-  for fieldName, fA in fieldPairs(a):
-    when fieldName == "c0":
-      fA.fromBig(src)
-    else:
-      fA.setZero()
+  a.coords[0].fromBig(src)
+  staticFor i, 1, a.coords.len:
+    a.coords[i].setZero()
 
 # Comparison
 # -------------------------------------------------------------------
@@ -77,32 +86,28 @@ func fromBig*(a: var ExtensionField, src: BigInt) =
 func `==`*(a, b: ExtensionField): SecretBool =
   ## Constant-time equality check
   result = CtTrue
-  for fA, fB in fields(a, b):
-    result = result and (fA == fB)
+  staticFor i, 0, a.coords.len:
+    result = result and (a.coords[i] == b.coords[i])
 
 func isZero*(a: ExtensionField): SecretBool =
   ## Constant-time check if zero
   result = CtTrue
-  for fA in fields(a):
-    result = result and fA.isZero()
+  staticFor i, 0, a.coords.len:
+    result = result and a.coords[i].isZero()
 
 func isOne*(a: ExtensionField): SecretBool =
   ## Constant-time check if one
   result = CtTrue
-  for fieldName, fA in fieldPairs(a):
-    when fieldName == "c0":
-      result = result and fA.isOne()
-    else:
-      result = result and fA.isZero()
+  result = result and a.coords[0].isOne()
+  staticFor i, 1, a.coords.len:
+    result = result and a.coords[i].isZero()
 
 func isMinusOne*(a: ExtensionField): SecretBool =
   ## Constant-time check if -1
   result = CtTrue
-  for fieldName, fA in fieldPairs(a):
-    when fieldName == "c0":
-      result = result and fA.isMinusOne()
-    else:
-      result = result and fA.isZero()
+  result = result and a.coords[0].isMinusOne()
+  staticFor i, 1, a.coords.len:
+    result = result and a.coords[i].isZero()
 
 # Copies
 # -------------------------------------------------------------------
@@ -112,68 +117,56 @@ func ccopy*(a: var ExtensionField, b: ExtensionField, ctl: SecretBool) =
   ## If ctl is true: b is copied into a
   ## if ctl is false: b is not copied and a is unmodified
   ## Time and memory accesses are the same whether a copy occurs or not
-  for fA, fB in fields(a, b):
-    ccopy(fA, fB, ctl)
+  staticFor i, 0, a.coords.len:
+    a.coords[i].ccopy(b.coords[i], ctl)
 
 # Abelian group
 # -------------------------------------------------------------------
 
 func neg*(r: var ExtensionField, a: ExtensionField) =
   ## Field out-of-place negation
-  for fR, fA in fields(r, a):
-    fR.neg(fA)
+  staticFor i, 0, a.coords.len:
+    r.coords[i].neg(a.coords[i])
 
 func neg*(a: var ExtensionField) =
   ## Field in-place negation
-  for fA in fields(a):
-    fA.neg()
+  staticFor i, 0, a.coords.len:
+    a.coords[i].neg()
 
 func `+=`*(a: var ExtensionField, b: ExtensionField) =
   ## Addition in the extension field
-  for fA, fB in fields(a, b):
-    fA += fB
+  staticFor i, 0, a.coords.len:
+    a.coords[i] += b.coords[i]
 
 func `-=`*(a: var ExtensionField, b: ExtensionField) =
   ## Substraction in the extension field
-  for fA, fB in fields(a, b):
-    fA -= fB
+  staticFor i, 0, a.coords.len:
+    a.coords[i] -= b.coords[i]
 
 func double*(r: var ExtensionField, a: ExtensionField) =
   ## Field out-of-place doubling
-  for fR, fA in fields(r, a):
-    fR.double(fA)
+  staticFor i, 0, a.coords.len:
+    r.coords[i].double(a.coords[i])
 
 func double*(a: var ExtensionField) =
   ## Field in-place doubling
-  for fA in fields(a):
-    fA.double()
+  staticFor i, 0, a.coords.len:
+    a.coords[i].double()
 
 func div2*(a: var ExtensionField) =
   ## Field in-place division by 2
-  for fA in fields(a):
-    fA.div2()
+  staticFor i, 0, a.coords.len:
+    a.coords[i].div2()
 
-func sum*(r: var QuadraticExt, a, b: QuadraticExt) =
+func sum*(r: var ExtensionField, a, b: ExtensionField) =
   ## Sum ``a`` and ``b`` into ``r``
-  r.c0.sum(a.c0, b.c0)
-  r.c1.sum(a.c1, b.c1)
+  staticFor i, 0, a.coords.len:
+    r.coords[i].sum(a.coords[i], b.coords[i])
 
-func sum*(r: var CubicExt, a, b: CubicExt) =
-  ## Sum ``a`` and ``b`` into ``r``
-  r.c0.sum(a.c0, b.c0)
-  r.c1.sum(a.c1, b.c1)
-  r.c2.sum(a.c2, b.c2)
-
-func diff*(r: var QuadraticExt, a, b: QuadraticExt) =
+func diff*(r: var ExtensionField, a, b: ExtensionField) =
   ## Diff ``a`` and ``b`` into ``r``
-  r.c0.diff(a.c0, b.c0)
-  r.c1.diff(a.c1, b.c1)
-
-func diff*(r: var CubicExt, a, b: CubicExt) =
-  ## Diff ``a`` and ``b`` into ``r``
-  r.c0.diff(a.c0, b.c0)
-  r.c1.diff(a.c1, b.c1)
-  r.c2.diff(a.c2, b.c2)
+  staticFor i, 0, a.coords.len:
+    r.coords[i].diff(a.coords[i], b.coords[i])
 
 func conj*(a: var QuadraticExt) =
   ## Computes the conjugate in-place
@@ -211,18 +204,18 @@ func conj*(r: var CubicExt, a: CubicExt) =
 func cneg*(a: var ExtensionField, ctl: SecretBool) =
   ## Constant-time in-place conditional negation
   ## Only negate if ctl is true
-  for fA in fields(a):
-    fA.cneg(ctl)
+  staticFor i, 0, a.coords.len:
+    a.coords[i].cneg(ctl)
 
 func cadd*(a: var ExtensionField, b: ExtensionField, ctl: SecretBool) =
   ## Constant-time in-place conditional addition
-  for fA, fB in fields(a, b):
-    fA.cadd(fB, ctl)
+  staticFor i, 0, a.coords.len:
+    a.coords[i].cadd(b.coords[i], ctl)
 
 func csub*(a: var ExtensionField, b: ExtensionField, ctl: SecretBool) =
   ## Constant-time in-place conditional substraction
-  for fA, fB in fields(a, b):
-    fA.csub(fB, ctl)
+  staticFor i, 0, a.coords.len:
+    a.coords[i].csub(b.coords[i], ctl)
 
 # Multiplication by a small integer known at compile-time
 # -------------------------------------------------------------------
@@ -603,10 +596,9 @@ func mul_sparse_generic_by_0y(
   var t{.noInit.}: typeof(a.c0)
 
   t.prod(a.c1, b)
-  t *= NonResidue
   r.c1.prod(a.c0, b)
   # aliasing: a unneeded now
-  r.c0 = t
+  r.c0.prod(t, NonResidue)
 
 func mul_sparse_generic_by_0y(
        r: var QuadraticExt, a: QuadraticExt,
@@ -627,10 +619,9 @@ func mul_sparse_generic_by_0y(
   var t{.noInit.}: typeof(a.c0)
 
   t.prod(a.c1, b)
-  t *= NonResidue
   r.c1.prod(a.c0, b)
   # aliasing: a unneeded now
-  r.c0 = t
+  r.c0.prod(t, NonResidue)
 
 func invImpl(r: var QuadraticExt, a: QuadraticExt) =
   ## Compute the multiplicative inverse of ``a``
