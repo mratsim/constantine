@@ -24,10 +24,72 @@ rng.seed(seed)
 echo "\n------------------------------------------------------\n"
 echo "test_finite_fields_double_precision xoshiro512** seed: ", seed
 
+template addsubnegTest(rng_gen: untyped): untyped =
+  proc `addsubneg _ rng_gen`(C: static Curve) =
+    # Try to exercise all code paths for in-place/out-of-place add/sum/sub/diff/double/neg
+    # (1 - (-a) - b + (-a) - 2a) + (2a + 2b + (-b))  == 1
+    let aFp = rng_gen(rng, Fp[C])
+    let bFp = rng_gen(rng, Fp[C])
+    var accumFp {.noInit.}: Fp[C]
+    var OneFp {.noInit.}: Fp[C]
+    var accum {.noInit.}, One {.noInit.}, a{.noInit.}, na{.noInit.}, b{.noInit.}, nb{.noInit.}, a2 {.noInit.}, b2 {.noInit.}: FpDbl[C]
+
+    OneFp.setOne()
+    One.prod2x(OneFp, OneFp)
+    a.prod2x(aFp, OneFp)
+    b.prod2x(bFp, OneFp)
+
+    block: # sanity check
+      var t: Fp[C]
+      t.redc2x(One)
+      doAssert bool t.isOne()
+
+    a2.sum2xMod(a, a)
+    na.neg2xMod(a)
+
+    block: # sanity check
+      var t0, t1: Fp[C]
+      t0.redc2x(na)
+      t1.neg(aFp)
+      doAssert bool(t0 == t1),
+        "Beware, if the hex are the same, it means the outputs are the same (mod p),\n" &
+        "but one might not be completely reduced\n" &
+        "  t0: " & t0.toHex() & "\n" &
+        "  t1: " & t1.toHex() & "\n"
+
+    block: # sanity check
+      var t0, t1: Fp[C]
+      t0.redc2x(a2)
+      t1.double(aFp)
+      doAssert bool(t0 == t1),
+        "Beware, if the hex are the same, it means the outputs are the same (mod p),\n" &
+        "but one might not be completely reduced\n" &
+        "  t0: " & t0.toHex() & "\n" &
+        "  t1: " & t1.toHex() & "\n"
+
+    b2.sum2xMod(b, b)
+    nb.neg2xMod(b)
+
+    accum.diff2xMod(One, na)
+    accum.diff2xMod(accum, b)
+    accum.sum2xMod(accum, na)
+    accum.diff2xMod(accum, a2)
+
+    var t{.noInit.}: FpDbl[C]
+    t.sum2xMod(a2, b2)
+    t.sum2xMod(t, nb)
+
+    accum.sum2xMod(accum, t)
+    accumFp.redc2x(accum)
+    doAssert bool accumFp.isOne(),
+        "Beware, if the hex are the same, it means the outputs are the same (mod p),\n" &
+        "but one might not be completely reduced\n" &
+        "  accumFp: " & accumFp.toHex()
+
 template mulTest(rng_gen: untyped): untyped =
   proc `mul _ rng_gen`(C: static Curve) =
     let a = rng_gen(rng, Fp[C])
-    let b = rng.random_unsafe(Fp[C])
+    let b = rng_gen(rng, Fp[C])
 
     var r_fp{.noInit.}, r_fpDbl{.noInit.}: Fp[C]
     var tmpDbl{.noInit.}: FpDbl[C]
@@ -49,12 +111,48 @@ template sqrTest(rng_gen: untyped): untyped =
 
     doAssert bool(mulDbl == sqrDbl)
 
+addsubnegTest(random_unsafe)
+addsubnegTest(randomHighHammingWeight)
+addsubnegTest(random_long01Seq)
 mulTest(random_unsafe)
 mulTest(randomHighHammingWeight)
 mulTest(random_long01Seq)
 sqrTest(random_unsafe)
 sqrTest(randomHighHammingWeight)
 sqrTest(random_long01Seq)
+
+suite "Field Addition/Substraction/Negation via double-precision field elements" & " [" & $WordBitwidth & "-bit mode]":
+  test "With P-224 field modulus":
+    for _ in 0 ..< Iters:
+      addsubneg_random_unsafe(P224)
+    for _ in 0 ..< Iters:
+      addsubneg_randomHighHammingWeight(P224)
+    for _ in 0 ..< Iters:
+      addsubneg_random_long01Seq(P224)
+
+  test "With P-256 field modulus":
+    for _ in 0 ..< Iters:
+      addsubneg_random_unsafe(P256)
+    for _ in 0 ..< Iters:
+      addsubneg_randomHighHammingWeight(P256)
+    for _ in 0 ..< Iters:
+      addsubneg_random_long01Seq(P256)
+
+  test "With BN254_Snarks field modulus":
+    for _ in 0 ..< Iters:
+      addsubneg_random_unsafe(BN254_Snarks)
+    for _ in 0 ..< Iters:
+      addsubneg_randomHighHammingWeight(BN254_Snarks)
+    for _ in 0 ..< Iters:
+      addsubneg_random_long01Seq(BN254_Snarks)
+
+  test "With BLS12_381 field modulus":
+    for _ in 0 ..< Iters:
+      addsubneg_random_unsafe(BLS12_381)
+    for _ in 0 ..< Iters:
+      addsubneg_randomHighHammingWeight(BLS12_381)
+    for _ in 0 ..< Iters:
+      addsubneg_random_long01Seq(BLS12_381)
 
 suite "Field Multiplication via double-precision field elements is consistent with single-width." & " [" & $WordBitwidth & "-bit mode]":
   test "With P-224 field modulus":

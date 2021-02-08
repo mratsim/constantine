@@ -41,6 +41,9 @@ template doublePrec*(T: type Fp): type =
 func `==`*(a, b: FpDbl): SecretBool =
   a.limbs2x == b.limbs2x
 
+func isZero*(a: FpDbl): SecretBool =
+  a.limbs2x.isZero()
+
 func setZero*(a: var FpDbl) =
   a.limbs2x.setZero()
 
@@ -92,13 +95,15 @@ func diff2xMod*(r: var FpDbl, a, b: FpDbl) =
   when UseASM_X86_64:
     submod2x_asm(r.limbs2x, a.limbs2x, b.limbs2x, FpDbl.C.Mod.limbs)
   else:
+    # Substraction step
     var underflowed = SecretBool r.limbs2x.diff(a.limbs2x, b.limbs2x)
 
+    # Conditional reduction by 2ⁿp
     const N = r.limbs2x.len div 2
     const M = FpDbl.C.Mod
     var carry = Carry(0)
     var sum: SecretWord
-    for i in 0 ..< N:
+    staticFor i, 0, N:
       addC(carry, sum, r.limbs2x[i+N], M.limbs[i], carry)
       underflowed.ccopy(r.limbs2x[i+N], sum)
 
@@ -110,32 +115,63 @@ func sum2xUnr*(r: var FpDbl, a, b: FpDbl) =
   discard r.limbs2x.sum(a.limbs2x, b.limbs2x)
 
 func sum2xMod*(r: var FpDbl, a, b: FpDbl) =
-  ## Double-precision modular substraction
+  ## Double-precision modular addition
   ## Output is conditionally reduced by 2ⁿp
   ## to stay in the [0, 2ⁿp) range
-  when UseASM_X86_64:
+  when false:
     addmod2x_asm(r.limbs2x, a.limbs2x, b.limbs2x, FpDbl.C.Mod.limbs)
   else:
+    # Addition step
     var overflowed = SecretBool r.limbs2x.sum(a.limbs2x, b.limbs2x)
 
     const N = r.limbs2x.len div 2
     const M = FpDbl.C.Mod
+    # Test >= 2ⁿp
     var borrow = Borrow(0)
-    var diff: SecretWord
-    for i in 0 ..< N:
-      subB(borrow, diff, r.limbs2x[i+N], M.limbs[i], borrow)
-      overflowed.ccopy(r.limbs2x[i+N], diff)
+    var t{.noInit.}: Limbs[N]
+    staticFor i, 0, N:
+      subB(borrow, t[i], r.limbs2x[i+N], M.limbs[i], borrow)
 
-func prod2x*(
+    # If no borrow occured, r was bigger than 2ⁿp
+    overflowed = overflowed or not(SecretBool borrow)
+
+    # Conditional reduction by 2ⁿp
+    staticFor i, 0, N:
+      SecretBool(overflowed).ccopy(r.limbs2x[i+N], t[i])
+
+func neg2xMod*(r: var FpDbl, a: FpDbl) =
+  ## Double-precision modular substraction
+  ## Negate modulo 2ⁿp
+  when false: # TODO UseASM_X86_64:
+    {.error: "Implement assembly".}
+  else:
+    # If a = 0 we need r = 0 and not r = M
+    # as comparison operator assume unicity
+    # of the modular representation.
+    # Also make sure to handle aliasing where r.addr = a.addr
+    var t {.noInit.}: FpDbl
+    let isZero = a.isZero()
+    const N = r.limbs2x.len div 2
+    const M = FpDbl.C.Mod
+    var borrow = Borrow(0)
+    # 2ⁿp is filled with 0 in the first half
+    staticFor i, 0, N:
+      subB(borrow, t.limbs2x[i], Zero, a.limbs2x[i], borrow)
+    # 2ⁿp has p (shifted) for the rest of the limbs
+    staticFor i, N, r.limbs2x.len:
+      subB(borrow, t.limbs2x[i], M.limbs[i-N], a.limbs2x[i], borrow)
+
+    # Zero the result if input was zero
+    t.limbs2x.czero(isZero)
+    r = t
+
+func prod2xImpl(
     r {.noAlias.}: var FpDbl,
     a {.noAlias.}: FpDbl, b: static int) =
   ## Multiplication by a small integer known at compile-time
-  ## Requires no aliasing
-  const negate = b < 0
-  const b = if negate: -b
-            else: b
-  when negate:
-    r.diff2xMod(typeof(a)(), a)
+  ## Requires no aliasing and b positive
+  static: doAssert b >= 0
+
   when b == 0:
     r.setZero()
   elif b == 1:
@@ -172,24 +208,36 @@ func prod2x*(
     r.sum2xMod(r, r) # 8
     r.sum2xMod(r, a)
   elif b == 10:
-    a.sum2xMod(a, a)
+    r.sum2xMod(a, a)
     r.sum2xMod(r, r)
     r.sum2xMod(r, a) # 5
     r.sum2xMod(r, r)
   elif b == 11:
-    a.sum2xMod(a, a)
+    r.sum2xMod(a, a)
     r.sum2xMod(r, r)
     r.sum2xMod(r, a) # 5
     r.sum2xMod(r, r)
     r.sum2xMod(r, a)
   elif b == 12:
-    a.sum2xMod(a, a)
+    r.sum2xMod(a, a)
     r.sum2xMod(r, r) # 4
     let t4 = a
     r.sum2xMod(r, r) # 8
     r.sum2xMod(r, t4)
   else:
     {.error: "Multiplication by this small int not implemented".}
+
+func prod2x*(r: var FpDbl, a: FpDbl, b: static int) =
+  ## Multiplication by a small integer known at compile-time
+  const negate = b < 0
+  const b = if negate: -b
+            else: b
+  when negate:
+    var t {.noInit.}: typeof(r)
+    t.neg2xMod(a)
+  else:
+    let t = a
+  prod2xImpl(r, t, b)
 
 {.pop.} # inline
 {.pop.} # raises no exceptions
