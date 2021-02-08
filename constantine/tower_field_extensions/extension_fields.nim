@@ -494,12 +494,20 @@ func prod2x_disjoint[Fdbl, F](
   # Require 2 extra bits
   V0.prod2x(a.c0, b0)           # v0 = a0b0
   V1.prod2x(a.c1, b1)           # v1 = a1b1
-  t0.sum(a.c0, a.c1)
-  t1.sum(b0, b1)
+  when F.has1extraBit():
+    t0.sumUnr(a.c0, a.c1)
+    t1.sumUnr(b0, b1)
+  else:
+    t0.sum(a.c0, a.c1)
+    t1.sum(b0, b1)
 
   r.c1.prod2x(t0, t1)           # r1 = (a0 + a1)(b0 + b1)
-  r.c1.diff2xMod(r.c1, V0)      # r1 = (a0 + a1)(b0 + b1) - a0b0
-  r.c1.diff2xMod(r.c1, V1)      # r1 = (a0 + a1)(b0 + b1) - a0b0 - a1b1
+  when F.has1extraBit():
+    r.c1.diff2xMod(r.c1, V0)
+    r.c1.diff2xMod(r.c1, V1)
+  else:
+    r.c1.diff2xMod(r.c1, V0)      # r1 = (a0 + a1)(b0 + b1) - a0b0
+    r.c1.diff2xMod(r.c1, V1)      # r1 = (a0 + a1)(b0 + b1) - a0b0 - a1b1
 
   r.c0.prod2x(V1, NonResidue)   # r0 = β a1 b1
   r.c0.sum2xMod(r.c0, V0)       # r0 = a0 b0 + β a1 b1
