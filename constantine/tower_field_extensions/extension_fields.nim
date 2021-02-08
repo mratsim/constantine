@@ -832,7 +832,7 @@ func square_generic(r: var QuadraticExt, a: QuadraticExt) =
     v1.square(a.c1)
 
     # Aliasing: a unneeded now
-    r.c1.diff(a.c0, a.c1)
+    r.c1.sum(a.c0, a.c1)
 
     # r0 = c0² + β c1²
     r.c0.prod(v1, NonResidue)
@@ -842,7 +842,7 @@ func square_generic(r: var QuadraticExt, a: QuadraticExt) =
     r.c1.square()
     r.c1 -= v0
     r.c1 -= v1
-    
+
   else:
     mixin prod
     var v0 {.noInit.}, v1 {.noInit.}: typeof(r.c0)

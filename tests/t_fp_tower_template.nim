@@ -276,7 +276,7 @@ proc runTowerTests*[N](
           rMul.prod(a, a)
           rSqr.square(a)
 
-          doAssert bool(rMul == rSqr), "Failure with a: " & a.toHex()
+          doAssert bool(rMul == rSqr), "Failure with a (" & $Field & "): " & a.toHex()
 
       staticFor(curve, TestCurves):
         test(ExtField(ExtDegree, curve), Iters, gen = Uniform)
@@ -295,7 +295,7 @@ proc runTowerTests*[N](
           rSqr.square(a)
           rNegSqr.square(na)
 
-          doAssert bool(rSqr == rNegSqr), "Failure with a: " & a.toHex()
+          doAssert bool(rSqr == rNegSqr), "Failure with a (" & $Field & "): " & a.toHex()
 
       staticFor(curve, TestCurves):
         test(ExtField(ExtDegree, curve), Iters, gen = Uniform)
