@@ -222,82 +222,12 @@ func csub*(a: var ExtensionField, b: ExtensionField, ctl: SecretBool) =
 
 func `*=`*(a: var ExtensionField, b: static int) =
   ## Multiplication by a small integer known at compile-time
-
-  const negate = b < 0
-  const b = if negate: -b
-            else: b
-  when negate:
-    a.neg(a)
-  when b == 0:
-    a.setZero()
-  elif b == 1:
-    return
-  elif b == 2:
-    a.double()
-  elif b == 3:
-    var t {.noInit.}: typeof(a)
-    t.double(a)
-    a += t
-  elif b == 4:
-    a.double()
-    a.double()
-  elif b == 5:
-    var t {.noInit.}: typeof(a)
-    t.double(a)
-    t.double()
-    a += t
-  elif b == 6:
-    var t {.noInit.}: typeof(a)
-    t.double(a)
-    t += a # 3
-    a.double(t)
-  elif b == 7:
-    var t {.noInit.}: typeof(a)
-    t.double(a)
-    t.double()
-    t.double()
-    a.diff(t, a)
-  elif b == 8:
-    a.double()
-    a.double()
-    a.double()
-  elif b == 9:
-    var t {.noInit.}: typeof(a)
-    t.double(a)
-    t.double()
-    t.double()
-    a.sum(t, a)
-  elif b == 10:
-    var t {.noInit.}: typeof(a)
-    t.double(a)
-    t.double()
-    a += t     # 5
-    a.double()
-  elif b == 11:
-    var t {.noInit.}: typeof(a)
-    t.double(a)
-    t += a       # 3
-    t.double()   # 6
-    t.double()   # 12
-    a.diff(t, a) # 11
-  elif b == 12:
-    var t {.noInit.}: typeof(a)
-    t.double(a)
-    t += a       # 3
-    t.double()   # 6
-    a.double(t)   # 12
-  else:
-    {.error: "Multiplication by this small int not implemented".}
+  for i in 0 ..< a.coords.len:
+    a.coords[i] *= b
 
 func prod*(r: var ExtensionField, a: ExtensionField, b: static int) =
   ## Multiplication by a small integer known at compile-time
-  const negate = b < 0
-  const b = if negate: -b
-            else: b
-  when negate:
-    r.neg(a)
-  else:
-    r = a
+  r = a
   r *= b
 
 {.pop.} # inline
@@ -331,13 +261,21 @@ template doublePrec(T: type ExtensionField): type =
     when T.F is QuadraticExt: # Fp6Dbl
       CubicExt2x[QuadraticExt2x[doublePrec(T.F.F)]]
 
+func has1extraBit(F: type Fp): bool =
+  ## We construct extensions only on Fp (and not Fr)
+  getSpareBits(F) >= 1
+
+func has2extraBits(F: type Fp): bool =
+  ## We construct extensions only on Fp (and not Fr)
+  getSpareBits(F) >= 2
+
 func has1extraBit(E: type ExtensionField): bool =
   ## We construct extensions only on Fp (and not Fr)
-  getSpareBits(Fp[E.C]) >= 1
+  getSpareBits(Fp[E.F.C]) >= 1
 
 func has2extraBits(E: type ExtensionField): bool =
   ## We construct extensions only on Fp (and not Fr)
-  getSpareBits(Fp[E.C]) >= 2
+  getSpareBits(Fp[E.F.C]) >= 2
 
 template C(E: type ExtensionField2x): Curve =
   E.F.C
@@ -392,6 +330,11 @@ func sum2xMod(r: var ExtensionField2x, a, b: ExtensionField2x) =
   staticFor i, 0, a.coords.len:
     r.coords[i].sum2xMod(a.coords[i], b.coords[i])
 
+func neg2xMod(r: var ExtensionField2x, a: ExtensionField2x) =
+  ## Double-precision modular negation
+  staticFor i, 0, a.coords.len:
+    r.coords[i].neg2xMod(a.coords[i], b.coords[i])
+
 # Reductions
 # -------------------------------------------------------------------
 
@@ -403,71 +346,10 @@ func redc2x(r: var ExtensionField, a: ExtensionField2x) =
 # Multiplication by a small integer known at compile-time
 # -------------------------------------------------------------------
 
-func prod(
-    r {.noAlias.}: var ExtensionField2x,
-    a {.noAlias.}: ExtensionField2x, b: static int) =
+func prod(r: var ExtensionField2x, a: ExtensionField2x, b: static int) =
   ## Multiplication by a small integer known at compile-time
-  ## Requires no aliasing
-  const negate = b < 0
-  const b = if negate: -b
-            else: b
-
-  when negate:
-    r.diff2xMod(typeof(a)(), a)
-  when b == 0:
-    r.setZero()
-  elif b == 1:
-    r = a
-  elif b == 2:
-    r.sum2xMod(a, a)
-  elif b == 3:
-    r.sum2xMod(a, a)
-    r.sum2xMod(a, r)
-  elif b == 4:
-    r.sum2xMod(a, a)
-    r.sum2xMod(r, r)
-  elif b == 5:
-    r.sum2xMod(a, a)
-    r.sum2xMod(r, r)
-    r.sum2xMod(r, a)
-  elif b == 6:
-    r.sum2xMod(a, a)
-    let t2 = r
-    r.sum2xMod(r, r) # 4
-    r.sum2xMod(t, t2)
-  elif b == 7:
-    r.sum2xMod(a, a)
-    r.sum2xMod(r, r) # 4
-    r.sum2xMod(r, r)
-    r.diff2xMod(r, a)
-  elif b == 8:
-    r.sum2xMod(a, a)
-    r.sum2xMod(r, r)
-    r.sum2xMod(r, r)
-  elif b == 9:
-    r.sum2xMod(a, a)
-    r.sum2xMod(r, r)
-    r.sum2xMod(r, r) # 8
-    r.sum2xMod(r, a)
-  elif b == 10:
-    r.sum2xMod(a, a)
-    r.sum2xMod(r, r)
-    r.sum2xMod(r, a) # 5
-    r.sum2xMod(r, r)
-  elif b == 11:
-    r.sum2xMod(a, a)
-    r.sum2xMod(r, r)
-    r.sum2xMod(r, a) # 5
-    r.sum2xMod(r, r)
-    r.sum2xMod(r, a)
-  elif b == 12:
-    r.sum2xMod(a, a)
-    r.sum2xMod(r, r) # 4
-    let t4 = a
-    r.sum2xMod(r, r) # 8
-    r.sum2xMod(r, t4)
-  else:
-    {.error: "Multiplication by this small int not implemented".}
+  for i in 0 ..< a.coords.len:
+    a *= b
 
 # NonResidue
 # ----------------------------------------------------------------------
@@ -493,28 +375,47 @@ func prod2x[C: static Curve](
     r.c0.diff2xMod(a.c0, a.c1)
     r.c1.sum2xMod(a.c0, a.c1)
   else:
-    # ξ = u + v x
-    # and x² = β
-    #
-    # (c0 + c1 x) (u + v x) => u c0 + (u c0 + u c1)x + v c1 x²
-    #                       => u c0 + β v c1 + (v c0 + u c1) x
-    var t {.noInit.}: FpDbl[C]
-
-    r.c0.prod2x(a.c0, U)
-    when V == 1 and Beta == -1:  # Case BN254_Snarks
-      r.c0.diff2xMod(r.c0, a.c1) # r0 = u c0 + β v c1
+    # Case:
+    # - BN254_Snarks, QNR_Fp: -1, SNR_Fp2: 9+1𝑖  (𝑖 = √-1)
+    # - BLS12_377, QNR_Fp: -5, SNR_Fp2: 0+1j    (j = √-5)
+    # - BW6_761, SNR_Fp: -4, CNR_Fp2: 0+1j      (j = √-4)
+    when U == 0:
+      # mul_sparse_by_0v
+      # r0 = β a1 v
+      # r1 = a0 v
+      # r and a don't alias, we use `r` as a temp location
+      r.c1.prod2x(a.c1, V)
+      r.c0.prod2x(r.c1, NonResidue)
+      r.c1.prod2x(a.c0, V)
     else:
-      {.error: "Unimplemented".}
+      # ξ = u + v x
+      # and x² = β
+      #
+      # (c0 + c1 x) (u + v x) => u c0 + (u c0 + u c1)x + v c1 x²
+      #                       => u c0 + β v c1 + (v c0 + u c1) x
+      var t {.noInit.}: FpDbl[C]
 
-    r.c1.prod2x(a.c0, V)
-    t.prod2x(a.c1, U)
-    r.c1.sum2xMod(r.c1, t) # r1 = v c0 + u c1
+      r.c0.prod2x(a.c0, U)
+      when V == 1 and Beta == -1:  # Case BN254_Snarks
+        r.c0.diff2xMod(r.c0, a.c1) # r0 = u c0 + β v c1
+      else:
+        {.error: "Unimplemented".}
+
+      r.c1.prod2x(a.c0, V)
+      t.prod2x(a.c1, U)
+      r.c1.sum2xMod(r.c1, t) # r1 = v c0 + u c1
 
 # ############################################################
 #                                                            #
 #          Quadratic extensions - Lazy Reductions            #
 #                                                            #
 # ############################################################
+
+# Forward declarations
+# ----------------------------------------------------------------------
+
+func prod2x(r: var QuadraticExt2x, a, b: QuadraticExt)
+func square2x(r: var QuadraticExt2x, a: QuadraticExt)
 
 # Commutative ring implementation for complex quadratic extension fields
 # ----------------------------------------------------------------------
@@ -566,24 +467,6 @@ func square2x_complex(r: var QuadraticExt2x, a: QuadraticExt) =
   t0.diff(a.c0, a.c1)
   r.c0.prod2x(t0, t1)       # r0 = (a0 + a1)(a0 - a1)
 
-func prod2x(r: var QuadraticExt2x, a, b: QuadraticExt) =
-  mixin fromComplexExtension
-  when a.fromComplexExtension():
-    r.prod2x_complex(a, b)
-  else:
-    {.error: "Not Implementated".}
-
-func square2x_disjoint[Fdbl, F](
-       r: var QuadraticExt2x[FDbl],
-       a0, a1: F)
-
-func square2x(r: var QuadraticExt2x, a: QuadraticExt) =
-  mixin fromComplexExtension, square2x_disjoint
-  when a.fromComplexExtension():
-    r.square2x_complex(a)
-  else:
-    r.square2x_disjoint(a.c0, a.c1)
-
 # Commutative ring implementation for generic quadratic extension fields
 # ----------------------------------------------------------------------
 #
@@ -609,22 +492,17 @@ func prod2x_disjoint[Fdbl, F](
   var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0) # Single-width
 
   # Require 2 extra bits
-  V0.prod2x(a.c0, b0)
-  V1.prod2x(a.c1, b1)
-  when F.has2extraBits():
-    t0.sumUnr(b0, b1)
-    t1.sumUnr(a.c0, a.c1)
-  else:
-    t0.sum(b0, b1)
-    t1.sum(a.c0, a.c1)
+  V0.prod2x(a.c0, b0)           # v0 = a0b0
+  V1.prod2x(a.c1, b1)           # v1 = a1b1
+  t0.sum(a.c0, a.c1)
+  t1.sum(b0, b1)
 
-  r.c1.prod2x(t0, t1)         # r1 = (a0 + a1)(b0 + b1)              , and at most 2 extra bits
-  r.c1.diff2xMod(r.c1, V0)    # r1 = (a0 + a1)(b0 + b1) - a0b0       , and at most 1 extra bit
-  r.c1.diff2xMod(r.c1, V1)    # r1 = (a0 + a1)(b0 + b1) - a0b0 - a1b1, and 0 extra bit
+  r.c1.prod2x(t0, t1)           # r1 = (a0 + a1)(b0 + b1)
+  r.c1.diff2xMod(r.c1, V0)      # r1 = (a0 + a1)(b0 + b1) - a0b0
+  r.c1.diff2xMod(r.c1, V1)      # r1 = (a0 + a1)(b0 + b1) - a0b0 - a1b1
 
-  # TODO: This is correct modulo p, but we have some extra bits still here.
-  r.c0.prod2x(V1, NonResidue) # r0 = β a1 b1
-  r.c0.sum2xMod(r.c0, V0)     # r0 = a0 b0 + β a1 b1
+  r.c0.prod2x(V1, NonResidue)   # r0 = β a1 b1
+  r.c0.sum2xMod(r.c0, V0)       # r0 = a0 b0 + β a1 b1
 
 func square2x_disjoint[Fdbl, F](
        r: var QuadraticExt2x[FDbl],
@@ -648,6 +526,23 @@ func square2x_disjoint[Fdbl, F](
   r.c1.square2x(t)
   r.c1.diff2xMod(r.c1, V0)
   r.c1.diff2xMod(r.c1, V1)
+
+# Dispatch
+# ----------------------------------------------------------------------
+
+func prod2x(r: var QuadraticExt2x, a, b: QuadraticExt) =
+  mixin fromComplexExtension
+  when a.fromComplexExtension():
+    r.prod2x_complex(a, b)
+  else:
+    r.prod2x_disjoint(a, b.c0, b.c1)
+
+func square2x(r: var QuadraticExt2x, a: QuadraticExt) =
+  mixin fromComplexExtension
+  when a.fromComplexExtension():
+    r.square2x_complex(a)
+  else:
+    r.square2x_disjoint(a.c0, a.c1)
 
 # ############################################################
 #                                                            #
@@ -1041,9 +936,10 @@ func prod*(r: var QuadraticExt, a, b: QuadraticExt) =
       r.c0.redc2x(d.c0)
       r.c1.redc2x(d.c1)
   else:
-    when true: # typeof(r.c0) is Fp:
+    when r.typeof.F.C == BW6_761 or typeof(r.c0) is Fp:
+      # BW6-761 requires too many registers for Dbl width path
       r.prod_generic(a, b)
-    else: # Deactivated r.c0 is correct modulo p but >= p
+    else:
       var d {.noInit.}: doublePrec(typeof(r))
       d.prod2x_disjoint(a, b.c0, b.c1)
       r.c0.redc2x(d.c0)
