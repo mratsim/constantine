@@ -69,7 +69,7 @@ macro addmod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N]): untyped =
     ctx.mov v[i], u[i]
 
   # Mask: overflowed contains 0xFFFF or 0x0000
-  # TODO: unnecessary if MSB never set, i.e. "canUseNoCarryMontyMul"
+  # TODO: unnecessary if MSB never set, i.e. "Field.getSpareBits >= 1"
   let overflowed = b.reuseRegister()
   ctx.sbb overflowed, overflowed
 

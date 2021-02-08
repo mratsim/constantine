@@ -56,7 +56,7 @@ func fromBig*(dst: var FF, src: BigInt) =
   when nimvm:
     dst.mres.montyResidue_precompute(src, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord())
   else:
-    dst.mres.montyResidue(src, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord(), FF.canUseNoCarryMontyMul())
+    dst.mres.montyResidue(src, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord(), FF.getSpareBits())
 
 func fromBig*[C: static Curve](T: type FF[C], src: BigInt): FF[C] {.noInit.} =
   ## Convert a BigInt to its Montgomery form
@@ -65,7 +65,7 @@ func fromBig*[C: static Curve](T: type FF[C], src: BigInt): FF[C] {.noInit.} =
 func toBig*(src: FF): auto {.noInit, inline.} =
   ## Convert a finite-field element to a BigInt in natural representation
   var r {.noInit.}: typeof(src.mres)
-  r.redc(src.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.canUseNoCarryMontyMul())
+  r.redc(src.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
   return r
 
 # Copy
@@ -201,11 +201,11 @@ func double*(r: var FF, a: FF) {.meter.} =
 func prod*(r: var FF, a, b: FF) {.meter.} =
   ## Store the product of ``a`` by ``b`` modulo p into ``r``
   ## ``r`` is initialized / overwritten
-  r.mres.montyMul(a.mres, b.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.canUseNoCarryMontyMul())
+  r.mres.montyMul(a.mres, b.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
 
 func square*(r: var FF, a: FF) {.meter.} =
   ## Squaring modulo p
-  r.mres.montySquare(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.canUseNoCarryMontySquare())
+  r.mres.montySquare(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
 
 func neg*(r: var FF, a: FF) {.meter.} =
   ## Negate modulo p
@@ -279,8 +279,7 @@ func pow*(a: var FF, exponent: BigInt) =
     exponent,
     FF.fieldMod(), FF.getMontyOne(),
     FF.getNegInvModWord(), windowSize,
-    FF.canUseNoCarryMontyMul(),
-    FF.canUseNoCarryMontySquare()
+    FF.getSpareBits()
   )
 
 func pow*(a: var FF, exponent: openarray[byte]) =
@@ -292,8 +291,7 @@ func pow*(a: var FF, exponent: openarray[byte]) =
     exponent,
     FF.fieldMod(), FF.getMontyOne(),
     FF.getNegInvModWord(), windowSize,
-    FF.canUseNoCarryMontyMul(),
-    FF.canUseNoCarryMontySquare()
+    FF.getSpareBits()
   )
 
 func powUnsafeExponent*(a: var FF, exponent: BigInt) =
@@ -312,8 +310,7 @@ func powUnsafeExponent*(a: var FF, exponent: BigInt) =
     exponent,
     FF.fieldMod(), FF.getMontyOne(),
     FF.getNegInvModWord(), windowSize,
-    FF.canUseNoCarryMontyMul(),
-    FF.canUseNoCarryMontySquare()
+    FF.getSpareBits()
   )
 
 func powUnsafeExponent*(a: var FF, exponent: openarray[byte]) =
@@ -332,8 +329,7 @@ func powUnsafeExponent*(a: var FF, exponent: openarray[byte]) =
     exponent,
     FF.fieldMod(), FF.getMontyOne(),
     FF.getNegInvModWord(), windowSize,
-    FF.canUseNoCarryMontyMul(),
-    FF.canUseNoCarryMontySquare()
+    FF.getSpareBits()
   )
 
 # ############################################################
@@ -350,7 +346,7 @@ func `*=`*(a: var FF, b: FF) {.meter.} =
 
 func square*(a: var FF) {.meter.} =
   ## Squaring modulo p
-  a.mres.montySquare(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.canUseNoCarryMontySquare())
+  a.mres.montySquare(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
 
 func square_repeated*(r: var FF, num: int) {.meter.} =
   ## Repeated squarings

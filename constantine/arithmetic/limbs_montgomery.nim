@@ -392,7 +392,7 @@ func montyRedc2x_Comba[N: static int](
 
 func montyMul*(
         r: var Limbs, a, b, M: Limbs,
-        m0ninv: static BaseType, canUseNoCarryMontyMul: static bool) {.inline.} =
+        m0ninv: static BaseType, spareBits: static int) {.inline.} =
   ## Compute r <- a*b (mod M) in the Montgomery domain
   ## `m0ninv` = -1/M (mod SecretWord). Our words are 2^32 or 2^64
   ##
@@ -419,7 +419,7 @@ func montyMul*(
   # The implementation is visible from here, the compiler can make decision whether to:
   # - specialize/duplicate code for m0ninv == 1 (especially if only 1 curve is needed)
   # - keep it generic and optimize code size
-  when canUseNoCarryMontyMul:
+  when spareBits >= 1:
     when UseASM_X86_64 and a.len in {2 .. 6}: # TODO: handle spilling
       if ({.noSideEffect.}: hasBmi2()) and ({.noSideEffect.}: hasAdx()):
         montMul_CIOS_nocarry_asm_adx_bmi2(r, a, b, M, m0ninv)
@@ -431,14 +431,14 @@ func montyMul*(
     montyMul_FIPS(r, a, b, M, m0ninv)
 
 func montySquare*(r: var Limbs, a, M: Limbs,
-                  m0ninv: static BaseType, canUseNoCarryMontySquare: static bool) {.inline.} =
+                  m0ninv: static BaseType, spareBits: static int) {.inline.} =
   ## Compute r <- a^2 (mod M) in the Montgomery domain
   ## `m0ninv` = -1/M (mod SecretWord). Our words are 2^31 or 2^63
 
   # TODO: needs optimization similar to multiplication
-  montyMul(r, a, a, M, m0ninv, canUseNoCarryMontySquare)
+  montyMul(r, a, a, M, m0ninv, spareBits)
 
-  # when canUseNoCarryMontySquare:
+  # when spareBits >= 2:
   #   # TODO: Deactivated
   #   # Off-by one on 32-bit on the least significant bit
   #   # for Fp[BLS12-381] with inputs
@@ -463,22 +463,22 @@ func montyRedc2x*[N: static int](
        r: var array[N, SecretWord],
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
-       m0ninv: BaseType, canUseNoCarryMontyMul: static bool) {.inline.} =
+       m0ninv: BaseType, spareBits: static int) {.inline.} =
   ## Montgomery reduce a double-precision bigint modulo M
   when UseASM_X86_64 and r.len <= 6:
     if ({.noSideEffect.}: hasBmi2()) and ({.noSideEffect.}: hasAdx()):
-      montRed_asm_adx_bmi2(r, a, M, m0ninv, canUseNoCarryMontyMul)
+      montRed_asm_adx_bmi2(r, a, M, m0ninv, spareBits)
     else:
-      montRed_asm(r, a, M, m0ninv, canUseNoCarryMontyMul)
+      montRed_asm(r, a, M, m0ninv, spareBits)
   elif UseASM_X86_32 and r.len <= 6:
     # TODO: Assembly faster than GCC but slower than Clang
-    montRed_asm(r, a, M, m0ninv, canUseNoCarryMontyMul)
+    montRed_asm(r, a, M, m0ninv, spareBits)
   else:
     montyRedc2x_CIOS(r, a, M, m0ninv)
     # montyRedc2x_Comba(r, a, M, m0ninv)
 
 func redc*(r: var Limbs, a, one, M: Limbs,
-           m0ninv: static BaseType, canUseNoCarryMontyMul: static bool) =
+           m0ninv: static BaseType, spareBits: static int) =
   ## Transform a bigint ``a`` from it's Montgomery N-residue representation (mod N)
   ## to the regular natural representation (mod N)
   ##
@@ -497,10 +497,10 @@ func redc*(r: var Limbs, a, one, M: Limbs,
   #   - http://langevin.univ-tln.fr/cours/MLC/extra/montgomery.pdf
   #     Montgomery original paper
   #
-  montyMul(r, a, one, M, m0ninv, canUseNoCarryMontyMul)
+  montyMul(r, a, one, M, m0ninv, spareBits)
 
 func montyResidue*(r: var Limbs, a, M, r2modM: Limbs,
-                   m0ninv: static BaseType, canUseNoCarryMontyMul: static bool) =
+                   m0ninv: static BaseType, spareBits: static int) =
   ## Transform a bigint ``a`` from it's natural representation (mod N)
   ## to a the Montgomery n-residue representation
   ##
@@ -518,7 +518,7 @@ func montyResidue*(r: var Limbs, a, M, r2modM: Limbs,
   ## Important: `r` is overwritten
   ## The result `r` buffer size MUST be at least the size of `M` buffer
   # Reference: https://eprint.iacr.org/2017/1057.pdf
-  montyMul(r, a, r2ModM, M, m0ninv, canUseNoCarryMontyMul)
+  montyMul(r, a, r2ModM, M, m0ninv, spareBits)
 
 # Montgomery Modular Exponentiation
 # ------------------------------------------
@@ -565,7 +565,7 @@ func montyPowPrologue(
        a: var Limbs, M, one: Limbs,
        m0ninv: static BaseType,
        scratchspace: var openarray[Limbs],
-       canUseNoCarryMontyMul: static bool
+       spareBits: static int
      ): uint =
   ## Setup the scratchspace
   ## Returns the fixed-window size for exponentiation with window optimization.
@@ -579,7 +579,7 @@ func montyPowPrologue(
   else:
     scratchspace[2] = a
     for k in 2 ..< 1 shl result:
-      scratchspace[k+1].montyMul(scratchspace[k], a, M, m0ninv, canUseNoCarryMontyMul)
+      scratchspace[k+1].montyMul(scratchspace[k], a, M, m0ninv, spareBits)
 
   # Set a to one
   a = one
@@ -593,7 +593,7 @@ func montyPowSquarings(
         window: uint,
         acc, acc_len: var uint,
         e: var int,
-        canUseNoCarryMontySquare: static bool
+        spareBits: static int
       ): tuple[k, bits: uint] {.inline.}=
   ## Squaring step of exponentiation by squaring
   ## Get the next k bits in range [1, window)
@@ -629,7 +629,7 @@ func montyPowSquarings(
 
   # We have k bits and can do k squaring
   for i in 0 ..< k:
-    tmp.montySquare(a, M, m0ninv, canUseNoCarryMontySquare)
+    tmp.montySquare(a, M, m0ninv, spareBits)
     a = tmp
 
   return (k, bits)
@@ -640,8 +640,7 @@ func montyPow*(
        M, one: Limbs,
        m0ninv: static BaseType,
        scratchspace: var openarray[Limbs],
-       canUseNoCarryMontyMul: static bool,
-       canUseNoCarryMontySquare: static bool
+       spareBits: static int
       ) =
   ## Modular exponentiation r = a^exponent mod M
   ## in the Montgomery domain
@@ -669,7 +668,7 @@ func montyPow*(
   ## A window of size 5 requires (2^5 + 1)*(381 + 7)/8 = 33 * 48 bytes = 1584 bytes
   ## of scratchspace (on the stack).
 
-  let window = montyPowPrologue(a, M, one, m0ninv, scratchspace, canUseNoCarryMontyMul)
+  let window = montyPowPrologue(a, M, one, m0ninv, scratchspace, spareBits)
 
   # We process bits with from most to least significant.
   # At each loop iteration with have acc_len bits in acc.
@@ -684,7 +683,7 @@ func montyPow*(
       a, exponent, M, m0ninv,
       scratchspace[0], window,
       acc, acc_len, e,
-      canUseNoCarryMontySquare
+      spareBits
     )
 
     # Window lookup: we set scratchspace[1] to the lookup value.
@@ -699,7 +698,7 @@ func montyPow*(
 
     # Multiply with the looked-up value
     # we keep the product only if the exponent bits are not all zeroes
-    scratchspace[0].montyMul(a, scratchspace[1], M, m0ninv, canUseNoCarryMontyMul)
+    scratchspace[0].montyMul(a, scratchspace[1], M, m0ninv, spareBits)
     a.ccopy(scratchspace[0], SecretWord(bits).isNonZero())
 
 func montyPowUnsafeExponent*(
@@ -708,8 +707,7 @@ func montyPowUnsafeExponent*(
        M, one: Limbs,
        m0ninv: static BaseType,
        scratchspace: var openarray[Limbs],
-       canUseNoCarryMontyMul: static bool,
-       canUseNoCarryMontySquare: static bool
+       spareBits: static int
       ) =
   ## Modular exponentiation r = a^exponent mod M
   ## in the Montgomery domain
@@ -723,7 +721,7 @@ func montyPowUnsafeExponent*(
 
   # TODO: scratchspace[1] is unused when window > 1
 
-  let window = montyPowPrologue(a, M, one, m0ninv, scratchspace, canUseNoCarryMontyMul)
+  let window = montyPowPrologue(a, M, one, m0ninv, scratchspace, spareBits)
 
   var
     acc, acc_len: uint
@@ -733,16 +731,16 @@ func montyPowUnsafeExponent*(
       a, exponent, M, m0ninv,
       scratchspace[0], window,
       acc, acc_len, e,
-      canUseNoCarryMontySquare
+      spareBits
     )
 
     ## Warning ⚠️: Exposes the exponent bits
     if bits != 0:
       if window > 1:
-        scratchspace[0].montyMul(a, scratchspace[1+bits], M, m0ninv, canUseNoCarryMontyMul)
+        scratchspace[0].montyMul(a, scratchspace[1+bits], M, m0ninv, spareBits)
       else:
         # scratchspace[1] holds the original `a`
-        scratchspace[0].montyMul(a, scratchspace[1], M, m0ninv, canUseNoCarryMontyMul)
+        scratchspace[0].montyMul(a, scratchspace[1], M, m0ninv, spareBits)
       a = scratchspace[0]
 
 {.pop.} # raises no exceptions

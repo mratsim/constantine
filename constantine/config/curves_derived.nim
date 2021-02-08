@@ -51,18 +51,10 @@ macro genDerivedConstants*(mode: static DerivedConstantMode): untyped =
     let M = if mode == kModulus: bindSym(curve & "_Modulus")
             else: bindSym(curve & "_Order")
 
-    # const MyCurve_CanUseNoCarryMontyMul = useNoCarryMontyMul(MyCurve_Modulus)
+    # const MyCurve_SpareBits = countSpareBits(MyCurve_Modulus)
     result.add newConstStmt(
-      used(curve & ff & "_CanUseNoCarryMontyMul"), newCall(
-        bindSym"useNoCarryMontyMul",
-        M
-      )
-    )
-
-    # const MyCurve_CanUseNoCarryMontySquare = useNoCarryMontySquare(MyCurve_Modulus)
-    result.add newConstStmt(
-      used(curve & ff & "_CanUseNoCarryMontySquare"), newCall(
-        bindSym"useNoCarryMontySquare",
+      used(curve & ff & "_SpareBits"), newCall(
+        bindSym"countSpareBits",
         M
       )
     )

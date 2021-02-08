@@ -333,11 +333,11 @@ template doublePrec(T: type ExtensionField): type =
 
 func has1extraBit(E: type ExtensionField): bool =
   ## We construct extensions only on Fp (and not Fr)
-  canUseNoCarryMontyMul(Fp[E.C])
+  getSpareBits(Fp[E.C]) >= 1
 
 func has2extraBits(E: type ExtensionField): bool =
   ## We construct extensions only on Fp (and not Fr)
-  canUseNoCarryMontySquare(Fp[E.C])
+  getSpareBits(Fp[E.C]) >= 2
 
 template C(E: type ExtensionField2x): Curve =
   E.F.C

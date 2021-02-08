@@ -61,15 +61,18 @@ template fieldMod*(Field: type FF): auto =
   else:
     Field.C.getCurveOrder()
 
-macro canUseNoCarryMontyMul*(ff: type FF): untyped =
-  ## Returns true if the Modulus is compatible with a fast
-  ## Montgomery multiplication that avoids many carries
-  result = bindConstant(ff, "CanUseNoCarryMontyMul")
-
-macro canUseNoCarryMontySquare*(ff: type FF): untyped =
-  ## Returns true if the Modulus is compatible with a fast
-  ## Montgomery squaring that avoids many carries
-  result = bindConstant(ff, "CanUseNoCarryMontySquare")
+macro getSpareBits*(ff: type FF): untyped =
+  ## Returns the number of extra bits
+  ## in the modulus M representation.
+  ##
+  ## This is used for no-carry operations
+  ## or lazily reduced operations by allowing
+  ## output in range:
+  ## - [0, 2p) if 1 bit is available
+  ## - [0, 4p) if 2 bits are available
+  ## - [0, 8p) if 3 bits are available
+  ## - ...
+  result = bindConstant(ff, "SpareBits")
 
 macro getR2modP*(ff: type FF): untyped =
   ## Get the Montgomery "R^2 mod P" constant associated to a curve field modulus

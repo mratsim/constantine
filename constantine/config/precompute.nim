@@ -238,21 +238,20 @@ func checkValidModulus(M: BigInt) =
 
   doAssert msb == expectedMsb, "Internal Error: the modulus must use all declared bits and only those"
 
-func useNoCarryMontyMul*(M: BigInt): bool =
-  ## Returns if the modulus is compatible
-  ## with the no-carry Montgomery Multiplication
-  ## from https://hackmd.io/@zkteam/modular_multiplication
-  # Indirection needed because static object are buggy
-  # https://github.com/nim-lang/Nim/issues/9679
-  BaseType(M.limbs[^1]) < high(BaseType) shr 1
-
-func useNoCarryMontySquare*(M: BigInt): bool =
-  ## Returns if the modulus is compatible
-  ## with the no-carry Montgomery Squaring
-  ## from https://hackmd.io/@zkteam/modular_multiplication
-  # Indirection needed because static object are buggy
-  # https://github.com/nim-lang/Nim/issues/9679
-  BaseType(M.limbs[^1]) < high(BaseType) shr 2
+func countSpareBits*(M: BigInt): int =
+  ## Count the number of extra bits
+  ## in the modulus M representation.
+  ##
+  ## This is used for no-carry operations
+  ## or lazily reduced operations by allowing
+  ## output in range:
+  ## - [0, 2p) if 1 bit is available
+  ## - [0, 4p) if 2 bits are available
+  ## - [0, 8p) if 3 bits are available
+  ## - ...
+  checkValidModulus(M)
+  let msb = log2(BaseType(M.limbs[^1]))
+  result = WordBitWidth - 1 - msb.int
 
 func invModBitwidth[T: SomeUnsignedInt](a: T): T =
   # We use BaseType for return value because static distinct type

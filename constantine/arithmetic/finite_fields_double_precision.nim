@@ -75,7 +75,7 @@ func redc2x*(r: var Fp, a: FpDbl) =
     a.limbs2x,
     Fp.C.Mod.limbs,
     Fp.getNegInvModWord(),
-    Fp.canUseNoCarryMontyMul()
+    Fp.getSpareBits()
   )
 
 func diff2xUnr*(r: var FpDbl, a, b: FpDbl) =
