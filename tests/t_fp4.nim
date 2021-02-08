@@ -35,7 +35,7 @@ runTowerTests(
 # Issue when using Fp4Dbl
 
 suite "𝔽p4 - Anti-regression":
-  test "Partial reduction (off by p) on double-width field":
+  test "Partial reduction (off by p) on double-precision field":
     proc partred1() =
       type F = Fp4[BN254_Snarks]
       var x: F

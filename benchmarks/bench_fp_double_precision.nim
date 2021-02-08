@@ -149,7 +149,23 @@ proc diff(T: typedesc, iters: int) =
   bench("Substraction", $T, iters):
     r.diff(a, b)
 
-proc diff2xNoReduce(T: typedesc, iters: int) =
+proc sum2xUnreduce(T: typedesc, iters: int) =
+  var r, a, b: doublePrec(T)
+  rng.random_unsafe(r, T)
+  rng.random_unsafe(a, T)
+  rng.random_unsafe(b, T)
+  bench("Addition 2x unreduced", $doublePrec(T), iters):
+    r.sum2xUnr(a, b)
+
+proc sum2x(T: typedesc, iters: int) =
+  var r, a, b: doublePrec(T)
+  rng.random_unsafe(r, T)
+  rng.random_unsafe(a, T)
+  rng.random_unsafe(b, T)
+  bench("Addition 2x reduced", $doublePrec(T), iters):
+    r.sum2xMod(a, b)
+
+proc diff2xUnreduce(T: typedesc, iters: int) =
   var r, a, b: doublePrec(T)
   rng.random_unsafe(r, T)
   rng.random_unsafe(a, T)
@@ -188,12 +204,16 @@ proc reduce2x*(T: typedesc, iters: int) =
 
 proc main() =
   separator()
-  sumUnr(Fp[BLS12_381], iters = 10_000_000)
-  diffUnr(Fp[BLS12_381], iters = 10_000_000)
   sum(Fp[BLS12_381], iters = 10_000_000)
+  sumUnr(Fp[BLS12_381], iters = 10_000_000)
   diff(Fp[BLS12_381], iters = 10_000_000)
+  diffUnr(Fp[BLS12_381], iters = 10_000_000)
+  separator()
+  sum2x(Fp[BLS12_381], iters = 10_000_000)
+  sum2xUnreduce(Fp[BLS12_381], iters = 10_000_000)
   diff2x(Fp[BLS12_381], iters = 10_000_000)
-  diff2xNoReduce(Fp[BLS12_381], iters = 10_000_000)
+  diff2xUnreduce(Fp[BLS12_381], iters = 10_000_000)
+  separator()
   prod2xBench(768, 384, 384, iters = 10_000_000)
   square2xBench(768, 384, iters = 10_000_000)
   reduce2x(Fp[BLS12_381], iters = 10_000_000)

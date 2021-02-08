@@ -373,22 +373,22 @@ func sumUnr(r: var ExtensionField, a, b: ExtensionField) =
     r.coords[i].sumUnr(a.coords[i], b.coords[i])
 
 func diff2xUnr(r: var ExtensionField2x, a, b: ExtensionField2x) =
-  ## Double-width substraction without reduction
+  ## Double-precision substraction without reduction
   staticFor i, 0, a.coords.len:
     r.coords[i].diff2xUnr(a.coords[i], b.coords[i])
 
 func diff2xMod(r: var ExtensionField2x, a, b: ExtensionField2x) =
-  ## Double-width modular substraction
+  ## Double-precision modular substraction
   staticFor i, 0, a.coords.len:
     r.coords[i].diff2xMod(a.coords[i], b.coords[i])
 
 func sum2xUnr(r: var ExtensionField2x, a, b: ExtensionField2x) =
-  ## Double-width addition without reduction
+  ## Double-precision addition without reduction
   staticFor i, 0, a.coords.len:
     r.coords[i].sum2xUnr(a.coords[i], b.coords[i])
 
 func sum2xMod(r: var ExtensionField2x, a, b: ExtensionField2x) =
-  ## Double-width modular addition
+  ## Double-precision modular addition
   staticFor i, 0, a.coords.len:
     r.coords[i].sum2xMod(a.coords[i], b.coords[i])
 
@@ -520,7 +520,7 @@ func prod2x[C: static Curve](
 # ----------------------------------------------------------------------
 
 func prod2x_complex(r: var QuadraticExt2x, a, b: QuadraticExt) =
-  ## Double-width unreduced complex multiplication
+  ## Double-precision unreduced complex multiplication
   # r and a or b cannot alias
 
   mixin fromComplexExtension
@@ -547,7 +547,7 @@ func prod2x_complex(r: var QuadraticExt2x, a, b: QuadraticExt) =
   r.c0.diff2xMod(r.c0, D)        # r0 = a0 b0 - a1 b1
 
 func square2x_complex(r: var QuadraticExt2x, a: QuadraticExt) =
-  ## Double-width unreduced complex squaring
+  ## Double-precision unreduced complex squaring
 
   mixin fromComplexExtension
   static: doAssert a.fromComplexExtension()
@@ -605,7 +605,7 @@ func prod2x_disjoint[Fdbl, F](
   ## Return a * (b0, b1) in r
   static: doAssert Fdbl is doublePrec(F)
 
-  var V0 {.noInit.}, V1 {.noInit.}: typeof(r.c0) # Double-width
+  var V0 {.noInit.}, V1 {.noInit.}: typeof(r.c0) # Double-precision
   var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0) # Single-width
 
   # Require 2 extra bits
@@ -630,7 +630,7 @@ func square2x_disjoint[Fdbl, F](
        r: var QuadraticExt2x[FDbl],
        a0, a1: F) =
   ## Return (a0, a1)² in r
-  var V0 {.noInit.}, V1 {.noInit.}: typeof(r.c0) # Double-width
+  var V0 {.noInit.}, V1 {.noInit.}: typeof(r.c0) # Double-precision
   var t {.noInit.}: F # Single-width
 
   # TODO: which is the best formulation? 3 squarings or 2 Mul?

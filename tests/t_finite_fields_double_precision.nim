@@ -56,7 +56,7 @@ sqrTest(random_unsafe)
 sqrTest(randomHighHammingWeight)
 sqrTest(random_long01Seq)
 
-suite "Field Multiplication via double-width field elements is consistent with single-width." & " [" & $WordBitwidth & "-bit mode]":
+suite "Field Multiplication via double-precision field elements is consistent with single-width." & " [" & $WordBitwidth & "-bit mode]":
   test "With P-224 field modulus":
     for _ in 0 ..< Iters:
       mul_random_unsafe(P224)
@@ -89,7 +89,7 @@ suite "Field Multiplication via double-width field elements is consistent with s
     for _ in 0 ..< Iters:
       mul_random_long01Seq(BLS12_381)
 
-suite "Field Squaring via double-width field elements is consistent with single-width." & " [" & $WordBitwidth & "-bit mode]":
+suite "Field Squaring via double-precision field elements is consistent with single-width." & " [" & $WordBitwidth & "-bit mode]":
   test "With P-224 field modulus":
     for _ in 0 ..< Iters:
       sqr_random_unsafe(P224)

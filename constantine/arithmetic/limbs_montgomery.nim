@@ -286,7 +286,7 @@ func montyRedc2x_CIOS[N: static int](
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
        m0ninv: BaseType) =
-  ## Montgomery reduce a double-width bigint modulo M
+  ## Montgomery reduce a double-precision bigint modulo M
   # - Analyzing and Comparing Montgomery Multiplication Algorithms
   #   Cetin Kaya Koc and Tolga Acar and Burton S. Kaliski Jr.
   #   http://pdfs.semanticscholar.org/5e39/41ff482ec3ee41dc53c3298f0be085c69483.pdf
@@ -299,7 +299,7 @@ func montyRedc2x_CIOS[N: static int](
   # Algorithm
   # Inputs:
   # - N number of limbs
-  # - a[0 ..< 2N] (double-width input to reduce)
+  # - a[0 ..< 2N] (double-precision input to reduce)
   # - M[0 ..< N] The field modulus (must be odd for Montgomery reduction)
   # - m0ninv: Montgomery Reduction magic number = -1/M[0]
   # Output:
@@ -348,7 +348,7 @@ func montyRedc2x_Comba[N: static int](
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
        m0ninv: BaseType) =
-  ## Montgomery reduce a double-width bigint modulo M
+  ## Montgomery reduce a double-precision bigint modulo M
   # We use Product Scanning / Comba multiplication
   var t, u, v = Zero
   var carry: Carry
@@ -464,7 +464,7 @@ func montyRedc2x*[N: static int](
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
        m0ninv: BaseType, canUseNoCarryMontyMul: static bool) {.inline.} =
-  ## Montgomery reduce a double-width bigint modulo M
+  ## Montgomery reduce a double-precision bigint modulo M
   when UseASM_X86_64 and r.len <= 6:
     if ({.noSideEffect.}: hasBmi2()) and ({.noSideEffect.}: hasAdx()):
       montRed_asm_adx_bmi2(r, a, M, m0ninv, canUseNoCarryMontyMul)

@@ -47,15 +47,28 @@ func setZero*(a: var FpDbl) =
 func prod2x*(r: var FpDbl, a, b: Fp) =
   ## Double-precision multiplication
   ## Store the product of ``a`` by ``b`` into ``r``
+  ##
+  ## If a and b are in [0, p)
+  ## Output is in [0, p²)
+  ##
+  ## Output can be up to [0, 2ⁿp) range
+  ## provided spare bits are available in Fp representation
   r.limbs2x.prod(a.mres.limbs, b.mres.limbs)
 
 func square2x*(r: var FpDbl, a: Fp) =
   ## Double-precision squaring
   ## Store the square of ``a`` into ``r``
+  ##
+  ## If a is in [0, p)
+  ## Output is in [0, p²)
+  ##
+  ## Output can be up to [0, 2ⁿp) range
+  ## provided spare bits are available in Fp representation
   r.limbs2x.square(a.mres.limbs)
 
 func redc2x*(r: var Fp, a: FpDbl) =
   ## Reduce a double-precision field element into r
+  ## from [0, 2ⁿp) range to [0, p) range
   const N = r.mres.limbs.len
   montyRedc2x(
     r.mres.limbs,
@@ -66,13 +79,18 @@ func redc2x*(r: var Fp, a: FpDbl) =
   )
 
 func diff2xUnr*(r: var FpDbl, a, b: FpDbl) =
-  ## Double-width substraction without reduction
+  ## Double-precision substraction without reduction
+  ##
+  ## If the result is negative, fully reduced addition/substraction
+  ## are necessary afterwards to guarantee the [0, 2ⁿp) range
   discard r.limbs2x.diff(a.limbs2x, b.limbs2x)
 
 func diff2xMod*(r: var FpDbl, a, b: FpDbl) =
-  ## Double-width modular substraction
+  ## Double-precision modular substraction
+  ## Output is conditionally reduced by 2ⁿp
+  ## to stay in the [0, 2ⁿp) range
   when UseASM_X86_64:
-    sub2x_asm(r.limbs2x, a.limbs2x, b.limbs2x, FpDbl.C.Mod.limbs)
+    submod2x_asm(r.limbs2x, a.limbs2x, b.limbs2x, FpDbl.C.Mod.limbs)
   else:
     var underflowed = SecretBool r.limbs2x.diff(a.limbs2x, b.limbs2x)
 
@@ -85,13 +103,18 @@ func diff2xMod*(r: var FpDbl, a, b: FpDbl) =
       underflowed.ccopy(r.limbs2x[i+N], sum)
 
 func sum2xUnr*(r: var FpDbl, a, b: FpDbl) =
-  ## Double-width addition without reduction
+  ## Double-precision addition without reduction
+  ##
+  ## If the result is bigger than 2ⁿp, fully reduced addition/substraction
+  ## are necessary afterwards to guarantee the [0, 2ⁿp) range
   discard r.limbs2x.sum(a.limbs2x, b.limbs2x)
 
 func sum2xMod*(r: var FpDbl, a, b: FpDbl) =
-  ## Double-width modular substraction
-  when false: # TODO: UseASM_X86_64:
-    sum2x_asm(r.limbs2x, a.limbs2x, b.limbs2x, FpDbl.C.Mod.limbs)
+  ## Double-precision modular substraction
+  ## Output is conditionally reduced by 2ⁿp
+  ## to stay in the [0, 2ⁿp) range
+  when UseASM_X86_64:
+    addmod2x_asm(r.limbs2x, a.limbs2x, b.limbs2x, FpDbl.C.Mod.limbs)
   else:
     var overflowed = SecretBool r.limbs2x.sum(a.limbs2x, b.limbs2x)
 

@@ -32,11 +32,85 @@ static: doAssert UseASM_X86_64
 # Field addition
 # ------------------------------------------------------------
 
+
+macro addmod2x_gen[N: static int](R: var Limbs[N], A, B: Limbs[N], m: Limbs[N div 2]): untyped =
+  ## Generate an optimized out-of-place double-precision addition kernel
+
+  result = newStmtList()
+
+  var ctx = init(Assembler_x86, BaseType)
+  let
+    H = N div 2
+
+    r = init(OperandArray, nimSymbol = R, N, PointerInReg, InputOutput)
+    # We reuse the reg used for b for overflow detection
+    b = init(OperandArray, nimSymbol = B, N, PointerInReg, InputOutput)
+    # We could force m as immediate by specializing per moduli
+    M = init(OperandArray, nimSymbol = m, N, PointerInReg, Input)
+    # If N is too big, we need to spill registers. TODO.
+    u = init(OperandArray, nimSymbol = ident"U", H, ElemsInReg, InputOutput)
+    v = init(OperandArray, nimSymbol = ident"V", H, ElemsInReg, InputOutput)
+
+  let usym = u.nimSymbol
+  let vsym = v.nimSymbol
+  result.add quote do:
+    var `usym`{.noinit.}, `vsym` {.noInit.}: typeof(`A`)
+    staticFor i, 0, `H`:
+      `usym`[i] = `A`[i]
+    staticFor i, `H`, `N`:
+      `vsym`[i-`H`] = `A`[i]
+
+  # Addition
+  # u = a[0..<H] + b[0..<H], v = a[H..<N]
+  for i in 0 ..< H:
+    if i == 0:
+      ctx.add u[0], b[0]
+    else:
+      ctx.adc u[i], b[i]
+
+  # Everything should be hot in cache now so movs are cheaper
+  # we can try using 2 per ADC
+  # v = a[H..<N] + b[H..<N], a[0..<H] = u, u = v
+  for i in H ..< N:
+    ctx.mov r[i-H], u[i-H]
+    ctx.adc v[i-H], b[i]
+    ctx.mov u[i-H], v[i-H]
+
+  # Mask: overflowed contains 0xFFFF or 0x0000
+  # TODO: unnecessary if MSB never set, i.e. "canUseNoCarryMontyMul"
+  let overflowed = b.reuseRegister()
+  ctx.sbb overflowed, overflowed
+
+  # Now substract the modulus
+  for i in 0 ..< H:
+    if i == 0:
+      ctx.sub v[0], M[0]
+    else:
+      ctx.sbb v[i], M[i]
+
+  # If it overflows here, it means that it was
+  # smaller than the modulus and we don't need v
+  ctx.sbb overflowed, 0
+
+  # Conditional Mov and
+  # and store result
+  for i in 0 ..< H:
+    ctx.cmovnc u[i],  v[i]
+    ctx.mov r[i], u[i]
+
+  result.add ctx.generate
+
+func addmod2x_asm*[N: static int](r: var Limbs[N], a, b: Limbs[N], M: Limbs[N div 2]) =
+  ## Constant-time double-precision addition
+  ## Output is conditionally reduced by 2ⁿp
+  ## to stay in the [0, 2ⁿp) range
+  addmod2x_gen(r, a, b, M)
+
 # Field Substraction
 # ------------------------------------------------------------
 
-macro sub2x_gen[N: static int](R: var Limbs[N], A, B: Limbs[N], m: Limbs[N div 2]): untyped =
-  ## Generate an optimized out-of-place double-width substraction kernel
+macro submod2x_gen[N: static int](R: var Limbs[N], A, B: Limbs[N], m: Limbs[N div 2]): untyped =
+  ## Generate an optimized out-of-place double-precision substraction kernel
 
   result = newStmtList()
 
@@ -96,6 +170,8 @@ macro sub2x_gen[N: static int](R: var Limbs[N], A, B: Limbs[N], m: Limbs[N div 2
 
   result.add ctx.generate
 
-func sub2x_asm*[N: static int](r: var Limbs[N], a, b: Limbs[N], M: Limbs[N div 2]) =
-  ## Constant-time double-width substraction
-  sub2x_gen(r, a, b, M)
+func submod2x_asm*[N: static int](r: var Limbs[N], a, b: Limbs[N], M: Limbs[N div 2]) =
+  ## Constant-time double-precision substraction
+  ## Output is conditionally reduced by 2ⁿp
+  ## to stay in the [0, 2ⁿp) range
+  submod2x_gen(r, a, b, M)

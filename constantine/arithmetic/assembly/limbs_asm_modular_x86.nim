@@ -81,7 +81,7 @@ macro addmod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N]): untyped =
       ctx.sbb v[i], M[i]
 
   # If it overflows here, it means that it was
-  # smaller than the modulus and we don'u need V
+  # smaller than the modulus and we don't need V
   ctx.sbb overflowed, 0
 
   # Conditional Mov and

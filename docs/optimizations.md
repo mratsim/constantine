@@ -107,13 +107,13 @@ The optimizations can be of algebraic, algorithmic or "implementation details" n
 
 ## Extension Fields
 
-- [ ] Lazy reduction via double-width base fields
+- [ ] Lazy reduction via double-precision base fields
 - [x] Sparse multiplication
 - Fp2
   - [x] complex multiplication
   - [x] complex squaring
   - [x] sqrt via the constant-time complex method (Adj et al)
-  - [ ] sqrt using addition chain
+  - [x] sqrt using addition chain
   - [x] fused complex method sqrt by rotating in complex plane
 - Cubic extension fields
   - [x] Toom-Cook polynomial multiplication (Chung-Hasan)
