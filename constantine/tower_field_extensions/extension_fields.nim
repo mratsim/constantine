@@ -319,17 +319,17 @@ type
 
   ExtensionField2x[F] = QuadraticExt2x[F] or CubicExt2x[F]
 
-template doubleWidth(T: type ExtensionField): type =
+template doublePrec(T: type ExtensionField): type =
   # For now naive unrolling, recursive template don't match
   # and I don't want to deal with types in macros
   when T is QuadraticExt:
     when T.F is QuadraticExt: # Fp4Dbl
-      QuadraticExt2x[QuadraticExt2x[doubleWidth(T.F.F)]]
+      QuadraticExt2x[QuadraticExt2x[doublePrec(T.F.F)]]
     elif T.F is Fp:           # Fp2Dbl
-      QuadraticExt2x[doubleWidth(T.F)]
+      QuadraticExt2x[doublePrec(T.F)]
   elif T is CubicExt:
     when T.F is QuadraticExt: # Fp6Dbl
-      CubicExt2x[QuadraticExt2x[doubleWidth(T.F.F)]]
+      CubicExt2x[QuadraticExt2x[doublePrec(T.F.F)]]
 
 func has1extraBit(E: type ExtensionField): bool =
   ## We construct extensions only on Fp (and not Fr)
@@ -603,7 +603,7 @@ func prod2x_disjoint[Fdbl, F](
        a: QuadraticExt[F],
        b0, b1: F) =
   ## Return a * (b0, b1) in r
-  static: doAssert Fdbl is doubleWidth(F)
+  static: doAssert Fdbl is doublePrec(F)
 
   var V0 {.noInit.}, V1 {.noInit.}: typeof(r.c0) # Double-width
   var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0) # Single-width
@@ -1011,7 +1011,7 @@ func square*(r: var QuadraticExt, a: QuadraticExt) =
     when true:
       r.square_complex(a)
     else: # slower
-      var d {.noInit.}: doubleWidth(typeof(r))
+      var d {.noInit.}: doublePrec(typeof(r))
       d.square2x_complex(a)
       r.c0.redc2x(d.c0)
       r.c1.redc2x(d.c1)
@@ -1025,7 +1025,7 @@ func square*(r: var QuadraticExt, a: QuadraticExt) =
       # TODO:
       # - On Fp4, we can have a.c0.c0 off by p
       #   a reduction is missing
-      var d {.noInit.}: doubleWidth(typeof(r))
+      var d {.noInit.}: doublePrec(typeof(r))
       d.square2x_disjoint(a.c0, a.c1)
       r.c0.redc2x(d.c0)
       r.c1.redc2x(d.c1)
@@ -1036,7 +1036,7 @@ func prod*(r: var QuadraticExt, a, b: QuadraticExt) =
     when false:
       r.prod_complex(a, b)
     else: # faster
-      var d {.noInit.}: doubleWidth(typeof(r))
+      var d {.noInit.}: doublePrec(typeof(r))
       d.prod2x_complex(a, b)
       r.c0.redc2x(d.c0)
       r.c1.redc2x(d.c1)
@@ -1044,7 +1044,7 @@ func prod*(r: var QuadraticExt, a, b: QuadraticExt) =
     when true: # typeof(r.c0) is Fp:
       r.prod_generic(a, b)
     else: # Deactivated r.c0 is correct modulo p but >= p
-      var d {.noInit.}: doubleWidth(typeof(r))
+      var d {.noInit.}: doublePrec(typeof(r))
       d.prod2x_disjoint(a, b.c0, b.c1)
       r.c0.redc2x(d.c0)
       r.c1.redc2x(d.c1)

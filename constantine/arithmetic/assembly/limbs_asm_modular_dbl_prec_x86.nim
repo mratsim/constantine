@@ -14,17 +14,25 @@ import
   ../../primitives
 
 # ############################################################
-#
-#        Assembly implementation of FpDbl
-#
+#                                                            #
+#        Assembly implementation of FpDbl                    #
+#                                                            #
 # ############################################################
+
+# A FpDbl is a partially-reduced double-precision element of Fp
+# The allowed range is [0, 2ⁿp)
+# with n = w*WordBitSize
+# and w the number of words necessary to represent p on the machine.
+# Concretely a 381-bit p needs 6*64 bits limbs (hence 384 bits total)
+# and so FpDbl would 768 bits.
 
 static: doAssert UseASM_X86_64
 {.localPassC:"-fomit-frame-pointer".} # Needed so that the compiler finds enough registers
 
-# TODO slower than intrinsics
+# Field addition
+# ------------------------------------------------------------
 
-# Substraction
+# Field Substraction
 # ------------------------------------------------------------
 
 macro sub2x_gen[N: static int](R: var Limbs[N], A, B: Limbs[N], m: Limbs[N div 2]): untyped =

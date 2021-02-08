@@ -22,7 +22,7 @@ var rng: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
 rng.seed(seed)
 echo "\n------------------------------------------------------\n"
-echo "test_finite_fields_double_width xoshiro512** seed: ", seed
+echo "test_finite_fields_double_precision xoshiro512** seed: ", seed
 
 template mulTest(rng_gen: untyped): untyped =
   proc `mul _ rng_gen`(C: static Curve) =

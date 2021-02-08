@@ -150,19 +150,19 @@ proc diff(T: typedesc, iters: int) =
     r.diff(a, b)
 
 proc diff2xNoReduce(T: typedesc, iters: int) =
-  var r, a, b: doubleWidth(T)
+  var r, a, b: doublePrec(T)
   rng.random_unsafe(r, T)
   rng.random_unsafe(a, T)
   rng.random_unsafe(b, T)
-  bench("Substraction 2x unreduced", $doubleWidth(T), iters):
+  bench("Substraction 2x unreduced", $doublePrec(T), iters):
     r.diff2xUnred(a, b)
 
 proc diff2x(T: typedesc, iters: int) =
-  var r, a, b: doubleWidth(T)
+  var r, a, b: doublePrec(T)
   rng.random_unsafe(r, T)
   rng.random_unsafe(a, T)
   rng.random_unsafe(b, T)
-  bench("Substraction 2x reduced", $doubleWidth(T), iters):
+  bench("Substraction 2x reduced", $doublePrec(T), iters):
     r.diff2xMod(a, b)
 
 proc prod2xBench*(rLen, aLen, bLen: static int, iters: int) =
@@ -180,10 +180,10 @@ proc square2xBench*(rLen, aLen: static int, iters: int) =
 
 proc reduce2x*(T: typedesc, iters: int) =
   var r: T
-  var t: doubleWidth(T)
+  var t: doublePrec(T)
   rng.random_unsafe(t, T)
 
-  bench("Redc 2x", $T & " <- " & $doubleWidth(T), iters):
+  bench("Redc 2x", $T & " <- " & $doublePrec(T), iters):
     r.redc2x(t)
 
 proc main() =

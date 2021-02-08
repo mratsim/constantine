@@ -16,16 +16,22 @@ import
   ./limbs_montgomery
 
 when UseASM_X86_64:
-  import assembly/limbs_asm_modular_dbl_width_x86
+  import assembly/limbs_asm_modular_dbl_prec_x86
 
 type FpDbl*[C: static Curve] = object
-  ## Double-width Fp element
-  ## This allows saving on reductions
-  # We directly work with double the number of limbs
+  ## Double-precision Fp element
+  ## A FpDbl is a partially-reduced double-precision element of Fp
+  ## The allowed range is [0, 2ⁿp)
+  ## with n = w*WordBitSize
+  ## and w the number of words necessary to represent p on the machine.
+  ## Concretely a 381-bit p needs 6*64 bits limbs (hence 384 bits total)
+  ## and so FpDbl would 768 bits.
+  # We directly work with double the number of limbs,
+  # instead of BigInt indirection.
   limbs2x*: matchingLimbs2x(C)
 
-template doubleWidth*(T: type Fp): type =
-  ## Return the double-width type matching with Fp
+template doublePrec*(T: type Fp): type =
+  ## Return the double-precision type matching with Fp
   FpDbl[T.C]
 
 # No exceptions allowed
