@@ -346,10 +346,10 @@ func redc2x(r: var ExtensionField, a: ExtensionField2x) =
 # Multiplication by a small integer known at compile-time
 # -------------------------------------------------------------------
 
-func prod(r: var ExtensionField2x, a: ExtensionField2x, b: static int) =
+func prod2x(r: var ExtensionField2x, a: ExtensionField2x, b: static int) =
   ## Multiplication by a small integer known at compile-time
   for i in 0 ..< a.coords.len:
-    a *= b
+    r.coords[i].prod2x(a.coords[i], b)
 
 # NonResidue
 # ----------------------------------------------------------------------
@@ -739,7 +739,6 @@ func square_generic(r: var QuadraticExt, a: QuadraticExt) =
     r.c1 -= v1
 
   else:
-    mixin prod
     var v0 {.noInit.}, v1 {.noInit.}: typeof(r.c0)
 
     # v1 <- (c0 + β c1)
@@ -771,7 +770,6 @@ func prod_generic(r: var QuadraticExt, a, b: QuadraticExt) =
   #
   # r0 = a0 b0 + β a1 b1
   # r1 = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1 (Karatsuba)
-  mixin prod
   var v0 {.noInit.}, v1 {.noInit.}, v2 {.noInit.}: typeof(r.c0)
 
   # v2 <- (a0 + a1)(b0 + b1)
@@ -806,7 +804,6 @@ func mul_sparse_generic_by_x0(r: var QuadraticExt, a, sparseB: QuadraticExt) =
   #
   # r0 = a0 b0
   # r1 = (a0 + a1) b0 - a0 b0 = a1 b0
-  mixin prod
   template b(): untyped = sparseB
 
   r.c0.prod(a.c0, b.c0)
@@ -1038,7 +1035,6 @@ func mul_sparse_by_x0*(a: var QuadraticExt, sparseB: QuadraticExt) =
 
 func square_Chung_Hasan_SQR2(r: var CubicExt, a: CubicExt) {.used.}=
   ## Returns r = a²
-  mixin prod, square, sum
   var s0{.noInit.}, m01{.noInit.}, m12{.noInit.}: typeof(r.c0)
 
   # precomputations that use a
@@ -1074,7 +1070,6 @@ func square_Chung_Hasan_SQR2(r: var CubicExt, a: CubicExt) {.used.}=
 
 func square_Chung_Hasan_SQR3(r: var CubicExt, a: CubicExt) =
   ## Returns r = a²
-  mixin prod, square, sum
   var s0{.noInit.}, t{.noInit.}, m12{.noInit.}: typeof(r.c0)
 
   # s₀ = (a₀ + a₁ + a₂)²
