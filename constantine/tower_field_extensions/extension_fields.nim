@@ -807,31 +807,68 @@ func square_generic(r: var QuadraticExt, a: QuadraticExt) =
   #
   # Alternative 2:
   #   c0² + β c1² <=> (c0 + c1)(c0 + β c1) - β c0c1 - c0c1
-  mixin prod
-  var v0 {.noInit.}, v1 {.noInit.}: typeof(r.c0)
+  #
+  # This gives us 2 Mul and 2 mul-nonresidue (which is costly for BN254_Snarks)
+  #
+  # We can also reframe the 2nd term with only squarings
+  # which might be significantly faster on higher tower degrees
+  #
+  #   2 c0 c1 <=> (a0 + a1)² - a0² - a1²
+  #
+  # This gives us 3 Sqr and 1 Mul-non-residue
+  const costlyMul = block:
+    # No shortcutting in the VM :/
+    when a.c0 is ExtensionField:
+      when a.c0.c0 is ExtensionField:
+        true
+      else:
+        false
+    else:
+      false
 
-  # v1 <- (c0 + β c1)
-  v1.prod(a.c1, NonResidue)
-  v1 += a.c0
+  when QuadraticExt.C == BN254_Snarks or costlyMul:
+    var v0 {.noInit.}, v1 {.noInit.}: typeof(r.c0)
+    v0.square(a.c0)
+    v1.square(a.c1)
 
-  # v0 <- (c0 + c1)(c0 + β c1)
-  v0.sum(a.c0, a.c1)
-  v0 *= v1
+    # Aliasing: a unneeded now
+    r.c1.diff(a.c0, a.c1)
 
-  # v1 <- c0 c1
-  v1.prod(a.c0, a.c1)
+    # r0 = c0² + β c1²
+    r.c0.prod(v1, NonResidue)
+    r.c0 += v0
 
-  # aliasing: a unneeded now
+    # r1 = (a0 + a1)² - a0² - a1²
+    r.c1.square()
+    r.c1 -= v0
+    r.c1 -= v1
+    
+  else:
+    mixin prod
+    var v0 {.noInit.}, v1 {.noInit.}: typeof(r.c0)
 
-  # r0 = (c0 + c1)(c0 + β c1) - c0c1
-  v0 -= v1
+    # v1 <- (c0 + β c1)
+    v1.prod(a.c1, NonResidue)
+    v1 += a.c0
 
-  # r1 = 2 c0c1
-  r.c1.double(v1)
+    # v0 <- (c0 + c1)(c0 + β c1)
+    v0.sum(a.c0, a.c1)
+    v0 *= v1
 
-  # r0 = (c0 + c1)(c0 + β c1) - c0c1 - β c0c1
-  v1 *= NonResidue
-  r.c0.diff(v0, v1)
+    # v1 <- c0 c1
+    v1.prod(a.c0, a.c1)
+
+    # aliasing: a unneeded now
+
+    # r0 = (c0 + c1)(c0 + β c1) - c0c1
+    v0 -= v1
+
+    # r1 = 2 c0c1
+    r.c1.double(v1)
+
+    # r0 = (c0 + c1)(c0 + β c1) - c0c1 - β c0c1
+    v1 *= NonResidue
+    r.c0.diff(v0, v1)
 
 func prod_generic(r: var QuadraticExt, a, b: QuadraticExt) =
   ## Returns r = a * b
