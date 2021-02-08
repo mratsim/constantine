@@ -121,12 +121,12 @@ func random_unsafe(rng: var RngState, a: var FpDbl, Base: typedesc) =
   for i in 0 ..< aHi.mres.limbs.len:
     a.limbs2x[aLo.mres.limbs.len+i] = aHi.mres.limbs[i]
 
-proc sumUnred(T: typedesc, iters: int) =
+proc sumUnr(T: typedesc, iters: int) =
   var r: T
   let a = rng.random_unsafe(T)
   let b = rng.random_unsafe(T)
   bench("Addition unreduced", $T, iters):
-    r.sumUnred(a, b)
+    r.sumUnr(a, b)
 
 proc sum(T: typedesc, iters: int) =
   var r: T
@@ -135,12 +135,12 @@ proc sum(T: typedesc, iters: int) =
   bench("Addition", $T, iters):
     r.sum(a, b)
 
-proc diffUnred(T: typedesc, iters: int) =
+proc diffUnr(T: typedesc, iters: int) =
   var r: T
   let a = rng.random_unsafe(T)
   let b = rng.random_unsafe(T)
   bench("Substraction unreduced", $T, iters):
-    r.diffUnred(a, b)
+    r.diffUnr(a, b)
 
 proc diff(T: typedesc, iters: int) =
   var r: T
@@ -155,7 +155,7 @@ proc diff2xNoReduce(T: typedesc, iters: int) =
   rng.random_unsafe(a, T)
   rng.random_unsafe(b, T)
   bench("Substraction 2x unreduced", $doublePrec(T), iters):
-    r.diff2xUnred(a, b)
+    r.diff2xUnr(a, b)
 
 proc diff2x(T: typedesc, iters: int) =
   var r, a, b: doublePrec(T)
@@ -188,8 +188,8 @@ proc reduce2x*(T: typedesc, iters: int) =
 
 proc main() =
   separator()
-  sumUnred(Fp[BLS12_381], iters = 10_000_000)
-  diffUnred(Fp[BLS12_381], iters = 10_000_000)
+  sumUnr(Fp[BLS12_381], iters = 10_000_000)
+  diffUnr(Fp[BLS12_381], iters = 10_000_000)
   sum(Fp[BLS12_381], iters = 10_000_000)
   diff(Fp[BLS12_381], iters = 10_000_000)
   diff2x(Fp[BLS12_381], iters = 10_000_000)

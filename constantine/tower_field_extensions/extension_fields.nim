@@ -367,25 +367,25 @@ func setZero*(a: var ExtensionField2x) =
 # Abelian group
 # -------------------------------------------------------------------
 
-func sumUnred(r: var ExtensionField, a, b: ExtensionField) =
+func sumUnr(r: var ExtensionField, a, b: ExtensionField) =
   ## Sum ``a`` and ``b`` into ``r``
   staticFor i, 0, a.coords.len:
-    r.coords[i].sumUnred(a.coords[i], b.coords[i])
+    r.coords[i].sumUnr(a.coords[i], b.coords[i])
 
-func diff2xUnred(r: var ExtensionField2x, a, b: ExtensionField2x) =
+func diff2xUnr(r: var ExtensionField2x, a, b: ExtensionField2x) =
   ## Double-width substraction without reduction
   staticFor i, 0, a.coords.len:
-    r.coords[i].diff2xUnred(a.coords[i], b.coords[i])
+    r.coords[i].diff2xUnr(a.coords[i], b.coords[i])
 
 func diff2xMod(r: var ExtensionField2x, a, b: ExtensionField2x) =
   ## Double-width modular substraction
   staticFor i, 0, a.coords.len:
     r.coords[i].diff2xMod(a.coords[i], b.coords[i])
 
-func sum2xUnred(r: var ExtensionField2x, a, b: ExtensionField2x) =
+func sum2xUnr(r: var ExtensionField2x, a, b: ExtensionField2x) =
   ## Double-width addition without reduction
   staticFor i, 0, a.coords.len:
-    r.coords[i].sum2xUnred(a.coords[i], b.coords[i])
+    r.coords[i].sum2xUnr(a.coords[i], b.coords[i])
 
 func sum2xMod(r: var ExtensionField2x, a, b: ExtensionField2x) =
   ## Double-width modular addition
@@ -532,15 +532,15 @@ func prod2x_complex(r: var QuadraticExt2x, a, b: QuadraticExt) =
   r.c0.prod2x(a.c0, b.c0)        # r0 = a0 b0
   D.prod2x(a.c1, b.c1)           # d =  a1 b1
   when QuadraticExt.has1extraBit():
-    t0.sumUnred(a.c0, a.c1)
-    t1.sumUnred(b.c0, b.c1)
+    t0.sumUnr(a.c0, a.c1)
+    t1.sumUnr(b.c0, b.c1)
   else:
     t0.sum(a.c0, a.c1)
     t1.sum(b.c0, b.c1)
   r.c1.prod2x(t0, t1)            # r1 = (b0 + b1)(a0 + a1)
   when QuadraticExt.has1extraBit():
-    r.c1.diff2xUnred(r.c1, r.c0) # r1 = (b0 + b1)(a0 + a1) - a0 b0
-    r.c1.diff2xUnred(r.c1, D)    # r1 = (b0 + b1)(a0 + a1) - a0 b0 - a1b1
+    r.c1.diff2xUnr(r.c1, r.c0) # r1 = (b0 + b1)(a0 + a1) - a0 b0
+    r.c1.diff2xUnr(r.c1, D)    # r1 = (b0 + b1)(a0 + a1) - a0 b0 - a1b1
   else:
     r.c1.diff2xMod(r.c1, r.c0)
     r.c1.diff2xMod(r.c1, D)
@@ -556,7 +556,7 @@ func square2x_complex(r: var QuadraticExt2x, a: QuadraticExt) =
 
   # Require 2 extra bits
   when QuadraticExt.has2extraBits():
-    t0.sumUnred(a.c1, a.c1)
+    t0.sumUnr(a.c1, a.c1)
     t1.sum(a.c0, a.c1)
   else:
     t0.double(a.c1)
@@ -612,8 +612,8 @@ func prod2x_disjoint[Fdbl, F](
   V0.prod2x(a.c0, b0)
   V1.prod2x(a.c1, b1)
   when F.has2extraBits():
-    t0.sumUnred(b0, b1)
-    t1.sumUnred(a.c0, a.c1)
+    t0.sumUnr(b0, b1)
+    t1.sumUnr(a.c0, a.c1)
   else:
     t0.sum(b0, b1)
     t1.sum(a.c0, a.c1)

@@ -65,7 +65,7 @@ func redc2x*(r: var Fp, a: FpDbl) =
     Fp.canUseNoCarryMontyMul()
   )
 
-func diff2xUnred*(r: var FpDbl, a, b: FpDbl) =
+func diff2xUnr*(r: var FpDbl, a, b: FpDbl) =
   ## Double-width substraction without reduction
   discard r.limbs2x.diff(a.limbs2x, b.limbs2x)
 
@@ -84,7 +84,7 @@ func diff2xMod*(r: var FpDbl, a, b: FpDbl) =
       addC(carry, sum, r.limbs2x[i+N], M.limbs[i], carry)
       underflowed.ccopy(r.limbs2x[i+N], sum)
 
-func sum2xUnred*(r: var FpDbl, a, b: FpDbl) =
+func sum2xUnr*(r: var FpDbl, a, b: FpDbl) =
   ## Double-width addition without reduction
   discard r.limbs2x.sum(a.limbs2x, b.limbs2x)
 
