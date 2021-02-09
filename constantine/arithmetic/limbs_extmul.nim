@@ -72,7 +72,8 @@ func prod*[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], b: 
   ## `r` must not alias ``a`` or ``b``
 
   when UseASM_X86_64 and aLen <= 6:
-    if ({.noSideEffect.}: hasBmi2()) and ({.noSideEffect.}: hasAdx()):
+    # ADX implies BMI2
+    if ({.noSideEffect.}: hasAdx()):
       mul_asm_adx_bmi2(r, a, b)
     else:
       mul_asm(r, a, b)

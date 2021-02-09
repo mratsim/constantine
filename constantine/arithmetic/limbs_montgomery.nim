@@ -421,7 +421,8 @@ func montyMul*(
   # - keep it generic and optimize code size
   when spareBits >= 1:
     when UseASM_X86_64 and a.len in {2 .. 6}: # TODO: handle spilling
-      if ({.noSideEffect.}: hasBmi2()) and ({.noSideEffect.}: hasAdx()):
+      # ADX implies BMI2
+      if ({.noSideEffect.}: hasAdx()):
         montMul_CIOS_nocarry_asm_adx_bmi2(r, a, b, M, m0ninv)
       else:
         montMul_CIOS_nocarry_asm(r, a, b, M, m0ninv)
@@ -466,7 +467,8 @@ func montyRedc2x*[N: static int](
        m0ninv: BaseType, spareBits: static int) {.inline.} =
   ## Montgomery reduce a double-precision bigint modulo M
   when UseASM_X86_64 and r.len <= 6:
-    if ({.noSideEffect.}: hasBmi2()) and ({.noSideEffect.}: hasAdx()):
+    # ADX implies BMI2
+    if ({.noSideEffect.}: hasAdx()):
       montRed_asm_adx_bmi2(r, a, M, m0ninv, spareBits)
     else:
       montRed_asm(r, a, M, m0ninv, spareBits)
