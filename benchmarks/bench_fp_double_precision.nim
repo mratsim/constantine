@@ -89,11 +89,13 @@ proc notes*() =
   echo "Notes:"
   echo "  - Compilers:"
   echo "    Compilers are severely limited on multiprecision arithmetic."
-  echo "    Inline Assembly is used by default (nimble bench_fp)."
-  echo "    Bench without assembly can use \"nimble bench_fp_gcc\" or \"nimble bench_fp_clang\"."
+  echo "    Constantine compile-time assembler is used by default (nimble bench_fp)."
   echo "    GCC is significantly slower than Clang on multiprecision arithmetic due to catastrophic handling of carries."
+  echo "    GCC also seems to have issues with large temporaries and register spilling."
+  echo "    This is somewhat alleviated by Constantine compile-time assembler."
+  echo "    Bench on specific compiler with assembler: \"nimble bench_ec_g1_gcc\" or \"nimble bench_ec_g1_clang\"."
+  echo "    Bench on specific compiler with assembler: \"nimble bench_ec_g1_gcc_noasm\" or \"nimble bench_ec_g1_clang_noasm\"."
   echo "  - The simplest operations might be optimized away by the compiler."
-  echo "  - Fast Squaring and Fast Multiplication are possible if there are spare bits in the prime representation (i.e. the prime uses 254 bits out of 256 bits)"
 
 template bench(op: string, desc: string, iters: int, body: untyped): untyped =
   let start = getMonotime()
@@ -121,12 +123,12 @@ func random_unsafe(rng: var RngState, a: var FpDbl, Base: typedesc) =
   for i in 0 ..< aHi.mres.limbs.len:
     a.limbs2x[aLo.mres.limbs.len+i] = aHi.mres.limbs[i]
 
-proc sumNoReduce(T: typedesc, iters: int) =
+proc sumUnr(T: typedesc, iters: int) =
   var r: T
   let a = rng.random_unsafe(T)
   let b = rng.random_unsafe(T)
-  bench("Addition no reduce", $T, iters):
-    r.sumNoReduce(a, b)
+  bench("Addition unreduced", $T, iters):
+    r.sumUnr(a, b)
 
 proc sum(T: typedesc, iters: int) =
   var r: T
@@ -135,12 +137,12 @@ proc sum(T: typedesc, iters: int) =
   bench("Addition", $T, iters):
     r.sum(a, b)
 
-proc diffNoReduce(T: typedesc, iters: int) =
+proc diffUnr(T: typedesc, iters: int) =
   var r: T
   let a = rng.random_unsafe(T)
   let b = rng.random_unsafe(T)
-  bench("Substraction no reduce", $T, iters):
-    r.diffNoReduce(a, b)
+  bench("Substraction unreduced", $T, iters):
+    r.diffUnr(a, b)
 
 proc diff(T: typedesc, iters: int) =
   var r: T
@@ -149,52 +151,86 @@ proc diff(T: typedesc, iters: int) =
   bench("Substraction", $T, iters):
     r.diff(a, b)
 
-proc diff2xNoReduce(T: typedesc, iters: int) =
-  var r, a, b: doubleWidth(T)
+proc neg(T: typedesc, iters: int) =
+  var r: T
+  let a = rng.random_unsafe(T)
+  bench("Negation", $T, iters):
+    r.neg(a)
+
+proc sum2xUnreduce(T: typedesc, iters: int) =
+  var r, a, b: doublePrec(T)
   rng.random_unsafe(r, T)
   rng.random_unsafe(a, T)
   rng.random_unsafe(b, T)
-  bench("Substraction 2x no reduce", $doubleWidth(T), iters):
-    r.diffNoReduce(a, b)
+  bench("Addition 2x unreduced", $doublePrec(T), iters):
+    r.sum2xUnr(a, b)
+
+proc sum2x(T: typedesc, iters: int) =
+  var r, a, b: doublePrec(T)
+  rng.random_unsafe(r, T)
+  rng.random_unsafe(a, T)
+  rng.random_unsafe(b, T)
+  bench("Addition 2x reduced", $doublePrec(T), iters):
+    r.sum2xMod(a, b)
+
+proc diff2xUnreduce(T: typedesc, iters: int) =
+  var r, a, b: doublePrec(T)
+  rng.random_unsafe(r, T)
+  rng.random_unsafe(a, T)
+  rng.random_unsafe(b, T)
+  bench("Substraction 2x unreduced", $doublePrec(T), iters):
+    r.diff2xUnr(a, b)
 
 proc diff2x(T: typedesc, iters: int) =
-  var r, a, b: doubleWidth(T)
+  var r, a, b: doublePrec(T)
   rng.random_unsafe(r, T)
   rng.random_unsafe(a, T)
   rng.random_unsafe(b, T)
-  bench("Substraction 2x", $doubleWidth(T), iters):
-    r.diff(a, b)
+  bench("Substraction 2x reduced", $doublePrec(T), iters):
+    r.diff2xMod(a, b)
 
-proc mul2xBench*(rLen, aLen, bLen: static int, iters: int) =
+proc neg2x(T: typedesc, iters: int) =
+  var r, a: doublePrec(T)
+  rng.random_unsafe(a, T)
+  bench("Negation 2x reduced", $doublePrec(T), iters):
+    r.neg2xMod(a)
+
+proc prod2xBench*(rLen, aLen, bLen: static int, iters: int) =
   var r: BigInt[rLen]
   let a = rng.random_unsafe(BigInt[aLen])
   let b = rng.random_unsafe(BigInt[bLen])
-  bench("Multiplication", $rLen & " <- " & $aLen & " x " & $bLen, iters):
+  bench("Multiplication 2x", $rLen & " <- " & $aLen & " x " & $bLen, iters):
     r.prod(a, b)
 
 proc square2xBench*(rLen, aLen: static int, iters: int) =
   var r: BigInt[rLen]
   let a = rng.random_unsafe(BigInt[aLen])
-  bench("Squaring", $rLen & " <- " & $aLen & "²", iters):
+  bench("Squaring 2x", $rLen & " <- " & $aLen & "²", iters):
     r.square(a)
 
 proc reduce2x*(T: typedesc, iters: int) =
   var r: T
-  var t: doubleWidth(T)
+  var t: doublePrec(T)
   rng.random_unsafe(t, T)
 
-  bench("Reduce 2x-width", $T & " <- " & $doubleWidth(T), iters):
-    r.reduce(t)
+  bench("Redc 2x", $T & " <- " & $doublePrec(T), iters):
+    r.redc2x(t)
 
 proc main() =
   separator()
-  sumNoReduce(Fp[BLS12_381], iters = 10_000_000)
-  diffNoReduce(Fp[BLS12_381], iters = 10_000_000)
   sum(Fp[BLS12_381], iters = 10_000_000)
+  sumUnr(Fp[BLS12_381], iters = 10_000_000)
   diff(Fp[BLS12_381], iters = 10_000_000)
+  diffUnr(Fp[BLS12_381], iters = 10_000_000)
+  neg(Fp[BLS12_381], iters = 10_000_000)
+  separator()
+  sum2x(Fp[BLS12_381], iters = 10_000_000)
+  sum2xUnreduce(Fp[BLS12_381], iters = 10_000_000)
   diff2x(Fp[BLS12_381], iters = 10_000_000)
-  diff2xNoReduce(Fp[BLS12_381], iters = 10_000_000)
-  mul2xBench(768, 384, 384, iters = 10_000_000)
+  diff2xUnreduce(Fp[BLS12_381], iters = 10_000_000)
+  neg2x(Fp[BLS12_381], iters = 10_000_000)
+  separator()
+  prod2xBench(768, 384, 384, iters = 10_000_000)
   square2xBench(768, 384, iters = 10_000_000)
   reduce2x(Fp[BLS12_381], iters = 10_000_000)
   separator()

@@ -56,7 +56,7 @@ func fromBig*(dst: var FF, src: BigInt) =
   when nimvm:
     dst.mres.montyResidue_precompute(src, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord())
   else:
-    dst.mres.montyResidue(src, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord(), FF.canUseNoCarryMontyMul())
+    dst.mres.montyResidue(src, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord(), FF.getSpareBits())
 
 func fromBig*[C: static Curve](T: type FF[C], src: BigInt): FF[C] {.noInit.} =
   ## Convert a BigInt to its Montgomery form
@@ -65,7 +65,7 @@ func fromBig*[C: static Curve](T: type FF[C], src: BigInt): FF[C] {.noInit.} =
 func toBig*(src: FF): auto {.noInit, inline.} =
   ## Convert a finite-field element to a BigInt in natural representation
   var r {.noInit.}: typeof(src.mres)
-  r.redc(src.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.canUseNoCarryMontyMul())
+  r.redc(src.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
   return r
 
 # Copy
@@ -169,7 +169,7 @@ func sum*(r: var FF, a, b: FF) {.meter.} =
     overflowed = overflowed or not(r.mres < FF.fieldMod())
     discard csub(r.mres, FF.fieldMod(), overflowed)
 
-func sumNoReduce*(r: var FF, a, b: FF) {.meter.} =
+func sumUnr*(r: var FF, a, b: FF) {.meter.} =
   ## Sum ``a`` and ``b`` into ``r`` without reduction
   discard r.mres.sum(a.mres, b.mres)
 
@@ -183,7 +183,7 @@ func diff*(r: var FF, a, b: FF) {.meter.} =
     var underflowed = r.mres.diff(a.mres, b.mres)
     discard cadd(r.mres, FF.fieldMod(), underflowed)
 
-func diffNoReduce*(r: var FF, a, b: FF) {.meter.} =
+func diffUnr*(r: var FF, a, b: FF) {.meter.} =
   ## Substract `b` from `a` and store the result into `r`
   ## without reduction
   discard r.mres.diff(a.mres, b.mres)
@@ -201,11 +201,11 @@ func double*(r: var FF, a: FF) {.meter.} =
 func prod*(r: var FF, a, b: FF) {.meter.} =
   ## Store the product of ``a`` by ``b`` modulo p into ``r``
   ## ``r`` is initialized / overwritten
-  r.mres.montyMul(a.mres, b.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.canUseNoCarryMontyMul())
+  r.mres.montyMul(a.mres, b.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
 
 func square*(r: var FF, a: FF) {.meter.} =
   ## Squaring modulo p
-  r.mres.montySquare(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.canUseNoCarryMontySquare())
+  r.mres.montySquare(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
 
 func neg*(r: var FF, a: FF) {.meter.} =
   ## Negate modulo p
@@ -279,8 +279,7 @@ func pow*(a: var FF, exponent: BigInt) =
     exponent,
     FF.fieldMod(), FF.getMontyOne(),
     FF.getNegInvModWord(), windowSize,
-    FF.canUseNoCarryMontyMul(),
-    FF.canUseNoCarryMontySquare()
+    FF.getSpareBits()
   )
 
 func pow*(a: var FF, exponent: openarray[byte]) =
@@ -292,8 +291,7 @@ func pow*(a: var FF, exponent: openarray[byte]) =
     exponent,
     FF.fieldMod(), FF.getMontyOne(),
     FF.getNegInvModWord(), windowSize,
-    FF.canUseNoCarryMontyMul(),
-    FF.canUseNoCarryMontySquare()
+    FF.getSpareBits()
   )
 
 func powUnsafeExponent*(a: var FF, exponent: BigInt) =
@@ -312,8 +310,7 @@ func powUnsafeExponent*(a: var FF, exponent: BigInt) =
     exponent,
     FF.fieldMod(), FF.getMontyOne(),
     FF.getNegInvModWord(), windowSize,
-    FF.canUseNoCarryMontyMul(),
-    FF.canUseNoCarryMontySquare()
+    FF.getSpareBits()
   )
 
 func powUnsafeExponent*(a: var FF, exponent: openarray[byte]) =
@@ -332,8 +329,7 @@ func powUnsafeExponent*(a: var FF, exponent: openarray[byte]) =
     exponent,
     FF.fieldMod(), FF.getMontyOne(),
     FF.getNegInvModWord(), windowSize,
-    FF.canUseNoCarryMontyMul(),
-    FF.canUseNoCarryMontySquare()
+    FF.getSpareBits()
   )
 
 # ############################################################
@@ -350,7 +346,7 @@ func `*=`*(a: var FF, b: FF) {.meter.} =
 
 func square*(a: var FF) {.meter.} =
   ## Squaring modulo p
-  a.mres.montySquare(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.canUseNoCarryMontySquare())
+  a.mres.montySquare(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
 
 func square_repeated*(r: var FF, num: int) {.meter.} =
   ## Repeated squarings
@@ -389,59 +385,57 @@ func `*=`*(a: var FF, b: static int) =
   elif b == 2:
     a.double()
   elif b == 3:
-    let t1 = a
-    a.double()
-    a += t1
+    var t {.noInit.}: typeof(a)
+    t.double(a)
+    a += t
   elif b == 4:
     a.double()
     a.double()
   elif b == 5:
-    let t1 = a
-    a.double()
-    a.double()
-    a += t1
+    var t {.noInit.}: typeof(a)
+    t.double(a)
+    t.double()
+    a += t
   elif b == 6:
-    a.double()
-    let t2 = a
-    a.double() # 4
-    a += t2
+    var t {.noInit.}: typeof(a)
+    t.double(a)
+    t += a # 3
+    a.double(t)
   elif b == 7:
-    let t1 = a
-    a.double()
-    let t2 = a
-    a.double() # 4
-    a += t2
-    a += t1
+    var t {.noInit.}: typeof(a)
+    t.double(a)
+    t.double()
+    t.double()
+    a.diff(t, a)
   elif b == 8:
     a.double()
     a.double()
     a.double()
   elif b == 9:
-    let t1 = a
-    a.double()
-    a.double()
-    a.double() # 8
-    a += t1
+    var t {.noInit.}: typeof(a)
+    t.double(a)
+    t.double()
+    t.double()
+    a.sum(t, a)
   elif b == 10:
+    var t {.noInit.}: typeof(a)
+    t.double(a)
+    t.double()
+    a += t     # 5
     a.double()
-    let t2 = a
-    a.double()
-    a.double() # 8
-    a += t2
   elif b == 11:
-    let t1 = a
-    a.double()
-    let t2 = a
-    a.double()
-    a.double() # 8
-    a += t2
-    a += t1
+    var t {.noInit.}: typeof(a)
+    t.double(a)
+    t += a       # 3
+    t.double()   # 6
+    t.double()   # 12
+    a.diff(t, a) # 11
   elif b == 12:
-    a.double()
-    a.double() # 4
-    let t4 = a
-    a.double() # 8
-    a += t4
+    var t {.noInit.}: typeof(a)
+    t.double(a)
+    t += a       # 3
+    t.double()   # 6
+    a.double(t)   # 12
   else:
     {.error: "Multiplication by this small int not implemented".}
 

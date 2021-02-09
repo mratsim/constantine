@@ -20,6 +20,7 @@ import
   ../constantine/towers,
   ../constantine/config/[common, curves],
   ../constantine/arithmetic,
+  ../constantine/io/io_towers,
   # Test utilities
   ../helpers/[prng_unsafe, static_for]
 
@@ -28,6 +29,8 @@ echo "\n------------------------------------------------------\n"
 template ExtField(degree: static int, curve: static Curve): untyped =
   when degree == 2:
     Fp2[curve]
+  elif degree == 4:
+    Fp4[curve]
   elif degree == 6:
     Fp6[curve]
   elif degree == 12:
@@ -273,7 +276,7 @@ proc runTowerTests*[N](
           rMul.prod(a, a)
           rSqr.square(a)
 
-          check: bool(rMul == rSqr)
+          doAssert bool(rMul == rSqr), "Failure with a (" & $Field & "): " & a.toHex()
 
       staticFor(curve, TestCurves):
         test(ExtField(ExtDegree, curve), Iters, gen = Uniform)
@@ -292,7 +295,7 @@ proc runTowerTests*[N](
           rSqr.square(a)
           rNegSqr.square(na)
 
-          check: bool(rSqr == rNegSqr)
+          doAssert bool(rSqr == rNegSqr), "Failure with a (" & $Field & "): " & a.toHex()
 
       staticFor(curve, TestCurves):
         test(ExtField(ExtDegree, curve), Iters, gen = Uniform)

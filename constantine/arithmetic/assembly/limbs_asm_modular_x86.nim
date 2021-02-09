@@ -69,11 +69,11 @@ macro addmod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N]): untyped =
     ctx.mov v[i], u[i]
 
   # Mask: overflowed contains 0xFFFF or 0x0000
-  # TODO: unnecessary if MSB never set, i.e. "canUseNoCarryMontyMul"
+  # TODO: unnecessary if MSB never set, i.e. "Field.getSpareBits >= 1"
   let overflowed = b.reuseRegister()
   ctx.sbb overflowed, overflowed
 
-  # Now substract the modulus
+  # Now substract the modulus to test a < p
   for i in 0 ..< N:
     if i == 0:
       ctx.sub v[0], M[0]
@@ -81,7 +81,7 @@ macro addmod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N]): untyped =
       ctx.sbb v[i], M[i]
 
   # If it overflows here, it means that it was
-  # smaller than the modulus and we don'u need V
+  # smaller than the modulus and we don't need V
   ctx.sbb overflowed, 0
 
   # Conditional Mov and

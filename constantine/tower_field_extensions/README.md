@@ -87,6 +87,16 @@ From Ben Edgington, https://hackmd.io/@benjaminion/bls12-381
   Jean-Luc Beuchat and Jorge Enrique González Díaz and Shigeo Mitsunari and Eiji Okamoto and Francisco Rodríguez-Henríquez and Tadanori Teruya, 2010\
   https://eprint.iacr.org/2010/354
 
+- Faster Explicit Formulas for Computing Pairings over Ordinary Curves\
+  Diego F. Aranha and Koray Karabina and Patrick Longa and Catherine H. Gebotys and Julio López, 2010\
+  https://eprint.iacr.org/2010/526.pdf\
+  https://www.iacr.org/archive/eurocrypt2011/66320047/66320047.pdf
+
+- Efficient Implementation of Bilinear Pairings on ARM Processors
+  Gurleen Grewal, Reza Azarderakhsh,
+  Patrick Longa, Shi Hu, and David Jao, 2012
+  https://eprint.iacr.org/2012/408.pdf
+
 - Choosing and generating parameters for low level pairing implementation on BN curves\
   Sylvain Duquesne and Nadia El Mrabet and Safia Haloui and Franck Rondepierre, 2015\
   https://eprint.iacr.org/2015/1212

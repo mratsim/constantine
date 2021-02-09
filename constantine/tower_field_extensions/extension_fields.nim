@@ -47,11 +47,11 @@ template c1*(a: ExtensionField): auto =
 template c2*(a: CubicExt): auto =
   a.coords[2]
 
-template `c0=`*(a: ExtensionField, v: auto) =
+template `c0=`*(a: var ExtensionField, v: auto) =
   a.coords[0] = v
-template `c1=`*(a: ExtensionField, v: auto) =
+template `c1=`*(a: var ExtensionField, v: auto) =
   a.coords[1] = v
-template `c2=`*(a: CubicExt, v: auto) =
+template `c2=`*(a: var CubicExt, v: auto) =
   a.coords[2] = v
 
 template C*(E: type ExtensionField): Curve =
@@ -222,87 +222,342 @@ func csub*(a: var ExtensionField, b: ExtensionField, ctl: SecretBool) =
 
 func `*=`*(a: var ExtensionField, b: static int) =
   ## Multiplication by a small integer known at compile-time
-
-  const negate = b < 0
-  const b = if negate: -b
-            else: b
-  when negate:
-    a.neg(a)
-  when b == 0:
-    a.setZero()
-  elif b == 1:
-    return
-  elif b == 2:
-    a.double()
-  elif b == 3:
-    let t1 = a
-    a.double()
-    a += t1
-  elif b == 4:
-    a.double()
-    a.double()
-  elif b == 5:
-    let t1 = a
-    a.double()
-    a.double()
-    a += t1
-  elif b == 6:
-    a.double()
-    let t2 = a
-    a.double() # 4
-    a += t2
-  elif b == 7:
-    let t1 = a
-    a.double()
-    let t2 = a
-    a.double() # 4
-    a += t2
-    a += t1
-  elif b == 8:
-    a.double()
-    a.double()
-    a.double()
-  elif b == 9:
-    let t1 = a
-    a.double()
-    a.double()
-    a.double() # 8
-    a += t1
-  elif b == 10:
-    a.double()
-    let t2 = a
-    a.double()
-    a.double() # 8
-    a += t2
-  elif b == 11:
-    let t1 = a
-    a.double()
-    let t2 = a
-    a.double()
-    a.double() # 8
-    a += t2
-    a += t1
-  elif b == 12:
-    a.double()
-    a.double() # 4
-    let t4 = a
-    a.double() # 8
-    a += t4
-  else:
-    {.error: "Multiplication by this small int not implemented".}
+  for i in 0 ..< a.coords.len:
+    a.coords[i] *= b
 
 func prod*(r: var ExtensionField, a: ExtensionField, b: static int) =
   ## Multiplication by a small integer known at compile-time
-  const negate = b < 0
-  const b = if negate: -b
-            else: b
-  when negate:
-    r.neg(a)
-  else:
-    r = a
+  r = a
   r *= b
 
 {.pop.} # inline
+
+# ############################################################
+#                                                            #
+#              Lazy reduced extension fields                 #
+#                                                            #
+# ############################################################
+
+type
+  QuadraticExt2x[F] = object
+    ## Quadratic Extension field for lazy reduced fields
+    coords: array[2, F]
+
+  CubicExt2x[F] = object
+    ## Cubic Extension field for lazy reduced fields
+    coords: array[3, F]
+
+  ExtensionField2x[F] = QuadraticExt2x[F] or CubicExt2x[F]
+
+template doublePrec(T: type ExtensionField): type =
+  # For now naive unrolling, recursive template don't match
+  # and I don't want to deal with types in macros
+  when T is QuadraticExt:
+    when T.F is QuadraticExt: # Fp4Dbl
+      QuadraticExt2x[QuadraticExt2x[doublePrec(T.F.F)]]
+    elif T.F is Fp:           # Fp2Dbl
+      QuadraticExt2x[doublePrec(T.F)]
+  elif T is CubicExt:
+    when T.F is QuadraticExt: # Fp6Dbl
+      CubicExt2x[QuadraticExt2x[doublePrec(T.F.F)]]
+
+func has1extraBit(F: type Fp): bool =
+  ## We construct extensions only on Fp (and not Fr)
+  getSpareBits(F) >= 1
+
+func has2extraBits(F: type Fp): bool =
+  ## We construct extensions only on Fp (and not Fr)
+  getSpareBits(F) >= 2
+
+func has1extraBit(E: type ExtensionField): bool =
+  ## We construct extensions only on Fp (and not Fr)
+  getSpareBits(Fp[E.F.C]) >= 1
+
+func has2extraBits(E: type ExtensionField): bool =
+  ## We construct extensions only on Fp (and not Fr)
+  getSpareBits(Fp[E.F.C]) >= 2
+
+template C(E: type ExtensionField2x): Curve =
+  E.F.C
+
+template c0(a: ExtensionField2x): auto =
+  a.coords[0]
+template c1(a: ExtensionField2x): auto =
+  a.coords[1]
+template c2(a: CubicExt2x): auto =
+  a.coords[2]
+
+template `c0=`(a: var ExtensionField2x, v: auto) =
+  a.coords[0] = v
+template `c1=`(a: var ExtensionField2x, v: auto) =
+  a.coords[1] = v
+template `c2=`(a: var CubicExt2x, v: auto) =
+  a.coords[2] = v
+
+# Initialization
+# -------------------------------------------------------------------
+
+func setZero*(a: var ExtensionField2x) =
+  ## Set ``a`` to 0 in the extension field
+  staticFor i, 0, a.coords.len:
+    a.coords[i].setZero()
+
+# Abelian group
+# -------------------------------------------------------------------
+
+func sumUnr(r: var ExtensionField, a, b: ExtensionField) =
+  ## Sum ``a`` and ``b`` into ``r``
+  staticFor i, 0, a.coords.len:
+    r.coords[i].sumUnr(a.coords[i], b.coords[i])
+
+func diff2xUnr(r: var ExtensionField2x, a, b: ExtensionField2x) =
+  ## Double-precision substraction without reduction
+  staticFor i, 0, a.coords.len:
+    r.coords[i].diff2xUnr(a.coords[i], b.coords[i])
+
+func diff2xMod(r: var ExtensionField2x, a, b: ExtensionField2x) =
+  ## Double-precision modular substraction
+  staticFor i, 0, a.coords.len:
+    r.coords[i].diff2xMod(a.coords[i], b.coords[i])
+
+func sum2xUnr(r: var ExtensionField2x, a, b: ExtensionField2x) =
+  ## Double-precision addition without reduction
+  staticFor i, 0, a.coords.len:
+    r.coords[i].sum2xUnr(a.coords[i], b.coords[i])
+
+func sum2xMod(r: var ExtensionField2x, a, b: ExtensionField2x) =
+  ## Double-precision modular addition
+  staticFor i, 0, a.coords.len:
+    r.coords[i].sum2xMod(a.coords[i], b.coords[i])
+
+func neg2xMod(r: var ExtensionField2x, a: ExtensionField2x) =
+  ## Double-precision modular negation
+  staticFor i, 0, a.coords.len:
+    r.coords[i].neg2xMod(a.coords[i], b.coords[i])
+
+# Reductions
+# -------------------------------------------------------------------
+
+func redc2x(r: var ExtensionField, a: ExtensionField2x) =
+  ## Reduction
+  staticFor i, 0, a.coords.len:
+    r.coords[i].redc2x(a.coords[i])
+
+# Multiplication by a small integer known at compile-time
+# -------------------------------------------------------------------
+
+func prod2x(r: var ExtensionField2x, a: ExtensionField2x, b: static int) =
+  ## Multiplication by a small integer known at compile-time
+  for i in 0 ..< a.coords.len:
+    r.coords[i].prod2x(a.coords[i], b)
+
+# NonResidue
+# ----------------------------------------------------------------------
+
+func prod2x(r: var FpDbl, a: FpDbl, _: type NonResidue){.inline.} =
+  ## Multiply an element of 𝔽p by the quadratic non-residue
+  ## chosen to construct 𝔽p2
+  static: doAssert FpDbl.C.getNonResidueFp() != -1, "𝔽p2 should be specialized for complex extension"
+  r.prod2x(a, FpDbl.C.getNonResidueFp())
+
+func prod2x[C: static Curve](
+       r {.noalias.}: var QuadraticExt2x[FpDbl[C]],
+       a {.noalias.}: QuadraticExt2x[FpDbl[C]],
+       _: type NonResidue) {.inline.} =
+  ## Multiplication by non-residue
+  ## ! no aliasing!
+  const complex = C.getNonResidueFp() == -1
+  const U = C.getNonResidueFp2()[0]
+  const V = C.getNonResidueFp2()[1]
+  const Beta {.used.} = C.getNonResidueFp()
+
+  when complex and U == 1 and V == 1:
+    r.c0.diff2xMod(a.c0, a.c1)
+    r.c1.sum2xMod(a.c0, a.c1)
+  else:
+    # Case:
+    # - BN254_Snarks, QNR_Fp: -1, SNR_Fp2: 9+1𝑖  (𝑖 = √-1)
+    # - BLS12_377, QNR_Fp: -5, SNR_Fp2: 0+1j    (j = √-5)
+    # - BW6_761, SNR_Fp: -4, CNR_Fp2: 0+1j      (j = √-4)
+    when U == 0:
+      # mul_sparse_by_0v
+      # r0 = β a1 v
+      # r1 = a0 v
+      # r and a don't alias, we use `r` as a temp location
+      r.c1.prod2x(a.c1, V)
+      r.c0.prod2x(r.c1, NonResidue)
+      r.c1.prod2x(a.c0, V)
+    else:
+      # ξ = u + v x
+      # and x² = β
+      #
+      # (c0 + c1 x) (u + v x) => u c0 + (u c0 + u c1)x + v c1 x²
+      #                       => u c0 + β v c1 + (v c0 + u c1) x
+      var t {.noInit.}: FpDbl[C]
+
+      r.c0.prod2x(a.c0, U)
+      when V == 1 and Beta == -1:  # Case BN254_Snarks
+        r.c0.diff2xMod(r.c0, a.c1) # r0 = u c0 + β v c1
+      else:
+        {.error: "Unimplemented".}
+
+      r.c1.prod2x(a.c0, V)
+      t.prod2x(a.c1, U)
+      r.c1.sum2xMod(r.c1, t) # r1 = v c0 + u c1
+
+# ############################################################
+#                                                            #
+#          Quadratic extensions - Lazy Reductions            #
+#                                                            #
+# ############################################################
+
+# Forward declarations
+# ----------------------------------------------------------------------
+
+func prod2x(r: var QuadraticExt2x, a, b: QuadraticExt)
+func square2x(r: var QuadraticExt2x, a: QuadraticExt)
+
+# Commutative ring implementation for complex quadratic extension fields
+# ----------------------------------------------------------------------
+
+func prod2x_complex(r: var QuadraticExt2x, a, b: QuadraticExt) =
+  ## Double-precision unreduced complex multiplication
+  # r and a or b cannot alias
+
+  mixin fromComplexExtension
+  static: doAssert a.fromComplexExtension()
+
+  var D {.noInit.}: typeof(r.c0)
+  var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0)
+
+  r.c0.prod2x(a.c0, b.c0)        # r0 = a0 b0
+  D.prod2x(a.c1, b.c1)           # d =  a1 b1
+  when QuadraticExt.has1extraBit():
+    t0.sumUnr(a.c0, a.c1)
+    t1.sumUnr(b.c0, b.c1)
+  else:
+    t0.sum(a.c0, a.c1)
+    t1.sum(b.c0, b.c1)
+  r.c1.prod2x(t0, t1)            # r1 = (b0 + b1)(a0 + a1)
+  when QuadraticExt.has1extraBit():
+    r.c1.diff2xUnr(r.c1, r.c0) # r1 = (b0 + b1)(a0 + a1) - a0 b0
+    r.c1.diff2xUnr(r.c1, D)    # r1 = (b0 + b1)(a0 + a1) - a0 b0 - a1b1
+  else:
+    r.c1.diff2xMod(r.c1, r.c0)
+    r.c1.diff2xMod(r.c1, D)
+  r.c0.diff2xMod(r.c0, D)        # r0 = a0 b0 - a1 b1
+
+func square2x_complex(r: var QuadraticExt2x, a: QuadraticExt) =
+  ## Double-precision unreduced complex squaring
+
+  mixin fromComplexExtension
+  static: doAssert a.fromComplexExtension()
+
+  var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0)
+
+  # Require 2 extra bits
+  when QuadraticExt.has2extraBits():
+    t0.sumUnr(a.c1, a.c1)
+    t1.sum(a.c0, a.c1)
+  else:
+    t0.double(a.c1)
+    t1.sum(a.c0, a.c1)
+
+  r.c1.prod2x(t0, a.c0)     # r1 = 2a0a1
+  t0.diff(a.c0, a.c1)
+  r.c0.prod2x(t0, t1)       # r0 = (a0 + a1)(a0 - a1)
+
+# Commutative ring implementation for generic quadratic extension fields
+# ----------------------------------------------------------------------
+#
+# Some sparse functions, reconstruct a Fp4 from disjoint pieces
+# to limit copies, we provide versions with disjoint elements
+# prod2x_disjoint:
+# - 2 products in mul_sparse_by_line_xyz000 (Fp4)
+# - 2 products in mul_sparse_by_line_xy000z (Fp4)
+# - mul_by_line_xy0 in mul_sparse_by_line_xy00z0 (Fp6)
+#
+# square2x_disjoint:
+# - cyclotomic square in Fp2 -> Fp6 -> Fp12 towering
+#   needs Fp4 as special case
+
+func prod2x_disjoint[Fdbl, F](
+       r: var QuadraticExt2x[FDbl],
+       a: QuadraticExt[F],
+       b0, b1: F) =
+  ## Return a * (b0, b1) in r
+  static: doAssert Fdbl is doublePrec(F)
+
+  var V0 {.noInit.}, V1 {.noInit.}: typeof(r.c0) # Double-precision
+  var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0) # Single-width
+
+  # Require 2 extra bits
+  V0.prod2x(a.c0, b0)           # v0 = a0b0
+  V1.prod2x(a.c1, b1)           # v1 = a1b1
+  when F.has1extraBit():
+    t0.sumUnr(a.c0, a.c1)
+    t1.sumUnr(b0, b1)
+  else:
+    t0.sum(a.c0, a.c1)
+    t1.sum(b0, b1)
+
+  r.c1.prod2x(t0, t1)           # r1 = (a0 + a1)(b0 + b1)
+  when F.has1extraBit():
+    r.c1.diff2xMod(r.c1, V0)
+    r.c1.diff2xMod(r.c1, V1)
+  else:
+    r.c1.diff2xMod(r.c1, V0)      # r1 = (a0 + a1)(b0 + b1) - a0b0
+    r.c1.diff2xMod(r.c1, V1)      # r1 = (a0 + a1)(b0 + b1) - a0b0 - a1b1
+
+  r.c0.prod2x(V1, NonResidue)   # r0 = β a1 b1
+  r.c0.sum2xMod(r.c0, V0)       # r0 = a0 b0 + β a1 b1
+
+func square2x_disjoint[Fdbl, F](
+       r: var QuadraticExt2x[FDbl],
+       a0, a1: F) =
+  ## Return (a0, a1)² in r
+  var V0 {.noInit.}, V1 {.noInit.}: typeof(r.c0) # Double-precision
+  var t {.noInit.}: F # Single-width
+
+  # TODO: which is the best formulation? 3 squarings or 2 Mul?
+  # It seems like the higher the tower the better squarings are
+  # So for Fp12 = 2xFp6, prefer squarings.
+  V0.square2x(a0)
+  V1.square2x(a1)
+  t.sum(a0, a1)
+
+  # r0 = a0² + β a1² (option 1) <=> (a0 + a1)(a0 + β a1) - β a0a1 - a0a1 (option 2)
+  r.c0.prod2x(V1, NonResidue)
+  r.c0.sum2xMod(r.c0, V0)
+
+  # r1 = 2 a0 a1 (option 1) = (a0 + a1)² - a0² - a1² (option 2)
+  r.c1.square2x(t)
+  r.c1.diff2xMod(r.c1, V0)
+  r.c1.diff2xMod(r.c1, V1)
+
+# Dispatch
+# ----------------------------------------------------------------------
+
+func prod2x(r: var QuadraticExt2x, a, b: QuadraticExt) =
+  mixin fromComplexExtension
+  when a.fromComplexExtension():
+    r.prod2x_complex(a, b)
+  else:
+    r.prod2x_disjoint(a, b.c0, b.c1)
+
+func square2x(r: var QuadraticExt2x, a: QuadraticExt) =
+  mixin fromComplexExtension
+  when a.fromComplexExtension():
+    r.square2x_complex(a)
+  else:
+    r.square2x_disjoint(a.c0, a.c1)
+
+# ############################################################
+#                                                            #
+#            Cubic extensions - Lazy Reductions              #
+#                                                            #
+# ############################################################
+
 
 # ############################################################
 #                                                            #
@@ -386,60 +641,18 @@ func prod_complex(r: var QuadraticExt, a, b: QuadraticExt) =
   mixin fromComplexExtension
   static: doAssert r.fromComplexExtension()
 
-  # TODO: GCC is adding an unexplainable 30 cycles tax to this function (~10% slow down)
-  #       for seemingly no reason
+  var a0b0 {.noInit.}, a1b1 {.noInit.}: typeof(r.c0)
+  a0b0.prod(a.c0, b.c0)                                         # [1 Mul]
+  a1b1.prod(a.c1, b.c1)                                         # [2 Mul]
 
-  when false: # Single-width implementation - BLS12-381
-              # Clang 348 cycles on i9-9980XE @3.9 GHz
-    var a0b0 {.noInit.}, a1b1 {.noInit.}: typeof(r.c0)
-    a0b0.prod(a.c0, b.c0)                                         # [1 Mul]
-    a1b1.prod(a.c1, b.c1)                                         # [2 Mul]
+  r.c0.sum(a.c0, a.c1)  # r0 = (a0 + a1)                        # [2 Mul, 1 Add]
+  r.c1.sum(b.c0, b.c1)  # r1 = (b0 + b1)                        # [2 Mul, 2 Add]
+  # aliasing: a and b unneeded now
+  r.c1 *= r.c0          # r1 = (b0 + b1)(a0 + a1)               # [3 Mul, 2 Add] - 𝔽p temporary
 
-    r.c0.sum(a.c0, a.c1)  # r0 = (a0 + a1)                        # [2 Mul, 1 Add]
-    r.c1.sum(b.c0, b.c1)  # r1 = (b0 + b1)                        # [2 Mul, 2 Add]
-    # aliasing: a and b unneeded now
-    r.c1 *= r.c0          # r1 = (b0 + b1)(a0 + a1)               # [3 Mul, 2 Add] - 𝔽p temporary
-
-    r.c0.diff(a0b0, a1b1) # r0 = a0 b0 - a1 b1                    # [3 Mul, 2 Add, 1 Sub]
-    r.c1 -= a0b0          # r1 = (b0 + b1)(a0 + a1) - a0b0        # [3 Mul, 2 Add, 2 Sub]
-    r.c1 -= a1b1          # r1 = (b0 + b1)(a0 + a1) - a0b0 - a1b1 # [3 Mul, 2 Add, 3 Sub]
-
-  else: # Double-width implementation with lazy reduction
-        # Clang 341 cycles on i9-9980XE @3.9 GHz
-    var a0b0 {.noInit.}, a1b1 {.noInit.}: doubleWidth(typeof(r.c0))
-    var d {.noInit.}: doubleWidth(typeof(r.c0))
-    const msbSet = r.c0.typeof.canUseNoCarryMontyMul()
-
-    a0b0.mulNoReduce(a.c0, b.c0)     # 44 cycles - cumul 44
-    a1b1.mulNoReduce(a.c1, b.c1)     # 44 cycles - cumul 88
-    when msbSet:
-      r.c0.sum(a.c0, a.c1)
-      r.c1.sum(b.c0, b.c1)
-    else:
-      r.c0.sumNoReduce(a.c0, a.c1)   # 5 cycles  - cumul 93
-      r.c1.sumNoReduce(b.c0, b.c1)   # 5 cycles  - cumul 98
-    # aliasing: a and b unneeded now
-    d.mulNoReduce(r.c0, r.c1)        # 44 cycles - cumul 142
-    when msbSet:
-      d -= a0b0
-      d -= a1b1
-    else:
-      d.diffNoReduce(d, a0b0)        # 11 cycles - cumul 153
-      d.diffNoReduce(d, a1b1)        # 11 cycles - cumul 164
-    a0b0.diff(a0b0, a1b1)            # 19 cycles - cumul 183
-    r.c0.reduce(a0b0)                # 50 cycles - cumul 233
-    r.c1.reduce(d)                   # 50 cycles - cumul 288
-
-  # Single-width [3 Mul, 2 Add, 3 Sub]
-  #    3*88 + 2*14 + 3*14 = 334 theoretical cycles
-  #    348 measured
-  # Double-Width
-  #    288 theoretical cycles
-  #    329 measured
-  #    Unexplained 40 cycles diff between theo and measured
-  #    and unexplained 30 cycles between Clang and GCC
-  #    - Function calls?
-  #    - push/pop stack?
+  r.c0.diff(a0b0, a1b1) # r0 = a0 b0 - a1 b1                    # [3 Mul, 2 Add, 1 Sub]
+  r.c1 -= a0b0          # r1 = (b0 + b1)(a0 + a1) - a0b0        # [3 Mul, 2 Add, 2 Sub]
+  r.c1 -= a1b1          # r1 = (b0 + b1)(a0 + a1) - a0b0 - a1b1 # [3 Mul, 2 Add, 3 Sub]
 
 func mul_sparse_complex_by_0y(
        r: var QuadraticExt, a: QuadraticExt,
@@ -497,31 +710,67 @@ func square_generic(r: var QuadraticExt, a: QuadraticExt) =
   #
   # Alternative 2:
   #   c0² + β c1² <=> (c0 + c1)(c0 + β c1) - β c0c1 - c0c1
-  mixin prod
-  var v0 {.noInit.}, v1 {.noInit.}: typeof(r.c0)
+  #
+  # This gives us 2 Mul and 2 mul-nonresidue (which is costly for BN254_Snarks)
+  #
+  # We can also reframe the 2nd term with only squarings
+  # which might be significantly faster on higher tower degrees
+  #
+  #   2 c0 c1 <=> (a0 + a1)² - a0² - a1²
+  #
+  # This gives us 3 Sqr and 1 Mul-non-residue
+  const costlyMul = block:
+    # No shortcutting in the VM :/
+    when a.c0 is ExtensionField:
+      when a.c0.c0 is ExtensionField:
+        true
+      else:
+        false
+    else:
+      false
 
-  # v1 <- (c0 + β c1)
-  v1.prod(a.c1, NonResidue)
-  v1 += a.c0
+  when QuadraticExt.C == BN254_Snarks or costlyMul:
+    var v0 {.noInit.}, v1 {.noInit.}: typeof(r.c0)
+    v0.square(a.c0)
+    v1.square(a.c1)
 
-  # v0 <- (c0 + c1)(c0 + β c1)
-  v0.sum(a.c0, a.c1)
-  v0 *= v1
+    # Aliasing: a unneeded now
+    r.c1.sum(a.c0, a.c1)
 
-  # v1 <- c0 c1
-  v1.prod(a.c0, a.c1)
+    # r0 = c0² + β c1²
+    r.c0.prod(v1, NonResidue)
+    r.c0 += v0
 
-  # aliasing: a unneeded now
+    # r1 = (a0 + a1)² - a0² - a1²
+    r.c1.square()
+    r.c1 -= v0
+    r.c1 -= v1
 
-  # r0 = (c0 + c1)(c0 + β c1) - c0c1
-  v0 -= v1
+  else:
+    var v0 {.noInit.}, v1 {.noInit.}: typeof(r.c0)
 
-  # r1 = 2 c0c1
-  r.c1.double(v1)
+    # v1 <- (c0 + β c1)
+    v1.prod(a.c1, NonResidue)
+    v1 += a.c0
 
-  # r0 = (c0 + c1)(c0 + β c1) - c0c1 - β c0c1
-  v1 *= NonResidue
-  r.c0.diff(v0, v1)
+    # v0 <- (c0 + c1)(c0 + β c1)
+    v0.sum(a.c0, a.c1)
+    v0 *= v1
+
+    # v1 <- c0 c1
+    v1.prod(a.c0, a.c1)
+
+    # aliasing: a unneeded now
+
+    # r0 = (c0 + c1)(c0 + β c1) - c0c1
+    v0 -= v1
+
+    # r1 = 2 c0c1
+    r.c1.double(v1)
+
+    # r0 = (c0 + c1)(c0 + β c1) - c0c1 - β c0c1
+    v1 *= NonResidue
+    r.c0.diff(v0, v1)
 
 func prod_generic(r: var QuadraticExt, a, b: QuadraticExt) =
   ## Returns r = a * b
@@ -529,7 +778,6 @@ func prod_generic(r: var QuadraticExt, a, b: QuadraticExt) =
   #
   # r0 = a0 b0 + β a1 b1
   # r1 = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1 (Karatsuba)
-  mixin prod
   var v0 {.noInit.}, v1 {.noInit.}, v2 {.noInit.}: typeof(r.c0)
 
   # v2 <- (a0 + a1)(b0 + b1)
@@ -564,7 +812,6 @@ func mul_sparse_generic_by_x0(r: var QuadraticExt, a, sparseB: QuadraticExt) =
   #
   # r0 = a0 b0
   # r1 = (a0 + a1) b0 - a0 b0 = a1 b0
-  mixin prod
   template b(): untyped = sparseB
 
   r.c0.prod(a.c0, b.c0)
@@ -658,21 +905,52 @@ func invImpl(r: var QuadraticExt, a: QuadraticExt) =
 # Exported quadratic symbols
 # -------------------------------------------------------------------
 
-{.push inline.}
-
 func square*(r: var QuadraticExt, a: QuadraticExt) =
   mixin fromComplexExtension
   when r.fromComplexExtension():
-    r.square_complex(a)
+    when true:
+      r.square_complex(a)
+    else: # slower
+      var d {.noInit.}: doublePrec(typeof(r))
+      d.square2x_complex(a)
+      r.c0.redc2x(d.c0)
+      r.c1.redc2x(d.c1)
   else:
-    r.square_generic(a)
+    when true: # r.typeof.F.C in {BLS12_377, BW6_761}:
+      # BW6-761 requires too many registers for Dbl width path
+      r.square_generic(a)
+    else:
+      # TODO understand why Fp4[BLS12_377]
+      # is so slow in the branch
+      # TODO:
+      # - On Fp4, we can have a.c0.c0 off by p
+      #   a reduction is missing
+      var d {.noInit.}: doublePrec(typeof(r))
+      d.square2x_disjoint(a.c0, a.c1)
+      r.c0.redc2x(d.c0)
+      r.c1.redc2x(d.c1)
 
 func prod*(r: var QuadraticExt, a, b: QuadraticExt) =
   mixin fromComplexExtension
   when r.fromComplexExtension():
-    r.prod_complex(a, b)
+    when false:
+      r.prod_complex(a, b)
+    else: # faster
+      var d {.noInit.}: doublePrec(typeof(r))
+      d.prod2x_complex(a, b)
+      r.c0.redc2x(d.c0)
+      r.c1.redc2x(d.c1)
   else:
-    r.prod_generic(a, b)
+    when r.typeof.F.C == BW6_761 or typeof(r.c0) is Fp:
+      # BW6-761 requires too many registers for Dbl width path
+      r.prod_generic(a, b)
+    else:
+      var d {.noInit.}: doublePrec(typeof(r))
+      d.prod2x_disjoint(a, b.c0, b.c1)
+      r.c0.redc2x(d.c0)
+      r.c1.redc2x(d.c1)
+
+{.push inline.}
 
 func inv*(r: var QuadraticExt, a: QuadraticExt) =
   ## Compute the multiplicative inverse of ``a``
@@ -765,7 +1043,6 @@ func mul_sparse_by_x0*(a: var QuadraticExt, sparseB: QuadraticExt) =
 
 func square_Chung_Hasan_SQR2(r: var CubicExt, a: CubicExt) {.used.}=
   ## Returns r = a²
-  mixin prod, square, sum
   var s0{.noInit.}, m01{.noInit.}, m12{.noInit.}: typeof(r.c0)
 
   # precomputations that use a
@@ -801,7 +1078,6 @@ func square_Chung_Hasan_SQR2(r: var CubicExt, a: CubicExt) {.used.}=
 
 func square_Chung_Hasan_SQR3(r: var CubicExt, a: CubicExt) =
   ## Returns r = a²
-  mixin prod, square, sum
   var s0{.noInit.}, t{.noInit.}, m12{.noInit.}: typeof(r.c0)
 
   # s₀ = (a₀ + a₁ + a₂)²

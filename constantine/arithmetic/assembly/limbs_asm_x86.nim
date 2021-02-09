@@ -138,14 +138,16 @@ macro add_gen[N: static int](carry: var Carry, r: var Limbs[N], a, b: Limbs[N]):
     var `t0sym`{.noinit.}, `t1sym`{.noinit.}: BaseType
 
   # Algorithm
-  for i in 0 ..< N:
-    ctx.mov t0, arrA[i]
-    if i == 0:
-      ctx.add t0, arrB[0]
-    else:
-      ctx.adc t0, arrB[i]
-    ctx.mov arrR[i], t0
-    swap(t0, t1)
+  ctx.mov t0, arrA[0]     # Prologue
+  ctx.add t0, arrB[0]
+
+  for i in 1 ..< N:
+    ctx.mov t1, arrA[i]   # Prepare the next iteration
+    ctx.mov arrR[i-1], t0 # Save the previous result in an interleaved manner
+    ctx.adc t1, arrB[i]   # Compute
+    swap(t0, t1)          # Break dependency chain
+
+  ctx.mov arrR[N-1], t0   # Epilogue
   ctx.setToCarryFlag(carry)
 
   # Codegen
@@ -197,14 +199,16 @@ macro sub_gen[N: static int](borrow: var Borrow, r: var Limbs[N], a, b: Limbs[N]
     var `t0sym`{.noinit.}, `t1sym`{.noinit.}: BaseType
 
   # Algorithm
-  for i in 0 ..< N:
-    ctx.mov t0, arrA[i]
-    if i == 0:
-      ctx.sub t0, arrB[0]
-    else:
-      ctx.sbb t0, arrB[i]
-    ctx.mov arrR[i], t0
-    swap(t0, t1)
+  ctx.mov t0, arrA[0]     # Prologue
+  ctx.sub t0, arrB[0]
+
+  for i in 1 ..< N:
+    ctx.mov t1, arrA[i]   # Prepare the next iteration
+    ctx.mov arrR[i-1], t0 # Save the previous reult in an interleaved manner
+    ctx.sbb t1, arrB[i]   # Compute
+    swap(t0, t1)          # Break dependency chain
+
+  ctx.mov arrR[N-1], t0   # Epilogue
   ctx.setToCarryFlag(borrow)
 
   # Codegen

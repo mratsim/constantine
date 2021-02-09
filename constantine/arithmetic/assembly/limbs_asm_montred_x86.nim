@@ -83,12 +83,12 @@ proc finalSubCanOverflow*(
 # Montgomery reduction
 # ------------------------------------------------------------
 
-macro montyRed_gen[N: static int](
+macro montyRedc2x_gen[N: static int](
        r_MR: var array[N, SecretWord],
        a_MR: array[N*2, SecretWord],
        M_MR: array[N, SecretWord],
        m0ninv_MR: BaseType,
-       canUseNoCarryMontyMul: static bool
+       spareBits: static int
       ) =
   # TODO, slower than Clang, in particular due to the shadowing
 
@@ -236,7 +236,7 @@ macro montyRed_gen[N: static int](
 
   let reuse = repackRegisters(t, scratch[N], scratch[N+1])
 
-  if canUseNoCarryMontyMul:
+  if spareBits >= 1:
     ctx.finalSubNoCarry(r, scratch, M, reuse)
   else:
     ctx.finalSubCanOverflow(r, scratch, M, reuse, rRAX)
@@ -249,7 +249,7 @@ func montRed_asm*[N: static int](
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
        m0ninv: BaseType,
-       canUseNoCarryMontyMul: static bool
+       spareBits: static int
       ) =
   ## Constant-time Montgomery reduction
-  montyRed_gen(r, a, M, m0ninv, canUseNoCarryMontyMul)
+  montyRedc2x_gen(r, a, M, m0ninv, spareBits)

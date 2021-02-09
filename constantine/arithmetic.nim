@@ -12,7 +12,7 @@ import
     finite_fields,
     finite_fields_inversion,
     finite_fields_square_root,
-    finite_fields_double_width
+    finite_fields_double_precision
   ]
 
 export
@@ -21,4 +21,4 @@ export
   finite_fields,
   finite_fields_inversion,
   finite_fields_square_root,
-  finite_fields_double_width
+  finite_fields_double_precision

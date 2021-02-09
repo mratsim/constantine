@@ -43,13 +43,14 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_finite_fields_powinv.nim", false),
   ("tests/t_finite_fields_vs_gmp.nim", true),
   ("tests/t_fp_cubic_root.nim", false),
-  # Double-width finite fields
+  # Double-precision finite fields
   # ----------------------------------------------------------
-  ("tests/t_finite_fields_double_width.nim", false),
+  ("tests/t_finite_fields_double_precision.nim", false),
   # Towers of extension fields
   # ----------------------------------------------------------
   ("tests/t_fp2.nim", false),
   ("tests/t_fp2_sqrt.nim", false),
+  ("tests/t_fp4.nim", false),
   ("tests/t_fp6_bn254_snarks.nim", false),
   ("tests/t_fp6_bls12_377.nim", false),
   ("tests/t_fp6_bls12_381.nim", false),
@@ -259,7 +260,7 @@ proc buildAllBenches() =
   echo "\n\n------------------------------------------------------\n"
   echo "Building benchmarks to ensure they stay relevant ..."
   buildBench("bench_fp")
-  buildBench("bench_fp_double_width")
+  buildBench("bench_fp_double_precision")
   buildBench("bench_fp2")
   buildBench("bench_fp6")
   buildBench("bench_fp12")
@@ -400,19 +401,19 @@ task bench_fp_clang_noasm, "Run benchmark 𝔽p with clang - no Assembly":
   runBench("bench_fp", "clang", useAsm = false)
 
 task bench_fpdbl, "Run benchmark 𝔽pDbl with your default compiler":
-  runBench("bench_fp_double_width")
+  runBench("bench_fp_double_precision")
 
 task bench_fpdbl_gcc, "Run benchmark 𝔽p with gcc":
-  runBench("bench_fp_double_width", "gcc")
+  runBench("bench_fp_double_precision", "gcc")
 
 task bench_fpdbl_clang, "Run benchmark 𝔽p with clang":
-  runBench("bench_fp_double_width", "clang")
+  runBench("bench_fp_double_precision", "clang")
 
 task bench_fpdbl_gcc_noasm, "Run benchmark 𝔽p with gcc - no Assembly":
-  runBench("bench_fp_double_width", "gcc", useAsm = false)
+  runBench("bench_fp_double_precision", "gcc", useAsm = false)
 
 task bench_fpdbl_clang_noasm, "Run benchmark 𝔽p with clang - no Assembly":
-  runBench("bench_fp_double_width", "clang", useAsm = false)
+  runBench("bench_fp_double_precision", "clang", useAsm = false)
 
 task bench_fp2, "Run benchmark with 𝔽p2 your default compiler":
   runBench("bench_fp2")

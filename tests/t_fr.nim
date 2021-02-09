@@ -25,7 +25,7 @@ echo "\n------------------------------------------------------\n"
 echo "test_fr xoshiro512** seed: ", seed
 
 proc sanity(C: static Curve) =
-  test "Fr: Squaring 0,1,2 with "& $Fr[C] & " [FastSquaring = " & $Fr[C].canUseNoCarryMontySquare & "]":
+  test "Fr: Squaring 0,1,2 with "& $Fr[C] & " [FastSquaring = " & $(Fr[C].getSpareBits() >= 2) & "]":
         block: # 0² mod
           var n: Fr[C]
 
@@ -112,7 +112,7 @@ proc random_long01Seq(C: static Curve) =
   doAssert bool(r_mul == r_sqr)
 
 suite "Fr: Random Modular Squaring is consistent with Modular Multiplication" & " [" & $WordBitwidth & "-bit mode]":
-  test "Random squaring mod r_BN254_Snarks [FastSquaring = " & $Fr[BN254_Snarks].canUseNoCarryMontySquare & "]":
+  test "Random squaring mod r_BN254_Snarks [FastSquaring = " & $(Fr[BN254_Snarks].getSpareBits() >= 2) & "]":
     for _ in 0 ..< Iters:
       randomCurve(BN254_Snarks)
     for _ in 0 ..< Iters:
@@ -120,7 +120,7 @@ suite "Fr: Random Modular Squaring is consistent with Modular Multiplication" & 
     for _ in 0 ..< Iters:
       random_long01Seq(BN254_Snarks)
 
-  test "Random squaring mod r_BLS12_381 [FastSquaring = " & $Fr[BLS12_381].canUseNoCarryMontySquare & "]":
+  test "Random squaring mod r_BLS12_381 [FastSquaring = " & $(Fr[BLS12_381].getSpareBits() >= 2) & "]":
     for _ in 0 ..< Iters:
       randomCurve(BLS12_381)
     for _ in 0 ..< Iters:

@@ -25,7 +25,7 @@ import
 #
 # ############################################################
 
-func montyResidue*(mres: var BigInt, a, N, r2modM: BigInt, m0ninv: static BaseType, canUseNoCarryMontyMul: static bool) =
+func montyResidue*(mres: var BigInt, a, N, r2modM: BigInt, m0ninv: static BaseType, spareBits: static int) =
   ## Convert a BigInt from its natural representation
   ## to the Montgomery n-residue form
   ##
@@ -40,9 +40,9 @@ func montyResidue*(mres: var BigInt, a, N, r2modM: BigInt, m0ninv: static BaseTy
   ## - `r2modM` is R² (mod M)
   ## with W = M.len
   ## and R = (2^WordBitWidth)^W
-  montyResidue(mres.limbs, a.limbs, N.limbs, r2modM.limbs, m0ninv, canUseNoCarryMontyMul)
+  montyResidue(mres.limbs, a.limbs, N.limbs, r2modM.limbs, m0ninv, spareBits)
 
-func redc*[mBits](r: var BigInt[mBits], a, M: BigInt[mBits], m0ninv: static BaseType, canUseNoCarryMontyMul: static bool) =
+func redc*[mBits](r: var BigInt[mBits], a, M: BigInt[mBits], m0ninv: static BaseType, spareBits: static int) =
   ## Convert a BigInt from its Montgomery n-residue form
   ## to the natural representation
   ##
@@ -54,26 +54,26 @@ func redc*[mBits](r: var BigInt[mBits], a, M: BigInt[mBits], m0ninv: static Base
     var one {.noInit.}: BigInt[mBits]
     one.setOne()
     one
-  redc(r.limbs, a.limbs, one.limbs, M.limbs, m0ninv, canUseNoCarryMontyMul)
+  redc(r.limbs, a.limbs, one.limbs, M.limbs, m0ninv, spareBits)
 
-func montyMul*(r: var BigInt, a, b, M: BigInt, negInvModWord: static BaseType, canUseNoCarryMontyMul: static bool) =
+func montyMul*(r: var BigInt, a, b, M: BigInt, negInvModWord: static BaseType, spareBits: static int) =
   ## Compute r <- a*b (mod M) in the Montgomery domain
   ##
   ## This resets r to zero before processing. Use {.noInit.}
   ## to avoid duplicating with Nim zero-init policy
-  montyMul(r.limbs, a.limbs, b.limbs, M.limbs, negInvModWord, canUseNoCarryMontyMul)
+  montyMul(r.limbs, a.limbs, b.limbs, M.limbs, negInvModWord, spareBits)
 
-func montySquare*(r: var BigInt, a, M: BigInt, negInvModWord: static BaseType, canUseNoCarryMontyMul: static bool) =
+func montySquare*(r: var BigInt, a, M: BigInt, negInvModWord: static BaseType, spareBits: static int) =
   ## Compute r <- a^2 (mod M) in the Montgomery domain
   ##
   ## This resets r to zero before processing. Use {.noInit.}
   ## to avoid duplicating with Nim zero-init policy
-  montySquare(r.limbs, a.limbs, M.limbs, negInvModWord, canUseNoCarryMontyMul)
+  montySquare(r.limbs, a.limbs, M.limbs, negInvModWord, spareBits)
 
 func montyPow*[mBits: static int](
        a: var BigInt[mBits], exponent: openarray[byte],
        M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,
-       canUseNoCarryMontyMul, canUseNoCarryMontySquare: static bool
+       spareBits: static int
       ) =
   ## Compute a <- a^exponent (mod M)
   ## ``a`` in the Montgomery domain
@@ -92,12 +92,12 @@ func montyPow*[mBits: static int](
   const scratchLen = if windowSize == 1: 2
                      else: (1 shl windowSize) + 1
   var scratchSpace {.noInit.}: array[scratchLen, Limbs[mBits.wordsRequired]]
-  montyPow(a.limbs, exponent, M.limbs, one.limbs, negInvModWord, scratchSpace, canUseNoCarryMontyMul, canUseNoCarryMontySquare)
+  montyPow(a.limbs, exponent, M.limbs, one.limbs, negInvModWord, scratchSpace, spareBits)
 
 func montyPowUnsafeExponent*[mBits: static int](
        a: var BigInt[mBits], exponent: openarray[byte],
        M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,
-       canUseNoCarryMontyMul, canUseNoCarryMontySquare: static bool
+       spareBits: static int
       ) =
   ## Compute a <- a^exponent (mod M)
   ## ``a`` in the Montgomery domain
@@ -116,7 +116,7 @@ func montyPowUnsafeExponent*[mBits: static int](
   const scratchLen = if windowSize == 1: 2
                      else: (1 shl windowSize) + 1
   var scratchSpace {.noInit.}: array[scratchLen, Limbs[mBits.wordsRequired]]
-  montyPowUnsafeExponent(a.limbs, exponent, M.limbs, one.limbs, negInvModWord, scratchSpace, canUseNoCarryMontyMul, canUseNoCarryMontySquare)
+  montyPowUnsafeExponent(a.limbs, exponent, M.limbs, one.limbs, negInvModWord, scratchSpace, spareBits)
 
 from ../io/io_bigints import exportRawUint
 # Workaround recursive dependencies
@@ -124,7 +124,7 @@ from ../io/io_bigints import exportRawUint
 func montyPow*[mBits, eBits: static int](
        a: var BigInt[mBits], exponent: BigInt[eBits],
        M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,
-       canUseNoCarryMontyMul, canUseNoCarryMontySquare: static bool
+       spareBits: static int
       ) =
   ## Compute a <- a^exponent (mod M)
   ## ``a`` in the Montgomery domain
@@ -138,12 +138,12 @@ func montyPow*[mBits, eBits: static int](
   var expBE {.noInit.}: array[(ebits + 7) div 8, byte]
   expBE.exportRawUint(exponent, bigEndian)
 
-  montyPow(a, expBE, M, one, negInvModWord, windowSize, canUseNoCarryMontyMul, canUseNoCarryMontySquare)
+  montyPow(a, expBE, M, one, negInvModWord, windowSize, spareBits)
 
 func montyPowUnsafeExponent*[mBits, eBits: static int](
        a: var BigInt[mBits], exponent: BigInt[eBits],
        M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,
-       canUseNoCarryMontyMul, canUseNoCarryMontySquare: static bool
+       spareBits: static int
       ) =
   ## Compute a <- a^exponent (mod M)
   ## ``a`` in the Montgomery domain
@@ -161,7 +161,7 @@ func montyPowUnsafeExponent*[mBits, eBits: static int](
   var expBE {.noInit.}: array[(ebits + 7) div 8, byte]
   expBE.exportRawUint(exponent, bigEndian)
 
-  montyPowUnsafeExponent(a, expBE, M, one, negInvModWord, windowSize, canUseNoCarryMontyMul, canUseNoCarryMontySquare)
+  montyPowUnsafeExponent(a, expBE, M, one, negInvModWord, windowSize, spareBits)
 
 {.pop.} # inline
 {.pop.} # raises no exceptions

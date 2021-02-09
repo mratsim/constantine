@@ -35,12 +35,12 @@ static: doAssert UseASM_X86_64
 # Montgomery reduction
 # ------------------------------------------------------------
 
-macro montyRedx_gen[N: static int](
+macro montyRedc2xx_gen[N: static int](
        r_MR: var array[N, SecretWord],
        a_MR: array[N*2, SecretWord],
        M_MR: array[N, SecretWord],
        m0ninv_MR: BaseType,
-       canUseNoCarryMontyMul: static bool
+       spareBits: static int
       ) =
   # TODO, slower than Clang, in particular due to the shadowing
 
@@ -175,7 +175,7 @@ macro montyRedx_gen[N: static int](
 
   let reuse = repackRegisters(t, scratch[N])
 
-  if canUseNoCarryMontyMul:
+  if spareBits >= 1:
     ctx.finalSubNoCarry(r, scratch, M, reuse)
   else:
     ctx.finalSubCanOverflow(r, scratch, M, reuse, hi)
@@ -188,7 +188,7 @@ func montRed_asm_adx_bmi2*[N: static int](
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
        m0ninv: BaseType,
-       canUseNoCarryMontyMul: static bool
+       spareBits: static int
       ) =
   ## Constant-time Montgomery reduction
-  montyRedx_gen(r, a, M, m0ninv, canUseNoCarryMontyMul)
+  montyRedc2xx_gen(r, a, M, m0ninv, spareBits)

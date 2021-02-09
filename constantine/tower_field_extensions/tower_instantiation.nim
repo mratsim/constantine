@@ -116,17 +116,24 @@ func prod*(r: var Fp2, a: Fp2, _: type NonResidue) {.inline.} =
       # BLS12_377 and BW6_761, use small addition chain
       r.mul_sparse_by_0y(a, v)
     else:
-      # BN254_Snarks, u = 9
-      # Full 𝔽p2 multiplication is cheaper than addition chains
-      # for u*c0 and u*c1
-      static:
-        doAssert u >= 0 and uint64(u) <= uint64(high(BaseType))
-        doAssert v >= 0 and uint64(v) <= uint64(high(BaseType))
-      # TODO: compile-time
-      var NR {.noInit.}: Fp2
-      NR.c0.fromUint(uint u)
-      NR.c1.fromUint(uint v)
-      r.prod(a, NR)
+      # BN254_Snarks, u = 9, v = 1, β = -1
+      # Even with u = 9, the 2x9 addition chains (8 additions total)
+      # are cheaper than full Fp2 multiplication
+      var t {.noInit.}: typeof(a.c0)
+
+      t.prod(a.c0, u)
+      when v == 1 and Beta == -1: # Case BN254_Snarks
+        t -= a.c1                 # r0 = u c0 + β v c1
+      else:
+        {.error: "Unimplemented".}
+
+      r.c1.prod(a.c1, u)
+      when v == 1:                # r1 = v c0 + u c1
+        r.c1 += a.c0
+        # aliasing: a.c0 is unused
+        r.c0 = t
+      else:
+        {.error: "Unimplemented".}
 
 func `*=`*(a: var Fp2, _: type NonResidue) {.inline.} =
   ## Multiply an element of 𝔽p2 by the non-residue
