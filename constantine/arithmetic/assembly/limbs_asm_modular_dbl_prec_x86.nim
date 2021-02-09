@@ -67,12 +67,10 @@ macro addmod2x_gen[N: static int](R: var Limbs[N], A, B: Limbs[N], m: Limbs[N di
       ctx.add u[0], b[0]
     else:
       ctx.adc u[i], b[i]
+    ctx.mov r[i], u[i]
 
-  # Everything should be hot in cache now so movs are cheaper
-  # we can try using 2 per ADC
   # v = a[H..<N] + b[H..<N], a[0..<H] = u, u = v
   for i in H ..< N:
-    ctx.mov r[i-H], u[i-H]
     ctx.adc v[i-H], b[i]
     ctx.mov u[i-H], v[i-H]
 
@@ -81,7 +79,7 @@ macro addmod2x_gen[N: static int](R: var Limbs[N], A, B: Limbs[N], m: Limbs[N di
   let overflowed = b.reuseRegister()
   ctx.sbb overflowed, overflowed
 
-  # Now substract the modulus
+  # Now substract the modulus to test a < 2ⁿp
   for i in 0 ..< H:
     if i == 0:
       ctx.sub v[0], M[0]
@@ -96,7 +94,7 @@ macro addmod2x_gen[N: static int](R: var Limbs[N], A, B: Limbs[N], m: Limbs[N di
   # and store result
   for i in 0 ..< H:
     ctx.cmovnc u[i],  v[i]
-    ctx.mov r[i], u[i]
+    ctx.mov r[i+H], u[i]
 
   result.add ctx.generate
 
@@ -143,12 +141,10 @@ macro submod2x_gen[N: static int](R: var Limbs[N], A, B: Limbs[N], m: Limbs[N di
       ctx.sub u[0], b[0]
     else:
       ctx.sbb u[i], b[i]
+    ctx.mov r[i], u[i]
 
-  # Everything should be hot in cache now so movs are cheaper
-  # we can try using 2 per SBB
   # v = a[H..<N] - b[H..<N], a[0..<H] = u, u = M
   for i in H ..< N:
-    ctx.mov r[i-H], u[i-H]
     ctx.sbb v[i-H], b[i]
     ctx.mov u[i-H], M[i-H] # TODO, bottleneck 17% perf: prefetch or inline modulus?
 

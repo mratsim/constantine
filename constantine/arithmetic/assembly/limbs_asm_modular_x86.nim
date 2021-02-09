@@ -73,7 +73,7 @@ macro addmod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N]): untyped =
   let overflowed = b.reuseRegister()
   ctx.sbb overflowed, overflowed
 
-  # Now substract the modulus
+  # Now substract the modulus to test a < p
   for i in 0 ..< N:
     if i == 0:
       ctx.sub v[0], M[0]

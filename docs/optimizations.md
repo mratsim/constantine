@@ -26,10 +26,10 @@ The optimizations can be of algebraic, algorithmic or "implementation details" n
   - [x] x86: MULX, ADCX, ADOX instructions
   - [x] Fused Multiply + Shift-right by word (for Barrett Reduction and approximating multiplication by fractional constant)
 - Squaring
-  - [ ] Dedicated squaring functions
-  - [ ] int128
+  - [x] Dedicated squaring functions
+  - [x] int128
   - [ ] loop unrolling
-  - [ ] x86: Full Assembly implementation
+  - [x] x86: Full Assembly implementation
   - [ ] x86: MULX, ADCX, ADOX instructions
 
 ## Finite Fields & Modular Arithmetic
@@ -107,7 +107,7 @@ The optimizations can be of algebraic, algorithmic or "implementation details" n
 
 ## Extension Fields
 
-- [ ] Lazy reduction via double-precision base fields
+- [x] Lazy reduction via double-precision base fields
 - [x] Sparse multiplication
 - Fp2
   - [x] complex multiplication
