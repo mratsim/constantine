@@ -10,7 +10,7 @@ import
   # Standard library
   std/[unittest, times, os, strutils, macros],
   # 3rd party
-  serialization, json_serialization,
+  jsony,
   # Internals
   ../constantine/config/[common, curves, type_bigint, type_ff],
   ../constantine/towers,
@@ -23,18 +23,6 @@ import
     ec_endomorphism_accel],
   # Test utilities
   ./support/ec_reference_scalar_mult
-
-# Workaround
-# --------------------------------------------------------------------------
-
-# Generic sandwich - https://github.com/nim-lang/Nim/issues/11225
-export serialization, json_serialization
-
-# When run_scalar_mul_test_vs_sage is not instantiated from this exact file
-# "nim-serialization" somehow tries to serialize SecretWord
-# json_serialization/reader.nim(522, 12) Error: Failed to convert to JSON an unsupported type: SecretWord
-#
-# This obscure error actually requires exporting the `readValue` proc
 
 # Serialization
 # --------------------------------------------------------------------------
@@ -145,23 +133,28 @@ const
   TestVectorsDir* =
     currentSourcePath.rsplit(DirSep, 1)[0] / "vectors"
 
-proc readValue*(reader: var JsonReader, value: var BigInt) =
-  value.fromHex(reader.readValue(string))
+proc parseHook*(src: string, pos: var int, value: var BigInt) =
+  var str: string
+  parseHook(src, pos, str)
+  value.fromHex(str)
 
-proc readValue*(reader: var JsonReader, value: var ECP_ShortW_Aff) =
-  # When ECP_ShortW_Aff[Fp[Foo], NotOnTwist]
-  # and ECP_ShortW_Aff[Fp[Foo], OnTwist]
-  # are generated in the same file (i.e. twists and base curve are both on Fp)
-  # this creates bad codegen, in the C code, the `value`parameter gets the wrong type
-  # TODO: upstream
+proc parseHook*(src: string, pos: var int, value: var ECP_ShortW_Aff) =
+  # Note when nim-serialization was used:
+  #   When ECP_ShortW_Aff[Fp[Foo], NotOnTwist]
+  #   and ECP_ShortW_Aff[Fp[Foo], OnTwist]
+  #   are generated in the same file (i.e. twists and base curve are both on Fp)
+  #   this creates bad codegen, in the C code, the `value`parameter gets the wrong type
+  #   TODO: upstream
   when ECP_ShortW_Aff.F is Fp:
-    let P = reader.readValue(EC_G1_hex)
+    var P: EC_G1_hex
+    parseHook(src, pos, P)
     let ok = value.fromHex(P.x, P.y)
     doAssert ok, "\nDeserialization error on G1 for\n" &
       "  P.x: " & P.x & "\n" &
       "  P.y: " & P.x & "\n"
   elif ECP_ShortW_Aff.F is Fp2:
-    let P = reader.readValue(EC_G2_hex)
+    var P: EC_G2_hex
+    parseHook(src, pos, P)
     let ok = value.fromHex(P.x.c0, P.x.c1, P.y.c0, P.y.c1)
     doAssert ok, "\nDeserialization error on G2 for\n" &
       "  P.x0: " & P.x.c0 & "\n" &
@@ -175,7 +168,8 @@ proc loadVectors(TestType: typedesc): TestType =
   const group = when TestType.EC.Tw == NotOnTwist: "G1"
                 else: "G2"
   const filename = "tv_" & $TestType.EC.F.C & "_scalar_mul_" & group & ".json"
-  result = Json.loadFile(TestVectorsDir/filename, TestType)
+  let content = readFile(TestVectorsDir/filename)
+  result = content.fromJson(TestType)
 
 # Testing
 # ------------------------------------------------------------------------

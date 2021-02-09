@@ -222,9 +222,7 @@ steps:
   - bash: |
       echo "PATH=${PATH}"
       nimble refresh
-      nimble install -y gmp stew json_serialization
-      nimble uninstall -y serialization
-      nimble install serialization@#217d78a
+      nimble install -y gmp stew jsony
     displayName: 'Installing package and testing dependencies'
 
   - bash: |

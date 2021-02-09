@@ -199,14 +199,9 @@ jobs:
           rm -rf .git
       - name: Install test dependencies
         shell: bash
-        # Workaround #113 and https://github.com/status-im/nim-serialization/issues/33
-        # and nimble flaky pinning / dependency resolution,
-        # json_serialization install would override nim-serialization pinning
         run: |
           nimble refresh
-          nimble install -y gmp stew json_serialization
-          nimble uninstall -y serialization
-          nimble install serialization@#217d78a
+          nimble install -y gmp stew jsony
       - name: Run Constantine tests (with Assembler & with GMP)
         if: (runner.os == 'Linux' || runner.os == 'macOS') && matrix.target.cpu == 'amd64'
         shell: bash
