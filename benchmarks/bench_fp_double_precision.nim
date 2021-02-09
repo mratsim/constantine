@@ -89,11 +89,13 @@ proc notes*() =
   echo "Notes:"
   echo "  - Compilers:"
   echo "    Compilers are severely limited on multiprecision arithmetic."
-  echo "    Inline Assembly is used by default (nimble bench_fp)."
-  echo "    Bench without assembly can use \"nimble bench_fp_gcc\" or \"nimble bench_fp_clang\"."
+  echo "    Constantine compile-time assembler is used by default (nimble bench_fp)."
   echo "    GCC is significantly slower than Clang on multiprecision arithmetic due to catastrophic handling of carries."
+  echo "    GCC also seems to have issues with large temporaries and register spilling."
+  echo "    This is somewhat alleviated by Constantine compile-time assembler."
+  echo "    Bench on specific compiler with assembler: \"nimble bench_ec_g1_gcc\" or \"nimble bench_ec_g1_clang\"."
+  echo "    Bench on specific compiler with assembler: \"nimble bench_ec_g1_gcc_noasm\" or \"nimble bench_ec_g1_clang_noasm\"."
   echo "  - The simplest operations might be optimized away by the compiler."
-  echo "  - Fast Squaring and Fast Multiplication are possible if there are spare bits in the prime representation (i.e. the prime uses 254 bits out of 256 bits)"
 
 template bench(op: string, desc: string, iters: int, body: untyped): untyped =
   let start = getMonotime()
@@ -149,6 +151,12 @@ proc diff(T: typedesc, iters: int) =
   bench("Substraction", $T, iters):
     r.diff(a, b)
 
+proc neg(T: typedesc, iters: int) =
+  var r: T
+  let a = rng.random_unsafe(T)
+  bench("Negation", $T, iters):
+    r.neg(a)
+
 proc sum2xUnreduce(T: typedesc, iters: int) =
   var r, a, b: doublePrec(T)
   rng.random_unsafe(r, T)
@@ -181,6 +189,12 @@ proc diff2x(T: typedesc, iters: int) =
   bench("Substraction 2x reduced", $doublePrec(T), iters):
     r.diff2xMod(a, b)
 
+proc neg2x(T: typedesc, iters: int) =
+  var r, a: doublePrec(T)
+  rng.random_unsafe(a, T)
+  bench("Negation 2x reduced", $doublePrec(T), iters):
+    r.neg2xMod(a)
+
 proc prod2xBench*(rLen, aLen, bLen: static int, iters: int) =
   var r: BigInt[rLen]
   let a = rng.random_unsafe(BigInt[aLen])
@@ -208,11 +222,13 @@ proc main() =
   sumUnr(Fp[BLS12_381], iters = 10_000_000)
   diff(Fp[BLS12_381], iters = 10_000_000)
   diffUnr(Fp[BLS12_381], iters = 10_000_000)
+  neg(Fp[BLS12_381], iters = 10_000_000)
   separator()
   sum2x(Fp[BLS12_381], iters = 10_000_000)
   sum2xUnreduce(Fp[BLS12_381], iters = 10_000_000)
   diff2x(Fp[BLS12_381], iters = 10_000_000)
   diff2xUnreduce(Fp[BLS12_381], iters = 10_000_000)
+  neg2x(Fp[BLS12_381], iters = 10_000_000)
   separator()
   prod2xBench(768, 384, 384, iters = 10_000_000)
   square2xBench(768, 384, iters = 10_000_000)

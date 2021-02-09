@@ -88,7 +88,6 @@ proc notes*() =
   echo "    Bench on specific compiler with assembler: \"nimble bench_ec_g1_gcc\" or \"nimble bench_ec_g1_clang\"."
   echo "    Bench on specific compiler with assembler: \"nimble bench_ec_g1_gcc_noasm\" or \"nimble bench_ec_g1_clang_noasm\"."
   echo "  - The simplest operations might be optimized away by the compiler."
-  echo "  - Fast Squaring and Fast Multiplication are possible if there are spare bits in the prime representation (i.e. the prime uses 254 bits out of 256 bits)"
 
 template measure*(iters: int,
                startTime, stopTime: untyped,

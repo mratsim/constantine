@@ -142,8 +142,8 @@ func sum2xMod*(r: var FpDbl, a, b: FpDbl) =
 func neg2xMod*(r: var FpDbl, a: FpDbl) =
   ## Double-precision modular substraction
   ## Negate modulo 2ⁿp
-  when false: # TODO UseASM_X86_64:
-    {.error: "Implement assembly".}
+  when UseASM_X86_64:
+    negmod2x_asm(r.limbs2x, a.limbs2x, FpDbl.C.Mod.limbs)
   else:
     # If a = 0 we need r = 0 and not r = M
     # as comparison operator assume unicity

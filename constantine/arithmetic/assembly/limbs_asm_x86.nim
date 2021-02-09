@@ -143,7 +143,7 @@ macro add_gen[N: static int](carry: var Carry, r: var Limbs[N], a, b: Limbs[N]):
 
   for i in 1 ..< N:
     ctx.mov t1, arrA[i]   # Prepare the next iteration
-    ctx.mov arrR[i-1], t0 # Save the previous reult in an interleaved manner
+    ctx.mov arrR[i-1], t0 # Save the previous result in an interleaved manner
     ctx.adc t1, arrB[i]   # Compute
     swap(t0, t1)          # Break dependency chain
 
@@ -210,7 +210,7 @@ macro sub_gen[N: static int](borrow: var Borrow, r: var Limbs[N], a, b: Limbs[N]
 
   ctx.mov arrR[N-1], t0   # Epilogue
   ctx.setToCarryFlag(borrow)
-  
+
   # Codegen
   result.add ctx.generate
 

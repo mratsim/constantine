@@ -29,9 +29,8 @@ import
 static: doAssert UseASM_X86_64
 {.localPassC:"-fomit-frame-pointer".} # Needed so that the compiler finds enough registers
 
-# Field addition
+# Double-precision field addition
 # ------------------------------------------------------------
-
 
 macro addmod2x_gen[N: static int](R: var Limbs[N], A, B: Limbs[N], m: Limbs[N div 2]): untyped =
   ## Generate an optimized out-of-place double-precision addition kernel
@@ -104,7 +103,7 @@ func addmod2x_asm*[N: static int](r: var Limbs[N], a, b: Limbs[N], M: Limbs[N di
   ## to stay in the [0, 2ⁿp) range
   addmod2x_gen(r, a, b, M)
 
-# Field Substraction
+# Double-precision field substraction
 # ------------------------------------------------------------
 
 macro submod2x_gen[N: static int](R: var Limbs[N], A, B: Limbs[N], m: Limbs[N div 2]): untyped =
@@ -171,3 +170,75 @@ func submod2x_asm*[N: static int](r: var Limbs[N], a, b: Limbs[N], M: Limbs[N di
   ## Output is conditionally reduced by 2ⁿp
   ## to stay in the [0, 2ⁿp) range
   submod2x_gen(r, a, b, M)
+
+# Double-precision field negation
+# ------------------------------------------------------------
+
+macro negmod2x_gen[N: static int](R: var Limbs[N], A: Limbs[N], m: Limbs[N div 2]): untyped =
+  ## Generate an optimized modular negation kernel
+
+  result = newStmtList()
+
+  var ctx = init(Assembler_x86, BaseType)
+  let
+    H = N div 2
+
+    a = init(OperandArray, nimSymbol = A, N, PointerInReg, Input)
+    r = init(OperandArray, nimSymbol = R, N, PointerInReg, InputOutput)
+    u = init(OperandArray, nimSymbol = ident"U", N, ElemsInReg, Output_EarlyClobber)
+    # We could force m as immediate by specializing per moduli
+    # We reuse the reg used for m for overflow detection
+    M = init(OperandArray, nimSymbol = m, N, PointerInReg, InputOutput)
+
+    isZero = Operand(
+      desc: OperandDesc(
+        asmId: "[isZero]",
+        nimSymbol: ident"isZero",
+        rm: Reg,
+        constraint: Output_EarlyClobber,
+        cEmit: "isZero"
+      )
+    )
+
+  # Substraction 2ⁿp - a
+  # The lower half of 2ⁿp is filled with zero
+  ctx.`xor` isZero, isZero
+  for i in 0 ..< H:
+    ctx.`xor` u[i], u[i]
+    ctx.`or` isZero, a[i]
+
+  for i in 0 ..< H:
+    # 0 - a[i]
+    if i == 0:
+      ctx.sub u[0], a[0]
+    else:
+      ctx.sbb u[i], a[i]
+    # store result, overwrite a[i] lower-half if aliasing.
+    ctx.mov r[i], u[i]
+    # Prepare second-half, u <- M
+    ctx.mov u[i], M[i]
+
+  for i in H ..< N:
+    # u = 2ⁿp higher half
+    ctx.sbb u[i-H], a[i]
+
+  # Deal with a == 0,
+  # we already accumulated 0 in the first half (which was destroyed if aliasing)
+  for i in H ..< N:
+    ctx.`or` isZero, a[i]
+
+  # Zero result if a == 0, only the upper half needs to be zero-ed here
+  for i in H ..< N:
+    ctx.cmovz u[i-H], isZero
+    ctx.mov r[i], u[i-H]
+
+  let isZerosym = isZero.desc.nimSymbol
+  let usym = u.nimSymbol
+  result.add quote do:
+    var `isZerosym`{.noInit.}: BaseType
+    var `usym`{.noinit.}: typeof(`A`)
+  result.add ctx.generate
+
+func negmod2x_asm*[N: static int](r: var Limbs[N], a: Limbs[N], M: Limbs[N div 2]) =
+  ## Constant-time double-precision negation
+  negmod2x_gen(r, a, M)

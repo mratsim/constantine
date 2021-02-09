@@ -154,6 +154,13 @@ suite "Field Addition/Substraction/Negation via double-precision field elements"
     for _ in 0 ..< Iters:
       addsubneg_random_long01Seq(BLS12_381)
 
+  test "Negate 0 returns 0 (unique Montgomery repr)":
+    var a: FpDbl[BN254_Snarks]
+    var r {.noInit.}: FpDbl[BN254_Snarks]
+    r.neg2xMod(a)
+
+    check: bool r.isZero()
+
 suite "Field Multiplication via double-precision field elements is consistent with single-width." & " [" & $WordBitwidth & "-bit mode]":
   test "With P-224 field modulus":
     for _ in 0 ..< Iters:
