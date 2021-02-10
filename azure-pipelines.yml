@@ -10,26 +10,30 @@ strategy:
     #   UCPU: i686
     #   CHANNEL: devel
     #   TEST_LANG: c
-    Windows_devel_64bit:
+    Windows_stable_noasm_64bit:
       VM: 'windows-latest'
       UCPU: amd64
-      CHANNEL: devel
+      CHANNEL: stable
       TEST_LANG: c
-    Windows_cpp_devel_64bit:
+      BACKEND: NO_ASM
+    Windows_cpp_stable_noasm_64bit:
       VM: 'windows-latest'
       UCPU: amd64
-      CHANNEL: devel
+      CHANNEL: stable
       TEST_LANG: cpp
-    Linux_devel_64bit:
+      BACKEND: NO_ASM
+    Linux_stable_noasm_64bit:
       VM: 'ubuntu-18.04'
       UCPU: amd64
-      CHANNEL: devel
+      CHANNEL: stable
       TEST_LANG: c
-    Linux_cpp_devel_64bit:
+      BACKEND: NO_ASM
+    Linux_cpp_stable_noasm_64bit:
       VM: 'ubuntu-18.04'
       UCPU: amd64
-      CHANNEL: devel
+      CHANNEL: stable
       TEST_LANG: cpp
+      BACKEND: NO_ASM
 
     # Deactivated for now, this is cross-compilation and tricky to get right
     # Linux_devel_32bit:
@@ -38,11 +42,47 @@ strategy:
     #   CHANNEL: devel
     #   TEST_LANG: c
 
-    MacOS_devel_64bit:
+    MacOS_stable_noasm_64bit:
       VM: 'macOS-10.15'
       UCPU: amd64
-      CHANNEL: devel
+      CHANNEL: stable
       TEST_LANG: c
+      BACKEND: NO_ASM
+
+    # -------------------------------
+
+    # No assembly for windows
+    # Windows_devel_64bit:
+    #   VM: 'windows-latest'
+    #   UCPU: amd64
+    #   CHANNEL: stable
+    #   TEST_LANG: c
+    #   BACKEND: ASM
+    # Windows_cpp_devel_64bit:
+    #   VM: 'windows-latest'
+    #   UCPU: amd64
+    #   CHANNEL: stable
+    #   TEST_LANG: cpp
+    #   BACKEND: ASM
+    Linux_stable_asm_64bit:
+      VM: 'ubuntu-18.04'
+      UCPU: amd64
+      CHANNEL: stable
+      TEST_LANG: c
+      BACKEND: ASM
+    Linux_cpp_stable_asm_64bit:
+      VM: 'ubuntu-18.04'
+      UCPU: amd64
+      CHANNEL: stable
+      TEST_LANG: cpp
+      BACKEND: ASM
+    MacOS_stable_asm_64bit:
+      VM: 'macOS-10.15'
+      UCPU: amd64
+      CHANNEL: stable
+      TEST_LANG: c
+      BACKEND: ASM
+
 pool:
   vmImage: $(VM)
 
@@ -188,6 +228,12 @@ steps:
       popd # exit NimBinaries
     displayName: 'Building Nim'
 
+   # https://forum.nim-lang.org/t/7494
+  - powershell: |
+      bitsadmin.exe /rawreturn /transfer "cURL-certicates" /priority FOREGROUND https://curl.se/ca/cacert.pem $pwd\NimBinaries\nim-$(CHANNEL)\bin\cacert.pem
+    displayName: 'cURL certificates (Windows)'
+    condition: eq(variables['Agent.OS'], 'Windows_NT')
+
   - powershell: |
       echo "##vso[task.prependpath]$pwd\NimBinaries\nim-$(CHANNEL)\bin"
     displayName: 'Set env variable (Windows)'
@@ -230,14 +276,14 @@ steps:
       export ucpu=${UCPU}
       nimble test_parallel
     displayName: 'Testing Constantine with Assembler and with GMP'
-    condition: ne(variables['Agent.OS'], 'Windows_NT')
+    condition: and(ne(variables['Agent.OS'], 'Windows_NT'), eq(variables['BACKEND'], 'ASM'))
 
   - bash: |
       echo "PATH=${PATH}"
       export ucpu=${UCPU}
       nimble test_parallel_no_assembler
     displayName: 'Testing Constantine without Assembler and with GMP'
-    condition: ne(variables['Agent.OS'], 'Windows_NT')
+    condition: and(ne(variables['Agent.OS'], 'Windows_NT'), eq(variables['BACKEND'], 'NO_ASM'))
 
   - bash: |
       echo "PATH=${PATH}"

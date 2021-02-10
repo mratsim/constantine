@@ -22,15 +22,15 @@ matrix:
       arch: arm64
       env:
         - ARCH=arm64
-        - CHANNEL=devel
+        - CHANNEL=stable
       compiler: gcc
 
-    - dist: bionic
-      arch: ppc64le
-      env:
-        - ARCH=powerpc64el
-        - CHANNEL=devel
-      compiler: gcc
+    # - dist: bionic
+    #   arch: ppc64le
+    #   env:
+    #     - ARCH=powerpc64el
+    #     - CHANNEL=stable
+    #   compiler: gcc
 
     # "Unknown processor s390x"
     # - dist: bionic
