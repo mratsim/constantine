@@ -10,25 +10,25 @@ strategy:
     #   UCPU: i686
     #   CHANNEL: devel
     #   TEST_LANG: c
-    Windows_devel_64bit:
+    Windows_stable_noasm_64bit:
       VM: 'windows-latest'
       UCPU: amd64
       CHANNEL: stable
       TEST_LANG: c
       BACKEND: NO_ASM
-    Windows_cpp_devel_64bit:
+    Windows_cpp_stable_noasm_64bit:
       VM: 'windows-latest'
       UCPU: amd64
       CHANNEL: stable
       TEST_LANG: cpp
       BACKEND: NO_ASM
-    Linux_devel_64bit:
+    Linux_stable_noasm_64bit:
       VM: 'ubuntu-18.04'
       UCPU: amd64
       CHANNEL: stable
       TEST_LANG: c
       BACKEND: NO_ASM
-    Linux_cpp_devel_64bit:
+    Linux_cpp_stable_noasm_64bit:
       VM: 'ubuntu-18.04'
       UCPU: amd64
       CHANNEL: stable
@@ -42,7 +42,7 @@ strategy:
     #   CHANNEL: devel
     #   TEST_LANG: c
 
-    MacOS_devel_64bit:
+    MacOS_stable_noasm_64bit:
       VM: 'macOS-10.15'
       UCPU: amd64
       CHANNEL: stable
@@ -64,19 +64,19 @@ strategy:
     #   CHANNEL: stable
     #   TEST_LANG: cpp
     #   BACKEND: ASM
-    Linux_devel_64bit:
+    Linux_stable_asm_64bit:
       VM: 'ubuntu-18.04'
       UCPU: amd64
       CHANNEL: stable
       TEST_LANG: c
       BACKEND: ASM
-    Linux_cpp_devel_64bit:
+    Linux_cpp_stable_asm_64bit:
       VM: 'ubuntu-18.04'
       UCPU: amd64
       CHANNEL: stable
       TEST_LANG: cpp
       BACKEND: ASM
-    MacOS_devel_64bit:
+    MacOS_stable_asm_64bit:
       VM: 'macOS-10.15'
       UCPU: amd64
       CHANNEL: stable

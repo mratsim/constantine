@@ -7,26 +7,32 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        branch: [devel] # [version-1-2, devel] - # 1.2 doesn't compile https://github.com/mratsim/constantine/pull/20#issuecomment-646327952
+        branch: [version-1-4] # [version-1-4, devel]
         target:
           - os: linux
             cpu: amd64
             TEST_LANG: c
+            BACKEND: NO_ASM
           - os: linux
             cpu: amd64
             TEST_LANG: cpp
+            BACKEND: NO_ASM
           - os: linux
             cpu: i386
             TEST_LANG: c
+            BACKEND: NO_ASM
           - os: linux
             cpu: i386
             TEST_LANG: cpp
+            BACKEND: NO_ASM
           - os: macos
             cpu: amd64
             TEST_LANG: c
+            BACKEND: NO_ASM
           - os: macos
             cpu: amd64
             TEST_LANG: cpp
+            BACKEND: NO_ASM
           # TODO:
           #   1. Modulo/reduce bug on 32-bit
           #   2. ModInverse bug on all windows
@@ -42,6 +48,31 @@ jobs:
           # - os: windows
           #   cpu: i386
           #   TEST_LANG: cpp
+          # ----------------------------
+          - os: linux
+            cpu: amd64
+            TEST_LANG: c
+            BACKEND: ASM
+          - os: linux
+            cpu: amd64
+            TEST_LANG: cpp
+            BACKEND: ASM
+          - os: linux
+            cpu: i386
+            TEST_LANG: c
+            BACKEND: ASM
+          - os: linux
+            cpu: i386
+            TEST_LANG: cpp
+            BACKEND: ASM
+          - os: macos
+            cpu: amd64
+            TEST_LANG: c
+            BACKEND: ASM
+          - os: macos
+            cpu: amd64
+            TEST_LANG: cpp
+            BACKEND: ASM
         include:
           - target:
               os: linux
@@ -203,28 +234,28 @@ jobs:
           nimble refresh
           nimble install -y gmp stew jsony
       - name: Run Constantine tests (with Assembler & with GMP)
-        if: (runner.os == 'Linux' || runner.os == 'macOS') && matrix.target.cpu == 'amd64'
+        if: (runner.os == 'Linux' || runner.os == 'macOS') && matrix.target.BACKEND == 'ASM' && matrix.target.cpu != 'i386'
         shell: bash
         run: |
           export UCPU="$cpu"
           cd constantine
           nimble test_parallel
       - name: Run Constantine tests (no Assembler & with GMP)
-        if: (runner.os == 'Linux' || runner.os == 'macOS') && matrix.target.cpu == 'amd64'
+        if: (runner.os == 'Linux' || runner.os == 'macOS') && matrix.target.BACKEND == 'NO_ASM' && matrix.target.cpu != 'i386'
         shell: bash
         run: |
           export UCPU="$cpu"
           cd constantine
           nimble test_parallel_no_assembler
       - name: Run Constantine tests (without GMP)
-        if: runner.os == 'Linux' && matrix.target.cpu == 'i386'
+        if: runner.os == 'Linux' && matrix.target.BACKEND == 'ASM' && matrix.target.cpu == 'i386'
         shell: bash
         run: |
           export UCPU="$cpu"
           cd constantine
           nimble test_parallel_no_gmp
       - name: Run Constantine tests (without Assembler or GMP)
-        if: runner.os == 'Linux' && matrix.target.cpu == 'i386'
+        if: runner.os == 'Linux' && matrix.target.BACKEND == 'NO_ASM' && matrix.target.cpu == 'i386'
         shell: bash
         run: |
           export UCPU="$cpu"
