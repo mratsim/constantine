@@ -230,7 +230,7 @@ steps:
 
    # https://forum.nim-lang.org/t/7494
   - powershell: |
-      bitsadmin.exe /rawreturn /transfer "cURL-certicates" /priority FOREGROUND https://curl.se/ca/cacert.pem ##vso[task.prependpath]$pwd\NimBinaries\nim-$(CHANNEL)\bin\cacert.pem
+      bitsadmin.exe /rawreturn /transfer "cURL-certicates" /priority FOREGROUND https://curl.se/ca/cacert.pem $pwd\NimBinaries\nim-$(CHANNEL)\bin\cacert.pem
     displayName: 'cURL certificates (Windows)'
     condition: eq(variables['Agent.OS'], 'Windows_NT')
 
