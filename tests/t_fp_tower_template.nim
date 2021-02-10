@@ -256,16 +256,22 @@ proc runTowerTests*[N](
       staticFor(curve, TestCurves):
         test(ExtField(ExtDegree, curve)):
           r.prod(x, Z)
-          check: bool(r == Z)
+          doAssert bool(r == Z),
+            "\nExpected zero but got (" & $ExtField(ExtDegree, curve) & "): " & x.toHex()
         test(ExtField(ExtDegree, curve)):
           r.prod(Z, x)
-          check: bool(r == Z)
+          doAssert bool(r == Z),
+            "\nExpected zero but got (" & $ExtField(ExtDegree, curve) & "): " & x.toHex()
         test(ExtField(ExtDegree, curve)):
           r.prod(x, O)
-          check: bool(r == x)
+          doAssert bool(r == x),
+            "\n(" & $ExtField(ExtDegree, curve) & "): Expected one: " & O.toHex() & "\n" &
+            "got: " & x.toHex()
         test(ExtField(ExtDegree, curve)):
           r.prod(O, x)
-          check: bool(r == x)
+          doAssert bool(r == x),
+            "\n(" & $ExtField(ExtDegree, curve) & "): Expected one: " & O.toHex() & "\n" &
+            "got: " & x.toHex()
 
     test "Multiplication and Squaring are consistent":
       proc test(Field: typedesc, Iters: static int, gen: static RandomGen) =
@@ -276,7 +282,9 @@ proc runTowerTests*[N](
           rMul.prod(a, a)
           rSqr.square(a)
 
-          doAssert bool(rMul == rSqr), "Failure with a (" & $Field & "): " & a.toHex()
+          doAssert bool(rMul == rSqr), "Failure with a (" & $Field & "): " & a.toHex() & "\n" &
+            "Mul: " & rMul.toHex() & "\n" &
+            "Sqr: " & rSqr.toHex() & "\n"
 
       staticFor(curve, TestCurves):
         test(ExtField(ExtDegree, curve), Iters, gen = Uniform)
@@ -295,7 +303,9 @@ proc runTowerTests*[N](
           rSqr.square(a)
           rNegSqr.square(na)
 
-          doAssert bool(rSqr == rNegSqr), "Failure with a (" & $Field & "): " & a.toHex()
+          doAssert bool(rSqr == rNegSqr), "Failure with a (" & $Field & "): " & a.toHex() & "\n" &
+            "Sqr:    " & rSqr.toHex() & "\n" &
+            "SqrNeg: " & rNegSqr.toHex() & "\n"
 
       staticFor(curve, TestCurves):
         test(ExtField(ExtDegree, curve), Iters, gen = Uniform)

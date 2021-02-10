@@ -258,8 +258,11 @@ template doublePrec(T: type ExtensionField): type =
     elif T.F is Fp:           # Fp2Dbl
       QuadraticExt2x[doublePrec(T.F)]
   elif T is CubicExt:
-    when T.F is QuadraticExt: # Fp6Dbl
-      CubicExt2x[QuadraticExt2x[doublePrec(T.F.F)]]
+    when T.F is QuadraticExt: #
+      when T.F.F is QuadraticExt: # Fp12
+        CubicExt2x[QuadraticExt2x[QuadraticExt2x[doublePrec(T.F.F.F)]]]
+      elif T.F.F is Fp: # Fp6
+        CubicExt2x[QuadraticExt2x[doublePrec(T.F.F)]]
 
 func has1extraBit(F: type Fp): bool =
   ## We construct extensions only on Fp (and not Fr)
@@ -361,19 +364,19 @@ func prod2x(r: var FpDbl, a: FpDbl, _: type NonResidue){.inline.} =
   r.prod2x(a, FpDbl.C.getNonResidueFp())
 
 func prod2x[C: static Curve](
-       r {.noalias.}: var QuadraticExt2x[FpDbl[C]],
-       a {.noalias.}: QuadraticExt2x[FpDbl[C]],
+       r: var QuadraticExt2x[FpDbl[C]],
+       a: QuadraticExt2x[FpDbl[C]],
        _: type NonResidue) {.inline.} =
   ## Multiplication by non-residue
-  ## ! no aliasing!
   const complex = C.getNonResidueFp() == -1
   const U = C.getNonResidueFp2()[0]
   const V = C.getNonResidueFp2()[1]
   const Beta {.used.} = C.getNonResidueFp()
 
   when complex and U == 1 and V == 1:
-    r.c0.diff2xMod(a.c0, a.c1)
-    r.c1.sum2xMod(a.c0, a.c1)
+    let a1 = a.c1
+    r.c1.sum2xMod(a.c0, a1)
+    r.c0.diff2xMod(a.c0, a1)
   else:
     # Case:
     # - BN254_Snarks, QNR_Fp: -1, SNR_Fp2: 9+1𝑖  (𝑖 = √-1)
@@ -383,10 +386,10 @@ func prod2x[C: static Curve](
       # mul_sparse_by_0v
       # r0 = β a1 v
       # r1 = a0 v
-      # r and a don't alias, we use `r` as a temp location
-      r.c1.prod2x(a.c1, V)
-      r.c0.prod2x(r.c1, NonResidue)
+      var t {.noInit.}: FpDbl[C]
+      t.prod2x(a.c1, V)
       r.c1.prod2x(a.c0, V)
+      r.c0.prod2x(t, NonResidue)
     else:
       # ξ = u + v x
       # and x² = β
@@ -395,15 +398,43 @@ func prod2x[C: static Curve](
       #                       => u c0 + β v c1 + (v c0 + u c1) x
       var t {.noInit.}: FpDbl[C]
 
-      r.c0.prod2x(a.c0, U)
+      t.prod2x(a.c0, U)
       when V == 1 and Beta == -1:  # Case BN254_Snarks
-        r.c0.diff2xMod(r.c0, a.c1) # r0 = u c0 + β v c1
+        t.diff2xMod(t, a.c1)       # r0 = u c0 + β v c1
       else:
         {.error: "Unimplemented".}
 
-      r.c1.prod2x(a.c0, V)
-      t.prod2x(a.c1, U)
-      r.c1.sum2xMod(r.c1, t) # r1 = v c0 + u c1
+
+      r.c1.prod2x(a.c1, U)
+      when V == 1:                 # r1 = v c0 + u c1
+        r.c1.sum2xMod(r.c1, a.c0)
+        # aliasing: a.c0 is unused
+        `=`(r.c0, t) # "r.c0 = t", is refused by the compiler.
+      else:
+        {.error: "Unimplemented".}
+
+func prod2x(
+       r: var QuadraticExt2x,
+       a: QuadraticExt2x,
+       _: type NonResidue) {.inline.} =
+  ## Multiplication by non-residue
+  static: doAssert not(r.c0 is FpDbl), "Wrong dispatch, there is a specific non-residue multiplication for the base extension."
+  let t = a.c0
+  r.c0.prod2x(a.c1, NonResidue)
+  `=`(r.c1, t) # "r.c1 = t", is refused by the compiler.
+
+func prod2x(
+       r: var CubicExt2x,
+       a: CubicExt2x,
+       _: type NonResidue) {.inline.} =
+  ## Multiplication by non-residue
+  ## For all curves γ = v with v the factor for cubic extension coordinate
+  ## and v³ = ξ
+  ## (c0 + c1 v + c2 v²) v => ξ c2 + c0 v + c1 v²
+  let t = a.c2
+  r.c1 = a.c0
+  r.c2 = a.c1
+  r.c0.prod2x(t, NonResidue)
 
 # ############################################################
 #                                                            #
@@ -455,10 +486,9 @@ func square2x_complex(r: var QuadraticExt2x, a: QuadraticExt) =
 
   var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0)
 
-  # Require 2 extra bits
-  when QuadraticExt.has2extraBits():
+  when QuadraticExt.has1extraBit():
     t0.sumUnr(a.c1, a.c1)
-    t1.sum(a.c0, a.c1)
+    t1.sumUnr(a.c0, a.c1)
   else:
     t0.double(a.c1)
     t1.sum(a.c0, a.c1)
@@ -502,12 +532,8 @@ func prod2x_disjoint[Fdbl, F](
     t1.sum(b0, b1)
 
   r.c1.prod2x(t0, t1)           # r1 = (a0 + a1)(b0 + b1)
-  when F.has1extraBit():
-    r.c1.diff2xMod(r.c1, V0)
-    r.c1.diff2xMod(r.c1, V1)
-  else:
-    r.c1.diff2xMod(r.c1, V0)      # r1 = (a0 + a1)(b0 + b1) - a0b0
-    r.c1.diff2xMod(r.c1, V1)      # r1 = (a0 + a1)(b0 + b1) - a0b0 - a1b1
+  r.c1.diff2xMod(r.c1, V0)      # r1 = (a0 + a1)(b0 + b1) - a0b0
+  r.c1.diff2xMod(r.c1, V1)      # r1 = (a0 + a1)(b0 + b1) - a0b0 - a1b1
 
   r.c0.prod2x(V1, NonResidue)   # r0 = β a1 b1
   r.c0.sum2xMod(r.c0, V0)       # r0 = a0 b0 + β a1 b1
@@ -558,6 +584,54 @@ func square2x(r: var QuadraticExt2x, a: QuadraticExt) =
 #                                                            #
 # ############################################################
 
+func prod2x(r: var CubicExt2x, a, b: CubicExt) =
+  var V0 {.noInit.}, V1 {.noInit.}, V2 {.noinit.}: typeof(r.c0)
+  var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0)
+
+  # TODO: The delayed reductions are deactivated, they work for all curves
+  # except for BN254_Snarks in the FP2 -> Fp4 -> Fp12 towering
+
+  V0.prod2x(a.c0, b.c0)
+  V1.prod2x(a.c1, b.c1)
+  V2.prod2x(a.c2, b.c2)
+
+  # r₀ = β ((a₁ + a₂)(b₁ + b₂) - v₁ - v₂) + v₀
+  when false: # CubicExt.has1extraBit():
+    t0.sumUnr(a.c1, a.c2)
+    t1.sumUnr(b.c1, b.c2)
+  else:
+    t0.sum(a.c1, a.c2)
+    t1.sum(b.c1, b.c2)
+  r.c0.prod2x(t0, t1) # r cannot alias a or b since it's double precision
+  r.c0.diff2xMod(r.c0, V1)
+  r.c0.diff2xMod(r.c0, V2)
+  r.c0.prod2x(r.c0, NonResidue)
+  r.c0.sum2xMod(r.c0, V0)
+
+  # r₁ = (a₀ + a₁) * (b₀ + b₁) - v₀ - v₁ + β v₂
+  when false: # CubicExt.has1extraBit():
+    t0.sumUnr(a.c0, a.c1)
+    t1.sumUnr(b.c0, b.c1)
+  else:
+    t0.sum(a.c0, a.c1)
+    t1.sum(b.c0, b.c1)
+  r.c1.prod2x(t0, t1)
+  r.c1.diff2xMod(r.c1, V0)
+  r.c1.diff2xMod(r.c1, V1)
+  r.c2.prod2x(V2, NonResidue) # r₂ is unused and cannot alias
+  r.c1.sum2xMod(r.c1, r.c2)
+
+  # r₂ = (a₀ + a₂) * (b₀ + b₂) - v₀ - v₂ + v₁
+  when false: # CubicExt.has1extraBit():
+    t0.sumUnr(a.c0, a.c2)
+    t1.sumUnr(b.c0, b.c2)
+  else:
+    t0.sum(a.c0, a.c2)
+    t1.sum(b.c0, b.c2)
+  r.c2.prod2x(t0, t1)
+  r.c2.diff2xMod(r.c2, V0)
+  r.c2.diff2xMod(r.c2, V2)
+  r.c2.sum2xMod(r.c2, V1)
 
 # ############################################################
 #                                                            #
@@ -1216,11 +1290,25 @@ func square*(a: var CubicExt) =
 
 func prod*(r: var CubicExt, a, b: CubicExt) =
   ## In-place multiplication
-  r.prodImpl(a, b)
+  when CubicExt.F.C == BW6_761: # Too large
+    r.prodImpl(a, b)
+  else:
+    var d {.noInit.}: doublePrec(typeof(r))
+    d.prod2x(a, b)
+    r.c0.redc2x(d.c0)
+    r.c1.redc2x(d.c1)
+    r.c2.redc2x(d.c2)
 
 func `*=`*(a: var CubicExt, b: CubicExt) =
   ## In-place multiplication
-  a.prodImpl(a, b)
+  when CubicExt.F.C == BW6_761: # Too large
+    a.prodImpl(a, b)
+  else:
+    var d {.noInit.}: doublePrec(typeof(a))
+    d.prod2x(a, b)
+    a.c0.redc2x(d.c0)
+    a.c1.redc2x(d.c1)
+    a.c2.redc2x(d.c2)
 
 func inv*(r: var CubicExt, a: CubicExt) =
   ## Compute the multiplicative inverse of ``a``

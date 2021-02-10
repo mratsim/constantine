@@ -68,7 +68,7 @@ proc test_sameBaseProduct(C: static Curve, gen: RandomGen) =
   xapb.powUnsafeExponent(apb, window = 3)
 
   xa *= xb
-  check: bool(xa == xapb)
+  doAssert: bool(xa == xapb)
 
 proc test_powpow(C: static Curve, gen: RandomGen) =
   ## (xᴬ)ᴮ = xᴬᴮ - power of power
@@ -86,7 +86,7 @@ proc test_powpow(C: static Curve, gen: RandomGen) =
   x.powUnsafeExponent(b, window = 3)
 
   y.powUnsafeExponent(ab, window = 3)
-  check: bool(x == y)
+  doAssert: bool(x == y)
 
 proc test_powprod(C: static Curve, gen: RandomGen) =
   ## (xy)ᴬ = xᴬyᴬ - power of product
@@ -105,7 +105,7 @@ proc test_powprod(C: static Curve, gen: RandomGen) =
 
   x *= y
 
-  check: bool(x == xy)
+  doAssert: bool(x == xy)
 
 proc test_pow0(C: static Curve, gen: RandomGen) =
   ## x⁰ = 1
@@ -113,7 +113,7 @@ proc test_pow0(C: static Curve, gen: RandomGen) =
   var a: BigInt[128] # 0-init
 
   x.powUnsafeExponent(a, window=3)
-  check: bool x.isOne()
+  doAssert: bool x.isOne()
 
 proc test_0pow0(C: static Curve, gen: RandomGen) =
   ## 0⁰ = 1
@@ -121,7 +121,7 @@ proc test_0pow0(C: static Curve, gen: RandomGen) =
   var a: BigInt[128] # 0-init
 
   x.powUnsafeExponent(a, window=3)
-  check: bool x.isOne()
+  doAssert: bool x.isOne()
 
 proc test_powinv(C: static Curve, gen: RandomGen) =
   ## xᴬ / xᴮ = xᴬ⁻ᴮ - quotient of power
@@ -150,7 +150,7 @@ proc test_powinv(C: static Curve, gen: RandomGen) =
   discard amb.diff(a, b)
   xamb.powUnsafeExponent(amb, window = 3)
 
-  check: bool(xa == xamb)
+  doAssert: bool(xa == xamb)
 
 proc test_invpow(C: static Curve, gen: RandomGen) =
   ## (x / y)ᴬ = xᴬ / yᴬ - power of quotient
@@ -173,7 +173,7 @@ proc test_invpow(C: static Curve, gen: RandomGen) =
   xqya *= invy
   xqya.powUnsafeExponent(a, window = 3)
 
-  check: bool(xa == xqya)
+  doAssert: bool(xa == xqya)
 
 suite "Exponentiation in 𝔽p12" & " [" & $WordBitwidth & "-bit mode]":
   staticFor(curve, TestCurves):

@@ -226,7 +226,7 @@ func `*=`*(a: var Fp4, _: type NonResidue) {.inline.} =
   a.prod(a, NonResidue)
 
 func prod*(r: var Fp6, a: Fp6, _: type NonResidue) {.inline.} =
-  ## Multiply an element of 𝔽p4 by the non-residue
+  ## Multiply an element of 𝔽p6 by the non-residue
   ## chosen to construct the next extension or the twist:
   ## - if quadratic non-residue: 𝔽p12
   ## - if cubic non-residue: 𝔽p18
@@ -243,7 +243,7 @@ func prod*(r: var Fp6, a: Fp6, _: type NonResidue) {.inline.} =
   r.c0.prod(t, NonResidue)
 
 func `*=`*(a: var Fp6, _: type NonResidue) {.inline.} =
-  ## Multiply an element of 𝔽p4 by the non-residue
+  ## Multiply an element of 𝔽p6 by the non-residue
   ## chosen to construct the next extension or the twist:
   ## - if quadratic non-residue: 𝔽p12
   ## - if cubic non-residue: 𝔽p18
