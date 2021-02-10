@@ -276,7 +276,7 @@ steps:
       export ucpu=${UCPU}
       nimble test_parallel
     displayName: 'Testing Constantine with Assembler and with GMP'
-    condition: and(ne(variables['Agent.OS'], 'Windows_NT'), eq(variables['BACKEND'], 'NO_ASM'))
+    condition: and(ne(variables['Agent.OS'], 'Windows_NT'), eq(variables['BACKEND'], 'ASM'))
 
   - bash: |
       echo "PATH=${PATH}"
