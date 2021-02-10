@@ -13,22 +13,22 @@ strategy:
     Windows_devel_64bit:
       VM: 'windows-latest'
       UCPU: amd64
-      CHANNEL: devel
+      CHANNEL: stable
       TEST_LANG: c
     Windows_cpp_devel_64bit:
       VM: 'windows-latest'
       UCPU: amd64
-      CHANNEL: devel
+      CHANNEL: stable
       TEST_LANG: cpp
     Linux_devel_64bit:
       VM: 'ubuntu-18.04'
       UCPU: amd64
-      CHANNEL: devel
+      CHANNEL: stable
       TEST_LANG: c
     Linux_cpp_devel_64bit:
       VM: 'ubuntu-18.04'
       UCPU: amd64
-      CHANNEL: devel
+      CHANNEL: stable
       TEST_LANG: cpp
 
     # Deactivated for now, this is cross-compilation and tricky to get right
@@ -41,7 +41,7 @@ strategy:
     MacOS_devel_64bit:
       VM: 'macOS-10.15'
       UCPU: amd64
-      CHANNEL: devel
+      CHANNEL: stable
       TEST_LANG: c
 pool:
   vmImage: $(VM)
@@ -187,6 +187,12 @@ steps:
       popd # exit nim-${CHANNEL}
       popd # exit NimBinaries
     displayName: 'Building Nim'
+
+   # https://forum.nim-lang.org/t/7494
+  - powershell: |
+      bitsadmin.exe /rawreturn /transfer "cURL-certicates" /priority FOREGROUND https://curl.se/ca/cacert.pem ##vso[task.prependpath]$pwd\NimBinaries\nim-$(CHANNEL)\bin\cacert.pem
+    displayName: 'cURL certificates (Windows)'
+    condition: eq(variables['Agent.OS'], 'Windows_NT')
 
   - powershell: |
       echo "##vso[task.prependpath]$pwd\NimBinaries\nim-$(CHANNEL)\bin"
