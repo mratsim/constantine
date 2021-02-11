@@ -43,12 +43,6 @@ template ct*[T: BaseUint](x: T): Ct[T] =
 template ct*(x: auto, T: typedesc[BaseUint]): Ct[T] =
   (Ct[T])(x)
 
-template `$`*[T](x: Ct[T]): string =
-  $T(x)
-
-template `$`*(x: CTBool): string =
-  $bool(x)
-
 # ############################################################
 #
 #                 Constant-time primitives
