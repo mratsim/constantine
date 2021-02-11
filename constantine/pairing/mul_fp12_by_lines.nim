@@ -131,30 +131,57 @@ func mul_sparse_by_line_xyz000*[C: static Curve](
   #    = a0 b0 + a2 b0 - v0 + v1
   #    = a2 b0 + v1
 
-  var b0 {.noInit.}, v0{.noInit.}, v1{.noInit.}, t{.noInit.}: Fp4[C]
+  when false:
+    var b0 {.noInit.}, v0{.noInit.}, v1{.noInit.}, t{.noInit.}: Fp4[C]
 
-  b0.c0 = l.x
-  b0.c1 = l.y
+    b0.c0 = l.x
+    b0.c1 = l.y
 
-  v0.prod(f.c0, b0)
-  v1.mul_sparse_by_y0(f.c1, l.z)
+    v0.prod(f.c0, b0)
+    v1.mul_sparse_by_x0(f.c1, l.z)
 
-  # r1 = (a0 + a1) * (b0 + b1) - v0 - v1
-  f.c1 += f.c0 # r1 = a0 + a1
-  t = b0
-  t.c0 += l.z  # t = b0 + b1
-  f.c1 *= t    # r2 = (a0 + a1)(b0 + b1)
-  f.c1 -= v0
-  f.c1 -= v1   # r2 = (a0 + a1)(b0 + b1) - v0 - v1
+    # r1 = (a0 + a1) * (b0 + b1) - v0 - v1
+    f.c1 += f.c0 # r1 = a0 + a1
+    t = b0
+    t.c0 += l.z  # t = b0 + b1
+    f.c1 *= t    # r2 = (a0 + a1)(b0 + b1)
+    f.c1 -= v0
+    f.c1 -= v1   # r2 = (a0 + a1)(b0 + b1) - v0 - v1
 
-  # r0 = ξ a2 b1 + v0
-  f.c0.mul_sparse_by_y0(f.c2, l.z)
-  f.c0 *= SexticNonResidue
-  f.c0 += v0
+    # r0 = ξ a2 b1 + v0
+    f.c0.mul_sparse_by_x0(f.c2, l.z)
+    f.c0 *= SexticNonResidue
+    f.c0 += v0
 
-  # r2 = a2 b0 + v1
-  f.c2 *= b0
-  f.c2 += v1
+    # r2 = a2 b0 + v1
+    f.c2 *= b0
+    f.c2 += v1
+
+  else: # Lazy reduction
+    var V0{.noInit.}, V1{.noInit.}, f2x{.noInit.}: doublePrec(Fp4[C])
+    var t{.noInit.}: Fp2[C]
+
+    V0.prod2x_disjoint(f.c0, l.x, l.y)
+    V1.mul2x_sparse_by_x0(f.c1, l.z)
+
+    # r1 = (a0 + a1) * (b0 + b1) - v0 - v1
+    f.c1 += f.c0 # TODO: lazy sumUnr
+    t.sum(l.x, l.z)                   # b0 is (x, y)
+    f2x.prod2x_disjoint(f.c1, t, l.y) # b1 is (z, 0)
+    f2x.diff2xMod(f2x, V0)
+    f2x.diff2xMod(f2x, V1)
+    f.c1.redc2x(f2x)
+
+    # r0 = ξ a2 b1 + v0
+    f2x.mul2x_sparse_by_x0(f.c2, l.z)
+    f2x.prod2x(f2x, SexticNonResidue)
+    f2x.sum2xMod(f2x, V0)
+    f.c0.redc2x(f2x)
+
+    # r2 = a2 b0 + v1
+    f2x.prod2x_disjoint(f.c2, l.x, l.y)
+    f2x.sum2xMod(f2x, V1)
+    f.c2.redc2x(f2x)
 
 func mul_sparse_by_line_xy000z*[C: static Curve](
        f: var Fp12[C], l: Line[Fp2[C]]) =
