@@ -561,6 +561,34 @@ func square2x_disjoint[Fdbl, F](
   r.c1.diff2xMod(r.c1, V0)
   r.c1.diff2xMod(r.c1, V1)
 
+func inv2xImpl(r: var QuadraticExt, a: QuadraticExt) =
+  ## Compute the multiplicative inverse of ``a``
+  ##
+  ## The inverse of 0 is 0.
+  ##
+  ## Inversion routine is using lazy reduction
+  mixin fromComplexExtension
+
+  # [2 Sqr, 1 Add]
+  var V0 {.noInit.}, V1 {.noInit.}: doublePrec(typeof(r.c0))
+  var t {.noInit.}: typeof(r.c0)
+  V0.square2x(a.c0)
+  V1.square2x(a.c1)
+  when r.fromComplexExtension():
+    V0.sum2xUnr(V0, V1)
+  else:
+    V1.prod2x(V1, NonResidue)
+    V0.diff2xMod(V0, V1)  # v0 = a0² - β a1² (the norm / squared magnitude of a)
+
+  # [1 Inv, 2 Sqr, 1 Add]
+  t.redc2x(V0)
+  t.inv()                  # v1 = 1 / (a0² - β a1²)
+
+  # [1 Inv, 2 Mul, 2 Sqr, 1 Add, 1 Neg]
+  r.c0.prod(a.c0, t)      # r0 = a0 / (a0² - β a1²)
+  t.neg()                 # v0 = -1 / (a0² - β a1²)
+  r.c1.prod(a.c1, t)      # r1 = -a1 / (a0² - β a1²)
+
 # Dispatch
 # ----------------------------------------------------------------------
 
@@ -1069,7 +1097,10 @@ func inv*(r: var QuadraticExt, a: QuadraticExt) =
   ## Incidentally this avoids extra check
   ## to convert Jacobian and Projective coordinates
   ## to affine for elliptic curve
-  r.invImpl(a)
+  when true:
+    r.invImpl(a)
+  else: # Lazy reduction, doesn't seem to gain speed.
+    r.inv2xImpl(a)
 
 func inv*(a: var QuadraticExt) =
   ## Compute the multiplicative inverse of ``a``
@@ -1078,7 +1109,7 @@ func inv*(a: var QuadraticExt) =
   ## Incidentally this avoids extra check
   ## to convert Jacobian and Projective coordinates
   ## to affine for elliptic curve
-  a.invImpl(a)
+  a.inv(a)
 
 func `*=`*(a: var QuadraticExt, b: QuadraticExt) =
   ## In-place multiplication
@@ -1319,7 +1350,7 @@ func invImpl(r: var CubicExt, a: CubicExt) =
 func square*(r: var CubicExt, a: CubicExt) =
   ## Returns r = a²
   when CubicExt.F.C == BW6_761 or    # Too large
-       CubicExt.F.C == BN254_Snarks: # 50 cycles slower on Fp2->Fp4->Fp1é towering
+       CubicExt.F.C == BN254_Snarks: # 50 cycles slower on Fp2->Fp4->Fp12 towering
     square_Chung_Hasan_SQR3(r, a)
   else:
     var d {.noInit.}: doublePrec(typeof(a))
