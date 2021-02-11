@@ -584,6 +584,42 @@ func square2x(r: var QuadraticExt2x, a: QuadraticExt) =
 #                                                            #
 # ############################################################
 
+# Commutative ring implementation for Cubic Extension Fields
+# -------------------------------------------------------------------
+
+func square2x_Chung_Hasan_SQR2(r: var CubicExt2x, a: CubicExt) =
+  ## Returns r = a²
+  var m01{.noInit.}, m12{.noInit.}: typeof(r.c0) # double-width
+  var t{.noInit.}: typeof(a.c0)                  # single width
+
+  m01.prod2x(a.c0, a.c1)
+  m01.sum2xMod(m01, m01)  # 2a₀a₁
+  m12.prod2x(a.c1, a.c2)
+  m12.sum2xMod(m12, m12)  # 2a₁a₂
+  r.c0.square2x(a.c2)     # borrow r₀ = a₂² for a moment
+
+  # r₂ = (a₀ - a₁ + a₂)²
+  t.sum(a.c2, a.c0)
+  t -= a.c1
+  r.c2.square2x(t)
+
+  # r₂ = (a₀ - a₁ + a₂)² + 2a₀a₁ + 2a₁a₂ - a₂²
+  r.c2.sum2xMod(r.c2, m01)
+  r.c2.sum2xMod(r.c2, m12)
+  r.c2.diff2xMod(r.c2, r.c0)
+
+  # r₁ = 2a₀a₁ + β a₂²
+  r.c1.prod2x(r.c0, NonResidue)
+  r.c1.sum2xMod(r.c1, m01)
+
+  # r₂ = (a₀ - a₁ + a₂)² + 2a₀a₁ + 2a₁a₂ - a₀² - a₂²
+  r.c0.square2x(a.c0)
+  r.c2.diff2xMod(r.c2, r.c0)
+
+  # r₀ = a₀² + β 2a₁a₂
+  m12.prod2x(m12, NonResidue)
+  r.c0.sum2xMod(r.c0, m12)
+
 func prod2x(r: var CubicExt2x, a, b: CubicExt) =
   var V0 {.noInit.}, V1 {.noInit.}, V2 {.noinit.}: typeof(r.c0)
   var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0)
@@ -1282,7 +1318,15 @@ func invImpl(r: var CubicExt, a: CubicExt) =
 
 func square*(r: var CubicExt, a: CubicExt) =
   ## Returns r = a²
-  square_Chung_Hasan_SQR3(r, a)
+  when CubicExt.F.C == BW6_761 or    # Too large
+       CubicExt.F.C == BN254_Snarks: # 50 cycles slower on Fp2->Fp4->Fp1é towering
+    square_Chung_Hasan_SQR3(r, a)
+  else:
+    var d {.noInit.}: doublePrec(typeof(a))
+    d.square2x_Chung_Hasan_SQR2(a)
+    r.c0.redc2x(d.c0)
+    r.c1.redc2x(d.c1)
+    r.c2.redc2x(d.c2)
 
 func square*(a: var CubicExt) =
   ## In-place squaring
