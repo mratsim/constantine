@@ -226,7 +226,7 @@ func `*=`*(a: var Fp4, _: type NonResidue) {.inline.} =
   a.prod(a, NonResidue)
 
 func prod*(r: var Fp6, a: Fp6, _: type NonResidue) {.inline.} =
-  ## Multiply an element of 𝔽p4 by the non-residue
+  ## Multiply an element of 𝔽p6 by the non-residue
   ## chosen to construct the next extension or the twist:
   ## - if quadratic non-residue: 𝔽p12
   ## - if cubic non-residue: 𝔽p18
@@ -243,7 +243,7 @@ func prod*(r: var Fp6, a: Fp6, _: type NonResidue) {.inline.} =
   r.c0.prod(t, NonResidue)
 
 func `*=`*(a: var Fp6, _: type NonResidue) {.inline.} =
-  ## Multiply an element of 𝔽p4 by the non-residue
+  ## Multiply an element of 𝔽p6 by the non-residue
   ## chosen to construct the next extension or the twist:
   ## - if quadratic non-residue: 𝔽p12
   ## - if cubic non-residue: 𝔽p18
@@ -271,12 +271,6 @@ func `*=`*(a: var Fp2, b: Fp) =
   ## Multiply an element of Fp2 by an element of Fp
   a.c0 *= b
   a.c1 *= b
-
-func mul_sparse_by_y0*[C: static Curve](r: var Fp4[C], a: Fp4[C], b: Fp2[C]) =
-  ## Sparse multiplication of an Fp4 element
-  ## with coordinates (a₀, a₁) by (b₀, 0)
-  r.c0.prod(a.c0, b)
-  r.c1.prod(a.c1, b)
 
 func mul_sparse_by_0y0*[C: static Curve](r: var Fp6[C], a: Fp6[C], b: Fp2[C]) =
   ## Sparse multiplication of an Fp6 element

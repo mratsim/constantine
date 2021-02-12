@@ -26,10 +26,10 @@ import
 
 func mul_sparse_by_line_xyz000*[C: static Curve](
        f: var Fp6[C], l: Line[Fp[C]]) =
-  ## Sparse multiplication of an 𝔽p12 element
-  ## by a sparse 𝔽p12 element coming from an D-Twist line function.
+  ## Sparse multiplication of an 𝔽p6 element
+  ## by a sparse 𝔽p6 element coming from an D-Twist line function.
   ## The sparse element is represented by a packed Line type
-  ## with coordinates (x,y,z) matching 𝔽p12 coordinates xyz000
+  ## with coordinates (x,y,z) matching 𝔽p6 coordinates xyz000
 
   static:
     doAssert C.getSexticTwist() == D_Twist
