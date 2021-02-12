@@ -145,34 +145,37 @@ func cyclotomic_square*[C](r: var Fp12[C], a: Fp12[C]) {.meter.} =
     # A = 3a² − 2 ̄a
     # B = 3 √i c² + 2 ̄b
     # C = 3b² − 2 ̄c
-    var A{.noinit.}, B{.noinit.}, C{.noinit.}, D{.noinit.}: Fp4[C]
+    var t0{.noinit.}, t1{.noinit.}: Fp4[C]
 
-    A = a.c0
+    t0.square(a.c0)     # t0 = a²
+    t1.double(t0)       # t1 = 2a²
+    t1 += t0            # t1 = 3a²
 
-    r.c0.square(a.c0)  # r0 = a²
-    D.double(r.c0)     # D  = 2a²
-    r.c0 += D          # r0 = 3a²
+    t0.conj(a.c0)       # t0 =  ̄a
+    t0.double()         # t0 =  2 ̄a
+    r.c0.diff(t1, t0)   # r0 = 3a² − 2 ̄a
 
-    A.conjneg()        # A = − ̄a
-    A.double()         # A = − 2 ̄a
-    r.c0 += A          # r0 = 3a² − 2 ̄a
+    # Aliasing: a.c0 unused
 
-    B.square(a.c2)     # B = c²
-    B *= NonResidue    # B = √i c²
-    D.double(B)        # B = 2 √i c²
-    B += D             # B = 3 √i c²
+    t0.square(a.c2)     # t0 = c²
+    t0 *= NonResidue    # t0 = √i c²
+    t1.double(t0)       # t1 = 2 √i c²
+    t0 += t1            # t0 = 3 √i c²
 
-    r.c1.conj(a.c1)    # r1 = ̄b
-    r.c1.double()      # r1 = 2 ̄b
-    r.c1 += B          # r1 = 3 √i c² + 2 ̄b
+    t1.square(a.c1)     # t1 = b²
 
-    C.square(a.c1)     # C = b²
-    D.double(C)        # D = 2b²
-    C += D             # C = 3b²
+    r.c1.conj(a.c1)     # r1 = ̄b
+    r.c1.double()       # r1 = 2 ̄b
+    r.c1 += t0          # r1 = 3 √i c² + 2 ̄b
 
-    r.c2.conjneg(a.c2) # r2 = - ̄c
-    r.c2.double()      # r2 = - 2 ̄c
-    r.c2 += C          # r2 = 3b² - 2 ̄c
+    # Aliasing: a.c1 unused
+
+    t0.double(t1)       # t0 = 2b²
+    t0 += t1            # t0 = 3b²
+
+    t1.conj(a.c2)       # r2 =  ̄c
+    t1.double()         # r2 =  2 ̄c
+    r.c2.diff(t0, t1)   # r2 = 3b² - 2 ̄c
 
   else:
     {.error: "Not implemented".}
@@ -185,45 +188,7 @@ func cyclotomic_square*[C](a: var Fp12[C]) {.meter.} =
   # Faster Squaring in the Cyclotomic Subgroup of Sixth Degree Extensions
   # Granger, Scott, 2009
   # https://eprint.iacr.org/2009/565.pdf
-
-  when a.c0 is Fp4:
-    # Cubic over quadratic
-    # A = 3a² − 2 ̄a
-    # B = 3 √i c² + 2 ̄b
-    # C = 3b² − 2 ̄c
-    var A{.noinit.}, B{.noinit.}, C{.noinit.}, D{.noinit.}: Fp4[C]
-
-    A = a.c0
-
-    a.c0.square()      # r0 = a²
-    D.double(a.c0)     # D  = 2a²
-    a.c0 += D          # r0 = 3a²
-
-    A.conjneg()        # A = − ̄a
-    A.double()         # A = − 2 ̄a
-    a.c0 += A          # r0 = 3a² − 2 ̄a
-
-    B.square(a.c2)     # B = c²
-    B *= NonResidue    # B = √i c²
-    D.double(B)        # B = 2 √i c²
-    B += D             # B = 3 √i c²
-
-    A = a.c1
-
-    a.c1.conj()        # r1 = ̄b
-    a.c1.double()      # r1 = 2 ̄b
-    a.c1 += B          # r1 = 3 √i c² + 2 ̄b
-
-    C.square(A)        # C = b²
-    D.double(C)        # D = 2b²
-    C += D             # C = 3b²
-
-    a.c2.conjneg()     # r2 = - ̄c
-    a.c2.double()      # r2 = - 2 ̄c
-    a.c2 += C          # r2 = 3b² - 2 ̄c
-
-  else:
-    {.error: "Not implemented".}
+  a.cyclotomic_square(a)
 
 func cycl_sqr_repeated*(f: var Fp12, num: int) {.inline, meter.} =
   ## Repeated cyclotomic squarings
