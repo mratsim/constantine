@@ -165,8 +165,12 @@ func mul_sparse_by_line_xyz000*[C: static Curve](
     V1.mul2x_sparse_by_x0(f.c1, l.z)
 
     # r1 = (a0 + a1) * (b0 + b1) - v0 - v1
-    f.c1 += f.c0                      # TODO: lazy sumUnr
-    t.sum(l.x, l.z)                   # b0 is (x, y)
+    when false:                       # TODO: what's the condition?
+      f.c1.sumUnr(f.c1, f.c0)
+      t.sumUnr(l.x, l.z)              # b0 is (x, y)
+    else:
+      f.c1.sum(f.c1, f.c0)
+      t.sum(l.x, l.z)                 # b0 is (x, y)
     f2x.prod2x_disjoint(f.c1, t, l.y) # b1 is (z, 0)
     f2x.diff2xMod(f2x, V0)
     f2x.diff2xMod(f2x, V1)
@@ -244,8 +248,12 @@ func mul_sparse_by_line_xy000z*[C: static Curve](
     V2.mul2x_sparse_by_0y(f.c2, l.z)
 
     # r2 = (a0 + a2) * (b0 + b2) - v0 - v2
-    f.c2 += f.c0                      # TODO: lazy sumUnr
-    t.sum(l.y, l.z)                   # b0 is (x, y)
+    when false:                       # TODO: what's the condition
+      f.c2.sumUnr(f.c2, f.c0)
+      t.sumUnr(l.y, l.z)              # b0 is (x, y)
+    else:
+      f.c2.sum(f.c2, f.c0)
+      t.sum(l.y, l.z)                 # b0 is (x, y)
     f2x.prod2x_disjoint(f.c2, l.x, t) # b2 is (0, z)
     f2x.diff2xMod(f2x, V0)
     f2x.diff2xMod(f2x, V2)

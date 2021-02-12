@@ -264,19 +264,19 @@ template doublePrec*(T: type ExtensionField): type =
       elif T.F.F is Fp: # Fp6
         CubicExt2x[QuadraticExt2x[doublePrec(T.F.F)]]
 
-func has1extraBit(F: type Fp): bool =
+func has1extraBit*(F: type Fp): bool =
   ## We construct extensions only on Fp (and not Fr)
   getSpareBits(F) >= 1
 
-func has2extraBits(F: type Fp): bool =
+func has2extraBits*(F: type Fp): bool =
   ## We construct extensions only on Fp (and not Fr)
   getSpareBits(F) >= 2
 
-func has1extraBit(E: type ExtensionField): bool =
+func has1extraBit*(E: type ExtensionField): bool =
   ## We construct extensions only on Fp (and not Fr)
   getSpareBits(Fp[E.F.C]) >= 1
 
-func has2extraBits(E: type ExtensionField): bool =
+func has2extraBits*(E: type ExtensionField): bool =
   ## We construct extensions only on Fp (and not Fr)
   getSpareBits(Fp[E.F.C]) >= 2
 
