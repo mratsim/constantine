@@ -151,10 +151,6 @@ import
   strutils,
   ../io/io_towers
 
-const AteAddChainCount = 68
-  ## 68 operations to build an addition chain with 0xd201000000010000
-  ## 0b1101001000000001000000000000000000000000000000010000000000000000
-
 func miller_first_iter[N: static int](
        f: var Fp12[BLS12_381],
        Ts: var array[N, ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist]],

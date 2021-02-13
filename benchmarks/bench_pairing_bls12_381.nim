@@ -25,7 +25,7 @@ import
 # ############################################################
 
 
-const Iters = 50
+const Iters = 1000
 const AvailableCurves = [
   BLS12_381,
 ]

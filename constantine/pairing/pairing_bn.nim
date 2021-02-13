@@ -20,6 +20,8 @@ import
   ./cyclotomic_fp12,
   ./miller_loops
 
+export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11225
+
 # ############################################################
 #
 #                 Optimal ATE pairing for

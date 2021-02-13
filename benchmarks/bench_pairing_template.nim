@@ -27,10 +27,12 @@ import
     pairing_bls12,
     pairing_bn
   ],
+  ../constantine/curves/zoo_pairings,
   # Helpers
   ../helpers/prng_unsafe,
   ./bench_blueprint
 
+export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11225
 export notes
 proc separator*() = separator(132)
 
