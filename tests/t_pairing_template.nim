@@ -14,14 +14,15 @@ import
   ../constantine/[arithmetic, primitives],
   ../constantine/towers,
   ../constantine/config/curves,
-  ../constantine/elliptic/ec_shortweierstrass_projective,
+  ../constantine/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
   ../constantine/hash_to_curve/cofactors,
   # Test utilities
   ../helpers/prng_unsafe
 
 export
   prng_unsafe, times, unittest,
-  ec_shortweierstrass_projective, arithmetic, towers,
+  ec_shortweierstrass_affine, ec_shortweierstrass_projective,
+  arithmetic, towers,
   primitives
 
 type
@@ -30,29 +31,32 @@ type
     HighHammingWeight
     Long01Sequence
 
+template affineType[F; Tw: static Twisted](
+    ec: ECP_ShortW_Prj[F, Tw]): type =
+  ECP_ShortW_Aff[F, Tw]
+
+func clearCofactorReference[F; Tw: static Twisted](
+       ec: var ECP_ShortW_Aff[F, Tw]) =
+  # For now we don't have any affine operation defined
+  var t {.noInit.}: ECP_ShortW_Prj[F, Tw]
+  t.projectiveFromAffine(ec)
+  t.clearCofactorReference()
+  ec.affineFromProjective(t)
+
 func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen): EC {.noInit.} =
-  if not randZ:
-    if gen == Uniform:
-      result = rng.random_unsafe(EC)
-      result.clearCofactorReference()
-    elif gen == HighHammingWeight:
-      result = rng.random_highHammingWeight(EC)
-      result.clearCofactorReference()
-    else:
-      result = rng.random_long01Seq(EC)
-      result.clearCofactorReference()
+  if gen == Uniform:
+    result = rng.random_unsafe(EC)
+    result.clearCofactorReference()
+  elif gen == HighHammingWeight:
+    result = rng.random_highHammingWeight(EC)
+    result.clearCofactorReference()
   else:
-    if gen == Uniform:
-      result = rng.random_unsafe_with_randZ(EC)
-      result.clearCofactorReference()
-    elif gen == HighHammingWeight:
-      result = rng.random_highHammingWeight_with_randZ(EC)
-      result.clearCofactorReference()
-    else:
-      result = rng.random_long01Seq_with_randZ(EC)
-      result.clearCofactorReference()
+    result = rng.random_long01Seq(EC)
+    result.clearCofactorReference()
 
 template runPairingTests*(Iters: static int, C: static Curve, G1, G2, GT: typedesc, pairing_fn: untyped): untyped {.dirty.}=
+  bind affineType
+
   var rng: RngState
   let timeseed = uint32(toUnix(getTime()) and (1'i64 shl 32 - 1)) # unixTime mod 2^32
   seed(rng, timeseed)
@@ -71,10 +75,18 @@ template runPairingTests*(Iters: static int, C: static Curve, G1, G2, GT: typede
       P2.double(P)
       Q2.double(Q)
 
-      r.pairing_fn(P, Q)
+      var Pa {.noInit.}, Pa2 {.noInit.}: affineType(P)
+      var Qa {.noInit.}, Qa2 {.noInit.}: affineType(Q)
+
+      Pa.affineFromProjective(P)
+      Pa2.affineFromProjective(P2)
+      Qa.affineFromProjective(Q)
+      Qa2.affineFromProjective(Q2)
+
+      r.pairing_fn(Pa, Qa)
       r.square()
-      r2.pairing_fn(P2, Q)
-      r3.pairing_fn(P, Q2)
+      r2.pairing_fn(Pa2, Qa)
+      r3.pairing_fn(Pa, Qa2)
 
       doAssert bool(not r.isZero())
       doAssert bool(not r.isOne())
@@ -85,8 +97,5 @@ template runPairingTests*(Iters: static int, C: static Curve, G1, G2, GT: typede
   suite "Pairing - Optimal Ate on " & $C & " [" & $WordBitwidth & "-bit mode]":
     test "Bilinearity e([2]P, Q) = e(P, [2]Q) = e(P, Q)^2":
       test_bilinearity_double_impl(randZ = false, gen = Uniform)
-      test_bilinearity_double_impl(randZ = true, gen = Uniform)
       test_bilinearity_double_impl(randZ = false, gen = HighHammingWeight)
-      test_bilinearity_double_impl(randZ = true, gen = HighHammingWeight)
       test_bilinearity_double_impl(randZ = false, gen = Long01Sequence)
-      test_bilinearity_double_impl(randZ = true, gen = Long01Sequence)
