@@ -67,19 +67,11 @@ func millerLoopGenericBN*[C](
     ate_param, ate_param_isNeg
   )
 
-  # Ate pairing for BN curves need adjustment after basic Miller loop
-  when C.pairing(ate_param_isNeg):
-    T.neg()
-  var V {.noInit.}: typeof(Q)
-
-  V.frobenius_psi(Q)
-  line.line_add(T, V, P)
-  f.mul(line)
-
-  V.frobenius_psi(Q, 2)
-  V.neg()
-  line.line_add(T, V, P)
-  f.mul(line)
+  # Ate pairing for BN curves needs adjustment after basic Miller loop
+  f.millerCorrectionBN(
+    T, Q, P,
+    pairing(C, ate_param_isNeg)
+  )
 
 func finalExpGeneric[C: static Curve](f: var Fp12[C]) =
   ## A generic and slow implementation of final exponentiation
@@ -160,6 +152,9 @@ func pairing_bn*[C](
   ## Compute the optimal Ate Pairing for BLS12 curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
-  gt.millerLoopGenericBN(P, Q)
+  when C == BN254_Nogami:
+    gt.millerLoopAddChain(Q, P)
+  else:
+    gt.millerLoopGenericBN(P, Q)
   gt.finalExpEasy()
   gt.finalExpHard_BN()

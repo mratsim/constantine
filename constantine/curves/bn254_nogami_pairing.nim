@@ -7,10 +7,11 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/[curves, type_bigint],
+  ../config/[curves, type_bigint, type_ff],
   ../io/io_bigints,
   ../towers,
-  ../pairing/cyclotomic_fp12
+  ../elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
+  ../pairing/[cyclotomic_fp12, miller_loops]
 
 # Slow generic implementation
 # ------------------------------------------------------------
@@ -29,12 +30,38 @@ const BN254_Nogami_pairing_finalexponent* = block:
 
 # Addition chain
 # ------------------------------------------------------------
+#
+# u = -0x4080000000000001
+# Ate BN |6u+2|
+# hex: 0x18300000000000004
+# bin: 0x11000001100000000000000000000000000000000000000000000000000000100
+
+func millerLoopAddchain*(
+       f: var Fp12[BN254_Nogami],
+       Q: ECP_ShortW_Aff[Fp2[BN254_Nogami], OnTwist],
+       P: ECP_ShortW_Aff[Fp[BN254_Nogami], NotOnTwist]
+     ) =
+  ## Miller Loop for BN254-Nogami curve
+  ## Computes f{6u+2,Q}(P) with u the BLS curve parameter
+  var T {.noInit.}: ECP_ShortW_Prj[Fp2[BN254_Nogami], OnTwist]
+
+  f.miller_init_double_then_add(T, Q, P, 1)                # 0b11
+  f.miller_accum_double_then_add(T, Q, P, 6)               # 0b11000001
+  f.miller_accum_double_then_add(T, Q, P, 1)               # 0b110000011
+  f.miller_accum_double_then_add(T, Q, P, 54)              # 0b110000011000000000000000000000000000000000000000000000000000001
+  f.miller_accum_double_then_add(T, Q, P, 2, add = false)  # 0b11000001100000000000000000000000000000000000000000000000000000100
+
+  # Negative AteParam
+  f.conj()
+
+  # Ate pairing for BN curves needs adjustment after basic Miller loop
+  f.millerCorrectionBN(T, Q, P, BN254_Nogami_pairing_ate_param_isNeg)
 
 func pow_u*(r: var Fp12[BN254_Nogami], a: Fp12[BN254_Nogami], invert = BN254_Nogami_pairing_ate_param_isNeg) =
   ## f^u with u the curve parameter
   ## For BN254_Nogami f^-0x4080000000000001
-  r = a
-  r.cycl_sqr_repeated(7)
+  r.cyclotomic_square(a)
+  r.cycl_sqr_repeated(6)
   r *= a
   r.cycl_sqr_repeated(55)
   r *= a

@@ -11,6 +11,7 @@ import
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective
   ],
+  ../isogeny/frobenius,
   ./lines_projective,
   ./mul_fp6_by_lines, ./mul_fp12_by_lines
 
@@ -58,6 +59,32 @@ template basicMillerLoop*[FT, F1, F2](
     # In GT, x^-1 == conjugate(x)
     # Remark 7.1, chapter 7.1.1 of Guide to Pairing-Based Cryptography, El Mrabet, 2017
     conj(f)
+
+func millerCorrectionBN*[FT, F1, F2](
+       f: var FT,
+       T: var ECP_ShortW_Prj[F2, OnTwist],
+       Q: ECP_ShortW_Aff[F2, OnTwist],
+       P: ECP_ShortW_Aff[F1, NotOnTwist],
+       ate_param_isNeg: static bool
+     ) =
+  ## Ate pairing for BN curves need adjustment after basic Miller loop
+  static:
+    doAssert FT.C == F1.C
+    doAssert FT.C == F2.C
+
+  when ate_param_isNeg:
+    T.neg()
+  var V {.noInit.}: typeof(Q)
+  var line {.noInit.}: Line[F2]
+
+  V.frobenius_psi(Q)
+  line.line_add(T, V, P)
+  f.mul(line)
+
+  V.frobenius_psi(Q, 2)
+  V.neg()
+  line.line_add(T, V, P)
+  f.mul(line)
 
 # ############################################################
 #                                                            #

@@ -31,9 +31,12 @@ const BLS12_381_pairing_finalexponent* = block:
 # Addition chains
 # ------------------------------------------------------------
 #
-# 68 operations to build an addition chain with
+# u = -0xd201000000010000
+# Ate BLS |u|
 # hex: 0xd201000000010000
 # bin: 0b1101001000000001000000000000000000000000000000010000000000000000
+#
+# 68 operations to build an addition chain
 
 func millerLoopAddchain*(
        f: var Fp12[BLS12_381],
@@ -52,7 +55,8 @@ func millerLoopAddchain*(
   f.miller_accum_double_then_add(T, Q, P, 32)              # 0b110100100000000100000000000000000000000000000001
   f.miller_accum_double_then_add(T, Q, P, 16, add = false) # 0b1101001000000001000000000000000000000000000000010000000000000000
 
-  # TODO: what is the threshold for Karabina's compressed squarings?
+  # Negative AteParam, conjugation eliminated by final exponentiation
+  # f.conj()
 
 func millerLoopAddchain*[N: static int](
        f: var Fp12[BLS12_381],
