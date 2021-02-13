@@ -40,7 +40,7 @@ func millerLoopAddchain*(
        Q: ECP_ShortW_Aff[Fp2[BLS12_381], OnTwist],
        P: ECP_ShortW_Aff[Fp[BLS12_381], NotOnTwist]
      ) =
-  ## Generic Miller Loop for BLS12 curve
+  ## Miller Loop for BLS12-381 curve
   ## Computes f{u,Q}(P) with u the BLS curve parameter
 
   var T {.noInit.}: ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist]

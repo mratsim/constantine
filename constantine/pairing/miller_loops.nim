@@ -212,6 +212,8 @@ func miller_init_double_then_add*[FT, F1, F2](
   # First step: 0b10, T <- Q, f = 1 (mod p¹²), f *= line
   # ----------------------------------------------------
   T.projectiveFromAffine(Q)
+
+  # f.square() -> square(1)
   line.line_double(T, P)
 
   # Doubling steps: 0b10...00
@@ -226,20 +228,27 @@ func miller_init_double_then_add*[FT, F1, F2](
     # f *= line <=> f = line for the first iteration
     # With Fp2 -> Fp4 -> Fp12 towering and a M-Twist
     # The line corresponds to a sparse xy000z Fp12
-    f.c0.c0 = line.x
-    f.c0.c1 = line.y
-    f.c1.c0.setZero()
-    f.c1.c1.setZero()
-    f.c2.c0.setZero()
-    f.c2.c1 = line.z
+    when FT.C.getSexticTwist() == M_Twist:
+      f.c0.c0 = line.x
+      f.c0.c1 = line.y
+      f.c1.c0.setZero()
+      f.c1.c1.setZero()
+      f.c2.c0.setZero()
+      f.c2.c1 = line.z
+    else:
+      f.c0.c0 = line.x
+      f.c0.c1 = line.y
+      f.c1.c0 = line.z
+      f.c1.c1.setZero()
+      f.c2.c0.setZero()
+      f.c2.c1.setZero()
 
-    f.square() # TODO: (sparse * sparse)
-
+    f.square()
     line.line_double(T, P)
     f.mul(line) # TODO: (somewhat-sparse * sparse)
-
-    for _ in 3 ..< numDoublings:
+    for _ in 2 ..< numDoublings:
       f.square()
+      line.line_double(T, P)
       f.mul(line)
 
   # Addition step: 0b10...01
@@ -253,19 +262,26 @@ func miller_init_double_then_add*[FT, F1, F2](
     # f *= line <=> f = line for the first iteration
     # With Fp2 -> Fp4 -> Fp12 towering and a M-Twist
     # The line corresponds to a sparse xy000z Fp12
-    f.c0.c0 = line.x
-    f.c0.c1 = line.y
-    f.c1.c0.setZero()
-    f.c1.c1.setZero()
-    f.c2.c0.setZero()
-    f.c2.c1 = line.z
+    when FT.C.getSexticTwist() == M_Twist:
+      f.c0.c0 = line.x
+      f.c0.c1 = line.y
+      f.c1.c0.setZero()
+      f.c1.c1.setZero()
+      f.c2.c0.setZero()
+      f.c2.c1 = line.z
+    else:
+      f.c0.c0 = line.x
+      f.c0.c1 = line.y
+      f.c1.c0 = line.z
+      f.c1.c1.setZero()
+      f.c2.c0.setZero()
+      f.c2.c1.setZero()
 
     line.line_add(T, Q, P)
-    # f.mul_sparse_sparse(line)
-    f.mul_sparse_by_line_xy000z(line) # TODO: (sparse * sparse)
+    f.mul(line) # TODO: (sparse * sparse)
   else:
     line.line_add(T, Q, P)
-    f.mul_sparse_by_line_xy000z(line)
+    f.mul(line)
 
   {.pop.} # No OverflowError or IndexError allowed
 
@@ -294,11 +310,11 @@ func miller_accum_double_then_add*[FT, F1, F2](
   for _ in 0 ..< numDoublings:
     f.square()
     line.line_double(T, P)
-    f.mul_sparse_by_line_xy000z(line)
+    f.mul(line)
 
   if add:
     line.line_add(T, Q, P)
-    f.mul_sparse_by_line_xy000z(line)
+    f.mul(line)
 
 # Miller Loop - multi-pairing
 # ----------------------------------------------------------------------------

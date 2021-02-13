@@ -7,10 +7,11 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/[curves, type_bigint],
+  ../config/[curves, type_bigint, type_ff],
   ../io/io_bigints,
   ../towers,
-  ../pairing/cyclotomic_fp12
+  ../elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
+  ../pairing/[cyclotomic_fp12, miller_loops]
 
 # Slow generic implementation
 # ------------------------------------------------------------
@@ -29,11 +30,38 @@ const BLS12_377_pairing_finalexponent* = block:
 
 # Addition chain
 # ------------------------------------------------------------
+#
+# 71 naive operations to build an addition chain with
+# hex: 0x8508c00000000001
+# bin: 0b1000010100001000110000000000000000000000000000000000000000000001
+#
+# or 68 with optimization, though unsure how to use them in the Miller Loop
+# and for multi-pairing it would use too much temporaries anyway.
+
+# 0b1000010100001000110000000000000000000000000000000000000000000001
+
+func millerLoopAddchain*(
+       f: var Fp12[BLS12_377],
+       Q: ECP_ShortW_Aff[Fp2[BLS12_377], OnTwist],
+       P: ECP_ShortW_Aff[Fp[BLS12_377], NotOnTwist]
+     ) =
+  ## Miller Loop for BLS12-377 curve
+  ## Computes f{u,Q}(P) with u the BLS curve parameter
+
+  var T {.noInit.}: ECP_ShortW_Prj[Fp2[BLS12_377], OnTwist]
+
+  f.miller_init_double_then_add(T, Q, P, 5)                # 0b100001
+  f.miller_accum_double_then_add(T, Q, P, 2)               # 0b10000101
+  f.miller_accum_double_then_add(T, Q, P, 5)               # 0b1000010100001
+  f.miller_accum_double_then_add(T, Q, P, 4)               # 0b10000101000010001
+  f.miller_accum_double_then_add(T, Q, P, 1)               # 0b100001010000100011
+  f.miller_accum_double_then_add(T, Q, P, 46, add = true)  # 0b1000010100001000110000000000000000000000000000000000000000000001
+
+  # TODO: what is the threshold for Karabina's compressed squarings?
 
 func pow_x*(r: var Fp12[BLS12_377], a: Fp12[BLS12_377], invert = BLS12_377_pairing_ate_param_isNeg) =
   ## f^x with x the curve parameter
   ## For BLS12_377 f^-0x8508c00000000001
-  ## Warning: The parameter is odd and needs a correction
   r.cyclotomic_square(a)
   r *= a
   r.cyclotomic_square()
