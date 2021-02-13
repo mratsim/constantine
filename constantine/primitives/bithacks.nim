@@ -83,3 +83,20 @@ func log2*[T: SomeUnsignedInt](n: T): T =
   else:
     static: doAssert sizeof(T) <= sizeof(uint32)
     T(log2Impl(uint32(n)))
+
+func hammingWeight*(x: uint32): int {.inline.} =
+  ## Counts the set bits in integer.
+  # https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
+  var v = x
+  v = v - ((v shr 1) and 0x55555555)
+  v = (v and 0x33333333) + ((v shr 2) and 0x33333333)
+  cast[int](((v + (v shr 4) and 0xF0F0F0F) * 0x1010101) shr 24)
+
+func hammingWeight*(x: uint64): int {.inline.} =
+  ## Counts the set bits in integer.
+  # https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
+  var v = x
+  v = v - ((v shr 1'u64) and 0x5555555555555555'u64)
+  v = (v and 0x3333333333333333'u64) + ((v shr 2'u64) and 0x3333333333333333'u64)
+  v = (v + (v shr 4'u64) and 0x0F0F0F0F0F0F0F0F'u64)
+  cast[int]((v * 0x0101010101010101'u64) shr 56'u64)

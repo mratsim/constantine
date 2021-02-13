@@ -53,7 +53,7 @@ func pow_x*(r: var Fp12[BLS12_377], a: Fp12[BLS12_377], invert = BLS12_377_pairi
   r.cycl_sqr_repeated(10)
   r *= t100011
 
-  r.cycl_sqr_repeated(46)
+  r.cycl_sqr_repeated(46) # TODO: Karabina's compressed squarings
   r *= a
 
   if invert:

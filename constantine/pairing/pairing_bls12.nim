@@ -17,7 +17,8 @@ import
   ../curves/zoo_pairings,
   ./cyclotomic_fp12,
   ./lines_common,
-  ./miller_loops
+  ./miller_loops,
+  ./pairing_bls12_381
 
 # ############################################################
 #
@@ -142,6 +143,9 @@ func finalExpHard_BLS12*[C](f: var Fp12[C]) {.meter.} =
   # (x−1)².(x+p).(x²+p²−1) + 3
   f *= v0
 
+template asArray[F, Tw](ecp: ECP_ShortW_Aff[F, Tw]): array[1, ECP_ShortW_Aff[F, Tw]] =
+  cast[ptr array[1, ECP_ShortW_Aff[F, Tw]]](ecp.unsafeAddr)[]
+
 func pairing_bls12*[C](
        gt: var Fp12[C],
        P: ECP_ShortW_Aff[Fp[C], NotOnTwist],
@@ -149,6 +153,14 @@ func pairing_bls12*[C](
   ## Compute the optimal Ate Pairing for BLS12 curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
-  gt.millerLoopGenericBLS12(P, Q)
+  when C == BLS12_381:
+    # use optimized multipairing. It requires an array
+    # so cast to an array of size 1 without copy.
+    gt.millerLoop_opt_BLS12_381(
+      Q.asArray(),
+      P.asArray()
+    )
+  else:
+    gt.millerLoopGenericBLS12(P, Q)
   gt.finalExpEasy()
   gt.finalExpHard_BLS12()
