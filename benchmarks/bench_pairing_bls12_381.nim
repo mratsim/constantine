@@ -37,6 +37,7 @@ proc main() =
     lineDoubleBench(curve, Iters)
     lineAddBench(curve, Iters)
     mulFp12byLine_xy000z_Bench(curve, Iters)
+    mulLinebyLine_xy000z_Bench(curve, Iters)
     separator()
     finalExpEasyBench(curve, Iters)
     finalExpHardBLS12Bench(curve, Iters)

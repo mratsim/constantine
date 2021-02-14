@@ -203,6 +203,55 @@ func mul_sparse_by_line_xyz000*[C: static Curve](
     f2x.sum2xMod(f2x, V1)
     f.c2.redc2x(f2x)
 
+func mul_xyz000_xyz000_into_abcdefghij00*[C: static Curve](f: var Fp12[C], l0, l1: Line[Fp2[C]]) =
+  ## Multiply 2 lines together
+  ## The result is sparse in f.c1.c1
+  # In the following equations (taken from cubic extension implementation)
+  # a0 = (x0, y0)
+  # a1 = (z0,  0)
+  # a2 = ( 0,  0)
+  # b0 = (x1, y1)
+  # b1 = (z1,  0)
+  # b2 = ( 0,  0)
+  #
+  # v0 = a0 b0 = (x0, y0).(x1, y1)
+  # v1 = a1 b1 = (z0,  0).(z1,  0)
+  # v2 = a2 b2 = ( 0,  0).( 0,  0)
+  #
+  # r0 = ξ ((a1 + a2) * (b1 + b2) - v1 - v2) + v0
+  #    = ξ (a1 b1 + a2 b1 - v1) + v0
+  #    = v0
+  # r1 = (a0 + a1) * (b0 + b1) - v0 - v1 + ξ v2
+  #    = (a0 + a1) * (b0 + b1) - v0 - v1
+  # r2 = (a0 + a2) * (b0 + b2) - v0 - v2 + v1
+  #    = a0 b0 - v0 + v1
+  #    = v1
+
+  static:
+    doAssert C.getSexticTwist() == D_Twist
+    doAssert f.c0.typeof is Fp4, "This assumes 𝔽p12 as a cubic extension of 𝔽p4"
+
+  var V0{.noInit.}, f2x{.noInit.}: doublePrec(Fp4[C])
+  var V1{.noInit.}: doublePrec(Fp2[C])
+
+  V0.prod2x_disjoint(l0.x, l0.y, l1.x, l1.y) # a0 b0 = (x0, y0).(x1, y1)
+  V1.prod2x(l0.z, l1.z)                      # a1 b1 = (z0,  0).(z1,  0)
+
+  # r1 = (a0 + a1) * (b0 + b1) - v0 - v1
+  f.c1.c0.sum(l0.x, l0.z)                           # x0 + z0
+  f.c1.c1.sum(l1.x, l1.z)                           # x1 + z1
+  f2x.prod2x_disjoint(f.c1.c0, l0.y, f.c1.c1, l1.y) # (x0 + z0, y0)(x1 + z1, y1) = (a0 + a1) * (b0 + b1)
+  f2x.diff2xMod(f2x, V0)
+  f2x.c0.diff2xMod(f2x.c0, V1)
+  f.c1.redc2x(f2x)
+
+  # r0 = v0
+  f.c0.redc2x(V0)
+
+  # r2 = v1
+  f.c2.c0.redc2x(V1)
+  f.c2.c1.setZero()
+
 # M-Twist
 # ------------------------------------------------------------
 
@@ -292,7 +341,7 @@ func mul_sparse_by_line_xy000z*[C: static Curve](
 
 func mul_xy000z_xy000z_into_abcd00efghij*[C: static Curve](f: var Fp12[C], l0, l1: Line[Fp2[C]]) =
   ## Multiply 2 lines together
-  ## The result is sparse in f.c1.c1
+  ## The result is sparse in f.c1.c0
   # In the following equations (taken from cubic extension implementation)
   # a0 = (x0, y0)
   # a1 = ( 0,  0)

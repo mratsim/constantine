@@ -96,6 +96,28 @@ proc mulFp12byLine_xy000z_Bench*(C: static Curve, iters: int) =
   bench("Mul 𝔽p12 by line xy000z", C, iters):
     f.mul_sparse_by_line_xy000z(line)
 
+proc mulLinebyLine_xyz000_Bench*(C: static Curve, iters: int) =
+  var l0, l1: Line[Fp2[C]]
+  var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], OnTwist])
+  let P = rng.random_point(ECP_ShortW_Aff[Fp[C], NotOnTwist])
+  l0.line_double(T, P)
+  l1.line_double(T, P)
+  var f = rng.random_unsafe(Fp12[C])
+
+  bench("Mul line xyz000 by line xyz000", C, iters):
+    f.mul_xyz000_xyz000_into_abcdefghij00(l0, l1)
+
+proc mulLinebyLine_xy000z_Bench*(C: static Curve, iters: int) =
+  var l0, l1: Line[Fp2[C]]
+  var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], OnTwist])
+  let P = rng.random_point(ECP_ShortW_Aff[Fp[C], NotOnTwist])
+  l0.line_double(T, P)
+  l1.line_double(T, P)
+  var f = rng.random_unsafe(Fp12[C])
+
+  bench("Mul line xy000z by line xy000z", C, iters):
+    f.mul_xy000z_xy000z_into_abcd00efghij(l0, l1)
+
 proc millerLoopBLS12Bench*(C: static Curve, iters: int) =
   let
     P = rng.random_point(ECP_ShortW_Aff[Fp[C], NotOnTwist])
