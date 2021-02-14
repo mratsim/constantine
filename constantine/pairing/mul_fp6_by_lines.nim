@@ -17,7 +17,8 @@ import
 # ############################################################
 #
 #                 Sparse Multiplication
-#                        by lines
+#             by lines for embedding degree 6
+#                   and sextic twist
 #
 # ############################################################
 

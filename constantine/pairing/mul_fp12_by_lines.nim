@@ -17,7 +17,8 @@ import
 # ############################################################
 #
 #                 Sparse Multiplication
-#                        by lines
+#             by lines for embedding degree 12
+#                   and sextic twist
 #
 # ############################################################
 
@@ -38,8 +39,14 @@ import
 #   Craig Costello, Tanja Lange, and Michael Naehrig, 2009
 #   https://eprint.iacr.org/2009/615.pdf
 
-# 𝔽p12 by line - Sparse functions
-# ----------------------------------------------------------------
+# ############################################################
+#
+#            𝔽p12 by line - 𝔽p12 quadratic over 𝔽p6
+#
+# ############################################################
+
+# D-Twist
+# ------------------------------------------------------------
 
 func mul_by_line_xy0*[C: static Curve](
        r: var Fp6[C],
@@ -100,6 +107,15 @@ func mul_sparse_by_line_xy00z0*[C: static Curve](
   v3.c1.sum(v0.c1, v1.c0)
   v3.c2.sum(v0.c2, v1.c1)
   f.c0 = v3
+
+# ############################################################
+#
+#            𝔽p12 by line - 𝔽p12 cubic over 𝔽p4
+#
+# ############################################################
+
+# D-Twist
+# ------------------------------------------------------------
 
 func mul_sparse_by_line_xyz000*[C: static Curve](
        f: var Fp12[C], l: Line[Fp2[C]]) =
@@ -187,6 +203,9 @@ func mul_sparse_by_line_xyz000*[C: static Curve](
     f2x.sum2xMod(f2x, V1)
     f.c2.redc2x(f2x)
 
+# M-Twist
+# ------------------------------------------------------------
+
 func mul_sparse_by_line_xy000z*[C: static Curve](
        f: var Fp12[C], l: Line[Fp2[C]]) =
 
@@ -270,6 +289,59 @@ func mul_sparse_by_line_xy000z*[C: static Curve](
     V2.prod2x(V2, SexticNonResidue)
     f2x.sum2xMod(f2x, V2)
     f.c1.redc2x(f2x)
+
+func mul_xy000z_xy000z_into_abcd00efghij*[C: static Curve](f: var Fp12[C], l0, l1: Line[Fp2[C]]) =
+  ## Multiply 2 lines together
+  ## The result is sparse in f.c1.c1
+  # In the following equations (taken from cubic extension implementation)
+  # a0 = (x0, y0)
+  # a1 = ( 0,  0)
+  # a2 = ( 0, z0)
+  # b0 = (x1, y1)
+  # b1 = ( 0,  0)
+  # b2 = ( 0, z1)
+  #
+  # v0 = a0 b0 = (x0, y0).(x1, y1)
+  # v1 = a1 b1 = ( 0,  0).( 0,  0)
+  # v2 = a2 b2 = ( 0, z0).( 0, z1)
+  #
+  # r0 = ξ ((a1 + a2) * (b1 + b2) - v1 - v2) + v0
+  #    = ξ (a1 b2 + a2 b2 - v2) + v0
+  #    = v0
+  # r1 = (a0 + a1) * (b0 + b1) - v0 - v1 + ξ v2
+  #    = a0 b0 + a1 b0 - v0 + ξ v2
+  #    = ξ v2
+  # r2 = (a0 + a2) * (b0 + b2) - v0 - v2 + v1
+  #    = (a0 + a2) * (b0 + b2) - v0 - v2
+
+  static:
+    doAssert C.getSexticTwist() == M_Twist
+    doAssert f.c0.typeof is Fp4, "This assumes 𝔽p12 as a cubic extension of 𝔽p4"
+
+  var V0{.noInit.}, f2x{.noInit.}: doublePrec(Fp4[C])
+  var V2{.noInit.}: doublePrec(Fp2[C])
+
+  V0.prod2x_disjoint(l0.x, l0.y, l1.x, l1.y) # a0 b0 = (x0, y0).(x1, y1)
+  V2.prod2x(l0.z, l1.z)                      # a2 b2 = ( 0, z0).( 0, z1)
+  V2.prod2x(V2, NonResidue)
+
+  # r2 = (a0 + a2) * (b0 + b2) - v0 - v2
+  f.c2.c0.sum(l0.y, l0.z)                           # y0 + z0
+  f.c2.c1.sum(l1.y, l1.z)                           # y1 + z1
+  f2x.prod2x_disjoint(l0.x, f.c2.c0, l1.x, f.c2.c1) # (x0, y0 + z0).(x1, y1 + z1) = (a0 + a2) * (b0 + b2)
+  f2x.diff2xMod(f2x, V0)                            # (a0 + a2) * (b0 + b2) - v0
+  f2x.c0.diff2xMod(f2x.c0, V2)                      # (a0 + a2) * (b0 + b2) - v0 - v2
+  f.c2.redc2x(f2x)
+
+  # r1 = ξ v2
+  f.c1.c1.redc2x(V2)
+  f.c1.c0.setZero()
+
+  # r0 = v0
+  f.c0.redc2x(V0)
+
+# Dispatch
+# ------------------------------------------------------------
 
 func mul*[C](f: var Fp12[C], line: Line[Fp2[C]]) {.inline.} =
   when C.getSexticTwist() == D_Twist:
