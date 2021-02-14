@@ -57,7 +57,7 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
       for _ in 0 ..< Iters:
         let a = rng.random_elem(Fp4[C], gen)
         let y = rng.random_elem(Fp2[C], gen)
-        let b = Fp4[C](c1: y)
+        let b = Fp4[C](coords: [Fp2[C](), y])
 
         var r {.noInit.}, r2 {.noInit.}: Fp4[C]
 
@@ -76,7 +76,7 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
       for _ in 0 ..< Iters:
         let a = rng.random_elem(Fp6[C], gen)
         let y = rng.random_elem(Fp2[C], gen)
-        let b = Fp6[C](c1: y)
+        let b = Fp6[C](coords: [Fp2[C](), y, Fp2[C]()])
 
         var r {.noInit.}, r2 {.noInit.}: Fp6[C]
 
@@ -91,12 +91,12 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
       test_fp6_0y0(curve, gen = Long01Sequence)
 
   test "Dense 𝔽p6 by Sparse xy0":
-    proc test_fp6_0y0(C: static Curve, gen: static RandomGen) =
+    proc test_fp6_xy0(C: static Curve, gen: static RandomGen) =
       for _ in 0 ..< Iters:
         let a = rng.random_elem(Fp6[C], gen)
         let x = rng.random_elem(Fp2[C], gen)
         let y = rng.random_elem(Fp2[C], gen)
-        let b = Fp6[C](c0: x, c1: y)
+        let b = Fp6[C](coords: [x, y, Fp2[C]()])
         let line = Line[Fp2[C]](x: x, y: y)
 
         var r {.noInit.}, r2 {.noInit.}: Fp6[C]
@@ -107,9 +107,9 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
         check: bool(r == r2)
 
     staticFor(curve, TestCurves):
-      test_fp6_0y0(curve, gen = Uniform)
-      test_fp6_0y0(curve, gen = HighHammingWeight)
-      test_fp6_0y0(curve, gen = Long01Sequence)
+      test_fp6_xy0(curve, gen = Uniform)
+      test_fp6_xy0(curve, gen = HighHammingWeight)
+      test_fp6_xy0(curve, gen = Long01Sequence)
 
   when Fp12[BN254_Snarks]().c0.typeof is Fp6:
     test "Sparse 𝔽p12/𝔽p6 resulting from xy00z0 line function":
@@ -124,8 +124,8 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
 
           let line = Line[Fp2[C]](x: x, y: y, z: z)
           let b = Fp12[C](
-            c0: Fp6[C](c0: x, c1: y),
-            c1: Fp6[C](c1: z)
+            c0: Fp6[C](coords: [       x, y, Fp2[C]()]),
+            c1: Fp6[C](coords: [Fp2[C](), z, Fp2[C]()])
           )
 
           a *= b
@@ -150,7 +150,7 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
 
           let line = Line[Fp2[C]](x: x, y: y, z: z)
           let b = Fp12[C](
-            c0: Fp6[C](c0: x, c1: y, c2: z)
+            c0: Fp6[C](coords: [x, y, z])
           )
 
           a *= b
@@ -178,9 +178,11 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
 
             let line = Line[Fp2[C]](x: x, y: y, z: z)
             let b = Fp12[C](
-              c0: Fp4[C](c0: x, c1: y),
-              # c1
-              c2: Fp4[C](       c1: z),
+              coords: [
+                Fp4[C](coords: [x, y]),
+                Fp4[C](),
+                Fp4[C](coords: [Fp2[C](), z])
+              ]
             )
 
             a *= b
@@ -194,7 +196,7 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
         test_fp12_xy000z(curve, gen = Long01Sequence)
 
     test "Sparse 𝔽p12/𝔽p4 resulting from xyz000 line function (D-twist only)":
-      proc test_fp12_xy000z(C: static Curve, gen: static RandomGen) =
+      proc test_fp12_xyz000(C: static Curve, gen: static RandomGen) =
         when C.getSexticTwist() == D_Twist:
           for _ in 0 ..< Iters:
             var a = rng.random_elem(Fp12[C], gen)
@@ -206,9 +208,11 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
 
             let line = Line[Fp2[C]](x: x, y: y, z: z)
             let b = Fp12[C](
-              c0: Fp4[C](c0: x, c1: y),
-              c1: Fp4[C](c0: z       ),
-              # c2:
+              coords: [
+                Fp4[C](coords: [x, y]),
+                Fp4[C](coords: [z, Fp2[C]()]),
+                Fp4[C]()
+              ]
             )
 
             a *= b
@@ -217,6 +221,6 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
             check: bool(a == a2)
 
       staticFor(curve, TestCurves):
-        test_fp12_xy000z(curve, gen = Uniform)
-        test_fp12_xy000z(curve, gen = HighHammingWeight)
-        test_fp12_xy000z(curve, gen = Long01Sequence)
+        test_fp12_xyz000(curve, gen = Uniform)
+        test_fp12_xyz000(curve, gen = HighHammingWeight)
+        test_fp12_xyz000(curve, gen = Long01Sequence)
