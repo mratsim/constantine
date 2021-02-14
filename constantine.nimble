@@ -270,6 +270,10 @@ proc buildAllBenches() =
   buildBench("bench_pairing_bls12_381")
   buildBench("bench_pairing_bn254_nogami")
   buildBench("bench_pairing_bn254_snarks")
+  buildBench("bench_summary_bls12_377")
+  buildBench("bench_summary_bls12_381")
+  buildBench("bench_summary_bn254_nogami")
+  buildBench("bench_summary_bn254_snarks")
   buildBench("bench_sha256")
   echo "All benchmarks compile successfully."
 
@@ -385,6 +389,9 @@ task test_parallel_no_gmp_no_assembler, "Run all tests in parallel (via GNU para
   if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
     buildAllBenches()
 
+# Finite field 𝔽p
+# ------------------------------------------
+
 task bench_fp, "Run benchmark 𝔽p with your default compiler":
   runBench("bench_fp")
 
@@ -399,6 +406,9 @@ task bench_fp_gcc_noasm, "Run benchmark 𝔽p with gcc - no Assembly":
 
 task bench_fp_clang_noasm, "Run benchmark 𝔽p with clang - no Assembly":
   runBench("bench_fp", "clang", useAsm = false)
+
+# Double-precision field 𝔽pDbl
+# ------------------------------------------
 
 task bench_fpdbl, "Run benchmark 𝔽pDbl with your default compiler":
   runBench("bench_fp_double_precision")
@@ -415,6 +425,9 @@ task bench_fpdbl_gcc_noasm, "Run benchmark 𝔽p with gcc - no Assembly":
 task bench_fpdbl_clang_noasm, "Run benchmark 𝔽p with clang - no Assembly":
   runBench("bench_fp_double_precision", "clang", useAsm = false)
 
+# Extension field 𝔽p2
+# ------------------------------------------
+
 task bench_fp2, "Run benchmark with 𝔽p2 your default compiler":
   runBench("bench_fp2")
 
@@ -429,6 +442,9 @@ task bench_fp2_gcc_noasm, "Run benchmark 𝔽p2 with gcc - no Assembly":
 
 task bench_fp2_clang_noasm, "Run benchmark 𝔽p2 with clang - no Assembly":
   runBench("bench_fp2", "clang", useAsm = false)
+
+# Extension field 𝔽p4
+# ------------------------------------------
 
 task bench_fp4, "Run benchmark with 𝔽p4 your default compiler":
   runBench("bench_fp4")
@@ -445,6 +461,9 @@ task bench_fp4_gcc_noasm, "Run benchmark 𝔽p4 with gcc - no Assembly":
 task bench_fp4_clang_noasm, "Run benchmark 𝔽p4 with clang - no Assembly":
   runBench("bench_fp4", "clang", useAsm = false)
 
+# Extension field 𝔽p6
+# ------------------------------------------
+
 task bench_fp6, "Run benchmark with 𝔽p6 your default compiler":
   runBench("bench_fp6")
 
@@ -459,6 +478,9 @@ task bench_fp6_gcc_noasm, "Run benchmark 𝔽p6 with gcc - no Assembly":
 
 task bench_fp6_clang_noasm, "Run benchmark 𝔽p6 with clang - no Assembly":
   runBench("bench_fp6", "clang", useAsm = false)
+
+# Extension field 𝔽p12
+# ------------------------------------------
 
 task bench_fp12, "Run benchmark with 𝔽p12 your default compiler":
   runBench("bench_fp12")
@@ -475,6 +497,9 @@ task bench_fp12_gcc_noasm, "Run benchmark 𝔽p12 with gcc - no Assembly":
 task bench_fp12_clang_noasm, "Run benchmark 𝔽p12 with clang - no Assembly":
   runBench("bench_fp12", "clang", useAsm = false)
 
+# Elliptic curve G1
+# ------------------------------------------
+
 task bench_ec_g1, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weierstrass with Projective Coordinates - Default compiler":
   runBench("bench_ec_g1")
 
@@ -489,6 +514,9 @@ task bench_ec_g1_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾1 - Short
 
 task bench_ec_g1_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weierstrass with Projective Coordinates - Clang no Assembly":
   runBench("bench_ec_g1", "clang", useAsm = false)
+
+# Elliptic curve G2
+# ------------------------------------------
 
 task bench_ec_g2, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weierstrass with Projective Coordinates - Default compiler":
   runBench("bench_ec_g2")
@@ -505,6 +533,9 @@ task bench_ec_g2_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾2 - Short
 task bench_ec_g2_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weierstrass with Projective Coordinates - Clang no Assembly":
   runBench("bench_ec_g2", "clang", useAsm = false)
 
+# Pairings
+# ------------------------------------------
+
 task bench_pairing_bls12_377, "Run pairings benchmarks for BLS12-377 - Default compiler":
   runBench("bench_pairing_bls12_377")
 
@@ -519,6 +550,8 @@ task bench_pairing_bls12_377_gcc_noasm, "Run pairings benchmarks for BLS12-377 -
 
 task bench_pairing_bls12_377_clang_noasm, "Run pairings benchmarks for BLS12-377 - Clang no Assembly":
   runBench("bench_pairing_bls12_377", "clang", useAsm = false)
+
+# --
 
 task bench_pairing_bls12_381, "Run pairings benchmarks for BLS12-381 - Default compiler":
   runBench("bench_pairing_bls12_381")
@@ -535,6 +568,8 @@ task bench_pairing_bls12_381_gcc_noasm, "Run pairings benchmarks for BLS12-381 -
 task bench_pairing_bls12_381_clang_noasm, "Run pairings benchmarks for BLS12-381 - Clang no Assembly":
   runBench("bench_pairing_bls12_381", "clang", useAsm = false)
 
+# --
+
 task bench_pairing_bn254_nogami, "Run pairings benchmarks for BN254-Nogami - Default compiler":
   runBench("bench_pairing_bn254_nogami")
 
@@ -550,6 +585,8 @@ task bench_pairing_bn254_nogami_gcc_noasm, "Run pairings benchmarks for BN254-No
 task bench_pairing_bn254_nogami_clang_noasm, "Run pairings benchmarks for BN254-Nogami - Clang no Assembly":
   runBench("bench_pairing_bn254_nogami", "clang", useAsm = false)
 
+# --
+
 task bench_pairing_bn254_snarks, "Run pairings benchmarks for BN254-Snarks - Default compiler":
   runBench("bench_pairing_bn254_snarks")
 
@@ -564,6 +601,79 @@ task bench_pairing_bn254_snarks_gcc_noasm, "Run pairings benchmarks for BN254-Sn
 
 task bench_pairing_bn254_snarks_clang_noasm, "Run pairings benchmarks for BN254-Snarks - Clang no Assembly":
   runBench("bench_pairing_bn254_snarks", "clang", useAsm = false)
+
+
+# Curve summaries
+# ------------------------------------------
+
+task bench_summary_bls12_377, "Run summary benchmarks for BLS12-377 - Default compiler":
+  runBench("bench_summary_bls12_377")
+
+task bench_summary_bls12_377_gcc, "Run summary benchmarks for BLS12-377 - GCC":
+  runBench("bench_summary_bls12_377", "gcc")
+
+task bench_summary_bls12_377_clang, "Run summary benchmarks for BLS12-377 - Clang":
+  runBench("bench_summary_bls12_377", "clang")
+
+task bench_summary_bls12_377_gcc_noasm, "Run summary benchmarks for BLS12-377 - GCC no Assembly":
+  runBench("bench_summary_bls12_377", "gcc", useAsm = false)
+
+task bench_summary_bls12_377_clang_noasm, "Run summary benchmarks for BLS12-377 - Clang no Assembly":
+  runBench("bench_summary_bls12_377", "clang", useAsm = false)
+
+# --
+
+task bench_summary_bls12_381, "Run summary benchmarks for BLS12-381 - Default compiler":
+  runBench("bench_summary_bls12_381")
+
+task bench_summary_bls12_381_gcc, "Run summary benchmarks for BLS12-381 - GCC":
+  runBench("bench_summary_bls12_381", "gcc")
+
+task bench_summary_bls12_381_clang, "Run summary benchmarks for BLS12-381 - Clang":
+  runBench("bench_summary_bls12_381", "clang")
+
+task bench_summary_bls12_381_gcc_noasm, "Run summary benchmarks for BLS12-381 - GCC no Assembly":
+  runBench("bench_summary_bls12_381", "gcc", useAsm = false)
+
+task bench_summary_bls12_381_clang_noasm, "Run summary benchmarks for BLS12-381 - Clang no Assembly":
+  runBench("bench_summary_bls12_381", "clang", useAsm = false)
+
+# --
+
+task bench_summary_bn254_nogami, "Run summary benchmarks for BN254-Nogami - Default compiler":
+  runBench("bench_summary_bn254_nogami")
+
+task bench_summary_bn254_nogami_gcc, "Run summary benchmarks for BN254-Nogami - GCC":
+  runBench("bench_summary_bn254_nogami", "gcc")
+
+task bench_summary_bn254_nogami_clang, "Run summary benchmarks for BN254-Nogami - Clang":
+  runBench("bench_summary_bn254_nogami", "clang")
+
+task bench_summary_bn254_nogami_gcc_noasm, "Run summary benchmarks for BN254-Nogami - GCC no Assembly":
+  runBench("bench_summary_bn254_nogami", "gcc", useAsm = false)
+
+task bench_summary_bn254_nogami_clang_noasm, "Run summary benchmarks for BN254-Nogami - Clang no Assembly":
+  runBench("bench_summary_bn254_nogami", "clang", useAsm = false)
+
+# --
+
+task bench_summary_bn254_snarks, "Run summary benchmarks for BN254-Snarks - Default compiler":
+  runBench("bench_summary_bn254_snarks")
+
+task bench_summary_bn254_snarks_gcc, "Run summary benchmarks for BN254-Snarks - GCC":
+  runBench("bench_summary_bn254_snarks", "gcc")
+
+task bench_summary_bn254_snarks_clang, "Run summary benchmarks for BN254-Snarks - Clang":
+  runBench("bench_summary_bn254_snarks", "clang")
+
+task bench_summary_bn254_snarks_gcc_noasm, "Run summary benchmarks for BN254-Snarks - GCC no Assembly":
+  runBench("bench_summary_bn254_snarks", "gcc", useAsm = false)
+
+task bench_summary_bn254_snarks_clang_noasm, "Run summary benchmarks for BN254-Snarks - Clang no Assembly":
+  runBench("bench_summary_bn254_snarks", "clang", useAsm = false)
+
+# Hashes
+# ------------------------------------------
 
 task bench_sha256, "Run SHA256 benchmarks":
   runBench("bench_sha256")

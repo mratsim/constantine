@@ -78,15 +78,17 @@ proc separator*(length: int) =
   echo "-".repeat(length)
 
 proc notes*() =
+  echo ""
   echo "Notes:"
+  echo "  - All procedures are constant-time unless mentioned otherwise (unsafe or vartime)"
   echo "  - Compilers:"
   echo "    Compilers are severely limited on multiprecision arithmetic."
-  echo "    Constantine compile-time assembler is used by default (nimble bench_fp)."
+  echo "    Constantine compile-time assembler is used by default \"nimble bench_summary_bls12_381\"."
   echo "    GCC is significantly slower than Clang on multiprecision arithmetic due to catastrophic handling of carries."
   echo "    GCC also seems to have issues with large temporaries and register spilling."
-  echo "    This is somewhat alleviated by Constantine compile-time assembler."
-  echo "    Bench on specific compiler with assembler: \"nimble bench_ec_g1_gcc\" or \"nimble bench_ec_g1_clang\"."
-  echo "    Bench on specific compiler with assembler: \"nimble bench_ec_g1_gcc_noasm\" or \"nimble bench_ec_g1_clang_noasm\"."
+  echo "    This is somewhat alleviated by Constantine compile-time assembler but not perfect."
+  echo "    Bench on specific compiler with assembler: \"nimble bench_summary_bls12_381_clang\"."
+  echo "    Bench on specific compiler with assembler: \"nimble bench_summary_bls12_381_clang_noasm\"."
   echo "  - The simplest operations might be optimized away by the compiler."
 
 template measure*(iters: int,
