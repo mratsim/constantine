@@ -118,6 +118,13 @@ proc mulLinebyLine_xy000z_Bench*(C: static Curve, iters: int) =
   bench("Mul line xy000z by line xy000z", C, iters):
     f.mul_xy000z_xy000z_into_abcd00efghij(l0, l1)
 
+proc mulFp12by_abcdefghij00_Bench*(C: static Curve, iters: int) =
+  var f = rng.random_unsafe(Fp12[C])
+  let g = rng.random_unsafe(Fp12[C])
+
+  bench("Mul 𝔽p12 by abcdefghij00", C, iters):
+    f.mul_sparse_by_abcdefghij00(g)
+
 proc millerLoopBLS12Bench*(C: static Curve, iters: int) =
   let
     P = rng.random_point(ECP_ShortW_Aff[Fp[C], NotOnTwist])
