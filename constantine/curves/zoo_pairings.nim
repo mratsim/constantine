@@ -21,4 +21,4 @@ macro pairing*(C: static Curve, value: untyped): untyped =
   ## Get pairing related constants
   return bindSym($C & "_pairing_" & $value)
 
-export pow_x, pow_xdiv2, pow_u
+export pow_x, pow_xdiv2, pow_u, millerLoopAddchain

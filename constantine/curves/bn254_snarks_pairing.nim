@@ -29,6 +29,15 @@ const BN254_Snarks_pairing_finalexponent* = block:
 
 # Addition chain
 # ------------------------------------------------------------
+#
+# u = 0x44e992b44a6909f1
+# Ate BN |6u+2|
+# hex: 0x19d797039be763ba8
+# bin: 0x11001110101111001011100000011100110111110011101100011101110101000
+#
+# We don't define an addition chain for the Miller loop
+# it would requires saving accumulators to actually save
+# operations compared to NAF, and can we combine the saved EC[Fp2] accumulators?
 
 func pow_u*(r: var Fp12[BN254_Snarks], a: Fp12[BN254_Snarks], invert = BN254_Snarks_pairing_ate_param_isNeg) =
   ## f^u with u the curve parameter

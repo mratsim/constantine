@@ -25,7 +25,7 @@ import
 # ############################################################
 
 
-const Iters = 50
+const Iters = 1000
 const AvailableCurves = [
   BLS12_381,
 ]
@@ -37,6 +37,10 @@ proc main() =
     lineDoubleBench(curve, Iters)
     lineAddBench(curve, Iters)
     mulFp12byLine_xy000z_Bench(curve, Iters)
+    mulLinebyLine_xy000z_Bench(curve, Iters)
+    mulFp12by_abcd00efghij_Bench(curve, Iters)
+    mulFp12_by_2lines_v1_xy000z_Bench(curve, Iters)
+    mulFp12_by_2lines_v2_xy000z_Bench(curve, Iters)
     separator()
     finalExpEasyBench(curve, Iters)
     finalExpHardBLS12Bench(curve, Iters)

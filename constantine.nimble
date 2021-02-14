@@ -142,7 +142,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ----------------------------------------------------------
   # ("tests/t_pairing_bls12_377_line_functions.nim", false),
   # ("tests/t_pairing_bls12_381_line_functions.nim", false),
-  # ("tests/t_pairing_mul_fp12_by_lines.nim", false),
+  ("tests/t_pairing_mul_fp12_by_lines.nim", false),
   # ("tests/t_pairing_cyclotomic_fp12.nim", false),
   ("tests/t_pairing_bn254_nogami_optate.nim", false),
   ("tests/t_pairing_bn254_snarks_optate.nim", false),

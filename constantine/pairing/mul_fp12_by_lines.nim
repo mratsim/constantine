@@ -17,7 +17,8 @@ import
 # ############################################################
 #
 #                 Sparse Multiplication
-#                        by lines
+#             by lines for embedding degree 12
+#                   and sextic twist
 #
 # ############################################################
 
@@ -38,8 +39,14 @@ import
 #   Craig Costello, Tanja Lange, and Michael Naehrig, 2009
 #   https://eprint.iacr.org/2009/615.pdf
 
-# 𝔽p12 by line - Sparse functions
-# ----------------------------------------------------------------
+# ############################################################
+#
+#            𝔽p12 by line - 𝔽p12 quadratic over 𝔽p6
+#
+# ############################################################
+
+# D-Twist
+# ------------------------------------------------------------
 
 func mul_by_line_xy0*[C: static Curve](
        r: var Fp6[C],
@@ -77,7 +84,7 @@ func mul_sparse_by_line_xy00z0*[C: static Curve](
 
   static:
     doAssert C.getSexticTwist() == D_Twist
-    doAssert f.c0.typeof is Fp6, "This assumes 𝔽p12 as a quadratic extension of 𝔽p6"
+    doAssert f.c0 is Fp6, "This assumes 𝔽p12 as a quadratic extension of 𝔽p6"
 
   var
     v0 {.noInit.}: Fp6[C]
@@ -101,6 +108,15 @@ func mul_sparse_by_line_xy00z0*[C: static Curve](
   v3.c2.sum(v0.c2, v1.c1)
   f.c0 = v3
 
+# ############################################################
+#
+#            𝔽p12 by line - 𝔽p12 cubic over 𝔽p4
+#
+# ############################################################
+
+# D-Twist
+# ------------------------------------------------------------
+
 func mul_sparse_by_line_xyz000*[C: static Curve](
        f: var Fp12[C], l: Line[Fp2[C]]) =
   ## Sparse multiplication of an 𝔽p12 element
@@ -110,7 +126,7 @@ func mul_sparse_by_line_xyz000*[C: static Curve](
 
   static:
     doAssert C.getSexticTwist() == D_Twist
-    doAssert f.c0.typeof is Fp4, "This assumes 𝔽p12 as a cubic extension of 𝔽p4"
+    doAssert f.c0 is Fp4, "This assumes 𝔽p12 as a cubic extension of 𝔽p4"
 
   # In the following equations (taken from cubic extension implementation)
   # a = f
@@ -187,12 +203,132 @@ func mul_sparse_by_line_xyz000*[C: static Curve](
     f2x.sum2xMod(f2x, V1)
     f.c2.redc2x(f2x)
 
+func mul_xyz000_xyz000_into_abcdefghij00*[C: static Curve](f: var Fp12[C], l0, l1: Line[Fp2[C]]) =
+  ## Multiply 2 lines together
+  ## The result is sparse in f.c1.c1
+  # In the following equations (taken from cubic extension implementation)
+  # a0 = (x0, y0)
+  # a1 = (z0,  0)
+  # a2 = ( 0,  0)
+  # b0 = (x1, y1)
+  # b1 = (z1,  0)
+  # b2 = ( 0,  0)
+  #
+  # v0 = a0 b0 = (x0, y0).(x1, y1)
+  # v1 = a1 b1 = (z0,  0).(z1,  0)
+  # v2 = a2 b2 = ( 0,  0).( 0,  0)
+  #
+  # r0 = ξ ((a1 + a2) * (b1 + b2) - v1 - v2) + v0
+  #    = ξ (a1 b1 + a2 b1 - v1) + v0
+  #    = v0
+  # r1 = (a0 + a1) * (b0 + b1) - v0 - v1 + ξ v2
+  #    = (a0 + a1) * (b0 + b1) - v0 - v1
+  # r2 = (a0 + a2) * (b0 + b2) - v0 - v2 + v1
+  #    = a0 b0 - v0 + v1
+  #    = v1
+
+  static:
+    doAssert C.getSexticTwist() == D_Twist
+    doAssert f.c0 is Fp4, "This assumes 𝔽p12 as a cubic extension of 𝔽p4"
+
+  var V0{.noInit.}, f2x{.noInit.}: doublePrec(Fp4[C])
+  var V1{.noInit.}: doublePrec(Fp2[C])
+
+  V0.prod2x_disjoint(l0.x, l0.y, l1.x, l1.y) # a0 b0 = (x0, y0).(x1, y1)
+  V1.prod2x(l0.z, l1.z)                      # a1 b1 = (z0,  0).(z1,  0)
+
+  # r1 = (a0 + a1) * (b0 + b1) - v0 - v1
+  f.c1.c0.sum(l0.x, l0.z)                           # x0 + z0
+  f.c1.c1.sum(l1.x, l1.z)                           # x1 + z1
+  f2x.prod2x_disjoint(f.c1.c0, l0.y, f.c1.c1, l1.y) # (x0 + z0, y0)(x1 + z1, y1) = (a0 + a1) * (b0 + b1)
+  f2x.diff2xMod(f2x, V0)
+  f2x.c0.diff2xMod(f2x.c0, V1)
+  f.c1.redc2x(f2x)
+
+  # r0 = v0
+  f.c0.redc2x(V0)
+
+  # r2 = v1
+  f.c2.c0.redc2x(V1)
+  f.c2.c1.setZero()
+
+func mul_sparse_by_abcdefghij00*[C: static Curve](
+       a: var Fp12[C], b: Fp12[C]) =
+  ## Sparse multiplication of an 𝔽p12 element
+  ## by a sparse 𝔽p12 element abcdefghij00
+  ## with each representing 𝔽p2 coordinate
+
+  static:
+    doAssert C.getSexticTwist() == D_Twist
+    doAssert a.c0 is Fp4, "This assumes 𝔽p12 as a cubic extension of 𝔽p4"
+
+  # In the following equations (taken from cubic extension implementation)
+  # b0 = (b00, b01)
+  # b1 = (b10, b11)
+  # b2 = (b20,   0)
+  #
+  # v0 = a0 b0 = (f00, f01).(b00, b01)
+  # v1 = a1 b1 = (f10, f11).(b10, b11)
+  # v2 = a2 b2 = (f20, f21).(b20,   0)
+  #
+  # r₀ = ξ ((a₁ + a₂)(b₁ + b₂) - v₁ - v₂) + v₀
+  # r₁ = (a₀ + a₁) * (b₀ + b₁) - v₀ - v₁ + β v₂
+  # r₂ = (a₀ + a₂) * (b₀ + b₂) - v₀ - v₂ + v₁
+
+  var V0 {.noInit.}, V1 {.noInit.}, V2 {.noinit.}: doublePrec(Fp4[C])
+  var t0 {.noInit.}, t1 {.noInit.}: Fp4[C]
+  var f2x{.noInit.}, g2x {.noinit.}: doublePrec(Fp4[C])
+
+  V0.prod2x(a.c0, b.c0)
+  V1.prod2x(a.c1, b.c1)
+  V2.mul2x_sparse_by_x0(a.c2, b.c2)
+
+  # r₀ = ξ ((a₁ + a₂)(b₁ + b₂) - v₁ - v₂) + v₀
+  t0.sum(a.c1, a.c2)
+  t1.c0.sum(b.c1.c0, b.c2.c0)             # b₂ = (b20,   0)
+  f2x.prod2x_disjoint(t0, t1.c0, b.c1.c1) # (a₁ + a₂).(b₁ + b₂)
+  f2x.diff2xMod(f2x, V1)
+  f2x.diff2xMod(f2x, V2)
+  f2x.prod2x(f2x, NonResidue)
+  f2x.sum2xMod(f2x, V0)
+
+  # r₁ = (a₀ + a₁) * (b₀ + b₁) - v₀ - v₁
+  t0.sum(a.c0, a.c1)
+  t1.sum(b.c0, b.c1)
+  g2x.prod2x(t0, t1)
+  g2x.diff2xMod(g2x, V0)
+  g2x.diff2xMod(g2x, V1)
+
+  # r₂ = (a₀ + a₂) and (b₀ + b₂)
+  t0.sum(a.c0, a.c2)
+  t1.c0.sum(b.c0.c0, b.c2.c0)             # b₂ = (b20,   0)
+
+  # Now we are aliasing free
+
+  # r₀ = ξ ((a₁ + a₂)(b₁ + b₂) - v₁ - v₂) + v₀
+  a.c0.redc2x(f2x)
+
+  # r₁ = (a₀ + a₁) * (b₀ + b₁) - v₀ - v₁ + β v₂
+  f2x.prod2x(V2, NonResidue)
+  g2x.sum2xMod(g2x, f2x)
+  a.c1.redc2x(g2x)
+
+  # r₂ = (a₀ + a₂) * (b₀ + b₂) - v₀ - v₂ + v₁
+  f2x.prod2x_disjoint(t0, t1.c0, b.c0.c1)
+  f2x.diff2xMod(f2x, V0)
+  f2x.diff2xMod(f2x, V2)
+  f2x.sum2xMod(f2x, V1)
+  a.c2.redc2x(f2x)
+
+# M-Twist
+# ------------------------------------------------------------
+
 func mul_sparse_by_line_xy000z*[C: static Curve](
        f: var Fp12[C], l: Line[Fp2[C]]) =
 
   static:
     doAssert C.getSexticTwist() == M_Twist
-    doAssert f.c0.typeof is Fp4, "This assumes 𝔽p12 as a cubic extension of 𝔽p4"
+    doAssert f.c0 is Fp4, "This assumes 𝔽p12 as a cubic extension of 𝔽p4"
 
   # In the following equations (taken from cubic extension implementation)
   # a = f
@@ -271,10 +407,139 @@ func mul_sparse_by_line_xy000z*[C: static Curve](
     f2x.sum2xMod(f2x, V2)
     f.c1.redc2x(f2x)
 
+func mul_xy000z_xy000z_into_abcd00efghij*[C: static Curve](f: var Fp12[C], l0, l1: Line[Fp2[C]]) =
+  ## Multiply 2 lines together
+  ## The result is sparse in f.c1.c0
+  # In the following equations (taken from cubic extension implementation)
+  # a0 = (x0, y0)
+  # a1 = ( 0,  0)
+  # a2 = ( 0, z0)
+  # b0 = (x1, y1)
+  # b1 = ( 0,  0)
+  # b2 = ( 0, z1)
+  #
+  # v0 = a0 b0 = (x0, y0).(x1, y1)
+  # v1 = a1 b1 = ( 0,  0).( 0,  0)
+  # v2 = a2 b2 = ( 0, z0).( 0, z1)
+  #
+  # r0 = ξ ((a1 + a2) * (b1 + b2) - v1 - v2) + v0
+  #    = ξ (a1 b2 + a2 b2 - v2) + v0
+  #    = v0
+  # r1 = (a0 + a1) * (b0 + b1) - v0 - v1 + ξ v2
+  #    = a0 b0 + a1 b0 - v0 + ξ v2
+  #    = ξ v2
+  # r2 = (a0 + a2) * (b0 + b2) - v0 - v2 + v1
+  #    = (a0 + a2) * (b0 + b2) - v0 - v2
+
+  static:
+    doAssert C.getSexticTwist() == M_Twist
+    doAssert f.c0 is Fp4, "This assumes 𝔽p12 as a cubic extension of 𝔽p4"
+
+  var V0{.noInit.}, f2x{.noInit.}: doublePrec(Fp4[C])
+  var V2{.noInit.}: doublePrec(Fp2[C])
+
+  V0.prod2x_disjoint(l0.x, l0.y, l1.x, l1.y) # a0 b0 = (x0, y0).(x1, y1)
+  V2.prod2x(l0.z, l1.z)                      # a2 b2 = ( 0, z0).( 0, z1)
+  V2.prod2x(V2, NonResidue)
+
+  # r2 = (a0 + a2) * (b0 + b2) - v0 - v2
+  f.c2.c0.sum(l0.y, l0.z)                           # y0 + z0
+  f.c2.c1.sum(l1.y, l1.z)                           # y1 + z1
+  f2x.prod2x_disjoint(l0.x, f.c2.c0, l1.x, f.c2.c1) # (x0, y0 + z0).(x1, y1 + z1) = (a0 + a2) * (b0 + b2)
+  f2x.diff2xMod(f2x, V0)                            # (a0 + a2) * (b0 + b2) - v0
+  f2x.c0.diff2xMod(f2x.c0, V2)                      # (a0 + a2) * (b0 + b2) - v0 - v2
+  f.c2.redc2x(f2x)
+
+  # r1 = ξ v2
+  f.c1.c1.redc2x(V2)
+  f.c1.c0.setZero()
+
+  # r0 = v0
+  f.c0.redc2x(V0)
+
+func mul_sparse_by_abcd00efghij*[C: static Curve](
+       a: var Fp12[C], b: Fp12[C]) =
+  ## Sparse multiplication of an 𝔽p12 element
+  ## by a sparse 𝔽p12 element abcd00efghij
+  ## with each representing 𝔽p2 coordinate
+
+  static:
+    doAssert C.getSexticTwist() == M_Twist
+    doAssert a.c0 is Fp4, "This assumes 𝔽p12 as a cubic extension of 𝔽p4"
+
+  # In the following equations (taken from cubic extension implementation)
+  # b0 = (b00, b01)
+  # b1 = (  0, b11)
+  # b2 = (b20, b21)
+  #
+  # v0 = a0 b0 = (f00, f01).(b00, b01)
+  # v1 = a1 b1 = (f10, f11).(  0, b11)
+  # v2 = a2 b2 = (f20, f21).(b20, b21)
+  #
+  # r₀ = ξ ((a₁ + a₂)(b₁ + b₂) - v₁ - v₂) + v₀
+  # r₁ = (a₀ + a₁) * (b₀ + b₁) - v₀ - v₁ + β v₂
+  # r₂ = (a₀ + a₂) * (b₀ + b₂) - v₀ - v₂ + v₁
+
+  var V0 {.noInit.}, V1 {.noInit.}, V2 {.noinit.}: doublePrec(Fp4[C])
+  var t0 {.noInit.}, t1 {.noInit.}: Fp4[C]
+  var f2x{.noInit.}, g2x {.noinit.}: doublePrec(Fp4[C])
+
+  V0.prod2x(a.c0, b.c0)
+  V1.mul2x_sparse_by_0y(a.c1, b.c1)
+  V2.prod2x(a.c2, b.c2)
+
+  # r₀ = ξ ((a₁ + a₂)(b₁ + b₂) - v₁ - v₂) + v₀
+  t0.sum(a.c1, a.c2)
+  t1.c1.sum(b.c1.c1, b.c2.c1)             # b₁ = (  0, b11)
+  f2x.prod2x_disjoint(t0, b.c2.c0, t1.c1) # (a₁ + a₂).(b₁ + b₂)
+  f2x.diff2xMod(f2x, V1)
+  f2x.diff2xMod(f2x, V2)
+  f2x.prod2x(f2x, NonResidue)
+  f2x.sum2xMod(f2x, V0)
+
+  # r₁ = (a₀ + a₁) * (b₀ + b₁) - v₀ - v₁
+  t0.sum(a.c0, a.c1)
+  t1.c1.sum(b.c0.c1, b.c1.c1)             # b₁ = (  0, b11)
+  g2x.prod2x_disjoint(t0, b.c0.c0, t1.c1) # (a₀ + a₁).(b₀ + b₁)
+  g2x.diff2xMod(g2x, V0)
+  g2x.diff2xMod(g2x, V1)
+
+  # r₂ = (a₀ + a₂) and (b₀ + b₂)
+  t0.sum(a.c0, a.c2)
+  t1.sum(b.c0, b.c2)
+
+  # Now we are aliasing free
+
+  # r₀ = ξ ((a₁ + a₂)(b₁ + b₂) - v₁ - v₂) + v₀
+  a.c0.redc2x(f2x)
+
+  # r₁ = (a₀ + a₁) * (b₀ + b₁) - v₀ - v₁ + β v₂
+  f2x.prod2x(V2, NonResidue)
+  g2x.sum2xMod(g2x, f2x)
+  a.c1.redc2x(g2x)
+
+  # r₂ = (a₀ + a₂) * (b₀ + b₂) - v₀ - v₂ + v₁
+  f2x.prod2x(t0, t1)
+  f2x.diff2xMod(f2x, V0)
+  f2x.diff2xMod(f2x, V2)
+  f2x.sum2xMod(f2x, V1)
+  a.c2.redc2x(f2x)
+
+# Dispatch
+# ------------------------------------------------------------
+
 func mul*[C](f: var Fp12[C], line: Line[Fp2[C]]) {.inline.} =
   when C.getSexticTwist() == D_Twist:
     f.mul_sparse_by_line_xyz000(line)
   elif C.getSexticTwist() == M_Twist:
     f.mul_sparse_by_line_xy000z(line)
+  else:
+    {.error: "A line function assumes that the curve has a twist".}
+
+func mul_sparse_sparse*[C](f: var Fp12[C], line0, line1: Line[Fp2[C]]) {.inline.} =
+  when C.getSexticTwist() == D_Twist:
+    f.mul_xyz000_xyz000_into_abcdefghij00(line0, line1)
+  elif C.getSexticTwist() == M_Twist:
+    f.mul_xy000z_xy000z_into_abcd00efghij(line0, line1)
   else:
     {.error: "A line function assumes that the curve has a twist".}

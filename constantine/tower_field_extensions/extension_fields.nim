@@ -513,22 +513,22 @@ func square2x_complex(r: var QuadraticExt2x, a: QuadraticExt) =
 
 func prod2x_disjoint*[Fdbl, F](
        r: var QuadraticExt2x[FDbl],
-       a: QuadraticExt[F],
+       a0, a1: F,
        b0, b1: F) =
   ## Return a * (b0, b1) in r
   static: doAssert Fdbl is doublePrec(F)
 
   var V0 {.noInit.}, V1 {.noInit.}: typeof(r.c0) # Double-precision
-  var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0) # Single-width
+  var t0 {.noInit.}, t1 {.noInit.}: typeof(a0)   # Single-width
 
   # Require 2 extra bits
-  V0.prod2x(a.c0, b0)           # v0 = a0b0
-  V1.prod2x(a.c1, b1)           # v1 = a1b1
+  V0.prod2x(a0, b0)             # v0 = a0b0
+  V1.prod2x(a1, b1)             # v1 = a1b1
   when F.has1extraBit():
-    t0.sumUnr(a.c0, a.c1)
+    t0.sumUnr(a0, a1)
     t1.sumUnr(b0, b1)
   else:
-    t0.sum(a.c0, a.c1)
+    t0.sum(a0, a1)
     t1.sum(b0, b1)
 
   r.c1.prod2x(t0, t1)           # r1 = (a0 + a1)(b0 + b1)
@@ -655,12 +655,19 @@ func inv2xImpl(r: var QuadraticExt, a: QuadraticExt) =
 # Dispatch
 # ----------------------------------------------------------------------
 
+func prod2x_disjoint*[Fdbl, F](
+       r: var QuadraticExt2x[FDbl],
+       a: QuadraticExt[F],
+       b0, b1: F) =
+  ## Return (a0, a1) * (b0, b1) in r
+  r.prod2x_disjoint(a.c0, a.c1, b0, b1)
+
 func prod2x*(r: var QuadraticExt2x, a, b: QuadraticExt) =
   mixin fromComplexExtension
   when a.fromComplexExtension():
     r.prod2x_complex(a, b)
   else:
-    r.prod2x_disjoint(a, b.c0, b.c1)
+    r.prod2x_disjoint(a.c0, a.c1, b.c0, b.c1)
 
 func square2x*(r: var QuadraticExt2x, a: QuadraticExt) =
   mixin fromComplexExtension

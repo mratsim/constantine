@@ -20,6 +20,8 @@ import
   ./cyclotomic_fp12,
   ./miller_loops
 
+export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11225
+
 # ############################################################
 #
 #                 Optimal ATE pairing for
@@ -65,19 +67,11 @@ func millerLoopGenericBN*[C](
     ate_param, ate_param_isNeg
   )
 
-  # Ate pairing for BN curves need adjustment after basic Miller loop
-  when C.pairing(ate_param_isNeg):
-    T.neg()
-  var V {.noInit.}: typeof(Q)
-
-  V.frobenius_psi(Q)
-  line.line_add(T, V, P)
-  f.mul(line)
-
-  V.frobenius_psi(Q, 2)
-  V.neg()
-  line.line_add(T, V, P)
-  f.mul(line)
+  # Ate pairing for BN curves needs adjustment after basic Miller loop
+  f.millerCorrectionBN(
+    T, Q, P,
+    pairing(C, ate_param_isNeg)
+  )
 
 func finalExpGeneric[C: static Curve](f: var Fp12[C]) =
   ## A generic and slow implementation of final exponentiation
@@ -86,18 +80,14 @@ func finalExpGeneric[C: static Curve](f: var Fp12[C]) =
 
 func pairing_bn_reference*[C](
        gt: var Fp12[C],
-       P: ECP_ShortW_Prj[Fp[C], NotOnTwist],
-       Q: ECP_ShortW_Prj[Fp2[C], OnTwist]) =
+       P: ECP_ShortW_Aff[Fp[C], NotOnTwist],
+       Q: ECP_ShortW_Aff[Fp2[C], OnTwist]) =
   ## Compute the optimal Ate Pairing for BN curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
   ##
   ## Reference implementation
-  var Paff {.noInit.}: ECP_ShortW_Aff[Fp[C], NotOnTwist]
-  var Qaff {.noInit.}: ECP_ShortW_Aff[Fp2[C], OnTwist]
-  Paff.affineFromProjective(P)
-  Qaff.affineFromProjective(Q)
-  gt.millerLoopGenericBN(Paff, Qaff)
+  gt.millerLoopGenericBN(P, Q)
   gt.finalExpGeneric()
 
 # Optimized pairing implementation
@@ -157,15 +147,14 @@ func finalExpHard_BN*[C: static Curve](f: var Fp12[C]) =
 
 func pairing_bn*[C](
        gt: var Fp12[C],
-       P: ECP_ShortW_Prj[Fp[C], NotOnTwist],
-       Q: ECP_ShortW_Prj[Fp2[C], OnTwist]) =
+       P: ECP_ShortW_Aff[Fp[C], NotOnTwist],
+       Q: ECP_ShortW_Aff[Fp2[C], OnTwist]) =
   ## Compute the optimal Ate Pairing for BLS12 curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
-  var Paff {.noInit.}: ECP_ShortW_Aff[Fp[C], NotOnTwist]
-  var Qaff {.noInit.}: ECP_ShortW_Aff[Fp2[C], OnTwist]
-  Paff.affineFromProjective(P)
-  Qaff.affineFromProjective(Q)
-  gt.millerLoopGenericBN(Paff, Qaff)
+  when C == BN254_Nogami:
+    gt.millerLoopAddChain(Q, P)
+  else:
+    gt.millerLoopGenericBN(P, Q)
   gt.finalExpEasy()
   gt.finalExpHard_BN()

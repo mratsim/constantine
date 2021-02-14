@@ -166,6 +166,7 @@ The optimizations can be of algebraic, algorithmic or "implementation details" n
     - [x] M-Twist
       - [x] Fused line add + elliptic curve add
       - [x] Fused line double + elliptic curve double
+    - [x] 6-way sparse multiplication line * Gₜ element
   - [ ] Jacobian projective coordinates
     - [ ] D-Twist
       - [ ] Fused line add + elliptic curve add
@@ -173,18 +174,15 @@ The optimizations can be of algebraic, algorithmic or "implementation details" n
     - [ ] M-Twist
       - [ ] Fused line add + elliptic curve add
       - [ ] Fused line double + elliptic curve double
-  - [x] Sparse multiplication line * Gₜ element
-    - [x] D-Twist
-      - [x] 6-way sparse
-      - [ ] Pseudo 8-sparse
-    - [x] M-Twist
-      - [x] 6-way sparse
-      - [ ] Pseudo 8-sparse
+    - [x] 6-way sparse multiplication line * Gₜ element
+  - [ ] Affine coordinates
+    - [ ] 7-way sparse multiplication line * Gₜ element
+    - [ ] Pseudo-8 sparse multiplication line * Gₜ element
 
 - Miller Loop
   - [x] NAF recoding
   - [ ] Quadruple-and-add and Octuple-and-add
-  - [ ] addition chain
+  - [x] addition chains
 
 - Final exponentiation
   - [x] Cyclotomic squaring
