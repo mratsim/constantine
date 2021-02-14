@@ -105,7 +105,7 @@ func millerCorrectionBN*[FT, F1, F2](
 #   https://eprint.iacr.org/2019/077.pdf
 #
 # Fault attacks:
-# To limite exposure to some fault attacks (flipping bits with a laser on embedded):
+# To limit exposure to some fault attacks (flipping bits with a laser on embedded):
 # - changing the number of Miller loop iterations
 # - flipping the bits in the Miller loop
 # we hardcode unrolled addition chains.
@@ -209,7 +209,19 @@ func millerCorrectionBN*[FT, F1, F2](
 # a 11.5% speedup
 #
 # We can use Aranha approach but process lines function 2-by-2 merging them
-# before merging them to the dense Fp12 accumulator
+# before merging them to the dense Fp12 accumulator.
+#
+# In benchmarks though, the speedup doesn't work for BN curves but does for BLS curves.
+#
+# For single pairings
+# Unfortunately, it's BN254_Snarks which requires a lot of addition in the Miller loop.
+# BLS12-377 and BLS12-381 require 6 and 7 line addition in their Miller loop,
+# the saving is about 150 cycles per addition for about 1000 cycles saved.
+# A full pairing is ~2M cycles so this is only 0.5% for significantly
+# more maintenance and bounds analysis complexity.
+#
+# For multipairing it is interesting since for a BLS signature verification (double pairing)
+# we would save 1000 cycles per Ate iteration so ~70000 cycles, while a Miller loop is ~800000 cycles.
 
 # Miller Loop - single pairing
 # ----------------------------------------------------------------------------
@@ -251,28 +263,9 @@ func miller_init_double_then_add*[FT, F1, F2](
   # - The first line is squared (sparse * sparse)
   # - The second is (somewhat-sparse * sparse)
   when numDoublings >= 2:
-    # TODO: sparse * sparse
-    # f *= line <=> f = line for the first iteration
-    # With Fp2 -> Fp4 -> Fp12 towering and a M-Twist
-    # The line corresponds to a sparse xy000z Fp12
-    when FT.C.getSexticTwist() == M_Twist:
-      f.c0.c0 = line.x
-      f.c0.c1 = line.y
-      f.c1.c0.setZero()
-      f.c1.c1.setZero()
-      f.c2.c0.setZero()
-      f.c2.c1 = line.z
-    else:
-      f.c0.c0 = line.x
-      f.c0.c1 = line.y
-      f.c1.c0 = line.z
-      f.c1.c1.setZero()
-      f.c2.c0.setZero()
-      f.c2.c1.setZero()
-
-    f.square()
+    f.mul_sparse_sparse(line, line)
     line.line_double(T, P)
-    f.mul(line) # TODO: (somewhat-sparse * sparse)
+    f.mul(line)
     for _ in 2 ..< numDoublings:
       f.square()
       line.line_double(T, P)
@@ -289,23 +282,9 @@ func miller_init_double_then_add*[FT, F1, F2](
     # f *= line <=> f = line for the first iteration
     # With Fp2 -> Fp4 -> Fp12 towering and a M-Twist
     # The line corresponds to a sparse xy000z Fp12
-    when FT.C.getSexticTwist() == M_Twist:
-      f.c0.c0 = line.x
-      f.c0.c1 = line.y
-      f.c1.c0.setZero()
-      f.c1.c1.setZero()
-      f.c2.c0.setZero()
-      f.c2.c1 = line.z
-    else:
-      f.c0.c0 = line.x
-      f.c0.c1 = line.y
-      f.c1.c0 = line.z
-      f.c1.c1.setZero()
-      f.c2.c0.setZero()
-      f.c2.c1.setZero()
-
-    line.line_add(T, Q, P)
-    f.mul(line) # TODO: (sparse * sparse)
+    var line2 {.noInit.}: Line[F2]
+    line2.line_add(T, Q, P)
+    f.mul_sparse_sparse(line, line2)
   else:
     line.line_add(T, Q, P)
     f.mul(line)

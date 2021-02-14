@@ -351,3 +351,49 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
         test_fp12_abcdefghij00(curve, gen = Uniform)
         test_fp12_abcdefghij00(curve, gen = HighHammingWeight)
         test_fp12_abcdefghij00(curve, gen = Long01Sequence)
+
+    test "Somewhat-sparse 𝔽p12/𝔽p4 mul by the product (xy000z*xy000z) of line functions (M-twist only)":
+      proc test_fp12_abcd00efghij(C: static Curve, gen: static RandomGen) =
+        when C.getSexticTwist() == M_Twist:
+          for _ in 0 ..< Iters:
+            var x0 = rng.random_elem(Fp2[C], gen)
+            var y0 = rng.random_elem(Fp2[C], gen)
+            var z0 = rng.random_elem(Fp2[C], gen)
+
+            let line0 = Line[Fp2[C]](x: x0, y: y0, z: z0)
+            let f0 = Fp12[C](
+              coords: [
+                Fp4[C](coords: [x0, y0]),
+                Fp4[C](),
+                Fp4[C](coords: [Fp2[C](), z0])
+              ]
+            )
+
+            var x1 = rng.random_elem(Fp2[C], gen)
+            var y1 = rng.random_elem(Fp2[C], gen)
+            var z1 = rng.random_elem(Fp2[C], gen)
+
+            let line1 = Line[Fp2[C]](x: x1, y: y1, z: z1)
+            let f1 = Fp12[C](
+              coords: [
+                Fp4[C](coords: [x1, y1]),
+                Fp4[C](),
+                Fp4[C](coords: [Fp2[C](), z1])
+              ]
+            )
+
+            var rl: Fp12[C]
+            rl.mul_xy000z_xy000z_into_abcd00efghij(line0, line1)
+
+            var f = rng.random_elem(Fp12[C], gen)
+            var f2 = f
+
+            f *= rl
+            f2.mul_sparse_by_abcd00efghij(rl)
+
+            check: bool(f == f2)
+
+      staticFor(curve, TestCurves):
+        test_fp12_abcd00efghij(curve, gen = Uniform)
+        test_fp12_abcd00efghij(curve, gen = HighHammingWeight)
+        test_fp12_abcd00efghij(curve, gen = Long01Sequence)

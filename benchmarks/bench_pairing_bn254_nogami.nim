@@ -39,6 +39,8 @@ proc main() =
     mulFp12byLine_xyz000_Bench(curve, Iters)
     mulLinebyLine_xyz000_Bench(curve, Iters)
     mulFp12by_abcdefghij00_Bench(curve, Iters)
+    mulFp12_by_2lines_v1_xyz000_Bench(curve, Iters)
+    mulFp12_by_2lines_v2_xyz000_Bench(curve, Iters)
     separator()
     finalExpEasyBench(curve, Iters)
     finalExpHardBNBench(curve, Iters)
