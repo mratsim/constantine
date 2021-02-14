@@ -10,7 +10,7 @@ import
   ../../constantine/config/curves,
   ../../constantine/[arithmetic, primitives],
   ../../constantine/elliptic/[
-    ec_endomorphism_accel,
+    ec_scalar_mul,
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
@@ -117,10 +117,10 @@ func simpleFT[EC; bits: static int](
 
   for i in 0 ..< L:
     last = vals[0]
-    last.scalarMulGLV_m2w2(rootsOfUnity[0])
+    last.scalarMul(rootsOfUnity[0])
     for j in 1 ..< L:
       v = vals[j]
-      v.scalarMulGLV_m2w2(rootsOfUnity[(i*j) mod L])
+      v.scalarMul(rootsOfUnity[(i*j) mod L])
       last += v
     output[i] = last
 
@@ -147,7 +147,7 @@ func fft_internal[EC; bits: static int](
   for i in 0 ..< half:
     # FFT Butterfly
     y_times_root = output[i+half]
-    y_times_root   .scalarMulGLV_m2w2(rootsOfUnity[i])
+    y_times_root   .scalarMul(rootsOfUnity[i])
     output[i+half] .diff(output[i], y_times_root)
     output[i]      += y_times_root
 
@@ -192,7 +192,7 @@ func ifft*[EC](
   let inv = invLen.toBig()
 
   for i in 0..< output.len:
-    output[i].scalarMulGLV_m2w2(inv)
+    output[i].scalarMul(inv)
 
   return FFTS_Success
 
@@ -276,7 +276,7 @@ when isMainModule:
 
     warmup()
 
-    for scale in 4 ..< 16:
+    for scale in 4 ..< 10:
       # Setup
 
       let desc = FFTDescriptor[G1].init(uint8 scale)
