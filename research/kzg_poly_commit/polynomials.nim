@@ -1,14 +1,16 @@
 import
   ../../constantine/config/curves,
-  ../../constantine/[arithmetic, primitives],
+  ../../constantine/[arithmetic, primitives, towers],
   ../../constantine/elliptic/[
     ec_scalar_mul,
+    ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
   ],
   ../../constantine/io/[io_fields, io_ec],
-  ../../constantine/pairings/[
-    pairings_bls12,
-    miller_loops
+  ../../constantine/pairing/[
+    pairing_bls12,
+    miller_loops,
+    cyclotomic_fp12
   ]
 
 type
@@ -19,7 +21,7 @@ type
   GT = Fp12[BLS12_381]
 
 func linear_combination*(
-       r: var ,
+       r: var G1,
        points: openarray[G1],
        coefs: openarray[Fr[BLS12_381]]
      ) =
@@ -63,5 +65,7 @@ func pair_verify*(
   gt2.millerLoopAddchain(Q2a, P2a)
 
   gt1 *= gt2
-  gt.finalExpEasy()
-  gt.finalExpHard_BLS12()
+  gt1.finalExpEasy()
+  gt1.finalExpHard_BLS12()
+
+  return gt1.isOne().bool()

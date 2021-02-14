@@ -56,7 +56,7 @@ type
     FFTS_TooManyValues = "Input length greater than the field 2-adicity (number of roots of unity)"
     FFTS_SizeNotPowerOfTwo = "Input must be of a power of 2 length"
 
-  FFTDescriptor[F] = object
+  FFTDescriptor*[F] = object
     ## Metadata for FFT on field F
     maxWidth: int
     rootOfUnity: F

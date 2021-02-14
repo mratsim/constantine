@@ -62,7 +62,7 @@ type
     FFTS_TooManyValues = "Input length greater than the field 2-adicity (number of roots of unity)"
     FFTS_SizeNotPowerOfTwo = "Input must be of a power of 2 length"
 
-  FFTDescriptor[EC] = object
+  FFTDescriptor*[EC] = object
     ## Metadata for FFT on Elliptic Curve
     maxWidth: int
     rootOfUnity: matchingOrderBigInt(EC.F.C)
