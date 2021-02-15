@@ -7,8 +7,10 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  std/macros,
   ../config/common,
-  ../io/endians
+  ../io/endians,
+  ../primitives/static_for
 
 # SHA256, a hash function from the SHA2 family
 # --------------------------------------------------------------------------------
@@ -51,6 +53,10 @@ type
 {.push raises: [].}
 {.push checks: off.}
 
+func setZero[N](a: var array[N, SomeNumber]){.inline.} =
+  for i in 0 ..< a.len:
+    a[i] = 0
+
 template rotr(x, n: uint32): uint32 =
   ## Rotate right the bits
   # We always use it with constants in 0 ..< 32
@@ -62,7 +68,7 @@ template ch(x, y, z: uint32): uint32 =
   ## Choose bit i from yi or zi depending on xi
   when false: # Spec FIPS 180-4
     (x and y) xor (not(x) and z)
-  else:      # RFC4634
+  else:       # RFC4634
     ((x and (y xor z)) xor z)
 
 template maj(x, y, z: uint32): uint32 =
@@ -88,9 +94,80 @@ template s1(x: uint32): uint32 =
   # σ₁
   rotr(x, 17) xor rotr(x, 19) xor (x shr 10)
 
-func setZero[N](a: var array[N, SomeNumber]){.inline.} =
-  for i in 0 ..< a.len:
-    a[i] = 0
+template u32BE(blob: array[4, byte]): uint32 =
+  ## Interpret a data blob as a big-endian uint32
+  ## This should lower to
+  when nimvm:
+    (blob[0].uint32 shl 24) or (blob[1].uint32 shl 16) or (blob[2].uint32 shl 8) or blob[3].uint32
+  else:
+    when cpuEndian == littleEndian:
+      (blob[0].uint32 shl 24) or (blob[1].uint32 shl 16) or (blob[2].uint32 shl 8) or blob[3].uint32
+    else:
+      cast[uint32](blob)
+
+template getU32at[T: byte|char](msg: openarray[T], pos: SomeInteger): uint32 =
+  u32BE(cast[ptr array[4, byte]](msg[pos].unsafeAddr())[])
+
+func rotateRight[T](a: var openarray[T], k: int) =
+  ## Rotate a seuqnce by k
+  doAssert a.len > 0
+  let k = k mod a.len
+
+  for _ in 0 ..< k:
+    let tmp = a[^1]
+    for i in countdown(a.len-1, 1):
+      a[i] = a[i-1]
+    a[0] = tmp
+
+macro round(a, b, c, d, e, f, g, h: untyped, t: static int): untyped =
+  ## Unrolled and allocation efficient SHA256 round
+  var s = [a, b, c, d, e, f, g, h]
+  s.rotateRight(t)
+  let
+    a = s[0]
+    b = s[1]
+    c = s[2]
+    d = s[3]
+    e = s[4]
+    f = s[5]
+    g = s[6]
+    h = s[7]
+
+  # W[t]
+  let w = nnkBracketExpr.newTree(
+    ident("W"), newLit(t mod 16)
+  )
+
+  result = newStmtList()
+
+  if t < 16:
+    # Reading message phase
+    let msg = ident"message"
+    let curBlock = ident"curBlock"
+    result.add quote do:
+      `w` = getU32at(`msg`, `curBlock`*64 + `t`*4)
+  else:
+    # Mixing
+
+    # Wt-2, Wt-7, Wt-15, Wt-16
+    let Wtm2 = nnkBracketExpr.newTree(
+      ident("W"), newLit((t-2) mod 16)
+    )
+    let Wtm7 = nnkBracketExpr.newTree(
+      ident("W"), newLit((t-7) mod 16)
+    )
+    let Wtm15 = nnkBracketExpr.newTree(
+      ident("W"), newLit((t-15) mod 16)
+    )
+    # w is Wt-16
+    result.add quote do:
+      `w` += s1(`Wtm2`) + `Wtm7` + s0(`Wtm15`)
+
+  result.add quote do:
+    let T1 = `h` + S1(`e`) + ch(`e`, `f`, `g`) + K256[`t`] + `w`
+    let T2 = S0(`a`) + maj(`a`, `b`, `c`)
+    `d` += T1
+    `h` = T1 + T2
 
 func hashMessageBlocks[T: byte|char](
        H: var array[HashSize, uint32],
@@ -126,7 +203,7 @@ func hashMessageBlocks[T: byte|char](
     g = H[6]
     h = H[7]
 
-  for _ in 0 ..< numBlocks:
+  for curBlock in 0 ..< numBlocks:
     # The first 16 bytes have different handling
     # from bytes 16..<64.
     # Using an array[64, uint32] will span it
@@ -134,38 +211,50 @@ func hashMessageBlocks[T: byte|char](
 
     # Workspace with message schedule Wₜ
     var W{.noInit.}: array[16, uint32]
-    var t = 0'u32
-    while t < 16: # Wₜ = Mⁱₜ
-      W[t].parseFromBlob(message, result, bigEndian)
-      let T1 = h + S1(e) + ch(e, f, g) + K256[t] + W[t]
-      let T2 = S0(a) + maj(a, b, c)
-      h = g
-      g = f
-      f = e
-      e = d + T1
-      d = c
-      c = b
-      b = a
-      a = T1+T2
 
-      t += 1
+    when true:
+      # Translation of the spec
+      # This is faster than even OpenSSL for hashing just 32 bytes
+      # for example for HMAC and HKDF.
+      var t = 0'u32
+      while t < 16: # Wₜ = Mⁱₜ
+        W[t].parseFromBlob(message, result, bigEndian)
+        let T1 = h + S1(e) + ch(e, f, g) + K256[t] + W[t]
+        let T2 = S0(a) + maj(a, b, c)
+        h = g
+        g = f
+        f = e
+        e = d + T1
+        d = c
+        c = b
+        b = a
+        a = T1+T2
 
-    while t < 64:
-      W[t mod 16] += s1(W[(t-2) mod 16]) +
-                     W[(t-7) mod 16] +
-                     s0(W[(t-15) mod 16])
-      let T1 = h + S1(e) + ch(e, f, g) + K256[t] + W[t mod 16]
-      let T2 = S0(a) + maj(a, b, c)
-      h = g
-      g = f
-      f = e
-      e = d + T1
-      d = c
-      c = b
-      b = a
-      a = T1+T2
+        t += 1
 
-      t += 1
+      while t < 64:
+        W[t mod 16] += s1(W[(t-2) mod 16]) +
+                      W[(t-7) mod 16] +
+                      s0(W[(t-15) mod 16])
+        let T1 = h + S1(e) + ch(e, f, g) + K256[t] + W[t mod 16]
+        let T2 = S0(a) + maj(a, b, c)
+        h = g
+        g = f
+        f = e
+        e = d + T1
+        d = c
+        c = b
+        b = a
+        a = T1+T2
+
+        t += 1
+    else:
+      # optimized version for large hashes
+      # For hashing 32B, this is slower than the rough translation
+      # of spec, unless compiled with -mssse3 (but no vector instructions are used :/)
+      staticFor t, 0, 64:
+        round(a, b, c, d, e, f, g, h, t)
+      result += 64
 
     a += H[0]; H[0] = a
     b += H[1]; H[1] = b

@@ -69,6 +69,10 @@ proc benchSHA256_openssl[T](msg: openarray[T], msgComment: string, iters: int) =
 when isMainModule:
   proc main() =
     block:
+      let msg128B = rng.random_byte_seq(32)
+      benchSHA256_constantine(msg128B, "32B", 32)
+      benchSHA256_openssl(msg128B, "32B", 32)
+    block:
       let msg128B = rng.random_byte_seq(128)
       benchSHA256_constantine(msg128B, "128B", 128)
       benchSHA256_openssl(msg128B, "128B", 128)
