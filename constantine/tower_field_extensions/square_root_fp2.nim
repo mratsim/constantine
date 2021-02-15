@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ./tower_instantiation,
+  ./extension_fields,
   ../arithmetic,
   ../primitives,
   ../config/[common, curves],
@@ -43,9 +43,9 @@ func isSquare*(a: Fp2): SecretBool =
   result = tv1.isSquare()
 
 func sqrt_rotate_extension(
-       out_sqrt: var QuadraticExt,
-       candidate_sqrt: QuadraticExt,
-       a: QuadraticExt
+       out_sqrt: var Fp2,
+       candidate_sqrt: Fp2,
+       a: Fp2
      ): SecretBool =
   ## From a field element `a` and a candidate Fp2 square root
   ## Search the actual square root by rotating candidate solution
@@ -57,7 +57,7 @@ func sqrt_rotate_extension(
   ## This avoids expensive trial "isSquare" checks (450+ field multiplications)
   ## This requires the sqrt of sqrt of the quadratic non-residue
   ## to be in Fp2
-  var coeff{.noInit.}, cand2{.noInit.}, t{.noInit.}: QuadraticExt
+  var coeff{.noInit.}, cand2{.noInit.}, t{.noInit.}: Fp2
   const Curve = typeof(a.c0).C
 
   # We name µ² the quadratic non-residue

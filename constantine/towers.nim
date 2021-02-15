@@ -8,8 +8,9 @@
 
 import
   tower_field_extensions/[
-    tower_instantiation,
-    square_root_fp2
+    square_root_fp2,
+    exponentiations,
+    extension_fields
   ]
 
-export tower_instantiation, square_root_fp2
+export extension_fields, square_root_fp2, exponentiations

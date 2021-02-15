@@ -9,20 +9,21 @@
 import
   ../config/[common, curves],
   ../primitives,
-  ../arithmetic
+  ../arithmetic,
+  ../io/io_fields
 
 # Note: to avoid burdening the Nim compiler, we rely on generic extension
 # to complain if the base field procedures don't exist
 
 # No exceptions allowed
 {.push raises: [].}
-{.push inline.}
 
 # ############################################################
 #                                                            #
 #                    Extension Fields                        #
 #                                                            #
 # ############################################################
+{.push inline.}
 
 type
   NonResidue* = object
@@ -39,6 +40,19 @@ type
     coords*: array[3, F]
 
   ExtensionField*[F] = QuadraticExt[F] or CubicExt[F]
+
+  Fp2*[C: static Curve] =
+    QuadraticExt[Fp[C]]
+
+  Fp4*[C: static Curve] =
+    QuadraticExt[Fp2[C]]
+
+  Fp6*[C: static Curve] =
+    CubicExt[Fp2[C]]
+
+  Fp12*[C: static Curve] =
+    CubicExt[Fp4[C]]
+    # QuadraticExt[Fp6[C]]
 
 template c0*(a: ExtensionField): auto =
   a.coords[0]
@@ -230,6 +244,14 @@ func prod*(r: var ExtensionField, a: ExtensionField, b: static int) =
   r = a
   r *= b
 
+# Multiplication by an Fp element
+# -------------------------------------------------------------------
+
+func `*=`*(a: var ExtensionField, b: Fp) =
+  ## Multiply an element of Fp2 by an element of Fp
+  for i in 0 ..< a.coords.len:
+    a.coords[i] *= b
+
 {.pop.} # inline
 
 # ############################################################
@@ -237,6 +259,7 @@ func prod*(r: var ExtensionField, a: ExtensionField, b: static int) =
 #              Lazy reduced extension fields                 #
 #                                                            #
 # ############################################################
+{.push inline.}
 
 type
   QuadraticExt2x*[F] = object
@@ -351,22 +374,114 @@ func redc2x*(r: var ExtensionField, a: ExtensionField2x) =
 
 func prod2x*(r: var ExtensionField2x, a: ExtensionField2x, b: static int) =
   ## Multiplication by a small integer known at compile-time
-  for i in 0 ..< a.coords.len:
+  staticFor i, 0, a.coords.len:
     r.coords[i].prod2x(a.coords[i], b)
 
-# NonResidue
-# ----------------------------------------------------------------------
+{.pop.} # inline
 
-func prod2x(r: var FpDbl, a: FpDbl, _: type NonResidue){.inline.} =
+# ############################################################
+#                                                            #
+#                        Non-Residues                        #
+#                                                            #
+# ############################################################
+{.push inline.}
+
+# 𝔽p
+# ----------------------------------------------------------------
+
+func `*=`*(a: var Fp, _: type NonResidue) =
+  ## Multiply an element of 𝔽p by the quadratic non-residue
+  ## chosen to construct 𝔽p2
+  static: doAssert Fp.C.getNonResidueFp() != -1, "𝔽p2 should be specialized for complex extension"
+  a *= Fp.C.getNonResidueFp()
+
+func prod*(r: var Fp, a: Fp, _: type NonResidue) =
+  ## Multiply an element of 𝔽p by the quadratic non-residue
+  ## chosen to construct 𝔽p2
+  static: doAssert Fp.C.getNonResidueFp() != -1, "𝔽p2 should be specialized for complex extension"
+  r.prod(a, Fp.C.getNonResidueFp())
+
+func prod2x(r: var FpDbl, a: FpDbl, _: type NonResidue) =
   ## Multiply an element of 𝔽p by the quadratic non-residue
   ## chosen to construct 𝔽p2
   static: doAssert FpDbl.C.getNonResidueFp() != -1, "𝔽p2 should be specialized for complex extension"
   r.prod2x(a, FpDbl.C.getNonResidueFp())
 
+# 𝔽p2
+# ----------------------------------------------------------------
+
+template fromComplexExtension*[F](elem: QuadraticExt[F]): static bool =
+  ## Returns true if the input is a complex extension
+  ## i.e. the irreducible polynomial chosen is
+  ##   x² - µ with µ = -1
+  ## and so 𝔽p2 = 𝔽p[x] / x² - µ = 𝔽p[𝑖]
+  when F is Fp and F.C.getNonResidueFp() == -1:
+    true
+  else:
+    false
+
+func prod*[C: static Curve](
+       r: var Fp2[C],
+       a: Fp2[C],
+       _: type NonResidue) =
+  ## Multiply an element of 𝔽p2 by the non-residue
+  ## chosen to construct the next extension or the twist:
+  ## - if quadratic non-residue: 𝔽p4
+  ## - if cubic non-residue: 𝔽p6
+  ## - if sextic non-residue: 𝔽p4, 𝔽p6 or 𝔽p12
+  # Yet another const tuple unpacking bug
+  const u = C.getNonResidueFp2()[0]
+  const v = C.getNonResidueFp2()[1]
+  const Beta {.used.} = C.getNonResidueFp()
+  # ξ = u + v x
+  # and x² = β
+  #
+  # (c0 + c1 x) (u + v x) => u c0 + (u c0 + u c1)x + v c1 x²
+  #                       => u c0 + β v c1 + (v c0 + u c1) x
+  when a.fromComplexExtension() and u == 1 and v == 1:
+    let t = a.c0
+    r.c0.diff(t, a.c1)
+    r.c1.sum(t, a.c1)
+  else:
+    # Case:
+    # - BN254_Snarks, QNR_Fp: -1, SNR_Fp2: 9+1𝑖  (𝑖 = √-1)
+    # - BLS12_377, QNR_Fp: -5, SNR_Fp2: 0+1j    (j = √-5)
+    # - BW6_761, SNR_Fp: -4, CNR_Fp2: 0+1j      (j = √-4)
+    when u == 0:
+      # BLS12_377 and BW6_761, use small addition chain
+      r.mul_sparse_by_0y(a, v)
+    else:
+      # BN254_Snarks, u = 9, v = 1, β = -1
+      # Even with u = 9, the 2x9 addition chains (8 additions total)
+      # are cheaper than full Fp2 multiplication
+      var t {.noInit.}: typeof(a.c0)
+
+      t.prod(a.c0, u)
+      when v == 1 and Beta == -1: # Case BN254_Snarks
+        t -= a.c1                 # r0 = u c0 + β v c1
+      else:
+        {.error: "Unimplemented".}
+
+      r.c1.prod(a.c1, u)
+      when v == 1:                # r1 = v c0 + u c1
+        r.c1 += a.c0
+        # aliasing: a.c0 is unused
+        r.c0 = t
+      else:
+        {.error: "Unimplemented".}
+
+func `*=`*[C: static Curve](a: var Fp2[C], _: type NonResidue) =
+  ## Multiply an element of 𝔽p2 by the non-residue
+  ## chosen to construct the next extension or the twist:
+  ## - if quadratic non-residue: 𝔽p4
+  ## - if cubic non-residue: 𝔽p6
+  ## - if sextic non-residue: 𝔽p4, 𝔽p6 or 𝔽p12
+  a.prod(a, NonResidue)
+
 func prod2x*[C: static Curve](
        r: var QuadraticExt2x[FpDbl[C]],
        a: QuadraticExt2x[FpDbl[C]],
-       _: type NonResidue) {.inline.} =
+       _: type NonResidue) =
   ## Multiplication by non-residue
   const complex = C.getNonResidueFp() == -1
   const U = C.getNonResidueFp2()[0]
@@ -413,15 +528,132 @@ func prod2x*[C: static Curve](
       else:
         {.error: "Unimplemented".}
 
+func `/=`*[C: static Curve](a: var Fp2[C], _: type NonResidue) =
+  ## Divide an element of 𝔽p by the non-residue
+  ## chosen to construct the next extension or the twist:
+  ## - if quadratic non-residue: 𝔽p4
+  ## - if cubic non-residue: 𝔽p6
+  ## - if sextic non-residue: 𝔽p4, 𝔽p6 or 𝔽p12
+
+  # Yet another const tuple unpacking bug
+  const u = C.getNonresidueFp2()[0] # Sextic non-residue to construct 𝔽p12
+  const v = C.getNonresidueFp2()[1]
+  const Beta = C.getNonResidueFp()  # Quadratic non-residue to construct 𝔽p2
+  # ξ = u + v x
+  # and x² = β
+  #
+  # (c0 + c1 x) / (u + v x) => (c0 + c1 x)(u - v x) / ((u + vx)(u-vx))
+  #                         => u c0 - v c1 x² + (u c1 - v c0) x / (u² - x²v²)
+  #                         => 1/(u² - βv²) * (uc0 - β v c1, u c1 - v c0)
+  # With β = 𝑖 = √-1
+  #   1/(u² + v²) * (u c0 + v c1, u c1 - v c0)
+  #
+  # With β = 𝑖 = √-1 and ξ = 1 + 𝑖
+  #   1/2 * (c0 + c1, c1 - c0)
+
+  when a.fromComplexExtension() and u == 1 and v == 1:
+    let t = a.c0
+    a.c0 += a.c1
+    a.c1 -= t
+    a.div2()
+  else:
+    var a0 = a.c0
+    let a1 = a.c1
+    const u2v2 = u*u - Beta*v*v # (u² - βv²)
+    # TODO can be precomputed (or precompute b/µ the twist coefficient)
+    #      and use faster non-constant-time inversion in the VM
+    var u2v2inv {.noInit.}: a.c0.typeof
+    u2v2inv.fromUint(u2v2)
+    u2v2inv.inv()
+
+    a.c0 *= u
+    a.c1 *= Beta * v
+    a.c0 -= a.c1
+
+    a.c1 = a1
+    a.c1 *= u
+    a0 *= v
+    a.c1 -= a0
+    a.c0 *= u2v2inv
+    a.c1 *= u2v2inv
+
+# Quadratic extensions
+# ----------------------------------------------------------------
+
+func prod*(r: var QuadraticExt, a: QuadraticExt, _: type NonResidue) =
+  ## Multiplication by non-residue.
+  ##
+  ## For example is a is an element of 𝔽p4
+  ## it is multiplied by the non-residue
+  ## chosen to construct the next extension or the twist:
+  ## - if quadratic non-residue: 𝔽p8
+  ## - if cubic non-residue: 𝔽p12
+  ## - if sextic non-residue: 𝔽p8, 𝔽p12 or 𝔽p24
+  ##
+  ## Assumes that the non-residue is sqrt(lower extension non-residue)
+  let t = a.c0
+  r.c0.prod(a.c1, NonResidue)
+  r.c1 = t
+
+func `*=`*(a: var QuadraticExt, _: type NonResidue) =
+  ## Multiplication by non-residue
+  ##
+  ## For example is `a` is an element of 𝔽p4
+  ## it is multiplied by the non-residue
+  ## chosen to construct the next extension or the twist:
+  ## - if quadratic non-residue: 𝔽p8
+  ## - if cubic non-residue: 𝔽p12
+  ## - if sextic non-residue: 𝔽p8, 𝔽p12 or 𝔽p24
+  ##
+  ## Assumes that the non-residue is sqrt(lower extension non-residue)
+  a.prod(a, NonResidue)
+
 func prod2x*(
        r: var QuadraticExt2x,
        a: QuadraticExt2x,
-       _: type NonResidue) {.inline.} =
+       _: type NonResidue) =
   ## Multiplication by non-residue
   static: doAssert not(r.c0 is FpDbl), "Wrong dispatch, there is a specific non-residue multiplication for the base extension."
   let t = a.c0
   r.c0.prod2x(a.c1, NonResidue)
   `=`(r.c1, t) # "r.c1 = t", is refused by the compiler.
+
+# Cubic extensions
+# ----------------------------------------------------------------
+
+func prod*(r: var CubicExt, a: CubicExt, _: type NonResidue) =
+  ## Multiplication by non-residue.
+  ##
+  ## For example is `a` is an element of 𝔽p6
+  ## it is multiplied by the non-residue
+  ## chosen to construct the next extension or the twist:
+  ## - if quadratic non-residue: 𝔽p12
+  ## - if cubic non-residue: 𝔽p18
+  ## - if sextic non-residue: 𝔽p12, 𝔽p18 or 𝔽p36
+  ##
+  ## Assumes that the non-residue is cube_root(lower extension non-residue)
+  ##
+  ## For all curves γ = v with v the factor for the cubic extension coordinate
+  ## and v³ = ξ
+  ## (c0 + c1 v + c2 v²) v => ξ c2 + c0 v + c1 v²
+  let t = a.c2
+  r.c1 = a.c0
+  r.c2 = a.c1
+  r.c0.prod(t, NonResidue)
+
+func `*=`*(a: var CubicExt, _: type NonResidue) {.inline.} =
+  ## Multiply an element of 𝔽p6 by the non-residue
+  ## chosen to construct the next extension or the twist:
+  ## - if quadratic non-residue: 𝔽p12
+  ## - if cubic non-residue: 𝔽p18
+  ## - if sextic non-residue: 𝔽p12, 𝔽p18 or 𝔽p36
+  ##
+  ## Assumes that it is cube_root(NonResidue_Fp2)
+  ##
+  ## For all curves γ = v with v the factor for the cubic extension coordinate
+  ## and v³ = ξ
+  ## (c0 + c1 v + c2 v²) v => ξ c2 + c0 v + c1 v²
+  a.prod(a, NonResidue)
 
 func prod2x*(
        r: var CubicExt2x,
@@ -436,9 +668,11 @@ func prod2x*(
   r.c2 = a.c1
   r.c0.prod2x(t, NonResidue)
 
+{.pop.} # inline
+
 # ############################################################
 #                                                            #
-#          Quadratic extensions - Lazy Reductions            #
+#                  Quadratic extensions                      #
 #                                                            #
 # ############################################################
 
@@ -448,343 +682,10 @@ func prod2x*(
 func prod2x*(r: var QuadraticExt2x, a, b: QuadraticExt)
 func square2x*(r: var QuadraticExt2x, a: QuadraticExt)
 
-# Commutative ring implementation for complex quadratic extension fields
+# Complex squarings
 # ----------------------------------------------------------------------
 
-func prod2x_complex(r: var QuadraticExt2x, a, b: QuadraticExt) =
-  ## Double-precision unreduced complex multiplication
-  # r and a or b cannot alias
-
-  mixin fromComplexExtension
-  static: doAssert a.fromComplexExtension()
-
-  var D {.noInit.}: typeof(r.c0)
-  var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0)
-
-  r.c0.prod2x(a.c0, b.c0)        # r0 = a0 b0
-  D.prod2x(a.c1, b.c1)           # d =  a1 b1
-  when QuadraticExt.has1extraBit():
-    t0.sumUnr(a.c0, a.c1)
-    t1.sumUnr(b.c0, b.c1)
-  else:
-    t0.sum(a.c0, a.c1)
-    t1.sum(b.c0, b.c1)
-  r.c1.prod2x(t0, t1)            # r1 = (b0 + b1)(a0 + a1)
-  when QuadraticExt.has1extraBit():
-    r.c1.diff2xUnr(r.c1, r.c0) # r1 = (b0 + b1)(a0 + a1) - a0 b0
-    r.c1.diff2xUnr(r.c1, D)    # r1 = (b0 + b1)(a0 + a1) - a0 b0 - a1b1
-  else:
-    r.c1.diff2xMod(r.c1, r.c0)
-    r.c1.diff2xMod(r.c1, D)
-  r.c0.diff2xMod(r.c0, D)        # r0 = a0 b0 - a1 b1
-
-func square2x_complex(r: var QuadraticExt2x, a: QuadraticExt) =
-  ## Double-precision unreduced complex squaring
-
-  mixin fromComplexExtension
-  static: doAssert a.fromComplexExtension()
-
-  var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0)
-
-  when QuadraticExt.has1extraBit():
-    t0.sumUnr(a.c1, a.c1)
-    t1.sumUnr(a.c0, a.c1)
-  else:
-    t0.double(a.c1)
-    t1.sum(a.c0, a.c1)
-
-  r.c1.prod2x(t0, a.c0)     # r1 = 2a0a1
-  t0.diff(a.c0, a.c1)
-  r.c0.prod2x(t0, t1)       # r0 = (a0 + a1)(a0 - a1)
-
-# Commutative ring implementation for generic quadratic extension fields
-# ----------------------------------------------------------------------
-#
-# Some sparse functions, reconstruct a Fp4 from disjoint pieces
-# to limit copies, we provide versions with disjoint elements
-# prod2x_disjoint:
-# - 2 products in mul_sparse_by_line_xyz000 (Fp4)
-# - 2 products in mul_sparse_by_line_xy000z (Fp4)
-# - mul_by_line_xy0 in mul_sparse_by_line_xy00z0 (Fp6)
-#
-# square2x_disjoint:
-# - cyclotomic square in Fp2 -> Fp6 -> Fp12 towering
-#   needs Fp4 as special case
-
-func prod2x_disjoint*[Fdbl, F](
-       r: var QuadraticExt2x[FDbl],
-       a0, a1: F,
-       b0, b1: F) =
-  ## Return a * (b0, b1) in r
-  static: doAssert Fdbl is doublePrec(F)
-
-  var V0 {.noInit.}, V1 {.noInit.}: typeof(r.c0) # Double-precision
-  var t0 {.noInit.}, t1 {.noInit.}: typeof(a0)   # Single-width
-
-  # Require 2 extra bits
-  V0.prod2x(a0, b0)             # v0 = a0b0
-  V1.prod2x(a1, b1)             # v1 = a1b1
-  when F.has1extraBit():
-    t0.sumUnr(a0, a1)
-    t1.sumUnr(b0, b1)
-  else:
-    t0.sum(a0, a1)
-    t1.sum(b0, b1)
-
-  r.c1.prod2x(t0, t1)           # r1 = (a0 + a1)(b0 + b1)
-  r.c1.diff2xMod(r.c1, V0)      # r1 = (a0 + a1)(b0 + b1) - a0b0
-  r.c1.diff2xMod(r.c1, V1)      # r1 = (a0 + a1)(b0 + b1) - a0b0 - a1b1
-
-  r.c0.prod2x(V1, NonResidue)   # r0 = β a1 b1
-  r.c0.sum2xMod(r.c0, V0)       # r0 = a0 b0 + β a1 b1
-
-func square2x_disjoint*[Fdbl, F](
-       r: var QuadraticExt2x[FDbl],
-       a0, a1: F) =
-  ## Return (a0, a1)² in r
-  var V0 {.noInit.}, V1 {.noInit.}: typeof(r.c0) # Double-precision
-  var t {.noInit.}: F # Single-width
-
-  # TODO: which is the best formulation? 3 squarings or 2 Mul?
-  # It seems like the higher the tower the better squarings are
-  # So for Fp12 = 2xFp6, prefer squarings.
-  V0.square2x(a0)
-  V1.square2x(a1)
-  t.sum(a0, a1)
-
-  # r0 = a0² + β a1² (option 1) <=> (a0 + a1)(a0 + β a1) - β a0a1 - a0a1 (option 2)
-  r.c0.prod2x(V1, NonResidue)
-  r.c0.sum2xMod(r.c0, V0)
-
-  # r1 = 2 a0 a1 (option 1) = (a0 + a1)² - a0² - a1² (option 2)
-  r.c1.square2x(t)
-  r.c1.diff2xMod(r.c1, V0)
-  r.c1.diff2xMod(r.c1, V1)
-
-# Sparse multiplication
-# -------------------------------------------------------------------
-
-func mul2x_sparse_by_x0*[Fdbl, F](
-       r: var QuadraticExt2x[Fdbl], a: QuadraticExt[F],
-       sparseB: auto) =
-  ## Multiply `a` by `b` with sparse coordinates (x, 0)
-  ## On a generic quadratic extension field
-  # Algorithm (with β the non-residue in the base field)
-  #
-  # r0 = a0 b0 + β a1 b1
-  # r1 = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1 (Karatsuba)
-  #
-  # with b1 = 0, hence
-  #
-  # r0 = a0 b0
-  # r1 = (a0 + a1) b0 - a0 b0 = a1 b0
-  static: doAssert Fdbl is doublePrec(F)
-
-  when typeof(sparseB) is typeof(a):
-    template b(): untyped = sparseB.c0
-  elif typeof(sparseB) is typeof(a.c0):
-    template b(): untyped = sparseB
-  else:
-    {.error: "sparseB type is " & $typeof(sparseB) &
-      " which does not match with either a (" & $typeof(a) &
-      ") or a.c0 (" & $typeof(a.c0) & ")".}
-
-  r.c0.prod2x(a.c0, b)
-  r.c1.prod2x(a.c1, b)
-
-func mul2x_sparse_by_0y*[Fdbl, F](
-       r: var QuadraticExt2x[Fdbl], a: QuadraticExt[F],
-       sparseB: auto) =
-  ## Multiply `a` by `b` with sparse coordinates (0, y)
-  ## On a generic quadratic extension field
-  # Algorithm (with β the non-residue in the base field)
-  #
-  # r0 = a0 b0 + β a1 b1
-  # r1 = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1 (Karatsuba)
-  #
-  # with b0 = 0, hence
-  #
-  # r0 = β a1 b1
-  # r1 = (a0 + a1) b1 - a1 b1 = a0 b1
-  static: doAssert Fdbl is doublePrec(F)
-
-  when typeof(sparseB) is typeof(a):
-    template b(): untyped = sparseB.c1
-  elif typeof(sparseB) is typeof(a.c0):
-    template b(): untyped = sparseB
-  else:
-    {.error: "sparseB type is " & $typeof(sparseB) &
-      " which does not match with either a (" & $typeof(a) &
-      ") or a.c0 (" & $typeof(a.c0) & ")".}
-
-  r.c0.prod2x(a.c1, b)
-  r.c0.prod2x(r.c0, NonResidue)
-  r.c1.prod2x(a.c0, b)
-
-# Inversion
-# -------------------------------------------------------------------
-
-func inv2xImpl(r: var QuadraticExt, a: QuadraticExt) =
-  ## Compute the multiplicative inverse of ``a``
-  ##
-  ## The inverse of 0 is 0.
-  ##
-  ## Inversion routine is using lazy reduction
-  mixin fromComplexExtension
-
-  # [2 Sqr, 1 Add]
-  var V0 {.noInit.}, V1 {.noInit.}: doublePrec(typeof(r.c0))
-  var t {.noInit.}: typeof(r.c0)
-  V0.square2x(a.c0)
-  V1.square2x(a.c1)
-  when r.fromComplexExtension():
-    V0.sum2xUnr(V0, V1)
-  else:
-    V1.prod2x(V1, NonResidue)
-    V0.diff2xMod(V0, V1)  # v0 = a0² - β a1² (the norm / squared magnitude of a)
-
-  # [1 Inv, 2 Sqr, 1 Add]
-  t.redc2x(V0)
-  t.inv()                  # v1 = 1 / (a0² - β a1²)
-
-  # [1 Inv, 2 Mul, 2 Sqr, 1 Add, 1 Neg]
-  r.c0.prod(a.c0, t)      # r0 = a0 / (a0² - β a1²)
-  t.neg()                 # v0 = -1 / (a0² - β a1²)
-  r.c1.prod(a.c1, t)      # r1 = -a1 / (a0² - β a1²)
-
-# Dispatch
-# ----------------------------------------------------------------------
-
-func prod2x_disjoint*[Fdbl, F](
-       r: var QuadraticExt2x[FDbl],
-       a: QuadraticExt[F],
-       b0, b1: F) =
-  ## Return (a0, a1) * (b0, b1) in r
-  r.prod2x_disjoint(a.c0, a.c1, b0, b1)
-
-func prod2x*(r: var QuadraticExt2x, a, b: QuadraticExt) =
-  mixin fromComplexExtension
-  when a.fromComplexExtension():
-    r.prod2x_complex(a, b)
-  else:
-    r.prod2x_disjoint(a.c0, a.c1, b.c0, b.c1)
-
-func square2x*(r: var QuadraticExt2x, a: QuadraticExt) =
-  mixin fromComplexExtension
-  when a.fromComplexExtension():
-    r.square2x_complex(a)
-  else:
-    r.square2x_disjoint(a.c0, a.c1)
-
-# ############################################################
-#                                                            #
-#            Cubic extensions - Lazy Reductions              #
-#                                                            #
-# ############################################################
-
-# Commutative ring implementation for Cubic Extension Fields
-# -------------------------------------------------------------------
-
-func square2x_Chung_Hasan_SQR2(r: var CubicExt2x, a: CubicExt) =
-  ## Returns r = a²
-  var m01{.noInit.}, m12{.noInit.}: typeof(r.c0) # double-width
-  var t{.noInit.}: typeof(a.c0)                  # single width
-
-  m01.prod2x(a.c0, a.c1)
-  m01.sum2xMod(m01, m01)  # 2a₀a₁
-  m12.prod2x(a.c1, a.c2)
-  m12.sum2xMod(m12, m12)  # 2a₁a₂
-  r.c0.square2x(a.c2)     # borrow r₀ = a₂² for a moment
-
-  # r₂ = (a₀ - a₁ + a₂)²
-  t.sum(a.c2, a.c0)
-  t -= a.c1
-  r.c2.square2x(t)
-
-  # r₂ = (a₀ - a₁ + a₂)² + 2a₀a₁ + 2a₁a₂ - a₂²
-  r.c2.sum2xMod(r.c2, m01)
-  r.c2.sum2xMod(r.c2, m12)
-  r.c2.diff2xMod(r.c2, r.c0)
-
-  # r₁ = 2a₀a₁ + β a₂²
-  r.c1.prod2x(r.c0, NonResidue)
-  r.c1.sum2xMod(r.c1, m01)
-
-  # r₂ = (a₀ - a₁ + a₂)² + 2a₀a₁ + 2a₁a₂ - a₀² - a₂²
-  r.c0.square2x(a.c0)
-  r.c2.diff2xMod(r.c2, r.c0)
-
-  # r₀ = a₀² + β 2a₁a₂
-  m12.prod2x(m12, NonResidue)
-  r.c0.sum2xMod(r.c0, m12)
-
-func prod2xImpl(r: var CubicExt2x, a, b: CubicExt) =
-  var V0 {.noInit.}, V1 {.noInit.}, V2 {.noinit.}: typeof(r.c0)
-  var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0)
-
-  V0.prod2x(a.c0, b.c0)
-  V1.prod2x(a.c1, b.c1)
-  V2.prod2x(a.c2, b.c2)
-
-  # r₀ = β ((a₁ + a₂)(b₁ + b₂) - v₁ - v₂) + v₀
-  when false: # CubicExt.has1extraBit():
-    t0.sumUnr(a.c1, a.c2)
-    t1.sumUnr(b.c1, b.c2)
-  else:
-    t0.sum(a.c1, a.c2)
-    t1.sum(b.c1, b.c2)
-  r.c0.prod2x(t0, t1) # r cannot alias a or b since it's double precision
-  r.c0.diff2xMod(r.c0, V1)
-  r.c0.diff2xMod(r.c0, V2)
-  r.c0.prod2x(r.c0, NonResidue)
-  r.c0.sum2xMod(r.c0, V0)
-
-  # r₁ = (a₀ + a₁) * (b₀ + b₁) - v₀ - v₁ + β v₂
-  when false: # CubicExt.has1extraBit():
-    t0.sumUnr(a.c0, a.c1)
-    t1.sumUnr(b.c0, b.c1)
-  else:
-    t0.sum(a.c0, a.c1)
-    t1.sum(b.c0, b.c1)
-  r.c1.prod2x(t0, t1)
-  r.c1.diff2xMod(r.c1, V0)
-  r.c1.diff2xMod(r.c1, V1)
-  r.c2.prod2x(V2, NonResidue) # r₂ is unused and cannot alias
-  r.c1.sum2xMod(r.c1, r.c2)
-
-  # r₂ = (a₀ + a₂) * (b₀ + b₂) - v₀ - v₂ + v₁
-  when false: # CubicExt.has1extraBit():
-    t0.sumUnr(a.c0, a.c2)
-    t1.sumUnr(b.c0, b.c2)
-  else:
-    t0.sum(a.c0, a.c2)
-    t1.sum(b.c0, b.c2)
-  r.c2.prod2x(t0, t1)
-  r.c2.diff2xMod(r.c2, V0)
-  r.c2.diff2xMod(r.c2, V2)
-  r.c2.sum2xMod(r.c2, V1)
-
-# Dispatch
-# ----------------------------------------------------------------------
-
-func square2x*(r: var CubicExt2x, a: CubicExt) {.inline.} =
-  ## Returns r = a²
-  square2x_Chung_Hasan_SQR2(r, a)
-
-func prod2x*(r: var CubicExt2x, a, b: CubicExt) {.inline.} =
-  ## Returns r = ab
-  prod2xImpl(r, a, b)
-
-# ############################################################
-#                                                            #
-#                Quadratic extensions                        #
-#                                                            #
-# ############################################################
-
-# Commutative ring implementation for complex quadratic extension fields
-# ----------------------------------------------------------------------
-
-func square_complex(r: var QuadraticExt, a: QuadraticExt) =
+func square_complex(r: var Fp2, a: Fp2) =
   ## Return a² in 𝔽p2 = 𝔽p[𝑖] in ``r``
   ## ``r`` is initialized/overwritten
   ##
@@ -814,7 +715,6 @@ func square_complex(r: var QuadraticExt, a: QuadraticExt) =
   # To handle aliasing between r and a, we need
   # r to be used only when a is unneeded
   # so we can't use r fields as a temporary
-  mixin fromComplexExtension
   static: doAssert r.fromComplexExtension()
 
   var v0 {.noInit.}, v1 {.noInit.}: typeof(r.c0)
@@ -825,7 +725,27 @@ func square_complex(r: var QuadraticExt, a: QuadraticExt) =
   r.c1.double()          # r.c1 = 2 c0 c1             [1 Mul, 2 Dbl, 1 Sub]
   r.c0.prod(v0, v1)      # r.c0 = (c0 + c1)(c0 - c1)  [2 Mul, 2 Dbl, 1 Sub]
 
-func prod_complex(r: var QuadraticExt, a, b: QuadraticExt) =
+func square2x_complex(r: var QuadraticExt2x, a: Fp2) =
+  ## Double-precision unreduced complex squaring
+  static: doAssert a.fromComplexExtension()
+
+  var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0)
+
+  when Fp2.has1extraBit():
+    t0.sumUnr(a.c1, a.c1)
+    t1.sumUnr(a.c0, a.c1)
+  else:
+    t0.double(a.c1)
+    t1.sum(a.c0, a.c1)
+
+  r.c1.prod2x(t0, a.c0)     # r1 = 2a0a1
+  t0.diff(a.c0, a.c1)
+  r.c0.prod2x(t0, t1)       # r0 = (a0 + a1)(a0 - a1)
+
+# Complex multiplications
+# ----------------------------------------------------------------------
+
+func prod_complex(r: var Fp2, a, b: Fp2) =
   ## Return a * b in 𝔽p2 = 𝔽p[𝑖] in ``r``
   ## ``r`` is initialized/overwritten
   ##
@@ -854,7 +774,6 @@ func prod_complex(r: var QuadraticExt, a, b: QuadraticExt) =
   # - 3 Substraction 𝔽p (2 are fused)
   # - 2 Addition 𝔽p
   # Stack: 6 * ModulusBitSize (4x 𝔽p element + 2x named temporaries + 1 in-place multiplication temporary)
-  mixin fromComplexExtension
   static: doAssert r.fromComplexExtension()
 
   var a0b0 {.noInit.}, a1b1 {.noInit.}: typeof(r.c0)
@@ -870,37 +789,32 @@ func prod_complex(r: var QuadraticExt, a, b: QuadraticExt) =
   r.c1 -= a0b0          # r1 = (b0 + b1)(a0 + a1) - a0b0        # [3 Mul, 2 Add, 2 Sub]
   r.c1 -= a1b1          # r1 = (b0 + b1)(a0 + a1) - a0b0 - a1b1 # [3 Mul, 2 Add, 3 Sub]
 
-func mul_sparse_complex_by_0y(
-       r: var QuadraticExt, a: QuadraticExt,
-       sparseB: auto) =
-  ## Multiply `a` by `b` with sparse coordinates (0, y)
-  ## On a complex quadratic extension field 𝔽p2 = 𝔽p[𝑖]
-  #
-  # r0 = a0 b0 - a1 b1
-  # r1 = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1 (Karatsuba)
-  #
-  # with b0 = 0, hence
-  #
-  # r0 = - a1 b1
-  # r1 = (a0 + a1) b1 - a1 b1 = a0 b1
-  mixin fromComplexExtension
-  static: doAssert r.fromComplexExtension()
+func prod2x_complex(r: var QuadraticExt2x, a, b: Fp2) =
+  ## Double-precision unreduced complex multiplication
+  # r and a or b cannot alias
+  static: doAssert a.fromComplexExtension()
 
-  when typeof(sparseB) is typeof(a):
-    template b(): untyped = sparseB.c1
-  elif typeof(sparseB) is typeof(a.c0):
-    template b(): untyped = sparseB
+  var D {.noInit.}: typeof(r.c0)
+  var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0)
+
+  r.c0.prod2x(a.c0, b.c0)        # r0 = a0 b0
+  D.prod2x(a.c1, b.c1)           # d =  a1 b1
+  when Fp2.has1extraBit():
+    t0.sumUnr(a.c0, a.c1)
+    t1.sumUnr(b.c0, b.c1)
   else:
-    {.error: "sparseB type is " & $typeof(sparseB) &
-      " which does not match with either a (" & $typeof(a) &
-      ") or a.c0 (" & $typeof(a.c0) & ")".}
+    t0.sum(a.c0, a.c1)
+    t1.sum(b.c0, b.c1)
+  r.c1.prod2x(t0, t1)            # r1 = (b0 + b1)(a0 + a1)
+  when Fp2.has1extraBit():
+    r.c1.diff2xUnr(r.c1, r.c0) # r1 = (b0 + b1)(a0 + a1) - a0 b0
+    r.c1.diff2xUnr(r.c1, D)    # r1 = (b0 + b1)(a0 + a1) - a0 b0 - a1b1
+  else:
+    r.c1.diff2xMod(r.c1, r.c0)
+    r.c1.diff2xMod(r.c1, D)
+  r.c0.diff2xMod(r.c0, D)        # r0 = a0 b0 - a1 b1
 
-  var t{.noInit.}: typeof(a.c0)
-  t.prod(a.c1, b)
-  r.c1.prod(a.c0, b)
-  r.c0.neg(t)
-
-# Commutative ring implementation for generic quadratic extension fields
+# Generic squarings
 # ----------------------------------------------------------------------
 
 func square_generic(r: var QuadraticExt, a: QuadraticExt) =
@@ -988,6 +902,32 @@ func square_generic(r: var QuadraticExt, a: QuadraticExt) =
     v1 *= NonResidue
     r.c0.diff(v0, v1)
 
+func square2x_disjoint*[Fdbl, F](
+       r: var QuadraticExt2x[FDbl],
+       a0, a1: F) =
+  ## Return (a0, a1)² in r
+  var V0 {.noInit.}, V1 {.noInit.}: typeof(r.c0) # Double-precision
+  var t {.noInit.}: F # Single-width
+
+  # TODO: which is the best formulation? 3 squarings or 2 Mul?
+  # It seems like the higher the tower the better squarings are
+  # So for Fp12 = 2xFp6, prefer squarings.
+  V0.square2x(a0)
+  V1.square2x(a1)
+  t.sum(a0, a1)
+
+  # r0 = a0² + β a1² (option 1) <=> (a0 + a1)(a0 + β a1) - β a0a1 - a0a1 (option 2)
+  r.c0.prod2x(V1, NonResidue)
+  r.c0.sum2xMod(r.c0, V0)
+
+  # r1 = 2 a0 a1 (option 1) = (a0 + a1)² - a0² - a1² (option 2)
+  r.c1.square2x(t)
+  r.c1.diff2xMod(r.c1, V0)
+  r.c1.diff2xMod(r.c1, V1)
+
+# Generic multiplications
+# ----------------------------------------------------------------------
+
 func prod_generic(r: var QuadraticExt, a, b: QuadraticExt) =
   ## Returns r = a * b
   # Algorithm (with β the non-residue in the base field)
@@ -1016,23 +956,53 @@ func prod_generic(r: var QuadraticExt, a, b: QuadraticExt) =
   v1 *= NonResidue
   r.c0.sum(v0, v1)
 
-# Sparse multiplication
+func prod2x_disjoint*[Fdbl, F](
+       r: var QuadraticExt2x[FDbl],
+       a0, a1: F,
+       b0, b1: F) =
+  ## Return a * (b0, b1) in r
+  static: doAssert Fdbl is doublePrec(F)
+
+  var V0 {.noInit.}, V1 {.noInit.}: typeof(r.c0) # Double-precision
+  var t0 {.noInit.}, t1 {.noInit.}: typeof(a0)   # Single-width
+
+  # Require 2 extra bits
+  V0.prod2x(a0, b0)             # v0 = a0b0
+  V1.prod2x(a1, b1)             # v1 = a1b1
+  when F.has1extraBit():
+    t0.sumUnr(a0, a1)
+    t1.sumUnr(b0, b1)
+  else:
+    t0.sum(a0, a1)
+    t1.sum(b0, b1)
+
+  r.c1.prod2x(t0, t1)           # r1 = (a0 + a1)(b0 + b1)
+  r.c1.diff2xMod(r.c1, V0)      # r1 = (a0 + a1)(b0 + b1) - a0b0
+  r.c1.diff2xMod(r.c1, V1)      # r1 = (a0 + a1)(b0 + b1) - a0b0 - a1b1
+
+  r.c0.prod2x(V1, NonResidue)   # r0 = β a1 b1
+  r.c0.sum2xMod(r.c0, V0)       # r0 = a0 b0 + β a1 b1
+
+# Sparse complex multiplication
 # -------------------------------------------------------------------
 
-func mul_sparse_generic_by_x0(r: var QuadraticExt, a: QuadraticExt, sparseB: auto) =
-  ## Multiply `a` by `b` with sparse coordinates (x, 0)
-  ## On a generic quadratic extension field
-  # Algorithm (with β the non-residue in the base field)
+func mul_sparse_complex_by_0y(
+       r: var QuadraticExt, a: QuadraticExt,
+       sparseB: auto) =
+  ## Multiply `a` by `b` with sparse coordinates (0, y)
+  ## On a complex quadratic extension field 𝔽p2 = 𝔽p[𝑖]
   #
-  # r0 = a0 b0 + β a1 b1
+  # r0 = a0 b0 - a1 b1
   # r1 = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1 (Karatsuba)
   #
-  # with b1 = 0, hence
+  # with b0 = 0, hence
   #
-  # r0 = a0 b0
-  # r1 = (a0 + a1) b0 - a0 b0 = a1 b0
+  # r0 = - a1 b1
+  # r1 = (a0 + a1) b1 - a1 b1 = a0 b1
+  static: doAssert r.fromComplexExtension()
+
   when typeof(sparseB) is typeof(a):
-    template b(): untyped = sparseB.c0
+    template b(): untyped = sparseB.c1
   elif typeof(sparseB) is typeof(a.c0):
     template b(): untyped = sparseB
   else:
@@ -1040,8 +1010,13 @@ func mul_sparse_generic_by_x0(r: var QuadraticExt, a: QuadraticExt, sparseB: aut
       " which does not match with either a (" & $typeof(a) &
       ") or a.c0 (" & $typeof(a.c0) & ")".}
 
-  r.c0.prod(a.c0, b)
-  r.c1.prod(a.c1, b)
+  var t{.noInit.}: typeof(a.c0)
+  t.prod(a.c1, b)
+  r.c1.prod(a.c0, b)
+  r.c0.neg(t)
+
+# Sparse generic multiplication
+# -------------------------------------------------------------------
 
 func mul_sparse_generic_by_0y(
        r: var QuadraticExt, a: QuadraticExt,
@@ -1096,6 +1071,87 @@ func mul_sparse_generic_by_0y(
   # aliasing: a unneeded now
   r.c0.prod(t, NonResidue)
 
+func mul_sparse_generic_by_x0(r: var QuadraticExt, a: QuadraticExt, sparseB: auto) =
+  ## Multiply `a` by `b` with sparse coordinates (x, 0)
+  ## On a generic quadratic extension field
+  # Algorithm (with β the non-residue in the base field)
+  #
+  # r0 = a0 b0 + β a1 b1
+  # r1 = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1 (Karatsuba)
+  #
+  # with b1 = 0, hence
+  #
+  # r0 = a0 b0
+  # r1 = (a0 + a1) b0 - a0 b0 = a1 b0
+  when typeof(sparseB) is typeof(a):
+    template b(): untyped = sparseB.c0
+  elif typeof(sparseB) is typeof(a.c0):
+    template b(): untyped = sparseB
+  else:
+    {.error: "sparseB type is " & $typeof(sparseB) &
+      " which does not match with either a (" & $typeof(a) &
+      ") or a.c0 (" & $typeof(a.c0) & ")".}
+
+  r.c0.prod(a.c0, b)
+  r.c1.prod(a.c1, b)
+
+func mul2x_sparse_by_x0*[Fdbl, F](
+       r: var QuadraticExt2x[Fdbl], a: QuadraticExt[F],
+       sparseB: auto) =
+  ## Multiply `a` by `b` with sparse coordinates (x, 0)
+  ## On a generic quadratic extension field
+  # Algorithm (with β the non-residue in the base field)
+  #
+  # r0 = a0 b0 + β a1 b1
+  # r1 = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1 (Karatsuba)
+  #
+  # with b1 = 0, hence
+  #
+  # r0 = a0 b0
+  # r1 = (a0 + a1) b0 - a0 b0 = a1 b0
+  static: doAssert Fdbl is doublePrec(F)
+
+  when typeof(sparseB) is typeof(a):
+    template b(): untyped = sparseB.c0
+  elif typeof(sparseB) is typeof(a.c0):
+    template b(): untyped = sparseB
+  else:
+    {.error: "sparseB type is " & $typeof(sparseB) &
+      " which does not match with either a (" & $typeof(a) &
+      ") or a.c0 (" & $typeof(a.c0) & ")".}
+
+  r.c0.prod2x(a.c0, b)
+  r.c1.prod2x(a.c1, b)
+
+func mul2x_sparse_by_0y*[Fdbl, F](
+       r: var QuadraticExt2x[Fdbl], a: QuadraticExt[F],
+       sparseB: auto) =
+  ## Multiply `a` by `b` with sparse coordinates (0, y)
+  ## On a generic quadratic extension field
+  # Algorithm (with β the non-residue in the base field)
+  #
+  # r0 = a0 b0 + β a1 b1
+  # r1 = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1 (Karatsuba)
+  #
+  # with b0 = 0, hence
+  #
+  # r0 = β a1 b1
+  # r1 = (a0 + a1) b1 - a1 b1 = a0 b1
+  static: doAssert Fdbl is doublePrec(F)
+
+  when typeof(sparseB) is typeof(a):
+    template b(): untyped = sparseB.c1
+  elif typeof(sparseB) is typeof(a.c0):
+    template b(): untyped = sparseB
+  else:
+    {.error: "sparseB type is " & $typeof(sparseB) &
+      " which does not match with either a (" & $typeof(a) &
+      ") or a.c0 (" & $typeof(a.c0) & ")".}
+
+  r.c0.prod2x(a.c1, b)
+  r.c0.prod2x(r.c0, NonResidue)
+  r.c1.prod2x(a.c0, b)
+
 # Inversion
 # -------------------------------------------------------------------
 
@@ -1111,7 +1167,6 @@ func invImpl(r: var QuadraticExt, a: QuadraticExt) =
   # with w being our coordinate system and β the quadratic non-residue
   # we have w² = β
   # So the inverse is (a0 - a1 w) / (a0² - β a1²)
-  mixin fromComplexExtension
 
   # [2 Sqr, 1 Add]
   var v0 {.noInit.}, v1 {.noInit.}: typeof(r.c0)
@@ -1131,11 +1186,45 @@ func invImpl(r: var QuadraticExt, a: QuadraticExt) =
   v0.neg(v1)              # v0 = -1 / (a0² - β a1²)
   r.c1.prod(a.c1, v0)     # r1 = -a1 / (a0² - β a1²)
 
-# Exported quadratic symbols
-# -------------------------------------------------------------------
+func inv2xImpl(r: var QuadraticExt, a: QuadraticExt) =
+  ## Compute the multiplicative inverse of ``a``
+  ##
+  ## The inverse of 0 is 0.
+  ##
+  ## Inversion routine is using lazy reduction
+
+  # [2 Sqr, 1 Add]
+  var V0 {.noInit.}, V1 {.noInit.}: doublePrec(typeof(r.c0))
+  var t {.noInit.}: typeof(r.c0)
+  V0.square2x(a.c0)
+  V1.square2x(a.c1)
+  when r.fromComplexExtension():
+    V0.sum2xUnr(V0, V1)
+  else:
+    V1.prod2x(V1, NonResidue)
+    V0.diff2xMod(V0, V1)  # v0 = a0² - β a1² (the norm / squared magnitude of a)
+
+  # [1 Inv, 2 Sqr, 1 Add]
+  t.redc2x(V0)
+  t.inv()                  # v1 = 1 / (a0² - β a1²)
+
+  # [1 Inv, 2 Mul, 2 Sqr, 1 Add, 1 Neg]
+  r.c0.prod(a.c0, t)      # r0 = a0 / (a0² - β a1²)
+  t.neg()                 # v0 = -1 / (a0² - β a1²)
+  r.c1.prod(a.c1, t)      # r1 = -a1 / (a0² - β a1²)
+
+# Dispatch
+# ----------------------------------------------------------------------
+
+{.push inline.}
+
+func square2x*(r: var QuadraticExt2x, a: QuadraticExt) =
+  when a.fromComplexExtension():
+    r.square2x_complex(a)
+  else:
+    r.square2x_disjoint(a.c0, a.c1)
 
 func square*(r: var QuadraticExt, a: QuadraticExt) =
-  mixin fromComplexExtension
   when r.fromComplexExtension():
     when true:
       r.square_complex(a)
@@ -1159,8 +1248,13 @@ func square*(r: var QuadraticExt, a: QuadraticExt) =
       r.c0.redc2x(d.c0)
       r.c1.redc2x(d.c1)
 
+func square*(a: var QuadraticExt) =
+  ## In-place squaring
+  a.square(a)
+
 func prod*(r: var QuadraticExt, a, b: QuadraticExt) =
-  mixin fromComplexExtension
+  ## Multiplication r <- a*b
+
   when r.fromComplexExtension():
     when false:
       r.prod_complex(a, b)
@@ -1175,11 +1269,81 @@ func prod*(r: var QuadraticExt, a, b: QuadraticExt) =
       r.prod_generic(a, b)
     else:
       var d {.noInit.}: doublePrec(typeof(r))
-      d.prod2x_disjoint(a, b.c0, b.c1)
+      d.prod2x_disjoint(a.c0, a.c1, b.c0, b.c1)
       r.c0.redc2x(d.c0)
       r.c1.redc2x(d.c1)
 
-{.push inline.}
+func `*=`*(a: var QuadraticExt, b: QuadraticExt) =
+  ## In-place multiplication
+  a.prod(a, b)
+
+func prod2x_disjoint*[Fdbl, F](
+       r: var QuadraticExt2x[FDbl],
+       a: QuadraticExt[F],
+       b0, b1: F) =
+  ## Return (a0, a1) * (b0, b1) in r
+  r.prod2x_disjoint(a.c0, a.c1, b0, b1)
+
+func prod2x*(r: var QuadraticExt2x, a, b: QuadraticExt) =
+  ## Double-precision multiplication r <- a*b
+  when a.fromComplexExtension():
+    r.prod2x_complex(a, b)
+  else:
+    r.prod2x_disjoint(a.c0, a.c1, b.c0, b.c1)
+
+func mul_sparse_by_0y*(r: var QuadraticExt, a: QuadraticExt, sparseB: auto) =
+  ## Sparse multiplication
+  when a.fromComplexExtension():
+    r.mul_sparse_complex_by_0y(a, sparseB)
+  else:
+    r.mul_sparse_generic_by_0y(a, sparseB)
+
+func mul_sparse_by_0y*(r: var QuadraticExt, a: QuadraticExt, sparseB: static int) =
+  ## Sparse multiplication
+  when a.fromComplexExtension():
+    {.error: "Not implemented.".}
+  else:
+    r.mul_sparse_generic_by_0y(a, sparseB)
+
+func mul_sparse_by_0y*(a: var QuadraticExt, sparseB: auto) =
+  ## Sparse in-place multiplication
+  a.mul_sparse_by_0y(a, sparseB)
+
+func mul_sparse_by_x0*(a: var QuadraticExt, sparseB: QuadraticExt) =
+  ## Sparse in-place multiplication
+  a.mul_sparse_generic_by_x0(a, sparseB)
+
+template mulCheckSparse*(a: var QuadraticExt, b: QuadraticExt) =
+  when b.isOne().bool:
+    discard
+  elif b.isMinusOne().bool:
+    a.neg()
+  elif b.c0.isZero().bool and b.c1.isOne().bool:
+    var t {.noInit.}: type(a.c0)
+    when fromComplexExtension(b):
+      t.neg(a.c1)
+      a.c1 = a.c0
+      a.c0 = t
+    else:
+      t.prod(a.c1, NonResidue)
+      a.c1 = a.c0
+      a.c0 = t
+  elif b.c0.isZero().bool and b.c1.isMinusOne().bool:
+    var t {.noInit.}: type(a.c0)
+    when fromComplexExtension(b):
+      t = a.c1
+      a.c1.neg(a.c0)
+      a.c0 = t
+    else:
+      t.prod(a.c1, NonResidue)
+      a.c1.neg(a.c0)
+      a.c0.neg(t)
+  elif b.c0.isZero().bool:
+    a.mul_sparse_by_0y(b)
+  elif b.c1.isZero().bool:
+    a.mul_sparse_by_x0(b)
+  else:
+    a *= b
 
 func inv*(r: var QuadraticExt, a: QuadraticExt) =
   ## Compute the multiplicative inverse of ``a``
@@ -1202,38 +1366,6 @@ func inv*(a: var QuadraticExt) =
   ## to affine for elliptic curve
   a.inv(a)
 
-func `*=`*(a: var QuadraticExt, b: QuadraticExt) =
-  ## In-place multiplication
-  a.prod(a, b)
-
-func square*(a: var QuadraticExt) =
-  ## In-place squaring
-  a.square(a)
-
-func mul_sparse_by_0y*(r: var QuadraticExt, a: QuadraticExt, sparseB: auto) =
-  ## Sparse multiplication
-  mixin fromComplexExtension
-  when a.fromComplexExtension():
-    r.mul_sparse_complex_by_0y(a, sparseB)
-  else:
-    r.mul_sparse_generic_by_0y(a, sparseB)
-
-func mul_sparse_by_0y*(r: var QuadraticExt, a: QuadraticExt, sparseB: static int) =
-  ## Sparse multiplication
-  mixin fromComplexExtension
-  when a.fromComplexExtension():
-    {.error: "Not implemented.".}
-  else:
-    r.mul_sparse_generic_by_0y(a, sparseB)
-
-func mul_sparse_by_0y*(a: var QuadraticExt, sparseB: auto) =
-  ## Sparse in-place multiplication
-  a.mul_sparse_by_0y(a, sparseB)
-
-func mul_sparse_by_x0*(a: var QuadraticExt, sparseB: QuadraticExt) =
-  ## Sparse in-place multiplication
-  a.mul_sparse_generic_by_x0(a, sparseB)
-
 {.pop.} # inline
 
 # ############################################################
@@ -1242,7 +1374,7 @@ func mul_sparse_by_x0*(a: var QuadraticExt, sparseB: QuadraticExt) =
 #                                                            #
 # ############################################################
 
-# Commutative ring implementation for Cubic Extension Fields
+# Squarings
 # -------------------------------------------------------------------
 # Cubic extensions can use specific squaring procedures
 # beyond Schoolbook and Karatsuba:
@@ -1308,6 +1440,39 @@ func square_Chung_Hasan_SQR2(r: var CubicExt, a: CubicExt) {.used.}=
   r.c0.prod(m12, NonResidue)
   r.c0 += s0
 
+func square2x_Chung_Hasan_SQR2(r: var CubicExt2x, a: CubicExt) =
+  ## Returns r = a²
+  var m01{.noInit.}, m12{.noInit.}: typeof(r.c0) # double-width
+  var t{.noInit.}: typeof(a.c0)                  # single width
+
+  m01.prod2x(a.c0, a.c1)
+  m01.sum2xMod(m01, m01)  # 2a₀a₁
+  m12.prod2x(a.c1, a.c2)
+  m12.sum2xMod(m12, m12)  # 2a₁a₂
+  r.c0.square2x(a.c2)     # borrow r₀ = a₂² for a moment
+
+  # r₂ = (a₀ - a₁ + a₂)²
+  t.sum(a.c2, a.c0)
+  t -= a.c1
+  r.c2.square2x(t)
+
+  # r₂ = (a₀ - a₁ + a₂)² + 2a₀a₁ + 2a₁a₂ - a₂²
+  r.c2.sum2xMod(r.c2, m01)
+  r.c2.sum2xMod(r.c2, m12)
+  r.c2.diff2xMod(r.c2, r.c0)
+
+  # r₁ = 2a₀a₁ + β a₂²
+  r.c1.prod2x(r.c0, NonResidue)
+  r.c1.sum2xMod(r.c1, m01)
+
+  # r₂ = (a₀ - a₁ + a₂)² + 2a₀a₁ + 2a₁a₂ - a₀² - a₂²
+  r.c0.square2x(a.c0)
+  r.c2.diff2xMod(r.c2, r.c0)
+
+  # r₀ = a₀² + β 2a₁a₂
+  m12.prod2x(m12, NonResidue)
+  r.c0.sum2xMod(r.c0, m12)
+
 func square_Chung_Hasan_SQR3(r: var CubicExt, a: CubicExt) =
   ## Returns r = a²
   var s0{.noInit.}, t{.noInit.}, m12{.noInit.}: typeof(r.c0)
@@ -1340,6 +1505,9 @@ func square_Chung_Hasan_SQR3(r: var CubicExt, a: CubicExt) =
   r.c2 -= s0
   r.c0.prod(m12, NonResidue)
   r.c0 += s0
+
+# Multiplications
+# -------------------------------------------------------------------
 
 func prodImpl(r: var CubicExt, a, b: CubicExt) =
   ## Returns r = a * b  # Algorithm is Karatsuba
@@ -1379,11 +1547,89 @@ func prodImpl(r: var CubicExt, a, b: CubicExt) =
   # Finish r₀
   r.c0.sum(t0, v0)
 
+func prod2xImpl(r: var CubicExt2x, a, b: CubicExt) =
+  var V0 {.noInit.}, V1 {.noInit.}, V2 {.noinit.}: typeof(r.c0)
+  var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0)
+
+  V0.prod2x(a.c0, b.c0)
+  V1.prod2x(a.c1, b.c1)
+  V2.prod2x(a.c2, b.c2)
+
+  # r₀ = β ((a₁ + a₂)(b₁ + b₂) - v₁ - v₂) + v₀
+  when false: # CubicExt.has1extraBit():
+    t0.sumUnr(a.c1, a.c2)
+    t1.sumUnr(b.c1, b.c2)
+  else:
+    t0.sum(a.c1, a.c2)
+    t1.sum(b.c1, b.c2)
+  r.c0.prod2x(t0, t1) # r cannot alias a or b since it's double precision
+  r.c0.diff2xMod(r.c0, V1)
+  r.c0.diff2xMod(r.c0, V2)
+  r.c0.prod2x(r.c0, NonResidue)
+  r.c0.sum2xMod(r.c0, V0)
+
+  # r₁ = (a₀ + a₁) * (b₀ + b₁) - v₀ - v₁ + β v₂
+  when false: # CubicExt.has1extraBit():
+    t0.sumUnr(a.c0, a.c1)
+    t1.sumUnr(b.c0, b.c1)
+  else:
+    t0.sum(a.c0, a.c1)
+    t1.sum(b.c0, b.c1)
+  r.c1.prod2x(t0, t1)
+  r.c1.diff2xMod(r.c1, V0)
+  r.c1.diff2xMod(r.c1, V1)
+  r.c2.prod2x(V2, NonResidue) # r₂ is unused and cannot alias
+  r.c1.sum2xMod(r.c1, r.c2)
+
+  # r₂ = (a₀ + a₂) * (b₀ + b₂) - v₀ - v₂ + v₁
+  when false: # CubicExt.has1extraBit():
+    t0.sumUnr(a.c0, a.c2)
+    t1.sumUnr(b.c0, b.c2)
+  else:
+    t0.sum(a.c0, a.c2)
+    t1.sum(b.c0, b.c2)
+  r.c2.prod2x(t0, t1)
+  r.c2.diff2xMod(r.c2, V0)
+  r.c2.diff2xMod(r.c2, V2)
+  r.c2.sum2xMod(r.c2, V1)
+
 # Sparse multiplication
-# -------------------------------------------------------------------
+# ----------------------------------------------------------------------
+
+func mul_sparse_by_0y0*(r: var CubicExt, a: CubicExt, sparseB: auto) =
+  ## Sparse multiplication of a cubic extenion element
+  ## with coordinates (a₀, a₁, a₂) by (0, b₁, 0)
+
+  # v0 = a0 b0 = 0
+  # v1 = a1 b1
+  # v2 = a2 b2 = 0
+  #
+  # r0 = ξ ((a1 + a2) * (b1 + b2) - v1 - v2) + v0
+  #    = ξ (a1 b1 + a2 b1 - v1)
+  #    = ξ a2 b1
+  # r1 = (a0 + a1) * (b0 + b1) - v0 - v1 + ξ v2
+  #    = a0 b1 + a1 b1 - v1
+  #    = a0 b1
+  # r2 = (a0 + a2) * (b0 + b2) - v0 - v2 + v1
+  #    = v1
+  #    = a1 b1
+
+  when typeof(sparseB) is typeof(a):
+    template b(): untyped = sparseB.c1
+  elif typeof(sparseB) is typeof(a.c0):
+    template b(): untyped = sparseB
+  else:
+    {.error: "sparseB type is " & $typeof(sparseB) &
+      " which does not match with either a (" & $typeof(a) &
+      ") or a.c0 (" & $typeof(a.c0) & ")".}
+
+  r.c0.prod(a.c2, b)
+  r.c0 *= NonResidue
+  r.c1.prod(a.c0, b)
+  r.c2.prod(a.c1, b)
 
 # Inversion
-# -------------------------------------------------------------------
+# ----------------------------------------------------------------------
 
 func invImpl(r: var CubicExt, a: CubicExt) =
   ## Compute the multiplicative inverse of ``a``
@@ -1440,8 +1686,9 @@ func invImpl(r: var CubicExt, a: CubicExt) =
   r.c1.prod(B, t)
   r.c2.prod(C, t)
 
-# Exported cubic symbols
-# -------------------------------------------------------------------
+# Dispatch
+# ----------------------------------------------------------------------
+
 {.push inline.}
 
 func square*(r: var CubicExt, a: CubicExt) =
@@ -1460,6 +1707,10 @@ func square*(a: var CubicExt) =
   ## In-place squaring
   a.square(a)
 
+func square2x*(r: var CubicExt2x, a: CubicExt) =
+  ## Returns r = a²
+  square2x_Chung_Hasan_SQR2(r, a)
+
 func prod*(r: var CubicExt, a, b: CubicExt) =
   ## In-place multiplication
   when CubicExt.F.C == BW6_761: # Too large
@@ -1470,6 +1721,10 @@ func prod*(r: var CubicExt, a, b: CubicExt) =
     r.c0.redc2x(d.c0)
     r.c1.redc2x(d.c1)
     r.c2.redc2x(d.c2)
+
+func prod2x*(r: var CubicExt2x, a, b: CubicExt) =
+  ## Returns r = ab
+  prod2xImpl(r, a, b)
 
 func `*=`*(a: var CubicExt, b: CubicExt) =
   ## In-place multiplication
