@@ -40,7 +40,7 @@ proc mulx_by_word(
        t: OperandArray,
        a: Operand, # Pointer in scratchspace
        word0: Operand,
-       lo, rRDX: Operand
+       lo: Operand
      ) =
   ## Multiply the `a[0..<N]` by `word` and store in `t[0..<N]`
   ## and carry register `C` (t[N])
@@ -55,7 +55,7 @@ proc mulx_by_word(
   #  (C,t[j])  := t[j] + a[j]*b[i] + C
 
   # First limb
-  ctx.mov rRDX, word0
+  ctx.mov rdx, word0
   if N > 1:
     ctx.mulx t[1], t[0], a[0], rdx
     ctx.`xor` hi, hi # Clear flags - TODO: necessary?
@@ -87,20 +87,19 @@ proc mulaccx_by_word(
        a: Operand, # Pointer in scratchspace
        i: int,
        word: Operand,
-       lo, rRDX: Operand
+       lo: Operand
      ) =
   ## Multiply the `a[0..<N]` by `word`
   ## and accumulate in `t[0..<N]`
   ## and carry register `C` (t[N])
   ## `t` and `C` are multiply-accumulated
   ## `S` is a scratchspace register
-  ## `rRDX` is the RDX register descriptor
   let N = min(a.len, t.len)
 
   doAssert i != 0
 
   ctx.comment "  Outer loop i = " & $i & ", j in [0, " & $N & ")"
-  ctx.mov rRDX, word
+  ctx.mov rdx, word
   ctx.`xor` hi, hi # Clear flags - TODO: necessary?
 
   # for j=0 to N-1
@@ -119,9 +118,9 @@ proc mulaccx_by_word(
 
   # Final carries
   ctx.comment "  Accumulate last carries in hi word"
-  ctx.mov  rRDX, 0 # Set to 0 without clearing flags
-  ctx.adcx hi, rRDX
-  ctx.adox hi, rRDX
+  ctx.mov  rdx, 0 # Set to 0 without clearing flags
+  ctx.adcx hi, rdx
+  ctx.adox hi, rdx
 
 proc partialRedx(
        ctx: var Assembler_x86,
@@ -129,7 +128,7 @@ proc partialRedx(
        t: OperandArray,
        M: OperandArray,
        m0ninv: Operand,
-       lo, S, rRDX: Operand
+       lo, S: Operand
      ) =
     ## Partial Montgomery reduction
     ## For CIOS method
@@ -145,8 +144,8 @@ proc partialRedx(
     # m = t[0] * m0ninv mod 2^w
     ctx.comment "  Reduction"
     ctx.comment "  m = t[0] * m0ninv mod 2^w"
-    ctx.mov  rRDX, t[0]
-    ctx.mulx S, rRDX, m0ninv, rdx # (S, RDX) <- m0ninv * RDX
+    ctx.mov  rdx, t[0]
+    ctx.mulx S, rdx, m0ninv, rdx # (S, RDX) <- m0ninv * RDX
 
     # Clear carry flags - TODO: necessary?
     ctx.`xor` S, S
@@ -194,16 +193,7 @@ macro montMul_CIOS_nocarry_adx_bmi2_gen[N: static int](r_MM: var Limbs[N], a_MM,
     # MultiPurpose Register slots
     scratch = init(OperandArray, nimSymbol = ident"scratch", scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
 
-    # MULX requires RDX
-    rRDX = Operand(
-      desc: OperandDesc(
-        asmId: "[rdx]",
-        nimSymbol: ident"rdx",
-        rm: RDX,
-        constraint: Output_EarlyClobber,
-        cEmit: "rdx"
-      )
-    )
+    # MULX requires RDX as well
 
     a = scratch[0].asArrayAddr(len = N) # Store the `a` operand
     b = scratch[1].asArrayAddr(len = N) # Store the `b` operand
@@ -225,15 +215,12 @@ macro montMul_CIOS_nocarry_adx_bmi2_gen[N: static int](r_MM: var Limbs[N], a_MM,
 
   let tsym = t.nimSymbol
   let scratchSym = scratch.nimSymbol
-  let edx = rRDX.desc.nimSymbol
   result.add quote do:
     static: doAssert: sizeof(SecretWord) == sizeof(ByteAddress)
 
     var `tsym`: typeof(`r_MM`) # zero init
     # Assumes 64-bit limbs on 64-bit arch (or you can't store an address)
     var `scratchSym` {.noInit.}: Limbs[`scratchSlots`]
-    var `edx`{.noInit.}: BaseType
-
     `scratchSym`[0] = cast[SecretWord](`a_MM`[0].unsafeAddr)
     `scratchSym`[1] = cast[SecretWord](`b_MM`[0].unsafeAddr)
     `scratchSym`[4] = SecretWord `m0ninv_MM`
@@ -258,20 +245,20 @@ macro montMul_CIOS_nocarry_adx_bmi2_gen[N: static int](r_MM: var Limbs[N], a_MM,
         A, t,
         a,
         b[0],
-        C, rRDX
+        C
       )
     else:
       ctx.mulaccx_by_word(
         A, t,
         a, i,
         b[i],
-        C, rRDX
+        C
       )
 
     ctx.partialRedx(
       A, t,
       M, m0ninv,
-      lo, C, rRDX
+      lo, C
     )
 
   ctx.finalSubNoCarry(

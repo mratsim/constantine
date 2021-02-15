@@ -35,15 +35,13 @@ static: doAssert UseASM_X86_64
 # Montgomery reduction
 # ------------------------------------------------------------
 
-macro montyRedc2xx_gen[N: static int](
+macro montyRedc2x_gen[N: static int](
        r_MR: var array[N, SecretWord],
        a_MR: array[N*2, SecretWord],
        M_MR: array[N, SecretWord],
        m0ninv_MR: BaseType,
        spareBits: static int
       ) =
-  # TODO, slower than Clang, in particular due to the shadowing
-
   result = newStmtList()
 
   var ctx = init(Assembler_x86, BaseType)
@@ -51,59 +49,29 @@ macro montyRedc2xx_gen[N: static int](
     # We could force M as immediate by specializing per moduli
     M = init(OperandArray, nimSymbol = M_MR, N, PointerInReg, Input)
 
-    hi = Operand(
-      desc: OperandDesc(
-        asmId: "[hi]",
-        nimSymbol: ident"hi",
-        rm: Reg,
-        constraint: Output_EarlyClobber,
-        cEmit: "hi"
-      )
-    )
+  let uSlots = N+1
+  let vSlots = max(N-1, 5)
 
-    lo = Operand(
-      desc: OperandDesc(
-        asmId: "[lo]",
-        nimSymbol: ident"lo",
-        rm: Reg,
-        constraint: Output_EarlyClobber,
-        cEmit: "lo"
-      )
-    )
-
-    rRDX = Operand(
-      desc: OperandDesc(
-        asmId: "[rdx]",
-        nimSymbol: ident"rdx",
-        rm: RDX,
-        constraint: InputOutput_EnsureClobber,
-        cEmit: "rdx"
-      )
-    )
-
-    m0ninv = Operand(
-      desc: OperandDesc(
-        asmId: "[m0ninv]",
-        nimSymbol: m0ninv_MR,
-        rm: Reg,
-        constraint: Input,
-        cEmit: "m0ninv"
-      )
-    )
-
-  let scratchSlots = N+1
-  var scratch = init(OperandArray, nimSymbol = ident"scratch", scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
+  var # Scratchspaces
+    u = init(OperandArray, nimSymbol = ident"U", uSlots, ElemsInReg, InputOutput_EnsureClobber)
+    v = init(OperandArray, nimSymbol = ident"V", vSlots, ElemsInReg, InputOutput_EnsureClobber)
 
   # Prologue
-  let edx = rRDX.desc.nimSymbol
-  let hisym = hi.desc.nimSymbol
-  let losym = lo.desc.nimSymbol
-  let scratchSym = scratch.nimSymbol
+  let usym = u.nimSymbol
+  let vsym = v.nimSymbol
   result.add quote do:
     static: doAssert: sizeof(SecretWord) == sizeof(ByteAddress)
+    var `usym`{.noinit.}: Limbs[`uSlots`]
+    var `vsym` {.noInit.}: Limbs[`vSlots`]
+    `vsym`[0] = cast[SecretWord](`r_MR`[0].unsafeAddr)
+    `vsym`[1] = cast[SecretWord](`a_MR`[0].unsafeAddr)
+    `vsym`[2] = SecretWord(`m0ninv_MR`)
 
-    var `hisym`{.noInit.}, `losym`{.noInit.}, `edx`{.noInit.}: BaseType
-    var `scratchSym` {.noInit.}: Limbs[`scratchSlots`]
+  let r_temp = v[0].asArrayAddr(len = N)
+  let a = v[1].asArrayAddr(len = 2*N)
+  let m0ninv = v[2]
+  let lo = v[3]
+  let hi = v[4]
 
   # Algorithm
   # ---------------------------------------------------------
@@ -122,63 +90,52 @@ macro montyRedc2xx_gen[N: static int](
   # No register spilling handling
   doAssert N <= 6, "The Assembly-optimized montgomery multiplication requires at most 6 limbs."
 
-  result.add quote do:
-    `edx` = BaseType(`m0ninv_MR`)
-    staticFor i, 0, `N`: # Do NOT use Nim slice/toOpenArray, they are not inlined
-      `scratchSym`[i] = `a_MR`[i]
+  ctx.mov rdx, m0ninv
+
+  for i in 0 ..< N:
+    ctx.mov u[i], a[i]
 
   for i in 0 ..< N:
     # RDX contains m0ninv at the start of each loop
     ctx.comment ""
-    ctx.imul rRDX, scratch[0] # m <- a[i] * m0ninv mod 2^w
+    ctx.imul rdx, u[0] # m <- a[i] * m0ninv mod 2^w
     ctx.comment "---- Reduction " & $i
-    ctx.`xor` scratch[N], scratch[N]
+    ctx.`xor` u[N], u[N]
 
     for j in 0 ..< N-1:
       ctx.comment ""
       ctx.mulx hi, lo, M[j], rdx
-      ctx.adcx scratch[j], lo
-      ctx.adox scratch[j+1], hi
+      ctx.adcx u[j], lo
+      ctx.adox u[j+1], hi
 
     # Last limb
     ctx.comment ""
     ctx.mulx hi, lo, M[N-1], rdx
-    ctx.mov rRDX, m0ninv # Reload m0ninv for next iter
-    ctx.adcx scratch[N-1], lo
-    ctx.adox hi, scratch[N]
-    ctx.adcx scratch[N], hi
+    ctx.mov rdx, m0ninv # Reload m0ninv for next iter
+    ctx.adcx u[N-1], lo
+    ctx.adox hi, u[N]
+    ctx.adcx u[N], hi
 
-    scratch.rotateLeft()
+    u.rotateLeft()
 
-  # Code generation
-  result.add ctx.generate()
-
-  # New codegen
-  ctx = init(Assembler_x86, BaseType)
-
-  let r = init(OperandArray, nimSymbol = r_MR, N, PointerInReg, InputOutput_EnsureClobber)
-  let a = init(OperandArray, nimSymbol = a_MR, N*2, PointerInReg, Input)
-  let extraRegNeeded = N-1
-  let t = init(OperandArray, nimSymbol = ident"t", extraRegNeeded, ElemsInReg, InputOutput_EnsureClobber)
-  let tsym = t.nimSymbol
-  result.add quote do:
-    var `tsym` {.noInit.}: Limbs[`extraRegNeeded`]
+  ctx.mov rdx, r_temp
+  let r = rdx.asArrayAddr(len = N)
 
   # This does a[i+n] += hi
   # but in a separate carry chain, fused with the
   # copy "r[i] = a[i+n]"
   for i in 0 ..< N:
     if i == 0:
-      ctx.add scratch[i], a[i+N]
+      ctx.add u[i], a[i+N]
     else:
-      ctx.adc scratch[i], a[i+N]
+      ctx.adc u[i], a[i+N]
 
-  let reuse = repackRegisters(t, scratch[N])
+  let t = repackRegisters(v, u[N])
 
   if spareBits >= 1:
-    ctx.finalSubNoCarry(r, scratch, M, reuse)
+    ctx.finalSubNoCarry(r, u, M, t)
   else:
-    ctx.finalSubCanOverflow(r, scratch, M, reuse, hi)
+    ctx.finalSubCanOverflow(r, u, M, t, hi)
 
   # Code generation
   result.add ctx.generate()
@@ -191,4 +148,4 @@ func montRed_asm_adx_bmi2*[N: static int](
        spareBits: static int
       ) =
   ## Constant-time Montgomery reduction
-  montyRedc2xx_gen(r, a, M, m0ninv, spareBits)
+  montyRedc2x_gen(r, a, M, m0ninv, spareBits)

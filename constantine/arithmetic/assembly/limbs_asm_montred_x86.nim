@@ -41,7 +41,7 @@ proc finalSubNoCarry*(
       ctx.sbb scratch[i], M[i]
 
   # If we borrowed it means that we were smaller than
-  # the modulus and we don'a need "scratch"
+  # the modulus and we don't need "scratch"
   for i in 0 ..< N:
     ctx.cmovnc a[i], scratch[i]
     ctx.mov r[i], a[i]
@@ -50,7 +50,7 @@ proc finalSubCanOverflow*(
        ctx: var Assembler_x86,
        r: Operand or OperandArray,
        a, M, scratch: OperandArray,
-       overflowReg: Operand
+       overflowReg: Operand or Register
      ) =
   ## Reduce `a` into `r` modulo `M`
   ## To be used when the final substraction can
@@ -74,7 +74,7 @@ proc finalSubCanOverflow*(
   ctx.sbb overflowReg, 0
 
   # If we borrowed it means that we were smaller than
-  # the modulus and we don'a need "scratch"
+  # the modulus and we don't need "scratch"
   for i in 0 ..< N:
     ctx.cmovnc a[i], scratch[i]
     ctx.mov r[i], a[i]
@@ -90,59 +90,37 @@ macro montyRedc2x_gen[N: static int](
        m0ninv_MR: BaseType,
        spareBits: static int
       ) =
-  # TODO, slower than Clang, in particular due to the shadowing
-
   result = newStmtList()
 
   var ctx = init(Assembler_x86, BaseType)
+  # On x86, compilers only let us use 15 out of 16 registers
+  # RAX and RDX are defacto used due to the MUL instructions
+  # so we store everything in scratchspaces restoring as needed
   let
     # We could force M as immediate by specializing per moduli
     M = init(OperandArray, nimSymbol = M_MR, N, PointerInReg, Input)
-
     # MUL requires RAX and RDX
-    rRAX = Operand(
-      desc: OperandDesc(
-        asmId: "[rax]",
-        nimSymbol: ident"rax",
-        rm: RAX,
-        constraint: InputOutput_EnsureClobber,
-        cEmit: "rax"
-      )
-    )
 
-    rRDX = Operand(
-      desc: OperandDesc(
-        asmId: "[rdx]",
-        nimSymbol: ident"rdx",
-        rm: RDX,
-        constraint: Output_EarlyClobber,
-        cEmit: "rdx"
-      )
-    )
+  let uSlots = N+2
+  let vSlots = max(N-2, 3)
 
-    m0ninv = Operand(
-      desc: OperandDesc(
-        asmId: "[m0ninv]",
-        nimSymbol: m0ninv_MR,
-        rm: Reg,
-        constraint: Input,
-        cEmit: "m0ninv"
-      )
-    )
-
-
-  let scratchSlots = N+2
-  var scratch = init(OperandArray, nimSymbol = ident"scratch", scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
+  var # Scratchspaces
+    u = init(OperandArray, nimSymbol = ident"U", uSlots, ElemsInReg, InputOutput_EnsureClobber)
+    v = init(OperandArray, nimSymbol = ident"V", vSlots, ElemsInReg, InputOutput_EnsureClobber)
 
   # Prologue
-  let eax = rRAX.desc.nimSymbol
-  let edx = rRDX.desc.nimSymbol
-  let scratchSym = scratch.nimSymbol
+  let usym = u.nimSymbol
+  let vsym = v.nimSymbol
   result.add quote do:
-    static: doAssert: sizeof(SecretWord) == sizeof(ByteAddress)
+    var `usym`{.noinit.}: Limbs[`uSlots`]
+    var `vsym` {.noInit.}: Limbs[`vSlots`]
+    `vsym`[0] = cast[SecretWord](`r_MR`[0].unsafeAddr)
+    `vsym`[1] = cast[SecretWord](`a_MR`[0].unsafeAddr)
+    `vsym`[2] = SecretWord(`m0ninv_MR`)
 
-    var `eax`{.noInit.}, `edx`{.noInit.}: BaseType
-    var `scratchSym` {.noInit.}: Limbs[`scratchSlots`]
+  let r_temp = v[0].asArrayAddr(len = N)
+  let a = v[1].asArrayAddr(len = 2*N)
+  let m0ninv = v[2]
 
   # Algorithm
   # ---------------------------------------------------------
@@ -161,85 +139,76 @@ macro montyRedc2x_gen[N: static int](
   # No register spilling handling
   doAssert N <= 6, "The Assembly-optimized montgomery multiplication requires at most 6 limbs."
 
-  result.add quote do:
-    `eax` = BaseType `a_MR`[0]
-    staticFor i, 0, `N`: # Do NOT use Nim slice/toOpenArray, they are not inlined
-      `scratchSym`[i] = `a_MR`[i]
+  for i in 0 ..< N:
+    ctx.mov u[i], a[i]
 
-  ctx.mov scratch[N], rRAX
-  ctx.imul rRAX, m0ninv    # m <- a[i] * m0ninv mod 2^w
-  ctx.mov scratch[0], rRAX
+  ctx.mov u[N], u[0]
+  ctx.imul u[0], m0ninv    # m <- a[i] * m0ninv mod 2^w
+  ctx.mov rax, u[0]
 
   # scratch: [a[0] * m0, a[1], a[2], a[3], a[0]] for 4 limbs
 
   for i in 0 ..< N:
     ctx.comment ""
-    let hi = scratch[N]
-    let next = scratch[N+1]
+    let hi = u[N]
+    let next = u[N+1]
 
     ctx.mul rdx, rax, M[0], rax
-    ctx.add hi, rRAX # Guaranteed to be zero
-    ctx.mov rRAX, scratch[0]
-    ctx.adc hi, rRDX
+    ctx.add hi, rax # Guaranteed to be zero
+    ctx.mov rax, u[0]
+    ctx.adc hi, rdx
 
     for j in 1 ..< N-1:
       ctx.comment ""
       ctx.mul rdx, rax, M[j], rax
-      ctx.add scratch[j], rRAX
-      ctx.mov rRAX, scratch[0]
-      ctx.adc rRDX, 0
-      ctx.add scratch[j], hi
-      ctx.adc rRDX, 0
-      ctx.mov hi, rRDX
+      ctx.add u[j], rax
+      ctx.mov rax, u[0]
+      ctx.adc rdx, 0
+      ctx.add u[j], hi
+      ctx.adc rdx, 0
+      ctx.mov hi, rdx
 
     # Next load
     if i < N-1:
       ctx.comment ""
-      ctx.mov next, scratch[1]
-      ctx.imul scratch[1], m0ninv
+      ctx.mov next, u[1]
+      ctx.imul u[1], m0ninv
       ctx.comment ""
 
     # Last limb
     ctx.comment ""
     ctx.mul rdx, rax, M[N-1], rax
-    ctx.add scratch[N-1], rRAX
-    ctx.mov rRAX, scratch[1] # Contains next * m0
-    ctx.adc rRDX, 0
-    ctx.add scratch[N-1], hi
-    ctx.adc rRDX, 0
-    ctx.mov hi, rRDX
+    ctx.add u[N-1], rax
+    ctx.mov rax, u[1] # Contains next * m0
+    ctx.adc rdx, 0
+    ctx.add u[N-1], hi
+    ctx.adc rdx, 0
+    ctx.mov hi, rdx
 
-    scratch.rotateLeft()
+    u.rotateLeft()
 
-  # Code generation
-  result.add ctx.generate()
+  # Second part - Final substraction
+  # ---------------------------------------------
 
-  # New codegen
-  ctx = init(Assembler_x86, BaseType)
-
-  let r = init(OperandArray, nimSymbol = r_MR, N, PointerInReg, InputOutput_EnsureClobber)
-  let a = init(OperandArray, nimSymbol = a_MR, N*2, PointerInReg, Input)
-  let extraRegNeeded = N-2
-  let t = init(OperandArray, nimSymbol = ident"t", extraRegNeeded, ElemsInReg, InputOutput_EnsureClobber)
-  let tsym = t.nimSymbol
-  result.add quote do:
-    var `tsym` {.noInit.}: Limbs[`extraRegNeeded`]
+  ctx.mov rdx, r_temp
+  let r = rdx.asArrayAddr(len = N)
 
   # This does a[i+n] += hi
   # but in a separate carry chain, fused with the
   # copy "r[i] = a[i+n]"
   for i in 0 ..< N:
     if i == 0:
-      ctx.add scratch[i], a[i+N]
+      ctx.add u[i], a[i+N]
     else:
-      ctx.adc scratch[i], a[i+N]
+      ctx.adc u[i], a[i+N]
 
-  let reuse = repackRegisters(t, scratch[N], scratch[N+1])
+  let t = repackRegisters(v, u[N], u[N+1])
 
+  # v is invalidated
   if spareBits >= 1:
-    ctx.finalSubNoCarry(r, scratch, M, reuse)
+    ctx.finalSubNoCarry(r, u, M, t)
   else:
-    ctx.finalSubCanOverflow(r, scratch, M, reuse, rRAX)
+    ctx.finalSubCanOverflow(r, u, M, t, rax)
 
   # Code generation
   result.add ctx.generate()

@@ -81,36 +81,13 @@ macro mul_gen[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], 
     )
 
     # MUL requires RAX and RDX
-    rRAX = Operand(
-      desc: OperandDesc(
-        asmId: "[rax]",
-        nimSymbol: ident"rax",
-        rm: RAX,
-        constraint: Output_EarlyClobber,
-        cEmit: "rax"
-      )
-    )
-
-    rRDX = Operand(
-      desc: OperandDesc(
-        asmId: "[rdx]",
-        nimSymbol: ident"rdx",
-        rm: RDX,
-        constraint: Output_EarlyClobber,
-        cEmit: "rdx"
-      )
-    )
-
 
   # Prologue
   let tsym = t.desc.nimSymbol
   let usym = u.desc.nimSymbol
   let vsym = v.desc.nimSymbol
-  let eax = rRAX.desc.nimSymbol
-  let edx = rRDX.desc.nimSymbol
   result.add quote do:
     var `tsym`{.noInit.}, `usym`{.noInit.}, `vsym`{.noInit.}: BaseType # zero-init
-    var `eax`{.noInit.}, `edx`{.noInit.}: BaseType
 
   # Algorithm
   ctx.`xor` u, u
@@ -127,10 +104,10 @@ macro mul_gen[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], 
     let ia = i - ib
     for j in 0 ..< min(aLen - ia, ib+1):
       # (t, u, v) <- (t, u, v) + a[ia+j] * b[ib-j]
-      ctx.mov rRAX, arrB[ib-j]
+      ctx.mov rax, arrB[ib-j]
       ctx.mul rdx, rax, arrA[ia+j], rax
-      ctx.add v, rRAX
-      ctx.adc u, rRDX
+      ctx.add v, rax
+      ctx.adc u, rdx
       ctx.adc t, 0
 
     ctx.mov arrR[i], v
@@ -141,9 +118,9 @@ macro mul_gen[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], 
       ctx.`xor` t, t
 
   if aLen+bLen < rLen:
-    ctx.`xor` rRAX, rRAX
+    ctx.`xor` rax, rax
     for i in aLen+bLen ..< rLen:
-      ctx.mov arrR[i], rRAX
+      ctx.mov arrR[i], rax
 
   # Codegen
   result.add ctx.generate
@@ -202,37 +179,12 @@ macro square_gen[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) =
       )
     )
 
-    # MUL requires RAX and RDX
-    rRAX = Operand(
-      desc: OperandDesc(
-        asmId: "[rax]",
-        nimSymbol: ident"rax",
-        rm: RAX,
-        constraint: Output_EarlyClobber,
-        cEmit: "rax"
-      )
-    )
-
-    rRDX = Operand(
-      desc: OperandDesc(
-        asmId: "[rdx]",
-        nimSymbol: ident"rdx",
-        rm: RDX,
-        constraint: Output_EarlyClobber,
-        cEmit: "rdx"
-      )
-    )
-
-
   # Prologue
   let tsym = t.desc.nimSymbol
   let usym = u.desc.nimSymbol
   let vsym = v.desc.nimSymbol
-  let eax = rRAX.desc.nimSymbol
-  let edx = rRDX.desc.nimSymbol
   result.add quote do:
     var `tsym`{.noInit.}, `usym`{.noInit.}, `vsym`{.noInit.}: BaseType # zero-init
-    var `eax`{.noInit.}, `edx`{.noInit.}: BaseType
 
   # Algorithm
   ctx.`xor` u, u
@@ -252,20 +204,20 @@ macro square_gen[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) =
       let k2 = ib-j
       if k1 < k2:
         # (t, u, v) <- (t, u, v) + 2 * a[k1] * a[k2]
-        ctx.mov rRAX, arrA[k2]
+        ctx.mov rax, arrA[k2]
         ctx.mul rdx, rax, arrA[k1], rax
-        ctx.add rRAX, rRAX
-        ctx.adc rRDX, rRDX
+        ctx.add rax, rax
+        ctx.adc rdx, rdx
         ctx.adc t, 0
-        ctx.add v, rRAX
-        ctx.adc u, rRDX
+        ctx.add v, rax
+        ctx.adc u, rdx
         ctx.adc t, 0
       elif k1 == k2:
         # (t, u, v) <- (t, u, v) + a[k1] * a[k2]
-        ctx.mov rRAX, arrA[k2]
+        ctx.mov rax, arrA[k2]
         ctx.mul rdx, rax, arrA[k1], rax
-        ctx.add v, rRAX
-        ctx.adc u, rRDX
+        ctx.add v, rax
+        ctx.adc u, rdx
         ctx.adc t, 0
       else:
         discard
@@ -278,9 +230,9 @@ macro square_gen[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) =
       ctx.`xor` t, t
 
   if aLen*2 < rLen:
-    ctx.`xor` rRAX, rRAX
+    ctx.`xor` rax, rax
     for i in aLen*2 ..< rLen:
-      ctx.mov arrR[i], rRAX
+      ctx.mov arrR[i], rax
 
   # Codegen
   result.add ctx.generate

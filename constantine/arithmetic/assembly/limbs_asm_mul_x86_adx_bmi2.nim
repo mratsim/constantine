@@ -37,8 +37,7 @@ proc mulx_by_word(
        ctx: var Assembler_x86,
        r0: Operand,
        a, t: OperandArray,
-       word0: Operand,
-       rRAX, rRDX: Operand
+       word0: Operand
      ) =
   ## Multiply the `a[0..<N]` by `word`
   ## and store in `[t:r0]`
@@ -52,18 +51,18 @@ proc mulx_by_word(
   #  (C,t[j])  := t[j] + a[j]*b[i] + C
 
   # First limb
-  ctx.mov rRDX, word0
-  ctx.`xor` rRAX, rRAX # Clear flags (important if steady state is skipped)
-  ctx.mulx t[0], rRAX, a[0], rdx
-  ctx.mov r0, rRAX
+  ctx.mov rdx, word0
+  ctx.`xor` rax, rax # Clear flags (important if steady state is skipped)
+  ctx.mulx t[0], rax, a[0], rdx
+  ctx.mov r0, rax
 
   # Steady state
   for j in 1 ..< N:
-    ctx.mulx t[j], rRAX, a[j], rdx
+    ctx.mulx t[j], rax, a[j], rdx
     if j == 1:
-      ctx.add t[j-1], rRAX
+      ctx.add t[j-1], rax
     else:
-      ctx.adc t[j-1], rRAX
+      ctx.adc t[j-1], rax
 
   # Final carries
   ctx.comment "  Accumulate last carries in hi word"
@@ -74,8 +73,7 @@ proc mulaccx_by_word(
        r: OperandArray,
        i: int,
        a, t: OperandArray,
-       word: Operand,
-       rRAX, rRDX: Operand
+       word: Operand
      ) =
   ## Multiply the `a[0..<N]` by `word`
   ## and store in `[t:r0]`
@@ -87,16 +85,16 @@ proc mulaccx_by_word(
   doAssert i != 0
 
   ctx.comment "  Outer loop i = " & $i & ", j in [0, " & $N & ")"
-  ctx.mov rRDX, word
-  ctx.`xor` rRAX, rRAX # Clear flags
+  ctx.mov rdx, word
+  ctx.`xor` rax, rax # Clear flags
 
   # for j=0 to N-1
   #  (C,t[j])  := t[j] + a[j]*b[i] + C
 
   # Steady state
   for j in 0 ..< N:
-    ctx.mulx hi, rRAX, a[j], rdx
-    ctx.adox t[j], rRAX
+    ctx.mulx hi, rax, a[j], rdx
+    ctx.adox t[j], rax
     if j == 0:
       ctx.mov r[i], t[j]
     if j == N-1:
@@ -105,9 +103,9 @@ proc mulaccx_by_word(
 
   # Final carries
   ctx.comment "  Accumulate last carries in hi word"
-  ctx.mov  rRDX, 0 # Set to 0 without clearing flags
-  ctx.adcx hi, rRDX
-  ctx.adox hi, rRDX
+  ctx.mov  rdx, 0 # Set to 0 without clearing flags
+  ctx.adcx hi, rdx
+  ctx.adox hi, rdx
 
 macro mulx_gen[rLen, aLen, bLen: static int](rx: var Limbs[rLen], ax: Limbs[aLen], bx: Limbs[bLen]) =
   ## `a`, `b`, `r` can have a different number of limbs
@@ -126,25 +124,6 @@ macro mulx_gen[rLen, aLen, bLen: static int](rx: var Limbs[rLen], ax: Limbs[aLen
     b = init(OperandArray, nimSymbol = bx, bLen, PointerInReg, Input)
 
     # MULX requires RDX
-    rRDX = Operand(
-      desc: OperandDesc(
-        asmId: "[rdx]",
-        nimSymbol: ident"rdx",
-        rm: RDX,
-        constraint: Output_EarlyClobber,
-        cEmit: "rdx"
-      )
-    )
-
-    rRAX = Operand(
-      desc: OperandDesc(
-        asmId: "[rax]",
-        nimSymbol: ident"rax",
-        rm: RAX,
-        constraint: Output_EarlyClobber,
-        cEmit: "rax"
-      )
-    )
 
     tSlots = aLen+1 # Extra for high word
 
@@ -154,26 +133,21 @@ macro mulx_gen[rLen, aLen, bLen: static int](rx: var Limbs[rLen], ax: Limbs[aLen
 
   # Prologue
   let tsym = t.nimSymbol
-  let eax = rRAX.desc.nimSymbol
-  let edx = rRDX.desc.nimSymbol
   result.add quote do:
     var `tsym`{.noInit.}: array[`tSlots`, BaseType]
-    var `edx`{.noInit.}, `eax`{.noInit.}: BaseType
 
   for i in 0 ..< min(rLen, bLen):
     if i == 0:
       ctx.mulx_by_word(
         r[0],
         a, t,
-        b[0],
-        rRAX, rRDX,
+        b[0]
       )
     else:
       ctx.mulaccx_by_word(
         r, i,
         a, t,
-        b[i],
-        rRAX, rRDX
+        b[i]
       )
 
       t.rotateLeft()
@@ -184,9 +158,9 @@ macro mulx_gen[rLen, aLen, bLen: static int](rx: var Limbs[rLen], ax: Limbs[aLen
 
   # Zero the extra
   if aLen+bLen < rLen:
-    ctx.`xor` rRAX, rRAX
+    ctx.`xor` rax, rax
     for i in aLen+bLen ..< rLen:
-      ctx.mov r[i], rRAX
+      ctx.mov r[i], rax
 
   # Codegen
   result.add ctx.generate

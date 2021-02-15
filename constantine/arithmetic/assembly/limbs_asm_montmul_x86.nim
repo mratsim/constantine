@@ -57,25 +57,6 @@ macro montMul_CIOS_nocarry_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_
     scratch = init(OperandArray, nimSymbol = ident"scratch", scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
 
     # MUL requires RAX and RDX
-    rRAX = Operand(
-      desc: OperandDesc(
-        asmId: "[rax]",
-        nimSymbol: ident"rax",
-        rm: RAX,
-        constraint: Output_EarlyClobber,
-        cEmit: "rax"
-      )
-    )
-
-    rRDX = Operand(
-      desc: OperandDesc(
-        asmId: "[rdx]",
-        nimSymbol: ident"rdx",
-        rm: RDX,
-        constraint: Output_EarlyClobber,
-        cEmit: "rdx"
-      )
-    )
 
     m0ninv = Operand(
                desc: OperandDesc(
@@ -109,16 +90,12 @@ macro montMul_CIOS_nocarry_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_
 
   let tsym = t.nimSymbol
   let scratchSym = scratch.nimSymbol
-  let eax = rRAX.desc.nimSymbol
-  let edx = rRDX.desc.nimSymbol
   result.add quote do:
     static: doAssert: sizeof(SecretWord) == sizeof(ByteAddress)
 
     var `tsym`: typeof(`r_MM`) # zero init
     # Assumes 64-bit limbs on 64-bit arch (or you can't store an address)
     var `scratchSym` {.noInit.}: Limbs[`scratchSlots`]
-    var `eax`{.noInit.}, `edx`{.noInit.}: BaseType
-
     `scratchSym`[0] = cast[SecretWord](`a_MM`[0].unsafeAddr)
     `scratchSym`[1] = cast[SecretWord](`b_MM`[0].unsafeAddr)
     `scratchSym`[5] = cast[SecretWord](`r_MM`[0].unsafeAddr)
@@ -140,14 +117,14 @@ macro montMul_CIOS_nocarry_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_
 
   for i in 0 ..< N:
     # (A, t[0]) <- a[0] * b[i] + t[0]
-    ctx.mov rRAX, a[0]
+    ctx.mov rax, a[0]
     ctx.mul rdx, rax, b[i], rax
     if i == 0: # overwrite t[0]
-      ctx.mov t[0], rRAX
+      ctx.mov t[0], rax
     else:      # Accumulate in t[0]
-      ctx.add t[0], rRAX
-      ctx.adc rRDX, 0
-    ctx.mov A, rRDX
+      ctx.add t[0], rax
+      ctx.adc rdx, 0
+    ctx.mov A, rdx
 
     # m        <- (t[0] * m0ninv) mod 2^w
     ctx.mov m, m0ninv
@@ -155,39 +132,39 @@ macro montMul_CIOS_nocarry_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_
 
     # (C, _)    <- m * M[0] + t[0]
     ctx.`xor` C, C
-    ctx.mov rRAX, M[0]
+    ctx.mov rax, M[0]
     ctx.mul rdx, rax, m, rax
-    ctx.add rRAX, t[0]
-    ctx.adc C, rRDX
+    ctx.add rax, t[0]
+    ctx.adc C, rdx
 
     for j in 1 ..< N:
       # (A, t[j])   <- a[j] * b[i] + A + t[j]
-      ctx.mov rRAX, a[j]
+      ctx.mov rax, a[j]
       ctx.mul rdx, rax, b[i], rax
       if i == 0:
         ctx.mov t[j], A
       else:
         ctx.add t[j], A
-        ctx.adc rRDX, 0
+        ctx.adc rdx, 0
       ctx.`xor` A, A
-      ctx.add t[j], rRAX
-      ctx.adc A, rRDX
+      ctx.add t[j], rax
+      ctx.adc A, rdx
 
       # (C, t[j-1]) <- m * M[j] + C + t[j]
-      ctx.mov rRAX, M[j]
+      ctx.mov rax, M[j]
       ctx.mul rdx, rax, m, rax
       ctx.add C, t[j]
-      ctx.adc rRDX, 0
-      ctx.add C, rRAX
-      ctx.adc rRDX, 0
+      ctx.adc rdx, 0
+      ctx.add C, rax
+      ctx.adc rdx, 0
       ctx.mov t[j-1], C
-      ctx.mov C, rRDX
+      ctx.mov C, rdx
 
     ctx.add A, C
     ctx.mov t[N-1], A
 
-  ctx.mov rRDX, r
-  let r2 = rRDX.asArrayAddr(len = N)
+  ctx.mov rdx, r
+  let r2 = rdx.asArrayAddr(len = N)
 
   ctx.finalSubNoCarry(
     r2, t, M,

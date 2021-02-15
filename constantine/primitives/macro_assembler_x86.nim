@@ -39,6 +39,9 @@ type
     # Flags
     CarryFlag      = "@ccc"
 
+    # Clobbered register
+    ClobberedReg
+
   Register* = enum
     rbx, rdx, r8, rax, xmm0
 
@@ -50,6 +53,7 @@ type
     Output_EarlyClobber = "=&"
     InputOutput         = "+"
     InputOutput_EnsureClobber = "+&" # For register InputOutput, clang needs "+&" bug?
+    ClobberedRegister
 
   OpKind = enum
     kRegister
@@ -88,11 +92,12 @@ type
     wordSize: int
     areFlagsClobbered: bool
     isStackClobbered: bool
+    regClobbers: set[Register]
 
   Stack* = object
 
 const SpecificRegisters = {RCX, RDX, R8, RAX}
-const OutputReg = {Output_EarlyClobber, InputOutput, InputOutput_EnsureClobber, Output_Overwrite}
+const OutputReg = {Output_EarlyClobber, InputOutput, InputOutput_EnsureClobber, Output_Overwrite, ClobberedRegister}
 
 func hash(od: OperandDesc): Hash =
   {.noSideEffect.}:
@@ -195,6 +200,24 @@ func asArrayAddr*(op: Operand, len: int): Operand =
       offset: i
     )
 
+func asArrayAddr*(op: Register, len: int): Operand =
+  ## Use the value stored in an operand as an array address
+  result = Operand(
+    kind: kArrayAddr,
+    desc: nil,
+    buf: newSeq[Operand](len)
+  )
+  for i in 0 ..< len:
+    result.buf[i] = Operand(
+      desc: OperandDesc(
+        asmId: $op,
+        rm: ClobberedReg,
+        constraint: ClobberedRegister
+      ),
+      kind: kFromArray,
+      offset: i
+    )
+
 # Code generation
 # ------------------------------------------------------------------------------------------------------------
 
@@ -268,6 +291,12 @@ func generate*(a: Assembler_x86): NimNode =
       else:
         clobberList.add ", \"" & str & '\"'
 
+  for reg in a.regClobbers:
+    if clobberList.len == 2:
+      clobberList.add "\"" & $reg & '\"'
+    else:
+      clobberList.add ", \"" & $reg & '\"'
+
   params.add clobberList
 
   # GCC will optimize ASM away if there are no
@@ -293,7 +322,15 @@ func generate*(a: Assembler_x86): NimNode =
 
 func getStrOffset(a: Assembler_x86, op: Operand): string =
   if op.kind != kFromArray:
-    return "%" & op.desc.asmId
+    if op.kind == kArrayAddr:
+      # We are operating on an array pointer
+      # instead of array elements
+      if op.buf[0].desc.constraint == ClobberedRegister:
+        return "%%" & op.buf[0].desc.asmId
+      else:
+        return "%" & op.buf[0].desc.asmId
+    else:
+      return "%" & op.desc.asmId
 
   # Beware GCC / Clang differences with array offsets
   # https://lists.llvm.org/pipermail/llvm-dev/2017-August/116202.html
@@ -315,12 +352,16 @@ func getStrOffset(a: Assembler_x86, op: Operand): string =
        op.desc.rm in SpecificRegisters or
        (op.desc.rm == ElemsInReg and op.kind == kFromArray):
     if op.offset == 0:
-      return "(%" & $op.desc.asmId & ')'
+      return "(%" & op.desc.asmId & ')'
     # GCC & Clang seemed to disagree on pointer indexing
     # in the past and required different codegen
     # if defined(gcc):
-    #   return $(op.offset * a.wordSize) & "+(%" & $op.desc.asmId & ')'
-    return $(op.offset * a.wordSize) & "(%" & $op.desc.asmId & ')'
+    #   return $(op.offset * a.wordSize) & "+(%" & op.desc.asmId & ')'
+    return $(op.offset * a.wordSize) & "(%" & op.desc.asmId & ')'
+  elif op.desc.rm == ClobberedReg: # Array in clobbered register
+    if op.offset == 0:
+      return "(%%" & op.desc.asmId & ')'
+    return $(op.offset * a.wordSize) & "(%%" & op.desc.asmId & ')'
   else:
     error "Unsupported: " & $op.desc.rm.ord
 
@@ -335,7 +376,8 @@ func codeFragment(a: var Assembler_x86, instr: string, op: Operand) =
   else:
     error "Unsupported bitwidth: " & $a.wordBitWidth
 
-  a.operands.incl op.desc
+  if op.desc.constraint != ClobberedRegister:
+    a.operands.incl op.desc
 
 func codeFragment(a: var Assembler_x86, instr: string, op0, op1: Operand) =
   # Generate a code fragment
@@ -352,8 +394,56 @@ func codeFragment(a: var Assembler_x86, instr: string, op0, op1: Operand) =
   else:
     error "Unsupported bitwidth: " & $a.wordBitWidth
 
-  a.operands.incl op0.desc
-  a.operands.incl op1.desc
+  if op0.desc.constraint != ClobberedRegister:
+    a.operands.incl op0.desc
+  if op1.desc.constraint != ClobberedRegister:
+    a.operands.incl op1.desc
+
+func codeFragment(a: var Assembler_x86, instr: string, op: Operand, reg: Register) =
+  # Generate a code fragment
+  # ⚠️ Warning:
+  # The caller should deal with destination/source operand
+  # so that it fits GNU Assembly
+  let off = a.getStrOffset(op)
+
+  if a.wordBitWidth == 64:
+    a.code &= instr & "q " & off & ", %%" & $reg & '\n'
+  else:
+    a.code &= instr & "l " & off & ", %%" & $reg & '\n'
+
+  # op.desc can be nil for renamed registers (using asArrayAddr)
+  if not op.desc.isNil and op.desc.constraint != ClobberedRegister:
+    a.operands.incl op.desc
+  a.regClobbers.incl reg
+
+func codeFragment(a: var Assembler_x86, instr: string, reg: Register, op: Operand) =
+  # Generate a code fragment
+  # ⚠️ Warning:
+  # The caller should deal with destination/source operand
+  # so that it fits GNU Assembly
+  let off = a.getStrOffset(op)
+
+  if a.wordBitWidth == 64:
+    a.code &= instr & "q %%" & $reg & ", " & off & '\n'
+  else:
+    a.code &= instr & "l %%" & $reg & ", " & off & '\n'
+
+  if op.desc.constraint != ClobberedRegister:
+    a.operands.incl op.desc
+  a.regClobbers.incl reg
+
+func codeFragment(a: var Assembler_x86, instr: string, reg0, reg1: Register) =
+  # Generate a code fragment
+  # ⚠️ Warning:
+  # The caller should deal with destination/source operand
+  # so that it fits GNU Assembly
+  if a.wordBitWidth == 64:
+    a.code &= instr & "q %%" & $reg0 & ", %%" & $reg1 & '\n'
+  else:
+    a.code &= instr & "l %%" & $reg0 & ", %%" & $reg1 & '\n'
+
+  a.regClobbers.incl reg0
+  a.regClobbers.incl reg1
 
 func codeFragment(a: var Assembler_x86, instr: string, imm: int, op: Operand) =
   # Generate a code fragment
@@ -367,7 +457,8 @@ func codeFragment(a: var Assembler_x86, instr: string, imm: int, op: Operand) =
   else:
     a.code &= instr & "l $" & $imm & ", " & off & '\n'
 
-  a.operands.incl op.desc
+  if op.desc.constraint != ClobberedRegister:
+    a.operands.incl op.desc
 
 func codeFragment(a: var Assembler_x86, instr: string, reg: Register, op: OperandReuse) =
   # Generate a code fragment
@@ -378,6 +469,7 @@ func codeFragment(a: var Assembler_x86, instr: string, reg: Register, op: Operan
     a.code &= instr & "q %%" & $reg & ", %" & $op.asmId & '\n'
   else:
     a.code &= instr & "l %%" & $reg & ", %" & $op.asmId & '\n'
+  a.regClobbers.incl reg
 
 func codeFragment(a: var Assembler_x86, instr: string, op: OperandReuse, reg: Register) =
   # Generate a code fragment
@@ -388,6 +480,7 @@ func codeFragment(a: var Assembler_x86, instr: string, op: OperandReuse, reg: Re
     a.code &= instr & "q %" & $op.asmId & ", %%" & $reg & '\n'
   else:
     a.code &= instr & "l %" & $op.asmId & ", %%" & $reg & '\n'
+  a.regClobbers.incl reg
 
 func codeFragment(a: var Assembler_x86, instr: string, imm: int, reg: Register) =
   # Generate a code fragment
@@ -398,16 +491,7 @@ func codeFragment(a: var Assembler_x86, instr: string, imm: int, reg: Register) 
     a.code &= instr & "q $" & $imm & ", %%" & $reg & '\n'
   else:
     a.code &= instr & "l $" & $imm & ", %%" & $reg & '\n'
-
-func codeFragment(a: var Assembler_x86, instr: string, reg0, reg1: Register) =
-  # Generate a code fragment
-  # ⚠️ Warning:
-  # The caller should deal with destination/source operand
-  # so that it fits GNU Assembly
-  if a.wordBitWidth == 64:
-    a.code &= instr & "q %%" & $reg0 & ", %%" & $reg1 & '\n'
-  else:
-    a.code &= instr & "l %%" & $reg0 & ", %%" & $reg1 & '\n'
+  a.regClobbers.incl reg
 
 func codeFragment(a: var Assembler_x86, instr: string, imm: int, reg: OperandReuse) =
   # Generate a code fragment
@@ -429,33 +513,35 @@ func codeFragment(a: var Assembler_x86, instr: string, reg0, reg1: OperandReuse)
   else:
     a.code &= instr & "l %" & $reg0.asmId & ", %" & $reg1.asmId & '\n'
 
-func codeFragment(a: var Assembler_x86, instr: string, reg0: OperandReuse, reg1: Operand) =
+func codeFragment(a: var Assembler_x86, instr: string, op0: OperandReuse, op1: Operand) =
   # Generate a code fragment
   # ⚠️ Warning:
   # The caller should deal with destination/source operand
   # so that it fits GNU Assembly
-  let off1 = a.getStrOffset(reg1)
+  let off1 = a.getStrOffset(op1)
 
   if a.wordBitWidth == 64:
-    a.code &= instr & "q %" & $reg0.asmId & ", " & off1 & '\n'
+    a.code &= instr & "q %" & $op0.asmId & ", " & off1 & '\n'
   else:
-    a.code &= instr & "l %" & $reg0.asmId & ", " & off1 & '\n'
+    a.code &= instr & "l %" & $op0.asmId & ", " & off1 & '\n'
 
-  a.operands.incl reg1.desc
+  if op1.desc.constraint != ClobberedRegister:
+    a.operands.incl op1.desc
 
-func codeFragment(a: var Assembler_x86, instr: string, reg0: Operand, reg1: OperandReuse) =
+func codeFragment(a: var Assembler_x86, instr: string, op0: Operand, op1: OperandReuse) =
   # Generate a code fragment
   # ⚠️ Warning:
   # The caller should deal with destination/source operand
   # so that it fits GNU Assembly
-  let off0 = a.getStrOffset(reg0)
+  let off0 = a.getStrOffset(op0)
 
   if a.wordBitWidth == 64:
-    a.code &= instr & "q " & off0 & ", %" & $reg1.asmId & '\n'
+    a.code &= instr & "q " & off0 & ", %" & $op1.asmId & '\n'
   else:
-    a.code &= instr & "l " & off0 & ", %" & $reg1.asmId & '\n'
+    a.code &= instr & "l " & off0 & ", %" & $op1.asmId & '\n'
 
-  a.operands.incl reg0.desc
+  if op0.desc.constraint != ClobberedRegister:
+    a.operands.incl op0.desc
 
 func reuseRegister*(reg: OperandArray): OperandReuse =
   # TODO: disable the reg input
@@ -481,6 +567,22 @@ func add*(a: var Assembler_x86, dst, src: Operand) =
   a.codeFragment("add", src, dst)
   a.areFlagsClobbered = true
 
+func add*(a: var Assembler_x86, dst, src: Register) =
+  ## Does: dst <- dst + src
+  a.codeFragment("add", src, dst)
+  a.areFlagsClobbered = true
+
+func add*(a: var Assembler_x86, dst: Operand, src: Register) =
+  ## Does: dst <- dst + src
+  doAssert dst.desc.constraint in OutputReg
+  a.codeFragment("add", src, dst)
+  a.areFlagsClobbered = true
+
+func add*(a: var Assembler_x86, dst: Register, src: Operand) =
+  ## Does: dst <- dst + src
+  a.codeFragment("add", src, dst)
+  a.areFlagsClobbered = true
+
 func adc*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- dst + src + carry
   doAssert dst.desc.constraint in OutputReg
@@ -490,6 +592,11 @@ func adc*(a: var Assembler_x86, dst, src: Operand) =
   if dst.desc.rm in {Mem, MemOffsettable, AnyRegOrMem}:
     {.warning: "Using addcarry with a memory destination, this incurs significant performance penalties.".}
 
+func adc*(a: var Assembler_x86, dst, src: Register) =
+  ## Does: dst <- dst + src + carry
+  a.codeFragment("adc", src, dst)
+  a.areFlagsClobbered = true
+
 func adc*(a: var Assembler_x86, dst: Operand, imm: int) =
   ## Does: dst <- dst + imm + borrow
   doAssert dst.desc.constraint in OutputReg
@@ -498,6 +605,17 @@ func adc*(a: var Assembler_x86, dst: Operand, imm: int) =
 
   if dst.desc.rm in {Mem, MemOffsettable, AnyRegOrMem}:
     {.warning: "Using addcarry with a memory destination, this incurs significant performance penalties.".}
+
+func adc*(a: var Assembler_x86, dst: Operand, src: Register) =
+  ## Does: dst <- dst + src
+  doAssert dst.desc.constraint in OutputReg
+  a.codeFragment("adc", src, dst)
+  a.areFlagsClobbered = true
+
+func adc*(a: var Assembler_x86, dst: Register, imm: int) =
+  ## Does: dst <- dst + src
+  a.codeFragment("adc", imm, dst)
+  a.areFlagsClobbered = true
 
 func sub*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- dst - src
@@ -597,6 +715,12 @@ func `xor`*(a: var Assembler_x86, dst, src: Operand) =
   a.codeFragment("xor", src, dst)
   a.areFlagsClobbered = true
 
+func `xor`*(a: var Assembler_x86, dst, src: Register) =
+  ## Compute the bitwise xor of x and y and
+  ## reset all flags
+  a.codeFragment("xor", src, dst)
+  a.areFlagsClobbered = true
+
 func mov*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- src
   doAssert dst.desc.constraint in OutputReg, $dst.repr
@@ -625,16 +749,26 @@ func mov*(a: var Assembler_x86, dst: Operand, imm: int) =
   a.codeFragment("mov", imm, dst)
   # No clobber
 
+func mov*(a: var Assembler_x86, dst: Register, imm: int) =
+  ## Does: dst <- src with dst a fixed register
+  a.codeFragment("mov", imm, dst)
+
+func mov*(a: var Assembler_x86, dst: Register, src: Operand) =
+  ## Does: dst <- src with dst a fixed register
+  a.codeFragment("mov", src, dst)
+
+func mov*(a: var Assembler_x86, dst: Operand, src: Register) =
+  ## Does: dst <- src with dst a fixed register
+  a.codeFragment("mov", src, dst)
+
 func mov*(a: var Assembler_x86, dst: Register, src: OperandReuse) =
   ## Does: dst <- src with dst a fixed register
   a.codeFragment("mov", src, dst)
-  # No clobber
 
 func mov*(a: var Assembler_x86, dst: OperandReuse, src: Register) =
   ## Does: dst <- imm
   # doAssert dst.desc.constraint in OutputReg, $dst.repr
   a.codeFragment("mov", src, dst)
-  # No clobber
 
 func cmovc*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- src if the carry flag is set
@@ -697,6 +831,8 @@ func mul*(a: var Assembler_x86, dHi, dLo: Register, src0: Operand, src1: Registe
   doAssert src1 == rax, "MUL requires the RAX register"
   doAssert dHi == rdx,  "MUL requires the RDX register"
   doAssert dLo == rax,   "MUL requires the RAX register"
+  a.regClobbers.incl rax
+  a.regClobbers.incl rdx
 
   a.codeFragment("mul", src0)
 
@@ -707,9 +843,15 @@ func imul*(a: var Assembler_x86, dst, src: Operand) =
 
   a.codeFragment("imul", src, dst)
 
+func imul*(a: var Assembler_x86, dst: Register, src: Operand) =
+  ## Does dst <- dst * src, keeping only the low half
+  a.codeFragment("imul", src, dst)
+
 func mulx*(a: var Assembler_x86, dHi, dLo, src0: Operand, src1: Register) =
   ## Does (dHi, dLo) <- src0 * src1
   doAssert src1 == rdx, "MULX requires the RDX register"
+  a.regClobbers.incl rdx
+
   doAssert dHi.desc.rm in {Reg, ElemsInReg}+SpecificRegisters,
     "The destination operand must be a register " & $dHi.repr
   doAssert dLo.desc.rm in {Reg, ElemsInReg}+SpecificRegisters,
@@ -727,9 +869,31 @@ func mulx*(a: var Assembler_x86, dHi, dLo, src0: Operand, src1: Register) =
 
   a.operands.incl src0.desc
 
+func mulx*(a: var Assembler_x86, dHi: Operand, dLo: Register, src0: Operand, src1: Register) =
+  ## Does (dHi, dLo) <- src0 * src1
+  doAssert src1 == rdx, "MULX requires the RDX register"
+  a.regClobbers.incl rdx
+
+  doAssert dHi.desc.rm in {Reg, ElemsInReg}+SpecificRegisters,
+    "The destination operand must be a register " & $dHi.repr
+  doAssert dHi.desc.constraint in OutputReg
+
+  let off0 = a.getStrOffset(src0)
+
+  # Annoying AT&T syntax
+  if a.wordBitWidth == 64:
+    a.code &= "mulxq " & off0 & ", %%" & $dLo & ", %" & $dHi.desc.asmId & '\n'
+  else:
+    a.code &= "mulxl " & off0 & ", %%" & $dLo & ", %" & $dHi.desc.asmId & '\n'
+
+  a.operands.incl src0.desc
+  a.regClobbers.incl dLo
+
 func mulx*(a: var Assembler_x86, dHi: OperandReuse, dLo, src0: Operand, src1: Register) =
   ## Does (dHi, dLo) <- src0 * src1
   doAssert src1 == rdx, "MULX requires the RDX register"
+  a.regClobbers.incl rdx
+
   doAssert dLo.desc.rm in {Reg, ElemsInReg}+SpecificRegisters,
     "The destination operand must be a register " & $dLo.repr
   doAssert dLo.desc.constraint in OutputReg
@@ -744,7 +908,40 @@ func mulx*(a: var Assembler_x86, dHi: OperandReuse, dLo, src0: Operand, src1: Re
 
   a.operands.incl src0.desc
 
-func adcx*(a: var Assembler_x86, dst: Operand|OperandReuse, src: Operand|OperandReuse) =
+func mulx*(a: var Assembler_x86, dHi: OperandReuse, dLo: Register, src0: Operand, src1: Register) =
+  ## Does (dHi, dLo) <- src0 * src1
+  doAssert src1 == rdx, "MULX requires the RDX register"
+  a.regClobbers.incl rdx
+
+  let off0 = a.getStrOffset(src0)
+
+  # Annoying AT&T syntax
+  if a.wordBitWidth == 64:
+    a.code &= "mulxq " & off0 & ", %%" & $dLo & ", %" & $dHi.asmId & '\n'
+  else:
+    a.code &= "mulxl " & off0 & ", %%" & $dLo & ", %" & $dHi.asmId & '\n'
+
+  a.operands.incl src0.desc
+  a.regClobbers.incl dLo
+
+func mulx*(a: var Assembler_x86, dHi, dLo: Register, src0: Operand, src1: Register) =
+  ## Does (dHi, dLo) <- src0 * src1
+  doAssert src1 == rdx, "MULX requires the RDX register"
+  a.regClobbers.incl rdx
+
+  let off0 = a.getStrOffset(src0)
+
+  # Annoying AT&T syntax
+  if a.wordBitWidth == 64:
+    a.code &= "mulxq " & off0 & ", %%" & $dLo & ", %%" & $dHi & '\n'
+  else:
+    a.code &= "mulxl " & off0 & ", %%" & $dLo & ", %%" & $dHi & '\n'
+
+  a.operands.incl src0.desc
+  a.regClobbers.incl dHi
+  a.regClobbers.incl dLo
+
+func adcx*(a: var Assembler_x86, dst: Operand|OperandReuse, src: Operand|OperandReuse|Register) =
   ## Does: dst <- dst + src + carry
   ## and only sets the carry flag
   when dst is Operand:
@@ -753,7 +950,7 @@ func adcx*(a: var Assembler_x86, dst: Operand|OperandReuse, src: Operand|Operand
   a.codeFragment("adcx", src, dst)
   a.areFlagsClobbered = true
 
-func adox*(a: var Assembler_x86, dst: Operand|OperandReuse, src: Operand|OperandReuse) =
+func adox*(a: var Assembler_x86, dst: Operand|OperandReuse, src: Operand|OperandReuse|Register) =
   ## Does: dst <- dst + src + overflow
   ## and only sets the overflow flag
   when dst is Operand:
