@@ -109,7 +109,10 @@ template sqrTest(rng_gen: untyped): untyped =
     mulDbl.prod2x(a, a)
     sqrDbl.square2x(a)
 
-    doAssert bool(mulDbl == sqrDbl)
+    doAssert bool(mulDbl == sqrDbl),
+      "\nOriginal: " & a.mres.limbs.toString() &
+      "\n  Mul: " & mulDbl.limbs2x.toString() &
+      "\n  Sqr: " & sqrDbl.limbs2x.toString()
 
 addsubnegTest(random_unsafe)
 addsubnegTest(randomHighHammingWeight)

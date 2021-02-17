@@ -117,6 +117,9 @@ func len*(opArray: Operand): int =
 func rotateLeft*(opArray: var OperandArray) =
   opArray.buf.rotateLeft(1)
 
+func rotateRight*(opArray: var OperandArray) =
+  opArray.buf.rotateLeft(-1)
+
 proc `[]`*(opArray: OperandArray, index: int): Operand =
   opArray.buf[index]
 
@@ -941,7 +944,7 @@ func mulx*(a: var Assembler_x86, dHi, dLo: Register, src0: Operand, src1: Regist
   a.regClobbers.incl dHi
   a.regClobbers.incl dLo
 
-func adcx*(a: var Assembler_x86, dst: Operand|OperandReuse, src: Operand|OperandReuse|Register) =
+func adcx*(a: var Assembler_x86, dst: Operand|OperandReuse|Register, src: Operand|OperandReuse|Register) =
   ## Does: dst <- dst + src + carry
   ## and only sets the carry flag
   when dst is Operand:
@@ -950,7 +953,7 @@ func adcx*(a: var Assembler_x86, dst: Operand|OperandReuse, src: Operand|Operand
   a.codeFragment("adcx", src, dst)
   a.areFlagsClobbered = true
 
-func adox*(a: var Assembler_x86, dst: Operand|OperandReuse, src: Operand|OperandReuse|Register) =
+func adox*(a: var Assembler_x86, dst: Operand|OperandReuse|Register, src: Operand|OperandReuse|Register) =
   ## Does: dst <- dst + src + overflow
   ## and only sets the overflow flag
   when dst is Operand:
