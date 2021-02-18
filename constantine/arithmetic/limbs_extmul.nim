@@ -200,7 +200,7 @@ func square*[rLen, aLen](
   ## a² (mod (2^WordBitwidth)^r.limbs.len)
   ##
   ## `r` must not alias ``a`` or ``b``
-  when UseASM_X86_64 and aLen in {4, 6}:
+  when UseASM_X86_64 and aLen in {4, 6} and rLen == 2*aLen:
     # ADX implies BMI2
     if ({.noSideEffect.}: hasAdx()):
       square_asm_adx_bmi2(r, a)

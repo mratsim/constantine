@@ -12,7 +12,7 @@ import
   # Internal
   ../config/common,
   ../primitives,
-  ./limbs
+  ./limbs, ./limbs_extmul
 
 when UseASM_X86_32:
   import ./assembly/limbs_asm_montred_x86
@@ -50,6 +50,114 @@ when UseASM_X86_64:
 
 # No exceptions allowed
 {.push raises: [].}
+
+# Montgomery Reduction
+# ------------------------------------------------------------
+func montyRedc2x_CIOS[N: static int](
+       r: var array[N, SecretWord],
+       a: array[N*2, SecretWord],
+       M: array[N, SecretWord],
+       m0ninv: BaseType) =
+  ## Montgomery reduce a double-precision bigint modulo M
+  # - Analyzing and Comparing Montgomery Multiplication Algorithms
+  #   Cetin Kaya Koc and Tolga Acar and Burton S. Kaliski Jr.
+  #   http://pdfs.semanticscholar.org/5e39/41ff482ec3ee41dc53c3298f0be085c69483.pdf
+  #
+  # - Arithmetic of Finite Fields
+  #   Chapter 5 of Guide to Pairing-Based Cryptography
+  #   Jean Luc Beuchat, Luis J. Dominguez Perez, Sylvain Duquesne, Nadia El Mrabet, Laura Fuentes-Castañeda, Francisco Rodríguez-Henríquez, 2017
+  #   https://www.researchgate.net/publication/319538235_Arithmetic_of_Finite_Fields
+  #
+  # Algorithm
+  # Inputs:
+  # - N number of limbs
+  # - a[0 ..< 2N] (double-precision input to reduce)
+  # - M[0 ..< N] The field modulus (must be odd for Montgomery reduction)
+  # - m0ninv: Montgomery Reduction magic number = -1/M[0]
+  # Output:
+  # - r[0 ..< N], in the Montgomery domain
+  # Parameters:
+  # - w, the word width usually 64 on 64-bit platforms or 32 on 32-bit
+  #
+  # for i in 0 .. n-1:
+  #   C <- 0
+  #   m <- a[i] * m0ninv mod 2^w (i.e. simple multiplication)
+  #   for j in 0 .. n-1:
+  #     (C, S) <- a[i+j] + m * M[j] + C
+  #     a[i+j] <- S
+  #   a[i+n] += C
+  # for i in 0 .. n-1:
+  #   r[i] = a[i+n]
+  # if r >= M:
+  #   r -= M
+  #
+  # Important note: `a[i+n] += C` should propagate the carry
+  # to the higher limb if any, thank you "implementation detail"
+  # missing from paper.
+
+  var a = a          # Copy "t" for mutation and ensure on stack
+  var res: typeof(r) # Accumulator
+  staticFor i, 0, N:
+    var C = Zero
+    let m = a[i] * SecretWord(m0ninv)
+    staticFor j, 0, N:
+      muladd2(C, a[i+j], m, M[j], a[i+j], C)
+    res[i] = C
+
+  # This does t[i+n] += C
+  # but in a separate carry chain, fused with the
+  # copy "r[i] = t[i+n]"
+  var carry = Carry(0)
+  staticFor i, 0, N:
+    addC(carry, res[i], a[i+N], res[i], carry)
+
+  # Final substraction
+  discard res.csub(M, SecretWord(carry).isNonZero() or not(res < M))
+  r = res
+
+func montyRedc2x_Comba[N: static int](
+       r: var array[N, SecretWord],
+       a: array[N*2, SecretWord],
+       M: array[N, SecretWord],
+       m0ninv: BaseType) =
+  ## Montgomery reduce a double-precision bigint modulo M
+  # We use Product Scanning / Comba multiplication
+  var t, u, v = Zero
+  var carry: Carry
+  var z: typeof(r) # zero-init, ensure on stack and removes in-place problems in tower fields
+  staticFor i, 0, N:
+    staticFor j, 0, i:
+      mulAcc(t, u, v, z[j], M[i-j])
+
+    addC(carry, v, v, a[i], Carry(0))
+    addC(carry, u, u, Zero, carry)
+    addC(carry, t, t, Zero, carry)
+
+    z[i] = v * SecretWord(m0ninv)
+    mulAcc(t, u, v, z[i], M[0])
+    v = u
+    u = t
+    t = Zero
+
+  staticFor i, N, 2*N-1:
+    staticFor j, i-N+1, N:
+      mulAcc(t, u, v, z[j], M[i-j])
+
+    addC(carry, v, v, a[i], Carry(0))
+    addC(carry, u, u, Zero, carry)
+    addC(carry, t, t, Zero, carry)
+
+    z[i-N] = v
+
+    v = u
+    u = t
+    t = Zero
+
+  addC(carry, z[N-1], v, a[2*N-1], Carry(0))
+
+  # Final substraction
+  discard z.csub(M, SecretBool(carry) or not(z < M))
+  r = z
 
 # Montgomery Multiplication
 # ------------------------------------------------------------
@@ -172,223 +280,61 @@ func montyMul_FIPS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   r = z
 
 # Montgomery Squaring
-# ------------------------------------------------------------
-
-func montySquare_CIOS_nocarry(r: var Limbs, a, M: Limbs, m0ninv: BaseType) {.used.}=
-  ## Montgomery Multiplication using Coarse Grained Operand Scanning (CIOS)
-  ## and no-carry optimization.
-  ## This requires the most significant word of the Modulus
-  ##   M[^1] < high(SecretWord) shr 2 (i.e. less than 0b00111...1111)
-  ## https://hackmd.io/@zkteam/modular_multiplication
-
-  # TODO: Deactivated
-  # Off-by one on 32-bit on the least significant bit
-  # for Fp[BLS12-381] with inputs
-  # - -0x091F02EFA1C9B99C004329E94CD3C6B308164CBE02037333D78B6C10415286F7C51B5CD7F917F77B25667AB083314B1B
-  # - -0x0B7C8AFE5D43E9A973AF8649AD8C733B97D06A78CFACD214CBE9946663C3F682362E0605BC8318714305B249B505AFD9
-
-  # We want all the computation to be kept in registers
-  # hence we use a temporary `t`, hoping that the compiler does it.
-  var t: typeof(M) # zero-init
-  const N = t.len
-  staticFor i, 0, N:
-    # Squaring
-    var
-      A1: Carry
-      A0: SecretWord
-    # (A0, t[i]) <- a[i] * a[i] + t[i]
-    muladd1(A0, t[i], a[i], a[i], t[i])
-    staticFor j, i+1, N:
-      # (A1, A0, t[j]) <- 2*a[j]*a[i] + t[j] + (A1, A0)
-      # 2*a[j]*a[i] can spill 1-bit on a 3rd word
-      mulDoubleAdd2(A1, A0, t[j], a[j], a[i], t[j], A1, A0)
-
-    # Reduction
-    #  m        <- (t[0] * m0ninv) mod 2^w
-    # (C, _)    <- m * M[0] + t[0]
-    let m = t[0] * SecretWord(m0ninv)
-    var C, lo: SecretWord
-    muladd1(C, lo, m, M[0], t[0])
-    staticFor j, 1, N:
-      # (C, t[j-1]) <- m*M[j] + t[j] + C
-      muladd2(C, t[j-1], m, M[j], t[j], C)
-
-    t[N-1] = C + A0
-
-  discard t.csub(M, not(t < M))
-  r = t
-
-func montySquare_CIOS(r: var Limbs, a, M: Limbs, m0ninv: BaseType) {.used.}=
-  ## Montgomery Multiplication using Coarse Grained Operand Scanning (CIOS)
-  ##
-  ## Architectural Support for Long Integer Modulo Arithmetic on Risc-Based Smart Cards
-  ## Johann Großschädl, 2003
-  ## https://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=95950BAC26A728114431C0C7B425E022?doi=10.1.1.115.3276&rep=rep1&type=pdf
-  ##
-  ## Analyzing and Comparing Montgomery Multiplication Algorithms
-  ## Koc, Acar, Kaliski, 1996
-  ## https://www.semanticscholar.org/paper/Analyzing-and-comparing-Montgomery-multiplication-Ko%C3%A7-Acar/5e3941ff482ec3ee41dc53c3298f0be085c69483
-
-  # TODO: Deactivated
-  # Off-by one on 32-bit on the least significant bit
-  # for Fp[2^127 - 1] with inputs
-  # - -0x75bfffefbfffffff7fd9dfd800000000
-  # - -0x7ff7ffffffffffff1dfb7fafc0000000
-  # Squaring the number and its opposite
-  # should give the same result, but those are off-by-one
-
-  # We want all the computation to be kept in registers
-  # hence we use a temporary `t`, hoping that the compiler does it.
-  var t: typeof(M) # zero-init
-  const N = t.len
-  # Extra words to handle up to 2 carries t[N] and t[N+1]
-  var tNp1: SecretWord
-  var tN: SecretWord
-
-  staticFor i, 0, N:
-    # Squaring
-    var A1 = Carry(0)
-    var A0: SecretWord
-    # (A0, t[i]) <- a[i] * a[i] + t[i]
-    muladd1(A0, t[i], a[i], a[i], t[i])
-    staticFor j, i+1, N:
-      # (A1, A0, t[j]) <- 2*a[j]*a[i] + t[j] + (A1, A0)
-      # 2*a[j]*a[i] can spill 1-bit on a 3rd word
-      mulDoubleAdd2(A1, A0, t[j], a[j], a[i], t[j], A1, A0)
-
-    var carryS: Carry
-    addC(carryS, tN, tN, A0, Carry(0))
-    addC(carryS, tNp1, SecretWord(A1), Zero, carryS)
-
-    # Reduction
-    #  m        <- (t[0] * m0ninv) mod 2^w
-    # (C, _)    <- m * M[0] + t[0]
-    var C, lo: SecretWord
-    let m = t[0] * SecretWord(m0ninv)
-    muladd1(C, lo, m, M[0], t[0])
-    staticFor j, 1, N:
-      # (C, t[j-1]) <- m*M[j] + t[j] + C
-      muladd2(C, t[j-1], m, M[j], t[j], C)
-
-    #  (C,t[N-1]) <- t[N] + C
-    #  (_, t[N])  <- t[N+1] + C
-    var carryR: Carry
-    addC(carryR, t[N-1], tN, C, Carry(0))
-    addC(carryR, tN, tNp1, Zero, carryR)
-
-  discard t.csub(M, tN.isNonZero() or not(t < M)) # TODO: (t >= M) is unnecessary for prime in the form (2^64)^w
-  r = t
-
-# Montgomery Reduction
-# ------------------------------------------------------------
-func montyRedc2x_CIOS[N: static int](
-       r: var array[N, SecretWord],
-       a: array[N*2, SecretWord],
-       M: array[N, SecretWord],
-       m0ninv: BaseType) =
-  ## Montgomery reduce a double-precision bigint modulo M
-  # - Analyzing and Comparing Montgomery Multiplication Algorithms
-  #   Cetin Kaya Koc and Tolga Acar and Burton S. Kaliski Jr.
-  #   http://pdfs.semanticscholar.org/5e39/41ff482ec3ee41dc53c3298f0be085c69483.pdf
-  #
-  # - Arithmetic of Finite Fields
-  #   Chapter 5 of Guide to Pairing-Based Cryptography
-  #   Jean Luc Beuchat, Luis J. Dominguez Perez, Sylvain Duquesne, Nadia El Mrabet, Laura Fuentes-Castañeda, Francisco Rodríguez-Henríquez, 2017
-  #   https://www.researchgate.net/publication/319538235_Arithmetic_of_Finite_Fields
-  #
-  # Algorithm
-  # Inputs:
-  # - N number of limbs
-  # - a[0 ..< 2N] (double-precision input to reduce)
-  # - M[0 ..< N] The field modulus (must be odd for Montgomery reduction)
-  # - m0ninv: Montgomery Reduction magic number = -1/M[0]
-  # Output:
-  # - r[0 ..< N], in the Montgomery domain
-  # Parameters:
-  # - w, the word width usually 64 on 64-bit platforms or 32 on 32-bit
-  #
-  # for i in 0 .. n-1:
-  #   C <- 0
-  #   m <- a[i] * m0ninv mod 2^w (i.e. simple multiplication)
-  #   for j in 0 .. n-1:
-  #     (C, S) <- a[i+j] + m * M[j] + C
-  #     a[i+j] <- S
-  #   a[i+n] += C
-  # for i in 0 .. n-1:
-  #   r[i] = a[i+n]
-  # if r >= M:
-  #   r -= M
-  #
-  # Important note: `a[i+n] += C` should propagate the carry
-  # to the higher limb if any, thank you "implementation detail"
-  # missing from paper.
-
-  var a = a          # Copy "t" for mutation and ensure on stack
-  var res: typeof(r) # Accumulator
-  staticFor i, 0, N:
-    var C = Zero
-    let m = a[i] * SecretWord(m0ninv)
-    staticFor j, 0, N:
-      muladd2(C, a[i+j], m, M[j], a[i+j], C)
-    res[i] = C
-
-  # This does t[i+n] += C
-  # but in a separate carry chain, fused with the
-  # copy "r[i] = t[i+n]"
-  var carry = Carry(0)
-  staticFor i, 0, N:
-    addC(carry, res[i], a[i+N], res[i], carry)
-
-  # Final substraction
-  discard res.csub(M, SecretWord(carry).isNonZero() or not(res < M))
-  r = res
-
-func montyRedc2x_Comba[N: static int](
-       r: var array[N, SecretWord],
-       a: array[N*2, SecretWord],
-       M: array[N, SecretWord],
-       m0ninv: BaseType) =
-  ## Montgomery reduce a double-precision bigint modulo M
-  # We use Product Scanning / Comba multiplication
-  var t, u, v = Zero
-  var carry: Carry
-  var z: typeof(r) # zero-init, ensure on stack and removes in-place problems in tower fields
-  staticFor i, 0, N:
-    staticFor j, 0, i:
-      mulAcc(t, u, v, z[j], M[i-j])
-
-    addC(carry, v, v, a[i], Carry(0))
-    addC(carry, u, u, Zero, carry)
-    addC(carry, t, t, Zero, carry)
-
-    z[i] = v * SecretWord(m0ninv)
-    mulAcc(t, u, v, z[i], M[0])
-    v = u
-    u = t
-    t = Zero
-
-  staticFor i, N, 2*N-1:
-    staticFor j, i-N+1, N:
-      mulAcc(t, u, v, z[j], M[i-j])
-
-    addC(carry, v, v, a[i], Carry(0))
-    addC(carry, u, u, Zero, carry)
-    addC(carry, t, t, Zero, carry)
-
-    z[i-N] = v
-
-    v = u
-    u = t
-    t = Zero
-
-  addC(carry, z[N-1], v, a[2*N-1], Carry(0))
-
-  # Final substraction
-  discard z.csub(M, SecretBool(carry) or not(z < M))
-  r = z
+# --------------------------------------------------------------------------------------------------------------------
+#
+# There are Montgomery squaring multiplications mentioned in the litterature
+# - https://hackmd.io/@zkteam/modular_multiplication if M[^1] < high(SecretWord) shr 2 (i.e. less than 0b00111...1111)
+# - Architectural Support for Long Integer Modulo Arithmetic on Risc-Based Smart Cards
+#   Johann Großschädl, 2003
+#   https://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=95950BAC26A728114431C0C7B425E022?doi=10.1.1.115.3276&rep=rep1&type=pdf
+# - Analyzing and Comparing Montgomery Multiplication Algorithms
+#   Koc, Acar, Kaliski, 1996
+#   https://www.semanticscholar.org/paper/Analyzing-and-comparing-Montgomery-multiplication-Ko%C3%A7-Acar/5e3941ff482ec3ee41dc53c3298f0be085c69483
+#
+# However fuzzing the implementation showed off-by-one on certain inputs especially in 32-bit mode
+#
+# for Fp[BLS12-381] on 32 bit with inputs
+# - 0x091F02EFA1C9B99C004329E94CD3C6B308164CBE02037333D78B6C10415286F7C51B5CD7F917F77B25667AB083314B1B
+# - 0x0B7C8AFE5D43E9A973AF8649AD8C733B97D06A78CFACD214CBE9946663C3F682362E0605BC8318714305B249B505AFD9
+# for Consensys/zkteam algorithm (off by one in least significant bit)
+#
+# for Fp[2^127 - 1] with inputs
+# - -0x75bfffefbfffffff7fd9dfd800000000
+# - -0x7ff7ffffffffffff1dfb7fafc0000000
+# Squaring the number and its opposite
+# should give the same result, but those are off-by-one
+# with Großschädl algorithm
+#
+# I suspect either I did a twice the same mistake when translating 2 different algorithms
+# or there is a carry propagation constraint that prevents interleaving squaring
+# and Montgomery reduction in the following loops
+# for i in 0 ..< N:
+#   for j in i+1 ..< N:     # <-- squaring, notice that we start at i+1 but carries from below may still impact us.
+#     ...
+#   for j in 1 ..< N:       # <- Montgomery reduce.
 
 # Exported API
 # ------------------------------------------------------------
+
+# TODO upstream, using Limbs[N] breaks semcheck
+func montyRedc2x*[N: static int](
+       r: var array[N, SecretWord],
+       a: array[N*2, SecretWord],
+       M: array[N, SecretWord],
+       m0ninv: BaseType, spareBits: static int) {.inline.} =
+  ## Montgomery reduce a double-precision bigint modulo M
+  when UseASM_X86_64 and r.len <= 6:
+    # ADX implies BMI2
+    if ({.noSideEffect.}: hasAdx()):
+      montRed_asm_adx_bmi2(r, a, M, m0ninv, spareBits >= 1)
+    else:
+      montRed_asm(r, a, M, m0ninv, spareBits >= 1)
+  elif UseASM_X86_32 and r.len <= 6:
+    # TODO: Assembly faster than GCC but slower than Clang
+    montRed_asm(r, a, M, m0ninv, spareBits >= 1)
+  else:
+    montyRedc2x_CIOS(r, a, M, m0ninv)
+    # montyRedc2x_Comba(r, a, M, m0ninv)
 
 func montyMul*(
         r: var Limbs, a, b, M: Limbs,
@@ -431,53 +377,27 @@ func montyMul*(
   else:
     montyMul_FIPS(r, a, b, M, m0ninv)
 
-func montySquare*(r: var Limbs, a, M: Limbs,
+func montySquare*[N](r: var Limbs[N], a, M: Limbs[N],
                   m0ninv: static BaseType, spareBits: static int) {.inline.} =
   ## Compute r <- a^2 (mod M) in the Montgomery domain
   ## `m0ninv` = -1/M (mod SecretWord). Our words are 2^31 or 2^63
 
-  # TODO: needs optimization similar to multiplication
-  montyMul(r, a, a, M, m0ninv, spareBits)
-
-  # when spareBits >= 2:
-  #   # TODO: Deactivated
-  #   # Off-by one on 32-bit on the least significant bit
-  #   # for Fp[BLS12-381] with inputs
-  #   # - -0x091F02EFA1C9B99C004329E94CD3C6B308164CBE02037333D78B6C10415286F7C51B5CD7F917F77B25667AB083314B1B
-  #   # - -0x0B7C8AFE5D43E9A973AF8649AD8C733B97D06A78CFACD214CBE9946663C3F682362E0605BC8318714305B249B505AFD9
-  #
-  #   # montySquare_CIOS_nocarry(r, a, M, m0ninv)
-  #   montyMul_CIOS_nocarry(r, a, a, M, m0ninv)
-  # else:
-  #   # TODO: Deactivated
-  #   # Off-by one on 32-bit for Fp[2^127 - 1] with inputs
-  #   # - -0x75bfffefbfffffff7fd9dfd800000000
-  #   # - -0x7ff7ffffffffffff1dfb7fafc0000000
-  #   # Squaring the number and its opposite
-  #   # should give the same result, but those are off-by-one
-  #
-  #   # montySquare_CIOS(r, a, M, m0ninv) # TODO <--- Fix this
-  #   montyMul_FIPS(r, a, a, M, m0ninv)
-
-# TODO upstream, using Limbs[N] breaks semcheck
-func montyRedc2x*[N: static int](
-       r: var array[N, SecretWord],
-       a: array[N*2, SecretWord],
-       M: array[N, SecretWord],
-       m0ninv: BaseType, spareBits: static int) {.inline.} =
-  ## Montgomery reduce a double-precision bigint modulo M
-  when UseASM_X86_64 and r.len <= 6:
+  when UseASM_X86_64 and a.len in {4, 6}:
     # ADX implies BMI2
     if ({.noSideEffect.}: hasAdx()):
-      montRed_asm_adx_bmi2(r, a, M, m0ninv, spareBits)
+      # With ADX and spare bit, montSquare_CIOS_asm_adx_bmi2
+      # which uses unfused squaring then Montgomery reduction
+      # is slightly slower than fused Montgomery multiplication
+      when spareBits >= 1:
+        montMul_CIOS_nocarry_asm_adx_bmi2(r, a, a, M, m0ninv)
+      else:
+        montSquare_CIOS_asm_adx_bmi2(r, a, M, m0ninv, spareBits >= 1)
     else:
-      montRed_asm(r, a, M, m0ninv, spareBits)
-  elif UseASM_X86_32 and r.len <= 6:
-    # TODO: Assembly faster than GCC but slower than Clang
-    montRed_asm(r, a, M, m0ninv, spareBits)
+      montSquare_CIOS_asm(r, a, M, m0ninv, spareBits >= 1)
   else:
-    montyRedc2x_CIOS(r, a, M, m0ninv)
-    # montyRedc2x_Comba(r, a, M, m0ninv)
+    var r2x {.noInit.}: Limbs[2*N]
+    r2x.square(a)
+    r.montyRedc2x(r2x, M, m0ninv, spareBits)
 
 func redc*(r: var Limbs, a, one, M: Limbs,
            m0ninv: static BaseType, spareBits: static int) =

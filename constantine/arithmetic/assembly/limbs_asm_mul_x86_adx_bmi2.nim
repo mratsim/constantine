@@ -554,7 +554,7 @@ func sqrx_gen6L(ctx: var Assembler_x86, r, a: OperandArray, t: var OperandArray)
   merge_diag_and_partsum(r, a, hi1, lo1, zero, 4)
   merge_diag_and_partsum(r, a, hi2, lo2, zero, 5)
 
-macro sqrx_gen[rLen, aLen: static int](rx: var Limbs[rLen], ax: Limbs[aLen]) =
+macro sqrx_gen*[rLen, aLen: static int](rx: var Limbs[rLen], ax: Limbs[aLen]) =
   ## Squaring
   ## `a` and `r` can have a different number of limbs
   ## if `r`.limbs.len < a.limbs.len * 2

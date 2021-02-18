@@ -83,12 +83,12 @@ proc finalSubCanOverflow*(
 # Montgomery reduction
 # ------------------------------------------------------------
 
-macro montyRedc2x_gen[N: static int](
+macro montyRedc2x_gen*[N: static int](
        r_MR: var array[N, SecretWord],
        a_MR: array[N*2, SecretWord],
        M_MR: array[N, SecretWord],
        m0ninv_MR: BaseType,
-       spareBits: static int
+       hasSpareBit: static bool
       ) =
   result = newStmtList()
 
@@ -205,7 +205,7 @@ macro montyRedc2x_gen[N: static int](
   let t = repackRegisters(v, u[N], u[N+1])
 
   # v is invalidated
-  if spareBits >= 1:
+  if hasSpareBit:
     ctx.finalSubNoCarry(r, u, M, t)
   else:
     ctx.finalSubCanOverflow(r, u, M, t, rax)
@@ -218,7 +218,7 @@ func montRed_asm*[N: static int](
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
        m0ninv: BaseType,
-       spareBits: static int
+       hasSpareBit: static bool
       ) =
   ## Constant-time Montgomery reduction
-  montyRedc2x_gen(r, a, M, m0ninv, spareBits)
+  montyRedc2x_gen(r, a, M, m0ninv, hasSpareBit)
