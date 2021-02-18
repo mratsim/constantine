@@ -257,10 +257,10 @@ func mul_asm_adx_bmi2*[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limb
 #
 # r₁₁ r₁₀ r₉ r₈ r₇ r₆ r₅ r₄ r₃ r₂ r₁ r₀
 
-template merge_diag_and_partsum(hi, lo, i): untyped =
+template merge_diag_and_partsum(r, a, hi, lo, zero, i): untyped =
   ctx.mulx hi, lo, a[i], rdx
   if i+1 < a.len:
-    ctx.mov rdx, a[i+1]
+    ctx.mov rdx, a[i+1]     # prepare next iteration
   if i != 0:
     ctx.adox lo, r[2*i]
     ctx.adcx lo, r[2*i]
@@ -334,7 +334,7 @@ func sqrx_gen4L(ctx: var Assembler_x86, r, a: OperandArray, t: var OperandArray)
 
   ctx.comment "a₃*a₂"
   ctx.mulx hi, rax, a[3], rdx
-  ctx.mov  rdx, 0 # Set to 0 without clearing flags
+  ctx.mov  rdx, 0                  # Set to 0 without clearing flags
   ctx.adox t[2], rax               # t₂ partial sum r₅
   ctx.mov r[5], t[2]               # r₅ finished
   ctx.adcx hi, rdx                 # Terminate carry chains
@@ -358,6 +358,8 @@ func sqrx_gen4L(ctx: var Assembler_x86, r, a: OperandArray, t: var OperandArray)
   #           a₃*a₂ a₃*a₀         |
   #
   #        r₇ r₆ r₅ r₄ r₃ r₂ r₁ r₀
+
+  # a₀ in RDX
   var
     hi1 = hi
     lo1 = rax
@@ -369,10 +371,188 @@ func sqrx_gen4L(ctx: var Assembler_x86, r, a: OperandArray, t: var OperandArray)
   let zero = t[2]
   ctx.`xor` zero, zero             # clear flags, break dependency chains
 
-  merge_diag_and_partsum(hi1, lo1, 0)
-  merge_diag_and_partsum(hi2, lo2, 1)
-  merge_diag_and_partsum(hi1, lo1, 2)
-  merge_diag_and_partsum(hi2, lo2, 3)
+  merge_diag_and_partsum(r, a, hi1, lo1, zero, 0)
+  merge_diag_and_partsum(r, a, hi2, lo2, zero, 1)
+  merge_diag_and_partsum(r, a, hi1, lo1, zero, 2)
+  merge_diag_and_partsum(r, a, hi2, lo2, zero, 3)
+
+
+func sqrx_gen6L(ctx: var Assembler_x86, r, a: OperandArray, t: var OperandArray) =
+  #                     a₅ a₄ a₃ a₂ a₁ a₀
+  # *                   a₅ a₄ a₃ a₂ a₁ a₀
+  # -------------------------------------
+  #                                 a₀*a₀
+  #                           a₁*a₁
+  #                     a₂*a₂
+  #               a₃*a₃
+  #         a₄*a₄
+  #   a₅*a₅
+  #
+  #                  a₃*a₂ a₂*a₁ a₁*a₀           |
+  #               a₄*a₂ a₃*a₁ a₂*a₀              |
+  #            a₄*a₃ a₄*a₁ a₃*a₀                 | * 2
+  #         a₅*a₃ a₅*a₁ a₄*a₀                    |
+  #      a₅*a₄ a₅*a₂ a₅*a₀                       |
+  #
+  #
+  # r₁₁ r₁₀ r₉ r₈ r₇ r₆ r₅ r₄ r₃ r₂ r₁ r₀
+
+  # First diagonal. a₀ * [aₙ₋₁ .. a₂ a₁]
+  # ------------------------------------
+  # This assumes that t will be rotated left and so
+  # t1 is in t[0] and tn in t[n-1]
+  ctx.mov rdx, a[0]
+  ctx.`xor` rax, rax # clear flags
+
+  ctx.comment "a₁*a₀"
+  ctx.mulx t[1], rax, a[1], rdx    # t₁ partial sum of r₂
+  ctx.mov  r[1], rax
+
+  ctx.comment "a₂*a₀"
+  ctx.mulx t[2], rax, a[2], rdx    # t₂ partial sum of r₃
+  ctx.add  t[1], rax
+  ctx.mov  r[2], t[1]              # r₂ finished
+
+  ctx.comment "a₃*a₀"
+  ctx.mulx t[3], rax, a[3], rdx    # t₃ partial sum of r₄
+  ctx.adc t[2], rax
+
+  ctx.comment "a₄*a₀"
+  ctx.mulx t[4], rax, a[4], rdx    # t₄ partial sum of r₅
+  ctx.adc t[3], rax
+
+  ctx.comment "a₅*a₀"
+  ctx.mulx t[5], rax, a[5], rdx    # t₅ partial sum of r₆
+  ctx.mov rdx, a[1]                # prepare next iteration
+  ctx.adc t[4], rax
+  ctx.adc t[5], 0                  # final carry in r₆
+
+  # Second diagonal, a₂*a₁, a₃*a₁, a₄*a₁, a₅*a₁, a₅*a₂
+  # --------------------------------------------------
+
+  ctx.`xor` t[a.len], t[a.len]     # Clear flags and upper word
+  t.rotateLeft()                   # Our schema are big-endian (rotate right)
+  t.rotateLeft()                   # but we are little-endian (rotateLeft)
+  # Partial sums: t₀ is r₃, t₁ is r₄, t₂ is r₅, t₃ is r₆, ...
+  block:
+    let hi = t[a.len]
+
+    ctx.comment "a₂*a₁"
+    ctx.mulx hi, rax, a[2], rdx
+    ctx.adox t[0], rax               # t₀ partial sum r₃
+    ctx.mov r[3], t[0]               # r₃ finished
+    ctx.adcx t[1], hi                # t₁ partial sum r₄
+
+    ctx.comment "a₃*a₁"
+    ctx.mulx hi, rax, a[3], rdx
+    ctx.adox t[1], rax               # t₁ partial sum r₄
+    ctx.mov r[4], t[1]               # r₄ finished
+    ctx.adcx t[2], hi                # t₂ partial sum r₅
+
+    ctx.comment "a₄*a₁"
+    ctx.mulx hi, rax, a[4], rdx
+    ctx.adox t[2], rax               # t₂ partial sum r₅
+    ctx.adcx t[3], hi                # t₃ partial sum r₆
+
+    ctx.comment "a₅*a₁"
+    ctx.mulx hi, rax, a[5], rdx
+    ctx.mov rdx, a[2]                # prepare next iteration
+    ctx.adox t[3], rax               # t₃ partial sum r₆
+    ctx.adcx t[4], hi                # t₄ partial sum r₇
+
+    ctx.comment "a₅*a₂"
+    ctx.mulx t[5], rax, a[5], rdx
+    ctx.mov hi, 0                    # Set to 0 `hi` (== t[6] = r₉) without clearing flags
+    ctx.adox t[4], rax               # t₄ partial sum r₇
+    ctx.adcx t[5], hi                # t₅ partial sum r₈, terminate carry chains
+    ctx.adox t[5], hi
+
+  # Third diagonal, a₃*a₂, a₄*a₂, a₄*a₃, a₅*a₃, a₅*a₄
+  # --------------------------------------------------
+  t.rotateLeft()
+  t.rotateLeft()
+  # Partial sums: t₀ is r₅, t₁ is r₆, t₂ is r₇, t₃ is r₈, t₄ is r₉, t₅ is r₁₀
+  # t₄ is r₉ and was set to zero, a₂ in RDX
+  block:
+    let hi = t[a.len]
+    ctx.`xor` hi, hi                 # t₅ is r₁₀ = 0, break dependency chains
+
+    ctx.comment "a₃*a₂"
+    ctx.mulx hi, rax, a[3], rdx
+    ctx.adox t[0], rax               # t₀ partial sum r₅
+    ctx.mov r[5], t[0]               # r₅ finished
+    ctx.adcx t[1], hi                # t₁ partial sum r₆
+
+    ctx.comment "a₄*a₂"
+    ctx.mulx hi, rax, a[4], rdx
+    ctx.mov rdx, a[3]                # prepare next iteration
+    ctx.adox t[1], rax               # t₁ partial sum r₆
+    ctx.mov r[6], t[1]               # r₆ finished
+    ctx.adcx t[2], hi                # t₂ partial sum r₇
+
+    ctx.comment "a₄*a₃"
+    ctx.mulx hi, rax, a[4], rdx
+    ctx.adox t[2], rax               # t₂ partial sum r₇
+    ctx.mov r[7], t[2]               # r₇ finished
+    ctx.adcx t[3], hi                # t₃ partial sum r₈
+
+    ctx.comment "a₅*a₃"
+    ctx.mulx hi, rax, a[5], rdx
+    ctx.mov rdx, a[4]                # prepare next iteration
+    ctx.adox t[3], rax               # t₃ partial sum r₈
+    ctx.mov r[8], t[3]               # r₈ finished
+    ctx.adcx t[4], hi                # t₄ partial sum r₉ (was zero)
+
+    ctx.comment "a₅*a₄"
+    ctx.mulx hi, rax, a[5], rdx
+    ctx.mov  rdx, 0                  # Set to 0 without clearing flags
+    ctx.adox t[4], rax               # t₄ partial sum r₉
+    ctx.mov r[9], t[4]               # r₉ finished
+    ctx.adcx hi, rdx                 # Terminate carry chains
+    ctx.adox hi, rdx
+    ctx.mov rdx, a[0]                # prepare next iteration
+    ctx.mov r[10], hi                # r₁₀ finished
+
+  # a[i] * a[i] + 2 * r[2n-1 .. 1]
+  # -------------------------------------
+  #
+  #                     a₅ a₄ a₃ a₂ a₁ a₀
+  # *                   a₅ a₄ a₃ a₂ a₁ a₀
+  # -------------------------------------
+  #                                 a₀*a₀
+  #                           a₁*a₁
+  #                     a₂*a₂
+  #               a₃*a₃
+  #         a₄*a₄
+  #   a₅*a₅
+  #
+  #                  a₃*a₂ a₂*a₁ a₁*a₀           |
+  #               a₄*a₂ a₃*a₁ a₂*a₀              |
+  #            a₄*a₃ a₄*a₁ a₃*a₀                 | * 2
+  #         a₅*a₃ a₅*a₁ a₄*a₀                    |
+  #      a₅*a₄ a₅*a₂ a₅*a₀                       |
+  #
+  #
+  # r₁₁ r₁₀ r₉ r₈ r₇ r₆ r₅ r₄ r₃ r₂ r₁ r₀
+
+  # a₀ in RDX
+  var
+    hi1 = t[a.len]
+    lo1 = rax
+  var
+    hi2 = t[1]
+    lo2 = t[0]
+
+  ctx.comment "ai*ai + 2*r[1..<2*n-2]"
+  let zero = t[2]
+  ctx.`xor` zero, zero             # clear flags, break dependency chains
+
+  merge_diag_and_partsum(r, a, hi1, lo1, zero, 0)
+  merge_diag_and_partsum(r, a, hi2, lo2, zero, 1)
+  merge_diag_and_partsum(r, a, hi1, lo1, zero, 2)
+  merge_diag_and_partsum(r, a, hi2, lo2, zero, 3)
+  merge_diag_and_partsum(r, a, hi1, lo1, zero, 4)
+  merge_diag_and_partsum(r, a, hi2, lo2, zero, 5)
 
 macro sqrx_gen[rLen, aLen: static int](rx: var Limbs[rLen], ax: Limbs[aLen]) =
   ## Squaring
@@ -409,6 +589,8 @@ macro sqrx_gen[rLen, aLen: static int](rx: var Limbs[rLen], ax: Limbs[aLen]) =
 
   if aLen == 4:
     ctx.sqrx_gen4L(r, a, t)
+  elif aLen == 6:
+    ctx.sqrx_gen6L(r, a, t)
   else:
     error: "Not implemented"
 
@@ -427,11 +609,15 @@ func square_asm_adx_bmi2*[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[a
 when isMainModule:
   import
     ../../config/[type_bigint, common],
-    ../../arithmetic/limbs,
-    algorithm, strutils
+    ../../arithmetic/limbs
+
+  type SW = SecretWord
+
+  # 4 limbs
+  # --------------------------------
 
   proc mainSqr1() =
-    var a = [SecretWord 0xFFFF_FFFF_FFFF_FFFF'u64, SecretWord 0xFFFF_FFFF_FFFF_FFFF'u64, SecretWord 0xFFFF_FFFF_FFFF_FFFF'u64, SecretWord 0xFFFF_FFFF_FFFF_FFFF'u64]
+    var a = [SW 0xFFFF_FFFF_FFFF_FFFF'u64, SW 0xFFFF_FFFF_FFFF_FFFF'u64, SW 0xFFFF_FFFF_FFFF_FFFF'u64, SW 0xFFFF_FFFF_FFFF_FFFF'u64]
 
     var a2x, expected: Limbs[8]
 
@@ -447,7 +633,7 @@ when isMainModule:
     doAssert bool(a2x == expected)
 
   proc mainSqr2() =
-    var a = [SecretWord 0x2'u64, SecretWord 0x1'u64, SecretWord 0x1'u64, SecretWord 0x2'u64]
+    var a = [SW 0x2'u64, SW 0x1'u64, SW 0x1'u64, SW 0x2'u64]
 
     var a2x, expected: Limbs[8]
 
@@ -464,3 +650,42 @@ when isMainModule:
 
   mainSqr1()
   mainSqr2()
+
+  # 6 limbs
+  # --------------------------------
+
+
+  proc mainSqr3() =
+    var a = [SW 0xFFFF_FFFF_FFFF_FFFF'u64, SW 0xFFFF_FFFF_FFFF_FFFF'u64, SW 0xFFFF_FFFF_FFFF_FFFF'u64, SW 0xFFFF_FFFF_FFFF_FFFF'u64, SW 0xFFFF_FFFF_FFFF_FFFF'u64, SW 0xFFFF_FFFF_FFFF_FFFF'u64]
+
+    var a2x, expected: Limbs[12]
+
+    a2x.square_asm_adx_bmi2(a)
+    expected.mul_asm_adx_bmi2(a, a)
+    debugecho "--------------------------------"
+    debugecho "before:"
+    debugecho "  a  : ", a.toString()
+    debugecho "after:"
+    debugecho "  a2x: ", a2x.toString()
+    debugecho "  ref: ", expected.toString()
+
+    doAssert bool(a2x == expected)
+
+  proc mainSqr4() =
+    var a = [SW 0x1'u64, SW 0x2'u64, SW 0x2'u64, SW 0x2'u64, SW 0x1'u64, SW 0x1'u64,]
+
+    var a2x, expected: Limbs[12]
+
+    a2x.square_asm_adx_bmi2(a)
+    expected.mul_asm_adx_bmi2(a, a)
+    debugecho "--------------------------------"
+    debugecho "before:"
+    debugecho "  a  : ", a.toString()
+    debugecho "after:"
+    debugecho "  a2x: ", a2x.toString()
+    debugecho "  ref: ", expected.toString()
+
+    doAssert bool(a2x == expected)
+
+  mainSqr3()
+  mainSqr4()
