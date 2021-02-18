@@ -183,12 +183,13 @@ suite "Modular squaring - bugs highlighted by property-based testing":
     a2 *= a2
     na2 *= na2
 
-    doAssert
+    doAssert(
       bool(a2 == na2) and
       bool(a2 == a) and
       bool(a2 == na),
         "\n   a*a:     " & a2.mres.limbs.toString() &
         "\n (-a)*(-a): " & na2.mres.limbs.toString()
+    )
 
   test "a² == (-a)² on for Fp[2^127 - 1] - #62":
     var a{.noInit.}: Fp[Mersenne127]
@@ -212,12 +213,13 @@ suite "Modular squaring - bugs highlighted by property-based testing":
     a2 *= a2
     na2 *= na2
 
-    check:
-      bool(a2 == na2)
-      bool(a2 == a)
+    doAssert(
+      bool(a2 == na2) and
+      bool(a2 == a) and
       bool(a2 == na),
         "\n   a*a:     " & a2.mres.limbs.toString() &
         "\n (-a)*(-a): " & na2.mres.limbs.toString()
+    )
 
   test "32-bit fast squaring on BLS12-381 - #42":
     # x = -(2^63 + 2^62 + 2^60 + 2^57 + 2^48 + 2^16)
