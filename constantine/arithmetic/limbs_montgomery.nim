@@ -329,7 +329,7 @@ func montyRedc2x*[N: static int](
       montRed_asm_adx_bmi2(r, a, M, m0ninv, spareBits >= 1)
     else:
       montRed_asm(r, a, M, m0ninv, spareBits >= 1)
-  elif UseASM_X86_32 and r.len <= 6:
+  elif UseASM_X86_64 and r.len <= 6:
     # TODO: Assembly faster than GCC but slower than Clang
     montRed_asm(r, a, M, m0ninv, spareBits >= 1)
   else:

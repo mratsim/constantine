@@ -42,9 +42,24 @@ type
     # Clobbered register
     ClobberedReg
 
-  Register* = enum
-    rbx, rdx, r8, rax, xmm0
+when sizeof(int) == 8 and not defined(Constantine32):
+  type
+    Register* = enum
+      rbx
+      rdx
+      r8
+      rax
+      xmm0
+else:
+  type
+    Register* = enum
+      rbx  = "ebx"
+      rdx  = "edx"
+      r8   = "r8d"
+      rax  = "eax"
+      xmm0
 
+type
   Constraint* = enum
     ## GCC extended assembly modifier
     Input               = ""

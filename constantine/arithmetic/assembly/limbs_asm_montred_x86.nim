@@ -221,4 +221,5 @@ func montRed_asm*[N: static int](
        hasSpareBit: static bool
       ) =
   ## Constant-time Montgomery reduction
+  static: doAssert UseASM_X86_64, "This requires x86-64."
   montyRedc2x_gen(r, a, M, m0ninv, hasSpareBit)
