@@ -12,7 +12,9 @@ import
   # Internal
   ../../config/common,
   ../../primitives,
-  ./limbs_asm_montred_x86
+  ./limbs_asm_montred_x86,
+  ./limbs_asm_montred_x86_adx_bmi2,
+  ./limbs_asm_mul_x86_adx_bmi2
 
 # ############################################################
 #
@@ -271,3 +273,36 @@ macro montMul_CIOS_nocarry_adx_bmi2_gen[N: static int](r_MM: var Limbs[N], a_MM,
 func montMul_CIOS_nocarry_asm_adx_bmi2*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   ## Constant-time modular multiplication
   montMul_CIOS_nocarry_adx_bmi2_gen(r, a, b, M, m0ninv)
+
+# Montgomery Squaring
+# ------------------------------------------------------------
+
+func square_asm_adx_bmi2_inline[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) {.inline.} =
+  ## Multi-precision Squaring
+  ## Extra indirection as the generator assumes that
+  ## arrays are pointers, which is true for parameters
+  ## but not for stack variables.
+  sqrx_gen(r, a)
+
+func montRed_asm_adx_bmi2_inline[N: static int](
+       r: var array[N, SecretWord],
+       a: array[N*2, SecretWord],
+       M: array[N, SecretWord],
+       m0ninv: BaseType,
+       hasSpareBit: static bool
+      ) {.inline.} =
+  ## Constant-time Montgomery reduction
+  ## Extra indirection as the generator assumes that
+  ## arrays are pointers, which is true for parameters
+  ## but not for stack variables.
+  montyRedc2x_adx_gen(r, a, M, m0ninv, hasSpareBit)
+
+func montSquare_CIOS_asm_adx_bmi2*[N](
+       r: var Limbs[N],
+       a, M: Limbs[N],
+       m0ninv: BaseType,
+       hasSpareBit: static bool) =
+  ## Constant-time modular squaring
+  var r2x {.noInit.}: Limbs[2*N]
+  r2x.square_asm_adx_bmi2_inline(a)
+  r.montRed_asm_adx_bmi2_inline(r2x, M, m0ninv, hasSpareBit)

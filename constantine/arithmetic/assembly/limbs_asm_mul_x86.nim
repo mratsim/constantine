@@ -133,7 +133,7 @@ func mul_asm*[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], 
 # Squaring
 # -----------------------------------------------------------------------------------------------
 
-macro square_gen[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) =
+macro sqr_gen*[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) =
   ## Comba squaring generator
   ## `a` and `r` can have a different number of limbs
   ## if `r`.limbs.len < a.limbs.len * 2
@@ -240,4 +240,4 @@ macro square_gen[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) =
 func square_asm*[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) =
   ## Multi-precision Squaring
   ## Assumes r doesn't alias a
-  square_gen(r, a)
+  sqr_gen(r, a)

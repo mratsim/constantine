@@ -12,7 +12,8 @@ import
   # Internal
   ../../config/common,
   ../../primitives,
-  ./limbs_asm_montred_x86
+  ./limbs_asm_montred_x86,
+  ./limbs_asm_mul_x86
 
 # ############################################################
 #
@@ -176,3 +177,37 @@ macro montMul_CIOS_nocarry_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_
 func montMul_CIOS_nocarry_asm*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   ## Constant-time modular multiplication
   montMul_CIOS_nocarry_gen(r, a, b, M, m0ninv)
+
+# Montgomery Squaring
+# ------------------------------------------------------------
+
+func square_asm_inline[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) {.inline.} =
+  ## Multi-precision Squaring
+  ## Assumes r doesn't alias a
+  ## Extra indirection as the generator assumes that
+  ## arrays are pointers, which is true for parameters
+  ## but not for stack variables
+  sqr_gen(r, a)
+
+func montRed_asm_inline[N: static int](
+       r: var array[N, SecretWord],
+       a: array[N*2, SecretWord],
+       M: array[N, SecretWord],
+       m0ninv: BaseType,
+       hasSpareBit: static bool
+      ) {.inline.} =
+  ## Constant-time Montgomery reduction
+  ## Extra indirection as the generator assumes that
+  ## arrays are pointers, which is true for parameters
+  ## but not for stack variables
+  montyRedc2x_gen(r, a, M, m0ninv, hasSpareBit)
+
+func montSquare_CIOS_asm*[N](
+       r: var Limbs[N],
+       a, M: Limbs[N],
+       m0ninv: BaseType,
+       hasSpareBit: static bool) =
+  ## Constant-time modular squaring
+  var r2x {.noInit.}: Limbs[2*N]
+  r2x.square_asm_inline(a)
+  r.montRed_asm_inline(r2x, M, m0ninv, hasSpareBit)

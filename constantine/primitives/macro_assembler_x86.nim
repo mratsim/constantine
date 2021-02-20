@@ -42,9 +42,24 @@ type
     # Clobbered register
     ClobberedReg
 
-  Register* = enum
-    rbx, rdx, r8, rax, xmm0
+when sizeof(int) == 8 and not defined(Constantine32):
+  type
+    Register* = enum
+      rbx
+      rdx
+      r8
+      rax
+      xmm0
+else:
+  type
+    Register* = enum
+      rbx  = "ebx"
+      rdx  = "edx"
+      r8   = "r8d"
+      rax  = "eax"
+      xmm0
 
+type
   Constraint* = enum
     ## GCC extended assembly modifier
     Input               = ""
@@ -116,6 +131,9 @@ func len*(opArray: Operand): int =
 
 func rotateLeft*(opArray: var OperandArray) =
   opArray.buf.rotateLeft(1)
+
+func rotateRight*(opArray: var OperandArray) =
+  opArray.buf.rotateLeft(-1)
 
 proc `[]`*(opArray: OperandArray, index: int): Operand =
   opArray.buf[index]
@@ -941,7 +959,7 @@ func mulx*(a: var Assembler_x86, dHi, dLo: Register, src0: Operand, src1: Regist
   a.regClobbers.incl dHi
   a.regClobbers.incl dLo
 
-func adcx*(a: var Assembler_x86, dst: Operand|OperandReuse, src: Operand|OperandReuse|Register) =
+func adcx*(a: var Assembler_x86, dst: Operand|OperandReuse|Register, src: Operand|OperandReuse|Register) =
   ## Does: dst <- dst + src + carry
   ## and only sets the carry flag
   when dst is Operand:
@@ -950,7 +968,7 @@ func adcx*(a: var Assembler_x86, dst: Operand|OperandReuse, src: Operand|Operand
   a.codeFragment("adcx", src, dst)
   a.areFlagsClobbered = true
 
-func adox*(a: var Assembler_x86, dst: Operand|OperandReuse, src: Operand|OperandReuse|Register) =
+func adox*(a: var Assembler_x86, dst: Operand|OperandReuse|Register, src: Operand|OperandReuse|Register) =
   ## Does: dst <- dst + src + overflow
   ## and only sets the overflow flag
   when dst is Operand:

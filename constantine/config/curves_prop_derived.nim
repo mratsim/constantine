@@ -125,7 +125,7 @@ macro debugConsts(): untyped {.used.} =
   for i in 1 ..< E.len:
     let curve = E[i]
     let curveName = $curve
-    let modulus = bindSym(curveName & "_Fp_Modulus")
+    let modulus = bindSym(curveName & "_Modulus")
     let r2modp = bindSym(curveName & "_Fp_R2modP")
     let negInvModWord = bindSym(curveName & "_Fp_NegInvModWord")
 

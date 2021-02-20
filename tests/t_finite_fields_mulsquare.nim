@@ -145,7 +145,6 @@ suite "Random Modular Squaring is consistent with Modular Multiplication" & " ["
       random_long01Seq(P224)
 
   test "Random squaring mod P-256 [FastSquaring = " & $(Fp[P256].getSpareBits() >= 2) & "]":
-    echo "Fp[P256].getSpareBits(): ", Fp[P256].getSpareBits()
     for _ in 0 ..< Iters:
       randomCurve(P256)
     for _ in 0 ..< Iters:
@@ -173,8 +172,9 @@ suite "Modular squaring - bugs highlighted by property-based testing":
     a.square()
     na.square()
 
-    check:
-      bool(a == na)
+    doAssert bool(a == na),
+      "\n   a² : " & a.mres.limbs.toString() &
+      "\n (-a)²: " & na.mres.limbs.toString()
 
     var a2{.noInit.}, na2{.noInit.}: Fp[Mersenne127]
     a2.fromHex"0x75bfffefbfffffff7fd9dfd800000000"
@@ -183,10 +183,13 @@ suite "Modular squaring - bugs highlighted by property-based testing":
     a2 *= a2
     na2 *= na2
 
-    check:
-      bool(a2 == na2)
-      bool(a2 == a)
-      bool(a2 == na)
+    doAssert(
+      bool(a2 == na2) and
+      bool(a2 == a) and
+      bool(a2 == na),
+        "\n   a*a:     " & a2.mres.limbs.toString() &
+        "\n (-a)*(-a): " & na2.mres.limbs.toString()
+    )
 
   test "a² == (-a)² on for Fp[2^127 - 1] - #62":
     var a{.noInit.}: Fp[Mersenne127]
@@ -199,8 +202,9 @@ suite "Modular squaring - bugs highlighted by property-based testing":
     a.square()
     na.square()
 
-    check:
-      bool(a == na)
+    doAssert bool(a == na),
+      "\n   a² : " & a.mres.limbs.toString() &
+      "\n (-a)²: " & na.mres.limbs.toString()
 
     var a2{.noInit.}, na2{.noInit.}: Fp[Mersenne127]
     a2.fromHex"0x7ff7ffffffffffff1dfb7fafc0000000"
@@ -209,10 +213,13 @@ suite "Modular squaring - bugs highlighted by property-based testing":
     a2 *= a2
     na2 *= na2
 
-    check:
-      bool(a2 == na2)
-      bool(a2 == a)
-      bool(a2 == na)
+    doAssert(
+      bool(a2 == na2) and
+      bool(a2 == a) and
+      bool(a2 == na),
+        "\n   a*a:     " & a2.mres.limbs.toString() &
+        "\n (-a)*(-a): " & na2.mres.limbs.toString()
+    )
 
   test "32-bit fast squaring on BLS12-381 - #42":
     # x = -(2^63 + 2^62 + 2^60 + 2^57 + 2^48 + 2^16)
