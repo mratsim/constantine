@@ -11,6 +11,7 @@ import
   ../primitives,
   ./limbs,
   ./limbs_extmul,
+  ./limbs_invmod,
   ./limbs_modular,
   ./limbs_montgomery
 
