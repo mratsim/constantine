@@ -168,11 +168,18 @@ macro mulx_gen[rLen, aLen, bLen: static int](rx: var Limbs[rLen], ax: Limbs[aLen
   # Codegen
   result.add ctx.generate
 
-func mul_asm_adx_bmi2*[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) =
+func mul_asm_adx_bmi2_impl*[rLen, aLen, bLen: static int](
+       r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) {.inline.} =
   ## Multi-precision Multiplication
   ## Assumes r doesn't alias a or b
+  ## Inline version
   mulx_gen(r, a, b)
 
+func mul_asm_adx_bmi2*[rLen, aLen, bLen: static int](
+       r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) =
+  ## Multi-precision Multiplication
+  ## Assumes r doesn't alias a or b
+  mul_asm_adx_bmi2_impl(r, a, b)
 
 # Squaring
 # -----------------------------------------------------------------------------------------------
