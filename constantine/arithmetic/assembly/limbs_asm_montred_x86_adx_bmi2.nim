@@ -20,8 +20,6 @@ import
 #
 # ############################################################
 
-# TODO, MCL has an implementation about 14% faster
-
 static: doAssert UseASM_X86_64
 
 # MULX/ADCX/ADOX
@@ -140,6 +138,17 @@ macro montyRedc2x_adx_gen*[N: static int](
   # Code generation
   result.add ctx.generate()
 
+func montRed_asm_adx_bmi2_impl*[N: static int](
+       r: var array[N, SecretWord],
+       a: array[N*2, SecretWord],
+       M: array[N, SecretWord],
+       m0ninv: BaseType,
+       hasSpareBit: static bool
+      ) =
+  ## Constant-time Montgomery reduction
+  ## Inline-version
+  montyRedc2x_adx_gen(r, a, M, m0ninv, hasSpareBit)
+
 func montRed_asm_adx_bmi2*[N: static int](
        r: var array[N, SecretWord],
        a: array[N*2, SecretWord],
@@ -148,4 +157,4 @@ func montRed_asm_adx_bmi2*[N: static int](
        hasSpareBit: static bool
       ) =
   ## Constant-time Montgomery reduction
-  montyRedc2x_adx_gen(r, a, M, m0ninv, hasSpareBit)
+  montRed_asm_adx_bmi2_impl(r, a, M, m0ninv, hasSpareBit)

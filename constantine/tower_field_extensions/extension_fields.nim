@@ -10,7 +10,8 @@ import
   ../config/[common, curves],
   ../primitives,
   ../arithmetic,
-  ../io/io_fields
+  ../io/io_fields,
+  ./assembly/fp2_asm_x86_adx_bmi2
 
 # Note: to avoid burdening the Nim compiler, we rely on generic extension
 # to complain if the base field procedures don't exist
@@ -807,8 +808,8 @@ func prod2x_complex(r: var QuadraticExt2x, a, b: Fp2) =
     t1.sum(b.c0, b.c1)
   r.c1.prod2x(t0, t1)            # r1 = (b0 + b1)(a0 + a1)
   when Fp2.has1extraBit():
-    r.c1.diff2xUnr(r.c1, r.c0) # r1 = (b0 + b1)(a0 + a1) - a0 b0
-    r.c1.diff2xUnr(r.c1, D)    # r1 = (b0 + b1)(a0 + a1) - a0 b0 - a1b1
+    r.c1.diff2xUnr(r.c1, r.c0)   # r1 = (b0 + b1)(a0 + a1) - a0 b0
+    r.c1.diff2xUnr(r.c1, D)      # r1 = (b0 + b1)(a0 + a1) - a0 b0 - a1b1
   else:
     r.c1.diff2xMod(r.c1, r.c0)
     r.c1.diff2xMod(r.c1, D)
@@ -1227,7 +1228,13 @@ func square2x*(r: var QuadraticExt2x, a: QuadraticExt) =
 func square*(r: var QuadraticExt, a: QuadraticExt) =
   when r.fromComplexExtension():
     when true:
-      r.square_complex(a)
+      when UseASM_X86_64 and a.c0.mres.limbs.len <= 6:
+        if ({.noSideEffect.}: hasAdx()):
+          r.coords.sqrx_complex_asm_adx_bmi2(a.coords)
+        else:
+          r.square_complex(a)
+      else:
+        r.square_complex(a)
     else: # slower
       var d {.noInit.}: doublePrec(typeof(r))
       d.square2x_complex(a)
@@ -1259,10 +1266,19 @@ func prod*(r: var QuadraticExt, a, b: QuadraticExt) =
     when false:
       r.prod_complex(a, b)
     else: # faster
-      var d {.noInit.}: doublePrec(typeof(r))
-      d.prod2x_complex(a, b)
-      r.c0.redc2x(d.c0)
-      r.c1.redc2x(d.c1)
+      when UseASM_X86_64 and a.c0.mres.limbs.len <= 6:
+        if ({.noSideEffect.}: hasAdx()):
+          r.coords.mulx_complex_asm_adx_bmi2(a.coords, b.coords)
+        else:
+          var d {.noInit.}: doublePrec(typeof(r))
+          d.prod2x_complex(a, b)
+          r.c0.redc2x(d.c0)
+          r.c1.redc2x(d.c1)
+      else:
+        var d {.noInit.}: doublePrec(typeof(r))
+        d.prod2x_complex(a, b)
+        r.c0.redc2x(d.c0)
+        r.c1.redc2x(d.c1)
   else:
     when r.typeof.F.C == BW6_761 or typeof(r.c0) is Fp:
       # BW6-761 requires too many registers for Dbl width path
@@ -1287,7 +1303,13 @@ func prod2x_disjoint*[Fdbl, F](
 func prod2x*(r: var QuadraticExt2x, a, b: QuadraticExt) =
   ## Double-precision multiplication r <- a*b
   when a.fromComplexExtension():
-    r.prod2x_complex(a, b)
+    when UseASM_X86_64 and a.c0.mres.limbs.len <= 6:
+      if ({.noSideEffect.}: hasAdx()):
+        r.coords.mulx2x_complex_asm_adx_bmi2(a.coords, b.coords)
+      else:
+        r.prod2x_complex(a, b)
+    else:
+      r.prod2x_complex(a, b)
   else:
     r.prod2x_disjoint(a.c0, a.c1, b.c0, b.c1)
 
