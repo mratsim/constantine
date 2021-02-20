@@ -10,8 +10,11 @@ import
   ../config/[common, curves],
   ../primitives,
   ../arithmetic,
-  ../io/io_fields,
-  ./assembly/fp2_asm_x86_adx_bmi2
+  ../io/io_fields
+
+when UseASM_X86_64:
+  import
+    ./assembly/fp2_asm_x86_adx_bmi2
 
 # Note: to avoid burdening the Nim compiler, we rely on generic extension
 # to complain if the base field procedures don't exist
