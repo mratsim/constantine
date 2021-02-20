@@ -60,10 +60,13 @@ proc finalSubCanOverflow*(
   ## `overflowReg` should be a register that will be used
   ## to store the carry flag
 
+  ctx.comment "Final substraction (may carry)"
+
+  # Mask: overflowed contains 0xFFFF or 0x0000
   ctx.sbb overflowReg, overflowReg
 
+  # Now substract the modulus to test a < p
   let N = M.len
-  ctx.comment "Final substraction (may carry)"
   for i in 0 ..< N:
     ctx.mov scratch[i], a[i]
     if i == 0:
@@ -71,6 +74,8 @@ proc finalSubCanOverflow*(
     else:
       ctx.sbb scratch[i], M[i]
 
+  # If it overflows here, it means that it was
+  # smaller than the modulus and we don't need `scratch`
   ctx.sbb overflowReg, 0
 
   # If we borrowed it means that we were smaller than
@@ -137,7 +142,8 @@ macro montyRedc2x_gen*[N: static int](
   #   r -= M
 
   # No register spilling handling
-  doAssert N <= 6, "The Assembly-optimized montgomery multiplication requires at most 6 limbs."
+  doAssert N > 2, "The Assembly-optimized montgomery reduction requires a minimum of 2 limbs."
+  doAssert N <= 6, "The Assembly-optimized montgomery reduction requires at most 6 limbs."
 
   for i in 0 ..< N:
     ctx.mov u[i], a[i]
@@ -223,3 +229,88 @@ func montRed_asm*[N: static int](
   ## Constant-time Montgomery reduction
   static: doAssert UseASM_X86_64, "This requires x86-64."
   montyRedc2x_gen(r, a, M, m0ninv, hasSpareBit)
+
+# Sanity checks
+# ----------------------------------------------------------
+
+when isMainModule:
+  import
+    ../../config/[type_bigint, common],
+    ../../arithmetic/limbs
+
+  type SW = SecretWord
+
+  # TODO: Properly handle low number of limbs
+
+  func montyRedc2x_Comba[N: static int](
+        r: var array[N, SecretWord],
+        a: array[N*2, SecretWord],
+        M: array[N, SecretWord],
+        m0ninv: BaseType) =
+    ## Montgomery reduce a double-precision bigint modulo M
+    # We use Product Scanning / Comba multiplication
+    var t, u, v = Zero
+    var carry: Carry
+    var z: typeof(r) # zero-init, ensure on stack and removes in-place problems in tower fields
+    staticFor i, 0, N:
+      staticFor j, 0, i:
+        mulAcc(t, u, v, z[j], M[i-j])
+
+      addC(carry, v, v, a[i], Carry(0))
+      addC(carry, u, u, Zero, carry)
+      addC(carry, t, t, Zero, carry)
+
+      z[i] = v * SecretWord(m0ninv)
+      mulAcc(t, u, v, z[i], M[0])
+      v = u
+      u = t
+      t = Zero
+
+    staticFor i, N, 2*N-1:
+      staticFor j, i-N+1, N:
+        mulAcc(t, u, v, z[j], M[i-j])
+
+      addC(carry, v, v, a[i], Carry(0))
+      addC(carry, u, u, Zero, carry)
+      addC(carry, t, t, Zero, carry)
+
+      z[i-N] = v
+
+      v = u
+      u = t
+      t = Zero
+
+    addC(carry, z[N-1], v, a[2*N-1], Carry(0))
+
+    # Final substraction
+    discard z.csub(M, SecretBool(carry) or not(z < M))
+    r = z
+
+
+  proc main2L() =
+    let M = [SW 0xFFFFFFFF_FFFFFFFF'u64, SW 0x7FFFFFFF_FFFFFFFF'u64]
+
+    # a²
+    let adbl_sqr = [SW 0xFF677F6000000001'u64, SW 0xD79897153FA818FD'u64, SW 0x68BFF63DE35C5451'u64, SW 0x2D243FE4B480041F'u64]
+    # (-a)²
+    let nadbl_sqr = [SW 0xFECEFEC000000004'u64, SW 0xAE9896D43FA818FB'u64, SW 0x690C368DE35C5450'u64, SW 0x01A4400534800420'u64]
+
+    var a_sqr{.noInit.}, na_sqr{.noInit.}: Limbs[2]
+    var a_sqr_comba{.noInit.}, na_sqr_comba{.noInit.}: Limbs[2]
+
+    a_sqr.montRed_asm(adbl_sqr, M, 1, hasSpareBit = false)
+    na_sqr.montRed_asm(nadbl_sqr, M, 1, hasSpareBit = false)
+    a_sqr_comba.montyRedc2x_Comba(adbl_sqr, M, 1)
+    na_sqr_comba.montyRedc2x_Comba(nadbl_sqr, M, 1)
+
+    debugecho "--------------------------------"
+    debugecho "after:"
+    debugecho "  a_sqr:        ", a_sqr.toString()
+    debugecho "  na_sqr:       ", na_sqr.toString()
+    debugecho "  a_sqr_comba:  ", a_sqr_comba.toString()
+    debugecho "  na_sqr_comba: ", na_sqr_comba.toString()
+
+    doAssert bool(a_sqr == na_sqr)
+    doAssert bool(a_sqr == a_sqr_comba)
+
+  main2L()

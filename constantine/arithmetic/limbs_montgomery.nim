@@ -328,8 +328,12 @@ func montyRedc2x*[N: static int](
     if ({.noSideEffect.}: hasAdx()):
       montRed_asm_adx_bmi2(r, a, M, m0ninv, spareBits >= 1)
     else:
-      montRed_asm(r, a, M, m0ninv, spareBits >= 1)
-  elif UseASM_X86_64 and r.len <= 6:
+      when r.len in {3..6}:
+        montRed_asm(r, a, M, m0ninv, spareBits >= 1)
+      else:
+        montyRedc2x_CIOS(r, a, M, m0ninv)
+        # montyRedc2x_Comba(r, a, M, m0ninv)
+  elif UseASM_X86_64 and r.len in {3..6}:
     # TODO: Assembly faster than GCC but slower than Clang
     montRed_asm(r, a, M, m0ninv, spareBits >= 1)
   else:
