@@ -27,7 +27,7 @@ func inv_euclid*(r: var FF, a: FF) =
   ## Inversion modulo p via
   ## Niels Moller constant-time version of
   ## Stein's GCD derived from extended binary Euclid algorithm
-  r.mres.steinsGCD(a.mres, FF.getR2modP(), FF.fieldMod(), FF.getPrimePlus1div2())
+  r.mres.mollerGCD(a.mres, FF.getR2modP(), FF.fieldMod(), FF.getPrimePlus1div2())
 
 func inv*(r: var FF, a: FF) =
   ## Inversion modulo p

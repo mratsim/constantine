@@ -465,13 +465,13 @@ func div2_modular*[bits](a: var BigInt[bits], mp1div2: BigInt[bits]) =
   ## Otherwise `mp1div2` should be M/2
   a.limbs.div2_modular(mp1div2.limbs)
 
-func steinsGCD*[bits](r: var BigInt[bits], a, F, M, mp1div2: BigInt[bits]) =
+func mollerGCD*[bits](r: var BigInt[bits], a, F, M, mp1div2: BigInt[bits]) =
   ## Compute F multiplied the modular inverse of ``a`` modulo M
   ## r ≡ F . a^-1 (mod M)
   ##
   ## M MUST be odd, M does not need to be prime.
   ## ``a`` MUST be less than M.
-  r.limbs.steinsGCD(a.limbs, F.limbs, M.limbs, bits, mp1div2.limbs)
+  r.limbs.mollerGCD(a.limbs, F.limbs, M.limbs, bits, mp1div2.limbs)
 
 func invmod*[bits](r: var BigInt[bits], a, M, mp1div2: BigInt[bits]) =
   ## Compute the modular inverse of ``a`` modulo M
@@ -479,7 +479,7 @@ func invmod*[bits](r: var BigInt[bits], a, M, mp1div2: BigInt[bits]) =
   ## The modulus ``M`` MUST be odd
   var one {.noInit.}: BigInt[bits]
   one.setOne()
-  r.steinsGCD(a, one, M, mp1div2)
+  r.mollerGCD(a, one, M, mp1div2)
 
 {.pop.} # inline
 {.pop.} # raises no exceptions
