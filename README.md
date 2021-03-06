@@ -175,63 +175,111 @@ nimble bench_pairing_bn254_nogami
 nimble bench_pairing_bn254_snarks
 nimble bench_pairing_bls12_377
 nimble bench_pairing_bls12_381
-```
 
-"Unsafe" lines uses a non-constant-time algorithm.
+# And per-curve summaries
+nimble bench_summary_bn254_nogami
+nimble bench_summary_bn254_snarks
+nimble bench_summary_bls12_377
+nimble bench_summary_bls12_381
+```
 
 As mentioned in the [Compiler caveats](#compiler-caveats) section, GCC is up to 2x slower than Clang due to mishandling of carries and register usage.
 
-On my machine i9-9980XE, for selected benchmarks with Clang + Assembly, all being constant-time (or tagged unsafe).
+On my machine i9-9980XE (overclocked @ 3.9 GHz, nominal clock 3.0 GHz), for Clang + Assembly, **all being constant-time** (including scalar multiplication, square root and inversion).
+
+#### BN254_Snarks (Clang + inline assembly)
 
 ```
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Line double                                                  BLS12_381            872600.349 ops/s          1146 ns/op          3434 CPU cycles (approx)
-Line add                                                     BLS12_381            616522.811 ops/s          1622 ns/op          4864 CPU cycles (approx)
-Mul 𝔽p12 by line xy000z                                      BLS12_381            535905.681 ops/s          1866 ns/op          5597 CPU cycles (approx)
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Final Exponentiation Easy                                    BLS12_381             39443.064 ops/s         25353 ns/op         76058 CPU cycles (approx)
-Final Exponentiation Hard BLS12                              BLS12_381              2139.367 ops/s        467428 ns/op       1402299 CPU cycles (approx)
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Miller Loop BLS12                                            BLS12_381              2971.512 ops/s        336529 ns/op       1009596 CPU cycles (approx)
-Final Exponentiation BLS12                                   BLS12_381              2029.365 ops/s        492765 ns/op       1478310 CPU cycles (approx)
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-Pairing BLS12                                                BLS12_381              1164.051 ops/s        859069 ns/op       2577234 CPU cycles (approx)
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+Multiplication                      Fr[BN254_Snarks]                            66666666.667 ops/s            15 ns/op            47 CPU cycles (approx)
+Squaring                            Fr[BN254_Snarks]                            71428571.429 ops/s            14 ns/op            42 CPU cycles (approx)
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+Multiplication                      Fp[BN254_Snarks]                            66666666.667 ops/s            15 ns/op            47 CPU cycles (approx)
+Squaring                            Fp[BN254_Snarks]                            71428571.429 ops/s            14 ns/op            42 CPU cycles (approx)
+Inversion                           Fp[BN254_Snarks]                              189537.528 ops/s          5276 ns/op         15828 CPU cycles (approx)
+Square Root + isSquare              Fp[BN254_Snarks]                              189358.076 ops/s          5281 ns/op         15843 CPU cycles (approx)
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+Multiplication                      Fp2[BN254_Snarks]                           18867924.528 ops/s            53 ns/op           160 CPU cycles (approx)
+Squaring                            Fp2[BN254_Snarks]                           25641025.641 ops/s            39 ns/op           119 CPU cycles (approx)
+Inversion                           Fp2[BN254_Snarks]                             186776.242 ops/s          5354 ns/op         16064 CPU cycles (approx)
+Square Root + isSquare              Fp2[BN254_Snarks]                              92790.201 ops/s         10777 ns/op         32332 CPU cycles (approx)
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+EC Add G1                           ECP_ShortW_Prj[Fp[BN254_Snarks]]             3731343.284 ops/s           268 ns/op           806 CPU cycles (approx)
+EC Mixed Addition G1                ECP_ShortW_Prj[Fp[BN254_Snarks]]             3952569.170 ops/s           253 ns/op           761 CPU cycles (approx)
+EC Double G1                        ECP_ShortW_Prj[Fp[BN254_Snarks]]             6024096.386 ops/s           166 ns/op           500 CPU cycles (approx)
+EC ScalarMul 254-bit G1             ECP_ShortW_Prj[Fp[BN254_Snarks]]               23140.113 ops/s         43215 ns/op        129647 CPU cycles (approx)
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+EC Add G1                           ECP_ShortW_Jac[Fp[BN254_Snarks]]             2985074.627 ops/s           335 ns/op          1005 CPU cycles (approx)
+EC Mixed Addition G1                ECP_ShortW_Jac[Fp[BN254_Snarks]]             4184100.418 ops/s           239 ns/op           718 CPU cycles (approx)
+EC Double G1                        ECP_ShortW_Jac[Fp[BN254_Snarks]]             6410256.410 ops/s           156 ns/op           469 CPU cycles (approx)
+EC ScalarMul 254-bit G1             ECP_ShortW_Jac[Fp[BN254_Snarks]]               21458.307 ops/s         46602 ns/op        139809 CPU cycles (approx)
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+EC Add G2                           ECP_ShortW_Prj[Fp2[BN254_Snarks]]            1061571.125 ops/s           942 ns/op          2826 CPU cycles (approx)
+EC Mixed Addition G2                ECP_ShortW_Prj[Fp2[BN254_Snarks]]            1183431.953 ops/s           845 ns/op          2536 CPU cycles (approx)
+EC Double G2                        ECP_ShortW_Prj[Fp2[BN254_Snarks]]            1821493.625 ops/s           549 ns/op          1649 CPU cycles (approx)
+EC ScalarMul 254-bit G2             ECP_ShortW_Prj[Fp2[BN254_Snarks]]               9259.602 ops/s        107996 ns/op        323995 CPU cycles (approx)
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+EC Add G2                           ECP_ShortW_Jac[Fp2[BN254_Snarks]]            1092896.175 ops/s           915 ns/op          2747 CPU cycles (approx)
+EC Mixed Addition G2                ECP_ShortW_Jac[Fp2[BN254_Snarks]]            1577287.066 ops/s           634 ns/op          1904 CPU cycles (approx)
+EC Double G2                        ECP_ShortW_Jac[Fp2[BN254_Snarks]]            2570694.087 ops/s           389 ns/op          1167 CPU cycles (approx)
+EC ScalarMul 254-bit G2             ECP_ShortW_Jac[Fp2[BN254_Snarks]]              10358.615 ops/s         96538 ns/op        289621 CPU cycles (approx)
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+Multiplication                      Fp12[BN254_Snarks]                            691085.003 ops/s          1447 ns/op          4342 CPU cycles (approx)
+Squaring                            Fp12[BN254_Snarks]                            893655.049 ops/s          1119 ns/op          3357 CPU cycles (approx)
+Inversion                           Fp12[BN254_Snarks]                            121876.904 ops/s          8205 ns/op         24617 CPU cycles (approx)
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+Miller Loop BN                      BN254_Snarks                                    4635.102 ops/s        215745 ns/op        647249 CPU cycles (approx)
+Final Exponentiation BN             BN254_Snarks                                    4011.038 ops/s        249312 ns/op        747950 CPU cycles (approx)
+Pairing BN                          BN254_Snarks                                    2158.047 ops/s        463382 ns/op       1390175 CPU cycles (approx)
+--------------------------------------------------------------------------------------------------------------------------------------------------------
 ```
 
+#### BLS12_381 (Clang + inline Assembly)
+
 ```
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-EC Add G1                                                    ECP_ShortW_Prj[Fp[BLS12_381]]               2118644.068 ops/s           472 ns/op          1416 CPU cycles (approx)
-EC Add G1                                                    ECP_ShortW_Jac[Fp[BLS12_381]]                1818181.818 ops/s           550 ns/op          1652 CPU cycles (approx)
-EC Mixed Addition G1                                         ECP_ShortW_Prj[Fp[BLS12_381]]               2427184.466 ops/s           412 ns/op          1236 CPU cycles (approx)
-EC Double G1                                                 ECP_ShortW_Prj[Fp[BLS12_381]]               3460207.612 ops/s           289 ns/op           867 CPU cycles (approx)
-EC Double G1                                                 ECP_ShortW_Jac[Fp[BLS12_381]]                3717472.119 ops/s           269 ns/op           809 CPU cycles (approx)
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-EC Projective to Affine G1                                   ECP_ShortW_Prj[Fp[BLS12_381]]                 72020.166 ops/s         13885 ns/op         41656 CPU cycles (approx)
-EC Jacobian to Affine G1                                     ECP_ShortW_Jac[Fp[BLS12_381]]                  71989.058 ops/s         13891 ns/op         41673 CPU cycles (approx)
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-EC ScalarMul G1 (unsafe reference DoubleAdd)                 ECP_ShortW_Prj[Fp[BLS12_381]]                  7260.266 ops/s        137736 ns/op        413213 CPU cycles (approx)
-EC ScalarMul G1 (unsafe reference DoubleAdd)                 ECP_ShortW_Jac[Fp[BLS12_381]]                   7140.970 ops/s        140037 ns/op        420115 CPU cycles (approx)
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-EC ScalarMul Generic G1 (window = 2, scratchsize = 4)        ECP_ShortW_Prj[Fp[BLS12_381]]                  5036.946 ops/s        198533 ns/op        595606 CPU cycles (approx)
-EC ScalarMul Generic G1 (window = 3, scratchsize = 8)        ECP_ShortW_Prj[Fp[BLS12_381]]                  7080.799 ops/s        141227 ns/op        423684 CPU cycles (approx)
-EC ScalarMul Generic G1 (window = 4, scratchsize = 16)       ECP_ShortW_Prj[Fp[BLS12_381]]                  8062.631 ops/s        124029 ns/op        372091 CPU cycles (approx)
-EC ScalarMul Generic G1 (window = 5, scratchsize = 32)       ECP_ShortW_Prj[Fp[BLS12_381]]                  8377.244 ops/s        119371 ns/op        358116 CPU cycles (approx)
-EC ScalarMul Generic G1 (window = 2, scratchsize = 4)        ECP_ShortW_Jac[Fp[BLS12_381]]                   4703.359 ops/s        212614 ns/op        637847 CPU cycles (approx)
-EC ScalarMul Generic G1 (window = 3, scratchsize = 8)        ECP_ShortW_Jac[Fp[BLS12_381]]                   6901.407 ops/s        144898 ns/op        434697 CPU cycles (approx)
-EC ScalarMul Generic G1 (window = 4, scratchsize = 16)       ECP_ShortW_Jac[Fp[BLS12_381]]                   8022.720 ops/s        124646 ns/op        373940 CPU cycles (approx)
-EC ScalarMul Generic G1 (window = 5, scratchsize = 32)       ECP_ShortW_Jac[Fp[BLS12_381]]                   8433.552 ops/s        118574 ns/op        355725 CPU cycles (approx)
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-EC ScalarMul G1 (endomorphism accelerated)                   ECP_ShortW_Prj[Fp[BLS12_381]]                  9703.933 ops/s        103051 ns/op        309155 CPU cycles (approx)
-EC ScalarMul Window-2 G1 (endomorphism accelerated)          ECP_ShortW_Prj[Fp[BLS12_381]]                 13160.839 ops/s         75983 ns/op        227950 CPU cycles (approx)
-EC ScalarMul G1 (endomorphism accelerated)                   ECP_ShortW_Jac[Fp[BLS12_381]]                   9064.868 ops/s        110316 ns/op        330951 CPU cycles (approx)
-EC ScalarMul Window-2 G1 (endomorphism accelerated)          ECP_ShortW_Jac[Fp[BLS12_381]]                  12722.484 ops/s         78601 ns/op        235806 CPU cycles (approx)
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+Multiplication                      Fr[BLS12_381]                               66666666.667 ops/s            15 ns/op            47 CPU cycles (approx)
+Squaring                            Fr[BLS12_381]                               71428571.429 ops/s            14 ns/op            43 CPU cycles (approx)
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+Multiplication                      Fp[BLS12_381]                               35714285.714 ops/s            28 ns/op            84 CPU cycles (approx)
+Squaring                            Fp[BLS12_381]                               35714285.714 ops/s            28 ns/op            84 CPU cycles (approx)
+Inversion                           Fp[BLS12_381]                                  70131.145 ops/s         14259 ns/op         42780 CPU cycles (approx)
+Square Root + isSquare              Fp[BLS12_381]                                  69793.412 ops/s         14328 ns/op         42986 CPU cycles (approx)
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+Multiplication                      Fp2[BLS12_381]                              10526315.789 ops/s            95 ns/op           287 CPU cycles (approx)
+Squaring                            Fp2[BLS12_381]                              14084507.042 ops/s            71 ns/op           213 CPU cycles (approx)
+Inversion                           Fp2[BLS12_381]                                 69376.995 ops/s         14414 ns/op         43242 CPU cycles (approx)
+Square Root + isSquare              Fp2[BLS12_381]                                 34526.810 ops/s         28963 ns/op         86893 CPU cycles (approx)
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+EC Add G1                           ECP_ShortW_Prj[Fp[BLS12_381]]                2127659.574 ops/s           470 ns/op          1412 CPU cycles (approx)
+EC Mixed Addition G1                ECP_ShortW_Prj[Fp[BLS12_381]]                2415458.937 ops/s           414 ns/op          1243 CPU cycles (approx)
+EC Double G1                        ECP_ShortW_Prj[Fp[BLS12_381]]                3412969.283 ops/s           293 ns/op           881 CPU cycles (approx)
+EC ScalarMul 255-bit G1             ECP_ShortW_Prj[Fp[BLS12_381]]                  13218.596 ops/s         75651 ns/op        226959 CPU cycles (approx)
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+EC Add G1                           ECP_ShortW_Jac[Fp[BLS12_381]]                1757469.244 ops/s           569 ns/op          1708 CPU cycles (approx)
+EC Mixed Addition G1                ECP_ShortW_Jac[Fp[BLS12_381]]                2433090.024 ops/s           411 ns/op          1235 CPU cycles (approx)
+EC Double G1                        ECP_ShortW_Jac[Fp[BLS12_381]]                3636363.636 ops/s           275 ns/op           826 CPU cycles (approx)
+EC ScalarMul 255-bit G1             ECP_ShortW_Jac[Fp[BLS12_381]]                  12390.499 ops/s         80707 ns/op        242126 CPU cycles (approx)
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+EC Add G2                           ECP_ShortW_Prj[Fp2[BLS12_381]]                710227.273 ops/s          1408 ns/op          4225 CPU cycles (approx)
+EC Mixed Addition G2                ECP_ShortW_Prj[Fp2[BLS12_381]]                800640.512 ops/s          1249 ns/op          3748 CPU cycles (approx)
+EC Double G2                        ECP_ShortW_Prj[Fp2[BLS12_381]]               1179245.283 ops/s           848 ns/op          2545 CPU cycles (approx)
+EC ScalarMul 255-bit G2             ECP_ShortW_Prj[Fp2[BLS12_381]]                  6179.171 ops/s        161834 ns/op        485514 CPU cycles (approx)
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+EC Add G2                           ECP_ShortW_Jac[Fp2[BLS12_381]]                631711.939 ops/s          1583 ns/op          4751 CPU cycles (approx)
+EC Mixed Addition G2                ECP_ShortW_Jac[Fp2[BLS12_381]]                900900.901 ops/s          1110 ns/op          3332 CPU cycles (approx)
+EC Double G2                        ECP_ShortW_Jac[Fp2[BLS12_381]]               1501501.502 ops/s           666 ns/op          1999 CPU cycles (approx)
+EC ScalarMul 255-bit G2             ECP_ShortW_Jac[Fp2[BLS12_381]]                  6067.519 ops/s        164812 ns/op        494446 CPU cycles (approx)
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+Multiplication                      Fp12[BLS12_381]                               504540.868 ops/s          1982 ns/op          5949 CPU cycles (approx)
+Squaring                            Fp12[BLS12_381]                               688231.246 ops/s          1453 ns/op          4360 CPU cycles (approx)
+Inversion                           Fp12[BLS12_381]                                54279.976 ops/s         18423 ns/op         55271 CPU cycles (approx)
+--------------------------------------------------------------------------------------------------------------------------------------------------------
+Miller Loop BLS12                   BLS12_381                                       3856.953 ops/s        259272 ns/op        777833 CPU cycles (approx)
+Final Exponentiation BLS12          BLS12_381                                       2526.465 ops/s        395810 ns/op       1187454 CPU cycles (approx)
+Pairing BLS12                       BLS12_381                                       1548.870 ops/s        645632 ns/op       1936937 CPU cycles (approx)
+--------------------------------------------------------------------------------------------------------------------------------------------------------
 ```
-
-
-
 
 ### Compiler caveats
 
