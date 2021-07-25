@@ -86,7 +86,21 @@ jobs:
     name: '${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ matrix.target.TEST_LANG }}-${{ matrix.target.BACKEND }} (${{ matrix.branch }})'
     runs-on: ${{ matrix.builder }}
     steps:
-      - name: Cancel Previous Runs
+      - name: Get branch name
+        shell: bash
+        run: |
+          if [[ '${{  github.event_name }}' == 'pull_request' ]]; then
+            echo "##[set-output name=branch_name;]$(echo ${GITHUB_HEAD_REF})"
+            echo "Branch found (PR): ${GITHUB_HEAD_REF}"
+          else
+            echo "##[set-output name=branch_name;]$(echo ${GITHUB_REF#refs/heads/})"
+            echo "Branch found (not PR): ${GITHUB_REF#refs/heads/}"
+          fi
+        id: get_branch
+
+      - name: Cancel Previous Runs (except master)
+        if: >
+          steps.get_branch.outputs.branch_name != 'master'
         uses: styfle/cancel-workflow-action@0.5.0
         with:
           access_token: ${{ github.token }}
@@ -136,7 +150,7 @@ jobs:
           else
             arch=32
           fi
-          curl -L "https://nim-lang.org/download/mingw$arch-6.3.0.7z" -o "external/mingw$arch.7z"
+          curl -L "https://nim-lang.org/download/mingw$arch.7z" -o "external/mingw$arch.7z"
           curl -L "https://nim-lang.org/download/windeps.zip" -o external/windeps.zip
           7z x "external/mingw$arch.7z" -oexternal/
           7z x external/windeps.zip -oexternal/dlls
