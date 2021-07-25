@@ -11,7 +11,7 @@ import
   std/macros,
   # Internal
   ./type_bigint, ./type_ff, ./common,
-  ./curves_declaration, ./curves_derived
+  ./curves_declaration, ./curves_prop_core, ./curves_derived
 
 # ############################################################
 #
@@ -57,9 +57,9 @@ proc bindConstant(ff: NimNode, property: string): NimNode =
 
 template fieldMod*(Field: type FF): auto =
   when Field is Fp:
-    Field.C.Mod
+    Mod(Field.C)
   else:
-    Field.C.getCurveOrder()
+    getCurveOrder(Field.C)
 
 macro getSpareBits*(ff: type FF): untyped =
   ## Returns the number of extra bits

@@ -8,7 +8,12 @@
 
 import
   ../constantine/hashes,
-  ../constantine/hash_to_curve/hash_to_field,
+  ../constantine/hash_to_curve/h2c_hash_to_field,
+  ../constantine/config/[curves_declaration, type_ff],
+  ../constantine/tower_field_extensions/extension_fields,
+
+  ../constantine/io/[io_fields, io_towers],
+
   # Third-party
   stew/byteutils
 
@@ -140,3 +145,29 @@ testExpandMessageXMD(10):
                     "378fba044a31f5cb44583a892f5969dcd73b3fa128816e"
   const len_in_bytes = expected.len div 2
   const expectedBytes = hexToByteArray[len_in_bytes](expected)
+
+template testHashToField(id, constants: untyped) =
+  # Section "Expand test vectors {#expand-testvectors}"
+  # https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-09#appendix-I.1
+  proc `testHashToField_sha256 _ id`() =
+    # We create a proc to avoid allocating to much globals/
+    constants
+
+    var output: array[2, Fp[BLS12_381]]
+    sha256.hashToField(
+      k = 128,
+      output,
+      augmentation = "",
+      msg,
+      "QUUX-V01-CS02-with-BLS12381G1_XMD:SHA-256_SSWU_RO_"
+    )
+
+    echo "Success smoke test sha256.hashToField(k=128, ", typeof(output), "), astToStr(id)"
+
+    echo output[0].toHex()
+    echo output[1].toHex()
+
+  `testHashToField_sha256 _ id`()
+
+testHashToField(1):
+  let msg = ""

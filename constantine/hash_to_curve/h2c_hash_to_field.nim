@@ -9,9 +9,10 @@
 import
   # Internals
   ../hashes,
-  ../io/endians
-
-import stew/byteutils # debug
+  ../io/[endians, io_bigints, io_fields],
+  ../config/[curves, type_bigint, type_ff],
+  ../arithmetic/limbs_montgomery,
+  ../tower_field_extensions/extension_fields
 
 # ############################################################
 #
@@ -85,9 +86,9 @@ func expandMessageXMD*[B1, B2, B3: byte|char](
   ##   which requires `CoreSign(SK, PK || message)`
   ##   and `CoreVerify(PK, PK || message, signature)`
   ## - `message` is the message to hash
-  ## - `domainSepTag` is the protocol domain separation tag.
+  ## - `domainSepTag` is the protocol domain separation tag (DST).
   ##   If a domainSepTag larger than 255-bit is required,
-  ##   it is recommended to cache the reduce
+  ##   it is recommended to cache the reduced DST
 
   # TODO oversized DST support
 
@@ -152,3 +153,76 @@ func expandMessageXMD*[B1, B2, B3: byte|char](
     output.copyFrom(bi, cur)
     if cur == output.len.uint:
       return
+
+func hashToField*[Field; B1, B2, B3: byte|char, count: static int](
+       H: type CryptoHash,
+       k: static int,
+       output: var array[count, Field],
+       augmentation: openarray[B1],
+       message: openarray[B2],
+       domainSepTag: openarray[B3]
+     ) =
+  ## Hash to a field or an extension field
+  ## https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-5.3
+  ##
+  ## Arguments:
+  ## - `Hash` a cryptographic hash function.
+  ##   - `Hash` MAY be a Merkle-Damgaard hash function like SHA-2
+  ##   - `Hash` MAY be a sponge-based hash function like SHA-3 or BLAKE2
+  ##   - Otherwise, H MUST be a hash function that has been proved
+  ##    indifferentiable from a random oracle [MRH04] under a reasonable
+  ##    cryptographic assumption.
+  ## - k the security parameter of the suite in bits (for example 128)
+  ## - `output`, an array of fields or extension fields.
+  ## - `augmentation`, an optional augmentation to the message. This will be prepended,
+  ##   prior to hashing.
+  ##   This is used for building the "message augmentation" variant of BLS signatures
+  ##   https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04#section-3.2
+  ##   which requires `CoreSign(SK, PK || message)`
+  ##   and `CoreVerify(PK, PK || message, signature)`
+  ## - `message` is the message to hash
+  ## - `domainSepTag` is the protocol domain separation tag (DST).
+  ##   If a domainSepTag larger than 255-bit is required,
+  ##   it is recommended to cache the reduced DST.
+
+  const
+    L = int ceilDiv(Field.C.getCurveBitwidth() + k, 8)
+    m = block:
+      when Field is Fp: 1
+      elif Field is Fp2: 2
+      else: {.error: "Unconfigured".}
+
+    len_in_bytes = count * m * L
+
+  var uniform_bytes{.noInit.}: array[len_in_bytes, byte]
+  sha256.expandMessageXMD(
+    uniform_bytes,
+    augmentation = augmentation,
+    message = message,
+    domainSepTag = domainSepTag
+  )
+
+  for i in 0 ..< count:
+    for j in 0 ..< m:
+      let elm_offset = L * (j + i * m)
+      template tv: untyped = uniform_bytes.toOpenArray(elm_offset, elm_offset + L-1)
+
+      var big2x {.noInit.}: BigInt[2 * getCurveBitwidth(Field.C)]
+      big2x.fromRawUint(tv, bigEndian)
+
+      # Reduces modulo p and output in Montgomery domain
+      when m == 1:
+        output[i].mres.limbs.montyRedc2x(
+          big2x.limbs,
+          Field.fieldMod().limbs,
+          Field.getNegInvModWord(),
+          Field.getSpareBits()
+        )
+
+      else:
+        output[i].coords[j].mres.limbs.montyRedc2x(
+          big2x.limbs,
+          Field.fieldMod().limbs,
+          Fp[Field.C].getNegInvModWord(),
+          Fp[Field.C].getSpareBits()
+        )
