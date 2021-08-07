@@ -78,6 +78,10 @@ macro getR2modP*(ff: type FF): untyped =
   ## Get the Montgomery "R^2 mod P" constant associated to a curve field modulus
   result = bindConstant(ff, "R2modP")
 
+macro getR3modP*(ff: type FF): untyped =
+  ## Get the Montgomery "R^3 mod P" constant associated to a curve field modulus
+  result = bindConstant(ff, "R3modP")
+
 macro getNegInvModWord*(ff: type FF): untyped =
   ## Get the Montgomery "-1/P[0] mod 2^Wordbitwidth" constant associated to a curve field modulus
   result = bindConstant(ff, "NegInvModWord")

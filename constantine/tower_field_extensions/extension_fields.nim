@@ -76,7 +76,7 @@ template C*(E: type ExtensionField): Curve =
   E.F.C
 
 template fieldMod*(E: type ExtensionField): auto =
-  Fp[E.F.C].fieldMod()
+  Mod(E.F.C)
 
 # Initialization
 # -------------------------------------------------------------------

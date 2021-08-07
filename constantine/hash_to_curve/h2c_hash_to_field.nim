@@ -10,7 +10,7 @@ import
   # Internals
   ../hashes,
   ../io/[endians, io_bigints, io_fields],
-  ../config/[curves, type_bigint, type_ff],
+  ../config/[common, curves, type_bigint, type_ff],
   ../arithmetic/limbs_montgomery,
   ../tower_field_extensions/extension_fields
 
@@ -154,6 +154,22 @@ func expandMessageXMD*[B1, B2, B3: byte|char](
     if cur == output.len.uint:
       return
 
+func redc2x[FF](r: var FF, big2x: BigInt) {.inline.} =
+  r.mres.limbs.montyRedc2x(
+    big2x.limbs,
+    FF.fieldMod().limbs,
+    FF.getNegInvModWord(),
+    FF.getSpareBits()
+  )
+
+func montyMul(r: var BigInt, a, b: BigInt, FF: type) {.inline.} =
+  r.limbs.montyMul(
+    a.limbs, b.limbs,
+    FF.fieldMod().limbs,
+    FF.getNegInvModWord(),
+    FF.getSpareBits()
+  )
+
 func hashToField*[Field; B1, B2, B3: byte|char, count: static int](
        H: type CryptoHash,
        k: static int,
@@ -212,17 +228,15 @@ func hashToField*[Field; B1, B2, B3: byte|char, count: static int](
 
       # Reduces modulo p and output in Montgomery domain
       when m == 1:
-        output[i].mres.limbs.montyRedc2x(
-          big2x.limbs,
-          Field.fieldMod().limbs,
-          Field.getNegInvModWord(),
-          Field.getSpareBits()
-        )
+        output[i].redc2x(big2x)
+        output[i].mres.montyMul(
+          output[i].mres,
+          Fp[Field.C].getR3ModP(),
+          Fp[Field.C])
 
       else:
-        output[i].coords[j].mres.limbs.montyRedc2x(
-          big2x.limbs,
-          Field.fieldMod().limbs,
-          Fp[Field.C].getNegInvModWord(),
-          Fp[Field.C].getSpareBits()
-        )
+        output[i].coords[j].redc2x(big2x)
+        output[i].coords[j].mres.montyMul(
+          output[i].coords[j].mres,
+          Fp[Field.C].getR3ModP(),
+          Fp[Field.C])

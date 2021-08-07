@@ -153,21 +153,32 @@ template testHashToField(id, constants: untyped) =
     # We create a proc to avoid allocating to much globals/
     constants
 
-    var output: array[2, Fp[BLS12_381]]
+    var output: array[2, Fp2[BLS12_381]]
     sha256.hashToField(
       k = 128,
       output,
       augmentation = "",
       msg,
-      "QUUX-V01-CS02-with-BLS12381G1_XMD:SHA-256_SSWU_RO_"
+      "QUUX-V01-CS02-with-BLS12381G2_XMD:SHA-256_SSWU_RO_"
     )
 
-    echo "Success smoke test sha256.hashToField(k=128, ", typeof(output), "), astToStr(id)"
+    doAssert output[0].c0.toHex() == "0x" & u0_re
+    doAssert output[0].c1.toHex() == "0x" & u0_im
+    doAssert output[1].c0.toHex() == "0x" & u1_re
+    doAssert output[1].c1.toHex() == "0x" & u1_im
 
-    echo output[0].toHex()
-    echo output[1].toHex()
+    echo "Success hashToField BLS12381G2_XMD:SHA-256_SSWU_RO - ", astToStr(id)
 
   `testHashToField_sha256 _ id`()
 
 testHashToField(1):
-  let msg = ""
+  let
+    msg = ""
+    u0_re  = "03dbc2cce174e91ba93cbb08f26b917f98194a2ea08d1cce75b2b9" &
+             "cc9f21689d80bd79b594a613d0a68eb807dfdc1cf8"
+    u0_im  = "05a2acec64114845711a54199ea339abd125ba38253b70a92c876d" &
+             "f10598bd1986b739cad67961eb94f7076511b3b39a"
+    u1_re  = "02f99798e8a5acdeed60d7e18e9120521ba1f47ec090984662846b" &
+             "c825de191b5b7641148c0dbc237726a334473eee94"
+    u1_im  = "145a81e418d4010cc027a68f14391b30074e89e60ee7a22f87217b" &
+             "2f6eb0c4b94c9115b436e6fa4607e95a98de30a435"
