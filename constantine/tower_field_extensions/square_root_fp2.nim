@@ -42,7 +42,7 @@ func isSquare*(a: Fp2): SecretBool =
 
   result = tv1.isSquare()
 
-func sqrt_rotate_extension(
+func sqrt_rotate_extension*(
        out_sqrt: var Fp2,
        candidate_sqrt: Fp2,
        a: Fp2
@@ -120,7 +120,7 @@ func sqrt_if_square_opt(a: var Fp2): SecretBool =
   t1.square(a.c0) #     a0²
   t2.square(a.c1) # - β a1² with β = 𝑖² in a complex extension field
   when a.fromComplexExtension():
-    t1 += t2      # a0 - (-1) a1²
+    t1 += t2      # a0² - (-1) a1²
   else:
     t2 *= NonResidue
     t1 -= t2
@@ -133,6 +133,7 @@ func sqrt_if_square_opt(a: var Fp2): SecretBool =
   t1.ccopy(t2, t1.isZero())
   t1.div2()                           # (a0 ± sqrt(a0² - β a1²))/2
 
+  # TODO: implement invsqrt alone
   # t1 being an actual sqrt will be tested in sqrt_rotate_extension
   # 1/sqrt((a0 ± sqrt(a0² - β b²))/2)
   sqrt_invsqrt(sqrt = cand.c1, invsqrt = cand.c0, t1) # we only want invsqrt = cand.c0

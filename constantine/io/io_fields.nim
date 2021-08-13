@@ -12,6 +12,8 @@ import
   ../arithmetic/finite_fields,
   ../primitives
 
+export Fp
+
 # No exceptions allowed
 {.push raises: [].}
 {.push inline.}

@@ -122,6 +122,11 @@ func isMinusOne*(a: FF): SecretBool =
   ## Constant-time check if -1 (mod p)
   a.mres == FF.getMontyPrimeMinus1()
 
+func isOdd*(a: FF): SecretBool {.
+  error: "Do you need the actual value to be odd\n" &
+         "or what it represents (so once converted out of the Montgomery internal representation)?"
+  .}
+
 func setZero*(a: var FF) =
   ## Set ``a`` to zero
   a.mres.setZero()
