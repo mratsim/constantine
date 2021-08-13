@@ -77,6 +77,8 @@ proc main() =
     finalExpBLS12Bench(curve, Iters)
     pairingBLS12Bench(curve, Iters)
     separator()
+    hashToCurveBLS12381G2Bench(Iters)
+    separator()
 
 main()
 notes()

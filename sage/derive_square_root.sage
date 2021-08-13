@@ -136,9 +136,6 @@ if __name__ == "__main__":
       f.write(copyright())
       f.write('\n\n')
 
-      embdeg = Curves[curve]['tower']['embedding_degree']
-      twdeg = Curves[curve]['tower']['twist_degree']
-
       f.write(inspect.cleandoc("""
           import
             ../config/curves,

@@ -345,6 +345,17 @@ func r2mod*(M: BigInt): BigInt =
   ##   R² ≡ ((2^63)^5)^2 (mod M) = 2^630 (mod M)
   r_powmod(2, M)
 
+func r3mod*(M: BigInt): BigInt =
+  ## Returns
+  ##
+  ##   R³ ≡ R³ (mod M) with R = (2^WordBitWidth)^numWords
+  ##
+  ## This is used in hash-to-curve to
+  ## reduce a double-sized bigint mod M
+  ## and map it to the Montgomery domain
+  ## with just redc2x + montyMul
+  r_powmod(3, M)
+
 func montyOne*(M: BigInt): BigInt =
   ## Returns "1 (mod M)" in the Montgomery domain.
   ## This is equivalent to R (mod M) in the natural domain

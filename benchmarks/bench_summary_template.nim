@@ -15,14 +15,13 @@
 import
   # Internals
   ../constantine/config/[curves, common],
-  ../constantine/arithmetic,
-  ../constantine/towers,
+  ../constantine/[arithmetic, hashes, towers],
   ../constantine/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
     ec_scalar_mul, ec_endomorphism_accel],
-  ../constantine/hash_to_curve/cofactors,
+  ../constantine/hash_to_curve/[cofactors, hash_to_curve],
   ../constantine/pairing/[
     cyclotomic_fp12,
     pairing_bls12,
@@ -212,3 +211,20 @@ proc pairingBNBench*(C: static Curve, iters: int) =
   var f: Fp12[C]
   bench("Pairing BN", C, iters):
     f.pairing_bn(P, Q)
+
+proc hashToCurveBLS12_381G2Bench*(iters: int) =
+  # Hardcode BLS12_381
+  # otherwise concept symbol
+  # 'CryptoHash' resolution issue
+  const dst = "BLS_SIG_BLS12381G2-SHA256-SSWU-RO_POP_"
+  let msg = "Mr F was here"
+  var P: ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist]
+
+  bench("Hash to G2 (Draft #11)", BLS12_381, iters):
+    sha256.hashToCurve(
+      k = 128,
+      output = P,
+      augmentation = "",
+      message = msg,
+      domainSepTag = dst
+    )

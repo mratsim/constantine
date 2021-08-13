@@ -66,6 +66,13 @@ macro genDerivedConstants*(mode: static DerivedConstantMode): untyped =
         M
       )
     )
+    # const MyCurve_R4modP = r4mod(MyCurve_Modulus)
+    result.add newConstStmt(
+      used(curve & ff & "_R3modP"), newCall(
+        bindSym"r3mod",
+        M
+      )
+    )
 
     # const MyCurve_NegInvModWord = negInvModWord(MyCurve_Modulus)
     result.add newConstStmt(

@@ -153,6 +153,11 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ----------------------------------------------------------
   ("tests/t_hash_sha256_vs_openssl.nim", true), # skip OpenSSL tests on Windows
 
+  # Hashing to elliptic curves
+  # ----------------------------------------------------------
+  ("tests/t_hash_to_field.nim", false),
+  ("tests/t_hash_to_curve.nim", false),
+
   # Prime order fields
   # ----------------------------------------------------------
   ("tests/t_fr.nim", false),
@@ -172,6 +177,8 @@ const skipSanitizers = [
   "tests/t_ec_sage_bn254_snarks.nim",
   "tests/t_ec_sage_bls12_377.nim",
   "tests/t_ec_sage_bls12_381.nim",
+  "tests/t_hash_to_field.nim",
+  "tests/t_hash_to_curve.nim"
 ]
 
 when defined(windows):
@@ -275,6 +282,7 @@ proc buildAllBenches() =
   buildBench("bench_summary_bn254_nogami")
   buildBench("bench_summary_bn254_snarks")
   buildBench("bench_sha256")
+  buildBench("bench_hash_to_curve")
   echo "All benchmarks compile successfully."
 
 # Tasks
@@ -677,3 +685,20 @@ task bench_summary_bn254_snarks_clang_noasm, "Run summary benchmarks for BN254-S
 
 task bench_sha256, "Run SHA256 benchmarks":
   runBench("bench_sha256")
+
+# Hash-to-curve
+# ------------------------------------------
+task bench_hash_to_curve, "Run Hash-to-Curve benchmarks":
+  runBench("bench_hash_to_curve")
+
+task bench_hash_to_curve_gcc, "Run Hash-to-Curve benchmarks":
+  runBench("bench_hash_to_curve", "gcc")
+
+task bench_hash_to_curve_clang, "Run Hash-to-Curve benchmarks":
+  runBench("bench_hash_to_curve", "clang")
+
+task bench_hash_to_curve_gcc_noasm, "Run Hash-to-Curve benchmarks":
+  runBench("bench_hash_to_curve", "gcc", useAsm = false)
+
+task bench_hash_to_curve_clang_noasm, "Run Hash-to-Curve benchmarks":
+  runBench("bench_hash_to_curve", "clang", useAsm = false)

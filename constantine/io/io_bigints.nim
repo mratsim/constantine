@@ -70,6 +70,9 @@ func fromRawUintLE(
   if dst_idx < dst.limbs.len:
     dst.limbs[dst_idx] = acc
 
+  for i in dst_idx + 1 ..< dst.limbs.len:
+    dst.limbs[i] = Zero
+
 func fromRawUintBE(
         dst: var BigInt,
         src: openarray[byte]) =
@@ -106,6 +109,9 @@ func fromRawUintBE(
 
   if dst_idx < dst.limbs.len:
     dst.limbs[dst_idx] = acc
+
+  for i in dst_idx + 1 ..< dst.limbs.len:
+    dst.limbs[i] = Zero
 
 func fromRawUint*(
         dst: var BigInt,

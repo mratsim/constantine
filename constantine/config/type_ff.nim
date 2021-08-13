@@ -8,7 +8,10 @@
 
 import
   ./common,
-  ./curves_declaration
+  ./curves_declaration,
+  ./curves_prop_core
+
+export matchingBigInt
 
 type
   Fp*[C: static Curve] = object

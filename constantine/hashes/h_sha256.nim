@@ -300,6 +300,14 @@ func hashBuffer(ctx: var Sha256Context) =
 # Public API
 # ----------------------------------------------------------------
 
+func digestSize*(H: type sha256): int =
+  ## Returns the output size in bytes
+  32
+
+func internalBlockSize*(H: type sha256): int =
+  ## Returns the byte size of the hash function ingested blocks
+  64
+
 func init*(ctx: var Sha256Context) =
   ## Initialize or reinitialize a Sha256 context
 
@@ -334,6 +342,9 @@ func update*[T: char|byte](ctx: var Sha256Context, message: openarray[T]) =
     doAssert: 0 <= ctx.bufIdx and ctx.bufIdx.int < ctx.buf.len
     for i in ctx.bufIdx ..< ctx.buf.len:
       doAssert ctx.buf[i] == 0
+
+  if message.len == 0:
+    return
 
   var # Message processing state machine
     cur = 0'u
@@ -414,24 +425,3 @@ func clear*(ctx: var Sha256Context) =
   ## use a Key Derivation Function instead (KDF)
   # TODO: ensure compiler cannot optimize the code away
   ctx.buf.setZero()
-
-func hash*[T: char|byte](
-       HashKind: type sha256,
-       digest: var array[32, byte],
-       message: openarray[T],
-       clearMem = false) =
-  ## Produce a SHA256 digest from a message
-  var ctx {.noInit.}: HashKind
-  ctx.init()
-  ctx.update(message)
-  ctx.finish(digest)
-
-  if clearMem:
-    ctx.clear()
-
-func hash*[T: char|byte](
-       HashKind: type sha256,
-       message: openarray[T],
-       clearmem = false): array[32, byte] =
-  ## Produce a SHA256 digest from a message
-  HashKind.hash(result, message, clearMem)

@@ -1,6 +1,6 @@
 import
   # Internals
-  ../constantine/hashes/h_sha256,
+  ../constantine/hashes,
   # Helpers
   ../helpers/prng_unsafe,
   # Third-party

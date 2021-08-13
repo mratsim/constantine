@@ -11,7 +11,7 @@ import
   std/macros,
   # Internal
   ./type_bigint, ./type_ff, ./common,
-  ./curves_declaration, ./curves_derived
+  ./curves_declaration, ./curves_prop_core, ./curves_derived
 
 # ############################################################
 #
@@ -57,9 +57,9 @@ proc bindConstant(ff: NimNode, property: string): NimNode =
 
 template fieldMod*(Field: type FF): auto =
   when Field is Fp:
-    Field.C.Mod
+    Mod(Field.C)
   else:
-    Field.C.getCurveOrder()
+    getCurveOrder(Field.C)
 
 macro getSpareBits*(ff: type FF): untyped =
   ## Returns the number of extra bits
@@ -77,6 +77,10 @@ macro getSpareBits*(ff: type FF): untyped =
 macro getR2modP*(ff: type FF): untyped =
   ## Get the Montgomery "R^2 mod P" constant associated to a curve field modulus
   result = bindConstant(ff, "R2modP")
+
+macro getR3modP*(ff: type FF): untyped =
+  ## Get the Montgomery "R^3 mod P" constant associated to a curve field modulus
+  result = bindConstant(ff, "R3modP")
 
 macro getNegInvModWord*(ff: type FF): untyped =
   ## Get the Montgomery "-1/P[0] mod 2^Wordbitwidth" constant associated to a curve field modulus
