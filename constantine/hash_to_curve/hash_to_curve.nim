@@ -107,4 +107,4 @@ func hashToCurve*[
   P[1].mapToCurve(u[1])
 
   output.sum(P[0], P[1])
-  output.clearCofactorReference() # TODO - fast cofactor clear
+  output.clearCofactorFast()
