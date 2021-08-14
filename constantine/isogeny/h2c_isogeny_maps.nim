@@ -98,10 +98,12 @@ func h2c_isogeny_map[F](
   ## (rx, ry) with rx = rxn/rxd and ry = ryn/ryd
 
   # xd^e with e in [1, N], for example [xd, xd², xd³]
+  static: doAssert isodegree >= 2
   var xd_pow{.noInit.}: array[isodegree, F]
   xd_pow[0] = xd
-  for i in 1 ..< xd_pow.len:
-    xd_pow[i].prod(xd_pow[i-1], xd)
+  xd_pow[1].square(xd_pow[0])
+  for i in 2 ..< xd_pow.len:
+    xd_pow[i].prod(xd_pow[i-1], xd_pow[0])
 
   rxn.poly_eval_horner_scaled(
     xn, xd_pow,
@@ -216,7 +218,7 @@ func h2c_isogeny_map*[F; Tw: static Twisted](
 
   # Z²^e with e in [1, N], for example [Z², Z⁴, Z⁶]
   static: doAssert isodegree >= 2
-  var ZZpow: array[isodegree, F]
+  var ZZpow{.noInit.}: array[isodegree, F]
   ZZpow[0].square(P.z)
   ZZpow[1].square(ZZpow[0])
   for i in 2 ..< ZZpow.len:
