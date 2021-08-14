@@ -134,10 +134,10 @@ func cneg*(P: var ECP_ShortW_Jac, ctl: CTBool)  {.inline.} =
   ## Negate if ``ctl`` is true
   P.y.cneg(ctl)
 
-func sum*[F; Tw: static Twisted](
+template sumImpl[F; Tw: static Twisted](
        r: var ECP_ShortW_Jac[F, Tw],
        P, Q: ECP_ShortW_Jac[F, Tw],
-       CurveA: static int
+       CoefA: untyped
      ) =
   ## Elliptic curve point addition for Short Weierstrass curves in Jacobian coordinates
   ## with the curve ``a`` being a parameter for summing on isogenous curves.
@@ -150,7 +150,7 @@ func sum*[F; Tw: static Twisted](
   ##   y² = x³ + a x + b
   ##
   ## ``r`` is initialized/overwritten with the sum
-  ## ``CurveA`` allows fast path for curve with a == 0 or a == -3
+  ## ``CoefA`` allows fast path for curve with a == 0 or a == -3
   ##            and also allows summing on curve isogenies.
   ##
   ## Implementation is constant-time, in particular it will not expose
@@ -222,7 +222,16 @@ func sum*[F; Tw: static Twisted](
   V_or_S *= HH_or_YY       # V = U₁*HH (add) or S = X₁*YY (dbl)
 
   block: # Compute M for doubling
-    when CurveA == 0:
+    # "when" static evaluation doesn't shortcut booleans :/
+    # which causes issues when CoefA isn't an int but Fp or Fp2
+    when CoefA is int:
+      const CoefA_eq_zero = CoefA == 0
+      const CoefA_eq_minus3 = CoefA == -3
+    else:
+      const CoefA_eq_zero = false
+      const CoefA_eq_minus3 = false
+
+    when CoefA_eq_zero:
       var a = H
       var b = HH_or_YY
       a.ccopy(P.x, isDbl)           # H or X₁
@@ -234,7 +243,7 @@ func sum*[F; Tw: static Twisted](
       M += HHH_or_Mpre              # 3X₁²/2
       R_or_M.ccopy(M, isDbl)
 
-    elif CurveA == -3:
+    elif CoefA_eq_minus3:
       var a{.noInit.}, b{.noInit.}: F
       a.sum(P.x, Z1Z1)
       b.diff(P.z, Z1Z1)
@@ -251,7 +260,7 @@ func sum*[F; Tw: static Twisted](
       # TODO: Costly `a` coefficients can be computed
       # by merging their computation with Z₃ = Z₁*Z₂*H (add) or Z₃ = Y₁*Z₁ (dbl)
       var a = H
-      var b = HH
+      var b = HH_or_YY
       a.ccopy(P.x, isDbl)
       b.ccopy(P.x, isDbl)
       HHH_or_Mpre.prod(a, b)        # HHH or X₁²
@@ -260,7 +269,8 @@ func sum*[F; Tw: static Twisted](
       a.square(HHH_or_Mpre)
       a *= HHH_or_Mpre              # a = 3X₁²
       b.square(Z1Z1)
-      b *= F.C.getCoefA()           # b = αZZ, with α the "a" coefficient of the curve
+      # b.mulCheckSparse(CoefA)     # TODO: broken static compile-time type inference
+      b *= CoefA                    # b = αZZ, with α the "a" coefficient of the curve
 
       a += b
       a.div2()
@@ -298,6 +308,31 @@ func sum*[F; Tw: static Twisted](
 
 func sum*[F; Tw: static Twisted](
        r: var ECP_ShortW_Jac[F, Tw],
+       P, Q: ECP_ShortW_Jac[F, Tw],
+       CoefA: static F
+     ) =
+  ## Elliptic curve point addition for Short Weierstrass curves in Jacobian coordinates
+  ## with the curve ``a`` being a parameter for summing on isogenous curves.
+  ##
+  ##   R = P + Q
+  ##
+  ## Short Weierstrass curves have the following equation in Jacobian coordinates
+  ##   Y² = X³ + aXZ⁴ + bZ⁶
+  ## from the affine equation
+  ##   y² = x³ + a x + b
+  ##
+  ## ``r`` is initialized/overwritten with the sum
+  ## ``CoefA`` allows fast path for curve with a == 0 or a == -3
+  ##            and also allows summing on curve isogenies.
+  ##
+  ## Implementation is constant-time, in particular it will not expose
+  ## that P == Q or P == -Q or P or Q are the infinity points
+  ## to simple side-channel attacks (SCA)
+  ## This is done by using a "complete" or "exception-free" addition law.
+  r.sumImpl(P, Q, CoefA)
+
+func sum*[F; Tw: static Twisted](
+       r: var ECP_ShortW_Jac[F, Tw],
        P, Q: ECP_ShortW_Jac[F, Tw]
      ) =
   ## Elliptic curve point addition for Short Weierstrass curves in Jacobian coordinates
@@ -315,6 +350,7 @@ func sum*[F; Tw: static Twisted](
   ## that P == Q or P == -Q or P or Q are the infinity points
   ## to simple side-channel attacks (SCA)
   ## This is done by using a "complete" or "exception-free" addition law.
+  r.sumImpl(P, Q, F.C.getCoefA())
 
 func madd*[F; Tw: static Twisted](
        r: var ECP_ShortW_Jac[F, Tw],

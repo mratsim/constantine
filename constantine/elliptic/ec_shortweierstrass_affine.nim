@@ -34,6 +34,11 @@ type
 
   SexticNonResidue* = NonResidue
 
+func `==`*(P, Q: ECP_ShortW_Aff): SecretBool =
+  ## Constant-time equality check
+  result = P.x == Q.x
+  result = result and (P.y == Q.y)
+
 func isInf*(P: ECP_ShortW_Aff): SecretBool =
   ## Returns true if P is an infinity point
   ## and false otherwise

@@ -11,10 +11,7 @@ import
   ../config/[common, curves],
   ../primitives, ../arithmetic, ../towers,
   ../curves/zoo_hash_to_curve,
-  ../elliptic/[
-    ec_shortweierstrass_projective,
-    ec_shortweierstrass_jacobian,
-  ],
+  ../ec_shortweierstrass,
   ./h2c_hash_to_field,
   ./h2c_map_to_isocurve_swu,
   ./cofactors,
@@ -36,6 +33,26 @@ import
 
 # Map to curve
 # ----------------------------------------------------------------
+
+func mapToIsoCurve_sswuG2_opt9mod16[F; Tw: static Twisted](
+       r: var ECP_ShortW_Jac[F, Tw],
+       u: F) =
+  var
+    xn{.noInit.}, xd{.noInit.}: F
+    yn{.noInit.}: F
+
+  mapToIsoCurve_sswuG2_opt9mod16(
+    xn, xd,
+    yn,
+    u
+  )
+
+  # Convert to Jacobian
+  r.z = xd         # Z = xd
+  r.x.prod(xn, xd) # X = xZ² = xn/xd * xd² = xn*xd
+  r.y.square(xd)
+  r.y *= xd
+  r.y *= yn        # Y = yZ³ = yn * xd³
 
 func mapToCurve[F; Tw: static Twisted](
        r: var (ECP_ShortW_Prj[F, Tw] or ECP_ShortW_Jac[F, Tw]),
@@ -65,6 +82,39 @@ func mapToCurve[F; Tw: static Twisted](
       yn,
       isodegree = 3
     )
+  else:
+    {.error: "Not implemented".}
+
+func mapToCurve_fusedAdd[F; Tw: static Twisted](
+       r: var ECP_ShortW_Jac[F, Tw],
+       u0, u1: F) =
+  ## Map 2 elements of the
+  ## finite or extension field F
+  ## to an elliptic curve E
+  ## and add them
+  # Optimization suggested in https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-6.6.3
+  #   Note that iso_map is a group homomorphism, meaning that point
+  #   addition commutes with iso_map.  Thus, when using this mapping in the
+  #   hash_to_curve construction of Section 3, one can effect a small
+  #   optimization by first mapping u0 and u1 to E', adding the resulting
+  #   points on E', and then applying iso_map to the sum.  This gives the
+  #   same result while requiring only one evaluation of iso_map.
+
+  # Jacobian formulae are independent of the curve equation B'
+  # y² = x³ + A'*x + B'
+  # unlike the complete projective formulae which heavily depends on it
+  # So we use jacobian coordinates for computation on isogenies.
+
+  var P0{.noInit.}, P1{.noInit.}: ECP_ShortW_Jac[F, Tw]
+  when F.C == BLS12_381 and F is Fp2:
+    # 1. Map to E'2 isogenous to E2
+    P0.mapToIsoCurve_sswuG2_opt9mod16(u0)
+    P1.mapToIsoCurve_sswuG2_opt9mod16(u1)
+
+    P0.sum(P0, P1, h2CConst(F.C, G2, Aprime_E2))
+
+    # 2. Map from E'2 to E2
+    r.h2c_isogeny_map(P0, isodegree = 3)
   else:
     {.error: "Not implemented".}
 
@@ -106,9 +156,14 @@ func hashToCurve*[
   var u{.noInit.}: array[2, F]
   H.hashToField(k, u, augmentation, message, domainSepTag)
 
-  var P{.noInit.}: array[2, ECP_ShortW_Prj[F, Tw]]
-  P[0].mapToCurve(u[0])
-  P[1].mapToCurve(u[1])
+  when false:
+    var P{.noInit.}: array[2, ECP_ShortW_Prj[F, Tw]]
+    P[0].mapToCurve(u[0])
+    P[1].mapToCurve(u[1])
+    output.sum(P[0], P[1])
+  else:
+    var Pjac{.noInit.}: ECP_ShortW_Jac[F, Tw]
+    Pjac.mapToCurve_fusedAdd(u[0], u[1])
+    output.projectiveFromJacobian(Pjac)
 
-  output.sum(P[0], P[1])
   output.clearCofactorFast()

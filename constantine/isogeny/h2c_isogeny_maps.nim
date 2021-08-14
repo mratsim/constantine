@@ -194,3 +194,66 @@ func h2c_isogeny_map*[F; Tw: static Twisted](
   r.y.square(r.z)    # Y = xd² * yd²
   r.y *= rdx         # Y = yd² * xd³
   r.y *= ryn         # Y = yn * yd² * xd³
+
+func h2c_isogeny_map*[F; Tw: static Twisted](
+       r: var ECP_ShortW_Jac[F, Tw],
+       P: ECP_ShortW_Jac[F, Tw],
+       isodegree: static int) =
+  ## Map P in isogenous curve E'2
+  ## to r in E2
+  ##
+  ## r and P are NOT on the same curve.
+  #
+  # We have in affine <=> jacobian representation
+  # (x, y) <=> (xn/xd, yn/yd)
+  #        <=> (xZ², yZ³, Z)
+  #
+  # We scale the isogeny coefficients by powers
+  # of Z²
+
+  var xn{.noInit.}, xd{.noInit.}: F
+  var yn{.noInit.}, yd{.noInit.}: F
+
+  # Z²^e with e in [1, N], for example [Z², Z⁴, Z⁶]
+  static: doAssert isodegree >= 2
+  var ZZpow: array[isodegree, F]
+  ZZpow[0].square(P.z)
+  ZZpow[1].square(ZZpow[0])
+  for i in 2 ..< ZZpow.len:
+    ZZpow[i].prod(ZZpow[i-1], ZZpow[0])
+
+  xn.poly_eval_horner_scaled(
+    P.x, ZZpow,
+    h2cIsomapPoly(F.C, G2, isodegree, xnum)
+  )
+  xd.poly_eval_horner_scaled(
+    P.x, ZZpow,
+    h2cIsomapPoly(F.C, G2, isodegree, xden)
+  )
+
+  yn.poly_eval_horner_scaled(
+    P.x, ZZpow,
+    h2cIsomapPoly(F.C, G2, isodegree, ynum)
+  )
+  yd.poly_eval_horner_scaled(
+    P.x, ZZpow,
+    h2cIsomapPoly(F.C, G2, isodegree, yden)
+  )
+
+  # yn = y' * poly_yNum(x) = yZ³ * poly_yNum(x)
+  yn *= P.y
+
+  # Scale yd by Z³
+  yd *= P.z
+  yd *= ZZpow[0]
+
+  # Now convert to jacobian coordinates
+  # (x, y) => (xnum/xden, ynum/yden)
+  #       <=> (xZ², yZ³, Z)
+  #       <=> (xnum*xden*yden², ynum*yden²*xden³, xden*yden)
+  r.z.prod(xd, yd) # Z = xn * xd
+  r.x.prod(xn, yd) # X = xn * yd
+  r.x *= r.z       # X = xn * xd * yd²
+  r.y.square(r.z)  # Y = xd² * yd²
+  r.y *= xd        # Y = yd² * xd³
+  r.y *= yn        # Y = yn * yd² * xd³
