@@ -40,19 +40,18 @@ func mapToIsoCurve_sswuG2_opt9mod16[F; Tw: static Twisted](
   var
     xn{.noInit.}, xd{.noInit.}: F
     yn{.noInit.}: F
+    xd3{.noInit.}: F
 
   mapToIsoCurve_sswuG2_opt9mod16(
     xn, xd,
     yn,
-    u
+    u, xd3
   )
 
   # Convert to Jacobian
-  r.z = xd         # Z = xd
-  r.x.prod(xn, xd) # X = xZ² = xn/xd * xd² = xn*xd
-  r.y.square(xd)
-  r.y *= xd
-  r.y *= yn        # Y = yZ³ = yn * xd³
+  r.z = xd          # Z = xd
+  r.x.prod(xn, xd)  # X = xZ² = xn/xd * xd² = xn*xd
+  r.y.prod(yn, xd3) # Y = yZ³ = yn * xd³
 
 func mapToCurve[F; Tw: static Twisted](
        r: var (ECP_ShortW_Prj[F, Tw] or ECP_ShortW_Jac[F, Tw]),
@@ -69,11 +68,12 @@ func mapToCurve[F; Tw: static Twisted](
     var
       xn{.noInit.}, xd{.noInit.}: F
       yn{.noInit.}: F
+      xd3{.noInit.}: F
 
     mapToIsoCurve_sswuG2_opt9mod16(
       xn, xd,
       yn,
-      u
+      u, xd3
     )
 
     # 2. Map from E'2 to E2
