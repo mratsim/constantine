@@ -109,8 +109,7 @@ func invsqrt_if_square[C: static Curve](
     t2 *= NonResidue
     t1 -= t2
 
-  # TODO: implement invsqrt alone
-  result = sqrt_invsqrt_if_square(sqrt = r.c1, invsqrt = t3, t1) # 1/sqrt(a0² - β a1²)
+  result = t3.invsqrt_if_square(t1)    # 1/sqrt(a0² - β a1²)
 
   # If input is not a square in Fp2, multiply by 1/Z³
   inp.prod(a, h2cConst(C, G2, inv_Z3)) # inp = a / Z³
@@ -131,8 +130,7 @@ func invsqrt_if_square[C: static Curve](
   t1.ccopy(t2, t1.isZero())
   t1.div2()    # (a0 ± sqrt(a0² - βa1²))/2
 
-  # TODO: implement invsqrt alone
-  sqrt_invsqrt(sqrt = r.c1, invsqrt = r.c0, t1)
+  r.c0.invsqrt(t1)
 
   r.c1 = inp.c1
   r.c1.div2()
@@ -152,19 +150,22 @@ func invsqrt_if_square[C: static Curve](
 
 func mapToIsoCurve_sswuG2_opt9mod16*[C: static Curve](
        xn, xd, yn: var Fp2[C],
-       u: Fp2[C]) =
+       u: Fp2[C], xd3: var Fp2[C]) =
   ## Given G2, the target prime order subgroup of E2 we want to hash to,
   ## this function maps any field element of Fp2 to E'2
   ## a curve isogenous to E2 using the Simplified Shallue-van de Woestijne method.
   ##
   ## This requires p² ≡ 9 (mod 16).
-  #
-  # Input:
-  # - u, an Fp2 element
-  # Output:
-  # - (xn, xd, yn, yd) such that (x', y') = (xn/xd, yn/yd)
-  #   is a point of E'2
-  # - yd is implied to be 1
+  ##
+  ## Input:
+  ## - u, an Fp2 element
+  ## Output:
+  ## - (xn, xd, yn, yd) such that (x', y') = (xn/xd, yn/yd)
+  ##   is a point of E'2
+  ## - yd is implied to be 1
+  ## Scratchspace:
+  ## - xd3 is temporary scratchspace that will hold xd³
+  ##   after execution (which might be useful for Jacobian coordinate conversion)
   #
   # Paper: https://eprint.iacr.org/2019/403
   # Spec: https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#appendix-G.2.3
@@ -175,7 +176,6 @@ func mapToIsoCurve_sswuG2_opt9mod16*[C: static Curve](
   var
     uu {.noInit.}, tv2 {.noInit.}: Fp2[C]
     tv4 {.noInit.}, x2n {.noInit.}, gx1 {.noInit.}: Fp2[C]
-    gxd {.noInit.}: Fp2[C]
     y2 {.noInit.}: Fp2[C]
     e1, e2: SecretBool
 
@@ -184,6 +184,7 @@ func mapToIsoCurve_sswuG2_opt9mod16*[C: static Curve](
   template x1n: untyped = xn
   template y1: untyped = yn
   template Zuu: untyped = x2n
+  template gxd: untyped = xd3
 
   # x numerators
   uu.square(u)                      # uu = u²
@@ -203,7 +204,7 @@ func mapToIsoCurve_sswuG2_opt9mod16*[C: static Curve](
   # y numerators
   tv2.square(xd)
   gxd.prod(xd, tv2)                         # gxd = xd³
-  tv2 *= h2CConst(C, G2, Aprime_E2)
+  tv2.mulCheckSparse(h2CConst(C, G2, Aprime_E2))
   gx1.square(x1n)
   gx1 += tv2                                # x1n² + A * xd²
   gx1 *= x1n                                # x1n³ + A * x1n * xd²

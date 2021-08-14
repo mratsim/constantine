@@ -263,26 +263,26 @@ proc runTests(requireGMP: bool, dumpCmdFile = false, test32bit = false, testASM 
         flags &= sanitizers
       test flags, td.path, dumpCmdFile
 
-proc buildAllBenches() =
+proc buildAllBenches(useAsm = true) =
   echo "\n\n------------------------------------------------------\n"
   echo "Building benchmarks to ensure they stay relevant ..."
-  buildBench("bench_fp")
-  buildBench("bench_fp_double_precision")
-  buildBench("bench_fp2")
-  buildBench("bench_fp6")
-  buildBench("bench_fp12")
-  buildBench("bench_ec_g1")
-  buildBench("bench_ec_g2")
-  buildBench("bench_pairing_bls12_377")
-  buildBench("bench_pairing_bls12_381")
-  buildBench("bench_pairing_bn254_nogami")
-  buildBench("bench_pairing_bn254_snarks")
-  buildBench("bench_summary_bls12_377")
-  buildBench("bench_summary_bls12_381")
-  buildBench("bench_summary_bn254_nogami")
-  buildBench("bench_summary_bn254_snarks")
-  buildBench("bench_sha256")
-  buildBench("bench_hash_to_curve")
+  buildBench("bench_fp", useAsm = useAsm)
+  buildBench("bench_fp_double_precision", useAsm = useAsm)
+  buildBench("bench_fp2", useAsm = useAsm)
+  buildBench("bench_fp6", useAsm = useAsm)
+  buildBench("bench_fp12", useAsm = useAsm)
+  buildBench("bench_ec_g1", useAsm = useAsm)
+  buildBench("bench_ec_g2", useAsm = useAsm)
+  buildBench("bench_pairing_bls12_377", useAsm = useAsm)
+  buildBench("bench_pairing_bls12_381", useAsm = useAsm)
+  buildBench("bench_pairing_bn254_nogami", useAsm = useAsm)
+  buildBench("bench_pairing_bn254_snarks", useAsm = useAsm)
+  buildBench("bench_summary_bls12_377", useAsm = useAsm)
+  buildBench("bench_summary_bls12_381", useAsm = useAsm)
+  buildBench("bench_summary_bn254_nogami", useAsm = useAsm)
+  buildBench("bench_summary_bn254_snarks", useAsm = useAsm)
+  buildBench("bench_sha256", useAsm = useAsm)
+  buildBench("bench_hash_to_curve", useAsm = useAsm)
   echo "All benchmarks compile successfully."
 
 # Tasks
@@ -308,7 +308,7 @@ task test_no_assembler, "Run all tests":
 
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
   if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
-    buildAllBenches()
+    buildAllBenches(useASM = false)
 
 task test_no_gmp, "Run tests that don't require GMP":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
@@ -357,7 +357,7 @@ task test_parallel_no_assembler, "Run all tests (without macro assembler) in par
   # ignore Windows 32-bit for the moment
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
   if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
-    buildAllBenches()
+    buildAllBenches(useASM = false)
 
 task test_parallel_no_gmp, "Run all tests in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
@@ -395,7 +395,7 @@ task test_parallel_no_gmp_no_assembler, "Run all tests in parallel (via GNU para
   # ignore Windows 32-bit for the moment
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
   if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
-    buildAllBenches()
+    buildAllBenches(useASM = false)
 
 # Finite field 𝔽p
 # ------------------------------------------

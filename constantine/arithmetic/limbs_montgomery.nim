@@ -398,10 +398,12 @@ func montySquare*[N](r: var Limbs[N], a, M: Limbs[N],
         montSquare_CIOS_asm_adx_bmi2(r, a, M, m0ninv, spareBits >= 1)
     else:
       montSquare_CIOS_asm(r, a, M, m0ninv, spareBits >= 1)
-  else:
+  elif UseASM_X86_64:
     var r2x {.noInit.}: Limbs[2*N]
     r2x.square(a)
     r.montyRedc2x(r2x, M, m0ninv, spareBits)
+  else:
+    montyMul(r, a, a, M, m0ninv, spareBits)
 
 func redc*(r: var Limbs, a, one, M: Limbs,
            m0ninv: static BaseType, spareBits: static int) =

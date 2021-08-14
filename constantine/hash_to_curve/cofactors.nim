@@ -14,7 +14,8 @@ import
   ../towers,
   ../config/curves,
   ../io/io_bigints,
-  ../elliptic/[ec_shortweierstrass_projective, ec_scalar_mul]
+  ../elliptic/[ec_shortweierstrass_projective, ec_scalar_mul],
+  ../isogeny/frobenius
 
 # ############################################################
 #
@@ -96,3 +97,97 @@ func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp[BW6_761], OnTwist]) {.inli
   ## Clear the cofactor of BW6_761 G2
   # Endomorphism acceleration cannot be used if cofactor is not cleared
   P.scalarMulGeneric(Cofactor_Eff_BW6_761_G2)
+
+# ############################################################
+#
+#                Clear Cofactor - Optimized
+#
+# ############################################################
+
+# BLS12 G2
+# ------------------------------------------------------------
+# From any point on the elliptic curve E2 of a BLS12 curve
+# Obtain a point in the G2 prime-order subgroup
+#
+# Described in https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#appendix-G.4
+#
+# Implementations, multiple implementations are possible in increasing order of speed:
+#
+# - The default, canonical, implementation is h_eff * P
+# - Scott et al, "Fast Hashing to G2 on Pairing-Friendly Curves", https://doi.org/10.1007/978-3-642-03298-1_8
+# - Fuentes-Castaneda et al, "Fast Hashing to G2 on Pairing-Friendly Curves", https://doi.org/10.1007/978-3-642-28496-0_25
+# - Budroni et al, "Hashing to G2 on BLS pairing-friendly curves", https://doi.org/10.1145/3313880.3313884
+# - Wahby et al "Fast and simple constant-time hashing to the BLS12-381 elliptic curve", https://eprint.iacr.org/2019/403
+# - IETF "Hashing to Elliptic Curves", https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#appendix-G.4
+#
+# In summary, the elliptic curve point multiplication is very expensive,
+# the fast methods uses endomorphism acceleration instead.
+#
+# The method described in Wahby et al is implemented by Riad Wahby
+# in C at: https://github.com/kwantam/bls12-381_hash/blob/23c1930039f58606138459557677668fabc8ce39/src/curve2/ops2.c#L106-L204
+# following Budroni et al, "Efficient hash maps to G2 on BLS curves"
+# https://eprint.iacr.org/2017/419
+#
+# "P -> [x² - x - 1] P + [x - 1] ψ(P) + ψ(ψ([2]P))"
+#
+# with Psi (ψ) - untwist-Frobenius-Twist function
+# and x the curve BLS parameter
+
+func double_repeated*[EC](P: var EC, num: int) {.inline.} =
+  ## Repeated doublings
+  for _ in 0 ..< num:
+    P.double()
+
+func pow_x(
+       r{.noalias.}: var ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist],
+       P{.noalias.}: ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist],
+     ) =
+  ## Does the scalar multiplication [x]P
+  ## with x the BLS12 curve parameter
+  ## For BLS12_381 [-0xd201000000010000]P
+  ## Requires r and P to not alias
+
+  # In binary
+  # 0b11
+  r.double(P)
+  r += P
+  # 0b1101
+  r.double_repeated(2)
+  r += P
+  # 0b1101001
+  r.double_repeated(3)
+  r += P
+  # 0b1101001000000001
+  r.double_repeated(9)
+  r += P
+  # 0b110100100000000100000000000000000000000000000001
+  r.double_repeated(32)
+  r += P
+  # 0b1101001000000001000000000000000000000000000000010000000000000000
+  r.double_repeated(16)
+
+  # Negative, x = -0xd201000000010000
+  r.neg(r)
+
+
+func clearCofactorFast*(P: var ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist]) =
+  ## Clear the cofactor of BLS12_381 G2
+  ## Optimized using endomorphisms
+  ## P -> [x²-x-1]P + [x-1] ψ(P) + ψ²([2]P)
+
+  var xP{.noInit.}, x2P{.noInit.}: typeof(P)
+
+  xP.pow_x(P)             # 1. xP = [x]P
+  x2P.pow_x(xP)           # 2. x2P = [x²]P
+
+  x2P.diff(x2P, xP)       # 3. x2P = [x²-x]P
+  x2P.diff(x2P, P)        # 4. x2P = [x²-x-1]P
+
+  xP.diff(xP, P)          # 5. xP = [x-1]P
+  xP.frobenius_psi(xP)    # 6. xP = ψ([x-1]P) = [x-1] ψ(P)
+
+  P.double(P)             # 7. P = [2]P
+  P.frobenius_psi(P, k=2) # 8. P = ψ²([2]P)
+
+  P.sum(P, x2P)           # 9. P = [x²-x-1]P + ψ²([2]P)
+  P.sum(P, xP)            # 10. P = [x²-x-1]P + [x-1] ψ(P) + ψ²([2]P)

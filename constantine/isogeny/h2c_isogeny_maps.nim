@@ -10,7 +10,10 @@ import
   # Internals
   ../primitives, ../arithmetic, ../towers,
   ../curves/zoo_hash_to_curve,
-  ../elliptic/ec_shortweierstrass_projective
+  ../elliptic/[
+    ec_shortweierstrass_projective,
+    ec_shortweierstrass_jacobian,
+  ]
 
 # ############################################################
 #
@@ -78,6 +81,51 @@ func poly_eval_horner_scaled[F; D, N: static int](
     # Missing scaling factor
     r *= xd_pow[isodegree - poly_degree - 1]
 
+func h2c_isogeny_map[F](
+       rxn, rxd, ryn, ryd: var F,
+       xn, xd, yn: F, isodegree: static int) =
+  ## Given G2, the target prime order subgroup of E2,
+  ## this function maps an element of
+  ## E'2 a curve isogenous to E2
+  ## to E2.
+  ##
+  ## The E'2 input is represented as
+  ## (x', y') with x' = xn/xd and y' = yn/yd
+  ##
+  ## yd is assumed to be 1 hence y' == yn
+  ##
+  ## The E2 output is represented as
+  ## (rx, ry) with rx = rxn/rxd and ry = ryn/ryd
+
+  # xd^e with e in [1, N], for example [xd, xd², xd³]
+  static: doAssert isodegree >= 2
+  var xd_pow{.noInit.}: array[isodegree, F]
+  xd_pow[0] = xd
+  xd_pow[1].square(xd_pow[0])
+  for i in 2 ..< xd_pow.len:
+    xd_pow[i].prod(xd_pow[i-1], xd_pow[0])
+
+  rxn.poly_eval_horner_scaled(
+    xn, xd_pow,
+    h2cIsomapPoly(F.C, G2, isodegree, xnum)
+  )
+  rxd.poly_eval_horner_scaled(
+    xn, xd_pow,
+    h2cIsomapPoly(F.C, G2, isodegree, xden)
+  )
+
+  ryn.poly_eval_horner_scaled(
+    xn, xd_pow,
+    h2cIsomapPoly(F.C, G2, isodegree, ynum)
+  )
+  ryd.poly_eval_horner_scaled(
+    xn, xd_pow,
+    h2cIsomapPoly(F.C, G2, isodegree, yden)
+  )
+
+  # y coordinate is y' * poly_yNum(x)
+  ryn *= yn
+
 func h2c_isogeny_map*[F; Tw: static Twisted](
        r: var ECP_ShortW_Prj[F, Tw],
        xn, xd, yn: F, isodegree: static int) =
@@ -95,33 +143,15 @@ func h2c_isogeny_map*[F; Tw: static Twisted](
   ## - https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-6.6.3
   ## - https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve
 
-  # xd^e with e in [1, N], for example [xd, xd², xd³]
-  var xd_pow: array[isodegree, F]
-  xd_pow[0] = xd
-  for i in 1 ..< xd_pow.len:
-    xd_pow[i].prod(xd_pow[i-1], xd)
+  var t{.noInit.}: F
 
-  r.x.poly_eval_horner_scaled(
-    xn, xd_pow,
-    h2cIsomapPoly(F.C, G2, isodegree, xnum)
+  h2c_isogeny_map(
+    rxn = r.x,
+    rxd = r.z,
+    ryn = r.y,
+    ryd = t,
+    xn, xd, yn, isodegree
   )
-  r.z.poly_eval_horner_scaled(
-    xn, xd_pow,
-    h2cIsomapPoly(F.C, G2, isodegree, xden)
-  )
-
-  r.y.poly_eval_horner_scaled(
-    xn, xd_pow,
-    h2cIsomapPoly(F.C, G2, isodegree, ynum)
-  )
-  var t {.noInit.}: F
-  t.poly_eval_horner_scaled(
-    xn, xd_pow,
-    h2cIsomapPoly(F.C, G2, isodegree, yden)
-  )
-
-  # y coordinate is y' * poly_yNum(x)
-  r.y *= yn
 
   # Now convert to projective coordinates
   # (x, y) => (xnum/xden, ynum/yden)
@@ -129,3 +159,103 @@ func h2c_isogeny_map*[F; Tw: static Twisted](
   r.y *= r.z
   r.x *= t
   r.z *= t
+
+func h2c_isogeny_map*[F; Tw: static Twisted](
+       r: var ECP_ShortW_Jac[F, Tw],
+       xn, xd, yn: F, isodegree: static int) =
+  ## Given G2, the target prime order subgroup of E2,
+  ## this function maps an element of
+  ## E'2 a curve isogenous to E2
+  ## to E2.
+  ##
+  ## The E'2 input is represented as
+  ## (x', y') with x' = xn/xd and y' = yn/yd
+  ##
+  ## yd is assumed to be 1 hence y' == yn
+  ##
+  ## Reference:
+  ## - https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-6.6.3
+  ## - https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve
+
+  var rxn{.noInit.}, rxd{.noInit.}: F
+  var ryn{.noInit.}, ryd{.noInit.}: F
+
+  h2c_isogeny_map(
+    rxn, rxd,
+    ryn, ryd,
+    xn, xd, yn, isodegree
+  )
+
+  # Now convert to jacobian coordinates
+  # (x, y) => (xnum/xden, ynum/yden)
+  #       <=> (xZ², yZ³, Z)
+  #       <=> (xnum*xden*yden², ynum*yden²*xden³, xden*yden)
+  r.z.prod(rxd, ryd) # Z = xn * xd
+  r.x.prod(rxn, ryd) # X = xn * yd
+  r.x *= r.z         # X = xn * xd * yd²
+  r.y.square(r.z)    # Y = xd² * yd²
+  r.y *= rdx         # Y = yd² * xd³
+  r.y *= ryn         # Y = yn * yd² * xd³
+
+func h2c_isogeny_map*[F; Tw: static Twisted](
+       r: var ECP_ShortW_Jac[F, Tw],
+       P: ECP_ShortW_Jac[F, Tw],
+       isodegree: static int) =
+  ## Map P in isogenous curve E'2
+  ## to r in E2
+  ##
+  ## r and P are NOT on the same curve.
+  #
+  # We have in affine <=> jacobian representation
+  # (x, y) <=> (xn/xd, yn/yd)
+  #        <=> (xZ², yZ³, Z)
+  #
+  # We scale the isogeny coefficients by powers
+  # of Z²
+
+  var xn{.noInit.}, xd{.noInit.}: F
+  var yn{.noInit.}, yd{.noInit.}: F
+
+  # Z²^e with e in [1, N], for example [Z², Z⁴, Z⁶]
+  static: doAssert isodegree >= 2
+  var ZZpow{.noInit.}: array[isodegree, F]
+  ZZpow[0].square(P.z)
+  ZZpow[1].square(ZZpow[0])
+  for i in 2 ..< ZZpow.len:
+    ZZpow[i].prod(ZZpow[i-1], ZZpow[0])
+
+  xn.poly_eval_horner_scaled(
+    P.x, ZZpow,
+    h2cIsomapPoly(F.C, G2, isodegree, xnum)
+  )
+  xd.poly_eval_horner_scaled(
+    P.x, ZZpow,
+    h2cIsomapPoly(F.C, G2, isodegree, xden)
+  )
+
+  yn.poly_eval_horner_scaled(
+    P.x, ZZpow,
+    h2cIsomapPoly(F.C, G2, isodegree, ynum)
+  )
+  yd.poly_eval_horner_scaled(
+    P.x, ZZpow,
+    h2cIsomapPoly(F.C, G2, isodegree, yden)
+  )
+
+  # yn = y' * poly_yNum(x) = yZ³ * poly_yNum(x)
+  yn *= P.y
+
+  # Scale yd by Z³
+  yd *= P.z
+  yd *= ZZpow[0]
+
+  # Now convert to jacobian coordinates
+  # (x, y) => (xnum/xden, ynum/yden)
+  #       <=> (xZ², yZ³, Z)
+  #       <=> (xnum*xden*yden², ynum*yden²*xden³, xden*yden)
+  r.z.prod(xd, yd) # Z = xn * xd
+  r.x.prod(xn, yd) # X = xn * yd
+  r.x *= r.z       # X = xn * xd * yd²
+  r.y.square(r.z)  # Y = xd² * yd²
+  r.y *= xd        # Y = yd² * xd³
+  r.y *= yn        # Y = yn * yd² * xd³

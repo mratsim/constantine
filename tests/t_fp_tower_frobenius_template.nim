@@ -61,7 +61,7 @@ proc runFrobeniusTowerTests*[N](
     ) =
   # Random seed for reproducibility
   var rng: RngState
-  let seed = 0 # uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
   rng.seed(seed)
   echo moduleName, " xoshiro512** seed: ", seed
 
