@@ -77,8 +77,13 @@ func dumpRawInt*[T: byte|char](
     for i in 0'u ..< L:
       dst[cursor+i] = toByte(src shr ((L-i-1) * 8))
 
-func toBytesBE*(num: SomeUnsignedInt): array[sizeof(num), byte] {.inline.}=
-  ## Convert an integer to an array of bytes
+func asBytesBE*[N: static int](
+       r: var array[N, byte],
+       num: SomeUnsignedInt,
+       pos: static int) {.inline.}=
+  ## Store an integer into an array of bytes
+  ## in big endian representation
   const L = sizeof(num)
+  static: doAssert N - (pos + L) >= 0
   for i in 0 ..< L:
-    result[i] = toByte(num shr ((L-1-i) * 8))
+    r[i] = toByte(num shr ((L-1-i) * 8))

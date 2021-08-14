@@ -315,14 +315,37 @@ func init*(ctx: var Sha256Context) =
   ctx.buf.setZero()
   ctx.bufIdx = 0
 
-  ctx.H[0] = 0x6a09e667'u32;
-  ctx.H[1] = 0xbb67ae85'u32;
-  ctx.H[2] = 0x3c6ef372'u32;
-  ctx.H[3] = 0xa54ff53a'u32;
-  ctx.H[4] = 0x510e527f'u32;
-  ctx.H[5] = 0x9b05688c'u32;
-  ctx.H[6] = 0x1f83d9ab'u32;
-  ctx.H[7] = 0x5be0cd19'u32;
+  ctx.H[0] = 0x6a09e667'u32
+  ctx.H[1] = 0xbb67ae85'u32
+  ctx.H[2] = 0x3c6ef372'u32
+  ctx.H[3] = 0xa54ff53a'u32
+  ctx.H[4] = 0x510e527f'u32
+  ctx.H[5] = 0x9b05688c'u32
+  ctx.H[6] = 0x1f83d9ab'u32
+  ctx.H[7] = 0x5be0cd19'u32
+
+func initZeroPadded*(ctx: var Sha256Context) =
+  ## Initialize a Sha256 context
+  ## with the result of
+  ## ctx.init()
+  ## ctx.update default(array[BlockSize, byte])
+  #
+  # This work arounds `toOpenArray`
+  # not working in the Nim VM, preventing `sha256.update`
+  # at compile-time
+
+  ctx.msgLen = 64
+  ctx.buf.setZero()
+  ctx.bufIdx = 0
+
+  ctx.H[0] = 0xda5698be'u32
+  ctx.H[1] = 0x17b9b469'u32
+  ctx.H[2] = 0x62335799'u32
+  ctx.H[3] = 0x779fbeca'u32
+  ctx.H[4] = 0x8ce5d491'u32
+  ctx.H[5] = 0xc0d26243'u32
+  ctx.H[6] = 0xbafef9ea'u32
+  ctx.H[7] = 0x1837a9d8'u32
 
 func update*[T: char|byte](ctx: var Sha256Context, message: openarray[T]) =
   ## Append a message to a SHA256 context

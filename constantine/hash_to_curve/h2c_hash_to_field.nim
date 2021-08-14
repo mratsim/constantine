@@ -30,12 +30,11 @@ func ceilDiv(a, b: uint): uint =
   ## ceil(a / b)
   (a + b - 1) div b
 
-proc copyFrom[N](output: var openarray[byte], bi: array[N, byte], cur: var uint) =
-  var b_index = 0'u
-  while b_index < bi.len.uint and cur < output.len.uint:
-    output[cur] = bi[b_index]
-    inc cur
-    inc b_index
+proc copyFrom[M, N: static int](output: var array[M, byte], bi: array[N, byte], cur: var uint) =
+  static: doAssert M mod N == 0
+  for i in 0'u ..< N:
+    output[cur+i] = bi[i]
+  cur += N.uint
 
 template strxor(b_i: var array, b0: array): untyped =
   for i in 0 ..< b_i.len:
@@ -57,9 +56,9 @@ func shortDomainSepTag[DigestSize: static int, B: byte|char](
   ctx.update oversizedDST
   ctx.finish(output)
 
-func expandMessageXMD*[B1, B2, B3: byte|char](
+func expandMessageXMD*[B1, B2, B3: byte|char, len_in_bytes: static int](
        H: type CryptoHash,
-       output: var openarray[byte],
+       output: var array[len_in_bytes, byte],
        augmentation: openarray[B1],
        message: openarray[B2],
        domainSepTag: openarray[B3]
@@ -110,23 +109,23 @@ func expandMessageXMD*[B1, B2, B3: byte|char](
   const DigestSize = Hash.digestSize()
   const BlockSize = Hash.internalBlockSize()
 
-  assert output.len mod 8 == 0
+  static:
+    doAssert output.len mod 8 == 0  # By spec
+    doAssert output.len mod 32 == 0 # Assumed by copy optimization
 
   let ell = ceilDiv(output.len.uint, DigestSize.uint)
   const zPad = default(array[BlockSize, byte])
-  let l_i_b_str = output.len.uint16.toBytesBE()
+  var l_i_b_str0 {.noInit.}: array[3, byte]
+  l_i_b_str0.asBytesBE(output.len.uint16, pos = 0)
+  l_i_b_str0[2] = 0
 
   var b0 {.noinit, align: DigestSize.}: array[DigestSize, byte]
-  func ctZpad(): Hash =
-    # Compile-time precompute
-    # TODO upstream: `toOpenArray` throws "cannot generate code for: mSlice"
-    result.init()
-    result.update zPad
-  var ctx = ctZpad() # static(ctZpad())
+  var ctx {.noInit.}: Hash
+  ctx.initZeroPadded()
   ctx.update augmentation
   ctx.update message
-  ctx.update l_i_b_str
-  ctx.update [byte 0]
+  ctx.update l_i_b_str0
+  # ctx.update [byte 0] # already appended to l_i_b_str
   ctx.update domainSepTag
   ctx.update [byte domainSepTag.len] # DST_prime
   ctx.finish(b0)
