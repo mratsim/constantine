@@ -133,10 +133,8 @@ func sqrt_if_square_opt(a: var Fp2): SecretBool =
   t1.ccopy(t2, t1.isZero())
   t1.div2()                           # (a0 ± sqrt(a0² - β a1²))/2
 
-  # TODO: implement invsqrt alone
   # t1 being an actual sqrt will be tested in sqrt_rotate_extension
-  # 1/sqrt((a0 ± sqrt(a0² - β b²))/2)
-  sqrt_invsqrt(sqrt = cand.c1, invsqrt = cand.c0, t1) # we only want invsqrt = cand.c0
+  cand.c0.invsqrt(t1)                 # 1/sqrt((a0 ± sqrt(a0² - β b²))/2)
 
   cand.c1 = a.c1
   cand.c1.div2()

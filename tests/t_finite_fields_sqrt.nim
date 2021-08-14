@@ -80,7 +80,6 @@ proc exhaustiveCheck(C: static Curve, modulus: static int) =
         check:
           bool not a.isSquare()
           bool not a.sqrt_if_square()
-          bool (a == a2) # a shouldn't be modified
 
 template testImpl(a: untyped): untyped {.dirty.} =
   var na{.noInit.}: typeof(a)

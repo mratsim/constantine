@@ -119,33 +119,37 @@ proc invAddChainBench*(T: typedesc, iters: int) =
 
 proc sqrtBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)
-  bench("Square Root + isSquare (constant-time default impl)", T, iters):
+  bench("Square Root (constant-time default impl)", T, iters):
     var r = x
-    discard r.sqrt_if_square()
+    discard r.sqrt()
 
 proc sqrtP3mod4Bench*(T: typedesc, iters: int) =
+  var r: T
   let x = rng.random_unsafe(T)
-  bench("SquareRoot + isSquare (p ≡ 3 (mod 4) exponentiation)", T, iters):
-    var r = x
-    discard r.sqrt_if_square_p3mod4()
+  bench("SquareRoot (p ≡ 3 (mod 4) exponentiation)", T, iters):
+    r.invsqrt_p3mod4(x)
+    r *= x
 
 proc sqrtAddChainBench*(T: typedesc, iters: int) =
+  var r: T
   let x = rng.random_unsafe(T)
-  bench("SquareRoot + isSquare (addition chain)", T, iters):
-    var r = x
-    discard r.sqrt_if_square_addchain()
+  bench("SquareRoot (addition chain)", T, iters):
+    r.invsqrt_addchain(x)
+    r *= x
 
 proc sqrtTonelliBench*(T: typedesc, iters: int) =
+  var r: T
   let x = rng.random_unsafe(T)
-  bench("SquareRoot + isSquare (constant-time Tonelli-Shanks exponentiation)", T, iters):
-    var r = x
-    discard r.sqrt_if_square_tonelli_shanks(useAddChain = false)
+  bench("SquareRoot (constant-time Tonelli-Shanks exponentiation)", T, iters):
+    r.invsqrt_tonelli_shanks(x, useAddChain = false)
+    r *= x
 
 proc sqrtTonelliAddChainBench*(T: typedesc, iters: int) =
+  var r: T
   let x = rng.random_unsafe(T)
-  bench("SquareRoot + isSquare (constant-time Tonelli-Shanks addchain)", T, iters):
-    var r = x
-    discard r.sqrt_if_square_tonelli_shanks(useAddChain = true)
+  bench("SquareRoot (constant-time Tonelli-Shanks addchain)", T, iters):
+    r.invsqrt_tonelli_shanks(x, useAddChain = true)
+    r *= x
 
 proc powBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)

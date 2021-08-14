@@ -109,8 +109,7 @@ func invsqrt_if_square[C: static Curve](
     t2 *= NonResidue
     t1 -= t2
 
-  # TODO: implement invsqrt alone
-  result = sqrt_invsqrt_if_square(sqrt = r.c1, invsqrt = t3, t1) # 1/sqrt(a0² - β a1²)
+  result = t3.invsqrt_if_square(t1)    # 1/sqrt(a0² - β a1²)
 
   # If input is not a square in Fp2, multiply by 1/Z³
   inp.prod(a, h2cConst(C, G2, inv_Z3)) # inp = a / Z³
@@ -131,8 +130,7 @@ func invsqrt_if_square[C: static Curve](
   t1.ccopy(t2, t1.isZero())
   t1.div2()    # (a0 ± sqrt(a0² - βa1²))/2
 
-  # TODO: implement invsqrt alone
-  sqrt_invsqrt(sqrt = r.c1, invsqrt = r.c0, t1)
+  r.c0.invsqrt(t1)
 
   r.c1 = inp.c1
   r.c1.div2()

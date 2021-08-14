@@ -54,8 +54,8 @@ func hasP3mod4_primeModulus(C: static Curve): static bool =
   ## Returns true iff p ≡ 3 (mod 4)
   (BaseType(C.Mod.limbs[0]) and 3) == 3
 
-func sqrt_p3mod4(a: var Fp) =
-  ## Compute the square root of ``a``
+func invsqrt_p3mod4*(r: var Fp, a: Fp) =
+  ## Compute the inverse square root of ``a``
   ##
   ## This requires ``a`` to be a square
   ## and the prime field modulus ``p``: p ≡ 3 (mod 4)
@@ -65,14 +65,6 @@ func sqrt_p3mod4(a: var Fp) =
   ## The square root, if it exist is multivalued,
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
-  static: doAssert BaseType(Fp.C.Mod.limbs[0]) mod 4 == 3
-  a.powUnsafeExponent(Fp.getPrimePlus1div4_BE())
-
-func sqrt_invsqrt_p3mod4(sqrt, invsqrt: var Fp, a: Fp) =
-  ## If ``a`` is a square, compute the square root of ``a`` in sqrt
-  ## and the inverse square root of a in invsqrt
-  ##
-  ## This assumes that the prime field modulus ``p``: p ≡ 3 (mod 4)
   # TODO: deterministic sign
   #
   # Algorithm
@@ -83,81 +75,11 @@ func sqrt_invsqrt_p3mod4(sqrt, invsqrt: var Fp, a: Fp) =
   # a^((p-3)/2))        ≡ 1/a  (mod p)
   # a^((p-3)/4))        ≡ 1/√a (mod p)      # Requires p ≡ 3 (mod 4)
   static: doAssert BaseType(Fp.C.Mod.limbs[0]) mod 4 == 3
-
-  invsqrt = a
-  invsqrt.powUnsafeExponent(Fp.getPrimeMinus3div4_BE())
-  # √a ≡ a * 1/√a ≡ a^((p+1)/4) (mod p)
-  sqrt.prod(invsqrt, a)
-
-func sqrt_invsqrt_if_square_p3mod4(sqrt, invsqrt: var Fp, a: Fp): SecretBool =
-  ## If ``a`` is a square, compute the square root of ``a`` in sqrt
-  ## and the inverse square root of a in invsqrt
-  ##
-  ## If a is not square, sqrt and invsqrt are undefined
-  ##
-  ## This assumes that the prime field modulus ``p``: p ≡ 3 (mod 4)
-  sqrt_invsqrt_p3mod4(sqrt, invsqrt, a)
-  var test {.noInit.}: Fp
-  test.square(sqrt)
-  result = test == a
-
-func sqrt_if_square_p3mod4*(a: var Fp): SecretBool =
-  ## If ``a`` is a square, compute the square root of ``a``
-  ## if not, ``a`` is unmodified.
-  ##
-  ## This assumes that the prime field modulus ``p``: p ≡ 3 (mod 4)
-  ##
-  ## The result is undefined otherwise
-  ##
-  ## The square root, if it exist is multivalued,
-  ## i.e. both x² == (-x)²
-  ## This procedure returns a deterministic result
-  var sqrt {.noInit.}, invsqrt {.noInit.}: Fp
-  result = sqrt_invsqrt_if_square_p3mod4(sqrt, invsqrt, a)
-  a.ccopy(sqrt, result)
+  r = a
+  r.powUnsafeExponent(Fp.getPrimeMinus3div4_BE())
 
 # Specialized routines for addchain-based square roots
 # ------------------------------------------------------------
-
-func sqrt_addchain(a: var Fp) =
-  ## Compute the square root of ``a``
-  ##
-  ## This requires ``a`` to be a square
-  ## The result is undefined otherwise
-  ##
-  ## The square root, if it exist is multivalued,
-  ## i.e. both x² == (-x)²
-  ## This procedure returns a deterministic result
-  var invsqrt {.noInit.}: Fp
-  invsqrt.invsqrt_addchain(a)
-  a *= invsqrt
-
-func sqrt_invsqrt_addchain(sqrt, invsqrt: var Fp, a: Fp) =
-  ## If ``a`` is a square, compute the square root of ``a`` in sqrt
-  ## and the inverse square root of a in invsqrt
-  invsqrt.invsqrt_addchain(a)
-  sqrt.prod(invsqrt, a)
-
-func sqrt_invsqrt_if_square_addchain(sqrt, invsqrt: var Fp, a: Fp): SecretBool =
-  ## If ``a`` is a square, compute the square root of ``a`` in sqrt
-  ## and the inverse square root of a in invsqrt
-  ##
-  ## If a is not square, sqrt and invsqrt are undefined
-  sqrt_invsqrt_addchain(sqrt, invsqrt, a)
-  var test {.noInit.}: Fp
-  test.square(sqrt)
-  result = test == a
-
-func sqrt_if_square_addchain*(a: var Fp): SecretBool =
-  ## If ``a`` is a square, compute the square root of ``a``
-  ## if not, ``a`` is unmodified.
-  ##
-  ## The square root, if it exist is multivalued,
-  ## i.e. both x² == (-x)²
-  ## This procedure returns a deterministic result
-  var sqrt {.noInit.}, invsqrt {.noInit.}: Fp
-  result = sqrt_invsqrt_if_square_addchain(sqrt, invsqrt, a)
-  a.ccopy(sqrt, result)
 
 {.pop.} # inline
 
@@ -174,12 +96,15 @@ func precompute_tonelli_shanks(
     a_pre_exp.powUnsafeExponent(Fp.C.tonelliShanks(exponent))
 
 func isSquare_tonelli_shanks(
-       a, a_pre_exp: Fp): SecretBool =
+       a, a_pre_exp: Fp): SecretBool {.used.} =
   ## Returns if `a` is a quadratic residue
   ## This uses common precomputation for
   ## Tonelli-Shanks based square root and inverse square root
   ##
   ## a^((p-1-2^e)/(2*2^e))
+  ##
+  ## Note: if we need to compute a candidate square root anyway
+  ##       it's faster to square it to check if we get ``a``
   const e = Fp.C.tonelliShanks(twoAdicity)
   var r {.noInit.}: Fp
   r.square(a_pre_exp)    # a^(2(q-1-2^e)/(2*2^e)) = a^((q-1)/2^e - 1)
@@ -198,10 +123,10 @@ func isSquare_tonelli_shanks(
       r.isMinusOne()
     )
 
-func sqrt_invsqrt_tonelli_shanks_pre(
-       sqrt, invsqrt: var Fp,
+func invsqrt_tonelli_shanks_pre(
+       invsqrt: var Fp,
        a, a_pre_exp: Fp) =
-  ## Compute the square_root and inverse_square_root
+  ## Compute the inverse_square_root
   ## of `a` via constant-time Tonelli-Shanks
   ##
   ## a_pre_exp is a precomputation a^((p-1-2^e)/(2*2^e))
@@ -230,12 +155,8 @@ func sqrt_invsqrt_tonelli_shanks_pre(
     t.ccopy(buf, bNotOne)
     b = t
 
-  sqrt.prod(invsqrt, a)
-
-# ----------------------------------------------
-
-func sqrt_tonelli_shanks(a: var Fp, useAddChain: static bool) =
-  ## Compute the square root of ``a``
+func invsqrt_tonelli_shanks*(r: var Fp, a: Fp, useAddChain: static bool) =
+  ## Compute the inverse square root of ``a``
   ##
   ## This requires ``a`` to be a square
   ##
@@ -245,54 +166,9 @@ func sqrt_tonelli_shanks(a: var Fp, useAddChain: static bool) =
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
   ## This procedure is constant-time
-  var a_pre_exp{.noInit.}, sqrt{.noInit.}, invsqrt{.noInit.}: Fp
-  a_pre_exp.precompute_tonelli_shanks(a, useAddChain)
-  sqrt_invsqrt_tonelli_shanks_pre(sqrt, invsqrt, a, a_pre_exp)
-  a = sqrt
-
-func sqrt_invsqrt_tonelli_shanks(sqrt, invsqrt: var Fp, a: Fp, useAddChain: static bool) =
-  ## Compute the square root and inverse square root of ``a``
-  ##
-  ## This requires ``a`` to be a square
-  ##
-  ## The result is undefined otherwise
-  ##
-  ## The square root, if it exist is multivalued,
-  ## i.e. both x² == (-x)²
-  ## This procedure returns a deterministic result
   var a_pre_exp{.noInit.}: Fp
   a_pre_exp.precompute_tonelli_shanks(a, useAddChain)
-  sqrt_invsqrt_tonelli_shanks_pre(sqrt, invsqrt, a, a_pre_exp)
-
-func sqrt_invsqrt_if_square_tonelli_shanks(sqrt, invsqrt: var Fp, a: Fp, useAddChain: static bool): SecretBool =
-  ## Compute the square root and ivnerse square root of ``a``
-  ##
-  ## This returns true if ``a`` is square and sqrt/invsqrt contains the square root/inverse square root
-  ##
-  ## The result is undefined otherwise
-  ##
-  ## The square root, if it exist is multivalued,
-  ## i.e. both x² == (-x)²
-  ## This procedure returns a deterministic result
-  var a_pre_exp{.noInit.}: Fp
-  a_pre_exp.precompute_tonelli_shanks(a, useAddChain)
-  result = isSquare_tonelli_shanks(a, a_pre_exp)
-  sqrt_invsqrt_tonelli_shanks_pre(sqrt, invsqrt, a, a_pre_exp)
-  a = sqrt
-
-func sqrt_if_square_tonelli_shanks*(a: var Fp, useAddChain: static bool): SecretBool =
-  ## If ``a`` is a square, compute the square root of ``a``
-  ## if not, ``a`` is unmodified.
-  ##
-  ## The square root, if it exist is multivalued,
-  ## i.e. both x² == (-x)²
-  ## This procedure returns a deterministic result
-  ## This procedure is constant-time
-  var a_pre_exp{.noInit.}, sqrt{.noInit.}, invsqrt{.noInit.}: Fp
-  a_pre_exp.precompute_tonelli_shanks(a, useAddChain)
-  result = isSquare_tonelli_shanks(a, a_pre_exp)
-  sqrt_invsqrt_tonelli_shanks_pre(sqrt, invsqrt, a, a_pre_exp)
-  a = sqrt
+  invsqrt_tonelli_shanks_pre(r, a, a_pre_exp)
 
 # Public routines
 # ------------------------------------------------------------
@@ -300,6 +176,24 @@ func sqrt_if_square_tonelli_shanks*(a: var Fp, useAddChain: static bool): Secret
 #       for benchmarking purposes.
 
 {.push inline.}
+
+func invsqrt*[C](r: var Fp[C], a: Fp[C]) =
+  ## Compute the inverse square root of ``a``
+  ##
+  ## This requires ``a`` to be a square
+  ##
+  ## The result is undefined otherwise
+  ##
+  ## The square root, if it exist is multivalued,
+  ## i.e. both x² == (-x)²
+  ## This procedure returns a deterministic result
+  ## This procedure is constant-time
+  when C.hasSqrtAddchain():
+    r.invsqrt_addchain(a)
+  elif C.hasP3mod4_primeModulus():
+    r.invsqrt_p3mod4(a)
+  else:
+    r.invsqrt_tonelli_shanks(a, useAddChain = C.hasTonelliShanksAddchain())
 
 func sqrt*[C](a: var Fp[C]) =
   ## Compute the square root of ``a``
@@ -312,12 +206,9 @@ func sqrt*[C](a: var Fp[C]) =
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
   ## This procedure is constant-time
-  when C.hasSqrtAddchain():
-    sqrt_addchain(a)
-  elif C.hasP3mod4_primeModulus():
-    sqrt_p3mod4(a)
-  else:
-    sqrt_tonelli_shanks(a, useAddChain = C.hasTonelliShanksAddchain())
+  var t {.noInit.}: Fp[C]
+  t.invsqrt(a)
+  a *= t
 
 func sqrt_invsqrt*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]) =
   ## Compute the square root and inverse square root of ``a``
@@ -329,12 +220,8 @@ func sqrt_invsqrt*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]) =
   ## The square root, if it exist is multivalued,
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
-  when C.hasSqrtAddchain():
-    sqrt_invsqrt_addchain(sqrt, invsqrt, a)
-  elif C.hasP3mod4_primeModulus():
-    sqrt_invsqrt_p3mod4(sqrt, invsqrt, a)
-  else:
-    sqrt_invsqrt_tonelli_shanks(sqrt, invsqrt, a, useAddChain = C.hasTonelliShanksAddchain())
+  invsqrt.invsqrt(a)
+  sqrt.prod(invsqrt, a)
 
 func sqrt_invsqrt_if_square*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]): SecretBool  =
   ## Compute the square root and ivnerse square root of ``a``
@@ -346,27 +233,33 @@ func sqrt_invsqrt_if_square*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]): SecretBool 
   ## The square root, if it exist is multivalued,
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
-  when C.hasSqrtAddchain():
-    result = sqrt_invsqrt_if_square_addchain(sqrt, invsqrt, a)
-  elif C.hasP3mod4_primeModulus():
-    result = sqrt_invsqrt_if_square_p3mod4(sqrt, invsqrt, a)
-  else:
-    result = sqrt_invsqrt_if_square_tonelli_shanks(sqrt, invsqrt, a, useAddChain = C.hasTonelliShanksAddchain())
+  sqrt_invsqrt(sqrt, invsqrt, a)
+  var test {.noInit.}: Fp[C]
+  test.square(sqrt)
+  result = test == a
 
 func sqrt_if_square*[C](a: var Fp[C]): SecretBool =
   ## If ``a`` is a square, compute the square root of ``a``
-  ## if not, ``a`` is unmodified.
+  ## if not, ``a`` is undefined.
   ##
   ## The square root, if it exist is multivalued,
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
   ## This procedure is constant-time
-  when C.hasSqrtAddchain():
-    result = sqrt_if_square_addchain(a)
-  elif C.hasP3mod4_primeModulus():
-    result = sqrt_if_square_p3mod4(a)
-  else:
-    result = sqrt_if_square_tonelli_shanks(a, useAddChain = C.hasTonelliShanksAddchain())
+  var sqrt{.noInit.}, invsqrt{.noInit.}: Fp[C]
+  result = sqrt_invsqrt_if_square(sqrt, invsqrt, a)
+  a = sqrt
+
+func invsqrt_if_square*[C](r: var Fp[C], a: Fp[C]): SecretBool =
+  ## If ``a`` is a square, compute the inverse square root of ``a``
+  ## if not, ``a`` is undefined.
+  ##
+  ## The square root, if it exist is multivalued,
+  ## i.e. both x² == (-x)²
+  ## This procedure returns a deterministic result
+  ## This procedure is constant-time
+  var sqrt{.noInit.}: Fp[C]
+  result = sqrt_invsqrt_if_square(sqrt, r, a)
 
 {.pop.} # inline
 {.pop.} # raises no exceptions
