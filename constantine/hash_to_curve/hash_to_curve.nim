@@ -11,7 +11,10 @@ import
   ../config/[common, curves],
   ../primitives, ../arithmetic, ../towers,
   ../curves/zoo_hash_to_curve,
-  ../elliptic/ec_shortweierstrass_projective,
+  ../elliptic/[
+    ec_shortweierstrass_projective,
+    ec_shortweierstrass_jacobian,
+  ],
   ./h2c_hash_to_field,
   ./h2c_map_to_isocurve_swu,
   ./cofactors,
@@ -35,7 +38,8 @@ import
 # ----------------------------------------------------------------
 
 func mapToCurve[F; Tw: static Twisted](
-       r: var ECP_ShortW_Prj[F, Tw], u: F) =
+       r: var (ECP_ShortW_Prj[F, Tw] or ECP_ShortW_Jac[F, Tw]),
+       u: F) =
   ## Map an element of the
   ## finite or extension field F
   ## to an elliptic curve E

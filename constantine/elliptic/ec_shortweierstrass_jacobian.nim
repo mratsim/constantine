@@ -136,9 +136,11 @@ func cneg*(P: var ECP_ShortW_Jac, ctl: CTBool)  {.inline.} =
 
 func sum*[F; Tw: static Twisted](
        r: var ECP_ShortW_Jac[F, Tw],
-       P, Q: ECP_ShortW_Jac[F, Tw]
+       P, Q: ECP_ShortW_Jac[F, Tw],
+       CurveA: static int
      ) =
   ## Elliptic curve point addition for Short Weierstrass curves in Jacobian coordinates
+  ## with the curve ``a`` being a parameter for summing on isogenous curves.
   ##
   ##   R = P + Q
   ##
@@ -148,6 +150,8 @@ func sum*[F; Tw: static Twisted](
   ##   y² = x³ + a x + b
   ##
   ## ``r`` is initialized/overwritten with the sum
+  ## ``CurveA`` allows fast path for curve with a == 0 or a == -3
+  ##            and also allows summing on curve isogenies.
   ##
   ## Implementation is constant-time, in particular it will not expose
   ## that P == Q or P == -Q or P or Q are the infinity points
@@ -218,7 +222,7 @@ func sum*[F; Tw: static Twisted](
   V_or_S *= HH_or_YY       # V = U₁*HH (add) or S = X₁*YY (dbl)
 
   block: # Compute M for doubling
-    when F.C.getCoefA() == 0:
+    when CurveA == 0:
       var a = H
       var b = HH_or_YY
       a.ccopy(P.x, isDbl)           # H or X₁
@@ -230,7 +234,7 @@ func sum*[F; Tw: static Twisted](
       M += HHH_or_Mpre              # 3X₁²/2
       R_or_M.ccopy(M, isDbl)
 
-    elif F.C.getCoefA() == -3:
+    elif CurveA == -3:
       var a{.noInit.}, b{.noInit.}: F
       a.sum(P.x, Z1Z1)
       b.diff(P.z, Z1Z1)
@@ -291,6 +295,26 @@ func sum*[F; Tw: static Twisted](
   block: # Infinity points
     r.ccopy(Q, P.isInf())
     r.ccopy(P, Q.isInf())
+
+func sum*[F; Tw: static Twisted](
+       r: var ECP_ShortW_Jac[F, Tw],
+       P, Q: ECP_ShortW_Jac[F, Tw]
+     ) =
+  ## Elliptic curve point addition for Short Weierstrass curves in Jacobian coordinates
+  ##
+  ##   R = P + Q
+  ##
+  ## Short Weierstrass curves have the following equation in Jacobian coordinates
+  ##   Y² = X³ + aXZ⁴ + bZ⁶
+  ## from the affine equation
+  ##   y² = x³ + a x + b
+  ##
+  ## ``r`` is initialized/overwritten with the sum
+  ##
+  ## Implementation is constant-time, in particular it will not expose
+  ## that P == Q or P == -Q or P or Q are the infinity points
+  ## to simple side-channel attacks (SCA)
+  ## This is done by using a "complete" or "exception-free" addition law.
 
 func madd*[F; Tw: static Twisted](
        r: var ECP_ShortW_Jac[F, Tw],
