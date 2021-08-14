@@ -119,9 +119,9 @@ proc invAddChainBench*(T: typedesc, iters: int) =
 
 proc sqrtBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)
-  bench("Square Root (constant-time default impl)", T, iters):
+  bench("Square Root + isSquare (constant-time default impl)", T, iters):
     var r = x
-    discard r.sqrt()
+    discard r.sqrt_if_square()
 
 proc sqrtP3mod4Bench*(T: typedesc, iters: int) =
   var r: T
