@@ -203,7 +203,7 @@ func mapToIsoCurve_sswuG2_opt9mod16*[C: static Curve](
   # y numerators
   tv2.square(xd)
   gxd.prod(xd, tv2)                         # gxd = xd³
-  tv2 *= h2CConst(C, G2, Aprime_E2)
+  tv2.mulCheckSparse(h2CConst(C, G2, Aprime_E2))
   gx1.square(x1n)
   gx1 += tv2                                # x1n² + A * xd²
   gx1 *= x1n                                # x1n³ + A * x1n * xd²

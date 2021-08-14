@@ -98,7 +98,7 @@ func h2c_isogeny_map[F](
   ## (rx, ry) with rx = rxn/rxd and ry = ryn/ryd
 
   # xd^e with e in [1, N], for example [xd, xd², xd³]
-  var xd_pow: array[isodegree, F]
+  var xd_pow{.noInit.}: array[isodegree, F]
   xd_pow[0] = xd
   for i in 1 ..< xd_pow.len:
     xd_pow[i].prod(xd_pow[i-1], xd)

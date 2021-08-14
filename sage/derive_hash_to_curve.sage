@@ -181,7 +181,7 @@ def genBLS12381G2_H2C_constants(curve_config):
   buf += field_to_nim(Z, 'Fp2', curve_name, comment_right = "-(2 + 𝑖)")
   buf += '\n'
 
-  buf += f'const {curve_name}_h2c_G2_minusA* = '
+  buf += f'const {curve_name}_h2c_G2_minus_A* = '
   buf += field_to_nim(minus_A, 'Fp2', curve_name, comment_right = "-240𝑖")
   buf += '\n'
 
