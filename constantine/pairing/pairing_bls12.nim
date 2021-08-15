@@ -154,3 +154,16 @@ func pairing_bls12*[C](
   gt.millerLoopAddchain(Q, P)
   gt.finalExpEasy()
   gt.finalExpHard_BLS12()
+
+func pairing_bls12*[N: static int, C](
+       gt: var Fp12[C],
+       Qs: array[N, ECP_ShortW_Aff[Fp2[C], OnTwist]],
+       Ps: array[N, ECP_ShortW_Aff[Fp[C], NotOnTwist]]) {.meter.} =
+  ## Compute the optimal Ate Pairing for BLS12 curves
+  ## Input: an array of Ps ∈ G1 and Qs ∈ G2
+  ## Output:
+  ##   The product of pairings
+  ##   e(P₀, Q₀) * e(P₁, Q₁) * e(P₂, Q₂) * ... * e(Pₙ, Qₙ) ∈ Gt
+  gt.millerLoopAddchain(Qs, Ps)
+  gt.finalExpEasy()
+  gt.finalExpHard_BLS12()

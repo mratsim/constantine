@@ -77,8 +77,8 @@ Supports:
 - [x] Field arithmetics
 - [x] Curve arithmetic
 - [x] Pairing
-- [ ] Multi-Pairing
-- [ ] Hash-To-Curve
+- [x] Multi-Pairing
+- [x] Hash-To-Curve
 
 Families:
 - BN: Barreto-Naehrig
