@@ -9,7 +9,6 @@
 import
   std/typetraits,
   ../primitives,
-  ../config/curves,
   ../arithmetic,
   ../towers,
   ../elliptic/ec_shortweierstrass_affine,

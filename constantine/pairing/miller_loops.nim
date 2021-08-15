@@ -151,7 +151,7 @@ func miller_init_double_then_add*[FT, F1, F2](
   # - The first line is squared (sparse * sparse)
   # - The second is (somewhat-sparse * sparse)
   when numDoublings >= 2:
-    f.mul_sparse_sparse(line, line)
+    f.prod_sparse_sparse(line, line)
     line.line_double(T, P)
     f.mul(line)
     for _ in 2 ..< numDoublings:
@@ -172,7 +172,7 @@ func miller_init_double_then_add*[FT, F1, F2](
     # The line corresponds to a sparse xy000z Fp12
     var line2 {.noInit.}: Line[F2]
     line2.line_add(T, Q, P)
-    f.mul_sparse_sparse(line, line2)
+    f.prod_sparse_sparse(line, line2)
   else:
     line.line_add(T, Q, P)
     f.mul(line)
@@ -238,76 +238,54 @@ func miller_first_iter[N: static int, FT, F1, F2](
     doAssert FT.C == F2.C
 
   {.push checks: off.} # No OverflowError or IndexError allowed
-  var line {.noInit.}: Line[F2]
+  var line0 {.noInit.}, line1 {.noInit.}: Line[F2]
 
   # First step: T <- Q, f = 1 (mod p¹²), f *= line
   # ----------------------------------------------
   for i in 0 ..< N:
     Ts[i].projectiveFromAffine(Qs[i])
 
-  line.line_double(Ts[0], Ps[0])
+  line0.line_double(Ts[0], Ps[0])
 
-  # f *= line <=> f = line for the first iteration
-  # With Fp2 -> Fp4 -> Fp12 towering and a M-Twist
-  # The line corresponds to a sparse xy000z Fp12
-  f.c0.c0 = line.x
-  f.c0.c1 = line.y
-  f.c1.c0.setZero()
-  f.c1.c1.setZero()
-  f.c2.c0.setZero()
-  f.c2.c1 = line.z
+  when N == 1:
+    # 2nd step: Line addition as MSB is always 1
+    # ----------------------------------------------
+    line1.line_add(Ts[0], Qs[0], Ps[0])
+    # f.prod_sparse_sparse(line)
+    f.prod_sparse_sparse(line0, line1)
 
-  when N >= 2:
-    line.line_double(Ts[1], Ps[1])
-    f.mul_sparse_by_line_xy000z(line)  # TODO: sparse-sparse mul
+  else:
+    line1.line_double(Ts[1], Ps[1])
+    f.prod_sparse_sparse(line0, line1)
 
     # Sparse merge 2 by 2, starting from 2
     for i in countup(2, N-1, 2):
       if i+1 >= N:
         break
 
-      # var f2 {.noInit.}: FT # TODO: sparse-sparse mul
-      var line2 {.noInit.}: Line[F2]
-
-      line.line_double(Ts[i], Ps[i])
-      line2.line_double(Ts[i+1], Ps[i+1])
-
-      # f2.mul_sparse_sparse(line, line2)
-      # f.mul_somewhat_sparse(f2)
-      f.mul_sparse_by_line_xy000z(line)
-      f.mul_sparse_by_line_xy000z(line2)
+      line0.line_double(Ts[i], Ps[i])
+      line1.line_double(Ts[i+1], Ps[i+1])
+      f.mul_3way_sparse_sparse(line0, line1)
 
     when (N and 1) == 1: # N >= 2 and N is odd, there is a leftover
-      line.line_double(Ts[N-1], Ps[N-1])
-      f.mul_sparse_by_line_xy000z(line)
+      line0.line_double(Ts[N-1], Ps[N-1])
+      f.mul(line0)
 
-  # 2nd step: Line addition as MSB is always 1
-  # ----------------------------------------------
-  when N >= 2: # f is dense, there are already many lines accumulated
+    # 2nd step: Line addition as MSB is always 1
+    # ----------------------------------------------
+    # f is dense, there are already many lines accumulated
     # Sparse merge 2 by 2, starting from 0
     for i in countup(0, N-1, 2):
       if i+1 >= N:
         break
 
-      # var f2 {.noInit.}: FT # TODO: sparse-sparse mul
-      var line2 {.noInit.}: Line[F2]
-
-      line.line_add(Ts[i], Qs[i], Ps[i])
-      line2.line_add(Ts[i+1], Qs[i+1], Ps[i+1])
-
-      # f2.mul_sparse_sparse(line, line2)
-      # f.mul_somewhat_sparse(f2)
-      f.mul_sparse_by_line_xy000z(line)
-      f.mul_sparse_by_line_xy000z(line2)
+      line0.line_add(Ts[i], Qs[i], Ps[i])
+      line1.line_add(Ts[i+1], Qs[i+1], Ps[i+1])
+      f.mul_3way_sparse_sparse(line0, line1)
 
     when (N and 1) == 1: # N >= 2 and N is odd, there is a leftover
-      line.line_add(Ts[N-1], Qs[N-1], Ps[N-1])
-      f.mul_sparse_by_line_xy000z(line)
-
-  else: # N = 1, f is sparse
-    line.line_add(Ts[0], Qs[0], Ps[0])
-    # f.mul_sparse_sparse(line)
-    f.mul_sparse_by_line_xy000z(line)
+      line0.line_add(Ts[N-1], Qs[N-1], Ps[N-1])
+      f.mul(line0)
 
   {.pop.} # No OverflowError or IndexError allowed
 
@@ -335,18 +313,14 @@ func miller_accum_doublings[N: static int, FT, F1, F2](
 
         line.line_double(Ts[i], Ps[i])
         line2.line_double(Ts[i+1], Ps[i+1])
-
-        # f2.mul_sparse_sparse(line, line2)
-        # f.mul_somewhat_sparse(f2)
-        f.mul_sparse_by_line_xy000z(line)
-        f.mul_sparse_by_line_xy000z(line2)
+        f.mul_3way_sparse_sparse(line, line2)
 
       when (N and 1) == 1: # N >= 2 and N is odd, there is a leftover
         line.line_double(Ts[N-1], Ps[N-1])
-        f.mul_sparse_by_line_xy000z(line)
+        f.mul(line)
     else:
       line.line_double(Ts[0], Ps[0])
-      f.mul_sparse_by_line_xy000z(line)
+      f.mul(line)
 
   {.pop.} # No OverflowError or IndexError allowed
 
@@ -373,19 +347,15 @@ func miller_accum_addition[N: static int, FT, F1, F2](
 
       line.line_add(Ts[i], Qs[i], Ps[i])
       line2.line_add(Ts[i+1], Qs[i+1], Ps[i+1])
-
-      # f2.mul_sparse_sparse(line, line2)
-      # f.mul_somewhat_sparse(f2)
-      f.mul_sparse_by_line_xy000z(line)
-      f.mul_sparse_by_line_xy000z(line2)
+      f.mul_3way_sparse_sparse(line, line2)
 
     when (N and 1) == 1: # N >= 2 and N is odd, there is a leftover
       line.line_add(Ts[N-1], Qs[N-1], Ps[N-1])
-      f.mul_sparse_by_line_xy000z(line)
+      f.mul(line)
 
   else:
     line.line_add(Ts[0], Qs[0], Ps[0])
-    f.mul_sparse_by_line_xy000z(line)
+    f.mul(line)
 
   {.pop.} # No OverflowError or IndexError allowed
 
