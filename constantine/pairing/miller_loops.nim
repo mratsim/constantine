@@ -15,6 +15,9 @@ import
   ./lines_projective,
   ./mul_fp6_by_lines, ./mul_fp12_by_lines
 
+# No exceptions allowed
+{.push raises: [].}
+
 # ############################################################
 #                                                            #
 #                 Basic Miller Loop                          #
@@ -166,10 +169,7 @@ func miller_init_double_then_add*[FT, F1, F2](
   # we special case the addition as
   # - The first line and second are sparse (sparse * sparse)
   when numDoublings == 1:
-    # TODO: sparse * sparse
     # f *= line <=> f = line for the first iteration
-    # With Fp2 -> Fp4 -> Fp12 towering and a M-Twist
-    # The line corresponds to a sparse xy000z Fp12
     var line2 {.noInit.}: Line[F2]
     line2.line_add(T, Q, P)
     f.prod_sparse_sparse(line, line2)
@@ -218,11 +218,61 @@ func miller_accum_double_then_add*[FT, F1, F2](
 # See `multi_pairing.md``
 # We implement Aranha approach
 
-func miller_first_iter[N: static int, FT, F1, F2](
+func double_jToN[N: static int, FT, F1, F2](
+       f: var FT,
+       j: static int,
+       line0, line1: var Line[F2],
+       Ts: var array[N, ECP_ShortW_Prj[F2, OnTwist]],
+       Ps: array[N, ECP_ShortW_Aff[F1, NotOnTwist]]) =
+  ## Doubling steps for pairings j to N
+
+  {.push checks: off.} # No OverflowError or IndexError allowed
+  # Sparse merge 2 by 2, starting from j
+  for i in countup(j, N-1, 2):
+    if i+1 >= N:
+      break
+
+    line0.line_double(Ts[i], Ps[i])
+    line1.line_double(Ts[i+1], Ps[i+1])
+    f.mul_3way_sparse_sparse(line0, line1)
+
+  when (N and 1) == 1: # N >= 2 and N is odd, there is a leftover
+    line0.line_double(Ts[N-1], Ps[N-1])
+    f.mul(line0)
+
+  {.pop.}
+
+func add_jToN[N: static int, FT, F1, F2](
+       f: var FT,
+       j: static int,
+       line0, line1: var Line[F2],
+       Ts: var array[N, ECP_ShortW_Prj[F2, OnTwist]],
+       Qs: array[N, ECP_ShortW_Aff[F2, OnTwist]],
+       Ps: array[N, ECP_ShortW_Aff[F1, NotOnTwist]])=
+  ## Addition steps for pairings 0 to N
+
+  {.push checks: off.} # No OverflowError or IndexError allowed
+  # Sparse merge 2 by 2, starting from 0
+  for i in countup(j, N-1, 2):
+    if i+1 >= N:
+      break
+
+    line0.line_add(Ts[i], Qs[i], Ps[i])
+    line1.line_add(Ts[i+1], Qs[i+1], Ps[i+1])
+    f.mul_3way_sparse_sparse(line0, line1)
+
+  when (N and 1) == 1: # N >= 2 and N is odd, there is a leftover
+    line0.line_add(Ts[N-1], Qs[N-1], Ps[N-1])
+    f.mul(line0)
+
+  {.pop.}
+
+func miller_init_double_then_add*[N: static int, FT, F1, F2](
        f: var FT,
        Ts: var array[N, ECP_ShortW_Prj[F2, OnTwist]],
        Qs: array[N, ECP_ShortW_Aff[F2, OnTwist]],
-       Ps: array[N, ECP_ShortW_Aff[F1, NotOnTwist]]
+       Ps: array[N, ECP_ShortW_Aff[F1, NotOnTwist]],
+       numDoublings: static int
      ) =
   ## Start a Miller Loop
   ## This means
@@ -232,7 +282,6 @@ func miller_first_iter[N: static int, FT, F1, F2](
   ## f is overwritten
   ## Ts are overwritten by Qs
   static:
-    doAssert N >= 1
     doAssert f.c0 is Fp4
     doAssert FT.C == F1.C
     doAssert FT.C == F2.C
@@ -246,136 +295,36 @@ func miller_first_iter[N: static int, FT, F1, F2](
     Ts[i].projectiveFromAffine(Qs[i])
 
   line0.line_double(Ts[0], Ps[0])
-
-  when N == 1:
-    # 2nd step: Line addition as MSB is always 1
-    # ----------------------------------------------
-    line1.line_add(Ts[0], Qs[0], Ps[0])
-    # f.prod_sparse_sparse(line)
-    f.prod_sparse_sparse(line0, line1)
-
-  else:
+  when N >= 2:
     line1.line_double(Ts[1], Ps[1])
     f.prod_sparse_sparse(line0, line1)
+    f.double_jToN(j=2, line0, line1, Ts, Ps)
 
-    # Sparse merge 2 by 2, starting from 2
-    for i in countup(2, N-1, 2):
-      if i+1 >= N:
-        break
-
-      line0.line_double(Ts[i], Ps[i])
-      line1.line_double(Ts[i+1], Ps[i+1])
-      f.mul_3way_sparse_sparse(line0, line1)
-
-    when (N and 1) == 1: # N >= 2 and N is odd, there is a leftover
-      line0.line_double(Ts[N-1], Ps[N-1])
+  # Doubling steps: 0b10...00
+  # ------------------------------------------------
+  when numDoublings > 1: # Already did the MSB doubling
+    when N == 1:         # f = line0
+      f.prod_sparse_sparse(line0, line0) # f.square()
+      line0.line_double(Ts[1], Ps[1])
       f.mul(line0)
-
-    # 2nd step: Line addition as MSB is always 1
-    # ----------------------------------------------
-    # f is dense, there are already many lines accumulated
-    # Sparse merge 2 by 2, starting from 0
-    for i in countup(0, N-1, 2):
-      if i+1 >= N:
-        break
-
-      line0.line_add(Ts[i], Qs[i], Ps[i])
-      line1.line_add(Ts[i+1], Qs[i+1], Ps[i+1])
-      f.mul_3way_sparse_sparse(line0, line1)
-
-    when (N and 1) == 1: # N >= 2 and N is odd, there is a leftover
-      line0.line_add(Ts[N-1], Qs[N-1], Ps[N-1])
-      f.mul(line0)
-
-  {.pop.} # No OverflowError or IndexError allowed
-
-func miller_accum_doublings[N: static int, FT, F1, F2](
-       f: var FT,
-       Ts: var array[N, ECP_ShortW_Prj[F2, OnTwist]],
-       Ps: array[N, ECP_ShortW_Aff[F1, NotOnTwist]],
-       numDoublings: int
-     ) =
-  ## Accumulate `numDoublings` Miller loop doubling steps into `f`
-  static: doAssert N >= 1
-  {.push checks: off.} # No OverflowError or IndexError allowed
-
-  var line {.noInit.}: Line[F2]
-
-  for _ in 0 ..< numDoublings:
-    f.square()
-    when N >= 2:
-      for i in countup(0, N-1, 2):
-        if i+1 >= N:
-          break
-
-        # var f2 {.noInit.}: FT # TODO: sparse-sparse mul
-        var line2 {.noInit.}: Line[F2]
-
-        line.line_double(Ts[i], Ps[i])
-        line2.line_double(Ts[i+1], Ps[i+1])
-        f.mul_3way_sparse_sparse(line, line2)
-
-      when (N and 1) == 1: # N >= 2 and N is odd, there is a leftover
-        line.line_double(Ts[N-1], Ps[N-1])
-        f.mul(line)
+      for _ in 2 ..< numDoublings:
+        f.square()
+        f.double_jtoN(j=0, line0, line1, Ts, Ps)
     else:
-      line.line_double(Ts[0], Ps[0])
-      f.mul(line)
+      for _ in 0 ..< numDoublings:
+        f.square()
+        f.double_jtoN(j=0, line0, line1, Ts, Ps)
 
-  {.pop.} # No OverflowError or IndexError allowed
+  # Addition step: 0b10...01
+  # ------------------------------------------------
 
-func miller_accum_addition[N: static int, FT, F1, F2](
-       f: var FT,
-       Ts: var array[N, ECP_ShortW_Prj[F2, OnTwist]],
-       Qs: array[N, ECP_ShortW_Aff[F2, OnTwist]],
-       Ps: array[N, ECP_ShortW_Aff[F1, NotOnTwist]]
-     ) =
-  ## Accumulate a Miller loop addition step into `f`
-  static: doAssert N >= 1
-  {.push checks: off.} # No OverflowError or IndexError allowed
-
-  var line {.noInit.}: Line[F2]
-
-  when N >= 2:
-    # Sparse merge 2 by 2, starting from 0
-    for i in countup(0, N-1, 2):
-      if i+1 >= N:
-        break
-
-      # var f2 {.noInit.}: FT # TODO: sparse-sparse mul
-      var line2 {.noInit.}: Line[F2]
-
-      line.line_add(Ts[i], Qs[i], Ps[i])
-      line2.line_add(Ts[i+1], Qs[i+1], Ps[i+1])
-      f.mul_3way_sparse_sparse(line, line2)
-
-    when (N and 1) == 1: # N >= 2 and N is odd, there is a leftover
-      line.line_add(Ts[N-1], Qs[N-1], Ps[N-1])
-      f.mul(line)
-
+  when N == 1:
+    line1.line_add(Ts[0], Qs[0], Ps[0])
+    f.prod_sparse_sparse(line0, line1)
   else:
-    line.line_add(Ts[0], Qs[0], Ps[0])
-    f.mul(line)
+    f.add_jToN(j=0,line0, line1, Ts, Qs, Ps)
 
   {.pop.} # No OverflowError or IndexError allowed
-
-func miller_init_double_then_add*[N: static int, FT, F1, F2](
-       f: var FT,
-       Ts: var array[N, ECP_ShortW_Prj[F2, OnTwist]],
-       Qs: array[N, ECP_ShortW_Aff[F2, OnTwist]],
-       Ps: array[N, ECP_ShortW_Aff[F1, NotOnTwist]],
-       numDoublings: static int
-     ) =
-  ## Start a Miller Loop with
-  ## - `numDoubling` doublings
-  ## - 1 add
-  ##
-  ## f is overwritten
-  ## Ts is overwritten by Qs
-  when numDoublings != 1:
-    {.error: "Only 1 doubling is implemented at the moment".}
-
-  f.miller_first_iter(Ts, Qs, Ps)
 
 func miller_accum_double_then_add*[N: static int, FT, F1, F2](
        f: var FT,
@@ -390,6 +339,10 @@ func miller_accum_double_then_add*[N: static int, FT, F1, F2](
   ## - 1 add
   ##
   ## f and T are updated
-  f.miller_accum_doublings(Ts, Ps, numDoublings)
+  var line0{.noInit.}, line1{.noinit.}: Line[F2]
+  for _ in 0 ..< numDoublings:
+    f.square()
+    f.double_jtoN(j=0, line0, line1, Ts, Ps)
+
   if add:
-    f.miller_accum_addition(Ts, Qs, Ps)
+    f.add_jToN(j=0, line0, line1, Ts, Qs, Ps)

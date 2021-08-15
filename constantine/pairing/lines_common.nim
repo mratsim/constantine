@@ -14,6 +14,9 @@ import
   ../elliptic/ec_shortweierstrass_affine,
   ../io/io_towers
 
+# No exceptions allowed
+{.push raises: [].}
+
 type
   Line*[F] = object
     ## Packed line representation over a E'(Fp^k/d)

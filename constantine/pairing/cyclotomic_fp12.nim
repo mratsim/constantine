@@ -13,6 +13,9 @@ import
   ../towers,
   ../isogeny/frobenius
 
+# No exceptions allowed
+{.push raises: [].}
+
 # ############################################################
 #
 #               Gϕ₁₂, Cyclotomic subgroup of Fp12

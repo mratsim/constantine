@@ -21,6 +21,9 @@ import
 
 export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11225
 
+# No exceptions allowed
+{.push raises: [].}
+
 # ############################################################
 #
 #                 Optimal ATE pairing for

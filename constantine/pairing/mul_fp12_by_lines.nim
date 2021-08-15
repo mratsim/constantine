@@ -13,6 +13,8 @@ import
   ../towers,
   ./lines_projective
 
+# No exceptions allowed
+{.push raises: [].}
 
 # ############################################################
 #
