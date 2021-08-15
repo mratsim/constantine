@@ -157,8 +157,8 @@ func pairing_bls12*[C](
 
 func pairing_bls12*[N: static int, C](
        gt: var Fp12[C],
-       Qs: array[N, ECP_ShortW_Aff[Fp2[C], OnTwist]],
-       Ps: array[N, ECP_ShortW_Aff[Fp[C], NotOnTwist]]) {.meter.} =
+       Ps: array[N, ECP_ShortW_Aff[Fp[C], NotOnTwist]],
+       Qs: array[N, ECP_ShortW_Aff[Fp2[C], OnTwist]]) {.meter.} =
   ## Compute the optimal Ate Pairing for BLS12 curves
   ## Input: an array of Ps ∈ G1 and Qs ∈ G2
   ## Output:

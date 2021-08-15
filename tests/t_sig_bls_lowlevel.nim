@@ -159,7 +159,7 @@ func verifyG2_multi[T: byte|char](
   G2s[1] = signature
 
   var e: Fp12[BLS12_381]
-  e.pairing_bls12(G2s, G1s)
+  e.pairing_bls12(G1s, G2s)
 
   return e.isOne()
 

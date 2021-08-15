@@ -49,7 +49,11 @@ proc main() =
     finalExpBLS12Bench(curve, Iters)
     separator()
     pairingBLS12Bench(curve, Iters)
+    pairing_multipairing_BLS12Bench(curve, 1, Iters)
     separator()
+    staticFor j, 2, 17:
+      pairing_multisingle_BLS12Bench(curve, j, Iters div j)
+      pairing_multipairing_BLS12Bench(curve, j, Iters div j)
 
 main()
 notes()

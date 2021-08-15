@@ -105,7 +105,7 @@ proc mulLinebyLine_xyz000_Bench*(C: static Curve, iters: int) =
   var f = rng.random_unsafe(Fp12[C])
 
   bench("Mul line xyz000 by line xyz000", C, iters):
-    f.mul_xyz000_xyz000_into_abcdefghij00(l0, l1)
+    f.prod_xyz000_xyz000_into_abcdefghij00(l0, l1)
 
 proc mulLinebyLine_xy000z_Bench*(C: static Curve, iters: int) =
   var l0, l1: Line[Fp2[C]]
@@ -116,7 +116,7 @@ proc mulLinebyLine_xy000z_Bench*(C: static Curve, iters: int) =
   var f = rng.random_unsafe(Fp12[C])
 
   bench("Mul line xy000z by line xy000z", C, iters):
-    f.mul_xy000z_xy000z_into_abcd00efghij(l0, l1)
+    f.prod_xy000z_xy000z_into_abcd00efghij(l0, l1)
 
 proc mulFp12by_abcdefghij00_Bench*(C: static Curve, iters: int) =
   var f = rng.random_unsafe(Fp12[C])
@@ -154,7 +154,7 @@ proc mulFp12_by_2lines_v2_xyz000_Bench*(C: static Curve, iters: int) =
 
   bench("mulFp12 by 2 lines v2", C, iters):
     var f2 {.noInit.}: Fp12[C]
-    f2.mul_xyz000_xyz000_into_abcdefghij00(l0, l1)
+    f2.prod_xyz000_xyz000_into_abcdefghij00(l0, l1)
     f.mul_sparse_by_abcdefghij00(f2)
 
 proc mulFp12_by_2lines_v1_xy000z_Bench*(C: static Curve, iters: int) =
@@ -179,7 +179,7 @@ proc mulFp12_by_2lines_v2_xy000z_Bench*(C: static Curve, iters: int) =
 
   bench("mulFp12 by 2 lines v2", C, iters):
     var f2 {.noInit.}: Fp12[C]
-    f2.mul_xy000z_xy000z_into_abcd00efghij(l0, l1)
+    f2.prod_xy000z_xy000z_into_abcd00efghij(l0, l1)
     f.mul_sparse_by_abcd00efghij(f2)
 
 proc millerLoopBLS12Bench*(C: static Curve, iters: int) =
@@ -237,6 +237,43 @@ proc pairingBLS12Bench*(C: static Curve, iters: int) =
   var f: Fp12[C]
   bench("Pairing BLS12", C, iters):
     f.pairing_bls12(P, Q)
+
+proc pairing_multisingle_BLS12Bench*(C: static Curve, N: static int, iters: int) =
+  let
+    P = rng.random_point(ECP_ShortW_Aff[Fp[C], NotOnTwist])
+    Q = rng.random_point(ECP_ShortW_Aff[Fp2[C], OnTwist])
+
+  var
+    Ps {.noInit.}: array[N, ECP_ShortW_Aff[Fp[C], NotOnTwist]]
+    Qs {.noInit.}: array[N, ECP_ShortW_Aff[Fp2[C], OnTwist]]
+
+    GTs {.noInit.}: array[N, Fp12[C]]
+
+  for i in 0 ..< N:
+    Ps[i] = rng.random_unsafe(typeof(Ps[0]))
+    Qs[i] = rng.random_unsafe(typeof(Qs[0]))
+
+  var f: Fp12[C]
+  bench("Pairing BLS12 multi-single " & $N & " pairings", C, iters):
+    for i in 0 ..< N:
+      GTs[i].pairing_bls12(Ps[i], Qs[i])
+
+    f = GTs[0]
+    for i in 1 ..< N:
+      f *= GTs[i]
+
+proc pairing_multipairing_BLS12Bench*(C: static Curve, N: static int, iters: int) =
+  var
+    Ps {.noInit.}: array[N, ECP_ShortW_Aff[Fp[C], NotOnTwist]]
+    Qs {.noInit.}: array[N, ECP_ShortW_Aff[Fp2[C], OnTwist]]
+
+  for i in 0 ..< N:
+    Ps[i] = rng.random_unsafe(typeof(Ps[0]))
+    Qs[i] = rng.random_unsafe(typeof(Qs[0]))
+
+  var f: Fp12[C]
+  bench("Pairing BLS12 multipairing " & $N & " pairings", C, iters):
+    f.pairing_bls12(Ps, Qs)
 
 proc pairingBNBench*(C: static Curve, iters: int) =
   let

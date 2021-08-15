@@ -55,7 +55,7 @@ proc testMultiPairing(rng: var RngState, N: static int) =
   # Multipairing
   let clockMultiStart = cpuTime()
   var GTmulti {.noInit.}: Fp12[BLS12_381]
-  GTmulti.pairing_bls12(Qs, Ps)
+  GTmulti.pairing_bls12(Ps, Qs)
   let clockMultiStop = cpuTime()
 
   echo &"N={N}, Simple: {clockSimpleStop - clockSimpleStart:>4.4f}s, Multi: {clockMultiStop - clockMultiStart:>4.4f}s"
