@@ -161,6 +161,10 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Prime order fields
   # ----------------------------------------------------------
   ("tests/t_fr.nim", false),
+
+  # Protocols
+  # ----------------------------------------------------------
+  ("tests/t_sig_bls_lowlevel.nim", false),
 ]
 
 # For temporary (hopefully) investigation that can only be reproduced in CI
@@ -178,7 +182,8 @@ const skipSanitizers = [
   "tests/t_ec_sage_bls12_377.nim",
   "tests/t_ec_sage_bls12_381.nim",
   "tests/t_hash_to_field.nim",
-  "tests/t_hash_to_curve.nim"
+  "tests/t_hash_to_curve.nim",
+  "tests/t_sig_bls_lowlevel.nim"
 ]
 
 when defined(windows):
