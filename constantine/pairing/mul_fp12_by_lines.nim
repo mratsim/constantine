@@ -13,6 +13,8 @@ import
   ../towers,
   ./lines_projective
 
+# No exceptions allowed
+{.push raises: [].}
 
 # ############################################################
 #
@@ -203,7 +205,7 @@ func mul_sparse_by_line_xyz000*[C: static Curve](
     f2x.sum2xMod(f2x, V1)
     f.c2.redc2x(f2x)
 
-func mul_xyz000_xyz000_into_abcdefghij00*[C: static Curve](f: var Fp12[C], l0, l1: Line[Fp2[C]]) =
+func prod_xyz000_xyz000_into_abcdefghij00*[C: static Curve](f: var Fp12[C], l0, l1: Line[Fp2[C]]) =
   ## Multiply 2 lines together
   ## The result is sparse in f.c1.c1
   # In the following equations (taken from cubic extension implementation)
@@ -407,7 +409,7 @@ func mul_sparse_by_line_xy000z*[C: static Curve](
     f2x.sum2xMod(f2x, V2)
     f.c1.redc2x(f2x)
 
-func mul_xy000z_xy000z_into_abcd00efghij*[C: static Curve](f: var Fp12[C], l0, l1: Line[Fp2[C]]) =
+func prod_xy000z_xy000z_into_abcd00efghij*[C: static Curve](f: var Fp12[C], l0, l1: Line[Fp2[C]]) =
   ## Multiply 2 lines together
   ## The result is sparse in f.c1.c0
   # In the following equations (taken from cubic extension implementation)
@@ -529,6 +531,7 @@ func mul_sparse_by_abcd00efghij*[C: static Curve](
 # ------------------------------------------------------------
 
 func mul*[C](f: var Fp12[C], line: Line[Fp2[C]]) {.inline.} =
+  ## Multiply an element of Fp12 by a sparse line function (xyz000 or xy000z)
   when C.getSexticTwist() == D_Twist:
     f.mul_sparse_by_line_xyz000(line)
   elif C.getSexticTwist() == M_Twist:
@@ -536,10 +539,26 @@ func mul*[C](f: var Fp12[C], line: Line[Fp2[C]]) {.inline.} =
   else:
     {.error: "A line function assumes that the curve has a twist".}
 
-func mul_sparse_sparse*[C](f: var Fp12[C], line0, line1: Line[Fp2[C]]) {.inline.} =
+func prod_sparse_sparse*[C](f: var Fp12[C], line0, line1: Line[Fp2[C]]) {.inline.} =
+  ## Multiply 2 lines function (xyz000 or xy000z)
+  ## and store the result in f
+  ## f is overwritten
   when C.getSexticTwist() == D_Twist:
-    f.mul_xyz000_xyz000_into_abcdefghij00(line0, line1)
+    f.prod_xyz000_xyz000_into_abcdefghij00(line0, line1)
   elif C.getSexticTwist() == M_Twist:
-    f.mul_xy000z_xy000z_into_abcd00efghij(line0, line1)
+    f.prod_xy000z_xy000z_into_abcd00efghij(line0, line1)
+  else:
+    {.error: "A line function assumes that the curve has a twist".}
+
+func mul_3way_sparse_sparse*[C](f: var Fp12[C], line0, line1: Line[Fp2[C]]) {.inline.} =
+  ## Multiply f*line0*line1 with lines (xyz000 or xy000z)
+  ## f is updated with the result
+  var t{.noInit.}: typeof(f)
+  when C.getSexticTwist() == D_Twist:
+    t.prod_xyz000_xyz000_into_abcdefghij00(line0, line1)
+    f.mul_sparse_by_abcdefghij00(t)
+  elif C.getSexticTwist() == M_Twist:
+    t.prod_xy000z_xy000z_into_abcd00efghij(line0, line1)
+    f.mul_sparse_by_abcd00efghij(t)
   else:
     {.error: "A line function assumes that the curve has a twist".}

@@ -259,7 +259,7 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
             r.prod(f0, f1)
 
             var rl: Fp12[C]
-            rl.mul_xy000z_xy000z_into_abcd00efghij(line0, line1)
+            rl.prod_xy000z_xy000z_into_abcd00efghij(line0, line1)
 
             check: bool(r == rl)
 
@@ -297,7 +297,7 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
             r.prod(f0, f1)
 
             var rl: Fp12[C]
-            rl.mul_xyz000_xyz000_into_abcdefghij00(line0, line1)
+            rl.prod_xyz000_xyz000_into_abcdefghij00(line0, line1)
 
             check: bool(r == rl)
 
@@ -337,7 +337,7 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
             )
 
             var rl: Fp12[C]
-            rl.mul_xyz000_xyz000_into_abcdefghij00(line0, line1)
+            rl.prod_xyz000_xyz000_into_abcdefghij00(line0, line1)
 
             var f = rng.random_elem(Fp12[C], gen)
             var f2 = f
@@ -383,7 +383,7 @@ suite "Pairing - Sparse 𝔽p12 multiplication by line function is consistent wi
             )
 
             var rl: Fp12[C]
-            rl.mul_xy000z_xy000z_into_abcd00efghij(line0, line1)
+            rl.prod_xy000z_xy000z_into_abcd00efghij(line0, line1)
 
             var f = rng.random_elem(Fp12[C], gen)
             var f2 = f

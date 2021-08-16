@@ -148,6 +148,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_pairing_bn254_snarks_optate.nim", false),
   ("tests/t_pairing_bls12_377_optate.nim", false),
   ("tests/t_pairing_bls12_381_optate.nim", false),
+  ("tests/t_pairing_bls12_381_multi.nim", false),
 
   # Hashing vs OpenSSL
   # ----------------------------------------------------------

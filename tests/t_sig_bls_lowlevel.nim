@@ -132,6 +132,37 @@ func verifyG2[T: byte|char](
 
   return e0 == e1
 
+func verifyG2_multi[T: byte|char](
+       pubkey: ECP_ShortW_Aff[Fp[BLS12_381], NotOnTwist],
+       message: openarray[T],
+       signature: ECP_ShortW_Aff[Fp2[BLS12_381], OnTwist]
+     ): SecretBool =
+  doAssert not pubkey.isInf.bool
+  doAssert not signature.isInf.bool
+
+  var Qprj {.noInit.}: ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist]
+  hashToCurve(
+    H = sha256, k = 128,
+    output = Qprj,
+    augmentation = "",
+    message = message,
+    domainSepTag = DomainSepTag
+  )
+
+  var G2s: array[2, ECP_ShortW_Aff[Fp2[BLS12_381], OnTwist]]
+  var G1s: array[2, ECP_ShortW_Aff[Fp[BLS12_381], NotOnTwist]]
+
+  G1s[0] = pubkey
+  G2s[0].affineFromprojective(Qprj)
+
+  G1s[1].neg(BLS12_381_G1_generator)
+  G2s[1] = signature
+
+  var e: Fp12[BLS12_381]
+  e.pairing_bls12(G1s, G2s)
+
+  return e.isOne()
+
 proc bls_signature_test(rng: var RngState, i: int) =
   var
     seckey: Fr[BLS12_381]
@@ -143,8 +174,11 @@ proc bls_signature_test(rng: var RngState, i: int) =
   pubkey.publicKeyG1(seckey)
   signature.signG2(message, seckey)
 
-  let ok = pubkey.verifyG2(message, signature)
-  doAssert bool ok
+  let okSingle = pubkey.verifyG2(message, signature)
+  doAssert bool okSingle
+
+  let okMulti = pubkey.verifyG2_multi(message, signature)
+  doAssert bool okMulti
 
 for i in 0 ..< 500:
   rng.bls_signature_test(i)

@@ -21,6 +21,9 @@ import
 
 export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11225
 
+# No exceptions allowed
+{.push raises: [].}
+
 # ############################################################
 #
 #                 Optimal ATE pairing for
@@ -152,5 +155,18 @@ func pairing_bls12*[C](
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
   gt.millerLoopAddchain(Q, P)
+  gt.finalExpEasy()
+  gt.finalExpHard_BLS12()
+
+func pairing_bls12*[N: static int, C](
+       gt: var Fp12[C],
+       Ps: array[N, ECP_ShortW_Aff[Fp[C], NotOnTwist]],
+       Qs: array[N, ECP_ShortW_Aff[Fp2[C], OnTwist]]) {.meter.} =
+  ## Compute the optimal Ate Pairing for BLS12 curves
+  ## Input: an array of Ps ∈ G1 and Qs ∈ G2
+  ## Output:
+  ##   The product of pairings
+  ##   e(P₀, Q₀) * e(P₁, Q₁) * e(P₂, Q₂) * ... * e(Pₙ, Qₙ) ∈ Gt
+  gt.millerLoopAddchain(Qs, Ps)
   gt.finalExpEasy()
   gt.finalExpHard_BLS12()

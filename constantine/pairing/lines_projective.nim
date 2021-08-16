@@ -19,6 +19,9 @@ import
 
 export lines_common
 
+# No exceptions allowed
+{.push raises: [].}
+
 # ############################################################
 #
 #            Miller Loop's Line Evaluation

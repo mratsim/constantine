@@ -9,11 +9,13 @@
 import
   std/typetraits,
   ../primitives,
-  ../config/curves,
   ../arithmetic,
   ../towers,
   ../elliptic/ec_shortweierstrass_affine,
   ../io/io_towers
+
+# No exceptions allowed
+{.push raises: [].}
 
 type
   Line*[F] = object
