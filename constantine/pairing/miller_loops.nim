@@ -318,7 +318,7 @@ func miller_init_double_then_add*[N: static int, FT, F1, F2](
   # Addition step: 0b10...01
   # ------------------------------------------------
 
-  when N == 1:
+  when numDoublings == 1 and N == 1: # f = line0
     line1.line_add(Ts[0], Qs[0], Ps[0])
     f.prod_sparse_sparse(line0, line1)
   else:
