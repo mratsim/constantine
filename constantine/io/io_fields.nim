@@ -8,7 +8,7 @@
 
 import
   ./io_bigints,
-  ../config/common,
+  ../config/[common, curves],
   ../arithmetic/finite_fields,
   ../primitives
 
@@ -84,12 +84,16 @@ func toHex*(f: FF, order: static Endianness = bigEndian): string =
 
 func fromHex*(dst: var FF, hexString: string) {.raises: [ValueError].}=
   ## Convert a hex string to a element of Fp or Fr
+  ## Warning: protocols might want a specific function that checks
+  ##          that the input is in [0, modulus) range
   # TODO: review API, should return bool
   let raw {.noinit.} = fromHex(dst.mres.typeof, hexString)
   dst.fromBig(raw)
 
 func fromHex*(T: type FF, hexString: string): T {.noInit, raises: [ValueError].}=
   ## Convert a hex string to a element of Fp
+  ## Warning: protocols might want a specific function that checks
+  ##          that the input is in [0, modulus) range
   result.fromHex(hexString)
 
 func toDecimal*(f: FF): string =
