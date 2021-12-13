@@ -21,9 +21,21 @@ type
     fork: string
     data: seq[BN256AddTest]
 
+  BN256MulTests = object
+    `func`: string
+    fork: string
+    data: seq[BN256MulTest]
+
   HexString = string
 
   BN256AddTest = object
+    Input: HexString
+    Expected: HexString
+    Name: string
+    Gas: int
+    NoBenchmark: bool
+
+  BN256MulTest = object
     Input: HexString
     Expected: HexString
     Name: string
@@ -39,13 +51,15 @@ proc loadVectors(TestType: typedesc, filename: string): TestType =
   result = content.fromJson(TestType)
 
 proc runBN256AddTests() =
-
-  let vec = loadVectors(BN256AddTests, "bn256Add.json")
+  let test = "bn256Add.json"
+  let vec = loadVectors(BN256AddTests, test)
+  echo "Running ", test
 
   for test in vec.data:
     stdout.write "Testing " & test.Name & " ... "
 
-    var inputbytes = newSeq[byte](test.Input.len * 2)
+    # Length: 2 hex characters -> 1 byte
+    var inputbytes = newSeq[byte](test.Input.len div 2)
     test.Input.hexToPaddedByteArray(inputbytes, bigEndian)
 
     var r: array[64, byte]
@@ -57,11 +71,32 @@ proc runBN256AddTests() =
 
     test.Expected.hexToPaddedByteArray(expected, bigEndian)
 
-    echo status
-    echo $r
-    echo $expected
+    doAssert r == expected
+    stdout.write "Success\n"
+
+proc runBN256MulTests() =
+  let test = "bn256mul.json"
+  let vec = loadVectors(BN256MulTests, test)
+  echo "Running ", test
+
+  for test in vec.data:
+    stdout.write "Testing " & test.Name & " ... "
+
+    # Length: 2 hex characters -> 1 byte
+    var inputbytes = newSeq[byte](test.Input.len div 2)
+    test.Input.hexToPaddedByteArray(inputbytes, bigEndian)
+
+    var r: array[64, byte]
+    var expected: array[64, byte]
+
+    let status = eth_evm_ecmul(r, inputbytes)
+    if status != cttEVM_Success:
+      reset(r)
+
+    test.Expected.hexToPaddedByteArray(expected, bigEndian)
 
     doAssert r == expected
     stdout.write "Success\n"
 
 runBN256AddTests()
+runBN256MulTests()

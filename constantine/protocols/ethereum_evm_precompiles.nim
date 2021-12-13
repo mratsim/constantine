@@ -9,6 +9,7 @@
 import
   ../config/[common, curves],
   ../arithmetic,
+  ../arithmetic/limbs_montgomery,
   ../ec_shortweierstrass,
   ../pairing/pairing_bn,
   ../io/[io_bigints, io_fields]
@@ -52,6 +53,7 @@ func fromRawCoords(
 
   # Deserialization
   # ----------------------
+  # Encoding spec https://eips.ethereum.org/EIPS/eip-196
 
   let status_x = dst.x.parseRawUint(x)
   if status_x != cttEVM_Success:
@@ -59,6 +61,13 @@ func fromRawCoords(
   let status_y = dst.y.parseRawUint(y)
   if status_y != cttEVM_Success:
     return status_y
+
+  # Handle point at infinity
+  if dst.x.isZero().bool and dst.y.isZero().bool:
+    dst.setInf()
+    return cttEVM_Success
+
+  # Otherwise regular point
   dst.z.setOne()
 
   # Deserialization checks
@@ -75,7 +84,9 @@ func fromRawCoords(
 
 func eth_evm_ecadd*(
       r: var array[64, byte], inputs: openarray[byte]): CttEVMStatus =
-  ## Elliptic Curve addition on BN254_Snarks (also called alt_bn128 in Ethereum specs)
+  ## Elliptic Curve addition on BN254_Snarks
+  ## (also called alt_bn128 in Ethereum specs
+  ##  and bn256 in Ethereum tests)
   ##
   ## Inputs:
   ## - A G1 point P with coordinates (Px, Py)
@@ -88,6 +99,8 @@ func eth_evm_ecadd*(
   ##
   ## Output
   ## - A G1 point R with coordinates (Px + Qx, Py + Qy)
+  ## 
+  ## Spec https://eips.ethereum.org/EIPS/eip-196
 
   # Auto-pad with zero
   var padded: array[128, byte]
@@ -103,8 +116,8 @@ func eth_evm_ecadd*(
   if statusP != cttEVM_Success:
     return statusP
   let statusQ = Q.fromRawCoords(
-    x = padded.toOpenArray(0, 31),
-    y = padded.toOpenArray(32, 63)
+    x = padded.toOpenArray(64, 95),
+    y = padded.toOpenArray(96, 127)
   )
   if statusQ != cttEVM_Success:
     return statusQ
@@ -112,6 +125,75 @@ func eth_evm_ecadd*(
   R.sum(P, Q)
   var aff{.noInit.}: ECP_ShortW_Aff[Fp[BN254_Snarks], NotOnTwist]
   aff.affineFromProjective(R)
+
+  r.toOpenArray(0, 31).exportRawUint(
+    aff.x, bigEndian
+  )
+  r.toOpenArray(32, 63).exportRawUint(
+    aff.y, bigEndian
+  )
+
+func eth_evm_ecmul*(
+      r: var array[64, byte], inputs: openarray[byte]): CttEVMStatus =
+  ## Elliptic Curve multiplication on BN254_Snarks
+  ## (also called alt_bn128 in Ethereum specs
+  ##  and bn256 in Ethereum tests)
+  ##
+  ## Inputs:
+  ## - A G1 point P with coordinates (Px, Py)
+  ## - A scalar s in 0 ..< 2²⁵⁶
+  ##
+  ## Each coordinate is a 32-bit bigEndian integer
+  ## They are serialized concatenated in a byte array [Px, Py, r]
+  ## If the length is less than 96 bytes, input is virtually padded with zeros.
+  ## If the length is greater than 96 bytes, input is truncated to 96 bytes.
+  ##
+  ## Output
+  ## - A G1 point R = [s]P
+  ## 
+  ## Spec https://eips.ethereum.org/EIPS/eip-196
+  ## 
+
+  # Auto-pad with zero
+  var padded: array[128, byte]
+  let lastIdx = min(inputs.len, 128) - 1
+  padded[0 .. lastIdx] = inputs.toOpenArray(0, lastIdx)
+
+  var P{.noInit.}: ECP_ShortW_Prj[Fp[BN254_Snarks], NotOnTwist]
+
+  let statusP = P.fromRawCoords(
+    x = padded.toOpenArray(0, 31),
+    y = padded.toOpenArray(32, 63)
+  )
+  if statusP != cttEVM_Success:
+    return statusP
+
+  var smod{.noInit.}: Fr[BN254_Snarks]
+  var s{.noInit.}: BigInt[256]
+  s.fromRawUint(padded.toOpenArray(64,95), bigEndian)
+
+  when true:
+    # The spec allows s to be bigger than the curve order r and the field modulus p.
+    # As, elliptic curve are a cyclic group mod r, we can reduce modulo r and get the same result.
+    # This allows to use windowed endomorphism acceleration
+    # which is 31.5% faster than plain windowed scalar multiplication
+    # at the low cost of a modular reduction.
+
+    var sprime{.noInit.}: typeof(smod.mres)
+    # Due to mismatch between the BigInt[256] input and the rest being BigInt[254]
+    # we use the low-level montyResidue instead of 'fromBig'
+    montyResidue(smod.mres.limbs, s.limbs,
+                Fr[BN254_Snarks].fieldMod().limbs,
+                Fr[BN254_Snarks].getR2modP().limbs,
+                Fr[BN254_Snarks].getNegInvModWord(),
+                Fr[BN254_Snarks].getSpareBits())
+    sprime = smod.toBig()
+    P.scalarMul(sprime)
+  else:
+    P.scalarMul(s)
+
+  var aff{.noInit.}: ECP_ShortW_Aff[Fp[BN254_Snarks], NotOnTwist]
+  aff.affineFromProjective(P)
 
   r.toOpenArray(0, 31).exportRawUint(
     aff.x, bigEndian
