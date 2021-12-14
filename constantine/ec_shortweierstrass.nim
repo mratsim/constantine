@@ -16,10 +16,11 @@ import
   elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_jacobian,
-    ec_shortweierstrass_projective
+    ec_shortweierstrass_projective,
+    ec_scalar_mul
   ]
 
-export ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_shortweierstrass_projective
+export ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_shortweierstrass_projective, ec_scalar_mul
 
 func projectiveFromJacobian*[F; Tw](
        prj: var ECP_ShortW_Prj[F, Tw],

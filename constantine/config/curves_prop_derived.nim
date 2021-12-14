@@ -91,7 +91,7 @@ macro getMontyOne*(ff: type FF): untyped =
   result = bindConstant(ff, "MontyOne")
 
 macro getMontyPrimeMinus1*(ff: type FF): untyped =
-  ## Get (P+1) / 2 for an odd prime
+  ## Get (P-1)
   result = bindConstant(ff, "MontyPrimeMinus1")
 
 macro getInvModExponent*(ff: type FF): untyped =

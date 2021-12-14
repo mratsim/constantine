@@ -564,8 +564,7 @@ func `/=`*[C: static Curve](a: var Fp2[C], _: type NonResidue) =
     var a0 = a.c0
     let a1 = a.c1
     const u2v2 = u*u - Beta*v*v # (u² - βv²)
-    # TODO can be precomputed (or precompute b/µ the twist coefficient)
-    #      and use faster non-constant-time inversion in the VM
+    # TODO can be precomputed to avoid costly inversion.
     var u2v2inv {.noInit.}: a.c0.typeof
     u2v2inv.fromUint(u2v2)
     u2v2inv.inv()

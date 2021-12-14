@@ -31,7 +31,7 @@ import
 
 # TODO: the in-place API should return a bool
 #       to indicate success.
-#       the out-of place API are for for configuration,
+#       the out-of place API are for configuration,
 #       prototyping, research and debugging purposes,
 #       and can use exceptions.
 
@@ -359,7 +359,7 @@ func countNonBlanks(hexStr: string, startPos: int): int =
     if c in blanks:
       result += 1
 
-func hexToPaddedByteArray(hexStr: string, output: var openArray[byte], order: static[Endianness]) =
+func hexToPaddedByteArray*(hexStr: string, output: var openArray[byte], order: static[Endianness]) =
   ## Read a hex string and store it in a byte array `output`.
   ## The string may be shorter than the byte array.
   ##
