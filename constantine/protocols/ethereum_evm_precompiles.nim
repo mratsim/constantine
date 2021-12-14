@@ -8,10 +8,10 @@
 
 import
   ../config/[common, curves],
-  ../arithmetic,
+  ../arithmetic, ../towers,
   ../arithmetic/limbs_montgomery,
   ../ec_shortweierstrass,
-  ../pairing/pairing_bn,
+  ../pairing/[pairing_bn, miller_loops, cyclotomic_fp12],
   ../io/[io_bigints, io_fields]
 
 # ############################################################
@@ -28,6 +28,8 @@ type
     cttEVM_Success
     cttEVM_IntLargerThanModulus
     cttEVM_PointNotOnCurve
+    cttEVM_PointNotInSubgroup
+    cttEVM_InvalidInputLength
 
 func parseRawUint(
        dst: var Fp[BN254_Snarks],
@@ -87,6 +89,8 @@ func eth_evm_ecadd*(
   ## Elliptic Curve addition on BN254_Snarks
   ## (also called alt_bn128 in Ethereum specs
   ##  and bn256 in Ethereum tests)
+  ## 
+  ## Name: ECADD
   ##
   ## Inputs:
   ## - A G1 point P with coordinates (Px, Py)
@@ -99,6 +103,10 @@ func eth_evm_ecadd*(
   ##
   ## Output
   ## - A G1 point R with coordinates (Px + Qx, Py + Qy)
+  ## - Status code:
+  ##   cttEVM_Success
+  ##   cttEVM_IntLargerThanModulus
+  ##   cttEVM_PointNotOnCurve
   ## 
   ## Spec https://eips.ethereum.org/EIPS/eip-196
 
@@ -139,6 +147,8 @@ func eth_evm_ecmul*(
   ## (also called alt_bn128 in Ethereum specs
   ##  and bn256 in Ethereum tests)
   ##
+  ## Name: ECMUL
+  ##
   ## Inputs:
   ## - A G1 point P with coordinates (Px, Py)
   ## - A scalar s in 0 ..< 2²⁵⁶
@@ -150,9 +160,12 @@ func eth_evm_ecmul*(
   ##
   ## Output
   ## - A G1 point R = [s]P
+  ## - Status code:
+  ##   cttEVM_Success
+  ##   cttEVM_IntLargerThanModulus
+  ##   cttEVM_PointNotOnCurve
   ## 
   ## Spec https://eips.ethereum.org/EIPS/eip-196
-  ## 
 
   # Auto-pad with zero
   var padded: array[128, byte]
@@ -201,3 +214,167 @@ func eth_evm_ecmul*(
   r.toOpenArray(32, 63).exportRawUint(
     aff.y, bigEndian
   )
+
+func subgroupCheck(P: ECP_ShortW_Aff[Fp2[BN254_Snarks], OnTwist]): bool =
+  ## A point may be on a curve but in case the curve has a cofactor != 1
+  ## that point may not be in the correct cyclic subgroup.
+  ## If we are on the subgroup of order r then [r]P = 0
+  
+  # TODO: Generic for any curve
+
+  var Q{.noInit.}: ECP_ShortW_Prj[Fp2[BN254_Snarks], OnTwist]
+  
+  # TODO: precompute up to the endomorphism decomposition
+  #       or implement fixed base scalar mul
+  #       as subgroup checks are a deserialization bottleneck
+  var rm1 = Fr[BN254_Snarks].fieldMod()
+  rm1 -= One
+
+  # We can't use endomorphism acceleration when multiplying
+  # by the curve order r to check [r]P == 0
+  # as it requires the scalar to be < r.
+  # But we can use it to multiply by [r-1].
+  Q.projectiveFromAffine(P)
+  let Q0 = Q
+  Q.scalarMul(rm1)
+  Q += Q0
+
+  return bool(Q.isInf())
+
+func fromRawCoords(
+       dst: var ECP_ShortW_Aff[Fp[BN254_Snarks], NotOnTwist],
+       x, y: openarray[byte]): CttEVMStatus =
+
+  # Deserialization
+  # ----------------------
+  # Encoding spec https://eips.ethereum.org/EIPS/eip-196
+
+  let status_x = dst.x.parseRawUint(x)
+  if status_x != cttEVM_Success:
+    return status_x
+  let status_y = dst.y.parseRawUint(y)
+  if status_y != cttEVM_Success:
+    return status_y
+
+  # Handle point at infinity
+  if dst.x.isZero().bool and dst.y.isZero().bool:
+    return cttEVM_Success
+
+  # Deserialization checks
+  # ----------------------
+
+  # Point on curve
+  if not bool(isOnCurve(dst.x, dst.y, NotOnTwist)):
+    return cttEVM_PointNotOnCurve
+
+  # BN254_Snarks is a curve with cofactor 1,
+  # so no subgroup checks are necessary
+
+  return cttEVM_Success
+
+func fromRawCoords(
+       dst: var ECP_ShortW_Aff[Fp2[BN254_Snarks], OnTwist],
+       x0, x1, y0, y1: openarray[byte]): CttEVMStatus =
+
+  # Deserialization
+  # ----------------------
+  # Encoding spec https://eips.ethereum.org/EIPS/eip-196
+
+  let status_x0 = dst.x.c0.parseRawUint(x0)
+  if status_x0 != cttEVM_Success:
+    return status_x0
+  let status_x1 = dst.x.c1.parseRawUint(x1)
+  if status_x1 != cttEVM_Success:
+    return status_x1
+
+  let status_y0 = dst.y.c0.parseRawUint(y0)
+  if status_y0 != cttEVM_Success:
+    return status_y0
+  let status_y1 = dst.y.c1.parseRawUint(y1)
+  if status_y1 != cttEVM_Success:
+    return status_y1
+
+  # Handle point at infinity
+  if dst.x.isZero().bool and dst.y.isZero().bool:
+    return cttEVM_Success
+
+  # Deserialization checks
+  # ----------------------
+
+  # Point on curve
+  if not bool(isOnCurve(dst.x, dst.y, OnTwist)):
+    return cttEVM_PointNotOnCurve
+  
+  if not subgroupCheck(dst):
+    return cttEVM_PointNotInSubgroup
+
+  return cttEVM_Success
+
+func eth_evm_ecpairing*(
+      r: var array[32, byte], inputs: openarray[byte]): CttEVMStatus =
+  ## Elliptic Curve pairing on BN254_Snarks
+  ## (also called alt_bn128 in Ethereum specs
+  ##  and bn256 in Ethereum tests)
+  ##
+  ## Name: ECPAIRING
+  ##
+  ## Inputs:
+  ## - An array of [(P0, Q0), (P1, Q1), ... (Pk, Qk)] points in (G1, G2)
+  ##
+  ## Output
+  ## - 0 or 1 in uint256 BigEndian representation
+  ## - Status code:
+  ##   cttEVM_Success
+  ##   cttEVM_IntLargerThanModulus
+  ##   cttEVM_PointNotOnCurve
+  ##   cttEVM_InvalidInputLength
+  ## 
+  ## Spec https://eips.ethereum.org/EIPS/eip-197
+  
+  let N = inputs.len div 192
+  if inputs.len mod 192 != 0:
+    return cttEVM_InvalidInputLength
+
+  if N == 0:
+    # Spec: "Empty input is valid and results in returning one."
+    zeroMem(r.addr, r.sizeof())
+    r[^1] = byte 1
+    return
+
+  var gt0{.noInit.}, gt1{.noInit.}: Fp12[BN254_Snarks]
+  var P{.noInit.}: ECP_ShortW_Aff[Fp[BN254_Snarks], NotOnTwist]
+  var Q{.noInit.}: ECP_ShortW_Aff[Fp2[BN254_Snarks], OnTwist]
+
+  for i in 0 ..< N:
+    let pos = i*192
+
+    let statusP = P.fromRawCoords(
+      x = inputs.toOpenArray(pos, pos+31),
+      y = inputs.toOpenArray(pos+32, pos+63)
+    )
+    if statusP != cttEVM_Success:
+      return statusP
+
+    # Warning EIP197 encoding order:
+    # Fp2 (a, b) <=> a*𝑖 + b instead of regular a+𝑖b
+    let statusQ = Q.fromRawCoords(
+      x1 = inputs.toOpenArray(pos+64, pos+95),
+      x0 = inputs.toOpenArray(pos+96, pos+127),
+      y1 = inputs.toOpenArray(pos+128, pos+159),
+      y0 = inputs.toOpenArray(pos+160, pos+191)
+    )
+    if statusQ != cttEVM_Success:
+      return statusQ
+
+    gt1.millerLoopGenericBN(P, Q)
+    if i == 0:
+      gt0 = gt1
+    else:
+      gt0 *= gt1
+
+  gt0.finalExpEasy()
+  gt0.finalExpHard_BN()
+
+  zeroMem(r.addr, r.sizeof())
+  if gt0.isOne().bool:
+    r[^1] = byte 1
