@@ -85,6 +85,15 @@ func trySetFromCoordsXandZ*[F; Tw](
   ##
   ## Note: Dedicated robust procedures for hashing-to-curve
   ##       will be provided, this is intended for testing purposes.
+  ## 
+  ##       For **test case generation only**,
+  ##       this is preferred to generating random point
+  ##       via random scalar multiplication of the curve generator
+  ##       as the latter assumes:
+  ##       - point addition, doubling work
+  ##       - scalar multiplication works
+  ##       - a generator point is defined
+  ##       i.e. you can't test unless everything is already working
   P.y.curve_eq_rhs(x, Tw)
   result = sqrt_if_square(P.y)
 
@@ -105,6 +114,15 @@ func trySetFromCoordX*[F; Tw](
   ##
   ## Note: Dedicated robust procedures for hashing-to-curve
   ##       will be provided, this is intended for testing purposes.
+  ## 
+  ##       For **test case generation only**,
+  ##       this is preferred to generating random point
+  ##       via random scalar multiplication of the curve generator
+  ##       as the latter assumes:
+  ##       - point addition, doubling work
+  ##       - scalar multiplication works
+  ##       - a generator point is defined
+  ##       i.e. you can't test unless everything is already working
   P.y.curve_eq_rhs(x, Tw)
   result = sqrt_if_square(P.y)
   P.x = x

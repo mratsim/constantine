@@ -11,7 +11,8 @@ import
   ../config/[common, curves],
   ../arithmetic,
   ../towers,
-  ../io/[io_fields, io_towers]
+  ../io/[io_fields, io_towers],
+  ../curves/zoo_precomputed_params
 
 # ############################################################
 #
@@ -54,45 +55,15 @@ func curve_eq_rhs*[F](y2: var F, x: F, Tw: static Twisted) =
   t.square(x)
   t *= x
 
-  # This procedure is not use in perf critical situation like signing/verification
-  # but for testing to quickly create points on a curve.
-  # That said D-Twists require an inversion
-  # and we could avoid doing `b/µ` or `µ*b` at runtime on 𝔽p²
-  # which would accelerate random point generation
-  #
-  # This is preferred to generating random point
-  # via random scalar multiplication of the curve generator
-  # as the latter assumes:
-  # - point addition, doubling work
-  # - scalar multiplication works
-  # - a generator point is defined
-  # i.e. you can't test unless everything is already working
-  #
-  # TODO: precomputation needed when deserializing points
-  #       to check if a point is on-curve and prevent denial-of-service
-  #       using slow inversion.
-  when F.C.getCoefB() >= 0:
-    y2.fromInt F.C.getCoefB()
-    when Tw == OnTwist:
-      when F.C.getSexticTwist() == D_Twist:
-        y2 /= SexticNonResidue
-      elif F.C.getSexticTwist() == M_Twist:
-        y2 *= SexticNonResidue
-      else:
-        {.error: "Only twisted curves are supported on extension field 𝔽p²".}
-
-    y2 += t
+  when Tw == NotOnTwist:
+    when F.C.getCoefB() >= 0:
+      y2.fromInt F.C.getCoefB()
+      y2 += t
+    else:
+      y2.fromInt -F.C.getCoefB()
+      y2.diff(t, y2)
   else:
-    y2.fromInt -F.C.getCoefB()
-    when Tw == OnTwist:
-      when F.C.getSexticTwist() == D_Twist:
-        y2 /= SexticNonResidue
-      elif F.C.getSexticTwist() == M_Twist:
-        y2 *= SexticNonResidue
-      else:
-        {.error: "Only twisted curves are supported on extension field 𝔽p²".}
-
-    y2.diff(t, y2)
+    y2.sum(F.C.getCoefB_G2, t)
 
   when F.C.getCoefA() != 0:
     t = x
@@ -122,6 +93,15 @@ func trySetFromCoordX*[F, Tw](
   ##
   ## Note: Dedicated robust procedures for hashing-to-curve
   ##       will be provided, this is intended for testing purposes.
+  ## 
+  ##       For **test case generation only**,
+  ##       this is preferred to generating random point
+  ##       via random scalar multiplication of the curve generator
+  ##       as the latter assumes:
+  ##       - point addition, doubling work
+  ##       - scalar multiplication works
+  ##       - a generator point is defined
+  ##       i.e. you can't test unless everything is already working
   P.y.curve_eq_rhs(x, Tw)
   result = sqrt_if_square(P.y)
   P.x = x
