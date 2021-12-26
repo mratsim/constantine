@@ -123,6 +123,13 @@ macro genDerivedConstants*(mode: static DerivedConstantMode): untyped =
         M
       )
     )
+    # const MyCurve_PrimeMinus5div8_BE = primeMinus5div8_BE(MyCurve_Modulus)
+    result.add newConstStmt(
+      used(curve & ff & "_PrimeMinus5div8_BE"), newCall(
+        bindSym"primeMinus5div8_BE",
+        M
+      )
+    )
     # const MyCurve_PrimePlus1div4_BE = primePlus1div4_BE(MyCurve_Modulus)
     result.add newConstStmt(
       used(curve & ff & "_PrimePlus1div4_BE"), newCall(

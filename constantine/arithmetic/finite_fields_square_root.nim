@@ -65,18 +65,94 @@ func invsqrt_p3mod4*(r: var Fp, a: Fp) =
   ## The square root, if it exist is multivalued,
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
-  # TODO: deterministic sign
-  #
   # Algorithm
   #
   #
-  # From Euler's criterion:   a^((p-1)/2)) ≡ 1 (mod p) if square
+  # From Euler's criterion: 
+  #    𝛘(a) = a^((p-1)/2)) ≡ 1 (mod p) if square
   # a^((p-1)/2)) * a^-1 ≡ 1/a  (mod p)
   # a^((p-3)/2))        ≡ 1/a  (mod p)
   # a^((p-3)/4))        ≡ 1/√a (mod p)      # Requires p ≡ 3 (mod 4)
-  static: doAssert BaseType(Fp.C.Mod.limbs[0]) mod 4 == 3
+  static: doAssert Fp.C.hasP3mod4_primeModulus()
   r = a
   r.powUnsafeExponent(Fp.getPrimeMinus3div4_BE())
+
+# Specialized routine for p ≡ 5 (mod 8)
+# ------------------------------------------------------------
+
+func hasP5mod8_primeModulus(C: static Curve): static bool =
+  ## Returns true iff p ≡ 5 (mod 8)
+  (BaseType(C.Mod.limbs[0]) and 7) == 5
+
+func invsqrt_p5mod8*(r: var Fp, a: Fp) =
+  ## Compute the inverse square root of ``a``
+  ##
+  ## This requires ``a`` to be a square
+  ## and the prime field modulus ``p``: p ≡ 5 (mod 8)
+  ##
+  ## The result is undefined otherwise
+  ##
+  ## The square root, if it exist is multivalued,
+  ## i.e. both x² == (-x)²
+  ## This procedure returns a deterministic result
+  #
+  # Intuition: Branching algorithm, that requires √-1 (mod p) precomputation
+  #
+  # From Euler's criterion:
+  #    𝛘(a) = a^((p-1)/2)) ≡ 1 (mod p) if square
+  # a^((p-1)/4))² ≡ 1 (mod p)
+  # if a is square, a^((p-1)/4)) ≡ ±1 (mod p)
+  #
+  # Case a^((p-1)/4)) ≡ 1 (mod p)
+  #   a^((p-1)/4)) * a⁻¹ ≡  1/a  (mod p)
+  #   a^((p-5)/4))        ≡  1/a  (mod p)
+  #   a^((p-5)/8))        ≡ ±1/√a (mod p)  # Requires p ≡ 5 (mod 8)
+  #
+  # Case a^((p-1)/4)) ≡ -1 (mod p)
+  #   a^((p-1)/4)) * a⁻¹ ≡  -1/a  (mod p)
+  #   a^((p-5)/4))       ≡  -1/a  (mod p)
+  #   a^((p-5)/8))       ≡ ± √-1/√a (mod p)
+  # as p ≡ 5 (mod 8), hence 𝑖 ∈ Fp with 𝑖² ≡ −1 (mod p)
+  #   a^((p-5)/8)) * 𝑖    ≡ ± 1/√a (mod p)
+  #
+  # Atkin Algorithm: branchless, no precomputation
+  #   Atkin, 1992, http://algo.inria.fr/seminars/sem91-92/atkin.pdf
+  #   Gora Adj 2012, https://eprint.iacr.org/2012/685
+  #   Rotaru, 2013, https://profs.info.uaic.ro/~siftene/fi125(1)04.pdf
+  #
+  # We express √a = αa(β − 1) where β² = −1 and 2aα² = β
+  # confirm that        (αa(β − 1))² = α²a²(β²-2β+1) = α²a²β² - 2a²α²β - a²α²
+  # Which simplifies to (αa(β − 1))² = -aβ² = a
+  #
+  # 𝛘(2) = 2^((p-1)/2) ≡ (-1)^((p²-1)/8) (mod p) hence 2 is QR iff p ≡ ±1 (mod 8)
+  # Here p ≡ 5 (mod 8), so 2 is a QNR, hence 2^((p-1)/2) ≡ -1 (mod 8)
+  #
+  # The product of a quadratic non-residue with quadratic residue is a QNR
+  # as 𝛘(QNR*QR) = 𝛘(QNR).𝛘(QR) = -1*1 = -1, hence:
+  #   (2a)^((p-1)/2) ≡ -1 (mod p)
+  #   (2a)^((p-1)/4) ≡ ± √-1 (mod p)
+  #
+  # Hence we set β = (2a)^((p-1)/4)
+  # and α = (β/2a)⁽¹⸍²⁾= (2a)^(((p-1)/4 - 1)/2) = (2a)^((p-5)/8)
+  static: doAssert Fp.C.hasP5mod8_primeModulus()
+  var alpha{.noInit.}, beta{.noInit.}: Fp
+  
+  # α = (2a)^((p-5)/8)
+  alpha.double(a)
+  beta = alpha
+  alpha.powUnsafeExponent(Fp.getPrimeMinus5div8_BE())
+
+  # Note: if r aliases a, for inverse square root we don't use `a` again
+
+  # β = 2aα²
+  r.square(alpha)
+  beta *= r
+  
+  # √a = αa(β − 1), so 1/√a = α(β − 1)
+  r.setOne()
+  beta -= r
+  r.prod(alpha, beta)
+  
 
 # Specialized routines for addchain-based square roots
 # ------------------------------------------------------------
@@ -192,6 +268,8 @@ func invsqrt*[C](r: var Fp[C], a: Fp[C]) =
     r.invsqrt_addchain(a)
   elif C.hasP3mod4_primeModulus():
     r.invsqrt_p3mod4(a)
+  elif C.hasP5mod8_primeModulus():
+    r.invsqrt_p5mod8(a)
   else:
     r.invsqrt_tonelli_shanks(a, useAddChain = C.hasTonelliShanksAddchain())
 

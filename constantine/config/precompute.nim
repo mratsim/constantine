@@ -434,6 +434,25 @@ func primeMinus3div4_BE*[bits: static int](
 
   result.exportRawUint(tmp, bigEndian)
 
+func primeMinus5div8_BE*[bits: static int](
+       P: BigInt[bits]
+     ): array[(bits+7) div 8, byte] {.noInit.} =
+  ## For an input prime `p`, compute (p-5)/8
+  ## and return the result as a canonical byte array / octet string
+  ## For use to check if a number is a square (quadratic residue)
+  ## and if so compute the square root in a fused manner
+  ##
+  # Output size:
+  # - (bits + 7) div 8: bits => byte conversion rounded up
+  # - (bits + 7 - 3): dividing by 8 means 3 bits is unused
+  # => TODO: reduce the output size (to potentially save a byte and corresponding multiplication/squarings)
+
+  var tmp = P
+  discard tmp.sub(5)
+  tmp.shiftRight(3)
+
+  result.exportRawUint(tmp, bigEndian)
+
 func primePlus1Div4_BE*[bits: static int](
        P: BigInt[bits]
      ): array[(bits+7) div 8, byte] {.noInit.} =
