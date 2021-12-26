@@ -17,7 +17,7 @@ import
 # ############################################################
 #
 #             Elliptic Curve in Short Weierstrass form
-#                 with Projective Coordinates
+#                 with Affine Coordinates
 #
 # ############################################################
 
@@ -86,7 +86,6 @@ func trySetFromCoordX*[F, Tw](
   ## Try to create a point the elliptic curve
   ## y² = x³ + a x + b     (affine coordinate)
   ##
-  ## The `Z` coordinates is set to 1
   ##
   ## return true and update `P` if `x` leads to a valid point
   ## return false otherwise, in that case `P` is undefined.

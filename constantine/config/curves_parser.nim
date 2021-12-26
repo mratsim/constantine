@@ -50,6 +50,7 @@ type
 
   CurveEquationForm* = enum
     ShortWeierstrass
+    TwistedEdwards
 
   SexticTwist* = enum
     ## The sextic twist type of the current elliptic curve
@@ -103,6 +104,7 @@ type
     eq_form: CurveEquationForm
     coef_A: CurveCoef
     coef_B: CurveCoef
+    coef_D: CurveCoef
     order: NimNode # nnkStrLit (hex)
     orderBitwidth: NimNode # nnkIntLit
 
@@ -191,6 +193,15 @@ proc parseCurveDecls(defs: var seq[CurveParams], curves: NimNode) =
           params.coef_B = CurveCoef(kind: Small, coef: -sectionVal[1].intVal.int)
         else:
           params.coef_B = CurveCoef(kind: Large, coefHex: sectionVal.strVal)
+      elif sectionId.eqIdent"coef_d":
+        if sectionVal.kind == nnkIntLit:
+          params.coef_D = CurveCoef(kind: Small, coef: sectionVal.intVal.int)
+        elif sectionVal.kind == nnkPrefix: # Got -1
+          sectionVal[0].expectIdent"-"
+          sectionVal[1].expectKind(nnkIntLit)
+          params.coef_D = CurveCoef(kind: Small, coef: -sectionVal[1].intVal.int)
+        else:
+          params.coef_D = CurveCoef(kind: Large, coefHex: sectionVal.strVal)
       elif sectionId.eqIdent"order":
         params.order = sectionVal
       elif sectionId.eqIdent"orderBitwidth":

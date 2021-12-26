@@ -82,6 +82,12 @@ macro getCoefB*(C: static Curve): untyped =
   ## or a bigInt depending on the curve
   result = bindSym($C & "_coef_B")
 
+macro getCoefD*(C: static Curve): untyped =
+  ## Returns the D coefficient of the curve
+  ## The return type is polymorphic, it can be an int
+  ## or a bigInt depending on the curve
+  result = bindSym($C & "_coef_D")
+
 macro getNonResidueFp*(C: static Curve): untyped =
   ## Returns the tower extension (and twist) non-residue for 𝔽p
   ## Depending on the curve it might be:

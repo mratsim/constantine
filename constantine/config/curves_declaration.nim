@@ -111,6 +111,14 @@ declareCurves:
   curve Curve25519: # Bernstein curve
     bitwidth: 255
     modulus: "0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed"
+
+    # Montgomery form:            y² = x³ + 486662x² + x 
+    # Edwards form:          x² + y² = 1+dx²y²           with d = 121665/121666
+    # Twisted Edwards form: ax² + y² = 1+dx²y²           with a = 121666 and d = 121665
+    eq_form: TwistedEdwards
+    coef_a: 121666
+    coef_d: 121665
+
   curve P256: # secp256r1 / NIST P-256
     bitwidth: 256
     modulus: "0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff"
