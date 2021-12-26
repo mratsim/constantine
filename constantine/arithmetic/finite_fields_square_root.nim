@@ -340,4 +340,85 @@ func invsqrt_if_square*[C](r: var Fp[C], a: Fp[C]): SecretBool =
   result = sqrt_invsqrt_if_square(sqrt, r, a)
 
 {.pop.} # inline
+
+# Fused routines
+# ------------------------------------------------------------
+
+func sqrt_ratio_if_square_p5mod8(r: var Fp, u, v: Fp): SecretBool =
+  ## If u/v is a square, compute √(u/v)
+  ## if not, the result is undefined
+  ## 
+  ## Requires p ≡ 5 (mod 8)
+  ## r must not alias u or v
+  ## 
+  ## The square root, if it exist is multivalued,
+  ## i.e. both (u/v)² == (-u/v)²
+  ## This procedure returns a deterministic result
+  ## This procedure is constant-time
+
+  # References:
+  #   - High-Speed High-Security Signature, Bernstein et al, p15 "Fast decompression", https://ed25519.cr.yp.to/ed25519-20110705.pdf
+  #   - IETF Hash-to-Curve: https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/blob/9939a07/draft-irtf-cfrg-hash-to-curve.md#optimized-sqrt_ratio-for-q--5-mod-8
+  #   - Pasta curves divsqrt: https://github.com/zcash/pasta/blob/f0f7068/squareroottab.sage#L139-L193
+  #
+  # p ≡ 5 (mod 8), hence 𝑖 ∈ Fp with 𝑖² ≡ −1 (mod p)
+  # if α is a square, with β ≡ α^((p+3)/8) (mod p)
+  # - either β² ≡ α (mod p), hence √α ≡ ± β (mod p)
+  # - or β² ≡ -α (mod p), hence √α ≡ ± 𝑖β (mod p)
+  # (see explanation in invsqrt_p5mod8)
+  #
+  # In our fused division and sqrt case we have
+  # β = (u/v)^((p+3)/8)
+  #   = u^((p+3)/8).v^(p−1−(p+3)/8) via Fermat's little theorem
+  #   = u^((p+3)/8).v^((7p−11)/8)
+  #   = u.u^((p-5)/8).v³.v^((7p−35)/8)
+  #   = uv³.u^((p-5)/8).v^(7(p-5)/8)
+  #   = uv³(uv⁷)^((p−5)/8)
+  #
+  # We can check if β² ≡ -α (mod p)
+  # by checking vβ² ≡ -u (mod p), and then multiply by 𝑖
+  # and if it's neither u or -u it wasn't a square.
+  static: doAssert Fp.C.hasP5mod8_primeModulus()
+  var t {.noInit.}: Fp
+  t.square(v)
+  t *= v
+
+  # r = uv³
+  r.prod(u, t)
+
+  # t = (uv⁷)^((p−5)/8)
+  t *= r
+  t *= v
+  t.powUnsafeExponent(Fp.getPrimeMinus5div8_BE())
+
+  # r = β = uv³(uv⁷)^((p−5)/8)
+  r *= t
+
+  # Check candidate square roots
+  t.square(r)
+  t *= v
+  block:
+    result = t == u
+  block:
+    t.neg()
+    let isSol = t == u
+    result = result or isSol
+    t.prod(r, Fp.C.sqrt_minus_one())
+    r.ccopy(t, isSol)
+
+func sqrt_ratio_if_square*(r: var Fp, u, v: Fp): SecretBool {.inline.} =
+  ## If u/v is a square, compute √(u/v)
+  ## if not, the result is undefined
+  ## 
+  ## r must not alias u or v
+  ## 
+  ## The square root, if it exist is multivalued,
+  ## i.e. both (u/v)² == (-u/v)²
+  ## This procedure returns a deterministic result
+  ## This procedure is constant-time
+  when Fp.C.hasP5mod8_primeModulus():
+    sqrt_ratio_if_square_p5mod8(r, u, v)
+  else:
+    {.error: "sqrt_ratio for curve " & $Fp & " is not implemented".}
+
 {.pop.} # raises no exceptions
