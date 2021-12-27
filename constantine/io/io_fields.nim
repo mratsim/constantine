@@ -8,7 +8,7 @@
 
 import
   ./io_bigints,
-  ../config/[common, curves],
+  ../config/[common, type_ff],
   ../arithmetic/finite_fields,
   ../primitives
 

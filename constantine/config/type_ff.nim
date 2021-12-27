@@ -9,7 +9,7 @@
 import
   ./common,
   ./curves_declaration,
-  ./curves_prop_core
+  ./curves_prop_field_core
 
 export matchingBigInt
 

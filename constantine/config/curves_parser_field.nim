@@ -43,10 +43,10 @@ type
     Large
 
   CurveCoef* = object
-    case kind: CurveCoefKind
+    case kind*: CurveCoefKind
     of NoCoef: discard
-    of Small: coef: int
-    of Large: coefHex: string
+    of Small: coef*: int
+    of Large: coefHex*: string
 
   CurveEquationForm* = enum
     ShortWeierstrass
@@ -85,37 +85,37 @@ type
     D_Twist
     M_Twist
 
-  CurveParams = object
+  CurveParams* = object
     ## All the curve parameters that may be defined
     # Note: we don't use case object here, the transition is annoying
     #       and would force use to scan all "kind" field (eq_form, family, ...)
     #       before instantiating the object.
-    name: NimNode
+    name*: NimNode
 
     # Field parameters
-    bitWidth: NimNode # nnkIntLit
-    modulus: NimNode  # nnkStrLit (hex)
+    bitWidth*: NimNode # nnkIntLit
+    modulus*: NimNode  # nnkStrLit (hex)
 
     # Towering
-    nonresidue_fp: NimNode # nnkIntLit
-    nonresidue_fp2: NimNode # nnkPar(nnkIntLit, nnkIntLit)
+    nonresidue_fp*: NimNode # nnkIntLit
+    nonresidue_fp2*: NimNode # nnkPar(nnkIntLit, nnkIntLit)
 
     # Curve parameters
-    eq_form: CurveEquationForm
-    coef_A: CurveCoef
-    coef_B: CurveCoef
-    coef_D: CurveCoef
-    order: NimNode # nnkStrLit (hex)
-    orderBitwidth: NimNode # nnkIntLit
+    eq_form*: CurveEquationForm
+    coef_A*: CurveCoef
+    coef_B*: CurveCoef
+    coef_D*: CurveCoef
+    order*: NimNode # nnkStrLit (hex)
+    orderBitwidth*: NimNode # nnkIntLit
 
-    embedding_degree: int
-    sexticTwist: SexticTwist
+    embedding_degree*: int
+    sexticTwist*: SexticTwist
 
-    family: CurveFamily
+    family*: CurveFamily
 
-var curvesDefinitions {.compileTime.}: seq[CurveParams]
+var curvesDefinitions* {.compileTime.}: seq[CurveParams]
 
-proc parseCurveDecls(defs: var seq[CurveParams], curves: NimNode) =
+proc parseCurveDecls*(defs: var seq[CurveParams], curves: NimNode) =
   ## Parse the curve declarations and store them in the curve definitions
   curves.expectKind(nnkStmtList)
 
@@ -182,6 +182,10 @@ proc parseCurveDecls(defs: var seq[CurveParams], curves: NimNode) =
       elif sectionId.eqIdent"coef_a":
         if sectionVal.kind == nnkIntLit:
           params.coef_A = CurveCoef(kind: Small, coef: sectionVal.intVal.int)
+        elif sectionVal.kind == nnkPrefix: # Got -1
+          sectionVal[0].expectIdent"-"
+          sectionVal[1].expectKind(nnkIntLit)
+          params.coef_B = CurveCoef(kind: Small, coef: -sectionVal[1].intVal.int)
         else:
           params.coef_A = CurveCoef(kind: Large, coefHex: sectionVal.strVal)
       elif sectionId.eqIdent"coef_b":
@@ -222,28 +226,14 @@ proc parseCurveDecls(defs: var seq[CurveParams], curves: NimNode) =
 
     defs.add params
 
-proc exported(id: string): NimNode =
+proc exported*(id: string): NimNode =
   nnkPostfix.newTree(
     ident"*",
     ident(id)
   )
 
-template getCoef(c: CurveCoef, width: NimNode): untyped {.dirty.}=
-  case c.kind
-  of NoCoef:
-    error "Unreachable"
-    nnkDiscardStmt.newTree(newLit "Dummy")
-  of Small:
-    newLit c.coef
-  of Large:
-    newCall(
-      bindSym"fromHex",
-      nnkBracketExpr.newTree(bindSym"BigInt", width),
-      newLit c.coefHex
-    )
-
-proc genMainConstants(defs: var seq[CurveParams]): NimNode =
-  ## Generate curves and fields main constants
+proc genFieldsConstants(defs: seq[CurveParams]): NimNode =
+  ## Generate fields main constants
 
   # MapCurveBitWidth & MapCurveOrderBitWidth
   # are workaround for https://github.com/nim-lang/Nim/issues/16774
@@ -251,12 +241,10 @@ proc genMainConstants(defs: var seq[CurveParams]): NimNode =
   var Curves: seq[NimNode]
   var MapCurveBitWidth = nnkBracket.newTree()
   var MapCurveOrderBitWidth = nnkBracket.newTree()
-  var MapCurveFamily = nnkBracket.newTree()
   var curveModStmts = newStmtList()
-  var curveEllipticStmts = newStmtList()
-  var curveExtraStmts = newStmtList()
 
   for curveDef in defs:
+
     curveDef.name.expectKind(nnkIdent)
     curveDef.bitWidth.expectKind(nnkIntLit)
     curveDef.modulus.expectKind(nnkStrLit)
@@ -264,9 +252,10 @@ proc genMainConstants(defs: var seq[CurveParams]): NimNode =
     let curve = curveDef.name
     let bitWidth = curveDef.bitWidth
     let modulus = curveDef.modulus
-    let family = curveDef.family
 
     Curves.add curve
+
+    # Field Fp
     # "BN254_Snarks: 254" array construction expression
     MapCurveBitWidth.add nnkExprColonExpr.newTree(
       curve, bitWidth
@@ -282,19 +271,10 @@ proc genMainConstants(defs: var seq[CurveParams]): NimNode =
       )
     )
 
-    MapCurveFamily.add nnkExprColonExpr.newTree(
-        curve, newLit(family)
-    )
-
-    # Curve equation
-    # -----------------------------------------------
-    curveEllipticStmts.add newConstStmt(
-      exported($curve & "_equation_form"),
-      newLit curveDef.eq_form
-    )
+    # Field Fr
     if not curveDef.order.isNil:
       curveDef.orderBitwidth.expectKind(nnkIntLit)
-      curveEllipticStmts.add newConstStmt(
+      curveModStmts.add newConstStmt(
         exported($curve & "_Order"),
         newCall(
           bindSym"fromHex",
@@ -306,7 +286,7 @@ proc genMainConstants(defs: var seq[CurveParams]): NimNode =
         curve, curveDef.orderBitwidth
       )
     else: # Dummy
-      curveEllipticStmts.add newConstStmt(
+      curveModStmts.add newConstStmt(
         exported($curve & "_Order"),
         newCall(
           bindSym"fromHex",
@@ -316,38 +296,6 @@ proc genMainConstants(defs: var seq[CurveParams]): NimNode =
       )
       MapCurveOrderBitWidth.add nnkExprColonExpr.newTree(
         curve, newLit 1
-      )
-
-    if curveDef.coef_A.kind != NoCoef and curveDef.coef_B.kind != NoCoef:
-      curveEllipticStmts.add newConstStmt(
-        exported($curve & "_coef_A"),
-        curveDef.coef_A.getCoef(bitWidth)
-      )
-      curveEllipticStmts.add newConstStmt(
-        exported($curve & "_coef_B"),
-        curveDef.coef_B.getCoef(bitWidth)
-      )
-
-      # Towering
-      # -----------------------------------------------
-      curveEllipticStmts.add newConstStmt(
-        exported($curve & "_nonresidue_fp"),
-        curveDef.nonresidue_fp
-      )
-      curveEllipticStmts.add newConstStmt(
-        exported($curve & "_nonresidue_fp2"),
-        curveDef.nonresidue_fp2
-      )
-
-      # Pairing
-      # -----------------------------------------------
-      curveEllipticStmts.add newConstStmt(
-        exported($curve & "_embedding_degree"),
-        newLit curveDef.embedding_degree
-      )
-      curveEllipticStmts.add newConstStmt(
-        exported($curve & "_sexticTwist"),
-        newLit curveDef.sexticTwist
       )
 
   # end for ---------------------------------------------------
@@ -367,18 +315,11 @@ proc genMainConstants(defs: var seq[CurveParams]): NimNode =
   result.add newConstStmt(
     exported("CurveBitWidth"), MapCurveBitWidth
   )
-  # const CurveFamily: array[Curve, CurveFamily] = ...
-  result.add newConstStmt(
-    exported("CurveFamilies"), MapCurveFamily
-  )
+  result.add curveModStmts
   # const CurveOrderBitSize: array[Curve, int] = ...
   result.add newConstStmt(
     exported("CurveOrderBitWidth"), MapCurveOrderBitWidth
   )
-
-  result.add curveModStmts
-  result.add curveEllipticStmts
-  result.add curveExtraStmts
 
   # echo result.toStrLit()
 
@@ -400,4 +341,4 @@ macro declareCurves*(curves: untyped): untyped =
 
   curves.expectKind(nnkStmtList)
   curvesDefinitions.parseCurveDecls(curves)
-  result = curvesDefinitions.genMainConstants()
+  result = curvesDefinitions.genFieldsConstants()

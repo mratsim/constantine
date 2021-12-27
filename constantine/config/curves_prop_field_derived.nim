@@ -11,7 +11,7 @@ import
   std/macros,
   # Internal
   ./type_bigint, ./type_ff, ./common,
-  ./curves_declaration, ./curves_prop_core, ./curves_derived
+  ./curves_declaration, ./curves_prop_field_core, ./curves_derived
 
 # ############################################################
 #

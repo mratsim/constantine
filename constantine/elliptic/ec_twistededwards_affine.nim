@@ -20,14 +20,13 @@ import
 #
 # ############################################################
 
-type
-  ECP_TwEdwards_Aff*[F] = object
-    ## Elliptic curve point for a curve in Twisted Edwards form
-    ##   ax²+y²=1+dx²y²
-    ## with a, d ≠ 0 and a ≠ d
-    ##
-    ## over a field F
-    x*, y*: F
+type ECP_TwEdwards_Aff*[F] = object
+  ## Elliptic curve point for a curve in Twisted Edwards form
+  ##   ax²+y²=1+dx²y²
+  ## with a, d ≠ 0 and a ≠ d
+  ##
+  ## over a field F
+  x*, y*: F
 
 func `==`*(P, Q: ECP_TwEdwards_Aff): SecretBool =
   ## Constant-time equality check
@@ -89,10 +88,16 @@ func trySetFromCoordY*[F](P: var ECP_TwEdwards_Aff[F], y: F): SecretBool =
   t.square(y)
 
   # (dy² − a)
-  P.y.fromInt F.C.getCoefD()
+  when F.C.getCoefD() is int:
+    P.y.fromInt F.C.getCoefD()
+  else:
+    P.y = F.C.getCoefD()
   P.y *= t
-  P.x.fromInt F.C.getCoefA()
-  P.y -= P.x
+  when F.C.getCoefA() is int:
+    P.x.fromInt F.C.getCoefA()
+    P.y -= P.x
+  else:
+    P.y -= F.C.getCoefA()
   P.y.inv()
 
   # y² − 1
@@ -103,3 +108,17 @@ func trySetFromCoordY*[F](P: var ECP_TwEdwards_Aff[F], y: F): SecretBool =
   result = sqrt_ratio_if_square(t, P.x, P.y)
   P.x = t
   P.y = y
+
+func neg*(P: var ECP_TwEdwards_Aff, Q: ECP_TwEdwards_Aff) =
+  ## Negate ``P``
+  P.x.neg(Q.x)
+  P.y = Q.y
+
+func neg*(P: var ECP_TwEdwards_Aff) =
+  ## Negate ``P``
+  P.x.neg()
+
+func cneg*(P: var ECP_TwEdwards_Aff, ctl: CTBool) =
+  ## Conditional negation.
+  ## Negate if ``ctl`` is true
+  P.x.cneg(ctl)

@@ -8,9 +8,9 @@
 
 import
   # Internal
-  ./curves_parser
+  ./curves_parser_field
 
-export CurveFamily
+export CurveFamily, SexticTwist
 
 # ############################################################
 #
@@ -115,9 +115,11 @@ declareCurves:
     # Montgomery form:            y² = x³ + 486662x² + x 
     # Edwards form:          x² + y² = 1+dx²y²           with d = 121665/121666
     # Twisted Edwards form: ax² + y² = 1+dx²y²           with a = 121666 and d = 121665
+    # or for use in Hisil, Wong, Carter, and Dawson extended coordinates 
+    #                       ax² + y² = 1+dx²y²           with a = -1 d=-121665/121666                     
     eq_form: TwistedEdwards
-    coef_a: 121666
-    coef_d: 121665
+    coef_a: -1
+    coef_d: "0x52036cee2b6ffe738cc740797779e89800700a4d4141d8ab75eb4dca135978a3"
 
   curve P256: # secp256r1 / NIST P-256
     bitwidth: 256
