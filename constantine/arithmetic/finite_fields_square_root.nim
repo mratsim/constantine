@@ -10,7 +10,8 @@ import
   ../primitives,
   ../config/[common, type_ff, curves],
   ../curves/zoo_square_roots,
-  ./bigints, ./finite_fields
+  ./bigints, ./finite_fields,
+  ./finite_fields_inversion
 
 # ############################################################
 #
@@ -419,6 +420,9 @@ func sqrt_ratio_if_square*(r: var Fp, u, v: Fp): SecretBool {.inline.} =
   when Fp.C.hasP5mod8_primeModulus():
     sqrt_ratio_if_square_p5mod8(r, u, v)
   else:
-    {.error: "sqrt_ratio for curve " & $Fp & " is not implemented".}
+    # TODO: Fuse inversion and tonelli-shanks and legendre symbol
+    r.inv(v)
+    r *= u
+    result = r.sqrt_if_square()
 
 {.pop.} # raises no exceptions

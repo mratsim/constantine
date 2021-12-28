@@ -52,14 +52,9 @@ func isOnCurve*[F](x, y: F): SecretBool =
   when F.C.getCoefA() is int:
     when F.C.getCoefA() == -1:
       t2.diff(t1, t0)
-    elif F.C.getCoefA() >= 0:
-      t2.fromUint uint F.C.getCoefA()
-      t2 *= t0
-      t2 += t1
     else:
-      t2.fromUint uint -F.C.getCoefA()
-      t2 *= t0
-      t2.diff(t1, t2)
+      t2.prod(t0, F.C.getCoefA())
+      t2 += t1
   else:
     t2.prod(F.C.getCoefA(), t0)
     t2 += t1

@@ -236,7 +236,9 @@ func checkValidModulus(M: BigInt) =
   const expectedMsb = M.bits-1 - WordBitWidth * (M.limbs.len - 1)
   let msb = log2(BaseType(M.limbs[^1]))
 
-  doAssert msb == expectedMsb, "Internal Error: the modulus must use all declared bits and only those"
+  doAssert msb == expectedMsb, "Internal Error: the modulus must use all declared bits and only those:\n" &
+    "    Modulus '" & M.toHex() & "' is declared with " & $M.bits &
+    " bits but uses " & $(msb + WordBitWidth * (M.limbs.len - 1)) & " bits."
 
 func countSpareBits*(M: BigInt): int =
   ## Count the number of extra bits

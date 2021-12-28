@@ -21,3 +21,15 @@ run_EC_addition_tests(
     Iters = Iters,
     moduleName = "test_ec_twistededwards_projective_add_double_" & $Curve25519
   )
+
+run_EC_addition_tests(
+    ec = ECP_TwEdwards_Prj[Fp[Jubjub]],
+    Iters = Iters,
+    moduleName = "test_ec_twistededwards_projective_add_double_" & $Jubjub
+  )
+
+run_EC_addition_tests(
+    ec = ECP_TwEdwards_Prj[Fp[Bandersnatch]],
+    Iters = Iters,
+    moduleName = "test_ec_twistededwards_projective_add_double_" & $Bandersnatch
+  )

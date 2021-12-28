@@ -155,9 +155,13 @@ proc main() =
     randomSqrtCheck BLS12_381
     randomSqrtCheck BW6_761
     randomSqrtCheck Curve25519
+    randomSqrtCheck Jubjub
+    randomSqrtCheck Bandersnatch
   
   suite "Modular sqrt(u/v)" & " [" & $WordBitwidth & "-bit mode]":
     randomSqrtRatioCheck Curve25519
+    randomSqrtRatioCheck Jubjub
+    randomSqrtRatioCheck Bandersnatch
 
   suite "Modular square root - 32-bit bugs highlighted by property-based testing " & " [" & $WordBitwidth & "-bit mode]":
     # test "FKM12_447 - #30": - Deactivated, we don't support the curve as no one uses it.

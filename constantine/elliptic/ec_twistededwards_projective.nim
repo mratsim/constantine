@@ -203,10 +203,11 @@ func sum*[Field](
   E.sum(C, D)     # E = C+D
   
   # Y3 = A*G*(D-a*C)
-  when Field.C.getCoefA == -1:
+  when Field.C.getCoefA() == -1:
     r.y = E       # (D-a*C) = D+C
   else:
-    {.error: "Not Implemented: Twisted Edwards projective sum, a != -1".}
+    r.y.prod(C, Field.C.getCoefA())
+    r.y.diff(D, r.y)
   r.y *= A
   r.y *= G
 
@@ -263,13 +264,7 @@ func double*[Field](
 
   D.square(P.y)
   E.square(P.x)
-  when Field.C.getCoefA() is int:
-    when Field.C.getCoefA() == -1:
-      E.neg()
-    else:
-      {.error: "Not implemented: curve coef A != -1".}
-  else:
-    {.error: "Not implemented: curve coef A != -1".}
+  E *= Field.C.getCoefA()
 
   r.y.sum(E, D)    # Ry stores F = E+D
   H.square(P.z)

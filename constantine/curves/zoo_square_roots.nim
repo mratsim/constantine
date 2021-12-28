@@ -14,7 +14,9 @@ import
   ./bn254_nogami_sqrt,
   ./bn254_snarks_sqrt,
   ./bw6_761_sqrt,
-  ./curve25519_sqrt
+  ./curve25519_sqrt,
+  ./jubjub_sqrt,
+  ./bandersnatch_sqrt
 
 export
   bls12_377_sqrt,
