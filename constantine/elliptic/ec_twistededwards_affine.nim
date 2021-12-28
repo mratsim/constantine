@@ -40,25 +40,45 @@ func isInf*(P: ECP_TwEdwards_Aff): SecretBool =
   result = P.x.isZero() and P.y.isOne()
 
 
-func isOnCurve*[F](x, y: ECP_TwEdwards_Aff[F]): SecretBool =
+func isOnCurve*[F](x, y: F): SecretBool =
   ## Returns true if the (x, y) coordinates
-  ## represents a point of the elliptic curve
+  ## represents a point of the Twisted Edwards elliptic curve
+  ## with equation ax²+y²=1+dx²y²
   var t0{.noInit.}, t1{.noInit.}, t2{.noInit.}: F
   t0.square(x)
   t1.square(y)
   
   # ax²+y²
-  t2.fromInt F.C.getCoefA()
-  t2 *= t0
-  t2 += t1
+  when F.C.getCoefA() is int:
+    when F.C.getCoefA() == -1:
+      t2.diff(t1, t0)
+    elif F.C.getCoefA() >= 0:
+      t2.fromUint uint F.C.getCoefA()
+      t2 *= t0
+      t2 += t1
+    else:
+      t2.fromUint uint -F.C.getCoefA()
+      t2 *= t0
+      t2.diff(t1, t2)
+  else:
+    t2.prod(F.C.getCoefA(), t0)
+    t2 += t1
 
   # dx²y²
   t0 *= t1
-  t1.fromInt F.C.getCoefD()
-  t0 *= t1
+  when F.C.getCoefD() is int:
+    when F.C.getCoefD >= 0:
+      t1.fromUint uint F.C.getCoefD()
+      t0 *= t1
+    else:
+      t1.fromUint uint F.C.getCoefD()
+      t0 *= t1
+      t0.neg()
+  else:
+    t0 *= F.C.getCoefD()
 
   # ax²+y² - dx²y² =? 1
-  t2 -= t1
+  t2 -= t0
   return t2.isOne()
 
 func trySetFromCoordY*[F](P: var ECP_TwEdwards_Aff[F], y: F): SecretBool =
@@ -89,16 +109,26 @@ func trySetFromCoordY*[F](P: var ECP_TwEdwards_Aff[F], y: F): SecretBool =
 
   # (dy² − a)
   when F.C.getCoefD() is int:
-    P.y.fromInt F.C.getCoefD()
+    when F.C.getCoefD() >= 0:
+      P.y.fromUint uint F.C.getCoefD()
+    else:
+      P.y.fromUint uint -F.C.getCoefD()
+      P.y.neg()
   else:
     P.y = F.C.getCoefD()
   P.y *= t
   when F.C.getCoefA() is int:
-    P.x.fromInt F.C.getCoefA()
-    P.y -= P.x
+    when F.C.getCoefA == -1:
+      P.x.setOne()
+      P.y += P.x
+    elif F.C.getCoefA >= 0:
+      P.x.fromUint uint F.C.getCoefA()
+      P.y -= P.x
+    else:
+      P.x.fromUint uint -F.C.getCoefA()
+      P.y += P.x
   else:
     P.y -= F.C.getCoefA()
-  P.y.inv()
 
   # y² − 1
   P.x.setMinusOne()

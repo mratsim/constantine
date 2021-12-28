@@ -45,6 +45,7 @@ func fromInt*(dst: var FF,
     let src = isNeg.mux(SecretWord -src, SecretWord src)
     let raw {.noinit.} = (type dst.mres).fromRawUint(cast[array[sizeof(src), byte]](src), cpuEndian)
     dst.fromBig(raw)
+    dst.cneg(isNeg)
 
 func exportRawUint*(dst: var openarray[byte],
                        src: FF,

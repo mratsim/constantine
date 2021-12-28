@@ -185,7 +185,7 @@ proc parseCurveDecls*(defs: var seq[CurveParams], curves: NimNode) =
         elif sectionVal.kind == nnkPrefix: # Got -1
           sectionVal[0].expectIdent"-"
           sectionVal[1].expectKind(nnkIntLit)
-          params.coef_B = CurveCoef(kind: Small, coef: -sectionVal[1].intVal.int)
+          params.coef_A = CurveCoef(kind: Small, coef: -sectionVal[1].intVal.int)
         else:
           params.coef_A = CurveCoef(kind: Large, coefHex: sectionVal.strVal)
       elif sectionId.eqIdent"coef_b":

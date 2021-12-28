@@ -57,10 +57,10 @@ func curve_eq_rhs*[F](y2: var F, x: F, Tw: static Twisted) =
 
   when Tw == NotOnTwist:
     when F.C.getCoefB() >= 0:
-      y2.fromInt F.C.getCoefB()
+      y2.fromUint uint F.C.getCoefB()
       y2 += t
     else:
-      y2.fromInt -F.C.getCoefB()
+      y2.fromUint uint -F.C.getCoefB()
       y2.diff(t, y2)
   else:
     y2.sum(F.C.getCoefB_G2, t)

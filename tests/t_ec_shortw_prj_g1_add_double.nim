@@ -14,7 +14,7 @@ import
   ./t_ec_template
 
 const
-  Iters = 1
+  Iters = 8
 
 run_EC_addition_tests(
     ec = ECP_ShortW_Prj[Fp[BN254_Snarks], NotOnTwist],
