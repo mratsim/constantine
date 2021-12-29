@@ -35,3 +35,21 @@ where code size is not an issue for example for multi-precision addition.
 - Faster big-integer modular multiplication for most moduli\
   Gautam Botrel, Gus Gutoski, and Thomas Piellard, 2020\
   https://hackmd.io/@zkteam/modular_multiplication
+
+### Square roots
+
+- Probabilistic Primality Testing
+  A. Oliver L. Atkin
+  http://algo.inria.fr/seminars/sem91-92/atkin.pdf
+
+- Square root computation over even extension fields
+  Gora Adj, Francisco Rodríguez-Henríquez, 2012
+  https://eprint.iacr.org/2012/685
+
+- A Complete Generalization of Atkin’s Square Root Algorithm
+  Armand Stefan Rotaru, Sorin Iftene, 2013
+  https://profs.info.uaic.ro/~siftene/fi125(1)04.pdf
+
+- Computing Square Roots Faster than the Tonelli-Shanks/Bernstein Algorithm
+  Palash Sarkar, 2020
+  https://eprint.iacr.org/2020/1407

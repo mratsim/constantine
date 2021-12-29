@@ -89,8 +89,15 @@ Curves:
 - BN254_Snarks (Zero-Knowledge Proofs, Snarks, Starks, Zcash, Ethereum 1)
 - BLS12-377 (Zexe)
 - BLS12-381 (Algorand, Chia Networks, Dfinity, Ethereum 2, Filecoin, Zcash Sapling)
-- BW6-671 (Celo, EY Blockchain) (Pairings are WIP)
+- BW6-671 (Celo, EY Blockchain) (Pairings are WIP)\
+  BLS12-377 is embedded in BW6-761 for one layer proof composition in zk-SNARKS.
 
+### Other curves
+
+- Curve25519, used in ed25519 and X25519 from TLS 1.3 protocol and the Signal protocol.
+  With Ristretto, it can be used in bulletproofs.
+- Jubjub, a curve embedded in BLS12-381 scalar field to be used in zk-SNARKS circuits.
+- Bandersnatch, a more efficient curve embedded in BLS12-381 scalar field to be used in zk-SNARKS circuits.
 ## Security
 
 Hardening an implementation against all existing and upcoming attack vectors is an extremely complex task.

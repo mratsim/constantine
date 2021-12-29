@@ -23,6 +23,8 @@ import
     ec_shortweierstrass_affine,
     ec_shortweierstrass_jacobian,
     ec_shortweierstrass_projective,
+    ec_twistededwards_affine,
+    ec_twistededwards_projective,
     ec_scalar_mul],
     ../constantine/io/[io_bigints, io_fields],
   # Test utilities
@@ -51,6 +53,15 @@ func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen)
     else:
       result = rng.random_long01Seq_with_randZ(EC)
 
+template pairingGroup(EC: typedesc): string =
+  when EC is (ECP_ShortW_Aff or ECP_ShortW_Prj or ECP_ShortW_Jac):
+    when EC.Tw == NotOnTwist:
+      "G1"
+    else:
+      "G2"
+  else:
+    ""
+
 proc run_EC_addition_tests*(
        ec: typedesc,
        Iters: static int,
@@ -64,12 +75,9 @@ proc run_EC_addition_tests*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  when ec.Tw == NotOnTwist:
-    const G1_or_G2 = "G1"
-  else:
-    const G1_or_G2 = "G2"
+  const G1_or_G2 = pairingGroup(ec)
 
-  const testSuiteDesc = "Elliptic curve in Short Weierstrass form with projective coordinates"
+  const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form with projective coordinates"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
     test "The infinity point is the neutral element w.r.t. to EC " & G1_or_G2 & " addition":
@@ -215,12 +223,9 @@ proc run_EC_mul_sanity_tests*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  when ec.Tw == NotOnTwist:
-    const G1_or_G2 = "G1"
-  else:
-    const G1_or_G2 = "G2"
+  const G1_or_G2 = pairingGroup(ec)
 
-  const testSuiteDesc = "Elliptic curve in Short Weierstrass form"
+  const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
     test "EC " & G1_or_G2 & " mul [0]P == Inf":
@@ -313,12 +318,9 @@ proc run_EC_mul_distributive_tests*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  when ec.Tw == NotOnTwist:
-    const G1_or_G2 = "G1"
-  else:
-    const G1_or_G2 = "G2"
+  const G1_or_G2 = pairingGroup(ec)
 
-  const testSuiteDesc = "Elliptic curve in Short Weierstrass form"
+  const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
 
@@ -383,12 +385,9 @@ proc run_EC_mul_vs_ref_impl*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  when ec.Tw == NotOnTwist:
-    const G1_or_G2 = "G1"
-  else:
-    const G1_or_G2 = "G2"
+  const G1_or_G2 = pairingGroup(ec)
 
-  const testSuiteDesc = "Elliptic curve in Short Weierstrass form"
+  const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
     test "EC " & G1_or_G2 & " mul constant-time is equivalent to a simple double-and-add algorithm":

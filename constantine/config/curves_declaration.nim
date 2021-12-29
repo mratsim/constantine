@@ -8,9 +8,9 @@
 
 import
   # Internal
-  ./curves_parser
+  ./curves_parser_field
 
-export CurveFamily
+export CurveFamily, SexticTwist
 
 # ############################################################
 #
@@ -108,9 +108,66 @@ declareCurves:
     embedding_degree: 12
     sexticTwist: D_Twist
 
+  curve BabyJubjub: # Curve embedded in BN254_Snarks scalar field
+    # https://iden3-docs.readthedocs.io/en/latest/_downloads/33717d75ab84e11313cc0d8a090b636f/Baby-Jubjub.pdf
+    bitwidth: 254
+    modulus: "0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001"
+
+    # Montgomery form: y² = x³ + 168698x² + x
+    # Edwards form: x² + y² = 1 + dx²y² with d=168696/168700
+    order: "0x60c89ce5c263405370a08b6d0302b0bab3eedb83920ee0a677297dc392126f1"
+    orderBitwidth: 251
+    cofactor: 8
+    # eq_form: Edwards
+    coef_d: "0x1575bd81821016c07a5fd2dee78446612498beee8e01a829736c2b06fb281473"
+
+  curve Jubjub: # Zcash Sapling curve embedded in BLS12-381 scalar field
+    # https://z.cash/technology/jubjub/
+    bitwidth: 255
+    modulus: "0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001"
+    # Montgomery form: y² = x³ + 40962x² + x 
+    # Twisted Edwards: ax² + y² = 1+dx²y² with a = -1 d=-10240/10241
+    order: "0xe7db4ea6533afa906673b0101343b00a6682093ccc81082d0970e5ed6f72cb7"
+    orderBitwidth: 252
+    cofactor: 8
+    eq_form: TwistedEdwards
+    coef_a: -1
+    coef_d: "0x2a9318e74bfa2b48f5fd9207e6bd7fd4292d7f6d37579d2601065fd6d6343eb1"
+
+  curve Bandersnatch: # Anoma curve embedded in BLS12-381 scalar field
+    # https://eprint.iacr.org/2021/1152
+    bitwidth: 255
+    modulus: "0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001"
+
+    # Weierstrass form: y² = x³ − 3763200000x − 7867596800000
+    # Mongomery form: By² = x³ + Ax² + x
+    #   B=0x300c3385d13bedb7c9e229e185c4ce8b1dd3b71366bb97c30855c0aa41d62727
+    #   A=0x4247698f4e32ad45a293959b4ca17afa4a2d2317e4c6ce5023e1f
+    # Twisted Edwards form: −5x² + y² = 1 + dx²y²
+    #   d = 138827208126141220649022263972958607803 / 171449701953573178309673572579671231137
+    order: "0x1cfb69d4ca675f520cce760202687600ff8f87007419047174fd06b52876e7e1"
+    orderBitwidth: 253
+    cofactor: 4
+    eq_form: TwistedEdwards
+    coef_a: -5
+    coef_d: "6389c12633c267cbc66e3bf86be3b6d8cb66677177e54f92b369f2f5188d58e7"
+
   curve Curve25519: # Bernstein curve
     bitwidth: 255
     modulus: "0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed"
+
+    # Montgomery form:            y² = x³ + 486662x² + x 
+    # Edwards form:          x² + y² = 1+dx²y²           with d = 121665/121666
+    # Twisted Edwards form: ax² + y² = 1+dx²y²           with a = 121666 and d = 121665
+    # or for use in Hisil, Wong, Carter, and Dawson extended coordinates 
+    #                       ax² + y² = 1+dx²y²           with a = -1 d=-121665/121666                     
+    order: "0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed"
+    orderBItwidth: 253
+    cofactor: 8
+    eq_form: TwistedEdwards
+    coef_a: -1
+    coef_d: "0x52036cee2b6ffe738cc740797779e89800700a4d4141d8ab75eb4dca135978a3"
+
   curve P256: # secp256r1 / NIST P-256
     bitwidth: 256
     modulus: "0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff"

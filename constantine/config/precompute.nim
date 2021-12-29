@@ -236,7 +236,9 @@ func checkValidModulus(M: BigInt) =
   const expectedMsb = M.bits-1 - WordBitWidth * (M.limbs.len - 1)
   let msb = log2(BaseType(M.limbs[^1]))
 
-  doAssert msb == expectedMsb, "Internal Error: the modulus must use all declared bits and only those"
+  doAssert msb == expectedMsb, "Internal Error: the modulus must use all declared bits and only those:\n" &
+    "    Modulus '" & M.toHex() & "' is declared with " & $M.bits &
+    " bits but uses " & $(msb + WordBitWidth * (M.limbs.len - 1)) & " bits."
 
 func countSpareBits*(M: BigInt): int =
   ## Count the number of extra bits
@@ -431,6 +433,25 @@ func primeMinus3div4_BE*[bits: static int](
   var tmp = P
   discard tmp.sub(3)
   tmp.shiftRight(2)
+
+  result.exportRawUint(tmp, bigEndian)
+
+func primeMinus5div8_BE*[bits: static int](
+       P: BigInt[bits]
+     ): array[(bits+7) div 8, byte] {.noInit.} =
+  ## For an input prime `p`, compute (p-5)/8
+  ## and return the result as a canonical byte array / octet string
+  ## For use to check if a number is a square (quadratic residue)
+  ## and if so compute the square root in a fused manner
+  ##
+  # Output size:
+  # - (bits + 7) div 8: bits => byte conversion rounded up
+  # - (bits + 7 - 3): dividing by 8 means 3 bits is unused
+  # => TODO: reduce the output size (to potentially save a byte and corresponding multiplication/squarings)
+
+  var tmp = P
+  discard tmp.sub(5)
+  tmp.shiftRight(3)
 
   result.exportRawUint(tmp, bigEndian)
 

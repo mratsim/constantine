@@ -11,7 +11,7 @@ import
   std/macros,
   # Internal
   ./type_bigint, ./type_ff, ./common,
-  ./curves_declaration, ./curves_prop_core, ./curves_derived
+  ./curves_declaration, ./curves_prop_field_core, ./curves_derived
 
 # ############################################################
 #
@@ -108,8 +108,12 @@ macro getPrimeMinus1div2_BE*(ff: type FF): untyped =
   result = bindConstant(ff, "PrimeMinus1div2_BE")
 
 macro getPrimeMinus3div4_BE*(ff: type FF): untyped =
-  ## Get (P-3) / 2 in big-endian serialized format
+  ## Get (P-3) / 4 in big-endian serialized format
   result = bindConstant(ff, "PrimeMinus3div4_BE")
+
+macro getPrimeMinus5div8_BE*(ff: type FF): untyped =
+  ## Get (P-5) / 8 in big-endian serialized format
+  result = bindConstant(ff, "PrimeMinus5div8_BE")
 
 macro getPrimePlus1div4_BE*(ff: type FF): untyped =
   ## Get (P+1) / 4 for an odd prime in big-endian serialized format

@@ -17,7 +17,7 @@ import
 # ############################################################
 #
 #             Elliptic Curve in Short Weierstrass form
-#                 with Projective Coordinates
+#                 with Affine Coordinates
 #
 # ############################################################
 
@@ -57,10 +57,10 @@ func curve_eq_rhs*[F](y2: var F, x: F, Tw: static Twisted) =
 
   when Tw == NotOnTwist:
     when F.C.getCoefB() >= 0:
-      y2.fromInt F.C.getCoefB()
+      y2.fromUint uint F.C.getCoefB()
       y2 += t
     else:
-      y2.fromInt -F.C.getCoefB()
+      y2.fromUint uint -F.C.getCoefB()
       y2.diff(t, y2)
   else:
     y2.sum(F.C.getCoefB_G2, t)
@@ -86,7 +86,6 @@ func trySetFromCoordX*[F, Tw](
   ## Try to create a point the elliptic curve
   ## y² = x³ + a x + b     (affine coordinate)
   ##
-  ## The `Z` coordinates is set to 1
   ##
   ## return true and update `P` if `x` leads to a valid point
   ## return false otherwise, in that case `P` is undefined.

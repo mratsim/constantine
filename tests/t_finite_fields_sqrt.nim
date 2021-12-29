@@ -81,7 +81,7 @@ proc exhaustiveCheck(C: static Curve, modulus: static int) =
           bool not a.isSquare()
           bool not a.sqrt_if_square()
 
-template testImpl(a: untyped): untyped {.dirty.} =
+template testSqrtImpl(a: untyped): untyped {.dirty.} =
   var na{.noInit.}: typeof(a)
   na.neg(a)
 
@@ -103,17 +103,46 @@ template testImpl(a: untyped): untyped {.dirty.} =
 
 proc randomSqrtCheck(C: static Curve) =
   test "Random square root check for " & $Curve(C):
-    for _ in 0 ..< 1: # Iters:
+    for _ in 0 ..< Iters:
       let a = rng.random_unsafe(Fp[C])
-      testImpl(a)
+      testSqrtImpl(a)
 
     for _ in 0 ..< Iters:
       let a = rng.randomHighHammingWeight(Fp[C])
-      testImpl(a)
+      testSqrtImpl(a)
 
     for _ in 0 ..< Iters:
       let a = rng.random_long01Seq(Fp[C])
-      testImpl(a)
+      testSqrtImpl(a)
+
+template testSqrtRatioImpl(u, v: untyped): untyped {.dirty.} =
+  var u_over_v, r{.noInit.}: typeof(v)
+  u_over_v.inv(v)
+  u_over_v *= u
+
+  let qr = r.sqrt_ratio_if_square(u, v)
+  check: bool(qr) == bool(u_over_v.isSquare())
+
+  if bool(qr):
+    r.square()
+    check: bool(r == u_over_v)
+
+proc randomSqrtRatioCheck(C: static Curve) =
+  test "Random square root check for " & $Curve(C):
+    for _ in 0 ..< Iters:
+      let u = rng.random_unsafe(Fp[C])
+      let v = rng.random_unsafe(Fp[C])
+      testSqrtRatioImpl(u, v)
+
+    for _ in 0 ..< Iters:
+      let u = rng.randomHighHammingWeight(Fp[C])
+      let v = rng.randomHighHammingWeight(Fp[C])
+      testSqrtRatioImpl(u, v)
+
+    for _ in 0 ..< Iters:
+      let u = rng.random_long01Seq(Fp[C])
+      let v = rng.random_long01Seq(Fp[C])
+      testSqrtRatioImpl(u, v)
 
 proc main() =
   suite "Modular square root" & " [" & $WordBitwidth & "-bit mode]":
@@ -125,6 +154,14 @@ proc main() =
     randomSqrtCheck BLS12_377 # p ≢ 3 (mod 4)
     randomSqrtCheck BLS12_381
     randomSqrtCheck BW6_761
+    randomSqrtCheck Curve25519
+    randomSqrtCheck Jubjub
+    randomSqrtCheck Bandersnatch
+  
+  suite "Modular sqrt(u/v)" & " [" & $WordBitwidth & "-bit mode]":
+    randomSqrtRatioCheck Curve25519
+    randomSqrtRatioCheck Jubjub
+    randomSqrtRatioCheck Bandersnatch
 
   suite "Modular square root - 32-bit bugs highlighted by property-based testing " & " [" & $WordBitwidth & "-bit mode]":
     # test "FKM12_447 - #30": - Deactivated, we don't support the curve as no one uses it.
@@ -150,11 +187,11 @@ proc main() =
     test "Fp[2^127 - 1] - #61":
       var a: Fp[Mersenne127]
       a.fromHex"0x75bfffefbfffffff7fd9dfd800000000"
-      testImpl(a)
+      testSqrtImpl(a)
 
     test "Fp[2^127 - 1] - #62":
       var a: Fp[Mersenne127]
       a.fromHex"0x7ff7ffffffffffff1dfb7fafc0000000"
-      testImpl(a)
+      testSqrtImpl(a)
 
 main()

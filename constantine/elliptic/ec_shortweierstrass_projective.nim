@@ -157,6 +157,7 @@ func sum*[F; Tw: static Twisted](
   ##   y² = x³ + a x + b
   ##
   ## ``r`` is initialized/overwritten with the sum
+  ## ``r`` may alias P
   ##
   ## Implementation is constant-time, in particular it will not expose
   ## that P == Q or P == -Q or P or Q are the infinity points
@@ -252,6 +253,8 @@ func madd*[F; Tw: static Twisted](
   ## with p in Projective coordinates and Q in affine coordinates
   ##
   ##   R = P + Q
+  ## 
+  ## ``r`` may alias P
 
   # TODO: static doAssert odd order
 
@@ -321,6 +324,7 @@ func double*[F; Tw: static Twisted](
   ##   y² = x³ + a x + b
   ##
   ## ``r`` is initialized/overwritten with the sum
+  ## ``r`` may alias P
   ##
   ## Implementation is constant-time, in particular it will not expose
   ## that `P` is an infinity point.

@@ -28,7 +28,7 @@
 
 import
   ../primitives,
-  ../config/[common, type_ff, curves],
+  ../config/[common, type_ff, curves_prop_field_core, curves_prop_field_derived],
   ./bigints, ./bigints_montgomery
 
 when UseASM_X86_64:
@@ -137,6 +137,13 @@ func setOne*(a: var FF) =
   # TODO: Nim codegen is not optimal it uses a temporary
   #       Check if the compiler optimizes it away
   a.mres = FF.getMontyOne()
+
+func setMinusOne*(a: var FF) =
+  ## Set ``a`` to -1 (mod p)
+  # Note: we need -1 in Montgomery residue form
+  # TODO: Nim codegen is not optimal it uses a temporary
+  #       Check if the compiler optimizes it away
+  a.mres = FF.getMontyPrimeMinus1()
 
 func `+=`*(a: var FF, b: FF) {.meter.} =
   ## In-place addition modulo p

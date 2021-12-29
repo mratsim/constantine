@@ -1,4 +1,3 @@
-# Constantine
 # Copyright (c) 2018-2019    Status Research & Development GmbH
 # Copyright (c) 2020-Present Mamy André-Ratsimbazafy
 # Licensed and distributed under either of
@@ -10,43 +9,18 @@ import
   # Standard library
   std/macros,
   # Internal
-  ./type_bigint, ./common,
-  ./curves_declaration, ./curves_parser
+  ./type_bigint,
+  ./curves_declaration, ./curves_parser_curve
 
 export CurveFamily, Curve, SexticTwist
-
-# ############################################################
-#
-#                 Field properties
-#
-# ############################################################
-
-{.experimental: "dynamicBindSym".}
-
-macro Mod*(C: static Curve): untyped =
-  ## Get the Modulus associated to a curve
-  result = bindSym($C & "_Modulus")
-
-template getCurveBitwidth*(C: Curve): int =
-  ## Returns the number of bits taken by the curve modulus
-  CurveBitWidth[C]
-
-template matchingBigInt*(C: static Curve): untyped =
-  # Workaround: https://github.com/nim-lang/Nim/issues/16774
-  BigInt[CurveBitWidth[C]]
-
-template family*(C: Curve): CurveFamily =
-  CurveFamilies[C]
-
-template matchingLimbs2x*(C: Curve): untyped =
-  const N2 = wordsRequired(getCurveBitwidth(C)) * 2 # TODO upstream, not precomputing N2 breaks semcheck
-  array[N2, SecretWord] # TODO upstream, using Limbs[N2] breaks semcheck
 
 # ############################################################
 #
 #                   Curve properties
 #
 # ############################################################
+
+{.experimental: "dynamicBindSym".}
 
 macro getCurveOrder*(C: static Curve): untyped =
   ## Get the curve order `r`
@@ -65,6 +39,9 @@ template matchingOrderBigInt*(C: static Curve): untyped =
   # Workaround: https://github.com/nim-lang/Nim/issues/16774
   BigInt[CurveOrderBitWidth[C]]
 
+template family*(C: Curve): CurveFamily =
+  CurveFamilies[C]
+
 macro getEquationForm*(C: static Curve): untyped =
   ## Returns the equation form
   ## (ShortWeierstrass, Montgomery, Twisted Edwards, Weierstrass, ...)
@@ -81,6 +58,12 @@ macro getCoefB*(C: static Curve): untyped =
   ## The return type is polymorphic, it can be an int
   ## or a bigInt depending on the curve
   result = bindSym($C & "_coef_B")
+
+macro getCoefD*(C: static Curve): untyped =
+  ## Returns the D coefficient of the curve
+  ## The return type is polymorphic, it can be an int
+  ## or a bigInt depending on the curve
+  result = bindSym($C & "_coef_D")
 
 macro getNonResidueFp*(C: static Curve): untyped =
   ## Returns the tower extension (and twist) non-residue for 𝔽p

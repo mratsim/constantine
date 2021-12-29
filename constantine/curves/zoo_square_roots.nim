@@ -13,14 +13,18 @@ import
   ./bls12_381_sqrt,
   ./bn254_nogami_sqrt,
   ./bn254_snarks_sqrt,
-  ./bw6_761_sqrt
+  ./bw6_761_sqrt,
+  ./curve25519_sqrt,
+  ./jubjub_sqrt,
+  ./bandersnatch_sqrt
 
 export
   bls12_377_sqrt,
   bls12_381_sqrt,
   bn254_nogami_sqrt,
   bn254_snarks_sqrt,
-  bw6_761_sqrt
+  bw6_761_sqrt,
+  curve25519_sqrt
 
 func hasSqrtAddchain*(C: static Curve): static bool =
   when C in {BLS12_381, BN254_Nogami, BN254_Snarks, BW6_761}:
@@ -39,3 +43,7 @@ func hasTonelliShanksAddchain*(C: static Curve): static bool =
     true
   else:
     false
+
+macro sqrt_minus_one*(C: static Curve): untyped = 
+  ## Return 𝑖 ∈ Fp with 𝑖² ≡ −1 (mod p)
+  return bindSym($C & "_sqrt_minus_one")

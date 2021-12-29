@@ -9,7 +9,7 @@
 import
   # Internals
   ../constantine/config/[type_ff, curves],
-  ../constantine/elliptic/ec_shortweierstrass_projective,
+  ../constantine/elliptic/ec_twistededwards_projective,
   # Test utilities
   ./t_ec_template
 
@@ -17,25 +17,19 @@ const
   Iters = 8
 
 run_EC_addition_tests(
-    ec = ECP_ShortW_Prj[Fp[BN254_Snarks], NotOnTwist],
+    ec = ECP_TwEdwards_Prj[Fp[Curve25519]],
     Iters = Iters,
-    moduleName = "test_ec_shortweierstrass_projective_g1_add_double_" & $BN254_Snarks
+    moduleName = "test_ec_twistededwards_projective_add_double_" & $Curve25519
   )
 
 run_EC_addition_tests(
-    ec = ECP_ShortW_Prj[Fp[BLS12_381], NotOnTwist],
+    ec = ECP_TwEdwards_Prj[Fp[Jubjub]],
     Iters = Iters,
-    moduleName = "test_ec_shortweierstrass_projective_g1_add_double_" & $BLS12_381
+    moduleName = "test_ec_twistededwards_projective_add_double_" & $Jubjub
   )
 
 run_EC_addition_tests(
-    ec = ECP_ShortW_Prj[Fp[BLS12_377], NotOnTwist],
+    ec = ECP_TwEdwards_Prj[Fp[Bandersnatch]],
     Iters = Iters,
-    moduleName = "test_ec_shortweierstrass_projective_g1_add_double_" & $BLS12_377
-  )
-
-run_EC_addition_tests(
-    ec = ECP_ShortW_Prj[Fp[BW6_761], NotOnTwist],
-    Iters = Iters,
-    moduleName = "test_ec_shortweierstrass_projective_g1_add_double_" & $BW6_761
+    moduleName = "test_ec_twistededwards_projective_add_double_" & $Bandersnatch
   )
