@@ -157,6 +157,22 @@ suite "Field Addition/Substraction/Negation via double-precision field elements"
     for _ in 0 ..< Iters:
       addsubneg_random_long01Seq(BLS12_381)
 
+  test "With Curve25519 field modulus":
+    for _ in 0 ..< Iters:
+      addsubneg_random_unsafe(Curve25519)
+    for _ in 0 ..< Iters:
+      addsubneg_randomHighHammingWeight(Curve25519)
+    for _ in 0 ..< Iters:
+      addsubneg_random_long01Seq(Curve25519)
+
+  test "With Bandersnatch field modulus":
+    for _ in 0 ..< Iters:
+      addsubneg_random_unsafe(Bandersnatch)
+    for _ in 0 ..< Iters:
+      addsubneg_randomHighHammingWeight(Bandersnatch)
+    for _ in 0 ..< Iters:
+      addsubneg_random_long01Seq(Bandersnatch)
+
   test "Negate 0 returns 0 (unique Montgomery repr)":
     var a: FpDbl[BN254_Snarks]
     var r {.noInit.}: FpDbl[BN254_Snarks]
@@ -197,6 +213,22 @@ suite "Field Multiplication via double-precision field elements is consistent wi
     for _ in 0 ..< Iters:
       mul_random_long01Seq(BLS12_381)
 
+  test "With Curve25519 field modulus":
+    for _ in 0 ..< Iters:
+      mul_random_unsafe(Curve25519)
+    for _ in 0 ..< Iters:
+      mul_randomHighHammingWeight(Curve25519)
+    for _ in 0 ..< Iters:
+      mul_random_long01Seq(Curve25519)
+
+  test "With Bandersnatch field modulus":
+    for _ in 0 ..< Iters:
+      mul_random_unsafe(Bandersnatch)
+    for _ in 0 ..< Iters:
+      mul_randomHighHammingWeight(Bandersnatch)
+    for _ in 0 ..< Iters:
+      mul_random_long01Seq(Bandersnatch)
+
 suite "Field Squaring via double-precision field elements is consistent with single-width." & " [" & $WordBitwidth & "-bit mode]":
   test "With P-224 field modulus":
     for _ in 0 ..< Iters:
@@ -229,3 +261,19 @@ suite "Field Squaring via double-precision field elements is consistent with sin
       sqr_randomHighHammingWeight(BLS12_381)
     for _ in 0 ..< Iters:
       sqr_random_long01Seq(BLS12_381)
+
+  test "With Curve25519 field modulus":
+    for _ in 0 ..< Iters:
+      sqr_random_unsafe(Curve25519)
+    for _ in 0 ..< Iters:
+      sqr_randomHighHammingWeight(Curve25519)
+    for _ in 0 ..< Iters:
+      sqr_random_long01Seq(Curve25519)
+
+  test "With Bandersnatch field modulus":
+    for _ in 0 ..< Iters:
+      sqr_random_unsafe(Bandersnatch)
+    for _ in 0 ..< Iters:
+      sqr_randomHighHammingWeight(Bandersnatch)
+    for _ in 0 ..< Iters:
+      sqr_random_long01Seq(Bandersnatch)

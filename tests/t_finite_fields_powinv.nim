@@ -198,6 +198,7 @@ proc main() =
     testRandomDiv2 Secp256k1
     testRandomDiv2 BLS12_377
     testRandomDiv2 BLS12_381
+    testRandomDiv2 Bandersnatch
 
   suite "Modular inversion over prime fields" & " [" & $WordBitwidth & "-bit mode]":
     test "Specific tests on Fp[BLS12_381]":
@@ -285,6 +286,7 @@ proc main() =
     testRandomInv Secp256k1
     testRandomInv BLS12_377
     testRandomInv BLS12_381
+    testRandomInv Bandersnatch
 
 main()
 
