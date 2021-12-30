@@ -162,7 +162,7 @@ func montyRedc2x_Comba[N: static int](
 # Montgomery Multiplication
 # ------------------------------------------------------------
 
-func montyMul_CIOS_nocarry(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
+func montyMul_CIOS_sparebit(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   ## Montgomery Multiplication using Coarse Grained Operand Scanning (CIOS)
   ## and no-carry optimization.
   ## This requires the most significant word of the Modulus
@@ -373,11 +373,11 @@ func montyMul*(
     when UseASM_X86_64 and a.len in {2 .. 6}: # TODO: handle spilling
       # ADX implies BMI2
       if ({.noSideEffect.}: hasAdx()):
-        montMul_CIOS_nocarry_asm_adx_bmi2(r, a, b, M, m0ninv)
+        montMul_CIOS_sparebit_asm_adx_bmi2(r, a, b, M, m0ninv)
       else:
-        montMul_CIOS_nocarry_asm(r, a, b, M, m0ninv)
+        montMul_CIOS_sparebit_asm(r, a, b, M, m0ninv)
     else:
-      montyMul_CIOS_nocarry(r, a, b, M, m0ninv)
+      montyMul_CIOS_sparebit(r, a, b, M, m0ninv)
   else:
     montyMul_FIPS(r, a, b, M, m0ninv)
 
@@ -393,7 +393,7 @@ func montySquare*[N](r: var Limbs[N], a, M: Limbs[N],
       # which uses unfused squaring then Montgomery reduction
       # is slightly slower than fused Montgomery multiplication
       when spareBits >= 1:
-        montMul_CIOS_nocarry_asm_adx_bmi2(r, a, a, M, m0ninv)
+        montMul_CIOS_sparebit_asm_adx_bmi2(r, a, a, M, m0ninv)
       else:
         montSquare_CIOS_asm_adx_bmi2(r, a, M, m0ninv, spareBits >= 1)
     else:

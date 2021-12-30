@@ -83,6 +83,7 @@ proc mainSanity() =
     sanity Mersenne127
     sanity P224         # P224 uses the fast-path with 64-bit words and the slow path with 32-bit words
     sanity P256
+    sanity Secp256k1
     sanity BLS12_381
     sanity Curve25519
     sanity Bandersnatch
@@ -153,6 +154,14 @@ suite "Random Modular Squaring is consistent with Modular Multiplication" & " ["
       randomHighHammingWeight(P256)
     for _ in 0 ..< Iters:
       random_long01Seq(P256)
+
+  test "Random squaring mod Secp256k1 [FastSquaring = " & $(Fp[Secp256k1].getSpareBits() >= 2) & "]":
+    for _ in 0 ..< Iters:
+      randomCurve(Secp256k1)
+    for _ in 0 ..< Iters:
+      randomHighHammingWeight(Secp256k1)
+    for _ in 0 ..< Iters:
+      random_long01Seq(Secp256k1)
 
   test "Random squaring mod BLS12_381 [FastSquaring = " & $(Fp[BLS12_381].getSpareBits() >= 2) & "]":
     for _ in 0 ..< Iters:

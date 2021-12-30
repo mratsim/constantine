@@ -31,8 +31,8 @@ const AvailableCurves = [
   BN254_Snarks,
   Curve25519,
   Bandersnatch,
-  # P256,
-  # Secp256k1,
+  P256,
+  Secp256k1,
   BLS12_377,
   BLS12_381,
   BW6_761

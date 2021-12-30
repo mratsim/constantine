@@ -1230,9 +1230,9 @@ func square2x*(r: var QuadraticExt2x, a: QuadraticExt) =
 func square*(r: var QuadraticExt, a: QuadraticExt) =
   when r.fromComplexExtension():
     when true:
-      when UseASM_X86_64 and a.c0.mres.limbs.len <= 6:
+      when UseASM_X86_64 and a.c0.mres.limbs.len <= 6 and r.typeof.has1extraBit():
         if ({.noSideEffect.}: hasAdx()):
-          r.coords.sqrx_complex_asm_adx_bmi2(a.coords)
+          r.coords.sqrx_complex_sparebit_asm_adx_bmi2(a.coords)
         else:
           r.square_complex(a)
       else:
