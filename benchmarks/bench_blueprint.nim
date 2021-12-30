@@ -16,7 +16,7 @@ import
   # Internal
   ../constantine/config/common,
   # Helpers
-  ../helpers/[prng_unsafe, static_for],
+  ../helpers/prng_unsafe,
   ./platforms,
   # Standard library
   std/[monotimes, times, strformat, strutils, macros]
