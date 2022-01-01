@@ -69,9 +69,9 @@ suite "Pairing - Line Functions on BLS12-381" & " [" & $WordBitwidth & "-bit mod
   test "Line double - lt,t(P)":
     proc test_line_double(C: static Curve, randZ: bool, gen: RandomGen) =
       for _ in 0 ..< Iters:
-        let P = rng.random_point(ECP_ShortW_Aff[Fp[C], NotOnTwist], gen)
-        var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], OnTwist], randZ, gen)
-        let Q = rng.random_point(ECP_ShortW_Prj[Fp2[C], OnTwist], randZ, gen)
+        let P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1], gen)
+        var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], G2], randZ, gen)
+        let Q = rng.random_point(ECP_ShortW_Prj[Fp2[C], G2], randZ, gen)
         var l: Line[Fp2[C]]
 
         var T2: typeof(Q)
@@ -91,15 +91,15 @@ suite "Pairing - Line Functions on BLS12-381" & " [" & $WordBitwidth & "-bit mod
   test "Line add - lt,q(P)":
     proc test_line_add(C: static Curve, randZ: bool, gen: RandomGen) =
       for _ in 0 ..< Iters:
-        let P = rng.random_point(ECP_ShortW_Aff[Fp[C], NotOnTwist], gen)
-        let Q = rng.random_point(ECP_ShortW_Prj[Fp2[C], OnTwist], randZ, gen)
-        var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], OnTwist], randZ, gen)
+        let P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1], gen)
+        let Q = rng.random_point(ECP_ShortW_Prj[Fp2[C], G2], randZ, gen)
+        var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], G2], randZ, gen)
         var l: Line[Fp2[C]]
 
         var TQ{.noInit.}: typeof(T)
         TQ.sum(T, Q)
 
-        var Qaff{.noInit.}: ECP_ShortW_Aff[Fp2[C], OnTwist]
+        var Qaff{.noInit.}: ECP_ShortW_Aff[Fp2[C], G2]
         Qaff.affineFromProjective(Q)
         l.line_add(T, Qaff, P)
 

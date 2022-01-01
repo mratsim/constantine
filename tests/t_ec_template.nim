@@ -55,7 +55,7 @@ func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen)
 
 template pairingGroup(EC: typedesc): string =
   when EC is (ECP_ShortW_Aff or ECP_ShortW_Prj or ECP_ShortW_Jac):
-    when EC.Tw == NotOnTwist:
+    when EC.G == G1:
       "G1"
     else:
       "G2"
@@ -426,7 +426,7 @@ proc run_EC_mixed_add_impl*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  when ec.Tw == NotOnTwist:
+  when ec.G == G1:
     const G1_or_G2 = "G1"
   else:
     const G1_or_G2 = "G2"
@@ -439,7 +439,7 @@ proc run_EC_mixed_add_impl*(
         for _ in 0 ..< Iters:
           let a = rng.random_point(EC, randZ, gen)
           let b = rng.random_point(EC, randZ, gen)
-          var bAff: ECP_ShortW_Aff[EC.F, EC.Tw]
+          var bAff: ECP_ShortW_Aff[EC.F, EC.G]
           when b is ECP_ShortW_Prj:
             bAff.affineFromProjective(b)
           else:

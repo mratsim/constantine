@@ -50,7 +50,7 @@ func parseRawUint(
   return cttEVM_Success
 
 func fromRawCoords(
-       dst: var ECP_ShortW_Prj[Fp[BN254_Snarks], NotOnTwist],
+       dst: var ECP_ShortW_Prj[Fp[BN254_Snarks], G1],
        x, y: openarray[byte]): CttEVMStatus =
 
   # Deserialization
@@ -76,7 +76,7 @@ func fromRawCoords(
   # ----------------------
 
   # Point on curve
-  if not bool(isOnCurve(dst.x, dst.y, NotOnTwist)):
+  if not bool(isOnCurve(dst.x, dst.y, G1)):
     return cttEVM_PointNotOnCurve
 
   # BN254_Snarks is a curve with cofactor 1,
@@ -115,7 +115,7 @@ func eth_evm_ecadd*(
   let lastIdx = min(inputs.len, 128) - 1
   padded[0 .. lastIdx] = inputs.toOpenArray(0, lastIdx)
 
-  var P{.noInit.}, Q{.noInit.}, R{.noInit.}: ECP_ShortW_Prj[Fp[BN254_Snarks], NotOnTwist]
+  var P{.noInit.}, Q{.noInit.}, R{.noInit.}: ECP_ShortW_Prj[Fp[BN254_Snarks], G1]
 
   let statusP = P.fromRawCoords(
     x = padded.toOpenArray(0, 31),
@@ -131,7 +131,7 @@ func eth_evm_ecadd*(
     return statusQ
 
   R.sum(P, Q)
-  var aff{.noInit.}: ECP_ShortW_Aff[Fp[BN254_Snarks], NotOnTwist]
+  var aff{.noInit.}: ECP_ShortW_Aff[Fp[BN254_Snarks], G1]
   aff.affineFromProjective(R)
 
   r.toOpenArray(0, 31).exportRawUint(
@@ -172,7 +172,7 @@ func eth_evm_ecmul*(
   let lastIdx = min(inputs.len, 128) - 1
   padded[0 .. lastIdx] = inputs.toOpenArray(0, lastIdx)
 
-  var P{.noInit.}: ECP_ShortW_Prj[Fp[BN254_Snarks], NotOnTwist]
+  var P{.noInit.}: ECP_ShortW_Prj[Fp[BN254_Snarks], G1]
 
   let statusP = P.fromRawCoords(
     x = padded.toOpenArray(0, 31),
@@ -205,7 +205,7 @@ func eth_evm_ecmul*(
   else:
     P.scalarMul(s)
 
-  var aff{.noInit.}: ECP_ShortW_Aff[Fp[BN254_Snarks], NotOnTwist]
+  var aff{.noInit.}: ECP_ShortW_Aff[Fp[BN254_Snarks], G1]
   aff.affineFromProjective(P)
 
   r.toOpenArray(0, 31).exportRawUint(
@@ -215,14 +215,14 @@ func eth_evm_ecmul*(
     aff.y, bigEndian
   )
 
-func subgroupCheck(P: ECP_ShortW_Aff[Fp2[BN254_Snarks], OnTwist]): bool =
+func subgroupCheck(P: ECP_ShortW_Aff[Fp2[BN254_Snarks], G2]): bool =
   ## A point may be on a curve but in case the curve has a cofactor != 1
   ## that point may not be in the correct cyclic subgroup.
   ## If we are on the subgroup of order r then [r]P = 0
   
   # TODO: Generic for any curve
 
-  var Q{.noInit.}: ECP_ShortW_Prj[Fp2[BN254_Snarks], OnTwist]
+  var Q{.noInit.}: ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]
   
   # TODO: precompute up to the endomorphism decomposition
   #       or implement fixed base scalar mul
@@ -242,7 +242,7 @@ func subgroupCheck(P: ECP_ShortW_Aff[Fp2[BN254_Snarks], OnTwist]): bool =
   return bool(Q.isInf())
 
 func fromRawCoords(
-       dst: var ECP_ShortW_Aff[Fp[BN254_Snarks], NotOnTwist],
+       dst: var ECP_ShortW_Aff[Fp[BN254_Snarks], G1],
        x, y: openarray[byte]): CttEVMStatus =
 
   # Deserialization
@@ -264,7 +264,7 @@ func fromRawCoords(
   # ----------------------
 
   # Point on curve
-  if not bool(isOnCurve(dst.x, dst.y, NotOnTwist)):
+  if not bool(isOnCurve(dst.x, dst.y, G1)):
     return cttEVM_PointNotOnCurve
 
   # BN254_Snarks is a curve with cofactor 1,
@@ -273,7 +273,7 @@ func fromRawCoords(
   return cttEVM_Success
 
 func fromRawCoords(
-       dst: var ECP_ShortW_Aff[Fp2[BN254_Snarks], OnTwist],
+       dst: var ECP_ShortW_Aff[Fp2[BN254_Snarks], G2],
        x0, x1, y0, y1: openarray[byte]): CttEVMStatus =
 
   # Deserialization
@@ -302,7 +302,7 @@ func fromRawCoords(
   # ----------------------
 
   # Point on curve
-  if not bool(isOnCurve(dst.x, dst.y, OnTwist)):
+  if not bool(isOnCurve(dst.x, dst.y, G2)):
     return cttEVM_PointNotOnCurve
   
   if not subgroupCheck(dst):
@@ -342,8 +342,8 @@ func eth_evm_ecpairing*(
     return
 
   var gt0{.noInit.}, gt1{.noInit.}: Fp12[BN254_Snarks]
-  var P{.noInit.}: ECP_ShortW_Aff[Fp[BN254_Snarks], NotOnTwist]
-  var Q{.noInit.}: ECP_ShortW_Aff[Fp2[BN254_Snarks], OnTwist]
+  var P{.noInit.}: ECP_ShortW_Aff[Fp[BN254_Snarks], G1]
+  var Q{.noInit.}: ECP_ShortW_Aff[Fp2[BN254_Snarks], G2]
 
   for i in 0 ..< N:
     let pos = i*192

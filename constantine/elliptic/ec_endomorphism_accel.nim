@@ -292,7 +292,7 @@ func scalarMulEndo*[scalBits; EC](
     const M = 2
     # 1. Compute endomorphisms
     var endomorphisms {.noInit.}: array[M-1, typeof(P)]
-    when P.Tw == NotOnTwist:
+    when P.G == G1:
       endomorphisms[0] = P
       endomorphisms[0].x *= C.getCubicRootOfUnity_mod_p()
     else:
@@ -481,7 +481,7 @@ func scalarMulGLV_m2w2*[scalBits; EC](
   static: doAssert: scalBits == C.getCurveOrderBitwidth()
 
   # 1. Compute endomorphisms
-  when P0.Tw == NotOnTwist:
+  when P0.G == G1:
     var P1 = P0
     P1.x *= C.getCubicRootOfUnity_mod_p()
   else:

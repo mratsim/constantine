@@ -52,14 +52,14 @@ export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11
 
 func millerLoopGenericBLS12*[C](
        f: var Fp12[C],
-       P: ECP_ShortW_Aff[Fp[C], NotOnTwist],
-       Q: ECP_ShortW_Aff[Fp2[C], OnTwist]
+       P: ECP_ShortW_Aff[Fp[C], G1],
+       Q: ECP_ShortW_Aff[Fp2[C], G2]
      ) {.meter.} =
   ## Generic Miller Loop for BLS12 curve
   ## Computes f{u,Q}(P) with u the BLS curve parameter
 
   var
-    T {.noInit.}: ECP_ShortW_Prj[Fp2[C], OnTwist]
+    T {.noInit.}: ECP_ShortW_Prj[Fp2[C], G2]
     line {.noInit.}: Line[Fp2[C]]
     nQ{.noInit.}: typeof(Q)
 
@@ -79,8 +79,8 @@ func finalExpGeneric[C: static Curve](f: var Fp12[C]) =
 
 func pairing_bls12_reference*[C](
        gt: var Fp12[C],
-       P: ECP_ShortW_Aff[Fp[C], NotOnTwist],
-       Q: ECP_ShortW_Aff[Fp2[C], OnTwist]) =
+       P: ECP_ShortW_Aff[Fp[C], G1],
+       Q: ECP_ShortW_Aff[Fp2[C], G2]) =
   ## Compute the optimal Ate Pairing for BLS12 curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
@@ -149,8 +149,8 @@ func finalExpHard_BLS12*[C](f: var Fp12[C]) {.meter.} =
 
 func pairing_bls12*[C](
        gt: var Fp12[C],
-       P: ECP_ShortW_Aff[Fp[C], NotOnTwist],
-       Q: ECP_ShortW_Aff[Fp2[C], OnTwist]) {.meter.} =
+       P: ECP_ShortW_Aff[Fp[C], G1],
+       Q: ECP_ShortW_Aff[Fp2[C], G2]) {.meter.} =
   ## Compute the optimal Ate Pairing for BLS12 curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
@@ -160,8 +160,8 @@ func pairing_bls12*[C](
 
 func pairing_bls12*[N: static int, C](
        gt: var Fp12[C],
-       Ps: array[N, ECP_ShortW_Aff[Fp[C], NotOnTwist]],
-       Qs: array[N, ECP_ShortW_Aff[Fp2[C], OnTwist]]) {.meter.} =
+       Ps: array[N, ECP_ShortW_Aff[Fp[C], G1]],
+       Qs: array[N, ECP_ShortW_Aff[Fp2[C], G2]]) {.meter.} =
   ## Compute the optimal Ate Pairing for BLS12 curves
   ## Input: an array of Ps ∈ G1 and Qs ∈ G2
   ## Output:

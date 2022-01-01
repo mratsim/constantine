@@ -50,14 +50,14 @@ export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11
 
 func millerLoopGenericBN*[C](
        f: var Fp12[C],
-       P: ECP_ShortW_Aff[Fp[C], NotOnTwist],
-       Q: ECP_ShortW_Aff[Fp2[C], OnTwist]
+       P: ECP_ShortW_Aff[Fp[C], G1],
+       Q: ECP_ShortW_Aff[Fp2[C], G2]
      ) =
   ## Generic Miller Loop for BN curves
   ## Computes f{6u+2,Q}(P) with u the BN curve parameter
 
   var
-    T {.noInit.}: ECP_ShortW_Prj[Fp2[C], OnTwist]
+    T {.noInit.}: ECP_ShortW_Prj[Fp2[C], G2]
     line {.noInit.}: Line[Fp2[C]]
     nQ{.noInit.}: typeof(Q)
 
@@ -83,8 +83,8 @@ func finalExpGeneric[C: static Curve](f: var Fp12[C]) =
 
 func pairing_bn_reference*[C](
        gt: var Fp12[C],
-       P: ECP_ShortW_Aff[Fp[C], NotOnTwist],
-       Q: ECP_ShortW_Aff[Fp2[C], OnTwist]) =
+       P: ECP_ShortW_Aff[Fp[C], G1],
+       Q: ECP_ShortW_Aff[Fp2[C], G2]) =
   ## Compute the optimal Ate Pairing for BN curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
@@ -150,8 +150,8 @@ func finalExpHard_BN*[C: static Curve](f: var Fp12[C]) =
 
 func pairing_bn*[C](
        gt: var Fp12[C],
-       P: ECP_ShortW_Aff[Fp[C], NotOnTwist],
-       Q: ECP_ShortW_Aff[Fp2[C], OnTwist]) =
+       P: ECP_ShortW_Aff[Fp[C], G1],
+       Q: ECP_ShortW_Aff[Fp2[C], G2]) =
   ## Compute the optimal Ate Pairing for BLS12 curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt

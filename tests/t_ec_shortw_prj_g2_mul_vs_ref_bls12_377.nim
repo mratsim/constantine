@@ -19,7 +19,7 @@ const
   ItersMul = Iters div 4
 
 run_EC_mul_vs_ref_impl(
-    ec = ECP_ShortW_Prj[Fp2[BLS12_377], OnTwist],
+    ec = ECP_ShortW_Prj[Fp2[BLS12_377], G2],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_projective_g2_mul_vs_ref_" & $BLS12_377
   )

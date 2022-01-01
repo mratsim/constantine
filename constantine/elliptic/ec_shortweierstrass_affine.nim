@@ -22,11 +22,11 @@ import
 # ############################################################
 
 type
-  Twisted* = enum
-    NotOnTwist
-    OnTwist
+  Subgroup* = enum
+    G1
+    G2
 
-  ECP_ShortW_Aff*[F; Tw: static Twisted] = object
+  ECP_ShortW_Aff*[F; G: static Subgroup] = object
     ## Elliptic curve point for a curve in Short Weierstrass form
     ##   y² = x³ + a x + b
     ##
@@ -45,7 +45,7 @@ func isInf*(P: ECP_ShortW_Aff): SecretBool =
   ## and false otherwise
   result = P.x.isZero() and P.y.isZero()
 
-func curve_eq_rhs*[F](y2: var F, x: F, Tw: static Twisted) =
+func curve_eq_rhs*[F](y2: var F, x: F, G: static Subgroup) =
   ## Compute the curve equation right-hand-side from field element `x`
   ## i.e.  `y²` in `y² = x³ + a x + b`
   ## or on sextic twists for pairing curves `y² = x³ + b/µ` or `y² = x³ + µ b`
@@ -55,7 +55,7 @@ func curve_eq_rhs*[F](y2: var F, x: F, Tw: static Twisted) =
   t.square(x)
   t *= x
 
-  when Tw == NotOnTwist:
+  when G == G1:
     when F.C.getCoefB() >= 0:
       y2.fromUint uint F.C.getCoefB()
       y2 += t
@@ -70,18 +70,18 @@ func curve_eq_rhs*[F](y2: var F, x: F, Tw: static Twisted) =
     t *= F.C.getCoefA()
     y2 += t
 
-func isOnCurve*[F](x, y: F, Tw: static Twisted): SecretBool =
+func isOnCurve*[F](x, y: F, G: static Subgroup): SecretBool =
   ## Returns true if the (x, y) coordinates
   ## represents a point of the elliptic curve
 
   var y2, rhs {.noInit.}: F
   y2.square(y)
-  rhs.curve_eq_rhs(x, Tw)
+  rhs.curve_eq_rhs(x, G)
 
   return y2 == rhs
 
-func trySetFromCoordX*[F, Tw](
-       P: var ECP_ShortW_Aff[F, Tw],
+func trySetFromCoordX*[F, G](
+       P: var ECP_ShortW_Aff[F, G],
        x: F): SecretBool =
   ## Try to create a point the elliptic curve
   ## y² = x³ + a x + b     (affine coordinate)
@@ -101,7 +101,7 @@ func trySetFromCoordX*[F, Tw](
   ##       - scalar multiplication works
   ##       - a generator point is defined
   ##       i.e. you can't test unless everything is already working
-  P.y.curve_eq_rhs(x, Tw)
+  P.y.curve_eq_rhs(x, G)
   result = sqrt_if_square(P.y)
   P.x = x
 

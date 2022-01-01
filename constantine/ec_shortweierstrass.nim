@@ -22,9 +22,9 @@ import
 
 export ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_shortweierstrass_projective, ec_scalar_mul
 
-func projectiveFromJacobian*[F; Tw](
-       prj: var ECP_ShortW_Prj[F, Tw],
-       jac: ECP_ShortW_Jac[F, Tw]) {.inline.} =
+func projectiveFromJacobian*[F; G](
+       prj: var ECP_ShortW_Prj[F, G],
+       jac: ECP_ShortW_Jac[F, G]) {.inline.} =
   prj.x.prod(jac.x, jac.z)
   prj.y = jac.y
   prj.z.square(jac.z)

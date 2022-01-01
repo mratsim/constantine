@@ -126,8 +126,8 @@ func h2c_isogeny_map[F](
   # y coordinate is y' * poly_yNum(x)
   ryn *= yn
 
-func h2c_isogeny_map*[F; Tw: static Twisted](
-       r: var ECP_ShortW_Prj[F, Tw],
+func h2c_isogeny_map*[F; G: static Subgroup](
+       r: var ECP_ShortW_Prj[F, G],
        xn, xd, yn: F, isodegree: static int) =
   ## Given G2, the target prime order subgroup of E2,
   ## this function maps an element of
@@ -160,8 +160,8 @@ func h2c_isogeny_map*[F; Tw: static Twisted](
   r.x *= t
   r.z *= t
 
-func h2c_isogeny_map*[F; Tw: static Twisted](
-       r: var ECP_ShortW_Jac[F, Tw],
+func h2c_isogeny_map*[F; G: static Subgroup](
+       r: var ECP_ShortW_Jac[F, G],
        xn, xd, yn: F, isodegree: static int) =
   ## Given G2, the target prime order subgroup of E2,
   ## this function maps an element of
@@ -197,9 +197,9 @@ func h2c_isogeny_map*[F; Tw: static Twisted](
   r.y *= rdx         # Y = yd² * xd³
   r.y *= ryn         # Y = yn * yd² * xd³
 
-func h2c_isogeny_map*[F; Tw: static Twisted](
-       r: var ECP_ShortW_Jac[F, Tw],
-       P: ECP_ShortW_Jac[F, Tw],
+func h2c_isogeny_map*[F; G: static Subgroup](
+       r: var ECP_ShortW_Jac[F, G],
+       P: ECP_ShortW_Jac[F, G],
        isodegree: static int) =
   ## Map P in isogenous curve E'2
   ## to r in E2

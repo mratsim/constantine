@@ -17,7 +17,7 @@ const
   Iters = 12
 
 run_EC_mixed_add_impl(
-    ec = ECP_ShortW_Prj[Fp[BW6_761], OnTwist],
+    ec = ECP_ShortW_Prj[Fp[BW6_761], G2],
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_projective_mixed_add_" & $BW6_761
   )

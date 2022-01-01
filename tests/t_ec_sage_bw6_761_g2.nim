@@ -14,28 +14,28 @@ import
   # Test utilities
   ./t_ec_sage_template
 
-# When ECP_ShortW_Aff[Fp[Foo], NotOnTwist]
-# and ECP_ShortW_Aff[Fp[Foo], OnTwist]
+# When ECP_ShortW_Aff[Fp[Foo], G1]
+# and ECP_ShortW_Aff[Fp[Foo], G2]
 # are generated in the same file (i.e. twists and base curve are both on Fp)
 # this creates bad codegen, in the C code, the `value`parameter gets the wrong type
 # TODO: upstream
 
 # run_scalar_mul_test_vs_sage(
-#   ECP_ShortW_Prj[Fp[BW6_761], NotOnTwist],
+#   ECP_ShortW_Prj[Fp[BW6_761], G1],
 #   "t_ec_sage_bw6_761_g1_projective"
 # )
 
 # run_scalar_mul_test_vs_sage(
-#   ECP_ShortW_Jac[Fp[BW6_761], NotOnTwist],
+#   ECP_ShortW_Jac[Fp[BW6_761], G1],
 #   "t_ec_sage_bw6_761_g1_jacobian"
 # )
 
 run_scalar_mul_test_vs_sage(
-  ECP_ShortW_Prj[Fp[BW6_761], OnTwist],
+  ECP_ShortW_Prj[Fp[BW6_761], G2],
   "t_ec_sage_bw6_761_g2_projective"
 )
 
 run_scalar_mul_test_vs_sage(
-  ECP_ShortW_Jac[Fp[BW6_761], OnTwist],
+  ECP_ShortW_Jac[Fp[BW6_761], G2],
   "t_ec_sage_bw6_761_g2_jacobian"
 )

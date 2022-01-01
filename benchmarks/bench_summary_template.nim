@@ -81,10 +81,10 @@ template bench(op: string, T: typed, iters: int, body: untyped): untyped =
   measure(iters, startTime, stopTime, startClk, stopClk, body)
   report(op, fixDisplay(T), startTime, stopTime, startClk, stopClk, iters)
 
-func clearCofactorReference[F; Tw: static Twisted](
-       ec: var ECP_ShortW_Aff[F, Tw]) =
+func clearCofactorReference[F; G: static Subgroup](
+       ec: var ECP_ShortW_Aff[F, G]) =
   # For now we don't have any affine operation defined
-  var t {.noInit.}: ECP_ShortW_Prj[F, Tw]
+  var t {.noInit.}: ECP_ShortW_Prj[F, G]
   t.projectiveFromAffine(ec)
   t.clearCofactorReference()
   ec.affineFromProjective(t)
@@ -134,7 +134,7 @@ proc mixedAddBench*(T: typedesc, iters: int) =
   var r {.noInit.}: T
   let P = rng.random_unsafe(T)
   let Q = rng.random_unsafe(T)
-  var Qaff: ECP_ShortW_Aff[T.F, T.Tw]
+  var Qaff: ECP_ShortW_Aff[T.F, T.G]
   when Q is ECP_ShortW_Prj:
     Qaff.affineFromProjective(Q)
   else:
@@ -166,8 +166,8 @@ proc scalarMulBench*(T: typedesc, iters: int) =
 
 proc millerLoopBLS12Bench*(C: static Curve, iters: int) =
   let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[C], NotOnTwist])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[C], OnTwist])
+    P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
+    Q = rng.random_point(ECP_ShortW_Aff[Fp2[C], G2])
 
   var f: Fp12[C]
   bench("Miller Loop BLS12", C, iters):
@@ -175,8 +175,8 @@ proc millerLoopBLS12Bench*(C: static Curve, iters: int) =
 
 proc millerLoopBNBench*(C: static Curve, iters: int) =
   let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[C], NotOnTwist])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[C], OnTwist])
+    P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
+    Q = rng.random_point(ECP_ShortW_Aff[Fp2[C], G2])
 
   var f: Fp12[C]
   bench("Miller Loop BN", C, iters):
@@ -196,8 +196,8 @@ proc finalExpBNBench*(C: static Curve, iters: int) =
 
 proc pairingBLS12Bench*(C: static Curve, iters: int) =
   let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[C], NotOnTwist])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[C], OnTwist])
+    P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
+    Q = rng.random_point(ECP_ShortW_Aff[Fp2[C], G2])
 
   var f: Fp12[C]
   bench("Pairing BLS12", C, iters):
@@ -205,8 +205,8 @@ proc pairingBLS12Bench*(C: static Curve, iters: int) =
 
 proc pairingBNBench*(C: static Curve, iters: int) =
   let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[C], NotOnTwist])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[C], OnTwist])
+    P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
+    Q = rng.random_point(ECP_ShortW_Aff[Fp2[C], G2])
 
   var f: Fp12[C]
   bench("Pairing BN", C, iters):
@@ -218,7 +218,7 @@ proc hashToCurveBLS12_381G2Bench*(iters: int) =
   # 'CryptoHash' resolution issue
   const dst = "BLS_SIG_BLS12381G2-SHA256-SSWU-RO_POP_"
   let msg = "Mr F was here"
-  var P: ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist]
+  var P: ECP_ShortW_Prj[Fp2[BLS12_381], G2]
 
   bench("Hash to G2 (Draft #11)", BLS12_381, iters):
     sha256.hashToCurve(

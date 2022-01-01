@@ -34,8 +34,8 @@ import
 # Map to curve
 # ----------------------------------------------------------------
 
-func mapToIsoCurve_sswuG2_opt9mod16[F; Tw: static Twisted](
-       r: var ECP_ShortW_Jac[F, Tw],
+func mapToIsoCurve_sswuG2_opt9mod16[F; G: static Subgroup](
+       r: var ECP_ShortW_Jac[F, G],
        u: F) =
   var
     xn{.noInit.}, xd{.noInit.}: F
@@ -53,8 +53,8 @@ func mapToIsoCurve_sswuG2_opt9mod16[F; Tw: static Twisted](
   r.x.prod(xn, xd)  # X = xZ² = xn/xd * xd² = xn*xd
   r.y.prod(yn, xd3) # Y = yZ³ = yn * xd³
 
-func mapToCurve[F; Tw: static Twisted](
-       r: var (ECP_ShortW_Prj[F, Tw] or ECP_ShortW_Jac[F, Tw]),
+func mapToCurve[F; G: static Subgroup](
+       r: var (ECP_ShortW_Prj[F, G] or ECP_ShortW_Jac[F, G]),
        u: F) =
   ## Map an element of the
   ## finite or extension field F
@@ -85,8 +85,8 @@ func mapToCurve[F; Tw: static Twisted](
   else:
     {.error: "Not implemented".}
 
-func mapToCurve_fusedAdd[F; Tw: static Twisted](
-       r: var ECP_ShortW_Jac[F, Tw],
+func mapToCurve_fusedAdd[F; G: static Subgroup](
+       r: var ECP_ShortW_Jac[F, G],
        u0, u1: F) =
   ## Map 2 elements of the
   ## finite or extension field F
@@ -105,7 +105,7 @@ func mapToCurve_fusedAdd[F; Tw: static Twisted](
   # unlike the complete projective formulae which heavily depends on it
   # So we use jacobian coordinates for computation on isogenies.
 
-  var P0{.noInit.}, P1{.noInit.}: ECP_ShortW_Jac[F, Tw]
+  var P0{.noInit.}, P1{.noInit.}: ECP_ShortW_Jac[F, G]
   when F.C == BLS12_381 and F is Fp2:
     # 1. Map to E'2 isogenous to E2
     P0.mapToIsoCurve_sswuG2_opt9mod16(u0)
@@ -122,11 +122,11 @@ func mapToCurve_fusedAdd[F; Tw: static Twisted](
 # ----------------------------------------------------------------
 
 func hashToCurve*[
-         F; Tw: static Twisted;
+         F; G: static Subgroup;
          B1, B2, B3: byte|char](
        H: type CryptoHash,
        k: static int,
-       output: var ECP_ShortW_Prj[F, Tw],
+       output: var ECP_ShortW_Prj[F, G],
        augmentation: openarray[B1],
        message: openarray[B2],
        domainSepTag: openarray[B3]
@@ -157,12 +157,12 @@ func hashToCurve*[
   H.hashToField(k, u, augmentation, message, domainSepTag)
 
   when false:
-    var P{.noInit.}: array[2, ECP_ShortW_Prj[F, Tw]]
+    var P{.noInit.}: array[2, ECP_ShortW_Prj[F, G]]
     P[0].mapToCurve(u[0])
     P[1].mapToCurve(u[1])
     output.sum(P[0], P[1])
   else:
-    var Pjac{.noInit.}: ECP_ShortW_Jac[F, Tw]
+    var Pjac{.noInit.}: ECP_ShortW_Jac[F, G]
     Pjac.mapToCurve_fusedAdd(u[0], u[1])
     output.projectiveFromJacobian(Pjac)
 

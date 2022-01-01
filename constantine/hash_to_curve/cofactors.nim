@@ -51,49 +51,49 @@ const Cofactor_Eff_BW6_761_G1 = BigInt[384].fromHex"0xad1972339049ce762c77d5ac34
 const Cofactor_Eff_BW6_761_G2 = BigInt[384].fromHex"0xad1972339049ce762c77d5ac34cb12efc856a0853c9db94cc61c554757551c0c832ba4061000003b3de580000000007c"
   ## P -> (103([u³]P) − 83([u²]P) − 143([u]P) + 27P) + ψ(7([u²]P) − 117([u]P) − 109P)
 
-func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp[BN254_Nogami], NotOnTwist]) {.inline.} =
+func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp[BN254_Nogami], G1]) {.inline.} =
   ## Clear the cofactor of BN254_Nogami G1
   ## BN curve have a G1 cofactor of 1 so this is a no-op
   discard
 
-func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp2[BN254_Nogami], OnTwist]) {.inline.} =
+func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp2[BN254_Nogami], G2]) {.inline.} =
   ## Clear the cofactor of BN254_Snarks G2
   # Endomorphism acceleration cannot be used if cofactor is not cleared
   P.scalarMulGeneric(Cofactor_Eff_BN254_Nogami_G2)
 
-func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp[BN254_Snarks], NotOnTwist]) {.inline.} =
+func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp[BN254_Snarks], G1]) {.inline.} =
   ## Clear the cofactor of BN254_Snarks G1
   ## BN curve have a G1 cofactor of 1 so this is a no-op
   discard
 
-func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp2[BN254_Snarks], OnTwist]) {.inline.} =
+func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]) {.inline.} =
   ## Clear the cofactor of BN254_Snarks G2
   # Endomorphism acceleration cannot be used if cofactor is not cleared
   P.scalarMulGeneric(Cofactor_Eff_BN254_Snarks_G2)
 
-func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp[BLS12_377], NotOnTwist]) {.inline.} =
+func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp[BLS12_377], G1]) {.inline.} =
   ## Clear the cofactor of BLS12_377 G1
   P.scalarMulGeneric(Cofactor_Eff_BLS12_377_G1)
 
-func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp2[BLS12_377], OnTwist]) {.inline.} =
+func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp2[BLS12_377], G2]) {.inline.} =
   ## Clear the cofactor of BLS12_377 G2
   # Endomorphism acceleration cannot be used if cofactor is not cleared
   P.scalarMulGeneric(Cofactor_Eff_BLS12_377_G2)
 
-func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp[BLS12_381], NotOnTwist]) {.inline.} =
+func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp[BLS12_381], G1]) {.inline.} =
   ## Clear the cofactor of BLS12_381 G1
   P.scalarMulGeneric(Cofactor_Eff_BLS12_381_G1)
 
-func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist]) {.inline.} =
+func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp2[BLS12_381], G2]) {.inline.} =
   ## Clear the cofactor of BLS12_381 G2
   # Endomorphism acceleration cannot be used if cofactor is not cleared
   P.scalarMulGeneric(Cofactor_Eff_BLS12_381_G2)
 
-func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp[BW6_761], NotOnTwist]) {.inline.} =
+func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp[BW6_761], G1]) {.inline.} =
   ## Clear the cofactor of BW6_761 G1
   P.scalarMulGeneric(Cofactor_Eff_BW6_761_G1)
 
-func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp[BW6_761], OnTwist]) {.inline.} =
+func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp[BW6_761], G2]) {.inline.} =
   ## Clear the cofactor of BW6_761 G2
   # Endomorphism acceleration cannot be used if cofactor is not cleared
   P.scalarMulGeneric(Cofactor_Eff_BW6_761_G2)
@@ -139,8 +139,8 @@ func double_repeated*[EC](P: var EC, num: int) {.inline.} =
     P.double()
 
 func pow_x(
-       r{.noalias.}: var ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist],
-       P{.noalias.}: ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist],
+       r{.noalias.}: var ECP_ShortW_Prj[Fp2[BLS12_381], G2],
+       P{.noalias.}: ECP_ShortW_Prj[Fp2[BLS12_381], G2],
      ) =
   ## Does the scalar multiplication [x]P
   ## with x the BLS12 curve parameter
@@ -170,7 +170,7 @@ func pow_x(
   r.neg(r)
 
 
-func clearCofactorFast*(P: var ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist]) =
+func clearCofactorFast*(P: var ECP_ShortW_Prj[Fp2[BLS12_381], G2]) =
   ## Clear the cofactor of BLS12_381 G2
   ## Optimized using endomorphisms
   ## P -> [x²-x-1]P + [x-1] ψ(P) + ψ²([2]P)

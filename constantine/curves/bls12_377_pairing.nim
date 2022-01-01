@@ -42,13 +42,13 @@ const BLS12_377_pairing_finalexponent* = block:
 
 func millerLoopAddchain*(
        f: var Fp12[BLS12_377],
-       Q: ECP_ShortW_Aff[Fp2[BLS12_377], OnTwist],
-       P: ECP_ShortW_Aff[Fp[BLS12_377], NotOnTwist]
+       Q: ECP_ShortW_Aff[Fp2[BLS12_377], G2],
+       P: ECP_ShortW_Aff[Fp[BLS12_377], G1]
      ) =
   ## Miller Loop for BLS12-377 curve
   ## Computes f{u,Q}(P) with u the BLS curve parameter
 
-  var T {.noInit.}: ECP_ShortW_Prj[Fp2[BLS12_377], OnTwist]
+  var T {.noInit.}: ECP_ShortW_Prj[Fp2[BLS12_377], G2]
 
   f.miller_init_double_then_add(T, Q, P, 5)                # 0b100001
   f.miller_accum_double_then_add(T, Q, P, 2)               # 0b10000101

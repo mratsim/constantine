@@ -31,14 +31,14 @@ type
     HighHammingWeight
     Long01Sequence
 
-template affineType[F; Tw: static Twisted](
-    ec: ECP_ShortW_Prj[F, Tw]): type =
-  ECP_ShortW_Aff[F, Tw]
+template affineType[F; G: static Subgroup](
+    ec: ECP_ShortW_Prj[F, G]): type =
+  ECP_ShortW_Aff[F, G]
 
-func clearCofactorReference[F; Tw: static Twisted](
-       ec: var ECP_ShortW_Aff[F, Tw]) =
+func clearCofactorReference[F; G: static Subgroup](
+       ec: var ECP_ShortW_Aff[F, G]) =
   # For now we don't have any affine operation defined
-  var t {.noInit.}: ECP_ShortW_Prj[F, Tw]
+  var t {.noInit.}: ECP_ShortW_Prj[F, G]
   t.projectiveFromAffine(ec)
   t.clearCofactorReference()
   ec.affineFromProjective(t)

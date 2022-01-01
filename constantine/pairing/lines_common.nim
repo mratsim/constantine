@@ -65,7 +65,7 @@ func toHex*(line: Line, order: static Endianness = bigEndian): string =
 # Line evaluation
 # --------------------------------------------------
 
-func line_update*[F1, F2](line: var Line[F2], P: ECP_ShortW_Aff[F1, NotOnTwist]) =
+func line_update*[F1, F2](line: var Line[F2], P: ECP_ShortW_Aff[F1, G1]) =
   ## Update the line evaluation with P
   ## after addition or doubling
   ## P in G1

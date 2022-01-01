@@ -16,21 +16,21 @@ import
   ./t_ec_sage_template
 
 run_scalar_mul_test_vs_sage(
-  ECP_ShortW_Prj[Fp[BN254_Snarks], NotOnTwist],
+  ECP_ShortW_Prj[Fp[BN254_Snarks], G1],
   "t_ec_sage_bn254_snarks_g1_projective"
 )
 
 run_scalar_mul_test_vs_sage(
-  ECP_ShortW_Jac[Fp[BN254_Snarks], NotOnTwist],
+  ECP_ShortW_Jac[Fp[BN254_Snarks], G1],
   "t_ec_sage_bn254_snarks_g1_jacobian"
 )
 
 run_scalar_mul_test_vs_sage(
-  ECP_ShortW_Prj[Fp2[BN254_Snarks], OnTwist],
+  ECP_ShortW_Prj[Fp2[BN254_Snarks], G2],
   "t_ec_sage_bn254_snarks_g2_projective"
 )
 
 run_scalar_mul_test_vs_sage(
-  ECP_ShortW_Jac[Fp2[BN254_Snarks], OnTwist],
+  ECP_ShortW_Jac[Fp2[BN254_Snarks], G2],
   "t_ec_sage_bn254_snarks_g2_jacobian"
 )

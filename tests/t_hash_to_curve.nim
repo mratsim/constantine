@@ -67,8 +67,8 @@ const
 
 proc parseHook*(src: string, pos: var int, value: var ECP_ShortW_Aff) =
   # Note when nim-serialization was used:
-  #   When ECP_ShortW_Aff[Fp[Foo], NotOnTwist]
-  #   and ECP_ShortW_Aff[Fp[Foo], OnTwist]
+  #   When ECP_ShortW_Aff[Fp[Foo], G1]
+  #   and ECP_ShortW_Aff[Fp[Foo], G2]
   #   are generated in the same file (i.e. twists and base curve are both on Fp)
   #   this creates bad codegen, in the C code, the `value`parameter gets the wrong type
   #   TODO: upstream
@@ -107,11 +107,11 @@ proc run_hash_to_curve_test(
        filename: string
      ) =
 
-  when EC.Tw == NotOnTwist:
+  when EC.G == G1:
     const G1_or_G2 = "G1"
   else:
     const G1_or_G2 = "G2"
-  let vec = loadVectors(HashToCurveTest[ECP_ShortW_Aff[EC.F, EC.Tw]], filename)
+  let vec = loadVectors(HashToCurveTest[ECP_ShortW_Aff[EC.F, EC.G]], filename)
 
   let testSuiteDesc = "Hash to Curve " & $EC.F.C & " " & G1_or_G2 & " - official specs " & spec_version & " test vectors"
 
@@ -142,7 +142,7 @@ echo "Hash-to-curve" & '\n'
 # Hash-to-curve v8 to latest
 # https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/blob/draft-irtf-cfrg-hash-to-curve-10/poc/vectors/BLS12381G2_XMD:SHA-256_SSWU_RO_.json
 run_hash_to_curve_test(
-  ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist],
+  ECP_ShortW_Prj[Fp2[BLS12_381], G2],
   "v8",
   "tv_h2c_v8_BLS12_381_hash_to_G2_SHA256_SSWU_RO.json"
 )
@@ -150,7 +150,7 @@ run_hash_to_curve_test(
 # Hash-to-curve v7 (different domain separation tag)
 # https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/blob/draft-irtf-cfrg-hash-to-curve-07/poc/vectors/BLS12381G2_XMD:SHA-256_SSWU_RO_.json
 run_hash_to_curve_test(
-  ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist],
+  ECP_ShortW_Prj[Fp2[BLS12_381], G2],
   "v7",
   "tv_h2c_v7_BLS12_381_hash_to_G2_SHA256_SSWU_RO.json"
 )

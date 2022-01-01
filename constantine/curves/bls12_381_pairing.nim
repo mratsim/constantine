@@ -40,13 +40,13 @@ const BLS12_381_pairing_finalexponent* = block:
 
 func millerLoopAddchain*(
        f: var Fp12[BLS12_381],
-       Q: ECP_ShortW_Aff[Fp2[BLS12_381], OnTwist],
-       P: ECP_ShortW_Aff[Fp[BLS12_381], NotOnTwist]
+       Q: ECP_ShortW_Aff[Fp2[BLS12_381], G2],
+       P: ECP_ShortW_Aff[Fp[BLS12_381], G1]
      ) =
   ## Miller Loop for BLS12-381 curve
   ## Computes f{u,Q}(P) with u the BLS curve parameter
 
-  var T {.noInit.}: ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist]
+  var T {.noInit.}: ECP_ShortW_Prj[Fp2[BLS12_381], G2]
 
   f.miller_init_double_then_add(T, Q, P, 1)                # 0b11
   f.miller_accum_double_then_add(T, Q, P, 2)               # 0b1101
@@ -60,13 +60,13 @@ func millerLoopAddchain*(
 
 func millerLoopAddchain*[N: static int](
        f: var Fp12[BLS12_381],
-       Qs: array[N, ECP_ShortW_Aff[Fp2[BLS12_381], OnTwist]],
-       Ps: array[N, ECP_ShortW_Aff[Fp[BLS12_381], NotOnTwist]]
+       Qs: array[N, ECP_ShortW_Aff[Fp2[BLS12_381], G2]],
+       Ps: array[N, ECP_ShortW_Aff[Fp[BLS12_381], G1]]
      ) =
   ## Generic Miller Loop for BLS12 curve
   ## Computes f{u,Q}(P) with u the BLS curve parameter
 
-  var Ts {.noInit.}: array[N, ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist]]
+  var Ts {.noInit.}: array[N, ECP_ShortW_Prj[Fp2[BLS12_381], G2]]
 
   # Ate param addition chain
   # Hex: 0xd201000000010000

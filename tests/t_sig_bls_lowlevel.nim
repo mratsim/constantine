@@ -62,10 +62,10 @@ const BLS12_381_G2_generator_y = Fp2[BLS12_381].fromHex(
   "3f370d275cec1da1aaa9075ff05f79be"
 )
 
-const BLS12_381_G1_generator = ECP_ShortW_Aff[Fp[BLS12_381], NotOnTwist](
+const BLS12_381_G1_generator = ECP_ShortW_Aff[Fp[BLS12_381], G1](
   x: BLS12_381_G1_generator_x, y: BLS12_381_G1_generator_y
 )
-const BLS12_381_G2_generator = ECP_ShortW_Aff[Fp2[BLS12_381], OnTwist](
+const BLS12_381_G2_generator = ECP_ShortW_Aff[Fp2[BLS12_381], G2](
   x: BLS12_381_G2_generator_x, y: BLS12_381_G2_generator_y
 )
 
@@ -80,22 +80,22 @@ func genSecretKey(rng: var RngState, seckey: var Fr[BLS12_381]) =
     seckey = rng.random_unsafe(Fr[BLS12_381])
 
 func publicKeyG1(
-       pubkey: var ECP_ShortW_Aff[Fp[BLS12_381], NotOnTwist],
+       pubkey: var ECP_ShortW_Aff[Fp[BLS12_381], G1],
        seckey: Fr[BLS12_381]
      ) =
-  var t: ECP_ShortW_Prj[Fp[BLS12_381], NotOnTwist]
+  var t: ECP_ShortW_Prj[Fp[BLS12_381], G1]
   t.projectiveFromAffine(BLS12_381_G1_generator)
   t.scalarMul(seckey.toBig())
   pubkey.affineFromprojective(t)
   doAssert not bool pubkey.isInf()
 
 func signG2[T: byte|char](
-       signature: var ECP_ShortW_Aff[Fp2[BLS12_381], OnTwist],
+       signature: var ECP_ShortW_Aff[Fp2[BLS12_381], G2],
        message: openarray[T],
        secretKey: Fr[BLS12_381]
      ) =
   doAssert not bool secretKey.isZero()
-  var t: ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist]
+  var t: ECP_ShortW_Prj[Fp2[BLS12_381], G2]
   hashToCurve(
     H = sha256, k = 128,
     output = t,
@@ -108,15 +108,15 @@ func signG2[T: byte|char](
   doAssert not bool signature.isInf()
 
 func verifyG2[T: byte|char](
-       pubkey: ECP_ShortW_Aff[Fp[BLS12_381], NotOnTwist],
+       pubkey: ECP_ShortW_Aff[Fp[BLS12_381], G1],
        message: openarray[T],
-       signature: ECP_ShortW_Aff[Fp2[BLS12_381], OnTwist]
+       signature: ECP_ShortW_Aff[Fp2[BLS12_381], G2]
      ): SecretBool =
   doAssert not pubkey.isInf.bool
   doAssert not signature.isInf.bool
 
   var Q {.noinit.}: typeof(signature)
-  var Qprj {.noInit.}: ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist]
+  var Qprj {.noInit.}: ECP_ShortW_Prj[Fp2[BLS12_381], G2]
   hashToCurve(
     H = sha256, k = 128,
     output = Qprj,
@@ -133,14 +133,14 @@ func verifyG2[T: byte|char](
   return e0 == e1
 
 func verifyG2_multi[T: byte|char](
-       pubkey: ECP_ShortW_Aff[Fp[BLS12_381], NotOnTwist],
+       pubkey: ECP_ShortW_Aff[Fp[BLS12_381], G1],
        message: openarray[T],
-       signature: ECP_ShortW_Aff[Fp2[BLS12_381], OnTwist]
+       signature: ECP_ShortW_Aff[Fp2[BLS12_381], G2]
      ): SecretBool =
   doAssert not pubkey.isInf.bool
   doAssert not signature.isInf.bool
 
-  var Qprj {.noInit.}: ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist]
+  var Qprj {.noInit.}: ECP_ShortW_Prj[Fp2[BLS12_381], G2]
   hashToCurve(
     H = sha256, k = 128,
     output = Qprj,
@@ -149,8 +149,8 @@ func verifyG2_multi[T: byte|char](
     domainSepTag = DomainSepTag
   )
 
-  var G2s: array[2, ECP_ShortW_Aff[Fp2[BLS12_381], OnTwist]]
-  var G1s: array[2, ECP_ShortW_Aff[Fp[BLS12_381], NotOnTwist]]
+  var G2s: array[2, ECP_ShortW_Aff[Fp2[BLS12_381], G2]]
+  var G1s: array[2, ECP_ShortW_Aff[Fp[BLS12_381], G1]]
 
   G1s[0] = pubkey
   G2s[0].affineFromprojective(Qprj)
@@ -166,9 +166,9 @@ func verifyG2_multi[T: byte|char](
 proc bls_signature_test(rng: var RngState, i: int) =
   var
     seckey: Fr[BLS12_381]
-    pubkey: ECP_ShortW_Aff[Fp[BLS12_381], NotOnTwist]
+    pubkey: ECP_ShortW_Aff[Fp[BLS12_381], G1]
     message = rng.random_byte_seq(length = i)
-    signature: ECP_ShortW_Aff[Fp2[BLS12_381], OnTwist]
+    signature: ECP_ShortW_Aff[Fp2[BLS12_381], G2]
 
   rng.genSecretKey(seckey)
   pubkey.publicKeyG1(seckey)

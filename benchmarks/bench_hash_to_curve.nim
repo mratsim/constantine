@@ -37,7 +37,7 @@ proc bench_BLS12_381_hash_to_G2(iters: int) =
   const dst = "BLS_SIG_BLS12381G2-SHA256-SSWU-RO_POP_"
   let msg = "Mr F was here"
 
-  var P: ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist]
+  var P: ECP_ShortW_Prj[Fp2[BLS12_381], G2]
 
   bench("Hash to G2 (Draft #11)", BLS12_381, iters):
     sha256.hashToCurve(
@@ -52,8 +52,8 @@ proc bench_BLS12_381_proj_aff_conversion(iters: int) =
   const dst = "BLS_SIG_BLS12381G2-SHA256-SSWU-RO_POP_"
   let msg = "Mr F was here"
 
-  var P: ECP_ShortW_Prj[Fp2[BLS12_381], OnTwist]
-  var Paff: ECP_ShortW_Aff[Fp2[BLS12_381], OnTwist]
+  var P: ECP_ShortW_Prj[Fp2[BLS12_381], G2]
+  var Paff: ECP_ShortW_Aff[Fp2[BLS12_381], G2]
 
   sha256.hashToCurve(
     k = 128,

@@ -38,7 +38,7 @@ func toHex*[EC: ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff](P: EC): stri
   ##
   ## This proc output may change format in the future
 
-  var aff {.noInit.}: ECP_ShortW_Aff[EC.F, EC.Tw]
+  var aff {.noInit.}: ECP_ShortW_Aff[EC.F, EC.G]
   when EC is ECP_ShortW_Prj:
     aff.affineFromProjective(P)
   elif EC is ECP_ShortW_Jac:
@@ -61,7 +61,7 @@ func fromHex*(dst: var (ECP_ShortW_Prj or ECP_ShortW_Jac), x, y: string): bool {
   dst.x.fromHex(x)
   dst.y.fromHex(y)
   dst.z.setOne()
-  return bool(isOnCurve(dst.x, dst.y, dst.Tw))
+  return bool(isOnCurve(dst.x, dst.y, dst.G))
 
 func fromHex*(dst: var (ECP_ShortW_Prj or ECP_ShortW_Jac), x0, x1, y0, y1: string): bool {.raises: [ValueError].}=
   ## Convert hex strings to a G2 curve point
@@ -72,7 +72,7 @@ func fromHex*(dst: var (ECP_ShortW_Prj or ECP_ShortW_Jac), x0, x1, y0, y1: strin
   dst.x.fromHex(x0, x1)
   dst.y.fromHex(y0, y1)
   dst.z.setOne()
-  return bool(isOnCurve(dst.x, dst.y, dst.Tw))
+  return bool(isOnCurve(dst.x, dst.y, dst.G))
 
 func fromHex*(dst: var ECP_ShortW_Aff, x, y: string): bool {.raises: [ValueError].}=
   ## Convert hex strings to a G1 curve point
@@ -82,7 +82,7 @@ func fromHex*(dst: var ECP_ShortW_Aff, x, y: string): bool {.raises: [ValueError
   static: doAssert dst.F is Fp, "dst must be on G1, an elliptic curve over 𝔽p"
   dst.x.fromHex(x)
   dst.y.fromHex(y)
-  return bool(isOnCurve(dst.x, dst.y, dst.Tw))
+  return bool(isOnCurve(dst.x, dst.y, dst.G))
 
 func fromHex*(dst: var ECP_ShortW_Aff, x0, x1, y0, y1: string): bool {.raises: [ValueError].}=
   ## Convert hex strings to a G2 curve point
@@ -92,4 +92,4 @@ func fromHex*(dst: var ECP_ShortW_Aff, x0, x1, y0, y1: string): bool {.raises: [
   static: doAssert dst.F is Fp2, "dst must be on G2, an elliptic curve over 𝔽p2"
   dst.x.fromHex(x0, x1)
   dst.y.fromHex(y0, y1)
-  return bool(isOnCurve(dst.x, dst.y, dst.Tw))
+  return bool(isOnCurve(dst.x, dst.y, dst.G))

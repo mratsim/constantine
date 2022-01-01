@@ -26,10 +26,10 @@ import
 
 template basicMillerLoop*[FT, F1, F2](
        f: var FT,
-       T: var ECP_ShortW_Prj[F2, OnTwist],
+       T: var ECP_ShortW_Prj[F2, G2],
        line: var Line[F2],
-       P: ECP_ShortW_Aff[F1, NotOnTwist],
-       Q, nQ: ECP_ShortW_Aff[F2, OnTwist],
+       P: ECP_ShortW_Aff[F1, G1],
+       Q, nQ: ECP_ShortW_Aff[F2, G2],
        ate_param: untyped,
        ate_param_isNeg: untyped
     ) =
@@ -65,9 +65,9 @@ template basicMillerLoop*[FT, F1, F2](
 
 func millerCorrectionBN*[FT, F1, F2](
        f: var FT,
-       T: var ECP_ShortW_Prj[F2, OnTwist],
-       Q: ECP_ShortW_Aff[F2, OnTwist],
-       P: ECP_ShortW_Aff[F1, NotOnTwist],
+       T: var ECP_ShortW_Prj[F2, G2],
+       Q: ECP_ShortW_Aff[F2, G2],
+       P: ECP_ShortW_Aff[F1, G1],
        ate_param_isNeg: static bool
      ) =
   ## Ate pairing for BN curves need adjustment after basic Miller loop
@@ -119,9 +119,9 @@ func millerCorrectionBN*[FT, F1, F2](
 
 func miller_init_double_then_add*[FT, F1, F2](
        f: var FT,
-       T: var ECP_ShortW_Prj[F2, OnTwist],
-       Q: ECP_ShortW_Aff[F2, OnTwist],
-       P: ECP_ShortW_Aff[F1, NotOnTwist],
+       T: var ECP_ShortW_Prj[F2, G2],
+       Q: ECP_ShortW_Aff[F2, G2],
+       P: ECP_ShortW_Aff[F1, G1],
        numDoublings: static int
      ) =
   ## Start a Miller Loop with
@@ -181,9 +181,9 @@ func miller_init_double_then_add*[FT, F1, F2](
 
 func miller_accum_double_then_add*[FT, F1, F2](
        f: var FT,
-       T: var ECP_ShortW_Prj[F2, OnTwist],
-       Q: ECP_ShortW_Aff[F2, OnTwist],
-       P: ECP_ShortW_Aff[F1, NotOnTwist],
+       T: var ECP_ShortW_Prj[F2, G2],
+       Q: ECP_ShortW_Aff[F2, G2],
+       P: ECP_ShortW_Aff[F1, G1],
        numDoublings: int,
        add = true
      ) =
@@ -222,8 +222,8 @@ func double_jToN[N: static int, FT, F1, F2](
        f: var FT,
        j: static int,
        line0, line1: var Line[F2],
-       Ts: var array[N, ECP_ShortW_Prj[F2, OnTwist]],
-       Ps: array[N, ECP_ShortW_Aff[F1, NotOnTwist]]) =
+       Ts: var array[N, ECP_ShortW_Prj[F2, G2]],
+       Ps: array[N, ECP_ShortW_Aff[F1, G1]]) =
   ## Doubling steps for pairings j to N
 
   {.push checks: off.} # No OverflowError or IndexError allowed
@@ -246,9 +246,9 @@ func add_jToN[N: static int, FT, F1, F2](
        f: var FT,
        j: static int,
        line0, line1: var Line[F2],
-       Ts: var array[N, ECP_ShortW_Prj[F2, OnTwist]],
-       Qs: array[N, ECP_ShortW_Aff[F2, OnTwist]],
-       Ps: array[N, ECP_ShortW_Aff[F1, NotOnTwist]])=
+       Ts: var array[N, ECP_ShortW_Prj[F2, G2]],
+       Qs: array[N, ECP_ShortW_Aff[F2, G2]],
+       Ps: array[N, ECP_ShortW_Aff[F1, G1]])=
   ## Addition steps for pairings 0 to N
 
   {.push checks: off.} # No OverflowError or IndexError allowed
@@ -269,9 +269,9 @@ func add_jToN[N: static int, FT, F1, F2](
 
 func miller_init_double_then_add*[N: static int, FT, F1, F2](
        f: var FT,
-       Ts: var array[N, ECP_ShortW_Prj[F2, OnTwist]],
-       Qs: array[N, ECP_ShortW_Aff[F2, OnTwist]],
-       Ps: array[N, ECP_ShortW_Aff[F1, NotOnTwist]],
+       Ts: var array[N, ECP_ShortW_Prj[F2, G2]],
+       Qs: array[N, ECP_ShortW_Aff[F2, G2]],
+       Ps: array[N, ECP_ShortW_Aff[F1, G1]],
        numDoublings: static int
      ) =
   ## Start a Miller Loop
@@ -328,9 +328,9 @@ func miller_init_double_then_add*[N: static int, FT, F1, F2](
 
 func miller_accum_double_then_add*[N: static int, FT, F1, F2](
        f: var FT,
-       Ts: var array[N, ECP_ShortW_Prj[F2, OnTwist]],
-       Qs: array[N, ECP_ShortW_Aff[F2, OnTwist]],
-       Ps: array[N, ECP_ShortW_Aff[F1, NotOnTwist]],
+       Ts: var array[N, ECP_ShortW_Prj[F2, G2]],
+       Qs: array[N, ECP_ShortW_Aff[F2, G2]],
+       Ps: array[N, ECP_ShortW_Aff[F1, G1]],
        numDoublings: int,
        add = true
      ) =

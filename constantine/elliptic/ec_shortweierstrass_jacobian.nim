@@ -13,7 +13,7 @@ import
   ../towers,
   ./ec_shortweierstrass_affine
 
-export Twisted
+export Subgroup
 
 # ############################################################
 #
@@ -22,7 +22,7 @@ export Twisted
 #
 # ############################################################
 
-type ECP_ShortW_Jac*[F; Tw: static Twisted] = object
+type ECP_ShortW_Jac*[F; G: static Subgroup] = object
   ## Elliptic curve point for a curve in Short Weierstrass form
   ##   y² = x³ + a x + b
   ##
@@ -80,8 +80,8 @@ func ccopy*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac, ctl: SecretBool) {.inline.
   for fP, fQ in fields(P, Q):
     ccopy(fP, fQ, ctl)
 
-func trySetFromCoordsXandZ*[F; Tw](
-       P: var ECP_ShortW_Jac[F, Tw],
+func trySetFromCoordsXandZ*[F; G](
+       P: var ECP_ShortW_Jac[F, G],
        x, z: F): SecretBool =
   ## Try to create a point the elliptic curve
   ## Y² = X³ + aXZ⁴ + bZ⁶  (Jacobian coordinates)
@@ -100,7 +100,7 @@ func trySetFromCoordsXandZ*[F; Tw](
   ##       - scalar multiplication works
   ##       - a generator point is defined
   ##       i.e. you can't test unless everything is already working
-  P.y.curve_eq_rhs(x, Tw)
+  P.y.curve_eq_rhs(x, G)
   result = sqrt_if_square(P.y)
 
   var z2 {.noInit.}: F
@@ -110,8 +110,8 @@ func trySetFromCoordsXandZ*[F; Tw](
   P.y *= z
   P.z = z
 
-func trySetFromCoordX*[F; Tw](
-       P: var ECP_ShortW_Jac[F, Tw],
+func trySetFromCoordX*[F; G](
+       P: var ECP_ShortW_Jac[F, G],
        x: F): SecretBool =
   ## Try to create a point the elliptic curve
   ## y² = x³ + a x + b     (affine coordinate)
@@ -132,7 +132,7 @@ func trySetFromCoordX*[F; Tw](
   ##       - scalar multiplication works
   ##       - a generator point is defined
   ##       i.e. you can't test unless everything is already working
-  P.y.curve_eq_rhs(x, Tw)
+  P.y.curve_eq_rhs(x, G)
   result = sqrt_if_square(P.y)
   P.x = x
   P.z.setOne()
@@ -152,9 +152,9 @@ func cneg*(P: var ECP_ShortW_Jac, ctl: CTBool)  {.inline.} =
   ## Negate if ``ctl`` is true
   P.y.cneg(ctl)
 
-template sumImpl[F; Tw: static Twisted](
-       r: var ECP_ShortW_Jac[F, Tw],
-       P, Q: ECP_ShortW_Jac[F, Tw],
+template sumImpl[F; G: static Subgroup](
+       r: var ECP_ShortW_Jac[F, G],
+       P, Q: ECP_ShortW_Jac[F, G],
        CoefA: untyped
      ) =
   ## Elliptic curve point addition for Short Weierstrass curves in Jacobian coordinates
@@ -324,9 +324,9 @@ template sumImpl[F; Tw: static Twisted](
     r.ccopy(Q, P.isInf())
     r.ccopy(P, Q.isInf())
 
-func sum*[F; Tw: static Twisted](
-       r: var ECP_ShortW_Jac[F, Tw],
-       P, Q: ECP_ShortW_Jac[F, Tw],
+func sum*[F; G: static Subgroup](
+       r: var ECP_ShortW_Jac[F, G],
+       P, Q: ECP_ShortW_Jac[F, G],
        CoefA: static F
      ) =
   ## Elliptic curve point addition for Short Weierstrass curves in Jacobian coordinates
@@ -349,9 +349,9 @@ func sum*[F; Tw: static Twisted](
   ## This is done by using a "complete" or "exception-free" addition law.
   r.sumImpl(P, Q, CoefA)
 
-func sum*[F; Tw: static Twisted](
-       r: var ECP_ShortW_Jac[F, Tw],
-       P, Q: ECP_ShortW_Jac[F, Tw]
+func sum*[F; G: static Subgroup](
+       r: var ECP_ShortW_Jac[F, G],
+       P, Q: ECP_ShortW_Jac[F, G]
      ) =
   ## Elliptic curve point addition for Short Weierstrass curves in Jacobian coordinates
   ##
@@ -370,10 +370,10 @@ func sum*[F; Tw: static Twisted](
   ## This is done by using a "complete" or "exception-free" addition law.
   r.sumImpl(P, Q, F.C.getCoefA())
 
-func madd*[F; Tw: static Twisted](
-       r: var ECP_ShortW_Jac[F, Tw],
-       P: ECP_ShortW_Jac[F, Tw],
-       Q: ECP_ShortW_Aff[F, Tw]
+func madd*[F; G: static Subgroup](
+       r: var ECP_ShortW_Jac[F, G],
+       P: ECP_ShortW_Jac[F, G],
+       Q: ECP_ShortW_Aff[F, G]
      ) =
   ## Elliptic curve mixed addition for Short Weierstrass curves
   ## with p in Jacobian coordinates and Q in affine coordinates
@@ -449,9 +449,9 @@ func madd*[F; Tw: static Twisted](
 
   r.ccopy(P, qIsInf)
 
-func double*[F; Tw: static Twisted](
-       r: var ECP_ShortW_Jac[F, Tw],
-       P: ECP_ShortW_Jac[F, Tw]
+func double*[F; G: static Subgroup](
+       r: var ECP_ShortW_Jac[F, G],
+       P: ECP_ShortW_Jac[F, G]
      ) =
   ## Elliptic curve point doubling for Short Weierstrass curves in projective coordinate
   ##
@@ -528,9 +528,9 @@ func diff*(r: var ECP_ShortW_Jac,
   nQ.neg(Q)
   r.sum(P, nQ)
 
-func affineFromJacobian*[F; Tw](
-       aff: var ECP_ShortW_Aff[F, Tw],
-       jac: ECP_ShortW_Jac[F, Tw]) =
+func affineFromJacobian*[F; G](
+       aff: var ECP_ShortW_Aff[F, G],
+       jac: ECP_ShortW_Jac[F, G]) =
   var invZ {.noInit.}, invZ2{.noInit.}: F
   invZ.inv(jac.z)
   invZ2.square(invZ)
@@ -539,9 +539,9 @@ func affineFromJacobian*[F; Tw](
   aff.y.prod(jac.y, invZ)
   aff.y *= invZ2
 
-func jacobianFromAffine*[F; Tw](
-       jac: var ECP_ShortW_Jac[F, Tw],
-       aff: ECP_ShortW_Aff[F, Tw]) {.inline.} =
+func jacobianFromAffine*[F; G](
+       jac: var ECP_ShortW_Jac[F, G],
+       aff: ECP_ShortW_Aff[F, G]) {.inline.} =
   jac.x = aff.x
   jac.y = aff.y
   jac.z.setOne()

@@ -18,25 +18,25 @@ const
   ItersMul = Iters div 4
 
 run_EC_mul_vs_ref_impl(
-    ec = ECP_ShortW_Prj[Fp[BN254_Snarks], NotOnTwist],
+    ec = ECP_ShortW_Prj[Fp[BN254_Snarks], G1],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_projective_g1_mul_vs_ref_" & $BN254_Snarks
   )
 
 run_EC_mul_vs_ref_impl(
-    ec = ECP_ShortW_Prj[Fp[BLS12_381], NotOnTwist],
+    ec = ECP_ShortW_Prj[Fp[BLS12_381], G1],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_projective_g1_mul_vs_ref_" & $BLS12_381
   )
 
 run_EC_mul_vs_ref_impl(
-    ec = ECP_ShortW_Prj[Fp[BLS12_377], NotOnTwist],
+    ec = ECP_ShortW_Prj[Fp[BLS12_377], G1],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_projective_g1_mul_vs_ref_" & $BLS12_377
   )
 
 run_EC_mul_vs_ref_impl(
-    ec = ECP_ShortW_Prj[Fp[BW6_761], NotOnTwist],
+    ec = ECP_ShortW_Prj[Fp[BW6_761], G1],
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_projective_g1_mul_vs_ref_" & $BW6_761
   )

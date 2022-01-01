@@ -38,12 +38,12 @@ const BN254_Nogami_pairing_finalexponent* = block:
 
 func millerLoopAddchain*(
        f: var Fp12[BN254_Nogami],
-       Q: ECP_ShortW_Aff[Fp2[BN254_Nogami], OnTwist],
-       P: ECP_ShortW_Aff[Fp[BN254_Nogami], NotOnTwist]
+       Q: ECP_ShortW_Aff[Fp2[BN254_Nogami], G2],
+       P: ECP_ShortW_Aff[Fp[BN254_Nogami], G1]
      ) =
   ## Miller Loop for BN254-Nogami curve
   ## Computes f{6u+2,Q}(P) with u the BLS curve parameter
-  var T {.noInit.}: ECP_ShortW_Prj[Fp2[BN254_Nogami], OnTwist]
+  var T {.noInit.}: ECP_ShortW_Prj[Fp2[BN254_Nogami], G2]
 
   f.miller_init_double_then_add(T, Q, P, 1)                # 0b11
   f.miller_accum_double_then_add(T, Q, P, 6)               # 0b11000001

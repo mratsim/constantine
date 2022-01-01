@@ -140,8 +140,8 @@ proc parseHook*(src: string, pos: var int, value: var BigInt) =
 
 proc parseHook*(src: string, pos: var int, value: var ECP_ShortW_Aff) =
   # Note when nim-serialization was used:
-  #   When ECP_ShortW_Aff[Fp[Foo], NotOnTwist]
-  #   and ECP_ShortW_Aff[Fp[Foo], OnTwist]
+  #   When ECP_ShortW_Aff[Fp[Foo], G1]
+  #   and ECP_ShortW_Aff[Fp[Foo], G2]
   #   are generated in the same file (i.e. twists and base curve are both on Fp)
   #   this creates bad codegen, in the C code, the `value`parameter gets the wrong type
   #   TODO: upstream
@@ -165,7 +165,7 @@ proc parseHook*(src: string, pos: var int, value: var ECP_ShortW_Aff) =
     {.error: "Not Implemented".}
 
 proc loadVectors(TestType: typedesc): TestType =
-  const group = when TestType.EC.Tw == NotOnTwist: "G1"
+  const group = when TestType.EC.G == G1: "G1"
                 else: "G2"
   const filename = "tv_" & $TestType.EC.F.C & "_scalar_mul_" & group & ".json"
   let content = readFile(TestVectorsDir/filename)
@@ -181,12 +181,12 @@ proc run_scalar_mul_test_vs_sage*(
   echo "\n------------------------------------------------------\n"
   echo moduleName & '\n'
 
-  when EC.Tw == NotOnTwist:
+  when EC.G == G1:
     const G1_or_G2 = "G1"
-    let vec = loadVectors(ScalarMulTestG1[ECP_ShortW_Aff[EC.F, EC.Tw]])
+    let vec = loadVectors(ScalarMulTestG1[ECP_ShortW_Aff[EC.F, EC.G]])
   else:
     const G1_or_G2 = "G2"
-    let vec = loadVectors(ScalarMulTestG2[ECP_ShortW_Aff[EC.F, EC.Tw]])
+    let vec = loadVectors(ScalarMulTestG2[ECP_ShortW_Aff[EC.F, EC.G]])
 
   const coord = when EC is ECP_ShortW_Prj: " Projective coordinates "
                 elif EC is ECP_ShortW_Jac: " Jacobian coordinates "
