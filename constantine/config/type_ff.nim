@@ -19,6 +19,8 @@ type
     ## P being the prime modulus of the Curve C
     ## Internally, data is stored in Montgomery n-residue form
     ## with the magic constant chosen for convenient division (a power of 2 depending on P bitsize)
+    # TODO, pseudo mersenne priles like 2²⁵⁵-19 have very fast modular reduction
+    #       and don't need Montgomery representation
     mres*: matchingBigInt(C)
 
   Fr*[C: static Curve] = object

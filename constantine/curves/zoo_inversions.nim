@@ -7,13 +7,15 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/[curves, type_ff],
+  ../config/curves,
   ./bls12_377_inversion,
   ./bls12_381_inversion,
   ./bn254_nogami_inversion,
   ./bn254_snarks_inversion,
   ./bw6_761_inversion,
-  ./secp256k1_inversion
+  ./secp256k1_inversion,
+  ./curve25519_inversion
+
 
 export
   bls12_377_inversion,
@@ -21,16 +23,13 @@ export
   bn254_nogami_inversion,
   bn254_snarks_inversion,
   bw6_761_inversion,
-  secp256k1_inversion
+  secp256k1_inversion,
+  curve25519_inversion
 
 func hasInversionAddchain*(C: static Curve): static bool =
-  # TODO: For now we don't activate the addition chains
-  #      for Secp256k1
-  #      Performance is slower than GCD (to investigate)
-  # For BW6-761 the addition chain is over 2x slower than Euclid-based inversion
-  # due to multiplication being so costly with 12 limbs (grows quadratically)
-  # while Euclid costs grows linearly.
-  when C in {BN254_Nogami, BN254_Snarks, BLS12_377, BLS12_381}:
+  ## Is an inversion addition chain implemented for the curve.
+  ## Note: the addition chain might be slower than Euclid-based inversion.
+  when C in {BN254_Nogami, BN254_Snarks, BLS12_377, BLS12_381, BW6_761, Curve25519, Secp256k1}:
     true
   else:
     false

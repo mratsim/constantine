@@ -37,10 +37,16 @@ func inv*(r: var FF, a: FF) =
   ## to convert Jacobian and Projective coordinates
   ## to affine for elliptic curve
   # For now we don't activate the addition chains
-  # neither for Secp256k1 nor BN curves
-  # Performance is slower than GCD
-  # To be revisited with faster squaring/multiplications
-  when FF is Fp and FF.C.hasInversionAddchain():
+  # Performance is slower than Euclid-based inversion on newer CPUs
+  #
+  # - Montgomery multiplication/squaring can skip the final substraction
+  # - For generalized Mersenne Prime curves, modular reduction can be made extremely cheap.
+  # - For BW6-761 the addition chain is over 2x slower than Euclid-based inversion
+  #   due to multiplication being so costly with 12 limbs (grows quadratically)
+  #   while Euclid costs grows linearly.
+  when false and
+       FF is Fp and FF.C.hasInversionAddchain() and
+       FF.C notin {BW6_761}:
     r.inv_addchain(a)
   else:
     r.inv_euclid(a)

@@ -52,18 +52,7 @@ proc main() =
     smallSeparator()
     invEuclidBench(Fp[curve], ExponentIters)
     invPowFermatBench(Fp[curve], ExponentIters)
-    when curve.hasInversionAddchain():
-      invAddChainBench(Fp[curve], ExponentIters)
-    when (BaseType(curve.Mod.limbs[0]) and 3) == 3:
-      sqrtP3mod4Bench(Fp[curve], ExponentIters)
-    when (BaseType(curve.Mod.limbs[0]) and 7) == 5:
-      sqrtP5mod8Bench(Fp[curve], ExponentIters)
-    when curve.hasSqrtAddchain():
-      sqrtAddChainBench(Fp[curve], ExponentIters)
-    when curve in {Jubjub, Bandersnatch, BLS12_377}:
-      sqrtTonelliBench(Fp[curve], ExponentIters)
-    when curve.hasTonelliShanksAddchain():
-      sqrtTonelliAddChainBench(Fp[curve], ExponentIters)
+    sqrtBench(Fp[curve], ExponentIters)
     sqrtRatioBench(Fp[curve], ExponentIters)
     # Exponentiation by a "secret" of size ~the curve order
     powBench(Fp[curve], ExponentIters)

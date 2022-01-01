@@ -10,8 +10,7 @@ import
   ../primitives,
   ../config/[common, type_ff, curves],
   ../curves/zoo_square_roots,
-  ./bigints, ./finite_fields,
-  ./finite_fields_inversion
+  ./bigints, ./finite_fields
 
 # ############################################################
 #
@@ -51,7 +50,7 @@ func isSquare*(a: Fp): SecretBool =
 # Specialized routine for p ≡ 3 (mod 4)
 # ------------------------------------------------------------
 
-func hasP3mod4_primeModulus(C: static Curve): static bool =
+func hasP3mod4_primeModulus*(C: static Curve): static bool =
   ## Returns true iff p ≡ 3 (mod 4)
   (BaseType(C.Mod.limbs[0]) and 3) == 3
 
@@ -75,13 +74,16 @@ func invsqrt_p3mod4*(r: var Fp, a: Fp) =
   # a^((p-3)/2))        ≡ 1/a  (mod p)
   # a^((p-3)/4))        ≡ 1/√a (mod p)      # Requires p ≡ 3 (mod 4)
   static: doAssert Fp.C.hasP3mod4_primeModulus()
-  r = a
-  r.powUnsafeExponent(Fp.getPrimeMinus3div4_BE())
+  when FP.C.hasSqrtAddchain():
+    r.invsqrt_addchain(a)
+  else:
+    r = a
+    r.powUnsafeExponent(Fp.getPrimeMinus3div4_BE())
 
 # Specialized routine for p ≡ 5 (mod 8)
 # ------------------------------------------------------------
 
-func hasP5mod8_primeModulus(C: static Curve): static bool =
+func hasP5mod8_primeModulus*(C: static Curve): static bool =
   ## Returns true iff p ≡ 5 (mod 8)
   (BaseType(C.Mod.limbs[0]) and 7) == 5
 
@@ -141,7 +143,10 @@ func invsqrt_p5mod8*(r: var Fp, a: Fp) =
   # α = (2a)^((p-5)/8)
   alpha.double(a)
   beta = alpha
-  alpha.powUnsafeExponent(Fp.getPrimeMinus5div8_BE())
+  when Fp.C.hasSqrtAddchain():
+    alpha.invsqrt_addchain_pminus5over8(alpha)
+  else:
+    alpha.powUnsafeExponent(Fp.getPrimeMinus5div8_BE())
 
   # Note: if r aliases a, for inverse square root we don't use `a` again
 
@@ -265,9 +270,7 @@ func invsqrt*[C](r: var Fp[C], a: Fp[C]) =
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
   ## This procedure is constant-time
-  when C.hasSqrtAddchain():
-    r.invsqrt_addchain(a)
-  elif C.hasP3mod4_primeModulus():
+  when C.hasP3mod4_primeModulus():
     r.invsqrt_p3mod4(a)
   elif C.hasP5mod8_primeModulus():
     r.invsqrt_p5mod8(a)
