@@ -230,8 +230,11 @@ proc main() =
   diff2xUnreduce(Fp[BLS12_381], iters = 10_000_000)
   neg2x(Fp[BLS12_381], iters = 10_000_000)
   separator()
+  prod2xBench(512, 256, 256, iters = 10_000_000)
   prod2xBench(768, 384, 384, iters = 10_000_000)
+  square2xBench(512, 256, iters = 10_000_000)
   square2xBench(768, 384, iters = 10_000_000)
+  reduce2x(Fp[BN254_Snarks], iters = 10_000_000)
   reduce2x(Fp[BLS12_381], iters = 10_000_000)
   separator()
 
