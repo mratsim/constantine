@@ -17,6 +17,7 @@ import
   ../constantine/config/[common, curves],
   ../constantine/arithmetic,
   ../constantine/towers,
+  ../constantine/curves/zoo_square_roots,
   # Helpers
   ../helpers/prng_unsafe,
   ./bench_blueprint
@@ -129,7 +130,7 @@ proc sqrtBench*(T: typedesc, iters: int) =
     else:
       "Tonelli-Shanks"
   const addchain = block:
-    when T.C.hasSqrtAddchain():
+    when T.C.hasSqrtAddchain() or T.C.hasTonelliShanksAddchain():
       "with addition chain"
     else:
       "without addition chain"

@@ -22,31 +22,6 @@ import
 {.push raises: [].}
 {.push inline.}
 
-# Legendre symbol / Euler's Criterion / Kronecker's symbol
-# ------------------------------------------------------------
-
-func isSquare*(a: Fp): SecretBool =
-  ## Returns true if ``a`` is a square (quadratic residue) in 𝔽p
-  ##
-  ## Assumes that the prime modulus ``p`` is public.
-  # Implementation: we use exponentiation by (p-1)/2 (Euler's criterion)
-  #                 as it can reuse the exponentiation implementation
-  #                 Note that we don't care about leaking the bits of p
-  #                 as we assume that
-  var xi {.noInit.} = a # TODO: is noInit necessary? see https://github.com/mratsim/constantine/issues/21
-  xi.powUnsafeExponent(Fp.getPrimeMinus1div2_BE())
-  result = not(xi.isMinusOne())
-  # xi can be:
-  # -  1  if a square
-  # -  0  if 0
-  # - -1  if a quadratic non-residue
-  debug:
-    doAssert: bool(
-      xi.isZero or
-      xi.isOne or
-      xi.isMinusOne()
-    )
-
 # Specialized routine for p ≡ 3 (mod 4)
 # ------------------------------------------------------------
 
@@ -54,7 +29,7 @@ func hasP3mod4_primeModulus*(C: static Curve): static bool =
   ## Returns true iff p ≡ 3 (mod 4)
   (BaseType(C.Mod.limbs[0]) and 3) == 3
 
-func invsqrt_p3mod4*(r: var Fp, a: Fp) =
+func invsqrt_p3mod4(r: var Fp, a: Fp) =
   ## Compute the inverse square root of ``a``
   ##
   ## This requires ``a`` to be a square
@@ -87,7 +62,7 @@ func hasP5mod8_primeModulus*(C: static Curve): static bool =
   ## Returns true iff p ≡ 5 (mod 8)
   (BaseType(C.Mod.limbs[0]) and 7) == 5
 
-func invsqrt_p5mod8*(r: var Fp, a: Fp) =
+func invsqrt_p5mod8(r: var Fp, a: Fp) =
   ## Compute the inverse square root of ``a``
   ##
   ## This requires ``a`` to be a square
@@ -168,13 +143,11 @@ func invsqrt_p5mod8*(r: var Fp, a: Fp) =
 # Tonelli Shanks for any prime
 # ------------------------------------------------------------
 
-func precompute_tonelli_shanks(
-       a_pre_exp: var Fp,
-       a: Fp, useAddChain: static bool) =
-  a_pre_exp = a
-  when useAddChain:
+func precompute_tonelli_shanks(a_pre_exp: var Fp, a: Fp) =
+  when FP.C.hasTonelliShanksAddchain():
     a_pre_exp.precompute_tonelli_shanks_addchain(a)
   else:
+    a_pre_exp = a
     a_pre_exp.powUnsafeExponent(Fp.C.tonelliShanks(exponent))
 
 func isSquare_tonelli_shanks(
@@ -237,7 +210,7 @@ func invsqrt_tonelli_shanks_pre(
     t.ccopy(buf, bNotOne)
     b = t
 
-func invsqrt_tonelli_shanks*(r: var Fp, a: Fp, useAddChain: static bool) =
+func invsqrt_tonelli_shanks*(r: var Fp, a: Fp) =
   ## Compute the inverse square root of ``a``
   ##
   ## This requires ``a`` to be a square
@@ -249,13 +222,11 @@ func invsqrt_tonelli_shanks*(r: var Fp, a: Fp, useAddChain: static bool) =
   ## This procedure returns a deterministic result
   ## This procedure is constant-time
   var a_pre_exp{.noInit.}: Fp
-  a_pre_exp.precompute_tonelli_shanks(a, useAddChain)
+  a_pre_exp.precompute_tonelli_shanks(a)
   invsqrt_tonelli_shanks_pre(r, a, a_pre_exp)
 
 # Public routines
 # ------------------------------------------------------------
-# Note: we export the inner sqrt_invsqrt_IMPL
-#       for benchmarking purposes.
 
 {.push inline.}
 
@@ -275,7 +246,7 @@ func invsqrt*[C](r: var Fp[C], a: Fp[C]) =
   elif C.hasP5mod8_primeModulus():
     r.invsqrt_p5mod8(a)
   else:
-    r.invsqrt_tonelli_shanks(a, useAddChain = C.hasTonelliShanksAddchain())
+    r.invsqrt_tonelli_shanks(a)
 
 func sqrt*[C](a: var Fp[C]) =
   ## Compute the square root of ``a``
@@ -342,6 +313,41 @@ func invsqrt_if_square*[C](r: var Fp[C], a: Fp[C]): SecretBool =
   ## This procedure is constant-time
   var sqrt{.noInit.}: Fp[C]
   result = sqrt_invsqrt_if_square(sqrt, r, a)
+
+# Legendre symbol / Euler's Criterion / Kronecker's symbol
+# ------------------------------------------------------------
+
+func isSquare*(a: Fp): SecretBool =
+  ## Returns true if ``a`` is a square (quadratic residue) in 𝔽p
+  ##
+  ## Assumes that the prime modulus ``p`` is public.
+  when false:
+    # Implementation: we use exponentiation by (p-1)/2 (Euler's criterion)
+    #                 as it can reuse the exponentiation implementation
+    #                 Note that we don't care about leaking the bits of p
+    #                 as we assume that
+    var xi {.noInit.} = a # TODO: is noInit necessary? see https://github.com/mratsim/constantine/issues/21
+    xi.powUnsafeExponent(Fp.getPrimeMinus1div2_BE())
+    result = not(xi.isMinusOne())
+    # xi can be:
+    # -  1  if a square
+    # -  0  if 0
+    # - -1  if a quadratic non-residue
+    debug:
+      doAssert: bool(
+        xi.isZero or
+        xi.isOne or
+        xi.isMinusOne()
+      )
+  else:
+    # We reuse the optimized addition chains instead of exponentiation by (p-1)/2
+    when Fp.C.hasP3mod4_primeModulus() or Fp.C.hasP5mod8_primeModulus():
+      var sqrt{.noInit.}, invsqrt{.noInit.}: Fp
+      return sqrt_invsqrt_if_square(sqrt, invsqrt, a)
+    else:
+      var a_pre_exp{.noInit.}: Fp
+      a_pre_exp.precompute_tonelli_shanks(a)
+      return isSquare_tonelli_shanks(a, a_pre_exp)
 
 {.pop.} # inline
 
