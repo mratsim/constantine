@@ -12,7 +12,7 @@ import
   ../arithmetic,
   ../towers,
   ../io/io_bigints,
-  ../curves/zoo_glv,
+  ../curves/zoo_endomorphisms,
   ./ec_endomorphism_accel
 
 # ############################################################

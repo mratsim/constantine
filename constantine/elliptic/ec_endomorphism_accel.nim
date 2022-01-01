@@ -12,7 +12,7 @@ import
   # Internal
   ../primitives,
   ../config/[common, curves, type_bigint],
-  ../curves/zoo_glv,
+  ../curves/zoo_endomorphisms,
   ../arithmetic,
   ../towers,
   ../isogeny/frobenius,

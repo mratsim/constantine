@@ -237,7 +237,7 @@ def dumpConst(name, inner):
 if __name__ == "__main__":
   # Usage
   # BLS12-381
-  # sage sage/derive_pairing.sage BLS12_381
+  # sage sage/derive_endomorphisms.sage BLS12_381
 
   from argparse import ArgumentParser
 
@@ -261,7 +261,7 @@ if __name__ == "__main__":
     print('----------------------------------------------------\n')
     g2lat, g2babai = genPsiEndo(curve, Curves)
 
-    with open(f'{curve.lower()}_glv.nim', 'w') as f:
+    with open(f'{curve.lower()}_endomorphisms.nim', 'w') as f:
       f.write(copyright())
       f.write('\n\n')
       f.write(inspect.cleandoc(f"""

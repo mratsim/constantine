@@ -10,11 +10,11 @@ import
   std/macros,
   ../config/[curves, type_ff],
   ../towers,
-  ./bls12_377_glv,
-  ./bls12_381_glv,
-  ./bn254_nogami_glv,
-  ./bn254_snarks_glv,
-  ./bw6_761_glv
+  ./bls12_377_endomorphisms,
+  ./bls12_381_endomorphisms,
+  ./bn254_nogami_endomorphisms,
+  ./bn254_snarks_endomorphisms,
+  ./bw6_761_endomorphisms
 
 {.experimental: "dynamicBindSym".}
 
