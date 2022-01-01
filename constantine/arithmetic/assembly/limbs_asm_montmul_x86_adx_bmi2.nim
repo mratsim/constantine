@@ -174,7 +174,7 @@ proc partialRedx(
     ctx.adcx t[N-1], S
     ctx.adox t[N-1], C
 
-macro montMul_CIOS_nocarry_adx_bmi2_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_MM: Limbs[N], m0ninv_MM: BaseType): untyped =
+macro montMul_CIOS_sparebit_adx_bmi2_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_MM: Limbs[N], m0ninv_MM: BaseType): untyped =
   ## Generate an optimized Montgomery Multiplication kernel
   ## using the CIOS method
   ## This requires the most significant word of the Modulus
@@ -270,9 +270,10 @@ macro montMul_CIOS_nocarry_adx_bmi2_gen[N: static int](r_MM: var Limbs[N], a_MM,
 
   result.add ctx.generate
 
-func montMul_CIOS_nocarry_asm_adx_bmi2*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
+func montMul_CIOS_sparebit_asm_adx_bmi2*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   ## Constant-time modular multiplication
-  montMul_CIOS_nocarry_adx_bmi2_gen(r, a, b, M, m0ninv)
+  ## Requires the prime modulus to have a spare bit in the representation. (Hence if using 64-bit words and 4 words, to be at most 255-bit)
+  montMul_CIOS_sparebit_adx_bmi2_gen(r, a, b, M, m0ninv)
 
 # Montgomery Squaring
 # ------------------------------------------------------------

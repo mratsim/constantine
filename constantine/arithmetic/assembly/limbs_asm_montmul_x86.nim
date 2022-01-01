@@ -34,7 +34,7 @@ static: doAssert UseASM_X86_64
 # Montgomery multiplication
 # ------------------------------------------------------------
 # Fallback when no ADX and BMI2 support (MULX, ADCX, ADOX)
-macro montMul_CIOS_nocarry_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_MM: Limbs[N], m0ninv_MM: BaseType): untyped =
+macro montMul_CIOS_sparebit_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_MM: Limbs[N], m0ninv_MM: BaseType): untyped =
   ## Generate an optimized Montgomery Multiplication kernel
   ## using the CIOS method
   ##
@@ -174,9 +174,9 @@ macro montMul_CIOS_nocarry_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_
 
   result.add ctx.generate
 
-func montMul_CIOS_nocarry_asm*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
+func montMul_CIOS_sparebit_asm*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   ## Constant-time modular multiplication
-  montMul_CIOS_nocarry_gen(r, a, b, M, m0ninv)
+  montMul_CIOS_sparebit_gen(r, a, b, M, m0ninv)
 
 # Montgomery Squaring
 # ------------------------------------------------------------

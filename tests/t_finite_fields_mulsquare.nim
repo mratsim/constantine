@@ -83,7 +83,10 @@ proc mainSanity() =
     sanity Mersenne127
     sanity P224         # P224 uses the fast-path with 64-bit words and the slow path with 32-bit words
     sanity P256
+    sanity Secp256k1
     sanity BLS12_381
+    sanity Curve25519
+    sanity Bandersnatch
 
 mainSanity()
 
@@ -152,6 +155,14 @@ suite "Random Modular Squaring is consistent with Modular Multiplication" & " ["
     for _ in 0 ..< Iters:
       random_long01Seq(P256)
 
+  test "Random squaring mod Secp256k1 [FastSquaring = " & $(Fp[Secp256k1].getSpareBits() >= 2) & "]":
+    for _ in 0 ..< Iters:
+      randomCurve(Secp256k1)
+    for _ in 0 ..< Iters:
+      randomHighHammingWeight(Secp256k1)
+    for _ in 0 ..< Iters:
+      random_long01Seq(Secp256k1)
+
   test "Random squaring mod BLS12_381 [FastSquaring = " & $(Fp[BLS12_381].getSpareBits() >= 2) & "]":
     for _ in 0 ..< Iters:
       randomCurve(BLS12_381)
@@ -159,6 +170,22 @@ suite "Random Modular Squaring is consistent with Modular Multiplication" & " ["
       randomHighHammingWeight(BLS12_381)
     for _ in 0 ..< Iters:
       random_long01Seq(BLS12_381)
+
+  test "Random squaring mod Curve25519 [FastSquaring = " & $(Fp[Curve25519].getSpareBits() >= 2) & "]":
+    for _ in 0 ..< Iters:
+      randomCurve(Curve25519)
+    for _ in 0 ..< Iters:
+      randomHighHammingWeight(Curve25519)
+    for _ in 0 ..< Iters:
+      random_long01Seq(Curve25519)
+
+  test "Random squaring mod Bandersnatch [FastSquaring = " & $(Fp[Bandersnatch].getSpareBits() >= 2) & "]":
+    for _ in 0 ..< Iters:
+      randomCurve(Bandersnatch)
+    for _ in 0 ..< Iters:
+      randomHighHammingWeight(Bandersnatch)
+    for _ in 0 ..< Iters:
+      random_long01Seq(Bandersnatch)
 
 suite "Modular squaring - bugs highlighted by property-based testing":
   test "a² == (-a)² on for Fp[2^127 - 1] - #61":

@@ -71,7 +71,7 @@ func sqrx2x_complex_asm_adx_bmi2*(
   t0.diff(a.c0, a.c1)
   r.c0.mul_asm_adx_bmi2_impl(t0, t1)
 
-func sqrx_complex_asm_adx_bmi2*(
+func sqrx_complex_sparebit_asm_adx_bmi2*(
         r: var array[2, Fp],
         a: array[2, Fp]
       ) =
@@ -85,10 +85,10 @@ func sqrx_complex_asm_adx_bmi2*(
   var v0 {.noInit.}, v1 {.noInit.}: typeof(r.c0)
   v0.diff(a.c0, a.c1)
   v1.sum(a.c0, a.c1)
-  r.c1.mres.limbs.montMul_CIOS_nocarry_asm_adx_bmi2(a.c0.mres.limbs, a.c1.mres.limbs, Fp.fieldMod().limbs, Fp.getNegInvModWord())
+  r.c1.mres.limbs.montMul_CIOS_sparebit_asm_adx_bmi2(a.c0.mres.limbs, a.c1.mres.limbs, Fp.fieldMod().limbs, Fp.getNegInvModWord())
   # aliasing: a unneeded now
   r.c1.double()
-  r.c0.mres.limbs.montMul_CIOS_nocarry_asm_adx_bmi2(v0.mres.limbs, v1.mres.limbs, Fp.fieldMod().limbs, Fp.getNegInvModWord())
+  r.c0.mres.limbs.montMul_CIOS_sparebit_asm_adx_bmi2(v0.mres.limbs, v1.mres.limbs, Fp.fieldMod().limbs, Fp.getNegInvModWord())
 
 # 𝔽p2 multiplication
 # ------------------------------------------------------------

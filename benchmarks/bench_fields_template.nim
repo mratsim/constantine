@@ -14,15 +14,17 @@
 
 import
   # Internals
-  ../constantine/config/[curves, common],
+  ../constantine/config/[common, curves],
   ../constantine/arithmetic,
   ../constantine/towers,
+  ../constantine/curves/zoo_square_roots,
   # Helpers
-  ../helpers/[prng_unsafe, static_for],
+  ../helpers/prng_unsafe,
   ./bench_blueprint
 
 export notes
 proc separator*() = separator(165)
+proc smallSeparator*() = separator(8)
 
 proc report(op, field: string, start, stop: MonoTime, startClk, stopClk: int64, iters: int) =
   let ns = inNanoseconds((stop-start) div iters)
@@ -119,37 +121,30 @@ proc invAddChainBench*(T: typedesc, iters: int) =
 
 proc sqrtBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)
-  bench("Square Root + isSquare (constant-time default impl)", T, iters):
+
+  const algoType = block:
+    when T.C.hasP3mod4_primeModulus():
+      "p ≡ 3 (mod 4)"
+    elif T.C.hasP5mod8_primeModulus():
+      "p ≡ 5 (mod 8)"
+    else:
+      "Tonelli-Shanks"
+  const addchain = block:
+    when T.C.hasSqrtAddchain() or T.C.hasTonelliShanksAddchain():
+      "with addition chain"
+    else:
+      "without addition chain"
+  const desc = "Square Root (constant-time " & algoType & " " & addchain & ")"
+  bench(desc, T, iters):
     var r = x
     discard r.sqrt_if_square()
 
-proc sqrtP3mod4Bench*(T: typedesc, iters: int) =
+proc sqrtRatioBench*(T: typedesc, iters: int) =
   var r: T
-  let x = rng.random_unsafe(T)
-  bench("SquareRoot (p ≡ 3 (mod 4) exponentiation)", T, iters):
-    r.invsqrt_p3mod4(x)
-    r *= x
-
-proc sqrtAddChainBench*(T: typedesc, iters: int) =
-  var r: T
-  let x = rng.random_unsafe(T)
-  bench("SquareRoot (addition chain)", T, iters):
-    r.invsqrt_addchain(x)
-    r *= x
-
-proc sqrtTonelliBench*(T: typedesc, iters: int) =
-  var r: T
-  let x = rng.random_unsafe(T)
-  bench("SquareRoot (constant-time Tonelli-Shanks exponentiation)", T, iters):
-    r.invsqrt_tonelli_shanks(x, useAddChain = false)
-    r *= x
-
-proc sqrtTonelliAddChainBench*(T: typedesc, iters: int) =
-  var r: T
-  let x = rng.random_unsafe(T)
-  bench("SquareRoot (constant-time Tonelli-Shanks addchain)", T, iters):
-    r.invsqrt_tonelli_shanks(x, useAddChain = true)
-    r *= x
+  let u = rng.random_unsafe(T)
+  let v = rng.random_unsafe(T)
+  bench("Fused SquareRoot+Division+isSquare sqrt(u/v)", T, iters):
+    let isSquare = r.sqrt_ratio_if_square(u, v)
 
 proc powBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)

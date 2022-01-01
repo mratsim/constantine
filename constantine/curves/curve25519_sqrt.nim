@@ -7,21 +7,32 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/[curves, type_bigint, type_ff],
-  ../io/[io_bigints, io_fields],
+  ../config/[curves, type_ff],
   ../arithmetic/finite_fields
 
-# p ≡ 5 (mod 8), hence 𝑖 ∈ Fp with 𝑖² ≡ −1 (mod p)
-# Hence if α is a square
-# with β ≡ α^((p+3)/8) (mod p)
-# - either β² ≡ α (mod p), hence √α ≡ ±β (mod p)
-# - or β² ≡ -α (mod p), hence √α ≡ ±𝑖β (mod p)
-
-# Sage:
-#   p = Integer('0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed')
-#   Fp = GF(p)
-#   sqrt_minus1 = Fp(-1).sqrt()
-#   print(Integer(sqrt_minus1).hex())
-const Curve25519_sqrt_minus_one* = Fp[Curve25519].fromHex(
-    "0x2b8324804fc1df0b2b4d00993dfbd7a72f431806ad2fe478c4ee1b274a0ea0b0"
-)
+func invsqrt_addchain_pminus5over8*(r: var Fp[Curve25519], a: Fp[Curve25519]) =
+  ## Returns a^((p-5)/8) = 2²⁵²-3 for inverse square root computation
+  
+  var t{.noInit.}, u{.noInit.}, v{.noinit.}: Fp[Curve25519]
+  u.square(a)               # 2
+  v.square_repeated(u, 2)   # 8
+  v *= a                    # 9
+  u *= v                    # 11
+  u.square()                # 22
+  u *= v                    # 31 = 2⁵-1
+  v.square_repeated(u, 5)   #
+  u *= v                    # 2¹⁰-1
+  v.square_repeated(u, 10)  #
+  v *= u                    # 2²⁰-1
+  t.square_repeated(v, 20)  #
+  v *= t                    # 2⁴⁰-1
+  v.square_repeated(10)     #
+  u *= v                    # 2⁵⁰-1
+  v.square_repeated(u, 50)  #
+  v *= u                    # 2¹⁰⁰-1
+  t.square_repeated(v, 100) #
+  v *= t                    # 2²⁰⁰-1
+  v.square_repeated(50)     # 
+  u *= v                    # 2²⁵⁰-1
+  u.square_repeated(2)      # 2²⁵²-4
+  r.prod(a, u)              # 2²⁵²-3

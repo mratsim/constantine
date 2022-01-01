@@ -27,7 +27,7 @@ export
   curve25519_sqrt
 
 func hasSqrtAddchain*(C: static Curve): static bool =
-  when C in {BLS12_381, BN254_Nogami, BN254_Snarks, BW6_761}:
+  when C in {BLS12_381, BN254_Nogami, BN254_Snarks, BW6_761, Curve25519}:
     true
   else:
     false
@@ -43,7 +43,3 @@ func hasTonelliShanksAddchain*(C: static Curve): static bool =
     true
   else:
     false
-
-macro sqrt_minus_one*(C: static Curve): untyped = 
-  ## Return 𝑖 ∈ Fp with 𝑖² ≡ −1 (mod p)
-  return bindSym($C & "_sqrt_minus_one")
