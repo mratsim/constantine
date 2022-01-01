@@ -19,7 +19,8 @@ import
   ../constantine/elliptic/ec_scalar_mul,
   ../constantine/io/[io_fields, io_towers, io_ec],
   ../constantine/config/curves,
-  ../constantine/hash_to_curve/[hash_to_curve, cofactors],
+  ../constantine/curves/zoo_subgroups,
+  ../constantine/hash_to_curve/hash_to_curve,
   ../constantine/pairing/pairing_bls12,
   # Test utilities
   ../helpers/prng_unsafe

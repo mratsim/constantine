@@ -12,7 +12,7 @@ import
   ../constantine/config/[common, curves],
   ../constantine/[arithmetic, towers],
   ../constantine/elliptic/ec_shortweierstrass_projective,
-  ../constantine/hash_to_curve/cofactors,
+  ../constantine/curves/zoo_subgroups,
   ../constantine/pairing/pairing_bls12,
   # Helpers
   ../helpers/prng_unsafe
@@ -24,7 +24,7 @@ echo "bench xoshiro512** seed: ", seed
 
 func random_point*(rng: var RngState, EC: typedesc): EC {.noInit.} =
   result = rng.random_unsafe(EC)
-  result.clearCofactorReference()
+  result.clearCofactor()
 
 proc pairingBLS12Meter*(C: static Curve) =
   let

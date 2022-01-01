@@ -15,7 +15,7 @@ import
   ../constantine/towers,
   ../constantine/config/curves,
   ../constantine/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
-  ../constantine/hash_to_curve/cofactors,
+  ../constantine/curves/zoo_subgroups,
   # Test utilities
   ../helpers/prng_unsafe
 
@@ -35,24 +35,24 @@ template affineType[F; G: static Subgroup](
     ec: ECP_ShortW_Prj[F, G]): type =
   ECP_ShortW_Aff[F, G]
 
-func clearCofactorReference[F; G: static Subgroup](
+func clearCofactor[F; G: static Subgroup](
        ec: var ECP_ShortW_Aff[F, G]) =
   # For now we don't have any affine operation defined
   var t {.noInit.}: ECP_ShortW_Prj[F, G]
   t.projectiveFromAffine(ec)
-  t.clearCofactorReference()
+  t.clearCofactor()
   ec.affineFromProjective(t)
 
 func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen): EC {.noInit.} =
   if gen == Uniform:
     result = rng.random_unsafe(EC)
-    result.clearCofactorReference()
+    result.clearCofactor()
   elif gen == HighHammingWeight:
     result = rng.random_highHammingWeight(EC)
-    result.clearCofactorReference()
+    result.clearCofactor()
   else:
     result = rng.random_long01Seq(EC)
-    result.clearCofactorReference()
+    result.clearCofactor()
 
 template runPairingTests*(Iters: static int, C: static Curve, G1, G2, GT: typedesc, pairing_fn: untyped): untyped {.dirty.}=
   bind affineType

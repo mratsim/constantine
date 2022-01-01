@@ -33,14 +33,14 @@ import
 
 func millerLoopBW6_761_naive[C](
        f: var Fp6[C],
-       P: ECP_ShortW_Aff[Fp[C], NotOnTwist],
-       Q: ECP_ShortW_Aff[Fp[C], OnTwist]
+       P: ECP_ShortW_Aff[Fp[C], G1],
+       Q: ECP_ShortW_Aff[Fp[C], G2]
      ) =
   ## Miller Loop for BW6_761 curve
   ## Computes f_{u+1,Q}(P)*Frobenius(f_{u*(u^2-u-1),Q}(P))
 
   var
-    T {.noInit.}: ECP_ShortW_Prj[Fp[C], OnTwist]
+    T {.noInit.}: ECP_ShortW_Prj[Fp[C], G2]
     line {.noInit.}: Line[Fp[C]]
     nQ{.noInit.}: typeof(Q)
 
@@ -76,15 +76,15 @@ func finalExpGeneric[C: static Curve](f: var Fp6[C]) =
 
 func millerLoopBW6_761_opt_to_debug[C](
        f: var Fp6[C],
-       P: ECP_ShortW_Aff[Fp[C], NotOnTwist],
-       Q: ECP_ShortW_Aff[Fp[C], OnTwist]
+       P: ECP_ShortW_Aff[Fp[C], G1],
+       Q: ECP_ShortW_Aff[Fp[C], G2]
      ) {.used.} =
   ## Miller Loop Otpimized for BW6_761 curve
 
   # 1st part: f_{u,Q}(P)
   # ------------------------------
   var
-    T {.noInit.}: ECP_ShortW_Prj[Fp[C], OnTwist]
+    T {.noInit.}: ECP_ShortW_Prj[Fp[C], G2]
     line {.noInit.}: Line[Fp[C]]
 
   T.projectiveFromAffine(Q)
@@ -150,15 +150,15 @@ func millerLoopBW6_761_opt_to_debug[C](
 
 func pairing_bw6_761_reference*[C](
        gt: var Fp6[C],
-       P: ECP_ShortW_Prj[Fp[C], NotOnTwist],
-       Q: ECP_ShortW_Prj[Fp[C], OnTwist]) =
+       P: ECP_ShortW_Prj[Fp[C], G1],
+       Q: ECP_ShortW_Prj[Fp[C], G2]) =
   ## Compute the optimal Ate Pairing for BW6 curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
   ##
   ## Reference implementation
-  var Paff {.noInit.}: ECP_ShortW_Aff[Fp[C], NotOnTwist]
-  var Qaff {.noInit.}: ECP_ShortW_Aff[Fp[C], OnTwist]
+  var Paff {.noInit.}: ECP_ShortW_Aff[Fp[C], G1]
+  var Qaff {.noInit.}: ECP_ShortW_Aff[Fp[C], G2]
   Paff.affineFromProjective(P)
   Qaff.affineFromProjective(Q)
   gt.millerLoopBW6_761_naive(Paff, Qaff)

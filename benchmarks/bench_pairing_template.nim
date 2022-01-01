@@ -16,10 +16,9 @@ import
   # Internals
   ../constantine/config/[curves, common],
   ../constantine/arithmetic,
-  ../constantine/io/io_bigints,
   ../constantine/towers,
-  ../constantine/elliptic/[ec_shortweierstrass_projective, ec_shortweierstrass_affine],
-  ../constantine/hash_to_curve/cofactors,
+  ../constantine/ec_shortweierstrass,
+  ../constantine/curves/zoo_subgroups,
   ../constantine/pairing/[
     cyclotomic_fp12,
     lines_projective,
@@ -48,17 +47,17 @@ template bench(op: string, C: static Curve, iters: int, body: untyped): untyped 
   measure(iters, startTime, stopTime, startClk, stopClk, body)
   report(op, $C, startTime, stopTime, startClk, stopClk, iters)
 
-func clearCofactorReference[F; G: static Subgroup](
+func clearCofactor[F; G: static Subgroup](
        ec: var ECP_ShortW_Aff[F, G]) =
   # For now we don't have any affine operation defined
   var t {.noInit.}: ECP_ShortW_Prj[F, G]
   t.projectiveFromAffine(ec)
-  t.clearCofactorReference()
+  t.clearCofactor()
   ec.affineFromProjective(t)
 
 func random_point*(rng: var RngState, EC: typedesc): EC {.noInit.} =
   result = rng.random_unsafe(EC)
-  result.clearCofactorReference()
+  result.clearCofactor()
 
 proc lineDoubleBench*(C: static Curve, iters: int) =
   var line: Line[Fp2[C]]

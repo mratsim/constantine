@@ -30,7 +30,7 @@ echo "bench xoshiro512** seed: ", seed
 
 func random_point*(rng: var RngState, EC: typedesc): EC {.noInit.} =
   result = rng.random_unsafe(EC)
-  result.clearCofactorReference()
+  result.clearCofactor()
 
 proc pairingBLS12Meter*(C: static Curve) =
   let

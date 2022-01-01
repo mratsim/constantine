@@ -10,11 +10,10 @@ import
   # Internals
   ../config/[common, curves],
   ../primitives, ../arithmetic, ../towers,
-  ../curves/zoo_hash_to_curve,
+  ../curves/[zoo_hash_to_curve, zoo_subgroups],
   ../ec_shortweierstrass,
   ./h2c_hash_to_field,
   ./h2c_map_to_isocurve_swu,
-  ./cofactors,
   ../isogeny/h2c_isogeny_maps,
   ../hashes
 
@@ -166,4 +165,4 @@ func hashToCurve*[
     Pjac.mapToCurve_fusedAdd(u[0], u[1])
     output.projectiveFromJacobian(Pjac)
 
-  output.clearCofactorFast()
+  output.clearCofactor()
