@@ -143,6 +143,11 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Edge cases highlighted by past bugs
   # ----------------------------------------------------------
   ("tests/t_ec_shortw_prj_edge_cases.nim", false),
+
+  # Subgroups and cofactors
+  # ----------------------------------------------------------
+  ("tests/t_ec_subgroups_bls12_381.nim", false),
+
   # Pairing
   # ----------------------------------------------------------
   # ("tests/t_pairing_bls12_377_line_functions.nim", false),

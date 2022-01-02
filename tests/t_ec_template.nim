@@ -26,7 +26,8 @@ import
     ec_twistededwards_affine,
     ec_twistededwards_projective,
     ec_scalar_mul],
-    ../constantine/io/[io_bigints, io_fields],
+  ../constantine/io/[io_bigints, io_fields, io_ec],
+  ../constantine/curves/zoo_subgroups,
   # Test utilities
   ../helpers/prng_unsafe,
   ./support/ec_reference_scalar_mult
@@ -458,3 +459,60 @@ proc run_EC_mixed_add_impl*(
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = HighHammingWeight)
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Long01Sequence)
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Long01Sequence)
+
+proc run_EC_subgroups_cofactors_impl*(
+       ec: typedesc,
+       ItersMul: static int,
+       moduleName: string
+     ) =
+  # Random seed for reproducibility
+  var rng: RngState
+  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  rng.seed(seed)
+  echo "\n------------------------------------------------------\n"
+  echo moduleName, " xoshiro512** seed: ", seed
+
+  when ec.G == G1:
+    const G1_or_G2 = "G1"
+  else:
+    const G1_or_G2 = "G2"
+
+  const testSuiteDesc = "Elliptic curve subgroup check and cofactor clearing"
+
+  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
+    var inSubgroup = 0
+    var offSubgroup = 0
+    proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
+      stdout.write "    "
+      for _ in 0 ..< Iters:
+        let P = rng.random_point(EC, randZ, gen)
+        var rP = P
+        rP.scalarMulGeneric(EC.F.C.getCurveOrder())
+        if bool rP.isInf():
+          inSubgroup += 1
+          doAssert bool P.isInSubgroup(), "Subgroup check issue on " & $EC & " with P: " & P.toHex()
+        else:
+          offSubgroup += 1
+          doAssert not bool P.isInSubgroup(), "Subgroup check issue on " & $EC & " with P: " & P.toHex()
+
+        var Q = P
+        var rQ: typeof(rP)
+        Q.clearCofactor()
+        rQ = Q
+        rQ.scalarMulGeneric(EC.F.C.getCurveOrder())
+        doAssert bool rQ.isInf(), "Cofactor clearing issue on " & $EC & " with Q: " & Q.toHex()
+        doAssert bool Q.isInSubgroup(), "Subgroup check issue on " & $EC & " with Q: " & Q.toHex()
+
+        stdout.write '.'
+      
+      stdout.write '\n'
+
+    test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
+    test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Uniform)
+    test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = HighHammingWeight)
+    test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = HighHammingWeight)
+    test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Long01Sequence)
+    test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Long01Sequence)
+  
+    echo "    [SUCCESS] Test finished with ", inSubgroup, " points in ", G1_or_G2, " subgroup and ",
+            offSubgroup, " points on curve but not in subgroup (before cofactor clearing)"

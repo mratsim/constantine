@@ -14,7 +14,8 @@ import
   ../towers,
   ../ec_shortweierstrass,
   ../io/io_bigints,
-  ../isogeny/frobenius
+  ../isogeny/frobenius,
+  ../curves/zoo_endomorphisms
 
 func pow_bls12_381_abs_x[ECP: ECP_ShortW[Fp[BLS12_381], G1] or
        ECP_ShortW[Fp2[BLS12_381], G2]](
@@ -158,3 +159,44 @@ func clearCofactorFast*(P: var ECP_ShortW_Prj[Fp2[BLS12_381], G2]) =
 
   P.sum(P, x2P)           # 9. P = [x²-x-1]P + ψ²([2]P)
   P.sum(P, xP)            # 10. P = [x²-x-1]P + [x-1] ψ(P) + ψ²([2]P)
+
+# ############################################################
+#
+#                Subgroup checks
+#
+# ############################################################
+
+func isInSubgroup*(P: ECP_ShortW_Prj[Fp[BLS12_381], G1]): SecretBool =
+  ## Returns true if P is in G1 subgroup, i.e. P is a point of order r.
+  ## A point may be on a curve but not on the prime order r subgroup.
+  ## Not checking subgroup exposes a protocol to small subgroup attacks.
+  # Implementation: Scott, https://eprint.iacr.org/2021/1130.pdf
+  #   A note on group membership tests for G1, G2 and GT
+  #   on BLS pairing-friendly curves
+  #   P is in the G1 subgroup iff phi(P) == [-u²](P)
+  var t0{.noInit.}, t1{.noInit.}: ECP_ShortW_Prj[Fp[BLS12_381], G1]
+  
+  # [-u²]P
+  t0.pow_bls12_381_x(P)
+  t1.pow_bls12_381_minus_x(t0) 
+
+  # phi(P)
+  t0.x.prod(P.x, BLS12_381.getCubicRootOfUnity_mod_p())
+  t0.y = P.y
+  t0.z = P.z                   
+
+  return t0 == t1
+
+func isInSubgroup*(P: ECP_ShortW_Prj[Fp2[BLS12_381], G2]): SecretBool =
+  ## Returns true if P is in G2 subgroup, i.e. P is a point of order r.
+  ## A point may be on a curve but not on the prime order r subgroup.
+  ## Not checking subgroup exposes a protocol to small subgroup attacks.
+  # Implementation: Scott, https://eprint.iacr.org/2021/1130.pdf
+  #   A note on group membership tests for G1, G2 and GT
+  #   on BLS pairing-friendly curves
+  #   P is in the G1 subgroup iff ψ(P) == [u](P)
+  var t0{.noInit.}, t1{.noInit.}: ECP_ShortW_Prj[Fp2[BLS12_381], G2]
+  t0.pow_bls12_381_x(P) # [u]P
+  t1.frobenius_psi(P)   # ψ(P)
+
+  return t0 == t1
