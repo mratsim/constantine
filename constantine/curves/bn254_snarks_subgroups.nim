@@ -107,8 +107,8 @@ func pow_bn254_snarks_minus_u[ECP: ECP_ShortW[Fp[BN254_Snarks], G1] or
        r{.noalias.}: var ECP,
        P{.noalias.}: ECP
      ) {.inline.}=
-  ## Does the scalar multiplication [-x]P
-  ## with x the BN curve parameter
+  ## Does the scalar multiplication [-u]P
+  ## with  the BN curve parameter
   pow_bn254_snarks_abs_u(r, P)
   r.neg()
 
@@ -124,7 +124,7 @@ const Cofactor_Eff_BN254_Snarks_G2 = BigInt[445].fromHex"0x10fdac342d9d118eaade4
   # G2.order() = (36x⁴ + 36x³ + 18x² + 6x + 1)(36x⁴ + 36x³ + 30x² + 6x + 1)
   #            = r * cofactor
   # Effective cofactor from Fuentes-Casteneda et al
-  # −(18x3 + 12x2 + 3x + 1)*cofactor
+  # -(18x³ + 12x² + 3x + 1)*cofactor
 
 func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp[BN254_Snarks], G1]) {.inline.} =
   ## Clear the cofactor of BN254_Snarks G1
@@ -159,7 +159,7 @@ func clearCofactorFast*(P: var ECP_ShortW_Prj[Fp[BN254_Snarks], G1]) {.inline.} 
 # Fuentes-Castaneda et al, "Fast Hashing to G2 on Pairing-Friendly Curves", https://doi.org/10.1007/978-3-642-28496-0_25*
 
 func clearCofactorFast*(P: var ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]) {.inline.} =
-  ## Clear the cofactor of BLS12_381 G2
+  ## Clear the cofactor of BN254_Snarks G2
   ## Optimized using endomorphisms
   ## P' → [x]P + [3x]ψ(P) + [x]ψ²(P) + ψ³(P)
   var xP{.noInit.}, t{.noInit.}: typeof(P)

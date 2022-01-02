@@ -146,6 +146,9 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
 
   # Subgroups and cofactors
   # ----------------------------------------------------------
+  ("tests/t_ec_subgroups_bn254_nogami.nim", false),
+  ("tests/t_ec_subgroups_bn254_snarks.nim", false),
+  ("tests/t_ec_subgroups_bls12_377.nim", false),
   ("tests/t_ec_subgroups_bls12_381.nim", false),
 
   # Pairing
