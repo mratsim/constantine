@@ -170,6 +170,8 @@ func isInSubgroup*(P: ECP_ShortW_Prj[Fp[BLS12_381], G1]): SecretBool =
   ## Returns true if P is in G1 subgroup, i.e. P is a point of order r.
   ## A point may be on a curve but not on the prime order r subgroup.
   ## Not checking subgroup exposes a protocol to small subgroup attacks.
+  ## 
+  ## Warning ⚠: Assumes that P is on curve
   # Implementation: Scott, https://eprint.iacr.org/2021/1130.pdf
   #   A note on group membership tests for G1, G2 and GT
   #   on BLS pairing-friendly curves
@@ -191,6 +193,8 @@ func isInSubgroup*(P: ECP_ShortW_Prj[Fp2[BLS12_381], G2]): SecretBool =
   ## Returns true if P is in G2 subgroup, i.e. P is a point of order r.
   ## A point may be on a curve but not on the prime order r subgroup.
   ## Not checking subgroup exposes a protocol to small subgroup attacks.
+  ## 
+  ## Warning ⚠: Assumes that P is on curve
   # Implementation: Scott, https://eprint.iacr.org/2021/1130.pdf
   #   A note on group membership tests for G1, G2 and GT
   #   on BLS pairing-friendly curves

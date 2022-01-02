@@ -93,7 +93,7 @@ func pow_bn254_snarks_abs_u*[ECP: ECP_ShortW[Fp[BN254_Snarks], G1] or
   r.double_repeated(16)
   r += r20
 
-func pow_bn254_snarks_x[ECP: ECP_ShortW[Fp[BN254_Snarks], G1] or
+func pow_bn254_snarks_u[ECP: ECP_ShortW[Fp[BN254_Snarks], G1] or
        ECP_ShortW[Fp2[BN254_Snarks], G2]](
        r{.noalias.}: var ECP,
        P{.noalias.}: ECP
@@ -102,7 +102,7 @@ func pow_bn254_snarks_x[ECP: ECP_ShortW[Fp[BN254_Snarks], G1] or
   ## with u the BN curve parameter
   pow_bn254_snarks_abs_u(r, P)
 
-func pow_bn254_snarks_minus_x[ECP: ECP_ShortW[Fp[BN254_Snarks], G1] or
+func pow_bn254_snarks_minus_u[ECP: ECP_ShortW[Fp[BN254_Snarks], G1] or
        ECP_ShortW[Fp2[BN254_Snarks], G2]](
        r{.noalias.}: var ECP,
        P{.noalias.}: ECP
@@ -136,7 +136,6 @@ func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]) {.inl
   # Endomorphism acceleration cannot be used if cofactor is not cleared
   P.scalarMulGeneric(Cofactor_Eff_BN254_Snarks_G2)
   P.neg()
-  debugEcho "-> finished cofactor reference"
 
 # ############################################################
 #
@@ -165,7 +164,7 @@ func clearCofactorFast*(P: var ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]) {.inline.}
   ## P' → [x]P + [3x]ψ(P) + [x]ψ²(P) + ψ³(P)
   var xP{.noInit.}, t{.noInit.}: typeof(P)
 
-  xP.pow_bn254_snarks_x(P) # xP = [x]P
+  xP.pow_bn254_snarks_u(P) # xP = [x]P
   t.frobenius_psi(P, 3)    # t  = ψ³(P)
   P.double(xP)    
   P += xP                  
@@ -174,4 +173,46 @@ func clearCofactorFast*(P: var ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]) {.inline.}
   t.frobenius_psi(xP, 2)   # t  = [x]ψ²(P)
   P += xP                  # P  = [x]P + [3x]ψ(P) + ψ³(P)
   P += t                   # P  = [x]P + [3x]ψ(P) + [x]ψ²(P) + ψ³(P)
-  debugEcho "-> finished cofactor fast"
+
+# ############################################################
+#
+#                Subgroup checks
+#
+# ############################################################
+
+func isInSubgroup*(P: ECP_ShortW_Prj[Fp[BN254_Snarks], G1]): SecretBool {.inline.} =
+  ## Returns true if P is in G1 subgroup, i.e. P is a point of order r.
+  ## A point may be on a curve but not on the prime order r subgroup.
+  ## Not checking subgroup exposes a protocol to small subgroup attacks.
+  ## This is a no-op as on G1, all points are in the correct subgroup.
+  ## 
+  ## Warning ⚠: Assumes that P is on curve
+  return CtTrue
+
+func isInSubgroup*(P: ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]): SecretBool =
+  ## Returns true if P is in G2 subgroup, i.e. P is a point of order r.
+  ## A point may be on a curve but not on the prime order r subgroup.
+  ## Not checking subgroup exposes a protocol to small subgroup attacks.
+  # Implementation: Scott, https://eprint.iacr.org/2021/1130.pdf
+  #   A note on group membership tests for G1, G2 and GT
+  #   on BLS pairing-friendly curves
+  #
+  #   The condition to apply the optimized endomorphism check on G₂ 
+  #   is gcd(h₁, h₂) == 1 with h₁ and h₂ the cofactors on G₁ and G₂.
+  #   In that case [p]Q == [t-1]Q as r = p+1-t and [r]Q = 0
+  #   For BN curves h₁ = 1, hence Scott group membership tests can be used for BN curves
+  #   
+  #   p the prime modulus: 36u⁴ + 36u³ + 24u² + 6u + 1
+  #   r the prime order:   36u⁴ + 36u³ + 18u² + 6u + 1
+  #   t the trace:         6u² + 1
+  var t0{.noInit.}, t1{.noInit.}: ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]
+  
+  t0.pow_bn254_snarks_u(P)  # [u]P
+  t1.pow_bn254_snarks_u(t0) # [u²]P
+  t0.double(t1)             # [2u²]P
+  t0 += t1                  # [3u²]P
+  t0.double()               # [6u²]P
+  
+  t1.frobenius_psi(P)       # ψ(P)
+
+  return t0 == t1
