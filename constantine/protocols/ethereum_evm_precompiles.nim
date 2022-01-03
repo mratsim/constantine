@@ -12,6 +12,7 @@ import
   ../arithmetic/limbs_montgomery,
   ../ec_shortweierstrass,
   ../pairing/[pairing_bn, miller_loops, cyclotomic_fp12],
+  ../curves/zoo_subgroups,
   ../io/[io_bigints, io_fields]
 
 # ############################################################
@@ -219,27 +220,9 @@ func subgroupCheck(P: ECP_ShortW_Aff[Fp2[BN254_Snarks], G2]): bool =
   ## A point may be on a curve but in case the curve has a cofactor != 1
   ## that point may not be in the correct cyclic subgroup.
   ## If we are on the subgroup of order r then [r]P = 0
-  
-  # TODO: Generic for any curve
-
   var Q{.noInit.}: ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]
-  
-  # TODO: precompute up to the endomorphism decomposition
-  #       or implement fixed base scalar mul
-  #       as subgroup checks are a deserialization bottleneck
-  var rm1 = Fr[BN254_Snarks].fieldMod()
-  rm1 -= One
-
-  # We can't use endomorphism acceleration when multiplying
-  # by the curve order r to check [r]P == 0
-  # as it requires the scalar to be < r.
-  # But we can use it to multiply by [r-1].
   Q.projectiveFromAffine(P)
-  let Q0 = Q
-  Q.scalarMul(rm1)
-  Q += Q0
-
-  return bool(Q.isInf())
+  return bool(Q.isInSubgroup())
 
 func fromRawCoords(
        dst: var ECP_ShortW_Aff[Fp[BN254_Snarks], G1],
