@@ -7,18 +7,13 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  std/macros,
-  ../config/curves,
-  ./bls12_377_pairing,
-  ./bls12_381_pairing,
-  ./bn254_nogami_pairing,
-  ./bn254_snarks_pairing,
-  ./bw6_761_pairing
+  ../constantine/config/common,
+  ../constantine/config/curves,
+  ../constantine/pairing/pairing_bn,
+  # Test utilities
+  ./t_pairing_template
 
-{.experimental: "dynamicBindSym".}
-
-macro pairing*(C: static Curve, value: untyped): untyped =
-  ## Get pairing related constants
-  return bindSym($C & "_pairing_" & $value)
-
-export pow_x, pow_xdiv2, pow_u, millerLoopAddchain, isInPairingSubgroup
+runGTsubgroupTests(
+  Iters = 4,
+  GT = Fp12[BN254_Snarks],
+  finalExpHard_BN)

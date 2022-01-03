@@ -220,3 +220,14 @@ func cyclotomic_exp*[C](r: var Fp12[C], a: Fp12[C], exponent: BigInt, invert: bo
           r *= a
     if invert:
       r.cyclotomic_inv()
+
+func isInCyclotomicSubgroup*[C](a: Fp12[C]): SecretBool =
+  ## Check if a ∈ Fpⁿ: a^Φₙ(p) = 1
+  ## Φ₁₂(p) = p⁴-p²+1
+  var t{.noInit.}, p2{.noInit.}: Fp12[C]
+
+  p2.frobenius_map(a, 2) # a^(p²)
+  t.frobenius_map(p2, 2) # a^(p⁴)
+  t *= a                 # a^(p⁴+1)
+
+  return t == p2
