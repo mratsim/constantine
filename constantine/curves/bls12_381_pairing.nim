@@ -7,11 +7,12 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/[curves, type_bigint, type_ff],
+  ../config/[common, curves, type_bigint, type_ff],
   ../io/io_bigints,
   ../towers,
   ../elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
-  ../pairing/[cyclotomic_fp12, miller_loops]
+  ../pairing/[cyclotomic_fp12, miller_loops],
+  ../isogeny/frobenius
 
 # Slow generic implementation
 # ------------------------------------------------------------
@@ -105,3 +106,16 @@ func pow_x*(r: var Fp12[BLS12_381], a: Fp12[BLS12_381], invert = BLS12_381_pairi
   ## For BLS12_381 f^-0xd201000000010000
   r.pow_xdiv2(a, invert)
   r.cyclotomic_square()
+
+func isInPairingSubgroup*(a: Fp12[BLS12_381]): SecretBool =
+  ## Returns true if a is in GT subgroup, i.e. a is an element of order r
+  ## Warning ⚠: Assumes that a is in the cyclotomic subgroup
+  # Implementation: Scott, https://eprint.iacr.org/2021/1130.pdf
+  #   A note on group membership tests for G1, G2 and GT
+  #   on BLS pairing-friendly curves
+  #   P is in the G1 subgroup iff a^p == a^u
+  var t0{.noInit.}, t1{.noInit.}: Fp12[BLS12_381]
+  t0.frobenius_map(a)
+  t1.pow_x(a)
+
+  return t0 == t1

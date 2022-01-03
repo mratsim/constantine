@@ -22,6 +22,8 @@ import
 
 export ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_shortweierstrass_projective, ec_scalar_mul
 
+type ECP_ShortW*[F; G: static Subgroup] = ECP_ShortW_Aff[F, G] | ECP_ShortW_Jac[F, G] | ECP_ShortW_Prj[F, G]
+
 func projectiveFromJacobian*[F; G](
        prj: var ECP_ShortW_Prj[F, G],
        jac: ECP_ShortW_Jac[F, G]) {.inline.} =
@@ -30,3 +32,7 @@ func projectiveFromJacobian*[F; G](
   prj.z.square(jac.z)
   prj.z *= jac.z
 
+func double_repeated*(P: var ECP_ShortW, num: int) {.inline.} =
+  ## Repeated doublings
+  for _ in 0 ..< num:
+    P.double()

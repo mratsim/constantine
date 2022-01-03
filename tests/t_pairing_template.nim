@@ -15,7 +15,10 @@ import
   ../constantine/towers,
   ../constantine/config/curves,
   ../constantine/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
-  ../constantine/hash_to_curve/cofactors,
+  ../constantine/curves/[zoo_subgroups, zoo_pairings],
+  ../constantine/pairing/cyclotomic_fp12,
+  ../constantine/io/io_towers,
+
   # Test utilities
   ../helpers/prng_unsafe
 
@@ -23,7 +26,8 @@ export
   prng_unsafe, times, unittest,
   ec_shortweierstrass_affine, ec_shortweierstrass_projective,
   arithmetic, towers,
-  primitives
+  primitives, io_towers,
+  cyclotomic_fp12
 
 type
   RandomGen* = enum
@@ -35,24 +39,24 @@ template affineType[F; G: static Subgroup](
     ec: ECP_ShortW_Prj[F, G]): type =
   ECP_ShortW_Aff[F, G]
 
-func clearCofactorReference[F; G: static Subgroup](
+func clearCofactor[F; G: static Subgroup](
        ec: var ECP_ShortW_Aff[F, G]) =
   # For now we don't have any affine operation defined
   var t {.noInit.}: ECP_ShortW_Prj[F, G]
   t.projectiveFromAffine(ec)
-  t.clearCofactorReference()
+  t.clearCofactor()
   ec.affineFromProjective(t)
 
 func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen): EC {.noInit.} =
   if gen == Uniform:
     result = rng.random_unsafe(EC)
-    result.clearCofactorReference()
+    result.clearCofactor()
   elif gen == HighHammingWeight:
     result = rng.random_highHammingWeight(EC)
-    result.clearCofactorReference()
+    result.clearCofactor()
   else:
     result = rng.random_long01Seq(EC)
-    result.clearCofactorReference()
+    result.clearCofactor()
 
 template runPairingTests*(Iters: static int, C: static Curve, G1, G2, GT: typedesc, pairing_fn: untyped): untyped {.dirty.}=
   bind affineType
@@ -99,3 +103,43 @@ template runPairingTests*(Iters: static int, C: static Curve, G1, G2, GT: typede
       test_bilinearity_double_impl(randZ = false, gen = Uniform)
       test_bilinearity_double_impl(randZ = false, gen = HighHammingWeight)
       test_bilinearity_double_impl(randZ = false, gen = Long01Sequence)
+
+func random_elem*(rng: var RngState, F: typedesc, gen: RandomGen): F {.inline, noInit.} =
+  if gen == Uniform:
+    result = rng.random_unsafe(F)
+  elif gen == HighHammingWeight:
+    result = rng.random_highHammingWeight(F)
+  else:
+    result = rng.random_long01Seq(F)
+
+template runGTsubgroupTests*(Iters: static int, GT: typedesc, finalExpHard_fn: untyped): untyped {.dirty.}=
+  bind affineType
+
+  var rng: RngState
+  let timeseed = uint32(toUnix(getTime()) and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  seed(rng, timeseed)
+  echo "\n------------------------------------------------------\n"
+  echo "test_pairing_",$GT.C,"_gt xoshiro512** seed: ", timeseed
+
+  proc test_gt_impl(gen: RandomGen) =
+    stdout.write "    "
+    for _ in 0 ..< Iters:
+      let a = rng.random_elem(GT, gen)
+      doAssert not bool a.isInCyclotomicSubgroup(), "The odds of generating randomly such an element are too low a: " & a.toHex()
+      var a2 = a
+      a2.finalExpEasy()
+      doAssert bool a2.isInCyclotomicSubgroup()
+      doAssert not bool a2.isInPairingSubgroup(), "The odds of generating randomly such an element are too low a2: " & a.toHex()
+      var a3 = a2
+      finalExpHard_fn(a3)
+      doAssert bool a3.isInCyclotomicSubgroup()
+      doAssert bool a3.isInPairingSubgroup()
+      stdout.write '.'
+
+    stdout.write '\n'
+
+  suite "Pairing - GT subgroup " & $GT.C & " [" & $WordBitwidth & "-bit mode]":
+    test "Final Exponentiation and GT-subgroup membership":
+      test_gt_impl(gen = Uniform)
+      test_gt_impl(gen = HighHammingWeight)
+      test_gt_impl(gen = Long01Sequence)

@@ -67,12 +67,12 @@ The optimizations can be of algebraic, algorithmic or "implementation details" n
   - [x] FIPS (Finely Integrated Operand Scanning)
 
 - Montgomery Squaring
-  - [ ] Dedicated squaring functions
-  - [ ] Fused multiply + reduce
+  - [x] Dedicated squaring functions
+  - [x] Fused multiply + reduce
   - [ ] int128
   - [ ] loop unrolling
-  - [ ] x86: Full Assembly implementation
-  - [ ] x86: MULX, ADCX, ADOX instructions
+  - [x] x86: Full Assembly implementation
+  - [x] x86: MULX, ADCX, ADOX instructions
   - [ ] no-carry optimization for CIOS (Coarsely Integrated Operand Scanning)
 
 - Addition chains
@@ -97,7 +97,7 @@ The optimizations can be of algebraic, algorithmic or "implementation details" n
 
 - Square Root (constant-time)
   - [x] baseline sqrt via Little-Fermat for `p ≡ 3 (mod 4)`
-  - [ ] baseline sqrt via Little-Fermat for `p ≡ 5 (mod 8)`
+  - [x] baseline sqrt via Little-Fermat for `p ≡ 5 (mod 8)`
   - [ ] baseline sqrt via Little-Fermat for `p ≡ 9 (mod 16)`
   - [x] baseline sqrt via Tonelli-Shanks for any prime.
   - [x] sqrt via addition-chain
@@ -211,3 +211,5 @@ The optimizations can be of algebraic, algorithmic or "implementation details" n
 - Subgroup check
   - [ ] BLS G1: Bowe, endomorphism accelerated
   - [ ] BLS G2: Bowe, endomorphism accelerated
+  - [x] BLS G1: Scott, endomorphism accelerated
+  - [x] BLS G2: Scott, endomorphism accelerated

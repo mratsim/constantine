@@ -21,7 +21,8 @@ import
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
     ec_scalar_mul, ec_endomorphism_accel],
-  ../constantine/hash_to_curve/[cofactors, hash_to_curve],
+  ../constantine/curves/zoo_subgroups,
+  ../constantine/hash_to_curve/hash_to_curve,
   ../constantine/pairing/[
     cyclotomic_fp12,
     pairing_bls12,
