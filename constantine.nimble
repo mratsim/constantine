@@ -155,6 +155,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_pairing_bn254_snarks_gt_subgroup.nim", false),
   ("tests/t_pairing_bls12_377_gt_subgroup.nim", false),
   ("tests/t_pairing_bls12_381_gt_subgroup.nim", false),
+  ("tests/t_pairing_bw6_761_gt_subgroup.nim", false),
 
   # Pairing
   # ----------------------------------------------------------

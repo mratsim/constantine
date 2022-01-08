@@ -60,7 +60,7 @@ func millerLoopAddchain*(
 
 func pow_x*(r: var Fp12[BLS12_377], a: Fp12[BLS12_377], invert = BLS12_377_pairing_ate_param_isNeg) =
   ## f^x with x the curve parameter
-  ## For BLS12_377 f^-0x8508c00000000001
+  ## For BLS12_377 f^0x8508c00000000001
   r.cyclotomic_square(a)
   r *= a
   r.cyclotomic_square()
@@ -92,7 +92,7 @@ func isInPairingSubgroup*(a: Fp12[BLS12_377]): SecretBool =
   # Implementation: Scott, https://eprint.iacr.org/2021/1130.pdf
   #   A note on group membership tests for G1, G2 and GT
   #   on BLS pairing-friendly curves
-  #   P is in the G1 subgroup iff a^p == a^u
+  #   a is in the GT subgroup iff a^p == a^u
   var t0{.noInit.}, t1{.noInit.}: Fp12[BLS12_377]
   t0.frobenius_map(a)
   t1.pow_x(a)

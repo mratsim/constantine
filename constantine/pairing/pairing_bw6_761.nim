@@ -20,6 +20,8 @@ import
   ./mul_fp6_by_lines,
   ./miller_loops
 
+export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11225
+
 # ############################################################
 #
 #                 Optimal ATE pairing for
@@ -29,7 +31,6 @@ import
 
 # Generic pairing implementation
 # ----------------------------------------------------------------
-# TODO: debug this
 
 func millerLoopBW6_761_naive[C](
        f: var Fp6[C],
@@ -59,7 +60,7 @@ func millerLoopBW6_761_naive[C](
   basicMillerLoop(
     f2, T, line,
     P, Q, nQ,
-    ate_param_1_unopt, ate_param_1_unopt_isNeg
+    ate_param_2_unopt, ate_param_2_unopt_isNeg
   )
 
   let t = f2
@@ -70,6 +71,11 @@ func finalExpGeneric[C: static Curve](f: var Fp6[C]) =
   ## A generic and slow implementation of final exponentiation
   ## for sanity checks purposes.
   f.powUnsafeExponent(C.pairing(finalexponent), window = 3)
+
+func finalExpHard_BW6_761*[C: static Curve](f: var Fp6[C]) =
+  ## A generic and slow implementation of final exponentiation
+  ## for sanity checks purposes.
+  f.powUnsafeExponent(C.pairing(finalexponent_hard), window = 3)
 
 # Optimized pairing implementation
 # ----------------------------------------------------------------
@@ -150,16 +156,14 @@ func millerLoopBW6_761_opt_to_debug[C](
 
 func pairing_bw6_761_reference*[C](
        gt: var Fp6[C],
-       P: ECP_ShortW_Prj[Fp[C], G1],
-       Q: ECP_ShortW_Prj[Fp[C], G2]) =
+       P: ECP_ShortW_Aff[Fp[C], G1],
+       Q: ECP_ShortW_Aff[Fp[C], G2]) =
   ## Compute the optimal Ate Pairing for BW6 curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
   ##
   ## Reference implementation
-  var Paff {.noInit.}: ECP_ShortW_Aff[Fp[C], G1]
-  var Qaff {.noInit.}: ECP_ShortW_Aff[Fp[C], G2]
-  Paff.affineFromProjective(P)
-  Qaff.affineFromProjective(Q)
-  gt.millerLoopBW6_761_naive(Paff, Qaff)
-  gt.finalExpGeneric()
+  {.error: "BW6_761 Miller loop is not working yet".}
+  gt.millerLoopBW6_761_naive(P, Q)
+  gt.finalExpEasy()
+  gt.finalExpHard_BW6_761()

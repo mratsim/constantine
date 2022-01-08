@@ -181,14 +181,14 @@ func isInSubgroup*(P: ECP_ShortW_Prj[Fp[BLS12_377], G1]): SecretBool =
   # Implementation: Scott, https://eprint.iacr.org/2021/1130.pdf
   #   A note on group membership tests for G1, G2 and GT
   #   on BLS pairing-friendly curves
-  #   P is in the G1 subgroup iff phi(P) == [-u²](P)
+  #   P is in the G1 subgroup iff ϕ(P) == [-u²](P)
   var t0{.noInit.}, t1{.noInit.}: ECP_ShortW_Prj[Fp[BLS12_377], G1]
   
   # [-u²]P
   t0.pow_bls12_377_x(P)
   t1.pow_bls12_377_minus_x(t0) 
 
-  # phi(P)
+  # ϕ(P)
   t0.x.prod(P.x, BLS12_377.getCubicRootOfUnity_mod_p())
   t0.y = P.y
   t0.z = P.z                   
