@@ -38,10 +38,10 @@ The optimizations can be of algebraic, algorithmic or "implementation details" n
   - [x] Montgomery Representation
   - [ ] Barret Reduction
   - [ ] Unsaturated Representation
-    - [ ] Mersenne Prime (2^k - 1),
+    - [ ] Mersenne Prime (2ᵏ - 1),
     - [ ] Generalized Mersenne Prime (NIST Prime P256: 2^256 - 2^224 + 2^192 + 2^96 - 1)
     - [ ] Pseudo-Mersenne Prime (2^m - k for example Curve25519: 2^255 - 19)
-    - [ ] Golden Primes (φ^2 - φ - 1 with φ = 2^k for example Ed448-Goldilocks: 2^448 - 2^224 - 1)
+    - [ ] Golden Primes (φ^2 - φ - 1 with φ = 2ᵏ for example Ed448-Goldilocks: 2^448 - 2^224 - 1)
     - [ ] any prime modulus (lazy carry)
 
 - Montgomery Reduction

@@ -59,7 +59,7 @@ type
     ## denoted `E(𝔽p)` in Short Weierstrass form
     ##   y² = x³ + Ax + B
     ##
-    ## If E(𝔽p^k), the elliptic curve defined over the extension field
+    ## If E(𝔽pᵏ), the elliptic curve defined over the extension field
     ## of degree k, the embedding degree, admits an isomorphism
     ## to a curve E'(Fp^(k/d)), we call E' a twisted curve.
     ##
@@ -67,7 +67,7 @@ type
     ##   y² = x³ + Ax/µ² + B/µ³ for a D-Twist (Divisor)
     ## or
     ##   y² = x³ + µ²Ax + µ³B for a M-Twist (Multiplicand)
-    ## with the polynomial x^k - µ being irreducible.
+    ## with the polynomial xᵏ - µ being irreducible.
     ##
     ## i.e. if d == 2, E' is a quadratic twist and µ is a quadratic non-residue
     ## if d == 4, E' is a quartic twist

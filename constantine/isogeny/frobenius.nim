@@ -37,13 +37,13 @@ import
 # or          √-2 or √-5
 
 func frobenius_map*(r: var Fp, a: Fp, k: static int = 1) {.inline.} =
-  ## Computes a^(p^k)
+  ## Computes a^(pᵏ)
   ## The p-power frobenius automorphism on 𝔽p
   ## This is identity per Fermat's little theorem
   r = a
 
 func frobenius_map*(r: var Fp2, a: Fp2, k: static int = 1) {.inline.} =
-  ## Computes a^(p^k)
+  ## Computes a^(pᵏ)
   ## The p-power frobenius automorphism on 𝔽p2
   when (k and 1) == 1:
     r.conj(a)
@@ -54,14 +54,14 @@ func frobenius_map*(r: var Fp2, a: Fp2, k: static int = 1) {.inline.} =
 # -----------------------------------------------------------------
 
 func frobenius_map*[C](r: var Fp4[C], a: Fp4[C], k: static int = 1) {.inline.} =
-  ## Computes a^(p^k)
+  ## Computes a^(pᵏ)
   ## The p-power frobenius automorphism on 𝔽p4
   r.c0.frobenius_map(a.c0, k)
   r.c1.frobenius_map(a.c1, k)
   r.c1.mulCheckSparse frobMapConst(C, 3, k)
 
 func frobenius_map*[C](r: var Fp6[C], a: Fp6[C], k: static int = 1) {.inline.} =
-  ## Computes a^(p^k)
+  ## Computes a^(pᵏ)
   ## The p-power frobenius automorphism on 𝔽p6
   r.c0.frobenius_map(a.c0, k)
   r.c1.frobenius_map(a.c1, k)
@@ -77,7 +77,7 @@ func frobenius_map*[C](r: var Fp6[C], a: Fp6[C], k: static int = 1) {.inline.} =
     {.error: "Not Implemented".}
 
 func frobenius_map*[C](r: var Fp12[C], a: Fp12[C], k: static int = 1) {.inline.} =
-  ## Computes a^(p^k)
+  ## Computes a^(pᵏ)
   ## The p-power frobenius automorphism on 𝔽p12
   static: doAssert r.c0 is Fp4
   staticFor i, 0, r.coords.len:

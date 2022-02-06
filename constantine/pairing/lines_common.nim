@@ -19,7 +19,7 @@ import
 
 type
   Line*[F] = object
-    ## Packed line representation over a E'(Fp^k/d)
+    ## Packed line representation over a E'(Fpᵏ/d)
     ## with k the embedding degree and d the twist degree
     ## i.e. for a curve with embedding degree 12 and sextic twist
     ## F is Fp2

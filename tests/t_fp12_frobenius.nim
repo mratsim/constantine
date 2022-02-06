@@ -25,5 +25,5 @@ runFrobeniusTowerTests(
   Iters = 8,
   TestCurves = TestCurves,
   moduleName = "test_fp12_frobenius",
-  testSuiteDesc = "𝔽p12 Frobenius map: Frobenius(a, k) = a^(p^k) (mod p^12)"
+  testSuiteDesc = "𝔽p12 Frobenius map: Frobenius(a, k) = a^(pᵏ) (mod p^12)"
 )

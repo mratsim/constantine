@@ -198,7 +198,7 @@ def genFinalExp(curve_name, curve_config):
     scale = 3*(u^3-u^2+1)
     scaleDesc = ' * 3*(u^3-u^2+1)'
 
-  fexp = (p^k - 1)//r
+  fexp = (pᵏ - 1)//r
   fexp *= scale
 
   buf = f'const {curve_name}_pairing_finalexponent* = block:\n'

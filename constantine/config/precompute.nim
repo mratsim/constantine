@@ -276,7 +276,7 @@ func invModBitwidth[T: SomeUnsignedInt](a: T): T =
   # For a and m to be coprimes, a must be odd.
   #
   # We have the following relation
-  # ax ≡ 1 (mod 2^k) <=> ax(2 - ax) ≡ 1 (mod 2^(2k))
+  # ax ≡ 1 (mod 2ᵏ) <=> ax(2 - ax) ≡ 1 (mod 2^(2k))
   # which grows in O(log(log(a)))
   checkOdd(a)
 

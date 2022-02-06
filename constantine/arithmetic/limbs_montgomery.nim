@@ -471,8 +471,8 @@ func montyResidue*(r: var Limbs, a, M, r2modM: Limbs,
 # - Apache Milagro Crypto has an alternative implementation
 #   that is more straightforward however:
 #   - the exponent hamming weight is used as loop bounds
-#   - the base^k is stored at each index of a temp table of size k
-#   - the base^k to use is indexed by the hamming weight
+#   - the baseᵏ is stored at each index of a temp table of size k
+#   - the baseᵏ to use is indexed by the hamming weight
 #     of the exponent, leaking this to cache attacks
 #   - in contrast BearSSL touches the whole table to
 #     hide the actual selection
@@ -500,7 +500,7 @@ func montyPowPrologue(
   result = scratchspace.len.getWindowLen()
   # Precompute window content, special case for window = 1
   # (i.e scratchspace has only space for 2 temporaries)
-  # The content scratchspace[2+k] is set at a^k
+  # The content scratchspace[2+k] is set at aᵏ
   # with scratchspace[0] untouched
   if result == 1:
     scratchspace[1] = a
@@ -583,7 +583,7 @@ func montyPow*(
   ## - ``one`` is 1 (mod M) in montgomery representation
   ## - ``m0ninv`` is the montgomery magic constant "-1/M[0] mod 2^WordBitWidth"
   ## - ``scratchspace`` with k the window bitsize of size up to 5
-  ##   This is a buffer that can hold between 2^k + 1 big-ints
+  ##   This is a buffer that can hold between 2ᵏ + 1 big-ints
   ##   A window of of 1-bit (no window optimization) requires only 2 big-ints
   ##
   ## Note that the best window size require benchmarking and is a tradeoff between

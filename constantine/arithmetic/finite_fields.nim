@@ -94,10 +94,10 @@ func cswap*(a, b: var FF, ctl: CTBool) {.meter.} =
 #
 # Note: the library currently implements generic routine for odd field modulus.
 #       Routines for special field modulus form:
-#       - Mersenne Prime (2^k - 1),
+#       - Mersenne Prime (2ᵏ - 1),
 #       - Generalized Mersenne Prime (NIST Prime P256: 2^256 - 2^224 + 2^192 + 2^96 - 1)
 #       - Pseudo-Mersenne Prime (2^m - k for example Curve25519: 2^255 - 19)
-#       - Golden Primes (φ^2 - φ - 1 with φ = 2^k for example Ed448-Goldilocks: 2^448 - 2^224 - 1)
+#       - Golden Primes (φ^2 - φ - 1 with φ = 2ᵏ for example Ed448-Goldilocks: 2^448 - 2^224 - 1)
 #       exist and can be implemented with compile-time specialization.
 
 # Note: for `+=`, double, sum

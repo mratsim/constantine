@@ -24,7 +24,7 @@ From Ben Edgington, https://hackmd.io/@benjaminion/bls12-381
 >
 > Applying our rule, by substituting $x^2 = -1$, gives us the final result $(a, b) \times (c, d) =$$ac + (ad+bc)x + bdx^2 =$$(ac-bd) + (ad+bc)x =$$(ac-bd, ad+bc)$. This might look a little familiar from complex arithmetic: $(a+ib) \times (c+id) =$$(ac-bd) + (ad+bc)i$. This is not a coincidence! The complex numbers are a quadratic extension of the real numbers.
 >
-> Complex numbers can't be extended any further because there are [no irreducible polynomials over the complex numbers](https://en.wikipedia.org/wiki/Fundamental_theorem_of_algebra). But for finite fields, if we can find an irreducible $k$-degree polynomial in our field $F_q$, and we often can, then we are able to extend the field to $F_{q^k}$, and represent the elements of the extended field as degree $k-1$ polynomials, $a_0 + a_1x +$$...$$+ a_{k-1}x^{k-1}$. We can represent this compactly as $(a_0,...,a_{k-1})$, as long as we remember that there may be some very funky arithmetic going on.
+> Complex numbers can't be extended any further because there are [no irreducible polynomials over the complex numbers](https://en.wikipedia.org/wiki/Fundamental_theorem_of_algebra). But for finite fields, if we can find an irreducible $k$-degree polynomial in our field $F_q$, and we often can, then we are able to extend the field to $F_{qᵏ}$, and represent the elements of the extended field as degree $k-1$ polynomials, $a_0 + a_1x +$$...$$+ a_{k-1}x^{k-1}$. We can represent this compactly as $(a_0,...,a_{k-1})$, as long as we remember that there may be some very funky arithmetic going on.
 >
 > Also worth noting is that modular reductions like this (our reduction rule) can be chosen so that they play nicely with the twisting operation.
 >
