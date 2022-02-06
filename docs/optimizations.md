@@ -93,6 +93,7 @@ The optimizations can be of algebraic, algorithmic or "implementation details" n
   - [x] Addition-chain for a^(p-2)
   - [ ] Constant-time binary GCD algorithm by Bernstein-Yang, https://eprint.iacr.org/2019/266
   - [ ] Constant-time binary GCD algorithm by Pornin, https://eprint.iacr.org/2020/972
+  - [ ] Constant-time binary GCD algorithm by BY with half-delta optimization by libsecp256k1, formally verified, https://eprint.iacr.org/2021/549
   - [ ] Simultaneous inversion
 
 - Square Root (constant-time)

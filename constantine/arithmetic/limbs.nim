@@ -330,6 +330,26 @@ func cneg*(a: var Limbs, ctl: CTBool) =
     carry = SecretWord(t < carry)    # Carry on
     a[i] = t
 
+func cneg*(r: var Limbs, a: Limbs, ctl: CTBool) =
+  ## Conditional negation.
+  ## Negate if ``ctl`` is true
+
+  # Algorithm:
+  # In two-complement representation
+  #  -x <=> not(x) + 1 <=> x xor 0xFF... + 1
+  # and
+  #   x <=> x xor 0x00...<=> x xor 0x00... + 0
+  #
+  # So we need to xor all words and then add 1
+  # The "+1" might carry
+  # So we fuse the 2 steps
+  let mask = -SecretWord(ctl)        # Obtain a 0xFF... or 0x00... mask
+  var carry = SecretWord(ctl)
+  for i in 0 ..< a.len:
+    let t = (a[i] xor mask) + carry  # XOR with mask and add 0x01 or 0x00 respectively
+    carry = SecretWord(t < carry)    # Carry on
+    r[i] = t
+
 {.pop.} # inline
 
 # Division

@@ -249,7 +249,7 @@ func div2*(a: var FF) {.meter.} =
 # ############################################################
 
 func cneg*(r: var FF, a: FF, ctl: SecretBool) {.meter.} =
-  ## Constant-time in-place conditional negation
+  ## Constant-time out-of-place conditional negation
   ## The negation is only performed if ctl is "true"
   r.neg(a)
   r.ccopy(a, not ctl)
