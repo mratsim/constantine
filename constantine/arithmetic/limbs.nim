@@ -81,7 +81,7 @@ func setUint*(a: var Limbs, n: SomeUnsignedInt) =
       "in ", a.len, " limb of size ", sizeof(SecretWord), "."
 
     a[0] = SecretWord(n) # Truncate the upper part
-    a[1] = SecretWord(n shr log2(sizeof(SecretWord)))
+    a[1] = SecretWord(n shr static(log2_vartime(sizeof(SecretWord))))
     when a.len > 2:
       zeroMem(a[2].addr, (a.len - 2) * sizeof(SecretWord))
 
@@ -340,8 +340,8 @@ func div10*(a: var Limbs): SecretWord =
   ## TODO constant-time
   result = Zero
 
-  let clz = WordBitWidth - 1 - log2(10)
-  let norm10 = SecretWord(10) shl clz
+  const clz = WordBitWidth - 1 - log2_vartime(10)
+  const norm10 = SecretWord(10) shl clz
 
   for i in countdown(a.len-1, 0):
     # dividend = 2^64 * remainder + a[i]

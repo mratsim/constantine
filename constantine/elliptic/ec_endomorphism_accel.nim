@@ -254,7 +254,7 @@ func buildLookupTable[M: static int, EC](
   lut[0] = P
   for u in 1'u32 ..< 1 shl (M-1):
     # The recoding allows usage of 2^(n-1) table instead of the usual 2^n with NAF
-    let msb = u.log2() # No undefined, u != 0
+    let msb = u.log2_vartime() # No undefined, u != 0
     lut[u].sum(lut[u.clearBit(msb)], endomorphisms[msb])
 
 func tableIndex(glv: GLV_SAC, bit: int): SecretWord =
@@ -599,7 +599,7 @@ when isMainModule:
     ## per new entries
     lut[0] = P
     for u in 1'u32 ..< 1 shl (M-1):
-      let msb = u.log2() # No undefined, u != 0
+      let msb = u.log2_vartime() # No undefined, u != 0
       lut[u] = lut[u.clearBit(msb)] & " + " & endomorphisms[msb]
 
   proc main_lut() =
@@ -716,7 +716,7 @@ when isMainModule:
     ## per new entries
     lut[0].incl P
     for u in 1'u32 ..< 1 shl (M-1):
-      let msb = u.log2() # No undefined, u != 0
+      let msb = u.log2_vartime() # No undefined, u != 0
       lut[u] = lut[u.clearBit(msb)] + {endomorphisms[msb]}
 
 

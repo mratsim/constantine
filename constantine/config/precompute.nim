@@ -234,7 +234,7 @@ func checkOdd(M: BigInt) =
 
 func checkValidModulus(M: BigInt) =
   const expectedMsb = M.bits-1 - WordBitWidth * (M.limbs.len - 1)
-  let msb = log2(BaseType(M.limbs[^1]))
+  let msb = log2_vartime(BaseType(M.limbs[^1]))
 
   doAssert msb == expectedMsb, "Internal Error: the modulus must use all declared bits and only those:\n" &
     "    Modulus '" & M.toHex() & "' is declared with " & $M.bits &
@@ -252,7 +252,7 @@ func countSpareBits*(M: BigInt): int =
   ## - [0, 8p) if 3 bits are available
   ## - ...
   checkValidModulus(M)
-  let msb = log2(BaseType(M.limbs[^1]))
+  let msb = log2_vartime(BaseType(M.limbs[^1]))
   result = WordBitWidth - 1 - msb.int
 
 func invModBitwidth[T: SomeUnsignedInt](a: T): T =
@@ -280,7 +280,7 @@ func invModBitwidth[T: SomeUnsignedInt](a: T): T =
   # which grows in O(log(log(a)))
   checkOdd(a)
 
-  let k = log2(T.sizeof() * 8)
+  let k = log2_vartime(T.sizeof() * 8)
   result = a                 # Start from an inverse of M0 modulo 2, M0 is odd and it's own inverse
   for _ in 0 ..< k:          # at each iteration we get the inverse mod(2^2k)
     result *= 2 - a * result # x' = x(2 - ax)

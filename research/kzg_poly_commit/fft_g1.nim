@@ -70,14 +70,6 @@ type
     expandedRootsOfUnity: seq[matchingOrderBigInt(EC.F.C)]
       ## domain, starting and ending with 1
 
-func isPowerOf2(n: SomeUnsignedInt): bool =
-  (n and (n - 1)) == 0
-
-func nextPowerOf2(n: uint64): uint64 =
-  ## Returns x if x is a power of 2
-  ## or the next biggest power of 2
-  1'u64 shl (log2(n-1) + 1)
-
 func expandRootOfUnity[F](rootOfUnity: F): auto {.noInit.} =
   ## From a generator root of unity
   ## expand to width + 1 values.
@@ -157,7 +149,7 @@ func fft*[EC](
        vals: openarray[EC]): FFT_Status =
   if vals.len > desc.maxWidth:
     return FFTS_TooManyValues
-  if not vals.len.uint64.isPowerOf2():
+  if not vals.len.uint64.isPowerOf2_vartime():
     return FFTS_SizeNotPowerOfTwo
 
   let rootz = desc.expandedRootsOfUnity
@@ -175,7 +167,7 @@ func ifft*[EC](
   ## Inverse FFT
   if vals.len > desc.maxWidth:
     return FFTS_TooManyValues
-  if not vals.len.uint64.isPowerOf2():
+  if not vals.len.uint64.isPowerOf2_vartime():
     return FFTS_SizeNotPowerOfTwo
 
   let rootz = desc.expandedRootsOfUnity

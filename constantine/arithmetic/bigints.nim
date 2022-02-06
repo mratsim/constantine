@@ -333,7 +333,7 @@ func bit*[bits: static int](a: BigInt[bits], index: int): Ct[uint8] =
   ## (b7, b6, b5, b4, b3, b2, b1, b0)
   ## for a 256-bit big-integer
   ## (b255, b254, ..., b1, b0)
-  const SlotShift = log2(WordBitWidth.uint32)
+  const SlotShift = log2_vartime(WordBitWidth.uint32)
   const SelectMask = WordBitWidth - 1
   const BitMask = One
 

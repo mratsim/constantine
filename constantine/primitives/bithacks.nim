@@ -33,18 +33,19 @@
 # and https://graphics.stanford.edu/%7Eseander/bithacks.html
 # for compendiums of bit manipulation
 
-proc clearMask[T: SomeInteger](v: T, mask: T): T {.inline.} =
+func clearMask[T: SomeInteger](v: T, mask: T): T {.inline.} =
   ## Returns ``v``, with all the ``1`` bits from ``mask`` set to 0
   v and not mask
 
-proc clearBit*[T: SomeInteger](v: T, bit: T): T {.inline.} =
+func clearBit*[T: SomeInteger](v: T, bit: T): T {.inline.} =
   ## Returns ``v``, with the bit at position ``bit`` set to 0
   v.clearMask(1.T shl bit)
 
-func log2Impl(x: uint32): uint32 =
+func log2impl_vartime(x: uint32): uint32 =
   ## Find the log base 2 of a 32-bit or less integer.
   ## using De Bruijn multiplication
-  ## Works at compile-time, guaranteed constant-time.
+  ## Works at compile-time.
+  ## ⚠️ not constant-time, table accesses are not uniform.
   ## TODO: at runtime BitScanReverse or CountLeadingZero are more efficient
   # https://graphics.stanford.edu/%7Eseander/bithacks.html#IntegerLogDeBruijn
   const lookup: array[32, uint8] = [0'u8, 9, 1, 10, 13, 21, 2, 29, 11, 14, 16, 18,
@@ -57,10 +58,11 @@ func log2Impl(x: uint32): uint32 =
   v = v or v shr 16
   lookup[(v * 0x07C4ACDD'u32) shr 27]
 
-func log2Impl(x: uint64): uint64 {.inline, noSideEffect.} =
+func log2impl_vartime(x: uint64): uint64 {.inline.} =
   ## Find the log base 2 of a 32-bit or less integer.
   ## using De Bruijn multiplication
-  ## Works at compile-time, guaranteed constant-time.
+  ## Works at compile-time.
+  ## ⚠️ not constant-time, table accesses are not uniform.
   ## TODO: at runtime BitScanReverse or CountLeadingZero are more efficient
   # https://graphics.stanford.edu/%7Eseander/bithacks.html#IntegerLogDeBruijn
   const lookup: array[64, uint8] = [0'u8, 58, 1, 59, 47, 53, 2, 60, 39, 48, 27, 54,
@@ -76,27 +78,41 @@ func log2Impl(x: uint64): uint64 {.inline, noSideEffect.} =
   v = v or v shr 32
   lookup[(v * 0x03F6EAF2CD271461'u64) shr 58]
 
-func log2*[T: SomeUnsignedInt](n: T): T =
+func log2_vartime*[T: SomeUnsignedInt](n: T): T {.inline.} =
   ## Find the log base 2 of an integer
   when sizeof(T) == sizeof(uint64):
-    T(log2Impl(uint64(n)))
+    T(log2impl_vartime(uint64(n)))
   else:
     static: doAssert sizeof(T) <= sizeof(uint32)
-    T(log2Impl(uint32(n)))
+    T(log2impl_vartime(uint32(n)))
 
-func hammingWeight*(x: uint32): int {.inline.} =
+func hammingWeight*(x: uint32): uint {.inline.} =
   ## Counts the set bits in integer.
   # https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
   var v = x
   v = v - ((v shr 1) and 0x55555555)
   v = (v and 0x33333333) + ((v shr 2) and 0x33333333)
-  cast[int](((v + (v shr 4) and 0xF0F0F0F) * 0x1010101) shr 24)
+  uint(((v + (v shr 4) and 0xF0F0F0F) * 0x1010101) shr 24)
 
-func hammingWeight*(x: uint64): int {.inline.} =
+func hammingWeight*(x: uint64): uint {.inline.} =
   ## Counts the set bits in integer.
   # https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
   var v = x
   v = v - ((v shr 1'u64) and 0x5555555555555555'u64)
   v = (v and 0x3333333333333333'u64) + ((v shr 2'u64) and 0x3333333333333333'u64)
   v = (v + (v shr 4'u64) and 0x0F0F0F0F0F0F0F0F'u64)
-  cast[int]((v * 0x0101010101010101'u64) shr 56'u64)
+  uint((v * 0x0101010101010101'u64) shr 56'u64)
+
+func countLeadingZeros_vartime*[T: SomeUnsignedInt](x: T): T {.inline.} =
+  (8*sizeof(T)) - 1 - log2_vartime(x)
+
+func isPowerOf2_vartime*(n: SomeUnsignedInt): bool {.inline.} =
+  ## Returns true if n is a power of 2
+  ## ⚠️ Result is bool instead of Secretbool,
+  ## for compile-time or explicit vartime proc only.
+  (n and (n - 1)) == 0
+
+func nextPowerOf2_vartime*(n: uint64): uint64 {.inline.} =
+  ## Returns x if x is a power of 2
+  ## or the next biggest power of 2
+  1'u64 shl (log2_vartime(n-1) + 1)

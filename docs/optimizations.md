@@ -91,7 +91,7 @@ The optimizations can be of algebraic, algorithmic or "implementation details" n
 - Inversion (constant-time baseline, Little-Fermat inversion via a^(p-2))
   - [x] Constant-time binary GCD algorithm by Möller, algorithm 5 in https://link.springer.com/content/pdf/10.1007%2F978-3-642-40588-4_10.pdf
   - [x] Addition-chain for a^(p-2)
-  - [ ] Constant-time binary GCD algorithm by Bernstein-Young, https://eprint.iacr.org/2019/266
+  - [ ] Constant-time binary GCD algorithm by Bernstein-Yang, https://eprint.iacr.org/2019/266
   - [ ] Constant-time binary GCD algorithm by Pornin, https://eprint.iacr.org/2020/972
   - [ ] Simultaneous inversion
 

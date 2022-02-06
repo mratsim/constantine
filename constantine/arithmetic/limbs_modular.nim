@@ -252,7 +252,7 @@ func csub(a: LimbsViewMut, b: LimbsViewAny, ctl: SecretBool, len: int): Borrow =
 # ------------------------------------------------------------
 
 func numWordsFromBits(bits: int): int {.inline.} =
-  const divShiftor = log2(uint32(WordBitWidth))
+  const divShiftor = log2_vartime(uint32(WordBitWidth))
   result = (bits + WordBitWidth - 1) shr divShiftor
 
 func shlAddMod_estimate(a: LimbsViewMut, aLen: int,
