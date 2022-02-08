@@ -244,7 +244,6 @@ debug:
     # Each divstep's individual matrix has determinant 2⁻¹,
     # the aggregate of numIters of them will have determinant 2ⁿᵘᵐᴵᵗᵉʳˢ. Multiplying with the initial
     # 2ᵏ*identity (which has determinant 2²ᵏ) means the result has determinant 2²ᵏ⁻ⁿᵘᵐᴵᵗᵉʳˢ.
-    
     let
       u = SecretWord u
       v = SecretWord v
@@ -262,7 +261,7 @@ debug:
 
     let d = 2*k - numIters
     b[0] = Zero; b[1] = Zero
-    b[d div k] = One shl (d mod WordBitwidth)
+    b[d div WordBitwidth] = One shl (d mod WordBitwidth)
 
     return bool(a == b)
 
@@ -278,7 +277,7 @@ func canonicalize(
   
   const
     UnsatBitWidth = WordBitWidth - a.Excess
-    Max = MaxWord shr a.Excess
+    Max = SignedSecretWord(MaxWord shr a.Excess)
   
   # Operate in registers
   var z = a
@@ -292,7 +291,7 @@ func canonicalize(
   # Normalize words to range (-2^UnsatBitwidth, 2^UnsatBitwidth)
   for i in 0 ..< z.words.len-1:
     z[i+1] = z[i+1] + z[i].ashr(UnsatBitWidth)
-    z[i] = z[i] and SignedSecretWord Max
+    z[i] = z[i] and Max
 
   # Add M if `z` is negative
   # -> range (0, M)
@@ -300,7 +299,7 @@ func canonicalize(
   # Normalize words to range (-2^UnsatBitwidth, 2^UnsatBitwidth)
   for i in 0 ..< z.words.len-1:
     z[i+1] = z[i+1] + z[i].ashr(UnsatBitWidth)
-    z[i] = z[i] and SignedSecretWord Max
+    z[i] = z[i] and Max
 
   a = z
 
@@ -369,7 +368,7 @@ func batchedDivsteps(
         # debugEcho "    q: 0b", BiggestInt(q).toBin(64), ", r: 0b", BiggestInt(r).toBin(64), " | q: ", int(q), ", r: ", int(r)
 
       doAssert (f.BaseType and 1) == 1, (reportLoop(); "f must be odd)")
-      doAssert bool(not(uint(u or v or q or r) and (high(uint) shr (i - 1)))), (reportLoop(); "Min trailing zeros count decreases at each iteration")
+      doAssert bool(not(uint(u or v or q or r) and (if i == 0: high(uint) else: high(uint) shr (i - 1)))), (reportLoop(); "Min trailing zeros count decreases at each iteration")
       doAssert bool(u.ashr(k-i)*f0 + v.ashr(k-i)*g0 == f.lshl(i)), (reportLoop(); "Applying the transition matrix to (f₀, g₀) returns current (f, g)")
       doAssert bool(q.ashr(k-i)*f0 + r.ashr(k-i)*g0 == g.lshl(i)), (reportLoop(); "Applying the transition matrix to (f₀, g₀) returns current (f, g)")
 
@@ -451,7 +450,7 @@ func matVecMul_shr_k_mod_M[N, E: static int](
   md.cadd(u, sign_d)
   md.cadd(v, sign_e)
   me.cadd(q, sign_d)
-  md.cadd(r, sign_e)
+  me.cadd(r, sign_e)
   
   md = md - (SignedSecretWord(invMod2powK * SecretWord(cd.lo) + SecretWord(md)) and Max)
   me = me - (SignedSecretWord(invMod2powK * SecretWord(ce.lo) + SecretWord(me)) and Max)
