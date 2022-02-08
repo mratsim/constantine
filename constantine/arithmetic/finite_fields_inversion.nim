@@ -27,7 +27,12 @@ func inv_euclid*(r: var FF, a: FF) =
   ## Inversion modulo p via
   ## Niels Moller constant-time version of
   ## Stein's GCD derived from extended binary Euclid algorithm
-  r.mres.mollerGCD(a.mres, FF.getR2modP(), FF.fieldMod(), FF.getPrimePlus1div2())
+  r.mres.mollerInvMod(a.mres, FF.getR2modP(), FF.fieldMod(), FF.getPrimePlus1div2())
+
+func inv_bernsteinYang*(r: var FF, a: FF) =
+  ## Inversion modulo p via
+  ## Bernstein-Yang algorithm
+  r.mres.bernsteinYangInvMod(a.mres, FF.getR2modP(), FF.fieldMod())
 
 func inv*(r: var FF, a: FF) =
   ## Inversion modulo p
@@ -49,7 +54,7 @@ func inv*(r: var FF, a: FF) =
        FF.C notin {BW6_761}:
     r.inv_addchain(a)
   else:
-    r.inv_euclid(a)
+    r.inv_bernsteinYang(a)
 
 func inv*(a: var FF) =
   ## Inversion modulo p

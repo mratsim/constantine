@@ -105,6 +105,13 @@ proc invEuclidBench*(T: typedesc, iters: int) =
   bench("Inversion (constant-time Euclid)", T, iters):
     r.inv_euclid(x)
 
+proc invBernsteinYangBench*(T: typedesc, iters: int) =
+  var r: T
+  let x = rng.random_unsafe(T)
+  preventOptimAway(r)
+  bench("Inversion (constant-time Bernstein-Yang)", T, iters):
+    r.inv_bernsteinYang(x)
+
 proc invPowFermatBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)
   const exponent = T.getInvModExponent()

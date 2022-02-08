@@ -28,6 +28,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Big ints
   # ----------------------------------------------------------
   ("tests/t_io_bigints.nim", false),
+  ("tests/t_io_unsaturated.nim", false),
   ("tests/t_bigints.nim", false),
   ("tests/t_bigints_multimod.nim", false),
   ("tests/t_bigints_mod_vs_gmp.nim", true),

@@ -97,3 +97,25 @@ func muladd2*(hi, lo: var Ct[uint64], a, b, c1, c2: Ct[uint64]) {.inline.}=
     else:
       {.emit:["*",hi, " = (NU64)(", dblPrec," >> ", 64'u64, ");"].}
       {.emit:["*",lo, " = (NU64)", dblPrec,";"].}
+
+func smul*(hi, lo: var Ct[uint64], a, b: Ct[uint64]) {.inline.} =
+  ## Extended precision multiplication
+  ## (hi, lo) <- a*b
+  ##
+  ## Inputs are intentionally unsigned
+  ## as we use their unchecked raw representation for cryptography
+  ## 
+  ## This is constant-time on most hardware
+  ## See: https://www.bearssl.org/ctmul.html
+  block:
+    var dblPrec {.noInit.}: int128
+    # We need to cast to int64 then sign-extended to int128
+    {.emit:[dblPrec, " = (__int128)", cast[int64](a)," * (__int128)", cast[int64](b),";"].}
+
+    # Don't forget to dereference the var param in C mode
+    when defined(cpp):
+      {.emit:[hi, " = (NU64)(", dblPrec," >> ", 64'u64, ");"].}
+      {.emit:[lo, " = (NU64)", dblPrec,";"].}
+    else:
+      {.emit:["*",hi, " = (NU64)(", dblPrec," >> ", 64'u64, ");"].}
+      {.emit:["*",lo, " = (NU64)", dblPrec,";"].}

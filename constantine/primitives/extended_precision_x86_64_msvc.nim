@@ -29,6 +29,7 @@ func udiv128(highDividend, lowDividend, divisor: Ct[uint64], remainder: var Ct[u
   ##   - if n_hi > d result is undefined
 
 func umul128(a, b: Ct[uint64], hi: var Ct[uint64]): Ct[uint64] {.importc:"_umul128", header:"<intrin.h>", nodecl.}
+  ## Unsigned extended precision multiplication
   ## (hi, lo) <-- a * b
   ## Return value is the low word
 
@@ -84,3 +85,22 @@ func muladd2*(hi, lo: var Ct[uint64], a, b, c1, c2: Ct[uint64]) {.inline.}=
   # Carry chain 2
   addC(carry2, lo, lo, c2, Carry(0))
   addC(carry2, hi, hi, 0, carry2)
+
+func smul128(a, b: Ct[uint64], hi: var Ct[uint64]): Ct[uint64] {.importc:"_mul128", header:"<intrin.h>", nodecl.}
+  ## Signed extended precision multiplication
+  ## (hi, lo) <-- a * b
+  ## Return value is the low word
+  ##
+  ## Inputs are intentionally unsigned
+  ## as we use their unchecked raw representation for cryptography
+
+func smul*(hi, lo: var Ct[uint64], a, b: Ct[uint64]) {.inline.} =
+  ## Extended precision multiplication
+  ## (hi, lo) <- a*b
+  ##
+  ## Inputs are intentionally unsigned
+  ## as we use their unchecked raw representation for cryptography
+  ## 
+  ## This is constant-time on most hardware
+  ## See: https://www.bearssl.org/ctmul.html
+  lo = smul128(a, b, hi)

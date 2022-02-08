@@ -28,16 +28,16 @@ The optimizations can be of algebraic, algorithmic or "implementation details" n
 - Squaring
   - [x] Dedicated squaring functions
   - [x] int128
-  - [ ] loop unrolling
+  - [x] loop unrolling
   - [x] x86: Full Assembly implementation
-  - [ ] x86: MULX, ADCX, ADOX instructions
+  - [x] x86: MULX, ADCX, ADOX instructions
 
 ## Finite Fields & Modular Arithmetic
 
 - Representation
   - [x] Montgomery Representation
   - [ ] Barret Reduction
-  - [ ] Unsaturated Representation
+  - [x] Unsaturated Representation
     - [ ] Mersenne Prime (2ᵏ - 1),
     - [ ] Generalized Mersenne Prime (NIST Prime P256: 2^256 - 2^224 + 2^192 + 2^96 - 1)
     - [ ] Pseudo-Mersenne Prime (2^m - k for example Curve25519: 2^255 - 19)
@@ -91,9 +91,9 @@ The optimizations can be of algebraic, algorithmic or "implementation details" n
 - Inversion (constant-time baseline, Little-Fermat inversion via a^(p-2))
   - [x] Constant-time binary GCD algorithm by Möller, algorithm 5 in https://link.springer.com/content/pdf/10.1007%2F978-3-642-40588-4_10.pdf
   - [x] Addition-chain for a^(p-2)
-  - [ ] Constant-time binary GCD algorithm by Bernstein-Yang, https://eprint.iacr.org/2019/266
+  - [x] Constant-time binary GCD algorithm by Bernstein-Yang, https://eprint.iacr.org/2019/266
   - [ ] Constant-time binary GCD algorithm by Pornin, https://eprint.iacr.org/2020/972
-  - [ ] Constant-time binary GCD algorithm by BY with half-delta optimization by libsecp256k1, formally verified, https://eprint.iacr.org/2021/549
+  - [x] Constant-time binary GCD algorithm by BY with half-delta optimization by libsecp256k1, formally verified, https://eprint.iacr.org/2021/549
   - [ ] Simultaneous inversion
 
 - Square Root (constant-time)
@@ -194,7 +194,7 @@ The optimizations can be of algebraic, algorithmic or "implementation details" n
   - [ ] BLS curves: Ghamman, Fouotsa
   - [x] BLS curves: Hayashida, Hayasaka, Teruya
 
-- [ ] Multi-pairing
+- [x] Multi-pairing
   - [ ] Line accumulation
   - [ ] Parallel Multi-Pairing
 
@@ -205,7 +205,7 @@ The optimizations can be of algebraic, algorithmic or "implementation details" n
   - [ ] BLS G2: Scott et al
   - [ ] BLS G2: Fuentes-Castañeda
   - [x] BLS G2: Budroni et al, endomorphism accelerated
-  - [ ] BN G2
+  - [x] BN G2: Fuentes-Castañeda
   - [ ] BW6-761 G1
   - [ ] BW6-761 G2
 

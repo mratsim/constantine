@@ -52,6 +52,7 @@ proc main() =
     smallSeparator()
     invEuclidBench(Fp[curve], ExponentIters)
     invPowFermatBench(Fp[curve], ExponentIters)
+    invBernsteinYangBench(Fp[curve], ExponentIters)
     sqrtBench(Fp[curve], ExponentIters)
     sqrtRatioBench(Fp[curve], ExponentIters)
     # Exponentiation by a "secret" of size ~the curve order
