@@ -9,11 +9,11 @@
 import
   std/macros,
   ../config/curves,
-  ./bls12_377_precomputed_params,
-  ./bls12_381_precomputed_params,
-  ./bn254_nogami_precomputed_params,
-  ./bn254_snarks_precomputed_params,
-  ./bw6_761_precomputed_params
+  ./bls12_377_g2_params,
+  ./bls12_381_g2_params,
+  ./bn254_nogami_g2_params,
+  ./bn254_snarks_g2_params,
+  ./bw6_761_g2_params
 
 {.experimental: "dynamicBindSym".}
 

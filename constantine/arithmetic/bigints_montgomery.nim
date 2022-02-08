@@ -11,7 +11,6 @@ import
   ../primitives,
   ../io/io_bigints,
   ./limbs,
-  ./limbs_modular,
   ./limbs_montgomery,
   ./bigints
 

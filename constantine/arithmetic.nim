@@ -10,7 +10,6 @@ import
   arithmetic/[bigints, bigints_montgomery],
   arithmetic/[
     finite_fields,
-    finite_fields_inversion,
     finite_fields_square_root,
     finite_fields_double_precision
   ]
@@ -19,6 +18,5 @@ export
   bigints,
   bigints_montgomery,
   finite_fields,
-  finite_fields_inversion,
   finite_fields_square_root,
   finite_fields_double_precision

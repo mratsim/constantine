@@ -12,7 +12,7 @@ import
   ../arithmetic,
   ../towers,
   ../io/[io_fields, io_towers],
-  ../curves/zoo_precomputed_params
+  ../curves/zoo_g2_params
 
 # ############################################################
 #

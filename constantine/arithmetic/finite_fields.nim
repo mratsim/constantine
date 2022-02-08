@@ -242,6 +242,24 @@ func div2*(a: var FF) {.meter.} =
   ## Modular division by 2
   a.mres.div2_modular(FF.getPrimePlus1div2())
 
+func inv*(r: var FF, a: FF) =
+  ## Inversion modulo p
+  ##
+  ## The inverse of 0 is 0.
+  ## Incidentally this avoids extra check
+  ## to convert Jacobian and Projective coordinates
+  ## to affine for elliptic curve
+  r.mres.bernsteinYangInvMod(a.mres, FF.getR2modP(), FF.fieldMod())
+
+func inv*(a: var FF) =
+  ## Inversion modulo p
+  ##
+  ## The inverse of 0 is 0.
+  ## Incidentally this avoids extra check
+  ## to convert Jacobian and Projective coordinates
+  ## to affine for elliptic curve
+  a.inv(a)
+
 # ############################################################
 #
 #                Field arithmetic conditional

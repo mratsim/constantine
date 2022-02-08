@@ -12,8 +12,7 @@ import
   ./limbs,
   ./limbs_extmul,
   ./limbs_invmod,
-  ./limbs_modular,
-  ./limbs_montgomery
+  ./limbs_division
 
 export BigInt
 
