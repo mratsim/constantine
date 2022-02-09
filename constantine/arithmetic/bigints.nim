@@ -450,32 +450,28 @@ func reduce*[aBits, mBits](r: var BigInt[mBits], a: BigInt[aBits], M: BigInt[mBi
   # pass a pointer+length to a fixed session of the BSS.
   reduce(r.limbs, a.limbs, aBits, M.limbs, mBits)
 
-func div2_modular*[bits](a: var BigInt[bits], mp1div2: BigInt[bits]) =
-  ## Compute a <- a/2 (mod M)
-  ## `mp1div2` is the modulus (M+1)/2
-  ##
-  ## Normally if `a` is odd we add the modulus before dividing by 2
-  ## but this may overflow and we might lose a bit before shifting.
-  ## Instead we shift first and then add half the modulus rounded up
-  ##
-  ## Assuming M is odd, `mp1div2` can be precomputed without
-  ## overflowing the "Limbs" by dividing by 2 first
-  ## and add 1
-  ## Otherwise `mp1div2` should be M/2
-  a.limbs.div2_modular(mp1div2.limbs)
-
-func mollerInvMod*[bits](r: var BigInt[bits], a, F, M, mp1div2: BigInt[bits]) =
-  ## Compute F multiplied the modular inverse of ``a`` modulo M
-  ## r ≡ F . a^-1 (mod M)
+func invmod*[bits](
+       r: var BigInt[bits],
+       a, F, M: BigInt[bits]) =
+  ## Compute the modular inverse of ``a`` modulo M
+  ## r ≡ F.a⁻¹ (mod M)
   ##
   ## M MUST be odd, M does not need to be prime.
   ## ``a`` MUST be less than M.
-  r.limbs.mollerInvMod(a.limbs, F.limbs, M.limbs, bits, mp1div2.limbs)
+  r.limbs.invmod(a.limbs, F.limbs, M.limbs, bits)
 
-func bernsteinYangInvMod*[bits](
+func invmod*[bits](
        r: var BigInt[bits],
-       a, F, M: BigInt[bits]) =
-  r.limbs.bernsteinYangInvMod(a.limbs, F.limbs, M.limbs, bits)
+       a: BigInt[bits],
+       F, M: static BigInt[bits]) =
+  ## Compute the modular inverse of ``a`` modulo M
+  ## r ≡ F.a⁻¹ (mod M)
+  ## 
+  ## with F and M known at compile-time
+  ##
+  ## M MUST be odd, M does not need to be prime.
+  ## ``a`` MUST be less than M.
+  r.limbs.invmod(a.limbs, F.limbs, M.limbs, bits)
 
 func invmod*[bits](r: var BigInt[bits], a, M: BigInt[bits]) =
   ## Compute the modular inverse of ``a`` modulo M
@@ -483,7 +479,7 @@ func invmod*[bits](r: var BigInt[bits], a, M: BigInt[bits]) =
   ## The modulus ``M`` MUST be odd
   var one {.noInit.}: BigInt[bits]
   one.setOne()
-  r.bernsteinYangInvMod(a, one, M)
+  r.invmod(a, one, M)
 
 {.pop.} # inline
 {.pop.} # raises no exceptions

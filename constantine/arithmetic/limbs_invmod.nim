@@ -20,28 +20,6 @@ import
 #
 # ############################################################
 
-func div2_modular*(a: var Limbs, mp1div2: Limbs) {.inline.} =
-  ## Modular Division by 2
-  ## `a` will be divided in-place
-  ## `mp1div2` is the modulus (M+1)/2
-  ##
-  ## Normally if `a` is odd we add the modulus before dividing by 2
-  ## but this may overflow and we might lose a bit before shifting.
-  ## Instead we shift first and then add half the modulus rounded up
-  ##
-  ## Assuming M is odd, `mp1div2` can be precomputed without
-  ## overflowing the "Limbs" by dividing by 2 first
-  ## and add 1
-  ## Otherwise `mp1div2` should be M/2
-
-  # if a.isOdd:
-  #   a += M
-  # a = a shr 1
-  let wasOdd = a.isOdd()
-  a.shiftRight(1)
-  let carry {.used.} = a.cadd(mp1div2, wasOdd)
-  debug: doAssert not carry.bool
-
 func invModBitwidth(a: BaseType): BaseType =
   # Modular inverse algorithm:
   # Explanation p11 "Dumas iterations" based on Newton-Raphson:
@@ -387,7 +365,7 @@ func matVecMul_shr_k[N, E: static int](
   f[N-1] = cf.lo
   g[N-1] = cg.lo
 
-func bernsteinYangInvMod_impl[N, E](
+func invmod_impl[N, E](
        a: var LimbsUnsaturated[N, E],
        F, M: LimbsUnsaturated[N, E],
        invMod2powK: SecretWord,
@@ -424,7 +402,7 @@ func bernsteinYangInvMod_impl[N, E](
   d.canonicalize(signMask = f.isNegMask(), M)
   a = d
 
-func bernsteinYangInvMod*(
+func invmod*(
        r: var Limbs, a: Limbs,
        F, M: Limbs, bits: static int) =
   ## Compute the modular inverse of ``a`` modulo M
@@ -444,9 +422,34 @@ func bernsteinYangInvMod*(
   var factor {.noInit.}: LimbsUnsaturated[NumUnsatWords, Excess]
   m2.fromPackedRepr(M)
   factor.fromPackedRepr(F)
-  let invMod2PowK = SecretWord invMod2powK(BaseType M[0], k)
+  let m0invK = SecretWord invMod2powK(BaseType M[0], k)
 
   var a2 {.noInit.}: LimbsUnsaturated[NumUnsatWords, Excess]
   a2.fromPackedRepr(a)
-  a2.bernsteinYangInvMod_impl(factor, m2, invMod2PowK, k, bits)
+  a2.invmod_impl(factor, m2, m0invK, k, bits)
+  r.fromUnsatRepr(a2)
+
+func invmod*(
+       r: var Limbs, a: Limbs,
+       F, M: static Limbs, bits: static int) =
+  ## Compute the modular inverse of ``a`` modulo M
+  ## r ≡ F.a⁻¹ (mod M)
+  ## 
+  ## with F and M known at compile-time
+  ##
+  ## M MUST be odd, M does not need to be prime.
+  ## ``a`` MUST be less than M.
+  
+  const Excess = 2
+  const k = WordBitwidth - Excess
+  const NumUnsatWords = (bits + k - 1) div k
+
+  # Convert values to unsaturated repr
+  const m2 = LimbsUnsaturated[NumUnsatWords, Excess].fromPackedRepr(M)
+  const factor = LimbsUnsaturated[NumUnsatWords, Excess].fromPackedRepr(F)
+  const m0invK = SecretWord invMod2powK(BaseType M[0], k)
+
+  var a2 {.noInit.}: LimbsUnsaturated[NumUnsatWords, Excess]
+  a2.fromPackedRepr(a)
+  a2.invmod_impl(factor, m2, m0invK, k, bits)
   r.fromUnsatRepr(a2)

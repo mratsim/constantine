@@ -137,6 +137,10 @@ func fromPackedRepr*[LU, E, LP: static int](
   for i in dst_idx + 1 ..< dst.words.len:
     dst[i] = SignedSecretWord Zero
 
+func fromPackedRepr*(T: type LimbsUnsaturated, src: Limbs): T =
+  ## Converts from an packed representation to an unsaturated representation
+  result.fromPackedRepr(src)
+
 func fromUnsatRepr*[LU, E, LP: static int](
        dst: var Limbs[LP],
        src: LimbsUnsaturated[LU, E]) =
@@ -325,6 +329,8 @@ func cneg*(
   ## Conditionally negate `a` 
   ## mask must be 0 (0x00000...0000) (no negation)
   ## or -1 (0xFFFF...FFFF) (negation)
+  ## 
+  ## Carry propagation is deferred
   for i in 0 ..< a.words.len:
     a[i] = a[i].cneg(mask)
 
@@ -335,6 +341,8 @@ func cadd*(
   ## Conditionally add `b` to `a` 
   ## mask must be 0 (0x00000...0000) (no addition)
   ## or -1 (0xFFFF...FFFF) (addition)
+  ## 
+  ## Carry propagation is deferred
   for i in 0 ..< a.words.len:
     a[i].cadd(b[i], mask)
 
@@ -347,9 +355,7 @@ func cadd*(
 type DSWord* = object
   lo*, hi*: SignedSecretWord
 
-func smulAccNoCarry*(
-       r: var DSWord,
-       a, b: SignedSecretWord) {.inline.}=
+func smulAccNoCarry*(r: var DSWord, a, b: SignedSecretWord) {.inline.}=
   ## Signed accumulated multiplication
   ## (_, hi, lo) += a*b
   ## This assumes no overflowing
@@ -362,9 +368,7 @@ func smulAccNoCarry*(
   r.lo = SignedSecretWord UV[0]
   r.hi = SignedSecretWord UV[1]
 
-func slincombAccNoCarry*(
-       r: var DSWord,
-       a, u, b, v: SignedSecretWord) {.inline.}=
+func slincombAccNoCarry*(r: var DSWord, a, u, b, v: SignedSecretWord) {.inline.}=
   ## Accumulated linear combination
   ## (_, hi, lo) += a*u + b*v
   ## This assumes no overflowing
