@@ -87,7 +87,7 @@ func setUint*(a: var Limbs, n: SomeUnsignedInt) =
 
 func csetZero*(a: var Limbs, ctl: SecretBool) =
   ## Set ``a`` to 0 if ``ctl`` is true
-  let mask = -(SecretWord ctl)
+  let mask = -(SecretWord(ctl) xor One)
   for i in 0 ..< a.len:
     a[i] = a[i] and mask
 

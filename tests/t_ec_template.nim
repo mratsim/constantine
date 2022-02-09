@@ -536,3 +536,41 @@ proc run_EC_subgroups_cofactors_impl*(
     
       echo "    [SUCCESS] Test finished with ", inSubgroup, " points in ", G1_or_G2, " subgroup and ",
               offSubgroup, " points on curve but not in subgroup (before cofactor clearing)"
+
+proc run_EC_affine_conversion*(
+       ec: typedesc,
+       Iters: static int,
+       moduleName: string
+     ) =
+
+  # Random seed for reproducibility
+  var rng: RngState
+  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  rng.seed(seed)
+  echo "\n------------------------------------------------------\n"
+  echo moduleName, " xoshiro512** seed: ", seed
+
+  const G1_or_G2 = pairingGroup(ec)
+
+  const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
+
+  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
+    test "EC " & G1_or_G2 & " batchAffine is consistent with single affine conversion":
+      proc test(EC: typedesc, gen: RandomGen) =
+        const batchSize = 10
+        for _ in 0 ..< Iters:
+          var Ps: array[batchSize, EC]
+          for i in 0 ..< batchSize:
+            Ps[i] = rng.random_point(EC, randZ = true, gen)
+
+          var Qs, Rs: array[batchSize, affine(EC)]
+          for i in 0 ..< batchSize:
+            Qs[i].affine(Ps[i])
+          Rs.batchAffine(Ps)
+
+          for i in countdown(batchSize-1, 0):
+            doAssert bool(Qs[i] == Rs[i]), "Mismatch on iteration " & $i
+
+      test(ec, gen = Uniform)
+      test(ec, gen = HighHammingWeight)
+      test(ec, gen = Long01Sequence)

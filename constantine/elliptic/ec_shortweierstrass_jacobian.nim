@@ -575,7 +575,6 @@ func batchAffine*[N: static int, F, G](
 
   # To avoid temporaries, we store partial accumulations
   # in affs[i].x and whether z == 0 in affs[i].y
-
   var zeroes: array[N, SecretBool]
   affs[0].x  = jacs[0].z
   zeroes[0] = affs[0].x.isZero()
@@ -594,17 +593,17 @@ func batchAffine*[N: static int, F, G](
 
   for i in countdown(N-1, 1):
     # Skip zero z-coordinates (infinity points)
-    var z = jacs[i].z
-    z.csetOne(zeroes[i])
+    var z = affs[i].x
 
     # Extract 1/Pᵢ + next iteration of batch inversion.
-    var invi {.noInit.}, invi2 {.noinit.}: F
+    var invi {.noInit.}: F
     invi.prod(accInv, affs[i-1].x)
     invi.csetZero(zeroes[i])
-    invi2.square(invi)
-    accInv *= z
+    accInv *= jacs[i].z
 
     # Now convert Pᵢ to affine
+    var invi2 {.noinit.}: F
+    invi2.square(invi)
     affs[i].x.prod(jacs[i].x, invi2)
     invi *= invi2
     affs[i].y.prod(jacs[i].y, invi)
