@@ -97,10 +97,6 @@ func fromPackedRepr*[LU, E, LP: static int](
     doAssert (LU-1) * UnsatBitWidth <= WordBitwidth * LP, block:
       "\n  (LU-1) * UnsatBitWidth: " & $(LU-1) & " * " & $UnsatBitWidth & " = " & $((LU-1) * UnsatBitWidth) &
       "\n  WordBitwidth * LP: " & $WordBitwidth & " * " & $LP & " = " & $(WordBitwidth * LP)
-    # Invalid for P224
-    # doAssert WordBitwidth * LP <= LU * UnsatBitWidth, block:
-    #   "\n  WordBitwidth * LP: " & $WordBitwidth & " * " & $LP & " = " & $(WordBitwidth * LP) & 
-    #   "\n  LU * UnsatBitWidth: " & $LU & " * " & $UnsatBitWidth & " = " & $(LU * UnsatBitWidth)
 
   var
     srcIdx, dstIdx = 0
@@ -152,10 +148,6 @@ func fromUnsatRepr*[LU, E, LP: static int](
     doAssert (LU-1) * UnsatBitWidth <= WordBitwidth * LP, block:
       "\n  (LU-1) * UnsatBitWidth: " & $(LU-1) & " * " & $UnsatBitWidth & " = " & $((LU-1) * UnsatBitWidth) &
       "\n  WordBitwidth * LP: " & $WordBitwidth & " * " & $LP & " = " & $(WordBitwidth * LP)
-    # Invalid for P224
-    # doAssert WordBitwidth * LP <= LU * UnsatBitWidth, block:
-    #   "\n  WordBitwidth * LP: " & $WordBitwidth & " * " & $LP & " = " & $(WordBitwidth * LP) & 
-    #   "\n  LU * UnsatBitWidth: " & $LU & " * " & $UnsatBitWidth & " = " & $(LU * UnsatBitWidth)
 
   var
     srcIdx, dstIdx = 0
