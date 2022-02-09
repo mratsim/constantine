@@ -136,10 +136,7 @@ proc mixedAddBench*(T: typedesc, iters: int) =
   let P = rng.random_unsafe(T)
   let Q = rng.random_unsafe(T)
   var Qaff: ECP_ShortW_Aff[T.F, T.G]
-  when Q is ECP_ShortW_Prj:
-    Qaff.affine(Q)
-  else:
-    Qaff.affine(Q)
+  Qaff.affine(Q)
   bench("EC Mixed Addition " & G1_or_G2, T, iters):
     r.madd(P, Qaff)
 

@@ -39,9 +39,7 @@ func toHex*[EC: ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff](P: EC): stri
   ## This proc output may change format in the future
 
   var aff {.noInit.}: ECP_ShortW_Aff[EC.F, EC.G]
-  when EC is ECP_ShortW_Prj:
-    aff.affine(P)
-  elif EC is ECP_ShortW_Jac:
+  when EC isnot ECP_ShortW_Aff:
     aff.affine(P)
   else:
     aff = P
