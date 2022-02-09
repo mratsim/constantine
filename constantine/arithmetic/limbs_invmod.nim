@@ -156,22 +156,23 @@ proc partitionDivsteps(bits, wordBitWidth: int): tuple[totalIters, numChunks, ch
   # - the base number of divsteps per chunk
   # - a cutoff chunk,
   #     before this chunk ID, the number of divsteps is "base number + 1"
-  #     afterward it's "base number"              
-  if bits == 256:
-    # https://github.com/sipa/safegcd-bounds/tree/master/coq
-    # For 256-bit inputs, 590 divsteps are sufficient with hddivstep variant (half-delta divstep)
-    # for gcd(f, g) with 0 <= g <= f <= Modulus (inversion g == 1)
-    # The generic formula reports 591
-    return (590, 10, 59, 0)
-  else:
-    # https://github.com/sipa/safegcd-bounds/blob/master/genproofhd.md
-    # For any input, for gcd(f, g) with 0 <= g <= f <= Modulus with hddivstep variant (half-delta divstep)
-    # (inversion g == 1)
-    let totalIters = (45907*bits + 26313) div 19929
-    let numChunks = (totalIters + wordBitWidth-1) div wordBitWidth
-    let chunkSize = totalIters div numChunks
-    let cutoff = totalIters mod numChunks
-    return (totalIters, numChunks, chunkSize, cutoff)
+  #     afterward it's "base number"
+  let totalIters =           
+    if bits == 256:
+      # https://github.com/sipa/safegcd-bounds/tree/master/coq
+      # For 256-bit inputs, 590 divsteps are sufficient with hddivstep variant (half-delta divstep)
+      # for gcd(f, g) with 0 <= g <= f <= Modulus (inversion g == 1)
+      # The generic formula reports 591
+      590
+    else:
+      # https://github.com/sipa/safegcd-bounds/blob/master/genproofhd.md
+      # For any input, for gcd(f, g) with 0 <= g <= f <= Modulus with hddivstep variant (half-delta divstep)
+      # (inversion g == 1)
+      (45907*bits + 26313) div 19929
+  let numChunks = (totalIters + wordBitWidth-1) div wordBitWidth
+  let chunkSize = totalIters div numChunks
+  let cutoff = totalIters mod numChunks
+  return (totalIters, numChunks, chunkSize, cutoff)
 
 func batchedDivsteps(
        t: var TransitionMatrix,
@@ -205,7 +206,7 @@ func batchedDivsteps(
   for i in k-numIters ..< k:
     debug:
       func reportLoop() =
-        debugEcho "  iterations: [", k-numIters, ", ", k, ")"
+        debugEcho "  iterations: [", k-numIters, ", ", k, ")", " (", numIters, " iterations in total)"
         debugEcho "  i: ", i, ", theta: ", int(theta)
         # debugEcho "    f: 0b", BiggestInt(f).toBin(64), ", g: 0b", BiggestInt(g).toBin(64), " | f: ", int(f), ", g: ", int(g)
         # debugEcho "    u: 0b", BiggestInt(u).toBin(64), ", v: 0b", BiggestInt(v).toBin(64), " | u: ", int(u), ", v: ", int(v)
@@ -395,8 +396,8 @@ func invmodImpl[N, E](
     # [u v]    [d] 
     # [q r]/2ᵏ.[e]  mod M
     t.matVecMul_shr_k_mod_M(d, e, k, M, invMod2powK)
-    # [u v]     [f] 
-    # [q r]/ 2ᵏ.[g] 
+    # [u v]    [f] 
+    # [q r]/2ᵏ.[g] 
     t.matVecMul_shr_k(f, g, k)
 
   d.canonicalize(signMask = f.isNegMask(), M)
