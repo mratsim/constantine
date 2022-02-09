@@ -133,7 +133,7 @@ func eth_evm_ecadd*(
 
   R.sum(P, Q)
   var aff{.noInit.}: ECP_ShortW_Aff[Fp[BN254_Snarks], G1]
-  aff.affineFromProjective(R)
+  aff.affine(R)
 
   r.toOpenArray(0, 31).exportRawUint(
     aff.x, bigEndian
@@ -207,7 +207,7 @@ func eth_evm_ecmul*(
     P.scalarMul(s)
 
   var aff{.noInit.}: ECP_ShortW_Aff[Fp[BN254_Snarks], G1]
-  aff.affineFromProjective(P)
+  aff.affine(P)
 
   r.toOpenArray(0, 31).exportRawUint(
     aff.x, bigEndian
@@ -221,7 +221,7 @@ func subgroupCheck(P: ECP_ShortW_Aff[Fp2[BN254_Snarks], G2]): bool =
   ## that point may not be in the correct cyclic subgroup.
   ## If we are on the subgroup of order r then [r]P = 0
   var Q{.noInit.}: ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]
-  Q.projectiveFromAffine(P)
+  Q.fromAffine(P)
   return bool(Q.isInSubgroup())
 
 func fromRawCoords(

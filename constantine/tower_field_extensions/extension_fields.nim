@@ -219,6 +219,17 @@ func conj*(r: var CubicExt, a: CubicExt) =
 # Conditional arithmetic
 # -------------------------------------------------------------------
 
+func csetZero*(a: var ExtensionField, ctl: SecretBool) =
+  ## Set ``a`` to 0 if ``ctl`` is true
+  staticFor i, 0, a.coords.len:
+    a.coords[i].csetZero(ctl)
+
+func csetOne*(a: var ExtensionField, ctl: SecretBool) =
+  ## Set ``a`` to 1 if ``ctl`` is true
+  a.coords[0].csetOne(ctl)
+  staticFor i, 1, a.coords.len:
+    a.coords[i].csetZero(ctl)
+
 func cneg*(a: var ExtensionField, ctl: SecretBool) =
   ## Constant-time in-place conditional negation
   ## Only negate if ctl is true

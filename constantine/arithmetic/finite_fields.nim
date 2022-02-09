@@ -231,7 +231,7 @@ func neg*(r: var FF, a: FF) {.meter.} =
     var t {.noInit.}: FF
     let isZero = a.isZero()
     discard t.mres.diff(FF.fieldMod(), a.mres)
-    t.mres.czero(isZero)
+    t.mres.csetZero(isZero)
     r = t
 
 func neg*(a: var FF) {.meter.} =
@@ -243,6 +243,14 @@ func neg*(a: var FF) {.meter.} =
 #                Field arithmetic conditional
 #
 # ############################################################
+
+func csetZero*(a: var FF, ctl: SecretBool) =
+  ## Set ``a`` to 0 if ``ctl`` is true
+  a.mres.csetZero(ctl)
+
+func csetOne*(a: var FF, ctl: SecretBool) =
+  ## Set ``a`` to 1 if ``ctl`` is true
+  a.mres.ccopy(FF.getMontyOne(), ctl)
 
 func cneg*(r: var FF, a: FF, ctl: SecretBool) {.meter.} =
   ## Constant-time out-of-place conditional negation

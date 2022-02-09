@@ -45,6 +45,14 @@ func isInf*(P: ECP_ShortW_Aff): SecretBool =
   ## and false otherwise
   result = P.x.isZero() and P.y.isZero()
 
+func ccopy*(P: var ECP_ShortW_Aff, Q: ECP_ShortW_Aff, ctl: SecretBool) {.inline.} =
+  ## Constant-time conditional copy
+  ## If ctl is true: Q is copied into P
+  ## if ctl is false: Q is not copied and P is unmodified
+  ## Time and memory accesses are the same whether a copy occurs or not
+  for fP, fQ in fields(P, Q):
+    ccopy(fP, fQ, ctl)
+
 func curve_eq_rhs*[F](y2: var F, x: F, G: static Subgroup) =
   ## Compute the curve equation right-hand-side from field element `x`
   ## i.e.  `y²` in `y² = x³ + a x + b`

@@ -64,7 +64,7 @@ proc bench_BLS12_381_proj_aff_conversion(iters: int) =
   )
 
   bench("Proj->Affine conversion (for pairing)", BLS12_381, iters):
-    Paff.affineFromProjective(P)
+    Paff.affine(P)
 
 const Iters = 1000
 

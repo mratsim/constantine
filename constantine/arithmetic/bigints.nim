@@ -79,9 +79,9 @@ func setUint*(a: var BigInt, n: SomeUnsignedInt) =
   ## Set a BigInt to a machine-sized integer ``n``
   a.limbs.setUint(n)
 
-func czero*(a: var BigInt, ctl: SecretBool) =
+func csetZero*(a: var BigInt, ctl: SecretBool) =
   ## Set ``a`` to 0 if ``ctl`` is true
-  a.limbs.czero(ctl)
+  a.limbs.csetZero(ctl)
 
 # Copy
 # ------------------------------------------------------------

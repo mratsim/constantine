@@ -85,9 +85,9 @@ func publicKeyG1(
        seckey: Fr[BLS12_381]
      ) =
   var t: ECP_ShortW_Prj[Fp[BLS12_381], G1]
-  t.projectiveFromAffine(BLS12_381_G1_generator)
+  t.fromAffine(BLS12_381_G1_generator)
   t.scalarMul(seckey.toBig())
-  pubkey.affineFromprojective(t)
+  pubkey.affine(t)
   doAssert not bool pubkey.isInf()
 
 func signG2[T: byte|char](
@@ -105,7 +105,7 @@ func signG2[T: byte|char](
     domainSepTag = DomainSepTag
   )
   t.scalarMul(secretKey.toBig())
-  signature.affineFromprojective(t)
+  signature.affine(t)
   doAssert not bool signature.isInf()
 
 func verifyG2[T: byte|char](
@@ -125,7 +125,7 @@ func verifyG2[T: byte|char](
     message = message,
     domainSepTag = DomainSepTag
   )
-  Q.affineFromprojective(Qprj)
+  Q.affine(Qprj)
 
   var e0{.noInit.}, e1{.noInit.}: Fp12[BLS12_381]
   e0.pairing_bls12(pubkey, Q)
@@ -154,7 +154,7 @@ func verifyG2_multi[T: byte|char](
   var G1s: array[2, ECP_ShortW_Aff[Fp[BLS12_381], G1]]
 
   G1s[0] = pubkey
-  G2s[0].affineFromprojective(Qprj)
+  G2s[0].affine(Qprj)
 
   G1s[1].neg(BLS12_381_G1_generator)
   G2s[1] = signature

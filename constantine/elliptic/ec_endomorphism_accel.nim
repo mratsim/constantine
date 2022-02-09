@@ -218,10 +218,10 @@ func nDimMultiScalarRecoding[M, L: static int](
       k[j].div2()
       k[j] += SecretWord (bji and b[0][i])
 
-func buildLookupTable[M: static int, EC](
+func buildLookupTable[M: static int, EC, ECaff](
        P: EC,
        endomorphisms: array[M-1, EC],
-       lut: var array[1 shl (M-1), EC],
+       lut: var array[1 shl (M-1), ECaff],
      ) =
   ## Build the lookup table from the base point P
   ## and the curve endomorphism
@@ -251,11 +251,17 @@ func buildLookupTable[M: static int, EC](
   #
   #   This scheme ensures 1 addition per table entry instead of a number
   #   of addition dependent on `u` Hamming Weight
-  lut[0] = P
+
+  # Step 1. Create the lookup-table in alternative coordinates
+  var tab {.noInit.}: array[1 shl (M-1), EC]
+  tab[0] = P
   for u in 1'u32 ..< 1 shl (M-1):
     # The recoding allows usage of 2^(n-1) table instead of the usual 2^n with NAF
     let msb = u.log2_vartime() # No undefined, u != 0
-    lut[u].sum(lut[u.clearBit(msb)], endomorphisms[msb])
+    tab[u].sum(tab[u.clearBit(msb)], endomorphisms[msb])
+
+  # Step 2. Convert to affine coordinates to benefit from mixed-addition
+  lut.batchAffine(tab)
 
 func tableIndex(glv: GLV_SAC, bit: int): SecretWord =
   ## Compose the secret table index from
@@ -286,12 +292,14 @@ func scalarMulEndo*[scalBits; EC](
   ## Requires:
   ## - Cofactor to be cleared
   ## - 0 <= scalar < curve order
+  mixin affine
+  type ECaff = affine(EC)
   const C = P.F.C # curve
   static: doAssert scalBits <= C.getCurveOrderBitwidth(), "Do not use endomorphism to multiply beyond the curve order"
   when P.F is Fp:
     const M = 2
     # 1. Compute endomorphisms
-    var endomorphisms {.noInit.}: array[M-1, typeof(P)]
+    var endomorphisms {.noInit.}: array[M-1, EC]
     when P.G == G1:
       endomorphisms[0] = P
       endomorphisms[0].x *= C.getCubicRootOfUnity_mod_p()
@@ -301,7 +309,7 @@ func scalarMulEndo*[scalBits; EC](
   elif P.F is Fp2:
     const M = 4
     # 1. Compute endomorphisms
-    var endomorphisms {.noInit.}: array[M-1, typeof(P)]
+    var endomorphisms {.noInit.}: array[M-1, EC]
     endomorphisms[0].frobenius_psi(P)
     endomorphisms[1].frobenius_psi(P, 2)
     endomorphisms[2].frobenius_psi(P, 3)
@@ -331,10 +339,8 @@ func scalarMulEndo*[scalBits; EC](
       endomorphisms[i-1].cneg(negatePoints[i])
 
   # 4. Precompute lookup table
-  var lut {.noInit.}: array[1 shl (M-1), typeof(P)]
+  var lut {.noInit.}: array[1 shl (M-1), ECaff]
   buildLookupTable(P, endomorphisms, lut)
-  # TODO: Montgomery simultaneous inversion (or other simultaneous inversion techniques)
-  #       so that we use mixed addition formulas in the main loop
 
   # 5. Recode the miniscalars
   #    we need the base miniscalar (that encodes the sign)
@@ -346,12 +352,13 @@ func scalarMulEndo*[scalBits; EC](
   recoded.nDimMultiScalarRecoding(miniScalars)
 
   # 6. Proceed to GLV accelerated scalar multiplication
-  var Q {.noInit.}: typeof(P)
-  Q.secretLookup(lut, recoded.tableIndex(L-1))
+  var Q {.noInit.}: EC
+  var tmp {.noInit.}: ECaff
+  tmp.secretLookup(lut, recoded.tableIndex(L-1))
+  Q.fromAffine(tmp)
 
   for i in countdown(L-2, 0):
     Q.double()
-    var tmp {.noInit.}: typeof(Q)
     tmp.secretLookup(lut, recoded.tableIndex(i))
     tmp.cneg(SecretBool recoded[0][i])
     Q += tmp
@@ -392,34 +399,40 @@ func scalarMulEndo*[scalBits; EC](
 #   -  0t10   ->  0b10  is  2
 #   -  0t11   ->  0b11  is  3
 
-func buildLookupTable_m2w2[EC](
+func buildLookupTable_m2w2[EC, Ecaff](
        P0: EC,
        P1: EC,
-       lut: var array[8, EC],
+       lut: var array[8, Ecaff],
      ) =
   ## Build a lookup table for GLV with 2-dimensional decomposition
   ## and window of size 2
 
+  # Step 1. Create the lookup-table in alternative coordinates
+  var tab {.noInit.}: array[8, EC]
+
   # with [k0, k1] the mini-scalars with digits of size 2-bit
   #
   # 4 = 0b100 - encodes [0b01, 0b00] ≡ P0
-  lut[4] = P0
+  tab[4] = P0
   # 5 = 0b101 - encodes [0b01, 0b01] ≡ P0 - P1
-  lut[5].diff(lut[4], P1)
+  tab[5].diff(tab[4], P1)
   # 7 = 0b111 - encodes [0b01, 0b11] ≡ P0 + P1
-  lut[7].sum(lut[4], P1)
+  tab[7].sum(tab[4], P1)
   # 6 = 0b110 - encodes [0b01, 0b10] ≡ P0 + 2P1
-  lut[6].sum(lut[7], P1)
+  tab[6].sum(tab[7], P1)
 
   # 0 = 0b000 - encodes [0b00, 0b00] ≡ 3P0
-  lut[0].double(lut[4])
-  lut[0] += lut[4]
+  tab[0].double(tab[4])
+  tab[0] += tab[4]
   # 1 = 0b001 - encodes [0b00, 0b01] ≡ 3P0 + P1
-  lut[1].sum(lut[0], P1)
+  tab[1].sum(tab[0], P1)
   # 2 = 0b010 - encodes [0b00, 0b10] ≡ 3P0 + 2P1
-  lut[2].sum(lut[1], P1)
+  tab[2].sum(tab[1], P1)
   # 3 = 0b011 - encodes [0b00, 0b11] ≡ 3P0 + 3P1
-  lut[3].sum(lut[2], P1)
+  tab[3].sum(tab[2], P1)
+
+  # Step 2. Convert to affine coordinates to benefit from mixed-addition
+  lut.batchAffine(tab)
 
 func w2Get(recoding: Recoded,
           digitIdx: int): uint8 {.inline.}=
@@ -477,6 +490,8 @@ func scalarMulGLV_m2w2*[scalBits; EC](
   ## Requires:
   ## - Cofactor to be cleared
   ## - 0 <= scalar < curve order
+  mixin affine
+  type ECaff = affine(EC)
   const C = P0.F.C # curve
   static: doAssert: scalBits == C.getCurveOrderBitwidth()
 
@@ -485,7 +500,7 @@ func scalarMulGLV_m2w2*[scalBits; EC](
     var P1 = P0
     P1.x *= C.getCubicRootOfUnity_mod_p()
   else:
-    var P1 {.noInit.}: typeof(P0)
+    var P1 {.noInit.}: EC
     P1.frobenius_psi(P0, 2)
 
   # 2. Decompose scalar into mini-scalars
@@ -503,10 +518,8 @@ func scalarMulGLV_m2w2*[scalBits; EC](
     P1.cneg(negatePoints[1])
 
   # 4. Precompute lookup table
-  var lut {.noInit.}: array[8, EC]
+  var lut {.noInit.}: array[8, ECaff]
   buildLookupTable_m2w2(P0, P1, lut)
-  # TODO: Montgomery simultaneous inversion (or other simultaneous inversion techniques)
-  #       so that we use mixed addition formulas in the main loop
 
   # 5. Recode the miniscalars
   #    we need the base miniscalar (that encodes the sign)
@@ -518,15 +531,16 @@ func scalarMulGLV_m2w2*[scalBits; EC](
   recoded.nDimMultiScalarRecoding(miniScalars)
 
   # 6. Proceed to GLV accelerated scalar multiplication
-  var Q {.noInit.}: typeof(P0)
+  var Q {.noInit.}: EC
+  var tmp {.noInit.}: ECaff
   var isNeg: SecretBool
 
-  Q.secretLookup(lut, recoded.w2TableIndex((L div 2) - 1, isNeg))
+  tmp.secretLookup(lut, recoded.w2TableIndex((L div 2) - 1, isNeg))
+  Q.fromAffine(tmp)
 
   for i in countdown((L div 2) - 2, 0):
     Q.double()
     Q.double()
-    var tmp {.noInit.}: typeof(Q)
     tmp.secretLookup(lut, recoded.w2TableIndex(i, isNeg))
     tmp.cneg(isNeg)
     Q += tmp

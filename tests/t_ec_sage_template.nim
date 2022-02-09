@@ -204,11 +204,11 @@ proc run_scalar_mul_test_vs_sage*(
           endo {.noInit.}: EC
 
         when EC is ECP_ShortW_Prj:
-          P.projectiveFromAffine(vec.vectors[i].P)
-          Q.projectiveFromAffine(vec.vectors[i].Q)
+          P.fromAffine(vec.vectors[i].P)
+          Q.fromAffine(vec.vectors[i].Q)
         else:
-          P.jacobianFromAffine(vec.vectors[i].P)
-          Q.jacobianFromAffine(vec.vectors[i].Q)
+          P.fromAffine(vec.vectors[i].P)
+          Q.fromAffine(vec.vectors[i].Q)
         impl = P
         reference = P
         endo = P

@@ -40,9 +40,9 @@ func toHex*[EC: ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff](P: EC): stri
 
   var aff {.noInit.}: ECP_ShortW_Aff[EC.F, EC.G]
   when EC is ECP_ShortW_Prj:
-    aff.affineFromProjective(P)
+    aff.affine(P)
   elif EC is ECP_ShortW_Jac:
-    aff.affineFromJacobian(P)
+    aff.affine(P)
   else:
     aff = P
 

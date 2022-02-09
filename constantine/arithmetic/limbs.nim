@@ -85,12 +85,11 @@ func setUint*(a: var Limbs, n: SomeUnsignedInt) =
     when a.len > 2:
       zeroMem(a[2].addr, (a.len - 2) * sizeof(SecretWord))
 
-func czero*(a: var Limbs, ctl: SecretBool) =
+func csetZero*(a: var Limbs, ctl: SecretBool) =
   ## Set ``a`` to 0 if ``ctl`` is true
-  # Only used for FF neg in pure Nim fallback
-  # so no need for assembly
+  let mask = -(SecretWord ctl)
   for i in 0 ..< a.len:
-    ctl.ccopy(a[i], Zero)
+    a[i] = a[i] and mask
 
 # Copy
 # ------------------------------------------------------------

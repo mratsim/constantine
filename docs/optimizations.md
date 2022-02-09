@@ -94,7 +94,7 @@ The optimizations can be of algebraic, algorithmic or "implementation details" n
   - [x] Constant-time binary GCD algorithm by Bernstein-Yang, https://eprint.iacr.org/2019/266
   - [ ] Constant-time binary GCD algorithm by Pornin, https://eprint.iacr.org/2020/972
   - [x] Constant-time binary GCD algorithm by BY with half-delta optimization by libsecp256k1, formally verified, https://eprint.iacr.org/2021/549
-  - [ ] Simultaneous inversion
+  - [x] Simultaneous inversion
 
 - Square Root (constant-time)
   - [x] baseline sqrt via Little-Fermat for `p ≡ 3 (mod 4)`

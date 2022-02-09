@@ -61,7 +61,7 @@ func millerLoopGenericBN*[C](
     line {.noInit.}: Line[Fp2[C]]
     nQ{.noInit.}: typeof(Q)
 
-  T.projectiveFromAffine(Q)
+  T.fromAffine(Q)
   nQ.neg(Q)
 
   basicMillerLoop(

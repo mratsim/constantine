@@ -222,7 +222,7 @@ when isMainModule:
   proc roundtrip() =
     let fftDesc = FFTDescriptor[G1].init(maxScale = 4)
     var data = newSeq[G1](fftDesc.maxWidth)
-    data[0].projectiveFromAffine(Generator1)
+    data[0].fromAffine(Generator1)
     for i in 1 ..< fftDesc.maxWidth:
       data[i].madd(data[i-1], Generator1)
 
@@ -273,7 +273,7 @@ when isMainModule:
 
       let desc = FFTDescriptor[G1].init(uint8 scale)
       var data = newSeq[G1](desc.maxWidth)
-      data[0].projectiveFromAffine(Generator1)
+      data[0].fromAffine(Generator1)
       for i in 1 ..< desc.maxWidth:
         data[i].madd(data[i-1], Generator1)
 

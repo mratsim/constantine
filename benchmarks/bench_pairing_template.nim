@@ -51,9 +51,9 @@ func clearCofactor[F; G: static Subgroup](
        ec: var ECP_ShortW_Aff[F, G]) =
   # For now we don't have any affine operation defined
   var t {.noInit.}: ECP_ShortW_Prj[F, G]
-  t.projectiveFromAffine(ec)
+  t.fromAffine(ec)
   t.clearCofactor()
-  ec.affineFromProjective(t)
+  ec.affine(t)
 
 func random_point*(rng: var RngState, EC: typedesc): EC {.noInit.} =
   result = rng.random_unsafe(EC)
