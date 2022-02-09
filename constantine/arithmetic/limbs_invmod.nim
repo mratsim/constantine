@@ -365,7 +365,7 @@ func matVecMul_shr_k[N, E: static int](
   f[N-1] = cf.lo
   g[N-1] = cg.lo
 
-func invmod_impl[N, E](
+func invmodImpl[N, E](
        a: var LimbsUnsaturated[N, E],
        F, M: LimbsUnsaturated[N, E],
        invMod2powK: SecretWord,
@@ -405,14 +405,11 @@ func invmod_impl[N, E](
 func invmod*(
        r: var Limbs, a: Limbs,
        F, M: Limbs, bits: static int) =
-  ## Compute the modular inverse of ``a`` modulo M
+  ## Compute the scaled modular inverse of ``a`` modulo M
   ## r ≡ F.a⁻¹ (mod M)
   ##
   ## M MUST be odd, M does not need to be prime.
   ## ``a`` MUST be less than M.
-  ## 
-  # TODO: compile-time overload to cache F and M for field arithmetic
-  
   const Excess = 2
   const k = WordBitwidth - Excess
   const NumUnsatWords = (bits + k - 1) div k
@@ -426,13 +423,13 @@ func invmod*(
 
   var a2 {.noInit.}: LimbsUnsaturated[NumUnsatWords, Excess]
   a2.fromPackedRepr(a)
-  a2.invmod_impl(factor, m2, m0invK, k, bits)
+  a2.invmodImpl(factor, m2, m0invK, k, bits)
   r.fromUnsatRepr(a2)
 
 func invmod*(
        r: var Limbs, a: Limbs,
        F, M: static Limbs, bits: static int) =
-  ## Compute the modular inverse of ``a`` modulo M
+  ## Compute the scaled modular inverse of ``a`` modulo M
   ## r ≡ F.a⁻¹ (mod M)
   ## 
   ## with F and M known at compile-time
@@ -451,5 +448,5 @@ func invmod*(
 
   var a2 {.noInit.}: LimbsUnsaturated[NumUnsatWords, Excess]
   a2.fromPackedRepr(a)
-  a2.invmod_impl(factor, m2, m0invK, k, bits)
+  a2.invmodImpl(factor, m2, m0invK, k, bits)
   r.fromUnsatRepr(a2)
