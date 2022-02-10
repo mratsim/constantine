@@ -24,9 +24,9 @@ import
 #
 # ############################################################
 
-func montyResidue*(mres: var BigInt, a, N, r2modM: BigInt, m0ninv: static BaseType, spareBits: static int) =
+func getMont*(mres: var BigInt, a, N, r2modM: BigInt, m0ninv: static BaseType, spareBits: static int) =
   ## Convert a BigInt from its natural representation
-  ## to the Montgomery n-residue form
+  ## to the Montgomery residue form
   ##
   ## `mres` is overwritten. It's bitlength must be properly set before calling this procedure.
   ##
@@ -39,21 +39,17 @@ func montyResidue*(mres: var BigInt, a, N, r2modM: BigInt, m0ninv: static BaseTy
   ## - `r2modM` is R² (mod M)
   ## with W = M.len
   ## and R = (2^WordBitWidth)^W
-  montyResidue(mres.limbs, a.limbs, N.limbs, r2modM.limbs, m0ninv, spareBits)
+  getMont(mres.limbs, a.limbs, N.limbs, r2modM.limbs, m0ninv, spareBits)
 
-func redc*[mBits](r: var BigInt[mBits], a, M: BigInt[mBits], m0ninv: static BaseType, spareBits: static int) =
-  ## Convert a BigInt from its Montgomery n-residue form
+func fromMont*[mBits](r: var BigInt[mBits], a, M: BigInt[mBits], m0ninv: static BaseType, spareBits: static int) =
+  ## Convert a BigInt from its Montgomery residue form
   ## to the natural representation
   ##
   ## `mres` is modified in-place
   ##
   ## Caller must take care of properly switching between
   ## the natural and montgomery domain.
-  let one = block:
-    var one {.noInit.}: BigInt[mBits]
-    one.setOne()
-    one
-  redc(r.limbs, a.limbs, one.limbs, M.limbs, m0ninv, spareBits)
+  fromMont(r.limbs, a.limbs, M.limbs, m0ninv, spareBits)
 
 func montyMul*(r: var BigInt, a, b, M: BigInt, negInvModWord: static BaseType, spareBits: static int) =
   ## Compute r <- a*b (mod M) in the Montgomery domain

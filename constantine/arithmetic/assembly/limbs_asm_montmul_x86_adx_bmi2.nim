@@ -143,9 +143,9 @@ proc partialRedx(
 
     let N = M.len
 
-    # m = t[0] * m0ninv mod 2^w
+    # m = t[0] * m0ninv mod 2ʷ
     ctx.comment "  Reduction"
-    ctx.comment "  m = t[0] * m0ninv mod 2^w"
+    ctx.comment "  m = t[0] * m0ninv mod 2ʷ"
     ctx.mov  rdx, t[0]
     ctx.imul rdx, m0ninv
 
@@ -180,12 +180,15 @@ macro montMul_CIOS_sparebit_adx_bmi2_gen[N: static int](r_MM: var Limbs[N], a_MM
   ## This requires the most significant word of the Modulus
   ##   M[^1] < high(SecretWord) shr 2 (i.e. less than 0b00111...1111)
   ## https://hackmd.io/@zkteam/modular_multiplication
+  
+  # No register spilling handling
+  doAssert N <= 6, "The Assembly-optimized montgomery multiplication requires at most 6 limbs."
 
   result = newStmtList()
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    scratchSlots = max(N, 6)
+    scratchSlots = 6
 
     r = init(OperandArray, nimSymbol = r_MM, N, PointerInReg, InputOutput_EnsureClobber)
     # We could force M as immediate by specializing per moduli
@@ -237,9 +240,6 @@ macro montMul_CIOS_sparebit_adx_bmi2_gen[N: static int](r_MM: var Limbs[N], a_MM
   # 	for j=1 to N-1
   # 		(C,t[j-1]) := t[j] + m*M[j] + C
   #   t[N-1] = C + A
-
-  # No register spilling handling
-  doAssert N <= 6, "The Assembly-optimized montgomery multiplication requires at most 6 limbs."
 
   for i in 0 ..< N:
     if i == 0:

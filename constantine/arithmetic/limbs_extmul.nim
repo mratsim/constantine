@@ -98,7 +98,7 @@ func prod_high_words*[rLen, aLen, bLen](
   # - Barret reduction
   # - Approximating multiplication by a fractional constant in the form f(a) = K/C * a
   #   with K and C known at compile-time.
-  #   We can instead find a well chosen M = (2^WordBitWidth)^w, with M > C (i.e. M is a power of 2 bigger than C)
+  #   We can instead find a well chosen M = (2^WordBitWidth)ʷ, with M > C (i.e. M is a power of 2 bigger than C)
   #   Precompute P = K*M/C at compile-time
   #   and at runtime do P*a/M <=> P*a >> (WordBitWidth*w)
   #   i.e. prod_high_words(result, P, a, w)

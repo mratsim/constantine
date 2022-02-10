@@ -56,16 +56,20 @@ func fromBig*(dst: var FF, src: BigInt) =
   when nimvm:
     dst.mres.montyResidue_precompute(src, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord())
   else:
-    dst.mres.montyResidue(src, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord(), FF.getSpareBits())
+    dst.mres.getMont(src, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord(), FF.getSpareBits())
 
 func fromBig*[C: static Curve](T: type FF[C], src: BigInt): FF[C] {.noInit.} =
   ## Convert a BigInt to its Montgomery form
   result.fromBig(src)
 
+func fromField*(dst: var BigInt, src: FF) {.noInit, inline.} =
+  ## Convert a finite-field element to a BigInt in natural representation
+  dst.fromMont(src.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
+
 func toBig*(src: FF): auto {.noInit, inline.} =
   ## Convert a finite-field element to a BigInt in natural representation
   var r {.noInit.}: typeof(src.mres)
-  r.redc(src.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
+  r.fromField(src)
   return r
 
 # Copy
@@ -102,7 +106,7 @@ func cswap*(a, b: var FF, ctl: CTBool) {.meter.} =
 
 # Note: for `+=`, double, sum
 #       not(a.mres < FF.fieldMod()) is unnecessary if the prime has the form
-#       (2^64)^w - 1 (if using uint64 words).
+#       (2^64)ʷ - 1 (if using uint64 words).
 # In practice I'm not aware of such prime being using in elliptic curves.
 # 2^127 - 1 and 2^521 - 1 are used but 127 and 521 are not multiple of 32/64
 

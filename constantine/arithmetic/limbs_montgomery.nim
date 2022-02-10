@@ -81,7 +81,7 @@ func montyRedc2x_CIOS[N: static int](
   #
   # for i in 0 .. n-1:
   #   C <- 0
-  #   m <- a[i] * m0ninv mod 2^w (i.e. simple multiplication)
+  #   m <- a[i] * m0ninv mod 2ʷ (i.e. simple multiplication)
   #   for j in 0 .. n-1:
   #     (C, S) <- a[i+j] + m * M[j] + C
   #     a[i+j] <- S
@@ -175,7 +175,7 @@ func montyMul_CIOS_sparebit(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   const N = t.len
   staticFor i, 0, N:
     # (A, t[0]) <- a[0] * b[i] + t[0]
-    #  m        <- (t[0] * m0ninv) mod 2^w
+    #  m        <- (t[0] * m0ninv) mod 2ʷ
     # (C, _)    <- m * M[0] + t[0]
     var A: SecretWord
     muladd1(A, t[0], a[0], b[i], t[0])
@@ -221,7 +221,7 @@ func montyMul_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) {.used.} =
     addC(tNp1, tN, tN, A, Carry(0))
 
     # Reduction
-    #  m        <- (t[0] * m0ninv) mod 2^w
+    #  m        <- (t[0] * m0ninv) mod 2ʷ
     # (C, _)    <- m * M[0] + t[0]
     var C, lo = Zero
     let m = t[0] * SecretWord(m0ninv)
@@ -239,7 +239,7 @@ func montyMul_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) {.used.} =
   # t[N+1] can only be non-zero in the intermediate computation
   # since it is immediately reduce to t[N] at the end of each "i" iteration
   # However if t[N] is non-zero we have t > M
-  discard t.csub(M, tN.isNonZero() or not(t < M)) # TODO: (t >= M) is unnecessary for prime in the form (2^64)^w
+  discard t.csub(M, tN.isNonZero() or not(t < M)) # TODO: (t >= M) is unnecessary for prime in the form (2^64)ʷ
   r = t
 
 func montyMul_FIPS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
@@ -312,6 +312,44 @@ func montyMul_FIPS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
 #   for j in i+1 ..< N:     # <-- squaring, notice that we start at i+1 but carries from below may still impact us.
 #     ...
 #   for j in 1 ..< N:       # <- Montgomery reduce.
+
+# Montgomery Conversion
+# ------------------------------------------------------------
+# 
+# In Montgomery form, inputs are scaled by a constant R
+# so a' = aR (mod p) and b' = bR (mod p)
+#
+# A classic multiplication would do a'*b' = abR² (mod p)
+# we then need to remove the extra R, hence:
+# - Montgomery reduction (redc) does 1/R (mod p) to map abR² (mod p) -> abR (mod p)
+# - Montgomery multiplication directly compute mulMont(aR, bR) = abR (mod p)
+#
+# So to convert a to a' = aR (mod p), we can do mulMont(a, R²) = aR (mod p)
+# and to convert a' to a = aR / R (mod p) we can do:
+# - redc(aR) = a
+# - or mulMont(aR, 1) = a
+
+func fromMont_CIOS(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
+  ## Convert from Montgomery form to canonical BigInt form
+  # for i in 0 .. n-1:
+  #   m <- t[0] * m0ninv mod 2ʷ (i.e. simple multiplication)
+  #   C, _ = t[0] + m * M[0]
+  #   for j in 0 ..n-1:
+  #     (C, t[j-1]) <- r[j] + m*M[j] + C
+  #   t[n-1] = C
+
+  const N = a.len
+  var t = a # Ensure working in registers
+
+  staticFor i, 0, N:
+    let m = t[0] * SecretWord(m0ninv)
+    var C, lo: SecretWord
+    muladd1(C, lo, m, M[0], t[0])
+    staticFor j, 1, N:
+      muladd2(C, t[j-1], m, M[j], C, t[j])
+    t[N-1] = C
+  
+  r = t
 
 # Exported API
 # ------------------------------------------------------------
@@ -404,8 +442,8 @@ func montySquare*[N](r: var Limbs[N], a, M: Limbs[N],
     r.montyRedc2x(r2x, M, m0ninv, spareBits)
   else:
     montyMul(r, a, a, M, m0ninv, spareBits)
-
-func redc*(r: var Limbs, a, one, M: Limbs,
+    
+func fromMont*(r: var Limbs, a, M: Limbs,
            m0ninv: static BaseType, spareBits: static int) =
   ## Transform a bigint ``a`` from it's Montgomery N-residue representation (mod N)
   ## to the regular natural representation (mod N)
@@ -424,10 +462,9 @@ func redc*(r: var Limbs, a, one, M: Limbs,
   #   - https://en.wikipedia.org/wiki/Montgomery_modular_multiplication#Montgomery_arithmetic_on_multiprecision_(variable-radix)_integers
   #   - http://langevin.univ-tln.fr/cours/MLC/extra/montgomery.pdf
   #     Montgomery original paper
-  #
-  montyMul(r, a, one, M, m0ninv, spareBits)
+  fromMont_CIOS(r, a, M, m0ninv)
 
-func montyResidue*(r: var Limbs, a, M, r2modM: Limbs,
+func getMont*(r: var Limbs, a, M, r2modM: Limbs,
                    m0ninv: static BaseType, spareBits: static int) =
   ## Transform a bigint ``a`` from it's natural representation (mod N)
   ## to a the Montgomery n-residue representation

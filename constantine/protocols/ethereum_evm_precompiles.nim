@@ -195,8 +195,8 @@ func eth_evm_ecmul*(
 
     var sprime{.noInit.}: typeof(smod.mres)
     # Due to mismatch between the BigInt[256] input and the rest being BigInt[254]
-    # we use the low-level montyResidue instead of 'fromBig'
-    montyResidue(smod.mres.limbs, s.limbs,
+    # we use the low-level getMont instead of 'fromBig'
+    getMont(smod.mres.limbs, s.limbs,
                 Fr[BN254_Snarks].fieldMod().limbs,
                 Fr[BN254_Snarks].getR2modP().limbs,
                 Fr[BN254_Snarks].getNegInvModWord(),

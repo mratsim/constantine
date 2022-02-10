@@ -75,7 +75,7 @@ macro montyRedc2x_adx_gen*[N: static int](
   # ---------------------------------------------------------
   # for i in 0 .. n-1:
   #   hi <- 0
-  #   m <- a[i] * m0ninv mod 2^w (i.e. simple multiplication)
+  #   m <- a[i] * m0ninv mod 2ʷ (i.e. simple multiplication)
   #   for j in 0 .. n-1:
   #     (hi, lo) <- a[i+j] + m * M[j] + hi
   #     a[i+j] <- lo
@@ -96,7 +96,7 @@ macro montyRedc2x_adx_gen*[N: static int](
   for i in 0 ..< N:
     # RDX contains m0ninv at the start of each loop
     ctx.comment ""
-    ctx.imul rdx, u[0] # m <- a[i] * m0ninv mod 2^w
+    ctx.imul rdx, u[0] # m <- a[i] * m0ninv mod 2ʷ
     ctx.comment "---- Reduction " & $i
     ctx.`xor` u[N], u[N]
 

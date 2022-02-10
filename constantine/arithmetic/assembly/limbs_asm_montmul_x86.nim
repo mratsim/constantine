@@ -44,11 +44,14 @@ macro montMul_CIOS_sparebit_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M
   ##   M[^1] < high(SecretWord) shr 2 (i.e. less than 0b00111...1111)
   ## https://hackmd.io/@zkteam/modular_multiplication
 
+  # No register spilling handling
+  doAssert N <= 6, "The Assembly-optimized montgomery multiplication requires at most 6 limbs."
+
   result = newStmtList()
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    scratchSlots = max(N, 6)
+    scratchSlots = 6
 
     # We could force M as immediate by specializing per moduli
     M = init(OperandArray, nimSymbol = M_MM, N, PointerInReg, Input)
@@ -76,7 +79,7 @@ macro montMul_CIOS_sparebit_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M
     b = scratch[1].asArrayAddr(len = N) # Store the `b` operand
     A = scratch[2]                      # High part of extended precision multiplication
     C = scratch[3]
-    m = scratch[4]                      # Stores (t[0] * m0ninv) mod 2^w
+    m = scratch[4]                      # Stores (t[0] * m0ninv) mod 2ʷ
     r = scratch[5]                      # Stores the `r` operand
 
   # Registers used:
@@ -105,7 +108,7 @@ macro montMul_CIOS_sparebit_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M
   # -----------------------------------------
   # for i=0 to N-1
   #   (A, t[0]) <- a[0] * b[i] + t[0]
-  #    m        <- (t[0] * m0ninv) mod 2^w
+  #    m        <- (t[0] * m0ninv) mod 2ʷ
   #   (C, _)    <- m * M[0] + t[0]
   #   for j=1 to N-1
   #     (A, t[j])   <- a[j] * b[i] + A + t[j]
@@ -127,7 +130,7 @@ macro montMul_CIOS_sparebit_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M
       ctx.adc rdx, 0
     ctx.mov A, rdx
 
-    # m        <- (t[0] * m0ninv) mod 2^w
+    # m        <- (t[0] * m0ninv) mod 2ʷ
     ctx.mov m, m0ninv
     ctx.imul m, t[0]
 

@@ -131,7 +131,7 @@ macro montyRedc2x_gen*[N: static int](
   # ---------------------------------------------------------
   # for i in 0 .. n-1:
   #   hi <- 0
-  #   m <- a[i] * m0ninv mod 2^w (i.e. simple multiplication)
+  #   m <- a[i] * m0ninv mod 2ʷ (i.e. simple multiplication)
   #   for j in 0 .. n-1:
   #     (hi, lo) <- a[i+j] + m * M[j] + hi
   #     a[i+j] <- lo
@@ -149,7 +149,7 @@ macro montyRedc2x_gen*[N: static int](
     ctx.mov u[i], a[i]
 
   ctx.mov u[N], u[0]
-  ctx.imul u[0], m0ninv    # m <- a[i] * m0ninv mod 2^w
+  ctx.imul u[0], m0ninv    # m <- a[i] * m0ninv mod 2ʷ
   ctx.mov rax, u[0]
 
   # scratch: [a[0] * m0, a[1], a[2], a[3], a[0]] for 4 limbs

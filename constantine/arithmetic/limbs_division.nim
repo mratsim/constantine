@@ -128,7 +128,7 @@ func numWordsFromBits(bits: int): int {.inline.} =
 func shlAddMod_estimate(a: LimbsViewMut, aLen: int,
                         c: SecretWord, M: LimbsViewConst, mBits: int
                       ): tuple[neg, tooBig: SecretBool] =
-  ## Estimate a <- a shl 2^w + c (mod M)
+  ## Estimate a <- a shl 2ʷ + c (mod M)
   ##
   ## with w the base word width, usually 32 on 32-bit platforms and 64 on 64-bit platforms
   ##

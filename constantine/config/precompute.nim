@@ -391,7 +391,7 @@ func primePlus1div2*(P: BigInt): BigInt =
 
   # (P+1)/2 = P/2 + 1 if P is odd,
   # this avoids overflowing if the prime uses all bits
-  # i.e. in the form (2^64)^w - 1 or (2^32)^w - 1
+  # i.e. in the form (2^64)ʷ - 1 or (2^32)ʷ - 1
 
   result = P
   result.shiftRight(1)
