@@ -11,7 +11,7 @@ import
   ../constantine/config/[curves, common],
   ../constantine/arithmetic,
   ../constantine/io/io_bigints,
-  ../constantine/curves/[zoo_inversions, zoo_square_roots],
+  ../constantine/curves/zoo_square_roots,
   # Helpers
   ../helpers/static_for,
   ./bench_fields_template
@@ -50,8 +50,7 @@ proc main() =
     mulBench(Fp[curve], Iters)
     sqrBench(Fp[curve], Iters)
     smallSeparator()
-    invEuclidBench(Fp[curve], ExponentIters)
-    invPowFermatBench(Fp[curve], ExponentIters)
+    invBench(Fp[curve], ExponentIters)
     sqrtBench(Fp[curve], ExponentIters)
     sqrtRatioBench(Fp[curve], ExponentIters)
     # Exponentiation by a "secret" of size ~the curve order

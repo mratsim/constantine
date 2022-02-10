@@ -132,7 +132,7 @@ proc run_hash_to_curve_test(
         )
 
         var P_ref: EC
-        P_ref.projectiveFromAffine(vec.vectors[i].P)
+        P_ref.fromAffine(vec.vectors[i].P)
 
         doAssert: bool(P == P_ref)
 

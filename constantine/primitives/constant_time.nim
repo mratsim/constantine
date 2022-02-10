@@ -124,7 +124,7 @@ template `-`*[T: Ct](x: T): T =
 #
 # ############################################################
 
-template isMsbSet[T: Ct](x: T): CTBool[T] =
+template isMsbSet*[T: Ct](x: T): CTBool[T] =
   ## Returns the most significant bit of an integer
   const msb_pos = T.sizeof * 8 - 1
   (CTBool[T])(x shr msb_pos)
@@ -162,6 +162,16 @@ template `<=`*[T: Ct](x, y: T): CTBool[T] =
 
 template `xor`*[T: Ct](x, y: CTBool[T]): CTBool[T] =
   CTBool[T](noteq(T(x), T(y)))
+
+# ############################################################
+#
+#                       Conditionals
+#
+# ############################################################
+
+template cneg*[T: Ct](x: T, ctl: CTBool[T]): T =
+  # Conditional negate if ctl is true
+  (x xor -T(ctl)) + T(ctl) 
 
 # ############################################################
 #

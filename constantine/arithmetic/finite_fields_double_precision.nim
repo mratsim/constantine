@@ -162,7 +162,7 @@ func neg2xMod*(r: var FpDbl, a: FpDbl) =
       subB(borrow, t.limbs2x[i], M.limbs[i-N], a.limbs2x[i], borrow)
 
     # Zero the result if input was zero
-    t.limbs2x.czero(isZero)
+    t.limbs2x.csetZero(isZero)
     r = t
 
 func prod2xImpl(

@@ -47,10 +47,10 @@ func pair_verify*(
   var P1a, P2a: G1aff
   var Q1a, Q2a: G2aff
 
-  P1a.affineFromProjective(P1)
-  Q1a.affineFromProjective(Q1)
-  P2a.affineFromProjective(P2)
-  Q2a.affineFromProjective(Q2)
+  P1a.affine(P1)
+  Q1a.affine(Q1)
+  P2a.affine(P2)
+  Q2a.affine(Q2)
 
   # To verify if e(P1, Q1) == e(P2, Q2)
   # we can do e(P1, Q1) / e(P2, Q2) == 1

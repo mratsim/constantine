@@ -147,7 +147,7 @@ proc partialRedx(
     ctx.comment "  Reduction"
     ctx.comment "  m = t[0] * m0ninv mod 2^w"
     ctx.mov  rdx, t[0]
-    ctx.mulx S, rdx, m0ninv, rdx # (S, RDX) <- m0ninv * RDX
+    ctx.imul rdx, m0ninv
 
     # Clear carry flags - TODO: necessary?
     ctx.`xor` S, S

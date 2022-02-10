@@ -34,6 +34,10 @@ type ECP_ShortW_Jac*[F; G: static Subgroup] = object
   ## Note that jacobian coordinates are not unique
   x*, y*, z*: F
 
+template affine*[F, G](_: type ECP_ShortW_Jac[F, G]): typedesc =
+  ## Returns the affine type that corresponds to the Jacobian type input
+  ECP_ShortW_Aff[F, G]
+
 func `==`*(P, Q: ECP_ShortW_Jac): SecretBool =
   ## Constant-time equality check
   ## This is a costly operation
@@ -379,6 +383,8 @@ func madd*[F; G: static Subgroup](
   ## with p in Jacobian coordinates and Q in affine coordinates
   ##
   ##   R = P + Q
+  ## 
+  ## TODO: ⚠️ cannot handle P == Q
   # "madd-2007-bl" mixed addition formula - https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#addition-madd-2007-bl
   # with conditional copies to handle infinity points
   #  Assumptions: Z2=1.
@@ -516,6 +522,14 @@ func `+=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac) {.inline.} =
   ## In-place point addition
   P.sum(P, Q)
 
+func `+=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Aff) {.inline.} =
+  ## In-place mixed point addition
+  ## 
+  ## TODO: ⚠️ cannot handle P == Q
+  var t{.noInit.}: typeof(P)
+  t.madd(P, Q)
+  P = t
+
 func double*(P: var ECP_ShortW_Jac) {.inline.} =
   ## In-place point doubling
   P.double(P)
@@ -528,7 +542,7 @@ func diff*(r: var ECP_ShortW_Jac,
   nQ.neg(Q)
   r.sum(P, nQ)
 
-func affineFromJacobian*[F; G](
+func affine*[F; G](
        aff: var ECP_ShortW_Aff[F, G],
        jac: ECP_ShortW_Jac[F, G]) =
   var invZ {.noInit.}, invZ2{.noInit.}: F
@@ -536,15 +550,75 @@ func affineFromJacobian*[F; G](
   invZ2.square(invZ)
 
   aff.x.prod(jac.x, invZ2)
+  invZ *= invZ2
   aff.y.prod(jac.y, invZ)
-  aff.y *= invZ2
 
-func jacobianFromAffine*[F; G](
+func fromAffine*[F; G](
        jac: var ECP_ShortW_Jac[F, G],
        aff: ECP_ShortW_Aff[F, G]) {.inline.} =
   jac.x = aff.x
   jac.y = aff.y
   jac.z.setOne()
+
+func batchAffine*[N: static int, F, G](
+       affs: var array[N, ECP_ShortW_Aff[F, G]],
+       jacs: array[N, ECP_ShortW_Jac[F, G]]) =
+  # Algorithm: Montgomery's batch inversion
+  # - Speeding the Pollard and Elliptic Curve Methods of Factorization
+  #   Section 10.3.1
+  #   Peter L. Montgomery
+  #   https://www.ams.org/journals/mcom/1987-48-177/S0025-5718-1987-0866113-7/S0025-5718-1987-0866113-7.pdf
+  # - Modern Computer Arithmetic
+  #   Section 2.5.1 Several inversions at once
+  #   Richard P. Brent and Paul Zimmermann
+  #   https://members.loria.fr/PZimmermann/mca/mca-cup-0.5.9.pdf
+
+  # To avoid temporaries, we store partial accumulations
+  # in affs[i].x and whether z == 0 in affs[i].y
+  var zeroes: array[N, SecretBool]
+  affs[0].x  = jacs[0].z
+  zeroes[0] = affs[0].x.isZero()
+  affs[0].x.csetOne(zeroes[0])
+
+  for i in 1 ..< N:
+    # Skip zero z-coordinates (infinity points)
+    var z = jacs[i].z
+    zeroes[i] = z.isZero()
+    z.csetOne(zeroes[i])
+
+    affs[i].x.prod(affs[i-1].x, z)
+  
+  var accInv {.noInit.}: F
+  accInv.inv(affs[N-1].x)
+
+  for i in countdown(N-1, 1):
+    # Skip zero z-coordinates (infinity points)
+    var z = affs[i].x
+
+    # Extract 1/Pᵢ
+    var invi {.noInit.}: F
+    invi.prod(accInv, affs[i-1].x)
+    invi.csetZero(zeroes[i])
+
+    # Now convert Pᵢ to affine
+    var invi2 {.noinit.}: F
+    invi2.square(invi)
+    affs[i].x.prod(jacs[i].x, invi2)
+    invi *= invi2
+    affs[i].y.prod(jacs[i].y, invi)
+
+    # next iteration
+    invi = jacs[i].z
+    invi.csetOne(zeroes[i])
+    accInv *= invi
+
+  block: # tail
+    var invi2 {.noinit.}: F
+    accInv.csetZero(zeroes[0])
+    invi2.square(accInv)
+    affs[0].x.prod(jacs[0].x, invi2)
+    accInv *= invi2
+    affs[0].y.prod(jacs[0].y, accInv)
 
 # ############################################################
 #                                                            #

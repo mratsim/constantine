@@ -45,7 +45,7 @@ func millerLoopBW6_761_naive[C](
     line {.noInit.}: Line[Fp[C]]
     nQ{.noInit.}: typeof(Q)
 
-  T.projectiveFromAffine(Q)
+  T.fromAffine(Q)
   nQ.neg(Q)
 
   basicMillerLoop(
@@ -55,7 +55,7 @@ func millerLoopBW6_761_naive[C](
   )
 
   var f2 {.noInit.}: typeof(f)
-  T.projectiveFromAffine(Q)
+  T.fromAffine(Q)
 
   basicMillerLoop(
     f2, T, line,
@@ -93,7 +93,7 @@ func millerLoopBW6_761_opt_to_debug[C](
     T {.noInit.}: ECP_ShortW_Prj[Fp[C], G2]
     line {.noInit.}: Line[Fp[C]]
 
-  T.projectiveFromAffine(Q)
+  T.fromAffine(Q)
   f.setOne()
 
   template u: untyped = pairing(C, ate_param_1_opt)
@@ -114,7 +114,7 @@ func millerLoopBW6_761_opt_to_debug[C](
 
   mu = f
   minvu.inv(f)
-  Qu.affineFromProjective(T)
+  Qu.affine(T)
   nQu.neg(Qu)
 
   # Drop the vertical line
@@ -125,7 +125,7 @@ func millerLoopBW6_761_opt_to_debug[C](
   # 2nd part: f_{u²-u-1,Q}(P)
   # ------------------------------
   # We restart from `f` and `T`
-  T.projectiveFromAffine(Qu)
+  T.fromAffine(Qu)
 
   template u: untyped = pairing(C, ate_param_2_opt)
   var u3 = pairing(C, ate_param_2_opt)

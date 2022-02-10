@@ -85,12 +85,11 @@ func setUint*(a: var Limbs, n: SomeUnsignedInt) =
     when a.len > 2:
       zeroMem(a[2].addr, (a.len - 2) * sizeof(SecretWord))
 
-func czero*(a: var Limbs, ctl: SecretBool) =
+func csetZero*(a: var Limbs, ctl: SecretBool) =
   ## Set ``a`` to 0 if ``ctl`` is true
-  # Only used for FF neg in pure Nim fallback
-  # so no need for assembly
+  let mask = -(SecretWord(ctl) xor One)
   for i in 0 ..< a.len:
-    ctl.ccopy(a[i], Zero)
+    a[i] = a[i] and mask
 
 # Copy
 # ------------------------------------------------------------
@@ -329,6 +328,26 @@ func cneg*(a: var Limbs, ctl: CTBool) =
     let t = (a[i] xor mask) + carry  # XOR with mask and add 0x01 or 0x00 respectively
     carry = SecretWord(t < carry)    # Carry on
     a[i] = t
+
+func cneg*(r: var Limbs, a: Limbs, ctl: CTBool) =
+  ## Conditional negation.
+  ## Negate if ``ctl`` is true
+
+  # Algorithm:
+  # In two-complement representation
+  #  -x <=> not(x) + 1 <=> x xor 0xFF... + 1
+  # and
+  #   x <=> x xor 0x00...<=> x xor 0x00... + 0
+  #
+  # So we need to xor all words and then add 1
+  # The "+1" might carry
+  # So we fuse the 2 steps
+  let mask = -SecretWord(ctl)        # Obtain a 0xFF... or 0x00... mask
+  var carry = SecretWord(ctl)
+  for i in 0 ..< a.len:
+    let t = (a[i] xor mask) + carry  # XOR with mask and add 0x01 or 0x00 respectively
+    carry = SecretWord(t < carry)    # Carry on
+    r[i] = t
 
 {.pop.} # inline
 

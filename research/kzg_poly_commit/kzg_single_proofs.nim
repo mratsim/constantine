@@ -64,7 +64,7 @@ proc checkProofSingle(
      ): bool =
   ## Check a proof for a Kate commitment for an evaluation f(x) = y
   var xG2, g2: G2
-  g2.projectiveFromAffine(Generator2)
+  g2.fromAffine(Generator2)
   xG2 = g2
   xG2.scalarMul(x.toBig())
 
@@ -72,7 +72,7 @@ proc checkProofSingle(
   s_minus_x.diff(kzg.secretG2[1], xG2)
 
   var yG1: G1
-  yG1.projectiveFromAffine(Generator1)
+  yG1.fromAffine(Generator1)
   yG1.scalarMul(y.toBig())
 
   var commitment_minus_y: G1

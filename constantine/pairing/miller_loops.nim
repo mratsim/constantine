@@ -141,7 +141,7 @@ func miller_init_double_then_add*[FT, F1, F2](
 
   # First step: 0b10, T <- Q, f = 1 (mod p¹²), f *= line
   # ----------------------------------------------------
-  T.projectiveFromAffine(Q)
+  T.fromAffine(Q)
 
   # f.square() -> square(1)
   line.line_double(T, P)
@@ -292,7 +292,7 @@ func miller_init_double_then_add*[N: static int, FT, F1, F2](
   # First step: T <- Q, f = 1 (mod p¹²), f *= line
   # ----------------------------------------------
   for i in 0 ..< N:
-    Ts[i].projectiveFromAffine(Qs[i])
+    Ts[i].fromAffine(Qs[i])
 
   line0.line_double(Ts[0], Ps[0])
   when N >= 2:

@@ -34,6 +34,10 @@ type ECP_ShortW_Prj*[F; G: static Subgroup] = object
   ## Note that projective coordinates are not unique
   x*, y*, z*: F
 
+template affine*[F, G](_: type ECP_ShortW_Prj[F, G]): typedesc =
+  ## Returns the affine type that corresponds to the Jacobian type input
+  ECP_ShortW_Aff[F, G]
+
 func `==`*(P, Q: ECP_ShortW_Prj): SecretBool =
   ## Constant-time equality check
   ## This is a costly operation
@@ -393,7 +397,6 @@ func `+=`*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Prj) {.inline.} =
 
 func `+=`*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Aff) {.inline.} =
   ## In-place mixed point addition
-  # used in line_addition
   P.madd(P, Q)
 
 func double*(P: var ECP_ShortW_Prj) {.inline.} =
@@ -409,7 +412,7 @@ func diff*(r: var ECP_ShortW_Prj,
   nQ.neg(Q)
   r.sum(P, nQ)
 
-func affineFromProjective*[F, G](
+func affine*[F, G](
        aff: var ECP_ShortW_Aff[F, G],
        proj: ECP_ShortW_Prj[F, G]) =
   var invZ {.noInit.}: F
@@ -418,9 +421,63 @@ func affineFromProjective*[F, G](
   aff.x.prod(proj.x, invZ)
   aff.y.prod(proj.y, invZ)
 
-func projectiveFromAffine*[F, G](
+func fromAffine*[F, G](
        proj: var ECP_ShortW_Prj[F, G],
        aff: ECP_ShortW_Aff[F, G]) {.inline.} =
   proj.x = aff.x
   proj.y = aff.y
   proj.z.setOne()
+
+func batchAffine*[N: static int, F, G](
+       affs: var array[N, ECP_ShortW_Aff[F, G]],
+       projs: array[N, ECP_ShortW_Prj[F, G]]) =
+  # Algorithm: Montgomery's batch inversion
+  # - Speeding the Pollard and Elliptic Curve Methods of Factorization
+  #   Section 10.3.1
+  #   Peter L. Montgomery
+  #   https://www.ams.org/journals/mcom/1987-48-177/S0025-5718-1987-0866113-7/S0025-5718-1987-0866113-7.pdf
+  # - Modern Computer Arithmetic
+  #   Section 2.5.1 Several inversions at once
+  #   Richard P. Brent and Paul Zimmermann
+  #   https://members.loria.fr/PZimmermann/mca/mca-cup-0.5.9.pdf
+
+  # To avoid temporaries, we store partial accumulations
+  # in affs[i].x
+  var zeroes: array[N, SecretBool]
+  affs[0].x = projs[0].z
+  zeroes[0] = affs[0].x.isZero()
+  affs[0].x.csetOne(zeroes[0])
+
+  for i in 1 ..< N:
+    # Skip zero z-coordinates (infinity points)
+    var z = projs[i].z
+    zeroes[i] = z.isZero()
+    z.csetOne(zeroes[i])
+
+    affs[i].x.prod(affs[i-1].x, z)
+  
+  var accInv {.noInit.}: F
+  accInv.inv(affs[N-1].x)
+
+  for i in countdown(N-1, 1):
+    # Skip zero z-coordinates (infinity points)
+    var z = affs[i].x
+
+    # Extract 1/Pᵢ
+    var invi {.noInit.}: F
+    invi.prod(accInv, affs[i-1].x)
+    invi.csetZero(zeroes[i])
+
+    # Now convert Pᵢ to affine
+    affs[i].x.prod(projs[i].x, invi)
+    affs[i].y.prod(projs[i].y, invi)
+
+    # next iteration
+    invi = projs[i].z
+    invi.csetOne(zeroes[i])
+    accInv *= invi
+  
+  block: # tail
+    accInv.csetZero(zeroes[0])
+    affs[0].x.prod(projs[0].x, accInv)
+    affs[0].y.prod(projs[0].y, accInv)

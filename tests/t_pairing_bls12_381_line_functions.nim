@@ -100,7 +100,7 @@ suite "Pairing - Line Functions on BLS12-381" & " [" & $WordBitwidth & "-bit mod
         TQ.sum(T, Q)
 
         var Qaff{.noInit.}: ECP_ShortW_Aff[Fp2[C], G2]
-        Qaff.affineFromProjective(Q)
+        Qaff.affine(Q)
         l.line_add(T, Qaff, P)
 
         doAssert: bool(T == TQ)

@@ -43,9 +43,9 @@ func clearCofactor[F; G: static Subgroup](
        ec: var ECP_ShortW_Aff[F, G]) =
   # For now we don't have any affine operation defined
   var t {.noInit.}: ECP_ShortW_Prj[F, G]
-  t.projectiveFromAffine(ec)
+  t.fromAffine(ec)
   t.clearCofactor()
-  ec.affineFromProjective(t)
+  ec.affine(t)
 
 func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen): EC {.noInit.} =
   if gen == Uniform:
@@ -82,10 +82,10 @@ template runPairingTests*(Iters: static int, C: static Curve, G1, G2, GT: typede
       var Pa {.noInit.}, Pa2 {.noInit.}: affineType(P)
       var Qa {.noInit.}, Qa2 {.noInit.}: affineType(Q)
 
-      Pa.affineFromProjective(P)
-      Pa2.affineFromProjective(P2)
-      Qa.affineFromProjective(Q)
-      Qa2.affineFromProjective(Q2)
+      Pa.affine(P)
+      Pa2.affine(P2)
+      Qa.affine(Q)
+      Qa2.affine(Q2)
 
       r.pairing_fn(Pa, Qa)
       r.square()

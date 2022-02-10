@@ -231,16 +231,12 @@ func neg*(r: var FF, a: FF) {.meter.} =
     var t {.noInit.}: FF
     let isZero = a.isZero()
     discard t.mres.diff(FF.fieldMod(), a.mres)
-    t.mres.czero(isZero)
+    t.mres.csetZero(isZero)
     r = t
 
 func neg*(a: var FF) {.meter.} =
   ## Negate modulo p
   a.neg(a)
-
-func div2*(a: var FF) {.meter.} =
-  ## Modular division by 2
-  a.mres.div2_modular(FF.getPrimePlus1div2())
 
 # ############################################################
 #
@@ -248,8 +244,16 @@ func div2*(a: var FF) {.meter.} =
 #
 # ############################################################
 
+func csetZero*(a: var FF, ctl: SecretBool) =
+  ## Set ``a`` to 0 if ``ctl`` is true
+  a.mres.csetZero(ctl)
+
+func csetOne*(a: var FF, ctl: SecretBool) =
+  ## Set ``a`` to 1 if ``ctl`` is true
+  a.mres.ccopy(FF.getMontyOne(), ctl)
+
 func cneg*(r: var FF, a: FF, ctl: SecretBool) {.meter.} =
-  ## Constant-time in-place conditional negation
+  ## Constant-time out-of-place conditional negation
   ## The negation is only performed if ctl is "true"
   r.neg(a)
   r.ccopy(a, not ctl)
@@ -261,18 +265,67 @@ func cneg*(a: var FF, ctl: SecretBool) {.meter.} =
   a.cneg(t, ctl)
 
 func cadd*(a: var FF, b: FF, ctl: SecretBool) {.meter.} =
-  ## Constant-time in-place conditional addition
+  ## Constant-time out-place conditional addition
   ## The addition is only performed if ctl is "true"
   var t = a
   t += b
   a.ccopy(t, ctl)
 
 func csub*(a: var FF, b: FF, ctl: SecretBool) {.meter.} =
-  ## Constant-time in-place conditional substraction
+  ## Constant-time out-place conditional substraction
   ## The substraction is only performed if ctl is "true"
   var t = a
   t -= b
   a.ccopy(t, ctl)
+
+# ############################################################
+#
+#           Field arithmetic division and inversion
+#
+# ############################################################
+
+func div2*(a: var FF) {.meter.} =
+  ## Modular division by 2
+  ## `a` will be divided in-place
+  #
+  # Normally if `a` is odd we add the modulus before dividing by 2
+  # but this may overflow and we might lose a bit before shifting.
+  # Instead we shift first and then add half the modulus rounded up
+  #
+  # Assuming M is odd, `mp1div2` can be precomputed without
+  # overflowing the "Limbs" by dividing by 2 first
+  # and add 1
+  # Otherwise `mp1div2` should be M/2
+
+  # if a.isOdd:
+  #   a += M
+  # a = a shr 1
+  let wasOdd = a.mres.isOdd()
+  a.mres.shiftRight(1)
+  let carry {.used.} = a.mres.cadd(FF.getPrimePlus1div2(), wasOdd)
+  
+  # a < M -> a/2 <= M/2:
+  #   a/2 + M/2 < M if a is odd
+  #   a/2       < M if a is even
+  debug: doAssert not carry.bool
+
+func inv*(r: var FF, a: FF) =
+  ## Inversion modulo p
+  ##
+  ## The inverse of 0 is 0.
+  ## Incidentally this avoids extra check
+  ## to convert Jacobian and Projective coordinates
+  ## to affine for elliptic curve
+  r.mres.invmod(a.mres, FF.getR2modP(), FF.fieldMod())
+
+func inv*(a: var FF) =
+  ## Inversion modulo p
+  ##
+  ## The inverse of 0 is 0.
+  ## Incidentally this avoids extra check
+  ## to convert Jacobian and Projective coordinates
+  ## to affine for elliptic curve
+  a.inv(a)
 
 # ############################################################
 #

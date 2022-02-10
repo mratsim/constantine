@@ -28,6 +28,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Big ints
   # ----------------------------------------------------------
   ("tests/t_io_bigints.nim", false),
+  ("tests/t_io_unsaturated.nim", false),
   ("tests/t_bigints.nim", false),
   ("tests/t_bigints_multimod.nim", false),
   ("tests/t_bigints_mod_vs_gmp.nim", true),
@@ -64,6 +65,11 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_fp4_frobenius.nim", false),
   ("tests/t_fp6_frobenius.nim", false),
   ("tests/t_fp12_frobenius.nim", false),
+
+  # Elliptic curve arithmetic 
+  # ----------------------------------------------------------
+  ("tests/t_ec_conversion.nim", false),
+
   # Elliptic curve arithmetic G1
   # ----------------------------------------------------------
   # ("tests/t_ec_shortw_prj_g1_add_double.nim", false),

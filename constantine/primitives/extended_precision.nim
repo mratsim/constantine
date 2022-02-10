@@ -75,6 +75,19 @@ func muladd2*(hi, lo: var Ct[uint32], a, b, c1, c2: Ct[uint32]) {.inline.}=
   lo = (Ct[uint32])(dblPrec)
   hi = (Ct[uint32])(dblPrec shr 32)
 
+func smul*(hi, lo: var Ct[uint32], a, b: Ct[uint32]) {.inline.} =
+  ## Signed extended precision multiplication
+  ## (hi, lo) <- a*b
+  ##
+  ## Inputs are intentionally unsigned
+  ## as we use their unchecked raw representation for cryptography
+  ##
+  ## This is constant-time on most hardware
+  ## See: https://www.bearssl.org/ctmul.html
+  let dblPrec = int64(cast[int32](a)) * int64(cast[int32](b)) # Sign-extension via cast+conversion to wider int
+  lo = cast[Ct[uint32]](dblPrec)
+  hi = cast[Ct[uint32]](dblPrec shr 32)
+
 # ############################################################
 #
 #                     64-bit words
@@ -83,15 +96,15 @@ func muladd2*(hi, lo: var Ct[uint32], a, b, c1, c2: Ct[uint32]) {.inline.}=
 
 when sizeof(int) == 8:
   when defined(vcc):
-    from ./extended_precision_x86_64_msvc import unsafeDiv2n1n, mul, muladd1, muladd2
+    from ./extended_precision_x86_64_msvc import unsafeDiv2n1n, mul, muladd1, muladd2, smul
   elif GCCCompatible:
     # TODO: constant-time div2n1n
     when X86:
       from ./extended_precision_x86_64_gcc import unsafeDiv2n1n
-      from ./extended_precision_64bit_uint128 import mul, muladd1, muladd2
+      from ./extended_precision_64bit_uint128 import mul, muladd1, muladd2, smul
     else:
-      from ./extended_precision_64bit_uint128 import unsafeDiv2n1n, mul, muladd1, muladd2
-  export unsafeDiv2n1n, mul, muladd1, muladd2
+      from ./extended_precision_64bit_uint128 import unsafeDiv2n1n, mul, muladd1, muladd2, smul
+  export unsafeDiv2n1n, mul, muladd1, muladd2, smul
 
 # ############################################################
 #

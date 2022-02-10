@@ -10,6 +10,7 @@ import
   ./io_bigints, ./io_fields, ./io_towers,
   ../arithmetic,
   ../towers,
+  ../primitives,
   ../elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
@@ -26,7 +27,12 @@ import
 #
 # ############################################################
 
-func toHex*[EC: ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff](P: EC): string =
+proc spaces(num: int): string =
+  result = newString(num)
+  for i in 0 ..< num:
+    result[i] = ' '
+
+func toHex*[EC: ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff](P: EC, indent: static int = 0): string =
   ## Stringify an elliptic curve point to Hex
   ## Note. Leading zeros are not removed.
   ## Result is prefixed with 0x
@@ -39,29 +45,31 @@ func toHex*[EC: ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff](P: EC): stri
   ## This proc output may change format in the future
 
   var aff {.noInit.}: ECP_ShortW_Aff[EC.F, EC.G]
-  when EC is ECP_ShortW_Prj:
-    aff.affineFromProjective(P)
-  elif EC is ECP_ShortW_Jac:
-    aff.affineFromJacobian(P)
+  when EC isnot ECP_ShortW_Aff:
+    aff.affine(P)
   else:
     aff = P
 
-  result = "ECP[" & $aff.F & "](\n  x: "
+  const sp = spaces(indent)
+
+  result = sp & $EC & "(\n" & sp & "  x: "
   result.appendHex(aff.x, bigEndian)
-  result &= ",\n  y: "
+  result &= ",\n" & sp & "  y: "
   result.appendHex(aff.y, bigEndian)
-  result &= "\n)"
+  result &= "\n" & sp & ")"
 
 func fromHex*(dst: var (ECP_ShortW_Prj or ECP_ShortW_Jac), x, y: string): bool {.raises: [ValueError].}=
   ## Convert hex strings to a G1 curve point
-  ## Returns `false`
-  ## if there is no point with coordinates (`x`, `y`) on the curve
+  ## Returns true if point exist or if input is the point at infinity (all 0)
+  ## Returns `false` if there is no point with coordinates (`x`, `y`) on the curve
   ## In that case, `dst` content is undefined.
   static: doAssert dst.F is Fp, "dst must be on G1, an elliptic curve over 𝔽p"
   dst.x.fromHex(x)
   dst.y.fromHex(y)
   dst.z.setOne()
-  return bool(isOnCurve(dst.x, dst.y, dst.G))
+  let isInf = dst.x.isZero() and dst.y.isZero()
+  dst.z.csetZero(isInf)
+  return bool(isOnCurve(dst.x, dst.y, dst.G) or isInf)
 
 func fromHex*(dst: var (ECP_ShortW_Prj or ECP_ShortW_Jac), x0, x1, y0, y1: string): bool {.raises: [ValueError].}=
   ## Convert hex strings to a G2 curve point
@@ -72,24 +80,34 @@ func fromHex*(dst: var (ECP_ShortW_Prj or ECP_ShortW_Jac), x0, x1, y0, y1: strin
   dst.x.fromHex(x0, x1)
   dst.y.fromHex(y0, y1)
   dst.z.setOne()
-  return bool(isOnCurve(dst.x, dst.y, dst.G))
+  let isInf = dst.x.isZero() and dst.y.isZero()
+  dst.z.csetZero(isInf)
+  return bool(isOnCurve(dst.x, dst.y, dst.G) or isInf)
 
 func fromHex*(dst: var ECP_ShortW_Aff, x, y: string): bool {.raises: [ValueError].}=
   ## Convert hex strings to a G1 curve point
-  ## Returns `false`
-  ## if there is no point with coordinates (`x`, `y`) on the curve
+  ## Returns true if point exist or if input is the point at infinity (all 0)
+  ## Returns `false` if there is no point with coordinates (`x`, `y`) on the curve
   ## In that case, `dst` content is undefined.
   static: doAssert dst.F is Fp, "dst must be on G1, an elliptic curve over 𝔽p"
   dst.x.fromHex(x)
   dst.y.fromHex(y)
-  return bool(isOnCurve(dst.x, dst.y, dst.G))
+  return bool(isOnCurve(dst.x, dst.y, dst.G) or dst.isInf())
 
 func fromHex*(dst: var ECP_ShortW_Aff, x0, x1, y0, y1: string): bool {.raises: [ValueError].}=
   ## Convert hex strings to a G2 curve point
-  ## Returns `false`
-  ## if there is no point with coordinates (`x`, `y`) on the curve
+  ## Returns true if point exist or if input is the point at infinity (all 0)
+  ## Returns `false` if there is no point with coordinates (`x`, `y`) on the curve
   ## In that case, `dst` content is undefined.
   static: doAssert dst.F is Fp2, "dst must be on G2, an elliptic curve over 𝔽p2"
   dst.x.fromHex(x0, x1)
   dst.y.fromHex(y0, y1)
-  return bool(isOnCurve(dst.x, dst.y, dst.G))
+  return bool(isOnCurve(dst.x, dst.y, dst.G) or dst.isInf())
+
+func fromHex*[EC: ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff](
+       _: type EC, x, y: string): EC {.raises: [ValueError].} =
+  doAssert result.fromHex(x, y)
+
+func fromHex*[EC: ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff](
+       _: type EC, x0, x1, y0, y1: string): EC {.raises: [ValueError].} =
+  doAssert result.fromHex(x0, x1, y0, y1)

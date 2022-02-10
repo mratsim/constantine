@@ -441,10 +441,7 @@ proc run_EC_mixed_add_impl*(
           let a = rng.random_point(EC, randZ, gen)
           let b = rng.random_point(EC, randZ, gen)
           var bAff: ECP_ShortW_Aff[EC.F, EC.G]
-          when b is ECP_ShortW_Prj:
-            bAff.affineFromProjective(b)
-          else:
-            bAff.affineFromJacobian(b)
+          bAff.affine(b)
 
           var r_generic, r_mixed: EC
 
@@ -536,3 +533,168 @@ proc run_EC_subgroups_cofactors_impl*(
     
       echo "    [SUCCESS] Test finished with ", inSubgroup, " points in ", G1_or_G2, " subgroup and ",
               offSubgroup, " points on curve but not in subgroup (before cofactor clearing)"
+
+proc run_EC_affine_conversion*(
+       ec: typedesc,
+       Iters: static int,
+       moduleName: string
+     ) =
+
+  # Random seed for reproducibility
+  var rng: RngState
+  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  rng.seed(seed)
+  echo "\n------------------------------------------------------\n"
+  echo moduleName, " xoshiro512** seed: ", seed
+
+  const G1_or_G2 = pairingGroup(ec)
+
+  const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
+
+  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
+    test "EC " & G1_or_G2 & " batchAffine is consistent with single affine conversion":
+      proc test(EC: typedesc, gen: RandomGen) =
+        const batchSize = 10
+        for _ in 0 ..< Iters:
+          var Ps: array[batchSize, EC]
+          for i in 0 ..< batchSize:
+            Ps[i] = rng.random_point(EC, randZ = true, gen)
+
+          var Qs, Rs: array[batchSize, affine(EC)]
+          for i in 0 ..< batchSize:
+            Qs[i].affine(Ps[i])
+          Rs.batchAffine(Ps)
+
+          for i in countdown(batchSize-1, 0):
+            doAssert bool(Qs[i] == Rs[i]), block:
+              var s: string
+              s &= "Mismatch on iteration " & $i
+              s &= "\nFailing batch for " & $EC & " (" & $WordBitwidth & "-bit)"
+              s &= "\n  ["
+              for i in 0 ..< batchSize:
+                s &= "\n" & Ps[i].toHex(indent = 4)
+                if i != batchSize-1: s &= ","
+              s &= "\n  ]"
+              s &= "\nFailing inversions for " & $EC & " (" & $WordBitwidth & "-bit)"
+              s &= "\n  ["
+              for i in 0 ..< batchSize:
+                s &= "\n" & Rs[i].toHex(indent = 4)
+                if i != batchSize-1: s &= ","
+              s &= "\n  ]"
+              s &= "\nExpected inversions for " & $EC & " (" & $WordBitwidth & "-bit)"
+              s &= "\n  ["
+              for i in 0 ..< batchSize:
+                s &= "\n" & Qs[i].toHex(indent = 4)
+                if i != batchSize-1: s &= ","
+              s &= "\n  ]"
+              s
+
+      test(ec, gen = Uniform)
+      test(ec, gen = HighHammingWeight)
+      test(ec, gen = Long01Sequence)
+
+proc run_EC_conversion_failures*(
+       moduleName: string
+     ) =
+
+  echo "\n------------------------------------------------------\n"
+  echo moduleName
+
+  suite moduleName & " - [" & $WordBitwidth & "-bit mode]":
+    test "EC batchAffine fuzzing failures ":
+      proc test_bn254_snarks_g1(ECP: type) =
+        type ECP_Aff = ECP_ShortW_Aff[Fp[BN254_Snarks], G1]
+
+        let Ps = [
+          ECP.fromHex(
+            x = "0x0e0a76c19a07e01fe56f246f7878652c0b39eb28f5c60b3dd43e438dc50e0d9d",
+            y = "0x04e6da44bc7f802fab3df34ce45d86857327663bc24ff574da48ee2b01a4932e"
+          ),
+          ECP.fromHex(
+            x = "0x2036a21a3d9cc09d8f5f7491fe7e4f44cffd2addf01c6ae587bee7d24f060571",
+            y = "0x2b5f1cc6f1cdb4a6dbaf3c88b9c02ccf984aecbba4830d5aeb33f940cb632d8a"
+          ),
+          ECP.fromHex(
+            x = "0x2fd314a75c6b1f82d70f2edc7b7bf6e7397bc04bc6aaa0584b9e5bbb7689082a",
+            y = "0x111b3b4a697e7a990400eb39f09a9bb559748cea6699535bd114ffb3dcc0b4d1"
+          ),
+          ECP.fromHex(
+            x = "0x0000000000000000000000000000000000000000000000000000000000000000",
+            y = "0x0000000000000000000000000000000000000000000000000000000000000000"
+          ),
+          ECP.fromHex(
+            x = "0x0e0a77c199ffdf2f686ea36f7879462c0a74eb28f5e70b3dd31d438dc58f0d9d",
+            y = "0x0b3938a732020d98793510be6aa312651a5f5369ebbbe41d7fda8fd914b7f264"
+          ),
+          ECP.fromHex(
+            x = "0x0000000007ffffffffffffff80000000000007ffe000000000ffffffffffffff",
+            y = "0x1d9db0f30e3395ee33a70674a31e2854de0665292dd545c10fb3da579d7df916"
+          ),
+          ECP.fromHex(
+            x = "0x000000000000000fffffffffe0000000000007ffffffffffffffffffffffffff",
+            y = "0x2a5c6df4d24efa9ffcf4003e35801dc202d820b59d67ecc65d57cfdf53b4bbc6"
+          ),
+          ECP.fromHex(
+            x = "0x00000000000000000003ffffffc00000000000000c000000000000003ffffffe",
+            y = "0x09f811f84207472ccd6ca00bb1ec3e6132a1c9206adc9ed768871f0005f0d358"
+          ),
+          ECP.fromHex(
+            x = "0x0e0979b99d07df30656ea36f7879462c097beb28f5c8083dd25d448dc58f0ca4",
+            y = "0x1799b22d8780c917ab1c4e15da718c243babc1c51225b5f8298aa570b5029796"
+          ),
+          ECP.fromHex(
+            x = "0x0e0a76c29a07e02f666ea36e806a462c0a78eb25f5c70b3dd35c4b8dc58f0d9c",
+            y = "0x0529cb1ad2552c7979a900ff59551d5dc1f8680c3a4f20d3b9cdcf68b69ec61c"
+          )
+        ]
+
+        let Qs = [
+          ECP_Aff.fromHex(
+            x = "0x0e0a76c19a07e01fe56f246f7878652c0b39eb28f5c60b3dd43e438dc50e0d9d",
+            y = "0x04e6da44bc7f802fab3df34ce45d86857327663bc24ff574da48ee2b01a4932e"
+          ),
+          ECP_Aff.fromHex(
+            x = "0x2036a21a3d9cc09d8f5f7491fe7e4f44cffd2addf01c6ae587bee7d24f060571",
+            y = "0x2b5f1cc6f1cdb4a6dbaf3c88b9c02ccf984aecbba4830d5aeb33f940cb632d8a"
+          ),
+          ECP_Aff.fromHex(
+            x = "0x2fd314a75c6b1f82d70f2edc7b7bf6e7397bc04bc6aaa0584b9e5bbb7689082a",
+            y = "0x111b3b4a697e7a990400eb39f09a9bb559748cea6699535bd114ffb3dcc0b4d1"
+          ),
+          ECP_Aff.fromHex(
+            x = "0x0000000000000000000000000000000000000000000000000000000000000000",
+            y = "0x0000000000000000000000000000000000000000000000000000000000000000"
+          ),
+          ECP_Aff.fromHex(
+            x = "0x0e0a77c199ffdf2f686ea36f7879462c0a74eb28f5e70b3dd31d438dc58f0d9d",
+            y = "0x0b3938a732020d98793510be6aa312651a5f5369ebbbe41d7fda8fd914b7f264"
+          ),
+          ECP_Aff.fromHex(
+            x = "0x0000000007ffffffffffffff80000000000007ffe000000000ffffffffffffff",
+            y = "0x1d9db0f30e3395ee33a70674a31e2854de0665292dd545c10fb3da579d7df916"
+          ),
+          ECP_Aff.fromHex(
+            x = "0x000000000000000fffffffffe0000000000007ffffffffffffffffffffffffff",
+            y = "0x2a5c6df4d24efa9ffcf4003e35801dc202d820b59d67ecc65d57cfdf53b4bbc6"
+          ),
+          ECP_Aff.fromHex(
+            x = "0x00000000000000000003ffffffc00000000000000c000000000000003ffffffe",
+            y = "0x09f811f84207472ccd6ca00bb1ec3e6132a1c9206adc9ed768871f0005f0d358"
+          ),
+          ECP_Aff.fromHex(
+            x = "0x0e0979b99d07df30656ea36f7879462c097beb28f5c8083dd25d448dc58f0ca4",
+            y = "0x1799b22d8780c917ab1c4e15da718c243babc1c51225b5f8298aa570b5029796"
+          ),
+          ECP_Aff.fromHex(
+            x = "0x0e0a76c29a07e02f666ea36e806a462c0a78eb25f5c70b3dd35c4b8dc58f0d9c",
+            y = "0x0529cb1ad2552c7979a900ff59551d5dc1f8680c3a4f20d3b9cdcf68b69ec61c"
+          )
+        ]
+
+        var Rs: array[10, ECP_Aff]
+        Rs.batchAffine(Ps)
+        for i in 0 ..< 10:
+          doAssert bool(Qs[i] == Rs[i])
+
+      test_bn254_snarks_g1(ECP_ShortW_Prj[Fp[BN254_Snarks], G1])
+      test_bn254_snarks_g1(ECP_ShortW_Jac[Fp[BN254_Snarks], G1])

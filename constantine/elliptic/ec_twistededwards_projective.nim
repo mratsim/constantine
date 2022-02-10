@@ -289,7 +289,7 @@ func diff*(r: var ECP_TwEdwards_Prj,
   nQ.neg(Q)
   r.sum(P, nQ)
 
-func affineFromProjective*[F](
+func affine*[F](
        aff: var ECP_TwEdwards_Prj[F],
        proj: ECP_TwEdwards_Prj[F]) =
   var invZ {.noInit.}: F
@@ -298,7 +298,7 @@ func affineFromProjective*[F](
   aff.x.prod(proj.x, invZ)
   aff.y.prod(proj.y, invZ)
 
-func projectiveFromAffine*[F](
+func projective*[F](
        proj: var ECP_TwEdwards_Prj[F],
        aff: ECP_TwEdwards_Prj[F]) {.inline.} =
   proj.x = aff.x
