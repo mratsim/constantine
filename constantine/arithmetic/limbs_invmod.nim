@@ -212,7 +212,7 @@ func batchedDivsteps(
         # debugEcho "    u: 0b", BiggestInt(u).toBin(64), ", v: 0b", BiggestInt(v).toBin(64), " | u: ", int(u), ", v: ", int(v)
         # debugEcho "    q: 0b", BiggestInt(q).toBin(64), ", r: 0b", BiggestInt(r).toBin(64), " | q: ", int(q), ", r: ", int(r)
 
-      doAssert (f.BaseType and 1) == 1, (reportLoop(); "f must be odd)")
+      doAssert (BaseType(f) and 1) == 1, (reportLoop(); "f must be odd)")
       doAssert bool(not(uint(u or v or q or r) and (if i == 0: high(uint) else: high(uint) shr (i - 1)))), (reportLoop(); "Min trailing zeros count decreases at each iteration")
       doAssert bool(u.ashr(k-i)*f0 + v.ashr(k-i)*g0 == f.lshl(i)), (reportLoop(); "Applying the transition matrix to (f₀, g₀) returns current (f, g)")
       doAssert bool(q.ashr(k-i)*f0 + r.ashr(k-i)*g0 == g.lshl(i)), (reportLoop(); "Applying the transition matrix to (f₀, g₀) returns current (f, g)")

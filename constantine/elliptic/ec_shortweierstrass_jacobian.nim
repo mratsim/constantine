@@ -595,11 +595,10 @@ func batchAffine*[N: static int, F, G](
     # Skip zero z-coordinates (infinity points)
     var z = affs[i].x
 
-    # Extract 1/Pᵢ + next iteration of batch inversion.
+    # Extract 1/Pᵢ
     var invi {.noInit.}: F
     invi.prod(accInv, affs[i-1].x)
     invi.csetZero(zeroes[i])
-    accInv *= jacs[i].z
 
     # Now convert Pᵢ to affine
     var invi2 {.noinit.}: F
@@ -607,6 +606,11 @@ func batchAffine*[N: static int, F, G](
     affs[i].x.prod(jacs[i].x, invi2)
     invi *= invi2
     affs[i].y.prod(jacs[i].y, invi)
+
+    # next iteration
+    invi = jacs[i].z
+    invi.csetOne(zeroes[i])
+    accInv *= invi
 
   block: # tail
     var invi2 {.noinit.}: F
