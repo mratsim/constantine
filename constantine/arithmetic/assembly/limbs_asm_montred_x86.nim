@@ -95,6 +95,11 @@ macro montyRedc2x_gen*[N: static int](
        m0ninv_MR: BaseType,
        hasSpareBit: static bool
       ) =
+
+  # No register spilling handling
+  doAssert N > 2, "The Assembly-optimized montgomery reduction requires a minimum of 2 limbs."
+  doAssert N <= 6, "The Assembly-optimized montgomery reduction requires at most 6 limbs."
+
   result = newStmtList()
 
   var ctx = init(Assembler_x86, BaseType)
@@ -140,10 +145,6 @@ macro montyRedc2x_gen*[N: static int](
   #   r[i] = a[i+n]
   # if r >= M:
   #   r -= M
-
-  # No register spilling handling
-  doAssert N > 2, "The Assembly-optimized montgomery reduction requires a minimum of 2 limbs."
-  doAssert N <= 6, "The Assembly-optimized montgomery reduction requires at most 6 limbs."
 
   for i in 0 ..< N:
     ctx.mov u[i], a[i]
@@ -229,6 +230,105 @@ func montRed_asm*[N: static int](
   ## Constant-time Montgomery reduction
   static: doAssert UseASM_X86_64, "This requires x86-64."
   montyRedc2x_gen(r, a, M, m0ninv, hasSpareBit)
+
+# Montgomery conversion
+# ----------------------------------------------------------
+
+macro fromMont_gen*[N: static int](
+       r_MR: var array[N, SecretWord],
+       a_MR: array[N, SecretWord],
+       M_MR: array[N, SecretWord],
+       m0ninv_MR: BaseType) =
+
+  # No register spilling handling
+  doAssert N <= 6, "The Assembly-optimized montgomery reduction requires at most 6 limbs."
+
+  result = newStmtList()
+
+  var ctx = init(Assembler_x86, BaseType)
+  # On x86, compilers only let us use 15 out of 16 registers
+  # RAX and RDX are defacto used due to the MUL instructions
+  # so we store everything in scratchspaces restoring as needed
+  let
+    scratchSlots = 2
+
+    r = init(OperandArray, nimSymbol = r_MR, N, PointerInReg, InputOutput_EnsureClobber)
+    # We could force M as immediate by specializing per moduli
+    M = init(OperandArray, nimSymbol = M_MR, N, PointerInReg, Input)
+    # If N is too big, we need to spill registers. TODO.
+    t = init(OperandArray, nimSymbol = ident"t", N, ElemsInReg, InputOutput)
+    # MultiPurpose Register slots
+    scratch = init(OperandArray, nimSymbol = ident"scratch", scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
+
+    # MUL requires RAX and RDX
+
+    m0ninv = Operand(
+               desc: OperandDesc(
+                 asmId: "[m0ninv]",
+                 nimSymbol: m0ninv_MR,
+                 rm: MemOffsettable,
+                 constraint: Input,
+                 cEmit: "&" & $m0ninv_MR
+               )
+             )
+
+    C = scratch[0] # Stores the high-part of muliplication
+    m = scratch[1] # Stores (t[0] * m0ninv) mod 2ʷ
+
+  let tsym = t.nimSymbol
+  let scratchSym = scratch.nimSymbol
+  
+  # Copy a in t
+  result.add quote do:
+    var `tsym` = `a_MR`
+    var `scratchSym` {.noInit.}: Limbs[`scratchSlots`]
+
+  # Algorithm
+  # ---------------------------------------------------------
+  # for i in 0 .. n-1:
+  #   m <- t[0] * m0ninv mod 2ʷ (i.e. simple multiplication)
+  #   C, _ = t[0] + m * M[0]
+  #   for j in 1 .. n-1:
+  #     (C, t[j-1]) <- r[j] + m*M[j] + C
+  #   t[n-1] = C
+
+  ctx.comment "for i in 0 ..< N:"
+  for i in 0 ..< N:
+    ctx.comment "  m <- t[0] * m0ninv mod 2ʷ"
+    ctx.mov m, m0ninv
+    ctx.imul m, t[0]
+
+    ctx.comment "  C, _ = t[0] + m * M[0]"
+    ctx.`xor` C, C
+    ctx.mov rax, M[0]
+    ctx.mul rdx, rax, m, rax
+    ctx.add rax, t[0]
+    ctx.adc C, rdx
+
+    ctx.comment "  for j in 1 .. n-1:"
+    for j in 1 ..< N:
+      ctx.comment "    (C, t[j-1]) <- r[j] + m*M[j] + C"
+      ctx.mov rax, M[j]
+      ctx.mul rdx, rax, m, rax
+      ctx.add C, t[j]
+      ctx.adc rdx, 0
+      ctx.add C, rax
+      ctx.adc rdx, 0
+      ctx.mov t[j-1], C
+      ctx.mov C, rdx
+
+    ctx.comment "  final carry"
+    ctx.mov t[N-1], C
+ 
+  ctx.comment "Move to registers"
+  for i in 0 ..< N:
+    ctx.mov r[i], t[i]
+
+  result.add ctx.generate()
+
+func fromMont_asm*(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
+  ## Constant-time Montgomery residue form to BigInt conversion
+  fromMont_gen(r, a, M, m0ninv)
 
 # Sanity checks
 # ----------------------------------------------------------

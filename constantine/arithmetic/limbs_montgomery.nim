@@ -334,7 +334,7 @@ func fromMont_CIOS(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
   # for i in 0 .. n-1:
   #   m <- t[0] * m0ninv mod 2ʷ (i.e. simple multiplication)
   #   C, _ = t[0] + m * M[0]
-  #   for j in 0 ..n-1:
+  #   for j in 1 ..n-1:
   #     (C, t[j-1]) <- r[j] + m*M[j] + C
   #   t[n-1] = C
 
@@ -462,7 +462,10 @@ func fromMont*(r: var Limbs, a, M: Limbs,
   #   - https://en.wikipedia.org/wiki/Montgomery_modular_multiplication#Montgomery_arithmetic_on_multiprecision_(variable-radix)_integers
   #   - http://langevin.univ-tln.fr/cours/MLC/extra/montgomery.pdf
   #     Montgomery original paper
-  fromMont_CIOS(r, a, M, m0ninv)
+  when UseASM_X86_64 and a.len in {2 .. 6}:
+    fromMont_asm(r, a, M, m0ninv)
+  else:
+    fromMont_CIOS(r, a, M, m0ninv)
 
 func getMont*(r: var Limbs, a, M, r2modM: Limbs,
                    m0ninv: static BaseType, spareBits: static int) =

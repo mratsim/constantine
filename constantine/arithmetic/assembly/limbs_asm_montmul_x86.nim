@@ -175,7 +175,7 @@ macro montMul_CIOS_sparebit_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M
     scratch
   )
 
-  result.add ctx.generate
+  result.add ctx.generate()
 
 func montMul_CIOS_sparebit_asm*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   ## Constant-time modular multiplication
