@@ -37,69 +37,200 @@ static: doAssert UseASM_X86_64
 # Montgomery Multiplication
 # ------------------------------------------------------------
 
-macro montMul_CIOS_sparebit_adx_bmi2_gen[N: static int](
-        t_EIR: var Limbs[N], a_PIR, b_PIR, M_PIR: Limbs[N], m0ninv_REG: BaseType): untyped =
+proc mulx_by_word(
+       ctx: var Assembler_x86,
+       hi: Operand,
+       t: OperandArray,
+       a: Operand, # Pointer in scratchspace
+       word0: Operand,
+       lo: Operand
+     ) =
+  ## Multiply the `a[0..<N]` by `word` and store in `t[0..<N]`
+  ## and carry register `C` (t[N])
+  ## `t` and `C` overwritten
+  ## `S` is a scratchspace carry register
+  ## `rRDX` is the RDX register descriptor
+  let N = min(a.len, t.len)
+
+  ctx.comment "  Outer loop i = 0"
+
+  # for j=0 to N-1
+  #  (C,t[j])  := t[j] + a[j]*b[i] + C
+
+  # First limb
+  ctx.mov rdx, word0
+  if N > 1:
+    ctx.mulx t[1], t[0], a[0], rdx
+    ctx.`xor` hi, hi # Clear flags - TODO: necessary?
+  else:
+    ctx.mulx hi, t[0], a[0], rdx
+    return
+
+  # Steady state
+  for j in 1 ..< N-1:
+    ctx.mulx t[j+1], lo, a[j], rdx
+    if j == 1:
+      ctx.add t[j], lo
+    else:
+      ctx.adc t[j], lo
+
+  # Last limb
+  ctx.comment "  Outer loop i = 0, last limb"
+  ctx.mulx hi, lo, a[N-1], rdx
+  ctx.adc t[N-1], lo
+
+  # Final carries
+  ctx.comment "  Accumulate last carries in hi word"
+  ctx.adc hi, 0
+
+proc mulaccx_by_word(
+       ctx: var Assembler_x86,
+       hi: Operand,
+       t: OperandArray,
+       a: Operand, # Pointer in scratchspace
+       i: int,
+       word: Operand,
+       lo: Operand
+     ) =
+  ## Multiply the `a[0..<N]` by `word`
+  ## and accumulate in `t[0..<N]`
+  ## and carry register `C` (t[N])
+  ## `t` and `C` are multiply-accumulated
+  ## `S` is a scratchspace register
+  let N = min(a.len, t.len)
+
+  doAssert i != 0
+
+  ctx.comment "  Outer loop i = " & $i & ", j in [0, " & $N & ")"
+  ctx.mov rdx, word
+  ctx.`xor` hi, hi # Clear flags - TODO: necessary?
+
+  # for j=0 to N-1
+  #  (C,t[j])  := t[j] + a[j]*b[i] + C
+
+  # Steady state
+  for j in 0 ..< N-1:
+    ctx.mulx hi, lo, a[j], rdx
+    ctx.adox t[j], lo
+    ctx.adcx t[j+1], hi
+
+  # Last limb
+  ctx.comment "  Outer loop i = " & $i & ", last limb"
+  ctx.mulx hi, lo, a[N-1], rdx
+  ctx.adox t[N-1], lo
+
+  # Final carries
+  ctx.comment "  Accumulate last carries in hi word"
+  ctx.mov  rdx, 0 # Set to 0 without clearing flags
+  ctx.adcx hi, rdx
+  ctx.adox hi, rdx
+
+proc partialRedx(
+       ctx: var Assembler_x86,
+       C: Operand,
+       t: OperandArray,
+       M: OperandArray,
+       m0ninv: Operand,
+       lo, S: Operand
+     ) =
+    ## Partial Montgomery reduction
+    ## For CIOS method
+    ## `C` the update carry flag (represents t[N])
+    ## `t[0..<N]` the array to reduce
+    ## `M[0..<N] the prime modulus
+    ## `m0ninv` The montgomery magic number -1/M[0]
+    ## `lo` and `S` are scratchspace registers
+    ## `rRDX` is the RDX register descriptor
+
+    let N = M.len
+
+    # m = t[0] * m0ninv mod 2^w
+    ctx.comment "  Reduction"
+    ctx.comment "  m = t[0] * m0ninv mod 2^w"
+    ctx.mov  rdx, t[0]
+    ctx.imul rdx, m0ninv
+
+    # Clear carry flags
+    ctx.`xor` S, S
+
+    # S,_ := t[0] + m*M[0]
+    ctx.comment "  S,_ := t[0] + m*M[0]"
+    ctx.mulx S, lo, M[0], rdx
+    ctx.adcx lo, t[0] # set the carry flag for the future ADCX
+    ctx.mov  t[0], S
+
+    ctx.mov lo, 0
+
+    # for j=1 to N-1
+    #   (S,t[j-1]) := t[j] + m*M[j] + S
+    ctx.comment "  for j=1 to N-1"
+    ctx.comment "    (S,t[j-1]) := t[j] + m*M[j] + S"
+    for j in 1 ..< N:
+      ctx.adcx t[j-1], t[j]
+      ctx.mulx t[j], S, M[j], rdx
+      ctx.adox t[j-1], S
+
+    # Last carries
+    # t[N-1] = S + C
+    ctx.comment "  Reduction carry "
+    ctx.adcx lo, C      # lo contains 0 so C += S
+    ctx.adox t[N-1], lo
+
+macro montMul_CIOS_sparebit_adx_bmi2_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_MM: Limbs[N], m0ninv_MM: BaseType): untyped =
   ## Generate an optimized Montgomery Multiplication kernel
   ## using the CIOS method
   ## This requires the most significant word of the Modulus
   ##   M[^1] < high(SecretWord) shr 2 (i.e. less than 0b00111...1111)
   ## https://hackmd.io/@zkteam/modular_multiplication
-  
+
   # No register spilling handling
-  doAssert N in {2..6}, "The Assembly-optimized montgomery multiplication requires at [2, 6] limbs."
+  doAssert N <= 6, "The Assembly-optimized montgomery multiplication requires at most 6 limbs."
 
   result = newStmtList()
 
   var ctx = init(Assembler_x86, BaseType)
   let
+    scratchSlots = max(N, 6)
+
+    r = init(OperandArray, nimSymbol = r_MM, N, PointerInReg, InputOutput_EnsureClobber)
     # We could force M as immediate by specializing per moduli
-    a = init(OperandArray, nimSymbol = a_PIR, N, PointerInReg, Input)
-    b = init(OperandArray, nimSymbol = b_PIR, N, PointerInReg, Input)
-    M = init(OperandArray, nimSymbol = M_PIR, N, PointerInReg, Input)
+    M = init(OperandArray, nimSymbol = M_MM, N, PointerInReg, Input)
     # If N is too big, we need to spill registers. TODO.
-    t = init(OperandArray, nimSymbol = t_EIR, N, ElemsInReg, Output_EarlyClobber)
+    t = init(OperandArray, nimSymbol = ident"t", N, ElemsInReg, Output_EarlyClobber)
+    # MultiPurpose Register slots
+    scratch = init(OperandArray, nimSymbol = ident"scratch", scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
 
     # MULX requires RDX as well
 
-    m0ninv = Operand(
-               desc: OperandDesc(
-                 asmId: "[m0ninv]",
-                 nimSymbol: m0ninv_REG,
-                 rm: MemOffsettable, # TODO, should be Register
-                 constraint: Input,
-                 cEmit: "&" & $m0ninv_REG
-               )
-             )
-  # Rolling workspace
-  var w = init(OperandArray, nimSymbol = ident"w", 2, ElemsInReg, InputOutput_EnsureClobber)
-  # Fixed sctachspace
-  var s = init(OperandArray, nimSymbol = ident"s", 2, ElemsInReg, InputOutput_EnsureClobber)
-
-  # It is likely that 80% of cryptographic code
-  # is spent in Montgomery multiplication.
-  # Improving it by some % has an immediate impact on everything.
+    a = scratch[0].asArrayAddr(len = N) # Store the `a` operand
+    b = scratch[1].asArrayAddr(len = N) # Store the `b` operand
+    A = scratch[2]                      # High part of extended precision multiplication
+    C = scratch[3]
+    m0ninv = scratch[4]                 # Modular inverse of M[0]
+    lo = scratch[5]                     # Discard "lo" part of partial Montgomery Reduction
 
   # Registers used:
-  # - 1   for `a`
-  # - 1   for `b`
-  # - 1   for `M`
-  # - 6   for `t` (assuming 6 limbs)
-  # - 2   for `w` (rolling workspace)
-  # - 2   for `s` (fixed scratchspace)
-  # - 1   for RDX to hold the multiplier for MULX
-  # - 1   for RAX for carries
+  # - 1 for `r`
+  # - 1 for `M`
+  # - 6 for `t`     (at most)
+  # - 6 for `scratch`
+  # - 1 for RDX
   # Total 15 out of 16
-  # + RSP reserved by the compiler for the stack pointer
-  #
   # We can save 1 by hardcoding M as immediate (and m0ninv)
   # but this prevent reusing the same code for multiple curves like BLS12-377 and BLS12-381
   # We might be able to save registers by having `r` and `M` be memory operand as well
 
-  let wsym = w.nimSymbol
-  let ssym = s.nimSymbol
+  let tsym = t.nimSymbol
+  let scratchSym = scratch.nimSymbol
   result.add quote do:
-    var `wsym` {.noInit.}: Limbs[2]
-    var `ssym` {.noInit.}: Limbs[2]
+    static: doAssert: sizeof(SecretWord) == sizeof(ByteAddress)
+
+    var `tsym`: typeof(`r_MM`) # zero init
+    # Assumes 64-bit limbs on 64-bit arch (or you can't store an address)
+    var `scratchSym` {.noInit.}: Limbs[`scratchSlots`]
+    `scratchSym`[0] = cast[SecretWord](`a_MM`[0].unsafeAddr)
+    `scratchSym`[1] = cast[SecretWord](`b_MM`[0].unsafeAddr)
+    `scratchSym`[4] = SecretWord `m0ninv_MM`
 
   # Algorithm
   # -----------------------------------------
@@ -112,138 +243,39 @@ macro montMul_CIOS_sparebit_adx_bmi2_gen[N: static int](
   # 		(C,t[j-1]) := t[j] + m*M[j] + C
   #   t[N-1] = C + A
 
-  # The workspace is used to prefetch
-  # a[j] and M[j]
-  # They will be stored in a set of rolling registers
-  # for 6 limbs
-  # [a₀, a₁, a₂, a₃, a₄, a₅, M₀, M₁, M₂, M₃, M₄, M₅]
-  var prefetch: seq[Operand]
-  for i in 0 ..< N: prefetch.add a[i]
-  for i in 0 ..< N: prefetch.add M[i]
-
-  # First iteration
-  ctx.mov rdx, b[0]
-
-  # Prefetch the first 4 limbs
-  # w = [a₀, a₁]
-  # prefetch = [a₂, a₃, a₄, a₅, M₀, M₁, M₂, M₃, M₄, M₅, a₀, a₁]
-  for i in 0 ..< w.len:
-    ctx.mov w[i], prefetch[0]
-    prefetch.rotateLeft(1)
-
-  template rollWorkspace(): untyped =
-    w.rotateLeft()
-    ctx.mov w[w.len-1], prefetch[0] # Physical roll
-    prefetch.rotateLeft(1)
-
-  let
-    # Carries for the multiplication step.
-    # and extra workspace, usually containing zero
-    hiM = s[0]
-    z = s[1]
-
   for i in 0 ..< N:
-    # Multiplication by a single word
-    # -------------------------------
-    #
-    #   for j=0 to N-1
-    # 		(A,t[j])  := t[j] + a[j]*b[i] + A
-
-    ctx.comment "  Outer loop i = " & $i & ", j in [0, " & $N & ")"
-    ctx.`xor` z, z # Reset carry flags and zero z
-
-    for j in 0 ..< N-1:
-      ctx.comment "    (A,t[j])  := t[j] + a[j]*b[i] + A with i = " & $i & ", j = " & $j
-      if i == 0 and j == 0:
-        ctx.mulx t[1], t[0], w[0], rdx
-      elif i == 0:
-        ctx.mulx t[j+1], rax, w[0], rdx
-        if j == 1:
-          ctx.add t[j], rax
-        else:
-          ctx.adc t[j], rax
-      else:
-        if j != 0:
-          ctx.adcx t[j], hiM
-        ctx.mulx hiM, rax, w[0], rdx
-        ctx.adox t[j], hiM
-      ctx.comment "    Preload j+2 step"
-      rollWorkspace()
- 
-    # Prefetch for reduction step
-    ctx.mov rdx, t[0]
-
-    ctx.comment "Final carries"
     if i == 0:
-      ctx.adc hiM, 0
+      ctx.mulx_by_word(
+        A, t,
+        a,
+        b[0],
+        C
+      )
     else:
-      ctx.adcx z, hiM # z is 0
-      ctx.adox hiM, z
+      ctx.mulaccx_by_word(
+        A, t,
+        a, i,
+        b[i],
+        C
+      )
 
-    # Reduction
-    # ---------
-    #   m := t[0]*m0ninv mod W
-    # 	C,_ := t[0] + m*M[0]
-    # 	for j=1 to N-1
-    # 		(C,t[j-1]) := t[j] + m*M[j] + C
-    #   t[N-1] = C + A
+    ctx.partialRedx(
+      A, t,
+      M, m0ninv,
+      lo, C
+    )
 
-    # w = [M₀, M₁]
-    # prefetch = [M₂, M₃, M₄, M₅, a₀, a₁, a₂, a₃, a₄, a₅, M₀, M₁]
-
-    # m = t[0] * m0ninv mod 2ʷ
-    ctx.comment "  Reduction"
-    ctx.comment "  m = t[0] * m0ninv mod 2ʷ"
-    ctx.imul rdx, m0ninv
-
-    # Clear carry flags and zero z
-    ctx.`xor` z, z
-
-    # C,_ := t[0] + m*M[0]
-    ctx.comment "  C,_ := t[0] + m*M[0]"
-    ctx.mulx z, rax, w[0], rdx
-    # Prefetch
-    rollWorkspace()
-    ctx.adcx rax, t[0] # set the carry flag for the future ADCX
-    ctx.mov  t[0], z
-    ctx.mov  z, 0      # zero z without upsetting the carry flag
-
-    # for j=1 to N-1
-    #   (S,t[j-1]) := t[j] + m*M[j] + S
-    ctx.comment "  for j=1 to N-1"
-    ctx.comment "    (S,t[j-1]) := t[j] + m*M[j] + S"
-    for j in 1 ..< N:
-      ctx.adcx t[j-1], t[j]
-      ctx.mulx t[j], rax, w[0], rdx
-      rollWorkspace()
-      ctx.adox t[j-1], rax
-
-    # Prefetch next iteration
-    if i+1 < N:
-      ctx.mov rdx, b[i+1]
-
-    # Last carries
-    # t[N-1] = A + C
-    ctx.comment "  Reduction carry "
-    ctx.adcx hiM, z # z is zero
-    ctx.adox t[N-1], hiM
-
-    # w = [a₀, a₁]
-    # prefetch = [a₂, a₃, a₄, a₅, M₀, M₁, M₂, M₃, M₄, M₅, a₀, a₁]
-
-  # --------------------------
+  ctx.finalSubNoCarryImpl(
+    r, t, M,
+    scratch
+  )
 
   result.add ctx.generate
 
 func montMul_CIOS_sparebit_asm_adx_bmi2*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   ## Constant-time modular multiplication
   ## Requires the prime modulus to have a spare bit in the representation. (Hence if using 64-bit words and 4 words, to be at most 255-bit)
-  var t{.noInit.}: typeof(r)
-  montMul_CIOS_sparebit_adx_bmi2_gen(t, a, b, M, m0ninv)
-
-  # Map from [0, 2p) to [0, p)
-  var scratch{.noInit.}: typeof(r)
-  r.finalSub_gen(a, M, scratch, mayCarry = false)
+  r.montMul_CIOS_sparebit_adx_bmi2_gen(a, b, M, m0ninv)
 
 # Montgomery Squaring
 # ------------------------------------------------------------
