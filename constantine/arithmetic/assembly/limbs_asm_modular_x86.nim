@@ -28,6 +28,103 @@ static: doAssert UseASM_X86_64
 
 {.localPassC:"-fomit-frame-pointer".} # Needed so that the compiler finds enough registers
 
+proc finalSubNoCarryImpl*(
+       ctx: var Assembler_x86,
+       r: Operand or OperandArray,
+       a, M, scratch: OperandArray
+     ) =
+  ## Reduce `a` into `r` modulo `M`
+  ## 
+  ## r, a, scratch, scratchReg are mutated
+  ## M is read-only
+  let N = M.len
+  ctx.comment "Final substraction (no carry)"
+  for i in 0 ..< N:
+    ctx.mov scratch[i], a[i]
+    if i == 0:
+      ctx.sub scratch[i], M[i]
+    else:
+      ctx.sbb scratch[i], M[i]
+
+  # If we borrowed it means that we were smaller than
+  # the modulus and we don't need "scratch"
+  for i in 0 ..< N:
+    ctx.cmovnc a[i], scratch[i]
+    ctx.mov r[i], a[i]
+
+proc finalSubMayCarryImpl*(
+       ctx: var Assembler_x86,
+       r: Operand or OperandArray,
+       a, M, scratch: OperandArray,
+       scratchReg: Operand or Register or OperandReuse
+     ) =
+  ## Reduce `a` into `r` modulo `M`
+  ## To be used when the final substraction can
+  ## also depend on the carry flag
+  ## 
+  ## r, a, scratch, scratchReg are mutated
+  ## M is read-only
+
+  ctx.comment "Final substraction (may carry)"
+
+  # Mask: scratchReg contains 0xFFFF or 0x0000
+  ctx.sbb scratchReg, scratchReg
+
+  # Now substract the modulus to test a < p
+  let N = M.len
+  for i in 0 ..< N:
+    ctx.mov scratch[i], a[i]
+    if i == 0:
+      ctx.sub scratch[i], M[i]
+    else:
+      ctx.sbb scratch[i], M[i]
+
+  # If it overflows here, it means that it was
+  # smaller than the modulus and we don't need `scratch`
+  ctx.sbb scratchReg, 0
+
+  # If we borrowed it means that we were smaller than
+  # the modulus and we don't need "scratch"
+  for i in 0 ..< N:
+    ctx.cmovnc a[i], scratch[i]
+    ctx.mov r[i], a[i]
+
+macro finalSub_gen*[N: static int](
+       r_PIR: var array[N, SecretWord],
+       a_EIR, M_PIR: array[N, SecretWord],
+       scratch_EIR: var array[N, SecretWord],
+       mayCarry: static bool): untyped =
+  ## Returns:
+  ##   a-M if a > M
+  ##   a otherwise
+  ## 
+  ## - r_PIR is a pointer to the result array, mutated,
+  ## - a_EIR is an array of registers, mutated,
+  ## - M_PIR is a pointer to an array, read-only,
+  ## - scratch_EIR is an array of registers, mutated
+  ## - mayCarry is set to true when the carry flag also needs to be read
+  result = newStmtList()
+
+  var ctx = init(Assembler_x86, BaseType)
+  let
+    r = init(OperandArray, nimSymbol = r_PIR, N, PointerInReg, InputOutput)
+    # We reuse the reg used for b for overflow detection
+    a = init(OperandArray, nimSymbol = a_EIR, N, ElemsInReg, InputOutput)
+    # We could force m as immediate by specializing per moduli
+    M = init(OperandArray, nimSymbol = M_PIR, N, PointerInReg, Input)
+    t = init(OperandArray, nimSymbol = scratch_EIR, N, ElemsInReg, Output_EarlyClobber)
+
+  if mayCarry:
+    ctx.finalSubMayCarryImpl(
+      r, a, M, t, rax
+    )
+  else:
+    ctx.finalSubNoCarryImpl(
+      r, a, M, t
+    )
+
+  result.add ctx.generate()
+
 # Field addition
 # ------------------------------------------------------------
 
@@ -68,29 +165,12 @@ macro addmod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N]): untyped =
     # Interleaved copy in a second buffer as well
     ctx.mov v[i], u[i]
 
-  # Mask: overflowed contains 0xFFFF or 0x0000
-  # TODO: unnecessary if MSB never set, i.e. "Field.getSpareBits >= 1"
-  let overflowed = b.reuseRegister()
-  ctx.sbb overflowed, overflowed
+  # TODO: no carry support
+  ctx.finalSubMayCarryImpl(
+    r, u, M, v, b.reuseRegister()
+  )
 
-  # Now substract the modulus to test a < p
-  for i in 0 ..< N:
-    if i == 0:
-      ctx.sub v[0], M[0]
-    else:
-      ctx.sbb v[i], M[i]
-
-  # If it overflows here, it means that it was
-  # smaller than the modulus and we don't need V
-  ctx.sbb overflowed, 0
-
-  # Conditional Mov and
-  # and store result
-  for i in 0 ..< N:
-    ctx.cmovnc u[i],  v[i]
-    ctx.mov r[i], u[i]
-
-  result.add ctx.generate
+  result.add ctx.generate()
 
 func addmod_asm*(r: var Limbs, a, b, m: Limbs) =
   ## Constant-time modular addition

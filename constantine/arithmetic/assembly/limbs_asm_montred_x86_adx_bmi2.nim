@@ -12,7 +12,7 @@ import
   # Internal
   ../../config/common,
   ../../primitives,
-  ./limbs_asm_montred_x86
+  ./limbs_asm_modular_x86
 
 # ############################################################
 #
@@ -132,9 +132,9 @@ macro montyRedc2x_adx_gen*[N: static int](
   let t = repackRegisters(v, u[N])
 
   if hasSpareBit:
-    ctx.finalSubNoCarry(r, u, M, t)
+    ctx.finalSubNoCarryImpl(r, u, M, t)
   else:
-    ctx.finalSubCanOverflow(r, u, M, t, hi)
+    ctx.finalSubMayCarryImpl(r, u, M, t, hi)
 
   # Code generation
   result.add ctx.generate()

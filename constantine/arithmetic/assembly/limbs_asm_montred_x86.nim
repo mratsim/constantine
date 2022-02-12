@@ -11,7 +11,8 @@ import
   std/macros,
   # Internal
   ../../config/common,
-  ../../primitives
+  ../../primitives,
+  ./limbs_asm_modular_x86
 
 # ############################################################
 #
@@ -24,66 +25,6 @@ static: doAssert UseASM_X86_32
 
 # Necessary for the compiler to find enough registers (enabled at -O1)
 {.localPassC:"-fomit-frame-pointer".}
-
-proc finalSubNoCarry*(
-       ctx: var Assembler_x86,
-       r: Operand or OperandArray,
-       a, M, scratch: OperandArray
-     ) =
-  ## Reduce `a` into `r` modulo `M`
-  let N = M.len
-  ctx.comment "Final substraction (no carry)"
-  for i in 0 ..< N:
-    ctx.mov scratch[i], a[i]
-    if i == 0:
-      ctx.sub scratch[i], M[i]
-    else:
-      ctx.sbb scratch[i], M[i]
-
-  # If we borrowed it means that we were smaller than
-  # the modulus and we don't need "scratch"
-  for i in 0 ..< N:
-    ctx.cmovnc a[i], scratch[i]
-    ctx.mov r[i], a[i]
-
-proc finalSubCanOverflow*(
-       ctx: var Assembler_x86,
-       r: Operand or OperandArray,
-       a, M, scratch: OperandArray,
-       overflowReg: Operand or Register
-     ) =
-  ## Reduce `a` into `r` modulo `M`
-  ## To be used when the final substraction can
-  ## also depend on the carry flag
-  ## This is in particular possible when the MSB
-  ## is set for the prime modulus
-  ## `overflowReg` should be a register that will be used
-  ## to store the carry flag
-
-  ctx.comment "Final substraction (may carry)"
-
-  # Mask: overflowed contains 0xFFFF or 0x0000
-  ctx.sbb overflowReg, overflowReg
-
-  # Now substract the modulus to test a < p
-  let N = M.len
-  for i in 0 ..< N:
-    ctx.mov scratch[i], a[i]
-    if i == 0:
-      ctx.sub scratch[i], M[i]
-    else:
-      ctx.sbb scratch[i], M[i]
-
-  # If it overflows here, it means that it was
-  # smaller than the modulus and we don't need `scratch`
-  ctx.sbb overflowReg, 0
-
-  # If we borrowed it means that we were smaller than
-  # the modulus and we don't need "scratch"
-  for i in 0 ..< N:
-    ctx.cmovnc a[i], scratch[i]
-    ctx.mov r[i], a[i]
-
 
 # Montgomery reduction
 # ------------------------------------------------------------
@@ -213,9 +154,9 @@ macro montyRedc2x_gen*[N: static int](
 
   # v is invalidated
   if hasSpareBit:
-    ctx.finalSubNoCarry(r, u, M, t)
+    ctx.finalSubNoCarryImpl(r, u, M, t)
   else:
-    ctx.finalSubCanOverflow(r, u, M, t, rax)
+    ctx.finalSubMayCarryImpl(r, u, M, t, rax)
 
   # Code generation
   result.add ctx.generate()
