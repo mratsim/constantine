@@ -463,7 +463,11 @@ func fromMont*(r: var Limbs, a, M: Limbs,
   #   - http://langevin.univ-tln.fr/cours/MLC/extra/montgomery.pdf
   #     Montgomery original paper
   when UseASM_X86_64 and a.len in {2 .. 6}:
-    fromMont_asm(r, a, M, m0ninv)
+    # ADX implies BMI2
+    if ({.noSideEffect.}: hasAdx()):
+      fromMont_asm_adx_bmi2(r, a, M, m0ninv)
+    else:
+      fromMont_asm(r, a, M, m0ninv)
   else:
     fromMont_CIOS(r, a, M, m0ninv)
 

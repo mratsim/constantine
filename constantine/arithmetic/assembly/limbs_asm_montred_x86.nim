@@ -234,7 +234,7 @@ func montRed_asm*[N: static int](
 # Montgomery conversion
 # ----------------------------------------------------------
 
-macro fromMont_gen*[N: static int](
+macro fromMont_gen[N: static int](
        r_MR: var array[N, SecretWord],
        a_MR: array[N, SecretWord],
        M_MR: array[N, SecretWord],
@@ -320,7 +320,7 @@ macro fromMont_gen*[N: static int](
     ctx.comment "  final carry"
     ctx.mov t[N-1], C
  
-  ctx.comment "Move to registers"
+  ctx.comment "Move to result destination"
   for i in 0 ..< N:
     ctx.mov r[i], t[i]
 
