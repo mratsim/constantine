@@ -1591,7 +1591,7 @@ func prod2xImpl(r: var CubicExt2x, a, b: CubicExt) =
   V2.prod2x(a.c2, b.c2)
 
   # r₀ = β ((a₁ + a₂)(b₁ + b₂) - v₁ - v₂) + v₀
-  when false: # CubicExt.has1extraBit():
+  when a.c0 is Fp and CubicExt.has1extraBit():
     t0.sumUnr(a.c1, a.c2)
     t1.sumUnr(b.c1, b.c2)
   else:
@@ -1604,7 +1604,7 @@ func prod2xImpl(r: var CubicExt2x, a, b: CubicExt) =
   r.c0.sum2xMod(r.c0, V0)
 
   # r₁ = (a₀ + a₁) * (b₀ + b₁) - v₀ - v₁ + β v₂
-  when false: # CubicExt.has1extraBit():
+  when a.c0 is Fp and CubicExt.has1extraBit():
     t0.sumUnr(a.c0, a.c1)
     t1.sumUnr(b.c0, b.c1)
   else:
@@ -1617,7 +1617,7 @@ func prod2xImpl(r: var CubicExt2x, a, b: CubicExt) =
   r.c1.sum2xMod(r.c1, r.c2)
 
   # r₂ = (a₀ + a₂) * (b₀ + b₂) - v₀ - v₂ + v₁
-  when false: # CubicExt.has1extraBit():
+  when a.c0 is Fp and CubicExt.has1extraBit():
     t0.sumUnr(a.c0, a.c2)
     t1.sumUnr(b.c0, b.c2)
   else:

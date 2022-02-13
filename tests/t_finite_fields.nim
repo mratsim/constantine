@@ -339,7 +339,7 @@ proc largeField() =
         var r, expected: BigInt[256]
 
         r.fromField(a)
-        expected.limbs.montyRedc2x(d.limbs2x, Secp256k1.Mod().limbs, Fp[Secp256k1].getNegInvModWord(), Fp[Secp256k1].getSpareBits())
+        expected.limbs.redc2xMont(d.limbs2x, Secp256k1.Mod().limbs, Fp[Secp256k1].getNegInvModWord(), Fp[Secp256k1].getSpareBits())
  
         check: bool(r == expected)
 
@@ -364,7 +364,7 @@ proc largeField() =
         var r, expected: BigInt[255]
 
         r.fromField(a)
-        expected.limbs.montyRedc2x(d.limbs2x, Curve25519.Mod().limbs, Fp[Curve25519].getNegInvModWord(), Fp[Curve25519].getSpareBits())
+        expected.limbs.redc2xMont(d.limbs2x, Curve25519.Mod().limbs, Fp[Curve25519].getNegInvModWord(), Fp[Curve25519].getSpareBits())
  
         check: bool(r == expected)
 

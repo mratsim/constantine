@@ -29,7 +29,7 @@ static: doAssert UseASM_X86_32
 # Montgomery reduction
 # ------------------------------------------------------------
 
-macro montyRedc2x_gen*[N: static int](
+macro redc2xMont_gen*[N: static int](
        r_MR: var array[N, SecretWord],
        a_MR: array[N*2, SecretWord],
        M_MR: array[N, SecretWord],
@@ -161,7 +161,7 @@ macro montyRedc2x_gen*[N: static int](
   # Code generation
   result.add ctx.generate()
 
-func montRed_asm*[N: static int](
+func redcMont_asm*[N: static int](
        r: var array[N, SecretWord],
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
@@ -170,12 +170,12 @@ func montRed_asm*[N: static int](
       ) =
   ## Constant-time Montgomery reduction
   static: doAssert UseASM_X86_64, "This requires x86-64."
-  montyRedc2x_gen(r, a, M, m0ninv, hasSpareBit)
+  redc2xMont_gen(r, a, M, m0ninv, hasSpareBit)
 
 # Montgomery conversion
 # ----------------------------------------------------------
 
-macro mulmont_by_1_gen[N: static int](
+macro mulMont_by_1_gen[N: static int](
        t_EIR: var array[N, SecretWord],
        M_PIR: array[N, SecretWord],
        m0ninv_REG: BaseType) =
@@ -262,7 +262,7 @@ func fromMont_asm*(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
   ## Constant-time Montgomery residue form to BigInt conversion
   var t{.noInit.} = a
   block:
-    t.mulmont_by_1_gen(M, m0ninv)
+    t.mulMont_by_1_gen(M, m0ninv)
 
   block: # Map from [0, 2p) to [0, p)
     var workspace{.noInit.}: typeof(r)
@@ -280,7 +280,7 @@ when isMainModule:
 
   # TODO: Properly handle low number of limbs
 
-  func montyRedc2x_Comba[N: static int](
+  func redc2xMont_Comba[N: static int](
         r: var array[N, SecretWord],
         a: array[N*2, SecretWord],
         M: array[N, SecretWord],
@@ -336,10 +336,10 @@ when isMainModule:
     var a_sqr{.noInit.}, na_sqr{.noInit.}: Limbs[2]
     var a_sqr_comba{.noInit.}, na_sqr_comba{.noInit.}: Limbs[2]
 
-    a_sqr.montRed_asm(adbl_sqr, M, 1, hasSpareBit = false)
-    na_sqr.montRed_asm(nadbl_sqr, M, 1, hasSpareBit = false)
-    a_sqr_comba.montyRedc2x_Comba(adbl_sqr, M, 1)
-    na_sqr_comba.montyRedc2x_Comba(nadbl_sqr, M, 1)
+    a_sqr.redcMont_asm(adbl_sqr, M, 1, hasSpareBit = false)
+    na_sqr.redcMont_asm(nadbl_sqr, M, 1, hasSpareBit = false)
+    a_sqr_comba.redc2xMont_Comba(adbl_sqr, M, 1)
+    na_sqr_comba.redc2xMont_Comba(nadbl_sqr, M, 1)
 
     debugecho "--------------------------------"
     debugecho "after:"

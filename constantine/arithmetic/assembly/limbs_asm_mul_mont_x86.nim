@@ -13,7 +13,7 @@ import
   ../../config/common,
   ../../primitives,
   ./limbs_asm_modular_x86,
-  ./limbs_asm_montred_x86,
+  ./limbs_asm_redc_mont_x86,
   ./limbs_asm_mul_x86
 
 # ############################################################
@@ -35,7 +35,7 @@ static: doAssert UseASM_X86_64
 # Montgomery multiplication
 # ------------------------------------------------------------
 # Fallback when no ADX and BMI2 support (MULX, ADCX, ADOX)
-macro montMul_CIOS_sparebit_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_MM: Limbs[N], m0ninv_MM: BaseType): untyped =
+macro mulMont_CIOS_sparebit_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_MM: Limbs[N], m0ninv_MM: BaseType): untyped =
   ## Generate an optimized Montgomery Multiplication kernel
   ## using the CIOS method
   ##
@@ -178,9 +178,9 @@ macro montMul_CIOS_sparebit_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M
 
   result.add ctx.generate()
 
-func montMul_CIOS_sparebit_asm*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
+func mulMont_CIOS_sparebit_asm*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   ## Constant-time modular multiplication
-  montMul_CIOS_sparebit_gen(r, a, b, M, m0ninv)
+  mulMont_CIOS_sparebit_gen(r, a, b, M, m0ninv)
 
 # Montgomery Squaring
 # ------------------------------------------------------------
@@ -193,7 +193,7 @@ func square_asm_inline[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen
   ## but not for stack variables
   sqr_gen(r, a)
 
-func montRed_asm_inline[N: static int](
+func redcMont_asm_inline[N: static int](
        r: var array[N, SecretWord],
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
@@ -204,9 +204,9 @@ func montRed_asm_inline[N: static int](
   ## Extra indirection as the generator assumes that
   ## arrays are pointers, which is true for parameters
   ## but not for stack variables
-  montyRedc2x_gen(r, a, M, m0ninv, hasSpareBit)
+  redc2xMont_gen(r, a, M, m0ninv, hasSpareBit)
 
-func montSquare_CIOS_asm*[N](
+func squareMont_CIOS_asm*[N](
        r: var Limbs[N],
        a, M: Limbs[N],
        m0ninv: BaseType,
@@ -214,4 +214,4 @@ func montSquare_CIOS_asm*[N](
   ## Constant-time modular squaring
   var r2x {.noInit.}: Limbs[2*N]
   r2x.square_asm_inline(a)
-  r.montRed_asm_inline(r2x, M, m0ninv, hasSpareBit)
+  r.redcMont_asm_inline(r2x, M, m0ninv, hasSpareBit)

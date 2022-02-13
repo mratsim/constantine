@@ -217,11 +217,11 @@ func double*(r: var FF, a: FF) {.meter.} =
 func prod*(r: var FF, a, b: FF) {.meter.} =
   ## Store the product of ``a`` by ``b`` modulo p into ``r``
   ## ``r`` is initialized / overwritten
-  r.mres.montyMul(a.mres, b.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
+  r.mres.mulMont(a.mres, b.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
 
 func square*(r: var FF, a: FF) {.meter.} =
   ## Squaring modulo p
-  r.mres.montySquare(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
+  r.mres.squareMont(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
 
 func neg*(r: var FF, a: FF) {.meter.} =
   ## Negate modulo p
@@ -344,7 +344,7 @@ func pow*(a: var FF, exponent: BigInt) =
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a big integer
   const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.montyPow(
+  a.mres.powMont(
     exponent,
     FF.fieldMod(), FF.getMontyOne(),
     FF.getNegInvModWord(), windowSize,
@@ -356,7 +356,7 @@ func pow*(a: var FF, exponent: openarray[byte]) =
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a big integer in canonical big endian representation
   const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.montyPow(
+  a.mres.powMont(
     exponent,
     FF.fieldMod(), FF.getMontyOne(),
     FF.getNegInvModWord(), windowSize,
@@ -375,7 +375,7 @@ func powUnsafeExponent*(a: var FF, exponent: BigInt) =
   ## - power analysis
   ## - timing analysis
   const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.montyPowUnsafeExponent(
+  a.mres.powMontUnsafeExponent(
     exponent,
     FF.fieldMod(), FF.getMontyOne(),
     FF.getNegInvModWord(), windowSize,
@@ -394,7 +394,7 @@ func powUnsafeExponent*(a: var FF, exponent: openarray[byte]) =
   ## - power analysis
   ## - timing analysis
   const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.montyPowUnsafeExponent(
+  a.mres.powMontUnsafeExponent(
     exponent,
     FF.fieldMod(), FF.getMontyOne(),
     FF.getNegInvModWord(), windowSize,
@@ -415,7 +415,7 @@ func `*=`*(a: var FF, b: FF) {.meter.} =
 
 func square*(a: var FF) {.meter.} =
   ## Squaring modulo p
-  a.mres.montySquare(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
+  a.mres.squareMont(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
 
 func square_repeated*(r: var FF, num: int) {.meter.} =
   ## Repeated squarings

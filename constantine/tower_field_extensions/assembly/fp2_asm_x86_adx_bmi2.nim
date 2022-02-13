@@ -13,8 +13,8 @@ import
   ../../arithmetic,
   ../../arithmetic/assembly/[
     limbs_asm_mul_x86_adx_bmi2,
-    limbs_asm_montmul_x86_adx_bmi2,
-    limbs_asm_montred_x86_adx_bmi2
+    limbs_asm_mul_mont_x86_adx_bmi2,
+    limbs_asm_redc_mont_x86_adx_bmi2
   ]
 
 
@@ -85,10 +85,10 @@ func sqrx_complex_sparebit_asm_adx*(
   var v0 {.noInit.}, v1 {.noInit.}: typeof(r.c0)
   v0.diff(a.c0, a.c1)
   v1.sum(a.c0, a.c1)
-  r.c1.mres.limbs.montMul_CIOS_sparebit_asm_adx(a.c0.mres.limbs, a.c1.mres.limbs, Fp.fieldMod().limbs, Fp.getNegInvModWord())
+  r.c1.mres.limbs.mulMont_CIOS_sparebit_asm_adx(a.c0.mres.limbs, a.c1.mres.limbs, Fp.fieldMod().limbs, Fp.getNegInvModWord())
   # aliasing: a unneeded now
   r.c1.double()
-  r.c0.mres.limbs.montMul_CIOS_sparebit_asm_adx(v0.mres.limbs, v1.mres.limbs, Fp.fieldMod().limbs, Fp.getNegInvModWord())
+  r.c0.mres.limbs.mulMont_CIOS_sparebit_asm_adx(v0.mres.limbs, v1.mres.limbs, Fp.fieldMod().limbs, Fp.getNegInvModWord())
 
 # 𝔽p2 multiplication
 # ------------------------------------------------------------
@@ -125,13 +125,13 @@ func mulx_complex_asm_adx*(
   ## Complex multiplication on 𝔽p2
   var d {.noInit.}: array[2,doublePrec(Fp)]
   d.mulx2x_complex_asm_adx(a, b)
-  r.c0.mres.limbs.montRed_asm_adx_impl(
+  r.c0.mres.limbs.redcMont_asm_adx_impl(
     d.c0.limbs2x,
     Fp.fieldMod().limbs,
     Fp.getNegInvModWord(),
     Fp.has1extraBit()
   )
-  r.c1.mres.limbs.montRed_asm_adx_impl(
+  r.c1.mres.limbs.redcMont_asm_adx_impl(
     d.c1.limbs2x,
     Fp.fieldMod().limbs,
     Fp.getNegInvModWord(),

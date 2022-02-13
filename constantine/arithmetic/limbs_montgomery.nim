@@ -15,12 +15,12 @@ import
   ./limbs, ./limbs_extmul
 
 when UseASM_X86_32:
-  import ./assembly/limbs_asm_montred_x86
+  import ./assembly/limbs_asm_redc_mont_x86
 when UseASM_X86_64:
   import
-    ./assembly/limbs_asm_montmul_x86,
-    ./assembly/limbs_asm_montmul_x86_adx_bmi2,
-    ./assembly/limbs_asm_montred_x86_adx_bmi2
+    ./assembly/limbs_asm_mul_mont_x86,
+    ./assembly/limbs_asm_mul_mont_x86_adx_bmi2,
+    ./assembly/limbs_asm_redc_mont_x86_adx_bmi2
 
 # ############################################################
 #
@@ -53,7 +53,7 @@ when UseASM_X86_64:
 
 # Montgomery Reduction
 # ------------------------------------------------------------
-func montyRedc2x_CIOS[N: static int](
+func redc2xMont_CIOS[N: static int](
        r: var array[N, SecretWord],
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
@@ -115,7 +115,7 @@ func montyRedc2x_CIOS[N: static int](
   discard res.csub(M, SecretWord(carry).isNonZero() or not(res < M))
   r = res
 
-func montyRedc2x_Comba[N: static int](
+func redc2xMont_Comba[N: static int](
        r: var array[N, SecretWord],
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
@@ -162,7 +162,7 @@ func montyRedc2x_Comba[N: static int](
 # Montgomery Multiplication
 # ------------------------------------------------------------
 
-func montyMul_CIOS_sparebit(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
+func mulMont_CIOS_sparebit(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   ## Montgomery Multiplication using Coarse Grained Operand Scanning (CIOS)
   ## and no-carry optimization.
   ## This requires the most significant word of the Modulus
@@ -194,7 +194,7 @@ func montyMul_CIOS_sparebit(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   discard t.csub(M, not(t < M))
   r = t
 
-func montyMul_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) {.used.} =
+func mulMont_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) {.used.} =
   ## Montgomery Multiplication using Coarse Grained Operand Scanning (CIOS)
   # - Analyzing and Comparing Montgomery Multiplication Algorithms
   #   Cetin Kaya Koc and Tolga Acar and Burton S. Kaliski Jr.
@@ -242,7 +242,7 @@ func montyMul_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) {.used.} =
   discard t.csub(M, tN.isNonZero() or not(t < M)) # TODO: (t >= M) is unnecessary for prime in the form (2^64)ʷ
   r = t
 
-func montyMul_FIPS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
+func mulMont_FIPS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   ## Montgomery Multiplication using Finely Integrated Product Scanning (FIPS)
   # - Architectural Enhancements for Montgomery
   #   Multiplication on Embedded RISC Processors
@@ -356,7 +356,7 @@ func fromMont_CIOS(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
 # ------------------------------------------------------------
 
 # TODO upstream, using Limbs[N] breaks semcheck
-func montyRedc2x*[N: static int](
+func redc2xMont*[N: static int](
        r: var array[N, SecretWord],
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
@@ -365,21 +365,21 @@ func montyRedc2x*[N: static int](
   when UseASM_X86_64 and r.len <= 6:
     # ADX implies BMI2
     if ({.noSideEffect.}: hasAdx()):
-      montRed_asm_adx(r, a, M, m0ninv, spareBits >= 1)
+      redcMont_asm_adx(r, a, M, m0ninv, spareBits >= 1)
     else:
       when r.len in {3..6}:
-        montRed_asm(r, a, M, m0ninv, spareBits >= 1)
+        redcMont_asm(r, a, M, m0ninv, spareBits >= 1)
       else:
-        montyRedc2x_CIOS(r, a, M, m0ninv)
-        # montyRedc2x_Comba(r, a, M, m0ninv)
+        redc2xMont_CIOS(r, a, M, m0ninv)
+        # redc2xMont_Comba(r, a, M, m0ninv)
   elif UseASM_X86_64 and r.len in {3..6}:
     # TODO: Assembly faster than GCC but slower than Clang
-    montRed_asm(r, a, M, m0ninv, spareBits >= 1)
+    redcMont_asm(r, a, M, m0ninv, spareBits >= 1)
   else:
-    montyRedc2x_CIOS(r, a, M, m0ninv)
-    # montyRedc2x_Comba(r, a, M, m0ninv)
+    redc2xMont_CIOS(r, a, M, m0ninv)
+    # redc2xMont_Comba(r, a, M, m0ninv)
 
-func montyMul*(
+func mulMont*(
         r: var Limbs, a, b, M: Limbs,
         m0ninv: static BaseType, spareBits: static int) {.inline.} =
   ## Compute r <- a*b (mod M) in the Montgomery domain
@@ -412,15 +412,15 @@ func montyMul*(
     when UseASM_X86_64 and a.len in {2 .. 6}: # TODO: handle spilling
       # ADX implies BMI2
       if ({.noSideEffect.}: hasAdx()):
-        montMul_CIOS_sparebit_asm_adx(r, a, b, M, m0ninv)
+        mulMont_CIOS_sparebit_asm_adx(r, a, b, M, m0ninv)
       else:
-        montMul_CIOS_sparebit_asm(r, a, b, M, m0ninv)
+        mulMont_CIOS_sparebit_asm(r, a, b, M, m0ninv)
     else:
-      montyMul_CIOS_sparebit(r, a, b, M, m0ninv)
+      mulMont_CIOS_sparebit(r, a, b, M, m0ninv)
   else:
-    montyMul_FIPS(r, a, b, M, m0ninv)
+    mulMont_FIPS(r, a, b, M, m0ninv)
 
-func montySquare*[N](r: var Limbs[N], a, M: Limbs[N],
+func squareMont*[N](r: var Limbs[N], a, M: Limbs[N],
                   m0ninv: static BaseType, spareBits: static int) {.inline.} =
   ## Compute r <- a^2 (mod M) in the Montgomery domain
   ## `m0ninv` = -1/M (mod SecretWord). Our words are 2^31 or 2^63
@@ -428,21 +428,21 @@ func montySquare*[N](r: var Limbs[N], a, M: Limbs[N],
   when UseASM_X86_64 and a.len in {4, 6}:
     # ADX implies BMI2
     if ({.noSideEffect.}: hasAdx()):
-      # With ADX and spare bit, montSquare_CIOS_asm_adx
+      # With ADX and spare bit, squareMont_CIOS_asm_adx
       # which uses unfused squaring then Montgomery reduction
       # is slightly slower than fused Montgomery multiplication
       when spareBits >= 1:
-        montMul_CIOS_sparebit_asm_adx(r, a, a, M, m0ninv)
+        mulMont_CIOS_sparebit_asm_adx(r, a, a, M, m0ninv)
       else:
-        montSquare_CIOS_asm_adx(r, a, M, m0ninv, spareBits >= 1)
+        squareMont_CIOS_asm_adx(r, a, M, m0ninv, spareBits >= 1)
     else:
-      montSquare_CIOS_asm(r, a, M, m0ninv, spareBits >= 1)
+      squareMont_CIOS_asm(r, a, M, m0ninv, spareBits >= 1)
   elif UseASM_X86_64:
     var r2x {.noInit.}: Limbs[2*N]
     r2x.square(a)
-    r.montyRedc2x(r2x, M, m0ninv, spareBits)
+    r.redc2xMont(r2x, M, m0ninv, spareBits)
   else:
-    montyMul(r, a, a, M, m0ninv, spareBits)
+    mulMont(r, a, a, M, m0ninv, spareBits)
     
 func fromMont*(r: var Limbs, a, M: Limbs,
            m0ninv: static BaseType, spareBits: static int) =
@@ -491,7 +491,7 @@ func getMont*(r: var Limbs, a, M, r2modM: Limbs,
   ## Important: `r` is overwritten
   ## The result `r` buffer size MUST be at least the size of `M` buffer
   # Reference: https://eprint.iacr.org/2017/1057.pdf
-  montyMul(r, a, r2ModM, M, m0ninv, spareBits)
+  mulMont(r, a, r2ModM, M, m0ninv, spareBits)
 
 # Montgomery Modular Exponentiation
 # ------------------------------------------
@@ -534,7 +534,7 @@ func getWindowLen(bufLen: int): uint =
   while (1 shl result) + 1 > bufLen:
     dec result
 
-func montyPowPrologue(
+func powMontPrologue(
        a: var Limbs, M, one: Limbs,
        m0ninv: static BaseType,
        scratchspace: var openarray[Limbs],
@@ -552,12 +552,12 @@ func montyPowPrologue(
   else:
     scratchspace[2] = a
     for k in 2 ..< 1 shl result:
-      scratchspace[k+1].montyMul(scratchspace[k], a, M, m0ninv, spareBits)
+      scratchspace[k+1].mulMont(scratchspace[k], a, M, m0ninv, spareBits)
 
   # Set a to one
   a = one
 
-func montyPowSquarings(
+func powMontSquarings(
         a: var Limbs,
         exponent: openarray[byte],
         M: Limbs,
@@ -602,12 +602,12 @@ func montyPowSquarings(
 
   # We have k bits and can do k squaring
   for i in 0 ..< k:
-    tmp.montySquare(a, M, m0ninv, spareBits)
+    tmp.squareMont(a, M, m0ninv, spareBits)
     a = tmp
 
   return (k, bits)
 
-func montyPow*(
+func powMont*(
        a: var Limbs,
        exponent: openarray[byte],
        M, one: Limbs,
@@ -641,7 +641,7 @@ func montyPow*(
   ## A window of size 5 requires (2^5 + 1)*(381 + 7)/8 = 33 * 48 bytes = 1584 bytes
   ## of scratchspace (on the stack).
 
-  let window = montyPowPrologue(a, M, one, m0ninv, scratchspace, spareBits)
+  let window = powMontPrologue(a, M, one, m0ninv, scratchspace, spareBits)
 
   # We process bits with from most to least significant.
   # At each loop iteration with have acc_len bits in acc.
@@ -652,7 +652,7 @@ func montyPow*(
     acc, acc_len: uint
     e = 0
   while acc_len > 0 or e < exponent.len:
-    let (k, bits) = montyPowSquarings(
+    let (k, bits) = powMontSquarings(
       a, exponent, M, m0ninv,
       scratchspace[0], window,
       acc, acc_len, e,
@@ -671,10 +671,10 @@ func montyPow*(
 
     # Multiply with the looked-up value
     # we keep the product only if the exponent bits are not all zeroes
-    scratchspace[0].montyMul(a, scratchspace[1], M, m0ninv, spareBits)
+    scratchspace[0].mulMont(a, scratchspace[1], M, m0ninv, spareBits)
     a.ccopy(scratchspace[0], SecretWord(bits).isNonZero())
 
-func montyPowUnsafeExponent*(
+func powMontUnsafeExponent*(
        a: var Limbs,
        exponent: openarray[byte],
        M, one: Limbs,
@@ -694,13 +694,13 @@ func montyPowUnsafeExponent*(
 
   # TODO: scratchspace[1] is unused when window > 1
 
-  let window = montyPowPrologue(a, M, one, m0ninv, scratchspace, spareBits)
+  let window = powMontPrologue(a, M, one, m0ninv, scratchspace, spareBits)
 
   var
     acc, acc_len: uint
     e = 0
   while acc_len > 0 or e < exponent.len:
-    let (_, bits) = montyPowSquarings(
+    let (_, bits) = powMontSquarings(
       a, exponent, M, m0ninv,
       scratchspace[0], window,
       acc, acc_len, e,
@@ -710,10 +710,10 @@ func montyPowUnsafeExponent*(
     ## Warning ⚠️: Exposes the exponent bits
     if bits != 0:
       if window > 1:
-        scratchspace[0].montyMul(a, scratchspace[1+bits], M, m0ninv, spareBits)
+        scratchspace[0].mulMont(a, scratchspace[1+bits], M, m0ninv, spareBits)
       else:
         # scratchspace[1] holds the original `a`
-        scratchspace[0].montyMul(a, scratchspace[1], M, m0ninv, spareBits)
+        scratchspace[0].mulMont(a, scratchspace[1], M, m0ninv, spareBits)
       a = scratchspace[0]
 
 {.pop.} # raises no exceptions

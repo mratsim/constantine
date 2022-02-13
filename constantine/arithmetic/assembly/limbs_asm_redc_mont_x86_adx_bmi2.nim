@@ -33,7 +33,7 @@ static: doAssert UseASM_X86_64
 # Montgomery reduction
 # ------------------------------------------------------------
 
-macro montyRedc2x_adx_gen*[N: static int](
+macro redc2xMont_adx_gen*[N: static int](
        r_MR: var array[N, SecretWord],
        a_MR: array[N*2, SecretWord],
        M_MR: array[N, SecretWord],
@@ -139,7 +139,7 @@ macro montyRedc2x_adx_gen*[N: static int](
   # Code generation
   result.add ctx.generate()
 
-func montRed_asm_adx_impl*[N: static int](
+func redcMont_asm_adx_impl*[N: static int](
        r: var array[N, SecretWord],
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
@@ -148,9 +148,9 @@ func montRed_asm_adx_impl*[N: static int](
       ) =
   ## Constant-time Montgomery reduction
   ## Inline-version
-  montyRedc2x_adx_gen(r, a, M, m0ninv, hasSpareBit)
+  redc2xMont_adx_gen(r, a, M, m0ninv, hasSpareBit)
 
-func montRed_asm_adx*[N: static int](
+func redcMont_asm_adx*[N: static int](
        r: var array[N, SecretWord],
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
@@ -158,13 +158,13 @@ func montRed_asm_adx*[N: static int](
        hasSpareBit: static bool
       ) =
   ## Constant-time Montgomery reduction
-  montRed_asm_adx_impl(r, a, M, m0ninv, hasSpareBit)
+  redcMont_asm_adx_impl(r, a, M, m0ninv, hasSpareBit)
 
 
 # Montgomery conversion
 # ----------------------------------------------------------
 
-macro mulmont_by_1_adx_gen[N: static int](
+macro mulMont_by_1_adx_gen[N: static int](
        t_EIR: var array[N, SecretWord],
        M_PIR: array[N, SecretWord],
        m0ninv_REG: BaseType) =
@@ -257,7 +257,7 @@ func fromMont_asm_adx*(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
   ## Requires ADX and BMI2 instruction set
   var t{.noInit.} = a
   block:
-    t.mulmont_by_1_adx_gen(M, m0ninv)
+    t.mulMont_by_1_adx_gen(M, m0ninv)
 
   block: # Map from [0, 2p) to [0, p)
     var workspace{.noInit.}: typeof(r)
