@@ -8,7 +8,8 @@
 
 import  std/unittest,
         ../constantine/arithmetic,
-        ../constantine/io/io_fields,
+        ../constantine/arithmetic/limbs_montgomery,
+        ../constantine/io/[io_bigints, io_fields],
         ../constantine/config/curves
 
 static: doAssert defined(testingCurves), "This modules requires the -d:testingCurves compile option"
@@ -316,5 +317,55 @@ proc largeField() =
       r.neg(a)
 
       check: bool r.isZero()
+
+    test "fromMont doesn't need a final substraction with 256-bit prime (full word used)":
+      block:
+        var a: Fp[Secp256k1]
+        a.mres = Fp[Secp256k1].getMontyPrimeMinus1()
+        let expected = BigInt[256].fromHex"0xFFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2E"
+
+        var r: BigInt[256]
+        r.fromField(a)
+
+        check: bool(r == expected)
+      block:
+        var a: Fp[Secp256k1]
+        var d: FpDbl[Secp256k1]
+
+        # Set Montgomery repr to the largest field element in Montgomery Residue form
+        a.mres    = BigInt[256].fromHex"0xFFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2E"
+        d.limbs2x = (BigInt[512].fromHex"0xFFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2E").limbs
+
+        var r, expected: BigInt[256]
+
+        r.fromField(a)
+        expected.limbs.redc2xMont(d.limbs2x, Secp256k1.Mod().limbs, Fp[Secp256k1].getNegInvModWord(), Fp[Secp256k1].getSpareBits())
+ 
+        check: bool(r == expected)
+
+    test "fromMont doesn't need a final substraction with 255-bit prime (1 spare bit)":
+      block:
+        var a: Fp[Curve25519]
+        a.mres = Fp[Curve25519].getMontyPrimeMinus1()
+        let expected = BigInt[255].fromHex"0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec"
+
+        var r: BigInt[255]
+        r.fromField(a)
+
+        check: bool(r == expected)
+      block:
+        var a: Fp[Curve25519]
+        var d: FpDbl[Curve25519]
+
+        # Set Montgomery repr to the largest field element in Montgomery Residue form
+        a.mres    = BigInt[255].fromHex"0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec"
+        d.limbs2x = (BigInt[512].fromHex"0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec").limbs
+
+        var r, expected: BigInt[255]
+
+        r.fromField(a)
+        expected.limbs.redc2xMont(d.limbs2x, Curve25519.Mod().limbs, Fp[Curve25519].getNegInvModWord(), Fp[Curve25519].getSpareBits())
+ 
+        check: bool(r == expected)
 
 largeField()

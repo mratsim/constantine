@@ -154,15 +154,15 @@ func expandMessageXMD*[B1, B2, B3: byte|char, len_in_bytes: static int](
       return
 
 func redc2x[FF](r: var FF, big2x: BigInt) {.inline.} =
-  r.mres.limbs.montyRedc2x(
+  r.mres.limbs.redc2xMont(
     big2x.limbs,
     FF.fieldMod().limbs,
     FF.getNegInvModWord(),
     FF.getSpareBits()
   )
 
-func montyMul(r: var BigInt, a, b: BigInt, FF: type) {.inline.} =
-  r.limbs.montyMul(
+func mulMont(r: var BigInt, a, b: BigInt, FF: type) {.inline.} =
+  r.limbs.mulMont(
     a.limbs, b.limbs,
     FF.fieldMod().limbs,
     FF.getNegInvModWord(),
@@ -228,14 +228,14 @@ func hashToField*[Field; B1, B2, B3: byte|char, count: static int](
       # Reduces modulo p and output in Montgomery domain
       when m == 1:
         output[i].redc2x(big2x)
-        output[i].mres.montyMul(
+        output[i].mres.mulMont(
           output[i].mres,
           Fp[Field.C].getR3ModP(),
           Fp[Field.C])
 
       else:
         output[i].coords[j].redc2x(big2x)
-        output[i].coords[j].mres.montyMul(
+        output[i].coords[j].mres.mulMont(
           output[i].coords[j].mres,
           Fp[Field.C].getR3ModP(),
           Fp[Field.C])

@@ -91,6 +91,20 @@ proc sqrBench*(T: typedesc, iters: int) =
   bench("Squaring", T, iters):
     r.square(x)
 
+proc toBigBench*(T: typedesc, iters: int) =
+  var r: matchingBigInt(T.C)
+  let x = rng.random_unsafe(T)
+  preventOptimAway(r)
+  bench("BigInt <- field conversion", T, iters):
+    r.fromField(x)
+
+proc toFieldBench*(T: typedesc, iters: int) =
+  var r: T
+  let x = rng.random_unsafe(matchingBigInt(T.C))
+  preventOptimAway(r)
+  bench("BigInt -> field conversion", T, iters):
+    r.fromBig(x)
+
 proc invBench*(T: typedesc, iters: int) =
   var r: T
   let x = rng.random_unsafe(T)

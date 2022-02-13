@@ -8,12 +8,12 @@
 
 import
   # Standard library
-  std/macros,
+  std/[macros, algorithm],
   # Internal
   ../../config/common,
   ../../primitives,
-  ./limbs_asm_montred_x86,
-  ./limbs_asm_montred_x86_adx_bmi2,
+  ./limbs_asm_modular_x86,
+  ./limbs_asm_redc_mont_x86_adx_bmi2,
   ./limbs_asm_mul_x86_adx_bmi2
 
 # ############################################################
@@ -36,6 +36,7 @@ static: doAssert UseASM_X86_64
 
 # Montgomery Multiplication
 # ------------------------------------------------------------
+
 proc mulx_by_word(
        ctx: var Assembler_x86,
        hi: Operand,
@@ -149,7 +150,7 @@ proc partialRedx(
     ctx.mov  rdx, t[0]
     ctx.imul rdx, m0ninv
 
-    # Clear carry flags - TODO: necessary?
+    # Clear carry flags
     ctx.`xor` S, S
 
     # S,_ := t[0] + m*M[0]
@@ -157,6 +158,8 @@ proc partialRedx(
     ctx.mulx S, lo, M[0], rdx
     ctx.adcx lo, t[0] # set the carry flag for the future ADCX
     ctx.mov  t[0], S
+
+    ctx.mov lo, 0
 
     # for j=1 to N-1
     #   (S,t[j-1]) := t[j] + m*M[j] + S
@@ -170,26 +173,31 @@ proc partialRedx(
     # Last carries
     # t[N-1] = S + C
     ctx.comment "  Reduction carry "
-    ctx.mov S, 0
-    ctx.adcx t[N-1], S
-    ctx.adox t[N-1], C
+    ctx.adcx lo, C      # lo contains 0 so C += S
+    ctx.adox t[N-1], lo
 
-macro montMul_CIOS_sparebit_adx_bmi2_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_MM: Limbs[N], m0ninv_MM: BaseType): untyped =
+macro mulMont_CIOS_sparebit_adx_gen[N: static int](
+        r_PIR: var Limbs[N], a_PIR, b_PIR,
+        M_PIR: Limbs[N], m0ninv_REG: BaseType,
+        skipReduction: static bool): untyped =
   ## Generate an optimized Montgomery Multiplication kernel
   ## using the CIOS method
   ## This requires the most significant word of the Modulus
   ##   M[^1] < high(SecretWord) shr 2 (i.e. less than 0b00111...1111)
   ## https://hackmd.io/@zkteam/modular_multiplication
 
+  # No register spilling handling
+  doAssert N <= 6, "The Assembly-optimized montgomery multiplication requires at most 6 limbs."
+
   result = newStmtList()
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    scratchSlots = max(N, 6)
+    scratchSlots = 6
 
-    r = init(OperandArray, nimSymbol = r_MM, N, PointerInReg, InputOutput_EnsureClobber)
+    r = init(OperandArray, nimSymbol = r_PIR, N, PointerInReg, InputOutput_EnsureClobber)
     # We could force M as immediate by specializing per moduli
-    M = init(OperandArray, nimSymbol = M_MM, N, PointerInReg, Input)
+    M = init(OperandArray, nimSymbol = M_PIR, N, PointerInReg, Input)
     # If N is too big, we need to spill registers. TODO.
     t = init(OperandArray, nimSymbol = ident"t", N, ElemsInReg, Output_EarlyClobber)
     # MultiPurpose Register slots
@@ -220,12 +228,12 @@ macro montMul_CIOS_sparebit_adx_bmi2_gen[N: static int](r_MM: var Limbs[N], a_MM
   result.add quote do:
     static: doAssert: sizeof(SecretWord) == sizeof(ByteAddress)
 
-    var `tsym`: typeof(`r_MM`) # zero init
+    var `tsym`{.noInit.}: typeof(`r_PIR`) # zero init
     # Assumes 64-bit limbs on 64-bit arch (or you can't store an address)
     var `scratchSym` {.noInit.}: Limbs[`scratchSlots`]
-    `scratchSym`[0] = cast[SecretWord](`a_MM`[0].unsafeAddr)
-    `scratchSym`[1] = cast[SecretWord](`b_MM`[0].unsafeAddr)
-    `scratchSym`[4] = SecretWord `m0ninv_MM`
+    `scratchSym`[0] = cast[SecretWord](`a_PIR`[0].unsafeAddr)
+    `scratchSym`[1] = cast[SecretWord](`b_PIR`[0].unsafeAddr)
+    `scratchSym`[4] = SecretWord `m0ninv_REG`
 
   # Algorithm
   # -----------------------------------------
@@ -237,9 +245,6 @@ macro montMul_CIOS_sparebit_adx_bmi2_gen[N: static int](r_MM: var Limbs[N], a_MM
   # 	for j=1 to N-1
   # 		(C,t[j-1]) := t[j] + m*M[j] + C
   #   t[N-1] = C + A
-
-  # No register spilling handling
-  doAssert N <= 6, "The Assembly-optimized montgomery multiplication requires at most 6 limbs."
 
   for i in 0 ..< N:
     if i == 0:
@@ -263,47 +268,35 @@ macro montMul_CIOS_sparebit_adx_bmi2_gen[N: static int](r_MM: var Limbs[N], a_MM
       lo, C
     )
 
-  ctx.finalSubNoCarry(
-    r, t, M,
-    scratch
-  )
+  if skipReduction:
+    for i in 0 ..< N:
+      ctx.mov r[i], t[i]
+  else:
+    ctx.finalSubNoCarryImpl(
+      r, t, M,
+      scratch
+    )
 
   result.add ctx.generate
 
-func montMul_CIOS_sparebit_asm_adx_bmi2*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
-  ## Constant-time modular multiplication
-  ## Requires the prime modulus to have a spare bit in the representation. (Hence if using 64-bit words and 4 words, to be at most 255-bit)
-  montMul_CIOS_sparebit_adx_bmi2_gen(r, a, b, M, m0ninv)
+func mulMont_CIOS_sparebit_asm_adx*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipReduction: static bool = false) =
+  ## Constant-time Montgomery multiplication
+  ## If "skipReduction" is set
+  ## the result is in the range [0, 2M)
+  ## otherwise the result is in the range [0, M)
+  ## 
+  ## This procedure can only be called if the modulus doesn't use the full bitwidth of its underlying representation
+  r.mulMont_CIOS_sparebit_adx_gen(a, b, M, m0ninv, skipReduction)
 
 # Montgomery Squaring
 # ------------------------------------------------------------
 
-func square_asm_adx_bmi2_inline[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) {.inline.} =
-  ## Multi-precision Squaring
-  ## Extra indirection as the generator assumes that
-  ## arrays are pointers, which is true for parameters
-  ## but not for stack variables.
-  sqrx_gen(r, a)
-
-func montRed_asm_adx_bmi2_inline[N: static int](
-       r: var array[N, SecretWord],
-       a: array[N*2, SecretWord],
-       M: array[N, SecretWord],
-       m0ninv: BaseType,
-       hasSpareBit: static bool
-      ) {.inline.} =
-  ## Constant-time Montgomery reduction
-  ## Extra indirection as the generator assumes that
-  ## arrays are pointers, which is true for parameters
-  ## but not for stack variables.
-  montyRedc2x_adx_gen(r, a, M, m0ninv, hasSpareBit)
-
-func montSquare_CIOS_asm_adx_bmi2*[N](
+func squareMont_CIOS_asm_adx*[N](
        r: var Limbs[N],
        a, M: Limbs[N],
        m0ninv: BaseType,
-       hasSpareBit: static bool) =
+       hasSpareBit, skipReduction: static bool) =
   ## Constant-time modular squaring
   var r2x {.noInit.}: Limbs[2*N]
-  r2x.square_asm_adx_bmi2_inline(a)
-  r.montRed_asm_adx_bmi2_inline(r2x, M, m0ninv, hasSpareBit)
+  r2x.square_asm_adx_inline(a)
+  r.redcMont_asm_adx(r2x, M, m0ninv, hasSpareBit, skipReduction)

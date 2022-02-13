@@ -56,16 +56,20 @@ func fromBig*(dst: var FF, src: BigInt) =
   when nimvm:
     dst.mres.montyResidue_precompute(src, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord())
   else:
-    dst.mres.montyResidue(src, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord(), FF.getSpareBits())
+    dst.mres.getMont(src, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord(), FF.getSpareBits())
 
 func fromBig*[C: static Curve](T: type FF[C], src: BigInt): FF[C] {.noInit.} =
   ## Convert a BigInt to its Montgomery form
   result.fromBig(src)
 
+func fromField*(dst: var BigInt, src: FF) {.noInit, inline.} =
+  ## Convert a finite-field element to a BigInt in natural representation
+  dst.fromMont(src.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
+
 func toBig*(src: FF): auto {.noInit, inline.} =
   ## Convert a finite-field element to a BigInt in natural representation
   var r {.noInit.}: typeof(src.mres)
-  r.redc(src.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
+  r.fromField(src)
   return r
 
 # Copy
@@ -102,7 +106,7 @@ func cswap*(a, b: var FF, ctl: CTBool) {.meter.} =
 
 # Note: for `+=`, double, sum
 #       not(a.mres < FF.fieldMod()) is unnecessary if the prime has the form
-#       (2^64)^w - 1 (if using uint64 words).
+#       (2^64)ʷ - 1 (if using uint64 words).
 # In practice I'm not aware of such prime being using in elliptic curves.
 # 2^127 - 1 and 2^521 - 1 are used but 127 and 521 are not multiple of 32/64
 
@@ -148,7 +152,7 @@ func setMinusOne*(a: var FF) =
 func `+=`*(a: var FF, b: FF) {.meter.} =
   ## In-place addition modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    addmod_asm(a.mres.limbs, a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs)
+    addmod_asm(a.mres.limbs, a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs, FF.getSpareBits() >= 1)
   else:
     var overflowed = add(a.mres, b.mres)
     overflowed = overflowed or not(a.mres < FF.fieldMod())
@@ -165,7 +169,7 @@ func `-=`*(a: var FF, b: FF) {.meter.} =
 func double*(a: var FF) {.meter.} =
   ## Double ``a`` modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    addmod_asm(a.mres.limbs, a.mres.limbs, a.mres.limbs, FF.fieldMod().limbs)
+    addmod_asm(a.mres.limbs, a.mres.limbs, a.mres.limbs, FF.fieldMod().limbs, FF.getSpareBits() >= 1)
   else:
     var overflowed = double(a.mres)
     overflowed = overflowed or not(a.mres < FF.fieldMod())
@@ -175,7 +179,7 @@ func sum*(r: var FF, a, b: FF) {.meter.} =
   ## Sum ``a`` and ``b`` into ``r`` modulo p
   ## r is initialized/overwritten
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    addmod_asm(r.mres.limbs, a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs)
+    addmod_asm(r.mres.limbs, a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs, FF.getSpareBits() >= 1)
   else:
     var overflowed = r.mres.sum(a.mres, b.mres)
     overflowed = overflowed or not(r.mres < FF.fieldMod())
@@ -204,20 +208,20 @@ func double*(r: var FF, a: FF) {.meter.} =
   ## Double ``a`` into ``r``
   ## `r` is initialized/overwritten
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    addmod_asm(r.mres.limbs, a.mres.limbs, a.mres.limbs, FF.fieldMod().limbs)
+    addmod_asm(r.mres.limbs, a.mres.limbs, a.mres.limbs, FF.fieldMod().limbs, FF.getSpareBits() >= 1)
   else:
     var overflowed = r.mres.double(a.mres)
     overflowed = overflowed or not(r.mres < FF.fieldMod())
     discard csub(r.mres, FF.fieldMod(), overflowed)
 
-func prod*(r: var FF, a, b: FF) {.meter.} =
+func prod*(r: var FF, a, b: FF, skipReduction: static bool = false) {.meter.} =
   ## Store the product of ``a`` by ``b`` modulo p into ``r``
   ## ``r`` is initialized / overwritten
-  r.mres.montyMul(a.mres, b.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
+  r.mres.mulMont(a.mres, b.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits(), skipReduction)
 
-func square*(r: var FF, a: FF) {.meter.} =
+func square*(r: var FF, a: FF, skipReduction: static bool = false) {.meter.} =
   ## Squaring modulo p
-  r.mres.montySquare(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
+  r.mres.squareMont(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits(), skipReduction)
 
 func neg*(r: var FF, a: FF) {.meter.} =
   ## Negate modulo p
@@ -261,20 +265,20 @@ func cneg*(r: var FF, a: FF, ctl: SecretBool) {.meter.} =
 func cneg*(a: var FF, ctl: SecretBool) {.meter.} =
   ## Constant-time in-place conditional negation
   ## The negation is only performed if ctl is "true"
-  var t = a
+  var t {.noInit.} = a
   a.cneg(t, ctl)
 
 func cadd*(a: var FF, b: FF, ctl: SecretBool) {.meter.} =
   ## Constant-time out-place conditional addition
   ## The addition is only performed if ctl is "true"
-  var t = a
+  var t {.noInit.} = a
   t += b
   a.ccopy(t, ctl)
 
 func csub*(a: var FF, b: FF, ctl: SecretBool) {.meter.} =
   ## Constant-time out-place conditional substraction
   ## The substraction is only performed if ctl is "true"
-  var t = a
+  var t {.noInit.} = a
   t -= b
   a.ccopy(t, ctl)
 
@@ -340,7 +344,7 @@ func pow*(a: var FF, exponent: BigInt) =
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a big integer
   const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.montyPow(
+  a.mres.powMont(
     exponent,
     FF.fieldMod(), FF.getMontyOne(),
     FF.getNegInvModWord(), windowSize,
@@ -352,7 +356,7 @@ func pow*(a: var FF, exponent: openarray[byte]) =
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a big integer in canonical big endian representation
   const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.montyPow(
+  a.mres.powMont(
     exponent,
     FF.fieldMod(), FF.getMontyOne(),
     FF.getNegInvModWord(), windowSize,
@@ -371,7 +375,7 @@ func powUnsafeExponent*(a: var FF, exponent: BigInt) =
   ## - power analysis
   ## - timing analysis
   const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.montyPowUnsafeExponent(
+  a.mres.powMontUnsafeExponent(
     exponent,
     FF.fieldMod(), FF.getMontyOne(),
     FF.getNegInvModWord(), windowSize,
@@ -390,7 +394,7 @@ func powUnsafeExponent*(a: var FF, exponent: openarray[byte]) =
   ## - power analysis
   ## - timing analysis
   const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.montyPowUnsafeExponent(
+  a.mres.powMontUnsafeExponent(
     exponent,
     FF.fieldMod(), FF.getMontyOne(),
     FF.getNegInvModWord(), windowSize,
@@ -409,20 +413,38 @@ func `*=`*(a: var FF, b: FF) {.meter.} =
   ## Multiplication modulo p
   a.prod(a, b)
 
-func square*(a: var FF) {.meter.} =
+func square*(a: var FF, skipReduction: static bool = false) {.meter.} =
   ## Squaring modulo p
-  a.mres.montySquare(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
+  a.square(a, skipReduction)
 
-func square_repeated*(r: var FF, num: int) {.meter.} =
+func square_repeated*(a: var FF, num: int, skipReduction: static bool = false) {.meter.} =
   ## Repeated squarings
+  # Except in Tonelli-Shanks, num is always known at compile-time
+  # and square repeated is inlined, so the compiler should optimize the branches away.
+  
+  # TODO: understand the conditions to avoid the final substraction
   for _ in 0 ..< num:
-    r.square()
+    a.square(skipReduction = false)
 
-func square_repeated*(r: var FF, a: FF, num: int) {.meter.} =
+func square_repeated*(r: var FF, a: FF, num: int, skipReduction: static bool = false) {.meter.} =
   ## Repeated squarings
+  
+  # TODO: understand the conditions to avoid the final substraction
   r.square(a)
   for _ in 1 ..< num:
     r.square()
+
+func square_repeated_then_mul*(a: var FF, num: int, b: FF, skipReduction: static bool = false) {.meter.} =
+  ## Square `a`, `num` times and then multiply by b
+  ## Assumes at least 1 squaring
+  a.square_repeated(num, skipReduction = false)
+  a.prod(a, b, skipReduction = skipReduction)
+
+func square_repeated_then_mul*(r: var FF, a: FF, num: int, b: FF, skipReduction: static bool = false) {.meter.} =
+  ## Square `a`, `num` times and then multiply by b
+  ## Assumes at least 1 squaring
+  r.square_repeated(a, num, skipReduction = false)
+  r.prod(r, b, skipReduction = skipReduction)
 
 func `*=`*(a: var FF, b: static int) =
   ## Multiplication by a small integer known at compile-time

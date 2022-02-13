@@ -355,7 +355,7 @@ func r3mod*(M: BigInt): BigInt =
   ## This is used in hash-to-curve to
   ## reduce a double-sized bigint mod M
   ## and map it to the Montgomery domain
-  ## with just redc2x + montyMul
+  ## with just redc2x + mulMont
   r_powmod(3, M)
 
 func montyOne*(M: BigInt): BigInt =
@@ -391,7 +391,7 @@ func primePlus1div2*(P: BigInt): BigInt =
 
   # (P+1)/2 = P/2 + 1 if P is odd,
   # this avoids overflowing if the prime uses all bits
-  # i.e. in the form (2^64)^w - 1 or (2^32)^w - 1
+  # i.e. in the form (2^64)ʷ - 1 or (2^32)ʷ - 1
 
   result = P
   result.shiftRight(1)
@@ -491,7 +491,7 @@ func toCanonicalIntRepr*[bits: static int](
 # ############################################################
 # This is needed to avoid recursive dependencies
 
-func montyMul_precompute(r: var BigInt, a, b, M: BigInt, m0ninv: BaseType) =
+func mulMont_precompute(r: var BigInt, a, b, M: BigInt, m0ninv: BaseType) =
   ## Montgomery Multiplication using Coarse Grained Operand Scanning (CIOS)
   var t: typeof(M)   # zero-init
   const N = t.limbs.len
@@ -527,4 +527,4 @@ func montyResidue_precompute*(r: var BigInt, a, M, r2modM: BigInt,
   ## Transform a bigint ``a`` from it's natural representation (mod N)
   ## to a the Montgomery n-residue representation
   ## This is intended for compile-time precomputations-only
-  montyMul_precompute(r, a, r2ModM, M, m0ninv)
+  mulMont_precompute(r, a, r2ModM, M, m0ninv)

@@ -111,7 +111,7 @@ proc mulaccx_by_word(
   ctx.adcx hi, rdx
   ctx.adox hi, rdx
 
-macro mulx_gen[rLen, aLen, bLen: static int](rx: var Limbs[rLen], ax: Limbs[aLen], bx: Limbs[bLen]) =
+macro mulx_gen[rLen, aLen, bLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs[aLen], b_PIR: Limbs[bLen]) =
   ## `a`, `b`, `r` can have a different number of limbs
   ## if `r`.limbs.len < a.limbs.len + b.limbs.len
   ## The result will be truncated, i.e. it will be
@@ -123,9 +123,9 @@ macro mulx_gen[rLen, aLen, bLen: static int](rx: var Limbs[rLen], ax: Limbs[aLen
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = init(OperandArray, nimSymbol = rx, rLen, PointerInReg, InputOutput_EnsureClobber)
-    a = init(OperandArray, nimSymbol = ax, aLen, PointerInReg, Input)
-    b = init(OperandArray, nimSymbol = bx, bLen, PointerInReg, Input)
+    r = init(OperandArray, nimSymbol = r_PIR, rLen, PointerInReg, InputOutput_EnsureClobber)
+    a = init(OperandArray, nimSymbol = a_PIR, aLen, PointerInReg, Input)
+    b = init(OperandArray, nimSymbol = b_PIR, bLen, PointerInReg, Input)
 
     # MULX requires RDX
 
@@ -168,24 +168,24 @@ macro mulx_gen[rLen, aLen, bLen: static int](rx: var Limbs[rLen], ax: Limbs[aLen
   # Codegen
   result.add ctx.generate
 
-func mul_asm_adx_bmi2_impl*[rLen, aLen, bLen: static int](
+func mul_asm_adx_inline*[rLen, aLen, bLen: static int](
        r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) {.inline.} =
   ## Multi-precision Multiplication
   ## Assumes r doesn't alias a or b
   ## Inline version
   mulx_gen(r, a, b)
 
-func mul_asm_adx_bmi2*[rLen, aLen, bLen: static int](
+func mul_asm_adx*[rLen, aLen, bLen: static int](
        r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) =
   ## Multi-precision Multiplication
   ## Assumes r doesn't alias a or b
-  mul_asm_adx_bmi2_impl(r, a, b)
+  mul_asm_adx_inline(r, a, b)
 
 # Squaring
 # -----------------------------------------------------------------------------------------------
 #
 # Strategy:
-# We want to use the same scheduling as mul_asm_adx_bmi2
+# We want to use the same scheduling as mul_asm_adx
 # and so process `a[0..<N]` by `word`
 # and store the intermediate result in `[t[n..1]:r0]`
 #
@@ -561,7 +561,7 @@ func sqrx_gen6L(ctx: var Assembler_x86, r, a: OperandArray, t: var OperandArray)
   merge_diag_and_partsum(r, a, hi1, lo1, zero, 4)
   merge_diag_and_partsum(r, a, hi2, lo2, zero, 5)
 
-macro sqrx_gen*[rLen, aLen: static int](rx: var Limbs[rLen], ax: Limbs[aLen]) =
+macro sqrx_gen*[rLen, aLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs[aLen]) =
   ## Squaring
   ## `a` and `r` can have a different number of limbs
   ## if `r`.limbs.len < a.limbs.len * 2
@@ -578,8 +578,8 @@ macro sqrx_gen*[rLen, aLen: static int](rx: var Limbs[rLen], ax: Limbs[aLen]) =
     # t = 2 * a.len = 12
     # We use the full x86 register set.
 
-    r = init(OperandArray, nimSymbol = rx, rLen, PointerInReg, InputOutput)
-    a = init(OperandArray, nimSymbol = ax, aLen, PointerInReg, Input)
+    r = init(OperandArray, nimSymbol = r_PIR, rLen, PointerInReg, InputOutput)
+    a = init(OperandArray, nimSymbol = a_PIR, aLen, PointerInReg, Input)
 
     # MULX requires RDX
 
@@ -604,10 +604,15 @@ macro sqrx_gen*[rLen, aLen: static int](rx: var Limbs[rLen], ax: Limbs[aLen]) =
   # Codegen
   result.add ctx.generate
 
-func square_asm_adx_bmi2*[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) =
+func square_asm_adx_inline*[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) {.inline.} =
+  ## Multi-precision Squaring
+  ## inline version
+  sqrx_gen(r, a)
+
+func square_asm_adx*[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) =
   ## Multi-precision Squaring
   ## Assumes r doesn't alias a
-  sqrx_gen(r, a)
+  square_asm_adx_inline(r, a)
 
 
 # Sanity checks
@@ -628,8 +633,8 @@ when isMainModule:
 
     var a2x, expected: Limbs[8]
 
-    a2x.square_asm_adx_bmi2(a)
-    expected.mul_asm_adx_bmi2(a, a)
+    a2x.square_asm_adx(a)
+    expected.mul_asm_adx(a, a)
     debugecho "--------------------------------"
     debugecho "before:"
     debugecho "  a  : ", a.toString()
@@ -644,8 +649,8 @@ when isMainModule:
 
     var a2x, expected: Limbs[8]
 
-    a2x.square_asm_adx_bmi2(a)
-    expected.mul_asm_adx_bmi2(a, a)
+    a2x.square_asm_adx(a)
+    expected.mul_asm_adx(a, a)
     debugecho "--------------------------------"
     debugecho "before:"
     debugecho "  a  : ", a.toString()
@@ -667,8 +672,8 @@ when isMainModule:
 
     var a2x, expected: Limbs[12]
 
-    a2x.square_asm_adx_bmi2(a)
-    expected.mul_asm_adx_bmi2(a, a)
+    a2x.square_asm_adx(a)
+    expected.mul_asm_adx(a, a)
     debugecho "--------------------------------"
     debugecho "before:"
     debugecho "  a  : ", a.toString()
@@ -683,8 +688,8 @@ when isMainModule:
 
     var a2x, expected: Limbs[12]
 
-    a2x.square_asm_adx_bmi2(a)
-    expected.mul_asm_adx_bmi2(a, a)
+    a2x.square_asm_adx(a)
+    expected.mul_asm_adx(a, a)
     debugecho "--------------------------------"
     debugecho "before:"
     debugecho "  a  : ", a.toString()

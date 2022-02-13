@@ -249,7 +249,7 @@ let
   hasBmi2Impl = testX86Feature(Bmi2)
   hasTsxHleImpl = testX86Feature(TsxHle)
   hasTsxRtmImpl = testX86Feature(TsxRtm)
-  hasAdxImpl = testX86Feature(TsxHle)
+  hasAdxImpl = testX86Feature(Adx)
   hasSgxImpl = testX86Feature(Sgx)
   hasGfniImpl = testX86Feature(Gfni)
   hasAesImpl = testX86Feature(Aes)

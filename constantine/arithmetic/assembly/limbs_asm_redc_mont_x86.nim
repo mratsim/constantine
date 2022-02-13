@@ -11,7 +11,8 @@ import
   std/macros,
   # Internal
   ../../config/common,
-  ../../primitives
+  ../../primitives,
+  ./limbs_asm_modular_x86
 
 # ############################################################
 #
@@ -25,76 +26,21 @@ static: doAssert UseASM_X86_32
 # Necessary for the compiler to find enough registers (enabled at -O1)
 {.localPassC:"-fomit-frame-pointer".}
 
-proc finalSubNoCarry*(
-       ctx: var Assembler_x86,
-       r: Operand or OperandArray,
-       a, M, scratch: OperandArray
-     ) =
-  ## Reduce `a` into `r` modulo `M`
-  let N = M.len
-  ctx.comment "Final substraction (no carry)"
-  for i in 0 ..< N:
-    ctx.mov scratch[i], a[i]
-    if i == 0:
-      ctx.sub scratch[i], M[i]
-    else:
-      ctx.sbb scratch[i], M[i]
-
-  # If we borrowed it means that we were smaller than
-  # the modulus and we don't need "scratch"
-  for i in 0 ..< N:
-    ctx.cmovnc a[i], scratch[i]
-    ctx.mov r[i], a[i]
-
-proc finalSubCanOverflow*(
-       ctx: var Assembler_x86,
-       r: Operand or OperandArray,
-       a, M, scratch: OperandArray,
-       overflowReg: Operand or Register
-     ) =
-  ## Reduce `a` into `r` modulo `M`
-  ## To be used when the final substraction can
-  ## also depend on the carry flag
-  ## This is in particular possible when the MSB
-  ## is set for the prime modulus
-  ## `overflowReg` should be a register that will be used
-  ## to store the carry flag
-
-  ctx.comment "Final substraction (may carry)"
-
-  # Mask: overflowed contains 0xFFFF or 0x0000
-  ctx.sbb overflowReg, overflowReg
-
-  # Now substract the modulus to test a < p
-  let N = M.len
-  for i in 0 ..< N:
-    ctx.mov scratch[i], a[i]
-    if i == 0:
-      ctx.sub scratch[i], M[i]
-    else:
-      ctx.sbb scratch[i], M[i]
-
-  # If it overflows here, it means that it was
-  # smaller than the modulus and we don't need `scratch`
-  ctx.sbb overflowReg, 0
-
-  # If we borrowed it means that we were smaller than
-  # the modulus and we don't need "scratch"
-  for i in 0 ..< N:
-    ctx.cmovnc a[i], scratch[i]
-    ctx.mov r[i], a[i]
-
-
 # Montgomery reduction
 # ------------------------------------------------------------
 
-macro montyRedc2x_gen*[N: static int](
-       r_MR: var array[N, SecretWord],
-       a_MR: array[N*2, SecretWord],
-       M_MR: array[N, SecretWord],
-       m0ninv_MR: BaseType,
-       hasSpareBit: static bool
+macro redc2xMont_gen*[N: static int](
+       r_PIR: var array[N, SecretWord],
+       a_PIR: array[N*2, SecretWord],
+       M_PIR: array[N, SecretWord],
+       m0ninv_REG: BaseType,
+       hasSpareBit, skipReduction: static bool
       ) =
+
+  # No register spilling handling
+  doAssert N > 2, "The Assembly-optimized montgomery reduction requires a minimum of 2 limbs."
+  doAssert N <= 6, "The Assembly-optimized montgomery reduction requires at most 6 limbs."
+
   result = newStmtList()
 
   var ctx = init(Assembler_x86, BaseType)
@@ -103,7 +49,7 @@ macro montyRedc2x_gen*[N: static int](
   # so we store everything in scratchspaces restoring as needed
   let
     # We could force M as immediate by specializing per moduli
-    M = init(OperandArray, nimSymbol = M_MR, N, PointerInReg, Input)
+    M = init(OperandArray, nimSymbol = M_PIR, N, PointerInReg, Input)
     # MUL requires RAX and RDX
 
   let uSlots = N+2
@@ -119,9 +65,9 @@ macro montyRedc2x_gen*[N: static int](
   result.add quote do:
     var `usym`{.noinit.}: Limbs[`uSlots`]
     var `vsym` {.noInit.}: Limbs[`vSlots`]
-    `vsym`[0] = cast[SecretWord](`r_MR`[0].unsafeAddr)
-    `vsym`[1] = cast[SecretWord](`a_MR`[0].unsafeAddr)
-    `vsym`[2] = SecretWord(`m0ninv_MR`)
+    `vsym`[0] = cast[SecretWord](`r_PIR`[0].unsafeAddr)
+    `vsym`[1] = cast[SecretWord](`a_PIR`[0].unsafeAddr)
+    `vsym`[2] = SecretWord(`m0ninv_REG`)
 
   let r_temp = v[0].asArrayAddr(len = N)
   let a = v[1].asArrayAddr(len = 2*N)
@@ -131,7 +77,7 @@ macro montyRedc2x_gen*[N: static int](
   # ---------------------------------------------------------
   # for i in 0 .. n-1:
   #   hi <- 0
-  #   m <- a[i] * m0ninv mod 2^w (i.e. simple multiplication)
+  #   m <- a[i] * m0ninv mod 2ʷ (i.e. simple multiplication)
   #   for j in 0 .. n-1:
   #     (hi, lo) <- a[i+j] + m * M[j] + hi
   #     a[i+j] <- lo
@@ -141,15 +87,11 @@ macro montyRedc2x_gen*[N: static int](
   # if r >= M:
   #   r -= M
 
-  # No register spilling handling
-  doAssert N > 2, "The Assembly-optimized montgomery reduction requires a minimum of 2 limbs."
-  doAssert N <= 6, "The Assembly-optimized montgomery reduction requires at most 6 limbs."
-
   for i in 0 ..< N:
     ctx.mov u[i], a[i]
 
   ctx.mov u[N], u[0]
-  ctx.imul u[0], m0ninv    # m <- a[i] * m0ninv mod 2^w
+  ctx.imul u[0], m0ninv    # m <- a[i] * m0ninv mod 2ʷ
   ctx.mov rax, u[0]
 
   # scratch: [a[0] * m0, a[1], a[2], a[3], a[0]] for 4 limbs
@@ -208,27 +150,138 @@ macro montyRedc2x_gen*[N: static int](
     else:
       ctx.adc u[i], a[i+N]
 
+  # v is invalidated from now on
   let t = repackRegisters(v, u[N], u[N+1])
-
-  # v is invalidated
-  if hasSpareBit:
-    ctx.finalSubNoCarry(r, u, M, t)
+  
+  if hasSpareBit and skipReduction:
+    for i in 0 ..< N:
+      ctx.mov r[i], t[i]
+  elif hasSpareBit:
+    ctx.finalSubNoCarryImpl(r, u, M, t)
   else:
-    ctx.finalSubCanOverflow(r, u, M, t, rax)
+    ctx.finalSubMayCarryImpl(r, u, M, t, rax)
 
   # Code generation
   result.add ctx.generate()
 
-func montRed_asm*[N: static int](
+func redcMont_asm_inline*[N: static int](
        r: var array[N, SecretWord],
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
        m0ninv: BaseType,
-       hasSpareBit: static bool
+       hasSpareBit: static bool,
+       skipReduction: static bool = false
+      ) {.inline.} =
+  ## Constant-time Montgomery reduction
+  ## Inline-version
+  redc2xMont_gen(r, a, M, m0ninv, hasSpareBit, skipReduction)
+
+func redcMont_asm*[N: static int](
+       r: var array[N, SecretWord],
+       a: array[N*2, SecretWord],
+       M: array[N, SecretWord],
+       m0ninv: BaseType,
+       hasSpareBit, skipReduction: static bool
       ) =
   ## Constant-time Montgomery reduction
   static: doAssert UseASM_X86_64, "This requires x86-64."
-  montyRedc2x_gen(r, a, M, m0ninv, hasSpareBit)
+  redcMont_asm_inline(r, a, M, m0ninv, hasSpareBit, skipReduction)
+
+# Montgomery conversion
+# ----------------------------------------------------------
+
+macro mulMont_by_1_gen[N: static int](
+       t_EIR: var array[N, SecretWord],
+       M_PIR: array[N, SecretWord],
+       m0ninv_REG: BaseType) =
+
+  # No register spilling handling
+  doAssert N <= 6, "The Assembly-optimized montgomery reduction requires at most 6 limbs."
+
+  result = newStmtList()
+
+  var ctx = init(Assembler_x86, BaseType)
+  # On x86, compilers only let us use 15 out of 16 registers
+  # RAX and RDX are defacto used due to the MUL instructions
+  # so we store everything in scratchspaces restoring as needed
+  let
+    scratchSlots = 2
+
+    t = init(OperandArray, nimSymbol = t_EIR, N, ElemsInReg, InputOutput_EnsureClobber)
+    # We could force M as immediate by specializing per moduli
+    M = init(OperandArray, nimSymbol = M_PIR, N, PointerInReg, Input)
+    # MultiPurpose Register slots
+    scratch = init(OperandArray, nimSymbol = ident"scratch", scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
+
+    # MUL requires RAX and RDX
+
+    m0ninv = Operand(
+               desc: OperandDesc(
+                 asmId: "[m0ninv]",
+                 nimSymbol: m0ninv_REG,
+                 rm: MemOffsettable,
+                 constraint: Input,
+                 cEmit: "&" & $m0ninv_REG
+               )
+             )
+
+    C = scratch[0] # Stores the high-part of muliplication
+    m = scratch[1] # Stores (t[0] * m0ninv) mod 2ʷ
+
+  let scratchSym = scratch.nimSymbol
+  
+  # Copy a in t
+  result.add quote do:
+    var `scratchSym` {.noInit.}: Limbs[`scratchSlots`]
+
+  # Algorithm
+  # ---------------------------------------------------------
+  # for i in 0 .. n-1:
+  #   m <- t[0] * m0ninv mod 2ʷ (i.e. simple multiplication)
+  #   C, _ = t[0] + m * M[0]
+  #   for j in 1 .. n-1:
+  #     (C, t[j-1]) <- r[j] + m*M[j] + C
+  #   t[n-1] = C
+
+  ctx.comment "for i in 0 ..< N:"
+  for i in 0 ..< N:
+    ctx.comment "  m <- t[0] * m0ninv mod 2ʷ"
+    ctx.mov m, m0ninv
+    ctx.imul m, t[0]
+
+    ctx.comment "  C, _ = t[0] + m * M[0]"
+    ctx.`xor` C, C
+    ctx.mov rax, M[0]
+    ctx.mul rdx, rax, m, rax
+    ctx.add rax, t[0]
+    ctx.adc C, rdx
+
+    ctx.comment "  for j in 1 .. n-1:"
+    for j in 1 ..< N:
+      ctx.comment "    (C, t[j-1]) <- r[j] + m*M[j] + C"
+      ctx.mov rax, M[j]
+      ctx.mul rdx, rax, m, rax
+      ctx.add C, t[j]
+      ctx.adc rdx, 0
+      ctx.add C, rax
+      ctx.adc rdx, 0
+      ctx.mov t[j-1], C
+      ctx.mov C, rdx
+
+    ctx.comment "  final carry"
+    ctx.mov t[N-1], C
+
+  result.add ctx.generate()
+
+func fromMont_asm*(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
+  ## Constant-time Montgomery residue form to BigInt conversion
+  var t{.noInit.} = a
+  block:
+    t.mulMont_by_1_gen(M, m0ninv)
+
+  block: # Map from [0, 2p) to [0, p)
+    var workspace{.noInit.}: typeof(r)
+    r.finalSub_gen(t, M, workspace, mayCarry = false)
 
 # Sanity checks
 # ----------------------------------------------------------
@@ -242,7 +295,7 @@ when isMainModule:
 
   # TODO: Properly handle low number of limbs
 
-  func montyRedc2x_Comba[N: static int](
+  func redc2xMont_Comba[N: static int](
         r: var array[N, SecretWord],
         a: array[N*2, SecretWord],
         M: array[N, SecretWord],
@@ -298,10 +351,10 @@ when isMainModule:
     var a_sqr{.noInit.}, na_sqr{.noInit.}: Limbs[2]
     var a_sqr_comba{.noInit.}, na_sqr_comba{.noInit.}: Limbs[2]
 
-    a_sqr.montRed_asm(adbl_sqr, M, 1, hasSpareBit = false)
-    na_sqr.montRed_asm(nadbl_sqr, M, 1, hasSpareBit = false)
-    a_sqr_comba.montyRedc2x_Comba(adbl_sqr, M, 1)
-    na_sqr_comba.montyRedc2x_Comba(nadbl_sqr, M, 1)
+    a_sqr.redcMont_asm(adbl_sqr, M, 1, hasSpareBit = false, skipReduction = false)
+    na_sqr.redcMont_asm(nadbl_sqr, M, 1, hasSpareBit = false, skipReduction = false)
+    a_sqr_comba.redc2xMont_Comba(adbl_sqr, M, 1)
+    na_sqr_comba.redc2xMont_Comba(nadbl_sqr, M, 1)
 
     debugecho "--------------------------------"
     debugecho "after:"
