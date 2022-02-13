@@ -128,7 +128,7 @@ macro finalSub_gen*[N: static int](
 # Field addition
 # ------------------------------------------------------------
 
-macro addmod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N]): untyped =
+macro addmod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N], hasSpareBit: static bool): untyped =
   ## Generate an optimized modular addition kernel
   # Register pressure note:
   #   We could generate a kernel per modulus m by hardcoding it as immediate
@@ -165,16 +165,18 @@ macro addmod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N]): untyped =
     # Interleaved copy in a second buffer as well
     ctx.mov v[i], u[i]
 
-  # TODO: no carry support
-  ctx.finalSubMayCarryImpl(
-    r, u, M, v, b.reuseRegister()
-  )
+  if hasSparebit:
+    ctx.finalSubNoCarryImpl(r, u, M, v)
+  else:
+    ctx.finalSubMayCarryImpl(
+      r, u, M, v, b.reuseRegister()
+    )
 
   result.add ctx.generate()
 
-func addmod_asm*(r: var Limbs, a, b, m: Limbs) =
+func addmod_asm*(r: var Limbs, a, b, m: Limbs, hasSpareBit: static bool) =
   ## Constant-time modular addition
-  addmod_gen(r, a, b, m)
+  addmod_gen(r, a, b, m, hasSpareBit)
 
 # Field substraction
 # ------------------------------------------------------------
@@ -305,7 +307,7 @@ when isMainModule:
     debugecho "  a: ", a.toHex()
     debugecho "  b: ", b.toHex()
     debugecho "  m: ", m.toHex()
-    addmod_asm(a, a, b, m)
+    addmod_asm(a, a, b, m, hasSpareBit = false)
     debugecho "after:"
     debugecho "  a: ", a.toHex().tolower
     debugecho "  s: ", s
@@ -325,7 +327,7 @@ when isMainModule:
     debugecho "  a: ", a.toHex()
     debugecho "  b: ", b.toHex()
     debugecho "  m: ", m.toHex()
-    addmod_asm(a, a, b, m)
+    addmod_asm(a, a, b, m, hasSpareBit = false)
     debugecho "after:"
     debugecho "  a: ", a.toHex().tolower
     debugecho "  s: ", s
@@ -345,7 +347,7 @@ when isMainModule:
     debugecho "  a: ", a.toHex()
     debugecho "  b: ", b.toHex()
     debugecho "  m: ", m.toHex()
-    addmod_asm(a, a, b, m)
+    addmod_asm(a, a, b, m, hasSpareBit = false)
     debugecho "after:"
     debugecho "  a: ", a.toHex().tolower
     debugecho "  s: ", s
@@ -365,7 +367,7 @@ when isMainModule:
     debugecho "  a: ", a.toHex()
     debugecho "  b: ", b.toHex()
     debugecho "  m: ", m.toHex()
-    addmod_asm(a, a, b, m)
+    addmod_asm(a, a, b, m, hasSpareBit = false)
     debugecho "after:"
     debugecho "  a: ", a.toHex().tolower
     debugecho "  s: ", s
@@ -388,7 +390,7 @@ when isMainModule:
     debugecho "  a: ", a.toHex()
     debugecho "  b: ", b.toHex()
     debugecho "  m: ", m.toHex()
-    submod_asm(a, a, b, m)
+    submod_asm(a, a, b, m, hasSpareBit = false)
     debugecho "after:"
     debugecho "  a: ", a.toHex().tolower
     debugecho "  s: ", s
@@ -413,7 +415,7 @@ when isMainModule:
     debugecho "  a: ", a.toHex()
     debugecho "  b: ", b.toHex()
     debugecho "  m: ", m.toHex()
-    submod_asm(r, a, b, m)
+    submod_asm(r, a, b, m, hasSpareBit = false)
     debugecho "after:"
     debugecho "  r: ", r.toHex().tolower
     debugecho "  s: ", s

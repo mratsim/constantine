@@ -152,7 +152,7 @@ func setMinusOne*(a: var FF) =
 func `+=`*(a: var FF, b: FF) {.meter.} =
   ## In-place addition modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    addmod_asm(a.mres.limbs, a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs)
+    addmod_asm(a.mres.limbs, a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs, FF.getSpareBits() >= 1)
   else:
     var overflowed = add(a.mres, b.mres)
     overflowed = overflowed or not(a.mres < FF.fieldMod())
@@ -169,7 +169,7 @@ func `-=`*(a: var FF, b: FF) {.meter.} =
 func double*(a: var FF) {.meter.} =
   ## Double ``a`` modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    addmod_asm(a.mres.limbs, a.mres.limbs, a.mres.limbs, FF.fieldMod().limbs)
+    addmod_asm(a.mres.limbs, a.mres.limbs, a.mres.limbs, FF.fieldMod().limbs, FF.getSpareBits() >= 1)
   else:
     var overflowed = double(a.mres)
     overflowed = overflowed or not(a.mres < FF.fieldMod())
@@ -179,7 +179,7 @@ func sum*(r: var FF, a, b: FF) {.meter.} =
   ## Sum ``a`` and ``b`` into ``r`` modulo p
   ## r is initialized/overwritten
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    addmod_asm(r.mres.limbs, a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs)
+    addmod_asm(r.mres.limbs, a.mres.limbs, b.mres.limbs, FF.fieldMod().limbs, FF.getSpareBits() >= 1)
   else:
     var overflowed = r.mres.sum(a.mres, b.mres)
     overflowed = overflowed or not(r.mres < FF.fieldMod())
@@ -208,7 +208,7 @@ func double*(r: var FF, a: FF) {.meter.} =
   ## Double ``a`` into ``r``
   ## `r` is initialized/overwritten
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
-    addmod_asm(r.mres.limbs, a.mres.limbs, a.mres.limbs, FF.fieldMod().limbs)
+    addmod_asm(r.mres.limbs, a.mres.limbs, a.mres.limbs, FF.fieldMod().limbs, FF.getSpareBits() >= 1)
   else:
     var overflowed = r.mres.double(a.mres)
     overflowed = overflowed or not(r.mres < FF.fieldMod())
