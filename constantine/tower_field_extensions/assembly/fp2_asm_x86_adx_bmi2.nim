@@ -67,9 +67,9 @@ func sqrx2x_complex_asm_adx*(
     t0.double(a.c1)
     t1.sum(a.c0, a.c1)
 
-  r.c1.mul_asm_adx_impl(t0, a.c0)
+  r.c1.mul_asm_adx_inline(t0, a.c0)
   t0.diff(a.c0, a.c1)
-  r.c0.mul_asm_adx_impl(t0, t1)
+  r.c0.mul_asm_adx_inline(t0, t1)
 
 func sqrx_complex_sparebit_asm_adx*(
         r: var array[2, Fp],
@@ -93,7 +93,7 @@ func sqrx_complex_sparebit_asm_adx*(
 # 𝔽p2 multiplication
 # ------------------------------------------------------------
 
-func mulx2x_complex_asm_adx*(
+func mul2x_fp2_complex_asm_adx*(
         r: var array[2, FpDbl],
         a, b: array[2, Fp]
       ) =
@@ -101,15 +101,15 @@ func mulx2x_complex_asm_adx*(
   var D {.noInit.}: typeof(r.c0)
   var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0)
 
-  r.c0.limbs2x.mul_asm_adx_impl(a.c0.mres.limbs, b.c0.mres.limbs)
-  D.limbs2x.mul_asm_adx_impl(a.c1.mres.limbs, b.c1.mres.limbs)
+  r.c0.limbs2x.mul_asm_adx_inline(a.c0.mres.limbs, b.c0.mres.limbs)
+  D.limbs2x.mul_asm_adx_inline(a.c1.mres.limbs, b.c1.mres.limbs)
   when Fp.has1extraBit():
     t0.sumUnr(a.c0, a.c1)
     t1.sumUnr(b.c0, b.c1)
   else:
     t0.sum(a.c0, a.c1)
     t1.sum(b.c0, b.c1)
-  r.c1.limbs2x.mul_asm_adx_impl(t0.mres.limbs, t1.mres.limbs)
+  r.c1.limbs2x.mul_asm_adx_inline(t0.mres.limbs, t1.mres.limbs)
   when Fp.has1extraBit():
     r.c1.diff2xUnr(r.c1, r.c0)
     r.c1.diff2xUnr(r.c1, D)
@@ -118,20 +118,20 @@ func mulx2x_complex_asm_adx*(
     r.c1.diff2xMod(r.c1, D)
   r.c0.diff2xMod(r.c0, D)
 
-func mulx_complex_asm_adx*(
+func mul_fp2_complex_asm_adx*(
         r: var array[2, Fp],
         a, b: array[2, Fp]
       ) =
   ## Complex multiplication on 𝔽p2
   var d {.noInit.}: array[2,doublePrec(Fp)]
-  d.mulx2x_complex_asm_adx(a, b)
-  r.c0.mres.limbs.redcMont_asm_adx_impl(
+  d.mul2x_fp2_complex_asm_adx(a, b)
+  r.c0.mres.limbs.redcMont_asm_adx_inline(
     d.c0.limbs2x,
     Fp.fieldMod().limbs,
     Fp.getNegInvModWord(),
     Fp.has1extraBit()
   )
-  r.c1.mres.limbs.redcMont_asm_adx_impl(
+  r.c1.mres.limbs.redcMont_asm_adx_inline(
     d.c1.limbs2x,
     Fp.fieldMod().limbs,
     Fp.getNegInvModWord(),

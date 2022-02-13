@@ -176,7 +176,10 @@ proc partialRedx(
     ctx.adcx lo, C      # lo contains 0 so C += S
     ctx.adox t[N-1], lo
 
-macro mulMont_CIOS_sparebit_adx_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_MM: Limbs[N], m0ninv_MM: BaseType): untyped =
+macro mulMont_CIOS_sparebit_adx_gen[N: static int](
+        r_PIR: var Limbs[N], a_PIR, b_PIR,
+        M_PIR: Limbs[N], m0ninv_REG: BaseType,
+        skipReduction: static bool): untyped =
   ## Generate an optimized Montgomery Multiplication kernel
   ## using the CIOS method
   ## This requires the most significant word of the Modulus
@@ -190,11 +193,11 @@ macro mulMont_CIOS_sparebit_adx_gen[N: static int](r_MM: var Limbs[N], a_MM, b_M
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    scratchSlots = max(N, 6)
+    scratchSlots = 6
 
-    r = init(OperandArray, nimSymbol = r_MM, N, PointerInReg, InputOutput_EnsureClobber)
+    r = init(OperandArray, nimSymbol = r_PIR, N, PointerInReg, InputOutput_EnsureClobber)
     # We could force M as immediate by specializing per moduli
-    M = init(OperandArray, nimSymbol = M_MM, N, PointerInReg, Input)
+    M = init(OperandArray, nimSymbol = M_PIR, N, PointerInReg, Input)
     # If N is too big, we need to spill registers. TODO.
     t = init(OperandArray, nimSymbol = ident"t", N, ElemsInReg, Output_EarlyClobber)
     # MultiPurpose Register slots
@@ -225,12 +228,12 @@ macro mulMont_CIOS_sparebit_adx_gen[N: static int](r_MM: var Limbs[N], a_MM, b_M
   result.add quote do:
     static: doAssert: sizeof(SecretWord) == sizeof(ByteAddress)
 
-    var `tsym`: typeof(`r_MM`) # zero init
+    var `tsym`{.noInit.}: typeof(`r_PIR`) # zero init
     # Assumes 64-bit limbs on 64-bit arch (or you can't store an address)
     var `scratchSym` {.noInit.}: Limbs[`scratchSlots`]
-    `scratchSym`[0] = cast[SecretWord](`a_MM`[0].unsafeAddr)
-    `scratchSym`[1] = cast[SecretWord](`b_MM`[0].unsafeAddr)
-    `scratchSym`[4] = SecretWord `m0ninv_MM`
+    `scratchSym`[0] = cast[SecretWord](`a_PIR`[0].unsafeAddr)
+    `scratchSym`[1] = cast[SecretWord](`b_PIR`[0].unsafeAddr)
+    `scratchSym`[4] = SecretWord `m0ninv_REG`
 
   # Algorithm
   # -----------------------------------------
@@ -265,47 +268,35 @@ macro mulMont_CIOS_sparebit_adx_gen[N: static int](r_MM: var Limbs[N], a_MM, b_M
       lo, C
     )
 
-  ctx.finalSubNoCarryImpl(
-    r, t, M,
-    scratch
-  )
+  if skipReduction:
+    result.add quote do:
+      `r_PIR` = `tsym`
+  else:
+    ctx.finalSubNoCarryImpl(
+      r, t, M,
+      scratch
+    )
 
   result.add ctx.generate
 
-func mulMont_CIOS_sparebit_asm_adx*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
-  ## Constant-time modular multiplication
-  ## Requires the prime modulus to have a spare bit in the representation. (Hence if using 64-bit words and 4 words, to be at most 255-bit)
-  r.mulMont_CIOS_sparebit_adx_gen(a, b, M, m0ninv)
+func mulMont_CIOS_sparebit_asm_adx*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipReduction: static bool = false) =
+  ## Constant-time Montgomery multiplication
+  ## If "skipReduction" is set
+  ## the result is in the range [0, 2M)
+  ## otherwise the result is in the range [0, M)
+  ## 
+  ## This procedure can only be called if the modulus doesn't use the full bitwidth of its underlying representation
+  r.mulMont_CIOS_sparebit_adx_gen(a, b, M, m0ninv, skipReduction)
 
 # Montgomery Squaring
 # ------------------------------------------------------------
-
-func square_asm_adx_inline[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) {.inline.} =
-  ## Multi-precision Squaring
-  ## Extra indirection as the generator assumes that
-  ## arrays are pointers, which is true for parameters
-  ## but not for stack variables.
-  sqrx_gen(r, a)
-
-func redcMont_asm_adx_inline[N: static int](
-       r: var array[N, SecretWord],
-       a: array[N*2, SecretWord],
-       M: array[N, SecretWord],
-       m0ninv: BaseType,
-       hasSpareBit: static bool
-      ) {.inline.} =
-  ## Constant-time Montgomery reduction
-  ## Extra indirection as the generator assumes that
-  ## arrays are pointers, which is true for parameters
-  ## but not for stack variables.
-  redc2xMont_adx_gen(r, a, M, m0ninv, hasSpareBit)
 
 func squareMont_CIOS_asm_adx*[N](
        r: var Limbs[N],
        a, M: Limbs[N],
        m0ninv: BaseType,
-       hasSpareBit: static bool) =
+       hasSpareBit, skipReduction: static bool) =
   ## Constant-time modular squaring
   var r2x {.noInit.}: Limbs[2*N]
   r2x.square_asm_adx_inline(a)
-  r.redcMont_asm_adx_inline(r2x, M, m0ninv, hasSpareBit)
+  r.redcMont_asm_adx(r2x, M, m0ninv, hasSpareBit, skipReduction)

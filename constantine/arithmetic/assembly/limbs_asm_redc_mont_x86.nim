@@ -30,11 +30,11 @@ static: doAssert UseASM_X86_32
 # ------------------------------------------------------------
 
 macro redc2xMont_gen*[N: static int](
-       r_MR: var array[N, SecretWord],
-       a_MR: array[N*2, SecretWord],
-       M_MR: array[N, SecretWord],
-       m0ninv_MR: BaseType,
-       hasSpareBit: static bool
+       r_PIR: var array[N, SecretWord],
+       a_PIR: array[N*2, SecretWord],
+       M_PIR: array[N, SecretWord],
+       m0ninv_REG: BaseType,
+       hasSpareBit, skipReduction: static bool
       ) =
 
   # No register spilling handling
@@ -49,7 +49,7 @@ macro redc2xMont_gen*[N: static int](
   # so we store everything in scratchspaces restoring as needed
   let
     # We could force M as immediate by specializing per moduli
-    M = init(OperandArray, nimSymbol = M_MR, N, PointerInReg, Input)
+    M = init(OperandArray, nimSymbol = M_PIR, N, PointerInReg, Input)
     # MUL requires RAX and RDX
 
   let uSlots = N+2
@@ -65,9 +65,9 @@ macro redc2xMont_gen*[N: static int](
   result.add quote do:
     var `usym`{.noinit.}: Limbs[`uSlots`]
     var `vsym` {.noInit.}: Limbs[`vSlots`]
-    `vsym`[0] = cast[SecretWord](`r_MR`[0].unsafeAddr)
-    `vsym`[1] = cast[SecretWord](`a_MR`[0].unsafeAddr)
-    `vsym`[2] = SecretWord(`m0ninv_MR`)
+    `vsym`[0] = cast[SecretWord](`r_PIR`[0].unsafeAddr)
+    `vsym`[1] = cast[SecretWord](`a_PIR`[0].unsafeAddr)
+    `vsym`[2] = SecretWord(`m0ninv_REG`)
 
   let r_temp = v[0].asArrayAddr(len = N)
   let a = v[1].asArrayAddr(len = 2*N)
@@ -153,7 +153,7 @@ macro redc2xMont_gen*[N: static int](
   let t = repackRegisters(v, u[N], u[N+1])
 
   # v is invalidated
-  if hasSpareBit:
+  if hasSpareBit and not skipReduction:
     ctx.finalSubNoCarryImpl(r, u, M, t)
   else:
     ctx.finalSubMayCarryImpl(r, u, M, t, rax)
@@ -161,16 +161,28 @@ macro redc2xMont_gen*[N: static int](
   # Code generation
   result.add ctx.generate()
 
+func redcMont_asm_inline*[N: static int](
+       r: var array[N, SecretWord],
+       a: array[N*2, SecretWord],
+       M: array[N, SecretWord],
+       m0ninv: BaseType,
+       hasSpareBit: static bool,
+       skipReduction: static bool = false
+      ) {.inline.} =
+  ## Constant-time Montgomery reduction
+  ## Inline-version
+  redc2xMont_gen(r, a, M, m0ninv, hasSpareBit, skipReduction)
+
 func redcMont_asm*[N: static int](
        r: var array[N, SecretWord],
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
        m0ninv: BaseType,
-       hasSpareBit: static bool
+       hasSpareBit, skipReduction: static bool
       ) =
   ## Constant-time Montgomery reduction
   static: doAssert UseASM_X86_64, "This requires x86-64."
-  redc2xMont_gen(r, a, M, m0ninv, hasSpareBit)
+  redcMont_asm_inline(r, a, M, m0ninv, hasSpareBit, skipReduction)
 
 # Montgomery conversion
 # ----------------------------------------------------------
@@ -336,8 +348,8 @@ when isMainModule:
     var a_sqr{.noInit.}, na_sqr{.noInit.}: Limbs[2]
     var a_sqr_comba{.noInit.}, na_sqr_comba{.noInit.}: Limbs[2]
 
-    a_sqr.redcMont_asm(adbl_sqr, M, 1, hasSpareBit = false)
-    na_sqr.redcMont_asm(nadbl_sqr, M, 1, hasSpareBit = false)
+    a_sqr.redcMont_asm(adbl_sqr, M, 1, hasSpareBit = false, skipReduction = false)
+    na_sqr.redcMont_asm(nadbl_sqr, M, 1, hasSpareBit = false, skipReduction = false)
     a_sqr_comba.redc2xMont_Comba(adbl_sqr, M, 1)
     na_sqr_comba.redc2xMont_Comba(nadbl_sqr, M, 1)
 
