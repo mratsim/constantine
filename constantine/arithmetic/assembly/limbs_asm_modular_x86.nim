@@ -24,7 +24,7 @@ import
 #       They are nice to let the compiler deals with mov
 #       but too constraining so we move things ourselves.
 
-static: doAssert UseASM_X86_64
+static: doAssert UseASM_X86_32
 
 {.localPassC:"-fomit-frame-pointer".} # Needed so that the compiler finds enough registers
 
