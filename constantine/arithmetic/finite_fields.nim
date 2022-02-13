@@ -214,14 +214,14 @@ func double*(r: var FF, a: FF) {.meter.} =
     overflowed = overflowed or not(r.mres < FF.fieldMod())
     discard csub(r.mres, FF.fieldMod(), overflowed)
 
-func prod*(r: var FF, a, b: FF) {.meter.} =
+func prod*(r: var FF, a, b: FF, skipReduction: static bool = false) {.meter.} =
   ## Store the product of ``a`` by ``b`` modulo p into ``r``
   ## ``r`` is initialized / overwritten
-  r.mres.mulMont(a.mres, b.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
+  r.mres.mulMont(a.mres, b.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits(), skipReduction)
 
-func square*(r: var FF, a: FF) {.meter.} =
+func square*(r: var FF, a: FF, skipReduction: static bool = false) {.meter.} =
   ## Squaring modulo p
-  r.mres.squareMont(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
+  r.mres.squareMont(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits(), skipReduction)
 
 func neg*(r: var FF, a: FF) {.meter.} =
   ## Negate modulo p
@@ -413,20 +413,38 @@ func `*=`*(a: var FF, b: FF) {.meter.} =
   ## Multiplication modulo p
   a.prod(a, b)
 
-func square*(a: var FF) {.meter.} =
+func square*(a: var FF, skipReduction: static bool = false) {.meter.} =
   ## Squaring modulo p
-  a.mres.squareMont(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
+  a.square(a, skipReduction)
 
-func square_repeated*(r: var FF, num: int) {.meter.} =
+func square_repeated*(a: var FF, num: int, skipReduction: static bool = false) {.meter.} =
   ## Repeated squarings
+  # Except in Tonelli-Shanks, num is always known at compile-time
+  # and square repeated is inlined, so the compiler should optimize the branches away.
+  
+  # TODO: understand the conditions to avoid the final substraction
   for _ in 0 ..< num:
-    r.square()
+    a.square(skipReduction = false)
 
-func square_repeated*(r: var FF, a: FF, num: int) {.meter.} =
+func square_repeated*(r: var FF, a: FF, num: int, skipReduction: static bool = false) {.meter.} =
   ## Repeated squarings
+  
+  # TODO: understand the conditions to avoid the final substraction
   r.square(a)
   for _ in 1 ..< num:
     r.square()
+
+func square_repeated_then_mul*(a: var FF, num: int, b: FF, skipReduction: static bool = false) {.meter.} =
+  ## Square `a`, `num` times and then multiply by b
+  ## Assumes at least 1 squaring
+  a.square_repeated(num, skipReduction = false)
+  a.prod(a, b, skipReduction = skipReduction)
+
+func square_repeated_then_mul*(r: var FF, a: FF, num: int, b: FF, skipReduction: static bool = false) {.meter.} =
+  ## Square `a`, `num` times and then multiply by b
+  ## Assumes at least 1 squaring
+  r.square_repeated(a, num, skipReduction = false)
+  r.prod(r, b, skipReduction = skipReduction)
 
 func `*=`*(a: var FF, b: static int) =
   ## Multiplication by a small integer known at compile-time

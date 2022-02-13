@@ -51,19 +51,21 @@ func fromMont*[mBits](r: var BigInt[mBits], a, M: BigInt[mBits], m0ninv: static 
   ## the natural and montgomery domain.
   fromMont(r.limbs, a.limbs, M.limbs, m0ninv, spareBits)
 
-func mulMont*(r: var BigInt, a, b, M: BigInt, negInvModWord: static BaseType, spareBits: static int) =
+func mulMont*(r: var BigInt, a, b, M: BigInt, negInvModWord: static BaseType,
+              spareBits: static int, skipReduction: static bool = false) =
   ## Compute r <- a*b (mod M) in the Montgomery domain
   ##
   ## This resets r to zero before processing. Use {.noInit.}
   ## to avoid duplicating with Nim zero-init policy
-  mulMont(r.limbs, a.limbs, b.limbs, M.limbs, negInvModWord, spareBits)
+  mulMont(r.limbs, a.limbs, b.limbs, M.limbs, negInvModWord, spareBits, skipReduction)
 
-func squareMont*(r: var BigInt, a, M: BigInt, negInvModWord: static BaseType, spareBits: static int) =
+func squareMont*(r: var BigInt, a, M: BigInt, negInvModWord: static BaseType,
+                 spareBits: static int, skipReduction: static bool = false) =
   ## Compute r <- a^2 (mod M) in the Montgomery domain
   ##
   ## This resets r to zero before processing. Use {.noInit.}
   ## to avoid duplicating with Nim zero-init policy
-  squareMont(r.limbs, a.limbs, M.limbs, negInvModWord, spareBits)
+  squareMont(r.limbs, a.limbs, M.limbs, negInvModWord, spareBits, skipReduction)
 
 func powMont*[mBits: static int](
        a: var BigInt[mBits], exponent: openarray[byte],

@@ -103,7 +103,7 @@ func redc2xMont_CIOS[N: static int](
   # missing from paper.
 
   var a {.noInit.} = a # Copy "t" for mutation and ensure on stack
-  var res: typeof(r)   # Accumulator
+  var res {.noInit.}: typeof(r)   # Accumulator
   staticFor i, 0, N:
     var C = Zero
     let m = a[i] * SecretWord(m0ninv)
@@ -370,7 +370,7 @@ func fromMont_CIOS(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
   #   t[n-1] = C
 
   const N = a.len
-  var t = a # Ensure working in registers
+  var t {.noInit.} = a # Ensure working in registers
 
   staticFor i, 0, N:
     let m = t[0] * SecretWord(m0ninv)

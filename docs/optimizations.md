@@ -84,7 +84,11 @@ The optimizations can be of algebraic, algorithmic or "implementation details" n
   - [ ] NAF recoding
   - [ ] windowed-NAF recoding
   - [ ] SIMD vectorized select in window algorithm
-  - [ ] Almost Montgomery Multiplication, https://eprint.iacr.org/2011/239.pdf
+  - [ ] Montgomery Multiplication with no final substraction,
+    - Bos and Montgomery, https://eprint.iacr.org/2017/1057.pdf
+      - Colin D Walter, https://colinandmargaret.co.uk/Research/CDW_ELL_99.pdf
+      - Hachez and Quisquater, https://link.springer.com/content/pdf/10.1007%2F3-540-44499-8_23.pdf
+    - Gueron, https://eprint.iacr.org/2011/239.pdf
   - [ ] Pippenger multi-exponentiation (variable-time)
     - [ ] parallelized Pippenger
 
