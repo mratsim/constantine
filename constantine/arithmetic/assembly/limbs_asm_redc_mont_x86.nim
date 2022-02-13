@@ -150,10 +150,13 @@ macro redc2xMont_gen*[N: static int](
     else:
       ctx.adc u[i], a[i+N]
 
+  # v is invalidated from now on
   let t = repackRegisters(v, u[N], u[N+1])
-
-  # v is invalidated
-  if hasSpareBit and not skipReduction:
+  
+  if hasSpareBit and skipReduction:
+    for i in 0 ..< N:
+      ctx.mov r[i], t[i]
+  elif hasSpareBit:
     ctx.finalSubNoCarryImpl(r, u, M, t)
   else:
     ctx.finalSubMayCarryImpl(r, u, M, t, rax)

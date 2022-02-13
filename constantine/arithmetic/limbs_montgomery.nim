@@ -646,8 +646,7 @@ func powMontSquarings(
 
   # We have k bits and can do k squaring
   for i in 0 ..< k:
-    tmp.squareMont(a, M, m0ninv, spareBits)
-    a = tmp
+    a.squareMont(a, M, m0ninv, spareBits)  
 
   return (k, bits)
 

@@ -172,10 +172,13 @@ macro mulMont_CIOS_sparebit_gen[N: static int](
     ctx.add A, C
     ctx.mov t[N-1], A
 
-  if not skipReduction:
-    ctx.mov rdx, r
-    let r2 = rdx.asArrayAddr(len = N)
+  ctx.mov rax, r # move r away from scratchspace that will be used for final substraction
+  let r2 = rax.asArrayAddr(len = N)
 
+  if skipReduction:
+    for i in 0 ..< N:
+      ctx.mov r2[i], t[i]
+  else:
     ctx.finalSubNoCarryImpl(
       r2, t, M,
       scratch

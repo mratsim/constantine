@@ -131,7 +131,10 @@ macro redc2xMont_adx_gen[N: static int](
 
   let t = repackRegisters(v, u[N])
 
-  if hasSpareBit and not skipReduction:
+  if hasSpareBit and skipReduction:
+    for i in 0 ..< N:
+      ctx.mov r[i], t[i]
+  elif hasSpareBit:
     ctx.finalSubNoCarryImpl(r, u, M, t)
   else:
     ctx.finalSubMayCarryImpl(r, u, M, t, hi)

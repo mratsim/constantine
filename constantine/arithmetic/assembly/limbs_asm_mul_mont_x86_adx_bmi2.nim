@@ -269,8 +269,8 @@ macro mulMont_CIOS_sparebit_adx_gen[N: static int](
     )
 
   if skipReduction:
-    result.add quote do:
-      `r_PIR` = `tsym`
+    for i in 0 ..< N:
+      ctx.mov r[i], t[i]
   else:
     ctx.finalSubNoCarryImpl(
       r, t, M,
