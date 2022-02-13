@@ -50,7 +50,7 @@ func has2extraBits(F: type Fp): bool =
 # 𝔽p2 squaring
 # ------------------------------------------------------------
 
-func sqrx2x_complex_asm_adx_bmi2*(
+func sqrx2x_complex_asm_adx*(
         r: var array[2, FpDbl],
         a: array[2, Fp]
       ) =
@@ -67,11 +67,11 @@ func sqrx2x_complex_asm_adx_bmi2*(
     t0.double(a.c1)
     t1.sum(a.c0, a.c1)
 
-  r.c1.mul_asm_adx_bmi2_impl(t0, a.c0)
+  r.c1.mul_asm_adx_impl(t0, a.c0)
   t0.diff(a.c0, a.c1)
-  r.c0.mul_asm_adx_bmi2_impl(t0, t1)
+  r.c0.mul_asm_adx_impl(t0, t1)
 
-func sqrx_complex_sparebit_asm_adx_bmi2*(
+func sqrx_complex_sparebit_asm_adx*(
         r: var array[2, Fp],
         a: array[2, Fp]
       ) =
@@ -85,15 +85,15 @@ func sqrx_complex_sparebit_asm_adx_bmi2*(
   var v0 {.noInit.}, v1 {.noInit.}: typeof(r.c0)
   v0.diff(a.c0, a.c1)
   v1.sum(a.c0, a.c1)
-  r.c1.mres.limbs.montMul_CIOS_sparebit_asm_adx_bmi2(a.c0.mres.limbs, a.c1.mres.limbs, Fp.fieldMod().limbs, Fp.getNegInvModWord())
+  r.c1.mres.limbs.montMul_CIOS_sparebit_asm_adx(a.c0.mres.limbs, a.c1.mres.limbs, Fp.fieldMod().limbs, Fp.getNegInvModWord())
   # aliasing: a unneeded now
   r.c1.double()
-  r.c0.mres.limbs.montMul_CIOS_sparebit_asm_adx_bmi2(v0.mres.limbs, v1.mres.limbs, Fp.fieldMod().limbs, Fp.getNegInvModWord())
+  r.c0.mres.limbs.montMul_CIOS_sparebit_asm_adx(v0.mres.limbs, v1.mres.limbs, Fp.fieldMod().limbs, Fp.getNegInvModWord())
 
 # 𝔽p2 multiplication
 # ------------------------------------------------------------
 
-func mulx2x_complex_asm_adx_bmi2*(
+func mulx2x_complex_asm_adx*(
         r: var array[2, FpDbl],
         a, b: array[2, Fp]
       ) =
@@ -101,15 +101,15 @@ func mulx2x_complex_asm_adx_bmi2*(
   var D {.noInit.}: typeof(r.c0)
   var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0)
 
-  r.c0.limbs2x.mul_asm_adx_bmi2_impl(a.c0.mres.limbs, b.c0.mres.limbs)
-  D.limbs2x.mul_asm_adx_bmi2_impl(a.c1.mres.limbs, b.c1.mres.limbs)
+  r.c0.limbs2x.mul_asm_adx_impl(a.c0.mres.limbs, b.c0.mres.limbs)
+  D.limbs2x.mul_asm_adx_impl(a.c1.mres.limbs, b.c1.mres.limbs)
   when Fp.has1extraBit():
     t0.sumUnr(a.c0, a.c1)
     t1.sumUnr(b.c0, b.c1)
   else:
     t0.sum(a.c0, a.c1)
     t1.sum(b.c0, b.c1)
-  r.c1.limbs2x.mul_asm_adx_bmi2_impl(t0.mres.limbs, t1.mres.limbs)
+  r.c1.limbs2x.mul_asm_adx_impl(t0.mres.limbs, t1.mres.limbs)
   when Fp.has1extraBit():
     r.c1.diff2xUnr(r.c1, r.c0)
     r.c1.diff2xUnr(r.c1, D)
@@ -118,20 +118,20 @@ func mulx2x_complex_asm_adx_bmi2*(
     r.c1.diff2xMod(r.c1, D)
   r.c0.diff2xMod(r.c0, D)
 
-func mulx_complex_asm_adx_bmi2*(
+func mulx_complex_asm_adx*(
         r: var array[2, Fp],
         a, b: array[2, Fp]
       ) =
   ## Complex multiplication on 𝔽p2
   var d {.noInit.}: array[2,doublePrec(Fp)]
-  d.mulx2x_complex_asm_adx_bmi2(a, b)
-  r.c0.mres.limbs.montRed_asm_adx_bmi2_impl(
+  d.mulx2x_complex_asm_adx(a, b)
+  r.c0.mres.limbs.montRed_asm_adx_impl(
     d.c0.limbs2x,
     Fp.fieldMod().limbs,
     Fp.getNegInvModWord(),
     Fp.has1extraBit()
   )
-  r.c1.mres.limbs.montRed_asm_adx_bmi2_impl(
+  r.c1.mres.limbs.montRed_asm_adx_impl(
     d.c1.limbs2x,
     Fp.fieldMod().limbs,
     Fp.getNegInvModWord(),

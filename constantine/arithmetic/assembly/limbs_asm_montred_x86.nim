@@ -175,11 +175,10 @@ func montRed_asm*[N: static int](
 # Montgomery conversion
 # ----------------------------------------------------------
 
-macro fromMont_gen[N: static int](
-       r_MR: var array[N, SecretWord],
-       a_MR: array[N, SecretWord],
-       M_MR: array[N, SecretWord],
-       m0ninv_MR: BaseType) =
+macro mulmont_by_1_gen[N: static int](
+       t_EIR: var array[N, SecretWord],
+       M_PIR: array[N, SecretWord],
+       m0ninv_REG: BaseType) =
 
   # No register spilling handling
   doAssert N <= 6, "The Assembly-optimized montgomery reduction requires at most 6 limbs."
@@ -193,11 +192,9 @@ macro fromMont_gen[N: static int](
   let
     scratchSlots = 2
 
-    r = init(OperandArray, nimSymbol = r_MR, N, PointerInReg, InputOutput_EnsureClobber)
+    t = init(OperandArray, nimSymbol = t_EIR, N, ElemsInReg, InputOutput_EnsureClobber)
     # We could force M as immediate by specializing per moduli
-    M = init(OperandArray, nimSymbol = M_MR, N, PointerInReg, Input)
-    # If N is too big, we need to spill registers. TODO.
-    t = init(OperandArray, nimSymbol = ident"t", N, ElemsInReg, InputOutput)
+    M = init(OperandArray, nimSymbol = M_PIR, N, PointerInReg, Input)
     # MultiPurpose Register slots
     scratch = init(OperandArray, nimSymbol = ident"scratch", scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
 
@@ -206,22 +203,20 @@ macro fromMont_gen[N: static int](
     m0ninv = Operand(
                desc: OperandDesc(
                  asmId: "[m0ninv]",
-                 nimSymbol: m0ninv_MR,
+                 nimSymbol: m0ninv_REG,
                  rm: MemOffsettable,
                  constraint: Input,
-                 cEmit: "&" & $m0ninv_MR
+                 cEmit: "&" & $m0ninv_REG
                )
              )
 
     C = scratch[0] # Stores the high-part of muliplication
     m = scratch[1] # Stores (t[0] * m0ninv) mod 2ʷ
 
-  let tsym = t.nimSymbol
   let scratchSym = scratch.nimSymbol
   
   # Copy a in t
   result.add quote do:
-    var `tsym` = `a_MR`
     var `scratchSym` {.noInit.}: Limbs[`scratchSlots`]
 
   # Algorithm
@@ -260,16 +255,18 @@ macro fromMont_gen[N: static int](
 
     ctx.comment "  final carry"
     ctx.mov t[N-1], C
- 
-  ctx.comment "Move to result destination"
-  for i in 0 ..< N:
-    ctx.mov r[i], t[i]
 
   result.add ctx.generate()
 
 func fromMont_asm*(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
   ## Constant-time Montgomery residue form to BigInt conversion
-  fromMont_gen(r, a, M, m0ninv)
+  var t{.noInit.} = a
+  block:
+    t.mulmont_by_1_gen(M, m0ninv)
+
+  block: # Map from [0, 2p) to [0, p)
+    var workspace{.noInit.}: typeof(r)
+    r.finalSub_gen(t, M, workspace, mayCarry = false)
 
 # Sanity checks
 # ----------------------------------------------------------

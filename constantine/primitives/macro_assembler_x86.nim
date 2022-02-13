@@ -337,6 +337,10 @@ func generate*(a: Assembler_x86): NimNode =
       )
     )
   )
+  result = nnkBlockStmt.newTree(
+    newEmptyNode(),
+    result
+  )
 
 func getStrOffset(a: Assembler_x86, op: Operand): string =
   if op.kind != kFromArray:

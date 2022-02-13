@@ -348,7 +348,8 @@ func fromMont_CIOS(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
     staticFor j, 1, N:
       muladd2(C, t[j-1], m, M[j], C, t[j])
     t[N-1] = C
-  
+
+  discard t.csub(M, not(t < M))
   r = t
 
 # Exported API
@@ -364,7 +365,7 @@ func montyRedc2x*[N: static int](
   when UseASM_X86_64 and r.len <= 6:
     # ADX implies BMI2
     if ({.noSideEffect.}: hasAdx()):
-      montRed_asm_adx_bmi2(r, a, M, m0ninv, spareBits >= 1)
+      montRed_asm_adx(r, a, M, m0ninv, spareBits >= 1)
     else:
       when r.len in {3..6}:
         montRed_asm(r, a, M, m0ninv, spareBits >= 1)
@@ -411,7 +412,7 @@ func montyMul*(
     when UseASM_X86_64 and a.len in {2 .. 6}: # TODO: handle spilling
       # ADX implies BMI2
       if ({.noSideEffect.}: hasAdx()):
-        montMul_CIOS_sparebit_asm_adx_bmi2(r, a, b, M, m0ninv)
+        montMul_CIOS_sparebit_asm_adx(r, a, b, M, m0ninv)
       else:
         montMul_CIOS_sparebit_asm(r, a, b, M, m0ninv)
     else:
@@ -427,13 +428,13 @@ func montySquare*[N](r: var Limbs[N], a, M: Limbs[N],
   when UseASM_X86_64 and a.len in {4, 6}:
     # ADX implies BMI2
     if ({.noSideEffect.}: hasAdx()):
-      # With ADX and spare bit, montSquare_CIOS_asm_adx_bmi2
+      # With ADX and spare bit, montSquare_CIOS_asm_adx
       # which uses unfused squaring then Montgomery reduction
       # is slightly slower than fused Montgomery multiplication
       when spareBits >= 1:
-        montMul_CIOS_sparebit_asm_adx_bmi2(r, a, a, M, m0ninv)
+        montMul_CIOS_sparebit_asm_adx(r, a, a, M, m0ninv)
       else:
-        montSquare_CIOS_asm_adx_bmi2(r, a, M, m0ninv, spareBits >= 1)
+        montSquare_CIOS_asm_adx(r, a, M, m0ninv, spareBits >= 1)
     else:
       montSquare_CIOS_asm(r, a, M, m0ninv, spareBits >= 1)
   elif UseASM_X86_64:
@@ -465,7 +466,7 @@ func fromMont*(r: var Limbs, a, M: Limbs,
   when UseASM_X86_64 and a.len in {2 .. 6}:
     # ADX implies BMI2
     if ({.noSideEffect.}: hasAdx()):
-      fromMont_asm_adx_bmi2(r, a, M, m0ninv)
+      fromMont_asm_adx(r, a, M, m0ninv)
     else:
       fromMont_asm(r, a, M, m0ninv)
   else:

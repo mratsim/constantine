@@ -176,7 +176,7 @@ proc partialRedx(
     ctx.adcx lo, C      # lo contains 0 so C += S
     ctx.adox t[N-1], lo
 
-macro montMul_CIOS_sparebit_adx_bmi2_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_MM: Limbs[N], m0ninv_MM: BaseType): untyped =
+macro montMul_CIOS_sparebit_adx_gen[N: static int](r_MM: var Limbs[N], a_MM, b_MM, M_MM: Limbs[N], m0ninv_MM: BaseType): untyped =
   ## Generate an optimized Montgomery Multiplication kernel
   ## using the CIOS method
   ## This requires the most significant word of the Modulus
@@ -272,22 +272,22 @@ macro montMul_CIOS_sparebit_adx_bmi2_gen[N: static int](r_MM: var Limbs[N], a_MM
 
   result.add ctx.generate
 
-func montMul_CIOS_sparebit_asm_adx_bmi2*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
+func montMul_CIOS_sparebit_asm_adx*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) =
   ## Constant-time modular multiplication
   ## Requires the prime modulus to have a spare bit in the representation. (Hence if using 64-bit words and 4 words, to be at most 255-bit)
-  r.montMul_CIOS_sparebit_adx_bmi2_gen(a, b, M, m0ninv)
+  r.montMul_CIOS_sparebit_adx_gen(a, b, M, m0ninv)
 
 # Montgomery Squaring
 # ------------------------------------------------------------
 
-func square_asm_adx_bmi2_inline[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) {.inline.} =
+func square_asm_adx_inline[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) {.inline.} =
   ## Multi-precision Squaring
   ## Extra indirection as the generator assumes that
   ## arrays are pointers, which is true for parameters
   ## but not for stack variables.
   sqrx_gen(r, a)
 
-func montRed_asm_adx_bmi2_inline[N: static int](
+func montRed_asm_adx_inline[N: static int](
        r: var array[N, SecretWord],
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
@@ -300,12 +300,12 @@ func montRed_asm_adx_bmi2_inline[N: static int](
   ## but not for stack variables.
   montyRedc2x_adx_gen(r, a, M, m0ninv, hasSpareBit)
 
-func montSquare_CIOS_asm_adx_bmi2*[N](
+func montSquare_CIOS_asm_adx*[N](
        r: var Limbs[N],
        a, M: Limbs[N],
        m0ninv: BaseType,
        hasSpareBit: static bool) =
   ## Constant-time modular squaring
   var r2x {.noInit.}: Limbs[2*N]
-  r2x.square_asm_adx_bmi2_inline(a)
-  r.montRed_asm_adx_bmi2_inline(r2x, M, m0ninv, hasSpareBit)
+  r2x.square_asm_adx_inline(a)
+  r.montRed_asm_adx_inline(r2x, M, m0ninv, hasSpareBit)

@@ -74,7 +74,7 @@ func prod*[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], b: 
   when UseASM_X86_64 and aLen <= 6:
     # ADX implies BMI2
     if ({.noSideEffect.}: hasAdx()):
-      mul_asm_adx_bmi2(r, a, b)
+      mul_asm_adx(r, a, b)
     else:
       mul_asm(r, a, b)
   elif UseASM_X86_64:
@@ -203,7 +203,7 @@ func square*[rLen, aLen](
   when UseASM_X86_64 and aLen in {4, 6} and rLen == 2*aLen:
     # ADX implies BMI2
     if ({.noSideEffect.}: hasAdx()):
-      square_asm_adx_bmi2(r, a)
+      square_asm_adx(r, a)
     else:
       square_asm(r, a)
   elif UseASM_X86_64:

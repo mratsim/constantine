@@ -139,7 +139,7 @@ macro montyRedc2x_adx_gen*[N: static int](
   # Code generation
   result.add ctx.generate()
 
-func montRed_asm_adx_bmi2_impl*[N: static int](
+func montRed_asm_adx_impl*[N: static int](
        r: var array[N, SecretWord],
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
@@ -150,7 +150,7 @@ func montRed_asm_adx_bmi2_impl*[N: static int](
   ## Inline-version
   montyRedc2x_adx_gen(r, a, M, m0ninv, hasSpareBit)
 
-func montRed_asm_adx_bmi2*[N: static int](
+func montRed_asm_adx*[N: static int](
        r: var array[N, SecretWord],
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
@@ -158,17 +158,16 @@ func montRed_asm_adx_bmi2*[N: static int](
        hasSpareBit: static bool
       ) =
   ## Constant-time Montgomery reduction
-  montRed_asm_adx_bmi2_impl(r, a, M, m0ninv, hasSpareBit)
+  montRed_asm_adx_impl(r, a, M, m0ninv, hasSpareBit)
 
 
 # Montgomery conversion
 # ----------------------------------------------------------
 
-macro fromMont_adx_gen*[N: static int](
-       r_MR: var array[N, SecretWord],
-       a_MR: array[N, SecretWord],
-       M_MR: array[N, SecretWord],
-       m0ninv_MR: BaseType) =
+macro mulmont_by_1_adx_gen[N: static int](
+       t_EIR: var array[N, SecretWord],
+       M_PIR: array[N, SecretWord],
+       m0ninv_REG: BaseType) =
 
   # No register spilling handling
   doAssert N <= 6, "The Assembly-optimized montgomery reduction requires at most 6 limbs."
@@ -182,11 +181,9 @@ macro fromMont_adx_gen*[N: static int](
   let
     scratchSlots = 1
 
-    r = init(OperandArray, nimSymbol = r_MR, N, PointerInReg, InputOutput_EnsureClobber)
+    t = init(OperandArray, nimSymbol = t_EIR, N, ElemsInReg, InputOutput_EnsureClobber)
     # We could force M as immediate by specializing per moduli
-    M = init(OperandArray, nimSymbol = M_MR, N, PointerInReg, Input)
-    # If N is too big, we need to spill registers. TODO.
-    t = init(OperandArray, nimSymbol = ident"t", N, ElemsInReg, InputOutput)
+    M = init(OperandArray, nimSymbol = M_PIR, N, PointerInReg, Input)
     # MultiPurpose Register slots
     scratch = init(OperandArray, nimSymbol = ident"scratch", scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
 
@@ -195,21 +192,19 @@ macro fromMont_adx_gen*[N: static int](
     m0ninv = Operand(
                desc: OperandDesc(
                  asmId: "[m0ninv]",
-                 nimSymbol: m0ninv_MR,
+                 nimSymbol: m0ninv_REG,
                  rm: MemOffsettable,
                  constraint: Input,
-                 cEmit: "&" & $m0ninv_MR
+                 cEmit: "&" & $m0ninv_REG
                )
              )
 
     C = scratch[0] # Stores the high-part of muliplication
 
-  let tsym = t.nimSymbol
   let scratchSym = scratch.nimSymbol
   
   # Copy a in t
   result.add quote do:
-    var `tsym` {.noInit.} = `a_MR`
     var `scratchSym` {.noInit.}: Limbs[`scratchSlots`]
 
   # Algorithm
@@ -255,13 +250,15 @@ macro fromMont_adx_gen*[N: static int](
     ctx.adcx t[N-1], rax
     ctx.adox t[N-1], rax
 
-  ctx.comment "Move to result destination"
-  for i in 0 ..< N:
-    ctx.mov r[i], t[i]
-
   result.add ctx.generate()
 
-func fromMont_asm_adx_bmi2*(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
+func fromMont_asm_adx*(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
   ## Constant-time Montgomery residue form to BigInt conversion
   ## Requires ADX and BMI2 instruction set
-  fromMont_adx_gen(r, a, M, m0ninv)
+  var t{.noInit.} = a
+  block:
+    t.mulmont_by_1_adx_gen(M, m0ninv)
+
+  block: # Map from [0, 2p) to [0, p)
+    var workspace{.noInit.}: typeof(r)
+    r.finalSub_gen(t, M, workspace, mayCarry = false)

@@ -1243,7 +1243,7 @@ func square*(r: var QuadraticExt, a: QuadraticExt) =
     when true:
       when UseASM_X86_64 and a.c0.mres.limbs.len <= 6 and r.typeof.has1extraBit():
         if ({.noSideEffect.}: hasAdx()):
-          r.coords.sqrx_complex_sparebit_asm_adx_bmi2(a.coords)
+          r.coords.sqrx_complex_sparebit_asm_adx(a.coords)
         else:
           r.square_complex(a)
       else:
@@ -1281,7 +1281,7 @@ func prod*(r: var QuadraticExt, a, b: QuadraticExt) =
     else: # faster
       when UseASM_X86_64 and a.c0.mres.limbs.len <= 6:
         if ({.noSideEffect.}: hasAdx()):
-          r.coords.mulx_complex_asm_adx_bmi2(a.coords, b.coords)
+          r.coords.mulx_complex_asm_adx(a.coords, b.coords)
         else:
           var d {.noInit.}: doublePrec(typeof(r))
           d.prod2x_complex(a, b)
@@ -1318,7 +1318,7 @@ func prod2x*(r: var QuadraticExt2x, a, b: QuadraticExt) =
   when a.fromComplexExtension():
     when UseASM_X86_64 and a.c0.mres.limbs.len <= 6:
       if ({.noSideEffect.}: hasAdx()):
-        r.coords.mulx2x_complex_asm_adx_bmi2(a.coords, b.coords)
+        r.coords.mulx2x_complex_asm_adx(a.coords, b.coords)
       else:
         r.prod2x_complex(a, b)
     else:
