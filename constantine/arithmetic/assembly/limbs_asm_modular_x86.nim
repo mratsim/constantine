@@ -112,7 +112,7 @@ macro finalSub_gen*[N: static int](
     a = init(OperandArray, nimSymbol = a_EIR, N, ElemsInReg, InputOutput)
     # We could force m as immediate by specializing per moduli
     M = init(OperandArray, nimSymbol = M_PIR, N, PointerInReg, Input)
-    t = init(OperandArray, nimSymbol = scratch_EIR, N, ElemsInReg, InputOutput)
+    t = init(OperandArray, nimSymbol = scratch_EIR, N, ElemsInReg, Output_EarlyClobber)
 
   if mayCarry:
     ctx.finalSubMayCarryImpl(
