@@ -265,20 +265,20 @@ func cneg*(r: var FF, a: FF, ctl: SecretBool) {.meter.} =
 func cneg*(a: var FF, ctl: SecretBool) {.meter.} =
   ## Constant-time in-place conditional negation
   ## The negation is only performed if ctl is "true"
-  var t = a
+  var t {.noInit.} = a
   a.cneg(t, ctl)
 
 func cadd*(a: var FF, b: FF, ctl: SecretBool) {.meter.} =
   ## Constant-time out-place conditional addition
   ## The addition is only performed if ctl is "true"
-  var t = a
+  var t {.noInit.} = a
   t += b
   a.ccopy(t, ctl)
 
 func csub*(a: var FF, b: FF, ctl: SecretBool) {.meter.} =
   ## Constant-time out-place conditional substraction
   ## The substraction is only performed if ctl is "true"
-  var t = a
+  var t {.noInit.} = a
   t -= b
   a.ccopy(t, ctl)
 

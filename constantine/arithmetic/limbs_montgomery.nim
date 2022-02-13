@@ -95,8 +95,8 @@ func montyRedc2x_CIOS[N: static int](
   # to the higher limb if any, thank you "implementation detail"
   # missing from paper.
 
-  var a = a          # Copy "t" for mutation and ensure on stack
-  var res: typeof(r) # Accumulator
+  var a {.noInit.} = a # Copy "t" for mutation and ensure on stack
+  var res: typeof(r)   # Accumulator
   staticFor i, 0, N:
     var C = Zero
     let m = a[i] * SecretWord(m0ninv)

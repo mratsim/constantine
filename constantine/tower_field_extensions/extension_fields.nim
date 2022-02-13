@@ -454,7 +454,7 @@ func prod*[C: static Curve](
   # (c0 + c1 x) (u + v x) => u c0 + (u c0 + u c1)x + v c1 x²
   #                       => u c0 + β v c1 + (v c0 + u c1) x
   when a.fromComplexExtension() and u == 1 and v == 1:
-    let t = a.c0
+    let t {.noInit.} = a.c0
     r.c0.diff(t, a.c1)
     r.c1.sum(t, a.c1)
   else:
@@ -504,7 +504,7 @@ func prod2x*[C: static Curve](
   const Beta {.used.} = C.getNonResidueFp()
 
   when complex and U == 1 and V == 1:
-    let a1 = a.c1
+    let a1 {.noInit.} = a.c1
     r.c1.sum2xMod(a.c0, a1)
     r.c0.diff2xMod(a.c0, a1)
   else:
@@ -567,13 +567,13 @@ func `/=`*[C: static Curve](a: var Fp2[C], _: type NonResidue) =
   #   1/2 * (c0 + c1, c1 - c0)
 
   when a.fromComplexExtension() and u == 1 and v == 1:
-    let t = a.c0
+    let t {.noInit.} = a.c0
     a.c0 += a.c1
     a.c1 -= t
     a.div2()
   else:
-    var a0 = a.c0
-    let a1 = a.c1
+    var a0 {.noInit.} = a.c0
+    let a1 {.noInit.} = a.c1
     const u2v2 = u*u - Beta*v*v # (u² - βv²)
     # TODO can be precomputed to avoid costly inversion.
     var u2v2inv {.noInit.}: a.c0.typeof
@@ -605,7 +605,7 @@ func prod*(r: var QuadraticExt, a: QuadraticExt, _: type NonResidue) =
   ## - if sextic non-residue: 𝔽p8, 𝔽p12 or 𝔽p24
   ##
   ## Assumes that the non-residue is sqrt(lower extension non-residue)
-  let t = a.c0
+  let t {.noInit.} = a.c0
   r.c0.prod(a.c1, NonResidue)
   r.c1 = t
 
@@ -628,7 +628,7 @@ func prod2x*(
        _: type NonResidue) =
   ## Multiplication by non-residue
   static: doAssert not(r.c0 is FpDbl), "Wrong dispatch, there is a specific non-residue multiplication for the base extension."
-  let t = a.c0
+  let t {.noInit.} = a.c0
   r.c0.prod2x(a.c1, NonResidue)
   `=`(r.c1, t) # "r.c1 = t", is refused by the compiler.
 
@@ -650,7 +650,7 @@ func prod*(r: var CubicExt, a: CubicExt, _: type NonResidue) =
   ## For all curves γ = v with v the factor for the cubic extension coordinate
   ## and v³ = ξ
   ## (c0 + c1 v + c2 v²) v => ξ c2 + c0 v + c1 v²
-  let t = a.c2
+  let t {.noInit.} = a.c2
   r.c1 = a.c0
   r.c2 = a.c1
   r.c0.prod(t, NonResidue)
@@ -677,7 +677,7 @@ func prod2x*(
   ## For all curves γ = v with v the factor for cubic extension coordinate
   ## and v³ = ξ
   ## (c0 + c1 v + c2 v²) v => ξ c2 + c0 v + c1 v²
-  let t = a.c2
+  let t {.noInit.} = a.c2
   r.c1 = a.c0
   r.c2 = a.c1
   r.c0.prod2x(t, NonResidue)
