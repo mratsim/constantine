@@ -14,75 +14,39 @@ jobs:
             TEST_LANG: c
             BACKEND: NO_ASM
           - os: linux
-            cpu: amd64
-            TEST_LANG: cpp
-            BACKEND: NO_ASM
-          - os: linux
             cpu: i386
             TEST_LANG: c
-            BACKEND: NO_ASM
-          - os: linux
-            cpu: i386
-            TEST_LANG: cpp
             BACKEND: NO_ASM
           - os: macos
             cpu: amd64
             TEST_LANG: c
             BACKEND: NO_ASM
-          - os: macos
+          - os: windows
             cpu: amd64
-            TEST_LANG: cpp
+            TEST_LANG: c
             BACKEND: NO_ASM
-          # TODO:
-          #   1. Modulo/reduce bug on 32-bit
-          #   2. ModInverse bug on all windows
-          # - os: windows
-          #   cpu: amd64
-          #   TEST_LANG: c
-          # - os: windows
-          #   cpu: amd64
-          #   TEST_LANG: cpp
-          # - os: windows
-          #   cpu: i386
-          #   TEST_LANG: c
-          # - os: windows
-          #   cpu: i386
-          #   TEST_LANG: cpp
-          # ----------------------------
-          - os: linux
-            cpu: amd64
-            TEST_LANG: c
-            BACKEND: ASM
-          - os: linux
-            cpu: amd64
-            TEST_LANG: cpp
-            BACKEND: ASM
-          - os: linux
+          - os: windows
             cpu: i386
             TEST_LANG: c
-            BACKEND: ASM
+            BACKEND: NO_ASM
           - os: linux
-            cpu: i386
-            TEST_LANG: cpp
-            BACKEND: ASM
-          - os: macos
             cpu: amd64
             TEST_LANG: c
             BACKEND: ASM
           - os: macos
             cpu: amd64
-            TEST_LANG: cpp
+            TEST_LANG: c
             BACKEND: ASM
         include:
           - target:
               os: linux
-            builder: ubuntu-18.04
+            builder: ubuntu-latest
           - target:
               os: macos
-            builder: macos-10.15
-          # - target:
-          #     os: windows
-          #   builder: windows-2019
+            builder: macos-latest
+          - target:
+              os: windows
+            builder: windows-latest
     name: '${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ matrix.target.TEST_LANG }}-${{ matrix.target.BACKEND }} (${{ matrix.branch }})'
     runs-on: ${{ matrix.builder }}
     steps:
@@ -275,3 +239,10 @@ jobs:
           export UCPU="$cpu"
           cd constantine
           nimble test_parallel_no_gmp_no_assembler
+      - name: Run Constantine tests
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          export UCPU="$cpu"
+          cd constantine
+          nimble test
