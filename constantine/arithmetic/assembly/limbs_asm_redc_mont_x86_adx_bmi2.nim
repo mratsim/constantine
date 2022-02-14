@@ -38,7 +38,7 @@ macro redc2xMont_adx_gen[N: static int](
        a_PIR: array[N*2, SecretWord],
        M_PIR: array[N, SecretWord],
        m0ninv_REG: BaseType,
-       hasSpareBit, skipReduction: static bool
+       hasSpareBit, skipFinalSub: static bool
       ) =
 
   # No register spilling handling
@@ -131,7 +131,7 @@ macro redc2xMont_adx_gen[N: static int](
 
   let t = repackRegisters(v, u[N])
 
-  if hasSpareBit and skipReduction:
+  if hasSpareBit and skipFinalSub:
     for i in 0 ..< N:
       ctx.mov r[i], t[i]
   elif hasSpareBit:
@@ -148,11 +148,11 @@ func redcMont_asm_adx_inline*[N: static int](
        M: array[N, SecretWord],
        m0ninv: BaseType,
        hasSpareBit: static bool,
-       skipReduction: static bool = false
+       skipFinalSub: static bool = false
       ) {.inline.} =
   ## Constant-time Montgomery reduction
   ## Inline-version
-  redc2xMont_adx_gen(r, a, M, m0ninv, hasSpareBit, skipReduction)
+  redc2xMont_adx_gen(r, a, M, m0ninv, hasSpareBit, skipFinalSub)
 
 func redcMont_asm_adx*[N: static int](
        r: var array[N, SecretWord],
@@ -160,10 +160,10 @@ func redcMont_asm_adx*[N: static int](
        M: array[N, SecretWord],
        m0ninv: BaseType,
        hasSpareBit: static bool,
-       skipReduction: static bool = false
+       skipFinalSub: static bool = false
       ) =
   ## Constant-time Montgomery reduction
-  redcMont_asm_adx_inline(r, a, M, m0ninv, hasSpareBit, skipReduction)
+  redcMont_asm_adx_inline(r, a, M, m0ninv, hasSpareBit, skipFinalSub)
 
 
 # Montgomery conversion

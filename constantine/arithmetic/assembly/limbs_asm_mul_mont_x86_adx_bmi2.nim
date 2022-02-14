@@ -179,7 +179,7 @@ proc partialRedx(
 macro mulMont_CIOS_sparebit_adx_gen[N: static int](
         r_PIR: var Limbs[N], a_PIR, b_PIR,
         M_PIR: Limbs[N], m0ninv_REG: BaseType,
-        skipReduction: static bool): untyped =
+        skipFinalSub: static bool): untyped =
   ## Generate an optimized Montgomery Multiplication kernel
   ## using the CIOS method
   ## This requires the most significant word of the Modulus
@@ -268,7 +268,7 @@ macro mulMont_CIOS_sparebit_adx_gen[N: static int](
       lo, C
     )
 
-  if skipReduction:
+  if skipFinalSub:
     for i in 0 ..< N:
       ctx.mov r[i], t[i]
   else:
@@ -279,14 +279,14 @@ macro mulMont_CIOS_sparebit_adx_gen[N: static int](
 
   result.add ctx.generate
 
-func mulMont_CIOS_sparebit_asm_adx*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipReduction: static bool = false) =
+func mulMont_CIOS_sparebit_asm_adx*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipFinalSub: static bool = false) =
   ## Constant-time Montgomery multiplication
-  ## If "skipReduction" is set
+  ## If "skipFinalSub" is set
   ## the result is in the range [0, 2M)
   ## otherwise the result is in the range [0, M)
   ## 
   ## This procedure can only be called if the modulus doesn't use the full bitwidth of its underlying representation
-  r.mulMont_CIOS_sparebit_adx_gen(a, b, M, m0ninv, skipReduction)
+  r.mulMont_CIOS_sparebit_adx_gen(a, b, M, m0ninv, skipFinalSub)
 
 # Montgomery Squaring
 # ------------------------------------------------------------
@@ -295,8 +295,8 @@ func squareMont_CIOS_asm_adx*[N](
        r: var Limbs[N],
        a, M: Limbs[N],
        m0ninv: BaseType,
-       hasSpareBit, skipReduction: static bool) =
+       hasSpareBit, skipFinalSub: static bool) =
   ## Constant-time modular squaring
   var r2x {.noInit.}: Limbs[2*N]
   r2x.square_asm_adx_inline(a)
-  r.redcMont_asm_adx(r2x, M, m0ninv, hasSpareBit, skipReduction)
+  r.redcMont_asm_adx(r2x, M, m0ninv, hasSpareBit, skipFinalSub)

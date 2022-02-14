@@ -214,14 +214,14 @@ func double*(r: var FF, a: FF) {.meter.} =
     overflowed = overflowed or not(r.mres < FF.fieldMod())
     discard csub(r.mres, FF.fieldMod(), overflowed)
 
-func prod*(r: var FF, a, b: FF, skipReduction: static bool = false) {.meter.} =
+func prod*(r: var FF, a, b: FF, skipFinalSub: static bool = false) {.meter.} =
   ## Store the product of ``a`` by ``b`` modulo p into ``r``
   ## ``r`` is initialized / overwritten
-  r.mres.mulMont(a.mres, b.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits(), skipReduction)
+  r.mres.mulMont(a.mres, b.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits(), skipFinalSub)
 
-func square*(r: var FF, a: FF, skipReduction: static bool = false) {.meter.} =
+func square*(r: var FF, a: FF, skipFinalSub: static bool = false) {.meter.} =
   ## Squaring modulo p
-  r.mres.squareMont(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits(), skipReduction)
+  r.mres.squareMont(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits(), skipFinalSub)
 
 func neg*(r: var FF, a: FF) {.meter.} =
   ## Negate modulo p
@@ -413,38 +413,23 @@ func `*=`*(a: var FF, b: FF) {.meter.} =
   ## Multiplication modulo p
   a.prod(a, b)
 
-func square*(a: var FF, skipReduction: static bool = false) {.meter.} =
+func square*(a: var FF, skipFinalSub: static bool = false) {.meter.} =
   ## Squaring modulo p
-  a.square(a, skipReduction)
+  a.square(a, skipFinalSub)
 
-func square_repeated*(a: var FF, num: int, skipReduction: static bool = false) {.meter.} =
+func square_repeated*(a: var FF, num: int, skipFinalSub: static bool = false) {.meter.} =
   ## Repeated squarings
-  # Except in Tonelli-Shanks, num is always known at compile-time
-  # and square repeated is inlined, so the compiler should optimize the branches away.
-  
-  # TODO: understand the conditions to avoid the final substraction
-  for _ in 0 ..< num:
-    a.square(skipReduction = false)
+  ## Assumes at least 1 squaring
+  for _ in 0 ..< num-1:
+    a.square(skipFinalSub = true)
+  a.square(skipFinalSub)
 
-func square_repeated*(r: var FF, a: FF, num: int, skipReduction: static bool = false) {.meter.} =
+func square_repeated*(r: var FF, a: FF, num: int, skipFinalSub: static bool = false) {.meter.} =
   ## Repeated squarings
-  
-  # TODO: understand the conditions to avoid the final substraction
-  r.square(a)
-  for _ in 1 ..< num:
-    r.square()
-
-func square_repeated_then_mul*(a: var FF, num: int, b: FF, skipReduction: static bool = false) {.meter.} =
-  ## Square `a`, `num` times and then multiply by b
-  ## Assumes at least 1 squaring
-  a.square_repeated(num, skipReduction = false)
-  a.prod(a, b, skipReduction = skipReduction)
-
-func square_repeated_then_mul*(r: var FF, a: FF, num: int, b: FF, skipReduction: static bool = false) {.meter.} =
-  ## Square `a`, `num` times and then multiply by b
-  ## Assumes at least 1 squaring
-  r.square_repeated(a, num, skipReduction = false)
-  r.prod(r, b, skipReduction = skipReduction)
+  r.square(a, skipFinalSub = true)
+  for _ in 1 ..< num-1:
+    r.square(skipFinalSub = true)
+  r.square(skipFinalSub)
 
 func `*=`*(a: var FF, b: static int) =
   ## Multiplication by a small integer known at compile-time
@@ -550,3 +535,46 @@ template mulCheckSparse*(a: var Fp, b: Fp) =
 
 {.pop.} # inline
 {.pop.} # raises no exceptions
+
+# ############################################################
+#
+#            Field arithmetic ergonomic macros
+#
+# ############################################################
+
+import std/macros
+
+macro addchain*(fn: untyped): untyped =
+  ## Modify all prod, `*=`, square, square_repeated calls
+  ## to skipFinalSub except the very last call.
+  ## This assumes straight-line code.
+  fn.expectKind(nnkFuncDef)
+
+  result = fn
+  var body = newStmtList()
+
+  for i, statement in fn[^1]:
+    statement.expectKind({nnkCommentStmt, nnkVarSection, nnkCall, nnkInfix})
+
+    var s = statement.copyNimTree()
+    if i + 1 != result[^1].len:
+      # Modify all but the last
+      if s.kind == nnkCall:
+        doAssert s[0].kind == nnkDotExpr, "Only method call syntax or infix syntax is supported in addition chains" 
+        doAssert s[0][1].eqIdent"prod" or s[0][1].eqIdent"square" or s[0][1].eqIdent"square_repeated"
+        s.add newLit(true)
+      elif s.kind == nnkInfix:
+        doAssert s[0].eqIdent"*="
+        # a *= b   ->  prod(a, a, b, true)
+        s = newCall(
+          bindSym"prod",
+          s[1],
+          s[1],
+          s[2],
+          newLit(true)
+        )
+    
+    body.add s
+
+  result[^1] = body
+  # echo result.toStrLit()

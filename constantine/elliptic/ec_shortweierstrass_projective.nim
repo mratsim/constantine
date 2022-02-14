@@ -220,7 +220,7 @@ func sum*[F; G: static Subgroup](
       t4 *= SexticNonResidue
     x3.sum(P.x, P.z)          # 14. X₃ <- X₁ + Z₁
     y3.sum(Q.x, Q.z)          # 15. Y₃ <- X₂ + Z₂
-    x3 *= y3                  # 16. X₃ <- X₃ Y₃     X₃ = (X₁Z₁)(X₂Z₂)
+    x3 *= y3                  # 16. X₃ <- X₃ Y₃     X₃ = (X₁+Z₁)(X₂+Z₂)
     y3.sum(t0, t2)            # 17. Y₃ <- t₀ + t₂   Y₃ = X₁ X₂ + Z₁ Z₂
     y3.diff(x3, y3)           # 18. Y₃ <- X₃ - Y₃   Y₃ = (X₁ + Z₁)(X₂ + Z₂) - (X₁ X₂ + Z₁ Z₂) = X₁Z₂ + X₂Z₁
     when G == G2 and F.C.getSexticTwist() == D_Twist:

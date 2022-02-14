@@ -28,7 +28,7 @@ const
 
 func precompute_tonelli_shanks_addchain*(
        r: var Fp[BLS12_377],
-       a: Fp[BLS12_377]) =
+       a: Fp[BLS12_377]) {.addchain.} =
   ## Does a^BLS12_377_TonelliShanks_exponent
   ## via an addition-chain
 
