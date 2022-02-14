@@ -129,11 +129,11 @@ func mul_fp2_complex_asm_adx*(
     d.c0.limbs2x,
     Fp.fieldMod().limbs,
     Fp.getNegInvModWord(),
-    Fp.has1extraBit()
+    Fp.getSpareBits()
   )
   r.c1.mres.limbs.redcMont_asm_adx_inline(
     d.c1.limbs2x,
     Fp.fieldMod().limbs,
     Fp.getNegInvModWord(),
-    Fp.has1extraBit()
+    Fp.getSpareBits()
   )

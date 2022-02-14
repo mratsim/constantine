@@ -404,16 +404,16 @@ func redc2xMont*[N: static int](
   when UseASM_X86_64 and r.len <= 6:
     # ADX implies BMI2
     if ({.noSideEffect.}: hasAdx()):
-      redcMont_asm_adx(r, a, M, m0ninv, spareBits >= 1, skipFinalSub)
+      redcMont_asm_adx(r, a, M, m0ninv, spareBits, skipFinalSub)
     else:
       when r.len in {3..6}:
-        redcMont_asm(r, a, M, m0ninv, spareBits >= 1, skipFinalSub)
+        redcMont_asm(r, a, M, m0ninv, spareBits, skipFinalSub)
       else:
         redc2xMont_CIOS(r, a, M, m0ninv, skipFinalSub)
         # redc2xMont_Comba(r, a, M, m0ninv)
   elif UseASM_X86_64 and r.len in {3..6}:
     # TODO: Assembly faster than GCC but slower than Clang
-    redcMont_asm(r, a, M, m0ninv, spareBits >= 1, skipFinalSub)
+    redcMont_asm(r, a, M, m0ninv, spareBits, skipFinalSub)
   else:
     redc2xMont_CIOS(r, a, M, m0ninv, skipFinalSub)
     # redc2xMont_Comba(r, a, M, m0ninv, skipFinalSub)
@@ -474,9 +474,9 @@ func squareMont*[N](r: var Limbs[N], a, M: Limbs[N],
       when spareBits >= 1:
         mulMont_CIOS_sparebit_asm_adx(r, a, a, M, m0ninv, skipFinalSub)
       else:
-        squareMont_CIOS_asm_adx(r, a, M, m0ninv, spareBits >= 1, skipFinalSub)
+        squareMont_CIOS_asm_adx(r, a, M, m0ninv, spareBits, skipFinalSub)
     else:
-      squareMont_CIOS_asm(r, a, M, m0ninv, spareBits >= 1, skipFinalSub)
+      squareMont_CIOS_asm(r, a, M, m0ninv, spareBits, skipFinalSub)
   elif UseASM_X86_64:
     var r2x {.noInit.}: Limbs[2*N]
     r2x.square(a)

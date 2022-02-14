@@ -295,8 +295,8 @@ func squareMont_CIOS_asm_adx*[N](
        r: var Limbs[N],
        a, M: Limbs[N],
        m0ninv: BaseType,
-       hasSpareBit, skipFinalSub: static bool) =
+       spareBits: static int, skipFinalSub: static bool) =
   ## Constant-time modular squaring
   var r2x {.noInit.}: Limbs[2*N]
   r2x.square_asm_adx_inline(a)
-  r.redcMont_asm_adx(r2x, M, m0ninv, hasSpareBit, skipFinalSub)
+  r.redcMont_asm_adx(r2x, M, m0ninv, spareBits, skipFinalSub)
