@@ -194,13 +194,14 @@ func invsqrt_tonelli_shanks_pre(
   t.square(z)
   t *= a
   r = z
-  var b = t
-  var root = Fp.C.tonelliShanks(root_of_unity)
+  var b {.noInit.} = t
+  var root {.noInit.} = Fp.C.tonelliShanks(root_of_unity)
 
   var buf {.noInit.}: Fp
 
   for i in countdown(e, 2, 1):
-    b.square_repeated(i-2)
+    if i-2 >= 1:
+      b.square_repeated(i-2)
 
     let bNotOne = not b.isOne()
     buf.prod(r, root)

@@ -34,7 +34,7 @@ macro redc2xMont_gen*[N: static int](
        a_PIR: array[N*2, SecretWord],
        M_PIR: array[N, SecretWord],
        m0ninv_REG: BaseType,
-       hasSpareBit, skipReduction: static bool
+       hasSpareBit, skipFinalSub: static bool
       ) =
 
   # No register spilling handling
@@ -153,7 +153,7 @@ macro redc2xMont_gen*[N: static int](
   # v is invalidated from now on
   let t = repackRegisters(v, u[N], u[N+1])
   
-  if hasSpareBit and skipReduction:
+  if hasSpareBit and skipFinalSub:
     for i in 0 ..< N:
       ctx.mov r[i], t[i]
   elif hasSpareBit:
@@ -170,22 +170,22 @@ func redcMont_asm_inline*[N: static int](
        M: array[N, SecretWord],
        m0ninv: BaseType,
        hasSpareBit: static bool,
-       skipReduction: static bool = false
+       skipFinalSub: static bool = false
       ) {.inline.} =
   ## Constant-time Montgomery reduction
   ## Inline-version
-  redc2xMont_gen(r, a, M, m0ninv, hasSpareBit, skipReduction)
+  redc2xMont_gen(r, a, M, m0ninv, hasSpareBit, skipFinalSub)
 
 func redcMont_asm*[N: static int](
        r: var array[N, SecretWord],
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
        m0ninv: BaseType,
-       hasSpareBit, skipReduction: static bool
+       hasSpareBit, skipFinalSub: static bool
       ) =
   ## Constant-time Montgomery reduction
   static: doAssert UseASM_X86_64, "This requires x86-64."
-  redcMont_asm_inline(r, a, M, m0ninv, hasSpareBit, skipReduction)
+  redcMont_asm_inline(r, a, M, m0ninv, hasSpareBit, skipFinalSub)
 
 # Montgomery conversion
 # ----------------------------------------------------------
@@ -351,8 +351,8 @@ when isMainModule:
     var a_sqr{.noInit.}, na_sqr{.noInit.}: Limbs[2]
     var a_sqr_comba{.noInit.}, na_sqr_comba{.noInit.}: Limbs[2]
 
-    a_sqr.redcMont_asm(adbl_sqr, M, 1, hasSpareBit = false, skipReduction = false)
-    na_sqr.redcMont_asm(nadbl_sqr, M, 1, hasSpareBit = false, skipReduction = false)
+    a_sqr.redcMont_asm(adbl_sqr, M, 1, hasSpareBit = false, skipFinalSub = false)
+    na_sqr.redcMont_asm(nadbl_sqr, M, 1, hasSpareBit = false, skipFinalSub = false)
     a_sqr_comba.redc2xMont_Comba(adbl_sqr, M, 1)
     na_sqr_comba.redc2xMont_Comba(nadbl_sqr, M, 1)
 

@@ -24,7 +24,7 @@ import
 #
 # ############################################################
 
-func getMont*(mres: var BigInt, a, N, r2modM: BigInt, m0ninv: static BaseType, spareBits: static int) =
+func getMont*(mres: var BigInt, a, N, r2modM: BigInt, m0ninv: BaseType, spareBits: static int) =
   ## Convert a BigInt from its natural representation
   ## to the Montgomery residue form
   ##
@@ -41,7 +41,7 @@ func getMont*(mres: var BigInt, a, N, r2modM: BigInt, m0ninv: static BaseType, s
   ## and R = (2^WordBitWidth)^W
   getMont(mres.limbs, a.limbs, N.limbs, r2modM.limbs, m0ninv, spareBits)
 
-func fromMont*[mBits](r: var BigInt[mBits], a, M: BigInt[mBits], m0ninv: static BaseType, spareBits: static int) =
+func fromMont*[mBits](r: var BigInt[mBits], a, M: BigInt[mBits], m0ninv: BaseType, spareBits: static int) =
   ## Convert a BigInt from its Montgomery residue form
   ## to the natural representation
   ##
@@ -52,20 +52,20 @@ func fromMont*[mBits](r: var BigInt[mBits], a, M: BigInt[mBits], m0ninv: static 
   fromMont(r.limbs, a.limbs, M.limbs, m0ninv, spareBits)
 
 func mulMont*(r: var BigInt, a, b, M: BigInt, negInvModWord: static BaseType,
-              spareBits: static int, skipReduction: static bool = false) =
+              spareBits: static int, skipFinalSub: static bool = false) =
   ## Compute r <- a*b (mod M) in the Montgomery domain
   ##
   ## This resets r to zero before processing. Use {.noInit.}
   ## to avoid duplicating with Nim zero-init policy
-  mulMont(r.limbs, a.limbs, b.limbs, M.limbs, negInvModWord, spareBits, skipReduction)
+  mulMont(r.limbs, a.limbs, b.limbs, M.limbs, negInvModWord, spareBits, skipFinalSub)
 
 func squareMont*(r: var BigInt, a, M: BigInt, negInvModWord: static BaseType,
-                 spareBits: static int, skipReduction: static bool = false) =
+                 spareBits: static int, skipFinalSub: static bool = false) =
   ## Compute r <- a^2 (mod M) in the Montgomery domain
   ##
   ## This resets r to zero before processing. Use {.noInit.}
   ## to avoid duplicating with Nim zero-init policy
-  squareMont(r.limbs, a.limbs, M.limbs, negInvModWord, spareBits, skipReduction)
+  squareMont(r.limbs, a.limbs, M.limbs, negInvModWord, spareBits, skipFinalSub)
 
 func powMont*[mBits: static int](
        a: var BigInt[mBits], exponent: openarray[byte],

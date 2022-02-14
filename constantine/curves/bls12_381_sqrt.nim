@@ -16,7 +16,7 @@ import
 #
 # ############################################################
 
-func invsqrt_addchain*(r: var Fp[BLS12_381], a: Fp[BLS12_381]) =
+func invsqrt_addchain*(r: var Fp[BLS12_381], a: Fp[BLS12_381]) {.addchain.} =
   var
     x10       {.noInit.}: Fp[BLS12_381]
     x100      {.noInit.}: Fp[BLS12_381]
