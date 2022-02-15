@@ -1414,7 +1414,7 @@ func inv*(a: var QuadraticExt) =
 # Cubic extensions can use specific squaring procedures
 # beyond Schoolbook and Karatsuba:
 # - Chung-Hasan (3 different algorithms)
-# - Toom-Cook-3x
+# - Toom-Cook-3x (only in Miller Loops)
 #
 # Chung-Hasan papers
 # http://cacr.uwaterloo.ca/techreports/2006/cacr2006-24.pdf
@@ -1434,11 +1434,11 @@ func inv*(a: var QuadraticExt) =
 # |-------------|----------|-------------------|
 # | Schoolbook  | 3M + 3S  | 6A + 2B           |
 # | Karatsuba   | 6S       | 13A + 2B          |
-# | Tom-Cook-3x | 5S       | 33A + 2B          |
+# | Tom-Cook-3x | 5S       | 33A + 2B          | (Miller loop only, factor 6)
 # | CH-SQR1     | 3M + 2S  | 11A + 2B          |
 # | CH-SQR2     | 2M + 3S  | 10A + 2B          |
 # | CH-SQR3     | 1M + 4S  | 11A + 2B + 1 Div2 |
-# | CH-SQR3x    | 1M + 4S  | 14A + 2B          |
+# | CH-SQR3x    | 1M + 4S  | 14A + 2B          | (Miller loop only, factor 2)
 
 func square_Chung_Hasan_SQR2(r: var CubicExt, a: CubicExt) {.used.}=
   ## Returns r = a²
@@ -1545,7 +1545,8 @@ func square_Chung_Hasan_SQR3(r: var CubicExt, a: CubicExt) =
 # -------------------------------------------------------------------
 
 func prodImpl(r: var CubicExt, a, b: CubicExt) =
-  ## Returns r = a * b  # Algorithm is Karatsuba
+  ## Returns r = a * b 
+  ## Algorithm is Karatsuba
   var v0{.noInit.}, v1{.noInit.}, v2{.noInit.}: typeof(r.c0)
   var t0{.noInit.}, t1{.noInit.}, t2{.noInit.}: typeof(r.c0)
 
@@ -1747,7 +1748,7 @@ func square2x*(r: var CubicExt2x, a: CubicExt) =
   square2x_Chung_Hasan_SQR2(r, a)
 
 func prod*(r: var CubicExt, a, b: CubicExt) =
-  ## In-place multiplication
+  ## Out-of-place multiplication
   when CubicExt.F.C == BW6_761: # Too large
     r.prodImpl(a, b)
   else:

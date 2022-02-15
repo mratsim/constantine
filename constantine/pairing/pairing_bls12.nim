@@ -119,17 +119,17 @@ func finalExpHard_BLS12*[C](f: var Fp12[C]) {.meter.} =
 
   # (x−1)²
   when C.pairing(ate_param).isEven.bool:
-    v0.pow_xdiv2(v2)           # v0 = (f²)^(x/2) = f^x
+    v0.cycl_exp_by_curve_param_div2(v2) # v0 = (f²)^(x/2) = f^x
   else:
-    v0.pow_x(f)
+    v0.cycl_exp_by_curve_param(f)
   v1.cyclotomic_inv(f)         # v1 = f^-1
   v0 *= v1                     # v0 = f^(x-1)
-  v1.pow_x(v0)                 # v1 = (f^(x-1))^x
+  v1.cycl_exp_by_curve_param(v0) # v1 = (f^(x-1))^x
   v0.cyclotomic_inv()          # v0 = (f^(x-1))^-1
   v0 *= v1                     # v0 = (f^(x-1))^(x-1) = f^((x-1)*(x-1)) = f^((x-1)²)
 
   # (x+p)
-  v1.pow_x(v0)                 # v1 = f^((x-1)².x)
+  v1.cycl_exp_by_curve_param(v0) # v1 = f^((x-1)².x)
   v0.frobenius_map(v0)         # v0 = f^((x-1)².p)
   v0 *= v1                     # v0 = f^((x-1)².(x+p))
 
@@ -137,8 +137,8 @@ func finalExpHard_BLS12*[C](f: var Fp12[C]) {.meter.} =
   f *= v2                      # f = f³
 
   # (x²+p²−1)
-  v2.pow_x(v0, invert = false)
-  v1.pow_x(v2, invert = false) # v1 = f^((x-1)².(x+p).x²)
+  v2.cycl_exp_by_curve_param(v0, invert = false)
+  v1.cycl_exp_by_curve_param(v2, invert = false) # v1 = f^((x-1)².(x+p).x²)
   v2.frobenius_map(v0, 2)      # v2 = f^((x-1)².(x+p).p²)
   v0.cyclotomic_inv()          # v0 = f^((x-1)².(x+p).-1)
   v0 *= v1                     # v0 = f^((x-1)².(x+p).(x²-1))

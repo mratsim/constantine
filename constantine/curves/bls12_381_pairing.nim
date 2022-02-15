@@ -82,7 +82,7 @@ func millerLoopAddchain*[N: static int](
 
   # TODO: what is the threshold for Karabina's compressed squarings?
 
-func pow_xdiv2*(r: var Fp12[BLS12_381], a: Fp12[BLS12_381], invert = BLS12_381_pairing_ate_param_isNeg) =
+func cycl_exp_by_curve_param_div2*(r: var Fp12[BLS12_381], a: Fp12[BLS12_381], invert = BLS12_381_pairing_ate_param_isNeg) =
   ## f^(x/2) with x the curve parameter
   ## For BLS12_381 f^-0xd201000000010000
 
@@ -101,10 +101,10 @@ func pow_xdiv2*(r: var Fp12[BLS12_381], a: Fp12[BLS12_381], invert = BLS12_381_p
   if invert:
     r.cyclotomic_inv()
 
-func pow_x*(r: var Fp12[BLS12_381], a: Fp12[BLS12_381], invert = BLS12_381_pairing_ate_param_isNeg) =
+func cycl_exp_by_curve_param*(r: var Fp12[BLS12_381], a: Fp12[BLS12_381], invert = BLS12_381_pairing_ate_param_isNeg) =
   ## f^x with x the curve parameter
   ## For BLS12_381 f^-0xd201000000010000
-  r.pow_xdiv2(a, invert)
+  r.cycl_exp_by_curve_param_div2(a, invert)
   r.cyclotomic_square()
 
 func isInPairingSubgroup*(a: Fp12[BLS12_381]): SecretBool =
@@ -116,6 +116,6 @@ func isInPairingSubgroup*(a: Fp12[BLS12_381]): SecretBool =
   #   P is in the G1 subgroup iff a^p == a^u
   var t0{.noInit.}, t1{.noInit.}: Fp12[BLS12_381]
   t0.frobenius_map(a)
-  t1.pow_x(a)
+  t1.cycl_exp_by_curve_param(a)
 
   return t0 == t1

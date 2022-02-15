@@ -42,6 +42,12 @@ proc main() =
     mulFp12_by_2lines_v1_xyz000_Bench(curve, Iters)
     mulFp12_by_2lines_v2_xyz000_Bench(curve, Iters)
     separator()
+    mulBench(curve, Iters)
+    sqrBench(curve, Iters)
+    separator()
+    cyclotomicSquare_Bench(curve, Iters)
+    expCurveParamBench(curve, Iters)
+    separator()
     finalExpEasyBench(curve, Iters)
     finalExpHardBLS12Bench(curve, Iters)
     separator()
@@ -49,7 +55,14 @@ proc main() =
     finalExpBLS12Bench(curve, Iters)
     separator()
     pairingBLS12Bench(curve, Iters)
+    pairing_multipairing_BLS12Bench(curve, 1, Iters)
     separator()
+    staticFor j, 2, 4:
+      pairing_multisingle_BLS12Bench(curve, j, Iters div j)
+      pairing_multipairing_BLS12Bench(curve, j, Iters div j)
+    separator()
+    staticFor j, 4, 9:
+      pairing_multipairing_BLS12Bench(curve, j, Iters div j)
 
 main()
 notes()

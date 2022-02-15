@@ -41,7 +41,7 @@ const BN254_Snarks_pairing_finalexponent* = block:
 # it would requires saving accumulators to actually save
 # operations compared to NAF, and can we combine the saved EC[Fp2] accumulators?
 
-func pow_u*(r: var Fp12[BN254_Snarks], a: Fp12[BN254_Snarks], invert = BN254_Snarks_pairing_ate_param_isNeg) =
+func cycl_exp_by_curve_param*(r: var Fp12[BN254_Snarks], a: Fp12[BN254_Snarks], invert = BN254_Snarks_pairing_ate_param_isNeg) =
   ## f^u with u the curve parameter
   ## For BN254_Snarks f^0x44e992b44a6909f1
   when false:
@@ -132,8 +132,8 @@ func isInPairingSubgroup*(a: Fp12[BN254_Snarks]): SecretBool =
   #   on BLS pairing-friendly curves
   #   P is in the G1 subgroup iff a^p == a^(6u²)
   var t0{.noInit.}, t1{.noInit.}: Fp12[BN254_Snarks]
-  t0.pow_u(a)   # a^p
-  t1.pow_u(t0)  # a^(p²)
+  t0.cycl_exp_by_curve_param(a)   # a^p
+  t1.cycl_exp_by_curve_param(t0)  # a^(p²)
   t0.square(t1) # a^(2p²)
   t0 *= t1      # a^(3p²)
   t0.square()   # a^(6p²)

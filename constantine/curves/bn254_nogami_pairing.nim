@@ -58,7 +58,7 @@ func millerLoopAddchain*(
   # Ate pairing for BN curves needs adjustment after basic Miller loop
   f.millerCorrectionBN(T, Q, P, BN254_Nogami_pairing_ate_param_isNeg)
 
-func pow_u*(r: var Fp12[BN254_Nogami], a: Fp12[BN254_Nogami], invert = BN254_Nogami_pairing_ate_param_isNeg) =
+func cycl_exp_by_curve_param*(r: var Fp12[BN254_Nogami], a: Fp12[BN254_Nogami], invert = BN254_Nogami_pairing_ate_param_isNeg) =
   ## f^u with u the curve parameter
   ## For BN254_Nogami f^-0x4080000000000001
   r.cyclotomic_square(a)
@@ -78,8 +78,8 @@ func isInPairingSubgroup*(a: Fp12[BN254_Nogami]): SecretBool =
   #   on BLS pairing-friendly curves
   #   P is in the G1 subgroup iff a^p == a^(6u²)
   var t0{.noInit.}, t1{.noInit.}: Fp12[BN254_Nogami]
-  t0.pow_u(a)   # a^p
-  t1.pow_u(t0)  # a^(p²)
+  t0.cycl_exp_by_curve_param(a)   # a^p
+  t1.cycl_exp_by_curve_param(t0)  # a^(p²)
   t0.square(t1) # a^(2p²)
   t0 *= t1      # a^(3p²)
   t0.square()   # a^(6p²)

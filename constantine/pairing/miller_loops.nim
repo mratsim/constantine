@@ -305,7 +305,7 @@ func miller_init_double_then_add*[N: static int, FT, F1, F2](
   when numDoublings > 1: # Already did the MSB doubling
     when N == 1:         # f = line0
       f.prod_sparse_sparse(line0, line0) # f.square()
-      line0.line_double(Ts[1], Ps[1])
+      line0.line_double(Ts[0], Ps[0])
       f.mul(line0)
       for _ in 2 ..< numDoublings:
         f.square()
