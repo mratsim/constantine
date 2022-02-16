@@ -11,7 +11,7 @@ import
   ../io/io_bigints,
   ../towers,
   ../elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
-  ../pairing/[cyclotomic_fp12, miller_loops],
+  ../pairing/[cyclotomic_subgroup, miller_loops],
   ../isogeny/frobenius
 
 # Slow generic implementation

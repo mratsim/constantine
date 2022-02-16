@@ -18,7 +18,7 @@ import
 
 # ############################################################
 #
-#               Gϕ₁₂, Cyclotomic subgroup of Fp12
+#                Gϕₙ, Cyclotomic subgroup of Fpⁿ
 #         with GΦₙ(p) = {α ∈ Fpⁿ : α^Φₙ(p) ≡ 1 (mod pⁿ)}
 #
 # ############################################################
@@ -32,8 +32,89 @@ import
 #   Scott, Benger, Charlemagne, Perez, Kachisa, 2008
 #   https://eprint.iacr.org/2008/490.pdf
 
-# 𝔽p12 -> Gϕ₁₂ - Mapping to Cyclotomic group
+# 𝔽pⁿ -> Gϕₙ - Mapping to Cyclotomic group
 # ----------------------------------------------------------------
+
+func finalExpEasy*[C: static Curve](f: var Fp6[C]) {.meter.} =
+  ## Easy part of the final exponentiation
+  ##
+  ## This maps the result of the Miller loop into the cyclotomic subgroup Gϕ₆
+  ##
+  ## We need to clear the Gₜ cofactor to obtain
+  ## an unique Gₜ representation
+  ## (reminder, Gₜ is a multiplicative group hence we exponentiate by the cofactor)
+  ##
+  ## i.e. Fp⁶ --> (fexp easy) --> Gϕ₆ --> (fexp hard) --> Gₜ
+  ##
+  ## The final exponentiation is fexp = f^((p⁶ - 1) / r)
+  ## It is separated into:
+  ## f^((p⁶ - 1) / r) = (p⁶ - 1) / ϕ₆(p)  * ϕ₆(p) / r
+  ##
+  ## with the cyclotomic polynomial ϕ₆(p) = (p²-p+1)
+  ##
+  ## With an embedding degree of 6, the easy part of final exponentiation is
+  ##
+  ##  f^(p³−1)(p+1)
+  ##
+  ## And properties are
+  ## 0. f^(p³) ≡ conj(f) (mod p⁶) for all f in Fp6
+  ##
+  ## After g = f^(p³−1) the result g is on the cyclotomic subgroup
+  ## 1. g^(-1) ≡ g^(p³) (mod p⁶)
+  ## 2. Inversion can be done with conjugate
+  ## 3. g is unitary, its norm |g| (the product of conjugates) is 1
+  ## 4. Squaring has a fast compressed variant.
+  #
+  # Proofs:
+  #
+  # Fp6 can be defined as a quadratic extension over Fp³
+  # with g = g₀ + x g₁ with x a quadratic non-residue
+  #
+  # with q = p³, q² = p⁶
+  # The frobenius map f^q ≡ (f₀ + x f₁)^q (mod q²)
+  #                       ≡ f₀^q + x^q f₁^q (mod q²)
+  #                       ≡ f₀ + x^q f₁ (mod q²)
+  #                       ≡ f₀ - x f₁ (mod q²)
+  # hence
+  # f^p³ ≡ conj(f) (mod p⁶)
+  # Q.E.D. of (0)
+  #
+  # ----------------
+  #
+  # p⁶ - 1 = (p³−1)(p³+1) = (p³−1)(p+1)(p²-p+1)
+  # by Fermat's little theorem we have
+  # f^(p⁶ - 1) ≡ 1 (mod p⁶)
+  #
+  # Hence f^(p³−1)(p³+1) ≡ 1 (mod p⁶)
+  #
+  # We call g = f^(p³−1) we have
+  # g^(p³+1) ≡ 1 (mod p⁶) <=> g^(p³) * g ≡ 1 (mod p⁶)
+  # hence g^(-1) ≡ g^(p³) (mod p⁶)
+  # Q.E.D. of (1)
+  #
+  # --
+  #
+  # From (1) g^(-1) ≡ g^(p³) (mod p⁶) for g = f^(p³−1)
+  # and  (0) f^p³ ≡ conj(f) (mod p⁶)  for all f in fp12
+  #
+  # so g^(-1) ≡ conj(g) (mod p⁶) for g = f^(p³−1)
+  # Q.E.D. of (2)
+  #
+  # --
+  #
+  # f^(p⁶ - 1) ≡ 1 (mod p⁶) by Fermat's Little Theorem
+  # f^(p³−1)(p³+1) ≡ 1 (mod p⁶)
+  # g^(p³+1) ≡ 1 (mod p⁶)
+  # g * g^p³ ≡ 1 (mod p⁶)
+  # g * conj(g) ≡ 1 (mod p⁶)
+  # Q.E.D. of (3)
+  var g {.noinit.}: typeof(f)
+  g.inv(f)              # g = f^-1
+  conj(f)               # f = f^p³
+  g *= f                # g = f^(p³-1)
+  f.frobenius_map(g)    # f = f^((p³-1) p)
+  f *= g                # f = f^((p³-1) (p+1))
+
 func finalExpEasy*[C: static Curve](f: var Fp12[C]) {.meter.} =
   ## Easy part of the final exponentiation
   ##
@@ -114,27 +195,27 @@ func finalExpEasy*[C: static Curve](f: var Fp12[C]) {.meter.} =
   f.frobenius_map(g, 2) # f = f^((p⁶-1) p²)
   f *= g                # f = f^((p⁶-1) (p²+1))
 
-# Gϕ₁₂ - Cyclotomic functions
+# Gϕₙ - Cyclotomic functions
 # ----------------------------------------------------------------
-# A cyclotomic group is a subgroup of Fp^n defined by
+# A cyclotomic group is a subgroup of Fpⁿ defined by
 #
 # GΦₙ(p) = {α ∈ Fpⁿ : α^Φₙ(p) = 1}
 #
 # The result of any pairing is in a cyclotomic subgroup
 
-func cyclotomic_inv*(a: var Fp12) {.meter.} =
+func cyclotomic_inv*[FT](a: var FT) {.meter.} =
   ## Fast inverse for a
   ## `a` MUST be in the cyclotomic subgroup
   ## consequently `a` MUST be unitary
   a.conj()
 
-func cyclotomic_inv*(r: var Fp12, a: Fp12) {.meter.} =
+func cyclotomic_inv*[FT](r: var FT, a: FT) {.meter.} =
   ## Fast inverse for a
   ## `a` MUST be in the cyclotomic subgroup
   ## consequently `a` MUST be unitary
   r.conj(a)
 
-func cyclotomic_square*[C](r: var Fp12[C], a: Fp12[C]) {.meter.} =
+func cyclotomic_square*[FT](r: var FT, a: FT) {.meter.} =
   ## Square `a` into `r`
   ## `a` MUST be in the cyclotomic subgroup
   ## consequently `a` MUST be unitary
@@ -143,12 +224,12 @@ func cyclotomic_square*[C](r: var Fp12[C], a: Fp12[C]) {.meter.} =
   # Granger, Scott, 2009
   # https://eprint.iacr.org/2009/565.pdf
 
-  when a.c0 is Fp4:
-    # Cubic over quadratic
+  when a is CubicExt:
+    # Cubic extension field
     # A = 3a² − 2 ̄a
     # B = 3 √i c² + 2 ̄b
     # C = 3b² − 2 ̄c
-    var t0{.noinit.}, t1{.noinit.}: Fp4[C]
+    var t0{.noinit.}, t1{.noinit.}: typeof(a.c0)
 
     t0.square(a.c0)     # t0 = a²
     t1.double(t0)       # t1 = 2a²
@@ -183,7 +264,7 @@ func cyclotomic_square*[C](r: var Fp12[C], a: Fp12[C]) {.meter.} =
   else:
     {.error: "Not implemented".}
 
-func cyclotomic_square*[C](a: var Fp12[C]) {.meter.} =
+func cyclotomic_square*[FT](a: var FT) {.meter.} =
   ## Square `a` into `r`
   ## `a` MUST be in the cyclotomic subgroup
   ## consequently `a` MUST be unitary
@@ -193,7 +274,7 @@ func cyclotomic_square*[C](a: var Fp12[C]) {.meter.} =
   # https://eprint.iacr.org/2009/565.pdf
   a.cyclotomic_square(a)
 
-func cycl_sqr_repeated*(f: var Fp12, num: int) {.inline, meter.} =
+func cycl_sqr_repeated*[FT](f: var FT, num: int) {.inline, meter.} =
   ## Repeated cyclotomic squarings
   for _ in 0 ..< num:
     f.cyclotomic_square()
@@ -208,7 +289,7 @@ iterator unpack(scalarByte: byte): bool =
   yield bool((scalarByte and 0b00000010) shr 1)
   yield bool( scalarByte and 0b00000001)
 
-func cyclotomic_exp*[C](r: var Fp12[C], a: Fp12[C], exponent: BigInt, invert: bool) {.meter.} =
+func cyclotomic_exp*[FT](r: var FT, a: FT, exponent: BigInt, invert: bool) {.meter.} =
     var eBytes: array[(exponent.bits+7) div 8, byte]
     eBytes.exportRawUint(exponent, bigEndian)
 
@@ -220,6 +301,17 @@ func cyclotomic_exp*[C](r: var Fp12[C], a: Fp12[C], exponent: BigInt, invert: bo
           r *= a
     if invert:
       r.cyclotomic_inv()
+
+func isInCyclotomicSubgroup*[C](a: Fp6[C]): SecretBool =
+  ## Check if a ∈ Fpⁿ: a^Φₙ(p) = 1
+  ## Φ₆(p) = p⁴-p²+1
+  var t{.noInit.}, p{.noInit.}: Fp6[C]
+
+  t.frobenius_map(a, 2)  # a^(p²)
+  t *= a                 # a^(p²+1)
+  p.frobenius_map(a)     # a^(p)
+
+  return t == p
 
 func isInCyclotomicSubgroup*[C](a: Fp12[C]): SecretBool =
   ## Check if a ∈ Fpⁿ: a^Φₙ(p) = 1

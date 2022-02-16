@@ -15,9 +15,8 @@ import
   ],
   ../isogeny/frobenius,
   ../curves/zoo_pairings,
-  ./lines_projective,
-  ./mul_fp12_by_lines,
-  ./cyclotomic_fp12,
+  ./lines_eval,
+  ./cyclotomic_subgroup,
   ./miller_loops
 
 export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11225

@@ -20,9 +20,8 @@ import
   ../constantine/ec_shortweierstrass,
   ../constantine/curves/zoo_subgroups,
   ../constantine/pairing/[
-    cyclotomic_fp12,
-    lines_projective,
-    mul_fp12_by_lines,
+    cyclotomic_subgroup,
+    lines_eval,
     pairing_bls12,
     pairing_bn
   ],

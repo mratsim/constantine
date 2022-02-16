@@ -10,7 +10,7 @@ import
   ../config/[common, curves, type_bigint],
   ../io/io_bigints,
   ../towers,
-  ../pairing/cyclotomic_fp6,
+  ../pairing/cyclotomic_subgroup,
   ../isogeny/frobenius
 
 # Slow generic implementation

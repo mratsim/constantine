@@ -16,8 +16,7 @@ import
   ],
   ../isogeny/frobenius,
   ../curves/zoo_pairings,
-  ./lines_projective,
-  ./mul_fp6_by_lines,
+  ./lines_eval,
   ./miller_loops
 
 export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11225
@@ -100,12 +99,12 @@ func millerLoopBW6_761_opt_to_debug[C](
   for i in countdown(u.bits - 2, 1):
     square(f)
     line_double(line, T, P)
-    mul(f, line)
+    mul_by_line(f, line)
 
     let bit = u.bit(i).int8
     if bit == 1:
       line_add(line, T, Q, P)
-      mul(f, line)
+      mul_by_line(f, line)
 
   # Fixup
   # ------------------------------
@@ -120,7 +119,7 @@ func millerLoopBW6_761_opt_to_debug[C](
   # Drop the vertical line
   line.line_add(T, Q, P) # TODO: eval without updating T
   muplusone = mu
-  muplusone.mul(line)
+  muplusone.mul_by_line(line)
 
   # 2nd part: f_{u²-u-1,Q}(P)
   # ------------------------------
@@ -133,16 +132,16 @@ func millerLoopBW6_761_opt_to_debug[C](
   for i in countdown(u3.bits - 2, 1):
     square(f)
     line_double(line, T, P)
-    mul(f, line)
+    mul_by_line(f, line)
 
     let naf = bit(u3, i).int8 - bit(u, i).int8 # This can throw exception
     if naf == 1:
       line_add(line, T, Qu, P)
-      mul(f, line)
+      mul_by_line(f, line)
       f *= mu
     elif naf == -1:
       line_add(line, T, nQu, P)
-      mul(f, line)
+      mul_by_line(f, line)
       f *= minvu
 
   # Final

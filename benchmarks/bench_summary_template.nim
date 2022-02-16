@@ -24,7 +24,7 @@ import
   ../constantine/curves/zoo_subgroups,
   ../constantine/hash_to_curve/hash_to_curve,
   ../constantine/pairing/[
-    cyclotomic_fp12,
+    cyclotomic_subgroup,
     pairing_bls12,
     pairing_bn
   ],

@@ -15,7 +15,7 @@ import
   ../constantine/towers,
   ../constantine/config/curves,
   ../constantine/io/io_towers,
-  ../constantine/pairing/cyclotomic_fp12,
+  ../constantine/pairing/cyclotomic_subgroup,
   ../constantine/isogeny/frobenius,
   # Test utilities
   ../helpers/[prng_unsafe, static_for]
