@@ -138,7 +138,8 @@ macro redc2xMont_gen*[N: static int](
   # Second part - Final substraction
   # ---------------------------------------------
 
-  ctx.mov rdx, r_temp
+  if not(spareBits >= 2 and skipFinalSub):
+    ctx.mov rdx, r_temp
   let r = rdx.asArrayAddr(len = N)
 
   # This does a[i+n] += hi
@@ -155,7 +156,7 @@ macro redc2xMont_gen*[N: static int](
   
   if spareBits >= 2 and skipFinalSub:
     for i in 0 ..< N:
-      ctx.mov r[i], t[i]
+      ctx.mov r_temp[i], u[i]
   elif spareBits >= 1:
     ctx.finalSubNoCarryImpl(r, u, M, t)
   else:
