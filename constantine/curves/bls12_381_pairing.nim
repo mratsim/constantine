@@ -82,30 +82,45 @@ func millerLoopAddchain*[N: static int](
 
   # TODO: what is the threshold for Karabina's compressed squarings?
 
-func cycl_exp_by_curve_param_div2*(r: var Fp12[BLS12_381], a: Fp12[BLS12_381], invert = BLS12_381_pairing_ate_param_isNeg) =
+func cycl_exp_by_curve_param_div2*(
+       r: var Fp12[BLS12_381], a: Fp12[BLS12_381],
+       invert = BLS12_381_pairing_ate_param_isNeg) =
   ## f^(x/2) with x the curve parameter
-  ## For BLS12_381 f^-0xd201000000010000
+  ## For BLS12_381 f^-0xd201000000010000 = 0b1101001000000001000000000000000000000000000000010000000000000000
+  
+  # Squarings accumulator
+  var s{.noInit.}: Fp12[BLS12_381]
 
-  r.cyclotomic_square(a)
-  r *= a
-  r.cycl_sqr_repeated(2)
-  r *= a
-  r.cycl_sqr_repeated(3)
-  r *= a
-  r.cycl_sqr_repeated(9)
-  r *= a
-  r.cycl_sqr_repeated(32)   # TODO: use Karabina?
-  r *= a
-  r.cycl_sqr_repeated(16-1) # Don't do the last iteration
+  r.cyclotomic_exp_compressed(s, a, [16-1, 32, 9])
+  s.cycl_sqr_repeated(3)
+  r *= s
+  s.cycl_sqr_repeated(2)
+  r *= s
+  s.cyclotomic_square()
+  r *= s
 
   if invert:
     r.cyclotomic_inv()
 
-func cycl_exp_by_curve_param*(r: var Fp12[BLS12_381], a: Fp12[BLS12_381], invert = BLS12_381_pairing_ate_param_isNeg) =
+func cycl_exp_by_curve_param*(
+       r: var Fp12[BLS12_381], a: Fp12[BLS12_381],
+       invert = BLS12_381_pairing_ate_param_isNeg) =
   ## f^x with x the curve parameter
   ## For BLS12_381 f^-0xd201000000010000
-  r.cycl_exp_by_curve_param_div2(a, invert)
-  r.cyclotomic_square()
+
+  # Squarings accumulator
+  var s{.noInit.}: Fp12[BLS12_381]
+
+  r.cyclotomic_exp_compressed(s, a, [16, 32, 9])
+  s.cycl_sqr_repeated(3)
+  r *= s
+  s.cycl_sqr_repeated(2)
+  r *= s
+  s.cyclotomic_square()
+  r *= s
+
+  if invert:
+    r.cyclotomic_inv()
 
 func isInPairingSubgroup*(a: Fp12[BLS12_381]): SecretBool =
   ## Returns true if a is in GT subgroup, i.e. a is an element of order r

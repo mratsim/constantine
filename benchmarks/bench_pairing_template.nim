@@ -207,6 +207,27 @@ proc expCurveParamBench*(C: static Curve, iters: int) =
   bench("Cyclotomic Exp by curve parameter", C, iters):
     f.cycl_exp_by_curve_param(f)
 
+proc cyclotomicSquareCompressed_Bench*(C: static Curve, iters: int) =
+  var f = rng.random_unsafe(Fp12[C])
+  var g: G2345[Fp2[C]]
+  g.fromFpk(f)
+
+  bench("Cyclotomic Compressed Squaring 𝔽p12", C, iters):
+    g.cyclotomic_square_compressed()
+
+proc cyclotomicDecompression_Bench*(C: static Curve, iters: int) =
+  var f = rng.random_unsafe(Fp12[C])
+  var gs: array[1, G2345[Fp2[C]]]
+  gs[0].fromFpk(f)
+
+  var g1s_ratio: array[1, tuple[g1_num, g1_den: Fp2[C]]]
+  var g0s, g1s: array[1, Fp2[C]]
+
+  bench("Cyclotomic Decompression 𝔽p12", C, iters):
+    recover_g1(g1s_ratio[0].g1_num, g1s_ratio[0].g1_den, gs[0])
+    g1s.batch_ratio_g1s(g1s_ratio)
+    g0s[0].recover_g0(g1s[0], gs[0])
+
 proc millerLoopBLS12Bench*(C: static Curve, iters: int) =
   let
     P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])

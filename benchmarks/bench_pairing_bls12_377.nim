@@ -46,6 +46,8 @@ proc main() =
     sqrBench(curve, Iters)
     separator()
     cyclotomicSquare_Bench(curve, Iters)
+    cyclotomicSquareCompressed_Bench(curve, Iters)
+    cyclotomicDecompression_Bench(curve, Iters)
     expCurveParamBench(curve, Iters)
     separator()
     finalExpEasyBench(curve, Iters)

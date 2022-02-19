@@ -78,26 +78,18 @@ func millerLoopAddchain*[N: static int](
 func cycl_exp_by_curve_param*(r: var Fp12[BLS12_377], a: Fp12[BLS12_377], invert = BLS12_377_pairing_ate_param_isNeg) =
   ## f^x with x the curve parameter
   ## For BLS12_377 f^0x8508c00000000001
-  r.cyclotomic_square(a)
+  r = a
+  r.cycl_sqr_repeated(5)
+  r *= a
+  let t{.noInit.} = r
+  r.cycl_sqr_repeated(7)
+  r *= t
+  r.cycl_sqr_repeated(4)
   r *= a
   r.cyclotomic_square()
   r *= a
-  let t111 = r
 
-  r.cycl_sqr_repeated(2)
-  let t111000 = r
-
-  r *= t111
-  let t100011 = r
-
-  r.cyclotomic_square()
-  r *= t100011
-  r *= t111000
-
-  r.cycl_sqr_repeated(10)
-  r *= t100011
-
-  r.cycl_sqr_repeated(46) # TODO: Karabina's compressed squarings
+  r.cyclotomic_exp_compressed(r, [46])
   r *= a
 
   if invert:

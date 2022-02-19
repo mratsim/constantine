@@ -357,12 +357,12 @@ func isInCyclotomicSubgroup*[C](a: Fp12[C]): SecretBool =
 # if g₂ == 0
 #       g₁ = 2g₄g₅/g₃                      g₀ = (2g₁²        - 3g₃g₄)ξ + 1
 
-type G2345[F] = object
+type G2345*[F] = object
   ## Compressed representation of cyclotomic subgroup element of a sextic extension
   ## (0 + 0u) + (g₂+g₃u)v + (g₄+g₅u)v²
   g2, g3, g4, g5: F
 
-func cyclotomic_square_compressed[F](g: var G2345[F]) =
+func cyclotomic_square_compressed*[F](g: var G2345[F]) =
   ## Karabina's compressed squaring
   ## for sextic extension fields
   # C(α)² = (h₂+h₃u)v + (h₄+h₅u)v²
@@ -410,7 +410,7 @@ func cyclotomic_square_compressed[F](g: var G2345[F]) =
   g.g4.diff(h4h5.c0, g4g5.c0)
   g.g5.sum(h4h5.c1, g4g5.c1)
 
-func recover_g1[F](g1_num, g1_den: var F, g: G2345[F]) =
+func recover_g1*[F](g1_num, g1_den: var F, g: G2345[F]) =
   ## Compute g₁ from coordinates g₂g₃g₄g₅
   ## of a cyclotomic subgroup element of a sextic extension field
   # if g₂ != 0
@@ -442,7 +442,7 @@ func recover_g1[F](g1_num, g1_den: var F, g: G2345[F]) =
   g1_den = g.g3
   g1_den.ccopy(t, g2NonZero)      # 4g₂ or g₃
 
-func batch_ratio_g1s[N: static int, F](
+func batch_ratio_g1s*[N: static int, F](
        dst: var array[N, F],
        src: array[N, tuple[g1_num, g1_den: F]]) =
   ## Batch inversion of g₁
@@ -478,7 +478,7 @@ func batch_ratio_g1s[N: static int, F](
   
   dst[0].prod(accInv, src[0].g1_num)
 
-func recover_g0[F](
+func recover_g0*[F](
        g0: var F, g1: F,
        g: G2345[F]) =
   ## Compute g₀ from coordinates g₁g₂g₃g₄g₅
@@ -496,7 +496,7 @@ func recover_g0[F](
   t.setOne()
   g0 += t
 
-func fromFpk[Fpkdiv6, Fpk](
+func fromFpk*[Fpkdiv6, Fpk](
        g: var G2345[Fpkdiv6],
        a: Fpk) =
   ## Convert from a sextic extension to the Karabina g₂₃₄₅
@@ -560,7 +560,7 @@ func fromFpk[Fpkdiv6, Fpk](
   else:
     {.error: "𝔽pᵏᐟ⁶ -> 𝔽pᵏ towering (direct sextic) is not implemented.".}
 
-func asFpk[Fpkdiv6, Fpk](
+func asFpk*[Fpkdiv6, Fpk](
        a: var Fpk,
        g0, g1: Fpkdiv6,
        g: G2345[Fpkdiv6]) =
@@ -585,12 +585,16 @@ func asFpk[Fpkdiv6, Fpk](
     {.error: "𝔽pᵏᐟ⁶ -> 𝔽pᵏ towering (direct sextic) is not implemented.".}
 
 func cyclotomic_exp_compressed*[N: static int, Fpk](
-       a: var Fpk, squarings: static array[N, int]) =
+       r: var Fpk, a: Fpk, 
+       squarings: static array[N, int]) =
   ## Exponentiation on the cyclotomic subgroup
   ## via compressed repeated squarings
   ## Exponentiation is done least-signigicant bits first
   ## `squarings` represents the number of squarings
   ## to do before the next multiplication.
+  ## 
+  ## `accumSquarings` stores the accumulated squarings so far
+  ## iff N != 1
   
   type Fpkdiv6 = typeof(a.c0.c0)
 
@@ -617,8 +621,54 @@ func cyclotomic_exp_compressed*[N: static int, Fpk](
   for i in 0 ..< N:
     g0s[i].recover_g0(g1s[i], gs[i])
 
-  a.asFpk(g0s[0], g1s[0], gs[0])
+  r.asFpk(g0s[0], g1s[0], gs[0])
   for i in 1 ..< N:
     var t {.noInit.}: Fpk
     t.asFpk(g0s[i], g1s[i], gs[i])
-    a *= t
+    r *= t
+
+func cyclotomic_exp_compressed*[N: static int, Fpk](
+       r, accumSquarings: var Fpk, a: Fpk,
+       squarings: static array[N, int]) =
+  ## Exponentiation on the cyclotomic subgroup
+  ## via compressed repeated squarings
+  ## Exponentiation is done least-signigicant bits first
+  ## `squarings` represents the number of squarings
+  ## to do before the next multiplication.
+  ## 
+  ## `accumSquarings` stores the accumulated squarings so far
+  ## iff N != 1
+  
+  type Fpkdiv6 = typeof(a.c0.c0)
+
+  var gs {.noInit.}: array[N, G2345[Fpkdiv6]]
+
+  var g {.noInit.}: G2345[Fpkdiv6]
+  g.fromFpk(a)
+
+  # Compressed squarings
+  for i in 0 ..< N:
+    for j in 0 ..< squarings[i]:
+      g.cyclotomic_square_compressed()
+    gs[i] = g
+
+  # Batch decompress
+  var g1s_ratio {.noInit.}: array[N, tuple[g1_num, g1_den: Fpkdiv6]]
+  for i in 0 ..< N:
+    recover_g1(g1s_ratio[i].g1_num, g1s_ratio[i].g1_den, gs[i])
+  
+  var g1s {.noInit.}: array[N, Fpkdiv6]
+  g1s.batch_ratio_g1s(g1s_ratio)
+
+  var g0s {.noInit.}: array[N, Fpkdiv6]
+  for i in 0 ..< N:
+    g0s[i].recover_g0(g1s[i], gs[i])
+
+  r.asFpk(g0s[0], g1s[0], gs[0])
+  for i in 1 ..< N:
+    var t {.noInit.}: Fpk
+    t.asFpk(g0s[i], g1s[i], gs[i])
+    r *= t
+
+    if i+1 == N:
+      accumSquarings = t

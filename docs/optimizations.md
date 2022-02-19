@@ -191,7 +191,7 @@ The optimizations can be of algebraic, algorithmic or "implementation details" n
 
 - Final exponentiation
   - [x] Cyclotomic squaring
-    - [ ] Karabina's compressed cyclotomic squarings
+    - [x] Karabina's compressed cyclotomic squarings
   - [x] Addition-chain for exponentiation by curve parameter
   - [x] BN curves: Fuentes-Castañeda
   - [ ] BN curves: Duquesne, Ghammam

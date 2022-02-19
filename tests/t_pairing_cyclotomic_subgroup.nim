@@ -135,7 +135,7 @@ suite "Pairing - Cyclotomic subgroup - GΦ₁₂(p) = {α ∈ Fp¹² : α^Φ₁�
         var g = f
 
         f.cycl_sqr_repeated(55)
-        g.cyclotomic_exp_compressed([55])
+        g.cyclotomic_exp_compressed(g, [55])
 
         check: bool(f == g)
 
@@ -157,7 +157,7 @@ suite "Pairing - Cyclotomic subgroup - GΦ₁₂(p) = {α ∈ Fp¹² : α^Φ₁�
         const e = BigInt[61].fromHex"0x1001000000010000"
 
         f.cyclotomic_exp(f2, e, invert = false)
-        g.cyclotomic_exp_compressed([16, 32, 12])
+        g.cyclotomic_exp_compressed(g, [16, 32, 12])
 
         check: bool(f == g)
 
