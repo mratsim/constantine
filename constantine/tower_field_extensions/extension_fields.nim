@@ -293,11 +293,14 @@ template doublePrec*(T: type ExtensionField): type =
   when T is QuadraticExt:
     when T.F is QuadraticExt: # Fp4Dbl
       QuadraticExt2x[QuadraticExt2x[doublePrec(T.F.F)]]
+    elif T.F is CubicExt:     
+      when T.F.F is QuadraticExt: # Fp12 over Fp6 over Fp2
+        QuadraticExt2x[CubicExt2x[QuadraticExt2x[doublePrec(T.F.F.F)]]]
     elif T.F is Fp:           # Fp2Dbl
       QuadraticExt2x[doublePrec(T.F)]
   elif T is CubicExt:
     when T.F is QuadraticExt: #
-      when T.F.F is QuadraticExt: # Fp12
+      when T.F.F is QuadraticExt: # Fp12 over Fp4 over Fp2
         CubicExt2x[QuadraticExt2x[QuadraticExt2x[doublePrec(T.F.F.F)]]]
       elif T.F.F is Fp: # Fp6
         CubicExt2x[QuadraticExt2x[doublePrec(T.F.F)]]

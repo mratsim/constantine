@@ -31,52 +31,36 @@ import
 # ===============================
 #
 # Given a sextic twist, we can express all elements in terms of z = SNR¹ᐟ⁶
+# 
+# The canonical direct sextic representation uses coefficients
 #
-# We use BLS12-381 as an example
-# the Sextic Non-Residue of BLS12-381 is SNR=(1+𝑖)
+#    c₀ + c₁ z + c₂ z² + c₃ z³ + c₄ z⁴ + c₅ z⁵
 #
-# Taking the common case with GT being a subgroup of 𝔽p12 (the cyclotomic subgroup of order r)
-# An Fp12 element coordinates becomes in the canonical repr:
-# 
-#   c₀ + c₁ z + c₂ z² + c₃ z³ + c₄ z⁴ + c₅ z⁵
+# with z = SNR¹ᐟ⁶
 #
-# Fp2 -> Fp4 -> Fp12 towering
-# ---------------------------
-# 
-# To map the coefficients to the canonical repr we start from this repr
-# 
-# - (a₀ + a₁ u) + (a₂ + a₃u) v + (a₄ + a₅u) v²
-# 
-# with:
-# - u = sqrt(1+𝑖)
-# - v = u¹ᐟ³ = z
-# 
-# Hence we find:
-# c₀ <=> a₀
-# c₁ <=> a₂
-# c₂ <=> a₄
-# c₃ <=> a₁
-# c₄ <=> a₃
-# c₅ <=> a₅
-# 
-# Fp2 -> Fp6 -> Fp12 towering
-# ---------------------------
-# 
-# To map the coefficients to the canonical repr we start from this repr
-# 
-#   (b₀ + b₁ x + b₂ x²) + (b₃ + b₄ x + b₅ x²) y
-# 
-# with:
-# - x = (1+𝑖)¹ᐟ³
-# - y = sqrt(x) = z
-# 
-# Hence we find:
-# c₀ <=> b₀
-# c₁ <=> b₃
-# c₂ <=> b₁
-# c₃ <=> b₄
-# c₄ <=> b₂
-# c₅ <=> b₅
+# The cubic over quadatric towering
+# ---------------------------------
+#
+#   (a₀ + a₁ u) + (a₂ + a₃u) v + (a₄ + a₅u) v²
+#
+# with u = (SNR)¹ᐟ² and v = z = u¹ᐟ³ = (SNR)¹ᐟ⁶
+#
+# The quadratic over cubic towering
+# ---------------------------------
+#
+#   (b₀ + b₁x + b₂x²) + (b₃ + b₄x + b₅x²)y
+#
+# with x = (SNR)¹ᐟ³ and y = z = x¹ᐟ² = (SNR)¹ᐟ⁶
+#
+# Mapping between towering schemes
+# --------------------------------
+#
+# c₀ <=> a₀ <=> b₀
+# c₁ <=> a₂ <=> b₃
+# c₂ <=> a₄ <=> b₁
+# c₃ <=> a₁ <=> b₄
+# c₄ <=> a₃ <=> b₂
+# c₅ <=> a₅ <=> b₅
 #
 # See also chapter 6.4
 # - Multiplication and Squaring on Pairing-Friendly Fields
@@ -123,13 +107,13 @@ type
     ## - 𝔽p6 -> 𝔽p12
     ## are not.
 
-func toHex*(line: Line, order: static Endianness = bigEndian): string =
+func toHex*(line: Line): string =
   result = static($line.typeof.genericHead() & '(')
   for fieldName, fieldValue in fieldPairs(line):
     when fieldName != "x":
       result.add ", "
     result.add fieldName & ": "
-    result.appendHex(fieldValue, order)
+    result.appendHex(fieldValue)
   result.add ")"
 
 # Line evaluation

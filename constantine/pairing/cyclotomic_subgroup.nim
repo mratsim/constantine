@@ -19,7 +19,7 @@ import
 # ############################################################
 #
 #                Gϕₙ, Cyclotomic subgroup of Fpⁿ
-#         with GΦₙ(p) = {α ∈ Fpⁿ : α^Φₙ(p) ≡ 1 (mod pⁿ)}
+#         with Gϕₙ(p) = {α ∈ Fpⁿ : α^Φₙ(p) ≡ 1 (mod pⁿ)}
 #
 # ############################################################
 
@@ -199,7 +199,7 @@ func finalExpEasy*[C: static Curve](f: var Fp12[C]) {.meter.} =
 # ----------------------------------------------------------------
 # A cyclotomic group is a subgroup of Fpⁿ defined by
 #
-# GΦₙ(p) = {α ∈ Fpⁿ : α^Φₙ(p) = 1}
+# Gϕₙ(p) = {α ∈ Fpⁿ : α^Φₙ(p) = 1}
 #
 # The result of any pairing is in a cyclotomic subgroup
 
@@ -323,3 +323,302 @@ func isInCyclotomicSubgroup*[C](a: Fp12[C]): SecretBool =
   t *= a                 # a^(p⁴+1)
 
   return t == p2
+
+# ############################################################
+#
+#                Compressed representations
+#
+# ############################################################
+#
+# The special structure of cyclotomic subgroup allows compression that
+# can lead to faster exponentiation:
+#
+# - Compression in Finite Fields and Torus-Based Cryptography
+#   Rubin and Silverberg, 2003
+#   https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.90.8087&rep=rep1&type=pdf
+#
+# - Squaring in Cyclotomic Subgroup
+#   Karabina, 2012
+#   https://www.ams.org/journals/mcom/2013-82-281/S0025-5718-2012-02625-1/S0025-5718-2012-02625-1.pdf
+#
+# Karabina's formula G₂₃₄₅ has the best squaring/decompression cost ratio.
+# From a sextic tower Fpᵏᐟ⁶ -> Fpᵏᐟ³ -> Fpᵏ with quadratic-non-residue u and cubic non-residue v
+# α = (a₀+a₁u) + (b₀+b₁u)v + (c₀+c₁u)v²
+# Compressed α: C(α) = (b₀+b₁u)v + (c₀+c₁u)v² = (g₂+g₃u)v + (g₄+g₅u)v²
+# C(α)² = (h₂+h₃u)v + (h₄+h₅u)v²
+#  with h₂ = 2(g₂ + 3ξg₄g₅)
+#       h₃ = 3((g₄+g₅)(g₄+ξg₅) - (ξ+1)g₄g₅) - 2g₃
+#       h₄ = 3((g₂+g₃)(g₂+ξg₃) - (ξ+1)g₂g₃) - 2g₄
+#       h₅ = 2(g₅ + 3(g₂+g₃)(g₂+ξg₃))
+#
+# For decompression we can recompute the missing coefficients
+# if g₂ != 0
+#       g₁ = (g₅²ξ + 3g₄² - 2g₃)/4g₂       g₀ = (2g₁² + g₂g₅ - 3g₃g₄)ξ + 1
+# if g₂ == 0
+#       g₁ = 2g₄g₅/g₃                      g₀ = (2g₁²        - 3g₃g₄)ξ + 1
+
+type G2345[F] = object
+  ## Compressed representation of cyclotomic subgroup element of a sextic extension
+  ## (0 + 0u) + (g₂+g₃u)v + (g₄+g₅u)v²
+  g2, g3, g4, g5: F
+
+func cyclotomic_square_compressed[F](g: var G2345[F]) =
+  ## Karabina's compressed squaring
+  ## for sextic extension fields
+  # C(α)² = (h₂+h₃u)v + (h₄+h₅u)v²
+  # with
+  #       h₂ = 2(g₂ + 3ξg₄g₅)
+  #       h₃ = 3((g₄+g₅)(g₄+ξg₅) - (ξ+1)g₄g₅) - 2g₃
+  #       h₄ = 3((g₂+g₃)(g₂+ξg₃) - (ξ+1)g₂g₃) - 2g₄
+  #       h₅ = 2(g₅ + 3(g₂+g₃)(g₂+ξg₃))
+  # (4 mul, theorem 3.2 p561)
+  #
+  # or
+  #       h₂ = 2g₂ + 6ξg₄g₅
+  #       h₃ = 3g₄² + 3g₅²ξ - 2g₃
+  #       h₄ = 3g₂² + 3g₃²ξ - 2g₄
+  #       h₅ = 2g₅ + 6g₂g₃
+  # (2 mul, 4 sqr, section 5.3 p567)
+  #
+  # or
+  #       h₂ = 2g₂ + 3ξ((g₄+g₅)²-g₄²-g₅²)
+  #       h₃ = 3(g₄² + g₅²ξ) - 2g₃
+  #       h₄ = 3(g₂² + g₃²ξ) - 2g₄
+  #       h₅ = 2g₅ + 3 ((g₂+g₃)²-g₂²-g₃²)
+  # (6 sqr)    
+  #
+  # or with quadratic arithmetic
+  #   (h₂+h₃u) = 3u(g₄+g₅u)² + 2(g₂-g₃u)
+  #   (h₄+h₅u) = 3 (g₂+g₃u)² - 2(g₄-g₅u)
+  # (2x2mul or 2x3sqr, section 5.3 p567)
+  var g2g3 {.noInit.} = QuadraticExt[F](coords:[g.g2, g.g3])
+  var g4g5 {.noInit.} = QuadraticExt[F](coords:[g.g4, g.g5])
+  var h2h3 {.noInit.}, h4h5 {.noInit.}: QuadraticExt[F]
+
+  h2h3.square(g4g5)
+  h2h3 *= NonResidue
+  h2h3 *= 3
+
+  h4h5.square(g2g3)
+  h4h5 *= 3
+
+  g2g3.double()
+  g4g5.double()
+
+  g.g2.sum(h2h3.c0, g2g3.c0)
+  g.g3.diff(h2h3.c1, g2g3.c1)
+  g.g4.diff(h4h5.c0, g4g5.c0)
+  g.g5.sum(h4h5.c1, g4g5.c1)
+
+func recover_g1[F](g1_num, g1_den: var F, g: G2345[F]) =
+  ## Compute g₁ from coordinates g₂g₃g₄g₅
+  ## of a cyclotomic subgroup element of a sextic extension field
+  # if g₂ != 0
+  #   g₁ = (g₅²ξ + 3g₄² - 2g₃)/4g₂
+  # if g₂ == 0
+  #   g₁ = 2g₄g₅/g₃
+  # 
+  # Theorem 3.1, this is well-defined for all
+  # g in Gϕₙ \ {1}
+  # if g₂=g₃=0 then g₄=g₅=0 as well
+  # and g₀ = 1
+  let g2NonZero = not g.g2.isZero()
+  var t{.noInit.}: F
+  
+  g1_num = g.g4
+  t = g.g5
+  t.ccopy(g.g4, g2NonZero)
+  t *= g1_num                     #  g₄²              or  g₄g₅
+  g1_num = t
+  g1_num.csub(g.g3, g2NonZero)    #  g₄²- g₃
+  g1_num.double()                 # 2g₄²-2g₃          or 2g₄g₅
+  g1_num.cadd(t, g2NonZero)       # 3g₄²-2g₃          or 2g₄g₅
+
+  t.square(g.g5)
+  t *= NonResidue
+  g1_num.cadd(t, g2NonZero)       # g₅²ξ + 3g₄² - 2g₃ or 2g₄g₅
+  
+  t.prod(g.g2, 4)
+  g1_den = g.g3
+  g1_den.ccopy(t, g2NonZero)      # 4g₂ or g₃
+
+func batch_ratio_g1s[N: static int, F](
+       dst: var array[N, F],
+       src: array[N, tuple[g1_num, g1_den: F]]) =
+  ## Batch inversion of g₁
+  ## returns g1_numᵢ/g1_denᵢ
+  ## This requires that all g1_den != 0 or all g1_den == 0
+  ## which is the case if this is used to implement
+  ## exponentiation in cyclotomic subgroup.
+  
+  # Algorithm: Montgomery's batch inversion
+  # - Speeding the Pollard and Elliptic Curve Methods of Factorization
+  #   Section 10.3.1
+  #   Peter L. Montgomery
+  #   https://www.ams.org/journals/mcom/1987-48-177/S0025-5718-1987-0866113-7/S0025-5718-1987-0866113-7.pdf
+  # - Modern Computer Arithmetic
+  #   Section 2.5.1 Several inversions at once
+  #   Richard P. Brent and Paul Zimmermann
+  #   https://members.loria.fr/PZimmermann/mca/mca-cup-0.5.9.pdf
+
+  dst[0] = src[0].g1_den
+  for i in 1 ..< N:
+    dst[i].prod(dst[i-1], src[i].g1_den)
+
+  var accInv{.noInit.}: F
+  accInv.inv(dst[N-1])
+
+  for i in countdown(N-1, 1):
+    # Compute inverse
+    dst[i].prod(accInv, dst[i-1])
+    # Apply it
+    dst[i] *= src[i].g1_num
+    # Next iteration
+    accInv *= src[i].g1_den
+  
+  dst[0].prod(accInv, src[0].g1_num)
+
+func recover_g0[F](
+       g0: var F, g1: F,
+       g: G2345[F]) =
+  ## Compute g₀ from coordinates g₁g₂g₃g₄g₅
+  ## of a cyclotomic subgroup element of a sextic extension field
+  var t{.noInit.}: F
+
+  t.square(g1)
+  g0.prod(g.g3, g.g4)
+  t -= g0
+  t.double()
+  t -= g0
+  g0.prod(g.g2, g.g5)
+  t += g0
+  g0.prod(t, NonResidue)
+  t.setOne()
+  g0 += t
+
+func fromFpk[Fpkdiv6, Fpk](
+       g: var G2345[Fpkdiv6],
+       a: Fpk) =
+  ## Convert from a sextic extension to the Karabina g₂₃₄₅
+  ## representation.
+  
+  # GT representations isomorphisms
+  # ===============================
+  #
+  # Given a sextic twist, we can express all elements in terms of z = SNR¹ᐟ⁶
+  # 
+  # The canonical direct sextic representation uses coefficients
+  #
+  #    c₀ + c₁ z + c₂ z² + c₃ z³ + c₄ z⁴ + c₅ z⁵
+  #
+  # with z = SNR¹ᐟ⁶
+  #
+  # The cubic over quadatric towering
+  # ---------------------------------
+  #
+  #   (a₀ + a₁ u) + (a₂ + a₃u) v + (a₄ + a₅u) v²
+  #
+  # with u = (SNR)¹ᐟ² and v = z = u¹ᐟ³ = (SNR)¹ᐟ⁶
+  #
+  # The quadratic over cubic towering
+  # ---------------------------------
+  #
+  #   (b₀ + b₁x + b₂x²) + (b₃ + b₄x + b₅x²)y
+  #
+  # with x = (SNR)¹ᐟ³ and y = z = x¹ᐟ² = (SNR)¹ᐟ⁶
+  #
+  # Mapping between towering schemes
+  # --------------------------------
+  #
+  # g₂₃₄₅ uses the cubic over quadratic representation hence:
+  #
+  #   c₀ <=> a₀ <=> b₀ <=> g₀
+  #   c₁ <=> a₂ <=> b₃ <=> g₂
+  #   c₂ <=> a₄ <=> b₁ <=> g₄
+  #   c₃ <=> a₁ <=> b₄ <=> g₁
+  #   c₄ <=> a₃ <=> b₂ <=> g₃
+  #   c₅ <=> a₅ <=> b₅ <=> g₅
+  #
+  # See also chapter 6.4
+  # - Multiplication and Squaring on Pairing-Friendly Fields
+  #   Augusto Jun Devegili and Colm Ó hÉigeartaigh and Michael Scott and Ricardo Dahab, 2006
+  #   https://eprint.iacr.org/2006/471
+
+  when a is CubicExt:
+    when a.c0 is QuadraticExt:
+      g.g2 = a.c1.c0
+      g.g3 = a.c1.c1
+      g.g4 = a.c2.c0
+      g.g5 = a.c2.c1
+    else:
+      {.error: "a must be a sextic extension field".}
+  elif a is QuadraticExt:
+    when a.c0 is CubicExt:
+      {.error: "𝔽pᵏᐟ⁶ -> 𝔽pᵏᐟ³ -> 𝔽pᵏ towering (quadratic over cubic) is not implemented.".}
+    else:
+      {.error: "a must be a sextic extension field".}
+  else:
+    {.error: "𝔽pᵏᐟ⁶ -> 𝔽pᵏ towering (direct sextic) is not implemented.".}
+
+func asFpk[Fpkdiv6, Fpk](
+       a: var Fpk,
+       g0, g1: Fpkdiv6,
+       g: G2345[Fpkdiv6]) =
+  ## Convert from a sextic extension to the Karabina g₂₃₄₅
+  ## representation.
+  when a is CubicExt:
+    when a.c0 is QuadraticExt:
+      a.c0.c0 = g0
+      a.c0.c1 = g1
+      a.c1.c0 = g.g2
+      a.c1.c1 = g.g3
+      a.c2.c0 = g.g4
+      a.c2.c1 = g.g5
+    else:
+      {.error: "a must be a sextic extension field".}
+  elif a is QuadraticExt:
+    when a.c0 is CubicExt:
+      {.error: "𝔽pᵏᐟ⁶ -> 𝔽pᵏᐟ³ -> 𝔽pᵏ towering (quadratic over cubic) is not implemented.".}
+    else:
+      {.error: "a must be a sextic extension field".}
+  else:
+    {.error: "𝔽pᵏᐟ⁶ -> 𝔽pᵏ towering (direct sextic) is not implemented.".}
+
+func cyclotomic_exp_compressed*[N: static int, Fpk](
+       a: var Fpk, squarings: static array[N, int]) =
+  ## Exponentiation on the cyclotomic subgroup
+  ## via compressed repeated squarings
+  ## Exponentiation is done least-signigicant bits first
+  ## `squarings` represents the number of squarings
+  ## to do before the next multiplication.
+  
+  type Fpkdiv6 = typeof(a.c0.c0)
+
+  var gs {.noInit.}: array[N, G2345[Fpkdiv6]]
+
+  var g {.noInit.}: G2345[Fpkdiv6]
+  g.fromFpk(a)
+
+  # Compressed squarings
+  for i in 0 ..< N:
+    for j in 0 ..< squarings[i]:
+      g.cyclotomic_square_compressed()
+    gs[i] = g
+
+  # Batch decompress
+  var g1s_ratio {.noInit.}: array[N, tuple[g1_num, g1_den: Fpkdiv6]]
+  for i in 0 ..< N:
+    recover_g1(g1s_ratio[i].g1_num, g1s_ratio[i].g1_den, gs[i])
+  
+  var g1s {.noInit.}: array[N, Fpkdiv6]
+  g1s.batch_ratio_g1s(g1s_ratio)
+
+  var g0s {.noInit.}: array[N, Fpkdiv6]
+  for i in 0 ..< N:
+    g0s[i].recover_g0(g1s[i], gs[i])
+
+  a.asFpk(g0s[0], g1s[0], gs[0])
+  for i in 1 ..< N:
+    var t {.noInit.}: Fpk
+    t.asFpk(g0s[i], g1s[i], gs[i])
+    a *= t

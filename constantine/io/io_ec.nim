@@ -27,11 +27,6 @@ import
 #
 # ############################################################
 
-proc spaces(num: int): string =
-  result = newString(num)
-  for i in 0 ..< num:
-    result[i] = ' '
-
 func toHex*[EC: ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff](P: EC, indent: static int = 0): string =
   ## Stringify an elliptic curve point to Hex
   ## Note. Leading zeros are not removed.
@@ -53,9 +48,9 @@ func toHex*[EC: ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff](P: EC, inden
   const sp = spaces(indent)
 
   result = sp & $EC & "(\n" & sp & "  x: "
-  result.appendHex(aff.x, bigEndian)
+  result.appendHex(aff.x)
   result &= ",\n" & sp & "  y: "
-  result.appendHex(aff.y, bigEndian)
+  result.appendHex(aff.y)
   result &= "\n" & sp & ")"
 
 func fromHex*(dst: var (ECP_ShortW_Prj or ECP_ShortW_Jac), x, y: string): bool {.raises: [ValueError].}=

@@ -14,7 +14,7 @@ import
   ../constantine/[arithmetic, primitives],
   ../constantine/towers,
   ../constantine/config/curves,
-  ../constantine/io/io_towers,
+  ../constantine/io/[io_bigints, io_towers],
   ../constantine/pairing/cyclotomic_subgroup,
   ../constantine/isogeny/frobenius,
   # Test utilities
@@ -125,3 +125,43 @@ suite "Pairing - Cyclotomic subgroup - GΦ₁₂(p) = {α ∈ Fp¹² : α^Φ₁�
       test_cycl_squaring_out_place(curve, gen = Uniform)
       test_cycl_squaring_out_place(curve, gen = HighHammingWeight)
       test_cycl_squaring_out_place(curve, gen = Long01Sequence)
+
+  test "Compressed cyclotomic squarings":
+    proc test_compressed_cycl_squarings(C: static Curve, gen: static RandomGen) =
+      for _ in 0 ..< Iters:
+        var f = rng.random_elem(Fp12[C], gen)
+
+        f.finalExpEasy()
+        var g = f
+
+        f.cycl_sqr_repeated(55)
+        g.cyclotomic_exp_compressed([55])
+
+        check: bool(f == g)
+
+    staticFor(curve, TestCurves):
+      test_compressed_cycl_squarings(curve, gen = Uniform)
+      test_compressed_cycl_squarings(curve, gen = HighHammingWeight)
+      test_compressed_cycl_squarings(curve, gen = Long01Sequence)
+
+  test "Compressed cyclotomic exponentiation":
+    proc test_compressed_cycl_exp(C: static Curve, gen: static RandomGen) =
+      for _ in 0 ..< Iters:
+        var f = rng.random_elem(Fp12[C], gen)
+
+        f.finalExpEasy()
+        var g = f
+        let f2 = f
+
+        # 0b1000000000001000000000000000000000000000000010000000000000000
+        const e = BigInt[61].fromHex"0x1001000000010000"
+
+        f.cyclotomic_exp(f2, e, invert = false)
+        g.cyclotomic_exp_compressed([16, 32, 12])
+
+        check: bool(f == g)
+
+    staticFor(curve, TestCurves):
+      test_compressed_cycl_exp(curve, gen = Uniform)
+      test_compressed_cycl_exp(curve, gen = HighHammingWeight)
+      test_compressed_cycl_exp(curve, gen = Long01Sequence)
