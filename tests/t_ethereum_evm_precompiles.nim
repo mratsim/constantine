@@ -34,7 +34,7 @@ type
 
 const
   TestVectorsDir* =
-    currentSourcePath.rsplit(DirSep, 1)[0] / "ethereum_evm_precompiles"
+    currentSourcePath.rsplit(DirSep, 1)[0] / "protocol_ethereum_evm_precompiles"
 
 proc loadVectors(TestType: typedesc, filename: string): TestType =
   let content = readFile(TestVectorsDir/filename)
