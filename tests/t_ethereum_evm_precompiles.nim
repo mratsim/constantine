@@ -8,14 +8,14 @@
 
 import
   # Standard library
-  std/[unittest, times, os, strutils, macros],
+  std/[times, os, strutils, macros],
   # Status
   stew/byteutils,
   # 3rd party
   jsony,
   # Internals
   ../constantine/backend/io/io_bigints,
-  ../constantine/backend/ethereum_evm_precompiles
+  ../constantine/ethereum_evm_precompiles
 
 type
   BN256Tests = object
