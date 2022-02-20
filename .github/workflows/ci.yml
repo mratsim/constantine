@@ -200,7 +200,7 @@ jobs:
       - name: Install test dependencies
         shell: bash
         run: |
-          nimble refresh _y
+          nimble refresh -y
           nimble install -y gmp stew jsony
       - name: Run Constantine tests (with Assembler & with GMP)
         if: (runner.os == 'Linux' || runner.os == 'macOS') && matrix.target.BACKEND == 'ASM' && matrix.target.cpu != 'i386'
