@@ -293,11 +293,14 @@ template doublePrec*(T: type ExtensionField): type =
   when T is QuadraticExt:
     when T.F is QuadraticExt: # Fp4Dbl
       QuadraticExt2x[QuadraticExt2x[doublePrec(T.F.F)]]
+    elif T.F is CubicExt:     
+      when T.F.F is QuadraticExt: # Fp12 over Fp6 over Fp2
+        QuadraticExt2x[CubicExt2x[QuadraticExt2x[doublePrec(T.F.F.F)]]]
     elif T.F is Fp:           # Fp2Dbl
       QuadraticExt2x[doublePrec(T.F)]
   elif T is CubicExt:
     when T.F is QuadraticExt: #
-      when T.F.F is QuadraticExt: # Fp12
+      when T.F.F is QuadraticExt: # Fp12 over Fp4 over Fp2
         CubicExt2x[QuadraticExt2x[QuadraticExt2x[doublePrec(T.F.F.F)]]]
       elif T.F.F is Fp: # Fp6
         CubicExt2x[QuadraticExt2x[doublePrec(T.F.F)]]
@@ -686,6 +689,47 @@ func prod2x*(
 
 # ############################################################
 #                                                            #
+#                     Cost functions                         #
+#                                                            #
+# ############################################################
+
+func prefer_3sqr_over_2mul(F: type ExtensionField): bool {.compileTime.} =
+  ## Returns true
+  ## if time(3sqr) < time(2mul) in the extension fields
+  
+  let a = default(F)
+  # No shortcut in the VM
+  when a.c0 is ExtensionField:
+    when a.c0.c0 is ExtensionField:
+      return true
+    else: return false
+  else: return false
+
+func has_large_NR_norm(C: static Curve): bool =
+  ## Returns true if the non-residue of the extension fields
+  ## has a large norm
+  
+  const j = C.getNonResidueFp()
+  const u = C.getNonResidueFp2()[0]
+  const v = C.getNonResidueFp2()[1]
+
+  const norm2 = u*u + (j*v)*(j*v)
+
+  # Compute integer square root
+  var norm = 0
+  while (norm+1) * (norm+1) <= norm2:
+    norm += 1
+
+  return norm > 5
+
+func has_large_field_elem(C: static Curve): bool =
+  ## Returns true if field element are large
+  ## and necessitate custom routine for assembly in particular
+  let a = default(Fp[C])
+  return a.mres.limbs.len > 6
+
+# ############################################################
+#                                                            #
 #                  Quadratic extensions                      #
 #                                                            #
 # ############################################################
@@ -863,17 +907,10 @@ func square_generic(r: var QuadraticExt, a: QuadraticExt) =
   #   2 c0 c1 <=> (a0 + a1)² - a0² - a1²
   #
   # This gives us 3 Sqr and 1 Mul-non-residue
-  const costlyMul = block:
-    # No shortcutting in the VM :/
-    when a.c0 is ExtensionField:
-      when a.c0.c0 is ExtensionField:
-        true
-      else:
-        false
-    else:
-      false
 
-  when QuadraticExt.C == BN254_Snarks or costlyMul:
+  when QuadraticExt.prefer_3sqr_over_2mul() or
+       # Other path multiplies twice by non-residue
+       QuadraticExt.C.has_large_NR_norm(): 
     var v0 {.noInit.}, v1 {.noInit.}: typeof(r.c0)
     v0.square(a.c0)
     v1.square(a.c1)
@@ -923,9 +960,8 @@ func square2x_disjoint*[Fdbl, F](
   var V0 {.noInit.}, V1 {.noInit.}: typeof(r.c0) # Double-precision
   var t {.noInit.}: F # Single-width
 
-  # TODO: which is the best formulation? 3 squarings or 2 Mul?
-  # It seems like the higher the tower the better squarings are
-  # So for Fp12 = 2xFp6, prefer squarings.
+  # square2x is faster than prod2x even on Fp
+  # hence we always use 3 squarings over 2 products
   V0.square2x(a0)
   V1.square2x(a1)
   t.sum(a0, a1)
@@ -1234,14 +1270,20 @@ func inv2xImpl(r: var QuadraticExt, a: QuadraticExt) =
 
 func square2x*(r: var QuadraticExt2x, a: QuadraticExt) =
   when a.fromComplexExtension():
-    r.square2x_complex(a)
+    when UseASM_X86_64 and not QuadraticExt.C.has_large_field_elem():
+      if ({.noSideEffect.}: hasAdx()):
+        r.coords.sqrx2x_complex_asm_adx(a.coords)
+      else:
+        r.square2x_complex(a)
+    else:
+      r.square2x_complex(a)
   else:
     r.square2x_disjoint(a.c0, a.c1)
 
 func square*(r: var QuadraticExt, a: QuadraticExt) =
   when r.fromComplexExtension():
     when true:
-      when UseASM_X86_64 and a.c0.mres.limbs.len <= 6 and r.typeof.has1extraBit():
+      when UseASM_X86_64 and not QuadraticExt.C.has_large_field_elem() and r.typeof.has1extraBit():
         if ({.noSideEffect.}: hasAdx()):
           r.coords.sqrx_complex_sparebit_asm_adx(a.coords)
         else:
@@ -1250,7 +1292,7 @@ func square*(r: var QuadraticExt, a: QuadraticExt) =
         r.square_complex(a)
     else: # slower
       var d {.noInit.}: doublePrec(typeof(r))
-      d.square2x_complex(a)
+      d.square2x(a)
       r.c0.redc2x(d.c0)
       r.c1.redc2x(d.c1)
   else:
@@ -1279,7 +1321,7 @@ func prod*(r: var QuadraticExt, a, b: QuadraticExt) =
     when false:
       r.prod_complex(a, b)
     else: # faster
-      when UseASM_X86_64 and a.c0.mres.limbs.len <= 6:
+      when UseASM_X86_64 and not QuadraticExt.C.has_large_field_elem():
         if ({.noSideEffect.}: hasAdx()):
           r.coords.mul_fp2_complex_asm_adx(a.coords, b.coords)
         else:
@@ -1293,7 +1335,7 @@ func prod*(r: var QuadraticExt, a, b: QuadraticExt) =
         r.c0.redc2x(d.c0)
         r.c1.redc2x(d.c1)
   else:
-    when r.typeof.F.C == BW6_761 or typeof(r.c0) is Fp:
+    when r.typeof.F.C.has_large_field_elem():
       # BW6-761 requires too many registers for Dbl width path
       r.prod_generic(a, b)
     else:
@@ -1316,7 +1358,7 @@ func prod2x_disjoint*[Fdbl, F](
 func prod2x*(r: var QuadraticExt2x, a, b: QuadraticExt) =
   ## Double-precision multiplication r <- a*b
   when a.fromComplexExtension():
-    when UseASM_X86_64 and a.c0.mres.limbs.len <= 6:
+    when UseASM_X86_64 and not QuadraticExt.C.has_large_field_elem():
       if ({.noSideEffect.}: hasAdx()):
         r.coords.mul2x_fp2_complex_asm_adx(a.coords, b.coords)
       else:
@@ -1414,7 +1456,7 @@ func inv*(a: var QuadraticExt) =
 # Cubic extensions can use specific squaring procedures
 # beyond Schoolbook and Karatsuba:
 # - Chung-Hasan (3 different algorithms)
-# - Toom-Cook-3x
+# - Toom-Cook-3x (only in Miller Loops)
 #
 # Chung-Hasan papers
 # http://cacr.uwaterloo.ca/techreports/2006/cacr2006-24.pdf
@@ -1434,11 +1476,11 @@ func inv*(a: var QuadraticExt) =
 # |-------------|----------|-------------------|
 # | Schoolbook  | 3M + 3S  | 6A + 2B           |
 # | Karatsuba   | 6S       | 13A + 2B          |
-# | Tom-Cook-3x | 5S       | 33A + 2B          |
+# | Tom-Cook-3x | 5S       | 33A + 2B          | (Miller loop only, factor 6)
 # | CH-SQR1     | 3M + 2S  | 11A + 2B          |
 # | CH-SQR2     | 2M + 3S  | 10A + 2B          |
 # | CH-SQR3     | 1M + 4S  | 11A + 2B + 1 Div2 |
-# | CH-SQR3x    | 1M + 4S  | 14A + 2B          |
+# | CH-SQR3x    | 1M + 4S  | 14A + 2B          | (Miller loop only, factor 2)
 
 func square_Chung_Hasan_SQR2(r: var CubicExt, a: CubicExt) {.used.}=
   ## Returns r = a²
@@ -1545,7 +1587,8 @@ func square_Chung_Hasan_SQR3(r: var CubicExt, a: CubicExt) =
 # -------------------------------------------------------------------
 
 func prodImpl(r: var CubicExt, a, b: CubicExt) =
-  ## Returns r = a * b  # Algorithm is Karatsuba
+  ## Returns r = a * b 
+  ## Algorithm is Karatsuba
   var v0{.noInit.}, v1{.noInit.}, v2{.noInit.}: typeof(r.c0)
   var t0{.noInit.}, t1{.noInit.}, t2{.noInit.}: typeof(r.c0)
 
@@ -1721,6 +1764,58 @@ func invImpl(r: var CubicExt, a: CubicExt) =
   r.c1.prod(B, t)
   r.c2.prod(C, t)
 
+func inv2xImpl(r: var CubicExt, a: CubicExt) =
+  ## Compute the multiplicative inverse of ``a``
+  ## via lazy reduction
+  ##
+  ## The inverse of 0 is 0.
+  ## Incidentally this avoids extra check
+  ## to convert Jacobian and Projective coordinates
+  ## to affine for elliptic curve
+  var aa{.noInit.}, bb{.noInit.}, cc{.noInit.}: doublePrec(typeof(r.c0))
+  var ab{.noInit.}, bc{.noInit.}, ac{.noInit.}: doublePrec(typeof(r.c0))
+  var A {.noInit.}, B {.noInit.}, C {.noInit.}: typeof(r.c0)
+  var t {.noInit.}, t2{.noInit.}: doublePrec(typeof(r.c0))
+  var f {.noInit.}: typeof(r.c0)
+
+  aa.square2x(a.c0)
+  bb.square2x(a.c1)
+  cc.square2x(a.c2)
+  ab.prod2x(a.c0, a.c1)
+  bc.prod2x(a.c1, a.c2)
+  ac.prod2x(a.c0, a.c2)
+
+  # A <- a₀² - β a₁ a₂
+  t.prod2x(bc, NonResidue)
+  t.diff2xMod(aa, t)
+  A.redc2x(t)
+
+  # B <- β a₂² - a₀ a₁
+  t.prod2x(cc, NonResidue)
+  t.diff2xMod(t, ab)
+  B.redc2x(t)
+
+  # C <- a₁² - a₀ a₂
+  t.diff2xMod(bb, ac)
+  C.redc2x(t)
+
+  # F in t
+  # F <- β a₁ C + a₀ A + β a₂ B
+  t.prod2x(B, a.c2)
+  t2.prod2x(C, a.c1)
+  t.sum2xMod(t, t2)
+  t.prod2x(t, NonResidue)
+  t2.prod2x(A, a.c0)
+  t.sum2xUnr(t, t2)
+  f.redc2x(t)
+  
+  f.inv()
+
+  # (a0 + a1 v + a2 v²)^-1 = (A + B v + C v²) / F
+  r.c0.prod(A, f)
+  r.c1.prod(B, f)
+  r.c2.prod(C, f)
+
 # Dispatch
 # ----------------------------------------------------------------------
 
@@ -1728,8 +1823,7 @@ func invImpl(r: var CubicExt, a: CubicExt) =
 
 func square*(r: var CubicExt, a: CubicExt) =
   ## Returns r = a²
-  when CubicExt.F.C == BW6_761 or    # Too large
-       CubicExt.F.C == BN254_Snarks: # 50 cycles slower on Fp2->Fp4->Fp12 towering
+  when CubicExt.C.has_large_NR_norm() or CubicExt.C.has_large_field_elem():
     square_Chung_Hasan_SQR3(r, a)
   else:
     var d {.noInit.}: doublePrec(typeof(a))
@@ -1747,8 +1841,8 @@ func square2x*(r: var CubicExt2x, a: CubicExt) =
   square2x_Chung_Hasan_SQR2(r, a)
 
 func prod*(r: var CubicExt, a, b: CubicExt) =
-  ## In-place multiplication
-  when CubicExt.F.C == BW6_761: # Too large
+  ## Out-of-place multiplication
+  when CubicExt.C.has_large_field_elem():
     r.prodImpl(a, b)
   else:
     var d {.noInit.}: doublePrec(typeof(r))
@@ -1763,14 +1857,7 @@ func prod2x*(r: var CubicExt2x, a, b: CubicExt) =
 
 func `*=`*(a: var CubicExt, b: CubicExt) =
   ## In-place multiplication
-  when CubicExt.F.C == BW6_761: # Too large
-    a.prodImpl(a, b)
-  else:
-    var d {.noInit.}: doublePrec(typeof(a))
-    d.prod2x(a, b)
-    a.c0.redc2x(d.c0)
-    a.c1.redc2x(d.c1)
-    a.c2.redc2x(d.c2)
+  a.prod(a, b)
 
 func inv*(r: var CubicExt, a: CubicExt) =
   ## Compute the multiplicative inverse of ``a``
@@ -1779,7 +1866,10 @@ func inv*(r: var CubicExt, a: CubicExt) =
   ## Incidentally this avoids extra check
   ## to convert Jacobian and Projective coordinates
   ## to affine for elliptic curve
-  r.invImpl(a)
+  when true:
+    r.invImpl(a)
+  else:
+    r.inv2xImpl(a)
 
 func inv*(a: var CubicExt) =
   ## Compute the multiplicative inverse of ``a``

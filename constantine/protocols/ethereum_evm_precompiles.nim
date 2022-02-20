@@ -11,7 +11,7 @@ import
   ../arithmetic, ../towers,
   ../arithmetic/limbs_montgomery,
   ../ec_shortweierstrass,
-  ../pairing/[pairing_bn, miller_loops, cyclotomic_fp12],
+  ../pairing/[pairing_bn, miller_loops, cyclotomic_subgroup],
   ../curves/zoo_subgroups,
   ../io/[io_bigints, io_fields]
 

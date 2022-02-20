@@ -11,7 +11,7 @@ import
   ../io/io_bigints,
   ../towers,
   ../elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
-  ../pairing/[cyclotomic_fp12, miller_loops],
+  ../pairing/[cyclotomic_subgroup, miller_loops],
   ../isogeny/frobenius
 
 # Slow generic implementation
@@ -58,13 +58,12 @@ func millerLoopAddchain*(
   # Ate pairing for BN curves needs adjustment after basic Miller loop
   f.millerCorrectionBN(T, Q, P, BN254_Nogami_pairing_ate_param_isNeg)
 
-func pow_u*(r: var Fp12[BN254_Nogami], a: Fp12[BN254_Nogami], invert = BN254_Nogami_pairing_ate_param_isNeg) =
+func cycl_exp_by_curve_param*(
+       r: var Fp12[BN254_Nogami], a: Fp12[BN254_Nogami],
+       invert = BN254_Nogami_pairing_ate_param_isNeg) =
   ## f^u with u the curve parameter
-  ## For BN254_Nogami f^-0x4080000000000001
-  r.cyclotomic_square(a)
-  r.cycl_sqr_repeated(6)
-  r *= a
-  r.cycl_sqr_repeated(55)
+  ## For BN254_Nogami f^-0x4080000000000001 = 0b100000010000000000000000000000000000000000000000000000000000001
+  r.cyclotomic_exp_compressed(a, [55, 7])
   r *= a
 
   if invert:
@@ -78,8 +77,8 @@ func isInPairingSubgroup*(a: Fp12[BN254_Nogami]): SecretBool =
   #   on BLS pairing-friendly curves
   #   P is in the G1 subgroup iff a^p == a^(6u²)
   var t0{.noInit.}, t1{.noInit.}: Fp12[BN254_Nogami]
-  t0.pow_u(a)   # a^p
-  t1.pow_u(t0)  # a^(p²)
+  t0.cycl_exp_by_curve_param(a)   # a^p
+  t1.cycl_exp_by_curve_param(t0)  # a^(p²)
   t0.square(t1) # a^(2p²)
   t0 *= t1      # a^(3p²)
   t0.square()   # a^(6p²)

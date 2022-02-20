@@ -10,7 +10,7 @@ import
   ../../constantine/pairing/[
     pairing_bls12,
     miller_loops,
-    cyclotomic_fp12
+    cyclotomic_subgroup
   ]
 
 type

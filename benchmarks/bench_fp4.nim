@@ -42,8 +42,13 @@ proc main() =
     negBench(Fp4[curve], Iters)
     ccopyBench(Fp4[curve], Iters)
     div2Bench(Fp4[curve], Iters)
+    smallSeparator()
     mulBench(Fp4[curve], Iters)
     sqrBench(Fp4[curve], Iters)
+    smallSeparator()
+    mulUnrBench(Fp2[curve], Iters)
+    sqrUnrBench(Fp2[curve], Iters)
+    smallSeparator()
     invBench(Fp4[curve], InvIters)
     separator()
 

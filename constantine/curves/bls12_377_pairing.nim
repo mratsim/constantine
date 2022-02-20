@@ -11,7 +11,7 @@ import
   ../io/io_bigints,
   ../towers,
   ../elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
-  ../pairing/[cyclotomic_fp12, miller_loops],
+  ../pairing/[cyclotomic_subgroup, miller_loops],
   ../isogeny/frobenius
 
 # Slow generic implementation
@@ -58,29 +58,37 @@ func millerLoopAddchain*(
   f.miller_accum_double_then_add(T, Q, P, 1)               # 0b100001010000100011
   f.miller_accum_double_then_add(T, Q, P, 46, add = true)  # 0b1000010100001000110000000000000000000000000000000000000000000001
 
-func pow_x*(r: var Fp12[BLS12_377], a: Fp12[BLS12_377], invert = BLS12_377_pairing_ate_param_isNeg) =
+func millerLoopAddchain*[N: static int](
+       f: var Fp12[BLS12_377],
+       Qs: array[N, ECP_ShortW_Aff[Fp2[BLS12_377], G2]],
+       Ps: array[N, ECP_ShortW_Aff[Fp[BLS12_377], G1]]
+     ) =
+  ## Miller Loop for BLS12-377 curve
+  ## Computes f{u,Q}(P) with u the BLS curve parameter
+
+  var Ts {.noInit.}: array[N, ECP_ShortW_Prj[Fp2[BLS12_377], G2]]
+
+  f.miller_init_double_then_add(Ts, Qs, Ps, 5)                # 0b100001
+  f.miller_accum_double_then_add(Ts, Qs, Ps, 2)               # 0b10000101
+  f.miller_accum_double_then_add(Ts, Qs, Ps, 5)               # 0b1000010100001
+  f.miller_accum_double_then_add(Ts, Qs, Ps, 4)               # 0b10000101000010001
+  f.miller_accum_double_then_add(Ts, Qs, Ps, 1)               # 0b100001010000100011
+  f.miller_accum_double_then_add(Ts, Qs, Ps, 46, add = true)  # 0b1000010100001000110000000000000000000000000000000000000000000001
+
+func cycl_exp_by_curve_param*(r: var Fp12[BLS12_377], a: Fp12[BLS12_377], invert = BLS12_377_pairing_ate_param_isNeg) =
   ## f^x with x the curve parameter
   ## For BLS12_377 f^0x8508c00000000001
-  r.cyclotomic_square(a)
+  r.cycl_sqr_repeated(a, 5)
+  r *= a
+  let t{.noInit.} = r
+  r.cycl_sqr_repeated(7)
+  r *= t
+  r.cycl_sqr_repeated(4)
   r *= a
   r.cyclotomic_square()
   r *= a
-  let t111 = r
 
-  r.cycl_sqr_repeated(2)
-  let t111000 = r
-
-  r *= t111
-  let t100011 = r
-
-  r.cyclotomic_square()
-  r *= t100011
-  r *= t111000
-
-  r.cycl_sqr_repeated(10)
-  r *= t100011
-
-  r.cycl_sqr_repeated(46) # TODO: Karabina's compressed squarings
+  r.cyclotomic_exp_compressed(r, [46])
   r *= a
 
   if invert:
@@ -95,6 +103,6 @@ func isInPairingSubgroup*(a: Fp12[BLS12_377]): SecretBool =
   #   a is in the GT subgroup iff a^p == a^u
   var t0{.noInit.}, t1{.noInit.}: Fp12[BLS12_377]
   t0.frobenius_map(a)
-  t1.pow_x(a)
+  t1.cycl_exp_by_curve_param(a)
 
   return t0 == t1

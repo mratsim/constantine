@@ -28,17 +28,25 @@ export extension_fields
 #
 # ############################################################
 
-func appendHex*(accum: var string, f: Fp2 or Fp4 or Fp6 or Fp12, order: static Endianness = bigEndian) =
+proc spaces*(num: int): string =
+  result = newString(num)
+  for i in 0 ..< num:
+    result[i] = ' '
+
+func appendHex*(accum: var string, f: Fp2 or Fp4 or Fp6 or Fp12, indent = 0, order: static Endianness = bigEndian) =
   ## Hex accumulator
   accum.add static($f.typeof.genericHead() & '(')
   staticFor i, 0, f.coords.len:
     when i != 0:
       accum.add ", "
-    accum.add "c" & $i & ": "
-    accum.appendHex(f.coords[i], order)
+    accum.add "\n" & spaces(indent+2) & "c" & $i & ": "
+    when f is Fp2:
+      accum.appendHex(f.coords[i], order)
+    else:
+      accum.appendHex(f.coords[i], indent+2, order)
   accum.add ")"
 
-func toHex*(f: Fp2 or Fp4 or Fp6 or Fp12, order: static Endianness = bigEndian): string =
+func toHex*(f: Fp2 or Fp4 or Fp6 or Fp12, indent = 0, order: static Endianness = bigEndian): string =
   ## Stringify a tower field element to hex.
   ## Note. Leading zeros are not removed.
   ## Result is prefixed with 0x
@@ -47,7 +55,7 @@ func toHex*(f: Fp2 or Fp4 or Fp6 or Fp12, order: static Endianness = bigEndian):
   ##
   ## CT:
   ##   - no leaks
-  result.appendHex(f, order)
+  result.appendHex(f, indent, order)
 
 func fromHex*(dst: var Fp2, c0, c1: string) {.raises: [ValueError].}=
   ## Convert 2 coordinates to an element of 𝔽p2

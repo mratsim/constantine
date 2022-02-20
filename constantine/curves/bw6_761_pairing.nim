@@ -10,7 +10,7 @@ import
   ../config/[common, curves, type_bigint],
   ../io/io_bigints,
   ../towers,
-  ../pairing/cyclotomic_fp6,
+  ../pairing/cyclotomic_subgroup,
   ../isogeny/frobenius
 
 # Slow generic implementation
@@ -64,7 +64,7 @@ const BW6_761_pairing_finalexponent_hard* = block:
 # Addition chain
 # ------------------------------------------------------------
 
-func pow_u*(r: var Fp6[BW6_761], a: Fp6[BW6_761], invert = false) =
+func cycl_exp_by_curve_param*(r: var Fp6[BW6_761], a: Fp6[BW6_761], invert = false) =
   ## f^u with u the curve parameter
   ## For BLS12_377/BW6_761 f^0x8508c00000000001
   r.cyclotomic_square(a)
@@ -111,8 +111,8 @@ func isInPairingSubgroup*(a: Fp6[BW6_761]): SecretBool =
   u0.cyclotomic_square()     # u0 = 18
   u0 *= a                    # u0 = 19
 
-  u1.pow_u(a)                # u1 = u
-  u4.pow_u(u1)               # u4 = u²
+  u1.cycl_exp_by_curve_param(a)  # u1 = u
+  u4.cycl_exp_by_curve_param(u1) # u4 = u²
 
   u3.cyclotomic_square(u1)   # u3 = 2u
   u3.cyclotomic_square()     # u3 = 4u
@@ -121,7 +121,7 @@ func isInPairingSubgroup*(a: Fp6[BW6_761]): SecretBool =
 
   u0 *= u1                   # u0 = 10u + 19
 
-  u1.pow_u(u4)               # u1 = u³
+  u1.cycl_exp_by_curve_param(u4) # u1 = u³
   u3.cyclotomic_square(u1)   # u3 = 2u³
   u3.cycl_sqr_repeated(3)    # u3 = 16u³
   u3 *= u1                   # u3 = 17u³
@@ -129,9 +129,9 @@ func isInPairingSubgroup*(a: Fp6[BW6_761]): SecretBool =
   u3 *= u1                   # u3 = 35u³
 
   u0 *= u3                   # u0 = 35u³ + 10u + 19
-  u4.pow_u(u1)               # u4 = u⁴
-  u5.pow_u(u4)               # u5 = u⁵
-  u6.pow_u(u5)               # u6 = u⁶
+  u4.cycl_exp_by_curve_param(u1) # u4 = u⁴
+  u5.cycl_exp_by_curve_param(u4) # u5 = u⁵
+  u6.cycl_exp_by_curve_param(u5) # u6 = u⁶
 
   u1.cyclotomic_square(u4)   # u1 = 2u⁴
   u1.cycl_sqr_repeated(2)    # u1 = 8u⁴

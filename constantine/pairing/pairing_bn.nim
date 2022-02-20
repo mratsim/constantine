@@ -15,9 +15,8 @@ import
   ],
   ../isogeny/frobenius,
   ../curves/zoo_pairings,
-  ./lines_projective,
-  ./mul_fp12_by_lines,
-  ./cyclotomic_fp12,
+  ./lines_eval,
+  ./cyclotomic_subgroup,
   ./miller_loops
 
 export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11225
@@ -114,11 +113,11 @@ func finalExpHard_BN*[C: static Curve](f: var Fp12[C]) =
   # that requires another addition chain
   var t0 {.noInit.}, t1 {.noinit.}, t2 {.noinit.}, t3 {.noinit.}, t4 {.noinit.}: Fp12[C]
 
-  t0.pow_u(f, invert = false)  # t0 = f^|u|
+  t0.cycl_exp_by_curve_param(f, invert = false)  # t0 = f^|u|
   t0.cyclotomic_square()       # t0 = f^2|u|
   t1.cyclotomic_square(t0)     # t1 = f^4|u|
   t1 *= t0                     # t1 = f^6|u|
-  t2.pow_u(t1, invert = false) # t2 = f^6u²
+  t2.cycl_exp_by_curve_param(t1, invert = false) # t2 = f^6u²
 
   if C.pairing(ate_param_is_Neg):
     t3.cyclotomic_inv(t1)      # t3 = f^6u
@@ -126,7 +125,7 @@ func finalExpHard_BN*[C: static Curve](f: var Fp12[C]) =
     t3 = t1                    # t3 = f^6u
   t1.prod(t2, t3)              # t1 = f^6u.f^6u²
   t3.cyclotomic_square(t2)     # t3 = f^12u²
-  t4.pow_u(t3)                 # t4 = f^12u³
+  t4.cycl_exp_by_curve_param(t3)                 # t4 = f^12u³
   t4 *= t1                     # t4 = f^(6u + 6u² + 12u³) = f^λ₂
 
   if not C.pairing(ate_param_is_Neg):

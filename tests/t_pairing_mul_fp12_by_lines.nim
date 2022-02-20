@@ -15,10 +15,7 @@ import
   ../constantine/towers,
   ../constantine/config/curves,
   ../constantine/io/io_towers,
-  ../constantine/pairing/[
-    lines_projective,
-    mul_fp12_by_lines
-  ],
+  ../constantine/pairing/lines_eval,
   # Test utilities
   ../helpers/[prng_unsafe, static_for]
 

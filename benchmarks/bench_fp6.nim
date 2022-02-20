@@ -40,8 +40,13 @@ proc main() =
     addBench(Fp6[curve], Iters)
     subBench(Fp6[curve], Iters)
     negBench(Fp6[curve], Iters)
+    smallSeparator()
     mulBench(Fp6[curve], Iters)
     sqrBench(Fp6[curve], Iters)
+    smallSeparator()
+    mulUnrBench(Fp6[curve], Iters)
+    sqrUnrBench(Fp6[curve], Iters)
+    smallSeparator()
     invBench(Fp6[curve], InvIters)
     separator()
 

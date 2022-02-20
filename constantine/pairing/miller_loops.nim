@@ -12,8 +12,7 @@ import
     ec_shortweierstrass_projective
   ],
   ../isogeny/frobenius,
-  ./lines_projective,
-  ./mul_fp6_by_lines, ./mul_fp12_by_lines
+  ./lines_eval
 
 # No exceptions allowed
 {.push raises: [].}
@@ -48,15 +47,15 @@ template basicMillerLoop*[FT, F1, F2](
   for i in countdown(u3.bits - 2, 1):
     square(f)
     line_double(line, T, P)
-    mul(f, line)
+    mul_by_line(f, line)
 
     let naf = bit(u3, i).int8 - bit(u, i).int8 # This can throw exception
     if naf == 1:
       line_add(line, T, Q, P)
-      mul(f, line)
+      mul_by_line(f, line)
     elif naf == -1:
       line_add(line, T, nQ, P)
-      mul(f, line)
+      mul_by_line(f, line)
 
   when pairing(C, ate_param_isNeg):
     # In GT, x^-1 == conjugate(x)
@@ -82,12 +81,12 @@ func millerCorrectionBN*[FT, F1, F2](
 
   V.frobenius_psi(Q)
   line.line_add(T, V, P)
-  f.mul(line)
+  f.mul_by_line(line)
 
   V.frobenius_psi(Q, 2)
   V.neg()
   line.line_add(T, V, P)
-  f.mul(line)
+  f.mul_by_line(line)
 
 # ############################################################
 #                                                            #
@@ -131,7 +130,6 @@ func miller_init_double_then_add*[FT, F1, F2](
   ## f is overwritten
   ## T is overwritten by Q
   static:
-    doAssert f.c0 is Fp4
     doAssert FT.C == F1.C
     doAssert FT.C == F2.C
     doAssert numDoublings >= 1
@@ -154,13 +152,13 @@ func miller_init_double_then_add*[FT, F1, F2](
   # - The first line is squared (sparse * sparse)
   # - The second is (somewhat-sparse * sparse)
   when numDoublings >= 2:
-    f.prod_sparse_sparse(line, line)
+    f.prod_from_2_lines(line, line)
     line.line_double(T, P)
-    f.mul(line)
+    f.mul_by_line(line)
     for _ in 2 ..< numDoublings:
       f.square()
       line.line_double(T, P)
-      f.mul(line)
+      f.mul_by_line(line)
 
   # Addition step: 0b10...01
   # ------------------------------------------------
@@ -172,10 +170,10 @@ func miller_init_double_then_add*[FT, F1, F2](
     # f *= line <=> f = line for the first iteration
     var line2 {.noInit.}: Line[F2]
     line2.line_add(T, Q, P)
-    f.prod_sparse_sparse(line, line2)
+    f.prod_from_2_lines(line, line2)
   else:
     line.line_add(T, Q, P)
-    f.mul(line)
+    f.mul_by_line(line)
 
   {.pop.} # No OverflowError or IndexError allowed
 
@@ -204,11 +202,11 @@ func miller_accum_double_then_add*[FT, F1, F2](
   for _ in 0 ..< numDoublings:
     f.square()
     line.line_double(T, P)
-    f.mul(line)
+    f.mul_by_line(line)
 
   if add:
     line.line_add(T, Q, P)
-    f.mul(line)
+    f.mul_by_line(line)
 
 # Miller Loop - multi-pairing
 # ----------------------------------------------------------------------------
@@ -234,11 +232,11 @@ func double_jToN[N: static int, FT, F1, F2](
 
     line0.line_double(Ts[i], Ps[i])
     line1.line_double(Ts[i+1], Ps[i+1])
-    f.mul_3way_sparse_sparse(line0, line1)
+    f.mul_by_2_lines(line0, line1)
 
   when (N and 1) == 1: # N >= 2 and N is odd, there is a leftover
     line0.line_double(Ts[N-1], Ps[N-1])
-    f.mul(line0)
+    f.mul_by_line(line0)
 
   {.pop.}
 
@@ -259,11 +257,11 @@ func add_jToN[N: static int, FT, F1, F2](
 
     line0.line_add(Ts[i], Qs[i], Ps[i])
     line1.line_add(Ts[i+1], Qs[i+1], Ps[i+1])
-    f.mul_3way_sparse_sparse(line0, line1)
+    f.mul_by_2_lines(line0, line1)
 
   when (N and 1) == 1: # N >= 2 and N is odd, there is a leftover
     line0.line_add(Ts[N-1], Qs[N-1], Ps[N-1])
-    f.mul(line0)
+    f.mul_by_line(line0)
 
   {.pop.}
 
@@ -282,7 +280,6 @@ func miller_init_double_then_add*[N: static int, FT, F1, F2](
   ## f is overwritten
   ## Ts are overwritten by Qs
   static:
-    doAssert f.c0 is Fp4
     doAssert FT.C == F1.C
     doAssert FT.C == F2.C
 
@@ -297,16 +294,16 @@ func miller_init_double_then_add*[N: static int, FT, F1, F2](
   line0.line_double(Ts[0], Ps[0])
   when N >= 2:
     line1.line_double(Ts[1], Ps[1])
-    f.prod_sparse_sparse(line0, line1)
+    f.prod_from_2_lines(line0, line1)
     f.double_jToN(j=2, line0, line1, Ts, Ps)
 
   # Doubling steps: 0b10...00
   # ------------------------------------------------
   when numDoublings > 1: # Already did the MSB doubling
     when N == 1:         # f = line0
-      f.prod_sparse_sparse(line0, line0) # f.square()
-      line0.line_double(Ts[1], Ps[1])
-      f.mul(line0)
+      f.prod_from_2_lines(line0, line0) # f.square()
+      line0.line_double(Ts[0], Ps[0])
+      f.mul_by_line(line0)
       for _ in 2 ..< numDoublings:
         f.square()
         f.double_jtoN(j=0, line0, line1, Ts, Ps)
@@ -320,7 +317,7 @@ func miller_init_double_then_add*[N: static int, FT, F1, F2](
 
   when numDoublings == 1 and N == 1: # f = line0
     line1.line_add(Ts[0], Qs[0], Ps[0])
-    f.prod_sparse_sparse(line0, line1)
+    f.prod_from_2_lines(line0, line1)
   else:
     f.add_jToN(j=0,line0, line1, Ts, Qs, Ps)
 

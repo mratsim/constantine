@@ -19,7 +19,7 @@ import
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_scalar_mul],
-  ../constantine/pairing/lines_projective,
+  ../constantine/pairing/lines_eval,
   # Test utilities
   ../helpers/[prng_unsafe, static_for]
 

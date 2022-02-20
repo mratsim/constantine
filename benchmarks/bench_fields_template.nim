@@ -91,6 +91,21 @@ proc sqrBench*(T: typedesc, iters: int) =
   bench("Squaring", T, iters):
     r.square(x)
 
+proc mulUnrBench*(T: typedesc, iters: int) =
+  var r: doublePrec(T)
+  let x = rng.random_unsafe(T)
+  let y = rng.random_unsafe(T)
+  preventOptimAway(r)
+  bench("Multiplication unreduced", T, iters):
+    r.prod2x(x, y)
+
+proc sqrUnrBench*(T: typedesc, iters: int) =
+  var r: doublePrec(T)
+  let x = rng.random_unsafe(T)
+  preventOptimAway(r)
+  bench("Squaring unreduced", T, iters):
+    r.square2x(x)
+
 proc toBigBench*(T: typedesc, iters: int) =
   var r: matchingBigInt(T.C)
   let x = rng.random_unsafe(T)

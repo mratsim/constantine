@@ -16,7 +16,7 @@ import
   ../constantine/config/curves,
   ../constantine/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
   ../constantine/curves/[zoo_subgroups, zoo_pairings],
-  ../constantine/pairing/[cyclotomic_fp12, cyclotomic_fp6],
+  ../constantine/pairing/cyclotomic_subgroup,
   ../constantine/io/io_towers,
 
   # Test utilities
@@ -27,7 +27,7 @@ export
   ec_shortweierstrass_affine, ec_shortweierstrass_projective,
   arithmetic, towers,
   primitives, io_towers,
-  cyclotomic_fp12, cyclotomic_fp6
+  cyclotomic_subgroup
 
 type
   RandomGen* = enum

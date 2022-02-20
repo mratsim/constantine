@@ -20,9 +20,8 @@ import
   ../constantine/ec_shortweierstrass,
   ../constantine/curves/zoo_subgroups,
   ../constantine/pairing/[
-    cyclotomic_fp12,
-    lines_projective,
-    mul_fp12_by_lines,
+    cyclotomic_subgroup,
+    lines_eval,
     pairing_bls12,
     pairing_bn
   ],
@@ -181,6 +180,54 @@ proc mulFp12_by_2lines_v2_xy000z_Bench*(C: static Curve, iters: int) =
     f2.prod_xy000z_xy000z_into_abcd00efghij(l0, l1)
     f.mul_sparse_by_abcd00efghij(f2)
 
+proc mulBench*(C: static Curve, iters: int) =
+  var r: Fp12[C]
+  let x = rng.random_unsafe(Fp12[C])
+  let y = rng.random_unsafe(Fp12[C])
+  preventOptimAway(r)
+  bench("Multiplication 𝔽p12", C, iters):
+    r.prod(x, y)
+
+proc sqrBench*(C: static Curve, iters: int) =
+  var r: Fp12[C]
+  let x = rng.random_unsafe(Fp12[C])
+  preventOptimAway(r)
+  bench("Squaring  𝔽p12", C, iters):
+    r.square(x)
+
+proc cyclotomicSquare_Bench*(C: static Curve, iters: int) =
+  var f = rng.random_unsafe(Fp12[C])
+
+  bench("Squaring 𝔽p12 in cyclotomic subgroup", C, iters):
+    f.cyclotomic_square()
+
+proc expCurveParamBench*(C: static Curve, iters: int) =
+  var f = rng.random_unsafe(Fp12[C])
+
+  bench("Cyclotomic Exp by curve parameter", C, iters):
+    f.cycl_exp_by_curve_param(f)
+
+proc cyclotomicSquareCompressed_Bench*(C: static Curve, iters: int) =
+  var f = rng.random_unsafe(Fp12[C])
+  var g: G2345[Fp2[C]]
+  g.fromFpk(f)
+
+  bench("Cyclotomic Compressed Squaring 𝔽p12", C, iters):
+    g.cyclotomic_square_compressed()
+
+proc cyclotomicDecompression_Bench*(C: static Curve, iters: int) =
+  var f = rng.random_unsafe(Fp12[C])
+  var gs: array[1, G2345[Fp2[C]]]
+  gs[0].fromFpk(f)
+
+  var g1s_ratio: array[1, tuple[g1_num, g1_den: Fp2[C]]]
+  var g0s, g1s: array[1, Fp2[C]]
+
+  bench("Cyclotomic Decompression 𝔽p12", C, iters):
+    recover_g1(g1s_ratio[0].g1_num, g1s_ratio[0].g1_den, gs[0])
+    g1s.batch_ratio_g1s(g1s_ratio)
+    g0s[0].recover_g0(g1s[0], gs[0])
+
 proc millerLoopBLS12Bench*(C: static Curve, iters: int) =
   let
     P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
@@ -253,7 +300,7 @@ proc pairing_multisingle_BLS12Bench*(C: static Curve, N: static int, iters: int)
     Qs[i] = rng.random_unsafe(typeof(Qs[0]))
 
   var f: Fp12[C]
-  bench("Pairing BLS12 multi-single " & $N & " pairings", C, iters):
+  bench("Pairing BLS12 non-batched: " & $N, C, iters):
     for i in 0 ..< N:
       GTs[i].pairing_bls12(Ps[i], Qs[i])
 
@@ -271,7 +318,7 @@ proc pairing_multipairing_BLS12Bench*(C: static Curve, N: static int, iters: int
     Qs[i] = rng.random_unsafe(typeof(Qs[0]))
 
   var f: Fp12[C]
-  bench("Pairing BLS12 multipairing " & $N & " pairings", C, iters):
+  bench("Pairing BLS12 batched:     " & $N, C, iters):
     f.pairing_bls12(Ps, Qs)
 
 proc pairingBNBench*(C: static Curve, iters: int) =
