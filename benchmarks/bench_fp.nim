@@ -8,10 +8,10 @@
 
 import
   # Internals
-  ../constantine/config/[curves, common],
-  ../constantine/arithmetic,
-  ../constantine/io/io_bigints,
-  ../constantine/curves/zoo_square_roots,
+  ../constantine/backend/config/[curves, common],
+  ../constantine/backend/arithmetic,
+  ../constantine/backend/io/io_bigints,
+  ../constantine/backend/curves/zoo_square_roots,
   # Helpers
   ../helpers/static_for,
   ./bench_fields_template

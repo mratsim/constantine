@@ -1,0 +1,21 @@
+# Constantine
+# Copyright (c) 2018-2019    Status Research & Development GmbH
+# Copyright (c) 2020-Present Mamy André-Ratsimbazafy
+# Licensed and distributed under either of
+#   * MIT license (license terms in the root directory or at http://opensource.org/licenses/MIT).
+#   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
+# at your option. This file may not be copied, modified, or distributed except according to those terms.
+
+import
+  ../../constantine/backend/config/common,
+  ../../constantine/backend/config/curves,
+  ../../constantine/backend/pairing/pairing_bn,
+  # Test utilities
+  ./t_pairing_template
+
+runPairingTests(
+  4, BN254_Snarks,
+  G1 = ECP_ShortW_Prj[Fp[BN254_Snarks], G1],
+  G2 = ECP_ShortW_Prj[Fp2[BN254_Snarks], G2],
+  GT = Fp12[BN254_Snarks],
+  pairing_bn)

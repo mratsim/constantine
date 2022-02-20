@@ -7,15 +7,15 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../constantine/config/curves,
-  ../../constantine/[arithmetic, primitives],
-  ../../constantine/elliptic/[
+  ../../constantine/backend/config/curves,
+  ../../constantine/backend/[arithmetic, primitives],
+  ../../constantine/backend/elliptic/[
     ec_scalar_mul,
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
   ],
-  ../../constantine/io/[io_fields, io_ec],
+  ../../constantine/backend/io/[io_fields, io_ec],
   # Research
   ./strided_views,
   ./fft_lut

@@ -14,7 +14,7 @@
 
 import
   # Internal
-  ../constantine/config/common,
+  ../constantine/backend/config/common,
   # Helpers
   ../helpers/prng_unsafe,
   ./platforms,

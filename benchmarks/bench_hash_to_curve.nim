@@ -8,13 +8,13 @@
 
 import
   # Internals
-  ../constantine/config/[common, curves, type_bigint, type_ff],
-  ../constantine/[towers, hashes],
-  ../constantine/io/[io_bigints, io_ec],
-  ../constantine/elliptic/[
+  ../constantine/backend/config/[common, curves, type_bigint, type_ff],
+  ../constantine/backend/[towers, hashes],
+  ../constantine/backend/io/[io_bigints, io_ec],
+  ../constantine/backend/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective],
-  ../constantine/hash_to_curve/hash_to_curve,
+  ../constantine/backend/hash_to_curve/hash_to_curve,
   # Helpers
   ../helpers/prng_unsafe,
   ./bench_blueprint

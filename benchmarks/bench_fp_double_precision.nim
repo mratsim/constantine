@@ -14,9 +14,9 @@
 
 import
   # Internals
-  ../constantine/config/[curves, common],
-  ../constantine/arithmetic,
-  ../constantine/towers,
+  ../constantine/backend/config/[curves, common],
+  ../constantine/backend/arithmetic,
+  ../constantine/backend/towers,
   # Helpers
   ../helpers/[prng_unsafe, static_for],
   ./platforms,
