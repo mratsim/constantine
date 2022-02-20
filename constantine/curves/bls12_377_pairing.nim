@@ -78,8 +78,7 @@ func millerLoopAddchain*[N: static int](
 func cycl_exp_by_curve_param*(r: var Fp12[BLS12_377], a: Fp12[BLS12_377], invert = BLS12_377_pairing_ate_param_isNeg) =
   ## f^x with x the curve parameter
   ## For BLS12_377 f^0x8508c00000000001
-  r = a
-  r.cycl_sqr_repeated(5)
+  r.cycl_sqr_repeated(a, 5)
   r *= a
   let t{.noInit.} = r
   r.cycl_sqr_repeated(7)

@@ -41,88 +41,65 @@ const BN254_Snarks_pairing_finalexponent* = block:
 # it would requires saving accumulators to actually save
 # operations compared to NAF, and can we combine the saved EC[Fp2] accumulators?
 
-func cycl_exp_by_curve_param*(r: var Fp12[BN254_Snarks], a: Fp12[BN254_Snarks], invert = BN254_Snarks_pairing_ate_param_isNeg) =
+func cycl_exp_by_curve_param*(
+       r: var Fp12[BN254_Snarks], a: Fp12[BN254_Snarks],
+       invert = BN254_Snarks_pairing_ate_param_isNeg) =
   ## f^u with u the curve parameter
   ## For BN254_Snarks f^0x44e992b44a6909f1
-  when false:
-    cyclotomic_exp(
-      r, a,
-      BigInt[63].fromHex("0x44e992b44a6909f1"),
-      invert
-    )
-  else:
-    var # Hopefully the compiler optimizes away unused Fp12
-        # because those are huge
-      x10       {.noInit.}: Fp12[BN254_Snarks]
-      x11       {.noInit.}: Fp12[BN254_Snarks]
-      x100      {.noInit.}: Fp12[BN254_Snarks]
-      x110      {.noInit.}: Fp12[BN254_Snarks]
-      x1100     {.noInit.}: Fp12[BN254_Snarks]
-      x1111     {.noInit.}: Fp12[BN254_Snarks]
-      x10010    {.noInit.}: Fp12[BN254_Snarks]
-      x10110    {.noInit.}: Fp12[BN254_Snarks]
-      x11100    {.noInit.}: Fp12[BN254_Snarks]
-      x101110   {.noInit.}: Fp12[BN254_Snarks]
-      x1001010  {.noInit.}: Fp12[BN254_Snarks]
-      x1111000  {.noInit.}: Fp12[BN254_Snarks]
-      x10001110 {.noInit.}: Fp12[BN254_Snarks]
+  # https://github.com/mmcloughlin/addchain
+  # Addchain weighted by Fp12 mul and cyclotomic square cycle costs
+  # addchain search -add 3622 -double 1696 "0x44e992b44a6909f1"
+  var # Hopefully the compiler optimizes away unused Fp12
+      # because those are huge
+    x10       {.noInit.}: Fp12[BN254_Snarks]
+    x100      {.noInit.}: Fp12[BN254_Snarks]
+    x1000     {.noInit.}: Fp12[BN254_Snarks]
+    x10000    {.noInit.}: Fp12[BN254_Snarks]
+    x10001    {.noInit.}: Fp12[BN254_Snarks]
+    x10011    {.noInit.}: Fp12[BN254_Snarks]
+    x10100    {.noInit.}: Fp12[BN254_Snarks]
+    x11001    {.noInit.}: Fp12[BN254_Snarks]
+    x100010   {.noInit.}: Fp12[BN254_Snarks]
+    x100111   {.noInit.}: Fp12[BN254_Snarks]
+    x101001   {.noInit.}: Fp12[BN254_Snarks]
 
-    x10       .cyclotomic_square(a)
-    x11       .prod(x10, a)
-    x100      .prod(x11, a)
-    x110      .prod(x10, x100)
-    x1100     .cyclotomic_square(x110)
-    x1111     .prod(x11, x1100)
-    x10010    .prod(x11, x1111)
-    x10110    .prod(x100, x10010)
-    x11100    .prod(x110, x10110)
-    x101110   .prod(x10010, x11100)
-    x1001010  .prod(x11100, x101110)
-    x1111000  .prod(x101110, x1001010)
-    x10001110 .prod(x10110, x1111000)
+  x10       .cyclotomic_square(a)
+  x100      .cyclotomic_square(x10)
+  x1000     .cyclotomic_square(x100)
+  x10000    .cyclotomic_square(x1000)
+  x10001    .prod(x10000, a)
+  x10011    .prod(x10001, x10)
+  x10100    .prod(x10011, a)
+  x11001    .prod(x1000, x10001)
+  x100010   .cyclotomic_square(x10001)
+  x100111   .prod(x10011, x10100)
+  x101001   .prod(x10, x100111)
 
-    var
-      r15 {.noInit.}: Fp12[BN254_Snarks]
-      r16 {.noInit.}: Fp12[BN254_Snarks]
-      r17 {.noInit.}: Fp12[BN254_Snarks]
-      r18 {.noInit.}: Fp12[BN254_Snarks]
-      r20 {.noInit.}: Fp12[BN254_Snarks]
-      r21 {.noInit.}: Fp12[BN254_Snarks]
-      r22 {.noInit.}: Fp12[BN254_Snarks]
-      r26 {.noInit.}: Fp12[BN254_Snarks]
-      r27 {.noInit.}: Fp12[BN254_Snarks]
-      r61 {.noInit.}: Fp12[BN254_Snarks]
+  r.cycl_sqr_repeated(x100010, 6)
+  r *= x100
+  r *= x11001
+  r.cycl_sqr_repeated(7)
+  r *= x11001
 
-    r15.cyclotomic_square(x10001110)
-    r15 *= x1001010
-    r16.prod(x10001110, r15)
-    r17.prod(x1111, r16)
-    r18.prod(r16, r17)
+  r.cycl_sqr_repeated(8)
+  r *= x101001
+  r *= x10
+  r.cycl_sqr_repeated(6)
+  r *= x10001
 
-    r20.cyclotomic_square(r18)
-    r20 *= r17
-    r21.prod(x1111000, r20)
-    r22.prod(r15, r21)
+  r.cycl_sqr_repeated(8)
+  r *= x101001
+  r.cycl_sqr_repeated(6)
+  r *= x101001
+  r.cycl_sqr_repeated(10)
 
-    r26.cyclotomic_square(r22)
-    r26.cyclotomic_square()
-    r26 *= r22
-    r26 *= r18
+  r *= x100111
+  r.cycl_sqr_repeated(6)
+  r *= x101001
+  r *= x1000
 
-    r27.prod(r22, r26)
-
-    r61.prod(r26, r27)
-    r61.cycl_sqr_repeated(17)
-    r61 *= r27
-    r61.cycl_sqr_repeated(14)
-    r61 *= r21
-
-    r = r61
-    r.cycl_sqr_repeated(16)
-    r *= r20
-
-    if invert:
-      r.cyclotomic_inv()
+  if invert:
+    r.cyclotomic_inv()
 
 func isInPairingSubgroup*(a: Fp12[BN254_Snarks]): SecretBool =
   ## Returns true if a is in GT subgroup, i.e. a is an element of order r
