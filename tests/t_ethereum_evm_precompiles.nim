@@ -15,7 +15,7 @@ import
   jsony,
   # Internals
   ../constantine/backend/io/io_bigints,
-  ../constantine/backend/protocols/ethereum_evm_precompiles
+  ../constantine/backend/ethereum_evm_precompiles
 
 type
   BN256Tests = object
