@@ -43,7 +43,7 @@ jobs:
           - target:
               os: windows
             builder: windows-latest
-    name: '${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ matrix.target.TEST_LANG }}-${{ matrix.target.BACKEND }} (${{ matrix.branch }})'
+    name: '${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ matrix.target.TEST_LANG }}-${{ matrix.target.BACKEND }} (${{ matrix.nim_version }})'
     runs-on: ${{ matrix.builder }}
     steps:
       - name: Get branch name
@@ -120,18 +120,18 @@ jobs:
       - name: Restore Nim from cache
         if: >
           steps.nim-compiler-cache.outputs.cache-hit != 'true' &&
-          matrix.target.nim_version != 'devel'
+          matrix.nim_version != 'devel'
         id: nim-compiler-cache
         uses: actions/cache@v2
         with:
-          path: '${{ github.workspace }}/nim-${{ matrix.target.nim_version }}-${{ matrix.target.cpu }}'
-          key: 'nim-${{ matrix.target.cpu }}-${{ matrix.target.nim_version }}'
+          path: '${{ github.workspace }}/nim-${{ matrix.nim_version }}-${{ matrix.target.cpu }}'
+          key: 'nim-${{ matrix.target.cpu }}-${{ matrix.nim_version }}'
 
       - name: Setup Nim
         uses: alaviss/setup-nim@0.1.1
         with:
           path: 'nim'
-          version: ${{ matrix.target.nim_version }}
+          version: ${{ matrix.nim_version }}
           architecture: ${{ matrix.target.cpu }}
 
       - name: Install dependencies (Linux amd64)
@@ -154,13 +154,20 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install gmp parallel
 
+      - name: Setup MSYS2 (Windows)
+        if: ${{matrix.target == 'windows'}}
+        uses: msys2/setup-msys2@v2
+        with:
+          path-type: inherit
+          update: true
+          install: base-devel git mingw-w64-x86_64-toolchain
+
       - name: Install dependencies (Windows)
         if: runner.os == 'Windows'
         shell: msys2 {0}
         run: |
           pacman -S --needed --noconfirm mingw-w64-x86_64-gmp
           pacman -S --needed --noconfirm parallel
-
 
       - name: Install test dependencies
         shell: bash
