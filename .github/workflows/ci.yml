@@ -7,7 +7,7 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        branch: [version-1-4, version-1-6] # [version-1-4, devel]
+        nim_version: [version-1-4, version-1-6] # [version-1-4, devel]
         target:
           - os: linux
             cpu: amd64
@@ -120,18 +120,18 @@ jobs:
       - name: Restore Nim from cache
         if: >
           steps.nim-compiler-cache.outputs.cache-hit != 'true' &&
-          matrix.target.nim_branch != 'devel'
+          matrix.target.nim_version != 'devel'
         id: nim-compiler-cache
         uses: actions/cache@v2
         with:
-          path: '${{ github.workspace }}/nim-${{ matrix.target.nim_branch }}-${{ matrix.target.cpu }}'
-          key: 'nim-${{ matrix.target.cpu }}-${{ matrix.target.nim_branch }}'
+          path: '${{ github.workspace }}/nim-${{ matrix.target.nim_version }}-${{ matrix.target.cpu }}'
+          key: 'nim-${{ matrix.target.cpu }}-${{ matrix.target.nim_version }}'
 
       - name: Setup Nim
         uses: alaviss/setup-nim@0.1.1
         with:
           path: 'nim'
-          version: ${{ matrix.target.nim_branch }}
+          version: ${{ matrix.target.nim_version }}
           architecture: ${{ matrix.target.cpu }}
 
       - name: Install dependencies (Linux amd64)
@@ -167,7 +167,7 @@ jobs:
         run: |
           nimble refresh -y
           nimble install -y gmp stew jsony
-          
+
       - name: Run Constantine tests (with Assembler & with GMP)
         if: (runner.os == 'Linux' || runner.os == 'macOS') && matrix.target.BACKEND == 'ASM' && matrix.target.cpu != 'i386'
         shell: bash
