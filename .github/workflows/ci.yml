@@ -226,4 +226,4 @@ jobs:
         run: |
           export UCPU="$cpu"
           cd constantine
-          nimble test_parallel_no_gmp_no_assembler
+          nimble test_no_gmp_no_assembler
