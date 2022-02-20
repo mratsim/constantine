@@ -150,6 +150,18 @@ jobs:
             --no-install-recommends -yq \
             libssl-dev:i386 libgmp-dev:i386
 
+          mkdir -p external/bin
+          cat << EOF > external/bin/gcc
+          #!/bin/bash
+          exec $(which gcc) -m32 "\$@"
+          EOF
+          cat << EOF > external/bin/g++
+          #!/bin/bash
+          exec $(which g++) -m32 "\$@"
+          EOF
+          chmod 755 external/bin/gcc external/bin/g++
+          echo '${{ github.workspace }}/external/bin' >> $GITHUB_PATH
+
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         run: brew install gmp parallel
@@ -206,7 +218,8 @@ jobs:
       - name: Run Constantine tests
         if: runner.os == 'Windows'
         shell: msys2 {0}
+        # TODO test_parallel_no_assembler but need, in nimscript to clear 'test_parallel.txt' including when it does not exist.
         run: |
           export UCPU="$cpu"
           cd constantine
-          nimble test_parallel_no_assembler
+          nimble test_no_assembler

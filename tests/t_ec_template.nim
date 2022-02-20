@@ -479,7 +479,7 @@ proc run_EC_subgroups_cofactors_impl*(
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
     test "Effective cofactor matches accelerated cofactor clearing" & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
       proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
-        for _ in 0 ..< Iters:
+        for _ in 0 ..< ItersMul:
           let P = rng.random_point(EC, randZ, gen)
           var cPeff = P
           var cPfast = P
