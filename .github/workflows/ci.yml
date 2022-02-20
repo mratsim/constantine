@@ -148,6 +148,7 @@ jobs:
           sudo apt-fast update -qq
           sudo DEBIAN_FRONTEND='noninteractive' apt-fast install \
             --no-install-recommends -yq \
+            gcc-multilib g++-multilib \
             libssl-dev:i386 libgmp-dev:i386
 
           mkdir -p external/bin
@@ -218,10 +219,11 @@ jobs:
           export UCPU="$cpu"
           cd constantine
           nimble test_parallel_no_gmp_no_assembler
-      - name: Run Constantine tests (without Assembler)
+      - name: Run Constantine tests (Windows - without Assembler or GMP)
+        # TODO, why aren't GMP or parallel in path?
         if: runner.os == 'Windows'
         shell: msys2 {0}
         run: |
           export UCPU="$cpu"
           cd constantine
-          nimble test_parallel_no_assembler
+          nimble test_parallel_no_gmp_no_assembler
