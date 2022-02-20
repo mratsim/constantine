@@ -180,8 +180,11 @@ jobs:
         run: |
           pacman -S --needed --noconfirm mingw-w64-x86_64-gmp
           pacman -S --needed --noconfirm parallel
+          nimble refresh -y
+          nimble install -y gmp stew jsony
 
       - name: Install test dependencies
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           nimble refresh -y
@@ -215,11 +218,10 @@ jobs:
           export UCPU="$cpu"
           cd constantine
           nimble test_parallel_no_gmp_no_assembler
-      - name: Run Constantine tests
+      - name: Run Constantine tests (without Assembler)
         if: runner.os == 'Windows'
         shell: msys2 {0}
-        # TODO test_parallel_no_assembler but need, in nimscript to clear 'test_parallel.txt' including when it does not exist.
         run: |
           export UCPU="$cpu"
           cd constantine
-          nimble test_no_assembler
+          nimble test_parallel_no_assembler

@@ -501,7 +501,7 @@ proc run_EC_subgroups_cofactors_impl*(
       var offSubgroup = 0
       proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
         stdout.write "    "
-        for _ in 0 ..< Iters:
+        for _ in 0 ..< ItersMul:
           let P = rng.random_point(EC, randZ, gen)
           var rP = P
           rP.scalarMulGeneric(EC.F.C.getCurveOrder())
