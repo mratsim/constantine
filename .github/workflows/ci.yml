@@ -7,23 +7,23 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        branch: [version-1-4] # [version-1-4, devel]
+        nim_version: [version-1-4, version-1-6] # [version-1-4, devel]
         target:
           - os: linux
             cpu: amd64
             TEST_LANG: c
             BACKEND: NO_ASM
           - os: linux
-            cpu: amd64
-            TEST_LANG: cpp
-            BACKEND: NO_ASM
-          - os: linux
             cpu: i386
             TEST_LANG: c
             BACKEND: NO_ASM
           - os: linux
-            cpu: i386
-            TEST_LANG: cpp
+            cpu: amd64
+            TEST_LANG: c
+            BACKEND: ASM
+          - os: windows
+            cpu: amd64
+            TEST_LANG: c
             BACKEND: NO_ASM
           - os: macos
             cpu: amd64
@@ -31,59 +31,19 @@ jobs:
             BACKEND: NO_ASM
           - os: macos
             cpu: amd64
-            TEST_LANG: cpp
-            BACKEND: NO_ASM
-          # TODO:
-          #   1. Modulo/reduce bug on 32-bit
-          #   2. ModInverse bug on all windows
-          # - os: windows
-          #   cpu: amd64
-          #   TEST_LANG: c
-          # - os: windows
-          #   cpu: amd64
-          #   TEST_LANG: cpp
-          # - os: windows
-          #   cpu: i386
-          #   TEST_LANG: c
-          # - os: windows
-          #   cpu: i386
-          #   TEST_LANG: cpp
-          # ----------------------------
-          - os: linux
-            cpu: amd64
             TEST_LANG: c
-            BACKEND: ASM
-          - os: linux
-            cpu: amd64
-            TEST_LANG: cpp
-            BACKEND: ASM
-          - os: linux
-            cpu: i386
-            TEST_LANG: c
-            BACKEND: ASM
-          - os: linux
-            cpu: i386
-            TEST_LANG: cpp
-            BACKEND: ASM
-          - os: macos
-            cpu: amd64
-            TEST_LANG: c
-            BACKEND: ASM
-          - os: macos
-            cpu: amd64
-            TEST_LANG: cpp
             BACKEND: ASM
         include:
           - target:
               os: linux
-            builder: ubuntu-18.04
+            builder: ubuntu-latest
           - target:
               os: macos
-            builder: macos-10.15
-          # - target:
-          #     os: windows
-          #   builder: windows-2019
-    name: '${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ matrix.target.TEST_LANG }}-${{ matrix.target.BACKEND }} (${{ matrix.branch }})'
+            builder: macos-latest
+          - target:
+              os: windows
+            builder: windows-latest
+    name: '${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ matrix.target.TEST_LANG }}-${{ matrix.target.BACKEND }} (${{ matrix.nim_version }})'
     runs-on: ${{ matrix.builder }}
     steps:
       - name: Get branch name
@@ -110,11 +70,76 @@ jobs:
         with:
           path: constantine
 
+      - name: Restore MinGW-W64 (Windows) from cache
+        if: runner.os == 'Windows'
+        id: windows-mingw-cache
+        uses: actions/cache@v2
+        with:
+          path: external/mingw-${{ matrix.target.cpu }}
+          key: 'mingw-${{ matrix.target.cpu }}'
+      - name: Restore Nim DLLs dependencies (Windows) from cache
+        if: runner.os == 'Windows'
+        id: windows-dlls-cache
+        uses: actions/cache@v2
+        with:
+          path: external/dlls-${{ matrix.target.cpu }}
+          key: 'dlls-${{ matrix.target.cpu }}'
+      - name: Install MinGW64 dependency (Windows)
+        if: >
+          steps.windows-mingw-cache.outputs.cache-hit != 'true' &&
+          runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir -p external
+          if [[ '${{ matrix.target.cpu }}' == 'amd64' ]]; then
+            MINGW_URL="https://github.com/brechtsanders/winlibs_mingw/releases/download/11.1.0-12.0.0-9.0.0-r2/winlibs-x86_64-posix-seh-gcc-11.1.0-mingw-w64-9.0.0-r2.7z"
+            ARCH=64
+          else
+            MINGW_URL="https://github.com/brechtsanders/winlibs_mingw/releases/download/11.1.0-12.0.0-9.0.0-r2/winlibs-i686-posix-dwarf-gcc-11.1.0-mingw-w64-9.0.0-r2.7z"
+            ARCH=32
+          fi
+          curl -L "$MINGW_URL" -o "external/mingw-${{ matrix.target.cpu }}.7z"
+          7z x -y "external/mingw-${{ matrix.target.cpu }}.7z" -oexternal/
+          mv external/mingw$ARCH external/mingw-${{ matrix.target.cpu }}
+      - name: Install DLLs dependencies (Windows)
+        if: >
+          steps.windows-dlls-cache.outputs.cache-hit != 'true' &&
+          runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir -p external
+          curl -L "https://nim-lang.org/download/windeps.zip" -o external/windeps.zip
+          7z x -y external/windeps.zip -oexternal/dlls-${{ matrix.target.cpu }}
+      - name: Path to cached dependencies (Windows)
+        if: >
+          runner.os == 'Windows'
+        shell: bash
+        run: |
+          echo '${{ github.workspace }}'"/external/mingw-${{ matrix.target.cpu }}/bin" >> $GITHUB_PATH
+          echo '${{ github.workspace }}'"/external/dlls-${{ matrix.target.cpu }}" >> $GITHUB_PATH
+      - name: Restore Nim from cache
+        if: >
+          steps.nim-compiler-cache.outputs.cache-hit != 'true' &&
+          matrix.nim_version != 'devel'
+        id: nim-compiler-cache
+        uses: actions/cache@v2
+        with:
+          path: '${{ github.workspace }}/nim-${{ matrix.nim_version }}-${{ matrix.target.cpu }}'
+          key: 'nim-${{ matrix.target.cpu }}-${{ matrix.nim_version }}'
+
+      - name: Setup Nim
+        uses: alaviss/setup-nim@0.1.1
+        with:
+          path: 'nim'
+          version: ${{ matrix.nim_version }}
+          architecture: ${{ matrix.target.cpu }}
+
       - name: Install dependencies (Linux amd64)
         if: runner.os == 'Linux' && matrix.target.cpu == 'amd64'
         run: |
           sudo DEBIAN_FRONTEND='noninteractive' apt-fast install \
-            --no-install-recommends -yq libgmp-dev
+            --no-install-recommends -yq \
+            libgmp-dev
 
       - name: Install dependencies (Linux i386)
         if: runner.os == 'Linux' && matrix.target.cpu == 'i386'
@@ -122,8 +147,10 @@ jobs:
           sudo dpkg --add-architecture i386
           sudo apt-fast update -qq
           sudo DEBIAN_FRONTEND='noninteractive' apt-fast install \
-            --no-install-recommends -yq gcc-multilib g++-multilib \
+            --no-install-recommends -yq \
+            gcc-multilib g++-multilib \
             libssl-dev:i386 libgmp-dev:i386
+
           mkdir -p external/bin
           cat << EOF > external/bin/gcc
           #!/bin/bash
@@ -138,115 +165,32 @@ jobs:
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
-        run: brew install gmp
+        run: brew install gmp parallel
+
+      - name: Setup MSYS2 (Windows)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          path-type: inherit
+          update: true
+          install: base-devel git mingw-w64-x86_64-toolchain
 
       - name: Install dependencies (Windows)
         if: runner.os == 'Windows'
-        shell: bash
+        shell: msys2 {0}
         run: |
-          mkdir external
-          if [[ '${{ matrix.target.cpu }}' == 'amd64' ]]; then
-            arch=64
-          else
-            arch=32
-          fi
-          curl -L "https://nim-lang.org/download/mingw$arch.7z" -o "external/mingw$arch.7z"
-          curl -L "https://nim-lang.org/download/windeps.zip" -o external/windeps.zip
-          7z x "external/mingw$arch.7z" -oexternal/
-          7z x external/windeps.zip -oexternal/dlls
-          echo '${{ github.workspace }}'"/external/mingw$arch/bin" >> $GITHUB_PATH
-          echo '${{ github.workspace }}'"/external/dlls" >> $GITHUB_PATH
-
-          choco install msys2
-          pacman -S mingw-w64-x86_64-gmp
-
-      - name: Setup environment
-        shell: bash
-        run: echo '${{ github.workspace }}/nim/bin' >> $GITHUB_PATH
-
-      - name: Get latest Nim commit hash
-        id: versions
-        shell: bash
-        run: |
-          getHash() {
-            git ls-remote "https://github.com/$1" "${2:-HEAD}" | cut -f 1
-          }
-          nimHash=$(getHash nim-lang/Nim '${{ matrix.branch }}')
-          csourcesHash=$(getHash nim-lang/csources)
-          echo "::set-output name=nim::$nimHash"
-          echo "::set-output name=csources::$csourcesHash"
-      - name: Restore prebuilt Nim from cache
-        id: nim-cache
-        uses: actions/cache@v1
-        with:
-          path: nim
-          key: 'nim-${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ steps.versions.outputs.nim }}'
-
-      - name: Restore prebuilt csources from cache
-        if: steps.nim-cache.outputs.cache-hit != 'true'
-        id: csources-cache
-        uses: actions/cache@v1
-        with:
-          path: csources/bin
-          key: 'csources-${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ steps.versions.outputs.csources }}'
-
-      - name: Checkout Nim csources
-        if: >
-          steps.csources-cache.outputs.cache-hit != 'true' &&
-          steps.nim-cache.outputs.cache-hit != 'true'
-        uses: actions/checkout@v2
-        with:
-          repository: nim-lang/csources
-          path: csources
-          ref: ${{ steps.versions.outputs.csources }}
-
-      - name: Checkout Nim
-        if: steps.nim-cache.outputs.cache-hit != 'true'
-        uses: actions/checkout@v2
-        with:
-          repository: nim-lang/Nim
-          path: nim
-          ref: ${{ steps.versions.outputs.nim }}
-
-      - name: Build Nim and associated tools
-        if: steps.nim-cache.outputs.cache-hit != 'true'
-        shell: bash
-        run: |
-          ncpu=
-          ext=
-          case '${{ runner.os }}' in
-          'Linux')
-            ncpu=$(nproc)
-            ;;
-          'macOS')
-            ncpu=$(sysctl -n hw.ncpu)
-            ;;
-          'Windows')
-            ncpu=$NUMBER_OF_PROCESSORS
-            ext=.exe
-            ;;
-          esac
-          [[ -z "$ncpu" || $ncpu -le 0 ]] && ncpu=1
-          if [[ ! -e csources/bin/nim$ext ]]; then
-            make -C csources -j $ncpu CC=gcc ucpu='${{ matrix.target.cpu }}'
-          else
-            echo 'Using prebuilt csources'
-          fi
-          cp -v csources/bin/nim$ext nim/bin
-          cd nim
-          nim c koch
-          ./koch boot -d:release
-          ./koch tools -d:release
-          # clean up to save cache space
-          rm koch
-          rm -rf nimcache
-          rm -rf dist
-          rm -rf .git
-      - name: Install test dependencies
-        shell: bash
-        run: |
-          nimble refresh
+          pacman -S --needed --noconfirm mingw-w64-x86_64-gmp
+          pacman -S --needed --noconfirm parallel
+          nimble refresh -y
           nimble install -y gmp stew jsony
+
+      - name: Install test dependencies
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          nimble refresh -y
+          nimble install -y gmp stew jsony
+
       - name: Run Constantine tests (with Assembler & with GMP)
         if: (runner.os == 'Linux' || runner.os == 'macOS') && matrix.target.BACKEND == 'ASM' && matrix.target.cpu != 'i386'
         shell: bash
@@ -275,3 +219,11 @@ jobs:
           export UCPU="$cpu"
           cd constantine
           nimble test_parallel_no_gmp_no_assembler
+      - name: Run Constantine tests (Windows - without Assembler or GMP)
+        # TODO, why aren't GMP or parallel in path?
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: |
+          export UCPU="$cpu"
+          cd constantine
+          nimble test_no_gmp_no_assembler

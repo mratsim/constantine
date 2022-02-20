@@ -354,6 +354,17 @@ task test_no_gmp, "Run tests that don't require GMP":
   if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
     buildAllBenches()
 
+task test_no_gmp_no_assembler, "Run tests that don't require GMP using a pure Nim backend":
+  # -d:testingCurves is configured in a *.nim.cfg for convenience
+  runTests(requireGMP = false, testASM = false)
+
+  # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
+  #   runTests(requireGMP = true, test32bit = true)
+
+  # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
+  if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
+    buildAllBenches()
+
 task test_parallel, "Run all tests in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   clearParallelBuild()
