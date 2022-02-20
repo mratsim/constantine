@@ -42,7 +42,6 @@ jobs:
             builder: macos-latest
           - target:
               os: windows
-              shell: msys2 {0}
             builder: windows-latest
     name: '${{ matrix.target.os }}-${{ matrix.target.cpu }}-${{ matrix.target.TEST_LANG }}-${{ matrix.target.BACKEND }} (${{ matrix.branch }})'
     runs-on: ${{ matrix.builder }}
