@@ -722,6 +722,12 @@ func has_large_NR_norm(C: static Curve): bool =
 
   return norm > 5
 
+func has_large_field_elem(C: static Curve): bool =
+  ## Returns true if field element are large
+  ## and necessitate custom routine for assembly in particular
+  let a = default(Fp[C])
+  return a.mres.limbs.len > 6
+
 # ############################################################
 #                                                            #
 #                  Quadratic extensions                      #
@@ -1264,7 +1270,13 @@ func inv2xImpl(r: var QuadraticExt, a: QuadraticExt) =
 
 func square2x*(r: var QuadraticExt2x, a: QuadraticExt) =
   when a.fromComplexExtension():
-    r.square2x_complex(a)
+    when a.c0.mres.limbs.len <= 6:
+      if ({.noSideEffect.}: hasAdx()):
+        r.coords.sqrx2x_complex_asm_adx(a.coords)
+      else:
+        r.square2x_complex(a)
+    else:
+      r.square2x_complex(a)
   else:
     r.square2x_disjoint(a.c0, a.c1)
 
@@ -1280,7 +1292,7 @@ func square*(r: var QuadraticExt, a: QuadraticExt) =
         r.square_complex(a)
     else: # slower
       var d {.noInit.}: doublePrec(typeof(r))
-      d.square2x_complex(a)
+      d.square2x(a)
       r.c0.redc2x(d.c0)
       r.c1.redc2x(d.c1)
   else:
@@ -1323,7 +1335,7 @@ func prod*(r: var QuadraticExt, a, b: QuadraticExt) =
         r.c0.redc2x(d.c0)
         r.c1.redc2x(d.c1)
   else:
-    when r.typeof.F.C == BW6_761 or typeof(r.c0) is Fp:
+    when r.typeof.F.C.has_large_field_elem():
       # BW6-761 requires too many registers for Dbl width path
       r.prod_generic(a, b)
     else:
@@ -1811,7 +1823,7 @@ func inv2xImpl(r: var CubicExt, a: CubicExt) =
 
 func square*(r: var CubicExt, a: CubicExt) =
   ## Returns r = a²
-  when CubicExt.C.has_large_NR_norm():
+  when CubicExt.C.has_large_NR_norm() or CubicExt.C.has_large_field_elem():
     square_Chung_Hasan_SQR3(r, a)
   else:
     var d {.noInit.}: doublePrec(typeof(a))
@@ -1830,7 +1842,7 @@ func square2x*(r: var CubicExt2x, a: CubicExt) =
 
 func prod*(r: var CubicExt, a, b: CubicExt) =
   ## Out-of-place multiplication
-  when CubicExt.F.C == BW6_761: # Too large
+  when CubicExt.C.has_large_field_elem():
     r.prodImpl(a, b)
   else:
     var d {.noInit.}: doublePrec(typeof(r))

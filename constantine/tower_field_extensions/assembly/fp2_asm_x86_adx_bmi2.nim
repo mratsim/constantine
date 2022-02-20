@@ -43,10 +43,6 @@ func has1extraBit(F: type Fp): bool =
   ## We construct extensions only on Fp (and not Fr)
   getSpareBits(F) >= 1
 
-func has2extraBits(F: type Fp): bool =
-  ## We construct extensions only on Fp (and not Fr)
-  getSpareBits(F) >= 2
-
 # 𝔽p2 squaring
 # ------------------------------------------------------------
 
@@ -67,9 +63,9 @@ func sqrx2x_complex_asm_adx*(
     t0.double(a.c1)
     t1.sum(a.c0, a.c1)
 
-  r.c1.mul_asm_adx_inline(t0, a.c0)
+  r.c1.limbs2x.mul_asm_adx_inline(t0.mres.limbs, a.c0.mres.limbs)
   t0.diff(a.c0, a.c1)
-  r.c0.mul_asm_adx_inline(t0, t1)
+  r.c0.limbs2x.mul_asm_adx_inline(t0.mres.limbs, t1.mres.limbs)
 
 func sqrx_complex_sparebit_asm_adx*(
         r: var array[2, Fp],
