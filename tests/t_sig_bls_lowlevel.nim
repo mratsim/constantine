@@ -10,18 +10,18 @@ import
   # Standard library
   std/[os, times],
   # Internals
-  ../constantine/config/common,
-  ../constantine/[
+  ../constantine/backend/config/common,
+  ../constantine/backend/[
     arithmetic, primitives,
     towers, ec_shortweierstrass,
     hashes
   ],
-  ../constantine/elliptic/ec_scalar_mul,
-  ../constantine/io/[io_fields, io_towers, io_ec],
-  ../constantine/config/curves,
-  ../constantine/curves/zoo_subgroups,
-  ../constantine/hash_to_curve/hash_to_curve,
-  ../constantine/pairing/pairing_bls12,
+  ../constantine/backend/elliptic/ec_scalar_mul,
+  ../constantine/backend/io/[io_fields, io_towers, io_ec],
+  ../constantine/backend/config/curves,
+  ../constantine/backend/curves/zoo_subgroups,
+  ../constantine/backend/hash_to_curve/hash_to_curve,
+  ../constantine/backend/pairing/pairing_bls12,
   # Test utilities
   ../helpers/prng_unsafe
 

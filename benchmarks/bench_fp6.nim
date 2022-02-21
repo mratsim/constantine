@@ -8,8 +8,8 @@
 
 import
   # Internals
-  ../constantine/config/curves,
-  ../constantine/towers,
+  ../constantine/backend/config/curves,
+  ../constantine/backend/towers,
   # Helpers
   ../helpers/static_for,
   ./bench_fields_template,

@@ -7,9 +7,9 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../constantine/config/curves,
-  ../../constantine/[arithmetic, primitives],
-  ../../constantine/io/io_fields,
+  ../../constantine/backend/config/curves,
+  ../../constantine/backend/[arithmetic, primitives],
+  ../../constantine/backend/io/io_fields,
   # Research
   ./strided_views,
   ./fft_lut

@@ -8,9 +8,9 @@
 
 import
   # Internals
-  ../constantine/config/curves,
-  ../constantine/arithmetic,
-  ../constantine/elliptic/[
+  ../constantine/backend/config/curves,
+  ../constantine/backend/arithmetic,
+  ../constantine/backend/elliptic/[
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian],
   # Helpers

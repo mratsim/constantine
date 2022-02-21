@@ -14,10 +14,10 @@
 
 import
   # Internals
-  ../constantine/config/[curves, common],
-  ../constantine/arithmetic,
-  ../constantine/io/io_bigints,
-  ../constantine/elliptic/[
+  ../constantine/backend/config/[curves, common],
+  ../constantine/backend/arithmetic,
+  ../constantine/backend/io/io_bigints,
+  ../constantine/backend/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
@@ -27,7 +27,7 @@ import
   ./platforms,
   ./bench_blueprint,
   # Reference unsafe scalar multiplication
-  ../tests/support/ec_reference_scalar_mult
+  ../tests/backend/support/ec_reference_scalar_mult
 
 export notes
 proc separator*() = separator(177)
