@@ -27,7 +27,7 @@ import
   ./platforms,
   ./bench_blueprint,
   # Reference unsafe scalar multiplication
-  ../tests/support/ec_reference_scalar_mult
+  ../tests/backend/support/ec_reference_scalar_mult
 
 export notes
 proc separator*() = separator(177)
