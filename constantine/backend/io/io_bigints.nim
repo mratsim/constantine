@@ -293,7 +293,8 @@ func exportRawUint*(
   ## or zero-padded right for little-endian.
   ## I.e least significant bit is aligned to buffer boundary
 
-  assert dst.len >= (BigInt.bits + 7) div 8, "BigInt -> Raw int conversion: destination buffer is too small"
+  debug:
+    doAssert dst.len >= (BigInt.bits + 7) div 8, "BigInt -> Raw int conversion: destination buffer is too small"
 
   when BigInt.bits == 0:
     zeroMem(dst, dst.len)

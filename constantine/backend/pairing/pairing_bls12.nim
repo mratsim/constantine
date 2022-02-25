@@ -15,6 +15,7 @@ import
   ],
   ../isogeny/frobenius,
   ../curves/zoo_pairings,
+  ../arithmetic,
   ./cyclotomic_subgroup,
   ./lines_eval,
   ./miller_loops
@@ -118,7 +119,7 @@ func finalExpHard_BLS12*[C](f: var Fp12[C]) {.meter.} =
   v2.cyclotomic_square(f)      # v2 = f²
 
   # (x−1)²
-  when C.pairing(ate_param).isEven.bool:
+  when C.pairing(ate_param).isEven().bool:
     v0.cycl_exp_by_curve_param_div2(v2) # v0 = (f²)^(x/2) = f^x
   else:
     v0.cycl_exp_by_curve_param(f)

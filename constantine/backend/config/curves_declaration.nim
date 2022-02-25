@@ -36,7 +36,7 @@ export CurveFamily, SexticTwist
 # - type Curve* = enum
 # - proc Mod*(curve: static Curve): auto
 #   which returns the field modulus of the curve
-# - proc Family*(curve: static Curve): CurveFamily
+# - proc family*(curve: static Curve): CurveFamily
 #   which returns the curve family
 
 declareCurves:

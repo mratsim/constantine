@@ -125,7 +125,7 @@ func hashToCurve*[
          B1, B2, B3: byte|char](
        H: type CryptoHash,
        k: static int,
-       output: var ECP_ShortW_Prj[F, G],
+       output: var ECP_ShortW_Jac[F, G],
        augmentation: openarray[B1],
        message: openarray[B2],
        domainSepTag: openarray[B3]
@@ -149,20 +149,52 @@ func hashToCurve*[
   ##   and `CoreVerify(PK, PK || message, signature)`
   ## - `message` is the message to hash
   ## - `domainSepTag` is the protocol domain separation tag (DST).
-  ##   If a domainSepTag larger than 255-bit is required,
-  ##   it is recommended to cache the reduced DST.
 
   var u{.noInit.}: array[2, F]
-  H.hashToField(k, u, augmentation, message, domainSepTag)
-
-  when false:
-    var P{.noInit.}: array[2, ECP_ShortW_Prj[F, G]]
-    P[0].mapToCurve(u[0])
-    P[1].mapToCurve(u[1])
-    output.sum(P[0], P[1])
+  if domainSepTag.len <= 255: 
+    H.hashToField(k, u, augmentation, message, domainSepTag)
   else:
-    var Pjac{.noInit.}: ECP_ShortW_Jac[F, G]
-    Pjac.mapToCurve_fusedAdd(u[0], u[1])
-    output.projectiveFromJacobian(Pjac)
+    const N = H.type.digestSize()
+    var dst {.noInit.}: array[N, byte]
+    H.shortDomainSepTag(dst, domainSepTag)
+    H.hashToField(k, u, augmentation, message, dst)
 
+  output.mapToCurve_fusedAdd(u[0], u[1])
   output.clearCofactor()
+
+func hashToCurve*[
+         F; G: static Subgroup;
+         B1, B2, B3: byte|char](
+       H: type CryptoHash,
+       k: static int,
+       output: var (ECP_ShortW_Prj[F, G] or ECP_ShortW_Aff[F, G]),
+       augmentation: openarray[B1],
+       message: openarray[B2],
+       domainSepTag: openarray[B3]
+     ) =
+  ## Hash a message to an elliptic curve
+  ##
+  ## Arguments:
+  ## - `Hash` a cryptographic hash function.
+  ##   - `Hash` MAY be a Merkle-Damgaard hash function like SHA-2
+  ##   - `Hash` MAY be a sponge-based hash function like SHA-3 or BLAKE2
+  ##   - Otherwise, H MUST be a hash function that has been proved
+  ##    indifferentiable from a random oracle [MRH04] under a reasonable
+  ##    cryptographic assumption.
+  ## - k the security parameter of the suite in bits (for example 128)
+  ## - `output`, an elliptic curve point that will be overwritten.
+  ## - `augmentation`, an optional augmentation to the message. This will be prepended,
+  ##   prior to hashing.
+  ##   This is used for building the "message augmentation" variant of BLS signatures
+  ##   https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04#section-3.2
+  ##   which requires `CoreSign(SK, PK || message)`
+  ##   and `CoreVerify(PK, PK || message, signature)`
+  ## - `message` is the message to hash
+  ## - `domainSepTag` is the protocol domain separation tag (DST).
+  
+  var Pjac{.noInit.}: ECP_ShortW_Jac[F, G]
+  H.hashToCurve(k, Pjac, augmentation, message, domainSepTag)
+  when output is ECP_ShortW_Prj:
+    output.projectiveFromJacobian(Pjac)
+  else:
+    output.affine(Pjac)

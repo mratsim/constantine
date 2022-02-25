@@ -29,7 +29,6 @@ import
 # using:
 # - GLV endomorphism on G1 (Gallant-Lambert-Vanstone)
 # - GLV and GLS endomorphisms on G2 (Galbraith-Lin-Scott)
-# - NAF recoding (windowed Non-Adjacent-Form)
 
 # Decomposition into scalars -> miniscalars
 # ----------------------------------------------------------------------------------------

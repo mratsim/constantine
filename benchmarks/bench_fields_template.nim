@@ -38,7 +38,7 @@ macro fixFieldDisplay(T: typedesc): untyped =
   # At compile-time, enums are integers and their display is buggy
   # we get the Curve ID instead of the curve name.
   let instantiated = T.getTypeInst()
-  var name = $instantiated[1][0] # Fp
+  var name = $instantiated[1][0] # 𝔽p
   name.add "[" & $Curve(instantiated[1][1].intVal) & "]"
   result = newLit name
 

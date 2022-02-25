@@ -25,8 +25,8 @@ type
     ##   - SHA3-512 block size is 72 bits
 
     # should we avoid int to avoid exception? But they are compile-time
-    H.digestSize is int
-    H.internalBlockSize is int
+    H.digestSize is static int
+    H.internalBlockSize is static int
 
     # Context
     # -------------------------------------------

@@ -41,14 +41,14 @@ template strxor(b_i: var array, b0: array): untyped =
     b_i[i] = b_i[i] xor b0[i]
 # ----------------------------------------------------------------
 
-func shortDomainSepTag[DigestSize: static int, B: byte|char](
+func shortDomainSepTag*[DigestSize: static int, B: byte|char](
        H: type CryptoHash,
        output: var array[DigestSize, byte],
        oversizedDST: openarray[B]) =
   ## Compute a short Domain Separation Tag
-  ## from a domain separation tag larger than 255 bits
+  ## from a domain separation tag larger than 255 bytes
   ##
-  ## https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-09#section-5.4.3
+  ## https://tools.ietf.org/html/draft-irtf-cfrg-hash-to-curve-14#section-5.4.3
   static: doAssert DigestSize == H.type.digestSize
   var ctx {.noInit.}: H
   ctx.init()
@@ -86,11 +86,10 @@ func expandMessageXMD*[B1, B2, B3: byte|char, len_in_bytes: static int](
   ##   and `CoreVerify(PK, PK || message, signature)`
   ## - `message` is the message to hash
   ## - `domainSepTag` is the protocol domain separation tag (DST).
-  ##   If a domainSepTag larger than 255-bit is required,
-  ##   it is recommended to cache the reduced DST
-
-  # TODO oversized DST support
-
+  ##   `domainSepTag` MUST be at most 255 bytes.
+  ##   The function `shortDomainSepTag` MUST be used to compute an adequate DST
+  ##   for an oversized source DST.
+  ##   That DST can be cached.
   # Steps:
   # 1.  ell = ceil(len_in_bytes / b_in_bytes)
   # 2.  ABORT if ell > 255
@@ -210,7 +209,7 @@ func hashToField*[Field; B1, B2, B3: byte|char, count: static int](
     len_in_bytes = count * m * L
 
   var uniform_bytes{.noInit.}: array[len_in_bytes, byte]
-  sha256.expandMessageXMD(
+  H.expandMessageXMD(
     uniform_bytes,
     augmentation = augmentation,
     message = message,
