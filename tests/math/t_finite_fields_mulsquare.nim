@@ -85,7 +85,7 @@ proc mainSanity() =
     sanity P256
     sanity Secp256k1
     sanity BLS12_381
-    sanity Curve25519
+    sanity Edwards25519
     sanity Bandersnatch
 
 mainSanity()
@@ -171,13 +171,13 @@ suite "Random Modular Squaring is consistent with Modular Multiplication" & " ["
     for _ in 0 ..< Iters:
       random_long01Seq(BLS12_381)
 
-  test "Random squaring mod Curve25519 [FastSquaring = " & $(Fp[Curve25519].getSpareBits() >= 2) & "]":
+  test "Random squaring mod Edwards25519 [FastSquaring = " & $(Fp[Edwards25519].getSpareBits() >= 2) & "]":
     for _ in 0 ..< Iters:
-      randomCurve(Curve25519)
+      randomCurve(Edwards25519)
     for _ in 0 ..< Iters:
-      randomHighHammingWeight(Curve25519)
+      randomHighHammingWeight(Edwards25519)
     for _ in 0 ..< Iters:
-      random_long01Seq(Curve25519)
+      random_long01Seq(Edwards25519)
 
   test "Random squaring mod Bandersnatch [FastSquaring = " & $(Fp[Bandersnatch].getSpareBits() >= 2) & "]":
     for _ in 0 ..< Iters:

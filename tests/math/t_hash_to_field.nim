@@ -7,12 +7,12 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../constantine/math/hashes,
-  ../../constantine/math/hash_to_curve/h2c_hash_to_field,
+  ../../constantine/hashes,
+  ../../constantine/hash_to_curve/h2c_hash_to_field,
   ../../constantine/math/config/[curves_declaration, type_ff],
-  ../../constantine/math/tower_field_extensions/extension_fields,
+  ../../constantine/math/extension_fields/towers,
 
-  ../../constantine/math/io/[io_fields, io_towers],
+  ../../constantine/math/io/[io_fields, io_extfields],
 
   # Third-party
   stew/byteutils

@@ -12,11 +12,11 @@ import
   # Internals
   ../../constantine/math/config/common,
   ../../constantine/math/[arithmetic, primitives],
-  ../../constantine/math/towers,
+  ../../constantine/math/extension_fields,
   ../../constantine/math/config/curves,
-  ../../constantine/math/io/[io_bigints, io_towers],
+  ../../constantine/math/io/[io_bigints, io_extfields],
   ../../constantine/math/pairing/cyclotomic_subgroup,
-  ../../constantine/math/isogeny/frobenius,
+  ../../constantine/math/isogenies/frobenius,
   # Test utilities
   ../../helpers/[prng_unsafe, static_for]
 

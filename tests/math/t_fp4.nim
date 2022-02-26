@@ -9,8 +9,8 @@
 import
   std/unittest,
   # Internals
-  ../../constantine/math/towers,
-  ../../constantine/math/io/io_towers,
+  ../../constantine/math/extension_fields,
+  ../../constantine/math/io/io_extfields,
   ../../constantine/math/config/curves,
   # Test utilities
   ./t_fp_tower_template

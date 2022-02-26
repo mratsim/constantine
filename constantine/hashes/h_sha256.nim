@@ -8,9 +8,9 @@
 
 import
   std/macros,
-  ../config/common,
-  ../io/endians,
-  ../primitives/static_for
+  ../math/config/common,
+  ../math/io/endians,
+  ../math/primitives/static_for
 
 # SHA256, a hash function from the SHA2 family
 # --------------------------------------------------------------------------------

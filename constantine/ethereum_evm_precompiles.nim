@@ -8,7 +8,7 @@
 
 import
   ./math/config/[common, curves],
-  ./math/[arithmetic, towers],
+  ./math/[arithmetic, extension_fields],
   ./math/arithmetic/limbs_montgomery,
   ./math/ec_shortweierstrass,
   ./math/pairing/[pairing_bn, miller_loops, cyclotomic_subgroup],

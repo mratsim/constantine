@@ -12,9 +12,9 @@ import
   # Internals
   ../../constantine/math/config/common,
   ../../constantine/math/[arithmetic, primitives],
-  ../../constantine/math/towers,
+  ../../constantine/math/extension_fields,
   ../../constantine/math/config/curves,
-  ../../constantine/math/io/io_towers,
+  ../../constantine/math/io/io_extfields,
   ../../constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,

@@ -7,9 +7,9 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ./io_bigints, ./io_fields, ./io_towers,
+  ./io_bigints, ./io_fields, ./io_extfields,
   ../arithmetic,
-  ../towers,
+  ../extension_fields,
   ../primitives,
   ../elliptic/[
     ec_shortweierstrass_affine,

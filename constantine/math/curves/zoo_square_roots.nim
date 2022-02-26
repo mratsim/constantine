@@ -27,7 +27,7 @@ export
   curve25519_sqrt
 
 func hasSqrtAddchain*(C: static Curve): static bool =
-  when C in {BLS12_381, BN254_Nogami, BN254_Snarks, BW6_761, Curve25519}:
+  when C in {BLS12_381, BN254_Nogami, BN254_Snarks, BW6_761, Edwards25519}:
     true
   else:
     false

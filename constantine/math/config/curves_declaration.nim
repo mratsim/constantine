@@ -152,7 +152,7 @@ declareCurves:
     coef_a: -5
     coef_d: "6389c12633c267cbc66e3bf86be3b6d8cb66677177e54f92b369f2f5188d58e7"
 
-  curve Curve25519: # Bernstein curve
+  curve Edwards25519: # Bernstein curve
     bitwidth: 255
     modulus: "0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed"
 

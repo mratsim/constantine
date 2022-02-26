@@ -8,9 +8,9 @@
 
 import
   # Internals
-  ../config/[common, curves],
-  ../primitives, ../arithmetic, ../towers,
-  ../curves/zoo_hash_to_curve
+  ../math/config/[common, curves],
+  ../math/[primitives, arithmetic, extension_fields],
+  ../math/curves/zoo_hash_to_curve
 
 # ############################################################
 #

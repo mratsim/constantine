@@ -18,8 +18,8 @@ import
   # Internals
   ../../constantine/math/config/[common, curves],
   ../../constantine/math/arithmetic,
-  ../../constantine/math/towers,
-  ../../constantine/math/io/[io_bigints, io_fields, io_towers, io_ec],
+  ../../constantine/math/extension_fields,
+  ../../constantine/math/io/[io_bigints, io_fields, io_extfields, io_ec],
   ../../constantine/math/elliptic/[ec_shortweierstrass_projective, ec_scalar_mul],
   # Test utilities
   ../../helpers/prng_unsafe,

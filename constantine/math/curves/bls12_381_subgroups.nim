@@ -11,10 +11,10 @@ import
   ../config/[common, curves],
   ../arithmetic,
   ../primitives,
-  ../towers,
+  ../extension_fields,
   ../ec_shortweierstrass,
   ../io/io_bigints,
-  ../isogeny/frobenius,
+  ../isogenies/frobenius,
   ../curves/zoo_endomorphisms
 
 func pow_bls12_381_abs_x[ECP: ECP_ShortW[Fp[BLS12_381], G1] or

@@ -193,7 +193,7 @@ proc main() =
     testRandomDiv2 P224
     testRandomDiv2 BN254_Nogami
     testRandomDiv2 BN254_Snarks
-    testRandomDiv2 Curve25519
+    testRandomDiv2 Edwards25519
     testRandomDiv2 P256
     testRandomDiv2 Secp256k1
     testRandomDiv2 BLS12_377
@@ -281,7 +281,7 @@ proc main() =
     testRandomInv P224
     testRandomInv BN254_Nogami
     testRandomInv BN254_Snarks
-    testRandomInv Curve25519
+    testRandomInv Edwards25519
     testRandomInv P256
     testRandomInv Secp256k1
     testRandomInv BLS12_377

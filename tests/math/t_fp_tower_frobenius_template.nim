@@ -17,10 +17,10 @@ import
   # Standard library
   std/[unittest, times],
   # Internals
-  ../../constantine/math/towers,
+  ../../constantine/math/extension_fields,
   ../../constantine/math/config/[common, curves],
   ../../constantine/math/arithmetic,
-  ../../constantine/math/isogeny/frobenius,
+  ../../constantine/math/isogenies/frobenius,
   # Test utilities
   ../../helpers/[prng_unsafe, static_for]
 

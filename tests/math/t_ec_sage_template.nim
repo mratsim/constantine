@@ -13,7 +13,7 @@ import
   jsony,
   # Internals
   ../../constantine/math/config/[common, curves, type_bigint, type_ff],
-  ../../constantine/math/towers,
+  ../../constantine/math/extension_fields,
   ../../constantine/math/io/[io_bigints, io_ec],
   ../../constantine/math/elliptic/[
     ec_shortweierstrass_affine,

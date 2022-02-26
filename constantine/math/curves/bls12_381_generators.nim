@@ -9,7 +9,7 @@
 import
   ../config/[curves, type_ff],
   ../elliptic/ec_shortweierstrass_affine,
-  ../io/[io_fields, io_towers]
+  ../io/[io_fields, io_extfields]
 
 # Generators
 # -----------------------------------------------------------------

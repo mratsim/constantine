@@ -12,12 +12,12 @@ import
   # Internals
   ../../constantine/math/config/common,
   ../../constantine/math/[arithmetic, primitives],
-  ../../constantine/math/towers,
+  ../../constantine/math/extension_fields,
   ../../constantine/math/config/curves,
   ../../constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
   ../../constantine/math/curves/[zoo_subgroups, zoo_pairings],
   ../../constantine/math/pairing/cyclotomic_subgroup,
-  ../../constantine/math/io/io_towers,
+  ../../constantine/math/io/io_extfields,
 
   # Test utilities
   ../../helpers/prng_unsafe
@@ -25,8 +25,8 @@ import
 export
   prng_unsafe, times, unittest,
   ec_shortweierstrass_affine, ec_shortweierstrass_projective,
-  arithmetic, towers,
-  primitives, io_towers,
+  arithmetic, extension_fields,
+  primitives, io_extfields,
   cyclotomic_subgroup
 
 type

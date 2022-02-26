@@ -24,7 +24,7 @@ var RNG {.compileTime.} = initRand(1234)
 const AvailableCurves = [
   P224,
   BN254_Nogami, BN254_Snarks,
-  P256, Secp256k1, Curve25519, Bandersnatch,
+  P256, Secp256k1, Edwards25519, Bandersnatch,
   BLS12_377, BLS12_381, BW6_761
 ]
 

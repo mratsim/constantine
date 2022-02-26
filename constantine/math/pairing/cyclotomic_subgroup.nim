@@ -10,8 +10,8 @@ import
   ../primitives,
   ../config/[common, curves],
   ../arithmetic,
-  ../towers,
-  ../isogeny/frobenius
+  ../extension_fields,
+  ../isogenies/frobenius
 
 # No exceptions allowed
 {.push raises: [].}

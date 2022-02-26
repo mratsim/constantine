@@ -345,8 +345,8 @@ proc largeField() =
 
     test "fromMont doesn't need a final substraction with 255-bit prime (1 spare bit)":
       block:
-        var a: Fp[Curve25519]
-        a.mres = Fp[Curve25519].getMontyPrimeMinus1()
+        var a: Fp[Edwards25519]
+        a.mres = Fp[Edwards25519].getMontyPrimeMinus1()
         let expected = BigInt[255].fromHex"0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec"
 
         var r: BigInt[255]
@@ -354,8 +354,8 @@ proc largeField() =
 
         check: bool(r == expected)
       block:
-        var a: Fp[Curve25519]
-        var d: FpDbl[Curve25519]
+        var a: Fp[Edwards25519]
+        var d: FpDbl[Edwards25519]
 
         # Set Montgomery repr to the largest field element in Montgomery Residue form
         a.mres    = BigInt[255].fromHex"0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec"
@@ -364,7 +364,7 @@ proc largeField() =
         var r, expected: BigInt[255]
 
         r.fromField(a)
-        expected.limbs.redc2xMont(d.limbs2x, Curve25519.Mod().limbs, Fp[Curve25519].getNegInvModWord(), Fp[Curve25519].getSpareBits())
+        expected.limbs.redc2xMont(d.limbs2x, Edwards25519.Mod().limbs, Fp[Edwards25519].getNegInvModWord(), Fp[Edwards25519].getSpareBits())
  
         check: bool(r == expected)
 

@@ -8,7 +8,7 @@
 
 import
   ../config/curves,
-  ../io/io_towers
+  ../io/io_extfields
 
 # Curve precomputed parameters
 # -----------------------------------------------------------------

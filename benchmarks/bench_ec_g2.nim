@@ -10,7 +10,7 @@ import
   # Internals
   ../constantine/math/config/curves,
   ../constantine/math/arithmetic,
-  ../constantine/math/towers,
+  ../constantine/math/extension_fields,
   ../constantine/math/elliptic/[
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian],
@@ -35,7 +35,7 @@ const AvailableCurves = [
   # P224,
   BN254_Nogami,
   BN254_Snarks,
-  # Curve25519,
+  # Edwards25519,
   # P256,
   # Secp256k1,
   BLS12_377,

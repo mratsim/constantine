@@ -10,7 +10,7 @@ import
   ../primitives,
   ../config/[common, curves],
   ../arithmetic,
-  ../towers,
+  ../extension_fields,
   ./ec_twistededwards_affine
 
 # ############################################################

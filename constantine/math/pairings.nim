@@ -9,7 +9,7 @@
 import
   ./config/curves,
   ./pairing/[pairing_bn, pairing_bls12],
-  ./towers
+  ./extension_fields
 
 template pairing*[C](gt: var Fp12[C], P, Q: typed) =
   when family(C) == BarretoNaehrig:

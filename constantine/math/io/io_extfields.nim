@@ -14,9 +14,9 @@ import
   ./io_bigints, ./io_fields,
   ../primitives,
   ../arithmetic/finite_fields,
-  ../tower_field_extensions/extension_fields
+  ../extension_fields/towers
 
-export extension_fields
+export towers
 
 # No exceptions allowed
 {.push raises: [].}

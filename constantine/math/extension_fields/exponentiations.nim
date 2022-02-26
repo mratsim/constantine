@@ -12,7 +12,7 @@ import
   ../config/common,
   ../primitives,
   ../io/io_bigints,
-  ./extension_fields
+  ./towers
 
 # ############################################################
 #

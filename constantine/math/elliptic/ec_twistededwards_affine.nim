@@ -10,8 +10,8 @@ import
   ../primitives,
   ../config/[common, curves],
   ../arithmetic,
-  ../towers,
-  ../io/[io_fields, io_towers]
+  ../extension_fields,
+  ../io/[io_fields, io_extfields]
 
 # ############################################################
 #

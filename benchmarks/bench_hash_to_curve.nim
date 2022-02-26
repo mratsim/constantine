@@ -9,12 +9,13 @@
 import
   # Internals
   ../constantine/math/config/[common, curves, type_bigint, type_ff],
-  ../constantine/math/[towers, hashes],
+  ../constantine/math/extension_fields,
   ../constantine/math/io/[io_bigints, io_ec],
   ../constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective],
-  ../constantine/math/hash_to_curve/hash_to_curve,
+  ../constantine/hash_to_curve/hash_to_curve,
+  ../constantine/hashes,
   # Helpers
   ../helpers/prng_unsafe,
   ./bench_blueprint

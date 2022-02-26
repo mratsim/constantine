@@ -10,7 +10,7 @@ import
   # Internals
   ../../constantine/math/config/curves,
   ../../constantine/math/elliptic/ec_shortweierstrass_projective,
-  ../../constantine/math/towers,
+  ../../constantine/math/extension_fields,
   # Test utilities
   ./t_ec_template
 

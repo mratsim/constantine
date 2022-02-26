@@ -18,9 +18,9 @@ const
   ItersMul = Iters div 4
 
 run_EC_mul_vs_ref_impl(
-    ec = ECP_TwEdwards_Prj[Fp[Curve25519]],
+    ec = ECP_TwEdwards_Prj[Fp[Edwards25519]],
     ItersMul = ItersMul,
-    moduleName = "test_ec_twistededwards_projective_mul_vs_ref_" & $Curve25519
+    moduleName = "test_ec_twistededwards_projective_mul_vs_ref_" & $Edwards25519
   )
 
 run_EC_mul_vs_ref_impl(

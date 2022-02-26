@@ -11,10 +11,10 @@ import
   ../config/[common, curves],
   ../arithmetic,
   ../primitives,
-  ../towers,
+  ../extension_fields,
   ../ec_shortweierstrass,
   ../io/io_bigints,
-  ../isogeny/frobenius
+  ../isogenies/frobenius
 
 # ############################################################
 #

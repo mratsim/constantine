@@ -28,7 +28,7 @@ const CryptoModSizes = [
   1024,
   2048,
   3072,
-  # secp256k1, Curve25519
+  # secp256k1, Edwards25519
   256,
   # Barreto-Naehrig
   254, # BN254

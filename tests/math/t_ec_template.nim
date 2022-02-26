@@ -18,7 +18,7 @@ import
   # Internals
   ../../constantine/math/config/[common, curves],
   ../../constantine/math/arithmetic,
-  ../../constantine/math/towers,
+  ../../constantine/math/extension_fields,
   ../../constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_jacobian,

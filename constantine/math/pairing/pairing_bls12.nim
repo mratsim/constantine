@@ -8,12 +8,12 @@
 
 import
   ../config/[common, curves, type_ff],
-  ../towers,
+  ../extension_fields,
   ../elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective
   ],
-  ../isogeny/frobenius,
+  ../isogenies/frobenius,
   ../curves/zoo_pairings,
   ../arithmetic,
   ./cyclotomic_subgroup,

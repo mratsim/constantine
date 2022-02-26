@@ -9,7 +9,7 @@
 import
   std/macros,
   ../arithmetic,
-  ../towers,
+  ../extension_fields,
   ../primitives,
   ../curves/zoo_frobenius
 

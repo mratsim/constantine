@@ -16,7 +16,7 @@ import
   # Internals
   ../constantine/math/config/[curves, common],
   ../constantine/math/arithmetic,
-  ../constantine/math/towers,
+  ../constantine/math/extension_fields,
   # Helpers
   ../helpers/[prng_unsafe, static_for],
   ./platforms,

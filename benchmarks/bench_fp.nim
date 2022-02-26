@@ -29,7 +29,7 @@ const AvailableCurves = [
   # P224,
   BN254_Nogami,
   BN254_Snarks,
-  Curve25519,
+  Edwards25519,
   Bandersnatch,
   P256,
   Secp256k1,

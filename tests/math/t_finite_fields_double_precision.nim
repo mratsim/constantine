@@ -157,13 +157,13 @@ suite "Field Addition/Substraction/Negation via double-precision field elements"
     for _ in 0 ..< Iters:
       addsubneg_random_long01Seq(BLS12_381)
 
-  test "With Curve25519 field modulus":
+  test "With Edwards25519 field modulus":
     for _ in 0 ..< Iters:
-      addsubneg_random_unsafe(Curve25519)
+      addsubneg_random_unsafe(Edwards25519)
     for _ in 0 ..< Iters:
-      addsubneg_randomHighHammingWeight(Curve25519)
+      addsubneg_randomHighHammingWeight(Edwards25519)
     for _ in 0 ..< Iters:
-      addsubneg_random_long01Seq(Curve25519)
+      addsubneg_random_long01Seq(Edwards25519)
 
   test "With Bandersnatch field modulus":
     for _ in 0 ..< Iters:
@@ -213,13 +213,13 @@ suite "Field Multiplication via double-precision field elements is consistent wi
     for _ in 0 ..< Iters:
       mul_random_long01Seq(BLS12_381)
 
-  test "With Curve25519 field modulus":
+  test "With Edwards25519 field modulus":
     for _ in 0 ..< Iters:
-      mul_random_unsafe(Curve25519)
+      mul_random_unsafe(Edwards25519)
     for _ in 0 ..< Iters:
-      mul_randomHighHammingWeight(Curve25519)
+      mul_randomHighHammingWeight(Edwards25519)
     for _ in 0 ..< Iters:
-      mul_random_long01Seq(Curve25519)
+      mul_random_long01Seq(Edwards25519)
 
   test "With Bandersnatch field modulus":
     for _ in 0 ..< Iters:
@@ -262,13 +262,13 @@ suite "Field Squaring via double-precision field elements is consistent with sin
     for _ in 0 ..< Iters:
       sqr_random_long01Seq(BLS12_381)
 
-  test "With Curve25519 field modulus":
+  test "With Edwards25519 field modulus":
     for _ in 0 ..< Iters:
-      sqr_random_unsafe(Curve25519)
+      sqr_random_unsafe(Edwards25519)
     for _ in 0 ..< Iters:
-      sqr_randomHighHammingWeight(Curve25519)
+      sqr_randomHighHammingWeight(Edwards25519)
     for _ in 0 ..< Iters:
-      sqr_random_long01Seq(Curve25519)
+      sqr_random_long01Seq(Edwards25519)
 
   test "With Bandersnatch field modulus":
     for _ in 0 ..< Iters:

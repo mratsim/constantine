@@ -81,7 +81,7 @@ The following curves are configured:
   - Jubjub, a curve embedded in BLS12-381 scalar field to be used in zk-SNARKS circuits.
   - Bandersnatch, a more efficient curve embedded in BLS12-381 scalar field to be used in zk-SNARKS circuits.
 - Other curves
-  - Curve25519, used in ed25519 and X25519 from TLS 1.3 protocol and the Signal protocol.
+  - Edwards25519, used in ed25519 and X25519 from TLS 1.3 protocol and the Signal protocol.
   With Ristretto, it can be used in bulletproofs.
 
 ## Installation

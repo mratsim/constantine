@@ -11,10 +11,10 @@ import
   std/unittest,
   # Internals
   ../../constantine/math/config/[common, type_ff],
-  ../../constantine/math/towers,
+  ../../constantine/math/extension_fields,
   ../../constantine/math/config/curves,
-  ../../constantine/math/io/io_towers,
-  ../../constantine/math/towers
+  ../../constantine/math/io/io_extfields,
+  ../../constantine/math/extension_fields
 
 # ###############################################################
 #

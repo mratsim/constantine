@@ -9,12 +9,12 @@
 import
   ../config/[curves, type_ff],
   ../arithmetic,
-  ../towers,
+  ../extension_fields,
   ../elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective
   ],
-  ../isogeny/frobenius,
+  ../isogenies/frobenius,
   ../curves/zoo_pairings,
   ./lines_eval,
   ./miller_loops

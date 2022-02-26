@@ -100,7 +100,7 @@ func cswap*(a, b: var FF, ctl: CTBool) {.meter.} =
 #       Routines for special field modulus form:
 #       - Mersenne Prime (2ᵏ - 1),
 #       - Generalized Mersenne Prime (NIST Prime P256: 2^256 - 2^224 + 2^192 + 2^96 - 1)
-#       - Pseudo-Mersenne Prime (2^m - k for example Curve25519: 2^255 - 19)
+#       - Pseudo-Mersenne Prime (2^m - k for example Edwards25519: 2^255 - 19)
 #       - Golden Primes (φ^2 - φ - 1 with φ = 2ᵏ for example Ed448-Goldilocks: 2^448 - 2^224 - 1)
 #       exist and can be implemented with compile-time specialization.
 

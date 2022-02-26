@@ -10,10 +10,10 @@ import
   ../config/[curves, type_ff],
   ../arithmetic/finite_fields
 
-func invsqrt_addchain_pminus5over8*(r: var Fp[Curve25519], a: Fp[Curve25519]) =
+func invsqrt_addchain_pminus5over8*(r: var Fp[Edwards25519], a: Fp[Edwards25519]) =
   ## Returns a^((p-5)/8) = 2²⁵²-3 for inverse square root computation
   
-  var t{.noInit.}, u{.noInit.}, v{.noinit.}: Fp[Curve25519]
+  var t{.noInit.}, u{.noInit.}, v{.noinit.}: Fp[Edwards25519]
   u.square(a)               # 2
   v.square_repeated(u, 2)   # 8
   v *= a                    # 9

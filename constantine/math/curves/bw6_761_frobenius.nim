@@ -8,8 +8,8 @@
 
 import
   ../config/[curves, type_ff],
-  ../towers,
-  ../io/[io_fields, io_towers]
+  ../extension_fields,
+  ../io/[io_fields, io_extfields]
 
 # Frobenius map - on extension fields
 # -----------------------------------------------------------------

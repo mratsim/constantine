@@ -9,9 +9,9 @@
 import
   ../config/[common, curves, type_bigint],
   ../io/io_bigints,
-  ../towers,
+  ../extension_fields,
   ../pairing/cyclotomic_subgroup,
-  ../isogeny/frobenius
+  ../isogenies/frobenius
 
 # Slow generic implementation
 # ------------------------------------------------------------

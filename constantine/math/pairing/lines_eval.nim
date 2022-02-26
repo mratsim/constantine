@@ -11,12 +11,12 @@ import
   ../config/curves,
   ../primitives,
   ../arithmetic,
-  ../towers,
+  ../extension_fields,
   ../elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective
   ],
-  ../io/io_towers
+  ../io/io_extfields
 
 # No exceptions allowed
 {.push raises: [].}

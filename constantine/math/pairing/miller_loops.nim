@@ -11,7 +11,7 @@ import
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective
   ],
-  ../isogeny/frobenius,
+  ../isogenies/frobenius,
   ./lines_eval
 
 # No exceptions allowed

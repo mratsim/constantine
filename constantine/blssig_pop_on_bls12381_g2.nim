@@ -12,19 +12,19 @@ import
     ],
     ./math/[
       ec_shortweierstrass,
-      hash_to_curve/hash_to_curve,
-      hashes,
-      towers,
+      extension_fields,
       arithmetic,
-      signatures/bls_signatures,
       curves/zoo_subgroups,
       primitives
     ],
-    ./math/io/[io_bigints, io_fields]
+    ./math/io/[io_bigints, io_fields],
+    hash_to_curve/hash_to_curve,
+    hashes,
+    signatures/bls_signatures
 
 export
   curves, # generic sandwich on matchingBigInt
-  towers, # generic sandwich on extension field access
+  extension_fields, # generic sandwich on extension field access
   hashes, # generic sandwich on sha256
   ec_shortweierstrass # generic sandwich on affine
 

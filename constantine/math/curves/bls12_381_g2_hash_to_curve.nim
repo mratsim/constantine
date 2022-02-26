@@ -8,7 +8,7 @@
 
 import
   ../config/curves,
-  ../io/[io_fields, io_towers]
+  ../io/[io_fields, io_extfields]
 
 # Hash-to-Curve map to isogenous BLS12-381 E'2 constants
 # -----------------------------------------------------------------

@@ -315,7 +315,7 @@ if __name__ == "__main__":
       f.write(inspect.cleandoc("""
           import
             ../config/curves,
-            ../io/[io_fields, io_towers]
+            ../io/[io_fields, io_extfields]
       """))
 
       f.write('\n\n')

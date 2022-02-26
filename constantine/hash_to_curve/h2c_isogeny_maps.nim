@@ -8,9 +8,9 @@
 
 import
   # Internals
-  ../primitives, ../arithmetic, ../towers,
-  ../curves/zoo_hash_to_curve,
-  ../elliptic/[
+  ../math/[primitives, arithmetic, extension_fields],
+  ../math/curves/zoo_hash_to_curve,
+  ../math/elliptic/[
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
   ]

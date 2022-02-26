@@ -10,7 +10,7 @@ import
   std/times,
   ./reports, ./tracer,
   ../constantine/math/config/[common, curves],
-  ../constantine/math/[arithmetic, towers],
+  ../constantine/math/[arithmetic, extension_fields],
   ../constantine/math/elliptic/ec_shortweierstrass_projective,
   ../constantine/math/curves/zoo_subgroups,
   ../constantine/math/pairing/pairing_bls12,

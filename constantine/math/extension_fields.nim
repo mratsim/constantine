@@ -7,10 +7,10 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  tower_field_extensions/[
+  extension_fields/[
     square_root_fp2,
     exponentiations,
-    extension_fields
+    towers
   ]
 
-export extension_fields, square_root_fp2, exponentiations
+export towers, square_root_fp2, exponentiations

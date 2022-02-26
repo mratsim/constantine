@@ -17,7 +17,7 @@ import
     ec_twistededwards_affine,
     ec_twistededwards_projective],
   ../constantine/math/io/io_bigints,
-  ../constantine/math/tower_field_extensions/extension_fields
+  ../constantine/math/extension_fields/towers
 
 # ############################################################
 #

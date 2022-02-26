@@ -9,10 +9,10 @@
 import
   # Internals
   ../hashes,
-  ../io/[endians, io_bigints, io_fields],
-  ../config/[common, curves, type_bigint, type_ff],
-  ../arithmetic/limbs_montgomery,
-  ../tower_field_extensions/extension_fields
+  ../math/io/[endians, io_bigints, io_fields],
+  ../math/config/[common, curves, type_bigint, type_ff],
+  ../math/arithmetic/limbs_montgomery,
+  ../math/extension_fields/towers
 
 # ############################################################
 #

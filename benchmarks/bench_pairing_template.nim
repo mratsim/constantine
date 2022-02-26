@@ -16,7 +16,7 @@ import
   # Internals
   ../constantine/math/config/[curves, common],
   ../constantine/math/arithmetic,
-  ../constantine/math/towers,
+  ../constantine/math/extension_fields,
   ../constantine/math/ec_shortweierstrass,
   ../constantine/math/curves/zoo_subgroups,
   ../constantine/math/pairing/[

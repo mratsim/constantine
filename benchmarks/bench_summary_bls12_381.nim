@@ -10,7 +10,7 @@ import
   # Internals
   ../constantine/math/config/curves,
   ../constantine/math/arithmetic,
-  ../constantine/math/towers,
+  ../constantine/math/extension_fields,
   # Helpers
   ../helpers/static_for,
   ./bench_summary_template,

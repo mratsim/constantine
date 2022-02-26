@@ -16,7 +16,7 @@ import
   # Internals
   ../constantine/math/config/[common, curves],
   ../constantine/math/arithmetic,
-  ../constantine/math/towers,
+  ../constantine/math/extension_fields,
   ../constantine/math/curves/zoo_square_roots,
   # Helpers
   ../helpers/prng_unsafe,

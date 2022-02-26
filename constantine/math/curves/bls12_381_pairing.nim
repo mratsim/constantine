@@ -9,10 +9,10 @@
 import
   ../config/[common, curves, type_bigint, type_ff],
   ../io/io_bigints,
-  ../towers,
+  ../extension_fields,
   ../elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
   ../pairing/[cyclotomic_subgroup, miller_loops],
-  ../isogeny/frobenius
+  ../isogenies/frobenius
 
 # Slow generic implementation
 # ------------------------------------------------------------

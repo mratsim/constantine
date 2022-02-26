@@ -17,9 +17,9 @@ const
   Iters = 8
 
 run_EC_addition_tests(
-    ec = ECP_TwEdwards_Prj[Fp[Curve25519]],
+    ec = ECP_TwEdwards_Prj[Fp[Edwards25519]],
     Iters = Iters,
-    moduleName = "test_ec_twistededwards_projective_add_double_" & $Curve25519
+    moduleName = "test_ec_twistededwards_projective_add_double_" & $Edwards25519
   )
 
 run_EC_addition_tests(

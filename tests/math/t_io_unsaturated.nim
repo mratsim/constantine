@@ -64,13 +64,13 @@ proc main() =
         testRoundtrip(BN254_Snarks, HighHammingWeight)
       for _ in 0 ..< Iters:
         testRoundtrip(BN254_Snarks, Long01Sequence)
-    test "Curve25519":
+    test "Edwards25519":
       for _ in 0 ..< Iters:
-        testRoundtrip(Curve25519, Uniform)
+        testRoundtrip(Edwards25519, Uniform)
       for _ in 0 ..< Iters:
-        testRoundtrip(Curve25519, HighHammingWeight)
+        testRoundtrip(Edwards25519, HighHammingWeight)
       for _ in 0 ..< Iters:
-        testRoundtrip(Curve25519, Long01Sequence)
+        testRoundtrip(Edwards25519, Long01Sequence)
     test "secp256k1":
       for _ in 0 ..< Iters:
         testRoundtrip(Secp256k1, Uniform)

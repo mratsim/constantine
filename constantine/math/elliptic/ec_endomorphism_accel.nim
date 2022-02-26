@@ -14,8 +14,8 @@ import
   ../config/[common, curves, type_bigint],
   ../curves/zoo_endomorphisms,
   ../arithmetic,
-  ../towers,
-  ../isogeny/frobenius,
+  ../extension_fields,
+  ../isogenies/frobenius,
   ./ec_shortweierstrass_affine
 
 # ############################################################

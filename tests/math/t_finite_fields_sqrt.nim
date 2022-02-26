@@ -154,12 +154,12 @@ proc main() =
     randomSqrtCheck BLS12_377 # p ≢ 3 (mod 4)
     randomSqrtCheck BLS12_381
     randomSqrtCheck BW6_761
-    randomSqrtCheck Curve25519
+    randomSqrtCheck Edwards25519
     randomSqrtCheck Jubjub
     randomSqrtCheck Bandersnatch
   
   suite "Modular sqrt(u/v)" & " [" & $WordBitwidth & "-bit mode]":
-    randomSqrtRatioCheck Curve25519
+    randomSqrtRatioCheck Edwards25519
     randomSqrtRatioCheck Jubjub
     randomSqrtRatioCheck Bandersnatch
 

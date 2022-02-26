@@ -10,7 +10,7 @@ import
   ../primitives,
   ../config/[common, curves],
   ../arithmetic,
-  ../towers,
+  ../extension_fields,
   ../io/io_bigints,
   ../curves/zoo_endomorphisms,
   ./ec_endomorphism_accel

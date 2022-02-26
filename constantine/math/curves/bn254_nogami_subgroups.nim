@@ -11,10 +11,10 @@ import
   ../config/[common, curves],
   ../arithmetic,
   ../primitives,
-  ../towers,
+  ../extension_fields,
   ../ec_shortweierstrass,
   ../io/io_bigints,
-  ../isogeny/frobenius
+  ../isogenies/frobenius
 
 func pow_BN254_Nogami_abs_u*[ECP: ECP_ShortW[Fp[BN254_Nogami], G1] or
        ECP_ShortW[Fp2[BN254_Nogami], G2]](

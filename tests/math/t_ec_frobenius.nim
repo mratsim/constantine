@@ -12,10 +12,10 @@ import
   std/[times, unittest],
   # Internals
   ../../constantine/math/config/[common, curves],
-  ../../constantine/math/[arithmetic, towers],
+  ../../constantine/math/[arithmetic, extension_fields],
   ../../constantine/math/io/[io_bigints, io_ec],
   ../../constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective, ec_scalar_mul],
-  ../../constantine/math/isogeny/frobenius,
+  ../../constantine/math/isogenies/frobenius,
   # Tests
   ../../helpers/prng_unsafe,
   ./t_ec_template

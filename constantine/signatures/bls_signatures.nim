@@ -7,10 +7,10 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-    ../ec_shortweierstrass,
+    ../math/[ec_shortweierstrass, pairings],
+    ../math/curves/zoo_generators,
     ../hash_to_curve/hash_to_curve,
-    ../hashes, ../pairings,
-    ../curves/zoo_generators
+    ../hashes
 
 # ############################################################
 #

@@ -15,20 +15,21 @@
 import
   # Internals
   ../constantine/math/config/[curves, common],
-  ../constantine/math/[arithmetic, hashes, towers],
+  ../constantine/math/[arithmetic, extension_fields],
   ../constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
     ec_scalar_mul, ec_endomorphism_accel],
   ../constantine/math/curves/zoo_subgroups,
-  ../constantine/math/hash_to_curve/hash_to_curve,
   ../constantine/math/pairing/[
     cyclotomic_subgroup,
     pairing_bls12,
     pairing_bn
   ],
   ../constantine/math/curves/zoo_pairings,
+  ../constantine/hashes,
+  ../constantine/hash_to_curve/hash_to_curve,
   # Helpers
   ../helpers/[prng_unsafe, static_for],
   ./bench_blueprint
