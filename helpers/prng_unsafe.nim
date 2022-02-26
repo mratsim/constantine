@@ -7,17 +7,17 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../constantine/backend/arithmetic,
-  ../constantine/backend/primitives,
-  ../constantine/backend/config/[common, curves, type_ff],
-  ../constantine/backend/elliptic/[
+  ../constantine/math/arithmetic,
+  ../constantine/math/primitives,
+  ../constantine/math/config/[common, curves, type_ff],
+  ../constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
     ec_twistededwards_affine,
     ec_twistededwards_projective],
-  ../constantine/backend/io/io_bigints,
-  ../constantine/backend/tower_field_extensions/extension_fields
+  ../constantine/math/io/io_bigints,
+  ../constantine/math/tower_field_extensions/extension_fields
 
 # ############################################################
 #

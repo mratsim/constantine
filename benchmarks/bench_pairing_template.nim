@@ -14,18 +14,18 @@
 
 import
   # Internals
-  ../constantine/backend/config/[curves, common],
-  ../constantine/backend/arithmetic,
-  ../constantine/backend/towers,
-  ../constantine/backend/ec_shortweierstrass,
-  ../constantine/backend/curves/zoo_subgroups,
-  ../constantine/backend/pairing/[
+  ../constantine/math/config/[curves, common],
+  ../constantine/math/arithmetic,
+  ../constantine/math/towers,
+  ../constantine/math/ec_shortweierstrass,
+  ../constantine/math/curves/zoo_subgroups,
+  ../constantine/math/pairing/[
     cyclotomic_subgroup,
     lines_eval,
     pairing_bls12,
     pairing_bn
   ],
-  ../constantine/backend/curves/zoo_pairings,
+  ../constantine/math/curves/zoo_pairings,
   # Helpers
   ../helpers/prng_unsafe,
   ./bench_blueprint

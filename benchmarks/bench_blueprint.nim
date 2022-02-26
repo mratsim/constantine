@@ -14,7 +14,7 @@
 
 import
   # Internal
-  ../constantine/backend/config/common,
+  ../constantine/math/config/common,
   # Helpers
   ../helpers/prng_unsafe,
   ./platforms,

@@ -1,15 +1,15 @@
 # https://github.com/ethereum/research/blob/master/kzg_data_availability/kzg_proofs.py
 
 import
-  ../../constantine/backend/config/curves,
-  ../../constantine/backend/[arithmetic, primitives, towers],
-  ../../constantine/backend/elliptic/[
+  ../../constantine/math/config/curves,
+  ../../constantine/math/[arithmetic, primitives, towers],
+  ../../constantine/math/elliptic/[
     ec_scalar_mul,
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
   ],
-  ../../constantine/backend/io/[io_fields, io_ec],
-  ../../constantine/backend/pairing/[
+  ../../constantine/math/io/[io_fields, io_ec],
+  ../../constantine/math/pairing/[
     pairing_bls12,
     miller_loops
   ],

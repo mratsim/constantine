@@ -14,7 +14,7 @@ import
   # 3rd party
   jsony,
   # Internals
-  ../constantine/backend/io/io_bigints,
+  ../constantine/math/io/io_bigints,
   ../constantine/ethereum_evm_precompiles
 
 type

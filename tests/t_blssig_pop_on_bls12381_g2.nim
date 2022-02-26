@@ -10,7 +10,7 @@ import
   std/[json, os, unittest, strutils],
   pkg/[jsony, stew/byteutils],
   ../constantine/blssig_pop_on_bls12381_g2,
-  ../constantine/backend/io/io_bigints
+  ../constantine/math/io/io_bigints
 
 type
   PubkeyField = object
@@ -51,7 +51,7 @@ const SkippedTests = [
   "deserialization_fails_too_many_bytes.json"
 ]
 
-const TestDir = currentSourcePath.rsplit(DirSep, 1)[0] / "blssig_pop_on_bls12381_g2_test_vectors_v0.1.1"
+const TestDir = currentSourcePath.rsplit(DirSep, 1)[0] / "protocol_blssig_pop_on_bls12381_g2_test_vectors_v0.1.1"
 
 iterator walkTests*(category: string, skipped: var int): (string, string) =
   let testDir = TestDir/category

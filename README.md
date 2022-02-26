@@ -66,7 +66,7 @@ After [installation](#installation), the available high-level protocols are:
 _The backend, unlike protocols, is not public. Here be dragons._
 
 At the moment the following curves are implemented, adding a new curve only requires adding the prime modulus
-and its bitsize in [constantine/config/curves.nim](constantine/backend/config/curves_declaration.nim).
+and its bitsize in [constantine/config/curves.nim](constantine/math/config/curves_declaration.nim).
 
 The following curves are configured:
 

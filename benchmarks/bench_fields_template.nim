@@ -14,10 +14,10 @@
 
 import
   # Internals
-  ../constantine/backend/config/[common, curves],
-  ../constantine/backend/arithmetic,
-  ../constantine/backend/towers,
-  ../constantine/backend/curves/zoo_square_roots,
+  ../constantine/math/config/[common, curves],
+  ../constantine/math/arithmetic,
+  ../constantine/math/towers,
+  ../constantine/math/curves/zoo_square_roots,
   # Helpers
   ../helpers/prng_unsafe,
   ./bench_blueprint

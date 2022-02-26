@@ -7,13 +7,13 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ./backend/config/[common, curves],
-  ./backend/[arithmetic, towers],
-  ./backend/arithmetic/limbs_montgomery,
-  ./backend/ec_shortweierstrass,
-  ./backend/pairing/[pairing_bn, miller_loops, cyclotomic_subgroup],
-  ./backend/curves/zoo_subgroups,
-  ./backend/io/[io_bigints, io_fields]
+  ./math/config/[common, curves],
+  ./math/[arithmetic, towers],
+  ./math/arithmetic/limbs_montgomery,
+  ./math/ec_shortweierstrass,
+  ./math/pairing/[pairing_bn, miller_loops, cyclotomic_subgroup],
+  ./math/curves/zoo_subgroups,
+  ./math/io/[io_bigints, io_fields]
 
 # ############################################################
 #

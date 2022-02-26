@@ -7,9 +7,9 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../constantine/backend/config/curves,
-  ../../constantine/backend/[arithmetic, primitives],
-  ../../constantine/backend/io/io_fields,
+  ../../constantine/math/config/curves,
+  ../../constantine/math/[arithmetic, primitives],
+  ../../constantine/math/io/io_fields,
   # Research
   ./strided_views,
   ./fft_lut
@@ -24,7 +24,7 @@ import
 #
 # Other readable FFTs includes:
 # - https://github.com/kwantam/fffft
-# - https://github.com/ConsenSys/gnark/blob/master/internal/backend/bls381/fft/fft.go
+# - https://github.com/ConsenSys/gnark/blob/master/internal/math/bls381/fft/fft.go
 # - https://github.com/poanetwork/threshold_crypto/blob/8820c11/src/poly_vals.rs#L332-L370
 # - https://github.com/zkcrypto/bellman/blob/10c5010/src/domain.rs#L272-L315
 # - Modern Computer Arithmetic, Brent and Zimmermann, p53 algorithm 2.2

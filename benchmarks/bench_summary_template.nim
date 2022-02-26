@@ -14,21 +14,21 @@
 
 import
   # Internals
-  ../constantine/backend/config/[curves, common],
-  ../constantine/backend/[arithmetic, hashes, towers],
-  ../constantine/backend/elliptic/[
+  ../constantine/math/config/[curves, common],
+  ../constantine/math/[arithmetic, hashes, towers],
+  ../constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
     ec_scalar_mul, ec_endomorphism_accel],
-  ../constantine/backend/curves/zoo_subgroups,
-  ../constantine/backend/hash_to_curve/hash_to_curve,
-  ../constantine/backend/pairing/[
+  ../constantine/math/curves/zoo_subgroups,
+  ../constantine/math/hash_to_curve/hash_to_curve,
+  ../constantine/math/pairing/[
     cyclotomic_subgroup,
     pairing_bls12,
     pairing_bn
   ],
-  ../constantine/backend/curves/zoo_pairings,
+  ../constantine/math/curves/zoo_pairings,
   # Helpers
   ../helpers/[prng_unsafe, static_for],
   ./bench_blueprint

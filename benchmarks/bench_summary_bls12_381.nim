@@ -8,9 +8,9 @@
 
 import
   # Internals
-  ../constantine/backend/config/curves,
-  ../constantine/backend/arithmetic,
-  ../constantine/backend/towers,
+  ../constantine/math/config/curves,
+  ../constantine/math/arithmetic,
+  ../constantine/math/towers,
   # Helpers
   ../helpers/static_for,
   ./bench_summary_template,

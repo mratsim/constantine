@@ -1,6 +1,6 @@
 import
   # Internals
-  ../constantine/backend/hashes,
+  ../constantine/math/hashes,
   # Helpers
   ../helpers/prng_unsafe,
   ./bench_blueprint

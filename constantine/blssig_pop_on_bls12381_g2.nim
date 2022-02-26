@@ -7,10 +7,10 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-    ./backend/config/[
+    ./math/config/[
       common, curves, type_bigint, type_ff
     ],
-    ./backend/[
+    ./math/[
       ec_shortweierstrass,
       hash_to_curve/hash_to_curve,
       hashes,
@@ -20,7 +20,7 @@ import
       curves/zoo_subgroups,
       primitives
     ],
-    ./backend/io/[io_bigints, io_fields]
+    ./math/io/[io_bigints, io_fields]
 
 export
   curves, # generic sandwich on matchingBigInt
