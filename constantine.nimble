@@ -190,9 +190,8 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
 
   # Protocols
   # ----------------------------------------------------------
-  ("tests/t_sig_bls_lowlevel.nim", false),
   ("tests/t_ethereum_evm_precompiles.nim", false),
-  ("tests/t_bls_sig_pop_on_bls12381_g2.nim", false),
+  ("tests/t_blssig_pop_on_bls12381_g2.nim", false),
 ]
 
 # For temporary (hopefully) investigation that can only be reproduced in CI
@@ -210,9 +209,7 @@ const skipSanitizers = [
   "tests/backend/t_ec_sage_bls12_377.nim",
   "tests/backend/t_ec_sage_bls12_381.nim",
   "tests/backend/t_hash_to_field.nim",
-  "tests/backend/t_hash_to_curve.nim",
-  "tests/backend/t_sig_bls_lowlevel.nim",
-  "tests/protocols/t_ethereum_evm_precompiles.nim"
+  "tests/backend/t_hash_to_curve.nim"
 ]
 
 when defined(windows):
