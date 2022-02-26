@@ -190,8 +190,8 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
 
   # Protocols
   # ----------------------------------------------------------
-  ("tests/t_sig_bls_lowlevel.nim", false),
   ("tests/t_ethereum_evm_precompiles.nim", false),
+  ("tests/t_blssig_pop_on_bls12381_g2.nim", false),
 ]
 
 # For temporary (hopefully) investigation that can only be reproduced in CI
@@ -209,9 +209,7 @@ const skipSanitizers = [
   "tests/backend/t_ec_sage_bls12_377.nim",
   "tests/backend/t_ec_sage_bls12_381.nim",
   "tests/backend/t_hash_to_field.nim",
-  "tests/backend/t_hash_to_curve.nim",
-  "tests/backend/t_sig_bls_lowlevel.nim",
-  "tests/protocols/t_ethereum_evm_precompiles.nim"
+  "tests/backend/t_hash_to_curve.nim"
 ]
 
 when defined(windows):
@@ -746,3 +744,20 @@ task bench_hash_to_curve_gcc_noasm, "Run Hash-to-Curve benchmarks":
 
 task bench_hash_to_curve_clang_noasm, "Run Hash-to-Curve benchmarks":
   runBench("bench_hash_to_curve", "clang", useAsm = false)
+
+# BLS signatures
+# ------------------------------------------
+task bench_blssig_on_bls12_381_g2, "Run Hash-to-Curve benchmarks":
+  runBench("bench_blssig_on_bls12_381_g2")
+
+task bench_blssig_on_bls12_381_g2_gcc, "Run Hash-to-Curve benchmarks":
+  runBench("bench_blssig_on_bls12_381_g2", "gcc")
+
+task bench_blssig_on_bls12_381_g2_clang, "Run Hash-to-Curve benchmarks":
+  runBench("bench_blssig_on_bls12_381_g2", "clang")
+
+task bench_blssig_on_bls12_381_g2_gcc_noasm, "Run Hash-to-Curve benchmarks":
+  runBench("bench_blssig_on_bls12_381_g2", "gcc", useAsm = false)
+
+task bench_blssig_on_bls12_381_g2_clang_noasm, "Run Hash-to-Curve benchmarks":
+  runBench("bench_blssig_on_bls12_381_g2", "clang", useAsm = false)

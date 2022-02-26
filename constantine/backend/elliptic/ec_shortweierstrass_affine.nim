@@ -12,7 +12,7 @@ import
   ../arithmetic,
   ../towers,
   ../io/[io_fields, io_towers],
-  ../curves/zoo_g2_params
+  ../curves/zoo_constants
 
 # ############################################################
 #
@@ -45,6 +45,11 @@ func isInf*(P: ECP_ShortW_Aff): SecretBool =
   ## and false otherwise
   result = P.x.isZero() and P.y.isZero()
 
+func setInf*(P: var ECP_ShortW_Aff) =
+  ## Set P to the infinity point
+  P.x.setZero()
+  P.y.setZero()
+
 func ccopy*(P: var ECP_ShortW_Aff, Q: ECP_ShortW_Aff, ctl: SecretBool) {.inline.} =
   ## Constant-time conditional copy
   ## If ctl is true: Q is copied into P
@@ -71,7 +76,7 @@ func curve_eq_rhs*[F](y2: var F, x: F, G: static Subgroup) =
       y2.fromUint uint -F.C.getCoefB()
       y2.diff(t, y2)
   else:
-    y2.sum(F.C.getCoefB_G2, t)
+    y2.sum(F.C.getCoefB_G2(), t)
 
   when F.C.getCoefA() != 0:
     t = x

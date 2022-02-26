@@ -45,7 +45,7 @@ After [installation](#installation), the available high-level protocols are:
 - [x] Ethereum EVM precompiles on BN254_Snarks (also called alt_bn128 or bn256 in Ethereum)
 
   `import constantine/ethereum_evm_precompiles`
-- [ ] BLS signature on BLS12-381 G2 as used in Ethereum 2.
+- [x] BLS signature on BLS12-381 G2 as used in Ethereum 2.
   Cryptographic suite: `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_`
 
   This scheme is also used in the following blockchains:

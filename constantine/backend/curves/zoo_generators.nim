@@ -9,19 +9,15 @@
 import
   std/macros,
   ../config/curves,
-  ./bls12_377_g2_params,
-  ./bls12_381_g2_params,
-  ./bn254_nogami_g2_params,
-  ./bn254_snarks_g2_params,
-  ./bw6_761_g2_params
+  ./bls12_381_generators
 
-{.experimental: "dynamicBindSym".}
+{.experimental: "dynamicbindsym".}
 
-macro getCoefB_G2*(C: static Curve): untyped =
-  ## A pairing curve has the following equation on G1
-  ##   y² = x³ + b
-  ## and on G2
-  ##   y² = x³ + b/µ (D-Twist)
-  ##   y² = x³ + b*µ (M-Twist)
-  ## with µ the non-residue (sextic non-residue with a sextic twist)
-  return bindSym($C & "_coefB_G2")
+macro getGenerator*(C: static Curve, subgroup: static string = ""): untyped =
+  ## Returns the curve subgroup generator.
+  ## Pairing-friendly curves expect G1 or G2
+  
+  if subgroup == "":
+    return bindSym($C & "_generator")
+  else:
+    return bindSym($C & "_generator_" & subgroup)

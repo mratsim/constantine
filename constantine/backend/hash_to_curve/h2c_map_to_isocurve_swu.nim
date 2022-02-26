@@ -54,7 +54,7 @@ func sgn0(x: Fp): SecretBool =
   # Another angle is that if M is odd,
   # a+M and a have different parity even though they are
   # the same modulo M.
-  let canonical = x.toBig()
+  let canonical {.noInit.} = x.toBig()
   result = canonical.isOdd()
 
 func sgn0(x: Fp2): SecretBool =

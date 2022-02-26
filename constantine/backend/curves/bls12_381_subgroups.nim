@@ -82,11 +82,11 @@ const Cofactor_Eff_BLS12_381_G2 = BigInt[636].fromHex"0xbc69f08f2ee75b3584c6a0ea
   ## P -> (x^2 - x - 1) P + (x - 1) ψ(P) + ψ(ψ(2P))
 
 func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp[BLS12_381], G1]) {.inline.} =
-  ## Clear the cofactor of BLS12_381 G1
+  ## Clear the cofactor of BLS12_381 𝔾1
   P.scalarMulGeneric(Cofactor_Eff_BLS12_381_G1)
 
 func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp2[BLS12_381], G2]) {.inline.} =
-  ## Clear the cofactor of BLS12_381 G2
+  ## Clear the cofactor of BLS12_381 𝔾2
   # Endomorphism acceleration cannot be used if cofactor is not cleared
   P.scalarMulGeneric(Cofactor_Eff_BLS12_381_G2)
 
@@ -96,11 +96,11 @@ func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp2[BLS12_381], G2]) {.inline
 #
 # ############################################################
 
-# BLS12 G1
+# BLS12 𝔾1
 # ------------------------------------------------------------
 
-func clearCofactorFast*(P: var ECP_ShortW_Prj[Fp[BLS12_381], G1]) =
-  ## Clear the cofactor of BLS12_381 G1
+func clearCofactorFast*(P: var ECP_ShortW[Fp[BLS12_381], G1]) =
+  ## Clear the cofactor of BLS12_381 𝔾1
   ## 
   ## Wahby et al "Fast and simple constant-time hashing to the BLS12-381 elliptic curve", https://eprint.iacr.org/2019/403
   ## Optimized using endomorphisms
@@ -109,19 +109,19 @@ func clearCofactorFast*(P: var ECP_ShortW_Prj[Fp[BLS12_381], G1]) =
   t.pow_bls12_381_minus_x(P) # [-x]P
   P += t                     # [1-x]P
 
-# BLS12 G2
+# BLS12 𝔾2
 # ------------------------------------------------------------
 # From any point on the elliptic curve E2 of a BLS12 curve
-# Obtain a point in the G2 prime-order subgroup
+# Obtain a point in the 𝔾2 prime-order subgroup
 #
 # Described in https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#appendix-G.4
 #
 # Implementations, multiple implementations are possible in increasing order of speed:
 #
 # - The default, canonical, implementation is h_eff * P
-# - Scott et al, "Fast Hashing to G2 on Pairing-Friendly Curves", https://doi.org/10.1007/978-3-642-03298-1_8
-# - Fuentes-Castaneda et al, "Fast Hashing to G2 on Pairing-Friendly Curves", https://doi.org/10.1007/978-3-642-28496-0_25
-# - Budroni et al, "Hashing to G2 on BLS pairing-friendly curves", https://doi.org/10.1145/3313880.3313884
+# - Scott et al, "Fast Hashing to 𝔾2 on Pairing-Friendly Curves", https://doi.org/10.1007/978-3-642-03298-1_8
+# - Fuentes-Castaneda et al, "Fast Hashing to 𝔾2 on Pairing-Friendly Curves", https://doi.org/10.1007/978-3-642-28496-0_25
+# - Budroni et al, "Hashing to 𝔾2 on BLS pairing-friendly curves", https://doi.org/10.1145/3313880.3313884
 # - Wahby et al "Fast and simple constant-time hashing to the BLS12-381 elliptic curve", https://eprint.iacr.org/2019/403
 # - IETF "Hashing to Elliptic Curves", https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#appendix-G.4
 #
@@ -138,8 +138,8 @@ func clearCofactorFast*(P: var ECP_ShortW_Prj[Fp[BLS12_381], G1]) =
 # with Psi (ψ) - untwist-Frobenius-Twist function
 # and x the curve BLS parameter
 
-func clearCofactorFast*(P: var ECP_ShortW_Prj[Fp2[BLS12_381], G2]) =
-  ## Clear the cofactor of BLS12_381 G2
+func clearCofactorFast*(P: var ECP_ShortW[Fp2[BLS12_381], G2]) =
+  ## Clear the cofactor of BLS12_381 𝔾2
   ## Optimized using endomorphisms
   ## P -> [x²-x-1]P + [x-1] ψ(P) + ψ²([2]P)
 
@@ -166,18 +166,18 @@ func clearCofactorFast*(P: var ECP_ShortW_Prj[Fp2[BLS12_381], G2]) =
 #
 # ############################################################
 
-func isInSubgroup*(P: ECP_ShortW_Prj[Fp[BLS12_381], G1]): SecretBool =
-  ## Returns true if P is in G1 subgroup, i.e. P is a point of order r.
+func isInSubgroup*(P: ECP_ShortW_Jac[Fp[BLS12_381], G1] or ECP_ShortW_Prj[Fp[BLS12_381], G1]): SecretBool =
+  ## Returns true if P is in 𝔾1 subgroup, i.e. P is a point of order r.
   ## A point may be on a curve but not on the prime order r subgroup.
   ## Not checking subgroup exposes a protocol to small subgroup attacks.
   ## 
   ## Warning ⚠: Assumes that P is on curve
   # Implementation: Scott, https://eprint.iacr.org/2021/1130.pdf
-  #   A note on group membership tests for G1, G2 and GT
+  #   A note on group membership tests for 𝔾1, 𝔾2 and 𝔾T
   #   on BLS pairing-friendly curves
-  #   P is in the G1 subgroup iff ϕ(P) == [-u²](P)
-  var t0{.noInit.}, t1{.noInit.}: ECP_ShortW_Prj[Fp[BLS12_381], G1]
-  
+  #   P is in the 𝔾1 subgroup iff ϕ(P) == [-u²](P)
+  var t0{.noInit.}, t1{.noInit.}: typeof(P)
+
   # [-u²]P
   t0.pow_bls12_381_x(P)
   t1.pow_bls12_381_minus_x(t0) 
@@ -189,18 +189,39 @@ func isInSubgroup*(P: ECP_ShortW_Prj[Fp[BLS12_381], G1]): SecretBool =
 
   return t0 == t1
 
-func isInSubgroup*(P: ECP_ShortW_Prj[Fp2[BLS12_381], G2]): SecretBool =
-  ## Returns true if P is in G2 subgroup, i.e. P is a point of order r.
+func isInSubgroup*(P: ECP_ShortW_Jac[Fp2[BLS12_381], G2] or ECP_ShortW_Prj[Fp2[BLS12_381], G2]): SecretBool =
+  ## Returns true if P is in 𝔾2 subgroup, i.e. P is a point of order r.
   ## A point may be on a curve but not on the prime order r subgroup.
   ## Not checking subgroup exposes a protocol to small subgroup attacks.
   ## 
   ## Warning ⚠: Assumes that P is on curve
   # Implementation: Scott, https://eprint.iacr.org/2021/1130.pdf
-  #   A note on group membership tests for G1, G2 and GT
+  #   A note on group membership tests for 𝔾1, 𝔾2 and 𝔾T
   #   on BLS pairing-friendly curves
-  #   P is in the G1 subgroup iff ψ(P) == [u](P)
-  var t0{.noInit.}, t1{.noInit.}: ECP_ShortW_Prj[Fp2[BLS12_381], G2]
+  #   P is in the 𝔾1 subgroup iff ψ(P) == [u](P)
+  var t0{.noInit.}, t1{.noInit.}: typeof(P)
   t0.pow_bls12_381_x(P) # [u]P
   t1.frobenius_psi(P)   # ψ(P)
 
   return t0 == t1
+
+func isInSubgroup*(P: ECP_ShortW_Aff[Fp[BLS12_381], G1]): SecretBool =
+  ## Returns true if P is in 𝔾1 subgroup, i.e. P is a point of order r.
+  ## A point may be on a curve but not on the prime order r subgroup.
+  ## Not checking subgroup exposes a protocol to small subgroup attacks.
+  ## 
+  ## Warning ⚠: Assumes that P is on curve
+  var t{.noInit.}: ECP_ShortW_Prj[Fp[BLS12_381], G1]
+  t.fromAffine(P)
+  return t.isInSubgroup()
+
+
+func isInSubgroup*(P: ECP_ShortW_Aff[Fp2[BLS12_381], G2]): SecretBool =
+  ## Returns true if P is in 𝔾2 subgroup, i.e. P is a point of order r.
+  ## A point may be on a curve but not on the prime order r subgroup.
+  ## Not checking subgroup exposes a protocol to small subgroup attacks.
+  ## 
+  ## Warning ⚠: Assumes that P is on curve
+  var t{.noInit.}: ECP_ShortW_Jac[Fp2[BLS12_381], G2]
+  t.fromAffine(P)
+  return t.isInSubgroup()
