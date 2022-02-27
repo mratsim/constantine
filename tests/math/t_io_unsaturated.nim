@@ -7,7 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  std/[unittest,times],
-        ../../constantine/math/config/[common, curves],
+        ../../constantine/platforms/abstractions,
+        ../../constantine/math/config/curves,
         ../../constantine/math/arithmetic,
         ../../constantine/math/arithmetic/limbs_unsaturated,
         ../../constantine/math/io/io_bigints,

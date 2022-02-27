@@ -7,8 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/[common, curves, type_ff],
-  ../primitives,
+  ../../platforms/abstractions,
+  ../config/curves,
   ./bigints,
   ./finite_fields,
   ./limbs,

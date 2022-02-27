@@ -8,7 +8,7 @@
 
 import
   # Internals
-  ../constantine/math/config/[curves, common],
+  ../constantine/math/config/curves,
   ../constantine/math/arithmetic,
   ../constantine/math/io/io_bigints,
   ../constantine/math/curves/zoo_square_roots,

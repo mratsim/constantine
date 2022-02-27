@@ -8,9 +8,8 @@
 
 import
   ./io_bigints,
-  ../config/[common, type_ff],
-  ../arithmetic/finite_fields,
-  ../primitives
+  ../../platforms/abstractions,
+  ../arithmetic/finite_fields
 
 export Fp
 

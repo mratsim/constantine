@@ -17,12 +17,15 @@ import
   # Standard library
   std/[unittest, times],
   # Internals
+  ../../constantine/platforms/abstractions,
   ../../constantine/math/extension_fields,
-  ../../constantine/math/config/[common, curves],
+  ../../constantine/math/config/curves,
   ../../constantine/math/arithmetic,
   ../../constantine/math/isogenies/frobenius,
   # Test utilities
   ../../helpers/[prng_unsafe, static_for]
+
+export unittest # Generic sandwich
 
 echo "\n------------------------------------------------------\n"
 

@@ -10,8 +10,7 @@ import
   # Standard library
   std/macros,
   # Internal
-  ../../config/common,
-  ../../primitives,
+  ../../../platforms/abstractions,
   ./limbs_asm_modular_x86
 
 # ############################################################

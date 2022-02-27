@@ -8,14 +8,14 @@
 
 # ############################################################
 #
-#                Common configuration
+#                Platforms abstractions
 #
 # ############################################################
 
-import ../primitives
-import ../../../metering/tracer
+import ./primitives
+import ../../metering/tracer
 
-export tracer
+export primitives, tracer
 
 when sizeof(int) == 8 and not defined(Constantine32):
   type

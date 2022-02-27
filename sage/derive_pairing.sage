@@ -239,7 +239,7 @@ if __name__ == "__main__":
       f.write('\n\n')
       f.write(inspect.cleandoc("""
         import
-          ../config/[curves, type_bigint],
+          ../config/curves,
           ../io/io_bigints
 
         # Slow generic implementation

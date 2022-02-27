@@ -8,9 +8,8 @@
 
 
 import
+  ../../platforms/abstractions,
   ../arithmetic,
-  ../config/common,
-  ../primitives,
   ../io/io_bigints,
   ./towers
 

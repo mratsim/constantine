@@ -10,8 +10,7 @@ import
   # Standard library
   std/macros,
   # Internal
-  ../../config/common,
-  ../../primitives
+  ../../../platforms/abstractions
 
 # ############################################################
 #
@@ -620,7 +619,8 @@ func square_asm_adx*[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen])
 
 when isMainModule:
   import
-    ../../config/[type_bigint, common],
+    ../../../platforms/abstractions,
+    ../../config/type_bigint,
     ../../arithmetic/limbs
 
   type SW = SecretWord

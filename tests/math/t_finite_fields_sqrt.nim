@@ -10,9 +10,10 @@ import
   # Standard library
   std/[tables, unittest, times],
   # Internal
-  ../../constantine/math/[arithmetic, primitives],
-  ../../constantine/math/io/[io_fields],
-  ../../constantine/math/config/[curves, common],
+  ../../constantine/platforms/abstractions,
+  ../../constantine/math/arithmetic,
+  ../../constantine/math/io/io_fields,
+  ../../constantine/math/config/curves,
   # Test utilities
   ../../helpers/prng_unsafe
 

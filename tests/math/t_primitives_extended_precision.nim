@@ -9,8 +9,7 @@
 
 import
   std/[unittest, times, math],
-  ../../constantine/math/config/common,
-  ../../constantine/math/primitives,
+  ../../constantine/platforms/abstractions,
   ../../helpers/prng_unsafe
 
 suite "Extended precision bugs":

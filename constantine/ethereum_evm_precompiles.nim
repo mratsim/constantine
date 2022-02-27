@@ -7,7 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ./math/config/[common, curves],
+  ./platforms/abstractions,
+  ./math/config/curves,
   ./math/[arithmetic, extension_fields],
   ./math/arithmetic/limbs_montgomery,
   ./math/ec_shortweierstrass,

@@ -10,7 +10,7 @@ import
   # stdlib
   std/unittest,
   # Internals
-  ../../constantine/math/config/[common, type_ff],
+  ../../constantine/platforms/abstractions,
   ../../constantine/math/extension_fields,
   ../../constantine/math/config/curves,
   ../../constantine/math/io/io_extfields,

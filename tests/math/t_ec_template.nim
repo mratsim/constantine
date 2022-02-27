@@ -16,7 +16,8 @@ import
   # Standard library
   std/[unittest, times],
   # Internals
-  ../../constantine/math/config/[common, curves],
+  ../../constantine/platforms/abstractions,
+  ../../constantine/math/config/curves,
   ../../constantine/math/arithmetic,
   ../../constantine/math/extension_fields,
   ../../constantine/math/elliptic/[
@@ -31,6 +32,8 @@ import
   # Test utilities
   ../../helpers/prng_unsafe,
   ./support/ec_reference_scalar_mult
+
+export unittest # Generic sandwich
 
 type
   RandomGen* = enum

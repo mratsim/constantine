@@ -7,7 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/[common, curves, type_ff],
+  ../../platforms/abstractions,
+  ../config/curves,
   ../extension_fields,
   ../elliptic/[
     ec_shortweierstrass_affine,

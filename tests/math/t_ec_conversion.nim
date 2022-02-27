@@ -8,7 +8,7 @@
 
 import
   # Internals
-  ../../constantine/math/config/[type_ff, curves],
+  ../../constantine/math/config/curves,
   ../../constantine/math/elliptic/[ec_shortweierstrass_jacobian, ec_shortweierstrass_projective],
   ../../constantine/math/extension_fields,
   # Test utilities

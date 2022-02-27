@@ -8,7 +8,7 @@
 
 import
   std/macros,
-  ../config/[curves, type_ff],
+  ../config/curves,
   ../extension_fields,
   ./bls12_377_endomorphisms,
   ./bls12_381_endomorphisms,

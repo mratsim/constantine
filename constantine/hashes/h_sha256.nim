@@ -8,9 +8,7 @@
 
 import
   std/macros,
-  ../math/config/common,
-  ../math/io/endians,
-  ../math/primitives/static_for
+  ../platforms/[abstractions, endians]
 
 # SHA256, a hash function from the SHA2 family
 # --------------------------------------------------------------------------------

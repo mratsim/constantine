@@ -22,7 +22,7 @@ const TestCurves = [
 
 runFrobeniusTowerTests(
   ExtDegree = 12,
-  Iters = 8,
+  Iters = 2,
   TestCurves = TestCurves,
   moduleName = "test_fp12_frobenius",
   testSuiteDesc = "𝔽p12 Frobenius map: Frobenius(a, k) = a^(pᵏ) (mod p^12)"

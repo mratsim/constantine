@@ -8,9 +8,9 @@
 
 import
   # Internals
-  ../config/[common, curves],
+  ../../platforms/abstractions,
+  ../config/curves,
   ../arithmetic,
-  ../primitives,
   ../extension_fields,
   ../ec_shortweierstrass,
   ../io/io_bigints,

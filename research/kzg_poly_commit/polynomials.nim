@@ -1,6 +1,7 @@
 import
+  ../../constantine/platforms/primitives,
   ../../constantine/math/config/curves,
-  ../../constantine/math/[arithmetic, primitives, extension_fields],
+  ../../constantine/math/[arithmetic, extension_fields],
   ../../constantine/math/elliptic/[
     ec_scalar_mul,
     ec_shortweierstrass_affine,

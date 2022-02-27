@@ -11,10 +11,11 @@
 #   - Burning memory to ensure secrets are not left after dealloc.
 
 import
-  ../primitives,
+  ../../platforms/[abstractions, endians],
   ../arithmetic/bigints,
-  ../config/[common, type_bigint],
-  ./endians
+  ../config/type_bigint
+
+export BigInt, wordsRequired
 
 # ############################################################
 #

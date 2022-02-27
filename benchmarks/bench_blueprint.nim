@@ -14,7 +14,7 @@
 
 import
   # Internal
-  ../constantine/math/config/common,
+  ../constantine/platforms/abstractions,
   # Helpers
   ../helpers/prng_unsafe,
   ./platforms,

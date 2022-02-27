@@ -8,7 +8,7 @@
 
 import
   std/macros,
-  ../config/[curves, type_ff],
+  ../config/curves,
   ./bls12_377_sqrt,
   ./bls12_381_sqrt,
   ./bn254_nogami_sqrt,

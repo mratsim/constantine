@@ -7,8 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../primitives,
-  ../config/[common, curves],
+  ../../platforms/abstractions,
+  ../config/curves,
   ../arithmetic,
   ../extension_fields,
   ./ec_shortweierstrass_affine

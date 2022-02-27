@@ -10,8 +10,8 @@ import
   # Standard library
   std/unittest, times,
   # Internals
-  ../../constantine/math/config/common,
-  ../../constantine/math/[arithmetic, primitives],
+  ../../constantine/platforms/abstractions,
+  ../../constantine/math/arithmetic,
   ../../constantine/math/extension_fields,
   ../../constantine/math/config/curves,
   ../../constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
@@ -27,7 +27,8 @@ export
   ec_shortweierstrass_affine, ec_shortweierstrass_projective,
   arithmetic, extension_fields,
   primitives, io_extfields,
-  cyclotomic_subgroup
+  cyclotomic_subgroup,
+  abstractions, curves
 
 type
   RandomGen* = enum

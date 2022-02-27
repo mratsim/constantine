@@ -8,7 +8,6 @@
 
 import
   # Internals
-  ../../constantine/math/extension_fields,
   ../../constantine/math/config/curves,
   # Test utilities
   ./t_fp_tower_template

@@ -13,9 +13,9 @@
 # ############################################################
 
 import
-  ./constant_time_types,
   ./addcarry_subborrow,
-  ./constant_time
+  ../constant_time/ct_types,
+  ../constant_time/ct_routines
 
 # ############################################################
 #

@@ -7,10 +7,10 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  ../../platforms/primitives,
   ./io_bigints, ./io_fields, ./io_extfields,
   ../arithmetic,
   ../extension_fields,
-  ../primitives,
   ../elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,

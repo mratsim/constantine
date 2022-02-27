@@ -7,7 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/[common, curves, type_bigint, type_ff],
+  ../../platforms/abstractions,
+  ../config/curves,
   ../io/io_bigints,
   ../extension_fields,
   ../elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],

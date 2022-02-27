@@ -8,7 +8,7 @@
 
 import  std/[unittest,times],
         ../../constantine/math/io/io_bigints,
-        ../../constantine/math/config/common,
+        ../../constantine/platforms/abstractions,
         ../../constantine/math/arithmetic,
         ../../helpers/prng_unsafe
 

@@ -7,10 +7,10 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  ../../platforms/abstractions,
   ./towers,
   ../arithmetic,
-  ../primitives,
-  ../config/[common, curves],
+  ../config/curves,
   ../curves/zoo_square_roots_fp2
 
 # Square root

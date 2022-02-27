@@ -27,8 +27,8 @@
 #     which requires a prime
 
 import
-  ../primitives,
-  ../config/[common, type_ff, curves_prop_field_core, curves_prop_field_derived],
+  ../../platforms/abstractions,
+  ../config/[type_ff, curves_prop_field_core, curves_prop_field_derived],
   ./bigints, ./bigints_montgomery
 
 when UseASM_X86_64:

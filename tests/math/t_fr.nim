@@ -10,9 +10,10 @@ import
   # Standard library
   std/[unittest, times],
   # Internal
+  ../../constantine/platforms/abstractions,
   ../../constantine/math/arithmetic,
   ../../constantine/math/io/[io_bigints, io_fields],
-  ../../constantine/math/config/[curves, common, type_bigint],
+  ../../constantine/math/config/curves,
   # Test utilities
   ../../helpers/prng_unsafe
 

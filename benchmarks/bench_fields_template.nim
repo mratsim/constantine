@@ -14,7 +14,8 @@
 
 import
   # Internals
-  ../constantine/math/config/[common, curves],
+  ../constantine/platforms/abstractions,
+  ../constantine/math/config/curves,
   ../constantine/math/arithmetic,
   ../constantine/math/extension_fields,
   ../constantine/math/curves/zoo_square_roots,

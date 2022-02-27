@@ -9,7 +9,7 @@
 import  std/[unittest, times],
         ../../constantine/math/io/[io_bigints, io_fields],
         ../../constantine/math/config/curves,
-        ../../constantine/math/config/common,
+        ../../constantine/platforms/abstractions,
         ../../constantine/math/arithmetic,
         ../../helpers/prng_unsafe
 

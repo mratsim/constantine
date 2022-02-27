@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ./common,
+  ../../platforms/abstractions,
   ./curves_declaration,
   ./curves_prop_field_core
 

@@ -1,7 +1,7 @@
 packageName   = "constantine"
 version       = "0.0.1"
 author        = "Status Research & Development GmbH"
-description   = "This library provides constant time big int primitives."
+description   = "This library provides thoroughly tested and highly-optimized implementations of cryptography protocols."
 license       = "MIT or Apache License 2.0"
 
 # Dependencies

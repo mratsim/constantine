@@ -8,8 +8,8 @@
 
 import
   # Internal
-  ../../config/[common, curves],
-  ../../primitives,
+  ../../../platforms/abstractions,
+  ../../config/curves,
   ../../arithmetic,
   ../../arithmetic/assembly/[
     limbs_asm_mul_x86_adx_bmi2,

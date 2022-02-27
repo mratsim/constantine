@@ -10,10 +10,9 @@ import
   # Standard library
   std/unittest,
   # Third-party
-  ../../constantine/math/config/common,
+  ../../constantine/platforms/abstractions,
   ../../constantine/math/io/io_bigints,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/primitives
+  ../../constantine/math/arithmetic
 
 echo "\n------------------------------------------------------\n"
 

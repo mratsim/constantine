@@ -7,8 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ./type_bigint, ./common,
-  ../primitives,
+  ../../platforms/abstractions,
+  ./type_bigint,
   ../io/io_bigints
 
 # Precomputed constants

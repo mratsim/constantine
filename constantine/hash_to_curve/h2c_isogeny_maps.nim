@@ -8,7 +8,8 @@
 
 import
   # Internals
-  ../math/[primitives, arithmetic, extension_fields],
+  ../platforms/abstractions,
+  ../math/[arithmetic, extension_fields],
   ../math/curves/zoo_hash_to_curve,
   ../math/elliptic/[
     ec_shortweierstrass_projective,
@@ -194,7 +195,7 @@ func h2c_isogeny_map*[F; G: static Subgroup](
   r.x.prod(rxn, ryd) # X = xn * yd
   r.x *= r.z         # X = xn * xd * yd²
   r.y.square(r.z)    # Y = xd² * yd²
-  r.y *= rdx         # Y = yd² * xd³
+  r.y *= rxd         # Y = yd² * xd³
   r.y *= ryn         # Y = yn * yd² * xd³
 
 func h2c_isogeny_map*[F; G: static Subgroup](

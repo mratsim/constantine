@@ -7,17 +7,21 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  primitives/constant_time_types,
-  primitives/constant_time,
-  primitives/multiplexers,
-  primitives/addcarry_subborrow,
-  primitives/extended_precision,
-  primitives/bithacks,
-  primitives/static_for
+  constant_time/[
+    ct_types,
+    ct_routines,
+    multiplexers
+  ],
+  compilers/[
+    addcarry_subborrow,
+    extended_precision
+  ],
+  ./bithacks,
+  ../../helpers/static_for
 
 export
-  constant_time_types,
-  constant_time,
+  ct_types,
+  ct_routines,
   multiplexers,
   addcarry_subborrow,
   extended_precision,
@@ -25,5 +29,5 @@ export
   staticFor
 
 when X86 and GCC_Compatible:
-  import primitives/[cpuinfo_x86, macro_assembler_x86]
+  import isa/[cpuinfo_x86, macro_assembler_x86]
   export cpuinfo_x86, macro_assembler_x86

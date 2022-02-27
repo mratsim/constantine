@@ -9,7 +9,8 @@ import
   # Standard library
   std/macros,
   # Internal
-  ./type_bigint, ./common,
+  ../../platforms/abstractions,
+  ./type_bigint,
   ./curves_declaration
 
 export Curve

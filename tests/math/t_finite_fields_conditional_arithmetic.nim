@@ -7,9 +7,10 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  std/unittest,
+        ../../constantine/platforms/abstractions,
         ../../constantine/math/arithmetic,
         ../../constantine/math/io/io_fields,
-        ../../constantine/math/config/[common, curves]
+        ../../constantine/math/config/curves
 
 echo "\n------------------------------------------------------\n"
 

@@ -12,8 +12,7 @@ import
   # Internal
   ../../constantine/math/io/io_bigints,
   ../../constantine/math/arithmetic,
-  ../../constantine/math/config/[common, type_bigint],
-  ../../constantine/math/primitives,
+  ../../constantine/platforms/abstractions,
   # Test utilities,
   support/canaries
 

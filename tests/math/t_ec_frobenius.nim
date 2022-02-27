@@ -11,7 +11,8 @@ import
   # Standard library
   std/[times, unittest],
   # Internals
-  ../../constantine/math/config/[common, curves],
+  ../../constantine/platforms/abstractions,
+  ../../constantine/math/config/curves,
   ../../constantine/math/[arithmetic, extension_fields],
   ../../constantine/math/io/[io_bigints, io_ec],
   ../../constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective, ec_scalar_mul],

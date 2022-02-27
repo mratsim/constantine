@@ -7,8 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/[common, type_bigint],
-  ../primitives,
+  ../../platforms/abstractions,
   ../io/io_bigints,
   ./limbs,
   ./limbs_montgomery,

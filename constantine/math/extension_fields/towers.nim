@@ -7,10 +7,12 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/[common, curves],
-  ../primitives,
+  ../../platforms/abstractions,
+  ../config/curves,
   ../arithmetic,
   ../io/io_fields
+
+export Fp
 
 when UseASM_X86_64:
   import

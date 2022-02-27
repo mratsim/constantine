@@ -8,9 +8,9 @@
 
 import
   std/macros,
+  ../../platforms/primitives,
   ../arithmetic,
   ../extension_fields,
-  ../primitives,
   ../curves/zoo_frobenius
 
 # Frobenius Map

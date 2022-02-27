@@ -10,8 +10,8 @@ import
   # Standard Library
   std/typetraits,
   # Internal
-  ../primitives,
-  ../config/[common, curves, type_bigint],
+  ../../platforms/abstractions,
+  ../config/[curves, type_bigint],
   ../curves/zoo_endomorphisms,
   ../arithmetic,
   ../extension_fields,

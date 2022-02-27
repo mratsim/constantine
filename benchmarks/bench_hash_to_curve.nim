@@ -8,7 +8,8 @@
 
 import
   # Internals
-  ../constantine/math/config/[common, curves, type_bigint, type_ff],
+  ../constantine/platforms/abstractions,
+  ../constantine/math/config/curves,
   ../constantine/math/extension_fields,
   ../constantine/math/io/[io_bigints, io_ec],
   ../constantine/math/elliptic/[

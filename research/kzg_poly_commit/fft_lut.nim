@@ -8,8 +8,9 @@
 
 import
   std/macros,
-  ../../constantine/math/config/[curves, common],
-  ../../constantine/math/[arithmetic, primitives],
+  ../../constantine/platforms/abstractions,
+  ../../constantine/math/config/curves,
+  ../../constantine/math/arithmetic,
   ../../constantine/math/io/io_fields
 
 # TODO automate this

@@ -7,8 +7,9 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  ../../constantine/platforms/primitives,
   ../../constantine/math/config/curves,
-  ../../constantine/math/[arithmetic, primitives],
+  ../../constantine/math/arithmetic,
   ../../constantine/math/elliptic/[
     ec_scalar_mul,
     ec_shortweierstrass_affine,

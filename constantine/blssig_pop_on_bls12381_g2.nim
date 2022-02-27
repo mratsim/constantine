@@ -7,18 +7,15 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-    ./math/config/[
-      common, curves, type_bigint, type_ff
-    ],
+    ./platforms/abstractions,
+    ./math/config/curves,
     ./math/[
       ec_shortweierstrass,
       extension_fields,
       arithmetic,
-      curves/zoo_subgroups,
-      primitives
+      curves/zoo_subgroups
     ],
     ./math/io/[io_bigints, io_fields],
-    hash_to_curve/hash_to_curve,
     hashes,
     signatures/bls_signatures
 

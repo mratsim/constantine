@@ -10,8 +10,8 @@ import
   # Standard library
   std/[unittest, times],
   # Internal
-  ../../constantine/math/config/common,
-  ../../constantine/math/[arithmetic, primitives],
+  ../../constantine/platforms/abstractions,
+  ../../constantine/math/arithmetic,
   ../../constantine/math/io/[io_bigints, io_fields],
   ../../constantine/math/config/curves,
   # Test utilities

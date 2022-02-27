@@ -7,9 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  std/unittest,
   # Internals
-  ../../constantine/math/extension_fields,
   ../../constantine/math/io/io_extfields,
   ../../constantine/math/config/curves,
   # Test utilities

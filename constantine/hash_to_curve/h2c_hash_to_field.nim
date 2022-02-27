@@ -8,9 +8,10 @@
 
 import
   # Internals
+  ../platforms/[abstractions, endians],
   ../hashes,
-  ../math/io/[endians, io_bigints, io_fields],
-  ../math/config/[common, curves, type_bigint, type_ff],
+  ../math/io/[io_bigints, io_fields],
+  ../math/config/curves,
   ../math/arithmetic/limbs_montgomery,
   ../math/extension_fields/towers
 

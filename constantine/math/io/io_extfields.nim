@@ -12,7 +12,7 @@ import
   std/typetraits,
   # Internal
   ./io_bigints, ./io_fields,
-  ../primitives,
+  ../../platforms/primitives,
   ../arithmetic/finite_fields,
   ../extension_fields/towers
 

@@ -8,8 +8,9 @@
 
 import
   # Internals
-  ../math/config/[common, curves],
-  ../math/[primitives, arithmetic, extension_fields],
+  ../platforms/abstractions,
+  ../math/config/curves,
+  ../math/[arithmetic, extension_fields],
   ../math/curves/[zoo_hash_to_curve, zoo_subgroups],
   ../math/ec_shortweierstrass,
   ./h2c_hash_to_field,

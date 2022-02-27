@@ -9,7 +9,7 @@
 import
   std/typetraits,
   ../config/curves,
-  ../primitives,
+  ../../platforms/primitives,
   ../arithmetic,
   ../extension_fields,
   ../elliptic/[

@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/[curves, type_ff],
+  ../config/curves,
   ../arithmetic/finite_fields
 
 func invsqrt_addchain_pminus5over8*(r: var Fp[Edwards25519], a: Fp[Edwards25519]) =

@@ -14,8 +14,7 @@ import
   # Internal
   ../../constantine/math/io/io_bigints,
   ../../constantine/math/arithmetic,
-  ../../constantine/math/primitives,
-  ../../constantine/math/config/[common, type_bigint]
+  ../../constantine/platforms/abstractions
 
 echo "\n------------------------------------------------------\n"
 # We test up to 1024-bit, more is really slow

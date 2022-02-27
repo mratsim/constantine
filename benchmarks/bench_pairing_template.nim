@@ -14,7 +14,8 @@
 
 import
   # Internals
-  ../constantine/math/config/[curves, common],
+  ../constantine/platforms/abstractions,
+  ../constantine/math/config/curves,
   ../constantine/math/arithmetic,
   ../constantine/math/extension_fields,
   ../constantine/math/ec_shortweierstrass,

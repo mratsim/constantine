@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/[curves, type_bigint, type_ff],
+  ../config/curves,
   ../io/[io_bigints, io_fields]
 
 # BN254_Snarks G1

@@ -10,7 +10,8 @@ import
   # Standard library
   std/macros,
   # Internal
-  ./type_bigint, ./type_ff, ./common,
+  ../../platforms/abstractions,
+  ./type_bigint, ./type_ff,
   ./curves_declaration, ./curves_prop_field_core, ./curves_derived
 
 # ############################################################
