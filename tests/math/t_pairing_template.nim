@@ -26,7 +26,7 @@ export
   prng_unsafe, times, unittest,
   ec_shortweierstrass_affine, ec_shortweierstrass_projective,
   arithmetic, extension_fields,
-  primitives, io_extfields,
+  io_extfields,
   cyclotomic_subgroup,
   abstractions, curves
 
