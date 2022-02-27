@@ -17,7 +17,7 @@ Constant-time APIs only leak the number of bits, of bytes or words of the
 big integer.
 
 The bytes API are constant-time and do not allocate:
-- BigInt or octet-string: fromRawUint, fromUint
+- BigInt or octet-string: unmarshal, fromUint
 - Machine sized integers: fromUint
 
 If you decide to use the internal hex or decimal API, you SHOULD ensure that the data is well-formatted:
@@ -33,13 +33,13 @@ The internal API is may be constant-time (temporarily) and may allocate.
 The hexadecimal API allocates:
 - `toHex` is constant-time
 - `appendHex` is constant-time
-- `fromHex` is **NOT constant-time** (yet), it is intended for debugging or
+- `fromHex` is constant-time, it is intended for debugging or
   (compile-time) configuration. It does not allocate.
   In particular it scans spaces and underscores and checks if the string
   starts with '0x'.
 
 The decimal API allocates:
-- `toDecimal` is **NOT constant-time** (yet) and allocates
+- `toDecimal` is constant-time and allocates
 - `fromDecimal` is constant-time and does not allocate.
 
 ## Avoiding secret mistakes

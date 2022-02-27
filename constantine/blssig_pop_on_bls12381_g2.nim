@@ -157,7 +157,7 @@ func validate_sig*(signature: Signature): CttBLSStatus =
 func serialize_secret_key*(dst: var array[32, byte], secret_key: SecretKey): CttBLSStatus =
   ## Serialize a secret key
   ## Returns cttBLS_Success if successful
-  dst.exportRawUint(secret_key.raw, bigEndian)
+  dst.marshal(secret_key.raw, bigEndian)
   return cttBLS_Success
 
 func serialize_public_key_compressed*(dst: var array[48, byte], public_key: PublicKey): CttBLSStatus =
@@ -170,7 +170,7 @@ func serialize_public_key_compressed*(dst: var array[48, byte], public_key: Publ
     dst[0] = byte 0b11000000 # Compressed + Infinity
     return cttBLS_Success
 
-  dst.exportRawUint(public_key.raw.x, bigEndian)
+  dst.marshal(public_key.raw.x, bigEndian)
   # The curve equation has 2 solutions for y² = x³ + 4 with y unknown and x known
   # The lexicographically largest will have bit 381 set to 1
   # (and bit 383 for the compressed representation)
@@ -191,8 +191,8 @@ func serialize_signature_compressed*(dst: var array[96, byte], signature: Signat
     dst[0] = byte 0b11000000 # Compressed + Infinity
     return cttBLS_Success
 
-  dst.toOpenArray(0, 48-1).exportRawUint(signature.raw.x.c1, bigEndian)
-  dst.toOpenArray(48, 96-1).exportRawUint(signature.raw.x.c0, bigEndian)
+  dst.toOpenArray(0, 48-1).marshal(signature.raw.x.c1, bigEndian)
+  dst.toOpenArray(48, 96-1).marshal(signature.raw.x.c0, bigEndian)
 
   let isLexicographicallyLargest =
     if signature.raw.y.c1.isZero().bool():
@@ -208,7 +208,7 @@ func deserialize_secret_key*(dst: var SecretKey, src: array[32, byte]): CttBLSSt
   ## 
   ## This is protected against side-channel unless your key is invalid.
   ## In that case it will like whether it's all zeros or larger than the curve order.
-  dst.raw.fromRawUint(src, bigEndian)
+  dst.raw.unmarshal(src, bigEndian)
   let status = validate_seckey(dst)
   if status != cttBLS_Success:
     dst.raw.setZero()
@@ -240,7 +240,7 @@ func deserialize_public_key_compressed_unchecked*(dst: var PublicKey, src: array
 
   # General case
   var t{.noInit.}: matchingBigInt(BLS12_381)
-  t.fromRawUint(src, bigEndian)
+  t.unmarshal(src, bigEndian)
   t.limbs[^1] = t.limbs[^1] and (MaxWord shr 3) # The first 3 bytes contain metadata to mask out
 
   if bool(t >= BLS12_381.Mod()):
@@ -294,7 +294,7 @@ func deserialize_signature_compressed_unchecked*(dst: var Signature, src: array[
 
   # General case
   var t{.noInit.}: matchingBigInt(BLS12_381)
-  t.fromRawUint(src.toOpenArray(0, 48-1), bigEndian)
+  t.unmarshal(src.toOpenArray(0, 48-1), bigEndian)
   t.limbs[^1] = t.limbs[^1] and (MaxWord shr 3) # The first 3 bytes contain metadata to mask out
 
   if bool(t >= BLS12_381.Mod()):
@@ -303,7 +303,7 @@ func deserialize_signature_compressed_unchecked*(dst: var Signature, src: array[
   var x{.noInit.}: Fp2[BLS12_381]
   x.c1.fromBig(t)
 
-  t.fromRawUint(src.toOpenArray(48, 96-1), bigEndian)
+  t.unmarshal(src.toOpenArray(48, 96-1), bigEndian)
   if bool(t >= BLS12_381.Mod()):
     return cttBLS_CoordinateGreaterOrEqualThanModulus
 

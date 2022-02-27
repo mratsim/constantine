@@ -73,8 +73,8 @@ proc binary_prologue[C: static Curve, N: static int](
   doAssert len >= bW, "Expected at most " & $len & " bytes but wrote " & $bW & " for " & toHex(bBuf) & " (big-endian)"
 
   # Build the bigint
-  aTest = Fp[C].fromBig BigInt[bits].fromRawUint(aBuf.toOpenArray(0, aW-1), bigEndian)
-  bTest = Fp[C].fromBig BigInt[bits].fromRawUint(bBuf.toOpenArray(0, bW-1), bigEndian)
+  aTest = Fp[C].fromBig BigInt[bits].unmarshal(aBuf.toOpenArray(0, aW-1), bigEndian)
+  bTest = Fp[C].fromBig BigInt[bits].unmarshal(bBuf.toOpenArray(0, bW-1), bigEndian)
 
 proc binary_epilogue[C: static Curve, N: static int](
         r, a, b: mpz_t,
@@ -90,7 +90,7 @@ proc binary_epilogue[C: static Curve, N: static int](
   discard mpz_export(rGMP[0].addr, rW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, r)
 
   var rConstantine: array[N, byte]
-  exportRawUint(rConstantine, rTest, bigEndian)
+  marshal(rConstantine, rTest, bigEndian)
 
   # Note: in bigEndian, GMP aligns left while constantine aligns right
   doAssert rGMP.toOpenArray(0, rW-1) == rConstantine.toOpenArray(N-rW, N-1), block:

@@ -223,7 +223,7 @@ func hashToField*[Field; B1, B2, B3: byte|char, count: static int](
       template tv: untyped = uniform_bytes.toOpenArray(elm_offset, elm_offset + L-1)
 
       var big2x {.noInit.}: BigInt[2 * getCurveBitwidth(Field.C)]
-      big2x.fromRawUint(tv, bigEndian)
+      big2x.unmarshal(tv, bigEndian)
 
       # Reduces modulo p and output in Montgomery domain
       when m == 1:

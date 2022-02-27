@@ -41,7 +41,7 @@ proc exhaustiveCheck(C: static Curve, modulus: static int) =
       a.square()
 
       var r_bytes: array[8, byte]
-      r_bytes.exportRawUint(a, cpuEndian)
+      r_bytes.marshal(a, cpuEndian)
       let r = uint16(cast[uint64](r_bytes))
 
       squares_to_roots.mgetOrPut(r, default(set[uint16])).incl(i)
@@ -69,7 +69,7 @@ proc exhaustiveCheck(C: static Curve, modulus: static int) =
         check: bool(a == a2)
 
         var r_bytes: array[8, byte]
-        r_bytes.exportRawUint(a, cpuEndian)
+        r_bytes.marshal(a, cpuEndian)
         let r = uint16(cast[uint64](r_bytes))
 
         # r is one of the 2 square roots of `i`

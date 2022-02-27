@@ -43,7 +43,7 @@ func parseRawUint(
   ## Return false if the integer is larger than the field modulus.
   ## Returns true on success.
   var big {.noInit.}: BigInt[254]
-  big.fromRawUint(src, bigEndian)
+  big.unmarshal(src, bigEndian)
 
   if not bool(big < Mod(BN254_Snarks)):
     return cttEVM_IntLargerThanModulus
@@ -136,10 +136,10 @@ func eth_evm_ecadd*(
   var aff{.noInit.}: ECP_ShortW_Aff[Fp[BN254_Snarks], G1]
   aff.affine(R)
 
-  r.toOpenArray(0, 31).exportRawUint(
+  r.toOpenArray(0, 31).marshal(
     aff.x, bigEndian
   )
-  r.toOpenArray(32, 63).exportRawUint(
+  r.toOpenArray(32, 63).marshal(
     aff.y, bigEndian
   )
 
@@ -185,7 +185,7 @@ func eth_evm_ecmul*(
 
   var smod{.noInit.}: Fr[BN254_Snarks]
   var s{.noInit.}: BigInt[256]
-  s.fromRawUint(padded.toOpenArray(64,95), bigEndian)
+  s.unmarshal(padded.toOpenArray(64,95), bigEndian)
 
   when true:
     # The spec allows s to be bigger than the curve order r and the field modulus p.
@@ -210,10 +210,10 @@ func eth_evm_ecmul*(
   var aff{.noInit.}: ECP_ShortW_Aff[Fp[BN254_Snarks], G1]
   aff.affine(P)
 
-  r.toOpenArray(0, 31).exportRawUint(
+  r.toOpenArray(0, 31).marshal(
     aff.x, bigEndian
   )
-  r.toOpenArray(32, 63).exportRawUint(
+  r.toOpenArray(32, 63).marshal(
     aff.y, bigEndian
   )
 

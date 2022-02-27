@@ -137,25 +137,34 @@ func mux*[T](ctl: CTBool[T], x, y: T): T {.inline.}=
   ## Returns x if ctl is true
   ## else returns y
   ## So equivalent to ctl? x: y
-  when X86 and GCC_Compatible:
-    mux_x86(ctl, x, y)
-  else:
+  when nimvm:
     mux_fallback(ctl, x, y)
+  else:
+    when X86 and GCC_Compatible:
+      mux_x86(ctl, x, y)
+    else:
+      mux_fallback(ctl, x, y)
 
 func mux*[T: CTBool](ctl: CTBool, x, y: T): T {.inline.}=
   ## Multiplexer / selector
   ## Returns x if ctl is true
   ## else returns y
   ## So equivalent to ctl? x: y
-  when X86 and GCC_Compatible:
-    mux_x86(ctl, x, y)
-  else:
+  when nimvm:
     mux_fallback(ctl, x, y)
+  else:
+    when X86 and GCC_Compatible:
+      mux_x86(ctl, x, y)
+    else:
+      mux_fallback(ctl, x, y)
 
 func ccopy*[T](ctl: CTBool[T], x: var T, y: T) {.inline.}=
   ## Conditional copy
   ## Copy ``y`` into ``x`` if ``ctl`` is true
-  when X86 and GCC_Compatible:
-    ccopy_x86(ctl, x, y)
-  else:
+  when nimvm:
     ccopy_fallback(ctl, x, y)
+  else:
+    when X86 and GCC_Compatible:
+      ccopy_x86(ctl, x, y)
+    else:
+      ccopy_fallback(ctl, x, y)

@@ -36,7 +36,7 @@ export BigInt, wordsRequired
 #       prototyping, research and debugging purposes,
 #       and can use exceptions.
 
-func fromRawUintLE(
+func unmarshalLE(
         dst: var BigInt,
         src: openarray[byte]) =
   ## Parse an unsigned integer from its canonical
@@ -74,7 +74,7 @@ func fromRawUintLE(
   for i in dst_idx + 1 ..< dst.limbs.len:
     dst.limbs[i] = Zero
 
-func fromRawUintBE(
+func unmarshalBE(
         dst: var BigInt,
         src: openarray[byte]) =
   ## Parse an unsigned integer from its canonical
@@ -114,7 +114,7 @@ func fromRawUintBE(
   for i in dst_idx + 1 ..< dst.limbs.len:
     dst.limbs[i] = Zero
 
-func fromRawUint*(
+func unmarshal*(
         dst: var BigInt,
         src: openarray[byte],
         srcEndianness: static Endianness) =
@@ -129,11 +129,11 @@ func fromRawUint*(
   ## from a canonical integer representation
 
   when srcEndianness == littleEndian:
-    dst.fromRawUintLE(src)
+    dst.unmarshalLE(src)
   else:
-    dst.fromRawUintBE(src)
+    dst.unmarshalBE(src)
 
-func fromRawUint*(
+func unmarshal*(
         T: type BigInt,
         src: openarray[byte],
         srcEndianness: static Endianness): T {.inline.}=
@@ -146,21 +146,21 @@ func fromRawUint*(
   ##
   ## Can work at compile-time to embed curve moduli
   ## from a canonical integer representation
-  result.fromRawUint(src, srcEndianness)
+  result.unmarshal(src, srcEndianness)
 
 func fromUint*(
         T: type BigInt,
         src: SomeUnsignedInt): T {.inline.}=
   ## Parse a regular unsigned integer
   ## and store it into a BigInt of size `bits`
-  result.fromRawUint(cast[array[sizeof(src), byte]](src), cpuEndian)
+  result.unmarshal(cast[array[sizeof(src), byte]](src), cpuEndian)
 
 func fromUint*(
         dst: var BigInt,
         src: SomeUnsignedInt) {.inline.}=
   ## Parse a regular unsigned integer
   ## and store it into a BigInt of size `bits`
-  dst.fromRawUint(cast[array[sizeof(src), byte]](src), cpuEndian)
+  dst.unmarshal(cast[array[sizeof(src), byte]](src), cpuEndian)
 
 # ############################################################
 #
@@ -180,7 +180,7 @@ template blobFrom(dst: var openArray[byte], src: SomeUnsignedInt, startIdx: int,
     for i in 0 ..< sizeof(src):
       dst[startIdx+sizeof(src)-1-i] = toByte(src shr (i * 8))
 
-func exportRawUintLE(
+func marshalLE(
         dst: var openarray[byte],
         src: BigInt) =
   ## Serialize a bigint into its canonical little-endian representation
@@ -229,7 +229,7 @@ func exportRawUintLE(
             dst[dst_idx+i] = toByte(lo shr ((tail-i)*8))
         return
 
-func exportRawUintBE(
+func marshalBE(
         dst: var openarray[byte],
         src: BigInt) =
   ## Serialize a bigint into its canonical big-endian representation
@@ -281,7 +281,7 @@ func exportRawUintBE(
             dst[tail-1-i] = toByte(lo shr ((tail-i)*8))
         return
 
-func exportRawUint*(
+func marshal*(
         dst: var openarray[byte],
         src: BigInt,
         dstEndianness: static Endianness) =
@@ -301,9 +301,9 @@ func exportRawUint*(
     zeroMem(dst, dst.len)
 
   when dstEndianness == littleEndian:
-    exportRawUintLE(dst, src)
+    marshalLE(dst, src)
   else:
-    exportRawUintBE(dst, src)
+    marshalBE(dst, src)
 
 {.pop.} # {.push raises: [].}
 
@@ -312,54 +312,23 @@ func exportRawUint*(
 #         Conversion helpers
 #
 # ############################################################
-# TODO: constant-time
 
-func readHexChar(c: char): uint8 {.inline.}=
+func readHexChar(c: char): SecretWord {.inline.}=
   ## Converts an hex char to an int
-  ## CT: leaks position of invalid input if any.
-  ##     and leaks if 0..9 or a..f or A..F
-  case c
-  of '0'..'9': result = uint8 ord(c) - ord('0')
-  of 'a'..'f': result = uint8 ord(c) - ord('a') + 10
-  of 'A'..'F': result = uint8 ord(c) - ord('A') + 10
-  else:
-    raise newException(ValueError, $c & "is not a hexadecimal character")
+  template sw(a: char or int): SecretWord = SecretWord(a)
+  const k = WordBitWidth - 1
 
-func skipPrefixes(current_idx: var int, str: string, radix: static range[2..16]) {.inline.} =
-  ## Returns the index of the first meaningful char in `hexStr` by skipping
-  ## "0x" prefix
-  ## CT:
-  ##   - leaks if input length < 2
-  ##   - leaks if input start with 0x, 0o or 0b prefix
+  let c = sw(c)
 
-  if str.len < 2:
-    return
+  let lowercaseMask = not -(((c - sw'a') or (sw('f') - c)) shr k)
+  let uppercaseMask = not -(((c - sw'A') or (sw('F') - c)) shr k)
+  
+  var val = c - sw'0'
+  val = val xor ((val xor (c - sw('a') + sw(10))) and lowercaseMask)
+  val = val xor ((val xor (c - sw('a') + sw(10))) and uppercaseMask)
+  val = val and sw(0xF) # Prevent overflow of invalid inputs
 
-  assert current_idx == 0, "skipPrefixes only works for prefixes (position 0 and 1 of the string)"
-  if str[0] == '0':
-    case str[1]
-    of {'x', 'X'}:
-      assert radix == 16, "Parsing mismatch, 0x prefix is only valid for a hexadecimal number (base 16)"
-      current_idx = 2
-    of {'o', 'O'}:
-      assert radix == 8, "Parsing mismatch, 0o prefix is only valid for an octal number (base 8)"
-      current_idx = 2
-    of {'b', 'B'}:
-      assert radix == 2, "Parsing mismatch, 0b prefix is only valid for a binary number (base 2)"
-      current_idx = 2
-    else: discard
-
-func countNonBlanks(hexStr: string, startPos: int): int =
-  ## Count the number of non-blank characters
-  ## ' ' (space) and '_' (underscore) are considered blank
-  ##
-  ## CT:
-  ##   - Leaks white-spaces and non-white spaces position
-  const blanks = {' ', '_'}
-
-  for c in hexStr:
-    if c in blanks:
-      result += 1
+  return val
 
 func hexToPaddedByteArray*(hexStr: string, output: var openArray[byte], order: static[Endianness]) =
   ## Read a hex string and store it in a byte array `output`.
@@ -367,31 +336,42 @@ func hexToPaddedByteArray*(hexStr: string, output: var openArray[byte], order: s
   ##
   ## The source string must be hex big-endian.
   ## The destination array can be big or little endian
+  ## 
+  ## Only characters accepted are 0x or 0X prefix
+  ## and 0-9,a-f,A-F in particular spaces and _ are not valid.
+  ## 
+  ## Procedure is constant-time except for the presence (or absence) of the 0x prefix.
+  ## 
+  ## This procedure is intended for configuration, prototyping, research and debugging purposes.
+  ## You MUST NOT use it for production.
+
+  template sw(a: bool or int): SecretWord = SecretWord(a)
+
   var
-    skip = 0
+    skip = Zero
     dstIdx: int
     shift = 4
-  skipPrefixes(skip, hexStr, 16)
-
-  const blanks = {' ', '_'}
-  let nonBlanksCount = countNonBlanks(hexStr, skip)
+  
+  if hexStr.len >= 2:
+    skip = sw(2)*(
+      sw(hexStr[0] == '0') and
+      (sw(hexStr[1] == 'x') or sw(hexStr[1] == 'X'))
+    )
 
   let maxStrSize = output.len * 2
-  let size = hexStr.len - skip - nonBlanksCount
+  let size = hexStr.len - skip.int
 
-  doAssert size <= maxStrSize, "size: " & $size & " (without blanks or prefix), maxSize: " & $maxStrSize
+  doAssert size <= maxStrSize, "size: " & $size & ", maxSize: " & $maxStrSize
 
   if size < maxStrSize:
     # include extra byte if odd length
-    dstIdx = output.len - (size + 1) div 2
+    dstIdx = output.len - (size + 1) shr 1
     # start with shl of 4 if length is even
-    shift = 4 - size mod 2 * 4
+    shift = 4 - (size and 1) * 4
 
-  for srcIdx in skip ..< hexStr.len:
-    if hexStr[srcIdx] in blanks:
-      continue
-
-    let nibble = hexStr[srcIdx].readHexChar shl shift
+  for srcIdx in skip.int ..< hexStr.len:
+    let c = hexStr[srcIdx]
+    let nibble = byte(c.readHexChar() shl shift)
     when order == bigEndian:
       output[dstIdx] = output[dstIdx] or nibble
     else:
@@ -429,8 +409,10 @@ func fromHex*(a: var BigInt, s: string) =
   ##
   ## Hex string is assumed big-endian
   ##
-  ## This API is intended for configuration and debugging purposes
-  ## Do not pass secret or private data to it.
+  ## Procedure is constant-time except for the presence (or absence) of the 0x prefix.
+  ## 
+  ## This procedure is intended for configuration, prototyping, research and debugging purposes.
+  ## You MUST NOT use it for production.
   ##
   ## Can work at compile-time to declare curve moduli from their hex strings
 
@@ -440,7 +422,7 @@ func fromHex*(a: var BigInt, s: string) =
   hexToPaddedByteArray(s, bytes, bigEndian)
 
   # 2. Convert canonical uint to Big Int
-  a.fromRawUint(bytes, bigEndian)
+  a.unmarshal(bytes, bigEndian)
 
 func fromHex*(T: type BigInt, s: string): T {.noInit.} =
   ## Convert a hex string to BigInt that can hold
@@ -450,8 +432,10 @@ func fromHex*(T: type BigInt, s: string): T {.noInit.} =
   ##
   ## Hex string is assumed big-endian
   ##
-  ## This API is intended for configuration and debugging purposes
-  ## Do not pass secret or private data to it.
+  ## Procedure is constant-time except for the presence (or absence) of the 0x prefix.
+  ## 
+  ## This procedure is intended for configuration, prototyping, research and debugging purposes.
+  ## You MUST NOT use it for production.
   ##
   ## Can work at compile-time to declare curve moduli from their hex strings
   result.fromHex(s)
@@ -468,11 +452,13 @@ func appendHex*(dst: var string, big: BigInt, order: static Endianness = bigEndi
   ##
   ## This is useful to reduce the number of allocations when serializing
   ## Fp towers
+  ## 
+  ## This function may allocate.
 
   # 1. Convert Big Int to canonical uint
   const canonLen = (big.bits + 8 - 1) div 8
   var bytes: array[canonLen, byte]
-  exportRawUint(bytes, big, cpuEndian)
+  marshal(bytes, big, cpuEndian)
 
   # 2 Convert canonical uint to hex
   dst.add bytes.nativeEndianToHex(order)
@@ -646,8 +632,6 @@ const log10_2_Denom = 42039
 #
 # 1 and 2 is solved by precomputing the length and make the number of add be fixed.
 # 3 is easily solved by doing "digitToPrint + ord('0')" instead
-#
-# For 4 for now we use non-constant-time division (TODO)
 
 func decimalLength(bits: static int): int =
   doAssert bits < (high(uint) div log10_2_Num),
@@ -659,10 +643,11 @@ func decimalLength(bits: static int): int =
 func toDecimal*(a: BigInt): string =
   ## Convert to a decimal string.
   ##
-  ## It is intended for configuration, prototyping, research and debugging purposes.
+  ## This procedure is intended for configuration, prototyping, research and debugging purposes.
   ## You MUST NOT use it for production.
   ##
-  ## This function is NOT constant-time at the moment.
+  ## This function is constant-time.
+  ## This function does heap-allocation.
   const len = decimalLength(BigInt.bits)
   result = newString(len)
 

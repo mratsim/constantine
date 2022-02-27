@@ -224,7 +224,7 @@ func scalarMulGeneric*[EC](P: var EC, scalar: BigInt, window: static int = 5) =
   var
     scratchSpace: array[1 shl window, EC]
     scalarCanonicalBE: array[(scalar.bits+7) div 8, byte] # canonical big endian representation
-  scalarCanonicalBE.exportRawUint(scalar, bigEndian)      # Export is constant-time
+  scalarCanonicalBE.marshal(scalar, bigEndian)      # Export is constant-time
   P.scalarMulGeneric(scalarCanonicalBE, scratchSpace)
 
 func scalarMul*[EC](

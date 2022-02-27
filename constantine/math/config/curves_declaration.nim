@@ -69,7 +69,7 @@ declareCurves:
   # -----------------------------------------------------------------------------
   curve P224: # NIST P-224
     bitwidth: 224
-    modulus: "0xffffffff_ffffffff_ffffffff_ffffffff_00000000_00000000_00000001"
+    modulus: "0xffffffffffffffffffffffffffffffff000000000000000000000001"
   curve BN254_Nogami: # Integer Variable χ–Based Ate Pairing, 2008, Nogami et al
     bitwidth: 254
     modulus: "0x2523648240000001ba344d80000000086121000000000013a700000000000013"
@@ -173,7 +173,7 @@ declareCurves:
     modulus: "0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff"
   curve Secp256k1: # Bitcoin curve
     bitwidth: 256
-    modulus: "0xFFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2F"
+    modulus: "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f"
   curve BLS12_377:
     # Zexe curve
     # (p41) https://eprint.iacr.org/2018/962.pdf

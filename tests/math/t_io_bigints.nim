@@ -27,7 +27,7 @@ proc main() =
       block: # Sanity check
         let x = 0'u64
         let x_bytes = cast[array[8, byte]](x)
-        let big = BigInt[64].fromRawUint(x_bytes, cpuEndian)
+        let big = BigInt[64].unmarshal(x_bytes, cpuEndian)
 
         check:
           T(big.limbs[0]) == 0
@@ -37,29 +37,29 @@ proc main() =
         # "Little-endian" - 2^63
         let x = 1'u64 shl 63
         let x_bytes = cast[array[8, byte]](x)
-        let big = BigInt[64].fromRawUint(x_bytes, littleEndian) # It's fine even on big-endian platform. We only want the byte-pattern
+        let big = BigInt[64].unmarshal(x_bytes, littleEndian) # It's fine even on big-endian platform. We only want the byte-pattern
 
         var r_bytes: array[8, byte]
-        exportRawUint(r_bytes, big, littleEndian)
+        marshal(r_bytes, big, littleEndian)
         check: x_bytes == r_bytes
 
       block: # "Little-endian" - single random
         let x = rng.random_unsafe(uint64)
         let x_bytes = cast[array[8, byte]](x)
-        let big = BigInt[64].fromRawUint(x_bytes, littleEndian) # It's fine even on big-endian platform. We only want the byte-pattern
+        let big = BigInt[64].unmarshal(x_bytes, littleEndian) # It's fine even on big-endian platform. We only want the byte-pattern
 
         var r_bytes: array[8, byte]
-        exportRawUint(r_bytes, big, littleEndian)
+        marshal(r_bytes, big, littleEndian)
         check: x_bytes == r_bytes
 
       block: # "Little-endian" - 10 random cases
         for _ in 0 ..< 10:
           let x = rng.random_unsafe(uint64)
           let x_bytes = cast[array[8, byte]](x)
-          let big = BigInt[64].fromRawUint(x_bytes, littleEndian) # It's fine even on big-endian platform. We only want the byte-pattern
+          let big = BigInt[64].unmarshal(x_bytes, littleEndian) # It's fine even on big-endian platform. We only want the byte-pattern
 
           var r_bytes: array[8, byte]
-          exportRawUint(r_bytes, big, littleEndian)
+          marshal(r_bytes, big, littleEndian)
           check: x_bytes == r_bytes
 
     test "Round trip on elliptic curve constants":

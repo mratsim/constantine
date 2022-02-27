@@ -102,8 +102,8 @@ proc main() =
     doAssert bLen >= bW, "Expected at most " & $bLen & " bytes but wrote " & $bW & " for " & toHex(bBuf) & " (big-endian)"
 
     # Build the bigint
-    let aTest = BigInt[aBits].fromRawUint(aBuf.toOpenArray(0, aW-1), bigEndian)
-    let bTest = BigInt[bBits].fromRawUint(bBuf.toOpenArray(0, bW-1), bigEndian)
+    let aTest = BigInt[aBits].unmarshal(aBuf.toOpenArray(0, aW-1), bigEndian)
+    let bTest = BigInt[bBits].unmarshal(bBuf.toOpenArray(0, bW-1), bigEndian)
 
     #########################################################
     # Multiplication + drop low words
@@ -132,7 +132,7 @@ proc main() =
     discard mpz_export(rGMP[0].addr, rW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, r)
 
     var rConstantine: array[rLen, byte]
-    exportRawUint(rConstantine, rTest, bigEndian)
+    marshal(rConstantine, rTest, bigEndian)
 
     # Note: in bigEndian, GMP aligns left while constantine aligns right
     doAssert rGMP.toOpenArray(0, rW-1) == rConstantine.toOpenArray(rLen-rW, rLen-1), block:

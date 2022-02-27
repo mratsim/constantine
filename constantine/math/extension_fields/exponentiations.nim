@@ -184,5 +184,5 @@ func powUnsafeExponent*[F; bits: static int](
   ## - power analysis
   ## - timing analysis
   var expBE {.noInit.}: array[(bits + 7) div 8, byte]
-  expBE.exportRawUint(exponent, bigEndian)
+  expBE.marshal(exponent, bigEndian)
   a.powUnsafeExponent(expBE, window)
