@@ -18,24 +18,6 @@ static:
   doAssert GCC_Compatible
   doAssert sizeof(int) == 8
 
-func unsafeDiv2n1n*(q, r: var Ct[uint64], n_hi, n_lo, d: Ct[uint64]) {.inline.}=
-  ## Division uint128 by uint64
-  ## Warning ⚠️ :
-  ##   - if n_hi == d, quotient does not fit in an uint64 and will throw SIGFPE on some platforms
-  ##   - if n_hi > d result is undefined
-  {.warning: "unsafeDiv2n1n is not constant-time at the moment on most hardware".}
-
-  var dblPrec {.noInit.}: uint128
-  {.emit:[dblPrec, " = (unsigned __int128)", n_hi," << 64 | (unsigned __int128)",n_lo,";"].}
-
-  # Don't forget to dereference the var param in C mode
-  when defined(cpp):
-    {.emit:[q, " = (NU64)(", dblPrec," / ", d, ");"].}
-    {.emit:[r, " = (NU64)(", dblPrec," % ", d, ");"].}
-  else:
-    {.emit:["*",q, " = (NU64)(", dblPrec," / ", d, ");"].}
-    {.emit:["*",r, " = (NU64)(", dblPrec," % ", d, ");"].}
-
 func mul*(hi, lo: var Ct[uint64], a, b: Ct[uint64]) {.inline.} =
   ## Extended precision multiplication
   ## (hi, lo) <- a*b

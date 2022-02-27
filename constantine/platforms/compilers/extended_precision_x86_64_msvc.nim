@@ -21,28 +21,10 @@ static:
   doAssert sizeof(int) == 8
   doAssert X86
 
-func udiv128(highDividend, lowDividend, divisor: Ct[uint64], remainder: var Ct[uint64]): Ct[uint64] {.importc:"_udiv128", header: "<intrin.h>", nodecl.}
-  ## Division 128 by 64, Microsoft only, 64-bit only,
-  ## returns quotient as return value remainder as var parameter
-  ## Warning ⚠️ :
-  ##   - if n_hi == d, quotient does not fit in an uint64 and will throw SIGFPE
-  ##   - if n_hi > d result is undefined
-
 func umul128(a, b: Ct[uint64], hi: var Ct[uint64]): Ct[uint64] {.importc:"_umul128", header:"<intrin.h>", nodecl.}
   ## Unsigned extended precision multiplication
   ## (hi, lo) <-- a * b
   ## Return value is the low word
-
-func unsafeDiv2n1n*(q, r: var Ct[uint64], n_hi, n_lo, d: Ct[uint64]) {.inline.}=
-    ## Division uint128 by uint64
-    ## Warning ⚠️ :
-    ##   - if n_hi == d, quotient does not fit in an uint64 and will throw SIGFPE
-    ##   - if n_hi > d result is undefined
-    {.warning: "unsafeDiv2n1n is not constant-time at the moment on most hardware".}
-
-    # TODO !!! - Replace by constant-time, portable, non-assembly version
-    #          -> use uint128? Compiler might add unwanted branches
-    q = udiv128(n_hi, n_lo, d, r)
 
 func mul*(hi, lo: var Ct[uint64], a, b: Ct[uint64]) {.inline.} =
   ## Extended precision multiplication
