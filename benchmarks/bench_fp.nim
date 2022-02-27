@@ -8,10 +8,10 @@
 
 import
   # Internals
-  ../constantine/backend/config/[curves, common],
-  ../constantine/backend/arithmetic,
-  ../constantine/backend/io/io_bigints,
-  ../constantine/backend/curves/zoo_square_roots,
+  ../constantine/math/config/curves,
+  ../constantine/math/arithmetic,
+  ../constantine/math/io/io_bigints,
+  ../constantine/math/curves/zoo_square_roots,
   # Helpers
   ../helpers/static_for,
   ./bench_fields_template
@@ -29,7 +29,7 @@ const AvailableCurves = [
   # P224,
   BN254_Nogami,
   BN254_Snarks,
-  Curve25519,
+  Edwards25519,
   Bandersnatch,
   P256,
   Secp256k1,

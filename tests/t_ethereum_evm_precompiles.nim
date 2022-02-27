@@ -10,11 +10,11 @@ import
   # Standard library
   std/[times, os, strutils, macros],
   # Status
-  stew/byteutils,
+  pkg/stew/byteutils,
   # 3rd party
-  jsony,
+  pkg/jsony,
   # Internals
-  ../constantine/backend/io/io_bigints,
+  ../constantine/math/io/io_bigints,
   ../constantine/ethereum_evm_precompiles
 
 type

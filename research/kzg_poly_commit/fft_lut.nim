@@ -8,9 +8,10 @@
 
 import
   std/macros,
-  ../../constantine/backend/config/[curves, common],
-  ../../constantine/backend/[arithmetic, primitives],
-  ../../constantine/backend/io/io_fields
+  ../../constantine/platforms/abstractions,
+  ../../constantine/math/config/curves,
+  ../../constantine/math/arithmetic,
+  ../../constantine/math/io/io_fields
 
 # TODO automate this
 # we can precompute everything in Sage

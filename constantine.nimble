@@ -1,7 +1,7 @@
 packageName   = "constantine"
 version       = "0.0.1"
 author        = "Status Research & Development GmbH"
-description   = "This library provides constant time big int primitives."
+description   = "This library provides thoroughly tested and highly-optimized implementations of cryptography protocols."
 license       = "MIT or Apache License 2.0"
 
 # Dependencies
@@ -23,166 +23,166 @@ const buildParallel = "test_parallel.txt"
 const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Primitives
   # ----------------------------------------------------------
-  ("tests/backend/t_primitives.nim", false),
-  ("tests/backend/t_primitives_extended_precision.nim", false),
+  ("tests/math/t_primitives.nim", false),
+  ("tests/math/t_primitives_extended_precision.nim", false),
   # Big ints
   # ----------------------------------------------------------
-  ("tests/backend/t_io_bigints.nim", false),
-  ("tests/backend/t_io_unsaturated.nim", false),
-  ("tests/backend/t_bigints.nim", false),
-  ("tests/backend/t_bigints_multimod.nim", false),
-  ("tests/backend/t_bigints_mod_vs_gmp.nim", true),
-  ("tests/backend/t_bigints_mul_vs_gmp.nim", true),
-  ("tests/backend/t_bigints_mul_high_words_vs_gmp.nim", true),
+  ("tests/math/t_io_bigints.nim", false),
+  ("tests/math/t_io_unsaturated.nim", false),
+  ("tests/math/t_bigints.nim", false),
+  ("tests/math/t_bigints_multimod.nim", false),
+  ("tests/math/t_bigints_mod_vs_gmp.nim", true),
+  ("tests/math/t_bigints_mul_vs_gmp.nim", true),
+  ("tests/math/t_bigints_mul_high_words_vs_gmp.nim", true),
   # Field
   # ----------------------------------------------------------
-  ("tests/backend/t_io_fields", false),
-  ("tests/backend/t_finite_fields.nim", false),
-  ("tests/backend/t_finite_fields_conditional_arithmetic.nim", false),
-  ("tests/backend/t_finite_fields_mulsquare.nim", false),
-  ("tests/backend/t_finite_fields_sqrt.nim", false),
-  ("tests/backend/t_finite_fields_powinv.nim", false),
-  ("tests/backend/t_finite_fields_vs_gmp.nim", true),
-  ("tests/backend/t_fp_cubic_root.nim", false),
+  ("tests/math/t_io_fields", false),
+  ("tests/math/t_finite_fields.nim", false),
+  ("tests/math/t_finite_fields_conditional_arithmetic.nim", false),
+  ("tests/math/t_finite_fields_mulsquare.nim", false),
+  ("tests/math/t_finite_fields_sqrt.nim", false),
+  ("tests/math/t_finite_fields_powinv.nim", false),
+  ("tests/math/t_finite_fields_vs_gmp.nim", true),
+  ("tests/math/t_fp_cubic_root.nim", false),
   # Double-precision finite fields
   # ----------------------------------------------------------
-  ("tests/backend/t_finite_fields_double_precision.nim", false),
+  ("tests/math/t_finite_fields_double_precision.nim", false),
   # Towers of extension fields
   # ----------------------------------------------------------
-  ("tests/backend/t_fp2.nim", false),
-  ("tests/backend/t_fp2_sqrt.nim", false),
-  ("tests/backend/t_fp4.nim", false),
-  ("tests/backend/t_fp6_bn254_snarks.nim", false),
-  ("tests/backend/t_fp6_bls12_377.nim", false),
-  ("tests/backend/t_fp6_bls12_381.nim", false),
-  ("tests/backend/t_fp6_bw6_761.nim", false),
-  ("tests/backend/t_fp12_bn254_snarks.nim", false),
-  ("tests/backend/t_fp12_bls12_377.nim", false),
-  ("tests/backend/t_fp12_bls12_381.nim", false),
-  ("tests/backend/t_fp12_exponentiation.nim", false),
-  ("tests/backend/t_fp12_anti_regression.nim", false),
+  ("tests/math/t_fp2.nim", false),
+  ("tests/math/t_fp2_sqrt.nim", false),
+  ("tests/math/t_fp4.nim", false),
+  ("tests/math/t_fp6_bn254_snarks.nim", false),
+  ("tests/math/t_fp6_bls12_377.nim", false),
+  ("tests/math/t_fp6_bls12_381.nim", false),
+  ("tests/math/t_fp6_bw6_761.nim", false),
+  ("tests/math/t_fp12_bn254_snarks.nim", false),
+  ("tests/math/t_fp12_bls12_377.nim", false),
+  ("tests/math/t_fp12_bls12_381.nim", false),
+  ("tests/math/t_fp12_exponentiation.nim", false),
+  ("tests/math/t_fp12_anti_regression.nim", false),
 
-  ("tests/backend/t_fp4_frobenius.nim", false),
-  ("tests/backend/t_fp6_frobenius.nim", false),
-  ("tests/backend/t_fp12_frobenius.nim", false),
+  ("tests/math/t_fp4_frobenius.nim", false),
+  ("tests/math/t_fp6_frobenius.nim", false),
+  ("tests/math/t_fp12_frobenius.nim", false),
 
   # Elliptic curve arithmetic 
   # ----------------------------------------------------------
-  ("tests/backend/t_ec_conversion.nim", false),
+  ("tests/math/t_ec_conversion.nim", false),
 
   # Elliptic curve arithmetic G1
   # ----------------------------------------------------------
-  # ("tests/backend/t_ec_shortw_prj_g1_add_double.nim", false),
-  # ("tests/backend/t_ec_shortw_prj_g1_mul_sanity.nim", false),
-  # ("tests/backend/t_ec_shortw_prj_g1_mul_distri.nim", false),
-  ("tests/backend/t_ec_shortw_prj_g1_mul_vs_ref.nim", false),
-  ("tests/backend/t_ec_shortw_prj_g1_mixed_add.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g1_add_double.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g1_mul_sanity.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g1_mul_distri.nim", false),
+  ("tests/math/t_ec_shortw_prj_g1_mul_vs_ref.nim", false),
+  ("tests/math/t_ec_shortw_prj_g1_mixed_add.nim", false),
 
-  # ("tests/backend/t_ec_shortw_jac_g1_add_double.nim", false),
-  # ("tests/backend/t_ec_shortw_jac_g1_mul_sanity.nim", false),
-  # ("tests/backend/t_ec_shortw_jac_g1_mul_distri.nim", false),
-  ("tests/backend/t_ec_shortw_jac_g1_mul_vs_ref.nim", false),
-  ("tests/backend/t_ec_shortw_jac_g1_mixed_add.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g1_add_double.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g1_mul_sanity.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g1_mul_distri.nim", false),
+  ("tests/math/t_ec_shortw_jac_g1_mul_vs_ref.nim", false),
+  ("tests/math/t_ec_shortw_jac_g1_mixed_add.nim", false),
 
-  ("tests/backend/t_ec_twedwards_prj_add_double", false),
-  ("tests/backend/t_ec_twedwards_prj_mul_sanity", false),
-  ("tests/backend/t_ec_twedwards_prj_mul_distri", false),
+  ("tests/math/t_ec_twedwards_prj_add_double", false),
+  ("tests/math/t_ec_twedwards_prj_mul_sanity", false),
+  ("tests/math/t_ec_twedwards_prj_mul_distri", false),
  
 
   # Elliptic curve arithmetic G2
   # ----------------------------------------------------------
-  # ("tests/backend/t_ec_shortw_prj_g2_add_double_bn254_snarks.nim", false),
-  # ("tests/backend/t_ec_shortw_prj_g2_mul_sanity_bn254_snarks.nim", false),
-  # ("tests/backend/t_ec_shortw_prj_g2_mul_distri_bn254_snarks.nim", false),
-  ("tests/backend/t_ec_shortw_prj_g2_mul_vs_ref_bn254_snarks.nim", false),
-  ("tests/backend/t_ec_shortw_prj_g2_mixed_add_bn254_snarks.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g2_add_double_bn254_snarks.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g2_mul_sanity_bn254_snarks.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g2_mul_distri_bn254_snarks.nim", false),
+  ("tests/math/t_ec_shortw_prj_g2_mul_vs_ref_bn254_snarks.nim", false),
+  ("tests/math/t_ec_shortw_prj_g2_mixed_add_bn254_snarks.nim", false),
 
-  # ("tests/backend/t_ec_shortw_prj_g2_add_double_bls12_381.nim", false),
-  # ("tests/backend/t_ec_shortw_prj_g2_mul_sanity_bls12_381.nim", false),
-  # ("tests/backend/t_ec_shortw_prj_g2_mul_distri_bls12_381.nim", false),
-  ("tests/backend/t_ec_shortw_prj_g2_mul_vs_ref_bls12_381.nim", false),
-  ("tests/backend/t_ec_shortw_prj_g2_mixed_add_bls12_381.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g2_add_double_bls12_381.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g2_mul_sanity_bls12_381.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g2_mul_distri_bls12_381.nim", false),
+  ("tests/math/t_ec_shortw_prj_g2_mul_vs_ref_bls12_381.nim", false),
+  ("tests/math/t_ec_shortw_prj_g2_mixed_add_bls12_381.nim", false),
 
-  # ("tests/backend/t_ec_shortw_prj_g2_add_double_bls12_377.nim", false),
-  # ("tests/backend/t_ec_shortw_prj_g2_mul_sanity_bls12_377.nim", false),
-  # ("tests/backend/t_ec_shortw_prj_g2_mul_distri_bls12_377.nim", false),
-  ("tests/backend/t_ec_shortw_prj_g2_mul_vs_ref_bls12_377.nim", false),
-  ("tests/backend/t_ec_shortw_prj_g2_mixed_add_bls12_377.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g2_add_double_bls12_377.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g2_mul_sanity_bls12_377.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g2_mul_distri_bls12_377.nim", false),
+  ("tests/math/t_ec_shortw_prj_g2_mul_vs_ref_bls12_377.nim", false),
+  ("tests/math/t_ec_shortw_prj_g2_mixed_add_bls12_377.nim", false),
 
-  # ("tests/backend/t_ec_shortw_prj_g2_add_double_bw6_761.nim", false),
-  # ("tests/backend/t_ec_shortw_prj_g2_mul_sanity_bw6_761.nim", false),
-  # ("tests/backend/t_ec_shortw_prj_g2_mul_distri_bw6_761.nim", false),
-  ("tests/backend/t_ec_shortw_prj_g2_mul_vs_ref_bw6_761.nim", false),
-  ("tests/backend/t_ec_shortw_prj_g2_mixed_add_bw6_761.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g2_add_double_bw6_761.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g2_mul_sanity_bw6_761.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g2_mul_distri_bw6_761.nim", false),
+  ("tests/math/t_ec_shortw_prj_g2_mul_vs_ref_bw6_761.nim", false),
+  ("tests/math/t_ec_shortw_prj_g2_mixed_add_bw6_761.nim", false),
 
-  # ("tests/backend/t_ec_shortw_jac_g2_add_double_bn254_snarks.nim", false),
-  # ("tests/backend/t_ec_shortw_jac_g2_mul_sanity_bn254_snarks.nim", false),
-  # ("tests/backend/t_ec_shortw_jac_g2_mul_distri_bn254_snarks.nim", false),
-  ("tests/backend/t_ec_shortw_jac_g2_mul_vs_ref_bn254_snarks.nim", false),
-  ("tests/backend/t_ec_shortw_jac_g2_mixed_add_bn254_snarks.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g2_add_double_bn254_snarks.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g2_mul_sanity_bn254_snarks.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g2_mul_distri_bn254_snarks.nim", false),
+  ("tests/math/t_ec_shortw_jac_g2_mul_vs_ref_bn254_snarks.nim", false),
+  ("tests/math/t_ec_shortw_jac_g2_mixed_add_bn254_snarks.nim", false),
 
-  # ("tests/backend/t_ec_shortw_jac_g2_add_double_bls12_381.nim", false),
-  # ("tests/backend/t_ec_shortw_jac_g2_mul_sanity_bls12_381.nim", false),
-  # ("tests/backend/t_ec_shortw_jac_g2_mul_distri_bls12_381.nim", false),
-  ("tests/backend/t_ec_shortw_jac_g2_mul_vs_ref_bls12_381.nim", false),
-  ("tests/backend/t_ec_shortw_jac_g2_mixed_add_bls12_381.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g2_add_double_bls12_381.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g2_mul_sanity_bls12_381.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g2_mul_distri_bls12_381.nim", false),
+  ("tests/math/t_ec_shortw_jac_g2_mul_vs_ref_bls12_381.nim", false),
+  ("tests/math/t_ec_shortw_jac_g2_mixed_add_bls12_381.nim", false),
 
-  # ("tests/backend/t_ec_shortw_jac_g2_add_double_bls12_377.nim", false),
-  # ("tests/backend/t_ec_shortw_jac_g2_mul_sanity_bls12_377.nim", false),
-  # ("tests/backend/t_ec_shortw_jac_g2_mul_distri_bls12_377.nim", false),
-  ("tests/backend/t_ec_shortw_jac_g2_mul_vs_ref_bls12_377.nim", false),
-  ("tests/backend/t_ec_shortw_jac_g2_mixed_add_bls12_377.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g2_add_double_bls12_377.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g2_mul_sanity_bls12_377.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g2_mul_distri_bls12_377.nim", false),
+  ("tests/math/t_ec_shortw_jac_g2_mul_vs_ref_bls12_377.nim", false),
+  ("tests/math/t_ec_shortw_jac_g2_mixed_add_bls12_377.nim", false),
 
-  # ("tests/backend/t_ec_shortw_jac_g2_add_double_bw6_761.nim", false),
-  # ("tests/backend/t_ec_shortw_jac_g2_mul_sanity_bw6_761.nim", false),
-  # ("tests/backend/t_ec_shortw_jac_g2_mul_distri_bw6_761.nim", false),
-  ("tests/backend/t_ec_shortw_jac_g2_mul_vs_ref_bw6_761.nim", false),
-  ("tests/backend/t_ec_shortw_jac_g2_mixed_add_bw6_761.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g2_add_double_bw6_761.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g2_mul_sanity_bw6_761.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g2_mul_distri_bw6_761.nim", false),
+  ("tests/math/t_ec_shortw_jac_g2_mul_vs_ref_bw6_761.nim", false),
+  ("tests/math/t_ec_shortw_jac_g2_mixed_add_bw6_761.nim", false),
 
   # Elliptic curve arithmetic vs Sagemath
   # ----------------------------------------------------------
-  ("tests/backend/t_ec_frobenius.nim", false),
-  ("tests/backend/t_ec_sage_bn254_nogami.nim", false),
-  ("tests/backend/t_ec_sage_bn254_snarks.nim", false),
-  ("tests/backend/t_ec_sage_bls12_377.nim", false),
-  ("tests/backend/t_ec_sage_bls12_381.nim", false),
+  ("tests/math/t_ec_frobenius.nim", false),
+  ("tests/math/t_ec_sage_bn254_nogami.nim", false),
+  ("tests/math/t_ec_sage_bn254_snarks.nim", false),
+  ("tests/math/t_ec_sage_bls12_377.nim", false),
+  ("tests/math/t_ec_sage_bls12_381.nim", false),
   # Edge cases highlighted by past bugs
   # ----------------------------------------------------------
-  ("tests/backend/t_ec_shortw_prj_edge_cases.nim", false),
+  ("tests/math/t_ec_shortw_prj_edge_cases.nim", false),
 
   # Subgroups and cofactors
   # ----------------------------------------------------------
-  ("tests/backend/t_ec_subgroups_bn254_nogami.nim", false),
-  ("tests/backend/t_ec_subgroups_bn254_snarks.nim", false),
-  ("tests/backend/t_ec_subgroups_bls12_377.nim", false),
-  ("tests/backend/t_ec_subgroups_bls12_381.nim", false),
+  ("tests/math/t_ec_subgroups_bn254_nogami.nim", false),
+  ("tests/math/t_ec_subgroups_bn254_snarks.nim", false),
+  ("tests/math/t_ec_subgroups_bls12_377.nim", false),
+  ("tests/math/t_ec_subgroups_bls12_381.nim", false),
 
-  ("tests/backend/t_pairing_bn254_nogami_gt_subgroup.nim", false),
-  ("tests/backend/t_pairing_bn254_snarks_gt_subgroup.nim", false),
-  ("tests/backend/t_pairing_bls12_377_gt_subgroup.nim", false),
-  ("tests/backend/t_pairing_bls12_381_gt_subgroup.nim", false),
-  ("tests/backend/t_pairing_bw6_761_gt_subgroup.nim", false),
+  ("tests/math/t_pairing_bn254_nogami_gt_subgroup.nim", false),
+  ("tests/math/t_pairing_bn254_snarks_gt_subgroup.nim", false),
+  ("tests/math/t_pairing_bls12_377_gt_subgroup.nim", false),
+  ("tests/math/t_pairing_bls12_381_gt_subgroup.nim", false),
+  ("tests/math/t_pairing_bw6_761_gt_subgroup.nim", false),
 
   # Pairing
   # ----------------------------------------------------------
-  # ("tests/backend/t_pairing_bls12_377_line_functions.nim", false),
-  # ("tests/backend/t_pairing_bls12_381_line_functions.nim", false),
-  ("tests/backend/t_pairing_mul_fp12_by_lines.nim", false),
-  ("tests/backend/t_pairing_cyclotomic_subgroup.nim", false),
-  ("tests/backend/t_pairing_bn254_nogami_optate.nim", false),
-  ("tests/backend/t_pairing_bn254_snarks_optate.nim", false),
-  ("tests/backend/t_pairing_bls12_377_optate.nim", false),
-  ("tests/backend/t_pairing_bls12_381_optate.nim", false),
-  ("tests/backend/t_pairing_bls12_381_multi.nim", false),
+  # ("tests/math/t_pairing_bls12_377_line_functions.nim", false),
+  # ("tests/math/t_pairing_bls12_381_line_functions.nim", false),
+  ("tests/math/t_pairing_mul_fp12_by_lines.nim", false),
+  ("tests/math/t_pairing_cyclotomic_subgroup.nim", false),
+  ("tests/math/t_pairing_bn254_nogami_optate.nim", false),
+  ("tests/math/t_pairing_bn254_snarks_optate.nim", false),
+  ("tests/math/t_pairing_bls12_377_optate.nim", false),
+  ("tests/math/t_pairing_bls12_381_optate.nim", false),
+  ("tests/math/t_pairing_bls12_381_multi.nim", false),
 
   # Hashing to elliptic curves
   # ----------------------------------------------------------
-  ("tests/backend/t_hash_to_field.nim", false),
-  ("tests/backend/t_hash_to_curve.nim", false),
+  ("tests/math/t_hash_to_field.nim", false),
+  ("tests/math/t_hash_to_curve.nim", false),
 
   # Prime order fields
   # ----------------------------------------------------------
-  ("tests/backend/t_fr.nim", false),
+  ("tests/math/t_fr.nim", false),
 
   # Hashing vs OpenSSL
   # ----------------------------------------------------------
@@ -196,20 +196,20 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
 
 # For temporary (hopefully) investigation that can only be reproduced in CI
 const useDebug = [
-  "tests/backend/t_bigints.nim",
-  "tests/backend/t_hash_sha256_vs_openssl.nim",
+  "tests/math/t_bigints.nim",
+  "tests/math/t_hash_sha256_vs_openssl.nim",
 ]
 
 # Tests that uses sequences require Nim GC, stack scanning and nil pointer passed to openarray
 # In particular the tests that uses the json test vectors, don't sanitize them.
 # we do use gc:none to help
 const skipSanitizers = [
-  "tests/backend/t_ec_sage_bn254_nogami.nim",
-  "tests/backend/t_ec_sage_bn254_snarks.nim",
-  "tests/backend/t_ec_sage_bls12_377.nim",
-  "tests/backend/t_ec_sage_bls12_381.nim",
-  "tests/backend/t_hash_to_field.nim",
-  "tests/backend/t_hash_to_curve.nim"
+  "tests/math/t_ec_sage_bn254_nogami.nim",
+  "tests/math/t_ec_sage_bn254_snarks.nim",
+  "tests/math/t_ec_sage_bls12_377.nim",
+  "tests/math/t_ec_sage_bls12_381.nim",
+  "tests/math/t_hash_to_field.nim",
+  "tests/math/t_hash_to_curve.nim"
 ]
 
 when defined(windows):

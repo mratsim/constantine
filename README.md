@@ -66,7 +66,7 @@ After [installation](#installation), the available high-level protocols are:
 _The backend, unlike protocols, is not public. Here be dragons._
 
 At the moment the following curves are implemented, adding a new curve only requires adding the prime modulus
-and its bitsize in [constantine/config/curves.nim](constantine/backend/config/curves_declaration.nim).
+and its bitsize in [constantine/config/curves.nim](constantine/math/config/curves_declaration.nim).
 
 The following curves are configured:
 
@@ -81,7 +81,7 @@ The following curves are configured:
   - Jubjub, a curve embedded in BLS12-381 scalar field to be used in zk-SNARKS circuits.
   - Bandersnatch, a more efficient curve embedded in BLS12-381 scalar field to be used in zk-SNARKS circuits.
 - Other curves
-  - Curve25519, used in ed25519 and X25519 from TLS 1.3 protocol and the Signal protocol.
+  - Edwards25519, used in ed25519 and X25519 from TLS 1.3 protocol and the Signal protocol.
   With Ristretto, it can be used in bulletproofs.
 
 ## Installation

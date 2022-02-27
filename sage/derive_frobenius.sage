@@ -279,15 +279,15 @@ if __name__ == "__main__":
         f.write(inspect.cleandoc("""
           import
             ../config/curves,
-            ../towers,
-            ../io/io_towers
+            ../extension_fields,
+            ../io/io_extfields
         """))
       else:
         f.write(inspect.cleandoc("""
           import
-            ../config/[curves, type_ff],
-            ../towers,
-            ../io/[io_fields, io_towers]
+            ../config/curves,
+            ../extension_fields,
+            ../io/[io_fields, io_extfields]
         """))
       f.write('\n\n')
       f.write(FrobMap)

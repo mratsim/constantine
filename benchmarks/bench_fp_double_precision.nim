@@ -14,9 +14,10 @@
 
 import
   # Internals
-  ../constantine/backend/config/[curves, common],
-  ../constantine/backend/arithmetic,
-  ../constantine/backend/towers,
+  ../constantine/platforms/abstractions,
+  ../constantine/math/config/curves,
+  ../constantine/math/arithmetic,
+  ../constantine/math/extension_fields,
   # Helpers
   ../helpers/[prng_unsafe, static_for],
   ./platforms,

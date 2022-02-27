@@ -7,24 +7,21 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-    ./backend/config/[
-      common, curves, type_bigint, type_ff
-    ],
-    ./backend/[
+    ./platforms/abstractions,
+    ./math/config/curves,
+    ./math/[
       ec_shortweierstrass,
-      hash_to_curve/hash_to_curve,
-      hashes,
-      towers,
+      extension_fields,
       arithmetic,
-      signatures/bls_signatures,
-      curves/zoo_subgroups,
-      primitives
+      curves/zoo_subgroups
     ],
-    ./backend/io/[io_bigints, io_fields]
+    ./math/io/[io_bigints, io_fields],
+    hashes,
+    signatures/bls_signatures
 
 export
   curves, # generic sandwich on matchingBigInt
-  towers, # generic sandwich on extension field access
+  extension_fields, # generic sandwich on extension field access
   hashes, # generic sandwich on sha256
   ec_shortweierstrass # generic sandwich on affine
 
