@@ -389,11 +389,13 @@ func nativeEndianToHex(bytes: openarray[byte], order: static[Endianness]): strin
   result[1] = 'x'
   for i in 0 ..< bytes.len:
     when order == system.cpuEndian:
-      result[2 + 2*i] = hexChars[int bytes[i] shr 4 and 0xF]
-      result[2 + 2*i+1] = hexChars[int bytes[i] and 0xF]
+      let bi = bytes[i]
+      result[2 + 2*i] = hexChars.secretLookup(SecretWord bi shr 4 and 0xF)
+      result[2 + 2*i+1] = hexChars.secretLookup(SecretWord bi and 0xF)
     else:
-      result[2 + 2*i] = hexChars[int bytes[bytes.high - i] shr 4 and 0xF]
-      result[2 + 2*i+1] = hexChars[int bytes[bytes.high - i] and 0xF]
+      let bmi = bytes[bytes.high - i]
+      result[2 + 2*i] = hexChars.secretLookup(SecretWord bmi shr 4 and 0xF)
+      result[2 + 2*i+1] = hexChars.secretLookup(SecretWord bmi and 0xF)
 
 # ############################################################
 #

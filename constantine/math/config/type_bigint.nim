@@ -29,19 +29,23 @@ type
 
 
 debug:
-  import std/strutils
+  func toHex*(a: SecretWord): string =
+    const hexChars = "0123456789abcdef"
+    const L = 2*sizeof(SecretWord)
+    result = newString(2 + L)
+    result[0] = '0'
+    result[1] = 'x'
+    var a = a
+    for j in countdown(L-1, 0):
+      result[j] = hexChars.secretLookup(a and SecretWord 0xF)
+      a = a shr 4
 
   func toString*(a: Limbs): string =
     result = "["
-    result.add " 0x" & toHex(BaseType(a[0]))
+    result.add " " & toHex(a[0])
     for i in 1 ..< a.len:
-      result.add ", 0x" & toHex(BaseType(a[i]))
+      result.add ", " & toHex(a[i])
     result.add "])"
-
-  func toHex*(a: Limbs): string =
-    result = "0x"
-    for i in countdown(a.len-1, 0):
-      result.add toHex(BaseType(a[i]))
 
   func `$`*(a: BigInt): string =
     result = "BigInt["

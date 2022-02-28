@@ -188,6 +188,22 @@ template trmFixSystemNotEq*{x != y}[T: Ct](x, y: T): CTBool[T] =
 
 # ############################################################
 #
+#                       Table lookups
+#
+# ############################################################
+
+func secretLookup*[T; S: Ct](table: openArray[T], index: S): T =
+  ## Return table[index]
+  ## This is constant-time, whatever the `index`, its value is not leaked
+  ## This is also protected against cache-timing attack by always scanning the whole table
+  var val: S
+  for i in 0 ..< table.len:
+    let selector = S(i) == index
+    selector.ccopy(val, S table[i])
+  return T(val)
+
+# ############################################################
+#
 #             Optimized hardened zero comparison
 #
 # ############################################################
