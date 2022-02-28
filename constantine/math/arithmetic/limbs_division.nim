@@ -165,7 +165,7 @@ func shlAddMod_estimate(a: LimbsViewMut, aLen: int,
   # Get a quotient q, at most we will be 2 iterations off
   # from the true quotient
   var q, r: SecretWord
-  unsafeDiv2n1n(q, r, a0, a1, m0)                # Estimate quotient
+  div2n1n(q, r, a0, a1, m0)                      # Estimate quotient
   q = mux(                                       # If n_hi == divisor
         a0 == m0, MaxWord,                       # Quotient == MaxWord (0b1111...1111)
         mux(
@@ -226,7 +226,7 @@ func shlAddMod(a: LimbsViewMut, aLen: int,
     let m0 = M[0] shl (WordBitWidth-R)
 
     var q, r: SecretWord
-    unsafeDiv2n1n(q, r, hi, lo, m0)  # (hi, lo) mod M
+    div2n1n(q, r, hi, lo, m0)  # (hi, lo) mod M
 
     a[0] = r shr (WordBitWidth-R)
 

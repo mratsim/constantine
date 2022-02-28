@@ -43,7 +43,7 @@ proc main() =
         r.prod(n, n)
 
         var r_bytes: array[8, byte]
-        r_bytes.exportRawUint(r, cpuEndian)
+        r_bytes.marshal(r, cpuEndian)
         let rU64 = cast[uint64](r_bytes)
 
         check:
@@ -61,7 +61,7 @@ proc main() =
         n.pow(exponent)
 
         var n_bytes: array[8, byte]
-        n_bytes.exportRawUint(n, cpuEndian)
+        n_bytes.marshal(n, cpuEndian)
         let r = cast[uint64](n_bytes)
 
         check:
@@ -79,7 +79,7 @@ proc main() =
         n.pow(exponent)
 
         var n_bytes: array[8, byte]
-        n_bytes.exportRawUint(n, cpuEndian)
+        n_bytes.marshal(n, cpuEndian)
         let r = cast[uint64](n_bytes)
 
         check:
@@ -97,7 +97,7 @@ proc main() =
         n.pow(exponent)
 
         var n_bytes: array[8, byte]
-        n_bytes.exportRawUint(n, cpuEndian)
+        n_bytes.marshal(n, cpuEndian)
         let r = cast[uint64](n_bytes)
 
         check:
@@ -115,7 +115,7 @@ proc main() =
         n.pow(exponent)
 
         var n_bytes: array[8, byte]
-        n_bytes.exportRawUint(n, cpuEndian)
+        n_bytes.marshal(n, cpuEndian)
         let r = cast[uint64](n_bytes)
 
         check:

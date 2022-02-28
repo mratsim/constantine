@@ -211,9 +211,9 @@ func random_long01Seq(rng: var RngState, a: var BigInt) =
   rng.random_long01Seq(buf)
   let order = rng.sample_unsafe([bigEndian, littleEndian])
   if order == bigEndian:
-    a.fromRawUint(buf, bigEndian)
+    a.unmarshal(buf, bigEndian)
   else:
-    a.fromRawUint(buf, littleEndian)
+    a.unmarshal(buf, littleEndian)
 
 func random_long01Seq(rng: var RngState, a: var FF) =
   ## Recursively initialize a BigInt (part of a field) or Field element

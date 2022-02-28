@@ -25,13 +25,13 @@ proc mainArith() =
       check: x.isZero().bool
     test "isZero for non-zero":
       block:
-        let x = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
+        let x = fromHex(BigInt[128], "0x00000000000000000000000000000001")
         check: not x.isZero().bool
       block:
-        let x = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000000")
+        let x = fromHex(BigInt[128], "0x00000000000000010000000000000000")
         check: not x.isZero().bool
       block:
-        let x = fromHex(BigInt[128], "0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF")
+        let x = fromHex(BigInt[128], "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
         check: not x.isZero().bool
 
     test "isZero for zero (compile-time)":
@@ -39,53 +39,53 @@ proc mainArith() =
       check: static(x.isZero().bool)
     test "isZero for non-zero (compile-time)":
       block:
-        const x = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
+        const x = fromHex(BigInt[128], "0x00000000000000000000000000000001")
         check: static(not x.isZero().bool)
       block:
-        const x = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000000")
+        const x = fromHex(BigInt[128], "0x00000000000000010000000000000000")
         check: static(not x.isZero().bool)
       block:
-        const x = fromHex(BigInt[128], "0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF")
+        const x = fromHex(BigInt[128], "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
         check: static(not x.isZero().bool)
 
 
   suite "Arithmetic operations - Addition" & " [" & $WordBitwidth & "-bit mode]":
     test "Adding 2 zeros":
-      var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
-      let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
+      var a = fromHex(BigInt[128], "0x00000000000000000000000000000000")
+      let b = fromHex(BigInt[128], "0x00000000000000000000000000000000")
       let carry = a.cadd(b, CtTrue)
       check: a.isZero().bool
 
     test "Adding 1 zero - real addition":
       block:
-        var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
-        let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
+        var a = fromHex(BigInt[128], "0x00000000000000000000000000000000")
+        let b = fromHex(BigInt[128], "0x00000000000000000000000000000001")
         let carry = a.cadd(b, CtTrue)
 
-        let c = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
+        let c = fromHex(BigInt[128], "0x00000000000000000000000000000001")
         check:
           bool(a == c)
       block:
-        var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
-        let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
+        var a = fromHex(BigInt[128], "0x00000000000000000000000000000001")
+        let b = fromHex(BigInt[128], "0x00000000000000000000000000000000")
         let carry = a.cadd(b, CtTrue)
 
-        let c = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
+        let c = fromHex(BigInt[128], "0x00000000000000000000000000000001")
         check:
           bool(a == c)
 
     test "Adding 1 zero - fake addition":
       block:
-        var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
-        let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
+        var a = fromHex(BigInt[128], "0x00000000000000000000000000000000")
+        let b = fromHex(BigInt[128], "0x00000000000000000000000000000001")
         let carry = a.cadd(b, CtFalse)
 
         let c = a
         check:
           bool(a == c)
       block:
-        var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
-        let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
+        var a = fromHex(BigInt[128], "0x00000000000000000000000000000001")
+        let b = fromHex(BigInt[128], "0x00000000000000000000000000000000")
         let carry = a.cadd(b, CtFalse)
 
         let c = a
@@ -94,34 +94,34 @@ proc mainArith() =
 
     test "Adding non-zeros - real addition":
       block:
-        var a = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000000")
-        let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
+        var a = fromHex(BigInt[128], "0x00000000000000010000000000000000")
+        let b = fromHex(BigInt[128], "0x00000000000000000000000000000001")
         let carry = a.cadd(b, CtTrue)
 
-        let c = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000001")
+        let c = fromHex(BigInt[128], "0x00000000000000010000000000000001")
         check:
           bool(a == c)
       block:
-        var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
-        let b = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000000")
+        var a = fromHex(BigInt[128], "0x00000000000000000000000000000001")
+        let b = fromHex(BigInt[128], "0x00000000000000010000000000000000")
         let carry = a.cadd(b, CtTrue)
 
-        let c = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000001")
+        let c = fromHex(BigInt[128], "0x00000000000000010000000000000001")
         check:
           bool(a == c)
 
     test "Adding non-zeros - fake addition":
       block:
-        var a = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000000")
-        let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
+        var a = fromHex(BigInt[128], "0x00000000000000010000000000000000")
+        let b = fromHex(BigInt[128], "0x00000000000000000000000000000001")
         let carry = a.cadd(b, CtFalse)
 
         let c = a
         check:
           bool(a == c)
       block:
-        var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
-        let b = fromHex(BigInt[128], "0x00000000_00000001_00000000_00000000")
+        var a = fromHex(BigInt[128], "0x00000000000000000000000000000001")
+        let b = fromHex(BigInt[128], "0x00000000000000010000000000000000")
         let carry = a.cadd(b, CtFalse)
 
         let c = a
@@ -130,21 +130,21 @@ proc mainArith() =
 
     test "Addition limbs carry":
       block:
-        var a = fromHex(BigInt[128], "0x00000000_FFFFFFFF_FFFFFFFF_FFFFFFFE")
-        let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
+        var a = fromHex(BigInt[128], "0x00000000FFFFFFFFFFFFFFFFFFFFFFFE")
+        let b = fromHex(BigInt[128], "0x00000000000000000000000000000001")
         let carry = a.cadd(b, CtTrue)
 
-        let c = fromHex(BigInt[128], "0x00000000_FFFFFFFF_FFFFFFFF_FFFFFFFF")
+        let c = fromHex(BigInt[128], "0x00000000FFFFFFFFFFFFFFFFFFFFFFFF")
         check:
           bool(a == c)
           not bool(carry)
 
       block:
-        var a = fromHex(BigInt[128], "0x00000000_FFFFFFFF_FFFFFFFF_FFFFFFFF")
-        let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
+        var a = fromHex(BigInt[128], "0x00000000FFFFFFFFFFFFFFFFFFFFFFFF")
+        let b = fromHex(BigInt[128], "0x00000000000000000000000000000001")
         let carry = a.cadd(b, CtTrue)
 
-        let c = fromHex(BigInt[128], "0x00000001_00000000_00000000_00000000")
+        let c = fromHex(BigInt[128], "0x00000001000000000000000000000000")
         check:
           bool(a == c)
           not bool(carry)
@@ -164,8 +164,8 @@ proc mainMul() =
     test "Same size operand into double size result":
       block:
         var r = canary(BigInt[256])
-        let a = BigInt[128].fromHex"0x12345678_FF11FFAA_00321321_CAFECAFE"
-        let b = BigInt[128].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF"
+        let a = BigInt[128].fromHex"0x12345678FF11FFAA00321321CAFECAFE"
+        let b = BigInt[128].fromHex"0xDEADBEEFDEADBEEFDEADBEEFDEADBEEF"
 
         let expected = BigInt[256].fromHex"fd5bdef43d64113f371ab5d8843beca889c07fd549b84d8a5001a8f102e0722"
 
@@ -178,7 +178,7 @@ proc mainMul() =
       block:
         var r = canary(BigInt[200])
         let a = BigInt[29].fromHex"0x12345678"
-        let b = BigInt[128].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF"
+        let b = BigInt[128].fromHex"0xDEADBEEFDEADBEEFDEADBEEFDEADBEEF"
 
         let expected = BigInt[200].fromHex"fd5bdee65f787f665f787f665f787f65621ca08"
 
@@ -189,9 +189,9 @@ proc mainMul() =
 
     test "Destination is properly zero-padded if multiplicands are too short":
       block:
-        var r = BigInt[200].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF_DE"
+        var r = BigInt[200].fromHex"0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDE"
         let a = BigInt[29].fromHex"0x12345678"
-        let b = BigInt[128].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF"
+        let b = BigInt[128].fromHex"0xDEADBEEFDEADBEEFDEADBEEFDEADBEEF"
 
         let expected = BigInt[200].fromHex"fd5bdee65f787f665f787f665f787f65621ca08"
 
@@ -205,108 +205,108 @@ proc mainMulHigh() =
     test "Same size operand into double size result - discard first word":
       block:
         var r = canary(BigInt[256])
-        let a = BigInt[128].fromHex"0x12345678_FF11FFAA_00321321_CAFECAFE"
-        let b = BigInt[128].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF"
+        let a = BigInt[128].fromHex"0x12345678FF11FFAA00321321CAFECAFE"
+        let b = BigInt[128].fromHex"0xDEADBEEFDEADBEEFDEADBEEFDEADBEEF"
 
         when WordBitWidth == 32:
           let expected = BigInt[256].fromHex"fd5bdef43d64113f371ab5d8843beca889c07fd549b84d8a5001a8f"
         else:
           let expected = BigInt[256].fromHex"fd5bdef43d64113f371ab5d8843beca889c07fd549b84d8"
 
-        r.prod_high_words(a, b, 1)
+        r.prodhighwords(a, b, 1)
         check: bool(r == expected)
-        r.prod_high_words(b, a, 1)
+        r.prodhighwords(b, a, 1)
         check: bool(r == expected)
 
     test "Same size operand into double size result - discard first 3 words":
       block:
         var r = canary(BigInt[256])
-        let a = BigInt[128].fromHex"0x12345678_FF11FFAA_00321321_CAFECAFE"
-        let b = BigInt[128].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF"
+        let a = BigInt[128].fromHex"0x12345678FF11FFAA00321321CAFECAFE"
+        let b = BigInt[128].fromHex"0xDEADBEEFDEADBEEFDEADBEEFDEADBEEF"
 
         when WordBitWidth == 32:
           let expected = BigInt[256].fromHex"fd5bdef43d64113f371ab5d8843beca889c07fd"
         else:
           let expected = BigInt[256].fromHex"fd5bdef43d64113"
 
-        r.prod_high_words(a, b, 3)
+        r.prodhighwords(a, b, 3)
         check: bool(r == expected)
-        r.prod_high_words(b, a, 3)
+        r.prodhighwords(b, a, 3)
         check: bool(r == expected)
 
     test "All lower words trigger a carry":
       block:
         var r = canary(BigInt[256])
-        let a = BigInt[256].fromHex"0xFFFFF000_FFFFF111_FFFFFFFA_FFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF"
-        let b = BigInt[256].fromHex"0xFFFFFFFF_FFFFF222_FFFFFFFB_FFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF"
+        let a = BigInt[256].fromHex"0xFFFFF000FFFFF111FFFFFFFAFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+        let b = BigInt[256].fromHex"0xFFFFFFFFFFFFF222FFFFFFFBFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
 
         # Full product:
-        # fffff000_ffffe335_00ddc21a_00cf3972_00008109_00000013_ffffffff_fffffffe
-        # 00000fff_00001ccb_00000009_00000000_00000000_00000000_00000000_00000001
-        let expected = BigInt[256].fromHex"0xfffff000_ffffe335_00ddc21a_00cf3972_00008109_00000013_ffffffff_fffffffe"
+        # fffff000ffffe33500ddc21a00cf39720000810900000013fffffffffffffffe
+        # 00000fff00001ccb000000090000000000000000000000000000000000000001
+        let expected = BigInt[256].fromHex"0xfffff000ffffe33500ddc21a00cf39720000810900000013fffffffffffffffe"
         when WordBitWidth == 32:
           const startWord = 8
         else:
           const startWord = 4
 
-        r.prod_high_words(a, b, startWord)
+        r.prodhighwords(a, b, startWord)
         check: bool(r == expected)
-        r.prod_high_words(b, a, startWord)
+        r.prodhighwords(b, a, startWord)
         check: bool(r == expected)
 
     test "Different size into large result":
       block:
         var r = canary(BigInt[200])
         let a = BigInt[29].fromHex"0x12345678"
-        let b = BigInt[128].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF"
+        let b = BigInt[128].fromHex"0xDEADBEEFDEADBEEFDEADBEEFDEADBEEF"
 
         when WordBitWidth == 32:
           let expected = BigInt[200].fromHex"fd5bdee65f787f665f787f6"
         else:
           let expected = BigInt[200].fromHex"fd5bdee"
 
-        r.prod_high_words(a, b, 2)
+        r.prodhighwords(a, b, 2)
         check: bool(r == expected)
-        r.prod_high_words(b, a, 2)
+        r.prodhighwords(b, a, 2)
         check: bool(r == expected)
 
     test "Destination is properly zero-padded if multiplicands are too short":
       block:
-        var r = BigInt[200].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF_DE"
+        var r = BigInt[200].fromHex"0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDE"
         let a = BigInt[29].fromHex"0x12345678"
-        let b = BigInt[128].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF"
+        let b = BigInt[128].fromHex"0xDEADBEEFDEADBEEFDEADBEEFDEADBEEF"
 
         when WordBitWidth == 32:
           let expected = BigInt[200].fromHex"fd5bdee65f787f665f787f6"
         else:
           let expected = BigInt[200].fromHex"fd5bdee"
 
-        r.prod_high_words(a, b, 2)
+        r.prodhighwords(a, b, 2)
         check: bool(r == expected)
-        r.prod_high_words(b, a, 2)
+        r.prodhighwords(b, a, 2)
         check: bool(r == expected)
 
 proc mainSquare() =
   suite "Multi-precision multiplication" & " [" & $WordBitwidth & "-bit mode]":
     test "Squaring is consistent with multiplication (rBits = 2*aBits)":
       block:
-        let a = BigInt[200].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF_DE"
+        let a = BigInt[200].fromHex"0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDE"
 
-        var r_mul, r_sqr: BigInt[400]
+        var rmul, rsqr: BigInt[400]
 
-        r_mul.prod(a, a)
-        r_sqr.square(a)
-        check: bool(r_mul == r_sqr)
+        rmul.prod(a, a)
+        rsqr.square(a)
+        check: bool(rmul == rsqr)
 
     test "Squaring is consistent with multiplication (truncated)":
       block:
-        let a = BigInt[200].fromHex"0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF_DE"
+        let a = BigInt[200].fromHex"0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDE"
 
-        var r_mul, r_sqr: BigInt[256]
+        var rmul, rsqr: BigInt[256]
 
-        r_mul.prod(a, a)
-        r_sqr.square(a)
-        check: bool(r_mul == r_sqr)
+        rmul.prod(a, a)
+        rsqr.square(a)
+        check: bool(rmul == rsqr)
 
 proc mainModular() =
   suite "Modular operations - small modulus" & " [" & $WordBitwidth & "-bit mode]":
@@ -347,7 +347,7 @@ proc mainModular() =
           "\n  expected (ll repr): " & $expected
 
     test "2^64 mod 3":
-      let a = BigInt[65].fromHex("0x1_00000000_00000000")
+      let a = BigInt[65].fromHex("0x10000000000000000")
       let m = BigInt[8].fromUint(3'u8)
 
       var r = canary(BigInt[8])
@@ -404,8 +404,8 @@ proc mainNeg() =
   suite "Conditional negation" & " [" & $WordBitwidth & "-bit mode]":
     test "Conditional negation":
       block:
-        var a = fromHex(BigInt[128], "0x12345678_FF11FFAA_00321321_CAFECAFE")
-        var b = fromHex(BigInt[128], "0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF")
+        var a = fromHex(BigInt[128], "0x12345678FF11FFAA00321321CAFECAFE")
+        var b = fromHex(BigInt[128], "0xDEADBEEFDEADBEEFDEADBEEFDEADBEEF")
 
         let a2 = a
         let b2 = b
@@ -421,8 +421,8 @@ proc mainNeg() =
           bool(b.isZero)
 
       block:
-        var a = fromHex(BigInt[128], "0x12345678_FF11FFAA_00321321_CAFECAFE")
-        var b = fromHex(BigInt[128], "0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF")
+        var a = fromHex(BigInt[128], "0x12345678FF11FFAA00321321CAFECAFE")
+        var b = fromHex(BigInt[128], "0xDEADBEEFDEADBEEFDEADBEEFDEADBEEF")
 
         let a2 = a
         let b2 = b
@@ -436,8 +436,8 @@ proc mainNeg() =
 
     test "Conditional negation with carries":
       block:
-        var a = fromHex(BigInt[128], "0x12345678_FF11FFAA_00321321_FFFFFFFF")
-        var b = fromHex(BigInt[128], "0xFFFFFFFF_FFFFFFFF_00000000_00000000")
+        var a = fromHex(BigInt[128], "0x12345678FF11FFAA00321321FFFFFFFF")
+        var b = fromHex(BigInt[128], "0xFFFFFFFFFFFFFFFF0000000000000000")
 
         let a2 = a
         let b2 = b
@@ -453,8 +453,8 @@ proc mainNeg() =
           bool(b.isZero)
 
       block:
-        var a = fromHex(BigInt[128], "0x12345678_00000000_00321321_FFFFFFFF")
-        var b = fromHex(BigInt[128], "0xFFFFFFFF_FFFFFFFF_00000000_00000000")
+        var a = fromHex(BigInt[128], "0x123456780000000000321321FFFFFFFF")
+        var b = fromHex(BigInt[128], "0xFFFFFFFFFFFFFFFF0000000000000000")
 
         let a2 = a
         let b2 = b
@@ -468,8 +468,8 @@ proc mainNeg() =
 
     test "Conditional all-zero bit or all-one bit":
       block:
-        var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
-        var b = fromHex(BigInt[128], "0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF")
+        var a = fromHex(BigInt[128], "0x00000000000000000000000000000000")
+        var b = fromHex(BigInt[128], "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
 
         let a2 = a
         let b2 = b
@@ -485,8 +485,8 @@ proc mainNeg() =
           bool(b.isZero)
 
       block:
-        var a = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000000")
-        var b = fromHex(BigInt[128], "0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF")
+        var a = fromHex(BigInt[128], "0x00000000000000000000000000000000")
+        var b = fromHex(BigInt[128], "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
 
         let a2 = a
         let b2 = b
@@ -502,8 +502,8 @@ proc mainCopySwap() =
   suite "Copy and Swap" & " [" & $WordBitwidth & "-bit mode]":
     test "Conditional copy":
       block:
-        var a = fromHex(BigInt[128], "0x12345678_FF11FFAA_00321321_CAFECAFE")
-        let b = fromHex(BigInt[128], "0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF")
+        var a = fromHex(BigInt[128], "0x12345678FF11FFAA00321321CAFECAFE")
+        let b = fromHex(BigInt[128], "0xDEADBEEFDEADBEEFDEADBEEFDEADBEEF")
 
         var expected = a
         a.ccopy(b, CtFalse)
@@ -511,8 +511,8 @@ proc mainCopySwap() =
         check: bool(expected == a)
 
       block:
-        var a = fromHex(BigInt[128], "0x00000000_FFFFFFFF_FFFFFFFF_FFFFFFFF")
-        let b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
+        var a = fromHex(BigInt[128], "0x00000000FFFFFFFFFFFFFFFFFFFFFFFF")
+        let b = fromHex(BigInt[128], "0x00000000000000000000000000000001")
 
         var expected = b
         a.ccopy(b, CtTrue)
@@ -521,8 +521,8 @@ proc mainCopySwap() =
 
     test "Conditional swap":
       block:
-        var a = fromHex(BigInt[128], "0x12345678_FF11FFAA_00321321_CAFECAFE")
-        var b = fromHex(BigInt[128], "0xDEADBEEF_DEADBEEF_DEADBEEF_DEADBEEF")
+        var a = fromHex(BigInt[128], "0x12345678FF11FFAA00321321CAFECAFE")
+        var b = fromHex(BigInt[128], "0xDEADBEEFDEADBEEFDEADBEEFDEADBEEF")
 
         let eA = a
         let eB = b
@@ -533,8 +533,8 @@ proc mainCopySwap() =
           bool(eB == b)
 
       block:
-        var a = fromHex(BigInt[128], "0x00000000_FFFFFFFF_FFFFFFFF_FFFFFFFF")
-        var b = fromHex(BigInt[128], "0x00000000_00000000_00000000_00000001")
+        var a = fromHex(BigInt[128], "0x00000000FFFFFFFFFFFFFFFFFFFFFFFF")
+        var b = fromHex(BigInt[128], "0x00000000000000000000000000000001")
 
         let eA = b
         let eB = a
@@ -548,7 +548,7 @@ proc mainModularInverse() =
   suite "Modular Inverse (with odd modulus)" & " [" & $WordBitwidth & "-bit mode]":
     # Note: We don't define multi-precision multiplication
     #       because who needs it when you have Montgomery?
-    #       ¯\_(ツ)_/¯
+    #       ¯\(ツ)/¯
     test "42^-1 (mod 2017) = 1969":
       block: # small int
         let a = BigInt[16].fromUint(42'u16)

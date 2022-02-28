@@ -367,7 +367,7 @@ func div10*(a: var Limbs): SecretWord =
     # Normalize
     hi = (hi shl clz) or (lo shr (WordBitWidth - clz))
     lo = lo shl clz
-    unsafeDiv2n1n(a[i], result, hi, lo, norm10)
+    div2n1n(a[i], result, hi, lo, norm10)
     # Undo normalization
     result = result shr clz
 

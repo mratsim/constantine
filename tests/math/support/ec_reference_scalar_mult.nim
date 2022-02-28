@@ -37,7 +37,7 @@ func unsafe_ECmul_double_add*[EC](
   ##
   ## This is highly VULNERABLE to timing attacks and power analysis attacks
   var scalarCanonical: array[(scalar.bits+7) div 8, byte]
-  scalarCanonical.exportRawUint(scalar, bigEndian)
+  scalarCanonical.marshal(scalar, bigEndian)
 
   var t0{.noInit.}, t1{.noInit.}: typeof(P)
   t0.setInf()

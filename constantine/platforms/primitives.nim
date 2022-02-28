@@ -10,7 +10,8 @@ import
   constant_time/[
     ct_types,
     ct_routines,
-    multiplexers
+    multiplexers,
+    ct_division
   ],
   compilers/[
     addcarry_subborrow,
@@ -25,6 +26,7 @@ export
   multiplexers,
   addcarry_subborrow,
   extended_precision,
+  ct_division,
   bithacks,
   staticFor
 

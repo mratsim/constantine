@@ -661,7 +661,7 @@ func powMont*(
   ## - On input ``a`` is the base, on ``output`` a = a^exponent (mod M)
   ##   ``a`` is in the Montgomery domain
   ## - ``exponent`` is the exponent in big-endian canonical format (octet-string)
-  ##   Use ``exportRawUint`` for conversion
+  ##   Use ``marshal`` for conversion
   ## - ``M`` is the modulus
   ## - ``one`` is 1 (mod M) in montgomery representation
   ## - ``m0ninv`` is the montgomery magic constant "-1/M[0] mod 2^WordBitWidth"

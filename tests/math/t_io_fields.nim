@@ -32,7 +32,7 @@ proc main() =
         f.fromUint(x)
 
         var r_bytes: array[sizeof(BaseType), byte]
-        exportRawUint(r_bytes, f, littleEndian)
+        marshal(r_bytes, f, littleEndian)
         check: x_bytes == r_bytes
 
       block:
@@ -43,7 +43,7 @@ proc main() =
         f.fromUint(x)
 
         var r_bytes: array[sizeof(BaseType), byte]
-        exportRawUint(r_bytes, f, littleEndian)
+        marshal(r_bytes, f, littleEndian)
         check: x_bytes == r_bytes
 
       # Mersenne 61 ---------------------------------
@@ -55,7 +55,7 @@ proc main() =
         f.fromUint(x)
 
         var r_bytes: array[8, byte]
-        exportRawUint(r_bytes, f, littleEndian)
+        marshal(r_bytes, f, littleEndian)
         check: x_bytes == r_bytes
 
       block:
@@ -66,7 +66,7 @@ proc main() =
         f.fromUint(x)
 
         var r_bytes: array[8, byte]
-        exportRawUint(r_bytes, f, littleEndian)
+        marshal(r_bytes, f, littleEndian)
         check: x_bytes == r_bytes
 
       block:
@@ -77,7 +77,7 @@ proc main() =
         f.fromUint(x)
 
         var r_bytes: array[8, byte]
-        exportRawUint(r_bytes, f, littleEndian)
+        marshal(r_bytes, f, littleEndian)
         check: x_bytes == r_bytes
 
       block:
@@ -88,7 +88,7 @@ proc main() =
         f.fromUint(x)
 
         var r_bytes: array[8, byte]
-        exportRawUint(r_bytes, f, littleEndian)
+        marshal(r_bytes, f, littleEndian)
         check: x_bytes == r_bytes
 
       # Mersenne 127 ---------------------------------
@@ -100,7 +100,7 @@ proc main() =
         f.fromUint(x)
 
         var r_bytes: array[16, byte]
-        exportRawUint(r_bytes, f, littleEndian)
+        marshal(r_bytes, f, littleEndian)
         check: x_bytes == r_bytes[0 ..< 8]
 
       block: # "Little-endian" - single random
@@ -110,7 +110,7 @@ proc main() =
         f.fromUint(x)
 
         var r_bytes: array[16, byte]
-        exportRawUint(r_bytes, f, littleEndian)
+        marshal(r_bytes, f, littleEndian)
         check: x_bytes == r_bytes[0 ..< 8]
 
       block: # "Little-endian" - 10 random cases
@@ -121,7 +121,7 @@ proc main() =
           f.fromUint(x)
 
           var r_bytes: array[16, byte]
-          exportRawUint(r_bytes, f, littleEndian)
+          marshal(r_bytes, f, littleEndian)
           check: x_bytes == r_bytes[0 ..< 8]
 
     test "Round trip on large constant":

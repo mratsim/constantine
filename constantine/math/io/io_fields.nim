@@ -27,7 +27,7 @@ func fromUint*(dst: var FF,
                src: SomeUnsignedInt) =
   ## Parse a regular unsigned integer
   ## and store it into a Fp or Fr
-  let raw {.noinit.} = (typeof dst.mres).fromRawUint(cast[array[sizeof(src), byte]](src), cpuEndian)
+  let raw {.noinit.} = (typeof dst.mres).unmarshal(cast[array[sizeof(src), byte]](src), cpuEndian)
   dst.fromBig(raw)
 
 func fromInt*(dst: var FF,
@@ -42,11 +42,11 @@ func fromInt*(dst: var FF,
     let isNeg = SecretBool((src shr msb_pos) and 1)
 
     let src = isNeg.mux(SecretWord -src, SecretWord src)
-    let raw {.noinit.} = (type dst.mres).fromRawUint(cast[array[sizeof(src), byte]](src), cpuEndian)
+    let raw {.noinit.} = (type dst.mres).unmarshal(cast[array[sizeof(src), byte]](src), cpuEndian)
     dst.fromBig(raw)
     dst.cneg(isNeg)
 
-func exportRawUint*(dst: var openarray[byte],
+func marshal*(dst: var openarray[byte],
                        src: FF,
                        dstEndianness: static Endianness) =
   ## Serialize a finite field element to its canonical big-endian or little-endian
@@ -58,7 +58,7 @@ func exportRawUint*(dst: var openarray[byte],
   ## If the buffer is bigger, output will be zero-padded left for big-endian
   ## or zero-padded right for little-endian.
   ## I.e least significant bit is aligned to buffer boundary
-  exportRawUint(dst, src.toBig(), dstEndianness)
+  marshal(dst, src.toBig(), dstEndianness)
 
 func appendHex*(dst: var string, f: FF, order: static Endianness = bigEndian) =
   ## Stringify a finite field element to hex.

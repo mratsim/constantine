@@ -29,7 +29,7 @@ proc main() =
         x += y
 
         var x_bytes: array[8, byte]
-        x_bytes.exportRawUint(x, cpuEndian)
+        x_bytes.marshal(x, cpuEndian)
 
         check:
           # Check equality in the Montgomery domain
@@ -47,7 +47,7 @@ proc main() =
         x += y
 
         var x_bytes: array[8, byte]
-        x_bytes.exportRawUint(x, cpuEndian)
+        x_bytes.marshal(x, cpuEndian)
 
         check:
           # Check equality in the Montgomery domain
@@ -65,7 +65,7 @@ proc main() =
         x += y
 
         var x_bytes: array[8, byte]
-        x_bytes.exportRawUint(x, cpuEndian)
+        x_bytes.marshal(x, cpuEndian)
 
         check:
           # Check equality in the Montgomery domain
@@ -84,7 +84,7 @@ proc main() =
         x -= y
 
         var x_bytes: array[8, byte]
-        x_bytes.exportRawUint(x, cpuEndian)
+        x_bytes.marshal(x, cpuEndian)
 
         check:
           # Check equality in the Montgomery domain
@@ -102,7 +102,7 @@ proc main() =
         x -= y
 
         var x_bytes: array[8, byte]
-        x_bytes.exportRawUint(x, cpuEndian)
+        x_bytes.marshal(x, cpuEndian)
 
         check:
           # Check equality in the Montgomery domain
@@ -120,7 +120,7 @@ proc main() =
         x -= y
 
         var x_bytes: array[8, byte]
-        x_bytes.exportRawUint(x, cpuEndian)
+        x_bytes.marshal(x, cpuEndian)
 
         check:
           # Check equality in the Montgomery domain
@@ -139,7 +139,7 @@ proc main() =
         r.prod(x, y)
 
         var r_bytes: array[8, byte]
-        r_bytes.exportRawUint(r, cpuEndian)
+        r_bytes.marshal(r, cpuEndian)
 
         check:
           # Check equality in the Montgomery domain
@@ -157,7 +157,7 @@ proc main() =
         r.prod(x, y)
 
         var r_bytes: array[8, byte]
-        r_bytes.exportRawUint(r, cpuEndian)
+        r_bytes.marshal(r, cpuEndian)
 
         check:
           # Check equality in the Montgomery domain
@@ -176,7 +176,7 @@ proc main() =
         x += y
 
         var x_bytes: array[8, byte]
-        x_bytes.exportRawUint(x, cpuEndian)
+        x_bytes.marshal(x, cpuEndian)
         let new_x = cast[uint64](x_bytes)
 
         check:
@@ -195,7 +195,7 @@ proc main() =
         x += y
 
         var x_bytes: array[8, byte]
-        x_bytes.exportRawUint(x, cpuEndian)
+        x_bytes.marshal(x, cpuEndian)
         let new_x = cast[uint64](x_bytes)
 
         check:
@@ -214,7 +214,7 @@ proc main() =
         x += y
 
         var x_bytes: array[8, byte]
-        x_bytes.exportRawUint(x, cpuEndian)
+        x_bytes.marshal(x, cpuEndian)
         let new_x = cast[uint64](x_bytes)
 
         check:
@@ -234,7 +234,7 @@ proc main() =
         x -= y
 
         var x_bytes: array[8, byte]
-        x_bytes.exportRawUint(x, cpuEndian)
+        x_bytes.marshal(x, cpuEndian)
         let new_x = cast[uint64](x_bytes)
 
         check:
@@ -253,7 +253,7 @@ proc main() =
         x -= y
 
         var x_bytes: array[8, byte]
-        x_bytes.exportRawUint(x, cpuEndian)
+        x_bytes.marshal(x, cpuEndian)
         let new_x = cast[uint64](x_bytes)
 
         check:
@@ -273,7 +273,7 @@ proc main() =
         r.prod(x, y)
 
         var r_bytes: array[8, byte]
-        r_bytes.exportRawUint(r, cpuEndian)
+        r_bytes.marshal(r, cpuEndian)
         let new_r = cast[uint64](r_bytes)
 
         check:
@@ -292,7 +292,7 @@ proc main() =
         r.prod(x, y)
 
         var r_bytes: array[8, byte]
-        r_bytes.exportRawUint(r, cpuEndian)
+        r_bytes.marshal(r, cpuEndian)
         let new_r = cast[uint64](r_bytes)
 
         check:
@@ -322,7 +322,7 @@ proc largeField() =
       block:
         var a: Fp[Secp256k1]
         a.mres = Fp[Secp256k1].getMontyPrimeMinus1()
-        let expected = BigInt[256].fromHex"0xFFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2E"
+        let expected = BigInt[256].fromHex"0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2E"
 
         var r: BigInt[256]
         r.fromField(a)
@@ -333,8 +333,8 @@ proc largeField() =
         var d: FpDbl[Secp256k1]
 
         # Set Montgomery repr to the largest field element in Montgomery Residue form
-        a.mres    = BigInt[256].fromHex"0xFFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2E"
-        d.limbs2x = (BigInt[512].fromHex"0xFFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFF FFFFFFFE FFFFFC2E").limbs
+        a.mres    = BigInt[256].fromHex"0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2E"
+        d.limbs2x = (BigInt[512].fromHex"0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2E").limbs
 
         var r, expected: BigInt[256]
 

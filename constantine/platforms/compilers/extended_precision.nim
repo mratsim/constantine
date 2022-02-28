@@ -23,23 +23,6 @@ import
 #
 # ############################################################
 
-func unsafeDiv2n1n*(q, r: var Ct[uint32], n_hi, n_lo, d: Ct[uint32]) {.inline.}=
-  ## Division uint64 by uint32
-  ## Warning ⚠️ :
-  ##   - if n_hi == d, quotient does not fit in an uint32
-  ##   - if n_hi > d result is undefined
-  ##
-  ## To avoid issues, n_hi, n_lo, d should be normalized.
-  ## i.e. shifted (== multiplied by the same power of 2)
-  ## so that the most significant bit in d is set.
-  # TODO !!! - Replace by constant-time, portable, non-assembly version
-  #          -> use uint128? Compiler might add unwanted branches
-  {.warning: "unsafeDiv2n1n is not constant-time at the moment on most hardware".}
-  let dividend = (uint64(n_hi) shl 32) or uint64(n_lo)
-  let divisor = uint64(d)
-  q = (Ct[uint32])(dividend div divisor)
-  r = (Ct[uint32])(dividend mod divisor)
-
 func mul*(hi, lo: var Ct[uint32], a, b: Ct[uint32]) {.inline.} =
   ## Extended precision multiplication
   ## (hi, lo) <- a*b
@@ -96,15 +79,14 @@ func smul*(hi, lo: var Ct[uint32], a, b: Ct[uint32]) {.inline.} =
 
 when sizeof(int) == 8:
   when defined(vcc):
-    from ./extended_precision_x86_64_msvc import unsafeDiv2n1n, mul, muladd1, muladd2, smul
+    from ./extended_precision_x86_64_msvc import mul, muladd1, muladd2, smul
   elif GCCCompatible:
     # TODO: constant-time div2n1n
     when X86:
-      from ./extended_precision_x86_64_gcc import unsafeDiv2n1n
       from ./extended_precision_64bit_uint128 import mul, muladd1, muladd2, smul
     else:
-      from ./extended_precision_64bit_uint128 import unsafeDiv2n1n, mul, muladd1, muladd2, smul
-  export unsafeDiv2n1n, mul, muladd1, muladd2, smul
+      from ./extended_precision_64bit_uint128 import mul, muladd1, muladd2, smul
+  export mul, muladd1, muladd2, smul
 
 # ############################################################
 #

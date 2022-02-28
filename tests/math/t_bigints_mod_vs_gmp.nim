@@ -127,8 +127,8 @@ proc main() =
     doAssert mLen == mW, "Expected " & $mLen & " bytes but wrote " & $mW & " for " & toHex(mBuf) & " (big-endian)"
 
     # Build the bigint
-    let aTest = BigInt[aBits].fromRawUint(aBuf.toOpenArray(0, aW-1), bigEndian)
-    let mTest = BigInt[mBits].fromRawUint(mBuf.toOpenArray(0, mW-1), bigEndian)
+    let aTest = BigInt[aBits].unmarshal(aBuf.toOpenArray(0, aW-1), bigEndian)
+    let mTest = BigInt[mBits].unmarshal(mBuf.toOpenArray(0, mW-1), bigEndian)
 
     #########################################################
     # Modulus
@@ -144,7 +144,7 @@ proc main() =
     discard mpz_export(rGMP[0].addr, rW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, r)
 
     var rConstantine: array[mLen, byte]
-    exportRawUint(rConstantine, rTest, bigEndian)
+    marshal(rConstantine, rTest, bigEndian)
 
     # echo "rGMP: ", rGMP.toHex()
     # echo "rConstantine: ", rConstantine.toHex()

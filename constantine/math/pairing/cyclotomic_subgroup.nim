@@ -297,7 +297,7 @@ iterator unpack(scalarByte: byte): bool =
 
 func cyclotomic_exp*[FT](r: var FT, a: FT, exponent: BigInt, invert: bool) {.meter.} =
     var eBytes: array[(exponent.bits+7) div 8, byte]
-    eBytes.exportRawUint(exponent, bigEndian)
+    eBytes.marshal(exponent, bigEndian)
 
     r.setOne()
     for b in eBytes:

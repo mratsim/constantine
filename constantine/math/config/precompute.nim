@@ -380,7 +380,7 @@ func primeMinus2_BE*[bits: static int](
   var tmp = P
   discard tmp.sub(2)
 
-  result.exportRawUint(tmp, bigEndian)
+  result.marshal(tmp, bigEndian)
 
 func primePlus1div2*(P: BigInt): BigInt =
   ## Compute (P+1)/2, assumes P is odd
@@ -415,7 +415,7 @@ func primeMinus1div2_BE*[bits: static int](
   discard tmp.sub(1)
   tmp.shiftRight(1)
 
-  result.exportRawUint(tmp, bigEndian)
+  result.marshal(tmp, bigEndian)
 
 func primeMinus3div4_BE*[bits: static int](
        P: BigInt[bits]
@@ -434,7 +434,7 @@ func primeMinus3div4_BE*[bits: static int](
   discard tmp.sub(3)
   tmp.shiftRight(2)
 
-  result.exportRawUint(tmp, bigEndian)
+  result.marshal(tmp, bigEndian)
 
 func primeMinus5div8_BE*[bits: static int](
        P: BigInt[bits]
@@ -453,7 +453,7 @@ func primeMinus5div8_BE*[bits: static int](
   discard tmp.sub(5)
   tmp.shiftRight(3)
 
-  result.exportRawUint(tmp, bigEndian)
+  result.marshal(tmp, bigEndian)
 
 func primePlus1Div4_BE*[bits: static int](
        P: BigInt[bits]
@@ -475,14 +475,14 @@ func primePlus1Div4_BE*[bits: static int](
   # then divide by 2
   tmp.shiftRight(1)
 
-  result.exportRawUint(tmp, bigEndian)
+  result.marshal(tmp, bigEndian)
 
 func toCanonicalIntRepr*[bits: static int](
        a: BigInt[bits]
      ): array[(bits+7) div 8, byte] {.noInit.} =
   ## Export a bigint to its canonical BigEndian representation
   ## (octet-string)
-  result.exportRawUint(a, bigEndian)
+  result.marshal(a, bigEndian)
 
 # ############################################################
 #
