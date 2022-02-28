@@ -325,7 +325,7 @@ func readHexChar(c: char): SecretWord {.inline.}=
   
   var val = c - sw'0'
   val = val xor ((val xor (c - sw('a') + sw(10))) and lowercaseMask)
-  val = val xor ((val xor (c - sw('a') + sw(10))) and uppercaseMask)
+  val = val xor ((val xor (c - sw('A') + sw(10))) and uppercaseMask)
   val = val and sw(0xF) # Prevent overflow of invalid inputs
 
   return val
