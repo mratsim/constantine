@@ -188,6 +188,10 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ----------------------------------------------------------
   ("tests/t_hash_sha256_vs_openssl.nim", true), # skip OpenSSL tests on Windows
 
+  # Ciphers
+  # ----------------------------------------------------------
+  ("tests/t_cipher_chacha20.nim", false),
+
   # Protocols
   # ----------------------------------------------------------
   ("tests/t_ethereum_evm_precompiles.nim", false),
