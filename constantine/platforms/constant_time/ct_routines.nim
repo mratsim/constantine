@@ -104,6 +104,11 @@ template `*`*[T: Ct](x, y: T): T =
   # but this is not always true, especially on ARMv7 and ARMv9
   fmap(x, `*`, y)
 
+template `*=`*[T: Ct](x, y: T) =
+  # Warning ⚠️ : We assume that mul hardware multiplication is constant time
+  # but this is not always true, especially on ARMv7 and ARMv9
+  fmapAsgn(x, `*=`, y)
+
 # We don't implement div/mod as we can't assume the hardware implementation
 # is constant-time
 

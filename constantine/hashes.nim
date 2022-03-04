@@ -58,7 +58,7 @@ func hash*[DigestSize: static int, T: char|byte](
 func hash*[T: char|byte](
        HashKind: type CryptoHash,
        message: openarray[T],
-       clearmem = false): array[HashKind.sizeInBytes, byte] =
+       clearmem = false): array[HashKind.sizeInBytes, byte] {.noInit.} =
   ## Produce a digest from a message
   HashKind.hash(result, message, clearMem)
 
