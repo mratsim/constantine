@@ -344,6 +344,16 @@ func bit0*(a: BigInt): Ct[uint8] =
   ## Access the least significant bit
   ct(a.limbs[0] and One, uint8)
 
+func setBit*[bits: static int](a: var BigInt[bits], index: int) =
+  ## Set an individual bit of `a` to 1.
+  ## This has no effect if it is already 1
+  const SlotShift = log2_vartime(WordBitWidth.uint32)
+  const SelectMask = WordBitWidth - 1
+
+  let slot = a.limbs[index shr SlotShift].addr
+  let shifted = One shl (index and SelectMask)
+  slot[] = slot[] or shifted
+
 # Multiplication by small cosntants
 # ------------------------------------------------------------
 

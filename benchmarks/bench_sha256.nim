@@ -69,17 +69,33 @@ proc benchSHA256_openssl[T](msg: openarray[T], msgComment: string, iters: int) =
 when isMainModule:
   proc main() =
     block:
-      let msg128B = rng.random_byte_seq(32)
-      benchSHA256_constantine(msg128B, "32B", 32)
-      benchSHA256_openssl(msg128B, "32B", 32)
+      let msg32B = rng.random_byte_seq(32)
+      benchSHA256_constantine(msg32B, "32B", 100)
+      benchSHA256_openssl(msg32B, "32B", 100)
+    block:
+      let msg64B = rng.random_byte_seq(64)
+      benchSHA256_constantine(msg64B, "64B", 100)
+      benchSHA256_openssl(msg64B, "64B", 100)
     block:
       let msg128B = rng.random_byte_seq(128)
-      benchSHA256_constantine(msg128B, "128B", 128)
-      benchSHA256_openssl(msg128B, "128B", 128)
+      benchSHA256_constantine(msg128B, "128B", 100)
+      benchSHA256_openssl(msg128B, "128B", 100)
     block:
-      let msg5MB = rng.random_byte_seq(5_000_000)
-      benchSHA256_constantine(msg5MB, "5MB", 16)
-      benchSHA256_openssl(msg5MB, "5MB", 16)
+      let msg576B = rng.random_byte_seq(576)
+      benchSHA256_constantine(msg576B, "576B", 50)
+      benchSHA256_openssl(msg576B, "576B", 50)
+    block:
+      let msg8192B = rng.random_byte_seq(8192)
+      benchSHA256_constantine(msg8192B, "8192B", 25)
+      benchSHA256_openssl(msg8192B, "8192B", 25)
+    block:
+      let msg1MB = rng.random_byte_seq(1_000_000)
+      benchSHA256_constantine(msg1MB, "1MB", 16)
+      benchSHA256_openssl(msg1MB, "1MB", 16)
+    block:
+      let msg10MB = rng.random_byte_seq(10_000_000)
+      benchSHA256_constantine(msg10MB, "10MB", 16)
+      benchSHA256_openssl(msg10MB, "10MB", 16)
     block:
       let msg100MB = rng.random_byte_seq(100_000_000)
       benchSHA256_constantine(msg100MB, "100MB", 3)

@@ -51,10 +51,6 @@ type
 {.push raises: [].}
 {.push checks: off.}
 
-func setZero[N](a: var array[N, SomeNumber]){.inline.} =
-  for i in 0 ..< a.len:
-    a[i] = 0
-
 template rotr(x, n: uint32): uint32 =
   ## Rotate right the bits
   # We always use it with constants in 0 ..< 32
@@ -272,24 +268,6 @@ func dumpHash(
     digest.dumpRawInt(H[i], dstIdx, bigEndian)
     dstIdx += uint sizeof(uint32)
 
-func copy[N: static int, T: byte|char](
-       dst: var array[N, byte],
-       dStart: SomeInteger,
-       src: openArray[T],
-       sStart: SomeInteger,
-       len: SomeInteger
-     ) =
-  ## Copy dst[dStart ..< dStart+len] = src[sStart ..< sStart+len]
-  ## Unlike the standard library, this cannot throw
-  ## even a defect.
-  ## It also handles copy of char into byte arrays
-  debug:
-    doAssert 0 <= dStart and dStart+len <= dst.len.uint
-    doAssert 0 <= sStart and sStart+len <= src.len.uint
-
-  for i in 0 ..< len:
-    dst[dStart + i] = byte src[sStart + i]
-
 func hashBuffer(ctx: var Sha256Context) =
   discard ctx.H.hashMessageBlocks(ctx.buf)
   ctx.buf.setZero()
@@ -445,4 +423,7 @@ func clear*(ctx: var Sha256Context) =
   ## For passwords and secret keys, you MUST NOT use raw SHA-256
   ## use a Key Derivation Function instead (KDF)
   # TODO: ensure compiler cannot optimize the code away
+  ctx.H.setZero()
   ctx.buf.setZero()
+  ctx.msgLen = 0
+  ctx.bufIdx = 0

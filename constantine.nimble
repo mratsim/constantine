@@ -192,6 +192,10 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ----------------------------------------------------------
   ("tests/t_cipher_chacha20.nim", false),
 
+  # Message Authentication Code
+  # ----------------------------------------------------------
+  ("tests/t_mac_poly1305.nim", false),
+
   # Protocols
   # ----------------------------------------------------------
   ("tests/t_ethereum_evm_precompiles.nim", false),
