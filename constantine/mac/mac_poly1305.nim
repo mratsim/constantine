@@ -9,14 +9,14 @@
 import
   ../platforms/abstractions,
   ../math/arithmetic/bigints,
-  ../math/arithmetic/limbs_extmul,
-  ../math/arithmetic/assembly/limbs_asm_modular_x86,
+  ../math/arithmetic/[limbs, limbs_extmul],
   ../math/io/io_bigints
 
+when UseASM_X86_64:
+  import ../math/arithmetic/assembly/limbs_asm_modular_x86
 
-import # debug
-  ../math/arithmetic/[limbs_division, limbs],
-  ../math/config/type_bigint
+# No exceptions allowed
+{.push raises: [].}
 
 # ############################################################
 #
