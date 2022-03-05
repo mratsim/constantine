@@ -24,98 +24,133 @@ import # debug
 #
 # ############################################################
 
+# TODO: instead of using a saturated representation,
+#       since there is 62 extra bits unused in the last limb
+#       use an unsaturated representation and remove all carry dependency chains.
+#       Given the number of add with carries, this would significantly
+#       improve instruction level parallelism.
+#
+#       Also vectorizing the code requires removing carry chains anyway.
+
 const P1305 = BigInt[130].fromHex"0x3fffffffffffffffffffffffffffffffb"
 
-# # TODO: fast reduction
-# func partialReduce_1305[N1, N2: static int](r: var Limbs[N1], a: Limbs[N2]) =
-#   ## The prime 2¹³⁰-5 has a special form 2ᵐ-c
-#   ## called "Crandall prime" or Pseudo-Mersenne Prime
-#   ## in the litterature
-#   ## which allows fast reduction from the fact that
-#   ##        2ᵐ-c ≡  0     (mod p)
-#   ##   <=>  2ᵐ   ≡  c     (mod p)   [1]
-#   ##   <=> a2ᵐ+b ≡ ac + b (mod p)
-#   ## 
-#   ## This partially reduces the input in range [0, 2¹³⁰)
-#   ##
-#   ## Assuming 64-bit words,
-#   ##   N1 = 3 words (192-bit necessary for 2¹³⁰-5)
-#   ##   N2 = 5 words (320-bit necessary for 2²⁶⁰-5*2¹³⁰+25)
-#   ## Assuming 32-bit words,
-#   ##   N1 = 5 words (160-bit necessary for 2¹³⁰-5)
-#   ##   N2 = 9 words (288-bit necessary for 2²⁶⁰-5*2¹³⁰+25)
-#   ## 
-#   ## from 64-bit, starting from [1]
-#   ##   2ᵐ      ≡  c     (mod p)
-#   ##   2¹³⁰    ≡  5     (mod p)
-#   ## 2¹³⁰.2⁶²  ≡  5.2⁶² (mod p)
-#   ##   2¹⁹²    ≡  5.2⁶² (mod p)
-#   ## 
-#   ## Hence if we call a the [2¹⁹², 2²⁶⁰) range
-#   ## and b the [0, 2¹⁹²) range
-#   ## we have
-#   ## a2¹⁹²+b ≡ a.5.2⁶² + b (mod p)
-#   ## 
-#   ## Then we can handle the highest word which has
-#   ## 62 bits that should be folded back as well
-#   ## 
-#   ## Similarly for 32-bit
-#   ##   2¹⁶⁰    ≡  5.2³⁰ (mod p)
-#   ## and we need to fold back the top 30 bits
-#   const bits = 130
-#   const c = SecretWord 5
-#   const excessBits = wordsRequired(bits)*WordBitWidth - bits
-#   const cExcess = c shl excessBits # Unfortunately on 64-bit 5.2⁶² requires 65-bit :/ 
+func partialReduce_1305[N1, N2: static int](r: var Limbs[N1], a: Limbs[N2]) =
+  ## The prime 2¹³⁰-5 has a special form 2ᵐ-c
+  ## called "Crandall prime" or Pseudo-Mersenne Prime
+  ## in the litterature
+  ## which allows fast reduction from the fact that
+  ##        2ᵐ-c ≡  0     (mod p)
+  ##   <=>  2ᵐ   ≡  c     (mod p)   [1]
+  ##   <=> a2ᵐ+b ≡ ac + b (mod p)
+  ## 
+  ## This partially reduces the input in range [0, 2¹³⁰)
+  #
+  # Assuming 64-bit words,
+  #   N1 = 3 words (192-bit necessary for 2¹³⁰-1)
+  #   N2 = 4 words (256-bit necessary for 2¹³¹.2¹²⁴)
+  # Assuming 32-bit words,
+  #   N1 = 5 words (160-bit necessary for 2¹³⁰-1)
+  #   N2 = 8 words (288-bit necessary for 2¹³¹.2¹²⁴)
+  # 
+  # from 64-bit, starting from [1]
+  #   2ᵐ      ≡  c     (mod p)
+  #   2¹³⁰    ≡  5     (mod p)
+  # 2¹³⁰.2⁶²  ≡  5.2⁶² (mod p)
+  #   2¹⁹²    ≡  5.2⁶² (mod p)
+  # 
+  # Hence if we call a the [2¹⁹², 2²⁶⁰) range
+  # and b the [0, 2¹⁹²) range
+  # we have
+  # a2¹⁹²+b ≡ a.5.2⁶² + b (mod p)
+  # 
+  # Then we can handle the highest word which has
+  # 62 bits that should be folded back as well
+  # 
+  # Similarly for 32-bit
+  #   2¹⁶⁰    ≡  5.2³⁰ (mod p)
+  # and we need to fold back the top 30 bits
+  # 
+  # But there is a twist. 5.2⁶² need 65-bit not 64
+  # and 5.2³⁰ need 33-bit not 32
 
-#   static: doAssert excessBits == 62
+  when WordBitwidth == 64:
+    static:
+      doAssert N1 == 3
+      doAssert N2 == 4
+    
+    block:
+      # First pass, fold everything greater than 2¹⁹²-1
+      # a2¹⁹²+b ≡ a.5.2⁶² + b (mod p)
+      #   scale by 5.2⁶¹ first as 5.2⁶² does not fit in 64-bit words
+      const c = SecretWord 5
+      const cExcess = c shl 61
 
-#   r.setZero() # debug
-#   var hi: SecretWord
+      var carry: Carry
+      var hi, lo: SecretWord
+      mul(hi, lo, a[3], cExcess)
+      addC(carry, r[0], lo, a[0], Carry(0))
+      addC(carry, r[1], hi, a[1], carry)
+      addC(carry, r[2], Zero, a[2], carry)
+      #   finally double to scale by 5.2⁶²
+      addC(carry, r[0], lo, r[0], Carry(0))
+      addC(carry, r[1], hi, r[1], carry)
+      addC(carry, r[2], Zero, r[2], carry)
+  else:
+    static:
+      doAssert N1 == 5
+      doAssert N2 == 8
+    
+    block:
+      # First pass, fold everything greater than 2¹⁶⁰-1
+      # a2¹⁶⁰+b ≡ a.5.2³⁰ + b (mod p)
+      #   scale by 5.2²⁹ first as 5.2³⁰ does not fit in 32-bit words
+      const c = SecretWord 5
+      const cExcess = c shl 29
 
-#   # First reduction pass, fold everything greater than 2¹⁹² (or 2¹⁶⁰)
-#   # into the lower bits
-#   muladd1(hi, r[0], a[N1], cExcess, a[0])
-#   staticFor i, 1, N2-N1:
-#     muladd2(hi, r[i], a[i+N1], cExcess, a[i], hi)
+      staticFor i, 0, N1:
+        r[i] = a[i]
+      
+      mulDoubleAcc(r[2], r[1], r[0], a[5], cExcess)
+      mulDoubleAcc(r[3], r[2], r[1], a[6], cExcess)
+      mulDoubleAcc(r[4], r[3], r[2], a[7], cExcess)
 
+  const bits = 130
+  const excessBits = wordsRequired(bits)*WordBitWidth - bits
 
-#   # Since for Poly1305 N2 < 2*N1, there is no carry for the last limb
-#   static: doAssert N2 < 2*N1
-#   hi += a[N1-1]
-#   # Now `hi` stores a'.2¹³⁰ + b'.
-#   # a' should be folded back to the lower bits
-#   # After folding, the result is in range [0, 2¹³⁰)
+  # Second pass, fold everything greater than 2¹³⁰-1
+  # into the lower bits
+  var carry, carry2: Carry
+  var hi = r[N1-1] shr (WordBitWidth - excessBits)
+  r[N1-1] = r[N1-1] and (MaxWord shr excessBits)
+  
+  # hi *= 5, with overflow stored in carry
+  let hi4 = hi shl 2                   # Cannot overflow as we have 2 spare bits
+  addC(carry2, hi, hi, hi4, Carry(0))  # Use the carry bit for storing a 63/31 bit result
 
-#   # b': Mask out the top bits that will be folded
-#   r[N1-1] = hi and (MaxWord shr excessBits)
-#   # a': Fold the top bits into lower bits
-#   hi = hi shr (WordBitwidth - excessBits)
-#   hi *= c # Cannot overflow
-
-#   # Second pass, fold everything greater than 2¹³⁰-1
-#   # into the lower bits
-#   var carry: Carry
-#   addC(carry, r[0], r[0], hi, Carry(0))
-#   staticFor i, 1, N1:
-#     addC(carry, r[i], r[i], Zero, carry)
-
-# func finalReduce_1305[N: static int](a: var Limbs[N]) =
-#   ## Maps an input in redundant representation [0, 2¹³¹-10)
-#   ## to the canonical representation in [0, 2¹³⁰-5)
-#   # Algorithm:
-#   # 1. substract p = 2¹³⁰-5
-#   # 2. if borrow, add back p.
-#   when UseASM_X86_32 and a.len <= 6:
-#     submod_asm(a, a, P1305.limbs, P1305.limbs)
-#   else:
-#     let underflowed = sub(a, P1305.limbs)
-#     discard cadd(a, P1305.limbs, underflowed)
+  # Process with actual fold
+  addC(carry, r[0], r[0], hi, Carry(0))
+  addC(carry, r[1], r[1], SecretWord(carry2), carry)
+  staticFor i, 2, N1:
+    addC(carry, r[i], r[i], Zero, carry)
+  
+func finalReduce_1305[N: static int](a: var Limbs[N]) =
+  ## Maps an input in redundant representation [0, 2¹³¹-10)
+  ## to the canonical representation in [0, 2¹³⁰-5)
+  # Algorithm:
+  # 1. substract p = 2¹³⁰-5
+  # 2. if borrow, add back p.
+  when UseASM_X86_64 and a.len <= 6:
+    submod_asm(a, a, P1305.limbs, P1305.limbs)
+  else:
+    let underflowed = SecretBool sub(a, P1305.limbs)
+    discard cadd(a, P1305.limbs, underflowed)
 
 const BlockSize = 16
 
 type Poly1305_CTX = object
-  acc: BigInt[130]
-  r, s: BigInt[128]
+  acc: BigInt[130+1] # After an unreduced sum, up to 131 bit may be used
+  r: BigInt[124]     # r is 124-bit after clamping
+  s: BigInt[128]
   buf: array[BlockSize, byte]
   msgLen: uint64
   bufIdx: uint8
@@ -123,8 +158,8 @@ type Poly1305_CTX = object
 type poly1305* = Poly1305_CTX
 
 func macMessageBlocks[T: byte|char](
-       acc: var BigInt[130],
-       r: BigInt[128],
+       acc: var BigInt[130+1],
+       r: BigInt[124],
        message: openArray[T],
        blockSize = BlockSize): uint =
   ## Authenticate a message block by block
@@ -139,16 +174,9 @@ func macMessageBlocks[T: byte|char](
   if numBlocks == 0:
     return 0
 
-  # Ensure there is a spare bit to handle carries when adding 2 numbers
-  const bits = 130
-  const excessBits = wordsRequired(bits)*WordBitWidth - bits
-  
-   # acc+input can use up to 131-bit
-  static: doAssert excessBits >= 1
-
-  var input {.noInit.}: BigInt[130]
-  # r is 128-bit
-  var t{.noInit.}: BigInt[131+128]
+  var input {.noInit.}: BigInt[130+1]
+  # r is 124-bit after clambing
+  var t{.noInit.}: BigInt[130+1+124]
 
   for curBlock in 0 ..< numBlocks:
     # range [0, 2¹²⁸-1)
@@ -164,10 +192,9 @@ func macMessageBlocks[T: byte|char](
       )
     input.setBit(8*blockSize) # range [2¹²⁸, 2¹²⁸+2¹²⁸-1)
     acc += input              # range [2¹²⁸, 2¹³⁰-1+2¹²⁸+2¹²⁸-1)
-    t.prod(acc, r)            # range [2²⁵⁶, (2¹²⁸-1)(2¹³⁰+2(2¹²⁸-1)))
+    t.prod(acc, r)            # range [2²⁵⁶, (2¹²⁴-1)(2¹³⁰+2(2¹²⁸-1)))
     
-    # TODO: fast reduction
-    acc.limbs.reduce(t.limbs, 131+128, P1305.limbs, 130)
+    acc.limbs.partialReduce_1305(t.limbs)
 
   return BlockSize * numBlocks.uint
 
@@ -232,7 +259,7 @@ func update*[T: char|byte](ctx: var Poly1305_CTX, message: openArray[T]) =
       ctx.bufIdx += bytesLeft.uint8
       return
     else:
-      # Fill the buffer and do one sha256 hash
+      # Fill the buffer and do one Poly1305 MAC
       ctx.buf.copy(dStart = bufIdx, message, sStart = 0, len = free)
       ctx.macBuffer(blockSize = BlockSize)
 
@@ -274,6 +301,10 @@ func finish*(ctx: var Poly1305_CTX, tag: var array[16, byte]) =
 
   if ctx.bufIdx != 0:
     ctx.macBuffer(blockSize = ctx.bufIdx.int)
+
+  # Input is only partially reduced to [0, 2¹³⁰)
+  # Map it to [0, 2¹³⁰-5)
+  ctx.acc.limbs.finalReduce_1305()
   
   # Starting from now, we only care about the 128 least significant bits
   var acc128{.noInit.}: BigInt[128]
@@ -297,7 +328,7 @@ func clear*(ctx: var Poly1305_CTX) =
   ctx.msgLen = 0
   ctx.bufIdx = 0
 
-func authenticate*[T: char, byte](
+func auth*[T: char|byte](
        _: type poly1305,
        tag: var array[16, byte],
        message: openArray[T],
@@ -314,11 +345,11 @@ func authenticate*[T: char, byte](
   if clearMem:
     ctx.clear()
 
-func authenticate*[T: char, byte](
+func auth*[T: char|byte](
        _: type poly1305,
        message: openArray[T],
        nonReusedKey: array[32, byte],
        clearMem = false): array[16, byte]{.noInit.}=
   ## Produce an authentication tag from a message
   ## and a preshared unique non-reused secret key
-  poly1305.authenticate(result, message, nonReusedKey, clearMem)
+  poly1305.auth(result, message, nonReusedKey, clearMem)

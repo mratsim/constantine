@@ -26,6 +26,6 @@ suite "[Message Authentication Code] Poly1305":
     ]
 
     var tag: array[16, byte]
-    poly1305.authenticate(tag, message, ikm)
+    poly1305.auth(tag, message, ikm)
 
     doAssert tag == expectedTag
