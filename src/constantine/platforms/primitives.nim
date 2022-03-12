@@ -18,7 +18,7 @@ import
     extended_precision
   ],
   ./bithacks,
-  ../../helpers/static_for
+  ../../../helpers/static_for
 
 export
   ct_types,
