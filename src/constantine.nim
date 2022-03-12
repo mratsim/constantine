@@ -11,10 +11,12 @@
 
 import 
     ./constantine/hashes,
+    ./constantine/signatures/bls_signatures,
     ./constantine/ciphers/chacha20,
     ./constantine/mac/mac_poly1305
 
 export
-    h_sha256,
+    hashes,
+    bls_signatures,
     chacha20,
     mac_poly1305

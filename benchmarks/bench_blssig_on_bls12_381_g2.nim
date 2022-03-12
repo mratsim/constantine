@@ -8,7 +8,7 @@
 
 import
   # Internals
-  ../constantine/blssig_pop_on_bls12381_g2,
+  ../src/constantine/blssig_pop_on_bls12381_g2,
   # Helpers
   ../helpers/prng_unsafe,
   ./bench_blueprint

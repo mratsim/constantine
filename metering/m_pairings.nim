@@ -9,11 +9,11 @@
 import
   std/times,
   ./reports, ./tracer,
-  ../constantine/math/config/[common, curves],
-  ../constantine/math/[arithmetic, extension_fields],
-  ../constantine/math/elliptic/ec_shortweierstrass_projective,
-  ../constantine/math/curves/zoo_subgroups,
-  ../constantine/math/pairing/pairing_bls12,
+  ../src/constantine/math/config/[common, curves],
+  ../src/constantine/math/[arithmetic, extension_fields],
+  ../src/constantine/math/elliptic/ec_shortweierstrass_projective,
+  ../src/constantine/math/curves/zoo_subgroups,
+  ../src/constantine/math/pairing/pairing_bls12,
   # Helpers
   ../helpers/prng_unsafe
 

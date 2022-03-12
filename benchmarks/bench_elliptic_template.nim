@@ -14,11 +14,11 @@
 
 import
   # Internals
-  ../constantine/platforms/abstractions,
-  ../constantine/math/config/curves,
-  ../constantine/math/arithmetic,
-  ../constantine/math/io/io_bigints,
-  ../constantine/math/elliptic/[
+  ../src/constantine/platforms/abstractions,
+  ../src/constantine/math/config/curves,
+  ../src/constantine/math/arithmetic,
+  ../src/constantine/math/io/io_bigints,
+  ../src/constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,

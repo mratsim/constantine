@@ -8,10 +8,10 @@
 
 import
   # Internals
-  ../constantine/math/config/curves,
-  ../constantine/math/arithmetic,
-  ../constantine/math/extension_fields,
-  ../constantine/math/elliptic/[
+  ../src/constantine/math/config/curves,
+  ../src/constantine/math/arithmetic,
+  ../src/constantine/math/extension_fields,
+  ../src/constantine/math/elliptic/[
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian],
   # Helpers
