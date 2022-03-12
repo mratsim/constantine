@@ -8,8 +8,8 @@
 
 import
   # Internals
-  ../../constantine/math/config/[type_ff, curves],
-  ../../constantine/math/elliptic/ec_twistededwards_projective,
+  ../../src/constantine/math/config/[type_ff, curves],
+  ../../src/constantine/math/elliptic/ec_twistededwards_projective,
   # Test utilities
   ./t_ec_template
   

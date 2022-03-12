@@ -8,8 +8,8 @@
 
 import
   # Internals
-  ../../../constantine/math/arithmetic,
-  ../../../constantine/math/io/io_bigints
+  ../../../src/constantine/math/arithmetic,
+  ../../../src/constantine/math/io/io_bigints
 
 # Support files for testing Elliptic Curve arithmetic
 # ------------------------------------------------------------------------------

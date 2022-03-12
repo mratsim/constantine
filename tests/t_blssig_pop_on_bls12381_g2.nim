@@ -8,9 +8,9 @@
 
 import
   std/[json, os, unittest, strutils],
-  pkg/[jsony, stew/byteutils],
-  ../constantine/blssig_pop_on_bls12381_g2,
-  ../constantine/math/io/io_bigints
+  jsony, stew/byteutils,
+  ../src/constantine/blssig_pop_on_bls12381_g2,
+  ../src/constantine/math/io/io_bigints
 
 type
   PubkeyField = object

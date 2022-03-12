@@ -8,9 +8,9 @@
 
 import
   # Internals
-  ../../constantine/math/config/curves,
-  ../../constantine/math/elliptic/ec_shortweierstrass_jacobian,
-  ../../constantine/math/arithmetic,
+  ../../src/constantine/math/config/curves,
+  ../../src/constantine/math/elliptic/ec_shortweierstrass_jacobian,
+  ../../src/constantine/math/arithmetic,
   # Test utilities
   ./t_ec_template
 

@@ -8,7 +8,7 @@
 
 import
   std/unittest,
-  ../constantine/ciphers/chacha20
+  ../src/constantine/ciphers/chacha20
 
 suite "[Cipher] Chacha20":
   test "Test vector 1 - RFC8439":

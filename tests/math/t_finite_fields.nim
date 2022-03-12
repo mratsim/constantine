@@ -7,10 +7,10 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  std/unittest,
-        ../../constantine/math/arithmetic,
-        ../../constantine/math/arithmetic/limbs_montgomery,
-        ../../constantine/math/io/[io_bigints, io_fields],
-        ../../constantine/math/config/curves
+        ../../src/constantine/math/arithmetic,
+        ../../src/constantine/math/arithmetic/limbs_montgomery,
+        ../../src/constantine/math/io/[io_bigints, io_fields],
+        ../../src/constantine/math/config/curves
 
 static: doAssert defined(testingCurves), "This modules requires the -d:testingCurves compile option"
 

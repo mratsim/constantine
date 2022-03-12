@@ -12,10 +12,10 @@ import
   # Third-party
   gmp, stew/byteutils,
   # Internal
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/io/[io_bigints, io_fields],
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/config/curves
+  ../../src/constantine/platforms/abstractions,
+  ../../src/constantine/math/io/[io_bigints, io_fields],
+  ../../src/constantine/math/arithmetic,
+  ../../src/constantine/math/config/curves
 
 echo "\n------------------------------------------------------\n"
 

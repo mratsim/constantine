@@ -7,10 +7,10 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  std/unittest,
-        ../../constantine/platforms/abstractions,
-        ../../constantine/math/arithmetic,
-        ../../constantine/math/config/curves,
-        ../../constantine/math/curves/zoo_endomorphisms
+        ../../src/constantine/platforms/abstractions,
+        ../../src/constantine/math/arithmetic,
+        ../../src/constantine/math/config/curves,
+        ../../src/constantine/math/curves/zoo_endomorphisms
 
 echo "\n------------------------------------------------------\n"
 

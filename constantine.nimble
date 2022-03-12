@@ -4,10 +4,16 @@ author        = "Status Research & Development GmbH"
 description   = "This library provides thoroughly tested and highly-optimized implementations of cryptography protocols."
 license       = "MIT or Apache License 2.0"
 
+# research dir
+skipDirs = @["research"]
+
 # Dependencies
 # ----------------------------------------------------------------
 
 requires "nim >= 1.1.0"
+requires "stew"
+requires "gmp"
+requires "jsony"
 
 # Test config
 # ----------------------------------------------------------------

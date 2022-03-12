@@ -10,11 +10,11 @@ import
   # Standard library
   std/[os, times, strformat],
   # Internals
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/[arithmetic, extension_fields, ec_shortweierstrass],
-  ../../constantine/math/io/io_extfields,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/pairing/pairing_bls12,
+  ../../src/constantine/platforms/abstractions,
+  ../../src/constantine/math/[arithmetic, extension_fields, ec_shortweierstrass],
+  ../../src/constantine/math/io/io_extfields,
+  ../../src/constantine/math/config/curves,
+  ../../src/constantine/math/pairing/pairing_bls12,
   # Test utilities
   ../../helpers/prng_unsafe
 

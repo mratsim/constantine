@@ -10,9 +10,9 @@ import
   # Standard library
   std/unittest,
   # Internal
-  ../../constantine/math/io/io_bigints,
-  ../../constantine/math/arithmetic,
-  ../../constantine/platforms/abstractions,
+  ../../src/constantine/math/io/io_bigints,
+  ../../src/constantine/math/arithmetic,
+  ../../src/constantine/platforms/abstractions,
   # Test utilities,
   support/canaries
 

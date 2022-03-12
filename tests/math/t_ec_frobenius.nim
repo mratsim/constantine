@@ -11,12 +11,12 @@ import
   # Standard library
   std/[times, unittest],
   # Internals
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/[arithmetic, extension_fields],
-  ../../constantine/math/io/[io_bigints, io_ec],
-  ../../constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective, ec_scalar_mul],
-  ../../constantine/math/isogenies/frobenius,
+  ../../src/constantine/platforms/abstractions,
+  ../../src/constantine/math/config/curves,
+  ../../src/constantine/math/[arithmetic, extension_fields],
+  ../../src/constantine/math/io/[io_bigints, io_ec],
+  ../../src/constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective, ec_scalar_mul],
+  ../../src/constantine/math/isogenies/frobenius,
   # Tests
   ../../helpers/prng_unsafe,
   ./t_ec_template

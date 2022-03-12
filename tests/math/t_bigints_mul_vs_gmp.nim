@@ -12,9 +12,9 @@ import
   # Third-party
   gmp, stew/byteutils,
   # Internal
-  ../../constantine/math/io/io_bigints,
-  ../../constantine/math/arithmetic,
-  ../../constantine/platforms/abstractions
+  ../../src/constantine/math/io/io_bigints,
+  ../../src/constantine/math/arithmetic,
+  ../../src/constantine/platforms/abstractions
 
 echo "\n------------------------------------------------------\n"
 # We test up to 1024-bit, more is really slow

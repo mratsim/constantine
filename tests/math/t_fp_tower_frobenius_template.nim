@@ -17,11 +17,11 @@ import
   # Standard library
   std/[unittest, times],
   # Internals
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/extension_fields,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/isogenies/frobenius,
+  ../../src/constantine/platforms/abstractions,
+  ../../src/constantine/math/extension_fields,
+  ../../src/constantine/math/config/curves,
+  ../../src/constantine/math/arithmetic,
+  ../../src/constantine/math/isogenies/frobenius,
   # Test utilities
   ../../helpers/[prng_unsafe, static_for]
 

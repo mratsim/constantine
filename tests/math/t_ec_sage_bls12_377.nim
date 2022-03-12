@@ -8,10 +8,10 @@
 
 import
   # Internals
-  ../../constantine/math/config/curves,
-  ../../constantine/math/extension_fields,
-  ../../constantine/math/elliptic/ec_shortweierstrass_jacobian,
-  ../../constantine/math/elliptic/ec_shortweierstrass_projective,
+  ../../src/constantine/math/config/curves,
+  ../../src/constantine/math/extension_fields,
+  ../../src/constantine/math/elliptic/ec_shortweierstrass_jacobian,
+  ../../src/constantine/math/elliptic/ec_shortweierstrass_projective,
   # Test utilities
   ./t_ec_sage_template
 

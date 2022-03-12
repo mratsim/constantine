@@ -16,19 +16,19 @@ import
   # Standard library
   std/[unittest, times],
   # Internals
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/extension_fields,
-  ../../constantine/math/elliptic/[
+  ../../src/constantine/platforms/abstractions,
+  ../../src/constantine/math/config/curves,
+  ../../src/constantine/math/arithmetic,
+  ../../src/constantine/math/extension_fields,
+  ../../src/constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_jacobian,
     ec_shortweierstrass_projective,
     ec_twistededwards_affine,
     ec_twistededwards_projective,
     ec_scalar_mul],
-  ../../constantine/math/io/[io_bigints, io_fields, io_ec],
-  ../../constantine/math/curves/zoo_subgroups,
+  ../../src/constantine/math/io/[io_bigints, io_fields, io_ec],
+  ../../src/constantine/math/curves/zoo_subgroups,
   # Test utilities
   ../../helpers/prng_unsafe,
   ./support/ec_reference_scalar_mult

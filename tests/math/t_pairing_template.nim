@@ -10,14 +10,14 @@ import
   # Standard library
   std/unittest, times,
   # Internals
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/extension_fields,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
-  ../../constantine/math/curves/[zoo_subgroups, zoo_pairings],
-  ../../constantine/math/pairing/cyclotomic_subgroup,
-  ../../constantine/math/io/io_extfields,
+  ../../src/constantine/platforms/abstractions,
+  ../../src/constantine/math/arithmetic,
+  ../../src/constantine/math/extension_fields,
+  ../../src/constantine/math/config/curves,
+  ../../src/constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
+  ../../src/constantine/math/curves/[zoo_subgroups, zoo_pairings],
+  ../../src/constantine/math/pairing/cyclotomic_subgroup,
+  ../../src/constantine/math/io/io_extfields,
 
   # Test utilities
   ../../helpers/prng_unsafe

@@ -7,11 +7,11 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import  std/[unittest,times],
-        ../../constantine/platforms/abstractions,
-        ../../constantine/math/config/curves,
-        ../../constantine/math/arithmetic,
-        ../../constantine/math/arithmetic/limbs_unsaturated,
-        ../../constantine/math/io/io_bigints,
+        ../../src/constantine/platforms/abstractions,
+        ../../src/constantine/math/config/curves,
+        ../../src/constantine/math/arithmetic,
+        ../../src/constantine/math/arithmetic/limbs_unsaturated,
+        ../../src/constantine/math/io/io_bigints,
         ../../helpers/prng_unsafe
 
 # Random seed for reproducibility

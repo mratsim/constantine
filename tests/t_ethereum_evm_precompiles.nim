@@ -14,8 +14,8 @@ import
   # 3rd party
   pkg/jsony,
   # Internals
-  ../constantine/math/io/io_bigints,
-  ../constantine/ethereum_evm_precompiles
+  ../src/constantine/math/io/io_bigints,
+  ../src/constantine/ethereum_evm_precompiles
 
 type
   BN256Tests = object
