@@ -4,7 +4,7 @@ author        = "Status Research & Development GmbH"
 description   = "This library provides thoroughly tested and highly-optimized implementations of cryptography protocols."
 license       = "MIT or Apache License 2.0"
 
-# research dir
+# research directory should be deleted in the future
 skipDirs = @["research"]
 
 # Dependencies
