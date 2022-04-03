@@ -16,7 +16,8 @@ import
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective
   ],
-  ../io/io_extfields
+  ../io/io_extfields,
+  ../curves/zoo_constants
 
 # No exceptions allowed
 {.push raises: [].}
@@ -232,6 +233,7 @@ func line_eval_fused_double[Field](
        T: var ECP_ShortW_Prj[Field, G2]) =
   ## Fused line evaluation and elliptic point doubling
   # Grewal et al, 2012 adapted to Scott 2019 line notation
+
   var A {.noInit.}, B {.noInit.}, C {.noInit.}: Field
   var E {.noInit.}, F {.noInit.}, G {.noInit.}: Field
   
@@ -239,27 +241,22 @@ func line_eval_fused_double[Field](
   template I: untyped = line.b
   template J: untyped = line.c
   
-  const b3 = 3*Field.C.getCoefB()
-
-  var snrY = T.y
-  when Field.C.getSexticTwist() == D_Twist:
-    snrY *= SexticNonResidue
-
-  A.prod(T.x, snrY)
+  A.prod(T.x, T.y)
   A.div2()          # A = XY/2
   B.square(T.y)     # B = Y²
   C.square(T.z)     # C = Z²
 
-  var snrB = B
-  when Field.C.getSexticTwist() == D_Twist:
-    snrB *= SexticNonResidue
+  # E = 3b'Z² = 3bξ Z² (M-Twist) or 3b/ξ Z² (D-Twist)
+  when Field.C.getSexticTwist() == M_Twist and E.fromComplexExtension():
+    const b3 = 3*Field.C.getCoefB()
+    E.prod(C, b3)
+    E *= SexticNonResidue
+  else:
+    E = C
+    E.mulCheckSparse(Field.C.getCoefB_G2_times_3())
 
-  E.prod(C, b3)
-  when Field.C.getSexticTwist() == M_Twist:
-    E *= SexticNonResidue # E = 3b'Z² = 3bξ Z²
-
-  F.prod(E, 3)      # F = 3E = 9bZ²
-  G.sum(snrB, F)
+  F.prod(E, 3)      # F = 3E = 9b'Z²
+  G.sum(B, F)
   G.div2()          # G = (B+F)/2
   H.sum(T.y, T.z)
   H.square()
@@ -268,30 +265,17 @@ func line_eval_fused_double[Field](
 
   I.square(T.x)
   I *= 3            # I = 3X²
-  when Field.C.getSexticTwist() == D_Twist:
-    I *= SexticNonResidue
 
-  J.diff(E, snrB)   # J = E-B = 3b'Z² - Y²
+  J.diff(E, B)      # J = E-B = 3b'Z² - Y²
 
   # In-place modification: invalidates `T.` calls
-  T.x.diff(snrB, F)
+  T.x.diff(B, F)
   T.x *= A          # X₃ = A(B-F) = XY/2.(Y²-9b'Z²)
-                    # M-twist: XY/2.(Y²-9bξZ²)
-                    # D-Twist: ξXY/2.(Y²ξ-9bZ²)
-
   T.y.square(G)
   E.square()
   E *= 3
   T.y -= E          # Y₃ = G² - 3E² = (Y²+9b'Z²)²/4 - 3*(3b'Z²)²
-                    # M-twist: (Y²+9bξZ²)²/4 - 3*(3bξZ²)²
-                    # D-Twist: (ξY²+9bZ²)²/4 - 3*(3bZ²)²
-
-  when Field.C.getSexticTwist() == D_Twist:
-    H *= SexticNonResidue
-  T.z.prod(snrB, H) # Z₃ = BH = Y²((Y+Z)² - (Y²+Z²)) = 2Y³Z
-                    # M-twist: 2Y³Z
-                    # D-twist: 2ξ²Y³Z
-
+  T.z.prod(B, H)    # Z₃ = BH = Y²((Y+Z)² - (Y²+Z²)) = 2Y³Z
   H.neg()
 
 func line_eval_fused_add[Field](
