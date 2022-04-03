@@ -724,7 +724,7 @@ func has_large_NR_norm(C: static Curve): bool =
 
   return norm > 5
 
-func has_large_field_elem(C: static Curve): bool =
+func has_large_field_elem*(C: static Curve): bool =
   ## Returns true if field element are large
   ## and necessitate custom routine for assembly in particular
   let a = default(Fp[C])
@@ -1388,9 +1388,13 @@ func mul_sparse_by_0y*(a: var QuadraticExt, sparseB: auto) =
   ## Sparse in-place multiplication
   a.mul_sparse_by_0y(a, sparseB)
 
+func mul_sparse_by_x0*(r: var QuadraticExt, a: QuadraticExt, sparseB: auto) =
+  ## Sparse in-place multiplication
+  r.mul_sparse_generic_by_x0(a, sparseB)
+
 func mul_sparse_by_x0*(a: var QuadraticExt, sparseB: QuadraticExt) =
   ## Sparse in-place multiplication
-  a.mul_sparse_generic_by_x0(a, sparseB)
+  a.mul_sparse_by_x0(a, sparseB)
 
 template mulCheckSparse*(a: var QuadraticExt, b: QuadraticExt) =
   when b.isOne().bool:
