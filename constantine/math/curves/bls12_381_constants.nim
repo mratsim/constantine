@@ -8,11 +8,15 @@
 
 import
   ../config/curves,
-  ../io/io_extfields
+  ../io/[io_fields, io_extfields]
 
 # Curve precomputed parameters
 # -----------------------------------------------------------------
 const BLS12_381_coefB_G2* = Fp2[BLS12_381].fromHex( 
   "0x4",
   "0x4"
+)
+const BLS12_381_coefB_G2_times_3* = Fp2[BLS12_381].fromHex( 
+  "0xc",
+  "0xc"
 )

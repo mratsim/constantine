@@ -75,63 +75,35 @@ proc lineAddBench*(C: static Curve, iters: int) =
   bench("Line add", C, iters):
     line.line_add(T, Q, P)
 
-proc mulFp12byLine_xyz000_Bench*(C: static Curve, iters: int) =
+proc mulFp12byLine_Bench*(C: static Curve, iters: int) =
   var line: Line[Fp2[C]]
   var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], G2])
   let P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
   line.line_double(T, P)
   var f = rng.random_unsafe(Fp12[C])
 
-  bench("Mul 𝔽p12 by line xyz000", C, iters):
-    f.mul_sparse_by_line_xyz000(line)
+  bench("Mul 𝔽p12 by line", C, iters):
+    f.mul_by_line(line)
 
-proc mulFp12byLine_xy000z_Bench*(C: static Curve, iters: int) =
-  var line: Line[Fp2[C]]
-  var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], G2])
-  let P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
-  line.line_double(T, P)
-  var f = rng.random_unsafe(Fp12[C])
-
-  bench("Mul 𝔽p12 by line xy000z", C, iters):
-    f.mul_sparse_by_line_xy000z(line)
-
-proc mulLinebyLine_xyz000_Bench*(C: static Curve, iters: int) =
+proc mulLinebyLine_Bench*(C: static Curve, iters: int) =
   var l0, l1: Line[Fp2[C]]
   var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], G2])
   let P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
   l0.line_double(T, P)
   l1.line_double(T, P)
-  var f = rng.random_unsafe(Fp12[C])
+  var f {.noInit.}: Fp12[C]
 
-  bench("Mul line xyz000 by line xyz000", C, iters):
-    f.prod_xyz000_xyz000_into_abcdefghij00(l0, l1)
+  bench("Mul line by line", C, iters):
+    f.prod_from_2_lines(l0, l1)
 
-proc mulLinebyLine_xy000z_Bench*(C: static Curve, iters: int) =
-  var l0, l1: Line[Fp2[C]]
-  var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], G2])
-  let P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
-  l0.line_double(T, P)
-  l1.line_double(T, P)
-  var f = rng.random_unsafe(Fp12[C])
-
-  bench("Mul line xy000z by line xy000z", C, iters):
-    f.prod_xy000z_xy000z_into_abcd00efghij(l0, l1)
-
-proc mulFp12by_abcdefghij00_Bench*(C: static Curve, iters: int) =
+proc mulFp12by_prod2lines_Bench*(C: static Curve, iters: int) =
   var f = rng.random_unsafe(Fp12[C])
   let g = rng.random_unsafe(Fp12[C])
 
-  bench("Mul 𝔽p12 by abcdefghij00", C, iters):
-    f.mul_sparse_by_abcdefghij00(g)
+  bench("Mul 𝔽p12 by product of 2 lines", C, iters):
+    f.mul_by_prod_of_2_lines(g)
 
-proc mulFp12by_abcd00efghij_Bench*(C: static Curve, iters: int) =
-  var f = rng.random_unsafe(Fp12[C])
-  let g = rng.random_unsafe(Fp12[C])
-
-  bench("Mul 𝔽p12 by abcd00efghij", C, iters):
-    f.mul_sparse_by_abcd00efghij(g)
-
-proc mulFp12_by_2lines_v1_xyz000_Bench*(C: static Curve, iters: int) =
+proc mulFp12_by_2lines_v1_Bench*(C: static Curve, iters: int) =
   var l0, l1: Line[Fp2[C]]
   var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], G2])
   let P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
@@ -140,10 +112,10 @@ proc mulFp12_by_2lines_v1_xyz000_Bench*(C: static Curve, iters: int) =
   var f = rng.random_unsafe(Fp12[C])
 
   bench("mulFp12 by 2 lines v1", C, iters):
-    f.mul_sparse_by_line_xyz000(l0)
-    f.mul_sparse_by_line_xyz000(l1)
+    f.mul_by_line(l0)
+    f.mul_by_line(l1)
 
-proc mulFp12_by_2lines_v2_xyz000_Bench*(C: static Curve, iters: int) =
+proc mulFp12_by_2lines_v2_Bench*(C: static Curve, iters: int) =
   var l0, l1: Line[Fp2[C]]
   var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], G2])
   let P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
@@ -153,33 +125,8 @@ proc mulFp12_by_2lines_v2_xyz000_Bench*(C: static Curve, iters: int) =
 
   bench("mulFp12 by 2 lines v2", C, iters):
     var f2 {.noInit.}: Fp12[C]
-    f2.prod_xyz000_xyz000_into_abcdefghij00(l0, l1)
-    f.mul_sparse_by_abcdefghij00(f2)
-
-proc mulFp12_by_2lines_v1_xy000z_Bench*(C: static Curve, iters: int) =
-  var l0, l1: Line[Fp2[C]]
-  var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], G2])
-  let P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
-  l0.line_double(T, P)
-  l1.line_double(T, P)
-  var f = rng.random_unsafe(Fp12[C])
-
-  bench("mulFp12 by 2 lines v1", C, iters):
-    f.mul_sparse_by_line_xy000z(l0)
-    f.mul_sparse_by_line_xy000z(l1)
-
-proc mulFp12_by_2lines_v2_xy000z_Bench*(C: static Curve, iters: int) =
-  var l0, l1: Line[Fp2[C]]
-  var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], G2])
-  let P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
-  l0.line_double(T, P)
-  l1.line_double(T, P)
-  var f = rng.random_unsafe(Fp12[C])
-
-  bench("mulFp12 by 2 lines v2", C, iters):
-    var f2 {.noInit.}: Fp12[C]
-    f2.prod_xy000z_xy000z_into_abcd00efghij(l0, l1)
-    f.mul_sparse_by_abcd00efghij(f2)
+    f2.prod_from_2_lines(l0, l1)
+    f.mul_by_prod_of_2_lines(f2)
 
 proc mulBench*(C: static Curve, iters: int) =
   var r: Fp12[C]

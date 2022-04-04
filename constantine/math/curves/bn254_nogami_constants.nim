@@ -8,11 +8,15 @@
 
 import
   ../config/curves,
-  ../io/io_extfields
+  ../io/[io_fields, io_extfields]
 
 # Curve precomputed parameters
 # -----------------------------------------------------------------
 const BN254_Nogami_coefB_G2* = Fp2[BN254_Nogami].fromHex( 
   "0x1",
   "0x2523648240000001ba344d80000000086121000000000013a700000000000012"
+)
+const BN254_Nogami_coefB_G2_times_3* = Fp2[BN254_Nogami].fromHex( 
+  "0x3",
+  "0x2523648240000001ba344d80000000086121000000000013a700000000000010"
 )

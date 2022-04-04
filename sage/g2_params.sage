@@ -129,6 +129,10 @@ def gen_coef_b_on_G2(curve_name, curve_config):
   buf += field_to_nim(G2B, G2_field, curve_name)
   buf += '\n'
 
+  buf += f'const {curve_name}_coefB_G2_times_3* = '
+  buf += field_to_nim(3*G2B, G2_field, curve_name)
+  buf += '\n'
+
   return buf
 
 # CLI
@@ -156,17 +160,17 @@ if __name__ == "__main__":
   else:
     G2B = gen_coef_b_on_G2(curve, Curves)
 
-    with open(f'{curve.lower()}_precomputed_params.nim', 'w') as f:
+    with open(f'{curve.lower()}_constants.nim', 'w') as f:
       f.write(copyright())
       f.write('\n\n')
 
       f.write(inspect.cleandoc("""
           import
             ../config/curves,
-            ../io/io_extfields
+            ../io/[io_fields, io_extfields]
       """))
 
       f.write('\n\n')
       f.write(G2B)
 
-    print(f'Successfully created {curve.lower()}_precomputed_params.nim')
+    print(f'Successfully created {curve.lower()}_constants.nim')
