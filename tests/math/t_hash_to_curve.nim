@@ -144,6 +144,12 @@ echo "Hash-to-curve" & '\n'
 # Hash-to-curve v8 to latest
 # https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/blob/draft-irtf-cfrg-hash-to-curve-10/poc/vectors/BLS12381G2_XMD:SHA-256_SSWU_RO_.json
 run_hash_to_curve_test(
+  ECP_ShortW_Prj[Fp[BLS12_381], G1],
+  "v8",
+  "tv_h2c_v8_BLS12_381_hash_to_G1_SHA256_SSWU_RO.json"
+)
+
+run_hash_to_curve_test(
   ECP_ShortW_Prj[Fp2[BLS12_381], G2],
   "v8",
   "tv_h2c_v8_BLS12_381_hash_to_G2_SHA256_SSWU_RO.json"

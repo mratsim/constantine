@@ -9,7 +9,9 @@
 import
   std/macros,
   ../config/curves,
-  ./bls12_381_g2_hash_to_curve
+  ../elliptic/ec_shortweierstrass_affine,
+  ./bls12_381_hash_to_curve_g1,
+  ./bls12_381_hash_to_curve_g2
 
 {.experimental: "dynamicBindSym".}
 
@@ -19,7 +21,7 @@ macro h2cConst*(C: static Curve, group, value: untyped): untyped =
   return bindSym($C & "_h2c_" & $group & "_" & $value)
 
 macro h2cIsomapPoly*(C: static Curve,
-        group: untyped,
+        group: static Subgroup,
         isodegree: static int,
         value: untyped): untyped =
   ## Get an isogeny map polynomial

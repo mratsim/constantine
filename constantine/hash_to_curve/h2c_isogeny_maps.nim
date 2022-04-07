@@ -84,7 +84,8 @@ func poly_eval_horner_scaled[F; D, N: static int](
 
 func h2c_isogeny_map[F](
        rxn, rxd, ryn, ryd: var F,
-       xn, xd, yn: F, isodegree: static int) =
+       xn, xd, yn: F, isodegree: static int,
+       G: static Subgroup) =
   ## Given G2, the target prime order subgroup of E2,
   ## this function maps an element of
   ## E'2 a curve isogenous to E2
@@ -108,20 +109,20 @@ func h2c_isogeny_map[F](
 
   rxn.poly_eval_horner_scaled(
     xn, xd_pow,
-    h2cIsomapPoly(F.C, G2, isodegree, xnum)
+    h2cIsomapPoly(F.C, G, isodegree, xnum)
   )
   rxd.poly_eval_horner_scaled(
     xn, xd_pow,
-    h2cIsomapPoly(F.C, G2, isodegree, xden)
+    h2cIsomapPoly(F.C, G, isodegree, xden)
   )
 
   ryn.poly_eval_horner_scaled(
     xn, xd_pow,
-    h2cIsomapPoly(F.C, G2, isodegree, ynum)
+    h2cIsomapPoly(F.C, G, isodegree, ynum)
   )
   ryd.poly_eval_horner_scaled(
     xn, xd_pow,
-    h2cIsomapPoly(F.C, G2, isodegree, yden)
+    h2cIsomapPoly(F.C, G, isodegree, yden)
   )
 
   # y coordinate is y' * poly_yNum(x)
@@ -151,7 +152,8 @@ func h2c_isogeny_map*[F; G: static Subgroup](
     rxd = r.z,
     ryn = r.y,
     ryd = t,
-    xn, xd, yn, isodegree
+    xn, xd, yn,
+    isodegree, G
   )
 
   # Now convert to projective coordinates
@@ -184,7 +186,8 @@ func h2c_isogeny_map*[F; G: static Subgroup](
   h2c_isogeny_map(
     rxn, rxd,
     ryn, ryd,
-    xn, xd, yn, isodegree
+    xn, xd, yn,
+    isodegree, G
   )
 
   # Now convert to jacobian coordinates
@@ -227,20 +230,20 @@ func h2c_isogeny_map*[F; G: static Subgroup](
 
   xn.poly_eval_horner_scaled(
     P.x, ZZpow,
-    h2cIsomapPoly(F.C, G2, isodegree, xnum)
+    h2cIsomapPoly(F.C, G, isodegree, xnum)
   )
   xd.poly_eval_horner_scaled(
     P.x, ZZpow,
-    h2cIsomapPoly(F.C, G2, isodegree, xden)
+    h2cIsomapPoly(F.C, G, isodegree, xden)
   )
 
   yn.poly_eval_horner_scaled(
     P.x, ZZpow,
-    h2cIsomapPoly(F.C, G2, isodegree, ynum)
+    h2cIsomapPoly(F.C, G, isodegree, ynum)
   )
   yd.poly_eval_horner_scaled(
     P.x, ZZpow,
-    h2cIsomapPoly(F.C, G2, isodegree, yden)
+    h2cIsomapPoly(F.C, G, isodegree, yden)
   )
 
   # yn = y' * poly_yNum(x) = yZ³ * poly_yNum(x)

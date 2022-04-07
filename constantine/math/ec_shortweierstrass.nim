@@ -13,6 +13,7 @@
 # ############################################################
 
 import
+  ./arithmetic,
   elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_jacobian,

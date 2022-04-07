@@ -69,12 +69,12 @@ const BLS12_381_h2c_G2_3_isogeny_map_xnum* = [
     "0x0",
     "0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71a"
   ),
-  # x^2
+  # x²
   Fp2[BLS12_381].fromHex(
     "0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71e",
     "0x8ab05f8bdd54cde190937e76bc3e447cc27c3d6fbd7063fcd104635a790520c0a395554e5c6aaaa9354ffffffffe38d"
   ),
-  # x^3
+  # x³
   Fp2[BLS12_381].fromHex(
     "0x171d6541fa38ccfaed6dea691f5fb614cb14b4e7f4e810aa22d6108f142b85757098e38d0f671c7188e2aaaaaaaa5ed1",
     "0x0"
@@ -94,7 +94,7 @@ const BLS12_381_h2c_G2_3_isogeny_map_xden* = [
     "0xc",
     "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa9f"
   ),
-  # x^2
+  # x²
   Fp2[BLS12_381].fromHex(
     "0x1",
     "0x0"
@@ -114,12 +114,12 @@ const BLS12_381_h2c_G2_3_isogeny_map_ynum* = [
     "0x0",
     "0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97be"
   ),
-  # x^2*y
+  # x²*y
   Fp2[BLS12_381].fromHex(
     "0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71c",
     "0x8ab05f8bdd54cde190937e76bc3e447cc27c3d6fbd7063fcd104635a790520c0a395554e5c6aaaa9354ffffffffe38f"
   ),
-  # x^3*y
+  # x³*y
   Fp2[BLS12_381].fromHex(
     "0x124c9ad43b6cf79bfbf7043de3811ad0761b0f37a1e26286b0e977c69aa274524e79097a56dc4bd9e1b371c71c718b10",
     "0x0"
@@ -139,12 +139,12 @@ const BLS12_381_h2c_G2_3_isogeny_map_yden* = [
     "0x0",
     "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa9d3"
   ),
-  # x^2
+  # x²
   Fp2[BLS12_381].fromHex(
     "0x12",
     "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa99"
   ),
-  # x^3
+  # x³
   Fp2[BLS12_381].fromHex(
     "0x1",
     "0x0"
