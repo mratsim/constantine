@@ -22,10 +22,8 @@ macro h2cConst*(C: static Curve, group, value: untyped): untyped =
 
 macro h2cIsomapPoly*(C: static Curve,
         group: static Subgroup,
-        isodegree: static int,
         value: untyped): untyped =
   ## Get an isogeny map polynomial
   ## for mapping to a elliptic curve group (G1 or G2)
   return bindSym($C & "_h2c_" &
-    $group & "_" & $isodegree &
-    "_isogeny_map_" & $value)
+    $group & "_isogeny_map_" & $value)

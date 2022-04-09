@@ -55,7 +55,7 @@ const BLS12_381_h2c_G2_inv_norm_inv_Z3* = Fp[BLS12_381].fromHex(  # 1/||1/Z³||
 # The polynomials map a point (x', y') on the isogenous curve E'2
 # to (x, y) on E2, represented as (xnum/xden, y' * ynum/yden)
 
-const BLS12_381_h2c_G2_3_isogeny_map_xnum* = [
+const BLS12_381_h2c_G2_isogeny_map_xnum* = [
   # Polynomial k₀ + k₁ x + k₂ x² + k₃ x³ + ... + kₙ xⁿ
   # The polynomial is stored as an array of coefficients ordered from k₀ to kₙ
 
@@ -80,7 +80,7 @@ const BLS12_381_h2c_G2_3_isogeny_map_xnum* = [
     "0x0"
   )
 ]
-const BLS12_381_h2c_G2_3_isogeny_map_xden* = [
+const BLS12_381_h2c_G2_isogeny_map_xden* = [
   # Polynomial k₀ + k₁ x + k₂ x² + k₃ x³ + ... + kₙ xⁿ
   # The polynomial is stored as an array of coefficients ordered from k₀ to kₙ
 
@@ -100,7 +100,7 @@ const BLS12_381_h2c_G2_3_isogeny_map_xden* = [
     "0x0"
   )
 ]
-const BLS12_381_h2c_G2_3_isogeny_map_ynum* = [
+const BLS12_381_h2c_G2_isogeny_map_ynum* = [
   # Polynomial k₀ + k₁ x + k₂ x² + k₃ x³ + ... + kₙ xⁿ
   # The polynomial is stored as an array of coefficients ordered from k₀ to kₙ
 
@@ -125,7 +125,7 @@ const BLS12_381_h2c_G2_3_isogeny_map_ynum* = [
     "0x0"
   )
 ]
-const BLS12_381_h2c_G2_3_isogeny_map_yden* = [
+const BLS12_381_h2c_G2_isogeny_map_yden* = [
   # Polynomial k₀ + k₁ x + k₂ x² + k₃ x³ + ... + kₙ xⁿ
   # The polynomial is stored as an array of coefficients ordered from k₀ to kₙ
 
