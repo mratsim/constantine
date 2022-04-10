@@ -134,6 +134,10 @@ const BLS12_381_h2c_G1_isogeny_map_xden* = [
   # x⁹
   Fp[BLS12_381].fromHex(
     "0x95fc13ab9e92ad4476d6e3eb3a56680f682b4ee96f7d03776df533978f31c1593174e4b4b7865002d6384d168ecdd0a"
+  ),
+  # x¹⁰
+  Fp[BLS12_381].fromHex(
+    "0x1"
   )
 ]
 const BLS12_381_h2c_G1_isogeny_map_ynum* = [
@@ -269,4 +273,8 @@ const BLS12_381_h2c_G1_isogeny_map_yden* = [
   Fp[BLS12_381].fromHex(
     "0xe0fa1d816ddc03e6b24255e0d7819c171c40f65e273b853324efcd6356caa205ca2f570f13497804415473a1d634b8f"
   ),
+  # x¹⁵
+  Fp[BLS12_381].fromHex(
+    "0x1"
+  )
 ]

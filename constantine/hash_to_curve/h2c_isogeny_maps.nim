@@ -43,7 +43,7 @@ func poly_eval_horner[F](r: var F, x: F, poly: openarray[F]) =
 
 func poly_eval_horner_scaled[F; D, N: static int](
        r: var F, xn: F,
-       xd_pow: array[D, F], poly: array[N, F]) =
+       xd_pow: array[D, F], poly: array[N, F], numPolyLen: static int) =
   ## Fast polynomial evaluation using Horner's rule
   ## Result is scaled by xd^N with N the polynomial degree
   ## to avoid finite field division
@@ -71,12 +71,12 @@ func poly_eval_horner_scaled[F; D, N: static int](
   for i in countdown(N-2, 0):
     var t: F
     r *= xn
-    t.prod(poly[i], xd_pow[N-2-i])
+    t.prod(poly[i], xd_pow[(N-2-i)])
     r += t
 
-  when D - (N-1) > 0:
+  when N-numPolyLen < 0:
     # Missing scaling factor
-    r *= xd_pow[D - (N-1) - 1]
+    r *= xd_pow[0]
 
 func h2c_isogeny_map[F](
        rxn, rxd, ryn, ryd: var F,
@@ -108,22 +108,29 @@ func h2c_isogeny_map[F](
   for i in 2 ..< xd_pow.len:
     xd_pow[i].prod(xd_pow[i-1], xd_pow[0])
 
+  const xnLen = h2cIsomapPoly(F.C, G, xnum).len
+  const ynLen = h2cIsomapPoly(F.C, G, ynum).len
+
   rxn.poly_eval_horner_scaled(
     xn, xd_pow,
-    h2cIsomapPoly(F.C, G, xnum)
+    h2cIsomapPoly(F.C, G, xnum),
+    xnLen
   )
   rxd.poly_eval_horner_scaled(
     xn, xd_pow,
-    h2cIsomapPoly(F.C, G, xden)
+    h2cIsomapPoly(F.C, G, xden),
+    xnLen
   )
 
   ryn.poly_eval_horner_scaled(
     xn, xd_pow,
-    h2cIsomapPoly(F.C, G, ynum)
+    h2cIsomapPoly(F.C, G, ynum),
+    ynLen
   )
   ryd.poly_eval_horner_scaled(
     xn, xd_pow,
-    h2cIsomapPoly(F.C, G, yden)
+    h2cIsomapPoly(F.C, G, yden),
+    ynLen
   )
 
   # y coordinate is y' * poly_yNum(x)
@@ -233,22 +240,29 @@ func h2c_isogeny_map*[F; G: static Subgroup](
   for i in 2 ..< ZZpow.len:
     ZZpow[i].prod(ZZpow[i-1], ZZpow[0])
 
+  const xnLen = h2cIsomapPoly(F.C, G, xnum).len
+  const ynLen = h2cIsomapPoly(F.C, G, ynum).len
+
   xn.poly_eval_horner_scaled(
     P.x, ZZpow,
-    h2cIsomapPoly(F.C, G, xnum)
+    h2cIsomapPoly(F.C, G, xnum),
+    xnLen
   )
   xd.poly_eval_horner_scaled(
     P.x, ZZpow,
-    h2cIsomapPoly(F.C, G, xden)
+    h2cIsomapPoly(F.C, G, xden),
+    xnLen
   )
 
   yn.poly_eval_horner_scaled(
     P.x, ZZpow,
-    h2cIsomapPoly(F.C, G, ynum)
+    h2cIsomapPoly(F.C, G, ynum),
+    ynLen
   )
   yd.poly_eval_horner_scaled(
     P.x, ZZpow,
-    h2cIsomapPoly(F.C, G, yden)
+    h2cIsomapPoly(F.C, G, yden),
+    ynLen
   )
 
   # yn = y' * poly_yNum(x) = yZ³ * poly_yNum(x)

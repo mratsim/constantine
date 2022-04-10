@@ -465,6 +465,9 @@ func appendHex*(dst: var string, big: BigInt, order: static Endianness = bigEndi
   # 2 Convert canonical uint to hex
   dst.add bytes.nativeEndianToHex(order)
 
+func toHex*(a: openArray[byte]): string =
+  nativeEndianToHex(a, system.cpuEndian)
+
 func toHex*(big: BigInt, order: static Endianness = bigEndian): string =
   ## Stringify an int to hex.
   ## Note. Leading zeros are not removed.
