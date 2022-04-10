@@ -25,10 +25,6 @@ import
 # Specialized routine for p ≡ 3 (mod 4)
 # ------------------------------------------------------------
 
-func hasP3mod4_primeModulus*(C: static Curve): static bool =
-  ## Returns true iff p ≡ 3 (mod 4)
-  (BaseType(C.Mod.limbs[0]) and 3) == 3
-
 func invsqrt_p3mod4(r: var Fp, a: Fp) =
   ## Compute the inverse square root of ``a``
   ##
@@ -57,10 +53,6 @@ func invsqrt_p3mod4(r: var Fp, a: Fp) =
 
 # Specialized routine for p ≡ 5 (mod 8)
 # ------------------------------------------------------------
-
-func hasP5mod8_primeModulus*(C: static Curve): static bool =
-  ## Returns true iff p ≡ 5 (mod 8)
-  (BaseType(C.Mod.limbs[0]) and 7) == 5
 
 func invsqrt_p5mod8(r: var Fp, a: Fp) =
   ## Compute the inverse square root of ``a``

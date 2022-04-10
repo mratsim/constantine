@@ -34,8 +34,27 @@ import
 # Map to curve
 # ----------------------------------------------------------------
 
-func mapToIsoCurve_sswuG2_opt9mod16[F; G: static Subgroup](
-       r: var ECP_ShortW_Jac[F, G],
+func mapToIsoCurve_sswuG1_opt3mod4[F](
+       r: var ECP_ShortW_Jac[F, G1],
+       u: F) =
+  var
+    xn{.noInit.}, xd{.noInit.}: F
+    yn{.noInit.}: F
+    xd3{.noInit.}: F
+
+  mapToIsoCurve_sswuG1_opt3mod4(
+    xn, xd,
+    yn,
+    u, xd3
+  )
+
+  # Convert to Jacobian
+  r.z = xd          # Z = xd
+  r.x.prod(xn, xd)  # X = xZ² = xn/xd * xd² = xn*xd
+  r.y.prod(yn, xd3) # Y = yZ³ = yn * xd³
+
+func mapToIsoCurve_sswuG2_opt9mod16[F](
+       r: var ECP_ShortW_Jac[F, G2],
        u: F) =
   var
     xn{.noInit.}, xd{.noInit.}: F
@@ -59,29 +78,30 @@ func mapToCurve[F; G: static Subgroup](
   ## Map an element of the
   ## finite or extension field F
   ## to an elliptic curve E
-
-  when F.C == BLS12_381 and F is Fp2:
+  
+  when F.C.getCoefA() * F.C.getCoefB() == 0:
     # https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-6.6.3
     # Simplified Shallue-van de Woestijne-Ulas method for AB == 0
+    
+    # 1. Map to E' isogenous to E
+    when F is Fp and F.C.hasP3mod4_primeModulus():
+      mapToIsoCurve_sswuG1_opt3mod4(
+        xn, xd,
+        yn,
+        u, xd3
+      )
+    elif F is Fp2 and F.C.hasP3mod4_primeModulus():
+      # p ≡ 3 (mod 4) => p² ≡ 9 (mod 16)
+      mapToIsoCurve_sswuG2_opt9mod16(
+        xn, xd,
+        yn,
+        u, xd3
+      )
+    else:
+      {.error: "Not implemented".}
 
-    # 1. Map to E'2 isogenous to E2
-    var
-      xn{.noInit.}, xd{.noInit.}: F
-      yn{.noInit.}: F
-      xd3{.noInit.}: F
-
-    mapToIsoCurve_sswuG2_opt9mod16(
-      xn, xd,
-      yn,
-      u, xd3
-    )
-
-    # 2. Map from E'2 to E2
-    r.h2c_isogeny_map(
-      xn, xd,
-      yn,
-      isodegree = 3
-    )
+    # 2. Map from E'1 to E1
+    r.h2c_isogeny_map(xn, xd, yn)
   else:
     {.error: "Not implemented".}
 
@@ -106,15 +126,27 @@ func mapToCurve_fusedAdd[F; G: static Subgroup](
   # So we use jacobian coordinates for computation on isogenies.
 
   var P0{.noInit.}, P1{.noInit.}: ECP_ShortW_Jac[F, G]
-  when F.C == BLS12_381 and F is Fp2:
-    # 1. Map to E'2 isogenous to E2
-    P0.mapToIsoCurve_sswuG2_opt9mod16(u0)
-    P1.mapToIsoCurve_sswuG2_opt9mod16(u1)
-
-    P0.sum(P0, P1, h2CConst(F.C, G2, Aprime_E2))
+  when F.C.getCoefA() * F.C.getCoefB() == 0:
+    # https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-6.6.3
+    # Simplified Shallue-van de Woestijne-Ulas method for AB == 0
+    
+    # 1. Map to E' isogenous to E
+    when F is Fp and F.C.hasP3mod4_primeModulus():
+      # 1. Map to E'1 isogenous to E1
+      P0.mapToIsoCurve_sswuG1_opt3mod4(u0)
+      P1.mapToIsoCurve_sswuG1_opt3mod4(u1)
+      P0.sum(P0, P1, h2CConst(F.C, G1, Aprime_E1))
+    elif F is Fp2 and F.C.hasP3mod4_primeModulus():
+      # p ≡ 3 (mod 4) => p² ≡ 9 (mod 16)
+      # 1. Map to E'2 isogenous to E2
+      P0.mapToIsoCurve_sswuG2_opt9mod16(u0)
+      P1.mapToIsoCurve_sswuG2_opt9mod16(u1)
+      P0.sum(P0, P1, h2CConst(F.C, G2, Aprime_E2))
+    else:
+      {.error: "Not implemented".}
 
     # 2. Map from E'2 to E2
-    r.h2c_isogeny_map(P0, isodegree = 3)
+    r.h2c_isogeny_map(P0)
   else:
     {.error: "Not implemented".}
 

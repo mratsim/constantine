@@ -115,6 +115,127 @@ def find_z_sswu(F, A, B):
                 return Z_cand
         ctr += 1
 
+# BLS12-381 G1
+# ---------------------------------------------------------
+# Hardcoding from spec:
+# - https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-8.8.1
+# - https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/blob/f7dd3761/poc/sswu_opt_3mod4.sage#L126-L132
+
+def genBLS12381G1_H2C_constants(curve_config):
+  curve_name = 'BLS12_381'
+
+  # ------------------------------------------
+  p = curve_config[curve_name]['field']['modulus']
+  Fp = GF(p)
+  K.<u> = PolynomialRing(Fp)
+  # ------------------------------------------
+
+  # Hash to curve isogenous curve parameters
+  # y² = x³ + A'*x + B'
+
+  print('\n----> Hash-to-Curve map to isogenous BLS12-381 E\'1 <----\n')
+  buf = inspect.cleandoc(f"""
+      # Hash-to-Curve map to isogenous BLS12-381 E'1 constants
+      # -----------------------------------------------------------------
+      #
+      # y² = x³ + A'*x + B' with p ≡ 3 (mod 4) the BLS12-381 characteristic (base modulus)
+      #
+      # Hardcoding from spec:
+      # - https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-8.8.1
+      # - https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/blob/f7dd3761/poc/sswu_opt_3mod4.sage#L126-L132
+  """)
+  buf += '\n\n'
+
+  # Base constants
+  Aprime_E1 = Fp('0x144698a3b8e9433d693a02c96d4982b0ea985383ee66a8d8e8981aefd881ac98936f8da0e0f97f5cf428082d584c1d')
+  Bprime_E1 = Fp('0x12e2908d11688030018b12e8753eee3b2016c1f0f24f4070a0b9c14fcef35ef55a23215a316ceaa5d1cc48e98e172be0')
+  Z = Fp(11)
+  # Extra
+  minus_A = -Aprime_E1
+  ZmulA = Z * Aprime_E1
+  sqrt_minus_Z3 = sqrt(-Z^3)
+
+  buf += f'const {curve_name}_h2c_G1_Aprime_E1* = '
+  buf += field_to_nim(Aprime_E1, 'Fp', curve_name)
+  buf += '\n'
+
+  buf += f'const {curve_name}_h2c_G1_Bprime_E1* = '
+  buf += field_to_nim(Bprime_E1, 'Fp', curve_name)
+  buf += '\n'
+
+  buf += f'const {curve_name}_h2c_G1_Z* = '
+  buf += field_to_nim(Z, 'Fp', curve_name)
+  buf += '\n'
+
+  buf += f'const {curve_name}_h2c_G1_minus_A* = '
+  buf += field_to_nim(minus_A, 'Fp', curve_name)
+  buf += '\n'
+
+  buf += f'const {curve_name}_h2c_G1_ZmulA* = '
+  buf += field_to_nim(ZmulA, 'Fp', curve_name)
+  buf += '\n'
+
+  buf += f'const {curve_name}_h2c_G1_sqrt_minus_Z3* = '
+  buf += field_to_nim(sqrt_minus_Z3, 'Fp', curve_name)
+  buf += '\n'
+
+  return buf
+
+def genBLS12381G1_H2C_isogeny_map(curve_config):
+  curve_name = 'BLS12_381'
+
+  # Hash to curve isogenous curve parameters
+  # y² = x³ + A'*x + B'
+
+  print('\n----> Hash-to-Curve 3-isogeny map BLS12-381 E\'1 constants <----\n')
+  buf = inspect.cleandoc(f"""
+      # Hash-to-Curve 11-isogeny map BLS12-381 E'1 constants
+      # -----------------------------------------------------------------
+      #
+      # The polynomials map a point (x', y') on the isogenous curve E'2
+      # to (x, y) on E2, represented as (xnum/xden, y' * ynum/yden)
+
+  """)
+  buf += '\n\n'
+
+  p = curve_config[curve_name]['field']['modulus']
+  Fp = GF(p)
+
+  # Base constants - E1
+  A = curve_config[curve_name]['curve']['a']
+  B = curve_config[curve_name]['curve']['b']
+  E1 =  EllipticCurve(Fp, [A, B])
+
+  # Base constants - Isogenous curve E'1, degree 11
+  Aprime_E1 = Fp('0x144698a3b8e9433d693a02c96d4982b0ea985383ee66a8d8e8981aefd881ac98936f8da0e0f97f5cf428082d584c1d')
+  Bprime_E1 = Fp('0x12e2908d11688030018b12e8753eee3b2016c1f0f24f4070a0b9c14fcef35ef55a23215a316ceaa5d1cc48e98e172be0')
+  Eprime1 = EllipticCurve(Fp, [Aprime_E1, Bprime_E1])
+
+  iso = EllipticCurveIsogeny(E=E1, kernel=None, codomain=Eprime1, degree=11).dual()
+  if (- iso.rational_maps()[1])(1, 1) > iso.rational_maps()[1](1, 1):
+      iso.switch_sign()
+
+  (xm, ym) = iso.rational_maps()
+  maps = (xm.numerator(), xm.denominator(), ym.numerator(), ym.denominator())
+
+  buf += dump_poly(
+    'BLS12_381_h2c_G1_11_isogeny_map_xnum',
+    xm.numerator(), 'Fp', curve_name)
+  buf += '\n'
+  buf += dump_poly(
+    'BLS12_381_h2c_G1_11_isogeny_map_xden',
+    xm.denominator(), 'Fp', curve_name)
+  buf += '\n'
+  buf += dump_poly(
+    'BLS12_381_h2c_G1_11_isogeny_map_ynum',
+    ym.numerator(), 'Fp', curve_name)
+  buf += '\n'
+  buf += dump_poly(
+    'BLS12_381_h2c_G1_11_isogeny_map_yden',
+    ym.denominator(), 'Fp', curve_name)
+
+  return buf
+
 # BLS12-381 G2
 # ---------------------------------------------------------
 # Hardcoding from spec:
@@ -303,12 +424,32 @@ if __name__ == "__main__":
   curve = args.curve[0]
   group = args.curve[1]
 
-  if curve == 'BLS12_381' and group == 'G2':
+  if curve == 'BLS12_381' and group == 'G1':
+    h2c = genBLS12381G1_H2C_constants(Curves)
+    h2c += '\n\n'
+    h2c += genBLS12381G1_H2C_isogeny_map(Curves)
+
+    with open(f'{curve.lower()}_hash_to_curve_g1.nim', 'w') as f:
+      f.write(copyright())
+      f.write('\n\n')
+
+      f.write(inspect.cleandoc("""
+          import
+            ../config/curves,
+            ../io/io_fields
+      """))
+
+      f.write('\n\n')
+      f.write(h2c)
+
+    print(f'Successfully created {curve.lower()}_hash_to_curve_g1.nim')
+
+  elif curve == 'BLS12_381' and group == 'G2':
     h2c = genBLS12381G2_H2C_constants(Curves)
     h2c += '\n\n'
     h2c += genBLS12381G2_H2C_isogeny_map(Curves)
 
-    with open(f'{curve.lower()}_g2_hash_to_curve.nim', 'w') as f:
+    with open(f'{curve.lower()}_hash_to_curve_g2.nim', 'w') as f:
       f.write(copyright())
       f.write('\n\n')
 
@@ -321,7 +462,7 @@ if __name__ == "__main__":
       f.write('\n\n')
       f.write(h2c)
 
-    print(f'Successfully created {curve.lower()}_g2_hash_to_curve.nim')
+    print(f'Successfully created {curve.lower()}_hash_to_curve_g2.nim')
   else:
     raise ValueError(
       curve + group +

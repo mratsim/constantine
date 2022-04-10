@@ -230,3 +230,86 @@ func mapToIsoCurve_sswuG2_opt9mod16*[C: static Curve](
   y.cneg(e1 xor e2)
 
   # yd.setOne()
+
+func mapToIsoCurve_sswuG1_opt3mod4*[C: static Curve](
+       xn, xd, yn: var Fp[C],
+       u: Fp[C], xd3: var Fp[C]) =
+  ## Given G1, the target prime order subgroup of E1 we want to hash to,
+  ## this function maps any field element of Fp to E'1
+  ## a curve isogenous to E1 using the Simplified Shallue-van de Woestijne method.
+  ##
+  ## This requires p² ≡ 3 (mod 4).
+  ##
+  ## Input:
+  ## - u, an Fp element
+  ## Output:
+  ## - (xn, xd, yn, yd) such that (x', y') = (xn/xd, yn/yd)
+  ##   is a point of E'1
+  ## - yd is implied to be 1
+  ## Scratchspace:
+  ## - xd3 is temporary scratchspace that will hold xd³
+  ##   after execution (which might be useful for Jacobian coordinate conversion)
+  #
+  # Paper: https://eprint.iacr.org/2019/403
+  # Spec: https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#appendix-G.2.1
+  # Sage: https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/blob/f7dd3761/poc/sswu_opt_3mod4.sage#L33-L76
+  # BLST: https://github.com/supranational/blst/blob/v0.3.4/src/map_to_g1.c#L322-L365
+  # Formal verification: https://github.com/GaloisInc/BLST-Verification/blob/8e2efde4/spec/implementation/HashToG1.cry
+
+  var
+    uu {.noInit.}, tv2 {.noInit.}: Fp[C]
+    tv4 {.noInit.}, x2n {.noInit.}, gx1 {.noInit.}: Fp[C]
+    y2 {.noInit.}: Fp[C]
+    e1, e2: SecretBool
+
+  # Aliases
+  template y: untyped = yn
+  template x1n: untyped = xn
+  template y1: untyped = yn
+  template Zuu: untyped = x2n
+  template gxd: untyped = xd3
+
+  # x numerators
+  uu.square(u)                      # uu = u²
+  Zuu.prod(uu, h2cConst(C, G1, Z))  # Zuu = Z * uu
+  tv2.square(Zuu)                   # tv2 = Zuu²
+  tv2 += Zuu                        # tv2 = tv2 + Zuu
+  x1n.setOne()
+  x1n += tv2                        # x1n = tv2 + 1
+  x1n *= h2cConst(C, G1, Bprime_E1) # x1n = x1n * B'
+  x2n.prod(Zuu, x1n)                # x2n = Zuu * x1n
+
+  # x denumerator
+  xd.prod(tv2, h2cConst(C, G1, minus_A)) # xd = -A * tv2
+  e1 = xd.isZero()                       # e1 = xd == 0
+  xd.ccopy(h2cConst(C, G1, ZmulA), e1)   # If xd == 0, set xd = Z*A
+
+  # y numerators
+  tv2.square(xd)
+  gxd.prod(xd, tv2)                         # gxd = xd³
+  tv2 *= h2CConst(C, G1, Aprime_E1)
+  gx1.square(x1n)
+  gx1 += tv2                                # x1n² + A * xd²
+  gx1 *= x1n                                # x1n³ + A * x1n * xd²
+  tv2.prod(gxd, h2cConst(C, G1, Bprime_E1))
+  gx1 += tv2                                # gx1 = x1n³ + A * x1n * xd² + B * xd³
+  tv4.square(gxd)                           # tv4 = gxd²
+  tv2.prod(gx1, gxd)                        # tv2 = gx1 * gxd
+  tv4 *= tv2                                # tv4 = gx1 * gxd³
+
+  # Start searching for sqrt(gx1)
+  e2 = y1.invsqrt_if_square(tv4)            # y1 = tv4^c1 = (gx1 * gxd³)^((p²-9)/16)
+  y1 *= tv2                                 # y1 *= gx1*gxd
+  y2.prod(y1, h2cConst(C, G1, sqrt_minus_Z3))
+  y2 *= uu
+  y2 *= u
+
+  # Choose numerators
+  xn.ccopy(x2n, not e2)                     # xn = e2 ? x1n : x2n
+  yn.ccopy(y2, not e2)                      # yn = e2 ? y1 : y2
+
+  e1 = sgn0(u)
+  e2 = sgn0(y)
+  y.cneg(e1 xor e2)
+
+  # yd.setOne()

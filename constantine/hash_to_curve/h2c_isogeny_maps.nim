@@ -25,25 +25,9 @@ import
 # No exceptions allowed
 {.push raises: [].}
 
-func poly_eval_horner[F](r: var F, x: F, poly: openarray[F]) =
-  ## Fast polynomial evaluation using Horner's rule
-  ## The polynomial k₀ + k₁ x + k₂ x² + k₃ x³ + ... + kₙ xⁿ
-  ## MUST be stored in order
-  ## [k₀, k₁, k₂, k₃, ..., kₙ]
-  ##
-  ## Assuming a degree n = 3 polynomial
-  ## Horner's rule rewrites its evaluation as
-  ## ((k₃ x + k₂)x + k₁) x + k₀
-  ## which is n additions and n multiplications,
-  ## the lowest complexity of general polynomial evaluation algorithm.
-  r = poly[^1] # TODO: optim when poly[^1] == 1
-  for i in countdown(poly.len-2, 0):
-    r *= x
-    r += poly[i]
-
 func poly_eval_horner_scaled[F; D, N: static int](
        r: var F, xn: F,
-       xd_pow: array[D, F], poly: array[N, F]) =
+       xd_pow: array[D, F], poly: static array[N, F], numPolyLen: static int) =
   ## Fast polynomial evaluation using Horner's rule
   ## Result is scaled by xd^N with N the polynomial degree
   ## to avoid finite field division
@@ -66,25 +50,33 @@ func poly_eval_horner_scaled[F; D, N: static int](
   ## ((k₃ xn + k₂ xd) xn + k₁ xd²) xn + k₀ xd³
   ##
   ## avoiding expensive divisions
-  r = poly[^1] # TODO: optim when poly[^1] == 1
-  for i in countdown(N-2, 0):
-    var t: F
+
+  # i = N-2
+  when poly[^1].isOne().bool:
+    block:
+      r.prod(poly[N-2], xd_pow[0])
+      r += xn
+  else:
+    block:
+      var t{.noInit.}: F
+      r.prod(poly[N-1], xn)
+      t.prod(poly[N-2], xd_pow[0])
+      r += t
+
+  for i in countdown(N-3, 0):
+    var t{.noInit.}: F
     r *= xn
-    t.prod(poly[i], xd_pow[N-2-i])
+    t.prod(poly[i], xd_pow[(N-2-i)])
     r += t
 
-  const
-    poly_degree = N-1 # [1, x, x², x³] of length 4
-    isodegree = D     # Isogeny degree
-
-  static: doAssert isodegree - poly_degree >= 0
-  when isodegree - poly_degree > 0:
+  when N-numPolyLen < 0:
     # Missing scaling factor
-    r *= xd_pow[isodegree - poly_degree - 1]
+    r *= xd_pow[0]
 
 func h2c_isogeny_map[F](
        rxn, rxd, ryn, ryd: var F,
-       xn, xd, yn: F, isodegree: static int) =
+       xn, xd, yn: F,
+       G: static Subgroup) =
   ## Given G2, the target prime order subgroup of E2,
   ## this function maps an element of
   ## E'2 a curve isogenous to E2
@@ -99,29 +91,41 @@ func h2c_isogeny_map[F](
   ## (rx, ry) with rx = rxn/rxd and ry = ryn/ryd
 
   # xd^e with e in [1, N], for example [xd, xd², xd³]
-  static: doAssert isodegree >= 2
-  var xd_pow{.noInit.}: array[isodegree, F]
+  const maxdegree = max([
+    h2cIsomapPoly(F.C, G, xnum).len,
+    h2cIsomapPoly(F.C, G, xden).len,
+    h2cIsomapPoly(F.C, G, ynum).len,
+    h2cIsomapPoly(F.C, G, yden).len,
+  ])
+  var xd_pow{.noInit.}: array[maxdegree, F]
   xd_pow[0] = xd
   xd_pow[1].square(xd_pow[0])
   for i in 2 ..< xd_pow.len:
     xd_pow[i].prod(xd_pow[i-1], xd_pow[0])
 
+  const xnLen = h2cIsomapPoly(F.C, G, xnum).len
+  const ynLen = h2cIsomapPoly(F.C, G, ynum).len
+
   rxn.poly_eval_horner_scaled(
     xn, xd_pow,
-    h2cIsomapPoly(F.C, G2, isodegree, xnum)
+    h2cIsomapPoly(F.C, G, xnum),
+    xnLen
   )
   rxd.poly_eval_horner_scaled(
     xn, xd_pow,
-    h2cIsomapPoly(F.C, G2, isodegree, xden)
+    h2cIsomapPoly(F.C, G, xden),
+    xnLen
   )
 
   ryn.poly_eval_horner_scaled(
     xn, xd_pow,
-    h2cIsomapPoly(F.C, G2, isodegree, ynum)
+    h2cIsomapPoly(F.C, G, ynum),
+    ynLen
   )
   ryd.poly_eval_horner_scaled(
     xn, xd_pow,
-    h2cIsomapPoly(F.C, G2, isodegree, yden)
+    h2cIsomapPoly(F.C, G, yden),
+    ynLen
   )
 
   # y coordinate is y' * poly_yNum(x)
@@ -129,7 +133,7 @@ func h2c_isogeny_map[F](
 
 func h2c_isogeny_map*[F; G: static Subgroup](
        r: var ECP_ShortW_Prj[F, G],
-       xn, xd, yn: F, isodegree: static int) =
+       xn, xd, yn: F) =
   ## Given G2, the target prime order subgroup of E2,
   ## this function maps an element of
   ## E'2 a curve isogenous to E2
@@ -151,7 +155,8 @@ func h2c_isogeny_map*[F; G: static Subgroup](
     rxd = r.z,
     ryn = r.y,
     ryd = t,
-    xn, xd, yn, isodegree
+    xn, xd, yn,
+    G
   )
 
   # Now convert to projective coordinates
@@ -163,7 +168,7 @@ func h2c_isogeny_map*[F; G: static Subgroup](
 
 func h2c_isogeny_map*[F; G: static Subgroup](
        r: var ECP_ShortW_Jac[F, G],
-       xn, xd, yn: F, isodegree: static int) =
+       xn, xd, yn: F) =
   ## Given G2, the target prime order subgroup of E2,
   ## this function maps an element of
   ## E'2 a curve isogenous to E2
@@ -184,7 +189,8 @@ func h2c_isogeny_map*[F; G: static Subgroup](
   h2c_isogeny_map(
     rxn, rxd,
     ryn, ryd,
-    xn, xd, yn, isodegree
+    xn, xd, yn,
+    G
   )
 
   # Now convert to jacobian coordinates
@@ -200,8 +206,7 @@ func h2c_isogeny_map*[F; G: static Subgroup](
 
 func h2c_isogeny_map*[F; G: static Subgroup](
        r: var ECP_ShortW_Jac[F, G],
-       P: ECP_ShortW_Jac[F, G],
-       isodegree: static int) =
+       P: ECP_ShortW_Jac[F, G]) =
   ## Map P in isogenous curve E'2
   ## to r in E2
   ##
@@ -218,29 +223,47 @@ func h2c_isogeny_map*[F; G: static Subgroup](
   var yn{.noInit.}, yd{.noInit.}: F
 
   # Z²^e with e in [1, N], for example [Z², Z⁴, Z⁶]
-  static: doAssert isodegree >= 2
-  var ZZpow{.noInit.}: array[isodegree, F]
+  const maxdegree = max([
+    h2cIsomapPoly(F.C, G, xnum).len,
+    h2cIsomapPoly(F.C, G, xden).len,
+    h2cIsomapPoly(F.C, G, ynum).len,
+    h2cIsomapPoly(F.C, G, yden).len,
+  ])
+  var ZZpow{.noInit.}: array[maxdegree, F]
   ZZpow[0].square(P.z)
-  ZZpow[1].square(ZZpow[0])
-  for i in 2 ..< ZZpow.len:
-    ZZpow[i].prod(ZZpow[i-1], ZZpow[0])
+
+  # ZZpow[1].square(ZZpow[0])
+  # for i in 2 ..< ZZpow.len:
+  #   ZZpow[i].prod(ZZpow[i-1], ZZpow[0])
+  staticFor i, 1, ZZpow.len:
+    when bool(i and 1): # is odd
+      ZZpow[i].square(ZZpow[(i-1) shr 1])
+    else:
+      ZZpow[i].prod(ZZpow[(i-1) shr 1], ZZpow[((i-1) shr 1) + 1])
+
+  const xnLen = h2cIsomapPoly(F.C, G, xnum).len
+  const ynLen = h2cIsomapPoly(F.C, G, ynum).len
 
   xn.poly_eval_horner_scaled(
     P.x, ZZpow,
-    h2cIsomapPoly(F.C, G2, isodegree, xnum)
+    h2cIsomapPoly(F.C, G, xnum),
+    xnLen
   )
   xd.poly_eval_horner_scaled(
     P.x, ZZpow,
-    h2cIsomapPoly(F.C, G2, isodegree, xden)
+    h2cIsomapPoly(F.C, G, xden),
+    xnLen
   )
 
   yn.poly_eval_horner_scaled(
     P.x, ZZpow,
-    h2cIsomapPoly(F.C, G2, isodegree, ynum)
+    h2cIsomapPoly(F.C, G, ynum),
+    ynLen
   )
   yd.poly_eval_horner_scaled(
     P.x, ZZpow,
-    h2cIsomapPoly(F.C, G2, isodegree, yden)
+    h2cIsomapPoly(F.C, G, yden),
+    ynLen
   )
 
   # yn = y' * poly_yNum(x) = yZ³ * poly_yNum(x)
