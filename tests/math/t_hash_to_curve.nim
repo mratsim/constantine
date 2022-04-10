@@ -158,6 +158,12 @@ run_hash_to_curve_test(
 # Hash-to-curve v7 (different domain separation tag)
 # https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/blob/draft-irtf-cfrg-hash-to-curve-07/poc/vectors/BLS12381G2_XMD:SHA-256_SSWU_RO_.json
 run_hash_to_curve_test(
+  ECP_ShortW_Prj[Fp[BLS12_381], G1],
+  "v7",
+  "tv_h2c_v7_BLS12_381_hash_to_G1_SHA256_SSWU_RO.json"
+)
+
+run_hash_to_curve_test(
   ECP_ShortW_Prj[Fp2[BLS12_381], G2],
   "v7",
   "tv_h2c_v7_BLS12_381_hash_to_G2_SHA256_SSWU_RO.json"

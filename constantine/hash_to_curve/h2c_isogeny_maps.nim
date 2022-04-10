@@ -64,7 +64,7 @@ func poly_eval_horner_scaled[F; D, N: static int](
       r += t
 
   for i in countdown(N-3, 0):
-    var t: F
+    var t{.noInit.}: F
     r *= xn
     t.prod(poly[i], xd_pow[(N-2-i)])
     r += t
@@ -231,9 +231,15 @@ func h2c_isogeny_map*[F; G: static Subgroup](
   ])
   var ZZpow{.noInit.}: array[maxdegree, F]
   ZZpow[0].square(P.z)
-  ZZpow[1].square(ZZpow[0])
-  for i in 2 ..< ZZpow.len:
-    ZZpow[i].prod(ZZpow[i-1], ZZpow[0])
+
+  # ZZpow[1].square(ZZpow[0])
+  # for i in 2 ..< ZZpow.len:
+  #   ZZpow[i].prod(ZZpow[i-1], ZZpow[0])
+  staticFor i, 1, ZZpow.len:
+    when bool(i and 1): # is odd
+      ZZpow[i].square(ZZpow[(i-1) shr 1])
+    else:
+      ZZpow[i].prod(ZZpow[(i-1) shr 1], ZZpow[((i-1) shr 1) + 1])
 
   const xnLen = h2cIsomapPoly(F.C, G, xnum).len
   const ynLen = h2cIsomapPoly(F.C, G, ynum).len
