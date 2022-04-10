@@ -25,25 +25,9 @@ import
 # No exceptions allowed
 {.push raises: [].}
 
-func poly_eval_horner[F](r: var F, x: F, poly: openarray[F]) =
-  ## Fast polynomial evaluation using Horner's rule
-  ## The polynomial k₀ + k₁ x + k₂ x² + k₃ x³ + ... + kₙ xⁿ
-  ## MUST be stored in order
-  ## [k₀, k₁, k₂, k₃, ..., kₙ]
-  ##
-  ## Assuming a degree n = 3 polynomial
-  ## Horner's rule rewrites its evaluation as
-  ## ((k₃ x + k₂)x + k₁) x + k₀
-  ## which is n additions and n multiplications,
-  ## the lowest complexity of general polynomial evaluation algorithm.
-  r = poly[^1] # TODO: optim when poly[^1] == 1
-  for i in countdown(poly.len-2, 0):
-    r *= x
-    r += poly[i]
-
 func poly_eval_horner_scaled[F; D, N: static int](
        r: var F, xn: F,
-       xd_pow: array[D, F], poly: array[N, F], numPolyLen: static int) =
+       xd_pow: array[D, F], poly: static array[N, F], numPolyLen: static int) =
   ## Fast polynomial evaluation using Horner's rule
   ## Result is scaled by xd^N with N the polynomial degree
   ## to avoid finite field division
@@ -67,8 +51,19 @@ func poly_eval_horner_scaled[F; D, N: static int](
   ##
   ## avoiding expensive divisions
 
-  r = poly[^1] # TODO: optim when poly[^1] == 1
-  for i in countdown(N-2, 0):
+  # i = N-2
+  when poly[^1].isOne().bool:
+    block:
+      r.prod(poly[N-2], xd_pow[0])
+      r += xn
+  else:
+    block:
+      var t{.noInit.}: F
+      r.prod(poly[N-1], xn)
+      t.prod(poly[N-2], xd_pow[0])
+      r += t
+
+  for i in countdown(N-3, 0):
     var t: F
     r *= xn
     t.prod(poly[i], xd_pow[(N-2-i)])

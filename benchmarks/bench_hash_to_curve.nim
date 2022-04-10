@@ -35,6 +35,21 @@ template bench(op: string, C: static Curve, iters: int, body: untyped): untyped 
   measure(iters, startTime, stopTime, startClk, stopClk, body)
   report(op, $C, startTime, stopTime, startClk, stopClk, iters)
 
+proc bench_BLS12_381_hash_to_G1(iters: int) =
+  const dst = "BLS_SIG_BLS12381G1-SHA256-SSWU-RO_POP_"
+  let msg = "Mr F was here"
+
+  var P: ECP_ShortW_Prj[Fp[BLS12_381], G1]
+
+  bench("Hash to G1 (Draft #11)", BLS12_381, iters):
+    sha256.hashToCurve(
+      k = 128,
+      output = P,
+      augmentation = "",
+      message = msg,
+      domainSepTag = dst
+    )
+
 proc bench_BLS12_381_hash_to_G2(iters: int) =
   const dst = "BLS_SIG_BLS12381G2-SHA256-SSWU-RO_POP_"
   let msg = "Mr F was here"
@@ -50,7 +65,25 @@ proc bench_BLS12_381_hash_to_G2(iters: int) =
       domainSepTag = dst
     )
 
-proc bench_BLS12_381_proj_aff_conversion(iters: int) =
+proc bench_BLS12_381_G1_proj_aff_conversion(iters: int) =
+  const dst = "BLS_SIG_BLS12381G1-SHA256-SSWU-RO_POP_"
+  let msg = "Mr F was here"
+
+  var P: ECP_ShortW_Prj[Fp[BLS12_381], G1]
+  var Paff: ECP_ShortW_Aff[Fp[BLS12_381], G1]
+
+  sha256.hashToCurve(
+    k = 128,
+    output = P,
+    augmentation = "",
+    message = msg,
+    domainSepTag = dst
+  )
+
+  bench("G1 Proj->Affine conversion (for pairing)", BLS12_381, iters):
+    Paff.affine(P)
+
+proc bench_BLS12_381_G2_proj_aff_conversion(iters: int) =
   const dst = "BLS_SIG_BLS12381G2-SHA256-SSWU-RO_POP_"
   let msg = "Mr F was here"
 
@@ -65,15 +98,17 @@ proc bench_BLS12_381_proj_aff_conversion(iters: int) =
     domainSepTag = dst
   )
 
-  bench("Proj->Affine conversion (for pairing)", BLS12_381, iters):
+  bench("G2 Proj->Affine conversion (for pairing)", BLS12_381, iters):
     Paff.affine(P)
 
 const Iters = 1000
 
 proc main() =
   separator()
+  bench_BLS12_381_hash_to_G1(Iters)
   bench_BLS12_381_hash_to_G2(Iters)
-  bench_BLS12_381_proj_aff_conversion(Iters)
+  bench_BLS12_381_G1_proj_aff_conversion(Iters)
+  bench_BLS12_381_G2_proj_aff_conversion(Iters)
   separator()
 
 main()
