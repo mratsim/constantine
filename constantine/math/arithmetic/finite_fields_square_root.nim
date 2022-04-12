@@ -44,7 +44,7 @@ func invsqrt_p3mod4(r: var Fp, a: Fp) =
   # a^((p-1)/2)) * a^-1 ≡ 1/a  (mod p)
   # a^((p-3)/2))        ≡ 1/a  (mod p)
   # a^((p-3)/4))        ≡ 1/√a (mod p)      # Requires p ≡ 3 (mod 4)
-  static: doAssert Fp.C.hasP3mod4_primeModulus()
+  static: doAssert Fp.C.has_P_3mod4_primeModulus()
   when FP.C.hasSqrtAddchain():
     r.invsqrt_addchain(a)
   else:
@@ -104,7 +104,7 @@ func invsqrt_p5mod8(r: var Fp, a: Fp) =
   #
   # Hence we set β = (2a)^((p-1)/4)
   # and α = (β/2a)⁽¹⸍²⁾= (2a)^(((p-1)/4 - 1)/2) = (2a)^((p-5)/8)
-  static: doAssert Fp.C.hasP5mod8_primeModulus()
+  static: doAssert Fp.C.has_P_5mod8_primeModulus()
   var alpha{.noInit.}, beta{.noInit.}: Fp
   
   # α = (2a)^((p-5)/8)
@@ -234,9 +234,9 @@ func invsqrt*[C](r: var Fp[C], a: Fp[C]) =
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
   ## This procedure is constant-time
-  when C.hasP3mod4_primeModulus():
+  when C.has_P_3mod4_primeModulus():
     r.invsqrt_p3mod4(a)
-  elif C.hasP5mod8_primeModulus():
+  elif C.has_P_5mod8_primeModulus():
     r.invsqrt_p5mod8(a)
   else:
     r.invsqrt_tonelli_shanks(a)
@@ -334,7 +334,7 @@ func isSquare*(a: Fp): SecretBool =
       )
   else:
     # We reuse the optimized addition chains instead of exponentiation by (p-1)/2
-    when Fp.C.hasP3mod4_primeModulus() or Fp.C.hasP5mod8_primeModulus():
+    when Fp.C.has_P_3mod4_primeModulus() or Fp.C.has_P_5mod8_primeModulus():
       var sqrt{.noInit.}, invsqrt{.noInit.}: Fp
       return sqrt_invsqrt_if_square(sqrt, invsqrt, a)
     else:

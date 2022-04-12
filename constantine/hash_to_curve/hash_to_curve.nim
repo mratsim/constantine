@@ -84,13 +84,13 @@ func mapToCurve[F; G: static Subgroup](
     # Simplified Shallue-van de Woestijne-Ulas method for AB == 0
     
     # 1. Map to E' isogenous to E
-    when F is Fp and F.C.hasP3mod4_primeModulus():
+    when F is Fp and F.C.has_P_3mod4_primeModulus():
       mapToIsoCurve_sswuG1_opt3mod4(
         xn, xd,
         yn,
         u, xd3
       )
-    elif F is Fp2 and F.C.hasP3mod4_primeModulus():
+    elif F is Fp2 and F.C.has_Psquare_9mod16_primePower():
       # p ≡ 3 (mod 4) => p² ≡ 9 (mod 16)
       mapToIsoCurve_sswuG2_opt9mod16(
         xn, xd,
@@ -131,12 +131,12 @@ func mapToCurve_fusedAdd[F; G: static Subgroup](
     # Simplified Shallue-van de Woestijne-Ulas method for AB == 0
     
     # 1. Map to E' isogenous to E
-    when F is Fp and F.C.hasP3mod4_primeModulus():
+    when F is Fp and F.C.has_P_3mod4_primeModulus():
       # 1. Map to E'1 isogenous to E1
       P0.mapToIsoCurve_sswuG1_opt3mod4(u0)
       P1.mapToIsoCurve_sswuG1_opt3mod4(u1)
       P0.sum(P0, P1, h2CConst(F.C, G1, Aprime_E1))
-    elif F is Fp2 and F.C.hasP3mod4_primeModulus():
+    elif F is Fp2 and F.C.has_Psquare_9mod16_primePower():
       # p ≡ 3 (mod 4) => p² ≡ 9 (mod 16)
       # 1. Map to E'2 isogenous to E2
       P0.mapToIsoCurve_sswuG2_opt9mod16(u0)

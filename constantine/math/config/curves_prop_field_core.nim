@@ -39,14 +39,18 @@ template matchingLimbs2x*(C: Curve): untyped =
   const N2 = wordsRequired(getCurveBitwidth(C)) * 2 # TODO upstream, not precomputing N2 breaks semcheck
   array[N2, SecretWord] # TODO upstream, using Limbs[N2] breaks semcheck
 
-func hasP3mod4_primeModulus*(C: static Curve): static bool =
+func has_P_3mod4_primeModulus*(C: static Curve): static bool =
   ## Returns true iff p ≡ 3 (mod 4)
   (BaseType(C.Mod.limbs[0]) and 3) == 3
 
-func hasP5mod8_primeModulus*(C: static Curve): static bool =
+func has_P_5mod8_primeModulus*(C: static Curve): static bool =
   ## Returns true iff p ≡ 5 (mod 8)
   (BaseType(C.Mod.limbs[0]) and 7) == 5
 
-func hasP9mod16_primeModulus*(C: static Curve): static bool =
+func has_P_9mod16_primeModulus*(C: static Curve): static bool =
   ## Returns true iff p ≡ 9 (mod 16)
   (BaseType(C.Mod.limbs[0]) and 15) == 9
+
+func has_Psquare_9mod16_primePower*(C: static Curve): static bool =
+  ## Returns true iff p² ≡ 9 (mod 16)
+  ((BaseType(C.Mod.limbs[0]) * BaseType(C.Mod.limbs[0])) and 15) == 9

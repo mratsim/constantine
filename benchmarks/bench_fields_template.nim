@@ -132,9 +132,9 @@ proc sqrtBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)
 
   const algoType = block:
-    when T.C.hasP3mod4_primeModulus():
+    when T.C.has_P_3mod4_primeModulus():
       "p ≡ 3 (mod 4)"
-    elif T.C.hasP5mod8_primeModulus():
+    elif T.C.has_P_5mod8_primeModulus():
       "p ≡ 5 (mod 8)"
     else:
       "Tonelli-Shanks"

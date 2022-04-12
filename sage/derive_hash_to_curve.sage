@@ -21,6 +21,7 @@
 
 import os
 import inspect, textwrap
+import sage.schemes.elliptic_curves.isogeny_small_degree as isd
 
 # Working directory
 # ---------------------------------------------------------
@@ -86,8 +87,23 @@ def dump_poly(name, poly, field, curve):
   result += ']'
   return result
 
-# Unused
+# Isogenies
 # ---------------------------------------------------------
+
+def find_iso(E):
+  """
+  Find an isogenous curve with j-invariant not in {0, 1728} so that
+  Simplified Shallue-van de Woestijne method is directly applicable
+  (i.e the Elliptic Curve coefficient y² = x³ + A*x + B have  AB != 0)
+  """
+  for p_test in primes(30):
+    isos = [i for i in isd.isogenies_prime_degree(E, p_test)
+            if i.codomain().j_invariant() not in (0, 1728) ]
+    if len(isos) > 0:
+      print(f'Found {len(isos)} isogenous curves of degree {p_test}')
+      return isos[0].dual()
+  print(f'Found no isogenies')
+  return None
 
 def find_z_sswu(F, A, B):
     """
@@ -114,6 +130,86 @@ def find_z_sswu(F, A, B):
                 # Criterion 4: g(B / (Z * A)) is square in F.
                 return Z_cand
         ctr += 1
+
+def search_isogeny(curve_name, curve_config):
+    p = curve_config[curve_name]['field']['modulus']
+    Fp = GF(p)
+
+    # Base constants - E1
+    A = curve_config[curve_name]['curve']['a']
+    B = curve_config[curve_name]['curve']['b']
+    E1 =  EllipticCurve(Fp, [A, B])
+
+    # Base constants - E2
+    embedding_degree = curve_config[curve_name]['tower']['embedding_degree']
+    twist_degree = curve_config[curve_name]['tower']['twist_degree']
+    twist = curve_config[curve_name]['tower']['twist']
+
+    G2_field_degree = embedding_degree // twist_degree
+    G2_field = f'Fp{G2_field_degree}' if G2_field_degree > 1 else 'Fp'
+
+    if G2_field_degree == 2:
+        non_residue_fp = curve_config[curve_name]['tower']['QNR_Fp']
+    elif G2_field_degree == 1:
+        if twist_degree == 6:
+            # Only for complete serialization
+            non_residue_fp = curve_config[curve_name]['tower']['SNR_Fp']
+        else:
+          raise NotImplementedError()
+    else:
+        raise NotImplementedError()
+
+    Fp = GF(p)
+    K.<u> = PolynomialRing(Fp)
+
+    if G2_field == 'Fp2':
+        Fp2.<beta> = Fp.extension(u^2 - non_residue_fp)
+        G2F = Fp2
+        if twist_degree == 6:
+            non_residue_twist = curve_config[curve_name]['tower']['SNR_Fp2']
+        else:
+            raise NotImplementedError()
+    elif G2_field == 'Fp':
+        G2F = Fp
+        if twist_degree == 6:
+            non_residue_twist = curve_config[curve_name]['tower']['SNR_Fp']
+        else:
+            raise NotImplementedError()
+    else:
+        raise NotImplementedError()
+
+    if twist == 'D_Twist':
+        G2B = B/G2F(non_residue_twist)
+        E2 = EllipticCurve(G2F, [0, G2B])
+    elif twist == 'M_Twist':
+        G2B = B*G2F(non_residue_twist)
+        E2 = EllipticCurve(G2F, [0, G2B])
+    else:
+        raise ValueError('E2 must be a D_Twist or M_Twist but found ' + twist)
+
+
+    # Isogenies:
+    iso_G1 = find_iso(E1)
+    a_G1 = iso_G1.domain().a4()
+    b_G1 = iso_G1.domain().a6()
+
+    iso_G2 = find_iso(E2)
+    a_G2 = iso_G2.domain().a4()
+    b_G2 = iso_G2.domain().a6()
+
+    # Z
+    Z_G1 = find_z_sswu(Fp, a_G1, b_G1)
+    Z_G2 = find_z_sswu(Fp2, a_G2, b_G2)
+
+    print(f"{curve_name} G1 - isogeny of degree {iso_G1.degree()} with eq y² = x³ + A'x + B':")
+    print(f"  A': 0x{Integer(a_G1).hex()}")
+    print(f"  B': 0x{Integer(b_G1).hex()}")
+    print(f"  Z: {Z_G1}")
+
+    print(f"{curve_name} G2 - isogeny of degree {iso_G2.degree()} with eq y² = x³ + A'x + B':")
+    print(f"  A': {fp2_to_hex(a_G2)}")
+    print(f"  B': {fp2_to_hex(b_G2)}")
+    print(f"  Z: {fp2_to_hex(Z_G2)}")
 
 # BLS12-381 G1
 # ---------------------------------------------------------
@@ -192,8 +288,8 @@ def genBLS12381G1_H2C_isogeny_map(curve_config):
       # Hash-to-Curve 11-isogeny map BLS12-381 E'1 constants
       # -----------------------------------------------------------------
       #
-      # The polynomials map a point (x', y') on the isogenous curve E'2
-      # to (x, y) on E2, represented as (xnum/xden, y' * ynum/yden)
+      # The polynomials map a point (x', y') on the isogenous curve E'1
+      # to (x, y) on E1, represented as (xnum/xden, y' * ynum/yden)
 
   """)
   buf += '\n\n'
@@ -374,7 +470,7 @@ def genBLS12381G2_H2C_isogeny_map(curve_config):
   else:
     Btwist = B / Fp2(SNR_Fp2)
 
-  E2 = EllipticCurve(Fp2, [A, B * Fp2(SNR_Fp2)])
+  E2 = EllipticCurve(Fp2, [A, Btwist])
 
   # Base constants - Isogenous curve E'2, degree 3
   Aprime_E2 = Fp2([0, 240])
@@ -413,7 +509,11 @@ def genBLS12381G2_H2C_isogeny_map(curve_config):
 if __name__ == "__main__":
   # Usage
   # BLS12-381
-  # sage sage/derive_hash_to_curve.sage BLS12_381 G2
+  #   sage sage/derive_hash_to_curve.sage BLS12_381 G2
+  # for Hash-to-Curve
+  # or
+  #   sage sage/derive_hash_to_curve.sage BLS12_381 iso
+  # to search for a suitable isogeny
 
   from argparse import ArgumentParser
 
@@ -422,9 +522,12 @@ if __name__ == "__main__":
   args = parser.parse_args()
 
   curve = args.curve[0]
-  group = args.curve[1]
+  group_or_iso = args.curve[1]
 
-  if curve == 'BLS12_381' and group == 'G1':
+  if group_or_iso == 'iso':
+    search_isogeny(curve, Curves)
+
+  elif curve == 'BLS12_381' and group_or_iso == 'G1':
     h2c = genBLS12381G1_H2C_constants(Curves)
     h2c += '\n\n'
     h2c += genBLS12381G1_H2C_isogeny_map(Curves)
@@ -444,7 +547,7 @@ if __name__ == "__main__":
 
     print(f'Successfully created {curve.lower()}_hash_to_curve_g1.nim')
 
-  elif curve == 'BLS12_381' and group == 'G2':
+  elif curve == 'BLS12_381' and group_or_iso == 'G2':
     h2c = genBLS12381G2_H2C_constants(Curves)
     h2c += '\n\n'
     h2c += genBLS12381G2_H2C_isogeny_map(Curves)
@@ -465,6 +568,6 @@ if __name__ == "__main__":
     print(f'Successfully created {curve.lower()}_hash_to_curve_g2.nim')
   else:
     raise ValueError(
-      curve + group +
+      curve + group_or_iso +
       ' is not configured '
     )
