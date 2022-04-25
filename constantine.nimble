@@ -175,11 +175,6 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/math/t_pairing_bls12_381_optate.nim", false),
   ("tests/math/t_pairing_bls12_381_multi.nim", false),
 
-  # Hashing to elliptic curves
-  # ----------------------------------------------------------
-  ("tests/math/t_hash_to_field.nim", false),
-  ("tests/math/t_hash_to_curve.nim", false),
-
   # Prime order fields
   # ----------------------------------------------------------
   ("tests/math/t_fr.nim", false),
@@ -187,6 +182,12 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Hashing vs OpenSSL
   # ----------------------------------------------------------
   ("tests/t_hash_sha256_vs_openssl.nim", true), # skip OpenSSL tests on Windows
+
+  # Hashing to elliptic curves
+  # ----------------------------------------------------------
+  ("tests/t_hash_to_field.nim", false),
+  ("tests/t_hash_to_curve_random.nim", false),
+  ("tests/t_hash_to_curve.nim", false),
 
   # Ciphers
   # ----------------------------------------------------------
@@ -216,8 +217,9 @@ const skipSanitizers = [
   "tests/math/t_ec_sage_bn254_snarks.nim",
   "tests/math/t_ec_sage_bls12_377.nim",
   "tests/math/t_ec_sage_bls12_381.nim",
-  "tests/math/t_hash_to_field.nim",
-  "tests/math/t_hash_to_curve.nim"
+  "tests/t_hash_to_field.nim",
+  "tests/t_hash_to_curve.nim",
+  "tests/t_hash_to_curve_random.nim"
 ]
 
 when defined(windows):

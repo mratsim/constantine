@@ -11,7 +11,8 @@ import
   ../platforms/abstractions,
   ../math/config/curves,
   ../math/[arithmetic, extension_fields],
-  ../math/curves/zoo_hash_to_curve
+  ../math/curves/zoo_hash_to_curve,
+  ./h2c_utilities
 
 # ############################################################
 #
@@ -38,43 +39,6 @@ import
 #   - https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/blob/f7dd3761/poc/sswu_opt_9mod16.sage
 # Test vector generator
 # - https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/blob/f7dd3761/poc/sswu_generic.sage
-
-func sgn0(x: Fp): SecretBool =
-  ## Returns a conventional "sign" for a field element.
-  ## Even numbers are considered positive by convention
-  ## and odd negative.
-  ##
-  ## https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-4.1
-  #
-  # In Montgomery representation
-  # each number a is represented as aR (mod M)
-  # with R a Montgomery constant
-  # hence the LSB of the Montgomery representation
-  # cannot be used for this use-case.
-  #
-  # Another angle is that if M is odd,
-  # a+M and a have different parity even though they are
-  # the same modulo M.
-  let canonical {.noInit.} = x.toBig()
-  result = canonical.isOdd()
-
-func sgn0(x: Fp2): SecretBool =
-  # https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-4.1
-  # sgn0_m_eq_2(x)
-  #
-  # Input: x, an element of GF(p^2).
-  # Output: 0 or 1.
-  #
-  # Steps:
-  # 1. sign_0 = x_0 mod 2
-  # 2. zero_0 = x_0 == 0
-  # 3. sign_1 = x_1 mod 2
-  # 4. return sign_0 OR (zero_0 AND sign_1)  # Avoid short-circuit logic ops
-
-  result = x.c0.sgn0()
-  let z0 = x.c0.isZero()
-  let s1 = x.c1.sgn0()
-  result = result or (z0 and s1)
 
 func invsqrt_if_square[C: static Curve](
        r: var Fp2[C], a: Fp2[C]): SecretBool =
@@ -113,13 +77,13 @@ func invsqrt_if_square[C: static Curve](
   result = t3.invsqrt_if_square(t1)    # 1/sqrt(a0² - β a1²)
 
   # If input is not a square in Fp2, multiply by 1/Z³
-  inp.prod(a, h2cConst(C, G2, inv_Z3)) # inp = a / Z³
+  inp.prod(a, h2cConst(C, sswu, G2, inv_Z3)) # inp = a / Z³
   block: # Adjust t1 and t3 accordingly
     var t0{.noInit.}: Fp[C]
-    t0.prod(t1, h2cConst(C, G2, squared_norm_inv_Z3)) # (a0² - β a1²) * ||1/Z³||²
+    t0.prod(t1, h2cConst(C, sswu, G2, squared_norm_inv_Z3)) # (a0² - β a1²) * ||1/Z³||²
     t1.ccopy(t0, not result)
 
-    t0.prod(t3, h2cConst(C, G2, inv_norm_inv_Z3))     # 1/sqrt(a0² - β a1²) * 1/||1/Z³||
+    t0.prod(t3, h2cConst(C, sswu, G2, inv_norm_inv_Z3))     # 1/sqrt(a0² - β a1²) * 1/||1/Z³||
     t3.ccopy(t0, not result)
 
   inp.ccopy(a, result)
@@ -188,42 +152,42 @@ func mapToIsoCurve_sswuG2_opt9mod16*[C: static Curve](
   template gxd: untyped = xd3
 
   # x numerators
-  uu.square(u)                      # uu = u²
-  Zuu.prod(uu, h2cConst(C, G2, Z))  # Zuu = Z * uu
-  tv2.square(Zuu)                   # tv2 = Zuu²
-  tv2 += Zuu                        # tv2 = tv2 + Zuu
+  uu.square(u)                                 # uu = u²
+  Zuu.prod(uu, h2cConst(C, sswu, G2, Z))       # Zuu = Z * uu
+  tv2.square(Zuu)                              # tv2 = Zuu²
+  tv2 += Zuu                                   # tv2 = tv2 + Zuu
   x1n.setOne()
-  x1n += tv2                        # x1n = tv2 + 1
-  x1n *= h2cConst(C, G2, Bprime_E2) # x1n = x1n * B'
-  x2n.prod(Zuu, x1n)                # x2n = Zuu * x1n
+  x1n += tv2                                   # x1n = tv2 + 1
+  x1n *= h2cConst(C, sswu, G2, Bprime_E2)      # x1n = x1n * B'
+  x2n.prod(Zuu, x1n)                           # x2n = Zuu * x1n
 
   # x denumerator
-  xd.prod(tv2, h2cConst(C, G2, minus_A)) # xd = -A * tv2
-  e1 = xd.isZero()                       # e1 = xd == 0
-  xd.ccopy(h2cConst(C, G2, ZmulA), e1)   # If xd == 0, set xd = Z*A
+  xd.prod(tv2, h2cConst(C, sswu, G2, minus_A)) # xd = -A * tv2
+  e1 = xd.isZero()                             # e1 = xd == 0
+  xd.ccopy(h2cConst(C, sswu, G2, ZmulA), e1)   # If xd == 0, set xd = Z*A
 
   # y numerators
   tv2.square(xd)
-  gxd.prod(xd, tv2)                         # gxd = xd³
-  tv2.mulCheckSparse(h2CConst(C, G2, Aprime_E2))
+  gxd.prod(xd, tv2)                            # gxd = xd³
+  tv2.mulCheckSparse(h2CConst(C, sswu, G2, Aprime_E2))
   gx1.square(x1n)
-  gx1 += tv2                                # x1n² + A * xd²
-  gx1 *= x1n                                # x1n³ + A * x1n * xd²
-  tv2.prod(gxd, h2cConst(C, G2, Bprime_E2))
-  gx1 += tv2                                # gx1 = x1n³ + A * x1n * xd² + B * xd³
-  tv4.square(gxd)                           # tv4 = gxd²
-  tv2.prod(gx1, gxd)                        # tv2 = gx1 * gxd
-  tv4 *= tv2                                # tv4 = gx1 * gxd³
+  gx1 += tv2                                   # x1n² + A * xd²
+  gx1 *= x1n                                   # x1n³ + A * x1n * xd²
+  tv2.prod(gxd, h2cConst(C, sswu, G2, Bprime_E2))
+  gx1 += tv2                                   # gx1 = x1n³ + A * x1n * xd² + B * xd³
+  tv4.square(gxd)                              # tv4 = gxd²
+  tv2.prod(gx1, gxd)                           # tv2 = gx1 * gxd
+  tv4 *= tv2                                   # tv4 = gx1 * gxd³
 
   # Start searching for sqrt(gx1)
-  e2 = y1.invsqrt_if_square(tv4)            # y1 = tv4^c1 = (gx1 * gxd³)^((p²-9)/16)
-  y1 *= tv2                                 # y1 *= gx1*gxd
+  e2 = y1.invsqrt_if_square(tv4)               # y1 = tv4^c1 = (gx1 * gxd³)^((p²-9)/16)
+  y1 *= tv2                                    # y1 *= gx1*gxd
   y2.prod(y1, uu)
   y2 *= u
 
   # Choose numerators
-  xn.ccopy(x2n, not e2)                     # xn = e2 ? x1n : x2n
-  yn.ccopy(y2, not e2)                      # yn = e2 ? y1 : y2
+  xn.ccopy(x2n, not e2)                        # xn = e2 ? x1n : x2n
+  yn.ccopy(y2, not e2)                         # yn = e2 ? y1 : y2
 
   e1 = sgn0(u)
   e2 = sgn0(y)
@@ -270,28 +234,28 @@ func mapToIsoCurve_sswuG1_opt3mod4*[C: static Curve](
   template gxd: untyped = xd3
 
   # x numerators
-  uu.square(u)                      # uu = u²
-  Zuu.prod(uu, h2cConst(C, G1, Z))  # Zuu = Z * uu
-  tv2.square(Zuu)                   # tv2 = Zuu²
-  tv2 += Zuu                        # tv2 = tv2 + Zuu
+  uu.square(u)                            # uu = u²
+  Zuu.prod(uu, h2cConst(C, sswu, G1, Z))  # Zuu = Z * uu
+  tv2.square(Zuu)                         # tv2 = Zuu²
+  tv2 += Zuu                              # tv2 = tv2 + Zuu
   x1n.setOne()
-  x1n += tv2                        # x1n = tv2 + 1
-  x1n *= h2cConst(C, G1, Bprime_E1) # x1n = x1n * B'
-  x2n.prod(Zuu, x1n)                # x2n = Zuu * x1n
+  x1n += tv2                              # x1n = tv2 + 1
+  x1n *= h2cConst(C, sswu, G1, Bprime_E1) # x1n = x1n * B'
+  x2n.prod(Zuu, x1n)                      # x2n = Zuu * x1n
 
   # x denumerator
-  xd.prod(tv2, h2cConst(C, G1, minus_A)) # xd = -A * tv2
-  e1 = xd.isZero()                       # e1 = xd == 0
-  xd.ccopy(h2cConst(C, G1, ZmulA), e1)   # If xd == 0, set xd = Z*A
+  xd.prod(tv2, h2cConst(C, sswu, G1, minus_A)) # xd = -A * tv2
+  e1 = xd.isZero()                             # e1 = xd == 0
+  xd.ccopy(h2cConst(C, sswu, G1, ZmulA), e1)   # If xd == 0, set xd = Z*A
 
   # y numerators
   tv2.square(xd)
   gxd.prod(xd, tv2)                         # gxd = xd³
-  tv2 *= h2CConst(C, G1, Aprime_E1)
+  tv2 *= h2cConst(C, sswu, G1, Aprime_E1)
   gx1.square(x1n)
   gx1 += tv2                                # x1n² + A * xd²
   gx1 *= x1n                                # x1n³ + A * x1n * xd²
-  tv2.prod(gxd, h2cConst(C, G1, Bprime_E1))
+  tv2.prod(gxd, h2cConst(C, sswu, G1, Bprime_E1))
   gx1 += tv2                                # gx1 = x1n³ + A * x1n * xd² + B * xd³
   tv4.square(gxd)                           # tv4 = gxd²
   tv2.prod(gx1, gxd)                        # tv2 = gx1 * gxd
@@ -300,7 +264,7 @@ func mapToIsoCurve_sswuG1_opt3mod4*[C: static Curve](
   # Start searching for sqrt(gx1)
   e2 = y1.invsqrt_if_square(tv4)            # y1 = tv4^c1 = (gx1 * gxd³)^((p²-9)/16)
   y1 *= tv2                                 # y1 *= gx1*gxd
-  y2.prod(y1, h2cConst(C, G1, sqrt_minus_Z3))
+  y2.prod(y1, h2cConst(C, sswu, G1, sqrt_minus_Z3))
   y2 *= uu
   y2 *= u
 

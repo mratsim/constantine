@@ -524,11 +524,11 @@ func prod*(r: var FF, a: FF, b: static int) =
 
 template mulCheckSparse*(a: var Fp, b: Fp) =
   ## Multiplication with optimization for sparse inputs
-  when b.isOne().bool:
+  when isOne(b).bool:
     discard
-  elif b.isZero().bool:
+  elif isZero(b).bool:
     a.setZero()
-  elif b.isMinusOne().bool:
+  elif isMinusOne(b).bool:
     a.neg()
   else:
     a *= b

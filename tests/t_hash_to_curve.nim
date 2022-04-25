@@ -12,15 +12,15 @@ import
   # 3rd party
   pkg/jsony,
   # Internals
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/extension_fields,
-  ../../constantine/math/io/[io_bigints, io_ec],
-  ../../constantine/math/elliptic/[
+  ../constantine/platforms/abstractions,
+  ../constantine/math/config/curves,
+  ../constantine/math/extension_fields,
+  ../constantine/math/io/[io_bigints, io_ec],
+  ../constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective],
-  ../../constantine/hash_to_curve/hash_to_curve,
-  ../../constantine/hashes
+  ../constantine/hash_to_curve/hash_to_curve,
+  ../constantine/hashes
 
 # Serialization
 # --------------------------------------------------------------------------
@@ -65,7 +65,7 @@ type
 
 const
   TestVectorsDir* =
-    currentSourcePath.rsplit(DirSep, 1)[0] / "vectors"
+    currentSourcePath.rsplit(DirSep, 1)[0] / "protocol_hash_to_curve"
 
 proc parseHook*(src: string, pos: var int, value: var ECP_ShortW_Aff) =
   # Note when nim-serialization was used:

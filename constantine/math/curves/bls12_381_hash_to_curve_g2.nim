@@ -19,33 +19,33 @@ import
 # - https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-8.8.2
 # - https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/blob/f7dd3761/poc/sswu_opt_9mod16.sage#L142-L148
 
-const BLS12_381_h2c_G2_Aprime_E2* = Fp2[BLS12_381].fromHex(  # 240𝑖
+const BLS12_381_h2c_sswu_G2_Aprime_E2* = Fp2[BLS12_381].fromHex(  # 240𝑖
   "0x0",
   "0xf0"
 )
-const BLS12_381_h2c_G2_Bprime_E2* = Fp2[BLS12_381].fromHex(  # 1012 * (1 + 𝑖)
+const BLS12_381_h2c_sswu_G2_Bprime_E2* = Fp2[BLS12_381].fromHex(  # 1012 * (1 + 𝑖)
   "0x3f4",
   "0x3f4"
 )
-const BLS12_381_h2c_G2_Z* = Fp2[BLS12_381].fromHex(  # -(2 + 𝑖)
+const BLS12_381_h2c_sswu_G2_Z* = Fp2[BLS12_381].fromHex(  # -(2 + 𝑖)
   "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaa9",
   "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaa"
 )
-const BLS12_381_h2c_G2_minus_A* = Fp2[BLS12_381].fromHex(  # -240𝑖
+const BLS12_381_h2c_sswu_G2_minus_A* = Fp2[BLS12_381].fromHex(  # -240𝑖
   "0x0",
   "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa9bb"
 )
-const BLS12_381_h2c_G2_ZmulA* = Fp2[BLS12_381].fromHex(  # Z*A = 240-480𝑖
+const BLS12_381_h2c_sswu_G2_ZmulA* = Fp2[BLS12_381].fromHex(  # Z*A = 240-480𝑖
   "0xf0",
   "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa8cb"
 )
-const BLS12_381_h2c_G2_inv_Z3* = Fp2[BLS12_381].fromHex(  # 1/Z³
+const BLS12_381_h2c_sswu_G2_inv_Z3* = Fp2[BLS12_381].fromHex(  # 1/Z³
   "0xec5373b4fc387140dfd46af348f55e2ca7901ef5b371b085d6da6bdbb39819171ad78d43fdbbe76a0f1189374bc3a07",
   "0x9c70eed928c402db9efc63a4a7484928607fdacdea2acefe74fcc1fd9af14de7a1fe76c0d6d687295ce78d4fdf39630"
 )
-const BLS12_381_h2c_G2_squared_norm_inv_Z3* = Fp[BLS12_381].fromHex(  # ||1/Z³||²
+const BLS12_381_h2c_sswu_G2_squared_norm_inv_Z3* = Fp[BLS12_381].fromHex(  # ||1/Z³||²
   "0x59ded5774de2fc31e8f3083875e2b7a4cff24cacc26fbdb84e195f19dbbba49567f439538bc20c48c86f3b645a1b852")
-const BLS12_381_h2c_G2_inv_norm_inv_Z3* = Fp[BLS12_381].fromHex(  # 1/||1/Z³||
+const BLS12_381_h2c_sswu_G2_inv_norm_inv_Z3* = Fp[BLS12_381].fromHex(  # 1/||1/Z³||
   "0x810e5a23cbb86fd12ded1af502287a397ed25c1d6fe0444e38c48e9c7ddb3c27cfebdd464e90f201fda0eb6983f2533")
 
 
@@ -55,7 +55,7 @@ const BLS12_381_h2c_G2_inv_norm_inv_Z3* = Fp[BLS12_381].fromHex(  # 1/||1/Z³||
 # The polynomials map a point (x', y') on the isogenous curve E'2
 # to (x, y) on E2, represented as (xnum/xden, y' * ynum/yden)
 
-const BLS12_381_h2c_G2_isogeny_map_xnum* = [
+const BLS12_381_h2c_sswu_G2_isogeny_map_xnum* = [
   # Polynomial k₀ + k₁ x + k₂ x² + k₃ x³ + ... + kₙ xⁿ
   # The polynomial is stored as an array of coefficients ordered from k₀ to kₙ
 
@@ -80,7 +80,7 @@ const BLS12_381_h2c_G2_isogeny_map_xnum* = [
     "0x0"
   )
 ]
-const BLS12_381_h2c_G2_isogeny_map_xden* = [
+const BLS12_381_h2c_sswu_G2_isogeny_map_xden* = [
   # Polynomial k₀ + k₁ x + k₂ x² + k₃ x³ + ... + kₙ xⁿ
   # The polynomial is stored as an array of coefficients ordered from k₀ to kₙ
 
@@ -100,7 +100,7 @@ const BLS12_381_h2c_G2_isogeny_map_xden* = [
     "0x0"
   )
 ]
-const BLS12_381_h2c_G2_isogeny_map_ynum* = [
+const BLS12_381_h2c_sswu_G2_isogeny_map_ynum* = [
   # Polynomial k₀ + k₁ x + k₂ x² + k₃ x³ + ... + kₙ xⁿ
   # The polynomial is stored as an array of coefficients ordered from k₀ to kₙ
 
@@ -125,7 +125,7 @@ const BLS12_381_h2c_G2_isogeny_map_ynum* = [
     "0x0"
   )
 ]
-const BLS12_381_h2c_G2_isogeny_map_yden* = [
+const BLS12_381_h2c_sswu_G2_isogeny_map_yden* = [
   # Polynomial k₀ + k₁ x + k₂ x² + k₃ x³ + ... + kₙ xⁿ
   # The polynomial is stored as an array of coefficients ordered from k₀ to kₙ
 

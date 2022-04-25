@@ -87,7 +87,62 @@ def dump_poly(name, poly, field, curve):
   result += ']'
   return result
 
-# Isogenies
+ZZR = PolynomialRing(ZZ, name='XX')
+def sgn0(x):
+    """
+    Returns 1 if x is 'negative' (little-endian sense), else 0.
+    """
+    degree = x.parent().degree()
+    if degree == 1:
+        # not a field extension
+        xi_values = (ZZ(x),)
+    else:
+        # field extension
+        xi_values = ZZR(x)  # extract vector repr of field element (faster than x._vector_())
+    sign = 0
+    zero = 1
+    # compute the sign in constant time
+    for i in range(0, degree):
+        zz_xi = xi_values[i]
+        # sign of this digit
+        sign_i = zz_xi % 2
+        zero_i = zz_xi == 0
+        # update sign and zero
+        sign = sign | (zero & sign_i)
+        zero = zero & zero_i
+    return sign
+
+# Generic Shallue-van de Woestijne map
+# ---------------------------------------------------------
+
+def find_z_svdw(F, A, B):
+    """
+    https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-14#appendix-H.1
+    Arguments:
+    - F, a field object, e.g., F = GF(2^521 - 1)
+    - A and B, the coefficients of the curve y^2 = x^3 + A * x + B
+    """
+    g = lambda x: F(x)^3 + F(A) * F(x) + F(B)
+    h = lambda Z: -(F(3) * Z^2 + F(4) * A) / (F(4) * g(Z))
+    ctr = F.gen()
+    while True:
+        for Z_cand in (F(ctr), F(-ctr)):
+            if g(Z_cand) == F(0):
+                # Criterion 1: g(Z) != 0 in F.
+                continue
+            if h(Z_cand) == F(0):
+                # Criterion 2: -(3 * Z^2 + 4 * A) / (4 * g(Z)) != 0 in F.
+                continue
+            if not h(Z_cand).is_square():
+                # Criterion 3: -(3 * Z^2 + 4 * A) / (4 * g(Z)) is square in F.
+                continue
+            if g(Z_cand).is_square() or g(-Z_cand / F(2)).is_square():
+                # Criterion 4: At least one of g(Z) and g(-Z / 2) is square in F.
+                return Z_cand
+        ctr += 1
+
+
+# Isogenies for Simplified Shallue-van de Woestijne-Ulas map
 # ---------------------------------------------------------
 
 def find_iso(E):
@@ -100,14 +155,14 @@ def find_iso(E):
     isos = [i for i in isd.isogenies_prime_degree(E, p_test)
             if i.codomain().j_invariant() not in (0, 1728) ]
     if len(isos) > 0:
-      print(f'Found {len(isos)} isogenous curves of degree {p_test}')
+      print(f'✔️✔️✔️ Found {len(isos)} isogenous curves of degree {p_test}')
       return isos[0].dual()
-  print(f'Found no isogenies')
+  print(f'⚠️⚠️⚠️ Found no isogenies for {E}')
   return None
 
 def find_z_sswu(F, A, B):
     """
-    https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#ref-SAGE
+    https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-14#appendix-H.2
     Arguments:
     - F, a field object, e.g., F = GF(2^521 - 1)
     - A and B, the coefficients of the curve equation y² = x³ + A * x + B
@@ -190,10 +245,19 @@ def search_isogeny(curve_name, curve_config):
 
     # Isogenies:
     iso_G1 = find_iso(E1)
+    iso_G2 = find_iso(E2)
+
+    if iso_G1 == None or iso_G2 == None:
+      # TODO: case when G1 has a cheap isogeny but G2 does not
+      Z_G1 = find_z_svdw(Fp, A, B)
+      print(f"Z G1 (svdw): {Z_G1}")
+      Z_G2 = find_z_svdw(Fp2, A, G2B)
+      print(f"Z G2 (svdw): {fp2_to_hex(Z_G2)}")
+      return
+
     a_G1 = iso_G1.domain().a4()
     b_G1 = iso_G1.domain().a6()
 
-    iso_G2 = find_iso(E2)
     a_G2 = iso_G2.domain().a4()
     b_G2 = iso_G2.domain().a6()
 
@@ -204,12 +268,12 @@ def search_isogeny(curve_name, curve_config):
     print(f"{curve_name} G1 - isogeny of degree {iso_G1.degree()} with eq y² = x³ + A'x + B':")
     print(f"  A': 0x{Integer(a_G1).hex()}")
     print(f"  B': 0x{Integer(b_G1).hex()}")
-    print(f"  Z: {Z_G1}")
+    print(f"  Z (sswu): {Z_G1}")
 
     print(f"{curve_name} G2 - isogeny of degree {iso_G2.degree()} with eq y² = x³ + A'x + B':")
     print(f"  A': {fp2_to_hex(a_G2)}")
     print(f"  B': {fp2_to_hex(b_G2)}")
-    print(f"  Z: {fp2_to_hex(Z_G2)}")
+    print(f"  Z (sswu): {fp2_to_hex(Z_G2)}")
 
 # BLS12-381 G1
 # ---------------------------------------------------------
@@ -223,7 +287,6 @@ def genBLS12381G1_H2C_constants(curve_config):
   # ------------------------------------------
   p = curve_config[curve_name]['field']['modulus']
   Fp = GF(p)
-  K.<u> = PolynomialRing(Fp)
   # ------------------------------------------
 
   # Hash to curve isogenous curve parameters
@@ -503,6 +566,140 @@ def genBLS12381G2_H2C_isogeny_map(curve_config):
 
   return buf
 
+def genSVDW_H2C_G1_constants(curve, curve_config, Z):
+  p = curve_config[curve]['field']['modulus']
+  a = curve_config[curve]['curve']['a']
+  b = curve_config[curve]['curve']['b']
+
+  Fp = GF(p)
+
+  print(f'\n----> Hash-to-Curve Shallue-van de Woestijne {curve} G1 map <----\n')
+  buf = inspect.cleandoc(f"""
+      # Hash-to-Curve Shallue-van de Woestijne {curve} G1 map
+      # -----------------------------------------------------------------
+      # Spec:
+      # - https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-14#appendix-F.1
+  """)
+  buf += '\n\n'
+
+  c1 = Z^3 + a*Z + b
+  c2 = -Z/2
+  t = 3 * Z^2 + 4 * a
+  c3 = sqrt(-c1 * t)
+  if sgn0(c3) == 1:
+    c3 = -c3
+  c4 = -4 * c1 / t
+
+  buf += f'const {curve}_h2c_svdw_G1_Z* = '
+  buf += field_to_nim(Z, 'Fp', curve)
+  buf += '\n'
+
+  buf += f'const {curve}_h2c_svdw_G1_c1* = '
+  buf += field_to_nim(c1, 'Fp', curve)
+  buf += '\n'
+
+  buf += f'const {curve}_h2c_svdw_G1_c2* = '
+  buf += field_to_nim(c2, 'Fp', curve)
+  buf += '\n'
+
+  buf += f'const {curve}_h2c_svdw_G1_c3* = '
+  buf += field_to_nim(c3, 'Fp', curve)
+  buf += '\n'
+
+  buf += f'const {curve}_h2c_svdw_G1_c4* = '
+  buf += field_to_nim(c4, 'Fp', curve)
+  buf += '\n'
+
+  return buf
+
+def genSVDW_H2C_G2_constants(curve, curve_config, Z):
+  p = curve_config[curve]['field']['modulus']
+  a = curve_config[curve]['curve']['a']
+  b = curve_config[curve]['curve']['b']
+
+  embedding_degree = curve_config[curve]['tower']['embedding_degree']
+  twist_degree = curve_config[curve]['tower']['twist_degree']
+  twist = curve_config[curve]['tower']['twist']
+
+  G2_field_degree = embedding_degree // twist_degree
+  G2_field = f'Fp{G2_field_degree}' if G2_field_degree > 1 else 'Fp'
+
+  if G2_field_degree == 2:
+      non_residue_fp = curve_config[curve]['tower']['QNR_Fp']
+  elif G2_field_degree == 1:
+      if twist_degree == 6:
+          # Only for complete serialization
+          non_residue_fp = curve_config[curve]['tower']['SNR_Fp']
+      else:
+        raise NotImplementedError()
+  else:
+      raise NotImplementedError()
+
+  Fp = GF(p)
+  K.<u> = PolynomialRing(Fp)
+
+  if G2_field == 'Fp2':
+      Fp2.<beta> = Fp.extension(u^2 - non_residue_fp)
+      G2F = Fp2
+      if twist_degree == 6:
+          non_residue_twist = curve_config[curve]['tower']['SNR_Fp2']
+      else:
+          raise NotImplementedError()
+  elif G2_field == 'Fp':
+      G2F = Fp
+      if twist_degree == 6:
+          non_residue_twist = curve_config[curve]['tower']['SNR_Fp']
+      else:
+          raise NotImplementedError()
+  else:
+      raise NotImplementedError()
+
+  if twist == 'D_Twist':
+      G2B = b/G2F(non_residue_twist)
+  elif twist == 'M_Twist':
+      G2B = b*G2F(non_residue_twist)
+  else:
+      raise ValueError('E2 must be a D_Twist or M_Twist but found ' + twist)
+
+  print(f'\n----> Hash-to-Curve Shallue-van de Woestijne {curve} G2 map <----\n')
+  buf = inspect.cleandoc(f"""
+      # Hash-to-Curve Shallue-van de Woestijne {curve} G2 map
+      # -----------------------------------------------------------------
+      # Spec:
+      # - https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-14#appendix-F.1
+  """)
+  buf += '\n\n'
+
+  c1 = Z^3 + a*Z + G2B
+  c2 = -Z/2
+  t = 3 * Z^2 + 4 * a
+  c3 = sqrt(-c1 * t)
+  if sgn0(c3) == 1:
+    c3 = -c3
+  c4 = -4 * c1 / t
+
+  buf += f'const {curve}_h2c_svdw_G2_Z* = '
+  buf += field_to_nim(Z, G2_field, curve)
+  buf += '\n'
+
+  buf += f'const {curve}_h2c_svdw_G2_curve_eq_rhs_Z* = '
+  buf += field_to_nim(c1, G2_field, curve)
+  buf += '\n'
+
+  buf += f'const {curve}_h2c_svdw_G2_minus_Z_div_2* = '
+  buf += field_to_nim(c2, G2_field, curve)
+  buf += '\n'
+
+  buf += f'const {curve}_h2c_svdw_G2_z3* = '
+  buf += field_to_nim(c3, G2_field, curve)
+  buf += '\n'
+
+  buf += f'const {curve}_h2c_svdw_G2_z4* = '
+  buf += field_to_nim(c4, G2_field, curve)
+  buf += '\n'
+
+  return buf
+
 # CLI
 # ---------------------------------------------------------
 
@@ -551,6 +748,52 @@ if __name__ == "__main__":
     h2c = genBLS12381G2_H2C_constants(Curves)
     h2c += '\n\n'
     h2c += genBLS12381G2_H2C_isogeny_map(Curves)
+
+    with open(f'{curve.lower()}_hash_to_curve_g2.nim', 'w') as f:
+      f.write(copyright())
+      f.write('\n\n')
+
+      f.write(inspect.cleandoc("""
+          import
+            ../config/curves,
+            ../io/[io_fields, io_extfields]
+      """))
+
+      f.write('\n\n')
+      f.write(h2c)
+
+    print(f'Successfully created {curve.lower()}_hash_to_curve_g2.nim')
+
+  elif curve == 'BN254_Snarks' and group_or_iso == 'G1':
+    p = Curves['BN254_Snarks']['field']['modulus']
+
+    Z = GF(p)(1)
+    h2c = genSVDW_H2C_G1_constants('BN254_Snarks', Curves, Z)
+
+    with open(f'{curve.lower()}_hash_to_curve_g1.nim', 'w') as f:
+      f.write(copyright())
+      f.write('\n\n')
+
+      f.write(inspect.cleandoc("""
+          import
+            ../config/curves,
+            ../io/io_fields
+      """))
+
+      f.write('\n\n')
+      f.write(h2c)
+
+    print(f'Successfully created {curve.lower()}_hash_to_curve_g1.nim')
+
+  elif curve == 'BN254_Snarks' and group_or_iso == 'G2':
+    p = Curves['BN254_Snarks']['field']['modulus']
+    non_residue_fp = Curves['BN254_Snarks']['tower']['QNR_Fp']
+    Fp = GF(p)
+    K.<u> = PolynomialRing(Fp)
+    Fp2.<beta> = Fp.extension(u^2 - non_residue_fp)
+
+    Z = Fp2([0, 1])
+    h2c = genSVDW_H2C_G2_constants('BN254_Snarks', Curves, Z)
 
     with open(f'{curve.lower()}_hash_to_curve_g2.nim', 'w') as f:
       f.write(copyright())

@@ -16,6 +16,7 @@ import
   ./h2c_hash_to_field,
   ./h2c_map_to_isocurve_swu,
   ./h2c_isogeny_maps,
+  ./h2c_utilities,
   ../hashes
 
 # ############################################################
@@ -33,6 +34,63 @@ import
 
 # Map to curve
 # ----------------------------------------------------------------
+
+func mapToCurve_svdw[F, G](
+       r: var ECP_ShortW_Aff[F, G],
+       u: F) =
+  ## Deterministically map a field element u
+  ## to an elliptic curve point `r`
+  ## https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-14#section-6.6.1
+  
+  var
+    tv1 {.noInit.}, tv2{.noInit.}, tv3{.noInit.}: F
+    tv4{.noInit.}: F
+    x1{.noInit.}, x2{.noInit.}: F
+    gx1{.noInit.}, gx2{.noInit.}: F
+
+  tv1.square(u)
+  tv1 *= h2cConst(F.C, svdw, G, curve_eq_rhs_Z)
+  tv2 = tv1
+  when F is Fp:
+    tv2 += F(mres: F.getMontyOne())
+    tv1.diff(F(mres: F.getMontyOne()), tv1)
+  else:
+    tv2.c0 += Fp[F.F.C](mres: Fp[F.F.C].getMontyOne())
+    tv1.c0.diff(Fp[F.F.C](mres: Fp[F.F.C].getMontyOne()), tv1.c0)
+    tv1.c1.neg()
+  tv3.prod(tv1, tv2)
+  tv3.inv()
+  
+  tv4.prod(u, tv1)
+  tv4 *= tv3
+  tv4.mulCheckSparse(h2cConst(F.C, svdw, G, z3))
+
+  x1.diff(h2cConst(F.C, svdw, G, minus_Z_div_2), tv4)
+  x2.sum(h2cConst(F.C, svdw, G, minus_Z_div_2), tv4)
+  r.x.square(tv2)
+  r.x *= tv3
+  r.x.square()
+  r.x *= h2cConst(F.C, svdw, G, z4)
+  r.x += h2cConst(F.C, svdw, G, Z)
+
+  # x³+ax+b
+  gx1.curve_eq_rhs(x1, G)
+  gx2.curve_eq_rhs(x2, G)
+
+  # TODO: faster Legendre symbol.
+  # We can optimize the 2 legendre symbols + 3 sqrt to 
+  # - either 2 legendre and 1 sqrt
+  # - or 3 fused legendre+sqrt
+  let e1 = gx1.isSquare()
+  let e2 = gx2.isSquare() and not e1
+
+  r.x.ccopy(x1, e1)
+  r.x.ccopy(x2, e2)
+
+  r.y.curve_eq_rhs(r.x, G)
+  r.y.sqrt()
+  
+  r.y.cneg(sgn0(u) xor sgn0(r.y))
 
 func mapToIsoCurve_sswuG1_opt3mod4[F](
        r: var ECP_ShortW_Jac[F, G1],
@@ -72,39 +130,6 @@ func mapToIsoCurve_sswuG2_opt9mod16[F](
   r.x.prod(xn, xd)  # X = xZ² = xn/xd * xd² = xn*xd
   r.y.prod(yn, xd3) # Y = yZ³ = yn * xd³
 
-func mapToCurve[F; G: static Subgroup](
-       r: var (ECP_ShortW_Prj[F, G] or ECP_ShortW_Jac[F, G]),
-       u: F) =
-  ## Map an element of the
-  ## finite or extension field F
-  ## to an elliptic curve E
-  
-  when F.C.getCoefA() * F.C.getCoefB() == 0:
-    # https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-6.6.3
-    # Simplified Shallue-van de Woestijne-Ulas method for AB == 0
-    
-    # 1. Map to E' isogenous to E
-    when F is Fp and F.C.has_P_3mod4_primeModulus():
-      mapToIsoCurve_sswuG1_opt3mod4(
-        xn, xd,
-        yn,
-        u, xd3
-      )
-    elif F is Fp2 and F.C.has_Psquare_9mod16_primePower():
-      # p ≡ 3 (mod 4) => p² ≡ 9 (mod 16)
-      mapToIsoCurve_sswuG2_opt9mod16(
-        xn, xd,
-        yn,
-        u, xd3
-      )
-    else:
-      {.error: "Not implemented".}
-
-    # 2. Map from E'1 to E1
-    r.h2c_isogeny_map(xn, xd, yn)
-  else:
-    {.error: "Not implemented".}
-
 func mapToCurve_fusedAdd[F; G: static Subgroup](
        r: var ECP_ShortW_Jac[F, G],
        u0, u1: F) =
@@ -125,23 +150,32 @@ func mapToCurve_fusedAdd[F; G: static Subgroup](
   # unlike the complete projective formulae which heavily depends on it
   # So we use jacobian coordinates for computation on isogenies.
 
-  var P0{.noInit.}, P1{.noInit.}: ECP_ShortW_Jac[F, G]
-  when F.C.getCoefA() * F.C.getCoefB() == 0:
+  when F.C == BN254_Snarks:
+    var P0{.noInit.}, P1{.noInit.}: ECP_ShortW_Aff[F, G]
+    P0.mapToCurve_svdw(u0)
+    P1.mapToCurve_svdw(u1)
+
+    r.fromAffine(P0)
+    r += P1
+
+  elif F.C.getCoefA() * F.C.getCoefB() == 0:
     # https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-6.6.3
     # Simplified Shallue-van de Woestijne-Ulas method for AB == 0
+
+    var P0{.noInit.}, P1{.noInit.}: ECP_ShortW_Jac[F, G]
     
     # 1. Map to E' isogenous to E
     when F is Fp and F.C.has_P_3mod4_primeModulus():
       # 1. Map to E'1 isogenous to E1
       P0.mapToIsoCurve_sswuG1_opt3mod4(u0)
       P1.mapToIsoCurve_sswuG1_opt3mod4(u1)
-      P0.sum(P0, P1, h2CConst(F.C, G1, Aprime_E1))
+      P0.sum(P0, P1, h2CConst(F.C, sswu, G1, Aprime_E1))
     elif F is Fp2 and F.C.has_Psquare_9mod16_primePower():
       # p ≡ 3 (mod 4) => p² ≡ 9 (mod 16)
       # 1. Map to E'2 isogenous to E2
       P0.mapToIsoCurve_sswuG2_opt9mod16(u0)
       P1.mapToIsoCurve_sswuG2_opt9mod16(u1)
-      P0.sum(P0, P1, h2CConst(F.C, G2, Aprime_E2))
+      P0.sum(P0, P1, h2CConst(F.C, sswu, G2, Aprime_E2))
     else:
       {.error: "Not implemented".}
 
