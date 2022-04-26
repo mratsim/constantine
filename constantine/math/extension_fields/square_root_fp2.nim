@@ -202,3 +202,11 @@ func sqrt_if_square*(a: var Fp2): SecretBool =
     result = a.sqrt_if_square_generic()
   else:
     result = a.sqrt_if_square_opt()
+
+func sqrt*(a: var Fp2) =
+  ## If ``a`` is a square, compute the square root of ``a``
+  ## if not, ``a`` is undefined.
+  ##
+  ## The square root, if it exist is multivalued,
+  ## i.e. both x² == (-x)²
+  discard a.sqrt_if_square()

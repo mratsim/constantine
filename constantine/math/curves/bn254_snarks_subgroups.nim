@@ -146,7 +146,7 @@ func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]) {.inl
 # BN G1
 # ------------------------------------------------------------
 
-func clearCofactorFast*(P: var ECP_ShortW_Prj[Fp[BN254_Snarks], G1]) {.inline.} =
+func clearCofactorFast*(P: var ECP_ShortW[Fp[BN254_Snarks], G1]) {.inline.} =
   ## Clear the cofactor of BN254_Snarks G1
   ## BN curves have a prime order r hence all points on curve are in G1
   ## Hence this is a no-op
@@ -158,7 +158,7 @@ func clearCofactorFast*(P: var ECP_ShortW_Prj[Fp[BN254_Snarks], G1]) {.inline.} 
 # Implementation 
 # Fuentes-Castaneda et al, "Fast Hashing to G2 on Pairing-Friendly Curves", https://doi.org/10.1007/978-3-642-28496-0_25*
 
-func clearCofactorFast*(P: var ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]) {.inline.} =
+func clearCofactorFast*(P: var ECP_ShortW[Fp2[BN254_Snarks], G2]) {.inline.} =
   ## Clear the cofactor of BN254_Snarks G2
   ## Optimized using endomorphisms
   ## P' → [x]P + [3x]ψ(P) + [x]ψ²(P) + ψ³(P)
@@ -180,7 +180,7 @@ func clearCofactorFast*(P: var ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]) {.inline.}
 #
 # ############################################################
 
-func isInSubgroup*(P: ECP_ShortW_Prj[Fp[BN254_Snarks], G1]): SecretBool {.inline.} =
+func isInSubgroup*(P: ECP_ShortW[Fp[BN254_Snarks], G1]): SecretBool {.inline.} =
   ## Returns true if P is in G1 subgroup, i.e. P is a point of order r.
   ## A point may be on a curve but not on the prime order r subgroup.
   ## Not checking subgroup exposes a protocol to small subgroup attacks.
@@ -189,7 +189,7 @@ func isInSubgroup*(P: ECP_ShortW_Prj[Fp[BN254_Snarks], G1]): SecretBool {.inline
   ## Warning ⚠: Assumes that P is on curve
   return CtTrue
 
-func isInSubgroup*(P: ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]): SecretBool =
+func isInSubgroup*(P: ECP_ShortW_Jac[Fp2[BN254_Snarks], G2] or ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]): SecretBool =
   ## Returns true if P is in G2 subgroup, i.e. P is a point of order r.
   ## A point may be on a curve but not on the prime order r subgroup.
   ## Not checking subgroup exposes a protocol to small subgroup attacks.
@@ -205,7 +205,7 @@ func isInSubgroup*(P: ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]): SecretBool =
   #   p the prime modulus: 36u⁴ + 36u³ + 24u² + 6u + 1
   #   r the prime order:   36u⁴ + 36u³ + 18u² + 6u + 1
   #   t the trace:         6u² + 1
-  var t0{.noInit.}, t1{.noInit.}: ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]
+  var t0{.noInit.}, t1{.noInit.}: typeof(P)
   
   t0.pow_bn254_snarks_u(P)  # [u]P
   t1.pow_bn254_snarks_u(t0) # [u²]P
@@ -216,3 +216,13 @@ func isInSubgroup*(P: ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]): SecretBool =
   t1.frobenius_psi(P)       # ψ(P)
 
   return t0 == t1
+
+func isInSubgroup*(P: ECP_ShortW_Aff[Fp2[BN254_Snarks], G2]): SecretBool =
+  ## Returns true if P is in 𝔾2 subgroup, i.e. P is a point of order r.
+  ## A point may be on a curve but not on the prime order r subgroup.
+  ## Not checking subgroup exposes a protocol to small subgroup attacks.
+  ## 
+  ## Warning ⚠: Assumes that P is on curve
+  var t{.noInit.}: ECP_ShortW_Jac[Fp2[BN254_Snarks], G2]
+  t.fromAffine(P)
+  return t.isInSubgroup()

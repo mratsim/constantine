@@ -12,15 +12,13 @@ import
   # 3rd party
   pkg/jsony,
   # Internals
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/extension_fields,
-  ../../constantine/math/io/[io_bigints, io_ec],
-  ../../constantine/math/elliptic/[
-    ec_shortweierstrass_affine,
-    ec_shortweierstrass_projective],
-  ../../constantine/hash_to_curve/hash_to_curve,
-  ../../constantine/hashes
+  ../constantine/platforms/abstractions,
+  ../constantine/math/config/curves,
+  ../constantine/math/extension_fields,
+  ../constantine/math/io/[io_bigints, io_ec],
+  ../constantine/math/ec_shortweierstrass,
+  ../constantine/hash_to_curve/hash_to_curve,
+  ../constantine/hashes
 
 # Serialization
 # --------------------------------------------------------------------------
@@ -65,7 +63,7 @@ type
 
 const
   TestVectorsDir* =
-    currentSourcePath.rsplit(DirSep, 1)[0] / "vectors"
+    currentSourcePath.rsplit(DirSep, 1)[0] / "protocol_hash_to_curve"
 
 proc parseHook*(src: string, pos: var int, value: var ECP_ShortW_Aff) =
   # Note when nim-serialization was used:
@@ -138,6 +136,41 @@ proc run_hash_to_curve_test(
 
         doAssert: bool(P == P_ref)
 
+proc run_hash_to_curve_svdw_test(
+       EC: typedesc,
+       spec_version: string,
+       filename: string
+     ) =
+
+  when EC.G == G1:
+    const G1_or_G2 = "G1"
+  else:
+    const G1_or_G2 = "G2"
+  let vec = loadVectors(HashToCurveTest[ECP_ShortW_Aff[EC.F, EC.G]], filename)
+
+  let testSuiteDesc = "Hash to Curve " & $EC.F.C & " " & G1_or_G2 & " - official specs " & spec_version & " test vectors"
+
+  suite testSuiteDesc & " [" & $WordBitwidth & "-bit mode]":
+
+    doAssert vec.hash == "sha256"
+    doAssert vec.k == "0x80" # 128
+
+    for i in 0 ..< vec.vectors.len:
+      test "test " & $i & " - msg: \'" & vec.vectors[i].msg & "\'":
+        var P{.noInit.}: EC
+        sha256.hashToCurve_svdw(
+          k = 128,
+          output = P,
+          augmentation = "",
+          message = vec.vectors[i].msg,
+          domainSepTag = vec.dst
+        )
+
+        var P_ref: EC
+        P_ref.fromAffine(vec.vectors[i].P)
+
+        doAssert: bool(P == P_ref)
+
 echo "\n------------------------------------------------------\n"
 echo "Hash-to-curve" & '\n'
 
@@ -167,4 +200,17 @@ run_hash_to_curve_test(
   ECP_ShortW_Prj[Fp2[BLS12_381], G2],
   "v7",
   "tv_h2c_v7_BLS12_381_hash_to_G2_SHA256_SSWU_RO.json"
+)
+
+# With the slower universal SVDW mapping instead of SSWU
+run_hash_to_curve_svdw_test(
+  ECP_ShortW_Jac[Fp[BLS12_381], G1],
+  "v7 (SVDW)",
+  "tv_h2c_v7_BLS12_381_hash_to_G1_SHA256_SVDW_RO.json"
+)
+
+run_hash_to_curve_svdw_test(
+  ECP_ShortW_Jac[Fp2[BLS12_381], G2],
+  "v7 (SVDW)",
+  "tv_h2c_v7_BLS12_381_hash_to_G2_SHA256_SVDW_RO.json"
 )

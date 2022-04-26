@@ -10,6 +10,26 @@ import
   ../config/curves,
   ../io/io_fields
 
+# Hash-to-Curve Shallue-van de Woestijne (SVDW) BLS12_381 G1 map
+# -----------------------------------------------------------------
+# Spec:
+# - https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-14#appendix-F.1
+# This map is slower than SSWU 
+
+const BLS12_381_h2c_svdw_G1_Z* = Fp[BLS12_381].fromHex( 
+  "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaa8")
+const BLS12_381_h2c_svdw_G1_curve_eq_rhs_Z* = Fp[BLS12_381].fromHex( 
+  "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa94")
+const BLS12_381_h2c_svdw_G1_minus_Z_div_2* = Fp[BLS12_381].fromHex( 
+  "0xd0088f51cbff34d258dd3db21a5d66bb23ba5c279c2895fb39869507b587b120f55ffff58a9ffffdcff7fffffffd557")
+const BLS12_381_h2c_svdw_G1_z3* = Fp[BLS12_381].fromHex( 
+  "0xc855b97020fc106fa9c2de78c9f5d835bbc17c0487afe401c9cd0dcff9fd40bdf8033cd3095a4cd124d794808f153aa")
+const BLS12_381_h2c_svdw_G1_z4* = Fp[BLS12_381].fromHex( 
+  "0x6bde8333e50911e85400f0953d13fc61090b4c3a76e5a319f7e6f7f108cb197962c97b3cf28bda11d421c71c71c5bab")
+
+# Hash-to-Curve Simplified Shallue-van de Woestijne-Ulas (SSWU) map
+# -----------------------------------------------------------------
+
 # Hash-to-Curve map to isogenous BLS12-381 E'1 constants
 # -----------------------------------------------------------------
 #
@@ -19,17 +39,17 @@ import
 # - https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-14#section-8.8.2
 # - https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/blob/f7dd3761/poc/sswu_opt_3mod4.sage#L126-L132
 
-const BLS12_381_h2c_G1_Aprime_E1* = Fp[BLS12_381].fromHex( 
+const BLS12_381_h2c_sswu_G1_Aprime_E1* = Fp[BLS12_381].fromHex( 
   "0x144698a3b8e9433d693a02c96d4982b0ea985383ee66a8d8e8981aefd881ac98936f8da0e0f97f5cf428082d584c1d")
-const BLS12_381_h2c_G1_Bprime_E1* = Fp[BLS12_381].fromHex( 
+const BLS12_381_h2c_sswu_G1_Bprime_E1* = Fp[BLS12_381].fromHex( 
   "0x12e2908d11688030018b12e8753eee3b2016c1f0f24f4070a0b9c14fcef35ef55a23215a316ceaa5d1cc48e98e172be0")
-const BLS12_381_h2c_G1_Z* = Fp[BLS12_381].fromHex( 
+const BLS12_381_h2c_sswu_G1_Z* = Fp[BLS12_381].fromHex( 
   "0xb")
-const BLS12_381_h2c_G1_minus_A* = Fp[BLS12_381].fromHex( 
+const BLS12_381_h2c_sswu_G1_minus_A* = Fp[BLS12_381].fromHex( 
   "0x19eccb5195c6fd570db26db379de6354b38cb3316f96ac168e483a8606d8747786189071107306805d0ad7f7d2a75e8e")
-const BLS12_381_h2c_G1_ZmulA* = Fp[BLS12_381].fromHex( 
+const BLS12_381_h2c_sswu_G1_ZmulA* = Fp[BLS12_381].fromHex( 
   "0xdf088f08f205e3a3857e1ea7b2289d9a148b96ab3e694151fe89284e4d926a8e55cb15e9aab878fe7db859f2cb453f")
-const BLS12_381_h2c_G1_sqrt_minus_Z3* = Fp[BLS12_381].fromHex( 
+const BLS12_381_h2c_sswu_G1_sqrt_minus_Z3* = Fp[BLS12_381].fromHex( 
   "0x3d689d1e0e762cef9f2bec6130316806b4c80eda6fc10ce77ae83eab1ea8b8b8a407c9c6db195e06f2dbeabc2baeff5")
 
 # Hash-to-Curve 11-isogeny map BLS12-381 E'1 constants
@@ -38,7 +58,7 @@ const BLS12_381_h2c_G1_sqrt_minus_Z3* = Fp[BLS12_381].fromHex(
 # The polynomials map a point (x', y') on the isogenous curve E'1
 # to (x, y) on E1, represented as (xnum/xden, y' * ynum/yden)
 
-const BLS12_381_h2c_G1_isogeny_map_xnum* = [
+const BLS12_381_h2c_sswu_G1_isogeny_map_xnum* = [
   # Polynomial k₀ + k₁ x + k₂ x² + k₃ x³ + ... + kₙ xⁿ
   # The polynomial is stored as an array of coefficients ordered from k₀ to kₙ
 
@@ -91,7 +111,7 @@ const BLS12_381_h2c_G1_isogeny_map_xnum* = [
     "0x6e08c248e260e70bd1e962381edee3d31d79d7e22c837bc23c0bf1bc24c6b68c24b1b80b64d391fa9c8ba2e8ba2d229"
   )
 ]
-const BLS12_381_h2c_G1_isogeny_map_xden* = [
+const BLS12_381_h2c_sswu_G1_isogeny_map_xden* = [
   # Polynomial k₀ + k₁ x + k₂ x² + k₃ x³ + ... + kₙ xⁿ
   # The polynomial is stored as an array of coefficients ordered from k₀ to kₙ
 
@@ -140,7 +160,7 @@ const BLS12_381_h2c_G1_isogeny_map_xden* = [
     "0x1"
   )
 ]
-const BLS12_381_h2c_G1_isogeny_map_ynum* = [
+const BLS12_381_h2c_sswu_G1_isogeny_map_ynum* = [
   # Polynomial k₀ + k₁ x + k₂ x² + k₃ x³ + ... + kₙ xⁿ
   # The polynomial is stored as an array of coefficients ordered from k₀ to kₙ
 
@@ -209,7 +229,7 @@ const BLS12_381_h2c_G1_isogeny_map_ynum* = [
     "0x15e6be4e990f03ce4ea50b3b42df2eb5cb181d8f84965a3957add4fa95af01b2b665027efec01c7704b456be69c8b604"
   ),
 ]
-const BLS12_381_h2c_G1_isogeny_map_yden* = [
+const BLS12_381_h2c_sswu_G1_isogeny_map_yden* = [
   # Polynomial k₀ + k₁ x + k₂ x² + k₃ x³ + ... + kₙ xⁿ
   # The polynomial is stored as an array of coefficients ordered from k₀ to kₙ
 
