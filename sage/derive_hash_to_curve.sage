@@ -242,7 +242,6 @@ def search_isogeny(curve_name, curve_config):
     else:
         raise ValueError('E2 must be a D_Twist or M_Twist but found ' + twist)
 
-
     # Isogenies:
     iso_G1 = find_iso(E1)
     iso_G2 = find_iso(E2)
@@ -594,19 +593,19 @@ def genSVDW_H2C_G1_constants(curve, curve_config, Z):
   buf += field_to_nim(Z, 'Fp', curve)
   buf += '\n'
 
-  buf += f'const {curve}_h2c_svdw_G1_c1* = '
+  buf += f'const {curve}_h2c_svdw_G1_curve_eq_rhs_Z* = '
   buf += field_to_nim(c1, 'Fp', curve)
   buf += '\n'
 
-  buf += f'const {curve}_h2c_svdw_G1_c2* = '
+  buf += f'const {curve}_h2c_svdw_G1_minus_Z_div_2* = '
   buf += field_to_nim(c2, 'Fp', curve)
   buf += '\n'
 
-  buf += f'const {curve}_h2c_svdw_G1_c3* = '
+  buf += f'const {curve}_h2c_svdw_G1_z3* = '
   buf += field_to_nim(c3, 'Fp', curve)
   buf += '\n'
 
-  buf += f'const {curve}_h2c_svdw_G1_c4* = '
+  buf += f'const {curve}_h2c_svdw_G1_z4* = '
   buf += field_to_nim(c4, 'Fp', curve)
   buf += '\n'
 

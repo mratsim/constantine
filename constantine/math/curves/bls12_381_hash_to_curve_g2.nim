@@ -10,6 +10,37 @@ import
   ../config/curves,
   ../io/[io_fields, io_extfields]
 
+# Hash-to-Curve Shallue-van de Woestijne (SVDW) BLS12_381 G2 map
+# -----------------------------------------------------------------
+# Spec:
+# - https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-14#appendix-F.1
+# This map is slower than SSWU 
+
+const BLS12_381_h2c_svdw_G2_Z* = Fp2[BLS12_381].fromHex( 
+  "0x0",
+  "0x1"
+)
+const BLS12_381_h2c_svdw_G2_curve_eq_rhs_Z* = Fp2[BLS12_381].fromHex( 
+  "0x4",
+  "0x3"
+)
+const BLS12_381_h2c_svdw_G2_minus_Z_div_2* = Fp2[BLS12_381].fromHex( 
+  "0x0",
+  "0xd0088f51cbff34d258dd3db21a5d66bb23ba5c279c2895fb39869507b587b120f55ffff58a9ffffdcff7fffffffd555"
+)
+const BLS12_381_h2c_svdw_G2_z3* = Fp2[BLS12_381].fromHex( 
+  "0xbdd5ce0da1f67a74801737ad294eb2e8792dfaff3b97d438795e114a0bf9b0d448554f8291ae6ae6f9aad7ac97e0842",
+  "0x154a803c6f0a66f3f4bd964d1db96c49c5807ce89e413640c752821cda0b2d1c809f1c51d940f78f4bdd8f28edd47488"
+)
+const BLS12_381_h2c_svdw_G2_z4* = Fp2[BLS12_381].fromHex( 
+  "0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc722",
+  "0x4"
+)
+
+
+# Hash-to-Curve Simplified Shallue-van de Woestijne-Ulas (SSWU) map
+# -----------------------------------------------------------------
+
 # Hash-to-Curve map to isogenous BLS12-381 E'2 constants
 # -----------------------------------------------------------------
 #

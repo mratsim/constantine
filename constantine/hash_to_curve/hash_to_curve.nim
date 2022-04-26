@@ -130,7 +130,21 @@ func mapToIsoCurve_sswuG2_opt9mod16[F](
   r.x.prod(xn, xd)  # X = xZ² = xn/xd * xd² = xn*xd
   r.y.prod(yn, xd3) # Y = yZ³ = yn * xd³
 
-func mapToCurve_fusedAdd[F; G: static Subgroup](
+func mapToCurve_svdw_fusedAdd[F; G: static Subgroup](
+       r: var ECP_ShortW_Jac[F, G],
+       u0, u1: F) =
+  ## Map 2 elements of the
+  ## finite or extension field F
+  ## to an elliptic curve E
+  ## and add them
+  var P0{.noInit.}, P1{.noInit.}: ECP_ShortW_Aff[F, G]
+  P0.mapToCurve_svdw(u0)
+  P1.mapToCurve_svdw(u1)
+
+  r.fromAffine(P0)
+  r += P1
+
+func mapToCurve_sswu_fusedAdd[F; G: static Subgroup](
        r: var ECP_ShortW_Jac[F, G],
        u0, u1: F) =
   ## Map 2 elements of the
@@ -150,15 +164,7 @@ func mapToCurve_fusedAdd[F; G: static Subgroup](
   # unlike the complete projective formulae which heavily depends on it
   # So we use jacobian coordinates for computation on isogenies.
 
-  when F.C == BN254_Snarks:
-    var P0{.noInit.}, P1{.noInit.}: ECP_ShortW_Aff[F, G]
-    P0.mapToCurve_svdw(u0)
-    P1.mapToCurve_svdw(u1)
-
-    r.fromAffine(P0)
-    r += P1
-
-  elif F.C.getCoefA() * F.C.getCoefB() == 0:
+  when F.C.getCoefA() * F.C.getCoefB() == 0:
     # https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-6.6.3
     # Simplified Shallue-van de Woestijne-Ulas method for AB == 0
 
@@ -187,7 +193,7 @@ func mapToCurve_fusedAdd[F; G: static Subgroup](
 # Hash to curve
 # ----------------------------------------------------------------
 
-func hashToCurve*[
+func hashToCurve_svdw*[
          F; G: static Subgroup;
          B1, B2, B3: byte|char](
        H: type CryptoHash,
@@ -226,8 +232,88 @@ func hashToCurve*[
     H.shortDomainSepTag(dst, domainSepTag)
     H.hashToField(k, u, augmentation, message, dst)
 
-  output.mapToCurve_fusedAdd(u[0], u[1])
+  output.mapToCurve_svdw_fusedAdd(u[0], u[1])
   output.clearCofactor()
+
+func hashToCurve_sswu*[
+         F; G: static Subgroup;
+         B1, B2, B3: byte|char](
+       H: type CryptoHash,
+       k: static int,
+       output: var ECP_ShortW_Jac[F, G],
+       augmentation: openarray[B1],
+       message: openarray[B2],
+       domainSepTag: openarray[B3]
+     ) =
+  ## Hash a message to an elliptic curve
+  ##
+  ## Arguments:
+  ## - `Hash` a cryptographic hash function.
+  ##   - `Hash` MAY be a Merkle-Damgaard hash function like SHA-2
+  ##   - `Hash` MAY be a sponge-based hash function like SHA-3 or BLAKE2
+  ##   - Otherwise, H MUST be a hash function that has been proved
+  ##    indifferentiable from a random oracle [MRH04] under a reasonable
+  ##    cryptographic assumption.
+  ## - k the security parameter of the suite in bits (for example 128)
+  ## - `output`, an elliptic curve point that will be overwritten.
+  ## - `augmentation`, an optional augmentation to the message. This will be prepended,
+  ##   prior to hashing.
+  ##   This is used for building the "message augmentation" variant of BLS signatures
+  ##   https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04#section-3.2
+  ##   which requires `CoreSign(SK, PK || message)`
+  ##   and `CoreVerify(PK, PK || message, signature)`
+  ## - `message` is the message to hash
+  ## - `domainSepTag` is the protocol domain separation tag (DST).
+
+  var u{.noInit.}: array[2, F]
+  if domainSepTag.len <= 255: 
+    H.hashToField(k, u, augmentation, message, domainSepTag)
+  else:
+    const N = H.type.digestSize()
+    var dst {.noInit.}: array[N, byte]
+    H.shortDomainSepTag(dst, domainSepTag)
+    H.hashToField(k, u, augmentation, message, dst)
+
+  output.mapToCurve_sswu_fusedAdd(u[0], u[1])
+  output.clearCofactor()
+
+func hashToCurve*[
+         F; G: static Subgroup;
+         B1, B2, B3: byte|char](
+       H: type CryptoHash,
+       k: static int,
+       output: var ECP_ShortW_Jac[F, G],
+       augmentation: openarray[B1],
+       message: openarray[B2],
+       domainSepTag: openarray[B3]
+     ) {.inline.} =
+  ## Hash a message to an elliptic curve
+  ##
+  ## Arguments:
+  ## - `Hash` a cryptographic hash function.
+  ##   - `Hash` MAY be a Merkle-Damgaard hash function like SHA-2
+  ##   - `Hash` MAY be a sponge-based hash function like SHA-3 or BLAKE2
+  ##   - Otherwise, H MUST be a hash function that has been proved
+  ##    indifferentiable from a random oracle [MRH04] under a reasonable
+  ##    cryptographic assumption.
+  ## - k the security parameter of the suite in bits (for example 128)
+  ## - `output`, an elliptic curve point that will be overwritten.
+  ## - `augmentation`, an optional augmentation to the message. This will be prepended,
+  ##   prior to hashing.
+  ##   This is used for building the "message augmentation" variant of BLS signatures
+  ##   https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04#section-3.2
+  ##   which requires `CoreSign(SK, PK || message)`
+  ##   and `CoreVerify(PK, PK || message, signature)`
+  ## - `message` is the message to hash
+  ## - `domainSepTag` is the protocol domain separation tag (DST).
+  when F.C == BLS12_381:
+    hashToCurve_sswu(H, k, output,
+      augmentation, message, domainSepTag)
+  elif F.C == BN254_Snarks:
+    hashToCurve_svdw(H, k, output,
+      augmentation, message, domainSepTag)
+  else:
+    {.error: "Not implemented".}
 
 func hashToCurve*[
          F; G: static Subgroup;
@@ -238,7 +324,7 @@ func hashToCurve*[
        augmentation: openarray[B1],
        message: openarray[B2],
        domainSepTag: openarray[B3]
-     ) =
+     ) {.inline.} =
   ## Hash a message to an elliptic curve
   ##
   ## Arguments:
