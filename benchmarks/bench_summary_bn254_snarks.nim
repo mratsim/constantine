@@ -78,6 +78,9 @@ proc main() =
     finalExpBNBench(curve, Iters)
     pairingBNBench(curve, Iters)
     separator()
+    hashToCurveBN254SnarksG1Bench(Iters)
+    hashToCurveBN254SnarksG2Bench(Iters)
+    separator()
 
 main()
 notes()

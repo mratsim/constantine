@@ -212,7 +212,24 @@ proc pairingBNBench*(C: static Curve, iters: int) =
   bench("Pairing BN", C, iters):
     f.pairing_bn(P, Q)
 
-proc hashToCurveBLS12_381G2Bench*(iters: int) =
+proc hashToCurveBLS12381G1Bench*(iters: int) =
+  # Hardcode BLS12_381
+  # otherwise concept symbol
+  # 'CryptoHash' resolution issue
+  const dst = "BLS_SIG_BLS12381G1-SHA256-SSWU-RO_POP_"
+  let msg = "Mr F was here"
+  var P: ECP_ShortW_Prj[Fp[BLS12_381], G1]
+
+  bench("Hash to G1 (SSWU - Draft #14)", BLS12_381, iters):
+    sha256.hashToCurve(
+      k = 128,
+      output = P,
+      augmentation = "",
+      message = msg,
+      domainSepTag = dst
+    )
+
+proc hashToCurveBLS12381G2Bench*(iters: int) =
   # Hardcode BLS12_381
   # otherwise concept symbol
   # 'CryptoHash' resolution issue
@@ -220,7 +237,42 @@ proc hashToCurveBLS12_381G2Bench*(iters: int) =
   let msg = "Mr F was here"
   var P: ECP_ShortW_Prj[Fp2[BLS12_381], G2]
 
-  bench("Hash to G2 (Draft #11)", BLS12_381, iters):
+  bench("Hash to G2 (SSWU - Draft #14)", BLS12_381, iters):
+    sha256.hashToCurve(
+      k = 128,
+      output = P,
+      augmentation = "",
+      message = msg,
+      domainSepTag = dst
+    )
+
+
+proc hashToCurveBN254SnarksG1Bench*(iters: int) =
+  # Hardcode BN254_Snarks
+  # otherwise concept symbol
+  # 'CryptoHash' resolution issue
+  const dst = "BLS_SIG_BN254SNARKSG1-SHA256-SVDW-RO_POP_"
+  let msg = "Mr F was here"
+  var P: ECP_ShortW_Prj[Fp[BN254_Snarks], G1]
+
+  bench("Hash to G1 (SVDW - Draft #14)", BN254_Snarks, iters):
+    sha256.hashToCurve(
+      k = 128,
+      output = P,
+      augmentation = "",
+      message = msg,
+      domainSepTag = dst
+    )
+
+proc hashToCurveBN254SnarksG2Bench*(iters: int) =
+  # Hardcode BN254_Snarks
+  # otherwise concept symbol
+  # 'CryptoHash' resolution issue
+  const dst = "BLS_SIG_BN254SNARKSG2-SHA256-SVDW-RO_POP_"
+  let msg = "Mr F was here"
+  var P: ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]
+
+  bench("Hash to G2 (SVDW - Draft #14)", BN254_Snarks, iters):
     sha256.hashToCurve(
       k = 128,
       output = P,
