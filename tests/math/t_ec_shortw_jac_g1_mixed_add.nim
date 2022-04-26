@@ -15,7 +15,7 @@ import
   ./t_ec_template
 
 const
-  Iters = 12
+  Iters = 6
 
 run_EC_mixed_add_impl(
     ec = ECP_ShortW_Jac[Fp[BN254_Snarks], G1],
@@ -39,4 +39,16 @@ run_EC_mixed_add_impl(
     ec = ECP_ShortW_Jac[Fp[BW6_761], G1],
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_jacobian_mixed_add_" & $BW6_761
+  )
+
+run_EC_mixed_add_impl(
+    ec = ECP_ShortW_Jac[Fp[Pallas], G1],
+    Iters = Iters,
+    moduleName = "test_ec_shortweierstrass_jacobian_mixed_add_" & $Pallas
+  )
+
+run_EC_mixed_add_impl(
+    ec = ECP_ShortW_Jac[Fp[Vesta], G1],
+    Iters = Iters,
+    moduleName = "test_ec_shortweierstrass_jacobian_mixed_add_" & $Vesta
   )

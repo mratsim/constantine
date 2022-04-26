@@ -14,7 +14,9 @@ import
   ./bls12_381_endomorphisms,
   ./bn254_nogami_endomorphisms,
   ./bn254_snarks_endomorphisms,
-  ./bw6_761_endomorphisms
+  ./bw6_761_endomorphisms,
+  ./pallas_endomorphisms,
+  ./vesta_endomorphisms
 
 {.experimental: "dynamicBindSym".}
 
@@ -43,5 +45,7 @@ func hasEndomorphismAcceleration*(C: static Curve): bool =
     BN254_Snarks,
     BLS12_377,
     BLS12_381,
-    BW6_761
+    BW6_761,
+    Pallas,
+    Vesta
   }

@@ -15,7 +15,7 @@ import
   ./t_ec_template
 
 const
-  Iters = 12
+  Iters = 8
 
 run_EC_mixed_add_impl(
     ec = ECP_ShortW_Prj[Fp[BN254_Snarks], G1],
@@ -39,4 +39,16 @@ run_EC_mixed_add_impl(
     ec = ECP_ShortW_Prj[Fp[BW6_761], G1],
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_projective_mixed_add_" & $BW6_761
+  )
+
+run_EC_mixed_add_impl(
+    ec = ECP_ShortW_Prj[Fp[Pallas], G1],
+    Iters = Iters,
+    moduleName = "test_ec_shortweierstrass_projective_mixed_add_" & $Pallas
+  )
+
+run_EC_mixed_add_impl(
+    ec = ECP_ShortW_Prj[Fp[Vesta], G1],
+    Iters = Iters,
+    moduleName = "test_ec_shortweierstrass_projective_mixed_add_" & $Vesta
   )

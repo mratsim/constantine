@@ -10,60 +10,49 @@ import
   # Internals
   ../constantine/math/config/curves,
   ../constantine/math/arithmetic,
-  ../constantine/math/io/io_bigints,
-  ../constantine/math/curves/zoo_square_roots,
+  ../constantine/math/extension_fields,
   # Helpers
   ../helpers/static_for,
-  ./bench_fields_template
+  ./bench_summary_template,
+  # Standard library
+  std/strutils
 
 # ############################################################
 #
-#                  Benchmark of 𝔽p
+#            Benchmark of Pallas and Vesta curves
 #
 # ############################################################
 
 
-const Iters = 100_000
-const ExponentIters = 100
+const Iters = 5000
 const AvailableCurves = [
-  # P224,
-  BN254_Nogami,
-  BN254_Snarks,
-  Edwards25519,
-  Bandersnatch,
-  Pallas,
-  Vesta,
-  P256,
-  Secp256k1,
-  BLS12_377,
-  BLS12_381,
-  BW6_761
+  Pallas, Vesta
 ]
+
 
 proc main() =
   separator()
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
-    addBench(Fp[curve], Iters)
-    subBench(Fp[curve], Iters)
-    negBench(Fp[curve], Iters)
-    ccopyBench(Fp[curve], Iters)
-    div2Bench(Fp[curve], Iters)
+
+    mulBench(Fr[curve], Iters)
+    sqrBench(Fr[curve], Iters)
+    separator()
     mulBench(Fp[curve], Iters)
     sqrBench(Fp[curve], Iters)
-    smallSeparator()
-    mulUnrBench(Fp[curve], Iters)
-    sqrUnrBench(Fp[curve], Iters)
-    smallSeparator()
-    toBigBench(Fp[curve], Iters)
-    toFieldBench(Fp[curve], Iters)
-    smallSeparator()
-    invBench(Fp[curve], ExponentIters)
-    sqrtBench(Fp[curve], ExponentIters)
-    sqrtRatioBench(Fp[curve], ExponentIters)
-    # Exponentiation by a "secret" of size ~the curve order
-    powBench(Fp[curve], ExponentIters)
-    powUnsafeBench(Fp[curve], ExponentIters)
+    invBench(Fp[curve], Iters)
+    sqrtBench(Fp[curve], Iters)
+    separator()
+    addBench(ECP_ShortW_Prj[Fp[curve], G1], Iters)
+    mixedAddBench(ECP_ShortW_Prj[Fp[curve], G1], Iters)
+    doublingBench(ECP_ShortW_Prj[Fp[curve], G1], Iters)
+    separator()
+    addBench(ECP_ShortW_Jac[Fp[curve], G1], Iters)
+    mixedAddBench(ECP_ShortW_Jac[Fp[curve], G1], Iters)
+    doublingBench(ECP_ShortW_Jac[Fp[curve], G1], Iters)
+    separator()
+    scalarMulBench(ECP_ShortW_Prj[Fp[curve], G1], Iters)
+    scalarMulBench(ECP_ShortW_Jac[Fp[curve], G1], Iters)
     separator()
 
 main()

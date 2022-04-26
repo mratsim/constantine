@@ -146,6 +146,8 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/math/t_ec_sage_bn254_snarks.nim", false),
   ("tests/math/t_ec_sage_bls12_377.nim", false),
   ("tests/math/t_ec_sage_bls12_381.nim", false),
+  ("tests/math/t_ec_sage_pallas.nim", false),
+  ("tests/math/t_ec_sage_vesta.nim", false),
   # Edge cases highlighted by past bugs
   # ----------------------------------------------------------
   ("tests/math/t_ec_shortw_prj_edge_cases.nim", false),
@@ -731,6 +733,23 @@ task bench_summary_bn254_snarks_gcc_noasm, "Run summary benchmarks for BN254-Sna
 
 task bench_summary_bn254_snarks_clang_noasm, "Run summary benchmarks for BN254-Snarks - Clang no Assembly":
   runBench("bench_summary_bn254_snarks", "clang", useAsm = false)
+
+# --
+
+task bench_summary_pasta, "Run summary benchmarks for the Pasta curves - Default compiler":
+  runBench("bench_summary_pasta")
+
+task bench_summary_pasta_gcc, "Run summary benchmarks for the Pasta curves - GCC":
+  runBench("bench_summary_pasta", "gcc")
+
+task bench_summary_pasta_clang, "Run summary benchmarks for the Pasta curves - Clang":
+  runBench("bench_summary_pasta", "clang")
+
+task bench_summary_pasta_gcc_noasm, "Run summary benchmarks for the Pasta curves - GCC no Assembly":
+  runBench("bench_summary_pasta", "gcc", useAsm = false)
+
+task bench_summary_pasta_clang_noasm, "Run summary benchmarks for the Pasta curves - Clang no Assembly":
+  runBench("bench_summary_pasta", "clang", useAsm = false)
 
 # Hashes
 # ------------------------------------------

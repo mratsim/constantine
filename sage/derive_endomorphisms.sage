@@ -121,6 +121,7 @@ def genCubicRootEndo(curve_name, curve_config):
   G1 = EllipticCurve(Fp, [0, b])
   print('Computing cofactor')
   cofactor = G1.order() // r
+  print('cofactor: 0x' + Integer(cofactor).hex())
 
   # slow for large inputs - https://pari.math.u-bordeaux.fr/archives/pari-dev-0412/msg00020.html
   if curve_name != 'BW6_761':

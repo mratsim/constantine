@@ -40,3 +40,15 @@ run_EC_mul_vs_ref_impl(
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_projective_g1_mul_vs_ref_" & $BW6_761
   )
+
+run_EC_mul_vs_ref_impl(
+    ec = ECP_ShortW_Prj[Fp[Pallas], G1],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_shortweierstrass_projective_g1_mul_vs_ref_" & $Pallas
+  )
+
+run_EC_mul_vs_ref_impl(
+    ec = ECP_ShortW_Prj[Fp[Vesta], G1],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_shortweierstrass_projective_g1_mul_vs_ref_" & $Vesta
+  )

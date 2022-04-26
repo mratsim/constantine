@@ -13,7 +13,9 @@ import
   ./bls12_381_subgroups,
   ./bn254_nogami_subgroups,
   ./bn254_snarks_subgroups,
-  ./bw6_761_subgroups
+  ./bw6_761_subgroups,
+  ./pallas_subgroups,
+  ./vesta_subgroups
 
 export
   bls12_377_subgroups,

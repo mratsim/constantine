@@ -37,6 +37,8 @@ const AvailableCurves = [
   # Edwards25519,
   # P256,
   # Secp256k1,
+  Pallas,
+  Vesta,
   BLS12_377,
   BLS12_381,
 ]
