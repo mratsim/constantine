@@ -27,5 +27,7 @@ proc main() =
     checkCubeRootOfUnity(BN254_Snarks)
     checkCubeRootOfUnity(BLS12_377)
     checkCubeRootOfUnity(BLS12_381)
+    checkCubeRootOfUnity(Pallas)
+    checkCubeRootOfUnity(Vesta)
 
 main()

@@ -152,5 +152,27 @@ Curves = {
       'SNR_Fp': -4,
       'twist': 'M_Twist'
     }
+  },
+  'Pallas': {
+    'field': {
+      'modulus': Integer('0x40000000000000000000000000000000224698fc094cf91b992d30ed00000001'),
+      'order': Integer('0x40000000000000000000000000000000224698fc0994a8dd8c46eb2100000001')
+    },
+    'curve': {
+      'form': 'short_weierstrass',
+      'a': 0,
+      'b': 5
+    }
+  },
+  'Vesta': {
+    'field': {
+      'modulus':  Integer('0x40000000000000000000000000000000224698fc0994a8dd8c46eb2100000001'),
+      'order': Integer('0x40000000000000000000000000000000224698fc094cf91b992d30ed00000001'),
+    },
+    'curve': {
+      'form': 'short_weierstrass',
+      'a': 0,
+      'b': 5
+    }
   }
 }

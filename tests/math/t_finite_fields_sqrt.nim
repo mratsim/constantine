@@ -158,11 +158,15 @@ proc main() =
     randomSqrtCheck Edwards25519
     randomSqrtCheck Jubjub
     randomSqrtCheck Bandersnatch
+    randomSqrtCheck Pallas
+    randomSqrtCheck Vesta
   
   suite "Modular sqrt(u/v)" & " [" & $WordBitwidth & "-bit mode]":
     randomSqrtRatioCheck Edwards25519
     randomSqrtRatioCheck Jubjub
     randomSqrtRatioCheck Bandersnatch
+    randomSqrtRatioCheck Pallas
+    randomSqrtRatioCheck Vesta
 
   suite "Modular square root - 32-bit bugs highlighted by property-based testing " & " [" & $WordBitwidth & "-bit mode]":
     # test "FKM12_447 - #30": - Deactivated, we don't support the curve as no one uses it.

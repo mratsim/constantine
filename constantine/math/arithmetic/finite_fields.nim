@@ -508,6 +508,13 @@ func `*=`*(a: var FF, b: static int) =
     t += a       # 3
     t.double()   # 6
     a.double(t)   # 12
+  elif b == 15:
+    var t {.noInit.}: typeof(a)
+    t.double(a)
+    t += a       # 3
+    a.double(t)  # 6
+    a.double()   # 12
+    a += t       # 15
   else:
     {.error: "Multiplication by this small int not implemented".}
 

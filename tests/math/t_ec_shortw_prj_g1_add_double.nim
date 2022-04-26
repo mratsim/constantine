@@ -39,3 +39,15 @@ run_EC_addition_tests(
     Iters = Iters,
     moduleName = "test_ec_shortweierstrass_projective_g1_add_double_" & $BW6_761
   )
+
+run_EC_addition_tests(
+    ec = ECP_ShortW_Prj[Fp[Pallas], G1],
+    Iters = Iters,
+    moduleName = "test_ec_shortweierstrass_projective_g1_add_double_" & $Pallas
+  )
+
+run_EC_addition_tests(
+    ec = ECP_ShortW_Prj[Fp[Vesta], G1],
+    Iters = Iters,
+    moduleName = "test_ec_shortweierstrass_projective_g1_add_double_" & $Vesta
+  )

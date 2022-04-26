@@ -17,7 +17,7 @@ import
   # Test utilities
   ../../helpers/prng_unsafe
 
-const Iters = 24
+const Iters = 12
 
 var rng: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
@@ -88,6 +88,8 @@ proc mainSanity() =
     sanity BLS12_381
     sanity Edwards25519
     sanity Bandersnatch
+    sanity Pallas
+    sanity Vesta
 
 mainSanity()
 
@@ -187,6 +189,22 @@ suite "Random Modular Squaring is consistent with Modular Multiplication" & " ["
       randomHighHammingWeight(Bandersnatch)
     for _ in 0 ..< Iters:
       random_long01Seq(Bandersnatch)
+
+  test "Random squaring mod Pallas [FastSquaring = " & $(Fp[Pallas].getSpareBits() >= 2) & "]":
+    for _ in 0 ..< Iters:
+      randomCurve(Pallas)
+    for _ in 0 ..< Iters:
+      randomHighHammingWeight(Pallas)
+    for _ in 0 ..< Iters:
+      random_long01Seq(Pallas)
+
+  test "Random squaring mod Vesta [FastSquaring = " & $(Fp[Vesta].getSpareBits() >= 2) & "]":
+    for _ in 0 ..< Iters:
+      randomCurve(Vesta)
+    for _ in 0 ..< Iters:
+      randomHighHammingWeight(Vesta)
+    for _ in 0 ..< Iters:
+      random_long01Seq(Vesta)
 
 suite "Modular squaring - bugs highlighted by property-based testing":
   test "a² == (-a)² on for Fp[2^127 - 1] - #61":

@@ -17,7 +17,7 @@ import
   # Test utilities
   ../../helpers/prng_unsafe
 
-const Iters = 24
+const Iters = 12
 
 var rng: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
@@ -174,6 +174,22 @@ suite "Field Addition/Substraction/Negation via double-precision field elements"
     for _ in 0 ..< Iters:
       addsubneg_random_long01Seq(Bandersnatch)
 
+  test "With Pallas field modulus":
+    for _ in 0 ..< Iters:
+      addsubneg_random_unsafe(Pallas)
+    for _ in 0 ..< Iters:
+      addsubneg_randomHighHammingWeight(Pallas)
+    for _ in 0 ..< Iters:
+      addsubneg_random_long01Seq(Pallas)
+
+  test "With Vesta field modulus":
+    for _ in 0 ..< Iters:
+      addsubneg_random_unsafe(Vesta)
+    for _ in 0 ..< Iters:
+      addsubneg_randomHighHammingWeight(Vesta)
+    for _ in 0 ..< Iters:
+      addsubneg_random_long01Seq(Vesta)
+
   test "Negate 0 returns 0 (unique Montgomery repr)":
     var a: FpDbl[BN254_Snarks]
     var r {.noInit.}: FpDbl[BN254_Snarks]
@@ -230,6 +246,22 @@ suite "Field Multiplication via double-precision field elements is consistent wi
     for _ in 0 ..< Iters:
       mul_random_long01Seq(Bandersnatch)
 
+  test "With Pallas field modulus":
+    for _ in 0 ..< Iters:
+      mul_random_unsafe(Pallas)
+    for _ in 0 ..< Iters:
+      mul_randomHighHammingWeight(Pallas)
+    for _ in 0 ..< Iters:
+      mul_random_long01Seq(Pallas)
+
+  test "With Vesta field modulus":
+    for _ in 0 ..< Iters:
+      mul_random_unsafe(Vesta)
+    for _ in 0 ..< Iters:
+      mul_randomHighHammingWeight(Vesta)
+    for _ in 0 ..< Iters:
+      mul_random_long01Seq(Vesta)
+
 suite "Field Squaring via double-precision field elements is consistent with single-width." & " [" & $WordBitwidth & "-bit mode]":
   test "With P-224 field modulus":
     for _ in 0 ..< Iters:
@@ -278,3 +310,19 @@ suite "Field Squaring via double-precision field elements is consistent with sin
       sqr_randomHighHammingWeight(Bandersnatch)
     for _ in 0 ..< Iters:
       sqr_random_long01Seq(Bandersnatch)
+
+  test "With Pallas field modulus":
+    for _ in 0 ..< Iters:
+      sqr_random_unsafe(Pallas)
+    for _ in 0 ..< Iters:
+      sqr_randomHighHammingWeight(Pallas)
+    for _ in 0 ..< Iters:
+      sqr_random_long01Seq(Pallas)
+
+  test "With Vesta field modulus":
+    for _ in 0 ..< Iters:
+      sqr_random_unsafe(Vesta)
+    for _ in 0 ..< Iters:
+      sqr_randomHighHammingWeight(Vesta)
+    for _ in 0 ..< Iters:
+      sqr_random_long01Seq(Vesta)

@@ -14,7 +14,7 @@ import
   ./t_ec_template
 
 const
-  Iters = 8
+  Iters = 6
 
 run_EC_addition_tests(
     ec = ECP_ShortW_Jac[Fp[BN254_Snarks], G1],
@@ -37,5 +37,17 @@ run_EC_addition_tests(
 run_EC_addition_tests(
     ec = ECP_ShortW_Jac[Fp[BW6_761], G1],
     Iters = Iters,
-    moduleName = "test_ec_shortweierstrass_jacobian_g1_add_double_" & $BLS12_377
+    moduleName = "test_ec_shortweierstrass_jacobian_g1_add_double_" & $BW6_761
+  )
+
+run_EC_addition_tests(
+    ec = ECP_ShortW_Jac[Fp[Pallas], G1],
+    Iters = Iters,
+    moduleName = "test_ec_shortweierstrass_jacobian_g1_add_double_" & $Pallas
+  )
+
+run_EC_addition_tests(
+    ec = ECP_ShortW_Jac[Fp[Vesta], G1],
+    Iters = Iters,
+    moduleName = "test_ec_shortweierstrass_jacobian_g1_add_double_" & $Vesta
   )

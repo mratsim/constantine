@@ -14,7 +14,7 @@ import
   ./t_ec_template
 
 const
-  Iters = 12
+  Iters = 8
   ItersMul = Iters div 4
 
 run_EC_mul_vs_ref_impl(
@@ -38,5 +38,17 @@ run_EC_mul_vs_ref_impl(
 run_EC_mul_vs_ref_impl(
     ec = ECP_ShortW_Jac[Fp[BW6_761], G1],
     ItersMul = ItersMul,
-    moduleName = "test_ec_shortweierstrass_jacobian_g1_mul_vs_ref_" & $BLS12_377
+    moduleName = "test_ec_shortweierstrass_jacobian_g1_mul_vs_ref_" & $BW6_761
+  )
+
+run_EC_mul_vs_ref_impl(
+    ec = ECP_ShortW_Jac[Fp[Pallas], G1],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_shortweierstrass_jacobian_g1_mul_vs_ref_" & $Pallas
+  )
+
+run_EC_mul_vs_ref_impl(
+    ec = ECP_ShortW_Jac[Fp[Vesta], G1],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_shortweierstrass_jacobian_g1_mul_vs_ref_" & $Vesta
   )
