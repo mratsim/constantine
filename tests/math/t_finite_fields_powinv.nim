@@ -199,6 +199,8 @@ proc main() =
     testRandomDiv2 BLS12_377
     testRandomDiv2 BLS12_381
     testRandomDiv2 Bandersnatch
+    testRandomDiv2 Pallas
+    testRandomDiv2 Vesta
 
   suite "Modular inversion over prime fields" & " [" & $WordBitwidth & "-bit mode]":
     test "Specific tests on Fp[BLS12_381]":
@@ -287,6 +289,8 @@ proc main() =
     testRandomInv BLS12_377
     testRandomInv BLS12_381
     testRandomInv Bandersnatch
+    testRandomInv Pallas
+    testRandomInv Vesta
 
 main()
 

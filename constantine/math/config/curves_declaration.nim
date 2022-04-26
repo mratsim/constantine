@@ -168,6 +168,23 @@ declareCurves:
     coef_a: -1
     coef_d: "0x52036cee2b6ffe738cc740797779e89800700a4d4141d8ab75eb4dca135978a3"
 
+  curve Pallas: # https://github.com/zcash/pasta
+    bitwidth: 255
+    modulus: "0x40000000000000000000000000000000224698fc094cf91b992d30ed00000001"
+    order: "0x40000000000000000000000000000000224698fc0994a8dd8c46eb2100000001"
+    orderBitwidth: 255
+    eq_form: ShortWeierstrass
+    coef_a: 0
+    coef_b: 5
+  curve Vesta: # https://github.com/zcash/pasta
+    bitwidth: 255
+    modulus: "0x40000000000000000000000000000000224698fc0994a8dd8c46eb2100000001"
+    order: "0x40000000000000000000000000000000224698fc094cf91b992d30ed00000001"
+    orderBitwidth: 255
+    eq_form: ShortWeierstrass
+    coef_a: 0
+    coef_b: 5
+
   curve P256: # secp256r1 / NIST P-256
     bitwidth: 256
     modulus: "0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff"
