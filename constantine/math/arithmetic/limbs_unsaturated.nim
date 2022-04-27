@@ -233,8 +233,8 @@ template `-`*(x: SignedSecretWord): SignedSecretWord =
   SignedSecretWord(-SecretWord(x))
 
 template `*`*(x, y: SignedSecretWord): SignedSecretWord =
-  # Warning ⚠️ : We assume that mul hardware multiplication is constant time
-  # but this is not always true, especially on ARMv7 and ARMv9
+  # Warning ⚠️ : We assume that hardware multiplication is constant time
+  # but this is not always true. See https://www.bearssl.org/ctmul.html
   fmap(x, `*`, y)
 
 # shifts
