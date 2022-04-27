@@ -10,7 +10,7 @@
 > “A cryptographic system should be secure even if everything about the system, except the key, is public knowledge.”\
 >   — Auguste Kerckhoffs
 
-This library provides [constant-time](https://en.wikipedia.org/wiki/Timing_attack) implementation of cryptography protocols
+This library provides [constant-time](https://en.wikipedia.org/wiki/Timing_attack) implementation of cryptographic protocols
 with a particular focus on pairing-based cryptography as used in blockchains and zero-knowledge protocols.
 
 The implementations are accompanied with SAGE code used as reference implementation and test vectors generators before writing highly optimized routines implemented in the [Nim language](https://nim-lang.org/)
@@ -58,7 +58,7 @@ After [installation](#installation), the available high-level protocols are:
   having them be as small as possible was important.
   On another hand, BLS signatures were first popularized due to their succinctness.
   And having signatures on G1 is useful when short signatures are desired, in embedded for example.
-- [ ] SHA256 hash
+- [x] SHA256 hash
 - ...
 
 ## Curves supported in the backend
@@ -82,7 +82,10 @@ The following curves are configured:
   - Bandersnatch, a more efficient curve embedded in BLS12-381 scalar field to be used in zk-SNARKS circuits.
 - Other curves
   - Edwards25519, used in ed25519 and X25519 from TLS 1.3 protocol and the Signal protocol.
-  With Ristretto, it can be used in bulletproofs.
+
+    With Ristretto, it can be used in bulletproofs.
+  - The Pasta curves (Pallas and Vesta) for the Halo 2 proof system (Zcash).
+  
 
 ## Installation
 
