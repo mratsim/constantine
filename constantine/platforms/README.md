@@ -22,15 +22,9 @@ This folder holds:
   reimplement multiplication with constant-time guarantees
   (at the cost of speed and code-size)
 
-⚠: Currently division and modulo operations are `unsafe`
-  and uses hardware division.
-  No known CPU implements division in constant-time.
-  A constant-time alternative will be provided.
-
-While extremely slow, division and modulo are only used
-on random or user inputs to constrain them to the prime field
-of the elliptic curves.
-Constantine internals are built to avoid costly constant-time divisions.
+Division is (naively) implemented in constant-time,
+as no hardware provides constant-time division
+While extremely slow, Constantine internals are built to avoid costly constant-time divisions.
 
 ## Assembler
 

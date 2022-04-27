@@ -310,14 +310,14 @@ func cyclotomic_exp*[FT](r: var FT, a: FT, exponent: BigInt, invert: bool) {.met
 
 func isInCyclotomicSubgroup*[C](a: Fp6[C]): SecretBool =
   ## Check if a ∈ Fpⁿ: a^Φₙ(p) = 1
-  ## Φ₆(p) = p⁴-p²+1
+  ## Φ₆(p) = p²-p+1
   var t{.noInit.}, p{.noInit.}: Fp6[C]
 
   t.frobenius_map(a, 2)  # a^(p²)
   t *= a                 # a^(p²+1)
   p.frobenius_map(a)     # a^(p)
 
-  return t == p
+  return t == p and not a.isZero()
 
 func isInCyclotomicSubgroup*[C](a: Fp12[C]): SecretBool =
   ## Check if a ∈ Fpⁿ: a^Φₙ(p) = 1
@@ -328,7 +328,7 @@ func isInCyclotomicSubgroup*[C](a: Fp12[C]): SecretBool =
   t.frobenius_map(p2, 2) # a^(p⁴)
   t *= a                 # a^(p⁴+1)
 
-  return t == p2
+  return t == p2 and not a.isZero()
 
 # ############################################################
 #

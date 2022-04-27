@@ -268,8 +268,7 @@ func reduce*[aLen, mLen](r: var Limbs[mLen],
                         ) {.inline.} =
   ## Reduce `a` modulo `M` and store the result in `r`
   ##
-  ## Warning ⚠: At the moment this is NOT constant-time
-  ##            as it relies on hardware division.
+  ## This uses constant-time division
   # This is implemented via type-erased indirection to avoid
   # a significant amount of code duplication if instantiated for
   # varying bitwidth.

@@ -101,16 +101,13 @@ template `shl`*[T: Ct](x: T, y: SomeInteger): T = T(T.T(x) shl y)
 
 template `*`*[T: Ct](x, y: T): T =
   # Warning ⚠️ : We assume that mul hardware multiplication is constant time
-  # but this is not always true, especially on ARMv7 and ARMv9
+  # but this is not always true. See https://www.bearssl.org/ctmul.html
   fmap(x, `*`, y)
 
 template `*=`*[T: Ct](x, y: T) =
   # Warning ⚠️ : We assume that mul hardware multiplication is constant time
-  # but this is not always true, especially on ARMv7 and ARMv9
+  # but this is not always true. See https://www.bearssl.org/ctmul.html
   fmapAsgn(x, `*=`, y)
-
-# We don't implement div/mod as we can't assume the hardware implementation
-# is constant-time
 
 template `-`*[T: Ct](x: T): T =
   ## Unary minus returns the two-complement representation
