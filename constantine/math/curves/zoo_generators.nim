@@ -9,7 +9,8 @@
 import
   std/macros,
   ../config/curves,
-  ./bls12_381_generators
+  ./bls12_381_generators,
+  ./bn254_snarks_generators
 
 {.experimental: "dynamicbindsym".}
 
