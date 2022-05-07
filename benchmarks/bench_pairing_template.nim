@@ -233,10 +233,6 @@ proc pairingBLS12Bench*(C: static Curve, iters: int) =
     f.pairing_bls12(P, Q)
 
 proc pairing_multisingle_BLS12Bench*(C: static Curve, N: static int, iters: int) =
-  let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[C], G2])
-
   var
     Ps {.noInit.}: array[N, ECP_ShortW_Aff[Fp[C], G1]]
     Qs {.noInit.}: array[N, ECP_ShortW_Aff[Fp2[C], G2]]
@@ -277,3 +273,36 @@ proc pairingBNBench*(C: static Curve, iters: int) =
   var f: Fp12[C]
   bench("Pairing BN", C, iters):
     f.pairing_bn(P, Q)
+
+proc pairing_multisingle_BNBench*(C: static Curve, N: static int, iters: int) =
+  var
+    Ps {.noInit.}: array[N, ECP_ShortW_Aff[Fp[C], G1]]
+    Qs {.noInit.}: array[N, ECP_ShortW_Aff[Fp2[C], G2]]
+
+    GTs {.noInit.}: array[N, Fp12[C]]
+
+  for i in 0 ..< N:
+    Ps[i] = rng.random_unsafe(typeof(Ps[0]))
+    Qs[i] = rng.random_unsafe(typeof(Qs[0]))
+
+  var f: Fp12[C]
+  bench("Pairing BN non-batched: " & $N, C, iters):
+    for i in 0 ..< N:
+      GTs[i].pairing_bn(Ps[i], Qs[i])
+
+    f = GTs[0]
+    for i in 1 ..< N:
+      f *= GTs[i]
+
+proc pairing_multipairing_BNBench*(C: static Curve, N: static int, iters: int) =
+  var
+    Ps {.noInit.}: array[N, ECP_ShortW_Aff[Fp[C], G1]]
+    Qs {.noInit.}: array[N, ECP_ShortW_Aff[Fp2[C], G2]]
+
+  for i in 0 ..< N:
+    Ps[i] = rng.random_unsafe(typeof(Ps[0]))
+    Qs[i] = rng.random_unsafe(typeof(Qs[0]))
+
+  var f: Fp12[C]
+  bench("Pairing BN batched:     " & $N, C, iters):
+    f.pairing_bn(Ps, Qs)

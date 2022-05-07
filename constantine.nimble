@@ -175,6 +175,11 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/math/t_pairing_bn254_snarks_optate.nim", false),
   ("tests/math/t_pairing_bls12_377_optate.nim", false),
   ("tests/math/t_pairing_bls12_381_optate.nim", false),
+
+  # Multi-Pairing
+  # ----------------------------------------------------------
+  ("tests/math/t_pairing_bn254_nogami_multi.nim", false),
+  ("tests/math/t_pairing_bn254_snarks_multi.nim", false),
   ("tests/math/t_pairing_bls12_381_multi.nim", false),
 
   # Prime order fields

@@ -59,6 +59,27 @@ func millerLoopAddchain*(
   # Ate pairing for BN curves needs adjustment after basic Miller loop
   f.millerCorrectionBN(T, Q, P, BN254_Nogami_pairing_ate_param_isNeg)
 
+func millerLoopAddchain*[N: static int](
+       f: var Fp12[BN254_Nogami],
+       Qs: array[N, ECP_ShortW_Aff[Fp2[BN254_Nogami], G2]],
+       Ps: array[N, ECP_ShortW_Aff[Fp[BN254_Nogami], G1]]
+     ) =
+  ## Miller Loop for BN254-Nogami curve
+  ## Computes f{6u+2,Q}(P) with u the BLS curve parameter
+  var Ts {.noInit.}: array[N, ECP_ShortW_Prj[Fp2[BN254_Nogami], G2]]
+
+  f.miller_init_double_then_add(Ts, Qs, Ps, 1)                # 0b11
+  f.miller_accum_double_then_add(Ts, Qs, Ps, 6)               # 0b11000001
+  f.miller_accum_double_then_add(Ts, Qs, Ps, 1)               # 0b110000011
+  f.miller_accum_double_then_add(Ts, Qs, Ps, 54)              # 0b110000011000000000000000000000000000000000000000000000000000001
+  f.miller_accum_double_then_add(Ts, Qs, Ps, 2, add = false)  # 0b11000001100000000000000000000000000000000000000000000000000000100
+
+  # Negative AteParam
+  f.conj()
+
+  for i in 0 ..< N:
+    f.millerCorrectionBN(Ts[i], Qs[i], Ps[i], BN254_Nogami_pairing_ate_param_isNeg)
+
 func cycl_exp_by_curve_param*(
        r: var Fp12[BN254_Nogami], a: Fp12[BN254_Nogami],
        invert = BN254_Nogami_pairing_ate_param_isNeg) =

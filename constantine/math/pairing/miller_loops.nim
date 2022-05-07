@@ -77,16 +77,16 @@ func millerCorrectionBN*[FT, F1, F2](
   when ate_param_isNeg:
     T.neg()
   var V {.noInit.}: typeof(Q)
-  var line {.noInit.}: Line[F2]
+  var line1 {.noInit.}, line2 {.noInit.}: Line[F2]
 
   V.frobenius_psi(Q)
-  line.line_add(T, V, P)
-  f.mul_by_line(line)
+  line1.line_add(T, V, P)
 
   V.frobenius_psi(Q, 2)
   V.neg()
-  line.line_add(T, V, P)
-  f.mul_by_line(line)
+  line2.line_add(T, V, P)
+
+  f.mul_by_2_lines(line1, line2)
 
 # ############################################################
 #                                                            #
@@ -264,6 +264,43 @@ func add_jToN[N: static int, FT, F1, F2](
     f.mul_by_line(line0)
 
   {.pop.}
+
+template basicMillerLoop*[FT, F1, F2; N: static int](
+       f: var FT,
+       Ts: var array[N, ECP_ShortW_Prj[F2, G2]],
+       line0, line1: var Line[F2],
+       Ps: array[N, ECP_ShortW_Aff[F1, G1]],
+       Qs, nQs: array[N, ECP_ShortW_Aff[F2, G2]],
+       ate_param: untyped,
+       ate_param_isNeg: untyped
+    ) =
+  ## Basic Miller loop iterations
+  # TODO: recompute nQ on-the-fly to save stack space
+  mixin pairing # symbol from zoo_pairings
+
+  static:
+    doAssert FT.C == F1.C
+    doAssert FT.C == F2.C
+
+  f.setOne()
+
+  template u: untyped = pairing(C, ate_param)
+  var u3 = pairing(C, ate_param)
+  u3 *= 3
+  for i in countdown(u3.bits - 2, 1):
+    f.square()
+    double_jToN(f, j=0, line0, line1, Ts, Ps)
+
+    let naf = bit(u3, i).int8 - bit(u, i).int8 # This can throw exception
+    if naf == 1:
+      add_jToN(f, j=0, line0, line1, Ts, Qs, Ps)
+    elif naf == -1:
+      add_jToN(f, j=0, line0, line1, Ts, nQs, Ps)
+
+  when pairing(C, ate_param_isNeg):
+    # In GT, x^-1 == conjugate(x)
+    # Remark 7.1, chapter 7.1.1 of Guide to Pairing-Based Cryptography, El Mrabet, 2017
+    conj(f)
 
 func miller_init_double_then_add*[N: static int, FT, F1, F2](
        f: var FT,
