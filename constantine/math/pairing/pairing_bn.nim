@@ -7,6 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  ../../platforms/abstractions,
   ../config/curves,
   ../extension_fields,
   ../elliptic/[
@@ -51,7 +52,7 @@ func millerLoopGenericBN*[C](
        f: var Fp12[C],
        P: ECP_ShortW_Aff[Fp[C], G1],
        Q: ECP_ShortW_Aff[Fp2[C], G2]
-     ) =
+     ) {.meter.} =
   ## Generic Miller Loop for BN curves
   ## Computes f{6u+2,Q}(P) with u the BN curve parameter
 
@@ -75,6 +76,34 @@ func millerLoopGenericBN*[C](
     pairing(C, ate_param_isNeg)
   )
 
+func millerLoopGenericBN*[N: static int, C](
+       f: var Fp12[C],
+       Ps: array[N, ECP_ShortW_Aff[Fp[C], G1]],
+       Qs: array[N, ECP_ShortW_Aff[Fp2[C], G2]]
+     ) {.meter.} =
+  ## Generic Miller Loop for BN curves
+  ## Computes f{6u+2,Q}(P) with u the BN curve parameter
+
+  var
+    Ts {.noInit.}: array[N, ECP_ShortW_Prj[Fp2[C], G2]]
+    line0 {.noInit.}, line1 {.noInit.}: Line[Fp2[C]]
+    nQs{.noInit.}: typeof(Qs)
+
+  for i in 0 ..< N:
+    Ts[i].fromAffine(Qs[i])
+  for i in 0 ..< N:
+    nQs[i].neg(Qs[i])
+
+  basicMillerLoop(
+    f, Ts, line0, line1,
+    Ps, Qs, nQs,
+    ate_param, ate_param_isNeg
+  )
+
+  # Ate pairing for BN curves needs adjustment after basic Miller loop
+  for i in 0 ..< N:
+    f.millerCorrectionBN(Ts[i], Qs[i], Ps[i], pairing(C, ate_param_isNeg))
+
 func finalExpGeneric[C: static Curve](f: var Fp12[C]) =
   ## A generic and slow implementation of final exponentiation
   ## for sanity checks purposes.
@@ -95,7 +124,7 @@ func pairing_bn_reference*[C](
 # Optimized pairing implementation
 # ----------------------------------------------------------------
 
-func finalExpHard_BN*[C: static Curve](f: var Fp12[C]) =
+func finalExpHard_BN*[C: static Curve](f: var Fp12[C]) {.meter.} =
   ## Hard part of the final exponentiation
   ## Specialized for BN curves
   ##
@@ -150,13 +179,29 @@ func finalExpHard_BN*[C: static Curve](f: var Fp12[C]) =
 func pairing_bn*[C](
        gt: var Fp12[C],
        P: ECP_ShortW_Aff[Fp[C], G1],
-       Q: ECP_ShortW_Aff[Fp2[C], G2]) =
-  ## Compute the optimal Ate Pairing for BLS12 curves
+       Q: ECP_ShortW_Aff[Fp2[C], G2]) {.meter.} =
+  ## Compute the optimal Ate Pairing for BN curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
   when C == BN254_Nogami:
     gt.millerLoopAddChain(Q, P)
   else:
     gt.millerLoopGenericBN(P, Q)
+  gt.finalExpEasy()
+  gt.finalExpHard_BN()
+
+func pairing_bn*[N: static int, C](
+       gt: var Fp12[C],
+       Ps: array[N, ECP_ShortW_Aff[Fp[C], G1]],
+       Qs: array[N, ECP_ShortW_Aff[Fp2[C], G2]]) {.meter.} =
+  ## Compute the optimal Ate Pairing for BLS12 curves
+  ## Input: an array of Ps ∈ G1 and Qs ∈ G2
+  ## Output:
+  ##   The product of pairings
+  ##   e(P₀, Q₀) * e(P₁, Q₁) * e(P₂, Q₂) * ... * e(Pₙ, Qₙ) ∈ Gt
+  when C == BN254_Nogami:
+    gt.millerLoopAddChain(Qs, Ps)
+  else:
+    gt.millerLoopGenericBN(Ps, Qs)
   gt.finalExpEasy()
   gt.finalExpHard_BN()

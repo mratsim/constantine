@@ -81,8 +81,6 @@ func millerLoopAddchain*[N: static int](
   f.miller_accum_double_then_add(Ts, Qs, Ps, 32)              # 0b110100100000000100000000000000000000000000000001
   f.miller_accum_double_then_add(Ts, Qs, Ps, 16, add = false) # 0b1101001000000001000000000000000000000000000000010000000000000000
 
-  # TODO: what is the threshold for Karabina's compressed squarings?
-
 func cycl_exp_by_curve_param_div2*(
        r: var Fp12[BLS12_381], a: Fp12[BLS12_381],
        invert = BLS12_381_pairing_ate_param_isNeg) =

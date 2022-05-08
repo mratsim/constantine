@@ -58,6 +58,12 @@ proc main() =
     separator()
     pairingBNBench(curve, Iters)
     separator()
+    staticFor j, 2, 4:
+      pairing_multisingle_BNBench(curve, j, Iters div j)
+      pairing_multipairing_BNBench(curve, j, Iters div j)
+    separator()
+    staticFor j, 4, 9:
+      pairing_multipairing_BNBench(curve, j, Iters div j)
 
 main()
 notes()
