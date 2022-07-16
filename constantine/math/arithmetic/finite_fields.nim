@@ -82,7 +82,7 @@ func ccopy*(a: var FF, b: FF, ctl: SecretBool) {.meter.} =
   ## Time and memory accesses are the same whether a copy occurs or not
   ccopy(a.mres, b.mres, ctl)
 
-func cswap*(a, b: var FF, ctl: CTBool) {.meter.} =
+func cswap*(a, b: var FF, ctl: SecretBool) {.meter.} =
   ## Swap ``a`` and ``b`` if ``ctl`` is true
   ##
   ## Constant-time:

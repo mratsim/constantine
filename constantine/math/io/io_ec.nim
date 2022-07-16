@@ -53,7 +53,7 @@ func toHex*[EC: ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff](P: EC, inden
   result.appendHex(aff.y)
   result &= "\n" & sp & ")"
 
-func fromHex*(dst: var (ECP_ShortW_Prj or ECP_ShortW_Jac), x, y: string): bool {.raises: [ValueError].}=
+func fromHex*(dst: var (ECP_ShortW_Prj or ECP_ShortW_Jac), x, y: string): bool =
   ## Convert hex strings to a G1 curve point
   ## Returns true if point exist or if input is the point at infinity (all 0)
   ## Returns `false` if there is no point with coordinates (`x`, `y`) on the curve
@@ -66,7 +66,7 @@ func fromHex*(dst: var (ECP_ShortW_Prj or ECP_ShortW_Jac), x, y: string): bool {
   dst.z.csetZero(isInf)
   return bool(isOnCurve(dst.x, dst.y, dst.G) or isInf)
 
-func fromHex*(dst: var (ECP_ShortW_Prj or ECP_ShortW_Jac), x0, x1, y0, y1: string): bool {.raises: [ValueError].}=
+func fromHex*(dst: var (ECP_ShortW_Prj or ECP_ShortW_Jac), x0, x1, y0, y1: string): bool =
   ## Convert hex strings to a G2 curve point
   ## Returns `false`
   ## if there is no point with coordinates (`x`, `y`) on the curve
@@ -79,7 +79,7 @@ func fromHex*(dst: var (ECP_ShortW_Prj or ECP_ShortW_Jac), x0, x1, y0, y1: strin
   dst.z.csetZero(isInf)
   return bool(isOnCurve(dst.x, dst.y, dst.G) or isInf)
 
-func fromHex*(dst: var ECP_ShortW_Aff, x, y: string): bool {.raises: [ValueError].}=
+func fromHex*(dst: var ECP_ShortW_Aff, x, y: string): bool =
   ## Convert hex strings to a G1 curve point
   ## Returns true if point exist or if input is the point at infinity (all 0)
   ## Returns `false` if there is no point with coordinates (`x`, `y`) on the curve
@@ -89,7 +89,7 @@ func fromHex*(dst: var ECP_ShortW_Aff, x, y: string): bool {.raises: [ValueError
   dst.y.fromHex(y)
   return bool(isOnCurve(dst.x, dst.y, dst.G) or dst.isInf())
 
-func fromHex*(dst: var ECP_ShortW_Aff, x0, x1, y0, y1: string): bool {.raises: [ValueError].}=
+func fromHex*(dst: var ECP_ShortW_Aff, x0, x1, y0, y1: string): bool =
   ## Convert hex strings to a G2 curve point
   ## Returns true if point exist or if input is the point at infinity (all 0)
   ## Returns `false` if there is no point with coordinates (`x`, `y`) on the curve
@@ -100,9 +100,9 @@ func fromHex*(dst: var ECP_ShortW_Aff, x0, x1, y0, y1: string): bool {.raises: [
   return bool(isOnCurve(dst.x, dst.y, dst.G) or dst.isInf())
 
 func fromHex*[EC: ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff](
-       _: type EC, x, y: string): EC {.raises: [ValueError].} =
+       _: type EC, x, y: string): EC =
   doAssert result.fromHex(x, y)
 
 func fromHex*[EC: ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff](
-       _: type EC, x0, x1, y0, y1: string): EC {.raises: [ValueError].} =
+       _: type EC, x0, x1, y0, y1: string): EC =
   doAssert result.fromHex(x0, x1, y0, y1)

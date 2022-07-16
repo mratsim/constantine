@@ -27,16 +27,18 @@ macro Mod*(C: static Curve): untyped =
   ## Get the Modulus associated to a curve
   result = bindSym($C & "_Modulus")
 
-template getCurveBitwidth*(C: Curve): int =
-  ## Returns the number of bits taken by the curve modulus
-  CurveBitWidth[C]
-
 template matchingBigInt*(C: static Curve): untyped =
+  ## BigInt type necessary to store the prime field Fp
   # Workaround: https://github.com/nim-lang/Nim/issues/16774
   BigInt[CurveBitWidth[C]]
 
+template matchingOrderBigInt*(C: static Curve): untyped =
+  ## BigInt type necessary to store the scalar field Fr
+  # Workaround: https://github.com/nim-lang/Nim/issues/16774
+  BigInt[CurveOrderBitWidth[C]]
+
 template matchingLimbs2x*(C: Curve): untyped =
-  const N2 = wordsRequired(getCurveBitwidth(C)) * 2 # TODO upstream, not precomputing N2 breaks semcheck
+  const N2 = wordsRequired(CurveBitWidth[C]) * 2 # TODO upstream, not precomputing N2 breaks semcheck
   array[N2, SecretWord] # TODO upstream, using Limbs[N2] breaks semcheck
 
 func has_P_3mod4_primeModulus*(C: static Curve): static bool =

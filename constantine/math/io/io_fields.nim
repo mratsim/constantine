@@ -82,7 +82,7 @@ func toHex*(f: FF, order: static Endianness = bigEndian): string =
   ##   - no leaks
   result.appendHex(f, order)
 
-func fromHex*(dst: var FF, hexString: string) {.raises: [ValueError].}=
+func fromHex*(dst: var FF, hexString: string) =
   ## Convert a hex string to a element of Fp or Fr
   ## Warning: protocols might want a specific function that checks
   ##          that the input is in [0, modulus) range
@@ -90,7 +90,7 @@ func fromHex*(dst: var FF, hexString: string) {.raises: [ValueError].}=
   let raw {.noinit.} = fromHex(dst.mres.typeof, hexString)
   dst.fromBig(raw)
 
-func fromHex*(T: type FF, hexString: string): T {.noInit, raises: [ValueError].}=
+func fromHex*(T: type FF, hexString: string): T {.noInit.}=
   ## Convert a hex string to a element of Fp
   ## Warning: protocols might want a specific function that checks
   ##          that the input is in [0, modulus) range
@@ -106,7 +106,7 @@ func toDecimal*(f: FF): string =
   # TODO constant-time
   f.toBig().toDecimal()
 
-func fromDecimal*(dst: var FF, decimalString: string) {.raises: [ValueError].}=
+func fromDecimal*(dst: var FF, decimalString: string) =
   ## Convert a decimal string. The input must be packed
   ## with no spaces or underscores.
   ## This assumes that bits and decimal length are **public.**
@@ -126,7 +126,7 @@ func fromDecimal*(dst: var FF, decimalString: string) {.raises: [ValueError].}=
   let raw {.noinit.} = fromDecimal(dst.mres.typeof, decimalString)
   dst.fromBig(raw)
 
-func fromDecimal*(T: type FF, hexString: string): T {.noInit, raises: [ValueError].}=
+func fromDecimal*(T: type FF, hexString: string): T {.noInit.}=
   ## Convert a decimal string. The input must be packed
   ## with no spaces or underscores.
   ## This assumes that bits and decimal length are **public.**

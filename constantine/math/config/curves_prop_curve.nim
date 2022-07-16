@@ -9,7 +9,6 @@ import
   # Standard library
   std/macros,
   # Internal
-  ./type_bigint,
   ./curves_declaration, ./curves_parser_curve
 
 export CurveFamily, Curve, SexticTwist
@@ -21,6 +20,10 @@ export CurveFamily, Curve, SexticTwist
 # ############################################################
 
 {.experimental: "dynamicBindSym".}
+
+template getCurveBitwidth*(C: Curve): int =
+  ## Returns the number of bits taken by the curve modulus
+  CurveBitWidth[C]
 
 macro getCurveOrder*(C: static Curve): untyped =
   ## Get the curve order `r`
@@ -34,10 +37,6 @@ macro getCurveOrderBitwidth*(C: static Curve): untyped =
     getAST(getCurveOrder(C)),
     ident"bits"
   )
-
-template matchingOrderBigInt*(C: static Curve): untyped =
-  # Workaround: https://github.com/nim-lang/Nim/issues/16774
-  BigInt[CurveOrderBitWidth[C]]
 
 template family*(C: Curve): CurveFamily =
   CurveFamilies[C]

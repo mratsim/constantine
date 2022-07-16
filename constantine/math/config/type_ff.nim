@@ -11,7 +11,7 @@ import
   ./curves_declaration,
   ./curves_prop_field_core
 
-export matchingBigInt
+export matchingBigInt, matchingOrderBigInt
 
 type
   Fp*[C: static Curve] = object

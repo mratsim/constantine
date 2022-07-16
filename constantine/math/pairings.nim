@@ -11,7 +11,7 @@ import
   ./pairing/[pairing_bn, pairing_bls12],
   ./extension_fields
 
-template pairing*[C](gt: var Fp12[C], P, Q: typed) =
+func pairing*[C](gt: var Fp12[C], P, Q: auto) {.inline.} =
   when family(C) == BarretoNaehrig:
     pairing_bn(gt, P, Q)
   elif family(C) == BarretoLynnScott:

@@ -10,12 +10,7 @@ import
   ../../constantine/platforms/primitives,
   ../../constantine/math/config/curves,
   ../../constantine/math/arithmetic,
-  ../../constantine/math/elliptic/[
-    ec_scalar_mul,
-    ec_shortweierstrass_affine,
-    ec_shortweierstrass_projective,
-    ec_shortweierstrass_jacobian,
-  ],
+  ../../constantine/math/ec_shortweierstrass,
   ../../constantine/math/io/[io_fields, io_ec],
   # Research
   ./strided_views,
@@ -213,7 +208,7 @@ when isMainModule:
     std/[times, monotimes, strformat],
     ../../helpers/prng_unsafe
 
-  type G1 = ECP_ShortW_Prj[Fp[BLS12_381], G1]
+  type EC_G1 = ECP_ShortW_Prj[Fp[BLS12_381], G1]
   var Generator1: ECP_ShortW_Aff[Fp[BLS12_381], G1]
   doAssert Generator1.fromHex(
     "0x17f1d3a73197d7942695638c4fa9ac0fc3688c4f9774b905a14e3a3f171bac586c55e83ff97a1aeffb3af00adb22c6bb",
@@ -221,18 +216,18 @@ when isMainModule:
   )
 
   proc roundtrip() =
-    let fftDesc = FFTDescriptor[G1].init(maxScale = 4)
-    var data = newSeq[G1](fftDesc.maxWidth)
+    let fftDesc = FFTDescriptor[EC_G1].init(maxScale = 4)
+    var data = newSeq[EC_G1](fftDesc.maxWidth)
     data[0].fromAffine(Generator1)
     for i in 1 ..< fftDesc.maxWidth:
       data[i].madd(data[i-1], Generator1)
 
-    var coefs = newSeq[G1](data.len)
+    var coefs = newSeq[EC_G1](data.len)
     let fftOk = fft(fftDesc, coefs, data)
     doAssert fftOk == FFTS_Success
     # display("coefs", 0, coefs)
 
-    var res = newSeq[G1](data.len)
+    var res = newSeq[EC_G1](data.len)
     let ifftOk = ifft(fftDesc, res, coefs)
     doAssert ifftOk == FFTS_Success
     # display("res", 0, coefs)
@@ -272,13 +267,13 @@ when isMainModule:
     for scale in 4 ..< 10:
       # Setup
 
-      let desc = FFTDescriptor[G1].init(uint8 scale)
-      var data = newSeq[G1](desc.maxWidth)
+      let desc = FFTDescriptor[EC_G1].init(uint8 scale)
+      var data = newSeq[EC_G1](desc.maxWidth)
       data[0].fromAffine(Generator1)
       for i in 1 ..< desc.maxWidth:
         data[i].madd(data[i-1], Generator1)
 
-      var coefsOut = newSeq[G1](data.len)
+      var coefsOut = newSeq[EC_G1](data.len)
 
       # Bench
       let start = getMonotime()

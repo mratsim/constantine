@@ -57,34 +57,34 @@ func toHex*(f: Fp2 or Fp4 or Fp6 or Fp12, indent = 0, order: static Endianness =
   ##   - no leaks
   result.appendHex(f, indent, order)
 
-func fromHex*(dst: var Fp2, c0, c1: string) {.raises: [ValueError].}=
+func fromHex*(dst: var Fp2, c0, c1: string) =
   ## Convert 2 coordinates to an element of 𝔽p2
   ## with dst = c0 + β * c1
   ## β is the quadratic non-residue chosen to construct 𝔽p2
   dst.c0.fromHex(c0)
   dst.c1.fromHex(c1)
 
-func fromHex*(T: typedesc[Fp2], c0, c1: string): T {.raises: [ValueError].}=
+func fromHex*(T: typedesc[Fp2], c0, c1: string): T =
   ## Convert 2 coordinates to an element of 𝔽p2
   ## with dst = c0 + β * c1
   ## β is the quadratic non-residue chosen to construct 𝔽p2
   result.fromHex(c0, c1)
 
 func fromHex*(dst: var Fp4,
-              c0, c1, c2, c3: string) {.raises: [ValueError].}=
+              c0, c1, c2, c3: string) =
   ## Convert 4 coordinates to an element of 𝔽p4
   dst.c0.fromHex(c0, c1)
   dst.c1.fromHex(c2, c3)
 
 func fromHex*(T: typedesc[Fp4],
               c0, c1, c2: string,
-              c3, c4, c5: string): T {.raises: [ValueError].}=
+              c3, c4, c5: string): T =
   ## Convert 4 coordinates to an element of 𝔽p4
   result.fromHex(c0, c1, c2, c3)
 
 func fromHex*(dst: var Fp6,
               c0, c1, c2: string,
-              c3, c4, c5: string) {.raises: [ValueError].}=
+              c3, c4, c5: string) =
   ## Convert 6 coordinates to an element of 𝔽p6
   dst.c0.fromHex(c0, c1)
   dst.c1.fromHex(c2, c3)
@@ -92,14 +92,14 @@ func fromHex*(dst: var Fp6,
 
 func fromHex*(T: typedesc[Fp6],
               c0, c1, c2: string,
-              c3, c4, c5: string): T {.raises: [ValueError].}=
+              c3, c4, c5: string): T =
   ## Convert 6 coordinates to an element of 𝔽p6
   result.fromHex(c0, c1, c2, c3, c4, c5)
 
 func fromHex*(dst: var Fp12,
               c0, c1, c2, c3: string,
               c4, c5, c6, c7: string,
-              c8, c9, c10, c11: string) {.raises: [ValueError].}=
+              c8, c9, c10, c11: string) =
   ## Convert 12 coordinates to an element of 𝔽p12
   when dst.c0 is Fp6:
     dst.c0.fromHex(c0, c1, c2, c3, c4, c5)
@@ -112,7 +112,7 @@ func fromHex*(dst: var Fp12,
 func fromHex*(T: typedesc[Fp12],
               c0, c1, c2, c3: string,
               c4, c5, c6, c7: string,
-              c8, c9, c10, c11: string): T {.raises: [ValueError].}=
+              c8, c9, c10, c11: string): T =
   ## Convert 12 coordinates to an element of 𝔽p12
   result.fromHex(c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11)
 
