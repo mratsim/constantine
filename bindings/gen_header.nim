@@ -57,16 +57,16 @@ extern "C" {{
 proc genBuiltinsTypes*(): string =
   """
 #if defined{__SIZE_TYPE__} && defined(__PTRDIFF_TYPE__)
-typedef __SIZE_TYPE__ size_t;
+typedef __SIZE_TYPE__    size_t;
 typedef __PTRDIFF_TYPE__ ptrdiff_t;
 #else
 #include <stddef.h>
 #endif
 
 #if defined(__UINT8_TYPE__) && defined(__UINT32_TYPE__) && defined(__UINT64_TYPE__)
-typedef __UINT8_TYPE__  uint8_t;
-typedef __UINT32_TYPE__ uint32_t;
-typedef __UINT64_TYPE__ uint64_t;
+typedef __UINT8_TYPE__   uint8_t;
+typedef __UINT32_TYPE__  uint32_t;
+typedef __UINT64_TYPE__  uint64_t;
 #else
 #include <stdint.h>
 #endif
@@ -74,14 +74,14 @@ typedef __UINT64_TYPE__ uint64_t;
 
 proc genCttBaseTypedef*(): string =
   """
-typedef size_t secret_word;
-typedef size_t secret_bool;
-typedef uint8_t  byte;
+typedef size_t           secret_word;
+typedef size_t           secret_bool;
+typedef uint8_t          byte;
 """
 
 proc genWordsRequired*(): string =
   """
-#define WordBitWidth (sizeof(secret_word)*8)
+#define WordBitWidth         (sizeof(secret_word)*8)
 #define words_required(bits) (bits+WordBitWidth-1)/WordBitWidth
 """
 
@@ -105,7 +105,8 @@ let TypeMap {.compileTime.} = newStringTable({
 proc toCrettype(node: NimNode): string =
   node.expectKind({nnkEmpty, nnkSym})
   if node.kind == nnkEmpty:
-    "void"
+    # align iwth secret_bool and secret_word
+    "void       "  
   else:
     TypeMap[$node] 
 
@@ -129,13 +130,27 @@ proc toCparam(name: string, typ: NimNode): string =
   typ.expectKind({nnkVarTy, nnkCall, nnkSym})
 
   if typ.kind == nnkCall:
-    "openarray"
+    typ[0].expectKind(nnkOpenSymChoice)
+    doAssert typ[0][0].eqIdent"[]"
+    doAssert typ[1].eqIdent"openArray"
+    let sTyp = $typ[2]
+    if sTyp in TypeMap:
+      "const " & TypeMap[sTyp] & " "  & name & "[], ptrdiff_t " & name & "_len"
+    else:
+      "const " & sTyp & " " & name & "[], ptrdiff_t " & name & "_len"
   elif typ.kind == nnkVarTy and typ[0].kind == nnkCall:
-    "var openarray"
+    typ[0][0].expectKind(nnkOpenSymChoice)
+    doAssert typ[0][0][0].eqIdent"[]"
+    doAssert typ[0][1].eqIdent"openArray"
+    let sTyp = $typ[0][2]
+    if sTyp in TypeMap:
+      TypeMap[sTyp] & " " & name & "[], ptrdiff_t " & name & "_len"
+    else:
+      sTyp & " " & name & "[], ptrdiff_t " & name & "_len"
   else:
     toCtrivialParam(name, typ)
 
-macro collectBindings*(body: typed): untyped =
+macro collectBindings*(cBindingsStr: untyped, body: typed): untyped =
   ## Collect function definitions from a generator template
 
   body.expectKind(nnkStmtList)
@@ -171,4 +186,27 @@ macro collectBindings*(body: typed): untyped =
 
       cBindings &= ");"
 
-  return newLit(cBindings)
+  result = copyNimTree(body)
+  result.add quote do:
+    const `cBindingsStr` = `cBindings`
+
+# Nim internals
+# -------------------------------------------
+
+proc declNimMain*(libName: string): string =
+  ## Create the NimMain function.
+  ## It initializes:
+  ## - the Nim runtime if seqs, strings or heap-allocated types are used,
+  ##   this is the case only if Constantine is multithreaded.
+  ## - runtime CPU features detection
+  ## 
+  ## Assumes library is compiled with --nimMainPrefix:ctt_{libName}_
+  &"""
+/*
+ * Initializes the library:
+ * - the Nim runtime if heap-allocated types are used,
+ *   this is the case only if Constantine is multithreaded.
+ * - runtime CPU features detection
+ */
+void ctt_{libName}_NimMain(void);
+"""

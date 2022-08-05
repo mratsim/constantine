@@ -14,31 +14,34 @@ type
   bls12381_fr = Fr[BLS12_381]
   bls12381_fp = Fp[BLS12_381]
 
-let cBindings {.compileTime.} = collectBindings:
+collectBindings(cBindings):
   genBindingsField(bls12381_fr)
   genBindingsField(bls12381_fp)
 
 # Write header
-proc main() =
-  echo "Running bindings generation for " & getAppFilename().extractFilename()
+when isMainModule and defined(CttGenerateHeaders):
+  proc main() =
+    echo "Running bindings generation for " & getAppFilename().extractFilename()
 
-  var header: string
-  header = genBuiltinsTypes()
-  header &= '\n'
-  header &= genCttBaseTypedef()
-  header &= '\n'
-  header &= genWordsRequired()
-  header &= '\n'
-  header &= genField("bls12381_fr", BLS12_381.getCurveOrderBitWidth())
-  header &= '\n'
-  header &= genField("bls12381_fp", BLS12_381.getCurveBitWidth())
-  header &= cBindings
+    var header: string
+    header = genBuiltinsTypes()
+    header &= '\n'
+    header &= genCttBaseTypedef()
+    header &= '\n'
+    header &= genWordsRequired()
+    header &= '\n'
+    header &= genField("bls12381_fr", BLS12_381.getCurveOrderBitWidth())
+    header &= '\n'
+    header &= genField("bls12381_fp", BLS12_381.getCurveBitWidth())
+    header &= cBindings
+    header &= '\n'
+    header &= declNimMain("bls12381")
 
-  header = genCpp(header)
-  header = genHeader("BLS12381", header)
-  header = genHeaderLicense() & header
+    header = genCpp(header)
+    header = genHeader("BLS12381", header)
+    header = genHeaderLicense() & header
 
-  writeFile("constantine_bls12_381.h", header)
+    writeFile("constantine_bls12_381.h", header)
 
-when isMainModule:
+
   main()
