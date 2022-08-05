@@ -34,10 +34,18 @@ typedef size_t           secret_bool;
 typedef uint8_t          byte;
 
 #define WordBitWidth         (sizeof(secret_word)*8)
-#define words_required(bits) (bits+WordBitWidth-1)/WordBitWidth
+#define words_required(bits) ((bits+WordBitWidth-1)/WordBitWidth)
 
 typedef struct { secret_word limbs[words_required(255)]; } bls12381_fr;
 typedef struct { secret_word limbs[words_required(381)]; } bls12381_fp;
+typedef struct { bls12381_fp c[2]; } bls12381_fp2;
+typedef struct { bls12381_fp x, y; } bls12381_ec_g1_aff;
+typedef struct { bls12381_fp x, y, z; } bls12381_ec_g1_jac;
+typedef struct { bls12381_fp x, y, z; } bls12381_ec_g1_prj;
+typedef struct { bls12381_fp2 x, y; } bls12381_ec_g2_aff;
+typedef struct { bls12381_fp2 x, y, z; } bls12381_ec_g2_jac;
+typedef struct { bls12381_fp2 x, y, z; } bls12381_ec_g2_prj;
+
 
 void        ctt_bls12381_fr_unmarshalBE(bls12381_fr* dst, const byte src[], ptrdiff_t src_len);
 void        ctt_bls12381_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const bls12381_fr* src);
@@ -72,6 +80,38 @@ void        ctt_bls12381_fp_diff(bls12381_fp* r, const bls12381_fp* a, const bls
 void        ctt_bls12381_fp_sub_in_place(bls12381_fp* a, const bls12381_fp* b);
 void        ctt_bls12381_fp_double(bls12381_fp* r, const bls12381_fp* a);
 void        ctt_bls12381_fp_double_in_place(bls12381_fp* a);
+
+secret_bool ctt_bls12381_fp2_is_eq(const bls12381_fp2* a, const bls12381_fp2* b);
+secret_bool ctt_bls12381_fp2_is_zero(const bls12381_fp2* a);
+secret_bool ctt_bls12381_fp2_is_one(const bls12381_fp2* a);
+secret_bool ctt_bls12381_fp2_is_minus_one(const bls12381_fp2* a);
+void        ctt_bls12381_fp2_set_zero(bls12381_fp2* a);
+void        ctt_bls12381_fp2_set_one(bls12381_fp2* a);
+void        ctt_bls12381_fp2_set_minus_one(bls12381_fp2* a);
+void        ctt_bls12381_fp2_neg(bls12381_fp2* a);
+void        ctt_bls12381_fp2_sum(bls12381_fp2* r, const bls12381_fp2* a, const bls12381_fp2* b);
+void        ctt_bls12381_fp2_add_in_place(bls12381_fp2* a, const bls12381_fp2* b);
+void        ctt_bls12381_fp2_diff(bls12381_fp2* r, const bls12381_fp2* a, const bls12381_fp2* b);
+void        ctt_bls12381_fp2_sub_in_place(bls12381_fp2* a, const bls12381_fp2* b);
+void        ctt_bls12381_fp2_double(bls12381_fp2* r, const bls12381_fp2* a);
+void        ctt_bls12381_fp2_double_in_place(bls12381_fp2* a);
+
+secret_bool ctt_bls12381_ec_g1_aff_is_eq(const bls12381_ec_g1_aff* P, const bls12381_ec_g1_aff* Q);
+secret_bool ctt_bls12381_ec_g1_aff_is_inf(const bls12381_ec_g1_aff* P);
+void        ctt_bls12381_ec_g1_aff_set_inf(bls12381_ec_g1_aff* P);
+void        ctt_bls12381_ec_g1_aff_ccopy(bls12381_ec_g1_aff* P, const bls12381_ec_g1_aff* Q, const secret_bool* ctl);
+secret_bool ctt_bls12381_ec_g1_aff_is_on_curve(const bls12381_fp* x, const bls12381_fp* y);
+void        ctt_bls12381_ec_g1_aff_neg(bls12381_ec_g1_aff* P, const bls12381_ec_g1_aff* Q);
+void        ctt_bls12381_ec_g1_aff_neg_in_place(bls12381_ec_g1_aff* P);
+
+secret_bool ctt_bls12381_ec_g2_aff_is_eq(const bls12381_ec_g2_aff* P, const bls12381_ec_g2_aff* Q);
+secret_bool ctt_bls12381_ec_g2_aff_is_inf(const bls12381_ec_g2_aff* P);
+void        ctt_bls12381_ec_g2_aff_set_inf(bls12381_ec_g2_aff* P);
+void        ctt_bls12381_ec_g2_aff_ccopy(bls12381_ec_g2_aff* P, const bls12381_ec_g2_aff* Q, const secret_bool* ctl);
+secret_bool ctt_bls12381_ec_g2_aff_is_on_curve(const bls12381_fp2* x, const bls12381_fp2* y);
+void        ctt_bls12381_ec_g2_aff_neg(bls12381_ec_g2_aff* P, const bls12381_ec_g2_aff* Q);
+void        ctt_bls12381_ec_g2_aff_neg_in_place(bls12381_ec_g2_aff* P);
+
 /*
  * Initializes the library:
  * - the Nim runtime if heap-allocated types are used,

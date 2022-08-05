@@ -146,6 +146,7 @@ export
 
 export extension_fields.setZero
 export extension_fields.setOne
+export extension_fields.setMinusOne
 
 export extension_fields.`==`
 export extension_fields.isZero

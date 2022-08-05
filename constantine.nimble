@@ -373,6 +373,8 @@ proc genHeaders(bindingsName: string) =
 task bindings, "Generate Constantine bindings":
   genBindings("constantine_bls12_381", "ctt_bls12381_")
   genHeaders("constantine_bls12_381")
+  genBindings("constantine_pasta", "ctt_pasta_")
+  genHeaders("constantine_pasta")
 
 task test, "Run all tests":
   # -d:testingCurves is configured in a *.nim.cfg for convenience

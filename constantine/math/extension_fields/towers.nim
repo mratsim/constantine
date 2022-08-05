@@ -94,6 +94,12 @@ func setOne*(a: var ExtensionField) =
   staticFor i, 1, a.coords.len:
     a.coords[i].setZero()
 
+func setMinusOne*(a: var ExtensionField) =
+  ## Set ``a`` to -1 in the extension field
+  a.coords[0].setMinusOne()
+  staticFor i, 1, a.coords.len:
+    a.coords[i].setZero()
+
 func fromBig*(a: var ExtensionField, src: BigInt) =
   ## Set ``a`` to the bigint value in the extension field
   a.coords[0].fromBig(src)

@@ -7,8 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  std/[strformat, strutils, macros, strtabs],
-  ../constantine/platforms/abstractions
+  std/[strformat, strutils, macros, strtabs]
 
 # Overview
 # ------------------------------------------------------------
@@ -82,17 +81,17 @@ typedef uint8_t          byte;
 proc genWordsRequired*(): string =
   """
 #define WordBitWidth         (sizeof(secret_word)*8)
-#define words_required(bits) (bits+WordBitWidth-1)/WordBitWidth
+#define words_required(bits) ((bits+WordBitWidth-1)/WordBitWidth)
 """
 
 proc genField*(name: string, bits: int): string =
   &"typedef struct {{ secret_word limbs[words_required({bits})]; }} {name};"
 
 proc genExtField*(name: string, degree: int, basename: string): string =
-  &"typedef struct {{ basename c[{degree}]; }} {name};"
+  &"typedef struct {{ {basename} c[{degree}]; }} {name};"
 
 proc genEllipticCurvePoint*(name, coords, basename: string): string =
-  &"typedef struct {{ basename {coords}; }} {name};"
+  &"typedef struct {{ {basename} {coords}; }} {name};"
 
 # Subroutines' declarations
 # -------------------------------------------
@@ -202,6 +201,7 @@ proc declNimMain*(libName: string): string =
   ## 
   ## Assumes library is compiled with --nimMainPrefix:ctt_{libName}_
   &"""
+
 /*
  * Initializes the library:
  * - the Nim runtime if heap-allocated types are used,
