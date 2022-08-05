@@ -21,6 +21,7 @@ template genBindingsField*(Field: untyped) =
   {.push cdecl, dynlib, exportc,  raises: [].} # No exceptions allowed
 
   func `ctt _ Field _ unmarshalBE`(dst: var Field, src: openarray[byte]) =
+    ## Deserialize
     unmarshalBE(dst, src)
 
   func `ctt _ Field _ marshalBE`(dst: var openarray[byte], src: Field) =
