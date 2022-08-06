@@ -11,8 +11,7 @@ import
   ../config/curves,
   ../io/io_bigints,
   ../extension_fields,
-  ../elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
-  ../pairing/[cyclotomic_subgroup, miller_loops],
+  ../pairing/cyclotomic_subgroup,
   ../isogenies/frobenius
 
 # Slow generic implementation

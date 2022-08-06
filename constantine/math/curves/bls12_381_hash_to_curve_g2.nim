@@ -10,6 +10,8 @@ import
   ../config/curves,
   ../io/[io_fields, io_extfields]
 
+{.used.}
+
 # Hash-to-Curve Shallue-van de Woestijne (SVDW) BLS12_381 G2 map
 # -----------------------------------------------------------------
 # Spec:

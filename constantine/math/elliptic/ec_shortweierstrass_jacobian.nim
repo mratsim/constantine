@@ -248,7 +248,7 @@ template sumImpl[F; G: static Subgroup](
     # which causes issues when CoefA isn't an int but Fp or Fp2
     when CoefA is int:
       const CoefA_eq_zero = CoefA == 0
-      const CoefA_eq_minus3 = CoefA == -3
+      const CoefA_eq_minus3 {.used.} = CoefA == -3
     else:
       const CoefA_eq_zero = false
       const CoefA_eq_minus3 = false

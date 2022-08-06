@@ -62,7 +62,7 @@ macro redc2xMont_adx_gen[N: static int](
   let vsym = v.nimSymbol
   result.add quote do:
     static: doAssert: sizeof(SecretWord) == sizeof(ByteAddress)
-    var `usym`{.noinit.}: Limbs[`uSlots`]
+    var `usym`{.noinit, used.}: Limbs[`uSlots`]
     var `vsym` {.noInit.}: Limbs[`vSlots`]
     `vsym`[0] = cast[SecretWord](`r_PIR`[0].unsafeAddr)
     `vsym`[1] = cast[SecretWord](`a_PIR`[0].unsafeAddr)
@@ -208,7 +208,7 @@ macro mulMont_by_1_adx_gen[N: static int](
   
   # Copy a in t
   result.add quote do:
-    var `scratchSym` {.noInit.}: Limbs[`scratchSlots`]
+    var `scratchSym` {.noInit, used.}: Limbs[`scratchSlots`]
 
   # Algorithm
   # ---------------------------------------------------------

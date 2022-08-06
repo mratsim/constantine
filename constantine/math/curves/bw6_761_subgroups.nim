@@ -13,8 +13,8 @@ import
   ../arithmetic,
   ../extension_fields,
   ../ec_shortweierstrass,
-  ../io/io_bigints,
-  ../isogenies/frobenius
+  ../io/io_bigints
+  # ../isogenies/frobenius
 
 # ############################################################
 #

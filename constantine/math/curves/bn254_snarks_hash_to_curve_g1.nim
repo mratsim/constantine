@@ -10,6 +10,8 @@ import
   ../config/curves,
   ../io/io_fields
 
+{.used.}
+
 # Hash-to-Curve Shallue-van de Woestijne BN254_Snarks G1 map
 # -----------------------------------------------------------------
 # Spec:

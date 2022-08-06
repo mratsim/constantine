@@ -45,7 +45,7 @@ type
     when SupportsGetTicks:
       cumulatedCycles*: int64
 
-template mtag(tagname: string){.pragma.}
+template mtag(tagname: string){.pragma, used.}
   ## This will allow tagging proc in the future with
   ## "Fp", "ec", "polynomial"
 

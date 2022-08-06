@@ -125,7 +125,7 @@ func redc2xMont_Comba[N: static int](
        r: var array[N, SecretWord],
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
-       m0ninv: BaseType, skipFinalSub: static bool = false) =
+       m0ninv: BaseType, skipFinalSub: static bool = false) {.used.} =
   ## Montgomery reduce a double-precision bigint modulo M
   ## 
   ## This maps

@@ -72,7 +72,6 @@ func square2x*(r: var FpDbl, a: Fp) =
 func redc2x*(r: var Fp, a: FpDbl) =
   ## Reduce a double-precision field element into r
   ## from [0, 2ⁿp) range to [0, p) range
-  const N = r.mres.limbs.len
   redc2xMont(
     r.mres.limbs,
     a.limbs2x,

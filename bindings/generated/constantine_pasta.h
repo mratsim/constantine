@@ -198,6 +198,36 @@ secret_bool ctt_pallas_ec_aff_is_on_curve(const pallas_fp* x, const pallas_fp* y
 void        ctt_pallas_ec_aff_neg(pallas_ec_aff* P, const pallas_ec_aff* Q);
 void        ctt_pallas_ec_aff_neg_in_place(pallas_ec_aff* P);
 
+secret_bool ctt_pallas_ec_jac_is_eq(const pallas_ec_jac* P, const pallas_ec_jac* Q);
+secret_bool ctt_pallas_ec_jac_is_inf(const pallas_ec_jac* P);
+void        ctt_pallas_ec_jac_set_inf(pallas_ec_jac* P);
+void        ctt_pallas_ec_jac_ccopy(pallas_ec_jac* P, const pallas_ec_jac* Q, const secret_bool ctl);
+void        ctt_pallas_ec_jac_neg(pallas_ec_jac* P, const pallas_ec_jac* Q);
+void        ctt_pallas_ec_jac_neg_in_place(pallas_ec_jac* P);
+void        ctt_pallas_ec_jac_cneg_in_place(pallas_ec_jac* P, const secret_bool ctl);
+void        ctt_pallas_ec_jac_sum(pallas_ec_jac* r, const pallas_ec_jac* P, const pallas_ec_jac* Q);
+void        ctt_pallas_ec_jac_add_in_place(pallas_ec_jac* P, const pallas_ec_jac* Q);
+void        ctt_pallas_ec_jac_diff(pallas_ec_jac* r, const pallas_ec_jac* P, const pallas_ec_jac* Q);
+void        ctt_pallas_ec_jac_double(pallas_ec_jac* r, const pallas_ec_jac* P);
+void        ctt_pallas_ec_jac_double_in_place(pallas_ec_jac* P);
+void        ctt_pallas_ec_jac_affine(pallas_ec_aff* dst, const pallas_ec_jac* src);
+void        ctt_pallas_ec_jac_from_affine(pallas_ec_jac* dst, const pallas_ec_aff* src);
+
+secret_bool ctt_pallas_ec_prj_is_eq(const pallas_ec_prj* P, const pallas_ec_prj* Q);
+secret_bool ctt_pallas_ec_prj_is_inf(const pallas_ec_prj* P);
+void        ctt_pallas_ec_prj_set_inf(pallas_ec_prj* P);
+void        ctt_pallas_ec_prj_ccopy(pallas_ec_prj* P, const pallas_ec_prj* Q, const secret_bool ctl);
+void        ctt_pallas_ec_prj_neg(pallas_ec_prj* P, const pallas_ec_prj* Q);
+void        ctt_pallas_ec_prj_neg_in_place(pallas_ec_prj* P);
+void        ctt_pallas_ec_prj_cneg_in_place(pallas_ec_prj* P, const secret_bool ctl);
+void        ctt_pallas_ec_prj_sum(pallas_ec_prj* r, const pallas_ec_prj* P, const pallas_ec_prj* Q);
+void        ctt_pallas_ec_prj_add_in_place(pallas_ec_prj* P, const pallas_ec_prj* Q);
+void        ctt_pallas_ec_prj_diff(pallas_ec_prj* r, const pallas_ec_prj* P, const pallas_ec_prj* Q);
+void        ctt_pallas_ec_prj_double(pallas_ec_prj* r, const pallas_ec_prj* P);
+void        ctt_pallas_ec_prj_double_in_place(pallas_ec_prj* P);
+void        ctt_pallas_ec_prj_affine(pallas_ec_aff* dst, const pallas_ec_prj* src);
+void        ctt_pallas_ec_prj_from_affine(pallas_ec_prj* dst, const pallas_ec_aff* src);
+
 secret_bool ctt_vesta_ec_aff_is_eq(const vesta_ec_aff* P, const vesta_ec_aff* Q);
 secret_bool ctt_vesta_ec_aff_is_inf(const vesta_ec_aff* P);
 void        ctt_vesta_ec_aff_set_inf(vesta_ec_aff* P);
@@ -205,6 +235,36 @@ void        ctt_vesta_ec_aff_ccopy(vesta_ec_aff* P, const vesta_ec_aff* Q, const
 secret_bool ctt_vesta_ec_aff_is_on_curve(const pallas_fp* x, const pallas_fp* y);
 void        ctt_vesta_ec_aff_neg(vesta_ec_aff* P, const vesta_ec_aff* Q);
 void        ctt_vesta_ec_aff_neg_in_place(vesta_ec_aff* P);
+
+secret_bool ctt_vesta_ec_jac_is_eq(const vesta_ec_jac* P, const vesta_ec_jac* Q);
+secret_bool ctt_vesta_ec_jac_is_inf(const vesta_ec_jac* P);
+void        ctt_vesta_ec_jac_set_inf(vesta_ec_jac* P);
+void        ctt_vesta_ec_jac_ccopy(vesta_ec_jac* P, const vesta_ec_jac* Q, const secret_bool ctl);
+void        ctt_vesta_ec_jac_neg(vesta_ec_jac* P, const vesta_ec_jac* Q);
+void        ctt_vesta_ec_jac_neg_in_place(vesta_ec_jac* P);
+void        ctt_vesta_ec_jac_cneg_in_place(vesta_ec_jac* P, const secret_bool ctl);
+void        ctt_vesta_ec_jac_sum(vesta_ec_jac* r, const vesta_ec_jac* P, const vesta_ec_jac* Q);
+void        ctt_vesta_ec_jac_add_in_place(vesta_ec_jac* P, const vesta_ec_jac* Q);
+void        ctt_vesta_ec_jac_diff(vesta_ec_jac* r, const vesta_ec_jac* P, const vesta_ec_jac* Q);
+void        ctt_vesta_ec_jac_double(vesta_ec_jac* r, const vesta_ec_jac* P);
+void        ctt_vesta_ec_jac_double_in_place(vesta_ec_jac* P);
+void        ctt_vesta_ec_jac_affine(vesta_ec_aff* dst, const vesta_ec_jac* src);
+void        ctt_vesta_ec_jac_from_affine(vesta_ec_jac* dst, const vesta_ec_aff* src);
+
+secret_bool ctt_vesta_ec_prj_is_eq(const vesta_ec_prj* P, const vesta_ec_prj* Q);
+secret_bool ctt_vesta_ec_prj_is_inf(const vesta_ec_prj* P);
+void        ctt_vesta_ec_prj_set_inf(vesta_ec_prj* P);
+void        ctt_vesta_ec_prj_ccopy(vesta_ec_prj* P, const vesta_ec_prj* Q, const secret_bool ctl);
+void        ctt_vesta_ec_prj_neg(vesta_ec_prj* P, const vesta_ec_prj* Q);
+void        ctt_vesta_ec_prj_neg_in_place(vesta_ec_prj* P);
+void        ctt_vesta_ec_prj_cneg_in_place(vesta_ec_prj* P, const secret_bool ctl);
+void        ctt_vesta_ec_prj_sum(vesta_ec_prj* r, const vesta_ec_prj* P, const vesta_ec_prj* Q);
+void        ctt_vesta_ec_prj_add_in_place(vesta_ec_prj* P, const vesta_ec_prj* Q);
+void        ctt_vesta_ec_prj_diff(vesta_ec_prj* r, const vesta_ec_prj* P, const vesta_ec_prj* Q);
+void        ctt_vesta_ec_prj_double(vesta_ec_prj* r, const vesta_ec_prj* P);
+void        ctt_vesta_ec_prj_double_in_place(vesta_ec_prj* P);
+void        ctt_vesta_ec_prj_affine(vesta_ec_aff* dst, const vesta_ec_prj* src);
+void        ctt_vesta_ec_prj_from_affine(vesta_ec_prj* dst, const vesta_ec_aff* src);
 
 /*
  * Initializes the library:

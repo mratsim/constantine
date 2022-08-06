@@ -11,17 +11,13 @@ import
   ../../platforms/abstractions,
   ../config/curves,
   ../arithmetic,
-  ../extension_fields,
-  ../ec_shortweierstrass,
-  ../io/io_bigints
+  ../ec_shortweierstrass
 
 # ############################################################
 #
 #                Clear Cofactor - Naive
 #
 # ############################################################
-
-const Cofactor_Eff_Pallas_G1 = BigInt[1].fromHex"0x1"
 
 func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp[Pallas], G1]) {.inline.} =
   ## Clear the cofactor of Pallas G1

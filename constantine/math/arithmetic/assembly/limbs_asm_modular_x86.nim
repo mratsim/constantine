@@ -151,7 +151,7 @@ macro addmod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N], spareBits: s
   let usym = u.nimSymbol
   let vsym = v.nimSymbol
   result.add quote do:
-    var `usym`{.noinit.}, `vsym` {.noInit.}: typeof(`A`)
+    var `usym`{.noinit.}, `vsym` {.noInit, used.}: typeof(`A`)
     staticFor i, 0, `N`:
       `usym`[i] = `A`[i]
 
@@ -204,7 +204,7 @@ macro submod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N]): untyped =
   let usym = u.nimSymbol
   let vsym = v.nimSymbol
   result.add quote do:
-    var `usym`{.noinit.}, `vsym` {.noInit.}: typeof(`A`)
+    var `usym`{.noinit.}, `vsym` {.noInit, used.}: typeof(`A`)
     staticFor i, 0, `N`:
       `usym`[i] = `A`[i]
 
@@ -278,7 +278,7 @@ macro negmod_gen[N: static int](R: var Limbs[N], A, m: Limbs[N]): untyped =
 
   let usym = u.nimSymbol
   result.add quote do:
-    var `usym`{.noinit.}: typeof(`A`)
+    var `usym`{.noinit, used.}: typeof(`A`)
   result.add ctx.generate
 
 func negmod_asm*(r: var Limbs, a, m: Limbs) =

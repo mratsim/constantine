@@ -106,7 +106,7 @@ func pow_bn254_snarks_minus_u[ECP: ECP_ShortW[Fp[BN254_Snarks], G1] or
        ECP_ShortW[Fp2[BN254_Snarks], G2]](
        r{.noalias.}: var ECP,
        P{.noalias.}: ECP
-     ) {.inline.}=
+     ) {.inline, used.}=
   ## Does the scalar multiplication [-u]P
   ## with  the BN curve parameter
   pow_bn254_snarks_abs_u(r, P)
@@ -118,7 +118,6 @@ func pow_bn254_snarks_minus_u[ECP: ECP_ShortW[Fp[BN254_Snarks], G1] or
 #
 # ############################################################
 
-const Cofactor_Eff_BN254_Snarks_G1 = BigInt[1].fromHex"0x1"
 const Cofactor_Eff_BN254_Snarks_G2 = BigInt[445].fromHex"0x10fdac342d9d118eaade453b741519b8e1d63b3400132e99468a9c2b25de5b5f1bf35b43bcc5da2335a0d8a112d43476616edcfabef338ea"
   # r = 36x⁴ + 36x³ + 18x² + 6x + 1
   # G2.order() = (36x⁴ + 36x³ + 18x² + 6x + 1)(36x⁴ + 36x³ + 30x² + 6x + 1)

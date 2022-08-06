@@ -43,7 +43,7 @@ func pow_BN254_Nogami_minus_u[ECP: ECP_ShortW[Fp[BN254_Nogami], G1] or
        ECP_ShortW[Fp2[BN254_Nogami], G2]](
        r{.noalias.}: var ECP,
        P{.noalias.}: ECP
-     ) {.inline.}=
+     ) {.inline, used.}=
   ## Does the scalar multiplication [-u]P
   ## with u the BN curve parameter
   pow_BN254_Nogami_abs_u(r, P)
@@ -54,7 +54,6 @@ func pow_BN254_Nogami_minus_u[ECP: ECP_ShortW[Fp[BN254_Nogami], G1] or
 #
 # ############################################################
 
-const Cofactor_Eff_BN254_Nogami_G1 = BigInt[1].fromHex"0x1"
 const Cofactor_Eff_BN254_Nogami_G2 = BigInt[444].fromHex"0xab11da940a5bd10e25327cb22360008556b23c24080002d6845e3404000009a4f95b60000000145460100000000018544800000000000c8"
   # r = 36x⁴ + 36x³ + 18x² + 6x + 1
   # G2.order() = (36x⁴ + 36x³ + 18x² + 6x + 1)(36x⁴ + 36x³ + 30x² + 6x + 1)

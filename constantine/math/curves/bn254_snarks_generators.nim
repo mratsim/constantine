@@ -11,6 +11,8 @@ import
   ../elliptic/ec_shortweierstrass_affine,
   ../io/[io_fields, io_extfields]
 
+{.used.}
+
 # Generators
 # -----------------------------------------------------------------
 # https://github.com/ethereum/EIPs/blob/master/EIPS/eip-197.md

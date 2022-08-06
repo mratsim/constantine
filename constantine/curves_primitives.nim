@@ -16,7 +16,7 @@ import
       curves/zoo_subgroups,
       curves/zoo_generators
     ],
-    ./math/io/[io_bigints, io_fields, io_ec],
+    ./math/io/[io_bigints, io_fields],
     ./math/isogenies/frobenius,
     ./math/pairings,
     ./math/pairing/[

@@ -148,7 +148,7 @@ func fromUnsatRepr*[LU, E, LP: static int](
       "\n  WordBitwidth * LP: " & $WordBitwidth & " * " & $LP & " = " & $(WordBitwidth * LP)
 
   var
-    srcIdx, dstIdx = 0
+    srcIdx {.used.}, dstIdx = 0
     acc = Zero
     accLen = 0
 

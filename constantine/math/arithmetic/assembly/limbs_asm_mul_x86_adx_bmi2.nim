@@ -136,7 +136,7 @@ macro mulx_gen[rLen, aLen, bLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limb
   # Prologue
   let tsym = t.nimSymbol
   result.add quote do:
-    var `tsym`{.noInit.}: array[`tSlots`, BaseType]
+    var `tsym`{.noInit, used.}: array[`tSlots`, BaseType]
 
   for i in 0 ..< min(rLen, bLen):
     if i == 0:
@@ -591,7 +591,7 @@ macro sqrx_gen*[rLen, aLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs[aLe
   # -------------------------------
   let tsym = t.nimSymbol
   result.add quote do:
-    var `tsym`{.noInit.}: array[`tSlots`, BaseType]
+    var `tsym`{.noInit, used.}: array[`tSlots`, BaseType]
 
   if aLen == 4:
     ctx.sqrx_gen4L(r, a, t)

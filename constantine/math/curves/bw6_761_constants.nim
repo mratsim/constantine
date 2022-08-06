@@ -10,6 +10,8 @@ import
   ../config/curves,
   ../io/[io_fields, io_extfields]
 
+{.used.}
+
 # Curve precomputed parameters
 # -----------------------------------------------------------------
 const BW6_761_coefB_G2* = Fp[BW6_761].fromHex( 

@@ -114,9 +114,6 @@ func powMontUnsafeExponent*[mBits: static int](
   var scratchSpace {.noInit.}: array[scratchLen, Limbs[mBits.wordsRequired]]
   powMontUnsafeExponent(a.limbs, exponent, M.limbs, one.limbs, negInvModWord, scratchSpace, spareBits)
 
-from ../io/io_bigints import marshal
-# Workaround recursive dependencies
-
 func powMont*[mBits, eBits: static int](
        a: var BigInt[mBits], exponent: BigInt[eBits],
        M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,

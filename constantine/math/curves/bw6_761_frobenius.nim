@@ -11,6 +11,8 @@ import
   ../extension_fields,
   ../io/[io_fields, io_extfields]
 
+{.used.}
+
 # Frobenius map - on extension fields
 # -----------------------------------------------------------------
 

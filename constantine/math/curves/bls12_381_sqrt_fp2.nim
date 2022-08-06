@@ -10,6 +10,8 @@ import
   ../config/curves,
   ../io/io_extfields
 
+{.used.}
+
 # Square Root Fp2 constants
 # -----------------------------------------------------------------
 const BLS12_381_sqrt_fp2_QNR* = Fp2[BLS12_381].fromHex(

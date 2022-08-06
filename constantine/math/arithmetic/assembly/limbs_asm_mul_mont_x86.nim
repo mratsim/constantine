@@ -101,7 +101,7 @@ macro mulMont_CIOS_sparebit_gen[N: static int](
   result.add quote do:
     static: doAssert: sizeof(SecretWord) == sizeof(ByteAddress)
 
-    var `tsym`: typeof(`r_PIR`) # zero init
+    var `tsym`{.noInit, used.}: typeof(`r_PIR`)
     # Assumes 64-bit limbs on 64-bit arch (or you can't store an address)
     var `scratchSym` {.noInit.}: Limbs[`scratchSlots`]
     `scratchSym`[0] = cast[SecretWord](`a_PIR`[0].unsafeAddr)

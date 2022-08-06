@@ -161,7 +161,7 @@ func square_Comba[rLen, aLen](
 
 func square_operandScan[rLen, aLen](
        r: var Limbs[rLen],
-       a: Limbs[aLen]) =
+       a: Limbs[aLen]) {.used.} =
   ## Multi-precision squaring using Operand Scanning
   const stopEx = min(a.len * 2, r.len)
   var t: typeof(r) # zero-init, ensure on stack

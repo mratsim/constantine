@@ -10,6 +10,8 @@ import
   ../config/curves,
   ../io/[io_bigints, io_fields]
 
+{.used.}
+
 # Pallas G1
 # ------------------------------------------------------------
 

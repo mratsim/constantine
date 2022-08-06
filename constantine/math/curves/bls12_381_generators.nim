@@ -11,6 +11,8 @@ import
   ../elliptic/ec_shortweierstrass_affine,
   ../io/[io_fields, io_extfields]
 
+{.used.}
+
 # Generators
 # -----------------------------------------------------------------
 # https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-pairing-friendly-curves-10#section-4.2.1

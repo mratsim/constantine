@@ -235,7 +235,7 @@ macro negmod2x_gen[N: static int](R: var Limbs[N], A: Limbs[N], m: Limbs[N div 2
   let usym = u.nimSymbol
   result.add quote do:
     var `isZerosym`{.noInit.}: BaseType
-    var `usym`{.noinit.}: typeof(`A`)
+    var `usym`{.noinit, used.}: typeof(`A`)
   result.add ctx.generate
 
 func negmod2x_asm*[N: static int](r: var Limbs[N], a: Limbs[N], M: Limbs[N div 2]) =

@@ -608,11 +608,11 @@ func add*(a: var Assembler_x86, dst: Register, src: Operand) =
 func adc*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- dst + src + carry
   doAssert dst.desc.constraint in OutputReg
+  doAssert dst.desc.rm notin {Mem, MemOffsettable, AnyRegOrMem},
+    "Using addcarry with a memory destination, this incurs significant performance penalties."
+
   a.codeFragment("adc", src, dst)
   a.areFlagsClobbered = true
-
-  if dst.desc.rm in {Mem, MemOffsettable, AnyRegOrMem}:
-    {.warning: "Using addcarry with a memory destination, this incurs significant performance penalties.".}
 
 func adc*(a: var Assembler_x86, dst, src: Register) =
   ## Does: dst <- dst + src + carry
@@ -622,11 +622,11 @@ func adc*(a: var Assembler_x86, dst, src: Register) =
 func adc*(a: var Assembler_x86, dst: Operand, imm: int) =
   ## Does: dst <- dst + imm + borrow
   doAssert dst.desc.constraint in OutputReg
+  doAssert dst.desc.rm notin {Mem, MemOffsettable, AnyRegOrMem},
+    "Using addcarry with a memory destination, this incurs significant performance penalties."
+
   a.codeFragment("adc", imm, dst)
   a.areFlagsClobbered = true
-
-  if dst.desc.rm in {Mem, MemOffsettable, AnyRegOrMem}:
-    {.warning: "Using addcarry with a memory destination, this incurs significant performance penalties.".}
 
 func adc*(a: var Assembler_x86, dst: Operand, src: Register) =
   ## Does: dst <- dst + src
@@ -648,20 +648,20 @@ func sub*(a: var Assembler_x86, dst, src: Operand) =
 func sbb*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- dst - src - borrow
   doAssert dst.desc.constraint in OutputReg
+  doAssert dst.desc.rm notin {Mem, MemOffsettable, AnyRegOrMem},
+    "Using subborrow with a memory destination, this incurs significant performance penalties."
+
   a.codeFragment("sbb", src, dst)
   a.areFlagsClobbered = true
-
-  if dst.desc.rm != Reg:
-    {.warning: "Using subborrow with a memory destination, this incurs significant performance penalties.".}
 
 func sbb*(a: var Assembler_x86, dst: Operand, imm: int) =
   ## Does: dst <- dst - imm - borrow
   doAssert dst.desc.constraint in OutputReg
+  doAssert dst.desc.rm notin {Mem, MemOffsettable, AnyRegOrMem},
+    "Using subborrow with a memory destination, this incurs significant performance penalties."
+
   a.codeFragment("sbb", imm, dst)
   a.areFlagsClobbered = true
-
-  if dst.desc.rm != Reg:
-    {.warning: "Using subborrow with a memory destination, this incurs significant performance penalties.".}
 
 func sbb*(a: var Assembler_x86, dst: Register, imm: int) =
   ## Does: dst <- dst - imm - borrow

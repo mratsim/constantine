@@ -32,10 +32,10 @@ func mux_fallback[T](ctl: CTBool[T], x, y: T): T {.inline.}=
   ## This is a constant-time operation
   y xor (-T(ctl) and (x xor y))
 
-func mux_fallback[T: CTBool](ctl: CTBool, x, y: T): T {.inline.}=
+func mux_fallback[T: CTBool](ctl, x, y: T): T {.inline.}=
   ## result = if ctl: x else: y
   ## This is a constant-time operation
-  T(T.T(y) xor (-T.T(ctl) and T.T(x xor y)))
+  T(T.T(y) xor (-T.T(ctl) and (T.T(x) xor T.T(y))))
 
 func ccopy_fallback[T](ctl: CTBool[T], x: var T, y: T) {.inline.}=
   ## Conditional copy

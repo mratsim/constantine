@@ -37,8 +37,6 @@ func invsqrt_addchain*(r: var Fp[BN254_Nogami], a: Fp[BN254_Nogami]) {.addchain.
     r35  {.noInit.}: Fp[BN254_Nogami]
     r36  {.noInit.}: Fp[BN254_Nogami]
     r37  {.noInit.}: Fp[BN254_Nogami]
-    r98  {.noInit.}: Fp[BN254_Nogami]
-    r263 {.noInit.}: Fp[BN254_Nogami]
 
   r10.square_repeated(x11, 7)
   r10 *= x11

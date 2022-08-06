@@ -10,6 +10,8 @@ import
   ../config/curves,
   ../io/[io_bigints, io_fields]
 
+{.used.}
+
 # BLS12_377 G1
 # ------------------------------------------------------------
 

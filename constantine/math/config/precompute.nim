@@ -11,6 +11,8 @@ import
   ./type_bigint,
   ../io/io_bigints
 
+{.used.}
+
 # Precomputed constants
 # We need alternate code paths for the VM
 # for various reasons
@@ -161,7 +163,7 @@ func muladd2(hi, lo: var BaseType, a, b, c1, c2: BaseType) {.inline.}=
   addC(carry2, lo, lo, c2, 0)
   addC(carry2, hi, hi, 0, carry2)
 
-func cadd(a: var BigInt, b: BigInt, ctl: bool): bool =
+func cadd(a: var BigInt, b: BigInt, ctl: bool): bool {.used.} =
   ## In-place optional addition
   ##
   ## It is NOT constant-time and is intended
