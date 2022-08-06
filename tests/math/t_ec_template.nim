@@ -18,8 +18,7 @@ import
   # Internals
   ../../constantine/platforms/abstractions,
   ../../constantine/math/config/curves,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/extension_fields,
+  ../../constantine/math/[arithmetic, extension_fields],
   ../../constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_jacobian,
@@ -33,7 +32,7 @@ import
   ../../helpers/prng_unsafe,
   ./support/ec_reference_scalar_mult
 
-export unittest # Generic sandwich
+export unittest, abstractions, arithmetic # Generic sandwich
 
 type
   RandomGen* = enum

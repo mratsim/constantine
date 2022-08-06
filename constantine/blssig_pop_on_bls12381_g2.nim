@@ -20,6 +20,7 @@ import
     signatures/bls_signatures
 
 export
+  abstractions, # generic sandwich on SecretBool and SecretBool in Jacobian sumImpl
   curves, # generic sandwich on matchingBigInt
   extension_fields, # generic sandwich on extension field access
   hashes, # generic sandwich on sha256

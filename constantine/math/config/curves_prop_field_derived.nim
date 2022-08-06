@@ -34,27 +34,31 @@ proc bindConstant(ff: NimNode, property: string): NimNode =
   T.expectKind(nnkBracketExpr)
   doAssert T[0].eqIdent("typedesc")
 
-  if T[1].kind == nnkBracketExpr: # typedesc[Fp[BLS12_381]]
-    # doAssert T[1][0].eqIdent"Fp" or T[1][0].eqIdent"Fr", "Found ident: '" & $T[1][0] & "' instead of 'Fp' or 'Fr'"
+  let curve =
+    if T[1].kind == nnkBracketExpr: # typedesc[Fp[BLS12_381]] as used internally
+      # doAssert T[1][0].eqIdent"Fp" or T[1][0].eqIdent"Fr", "Found ident: '" & $T[1][0] & "' instead of 'Fp' or 'Fr'"
+      T[1][1].expectKind(nnkIntLit) # static enum are ints in the VM
+      $Curve(T[1][1].intVal)
+    else: # typedesc[bls12381_fp] alias as used for C exports
+      let T1 = getTypeInst(T[1].getImpl()[2])
+      if T1.kind != nnkBracketExpr or
+         T1[1].kind != nnkIntLit:
+        echo T.repr()
+        echo T1.repr()
+        echo getTypeInst(T1).treerepr()
+        error "getTypeInst didn't return the full instantiation." &
+          " Dealing with types in macros is hard, complain at https://github.com/nim-lang/RFCs/issues/44"
+      $Curve(T1[1].intVal)
 
-    T[1][1].expectKind(nnkIntLit) # static enum are ints in the VM
-
-    let curve = $Curve(T[1][1].intVal)
-    let curve_fp = bindSym(curve & "_Fp_" & property)
-    let curve_fr = bindSym(curve & "_Fr_" & property)
-    result = quote do:
-      when `ff` is Fp:
-        `curve_fp`
-      elif `ff` is Fr:
-        `curve_fr`
-      else:
-        {.error: "Unreachable, received type: " & $`ff`.}
-
-  else:
-    echo T.repr()
-    echo getTypeInst(T[1]).treerepr
-    error "getTypeInst didn't return the full instantiation." &
-      " Dealing with types in macros is hard, complain at https://github.com/nim-lang/RFCs/issues/44"
+  let curve_fp = bindSym(curve & "_Fp_" & property)
+  let curve_fr = bindSym(curve & "_Fr_" & property)
+  result = quote do:
+    when `ff` is Fp:
+      `curve_fp`
+    elif `ff` is Fr:
+      `curve_fr`
+    else:
+      {.error: "Unreachable, received type: " & $`ff`.}
 
 template fieldMod*(Field: type FF): auto =
   when Field is Fp:

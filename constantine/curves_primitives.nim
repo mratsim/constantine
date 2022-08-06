@@ -16,7 +16,7 @@ import
       curves/zoo_subgroups,
       curves/zoo_generators
     ],
-    ./math/io/[io_bigints, io_ec],
+    ./math/io/[io_bigints, io_fields, io_ec],
     ./math/isogenies/frobenius,
     ./math/pairings,
     ./math/pairing/[
@@ -39,7 +39,7 @@ import
 # ------------------------------------------------------------
 
 export
-  abstractions.SecretBool,
+  abstractions,
   curves.Curve
 
 # Scalar field Fr and Prime Field Fp
@@ -59,6 +59,9 @@ func marshalBE*(dst: var openarray[byte], src: FF) =
   var raw {.noInit.}: typeof src.mres
   raw.fromField(src)
   dst.marshal(src, bigEndian)
+
+export arithmetic.ccopy
+export arithmetic.cswap
 
 export arithmetic.`==`
 export arithmetic.isZero
@@ -122,6 +125,7 @@ export ec_shortweierstrass.fromAffine
 export ec_shortweierstrass.batchAffine
 
 export ec_shortweierstrass.sum
+export ec_shortweierstrass.`+=`
 export ec_shortweierstrass.double
 export ec_shortweierstrass.diff
 # export ec_shortweierstrass.madd
@@ -144,8 +148,14 @@ export
   # extension_fields.Fp6,
   # extension_fields.Fp12
 
+# Generic sandwich - https://github.com/nim-lang/Nim/issues/11225
+export extension_fields.c0, extension_fields.`c0=`
+export extension_fields.c1, extension_fields.`c1=`
+export extension_fields.c2, extension_fields.`c2=`
+
 export extension_fields.setZero
 export extension_fields.setOne
+export extension_fields.setMinusOne
 
 export extension_fields.`==`
 export extension_fields.isZero
@@ -172,6 +182,7 @@ export extension_fields.cadd
 
 export extension_fields.`*=`
 export extension_fields.prod
+export extension_fields.square
 export extension_fields.inv
 
 export extension_fields.isSquare

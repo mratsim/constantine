@@ -333,8 +333,48 @@ proc buildAllBenches(useAsm = true) =
   buildBench("bench_hash_to_curve", useAsm = useAsm)
   echo "All benchmarks compile successfully."
 
+proc genBindings(bindingsName, prefixNimMain: string) =
+  proc compile(libName: string, flags = "") =
+    # -d:danger to avoid boundsCheck, overflowChecks that would trigger exceptions or allocations in a crypto library.
+    #           Those are internally guaranteed at compile-time by fixed-sized array
+    #           and checked at runtime with an appropriate error code if any for user-input.
+    # -gc:arc   Constantine stack allocates everything. Inputs are through unmanaged ptr+len.
+    #           In the future, Constantine might use:
+    #             - heap-allocated sequences and objects manually managed or managed by destructors for multithreading.
+    #             - heap-allocated strings for hex-string or decimal strings
+    exec "nim c -f " & flags & " --noMain -d:danger --app:lib --gc:arc " &
+         " --nimMainPrefix:" & prefixNimMain &
+         " --out:" & libName & " --outdir:bindings/generated " &
+         " --nimcache:nimcache/bindings/" & bindingsName &
+         " bindings/" & bindingsName & ".nim"
+
+  when defined(windows):
+    compile bindingsName & ".dll"
+
+  elif defined(macosx):
+    compile "lib" & bindingsName & ".dylib.arm", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
+    compile "lib" & bindingsName & ".dylib.x64", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
+    exec "lipo bindings/generated/lib" & bindingsName & ".dylib.arm " &
+             " bindings/generated/lib" & bindingsName & ".dylib.x64 " &
+             " -output bindings/generated/lib" & bindingsName & ".dylib -create"
+
+  else:
+    compile "lib" & bindingsName & ".so"
+
+proc genHeaders(bindingsName: string) =
+  exec "nim c -r -d:release -d:CttGenerateHeaders " &
+       " --out:" & bindingsName & "_gen_header.exe --outdir:bindings/generated " &
+       " --nimcache:nimcache/bindings/" & bindingsName & "_header" &
+       " bindings/" & bindingsName & ".nim"
+
 # Tasks
 # ----------------------------------------------------------------
+
+task bindings, "Generate Constantine bindings":
+  genBindings("constantine_bls12_381", "ctt_bls12381_")
+  genHeaders("constantine_bls12_381")
+  genBindings("constantine_pasta", "ctt_pasta_")
+  genHeaders("constantine_pasta")
 
 task test, "Run all tests":
   # -d:testingCurves is configured in a *.nim.cfg for convenience

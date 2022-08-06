@@ -19,6 +19,8 @@ import
   ./h2c_utilities,
   ../hashes
 
+export abstractions, arithmetic # generic sandwich
+
 # ############################################################
 #
 #                Hashing to Elliptic Curve

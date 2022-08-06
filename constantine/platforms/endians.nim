@@ -67,7 +67,6 @@ func dumpRawInt*[T: byte|char](
       "cursor (" & $cursor & ") + sizeof(src) (" & $sizeof(src) &
       ") <= dst.len (" & $dst.len & ")"
 
-  type U = typeof(src)
   const L = uint sizeof(src)
 
   when endian == littleEndian:

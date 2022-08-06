@@ -45,29 +45,29 @@ type
     when SupportsGetTicks:
       cumulatedCycles*: int64
 
+template mtag(tagname: string){.pragma.}
+  ## This will allow tagging proc in the future with
+  ## "Fp", "ec", "polynomial"
+
+const CttMeter {.booldefine.} = off
+const CttTrace {.booldefine.} = off # For manual "debug-echo"-style timing.
+
 var ctMetrics{.compileTime.}: seq[Metadata]
   ## Metrics are collected here, this is just a temporary holder of compileTime values
   ## Unfortunately the "seq" is emptied when passing the compileTime/runtime boundaries
   ## due to Nim bugs
 
-var Metrics*: seq[Metadata]
-  ## We can't directly use it at compileTime because it doesn't exist.
-  ## We need `Metrics = static(ctMetrics)`
-  ## To transfer the compileTime content to runtime at an opportune time.
-
-template mtag(tagname: string){.pragma.}
-  ## This will allow tagging proc in the future with
-  ## "Fp", "ec", "polynomial"
-
-proc resetMetering*() =
-  Metrics = static(ctMetrics)
-
-const CttMeter {.booldefine.} = off
-
-const CttTrace {.booldefine.} = off # For manual "debug-echo"-style timing.
 when CttTrace:
   # strformat doesn't work in templates.
   from strutils import alignLeft, formatFloat
+
+  var Metrics*: seq[Metadata]
+    ## We can't directly use it at compileTime because it doesn't exist.
+    ## We need `Metrics = static(ctMetrics)`
+    ## To transfer the compileTime content to runtime at an opportune time.
+
+  proc resetMetering*() =
+    Metrics = static(ctMetrics)
 
 # Symbols
 # --------------------------------------------------
