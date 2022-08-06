@@ -120,9 +120,10 @@ proc toCtrivialParam(name: string, typ: NimNode): string =
              else: $typ
 
   if sTyp in TypeMap:
-    constify & TypeMap[sTyp] & "* " & name
+    # Pass-by-value
+    constify & TypeMap[sTyp] & " " & name
   else:
-    # Pointer API
+    # Pass-by-reference
     constify & sTyp & "* " & name
 
 proc toCparam(name: string, typ: NimNode): string =
@@ -185,9 +186,11 @@ macro collectBindings*(cBindingsStr: untyped, body: typed): untyped =
 
       cBindings &= ");"
 
-  result = copyNimTree(body)
-  result.add quote do:
-    const `cBindingsStr` = `cBindings`
+  if defined(CttGenerateHeaders):
+    result = newConstStmt(cBindingsStr, newLit cBindings)
+  else:
+    result = body
+
 
 # Nim internals
 # -------------------------------------------

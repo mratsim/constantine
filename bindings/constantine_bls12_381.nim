@@ -13,18 +13,24 @@ type
   bls12381_fp = Fp[BLS12_381]
   bls12381_fp2 = Fp2[BLS12_381]
   bls12381_ec_g1_aff = ECP_ShortW_Aff[Fp[BLS12_381], G1] 
-  bls12381_ec_g1_jac = ECP_ShortW_Aff[Fp[BLS12_381], G1]
-  bls12381_ec_g1_prj = ECP_ShortW_Aff[Fp[BLS12_381], G1]
+  bls12381_ec_g1_jac = ECP_ShortW_Jac[Fp[BLS12_381], G1]
+  bls12381_ec_g1_prj = ECP_ShortW_Prj[Fp[BLS12_381], G1]
   bls12381_ec_g2_aff = ECP_ShortW_Aff[Fp2[BLS12_381], G2] 
-  bls12381_ec_g2_jac = ECP_ShortW_Aff[Fp2[BLS12_381], G2]
-  bls12381_ec_g2_prj = ECP_ShortW_Aff[Fp2[BLS12_381], G2]
+  bls12381_ec_g2_jac = ECP_ShortW_Jac[Fp2[BLS12_381], G2]
+  bls12381_ec_g2_prj = ECP_ShortW_Prj[Fp2[BLS12_381], G2]
 
 collectBindings(cBindings):
   genBindingsField(bls12381_fr)
   genBindingsField(bls12381_fp)
+  genBindingsFieldSqrt(bls12381_fp)
   genBindingsExtField(bls12381_fp2)
+  genBindingsExtFieldSqrt(bls12381_fp2)
   genBindings_EC_ShortW_Affine(bls12381_ec_g1_aff, bls12381_fp)
+  genBindings_EC_ShortW_NonAffine(bls12381_ec_g1_jac, bls12381_ec_g1_aff, bls12381_fp)
+  genBindings_EC_ShortW_NonAffine(bls12381_ec_g1_prj, bls12381_ec_g1_aff, bls12381_fp)
   genBindings_EC_ShortW_Affine(bls12381_ec_g2_aff, bls12381_fp2)
+  genBindings_EC_ShortW_NonAffine(bls12381_ec_g2_jac, bls12381_ec_g2_aff, bls12381_fp2)
+  genBindings_EC_ShortW_NonAffine(bls12381_ec_g2_prj, bls12381_ec_g2_aff, bls12381_fp2)
 
 # Write header
 when isMainModule and defined(CttGenerateHeaders):

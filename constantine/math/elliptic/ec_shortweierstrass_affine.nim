@@ -84,7 +84,7 @@ func isOnCurve*[F](x, y: F, G: static Subgroup): SecretBool =
   ## Returns true if the (x, y) coordinates
   ## represents a point of the elliptic curve
 
-  var y2, rhs {.noInit.}: F
+  var y2 {.noInit.}, rhs {.noInit.}: F
   y2.square(y)
   rhs.curve_eq_rhs(x, G)
 

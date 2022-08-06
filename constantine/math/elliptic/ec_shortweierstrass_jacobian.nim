@@ -159,7 +159,7 @@ func cneg*(P: var ECP_ShortW_Jac, ctl: CTBool)  {.inline.} =
 template sumImpl[F; G: static Subgroup](
        r: var ECP_ShortW_Jac[F, G],
        P, Q: ECP_ShortW_Jac[F, G],
-       CoefA: untyped
+       CoefA: typed
      ) =
   ## Elliptic curve point addition for Short Weierstrass curves in Jacobian coordinates
   ## with the curve ``a`` being a parameter for summing on isogenous curves.
@@ -254,13 +254,13 @@ template sumImpl[F; G: static Subgroup](
       const CoefA_eq_minus3 = false
 
     when CoefA_eq_zero:
-      var a = H
-      var b = HH_or_YY
+      var a {.noInit.} = H
+      var b {.noInit.} = HH_or_YY
       a.ccopy(P.x, isDbl)           # H or X₁
       b.ccopy(P.x, isDbl)           # HH or X₁
       HHH_or_Mpre.prod(a, b)        # HHH or X₁²
 
-      var M = HHH_or_Mpre           # Assuming on doubling path
+      var M{.noInit.} = HHH_or_Mpre # Assuming on doubling path
       M.div2()                      #  X₁²/2
       M += HHH_or_Mpre              # 3X₁²/2
       R_or_M.ccopy(M, isDbl)
@@ -273,7 +273,7 @@ template sumImpl[F; G: static Subgroup](
       b.ccopy(HH_or_YY, not isDbl)  # HH  or X₁-ZZ
       HHH_or_Mpre.prod(a, b)        # HHH or X₁²-ZZ²
 
-      var M = HHH_or_Mpre           # Assuming on doubling path
+      var M{.noInit.} = HHH_or_Mpre # Assuming on doubling path
       M.div2()                      # (X₁²-ZZ²)/2
       M += HHH_or_Mpre              # 3(X₁²-ZZ²)/2
       R_or_M.ccopy(M, isDbl)
@@ -281,8 +281,8 @@ template sumImpl[F; G: static Subgroup](
     else:
       # TODO: Costly `a` coefficients can be computed
       # by merging their computation with Z₃ = Z₁*Z₂*H (add) or Z₃ = Y₁*Z₁ (dbl)
-      var a = H
-      var b = HH_or_YY
+      var a{.noInit.} = H
+      var b{.noInit.} = HH_or_YY
       a.ccopy(P.x, isDbl)
       b.ccopy(P.x, isDbl)
       HHH_or_Mpre.prod(a, b)        # HHH or X₁²

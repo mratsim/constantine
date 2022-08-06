@@ -23,8 +23,10 @@ type
 collectBindings(cBindings):
   genBindingsField(pallas_fr)
   genBindingsField(pallas_fp)
+  genBindingsFieldSqrt(pallas_fp)
   genBindingsField(vesta_fr)
   genBindingsField(vesta_fp)
+  genBindingsFieldSqrt(vesta_fp)
   genBindings_EC_ShortW_Affine(pallas_ec_aff, pallas_fp)
   genBindings_EC_ShortW_Affine(vesta_ec_aff, pallas_fp)
 

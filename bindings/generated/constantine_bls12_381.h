@@ -63,6 +63,18 @@ void        ctt_bls12381_fr_diff(bls12381_fr* r, const bls12381_fr* a, const bls
 void        ctt_bls12381_fr_sub_in_place(bls12381_fr* a, const bls12381_fr* b);
 void        ctt_bls12381_fr_double(bls12381_fr* r, const bls12381_fr* a);
 void        ctt_bls12381_fr_double_in_place(bls12381_fr* a);
+void        ctt_bls12381_fr_prod(bls12381_fr* r, const bls12381_fr* a, const bls12381_fr* b);
+void        ctt_bls12381_fr_mul_in_place(bls12381_fr* a, const bls12381_fr* b);
+void        ctt_bls12381_fr_square(bls12381_fr* r, const bls12381_fr* a);
+void        ctt_bls12381_fr_square_in_place(bls12381_fr* a);
+void        ctt_bls12381_fr_div2(bls12381_fr* a);
+void        ctt_bls12381_fr_inv(bls12381_fr* r, const bls12381_fr* a);
+void        ctt_bls12381_fr_inv_in_place(bls12381_fr* a);
+void        ctt_bls12381_fr_csetZero(bls12381_fr* a, const secret_bool ctl);
+void        ctt_bls12381_fr_csetOne(bls12381_fr* a, const secret_bool ctl);
+void        ctt_bls12381_fr_cneg_in_place(bls12381_fr* a, const secret_bool ctl);
+void        ctt_bls12381_fr_cadd_in_place(bls12381_fr* a, const bls12381_fr* b, const secret_bool ctl);
+void        ctt_bls12381_fr_csub_in_place(bls12381_fr* a, const bls12381_fr* b, const secret_bool ctl);
 
 void        ctt_bls12381_fp_unmarshalBE(bls12381_fp* dst, const byte src[], ptrdiff_t src_len);
 void        ctt_bls12381_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const bls12381_fp* src);
@@ -80,6 +92,27 @@ void        ctt_bls12381_fp_diff(bls12381_fp* r, const bls12381_fp* a, const bls
 void        ctt_bls12381_fp_sub_in_place(bls12381_fp* a, const bls12381_fp* b);
 void        ctt_bls12381_fp_double(bls12381_fp* r, const bls12381_fp* a);
 void        ctt_bls12381_fp_double_in_place(bls12381_fp* a);
+void        ctt_bls12381_fp_prod(bls12381_fp* r, const bls12381_fp* a, const bls12381_fp* b);
+void        ctt_bls12381_fp_mul_in_place(bls12381_fp* a, const bls12381_fp* b);
+void        ctt_bls12381_fp_square(bls12381_fp* r, const bls12381_fp* a);
+void        ctt_bls12381_fp_square_in_place(bls12381_fp* a);
+void        ctt_bls12381_fp_div2(bls12381_fp* a);
+void        ctt_bls12381_fp_inv(bls12381_fp* r, const bls12381_fp* a);
+void        ctt_bls12381_fp_inv_in_place(bls12381_fp* a);
+void        ctt_bls12381_fp_csetZero(bls12381_fp* a, const secret_bool ctl);
+void        ctt_bls12381_fp_csetOne(bls12381_fp* a, const secret_bool ctl);
+void        ctt_bls12381_fp_cneg_in_place(bls12381_fp* a, const secret_bool ctl);
+void        ctt_bls12381_fp_cadd_in_place(bls12381_fp* a, const bls12381_fp* b, const secret_bool ctl);
+void        ctt_bls12381_fp_csub_in_place(bls12381_fp* a, const bls12381_fp* b, const secret_bool ctl);
+
+secret_bool ctt_bls12381_fp_is_square(const bls12381_fp* a);
+void        ctt_bls12381_fp_invsqrt(bls12381_fp* r, const bls12381_fp* a);
+secret_bool ctt_bls12381_fp_invsqrt_in_place(bls12381_fp* r, const bls12381_fp* a);
+void        ctt_bls12381_fp_sqrt_in_place(bls12381_fp* a);
+secret_bool ctt_bls12381_fp_sqrt_if_square_in_place(bls12381_fp* a);
+void        ctt_bls12381_fp_sqrt_invsqrt(bls12381_fp* sqrt, bls12381_fp* invsqrt, const bls12381_fp* a);
+secret_bool ctt_bls12381_fp_sqrt_invsqrt_if_square(bls12381_fp* sqrt, bls12381_fp* invsqrt, const bls12381_fp* a);
+secret_bool ctt_bls12381_fp_sqrt_ratio_if_square(bls12381_fp* r, const bls12381_fp* u, const bls12381_fp* v);
 
 secret_bool ctt_bls12381_fp2_is_eq(const bls12381_fp2* a, const bls12381_fp2* b);
 secret_bool ctt_bls12381_fp2_is_zero(const bls12381_fp2* a);
@@ -95,22 +128,102 @@ void        ctt_bls12381_fp2_diff(bls12381_fp2* r, const bls12381_fp2* a, const 
 void        ctt_bls12381_fp2_sub_in_place(bls12381_fp2* a, const bls12381_fp2* b);
 void        ctt_bls12381_fp2_double(bls12381_fp2* r, const bls12381_fp2* a);
 void        ctt_bls12381_fp2_double_in_place(bls12381_fp2* a);
+void        ctt_bls12381_fp2_conj(bls12381_fp2* r, const bls12381_fp2* a);
+void        ctt_bls12381_fp2_conj_in_place(bls12381_fp2* a);
+void        ctt_bls12381_fp2_conjneg(bls12381_fp2* r, const bls12381_fp2* a);
+void        ctt_bls12381_fp2_conjneg_in_place(bls12381_fp2* a);
+void        ctt_bls12381_fp2_prod(bls12381_fp2* r, const bls12381_fp2* a, const bls12381_fp2* b);
+void        ctt_bls12381_fp2_mul_in_place(bls12381_fp2* a, const bls12381_fp2* b);
+void        ctt_bls12381_fp2_square(bls12381_fp2* r, const bls12381_fp2* a);
+void        ctt_bls12381_fp2_square_in_place(bls12381_fp2* a);
+void        ctt_bls12381_fp2_div2(bls12381_fp2* a);
+void        ctt_bls12381_fp2_inv(bls12381_fp2* r, const bls12381_fp2* a);
+void        ctt_bls12381_fp2_inv_in_place(bls12381_fp2* a);
+void        ctt_bls12381_fp2_csetZero(bls12381_fp2* a, const secret_bool ctl);
+void        ctt_bls12381_fp2_csetOne(bls12381_fp2* a, const secret_bool ctl);
+void        ctt_bls12381_fp2_cneg_in_place(bls12381_fp2* a, const secret_bool ctl);
+void        ctt_bls12381_fp2_cadd_in_place(bls12381_fp2* a, const bls12381_fp2* b, const secret_bool ctl);
+void        ctt_bls12381_fp2_csub_in_place(bls12381_fp2* a, const bls12381_fp2* b, const secret_bool ctl);
+
+secret_bool ctt_bls12381_fp2_is_square(const bls12381_fp2* a);
+void        ctt_bls12381_fp2_sqrt_in_place(bls12381_fp2* a);
+secret_bool ctt_bls12381_fp2_sqrt_if_square_in_place(bls12381_fp2* a);
 
 secret_bool ctt_bls12381_ec_g1_aff_is_eq(const bls12381_ec_g1_aff* P, const bls12381_ec_g1_aff* Q);
 secret_bool ctt_bls12381_ec_g1_aff_is_inf(const bls12381_ec_g1_aff* P);
 void        ctt_bls12381_ec_g1_aff_set_inf(bls12381_ec_g1_aff* P);
-void        ctt_bls12381_ec_g1_aff_ccopy(bls12381_ec_g1_aff* P, const bls12381_ec_g1_aff* Q, const secret_bool* ctl);
+void        ctt_bls12381_ec_g1_aff_ccopy(bls12381_ec_g1_aff* P, const bls12381_ec_g1_aff* Q, const secret_bool ctl);
 secret_bool ctt_bls12381_ec_g1_aff_is_on_curve(const bls12381_fp* x, const bls12381_fp* y);
 void        ctt_bls12381_ec_g1_aff_neg(bls12381_ec_g1_aff* P, const bls12381_ec_g1_aff* Q);
 void        ctt_bls12381_ec_g1_aff_neg_in_place(bls12381_ec_g1_aff* P);
 
+secret_bool ctt_bls12381_ec_g1_jac_is_eq(const bls12381_ec_g1_jac* P, const bls12381_ec_g1_jac* Q);
+secret_bool ctt_bls12381_ec_g1_jac_is_inf(const bls12381_ec_g1_jac* P);
+void        ctt_bls12381_ec_g1_jac_set_inf(bls12381_ec_g1_jac* P);
+void        ctt_bls12381_ec_g1_jac_ccopy(bls12381_ec_g1_jac* P, const bls12381_ec_g1_jac* Q, const secret_bool ctl);
+void        ctt_bls12381_ec_g1_jac_neg(bls12381_ec_g1_jac* P, const bls12381_ec_g1_jac* Q);
+void        ctt_bls12381_ec_g1_jac_neg_in_place(bls12381_ec_g1_jac* P);
+void        ctt_bls12381_ec_g1_jac_cneg_in_place(bls12381_ec_g1_jac* P, const secret_bool ctl);
+void        ctt_bls12381_ec_g1_jac_sum(bls12381_ec_g1_jac* r, const bls12381_ec_g1_jac* P, const bls12381_ec_g1_jac* Q);
+void        ctt_bls12381_ec_g1_jac_add_in_place(bls12381_ec_g1_jac* P, const bls12381_ec_g1_jac* Q);
+void        ctt_bls12381_ec_g1_jac_diff(bls12381_ec_g1_jac* r, const bls12381_ec_g1_jac* P, const bls12381_ec_g1_jac* Q);
+void        ctt_bls12381_ec_g1_jac_double(bls12381_ec_g1_jac* r, const bls12381_ec_g1_jac* P);
+void        ctt_bls12381_ec_g1_jac_double_in_place(bls12381_ec_g1_jac* P);
+void        ctt_bls12381_ec_g1_jac_affine(bls12381_ec_g1_aff* dst, const bls12381_ec_g1_jac* src);
+void        ctt_bls12381_ec_g1_jac_from_affine(bls12381_ec_g1_jac* dst, const bls12381_ec_g1_aff* src);
+
+secret_bool ctt_bls12381_ec_g1_prj_is_eq(const bls12381_ec_g1_prj* P, const bls12381_ec_g1_prj* Q);
+secret_bool ctt_bls12381_ec_g1_prj_is_inf(const bls12381_ec_g1_prj* P);
+void        ctt_bls12381_ec_g1_prj_set_inf(bls12381_ec_g1_prj* P);
+void        ctt_bls12381_ec_g1_prj_ccopy(bls12381_ec_g1_prj* P, const bls12381_ec_g1_prj* Q, const secret_bool ctl);
+void        ctt_bls12381_ec_g1_prj_neg(bls12381_ec_g1_prj* P, const bls12381_ec_g1_prj* Q);
+void        ctt_bls12381_ec_g1_prj_neg_in_place(bls12381_ec_g1_prj* P);
+void        ctt_bls12381_ec_g1_prj_cneg_in_place(bls12381_ec_g1_prj* P, const secret_bool ctl);
+void        ctt_bls12381_ec_g1_prj_sum(bls12381_ec_g1_prj* r, const bls12381_ec_g1_prj* P, const bls12381_ec_g1_prj* Q);
+void        ctt_bls12381_ec_g1_prj_add_in_place(bls12381_ec_g1_prj* P, const bls12381_ec_g1_prj* Q);
+void        ctt_bls12381_ec_g1_prj_diff(bls12381_ec_g1_prj* r, const bls12381_ec_g1_prj* P, const bls12381_ec_g1_prj* Q);
+void        ctt_bls12381_ec_g1_prj_double(bls12381_ec_g1_prj* r, const bls12381_ec_g1_prj* P);
+void        ctt_bls12381_ec_g1_prj_double_in_place(bls12381_ec_g1_prj* P);
+void        ctt_bls12381_ec_g1_prj_affine(bls12381_ec_g1_aff* dst, const bls12381_ec_g1_prj* src);
+void        ctt_bls12381_ec_g1_prj_from_affine(bls12381_ec_g1_prj* dst, const bls12381_ec_g1_aff* src);
+
 secret_bool ctt_bls12381_ec_g2_aff_is_eq(const bls12381_ec_g2_aff* P, const bls12381_ec_g2_aff* Q);
 secret_bool ctt_bls12381_ec_g2_aff_is_inf(const bls12381_ec_g2_aff* P);
 void        ctt_bls12381_ec_g2_aff_set_inf(bls12381_ec_g2_aff* P);
-void        ctt_bls12381_ec_g2_aff_ccopy(bls12381_ec_g2_aff* P, const bls12381_ec_g2_aff* Q, const secret_bool* ctl);
+void        ctt_bls12381_ec_g2_aff_ccopy(bls12381_ec_g2_aff* P, const bls12381_ec_g2_aff* Q, const secret_bool ctl);
 secret_bool ctt_bls12381_ec_g2_aff_is_on_curve(const bls12381_fp2* x, const bls12381_fp2* y);
 void        ctt_bls12381_ec_g2_aff_neg(bls12381_ec_g2_aff* P, const bls12381_ec_g2_aff* Q);
 void        ctt_bls12381_ec_g2_aff_neg_in_place(bls12381_ec_g2_aff* P);
+
+secret_bool ctt_bls12381_ec_g2_jac_is_eq(const bls12381_ec_g2_jac* P, const bls12381_ec_g2_jac* Q);
+secret_bool ctt_bls12381_ec_g2_jac_is_inf(const bls12381_ec_g2_jac* P);
+void        ctt_bls12381_ec_g2_jac_set_inf(bls12381_ec_g2_jac* P);
+void        ctt_bls12381_ec_g2_jac_ccopy(bls12381_ec_g2_jac* P, const bls12381_ec_g2_jac* Q, const secret_bool ctl);
+void        ctt_bls12381_ec_g2_jac_neg(bls12381_ec_g2_jac* P, const bls12381_ec_g2_jac* Q);
+void        ctt_bls12381_ec_g2_jac_neg_in_place(bls12381_ec_g2_jac* P);
+void        ctt_bls12381_ec_g2_jac_cneg_in_place(bls12381_ec_g2_jac* P, const secret_bool ctl);
+void        ctt_bls12381_ec_g2_jac_sum(bls12381_ec_g2_jac* r, const bls12381_ec_g2_jac* P, const bls12381_ec_g2_jac* Q);
+void        ctt_bls12381_ec_g2_jac_add_in_place(bls12381_ec_g2_jac* P, const bls12381_ec_g2_jac* Q);
+void        ctt_bls12381_ec_g2_jac_diff(bls12381_ec_g2_jac* r, const bls12381_ec_g2_jac* P, const bls12381_ec_g2_jac* Q);
+void        ctt_bls12381_ec_g2_jac_double(bls12381_ec_g2_jac* r, const bls12381_ec_g2_jac* P);
+void        ctt_bls12381_ec_g2_jac_double_in_place(bls12381_ec_g2_jac* P);
+void        ctt_bls12381_ec_g2_jac_affine(bls12381_ec_g2_aff* dst, const bls12381_ec_g2_jac* src);
+void        ctt_bls12381_ec_g2_jac_from_affine(bls12381_ec_g2_jac* dst, const bls12381_ec_g2_aff* src);
+
+secret_bool ctt_bls12381_ec_g2_prj_is_eq(const bls12381_ec_g2_prj* P, const bls12381_ec_g2_prj* Q);
+secret_bool ctt_bls12381_ec_g2_prj_is_inf(const bls12381_ec_g2_prj* P);
+void        ctt_bls12381_ec_g2_prj_set_inf(bls12381_ec_g2_prj* P);
+void        ctt_bls12381_ec_g2_prj_ccopy(bls12381_ec_g2_prj* P, const bls12381_ec_g2_prj* Q, const secret_bool ctl);
+void        ctt_bls12381_ec_g2_prj_neg(bls12381_ec_g2_prj* P, const bls12381_ec_g2_prj* Q);
+void        ctt_bls12381_ec_g2_prj_neg_in_place(bls12381_ec_g2_prj* P);
+void        ctt_bls12381_ec_g2_prj_cneg_in_place(bls12381_ec_g2_prj* P, const secret_bool ctl);
+void        ctt_bls12381_ec_g2_prj_sum(bls12381_ec_g2_prj* r, const bls12381_ec_g2_prj* P, const bls12381_ec_g2_prj* Q);
+void        ctt_bls12381_ec_g2_prj_add_in_place(bls12381_ec_g2_prj* P, const bls12381_ec_g2_prj* Q);
+void        ctt_bls12381_ec_g2_prj_diff(bls12381_ec_g2_prj* r, const bls12381_ec_g2_prj* P, const bls12381_ec_g2_prj* Q);
+void        ctt_bls12381_ec_g2_prj_double(bls12381_ec_g2_prj* r, const bls12381_ec_g2_prj* P);
+void        ctt_bls12381_ec_g2_prj_double_in_place(bls12381_ec_g2_prj* P);
+void        ctt_bls12381_ec_g2_prj_affine(bls12381_ec_g2_aff* dst, const bls12381_ec_g2_prj* src);
+void        ctt_bls12381_ec_g2_prj_from_affine(bls12381_ec_g2_prj* dst, const bls12381_ec_g2_aff* src);
 
 /*
  * Initializes the library:
