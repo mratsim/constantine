@@ -31,6 +31,8 @@ import
   ../tests/math/support/ec_reference_scalar_mult
 
 export notes
+export abstractions # generic sandwich on SecretBool and SecretBool in Jacobian sum
+
 proc separator*() = separator(177)
 
 macro fixEllipticDisplay(T: typedesc): untyped =

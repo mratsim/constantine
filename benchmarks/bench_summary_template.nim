@@ -39,6 +39,7 @@ export
   ec_shortweierstrass_projective,
   ec_shortweierstrass_jacobian
 
+export abstractions # generic sandwich on SecretBool and SecretBool in Jacobian sum
 export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11225
 export notes
 proc separator*() = separator(152)

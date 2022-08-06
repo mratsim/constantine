@@ -39,7 +39,7 @@ import
 # ------------------------------------------------------------
 
 export
-  abstractions.SecretBool,
+  abstractions,
   curves.Curve
 
 # Scalar field Fr and Prime Field Fp
@@ -59,6 +59,9 @@ func marshalBE*(dst: var openarray[byte], src: FF) =
   var raw {.noInit.}: typeof src.mres
   raw.fromField(src)
   dst.marshal(src, bigEndian)
+
+export arithmetic.ccopy
+export arithmetic.cswap
 
 export arithmetic.`==`
 export arithmetic.isZero

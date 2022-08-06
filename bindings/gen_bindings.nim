@@ -90,6 +90,12 @@ template genBindingsField*(Field: untyped) =
   func `ctt _ Field _ inv_in_place`(a: var Field) =
     a.inv()
   # --------------------------------------------------------------------------------------
+  func `ctt _ Field _ ccopy`(a: var Field, b: Field, ctl: SecretBool) =
+    a.ccopy(b, ctl)
+
+  func `ctt _ Field _ cswap`(a, b: var Field, ctl: SecretBool) =
+    a.cswap(b, ctl)
+  
   func `ctt _ Field _ csetZero`(a: var Field, ctl: SecretBool) =
     a.csetZero(ctl)
   

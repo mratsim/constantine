@@ -160,7 +160,7 @@ template sumImpl[F; G: static Subgroup](
        r: var ECP_ShortW_Jac[F, G],
        P, Q: ECP_ShortW_Jac[F, G],
        CoefA: typed
-     ) =
+     ) {.dirty.} =
   ## Elliptic curve point addition for Short Weierstrass curves in Jacobian coordinates
   ## with the curve ``a`` being a parameter for summing on isogenous curves.
   ##
