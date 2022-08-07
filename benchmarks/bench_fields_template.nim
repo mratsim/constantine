@@ -128,6 +128,11 @@ proc invBench*(T: typedesc, iters: int) =
   bench("Inversion (constant-time)", T, iters):
     r.inv(x)
 
+proc isSquareBench*(T: typedesc, iters: int) =
+  let x = rng.random_unsafe(T)
+  bench("isSquare (constant-time)", T, iters):
+    let qrt = x.isSquare()
+
 proc sqrtBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)
 

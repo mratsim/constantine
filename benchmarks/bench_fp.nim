@@ -59,6 +59,7 @@ proc main() =
     toFieldBench(Fp[curve], Iters)
     smallSeparator()
     invBench(Fp[curve], ExponentIters)
+    isSquareBench(Fp[curve], ExponentIters)
     sqrtBench(Fp[curve], ExponentIters)
     sqrtRatioBench(Fp[curve], ExponentIters)
     # Exponentiation by a "secret" of size ~the curve order
