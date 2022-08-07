@@ -10,7 +10,7 @@ import
   ../../platforms/abstractions,
   ../config/curves,
   ../curves/zoo_square_roots,
-  ./bigints, ./finite_fields
+  ./bigints, ./finite_fields, ./limbs_exgcd
 
 # ############################################################
 #
@@ -141,34 +141,6 @@ func precompute_tonelli_shanks(a_pre_exp: var Fp, a: Fp) =
   else:
     a_pre_exp = a
     a_pre_exp.powUnsafeExponent(Fp.C.tonelliShanks(exponent))
-
-func isSquare_tonelli_shanks(
-       a, a_pre_exp: Fp): SecretBool {.used.} =
-  ## Returns if `a` is a quadratic residue
-  ## This uses common precomputation for
-  ## Tonelli-Shanks based square root and inverse square root
-  ##
-  ## a^((p-1-2^e)/(2*2^e))
-  ##
-  ## Note: if we need to compute a candidate square root anyway
-  ##       it's faster to square it to check if we get ``a``
-  const e = Fp.C.tonelliShanks(twoAdicity)
-  var r {.noInit.}: Fp
-  r.square(a_pre_exp)    # a^(2(q-1-2^e)/(2*2^e)) = a^((q-1)/2^e - 1)
-  r *= a                 # a^((q-1)/2^e)
-  r.square_repeated(e-1) # a^((q-1)/2)
-
-  result = not(r.isMinusOne())
-  # r can be:
-  # -  1  if a square
-  # -  0  if 0
-  # - -1  if a quadratic non-residue
-  debug:
-    doAssert: bool(
-      r.isZero or
-      r.isOne or
-      r.isMinusOne()
-    )
 
 func invsqrt_tonelli_shanks_pre(
        invsqrt: var Fp,
@@ -314,33 +286,10 @@ func isSquare*(a: Fp): SecretBool =
   ## Returns true if ``a`` is a square (quadratic residue) in 𝔽p
   ##
   ## Assumes that the prime modulus ``p`` is public.
-  when false:
-    # Implementation: we use exponentiation by (p-1)/2 (Euler's criterion)
-    #                 as it can reuse the exponentiation implementation
-    #                 Note that we don't care about leaking the bits of p
-    #                 as we assume that
-    var xi {.noInit.} = a # TODO: is noInit necessary? see https://github.com/mratsim/constantine/issues/21
-    xi.powUnsafeExponent(Fp.getPrimeMinus1div2_BE())
-    result = not(xi.isMinusOne())
-    # xi can be:
-    # -  1  if a square
-    # -  0  if 0
-    # - -1  if a quadratic non-residue
-    debug:
-      doAssert: bool(
-        xi.isZero or
-        xi.isOne or
-        xi.isMinusOne()
-      )
-  else:
-    # We reuse the optimized addition chains instead of exponentiation by (p-1)/2
-    when Fp.C.has_P_3mod4_primeModulus() or Fp.C.has_P_5mod8_primeModulus():
-      var sqrt{.noInit.}, invsqrt{.noInit.}: Fp
-      return sqrt_invsqrt_if_square(sqrt, invsqrt, a)
-    else:
-      var a_pre_exp{.noInit.}: Fp
-      a_pre_exp.precompute_tonelli_shanks(a)
-      return isSquare_tonelli_shanks(a, a_pre_exp)
+  var aa {.noInit.}: matchingBigInt(Fp.C)
+  aa.fromField(a)
+  let symbol = legendre(aa.limbs, Fp.fieldMod().limbs, aa.bits)
+  return not(symbol == MaxWord)
 
 {.pop.} # inline
 

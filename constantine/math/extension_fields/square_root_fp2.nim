@@ -54,7 +54,7 @@ func sqrt_rotate_extension*(
   ## if there is one, update out_sqrt with it and return true
   ## return false otherwise, out_sqrt is undefined in this case
   ##
-  ## This avoids expensive trial "isSquare" checks (450+ field multiplications)
+  ## This avoids expensive trial "isSquare" checks
   ## This requires the sqrt of sqrt of the quadratic non-residue
   ## to be in Fp2
   var coeff{.noInit.}, cand2{.noInit.}, t{.noInit.}: Fp2

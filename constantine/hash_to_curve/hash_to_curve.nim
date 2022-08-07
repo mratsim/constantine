@@ -79,10 +79,6 @@ func mapToCurve_svdw[F, G](
   gx1.curve_eq_rhs(x1, G)
   gx2.curve_eq_rhs(x2, G)
 
-  # TODO: faster Legendre symbol.
-  # We can optimize the 2 legendre symbols + 3 sqrt to 
-  # - either 2 legendre and 1 sqrt
-  # - or 3 fused legendre+sqrt
   let e1 = gx1.isSquare()
   let e2 = gx2.isSquare() and not e1
 

@@ -269,6 +269,21 @@ template `==`*(x, y: SignedSecretWord): SecretBool =
 # SignedSecretWord
 # ----------------
 
+func isNeg*(a: SignedSecretWord): SignedSecretWord {.inline.} =
+  ## Returns 1 if a is negative
+  ## and 0 otherwise
+  a.lshr(WordBitWidth-1)
+
+func isOdd*(a: SignedSecretWord): SignedSecretWord {.inline.} =
+  ## Returns 1 if a is odd
+  ## and 0 otherwise
+  a and SignedSecretWord(1)
+
+func isZeroMask*(a: SignedSecretWord): SignedSecretWord {.inline.} =
+  ## Produce the -1 mask if a is negative
+  ## and 0 otherwise
+  not SignedSecretWord(a.SecretWord().isZero())
+
 func isNegMask*(a: SignedSecretWord): SignedSecretWord {.inline.} =
   ## Produce the -1 mask if a is negative
   ## and 0 otherwise
@@ -278,6 +293,12 @@ func isOddMask*(a: SignedSecretWord): SignedSecretWord {.inline.} =
   ## Produce the -1 mask if a is odd
   ## and 0 otherwise
   -(a and SignedSecretWord(1))
+
+func csetZero*(a: var SignedSecretWord, mask: SignedSecretWord) {.inline.} =
+  ## Conditionally set `a` to 0 
+  ## mask must be 0 (0x00000...0000) (kept as is)
+  ## or -1 (0xFFFF...FFFF) (zeroed)
+  a = a and mask
 
 func cneg*(
        a: SignedSecretWord,
@@ -307,6 +328,20 @@ func csub*(
 
 # UnsaturatedLimbs
 # ----------------
+
+func isZeroMask*(a: LimbsUnsaturated): SignedSecretWord {.inline.} =
+  ## Produce the -1 mask if a is zero
+  ## and 0 otherwise
+  var accum = SignedSecretWord(0)
+  for i in 0 ..< a.words.len:
+    accum = accum or a.words[i]
+  
+  return accum.isZeroMask()
+
+func isNeg*(a: LimbsUnsaturated): SignedSecretWord {.inline.} =
+  ## Returns 1 if a is negative
+  ## and 0 otherwise
+  a[a.words.len-1].lshr(WordBitWidth - a.Excess + 1)
 
 func isNegMask*(a: LimbsUnsaturated): SignedSecretWord {.inline.} =
   ## Produce the -1 mask if a is negative

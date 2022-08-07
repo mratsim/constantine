@@ -11,7 +11,7 @@ import
   ../config/type_bigint,
   ./limbs,
   ./limbs_extmul,
-  ./limbs_invmod,
+  ./limbs_exgcd,
   ./limbs_division
 
 export BigInt
