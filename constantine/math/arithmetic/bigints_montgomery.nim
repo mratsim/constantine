@@ -66,6 +66,20 @@ func squareMont*(r: var BigInt, a, M: BigInt, negInvModWord: static BaseType,
   ## to avoid duplicating with Nim zero-init policy
   squareMont(r.limbs, a.limbs, M.limbs, negInvModWord, spareBits, skipFinalSub)
 
+func sumprodMont*[N: static int](
+      r: var BigInt,
+      a, b: array[N, BigInt],
+      M: BigInt, negInvModWord: static BaseType,
+      spareBits: static int, skipFinalSub: static bool = false) =
+  ## Compute r <- ⅀aᵢ.bᵢ (mod M) (sum of products) in the Montgomery domain
+  # We rely on BigInt and Limbs having the same repr to avoid array copies
+  sumprodMont(
+    r.limbs,
+    cast[ptr array[N, typeof(a[0].limbs)]](a.unsafeAddr)[],
+    cast[ptr array[N, typeof(b[0].limbs)]](b.unsafeAddr)[],
+    M.limbs, negInvModWord, spareBits, skipFinalSub 
+  )
+
 func powMont*[mBits: static int](
        a: var BigInt[mBits], exponent: openarray[byte],
        M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,

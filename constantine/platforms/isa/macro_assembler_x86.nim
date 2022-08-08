@@ -74,6 +74,7 @@ type
     kRegister
     kFromArray
     kArrayAddr
+    k2dArrayAddr
 
   Operand* = object
     desc*: OperandDesc
@@ -84,6 +85,9 @@ type
       offset: int
     of kArrayAddr:
       buf: seq[Operand]
+    of k2dArrayAddr:
+      dims: array[2, int]
+      buf2d: seq[Operand]
 
   OperandDesc* = ref object
     asmId*: string          # [a] - ASM id
@@ -141,11 +145,17 @@ proc `[]`*(opArray: OperandArray, index: int): Operand =
 func `[]`*(opArray: var OperandArray, index: int): var Operand =
   opArray.buf[index]
 
-func `[]`*(arrayAddr: Operand, index: int): Operand =
-  arrayAddr.buf[index]
+func `[]`*(arrAddr: Operand, index: int): Operand =
+  arrAddr.buf[index]
 
-func `[]`*(arrayAddr: var Operand, index: int): var Operand =
-  arrayAddr.buf[index]
+func `[]`*(arrAddr: var Operand, index: int): var Operand =
+  arrAddr.buf[index]
+
+func `[]`*(arr2dAddr: Operand, i, j: int): Operand =
+  arr2dAddr.buf2d[i*arr2dAddr.dims[1] + j]
+
+func `[]`*(arr2dAddr: var Operand, i, j: int): var Operand =
+  arr2dAddr.buf2d[i*arr2dAddr.dims[1] + j]
 
 func init*(T: type Assembler_x86, Word: typedesc[SomeUnsignedInt]): Assembler_x86 =
   result.wordSize = sizeof(Word)
@@ -232,6 +242,22 @@ func asArrayAddr*(op: Register, len: int): Operand =
         rm: ClobberedReg,
         constraint: ClobberedRegister
       ),
+      kind: kFromArray,
+      offset: i
+    )
+
+func as2dArrayAddr*(op: Operand, rows, cols: int): Operand =
+  ## Use the value stored in an operand as an array address
+  doAssert op.desc.rm in {Reg, PointerInReg, ElemsInReg}+SpecificRegisters
+  result = Operand(
+    kind: k2dArrayAddr,
+    desc: nil,
+    dims: [rows, cols],
+    buf2d: newSeq[Operand](rows*cols)
+  )
+  for i in 0 ..< rows*cols:
+    result.buf2d[i] = Operand(
+      desc: op.desc,
       kind: kFromArray,
       offset: i
     )
@@ -344,7 +370,7 @@ func generate*(a: Assembler_x86): NimNode =
 
 func getStrOffset(a: Assembler_x86, op: Operand): string =
   if op.kind != kFromArray:
-    if op.kind == kArrayAddr:
+    if op.kind in {kArrayAddr, k2dArrayAddr}:
       # We are operating on an array pointer
       # instead of array elements
       if op.buf[0].desc.constraint == ClobberedRegister:

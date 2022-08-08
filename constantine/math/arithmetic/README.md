@@ -34,7 +34,7 @@ where code size is not an issue for example for multi-precision addition.
 
 - Faster big-integer modular multiplication for most moduli\
   Gautam Botrel, Gus Gutoski, and Thomas Piellard, 2020\
-  https://hackmd.io/@zkteam/modular_multiplication
+  https://hackmd.io/@gnark/modular_multiplication
 
 ### Square roots
 

@@ -306,11 +306,69 @@ func mulMont_FIPS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipFinalSub: 
     discard z.csub(M, v.isNonZero() or not(z < M))
   r = z
 
+func sumprodMont_CIOS_spare2bits[K: static int](
+       r: var Limbs, a, b: array[K, Limbs],
+       M: Limbs, m0ninv: BaseType,
+       skipFinalSub: static bool = false) =
+  ## Compute r = ⅀aᵢ.bᵢ (mod M) (suim of products)
+  ## This requires 2 unused bits in the field element representation
+  ## 
+  ## This maps
+  ## - [0, 2p) -> [0, 2p) with skipFinalSub
+  ## - [0, 2p) -> [0, p) without
+  ## 
+  ## skipFinalSub skips the final substraction step.
+
+  # We want all the computation to be kept in registers
+  # hence we use a temporary `t`, hoping that the compiler does the right thing™.
+  var t: typeof(M)   # zero-init
+  const N = t.len
+  # Extra word to handle carries t[N] (not there are 2 unused spare bits)
+  var tN {.noInit.}: SecretWord
+
+  static: doAssert K <= 8, "we cannot sum more than 8 products"
+  # Bounds:
+  # 1. To ensure mapping in [0, 2p), we need ⅀aᵢ.bᵢ <=pR
+  #    for all intent and purposes this is true since aᵢ.bᵢ is:
+  #    if reduced inputs: (p-1).(p-1) = p²-2p+1 which would allow more than p sums
+  #    if unreduced inputs: (2p-1).(2p-1) = 4p²-4p+1,
+  #    with 4p < R due to the 2 unused bits constraint so more than p sums are allowed
+  # 2. We have a high-word tN to accumulate overflows.
+  #    with 2 unused bits in the last word,
+  #    the multiplication of two last words will leave 4 unused bits
+  #    enough for accumulating 8 additions and overflow.
+
+  staticFor i, 0, N:
+    tN = Zero
+    staticFor k, 0, K:
+      var A = Zero
+      staticFor j, 0, N:
+        # (A, t[j]) <- a[k][j] * b[k][i] + t[j] + A
+        muladd2(A, t[j], a[k][j], b[k][i], t[j], A)
+      tN += A
+
+    # Reduction
+    #  m        <- (t[0] * m0ninv) mod 2ʷ
+    # (C, _)    <- m * M[0] + t[0]
+    var C, lo = Zero
+    let m = t[0] * SecretWord(m0ninv)
+    muladd1(C, lo, m, M[0], t[0])
+    staticFor j, 1, N:
+      # (C, t[j-1]) <- m*M[j] + t[j] + C
+      muladd2(C, t[j-1], m, M[j], t[j], C)
+    #  (_,t[N-1]) <- t[N] + C
+    t[N-1] = tN + C
+
+  when not skipFinalSub:
+    discard t.csub(M, not(t < M))
+  r = t
+
+
 # Montgomery Squaring
 # --------------------------------------------------------------------------------------------------------------------
 #
 # There are Montgomery squaring multiplications mentioned in the litterature
-# - https://hackmd.io/@zkteam/modular_multiplication if M[^1] < high(SecretWord) shr 2 (i.e. less than 0b00111...1111)
+# - https://hackmd.io/@gnark/modular_multiplication if M[^1] < high(SecretWord) shr 2 (i.e. less than 0b00111...1111)
 # - Architectural Support for Long Integer Modulo Arithmetic on Risc-Based Smart Cards
 #   Johann Großschädl, 2003
 #   https://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=95950BAC26A728114431C0C7B425E022?doi=10.1.1.115.3276&rep=rep1&type=pdf
@@ -482,9 +540,31 @@ func squareMont*[N](r: var Limbs[N], a, M: Limbs[N],
     r.redc2xMont(r2x, M, m0ninv, spareBits, skipFinalSub)
   else:
     mulMont(r, a, a, M, m0ninv, spareBits, skipFinalSub)
-    
+
+func sumprodMont*[N: static int](
+        r: var Limbs, a, b: array[N, Limbs],
+        M: Limbs, m0ninv: BaseType,
+        spareBits: static int,
+        skipFinalSub: static bool = false) {.inline.} =
+  when spareBits >= 2:
+    when UseASM_X86_64 and r.len in {2 .. 6}:
+      if ({.noSideEffect.}: hasAdx()):
+        r.sumprodMont_CIOS_spare2bits_asm_adx(a, b, M, m0ninv, skipFinalSub)
+      else:
+        r.sumprodMont_CIOS_spare2bits_asm(a, b, M, m0ninv, skipFinalSub)
+    else:  
+      r.sumprodMont_CIOS_spare2bits(a, b, M, m0ninv, skipFinalSub)
+  else:
+    r.mulMont(a[0], b[0], M, m0ninv, spareBits, skipFinalSub = false)
+    var ri {.noInit.}: Limbs
+    for i in 1 ..< N:
+      ri.mulMont(a[i], b[i], M, m0ninv, spareBits, skipFinalSub = false)
+      var overflowed = SecretBool r.add(ri)
+      overflowed = overflowed or not(r < M)
+      discard r.csub(M, overflowed)
+
 func fromMont*(r: var Limbs, a, M: Limbs,
-           m0ninv: BaseType, spareBits: static int) =
+           m0ninv: BaseType, spareBits: static int) {.inline.} =
   ## Transform a bigint ``a`` from it's Montgomery N-residue representation (mod N)
   ## to the regular natural representation (mod N)
   ##
@@ -512,7 +592,7 @@ func fromMont*(r: var Limbs, a, M: Limbs,
     fromMont_CIOS(r, a, M, m0ninv)
 
 func getMont*(r: var Limbs, a, M, r2modM: Limbs,
-                   m0ninv: BaseType, spareBits: static int) =
+                   m0ninv: BaseType, spareBits: static int) {.inline.} =
   ## Transform a bigint ``a`` from it's natural representation (mod N)
   ## to a the Montgomery n-residue representation
   ##

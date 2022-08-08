@@ -305,8 +305,8 @@ func matVecMul_shr_k_mod_M[N, E: static int](
 
   # First iteration of [u v] [d] 
   #                    [q r].[e]
-  cd.slincombAccNoCarry(u, d[0], v, e[0])
-  ce.slincombAccNoCarry(q, d[0], r, e[0])
+  cd.ssumprodAccNoCarry(u, d[0], v, e[0])
+  ce.ssumprodAccNoCarry(q, d[0], r, e[0])
 
   # Compute me and md, multiples of M
   # such as the bottom k bits if d and e are 0
@@ -330,8 +330,8 @@ func matVecMul_shr_k_mod_M[N, E: static int](
   ce.ashr(k)
 
   for i in 1 ..< N:
-    cd.slincombAccNoCarry(u, d[i], v, e[i])
-    ce.slincombAccNoCarry(q, d[i], r, e[i])
+    cd.ssumprodAccNoCarry(u, d[i], v, e[i])
+    ce.ssumprodAccNoCarry(q, d[i], r, e[i])
     cd.smulAccNoCarry(md, M[i])
     ce.smulAccNoCarry(me, M[i])
     d[i-1] = cd.lo and Max
@@ -366,8 +366,8 @@ func matVecMul_shr_k[N, E: static int](
   
   # First iteration of [u v] [f] 
   #                    [q r].[g]
-  cf.slincombAccNoCarry(u, f[0], v, g[0])
-  cg.slincombAccNoCarry(q, f[0], r, g[0])
+  cf.ssumprodAccNoCarry(u, f[0], v, g[0])
+  cg.ssumprodAccNoCarry(q, f[0], r, g[0])
   # bottom k bits are zero by construction
   debug:
     doAssert BaseType(cf.lo and Max) == 0, "bottom k bits should be 0, cf.lo: " & $BaseType(cf.lo)
@@ -377,8 +377,8 @@ func matVecMul_shr_k[N, E: static int](
   cg.ashr(k)
 
   for i in 1 ..< N:
-    cf.slincombAccNoCarry(u, f[i], v, g[i])
-    cg.slincombAccNoCarry(q, f[i], r, g[i])
+    cf.ssumprodAccNoCarry(u, f[i], v, g[i])
+    cg.ssumprodAccNoCarry(q, f[i], r, g[i])
     f[i-1] = cf.lo and Max
     g[i-1] = cg.lo and Max
     cf.ashr(k)
@@ -496,11 +496,6 @@ func invmod*(
 #
 # Those symbols can be computed either via exponentiation (Fermat's Little Theorem)
 # or using slight modifications to the Extended Euclidean Algorithm for GCD.
-#
-# See
-# - Algorithm II.7 in Blake, Seroussi, Smart: "Elliptic Curves in Cryptography"
-# - Algorithm 5.9.2 in Bach and Shallit: "Algorithmic Number Theory"
-# - Pornin: https://github.com/pornin/x25519-cm0/blob/75a53f2/src/x25519-cm0.S#L89-L155
 
 func batchedDivstepsSymbol(
        t: var TransitionMatrix,
@@ -631,7 +626,7 @@ func legendreImpl[N, E](
 
   accL = (accL + accL.isOdd()) and SignedSecretWord(3)
   accL = SignedSecretWord(1)-accL
-  accL.csetZero(f.isZeroMask()) # f = gcd = 1 as M is prime or f = 0 if a = 0
+  accL.csetZero(f.isZeroMask())
   return SecretWord(accL)
 
 func legendre*(a, M: Limbs, bits: static int): SecretWord =

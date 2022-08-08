@@ -811,7 +811,7 @@ func square2x_complex(r: var QuadraticExt2x, a: Fp2) =
 # Complex multiplications
 # ----------------------------------------------------------------------
 
-func prod_complex(r: var Fp2, a, b: Fp2) =
+func prod_complex(r: var Fp2, a, b: Fp2) {.used.} =
   ## Return a * b in 𝔽p2 = 𝔽p[𝑖] in ``r``
   ## ``r`` is initialized/overwritten
   ##
@@ -823,10 +823,7 @@ func prod_complex(r: var Fp2, a, b: Fp2) =
   # while addition has cost O(3n) (n for addition, n for overflow, n for conditional substraction)
   # and substraction has cost O(2n) (n for substraction + underflow, n for conditional addition)
   #
-  # Even for 256-bit primes, we are looking at always a minimum of n=5 limbs (with 2^63 words)
-  # where addition/substraction are significantly cheaper than multiplication
-  #
-  # So we always reframe the imaginary part using Karatsuba approach to save a multiplication
+  # Hence we can consider using q Karatsuba approach to save a multiplication
   # (a0, a1) (b0, b1) => (a0 b0 - a1 b1) + 𝑖( (a0 + a1)(b0 + b1) - a0 b0 - a1 b1 )
   #
   # Costs (naive implementation)
@@ -841,19 +838,12 @@ func prod_complex(r: var Fp2, a, b: Fp2) =
   # - 2 Addition 𝔽p
   # Stack: 6 * ModulusBitSize (4x 𝔽p element + 2x named temporaries + 1 in-place multiplication temporary)
   static: doAssert r.fromComplexExtension()
-
-  var a0b0 {.noInit.}, a1b1 {.noInit.}: typeof(r.c0)
-  a0b0.prod(a.c0, b.c0)                                         # [1 Mul]
-  a1b1.prod(a.c1, b.c1)                                         # [2 Mul]
-
-  r.c0.sum(a.c0, a.c1)  # r0 = (a0 + a1)                        # [2 Mul, 1 Add]
-  r.c1.sum(b.c0, b.c1)  # r1 = (b0 + b1)                        # [2 Mul, 2 Add]
-  # aliasing: a and b unneeded now
-  r.c1 *= r.c0          # r1 = (b0 + b1)(a0 + a1)               # [3 Mul, 2 Add] - 𝔽p temporary
-
-  r.c0.diff(a0b0, a1b1) # r0 = a0 b0 - a1 b1                    # [3 Mul, 2 Add, 1 Sub]
-  r.c1 -= a0b0          # r1 = (b0 + b1)(a0 + a1) - a0b0        # [3 Mul, 2 Add, 2 Sub]
-  r.c1 -= a1b1          # r1 = (b0 + b1)(a0 + a1) - a0b0 - a1b1 # [3 Mul, 2 Add, 3 Sub]
+  var t {.noInit.}: typeof(r)
+  var na1 {.noInit.}: typeof(r.c0)
+  na1.neg(a.c1)
+  t.c0.sumprod([a.c0, na1], [b.c0, b.c1])
+  t.c1.sumprod([a.c0, a.c1], [b.c1, b.c0])
+  r = t
 
 func prod2x_complex(r: var QuadraticExt2x, a, b: Fp2) =
   ## Double-precision unreduced complex multiplication
@@ -1326,22 +1316,19 @@ func prod*(r: var QuadraticExt, a, b: QuadraticExt) =
   ## Multiplication r <- a*b
 
   when r.fromComplexExtension():
-    when false:
-      r.prod_complex(a, b)
-    else: # faster
-      when UseASM_X86_64 and not QuadraticExt.C.has_large_field_elem():
-        if ({.noSideEffect.}: hasAdx()):
-          r.coords.mul_fp2_complex_asm_adx(a.coords, b.coords)
-        else:
-          var d {.noInit.}: doublePrec(typeof(r))
-          d.prod2x_complex(a, b)
-          r.c0.redc2x(d.c0)
-          r.c1.redc2x(d.c1)
+    when UseASM_X86_64 and not QuadraticExt.C.has_large_field_elem():
+      if ({.noSideEffect.}: hasAdx()):
+        r.coords.mul_fp2_complex_asm_adx(a.coords, b.coords)
       else:
         var d {.noInit.}: doublePrec(typeof(r))
         d.prod2x_complex(a, b)
         r.c0.redc2x(d.c0)
         r.c1.redc2x(d.c1)
+    else:
+      var d {.noInit.}: doublePrec(typeof(r))
+      d.prod2x_complex(a, b)
+      r.c0.redc2x(d.c0)
+      r.c1.redc2x(d.c1)
   else:
     when r.typeof.F.C.has_large_field_elem():
       # BW6-761 requires too many registers for Dbl width path
@@ -1597,6 +1584,45 @@ func square_Chung_Hasan_SQR3(r: var CubicExt, a: CubicExt) =
 
 # Multiplications
 # -------------------------------------------------------------------
+
+func prodImpl_fp6o2_p3mod8[C: static Curve](r: var Fp6[C], a, b: Fp6[C]) =
+  ## Returns r = a * b 
+  ## For 𝔽p6/𝔽p2 with p ≡ 3 (mod 8),
+  ##   hence 𝔽p QNR is 𝑖 = √-1 as p ≡ 3 (mod 8) implies p ≡ 3 (mod 4)
+  ##   and 𝔽p SNR is (1 + i)
+  # https://eprint.iacr.org/2022/367 - Equation 8
+  static: doAssert C.has_P_3mod8_primeModulus()
+  var
+    b10_p_b11{.noInit.}, b10_m_b11{.noInit.}: Fp[C]
+    b20_p_b21{.noInit.}, b20_m_b21{.noInit.}: Fp[C]
+
+    n_a01{.noInit.}, n_a11{.noInit.}, n_a21{.noInit.}: Fp[C]
+
+    t{.noInit.}: Fp6[C]
+
+  b10_p_b11.sum(b.c1.c0, b.c1.c1)
+  b10_m_b11.diff(b.c1.c0, b.c1.c1)
+  b20_p_b21.sum(b.c2.c0, b.c2.c1)
+  b20_m_b21.diff(b.c2.c0, b.c2.c1)
+
+  n_a01.neg(a.c0.c1)
+  n_a11.neg(a.c1.c1)
+  n_a21.neg(a.c2.c1)
+
+  t.c0.c0.sumprod([a.c0.c0,   n_a01,   a.c1.c0,     n_a11,   a.c2.c0,     n_a21],
+                  [b.c0.c0, b.c0.c1, b20_m_b21, b20_p_b21, b10_m_b11, b10_p_b11])
+  t.c0.c1.sumprod([a.c0.c0, a.c0.c1,   a.c1.c0,   a.c1.c1,   a.c2.c0,   a.c2.c1],
+                  [b.c0.c1, b.c0.c0, b20_p_b21, b20_m_b21, b10_p_b11, b10_m_b11])
+  t.c1.c0.sumprod([a.c0.c0,   n_a01,   a.c1.c0,     n_a11,   a.c2.c0,     n_a21],
+                  [b.c1.c0, b.c1.c1,   b.c0.c0,   b.c0.c1, b20_m_b21, b20_p_b21])
+  t.c1.c1.sumprod([a.c0.c0, a.c0.c1,   a.c1.c0,   a.c1.c1,   a.c2.c0,   a.c2.c1],
+                  [b.c1.c1, b.c1.c0,   b.c0.c1,   b.c0.c0, b20_p_b21, b20_m_b21])
+  t.c2.c0.sumprod([a.c0.c0,   n_a01,   a.c1.c0,     n_a11,   a.c2.c0,     n_a21],
+                  [b.c2.c0, b.c2.c1,   b.c1.c0,   b.c1.c1,   b.c0.c0,   b.c0.c1])
+  t.c2.c1.sumprod([a.c0.c0, a.c0.c1,   a.c1.c0,   a.c1.c1,   a.c2.c0,   a.c2.c1],
+                  [b.c2.c1, b.c2.c0,   b.c1.c1,   b.c1.c0,   b.c0.c1,   b.c0.c0])
+
+  r = t
 
 func prodImpl(r: var CubicExt, a, b: CubicExt) =
   ## Returns r = a * b 
@@ -1856,6 +1882,8 @@ func prod*(r: var CubicExt, a, b: CubicExt) =
   ## Out-of-place multiplication
   when CubicExt.C.has_large_field_elem():
     r.prodImpl(a, b)
+  elif r is Fp6 and CubicExt.C.has_P_3mod8_primeModulus():
+    r.prodImpl_fp6o2_p3mod8(a, b)
   else:
     var d {.noInit.}: doublePrec(typeof(r))
     d.prod2x(a, b)
