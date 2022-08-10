@@ -11,7 +11,7 @@ import
   ./towers,
   ../arithmetic,
   ../config/curves,
-  ../curves/zoo_square_roots_fp2
+  ../constants/zoo_square_roots_fp2
 
 # Square root
 # -----------------------------------------------------------

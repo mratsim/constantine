@@ -13,7 +13,7 @@ import
   ./math/arithmetic/limbs_montgomery,
   ./math/ec_shortweierstrass,
   ./math/pairing/[pairing_bn, miller_loops, cyclotomic_subgroup],
-  ./math/curves/zoo_subgroups,
+  ./math/constants/zoo_subgroups,
   ./math/io/[io_bigints, io_fields]
 
 # ############################################################

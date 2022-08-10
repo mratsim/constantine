@@ -15,7 +15,7 @@ import
   ../constantine/math/ec_shortweierstrass,
   ../constantine/hash_to_curve/hash_to_curve,
   ../constantine/hashes,
-  ../constantine/math/curves/zoo_subgroups,
+  ../constantine/math/constants/zoo_subgroups,
   # Test utilities
   ../helpers/prng_unsafe
 

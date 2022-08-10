@@ -17,7 +17,7 @@ import
     ec_shortweierstrass_projective
   ],
   ../io/io_extfields,
-  ../curves/zoo_constants
+  ../constants/zoo_constants
 
 # No exceptions allowed
 {.push raises: [].}

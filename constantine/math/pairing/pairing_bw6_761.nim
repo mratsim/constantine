@@ -15,7 +15,7 @@ import
     ec_shortweierstrass_projective
   ],
   ../isogenies/frobenius,
-  ../curves/zoo_pairings,
+  ../constants/zoo_pairings,
   ./lines_eval,
   ./miller_loops
 

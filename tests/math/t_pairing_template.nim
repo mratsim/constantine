@@ -15,7 +15,7 @@ import
   ../../constantine/math/extension_fields,
   ../../constantine/math/config/curves,
   ../../constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
-  ../../constantine/math/curves/[zoo_subgroups, zoo_pairings],
+  ../../constantine/math/constants/[zoo_subgroups, zoo_pairings],
   ../../constantine/math/pairing/cyclotomic_subgroup,
   ../../constantine/math/io/io_extfields,
 

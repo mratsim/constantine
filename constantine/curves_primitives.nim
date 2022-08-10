@@ -23,7 +23,7 @@ import
       cyclotomic_subgroup,
       lines_eval
     ],
-    ./math/curves/zoo_pairings,
+    ./math/constants/zoo_pairings,
     ./hash_to_curve/hash_to_curve
 
 # ############################################################

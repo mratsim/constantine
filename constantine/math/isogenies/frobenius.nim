@@ -11,7 +11,7 @@ import
   ../../platforms/primitives,
   ../arithmetic,
   ../extension_fields,
-  ../curves/zoo_frobenius
+  ../constants/zoo_frobenius
 
 # Frobenius Map
 # ------------------------------------------------------------

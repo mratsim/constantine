@@ -9,7 +9,7 @@
 import
   ../../platforms/abstractions,
   ../config/curves,
-  ../curves/zoo_square_roots,
+  ../constants/zoo_square_roots,
   ./bigints, ./finite_fields, ./limbs_exgcd
 
 # ############################################################
