@@ -13,7 +13,7 @@ import
       ec_shortweierstrass,
       extension_fields,
       arithmetic,
-      curves/zoo_subgroups
+      constants/zoo_subgroups
     ],
     ./math/io/[io_bigints, io_fields],
     hashes,
