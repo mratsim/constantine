@@ -79,17 +79,24 @@ func frobenius_map*[C](r: var Fp6[C], a: Fp6[C], k: static int = 1) {.inline.} =
 func frobenius_map*[C](r: var Fp12[C], a: Fp12[C], k: static int = 1) {.inline.} =
   ## Computes a^(pᵏ)
   ## The p-power frobenius automorphism on 𝔽p12
-  static: doAssert r.c0 is Fp4
   staticFor i, 0, r.coords.len:
     staticFor j, 0, r.coords[0].coords.len:
       r.coords[i].coords[j].frobenius_map(a.coords[i].coords[j], k)
 
-  r.c0.c0.mulCheckSparse frobMapConst(C, 0, k)
-  r.c0.c1.mulCheckSparse frobMapConst(C, 3, k)
-  r.c1.c0.mulCheckSparse frobMapConst(C, 1, k)
-  r.c1.c1.mulCheckSparse frobMapConst(C, 4, k)
-  r.c2.c0.mulCheckSparse frobMapConst(C, 2, k)
-  r.c2.c1.mulCheckSparse frobMapConst(C, 5, k)
+  when r.c0 is Fp4:
+    r.c0.c0.mulCheckSparse frobMapConst(C, 0, k)
+    r.c0.c1.mulCheckSparse frobMapConst(C, 3, k)
+    r.c1.c0.mulCheckSparse frobMapConst(C, 1, k)
+    r.c1.c1.mulCheckSparse frobMapConst(C, 4, k)
+    r.c2.c0.mulCheckSparse frobMapConst(C, 2, k)
+    r.c2.c1.mulCheckSparse frobMapConst(C, 5, k)
+  else:
+    r.c0.c0.mulCheckSparse frobMapConst(C, 0, k)
+    r.c0.c1.mulCheckSparse frobMapConst(C, 2, k)
+    r.c0.c2.mulCheckSparse frobMapConst(C, 4, k)
+    r.c1.c0.mulCheckSparse frobMapConst(C, 1, k)
+    r.c1.c1.mulCheckSparse frobMapConst(C, 3, k)
+    r.c1.c2.mulCheckSparse frobMapConst(C, 5, k)
 
 # ψ (Psi) - Untwist-Frobenius-Twist Endomorphisms on twisted curves
 # -----------------------------------------------------------------

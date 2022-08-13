@@ -390,44 +390,19 @@ func line_add*[F1, F2](
 # D-Twist
 # ------------------------------------------------------------
 
-func mul_by_line_xy0*[Fpkdiv2, Fpkdiv6](
-       r: var Fpkdiv2,
-       a: Fpkdiv2,
-       x, y: Fpkdiv6) =
-  ## Sparse multiplication of an 𝔽pᵏᐟ² element
-  ## with coordinates (a₀, a₁, a₂) by a line (x, y, 0)
-  ## The z coordinates in the line will be ignored.
-  ## `r` and `a` must not alias
-  
-  static:
-    doAssert a is CubicExt
-    doAssert a.c0 is Fpkdiv6
-
-  var
-    v0 {.noInit.}: Fpkdiv6
-    v1 {.noInit.}: Fpkdiv6
-
-  v0.prod(a.c0, x)
-  v1.prod(a.c1, y)
-  r.c0.prod(a.c2, y)
-  r.c0 *= SexticNonResidue
-  r.c0 += v0
-
-  r.c1.sum(a.c0, a.c1) # Error when r and a alias as r.c0 was updated
-  r.c2.sum(x, y)
-  r.c1 *= r.c2
-  r.c1 -= v0
-  r.c1 -= v1
-
-  r.c2.prod(a.c2, x)
-  r.c2 += v1
-
-func mul_sparse_by_line_ab00c0*[Fpk, Fpkdiv6](f: var Fpk, l: Line[Fpkdiv6]) =
+func mul_sparse_by_line_a00bc0*[Fpk, Fpkdiv6](f: var Fpk, l: Line[Fpkdiv6]) =
   ## Sparse multiplication of an 𝔽pᵏ element
   ## by a sparse 𝔽pᵏ element coming from an D-Twist line function
-  ## With a quadratic over cubic towering (Fp2 -> Fp6 -> Fp12)
+  ## with a cubic over quadratic towering (𝔽p2 -> 𝔽p6 -> 𝔽p12)
   ## The sparse element is represented by a packed Line type
-  ## with coordinate (a,b,c) matching 𝔽pᵏ coordinates ab00c0
+  ## with coordinate (a,b,c) matching 𝔽pᵏ coordinates a00bc0
+
+  # a0b0 = (a00, a01, a02).( x, 0, 0)
+  # a1b1 = (a10, a11, a12).( y, z, 0)
+  #
+  # r0 = a0 b0 + ξ a1 b1
+  # r1 = a0 b1 + a1 b0                       (Schoolbook)
+  #    = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1 (Karatsuba)
 
   static:
     doAssert Fpk.C.getSexticTwist() == D_Twist
@@ -436,27 +411,290 @@ func mul_sparse_by_line_ab00c0*[Fpk, Fpkdiv6](f: var Fpk, l: Line[Fpkdiv6]) =
 
   type Fpkdiv2 = typeof(f.c0)
 
-  var
-    v0 {.noInit.}: Fpkdiv2
-    v1 {.noInit.}: Fpkdiv2
-    v2 {.noInit.}: Line[Fpkdiv6]
-    v3 {.noInit.}: Fpkdiv2
+  when Fpk.C.has_large_field_elem():
+    var
+      v0 {.noInit.}: Fpkdiv2
+      v1 {.noInit.}: Fpkdiv2
+      t  {.noInit.}: Fpkdiv6
 
-  v0.mul_by_line_xy0(f.c0, l.a, l.b)
-  v1.mul_sparse_by_0y0(f.c1, l.c)
+    v1.sum(f.c0, f.c1)
+    t.sum(l.a, l.b)
+    v0.mul_sparse_by_xy0(v1, t, l.c)
 
-  v2.x = l.a
-  v2.y.sum(l.b, l.c)
-  f.c1 += f.c0
-  v3.mul_by_line_xy0(f.c1, v2.x, v2.y)
-  v3 -= v0
-  f.c1.diff(v3, v1)
+    v1.mul_sparse_by_xy0(f.c1, l.b, l.c)
 
-  v3.c0.prod(v1.c2, SexticNonResidue)
-  v3.c0 += v0.c0
-  v3.c1.sum(v0.c1, v1.c0)
-  v3.c2.sum(v0.c2, v1.c1)
-  f.c0 = v3
+    f.c1.diff(v0, v1)
+
+    v0.mul_sparse_by_x00(f.c0, l.a)
+    f.c1 -= v0
+
+    v1 *= NonResidue
+    f.c0.sum(v0, v1)
+  
+  else: # Lazy reduction
+    var
+      V0 {.noInit.}: doubleprec(Fpkdiv2)
+      V1 {.noInit.}: doubleprec(Fpkdiv2)
+      V  {.noInit.}: doubleprec(Fpkdiv2)
+      t  {.noInit.}: Fpkdiv6
+      u  {.noInit.}: Fpkdiv2
+  
+    u.sum(f.c0, f.c1)
+    t.sum(l.a, l.b)
+    V.mul2x_sparse_by_xy0(u, t, l.c)
+    V1.mul2x_sparse_by_xy0(f.c1, l.b, l.c)
+    V0.mul2x_sparse_by_x00(f.c0, l.a)
+    
+    V.diff2xMod(V, V1)
+    V.diff2xMod(V, V0)
+    f.c1.redc2x(V)
+
+    V1.prod2x(V1, NonResidue)
+    V0.sum2xMod(V0, V1)
+    f.c0.redc2x(V0)
+
+func prod_x00yz0_x00yz0_into_abcdefghij00*[Fpk, Fpkdiv6](f: var Fpk, l0, l1: Line[Fpkdiv6]) =
+  ## Multiply 2 lines together
+  ## The result is sparse in f.
+  # Preambule
+  #
+  # A sparse xy0 by xy0 multiplication in 𝔽pᵏᐟ² (cubic) would be
+  #   (a0', a1', 0).(b0', b1', 0)
+  #  
+  #   r0' = a0'b0'
+  #   r1' = a0'b1 + a1'b0'
+  #     or (a0'+b1')(a1'+b0')-a0'a1'-b0'b1'
+  #   r2' = a1'b1
+  #
+  # Note¹ that the Karatsuba does not reuse terms!
+  #
+  # In the following equations (taken from quad extension implementation)
+  # a0 = ( x , 0 , 0)
+  # a1 = ( y , z , 0)
+  # b0 = ( x', 0, 0)
+  # b1 = ( y', z', 0)
+  #
+  # a0b0 = ( x, 0, 0).( x', 0 , 0) = (xx',       0,  0 )
+  # a1b1 = ( y, z, 0).( y', z', 0) = (yy', yz'+zy', zz')
+  
+  # r0 = a0 b0 + ξ a1 b1
+  # r1 = a0 b1 + a1 b0                       (Schoolbook)
+  #    = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1 (Karatsuba)
+  #
+  # Note² that Karatsuba doesn't help as a0 and b0 are actually very cheap (x, 0, 0)
+  #
+  # Replacing by the coordinates in the lower tower we get
+  #
+  # r0 = (xx'+ξzz', yy', yz'+zy')
+  # r1 = ( x, 0, 0)( y', z', 0) + ( y , z , 0)( x', 0, 0)
+  #    = (xy'+yx', xz'+zx', 0)
+  #
+  # Now we can apply Karasuba¹² for a total of 6 multiplications
+
+  static:
+    doAssert Fpk.C.getSexticTwist() == D_Twist
+    doAssert f is QuadraticExt, "This assumes 𝔽pᵏ as a quadratic extension of 𝔽pᵏᐟ²"
+    doAssert f.c0 is CubicExt, "This assumes 𝔽pᵏᐟ² as a cubic extension of 𝔽pᵏᐟ⁶"
+
+  var XX{.noInit.}, YY{.noInit.}, ZZ{.noInit.}: doublePrec(Fpkdiv6)
+
+  XX.prod2x(l0.a, l1.a)
+  YY.prod2x(l0.b, l1.b)
+  ZZ.prod2x(l0.c, l1.c)
+
+  var V{.noInit.}: doublePrec(Fpkdiv6)  
+  var t0{.noInit.}, t1{.noInit.}: Fpkdiv6
+
+  # r0 = (xx'+ξzz', yy', yz'+zy')
+  # r00 = xx'+ξzz'' 
+  # r01 = yy'
+  # r02 = yz'+zy' = (y+z)(y'+z') - yy' - zz'
+  V.prod2x(ZZ, NonResidue)
+  V.sum2xMod(V,XX)
+  f.c0.c0.redc2x(V)
+
+  f.c0.c1.redc2x(YY)
+
+  t0.sum(l0.b, l0.c)
+  t1.sum(l1.b, l1.c)
+  V.prod2x(t0, t1)
+  V.diff2xMod(V, YY)
+  V.diff2xMod(V, ZZ)
+  f.c0.c2.redc2x(V)
+
+  # r1 = (xy'+yx', xz'+zx', 0)
+  # r10 = xy'+yx' = (x+y)(x'+y') - xx' - yy'
+  # r11 = xz'+zx' = (x+z)(x'+z') - xx' - zz'
+  # r12 = 0
+  t0.sum(l0.a, l0.b)
+  t1.sum(l1.a, l1.b)
+  V.prod2x(t0, t1)
+  V.diff2xMod(V, XX)
+  V.diff2xMod(V, YY)
+  f.c1.c0.redc2x(V)
+
+  t0.sum(l0.a, l0.c)
+  t1.sum(l1.a, l1.c)
+  V.prod2x(t0, t1)
+  V.diff2xMod(V, XX)
+  V.diff2xMod(V, ZZ)
+  f.c1.c1.redc2x(V)
+
+  f.c1.c2.setZero()
+
+# M-Twist
+# ------------------------------------------------------------
+
+func mul_sparse_by_line_cb00a0*[Fpk, Fpkdiv6](f: var Fpk, l: Line[Fpkdiv6]) =
+  ## Sparse multiplication of an 𝔽pᵏ element
+  ## by a sparse 𝔽pᵏ element coming from an M-Twist line function
+  ## with a cubic over quadratic towering (𝔽p2 -> 𝔽p6 -> 𝔽p12)
+  ## The sparse element is represented by a packed Line type
+  ## with coordinate (a,b,c) matching 𝔽pᵏ coordinates cb00a0
+
+  # a0b0 = (a00, a01, a02).( z, y, 0)
+  # a1b1 = (a10, a11, a12).( 0, x, 0)
+  #
+  # r0 = a0 b0 + ξ a1 b1
+  # r1 = a0 b1 + a1 b0                       (Schoolbook)
+  #    = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1 (Karatsuba)
+
+  static:
+    doAssert Fpk.C.getSexticTwist() == M_Twist
+    doAssert f is QuadraticExt, "This assumes 𝔽pᵏ as a quadratic extension of 𝔽pᵏᐟ²"
+    doAssert f.c0 is CubicExt, "This assumes 𝔽pᵏᐟ² as a cubic extension of 𝔽pᵏᐟ⁶"
+
+  type Fpkdiv2 = typeof(f.c0)
+
+  when Fpk.C.has_large_field_elem():
+    var
+      v0 {.noInit.}: Fpkdiv2
+      v1 {.noInit.}: Fpkdiv2
+      t  {.noInit.}: Fpkdiv6
+
+    v1.sum(f.c0, f.c1)
+    t.sum(l.b, l.a)
+    v0.mul_sparse_by_xy0(v1, l.c, t)
+
+    v1.mul_sparse_by_0y0(f.c1, l.a)
+
+    f.c1.diff(v0, v1)
+
+    v0.mul_sparse_by_xy0(f.c0, l.c, l.b)
+    f.c1 -= v0
+
+    v1 *= NonResidue
+    f.c0.sum(v0, v1)
+  else: # Lazy reduction
+    var
+      V0 {.noInit.}: doubleprec(Fpkdiv2)
+      V1 {.noInit.}: doubleprec(Fpkdiv2)
+      V  {.noInit.}: doubleprec(Fpkdiv2)
+      t  {.noInit.}: Fpkdiv6
+      u  {.noInit.}: Fpkdiv2
+  
+    u.sum(f.c0, f.c1)
+    t.sum(l.b, l.a)
+    V.mul2x_sparse_by_xy0(u, l.c, t)
+    V1.mul2x_sparse_by_0y0(f.c1, l.a)
+    V0.mul2x_sparse_by_xy0(f.c0, l.c, l.b)
+    
+    V.diff2xMod(V, V1)
+    V.diff2xMod(V, V0)
+    f.c1.redc2x(V)
+
+    V1.prod2x(V1, NonResidue)
+    V0.sum2xMod(V0, V1)
+    f.c0.redc2x(V0)
+
+func prod_zy00x0_zy00x0_into_abcdef00ghij*[Fpk, Fpkdiv6](f: var Fpk, l0, l1: Line[Fpkdiv6]) =
+  ## Multiply 2 lines together
+  ## The result is sparse in f.c1.c0
+  # Preambule
+  #
+  # A sparse xy0 by xy0 multiplication in 𝔽pᵏᐟ² (cubic) would be
+  #   (a0', a1', 0).(b0', b1', 0)
+  #  
+  #   r0' = a0'b0'
+  #   r1' = a0'b1 + a1'b0'
+  #     or (a0'+b1')(a1'+b0')-a0'a1'-b0'b1'
+  #   r2' = a1'b1
+  #
+  # Note¹ that the Karatsuba does not reuse terms!
+  #
+  # In the following equations (taken from quad extension implementation)
+  # a0 = ( z , y , 0)
+  # a1 = ( 0 , x , 0)
+  # b0 = ( z', y', 0)
+  # b1 = ( 0 , x', 0)
+  #
+  # a0b0 = ( z, y, 0).(z', y', 0) = (zz', zy'+yz', yy')
+  # a1b1 = ( 0, x, 0).( 0, x', 0) = (  0,       0, xx')
+  
+  # r0 = a0 b0 + ξ a1 b1
+  # r1 = a0 b1 + a1 b0                       (Schoolbook)
+  #    = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1 (Karatsuba)
+  #
+  # Note² that Karatsuba doesn't help as a1 and b1 are actually very cheap (0, x, 0)
+  #
+  # Replacing by the coordinates in the lower tower we get
+  #
+  # r0 = (zz'+ξxx', zy'+z'y, yy')
+  # r1 = (z, y, 0)(0, x', 0) + (z', y', 0)(0, x, 0)
+  #    = (0, zx'+xz', yx'+xy')
+  #
+  # Now we can apply Karasuba¹² for a total of 6 multiplications
+
+  static:
+    doAssert Fpk.C.getSexticTwist() == M_Twist
+    doAssert f is QuadraticExt, "This assumes 𝔽pᵏ as a quadratic extension of 𝔽pᵏᐟ²"
+    doAssert f.c0 is CubicExt, "This assumes 𝔽pᵏᐟ² as a cubic extension of 𝔽pᵏᐟ⁶"
+
+  var XX{.noInit.}, YY{.noInit.}, ZZ{.noInit.}: doublePrec(Fpkdiv6)
+
+  XX.prod2x(l0.a, l1.a)
+  YY.prod2x(l0.b, l1.b)
+  ZZ.prod2x(l0.c, l1.c)
+
+  var V{.noInit.}: doublePrec(Fpkdiv6)  
+  var t0{.noInit.}, t1{.noInit.}: Fpkdiv6
+
+  # r0 = (zz'+ξxx', zy'+z'y, yy')
+  # r00 = zz'+ξxx'
+  # r01 = zy'+z'y = (z+y)(z'+y') - zz' - yy'
+  # r02 = yy'
+  V.prod2x(XX, NonResidue)
+  V.sum2xMod(V, ZZ)
+  f.c0.c0.redc2x(V)
+
+  t0.sum(l0.c, l0.b)
+  t1.sum(l1.c, l1.b)
+  V.prod2x(t0, t1)
+  V.diff2xMod(V, ZZ)
+  V.diff2xMod(V, YY)
+  f.c0.c1.redc2x(V)
+
+  f.c0.c2.redc2x(YY)
+
+  # r1 = (0, zx'+xz', yx'+xy')
+  # r10 = 0
+  # r11 = zx'+xz' = (z+x)(z'+x') - zz' - xx'
+  # r12 = xy'+yx' = (x+y)(x'+y') - xx' - yy'
+  f.c1.c0.setZero()
+
+  t0.sum(l0.c, l0.a)
+  t1.sum(l1.c, l1.a)
+  V.prod2x(t0, t1)
+  V.diff2xMod(V, ZZ)
+  V.diff2xMod(V, XX)
+  f.c1.c1.redc2x(V)
+
+  t0.sum(l0.a, l0.b)
+  t1.sum(l1.a, l1.b)
+  V.prod2x(t0, t1)
+  V.diff2xMod(V, XX)
+  V.diff2xMod(V, YY)
+  f.c1.c2.redc2x(V)
 
 # ############################################################
 #
@@ -556,16 +794,16 @@ func prod_xzy000_xzy000_into_abcdefghij00*[Fpk, Fpkdiv6](f: var Fpk, l0, l1: Lin
   ## Multiply 2 lines together
   ## The result is sparse in f.c1.c1
   # In the following equations (taken from cubic extension implementation)
-  # a0 = (x0, z0)
-  # a1 = (y0,  0)
-  # a2 = ( 0,  0)
-  # b0 = (x1, z1)
-  # b1 = (y1,  0)
-  # b2 = ( 0,  0)
+  # a0 = ( x, z)
+  # a1 = ( y, 0)
+  # a2 = ( 0, 0)
+  # b0 = (x', z')
+  # b1 = (y', 0)
+  # b2 = ( 0, 0)
   #
-  # v0 = a0 b0 = (x0, z0).(x1, z1)
-  # v1 = a1 b1 = (y0,  0).(y1,  0)
-  # v2 = a2 b2 = ( 0,  0).( 0,  0)
+  # v0 = a0 b0 = (x, z).(x', z')
+  # v1 = a1 b1 = (y, 0).(y',  0)
+  # v2 = a2 b2 = (0, 0).( 0,  0)
   #
   # r0 = ξ ((a1 + a2) * (b1 + b2) - v1 - v2) + v0
   #    = ξ (a1 b1 + a2 b1 - v1) + v0
@@ -575,105 +813,64 @@ func prod_xzy000_xzy000_into_abcdefghij00*[Fpk, Fpkdiv6](f: var Fpk, l0, l1: Lin
   # r2 = (a0 + a2) * (b0 + b2) - v0 - v2 + v1
   #    = a0 b0 - v0 + v1
   #    = v1
+  #
+  # r1 is computed in 3 extra muls in the base field 𝔽pᵏᐟ⁶ (Karatsuba product in quadratic field)
+  # 
+  # If we dive deeper:
+  # r1 = a0b1 + a1b0 = (xy'+yx', zy'+yz')      (Schoolbook - 4 muls)
+  # r10 = zy'+yz' = (x+y)(x'+y') - xx' - yy'
+  # r11 = xy'+yx' = (z+y)(z'+y') - zz' - yy'
+  #
+  # The substraction are all computed as part of v0 and v1
+  # hence r1 can be compute for 2 extra muls in 𝔽pᵏᐟ⁶ only
 
   static:
     doAssert Fpk.C.getSexticTwist() == D_Twist
     doAssert f is CubicExt, "This assumes 𝔽pᵏ as a cubic extension of 𝔽pᵏᐟ³"
     doAssert f.c0 is QuadraticExt, "This assumes 𝔽pᵏᐟ³ as a quadratic extension of 𝔽pᵏᐟ⁶"
 
-  type Fpkdiv3 = typeof(f.c0)
+  var XX{.noInit.}, YY{.noInit.}, ZZ{.noInit.}: doublePrec(Fpkdiv6)
 
-  var V0{.noInit.}, f2x{.noInit.}: doublePrec(Fpkdiv3)
-  var V1{.noInit.}: doublePrec(Fpkdiv6)
+  XX.prod2x(l0.a, l1.a)
+  YY.prod2x(l0.b, l1.b)
+  ZZ.prod2x(l0.c, l1.c)
 
-  V0.prod2x_disjoint(l0.a, l0.c, l1.a, l1.c) # a0 b0 = (x0, z0).(x1, z1)
-  V1.prod2x(l0.b, l1.b)                      # a1 b1 = (y0,  0).(y1,  0)
+  var V{.noInit.}: doublePrec(Fpkdiv6)  
+  var t0{.noInit.}, t1{.noInit.}: Fpkdiv6
 
-  # r1 = (a0 + a1) * (b0 + b1) - v0 - v1
-  f.c1.c0.sum(l0.a, l0.b)                           # x0 + y0
-  f.c1.c1.sum(l1.a, l1.b)                           # x1 + y1
-  f2x.prod2x_disjoint(f.c1.c0, l0.c, f.c1.c1, l1.c) # (x0 + y0, z0)(x1 + y1, z1) = (a0 + a1) * (b0 + b1)
-  f2x.diff2xMod(f2x, V0)
-  f2x.c0.diff2xMod(f2x.c0, V1)
-  f.c1.redc2x(f2x)
+  # r0 = a0 b0 = (x, z).(x', z')
+  # r00 = xx' + βzz'
+  # r01 = (x+z)(x'+z') - zz' - xx'
+  V.prod2x(ZZ, NonResidue)
+  V.sum2xMod(V, XX)
+  f.c0.c0.redc2x(V)
+  
+  t0.sum(l0.a, l0.c)
+  t1.sum(l1.a, l1.c)
+  V.prod2x(t0, t1)
+  V.diff2xMod(V, ZZ)
+  V.diff2xMod(V, XX)
+  f.c0.c1.redc2x(V)
 
-  # r0 = v0
-  f.c0.redc2x(V0)
+  # r10 = zy'+yz' = (x+y)(x'+y') - xx' - yy'
+  # r11 = xy'+yx' = (z+y)(z'+y') - zz' - yy'
+  t0.sum(l0.a, l0.b)
+  t1.sum(l1.a, l1.b)
+  V.prod2x(t0, t1)
+  V.diff2xMod(V, XX)
+  V.diff2xMod(V, YY)
+  f.c1.c0.redc2x(V)
 
-  # r2 = v1
-  f.c2.c0.redc2x(V1)
+  t0.sum(l0.c, l0.b)
+  t1.sum(l1.c, l1.b)
+  V.prod2x(t0, t1)
+  V.diff2xMod(V, ZZ)
+  V.diff2xMod(V, YY)
+  f.c1.c1.redc2x(V)
+
+  # r2 = v2 = (y, 0).(y', 0) = (yy', 0)
+  f.c2.c0.redc2x(YY)
   f.c2.c1.setZero()
-
-func mul_sparse_by_abcdefghij00*[Fpk](
-       a: var Fpk, b: Fpk) =
-  ## Sparse multiplication of an 𝔽pᵏ element
-  ## by a sparse 𝔽pᵏ element abcdefghij00
-  ## with each representing 𝔽pᵏᐟ⁶ coordinate
-
-  static:
-    doAssert Fpk.C.getSexticTwist() == D_Twist
-    doAssert a is CubicExt, "This assumes 𝔽pᵏ as a cubic extension of 𝔽pᵏᐟ³"
-    doAssert a.c0 is QuadraticExt, "This assumes 𝔽pᵏᐟ³ as a quadratic extension of 𝔽pᵏᐟ⁶"
-
-  type Fpkdiv3 = typeof(a.c0)
-
-  # In the following equations (taken from cubic extension implementation)
-  # b0 = (b00, b01)
-  # b1 = (b10, b11)
-  # b2 = (b20,   0)
-  #
-  # v0 = a0 b0 = (f00, f01).(b00, b01)
-  # v1 = a1 b1 = (f10, f11).(b10, b11)
-  # v2 = a2 b2 = (f20, f21).(b20,   0)
-  #
-  # r₀ = ξ ((a₁ + a₂)(b₁ + b₂) - v₁ - v₂) + v₀
-  # r₁ = (a₀ + a₁) * (b₀ + b₁) - v₀ - v₁ + β v₂
-  # r₂ = (a₀ + a₂) * (b₀ + b₂) - v₀ - v₂ + v₁
-
-  var V0 {.noInit.}, V1 {.noInit.}, V2 {.noinit.}: doublePrec(Fpkdiv3)
-  var t0 {.noInit.}, t1 {.noInit.}: Fpkdiv3
-  var f2x{.noInit.}, g2x {.noinit.}: doublePrec(Fpkdiv3)
-
-  V0.prod2x(a.c0, b.c0)
-  V1.prod2x(a.c1, b.c1)
-  V2.mul2x_sparse_by_x0(a.c2, b.c2)
-
-  # r₀ = ξ ((a₁ + a₂)(b₁ + b₂) - v₁ - v₂) + v₀
-  t0.sum(a.c1, a.c2)
-  t1.c0.sum(b.c1.c0, b.c2.c0)             # b₂ = (b20,   0)
-  f2x.prod2x_disjoint(t0, t1.c0, b.c1.c1) # (a₁ + a₂).(b₁ + b₂)
-  f2x.diff2xMod(f2x, V1)
-  f2x.diff2xMod(f2x, V2)
-  f2x.prod2x(f2x, NonResidue)
-  f2x.sum2xMod(f2x, V0)
-
-  # r₁ = (a₀ + a₁) * (b₀ + b₁) - v₀ - v₁
-  t0.sum(a.c0, a.c1)
-  t1.sum(b.c0, b.c1)
-  g2x.prod2x(t0, t1)
-  g2x.diff2xMod(g2x, V0)
-  g2x.diff2xMod(g2x, V1)
-
-  # r₂ = (a₀ + a₂) and (b₀ + b₂)
-  t0.sum(a.c0, a.c2)
-  t1.c0.sum(b.c0.c0, b.c2.c0)             # b₂ = (b20,   0)
-
-  # Now we are aliasing free
-
-  # r₀ = ξ ((a₁ + a₂)(b₁ + b₂) - v₁ - v₂) + v₀
-  a.c0.redc2x(f2x)
-
-  # r₁ = (a₀ + a₁) * (b₀ + b₁) - v₀ - v₁ + β v₂
-  f2x.prod2x(V2, NonResidue)
-  g2x.sum2xMod(g2x, f2x)
-  a.c1.redc2x(g2x)
-
-  # r₂ = (a₀ + a₂) * (b₀ + b₂) - v₀ - v₂ + v₁
-  f2x.prod2x_disjoint(t0, t1.c0, b.c0.c1)
-  f2x.diff2xMod(f2x, V0)
-  f2x.diff2xMod(f2x, V2)
-  f2x.sum2xMod(f2x, V1)
-  a.c2.redc2x(f2x)
 
 # M-Twist
 # ------------------------------------------------------------
@@ -769,16 +966,16 @@ func prod_zx00y0_zx00y0_into_abcd00efghij*[Fpk, Fpkdiv6](f: var Fpk, l0, l1: Lin
   ## Multiply 2 lines together
   ## The result is sparse in f.c1.c1
   # In the following equations (taken from cubic extension implementation)
-  # a0 = (z0, x0)
+  # a0 = ( z,  x)
   # a1 = ( 0,  0)
-  # a2 = (y0,  0)
-  # b0 = (z1, x1)
+  # a2 = ( y,  0)
+  # b0 = (z', x')
   # b1 = ( 0,  0)
-  # b2 = (y0,  0)
+  # b2 = (y',  0)
   #
-  # v0 = a0 b0 = (z0, x0).(z1, x1)
-  # v1 = a1 b1 = ( 0,  0).( 0,  0)
-  # v2 = a2 b2 = (y0,  0).(y1,  0)
+  # v0 = a0 b0 = (z, x).(z', x')
+  # v1 = a1 b1 = (0, 0).(0 , 0)
+  # v2 = a2 b2 = (y, 0).(y', 0)
   #
   # r0 = ξ ((a1 + a2) * (b1 + b2) - v1 - v2) + v0
   #    = ξ (a1 b2 + a2 b2 - v2) + v0
@@ -788,36 +985,221 @@ func prod_zx00y0_zx00y0_into_abcd00efghij*[Fpk, Fpkdiv6](f: var Fpk, l0, l1: Lin
   #    = ξ v2
   # r2 = (a0 + a2) * (b0 + b2) - v0 - v2 + v1
   #    = (a0 + a2) * (b0 + b2) - v0 - v2
+  #
+  # r2 is computed in 3 extra muls in the base field 𝔽pᵏᐟ⁶ (Karatsuba product in quadratic field)
+  # 
+  # If we dive deeper:
+  # r2 = a0b2 + a2b0 = (zy'+yz', xy'+x'y)      (Schoolbook - 4 muls)
+  # r20 = zy'+z'y = (z+y)(z'+y') - zz' - yy'
+  # r21 = xy'+x'y = (x+y)(x'+y') - xx' - yy'
+  #
+  # The substraction are all computed as part of v0 and v2
+  # hence r2 can be compute for 2 extra muls in 𝔽pᵏᐟ⁶ only
 
   static:
     doAssert Fpk.C.getSexticTwist() == M_Twist
     doAssert f is CubicExt, "This assumes 𝔽pᵏ as a cubic extension of 𝔽pᵏᐟ³"
     doAssert f.c0 is QuadraticExt, "This assumes 𝔽pᵏᐟ³ as a quadratic extension of 𝔽pᵏᐟ⁶"
 
-  type Fpkdiv3 = typeof(f.c0)
+  var XX{.noInit.}, YY{.noInit.}, ZZ{.noInit.}: doublePrec(Fpkdiv6)
 
-  var V0{.noInit.}, f2x{.noInit.}: doublePrec(Fpkdiv3)
-  var V2{.noInit.}: doublePrec(Fpkdiv6)
+  XX.prod2x(l0.a, l1.a)
+  YY.prod2x(l0.b, l1.b)
+  ZZ.prod2x(l0.c, l1.c)
 
-  V0.prod2x_disjoint(l0.c, l0.a, l1.c, l1.a) # a0 b0 = (z0, x0).(z1, x1)
-  V2.prod2x(l0.b, l1.b)                      # a2 b2 = (y0,  0).(y1,  0)
+  var V{.noInit.}: doublePrec(Fpkdiv6)  
+  var t0{.noInit.}, t1{.noInit.}: Fpkdiv6
 
-  # r2 = (a0 + a2) * (b0 + b2) - v0 - v2
-  f.c2.c0.sum(l0.b, l0.c)                           # y0 + z0
-  f.c2.c1.sum(l1.b, l1.c)                           # y1 + z1
-  f2x.prod2x_disjoint(f.c2.c0, l0.a, f.c2.c1, l1.a) # (z0 + y0, x0).(z1 + y1, x1) = (a0 + a2) * (b0 + b2)
-  f2x.diff2xMod(f2x, V0)                            # (a0 + a2) * (b0 + b2) - v0
-  f2x.c0.diff2xMod(f2x.c0, V2)                      # (a0 + a2) * (b0 + b2) - v0 - v2
-  f.c2.redc2x(f2x)
+  # r0 = a0 b0 = (z, x).(z', x')
+  # r00 = zz' + βxx'
+  # r01 = (z+x)(z'+x') - zz' - xx'
+  V.prod2x(XX, NonResidue)
+  V.sum2xMod(V, ZZ)
+  f.c0.c0.redc2x(V)
+  
+  t0.sum(l0.c, l0.a)
+  t1.sum(l1.c, l1.a)
+  V.prod2x(t0, t1)
+  V.diff2xMod(V, ZZ)
+  V.diff2xMod(V, XX)
+  f.c0.c1.redc2x(V)
 
-  # r1 = ξ v2
-  f.c1.c1.redc2x(V2)
+  # r1 = ξ v2 = ξ(y, 0).(y', 0) = ξ(yy', 0) = (0, yy')
   f.c1.c0.setZero()
+  f.c1.c1.redc2x(YY)
 
-  # r0 = v0
-  f.c0.redc2x(V0)
+  # r20 = zy'+z'y = (z+y)(z'+y') - zz' - yy'
+  # r21 = xy'+x'y = (x+y)(x'+y') - xx' - yy'
+  t0.sum(l0.c, l0.b)
+  t1.sum(l1.c, l1.b)
+  V.prod2x(t0, t1)
+  V.diff2xMod(V, ZZ)
+  V.diff2xMod(V, YY)
+  f.c2.c0.redc2x(V)
 
-func mul_sparse_by_abcd00efghij*[Fpk](
+  t0.sum(l0.a, l0.b)
+  t1.sum(l1.a, l1.b)
+  V.prod2x(t0, t1)
+  V.diff2xMod(V, XX)
+  V.diff2xMod(V, YY)
+  f.c2.c1.redc2x(V)
+
+# ############################################################
+#
+#                    Sparse multiplication         
+#
+# ############################################################
+
+func mul_sparse_by_abcdefghij00_quad_over_cube*[Fpk](
+       a: var Fpk, b: Fpk) =
+  ## Sparse multiplication of an 𝔽pᵏ element
+  ## by a sparse 𝔽pᵏ element abcdefghij00
+  ## with each representing 𝔽pᵏᐟ⁶ coordinate
+
+  static:
+    doAssert Fpk.C.getSexticTwist() == D_Twist
+    doAssert a is QuadraticExt, "This assumes 𝔽pᵏ as a quadratic extension of 𝔽pᵏᐟ²"
+    doAssert a.c0 is CubicExt, "This assumes 𝔽pᵏᐟ² as a cubic extension of 𝔽pᵏᐟ⁶"
+
+  type Fpkdiv2 = typeof(a.c0)
+
+  # In the following equations (taken from quadratic extension implementation)
+  # b0 = (b00, b01, b02)
+  # b1 = (b10, b11,   0)
+  #
+  # v0 = a0 b0 = (a00, a01, a02).(b00, b01, b02)
+  # v1 = a1 b1 = (a10, a11, a12).(b10, b11,   0)
+  #
+  # r0 = a0 b0 + ξ a1 b1
+  # r1 = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1
+
+  when Fpk.C.has_large_field_elem():
+    var v0 {.noInit.}, v1 {.noInit.}, v2 {.noInit.}: Fpkdiv2
+
+    # v2 <- (a0 + a1)(b0 + b1)
+    v0.sum(a.c0, a.c1)
+    v1.c0.sum(b.c0.c0, b.c1.c0)
+    v1.c1.sum(b.c0.c1, b.c1.c1)
+    v1.c2 = b.c0.c2
+    v2.prod(v0, v1)
+
+    # v0 <- a0 b0
+    # v1 <- a1 b1
+    v0.prod(a.c0, b.c0)
+    v1.mul_sparse_by_xy0(a.c1, b.c1.c0, b.c1.c1)
+
+    # aliasing: a and b unneeded now
+
+    # r1 <- (a0 + a1)(b0 + b1) - a0 b0 - a1 b1
+    a.c1.diff(v2, v0)
+    a.c1 -= v1
+
+    # r0 <- a0 b0 + β a1 b1
+    v1 *= NonResidue
+    a.c0.sum(v0, v1)
+
+  else: # Lazy reduction
+    var V0 {.noInit.}, V1 {.noInit.}, V2 {.noInit.}: doublePrec(Fpkdiv2)
+    var t0{.noInit.}, t1{.noInit.}: Fpkdiv2
+
+    # v2 <- (a0 + a1)(b0 + b1)
+    t0.sum(a.c0, a.c1)
+    t1.c0.sum(b.c0.c0, b.c1.c0)
+    t1.c1.sum(b.c0.c1, b.c1.c1)
+    t1.c2 = b.c0.c2
+    V2.prod2x(t0, t1)
+
+    # v0 <- a0 b0
+    # v1 <- a1 b1
+    V0.prod2x(a.c0, b.c0)
+    V1.mul2x_sparse_by_xy0(a.c1, b.c1.c0, b.c1.c1)
+
+    # r1 <- (a0 + a1)(b0 + b1) - a0 b0 - a1 b1
+    V2.diff2xMod(V2, V0)
+    V2.diff2xMod(V2, V1)
+    a.c1.redc2x(V2)
+
+    # r0 <- a0 b0 + β a1 b1
+    V1.prod2x(V1, NonResidue)
+    V2.sum2xMod(V0, V1)
+    a.c0.redc2x(V2)
+
+func mul_sparse_by_abcdef00ghij_quad_over_cube*[Fpk](
+       a: var Fpk, b: Fpk) =
+  ## Sparse multiplication of an 𝔽pᵏ element
+  ## by a sparse 𝔽pᵏ element abcdef00ghij
+  ## with each representing 𝔽pᵏᐟ⁶ coordinate
+
+  static:
+    doAssert Fpk.C.getSexticTwist() == M_Twist
+    doAssert a is QuadraticExt, "This assumes 𝔽pᵏ as a quadratic extension of 𝔽pᵏᐟ²"
+    doAssert a.c0 is CubicExt, "This assumes 𝔽pᵏᐟ² as a cubic extension of 𝔽pᵏᐟ⁶"
+
+  type Fpkdiv2 = typeof(a.c0)
+
+  # In the following equations (taken from quadratic extension implementation)
+  # b0 = (b00, b01, b02)
+  # b1 = (  0, b11, b12)
+  #
+  # v0 = a0 b0 = (a00, a01, a02).(b00, b01, b02)
+  # v1 = a1 b1 = (a10, a11, a12).(  0, b11, b12)
+  #
+  # r0 = a0 b0 + ξ a1 b1
+  # r1 = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1
+
+  when Fpk.C.has_large_field_elem():
+    var v0 {.noInit.}, v1 {.noInit.}, v2 {.noInit.}: Fpkdiv2
+
+    # v2 <- (a0 + a1)(b0 + b1)
+    v0.sum(a.c0, a.c1)
+    v1.c0 = b.c0.c0
+    v1.c1.sum(b.c0.c1, b.c1.c1)
+    v1.c2.sum(b.c0.c2, b.c1.c2)
+    v2.prod(v0, v1)
+
+    # v0 <- a0 b0
+    # v1 <- a1 b1
+    v0.prod(a.c0, b.c0)
+    v1.mul_sparse_by_0yz(a.c1, b.c1.c1, b.c1.c2)
+
+    # aliasing: a and b unneeded now
+
+    # r1 <- (a0 + a1)(b0 + b1) - a0 b0 - a1 b1
+    a.c1.diff(v2, v0)
+    a.c1 -= v1
+
+    # r0 <- a0 b0 + β a1 b1
+    v1 *= NonResidue
+    a.c0.sum(v0, v1)
+
+  else: # Lazy reduction
+    var V0 {.noInit.}, V1 {.noInit.}, V2 {.noInit.}: doublePrec(Fpkdiv2)
+    var t0{.noInit.}, t1{.noInit.}: Fpkdiv2
+
+    # v2 <- (a0 + a1)(b0 + b1)
+    t0.sum(a.c0, a.c1)
+    t1.c0 = b.c0.c0
+    t1.c1.sum(b.c0.c1, b.c1.c1)
+    t1.c2.sum(b.c0.c2, b.c1.c2)
+    V2.prod2x(t0, t1)
+
+    # v0 <- a0 b0
+    # v1 <- a1 b1
+    V0.prod2x(a.c0, b.c0)
+    V1.mul2x_sparse_by_0yz(a.c1, b.c1.c1, b.c1.c2)
+
+    # r1 <- (a0 + a1)(b0 + b1) - a0 b0 - a1 b1
+    V2.diff2xMod(V2, V0)
+    V2.diff2xMod(V2, V1)
+    a.c1.redc2x(V2)
+
+    # r0 <- a0 b0 + β a1 b1
+    V1.prod2x(V1, NonResidue)
+    V2.sum2xMod(V0, V1)
+    a.c0.redc2x(V2)
+
+
+func mul_sparse_by_abcd00efghij_cube_over_quad*[Fpk](
        a: var Fpk, b: Fpk) =
   ## Sparse multiplication of an 𝔽pᵏ element
   ## by a sparse 𝔽pᵏ element abcd00efghij
@@ -888,15 +1270,92 @@ func mul_sparse_by_abcd00efghij*[Fpk](
   f2x.sum2xMod(f2x, V1)
   a.c2.redc2x(f2x)
 
+func mul_sparse_by_abcdefghij00_cube_over_quad*[Fpk](
+       a: var Fpk, b: Fpk) =
+  ## Sparse multiplication of an 𝔽pᵏ element
+  ## by a sparse 𝔽pᵏ element abcdefghij00
+  ## with each representing 𝔽pᵏᐟ⁶ coordinate
+
+  static:
+    doAssert Fpk.C.getSexticTwist() == D_Twist
+    doAssert a is CubicExt, "This assumes 𝔽pᵏ as a cubic extension of 𝔽pᵏᐟ³"
+    doAssert a.c0 is QuadraticExt, "This assumes 𝔽pᵏᐟ³ as a quadratic extension of 𝔽pᵏᐟ⁶"
+
+  type Fpkdiv3 = typeof(a.c0)
+
+  # In the following equations (taken from cubic extension implementation)
+  # b0 = (b00, b01)
+  # b1 = (b10, b11)
+  # b2 = (b20,   0)
+  #
+  # v0 = a0 b0 = (f00, f01).(b00, b01)
+  # v1 = a1 b1 = (f10, f11).(b10, b11)
+  # v2 = a2 b2 = (f20, f21).(b20,   0)
+  #
+  # r₀ = ξ ((a₁ + a₂)(b₁ + b₂) - v₁ - v₂) + v₀
+  # r₁ = (a₀ + a₁) * (b₀ + b₁) - v₀ - v₁ + β v₂
+  # r₂ = (a₀ + a₂) * (b₀ + b₂) - v₀ - v₂ + v₁
+
+  var V0 {.noInit.}, V1 {.noInit.}, V2 {.noinit.}: doublePrec(Fpkdiv3)
+  var t0 {.noInit.}, t1 {.noInit.}: Fpkdiv3
+  var f2x{.noInit.}, g2x {.noinit.}: doublePrec(Fpkdiv3)
+
+  V0.prod2x(a.c0, b.c0)
+  V1.prod2x(a.c1, b.c1)
+  V2.mul2x_sparse_by_x0(a.c2, b.c2)
+
+  # r₀ = ξ ((a₁ + a₂)(b₁ + b₂) - v₁ - v₂) + v₀
+  t0.sum(a.c1, a.c2)
+  t1.c0.sum(b.c1.c0, b.c2.c0)             # b₂ = (b20,   0)
+  f2x.prod2x_disjoint(t0, t1.c0, b.c1.c1) # (a₁ + a₂).(b₁ + b₂)
+  f2x.diff2xMod(f2x, V1)
+  f2x.diff2xMod(f2x, V2)
+  f2x.prod2x(f2x, NonResidue)
+  f2x.sum2xMod(f2x, V0)
+
+  # r₁ = (a₀ + a₁) * (b₀ + b₁) - v₀ - v₁
+  t0.sum(a.c0, a.c1)
+  t1.sum(b.c0, b.c1)
+  g2x.prod2x(t0, t1)
+  g2x.diff2xMod(g2x, V0)
+  g2x.diff2xMod(g2x, V1)
+
+  # r₂ = (a₀ + a₂) and (b₀ + b₂)
+  t0.sum(a.c0, a.c2)
+  t1.c0.sum(b.c0.c0, b.c2.c0)             # b₂ = (b20,   0)
+
+  # Now we are aliasing free
+
+  # r₀ = ξ ((a₁ + a₂)(b₁ + b₂) - v₁ - v₂) + v₀
+  a.c0.redc2x(f2x)
+
+  # r₁ = (a₀ + a₁) * (b₀ + b₁) - v₀ - v₁ + β v₂
+  f2x.prod2x(V2, NonResidue)
+  g2x.sum2xMod(g2x, f2x)
+  a.c1.redc2x(g2x)
+
+  # r₂ = (a₀ + a₂) * (b₀ + b₂) - v₀ - v₂ + v₁
+  f2x.prod2x_disjoint(t0, t1.c0, b.c0.c1)
+  f2x.diff2xMod(f2x, V0)
+  f2x.diff2xMod(f2x, V2)
+  f2x.sum2xMod(f2x, V1)
+  a.c2.redc2x(f2x)
+
 # Dispatch
 # ------------------------------------------------------------
 
 func mul_by_line*[Fpk, Fpkdiv6](f: var Fpk, line: Line[Fpkdiv6]) {.inline.} =
   ## Multiply an element of Fp12 by a sparse line function
   when Fpk.C.getSexticTwist() == D_Twist:
-    f.mul_sparse_by_line_acb000(line)
+    when f is CubicExt:
+      f.mul_sparse_by_line_acb000(line)
+    else:
+      f.mul_sparse_by_line_a00bc0(line)
   elif Fpk.C.getSexticTwist() == M_Twist:
-    f.mul_sparse_by_line_ca00b0(line)
+    when f is CubicExt:
+      f.mul_sparse_by_line_ca00b0(line)
+    else:
+      f.mul_sparse_by_line_cb00a0(line)
   else:
     {.error: "A line function assumes that the curve has a twist".}
 
@@ -905,18 +1364,30 @@ func prod_from_2_lines*[Fpk, Fpkdiv6](f: var Fpk, line0, line1: Line[Fpkdiv6]) {
   ## and store the result in f
   ## f is overwritten
   when Fpk.C.getSexticTwist() == D_Twist:
-    f.prod_xzy000_xzy000_into_abcdefghij00(line0, line1)
+    when f is CubicExt:
+      f.prod_xzy000_xzy000_into_abcdefghij00(line0, line1)
+    else:
+      f.prod_x00yz0_x00yz0_into_abcdefghij00(line0, line1)
   elif Fpk.C.getSexticTwist() == M_Twist:
-    f.prod_zx00y0_zx00y0_into_abcd00efghij(line0, line1)
+    when f is CubicExt:
+      f.prod_zx00y0_zx00y0_into_abcd00efghij(line0, line1)
+    else:
+      f.prod_zy00x0_zy00x0_into_abcdef00ghij(line0, line1)
   else:
     {.error: "A line function assumes that the curve has a twist".}
 
 func mul_by_prod_of_2_lines*[Fpk](f: var Fpk, g: Fpk) {.inline.} =
   ## Multiply f by the somewhat sparse product of 2 lines
   when Fpk.C.getSexticTwist() == D_Twist:
-    f.mul_sparse_by_abcdefghij00(g)
+    when f is CubicExt:
+      f.mul_sparse_by_abcdefghij00_cube_over_quad(g)
+    else:
+      f.mul_sparse_by_abcdefghij00_quad_over_cube(g)
   elif Fpk.C.getSexticTwist() == M_Twist:
-    f.mul_sparse_by_abcd00efghij(g)
+    when f is CubicExt:
+      f.mul_sparse_by_abcd00efghij_cube_over_quad(g)
+    else:
+      f.mul_sparse_by_abcdef00ghij_quad_over_cube(g)
   else:
     {.error: "A line function assumes that the curve has a twist".}
 

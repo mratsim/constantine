@@ -215,7 +215,7 @@ func cyclotomic_inv*[FT](r: var FT, a: FT) {.meter.} =
   ## consequently `a` MUST be unitary
   r.conj(a)
 
-func cyclotomic_square*[FT](r: var FT, a: FT) {.meter.} =
+func cyclotomic_square_cube_over_quad(r: var CubicExt, a: CubicExt) =
   ## Square `a` into `r`
   ## `a` MUST be in the cyclotomic subgroup
   ## consequently `a` MUST be unitary
@@ -224,47 +224,147 @@ func cyclotomic_square*[FT](r: var FT, a: FT) {.meter.} =
   # Granger, Scott, 2009
   # https://eprint.iacr.org/2009/565.pdf
 
+  # Cubic extension field
+  # A = 3a² − 2 ̄a
+  # B = 3 √i c² + 2 ̄b
+  # C = 3b² − 2 ̄c
+  var v0{.noInit.}, v1{.noInit.}, v2{.noInit.}: typeof(a.c0)
+
+  template a0: untyped = a.c0.c0
+  template a1: untyped = a.c0.c1
+  template a2: untyped = a.c1.c0
+  template a3: untyped = a.c1.c1
+  template a4: untyped = a.c2.c0
+  template a5: untyped = a.c2.c1
+
+  v0.square(a.c0)
+  v1.square(a.c1)
+  v2.square(a.c2)
+
+  # From here on, r aliasing with a is only for the first operation
+  # and only read/write the exact same coordinates
+  
+  # 3v₀₀ - 2a₀
+  r.c0.c0.diff(v0.c0, a0)
+  r.c0.c0.double()
+  r.c0.c0 += v0.c0
+  # 3v₀₁ + 2a₁
+  r.c0.c1.sum(v0.c1, a1)
+  r.c0.c1.double()
+  r.c0.c1 += v0.c1
+  # 3v₁₀ - 2a₄
+  r.c2.c0.diff(v1.c0, a4)
+  r.c2.c0.double()
+  r.c2.c0 += v1.c0
+  # 3v₁₁ + 2b₅
+  r.c2.c1.sum(v1.c1, a5)
+  r.c2.c1.double()
+  r.c2.c1 += v1.c1
+
+  # Now B = 3 √i c² + 2 ̄b
+  # beware of mul by non residue: √i v₂ = ξv₂₁ + v₂₀√i
+
+  # 3 (√i c²)₀ + 2a₂
+  v2.c1 *= NonResidue
+  r.c1.c0.sum(v2.c1, a2)
+  r.c1.c0.double()
+  r.c1.c0 += v2.c1
+
+  # 3 (√i c²)₁ - 2a₃
+  r.c1.c1.diff(v2.c0, a3)
+  r.c1.c1.double()
+  r.c1.c1 += v2.c0
+
+func cyclotomic_square_quad_over_cube[F](r: var QuadraticExt[F], a: QuadraticExt[F]) =
+  ## Square `a` into `r`
+  ## `a` MUST be in the cyclotomic subgroup
+  ## consequently `a` MUST be unitary
+  # Mapping between towering schemes
+  # --------------------------------
+  #
+  # canonical <=> cubic over quadratic <=> quadratic over cubic
+  #    c₀     <=>        a₀            <=>            b₀
+  #    c₁     <=>        a₂            <=>            b₃
+  #    c₂     <=>        a₄            <=>            b₁
+  #    c₃     <=>        a₁            <=>            b₄
+  #    c₄     <=>        a₃            <=>            b₂
+  #    c₅     <=>        a₅            <=>            b₅
+  #
+  # Hence, this formula for a cubic extension field
+  #   A = 3a² − 2 ̄a
+  #   B = 3 √i c² + 2 ̄b
+  #   C = 3b² − 2 ̄c
+  #
+  # becomes
+  #   A = (b₀, b₄) = 3(b₀, b₄)² - 2(b₀,-b₄)
+  #   B = (b₃, b₂) = 3 √i(b₁, b₅)² + 2(b₃, -b₂)
+  #   C = (b₁, b₅) = 3(b₃, b₂)² - 2(b₁, -b₅)
+  #
+  # with
+  #   v₀ = (b₀, b₄) = (a.c0.c0, a.c1.c1)
+  #   v₁ = (b₃, b₂) = (a.c1.c0, a.c0.c2)
+  #   v₂ = (b₁, b₅) = (a.c0.c1, a.c1.c2)
+  var v0{.noInit.}, v1{.noInit.}, v2{.noInit.}: QuadraticExt[typeof(r.c0.c0)]
+  
+  template b0: untyped = a.c0.c0
+  template b1: untyped = a.c0.c1
+  template b2: untyped = a.c0.c2
+  template b3: untyped = a.c1.c0
+  template b4: untyped = a.c1.c1
+  template b5: untyped = a.c1.c2
+  
+  v0.square_disjoint(b0, b4)
+  v1.square_disjoint(b3, b2)
+  v2.square_disjoint(b1, b5)
+  
+  # From here on, r aliasing with a is only for the first operation
+  # and only read/write the exact same coordinates
+  
+  # 3v₀₀ - 2b₀
+  r.c0.c0.diff(v0.c0, b0)
+  r.c0.c0.double()
+  r.c0.c0 += v0.c0
+  # 3v₁₀ - 2b₁
+  r.c0.c1.diff(v1.c0, b1)
+  r.c0.c1.double()
+  r.c0.c1 += v1.c0
+  # 3v₀₁ + 2b₄
+  r.c1.c1.sum(v0.c1, b4)
+  r.c1.c1.double()
+  r.c1.c1 += v0.c1
+  # 3v₁₁ + 2b₅
+  r.c1.c2.sum(v1.c1, b5)
+  r.c1.c2.double()
+  r.c1.c2 += v1.c1
+
+  # Now B = (b₃, b₂) = 3 √i(b₁, b₅)² + 2(b₃, -b₂)
+  # beware of mul by non residue: √i v₂ = ξv₂₁ + v₂₀√i
+
+  # 3 (√i (b₁, b₅)²)₀ + 2b₃
+  v2.c1 *= NonResidue
+  r.c1.c0.sum(v2.c1, b3)
+  r.c1.c0.double()
+  r.c1.c0 += v2.c1
+
+  # 3 (√i (b₁, b₅)²)₁ - 2b₃
+  r.c0.c2.diff(v2.c0, b2)
+  r.c0.c2.double()
+  r.c0.c2 += v2.c0
+
+func cyclotomic_square*[FT](r: var FT, a: FT) {.inline, meter.} =
+  ## Square `a` into `r`
+  ## `a` MUST be in the cyclotomic subgroup
+  ## consequently `a` MUST be unitary
+  #
+  # Faster Squaring in the Cyclotomic Subgroup of Sixth Degree Extensions
+  # Granger, Scott, 2009
+  # https://eprint.iacr.org/2009/565.pdf
   when a is CubicExt:
-    # Cubic extension field
-    # A = 3a² − 2 ̄a
-    # B = 3 √i c² + 2 ̄b
-    # C = 3b² − 2 ̄c
-    var t0{.noinit.}, t1{.noinit.}: typeof(a.c0)
-
-    t0.square(a.c0)     # t0 = a²
-    t1.double(t0)       # t1 = 2a²
-    t1 += t0            # t1 = 3a²
-
-    t0.conj(a.c0)       # t0 =  ̄a
-    t0.double()         # t0 =  2 ̄a
-    r.c0.diff(t1, t0)   # r0 = 3a² − 2 ̄a
-
-    # Aliasing: a.c0 unused
-
-    t0.square(a.c2)     # t0 = c²
-    t0 *= NonResidue    # t0 = √i c²
-    t1.double(t0)       # t1 = 2 √i c²
-    t0 += t1            # t0 = 3 √i c²
-
-    t1.square(a.c1)     # t1 = b²
-
-    r.c1.conj(a.c1)     # r1 = ̄b
-    r.c1.double()       # r1 = 2 ̄b
-    r.c1 += t0          # r1 = 3 √i c² + 2 ̄b
-
-    # Aliasing: a.c1 unused
-
-    t0.double(t1)       # t0 = 2b²
-    t0 += t1            # t0 = 3b²
-
-    t1.conj(a.c2)       # r2 =  ̄c
-    t1.double()         # r2 =  2 ̄c
-    r.c2.diff(t0, t1)   # r2 = 3b² - 2 ̄c
-
+    r.cyclotomic_square_cube_over_quad(a)
   else:
-    {.error: "Not implemented".}
+    r.cyclotomic_square_quad_over_cube(a)
 
-func cyclotomic_square*[FT](a: var FT) {.meter.} =
+func cyclotomic_square*[FT](a: var FT) {.inline.} =
   ## Square `a` into `r`
   ## `a` MUST be in the cyclotomic subgroup
   ## consequently `a` MUST be unitary
@@ -560,7 +660,10 @@ func fromFpk*[Fpkdiv6, Fpk](
       {.error: "a must be a sextic extension field".}
   elif a is QuadraticExt:
     when a.c0 is CubicExt:
-      {.error: "𝔽pᵏᐟ⁶ -> 𝔽pᵏᐟ³ -> 𝔽pᵏ towering (quadratic over cubic) is not implemented.".}
+      g.g2 = a.c1.c0
+      g.g3 = a.c0.c2
+      g.g4 = a.c0.c1
+      g.g5 = a.c1.c2
     else:
       {.error: "a must be a sextic extension field".}
   else:
@@ -584,7 +687,12 @@ func asFpk*[Fpkdiv6, Fpk](
       {.error: "a must be a sextic extension field".}
   elif a is QuadraticExt:
     when a.c0 is CubicExt:
-      {.error: "𝔽pᵏᐟ⁶ -> 𝔽pᵏᐟ³ -> 𝔽pᵏ towering (quadratic over cubic) is not implemented.".}
+      a.c0.c0 = g0
+      a.c0.c1 = g.g4
+      a.c0.c2 = g.g3
+      a.c1.c0 = g.g2
+      a.c1.c1 = g1
+      a.c1.c2 = g.g5
     else:
       {.error: "a must be a sextic extension field".}
   else:
@@ -598,9 +706,6 @@ func cyclotomic_exp_compressed*[N: static int, Fpk](
   ## Exponentiation is done least-signigicant bits first
   ## `squarings` represents the number of squarings
   ## to do before the next multiplication.
-  ## 
-  ## `accumSquarings` stores the accumulated squarings so far
-  ## iff N != 1
   
   type Fpkdiv6 = typeof(a.c0.c0)
 
