@@ -205,6 +205,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Message Authentication Code
   # ----------------------------------------------------------
   ("tests/t_mac_poly1305.nim", false),
+  ("tests/t_mac_hmac_sha256.nim", false),
 
   # Protocols
   # ----------------------------------------------------------
@@ -228,7 +229,8 @@ const skipSanitizers = [
   "tests/math/t_ec_sage_bls12_381.nim",
   "tests/t_hash_to_field.nim",
   "tests/t_hash_to_curve.nim",
-  "tests/t_hash_to_curve_random.nim"
+  "tests/t_hash_to_curve_random.nim",
+  "tests/t_mac_poly1305.nim",
 ]
 
 when defined(windows):

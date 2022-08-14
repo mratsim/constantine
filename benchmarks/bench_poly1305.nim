@@ -34,7 +34,7 @@ proc benchPoly1305_constantine[T](msg: openarray[T], msgComment: string, iters: 
            0x4a, 0xbf, 0xf6, 0xaf, 0x41, 0x49, 0xf5, 0x1b
     ]
   bench("Poly1305 - Constantine - " & msgComment, msg.len, iters):
-    poly1305.auth(tag, msg, ikm)
+    poly1305.mac(tag, msg, ikm)
 
 when isMainModule:
   proc main() =
