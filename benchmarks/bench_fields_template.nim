@@ -18,7 +18,7 @@ import
   ../constantine/math/config/curves,
   ../constantine/math/arithmetic,
   ../constantine/math/extension_fields,
-  ../constantine/math/curves/zoo_square_roots,
+  ../constantine/math/constants/zoo_square_roots,
   # Helpers
   ../helpers/prng_unsafe,
   ./bench_blueprint
@@ -46,6 +46,20 @@ macro fixFieldDisplay(T: typedesc): untyped =
 template bench(op: string, T: typedesc, iters: int, body: untyped): untyped =
   measure(iters, startTime, stopTime, startClk, stopClk, body)
   report(op, fixFieldDisplay(T), startTime, stopTime, startClk, stopClk, iters)
+
+func random_unsafe(rng: var RngState, a: var FpDbl) =
+  ## Initialize a standalone Double-Width field element
+  ## we don't reduce it modulo p², this is only used for benchmark
+  let aHi = rng.random_unsafe(Fp[FpDbl.C])
+  let aLo = rng.random_unsafe(Fp[FpDbl.C])
+  for i in 0 ..< aLo.mres.limbs.len:
+    a.limbs2x[i] = aLo.mres.limbs[i]
+  for i in 0 ..< aHi.mres.limbs.len:
+    a.limbs2x[aLo.mres.limbs.len+i] = aHi.mres.limbs[i]
+
+func random_unsafe(rng: var RngState, a: var ExtensionField2x) =
+  for i in 0 ..< a.coords.len:
+    rng.random_unsafe(a.coords[i])
 
 proc addBench*(T: typedesc, iters: int) =
   var x = rng.random_unsafe(T)
@@ -92,20 +106,38 @@ proc sqrBench*(T: typedesc, iters: int) =
   bench("Squaring", T, iters):
     r.square(x)
 
-proc mulUnrBench*(T: typedesc, iters: int) =
+proc mul2xUnrBench*(T: typedesc, iters: int) =
   var r: doublePrec(T)
   let x = rng.random_unsafe(T)
   let y = rng.random_unsafe(T)
   preventOptimAway(r)
-  bench("Multiplication unreduced", T, iters):
+  bench("Multiplication 2x unreduced", T, iters):
     r.prod2x(x, y)
 
-proc sqrUnrBench*(T: typedesc, iters: int) =
+proc sqr2xUnrBench*(T: typedesc, iters: int) =
   var r: doublePrec(T)
   let x = rng.random_unsafe(T)
   preventOptimAway(r)
-  bench("Squaring unreduced", T, iters):
+  bench("Squaring 2x unreduced", T, iters):
     r.square2x(x)
+
+proc rdc2xBench*(T: typedesc, iters: int) =
+  var r: T
+  var t: doublePrec(T)
+  rng.random_unsafe(t)
+  preventOptimAway(r)
+  bench("Redc 2x", T, iters):
+    r.redc2x(t)
+
+proc sumprodBench*(T: typedesc, iters: int) =
+  var r: T
+  let a = rng.random_unsafe(T)
+  let b = rng.random_unsafe(T)
+  let u = rng.random_unsafe(T)
+  let v = rng.random_unsafe(T)
+  preventOptimAway(r)
+  bench("Linear combination", T, iters):
+    r.sumprod([a, b], [u, v])
 
 proc toBigBench*(T: typedesc, iters: int) =
   var r: matchingBigInt(T.C)

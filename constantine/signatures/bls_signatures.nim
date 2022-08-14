@@ -8,7 +8,7 @@
 
 import
     ../math/[ec_shortweierstrass, pairings],
-    ../math/curves/zoo_generators,
+    ../math/constants/zoo_generators,
     ../hash_to_curve/hash_to_curve,
     ../hashes
 

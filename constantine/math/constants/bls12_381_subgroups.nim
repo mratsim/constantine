@@ -15,7 +15,7 @@ import
   ../ec_shortweierstrass,
   ../io/io_bigints,
   ../isogenies/frobenius,
-  ../curves/zoo_endomorphisms
+  ../constants/zoo_endomorphisms
 
 func pow_bls12_381_abs_x[ECP: ECP_ShortW[Fp[BLS12_381], G1] or
        ECP_ShortW[Fp2[BLS12_381], G2]](

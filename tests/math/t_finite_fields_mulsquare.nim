@@ -28,7 +28,7 @@ echo "test_finite_fields_mulsquare xoshiro512** seed: ", seed
 static: doAssert defined(testingCurves), "This modules requires the -d:testingCurves compile option"
 
 proc sanity(C: static Curve) =
-  test "Squaring 0,1,2 with "& $Curve(C) & " [FastSquaring = " & $(Fp[C].getSpareBits() >= 2) & "]":
+  test "Squaring 0,1,2 with " & $Curve(C) & " [FastSquaring = " & $(Fp[C].getSpareBits() >= 2) & "]":
         block: # 0² mod
           var n: Fp[C]
 
@@ -310,3 +310,74 @@ suite "Modular squaring - bugs highlighted by property-based testing":
     check:
       bool(a2mul == expected)
       bool(a2sqr == expected)
+
+
+proc random_sumprod(C: static Curve, N: static int) =
+  template sumprod_test(random_instancer: untyped) =
+    block:
+      var a: array[N, Fp[C]]
+      var b: array[N, Fp[C]]
+
+      for i in 0 ..< N:
+        a[i] = rng.random_instancer(Fp[C])
+        b[i] = rng.random_instancer(Fp[C])
+
+      var r, r_ref, t: Fp[C]
+
+      r_ref.prod(a[0], b[0])
+      for i in 1 ..< N:
+        t.prod(a[i], b[i])
+        r_ref += t
+
+      r.sumprod(a, b)
+
+      doAssert bool(r == r_ref)
+
+  template sumProdMax() =
+    block:
+      var a: array[N, Fp[C]]
+      var b: array[N, Fp[C]]
+
+      for i in 0 ..< N:
+        a[i].setMinusOne()
+        b[i].setMinusOne()
+  
+      var r, r_ref, t: Fp[C]
+
+      r_ref.prod(a[0], b[0])
+      for i in 1 ..< N:
+        t.prod(a[i], b[i])
+        r_ref += t
+
+      r.sumprod(a, b)
+
+      doAssert bool(r == r_ref)
+
+  sumprod_test(random_unsafe)
+  sumprod_test(randomHighHammingWeight)
+  sumprod_test(random_long01Seq)
+  sumProdMax()
+
+suite "Random sum products is consistent with naive " & " [" & $WordBitwidth & "-bit mode]":
+  
+  const MaxLength = 8
+  test "Random sum products mod P-224]":
+    for _ in 0 ..< Iters:
+      staticFor N, 2, MaxLength:
+        random_sumprod(P224, N)
+  test "Random sum products mod BN254_Nogami]":
+    for _ in 0 ..< Iters:
+      staticFor N, 2, MaxLength:
+        random_sumprod(BN254_Nogami, N)
+  test "Random sum products mod BN254_Snarks]":
+    for _ in 0 ..< Iters:
+      staticFor N, 2, MaxLength:
+        random_sumprod(BN254_Snarks, N)
+  test "Random sum products mod BLS12_377]":
+    for _ in 0 ..< Iters:
+      staticFor N, 2, MaxLength:
+        random_sumprod(BLS12_377, N)
+  test "Random sum products mod BLS12_381]":
+    for _ in 0 ..< Iters:
+      staticFor N, 2, MaxLength:
+        random_sumprod(BLS12_381, N)

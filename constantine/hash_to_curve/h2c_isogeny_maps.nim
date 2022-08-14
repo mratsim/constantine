@@ -10,7 +10,7 @@ import
   # Internals
   ../platforms/abstractions,
   ../math/[arithmetic, extension_fields],
-  ../math/curves/zoo_hash_to_curve,
+  ../math/constants/zoo_hash_to_curve,
   ../math/elliptic/[
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,

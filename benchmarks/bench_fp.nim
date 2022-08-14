@@ -11,7 +11,7 @@ import
   ../constantine/math/config/curves,
   ../constantine/math/arithmetic,
   ../constantine/math/io/io_bigints,
-  ../constantine/math/curves/zoo_square_roots,
+  ../constantine/math/constants/zoo_square_roots,
   # Helpers
   ../helpers/static_for,
   ./bench_fields_template
@@ -52,8 +52,11 @@ proc main() =
     mulBench(Fp[curve], Iters)
     sqrBench(Fp[curve], Iters)
     smallSeparator()
-    mulUnrBench(Fp[curve], Iters)
-    sqrUnrBench(Fp[curve], Iters)
+    mul2xUnrBench(Fp[curve], Iters)
+    sqr2xUnrBench(Fp[curve], Iters)
+    rdc2xBench(Fp[curve], Iters)
+    smallSeparator()
+    sumprodBench(Fp[curve], Iters)
     smallSeparator()
     toBigBench(Fp[curve], Iters)
     toFieldBench(Fp[curve], Iters)

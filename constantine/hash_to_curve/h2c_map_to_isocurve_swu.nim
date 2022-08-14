@@ -11,7 +11,7 @@ import
   ../platforms/abstractions,
   ../math/config/curves,
   ../math/[arithmetic, extension_fields],
-  ../math/curves/zoo_hash_to_curve,
+  ../math/constants/zoo_hash_to_curve,
   ./h2c_utilities
 
 # ############################################################

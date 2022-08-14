@@ -149,6 +149,26 @@ func setMinusOne*(a: var FF) =
   #       Check if the compiler optimizes it away
   a.mres = FF.getMontyPrimeMinus1()
 
+
+func neg*(r: var FF, a: FF) {.meter.} =
+  ## Negate modulo p
+  when UseASM_X86_64:
+    negmod_asm(r.mres.limbs, a.mres.limbs, FF.fieldMod().limbs)
+  else:
+    # If a = 0 we need r = 0 and not r = M
+    # as comparison operator assume unicity
+    # of the modular representation.
+    # Also make sure to handle aliasing where r.addr = a.addr
+    var t {.noInit.}: FF
+    let isZero = a.isZero()
+    discard t.mres.diff(FF.fieldMod(), a.mres)
+    t.mres.csetZero(isZero)
+    r = t
+
+func neg*(a: var FF) {.meter.} =
+  ## Negate modulo p
+  a.neg(a)
+
 func `+=`*(a: var FF, b: FF) {.meter.} =
   ## In-place addition modulo p
   when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
@@ -223,24 +243,14 @@ func square*(r: var FF, a: FF, skipFinalSub: static bool = false) {.meter.} =
   ## Squaring modulo p
   r.mres.squareMont(a.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits(), skipFinalSub)
 
-func neg*(r: var FF, a: FF) {.meter.} =
-  ## Negate modulo p
-  when UseASM_X86_64:
-    negmod_asm(r.mres.limbs, a.mres.limbs, FF.fieldMod().limbs)
-  else:
-    # If a = 0 we need r = 0 and not r = M
-    # as comparison operator assume unicity
-    # of the modular representation.
-    # Also make sure to handle aliasing where r.addr = a.addr
-    var t {.noInit.}: FF
-    let isZero = a.isZero()
-    discard t.mres.diff(FF.fieldMod(), a.mres)
-    t.mres.csetZero(isZero)
-    r = t
-
-func neg*(a: var FF) {.meter.} =
-  ## Negate modulo p
-  a.neg(a)
+func sumprod*[N: static int](r: var FF, a, b: array[N, FF], skipFinalSub: static bool = false) {.meter.} =
+  ## Compute r <- ⅀aᵢ.bᵢ (mod M) (sum of products)
+  # We rely on FF and Bigints having the same repr to avoid array copies
+  r.mres.sumprodMont(
+    cast[ptr array[N, typeof(a[0].mres)]](a.unsafeAddr)[],
+    cast[ptr array[N, typeof(b[0].mres)]](b.unsafeAddr)[],
+    FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits(), skipFinalSub
+  )
 
 # ############################################################
 #

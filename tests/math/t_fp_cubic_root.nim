@@ -10,7 +10,7 @@ import  std/unittest,
         ../../constantine/platforms/abstractions,
         ../../constantine/math/arithmetic,
         ../../constantine/math/config/curves,
-        ../../constantine/math/curves/zoo_endomorphisms
+        ../../constantine/math/constants/zoo_endomorphisms
 
 echo "\n------------------------------------------------------\n"
 

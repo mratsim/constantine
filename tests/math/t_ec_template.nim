@@ -27,7 +27,7 @@ import
     ec_twistededwards_projective,
     ec_scalar_mul],
   ../../constantine/math/io/[io_bigints, io_fields, io_ec],
-  ../../constantine/math/curves/zoo_subgroups,
+  ../../constantine/math/constants/zoo_subgroups,
   # Test utilities
   ../../helpers/prng_unsafe,
   ./support/ec_reference_scalar_mult

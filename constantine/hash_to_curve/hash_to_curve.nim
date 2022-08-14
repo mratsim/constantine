@@ -11,7 +11,7 @@ import
   ../platforms/abstractions,
   ../math/config/curves,
   ../math/[arithmetic, extension_fields],
-  ../math/curves/[zoo_hash_to_curve, zoo_subgroups],
+  ../math/constants/[zoo_hash_to_curve, zoo_subgroups],
   ../math/ec_shortweierstrass,
   ./h2c_hash_to_field,
   ./h2c_map_to_isocurve_swu,

@@ -19,14 +19,14 @@ import
   ../constantine/math/arithmetic,
   ../constantine/math/extension_fields,
   ../constantine/math/ec_shortweierstrass,
-  ../constantine/math/curves/zoo_subgroups,
+  ../constantine/math/constants/zoo_subgroups,
   ../constantine/math/pairing/[
     cyclotomic_subgroup,
     lines_eval,
     pairing_bls12,
     pairing_bn
   ],
-  ../constantine/math/curves/zoo_pairings,
+  ../constantine/math/constants/zoo_pairings,
   # Helpers
   ../helpers/prng_unsafe,
   ./bench_blueprint

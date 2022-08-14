@@ -12,7 +12,7 @@ import
   ../arithmetic,
   ../extension_fields,
   ../io/[io_fields, io_extfields],
-  ../curves/zoo_constants
+  ../constants/zoo_constants
 
 # ############################################################
 #

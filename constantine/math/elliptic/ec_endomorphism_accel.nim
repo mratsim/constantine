@@ -12,7 +12,7 @@ import
   # Internal
   ../../platforms/abstractions,
   ../config/[curves, type_bigint],
-  ../curves/zoo_endomorphisms,
+  ../constants/zoo_endomorphisms,
   ../arithmetic,
   ../extension_fields,
   ../isogenies/frobenius,

@@ -33,7 +33,7 @@ proc spaces*(num: int): string =
   for i in 0 ..< num:
     result[i] = ' '
 
-func appendHex*(accum: var string, f: Fp2 or Fp4 or Fp6 or Fp12, indent = 0, order: static Endianness = bigEndian) =
+func appendHex*(accum: var string, f: ExtensionField, indent = 0, order: static Endianness = bigEndian) =
   ## Hex accumulator
   accum.add static($f.typeof.genericHead() & '(')
   staticFor i, 0, f.coords.len:
@@ -46,7 +46,7 @@ func appendHex*(accum: var string, f: Fp2 or Fp4 or Fp6 or Fp12, indent = 0, ord
       accum.appendHex(f.coords[i], indent+2, order)
   accum.add ")"
 
-func toHex*(f: Fp2 or Fp4 or Fp6 or Fp12, indent = 0, order: static Endianness = bigEndian): string =
+func toHex*(f: ExtensionField, indent = 0, order: static Endianness = bigEndian): string =
   ## Stringify a tower field element to hex.
   ## Note. Leading zeros are not removed.
   ## Result is prefixed with 0x

@@ -393,8 +393,8 @@ func smulAccNoCarry*(r: var DSWord, a, b: SignedSecretWord) {.inline.}=
   r.lo = SignedSecretWord UV[0]
   r.hi = SignedSecretWord UV[1]
 
-func slincombAccNoCarry*(r: var DSWord, a, u, b, v: SignedSecretWord) {.inline.}=
-  ## Accumulated linear combination
+func ssumprodAccNoCarry*(r: var DSWord, a, u, b, v: SignedSecretWord) {.inline.}=
+  ## Accumulated sum of products
   ## (_, hi, lo) += a*u + b*v
   ## This assumes no overflowing
   var carry: Carry

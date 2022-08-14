@@ -12,7 +12,7 @@ import
   ../arithmetic,
   ../extension_fields,
   ../io/io_bigints,
-  ../curves/zoo_endomorphisms,
+  ../constants/zoo_endomorphisms,
   ./ec_endomorphism_accel
 
 # ############################################################

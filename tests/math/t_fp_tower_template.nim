@@ -260,11 +260,11 @@ proc runTowerTests*[N](
         test(ExtField(ExtDegree, curve)):
           r.prod(x, Z)
           doAssert bool(r == Z),
-            "\nExpected zero but got (" & $ExtField(ExtDegree, curve) & "): " & x.toHex()
+            "\nExpected zero but got \n(" & $ExtField(ExtDegree, curve) & "): " & x.toHex()
         test(ExtField(ExtDegree, curve)):
           r.prod(Z, x)
           doAssert bool(r == Z),
-            "\nExpected zero but got (" & $ExtField(ExtDegree, curve) & "): " & x.toHex()
+            "\nExpected zero but got \n(" & $ExtField(ExtDegree, curve) & "): " & x.toHex()
         test(ExtField(ExtDegree, curve)):
           r.prod(x, O)
           doAssert bool(r == x),
@@ -285,7 +285,7 @@ proc runTowerTests*[N](
           rMul.prod(a, a)
           rSqr.square(a)
 
-          doAssert bool(rMul == rSqr), "Failure with a (" & $Field & "): " & a.toHex() & "\n" &
+          doAssert bool(rMul == rSqr), "Failure with a (" & $Field & "): \nInput:" & a.toHex() & "\n" &
             "Mul: " & rMul.toHex() & "\n" &
             "Sqr: " & rSqr.toHex() & "\n"
 
@@ -306,7 +306,7 @@ proc runTowerTests*[N](
           rSqr.square(a)
           rNegSqr.square(na)
 
-          doAssert bool(rSqr == rNegSqr), "Failure with a (" & $Field & "): " & a.toHex() & "\n" &
+          doAssert bool(rSqr == rNegSqr), "Failure with a \n(" & $Field & "): " & a.toHex() & "\n" &
             "Sqr:    " & rSqr.toHex() & "\n" &
             "SqrNeg: " & rNegSqr.toHex() & "\n"
 
