@@ -217,6 +217,15 @@ proc reduce2x*(T: typedesc, iters: int) =
   bench("Redc 2x", $T & " <- " & $doublePrec(T), iters):
     r.redc2x(t)
 
+proc reduce2xViaDivision*(T: typedesc, iters: int) =
+  
+  const bits2x = 2 * T.C.getCurveBitWidth()
+  var r: matchingBigInt(T.C)
+  let t = rng.random_unsafe(BigInt[bits2x])
+
+  bench("Reduction via division", $T & " <- " & $doublePrec(T), iters):
+    r.reduce(t, T.fieldMod())
+
 proc main() =
   separator()
   sum(Fp[BLS12_381], iters = 10_000_000)
@@ -237,6 +246,8 @@ proc main() =
   square2xBench(768, 384, iters = 10_000_000)
   reduce2x(Fp[BN254_Snarks], iters = 10_000_000)
   reduce2x(Fp[BLS12_381], iters = 10_000_000)
+  reduce2xViaDivision(Fp[BN254_Snarks], iters = 10_000)
+  reduce2xViaDivision(Fp[BLS12_381], iters = 10_000)
   separator()
 
 main()

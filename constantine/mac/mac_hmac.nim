@@ -16,9 +16,11 @@ import
 # https://datatracker.ietf.org/doc/html/rfc2104
 #
 # Test vectors:
-# - https://www.rfc-editor.org/rfc/rfc4231
+# - https://datatracker.ietf.org/doc/html/rfc4231
 # - https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program
 #   - http://csrc.nist.gov/groups/STM/cavp/documents/mac/hmactestvectors.zip
+
+{.push raises: [].} # No exceptions
 
 type HMAC*[H: CryptoHash] = object
   inner: H
@@ -84,7 +86,7 @@ func clear*[H: CryptoHash](ctx: var HMAC[H]) =
   ctx.outer.clear()
 
 func mac*[T: char|byte, H: CryptoHash, N: static int](
-       _: type HMAC[H],
+       Hash: type HMAC[H],
        tag: var array[N, byte],
        message: openArray[T],
        secretKey: openarray[T],

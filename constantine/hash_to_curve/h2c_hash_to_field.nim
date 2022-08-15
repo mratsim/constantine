@@ -116,7 +116,7 @@ func expandMessageXMD*[B1, B2, B3: byte|char, len_in_bytes: static int](
   let ell = ceilDiv(output.len.uint, DigestSize.uint)
   const zPad = default(array[BlockSize, byte])
   var l_i_b_str0 {.noInit.}: array[3, byte]
-  l_i_b_str0.asBytesBE(output.len.uint16, pos = 0)
+  l_i_b_str0.dumpRawInt(output.len.uint16, cursor = 0, bigEndian)
   l_i_b_str0[2] = 0
 
   var b0 {.noinit, align: DigestSize.}: array[DigestSize, byte]

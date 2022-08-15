@@ -207,6 +207,10 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_mac_poly1305.nim", false),
   ("tests/t_mac_hmac_sha256.nim", false),
 
+  # KDF
+  # ----------------------------------------------------------
+  ("tests/t_kdf_hkdf.nim", false),
+
   # Protocols
   # ----------------------------------------------------------
   ("tests/t_ethereum_evm_precompiles.nim", false),
@@ -231,6 +235,8 @@ const skipSanitizers = [
   "tests/t_hash_to_curve.nim",
   "tests/t_hash_to_curve_random.nim",
   "tests/t_mac_poly1305.nim",
+  "tests/t_mac_hmac.nim",
+  "tests/t_kdf_hkdf.nim"
 ]
 
 when defined(windows):
