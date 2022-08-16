@@ -328,7 +328,7 @@ func clear*(ctx: var Poly1305_CTX) =
   ctx.msgLen = 0
   ctx.bufIdx = 0
 
-func auth*[T: char|byte](
+func mac*[T: char|byte](
        _: type poly1305,
        tag: var array[16, byte],
        message: openArray[T],
@@ -345,11 +345,11 @@ func auth*[T: char|byte](
   if clearMem:
     ctx.clear()
 
-func auth*[T: char|byte](
+func mac*[T: char|byte](
        _: type poly1305,
        message: openArray[T],
        nonReusedKey: array[32, byte],
        clearMem = false): array[16, byte]{.noInit.}=
   ## Produce an authentication tag from a message
   ## and a preshared unique non-reused secret key
-  poly1305.auth(result, message, nonReusedKey, clearMem)
+  poly1305.mac(result, message, nonReusedKey, clearMem)

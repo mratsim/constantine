@@ -276,11 +276,11 @@ func hashBuffer(ctx: var Sha256Context) =
 # Public API
 # ----------------------------------------------------------------
 
-func digestSize*(H: type sha256): int =
+template digestSize*(H: type sha256): int =
   ## Returns the output size in bytes
   32
 
-func internalBlockSize*(H: type sha256): int =
+template internalBlockSize*(H: type sha256): int =
   ## Returns the byte size of the hash function ingested blocks
   64
 

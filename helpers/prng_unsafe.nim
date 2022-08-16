@@ -9,6 +9,7 @@
 import
   ../constantine/platforms/abstractions,
   ../constantine/math/arithmetic,
+  ../constantine/math/arithmetic/limbs_montgomery,
   ../constantine/math/config/curves,
   ../constantine/math/elliptic/[
     ec_shortweierstrass_affine,
@@ -135,20 +136,38 @@ func sample_unsafe*[T](rng: var RngState, src: openarray[T]): T =
 # - A bias is a result that is consistently off from the true value i.e.
 #   a deviation of an estimate from the quantity under observation
 
+func reduceViaMont[N: static int, F](reduced: var array[N, SecretWord], unreduced: array[2*N, SecretWord], _: typedesc[F]) =
+  #  reduced.reduce(unreduced, FF.fieldMod())
+  #  ----------------------------------------
+  #  With R ≡ (2^WordBitWidth)^numWords (mod p)
+  #  redc2xMont(a) computes a/R (mod p)
+  #  mulMont(a, b) computes a.b.R⁻¹ (mod p)
+  #  Hence with b = R², this computes a (mod p).
+  #  Montgomery reduction works word by word, quadratically
+  #  so for 384-bit prime (6-words on 64-bit CPUs), so 6*6 = 36, twice for multiplication and reduction
+  #  significantly faster than division which works bit-by-bit due to constant-time requirement
+  reduced.redc2xMont(unreduced,                          # a/R
+                     F.fieldMod().limbs, F.getNegInvModWord(), 
+                     F.getSpareBits())
+  reduced.mulMont(reduced, F.getR2modP().limbs,          # (a/R) * R² * R⁻¹ ≡ a (mod p)
+                  F.fieldMod().limbs, F.getNegInvModWord(), 
+                  F.getSpareBits())
+
+func random_unsafe(rng: var RngState, a: var Limbs) =
+  ## Initialize standalone limbs
+  for i in 0 ..< a.len:
+    a[i] = SecretWord(rng.next())
+
 func random_unsafe(rng: var RngState, a: var BigInt) =
   ## Initialize a standalone BigInt
-  for i in 0 ..< a.limbs.len:
-    a.limbs[i] = SecretWord(rng.next())
+  rng.random_unsafe(a.limbs)
 
 func random_unsafe(rng: var RngState, a: var FF) =
   ## Initialize a Field element
   ## Unsafe: for testing and benchmarking purposes only
-  var reduced, unreduced{.noInit.}: typeof(a.mres)
+  var unreduced{.noinit.}: Limbs[2*a.mres.limbs.len]
   rng.random_unsafe(unreduced)
-
-  # Note: a simple modulo will be biaised but it's simple and "fast"
-  reduced.reduce(unreduced, FF.fieldMod())
-  a.mres.getMont(reduced, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord(), FF.getSpareBits())
+  a.mres.limbs.reduceViaMont(unreduced, FF)
 
 func random_unsafe(rng: var RngState, a: var ExtensionField) =
   ## Recursively initialize an extension Field element
@@ -162,24 +181,27 @@ func random_word_highHammingWeight(rng: var RngState): BaseType =
   for _ in 0 ..< numZeros:
     result = result.clearBit rng.random_unsafe(WordBitWidth)
 
+func random_highHammingWeight(rng: var RngState, a: var Limbs) =
+  ## Initialize standalone limbs
+  ## with high Hamming weight
+  ## to have a higher probability of triggering carries
+  for i in 0 ..< a.len:
+    a[i] = SecretWord rng.random_word_highHammingWeight()
+
 func random_highHammingWeight(rng: var RngState, a: var BigInt) =
   ## Initialize a standalone BigInt
   ## with high Hamming weight
   ## to have a higher probability of triggering carries
-  for i in 0 ..< a.limbs.len:
-    a.limbs[i] = SecretWord rng.random_word_highHammingWeight()
+  rng.random_highHammingWeight(a.limbs)
 
 func random_highHammingWeight(rng: var RngState, a: var FF) =
   ## Recursively initialize a BigInt (part of a field) or Field element
   ## Unsafe: for testing and benchmarking purposes only
   ## The result will have a high Hamming Weight
   ## to have a higher probability of triggering carries
-  var reduced, unreduced{.noInit.}: typeof(a.mres)
+  var unreduced{.noinit.}: Limbs[2*a.mres.limbs.len]
   rng.random_highHammingWeight(unreduced)
-
-  # Note: a simple modulo will be biaised but it's simple and "fast"
-  reduced.reduce(unreduced, FF.fieldMod())
-  a.mres.getMont(reduced, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord(), FF.getSpareBits())
+  a.mres.limbs.reduceViaMont(unreduced, FF)
 
 func random_highHammingWeight(rng: var RngState, a: var ExtensionField) =
   ## Recursively initialize an extension Field element
@@ -215,16 +237,23 @@ func random_long01Seq(rng: var RngState, a: var BigInt) =
   else:
     a.unmarshal(buf, littleEndian)
 
+func random_long01Seq(rng: var RngState, a: var Limbs) =
+  ## Initialize standalone limbs
+  ## It is skewed towards producing strings of 1111... and 0000
+  ## to trigger edge cases
+  const bits = a.len*WordBitWidth
+
+  var t{.noInit.}: BigInt[bits]
+  rng.random_long01Seq(t)
+  a = t.limbs
+
 func random_long01Seq(rng: var RngState, a: var FF) =
   ## Recursively initialize a BigInt (part of a field) or Field element
   ## It is skewed towards producing strings of 1111... and 0000
   ## to trigger edge cases
-  var reduced, unreduced{.noInit.}: typeof(a.mres)
+  var unreduced{.noinit.}: Limbs[2*a.mres.limbs.len]
   rng.random_long01Seq(unreduced)
-
-  # Note: a simple modulo will be biaised but it's simple and "fast"
-  reduced.reduce(unreduced, FF.fieldMod())
-  a.mres.getMont(reduced, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord(), FF.getSpareBits())
+  a.mres.limbs.reduceViaMont(unreduced, FF)
 
 func random_long01Seq(rng: var RngState, a: var ExtensionField) =
   ## Recursively initialize an extension Field element

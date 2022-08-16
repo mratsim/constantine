@@ -205,11 +205,17 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Message Authentication Code
   # ----------------------------------------------------------
   ("tests/t_mac_poly1305.nim", false),
+  ("tests/t_mac_hmac_sha256.nim", false),
+
+  # KDF
+  # ----------------------------------------------------------
+  ("tests/t_kdf_hkdf.nim", false),
 
   # Protocols
   # ----------------------------------------------------------
   ("tests/t_ethereum_evm_precompiles.nim", false),
   ("tests/t_blssig_pop_on_bls12381_g2.nim", false),
+  ("tests/t_ethereum_eip2333_bls12381_key_derivation.nim", false),
 ]
 
 # For temporary (hopefully) investigation that can only be reproduced in CI
@@ -228,7 +234,11 @@ const skipSanitizers = [
   "tests/math/t_ec_sage_bls12_381.nim",
   "tests/t_hash_to_field.nim",
   "tests/t_hash_to_curve.nim",
-  "tests/t_hash_to_curve_random.nim"
+  "tests/t_hash_to_curve_random.nim",
+  "tests/t_mac_poly1305.nim",
+  "tests/t_mac_hmac.nim",
+  "tests/t_kdf_hkdf.nim",
+  "tests/t_ethereum_eip2333_bls12381_key_derivation"
 ]
 
 when defined(windows):

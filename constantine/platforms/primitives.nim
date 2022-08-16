@@ -54,8 +54,8 @@ func setZero*[N](a: var array[N, SomeNumber]){.inline.} =
   for i in 0 ..< a.len:
     a[i] = 0
 
-func copy*[N: static int, T: byte|char](
-       dst: var array[N, byte],
+func copy*[T: byte|char](
+       dst: var openArray[byte],
        dStart: SomeInteger,
        src: openArray[T],
        sStart: SomeInteger,
@@ -69,5 +69,6 @@ func copy*[N: static int, T: byte|char](
     doAssert 0 <= dStart and dStart+len <= dst.len.uint, "dStart: " & $dStart & ", dStart+len: " & $(dStart+len) & ", dst.len: " & $dst.len
     doAssert 0 <= sStart and sStart+len <= src.len.uint, "sStart: " & $sStart & ", sStart+len: " & $(sStart+len) & ", src.len: " & $src.len
 
+  {.push checks: off.} # No OverflowError or IndexError allowed
   for i in 0 ..< len:
     dst[dStart + i] = byte src[sStart + i]
