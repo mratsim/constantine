@@ -14,7 +14,7 @@
 extern "C" {
 #endif
 
-#if defined{__SIZE_TYPE__} && defined(__PTRDIFF_TYPE__)
+#if defined(__SIZE_TYPE__) && defined(__PTRDIFF_TYPE__)
 typedef __SIZE_TYPE__    size_t;
 typedef __PTRDIFF_TYPE__ ptrdiff_t;
 #else
@@ -57,7 +57,8 @@ secret_bool ctt_pallas_fr_is_minus_one(const pallas_fr* a);
 void        ctt_pallas_fr_set_zero(pallas_fr* a);
 void        ctt_pallas_fr_set_one(pallas_fr* a);
 void        ctt_pallas_fr_set_minus_one(pallas_fr* a);
-void        ctt_pallas_fr_neg(pallas_fr* a);
+void        ctt_pallas_fr_neg(pallas_fr* r, const pallas_fr* a);
+void        ctt_pallas_fr_neg_in_place(pallas_fr* a);
 void        ctt_pallas_fr_sum(pallas_fr* r, const pallas_fr* a, const pallas_fr* b);
 void        ctt_pallas_fr_add_in_place(pallas_fr* a, const pallas_fr* b);
 void        ctt_pallas_fr_diff(pallas_fr* r, const pallas_fr* a, const pallas_fr* b);
@@ -88,7 +89,8 @@ secret_bool ctt_pallas_fp_is_minus_one(const pallas_fp* a);
 void        ctt_pallas_fp_set_zero(pallas_fp* a);
 void        ctt_pallas_fp_set_one(pallas_fp* a);
 void        ctt_pallas_fp_set_minus_one(pallas_fp* a);
-void        ctt_pallas_fp_neg(pallas_fp* a);
+void        ctt_pallas_fp_neg(pallas_fp* r, const pallas_fp* a);
+void        ctt_pallas_fp_neg_in_place(pallas_fp* a);
 void        ctt_pallas_fp_sum(pallas_fp* r, const pallas_fp* a, const pallas_fp* b);
 void        ctt_pallas_fp_add_in_place(pallas_fp* a, const pallas_fp* b);
 void        ctt_pallas_fp_diff(pallas_fp* r, const pallas_fp* a, const pallas_fp* b);
@@ -128,7 +130,8 @@ secret_bool ctt_vesta_fr_is_minus_one(const vesta_fr* a);
 void        ctt_vesta_fr_set_zero(vesta_fr* a);
 void        ctt_vesta_fr_set_one(vesta_fr* a);
 void        ctt_vesta_fr_set_minus_one(vesta_fr* a);
-void        ctt_vesta_fr_neg(vesta_fr* a);
+void        ctt_vesta_fr_neg(vesta_fr* r, const vesta_fr* a);
+void        ctt_vesta_fr_neg_in_place(vesta_fr* a);
 void        ctt_vesta_fr_sum(vesta_fr* r, const vesta_fr* a, const vesta_fr* b);
 void        ctt_vesta_fr_add_in_place(vesta_fr* a, const vesta_fr* b);
 void        ctt_vesta_fr_diff(vesta_fr* r, const vesta_fr* a, const vesta_fr* b);
@@ -159,7 +162,8 @@ secret_bool ctt_vesta_fp_is_minus_one(const vesta_fp* a);
 void        ctt_vesta_fp_set_zero(vesta_fp* a);
 void        ctt_vesta_fp_set_one(vesta_fp* a);
 void        ctt_vesta_fp_set_minus_one(vesta_fp* a);
-void        ctt_vesta_fp_neg(vesta_fp* a);
+void        ctt_vesta_fp_neg(vesta_fp* r, const vesta_fp* a);
+void        ctt_vesta_fp_neg_in_place(vesta_fp* a);
 void        ctt_vesta_fp_sum(vesta_fp* r, const vesta_fp* a, const vesta_fp* b);
 void        ctt_vesta_fp_add_in_place(vesta_fp* a, const vesta_fp* b);
 void        ctt_vesta_fp_diff(vesta_fp* r, const vesta_fp* a, const vesta_fp* b);

@@ -36,10 +36,20 @@ collectBindings(cBindings):
 
 # Write header
 when isMainModule and defined(CttGenerateHeaders):
-  import std/os
+  import std/[os, strformat]
   
   proc main() =
-    echo "Running bindings generation for " & getAppFilename().extractFilename()
+    # echo "Running bindings generation for " & getAppFilename().extractFilename()
+
+    var dir = "."
+    if paramCount() == 1:
+      dir = paramStr(1)
+    elif paramCount() > 1:
+      let exeName = getAppFilename().extractFilename()
+      echo &"Usage: {exeName} <optional directory to save header to>"
+      echo "Found more than one parameter"
+      quit 1
+
 
     var header: string
     header = genBuiltinsTypes()
@@ -76,7 +86,6 @@ when isMainModule and defined(CttGenerateHeaders):
     header = genHeader("PASTA", header)
     header = genHeaderLicense() & header
 
-    writeFile("constantine_pasta.h", header)
-
+    writeFile(dir/"constantine_pasta.h", header)
 
   main()

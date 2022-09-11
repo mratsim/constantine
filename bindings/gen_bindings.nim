@@ -48,7 +48,10 @@ template genBindingsField*(Field: untyped) =
   func `ctt _ Field _ set_minus_one`(a: var Field) =
     a.setMinusOne()
   # --------------------------------------------------------------------------------------
-  func `ctt _ Field _ neg`(a: var Field) =
+  func `ctt _ Field _ neg`(r: var Field, a: Field) =
+    r.neg(a)
+
+  func `ctt _ Field _ neg_in_place`(a: var Field) =
     a.neg()
 
   func `ctt _ Field _ sum`(r: var Field, a, b: Field) =

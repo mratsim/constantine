@@ -197,21 +197,27 @@ jobs:
           nimble refresh --verbose -y
           nimble install --verbose -y gmp stew jsony asynctools
 
-      - name: Run Constantine tests (UNIX with Assembler)
+      - name: Run Constantine tests (UNIX with Assembly)
         if: runner.os != 'Windows' && matrix.target.BACKEND == 'ASM'
         shell: bash
         run: |
           cd constantine
+          nimble bindings      --verbose
+          nimble test_bindings --verbose
           nimble test_parallel --verbose
-      - name: Run Constantine tests (UNIX no Assembler)
+      - name: Run Constantine tests (UNIX no Assembly)
         if: runner.os != 'Windows' && matrix.target.BACKEND == 'NO_ASM'
         shell: bash
         run: |
           cd constantine
+          nimble bindings             --verbose
+          nimble test_bindings        --verbose
           nimble test_parallel_no_asm --verbose
-      - name: Run Constantine tests (Windows no Assembler)
+      - name: Run Constantine tests (Windows no Assembly)
         if: runner.os == 'Windows' && matrix.target.BACKEND == 'NO_ASM'
         shell: msys2 {0}
         run: |
           cd constantine
+          nimble bindings             --verbose
+          nimble test_bindings        --verbose
           nimble test_parallel_no_asm --verbose

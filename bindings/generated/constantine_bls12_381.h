@@ -14,7 +14,7 @@
 extern "C" {
 #endif
 
-#if defined{__SIZE_TYPE__} && defined(__PTRDIFF_TYPE__)
+#if defined(__SIZE_TYPE__) && defined(__PTRDIFF_TYPE__)
 typedef __SIZE_TYPE__    size_t;
 typedef __PTRDIFF_TYPE__ ptrdiff_t;
 #else
@@ -56,7 +56,8 @@ secret_bool ctt_bls12381_fr_is_minus_one(const bls12381_fr* a);
 void        ctt_bls12381_fr_set_zero(bls12381_fr* a);
 void        ctt_bls12381_fr_set_one(bls12381_fr* a);
 void        ctt_bls12381_fr_set_minus_one(bls12381_fr* a);
-void        ctt_bls12381_fr_neg(bls12381_fr* a);
+void        ctt_bls12381_fr_neg(bls12381_fr* r, const bls12381_fr* a);
+void        ctt_bls12381_fr_neg_in_place(bls12381_fr* a);
 void        ctt_bls12381_fr_sum(bls12381_fr* r, const bls12381_fr* a, const bls12381_fr* b);
 void        ctt_bls12381_fr_add_in_place(bls12381_fr* a, const bls12381_fr* b);
 void        ctt_bls12381_fr_diff(bls12381_fr* r, const bls12381_fr* a, const bls12381_fr* b);
@@ -87,7 +88,8 @@ secret_bool ctt_bls12381_fp_is_minus_one(const bls12381_fp* a);
 void        ctt_bls12381_fp_set_zero(bls12381_fp* a);
 void        ctt_bls12381_fp_set_one(bls12381_fp* a);
 void        ctt_bls12381_fp_set_minus_one(bls12381_fp* a);
-void        ctt_bls12381_fp_neg(bls12381_fp* a);
+void        ctt_bls12381_fp_neg(bls12381_fp* r, const bls12381_fp* a);
+void        ctt_bls12381_fp_neg_in_place(bls12381_fp* a);
 void        ctt_bls12381_fp_sum(bls12381_fp* r, const bls12381_fp* a, const bls12381_fp* b);
 void        ctt_bls12381_fp_add_in_place(bls12381_fp* a, const bls12381_fp* b);
 void        ctt_bls12381_fp_diff(bls12381_fp* r, const bls12381_fp* a, const bls12381_fp* b);

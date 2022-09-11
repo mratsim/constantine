@@ -327,7 +327,7 @@ template setupBench(): untyped {.dirty.} =
     cc &= " -d:CttASM=false"
   let command = "nim " & lang & cc &
        " -d:danger --verbosity:0 -o:build/bench/" & benchName & "_" & compiler & "_" & (if useAsm: "useASM" else: "noASM") &
-       " --nimcache:nimcache/" & benchName & "_" & compiler & "_" & (if useAsm: "useASM" else: "noASM") &
+       " --nimcache:nimcache/benches/" & benchName & "_" & compiler & "_" & (if useAsm: "useASM" else: "noASM") &
        runFlag & "--hints:off --warnings:off benchmarks/" & benchName & ".nim"
 
 proc runBench(benchName: string, compiler = "", useAsm = true) =
@@ -369,7 +369,7 @@ proc addBenchSet(cmdFile: var string, useAsm = true) =
   for bd in benchDesc:
     cmdFile.buildBenchBatch(bd, useASM = useASM)
 
-proc genBindings(bindingsName, prefixNimMain: string) =
+proc genDynamicBindings(bindingsName, prefixNimMain: string) =
   proc compile(libName: string, flags = "") =
     # -d:danger to avoid boundsCheck, overflowChecks that would trigger exceptions or allocations in a crypto library.
     #           Those are internally guaranteed at compile-time by fixed-sized array
@@ -378,7 +378,9 @@ proc genBindings(bindingsName, prefixNimMain: string) =
     #           In the future, Constantine might use:
     #             - heap-allocated sequences and objects manually managed or managed by destructors for multithreading.
     #             - heap-allocated strings for hex-string or decimal strings
+    echo "Compiling dynamic library: bindings/generated/" & libName
     exec "nim c -f " & flags & " --noMain -d:danger --app:lib --gc:arc " &
+         " --verbosity:0 --hints:off --warnings:off " &
          " --nimMainPrefix:" & prefixNimMain &
          " --out:" & libName & " --outdir:bindings/generated " &
          " --nimcache:nimcache/bindings/" & bindingsName &
@@ -397,11 +399,44 @@ proc genBindings(bindingsName, prefixNimMain: string) =
   else:
     compile "lib" & bindingsName & ".so"
 
+proc genStaticBindings(bindingsName, prefixNimMain: string) =
+  proc compile(libName: string, flags = "") =
+    # -d:danger to avoid boundsCheck, overflowChecks that would trigger exceptions or allocations in a crypto library.
+    #           Those are internally guaranteed at compile-time by fixed-sized array
+    #           and checked at runtime with an appropriate error code if any for user-input.
+    # -gc:arc   Constantine stack allocates everything. Inputs are through unmanaged ptr+len.
+    #           In the future, Constantine might use:
+    #             - heap-allocated sequences and objects manually managed or managed by destructors for multithreading.
+    #             - heap-allocated strings for hex-string or decimal strings
+    echo "Compiling static library:  bindings/generated/" & libName
+    exec "nim c -f " & flags & " --noMain -d:danger --app:staticLib --gc:arc " &
+         " --verbosity:0 --hints:off --warnings:off " &
+         " --nimMainPrefix:" & prefixNimMain &
+         " --out:" & libName & " --outdir:bindings/generated " &
+         " --nimcache:nimcache/bindings/" & bindingsName &
+         " bindings/" & bindingsName & ".nim"
+
+  when defined(windows):
+    compile bindingsName & ".lib"
+
+  elif defined(macosx):
+    compile "lib" & bindingsName & ".a.arm", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
+    compile "lib" & bindingsName & ".a.x64", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
+    exec "lipo bindings/generated/lib" & bindingsName & ".a.arm " &
+             " bindings/generated/lib" & bindingsName & ".a.x64 " &
+             " -output bindings/generated/lib" & bindingsName & ".a -create"
+
+  else:
+    compile "lib" & bindingsName & ".a"
+
 proc genHeaders(bindingsName: string) =
-  exec "nim c -r -d:release -d:CttGenerateHeaders " &
+  echo "Generating header:         bindings/generated/" & bindingsName & ".h"
+  exec "nim c -d:release -d:CttGenerateHeaders " &
+       " --verbosity:0 --hints:off --warnings:off " &
        " --out:" & bindingsName & "_gen_header.exe --outdir:bindings/generated " &
        " --nimcache:nimcache/bindings/" & bindingsName & "_header" &
        " bindings/" & bindingsName & ".nim"
+  exec "bindings/generated/" & bindingsName & "_gen_header.exe bindings/generated"
 
 proc genParallelCmdRunner() =
   exec "nim c --verbosity:0 --hints:off --warnings:off -d:release --out:build/pararun --nimcache:nimcache/pararun helpers/pararun.nim"
@@ -410,10 +445,17 @@ proc genParallelCmdRunner() =
 # ----------------------------------------------------------------
 
 task bindings, "Generate Constantine bindings":
-  genBindings("constantine_bls12_381", "ctt_bls12381_")
+  genDynamicBindings("constantine_bls12_381", "ctt_bls12381_")
+  genStaticBindings("constantine_bls12_381", "ctt_bls12381_")
   genHeaders("constantine_bls12_381")
-  genBindings("constantine_pasta", "ctt_pasta_")
+  echo ""
+  genDynamicBindings("constantine_pasta", "ctt_pasta_")
+  genStaticBindings("constantine_pasta", "ctt_pasta_")
   genHeaders("constantine_pasta")
+
+task test_bindings, "Test C bindings":
+  exec "gcc -Ibindings/generated -Lbindings/generated -lgmp -lconstantine_bls12_381  -o build/t_libctt_bls12_381 tests/bindings/t_libctt_bls12_381.c"
+  exec "LD_LIBRARY_PATH=bindings/generated ./build/t_libctt_bls12_381"
 
 task test, "Run all tests":
   # -d:testingCurves is configured in a *.nim.cfg for convenience

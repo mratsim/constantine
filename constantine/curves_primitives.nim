@@ -13,8 +13,8 @@ import
       ec_shortweierstrass,
       extension_fields,
       arithmetic,
-      curves/zoo_subgroups,
-      curves/zoo_generators
+      constants/zoo_subgroups,
+      constants/zoo_generators
     ],
     ./math/io/[io_bigints, io_fields],
     ./math/isogenies/frobenius,
