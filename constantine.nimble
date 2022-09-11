@@ -454,7 +454,8 @@ task bindings, "Generate Constantine bindings":
   genHeaders("constantine_pasta")
 
 task test_bindings, "Test C bindings":
-  exec "gcc -Ibindings/generated -Lbindings/generated -lgmp -lconstantine_bls12_381  -o build/t_libctt_bls12_381 tests/bindings/t_libctt_bls12_381.c"
+  exec "mkdir -p build"
+  exec "gcc -Ibindings/generated -Lbindings/generated -lgmp -lconstantine_bls12_381 -o build/t_libctt_bls12_381 tests/bindings/t_libctt_bls12_381.c"
   exec "LD_LIBRARY_PATH=bindings/generated ./build/t_libctt_bls12_381"
 
 task test, "Run all tests":
