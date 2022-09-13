@@ -409,7 +409,7 @@ task test, "Run all tests":
   #   runTests(requireGMP = true, test32bit = true)
 
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
-  if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
+  if not defined(windows):
     buildAllBenches()
 
 task test_no_assembler, "Run all tests":
@@ -420,7 +420,7 @@ task test_no_assembler, "Run all tests":
   #   runTests(requireGMP = true, test32bit = true)
 
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
-  if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
+  if not defined(windows):
     buildAllBenches(useASM = false)
 
 task test_no_gmp, "Run tests that don't require GMP":
@@ -431,7 +431,7 @@ task test_no_gmp, "Run tests that don't require GMP":
   #   runTests(requireGMP = true, test32bit = true)
 
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
-  if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
+  if not defined(windows):
     buildAllBenches()
 
 task test_no_gmp_no_assembler, "Run tests that don't require GMP using a pure Nim backend":
@@ -442,7 +442,7 @@ task test_no_gmp_no_assembler, "Run tests that don't require GMP using a pure Ni
   #   runTests(requireGMP = true, test32bit = true)
 
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
-  if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
+  if not defined(windows):
     buildAllBenches()
 
 task test_parallel, "Run all tests in parallel (via GNU parallel)":
@@ -461,7 +461,7 @@ task test_parallel, "Run all tests in parallel (via GNU parallel)":
   # Benchmarks compile
   # ignore Windows 32-bit for the moment
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
-  if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
+  if not defined(windows):
     buildAllBenches()
 
 task test_parallel_no_assembler, "Run all tests (without macro assembler) in parallel (via GNU parallel)":
@@ -470,6 +470,7 @@ task test_parallel_no_assembler, "Run all tests (without macro assembler) in par
   runTests(requireGMP = true, dumpCmdFile = true, testASM = false)
   exec "which parallel"
   exec "head " & buildParallel
+  exec "parallel --help"
   exec "parallel --keep-order --group -a " & buildParallel
 
   # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
@@ -482,7 +483,7 @@ task test_parallel_no_assembler, "Run all tests (without macro assembler) in par
   # Benchmarks compile
   # ignore Windows 32-bit for the moment
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
-  if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
+  if not defined(windows):
     buildAllBenches(useASM = false)
 
 task test_parallel_no_gmp, "Run all tests in parallel (via GNU parallel)":
@@ -501,7 +502,7 @@ task test_parallel_no_gmp, "Run all tests in parallel (via GNU parallel)":
   # Benchmarks compile
   # ignore Windows 32-bit for the moment
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
-  if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
+  if not defined(windows):
     buildAllBenches()
 
 task test_parallel_no_gmp_no_assembler, "Run all tests in parallel (via GNU parallel)":
@@ -520,7 +521,7 @@ task test_parallel_no_gmp_no_assembler, "Run all tests in parallel (via GNU para
   # Benchmarks compile
   # ignore Windows 32-bit for the moment
   # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
-  if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
+  if not defined(windows):
     buildAllBenches(useASM = false)
 
 # Finite field 𝔽p
