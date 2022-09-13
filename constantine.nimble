@@ -445,12 +445,12 @@ proc genParallelCmdRunner() =
 # ----------------------------------------------------------------
 
 task bindings, "Generate Constantine bindings":
-  genDynamicBindings("constantine_bls12_381", "ctt_bls12381_")
-  genStaticBindings("constantine_bls12_381", "ctt_bls12381_")
+  genDynamicBindings("constantine_bls12_381", "ctt_bls12381_init_")
+  genStaticBindings("constantine_bls12_381", "ctt_bls12381_init_")
   genHeaders("constantine_bls12_381")
   echo ""
-  genDynamicBindings("constantine_pasta", "ctt_pasta_")
-  genStaticBindings("constantine_pasta", "ctt_pasta_")
+  genDynamicBindings("constantine_pasta", "ctt_pasta_init_")
+  genStaticBindings("constantine_pasta", "ctt_pasta_init_")
   genHeaders("constantine_pasta")
 
 task test_bindings, "Test C bindings":

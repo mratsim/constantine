@@ -78,9 +78,10 @@ when isMainModule and defined(CttGenerateHeaders):
     header &= '\n'
     header &= genEllipticCurvePoint("vesta_ec_prj", "x, y, z", "vesta_fp")
     header &= '\n'
+    header &= declNimMain("pasta")
+    header &= '\n'
     header &= cBindings
     header &= '\n'
-    header &= declNimMain("pasta")
 
     header = genCpp(header)
     header = genHeader("PASTA", header)

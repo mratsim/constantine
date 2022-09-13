@@ -97,10 +97,10 @@ void epilogue(
   printf(".");
 }
 
-void main(){
+int main(){
   
   // Initialize the runtime. For Constantine, it populates CPU runtime detection dispatch.
-  ctt_bls12381_NimMain();
+  ctt_bls12381_init_NimMain();
   
   gmp_randstate_t gmpRng;
   gmp_randinit_mt(gmpRng);
@@ -241,5 +241,7 @@ void main(){
   //   );
   // }
   // printf(" SUCCESS square root\n");
+
+  return 0;
 
 }
