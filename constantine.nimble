@@ -468,7 +468,7 @@ task test_parallel_no_assembler, "Run all tests (without macro assembler) in par
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   clearParallelBuild()
   runTests(requireGMP = true, dumpCmdFile = true, testASM = false)
-  exec "parallel --keep-order --group < " & buildParallel
+  exec "parallel --keep-order --group -a " & buildParallel
 
   # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
   #   clearParallelBuild()
