@@ -185,8 +185,8 @@ jobs:
       - name: Install test dependencies (Windows)
         if: runner.os == 'Windows'
         run: |
-          pacman -S --needed --noconfirm mingw-w64-x86_64-gmp
-          pacman -S --needed --noconfirm parallel
+          msys2 -c "pacman -S --needed --noconfirm mingw-w64-x86_64-gmp"
+          msys2 -c "pacman -S --needed --noconfirm parallel"
 
       - name: Install test dependencies (Nim)
         shell: bash
