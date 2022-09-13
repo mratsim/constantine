@@ -188,31 +188,31 @@ jobs:
         run: |
           pacman -S --needed --noconfirm mingw-w64-x86_64-gmp
           pacman -S --needed --noconfirm parallel
-          nimble refresh -y
-          nimble install -y gmp stew jsony
+          nimble refresh --verbose -y
+          nimble install --verbose -y gmp stew jsony
 
       - name: Install test dependencies
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          nimble refresh -y
-          nimble install -y gmp stew jsony
+          nimble refresh --verbose -y
+          nimble install --verbose -y gmp stew jsony
 
       - name: Run Constantine tests (UNIX with Assembler)
         if: runner.os != 'Windows' && matrix.target.BACKEND == 'ASM'
         shell: bash
         run: |
           cd constantine
-          nimble test_parallel
+          nimble test_parallel --verbose
       - name: Run Constantine tests (UNIX no Assembler)
         if: runner.os != 'Windows' && matrix.target.BACKEND == 'NO_ASM'
         shell: bash
         run: |
           cd constantine
-          nimble test_parallel_no_assembler
+          nimble test_parallel_no_assembler --verbose
       - name: Run Constantine tests (Windows no Assembler)
         if: runner.os == 'Windows' && matrix.target.BACKEND == 'NO_ASM'
         shell: msys2 {0}
         run: |
           cd constantine
-          nimble test_parallel_no_assembler
+          nimble test_parallel_no_assembler --verbose

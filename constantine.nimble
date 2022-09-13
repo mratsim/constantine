@@ -449,12 +449,12 @@ task test_parallel, "Run all tests in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   clearParallelBuild()
   runTests(requireGMP = true, dumpCmdFile = true)
-  exec "parallel --keep-order --group < " & buildParallel
+  exec "parallel --keep-order --group -a " & buildParallel
 
   # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
   #   clearParallelBuild()
   #   runTests(requireGMP = true, dumpCmdFile = true, test32bit = true)
-  #   exec "parallel --keep-order --group < " & buildParallel
+  #   exec "parallel --keep-order --group -a " & buildParallel
 
   # Now run the benchmarks
   #
@@ -468,12 +468,14 @@ task test_parallel_no_assembler, "Run all tests (without macro assembler) in par
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   clearParallelBuild()
   runTests(requireGMP = true, dumpCmdFile = true, testASM = false)
+  exec "which parallel"
+  exec "head " & buildParallel
   exec "parallel --keep-order --group -a " & buildParallel
 
   # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
   #   clearParallelBuild()
   #   runTests(requireGMP = true, dumpCmdFile = true, test32bit = true, testASM = false)
-  #   exec "parallel --keep-order --group < " & buildParallel
+  #   exec "parallel --keep-order --group -a " & buildParallel
 
   # Now run the benchmarks
   #
@@ -487,12 +489,12 @@ task test_parallel_no_gmp, "Run all tests in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   clearParallelBuild()
   runTests(requireGMP = false, dumpCmdFile = true)
-  exec "parallel --keep-order --group < " & buildParallel
+  exec "parallel --keep-order --group -a " & buildParallel
 
   # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
   #   clearParallelBuild()
   #   runTests(requireGMP = false, dumpCmdFile = true, test32bit = true)
-  #   exec "parallel --keep-order --group < " & buildParallel
+  #   exec "parallel --keep-order --group -a " & buildParallel
 
   # Now run the benchmarks
   #
@@ -506,12 +508,12 @@ task test_parallel_no_gmp_no_assembler, "Run all tests in parallel (via GNU para
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   clearParallelBuild()
   runTests(requireGMP = false, dumpCmdFile = true, testASM = false)
-  exec "parallel --keep-order --group < " & buildParallel
+  exec "parallel --keep-order --group -a " & buildParallel
 
   # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
   #   clearParallelBuild()
   #   runTests(requireGMP = false, dumpCmdFile = true, test32bit = true, testASM = false)
-  #   exec "parallel --keep-order --group < " & buildParallel
+  #   exec "parallel --keep-order --group -a " & buildParallel
 
   # Now run the benchmarks
   #
