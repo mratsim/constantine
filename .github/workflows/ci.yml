@@ -117,10 +117,9 @@ jobs:
         run: |
           echo '${{ github.workspace }}'"/external/mingw-${{ matrix.target.cpu }}/bin" >> $GITHUB_PATH
           echo '${{ github.workspace }}'"/external/dlls-${{ matrix.target.cpu }}" >> $GITHUB_PATH
+
       - name: Restore Nim from cache
-        if: >
-          steps.nim-compiler-cache.outputs.cache-hit != 'true' &&
-          matrix.nim_version != 'devel'
+        if: matrix.nim_version != 'devel'
         id: nim-compiler-cache
         uses: actions/cache@v2
         with:
@@ -128,11 +127,20 @@ jobs:
           key: 'nim-${{ matrix.target.cpu }}-${{ matrix.nim_version }}'
 
       - name: Setup Nim
+        if: steps.nim-compiler-cache.outputs.cache-hit != 'true'
         uses: alaviss/setup-nim@0.1.1
         with:
-          path: 'nim'
+          path: 'nim-${{ matrix.nim_version }}-${{ matrix.target.cpu }}'
           version: ${{ matrix.nim_version }}
           architecture: ${{ matrix.target.cpu }}
+          add-to-path: false
+
+      - name: Path to cached Nim
+        if: steps.nim-compiler-cache.outputs.cache-hit == 'true'
+        shell: bash
+        run: |
+          echo '${{ github.workspace }}'"/nim-${{ matrix.nim_version }}-${{ matrix.target.cpu }}/bin" >> $GITHUB_PATH
+          echo '${{ github.workspace }}'"/.nimble/bin" >> $GITHUB_PATH
 
       - name: Install test dependencies (Linux amd64)
         if: runner.os == 'Linux' && matrix.target.cpu == 'amd64'
@@ -160,7 +168,7 @@ jobs:
           #!/bin/bash
           exec $(which g++) -m32 "\$@"
           EOF
-          chmod 755 external/bin/gcc external/bin/g++
+          chmod 755 external/bin/{gcc,g++}
           echo '${{ github.workspace }}/external/bin' >> $GITHUB_PATH
 
       - name: Install test dependencies (macOS)
