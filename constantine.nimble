@@ -256,7 +256,8 @@ else:
 # ----------------------------------------------------------------
 
 proc clearParallelBuild() =
-  exec "cat /dev/null > " & buildParallel
+  # Support clearing from non POSIX shell like CMD, Powershell or MSYS2
+  exec "bash -c ':> " & buildParallel & "'"
 
 proc test(flags, path: string, commandFile = false) =
   # commandFile should be a "file" but Nimscript doesn't support IO
