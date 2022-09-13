@@ -257,7 +257,8 @@ else:
 
 proc clearParallelBuild() =
   # Support clearing from non POSIX shell like CMD, Powershell or MSYS2
-  exec "bash -c ':> " & buildParallel & "'"
+  if fileExists(buildParallel):
+    rmFile(buildParallel)
 
 proc test(flags, path: string, commandFile = false) =
   # commandFile should be a "file" but Nimscript doesn't support IO
@@ -288,7 +289,6 @@ proc test(flags, path: string, commandFile = false) =
     exec command
   else:
     exec "echo \'" & command & "\' >> " & buildParallel
-    exec "echo \"------------------------------------------------------\""
 
 proc buildBench(benchName: string, compiler = "", useAsm = true, run = false) =
   if not dirExists "build":
@@ -311,6 +311,7 @@ proc runBench(benchName: string, compiler = "", useAsm = true) =
   buildBench(benchName, compiler, useAsm, run = true)
 
 proc runTests(requireGMP: bool, dumpCmdFile = false, test32bit = false, testASM = true) =
+  echo "Found " & $testDesc.len & " tests to run."
   for td in testDesc:
     if not(td.useGMP and not requireGMP):
       var flags = ""
