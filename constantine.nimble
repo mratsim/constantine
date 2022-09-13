@@ -256,7 +256,7 @@ else:
 # ----------------------------------------------------------------
 
 proc clearParallelBuild() =
-  exec "> " & buildParallel
+  exec ":> " & buildParallel
 
 proc test(flags, path: string, commandFile = false) =
   # commandFile should be a "file" but Nimscript doesn't support IO
