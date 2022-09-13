@@ -455,8 +455,9 @@ task bindings, "Generate Constantine bindings":
 
 task test_bindings, "Test C bindings":
   exec "mkdir -p build"
-  exec "gcc -Ibindings/generated -Lbindings/generated -ldl -lgmp -lconstantine_bls12_381 -o build/t_libctt_bls12_381 tests/bindings/t_libctt_bls12_381.c"
-  exec "LD_LIBRARY_PATH=bindings/generated ./build/t_libctt_bls12_381"
+  echo "--> Testing dynamically linked library"
+  exec "gcc -I\"$PWD\"/bindings/generated -L\"$PWD\"/bindings/generated -o build/t_libctt_bls12_381_dl tests/bindings/t_libctt_bls12_381.c -lgmp -lconstantine_bls12_381"
+  exec "LD_LIBRARY_PATH=\"$PWD\"/bindings/generated ./build/t_libctt_bls12_381_dl"
 
 task test, "Run all tests":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
