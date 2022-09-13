@@ -260,10 +260,7 @@ proc clearParallelBuild() =
   if fileExists(buildParallel):
     rmFile(buildParallel)
 
-proc test(flags, path: string, commandFile = false) =
-  # commandFile should be a "file" but Nimscript doesn't support IO
-  if not dirExists "build":
-    mkDir "build"
+template setupCommand(): untyped {.dirty.} = 
   # Compilation language is controlled by WEAVE_TEST_LANG
   var lang = "c"
   if existsEnv"TEST_LANG":
@@ -282,13 +279,16 @@ proc test(flags, path: string, commandFile = false) =
     " --nimcache:nimcache/" & path & " " &
     path
 
-  if not commandFile:
-    echo "\n=============================================================================================="
-    echo "Running [flags:", flags, "] ", path
-    echo "=============================================================================================="
-    exec command
-  else:
-    exec "echo \'" & command & "\' >> " & buildParallel
+proc test(flags, path: string) =
+  setupCommand()
+  echo "\n=============================================================================================="
+  echo "Running [flags:", flags, "] ", path
+  echo "=============================================================================================="
+  exec command
+
+proc testBatch(commands: var string, flags, path: string) =
+  setupCommand()
+  commands &= command & '\n'
 
 proc buildBench(benchName: string, compiler = "", useAsm = true, run = false) =
   if not dirExists "build":
@@ -311,7 +311,11 @@ proc runBench(benchName: string, compiler = "", useAsm = true) =
   buildBench(benchName, compiler, useAsm, run = true)
 
 proc runTests(requireGMP: bool, dumpCmdFile = false, test32bit = false, testASM = true) =
+  if not dirExists "build":
+    mkDir "build"
   echo "Found " & $testDesc.len & " tests to run."
+  
+  var cmdFile: string
   for td in testDesc:
     if not(td.useGMP and not requireGMP):
       var flags = ""
@@ -323,7 +327,14 @@ proc runTests(requireGMP: bool, dumpCmdFile = false, test32bit = false, testASM 
         flags &= " -d:debugConstantine"
       if td.path notin skipSanitizers:
         flags &= sanitizers
-      test flags, td.path, dumpCmdFile
+      
+      if dumpCmdFile:
+        cmdFile.testBatch(flags, td.path)
+      else:
+        test flags, td.path
+
+  if dumpCmdFile:
+    writeFile(buildParallel, cmdFile)
 
 proc buildAllBenches(useAsm = true) =
   echo "\n\n------------------------------------------------------\n"
