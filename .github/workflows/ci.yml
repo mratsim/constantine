@@ -176,35 +176,43 @@ jobs:
 
       - name: Setup MSYS2 (Windows)
         if: runner.os == 'Windows'
-        run: |
-          set MSYS_PATH=%CD%\temp\msys2
-          choco install msys2 --params="/InstallDir:%MSYS_PATH% /NoPath" -y
-          echo "%MSYS_PATH%\usr\bin" >> $GITHUB_PATH
-          echo "%MSYS_PATH%" >> $GITHUB_PATH
+        uses: msys2/setup-msys2@v2
+        with:
+          path-type: inherit
+          update: true
+          install: base-devel git mingw-w64-x86_64-toolchain
 
       - name: Install test dependencies (Windows)
         if: runner.os == 'Windows'
+        shell: msys2 {0}
         run: |
-          msys2 -c "pacman -S --needed --noconfirm mingw-w64-x86_64-gmp"
-          msys2 -c "pacman -S --needed --noconfirm parallel"
+          pacman -S --needed --noconfirm mingw-w64-x86_64-gmp
+          pacman -S --needed --noconfirm parallel
+          nimble refresh -y
+          nimble install -y gmp stew jsony
 
-      - name: Install test dependencies (Nim)
+      - name: Install test dependencies
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           nimble refresh -y
           nimble install -y gmp stew jsony
 
-      - name: Run Constantine tests (with Assembler)
-        if: matrix.target.BACKEND == 'ASM'
+      - name: Run Constantine tests (UNIX with Assembler)
+        if: runner.os != 'Windows' && matrix.target.BACKEND == 'ASM'
         shell: bash
         run: |
-          export UCPU="$cpu"
           cd constantine
           nimble test_parallel
-      - name: Run Constantine tests (no Assembler)
-        if: matrix.target.BACKEND == 'NO_ASM'
+      - name: Run Constantine tests (UNIX no Assembler)
+        if: runner.os != 'Windows' && matrix.target.BACKEND == 'NO_ASM'
         shell: bash
         run: |
-          export UCPU="$cpu"
+          cd constantine
+          nimble test_parallel_no_assembler
+      - name: Run Constantine tests (Windows no Assembler)
+        if: runner.os == 'Windows' && matrix.target.BACKEND == 'NO_ASM'
+        shell: msys2 {0}
+        run: |
           cd constantine
           nimble test_parallel_no_assembler
