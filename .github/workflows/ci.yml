@@ -134,14 +134,14 @@ jobs:
           version: ${{ matrix.nim_version }}
           architecture: ${{ matrix.target.cpu }}
 
-      - name: Install dependencies (Linux amd64)
+      - name: Install test dependencies (Linux amd64)
         if: runner.os == 'Linux' && matrix.target.cpu == 'amd64'
         run: |
           sudo DEBIAN_FRONTEND='noninteractive' apt-fast install \
             --no-install-recommends -yq \
             libgmp-dev
 
-      - name: Install dependencies (Linux i386)
+      - name: Install test dependencies (Linux i386)
         if: runner.os == 'Linux' && matrix.target.cpu == 'i386'
         run: |
           sudo dpkg --add-architecture i386
@@ -163,67 +163,42 @@ jobs:
           chmod 755 external/bin/gcc external/bin/g++
           echo '${{ github.workspace }}/external/bin' >> $GITHUB_PATH
 
-      - name: Install dependencies (macOS)
+      - name: Install test dependencies (macOS)
         if: runner.os == 'macOS'
         run: brew install gmp parallel
 
       - name: Setup MSYS2 (Windows)
         if: runner.os == 'Windows'
-        uses: msys2/setup-msys2@v2
-        with:
-          path-type: inherit
-          update: true
-          install: base-devel git mingw-w64-x86_64-toolchain
+        run: |
+          set MSYS_PATH=%CD%\temp\msys2
+          choco install msys2 --params="/InstallDir:%MSYS_PATH% /NoPath" -y
+          echo "%MSYS_PATH%\usr\bin" >> $GITHUB_PATH
+          echo "%MSYS_PATH%" >> $GITHUB_PATH
 
-      - name: Install dependencies (Windows)
+      - name: Install test dependencies (Windows)
         if: runner.os == 'Windows'
         shell: msys2 {0}
         run: |
           pacman -S --needed --noconfirm mingw-w64-x86_64-gmp
           pacman -S --needed --noconfirm parallel
-          nimble refresh -y
-          nimble install -y gmp stew jsony
 
-      - name: Install test dependencies
-        if: runner.os != 'Windows'
+      - name: Install test dependencies (Nim)
         shell: bash
         run: |
           nimble refresh -y
           nimble install -y gmp stew jsony
 
-      - name: Run Constantine tests (with Assembler & with GMP)
-        if: (runner.os == 'Linux' || runner.os == 'macOS') && matrix.target.BACKEND == 'ASM' && matrix.target.cpu != 'i386'
+      - name: Run Constantine tests (with Assembler)
+        if: matrix.target.BACKEND == 'ASM'
         shell: bash
         run: |
           export UCPU="$cpu"
           cd constantine
           nimble test_parallel
-      - name: Run Constantine tests (no Assembler & with GMP)
-        if: (runner.os == 'Linux' || runner.os == 'macOS') && matrix.target.BACKEND == 'NO_ASM' && matrix.target.cpu != 'i386'
+      - name: Run Constantine tests (no Assembler)
+        if: matrix.target.BACKEND == 'NO_ASM'
         shell: bash
         run: |
           export UCPU="$cpu"
           cd constantine
           nimble test_parallel_no_assembler
-      - name: Run Constantine tests (without GMP)
-        if: runner.os == 'Linux' && matrix.target.BACKEND == 'ASM' && matrix.target.cpu == 'i386'
-        shell: bash
-        run: |
-          export UCPU="$cpu"
-          cd constantine
-          nimble test_parallel_no_gmp
-      - name: Run Constantine tests (without Assembler or GMP)
-        if: runner.os == 'Linux' && matrix.target.BACKEND == 'NO_ASM' && matrix.target.cpu == 'i386'
-        shell: bash
-        run: |
-          export UCPU="$cpu"
-          cd constantine
-          nimble test_parallel_no_gmp_no_assembler
-      - name: Run Constantine tests (Windows - without Assembler or GMP)
-        # TODO, why aren't GMP or parallel in path?
-        if: runner.os == 'Windows'
-        shell: msys2 {0}
-        run: |
-          export UCPU="$cpu"
-          cd constantine
-          nimble test_no_gmp_no_assembler
