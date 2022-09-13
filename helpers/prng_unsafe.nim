@@ -158,9 +158,19 @@ func random_unsafe(rng: var RngState, a: var Limbs) =
   for i in 0 ..< a.len:
     a[i] = SecretWord(rng.next())
 
+template clearExtraBitsOverMSB(a: var BigInt) =
+  ## If we do bit manipulation at the word level,
+  ## for example a 381-bit BigInt stored in a 384-bit buffer
+  ## we need to clear the upper 3-bit
+  when a.bits != a.limbs.len * WordBitWidth:
+    const posExtraBits = a.bits - (a.limbs.len-1) * WordBitWidth
+    const mask = (One shl posExtraBits) - One
+    a.limbs[^1] = a.limbs[^1] and mask
+
 func random_unsafe(rng: var RngState, a: var BigInt) =
   ## Initialize a standalone BigInt
   rng.random_unsafe(a.limbs)
+  a.clearExtraBitsOverMSB()
 
 func random_unsafe(rng: var RngState, a: var FF) =
   ## Initialize a Field element
@@ -193,6 +203,7 @@ func random_highHammingWeight(rng: var RngState, a: var BigInt) =
   ## with high Hamming weight
   ## to have a higher probability of triggering carries
   rng.random_highHammingWeight(a.limbs)
+  a.clearExtraBitsOverMSB()
 
 func random_highHammingWeight(rng: var RngState, a: var FF) =
   ## Recursively initialize a BigInt (part of a field) or Field element
@@ -236,6 +247,7 @@ func random_long01Seq(rng: var RngState, a: var BigInt) =
     a.unmarshal(buf, bigEndian)
   else:
     a.unmarshal(buf, littleEndian)
+  a.clearExtraBitsOverMSB()
 
 func random_long01Seq(rng: var RngState, a: var Limbs) =
   ## Initialize standalone limbs
