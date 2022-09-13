@@ -458,8 +458,11 @@ task test_bindings, "Test C bindings":
   echo "--> Testing dynamically linked library"
   exec "gcc -Ibindings/generated -Lbindings/generated -o build/t_libctt_bls12_381_dl tests/bindings/t_libctt_bls12_381.c -lgmp -lconstantine_bls12_381"
   exec "LD_LIBRARY_PATH=bindings/generated ./build/t_libctt_bls12_381_dl"
+  
   echo "--> Testing statically linked library"
-  exec "gcc -Ibindings/generated -Lbindings/generated -o build/t_libctt_bls12_381_sl tests/bindings/t_libctt_bls12_381.c -lgmp -Wl,-Bstatic -lconstantine_bls12_381 -Wl,-Bdynamic"
+  # exec "gcc -Ibindings/generated -Lbindings/generated -o build/t_libctt_bls12_381_sl tests/bindings/t_libctt_bls12_381.c -lgmp -Wl,-Bstatic -lconstantine_bls12_381 -Wl,-Bdynamic"
+  # Deal with MacOS annoying linker with regards to static libraries
+  exec "gcc -Ibindings/generated -o build/t_libctt_bls12_381_sl tests/bindings/t_libctt_bls12_381.c bindings/generated/libconstantine_bls12_381.a -lgmp"
   exec "./build/t_libctt_bls12_381_sl"
 
 task test, "Run all tests":
