@@ -136,7 +136,6 @@ jobs:
           add-to-path: false
 
       - name: Path to cached Nim
-        if: steps.nim-compiler-cache.outputs.cache-hit == 'true'
         shell: bash
         run: |
           echo '${{ github.workspace }}'"/nim-${{ matrix.nim_version }}-${{ matrix.target.cpu }}/bin" >> $GITHUB_PATH
