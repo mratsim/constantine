@@ -172,7 +172,7 @@ jobs:
 
       - name: Install test dependencies (macOS)
         if: runner.os == 'macOS'
-        run: brew install gmp parallel
+        run: brew install gmp
 
       - name: Setup MSYS2 (Windows)
         if: runner.os == 'Windows'
@@ -187,16 +187,15 @@ jobs:
         shell: msys2 {0}
         run: |
           pacman -S --needed --noconfirm mingw-w64-x86_64-gmp
-          pacman -S --needed --noconfirm parallel
           nimble refresh --verbose -y
-          nimble install --verbose -y gmp stew jsony
+          nimble install --verbose -y gmp stew jsony asynctools
 
       - name: Install test dependencies
         if: runner.os != 'Windows'
         shell: bash
         run: |
           nimble refresh --verbose -y
-          nimble install --verbose -y gmp stew jsony
+          nimble install --verbose -y gmp stew jsony asynctools
 
       - name: Run Constantine tests (UNIX with Assembler)
         if: runner.os != 'Windows' && matrix.target.BACKEND == 'ASM'
@@ -209,10 +208,10 @@ jobs:
         shell: bash
         run: |
           cd constantine
-          nimble test_parallel_no_assembler --verbose
+          nimble test_parallel_no_asm --verbose
       - name: Run Constantine tests (Windows no Assembler)
         if: runner.os == 'Windows' && matrix.target.BACKEND == 'NO_ASM'
         shell: msys2 {0}
         run: |
           cd constantine
-          nimble test_parallel_no_assembler --verbose
+          nimble test_parallel_no_asm --verbose

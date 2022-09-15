@@ -43,8 +43,8 @@ proc SHA256_OpenSSL[T: byte|char](
 # --------------------------------------------------------------------
 
 echo "\n------------------------------------------------------\n"
-const SmallSizeIters = 128
-const LargeSizeIters =  10
+const SmallSizeIters = 64
+const LargeSizeIters =  1
 
 proc sanityABC =
   var bufCt: array[32, byte]
