@@ -473,7 +473,7 @@ task test_bindings, "Test C bindings":
     exec "gcc -Ibindings/generated -o build/testsuite/t_libctt_bls12_381_sl tests/bindings/t_libctt_bls12_381.c bindings/generated/libconstantine_bls12_381.a -lgmp"
     exec "./build/testsuite/t_libctt_bls12_381_sl"
   else:
-    exec "gcc -Ibindings/generated -o build/testsuite/t_libctt_bls12_381_sl.exe tests/bindings/t_libctt_bls12_381.c bindings/generated/libconstantine_bls12_381.lib -lgmp"
+    exec "gcc -Ibindings/generated -o build/testsuite/t_libctt_bls12_381_sl.exe tests/bindings/t_libctt_bls12_381.c bindings/generated/constantine_bls12_381.lib -lgmp"
     exec "./build/testsuite/t_libctt_bls12_381_sl.exe"
 
 task test, "Run all tests":
