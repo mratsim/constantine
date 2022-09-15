@@ -456,14 +456,14 @@ task bindings, "Generate Constantine bindings":
 task test_bindings, "Test C bindings":
   exec "mkdir -p build"
   echo "--> Testing dynamically linked library"
-  exec "gcc -Ibindings/generated -Lbindings/generated -o build/t_libctt_bls12_381_dl tests/bindings/t_libctt_bls12_381.c -lgmp -lconstantine_bls12_381"
-  exec "LD_LIBRARY_PATH=bindings/generated ./build/t_libctt_bls12_381_dl"
+  exec "gcc -Ibindings/generated -Lbindings/generated -o build/testsuite/t_libctt_bls12_381_dl.exe tests/bindings/t_libctt_bls12_381.c -lgmp -lconstantine_bls12_381"
+  exec "LD_LIBRARY_PATH=bindings/generated ./build/testsuite/t_libctt_bls12_381_dl.exe"
   
   echo "--> Testing statically linked library"
-  # exec "gcc -Ibindings/generated -Lbindings/generated -o build/t_libctt_bls12_381_sl tests/bindings/t_libctt_bls12_381.c -lgmp -Wl,-Bstatic -lconstantine_bls12_381 -Wl,-Bdynamic"
+  # exec "gcc -Ibindings/generated -Lbindings/generated -o build/t_libctt_bls12_381_sl.exe tests/bindings/t_libctt_bls12_381.c -lgmp -Wl,-Bstatic -lconstantine_bls12_381 -Wl,-Bdynamic"
   # Deal with MacOS annoying linker with regards to static libraries
-  exec "gcc -Ibindings/generated -o build/t_libctt_bls12_381_sl tests/bindings/t_libctt_bls12_381.c bindings/generated/libconstantine_bls12_381.a -lgmp"
-  exec "./build/t_libctt_bls12_381_sl"
+  exec "gcc -Ibindings/generated -o build/testsuite/t_libctt_bls12_381_sl.exe tests/bindings/t_libctt_bls12_381.c bindings/generated/libconstantine_bls12_381.a -lgmp"
+  exec "./build/testsuite/t_libctt_bls12_381_sl.exe"
 
 task test, "Run all tests":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
