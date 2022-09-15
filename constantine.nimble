@@ -457,7 +457,10 @@ task test_bindings, "Test C bindings":
   exec "mkdir -p build/testsuite"
   echo "--> Testing dynamically linked library"
   exec "gcc -Ibindings/generated -Lbindings/generated -o build/testsuite/t_libctt_bls12_381_dl.exe tests/bindings/t_libctt_bls12_381.c -lgmp -lconstantine_bls12_381"
-  exec "LD_LIBRARY_PATH=bindings/generated ./build/testsuite/t_libctt_bls12_381_dl.exe"
+  when not defined(windows):
+    exec "LD_LIBRARY_PATH=bindings/generated ./build/testsuite/t_libctt_bls12_381_dl.exe"
+  else:
+    echo "Skip DLL testing on windows"
   
   echo "--> Testing statically linked library"
   # exec "gcc -Ibindings/generated -Lbindings/generated -o build/t_libctt_bls12_381_sl.exe tests/bindings/t_libctt_bls12_381.c -lgmp -Wl,-Bstatic -lconstantine_bls12_381 -Wl,-Bdynamic"
