@@ -14,7 +14,7 @@
 extern "C" {
 #endif
 
-#if defined{__SIZE_TYPE__} && defined(__PTRDIFF_TYPE__)
+#if defined(__SIZE_TYPE__) && defined(__PTRDIFF_TYPE__)
 typedef __SIZE_TYPE__    size_t;
 typedef __PTRDIFF_TYPE__ ptrdiff_t;
 #else
@@ -47,6 +47,11 @@ typedef struct { vesta_fp x, y; } vesta_ec_aff;
 typedef struct { vesta_fp x, y, z; } vesta_ec_jac;
 typedef struct { vesta_fp x, y, z; } vesta_ec_prj;
 
+/*
+ * Initializes the library:
+ * - detect CPU features like ADX instructions support (MULX, ADCX, ADOX)
+ */
+void ctt_pasta_init_NimMain(void);
 
 void        ctt_pallas_fr_unmarshalBE(pallas_fr* dst, const byte src[], ptrdiff_t src_len);
 void        ctt_pallas_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const pallas_fr* src);
@@ -57,7 +62,8 @@ secret_bool ctt_pallas_fr_is_minus_one(const pallas_fr* a);
 void        ctt_pallas_fr_set_zero(pallas_fr* a);
 void        ctt_pallas_fr_set_one(pallas_fr* a);
 void        ctt_pallas_fr_set_minus_one(pallas_fr* a);
-void        ctt_pallas_fr_neg(pallas_fr* a);
+void        ctt_pallas_fr_neg(pallas_fr* r, const pallas_fr* a);
+void        ctt_pallas_fr_neg_in_place(pallas_fr* a);
 void        ctt_pallas_fr_sum(pallas_fr* r, const pallas_fr* a, const pallas_fr* b);
 void        ctt_pallas_fr_add_in_place(pallas_fr* a, const pallas_fr* b);
 void        ctt_pallas_fr_diff(pallas_fr* r, const pallas_fr* a, const pallas_fr* b);
@@ -78,7 +84,6 @@ void        ctt_pallas_fr_cset_one(pallas_fr* a, const secret_bool ctl);
 void        ctt_pallas_fr_cneg_in_place(pallas_fr* a, const secret_bool ctl);
 void        ctt_pallas_fr_cadd_in_place(pallas_fr* a, const pallas_fr* b, const secret_bool ctl);
 void        ctt_pallas_fr_csub_in_place(pallas_fr* a, const pallas_fr* b, const secret_bool ctl);
-
 void        ctt_pallas_fp_unmarshalBE(pallas_fp* dst, const byte src[], ptrdiff_t src_len);
 void        ctt_pallas_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const pallas_fp* src);
 secret_bool ctt_pallas_fp_is_eq(const pallas_fp* a, const pallas_fp* b);
@@ -88,7 +93,8 @@ secret_bool ctt_pallas_fp_is_minus_one(const pallas_fp* a);
 void        ctt_pallas_fp_set_zero(pallas_fp* a);
 void        ctt_pallas_fp_set_one(pallas_fp* a);
 void        ctt_pallas_fp_set_minus_one(pallas_fp* a);
-void        ctt_pallas_fp_neg(pallas_fp* a);
+void        ctt_pallas_fp_neg(pallas_fp* r, const pallas_fp* a);
+void        ctt_pallas_fp_neg_in_place(pallas_fp* a);
 void        ctt_pallas_fp_sum(pallas_fp* r, const pallas_fp* a, const pallas_fp* b);
 void        ctt_pallas_fp_add_in_place(pallas_fp* a, const pallas_fp* b);
 void        ctt_pallas_fp_diff(pallas_fp* r, const pallas_fp* a, const pallas_fp* b);
@@ -109,7 +115,6 @@ void        ctt_pallas_fp_cset_one(pallas_fp* a, const secret_bool ctl);
 void        ctt_pallas_fp_cneg_in_place(pallas_fp* a, const secret_bool ctl);
 void        ctt_pallas_fp_cadd_in_place(pallas_fp* a, const pallas_fp* b, const secret_bool ctl);
 void        ctt_pallas_fp_csub_in_place(pallas_fp* a, const pallas_fp* b, const secret_bool ctl);
-
 secret_bool ctt_pallas_fp_is_square(const pallas_fp* a);
 void        ctt_pallas_fp_invsqrt(pallas_fp* r, const pallas_fp* a);
 secret_bool ctt_pallas_fp_invsqrt_in_place(pallas_fp* r, const pallas_fp* a);
@@ -118,7 +123,6 @@ secret_bool ctt_pallas_fp_sqrt_if_square_in_place(pallas_fp* a);
 void        ctt_pallas_fp_sqrt_invsqrt(pallas_fp* sqrt, pallas_fp* invsqrt, const pallas_fp* a);
 secret_bool ctt_pallas_fp_sqrt_invsqrt_if_square(pallas_fp* sqrt, pallas_fp* invsqrt, const pallas_fp* a);
 secret_bool ctt_pallas_fp_sqrt_ratio_if_square(pallas_fp* r, const pallas_fp* u, const pallas_fp* v);
-
 void        ctt_vesta_fr_unmarshalBE(vesta_fr* dst, const byte src[], ptrdiff_t src_len);
 void        ctt_vesta_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const vesta_fr* src);
 secret_bool ctt_vesta_fr_is_eq(const vesta_fr* a, const vesta_fr* b);
@@ -128,7 +132,8 @@ secret_bool ctt_vesta_fr_is_minus_one(const vesta_fr* a);
 void        ctt_vesta_fr_set_zero(vesta_fr* a);
 void        ctt_vesta_fr_set_one(vesta_fr* a);
 void        ctt_vesta_fr_set_minus_one(vesta_fr* a);
-void        ctt_vesta_fr_neg(vesta_fr* a);
+void        ctt_vesta_fr_neg(vesta_fr* r, const vesta_fr* a);
+void        ctt_vesta_fr_neg_in_place(vesta_fr* a);
 void        ctt_vesta_fr_sum(vesta_fr* r, const vesta_fr* a, const vesta_fr* b);
 void        ctt_vesta_fr_add_in_place(vesta_fr* a, const vesta_fr* b);
 void        ctt_vesta_fr_diff(vesta_fr* r, const vesta_fr* a, const vesta_fr* b);
@@ -149,7 +154,6 @@ void        ctt_vesta_fr_cset_one(vesta_fr* a, const secret_bool ctl);
 void        ctt_vesta_fr_cneg_in_place(vesta_fr* a, const secret_bool ctl);
 void        ctt_vesta_fr_cadd_in_place(vesta_fr* a, const vesta_fr* b, const secret_bool ctl);
 void        ctt_vesta_fr_csub_in_place(vesta_fr* a, const vesta_fr* b, const secret_bool ctl);
-
 void        ctt_vesta_fp_unmarshalBE(vesta_fp* dst, const byte src[], ptrdiff_t src_len);
 void        ctt_vesta_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const vesta_fp* src);
 secret_bool ctt_vesta_fp_is_eq(const vesta_fp* a, const vesta_fp* b);
@@ -159,7 +163,8 @@ secret_bool ctt_vesta_fp_is_minus_one(const vesta_fp* a);
 void        ctt_vesta_fp_set_zero(vesta_fp* a);
 void        ctt_vesta_fp_set_one(vesta_fp* a);
 void        ctt_vesta_fp_set_minus_one(vesta_fp* a);
-void        ctt_vesta_fp_neg(vesta_fp* a);
+void        ctt_vesta_fp_neg(vesta_fp* r, const vesta_fp* a);
+void        ctt_vesta_fp_neg_in_place(vesta_fp* a);
 void        ctt_vesta_fp_sum(vesta_fp* r, const vesta_fp* a, const vesta_fp* b);
 void        ctt_vesta_fp_add_in_place(vesta_fp* a, const vesta_fp* b);
 void        ctt_vesta_fp_diff(vesta_fp* r, const vesta_fp* a, const vesta_fp* b);
@@ -180,7 +185,6 @@ void        ctt_vesta_fp_cset_one(vesta_fp* a, const secret_bool ctl);
 void        ctt_vesta_fp_cneg_in_place(vesta_fp* a, const secret_bool ctl);
 void        ctt_vesta_fp_cadd_in_place(vesta_fp* a, const vesta_fp* b, const secret_bool ctl);
 void        ctt_vesta_fp_csub_in_place(vesta_fp* a, const vesta_fp* b, const secret_bool ctl);
-
 secret_bool ctt_vesta_fp_is_square(const vesta_fp* a);
 void        ctt_vesta_fp_invsqrt(vesta_fp* r, const vesta_fp* a);
 secret_bool ctt_vesta_fp_invsqrt_in_place(vesta_fp* r, const vesta_fp* a);
@@ -189,7 +193,6 @@ secret_bool ctt_vesta_fp_sqrt_if_square_in_place(vesta_fp* a);
 void        ctt_vesta_fp_sqrt_invsqrt(vesta_fp* sqrt, vesta_fp* invsqrt, const vesta_fp* a);
 secret_bool ctt_vesta_fp_sqrt_invsqrt_if_square(vesta_fp* sqrt, vesta_fp* invsqrt, const vesta_fp* a);
 secret_bool ctt_vesta_fp_sqrt_ratio_if_square(vesta_fp* r, const vesta_fp* u, const vesta_fp* v);
-
 secret_bool ctt_pallas_ec_aff_is_eq(const pallas_ec_aff* P, const pallas_ec_aff* Q);
 secret_bool ctt_pallas_ec_aff_is_inf(const pallas_ec_aff* P);
 void        ctt_pallas_ec_aff_set_inf(pallas_ec_aff* P);
@@ -197,7 +200,6 @@ void        ctt_pallas_ec_aff_ccopy(pallas_ec_aff* P, const pallas_ec_aff* Q, co
 secret_bool ctt_pallas_ec_aff_is_on_curve(const pallas_fp* x, const pallas_fp* y);
 void        ctt_pallas_ec_aff_neg(pallas_ec_aff* P, const pallas_ec_aff* Q);
 void        ctt_pallas_ec_aff_neg_in_place(pallas_ec_aff* P);
-
 secret_bool ctt_pallas_ec_jac_is_eq(const pallas_ec_jac* P, const pallas_ec_jac* Q);
 secret_bool ctt_pallas_ec_jac_is_inf(const pallas_ec_jac* P);
 void        ctt_pallas_ec_jac_set_inf(pallas_ec_jac* P);
@@ -212,7 +214,6 @@ void        ctt_pallas_ec_jac_double(pallas_ec_jac* r, const pallas_ec_jac* P);
 void        ctt_pallas_ec_jac_double_in_place(pallas_ec_jac* P);
 void        ctt_pallas_ec_jac_affine(pallas_ec_aff* dst, const pallas_ec_jac* src);
 void        ctt_pallas_ec_jac_from_affine(pallas_ec_jac* dst, const pallas_ec_aff* src);
-
 secret_bool ctt_pallas_ec_prj_is_eq(const pallas_ec_prj* P, const pallas_ec_prj* Q);
 secret_bool ctt_pallas_ec_prj_is_inf(const pallas_ec_prj* P);
 void        ctt_pallas_ec_prj_set_inf(pallas_ec_prj* P);
@@ -227,7 +228,6 @@ void        ctt_pallas_ec_prj_double(pallas_ec_prj* r, const pallas_ec_prj* P);
 void        ctt_pallas_ec_prj_double_in_place(pallas_ec_prj* P);
 void        ctt_pallas_ec_prj_affine(pallas_ec_aff* dst, const pallas_ec_prj* src);
 void        ctt_pallas_ec_prj_from_affine(pallas_ec_prj* dst, const pallas_ec_aff* src);
-
 secret_bool ctt_vesta_ec_aff_is_eq(const vesta_ec_aff* P, const vesta_ec_aff* Q);
 secret_bool ctt_vesta_ec_aff_is_inf(const vesta_ec_aff* P);
 void        ctt_vesta_ec_aff_set_inf(vesta_ec_aff* P);
@@ -235,7 +235,6 @@ void        ctt_vesta_ec_aff_ccopy(vesta_ec_aff* P, const vesta_ec_aff* Q, const
 secret_bool ctt_vesta_ec_aff_is_on_curve(const pallas_fp* x, const pallas_fp* y);
 void        ctt_vesta_ec_aff_neg(vesta_ec_aff* P, const vesta_ec_aff* Q);
 void        ctt_vesta_ec_aff_neg_in_place(vesta_ec_aff* P);
-
 secret_bool ctt_vesta_ec_jac_is_eq(const vesta_ec_jac* P, const vesta_ec_jac* Q);
 secret_bool ctt_vesta_ec_jac_is_inf(const vesta_ec_jac* P);
 void        ctt_vesta_ec_jac_set_inf(vesta_ec_jac* P);
@@ -250,7 +249,6 @@ void        ctt_vesta_ec_jac_double(vesta_ec_jac* r, const vesta_ec_jac* P);
 void        ctt_vesta_ec_jac_double_in_place(vesta_ec_jac* P);
 void        ctt_vesta_ec_jac_affine(vesta_ec_aff* dst, const vesta_ec_jac* src);
 void        ctt_vesta_ec_jac_from_affine(vesta_ec_jac* dst, const vesta_ec_aff* src);
-
 secret_bool ctt_vesta_ec_prj_is_eq(const vesta_ec_prj* P, const vesta_ec_prj* Q);
 secret_bool ctt_vesta_ec_prj_is_inf(const vesta_ec_prj* P);
 void        ctt_vesta_ec_prj_set_inf(vesta_ec_prj* P);
@@ -265,14 +263,6 @@ void        ctt_vesta_ec_prj_double(vesta_ec_prj* r, const vesta_ec_prj* P);
 void        ctt_vesta_ec_prj_double_in_place(vesta_ec_prj* P);
 void        ctt_vesta_ec_prj_affine(vesta_ec_aff* dst, const vesta_ec_prj* src);
 void        ctt_vesta_ec_prj_from_affine(vesta_ec_prj* dst, const vesta_ec_aff* src);
-
-/*
- * Initializes the library:
- * - the Nim runtime if heap-allocated types are used,
- *   this is the case only if Constantine is multithreaded.
- * - runtime CPU features detection
- */
-void ctt_pasta_NimMain(void);
 
 
 #ifdef __cplusplus

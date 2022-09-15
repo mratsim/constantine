@@ -55,7 +55,7 @@ extern "C" {{
 
 proc genBuiltinsTypes*(): string =
   """
-#if defined{__SIZE_TYPE__} && defined(__PTRDIFF_TYPE__)
+#if defined(__SIZE_TYPE__) && defined(__PTRDIFF_TYPE__)
 typedef __SIZE_TYPE__    size_t;
 typedef __PTRDIFF_TYPE__ ptrdiff_t;
 #else
@@ -92,6 +92,25 @@ proc genExtField*(name: string, degree: int, basename: string): string =
 
 proc genEllipticCurvePoint*(name, coords, basename: string): string =
   &"typedef struct {{ {basename} {coords}; }} {name};"
+
+# Nim internals
+# -------------------------------------------
+
+proc declNimMain*(libName: string): string =
+  ## Create the NimMain function.
+  ## It initializes:
+  ## - the Nim runtime if seqs, strings or heap-allocated types are used,
+  ##   this is the case only if Constantine is multithreaded.
+  ## - runtime CPU features detection
+  ## 
+  ## Assumes library is compiled with --nimMainPrefix:ctt_{libName}_
+  &"""
+
+/*
+ * Initializes the library:
+ * - detect CPU features like ADX instructions support (MULX, ADCX, ADOX)
+ */
+void ctt_{libName}_init_NimMain(void);"""
 
 # Subroutines' declarations
 # -------------------------------------------
@@ -159,7 +178,6 @@ macro collectBindings*(cBindingsStr: untyped, body: typed): untyped =
 
   for generator in body:
     generator.expectKind(nnkStmtList)
-    cBindings &= "\n"
     for fnDef in generator:
       if fnDef.kind notin {nnkProcDef, nnkFuncDef}:
         continue
@@ -190,26 +208,3 @@ macro collectBindings*(cBindingsStr: untyped, body: typed): untyped =
     result = newConstStmt(cBindingsStr, newLit cBindings)
   else:
     result = body
-
-
-# Nim internals
-# -------------------------------------------
-
-proc declNimMain*(libName: string): string =
-  ## Create the NimMain function.
-  ## It initializes:
-  ## - the Nim runtime if seqs, strings or heap-allocated types are used,
-  ##   this is the case only if Constantine is multithreaded.
-  ## - runtime CPU features detection
-  ## 
-  ## Assumes library is compiled with --nimMainPrefix:ctt_{libName}_
-  &"""
-
-/*
- * Initializes the library:
- * - the Nim runtime if heap-allocated types are used,
- *   this is the case only if Constantine is multithreaded.
- * - runtime CPU features detection
- */
-void ctt_{libName}_NimMain(void);
-"""
