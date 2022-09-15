@@ -456,17 +456,25 @@ task bindings, "Generate Constantine bindings":
 task test_bindings, "Test C bindings":
   exec "mkdir -p build/testsuite"
   echo "--> Testing dynamically linked library"
-  exec "gcc -Ibindings/generated -Lbindings/generated -o build/testsuite/t_libctt_bls12_381_dl.exe tests/bindings/t_libctt_bls12_381.c -lgmp -lconstantine_bls12_381"
   when not defined(windows):
-    exec "LD_LIBRARY_PATH=bindings/generated ./build/testsuite/t_libctt_bls12_381_dl.exe"
+    exec "gcc -Ibindings/generated -Lbindings/generated -o build/testsuite/t_libctt_bls12_381_dl tests/bindings/t_libctt_bls12_381.c -lgmp -lconstantine_bls12_381"
+    exec "LD_LIBRARY_PATH=bindings/generated ./build/testsuite/t_libctt_bls12_381_dl"
   else:
-    echo "Skip DLL testing on windows"
+    # Put DLL near the exe as LD_LIBRARY_PATH doesn't work even in an POSIX compatible shell
+    exec "gcc -Ibindings/generated -Lbindings/generated -o build/testsuite/t_libctt_bls12_381_dl.exe tests/bindings/t_libctt_bls12_381.c -lgmp -lconstantine_bls12_381"
+    exec "./build/testsuite/t_libctt_bls12_381_dl.exe"
   
   echo "--> Testing statically linked library"
-  # exec "gcc -Ibindings/generated -Lbindings/generated -o build/t_libctt_bls12_381_sl.exe tests/bindings/t_libctt_bls12_381.c -lgmp -Wl,-Bstatic -lconstantine_bls12_381 -Wl,-Bdynamic"
-  # Deal with MacOS annoying linker with regards to static libraries
-  exec "gcc -Ibindings/generated -o build/testsuite/t_libctt_bls12_381_sl.exe tests/bindings/t_libctt_bls12_381.c bindings/generated/libconstantine_bls12_381.a -lgmp"
-  exec "./build/testsuite/t_libctt_bls12_381_sl.exe"
+  when not defined(windows):
+    # Beware MacOS annoying linker with regards to static libraries
+    # The following standard way cannot be used on MacOS
+    # exec "gcc -Ibindings/generated -Lbindings/generated -o build/t_libctt_bls12_381_sl.exe tests/bindings/t_libctt_bls12_381.c -lgmp -Wl,-Bstatic -lconstantine_bls12_381 -Wl,-Bdynamic"
+    
+    exec "gcc -Ibindings/generated -o build/testsuite/t_libctt_bls12_381_sl tests/bindings/t_libctt_bls12_381.c bindings/generated/libconstantine_bls12_381.a -lgmp"
+    exec "./build/testsuite/t_libctt_bls12_381_sl"
+  else:
+    exec "gcc -Ibindings/generated -o build/testsuite/t_libctt_bls12_381_sl.exe tests/bindings/t_libctt_bls12_381.c bindings/generated/libconstantine_bls12_381.lib -lgmp"
+    exec "./build/testsuite/t_libctt_bls12_381_sl.exe"
 
 task test, "Run all tests":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
