@@ -21,6 +21,24 @@ const buildParallel = "test_parallel.txt"
 #   Code refactoring requires re-enabling the full suite.
 #   Basic primitives should stay on to catch compiler regressions.
 const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
+
+  # Hashing vs OpenSSL
+  # ----------------------------------------------------------
+  ("tests/t_hash_sha256_vs_openssl.nim", true), # skip OpenSSL tests on Windows
+
+  # Ciphers
+  # ----------------------------------------------------------
+  ("tests/t_cipher_chacha20.nim", false),
+
+  # Message Authentication Code
+  # ----------------------------------------------------------
+  ("tests/t_mac_poly1305.nim", false),
+  ("tests/t_mac_hmac_sha256.nim", false),
+
+  # KDF
+  # ----------------------------------------------------------
+  ("tests/t_kdf_hkdf.nim", false),
+
   # Primitives
   # ----------------------------------------------------------
   ("tests/math/t_primitives.nim", false),
@@ -188,34 +206,37 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ----------------------------------------------------------
   ("tests/math/t_fr.nim", false),
 
-  # Hashing vs OpenSSL
-  # ----------------------------------------------------------
-  ("tests/t_hash_sha256_vs_openssl.nim", true), # skip OpenSSL tests on Windows
-
   # Hashing to elliptic curves
   # ----------------------------------------------------------
   ("tests/t_hash_to_field.nim", false),
   ("tests/t_hash_to_curve_random.nim", false),
   ("tests/t_hash_to_curve.nim", false),
 
-  # Ciphers
-  # ----------------------------------------------------------
-  ("tests/t_cipher_chacha20.nim", false),
-
-  # Message Authentication Code
-  # ----------------------------------------------------------
-  ("tests/t_mac_poly1305.nim", false),
-  ("tests/t_mac_hmac_sha256.nim", false),
-
-  # KDF
-  # ----------------------------------------------------------
-  ("tests/t_kdf_hkdf.nim", false),
-
   # Protocols
   # ----------------------------------------------------------
   ("tests/t_ethereum_evm_precompiles.nim", false),
   ("tests/t_blssig_pop_on_bls12381_g2.nim", false),
   ("tests/t_ethereum_eip2333_bls12381_key_derivation.nim", false),
+]
+
+const benchDesc = [
+  "bench_fp",
+  "bench_fp_double_precision",
+  "bench_fp2",
+  "bench_fp6",
+  "bench_fp12",
+  "bench_ec_g1",
+  "bench_ec_g2",
+  "bench_pairing_bls12_377",
+  "bench_pairing_bls12_381",
+  "bench_pairing_bn254_nogami",
+  "bench_pairing_bn254_snarks",
+  "bench_summary_bls12_377",
+  "bench_summary_bls12_381",
+  "bench_summary_bn254_nogami",
+  "bench_summary_bn254_snarks",
+  "bench_sha256",
+  "bench_hash_to_curve"
 ]
 
 # For temporary (hopefully) investigation that can only be reproduced in CI
@@ -256,13 +277,11 @@ else:
 # ----------------------------------------------------------------
 
 proc clearParallelBuild() =
-  exec "> " & buildParallel
+  # Support clearing from non POSIX shell like CMD, Powershell or MSYS2
+  if fileExists(buildParallel):
+    rmFile(buildParallel)
 
-proc test(flags, path: string, commandFile = false) =
-  # commandFile should be a "file" but Nimscript doesn't support IO
-  if not dirExists "build":
-    mkDir "build"
-  # Compilation language is controlled by WEAVE_TEST_LANG
+template setupCommand(): untyped {.dirty.} = 
   var lang = "c"
   if existsEnv"TEST_LANG":
     lang = getEnv"TEST_LANG"
@@ -280,36 +299,55 @@ proc test(flags, path: string, commandFile = false) =
     " --nimcache:nimcache/" & path & " " &
     path
 
-  if not commandFile:
-    echo "\n=============================================================================================="
-    echo "Running [flags:", flags, "] ", path
-    echo "=============================================================================================="
-    exec command
-  else:
-    exec "echo \'" & command & "\' >> " & buildParallel
-    exec "echo \"------------------------------------------------------\""
+proc test(cmd: string) =
+  echo "\n=============================================================================================="
+  echo "Running '", cmd, "'"
+  echo "=============================================================================================="
+  exec cmd
 
-proc buildBench(benchName: string, compiler = "", useAsm = true, run = false) =
-  if not dirExists "build":
-    mkDir "build"
+proc testBatch(commands: var string, flags, path: string) =
+  setupCommand()
+  commands &= command & '\n'
 
+template setupBench(): untyped {.dirty.} =
   let runFlag = if run: " -r "
-            else: " "
+                else: " "
+
+  var lang = " c "
+  if existsEnv"TEST_LANG":
+    lang = getEnv"TEST_LANG"
 
   var cc = ""
   if compiler != "":
     cc = "--cc:" & compiler
+  elif existsEnv"CC":
+    cc = " --cc:" & getEnv"CC"
+
   if not useAsm:
     cc &= " -d:CttASM=false"
-  exec "nim c " & cc &
+  let command = "nim " & lang & cc &
        " -d:danger --verbosity:0 -o:build/bench/" & benchName & "_" & compiler & "_" & (if useAsm: "useASM" else: "noASM") &
        " --nimcache:nimcache/" & benchName & "_" & compiler & "_" & (if useAsm: "useASM" else: "noASM") &
        runFlag & "--hints:off --warnings:off benchmarks/" & benchName & ".nim"
 
 proc runBench(benchName: string, compiler = "", useAsm = true) =
-  buildBench(benchName, compiler, useAsm, run = true)
+  if not dirExists "build":
+    mkDir "build"
+  let run = true
+  setupBench()
+  exec command
 
-proc runTests(requireGMP: bool, dumpCmdFile = false, test32bit = false, testASM = true) =
+proc buildBenchBatch(commands: var string, benchName: string, compiler = "", useAsm = true) =
+  let run = false
+  let compiler = ""
+  setupBench()
+  commands &= command & '\n'
+
+proc addTestSet(cmdFile: var string, requireGMP: bool, test32bit = false, testASM = true) =
+  if not dirExists "build":
+    mkDir "build"
+  echo "Found " & $testDesc.len & " tests to run."
+  
   for td in testDesc:
     if not(td.useGMP and not requireGMP):
       var flags = ""
@@ -321,29 +359,15 @@ proc runTests(requireGMP: bool, dumpCmdFile = false, test32bit = false, testASM 
         flags &= " -d:debugConstantine"
       if td.path notin skipSanitizers:
         flags &= sanitizers
-      test flags, td.path, dumpCmdFile
+      
+      cmdFile.testBatch(flags, td.path)
 
-proc buildAllBenches(useAsm = true) =
-  echo "\n\n------------------------------------------------------\n"
-  echo "Building benchmarks to ensure they stay relevant ..."
-  buildBench("bench_fp", useAsm = useAsm)
-  buildBench("bench_fp_double_precision", useAsm = useAsm)
-  buildBench("bench_fp2", useAsm = useAsm)
-  buildBench("bench_fp6", useAsm = useAsm)
-  buildBench("bench_fp12", useAsm = useAsm)
-  buildBench("bench_ec_g1", useAsm = useAsm)
-  buildBench("bench_ec_g2", useAsm = useAsm)
-  buildBench("bench_pairing_bls12_377", useAsm = useAsm)
-  buildBench("bench_pairing_bls12_381", useAsm = useAsm)
-  buildBench("bench_pairing_bn254_nogami", useAsm = useAsm)
-  buildBench("bench_pairing_bn254_snarks", useAsm = useAsm)
-  buildBench("bench_summary_bls12_377", useAsm = useAsm)
-  buildBench("bench_summary_bls12_381", useAsm = useAsm)
-  buildBench("bench_summary_bn254_nogami", useAsm = useAsm)
-  buildBench("bench_summary_bn254_snarks", useAsm = useAsm)
-  buildBench("bench_sha256", useAsm = useAsm)
-  buildBench("bench_hash_to_curve", useAsm = useAsm)
-  echo "All benchmarks compile successfully."
+proc addBenchSet(cmdFile: var string, useAsm = true) =
+  if not dirExists "build":
+    mkDir "build"
+  echo "Found " & $benchDesc.len & " benches to compile. (compile-only to ensure they stay relevant)"
+  for bd in benchDesc:
+    cmdFile.buildBenchBatch(bd, useASM = useASM)
 
 proc genBindings(bindingsName, prefixNimMain: string) =
   proc compile(libName: string, flags = "") =
@@ -379,6 +403,9 @@ proc genHeaders(bindingsName: string) =
        " --nimcache:nimcache/bindings/" & bindingsName & "_header" &
        " bindings/" & bindingsName & ".nim"
 
+proc genParallelCmdRunner() =
+  exec "nim c --verbosity:0 --hints:off --warnings:off -d:release --out:build/pararun --nimcache:nimcache/pararun helpers/pararun.nim"
+
 # Tasks
 # ----------------------------------------------------------------
 
@@ -390,123 +417,79 @@ task bindings, "Generate Constantine bindings":
 
 task test, "Run all tests":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
-  runTests(requireGMP = true)
+  var cmdFile: string
+  cmdFile.addTestSet(requireGMP = true, testASM = true)
+  cmdFile.addBenchSet(useASM = true)    # Build (but don't run) benches to ensure they stay relevant
+  for cmd in cmdFile.splitLines():
+    exec cmd
 
-  # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
-  #   runTests(requireGMP = true, test32bit = true)
-
-  # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
-  if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
-    buildAllBenches()
-
-task test_no_assembler, "Run all tests":
+task test_no_asm, "Run all tests (no assembly)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
-  runTests(requireGMP = true, testASM = false)
-
-  # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
-  #   runTests(requireGMP = true, test32bit = true)
-
-  # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
-  if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
-    buildAllBenches(useASM = false)
+  var cmdFile: string
+  cmdFile.addTestSet(requireGMP = true, testASM = false)
+  cmdFile.addBenchSet(useASM = false)    # Build (but don't run) benches to ensure they stay relevant
+  for cmd in cmdFile.splitLines():
+    exec cmd
 
 task test_no_gmp, "Run tests that don't require GMP":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
-  runTests(requireGMP = false)
+  var cmdFile: string
+  cmdFile.addTestSet(requireGMP = false, testASM = true)
+  cmdFile.addBenchSet(useASM = true)    # Build (but don't run) benches to ensure they stay relevant
+  for cmd in cmdFile.splitLines():
+    exec cmd
 
-  # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
-  #   runTests(requireGMP = true, test32bit = true)
-
-  # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
-  if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
-    buildAllBenches()
-
-task test_no_gmp_no_assembler, "Run tests that don't require GMP using a pure Nim backend":
+task test_no_gmp_no_asm, "Run tests that don't require GMP using a pure Nim backend":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
-  runTests(requireGMP = false, testASM = false)
-
-  # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
-  #   runTests(requireGMP = true, test32bit = true)
-
-  # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
-  if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
-    buildAllBenches()
+  var cmdFile: string
+  cmdFile.addTestSet(requireGMP = false, testASM = false)
+  cmdFile.addBenchSet(useASM = false)    # Build (but don't run) benches to ensure they stay relevant
+  for cmd in cmdFile.splitLines():
+    exec cmd
 
 task test_parallel, "Run all tests in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   clearParallelBuild()
-  runTests(requireGMP = true, dumpCmdFile = true)
-  exec "parallel --keep-order --group < " & buildParallel
+  genParallelCmdRunner()
 
-  # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
-  #   clearParallelBuild()
-  #   runTests(requireGMP = true, dumpCmdFile = true, test32bit = true)
-  #   exec "parallel --keep-order --group < " & buildParallel
+  var cmdFile: string
+  cmdFile.addTestSet(requireGMP = true, testASM = true)
+  cmdFile.addBenchSet(useASM = true)    # Build (but don't run) benches to ensure they stay relevant
+  writeFile(buildParallel, cmdFile)
+  exec "build/pararun " & buildParallel
 
-  # Now run the benchmarks
-  #
-  # Benchmarks compile
-  # ignore Windows 32-bit for the moment
-  # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
-  if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
-    buildAllBenches()
-
-task test_parallel_no_assembler, "Run all tests (without macro assembler) in parallel (via GNU parallel)":
+task test_parallel_no_asm, "Run all tests (without macro assembler) in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   clearParallelBuild()
-  runTests(requireGMP = true, dumpCmdFile = true, testASM = false)
-  exec "parallel --keep-order --group < " & buildParallel
+  genParallelCmdRunner()
 
-  # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
-  #   clearParallelBuild()
-  #   runTests(requireGMP = true, dumpCmdFile = true, test32bit = true, testASM = false)
-  #   exec "parallel --keep-order --group < " & buildParallel
-
-  # Now run the benchmarks
-  #
-  # Benchmarks compile
-  # ignore Windows 32-bit for the moment
-  # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
-  if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
-    buildAllBenches(useASM = false)
+  var cmdFile: string
+  cmdFile.addTestSet(requireGMP = true, testASM = false)
+  cmdFile.addBenchSet(useASM = false)
+  writeFile(buildParallel, cmdFile)
+  exec "build/pararun " & buildParallel
 
 task test_parallel_no_gmp, "Run all tests in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   clearParallelBuild()
-  runTests(requireGMP = false, dumpCmdFile = true)
-  exec "parallel --keep-order --group < " & buildParallel
+  genParallelCmdRunner()
 
-  # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
-  #   clearParallelBuild()
-  #   runTests(requireGMP = false, dumpCmdFile = true, test32bit = true)
-  #   exec "parallel --keep-order --group < " & buildParallel
+  var cmdFile: string
+  cmdFile.addTestSet(requireGMP = false, testASM = true)
+  cmdFile.addBenchSet(useASM = true)    # Build (but don't run) benches to ensure they stay relevant
+  writeFile(buildParallel, cmdFile)
+  exec "build/pararun " & buildParallel
 
-  # Now run the benchmarks
-  #
-  # Benchmarks compile
-  # ignore Windows 32-bit for the moment
-  # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
-  if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
-    buildAllBenches()
-
-task test_parallel_no_gmp_no_assembler, "Run all tests in parallel (via GNU parallel)":
+task test_parallel_no_gmp_no_asm, "Run all tests in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   clearParallelBuild()
-  runTests(requireGMP = false, dumpCmdFile = true, testASM = false)
-  exec "parallel --keep-order --group < " & buildParallel
+  genParallelCmdRunner()
 
-  # if sizeof(int) == 8: # 32-bit tests on 64-bit arch
-  #   clearParallelBuild()
-  #   runTests(requireGMP = false, dumpCmdFile = true, test32bit = true, testASM = false)
-  #   exec "parallel --keep-order --group < " & buildParallel
-
-  # Now run the benchmarks
-  #
-  # Benchmarks compile
-  # ignore Windows 32-bit for the moment
-  # Ensure benchmarks stay relevant. Ignore Windows 32-bit at the moment
-  if not defined(windows) or not (existsEnv"UCPU" or getEnv"UCPU" == "i686"):
-    buildAllBenches(useASM = false)
+  var cmdFile: string
+  cmdFile.addTestSet(requireGMP = false, testASM = false)
+  cmdFile.addBenchSet(useASM = false)    # Build (but don't run) benches to ensure they stay relevant
+  writeFile(buildParallel, cmdFile)
+  exec "build/pararun " & buildParallel
 
 # Finite field 𝔽p
 # ------------------------------------------

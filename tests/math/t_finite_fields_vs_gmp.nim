@@ -15,7 +15,9 @@ import
   ../../constantine/platforms/abstractions,
   ../../constantine/math/io/[io_bigints, io_fields],
   ../../constantine/math/arithmetic,
-  ../../constantine/math/config/curves
+  ../../constantine/math/config/curves,
+  # Test utilities
+  ../../helpers/prng_unsafe
 
 echo "\n------------------------------------------------------\n"
 
@@ -45,36 +47,32 @@ const # https://gmplib.org/manual/Integer-Import-and-Export.html
 # Factor common things in proc to avoid generating 100k+ lines of C code
 
 proc binary_prologue[C: static Curve, N: static int](
-        gmpRng: var gmp_randstate_t,
+        rng: var RngState,
         a, b, p: var mpz_t,
         aTest, bTest: var Fp[C],
         aBuf, bBuf: var array[N, byte]) =
-  const bits = C.getCurveBitwidth()
 
-  # Generate random value in the range 0 ..< 2^(bits-1)
-  mpz_urandomb(a, gmpRng, uint bits)
-  mpz_urandomb(b, gmpRng, uint bits)
+  # Build the field elements
+  aTest = rng.random_unsafe(Fp[C])
+  bTest = rng.random_unsafe(Fp[C])
+
   # Set modulus to curve modulus
   let err = mpz_set_str(p, Curve(C).Mod.toHex(), 0)
   doAssert err == 0, "Error on prime for curve " & $Curve(C)
 
   #########################################################
-  # Conversion buffers
-  const len = (bits + 7) div 8
+  # Conversion to GMP
+  const aLen = (C.getCurveBitwidth() + 7) div 8
+  const bLen = (C.getCurveBitwidth()  + 7) div 8
 
-  static: doAssert N >= len
+  var aBuf: array[aLen, byte]
+  var bBuf: array[bLen, byte]
 
-  var aW, bW: csize # Word written by GMP
-  discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
-  discard mpz_export(bBuf[0].addr, bW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, b)
+  aBuf.marshal(aTest, bigEndian)
+  bBuf.marshal(bTest, bigEndian)
 
-  # Since the modulus is using all bits, it's we can test for exact amount copy
-  doAssert len >= aW, "Expected at most " & $len & " bytes but wrote " & $aW & " for " & toHex(aBuf) & " (big-endian)"
-  doAssert len >= bW, "Expected at most " & $len & " bytes but wrote " & $bW & " for " & toHex(bBuf) & " (big-endian)"
-
-  # Build the bigint
-  aTest = Fp[C].fromBig BigInt[bits].unmarshal(aBuf.toOpenArray(0, aW-1), bigEndian)
-  bTest = Fp[C].fromBig BigInt[bits].unmarshal(bBuf.toOpenArray(0, bW-1), bigEndian)
+  mpz_import(a, aLen, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, aBuf[0].addr)
+  mpz_import(b, bLen, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, bBuf[0].addr)
 
 proc binary_epilogue[C: static Curve, N: static int](
         r, a, b: mpz_t,
@@ -85,8 +83,12 @@ proc binary_epilogue[C: static Curve, N: static int](
 
   #########################################################
   # Check
+
+  {.push warnings: off.} # deprecated csize
+  var aW, bW, rW: csize  # Word written by GMP
+  {.pop.}
+
   var rGMP: array[N, byte]
-  var rW: csize # Word written by GMP
   discard mpz_export(rGMP[0].addr, rW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, r)
 
   var rConstantine: array[N, byte]
@@ -95,7 +97,6 @@ proc binary_epilogue[C: static Curve, N: static int](
   # Note: in bigEndian, GMP aligns left while constantine aligns right
   doAssert rGMP.toOpenArray(0, rW-1) == rConstantine.toOpenArray(N-rW, N-1), block:
     # Reexport as bigEndian for debugging
-    var aW, bW: csize
     discard mpz_export(aBuf[0].unsafeAddr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
     discard mpz_export(bBuf[0].unsafeAddr, bW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, b)
     "\nModular " & operation & " on curve " & $C & " with operands\n" &
@@ -112,7 +113,7 @@ proc binary_epilogue[C: static Curve, N: static int](
 #
 # ############################################################
 
-proc addTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curve) =
+proc addTests(rng: var RngState, a, b, p, r: var mpz_t, C: static Curve) =
   # echo "Testing: random modular addition on ", $C
 
   const
@@ -121,7 +122,7 @@ proc addTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curv
   var
     aTest, bTest{.noInit.}: Fp[C]
     aBuf, bBuf: array[bufLen, byte]
-  binary_prologue(gmpRng, a, b, p, aTest, bTest, aBuf, bBuf)
+  binary_prologue(rng, a, b, p, aTest, bTest, aBuf, bBuf)
 
   mpz_add(r, a, b)
   mpz_mod(r, r, p)
@@ -135,7 +136,7 @@ proc addTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curv
   binary_epilogue(r, a, b, rTest, aBuf, bBuf, "Addition (with result)")
   binary_epilogue(r, a, b, r2Test, aBuf, bBuf, "Addition (in-place)")
 
-proc subTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curve) =
+proc subTests(rng: var RngState, a, b, p, r: var mpz_t, C: static Curve) =
   # echo "Testing: random modular substraction on ", $C
 
   const
@@ -144,7 +145,7 @@ proc subTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curv
   var
     aTest, bTest{.noInit.}: Fp[C]
     aBuf, bBuf: array[bufLen, byte]
-  binary_prologue(gmpRng, a, b, p, aTest, bTest, aBuf, bBuf)
+  binary_prologue(rng, a, b, p, aTest, bTest, aBuf, bBuf)
 
   mpz_sub(r, a, b)
   mpz_mod(r, r, p)
@@ -163,7 +164,7 @@ proc subTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curv
   binary_epilogue(r, a, b, r2Test, aBuf, bBuf, "Substraction (in-place)")
   binary_epilogue(r, a, b, r3Test, aBuf, bBuf, "Substraction (result aliasing)")
 
-proc mulTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curve) =
+proc mulTests(rng: var RngState, a, b, p, r: var mpz_t, C: static Curve) =
   # echo "Testing: random modular multiplication on ", $C
 
   const
@@ -172,7 +173,7 @@ proc mulTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curv
   var
     aTest, bTest{.noInit.}: Fp[C]
     aBuf, bBuf: array[bufLen, byte]
-  binary_prologue(gmpRng, a, b, p, aTest, bTest, aBuf, bBuf)
+  binary_prologue(rng, a, b, p, aTest, bTest, aBuf, bBuf)
 
   mpz_mul(r, a, b)
   mpz_mod(r, r, p)
@@ -186,7 +187,7 @@ proc mulTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curv
   binary_epilogue(r, a, b, rTest, aBuf, bBuf, "Multiplication (with result)")
   binary_epilogue(r, a, b, r2Test, aBuf, bBuf, "Multiplication (in-place)")
 
-proc invTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curve) =
+proc invTests(rng: var RngState, a, b, p, r: var mpz_t, C: static Curve) =
   # We use the binary prologue epilogue but the "b" parameter is actual unused
   # echo "Testing: random modular inversion on ", $C
 
@@ -196,7 +197,7 @@ proc invTests(gmpRng: var gmp_randstate_t, a, b, p, r: var mpz_t, C: static Curv
   var
     aTest, bTest{.noInit.}: Fp[C]
     aBuf, bBuf: array[bufLen, byte]
-  binary_prologue(gmpRng, a, b, p, aTest, bTest, aBuf, bBuf)
+  binary_prologue(rng, a, b, p, aTest, bTest, aBuf, bBuf)
 
   let exist = mpz_invert(r, a, p)
   doAssert exist != 0
@@ -227,15 +228,11 @@ macro randomTests(numTests: static int, curveSym, body: untyped): untyped =
           `body`
 
 template testSetup {.dirty.} =
-  var gmpRng: gmp_randstate_t
-  gmp_randinit_mt(gmpRng)
-  # The GMP seed varies between run so that
-  # test coverage increases as the library gets tested.
-  # This requires to dump the seed in the console or the function inputs
-  # to be able to reproduce a bug
+  var rng: RngState
   let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
-  echo "GMP seed: ", seed
-  gmp_randseed_ui(gmpRng, seed)
+  rng.seed(seed)
+  echo "\n------------------------------------------------------\n"
+  echo "test_finite_fields_vs_gmp** seed: ", seed
 
   var a, b, p, r: mpz_t
   mpz_init(a)
@@ -247,25 +244,25 @@ proc mainMul() =
   testSetup()
   echo "Testing modular multiplications vs GMP"
   randomTests(24, curve):
-    mulTests(gmpRng, a, b, p, r, curve)
+    mulTests(rng, a, b, p, r, curve)
 
 proc mainAdd() =
   testSetup()
   echo "Testing modular additions vs GMP"
   randomTests(24, curve):
-    addTests(gmpRng, a, b, p, r, curve)
+    addTests(rng, a, b, p, r, curve)
 
 proc mainSub() =
   testSetup()
   echo "Testing modular substractions vs GMP"
   randomTests(24, curve):
-    subTests(gmpRng, a, b, p, r, curve)
+    subTests(rng, a, b, p, r, curve)
 
 proc mainInv() =
   testSetup()
   echo "Testing modular inversions vs GMP"
   randomTests(24, curve):
-    invTests(gmpRng, a, b, p, r, curve)
+    invTests(rng, a, b, p, r, curve)
 
 
 mainMul()

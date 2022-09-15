@@ -14,7 +14,9 @@ import
   # Internal
   ../../constantine/math/io/io_bigints,
   ../../constantine/math/arithmetic,
-  ../../constantine/platforms/primitives
+  ../../constantine/platforms/primitives,
+  # Test utilities
+  ../../helpers/prng_unsafe
 
 echo "\n------------------------------------------------------\n"
 # We test up to 1024-bit, more is really slow
@@ -82,15 +84,11 @@ const # https://gmplib.org/manual/Integer-Import-and-Export.html
   GMP_LeastSignificantWordFirst = -1'i32
 
 proc main() =
-  var gmpRng: gmp_randstate_t
-  gmp_randinit_mt(gmpRng)
-  # The GMP seed varies between run so that
-  # test coverage increases as the library gets tested.
-  # This requires to dump the seed in the console or the function inputs
-  # to be able to reproduce a bug
+  var rng: RngState
   let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
-  echo "GMP seed: ", seed
-  gmp_randseed_ui(gmpRng, seed)
+  rng.seed(seed)
+  echo "\n------------------------------------------------------\n"
+  echo "test_bigints_mod_vs_gmp xoshiro512** seed: ", seed
 
   var a, m, r: mpz_t
   mpz_init(a)
@@ -101,34 +99,25 @@ proc main() =
     # echo "--------------------------------------------------------------------------------"
     echo "Testing: random dividend (" & align($aBits, 4) & "-bit) -- random modulus (" & align($mBits, 4) & "-bit)"
 
-    # Generate random value in the range 0 ..< 2^aBits
-    mpz_urandomb(a, gmpRng, aBits)
-    # Generate random modulus and ensure the MSB is set
-    mpz_urandomb(m, gmpRng, mBits)
-    mpz_setbit(m, mBits-1)
-
-    # discard gmp_printf(" -- %#Zx mod %#Zx\n", a.addr, m.addr)
+    # Build the bigints
+    let aTest = rng.random_unsafe(BigInt[aBits])
+    var mTest = rng.random_unsafe(BigInt[mBits])
+    # Ensure modulus MSB is set
+    mTest.setBit(mBits-1)
 
     #########################################################
-    # Conversion buffers
+    # Conversion to GMP
     const aLen = (aBits + 7) div 8
     const mLen = (mBits + 7) div 8
 
     var aBuf: array[aLen, byte]
     var mBuf: array[mLen, byte]
 
-    var aW, mW: csize # Word written by GMP
+    aBuf.marshal(aTest, bigEndian)
+    mBuf.marshal(mTest, bigEndian)
 
-    discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
-    discard mpz_export(mBuf[0].addr, mW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, m)
-
-    # Since the modulus is using all bits, it's we can test for exact amount copy
-    doAssert aLen >= aW, "Expected at most " & $aLen & " bytes but wrote " & $aW & " for " & toHex(aBuf) & " (big-endian)"
-    doAssert mLen == mW, "Expected " & $mLen & " bytes but wrote " & $mW & " for " & toHex(mBuf) & " (big-endian)"
-
-    # Build the bigint
-    let aTest = BigInt[aBits].unmarshal(aBuf.toOpenArray(0, aW-1), bigEndian)
-    let mTest = BigInt[mBits].unmarshal(mBuf.toOpenArray(0, mW-1), bigEndian)
+    mpz_import(a, aLen, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, aBuf[0].addr)
+    mpz_import(m, mLen, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, mBuf[0].addr)
 
     #########################################################
     # Modulus
@@ -139,8 +128,12 @@ proc main() =
 
     #########################################################
     # Check
+
+    {.push warnings: off.} # deprecated csize
+    var aW, mW, rW: csize  # Words written by GMP
+    {.pop.}
+
     var rGMP: array[mLen, byte]
-    var rW: csize # Word written by GMP
     discard mpz_export(rGMP[0].addr, rW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, r)
 
     var rConstantine: array[mLen, byte]

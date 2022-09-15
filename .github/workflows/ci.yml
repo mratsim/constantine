@@ -117,10 +117,9 @@ jobs:
         run: |
           echo '${{ github.workspace }}'"/external/mingw-${{ matrix.target.cpu }}/bin" >> $GITHUB_PATH
           echo '${{ github.workspace }}'"/external/dlls-${{ matrix.target.cpu }}" >> $GITHUB_PATH
+
       - name: Restore Nim from cache
-        if: >
-          steps.nim-compiler-cache.outputs.cache-hit != 'true' &&
-          matrix.nim_version != 'devel'
+        if: matrix.nim_version != 'devel'
         id: nim-compiler-cache
         uses: actions/cache@v2
         with:
@@ -128,20 +127,28 @@ jobs:
           key: 'nim-${{ matrix.target.cpu }}-${{ matrix.nim_version }}'
 
       - name: Setup Nim
+        if: steps.nim-compiler-cache.outputs.cache-hit != 'true'
         uses: alaviss/setup-nim@0.1.1
         with:
-          path: 'nim'
+          path: 'nim-${{ matrix.nim_version }}-${{ matrix.target.cpu }}'
           version: ${{ matrix.nim_version }}
           architecture: ${{ matrix.target.cpu }}
+          add-to-path: false
 
-      - name: Install dependencies (Linux amd64)
+      - name: Path to cached Nim
+        shell: bash
+        run: |
+          echo '${{ github.workspace }}'"/nim-${{ matrix.nim_version }}-${{ matrix.target.cpu }}/bin" >> $GITHUB_PATH
+          echo '${{ github.workspace }}'"/.nimble/bin" >> $GITHUB_PATH
+
+      - name: Install test dependencies (Linux amd64)
         if: runner.os == 'Linux' && matrix.target.cpu == 'amd64'
         run: |
           sudo DEBIAN_FRONTEND='noninteractive' apt-fast install \
             --no-install-recommends -yq \
             libgmp-dev
 
-      - name: Install dependencies (Linux i386)
+      - name: Install test dependencies (Linux i386)
         if: runner.os == 'Linux' && matrix.target.cpu == 'i386'
         run: |
           sudo dpkg --add-architecture i386
@@ -160,70 +167,51 @@ jobs:
           #!/bin/bash
           exec $(which g++) -m32 "\$@"
           EOF
-          chmod 755 external/bin/gcc external/bin/g++
+          chmod 755 external/bin/{gcc,g++}
           echo '${{ github.workspace }}/external/bin' >> $GITHUB_PATH
 
-      - name: Install dependencies (macOS)
+      - name: Install test dependencies (macOS)
         if: runner.os == 'macOS'
-        run: brew install gmp parallel
+        run: brew install gmp
 
       - name: Setup MSYS2 (Windows)
         if: runner.os == 'Windows'
         uses: msys2/setup-msys2@v2
         with:
           path-type: inherit
-          update: true
+          update: false
           install: base-devel git mingw-w64-x86_64-toolchain
 
-      - name: Install dependencies (Windows)
+      - name: Install test dependencies (Windows)
         if: runner.os == 'Windows'
         shell: msys2 {0}
         run: |
           pacman -S --needed --noconfirm mingw-w64-x86_64-gmp
-          pacman -S --needed --noconfirm parallel
-          nimble refresh -y
-          nimble install -y gmp stew jsony
+          nimble refresh --verbose -y
+          nimble install --verbose -y gmp stew jsony asynctools
 
       - name: Install test dependencies
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          nimble refresh -y
-          nimble install -y gmp stew jsony
+          nimble refresh --verbose -y
+          nimble install --verbose -y gmp stew jsony asynctools
 
-      - name: Run Constantine tests (with Assembler & with GMP)
-        if: (runner.os == 'Linux' || runner.os == 'macOS') && matrix.target.BACKEND == 'ASM' && matrix.target.cpu != 'i386'
+      - name: Run Constantine tests (UNIX with Assembler)
+        if: runner.os != 'Windows' && matrix.target.BACKEND == 'ASM'
         shell: bash
         run: |
-          export UCPU="$cpu"
           cd constantine
-          nimble test_parallel
-      - name: Run Constantine tests (no Assembler & with GMP)
-        if: (runner.os == 'Linux' || runner.os == 'macOS') && matrix.target.BACKEND == 'NO_ASM' && matrix.target.cpu != 'i386'
+          nimble test_parallel --verbose
+      - name: Run Constantine tests (UNIX no Assembler)
+        if: runner.os != 'Windows' && matrix.target.BACKEND == 'NO_ASM'
         shell: bash
         run: |
-          export UCPU="$cpu"
           cd constantine
-          nimble test_parallel_no_assembler
-      - name: Run Constantine tests (without GMP)
-        if: runner.os == 'Linux' && matrix.target.BACKEND == 'ASM' && matrix.target.cpu == 'i386'
-        shell: bash
-        run: |
-          export UCPU="$cpu"
-          cd constantine
-          nimble test_parallel_no_gmp
-      - name: Run Constantine tests (without Assembler or GMP)
-        if: runner.os == 'Linux' && matrix.target.BACKEND == 'NO_ASM' && matrix.target.cpu == 'i386'
-        shell: bash
-        run: |
-          export UCPU="$cpu"
-          cd constantine
-          nimble test_parallel_no_gmp_no_assembler
-      - name: Run Constantine tests (Windows - without Assembler or GMP)
-        # TODO, why aren't GMP or parallel in path?
-        if: runner.os == 'Windows'
+          nimble test_parallel_no_asm --verbose
+      - name: Run Constantine tests (Windows no Assembler)
+        if: runner.os == 'Windows' && matrix.target.BACKEND == 'NO_ASM'
         shell: msys2 {0}
         run: |
-          export UCPU="$cpu"
           cd constantine
-          nimble test_no_gmp_no_assembler
+          nimble test_parallel_no_asm --verbose
