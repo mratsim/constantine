@@ -23,7 +23,7 @@ type AsyncSemaphore = ref object
   slots, max: int
 
 proc new(_: type AsyncSemaphore, max: int): AsyncSemaphore =
-  ## Initialize an AsyncSemaphore that can release up to max item
+  ## Initialize an AsyncSemaphore that can release up to max items
   AsyncSemaphore(
     waiters: default(Deque[Future[void]]),
     slots: max,
@@ -112,9 +112,7 @@ proc runCommands(commandFile: string, numWorkers: int) =
 
   # Parse the file
   # --------------
-  var cmd: string
-  let f = open(commandFile)
-  while f.readLine(cmd):
+  for cmd in lines(commandFile):
     if cmd.len == 0: continue
     wq.cmdQueue.addLast(cmd)
 
