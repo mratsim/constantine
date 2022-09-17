@@ -322,7 +322,7 @@ func eth_evm_ecpairing*(
   if N == 0:
     # Spec: "Empty input is valid and results in returning one."
     zeroMem(r.addr, r.sizeof())
-    r[^1] = byte 1
+    r[r.len-1] = byte 1
     return
 
   var gt0{.noInit.}, gt1{.noInit.}: Fp12[BN254_Snarks]
@@ -361,4 +361,4 @@ func eth_evm_ecpairing*(
 
   zeroMem(r.addr, r.sizeof())
   if gt0.isOne().bool:
-    r[^1] = byte 1
+    r[r.len-1] = byte 1

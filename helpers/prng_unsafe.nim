@@ -165,7 +165,7 @@ template clearExtraBitsOverMSB(a: var BigInt) =
   when a.bits != a.limbs.len * WordBitWidth:
     const posExtraBits = a.bits - (a.limbs.len-1) * WordBitWidth
     const mask = (One shl posExtraBits) - One
-    a.limbs[^1] = a.limbs[^1] and mask
+    a.limbs[a.limbs.len-1] = a.limbs[a.limbs.len-1] and mask
 
 func random_unsafe(rng: var RngState, a: var BigInt) =
   ## Initialize a standalone BigInt

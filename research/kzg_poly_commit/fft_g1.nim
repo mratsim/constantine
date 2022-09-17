@@ -82,10 +82,10 @@ func expandRootOfUnity[F](rootOfUnity: F): auto {.noInit.} =
   r[1] = rootOfUnity.toBig()
 
   var cur = rootOfUnity
-  while not r[^1].isOne().bool:
+  while not r[r.len-1].isOne().bool:
     cur *= rootOfUnity
     r.setLen(r.len + 1)
-    r[^1] = cur.toBig()
+    r[r.len-1] = cur.toBig()
 
   return r
 

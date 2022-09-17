@@ -236,7 +236,7 @@ func checkOdd(M: BigInt) =
 
 func checkValidModulus(M: BigInt) =
   const expectedMsb = M.bits-1 - WordBitWidth * (M.limbs.len - 1)
-  let msb = log2_vartime(BaseType(M.limbs[^1]))
+  let msb = log2_vartime(BaseType(M.limbs[M.limbs.len-1]))
 
   doAssert msb == expectedMsb, "Internal Error: the modulus must use all declared bits and only those:\n" &
     "    Modulus '" & M.toHex() & "' is declared with " & $M.bits &
@@ -254,7 +254,7 @@ func countSpareBits*(M: BigInt): int =
   ## - [0, 8p) if 3 bits are available
   ## - ...
   checkValidModulus(M)
-  let msb = log2_vartime(BaseType(M.limbs[^1]))
+  let msb = log2_vartime(BaseType(M.limbs[M.limbs.len-1]))
   result = WordBitWidth - 1 - msb.int
 
 func invModBitwidth[T: SomeUnsignedInt](a: T): T =
@@ -336,7 +336,7 @@ func r_powmod(n: static int, M: BigInt): BigInt =
     start = (w-1)*WordBitWidth + msb
     stop = n*WordBitWidth*w
 
-  result.limbs[^1] = SecretWord(BaseType(1) shl msb) # C0 = 2^(wn-1), the power of 2 immediatly less than the modulus
+  result.limbs[M.limbs.len-1] = SecretWord(BaseType(1) shl msb) # C0 = 2^(wn-1), the power of 2 immediatly less than the modulus
   for _ in start ..< stop:
     result.doubleMod(M)
 

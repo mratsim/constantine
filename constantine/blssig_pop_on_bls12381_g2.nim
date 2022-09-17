@@ -242,7 +242,7 @@ func deserialize_public_key_compressed_unchecked*(dst: var PublicKey, src: array
   # General case
   var t{.noInit.}: matchingBigInt(BLS12_381)
   t.unmarshal(src, bigEndian)
-  t.limbs[^1] = t.limbs[^1] and (MaxWord shr 3) # The first 3 bytes contain metadata to mask out
+  t.limbs[t.len-1] = t.limbs[t.len-1] and (MaxWord shr 3) # The first 3 bytes contain metadata to mask out
 
   if bool(t >= BLS12_381.Mod()):
     return cttBLS_CoordinateGreaterOrEqualThanModulus
@@ -296,7 +296,7 @@ func deserialize_signature_compressed_unchecked*(dst: var Signature, src: array[
   # General case
   var t{.noInit.}: matchingBigInt(BLS12_381)
   t.unmarshal(src.toOpenArray(0, 48-1), bigEndian)
-  t.limbs[^1] = t.limbs[^1] and (MaxWord shr 3) # The first 3 bytes contain metadata to mask out
+  t.limbs[t.limbs.len-1] = t.limbs[t.limbs.len-1] and (MaxWord shr 3) # The first 3 bytes contain metadata to mask out
 
   if bool(t >= BLS12_381.Mod()):
     return cttBLS_CoordinateGreaterOrEqualThanModulus

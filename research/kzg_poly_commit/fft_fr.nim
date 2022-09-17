@@ -78,9 +78,9 @@ func expandRootOfUnity[F](rootOfUnity: F): seq[F] =
   result.setLen(2)
   result[0].setOne()
   result[1] = rootOfUnity
-  while not result[^1].isOne().bool:
+  while not result[result.len-1].isOne().bool:
     result.setLen(result.len + 1)
-    result[^1].prod(result[^2], rootOfUnity)
+    result[result.len-1].prod(result[result.len-2], rootOfUnity)
 
 # FFT Algorithm
 # ----------------------------------------------------------------
