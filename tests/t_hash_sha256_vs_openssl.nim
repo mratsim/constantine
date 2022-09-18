@@ -34,7 +34,7 @@ else:
 # But the new API isn't expose on Linux :/
 
 # TODO: fix Windows
-when not defined(Windows):
+when not defined(windows):
   proc SHA256[T: byte|char](
         msg: openarray[T],
         digest: ptr array[32, byte] = nil
