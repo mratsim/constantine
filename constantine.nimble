@@ -223,6 +223,7 @@ const benchDesc = [
   "bench_fp",
   "bench_fp_double_precision",
   "bench_fp2",
+  "bench_fp4",
   "bench_fp6",
   "bench_fp12",
   "bench_ec_g1",
@@ -235,8 +236,11 @@ const benchDesc = [
   "bench_summary_bls12_381",
   "bench_summary_bn254_nogami",
   "bench_summary_bn254_snarks",
+  "bench_summary_pasta",
+  "bench_poly_1305",
   "bench_sha256",
-  "bench_hash_to_curve"
+  "bench_hash_to_curve",
+  "bench_blssig_on_bls12_381_g2"
 ]
 
 # For temporary (hopefully) investigation that can only be reproduced in CI
