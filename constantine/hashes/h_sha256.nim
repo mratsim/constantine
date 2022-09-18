@@ -11,7 +11,9 @@ import
   ./sha256/sha256_generic
 
 when UseASM_X86_32:
-  import ./sha256/sha256_x86_ssse3
+  import ./sha256/[
+    sha256_x86_ssse3,
+    sha256_x86_shaext]
 
 # SHA256, a hash function from the SHA2 family
 # --------------------------------------------------------------------------------
@@ -19,11 +21,6 @@ when UseASM_X86_32:
 # References:
 # - NIST: https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
 # - IETF: US Secure Hash Algorithms (SHA and HMAC-SHA) https://tools.ietf.org/html/rfc4634
-# - Intel optimization https://www.intel.com/content/dam/www/public/us/en/documents/white-papers/sha-256-implementations-paper.pdf
-# - Parallelizing message schedules
-#   to accelerate the computations of hash functions
-#   Shay Gueron, Vlad Krasnov, 2012
-#   https://eprint.iacr.org/2012/067.pdf
 #
 # Vectors:
 # - https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA256.pdf
@@ -52,7 +49,9 @@ func hashMessageBlocks(
        message: ptr UncheckedArray[byte],
        numBlocks: uint) =
   when UseASM_X86_32:
-    if ({.noSideEffect.}: hasSSSE3()):
+    if ({.noSideEffect.}: hasSha()):
+      hashMessageBlocks_shaext(s, message, numBlocks)
+    elif ({.noSideEffect.}: hasSSSE3()):
       hashMessageBlocks_ssse3(s, message, numBlocks)
     else:
       hashMessageBlocks_generic(s, message, numBlocks)

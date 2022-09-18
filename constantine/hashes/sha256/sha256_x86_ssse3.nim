@@ -13,7 +13,7 @@ import
 
 {.localpassC:"-mssse3".}
 
-# SHA256, a hash function from the SHA2 family
+# SHA256, SSSE3 optimizations
 # --------------------------------------------------------------------------------
 #
 # References:
@@ -59,7 +59,7 @@ func initMessageSchedule(
   staticFor i, 0, VecNum:
     msnext[i] = loadu_u128(message[i * sizeof(m128i)].addr)
     msnext[i] = shuf_u8x16(msnext[i], mask)
-    store_u128(ms.w[VecWords*i].addr, add_u32x4(msnext[i], loadu_u128(pK256[VecWords*i].addr)))
+    storea_u128(ms.w[VecWords*i].addr, add_u32x4(msnext[i], loadu_u128(pK256[VecWords*i].addr)))
 
 func updateMessageSchedule(
        W: var array[4, m128i],
@@ -173,7 +173,7 @@ func sha256_rounds_0_47(
       s.sha256_round(wt = ms.w[pos + 2], kt = 0)
       s.sha256_round(wt = ms.w[pos + 3], kt = 0)
 
-      store_u128(ms.w[pos].addr, wnext)
+      storea_u128(ms.w[pos].addr, wnext)
       k256_idx += VecWords
 
 
@@ -193,7 +193,6 @@ func hashMessageBlocks_ssse3*(
   ## Sha256 block size is 64 bytes hence
   ## a message will be process 64 by 64 bytes.
 
-  # var msg = message
   var msg = message
   var ms{.noInit.}: Sha256_MessageSchedule
   var msnext{.noInit.}: array[VecNum, m128i]
