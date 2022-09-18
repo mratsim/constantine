@@ -37,7 +37,6 @@ type
     s{.align: 64}: Sha256_state
     buf{.align: 64}: array[BlockSize, byte]
     msgLen: uint64
-    bufIdx: uint8
 
   sha256* = Sha256Context
 
@@ -72,7 +71,6 @@ func dumpHash(
 func hashBuffer(ctx: var Sha256Context) {.inline.} =
   ctx.s.hashMessageBlocks(ctx.buf.asUnchecked(), numBlocks = 1)
   ctx.buf.setZero()
-  ctx.bufIdx = 0
 
 # Public API
 # ----------------------------------------------------------------
@@ -90,7 +88,6 @@ func init*(ctx: var Sha256Context) =
 
   ctx.msgLen = 0
   ctx.buf.setZero()
-  ctx.bufIdx = 0
 
   ctx.s.H[0] = 0x6a09e667'u32
   ctx.s.H[1] = 0xbb67ae85'u32
@@ -113,7 +110,6 @@ func initZeroPadded*(ctx: var Sha256Context) =
 
   ctx.msgLen = 64
   ctx.buf.setZero()
-  ctx.bufIdx = 0
 
   ctx.s.H[0] = 0xda5698be'u32
   ctx.s.H[1] = 0x17b9b469'u32
@@ -137,58 +133,32 @@ func update*(ctx: var Sha256Context, message: openarray[byte]) =
   ##
   ## For passwords and secret keys, you MUST NOT use raw SHA-256
   ## use a Key Derivation Function instead (KDF)
-
-  debug:
-    doAssert: 0 <= ctx.bufIdx and ctx.bufIdx.int < ctx.buf.len
-    for i in ctx.bufIdx ..< ctx.buf.len:
-      doAssert ctx.buf[i] == 0
-
-  if message.len == 0:
-    return
-
-  var # Message processing state machine
-    cur = 0'u
-    bytesLeft = message.len.uint
+  
+  # Message processing state machine
+  let bufIdx = uint(ctx.msgLen mod BlockSize)
+  var cur = 0'u
+  var bytesLeft = message.len.uint
 
   ctx.msgLen += bytesLeft
 
-  if ctx.bufIdx != 0: # Previous partial update
-    let bufIdx = ctx.bufIdx.uint
-    let free = ctx.buf.sizeof().uint - bufIdx
-
-    if free > bytesLeft:
-      # Enough free space, store in buffer
-      ctx.buf.copy(dStart = bufIdx, message, sStart = 0, len = bytesLeft)
-      ctx.bufIdx += bytesLeft.uint8
-      return
-    else:
-      # Fill the buffer and do one sha256 hash
-      ctx.buf.copy(dStart = bufIdx, message, sStart = 0, len = free)
-      ctx.hashBuffer()
-
-      # Update message state for further processing
-      cur = free
-      bytesLeft -= free
-
-  # Process n blocks (64 byte each)
-  let numBlocks = bytesLeft div BlockSize
+  if bufIdx != 0 and bufIdx+bytesLeft >= BlockSize:
+    # Previous partial update, fill the buffer and do one sha256 hash
+    let free = BlockSize - bufIdx
+    ctx.buf.copy(dStart = bufIdx, message, sStart = 0, len = free)
+    ctx.hashBuffer()
+    cur = free
+    bytesLeft -= free
   
-  if numBlocks != 0:
-    ctx.s.hashMessageBlocks(
-      message.asUnchecked +% cur,
-      numBlocks)
-    let consumed = numBlocks * BlockSize
-    cur += consumed
-    bytesLeft -= consumed
+  if bytesLeft >= BlockSize:
+    # Process n blocks (64 byte each)
+    let numBlocks = bytesLeft div BlockSize
+    ctx.s.hashMessageBlocks(message.asUnchecked +% cur, numBlocks)
+    cur += numBlocks * BlockSize
+    bytesLeft -= numBlocks * BlockSize
 
   if bytesLeft != 0:
     # Store the tail in buffer
-    debug: # TODO: state machine formal verification - https://nim-lang.org/docs/drnim.html
-      doAssert ctx.bufIdx == 0
-      doAssert cur + bytesLeft == message.len.uint
-
     ctx.buf.copy(dStart = 0'u, message, sStart = cur, len = bytesLeft)
-    ctx.bufIdx = uint8 bytesLeft
 
 func update*(ctx: var Sha256Context, message: openarray[char]) {.inline.} =
   ## Append a message to a SHA256 context
@@ -217,18 +187,15 @@ func finish*(ctx: var Sha256Context, digest: var array[32, byte]) =
   ## For passwords and secret keys, you MUST NOT use raw SHA-256
   ## use a Key Derivation Function instead (KDF)
 
-  debug:
-    doAssert: 0 <= ctx.bufIdx and ctx.bufIdx.int < ctx.buf.len
-    for i in ctx.bufIdx ..< ctx.buf.len:
-      doAssert ctx.buf[i] == 0
+  let bufIdx = uint(ctx.msgLen mod BlockSize)
 
   # Add '1' bit at the end of the message (+7 zero bits)
-  ctx.buf[ctx.bufIdx] = 0b1000_0000
+  ctx.buf[bufIdx] = 0b1000_0000
 
   # Add k bits so that msgLenBits + 1 + k ≡ 448 mod 512
   # Hence in bytes msgLen + 1 + K ≡ 56 mod 64
   const padZone = 56
-  if ctx.bufIdx >= padZone:
+  if bufIdx >= padZone:
     # We are in the 56..<64 mod 64 byte count
     # and need to rollover to 0
     ctx.hashBuffer()
@@ -247,4 +214,3 @@ func clear*(ctx: var Sha256Context) =
   ctx.s.H.setZero()
   ctx.buf.setZero()
   ctx.msgLen = 0
-  ctx.bufIdx = 0
