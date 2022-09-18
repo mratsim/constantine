@@ -99,10 +99,15 @@ proc flushCommandsOutput(wq: WorkQueue) {.async.} =
       let charsWritten = stdout.writeBuffer(wq.lineBuf[0].addr, charsRead)
       doAssert charsRead == charsWritten
     
-    let exitCode = p.peekExitCode()
+    let exitCode = await p.waitForExit()
     if exitCode != 0:
-      quit "Command #" & $id & "exited with error " & $exitCode, exitCode
+      quit "Command #" & $id & " exited with error " & $exitCode, exitCode
     
+    # p.close() is not exposed :/
+    p.inputHandle.close()
+    p.outputHandle.close()
+    p.errorHandle.close()
+
     id += 1
 
     if wq.cmdQueue.len == 0 and wq.outputQueue.len == 0:
