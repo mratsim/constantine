@@ -66,8 +66,10 @@ proc releaseOnProcessExit(sem: AsyncSemaphore, p: AsyncProcess) {.async.} =
   #
   # see also: https://forum.nim-lang.org/t/5565
 
+  var backoff = 8
   while p.running():
-    await sleepAsync(10)
+    backoff = min(backoff*2, 1024) # Exponential backoff
+    await sleepAsync(backoff)
   sem.release()
 
 proc enqueuePendingCommands(wq: WorkQueue) {.async.} =
@@ -95,6 +97,10 @@ proc flushCommandsOutput(wq: WorkQueue) {.async.} =
         break
       let charsWritten = stdout.writeBuffer(wq.lineBuf[0].addr, charsRead)
       doAssert charsRead == charsWritten
+    
+    let exitCode = p.peekExitCode()
+    if exitCode != 0:
+      quit exitCode 
 
     if wq.cmdQueue.len == 0 and wq.outputQueue.len == 0:
       return
