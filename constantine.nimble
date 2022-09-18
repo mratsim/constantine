@@ -237,7 +237,7 @@ const benchDesc = [
   "bench_summary_bn254_nogami",
   "bench_summary_bn254_snarks",
   "bench_summary_pasta",
-  "bench_poly_1305",
+  "bench_poly1305",
   "bench_sha256",
   "bench_hash_to_curve",
   "bench_blssig_on_bls12_381_g2"

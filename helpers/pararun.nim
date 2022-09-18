@@ -84,6 +84,7 @@ proc enqueuePendingCommands(wq: WorkQueue) {.async.} =
     wq.outputQueue.putNoWait((cmd, p))
 
 proc flushCommandsOutput(wq: WorkQueue) {.async.} =
+  var id = 0
   while true:
     let (cmd, p) = await wq.outputQueue.get()
     
@@ -100,7 +101,9 @@ proc flushCommandsOutput(wq: WorkQueue) {.async.} =
     
     let exitCode = p.peekExitCode()
     if exitCode != 0:
-      quit exitCode 
+      quit "Command #" & $id & "exited with error " & $exitCode, exitCode
+    
+    id += 1
 
     if wq.cmdQueue.len == 0 and wq.outputQueue.len == 0:
       return
