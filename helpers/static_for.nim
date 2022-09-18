@@ -35,6 +35,14 @@ macro staticFor*(idx: untyped{nkIdent}, start, stopEx: static int, body: untyped
       body.replaceNodes(idx, newLit i)
     )
 
+macro staticForCountdown*(idx: untyped{nkIdent}, start, stopIncl: static int, body: untyped): untyped =
+  result = newStmtList()
+  for i in countdown(start, stopIncl):
+    result.add nnkBlockStmt.newTree(
+      ident("unrolledIter_" & $idx & $i),
+      body.replaceNodes(idx, newLit i)
+    )
+
 {.experimental: "dynamicBindSym".}
 
 macro staticFor*(ident: untyped{nkIdent}, choices: typed, body: untyped): untyped =

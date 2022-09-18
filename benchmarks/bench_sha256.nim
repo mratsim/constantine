@@ -48,9 +48,9 @@ proc report(op: string, bytes: int, startTime, stopTime: MonoTime, startClk, sto
   when SupportsGetTicks:
     let cycles = (stopClk - startClk) div iters
     let cyclePerByte = cycles.float64 / bytes.float64
-    echo &"{op:<30}     {throughput:>15.3f} ops/s    {ns:>9} ns/op    {cycles:>10} cycles    {cyclePerByte:>5.2f} cycles/byte"
+    echo &"{op:<50}     {throughput:>15.3f} ops/s    {ns:>9} ns/op    {cycles:>10} cycles    {cyclePerByte:>5.2f} cycles/byte"
   else:
-    echo &"{op:<30}     {throughput:>15.3f} ops/s    {ns:>9} ns/op"
+    echo &"{op:<50}     {throughput:>15.3f} ops/s    {ns:>9} ns/op"
 
 template bench(op: string, bytes: int, iters: int, body: untyped): untyped =
   measure(iters, startTime, stopTime, startClk, stopClk, body)
@@ -63,41 +63,23 @@ proc benchSHA256_constantine[T](msg: openarray[T], msgComment: string, iters: in
 
 proc benchSHA256_openssl[T](msg: openarray[T], msgComment: string, iters: int) =
   var digest: array[32, byte]
-  bench("SHA256 - OpenSSL - " & msgComment, msg.len, iters):
+  bench("SHA256 - OpenSSL     - " & msgComment, msg.len, iters):
     SHA256_OpenSSL(digest, msg)
 
 when isMainModule:
   proc main() =
-    block:
-      let msg32B = rng.random_byte_seq(32)
-      benchSHA256_constantine(msg32B, "32B", 100)
-      benchSHA256_openssl(msg32B, "32B", 100)
-    block:
-      let msg64B = rng.random_byte_seq(64)
-      benchSHA256_constantine(msg64B, "64B", 100)
-      benchSHA256_openssl(msg64B, "64B", 100)
-    block:
-      let msg128B = rng.random_byte_seq(128)
-      benchSHA256_constantine(msg128B, "128B", 100)
-      benchSHA256_openssl(msg128B, "128B", 100)
-    block:
-      let msg576B = rng.random_byte_seq(576)
-      benchSHA256_constantine(msg576B, "576B", 50)
-      benchSHA256_openssl(msg576B, "576B", 50)
-    block:
-      let msg8192B = rng.random_byte_seq(8192)
-      benchSHA256_constantine(msg8192B, "8192B", 25)
-      benchSHA256_openssl(msg8192B, "8192B", 25)
-    block:
-      let msg1MB = rng.random_byte_seq(1_000_000)
-      benchSHA256_constantine(msg1MB, "1MB", 16)
-      benchSHA256_openssl(msg1MB, "1MB", 16)
-    block:
-      let msg10MB = rng.random_byte_seq(10_000_000)
-      benchSHA256_constantine(msg10MB, "10MB", 16)
-      benchSHA256_openssl(msg10MB, "10MB", 16)
-    block:
-      let msg100MB = rng.random_byte_seq(100_000_000)
-      benchSHA256_constantine(msg100MB, "100MB", 3)
-      benchSHA256_openssl(msg100MB, "100MB", 3)
+    const sizes = [
+      32, 64, 128, 256,
+      1024, 4096, 16384, 65536,
+      1_000_000, 10_000_000
+    ]
+
+    const target_cycles = 1_000_000_000'i64
+    const worst_cycles_per_bytes = 25'i64
+    for s in sizes:
+      let msg = rng.random_byte_seq(s)
+      let iters = int(target_cycles div (s.int64 * worst_cycles_per_bytes))
+      benchSHA256_constantine(msg, $s & "B", iters)
+      benchSHA256_openssl(msg, $s & "B", iters)
+
   main()

@@ -36,7 +36,7 @@ debug:
     result[0] = '0'
     result[1] = 'x'
     var a = a
-    for j in countdown(L-1, 0):
+    for j in countdown(result.len-1, 2):
       result[j] = hexChars.secretLookup(a and SecretWord 0xF)
       a = a shr 4
 
@@ -45,7 +45,7 @@ debug:
     result.add " " & toHex(a[0])
     for i in 1 ..< a.len:
       result.add ", " & toHex(a[i])
-    result.add "])"
+    result.add "]"
 
   func `$`*(a: BigInt): string =
     result = "BigInt["
