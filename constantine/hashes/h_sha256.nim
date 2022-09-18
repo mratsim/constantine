@@ -135,17 +135,16 @@ func update*(ctx: var Sha256Context, message: openarray[byte]) =
   ## use a Key Derivation Function instead (KDF)
   
   # Message processing state machine
-  let bufIdx = uint(ctx.msgLen mod BlockSize)
+  var bufIdx = uint(ctx.msgLen mod BlockSize)
   var cur = 0'u
   var bytesLeft = message.len.uint
-
-  ctx.msgLen += bytesLeft
 
   if bufIdx != 0 and bufIdx+bytesLeft >= BlockSize:
     # Previous partial update, fill the buffer and do one sha256 hash
     let free = BlockSize - bufIdx
     ctx.buf.copy(dStart = bufIdx, message, sStart = 0, len = free)
     ctx.hashBuffer()
+    bufIdx = 0
     cur = free
     bytesLeft -= free
   
@@ -158,7 +157,9 @@ func update*(ctx: var Sha256Context, message: openarray[byte]) =
 
   if bytesLeft != 0:
     # Store the tail in buffer
-    ctx.buf.copy(dStart = 0'u, message, sStart = cur, len = bytesLeft)
+    ctx.buf.copy(dStart = bufIdx, message, sStart = cur, len = bytesLeft)
+
+  ctx.msgLen += message.len.uint
 
 func update*(ctx: var Sha256Context, message: openarray[char]) {.inline.} =
   ## Append a message to a SHA256 context

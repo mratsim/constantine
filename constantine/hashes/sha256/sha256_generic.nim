@@ -15,12 +15,6 @@ import
 # References:
 # - NIST: https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
 # - IETF: US Secure Hash Algorithms (SHA and HMAC-SHA) https://tools.ietf.org/html/rfc4634
-# - Intel optimization https://www.intel.com/content/dam/www/public/us/en/documents/white-papers/sha-256-implementations-paper.pdf
-# - Parallelizing message schedules
-#   to accelerate the computations of hash functions
-#   Shay Gueron, Vlad Krasnov, 2012
-#   https://eprint.iacr.org/2012/067.pdf
-#
 # Vectors:
 # - https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA256.pdf
 
