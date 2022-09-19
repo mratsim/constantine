@@ -214,10 +214,12 @@ jobs:
           nimble test_bindings        --verbose
           nimble test_parallel_no_asm --verbose
       - name: Run Constantine tests (Windows no Assembly)
+        # So "test_bindings" uses C and can find GMP
+        # but nim-gmp cannot find GMP on Windows CI
         if: runner.os == 'Windows' && matrix.target.BACKEND == 'NO_ASM'
         shell: msys2 {0}
         run: |
           cd constantine
-          nimble bindings             --verbose
-          nimble test_bindings        --verbose
-          nimble test_parallel_no_asm --verbose
+          nimble bindings                    --verbose
+          nimble test_bindings               --verbose
+          nimble test_parallel_no_gmp_no_asm --verbose
