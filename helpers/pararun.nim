@@ -79,6 +79,7 @@ proc enqueuePendingCommands(wq: WorkQueue) {.async.} =
     let p = cmd.startProcess(
       options = {poStdErrToStdOut, poUsePath, poEvalCommand}
     )
+    p.inputHandle.close()
 
     asyncCheck wq.sem.releaseOnProcessExit(p)
     wq.outputQueue.putNoWait((cmd, p))
@@ -99,14 +100,14 @@ proc flushCommandsOutput(wq: WorkQueue) {.async.} =
       let charsWritten = stdout.writeBuffer(wq.lineBuf[0].addr, charsRead)
       doAssert charsRead == charsWritten
     
-    let exitCode = await p.waitForExit()
-    if exitCode != 0:
-      quit "Command #" & $id & " exited with error " & $exitCode, exitCode
-    
-    # p.close() is not exposed :/
-    p.inputHandle.close()
     p.outputHandle.close()
-    p.errorHandle.close()
+    
+    let exitCode = p.peekExitCode()
+    if exitCode != 0:
+      echo "==== Custom stacktrace ===="
+      writeStackTrace()
+      echo "==== Custom stacktrace ===="
+      quit "Command #" & $id & " exited with error " & $exitCode, exitCode
 
     id += 1
 
