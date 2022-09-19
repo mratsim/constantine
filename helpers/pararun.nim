@@ -65,6 +65,7 @@ proc releaseOnProcessExit(sem: AsyncSemaphore, p: AsyncProcess) {.async.} =
   #   sem.release()
   #
   # see also: https://forum.nim-lang.org/t/5565
+  # and https://github.com/cheatfate/asynctools/issues/20
 
   var backoff = 8
   while p.running():
@@ -100,14 +101,24 @@ proc flushCommandsOutput(wq: WorkQueue) {.async.} =
       let charsWritten = stdout.writeBuffer(wq.lineBuf[0].addr, charsRead)
       doAssert charsRead == charsWritten
     
+    # close not exported: https://github.com/cheatfate/asynctools/issues/16
     p.outputHandle.close()
     
     let exitCode = p.peekExitCode()
-    if exitCode != 0:
+    if exitCode == 259:
+      echo "==== Command exited with code 259 ===="
+      echo "[SKIP]: '", cmd, "' (#", id, ")"
       echo "==== Custom stacktrace ===="
       writeStackTrace()
       echo "==== Custom stacktrace ===="
-      quit "Command #" & $id & " exited with error " & $exitCode, exitCode
+      echo "[SKIP]: Assuming process was unregistered when trying to retrieve its exit code"
+    elif exitCode != 0:
+      echo "==== Command exited with code ", exitCode, " ===="
+      echo "[FAIL]: '", cmd, "' (#", id, ")"
+      echo "==== Custom stacktrace ===="
+      writeStackTrace()
+      echo "==== Custom stacktrace ===="
+      quit "[FAIL]: Command #" & $id & " exited with error " & $exitCode, exitCode
 
     id += 1
 

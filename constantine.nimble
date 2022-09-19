@@ -43,6 +43,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ----------------------------------------------------------
   ("tests/math/t_primitives.nim", false),
   ("tests/math/t_primitives_extended_precision.nim", false),
+  
   # Big ints
   # ----------------------------------------------------------
   ("tests/math/t_io_bigints.nim", false),
@@ -52,6 +53,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/math/t_bigints_mod_vs_gmp.nim", true),
   ("tests/math/t_bigints_mul_vs_gmp.nim", true),
   ("tests/math/t_bigints_mul_high_words_vs_gmp.nim", true),
+  
   # Field
   # ----------------------------------------------------------
   ("tests/math/t_io_fields", false),
@@ -61,13 +63,15 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/math/t_finite_fields_sqrt.nim", false),
   ("tests/math/t_finite_fields_powinv.nim", false),
   ("tests/math/t_finite_fields_vs_gmp.nim", true),
-  ("tests/math/t_fp_cubic_root.nim", false),
+  # ("tests/math/t_fp_cubic_root.nim", false),
+  
   # Double-precision finite fields
   # ----------------------------------------------------------
   ("tests/math/t_finite_fields_double_precision.nim", false),
+  
   # Towers of extension fields
   # ----------------------------------------------------------
-  ("tests/math/t_fp2.nim", false),
+  # ("tests/math/t_fp2.nim", false),
   ("tests/math/t_fp2_sqrt.nim", false),
   ("tests/math/t_fp4.nim", false),
   ("tests/math/t_fp6_bn254_nogami.nim", false),
@@ -168,6 +172,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/math/t_ec_sage_bls12_381.nim", false),
   ("tests/math/t_ec_sage_pallas.nim", false),
   ("tests/math/t_ec_sage_vesta.nim", false),
+  
   # Edge cases highlighted by past bugs
   # ----------------------------------------------------------
   ("tests/math/t_ec_shortw_prj_edge_cases.nim", false),
@@ -189,8 +194,8 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ----------------------------------------------------------
   # ("tests/math/t_pairing_bls12_377_line_functions.nim", false),
   # ("tests/math/t_pairing_bls12_381_line_functions.nim", false),
-  ("tests/math/t_pairing_mul_fp12_by_lines.nim", false),
-  ("tests/math/t_pairing_cyclotomic_subgroup.nim", false),
+  # ("tests/math/t_pairing_mul_fp12_by_lines.nim", false),
+  # ("tests/math/t_pairing_cyclotomic_subgroup.nim", false),
   ("tests/math/t_pairing_bn254_nogami_optate.nim", false),
   ("tests/math/t_pairing_bn254_snarks_optate.nim", false),
   ("tests/math/t_pairing_bls12_377_optate.nim", false),
@@ -209,7 +214,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Hashing to elliptic curves
   # ----------------------------------------------------------
   ("tests/t_hash_to_field.nim", false),
-  ("tests/t_hash_to_curve_random.nim", false),
+  # ("tests/t_hash_to_curve_random.nim", false),
   ("tests/t_hash_to_curve.nim", false),
 
   # Protocols

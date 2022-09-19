@@ -21,6 +21,10 @@ import
 # - IETF: US Secure Hash Algorithms (SHA and HMAC-SHA) https://tools.ietf.org/html/rfc4634
 # - Fast SHA-256 Implementations on Intel® Architecture Processors
 #   https://www.intel.com/content/dam/www/public/us/en/documents/white-papers/sha-256-implementations-paper.pdf
+# - Parallelizing message schedules
+#   to accelerate the computations of hash functions
+#   Shay Gueron, Vlad Krasnov, 2012
+#   https://eprint.iacr.org/2012/067.pdf
 
 # Following the intel whitepaper we split our code into:
 # We keep track of a 256-bit state vector corresponding
