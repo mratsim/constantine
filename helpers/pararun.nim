@@ -13,7 +13,7 @@ import
 
 # Pararun is a parallel shell command runner
 # ------------------------------------------
-# Usage: pararun <file-with-1-command-per-line> <numWorkers
+# Usage: pararun <file-with-1-command-per-line> <numWorkers>
 
 # AsyncSemaphore
 # ----------------------------------------------------------------

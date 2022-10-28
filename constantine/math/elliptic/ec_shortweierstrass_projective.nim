@@ -15,6 +15,9 @@ import
 
 export Subgroup
 
+# No exceptions allowed
+{.push raises: [].}
+
 # ############################################################
 #
 #             Elliptic Curve in Short Weierstrass form
@@ -261,7 +264,6 @@ func madd*[F; G: static Subgroup](
   ## ``r`` may alias P
 
   # TODO: static doAssert odd order
-
   when F.C.getCoefA() == 0:
     var t0 {.noInit.}, t1 {.noInit.}, t2 {.noInit.}, t3 {.noInit.}, t4 {.noInit.}: F
     var x3 {.noInit.}, y3 {.noInit.}, z3 {.noInit.}: F
@@ -273,6 +275,10 @@ func madd*[F; G: static Subgroup](
     # Y₃ = (Y₁Y₂ + 3bZ₁)(Y₁Y₂ − 3bZ₁)
     #     + 9bX₁X₂ (X₁ + X₂Z₁)
     # Z₃= (Y₁ + Y₂Z₁)(Y₁Y₂ + 3bZ₁) + 3 X₁X₂ (X₁Y₂ + X₂Y₁)
+    #
+    # Note¹⁰ mentions that due to Qz = 1, cannot be
+    # the point at infinity.
+    # We solve that by conditional copies. 
     t0.prod(P.x, Q.x)         # 1.  t₀ <- X₁ X₂
     t1.prod(P.y, Q.y)         # 2.  t₁ <- Y₁ Y₂
     t3.sum(P.x, P.y)          # 3.  t₃ <- X₁ + Y₁ ! error in paper
@@ -304,13 +310,24 @@ func madd*[F; G: static Subgroup](
       y3 *= SexticNonResidue
     x3.prod(t4, y3)           # 18. X₃ <- t₄ Y₃,   X₃ = (Y₁ + Y₂Z₁) 3b(X₁ + X₂Z₁)
     t2.prod(t3, t1)           # 19. t₂ <- t₃ t₁,   t₂ = (X₁Y₂ + X₂Y₁)(Y₁Y₂ - 3bZ₁)
-    r.x.diff(t2, x3)          # 20. X₃ <- t₂ - X₃, X₃ = (X₁Y₂ + X₂Y₁)(Y₁Y₂ - 3bZ₁) - 3b(Y₁ + Y₂Z₁)(X₁ + X₂Z₁)
+    x3.diff(t2, x3)           # 20. X₃ <- t₂ - X₃, X₃ = (X₁Y₂ + X₂Y₁)(Y₁Y₂ - 3bZ₁) - 3b(Y₁ + Y₂Z₁)(X₁ + X₂Z₁)
     y3 *= t0                  # 21. Y₃ <- Y₃ t₀,   Y₃ = 9bX₁X₂ (X₁ + X₂Z₁)
     t1 *= z3                  # 22. t₁ <- t₁ Z₃,   t₁ = (Y₁Y₂ - 3bZ₁)(Y₁Y₂ + 3bZ₁)
-    r.y.sum(y3, t1)           # 23. Y₃ <- t₁ + Y₃, Y₃ = (Y₁Y₂ + 3bZ₁)(Y₁Y₂ - 3bZ₁) + 9bX₁X₂ (X₁ + X₂Z₁)
+    y3 += t1                  # 23. Y₃ <- t₁ + Y₃, Y₃ = (Y₁Y₂ + 3bZ₁)(Y₁Y₂ - 3bZ₁) + 9bX₁X₂ (X₁ + X₂Z₁)
     t0 *= t3                  # 31. t₀ <- t₀ t₃,   t₀ = 3X₁X₂ (X₁Y₂ + X₂Y₁)
     z3 *= t4                  # 32. Z₃ <- Z₃ t₄,   Z₃ = (Y₁Y₂ + 3bZ₁)(Y₁ + Y₂Z₁)
-    r.z.sum(z3, t0)           # 33. Z₃ <- Z₃ + t₀, Z₃ = (Y₁ + Y₂Z₁)(Y₁Y₂ + 3bZ₁) + 3X₁X₂ (X₁Y₂ + X₂Y₁)
+    z3 += t0                  # 33. Z₃ <- Z₃ + t₀, Z₃ = (Y₁ + Y₂Z₁)(Y₁Y₂ + 3bZ₁) + 3X₁X₂ (X₁Y₂ + X₂Y₁)
+  
+    # Deal with infinity point. r and P might alias.
+    let inf = Q.isInf()
+    x3.ccopy(P.x, inf)
+    y3.ccopy(P.y, inf)
+    z3.ccopy(P.z, inf)
+
+    r.x = x3
+    r.y = y3
+    r.z = z3
+
   else:
     {.error: "Not implemented.".}
 

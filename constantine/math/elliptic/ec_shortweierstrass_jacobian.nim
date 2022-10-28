@@ -15,6 +15,9 @@ import
 
 export Subgroup
 
+# No exceptions allowed
+{.push raises: [].}
+
 # ############################################################
 #
 #             Elliptic Curve in Short Weierstrass form

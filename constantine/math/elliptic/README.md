@@ -62,7 +62,7 @@ Ry = λ(Px - Rx) - Py
 ```
 but in the case of addition
 ```
-λ = (Qy - Py) / (Px - Qx)
+λ = (Qy - Py) / (Qx - Px)
 ```
 which is undefined for P == Q or P == -Q (as `-(x, y) = (x, -y)`)
 
