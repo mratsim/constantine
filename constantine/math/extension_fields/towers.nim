@@ -2156,5 +2156,29 @@ func inv*(a: var CubicExt) =
   ## to affine for elliptic curve
   a.invImpl(a)
 
+# Convenience functions
+# ----------------------------------------------------------------------
+
+template square*(a: var ExtensionField, skipFinalSub: static bool) =
+  # Square alias,
+  # this allows using the same code for
+  # the base field and its extensions while benefitting from skipping
+  # the final substraction on Fp
+  a.square()
+
+template square*(r: var ExtensionField, a: ExtensionField, skipFinalSub: static bool) =
+  # Square alias,
+  # this allows using the same code for
+  # the base field and its extensions while benefitting from skipping
+  # the final substraction on Fp
+  r.square(a)
+
+template prod*(r: var ExtensionField, a, b: ExtensionField, skipFinalSub: static bool) =
+  # Prod alias,
+  # this allows using the same code for
+  # the base field and its extensions while benefitting from skipping
+  # the final substraction on Fp
+  r.prod(a, b)
+
 {.pop.} # inline
 {.pop.} # raises no exceptions

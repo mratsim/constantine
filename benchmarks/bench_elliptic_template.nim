@@ -22,6 +22,7 @@ import
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
+    ec_shortweierstrass_batch_ops,
     ec_scalar_mul, ec_endomorphism_accel],
   # Helpers
   ../helpers/[prng_unsafe, static_for],
@@ -35,10 +36,10 @@ export abstractions # generic sandwich on SecretBool and SecretBool in Jacobian 
 
 proc separator*() = separator(177)
 
-macro fixEllipticDisplay(T: typedesc): untyped =
+macro fixEllipticDisplay(EC: typedesc): untyped =
   # At compile-time, enums are integers and their display is buggy
   # we get the Curve ID instead of the curve name.
-  let instantiated = T.getTypeInst()
+  let instantiated = EC.getTypeInst()
   var name = $instantiated[1][0] # EllipticEquationFormCoordinates
   let fieldName = $instantiated[1][1][0]
   let curveName = $Curve(instantiated[1][1][1].intVal)
@@ -53,100 +54,108 @@ proc report(op, elliptic: string, start, stop: MonoTime, startClk, stopClk: int6
   else:
     echo &"{op:<60} {elliptic:<40} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
 
-template bench(op: string, T: typedesc, iters: int, body: untyped): untyped =
+template bench(op: string, EC: typedesc, iters: int, body: untyped): untyped =
   measure(iters, startTime, stopTime, startClk, stopClk, body)
-  report(op, fixEllipticDisplay(T), startTime, stopTime, startClk, stopClk, iters)
+  report(op, fixEllipticDisplay(EC), startTime, stopTime, startClk, stopClk, iters)
 
-proc addBench*(T: typedesc, iters: int) =
-  const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
-  var r {.noInit.}: T
-  let P = rng.random_unsafe(T)
-  let Q = rng.random_unsafe(T)
-  bench("EC Add " & G1_or_G2, T, iters):
+proc addBench*(EC: typedesc, iters: int) =
+  var r {.noInit.}: EC
+  let P = rng.random_unsafe(EC)
+  let Q = rng.random_unsafe(EC)
+  bench("EC Add " & $EC.G, EC, iters):
     r.sum(P, Q)
 
-proc mixedAddBench*(T: typedesc, iters: int) =
-  const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
-  var r {.noInit.}: T
-  let P = rng.random_unsafe(T)
-  let Q = rng.random_unsafe(T)
-  var Qaff: ECP_ShortW_Aff[T.F, T.G]
+proc mixedAddBench*(EC: typedesc, iters: int) =
+  var r {.noInit.}: EC
+  let P = rng.random_unsafe(EC)
+  let Q = rng.random_unsafe(EC)
+  var Qaff: ECP_ShortW_Aff[EC.F, EC.G]
   Qaff.affine(Q)
-  bench("EC Mixed Addition " & G1_or_G2, T, iters):
+  bench("EC Mixed Addition " & $EC.G, EC, iters):
     r.madd(P, Qaff)
 
-proc doublingBench*(T: typedesc, iters: int) =
-  const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
-  var r {.noInit.}: T
-  let P = rng.random_unsafe(T)
-  bench("EC Double " & G1_or_G2, T, iters):
+proc doublingBench*(EC: typedesc, iters: int) =
+  var r {.noInit.}: EC
+  let P = rng.random_unsafe(EC)
+  bench("EC Double " & $EC.G, EC, iters):
     r.double(P)
 
-proc affFromProjBench*(T: typedesc, iters: int) =
-  const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
-  var r {.noInit.}: ECP_ShortW_Aff[T.F, T.G]
-  let P = rng.random_unsafe(T)
-  bench("EC Projective to Affine " & G1_or_G2, T, iters):
+proc affFromProjBench*(EC: typedesc, iters: int) =
+  var r {.noInit.}: ECP_ShortW_Aff[EC.F, EC.G]
+  let P = rng.random_unsafe(EC)
+  bench("EC Projective to Affine " & $EC.G, EC, iters):
     r.affine(P)
 
-proc affFromJacBench*(T: typedesc, iters: int) =
-  const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
-  var r {.noInit.}: ECP_ShortW_Aff[T.F, T.G]
-  let P = rng.random_unsafe(T)
-  bench("EC Jacobian to Affine " & G1_or_G2, T, iters):
+proc affFromJacBench*(EC: typedesc, iters: int) =
+  var r {.noInit.}: ECP_ShortW_Aff[EC.F, EC.G]
+  let P = rng.random_unsafe(EC)
+  bench("EC Jacobian to Affine " & $EC.G, EC, iters):
     r.affine(P)
 
-proc scalarMulGenericBench*(T: typedesc, window: static int, iters: int) =
-  const bits = T.F.C.getCurveOrderBitwidth()
-  const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
+proc scalarMulGenericBench*(EC: typedesc, window: static int, iters: int) =
+  const bits = EC.F.C.getCurveOrderBitwidth()
 
-  var r {.noInit.}: T
-  let P = rng.random_unsafe(T) # TODO: clear cofactor
+  var r {.noInit.}: EC
+  let P = rng.random_unsafe(EC) # TODO: clear cofactor
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
-  bench("EC ScalarMul " & $bits & "-bit " & G1_or_G2 & " (window-" & $window & ", generic)", T, iters):
+  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (window-" & $window & ", generic)", EC, iters):
     r = P
     r.scalarMulGeneric(exponent, window)
 
-proc scalarMulEndo*(T: typedesc, iters: int) =
-  const bits = T.F.C.getCurveOrderBitwidth()
-  const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
+proc scalarMulEndo*(EC: typedesc, iters: int) =
+  const bits = EC.F.C.getCurveOrderBitwidth()
 
-  var r {.noInit.}: T
-  let P = rng.random_unsafe(T) # TODO: clear cofactor
+  var r {.noInit.}: EC
+  let P = rng.random_unsafe(EC) # TODO: clear cofactor
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
-  bench("EC ScalarMul " & $bits & "-bit " & G1_or_G2 & " (endomorphism accelerated)", T, iters):
+  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (endomorphism accelerated)", EC, iters):
     r = P
     r.scalarMulEndo(exponent)
 
-proc scalarMulEndoWindow*(T: typedesc, iters: int) =
-  const bits = T.F.C.getCurveOrderBitwidth()
-  const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
+proc scalarMulEndoWindow*(EC: typedesc, iters: int) =
+  const bits = EC.F.C.getCurveOrderBitwidth()
 
-  var r {.noInit.}: T
-  let P = rng.random_unsafe(T) # TODO: clear cofactor
+  var r {.noInit.}: EC
+  let P = rng.random_unsafe(EC) # TODO: clear cofactor
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
-  bench("EC ScalarMul " & $bits & "-bit " & G1_or_G2 & " (window-2, endomorphism accelerated)", T, iters):
+  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (window-2, endomorphism accelerated)", EC, iters):
     r = P
-    when T.F is Fp:
+    when EC.F is Fp:
       r.scalarMulGLV_m2w2(exponent)
     else:
       {.error: "Not implemented".}
 
-proc scalarMulUnsafeDoubleAddBench*(T: typedesc, iters: int) =
-  const bits = T.F.C.getCurveOrderBitwidth()
-  const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
+proc scalarMulUnsafeDoubleAddBench*(EC: typedesc, iters: int) =
+  const bits = EC.F.C.getCurveOrderBitwidth()
 
-  var r {.noInit.}: T
-  let P = rng.random_unsafe(T) # TODO: clear cofactor
+  var r {.noInit.}: EC
+  let P = rng.random_unsafe(EC) # TODO: clear cofactor
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
-  bench("EC ScalarMul " & $bits & "-bit " & G1_or_G2 & " (unsafe reference DoubleAdd)", T, iters):
+  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (unsafe reference DoubleAdd)", EC, iters):
     r = P
     r.unsafe_ECmul_double_add(exponent)
+
+proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int) =  
+  var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](numPoints)
+
+  for i in 0 ..< numPoints:
+    points[i] = rng.random_unsafe(ECP_ShortW_Aff[EC.F, EC.G])
+
+  var r{.noInit.}: EC
+
+  if useBatching:
+    bench("EC Multi-Addition batched             " & $EC.G & " (" & $numPoints & " points)", EC, iters):
+      r.sum_batch_vartime(points)
+  else:
+    bench("EC Multi-Addition unbatched mixed add " & $EC.G & " (" & $numPoints & " points)", EC, iters):
+      r.setInf()
+      for i in 0 ..< numPoints:
+        r += points[i]

@@ -14,6 +14,9 @@ import
   ../io/[io_fields, io_extfields],
   ../constants/zoo_constants
 
+# No exceptions allowed
+{.push raises: [].}
+
 # ############################################################
 #
 #             Elliptic Curve in Short Weierstrass form

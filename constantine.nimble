@@ -96,13 +96,13 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
 
   # Elliptic curve arithmetic G1
   # ----------------------------------------------------------
-  # ("tests/math/t_ec_shortw_prj_g1_add_double.nim", false),
+  ("tests/math/t_ec_shortw_prj_g1_add_double.nim", false),
   # ("tests/math/t_ec_shortw_prj_g1_mul_sanity.nim", false),
   # ("tests/math/t_ec_shortw_prj_g1_mul_distri.nim", false),
   ("tests/math/t_ec_shortw_prj_g1_mul_vs_ref.nim", false),
   ("tests/math/t_ec_shortw_prj_g1_mixed_add.nim", false),
 
-  # ("tests/math/t_ec_shortw_jac_g1_add_double.nim", false),
+  ("tests/math/t_ec_shortw_jac_g1_add_double.nim", false),
   # ("tests/math/t_ec_shortw_jac_g1_mul_sanity.nim", false),
   # ("tests/math/t_ec_shortw_jac_g1_mul_distri.nim", false),
   ("tests/math/t_ec_shortw_jac_g1_mul_vs_ref.nim", false),
@@ -115,49 +115,49 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
 
   # Elliptic curve arithmetic G2
   # ----------------------------------------------------------
-  # ("tests/math/t_ec_shortw_prj_g2_add_double_bn254_snarks.nim", false),
+  ("tests/math/t_ec_shortw_prj_g2_add_double_bn254_snarks.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mul_sanity_bn254_snarks.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mul_distri_bn254_snarks.nim", false),
   ("tests/math/t_ec_shortw_prj_g2_mul_vs_ref_bn254_snarks.nim", false),
   ("tests/math/t_ec_shortw_prj_g2_mixed_add_bn254_snarks.nim", false),
 
-  # ("tests/math/t_ec_shortw_prj_g2_add_double_bls12_381.nim", false),
+  ("tests/math/t_ec_shortw_prj_g2_add_double_bls12_381.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mul_sanity_bls12_381.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mul_distri_bls12_381.nim", false),
   ("tests/math/t_ec_shortw_prj_g2_mul_vs_ref_bls12_381.nim", false),
   ("tests/math/t_ec_shortw_prj_g2_mixed_add_bls12_381.nim", false),
 
-  # ("tests/math/t_ec_shortw_prj_g2_add_double_bls12_377.nim", false),
+  ("tests/math/t_ec_shortw_prj_g2_add_double_bls12_377.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mul_sanity_bls12_377.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mul_distri_bls12_377.nim", false),
   ("tests/math/t_ec_shortw_prj_g2_mul_vs_ref_bls12_377.nim", false),
   ("tests/math/t_ec_shortw_prj_g2_mixed_add_bls12_377.nim", false),
 
-  # ("tests/math/t_ec_shortw_prj_g2_add_double_bw6_761.nim", false),
+  ("tests/math/t_ec_shortw_prj_g2_add_double_bw6_761.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mul_sanity_bw6_761.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mul_distri_bw6_761.nim", false),
   ("tests/math/t_ec_shortw_prj_g2_mul_vs_ref_bw6_761.nim", false),
   ("tests/math/t_ec_shortw_prj_g2_mixed_add_bw6_761.nim", false),
 
-  # ("tests/math/t_ec_shortw_jac_g2_add_double_bn254_snarks.nim", false),
+  ("tests/math/t_ec_shortw_jac_g2_add_double_bn254_snarks.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mul_sanity_bn254_snarks.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mul_distri_bn254_snarks.nim", false),
   ("tests/math/t_ec_shortw_jac_g2_mul_vs_ref_bn254_snarks.nim", false),
   ("tests/math/t_ec_shortw_jac_g2_mixed_add_bn254_snarks.nim", false),
 
-  # ("tests/math/t_ec_shortw_jac_g2_add_double_bls12_381.nim", false),
+  ("tests/math/t_ec_shortw_jac_g2_add_double_bls12_381.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mul_sanity_bls12_381.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mul_distri_bls12_381.nim", false),
   ("tests/math/t_ec_shortw_jac_g2_mul_vs_ref_bls12_381.nim", false),
   ("tests/math/t_ec_shortw_jac_g2_mixed_add_bls12_381.nim", false),
 
-  # ("tests/math/t_ec_shortw_jac_g2_add_double_bls12_377.nim", false),
+  ("tests/math/t_ec_shortw_jac_g2_add_double_bls12_377.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mul_sanity_bls12_377.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mul_distri_bls12_377.nim", false),
   ("tests/math/t_ec_shortw_jac_g2_mul_vs_ref_bls12_377.nim", false),
   ("tests/math/t_ec_shortw_jac_g2_mixed_add_bls12_377.nim", false),
 
-  # ("tests/math/t_ec_shortw_jac_g2_add_double_bw6_761.nim", false),
+  ("tests/math/t_ec_shortw_jac_g2_add_double_bw6_761.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mul_sanity_bw6_761.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mul_distri_bw6_761.nim", false),
   ("tests/math/t_ec_shortw_jac_g2_mul_vs_ref_bw6_761.nim", false),
@@ -176,6 +176,11 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Edge cases highlighted by past bugs
   # ----------------------------------------------------------
   ("tests/math/t_ec_shortw_prj_edge_cases.nim", false),
+
+  # Elliptic curve arithmetic - batch computation
+  # ----------------------------------------------------------
+  ("tests/math/t_ec_shortw_prj_g1_batch_add.nim", false),
+  ("tests/math/t_ec_shortw_jac_g1_batch_add.nim", false),
 
   # Subgroups and cofactors
   # ----------------------------------------------------------
@@ -232,6 +237,7 @@ const benchDesc = [
   "bench_fp6",
   "bench_fp12",
   "bench_ec_g1",
+  "bench_ec_g1_batch",
   "bench_ec_g2",
   "bench_pairing_bls12_377",
   "bench_pairing_bls12_381",
@@ -262,13 +268,14 @@ const skipSanitizers = [
   "tests/math/t_ec_sage_bn254_snarks.nim",
   "tests/math/t_ec_sage_bls12_377.nim",
   "tests/math/t_ec_sage_bls12_381.nim",
+  "tests/t_blssig_pop_on_bls12381_g2.nim",
   "tests/t_hash_to_field.nim",
   "tests/t_hash_to_curve.nim",
   "tests/t_hash_to_curve_random.nim",
   "tests/t_mac_poly1305.nim",
   "tests/t_mac_hmac.nim",
   "tests/t_kdf_hkdf.nim",
-  "tests/t_ethereum_eip2333_bls12381_key_derivation"
+  "tests/t_ethereum_eip2333_bls12381_key_derivation.nim"
 ]
 
 when defined(windows):
@@ -302,8 +309,8 @@ template setupCommand(): untyped {.dirty.} =
   var flags = flags
   when not defined(windows):
     # Not available in MinGW https://github.com/libressl-portable/portable/issues/54
-    flags &= " --passC:-fstack-protector-all"
-  let command = "nim " & lang & cc & " " & flags &
+    flags &= " --passC:-fstack-protector-strong"
+  let command = "nim " & lang & cc & " -d:release " & flags &
     " --verbosity:0 --outdir:build/testsuite -r --hints:off --warnings:off " &
     " --nimcache:nimcache/" & path & " " &
     path
@@ -672,37 +679,55 @@ task bench_fp12_clang_noasm, "Run benchmark 𝔽p12 with clang - no Assembly":
 # Elliptic curve G1
 # ------------------------------------------
 
-task bench_ec_g1, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weierstrass with Projective Coordinates - Default compiler":
+task bench_ec_g1, "Run benchmark on Elliptic Curve group 𝔾1 - Default compiler":
   runBench("bench_ec_g1")
 
-task bench_ec_g1_gcc, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weierstrass with Projective Coordinates - GCC":
+task bench_ec_g1_gcc, "Run benchmark on Elliptic Curve group 𝔾1 - GCC":
   runBench("bench_ec_g1", "gcc")
 
-task bench_ec_g1_clang, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weierstrass with Projective Coordinates - Clang":
+task bench_ec_g1_clang, "Run benchmark on Elliptic Curve group 𝔾1 - Clang":
   runBench("bench_ec_g1", "clang")
 
-task bench_ec_g1_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weierstrass with Projective Coordinates - GCC no Assembly":
+task bench_ec_g1_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾1 - GCC no Assembly":
   runBench("bench_ec_g1", "gcc", useAsm = false)
 
-task bench_ec_g1_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾1 - Short Weierstrass with Projective Coordinates - Clang no Assembly":
+task bench_ec_g1_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾1 - Clang no Assembly":
+  runBench("bench_ec_g1", "clang", useAsm = false)
+
+# Elliptic curve G1 - batch operations
+# ------------------------------------------
+
+task bench_ec_g1_batch, "Run benchmark on Elliptic Curve group 𝔾1 (batch ops) - Default compiler":
+  runBench("bench_ec_g1_batch")
+
+task bench_ec_g1_batch_gcc, "Run benchmark on Elliptic Curve group 𝔾1 (batch ops) - GCC":
+  runBench("bench_ec_g1_batch", "gcc")
+
+task bench_ec_g1_batch_clang, "Run benchmark on Elliptic Curve group 𝔾1 (batch ops) - Clang":
+  runBench("bench_ec_g1_batch", "clang")
+
+task bench_ec_g1_batch_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (batch ops) - GCC no Assembly":
+  runBench("bench_ec_g1_batch", "gcc", useAsm = false)
+
+task bench_ec_g1_batch_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (batch ops) - Clang no Assembly":
   runBench("bench_ec_g1", "clang", useAsm = false)
 
 # Elliptic curve G2
 # ------------------------------------------
 
-task bench_ec_g2, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weierstrass with Projective Coordinates - Default compiler":
+task bench_ec_g2, "Run benchmark on Elliptic Curve group 𝔾2 - Default compiler":
   runBench("bench_ec_g2")
 
-task bench_ec_g2_gcc, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weierstrass with Projective Coordinates - GCC":
+task bench_ec_g2_gcc, "Run benchmark on Elliptic Curve group 𝔾2 - GCC":
   runBench("bench_ec_g2", "gcc")
 
-task bench_ec_g2_clang, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weierstrass with Projective Coordinates - Clang":
+task bench_ec_g2_clang, "Run benchmark on Elliptic Curve group 𝔾2 - Clang":
   runBench("bench_ec_g2", "clang")
 
-task bench_ec_g2_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weierstrass with Projective Coordinates - GCC no Assembly":
+task bench_ec_g2_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾2 - GCC no Assembly":
   runBench("bench_ec_g2", "gcc", useAsm = false)
 
-task bench_ec_g2_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾2 - Short Weierstrass with Projective Coordinates - Clang no Assembly":
+task bench_ec_g2_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾2 - Clang no Assembly":
   runBench("bench_ec_g2", "clang", useAsm = false)
 
 # Pairings

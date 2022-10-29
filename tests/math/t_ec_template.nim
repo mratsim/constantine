@@ -23,6 +23,7 @@ import
     ec_shortweierstrass_affine,
     ec_shortweierstrass_jacobian,
     ec_shortweierstrass_projective,
+    ec_shortweierstrass_batch_ops,
     ec_twistededwards_affine,
     ec_twistededwards_projective,
     ec_scalar_mul],
@@ -41,7 +42,7 @@ type
     Long01Sequence
 
 func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen): EC {.noInit.} =
-  if not randZ:
+  when EC is ECP_ShortW_Aff:
     if gen == Uniform:
       result = rng.random_unsafe(EC)
     elif gen == HighHammingWeight:
@@ -49,12 +50,20 @@ func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen)
     else:
       result = rng.random_long01Seq(EC)
   else:
-    if gen == Uniform:
-      result = rng.random_unsafe_with_randZ(EC)
-    elif gen == HighHammingWeight:
-      result = rng.random_highHammingWeight_with_randZ(EC)
+    if not randZ:
+      if gen == Uniform:
+        result = rng.random_unsafe(EC)
+      elif gen == HighHammingWeight:
+        result = rng.random_highHammingWeight(EC)
+      else:
+        result = rng.random_long01Seq(EC)
     else:
-      result = rng.random_long01Seq_with_randZ(EC)
+      if gen == Uniform:
+        result = rng.random_unsafe_with_randZ(EC)
+      elif gen == HighHammingWeight:
+        result = rng.random_highHammingWeight_with_randZ(EC)
+      else:
+        result = rng.random_long01Seq_with_randZ(EC)
 
 template pairingGroup(EC: typedesc): string =
   when EC is (ECP_ShortW_Aff or ECP_ShortW_Prj or ECP_ShortW_Jac):
@@ -97,6 +106,15 @@ proc run_EC_addition_tests*(
           check: bool(r == P)
 
           r.sum(inf, P)
+          check: bool(r == P)
+
+          # Aliasing tests
+          r = P
+          r += inf
+          check: bool(r == P)
+
+          r.setInf()
+          r += P
           check: bool(r == P)
 
       test(ec, randZ = false, gen = Uniform)
@@ -438,7 +456,7 @@ proc run_EC_mixed_add_impl*(
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
     test "EC " & G1_or_G2 & " mixed addition is consistent with general addition":
-      proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
+      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< Iters:
           let a = rng.random_point(EC, randZ, gen)
           let b = rng.random_point(EC, randZ, gen)
@@ -452,12 +470,83 @@ proc run_EC_mixed_add_impl*(
 
           check: bool(r_generic == r_mixed)
 
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Uniform)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = HighHammingWeight)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = HighHammingWeight)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Long01Sequence)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Long01Sequence)
+      test(ec, randZ = false, gen = Uniform)
+      test(ec, randZ = true, gen = Uniform)
+      test(ec, randZ = false, gen = HighHammingWeight)
+      test(ec, randZ = true, gen = HighHammingWeight)
+      test(ec, randZ = false, gen = Long01Sequence)
+      test(ec, randZ = true, gen = Long01Sequence)
+
+    test "EC " & G1_or_G2 & " mixed addition - doubling":
+      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
+        for _ in 0 ..< Iters:
+          let a = rng.random_point(EC, randZ, gen)
+          var aAff: ECP_ShortW_Aff[EC.F, EC.G]
+          aAff.affine(a)
+
+          var r_generic, r_mixed: EC
+
+          r_generic.double(a)
+          r_mixed.madd(a, aAff)
+          check: bool(r_generic == r_mixed)
+          
+          # Aliasing test
+          r_mixed = a
+          r_mixed += aAff
+          check: bool(r_generic == r_mixed)
+
+      test(ec, randZ = false, gen = Uniform)
+      test(ec, randZ = true, gen = Uniform)
+      test(ec, randZ = false, gen = HighHammingWeight)
+      test(ec, randZ = true, gen = HighHammingWeight)
+      test(ec, randZ = false, gen = Long01Sequence)
+      test(ec, randZ = true, gen = Long01Sequence)
+
+    test "EC " & G1_or_G2 & " mixed addition - adding infinity LHS":
+      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
+        for _ in 0 ..< Iters:
+          var a{.noInit.}: EC
+          a.setInf()
+          let bAff = rng.random_point(ECP_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
+
+          var r_mixed{.noInit.}: EC
+          r_mixed.madd(a, bAff)
+
+          var r{.noInit.}: ECP_ShortW_Aff[EC.F, EC.G]
+          r.affine(r_mixed)
+
+          a += bAff
+
+          check:
+            bool(r == bAff)
+            bool(a == r_mixed)
+
+      test(ec, randZ = false, gen = Uniform)
+      test(ec, randZ = false, gen = HighHammingWeight)
+      test(ec, randZ = false, gen = Long01Sequence)
+
+    test "EC " & G1_or_G2 & " mixed addition - adding infinity RHS":
+      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
+        for _ in 0 ..< Iters:
+          let a = rng.random_point(EC, randZ, gen)
+          var bAff{.noInit.}: ECP_ShortW_Aff[EC.F, EC.G]
+          bAff.setInf()
+
+          var r{.noInit.}: EC
+          r.madd(a, bAff)
+
+          check: bool(r == a)
+
+          r = a
+          r += bAff
+          check: bool(r == a)
+
+      test(ec, randZ = false, gen = Uniform)
+      test(ec, randZ = true, gen = Uniform)
+      test(ec, randZ = false, gen = HighHammingWeight)
+      test(ec, randZ = true, gen = HighHammingWeight)
+      test(ec, randZ = false, gen = Long01Sequence)
+      test(ec, randZ = true, gen = Long01Sequence)
 
 proc run_EC_subgroups_cofactors_impl*(
        ec: typedesc,
@@ -480,7 +569,7 @@ proc run_EC_subgroups_cofactors_impl*(
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
     test "Effective cofactor matches accelerated cofactor clearing" & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
-      proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
+      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< ItersMul:
           let P = rng.random_point(EC, randZ, gen)
           var cPeff = P
@@ -491,17 +580,17 @@ proc run_EC_subgroups_cofactors_impl*(
 
           check: bool(cPeff == cPfast)
 
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Uniform)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = HighHammingWeight)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = HighHammingWeight)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Long01Sequence)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Long01Sequence)
+      test(ec, randZ = false, gen = Uniform)
+      test(ec, randZ = true, gen = Uniform)
+      test(ec, randZ = false, gen = HighHammingWeight)
+      test(ec, randZ = true, gen = HighHammingWeight)
+      test(ec, randZ = false, gen = Long01Sequence)
+      test(ec, randZ = true, gen = Long01Sequence)
 
     test "Subgroup checks and cofactor clearing consistency":
       var inSubgroup = 0
       var offSubgroup = 0
-      proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
+      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         stdout.write "    "
         for _ in 0 ..< ItersMul:
           let P = rng.random_point(EC, randZ, gen)
@@ -526,12 +615,12 @@ proc run_EC_subgroups_cofactors_impl*(
         
         stdout.write '\n'
 
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Uniform)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = HighHammingWeight)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = HighHammingWeight)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Long01Sequence)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Long01Sequence)
+      test(ec, randZ = false, gen = Uniform)
+      test(ec, randZ = true, gen = Uniform)
+      test(ec, randZ = false, gen = HighHammingWeight)
+      test(ec, randZ = true, gen = HighHammingWeight)
+      test(ec, randZ = false, gen = Long01Sequence)
+      test(ec, randZ = true, gen = Long01Sequence)
     
       echo "    [SUCCESS] Test finished with ", inSubgroup, " points in ", G1_or_G2, " subgroup and ",
               offSubgroup, " points on curve but not in subgroup (before cofactor clearing)"
@@ -700,3 +789,81 @@ proc run_EC_conversion_failures*(
 
       test_bn254_snarks_g1(ECP_ShortW_Prj[Fp[BN254_Snarks], G1])
       test_bn254_snarks_g1(ECP_ShortW_Jac[Fp[BN254_Snarks], G1])
+
+proc run_EC_batch_add_impl*[N: static int](
+       ec: typedesc,
+       numPoints: array[N, int],
+       moduleName: string
+     ) =
+
+  # Random seed for reproducibility
+  var rng: RngState
+  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  rng.seed(seed)
+  echo "\n------------------------------------------------------\n"
+  echo moduleName, " xoshiro512** seed: ", seed
+
+  when ec.G == G1:
+    const G1_or_G2 = "G1"
+  else:
+    const G1_or_G2 = "G2"
+
+  const testSuiteDesc = "Elliptic curve batch addition for Short Weierstrass form"
+
+  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
+    for n in numPoints:
+      test $ec & " batch addition (N=" & $n & ")":
+        proc test(EC: typedesc, gen: RandomGen) =
+          var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](n)
+          
+          for i in 0 ..< n:
+            points[i] = rng.random_point(ECP_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
+
+          var r_batch{.noinit.}, r_ref{.noInit.}: EC
+
+          r_ref.setInf()
+          for i in 0 ..< n:
+            r_ref += points[i]
+
+          r_batch.sum_batch_vartime(points)
+
+          check: bool(r_batch == r_ref)
+
+
+        test(ec, gen = Uniform)
+        test(ec, gen = HighHammingWeight)
+        test(ec, gen = Long01Sequence)
+
+      test "EC " & G1_or_G2 & " batch addition (N=" & $n & ") - special cases":
+        proc test(EC: typedesc, gen: RandomGen) =
+          var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](n)
+
+          let halfN = n div 2
+          
+          for i in 0 ..< halfN:
+            points[i] = rng.random_point(ECP_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
+          
+          for i in halfN ..< n:
+            # The special cases test relies on internal knowledge that we sum(points[i], points[i+n/2]
+            # It should be changed if scheduling change, for example if we sum(points[2*i], points[2*i+1])
+            let c = rng.random_unsafe(3)
+            if c == 0:
+              points[i] = rng.random_point(ECP_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
+            elif c == 1:
+              points[i] = points[i-halfN]
+            else:
+              points[i].neg(points[i-halfN])
+
+          var r_batch{.noinit.}, r_ref{.noInit.}: EC
+
+          r_ref.setInf()
+          for i in 0 ..< n:
+            r_ref += points[i]
+
+          r_batch.sum_batch_vartime(points)
+
+          check: bool(r_batch == r_ref)
+
+        test(ec, gen = Uniform)
+        test(ec, gen = HighHammingWeight)
+        test(ec, gen = Long01Sequence)
