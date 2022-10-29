@@ -276,6 +276,10 @@ func double*[Field](
   E -= D           # C stores E-D
   r.y *= E
 
+func `+=`*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Prj) {.inline.} =
+  ## In-place point addition
+  P.sum(P, Q)
+
 func double*(P: var ECP_TwEdwards_Prj) {.inline.} =
   ## In-place EC doubling
   P.double(P)

@@ -108,6 +108,15 @@ proc run_EC_addition_tests*(
           r.sum(inf, P)
           check: bool(r == P)
 
+          # Aliasing tests
+          r = P
+          r += inf
+          check: bool(r == P)
+
+          r.setInf()
+          r += P
+          check: bool(r == P)
+
       test(ec, randZ = false, gen = Uniform)
       test(ec, randZ = true, gen = Uniform)
       test(ec, randZ = false, gen = HighHammingWeight)
@@ -468,6 +477,77 @@ proc run_EC_mixed_add_impl*(
       test(ec, randZ = false, gen = Long01Sequence)
       test(ec, randZ = true, gen = Long01Sequence)
 
+    test "EC " & G1_or_G2 & " mixed addition - doubling":
+      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
+        for _ in 0 ..< Iters:
+          let a = rng.random_point(EC, randZ, gen)
+          var aAff: ECP_ShortW_Aff[EC.F, EC.G]
+          aAff.affine(a)
+
+          var r_generic, r_mixed: EC
+
+          r_generic.double(a)
+          r_mixed.madd(a, aAff)
+          check: bool(r_generic == r_mixed)
+          
+          # Aliasing test
+          r_mixed = a
+          r_mixed += aAff
+          check: bool(r_generic == r_mixed)
+
+      test(ec, randZ = false, gen = Uniform)
+      test(ec, randZ = true, gen = Uniform)
+      test(ec, randZ = false, gen = HighHammingWeight)
+      test(ec, randZ = true, gen = HighHammingWeight)
+      test(ec, randZ = false, gen = Long01Sequence)
+      test(ec, randZ = true, gen = Long01Sequence)
+
+    test "EC " & G1_or_G2 & " mixed addition - adding infinity LHS":
+      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
+        for _ in 0 ..< Iters:
+          var a{.noInit.}: EC
+          a.setInf()
+          let bAff = rng.random_point(ECP_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
+
+          var r_mixed{.noInit.}: EC
+          r_mixed.madd(a, bAff)
+
+          var r{.noInit.}: ECP_ShortW_Aff[EC.F, EC.G]
+          r.affine(r_mixed)
+
+          a += bAff
+
+          check:
+            bool(r == bAff)
+            bool(a == r_mixed)
+
+      test(ec, randZ = false, gen = Uniform)
+      test(ec, randZ = false, gen = HighHammingWeight)
+      test(ec, randZ = false, gen = Long01Sequence)
+
+    test "EC " & G1_or_G2 & " mixed addition - adding infinity RHS":
+      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
+        for _ in 0 ..< Iters:
+          let a = rng.random_point(EC, randZ, gen)
+          var bAff{.noInit.}: ECP_ShortW_Aff[EC.F, EC.G]
+          bAff.setInf()
+
+          var r{.noInit.}: EC
+          r.madd(a, bAff)
+
+          check: bool(r == a)
+
+          r = a
+          r += bAff
+          check: bool(r == a)
+
+      test(ec, randZ = false, gen = Uniform)
+      test(ec, randZ = true, gen = Uniform)
+      test(ec, randZ = false, gen = HighHammingWeight)
+      test(ec, randZ = true, gen = HighHammingWeight)
+      test(ec, randZ = false, gen = Long01Sequence)
+      test(ec, randZ = true, gen = Long01Sequence)
+
 proc run_EC_subgroups_cofactors_impl*(
        ec: typedesc,
        ItersMul: static int,
@@ -718,7 +798,7 @@ proc run_EC_batch_add_impl*[N: static int](
 
   # Random seed for reproducibility
   var rng: RngState
-  let seed = 1666905586 # uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
   rng.seed(seed)
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed

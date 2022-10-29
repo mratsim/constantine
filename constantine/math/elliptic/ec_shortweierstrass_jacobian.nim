@@ -305,31 +305,33 @@ template sumImpl[F; G: static Subgroup](
   # - R_or_M is set with R (add) or M (dbl)
   # - HHH_or_Mpre contains HHH (add) or garbage precomputation (dbl)
   # - V_or_S is set with V = U₁*HH (add) or S = X₁*YY (dbl)
+  var o {.noInit.}: typeof(r)
   block: # Finishing line
-    # we can start using r, while carefully handling r and P or Q aliasing
     var t {.noInit.}: F
     t.double(V_or_S)
-    r.x.square(R_or_M)
-    r.x -= t                           # X₃ = R²-2*V (add) or M²-2*S (dbl)
-    r.x.csub(HHH_or_Mpre, not isDbl)   # X₃ = R²-HHH-2*V (add) or M²-2*S (dbl)
+    o.x.square(R_or_M)
+    o.x -= t                           # X₃ = R²-2*V (add) or M²-2*S (dbl)
+    o.x.csub(HHH_or_Mpre, not isDbl)   # X₃ = R²-HHH-2*V (add) or M²-2*S (dbl)
 
-    V_or_S -= r.x                      # V-X₃ (add) or S-X₃ (dbl)
-    r.y.prod(R_or_M, V_or_S)           # Y₃ = R(V-X₃) (add) or M(S-X₃) (dbl)
+    V_or_S -= o.x                      # V-X₃ (add) or S-X₃ (dbl)
+    o.y.prod(R_or_M, V_or_S)           # Y₃ = R(V-X₃) (add) or M(S-X₃) (dbl)
     HHH_or_Mpre.ccopy(HH_or_YY, isDbl) # HHH (add) or YY (dbl)
     S1.ccopy(HH_or_YY, isDbl)          # S1 (add) or YY (dbl)
     HHH_or_Mpre *= S1                  # HHH*S1 (add) or YY² (dbl)
-    r.y -= HHH_or_Mpre                 # Y₃ = R(V-X₃)-S₁*HHH (add) or M(S-X₃)-YY² (dbl)
+    o.y -= HHH_or_Mpre                 # Y₃ = R(V-X₃)-S₁*HHH (add) or M(S-X₃)-YY² (dbl)
 
     t = Q.z
     t.ccopy(H_or_Y, isDbl)             # Z₂ (add) or Y₁ (dbl)
     t.prod(t, P.z, true)               # Z₁Z₂ (add) or Y₁Z₁ (dbl)
-    r.z.prod(t, H_or_Y)                # Z₁Z₂H (add) or garbage (dbl)
-    r.z.ccopy(t, isDbl)                # Z₁Z₂H (add) or Y₁Z₁ (dbl)
+    o.z.prod(t, H_or_Y)                # Z₁Z₂H (add) or garbage (dbl)
+    o.z.ccopy(t, isDbl)                # Z₁Z₂H (add) or Y₁Z₁ (dbl)
 
   # if P or R were infinity points they would have spread 0 with Z₁Z₂
   block: # Infinity points
-    r.ccopy(Q, P.isInf())
-    r.ccopy(P, Q.isInf())
+    o.ccopy(Q, P.isInf())
+    o.ccopy(P, Q.isInf())
+
+  r = o
 
 func sum*[F; G: static Subgroup](
        r: var ECP_ShortW_Jac[F, G],
@@ -382,81 +384,176 @@ func madd*[F; G: static Subgroup](
        P: ECP_ShortW_Jac[F, G],
        Q: ECP_ShortW_Aff[F, G]
      ) =
-  ## Elliptic curve mixed addition for Short Weierstrass curves
-  ## with p in Jacobian coordinates and Q in affine coordinates
+  ## Elliptic curve mixed addition for Short Weierstrass curves in Jacobian coordinates
+  ## with the curve ``a`` being a parameter for summing on isogenous curves.
   ##
   ##   R = P + Q
-  ## 
-  ## TODO: ⚠️ cannot handle P == Q
-  # "madd-2007-bl" mixed addition formula - https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#addition-madd-2007-bl
-  # with conditional copies to handle infinity points
-  #  Assumptions: Z2=1.
-  #  Cost: 7M + 4S + 9add + 3*2 + 1*4.
-  #  Source: 2007 Bernstein–Lange.
-  #  Explicit formulas:
+  ##
+  ## Short Weierstrass curves have the following equation in Jacobian coordinates
+  ##   Y² = X³ + aXZ⁴ + bZ⁶
+  ## from the affine equation
+  ##   y² = x³ + a x + b
+  ##
+  ## ``r`` is initialized/overwritten with the sum
+  ## ``CoefA`` allows fast path for curve with a == 0 or a == -3
+  ##            and also allows summing on curve isogenies.
+  ##
+  ## Implementation is constant-time, in particular it will not expose
+  ## that P == Q or P == -Q or P or Q are the infinity points
+  ## to simple side-channel attacks (SCA)
+  ## This is done by using a "complete" or "exception-free" addition law.
   #
-  #        Z1Z1 = Z1²
-  #        U2 = X2*Z1Z1
-  #        S2 = Y2*Z1*Z1Z1
-  #        H = U2-X1
-  #        HH = H2
-  #        I = 4*HH
-  #        J = H*I
-  #        r = 2*(S2-Y1)
-  #        V = X1*I
-  #        X3 = r²-J-2*V
-  #        Y3 = r*(V-X3)-2*Y1*J
-  #        Z3 = (Z1+H)²-Z1Z1-HH
-  var Z1Z1 {.noInit.}, H {.noInit.}, HH {.noInit.}, I{.noInit.}, J {.noInit.}: F
+  # Implementation, see write-up at the bottom.
+  # We fuse addition and doubling with condition copy by swapping
+  # terms with the following table
+  #
+  # |  Addition, Cohen et al, 1998  |      Doubling, Cohen et al, 1998         |   Doubling = -3   | Doubling a = 0 |
+  # |  12M + 4S + 6add + 1*2        | 3M + 6S + 1*a + 4add + 1*2 + 1*3 + 1half |                   |                |
+  # | ----------------------------- | -----------------------------------------| ----------------- | -------------- |
+  # | Z₁Z₁ = Z₁²                    | Z₁Z₁ = Z₁²                               |                   |                |
+  # | Z₂Z₂ = Z₂²                    |                                          |                   |                |
+  # |                               |                                          |                   |                |
+  # | U₁ = X₁*Z₂Z₂                  |                                          |                   |                |
+  # | U₂ = X₂*Z₁Z₁                  |                                          |                   |                |
+  # | S₁ = Y₁*Z₂*Z₂Z₂               |                                          |                   |                |
+  # | S₂ = Y₂*Z₁*Z₁Z₁               |                                          |                   |                |
+  # | H  = U₂-U₁ # P=-Q, P=Inf, P=Q |                                          |                   |                |
+  # | R  = S₂-S₁ # Q=Inf            |                                          |                   |                |
+  # |                               |                                          |                   |                |
+  # | HH  = H²                      | YY = Y₁²                                 |                   |                |
+  # | V   = U₁*HH                   | S  = X₁*YY                               |                   |                |
+  # | HHH = H*HH                    | M  = (3*X₁²+a*ZZ²)/2                     | 3(X₁-ZZ)(X₁+ZZ)/2 | 3X₁²/2         |
+  # |                               |                                          |                   |                |
+  # | X₃ = R²-HHH-2*V               | X₃ = M²-2*S                              |                   |                |
+  # | Y₃ = R*(V-X₃)-S₁*HHH          | Y₃ = M*(S-X₃)-YY*YY                      |                   |                |
+  # | Z₃ = Z₁*Z₂*H                  | Z₃ = Y₁*Z₁                               |                   |                |
+  #
+  # For mixed adddition we just set Z₂ = 1
+  var Z1Z1 {.noInit.}, U1 {.noInit.}, S1 {.noInit.}, H {.noInit.}, R {.noinit.}: F
 
-  # Preload P and Q in cache
-  let pIsInf = P.isInf()
-  let qIsInf = Q.isInf()
+  block: # Addition-only, check for exceptional cases
+    var U2 {.noInit.}, S2 {.noInit.}: F
+    U1 = P.x
+    S1 = P.y
 
-  Z1Z1.square(P.z)          # Z₁Z₁ = Z₁²
-  r.z.prod(P.z, Z1Z1, true) #               P.Z is hot in cache, keep it in same register.
-  r.z *= Q.y                # S₂ = Y₂Z₁Z₁Z₁         -- r.z used as S₂
+    Z1Z1.square(P.z, skipFinalSub = true)
+    S2.prod(P.z, Z1Z1, skipFinalSub = true)
+    S2 *= Q.y           # S₂ = Y₂*Z₁³
+    U2.prod(Q.x, Z1Z1)  # U₂ = X₂*Z₁²
 
-  H.prod(Q.x, Z1Z1)         # U₂ = X₂Z₁Z₁
-  H -= P.x                  # H = U₂ - X₁
+    H.diff(U2, U1)      # H = U₂-U₁
+    R.diff(S2, S1)      # R = S₂-S₁
 
-  HH.square(H)              # HH = H²
+  # Exceptional cases
+  # Expressing H as affine, if H == 0, P == Q or -Q
+  # H = U₂-U₁ = X₂*Z₁² - X₁*Z₂² = x₂*Z₂²*Z₁² - x₁*Z₁²*Z₂²
+  # if H == 0 && R == 0, P = Q -> doubling
+  # if only H == 0, P = -Q     -> infinity, implied in Z₃ = Z₁*Z₂*H = 0
+  # if only R == 0, P and Q are related by the cubic root endomorphism
+  let isDbl = H.isZero() and R.isZero()
 
-  I.double(HH)
-  I.double()                # I = 4HH
+  # Rename buffers under the form (add_or_dbl)
+  template R_or_M: untyped = R
+  template H_or_Y: untyped = H
+  template V_or_S: untyped = U1
+  var HH_or_YY {.noInit.}: F
+  var HHH_or_Mpre {.noInit.}: F
 
-  J.prod(H, I)              # J = H*I
-  r.y.prod(P.x, I)          # V = X₁*I              -- r.y used as V
+  H_or_Y.ccopy(P.y, isDbl) # H         (add) or Y₁        (dbl)
+  HH_or_YY.square(H_or_Y)  # H²        (add) or Y₁²       (dbl)
 
-  r.z -= P.y                #
-  r.z.double()              # r = 2*(S₂-Y₁)         -- r.z used as r
+  V_or_S.ccopy(P.x, isDbl) # U₁        (add) or X₁        (dbl)
+  V_or_S *= HH_or_YY       # V = U₁*HH (add) or S = X₁*YY (dbl)
 
-  r.x.square(r.z)           # r²
-  r.x -= J
-  r.x -= r.y
-  r.x -= r.y                # X₃ = r²-J-2*V         -- r.x computed
+  block: # Compute M for doubling
+    # "when" static evaluation doesn't shortcut booleans :/
+    # which causes issues when CoefA isn't an int but Fp or Fp2
+    const CoefA = F.C.getCoefA()
+    when CoefA is int:
+      const CoefA_eq_zero = CoefA == 0
+      const CoefA_eq_minus3 {.used.} = CoefA == -3
+    else:
+      const CoefA_eq_zero = false
+      const CoefA_eq_minus3 = false
 
-  r.y -= r.x                # V-X₃
-  r.y *= r.z                # r*(V-X₃)
+    when CoefA_eq_zero:
+      var a {.noInit.} = H
+      var b {.noInit.} = HH_or_YY
+      a.ccopy(P.x, isDbl)           # H or X₁
+      b.ccopy(P.x, isDbl)           # HH or X₁
+      HHH_or_Mpre.prod(a, b)        # HHH or X₁²
 
-  J *= P.y                  # Y₁J                   -- J reused as Y₁J
-  r.y -= J
-  r.y -= J                  # Y₃ = r*(V-X₃) - 2*Y₁J -- r.y computed
+      var M{.noInit.} = HHH_or_Mpre # Assuming on doubling path
+      M.div2()                      #  X₁²/2
+      M += HHH_or_Mpre              # 3X₁²/2
+      R_or_M.ccopy(M, isDbl)
 
-  r.z.sum(P.z, H)           # Z₁ + H
-  r.z.square()
-  r.z -= Z1Z1
-  r.z -= HH                 # Z₃ = (Z1+H)²-Z1Z1-HH
+    elif CoefA_eq_minus3:
+      var a{.noInit.}, b{.noInit.}: F
+      a.sum(P.x, Z1Z1)
+      b.diff(P.z, Z1Z1)
+      a.ccopy(H_or_Y, not isDbl)    # H   or X₁+ZZ
+      b.ccopy(HH_or_YY, not isDbl)  # HH  or X₁-ZZ
+      HHH_or_Mpre.prod(a, b)        # HHH or X₁²-ZZ²
 
-  # Now handle points at infinity
-  proc one(): F =
-    result.setOne()
+      var M{.noInit.} = HHH_or_Mpre # Assuming on doubling path
+      M.div2()                      # (X₁²-ZZ²)/2
+      M += HHH_or_Mpre              # 3(X₁²-ZZ²)/2
+      R_or_M.ccopy(M, isDbl)
 
-  r.x.ccopy(Q.x, pIsInf)
-  r.y.ccopy(Q.y, pIsInf)
-  r.z.ccopy(static(one()), pIsInf)
+    else:
+      # TODO: Costly `a` coefficients can be computed
+      # by merging their computation with Z₃ = Z₁*Z₂*H (add) or Z₃ = Y₁*Z₁ (dbl)
+      var a{.noInit.} = H
+      var b{.noInit.} = HH_or_YY
+      a.ccopy(P.x, isDbl)
+      b.ccopy(P.x, isDbl)
+      HHH_or_Mpre.prod(a, b, true)  # HHH or X₁²
 
-  r.ccopy(P, qIsInf)
+      # Assuming doubling path
+      a.square(HHH_or_Mpre, skipFinalSub = true)
+      a *= HHH_or_Mpre              # a = 3X₁²
+      b.square(Z1Z1)
+      # b.mulCheckSparse(CoefA)     # TODO: broken static compile-time type inference
+      b *= CoefA                    # b = αZZ, with α the "a" coefficient of the curve
+      
+      a += b
+      a.div2()
+      R_or_M.ccopy(a, isDbl)        # (3X₁² - αZZ)/2
+
+  # Let's count our horses, at this point:
+  # - R_or_M is set with R (add) or M (dbl)
+  # - HHH_or_Mpre contains HHH (add) or garbage precomputation (dbl)
+  # - V_or_S is set with V = U₁*HH (add) or S = X₁*YY (dbl)
+  var o {.noInit.}: typeof(r)
+  block: # Finishing line
+    var t {.noInit.}: F
+    t.double(V_or_S)
+    o.x.square(R_or_M)
+    o.x -= t                           # X₃ = R²-2*V (add) or M²-2*S (dbl)
+    o.x.csub(HHH_or_Mpre, not isDbl)   # X₃ = R²-HHH-2*V (add) or M²-2*S (dbl)
+
+    V_or_S -= o.x                      # V-X₃ (add) or S-X₃ (dbl)
+    o.y.prod(R_or_M, V_or_S)           # Y₃ = R(V-X₃) (add) or M(S-X₃) (dbl)
+    HHH_or_Mpre.ccopy(HH_or_YY, isDbl) # HHH (add) or YY (dbl)
+    S1.ccopy(HH_or_YY, isDbl)          # S1 (add) or YY (dbl)
+    HHH_or_Mpre *= S1                  # HHH*S1 (add) or YY² (dbl)
+    o.y -= HHH_or_Mpre                 # Y₃ = R(V-X₃)-S₁*HHH (add) or M(S-X₃)-YY² (dbl)
+
+    t.setOne()
+    t.ccopy(H_or_Y, isDbl)             # Z₂ (add) or Y₁ (dbl)
+    t.prod(t, P.z, true)               # Z₁Z₂ (add) or Y₁Z₁ (dbl)
+    o.z.prod(t, H_or_Y)                # Z₁Z₂H (add) or garbage (dbl)
+    o.z.ccopy(t, isDbl)                # Z₁Z₂H (add) or Y₁Z₁ (dbl)
+
+  block: # Infinity points
+    o.x.ccopy(Q.x, P.isInf())
+    o.y.ccopy(Q.y, P.isInf())
+    o.z.csetOne(P.isInf())
+    
+    o.ccopy(P, Q.isInf())
+
+  r = o
 
 func double*[F; G: static Subgroup](
        r: var ECP_ShortW_Jac[F, G],
@@ -527,11 +624,7 @@ func `+=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac) {.inline.} =
 
 func `+=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Aff) {.inline.} =
   ## In-place mixed point addition
-  ## 
-  ## TODO: ⚠️ cannot handle P == Q
-  var t{.noInit.}: typeof(P)
-  t.madd(P, Q)
-  P = t
+  P.madd(P, Q)
 
 func double*(P: var ECP_ShortW_Jac) {.inline.} =
   ## In-place point doubling
@@ -598,9 +691,6 @@ func batchAffine*[N: static int, F, G](
   accInv.inv(affs[N-1].x)
 
   for i in countdown(N-1, 1):
-    # Skip zero z-coordinates (infinity points)
-    var z = affs[i].x
-
     # Extract 1/Pᵢ
     var invi {.noInit.}: F
     invi.prod(accInv, affs[i-1].x, skipFinalSub = true)

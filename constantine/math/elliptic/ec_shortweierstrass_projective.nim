@@ -480,9 +480,6 @@ func batchAffine*[N: static int, F, G](
   accInv.inv(affs[N-1].x)
 
   for i in countdown(N-1, 1):
-    # Skip zero z-coordinates (infinity points)
-    var z = affs[i].x
-
     # Extract 1/Pᵢ
     var invi {.noInit.}: F
     invi.prod(accInv, affs[i-1].x, skipFinalSub = true)
