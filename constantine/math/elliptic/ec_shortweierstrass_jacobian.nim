@@ -50,15 +50,15 @@ func `==`*(P, Q: ECP_ShortW_Jac): SecretBool =
   var z1z1 {.noInit.}, z2z2 {.noInit.}: F
   var a{.noInit.}, b{.noInit.}: F
 
-  z1z1.square(P.z)
-  z2z2.square(Q.z)
+  z1z1.square(P.z, skipFinalSub = true)
+  z2z2.square(Q.z, skipFinalSub = true)
 
   a.prod(P.x, z2z2)
   b.prod(Q.x, z1z1)
   result = a == b
 
-  a.prod(P.y, Q.z)
-  b.prod(Q.y, P.z)
+  a.prod(P.y, Q.z, skipFinalSub = true)
+  b.prod(Q.y, P.z, skipFinalSub = true)
   a *= z2z2
   b *= z1z1
   result = result and a == b
@@ -111,9 +111,9 @@ func trySetFromCoordsXandZ*[F; G](
   result = sqrt_if_square(P.y)
 
   var z2 {.noInit.}: F
-  z2.square(z)
+  z2.square(z, skipFinalSub = true)
   P.x.prod(x, z2)
-  P.y *= z2
+  P.y.prod(P.y, z2, skipFinalSub = true)
   P.y *= z
   P.z = z
 
@@ -212,13 +212,13 @@ template sumImpl[F; G: static Subgroup](
 
   block: # Addition-only, check for exceptional cases
     var Z2Z2 {.noInit.}, U2 {.noInit.}, S2 {.noInit.}: F
-    Z2Z2.square(Q.z)
-    S1.prod(Q.z, Z2Z2)
+    Z2Z2.square(Q.z, skipFinalSub = true)
+    S1.prod(Q.z, Z2Z2, skipFinalSub = true)
     S1 *= P.y           # S₁ = Y₁*Z₂³
     U1.prod(P.x, Z2Z2)  # U₁ = X₁*Z₂²
 
-    Z1Z1.square(P.z)
-    S2.prod(P.z, Z1Z1)
+    Z1Z1.square(P.z, skipFinalSub = true)
+    S2.prod(P.z, Z1Z1, skipFinalSub = true)
     S2 *= Q.y           # S₂ = Y₂*Z₁³
     U2.prod(Q.x, Z1Z1)  # U₂ = X₂*Z₁²
 
@@ -288,10 +288,10 @@ template sumImpl[F; G: static Subgroup](
       var b{.noInit.} = HH_or_YY
       a.ccopy(P.x, isDbl)
       b.ccopy(P.x, isDbl)
-      HHH_or_Mpre.prod(a, b)        # HHH or X₁²
+      HHH_or_Mpre.prod(a, b, true)  # HHH or X₁²
 
       # Assuming doubling path
-      a.square(HHH_or_Mpre)
+      a.square(HHH_or_Mpre, skipFinalSub = true)
       a *= HHH_or_Mpre              # a = 3X₁²
       b.square(Z1Z1)
       # b.mulCheckSparse(CoefA)     # TODO: broken static compile-time type inference
@@ -322,7 +322,7 @@ template sumImpl[F; G: static Subgroup](
 
     t = Q.z
     t.ccopy(H_or_Y, isDbl)             # Z₂ (add) or Y₁ (dbl)
-    t *= P.z                           # Z₁Z₂ (add) or Y₁Z₁ (dbl)
+    t.prod(t, P.z, true)               # Z₁Z₂ (add) or Y₁Z₁ (dbl)
     r.z.prod(t, H_or_Y)                # Z₁Z₂H (add) or garbage (dbl)
     r.z.ccopy(t, isDbl)                # Z₁Z₂H (add) or Y₁Z₁ (dbl)
 
@@ -413,40 +413,40 @@ func madd*[F; G: static Subgroup](
   let pIsInf = P.isInf()
   let qIsInf = Q.isInf()
 
-  Z1Z1.square(P.z)    # Z₁Z₁ = Z₁²
-  r.z.prod(P.z, Z1Z1) #               P.Z is hot in cache, keep it in same register.
-  r.z *= Q.y          # S₂ = Y₂Z₁Z₁Z₁         -- r.z used as S₂
+  Z1Z1.square(P.z)          # Z₁Z₁ = Z₁²
+  r.z.prod(P.z, Z1Z1, true) #               P.Z is hot in cache, keep it in same register.
+  r.z *= Q.y                # S₂ = Y₂Z₁Z₁Z₁         -- r.z used as S₂
 
-  H.prod(Q.x, Z1Z1)   # U₂ = X₂Z₁Z₁
-  H -= P.x            # H = U₂ - X₁
+  H.prod(Q.x, Z1Z1)         # U₂ = X₂Z₁Z₁
+  H -= P.x                  # H = U₂ - X₁
 
-  HH.square(H)        # HH = H²
+  HH.square(H)              # HH = H²
 
   I.double(HH)
-  I.double()          # I = 4HH
+  I.double()                # I = 4HH
 
-  J.prod(H, I)        # J = H*I
-  r.y.prod(P.x, I)    # V = X₁*I              -- r.y used as V
+  J.prod(H, I)              # J = H*I
+  r.y.prod(P.x, I)          # V = X₁*I              -- r.y used as V
 
-  r.z -= P.y          #
-  r.z.double()        # r = 2*(S₂-Y₁)         -- r.z used as r
+  r.z -= P.y                #
+  r.z.double()              # r = 2*(S₂-Y₁)         -- r.z used as r
 
-  r.x.square(r.z)     # r²
+  r.x.square(r.z)           # r²
   r.x -= J
   r.x -= r.y
-  r.x -= r.y          # X₃ = r²-J-2*V         -- r.x computed
+  r.x -= r.y                # X₃ = r²-J-2*V         -- r.x computed
 
-  r.y -= r.x          # V-X₃
-  r.y *= r.z          # r*(V-X₃)
+  r.y -= r.x                # V-X₃
+  r.y *= r.z                # r*(V-X₃)
 
-  J *= P.y            # Y₁J                   -- J reused as Y₁J
+  J *= P.y                  # Y₁J                   -- J reused as Y₁J
   r.y -= J
-  r.y -= J            # Y₃ = r*(V-X₃) - 2*Y₁J -- r.y computed
+  r.y -= J                  # Y₃ = r*(V-X₃) - 2*Y₁J -- r.y computed
 
-  r.z.sum(P.z, H)     # Z₁ + H
+  r.z.sum(P.z, H)           # Z₁ + H
   r.z.square()
   r.z -= Z1Z1
-  r.z -= HH           # Z₃ = (Z1+H)²-Z1Z1-HH
+  r.z -= HH                 # Z₃ = (Z1+H)²-Z1Z1-HH
 
   # Now handle points at infinity
   proc one(): F =
@@ -550,10 +550,10 @@ func affine*[F; G](
        jac: ECP_ShortW_Jac[F, G]) =
   var invZ {.noInit.}, invZ2{.noInit.}: F
   invZ.inv(jac.z)
-  invZ2.square(invZ)
+  invZ2.square(invZ, skipFinalSub = true)
 
   aff.x.prod(jac.x, invZ2)
-  invZ *= invZ2
+  invZ.prod(invZ, invZ2, skipFinalSub = true)
   aff.y.prod(jac.y, invZ)
 
 func fromAffine*[F; G](
@@ -589,7 +589,10 @@ func batchAffine*[N: static int, F, G](
     zeroes[i] = z.isZero()
     z.csetOne(zeroes[i])
 
-    affs[i].x.prod(affs[i-1].x, z)
+    if i != N-1:
+      affs[i].x.prod(affs[i-1].x, z, skipFinalSub = true)
+    else:
+      affs[i].x.prod(affs[i-1].x, z, skipFinalSub = false)
   
   var accInv {.noInit.}: F
   accInv.inv(affs[N-1].x)
@@ -600,27 +603,27 @@ func batchAffine*[N: static int, F, G](
 
     # Extract 1/Pᵢ
     var invi {.noInit.}: F
-    invi.prod(accInv, affs[i-1].x)
+    invi.prod(accInv, affs[i-1].x, skipFinalSub = true)
     invi.csetZero(zeroes[i])
 
     # Now convert Pᵢ to affine
     var invi2 {.noinit.}: F
-    invi2.square(invi)
+    invi2.square(invi, skipFinalSub = true)
     affs[i].x.prod(jacs[i].x, invi2)
-    invi *= invi2
+    invi.prod(invi, invi2, skipFinalSub = true)
     affs[i].y.prod(jacs[i].y, invi)
 
     # next iteration
     invi = jacs[i].z
     invi.csetOne(zeroes[i])
-    accInv *= invi
+    accInv.prod(accInv, invi, skipFinalSub = true)
 
   block: # tail
     var invi2 {.noinit.}: F
     accInv.csetZero(zeroes[0])
-    invi2.square(accInv)
+    invi2.square(accInv, skipFinalSub = true)
     affs[0].x.prod(jacs[0].x, invi2)
-    accInv *= invi2
+    accInv.prod(accInv, invi2, skipFinalSub = true)
     affs[0].y.prod(jacs[0].y, accInv)
 
 # ############################################################

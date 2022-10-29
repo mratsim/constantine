@@ -48,10 +48,17 @@ proc main() =
     for numPoints in [10, 100, 1000, 10000, 100000, 1000000]:
       let batchIters = max(1, Iters div numPoints)
       multiAddBench(ECP_ShortW_Prj[Fp[curve], G1], numPoints, useBatching = false, batchIters)
+    separator()
+    for numPoints in [10, 100, 1000, 10000, 100000, 1000000]:
+      let batchIters = max(1, Iters div numPoints)
       multiAddBench(ECP_ShortW_Prj[Fp[curve], G1], numPoints, useBatching = true, batchIters)
+    separator()
     for numPoints in [10, 100, 1000, 10000, 100000, 1000000]:
       let batchIters = max(1, Iters div numPoints)
       multiAddBench(ECP_ShortW_Jac[Fp[curve], G1], numPoints, useBatching = false, batchIters)
+    separator()
+    for numPoints in [10, 100, 1000, 10000, 100000, 1000000]:
+      let batchIters = max(1, Iters div numPoints)
       multiAddBench(ECP_ShortW_Jac[Fp[curve], G1], numPoints, useBatching = true, batchIters)
     separator()
     separator()

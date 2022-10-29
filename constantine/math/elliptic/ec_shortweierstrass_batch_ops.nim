@@ -162,10 +162,12 @@ func accum_half_vartime[F; G: static Subgroup](
     if i == 0:
       points[q].y = lambdas[i].den
     else:
-      points[q].y.prod(points[q_prev].y, lambdas[i].den)
+      points[q].y.prod(points[q_prev].y, lambdas[i].den, skipFinalSub = true)  
 
   # Step 3: batch invert
   var accInv {.noInit.}: F
+  accInv.setZero()
+  points[len-1].y += accInv   # Undo skipFinalSub, ensure that the last accum is in canonical form, before inversion
   accInv.inv(points[len-1].y)
 
   # Step 4: Compute the partial sums
@@ -191,8 +193,8 @@ func accum_half_vartime[F; G: static Subgroup](
       continue
 
     # Compute lambda
-    points[q].y.prod(accInv, points[q_prev].y)
-    points[q].y *= lambdas[i].num
+    points[q].y.prod(accInv, points[q_prev].y, skipFinalSub = true)
+    points[q].y.prod(points[q].y, lambdas[i].num, skipFinalSub = true)
     
     # Compute EC addition 
     var r{.noInit.}: ECP_ShortW_Aff[F, G]
@@ -202,7 +204,7 @@ func accum_half_vartime[F; G: static Subgroup](
     points[i] = r
 
     # Next iteration
-    accInv *= lambdas[i].den
+    accInv.prod(accInv, lambdas[i].den, skipFinalSub = true)
 
   block: # Tail
     let i = 0
@@ -213,7 +215,7 @@ func accum_half_vartime[F; G: static Subgroup](
       recallSpecialCase(i, p, q)
     else:
       # Compute lambda
-      points[q].y.prod(lambdas[0].num, accInv)
+      points[q].y.prod(lambdas[0].num, accInv, skipFinalSub = true)
   
       # Compute EC addition 
       var r{.noInit.}: ECP_ShortW_Aff[F, G]
