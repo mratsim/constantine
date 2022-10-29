@@ -268,7 +268,7 @@ const skipSanitizers = [
   "tests/math/t_ec_sage_bn254_snarks.nim",
   "tests/math/t_ec_sage_bls12_377.nim",
   "tests/math/t_ec_sage_bls12_381.nim",
-  "tests/t_blssig_pop_on_bls12381_g2",
+  "tests/t_blssig_pop_on_bls12381_g2.nim",
   "tests/t_hash_to_field.nim",
   "tests/t_hash_to_curve.nim",
   "tests/t_hash_to_curve_random.nim",
