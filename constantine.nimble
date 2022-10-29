@@ -275,7 +275,7 @@ const skipSanitizers = [
   "tests/t_mac_poly1305.nim",
   "tests/t_mac_hmac.nim",
   "tests/t_kdf_hkdf.nim",
-  "tests/t_ethereum_eip2333_bls12381_key_derivation"
+  "tests/t_ethereum_eip2333_bls12381_key_derivation.nim"
 ]
 
 when defined(windows):
