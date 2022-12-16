@@ -346,10 +346,6 @@ type
     ##  This indicates that an unknown internal error has occurred.
     CUDA_ERROR_UNKNOWN = 999
 
-type
-  CUdevice* = distinct int32
-    ## Compute Device handle
-
   CUdevice_attribute* {.size: sizeof(cint).} = enum
     CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_BLOCK = 1,                          ## Maximum number of threads per block */
     CU_DEVICE_ATTRIBUTE_MAX_BLOCK_DIM_X = 2,                                ## Maximum block dimension X */
@@ -473,6 +469,13 @@ type
     CU_DEVICE_ATTRIBUTE_DMA_BUF_SUPPORTED = 124,                            ## Device supports buffer sharing with dma_buf mechanism. */ 
     CU_DEVICE_ATTRIBUTE_MAX
 
+  CUmemAttach_flags* = enum
+    CU_MEM_ATTACH_GLOBAL = 0x1, ## Memory can be accessed by any stream on any device
+    CU_MEM_ATTACH_HOST = 0x2,   ## Memory cannot be accessed by any stream on any device
+    CU_MEM_ATTACH_SINGLE = 0x4
+
+  CUdevice* = distinct int32
+    ## Compute Device handle
   CUcontext* = distinct pointer
   CUmodule* = distinct pointer
   CUfunction* = distinct pointer
@@ -505,12 +508,6 @@ proc cuLaunchKernel(
        kernelParams: ptr pointer,
        extra: ptr pointer
      ): CUresult {.used.}
-
-type
-  CUmemAttach_flags* = enum
-    CU_MEM_ATTACH_GLOBAL = 0x1, ## Memory can be accessed by any stream on any device
-    CU_MEM_ATTACH_HOST = 0x2,   ## Memory cannot be accessed by any stream on any device
-    CU_MEM_ATTACH_SINGLE = 0x4
 
 proc cuMemAlloc*(devptr: var CUdeviceptr, size: csize_t): CUresult
 proc cuMemAllocManaged*(devptr: var CUdeviceptr, size: csize_t, flags: Flag[CUmemAttach_flags]): CUresult
