@@ -6,9 +6,32 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import macros
+import std/macros
 
-# Binding utilities
+# ############################################################
+#
+#                     Binding utilities
+#
+# ############################################################
+
+# Flag parameters
+# ------------------------------------------------------------
+
+type Flag*[E: enum] = distinct cint
+
+func flag*[E: enum](e: varargs[E]): Flag[E] {.inline.} =
+  ## Enum should only have power of 2 fields
+  # static:
+  #   for val in E:
+  #     assert (ord(val) and (ord(val) - 1)) == 0, "Enum values should all be power of 2, found " &
+  #                                                 $val & " with value " & $ord(val) & "."
+  var flags = 0
+  for val in e:
+    flags = flags or ord(val)
+  result = Flag[E](flags)
+
+# Macros
+# ------------------------------------------------------------
 
 proc replaceSymsByIdents*(ast: NimNode): NimNode =
   proc inspect(node: NimNode): NimNode =
@@ -65,7 +88,7 @@ macro wrapOpenArrayLenType*(ty: typedesc, procAst: untyped): untyped =
   ## is transformed into
   ## 
   ## ```
-  ## proc foo(r: int, a: ptr CustomType, aLen: uint32, b: int) {.importc: "foo", dynlib: "libfoo.so".}
+  ## proc foo(r: int, a: ptr CustomType, aLen: uint32, b: int) {.cdecl, importc: "foo", dynlib: "libfoo.so".}
   ## 
   ## proc foo*(r: int, a: openArray[CustomType], b: int) {.inline.} =
   ##   foo(r, a[0].unsafeAddr, a.len.uint32, b)

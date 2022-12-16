@@ -26,7 +26,7 @@ static: echo "[Constantine] Using library " & libLLVM
 # also link to libLLVM, for example if they implement a virtual machine (for the EVM, for Snarks/zero-knowledge, ...).
 # Hence Constantine should always use LLVM context to "namespace" its own codegen and avoid collisions in the global context.
 
-{.push hint[Name]: off.}
+{.push used, hint[Name]: off, cdecl, dynlib: libLLVM.}
 
 # ############################################################
 #
@@ -35,30 +35,28 @@ static: echo "[Constantine] Using library " & libLLVM
 # ############################################################
 
 type
-  LlvmBool* = distinct int32
-  MemoryBufferRef* = distinct pointer
+  LlvmBool = distinct int32
+  MemoryBufferRef = distinct pointer
   ContextRef* = distinct pointer
   ModuleRef* = distinct pointer
   TargetRef* = distinct pointer
   ExecutionEngineRef* = distinct pointer
   TypeRef* = distinct pointer
   ValueRef* = distinct pointer
-  NamedMDNodeRef* = distinct pointer
-  MetadataRef* = distinct pointer
+  MetadataRef = distinct pointer
+  LLVMstring = distinct cstring
+    ## A string with a buffer owned by LLVM
 
-{.push cdecl, dynlib: libLLVM.} # {.push header: "<llvm-c/Core.h>".}
+# <llvm-c/Core.h>
 
 proc createContext*(): ContextRef {.importc: "LLVMContextCreate".}
 proc dispose*(ctx: ContextRef) {.importc: "LLVMContextDispose".}
 
-proc dispose*(msg: cstring) {.importc: "LLVMDisposeMessage".}
+proc dispose(msg: LLVMstring) {.importc: "LLVMDisposeMessage".}
   ## cstring in LLVM are owned by LLVM and must be destroyed with a specific function
-
-proc dispose*(buf: MemoryBufferRef){.importc: "LLVMDisposeMemoryBuffer".}
-proc getBufferStart*(buf: MemoryBufferRef): ptr byte {.importc: "LLVMGetBufferStart".}
-proc getBufferSize*(buf: MemoryBufferRef): csize_t {.importc: "LLVMGetBufferSize".}
-
-{.pop.} # {.push header: "<llvm-c/Core.h>".}
+proc dispose(buf: MemoryBufferRef){.importc: "LLVMDisposeMemoryBuffer".}
+proc getBufferStart(buf: MemoryBufferRef): ptr byte {.importc: "LLVMGetBufferStart".}
+proc getBufferSize(buf: MemoryBufferRef): csize_t {.importc: "LLVMGetBufferSize".}
 
 # ############################################################
 #
@@ -66,15 +64,13 @@ proc getBufferSize*(buf: MemoryBufferRef): csize_t {.importc: "LLVMGetBufferSize
 #
 # ############################################################
 
-{.push cdecl, dynlib: libLLVM.} # {.push header: "<llvm-c/Core.h>".}
+# {.push header: "<llvm-c/Core.h>".}
 
-proc llvmCreateModule(name: cstring, ctx: ContextRef): ModuleRef {.importc: "LLVMModuleCreateWithNameInContext".}
-template createModule*(ctx: ContextRef, name: cstring): ModuleRef =
-  llvmCreateModule(name, ctx)
+proc createModule(name: cstring, ctx: ContextRef): ModuleRef {.importc: "LLVMModuleCreateWithNameInContext".}
 proc dispose*(m: ModuleRef) {.importc: "LLVMDisposeModule".}
   ## Destroys a module
   ## Note: destroying an Execution Engine will also destroy modules attached to it
-proc toIRString(m: ModuleRef): cstring {.importc: "LLVMPrintModuleToString".}
+proc toIR_LLVMstring(m: ModuleRef): LLVMstring {.used, importc: "LLVMPrintModuleToString".}
   ## Print a module IR to textual IR string. The string must be disposed with LLVM "dispose" or memory will leak.
 proc getContext*(m: ModuleRef): ContextRef {.importc: "LLVMGetModuleContext".}
 
@@ -83,37 +79,20 @@ proc metadataNode*(ctx: ContextRef, metadataNodes: openArray[MetadataRef]): Meta
 proc metadataNode*(ctx: ContextRef, str: openArray[char]): MetadataRef {.wrapOpenArrayLenType: csize_t, importc: "LLVMMDStringInContext2".}
 proc asMetadataRef*(val: ValueRef): MetadataRef {.importc: "LLVMValueAsMetadata".}
 proc asValueRef*(ctx: ContextRef, md: MetadataRef): ValueRef {.importc: "LLVMMetadataAsValue".}
-{.pop.} # {.push header: "<llvm-c/Core.h>".}
 
-{.push cdecl, dynlib: libLLVM.} # {.push header: "<llvm-c/BitWriter.h>".}
+# <llvm-c/BitWriter.h>
 proc writeBitcodeToFile*(m: ModuleRef, path: cstring) {.importc: "LLVMWriteBitcodeToFile".}
 proc writeBitcodeToMemoryBuffer*(m: ModuleRef): MemoryBufferRef {.importc: "LLVMWriteBitcodeToMemoryBuffer".}
   ## Write bitcode to a memory buffer
   ## The MemoryBuffer must be disposed appropriately or memory will leak
-{.pop.} # {.push header: "<llvm-c/BitWriter.h>".}
-
-proc `$`*(ty: ModuleRef): string =
-  let s = ty.toIRString()
-  result = $s
-  s.dispose()
-
-proc toBitcode*(m: ModuleRef): seq[byte] =
-  ## Print a module IR to bitcode
-  let mb = m.writeBitcodeToMemoryBuffer()
-  let len = mb.getBufferSize()
-  result.newSeq(len)
-  copyMem(result[0].addr, mb.getBufferStart(), len)
-  mb.dispose()
 
 type VerifierFailureAction* {.size: sizeof(cint).} = enum
   AbortProcessAction # verifier will print to stderr and abort()
   PrintMessageAction # verifier will print to stderr and return 1
   ReturnStatusAction # verifier will just return 1
 
-{.push cdecl, dynlib: libLLVM.} # {.push header: "<llvm-c/Analysis.h>".}
-proc verify*(module: ModuleRef, failureAction: VerifierFailureAction, msg: var cstring): LlvmBool {.importc: "LLVMVerifyModule".}
-proc verify*(fn: ValueRef, failureAction: VerifierFailureAction): LlvmBool {.importc: "LLVMVerifyFunction".}
-{.pop.}
+# {.push header: "<llvm-c/Analysis.h>".}
+proc verify(module: ModuleRef, failureAction: VerifierFailureAction, msg: var LLVMstring): LlvmBool {.used, importc: "LLVMVerifyModule".}
 
 # ############################################################
 #
@@ -121,12 +100,15 @@ proc verify*(fn: ValueRef, failureAction: VerifierFailureAction): LlvmBool {.imp
 #
 # ############################################################
 
-{.push cdecl, dynlib: libLLVM.} # {.push header: "<llvm-c/Target.h>".}
+# "<llvm-c/Target.h>"
 
-# The following procedures are implemented in the development header macros and aren't in the LLVM library
+# The following procedures:
+# - initializeNativeTarget()
+# - initializeNativeAsmPrinter()
+# are implemented in the development header macros and aren't in the LLVM library
 # We want to only depend on the runtime for installation ease and size. 
 #
-# We emulate the calls based on:
+# We can emulate the calls based on:
 # - /usr/include/llvm-c/Target.h
 # - /usr/include/llvm/Config/llvm-config-64.h
 
@@ -139,22 +121,10 @@ proc initializeX86TargetInfo() {.importc: "LLVMInitializeX86TargetInfo".}
 proc initializeX86TargetMC() {.importc: "LLVMInitializeX86TargetMC".}
 
 proc getTargetFromName*(name: cstring): TargetRef {.importc: "LLVMGetTargetFromName".}
-{.pop.}
 
-proc initializeNativeTarget* {.inline.} =
-  static: doAssert defined(amd64) or defined(i386), "Only x86 is configured at the moment"
-  initializeX86TargetInfo()
-  initializeX86Target()
-  initializeX86TargetMC()
-
-proc initializeNativeAsmPrinter* {.inline.} =
-  static: doAssert defined(amd64) or defined(i386), "Only x86 is configured at the moment"
-  initializeX86AsmPrinter()
-
-{.push cdecl, dynlib: libLLVM.} # {.push header: "<llvm-c/Core.h>".}
+# {.push header: "<llvm-c/Core.h>".}
 proc setTarget*(module: ModuleRef, triple: cstring) {.importc: "LLVMSetTarget".}
 proc setDataLayout*(module: ModuleRef, layout: cstring) {.importc: "LLVMSetDataLayout".}
-{.pop.}
 
 # ############################################################
 #
@@ -162,17 +132,16 @@ proc setDataLayout*(module: ModuleRef, layout: cstring) {.importc: "LLVMSetDataL
 #
 # ############################################################
 
-{.push cdecl, dynlib: libLLVM.} # {.push header: "<llvm-c/ExecutionEngine.h>".}
-proc createJITCompilerForModule*(
+# "<llvm-c/ExecutionEngine.h>"
+proc createJITCompilerForModule(
        engine: var ExecutionEngineRef,
        module: ModuleRef,
        optLevel: uint32,
-       err: var cstring): LlvmBool {.importc: "LLVMCreateJITCompilerForModule".}
+       err: var LLVMstring): LlvmBool {.used, importc: "LLVMCreateJITCompilerForModule".}
 proc dispose*(engine: ExecutionEngineRef) {.importc: "LLVMDisposeExecutionEngine".}
   ## Destroys an execution engine
   ## Note: destroying an Execution Engine will also destroy modules attached to it
 proc getFunctionAddress*(engine: ExecutionEngineRef, name: cstring): distinct pointer {.importc: "LLVMGetFunctionAddress".}
-{.pop}
 
 # ############################################################
 #
@@ -205,10 +174,10 @@ type
     tkBFloat,         ## 16 bit brain floating point type
     tkX86_AMX         ## X86 AMX
 
-{.push cdecl, dynlib: libLLVM.} # {.push header: "<llvm-c/Core.h>".}
+# header: "<llvm-c/Core.h>"
 
 proc getTypeKind*(ty: TypeRef): TypeKind {.importc: "LLVMGetTypeKind".}
-proc toString(ty: TypeRef): cstring {.importc: "LLVMPrintTypeToString".}
+proc toLLVMstring(ty: TypeRef): LLVMstring {.used, importc: "LLVMPrintTypeToString".}
 
 proc void_t*(ctx: ContextRef): TypeRef {.importc: "LLVMVoidTypeInContext".}
 
@@ -230,7 +199,7 @@ proc struct_t*(
        packed: LlvmBool): TypeRef {.wrapOpenArrayLenType: cuint, importc: "LLVMStructTypeInContext".}
 proc array_t*(elemType: TypeRef, elemCount: uint32): TypeRef {.importc: "LLVMArrayType".}
 
-proc pointerType(elementType: TypeRef; addressSpace: cuint): TypeRef {.importc: "LLVMPointerType".}
+proc pointerType(elementType: TypeRef; addressSpace: cuint): TypeRef {.used, importc: "LLVMPointerType".}
 
 # Functions
 # ------------------------------------------------------------
@@ -253,28 +222,13 @@ proc addFunction*(m: ModuleRef, name: cstring, ty: TypeRef): ValueRef {.importc:
 
 proc getReturnType*(functionTy: TypeRef): TypeRef {.importc: "LLVMGetReturnType".}
 
-{.pop.} # {.push header: "<llvm-c/Core.h>".}
-
-# ------------------------------
-
-proc `$`*(ty: TypeRef): string =
-  let s = ty.toString()
-  result = $s
-  s.dispose()
-
-proc isVoid*(ty: TypeRef): bool {.inline.} =
-  ty.getTypeKind == tkVoid
-
-proc pointer_t*(elementTy: TypeRef): TypeRef {.inline.} =
-  pointerType(elementTy, addressSpace = 0)
-
 # ############################################################
 #
 #                         Values
 #
 # ############################################################
 
-{.push cdecl, dynlib: libLLVM.} # {.push header: "<llvm-c/Core.h>".}
+# {.push header: "<llvm-c/Core.h>".}
 
 proc getTypeOf*(x: ValueRef): TypeRef {.importc: "LLVMTypeOf".}
 
@@ -282,20 +236,18 @@ proc getTypeOf*(x: ValueRef): TypeRef {.importc: "LLVMTypeOf".}
 # ------------------------------------------------------------
 # https://llvm.org/doxygen/group__LLVMCCoreValueConstant.html
 
-proc constInt*(ty: TypeRef, n: culonglong, signExtend: LlvmBool): ValueRef {.importc: "LLVMConstInt".}
+proc constInt(ty: TypeRef, n: culonglong, signExtend: LlvmBool): ValueRef {.importc: "LLVMConstInt".}
 proc constReal*(ty: TypeRef, n: cdouble): ValueRef {.importc: "LLVMConstReal".}
 
 proc constNull*(ty: TypeRef): ValueRef {.importc: "LLVMConstNull".}
 proc constAllOnes*(ty: TypeRef): ValueRef {.importc: "LLVMConstAllOnes".}
-proc constStruct*(
+proc constStruct(
        constantVals: openArray[ValueRef],
        packed: LlvmBool): ValueRef {.wrapOpenArrayLenType: cuint, importc: "LLVMConstStruct".}
 proc constArray*(
        ty: TypeRef,
        constantVals: openArray[ValueRef],
     ): ValueRef {.wrapOpenArrayLenType: cuint, importc: "LLVMConstArray".}
-
-{.pop.} # {.push header: "<llvm-c/Core.h>".}
 
 # ############################################################
 #
@@ -323,7 +275,7 @@ type
     IntSLT,                   ## signed less than
     IntSLE                    ## signed less or equal
 
-{.push cdecl, dynlib: libLLVM.} # {.push header: "<llvm-c/Core.h>".}
+# "<llvm-c/Core.h>"
 
 # Instantiation
 # ------------------------------------------------------------
@@ -438,64 +390,4 @@ proc memset*(builder: BuilderRef, `ptr`, val, len: ValueRef, align: uint32) {.im
 proc memcpy*(builder: BuilderRef, dst: ValueRef, dstAlign: uint32, src: ValueRef, srcAlign: uint32, size: ValueRef) {.importc: "LLVMBuildMemcpy".}
 proc memmove*(builder: BuilderRef, dst: ValueRef, dstAlign: uint32, src: ValueRef, srcAlign: uint32, size: ValueRef) {.importc: "LLVMBuildMemmove".}
 
-{.pop.} # {.push header: "<llvm-c/Core.h>".}
-
-{.pop.} # {.push hint[Name]: off.}
-
-# ############################################################
-#
-#                    Sanity Check
-#
-# ############################################################
-
-when isMainModule:
-  echo "LLVM JIT compiler sanity check"
-
-  let ctx = createContext()
-  var module = ctx.createModule("addition")
-  let i32 = ctx.int32_t()
-
-  let addType = function_t(i32, [i32, i32], isVarArg = LlvmBool(false))
-  let addBody = module.addFunction("add", addType)
-
-  let builder = ctx.createBuilder()
-  let blck = ctx.append_basic_block(addBody, "addBody")
-  builder.positionAtEnd(blck)
-
-  block:
-    let a = addBody.getParam(0)
-    let b = addBody.getParam(1)
-    let sum = builder.add(a, b, "sum")
-    builder.ret(sum)
-
-  block:
-    var errMsg: cstring
-    let errCode = module.verify(AbortProcessAction, errMsg)
-    echo "Verification: code ", int(errCode), ", message \"", errMsg, "\""
-    errMsg.dispose()
-
-  var engine: ExecutionEngineRef
-  block:
-    initializeNativeTarget()
-    initializeNativeAsmPrinter()
-    var errMsg: cstring
-    if bool createJITCompilerForModule(engine, module, optLevel = 0, errMsg):
-      if errMsg.len > 0:
-        echo errMsg
-        echo "exiting ..."
-      else:
-        echo "JIT compiler: error without details ... exiting"
-      quit 1
-  
-  let jitAdd = cast[proc(a, b: int32): int32 {.noconv.}](
-    engine.getFunctionAddress("add"))
-
-  echo "jitAdd(1, 2) = ", jitAdd(1, 2)
-  doAssert jitAdd(1, 2) == 1 + 2
-
-  block:
-    # Cleanup
-    builder.dispose()
-    engine.dispose()  # also destroys the module attached to it
-    ctx.dispose()
-  echo "LLVM JIT - SUCCESS"
+{.pop.} # {.used, hint[Name]: off, cdecl, dynlib: libLLVM.}

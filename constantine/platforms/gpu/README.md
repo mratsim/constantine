@@ -1,6 +1,6 @@
-# Accelerator compilation targets
+# GPU compilation targets
 
-For accelerators, Constantine JIT-compiles the cryptographic kernels via LLVM.
+For CPUs, Constantine JIT-compiles the cryptographic kernels via LLVM.
 
 This allows targeting several devices with a single frontend, the LLVM IR.
 
@@ -13,4 +13,4 @@ Those are important primitives for:
 
 Potential future use-cases include erasure coding and lattice-based cryptography acceleration.
 
-⚠️ Accelerator usage is not constant-time and requires allocation of dynamic memory. It MUST NOT be used for secret data.
+⚠️ GPU usage is not constant-time and requires allocation of dynamic memory. It MUST NOT be used for secret data.
