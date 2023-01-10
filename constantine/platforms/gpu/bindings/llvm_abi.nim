@@ -10,8 +10,8 @@ import ./utils
 
 {.passc: gorge("llvm-config --cflags").}
 {.passl: gorge("llvm-config --libs").}
-
 const libLLVM = gorge("llvm-config --libnames")
+
 static: echo "[Constantine] Using library " & libLLVM
 
 # ############################################################
@@ -26,7 +26,7 @@ static: echo "[Constantine] Using library " & libLLVM
 # also link to libLLVM, for example if they implement a virtual machine (for the EVM, for Snarks/zero-knowledge, ...).
 # Hence Constantine should always use LLVM context to "namespace" its own codegen and avoid collisions in the global context.
 
-{.push used, hint[Name]: off, cdecl, dynlib: libLLVM.}
+{.push used, cdecl, dynlib: libLLVM.}
 
 # ############################################################
 #
@@ -36,15 +36,22 @@ static: echo "[Constantine] Using library " & libLLVM
 
 type
   LlvmBool = distinct int32
+  ErrorRef = distinct pointer
   MemoryBufferRef = distinct pointer
   ContextRef* = distinct pointer
   ModuleRef* = distinct pointer
   TargetRef* = distinct pointer
   ExecutionEngineRef* = distinct pointer
+  TargetMachineRef* = distinct pointer
+  PassManagerRef* = distinct pointer
+  PassManagerBuilderRef* = distinct pointer
+  PassBuilderOptionsRef* = distinct pointer
+  PassRegistryRef* = distinct pointer
   TypeRef* = distinct pointer
   ValueRef* = distinct pointer
   MetadataRef = distinct pointer
   LLVMstring = distinct cstring
+  ErrorMessageString = distinct cstring
     ## A string with a buffer owned by LLVM
 
 # <llvm-c/Core.h>
@@ -58,6 +65,9 @@ proc dispose(buf: MemoryBufferRef){.importc: "LLVMDisposeMemoryBuffer".}
 proc getBufferStart(buf: MemoryBufferRef): ptr byte {.importc: "LLVMGetBufferStart".}
 proc getBufferSize(buf: MemoryBufferRef): csize_t {.importc: "LLVMGetBufferSize".}
 
+proc dispose(msg: ErrorMessageString) {.importc: "LLVMDisposeErrorMessage".}
+proc getErrorMessage(err: ErrorRef): ErrorMessageString {.importc: "LLVMGetErrorMessage".}
+ 
 # ############################################################
 #
 #                         Module
@@ -73,6 +83,7 @@ proc dispose*(m: ModuleRef) {.importc: "LLVMDisposeModule".}
 proc toIR_LLVMstring(m: ModuleRef): LLVMstring {.used, importc: "LLVMPrintModuleToString".}
   ## Print a module IR to textual IR string. The string must be disposed with LLVM "dispose" or memory will leak.
 proc getContext*(m: ModuleRef): ContextRef {.importc: "LLVMGetModuleContext".}
+proc getIdentifier*(m: ModuleRef, rLen: var csize_t): cstring {.used, importc: "LLVMGetModuleIdentifier".}
 
 proc addNamedMetadataOperand*(m: ModuleRef, name: cstring, val: ValueRef) {.importc: "LLVMAddNamedMetadataOperand".}
 proc metadataNode*(ctx: ContextRef, metadataNodes: openArray[MetadataRef]): MetadataRef {.wrapOpenArrayLenType: csize_t, importc: "LLVMMDNodeInContext2".}
@@ -82,7 +93,7 @@ proc asValueRef*(ctx: ContextRef, md: MetadataRef): ValueRef {.importc: "LLVMMet
 
 # <llvm-c/BitWriter.h>
 proc writeBitcodeToFile*(m: ModuleRef, path: cstring) {.importc: "LLVMWriteBitcodeToFile".}
-proc writeBitcodeToMemoryBuffer*(m: ModuleRef): MemoryBufferRef {.importc: "LLVMWriteBitcodeToMemoryBuffer".}
+proc writeBitcodeToMemoryBuffer(m: ModuleRef): MemoryBufferRef {.used, importc: "LLVMWriteBitcodeToMemoryBuffer".}
   ## Write bitcode to a memory buffer
   ## The MemoryBuffer must be disposed appropriately or memory will leak
 
@@ -120,7 +131,20 @@ proc initializeX86Target() {.importc: "LLVMInitializeX86Target".}
 proc initializeX86TargetInfo() {.importc: "LLVMInitializeX86TargetInfo".}
 proc initializeX86TargetMC() {.importc: "LLVMInitializeX86TargetMC".}
 
+proc initializeNVPTXAsmPrinter() {.importc: "LLVMInitializeNVPTXAsmPrinter".}
+proc initializeNVPTXTarget() {.importc: "LLVMInitializeNVPTXTarget".}
+proc initializeNVPTXTargetInfo() {.importc: "LLVMInitializeNVPTXTargetInfo".}
+proc initializeNVPTXTargetMC() {.importc: "LLVMInitializeNVPTXTargetMC".}
+
 proc getTargetFromName*(name: cstring): TargetRef {.importc: "LLVMGetTargetFromName".}
+proc getTargetFromTriple*(triple: cstring, target: var TargetRef, errorMessage: var LLVMstring
+       ): LLVMBool {.importc: "LLVMGetTargetFromTriple".}
+
+proc getTargetDescription*(t: TargetRef): cstring {.importc: "LLVMGetTargetDescription".}
+
+proc hasJIT*(t: TargetRef): LLVMBool {.importc: "LLVMTargetHasJIT".}
+proc hasTargetMachine*(t: TargetRef): LLVMBool {.importc: "LLVMTargetHasTargetMachine".}
+proc hasAsmBackend*(t: TargetRef): LLVMBool {.importc: "LLVMTargetHasAsmBackend".}
 
 # {.push header: "<llvm-c/Core.h>".}
 proc setTarget*(module: ModuleRef, triple: cstring) {.importc: "LLVMSetTarget".}
@@ -142,6 +166,118 @@ proc dispose*(engine: ExecutionEngineRef) {.importc: "LLVMDisposeExecutionEngine
   ## Destroys an execution engine
   ## Note: destroying an Execution Engine will also destroy modules attached to it
 proc getFunctionAddress*(engine: ExecutionEngineRef, name: cstring): distinct pointer {.importc: "LLVMGetFunctionAddress".}
+
+# ############################################################
+#
+#                    Target Machine
+#
+# ############################################################
+
+type
+  CodeGenOptLevel* {.size: sizeof(cint).} = enum
+    CodeGenLevelNone, CodeGenLevelLess, CodeGenLevelDefault, CodeGenLevelAggressive
+  RelocMode* {.size: sizeof(cint).} = enum
+    RelocDefault, RelocStatic, RelocPIC, RelocDynamicNoPic, RelocROPI, RelocRWPI,
+    RelocROPI_RWPI
+  CodeModel* {.size: sizeof(cint).} = enum
+    CodeModelDefault, CodeModelJITDefault, CodeModelTiny, CodeModelSmall,
+    CodeModelKernel, CodeModelMedium, CodeModelLarge
+  CodeGenFileType* {.size: sizeof(cint).} = enum
+    AssemblyFile, ObjectFile
+
+  TargetDataRef* = distinct pointer
+  TargetLibraryInfoRef* = distinct pointer
+
+# "<llvm-c/TargetMachine.h>"
+proc createTargetMachine*(
+       target: TargetRef, triple, cpu, features: cstring,
+       level: CodeGenOptLevel, reloc: RelocMode, codeModel: CodeModel): TargetMachineRef {.importc: "LLVMCreateTargetMachine".}
+proc dispose*(m: TargetMachineRef) {.importc: "LLVMDisposeTargetMachine".}
+
+proc createTargetDataLayout*(t: TargetMachineRef): TargetDataRef {.importc: "LLVMCreateTargetDataLayout".}
+proc dispose*(m: TargetDataRef) {.importc: "LLVMDisposeTargetData".}
+proc setDataLayout*(module: ModuleRef, dataLayout: TargetDataRef) {.importc: "LLVMSetModuleDataLayout".}
+
+proc targetMachineEmitToFile*(t: TargetMachineRef, m: ModuleRef, fileName: cstring,
+                             codegen: CodeGenFileType, errorMessage: var LLVMstring): LLVMBool {.importc: "LLVMTargetMachineEmitToFile".}
+proc targetMachineEmitToMemoryBuffer*(t: TargetMachineRef, m: ModuleRef,
+                                     codegen: CodeGenFileType,
+                                     errorMessage: var LLVMstring,
+                                     outMemBuf: var MemoryBufferRef): LLVMBool {.importc: "LLVMTargetMachineEmitToMemoryBuffer".}
+
+# ############################################################
+#
+#                    Passes and transforms
+#
+# ############################################################
+
+# - https://blog.llvm.org/posts/2021-03-26-the-new-pass-manager/
+# - https://llvm.org/docs/NewPassManager.html
+
+# https://llvm.org/doxygen/group__LLVMCCorePassManagers.html
+# # header: "<llvm-c/Core.h>"
+
+proc createPassManager*(): PassManagerRef {.importc: "LLVMCreatePassManager".}
+proc dispose*(pm: PassManagerRef) {.importc: "LLVMDisposePassManager".}
+proc run*(pm: PassManagerRef, module: ModuleRef) {. importc: "LLVMRunPassManager".}
+
+# https://llvm.org/doxygen/group__LLVMCTransformsPassManagerBuilder.html
+# header: "<llvm-c/Transforms/PassManagerBuilder.h>"
+
+proc createPassManagerBuilder*(): PassManagerBuilderRef {.importc: "LLVMPassManagerBuilderCreate".}
+proc dispose*(pmb: PassManagerBuilderRef) {.importc: "LLVMPassManagerBuilderDispose".}
+proc setOptLevel*(pmb: PassManagerBuilderRef, level: uint32) {.importc: "LLVMPassManagerBuilderSetOptLevel".}
+proc setSizeLevel*(pmb: PassManagerBuilderRef, level: uint32) {.importc: "LLVMPassManagerBuilderSetSizeLevel".}
+proc populateModulePassManager*(pmb: PassManagerBuilderRef, legacyPM: PassManagerRef) {. importc: "LLVMPassManagerBuilderPopulateModulePassManager".}
+
+# https://llvm.org/doxygen/group__LLVMCCoreNewPM.html
+# header: "<llvm-c/Transforms/PassBuilder.h>"
+
+proc createPassBuilderOptions*(): PassBuilderOptionsRef {.importc: "LLVMCreatePassBuilderOptions".}
+proc dispose*(pbo: PassBuilderOptionsRef) {.importc: "LLVMDisposePassBuilderOptions".}
+proc runPasses(module: ModuleRef, passes: cstring, machine: TargetMachineRef, pbo: PassBuilderOptionsRef): ErrorRef {.importc: "LLVMRunPasses".}
+
+# https://llvm.org/docs/doxygen/group__LLVMCInitialization.html
+# header: "<llvm-c/Initialization.h>"
+
+proc getGlobalPassRegistry(): PassRegistryRef {.importc: "LLVMGetGlobalPassRegistry".}
+
+proc initializeCore(registry: PassRegistryRef) {.importc: "LLVMInitializeCore".}
+proc initializeTransformUtils(registry: PassRegistryRef) {.importc: "LLVMInitializeTransformUtils".}
+proc initializeScalarOpts(registry: PassRegistryRef) {.importc: "LLVMInitializeScalarOpts".}
+proc initializeObjCARCOpts(registry: PassRegistryRef) {.importc: "LLVMInitializeObjCARCOpts".}
+proc initializeVectorization(registry: PassRegistryRef) {.importc: "LLVMInitializeVectorization".}
+proc initializeInstCombine(registry: PassRegistryRef) {.importc: "LLVMInitializeInstCombine".}
+proc initializeAggressiveInstCombiner(registry: PassRegistryRef) {.importc: "LLVMInitializeAggressiveInstCombiner".}
+proc initializeIPO(registry: PassRegistryRef) {.importc: "LLVMInitializeIPO".}
+proc initializeInstrumentation(registry: PassRegistryRef) {.importc: "LLVMInitializeInstrumentation".}
+proc initializeAnalysis(registry: PassRegistryRef) {.importc: "LLVMInitializeAnalysis".}
+proc initializeIPA(registry: PassRegistryRef) {.importc: "LLVMInitializeIPA".}
+proc initializeCodeGen(registry: PassRegistryRef) {.importc: "LLVMInitializeCodeGen".}
+proc initializeTarget(registry: PassRegistryRef) {.importc: "LLVMInitializeTarget".}
+
+# https://llvm.org/doxygen/group__LLVMCTarget.html
+proc addTargetLibraryInfo*(tli: TargetLibraryInfoRef, pm: PassManagerRef) {.importc: "LLVMAddTargetLibraryInfo".}
+  # There doesn't seem to be a way to instantiate TargetLibraryInfoRef :/
+proc addAnalysisPasses*(machine: TargetMachineRef, pm: PassManagerRef) {.importc: "LLVMAddAnalysisPasses".}
+
+# https://www.llvm.org/docs/Passes.html
+# -------------------------------------
+
+#https://llvm.org/doxygen/group__LLVMCTransformsUtils.html
+proc addPromoteMemoryToRegisterPass*(pm: PassManagerRef) {.importc: "LLVMAddPromoteMemoryToRegisterPass".}
+
+# https://llvm.org/doxygen/group__LLVMCTransformsScalar.html
+proc addAggressiveDeadCodeEliminationPass*(pm: PassManagerRef) {.importc: "LLVMAddAggressiveDCEPass".}
+  ## Aggressive dead code elimination
+proc addDeadStoreEliminationPass*(pm: PassManagerRef) {.importc: "LLVMAddDeadStoreEliminationPass".}
+proc addGlobalValueNumberingPass*(pm: PassManagerRef) {.importc: "LLVMAddNewGVNPass".}
+proc addMemCpyOptPass*(pm: PassManagerRef) {.importc: "LLVMAddMemCpyOptPass".}
+proc addScalarReplacementOfAggregatesPass*(pm: PassManagerRef) {.importc: "LLVMAddScalarReplAggregatesPass".}
+
+# https://llvm.org/doxygen/group__LLVMCTransformsIPO.html
+proc addDeduceFunctionAttributesPass*(pm: PassManagerRef) {.importc: "LLVMAddFunctionAttrsPass".}
+proc addFunctionInliningPass*(pm: PassManagerRef) {.importc: "LLVMAddFunctionInliningPass".}
 
 # ############################################################
 #
@@ -176,7 +312,9 @@ type
 
 # header: "<llvm-c/Core.h>"
 
+proc getContext*(ty: TypeRef): ContextRef {.importc: "LLVMGetTypeContext".}
 proc getTypeKind*(ty: TypeRef): TypeKind {.importc: "LLVMGetTypeKind".}
+proc dumpType*(ty: TypeRef) {.sideeffect, importc: "LLVMDumpType".}
 proc toLLVMstring(ty: TypeRef): LLVMstring {.used, importc: "LLVMPrintTypeToString".}
 
 proc void_t*(ctx: ContextRef): TypeRef {.importc: "LLVMVoidTypeInContext".}
@@ -191,6 +329,8 @@ proc int64_t*(ctx: ContextRef): TypeRef {.importc: "LLVMInt64TypeInContext".}
 proc int128_t*(ctx: ContextRef): TypeRef {.importc: "LLVMInt128TypeInContext".}
 proc int_t*(ctx: ContextRef, numBits: uint32): TypeRef {.importc: "LLVMIntTypeInContext".}
 
+proc getIntTypeWidth*(ty: TypeRef): uint32 {.importc: "LLVMGetIntTypeWidth".}
+
 # Composite
 # ------------------------------------------------------------
 proc struct_t*(
@@ -200,6 +340,8 @@ proc struct_t*(
 proc array_t*(elemType: TypeRef, elemCount: uint32): TypeRef {.importc: "LLVMArrayType".}
 
 proc pointerType(elementType: TypeRef; addressSpace: cuint): TypeRef {.used, importc: "LLVMPointerType".}
+
+proc getElementType*(arrayOrVectorTy: TypeRef): TypeRef {.importc: "LLVMGetElementType".}
 
 # Functions
 # ------------------------------------------------------------
@@ -221,6 +363,7 @@ proc addFunction*(m: ModuleRef, name: cstring, ty: TypeRef): ValueRef {.importc:
 # - pointer particularities: readonly, writeonly, noalias, inalloca, byval
 
 proc getReturnType*(functionTy: TypeRef): TypeRef {.importc: "LLVMGetReturnType".}
+proc countParamTypes*(functionTy: TypeRef): uint32 {.importc: "LLVMCountParamTypes".}
 
 # ############################################################
 #
@@ -230,7 +373,18 @@ proc getReturnType*(functionTy: TypeRef): TypeRef {.importc: "LLVMGetReturnType"
 
 # {.push header: "<llvm-c/Core.h>".}
 
-proc getTypeOf*(x: ValueRef): TypeRef {.importc: "LLVMTypeOf".}
+proc getTypeOf*(v: ValueRef): TypeRef {.importc: "LLVMTypeOf".}
+proc getValueName2(v: ValueRef, rLen: var csize_t): cstring {.used, importc: "LLVMGetValueName2".}
+  ## Returns the name of a valeu if it exists.
+  ## `rLen` stores the returned string length
+  ## 
+  ## This is not free, it requires internal hash table access
+  ## The return value does not have to be freed and is a pointer an internal LLVM data structure
+
+proc dumpValue*(v: ValueRef) {.sideeffect, importc: "LLVMDumpValue".}
+  ## Print the value to stderr
+
+proc toLLVMstring(v: ValueRef): LLVMstring {.used, importc: "LLVMPrintValueToString".}
 
 # Constants
 # ------------------------------------------------------------
@@ -264,16 +418,20 @@ type
     ##  the exclusive means of building instructions using the C interface.
 
   IntPredicate* {.size: sizeof(cint).} = enum
-    IntEQ = 32,               ## equal
-    IntNE,                    ## not equal
-    IntUGT,                   ## unsigned greater than
-    IntUGE,                   ## unsigned greater or equal
-    IntULT,                   ## unsigned less than
-    IntULE,                   ## unsigned less or equal
-    IntSGT,                   ## signed greater than
-    IntSGE,                   ## signed greater or equal
-    IntSLT,                   ## signed less than
-    IntSLE                    ## signed less or equal
+    IntEQ = 32               ## equal
+    IntNE                    ## not equal
+    IntUGT                   ## unsigned greater than
+    IntUGE                   ## unsigned greater or equal
+    IntULT                   ## unsigned less than
+    IntULE                   ## unsigned less or equal
+    IntSGT                   ## signed greater than
+    IntSGE                   ## signed greater or equal
+    IntSLT                   ## signed less than
+    IntSLE                   ## signed less or equal
+
+  InlineAsmDialect* {.size: sizeof(cint).} = enum
+    InlineAsmDialectATT
+    InlineAsmDialectIntel
 
 # "<llvm-c/Core.h>"
 
@@ -290,8 +448,8 @@ proc dispose*(builder: BuilderRef) {.importc: "LLVMDisposeBuilder".}
 # ------------------------------------------------------------
 
 proc getParam*(fn: ValueRef, index: uint32): ValueRef {.importc: "LLVMGetParam".}
-proc retVoid*(builder: BuilderRef): ValueRef {.importc: "LLVMBuildRetVoid".}
-proc ret*(builder: BuilderRef, returnVal: ValueRef) {.importc: "LLVMBuildRet".}
+proc retVoid*(builder: BuilderRef): ValueRef {.discardable, importc: "LLVMBuildRetVoid".}
+proc ret*(builder: BuilderRef, returnVal: ValueRef): ValueRef {.discardable, importc: "LLVMBuildRet".}
 
 # Positioning
 # ------------------------------------------------------------
@@ -300,66 +458,94 @@ proc position*(builder: BuilderRef, blck: BasicBlockRef, instr: ValueRef) {.impo
 proc positionBefore*(builder: BuilderRef, instr: ValueRef) {.importc: "LLVMPositionBuilderBefore".}
 proc positionAtEnd*(builder: BuilderRef, blck: BasicBlockRef) {.importc: "LLVMPositionBuilderAtEnd".}
 
+proc getInsertBlock(builder: BuilderRef): BasicBlockRef {.importc: "LLVMGetInsertBlock".}
+  ## This function is not documented and probably for special use
+  ## However due to https://github.com/llvm/llvm-project/issues/59875
+  ## it's our workaround to get the context of a Builder
+
+proc getBasicBlockParent*(blck: BasicBlockRef): ValueRef {.importc: "LLVMGetBasicBlockParent".}
+  ## Obtains the function to which a basic block belongs
+
+# Inline Assembly
+# ------------------------------------------------------------
+proc getInlineAsm*(
+       ty: TypeRef,
+       asmString: openArray[char],
+       constraints: openArray[char],
+       hasSideEffects, isAlignStack: LlvmBool,
+       dialect: InlineAsmDialect, canThrow: LlvmBool
+     ): ValueRef {.importc: "LLVMGetInlineAsm"}
+
 # Intermediate Representation
 # ------------------------------------------------------------
 # 
 # - NSW: no signed wrap, signed value cannot over- or underflow.
 # - NUW: no unsigned wrap, unsigned value cannot over- or underflow.
 
-proc add*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildAdd".}
-proc addNSW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildNSWAdd".}
-proc addNUW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildNUWAdd".}
+proc call2*(
+       builder: BuilderRef,
+       ty: TypeRef,
+       fn: ValueRef,
+       args: openArray[ValueRef],
+       name: cstring = ""): ValueRef {.wrapOpenArrayLenType: cuint, importc: "LLVMBuildCall2".}
 
-proc sub*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildSub".}
-proc subNSW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildNSWSub".}
-proc subNUW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildNUWSub".}
+proc add*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildAdd".}
+proc addNSW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNSWAdd".}
+proc addNUW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNUWAdd".}
 
-proc neg*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildNeg".}
-proc negNSW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildNSWNeg".}
-proc negNUW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildNUWNeg".}
+proc sub*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildSub".}
+proc subNSW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNSWSub".}
+proc subNUW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNUWSub".}
 
-proc mul*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildMul".}
-proc mulNSW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildNSWMul".}
-proc mulNUW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildNUWMul".}
+proc neg*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNeg".}
+proc negNSW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNSWNeg".}
+proc negNUW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNUWNeg".}
 
-proc divU*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildUDiv".}
-proc divU_exact*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildExactUDiv".}
-proc divS*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildSDiv".}
-proc divS_exact*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildExactSDiv".}
-proc remU*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildURem".}
-proc remS*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildSRem".}
+proc mul*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildMul".}
+proc mulNSW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNSWMul".}
+proc mulNUW*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNUWMul".}
 
-proc lshl*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildShl".}
-proc lshr*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildLShr".}
-proc ashr*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildAShr".}
+proc divU*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildUDiv".}
+proc divU_exact*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildExactUDiv".}
+proc divS*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildSDiv".}
+proc divS_exact*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildExactSDiv".}
+proc remU*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildURem".}
+proc remS*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildSRem".}
 
-proc `and`*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildAnd".}
-proc `or`*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildOr".}
-proc `xor`*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildXor".}
-proc `not`*(builder: BuilderRef, val: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildNot".}
-proc select*(builder: BuilderRef, condition, then, otherwise: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildNot".}
+proc lshl*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildShl".}
+proc lshr*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildLShr".}
+proc ashr*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildAShr".}
 
-proc icmp*(builder: BuilderRef, op: IntPredicate, lhs, rhs: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildICmp".}
+proc `and`*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildAnd".}
+proc `or`*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildOr".}
+proc `xor`*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildXor".}
+proc `not`*(builder: BuilderRef, val: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNot".}
+proc select*(builder: BuilderRef, condition, then, otherwise: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNot".}
 
-proc bitcast*(builder: BuilderRef, val: ValueRef, destTy: TypeRef, name: cstring) {.importc: "LLVMBuildBitcast".}
-proc trunc*(builder: BuilderRef, val: ValueRef, destTy: TypeRef, name: cstring) {.importc: "LLVMBuildTrunc".}
-proc zext*(builder: BuilderRef, val: ValueRef, destTy: TypeRef, name: cstring) {.importc: "LLVMBuildZExt".}
+proc icmp*(builder: BuilderRef, op: IntPredicate, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildICmp".}
+
+proc bitcast*(builder: BuilderRef, val: ValueRef, destTy: TypeRef, name: cstring = "") {.importc: "LLVMBuildBitcast".}
+proc trunc*(builder: BuilderRef, val: ValueRef, destTy: TypeRef, name: cstring = "") {.importc: "LLVMBuildTrunc".}
+proc zext*(builder: BuilderRef, val: ValueRef, destTy: TypeRef, name: cstring = "") {.importc: "LLVMBuildZExt".}
   ## Zero-extend
-proc sext*(builder: BuilderRef, val: ValueRef, destTy: TypeRef, name: cstring) {.importc: "LLVMBuildSExt".}
+proc sext*(builder: BuilderRef, val: ValueRef, destTy: TypeRef, name: cstring = "") {.importc: "LLVMBuildSExt".}
   ## Sign-extend
 
-proc malloc*(builder: BuilderRef, ty: TypeRef): ValueRef {.importc: "LLVMBuildMalloc".}
-proc mallocArray*(builder: BuilderRef, ty: TypeRef, val: ValueRef): ValueRef {.importc: "LLVMBuildMallocArray".}
+proc malloc*(builder: BuilderRef, ty: TypeRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildMalloc".}
+proc mallocArray*(builder: BuilderRef, ty: TypeRef, length: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildArrayMalloc".}
 proc free*(builder: BuilderRef, ty: TypeRef, `ptr`: ValueRef): ValueRef {.importc: "LLVMBuildFree".}
-proc alloca*(builder: BuilderRef, ty: TypeRef): ValueRef {.importc: "LLVMBuildAlloca".}
-proc allocaArray*(builder: BuilderRef, ty: TypeRef, val: ValueRef): ValueRef {.importc: "LLVMBuildAllocaArray".}
+proc alloca*(builder: BuilderRef, ty: TypeRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildAlloca".}
+proc allocaArray*(builder: BuilderRef, ty: TypeRef, length: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildArrayAlloca".}
+
+proc extractValue*(builder: BuilderRef, aggVal: ValueRef, index: uint32, name: cstring = ""): ValueRef {.importc: "LLVMBuildExtractValue".}
+proc insertValue*(builder: BuilderRef, aggVal: ValueRef, eltVal: ValueRef, index: uint32, name: cstring = ""): ValueRef {.discardable, importc: "LLVMBuildInsertValue".}
 
 proc getElementPtr2*(
        builder: BuilderRef,
        ty: TypeRef,
        `ptr`: ValueRef,
        indices: openArray[ValueRef],
-       name: cstring
+       name: cstring = ""
      ): ValueRef {.wrapOpenArrayLenType: cuint, importc: "LLVMBuildGEP2".}
   ## https://www.llvm.org/docs/GetElementPtr.html
 proc getElementPtr2_InBounds*(
@@ -367,7 +553,7 @@ proc getElementPtr2_InBounds*(
        ty: TypeRef,
        `ptr`: ValueRef,
        indices: openArray[ValueRef],
-       name: cstring
+       name: cstring = ""
      ): ValueRef {.wrapOpenArrayLenType: cuint, importc: "LLVMBuildInBoundsGEP2".}
   ## https://www.llvm.org/docs/GetElementPtr.html
   ## If the GEP lacks the inbounds keyword, the value is the result from evaluating the implied two’s complement integer computation.
@@ -377,14 +563,14 @@ proc getElementPtr2_Struct*(
        ty: TypeRef,
        `ptr`: ValueRef,
        idx: uint32,
-       name: cstring
+       name: cstring = ""
      ): ValueRef {.importc: "LLVMBuildStructGEP2".}
   ## https://www.llvm.org/docs/GetElementPtr.html
   ## If the GEP lacks the inbounds keyword, the value is the result from evaluating the implied two’s complement integer computation.
   ## However, since there’s no guarantee of where an object will be allocated in the address space, such values have limited meaning.
 
-proc load2*(builder: BuilderRef, ty: TypeRef, `ptr`: ValueRef, name: cstring): ValueRef {.importc: "LLVMBuildLoad2".}
-proc store*(builder: BuilderRef, val, `ptr`: ValueRef): ValueRef {.importc: "LLVMBuildStore".}
+proc load2*(builder: BuilderRef, ty: TypeRef, `ptr`: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildLoad2".}
+proc store*(builder: BuilderRef, val, `ptr`: ValueRef): ValueRef {.discardable, importc: "LLVMBuildStore".}
 
 proc memset*(builder: BuilderRef, `ptr`, val, len: ValueRef, align: uint32) {.importc: "LLVMBuildMemset".}
 proc memcpy*(builder: BuilderRef, dst: ValueRef, dstAlign: uint32, src: ValueRef, srcAlign: uint32, size: ValueRef) {.importc: "LLVMBuildMemcpy".}

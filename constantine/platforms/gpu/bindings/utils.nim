@@ -63,18 +63,25 @@ proc replaceSymsByIdents*(ast: NimNode): NimNode =
 macro replacePragmasByInline(procAst: typed): untyped =
   ## Replace pragmas by the inline pragma
   ## We need a separate "typed" macro
-  ## so that it is executed after the {.push mypragma.} calls  
+  ## so that it is executed after the {.push mypragma.} calls
   var params: seq[NimNode]
   for i in 0 ..< procAst.params.len:
     params.add procAst.params[i]
 
-  result = newProc(
+  result = newStmtList()
+
+  # The push cdecl is applied multiple times :/, so fight push with push
+  result.add nnkPragma.newTree(ident"push", ident"nimcall", ident"inline")
+
+  result.add newProc(
     name = procAst.name,
     params = params,
     body = procAst.body.replaceSymsByIdents(),
     procType = nnkProcDef,
-    pragmas = nnkPragma.newTree(ident"inline")
+    pragmas = nnkPragma.newTree(ident"inline", ident"nimcall")
   )
+
+  result.add nnkPragma.newTree(ident"pop")
 
 macro wrapOpenArrayLenType*(ty: typedesc, procAst: untyped): untyped =
   ## Wraps pointer+len library calls in properly typed and converted openArray calls 
@@ -93,14 +100,12 @@ macro wrapOpenArrayLenType*(ty: typedesc, procAst: untyped): untyped =
   ## proc foo*(r: int, a: openArray[CustomType], b: int) {.inline.} =
   ##   foo(r, a[0].unsafeAddr, a.len.uint32, b)
   ## ```
-
   procAst.expectKind(nnkProcDef)
-  let suffix = "Lib"
 
   var
     wrappeeParams = @[procAst.params[0]]
     wrapperParams = @[procAst.params[0]]
-    wrapperBody = newCall(ident($procAst.name & suffix))
+    wrapperBody = newCall(ident($procAst.name))
 
   for i in 1 ..< procAst.params.len:
     if procAst.params[i][^2].kind == nnkBracketExpr and procAst.params[i][^2][0].eqident"openarray":
@@ -116,13 +121,25 @@ macro wrapOpenArrayLenType*(ty: typedesc, procAst: untyped): untyped =
         newEmptyNode()
       )
       wrapperParams.add procAst.params[i]
-      wrapperBody.add newCall(
-        ident"unsafeAddr",
-        nnkBracketExpr.newTree(
-          ident($procAst.params[i][0]),
-          newLit 0
-        ))
-      wrapperBody.add newCall(ty, newCall(bindSym"len", ident($procAst.params[i][0])))
+      wrapperBody.add nnkIfExpr.newTree(
+        nnkElifExpr.newTree(
+          nnkInfix.newTree(
+            ident"==",
+            nnkDotExpr.newTree(ident($procAst.params[i][0]), bindSym"len"),
+            newLit 0
+          ),
+          newNilLit()
+        ),
+        nnkElseExpr.newTree(
+          newCall(
+          ident"unsafeAddr",
+          nnkBracketExpr.newTree(
+            ident($procAst.params[i][0]),
+            newLit 0
+          ))
+        )
+      )
+      wrapperBody.add newCall(ty, nnkDotExpr.newTree(ident($procAst.params[i][0]), bindSym"len"))
     else:
       wrappeeParams.add procAst.params[i]
       wrapperParams.add procAst.params[i]
@@ -131,7 +148,7 @@ macro wrapOpenArrayLenType*(ty: typedesc, procAst: untyped): untyped =
         wrapperBody.add ident($procAst.params[i][j])
 
   let wrappee = newProc(
-    name = ident($procAst.name & suffix),                        # Remove export marker if any
+    name = ident($procAst.name),                                 # Remove export marker if any
     params = wrappeeParams,
     body = procAst.body.copyNimTree(),
     procType = nnkProcDef,
@@ -146,3 +163,12 @@ macro wrapOpenArrayLenType*(ty: typedesc, procAst: untyped): untyped =
   )
 
   result = newStmtList(wrappee, wrapper)
+
+when isMainModule:
+  expandMacros:
+    {.push cdecl.}
+
+    proc foo(x: int, a: openArray[uint32], name: cstring) {.wrapOpenArrayLenType: cuint.} =
+      discard
+
+    {.pop.}

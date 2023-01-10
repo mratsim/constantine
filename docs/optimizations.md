@@ -37,7 +37,7 @@ The optimizations can be of algebraic, algorithmic or "implementation details" n
 - Representation
   - [x] Montgomery Representation
   - [ ] Barret Reduction
-  - [x] Unsaturated Representation
+  - [ ] Unsaturated Representation
     - [ ] Mersenne Prime (2ᵏ - 1),
     - [ ] Generalized Mersenne Prime (NIST Prime P256: 2^256 - 2^224 + 2^192 + 2^96 - 1)
     - [ ] Pseudo-Mersenne Prime (2^m - k for example Edwards25519: 2^255 - 19)
@@ -69,14 +69,14 @@ The optimizations can be of algebraic, algorithmic or "implementation details" n
 - Montgomery Squaring
   - [x] Dedicated squaring functions
   - [x] Fused multiply + reduce
-  - [ ] int128
-  - [ ] loop unrolling
+  - [x] int128
+  - [x] loop unrolling
   - [x] x86: Full Assembly implementation
   - [x] x86: MULX, ADCX, ADOX instructions
   - [ ] no-carry optimization for CIOS (Coarsely Integrated Operand Scanning)
 
 - Addition chains
-  - [ ] unreduced squarings/multiplications in addition chains
+  - [x] unreduced squarings/multiplications in addition chains
 
 - Exponentiation
   - [x] variable-time exponentiation

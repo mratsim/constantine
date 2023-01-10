@@ -25,7 +25,10 @@ export llvm_abi
 # The LLVM bool uses 32-bit representation instead of 1-bit.
 # LLVM metadata is easier to use with dedicated procedures.
 
-{.push hint[Name]: off.}
+# ⚠ Warning: To provide full diagnostic (filename:line), we wrap some LLVM procedures in template
+# Templates copy-paste their inputs parameters.
+# For example if `module` parameter is passed `foo.launchMissiles()`
+# and that parameter is used twice within the template, `foo.launchMissiles()` will be called twice.
 
 # Module
 # ------------------------------------------------------------
@@ -45,42 +48,121 @@ proc toBitcode*(m: ModuleRef): seq[byte] =
   copyMem(result[0].addr, mb.getBufferStart(), len)
   mb.dispose()
 
-template verify*(module: ModuleRef{lvalue}, failureAction: VerifierFailureAction) =
+template verify*(module: ModuleRef, failureAction: VerifierFailureAction) =
   ## Verify the IR code in a module
-  ## The returned string is empty on success
   var errMsg: LLVMstring
   let err = bool verify(module, failureAction, errMsg)
   if err:
-    stderr.write("verification of module '" & astToStr(module) & "' " & $instantiationInfo() & " exited with error: " & $cstring(errMsg) & '\n')
+    stderr.write("\"verify\" for module '" & astToStr(module) & "' " & $instantiationInfo() & " exited with error: " & $cstring(errMsg) & '\n')
     errMsg.dispose()
     quit 1
+
+proc getIdentifier*(module: ModuleRef): string =
+  var rLen: csize_t
+  let rStr = getIdentifier(module, rLen)
+
+  result = newString(rLen.int)
+  copyMem(result[0].addr, rStr, rLen.int)
 
 # Target
 # ------------------------------------------------------------
 
-proc initializeNativeTarget* {.inline.} =
+template toTarget*(triple: cstring): TargetRef =
+  var target: TargetRef
+  var errMsg: LLVMstring
+  let err = bool triple.getTargetFromTriple(target, errMsg)
+  if err:
+    echo "\"toTarget\" for triple '", triple, "' " & $instantiationInfo() & " exited with error: " & $cstring(errMsg) & '\n'
+    errMsg.dispose()
+    quit 1
+  target
+
+proc initializeFullNativeTarget* {.inline.} =
   static: doAssert defined(amd64) or defined(i386), "Only x86 is configured at the moment"
   initializeX86TargetInfo()
   initializeX86Target()
   initializeX86TargetMC()
-
-proc initializeNativeAsmPrinter* {.inline.} =
-  static: doAssert defined(amd64) or defined(i386), "Only x86 is configured at the moment"
+  # With usual `initializeNativeTarget`
+  # it's a separate call but it's mandatory so include it
   initializeX86AsmPrinter()
+
+proc initializeFullNVPTXTarget* {.inline.} =
+  initializeNVPTXTargetInfo()
+  initializeNVPTXTarget()
+  initializeNVPTXTargetMC()
+  initializeNVPTXAsmPrinter()
 
 # Execution Engine
 # ------------------------------------------------------------
 
 template createJITCompilerForModule*(
        engine: var ExecutionEngineRef,
-       module: ModuleRef{lvalue},
+       module: ModuleRef,
        optLevel: uint32) =
   var errMsg: LLVMstring
   let err = bool createJITCompilerForModule(engine, module, optLevel, errMsg)
   if err:
-    stderr.write("JIT compiler creation for module '" & astToStr(module) & "' " & $instantiationInfo() & " exited with error: " & $cstring(errMsg) & '\n')
+    stderr.write("\"createJITCompilerForModule\" for module '" & astToStr(module) & "' " & $instantiationInfo() & " exited with error: " & $cstring(errMsg) & '\n')
     errMsg.dispose()
     quit 1
+
+# Target Machine
+# ------------------------------------------------------------
+
+template emitToFile*(t: TargetMachineRef, m: ModuleRef,
+                 fileName: string, codegen: CodeGenFileType) =
+  var errMsg: LLVMstring
+  let err = bool targetMachineEmitToFile(t, m, cstring(fileName), codegen, errMsg)
+  if err:
+    stderr.write("\"emitToFile\" for module '" & astToStr(module) & "' " & $instantiationInfo() & " exited with error: " & $cstring(errMsg) & '\n')
+    errMsg.dispose()
+    quit 1 
+
+template emitToString*(t: TargetMachineRef, m: ModuleRef, codegen: CodeGenFileType): string =
+  ## Codegen to string
+  var errMsg: LLVMstring
+  var mb: MemoryBufferRef
+  let err = bool targetMachineEmitToMemoryBuffer(t, m, codegen, errMsg, mb)
+  if err:
+    stderr.write("\"emitToString\" for module '" & astToStr(module) & "' " & $instantiationInfo() & " exited with error: " & $cstring(errMsg) & '\n')
+    errMsg.dispose()
+    quit 1
+  let len = mb.getBufferSize()
+  var emitted = newString(len)
+  copyMem(emitted[0].addr, mb.getBufferStart(), len)
+  mb.dispose()
+  emitted
+
+# Target Machine
+# ------------------------------------------------------------
+
+proc initializePasses* =
+  let registry = getGlobalPassRegistry()
+
+  # TODO: Some passes in llc aren't exposed
+  # https://github.com/llvm/llvm-project/blob/main/llvm/tools/llc/llc.cpp
+  registry.initializeCore()
+  registry.initializeTransformUtils()
+  registry.initializeScalarOpts()
+  registry.initializeObjCARCOpts()
+  registry.initializeVectorization()
+  registry.initializeInstCombine()
+  registry.initializeAggressiveInstCombiner()
+  registry.initializeIPO()
+  registry.initializeInstrumentation()
+  registry.initializeAnalysis()
+  registry.initializeIPA()
+  registry.initializeCodeGen()
+  registry.initializeTarget()
+
+# Builder
+# ------------------------------------------------------------
+
+proc getContext*(builder: BuilderRef): ContextRef =
+  # LLVM C API does not expose IRBuilder.getContext()
+  # making this unnecessary painful
+  # https://github.com/llvm/llvm-project/issues/59875
+  builder.getInsertBlock().getBasicBlockParent().getTypeOf().getContext()
 
 # Types
 # ------------------------------------------------------------
@@ -96,55 +178,32 @@ proc isVoid*(ty: TypeRef): bool {.inline.} =
 proc pointer_t*(elementTy: TypeRef): TypeRef {.inline.} =
   pointerType(elementTy, addressSpace = 0)
 
-proc constInt*(ty: TypeRef, n: uint64, signExtend: bool): ValueRef {.inline.} =
+proc array_t*(elemType: TypeRef, elemCount: SomeInteger): TypeRef {.inline.}=
+  array_t(elemType, uint32(elemCount))
+
+proc function_t*(returnType: TypeRef, paramTypes: openArray[TypeRef]): TypeRef {.inline.} =
+  function_t(returnType, paramTypes, isVarArg = LlvmBool(false))
+
+# Values
+# ------------------------------------------------------------
+
+proc getName*(v: ValueRef): string =
+  var rLen: csize_t
+  let rStr = getValueName2(v, rLen)
+
+  result = newString(rLen.int)
+  copyMem(result[0].addr, rStr, rLen.int)
+
+proc constInt*(ty: TypeRef, n: uint64, signExtend = false): ValueRef {.inline.} =
   constInt(ty, culonglong(n), LlvmBool(signExtend))
 
 proc constStruct*(constantVals: openArray[ValueRef], packed = false): ValueRef {.inline.} =
   constStruct(constantVals, LlvmBool(packed))
 
-# ############################################################
-#
-#                    Sanity Check
-#
-# ############################################################
+# Syntax sugar
+# ------------------------------------------------------------
 
-when isMainModule:
-  echo "LLVM JIT compiler sanity check"
-
-  let ctx = createContext()
-  var module = ctx.createModule("addition")
-  let i32 = ctx.int32_t()
-
-  let addType = function_t(i32, [i32, i32], isVarArg = LlvmBool(false))
-  let addBody = module.addFunction("add", addType)
-
-  let builder = ctx.createBuilder()
-  let blck = ctx.appendBasicBlock(addBody, "addBody")
-  builder.positionAtEnd(blck)
-
-  block:
-    let a = addBody.getParam(0)
-    let b = addBody.getParam(1)
-    let sum = builder.add(a, b, "sum")
-    builder.ret(sum)
-
-  module.verify(AbortProcessAction)
-
-  var engine: ExecutionEngineRef
-  block:
-    initializeNativeTarget()
-    initializeNativeAsmPrinter()
-    createJITCompilerForModule(engine, module, optLevel = 0)
-
-  let jitAdd = cast[proc(a, b: int32): int32 {.noconv.}](
-    engine.getFunctionAddress("add"))
-
-  echo "jitAdd(1, 2) = ", jitAdd(1, 2)
-  doAssert jitAdd(1, 2) == 1 + 2
-
-  block:
-    # Cleanup
-    builder.dispose()
-    engine.dispose()  # also destroys the module attached to it
-    ctx.dispose()
-  echo "LLVM JIT - SUCCESS"
+type
+  FnDef* = tuple[fnTy: TypeRef, fnImpl: ValueRef]
+    # calling getTypeOf on a ValueRef function
+    # loses type information like return value type or arity
