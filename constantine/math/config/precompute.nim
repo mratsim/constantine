@@ -257,7 +257,7 @@ func countSpareBits*(M: BigInt): int =
   let msb = log2_vartime(BaseType(M.limbs[M.limbs.len-1]))
   result = WordBitWidth - 1 - msb.int
 
-func invModBitwidth[T: SomeUnsignedInt](a: T): T =
+func invModBitwidth*[T: SomeUnsignedInt](a: T): T =
   # We use BaseType for return value because static distinct type
   # confuses Nim semchecks [UPSTREAM BUG]
   # We don't enforce compile-time evaluation here

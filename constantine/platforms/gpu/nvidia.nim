@@ -49,6 +49,7 @@ template check*(status: CUresult) =
   
   let code = status # ensure that the input expression is evaluated once only
   if code != CUDA_SUCCESS:
+    writeStackTrace()
     stderr.write(astToStr(status) & " " & $instantiationInfo() & " exited with error: " & $code & '\n')
     quit 1
 
@@ -82,10 +83,6 @@ proc cudaDeviceInit*(deviceID = 0'i32): CUdevice =
     quit 1
   
   return cuDevice
-
-proc getCudaKernel*(cuMod: CUmodule, fnName: string): CUfunction =
-  # Public kernels are appended _public
-  check cuModuleGetFunction(result, cuMod, fnName & "_public")
 
 # LLVM IR
 # ------------------------------------------------------------

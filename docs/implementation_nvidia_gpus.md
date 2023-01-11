@@ -146,6 +146,12 @@ Note: The dead code/instructions elimination passes might remove the ASM not mar
 
 Ordering GVN before SROA: https://reviews.llvm.org/D111471
 
+If we use "normal" instructions instead of inline assembly, this thread links to many LLVM internal discussions
+on the passes that optimize to add-with-carry: https://github.com/llvm/llvm-project/issues/31102
+We have:
+- InstCombine, for instruction combining (see also: https://reviews.llvm.org/D8889, https://reviews.llvm.org/D124698, https://github.com/llvm/llvm-project/issues/39832)
+- CodegenPrepare, for ISA specific codegen
+
 ### LLVM NVPTX or Nvidia libNVVM
 
 https://docs.nvidia.com/cuda/libnvvm-api/index.html

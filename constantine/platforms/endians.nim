@@ -22,6 +22,18 @@ template toByte*(x: SomeUnsignedInt): byte =
   else:
     byte(x)
 
+template blobFrom*(dst: var openArray[byte], src: SomeUnsignedInt, startIdx: int, endian: static Endianness) =
+  ## Write an integer into a raw binary blob
+  ## Swapping endianness if needed
+  ## startidx is the first written array item if littleEndian is requested
+  ## or the last if bigEndian is requested
+  when endian == cpuEndian:
+    for i in 0 ..< sizeof(src):
+      dst[startIdx+i] = toByte(src shr (i * 8))
+  else:
+    for i in 0 ..< sizeof(src):
+      dst[startIdx+sizeof(src)-1-i] = toByte(src shr (i * 8))
+
 func parseFromBlob*[T: byte|char](
            dst: var SomeUnsignedInt,
            src: openArray[T],

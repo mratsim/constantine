@@ -264,12 +264,14 @@ proc addAnalysisPasses*(machine: TargetMachineRef, pm: PassManagerRef) {.importc
 # https://www.llvm.org/docs/Passes.html
 # -------------------------------------
 
-#https://llvm.org/doxygen/group__LLVMCTransformsUtils.html
+# https://llvm.org/doxygen/group__LLVMCTransformsInstCombine.html
+proc addInstructionCombiningPass*(pm: PassManagerRef) {.importc: "LLVMAddInstructionCombiningPass".}
+
+# https://llvm.org/doxygen/group__LLVMCTransformsUtils.html
 proc addPromoteMemoryToRegisterPass*(pm: PassManagerRef) {.importc: "LLVMAddPromoteMemoryToRegisterPass".}
 
 # https://llvm.org/doxygen/group__LLVMCTransformsScalar.html
 proc addAggressiveDeadCodeEliminationPass*(pm: PassManagerRef) {.importc: "LLVMAddAggressiveDCEPass".}
-  ## Aggressive dead code elimination
 proc addDeadStoreEliminationPass*(pm: PassManagerRef) {.importc: "LLVMAddDeadStoreEliminationPass".}
 proc addGlobalValueNumberingPass*(pm: PassManagerRef) {.importc: "LLVMAddNewGVNPass".}
 proc addMemCpyOptPass*(pm: PassManagerRef) {.importc: "LLVMAddMemCpyOptPass".}
@@ -520,15 +522,15 @@ proc `and`*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueR
 proc `or`*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildOr".}
 proc `xor`*(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildXor".}
 proc `not`*(builder: BuilderRef, val: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNot".}
-proc select*(builder: BuilderRef, condition, then, otherwise: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildNot".}
+proc select*(builder: BuilderRef, condition, then, otherwise: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildSelect".}
 
 proc icmp*(builder: BuilderRef, op: IntPredicate, lhs, rhs: ValueRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildICmp".}
 
-proc bitcast*(builder: BuilderRef, val: ValueRef, destTy: TypeRef, name: cstring = "") {.importc: "LLVMBuildBitcast".}
-proc trunc*(builder: BuilderRef, val: ValueRef, destTy: TypeRef, name: cstring = "") {.importc: "LLVMBuildTrunc".}
-proc zext*(builder: BuilderRef, val: ValueRef, destTy: TypeRef, name: cstring = "") {.importc: "LLVMBuildZExt".}
+proc bitcast*(builder: BuilderRef, val: ValueRef, destTy: TypeRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildBitcast".}
+proc trunc*(builder: BuilderRef, val: ValueRef, destTy: TypeRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildTrunc".}
+proc zext*(builder: BuilderRef, val: ValueRef, destTy: TypeRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildZExt".}
   ## Zero-extend
-proc sext*(builder: BuilderRef, val: ValueRef, destTy: TypeRef, name: cstring = "") {.importc: "LLVMBuildSExt".}
+proc sext*(builder: BuilderRef, val: ValueRef, destTy: TypeRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildSExt".}
   ## Sign-extend
 
 proc malloc*(builder: BuilderRef, ty: TypeRef, name: cstring = ""): ValueRef {.importc: "LLVMBuildMalloc".}

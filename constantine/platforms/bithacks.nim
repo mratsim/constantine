@@ -6,6 +6,8 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
+import ./compilers/bitops
+
 # ############################################################
 #
 #                           Bit hacks
@@ -14,19 +16,19 @@
 
 # Bithacks
 # ------------------------------------------------------------
-# TODO: Nim std/bitops is unsatisfactory
-#       in particular the "noUndefined" flag
-#       for countLeadingZeroBits/countTrailingZeroBits
-#       is returning zero instead of the integer bitwidth
+# Nim std/bitops is unsatisfactory
+# in particular the "noUndefined" flag
+# for countLeadingZeroBits/countTrailingZeroBits
+# is returning zero instead of the integer bitwidth
 #
-#       Furthermore it is not guaranteed constant-time
-#       And lastly, even compiler builtin may be slightly inefficient
-#       for example when doing fastLog2
-#       which is "31 - builtin_clz" we get
-#       `bsr + xor (from clz) + sub`
-#       instead of plain `bsr`
+# Furthermore it is not guaranteed constant-time
+# And lastly, even compiler builtin may be slightly inefficient
+# for example when doing fastLog2
+# which is "31 - builtin_clz" we get
+# `bsr + xor (from clz) + sub`
+# instead of plain `bsr`
 #
-#       At the moment we don't need them to operate on secret data
+# At the moment we don't need them to operate on secret data
 #
 # See: https://www.chessprogramming.org/BitScan
 #      https://www.chessprogramming.org/General_Setwise_Operations
@@ -80,11 +82,20 @@ func log2impl_vartime(x: uint64): uint64 {.inline.} =
 
 func log2_vartime*[T: SomeUnsignedInt](n: T): T {.inline.} =
   ## Find the log base 2 of an integer
-  when sizeof(T) == sizeof(uint64):
-    T(log2impl_vartime(uint64(n)))
+  ## 
+  ## ⚠ With GCC and Clang compilers on x86, if n is zero, result is undefined.
+  when nimvm:
+    when sizeof(T) == sizeof(uint64):
+      T(log2impl_vartime(uint64(n)))
+    else:
+      static: doAssert sizeof(T) <= sizeof(uint32)
+      T(log2impl_vartime(uint32(n)))
   else:
-    static: doAssert sizeof(T) <= sizeof(uint32)
-    T(log2impl_vartime(uint32(n)))
+    when sizeof(T) == sizeof(uint64):
+      T(log2_c_compiler_vartime(uint64(n)))
+    else:
+      static: doAssert sizeof(T) <= sizeof(uint32)
+      T(log2_c_compiler_vartime(uint32(n)))
 
 func hammingWeight*(x: uint32): uint {.inline.} =
   ## Counts the set bits in integer.

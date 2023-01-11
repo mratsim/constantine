@@ -27,17 +27,21 @@ static: doAssert UseASM_X86_32
 
 {.localPassC:"-fomit-frame-pointer".} # Needed so that the compiler finds enough registers
 
-proc finalSubNoCarryImpl*(
+proc finalSubNoOverflowImpl*(
        ctx: var Assembler_x86,
        r: Operand or OperandArray,
        a, M, scratch: OperandArray
      ) =
   ## Reduce `a` into `r` modulo `M`
+  ## To be used when the modulus does not use the full bitwidth of the storing words
+  ## for example a 255-bit modulus in n words of total max size 2^256
   ## 
   ## r, a, scratch, scratchReg are mutated
   ## M is read-only
   let N = M.len
-  ctx.comment "Final substraction (no carry)"
+  ctx.comment "Final substraction (cannot overflow its limbs)"
+  
+  # Substract the modulus, and test a < p with the last borrow
   for i in 0 ..< N:
     ctx.mov scratch[i], a[i]
     if i == 0:
@@ -51,7 +55,7 @@ proc finalSubNoCarryImpl*(
     ctx.cmovnc a[i], scratch[i]
     ctx.mov r[i], a[i]
 
-proc finalSubMayCarryImpl*(
+proc finalSubMayOverflowImpl*(
        ctx: var Assembler_x86,
        r: Operand or OperandArray,
        a, M, scratch: OperandArray,
@@ -59,7 +63,7 @@ proc finalSubMayCarryImpl*(
      ) =
   ## Reduce `a` into `r` modulo `M`
   ## To be used when the final substraction can
-  ## also depend on the carry flag
+  ## also overflow the limbs (a 2^256 order of magnitude modulus stored in n words of total max size 2^256)
   ## 
   ## r, a, scratch, scratchReg are mutated
   ## M is read-only
@@ -69,7 +73,7 @@ proc finalSubMayCarryImpl*(
   # Mask: scratchReg contains 0xFFFF or 0x0000
   ctx.sbb scratchReg, scratchReg
 
-  # Now substract the modulus to test a < p
+  # Now substract the modulus, and test a < p with the last borrow
   let N = M.len
   for i in 0 ..< N:
     ctx.mov scratch[i], a[i]
@@ -92,7 +96,7 @@ macro finalSub_gen*[N: static int](
        r_PIR: var array[N, SecretWord],
        a_EIR, M_PIR: array[N, SecretWord],
        scratch_EIR: var array[N, SecretWord],
-       mayCarry: static bool): untyped =
+       mayOverflow: static bool): untyped =
   ## Returns:
   ##   a-M if a > M
   ##   a otherwise
@@ -101,7 +105,7 @@ macro finalSub_gen*[N: static int](
   ## - a_EIR is an array of registers, mutated,
   ## - M_PIR is a pointer to an array, read-only,
   ## - scratch_EIR is an array of registers, mutated
-  ## - mayCarry is set to true when the carry flag also needs to be read
+  ## - mayOverflow is set to true when the carry flag also needs to be read
   result = newStmtList()
 
   var ctx = init(Assembler_x86, BaseType)
@@ -113,12 +117,12 @@ macro finalSub_gen*[N: static int](
     M = init(OperandArray, nimSymbol = M_PIR, N, PointerInReg, Input)
     t = init(OperandArray, nimSymbol = scratch_EIR, N, ElemsInReg, Output_EarlyClobber)
 
-  if mayCarry:
-    ctx.finalSubMayCarryImpl(
+  if mayOverflow:
+    ctx.finalSubMayOverflowImpl(
       r, a, M, t, rax
     )
   else:
-    ctx.finalSubNoCarryImpl(
+    ctx.finalSubNoOverflowImpl(
       r, a, M, t
     )
 
@@ -165,9 +169,9 @@ macro addmod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N], spareBits: s
     ctx.mov v[i], u[i]
 
   if spareBits >= 1:
-    ctx.finalSubNoCarryImpl(r, u, M, v)
+    ctx.finalSubNoOverflowImpl(r, u, M, v)
   else:
-    ctx.finalSubMayCarryImpl(
+    ctx.finalSubMayOverflowImpl(
       r, u, M, v, b.reuseRegister()
     )
 

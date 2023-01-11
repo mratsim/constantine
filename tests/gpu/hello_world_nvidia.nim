@@ -221,6 +221,9 @@ type
     PTXviaNvidiaNvvm
     PTXviaLlvmNvptx
 
+proc getCudaKernel(cuMod: CUmodule, fnName: string): CUfunction =
+  check cuModuleGetFunction(result, cuMod, fnName & "_public")
+
 proc main(backend: CodegenBackend) =
 
   #######################################

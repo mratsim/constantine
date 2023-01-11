@@ -53,6 +53,7 @@ template verify*(module: ModuleRef, failureAction: VerifierFailureAction) =
   var errMsg: LLVMstring
   let err = bool verify(module, failureAction, errMsg)
   if err:
+    writeStackTrace()
     stderr.write("\"verify\" for module '" & astToStr(module) & "' " & $instantiationInfo() & " exited with error: " & $cstring(errMsg) & '\n')
     errMsg.dispose()
     quit 1
@@ -72,6 +73,7 @@ template toTarget*(triple: cstring): TargetRef =
   var errMsg: LLVMstring
   let err = bool triple.getTargetFromTriple(target, errMsg)
   if err:
+    writeStackTrace()
     echo "\"toTarget\" for triple '", triple, "' " & $instantiationInfo() & " exited with error: " & $cstring(errMsg) & '\n'
     errMsg.dispose()
     quit 1
@@ -102,6 +104,7 @@ template createJITCompilerForModule*(
   var errMsg: LLVMstring
   let err = bool createJITCompilerForModule(engine, module, optLevel, errMsg)
   if err:
+    writeStackTrace()
     stderr.write("\"createJITCompilerForModule\" for module '" & astToStr(module) & "' " & $instantiationInfo() & " exited with error: " & $cstring(errMsg) & '\n')
     errMsg.dispose()
     quit 1
@@ -114,6 +117,7 @@ template emitToFile*(t: TargetMachineRef, m: ModuleRef,
   var errMsg: LLVMstring
   let err = bool targetMachineEmitToFile(t, m, cstring(fileName), codegen, errMsg)
   if err:
+    writeStackTrace()
     stderr.write("\"emitToFile\" for module '" & astToStr(module) & "' " & $instantiationInfo() & " exited with error: " & $cstring(errMsg) & '\n')
     errMsg.dispose()
     quit 1 
@@ -124,6 +128,7 @@ template emitToString*(t: TargetMachineRef, m: ModuleRef, codegen: CodeGenFileTy
   var mb: MemoryBufferRef
   let err = bool targetMachineEmitToMemoryBuffer(t, m, codegen, errMsg, mb)
   if err:
+    writeStackTrace()
     stderr.write("\"emitToString\" for module '" & astToStr(module) & "' " & $instantiationInfo() & " exited with error: " & $cstring(errMsg) & '\n')
     errMsg.dispose()
     quit 1

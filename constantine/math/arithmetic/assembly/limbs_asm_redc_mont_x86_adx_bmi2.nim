@@ -134,9 +134,9 @@ macro redc2xMont_adx_gen[N: static int](
     for i in 0 ..< N:
       ctx.mov r[i], t[i]
   elif spareBits >= 1:
-    ctx.finalSubNoCarryImpl(r, u, M, t)
+    ctx.finalSubNoOverflowImpl(r, u, M, t)
   else:
-    ctx.finalSubMayCarryImpl(r, u, M, t, hi)
+    ctx.finalSubMayOverflowImpl(r, u, M, t, hi)
 
   # Code generation
   result.add ctx.generate()
@@ -264,4 +264,4 @@ func fromMont_asm_adx*(r: var Limbs, a, M: Limbs, m0ninv: BaseType) =
 
   block: # Map from [0, 2p) to [0, p)
     var workspace{.noInit.}: typeof(r)
-    r.finalSub_gen(t, M, workspace, mayCarry = false)
+    r.finalSub_gen(t, M, workspace, mayOverflow = false)
