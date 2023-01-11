@@ -21,7 +21,7 @@ echo "\n------------------------------------------------------\n"
 echo "test_io_fields xoshiro512** seed: ", seed
 
 proc main() =
-  suite "IO - Finite fields" & " [" & $WordBitwidth & "-bit mode]":
+  suite "IO - Finite fields" & " [" & $WordBitWidth & "-bit mode]":
     test "Parsing and serializing round-trip on uint64":
       # 101 ---------------------------------
       block:

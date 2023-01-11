@@ -92,9 +92,9 @@ func fromPackedRepr*[LU, E, LP: static int](
 
   static:
     # Destination and Source size are consistent
-    doAssert (LU-1) * UnsatBitWidth <= WordBitwidth * LP, block:
+    doAssert (LU-1) * UnsatBitWidth <= WordBitWidth * LP, block:
       "\n  (LU-1) * UnsatBitWidth: " & $(LU-1) & " * " & $UnsatBitWidth & " = " & $((LU-1) * UnsatBitWidth) &
-      "\n  WordBitwidth * LP: " & $WordBitwidth & " * " & $LP & " = " & $(WordBitwidth * LP)
+      "\n  WordBitWidth * LP: " & $WordBitWidth & " * " & $LP & " = " & $(WordBitWidth * LP)
 
   var
     srcIdx, dstIdx = 0
@@ -143,9 +143,9 @@ func fromUnsatRepr*[LU, E, LP: static int](
 
   static:
     # Destination and Source size are consistent
-    doAssert (LU-1) * UnsatBitWidth <= WordBitwidth * LP, block:
+    doAssert (LU-1) * UnsatBitWidth <= WordBitWidth * LP, block:
       "\n  (LU-1) * UnsatBitWidth: " & $(LU-1) & " * " & $UnsatBitWidth & " = " & $((LU-1) * UnsatBitWidth) &
-      "\n  WordBitwidth * LP: " & $WordBitwidth & " * " & $LP & " = " & $(WordBitwidth * LP)
+      "\n  WordBitWidth * LP: " & $WordBitWidth & " * " & $LP & " = " & $(WordBitWidth * LP)
 
   var
     srcIdx {.used.}, dstIdx = 0

@@ -175,7 +175,7 @@ proc test_invpow(C: static Curve, gen: RandomGen) =
 
   doAssert: bool(xa == xqya)
 
-suite "Exponentiation in 𝔽p12" & " [" & $WordBitwidth & "-bit mode]":
+suite "Exponentiation in 𝔽p12" & " [" & $WordBitWidth & "-bit mode]":
   staticFor(curve, TestCurves):
     test "xᴬ xᴮ = xᴬ⁺ᴮ on " & $curve:
       test_sameBaseProduct(curve, gen = Uniform)

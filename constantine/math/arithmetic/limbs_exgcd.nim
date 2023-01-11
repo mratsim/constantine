@@ -126,7 +126,7 @@ debug:
 
     let d = 2*k - numIters
     b[0] = Zero; b[1] = Zero
-    b[d div WordBitwidth] = One shl (d mod WordBitwidth)
+    b[d div WordBitWidth] = One shl (d mod WordBitWidth)
 
     return bool(a == b)
 
@@ -433,7 +433,7 @@ func invmod*(
   ## M MUST be odd, M does not need to be prime.
   ## ``a`` MUST be less than M.
   const Excess = 2
-  const k = WordBitwidth - Excess
+  const k = WordBitWidth - Excess
   const NumUnsatWords = (bits + k - 1) div k
 
   # Convert values to unsaturated repr
@@ -460,7 +460,7 @@ func invmod*(
   ## ``a`` MUST be less than M.
   
   const Excess = 2
-  const k = WordBitwidth - Excess
+  const k = WordBitWidth - Excess
   const NumUnsatWords = (bits + k - 1) div k
 
   # Convert values to unsaturated repr
@@ -636,7 +636,7 @@ func legendre*(a, M: Limbs, bits: static int): SecretWord =
   ##                      ≡ -1 (mod p), iff a is quadratic non-residue
   ##                      ≡  0 (mod p), iff a is 0
   const Excess = 2
-  const k = WordBitwidth - Excess
+  const k = WordBitWidth - Excess
   const NumUnsatWords = (bits + k - 1) div k
 
   # Convert values to unsaturated repr
@@ -656,7 +656,7 @@ func legendre*(a: Limbs, M: static Limbs, bits: static int): SecretWord =
   ##                      ≡  0 (mod p), iff a is 0
   
   const Excess = 2
-  const k = WordBitwidth - Excess
+  const k = WordBitWidth - Excess
   const NumUnsatWords = (bits + k - 1) div k
 
   # Convert values to unsaturated repr

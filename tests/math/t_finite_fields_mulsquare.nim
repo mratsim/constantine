@@ -78,7 +78,7 @@ proc sanity(C: static Curve) =
             bool(n == expected)
 
 proc mainSanity() =
-  suite "Modular squaring is consistent with multiplication on special elements" & " [" & $WordBitwidth & "-bit mode]":
+  suite "Modular squaring is consistent with multiplication on special elements" & " [" & $WordBitWidth & "-bit mode]":
     sanity Fake101
     sanity Mersenne61
     sanity Mersenne127
@@ -94,7 +94,7 @@ proc mainSanity() =
 mainSanity()
 
 proc mainSelectCases() =
-  suite "Modular Squaring: selected tricky cases" & " [" & $WordBitwidth & "-bit mode]":
+  suite "Modular Squaring: selected tricky cases" & " [" & $WordBitWidth & "-bit mode]":
     test "P-256 [FastSquaring = " & $(Fp[P256].getSpareBits() >= 2) & "]":
       block:
         # Triggered an issue in the (t[N+1], t[N]) = t[N] + (A1, A0)
@@ -141,7 +141,7 @@ proc random_long01Seq(C: static Curve) =
 
   doAssert bool(r_mul == r_sqr)
 
-suite "Random Modular Squaring is consistent with Modular Multiplication" & " [" & $WordBitwidth & "-bit mode]":
+suite "Random Modular Squaring is consistent with Modular Multiplication" & " [" & $WordBitWidth & "-bit mode]":
   test "Random squaring mod P-224 [FastSquaring = " & $(Fp[P224].getSpareBits() >= 2) & "]":
     for _ in 0 ..< Iters:
       randomCurve(P224)
@@ -358,7 +358,7 @@ proc random_sumprod(C: static Curve, N: static int) =
   sumprod_test(random_long01Seq)
   sumProdMax()
 
-suite "Random sum products is consistent with naive " & " [" & $WordBitwidth & "-bit mode]":
+suite "Random sum products is consistent with naive " & " [" & $WordBitWidth & "-bit mode]":
   
   const MaxLength = 8
   test "Random sum products mod P-224]":

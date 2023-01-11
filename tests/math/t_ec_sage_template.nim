@@ -196,7 +196,7 @@ proc run_scalar_mul_test_vs_sage*(
 
   const testSuiteDesc = "Scalar Multiplication " & $EC.F.C & " " & G1_or_G2 & " vs SageMath"
 
-  suite testSuiteDesc & " [" & $WordBitwidth & "-bit mode]":
+  suite testSuiteDesc & " [" & $WordBitWidth & "-bit mode]":
     for i in 0 ..< vec.vectors.len:
       test "test " & $vec.vectors[i].id & " - " & $EC:
         var

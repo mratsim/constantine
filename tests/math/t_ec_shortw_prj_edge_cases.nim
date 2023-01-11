@@ -61,7 +61,7 @@ func testAddAssociativity[EC](a, b, c: EC) =
   doAssert bool(r0 == r3)
   doAssert bool(r0 == r4)
 
-suite "Short Weierstrass Elliptic Curve - Edge cases [" & $WordBitwidth & "-bit mode]":
+suite "Short Weierstrass Elliptic Curve - Edge cases [" & $WordBitWidth & "-bit mode]":
   test "EC Add G2 is associative - #60":
 
     var a, b, c: ECP_ShortW_Prj[Fp2[BLS12_381], G2]

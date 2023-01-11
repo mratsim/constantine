@@ -69,7 +69,7 @@ proc runTowerTests*[N](
   rng.seed(seed)
   echo moduleName, " xoshiro512** seed: ", seed
 
-  suite testSuiteDesc & " [" & $WordBitwidth & "-bit mode]":
+  suite testSuiteDesc & " [" & $WordBitWidth & "-bit mode]":
     test "Comparison sanity checks":
       proc test(Field: typedesc) =
         var z, o {.noInit.}: Field

@@ -68,7 +68,7 @@ proc runFrobeniusTowerTests*[N](
   rng.seed(seed)
   echo moduleName, " xoshiro512** seed: ", seed
 
-  suite testSuiteDesc & " [" & $WordBitwidth & "-bit mode]":
+  suite testSuiteDesc & " [" & $WordBitWidth & "-bit mode]":
     test "Frobenius(a) = a^p (mod p^" & $ExtDegree & ")":
       proc test(Field: typedesc, Iters: static int, gen: RandomGen) =
         for _ in 0 ..< Iters:

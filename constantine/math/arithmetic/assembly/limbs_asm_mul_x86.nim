@@ -37,7 +37,7 @@ macro mul_gen[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], 
   ## `a`, `b`, `r` can have a different number of limbs
   ## if `r`.limbs.len < a.limbs.len + b.limbs.len
   ## The result will be truncated, i.e. it will be
-  ## a * b (mod (2^WordBitwidth)^r.limbs.len)
+  ## a * b (mod (2^WordBitWidth)^r.limbs.len)
   ##
   ## Assumes r doesn't aliases a or b
 
@@ -137,7 +137,7 @@ macro sqr_gen*[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) =
   ## `a` and `r` can have a different number of limbs
   ## if `r`.limbs.len < a.limbs.len * 2
   ## The result will be truncated, i.e. it will be
-  ## a² (mod (2^WordBitwidth)^r.limbs.len)
+  ## a² (mod (2^WordBitWidth)^r.limbs.len)
   ##
   ## Assumes r doesn't aliases a
 

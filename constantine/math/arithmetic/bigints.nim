@@ -292,7 +292,7 @@ func prod_high_words*[rBits, aBits, bBits](r: var BigInt[rBits], a: BigInt[aBits
   ## `a`, `b`, `r` can have a different number of limbs
   ## if `r`.limbs.len < a.limbs.len + b.limbs.len - lowestWordIndex
   ## The result will be truncated, i.e. it will be
-  ## a * b >> (2^WordBitWidth)^lowestWordIndex (mod (2^WordBitwidth)^r.limbs.len)
+  ## a * b >> (2^WordBitWidth)^lowestWordIndex (mod (2^WordBitWidth)^r.limbs.len)
   ##
   # This is useful for
   # - Barret reduction

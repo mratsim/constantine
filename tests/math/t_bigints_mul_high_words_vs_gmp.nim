@@ -95,13 +95,13 @@ proc main() =
     mpz_mul(r, a, b)
     var shift: mpz_t
     mpz_init(shift)
-    r.mpz_tdiv_q_2exp(r, WordBitwidth * wordsStartIndex)
+    r.mpz_tdiv_q_2exp(r, WordBitWidth * wordsStartIndex)
 
     # If a*b overflow the result size we truncate
     const numWords = wordsRequired(rBits)
     when numWords < wordsRequired(aBits+bBits):
-      echo "  truncating from ", wordsRequired(aBits+bBits), " words to ", numWords, " (2^", WordBitwidth * numWords, ")"
-      r.mpz_tdiv_r_2exp(r, WordBitwidth * numWords)
+      echo "  truncating from ", wordsRequired(aBits+bBits), " words to ", numWords, " (2^", WordBitWidth * numWords, ")"
+      r.mpz_tdiv_r_2exp(r, WordBitWidth * numWords)
 
     # Constantine
     var rTest: BigInt[rBits]

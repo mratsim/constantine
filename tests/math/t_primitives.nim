@@ -21,7 +21,7 @@ template undistinct[T](x: Ct[T]): T =
   T(x)
 
 proc main() =
-  suite "Constant-time unsigned integers" & " [" & $WordBitwidth & "-bit mode]":
+  suite "Constant-time unsigned integers" & " [" & $WordBitWidth & "-bit mode]":
     test "High - getting the biggest representable number":
       check:
         high(Ct[byte]).undistinct == 0xFF.byte

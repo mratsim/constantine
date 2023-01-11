@@ -29,7 +29,7 @@ echo "\n------------------------------------------------------\n"
 echo "test_finite_fields_powinv xoshiro512** seed: ", seed
 
 proc main() =
-  suite "Modular exponentiation over finite fields" & " [" & $WordBitwidth & "-bit mode]":
+  suite "Modular exponentiation over finite fields" & " [" & $WordBitWidth & "-bit mode]":
     test "n² mod 101":
       let exponent = BigInt[64].fromUint(2'u64)
 
@@ -202,7 +202,7 @@ proc main() =
     testRandomDiv2 Pallas
     testRandomDiv2 Vesta
 
-  suite "Modular inversion over prime fields" & " [" & $WordBitwidth & "-bit mode]":
+  suite "Modular inversion over prime fields" & " [" & $WordBitWidth & "-bit mode]":
     test "Specific tests on Fp[BLS12_381]":
       block: # No inverse exist for 0 --> should return 0 for projective/jacobian to affine coordinate conversion
         var r, x: Fp[BLS12_381]
@@ -295,7 +295,7 @@ proc main() =
 main()
 
 proc main_anti_regression =
-  suite "Bug highlighted by property-based testing" & " [" & $WordBitwidth & "-bit mode]":
+  suite "Bug highlighted by property-based testing" & " [" & $WordBitWidth & "-bit mode]":
     # test "#30 - Euler's Criterion should be 1 for square on FKM12_447":
     #   var a: Fp[FKM12_447]
     #   # square of "0x406e5e74ee09c84fa0c59f2db3ac814a4937e2f57ecd3c0af4265e04598d643c5b772a6549a2d9b825445c34b8ba100fe8d912e61cfda43d"

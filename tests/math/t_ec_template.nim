@@ -91,7 +91,7 @@ proc run_EC_addition_tests*(
 
   const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form with projective coordinates"
 
-  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
+  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     test "The infinity point is the neutral element w.r.t. to EC " & G1_or_G2 & " addition":
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         var inf {.noInit.}: EC
@@ -248,7 +248,7 @@ proc run_EC_mul_sanity_tests*(
 
   const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
 
-  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
+  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     test "EC " & G1_or_G2 & " mul [0]P == Inf":
       proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< ItersMul:
@@ -343,7 +343,7 @@ proc run_EC_mul_distributive_tests*(
 
   const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
 
-  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
+  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
 
     test "EC " & G1_or_G2 & " mul is distributive over EC add":
       proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
@@ -410,7 +410,7 @@ proc run_EC_mul_vs_ref_impl*(
 
   const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
 
-  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
+  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     test "EC " & G1_or_G2 & " mul constant-time is equivalent to a simple double-and-add algorithm":
       proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< ItersMul:
@@ -454,7 +454,7 @@ proc run_EC_mixed_add_impl*(
 
   const testSuiteDesc = "Elliptic curve mixed addition for Short Weierstrass form"
 
-  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
+  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     test "EC " & G1_or_G2 & " mixed addition is consistent with general addition":
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< Iters:
@@ -567,8 +567,8 @@ proc run_EC_subgroups_cofactors_impl*(
 
   const testSuiteDesc = "Elliptic curve subgroup check and cofactor clearing"
 
-  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
-    test "Effective cofactor matches accelerated cofactor clearing" & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
+  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
+    test "Effective cofactor matches accelerated cofactor clearing" & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< ItersMul:
           let P = rng.random_point(EC, randZ, gen)
@@ -642,7 +642,7 @@ proc run_EC_affine_conversion*(
 
   const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
 
-  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
+  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     test "EC " & G1_or_G2 & " batchAffine is consistent with single affine conversion":
       proc test(EC: typedesc, gen: RandomGen) =
         const batchSize = 10
@@ -660,19 +660,19 @@ proc run_EC_affine_conversion*(
             doAssert bool(Qs[i] == Rs[i]), block:
               var s: string
               s &= "Mismatch on iteration " & $i
-              s &= "\nFailing batch for " & $EC & " (" & $WordBitwidth & "-bit)"
+              s &= "\nFailing batch for " & $EC & " (" & $WordBitWidth & "-bit)"
               s &= "\n  ["
               for i in 0 ..< batchSize:
                 s &= "\n" & Ps[i].toHex(indent = 4)
                 if i != batchSize-1: s &= ","
               s &= "\n  ]"
-              s &= "\nFailing inversions for " & $EC & " (" & $WordBitwidth & "-bit)"
+              s &= "\nFailing inversions for " & $EC & " (" & $WordBitWidth & "-bit)"
               s &= "\n  ["
               for i in 0 ..< batchSize:
                 s &= "\n" & Rs[i].toHex(indent = 4)
                 if i != batchSize-1: s &= ","
               s &= "\n  ]"
-              s &= "\nExpected inversions for " & $EC & " (" & $WordBitwidth & "-bit)"
+              s &= "\nExpected inversions for " & $EC & " (" & $WordBitWidth & "-bit)"
               s &= "\n  ["
               for i in 0 ..< batchSize:
                 s &= "\n" & Qs[i].toHex(indent = 4)
@@ -691,7 +691,7 @@ proc run_EC_conversion_failures*(
   echo "\n------------------------------------------------------\n"
   echo moduleName
 
-  suite moduleName & " - [" & $WordBitwidth & "-bit mode]":
+  suite moduleName & " - [" & $WordBitWidth & "-bit mode]":
     test "EC batchAffine fuzzing failures ":
       proc test_bn254_snarks_g1(ECP: type) =
         type ECP_Aff = ECP_ShortW_Aff[Fp[BN254_Snarks], G1]
@@ -810,7 +810,7 @@ proc run_EC_batch_add_impl*[N: static int](
 
   const testSuiteDesc = "Elliptic curve batch addition for Short Weierstrass form"
 
-  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitwidth & "-bit mode]":
+  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     for n in numPoints:
       test $ec & " batch addition (N=" & $n & ")":
         proc test(EC: typedesc, gen: RandomGen) =

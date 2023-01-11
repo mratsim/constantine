@@ -73,7 +73,7 @@ func partialReduce_1305[N1, N2: static int](r: var Limbs[N1], a: Limbs[N2]) =
   # But there is a twist. 5.2⁶² need 65-bit not 64
   # and 5.2³⁰ need 33-bit not 32
 
-  when WordBitwidth == 64:
+  when WordBitWidth == 64:
     static:
       doAssert N1 == 3
       doAssert N2 == 4

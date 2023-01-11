@@ -66,7 +66,7 @@ func prod*[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], b: 
   ## `a`, `b`, `r` can have a different number of limbs
   ## if `r`.limbs.len < a.limbs.len + b.limbs.len
   ## The result will be truncated, i.e. it will be
-  ## a * b (mod (2^WordBitwidth)^r.limbs.len)
+  ## a * b (mod (2^WordBitWidth)^r.limbs.len)
   ##
   ## `r` must not alias ``a`` or ``b``
 
@@ -91,7 +91,7 @@ func prod_high_words*[rLen, aLen, bLen](
   ## `a`, `b`, `r` can have a different number of limbs
   ## if `r`.limbs.len < a.limbs.len + b.limbs.len - lowestWordIndex
   ## The result will be truncated, i.e. it will be
-  ## a * b >> (2^WordBitWidth)^lowestWordIndex (mod (2^WordBitwidth)^r.limbs.len)
+  ## a * b >> (2^WordBitWidth)^lowestWordIndex (mod (2^WordBitWidth)^r.limbs.len)
   #
   # This is useful for
   # - Barret reduction
@@ -196,7 +196,7 @@ func square*[rLen, aLen](
   ##
   ## if `r`.limbs.len < a.limbs.len * 2
   ## The result will be truncated, i.e. it will be
-  ## a² (mod (2^WordBitwidth)^r.limbs.len)
+  ## a² (mod (2^WordBitWidth)^r.limbs.len)
   ##
   ## `r` must not alias ``a`` or ``b``
   when UseASM_X86_64 and aLen in {4, 6} and rLen == 2*aLen:

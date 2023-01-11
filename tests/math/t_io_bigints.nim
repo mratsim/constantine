@@ -22,7 +22,7 @@ echo "test_io_bigints xoshiro512** seed: ", seed
 type T = BaseType
 
 proc main() =
-  suite "IO Hex - BigInt" & " [" & $WordBitwidth & "-bit mode]":
+  suite "IO Hex - BigInt" & " [" & $WordBitWidth & "-bit mode]":
     test "Parsing raw integers":
       block: # Sanity check
         let x = 0'u64
@@ -98,7 +98,7 @@ proc main() =
 
       check: n == h
 
-  suite "IO Decimal - BigInt" & " [" & $WordBitwidth & "-bit mode]":
+  suite "IO Decimal - BigInt" & " [" & $WordBitWidth & "-bit mode]":
     test "Checks elliptic curve constants":
       block: # BLS12-381 - https://github.com/ethereum/py_ecc/blob/master/py_ecc/fields/field_properties.py
         const p = "4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787"

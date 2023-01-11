@@ -76,7 +76,7 @@ proc sanity(C: static Curve) =
             bool(n == expected)
 
 proc mainSanity() =
-  suite "Fr: Modular squaring is consistent with multiplication on special elements" & " [" & $WordBitwidth & "-bit mode]":
+  suite "Fr: Modular squaring is consistent with multiplication on special elements" & " [" & $WordBitWidth & "-bit mode]":
     sanity BN254_Snarks
     sanity BLS12_381
 
@@ -112,7 +112,7 @@ proc random_long01Seq(C: static Curve) =
 
   doAssert bool(r_mul == r_sqr)
 
-suite "Fr: Random Modular Squaring is consistent with Modular Multiplication" & " [" & $WordBitwidth & "-bit mode]":
+suite "Fr: Random Modular Squaring is consistent with Modular Multiplication" & " [" & $WordBitWidth & "-bit mode]":
   test "Random squaring mod r_BN254_Snarks [FastSquaring = " & $(Fr[BN254_Snarks].getSpareBits() >= 2) & "]":
     for _ in 0 ..< Iters:
       randomCurve(BN254_Snarks)
