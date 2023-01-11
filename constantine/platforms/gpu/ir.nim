@@ -7,9 +7,9 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../math/config/curves,
-  ../../math_gpu/metadata,
-  ../primitives,
+  ../../math/config/[curves, precompute],
+  ../../math/io/io_bigints,
+  ../primitives, ../bithacks, ../endians,
   ./llvm,
   std/hashes
 
@@ -30,6 +30,10 @@ type
 
   Backend* = enum
     bkNvidiaPTX
+
+  FnDef* = tuple[fnTy: TypeRef, fnImpl: ValueRef]
+    # calling getTypeOf on a ValueRef function
+    # loses type information like return value type or arity
 
 proc finalizeAssemblerLLVM(asy: Assembler_LLVM) =
   if not asy.isNil:
@@ -55,6 +59,112 @@ proc new*(T: type Assembler_LLVM, backend: Backend, moduleName: cstring): Assemb
   result.void_t = result.ctx.void_t()
   result.backend = backend
 
+# ############################################################
+#
+#                Metadata precomputation
+#
+# ############################################################
+
+# Constantine on CPU is configured at compile-time for several properties that need to be runtime configuration GPUs:
+# - word size (32-bit or 64-bit)
+# - curve properties access like modulus bitsize or -1/M[0] a.k.a. m0ninv
+# - constants are stored in freestanding `const`
+#
+# This is because it's not possible to store a BigInt[254] and a BigInt[384]
+# in a generic way in the same structure, especially without using heap allocation.
+# And with Nim's dead code elimination, unused curves are not compiled in.
+#
+# As there would be no easy way to dynamically retrieve (via an array or a table)
+#    const BLS12_381_modulus = ...
+#    const BN254_Snarks_modulus = ...
+#
+# - We would need a macro to properly access each constant.
+# - We would need to create a 32-bit and a 64-bit version.
+# - Unused curves would be compiled in the program.
+#
+# Note: on GPU we don't manipulate secrets hence branches and dynamic memory allocations are allowed.
+#
+# As GPU is a niche usage, instead we recreate the relevant `precompute` and IO procedures
+# with dynamic wordsize support.
+
+type
+  DynWord = uint32 or uint64
+  BigNum[T: DynWord] = object
+    bits: uint32
+    limbs: seq[T] 
+
+# Serialization
+# ------------------------------------------------
+
+func byteLen(bits: SomeInteger): SomeInteger {.inline.} =
+  ## Length in bytes to serialize BigNum
+  (bits + 7) shr 3 # (bits + 8 - 1) div 8
+
+func wordsRequiredForBits(bits, wordBitwidth: SomeInteger): SomeInteger {.inline.} =
+  ## Compute the number of limbs required
+  ## from the announced bit length
+  
+  debug: doAssert wordBitwidth == 32 or wordBitwidth == 64        # Power of 2
+  (bits + wordBitwidth - 1) shr log2_vartime(uint32 wordBitwidth) # 5x to 55x faster than dividing by wordBitwidth
+
+func fromHex[T](a: var BigNum[T], s: string) =
+   var bytes = newSeq[byte](a.bits.byteLen())
+   hexToPaddedByteArray(s, bytes, bigEndian)
+   
+   # 2. Convert canonical uint to BigNum
+   const wordBitwidth = sizeof(T) * 8
+   a.limbs.unmarshal(bytes, wordBitwidth, bigEndian)
+
+func fromHex[T](BN: type BigNum[T], bits: uint32, s: string): BN =
+  const wordBitwidth = sizeof(T) * 8
+  let numWords = wordsRequiredForBits(bits, wordBitwidth)
+  
+  result.bits = bits
+  result.limbs.setLen(numWords)
+  result.fromHex(s)
+
+func toHex[T](a: BigNum[T]): string =
+  ## Conversion to big-endian hex
+  ## This is variable-time
+  # 1. Convert BigInt to canonical uint
+  const wordBitwidth = sizeof(T) * 8
+  var bytes = newSeq[byte](byteLen(a.bits))
+  bytes.marshal(a.limbs, wordBitwidth, cpuEndian)
+
+  # 2 Convert canonical uint to hex
+  return bytes.nativeEndianToHex(bigEndian)
+
+# Checks
+# ------------------------------------------------
+
+func checkValidModulus(M: BigNum) =
+  const wordBitwidth = uint32(BigNum.T.sizeof() * 8)
+  let expectedMsb = M.bits-1 - wordBitwidth * (M.limbs.len.uint32 - 1)
+  let msb = log2_vartime(M.limbs[M.limbs.len-1])
+
+  doAssert msb == expectedMsb, "Internal Error: the modulus must use all declared bits and only those:\n" &
+    "    Modulus '" & M.toHex() & "' is declared with " & $M.bits &
+    " bits but uses " & $(msb + wordBitwidth * uint32(M.limbs.len - 1)) & " bits."
+
+# Fields metadata
+# ------------------------------------------------
+
+func negInvModWord[T](M: BigNum[T]): T =
+  ## Returns the Montgomery domain magic constant for the input modulus:
+  ##
+  ##   µ ≡ -1/M[0] (mod SecretWord)
+  ##
+  ## M[0] is the least significant limb of M
+  ## M must be odd and greater than 2.
+  ##
+  ## Assuming 64-bit words:
+  ##
+  ## µ ≡ -1/M[0] (mod 2^64)
+  checkValidModulus(M)
+  
+  result = invModBitwidth(M.limbs[0])
+  # negate to obtain the negative inverse
+  result = not(result) + 1
 
 # ############################################################
 #
@@ -70,25 +180,21 @@ type
   Field* = enum
     fp
     fr
-
-  FieldTy* = tuple[wordTy, ty: TypeRef, len: uint32]
   
-  FieldConst*[T: DynWord] = object
-    fieldTy: FieldTy
-    modulus*: BigNum[T]
-    m0ninv*: T
+  FieldConst* = object
+    wordTy: TypeRef
+    fieldTy: TypeRef
+    modulus*: seq[ConstValueRef]
+    m0ninv*: ConstValueRef
+    bits*: uint32
     spareBits*: uint8
 
   CurveMetadata* = object
     curve*: Curve
     prefix*: string
-    case wordSize*: WordSize
-    of size32:
-      fp32*: FieldConst[uint32]
-      fr32*: FieldConst[uint32]
-    of size64:
-      fp64*: FieldConst[uint64]
-      fr64*: FieldConst[uint64]    
+    wordSize*: WordSize
+    fp*: FieldConst
+    fr*: FieldConst 
 
   Opcode* = enum
     opFpAdd = "fp_add"
@@ -105,12 +211,28 @@ proc setFieldConst(fc: var FieldConst, ctx: ContextRef, wordSize: WordSize, modB
 
   let numWords = wordsRequiredForBits(modBits, wordBitwidth)
 
-  fc.fieldTy.wordTy = wordTy
-  fc.fieldTy.ty = array_t(wordTy, numWords)
-  fc.fieldTy.len = numWords
-  fc.modulus.fromHex(modBits, modulus)
+  fc.wordTy = wordTy
+  fc.fieldTy = array_t(wordTy, numWords)
   
-  fc.m0ninv = fc.modulus.negInvModWord()
+  case wordSize
+  of size32:
+    let m = BigNum[uint32].fromHex(modBits, modulus)
+    fc.modulus.setlen(m.limbs.len)
+    for i in 0 ..< m.limbs.len:
+      fc.modulus[i] = ctx.int32_t().constInt(m.limbs[i])
+
+    fc.m0ninv = ctx.int32_t().constInt(m.negInvModWord())
+
+  of size64:
+    let m = BigNum[uint64].fromHex(modBits, modulus)
+    fc.modulus.setlen(m.limbs.len)
+    for i in 0 ..< m.limbs.len:
+      fc.modulus[i] = ctx.int64_t().constInt(m.limbs[i])
+
+    fc.m0ninv = ctx.int64_t().constInt(m.negInvModWord())
+
+  debug: doAssert numWords == fc.modulus.len.uint32
+  fc.bits = modBits
   fc.spareBits = uint8(numWords*wordBitwidth - modBits)
 
 proc init*(
@@ -120,14 +242,8 @@ proc init*(
        frBits: uint32, frMod: string): CurveMetadata =
     
   result = C(prefix: prefix, wordSize: wordSize)
-
-  case wordSize
-  of size32:
-    result.fp32.setFieldConst(ctx, wordSize, fpBits, fpMod)
-    result.fr32.setFieldConst(ctx, wordSize, frBits, frMod)
-  of size64:
-    result.fp64.setFieldConst(ctx, wordSize, fpBits, fpMod)
-    result.fr64.setFieldConst(ctx, wordSize, frBits, frMod)
+  result.fp.setFieldConst(ctx, wordSize, fpBits, fpMod)
+  result.fr.setFieldConst(ctx, wordSize, frBits, frMod)
 
 proc hash*(curveOp: tuple[cm: CurveMetadata, op: Opcode]): Hash {.inline.} =
   result = hash(curveOp.cm.curve) !& int(hash(curveOp.op))
@@ -138,42 +254,32 @@ proc genSymbol*(cm: CurveMetadata, opcode: Opcode): string {.inline.} =
     (if cm.wordSize == size32: "32b_" else: "64b_") &
     $opcode
 
-func getFieldType*(cm: CurveMetadata, field: Field): FieldTy {.inline.} =
-  if cm.wordSize == size32:
-    if field == fp:
-      return cm.fp32.fieldTy
-    else:
-      return cm.fr32.fieldTy
+func getFieldType*(cm: CurveMetadata, field: Field): TypeRef {.inline.} =
+  if field == fp:
+    return cm.fp.fieldTy
   else:
-    if field == fp:
-      return cm.fp64.fieldTy
-    else:
-      return cm.fr64.fieldTy
+    return cm.fr.fieldTy
 
-func getModulus*(cm: CurveMetadata, field: Field): auto {.inline.} =
+func getNumWords*(cm: CurveMetadata, field: Field): int {.inline.} =
+  case field
+  of fp:
+    return cm.fp.modulus.len
+  of fr:
+    return cm.fr.modulus.len
+
+func getModulus*(cm: CurveMetadata, field: Field): lent seq[ConstValueRef] {.inline.} =
   # TODO: replace static typing, the returned type is incorrect for 64-bit
-  if cm.wordSize == size32:
-    if field == fp:
-      return cast[ptr UncheckedArray[uint32]](cm.fp32.modulus.limbs[0].unsafeAddr)
-    else:
-      return cast[ptr UncheckedArray[uint32]](cm.fr32.modulus.limbs[0].unsafeAddr)
-  else:
-    if field == fp:
-      return cast[ptr UncheckedArray[uint32]](cm.fp64.modulus.limbs[0].unsafeAddr)
-    else:
-      return cast[ptr UncheckedArray[uint32]](cm.fr64.modulus.limbs[0].unsafeAddr)
+  case field
+  of fp:
+    return cm.fp.modulus
+  of fr:
+    return cm.fr.modulus
 
 func getSpareBits*(cm: CurveMetadata, field: Field): uint8 {.inline.} =
-  if cm.wordSize == size32:
-    if field == fp:
-      return cm.fp32.sparebits
-    else:
-      return cm.fr32.sparebits
+  if field == fp:
+    return cm.fp.sparebits
   else:
-    if field == fp:
-      return cm.fp64.sparebits
-    else:
-      return cm.fr64.sparebits
+    return cm.fr.sparebits
 
 # ############################################################
 #
@@ -225,13 +331,13 @@ proc makeArray*(builder: BuilderRef, elemTy: TypeRef, len: uint32): Array =
     int32_t: arrayTy.getContext().int32_t()
   )
 
-proc `[]`*(a: Array, index: uint32): ValueRef {.inline.}=
+proc `[]`*(a: Array, index: SomeInteger): ValueRef {.inline.}=
   # First dereference the array pointer with 0, then access the `index`
-  let pelem = a.builder.getElementPtr2_InBounds(a.arrayTy, a.p, [constInt(a.int32_t, 0), constInt(a.int32_t, index)])
+  let pelem = a.builder.getElementPtr2_InBounds(a.arrayTy, a.p, [ValueRef constInt(a.int32_t, 0), ValueRef constInt(a.int32_t, uint64 index)])
   a.builder.load2(a.elemTy, pelem)
 
-proc `[]=`*(a: Array, index: uint32, val: ValueRef) {.inline.}=
-  let pelem = a.builder.getElementPtr2_InBounds(a.arrayTy, a.p, [constInt(a.int32_t, 0), constInt(a.int32_t, index)])
+proc `[]=`*(a: Array, index: SomeInteger, val: ValueRef) {.inline.}=
+  let pelem = a.builder.getElementPtr2_InBounds(a.arrayTy, a.p, [ValueRef constInt(a.int32_t, 0), ValueRef constInt(a.int32_t, uint64 index)])
   a.builder.store(val, pelem)
 
 proc store*(builder: BuilderRef, dst: Array, src: Array) {.inline.}=

@@ -11,10 +11,7 @@ import
   # Standard library
   std/[unittest, times],
   # Internal
-  ../../constantine/platforms/gpu/[
-         llvm,
-         nvidia,
-         ir, codegen],
+  ../../constantine/platforms/gpu/[llvm, nvidia, ir],
   ../../constantine/math/config/[curves, type_bigint],
   ../../constantine/math/io/io_bigints,
   ../../constantine/math/arithmetic,
@@ -43,8 +40,8 @@ proc init(T: type CurveMetadata, asy: Assembler_LLVM, curve: static Curve, wordS
 proc genFieldAddPTX(asy: Assembler_LLVM, cm: CurveMetadata) =
   let fpAdd = asy.field_add_gen(cm, fp)
   asy.module.setCallableCudaKernel(fpAdd)
-  # let frAdd = asy.field_add_gen(cm, fr)
-  # asy.module.setCallableCudaKernel(frAdd)
+  let frAdd = asy.field_add_gen(cm, fr)
+  asy.module.setCallableCudaKernel(frAdd)
 
 # Init LLVM
 # -------------------------
@@ -75,11 +72,14 @@ proc t_field_add(curve: static Curve) =
   var cuMod: CUmodule
   check cuCtxCreate(cuCtx, 0, cudaDevice)
   check cuModuleLoadData(cuMod, ptx)
+  defer:
+    check cuMod.cuModuleUnload()
+    check cuCtx.cuCtxDestroy()
 
   let fpAdd32 = cuMod.getCudaKernel(cm32, opFpAdd)
   let fpAdd64 = cuMod.getCudaKernel(cm64, opFpAdd)
-  # let frAdd32 = cuMod.getCudaKernel(cm32, opFrAdd)
-  # let frAdd64 = cuMod.getCudaKernel(cm64, opFrAdd)
+  let frAdd32 = cuMod.getCudaKernel(cm32, opFrAdd)
+  let frAdd64 = cuMod.getCudaKernel(cm64, opFrAdd)
 
   # Fp
   for i in 0 ..< Iters:
@@ -93,21 +93,21 @@ proc t_field_add(curve: static Curve) =
     fpAdd64.exec(rGPU_64, a, b)
 
     doAssert bool(rCPU == rGPU_32)
-    # doAssert bool(rCPU == rGPU_64)          # Currently failing due to getModulus using incorrect return type
+    doAssert bool(rCPU == rGPU_64)
 
-  # # Fr
-  # for i in 0 ..< Iters:
-  #   let a = rng.random_long01Seq(Fr[curve])
-  #   let b = rng.random_long01Seq(Fr[curve])
+  # Fr
+  for i in 0 ..< Iters:
+    let a = rng.random_long01Seq(Fr[curve])
+    let b = rng.random_long01Seq(Fr[curve])
 
-  #   var rCPU, rGPU_32, rGPU_64: Fr[curve]
+    var rCPU, rGPU_32, rGPU_64: Fr[curve]
     
-  #   rCPU.sum(a, b)
-  #   frAdd32.exec(rGPU_32, a, b)
-  #   frAdd64.exec(rGPU_64, a, b)
+    rCPU.sum(a, b)
+    frAdd32.exec(rGPU_32, a, b)
+    frAdd64.exec(rGPU_64, a, b)
 
-  #   doAssert bool(rCPU == rGPU_32)
-  #   doAssert bool(rCPU == rGPU_64)
+    doAssert bool(rCPU == rGPU_32)
+    doAssert bool(rCPU == rGPU_64)
 
 proc main() =
   const curves = [
@@ -128,7 +128,7 @@ proc main() =
   suite "[Nvidia GPU] Field Addition":
     staticFor i, 0, curves.len:
       const curve = curves[i]
-      test "Nvidia GPU field addition for " & $curve:
+      test "Nvidia GPU field addition (𝔽p, 𝔽r) for " & $curve:
         t_field_add(curve)
 
 main()

@@ -192,6 +192,10 @@ proc function_t*(returnType: TypeRef, paramTypes: openArray[TypeRef]): TypeRef {
 # Values
 # ------------------------------------------------------------
 
+type
+  ConstValueRef* = distinct ValueRef
+  AnyValueRef* = ValueRef or ConstValueRef
+
 proc getName*(v: ValueRef): string =
   var rLen: csize_t
   let rStr = getValueName2(v, rLen)
@@ -199,16 +203,10 @@ proc getName*(v: ValueRef): string =
   result = newString(rLen.int)
   copyMem(result[0].addr, rStr, rLen.int)
 
-proc constInt*(ty: TypeRef, n: uint64, signExtend = false): ValueRef {.inline.} =
-  constInt(ty, culonglong(n), LlvmBool(signExtend))
+proc constInt*(ty: TypeRef, n: uint64, signExtend = false): ConstValueRef {.inline.} =
+  ConstValueRef constInt(ty, culonglong(n), LlvmBool(signExtend))
 
-proc constStruct*(constantVals: openArray[ValueRef], packed = false): ValueRef {.inline.} =
-  constStruct(constantVals, LlvmBool(packed))
+proc constStruct*(constantVals: openArray[ValueRef], packed = false): ConstValueRef {.inline.} =
+  ConstValueRef constStruct(constantVals, LlvmBool(packed))
 
-# Syntax sugar
-# ------------------------------------------------------------
-
-type
-  FnDef* = tuple[fnTy: TypeRef, fnImpl: ValueRef]
-    # calling getTypeOf on a ValueRef function
-    # loses type information like return value type or arity
+proc getTypeOf*(v: ConstValueRef): TypeRef {.borrow.}

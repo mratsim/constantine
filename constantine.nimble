@@ -229,6 +229,10 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_ethereum_eip2333_bls12381_key_derivation.nim", false),
 ]
 
+const testDescNvidia: seq[string] = @[
+  "tests/gpu/t_nvidia_fp.nim",
+]
+
 const benchDesc = [
   "bench_fp",
   "bench_fp_double_precision",
@@ -377,6 +381,14 @@ proc addTestSet(cmdFile: var string, requireGMP: bool, test32bit = false, testAS
         flags &= sanitizers
       
       cmdFile.testBatch(flags, td.path)
+
+proc addTestSetNvidia(cmdFile: var string) =
+  if not dirExists "build":
+    mkDir "build"
+  echo "Found " & $testDescNvidia.len & " tests to run."
+  
+  for path in testDescNvidia:
+    cmdFile.testBatch(flags = "", path)
 
 proc addBenchSet(cmdFile: var string, useAsm = true) =
   if not dirExists "build":
@@ -567,6 +579,12 @@ task test_parallel_no_gmp_no_asm, "Run all tests in parallel (via GNU parallel)"
   cmdFile.addBenchSet(useASM = false)    # Build (but don't run) benches to ensure they stay relevant
   writeFile(buildParallel, cmdFile)
   exec "build/pararun " & buildParallel
+
+task test_nvidia, "Run all tests for Nvidia GPUs":
+  var cmdFile: string
+  cmdFile.addTestSetNvidia()
+  for cmd in cmdFile.splitLines():
+    exec cmd
 
 # Finite field 𝔽p
 # ------------------------------------------

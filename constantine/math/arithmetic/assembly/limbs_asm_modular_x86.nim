@@ -42,12 +42,11 @@ proc finalSubNoOverflowImpl*(
   ctx.comment "Final substraction (cannot overflow its limbs)"
   
   # Substract the modulus, and test a < p with the last borrow
-  for i in 0 ..< N:
+  ctx.mov scratch[0], a[0]
+  ctx.sub scratch[0], M[0]
+  for i in 1 ..< N:
     ctx.mov scratch[i], a[i]
-    if i == 0:
-      ctx.sub scratch[i], M[i]
-    else:
-      ctx.sbb scratch[i], M[i]
+    ctx.sbb scratch[i], M[i]
 
   # If we borrowed it means that we were smaller than
   # the modulus and we don't need "scratch"
@@ -67,20 +66,18 @@ proc finalSubMayOverflowImpl*(
   ## 
   ## r, a, scratch, scratchReg are mutated
   ## M is read-only
-
+  let N = M.len
   ctx.comment "Final substraction (may carry)"
 
   # Mask: scratchReg contains 0xFFFF or 0x0000
   ctx.sbb scratchReg, scratchReg
 
   # Now substract the modulus, and test a < p with the last borrow
-  let N = M.len
-  for i in 0 ..< N:
+  ctx.mov scratch[0], a[0]
+  ctx.sub scratch[0], M[0]
+  for i in 1 ..< N:
     ctx.mov scratch[i], a[i]
-    if i == 0:
-      ctx.sub scratch[i], M[i]
-    else:
-      ctx.sbb scratch[i], M[i]
+    ctx.sbb scratch[i], M[i]
 
   # If it overflows here, it means that it was
   # smaller than the modulus and we don't need `scratch`
@@ -160,11 +157,10 @@ macro addmod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N], spareBits: s
       `usym`[i] = `A`[i]
 
   # Addition
-  for i in 0 ..< N:
-    if i == 0:
-      ctx.add u[0], b[0]
-    else:
-      ctx.adc u[i], b[i]
+  ctx.add u[0], b[0]
+  ctx.mov v[0], u[0]
+  for i in 1 ..< N:
+    ctx.adc u[i], b[i]
     # Interleaved copy in a second buffer as well
     ctx.mov v[i], u[i]
 
@@ -213,11 +209,10 @@ macro submod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N]): untyped =
       `usym`[i] = `A`[i]
 
   # Substraction
-  for i in 0 ..< N:
-    if i == 0:
-      ctx.sub u[0], b[0]
-    else:
-      ctx.sbb u[i], b[i]
+  ctx.sub u[0], b[0]
+  ctx.mov v[0], M[0]
+  for i in 1 ..< N:
+    ctx.sbb u[i], b[i]
     # Interleaved copy the modulus to hide SBB latencies
     ctx.mov v[i], M[i]
 
@@ -230,11 +225,10 @@ macro submod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N]): untyped =
     ctx.`and` v[i], underflowed
 
   # Add the masked modulus
-  for i in 0 ..< N:
-    if i == 0:
-      ctx.add u[0], v[0]
-    else:
-      ctx.adc u[i], v[i]
+  ctx.add u[0], v[0]
+  ctx.mov r[0], u[0]
+  for i in 1 ..< N:
+    ctx.adc u[i], v[i]
     ctx.mov r[i], u[i]
 
   result.add ctx.generate
@@ -262,12 +256,11 @@ macro negmod_gen[N: static int](R: var Limbs[N], A, m: Limbs[N]): untyped =
     M = init(OperandArray, nimSymbol = m, N, PointerInReg, InputOutput)
 
   # Substraction m - a
-  for i in 0 ..< N:
+  ctx.mov u[0], M[0]
+  ctx.sub u[0], a[0]
+  for i in 1 ..< N:
     ctx.mov u[i], M[i]
-    if i == 0:
-      ctx.sub u[0], a[0]
-    else:
-      ctx.sbb u[i], a[i]
+    ctx.sbb u[i], a[i]
 
   # Deal with a == 0
   let isZero = M.reuseRegister()

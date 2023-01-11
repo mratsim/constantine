@@ -67,7 +67,7 @@ template selConstraint(operand: auto, append = ""): string =
       "r" & append
     else:
       "l" & append
-  else:
+  else: # ConstValueRef or uint32 or uint64
     "n" & append
 
 macro genInstr(body: untyped): untyped =
@@ -98,9 +98,9 @@ macro genInstr(body: untyped): untyped =
     instrBody.add quote do:
       let `ctx` = builder.getContext()
       # lhs: ValueRef or uint32 or uint64
-      let `numBits` = when `lhs` is ValueRef: `lhs`.getTypeOf().getIntTypeWidth()
+      let `numBits` = when `lhs` is ValueRef|ConstValueRef: `lhs`.getTypeOf().getIntTypeWidth()
                       else: 8*sizeof(`lhs`)
-      let `regTy` = when `lhs` is ValueRef: `lhs`.getTypeOf()
+      let `regTy` = when `lhs` is ValueRef|ConstValueRef: `lhs`.getTypeOf()
                     elif `lhs` is uint32: `ctx`.int32_t()
                     elif `lhs` is uint64: `ctx`.int64_t()
                     else: {.error "Unsupported input type " & $typeof(`lhs`).}
@@ -225,9 +225,12 @@ macro genInstr(body: untyped): untyped =
     for op in operands:
       # when op is ValueRef: op
       # else: constInt(uint64(op))
-      opArray.add nnkWhenStmt.newTree(
-        nnkElifBranch.newTree(nnkInfix.newTree(ident"is", op, bindSym"ValueRef"), op),
-        nnkElse.newTree(newCall(ident"constInt", regTy, newCall(ident"uint64", op)))
+      opArray.add newCall(
+        bindSym"ValueRef",
+        nnkWhenStmt.newTree(
+          nnkElifBranch.newTree(nnkInfix.newTree(ident"is", op, bindSym"AnyValueRef"), op),
+          nnkElse.newTree(newCall(ident"constInt", regTy, newCall(ident"uint64", op)))
+        )
       )
     # builder.call2(ty, inlineASM, [lhs, rhs], name)
     instrBody.add newCall(
@@ -251,14 +254,14 @@ macro genInstr(body: untyped): untyped =
           opDefs.add newIdentDefs(
             operands[i],
             nnkInfix.newTree(ident"or",
-              nnkInfix.newTree(ident"or", ident"ValueRef", ident"uint32"),
+              nnkInfix.newTree(ident"or", ident"AnyValueRef", ident"uint32"),
               ident"uint64")
           )
         elif constraint == "rn":
           opDefs.add newIdentDefs(
             operands[i],
             nnkInfix.newTree(ident"or",
-              ident"ValueRef",
+              ident"AnyValueRef",
               ident"uint32")
           )
         else:
@@ -272,8 +275,6 @@ macro genInstr(body: untyped): untyped =
       procType = nnkProcDef,
       body = instrBody
     )
-
-  # echo result.toStrLit()
 
 # Inline PTX assembly
 # ------------------------------------------------------------
@@ -339,9 +340,9 @@ genInstr():
   op add_ci:       ("addc",       "$0, $1, $2;",     "=rl,rln,rln",   [lhs, rhs])
   op add_cio:      ("addc.cc",    "$0, $1, $2;",     "=rl,rln,rln",   [lhs, rhs])
   # r <- a-b
-  op sub_co:       ("sub.cc",     "$0, $1, $2;",     "=rl,rln,rln",   [lhs, rhs])
-  op sub_ci:       ("subc",       "$0, $1, $2;",     "=rl,rln,rln",   [lhs, rhs])
-  op sub_cio:      ("subc.cc",    "$0, $1, $2;",     "=rl,rln,rln",   [lhs, rhs])
+  op sub_bo:       ("sub.cc",     "$0, $1, $2;",     "=rl,rln,rln",   [lhs, rhs])
+  op sub_bi:       ("subc",       "$0, $1, $2;",     "=rl,rln,rln",   [lhs, rhs])
+  op sub_bio:      ("subc.cc",    "$0, $1, $2;",     "=rl,rln,rln",   [lhs, rhs])
   # r <- a * b >> 32
   op mulhi:        ("mul.hi",     "$0, $1, $2;",     "=rl,rln,rln",   [lhs, rhs])
   # r <- a * b + c
@@ -371,3 +372,6 @@ genInstr():
   # selp r, a, b, c;
   # r <- (c == 1) ? a : b;
   # op selp:         ("selp",     "$0, $1, $2, $3;", "=rl,rln,rln,rln", [ifTrue, ifFalse, condition])
+
+  # Alternatively, for conditional moves use-cases, we might want to use
+  # 'setp' to set a predicate and then '@p mov' for predicated moves

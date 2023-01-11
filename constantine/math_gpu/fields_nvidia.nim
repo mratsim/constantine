@@ -18,7 +18,7 @@ import
 # Loads from global (kernel params) take over 100 cycles
 # https://docs.nvidia.com/cuda/parallel-thread-execution/index.html#operand-costs
 
-proc finalSubMayOverflow*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, r, a: Array, N: uint32) =
+proc finalSubMayOverflow*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, r, a: Array) =
   ## If a >= Modulus: r <- a-M
   ## else:            r <- a
   ## 
@@ -30,29 +30,27 @@ proc finalSubMayOverflow*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, 
 
   let bld = asy.builder
   let fieldTy = cm.getFieldType(field)
-  let scratch = bld.makeArray(fieldTy.ty)
+  let scratch = bld.makeArray(fieldTy)
   let M = cm.getModulus(field)
+  let N = M.len
 
   # Contains 0x0001 (if overflowed limbs) or 0x0000
   let overflowedLimbs = bld.add_ci(0'u32, 0'u32)
 
-  # Now substract the modulus, and test a < p with the last borrow
-  for i in 0 ..< N:
-    if i == 0:
-      scratch[0] = bld.sub_co(a[0], M[0])
-    else:
-      scratch[i] = bld.sub_cio(a[i], M[i])
+  # Now substract the modulus, and test a < M with the last borrow
+  scratch[0] = bld.sub_bo(a[0], M[0])
+  for i in 1 ..< N:
+    scratch[i] = bld.sub_bio(a[i], M[i])
 
-  # - If it underflows here a was smaller than the modulus
-  #   Note: if limbs were overflowed, a is always smaller than the modulus
-  # - If it overflowed the limbs or didn't underflow when modulus was substracted,
-  #   we need to substract modulus
-  let underflowedModulus = bld.sub_ci(overflowedLimbs, 0'u32)
+  # 1. if `overflowedLimbs`, underflowedModulus >= 0
+  # 2. if a >= M, underflowedModulus >= 0
+  # if underflowedModulus >= 0: a-M else: a
+  let underflowedModulus = bld.sub_bi(overflowedLimbs, 0'u32)
 
   for i in 0 ..< N:
     r[i] = bld.slct(scratch[i], a[i], underflowedModulus) 
 
-proc finalSubNoOverflow*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, r, a: Array, N: uint32) =
+proc finalSubNoOverflow*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, r, a: Array) =
   ## If a >= Modulus: r <- a-M
   ## else:            r <- a
   ## 
@@ -64,17 +62,17 @@ proc finalSubNoOverflow*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, r
 
   let bld = asy.builder
   let fieldTy = cm.getFieldType(field)
-  let scratch = bld.makeArray(fieldTy.ty)
+  let scratch = bld.makeArray(fieldTy)
   let M = cm.getModulus(field)
+  let N = M.len
+ 
+  # Now substract the modulus, and test a < M with the last borrow
+  scratch[0] = bld.sub_bo(a[0], M[0])
+  for i in 1 ..< N:
+    scratch[i] = bld.sub_bio(a[i], M[i])
 
-  for i in 0 ..< N:
-    if i == 0:
-      scratch[0] = bld.sub_co(a[0], M[0])
-    else:
-      scratch[i] = bld.sub_cio(a[i], M[i])
-
-  # If it underflows here a was smaller than the modulus
-  let underflowedModulus = bld.sub_ci(0'u32, 0'u32)
+  # If it underflows here a was smaller than the modulus, which is what we want
+  let underflowedModulus = bld.sub_bi(0'u32, 0'u32)
 
   for i in 0 ..< N:
     r[i] = bld.slct(scratch[i], a[i], underflowedModulus)
@@ -88,7 +86,7 @@ proc field_add_gen*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field): FnDef
     of fp: opFpAdd
     of fr: opFrAdd)
   let fieldTy = cm.getFieldType(field)
-  let pFieldTy = pointer_t(fieldTy.ty)
+  let pFieldTy = pointer_t(fieldTy)
 
   let addModTy = function_t(asy.void_t, [pFieldTy, pFieldTy, pFieldTy])
   let addModKernel = asy.module.addFunction(cstring procName, addModTy)
@@ -97,22 +95,21 @@ proc field_add_gen*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field): FnDef
 
   let bld = asy.builder
   
-  let r = bld.asArray(addModKernel.getParam(0), fieldTy.ty)
-  let a = bld.asArray(addModKernel.getParam(1), fieldTy.ty)
-  let b = bld.asArray(addModKernel.getParam(2), fieldTy.ty)
+  let r = bld.asArray(addModKernel.getParam(0), fieldTy)
+  let a = bld.asArray(addModKernel.getParam(1), fieldTy)
+  let b = bld.asArray(addModKernel.getParam(2), fieldTy)
 
-  let t = bld.makeArray(fieldTy.ty)
-  let N = fieldTy.len
-  for i in 0 ..< N:
-    if i == 0:
-      t[0] = bld.add_co(a[0], b[0]) 
-    else:
-      t[i] = bld.add_cio(a[i], b[i])
+  let t = bld.makeArray(fieldTy)
+  let N = cm.getNumWords(field)
+  
+  t[0] = bld.add_co(a[0], b[0])
+  for i in 1 ..< N:
+    t[i] = bld.add_cio(a[i], b[i])
 
   if cm.getSpareBits(field) >= 1:
-    asy.finalSubNoOverflow(cm, field, t, t, N)
+    asy.finalSubNoOverflow(cm, field, t, t)
   else:
-    asy.finalSubMayOverflow(cm, field, t, t, N)
+    asy.finalSubMayOverflow(cm, field, t, t)
 
   bld.store(r, t)
   bld.retVoid()

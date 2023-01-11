@@ -1,5 +1,7 @@
 # Implementation on Nvidia GPUs
 
+This documentation references useful information for implementing and optimizing for Nvidia GPUs
+
 ## Integer instruction bug
 
 The instruction integer fused-multiply-ad  with carry-in may
@@ -177,4 +179,31 @@ Hence, using LLVM NVPTX backend instead of libNVVM is likely the sustainable way
 ### Register pressure
 
 See this AMD paper https://dl.acm.org/doi/pdf/10.1145/3368826.3377918
-However if we want to reduce register pressure we need to local memory which is also expensive.
+However if we want to reduce register pressure we need to store to local memory which is also expensive.
+
+## Parallel reductions
+
+Batch elliptic point addition `r = P₀ + P₁ + ... + Pₙ` and
+multi-scalar multiplication (MSM) `r = [k₀]P₀ + [k₁]P₁ + ... + [kₙ]Pₙ`
+are reduction operations.
+
+There is a wealth of resources regarding optimized implementations of those.
+The baseline is provided by: [Optimizing Parallel Reduction in CUDA, Mark harris](https://developer.download.nvidia.com/assets/cuda/files/reduction.pdf)
+Then on later architectures:
+- https://developer.nvidia.com/blog/faster-parallel-reductions-kepler/
+- https://www.irisa.fr/alf/downloads/collange/talks/collange_warp_synchronous_19.pdf
+
+Other interesting resources:
+- https://on-demand.gputechconf.com/gtc/2017/presentation/s7622-Kyrylo-perelygin-robust-and-scalable-cuda.pdf \
+  This explains in great details the cooperative group features
+  and examples in reduction kernels
+- https://github.com/umfranzw/cuda-reduction-example \
+  This explains and uses overlapping streams for latency hiding
+- https://vccvisualization.org/teaching/CS380/CS380_fall2020_lecture_25.pdf
+  SHFL instruction
+- https://unum.cloud/post/2022-01-28-reduce/
+  - https://github.com/ashvardanian/ParallelReductionsBenchmark \
+  This provides an overview and benchmark code across CPU (AVX2, OpenMP, TBB), OpenCL, Cuda (Cublas, Thrust, Cub)
+- https://diglib.eg.org/bitstream/handle/10.2312/egt20211037/CUDA_day2.pdf
+  - https://cuda-tutorial.github.io/part3_22.pdf
+  - https://github.com/CUDA-Tutorial/CodeSamples
