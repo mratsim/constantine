@@ -103,7 +103,6 @@ func toDecimal*(f: FF): string =
   ## You MUST NOT use it for production.
   ##
   ## This function is NOT constant-time at the moment.
-  # TODO constant-time
   f.toBig().toDecimal()
 
 func fromDecimal*(dst: var FF, decimalString: string) =

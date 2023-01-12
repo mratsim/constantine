@@ -23,34 +23,3 @@ run_EC_mul_sanity_tests(
     ItersMul = ItersMul,
     moduleName = "test_ec_shortweierstrass_projective_g2_mul_sanity_" & $BN254_Snarks
   )
-
-# TODO: the order on E'(Fp2) for BN curve is r∗(2p−r) with r the order on E(Fp)
-#
-# test "EC mul [Order]P == Inf":
-#   var rng: RngState
-#   let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
-#   rng.seed(seed)
-#   echo "test_ec_shortweierstrass_projective_g1_mul_sanity_extra_curve_order_mul_sanity xoshiro512** seed: ", seed
-#
-#   proc test(EC: typedesc, bits: static int, randZ: static bool) =
-#     for _ in 0 ..< ItersMul:
-#       when randZ:
-#         let a = rng.random_unsafe_with_randZ(EC)
-#       else:
-#         let a = rng.random_unsafe(EC)
-#
-#       let exponent = F.C.getCurveOrder()
-#
-#       var
-#         impl = a
-#         reference = a
-#
-#       impl.scalarMulGeneric(exponent)
-#       reference.unsafe_ECmul_double_add(exponent)
-#
-#       check:
-#         bool(impl.isInf())
-#         bool(reference.isInf())
-#
-#   test(ECP_ShortW_Prj[Fp2[BN254_Snarks]], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = false)
-#   test(ECP_ShortW_Prj[Fp2[BN254_Snarks]], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = true)

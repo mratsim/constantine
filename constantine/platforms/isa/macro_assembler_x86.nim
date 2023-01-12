@@ -125,8 +125,6 @@ func hash(od: OperandDesc): Hash =
     except:
       raise newException(Defect, "Broke Nim")
 
-# TODO: remove the need of OperandArray
-
 func len*(opArray: OperandArray): int =
   opArray.buf.len
 
@@ -592,7 +590,6 @@ func codeFragment(a: var Assembler_x86, instr: string, op0: Operand, op1: Operan
     a.operands.incl op0.desc
 
 func reuseRegister*(reg: OperandArray): OperandReuse =
-  # TODO: disable the reg input
   doAssert reg.buf[0].desc.constraint == InputOutput
   result.asmId = reg.buf[0].desc.asmId
 

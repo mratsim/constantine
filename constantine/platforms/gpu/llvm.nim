@@ -144,8 +144,6 @@ template emitToString*(t: TargetMachineRef, m: ModuleRef, codegen: CodeGenFileTy
 proc initializePasses* =
   let registry = getGlobalPassRegistry()
 
-  # TODO: Some passes in llc aren't exposed
-  # https://github.com/llvm/llvm-project/blob/main/llvm/tools/llc/llc.cpp
   registry.initializeCore()
   registry.initializeTransformUtils()
   registry.initializeScalarOpts()
@@ -205,8 +203,5 @@ proc getName*(v: ValueRef): string =
 
 proc constInt*(ty: TypeRef, n: uint64, signExtend = false): ConstValueRef {.inline.} =
   ConstValueRef constInt(ty, culonglong(n), LlvmBool(signExtend))
-
-proc constStruct*(constantVals: openArray[ValueRef], packed = false): ConstValueRef {.inline.} =
-  ConstValueRef constStruct(constantVals, LlvmBool(packed))
 
 proc getTypeOf*(v: ConstValueRef): TypeRef {.borrow.}

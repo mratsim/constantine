@@ -371,19 +371,6 @@ func montyPrimeMinus1*(P: BigInt): BigInt =
   result = P
   discard result.csub(P.montyOne(), true)
 
-func primeMinus2_BE*[bits: static int](
-       P: BigInt[bits]
-     ): array[(bits+7) div 8, byte] {.noInit.} =
-  ## Compute an input prime-2
-  ## and return the result as a canonical byte array / octet string
-  ## For use to precompute modular inverse exponent
-  ## when using inversion by Little Fermat Theorem a^-1 = a^(p-2) mod p
-
-  var tmp = P
-  discard tmp.sub(2)
-
-  result.marshal(tmp, bigEndian)
-
 func primePlus1div2*(P: BigInt): BigInt =
   ## Compute (P+1)/2, assumes P is odd
   ## For use in constant-time modular inversion
@@ -399,25 +386,6 @@ func primePlus1div2*(P: BigInt): BigInt =
   result.shiftRight(1)
   let carry = result.add(1)
   doAssert not carry
-
-func primeMinus1div2_BE*[bits: static int](
-       P: BigInt[bits]
-     ): array[(bits+7) div 8, byte] {.noInit.} =
-  ## For an input prime `p`, compute (p-1)/2
-  ## and return the result as a canonical byte array / octet string
-  ## For use to check if a number is a square (quadratic residue)
-  ## in a field by Euler's criterion
-  ##
-  # Output size:
-  # - (bits + 7) div 8: bits => byte conversion rounded up
-  # - (bits + 7 - 1): dividing by 2 means 1 bit is unused
-  # => TODO: reduce the output size (to potentially save a byte and corresponding multiplication/squarings)
-
-  var tmp = P
-  discard tmp.sub(1)
-  tmp.shiftRight(1)
-
-  result.marshal(tmp, bigEndian)
 
 func primeMinus3div4_BE*[bits: static int](
        P: BigInt[bits]
@@ -456,35 +424,6 @@ func primeMinus5div8_BE*[bits: static int](
   tmp.shiftRight(3)
 
   result.marshal(tmp, bigEndian)
-
-func primePlus1Div4_BE*[bits: static int](
-       P: BigInt[bits]
-     ): array[(bits+7) div 8, byte] {.noInit.} =
-  ## For an input prime `p`, compute (p+1)/4
-  ## and return the result as a canonical byte array / octet string
-  ## For use to check if a number is a square (quadratic residue)
-  ## in a field by Euler's criterion
-  ##
-  # Output size:
-  # - (bits + 7) div 8: bits => byte conversion rounded up
-  # - (bits + 7 - 1): dividing by 4 means 2 bits are unused
-  #                   but we also add 1 to an odd number so using an extra bit
-  # => TODO: reduce the output size (to potentially save a byte and corresponding multiplication/squarings)
-  checkOdd(P)
-
-  # First we do P+1/2 in a way that guarantees no overflow
-  var tmp = primePlus1div2(P)
-  # then divide by 2
-  tmp.shiftRight(1)
-
-  result.marshal(tmp, bigEndian)
-
-func toCanonicalIntRepr*[bits: static int](
-       a: BigInt[bits]
-     ): array[(bits+7) div 8, byte] {.noInit.} =
-  ## Export a bigint to its canonical BigEndian representation
-  ## (octet-string)
-  result.marshal(a, bigEndian)
 
 # ############################################################
 #

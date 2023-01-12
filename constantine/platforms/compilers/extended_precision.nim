@@ -81,7 +81,6 @@ when sizeof(int) == 8:
   when defined(vcc):
     from ./extended_precision_x86_64_msvc import mul, muladd1, muladd2, smul
   elif GCCCompatible:
-    # TODO: constant-time div2n1n
     when X86:
       from ./extended_precision_64bit_uint128 import mul, muladd1, muladd2, smul
     else:

@@ -95,24 +95,10 @@ macro genDerivedConstants*(mode: static DerivedConstantMode): untyped =
         M
       )
     )
-    # const MyCurve_InvModExponent = primeMinus2_BE(MyCurve_Modulus)
-    result.add newConstStmt(
-      used(curve & ff & "_InvModExponent"), newCall(
-        bindSym"primeMinus2_BE",
-        M
-      )
-    )
     # const MyCurve_PrimePlus1div2 = primePlus1div2(MyCurve_Modulus)
     result.add newConstStmt(
       used(curve & ff & "_PrimePlus1div2"), newCall(
         bindSym"primePlus1div2",
-        M
-      )
-    )
-    # const MyCurve_PrimeMinus1div2_BE = primeMinus1div2_BE(MyCurve_Modulus)
-    result.add newConstStmt(
-      used(curve & ff & "_PrimeMinus1div2_BE"), newCall(
-        bindSym"primeMinus1div2_BE",
         M
       )
     )
@@ -127,13 +113,6 @@ macro genDerivedConstants*(mode: static DerivedConstantMode): untyped =
     result.add newConstStmt(
       used(curve & ff & "_PrimeMinus5div8_BE"), newCall(
         bindSym"primeMinus5div8_BE",
-        M
-      )
-    )
-    # const MyCurve_PrimePlus1div4_BE = primePlus1div4_BE(MyCurve_Modulus)
-    result.add newConstStmt(
-      used(curve & ff & "_PrimePlus1div4_BE"), newCall(
-        bindSym"primePlus1div4_BE",
         M
       )
     )

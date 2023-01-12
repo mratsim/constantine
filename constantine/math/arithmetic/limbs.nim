@@ -354,7 +354,6 @@ func cneg*(r: var Limbs, a: Limbs, ctl: CTBool) =
 
 func div10*(a: var Limbs): SecretWord =
   ## Divide `a` by 10 in-place and return the remainder
-  ## TODO constant-time
   result = Zero
 
   const clz = WordBitWidth - 1 - log2_vartime(10)

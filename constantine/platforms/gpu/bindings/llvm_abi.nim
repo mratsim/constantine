@@ -26,7 +26,7 @@ static: echo "[Constantine] Using library " & libLLVM
 # also link to libLLVM, for example if they implement a virtual machine (for the EVM, for Snarks/zero-knowledge, ...).
 # Hence Constantine should always use LLVM context to "namespace" its own codegen and avoid collisions in the global context.
 
-{.push used, cdecl, dynlib: libLLVM.}
+{.push cdecl, dynlib: libLLVM.}
 
 # ############################################################
 #
@@ -59,14 +59,14 @@ type
 proc createContext*(): ContextRef {.importc: "LLVMContextCreate".}
 proc dispose*(ctx: ContextRef) {.importc: "LLVMContextDispose".}
 
-proc dispose(msg: LLVMstring) {.importc: "LLVMDisposeMessage".}
+proc dispose(msg: LLVMstring) {.used, importc: "LLVMDisposeMessage".}
   ## cstring in LLVM are owned by LLVM and must be destroyed with a specific function
-proc dispose(buf: MemoryBufferRef){.importc: "LLVMDisposeMemoryBuffer".}
-proc getBufferStart(buf: MemoryBufferRef): ptr byte {.importc: "LLVMGetBufferStart".}
-proc getBufferSize(buf: MemoryBufferRef): csize_t {.importc: "LLVMGetBufferSize".}
+proc dispose(buf: MemoryBufferRef){.used, importc: "LLVMDisposeMemoryBuffer".}
+proc getBufferStart(buf: MemoryBufferRef): ptr byte {.used, importc: "LLVMGetBufferStart".}
+proc getBufferSize(buf: MemoryBufferRef): csize_t {.used, importc: "LLVMGetBufferSize".}
 
-proc dispose(msg: ErrorMessageString) {.importc: "LLVMDisposeErrorMessage".}
-proc getErrorMessage(err: ErrorRef): ErrorMessageString {.importc: "LLVMGetErrorMessage".}
+proc dispose(msg: ErrorMessageString) {.used, importc: "LLVMDisposeErrorMessage".}
+proc getErrorMessage(err: ErrorRef): ErrorMessageString {.used, importc: "LLVMGetErrorMessage".}
  
 # ############################################################
 #
@@ -76,7 +76,7 @@ proc getErrorMessage(err: ErrorRef): ErrorMessageString {.importc: "LLVMGetError
 
 # {.push header: "<llvm-c/Core.h>".}
 
-proc createModule(name: cstring, ctx: ContextRef): ModuleRef {.importc: "LLVMModuleCreateWithNameInContext".}
+proc createModule(name: cstring, ctx: ContextRef): ModuleRef {.used, importc: "LLVMModuleCreateWithNameInContext".}
 proc dispose*(m: ModuleRef) {.importc: "LLVMDisposeModule".}
   ## Destroys a module
   ## Note: destroying an Execution Engine will also destroy modules attached to it
@@ -126,6 +126,7 @@ proc verify(module: ModuleRef, failureAction: VerifierFailureAction, msg: var LL
 # proc initializeNativeTarget*(): LlvmBool {.discardable, importc: "LLVMInitializeNativeTarget".}
 # proc initializeNativeAsmPrinter*(): LlvmBool {.discardable, importc: "LLVMInitializeNativeAsmPrinter".}
 
+{.push used.}
 proc initializeX86AsmPrinter() {.importc: "LLVMInitializeX86AsmPrinter".}
 proc initializeX86Target() {.importc: "LLVMInitializeX86Target".}
 proc initializeX86TargetInfo() {.importc: "LLVMInitializeX86TargetInfo".}
@@ -135,6 +136,7 @@ proc initializeNVPTXAsmPrinter() {.importc: "LLVMInitializeNVPTXAsmPrinter".}
 proc initializeNVPTXTarget() {.importc: "LLVMInitializeNVPTXTarget".}
 proc initializeNVPTXTargetInfo() {.importc: "LLVMInitializeNVPTXTargetInfo".}
 proc initializeNVPTXTargetMC() {.importc: "LLVMInitializeNVPTXTargetMC".}
+{.pop.}
 
 proc getTargetFromName*(name: cstring): TargetRef {.importc: "LLVMGetTargetFromName".}
 proc getTargetFromTriple*(triple: cstring, target: var TargetRef, errorMessage: var LLVMstring
@@ -235,11 +237,12 @@ proc populateModulePassManager*(pmb: PassManagerBuilderRef, legacyPM: PassManage
 
 proc createPassBuilderOptions*(): PassBuilderOptionsRef {.importc: "LLVMCreatePassBuilderOptions".}
 proc dispose*(pbo: PassBuilderOptionsRef) {.importc: "LLVMDisposePassBuilderOptions".}
-proc runPasses(module: ModuleRef, passes: cstring, machine: TargetMachineRef, pbo: PassBuilderOptionsRef): ErrorRef {.importc: "LLVMRunPasses".}
+proc runPasses(module: ModuleRef, passes: cstring, machine: TargetMachineRef, pbo: PassBuilderOptionsRef): ErrorRef {.used, importc: "LLVMRunPasses".}
 
 # https://llvm.org/docs/doxygen/group__LLVMCInitialization.html
 # header: "<llvm-c/Initialization.h>"
 
+{.push used.}
 proc getGlobalPassRegistry(): PassRegistryRef {.importc: "LLVMGetGlobalPassRegistry".}
 
 proc initializeCore(registry: PassRegistryRef) {.importc: "LLVMInitializeCore".}
@@ -255,6 +258,7 @@ proc initializeAnalysis(registry: PassRegistryRef) {.importc: "LLVMInitializeAna
 proc initializeIPA(registry: PassRegistryRef) {.importc: "LLVMInitializeIPA".}
 proc initializeCodeGen(registry: PassRegistryRef) {.importc: "LLVMInitializeCodeGen".}
 proc initializeTarget(registry: PassRegistryRef) {.importc: "LLVMInitializeTarget".}
+{.pop.}
 
 # https://llvm.org/doxygen/group__LLVMCTarget.html
 proc addTargetLibraryInfo*(tli: TargetLibraryInfoRef, pm: PassManagerRef) {.importc: "LLVMAddTargetLibraryInfo".}
@@ -356,14 +360,6 @@ proc addFunction*(m: ModuleRef, name: cstring, ty: TypeRef): ValueRef {.importc:
   ## Declare a function `name` in a module.
   ## Returns a handle to specify its instructions
 
-# TODO: Function and Parameter attributes:
-# - https://www.llvm.org/docs/LangRef.html?highlight=attribute#function-attributes
-# - https://www.llvm.org/docs/LangRef.html?highlight=attribute#parameter-attributes
-#
-# We can use attributes to specify additional guarantees of Constantine code, for instance:
-# - "pure" function with: nounwind, readonly
-# - pointer particularities: readonly, writeonly, noalias, inalloca, byval
-
 proc getReturnType*(functionTy: TypeRef): TypeRef {.importc: "LLVMGetReturnType".}
 proc countParamTypes*(functionTy: TypeRef): uint32 {.importc: "LLVMCountParamTypes".}
 
@@ -392,14 +388,11 @@ proc toLLVMstring(v: ValueRef): LLVMstring {.used, importc: "LLVMPrintValueToStr
 # ------------------------------------------------------------
 # https://llvm.org/doxygen/group__LLVMCCoreValueConstant.html
 
-proc constInt(ty: TypeRef, n: culonglong, signExtend: LlvmBool): ValueRef {.importc: "LLVMConstInt".}
+proc constInt(ty: TypeRef, n: culonglong, signExtend: LlvmBool): ValueRef {.used, importc: "LLVMConstInt".}
 proc constReal*(ty: TypeRef, n: cdouble): ValueRef {.importc: "LLVMConstReal".}
 
 proc constNull*(ty: TypeRef): ValueRef {.importc: "LLVMConstNull".}
 proc constAllOnes*(ty: TypeRef): ValueRef {.importc: "LLVMConstAllOnes".}
-proc constStruct(
-       constantVals: openArray[ValueRef],
-       packed: LlvmBool): ValueRef {.wrapOpenArrayLenType: cuint, importc: "LLVMConstStruct".}
 proc constArray*(
        ty: TypeRef,
        constantVals: openArray[ValueRef],
@@ -460,7 +453,7 @@ proc position*(builder: BuilderRef, blck: BasicBlockRef, instr: ValueRef) {.impo
 proc positionBefore*(builder: BuilderRef, instr: ValueRef) {.importc: "LLVMPositionBuilderBefore".}
 proc positionAtEnd*(builder: BuilderRef, blck: BasicBlockRef) {.importc: "LLVMPositionBuilderAtEnd".}
 
-proc getInsertBlock(builder: BuilderRef): BasicBlockRef {.importc: "LLVMGetInsertBlock".}
+proc getInsertBlock(builder: BuilderRef): BasicBlockRef {.used, importc: "LLVMGetInsertBlock".}
   ## This function is not documented and probably for special use
   ## However due to https://github.com/llvm/llvm-project/issues/59875
   ## it's our workaround to get the context of a Builder

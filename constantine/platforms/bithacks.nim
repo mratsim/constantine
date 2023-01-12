@@ -48,7 +48,6 @@ func log2impl_vartime(x: uint32): uint32 =
   ## using De Bruijn multiplication
   ## Works at compile-time.
   ## ⚠️ not constant-time, table accesses are not uniform.
-  ## TODO: at runtime BitScanReverse or CountLeadingZero are more efficient
   # https://graphics.stanford.edu/%7Eseander/bithacks.html#IntegerLogDeBruijn
   const lookup: array[32, uint8] = [0'u8, 9, 1, 10, 13, 21, 2, 29, 11, 14, 16, 18,
     22, 25, 3, 30, 8, 12, 20, 28, 15, 17, 24, 7, 19, 27, 23, 6, 26, 5, 4, 31]
@@ -65,7 +64,6 @@ func log2impl_vartime(x: uint64): uint64 {.inline.} =
   ## using De Bruijn multiplication
   ## Works at compile-time.
   ## ⚠️ not constant-time, table accesses are not uniform.
-  ## TODO: at runtime BitScanReverse or CountLeadingZero are more efficient
   # https://graphics.stanford.edu/%7Eseander/bithacks.html#IntegerLogDeBruijn
   const lookup: array[64, uint8] = [0'u8, 58, 1, 59, 47, 53, 2, 60, 39, 48, 27, 54,
     33, 42, 3, 61, 51, 37, 40, 49, 18, 28, 20, 55, 30, 34, 11, 43, 14, 22, 4, 62,

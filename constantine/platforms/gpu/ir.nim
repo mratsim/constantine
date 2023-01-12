@@ -268,7 +268,6 @@ func getNumWords*(cm: CurveMetadata, field: Field): int {.inline.} =
     return cm.fr.modulus.len
 
 func getModulus*(cm: CurveMetadata, field: Field): lent seq[ConstValueRef] {.inline.} =
-  # TODO: replace static typing, the returned type is incorrect for 64-bit
   case field
   of fp:
     return cm.fp.modulus

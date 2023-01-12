@@ -70,11 +70,6 @@ func precompute_tonelli_shanks_addchain*(
   x11010111 .prod(x111, x11010000)
   # 18 operations
 
-  # TODO: we can accumulate in a partially reduced
-  #       doubled-size `r` to avoid the final substractions.
-  #       and only reduce at the end.
-  #       This requires the number of op to be less than log2(p) == 381
-
   # 18 + 18 = 36 operations
   r.square_repeated(x11010111, 8)
   r *= x11101

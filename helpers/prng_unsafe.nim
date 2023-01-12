@@ -383,7 +383,7 @@ func random_unsafe*(rng: var RngState, T: typedesc): T =
   when T is ECP:
     rng.random_unsafe(result)
   elif T is SomeNumber:
-    cast[T](rng.next()) # TODO: Rely on casting integer actually converting in C (i.e. uint64->uint32 is valid)
+    cast[T](rng.next())
   elif T is BigInt:
     rng.random_unsafe(result)
   else: # Fields
@@ -400,7 +400,7 @@ func random_highHammingWeight*(rng: var RngState, T: typedesc): T =
   when T is ECP:
     rng.random_highHammingWeight(result)
   elif T is SomeNumber:
-    cast[T](rng.next()) # TODO: Rely on casting integer actually converting in C (i.e. uint64->uint32 is valid)
+    cast[T](rng.next())
   elif T is BigInt:
     rng.random_highHammingWeight(result)
   else: # Fields
@@ -417,7 +417,7 @@ func random_long01Seq*(rng: var RngState, T: typedesc): T =
   when T is ECP:
     rng.random_long01Seq(result)
   elif T is SomeNumber:
-    cast[T](rng.next()) # TODO: Rely on casting integer actually converting in C (i.e. uint64->uint32 is valid)
+    cast[T](rng.next())
   elif T is BigInt:
     rng.random_long01Seq(result)
   else: # Fields

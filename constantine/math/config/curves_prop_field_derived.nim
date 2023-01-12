@@ -99,18 +99,10 @@ macro getMontyPrimeMinus1*(ff: type FF): untyped =
   ## Get (P-1)
   result = bindConstant(ff, "MontyPrimeMinus1")
 
-macro getInvModExponent*(ff: type FF): untyped =
-  ## Get modular inversion exponent (Modulus-2 in canonical representation)
-  result = bindConstant(ff, "InvModExponent")
-
 macro getPrimePlus1div2*(ff: type FF): untyped =
   ## Get (P+1) / 2 for an odd prime
   ## Warning ⚠️: Result in canonical domain (not Montgomery)
   result = bindConstant(ff, "PrimePlus1div2")
-
-macro getPrimeMinus1div2_BE*(ff: type FF): untyped =
-  ## Get (P-1) / 2 in big-endian serialized format
-  result = bindConstant(ff, "PrimeMinus1div2_BE")
 
 macro getPrimeMinus3div4_BE*(ff: type FF): untyped =
   ## Get (P-3) / 4 in big-endian serialized format
@@ -119,10 +111,6 @@ macro getPrimeMinus3div4_BE*(ff: type FF): untyped =
 macro getPrimeMinus5div8_BE*(ff: type FF): untyped =
   ## Get (P-5) / 8 in big-endian serialized format
   result = bindConstant(ff, "PrimeMinus5div8_BE")
-
-macro getPrimePlus1div4_BE*(ff: type FF): untyped =
-  ## Get (P+1) / 4 for an odd prime in big-endian serialized format
-  result = bindConstant(ff, "PrimePlus1div4_BE")
 
 # ############################################################
 #

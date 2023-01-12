@@ -189,8 +189,6 @@ func sum*[F; G: static Subgroup](
   #
   # Cost: 12M + 3 mul(a) + 2 mul(3b) + 23 a
 
-  # TODO: static doAssert odd order
-
   when F.C.getCoefA() == 0:
     var t0 {.noInit.}, t1 {.noInit.}, t2 {.noInit.}, t3 {.noInit.}, t4 {.noInit.}: F
     var x3 {.noInit.}, y3 {.noInit.}, z3 {.noInit.}: F
@@ -263,7 +261,6 @@ func madd*[F; G: static Subgroup](
   ## 
   ## ``r`` may alias P
 
-  # TODO: static doAssert odd order
   when F.C.getCoefA() == 0:
     var t0 {.noInit.}, t1 {.noInit.}, t2 {.noInit.}, t3 {.noInit.}, t4 {.noInit.}: F
     var x3 {.noInit.}, y3 {.noInit.}, z3 {.noInit.}: F

@@ -23,9 +23,6 @@ import
 #       They are nice to let the compiler deals with mov
 #       but too constraining so we move things ourselves.
 
-# TODO: verify that assembly generated works for small arrays
-#       that are passed by values
-
 static: doAssert UseASM_X86_32
 
 # Copy

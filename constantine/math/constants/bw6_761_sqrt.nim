@@ -91,11 +91,6 @@ func invsqrt_addchain*(r: var Fp[BW6_761], a: Fp[BW6_761]) {.addchain.} =
   x11111111 .prod(a, x11111110)
   # 35 operations
 
-  # TODO: we can accumulate in a partially reduced
-  #       doubled-size `r` to avoid the final substractions.
-  #       and only reduce at the end.
-  #       This requires the number of op to be less than log2(p) == 381
-
   # 35 + 8 = 43 operations
   r.prod(x100001, x11111111)
   r.square_repeated(3)

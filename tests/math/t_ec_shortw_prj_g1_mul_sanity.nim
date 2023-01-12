@@ -58,11 +58,6 @@ suite "Order checks on BN254_Snarks":
 
     test(ECP_ShortW_Prj[Fp[BN254_Snarks], G1], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = false)
     test(ECP_ShortW_Prj[Fp[BN254_Snarks], G1], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = true)
-    # TODO: BLS12 is using a subgroup of order "r" such as r*h = CurveOrder
-    #       with h the curve cofactor
-    #       instead of the full group
-    # test(Fp[BLS12_381], bits = BLS12_381.getCurveOrderBitwidth(), randZ = G1)
-    # test(Fp[BLS12_381], bits = BLS12_381.getCurveOrderBitwidth(), randZ = true)
 
   test "Not a point on the curve / not a square - #67":
     var ax, ay: Fp[BN254_Snarks]
