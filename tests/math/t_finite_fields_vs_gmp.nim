@@ -8,9 +8,9 @@
 
 import
   # Standard library
-  std/[random, macros, times, strutils],
+  std/[random, macros, times],
   # Third-party
-  gmp, stew/byteutils,
+  gmp,
   # Internal
   ../../constantine/platforms/abstractions,
   ../../constantine/math/io/[io_bigints, io_fields],

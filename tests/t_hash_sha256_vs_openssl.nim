@@ -1,10 +1,9 @@
 import
   # Internals
   ../constantine/hashes,
+  ../constantine/math/io/io_bigints,
   # Helpers
-  ../helpers/prng_unsafe,
-  # Third-party
-  stew/byteutils
+  ../helpers/prng_unsafe
 
 # Deal with platform mess
 # --------------------------------------------------------------------
@@ -65,7 +64,7 @@ proc sanityABC =
   var bufCt: array[32, byte]
   let msg = "abc"
 
-  let hashed = hexToByteArray[32](
+  let hashed = array[32, byte].fromHex(
     "BA7816BF8F01CFEA414140DE5DAE2223" &
     "B00361A396177A9CB410FF61F20015AD")
 
@@ -77,7 +76,7 @@ proc sanityABC2 =
   var bufCt: array[32, byte]
   let msg = "abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"
 
-  let hashed = hexToByteArray[32](
+  let hashed = array[32, byte].fromHex(
     "248D6A61D20638B8E5C026930C3E6039" &
     "A33CE45964FF2167F6ECEDD419DB06C1")
 

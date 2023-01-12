@@ -10,9 +10,8 @@ import
   # Standard library
   std/[unittest, times],
   # Internals
-  ../../constantine/math/config/[common, curves],
-  ../../constantine/math/[arithmetic, primitives],
-  ../../constantine/math/io/[io_bigints, io_fields, io_ec],
+  ../../constantine/math/config/curves,
+  ../../constantine/math/io/io_fields,
   ../../constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective, ec_scalar_mul],
   # Test utilities
   ../../helpers/prng_unsafe,

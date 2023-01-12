@@ -15,7 +15,34 @@ with a particular focus on pairing-based cryptography as used in blockchains and
 
 The implementations are accompanied with SAGE code used as reference implementation and test vectors generators before writing highly optimized routines implemented in the [Nim language](https://nim-lang.org/)
 
-> The library is in development state and high-level wrappers or example protocols are not available yet.
+> The library is in development state and high-level wrappers or example protocols are work-in-progress.
+
+## Table of Contents
+
+<!-- TOC -->
+
+- [Constantine - Fast, compact, hardened Pairing-Based Cryptography](#constantine---fast-compact-hardened-pairing-based-cryptography)
+  - [Table of Contents](#table-of-contents)
+  - [Target audience](#target-audience)
+  - [Protocols](#protocols)
+  - [Curves supported in the backend](#curves-supported-in-the-backend)
+  - [Installation](#installation)
+  - [Dependencies](#dependencies)
+  - [Security](#security)
+    - [Disclaimer](#disclaimer)
+    - [Security disclosure](#security-disclosure)
+  - [Performance](#performance)
+    - [In blockchain](#in-blockchain)
+    - [In zero-knowledge proofs](#in-zero-knowledge-proofs)
+    - [Measuring performance](#measuring-performance)
+      - [BLS12_381 Clang + inline Assembly](#bls12_381-clang--inline-assembly)
+  - [Why Nim](#why-nim)
+  - [Compiler caveats](#compiler-caveats)
+    - [Inline assembly](#inline-assembly)
+  - [Sizes: code size, stack usage](#sizes-code-size-stack-usage)
+  - [License](#license)
+
+<!-- /TOC -->
 
 ## Target audience
 
@@ -102,6 +129,21 @@ generated incorrect add-with-carry code.
 On x86-64, inline assembly is used to workaround compilers having issues optimizing large integer arithmetic,
 and also ensure constant-time code.
 
+## Dependencies
+
+Constantine has no dependencies, even on Nim standard library except:
+- for testing 
+  - jsony for parsing json test vectors
+  - the Nim standard library for unittesting, formatting and datetime.
+  - GMP for testing against GMP
+- for benchmarking
+  - The Nim standard libreary for timing and formatting
+- for Nvidia GPU backend:
+  - the LLVM runtime ("dev" version with headers is not needed)
+  - the CUDA runtime ("dev" version with headers is not needed)
+- at compile-time
+  - we need the std/macros library to generate Nim code.
+
 ## Security
 
 Hardening an implementation against all existing and upcoming attack vectors is an extremely complex task.
@@ -111,6 +153,8 @@ The library is provided as is, without any guarantees at least until:
 - formal verification of constant-time implementation is possible
 
 Defense against common attack vectors are provided on a best effort basis.
+Do note that Constantine has no external package dependencies hence it is not vulnerable to
+supply chain attacks (unless they affect a compiler or the OS).
 
 Attackers may go to great lengths to retrieve secret data including:
 - Timing the time taken to multiply on an elliptic curve
@@ -231,7 +275,7 @@ The Nim language offers the following benefits for cryptography:
   - derive constants
   - write a size-independent inline assembly code generator
 - Upcoming proof system for formal verification via Z3 ([DrNim](https://nim-lang.org/docs/drnim.html), [Correct-by-Construction RFC](https://github.com/nim-lang/RFCs/issues/222))
-### Compiler caveats
+## Compiler caveats
 
 Unfortunately compilers and in particular GCC are not very good at optimizing big integers and/or cryptographic code even when using intrinsics like `addcarry_u64`.
 

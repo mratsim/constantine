@@ -8,7 +8,7 @@
 
 import
   # Standard library
-  std/[macros, algorithm],
+  std/macros,
   # Internal
   ../../../platforms/abstractions,
   ./limbs_asm_modular_x86,

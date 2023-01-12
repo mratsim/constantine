@@ -188,14 +188,14 @@ jobs:
         run: |
           pacman -S --needed --noconfirm mingw-w64-x86_64-gmp
           nimble refresh --verbose -y
-          nimble install --verbose -y gmp stew jsony asynctools
+          nimble install --verbose -y gmp jsony asynctools
 
       - name: Install test dependencies
         if: runner.os != 'Windows'
         shell: bash
         run: |
           nimble refresh --verbose -y
-          nimble install --verbose -y gmp stew jsony asynctools
+          nimble install --verbose -y gmp jsony asynctools
 
       - name: Run Constantine tests (UNIX with Assembly)
         if: runner.os != 'Windows' && matrix.target.BACKEND == 'ASM'

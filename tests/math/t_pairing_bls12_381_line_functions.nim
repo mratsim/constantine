@@ -8,7 +8,7 @@
 
 import
   # Standard library
-  std/[tables, unittest, times],
+  std/[unittest, times],
   # Internals
   ../../constantine/platforms/abstractions,
   ../../constantine/math/arithmetic,
@@ -17,11 +17,10 @@ import
   ../../constantine/math/io/io_extfields,
   ../../constantine/math/elliptic/[
     ec_shortweierstrass_affine,
-    ec_shortweierstrass_projective,
-    ec_scalar_mul],
+    ec_shortweierstrass_projective],
   ../../constantine/math/pairing/lines_eval,
   # Test utilities
-  ../helpers/[prng_unsafe, static_for]
+  ../../helpers/[prng_unsafe, static_for]
 
 const
   Iters = 4

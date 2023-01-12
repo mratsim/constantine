@@ -10,8 +10,7 @@ import
   ../../math/config/[curves, precompute],
   ../../math/io/io_bigints,
   ../primitives, ../bithacks, ../endians,
-  ./llvm,
-  std/hashes
+  ./llvm
 
 # ############################################################
 #
@@ -129,10 +128,10 @@ func toHex[T](a: BigNum[T]): string =
   # 1. Convert BigInt to canonical uint
   const wordBitwidth = sizeof(T) * 8
   var bytes = newSeq[byte](byteLen(a.bits))
-  bytes.marshal(a.limbs, wordBitwidth, cpuEndian)
+  bytes.marshal(a.limbs, wordBitwidth, bigEndian)
 
   # 2 Convert canonical uint to hex
-  return bytes.nativeEndianToHex(bigEndian)
+  return bytes.toHex()
 
 # Checks
 # ------------------------------------------------
@@ -244,10 +243,6 @@ proc init*(
   result = C(prefix: prefix, wordSize: wordSize)
   result.fp.setFieldConst(ctx, wordSize, fpBits, fpMod)
   result.fr.setFieldConst(ctx, wordSize, frBits, frMod)
-
-proc hash*(curveOp: tuple[cm: CurveMetadata, op: Opcode]): Hash {.inline.} =
-  result = hash(curveOp.cm.curve) !& int(hash(curveOp.op))
-  result = !$result
 
 proc genSymbol*(cm: CurveMetadata, opcode: Opcode): string {.inline.} =
   cm.prefix & 

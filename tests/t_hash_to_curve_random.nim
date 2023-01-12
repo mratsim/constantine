@@ -8,7 +8,7 @@
 
 import
   # Standard library
-  std/[unittest, times, os, strutils],
+  std/[unittest, times],
   # Internals
   ../constantine/math/config/curves,
   ../constantine/math/extension_fields,

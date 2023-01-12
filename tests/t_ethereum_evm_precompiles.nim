@@ -9,8 +9,6 @@
 import
   # Standard library
   std/[times, os, strutils, macros],
-  # Status
-  pkg/stew/byteutils,
   # 3rd party
   pkg/jsony,
   # Internals

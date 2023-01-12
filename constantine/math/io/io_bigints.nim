@@ -291,7 +291,7 @@ func marshalBE[T](
 
   var tail = dst.len
   while tail > 0:
-    let w = if src_idx < src.len: BaseType(src[src_idx])
+    let w = if src_idx < src.len: BT(src[src_idx])
             else: 0
     inc src_idx
 
@@ -439,23 +439,20 @@ func hexToPaddedByteArray*(hexStr: string, output: var openArray[byte], order: s
     shift = (shift + 4) and 4
     dstIdx += shift shr 2
 
-func nativeEndianToHex*(bytes: openarray[byte], order: static[Endianness]): string =
+func toHex*(bytes: openarray[byte]): string =
   ## Convert a byte-array to its hex representation
-  ## Output is in lowercase and not prefixed.
-  ## This assumes that input is in platform native endianness
+  ## Output is in lowercase and prefixed with 0x
   const hexChars = "0123456789abcdef"
   result = newString(2 + 2 * bytes.len)
   result[0] = '0'
   result[1] = 'x'
   for i in 0 ..< bytes.len:
-    when order == system.cpuEndian:
-      let bi = bytes[i]
-      result[2 + 2*i] = hexChars.secretLookup(SecretWord bi shr 4 and 0xF)
-      result[2 + 2*i+1] = hexChars.secretLookup(SecretWord bi and 0xF)
-    else:
-      let bmi = bytes[bytes.high - i]
-      result[2 + 2*i] = hexChars.secretLookup(SecretWord bmi shr 4 and 0xF)
-      result[2 + 2*i+1] = hexChars.secretLookup(SecretWord bmi and 0xF)
+    let bi = bytes[i]
+    result[2 + 2*i] = hexChars.secretLookup(SecretWord bi shr 4 and 0xF)
+    result[2 + 2*i+1] = hexChars.secretLookup(SecretWord bi and 0xF)
+
+func fromHex*[N: static int](T: type array[N, byte], hex: string): T =
+  hexToPaddedByteArray(hex, result, bigEndian)
 
 # ############################################################
 #
@@ -520,10 +517,10 @@ func appendHex*(dst: var string, big: BigInt, order: static Endianness = bigEndi
   # 1. Convert Big Int to canonical uint
   const canonLen = (big.bits + 8 - 1) div 8
   var bytes: array[canonLen, byte]
-  marshal(bytes, big, cpuEndian)
+  marshal(bytes, big, order)
 
   # 2 Convert canonical uint to hex
-  dst.add bytes.nativeEndianToHex(order)
+  dst.add bytes.toHex()
 
 func toHex*(big: BigInt, order: static Endianness = bigEndian): string =
   ## Stringify an int to hex.

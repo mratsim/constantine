@@ -11,10 +11,7 @@ import
   ../constantine/hash_to_curve/h2c_hash_to_field,
   ../constantine/math/config/[curves_declaration, type_ff],
   ../constantine/math/extension_fields/towers,
-  ../constantine/math/io/[io_fields, io_extfields],
-
-  # Third-party
-  stew/byteutils
+  ../constantine/math/io/[io_bigints, io_fields, io_extfields]
 
 # Test vectors for expandMessageXMD
 # ----------------------------------------------------------------------
@@ -47,19 +44,19 @@ testExpandMessageXMD(1):
   let msg = ""
   const expected = "f659819a6473c1835b25ea59e3d38914c98b374f0970b7e4c92181df928fca88"
   const len_in_bytes = expected.len div 2
-  const expectedBytes = hexToByteArray[len_in_bytes](expected)
+  const expectedBytes = array[len_in_bytes, byte].fromHex(expected)
 
 testExpandMessageXMD(2):
   let msg = "abc"
   const expected = "1c38f7c211ef233367b2420d04798fa4698080a8901021a795a1151775fe4da7"
   const len_in_bytes = expected.len div 2
-  const expectedBytes = hexToByteArray[len_in_bytes](expected)
+  const expectedBytes = array[len_in_bytes, byte].fromHex(expected)
 
 testExpandMessageXMD(3):
   let msg = "abcdef0123456789"
   const expected = "8f7e7b66791f0da0dbb5ec7c22ec637f79758c0a48170bfb7c4611bd304ece89"
   const len_in_bytes = expected.len div 2
-  const expectedBytes = hexToByteArray[len_in_bytes](expected)
+  const expectedBytes = array[len_in_bytes, byte].fromHex(expected)
 
 testExpandMessageXMD(4):
   let msg = "q128_qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq" &
@@ -67,7 +64,7 @@ testExpandMessageXMD(4):
             "qqqqqqqqqqqqqqqqqqqqqqqqq"
   const expected = "72d5aa5ec810370d1f0013c0df2f1d65699494ee2a39f72e1716b1b964e1c642"
   const len_in_bytes = expected.len div 2
-  const expectedBytes = hexToByteArray[len_in_bytes](expected)
+  const expectedBytes = array[len_in_bytes, byte].fromHex(expected)
 
 testExpandMessageXMD(5):
   let msg = "a512_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" &
@@ -82,7 +79,7 @@ testExpandMessageXMD(5):
             "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
   const expected = "3b8e704fc48336aca4c2a12195b720882f2162a4b7b13a9c350db46f429b771b"
   const len_in_bytes = expected.len div 2
-  const expectedBytes = hexToByteArray[len_in_bytes](expected)
+  const expectedBytes = array[len_in_bytes, byte].fromHex(expected)
 
 testExpandMessageXMD(6):
   let msg = ""
@@ -92,7 +89,7 @@ testExpandMessageXMD(6):
                     "fc5d9d8d77e2071b86ab114a9f34150954a7531da568a1ea8c7608" &
                     "61c0cde2005afc2c114042ee7b5848f5303f0611cf297f"
   const len_in_bytes = expected.len div 2
-  const expectedBytes = hexToByteArray[len_in_bytes](expected)
+  const expectedBytes = array[len_in_bytes, byte].fromHex(expected)
 
 testExpandMessageXMD(7):
   let msg = "abc"
@@ -102,7 +99,7 @@ testExpandMessageXMD(7):
                     "98619c0aa0c6c51fca15520789925e813dcfd318b542f879944127" &
                     "1f4db9ee3b8092a7a2e8d5b75b73e28fb1ab6b4573c192"
   const len_in_bytes = expected.len div 2
-  const expectedBytes = hexToByteArray[len_in_bytes](expected)
+  const expectedBytes = array[len_in_bytes, byte].fromHex(expected)
 
 testExpandMessageXMD(8):
   let msg = "abcdef0123456789"
@@ -112,7 +109,7 @@ testExpandMessageXMD(8):
                     "4b9535a819b445814890b7029b5de805bf62b33a4dc7e24acdf2c9" &
                     "24e9fe50d55a6b832c8c84c7f82474b34e48c6d43867be"
   const len_in_bytes = expected.len div 2
-  const expectedBytes = hexToByteArray[len_in_bytes](expected)
+  const expectedBytes = array[len_in_bytes, byte].fromHex(expected)
 
 testExpandMessageXMD(9):
   let msg = "q128_qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq" &
@@ -124,7 +121,7 @@ testExpandMessageXMD(9):
                     "720fe96ba53db947842120a068816ac05c159bb5266c63658b4f00" &
                     "0cbf87b1209a225def8ef1dca917bcda79a1e42acd8069"
   const len_in_bytes = expected.len div 2
-  const expectedBytes = hexToByteArray[len_in_bytes](expected)
+  const expectedBytes = array[len_in_bytes, byte].fromHex(expected)
 
 testExpandMessageXMD(10):
   let msg = "a512_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" &
@@ -143,7 +140,7 @@ testExpandMessageXMD(10):
                     "42a0807bb148b77c2ef82ed4b6c9f7fcb732e7f94466c8b51e52bf" &
                     "378fba044a31f5cb44583a892f5969dcd73b3fa128816e"
   const len_in_bytes = expected.len div 2
-  const expectedBytes = hexToByteArray[len_in_bytes](expected)
+  const expectedBytes = array[len_in_bytes, byte].fromHex(expected)
 
 template testHashToField(id, constants: untyped) =
   # Section "Expand test vectors {#expand-testvectors}"

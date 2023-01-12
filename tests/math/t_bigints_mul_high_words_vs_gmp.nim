@@ -10,7 +10,7 @@ import
   # Standard library
   std/[random, macros, times, strutils],
   # Third-party
-  gmp, stew/byteutils,
+  gmp,
   # Internal
   ../../constantine/math/io/io_bigints,
   ../../constantine/math/arithmetic,

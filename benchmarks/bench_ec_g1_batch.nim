@@ -16,9 +16,7 @@ import
     ec_shortweierstrass_jacobian],
   # Helpers
   ../helpers/static_for,
-  ./bench_elliptic_template,
-  # Standard library
-  std/strutils
+  ./bench_elliptic_template
 
 # ############################################################
 #

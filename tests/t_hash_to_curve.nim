@@ -8,7 +8,7 @@
 
 import
   # Standard library
-  std/[unittest, times, os, strutils, macros],
+  std/[unittest, times, os, strutils],
   # 3rd party
   pkg/jsony,
   # Internals

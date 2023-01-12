@@ -7,8 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  std/[json, os, unittest, strutils],
-  pkg/[jsony, stew/byteutils],
+  std/[os, unittest, strutils],
+  pkg/jsony,
   ../constantine/blssig_pop_on_bls12381_g2,
   ../constantine/math/io/io_bigints
 

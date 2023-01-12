@@ -91,7 +91,7 @@ proc getNvvmLog(prog: NvvmProgram): string {.used.} =
     result = newString(logSize)
     check nvvmGetProgramLog(prog, result[0].addr)
 
-proc ptxCodegenViaNvidiaNvvm(module: ModuleRef, sm: tuple[major, minor: int32]): string {.used.} =
+proc ptxCodegenViaNvidiaNvvm(module: ModuleRef, sm: tuple[major, minor: int32]): string =
   ## PTX codegen via Nvidia NVVM
   
   # ######################################
@@ -118,7 +118,7 @@ proc ptxCodegenViaNvidiaNvvm(module: ModuleRef, sm: tuple[major, minor: int32]):
 
   check nvvmDestroyProgram(prog)
 
-proc ptxCodegenViaLlvmNvptx(module: ModuleRef, sm: tuple[major, minor: int32]): string {.used.} =
+proc ptxCodegenViaLlvmNvptx(module: ModuleRef, sm: tuple[major, minor: int32]): string =
   ## PTX codegen via LLVM NVPTX
   
   module.verify(AbortProcessAction)

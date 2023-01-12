@@ -81,17 +81,11 @@ addons:
   apt:
     packages:
       - libgmp-dev
-      - parallel
   homebrew:
     packages:
       - gmp
-      # Travis `bundle` bug: https://travis-ci.community/t/macos-build-fails-because-of-homebrew-bundle-unknown-command/7296/28
-      # - parallel
 
 before_install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-      HOMEBREW_NO_AUTO_UPDATE=1 brew install parallel;
-    fi
   - |
     if [ "${CHANNEL}" = stable ]; then
       BRANCH="v$(curl https://nim-lang.org/channels/stable)"
@@ -127,7 +121,7 @@ before_script:
     - export PATH="$PWD/nim-${CHANNEL}/bin${PATH:+:$PATH}"
 script:
     - nimble refresh
-    - nimble install -y gmp stew jsony
+    - nimble install -y gmp jsony
 
     # Installing Clang9.0 or later is a pain in Travis
     # for inline assembly "flag output constraint"
@@ -137,9 +131,6 @@ script:
         nimble test_parallel_no_assembler
       else
         nimble test_parallel
-        if [[ "$ARCH" == "amd64" ]]; then
-          nimble test_parallel_no_assembler
-        fi
       fi
 branches:
   except:

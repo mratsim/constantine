@@ -7,11 +7,19 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  stew/byteutils,
+  ../constantine/math/io/io_bigints,
   ../constantine/[hashes, mac/mac_hmac, kdf/kdf_hkdf]
 
 proc hexToBytes(s: string): seq[byte] =
-  if s.len != 0: return hexToSeqByte(s)
+  if s.len > 0:
+    var skip = 0
+    if s.len >= 2:
+      skip = 2*(
+        int(s[0] == '0') and
+        (int(s[1] == 'x') or int(s[1] == 'X'))
+      )
+    result.setLen((s.len - skip) div 2)
+    s.hexToPaddedByteArray(result, bigEndian)
 
 template test(id, constants: untyped) =
   proc `test _ id`() =

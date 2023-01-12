@@ -13,9 +13,7 @@ import
   ../constantine/math/extension_fields,
   # Helpers
   ../helpers/static_for,
-  ./bench_summary_template,
-  # Standard library
-  std/strutils
+  ./bench_summary_template
 
 # ############################################################
 #

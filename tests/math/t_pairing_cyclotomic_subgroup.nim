@@ -8,7 +8,7 @@
 
 import
   # Standard library
-  std/[tables, unittest, times],
+  std/[unittest, times],
   # Internals
   ../../constantine/platforms/abstractions,
   ../../constantine/math/arithmetic,

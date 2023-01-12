@@ -268,7 +268,7 @@ steps:
   - bash: |
       echo "PATH=${PATH}"
       nimble refresh
-      nimble install -y gmp stew jsony
+      nimble install -y gmp jsony
     displayName: 'Installing package and testing dependencies'
 
   - bash: |

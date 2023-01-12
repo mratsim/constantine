@@ -14,17 +14,14 @@
 
 import
   # Standard library
-  std/[unittest, times],
+  std/unittest,
   # Internals
   ../../constantine/platforms/abstractions,
   ../../constantine/math/config/curves,
   ../../constantine/math/arithmetic,
   ../../constantine/math/extension_fields,
-  ../../constantine/math/io/[io_bigints, io_fields, io_extfields, io_ec],
-  ../../constantine/math/elliptic/[ec_shortweierstrass_projective, ec_scalar_mul],
-  # Test utilities
-  ../../helpers/prng_unsafe,
-  ./support/ec_reference_scalar_mult
+  ../../constantine/math/io/[io_bigints, io_fields, io_extfields],
+  ../../constantine/math/elliptic/ec_shortweierstrass_projective
 
 func testAddAssociativity[EC](a, b, c: EC) =
   var tmp1{.noInit.}, tmp2{.noInit.}: ECP_ShortW_Prj[Fp2[BLS12_381], G2]
