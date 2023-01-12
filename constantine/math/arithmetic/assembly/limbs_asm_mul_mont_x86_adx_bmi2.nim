@@ -272,7 +272,7 @@ macro mulMont_CIOS_sparebit_adx_gen[N: static int](
     for i in 0 ..< N:
       ctx.mov r[i], t[i]
   else:
-    ctx.finalSubNoCarryImpl(
+    ctx.finalSubNoOverflowImpl(
       r, t, M,
       scratch
     )
@@ -476,7 +476,7 @@ macro sumprodMont_CIOS_spare2bits_adx_gen[N, K: static int](
       ctx.mov r2[i], t[i]
   else:
     ctx.comment "  Final substraction"
-    ctx.finalSubNoCarryImpl(
+    ctx.finalSubNoOverflowImpl(
       r2, t, M,
       scratch
     )

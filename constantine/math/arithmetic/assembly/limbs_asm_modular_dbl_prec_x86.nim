@@ -60,11 +60,10 @@ macro addmod2x_gen[N: static int](R: var Limbs[N], A, B: Limbs[N], m: Limbs[N di
 
   # Addition
   # u = a[0..<H] + b[0..<H], v = a[H..<N]
-  for i in 0 ..< H:
-    if i == 0:
-      ctx.add u[0], b[0]
-    else:
-      ctx.adc u[i], b[i]
+  ctx.add u[0], b[0]
+  ctx.mov r[0], u[0]
+  for i in 1 ..< H:
+    ctx.adc u[i], b[i]
     ctx.mov r[i], u[i]
 
   # v = a[H..<N] + b[H..<N], a[0..<H] = u, u = v
@@ -78,11 +77,9 @@ macro addmod2x_gen[N: static int](R: var Limbs[N], A, B: Limbs[N], m: Limbs[N di
   ctx.sbb overflowed, overflowed
 
   # Now substract the modulus to test a < 2ⁿp
-  for i in 0 ..< H:
-    if i == 0:
-      ctx.sub v[0], M[0]
-    else:
-      ctx.sbb v[i], M[i]
+  ctx.sub v[0], M[0]
+  for i in 1 ..< H:
+    ctx.sbb v[i], M[i]
 
   # If it overflows here, it means that it was
   # smaller than the modulus and we don't need v
@@ -134,11 +131,10 @@ macro submod2x_gen[N: static int](R: var Limbs[N], A, B: Limbs[N], m: Limbs[N di
 
   # Substraction
   # u = a[0..<H] - b[0..<H], v = a[H..<N]
-  for i in 0 ..< H:
-    if i == 0:
-      ctx.sub u[0], b[0]
-    else:
-      ctx.sbb u[i], b[i]
+  ctx.sub u[0], b[0]
+  ctx.mov r[0], u[0]
+  for i in 1 ..< H:
+    ctx.sbb u[i], b[i]
     ctx.mov r[i], u[i]
 
   # v = a[H..<N] - b[H..<N], a[0..<H] = u, u = M
@@ -155,11 +151,10 @@ macro submod2x_gen[N: static int](R: var Limbs[N], A, B: Limbs[N], m: Limbs[N di
     ctx.`and` u[i], underflowed
 
   # Add the masked modulus
-  for i in 0 ..< H:
-    if i == 0:
-      ctx.add u[0], v[0]
-    else:
-      ctx.adc u[i], v[i]
+  ctx.add u[0], v[0]
+  ctx.mov r[H], u[0]
+  for i in 1 ..< H:
+    ctx.adc u[i], v[i]
     ctx.mov r[i+H], u[i]
 
   result.add ctx.generate

@@ -70,6 +70,9 @@ declareCurves:
   curve P224: # NIST P-224
     bitwidth: 224
     modulus: "0xffffffffffffffffffffffffffffffff000000000000000000000001"
+    order: "0xffffffffffffffffffffffffffff16a2e0b8f03e13dd29455c5c2a3d"
+    orderBitwidth: 224
+
   curve BN254_Nogami: # Integer Variable χ–Based Ate Pairing, 2008, Nogami et al
     bitwidth: 254
     modulus: "0x2523648240000001ba344d80000000086121000000000013a700000000000013"
@@ -162,7 +165,7 @@ declareCurves:
     # or for use in Hisil, Wong, Carter, and Dawson extended coordinates 
     #                       ax² + y² = 1+dx²y²           with a = -1 d=-121665/121666                     
     order: "0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed"
-    orderBItwidth: 253
+    orderBitwidth: 253
     cofactor: 8
     eq_form: TwistedEdwards
     coef_a: -1
@@ -188,9 +191,13 @@ declareCurves:
   curve P256: # secp256r1 / NIST P-256
     bitwidth: 256
     modulus: "0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff"
+    order: "0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551"
+    orderBitwidth: 256
   curve Secp256k1: # Bitcoin curve
     bitwidth: 256
     modulus: "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f"
+    order: "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141"
+    orderBitwidth: 256
   curve BLS12_377:
     # Zexe curve
     # (p41) https://eprint.iacr.org/2018/962.pdf

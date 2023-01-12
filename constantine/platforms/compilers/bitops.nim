@@ -1,0 +1,87 @@
+# Constantine
+# Copyright (c) 2018-2019    Status Research & Development GmbH
+# Copyright (c) 2020-Present Mamy André-Ratsimbazafy
+# Licensed and distributed under either of
+#   * MIT license (license terms in the root directory or at http://opensource.org/licenses/MIT).
+#   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
+# at your option. This file may not be copied, modified, or distributed except according to those terms.
+
+import ../constant_time/ct_types
+
+when GCC_Compatible:
+  func builtin_clz(n: uint32): cint {.importc: "__builtin_clz", nodecl.}
+    ## Count the number of leading zeros
+    ## undefined if n is zero
+  func builtin_clzll(n: uint64): cint {.importc: "__builtin_clzll", nodecl.}
+    ## Count the number of leading zeros
+    ## undefined if n is zero
+
+  func log2_c_compiler_vartime*(n: uint8|uint16|uint32): int {.inline.} =
+    ## Compute the log2 of n using compiler builtin
+    ## ⚠ Depending on the compiler:
+    ## - It is undefined if n == 0
+    ## - It is not constant-time as a zero input is checked
+    cast[int](31 - cast[cuint](builtin_clz(n.uint32)))
+  func log2_c_compiler_vartime*(n: uint64): int {.inline.} =
+    ## Compute the log2 of n using compiler builtin
+    ## ⚠ Depending on the compiler:
+    ## - It is undefined if n == 0
+    ## - It is not constant-time as a zero input is checked
+    cast[int](63 - cast[cuint](builtin_clzll(n)))
+
+elif defined(icc):
+  func bitScanReverse(r: var uint32, n: uint32): uint8 {.importc: "_BitScanReverse", header: "<immintrin.h>".}
+    ## Returns 0 if n is zero and non-zero otherwise
+    ## Returns the position of the first set bit in `r`
+  func bitScanReverse64(r: var uint32, n: uint64): uint8 {.importc: "_BitScanReverse64", header: "<immintrin.h>".}
+    ## Returns 0 if n is zero and non-zero otherwise
+    ## Returns the position of the first set bit in `r`
+
+  template bitscan(fnc: untyped; v: untyped): int {.inline.} =
+    var index: uint32
+    if fnc(index.addr, v) == 0:
+      return 0
+    return index.int
+  
+  func log2_c_compiler_vartime*(n: uint8|uint16|uint32): int {.inline.} =
+    ## Compute the log2 of n using compiler builtin
+    ## ⚠ Depending on the compiler:
+    ## - It is undefined if n == 0
+    ## - It is not constant-time as a zero input is checked
+    bitscan(bitScanReverse, c.uint32)
+  func log2_c_compiler_vartime*(n: uint64): int {.inline.} =
+    ## Compute the log2 of n using compiler builtin
+    ## ⚠ Depending on the compiler:
+    ## - It is undefined if n == 0
+    ## - It is not constant-time as a zero input is checked
+    bitscan(bitScanReverse64, n)
+    
+elif defined(vcc):
+  func bitScanReverse(p: ptr uint32, b: uint32): uint8 {.importc: "_BitScanReverse", header: "<intrin.h>".}
+    ## Returns 0 if n s no set bit and non-zero otherwise
+    ## Returns the position of the first set bit in `r`
+  func bitScanReverse64(p: ptr uint32, b: uint64): uint8 {.importc: "_BitScanReverse64", header: "<intrin.h>".}
+    ## Returns 0 if n s no set bit and non-zero otherwise
+    ## Returns the position of the first set bit in `r`
+
+  template bitscan(fnc: untyped; v: untyped): int =
+    var index: uint32
+    if fnc(index.addr, v) == 0:
+      return 0
+    return index.int
+  
+  func log2_c_compiler_vartime*(n: uint8|uint16|uint32): int {.inline.} =
+    ## Compute the log2 of n using compiler builtin
+    ## ⚠ Depending on the compiler:
+    ## - It is undefined if n == 0
+    ## - It is not constant-time as a zero input is checked
+    bitscan(bitScanReverse, c.uint32)
+  func log2_c_compiler_vartime*(n: uint64): int {.inline.} =
+    ## Compute the log2 of n using compiler builtin
+    ## ⚠ Depending on the compiler:
+    ## - It is undefined if n == 0
+    ## - It is not constant-time as a zero input is checked
+    bitscan(bitScanReverse64, n)
+
+else:
+  {. error: "Unsupported compiler".}
