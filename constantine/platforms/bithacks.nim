@@ -32,7 +32,10 @@ import ./compilers/bitops
 #
 # See: https://www.chessprogramming.org/BitScan
 #      https://www.chessprogramming.org/General_Setwise_Operations
+#      https://www.chessprogramming.org/De_Bruijn_Sequence_Generator
 # and https://graphics.stanford.edu/%7Eseander/bithacks.html
+# and Hacker's Delight 2nd Edition, Henry S Warren, Jr.
+# and https://sites.google.com/site/sydfhd/articles-tutorials/de-bruijn-sequence-generator
 # for compendiums of bit manipulation
 
 func clearMask[T: SomeInteger](v: T, mask: T): T {.inline.} =
@@ -43,77 +46,106 @@ func clearBit*[T: SomeInteger](v: T, bit: T): T {.inline.} =
   ## Returns ``v``, with the bit at position ``bit`` set to 0
   v.clearMask(1.T shl bit)
 
-func log2impl_vartime(x: uint32): uint32 =
+func log2_impl_vartime(n: uint32): uint32 =
   ## Find the log base 2 of a 32-bit or less integer.
   ## using De Bruijn multiplication
   ## Works at compile-time.
   ## ⚠️ not constant-time, table accesses are not uniform.
   # https://graphics.stanford.edu/%7Eseander/bithacks.html#IntegerLogDeBruijn
-  const lookup: array[32, uint8] = [0'u8, 9, 1, 10, 13, 21, 2, 29, 11, 14, 16, 18,
-    22, 25, 3, 30, 8, 12, 20, 28, 15, 17, 24, 7, 19, 27, 23, 6, 26, 5, 4, 31]
-  var v = x
-  v = v or v shr 1 # first round down to one less than a power of 2
-  v = v or v shr 2
-  v = v or v shr 4
-  v = v or v shr 8
-  v = v or v shr 16
-  lookup[(v * 0x07C4ACDD'u32) shr 27]
+  const lookup: array[32, uint8] = [
+    uint8  0,  9,  1, 10, 13, 21,  2, 29,
+          11, 14, 16, 18, 22, 25,  3, 30,
+           8, 12, 20, 28, 15, 17, 24,  7,
+          19, 27, 23,  6, 26,  5,  4, 31]
+  
+  # Isolate MSB
+  var n = n
+  n = n or n shr 1 # first round down to one less than a power of 2
+  n = n or n shr 2
+  n = n or n shr 4
+  n = n or n shr 8
+  n = n or n shr 16
+  uint32 lookup[(n * 0x07C4ACDD'u32) shr 27]
 
-func log2impl_vartime(x: uint64): uint64 {.inline.} =
+func log2_impl_vartime(n: uint64): uint64 {.inline.} =
   ## Find the log base 2 of a 32-bit or less integer.
   ## using De Bruijn multiplication
   ## Works at compile-time.
   ## ⚠️ not constant-time, table accesses are not uniform.
   # https://graphics.stanford.edu/%7Eseander/bithacks.html#IntegerLogDeBruijn
-  const lookup: array[64, uint8] = [0'u8, 58, 1, 59, 47, 53, 2, 60, 39, 48, 27, 54,
-    33, 42, 3, 61, 51, 37, 40, 49, 18, 28, 20, 55, 30, 34, 11, 43, 14, 22, 4, 62,
-    57, 46, 52, 38, 26, 32, 41, 50, 36, 17, 19, 29, 10, 13, 21, 56, 45, 25, 31,
-    35, 16, 9, 12, 44, 24, 15, 8, 23, 7, 6, 5, 63]
-  var v = x
-  v = v or v shr 1 # first round down to one less than a power of 2
-  v = v or v shr 2
-  v = v or v shr 4
-  v = v or v shr 8
-  v = v or v shr 16
-  v = v or v shr 32
-  lookup[(v * 0x03F6EAF2CD271461'u64) shr 58]
+  # https://stackoverflow.com/questions/11376288/fast-computing-of-log2-for-64-bit-integers
+  const lookup: array[64, uint8] = [
+    uint8  0, 58,  1, 59, 47, 53,  2, 60,
+          39, 48, 27, 54, 33, 42,  3, 61,
+          51, 37, 40, 49, 18, 28, 20, 55,
+          30, 34, 11, 43, 14, 22,  4, 62,
+          57, 46, 52, 38, 26, 32, 41, 50,
+          36, 17, 19, 29, 10, 13, 21, 56,
+          45, 25, 31, 35, 16,  9, 12, 44,
+          24, 15,  8, 23,  7,  6,  5, 63]
+  
+  # Isolate MSB
+  var n = n
+  n = n or n shr 1 # first round down to one less than a power of 2
+  n = n or n shr 2
+  n = n or n shr 4
+  n = n or n shr 8
+  n = n or n shr 16
+  n = n or n shr 32
+  uint64 lookup[(n * 0x03F6EAF2CD271461'u64) shr 58]
 
 func log2_vartime*[T: SomeUnsignedInt](n: T): T {.inline.} =
   ## Find the log base 2 of an integer
-  ## 
-  ## ⚠ With GCC and Clang compilers on x86, if n is zero, result is undefined.
   when nimvm:
-    when sizeof(T) == sizeof(uint64):
-      T(log2impl_vartime(uint64(n)))
+    when sizeof(T) == 8:
+      T(log2_impl_vartime(uint64(n)))
     else:
-      static: doAssert sizeof(T) <= sizeof(uint32)
-      T(log2impl_vartime(uint32(n)))
+      T(log2_impl_vartime(uint32(n)))
   else:
-    when sizeof(T) == sizeof(uint64):
-      T(log2_c_compiler_vartime(uint64(n)))
+    log2_c_compiler_vartime(n)
+
+func ctz_impl_vartime(n: uint32): uint32 =
+  ## Find the number of trailing zero bits
+  ## Requires n != 0
+  # https://sites.google.com/site/sydfhd/articles-tutorials/de-bruijn-sequence-generator
+  const lookup: array[32, uint8] = [
+    uint8  0,  1, 16,  2, 29, 17,  3, 22,
+          30, 20, 18, 11, 13,  4,  7, 23,
+          31, 15, 28, 21, 19, 10, 12,  6,
+          14, 27,  9,  5, 26,  8, 25, 24]
+  
+  let isolateLSB = n xor (n-1)
+  uint32 lookup[(isolateLSB * 0x6EB14F9'u32) shr 27]
+
+func ctz_impl_vartime(n: uint64): uint64 =
+  ## Find the number of trailing zero bits
+  ## Requires n != 0
+  # https://www.chessprogramming.org/BitScan#Bitscan_forward
+  const lookup: array[64, uint8] = [
+    uint8  0, 47,  1, 56, 48, 27,  2, 60,
+          57, 49, 41, 37, 28, 16,  3, 61,
+          54, 58, 35, 52, 50, 42, 21, 44,
+          38, 32, 29, 23, 17, 11,  4, 62,
+          46, 55, 26, 59, 40, 36, 15, 53,
+          34, 51, 20, 43, 31, 22, 10, 45,
+          25, 39, 14, 33, 19, 30,  9, 24,
+          13, 18,  8, 12,  7,  6,  5, 63]
+
+  let isolateLSB = n xor (n-1)
+  uint64 lookup[(isolateLSB * 0x03f79d71b4cb0a89'u64) shr 58]
+
+func countTrailingZeroBits*[T: SomeUnsignedInt](n: T): T {.inline.} =
+  ## Count the number of trailing zero bits of an integer
+  when nimvm:
+    if n == 0:
+      T(sizeof(n) * 8)
     else:
-      static: doAssert sizeof(T) <= sizeof(uint32)
-      T(log2_c_compiler_vartime(uint32(n)))
-
-func hammingWeight*(x: uint32): uint {.inline.} =
-  ## Counts the set bits in integer.
-  # https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
-  var v = x
-  v = v - ((v shr 1) and 0x55555555)
-  v = (v and 0x33333333) + ((v shr 2) and 0x33333333)
-  uint(((v + (v shr 4) and 0xF0F0F0F) * 0x1010101) shr 24)
-
-func hammingWeight*(x: uint64): uint {.inline.} =
-  ## Counts the set bits in integer.
-  # https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
-  var v = x
-  v = v - ((v shr 1'u64) and 0x5555555555555555'u64)
-  v = (v and 0x3333333333333333'u64) + ((v shr 2'u64) and 0x3333333333333333'u64)
-  v = (v + (v shr 4'u64) and 0x0F0F0F0F0F0F0F0F'u64)
-  uint((v * 0x0101010101010101'u64) shr 56'u64)
-
-func countLeadingZeros_vartime*[T: SomeUnsignedInt](x: T): T {.inline.} =
-  (8*sizeof(T)) - 1 - log2_vartime(x)
+      when sizeof(T) == 8:
+        T(ctz_impl_vartime(uint64(n)))
+      else:
+        T(ctz_impl_vartime(uint32(n)))
+  else:
+    ctz_c_compiler_vartime(n)
 
 func isPowerOf2_vartime*(n: SomeUnsignedInt): bool {.inline.} =
   ## Returns true if n is a power of 2
@@ -121,7 +153,7 @@ func isPowerOf2_vartime*(n: SomeUnsignedInt): bool {.inline.} =
   ## for compile-time or explicit vartime proc only.
   (n and (n - 1)) == 0
 
-func nextPowerOf2_vartime*(n: uint64): uint64 {.inline.} =
+func nextPowerOfTwo_vartime*(n: uint32): uint32 {.inline.} =
   ## Returns x if x is a power of 2
   ## or the next biggest power of 2
-  1'u64 shl (log2_vartime(n-1) + 1)
+  1'u32 shl (log2_vartime(n-1) + 1)

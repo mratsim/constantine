@@ -282,7 +282,7 @@ func invModBitwidth*[T: SomeUnsignedInt](a: T): T =
   # which grows in O(log(log(a)))
   checkOdd(a)
 
-  let k = log2_vartime(T.sizeof() * 8)
+  let k = log2_vartime(T.sizeof().uint32 * 8)
   result = a                 # Start from an inverse of M0 modulo 2, M0 is odd and it's own inverse
   for _ in 0 ..< k:          # at each iteration we get the inverse mod(2^2k)
     result *= 2 - a * result # x' = x(2 - ax)

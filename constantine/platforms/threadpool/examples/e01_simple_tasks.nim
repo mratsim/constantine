@@ -1,0 +1,40 @@
+import ../threadpool
+
+block: # Async without result
+
+  proc displayInt(x: int) =
+    stdout.write(x)
+    stdout.write(" - SUCCESS\n")
+
+  proc main() =
+    echo "\nSanity check 1: Printing 123456 654321 in parallel"
+
+    var tp = Threadpool.new(numThreads = 4)
+    tp.spawn displayInt(123456)
+    tp.spawn displayInt(654321)
+    tp.shutdown()
+
+  main()
+
+block: # Async/Await
+  var tp: Threadpool
+
+  proc asyncFib(n: int): int =
+    if n < 2:
+      return n
+
+    let x = tp.spawn asyncFib(n-1)
+    let y = asyncFib(n-2)
+
+    result = sync(x) + y
+
+  proc main2() =
+    echo "\nSanity check 2: fib(20)"
+
+    tp = Threadpool.new()
+    let f = asyncFib(20)
+    tp.shutdown()
+
+    doAssert f == 6765, "f was " & $f
+
+  main2()

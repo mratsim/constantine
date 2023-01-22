@@ -233,6 +233,18 @@ const testDescNvidia: seq[string] = @[
   "tests/gpu/t_nvidia_fp.nim",
 ]
 
+const testDescThreadpool: seq[string] = @[
+  "constantine/platforms/threadpool/examples/e01_simple_tasks.nim",
+  "constantine/platforms/threadpool/examples/e02_parallel_pi.nim",
+  "constantine/platforms/threadpool/benchmarks/bouncing_producer_consumer/threadpool_bpc.nim",
+  "constantine/platforms/threadpool/benchmarks/dfs/threadpool_dfs.nim",
+  "constantine/platforms/threadpool/benchmarks/fibonacci/threadpool_fib.nim",
+  "constantine/platforms/threadpool/benchmarks/heat/threadpool_heat.nim",
+  "constantine/platforms/threadpool/benchmarks/matmul_cache_oblivious/threadpool_matmul_co.nim",
+  "constantine/platforms/threadpool/benchmarks/nqueens/threadpool_nqueens.nim",
+  "constantine/platforms/threadpool/benchmarks/single_task_producer/threadpool_spc.nim",
+]
+
 const benchDesc = [
   "bench_fp",
   "bench_fp_double_precision",
@@ -390,6 +402,14 @@ proc addTestSetNvidia(cmdFile: var string) =
   for path in testDescNvidia:
     cmdFile.testBatch(flags = "", path)
 
+proc addTestSetThreadpool(cmdFile: var string) =
+  if not dirExists "build":
+    mkDir "build"
+  echo "Found " & $testDescThreadpool.len & " tests to run."
+  
+  for path in testDescThreadpool:
+    cmdFile.testBatch(flags = "--threads:on", path)
+
 proc addBenchSet(cmdFile: var string, useAsm = true) =
   if not dirExists "build":
     mkDir "build"
@@ -509,6 +529,7 @@ task test, "Run all tests":
   var cmdFile: string
   cmdFile.addTestSet(requireGMP = true, testASM = true)
   cmdFile.addBenchSet(useASM = true)    # Build (but don't run) benches to ensure they stay relevant
+  cmdFile.addTestSetThreadpool()
   for cmd in cmdFile.splitLines():
     exec cmd
 
@@ -517,6 +538,7 @@ task test_no_asm, "Run all tests (no assembly)":
   var cmdFile: string
   cmdFile.addTestSet(requireGMP = true, testASM = false)
   cmdFile.addBenchSet(useASM = false)    # Build (but don't run) benches to ensure they stay relevant
+  cmdFile.addTestSetThreadpool()
   for cmd in cmdFile.splitLines():
     exec cmd
 
@@ -525,6 +547,7 @@ task test_no_gmp, "Run tests that don't require GMP":
   var cmdFile: string
   cmdFile.addTestSet(requireGMP = false, testASM = true)
   cmdFile.addBenchSet(useASM = true)    # Build (but don't run) benches to ensure they stay relevant
+  cmdFile.addTestSetThreadpool()
   for cmd in cmdFile.splitLines():
     exec cmd
 
@@ -533,6 +556,7 @@ task test_no_gmp_no_asm, "Run tests that don't require GMP using a pure Nim back
   var cmdFile: string
   cmdFile.addTestSet(requireGMP = false, testASM = false)
   cmdFile.addBenchSet(useASM = false)    # Build (but don't run) benches to ensure they stay relevant
+  cmdFile.addTestSetThreadpool()
   for cmd in cmdFile.splitLines():
     exec cmd
 
@@ -547,6 +571,11 @@ task test_parallel, "Run all tests in parallel (via GNU parallel)":
   writeFile(buildParallel, cmdFile)
   exec "build/pararun " & buildParallel
 
+  # Threadpool tests done serially
+  cmdFile.addTestSetThreadpool()
+  for cmd in cmdFile.splitLines():
+    exec cmd
+
 task test_parallel_no_asm, "Run all tests (without macro assembler) in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   clearParallelBuild()
@@ -557,6 +586,11 @@ task test_parallel_no_asm, "Run all tests (without macro assembler) in parallel 
   cmdFile.addBenchSet(useASM = false)
   writeFile(buildParallel, cmdFile)
   exec "build/pararun " & buildParallel
+
+  # Threadpool tests done serially
+  cmdFile.addTestSetThreadpool()
+  for cmd in cmdFile.splitLines():
+    exec cmd
 
 task test_parallel_no_gmp, "Run all tests in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
@@ -569,6 +603,11 @@ task test_parallel_no_gmp, "Run all tests in parallel (via GNU parallel)":
   writeFile(buildParallel, cmdFile)
   exec "build/pararun " & buildParallel
 
+  # Threadpool tests done serially
+  cmdFile.addTestSetThreadpool()
+  for cmd in cmdFile.splitLines():
+    exec cmd
+
 task test_parallel_no_gmp_no_asm, "Run all tests in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   clearParallelBuild()
@@ -579,6 +618,11 @@ task test_parallel_no_gmp_no_asm, "Run all tests in parallel (via GNU parallel)"
   cmdFile.addBenchSet(useASM = false)    # Build (but don't run) benches to ensure they stay relevant
   writeFile(buildParallel, cmdFile)
   exec "build/pararun " & buildParallel
+
+  # Threadpool tests done serially
+  cmdFile.addTestSetThreadpool()
+  for cmd in cmdFile.splitLines():
+    exec cmd
 
 task test_nvidia, "Run all tests for Nvidia GPUs":
   var cmdFile: string

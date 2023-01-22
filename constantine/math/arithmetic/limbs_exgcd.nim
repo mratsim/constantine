@@ -61,7 +61,7 @@ func invModBitwidth(a: BaseType): BaseType =
   # which grows in O(log(log(a)))
   debug: doAssert (a and 1) == 1, "a must be odd"
 
-  const k = log2_vartime(a.sizeof() * 8)
+  const k = log2_vartime(a.sizeof().uint32 * 8)
   result = a                 # Start from an inverse of M0 modulo 2, M0 is odd and it's own inverse
   for _ in 0 ..< k:          # at each iteration we get the inverse mod(2^2k)
     result *= 2 - a * result # x' = x(2 - ax)

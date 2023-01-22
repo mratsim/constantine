@@ -6,9 +6,23 @@ This folder holds:
   to have the compiler enforce proper usage
 - extended precision multiplication and division primitives
 - assembly or builtin int128 primitives
-- intrinsics
-- an assembler
-- Runtime CPU features detection
+- SIMD intrinsics
+- assemblers for x86 and LLVM IR
+- a code generator for Nvidia GPU from LLVM IR
+- runtime CPU features detection
+- a threadpool
+
+## Runtimes
+
+Constantine strongly avoid any runtime so that it can be used even where garbage collection, dynamic memory allocation
+are not allowed. That also avoids secrets remaining in heap memory.
+
+At runtime, Constantine may:
+- detect the CPU features at the start of the application (in Nim) or after calling `ctt_myprotocol_init_NimMain()` for the C (or any other language) bindings.
+
+And offers the following opt-in features with use dynamic allocation:
+- a threadpool, only for explicitly tagged parallel primitives.
+- use LLVM and Cuda, and configure code to run computation on GPUs.
 
 ## Security
 
