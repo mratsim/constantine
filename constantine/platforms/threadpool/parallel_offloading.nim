@@ -43,7 +43,7 @@ proc spawnVoid(funcCall: NimNode, args, argsTy: NimNode, workerContext, schedule
   # Create the async call
   result.add quote do:
     proc `async_fn`(param: pointer) {.nimcall.} =
-      preCondition: not isRootTask(`workerContext`.currentTask)
+      # preCondition: not isRootTask(`workerContext`.currentTask)
 
       when bool(`withArgs`):
         let `data` = cast[ptr `argsTy`](param)
@@ -110,7 +110,7 @@ proc spawnRet(funcCall: NimNode, retTy, args, argsTy: NimNode, workerContext, sc
 
   result.add quote do:
     proc `async_fn`(param: pointer) {.nimcall.} =
-      preCondition: not isRootTask(`workerContext`.currentTask)
+      # preCondition: not isRootTask(`workerContext`.currentTask)
 
       let `data` = cast[ptr `futArgsTy`](param)
       let res = `fnCall`

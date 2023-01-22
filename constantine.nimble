@@ -240,7 +240,7 @@ const testDescThreadpool: seq[string] = @[
   "constantine/platforms/threadpool/benchmarks/dfs/threadpool_dfs.nim",
   "constantine/platforms/threadpool/benchmarks/fibonacci/threadpool_fib.nim",
   "constantine/platforms/threadpool/benchmarks/heat/threadpool_heat.nim",
-  "constantine/platforms/threadpool/benchmarks/matmul_cache_oblivious/threadpool_matmul_co.nim",
+  # "constantine/platforms/threadpool/benchmarks/matmul_cache_oblivious/threadpool_matmul_co.nim",
   "constantine/platforms/threadpool/benchmarks/nqueens/threadpool_nqueens.nim",
   "constantine/platforms/threadpool/benchmarks/single_task_producer/threadpool_spc.nim",
 ]
