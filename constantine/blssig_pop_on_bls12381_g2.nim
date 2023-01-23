@@ -85,6 +85,7 @@ type
     cttBLS_PointNotInSubgroup
     cttBLS_ZeroSecretKey
     cttBLS_SecretKeyLargerThanCurveOrder
+    cttBLS_ZeroLengthAggregation
 
 # Comparisons
 # ------------------------------------------------------------------------------------------------
@@ -401,6 +402,42 @@ func verify*[T: byte|char](public_key: PublicKey, message: openarray[T], signatu
     return cttBLS_PointAtInfinity
 
   let verified = coreVerify(public_key.raw, message, signature.raw, sha256, 128, augmentation = "", DST)
+  if verified:
+    return cttBLS_Success
+  return cttBLS_VerificationFailure
+
+func fast_aggregate_verify*[T: byte|char](public_keys: openArray[PublicKey], message: openarray[T], signature: Signature): CttBLSStatus =
+  ## Check that a signature is valid for a message
+  ## under the aggregate of provided public keys.
+  ## returns `true` if the signature is valid, `false` otherwise.
+  ## 
+  ## For message domain separation purpose, the tag is `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_`
+  ## 
+  ## Input:
+  ## - Public keys initialized by one of the key derivation or deserialization procedure.
+  ##   Or validated via validate_pubkey
+  ## - A message
+  ## - A signature initialized by one of the key derivation or deserialization procedure.
+  ##   Or validated via validate_pubkey
+  ## 
+  ## In particular, the public keys and signature are assumed to be on curve subgroup checked.
+
+  if public_keys.len == 0:
+    # IETF spec precondition
+    return cttBLS_ZeroLengthAggregation
+
+  # Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
+  if signature.raw.isInf().bool:
+    return cttBLS_PointAtInfinity
+
+  for i in 0 ..< public_keys.len:
+    if public_keys[i].raw.isInf().bool:
+      return cttBLS_PointAtInfinity
+  
+  let verified = fastAggregateVerify(
+    toOpenArray(cast[ptr UncheckedArray[typeof public_keys[0].raw]](public_keys[0].raw.unsafeAddr), public_keys.low, public_keys.high),
+    message, signature.raw,
+    sha256, 128, augmentation = "", DST)
   if verified:
     return cttBLS_Success
   return cttBLS_VerificationFailure

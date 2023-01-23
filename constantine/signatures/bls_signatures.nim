@@ -8,6 +8,7 @@
 
 import
     ../math/[ec_shortweierstrass, pairings],
+    ../math/elliptic/ec_shortweierstrass_batch_ops,
     ../math/constants/zoo_generators,
     ../hash_to_curve/hash_to_curve,
     ../hashes
@@ -94,7 +95,7 @@ func coreSign*[B1, B2, B3: byte|char, Sig, SecKey](
   signature.affine(sig)
 
 func coreVerify*[B1, B2, B3: byte|char, Pubkey, Sig](
-    pubKey: Pubkey,
+    pubkey: Pubkey,
     message: openarray[B1],
     signature: Sig,
     H: type CryptoHash,
@@ -119,8 +120,45 @@ func coreVerify*[B1, B2, B3: byte|char, Pubkey, Sig](
 
   # e(PK, H(msg))*e(sig, -G) == 1
   when Sig.G == G2:
-    pairing(gt, [pubKey, negG], [Q, signature])
+    pairing(gt, [pubkey, negG], [Q, signature])
   else:
-    pairing(gt, [Q, signature], [pubKey, negG])
+    pairing(gt, [Q, signature], [pubkey, negG])
 
   return gt.isOne().bool()
+
+# ############################################################
+#
+#                   Aggregate verification
+#
+# ############################################################
+#
+# Terminology:
+#
+# - fastAggregateVerify:
+#   Verify the aggregate of multiple signatures by multiple pubkeys
+#   on the same message.
+#
+# - aggregateVerify:
+#   Verify the aggregate of multiple signatures by multiple (pubkey, message) pairs
+#
+# - batchVerify:
+#   Verify that all (pubkey, message, signature) triplets are valid
+
+func fastAggregateVerify*[B1, B2, B3: byte|char, Pubkey, Sig](
+    pubkeys: openArray[Pubkey],
+    message: openarray[B1],
+    signature: Sig,
+    H: type CryptoHash,
+    k: static int,
+    augmentation: openarray[B2],
+    domainSepTag: openarray[B3]): bool =
+  ## Verify the aggregate of multiple signatures by multiple pubkeys
+  ## on the same message.
+  
+  var accum {.noinit.}: ECP_ShortW_Jac[Pubkey.F, Pubkey.G]
+  accum.sum_batch_vartime(pubkeys)
+
+  var aggPubkey {.noinit.}: Pubkey
+  aggPubkey.affine(accum)
+
+  aggPubkey.coreVerify(message, signature, H, k, augmentation, domainSepTag)

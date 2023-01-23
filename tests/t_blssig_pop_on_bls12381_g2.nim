@@ -13,13 +13,16 @@ import
   ../constantine/math/io/io_bigints
 
 type
+  # https://github.com/ethereum/bls12-381-tests/blob/master/formats/
+
   PubkeyField = object
     pubkey: array[48, byte]
-  SignatureField =object
-    signature: array[96, byte]
   DeserG1_test = object
     input: PubkeyField
     output: bool
+
+  SignatureField =object
+    signature: array[96, byte]
   DeserG2_test = object
     input: SignatureField
     output: bool
@@ -27,7 +30,6 @@ type
   InputSign = object
     privkey: array[32, byte]
     message: array[32, byte]
-
   Sign_test = object
     input: InputSign
     output: array[96, byte]
@@ -36,9 +38,16 @@ type
     pubkey: array[48, byte]
     message: array[32, byte]
     signature: array[96, byte]
-
   Verify_test = object
     input: InputVerify
+    output: bool
+
+  InputFastAggregateVerify = object
+    pubkeys: seq[array[48, byte]]
+    message: array[32, byte]
+    signature: array[96, byte]
+  FastAggregateVerify_test = object
+    input: InputFastAggregateVerify
     output: bool
 
 proc parseHook*[N: static int](src: string, pos: var int, value: var array[N, byte]) =
@@ -73,7 +82,7 @@ template testGen*(name, testData, TestType, body: untyped): untyped =
     var count = 0 # Need to fail if walkDir doesn't return anything
     var skipped = 0
     for dir, file in walkTests(astToStr(name), skipped):
-      stdout.write("       " & astToStr(name) & " test: " & alignLeft(file, 60))
+      stdout.write("       " & astToStr(name) & " test: " & alignLeft(file, 70))
       let testFile = readFile(dir/file)
       let testData = testFile.fromJson(TestType)
 
@@ -169,7 +178,7 @@ testGen(verify, testVector, Verify_test):
   var
     pubkey{.noInit.}: PublicKey
     signature{.noInit.}: Signature
-    status = cttBLS_Success
+    status = cttBLS_VerificationFailure
 
   block testChecks:
     status = pubkey.deserialize_public_key_compressed(testVector.input.pubkey)
@@ -181,26 +190,52 @@ testGen(verify, testVector, Verify_test):
       # For point at infinity, we want to make sure that "verify" itself handles them.
       break testChecks
 
-
     status = pubkey.verify(testVector.input.message, signature)
-    let success = status == cttBLS_Success
-    doAssert success == testVector.output, block:
-      "\Verification differs from expected \n" &
-      "   valid sig? " & $success & " (" & $status & ")\n" &
-      "   expected: " & $testVector.output
+  
+  let success = status == cttBLS_Success
+  doAssert success == testVector.output, block:
+    "\Verification differs from expected \n" &
+    "   valid sig? " & $success & " (" & $status & ")\n" &
+    "   expected: " & $testVector.output
 
-    if success: # Extra codec testing
-      block:
-        var output{.noInit.}: array[48, byte]
-        let s = output.serialize_public_key_compressed(pubkey)
-        doAssert s == cttBLS_Success
-        doAssert output == testVector.input.pubkey
+  if success: # Extra codec testing
+    block:
+      var output{.noInit.}: array[48, byte]
+      let s = output.serialize_public_key_compressed(pubkey)
+      doAssert s == cttBLS_Success
+      doAssert output == testVector.input.pubkey
 
-      block:
-        var output{.noInit.}: array[96, byte]
-        let s = output.serialize_signature_compressed(signature)
-        doAssert s == cttBLS_Success
-        doAssert output == testVector.input.signature
+    block:
+      var output{.noInit.}: array[96, byte]
+      let s = output.serialize_signature_compressed(signature)
+      doAssert s == cttBLS_Success
+      doAssert output == testVector.input.signature
+
+testGen(fast_aggregate_verify, testVector, FastAggregateVerify_test):
+  var
+    pubkeys = newSeq[PublicKey](testVector.input.pubkeys.len)
+    signature{.noInit.}: Signature
+    status = cttBLS_VerificationFailure
+
+  block testChecks:
+    for i in 0 ..< testVector.input.pubkeys.len:
+      status = pubkeys[i].deserialize_public_key_compressed(testVector.input.pubkeys[i])
+      if status notin {cttBLS_Success, cttBLS_PointAtInfinity}:
+        # For point at infinity, we want to make sure that "verify" itself handles them.
+        break testChecks
+    
+    status = signature.deserialize_signature_compressed(testVector.input.signature)
+    if status notin {cttBLS_Success, cttBLS_PointAtInfinity}:
+      # For point at infinity, we want to make sure that "verify" itself handles them.
+      break testChecks
+
+    status = pubkeys.fast_aggregate_verify(testVector.input.message, signature)
+  
+  let success = status == cttBLS_Success
+  doAssert success == testVector.output, block:
+    "\Verification differs from expected \n" &
+    "   valid sig? " & $success & " (" & $status & ")\n" &
+    "   expected: " & $testVector.output
 
 suite "BLS signature on BLS12381G3 - ETH 2.0 test vectors":
   test "Deserialization_G1(PublicKey) -> bool":
@@ -211,3 +246,5 @@ suite "BLS signature on BLS12381G3 - ETH 2.0 test vectors":
     test_sign()
   test "verify(PublicKey, message, Signature) -> bool":
     test_verify()
+  test "fast_aggregate_verify(seq[PublicKey], message, Signature) -> bool":
+    test_fast_aggregate_verify()
