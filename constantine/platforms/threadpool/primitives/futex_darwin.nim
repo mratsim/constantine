@@ -101,9 +101,7 @@ proc wait*(futex: var Futex, refVal: uint32) {.inline.} =
 
 proc wake*(futex: var Futex) {.inline.} =
   ## Wake one thread (from the same process)
-  # Yes no ULF_WAKE_THREAD, in the source code they dispatch to different paths
-  # and the ULF_WAKE_THREAD seems less relevant.
-  discard ulock_wake(UL_COMPARE_AND_WAIT or ULF_NO_ERRNO, futex.value.addr, 0)
+  discard ulock_wake(UL_COMPARE_AND_WAIT or ULF_NO_ERRNO or ULF_WAKE_THREAD, futex.value.addr, 0)
 
 proc wakeAll*(futex: var Futex) {.inline.} =
   ## Wake all threads (from the same process)
