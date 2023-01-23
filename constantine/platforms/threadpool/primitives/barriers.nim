@@ -5,6 +5,8 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
+{.push raises: [], checks: off.} # No exceptions or overflow/conversion checks
+
 when defined(windows):
   import ./barriers_windows
   when compileOption("assertions"):
@@ -15,7 +17,7 @@ when defined(windows):
   proc init*(syncBarrier: var SyncBarrier, threadCount: uint32) {.inline.} =
     ## Initialize a synchronization barrier that will block ``threadCount`` threads
     ## before release.
-    let err {.used.} = InitializeSynchronizationBarrier(syncBarrier, threadCount, -1)
+    let err {.used.} = InitializeSynchronizationBarrier(syncBarrier, cast[int32](threadCount), -1)
     when compileOption("assertions"):
       if err != 1:
         assert err == 0
