@@ -12,7 +12,7 @@ import std/atomics
 # A new API appeared in OSX Big Sur (Jan 2021) ulock_wait2 and macOS pthread_cond_t has been migrated to it
 # - https://github.com/apple/darwin-xnu/commit/d4061fb0260b3ed486147341b72468f836ed6c8f#diff-08f993cc40af475663274687b7c326cc6c3031e0db3ac8de7b24624610616be6
 #
-# We keep the old API ulock_wait
+# The old API is ulock_wait
 # - https://opensource.apple.com/source/xnu/xnu-7195.81.3/bsd/kern/sys_ulock.c.auto.html
 # - https://opensource.apple.com/source/xnu/xnu-7195.81.3/bsd/sys/ulock.h.auto.html
 
@@ -96,7 +96,8 @@ proc store*(futex: var Futex, value: uint32, order: MemoryOrder) {.inline.} =
 
 proc wait*(futex: var Futex, refVal: uint32) {.inline.} =
   ## Suspend a thread if the value of the futex is the same as refVal.
-  discard ulock_wait(UL_COMPARE_AND_WAIT or ULF_NO_ERRNO, futex.value.addr, uint64 refVal, 0)
+  # discard ulock_wait(UL_COMPARE_AND_WAIT or ULF_NO_ERRNO, futex.value.addr, uint64 refVal, 0)
+  discard ulock_wait2(UL_COMPARE_AND_WAIT or ULF_NO_ERRNO, futex.value.addr, uint64 refVal, 0, 0)
 
 proc wake*(futex: var Futex) {.inline.} =
   ## Wake one thread (from the same process)
