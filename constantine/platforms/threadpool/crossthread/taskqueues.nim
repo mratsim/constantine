@@ -47,7 +47,7 @@ type
     ## Backend buffer of a Taskqueue
     ## `capacity` MUST be a power of 2
     prevRetired: ptr Buf # intrusive linked list. Used for garbage collection
-     
+
     capacity: int
     rawBuffer: UncheckedArray[Atomic[ptr Task]]
 
@@ -78,7 +78,7 @@ proc peek*(tq: var Taskqueue): int =
   let # Handle race conditions
     b = tq.back.load(moRelaxed)
     f = tq.front.load(moRelaxed)
-  
+
   if b >= f:
     return b-f
   else:
@@ -216,13 +216,13 @@ proc steal*(thiefID: uint32, tq: var Taskqueue): ptr Task =
       return nil
     result.thiefID.store(thiefID, moRelease)
 
-proc stealHalfImpl(dst: var Buf, dstBottom: int, src: var Taskqueue): int =
+proc stealHalfImpl(dst: var Buf, dstBack: int, src: var Taskqueue): int =
   ## Theft part of stealHalf:
   ## - updates the victim metadata if successful
   ## - uncommitted updates to the thief tq whether successful or not
   ## Returns -1 if dst buffer is too small
   ## Assumes `dst` buffer is empty (i.e. not ahead-of-time thefts)
-  
+
   while true:
     # Try as long as there are something to steal, we are idling anyway.
 
@@ -240,7 +240,7 @@ proc stealHalfImpl(dst: var Buf, dstBottom: int, src: var Taskqueue): int =
     # Non-empty queue.
     let sBuf = src.buf.load(moConsume)
     for i in 0 ..< n: # Copy LIFO or FIFO?
-      dst[dstBottom+i] = sBuf[][f+i]
+      dst[dstBack+i] = sBuf[][f+i]
     if compareExchange(src.front, f, f+n, moSequentiallyConsistent, moRelaxed):
       return n
 
@@ -250,7 +250,7 @@ proc stealHalf*(thiefID: uint32, dst: var Taskqueue, src: var Taskqueue): ptr Ta
 
   while true:
     # Prepare for batch steal
-    let 
+    let
       bDst = dst.back.load(moRelaxed)
       fDst = dst.front.load(moAcquire)
     var dBuf = dst.buf.load(moAcquire)
@@ -276,6 +276,7 @@ proc stealHalf*(thiefID: uint32, dst: var Taskqueue, src: var Taskqueue): ptr Ta
 
     # Commit/publish theft, return the first item for processing
     let last = dBuf[][bDst+n-1]
+    fence(moSequentiallyConsistent)
     if n == 1:
       return last
 

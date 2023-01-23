@@ -72,12 +72,14 @@ proc main() =
   when not defined(windows):
     let stop = wtime_usec()
 
+  echo "--------------------------------------------------------------------------"
   echo "Scheduler:  Constantine's Threadpool"
   echo "Benchmark:  dfs"
   echo "Threads:    ", nthreads
   when not defined(windows):
     echo "Time(us)    ", stop - start
   echo "Output:     ", answer
+  echo "--------------------------------------------------------------------------"
 
   quit 0
 

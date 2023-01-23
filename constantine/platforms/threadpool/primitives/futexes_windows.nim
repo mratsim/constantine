@@ -15,7 +15,7 @@ type
     value: Atomic[uint32]
 
 # Contrary to the documentation, the futex related primitives are NOT in kernel32.dll
-# but in api-ms-win-core-synch-l1-2-0.dll ¯\_(ツ)_/¯
+# but in API-MS-Win-Core-Synch-l1-2-0.dll ¯\_(ツ)_/¯
 
 proc initialize*(futex: var Futex) {.inline.} =
   futex.value.store(0, moRelaxed)
@@ -26,11 +26,11 @@ proc teardown*(futex: var Futex) {.inline.} =
 proc WaitOnAddress(
         Address: pointer, CompareAddress: pointer,
         AddressSize: csize_t, dwMilliseconds: DWORD
-       ): WINBOOL {.importc, stdcall, dynlib: "api-ms-win-core-synch-l1-2-0".}
+       ): WINBOOL {.importc, stdcall, dynlib: "API-MS-Win-Core-Synch-l1-2-0.dll".}
   # The Address should be volatile
 
-proc WakeByAddressSingle(Address: pointer) {.importc, stdcall, dynlib: "api-ms-win-core-synch-l1-2-0".}
-proc WakeByAddressAll(Address: pointer) {.importc, stdcall, dynlib: "api-ms-win-core-synch-l1-2-0".}
+proc WakeByAddressSingle(Address: pointer) {.importc, stdcall, dynlib: "API-MS-Win-Core-Synch-l1-2-0.dll".}
+proc WakeByAddressAll(Address: pointer) {.importc, stdcall, dynlib: "API-MS-Win-Core-Synch-l1-2-0.dll".}
 
 proc load*(futex: var Futex, order: MemoryOrder): uint32 {.inline.} =
   futex.value.load(order)

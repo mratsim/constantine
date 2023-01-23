@@ -193,6 +193,7 @@ proc main() =
   rss = ru.ru_maxrss - rss
   flt = ru.ru_minflt - flt
 
+  echo "--------------------------------------------------------------------------"
   echo "Scheduler:        Constantine's Threadpool"
   echo "Benchmark:        Matrix Multiplication (cache oblivious)"
   echo "Threads:          ", nthreads
@@ -202,6 +203,7 @@ proc main() =
   echo "# of page faults: ", flt
   echo "Input:            ", n
   echo "Error:           ", check(A, B, C, n)
+  echo "--------------------------------------------------------------------------"
 
   delete A
   delete B

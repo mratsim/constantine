@@ -260,7 +260,7 @@ proc verify() =
     echo &"Global mean absolute error {me:1.3e}"
     quit 1
 
-  echo "Verification successful"
+  echo "Heat: Verification successful"
 
 proc main() =
   var nthreads: int
@@ -298,6 +298,7 @@ proc main() =
   delete(even)
   delete(odd)
 
+  echo "--------------------------------------------------------------------------"
   echo "Scheduler:        Constantine's Threadpool"
   echo "Benchmark:        heat"
   echo "Threads:          ", nthreads
@@ -306,6 +307,7 @@ proc main() =
     echo "Max RSS (KB):     ", ru.ru_maxrss
     echo "Runtime RSS (KB): ", rss
     echo "# of page faults: ", flt
+  echo "--------------------------------------------------------------------------"
 
   quit 0
 

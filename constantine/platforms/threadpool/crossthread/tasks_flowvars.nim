@@ -54,7 +54,7 @@ proc new*(
        T: typedesc[Task],
        parent: ptr Task,
        fn: proc (param: pointer) {.nimcall, gcsafe.}): ptr Task {.inline.} =
-  
+
   const size = sizeof(T)
 
   result = allocHeapUnchecked(T, size)
@@ -69,7 +69,7 @@ proc new*(
        parent: ptr Task,
        fn: proc (param: pointer) {.nimcall, gcsafe.},
        params: auto): ptr Task {.inline.} =
-  
+
   const size = sizeof(T) + # size without Unchecked
                sizeof(params)
 
@@ -93,8 +93,9 @@ proc newFlowVar*(T: typedesc, task: ptr Task): Flowvar[T] {.inline.} =
   # that can only access data
   cast[ptr ptr Task](task.data.addr)[] = task
 
-proc cleanup*(fv: Flowvar) {.inline.} =
+proc cleanup*(fv: var Flowvar) {.inline.} =
   fv.task.freeHeap()
+  fv.task = nil
 
 func isSpawned*(fv: Flowvar): bool {.inline.} =
   ## Returns true if a flowvar is spawned
@@ -103,20 +104,19 @@ func isSpawned*(fv: Flowvar): bool {.inline.} =
   ## This is similar to Option or Maybe types
   return not fv.task.isNil
 
-func readyWith*[T](task: ptr Task, childResult: T) {.inline.} =
-  ## Send the Flowvar result from the child thread processing the task
-  ## to its parent thread.
-  precondition: not task.completed.load(moAcquire)
-  cast[ptr (ptr Task, T)](task.data.addr)[1] = childResult
-  
-  # task.completed is updated in task.run()
-
 func isReady*[T](fv: Flowvar[T]): bool {.inline.} =
   ## Returns true if the result of a Flowvar is ready.
   ## In that case `sync` will not block.
   ## Otherwise the current will block to help on all the pending tasks
   ## until the Flowvar is ready.
   fv.task.completed.load(moAcquire)
+
+func readyWith*[T](task: ptr Task, childResult: T) {.inline.} =
+  ## Send the Flowvar result from the child thread processing the task
+  ## to its parent thread.
+  precondition: not task.completed.load(moAcquire)
+  cast[ptr (ptr Task, T)](task.data.addr)[1] = childResult
+  task.completed.store(true, moRelease)
 
 proc sync*[T](fv: sink Flowvar[T]): T {.inline, gcsafe.} =
   ## Blocks the current thread until the flowvar is available

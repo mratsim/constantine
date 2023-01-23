@@ -139,6 +139,7 @@ proc main() =
   echo "# of tasks:                                    ", NumTasksTotal
   echo "Task granularity (us):                         ", TaskGranularity
   echo "Polling / manual load balancing interval (us): ", PollInterval
+  echo "--------------------------------------------------------------------------"
 
   quit 0
 

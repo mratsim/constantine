@@ -7,6 +7,10 @@ block: # Async without result
     stdout.write(" - SUCCESS\n")
 
   proc main() =
+    echo "\n=============================================================================================="
+    echo "Running 'threadpool/examples/e01_simple_tasks.nim'"
+    echo "=============================================================================================="
+
     echo "\nSanity check 1: Printing 123456 654321 in parallel"
 
     var tp = Threadpool.new(numThreads = 4)
@@ -29,6 +33,10 @@ block: # Async/Await
     result = sync(x) + y
 
   proc main2() =
+    echo "\n=============================================================================================="
+    echo "Running 'threadpool/examples/e01_simple_tasks.nim'"
+    echo "=============================================================================================="
+
     echo "\nSanity check 2: fib(20)"
 
     tp = Threadpool.new()

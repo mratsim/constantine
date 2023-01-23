@@ -20,6 +20,11 @@ proc piApprox(tp: Threadpool, n: int): float =
     result += sync pendingFuts[k]     # Block until the result is available.
 
 proc main() =
+
+  echo "\n=============================================================================================="
+  echo "Running 'threadpool/examples/e02_parallel_pi.nim'"
+  echo "=============================================================================================="
+
   var n = 1_000_000
   var nthreads = countProcessors()
 
@@ -27,7 +32,6 @@ proc main() =
 
   echo formatFloat(tp.piApprox(n))
 
-  tp.syncAll()                                  # Block until all pending tasks are processed (implied in tp.shutdown())
   tp.shutdown()
 
 # Compile with nim c -r -d:release --threads:on --outdir:build example.nim

@@ -16,6 +16,8 @@ import std/atomics
 # - https://opensource.apple.com/source/xnu/xnu-7195.81.3/bsd/kern/sys_ulock.c.auto.html
 # - https://opensource.apple.com/source/xnu/xnu-7195.81.3/bsd/sys/ulock.h.auto.html
 
+{.push hint[XDeclaredButNotUsed]: off.}
+
 const UL_COMPARE_AND_WAIT            = 1
 const UL_UNFAIR_LOCK                 = 2
 const UL_COMPARE_AND_WAIT_SHARED     = 3
@@ -96,13 +98,12 @@ proc store*(futex: var Futex, value: uint32, order: MemoryOrder) {.inline.} =
 
 proc wait*(futex: var Futex, refVal: uint32) {.inline.} =
   ## Suspend a thread if the value of the futex is the same as refVal.
-  # discard ulock_wait(UL_COMPARE_AND_WAIT or ULF_NO_ERRNO, futex.value.addr, uint64 refVal, 0)
-  discard ulock_wait2(UL_COMPARE_AND_WAIT or ULF_NO_ERRNO, futex.value.addr, uint64 refVal, 0, 0)
+  discard ulock_wait(UL_UNFAIR_LOCK64_SHARED or ULF_NO_ERRNO, futex.value.addr, uint64 refVal, 0)
 
 proc wake*(futex: var Futex) {.inline.} =
   ## Wake one thread (from the same process)
-  discard ulock_wake(UL_COMPARE_AND_WAIT or ULF_NO_ERRNO or ULF_WAKE_THREAD, futex.value.addr, 0)
+  discard ulock_wake(ULF_WAKE_THREAD or ULF_NO_ERRNO, futex.value.addr, 0)
 
 proc wakeAll*(futex: var Futex) {.inline.} =
   ## Wake all threads (from the same process)
-  discard ulock_wake(UL_COMPARE_AND_WAIT or ULF_NO_ERRNO or ULF_WAKE_ALL, futex.value.addr, 0)
+  discard ulock_wake(ULF_WAKE_ALL or ULF_NO_ERRNO, futex.value.addr, 0)

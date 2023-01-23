@@ -8,7 +8,7 @@
 
 import
   std/atomics,
-  ../primitives/futex
+  ../primitives/futexes
 
 # We implement 2 datastructures to put threads to sleep:
 # 1. An event notifier to put an awaiting thread to sleep when the task they require is worked on by another thread

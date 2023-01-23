@@ -213,6 +213,7 @@ proc main() =
       c_printf("%2d ", example_solution[i])
     stdout.write('\n')
 
+  echo "--------------------------------------------------------------------------"
   echo "Scheduler:            Constantine's Threadpool"
   echo "Benchmark:            N-queens"
   echo "Threads:              ", nthreads
@@ -223,6 +224,7 @@ proc main() =
     echo "# of page faults:     ", flt
   echo "Problem size:         ", n,"x",n, " board with ",n, " queens"
   echo "Solutions found:      ", count
+  echo "--------------------------------------------------------------------------"
 
   quit 0
 

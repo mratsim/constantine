@@ -6,14 +6,13 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 when defined(linux):
-  import ./futex_linux
-  export futex_linux
+  import ./futexes_linux
+  export futexes_linux
 elif defined(windows):
-  import ./futex_windows
-  export futex_windows
-elif defined(macos):
-  import ./futex_darwin
-  export futex_darwin
+  import ./futexes_windows
+  export futexes_windows
+elif defined(osx):
+  import ./futexes_macos
+  export futexes_macos
 else:
-  import ./futex_generic
-  export futex_generic
+  {.error: "Futexes are not implemented for your OS".}

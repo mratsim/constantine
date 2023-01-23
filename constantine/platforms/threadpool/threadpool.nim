@@ -152,6 +152,7 @@ proc run*(ctx: var WorkerContext, task: ptr Task) {.raises:[Exception].} =
   ctx.currentTask = task
   debug: log("Worker %2d: running task.fn 0x%.08x (%d pending)\n", ctx.id, task.fn, ctx.taskqueue[].peek())
   task.fn(task.data.addr)
+  debug: log("Worker %2d: completed task.fn 0x%.08x (%d pending)\n", ctx.id, task.fn, ctx.taskqueue[].peek())
   ctx.recentTasks += 1
   ctx.currentTask = suspendedTask
   if not task.hasFuture:
@@ -159,7 +160,6 @@ proc run*(ctx: var WorkerContext, task: ptr Task) {.raises:[Exception].} =
     return
 
   # Sync with an awaiting thread without work in completeFuture
-  task.completed.store(true, moRelease)
   var expected = (ptr EventNotifier)(nil)
   if not compareExchange(task.waiter, expected, desired = ReadyFuture, moAcquireRelease):
     debug: log("Worker %2d: completed task 0x%.08x, notifying waiter 0x%.08x\n", ctx.id, task, expected)
@@ -170,7 +170,7 @@ proc schedule(ctx: var WorkerContext, tn: ptr Task, forceWake = false) {.inline.
   ## This wakes a sibling thread if our local queue is empty
   ## or forceWake is true.
   debug: log("Worker %2d: schedule task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, tn, tn.parent, ctx.currentTask)
-  
+
   # Instead of notifying every time a task is scheduled, we notify
   # only when the worker queue is empty. This is a good approximation
   # of starvation in work-stealing.
@@ -215,15 +215,15 @@ iterator pseudoRandomPermutation(randomSeed, maxExclusive: uint32): uint32 =
   # - we don't need a GCD to find the coprimes
   # - we don't need to cache coprimes, removing a cache-miss potential
   # - a != 1, so we now have a multiplicative factor, which makes output more "random looking".
-  
+
   # n and (m-1) <=> n mod m, if m is a power of 2
   let M = maxExclusive.nextPowerOfTwo_vartime()
   let c = (randomSeed and ((M shr 1) - 1)) * 2 + 1 # c odd and c ∈ [0, M)
   let a = (randomSeed and ((M shr 2) - 1)) * 4 + 1 # a-1 divisible by 2 (all prime factors of m) and by 4 if m divisible by 4
-  
+
   let mask = M-1                                   # for mod M
   let start = randomSeed and mask
-  
+
   var x = start
   while true:
     if x < maxExclusive:
@@ -238,9 +238,9 @@ proc tryStealOne(ctx: var WorkerContext): ptr Task =
   for targetId in seed.pseudoRandomPermutation(ctx.threadpool.numThreads):
     if targetId == ctx.id:
       continue
-    
+
     let stolenTask = ctx.id.steal(ctx.threadpool.workerQueues[targetId])
-    
+
     if not stolenTask.isNil():
       ctx.recentThefts += 1
       # Theft successful, there might be more work for idle threads, wake one
@@ -263,7 +263,7 @@ proc updateStealStrategy(ctx: var WorkerContext) =
     elif not ctx.stealHalf and ratio == 1.0f:
       # All tasks processed were stolen tasks, we need to steal many at a time
       ctx.stealHalf = true
-    
+
     # Reset interval
     ctx.recentTasks = 0
     ctx.recentThefts = 0
@@ -272,18 +272,18 @@ proc updateStealStrategy(ctx: var WorkerContext) =
 
 proc tryStealAdaptative(ctx: var WorkerContext): ptr Task =
   ## Try to steal one or many tasks, depending on load
-  
+
   ctx.updateStealStrategy()
 
   let seed = ctx.rng.next().uint32
   for targetId in seed.pseudoRandomPermutation(ctx.threadpool.numThreads):
     if targetId == ctx.id:
       continue
-    
-    let stolenTask = 
+
+    let stolenTask =
       if ctx.stealHalf: ctx.id.stealHalf(ctx.taskqueue[], ctx.threadpool.workerQueues[targetId])
       else:             ctx.id.steal(ctx.threadpool.workerQueues[targetId])
-    
+
     if not stolenTask.isNil():
       ctx.recentThefts += 1
       ctx.recentTheftsAdaptative += 1
@@ -294,15 +294,15 @@ proc tryStealAdaptative(ctx: var WorkerContext): ptr Task =
 
 proc tryLeapfrog(ctx: var WorkerContext, awaitedTask: ptr Task): ptr Task =
   ## Leapfrogging:
-  ## 
+  ##
   ## - Leapfrogging: a portable technique for implementing efficient futures,
   ##   David B. Wagner, Bradley G. Calder, 1993
   ##   https://dl.acm.org/doi/10.1145/173284.155354
-  ## 
+  ##
   ## When awaiting a future, we can look in the thief queue first. They steal when they run out of tasks.
   ## If they have tasks in their queue, it's the task we are awaiting that created them and it will likely be stuck
   ## on those tasks as well, so we need to help them help us.
-  
+
   var thiefID = SentinelThief
   while true:
     debug: log("Worker %2d: waiting for thief to publish their ID\n", ctx.id)
@@ -359,7 +359,7 @@ proc completeFuture*[T](fv: Flowvar[T], parentResult: var T) {.raises:[Exception
   template ctx: untyped = workerContext
 
   template isFutReady(): untyped =
-    let isReady = fv.task.completed.load(moRelaxed)
+    let isReady = fv.task.completed.load(moAcquire)
     if isReady:
       parentResult = cast[ptr (ptr Task, T)](fv.task.data.addr)[1]
     isReady
@@ -374,7 +374,7 @@ proc completeFuture*[T](fv: Flowvar[T], parentResult: var T) {.raises:[Exception
     if task.parent != ctx.currentTask:
       debug: log("Worker %2d: sync 1 - skipping non-direct descendant task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, task, task.parent, ctx.currentTask)
       ctx.schedule(task, forceWake = true) # reschedule task and wake a sibling to take it over.
-      break 
+      break
     debug: log("Worker %2d: sync 1 - running task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, task, task.parent, ctx.currentTask)
     ctx.run(task)
     if isFutReady():
@@ -385,7 +385,7 @@ proc completeFuture*[T](fv: Flowvar[T], parentResult: var T) {.raises:[Exception
   ##    So the task is bottlenecked by dependencies in other threads,
   ##    hence we abandon our enqueued work and steal in the others' queues
   ##    in hope it advances our awaited task. This prioritizes latency over throughput.
-  ## 
+  ##
   ##    See also
   ##    - Proactive work-stealing for futures
   ##      Kyle Singer, Yifan Xu, I-Ting Angelina Lee, 2019
@@ -402,7 +402,7 @@ proc completeFuture*[T](fv: Flowvar[T], parentResult: var T) {.raises:[Exception
       ctx.run(stolenTask)
     elif (let ownTask = ctx.taskqueue[].pop(); not ownTask.isNil):
       # We advance our own queue, this increases global throughput but may impact latency on the awaited task.
-      # 
+      #
       # Note: for a scheduler to be optimal (i.e. within 2x than ideal) it should be greedy
       #       so all workers should be working. This is a difficult tradeoff.
       debug: log("Worker %2d: sync 2.3 - couldn't steal, running own task\n", ctx.id)
