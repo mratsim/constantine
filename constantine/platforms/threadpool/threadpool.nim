@@ -273,7 +273,11 @@ proc updateStealStrategy(ctx: var WorkerContext) =
 proc tryStealAdaptative(ctx: var WorkerContext): ptr Task =
   ## Try to steal one or many tasks, depending on load
 
-  ctx.updateStealStrategy()
+  # TODO: while running 'threadpool/examples/e02_parallel_pi.nim'
+  #       stealHalf can error out in tasks_flowvars.nim with:
+  #       "precondition not task.completed.load(moAcquire)"
+  ctx.stealHalf = false
+  # ctx.updateStealStrategy()
 
   let seed = ctx.rng.next().uint32
   for targetId in seed.pseudoRandomPermutation(ctx.threadpool.numThreads):
