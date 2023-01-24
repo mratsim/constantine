@@ -12,7 +12,7 @@ import
   ./math/[arithmetic, extension_fields],
   ./math/arithmetic/limbs_montgomery,
   ./math/ec_shortweierstrass,
-  ./math/pairing/[pairing_bn, miller_loops, cyclotomic_subgroup],
+  ./math/pairings/[pairings_bn, miller_loops, cyclotomic_subgroups],
   ./math/constants/zoo_subgroups,
   ./math/io/[io_bigints, io_fields]
 
@@ -91,7 +91,7 @@ func eth_evm_ecadd*(
   ## Elliptic Curve addition on BN254_Snarks
   ## (also called alt_bn128 in Ethereum specs
   ##  and bn256 in Ethereum tests)
-  ## 
+  ##
   ## Name: ECADD
   ##
   ## Inputs:
@@ -109,7 +109,7 @@ func eth_evm_ecadd*(
   ##   cttEVM_Success
   ##   cttEVM_IntLargerThanModulus
   ##   cttEVM_PointNotOnCurve
-  ## 
+  ##
   ## Spec https://eips.ethereum.org/EIPS/eip-196
 
   # Auto-pad with zero
@@ -166,7 +166,7 @@ func eth_evm_ecmul*(
   ##   cttEVM_Success
   ##   cttEVM_IntLargerThanModulus
   ##   cttEVM_PointNotOnCurve
-  ## 
+  ##
   ## Spec https://eips.ethereum.org/EIPS/eip-196
 
   # Auto-pad with zero
@@ -288,7 +288,7 @@ func fromRawCoords(
   # Point on curve
   if not bool(isOnCurve(dst.x, dst.y, G2)):
     return cttEVM_PointNotOnCurve
-  
+
   if not subgroupCheck(dst):
     return cttEVM_PointNotInSubgroup
 
@@ -312,9 +312,9 @@ func eth_evm_ecpairing*(
   ##   cttEVM_IntLargerThanModulus
   ##   cttEVM_PointNotOnCurve
   ##   cttEVM_InvalidInputLength
-  ## 
+  ##
   ## Spec https://eips.ethereum.org/EIPS/eip-197
-  
+
   let N = inputs.len div 192
   if inputs.len mod 192 != 0:
     return cttEVM_InvalidInputLength

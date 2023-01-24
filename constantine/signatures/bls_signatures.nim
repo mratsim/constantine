@@ -7,8 +7,9 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-    ../math/[ec_shortweierstrass, pairings],
+    ../math/ec_shortweierstrass,
     ../math/elliptic/ec_shortweierstrass_batch_ops,
+    ../math/pairings/pairings_generic,
     ../math/constants/zoo_generators,
     ../hash_to_curve/hash_to_curve,
     ../hashes
@@ -30,7 +31,7 @@ import
 
 {.push inline.} # inline in the main public procs
 {.push raises: [].} # No exceptions allowed in core cryptographic operations
-
+{.push checks: off.} # No defects due to array bound checking or signed integer overflow allowed
 
 func derivePubkey*[Pubkey, SecKey](pubkey: var Pubkey, seckey: SecKey): bool =
   ## Generates the public key associated with the input secret key.
@@ -39,7 +40,7 @@ func derivePubkey*[Pubkey, SecKey](pubkey: var Pubkey, seckey: SecKey): bool =
   ## - false is secret key is invalid (SK == 0 or >= BLS12-381 curve order),
   ##   true otherwise
   ##   By construction no public API should ever instantiate
-  ##   an invalid secretkey in the first place.  
+  ##   an invalid secretkey in the first place.
   const Group = Pubkey.G
   type Field = Pubkey.F
   const EC = Field.C
@@ -64,10 +65,10 @@ func coreSign*[B1, B2, B3: byte|char, Sig, SecKey](
     augmentation: openarray[B2],
     domainSepTag: openarray[B3]) =
   ## Computes a signature for the message from the specified secret key.
-  ## 
+  ##
   ## Output:
   ## - `signature` is overwritten with `message` signed with `secretKey`
-  ## 
+  ##
   ## Inputs:
   ## - `Hash` a cryptographic hash function.
   ##   - `Hash` MAY be a Merkle-Damgaard hash function like SHA-2
@@ -85,7 +86,7 @@ func coreSign*[B1, B2, B3: byte|char, Sig, SecKey](
   ##   and `CoreVerify(PK, PK || message, signature)`
   ## - `message` is the message to hash
   ## - `domainSepTag` is the protocol domain separation tag (DST).
-  
+
   type ECP_Jac = ECP_ShortW_Jac[Sig.F, Sig.G]
 
   var sig {.noInit.}: ECP_Jac
@@ -154,7 +155,7 @@ func fastAggregateVerify*[B1, B2, B3: byte|char, Pubkey, Sig](
     domainSepTag: openarray[B3]): bool =
   ## Verify the aggregate of multiple signatures by multiple pubkeys
   ## on the same message.
-  
+
   var accum {.noinit.}: ECP_ShortW_Jac[Pubkey.F, Pubkey.G]
   accum.sum_batch_vartime(pubkeys)
 

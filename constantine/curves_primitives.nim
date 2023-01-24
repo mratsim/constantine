@@ -19,8 +19,8 @@ import
     ./math/io/[io_bigints, io_fields],
     ./math/isogenies/frobenius,
     ./math/pairings,
-    ./math/pairing/[
-      cyclotomic_subgroup,
+    ./math/pairings/[
+      cyclotomic_subgroups,
       lines_eval
     ],
     ./math/constants/zoo_pairings,
@@ -202,12 +202,12 @@ export lines_eval.line_add
 export lines_eval.mul_by_line
 export lines_eval.mul_by_2_lines
 
-export cyclotomic_subgroup.finalExpEasy
-export cyclotomic_subgroup.cyclotomic_inv
-export cyclotomic_subgroup.cyclotomic_square
-export cyclotomic_subgroup.cycl_sqr_repeated
-export cyclotomic_subgroup.cyclotomic_exp
-export cyclotomic_subgroup.isInCyclotomicSubgroup
+export cyclotomic_subgroups.finalExpEasy
+export cyclotomic_subgroups.cyclotomic_inv
+export cyclotomic_subgroups.cyclotomic_square
+export cyclotomic_subgroups.cycl_sqr_repeated
+export cyclotomic_subgroups.cyclotomic_exp
+export cyclotomic_subgroups.isInCyclotomicSubgroup
 
 export zoo_pairings.cycl_exp_by_curve_param
 export zoo_pairings.cycl_exp_by_curve_param_div2

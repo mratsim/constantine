@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/abstractions,
+  ../../platforms/[abstractions, allocs],
   ../config/curves,
   ../extension_fields,
   ../elliptic/[
@@ -17,7 +17,7 @@ import
   ../isogenies/frobenius,
   ../constants/zoo_pairings,
   ./lines_eval,
-  ./cyclotomic_subgroup,
+  ./cyclotomic_subgroups,
   ./miller_loops
 
 export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11225
@@ -55,19 +55,16 @@ func millerLoopGenericBN*[C](
      ) {.meter.} =
   ## Generic Miller Loop for BN curves
   ## Computes f{6u+2,Q}(P) with u the BN curve parameter
-
   var
     T {.noInit.}: ECP_ShortW_Prj[Fp2[C], G2]
     line {.noInit.}: Line[Fp2[C]]
-    nQ{.noInit.}: typeof(Q)
 
   T.fromAffine(Q)
-  nQ.neg(Q)
 
   basicMillerLoop(
-    f, T, line,
-    P, Q, nQ,
-    ate_param, ate_param_isNeg
+    f, line, T,
+    P, Q,
+    pairing(C, ate_param), pairing(C, ate_param_isNeg)
   )
 
   # Ate pairing for BN curves needs adjustment after basic Miller loop
@@ -76,28 +73,25 @@ func millerLoopGenericBN*[C](
     pairing(C, ate_param_isNeg)
   )
 
-func millerLoopGenericBN*[N: static int, C](
+func millerLoopGenericBN*[C](
        f: var Fp12[C],
-       Ps: array[N, ECP_ShortW_Aff[Fp[C], G1]],
-       Qs: array[N, ECP_ShortW_Aff[Fp2[C], G2]]
+       Ps: ptr UncheckedArray[ECP_ShortW_Aff[Fp[C], G1]],
+       Qs: ptr UncheckedArray[ECP_ShortW_Aff[Fp2[C], G2]],
+       N: int
      ) {.meter.} =
   ## Generic Miller Loop for BN curves
   ## Computes f{6u+2,Q}(P) with u the BN curve parameter
-
   var
-    Ts {.noInit.}: array[N, ECP_ShortW_Prj[Fp2[C], G2]]
+    Ts = allocStackArray(ECP_ShortW_Prj[Fp2[C], G2], N)
     line0 {.noInit.}, line1 {.noInit.}: Line[Fp2[C]]
-    nQs{.noInit.}: typeof(Qs)
 
   for i in 0 ..< N:
     Ts[i].fromAffine(Qs[i])
-  for i in 0 ..< N:
-    nQs[i].neg(Qs[i])
 
   basicMillerLoop(
-    f, Ts, line0, line1,
-    Ps, Qs, nQs,
-    ate_param, ate_param_isNeg
+    f, line0, line1, Ts,
+    Ps, Qs, N,
+    pairing(C, ate_param), pairing(C, ate_param_isNeg)
   )
 
   # Ate pairing for BN curves needs adjustment after basic Miller loop
@@ -200,8 +194,8 @@ func pairing_bn*[N: static int, C](
   ##   The product of pairings
   ##   e(P₀, Q₀) * e(P₁, Q₁) * e(P₂, Q₂) * ... * e(Pₙ, Qₙ) ∈ Gt
   when C == BN254_Nogami:
-    gt.millerLoopAddChain(Qs, Ps)
+    gt.millerLoopAddChain(Qs.asUnchecked(), Ps.asUnchecked(), N)
   else:
-    gt.millerLoopGenericBN(Ps, Qs)
+    gt.millerLoopGenericBN(Ps.asUnchecked(), Qs.asUnchecked(), N)
   gt.finalExpEasy()
   gt.finalExpHard_BN()

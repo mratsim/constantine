@@ -15,7 +15,7 @@ import
   ../../constantine/math/extension_fields,
   ../../constantine/math/config/curves,
   ../../constantine/math/io/[io_bigints, io_extfields],
-  ../../constantine/math/pairing/cyclotomic_subgroup,
+  ../../constantine/math/pairings/cyclotomic_subgroups,
   ../../constantine/math/isogenies/frobenius,
   # Test utilities
   ../../helpers/[prng_unsafe, static_for]

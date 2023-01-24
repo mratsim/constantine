@@ -13,7 +13,7 @@ import
   ../constantine/math/[arithmetic, extension_fields],
   ../constantine/math/elliptic/ec_shortweierstrass_projective,
   ../constantine/math/constants/zoo_subgroups,
-  ../constantine/math/pairing/pairing_bls12,
+  ../constantine/math/pairings/pairings_bls12,
   # Helpers
   ../helpers/prng_unsafe
 

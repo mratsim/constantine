@@ -9,11 +9,11 @@
 import
   std/macros,
   ../config/curves,
-  ./bls12_377_pairing,
-  ./bls12_381_pairing,
-  ./bn254_nogami_pairing,
-  ./bn254_snarks_pairing,
-  ./bw6_761_pairing
+  ./bls12_377_pairings,
+  ./bls12_381_pairings,
+  ./bn254_nogami_pairings,
+  ./bn254_snarks_pairings,
+  ./bw6_761_pairings
 
 {.experimental: "dynamicBindSym".}
 

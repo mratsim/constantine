@@ -11,7 +11,7 @@ import
   ../config/curves,
   ../io/io_bigints,
   ../extension_fields,
-  ../pairing/cyclotomic_subgroup,
+  ../pairings/cyclotomic_subgroups,
   ../isogenies/frobenius
 
 # Slow generic implementation
@@ -115,6 +115,6 @@ func isInPairingSubgroup*(a: Fp12[BN254_Snarks]): SecretBool =
   t0 *= t1      # a^(3p²)
   t0.square()   # a^(6p²)
 
-  t1.frobenius_map(a)  
+  t1.frobenius_map(a)
 
   return t0 == t1

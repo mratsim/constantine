@@ -11,7 +11,7 @@ import
   ../config/curves,
   ../io/io_bigints,
   ../extension_fields,
-  ../pairing/cyclotomic_subgroup,
+  ../pairings/cyclotomic_subgroups,
   ../isogenies/frobenius
 
 # Slow generic implementation

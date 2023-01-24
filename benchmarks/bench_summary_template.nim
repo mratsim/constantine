@@ -23,10 +23,10 @@ import
     ec_shortweierstrass_jacobian,
     ec_scalar_mul, ec_endomorphism_accel],
   ../constantine/math/constants/zoo_subgroups,
-  ../constantine/math/pairing/[
-    cyclotomic_subgroup,
-    pairing_bls12,
-    pairing_bn
+  ../constantine/math/pairings/[
+    cyclotomic_subgroups,
+    pairings_bls12,
+    pairings_bn
   ],
   ../constantine/math/constants/zoo_pairings,
   ../constantine/hashes,

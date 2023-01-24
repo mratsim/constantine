@@ -7,9 +7,10 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ./config/curves,
-  ./pairing/[pairing_bn, pairing_bls12],
-  ./extension_fields
+  ../config/curves,
+  ./pairings_bn, ./pairings_bls12,
+  ../extension_fields,
+  ../constants/zoo_pairings
 
 func pairing*[C](gt: var Fp12[C], P, Q: auto) {.inline.} =
   when family(C) == BarretoNaehrig:
@@ -18,3 +19,18 @@ func pairing*[C](gt: var Fp12[C], P, Q: auto) {.inline.} =
     pairing_bls12(gt, P, Q)
   else:
     {.error: "Pairing not implemented for " & $C.}
+
+func millerLoop*[C](gt: var Fp12[C], P, Q: auto, n: int) {.inline.} =
+  when C == BN254_Snarks:
+    gt.millerLoopGenericBN(P, Q, n)
+  else:
+    gt.millerLoopAddchain(P, Q, n)
+
+func finalExp*[C](gt: var Fp12[C]){.inline.} =
+  gt.finalExpEasy()
+  when family(C) == BarretoNaehrig:
+    gt.finalExpHard_BN()
+  elif family(C) == BarretoLynnScott:
+    gt.finalExpHard_BLS12()
+  else:
+    {.error: "Final Exponentiation not implemented for " & $C.}

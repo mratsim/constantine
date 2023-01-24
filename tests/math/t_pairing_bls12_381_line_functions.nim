@@ -18,7 +18,7 @@ import
   ../../constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective],
-  ../../constantine/math/pairing/lines_eval,
+  ../../constantine/math/pairings/lines_eval,
   # Test utilities
   ../../helpers/[prng_unsafe, static_for]
 

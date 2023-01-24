@@ -8,10 +8,10 @@ import
     ec_shortweierstrass_projective,
   ],
   ../../constantine/math/io/[io_fields, io_ec],
-  ../../constantine/math/pairing/[
+  ../../constantine/math/pairings/[
     pairing_bls12,
     miller_loops,
-    cyclotomic_subgroup
+    cyclotomic_subgroups
   ]
 
 type

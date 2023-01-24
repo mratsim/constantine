@@ -20,11 +20,11 @@ import
   ../constantine/math/extension_fields,
   ../constantine/math/ec_shortweierstrass,
   ../constantine/math/constants/zoo_subgroups,
-  ../constantine/math/pairing/[
-    cyclotomic_subgroup,
+  ../constantine/math/pairings/[
+    cyclotomic_subgroups,
     lines_eval,
-    pairing_bls12,
-    pairing_bn
+    pairings_bls12,
+    pairings_bn
   ],
   ../constantine/math/constants/zoo_pairings,
   # Helpers
