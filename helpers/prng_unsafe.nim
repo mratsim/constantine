@@ -68,7 +68,7 @@ func rotl(x: uint64, k: static int): uint64 {.inline.} =
 template `^=`(x: var uint64, y: uint64) =
   x = x xor y
 
-func next(rng: var RngState): uint64 =
+func next*(rng: var RngState): uint64 =
   ## Compute a random uint64 from the input state
   ## using xoshiro512** algorithm by Vigna et al
   ## State is updated.
@@ -96,6 +96,12 @@ func random_unsafe*(rng: var RngState, maxExclusive: uint32): uint32 =
   ## Uses an unbiaised generation method
   ## See Lemire's algorithm modified by Melissa O'Neill
   ##   https://www.pcg-random.org/posts/bounded-rands.html
+  ## Original:
+  ##   biaised:   https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
+  ##   unbiaised: https://arxiv.org/pdf/1805.10941.pdf
+  ## Also:
+  ##   Barrett Reduction: https://en.wikipedia.org/wiki/Barrett_reduction
+  ##                      http://www.acsel-lab.com/arithmetic/arith18/papers/ARITH18_Hasenplaugh.pdf
   let max = maxExclusive
   var x = uint32 rng.next()
   var m = x.uint64 * max.uint64

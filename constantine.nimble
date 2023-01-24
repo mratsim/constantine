@@ -43,7 +43,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ----------------------------------------------------------
   ("tests/math/t_primitives.nim", false),
   ("tests/math/t_primitives_extended_precision.nim", false),
-  
+
   # Big ints
   # ----------------------------------------------------------
   ("tests/math/t_io_bigints.nim", false),
@@ -53,7 +53,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/math/t_bigints_mod_vs_gmp.nim", true),
   ("tests/math/t_bigints_mul_vs_gmp.nim", true),
   ("tests/math/t_bigints_mul_high_words_vs_gmp.nim", true),
-  
+
   # Field
   # ----------------------------------------------------------
   ("tests/math/t_io_fields", false),
@@ -64,11 +64,11 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/math/t_finite_fields_powinv.nim", false),
   ("tests/math/t_finite_fields_vs_gmp.nim", true),
   # ("tests/math/t_fp_cubic_root.nim", false),
-  
+
   # Double-precision finite fields
   # ----------------------------------------------------------
   ("tests/math/t_finite_fields_double_precision.nim", false),
-  
+
   # Towers of extension fields
   # ----------------------------------------------------------
   # ("tests/math/t_fp2.nim", false),
@@ -90,7 +90,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/math/t_fp6_frobenius.nim", false),
   ("tests/math/t_fp12_frobenius.nim", false),
 
-  # Elliptic curve arithmetic 
+  # Elliptic curve arithmetic
   # ----------------------------------------------------------
   ("tests/math/t_ec_conversion.nim", false),
 
@@ -111,7 +111,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/math/t_ec_twedwards_prj_add_double", false),
   ("tests/math/t_ec_twedwards_prj_mul_sanity", false),
   ("tests/math/t_ec_twedwards_prj_mul_distri", false),
- 
+
 
   # Elliptic curve arithmetic G2
   # ----------------------------------------------------------
@@ -172,7 +172,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/math/t_ec_sage_bls12_381.nim", false),
   ("tests/math/t_ec_sage_pallas.nim", false),
   ("tests/math/t_ec_sage_vesta.nim", false),
-  
+
   # Edge cases highlighted by past bugs
   # ----------------------------------------------------------
   ("tests/math/t_ec_shortw_prj_edge_cases.nim", false),
@@ -231,6 +231,18 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
 
 const testDescNvidia: seq[string] = @[
   "tests/gpu/t_nvidia_fp.nim",
+]
+
+const testDescThreadpool: seq[string] = @[
+  "constantine/platforms/threadpool/examples/e01_simple_tasks.nim",
+  "constantine/platforms/threadpool/examples/e02_parallel_pi.nim",
+  # "constantine/platforms/threadpool/benchmarks/bouncing_producer_consumer/threadpool_bpc.nim", # Need timing not implemented on Windows
+  "constantine/platforms/threadpool/benchmarks/dfs/threadpool_dfs.nim",
+  "constantine/platforms/threadpool/benchmarks/fibonacci/threadpool_fib.nim",
+  "constantine/platforms/threadpool/benchmarks/heat/threadpool_heat.nim",
+  # "constantine/platforms/threadpool/benchmarks/matmul_cache_oblivious/threadpool_matmul_co.nim",
+  "constantine/platforms/threadpool/benchmarks/nqueens/threadpool_nqueens.nim",
+  # "constantine/platforms/threadpool/benchmarks/single_task_producer/threadpool_spc.nim", # Need timing not implemented on Windows
 ]
 
 const benchDesc = [
@@ -301,7 +313,7 @@ proc clearParallelBuild() =
   if fileExists(buildParallel):
     rmFile(buildParallel)
 
-template setupCommand(): untyped {.dirty.} = 
+template setupCommand(): untyped {.dirty.} =
   var lang = "c"
   if existsEnv"TEST_LANG":
     lang = getEnv"TEST_LANG"
@@ -367,7 +379,7 @@ proc addTestSet(cmdFile: var string, requireGMP: bool, test32bit = false, testAS
   if not dirExists "build":
     mkDir "build"
   echo "Found " & $testDesc.len & " tests to run."
-  
+
   for td in testDesc:
     if not(td.useGMP and not requireGMP):
       var flags = ""
@@ -379,16 +391,24 @@ proc addTestSet(cmdFile: var string, requireGMP: bool, test32bit = false, testAS
         flags &= " -d:debugConstantine"
       if td.path notin skipSanitizers:
         flags &= sanitizers
-      
+
       cmdFile.testBatch(flags, td.path)
 
 proc addTestSetNvidia(cmdFile: var string) =
   if not dirExists "build":
     mkDir "build"
   echo "Found " & $testDescNvidia.len & " tests to run."
-  
+
   for path in testDescNvidia:
     cmdFile.testBatch(flags = "", path)
+
+proc addTestSetThreadpool(cmdFile: var string) =
+  if not dirExists "build":
+    mkDir "build"
+  echo "Found " & $testDescThreadpool.len & " tests to run."
+
+  for path in testDescThreadpool:
+    cmdFile.testBatch(flags = "--threads:on --linetrace:on", path)
 
 proc addBenchSet(cmdFile: var string, useAsm = true) =
   if not dirExists "build":
@@ -491,13 +511,13 @@ task test_bindings, "Test C bindings":
     # Put DLL near the exe as LD_LIBRARY_PATH doesn't work even in an POSIX compatible shell
     exec "gcc -Ibindings/generated -Lbindings/generated -o build/testsuite/t_libctt_bls12_381_dl.exe tests/bindings/t_libctt_bls12_381.c -lgmp -lconstantine_bls12_381"
     exec "./build/testsuite/t_libctt_bls12_381_dl.exe"
-  
+
   echo "--> Testing statically linked library"
   when not defined(windows):
     # Beware MacOS annoying linker with regards to static libraries
     # The following standard way cannot be used on MacOS
     # exec "gcc -Ibindings/generated -Lbindings/generated -o build/t_libctt_bls12_381_sl.exe tests/bindings/t_libctt_bls12_381.c -lgmp -Wl,-Bstatic -lconstantine_bls12_381 -Wl,-Bdynamic"
-    
+
     exec "gcc -Ibindings/generated -o build/testsuite/t_libctt_bls12_381_sl tests/bindings/t_libctt_bls12_381.c bindings/generated/libconstantine_bls12_381.a -lgmp"
     exec "./build/testsuite/t_libctt_bls12_381_sl"
   else:
@@ -509,32 +529,40 @@ task test, "Run all tests":
   var cmdFile: string
   cmdFile.addTestSet(requireGMP = true, testASM = true)
   cmdFile.addBenchSet(useASM = true)    # Build (but don't run) benches to ensure they stay relevant
+  cmdFile.addTestSetThreadpool()
   for cmd in cmdFile.splitLines():
-    exec cmd
+    if cmd != "": # Windows doesn't like empty commands
+      exec cmd
 
 task test_no_asm, "Run all tests (no assembly)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   var cmdFile: string
   cmdFile.addTestSet(requireGMP = true, testASM = false)
   cmdFile.addBenchSet(useASM = false)    # Build (but don't run) benches to ensure they stay relevant
+  cmdFile.addTestSetThreadpool()
   for cmd in cmdFile.splitLines():
-    exec cmd
+    if cmd != "": # Windows doesn't like empty commands
+      exec cmd
 
 task test_no_gmp, "Run tests that don't require GMP":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   var cmdFile: string
   cmdFile.addTestSet(requireGMP = false, testASM = true)
   cmdFile.addBenchSet(useASM = true)    # Build (but don't run) benches to ensure they stay relevant
+  cmdFile.addTestSetThreadpool()
   for cmd in cmdFile.splitLines():
-    exec cmd
+    if cmd != "": # Windows doesn't like empty commands
+      exec cmd
 
 task test_no_gmp_no_asm, "Run tests that don't require GMP using a pure Nim backend":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   var cmdFile: string
   cmdFile.addTestSet(requireGMP = false, testASM = false)
   cmdFile.addBenchSet(useASM = false)    # Build (but don't run) benches to ensure they stay relevant
+  cmdFile.addTestSetThreadpool()
   for cmd in cmdFile.splitLines():
-    exec cmd
+    if cmd != "": # Windows doesn't like empty commands
+      exec cmd
 
 task test_parallel, "Run all tests in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
@@ -547,6 +575,13 @@ task test_parallel, "Run all tests in parallel (via GNU parallel)":
   writeFile(buildParallel, cmdFile)
   exec "build/pararun " & buildParallel
 
+  # Threadpool tests done serially
+  cmdFile = ""
+  cmdFile.addTestSetThreadpool()
+  for cmd in cmdFile.splitLines():
+    if cmd != "": # Windows doesn't like empty commands
+      exec cmd
+
 task test_parallel_no_asm, "Run all tests (without macro assembler) in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   clearParallelBuild()
@@ -557,6 +592,13 @@ task test_parallel_no_asm, "Run all tests (without macro assembler) in parallel 
   cmdFile.addBenchSet(useASM = false)
   writeFile(buildParallel, cmdFile)
   exec "build/pararun " & buildParallel
+
+  # Threadpool tests done serially
+  cmdFile = ""
+  cmdFile.addTestSetThreadpool()
+  for cmd in cmdFile.splitLines():
+    if cmd != "": # Windows doesn't like empty commands
+      exec cmd
 
 task test_parallel_no_gmp, "Run all tests in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
@@ -569,6 +611,13 @@ task test_parallel_no_gmp, "Run all tests in parallel (via GNU parallel)":
   writeFile(buildParallel, cmdFile)
   exec "build/pararun " & buildParallel
 
+  # Threadpool tests done serially
+  cmdFile = ""
+  cmdFile.addTestSetThreadpool()
+  for cmd in cmdFile.splitLines():
+    if cmd != "": # Windows doesn't like empty commands
+      exec cmd
+
 task test_parallel_no_gmp_no_asm, "Run all tests in parallel (via GNU parallel)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   clearParallelBuild()
@@ -580,11 +629,26 @@ task test_parallel_no_gmp_no_asm, "Run all tests in parallel (via GNU parallel)"
   writeFile(buildParallel, cmdFile)
   exec "build/pararun " & buildParallel
 
+  # Threadpool tests done serially
+  cmdFile = ""
+  cmdFile.addTestSetThreadpool()
+  for cmd in cmdFile.splitLines():
+    if cmd != "": # Windows doesn't like empty commands
+      exec cmd
+
+task test_threadpool, "Run all tests for the builtin threadpool":
+  var cmdFile: string
+  cmdFile.addTestSetThreadpool()
+  for cmd in cmdFile.splitLines():
+    if cmd != "": # Windows doesn't like empty commands
+      exec cmd
+
 task test_nvidia, "Run all tests for Nvidia GPUs":
   var cmdFile: string
   cmdFile.addTestSetNvidia()
   for cmd in cmdFile.splitLines():
-    exec cmd
+    if cmd != "": # Windows doesn't like empty commands
+      exec cmd
 
 # Finite field 𝔽p
 # ------------------------------------------

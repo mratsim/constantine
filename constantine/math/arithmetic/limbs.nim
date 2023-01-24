@@ -356,7 +356,7 @@ func div10*(a: var Limbs): SecretWord =
   ## Divide `a` by 10 in-place and return the remainder
   result = Zero
 
-  const clz = WordBitWidth - 1 - log2_vartime(10)
+  const clz = WordBitWidth - 1 - log2_vartime(10'u32)
   const norm10 = SecretWord(10) shl clz
 
   for i in countdown(a.len-1, 0):

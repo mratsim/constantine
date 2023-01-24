@@ -291,8 +291,8 @@ func sum_batch_vartime*[F; G: static Subgroup](
   const maxStride = maxChunkSize div sizeof(ECP_ShortW_Aff[F, G])
   
   let n = min(maxStride, points.len)
-  let accumulators = alloca(ECP_ShortW_Aff[F, G], n)
-  let lambdas = alloca(tuple[num, den: F], n)
+  let accumulators = allocStackArray(ECP_ShortW_Aff[F, G], n)
+  let lambdas = allocStackArray(tuple[num, den: F], n)
 
   for i in countup(0, points.len-1, maxStride):
     let n = min(maxStride, points.len - i)
