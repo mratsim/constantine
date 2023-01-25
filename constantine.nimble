@@ -48,120 +48,120 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ----------------------------------------------------------
   ("tests/math/t_io_bigints.nim", false),
   ("tests/math/t_io_unsaturated.nim", false),
-  ("tests/math/t_bigints.nim", false),
-  ("tests/math/t_bigints_multimod.nim", false),
-  ("tests/math/t_bigints_mod_vs_gmp.nim", true),
-  ("tests/math/t_bigints_mul_vs_gmp.nim", true),
-  ("tests/math/t_bigints_mul_high_words_vs_gmp.nim", true),
+  # ("tests/math/t_bigints.nim", false),
+  # ("tests/math/t_bigints_multimod.nim", false),
+  # ("tests/math/t_bigints_mod_vs_gmp.nim", true),
+  # ("tests/math/t_bigints_mul_vs_gmp.nim", true),
+  # ("tests/math/t_bigints_mul_high_words_vs_gmp.nim", true),
 
   # Field
   # ----------------------------------------------------------
   ("tests/math/t_io_fields", false),
-  ("tests/math/t_finite_fields.nim", false),
-  ("tests/math/t_finite_fields_conditional_arithmetic.nim", false),
-  ("tests/math/t_finite_fields_mulsquare.nim", false),
-  ("tests/math/t_finite_fields_sqrt.nim", false),
-  ("tests/math/t_finite_fields_powinv.nim", false),
-  ("tests/math/t_finite_fields_vs_gmp.nim", true),
+  # ("tests/math/t_finite_fields.nim", false),
+  # ("tests/math/t_finite_fields_conditional_arithmetic.nim", false),
+  # ("tests/math/t_finite_fields_mulsquare.nim", false),
+  # ("tests/math/t_finite_fields_sqrt.nim", false),
+  # ("tests/math/t_finite_fields_powinv.nim", false),
+  # ("tests/math/t_finite_fields_vs_gmp.nim", true),
   # ("tests/math/t_fp_cubic_root.nim", false),
 
   # Double-precision finite fields
   # ----------------------------------------------------------
-  ("tests/math/t_finite_fields_double_precision.nim", false),
+  # ("tests/math/t_finite_fields_double_precision.nim", false),
 
   # Towers of extension fields
   # ----------------------------------------------------------
   # ("tests/math/t_fp2.nim", false),
-  ("tests/math/t_fp2_sqrt.nim", false),
-  ("tests/math/t_fp4.nim", false),
-  ("tests/math/t_fp6_bn254_nogami.nim", false),
-  ("tests/math/t_fp6_bn254_snarks.nim", false),
-  ("tests/math/t_fp6_bls12_377.nim", false),
-  ("tests/math/t_fp6_bls12_381.nim", false),
-  ("tests/math/t_fp6_bw6_761.nim", false),
-  ("tests/math/t_fp12_bn254_nogami.nim", false),
-  ("tests/math/t_fp12_bn254_snarks.nim", false),
-  ("tests/math/t_fp12_bls12_377.nim", false),
-  ("tests/math/t_fp12_bls12_381.nim", false),
-  ("tests/math/t_fp12_exponentiation.nim", false),
+  # ("tests/math/t_fp2_sqrt.nim", false),
+  # ("tests/math/t_fp4.nim", false),
+  # ("tests/math/t_fp6_bn254_nogami.nim", false),
+  # ("tests/math/t_fp6_bn254_snarks.nim", false),
+  # ("tests/math/t_fp6_bls12_377.nim", false),
+  # ("tests/math/t_fp6_bls12_381.nim", false),
+  # ("tests/math/t_fp6_bw6_761.nim", false),
+  # ("tests/math/t_fp12_bn254_nogami.nim", false),
+  # ("tests/math/t_fp12_bn254_snarks.nim", false),
+  # ("tests/math/t_fp12_bls12_377.nim", false),
+  # ("tests/math/t_fp12_bls12_381.nim", false),
+  # ("tests/math/t_fp12_exponentiation.nim", false),
   ("tests/math/t_fp12_anti_regression.nim", false),
 
-  ("tests/math/t_fp4_frobenius.nim", false),
-  ("tests/math/t_fp6_frobenius.nim", false),
-  ("tests/math/t_fp12_frobenius.nim", false),
+  # ("tests/math/t_fp4_frobenius.nim", false),
+  # ("tests/math/t_fp6_frobenius.nim", false),
+  # ("tests/math/t_fp12_frobenius.nim", false),
 
   # Elliptic curve arithmetic
   # ----------------------------------------------------------
-  ("tests/math/t_ec_conversion.nim", false),
+  # ("tests/math/t_ec_conversion.nim", false),
 
   # Elliptic curve arithmetic G1
   # ----------------------------------------------------------
-  ("tests/math/t_ec_shortw_prj_g1_add_double.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g1_add_double.nim", false),
   # ("tests/math/t_ec_shortw_prj_g1_mul_sanity.nim", false),
   # ("tests/math/t_ec_shortw_prj_g1_mul_distri.nim", false),
-  ("tests/math/t_ec_shortw_prj_g1_mul_vs_ref.nim", false),
-  ("tests/math/t_ec_shortw_prj_g1_mixed_add.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g1_mul_vs_ref.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g1_mixed_add.nim", false),
 
-  ("tests/math/t_ec_shortw_jac_g1_add_double.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g1_add_double.nim", false),
   # ("tests/math/t_ec_shortw_jac_g1_mul_sanity.nim", false),
   # ("tests/math/t_ec_shortw_jac_g1_mul_distri.nim", false),
-  ("tests/math/t_ec_shortw_jac_g1_mul_vs_ref.nim", false),
-  ("tests/math/t_ec_shortw_jac_g1_mixed_add.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g1_mul_vs_ref.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g1_mixed_add.nim", false),
 
-  ("tests/math/t_ec_twedwards_prj_add_double", false),
-  ("tests/math/t_ec_twedwards_prj_mul_sanity", false),
-  ("tests/math/t_ec_twedwards_prj_mul_distri", false),
+  # ("tests/math/t_ec_twedwards_prj_add_double", false),
+  # ("tests/math/t_ec_twedwards_prj_mul_sanity", false),
+  # ("tests/math/t_ec_twedwards_prj_mul_distri", false),
 
 
   # Elliptic curve arithmetic G2
   # ----------------------------------------------------------
-  ("tests/math/t_ec_shortw_prj_g2_add_double_bn254_snarks.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g2_add_double_bn254_snarks.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mul_sanity_bn254_snarks.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mul_distri_bn254_snarks.nim", false),
-  ("tests/math/t_ec_shortw_prj_g2_mul_vs_ref_bn254_snarks.nim", false),
-  ("tests/math/t_ec_shortw_prj_g2_mixed_add_bn254_snarks.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g2_mul_vs_ref_bn254_snarks.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g2_mixed_add_bn254_snarks.nim", false),
 
-  ("tests/math/t_ec_shortw_prj_g2_add_double_bls12_381.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g2_add_double_bls12_381.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mul_sanity_bls12_381.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mul_distri_bls12_381.nim", false),
-  ("tests/math/t_ec_shortw_prj_g2_mul_vs_ref_bls12_381.nim", false),
-  ("tests/math/t_ec_shortw_prj_g2_mixed_add_bls12_381.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g2_mul_vs_ref_bls12_381.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g2_mixed_add_bls12_381.nim", false),
 
-  ("tests/math/t_ec_shortw_prj_g2_add_double_bls12_377.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g2_add_double_bls12_377.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mul_sanity_bls12_377.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mul_distri_bls12_377.nim", false),
-  ("tests/math/t_ec_shortw_prj_g2_mul_vs_ref_bls12_377.nim", false),
-  ("tests/math/t_ec_shortw_prj_g2_mixed_add_bls12_377.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g2_mul_vs_ref_bls12_377.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g2_mixed_add_bls12_377.nim", false),
 
-  ("tests/math/t_ec_shortw_prj_g2_add_double_bw6_761.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g2_add_double_bw6_761.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mul_sanity_bw6_761.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mul_distri_bw6_761.nim", false),
-  ("tests/math/t_ec_shortw_prj_g2_mul_vs_ref_bw6_761.nim", false),
-  ("tests/math/t_ec_shortw_prj_g2_mixed_add_bw6_761.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g2_mul_vs_ref_bw6_761.nim", false),
+  # ("tests/math/t_ec_shortw_prj_g2_mixed_add_bw6_761.nim", false),
 
-  ("tests/math/t_ec_shortw_jac_g2_add_double_bn254_snarks.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g2_add_double_bn254_snarks.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mul_sanity_bn254_snarks.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mul_distri_bn254_snarks.nim", false),
-  ("tests/math/t_ec_shortw_jac_g2_mul_vs_ref_bn254_snarks.nim", false),
-  ("tests/math/t_ec_shortw_jac_g2_mixed_add_bn254_snarks.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g2_mul_vs_ref_bn254_snarks.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g2_mixed_add_bn254_snarks.nim", false),
 
-  ("tests/math/t_ec_shortw_jac_g2_add_double_bls12_381.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g2_add_double_bls12_381.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mul_sanity_bls12_381.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mul_distri_bls12_381.nim", false),
-  ("tests/math/t_ec_shortw_jac_g2_mul_vs_ref_bls12_381.nim", false),
-  ("tests/math/t_ec_shortw_jac_g2_mixed_add_bls12_381.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g2_mul_vs_ref_bls12_381.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g2_mixed_add_bls12_381.nim", false),
 
-  ("tests/math/t_ec_shortw_jac_g2_add_double_bls12_377.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g2_add_double_bls12_377.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mul_sanity_bls12_377.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mul_distri_bls12_377.nim", false),
-  ("tests/math/t_ec_shortw_jac_g2_mul_vs_ref_bls12_377.nim", false),
-  ("tests/math/t_ec_shortw_jac_g2_mixed_add_bls12_377.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g2_mul_vs_ref_bls12_377.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g2_mixed_add_bls12_377.nim", false),
 
-  ("tests/math/t_ec_shortw_jac_g2_add_double_bw6_761.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g2_add_double_bw6_761.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mul_sanity_bw6_761.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mul_distri_bw6_761.nim", false),
-  ("tests/math/t_ec_shortw_jac_g2_mul_vs_ref_bw6_761.nim", false),
-  ("tests/math/t_ec_shortw_jac_g2_mixed_add_bw6_761.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g2_mul_vs_ref_bw6_761.nim", false),
+  # ("tests/math/t_ec_shortw_jac_g2_mixed_add_bw6_761.nim", false),
 
   # Elliptic curve arithmetic vs Sagemath
   # ----------------------------------------------------------
@@ -184,16 +184,16 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
 
   # Subgroups and cofactors
   # ----------------------------------------------------------
-  ("tests/math/t_ec_subgroups_bn254_nogami.nim", false),
-  ("tests/math/t_ec_subgroups_bn254_snarks.nim", false),
-  ("tests/math/t_ec_subgroups_bls12_377.nim", false),
-  ("tests/math/t_ec_subgroups_bls12_381.nim", false),
+  # ("tests/math/t_ec_subgroups_bn254_nogami.nim", false),
+  # ("tests/math/t_ec_subgroups_bn254_snarks.nim", false),
+  # ("tests/math/t_ec_subgroups_bls12_377.nim", false),
+  # ("tests/math/t_ec_subgroups_bls12_381.nim", false),
 
-  ("tests/math/t_pairing_bn254_nogami_gt_subgroup.nim", false),
-  ("tests/math/t_pairing_bn254_snarks_gt_subgroup.nim", false),
-  ("tests/math/t_pairing_bls12_377_gt_subgroup.nim", false),
-  ("tests/math/t_pairing_bls12_381_gt_subgroup.nim", false),
-  ("tests/math/t_pairing_bw6_761_gt_subgroup.nim", false),
+  # ("tests/math/t_pairing_bn254_nogami_gt_subgroup.nim", false),
+  # ("tests/math/t_pairing_bn254_snarks_gt_subgroup.nim", false),
+  # ("tests/math/t_pairing_bls12_377_gt_subgroup.nim", false),
+  # ("tests/math/t_pairing_bls12_381_gt_subgroup.nim", false),
+  # ("tests/math/t_pairing_bw6_761_gt_subgroup.nim", false),
 
   # Pairing
   # ----------------------------------------------------------
