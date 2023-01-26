@@ -8,6 +8,7 @@
 
 import
   ../config/curves,
+  ./cyclotomic_subgroups,
   ./pairings_bn, ./pairings_bls12,
   ../extension_fields,
   ../constants/zoo_pairings
