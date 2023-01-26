@@ -18,10 +18,10 @@ import
     ],
     ./math/io/[io_bigints, io_fields],
     ./math/isogenies/frobenius,
-    ./math/pairings,
     ./math/pairings/[
       cyclotomic_subgroups,
-      lines_eval
+      lines_eval,
+      pairings_generic
     ],
     ./math/constants/zoo_pairings,
     ./hash_to_curve/hash_to_curve
@@ -214,7 +214,9 @@ export zoo_pairings.cycl_exp_by_curve_param_div2
 export zoo_pairings.millerLoopAddchain
 export zoo_pairings.isInPairingSubgroup
 
-export pairings.pairing
+export pairings_generic.pairing
+export pairings_generic.millerLoop
+export pairings_generic.finalExp
 
 # Hashing to Elliptic Curve
 # ------------------------------------------------------------
