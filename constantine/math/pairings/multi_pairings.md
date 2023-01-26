@@ -86,8 +86,8 @@ and then pairings of each tuple are directly merged on GT.
 Scott approach is fully "online"/"streaming",
 while Aranha's saves space.
 For BLS12_381,
-M = 68 hence we would need 68*12*48 = 39168 bytes (381-bit needs 48 bytes)
-G2 has size 3*2*48 = 288 bytes (3 proj coordinates on Fp2)
+M = 68 hence we would need 68\*12\*48 = 39168 bytes (381-bit needs 48 bytes)
+G2 has size 3\*2\*48 = 288 bytes (3 proj coordinates on Fp2)
 and while we can choose N to be anything (which can be 1 for single pairing or reverting to Scott approach).
 
 In practice, "streaming pairings" are not used, pairings to compute are receive

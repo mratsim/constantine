@@ -12,8 +12,9 @@ import
   ../io/io_bigints,
   ../extension_fields,
   ../elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
-  ../pairing/[cyclotomic_subgroup, miller_loops],
-  ../isogenies/frobenius
+  ../pairings/[cyclotomic_subgroups, miller_loops],
+  ../isogenies/frobenius,
+  ../../platforms/allocs
 
 # Slow generic implementation
 # ------------------------------------------------------------
@@ -59,22 +60,23 @@ func millerLoopAddchain*(
   f.miller_accum_double_then_add(T, Q, P, 1)               # 0b100001010000100011
   f.miller_accum_double_then_add(T, Q, P, 46, add = true)  # 0b1000010100001000110000000000000000000000000000000000000000000001
 
-func millerLoopAddchain*[N: static int](
+func millerLoopAddchain*(
        f: var Fp12[BLS12_377],
-       Qs: array[N, ECP_ShortW_Aff[Fp2[BLS12_377], G2]],
-       Ps: array[N, ECP_ShortW_Aff[Fp[BLS12_377], G1]]
+       Qs: ptr UncheckedArray[ECP_ShortW_Aff[Fp2[BLS12_377], G2]],
+       Ps: ptr UncheckedArray[ECP_ShortW_Aff[Fp[BLS12_377], G1]],
+       N: int
      ) =
   ## Miller Loop for BLS12-377 curve
   ## Computes f{u,Q}(P) with u the BLS curve parameter
 
-  var Ts {.noInit.}: array[N, ECP_ShortW_Prj[Fp2[BLS12_377], G2]]
+  var Ts = allocStackArray(ECP_ShortW_Prj[Fp2[BLS12_377], G2], N)
 
-  f.miller_init_double_then_add(Ts, Qs, Ps, 5)                # 0b100001
-  f.miller_accum_double_then_add(Ts, Qs, Ps, 2)               # 0b10000101
-  f.miller_accum_double_then_add(Ts, Qs, Ps, 5)               # 0b1000010100001
-  f.miller_accum_double_then_add(Ts, Qs, Ps, 4)               # 0b10000101000010001
-  f.miller_accum_double_then_add(Ts, Qs, Ps, 1)               # 0b100001010000100011
-  f.miller_accum_double_then_add(Ts, Qs, Ps, 46, add = true)  # 0b1000010100001000110000000000000000000000000000000000000000000001
+  f.miller_init_double_then_add( Ts, Qs, Ps, N, 5)               # 0b100001
+  f.miller_accum_double_then_add(Ts, Qs, Ps, N, 2)               # 0b10000101
+  f.miller_accum_double_then_add(Ts, Qs, Ps, N, 5)               # 0b1000010100001
+  f.miller_accum_double_then_add(Ts, Qs, Ps, N, 4)               # 0b10000101000010001
+  f.miller_accum_double_then_add(Ts, Qs, Ps, N, 1)               # 0b100001010000100011
+  f.miller_accum_double_then_add(Ts, Qs, Ps, N, 46, add = true)  # 0b1000010100001000110000000000000000000000000000000000000000000001
 
 func cycl_exp_by_curve_param*(r: var Fp12[BLS12_377], a: Fp12[BLS12_377], invert = BLS12_377_pairing_ate_param_isNeg) =
   ## f^x with x the curve parameter

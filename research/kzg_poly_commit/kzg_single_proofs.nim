@@ -9,8 +9,8 @@ import
     ec_shortweierstrass_projective,
   ],
   ../../constantine/math/io/[io_fields, io_ec],
-  ../../constantine/math/pairing/[
-    pairing_bls12,
+  ../../constantine/math/pairings/[
+    pairings_bls12,
     miller_loops
   ],
   # Research

@@ -42,24 +42,22 @@ func millerLoopBW6_761_naive[C](
   var
     T {.noInit.}: ECP_ShortW_Prj[Fp[C], G2]
     line {.noInit.}: Line[Fp[C]]
-    nQ{.noInit.}: typeof(Q)
 
   T.fromAffine(Q)
-  nQ.neg(Q)
 
   basicMillerLoop(
-    f, T, line,
-    P, Q, nQ,
-    ate_param_1_unopt, ate_param_1_unopt_isNeg
+    f, line, T,
+    P, Q,
+    pairing(C, ate_param_1_unopt), pairing(C, ate_param_1_unopt_isNeg)
   )
 
   var f2 {.noInit.}: typeof(f)
   T.fromAffine(Q)
 
   basicMillerLoop(
-    f2, T, line,
-    P, Q, nQ,
-    ate_param_2_unopt, ate_param_2_unopt_isNeg
+    f2, line, T,
+    P, Q,
+    pairing(C, ate_param_2_unopt), pairing(C, ate_param_2_unopt_isNeg)
   )
 
   let t = f2

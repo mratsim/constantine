@@ -15,7 +15,7 @@ import
   ../../constantine/math/extension_fields,
   ../../constantine/math/config/curves,
   ../../constantine/math/io/io_extfields,
-  ../../constantine/math/pairing/lines_eval,
+  ../../constantine/math/pairings/lines_eval,
   # Test utilities
   ../../helpers/[prng_unsafe, static_for]
 

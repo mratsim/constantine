@@ -96,3 +96,12 @@ macro getEmbeddingDegree*(C: static Curve): untyped =
 macro getSexticTwist*(C: static Curve): untyped =
   ## Returns if D-Twist or M-Twist
   result = bindSym($C & "_sexticTwist")
+
+macro getGT*(C: static Curve): untyped =
+  ## Returns the GT extension field
+
+  template gt(embdegree: static int): untyped =
+    `Fp embdegree`
+
+  result = quote do:
+    `gt`(getEmbeddingDegree(Curve(`C`)))[Curve(`C`)]

@@ -16,7 +16,7 @@ import
   ../../constantine/math/config/curves,
   ../../constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
   ../../constantine/math/constants/[zoo_subgroups, zoo_pairings],
-  ../../constantine/math/pairing/cyclotomic_subgroup,
+  ../../constantine/math/pairings/cyclotomic_subgroups,
   ../../constantine/math/io/io_extfields,
 
   # Test utilities
@@ -27,7 +27,7 @@ export
   ec_shortweierstrass_affine, ec_shortweierstrass_projective,
   arithmetic, extension_fields,
   io_extfields,
-  cyclotomic_subgroup,
+  cyclotomic_subgroups,
   abstractions, curves
 
 type

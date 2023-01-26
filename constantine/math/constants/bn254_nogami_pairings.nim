@@ -12,8 +12,9 @@ import
   ../io/io_bigints,
   ../extension_fields,
   ../elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
-  ../pairing/[cyclotomic_subgroup, miller_loops],
-  ../isogenies/frobenius
+  ../pairings/[cyclotomic_subgroups, miller_loops],
+  ../isogenies/frobenius,
+  ../../platforms/allocs
 
 # Slow generic implementation
 # ------------------------------------------------------------
@@ -59,20 +60,21 @@ func millerLoopAddchain*(
   # Ate pairing for BN curves needs adjustment after basic Miller loop
   f.millerCorrectionBN(T, Q, P, BN254_Nogami_pairing_ate_param_isNeg)
 
-func millerLoopAddchain*[N: static int](
+func millerLoopAddchain*(
        f: var Fp12[BN254_Nogami],
-       Qs: array[N, ECP_ShortW_Aff[Fp2[BN254_Nogami], G2]],
-       Ps: array[N, ECP_ShortW_Aff[Fp[BN254_Nogami], G1]]
+       Qs: ptr UncheckedArray[ECP_ShortW_Aff[Fp2[BN254_Nogami], G2]],
+       Ps: ptr UncheckedArray[ECP_ShortW_Aff[Fp[BN254_Nogami], G1]],
+       N: int
      ) =
   ## Miller Loop for BN254-Nogami curve
   ## Computes f{6u+2,Q}(P) with u the BLS curve parameter
-  var Ts {.noInit.}: array[N, ECP_ShortW_Prj[Fp2[BN254_Nogami], G2]]
+  var Ts = allocStackArray(ECP_ShortW_Prj[Fp2[BN254_Nogami], G2], N)
 
-  f.miller_init_double_then_add(Ts, Qs, Ps, 1)                # 0b11
-  f.miller_accum_double_then_add(Ts, Qs, Ps, 6)               # 0b11000001
-  f.miller_accum_double_then_add(Ts, Qs, Ps, 1)               # 0b110000011
-  f.miller_accum_double_then_add(Ts, Qs, Ps, 54)              # 0b110000011000000000000000000000000000000000000000000000000000001
-  f.miller_accum_double_then_add(Ts, Qs, Ps, 2, add = false)  # 0b11000001100000000000000000000000000000000000000000000000000000100
+  f.miller_init_double_then_add( Ts, Qs, Ps, N, 1)               # 0b11
+  f.miller_accum_double_then_add(Ts, Qs, Ps, N, 6)               # 0b11000001
+  f.miller_accum_double_then_add(Ts, Qs, Ps, N, 1)               # 0b110000011
+  f.miller_accum_double_then_add(Ts, Qs, Ps, N, 54)              # 0b110000011000000000000000000000000000000000000000000000000000001
+  f.miller_accum_double_then_add(Ts, Qs, Ps, N, 2, add = false)  # 0b11000001100000000000000000000000000000000000000000000000000000100
 
   # Negative AteParam
   f.conj()
@@ -105,6 +107,6 @@ func isInPairingSubgroup*(a: Fp12[BN254_Nogami]): SecretBool =
   t0 *= t1      # a^(3p²)
   t0.square()   # a^(6p²)
 
-  t1.frobenius_map(a)  
+  t1.frobenius_map(a)
 
   return t0 == t1

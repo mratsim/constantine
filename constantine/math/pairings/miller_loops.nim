@@ -23,44 +23,44 @@ import
 #                                                            #
 # ############################################################
 
-template basicMillerLoop*[FT, F1, F2](
+func basicMillerLoop*[FT, F1, F2](
        f: var FT,
-       T: var ECP_ShortW_Prj[F2, G2],
        line: var Line[F2],
+       T: var ECP_ShortW_Prj[F2, G2],
        P: ECP_ShortW_Aff[F1, G1],
-       Q, nQ: ECP_ShortW_Aff[F2, G2],
-       ate_param: untyped,
-       ate_param_isNeg: untyped
+       Q: ECP_ShortW_Aff[F2, G2],
+       ate_param: auto,
+       ate_param_isNeg: static bool
     ) =
   ## Basic Miller loop iterations
-  mixin pairing # symbol from zoo_pairings
-
   static:
     doAssert FT.C == F1.C
     doAssert FT.C == F2.C
 
   f.setOne()
+  var nQ {.noInit.}: ECP_ShortW_Aff[F2, G2]
+  nQ.neg(Q)
 
-  template u: untyped = pairing(C, ate_param)
-  var u3 = pairing(C, ate_param)
+  template u: untyped = ate_param
+  var u3 = ate_param
   u3 *= 3
   for i in countdown(u3.bits - 2, 1):
-    square(f)
-    line_double(line, T, P)
-    mul_by_line(f, line)
+    f.square()
+    line.line_double(T, P)
+    f.mul_by_line(line)
 
-    let naf = bit(u3, i).int8 - bit(u, i).int8 # This can throw exception
+    let naf = u3.bit(i).int8 - u.bit(i).int8 # This can throw exception
     if naf == 1:
-      line_add(line, T, Q, P)
-      mul_by_line(f, line)
+      line.line_add(T, Q, P)
+      f.mul_by_line(line)
     elif naf == -1:
-      line_add(line, T, nQ, P)
-      mul_by_line(f, line)
+      line.line_add(T, nQ, P)
+      f.mul_by_line(line)
 
-  when pairing(C, ate_param_isNeg):
+  when ate_param_isNeg:
     # In GT, x^-1 == conjugate(x)
     # Remark 7.1, chapter 7.1.1 of Guide to Pairing-Based Cryptography, El Mrabet, 2017
-    conj(f)
+    f.conj()
 
 func millerCorrectionBN*[FT, F1, F2](
        f: var FT,
@@ -216,12 +216,13 @@ func miller_accum_double_then_add*[FT, F1, F2](
 # See `multi_pairing.md``
 # We implement Aranha approach
 
-func double_jToN[N: static int, FT, F1, F2](
+func double_jToN[FT, F1, F2](
        f: var FT,
        j: static int,
        line0, line1: var Line[F2],
-       Ts: var array[N, ECP_ShortW_Prj[F2, G2]],
-       Ps: array[N, ECP_ShortW_Aff[F1, G1]]) =
+       Ts: ptr UncheckedArray[ECP_ShortW_Prj[F2, G2]],
+       Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
+       N: int) =
   ## Doubling steps for pairings j to N
 
   {.push checks: off.} # No OverflowError or IndexError allowed
@@ -234,19 +235,20 @@ func double_jToN[N: static int, FT, F1, F2](
     line1.line_double(Ts[i+1], Ps[i+1])
     f.mul_by_2_lines(line0, line1)
 
-  when (N and 1) == 1: # N >= 2 and N is odd, there is a leftover
+  if (N and 1) == 1: # N >= 2 and N is odd, there is a leftover
     line0.line_double(Ts[N-1], Ps[N-1])
     f.mul_by_line(line0)
 
   {.pop.}
 
-func add_jToN[N: static int, FT, F1, F2](
+func add_jToN[FT, F1, F2](
        f: var FT,
        j: static int,
        line0, line1: var Line[F2],
-       Ts: var array[N, ECP_ShortW_Prj[F2, G2]],
-       Qs: array[N, ECP_ShortW_Aff[F2, G2]],
-       Ps: array[N, ECP_ShortW_Aff[F1, G1]])=
+       Ts: ptr UncheckedArray[ECP_ShortW_Prj[F2, G2]],
+       Qs: ptr UncheckedArray[ECP_ShortW_Aff[F2, G2]],
+       Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
+       N: int)=
   ## Addition steps for pairings 0 to N
 
   {.push checks: off.} # No OverflowError or IndexError allowed
@@ -259,24 +261,54 @@ func add_jToN[N: static int, FT, F1, F2](
     line1.line_add(Ts[i+1], Qs[i+1], Ps[i+1])
     f.mul_by_2_lines(line0, line1)
 
-  when (N and 1) == 1: # N >= 2 and N is odd, there is a leftover
+  if (N and 1) == 1: # N >= 2 and N is odd, there is a leftover
     line0.line_add(Ts[N-1], Qs[N-1], Ps[N-1])
     f.mul_by_line(line0)
 
   {.pop.}
 
-template basicMillerLoop*[FT, F1, F2; N: static int](
+func add_jToN_negateQ[FT, F1, F2](
        f: var FT,
-       Ts: var array[N, ECP_ShortW_Prj[F2, G2]],
+       j: static int,
        line0, line1: var Line[F2],
-       Ps: array[N, ECP_ShortW_Aff[F1, G1]],
-       Qs, nQs: array[N, ECP_ShortW_Aff[F2, G2]],
-       ate_param: untyped,
-       ate_param_isNeg: untyped
+       Ts: ptr UncheckedArray[ECP_ShortW_Prj[F2, G2]],
+       Qs: ptr UncheckedArray[ECP_ShortW_Aff[F2, G2]],
+       Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
+       N: int)=
+  ## Addition steps for pairings 0 to N
+
+  var nQ{.noInit.}: ECP_ShortW_Aff[F2, G2]
+
+  {.push checks: off.} # No OverflowError or IndexError allowed
+  # Sparse merge 2 by 2, starting from 0
+  for i in countup(j, N-1, 2):
+    if i+1 >= N:
+      break
+
+    nQ.neg(Qs[i])
+    line0.line_add(Ts[i], nQ, Ps[i])
+    nQ.neg(Qs[i+1])
+    line1.line_add(Ts[i+1], nQ, Ps[i+1])
+    f.mul_by_2_lines(line0, line1)
+
+  if (N and 1) == 1: # N >= 2 and N is odd, there is a leftover
+    nQ.neg(Qs[N-1])
+    line0.line_add(Ts[N-1], nQ, Ps[N-1])
+    f.mul_by_line(line0)
+
+  {.pop.}
+
+func basicMillerLoop*[FT, F1, F2](
+       f: var FT,
+       line0, line1: var Line[F2],
+       Ts: ptr UncheckedArray[ECP_ShortW_Prj[F2, G2]],
+       Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
+       Qs: ptr UncheckedArray[ECP_ShortW_Aff[F2, G2]],
+       N: int,
+       ate_param: auto,
+       ate_param_isNeg: static bool
     ) =
   ## Basic Miller loop iterations
-  # TODO: recompute nQ on-the-fly to save stack space
-  mixin pairing # symbol from zoo_pairings
 
   static:
     doAssert FT.C == F1.C
@@ -284,29 +316,30 @@ template basicMillerLoop*[FT, F1, F2; N: static int](
 
   f.setOne()
 
-  template u: untyped = pairing(C, ate_param)
-  var u3 = pairing(C, ate_param)
+  template u: untyped = ate_param
+  var u3 = ate_param
   u3 *= 3
   for i in countdown(u3.bits - 2, 1):
     f.square()
-    double_jToN(f, j=0, line0, line1, Ts, Ps)
+    f.double_jToN(j=0, line0, line1, Ts, Ps, N)
 
-    let naf = bit(u3, i).int8 - bit(u, i).int8 # This can throw exception
+    let naf = u3.bit(i).int8 - u.bit(i).int8 # This can throw exception
     if naf == 1:
-      add_jToN(f, j=0, line0, line1, Ts, Qs, Ps)
+      f.add_jToN(j=0, line0, line1, Ts, Qs, Ps, N)
     elif naf == -1:
-      add_jToN(f, j=0, line0, line1, Ts, nQs, Ps)
+      f.add_jToN_negateQ(j=0, line0, line1, Ts, Qs, Ps, N)
 
-  when pairing(C, ate_param_isNeg):
+  when ate_param_isNeg:
     # In GT, x^-1 == conjugate(x)
     # Remark 7.1, chapter 7.1.1 of Guide to Pairing-Based Cryptography, El Mrabet, 2017
-    conj(f)
+    f.conj()
 
-func miller_init_double_then_add*[N: static int, FT, F1, F2](
+func miller_init_double_then_add*[FT, F1, F2](
        f: var FT,
-       Ts: var array[N, ECP_ShortW_Prj[F2, G2]],
-       Qs: array[N, ECP_ShortW_Aff[F2, G2]],
-       Ps: array[N, ECP_ShortW_Aff[F1, G1]],
+       Ts: ptr UncheckedArray[ECP_ShortW_Prj[F2, G2]],
+       Qs: ptr UncheckedArray[ECP_ShortW_Aff[F2, G2]],
+       Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
+       N: int,
        numDoublings: static int
      ) =
   ## Start a Miller Loop
@@ -329,42 +362,46 @@ func miller_init_double_then_add*[N: static int, FT, F1, F2](
     Ts[i].fromAffine(Qs[i])
 
   line0.line_double(Ts[0], Ps[0])
-  when N >= 2:
+  if N >= 2:
     line1.line_double(Ts[1], Ps[1])
     f.prod_from_2_lines(line0, line1)
-    f.double_jToN(j=2, line0, line1, Ts, Ps)
+    f.double_jToN(j=2, line0, line1, Ts, Ps, N)
 
   # Doubling steps: 0b10...00
   # ------------------------------------------------
   when numDoublings > 1: # Already did the MSB doubling
-    when N == 1:         # f = line0
+    if N == 1:           # f = line0
       f.prod_from_2_lines(line0, line0) # f.square()
       line0.line_double(Ts[0], Ps[0])
       f.mul_by_line(line0)
       for _ in 2 ..< numDoublings:
         f.square()
-        f.double_jtoN(j=0, line0, line1, Ts, Ps)
+        f.double_jtoN(j=0, line0, line1, Ts, Ps, N)
     else:
       for _ in 0 ..< numDoublings:
         f.square()
-        f.double_jtoN(j=0, line0, line1, Ts, Ps)
+        f.double_jtoN(j=0, line0, line1, Ts, Ps, N)
 
   # Addition step: 0b10...01
   # ------------------------------------------------
 
-  when numDoublings == 1 and N == 1: # f = line0
-    line1.line_add(Ts[0], Qs[0], Ps[0])
-    f.prod_from_2_lines(line0, line1)
+  when numDoublings == 1:
+    if N == 1: # f = line0
+      line1.line_add(Ts[0], Qs[0], Ps[0])
+      f.prod_from_2_lines(line0, line1)
+    else:
+      f.add_jToN(j=0,line0, line1, Ts, Qs, Ps, N)
   else:
-    f.add_jToN(j=0,line0, line1, Ts, Qs, Ps)
+    f.add_jToN(j=0,line0, line1, Ts, Qs, Ps, N)
 
   {.pop.} # No OverflowError or IndexError allowed
 
-func miller_accum_double_then_add*[N: static int, FT, F1, F2](
+func miller_accum_double_then_add*[FT, F1, F2](
        f: var FT,
-       Ts: var array[N, ECP_ShortW_Prj[F2, G2]],
-       Qs: array[N, ECP_ShortW_Aff[F2, G2]],
-       Ps: array[N, ECP_ShortW_Aff[F1, G1]],
+       Ts: ptr UncheckedArray[ECP_ShortW_Prj[F2, G2]],
+       Qs: ptr UncheckedArray[ECP_ShortW_Aff[F2, G2]],
+       Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
+       N: int,
        numDoublings: int,
        add = true
      ) =
@@ -376,7 +413,7 @@ func miller_accum_double_then_add*[N: static int, FT, F1, F2](
   var line0{.noInit.}, line1{.noinit.}: Line[F2]
   for _ in 0 ..< numDoublings:
     f.square()
-    f.double_jtoN(j=0, line0, line1, Ts, Ps)
+    f.double_jtoN(j=0, line0, line1, Ts, Ps, N)
 
   if add:
-    f.add_jToN(j=0, line0, line1, Ts, Qs, Ps)
+    f.add_jToN(j=0, line0, line1, Ts, Qs, Ps, N)

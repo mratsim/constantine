@@ -10,7 +10,8 @@ import
   std/[os, unittest, strutils],
   pkg/jsony,
   ../constantine/blssig_pop_on_bls12381_g2,
-  ../constantine/math/io/io_bigints
+  ../constantine/math/io/io_bigints,
+  ../constantine/hashes
 
 type
   # https://github.com/ethereum/bls12-381-tests/blob/master/formats/
@@ -48,6 +49,22 @@ type
     signature: array[96, byte]
   FastAggregateVerify_test = object
     input: InputFastAggregateVerify
+    output: bool
+
+  InputAggregateVerify = object
+    pubkeys: seq[array[48, byte]]
+    messages: seq[array[32, byte]]
+    signature: array[96, byte]
+  AggregateVerify_test = object
+    input: InputAggregateVerify
+    output: bool
+
+  InputBatchVerify = object
+    pubkeys: seq[array[48, byte]]
+    messages: seq[array[32, byte]]
+    signatures: seq[array[96, byte]]
+  BatchVerify_test = object
+    input: InputBatchVerify
     output: bool
 
 proc parseHook*[N: static int](src: string, pos: var int, value: var array[N, byte]) =
@@ -159,7 +176,7 @@ testGen(sign, testVector, Sign_test):
         var roundtrip{.noInit.}: array[96, byte]
         let sb_status = sig_bytes.serialize_signature_compressed(sig)
         let rt_status = roundtrip.serialize_signature_compressed(output)
-         
+
         "\nResult signature differs from expected \n" &
         "   computed:  0x" & $sig_bytes.toHex() & " (" & $sb_status & ")\n" &
         "   roundtrip: 0x" & $roundtrip.toHex() & " (" & $rt_status & ")\n" &
@@ -191,10 +208,10 @@ testGen(verify, testVector, Verify_test):
       break testChecks
 
     status = pubkey.verify(testVector.input.message, signature)
-  
+
   let success = status == cttBLS_Success
   doAssert success == testVector.output, block:
-    "\Verification differs from expected \n" &
+    "Verification differs from expected \n" &
     "   valid sig? " & $success & " (" & $status & ")\n" &
     "   expected: " & $testVector.output
 
@@ -223,17 +240,72 @@ testGen(fast_aggregate_verify, testVector, FastAggregateVerify_test):
       if status notin {cttBLS_Success, cttBLS_PointAtInfinity}:
         # For point at infinity, we want to make sure that "verify" itself handles them.
         break testChecks
-    
+
     status = signature.deserialize_signature_compressed(testVector.input.signature)
     if status notin {cttBLS_Success, cttBLS_PointAtInfinity}:
       # For point at infinity, we want to make sure that "verify" itself handles them.
       break testChecks
 
     status = pubkeys.fast_aggregate_verify(testVector.input.message, signature)
-  
+
   let success = status == cttBLS_Success
   doAssert success == testVector.output, block:
-    "\Verification differs from expected \n" &
+    "Verification differs from expected \n" &
+    "   valid sig? " & $success & " (" & $status & ")\n" &
+    "   expected: " & $testVector.output
+
+testGen(aggregate_verify, testVector, AggregateVerify_test):
+  var
+    pubkeys = newSeq[PublicKey](testVector.input.pubkeys.len)
+    signature{.noInit.}: Signature
+    status = cttBLS_VerificationFailure
+
+  block testChecks:
+    for i in 0 ..< testVector.input.pubkeys.len:
+      status = pubkeys[i].deserialize_public_key_compressed(testVector.input.pubkeys[i])
+      if status notin {cttBLS_Success, cttBLS_PointAtInfinity}:
+        # For point at infinity, we want to make sure that "verify" itself handles them.
+        break testChecks
+
+    status = signature.deserialize_signature_compressed(testVector.input.signature)
+    if status notin {cttBLS_Success, cttBLS_PointAtInfinity}:
+      # For point at infinity, we want to make sure that "verify" itself handles them.
+      break testChecks
+
+    status = pubkeys.aggregate_verify(testVector.input.messages, signature)
+
+  let success = status == cttBLS_Success
+  doAssert success == testVector.output, block:
+    "Verification differs from expected \n" &
+    "   valid sig? " & $success & " (" & $status & ")\n" &
+    "   expected: " & $testVector.output
+
+testGen(batch_verify, testVector, BatchVerify_test):
+  var
+    pubkeys = newSeq[PublicKey](testVector.input.pubkeys.len)
+    signatures = newSeq[Signature](testVector.input.signatures.len)
+    status = cttBLS_VerificationFailure
+
+  block testChecks:
+    for i in 0 ..< testVector.input.pubkeys.len:
+      status = pubkeys[i].deserialize_public_key_compressed(testVector.input.pubkeys[i])
+      if status notin {cttBLS_Success, cttBLS_PointAtInfinity}:
+        # For point at infinity, we want to make sure that "verify" itself handles them.
+        break testChecks
+
+    for i in 0 ..< testVector.input.signatures.len:
+      status = signatures[i].deserialize_signature_compressed(testVector.input.signatures[i])
+      if status notin {cttBLS_Success, cttBLS_PointAtInfinity}:
+        # For point at infinity, we want to make sure that "verify" itself handles them.
+        break testChecks
+
+    let randomBytes = sha256.hash("totally non-secure source of entropy")
+
+    status = pubkeys.batch_verify(testVector.input.messages, signatures, randomBytes)
+
+  let success = status == cttBLS_Success
+  doAssert success == testVector.output, block:
+    "Verification differs from expected \n" &
     "   valid sig? " & $success & " (" & $status & ")\n" &
     "   expected: " & $testVector.output
 
@@ -248,3 +320,7 @@ suite "BLS signature on BLS12381G3 - ETH 2.0 test vectors":
     test_verify()
   test "fast_aggregate_verify(seq[PublicKey], message, Signature) -> bool":
     test_fast_aggregate_verify()
+  test "aggregate_verify(seq[PublicKey], seq[message], Signature) -> bool":
+    test_aggregate_verify()
+  test "batch_verify(seq[PublicKey], seq[message], seq[Signature]) -> bool":
+    test_batch_verify()

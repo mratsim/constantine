@@ -17,7 +17,7 @@ import
   ../isogenies/frobenius,
   ../constants/zoo_pairings,
   ../arithmetic,
-  ./cyclotomic_subgroup,
+  ./cyclotomic_subgroups,
   ./lines_eval,
   ./miller_loops
 
@@ -63,15 +63,13 @@ func millerLoopGenericBLS12*[C](
   var
     T {.noInit.}: ECP_ShortW_Prj[Fp2[C], G2]
     line {.noInit.}: Line[Fp2[C]]
-    nQ{.noInit.}: typeof(Q)
 
   T.fromAffine(Q)
-  nQ.neg(Q)
 
   basicMillerLoop(
-    f, T, line,
-    P, Q, nQ,
-    ate_param, ate_param_isNeg
+    f, line, T,
+    P, Q,
+    pairing(C, ate_param), pairing(C, ate_param_isNeg)
   )
 
 func finalExpGeneric[C: static Curve](f: var Fp12[C]) =
@@ -169,6 +167,6 @@ func pairing_bls12*[N: static int, C](
   ## Output:
   ##   The product of pairings
   ##   e(P₀, Q₀) * e(P₁, Q₁) * e(P₂, Q₂) * ... * e(Pₙ, Qₙ) ∈ Gt
-  gt.millerLoopAddchain(Qs, Ps)
+  gt.millerLoopAddchain(Qs.asUnchecked(), Ps.asUnchecked(), N)
   gt.finalExpEasy()
   gt.finalExpHard_BLS12()
