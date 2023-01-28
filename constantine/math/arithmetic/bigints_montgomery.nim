@@ -50,7 +50,7 @@ func fromMont*[mBits](r: var BigInt[mBits], a, M: BigInt[mBits], m0ninv: BaseTyp
   ## the natural and montgomery domain.
   fromMont(r.limbs, a.limbs, M.limbs, m0ninv, spareBits)
 
-func mulMont*(r: var BigInt, a, b, M: BigInt, negInvModWord: static BaseType,
+func mulMont*(r: var BigInt, a, b, M: BigInt, negInvModWord: BaseType,
               spareBits: static int, skipFinalSub: static bool = false) =
   ## Compute r <- a*b (mod M) in the Montgomery domain
   ##
@@ -58,7 +58,7 @@ func mulMont*(r: var BigInt, a, b, M: BigInt, negInvModWord: static BaseType,
   ## to avoid duplicating with Nim zero-init policy
   mulMont(r.limbs, a.limbs, b.limbs, M.limbs, negInvModWord, spareBits, skipFinalSub)
 
-func squareMont*(r: var BigInt, a, M: BigInt, negInvModWord: static BaseType,
+func squareMont*(r: var BigInt, a, M: BigInt, negInvModWord: BaseType,
                  spareBits: static int, skipFinalSub: static bool = false) =
   ## Compute r <- a^2 (mod M) in the Montgomery domain
   ##
@@ -69,7 +69,7 @@ func squareMont*(r: var BigInt, a, M: BigInt, negInvModWord: static BaseType,
 func sumprodMont*[N: static int](
       r: var BigInt,
       a, b: array[N, BigInt],
-      M: BigInt, negInvModWord: static BaseType,
+      M: BigInt, negInvModWord: BaseType,
       spareBits: static int, skipFinalSub: static bool = false) =
   ## Compute r <- ⅀aᵢ.bᵢ (mod M) (sum of products) in the Montgomery domain
   # We rely on BigInt and Limbs having the same repr to avoid array copies
@@ -77,12 +77,12 @@ func sumprodMont*[N: static int](
     r.limbs,
     cast[ptr array[N, typeof(a[0].limbs)]](a.unsafeAddr)[],
     cast[ptr array[N, typeof(b[0].limbs)]](b.unsafeAddr)[],
-    M.limbs, negInvModWord, spareBits, skipFinalSub 
+    M.limbs, negInvModWord, spareBits, skipFinalSub
   )
 
 func powMont*[mBits: static int](
        a: var BigInt[mBits], exponent: openarray[byte],
-       M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,
+       M, one: BigInt[mBits], negInvModWord: BaseType, windowSize: static int,
        spareBits: static int
       ) =
   ## Compute a <- a^exponent (mod M)
@@ -106,7 +106,7 @@ func powMont*[mBits: static int](
 
 func powMontUnsafeExponent*[mBits: static int](
        a: var BigInt[mBits], exponent: openarray[byte],
-       M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,
+       M, one: BigInt[mBits], negInvModWord: BaseType, windowSize: static int,
        spareBits: static int
       ) =
   ## Compute a <- a^exponent (mod M)
@@ -130,7 +130,7 @@ func powMontUnsafeExponent*[mBits: static int](
 
 func powMont*[mBits, eBits: static int](
        a: var BigInt[mBits], exponent: BigInt[eBits],
-       M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,
+       M, one: BigInt[mBits], negInvModWord: BaseType, windowSize: static int,
        spareBits: static int
       ) =
   ## Compute a <- a^exponent (mod M)
@@ -149,7 +149,7 @@ func powMont*[mBits, eBits: static int](
 
 func powMontUnsafeExponent*[mBits, eBits: static int](
        a: var BigInt[mBits], exponent: BigInt[eBits],
-       M, one: BigInt[mBits], negInvModWord: static BaseType, windowSize: static int,
+       M, one: BigInt[mBits], negInvModWord: BaseType, windowSize: static int,
        spareBits: static int
       ) =
   ## Compute a <- a^exponent (mod M)
