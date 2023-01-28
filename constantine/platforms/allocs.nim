@@ -74,7 +74,7 @@ template allocStackUnchecked*(T: typedesc, size: int): ptr T =
   ## Stack allocation for types containing a variable-sized UncheckedArray field
   cast[ptr T](alloca(size))
 
-template allocStackArray*(T: typedesc, len: Natural): ptr UncheckedArray[T] =
+template allocStackArray*(T: typedesc, len: SomeInteger): ptr UncheckedArray[T] =
   cast[ptr UncheckedArray[T]](alloca(sizeof(T) * len))
 
 # Heap allocation
@@ -88,7 +88,7 @@ proc allocHeapUnchecked*(T: typedesc, size: int): ptr T {.inline.} =
   cast[type result](malloc(size))
 
 proc allocHeapArray*(T: typedesc, len: SomeInteger): ptr UncheckedArray[T] {.inline.} =
-  cast[type result](malloc(len*sizeof(T)))
+  cast[type result](malloc(sizeof(T) * len))
 
 proc freeHeap*(p: pointer) {.inline.} =
   free(p)
