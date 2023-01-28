@@ -8,7 +8,6 @@
 
 import
   std/macros,
-  ./instrumentation,
   ./crossthread/tasks_flowvars
 
 # Task parallelism - spawn
@@ -43,12 +42,10 @@ proc spawnVoid(funcCall: NimNode, args, argsTy: NimNode, workerContext, schedule
   # Create the async call
   result.add quote do:
     proc `async_fn`(param: pointer) {.nimcall.} =
-      # preCondition: not isRootTask(`workerContext`.currentTask)
-
       when bool(`withArgs`):
         let `data` = cast[ptr `argsTy`](param)
       `fnCall`
-  
+
   # Create the task
   result.add quote do:
     block enq_deq_task:
@@ -110,8 +107,6 @@ proc spawnRet(funcCall: NimNode, retTy, args, argsTy: NimNode, workerContext, sc
 
   result.add quote do:
     proc `async_fn`(param: pointer) {.nimcall.} =
-      # preCondition: not isRootTask(`workerContext`.currentTask)
-
       let `data` = cast[ptr `futArgsTy`](param)
       let res = `fnCall`
       readyWith(`data`[0], res)
@@ -136,7 +131,7 @@ proc spawnRet(funcCall: NimNode, retTy, args, argsTy: NimNode, workerContext, sc
 
 proc spawnImpl*(tp: NimNode{nkSym}, funcCall: NimNode, workerContext, schedule: NimNode): NimNode =
   funcCall.expectKind(nnkCall)
-  
+
   # Get the return type if any
   let retType = funcCall[0].getImpl[3][0]
   let needFuture = retType.kind != nnkEmpty
@@ -157,4 +152,3 @@ proc spawnImpl*(tp: NimNode{nkSym}, funcCall: NimNode, workerContext, schedule: 
 
   # Wrap in a block for namespacing
   result = nnkBlockStmt.newTree(newEmptyNode(), result)
-  # echo result.toStrLit

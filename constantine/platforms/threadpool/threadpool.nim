@@ -109,9 +109,9 @@ proc teardownWorker() =
   workerContext.localBackoff.`=destroy`()
   workerContext.taskqueue[].teardown()
 
-proc eventLoop(ctx: var WorkerContext) {.raises:[Exception].}
+proc eventLoop(ctx: var WorkerContext) {.raises:[].}
 
-proc workerEntryFn(params: tuple[threadpool: Threadpool, id: WorkerID]) {.raises: [Exception].} =
+proc workerEntryFn(params: tuple[threadpool: Threadpool, id: WorkerID]) {.raises: [].} =
   ## On the start of the threadpool workers will execute this
   ## until they receive a termination signal
   # We assume that thread_local variables start all at their binary zero value
@@ -146,7 +146,7 @@ proc workerEntryFn(params: tuple[threadpool: Threadpool, id: WorkerID]) {.raises
 const ReadyFuture = cast[ptr EventNotifier](0xCA11AB1E)
 const RootTask = cast[ptr Task](0xEFFACED0)
 
-proc run*(ctx: var WorkerContext, task: ptr Task) {.raises:[Exception].} =
+proc run*(ctx: var WorkerContext, task: ptr Task) {.raises:[].} =
   ## Run a task, frees it if it is not owned by a Flowvar
   let suspendedTask = workerContext.currentTask
   ctx.currentTask = task
@@ -178,7 +178,6 @@ proc schedule(ctx: var WorkerContext, tn: ptr Task, forceWake = false) {.inline.
   #   Lazy binary-splitting: a run-time adaptive work-stealing scheduler.
   #   In PPoPP ’10, Bangalore, India, January 2010. ACM, pp. 179–190.
   #   https://user.eng.umd.edu/~barua/ppopp164.pdf
-
   let wasEmpty = ctx.taskqueue[].peek() == 0
   ctx.taskqueue[].push(tn)
   if forceWake or wasEmpty:
@@ -326,9 +325,9 @@ proc tryLeapfrog(ctx: var WorkerContext, awaitedTask: ptr Task): ptr Task =
     return leapTask
   return nil
 
-proc eventLoop(ctx: var WorkerContext) {.raises:[Exception].} =
+proc eventLoop(ctx: var WorkerContext) {.raises:[].} =
   ## Each worker thread executes this loop over and over.
-  while not ctx.signal.terminate.load(moRelaxed):
+  while true:
     # 1. Pick from local queue
     debug: log("Worker %2d: eventLoop 1 - searching task from local queue\n", ctx.id)
     while (var task = ctx.taskqueue[].pop(); not task.isNil):
@@ -338,13 +337,17 @@ proc eventLoop(ctx: var WorkerContext) {.raises:[Exception].} =
     # 2. Run out of tasks, become a thief
     debug: log("Worker %2d: eventLoop 2 - becoming a thief\n", ctx.id)
     let ticket = ctx.threadpool.globalBackoff.sleepy()
-    var stolenTask = ctx.tryStealAdaptative()
-    if not stolenTask.isNil:
+    if (var stolenTask = ctx.tryStealAdaptative(); not stolenTask.isNil):
       # We manage to steal a task, cancel sleep
       ctx.threadpool.globalBackoff.cancelSleep()
       # 2.a Run task
       debug: log("Worker %2d: eventLoop 2.a - stole task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, stolenTask, stolenTask.parent, ctx.currentTask)
       ctx.run(stolenTask)
+    elif ctx.signal.terminate.load(moAcquire):
+      # 2.b Threadpool has no more tasks and we were signaled to terminate
+      ctx.threadpool.globalBackoff.cancelSleep()
+      debugTermination: log("Worker %2d: eventLoop 2.b - terminated\n", ctx.id)
+      break
     else:
       # 2.b Park the thread until a new task enters the threadpool
       debug: log("Worker %2d: eventLoop 2.b - sleeping\n", ctx.id)
@@ -357,9 +360,8 @@ proc eventLoop(ctx: var WorkerContext) {.raises:[Exception].} =
 template isRootTask(task: ptr Task): bool =
   task == RootTask
 
-proc completeFuture*[T](fv: Flowvar[T], parentResult: var T) {.raises:[Exception].} =
+proc completeFuture*[T](fv: Flowvar[T], parentResult: var T) {.raises:[].} =
   ## Eagerly complete an awaited FlowVar
-
   template ctx: untyped = workerContext
 
   template isFutReady(): untyped =
@@ -422,7 +424,7 @@ proc completeFuture*[T](fv: Flowvar[T], parentResult: var T) {.raises:[Exception
       if compareExchange(fv.task.waiter, expected, desired = ctx.localBackoff.addr, moAcquireRelease):
         ctx.localBackoff.park()
 
-proc syncAll*(tp: Threadpool) {.raises: [Exception].} =
+proc syncAll*(tp: Threadpool) {.raises: [].} =
   ## Blocks until all pending tasks are completed
   ## This MUST only be called from
   ## the root scope that created the threadpool
@@ -435,35 +437,31 @@ proc syncAll*(tp: Threadpool) {.raises: [Exception].} =
   preCondition: ctx.currentTask.isRootTask()
 
   # Empty all tasks
-  var foreignThreadsParked = false
-  while not foreignThreadsParked:
+  tp.globalBackoff.wakeAll()
+
+  while true:
     # 1. Empty local tasks
     debug: log("Worker %2d: syncAll 1 - searching task from local queue\n", ctx.id)
     while (let task = ctx.taskqueue[].pop(); not task.isNil):
       debug: log("Worker %2d: syncAll 1 - running task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, task, task.parent, ctx.currentTask)
       ctx.run(task)
 
-    if tp.numThreads == 1 or foreignThreadsParked:
+    if tp.numThreads == 1:
       break
 
     # 2. Help other threads
     debug: log("Worker %2d: syncAll 2 - becoming a thief\n", ctx.id)
-    let stolenTask = ctx.tryStealAdaptative()
-
-    if not stolenTask.isNil:
-      # 2.1 We stole some task
-      debug: log("Worker %2d: syncAll 2.1 - stole task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, stolenTask, stolenTask.parent, ctx.currentTask)
+    if (var stolenTask = ctx.tryStealAdaptative(); not stolenTask.isNil):
+      # 2.a We stole some task
+      debug: log("Worker %2d: syncAll 2.a - stole task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, stolenTask, stolenTask.parent, ctx.currentTask)
       ctx.run(stolenTask)
+    elif tp.globalBackoff.getNumWaiters() == (0'u32, tp.numThreads - 1):
+      # 2.b all threads besides the current are parked
+      debugTermination: log("Worker %2d: syncAll 2.b - termination, all other threads sleeping\n", ctx.id)
+      break
     else:
-      # 2.2 No task to steal
-      if tp.globalBackoff.getNumWaiters() == tp.numThreads - 1:
-        # 2.2.1 all threads besides the current are parked
-        debugTermination:
-          log("Worker %2d: syncAll 2.2.1 - termination, all other threads sleeping\n", ctx.id)
-        foreignThreadsParked = true
-      else:
-        # 2.2.2 We don't park as there is no notif for task completion
-        cpuRelax()
+      # 2.c We don't park as there is no notif for task completion
+      cpuRelax()
 
   debugTermination:
     log(">>> Worker %2d leaves barrier <<<\n", ctx.id)
@@ -471,7 +469,7 @@ proc syncAll*(tp: Threadpool) {.raises: [Exception].} =
 # Runtime
 # ---------------------------------------------
 
-proc new*(T: type Threadpool, numThreads = countProcessors()): T {.raises: [Exception].} =
+proc new*(T: type Threadpool, numThreads = countProcessors()): T {.raises: [ResourceExhaustedError].} =
   ## Initialize a threadpool that manages `numThreads` threads.
   ## Default to the number of logical processors available.
 
@@ -503,7 +501,7 @@ proc new*(T: type Threadpool, numThreads = countProcessors()): T {.raises: [Exce
   discard tp.barrier.wait()
   return tp
 
-proc cleanup(tp: var Threadpool) {.raises: [OSError].} =
+proc cleanup(tp: var Threadpool) {.raises: [].} =
   ## Cleanup all resources allocated by the threadpool
   preCondition: workerContext.currentTask.isRootTask()
 
@@ -518,14 +516,14 @@ proc cleanup(tp: var Threadpool) {.raises: [OSError].} =
 
   tp.freeHeapAligned()
 
-proc shutdown*(tp: var Threadpool) {.raises:[Exception].} =
+proc shutdown*(tp: var Threadpool) {.raises:[].} =
   ## Wait until all tasks are processed and then shutdown the threadpool
   preCondition: workerContext.currentTask.isRootTask()
   tp.syncAll()
 
   # Signal termination to all threads
   for i in 0 ..< tp.numThreads:
-    tp.workerSignals[i].terminate.store(true, moRelaxed)
+    tp.workerSignals[i].terminate.store(true, moRelease)
 
   tp.globalBackoff.wakeAll()
 
