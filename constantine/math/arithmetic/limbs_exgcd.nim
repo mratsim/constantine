@@ -15,7 +15,7 @@ import
 
 # ############################################################
 #
-#             Primitives based on Bézout's identity              
+#             Primitives based on Bézout's identity
 #
 # ############################################################
 #
@@ -78,7 +78,7 @@ func invMod2powK(M0: BaseType, k: static BaseType): BaseType =
 
 # ###############################################################
 #
-#                   Modular inversion 
+#                   Modular inversion
 #
 # ###############################################################
 
@@ -136,17 +136,17 @@ func canonicalize(
        M: LimbsUnsaturated
      ) =
   ## Compute a = sign*a (mod M)
-  ## 
+  ##
   ## with a in range (-2*M, M)
   ## result in range [0, M)
-  
+
   const
     UnsatBitWidth = WordBitWidth - a.Excess
     Max = SignedSecretWord(MaxWord shr a.Excess)
-  
+
   # Operate in registers
   var z = a
-  
+
   # Add M if `z` is negative
   # -> range (-M, M)
   z.cadd(M, z.isNegMask())
@@ -170,7 +170,7 @@ func canonicalize(
 
 proc partitionDivsteps(bits, wordBitWidth: int): tuple[totalIters, numChunks, chunkSize, cutoff: int] =
   # Given the field modulus number of bits
-  # and the effective word size  
+  # and the effective word size
   # Returns:
   # - the total number of iterations that guarantees GCD convergence
   # - the number of chunks of divsteps to compute
@@ -178,7 +178,7 @@ proc partitionDivsteps(bits, wordBitWidth: int): tuple[totalIters, numChunks, ch
   # - a cutoff chunk,
   #     before this chunk ID, the number of divsteps is "base number + 1"
   #     afterward it's "base number"
-  let totalIters =           
+  let totalIters =
     if bits == 256:
       # https://github.com/sipa/safegcd-bounds/tree/master/coq
       # For 256-bit inputs, 590 divsteps are sufficient with hddivstep variant (half-delta divstep)
@@ -203,12 +203,12 @@ func batchedDivsteps(
        k: static int
      ): SignedSecretWord =
   ## Bernstein-Yang half-delta (hdelta) batch of divsteps
-  ## 
+  ##
   ## Output:
   ## - return hdelta for the next batch of divsteps
   ## - mutate t, the transition matrix to apply `numIters` divsteps at once
   ##   t is scaled by 2ᵏ
-  ## 
+  ##
   ## Input:
   ## - f0, bottom limb of f
   ## - g0, bottom limb of g
@@ -281,13 +281,13 @@ func matVecMul_shr_k_mod_M[N, E: static int](
        invMod2powK: SecretWord
   ) =
   ## Compute
-  ##      
-  ## [u v]    [d] 
+  ##
+  ## [u v]    [d]
   ## [q r]/2ᵏ.[e] mod M
   ##
   ## d, e will be in range (-2*modulus,modulus)
   ## and output limbs in (-2ᵏ, 2ᵏ)
-  
+
   static: doAssert k == WordBitWidth - E
   const Max = SignedSecretWord(MaxWord shr E)
 
@@ -303,7 +303,7 @@ func matVecMul_shr_k_mod_M[N, E: static int](
   # Double-signed-word carries
   var cd, ce: DSWord
 
-  # First iteration of [u v] [d] 
+  # First iteration of [u v] [d]
   #                    [q r].[e]
   cd.ssumprodAccNoCarry(u, d[0], v, e[0])
   ce.ssumprodAccNoCarry(q, d[0], r, e[0])
@@ -317,7 +317,7 @@ func matVecMul_shr_k_mod_M[N, E: static int](
   md.cadd(v, sign_e)
   me.cadd(q, sign_d)
   me.cadd(r, sign_e)
-  
+
   md = md - (SignedSecretWord(invMod2powK * SecretWord(cd.lo) + SecretWord(md)) and Max)
   me = me - (SignedSecretWord(invMod2powK * SecretWord(ce.lo) + SecretWord(me)) and Max)
 
@@ -338,18 +338,18 @@ func matVecMul_shr_k_mod_M[N, E: static int](
     e[i-1] = ce.lo and Max
     cd.ashr(k)
     ce.ashr(k)
-  
+
   d[N-1] = cd.lo
   e[N-1] = ce.lo
 
 func matVecMul_shr_k[N, E: static int](
        t: TransitionMatrix,
        f, g: var LimbsUnsaturated[N, E],
-       k: static int     
+       k: static int
   ) =
   ## Compute
-  ##      
-  ## [u v] [f] 
+  ##
+  ## [u v] [f]
   ## [q r].[g] / 2ᵏ
 
   static: doAssert k == WordBitWidth - E
@@ -363,8 +363,8 @@ func matVecMul_shr_k[N, E: static int](
 
   # Double-signed-word carries
   var cf, cg: DSWord
-  
-  # First iteration of [u v] [f] 
+
+  # First iteration of [u v] [f]
   #                    [q r].[g]
   cf.ssumprodAccNoCarry(u, f[0], v, g[0])
   cg.ssumprodAccNoCarry(q, f[0], r, g[0])
@@ -383,7 +383,7 @@ func matVecMul_shr_k[N, E: static int](
     g[i-1] = cg.lo and Max
     cf.ashr(k)
     cg.ashr(k)
-  
+
   f[N-1] = cf.lo
   g[N-1] = cg.lo
 
@@ -414,11 +414,11 @@ func invmodImpl[N, E](
     # Compute transition matrix and next hdelta
     hdelta = t.batchedDivsteps(hdelta, f[0], g[0], numIters, k)
     # Apply the transition matrix
-    # [u v]    [d] 
+    # [u v]    [d]
     # [q r]/2ᵏ.[e]  mod M
     t.matVecMul_shr_k_mod_M(d, e, k, M, invMod2powK)
-    # [u v]    [f] 
-    # [q r]/2ᵏ.[g] 
+    # [u v]    [f]
+    # [q r]/2ᵏ.[g]
     t.matVecMul_shr_k(f, g, k)
 
   d.canonicalize(signMask = f.isNegMask(), M)
@@ -453,12 +453,12 @@ func invmod*(
        F, M: static Limbs, bits: static int) =
   ## Compute the scaled modular inverse of ``a`` modulo M
   ## r ≡ F.a⁻¹ (mod M) (compile-time factor and modulus overload)
-  ## 
+  ##
   ## with F and M known at compile-time
   ##
   ## M MUST be odd, M does not need to be prime.
   ## ``a`` MUST be less than M.
-  
+
   const Excess = 2
   const k = WordBitWidth - Excess
   const NumUnsatWords = (bits + k - 1) div k
@@ -506,13 +506,13 @@ func batchedDivstepsSymbol(
      ): tuple[hdelta, L: SignedSecretWord] =
   ## Bernstein-Yang half-delta (hdelta) batch of divsteps
   ## with Legendre symbol tracking
-  ## 
+  ##
   ## Output:
   ## - return hdelta for the next batch of divsteps
   ## - Returns the intermediate Legendre symbol
   ## - mutate t, the transition matrix to apply `numIters` divsteps at once
   ##   t is scaled by 2ᵏ
-  ## 
+  ##
   ## Input:
   ## - f0, bottom limb of f
   ## - g0, bottom limb of g
@@ -618,20 +618,20 @@ func legendreImpl[N, E](
                       numIters, k)
     else:
       (hdelta, L) = t.batchedDivstepsSymbol(hdelta, f[0], g[0], numIters, k)
-    # [u v]    [f] 
-    # [q r]/2ᵏ.[g] 
+    # [u v]    [f]
+    # [q r]/2ᵏ.[g]
     t.matVecMul_shr_k(f, g, k)
     accL = (accL + L) and SignedSecretWord(3)
     accL = (accL + ((accL.isOdd() xor f.isNeg()))) and SignedSecretWord(3)
 
   accL = (accL + accL.isOdd()) and SignedSecretWord(3)
   accL = SignedSecretWord(1)-accL
-  accL.csetZero(f.isZeroMask())
+  accL.csetZero(not f.isZeroMask())
   return SecretWord(accL)
 
 func legendre*(a, M: Limbs, bits: static int): SecretWord =
   ## Compute the Legendre symbol
-  ## 
+  ##
   ## (a/p)ₗ ≡ a^((p-1)/2) ≡  1 (mod p), iff a is a square
   ##                      ≡ -1 (mod p), iff a is quadratic non-residue
   ##                      ≡  0 (mod p), iff a is 0
@@ -645,24 +645,24 @@ func legendre*(a, M: Limbs, bits: static int): SecretWord =
 
   var a2 {.noInit.}: LimbsUnsaturated[NumUnsatWords, Excess]
   a2.fromPackedRepr(a)
-  
+
   legendreImpl(a2, m2, k, bits)
 
 func legendre*(a: Limbs, M: static Limbs, bits: static int): SecretWord =
   ## Compute the Legendre symbol (compile-time modulus overload)
-  ## 
+  ##
   ## (a/p)ₗ ≡ a^((p-1)/2) ≡  1 (mod p), iff a is a square
   ##                      ≡ -1 (mod p), iff a is quadratic non-residue
   ##                      ≡  0 (mod p), iff a is 0
-  
+
   const Excess = 2
   const k = WordBitWidth - Excess
   const NumUnsatWords = (bits + k - 1) div k
 
   # Convert values to unsaturated repr
   const m2 = LimbsUnsaturated[NumUnsatWords, Excess].fromPackedRepr(M)
-  
+
   var a2 {.noInit.}: LimbsUnsaturated[NumUnsatWords, Excess]
   a2.fromPackedRepr(a)
-  
+
   legendreImpl(a2, m2, k, bits)

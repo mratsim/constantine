@@ -17,7 +17,7 @@ type
     ## This allows efficient handling of carries and signs without intrinsics or assembly.
     #
     # Comparison with packed representation:
-    # 
+    #
     # Packed representation
     # - pro: uses less words (important for multiplication which is O(n²) with n the number of words)
     # - pro: less "mental overhead" to keep track (clear/shift) excess bits
@@ -86,7 +86,7 @@ template `[]=`*(a: LimbsUnsaturated, idx: int, val: SignedSecretWord) =
 func fromPackedRepr*[LU, E, LP: static int](
        dst: var LimbsUnsaturated[LU, E],
        src: Limbs[LP]) =
-  ## Converts from an packed representation to an unsaturated representation  
+  ## Converts from an packed representation to an unsaturated representation
   const UnsatBitWidth = WordBitWidth-E
   const Max = MaxWord shr E
 
@@ -100,13 +100,13 @@ func fromPackedRepr*[LU, E, LP: static int](
     srcIdx, dstIdx = 0
     hi, lo = Zero
     accLen = 0
-  
+
   while srcIdx < src.len:
     # Form a 2-word buffer (hi, lo)
     let w = if src_idx < src.len: src[srcIdx]
             else: Zero
     inc srcIdx
- 
+
     if accLen == 0:
       lo = w and Max
       hi = w shr UnsatBitWidth
@@ -124,7 +124,7 @@ func fromPackedRepr*[LU, E, LP: static int](
       accLen -= s
       lo = ((lo shr s) or (hi shl (UnsatBitWidth - s))) and Max
       hi = hi shr s
-      
+
   if dstIdx < dst.words.len:
     dst[dstIdx] = SignedSecretWord lo
 
@@ -138,7 +138,7 @@ func fromPackedRepr*(T: type LimbsUnsaturated, src: Limbs): T =
 func fromUnsatRepr*[LU, E, LP: static int](
        dst: var Limbs[LP],
        src: LimbsUnsaturated[LU, E]) =
-  ## Converts from an packed representation to an unsaturated representation  
+  ## Converts from an packed representation to an unsaturated representation
   const UnsatBitWidth = WordBitWidth-E
 
   static:
@@ -165,7 +165,7 @@ func fromUnsatRepr*[LU, E, LP: static int](
       inc dstIdx
       accLen -= WordBitWidth
       acc = nextWord shr (UnsatBitWidth - accLen)
-  
+
   if dst_idx < dst.len:
     dst[dst_idx] = acc
 
@@ -280,9 +280,10 @@ func isOdd*(a: SignedSecretWord): SignedSecretWord {.inline.} =
   a and SignedSecretWord(1)
 
 func isZeroMask*(a: SignedSecretWord): SignedSecretWord {.inline.} =
-  ## Produce the -1 mask if a is negative
+  ## Produce the -1 mask if a is 0
   ## and 0 otherwise
-  not SignedSecretWord(a.SecretWord().isZero())
+  # In x86 assembly, we can use "neg" + "sbb"
+  -SignedSecretWord(a.SecretWord().isZero())
 
 func isNegMask*(a: SignedSecretWord): SignedSecretWord {.inline.} =
   ## Produce the -1 mask if a is negative
@@ -295,7 +296,7 @@ func isOddMask*(a: SignedSecretWord): SignedSecretWord {.inline.} =
   -(a and SignedSecretWord(1))
 
 func csetZero*(a: var SignedSecretWord, mask: SignedSecretWord) {.inline.} =
-  ## Conditionally set `a` to 0 
+  ## Conditionally set `a` to 0
   ## mask must be 0 (0x00000...0000) (kept as is)
   ## or -1 (0xFFFF...FFFF) (zeroed)
   a = a and mask
@@ -303,7 +304,7 @@ func csetZero*(a: var SignedSecretWord, mask: SignedSecretWord) {.inline.} =
 func cneg*(
        a: SignedSecretWord,
        mask: SignedSecretWord): SignedSecretWord {.inline.} =
-  ## Conditionally negate `a` 
+  ## Conditionally negate `a`
   ## mask must be 0 (0x00000...0000) (no negation)
   ## or -1 (0xFFFF...FFFF) (negation)
   (a xor mask) - mask
@@ -312,7 +313,7 @@ func cadd*(
        a: var SignedSecretWord,
        b: SignedSecretWord,
        mask: SignedSecretWord) {.inline.} =
-  ## Conditionally add `b` to `a` 
+  ## Conditionally add `b` to `a`
   ## mask must be 0 (0x00000...0000) (no addition)
   ## or -1 (0xFFFF...FFFF) (addition)
   a = a + (b and mask)
@@ -321,7 +322,7 @@ func csub*(
        a: var SignedSecretWord,
        b: SignedSecretWord,
        mask: SignedSecretWord) {.inline.} =
-  ## Conditionally substract `b` from `a` 
+  ## Conditionally substract `b` from `a`
   ## mask must be 0 (0x00000...0000) (no substraction)
   ## or -1 (0xFFFF...FFFF) (substraction)
   a = a - (b and mask)
@@ -335,7 +336,7 @@ func isZeroMask*(a: LimbsUnsaturated): SignedSecretWord {.inline.} =
   var accum = SignedSecretWord(0)
   for i in 0 ..< a.words.len:
     accum = accum or a.words[i]
-  
+
   return accum.isZeroMask()
 
 func isNeg*(a: LimbsUnsaturated): SignedSecretWord {.inline.} =
@@ -351,10 +352,10 @@ func isNegMask*(a: LimbsUnsaturated): SignedSecretWord {.inline.} =
 func cneg*(
        a: var LimbsUnsaturated,
        mask: SignedSecretWord) {.inline.} =
-  ## Conditionally negate `a` 
+  ## Conditionally negate `a`
   ## mask must be 0 (0x00000...0000) (no negation)
   ## or -1 (0xFFFF...FFFF) (negation)
-  ## 
+  ##
   ## Carry propagation is deferred
   for i in 0 ..< a.words.len:
     a[i] = a[i].cneg(mask)
@@ -363,10 +364,10 @@ func cadd*(
        a: var LimbsUnsaturated,
        b: LimbsUnsaturated,
        mask: SignedSecretWord) {.inline.} =
-  ## Conditionally add `b` to `a` 
+  ## Conditionally add `b` to `a`
   ## mask must be 0 (0x00000...0000) (no addition)
   ## or -1 (0xFFFF...FFFF) (addition)
-  ## 
+  ##
   ## Carry propagation is deferred
   for i in 0 ..< a.words.len:
     a[i].cadd(b[i], mask)

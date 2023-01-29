@@ -173,7 +173,7 @@ template `xor`*[T: Ct](x, y: CTBool[T]): CTBool[T] =
 
 template cneg*[T: Ct](x: T, ctl: CTBool[T]): T =
   # Conditional negate if ctl is true
-  (x xor -T(ctl)) + T(ctl) 
+  (x xor -T(ctl)) + T(ctl)
 
 # ############################################################
 #
@@ -215,6 +215,7 @@ template isNonZero*[T: Ct](x: T): CTBool[T] =
   isMsbSet(x_NZ or -x_NZ)
 
 template isZero*[T: Ct](x: T): CTBool[T] =
+  # In x86 assembly, we can use "neg" + "adc"
   not isNonZero(x)
 
 # ############################################################
