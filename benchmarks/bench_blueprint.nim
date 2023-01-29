@@ -21,7 +21,7 @@ import
   # Standard library
   std/[monotimes, times, strformat, strutils, macros]
 
-export strformat, platforms, times, monotimes, macros
+export strutils, strformat, platforms, times, monotimes, macros
 
 var rng*: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32

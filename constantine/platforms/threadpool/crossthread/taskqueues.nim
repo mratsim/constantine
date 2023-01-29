@@ -76,8 +76,8 @@ proc peek*(tq: var Taskqueue): int =
   ##
   ## This is a non-locking operation.
   let # Handle race conditions
-    b = tq.back.load(moRelaxed)
-    f = tq.front.load(moRelaxed)
+    b = tq.back.load(moAcquire)
+    f = tq.front.load(moAcquire)
 
   if b >= f:
     return b-f

@@ -13,10 +13,34 @@ import
   ../constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
-    ec_shortweierstrass_jacobian],
+    ec_shortweierstrass_jacobian,
+    ec_shortweierstrass_batch_ops_parallel],
+  ../constantine/platforms/threadpool/threadpool,
   # Helpers
-  ../helpers/static_for,
-  ./bench_elliptic_template
+  ../helpers/[static_for, prng_unsafe],
+  ./bench_elliptic_template,
+  ./bench_blueprint
+
+# ############################################################
+#
+#             Parallel Benchmark definitions
+#
+# ############################################################
+
+proc multiAddParallelBench*(EC: typedesc, numPoints: int, iters: int) =
+  var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](numPoints)
+
+  for i in 0 ..< numPoints:
+    points[i] = rng.random_unsafe(ECP_ShortW_Aff[EC.F, EC.G])
+
+  var r{.noInit.}: EC
+
+  var tp = Threadpool.new()
+
+  bench("EC parallel batch add  (" & align($tp.numThreads, 2) & " threads)   " & $EC.G & " (" & $numPoints & " points)", EC, iters):
+    tp.sum_batch_vartime_parallel(r, points)
+
+  tp.shutdown()
 
 # ############################################################
 #
@@ -54,11 +78,19 @@ proc main() =
     separator()
     for numPoints in [10, 100, 1000, 10000, 100000, 1000000]:
       let batchIters = max(1, Iters div numPoints)
+      multiAddParallelBench(ECP_ShortW_Prj[Fp[curve], G1], numPoints, batchIters)
+    separator()
+    for numPoints in [10, 100, 1000, 10000, 100000, 1000000]:
+      let batchIters = max(1, Iters div numPoints)
       multiAddBench(ECP_ShortW_Jac[Fp[curve], G1], numPoints, useBatching = false, batchIters)
     separator()
     for numPoints in [10, 100, 1000, 10000, 100000, 1000000]:
       let batchIters = max(1, Iters div numPoints)
       multiAddBench(ECP_ShortW_Jac[Fp[curve], G1], numPoints, useBatching = true, batchIters)
+    separator()
+    for numPoints in [10, 100, 1000, 10000, 100000, 1000000]:
+      let batchIters = max(1, Iters div numPoints)
+      multiAddParallelBench(ECP_ShortW_Jac[Fp[curve], G1], numPoints, batchIters)
     separator()
     separator()
 

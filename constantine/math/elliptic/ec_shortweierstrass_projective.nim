@@ -92,7 +92,7 @@ func trySetFromCoordsXandZ*[F; G](
   ##
   ## Note: Dedicated robust procedures for hashing-to-curve
   ##       will be provided, this is intended for testing purposes.
-  ## 
+  ##
   ##       For **test case generation only**,
   ##       this is preferred to generating random point
   ##       via random scalar multiplication of the curve generator
@@ -121,7 +121,7 @@ func trySetFromCoordX*[F; G](
   ##
   ## Note: Dedicated robust procedures for hashing-to-curve
   ##       will be provided, this is intended for testing purposes.
-  ## 
+  ##
   ##       For **test case generation only**,
   ##       this is preferred to generating random point
   ##       via random scalar multiplication of the curve generator
@@ -258,7 +258,7 @@ func madd*[F; G: static Subgroup](
   ## with p in Projective coordinates and Q in affine coordinates
   ##
   ##   R = P + Q
-  ## 
+  ##
   ## ``r`` may alias P
 
   when F.C.getCoefA() == 0:
@@ -275,7 +275,7 @@ func madd*[F; G: static Subgroup](
     #
     # Note¹⁰ mentions that due to Qz = 1, cannot be
     # the point at infinity.
-    # We solve that by conditional copies. 
+    # We solve that by conditional copies.
     t0.prod(P.x, Q.x)         # 1.  t₀ <- X₁ X₂
     t1.prod(P.y, Q.y)         # 2.  t₁ <- Y₁ Y₂
     t3.sum(P.x, P.y)          # 3.  t₃ <- X₁ + Y₁ ! error in paper
@@ -314,7 +314,7 @@ func madd*[F; G: static Subgroup](
     t0 *= t3                  # 31. t₀ <- t₀ t₃,   t₀ = 3X₁X₂ (X₁Y₂ + X₂Y₁)
     z3 *= t4                  # 32. Z₃ <- Z₃ t₄,   Z₃ = (Y₁Y₂ + 3bZ₁)(Y₁ + Y₂Z₁)
     z3 += t0                  # 33. Z₃ <- Z₃ + t₀, Z₃ = (Y₁ + Y₂Z₁)(Y₁Y₂ + 3bZ₁) + 3X₁X₂ (X₁Y₂ + X₂Y₁)
-  
+
     # Deal with infinity point. r and P might alias.
     let inf = Q.isInf()
     x3.ccopy(P.x, inf)
@@ -441,57 +441,3 @@ func fromAffine*[F, G](
   proj.x = aff.x
   proj.y = aff.y
   proj.z.setOne()
-
-func batchAffine*[N: static int, F, G](
-       affs: var array[N, ECP_ShortW_Aff[F, G]],
-       projs: array[N, ECP_ShortW_Prj[F, G]]) =
-  # Algorithm: Montgomery's batch inversion
-  # - Speeding the Pollard and Elliptic Curve Methods of Factorization
-  #   Section 10.3.1
-  #   Peter L. Montgomery
-  #   https://www.ams.org/journals/mcom/1987-48-177/S0025-5718-1987-0866113-7/S0025-5718-1987-0866113-7.pdf
-  # - Modern Computer Arithmetic
-  #   Section 2.5.1 Several inversions at once
-  #   Richard P. Brent and Paul Zimmermann
-  #   https://members.loria.fr/PZimmermann/mca/mca-cup-0.5.9.pdf
-
-  # To avoid temporaries, we store partial accumulations
-  # in affs[i].x
-  var zeroes: array[N, SecretBool]
-  affs[0].x = projs[0].z
-  zeroes[0] = affs[0].x.isZero()
-  affs[0].x.csetOne(zeroes[0])
-
-  for i in 1 ..< N:
-    # Skip zero z-coordinates (infinity points)
-    var z = projs[i].z
-    zeroes[i] = z.isZero()
-    z.csetOne(zeroes[i])
-
-    if i != N-1:
-      affs[i].x.prod(affs[i-1].x, z, skipFinalSub = true)
-    else:
-      affs[i].x.prod(affs[i-1].x, z, skipFinalSub = false)
-  
-  var accInv {.noInit.}: F
-  accInv.inv(affs[N-1].x)
-
-  for i in countdown(N-1, 1):
-    # Extract 1/Pᵢ
-    var invi {.noInit.}: F
-    invi.prod(accInv, affs[i-1].x, skipFinalSub = true)
-    invi.csetZero(zeroes[i])
-
-    # Now convert Pᵢ to affine
-    affs[i].x.prod(projs[i].x, invi)
-    affs[i].y.prod(projs[i].y, invi)
-
-    # next iteration
-    invi = projs[i].z
-    invi.csetOne(zeroes[i])
-    accInv.prod(accInv, invi, skipFinalSub = true)
-  
-  block: # tail
-    accInv.csetZero(zeroes[0])
-    affs[0].x.prod(projs[0].x, accInv)
-    affs[0].y.prod(projs[0].y, accInv)

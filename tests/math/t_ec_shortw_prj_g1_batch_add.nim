@@ -14,8 +14,7 @@ import
   # Test utilities
   ./t_ec_template
 
-const
-  numPoints = [1, 2, 8, 16, 128, 1024, 2048, 16384, 32768] # 262144, 1048576]
+const numPoints = [1, 2, 8, 16, 128, 1024, 2048, 16384, 32768] # 262144, 1048576]
 
 run_EC_batch_add_impl(
     ec = ECP_ShortW_Prj[Fp[BN254_Snarks], G1],

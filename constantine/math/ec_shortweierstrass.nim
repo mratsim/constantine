@@ -18,10 +18,12 @@ import
     ec_shortweierstrass_affine,
     ec_shortweierstrass_jacobian,
     ec_shortweierstrass_projective,
+    ec_shortweierstrass_batch_ops,
     ec_scalar_mul
   ]
 
-export ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_shortweierstrass_projective, ec_scalar_mul
+export ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_shortweierstrass_projective,
+       ec_shortweierstrass_batch_ops, ec_scalar_mul
 
 type ECP_ShortW*[F; G: static Subgroup] = ECP_ShortW_Aff[F, G] | ECP_ShortW_Jac[F, G] | ECP_ShortW_Prj[F, G]
 

@@ -45,9 +45,9 @@ func pthread_barrier_init*(
   barrier.lock.initLock()
   {.locks: [barrier.lock].}:
     barrier.cond.initCond()
+    barrier.sense = false
     barrier.left = count
   barrier.count = count
-  # barrier.sense = false
 
 proc pthread_barrier_wait*(barrier: var PthreadBarrier): Errno =
   ## Wait on `barrier`

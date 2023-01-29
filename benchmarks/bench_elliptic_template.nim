@@ -25,7 +25,7 @@ import
     ec_shortweierstrass_batch_ops,
     ec_scalar_mul, ec_endomorphism_accel],
   # Helpers
-  ../helpers/[prng_unsafe, static_for],
+  ../helpers/prng_unsafe,
   ./platforms,
   ./bench_blueprint,
   # Reference unsafe scalar multiplication
@@ -54,7 +54,7 @@ proc report(op, elliptic: string, start, stop: MonoTime, startClk, stopClk: int6
   else:
     echo &"{op:<60} {elliptic:<40} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
 
-template bench(op: string, EC: typedesc, iters: int, body: untyped): untyped =
+template bench*(op: string, EC: typedesc, iters: int, body: untyped): untyped =
   measure(iters, startTime, stopTime, startClk, stopClk, body)
   report(op, fixEllipticDisplay(EC), startTime, stopTime, startClk, stopClk, iters)
 
@@ -143,7 +143,7 @@ proc scalarMulUnsafeDoubleAddBench*(EC: typedesc, iters: int) =
     r = P
     r.unsafe_ECmul_double_add(exponent)
 
-proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int) =  
+proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int) =
   var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](numPoints)
 
   for i in 0 ..< numPoints:
@@ -152,10 +152,10 @@ proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int)
   var r{.noInit.}: EC
 
   if useBatching:
-    bench("EC Multi-Addition batched             " & $EC.G & " (" & $numPoints & " points)", EC, iters):
+    bench("EC Multi Add batched                  " & $EC.G & " (" & $numPoints & " points)", EC, iters):
       r.sum_batch_vartime(points)
   else:
-    bench("EC Multi-Addition unbatched mixed add " & $EC.G & " (" & $numPoints & " points)", EC, iters):
+    bench("EC Multi Mixed-Add unbatched          " & $EC.G & " (" & $numPoints & " points)", EC, iters):
       r.setInf()
       for i in 0 ..< numPoints:
         r += points[i]

@@ -41,7 +41,7 @@ type
 
     # Execution
     # ------------------
-    fn*: proc (param: pointer) {.nimcall, gcsafe.}
+    fn*: proc (param: pointer) {.nimcall, gcsafe, raises: [].}
     # destroy*: proc (param: pointer) {.nimcall, gcsafe.} # Constantine only deals with plain old data
     data*{.align:sizeof(int).}: UncheckedArray[byte]
 
@@ -60,6 +60,7 @@ proc new*(
   result = allocHeapUnchecked(T, size)
   result.parent = parent
   result.thiefID.store(SentinelThief, moRelaxed)
+  result.hasFuture = false
   result.completed.store(false, moRelaxed)
   result.waiter.store(nil, moRelaxed)
   result.fn = fn
@@ -67,7 +68,7 @@ proc new*(
 proc new*(
        T: typedesc[Task],
        parent: ptr Task,
-       fn: proc (param: pointer) {.nimcall, gcsafe.},
+       fn: proc (param: pointer) {.nimcall, gcsafe, raises: [].},
        params: auto): ptr Task {.inline.} =
 
   const size = sizeof(T) + # size without Unchecked
@@ -76,6 +77,7 @@ proc new*(
   result = allocHeapUnchecked(T, size)
   result.parent = parent
   result.thiefID.store(SentinelThief, moRelaxed)
+  result.hasFuture = false
   result.completed.store(false, moRelaxed)
   result.waiter.store(nil, moRelaxed)
   result.fn = fn

@@ -16,7 +16,8 @@ import
   ../arithmetic,
   ../extension_fields,
   ../isogenies/frobenius,
-  ./ec_shortweierstrass_affine
+  ./ec_shortweierstrass_affine,
+  ./ec_shortweierstrass_batch_ops
 
 # ############################################################
 #

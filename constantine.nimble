@@ -245,6 +245,11 @@ const testDescThreadpool: seq[string] = @[
   # "constantine/platforms/threadpool/benchmarks/single_task_producer/threadpool_spc.nim", # Need timing not implemented on Windows
 ]
 
+const testDescMultithreadedCrypto: seq[string] = @[
+  "tests/parallel/t_ec_shortw_jac_g1_batch_add_parallel.nim",
+  "tests/parallel/t_ec_shortw_prj_g1_batch_add_parallel.nim"
+]
+
 const benchDesc = [
   "bench_fp",
   "bench_fp_double_precision",
@@ -408,7 +413,25 @@ proc addTestSetThreadpool(cmdFile: var string) =
   echo "Found " & $testDescThreadpool.len & " tests to run."
 
   for path in testDescThreadpool:
-    cmdFile.testBatch(flags = "--threads:on --linetrace:on", path)
+    cmdFile.testBatch(flags = "--threads:on --linetrace:on --debugger:native", path)
+
+proc addTestSetMultithreadedCrypto(cmdFile: var string, test32bit = false, testASM = true) =
+  if not dirExists "build":
+    mkDir "build"
+  echo "Found " & $testDescMultithreadedCrypto.len & " tests to run."
+
+  for td in testDescMultithreadedCrypto:
+    var flags = " --threads:on --debugger:native"
+    if not testASM:
+      flags &= " -d:CttASM=false"
+    if test32bit:
+      flags &= " -d:Constantine32"
+    if td in useDebug:
+      flags &= " -d:debugConstantine"
+    if td notin skipSanitizers:
+      flags &= sanitizers
+
+    cmdFile.testBatch(flags, td)
 
 proc addBenchSet(cmdFile: var string, useAsm = true) =
   if not dirExists "build":
@@ -639,6 +662,13 @@ task test_parallel_no_gmp_no_asm, "Run all tests in parallel (via GNU parallel)"
 task test_threadpool, "Run all tests for the builtin threadpool":
   var cmdFile: string
   cmdFile.addTestSetThreadpool()
+  for cmd in cmdFile.splitLines():
+    if cmd != "": # Windows doesn't like empty commands
+      exec cmd
+
+task test_multithreaded_crypto, "Run all tests for multithreaded cryptography":
+  var cmdFile: string
+  cmdFile.addTestSetMultithreadedCrypto()
   for cmd in cmdFile.splitLines():
     if cmd != "": # Windows doesn't like empty commands
       exec cmd

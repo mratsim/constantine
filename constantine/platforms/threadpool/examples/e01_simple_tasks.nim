@@ -2,9 +2,12 @@ import ../threadpool
 
 block: # Async without result
 
-  proc displayInt(x: int) =
-    stdout.write(x)
-    stdout.write(" - SUCCESS\n")
+  proc displayInt(x: int) {.raises: [].} =
+    try:
+      stdout.write(x)
+      stdout.write(" - SUCCESS\n")
+    except:
+      quit 1
 
   proc main() =
     echo "\n=============================================================================================="
