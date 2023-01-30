@@ -63,7 +63,7 @@ Protocols are a set of routines, designed for specific goals or a combination th
 - integrity: the received message has not been tampered with
 - non-repudiation: the sender of a message cannot repudiated it
 
-Protocols to address these goals, (authenticated) encryption, signature, traitor-tracing, etc 
+Protocols to address these goals, (authenticated) encryption, signature, traitor-tracing, etc
 are designed.\
 Note: some goals might be mutually exclusive, for example "plausible deniability" and "non-repudiation".
 
@@ -112,7 +112,7 @@ The following curves are configured:
 
     With Ristretto, it can be used in bulletproofs.
   - The Pasta curves (Pallas and Vesta) for the Halo 2 proof system (Zcash).
-  
+
 
 ## Installation
 
@@ -132,7 +132,7 @@ and also ensure constant-time code.
 ## Dependencies
 
 Constantine has no dependencies, even on Nim standard library except:
-- for testing 
+- for testing
   - jsony for parsing json test vectors
   - the Nim standard library for unittesting, formatting and datetime.
   - GMP for testing against GMP
