@@ -26,7 +26,8 @@ import
     ec_shortweierstrass_batch_ops,
     ec_twistededwards_affine,
     ec_twistededwards_projective,
-    ec_scalar_mul],
+    ec_scalar_mul,
+    ec_multi_scalar_mul],
   ../../constantine/math/io/[io_bigints, io_fields, io_ec],
   ../../constantine/math/constants/zoo_subgroups,
   # Test utilities
@@ -867,6 +868,56 @@ proc run_EC_batch_add_impl*[N: static int](
           r_batch.sum_batch_vartime(points)
 
           check: bool(r_batch == r_ref)
+
+        test(ec, gen = Uniform)
+        test(ec, gen = HighHammingWeight)
+        test(ec, gen = Long01Sequence)
+
+proc run_EC_multi_scalar_mul_impl*[N: static int](
+       ec: typedesc,
+       numPoints: array[N, int],
+       moduleName: string
+     ) =
+
+  # Random seed for reproducibility
+  var rng: RngState
+  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  rng.seed(seed)
+  echo "\n------------------------------------------------------\n"
+  echo moduleName, " xoshiro512** seed: ", seed
+
+  when ec.G == G1:
+    const G1_or_G2 = "G1"
+  else:
+    const G1_or_G2 = "G2"
+
+  const testSuiteDesc = "Elliptic curve multi-scalar-multiplication for Short Weierstrass form"
+
+  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
+    for n in numPoints:
+      let bucketBits = bestBucketBitSize(n, ec.F.C.getCurveOrderBitwidth())
+      test $ec & " Multi-scalar-mul (N=" & $n & ", bucket bits: " & $bucketBits & ")":
+        proc test(EC: typedesc, gen: RandomGen) =
+          var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](n)
+          var coefs = newSeq[BigInt[EC.F.C.getCurveOrderBitwidth()]](n)
+
+          for i in 0 ..< n:
+            var tmp = rng.random_unsafe(EC)
+            tmp.clearCofactor()
+            points[i].affine(tmp)
+            coefs[i] = rng.random_unsafe(BigInt[EC.F.C.getCurveOrderBitwidth()])
+
+          var naive, naive_tmp: EC
+          naive.setInf()
+          for i in 0 ..< n:
+            naive_tmp.fromAffine(points[i])
+            naive_tmp.scalarMulGeneric(coefs[i])
+            naive += naive_tmp
+
+          var msm: EC
+          msm.multiScalarMul_vartime(coefs, points)
+
+          doAssert bool(naive == msm)
 
         test(ec, gen = Uniform)
         test(ec, gen = HighHammingWeight)

@@ -55,3 +55,6 @@ const
 const CttASM {.booldefine.} = true
 const UseASM_X86_32* = CttASM and X86 and GCC_Compatible
 const UseASM_X86_64* = WordBitWidth == 64 and UseASM_X86_32
+
+# We use Nim effect system to track vartime subroutines
+type VarTime*   = object

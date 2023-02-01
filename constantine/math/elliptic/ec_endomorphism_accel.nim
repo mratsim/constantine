@@ -493,7 +493,7 @@ func scalarMulGLV_m2w2*[scalBits; EC](
   mixin affine
   type ECaff = affine(EC)
   const C = P0.F.C # curve
-  static: doAssert: scalBits == C.getCurveOrderBitwidth()
+  static: doAssert: scalBits <= C.getCurveOrderBitwidth()
 
   # 1. Compute endomorphisms
   when P0.G == G1:

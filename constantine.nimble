@@ -181,6 +181,8 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ----------------------------------------------------------
   ("tests/math/t_ec_shortw_prj_g1_batch_add.nim", false),
   ("tests/math/t_ec_shortw_jac_g1_batch_add.nim", false),
+  ("tests/math/t_ec_shortw_prj_g1_msm.nim", false),
+  ("tests/math/t_ec_shortw_jac_g1_msm.nim", false),
 
   # Subgroups and cofactors
   # ----------------------------------------------------------
@@ -826,7 +828,25 @@ task bench_ec_g1_batch_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (
   runBench("bench_ec_g1_batch", "gcc", useAsm = false)
 
 task bench_ec_g1_batch_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (batch ops) - Clang no Assembly":
-  runBench("bench_ec_g1", "clang", useAsm = false)
+  runBench("bench_ec_g1_batch", "clang", useAsm = false)
+
+# Elliptic curve G1 - Multi-scalar-mul
+# ------------------------------------------
+
+task bench_ec_g1_msm, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) - Default compiler":
+  runBench("bench_ec_g1_msm")
+
+task bench_ec_g1_msm_gcc, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) - GCC":
+  runBench("bench_ec_g1_msm", "gcc")
+
+task bench_ec_g1_msm_clang, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) - Clang":
+  runBench("bench_ec_g1_msm", "clang")
+
+task bench_ec_g1_msm_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) - GCC no Assembly":
+  runBench("bench_ec_g1_msm", "gcc", useAsm = false)
+
+task bench_ec_g1_msm_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) - Clang no Assembly":
+  runBench("bench_ec_g1_msm", "clang", useAsm = false)
 
 # Elliptic curve G2
 # ------------------------------------------

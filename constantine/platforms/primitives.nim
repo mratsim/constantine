@@ -48,6 +48,9 @@ template debug*(body: untyped): untyped =
   when defined(debugConstantine):
     body
 
+func unreachable*() {.noReturn.} =
+  doAssert false, "Unreachable"
+
 # ############################################################
 #
 #                         Buffers

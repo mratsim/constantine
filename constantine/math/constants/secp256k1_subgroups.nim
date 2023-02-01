@@ -19,9 +19,9 @@ import
 #
 # ############################################################
 
-func clearCofactorReference*(P: var ECP_ShortW[Fp[Vesta], G1]) {.inline.} =
-  ## Clear the cofactor of Vesta G1
-  ## The Pasta curves have a prime-order group so this is a no-op
+func clearCofactorReference*(P: var ECP_ShortW[Fp[Secp256k1], G1]) {.inline.} =
+  ## Clear the cofactor of Secp256k1
+  ## The secp256k1 curve has a prime-order group so this is a no-op
   discard
 
 # ############################################################
@@ -30,11 +30,8 @@ func clearCofactorReference*(P: var ECP_ShortW[Fp[Vesta], G1]) {.inline.} =
 #
 # ############################################################
 
-func isInSubgroup*(P: ECP_ShortW[Fp[Vesta], G1]): SecretBool {.inline.} =
-  ## Returns true if P is in G1 subgroup, i.e. P is a point of order r.
-  ## A point may be on a curve but not on the prime order r subgroup.
-  ## Not checking subgroup exposes a protocol to small subgroup attacks.
-  ## This is a no-op as on G1, all points are in the correct subgroup.
+func isInSubgroup*(P: ECP_ShortW[Fp[Secp256k1], G1]): SecretBool {.inline.} =
+  ## This is a no-op, all points on curve are in the correct subgroup.
   ##
   ## Warning ⚠: Assumes that P is on curve
   return CtTrue

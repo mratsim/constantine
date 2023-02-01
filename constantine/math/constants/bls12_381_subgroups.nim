@@ -101,7 +101,7 @@ func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp2[BLS12_381], G2]) {.inline
 
 func clearCofactorFast*(P: var ECP_ShortW[Fp[BLS12_381], G1]) =
   ## Clear the cofactor of BLS12_381 𝔾1
-  ## 
+  ##
   ## Wahby et al "Fast and simple constant-time hashing to the BLS12-381 elliptic curve", https://eprint.iacr.org/2019/403
   ## Optimized using endomorphisms
   ## P -> (1 - x) P
@@ -166,11 +166,11 @@ func clearCofactorFast*(P: var ECP_ShortW[Fp2[BLS12_381], G2]) =
 #
 # ############################################################
 
-func isInSubgroup*(P: ECP_ShortW_Jac[Fp[BLS12_381], G1] or ECP_ShortW_Prj[Fp[BLS12_381], G1]): SecretBool =
+func isInSubgroup*(P: ECP_ShortW[Fp[BLS12_381], G1]): SecretBool =
   ## Returns true if P is in 𝔾1 subgroup, i.e. P is a point of order r.
   ## A point may be on a curve but not on the prime order r subgroup.
   ## Not checking subgroup exposes a protocol to small subgroup attacks.
-  ## 
+  ##
   ## Warning ⚠: Assumes that P is on curve
   # Implementation: Scott, https://eprint.iacr.org/2021/1130.pdf
   #   A note on group membership tests for 𝔾1, 𝔾2 and 𝔾T
@@ -180,20 +180,20 @@ func isInSubgroup*(P: ECP_ShortW_Jac[Fp[BLS12_381], G1] or ECP_ShortW_Prj[Fp[BLS
 
   # [-u²]P
   t0.pow_bls12_381_x(P)
-  t1.pow_bls12_381_minus_x(t0) 
+  t1.pow_bls12_381_minus_x(t0)
 
   # ϕ(P)
   t0.x.prod(P.x, BLS12_381.getCubicRootOfUnity_mod_p())
   t0.y = P.y
-  t0.z = P.z                   
+  t0.z = P.z
 
   return t0 == t1
 
-func isInSubgroup*(P: ECP_ShortW_Jac[Fp2[BLS12_381], G2] or ECP_ShortW_Prj[Fp2[BLS12_381], G2]): SecretBool =
+func isInSubgroup*(P: ECP_ShortW[Fp2[BLS12_381], G2]): SecretBool =
   ## Returns true if P is in 𝔾2 subgroup, i.e. P is a point of order r.
   ## A point may be on a curve but not on the prime order r subgroup.
   ## Not checking subgroup exposes a protocol to small subgroup attacks.
-  ## 
+  ##
   ## Warning ⚠: Assumes that P is on curve
   # Implementation: Scott, https://eprint.iacr.org/2021/1130.pdf
   #   A note on group membership tests for 𝔾1, 𝔾2 and 𝔾T
@@ -209,7 +209,7 @@ func isInSubgroup*(P: ECP_ShortW_Aff[Fp[BLS12_381], G1]): SecretBool =
   ## Returns true if P is in 𝔾1 subgroup, i.e. P is a point of order r.
   ## A point may be on a curve but not on the prime order r subgroup.
   ## Not checking subgroup exposes a protocol to small subgroup attacks.
-  ## 
+  ##
   ## Warning ⚠: Assumes that P is on curve
   var t{.noInit.}: ECP_ShortW_Prj[Fp[BLS12_381], G1]
   t.fromAffine(P)
@@ -220,7 +220,7 @@ func isInSubgroup*(P: ECP_ShortW_Aff[Fp2[BLS12_381], G2]): SecretBool =
   ## Returns true if P is in 𝔾2 subgroup, i.e. P is a point of order r.
   ## A point may be on a curve but not on the prime order r subgroup.
   ## Not checking subgroup exposes a protocol to small subgroup attacks.
-  ## 
+  ##
   ## Warning ⚠: Assumes that P is on curve
   var t{.noInit.}: ECP_ShortW_Jac[Fp2[BLS12_381], G2]
   t.fromAffine(P)

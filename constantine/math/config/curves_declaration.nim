@@ -128,7 +128,7 @@ declareCurves:
     # https://z.cash/technology/jubjub/
     bitwidth: 255
     modulus: "0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001"
-    # Montgomery form: y² = x³ + 40962x² + x 
+    # Montgomery form: y² = x³ + 40962x² + x
     # Twisted Edwards: ax² + y² = 1+dx²y² with a = -1 d=-10240/10241
     order: "0xe7db4ea6533afa906673b0101343b00a6682093ccc81082d0970e5ed6f72cb7"
     orderBitwidth: 252
@@ -159,11 +159,11 @@ declareCurves:
     bitwidth: 255
     modulus: "0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed"
 
-    # Montgomery form:            y² = x³ + 486662x² + x 
+    # Montgomery form:            y² = x³ + 486662x² + x
     # Edwards form:          x² + y² = 1+dx²y²           with d = 121665/121666
     # Twisted Edwards form: ax² + y² = 1+dx²y²           with a = 121666 and d = 121665
-    # or for use in Hisil, Wong, Carter, and Dawson extended coordinates 
-    #                       ax² + y² = 1+dx²y²           with a = -1 d=-121665/121666                     
+    # or for use in Hisil, Wong, Carter, and Dawson extended coordinates
+    #                       ax² + y² = 1+dx²y²           with a = -1 d=-121665/121666
     order: "0x1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed"
     orderBitwidth: 253
     cofactor: 8
@@ -198,6 +198,9 @@ declareCurves:
     modulus: "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f"
     order: "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141"
     orderBitwidth: 256
+    eq_form: ShortWeierstrass
+    coef_a: 0
+    coef_b: 7
   curve BLS12_377:
     # Zexe curve
     # (p41) https://eprint.iacr.org/2018/962.pdf

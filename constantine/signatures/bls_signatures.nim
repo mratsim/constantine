@@ -369,7 +369,7 @@ func init*[T0, T1: char|byte](
 func scalarMul_minHammingWeight_vartime[EC](
        P: var EC,
        scalar: BigInt,
-     ) =
+     ) {.tags:[VarTime].} =
   ## **Variable-time** Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P

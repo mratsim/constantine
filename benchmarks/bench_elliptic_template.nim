@@ -24,6 +24,7 @@ import
     ec_shortweierstrass_jacobian,
     ec_shortweierstrass_batch_ops,
     ec_scalar_mul, ec_endomorphism_accel],
+    ../constantine/math/constants/zoo_subgroups,
   # Helpers
   ../helpers/prng_unsafe,
   ./platforms,
@@ -34,7 +35,7 @@ import
 export notes
 export abstractions # generic sandwich on SecretBool and SecretBool in Jacobian sum
 
-proc separator*() = separator(177)
+proc separator*() = separator(206)
 
 macro fixEllipticDisplay(EC: typedesc): untyped =
   # At compile-time, enums are integers and their display is buggy
@@ -50,9 +51,9 @@ proc report(op, elliptic: string, start, stop: MonoTime, startClk, stopClk: int6
   let ns = inNanoseconds((stop-start) div iters)
   let throughput = 1e9 / float64(ns)
   when SupportsGetTicks:
-    echo &"{op:<60} {elliptic:<40} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
+    echo &"{op:<80} {elliptic:<40} {throughput:>15.3f} ops/s     {ns:>12} ns/op     {(stopClk - startClk) div iters:>12} CPU cycles (approx)"
   else:
-    echo &"{op:<60} {elliptic:<40} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
+    echo &"{op:<80} {elliptic:<40} {throughput:>15.3f} ops/s     {ns:>12} ns/op"
 
 template bench*(op: string, EC: typedesc, iters: int, body: untyped): untyped =
   measure(iters, startTime, stopTime, startClk, stopClk, body)
@@ -96,7 +97,8 @@ proc scalarMulGenericBench*(EC: typedesc, window: static int, iters: int) =
   const bits = EC.F.C.getCurveOrderBitwidth()
 
   var r {.noInit.}: EC
-  let P = rng.random_unsafe(EC) # TODO: clear cofactor
+  var P = rng.random_unsafe(EC)
+  P.clearCofactor()
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
@@ -108,7 +110,8 @@ proc scalarMulEndo*(EC: typedesc, iters: int) =
   const bits = EC.F.C.getCurveOrderBitwidth()
 
   var r {.noInit.}: EC
-  let P = rng.random_unsafe(EC) # TODO: clear cofactor
+  var P = rng.random_unsafe(EC)
+  P.clearCofactor()
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
@@ -120,7 +123,8 @@ proc scalarMulEndoWindow*(EC: typedesc, iters: int) =
   const bits = EC.F.C.getCurveOrderBitwidth()
 
   var r {.noInit.}: EC
-  let P = rng.random_unsafe(EC) # TODO: clear cofactor
+  var P = rng.random_unsafe(EC)
+  P.clearCofactor()
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
@@ -135,7 +139,8 @@ proc scalarMulUnsafeDoubleAddBench*(EC: typedesc, iters: int) =
   const bits = EC.F.C.getCurveOrderBitwidth()
 
   var r {.noInit.}: EC
-  let P = rng.random_unsafe(EC) # TODO: clear cofactor
+  var P = rng.random_unsafe(EC)
+  P.clearCofactor()
 
   let exponent = rng.random_unsafe(BigInt[bits])
 

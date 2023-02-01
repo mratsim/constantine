@@ -230,7 +230,7 @@ func affineAdd[F; G: static Subgroup](
 func accum_half_vartime[F; G: static Subgroup](
        points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
        lambdas: ptr UncheckedArray[tuple[num, den: F]],
-       len: uint) {.noinline.} =
+       len: uint) {.tags:[VarTime], noinline.} =
   ## Affine accumulation of half the points into the other half
   ## Warning ⚠️ : variable-time
   ##
