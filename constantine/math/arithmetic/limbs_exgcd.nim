@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/abstractions,
+  ../../platforms/[abstractions, signed_secret_words],
   ./limbs, ./limbs_unsaturated
 
 # No exceptions allowed

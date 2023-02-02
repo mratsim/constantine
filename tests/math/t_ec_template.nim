@@ -489,7 +489,7 @@ proc run_EC_mixed_add_impl*(
           r_generic.double(a)
           r_mixed.madd(a, aAff)
           check: bool(r_generic == r_mixed)
-          
+
           # Aliasing test
           r_mixed = a
           r_mixed += aAff
@@ -612,7 +612,7 @@ proc run_EC_subgroups_cofactors_impl*(
           doAssert bool Q.isInSubgroup(), "Subgroup check issue on " & $EC & " with Q: " & Q.toHex()
 
           stdout.write '.'
-        
+
         stdout.write '\n'
 
       test(ec, randZ = false, gen = Uniform)
@@ -621,7 +621,7 @@ proc run_EC_subgroups_cofactors_impl*(
       test(ec, randZ = true, gen = HighHammingWeight)
       test(ec, randZ = false, gen = Long01Sequence)
       test(ec, randZ = true, gen = Long01Sequence)
-    
+
       echo "    [SUCCESS] Test finished with ", inSubgroup, " points in ", G1_or_G2, " subgroup and ",
               offSubgroup, " points on curve but not in subgroup (before cofactor clearing)"
 
@@ -815,7 +815,7 @@ proc run_EC_batch_add_impl*[N: static int](
       test $ec & " batch addition (N=" & $n & ")":
         proc test(EC: typedesc, gen: RandomGen) =
           var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](n)
-          
+
           for i in 0 ..< n:
             points[i] = rng.random_point(ECP_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
 
@@ -839,10 +839,10 @@ proc run_EC_batch_add_impl*[N: static int](
           var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](n)
 
           let halfN = n div 2
-          
+
           for i in 0 ..< halfN:
             points[i] = rng.random_point(ECP_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
-          
+
           for i in halfN ..< n:
             # The special cases test relies on internal knowledge that we sum(points[i], points[i+n/2]
             # It should be changed if scheduling change, for example if we sum(points[2*i], points[2*i+1])
