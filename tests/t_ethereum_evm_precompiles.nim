@@ -12,7 +12,7 @@ import
   # 3rd party
   pkg/jsony,
   # Internals
-  ../constantine/math/io/io_bigints,
+  ../constantine/platforms/codecs,
   ../constantine/ethereum_evm_precompiles
 
 type
@@ -48,7 +48,7 @@ template runBN256Tests(filename: string, funcname: untyped, osize: static int) =
 
       # Length: 2 hex characters -> 1 byte
       var inputbytes = newSeq[byte](test.Input.len div 2)
-      test.Input.hexToPaddedByteArray(inputbytes, bigEndian)
+      inputbytes.paddedFromHex(test.Input, bigEndian)
 
       var r: array[osize, byte]
       var expected: array[osize, byte]
@@ -57,15 +57,15 @@ template runBN256Tests(filename: string, funcname: untyped, osize: static int) =
       if status != cttEVM_Success:
         reset(r)
 
-      test.Expected.hexToPaddedByteArray(expected, bigEndian)
+      expected.paddedFromHex(test.Expected, bigEndian)
 
       doAssert r == expected, "[Test Failure]\n" &
         "  " & funcname.astToStr & " status: " & $status & "\n" &
         "  " & "result:   " & r.toHex() & "\n" &
-        "  " & "expected: " & expected.toHex() & '\n'   
-      
+        "  " & "expected: " & expected.toHex() & '\n'
+
       stdout.write "Success\n"
-  
+
   `bn256testrunner _ funcname`()
 
 runBN256Tests("bn256Add.json", eth_evm_ecadd, 64)

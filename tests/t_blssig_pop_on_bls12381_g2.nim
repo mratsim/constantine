@@ -10,7 +10,7 @@ import
   std/[os, unittest, strutils],
   pkg/jsony,
   ../constantine/blssig_pop_on_bls12381_g2,
-  ../constantine/math/io/io_bigints,
+  ../constantine/platforms/codecs,
   ../constantine/hashes
 
 type
@@ -70,7 +70,7 @@ type
 proc parseHook*[N: static int](src: string, pos: var int, value: var array[N, byte]) =
   var str: string
   parseHook(src, pos, str)
-  str.hexToPaddedByteArray(value, bigEndian)
+  value.paddedFromHex(str, bigEndian)
 
 const SkippedTests = [
   # By construction, input MUST be 48 bytes, which is enforced at the type-system level.

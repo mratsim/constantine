@@ -109,6 +109,13 @@ func isOddMask*(a: SignedSecretWord): SignedSecretWord {.inline.} =
   ## and 0 otherwise
   -(a and SignedSecretWord(1))
 
+func isInRangeMask*(val, lo, hi: SignedSecretWord): SignedSecretWord {.inline.} =
+  ## Produce 0b11111111 mask if lo <= val <= hi (inclusive range)
+  ## and 0b00000000 otherwise
+  let loInvMask = isNegMask(val-lo) # if val-lo < 0 => val < lo
+  let hiInvMask = isNegMask(hi-val) # if hi-val < 0 => val > hi
+  return not(loInvMask or hiInvMask)
+
 func csetZero*(a: var SignedSecretWord, mask: SignedSecretWord) {.inline.} =
   ## Conditionally set `a` to 0
   ## mask must be 0 (0x00000...0000) (kept as is)

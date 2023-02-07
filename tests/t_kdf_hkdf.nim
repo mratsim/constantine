@@ -19,7 +19,7 @@ proc hexToBytes(s: string): seq[byte] =
         (int(s[1] == 'x') or int(s[1] == 'X'))
       )
     result.setLen((s.len - skip) div 2)
-    s.hexToPaddedByteArray(result, bigEndian)
+    result.paddedFromHex(s, bigEndian)
 
 template test(id, constants: untyped) =
   proc `test _ id`() =

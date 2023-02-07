@@ -11,7 +11,8 @@ import
   ../constantine/hash_to_curve/h2c_hash_to_field,
   ../constantine/math/config/[curves_declaration, type_ff],
   ../constantine/math/extension_fields/towers,
-  ../constantine/math/io/[io_bigints, io_fields, io_extfields]
+  ../constantine/math/io/[io_fields, io_extfields],
+  ../constantine/platforms/codecs
 
 # Test vectors for expandMessageXMD
 # ----------------------------------------------------------------------

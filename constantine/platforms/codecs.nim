@@ -6,7 +6,7 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import ./abstractions
+import ./abstractions, ./signed_secret_words
 
 # ############################################################
 #
@@ -14,30 +14,31 @@ import ./abstractions
 #
 # ############################################################
 
+template sw(a: auto): SecretWord = SecretWord(a)
+template ssw(a: auto): SignedSecretWord = SignedSecretWord(a)
+
 # ############################################################
 #
 #                      Hexadecimal
 #
 # ############################################################
 
-func readHexChar(c: char): SecretWord {.inline.}=
+func readHexChar(c: char): SecretWord {.inline.} =
   ## Converts an hex char to an int
-  template sw(a: char or int): SecretWord = SecretWord(a)
-  const k = WordBitWidth - 1
+  const OOR = ssw 256        # Push chars out-of-range
+  var c = ssw(c) + OOR
 
-  let c = sw(c)
+  # '0' -> '9' maps to [0, 9]
+  c.csub(OOR + ssw('0') - ssw  0, c.isInRangeMask(ssw('0') + OOR, ssw('9') + OOR))
+  # 'A' -> 'Z' maps to [10, 16)
+  c.csub(OOR + ssw('A') - ssw 10, c.isInRangeMask(ssw('A') + OOR, ssw('Z') + OOR))
+  # 'a' -> 'z' maps to [10, 16)
+  c.csub(OOR + ssw('a') - ssw 10, c.isInRangeMask(ssw('a') + OOR, ssw('z') + OOR))
 
-  let lowercaseMask = not -(((c - sw'a') or (sw('f') - c)) shr k)
-  let uppercaseMask = not -(((c - sw'A') or (sw('F') - c)) shr k)
+  c = c and ssw(0xF) # Prevent overflow of invalid inputs
+  return sw(c)
 
-  var val = c - sw'0'
-  val = val xor ((val xor (c - sw('a') + sw(10))) and lowercaseMask)
-  val = val xor ((val xor (c - sw('A') + sw(10))) and uppercaseMask)
-  val = val and sw(0xF) # Prevent overflow of invalid inputs
-
-  return val
-
-func hexToPaddedByteArray*(hexStr: string, output: var openArray[byte], order: static[Endianness]) =
+func paddedFromHex*(output: var openArray[byte], hexStr: string, order: static[Endianness]) =
   ## Read a hex string and store it in a byte array `output`.
   ## The string may be shorter than the byte array.
   ##
@@ -51,8 +52,6 @@ func hexToPaddedByteArray*(hexStr: string, output: var openArray[byte], order: s
   ##
   ## This procedure is intended for configuration, prototyping, research and debugging purposes.
   ## You MUST NOT use it for production.
-
-  template sw(a: bool or int): SecretWord = SecretWord(a)
 
   var
     skip = Zero
@@ -99,4 +98,4 @@ func toHex*(bytes: openarray[byte]): string =
     result[2 + 2*i+1] = hexChars.secretLookup(SecretWord bi and 0xF)
 
 func fromHex*[N: static int](T: type array[N, byte], hex: string): T =
-  hexToPaddedByteArray(hex, result, bigEndian)
+  result.paddedFromHex(hex, bigEndian)
