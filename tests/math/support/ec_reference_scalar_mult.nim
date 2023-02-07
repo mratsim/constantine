@@ -39,16 +39,13 @@ func unsafe_ECmul_double_add*[EC](
   var scalarCanonical: array[(scalar.bits+7) div 8, byte]
   scalarCanonical.marshal(scalar, bigEndian)
 
-  var t0{.noInit.}, t1{.noInit.}: typeof(P)
+  var t0: typeof(P)
   t0.setInf()
-  t1.setInf()
   for scalarByte in scalarCanonical:
     for bit in unpack(scalarByte):
-      t1.double(t0)
+      t0.double()
       if bit:
-        t0.sum(t1, P)
-      else:
-        t0 = t1
+        t0 += P
   P = t0
 
 func unsafe_ECmul_minHammingWeight*[EC](
@@ -63,15 +60,12 @@ func unsafe_ECmul_minHammingWeight*[EC](
   ## This is UNSAFE to use in production and only intended for testing purposes.
   ##
   ## This is highly VULNERABLE to timing attacks and power analysis attacks
-  var t0{.noInit.}, t1{.noInit.}: typeof(P)
+  var t0{.noInit.}: typeof(P)
   t0.setInf()
-  t1.setInf()
   for bit in recoding_l2r_vartime(scalar):
-    t1.double(t0)
+    t0.double()
     if bit == 1:
-      t0.sum(t1, P)
+      t0 += P
     elif bit == -1:
-      t0.diff(t1,P)
-    else:
-      t0 = t1
+      t0 -= P
   P = t0

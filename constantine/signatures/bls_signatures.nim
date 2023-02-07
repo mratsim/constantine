@@ -8,6 +8,7 @@
 
 import
     ../math/[ec_shortweierstrass, extension_fields],
+    ../math/io/io_bigints,
     ../math/elliptic/ec_shortweierstrass_batch_ops,
     ../math/pairings/[pairings_generic, miller_accumulators],
     ../math/constants/zoo_generators,
@@ -365,41 +366,30 @@ func init*[T0, T1: char|byte](
 
   H.hash(ctx.secureBlinding, secureRandomBytes, accumSepTag)
 
-iterator unpack(scalarByte: byte): bool =
-  yield bool((scalarByte and 0b10000000) shr 7)
-  yield bool((scalarByte and 0b01000000) shr 6)
-  yield bool((scalarByte and 0b00100000) shr 5)
-  yield bool((scalarByte and 0b00010000) shr 4)
-  yield bool((scalarByte and 0b00001000) shr 3)
-  yield bool((scalarByte and 0b00000100) shr 2)
-  yield bool((scalarByte and 0b00000010) shr 1)
-  yield bool( scalarByte and 0b00000001)
-
-func scalarMul_doubleAdd_vartime[EC](
+func scalarMul_minHammingWeight_vartime[EC](
        P: var EC,
-       scalarCanonical: openArray[byte],
+       scalar: BigInt,
      ) =
   ## **Variable-time** Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P
   ##
-  ## This uses the double-and-add algorithm
-  ## This is UNSAFE to use with secret data and is only intended for signature verification
-  ## to multiply by random blinding scalars.
+  ## This uses an online recoding with minimum Hamming Weight
+  ## (which is not NAF, NAF is least-significant bit to most)
   ## Due to those scalars being 64-bit, window-method or endomorphism acceleration are slower
   ## than double-and-add.
   ##
   ## This is highly VULNERABLE to timing attacks and power analysis attacks.
-  var t0{.noInit.}, t1{.noInit.}: typeof(P)
+  ## For our usecase, scaling with a random number not in attacker control,
+  ## leaking the scalar bits is not an issue.
+  var t0{.noInit.}: typeof(P)
   t0.setInf()
-  t1.setInf()
-  for scalarByte in scalarCanonical:
-    for bit in unpack(scalarByte):
-      t1.double(t0)
-      if bit:
-        t0.sum(t1, P)
-      else:
-        t0 = t1
+  for bit in recoding_l2r_vartime(scalar):
+    t0.double()
+    if bit == 1:
+      t0 += P
+    elif bit == -1:
+      t0 -= P
   P = t0
 
 func update*[T: char|byte, Pubkey, Sig: ECP_ShortW_Aff](
@@ -434,7 +424,12 @@ func update*[T: char|byte, Pubkey, Sig: ECP_ShortW_Aff](
   # we only use a 1..<2^64 random blinding factor.
   # We assume that the attacker cannot resubmit 2^64 times
   # forged public keys and signatures.
+  #
   # Discussion https://ethresear.ch/t/fast-verification-of-multiple-bls-signatures/5407
+  # See also
+  # - Faster batch forgery identification
+  #   Daniel J. Bernstein, Jeroen Doumen, Tanja Lange, and Jan-Jaap Oosterwijk, 2012
+  #   https://eprint.iacr.org/2012/549
 
   # We only use the first 8 bytes for blinding
   # but use the full 32 bytes to derive new random scalar
@@ -459,8 +454,10 @@ func update*[T: char|byte, Pubkey, Sig: ECP_ShortW_Aff](
     pkG1_jac.fromAffine(pubkey)
     sigG2_jac.fromAffine(signature)
 
-    pkG1_jac.scalarMul_doubleAdd_vartime(ctx.secureBlinding.toOpenArray(0, 7))
-    sigG2_jac.scalarMul_doubleAdd_vartime(ctx.secureBlinding.toOpenArray(0, 7))
+    var randFactor{.noInit.}: BigInt[64]
+    randFactor.unmarshal(ctx.secureBlinding.toOpenArray(0, 7), bigEndian)
+    pkG1_jac.scalarMul_minHammingWeight_vartime(randFactor)
+    sigG2_jac.scalarMul_minHammingWeight_vartime(randFactor)
 
     if ctx.aggSigOnce == false:
       ctx.aggSig = sigG2_jac
@@ -493,8 +490,10 @@ func update*[T: char|byte, Pubkey, Sig: ECP_ShortW_Aff](
 
     sigG1_jac.fromAffine(signature)
 
-    hmsgG1_jac.scalarMul_doubleAdd_vartime(ctx.secureBlinding.toOpenArray(0, 7))
-    sigG1_jac.scalarMul_doubleAdd_vartime(ctx.secureBlinding.toOpenArray(0, 7))
+    var randFactor{.noInit.}: BigInt[64]
+    randFactor.unmarshal(ctx.secureBlinding.toOpenArray(0, 7), bigEndian)
+    hmsgG1_jac.scalarMul_minHammingWeight_vartime(randFactor)
+    sigG1_jac.scalarMul_minHammingWeight_vartime(randFactor)
 
     if ctx.aggSigOnce == false:
       ctx.aggSig = sigG1_jac

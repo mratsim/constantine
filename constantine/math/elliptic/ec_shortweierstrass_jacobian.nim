@@ -630,13 +630,17 @@ func double*(P: var ECP_ShortW_Jac) {.inline.} =
   ## In-place point doubling
   P.double(P)
 
-func diff*(r: var ECP_ShortW_Jac,
-           P, Q: ECP_ShortW_Jac
-     ) {.inline.} =
+func diff*(r: var ECP_ShortW_Jac, P, Q: ECP_ShortW_Jac) {.inline.} =
   ## r = P - Q
   var nQ {.noInit.}: typeof(Q)
   nQ.neg(Q)
   r.sum(P, nQ)
+
+func `-=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac) {.inline.} =
+  ## In-place point substraction
+  var nQ {.noInit.}: typeof(Q)
+  nQ.neg(Q)
+  P.sum(P, nQ)
 
 func affine*[F; G](
        aff: var ECP_ShortW_Aff[F, G],

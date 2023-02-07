@@ -45,7 +45,8 @@ func basicMillerLoop*[FT, F1, F2](
   var u3 = ate_param
   u3 *= 3
   for i in countdown(u3.bits - 2, 1):
-    f.square()
+    if i != u3.bits - 2:
+      f.square()
     line.line_double(T, P)
     f.mul_by_line(line)
 
@@ -320,7 +321,8 @@ func basicMillerLoop*[FT, F1, F2](
   var u3 = ate_param
   u3 *= 3
   for i in countdown(u3.bits - 2, 1):
-    f.square()
+    if i != u3.bits - 2:
+      f.square()
     f.double_jToN(j=0, line0, line1, Ts, Ps, N)
 
     let naf = u3.bit(i).int8 - u.bit(i).int8 # This can throw exception

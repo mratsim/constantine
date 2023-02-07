@@ -243,7 +243,7 @@ func cyclotomic_square_cube_over_quad(r: var CubicExt, a: CubicExt) =
 
   # From here on, r aliasing with a is only for the first operation
   # and only read/write the exact same coordinates
-  
+
   # 3v₀₀ - 2a₀
   r.c0.c0.diff(v0.c0, a0)
   r.c0.c0.double()
@@ -305,21 +305,21 @@ func cyclotomic_square_quad_over_cube[F](r: var QuadraticExt[F], a: QuadraticExt
   #   v₁ = (b₃, b₂) = (a.c1.c0, a.c0.c2)
   #   v₂ = (b₁, b₅) = (a.c0.c1, a.c1.c2)
   var v0{.noInit.}, v1{.noInit.}, v2{.noInit.}: QuadraticExt[typeof(r.c0.c0)]
-  
+
   template b0: untyped = a.c0.c0
   template b1: untyped = a.c0.c1
   template b2: untyped = a.c0.c2
   template b3: untyped = a.c1.c0
   template b4: untyped = a.c1.c1
   template b5: untyped = a.c1.c2
-  
+
   v0.square_disjoint(b0, b4)
   v1.square_disjoint(b3, b2)
   v2.square_disjoint(b1, b5)
-  
+
   # From here on, r aliasing with a is only for the first operation
   # and only read/write the exact same coordinates
-  
+
   # 3v₀₀ - 2b₀
   r.c0.c0.diff(v0.c0, b0)
   r.c0.c0.double()
@@ -385,28 +385,31 @@ func cycl_sqr_repeated*[FT](r: var FT, a: FT, num: int) {.inline, meter.} =
   for _ in 1 ..< num:
     r.cyclotomic_square()
 
-iterator unpack(scalarByte: byte): bool =
-  yield bool((scalarByte and 0b10000000) shr 7)
-  yield bool((scalarByte and 0b01000000) shr 6)
-  yield bool((scalarByte and 0b00100000) shr 5)
-  yield bool((scalarByte and 0b00010000) shr 4)
-  yield bool((scalarByte and 0b00001000) shr 3)
-  yield bool((scalarByte and 0b00000100) shr 2)
-  yield bool((scalarByte and 0b00000010) shr 1)
-  yield bool( scalarByte and 0b00000001)
+func cyclotomic_exp*[FT](r: var FT, a: FT, exponent: static BigInt, invert: bool) {.meter.} =
+  ## Assumes public exponent
+  var na {.noInit.}: FT
+  na.cyclotomic_inv(a)
 
-func cyclotomic_exp*[FT](r: var FT, a: FT, exponent: BigInt, invert: bool) {.meter.} =
-    var eBytes: array[(exponent.bits+7) div 8, byte]
-    eBytes.marshal(exponent, bigEndian)
+  r.setOne()
+  var init = false
+  for bit in recoding_l2r_vartime(exponent):
+    if init:
+      r.cyclotomic_square()
+    if bit == 1:
+      if not init:
+        r = a
+        init = true
+      else:
+        r *= a
+    elif bit == -1:
+      if not init:
+        r = na
+        init = true
+      else:
+        r *= na
 
-    r.setOne()
-    for b in eBytes:
-      for bit in unpack(b):
-        r.cyclotomic_square()
-        if bit:
-          r *= a
-    if invert:
-      r.cyclotomic_inv()
+  if invert:
+    r.cyclotomic_inv()
 
 func isInCyclotomicSubgroup*[C](a: Fp6[C]): SecretBool =
   ## Check if a ∈ Fpⁿ: a^Φₙ(p) = 1
@@ -491,7 +494,7 @@ func cyclotomic_square_compressed*[F](g: var G2345[F]) =
   #       h₃ = 3(g₄² + g₅²ξ) - 2g₃
   #       h₄ = 3(g₂² + g₃²ξ) - 2g₄
   #       h₅ = 2g₅ + 3 ((g₂+g₃)²-g₂²-g₃²)
-  # (6 sqr)    
+  # (6 sqr)
   #
   # or with quadratic arithmetic
   #   (h₂+h₃u) = 3u(g₄+g₅u)² + 2(g₂-g₃u)
@@ -523,14 +526,14 @@ func recover_g1*[F](g1_num, g1_den: var F, g: G2345[F]) =
   #   g₁ = (g₅²ξ + 3g₄² - 2g₃)/4g₂
   # if g₂ == 0
   #   g₁ = 2g₄g₅/g₃
-  # 
+  #
   # Theorem 3.1, this is well-defined for all
   # g in Gϕₙ \ {1}
   # if g₂=g₃=0 then g₄=g₅=0 as well
   # and g₀ = 1
   let g2NonZero = not g.g2.isZero()
   var t{.noInit.}: F
-  
+
   g1_num = g.g4
   t = g.g5
   t.ccopy(g.g4, g2NonZero)
@@ -543,7 +546,7 @@ func recover_g1*[F](g1_num, g1_den: var F, g: G2345[F]) =
   t.square(g.g5)
   t *= NonResidue
   g1_num.cadd(t, g2NonZero)       # g₅²ξ + 3g₄² - 2g₃ or 2g₄g₅
-  
+
   t.prod(g.g2, 4)
   g1_den = g.g3
   g1_den.ccopy(t, g2NonZero)      # 4g₂ or g₃
@@ -556,7 +559,7 @@ func batch_ratio_g1s*[N: static int, F](
   ## This requires that all g1_den != 0 or all g1_den == 0
   ## which is the case if this is used to implement
   ## exponentiation in cyclotomic subgroup.
-  
+
   # Algorithm: Montgomery's batch inversion
   # - Speeding the Pollard and Elliptic Curve Methods of Factorization
   #   Section 10.3.1
@@ -581,7 +584,7 @@ func batch_ratio_g1s*[N: static int, F](
     dst[i] *= src[i].g1_num
     # Next iteration
     accInv *= src[i].g1_den
-  
+
   dst[0].prod(accInv, src[0].g1_num)
 
 func recover_g0*[F](
@@ -607,12 +610,12 @@ func fromFpk*[Fpkdiv6, Fpk](
        a: Fpk) =
   ## Convert from a sextic extension to the Karabina g₂₃₄₅
   ## representation.
-  
+
   # GT representations isomorphisms
   # ===============================
   #
   # Given a sextic twist, we can express all elements in terms of z = SNR¹ᐟ⁶
-  # 
+  #
   # The canonical direct sextic representation uses coefficients
   #
   #    c₀ + c₁ z + c₂ z² + c₃ z³ + c₄ z⁴ + c₅ z⁵
@@ -699,14 +702,14 @@ func asFpk*[Fpkdiv6, Fpk](
     {.error: "𝔽pᵏᐟ⁶ -> 𝔽pᵏ towering (direct sextic) is not implemented.".}
 
 func cyclotomic_exp_compressed*[N: static int, Fpk](
-       r: var Fpk, a: Fpk, 
+       r: var Fpk, a: Fpk,
        squarings: static array[N, int]) =
   ## Exponentiation on the cyclotomic subgroup
   ## via compressed repeated squarings
   ## Exponentiation is done least-signigicant bits first
   ## `squarings` represents the number of squarings
   ## to do before the next multiplication.
-  
+
   type Fpkdiv6 = typeof(a.c0.c0)
 
   var gs {.noInit.}: array[N, G2345[Fpkdiv6]]
@@ -724,7 +727,7 @@ func cyclotomic_exp_compressed*[N: static int, Fpk](
   var g1s_ratio {.noInit.}: array[N, tuple[g1_num, g1_den: Fpkdiv6]]
   for i in 0 ..< N:
     recover_g1(g1s_ratio[i].g1_num, g1s_ratio[i].g1_den, gs[i])
-  
+
   var g1s {.noInit.}: array[N, Fpkdiv6]
   g1s.batch_ratio_g1s(g1s_ratio)
 
@@ -746,10 +749,10 @@ func cyclotomic_exp_compressed*[N: static int, Fpk](
   ## Exponentiation is done least-signigicant bits first
   ## `squarings` represents the number of squarings
   ## to do before the next multiplication.
-  ## 
+  ##
   ## `accumSquarings` stores the accumulated squarings so far
   ## iff N != 1
-  
+
   type Fpkdiv6 = typeof(a.c0.c0)
 
   var gs {.noInit.}: array[N, G2345[Fpkdiv6]]
@@ -767,7 +770,7 @@ func cyclotomic_exp_compressed*[N: static int, Fpk](
   var g1s_ratio {.noInit.}: array[N, tuple[g1_num, g1_den: Fpkdiv6]]
   for i in 0 ..< N:
     recover_g1(g1s_ratio[i].g1_num, g1s_ratio[i].g1_den, gs[i])
-  
+
   var g1s {.noInit.}: array[N, Fpkdiv6]
   g1s.batch_ratio_g1s(g1s_ratio)
 
