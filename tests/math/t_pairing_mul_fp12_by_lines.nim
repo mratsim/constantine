@@ -17,7 +17,7 @@ import
   ../../constantine/math/io/io_extfields,
   ../../constantine/math/pairings/lines_eval,
   # Test utilities
-  ../../helpers/[prng_unsafe, static_for]
+  ../../helpers/prng_unsafe
 
 const
   Iters = 8

@@ -16,7 +16,7 @@ import
   ../../constantine/math/config/curves,
   ../../constantine/math/io/io_extfields,
   # Test utilities
-  ../../helpers/[prng_unsafe, static_for]
+  ../../helpers/prng_unsafe
 
 const
   Iters = 8

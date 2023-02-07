@@ -32,7 +32,7 @@ import
   ../constantine/hashes,
   ../constantine/hash_to_curve/hash_to_curve,
   # Helpers
-  ../helpers/[prng_unsafe, static_for],
+  ../helpers/prng_unsafe,
   ./bench_blueprint
 
 export

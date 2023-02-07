@@ -14,7 +14,6 @@ import
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian],
   # Helpers
-  ../helpers/static_for,
   ./bench_elliptic_template
 
 # ############################################################

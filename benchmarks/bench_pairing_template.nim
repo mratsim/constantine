@@ -31,6 +31,7 @@ import
   ../helpers/prng_unsafe,
   ./bench_blueprint
 
+export abstractions
 export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11225
 export notes
 proc separator*() = separator(132)

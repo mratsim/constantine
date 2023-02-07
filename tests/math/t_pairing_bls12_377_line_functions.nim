@@ -21,7 +21,7 @@ import
     ec_scalar_mul],
   ../../constantine/math/pairings/lines_eval,
   # Test utilities
-  ../../helpers/[prng_unsafe, static_for]
+  ../../helpers/prng_unsafe
 
 const
   Iters = 4

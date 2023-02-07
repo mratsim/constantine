@@ -11,7 +11,6 @@ import
   ../constantine/math/config/curves,
   ../constantine/math/extension_fields,
   # Helpers
-  ../helpers/static_for,
   ./bench_fields_template
 
 # ############################################################

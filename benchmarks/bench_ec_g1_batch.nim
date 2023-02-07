@@ -17,7 +17,7 @@ import
     ec_shortweierstrass_batch_ops_parallel],
   ../constantine/platforms/threadpool/threadpool,
   # Helpers
-  ../helpers/[static_for, prng_unsafe],
+  ../helpers/prng_unsafe,
   ./bench_elliptic_template,
   ./bench_blueprint
 
