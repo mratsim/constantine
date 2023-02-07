@@ -14,8 +14,8 @@ import ./abstractions, ./signed_secret_words
 #
 # ############################################################
 
-template sw(a: auto): SecretWord = SecretWord(a)
-template ssw(a: auto): SignedSecretWord = SignedSecretWord(a)
+template sw(a: auto): SecretWord = cast[SecretWord](a)
+template ssw(a: auto): SignedSecretWord = cast[SignedSecretWord](a)
 
 # ############################################################
 #

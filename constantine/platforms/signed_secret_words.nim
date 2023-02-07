@@ -55,7 +55,7 @@ template `*`*(x, y: SignedSecretWord): SignedSecretWord =
 template ashr*(x: SignedSecretWord, y: SomeNumber): SignedSecretWord =
   ## Arithmetic right shift
   # We need to cast to Nim ints without Nim checks
-  SignedSecretWord(cast[SignedBaseType](x).ashr(y))
+  cast[SignedSecretWord](cast[SignedBaseType](x).ashr(y))
 
 template lshr*(x: SignedSecretWord, y: SomeNumber): SignedSecretWord =
   ## Logical right shift
