@@ -421,11 +421,15 @@ proc run_EC_mul_vs_ref_impl*(
           var
             impl = a
             reference = a
+            refMinWeight = a
 
           impl.scalarMulGeneric(exponent)
           reference.unsafe_ECmul_double_add(exponent)
+          refMinWeight.unsafe_ECmul_minHammingWeight(exponent)
 
-          check: bool(impl == reference)
+          check:
+            bool(impl == reference)
+            bool(impl == refMinWeight)
 
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Uniform)
