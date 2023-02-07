@@ -99,3 +99,72 @@ func toHex*(bytes: openarray[byte]): string =
 
 func fromHex*[N: static int](T: type array[N, byte], hex: string): T =
   result.paddedFromHex(hex, bigEndian)
+
+
+# ############################################################
+#
+#                        Base64
+#
+# ############################################################
+
+func base64_decode(
+       dst: var openArray[byte],
+       src: openArray[char]): int {.used.} =
+  ## Decode a Base64 string/bytearray input into
+  ## an octet string
+  ## This procedure is constant-time, except for new lines, padding and invalid base64 characters
+  ##
+  ## Returns -1 if the buffer is too small
+  ## or the number of bytes written.
+  ## Bytes are written from the start of the buffer
+
+  # TODO: unexposed, missing comprehensive test suite.
+
+  var s, d = 0
+  var vals: array[4, SecretWord]
+  var bytes: array[3, byte]
+
+  while s < src.len and d < dst.len:
+    var padding = ssw 0
+
+    for i in 0 ..< 4:
+      const OOR = ssw 256        # Push chars out-of-range
+
+      var c = ssw(src[s]) + OOR
+      s += 1
+
+      # 'A' -> 'Z' maps to [0, 26)
+      c.csub(OOR + ssw('A'),          c.isInRangeMask(ssw('A') + OOR, ssw('Z') + OOR))
+      # 'a' -> 'z' maps to [26, 52)
+      c.csub(OOR + ssw('a') - ssw 26, c.isInRangeMask(ssw('a') + OOR, ssw('z') + OOR))
+      # '0' -> '9' maps to [52, 61)
+      c.csub(OOR + ssw('0') - ssw 52, c.isInRangeMask(ssw('0') + OOR, ssw('9') + OOR))
+      # '+' maps to 62
+      c.csub(OOR + ssw('+') - ssw 62, c.isInRangeMask(ssw('+') + OOR, ssw('+') + OOR))
+      # '/' maps to 63
+      c.csub(OOR + ssw('/') - ssw 63, c.isInRangeMask(ssw('/') + OOR, ssw('/') + OOR))
+      # '=' is padding and everything else is ignored
+      padding.cadd(ssw 1, c.isInRangeMask(ssw('=') + OOR, ssw('=') + OOR))
+
+      # https://www.rfc-editor.org/rfc/rfc7468#section-2
+      # "Furthermore, parsers SHOULD ignore whitespace and other non-
+      #  base64 characters and MUST handle different newline conventions."
+      #
+      # Unfortunately, there is no way to deal with newlines, padding and invalid characters
+      # without revealing that they exist when we do not increment the destination index
+      if c.int >= OOR.int:
+        continue
+
+      vals[i] = SecretWord(c)
+
+    bytes[0] = byte((vals[0] shl 2) or (vals[1] shr 4))
+    bytes[1] = byte((vals[1] shl 4) or (vals[2] shr 2))
+    bytes[2] = byte((vals[2] shl 6) or  vals[3]       )
+
+
+    for i in 0 ..< 3 - padding.int:
+      if d >= dst.len:
+        return -1
+      dst[d] = bytes[i]
+      d += 1
+  return d
