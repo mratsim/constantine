@@ -476,7 +476,7 @@ func invmod*[bits](
        F, M: static BigInt[bits]) =
   ## Compute the modular inverse of ``a`` modulo M
   ## r ≡ F.a⁻¹ (mod M)
-  ## 
+  ##
   ## with F and M known at compile-time
   ##
   ## M MUST be odd, M does not need to be prime.
@@ -490,6 +490,53 @@ func invmod*[bits](r: var BigInt[bits], a, M: BigInt[bits]) =
   var one {.noInit.}: BigInt[bits]
   one.setOne()
   r.invmod(a, one, M)
+
+# ############################################################
+#
+#                   Recoding
+#
+# ############################################################
+
+iterator recoding_l2r_vartime*(a: BigInt): int8 =
+  ## This is a minimum-Hamming-Weight left-to-right recoding.
+  ## It outputs signed {-1, 0, 1} bits from MSB to LSB
+  ## with minimal Hamming Weight to minimize operations
+  ## in Miller Loop and vartime scalar multiplications
+  ##
+  ## Tagged vartime as it returns an int8
+  ## - Optimal Left-to-Right Binary Signed-Digit Recoding
+  ##   Joye, Yen, 2000
+  ##   https://marcjoye.github.io/papers/JY00sd2r.pdf
+
+  # As the caller is copy-pasted at each yield
+  # we rework the algorithm so that we have a single yield point
+  # We rely on the compiler for loop hoisting and/or loop peeling
+
+  var bi, bi1, ri, ri1, ri2: int8
+
+  var i = a.bits
+  while true:
+    if i == a.bits: # We rely on compiler to hoist this branch out of the loop.
+      ri = 0
+      ri1 = int8 a.bit(a.bits-1)
+      ri2 = int8 a.bit(a.bits-2)
+      bi = 0
+    else:
+      bi = bi1
+      ri = ri1
+      ri1 = ri2
+      if i < 2:
+        ri2 = 0
+      else:
+        ri2 = int8 a.bit(i-2)
+
+    bi1 = (bi + ri1 + ri2) shr 1
+    yield -2*bi + ri + bi1
+
+    if i > 0:
+      i -= 1
+    else:
+      break
 
 {.pop.} # inline
 {.pop.} # raises no exceptions

@@ -143,6 +143,18 @@ proc scalarMulUnsafeDoubleAddBench*(EC: typedesc, iters: int) =
     r = P
     r.unsafe_ECmul_double_add(exponent)
 
+proc scalarMulUnsafeMinHammingWeightRecodingBench*(EC: typedesc, iters: int) =
+  const bits = EC.F.C.getCurveOrderBitwidth()
+
+  var r {.noInit.}: EC
+  var P = rng.random_unsafe(EC) # TODO: clear cofactor
+
+  let exponent = rng.random_unsafe(BigInt[bits])
+
+  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (unsafe min Hamming Weight recoding)", EC, iters):
+    r = P
+    r.unsafe_ECmul_minHammingWeight(exponent)
+
 proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int) =
   var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](numPoints)
 

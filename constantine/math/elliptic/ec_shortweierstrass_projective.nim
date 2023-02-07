@@ -417,14 +417,18 @@ func double*(P: var ECP_ShortW_Prj) {.inline.} =
   ## In-place EC doubling
   P.double(P)
 
-func diff*(r: var ECP_ShortW_Prj,
-              P, Q: ECP_ShortW_Prj
-     ) {.inline.} =
+func diff*(r: var ECP_ShortW_Prj, P, Q: ECP_ShortW_Prj) {.inline.} =
   ## r = P - Q
   ## Can handle r and Q aliasing
   var nQ {.noInit.}: typeof(Q)
   nQ.neg(Q)
   r.sum(P, nQ)
+
+func `-=`*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Prj) {.inline.} =
+  ## In-place point substraction
+  var nQ {.noInit.}: typeof(Q)
+  nQ.neg(Q)
+  P.sum(P, nQ)
 
 func affine*[F, G](
        aff: var ECP_ShortW_Aff[F, G],

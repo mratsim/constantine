@@ -24,7 +24,7 @@ import
 
 # ############################################################
 #
-#                     Lines functions    
+#                     Lines functions
 #
 # ############################################################
 
@@ -32,7 +32,7 @@ import
 # ===============================
 #
 # Given a sextic twist, we can express all elements in terms of z = SNR¹ᐟ⁶
-# 
+#
 # The canonical direct sextic representation uses coefficients
 #
 #    c₀ + c₁ z + c₂ z² + c₃ z³ + c₄ z⁴ + c₅ z⁵
@@ -84,16 +84,16 @@ type
     ## For a D-twist
     ##   in canonical coordinates over sextic polynomial [1, w, w², w³, w⁴, w⁵]
     ##   when evaluating the line at P(xₚ, yₚ)
-    ##     a.yₚ + b.xₚ w + c w³ 
-    ##     
+    ##     a.yₚ + b.xₚ w + c w³
+    ##
     ##   This translates in 𝔽pᵏ to
     ##     - acb000 (cubic over quadratic towering)
     ##     - a00bc0 (quadratic over cubic towering)
     ## For a M-Twist
     ##   in canonical coordinates over sextic polynomial [1, w, w², w³, w⁴, w⁵]
     ##   when evaluating the line at the twist ψ(P)(xₚw², yₚw³)
-    ##     a.yₚ w³ + b.xₚ w² + c 
-    ## 
+    ##     a.yₚ w³ + b.xₚ w² + c
+    ##
     ##   This translates in 𝔽pᵏ to
     ##     - ca00b0 (cubic over quadratic towering)
     ##     - cb00a0 (quadratic over cubic towering)
@@ -136,7 +136,7 @@ func line_update[F1, F2](line: var Line[F2], P: ECP_ShortW_Aff[F1, G1]) =
   #   a.yₚ + b.xₚ w + c w³
   #
   # M-Twist: line at ψ(P)(xₚw², yₚw³)
-  #   a.yₚ w³ + b.xₚ w² + c 
+  #   a.yₚ w³ + b.xₚ w² + c
   line.a *= P.y
   line.b *= P.x
 
@@ -236,11 +236,11 @@ func line_eval_fused_double[Field](
 
   var A {.noInit.}, B {.noInit.}, C {.noInit.}: Field
   var E {.noInit.}, F {.noInit.}, G {.noInit.}: Field
-  
+
   template H: untyped = line.a
   template I: untyped = line.b
   template J: untyped = line.c
-  
+
   A.prod(T.x, T.y)
   A.div2()          # A = XY/2
   B.square(T.y)     # B = Y²
@@ -383,7 +383,7 @@ func line_add*[F1, F2](
 
 # ############################################################
 #
-#            𝔽pᵏ by line - 𝔽pᵏ quadratic over cubic             
+#            𝔽pᵏ by line - 𝔽pᵏ quadratic over cubic
 #
 # ############################################################
 
@@ -430,7 +430,7 @@ func mul_sparse_by_line_a00bc0*[Fpk, Fpkdiv6](f: var Fpk, l: Line[Fpkdiv6]) =
 
     v1 *= NonResidue
     f.c0.sum(v0, v1)
-  
+
   else: # Lazy reduction
     var
       V0 {.noInit.}: doubleprec(Fpkdiv2)
@@ -438,13 +438,13 @@ func mul_sparse_by_line_a00bc0*[Fpk, Fpkdiv6](f: var Fpk, l: Line[Fpkdiv6]) =
       V  {.noInit.}: doubleprec(Fpkdiv2)
       t  {.noInit.}: Fpkdiv6
       u  {.noInit.}: Fpkdiv2
-  
+
     u.sum(f.c0, f.c1)
     t.sum(l.a, l.b)
     V.mul2x_sparse_by_xy0(u, t, l.c)
     V1.mul2x_sparse_by_xy0(f.c1, l.b, l.c)
     V0.mul2x_sparse_by_x00(f.c0, l.a)
-    
+
     V.diff2xMod(V, V1)
     V.diff2xMod(V, V0)
     f.c1.redc2x(V)
@@ -460,7 +460,7 @@ func prod_x00yz0_x00yz0_into_abcdefghij00*[Fpk, Fpkdiv6](f: var Fpk, l0, l1: Lin
   #
   # A sparse xy0 by xy0 multiplication in 𝔽pᵏᐟ² (cubic) would be
   #   (a0', a1', 0).(b0', b1', 0)
-  #  
+  #
   #   r0' = a0'b0'
   #   r1' = a0'b1 + a1'b0'
   #     or (a0'+b1')(a1'+b0')-a0'a1'-b0'b1'
@@ -476,7 +476,7 @@ func prod_x00yz0_x00yz0_into_abcdefghij00*[Fpk, Fpkdiv6](f: var Fpk, l0, l1: Lin
   #
   # a0b0 = ( x, 0, 0).( x', 0 , 0) = (xx',       0,  0 )
   # a1b1 = ( y, z, 0).( y', z', 0) = (yy', yz'+zy', zz')
-  
+
   # r0 = a0 b0 + ξ a1 b1
   # r1 = a0 b1 + a1 b0                       (Schoolbook)
   #    = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1 (Karatsuba)
@@ -502,11 +502,11 @@ func prod_x00yz0_x00yz0_into_abcdefghij00*[Fpk, Fpkdiv6](f: var Fpk, l0, l1: Lin
   YY.prod2x(l0.b, l1.b)
   ZZ.prod2x(l0.c, l1.c)
 
-  var V{.noInit.}: doublePrec(Fpkdiv6)  
+  var V{.noInit.}: doublePrec(Fpkdiv6)
   var t0{.noInit.}, t1{.noInit.}: Fpkdiv6
 
   # r0 = (xx'+ξzz', yy', yz'+zy')
-  # r00 = xx'+ξzz'' 
+  # r00 = xx'+ξzz''
   # r01 = yy'
   # r02 = yz'+zy' = (y+z)(y'+z') - yy' - zz'
   V.prod2x(ZZ, NonResidue)
@@ -592,13 +592,13 @@ func mul_sparse_by_line_cb00a0*[Fpk, Fpkdiv6](f: var Fpk, l: Line[Fpkdiv6]) =
       V  {.noInit.}: doubleprec(Fpkdiv2)
       t  {.noInit.}: Fpkdiv6
       u  {.noInit.}: Fpkdiv2
-  
+
     u.sum(f.c0, f.c1)
     t.sum(l.b, l.a)
     V.mul2x_sparse_by_xy0(u, l.c, t)
     V1.mul2x_sparse_by_0y0(f.c1, l.a)
     V0.mul2x_sparse_by_xy0(f.c0, l.c, l.b)
-    
+
     V.diff2xMod(V, V1)
     V.diff2xMod(V, V0)
     f.c1.redc2x(V)
@@ -614,7 +614,7 @@ func prod_zy00x0_zy00x0_into_abcdef00ghij*[Fpk, Fpkdiv6](f: var Fpk, l0, l1: Lin
   #
   # A sparse xy0 by xy0 multiplication in 𝔽pᵏᐟ² (cubic) would be
   #   (a0', a1', 0).(b0', b1', 0)
-  #  
+  #
   #   r0' = a0'b0'
   #   r1' = a0'b1 + a1'b0'
   #     or (a0'+b1')(a1'+b0')-a0'a1'-b0'b1'
@@ -630,7 +630,7 @@ func prod_zy00x0_zy00x0_into_abcdef00ghij*[Fpk, Fpkdiv6](f: var Fpk, l0, l1: Lin
   #
   # a0b0 = ( z, y, 0).(z', y', 0) = (zz', zy'+yz', yy')
   # a1b1 = ( 0, x, 0).( 0, x', 0) = (  0,       0, xx')
-  
+
   # r0 = a0 b0 + ξ a1 b1
   # r1 = a0 b1 + a1 b0                       (Schoolbook)
   #    = (a0 + a1) (b0 + b1) - a0 b0 - a1 b1 (Karatsuba)
@@ -656,7 +656,7 @@ func prod_zy00x0_zy00x0_into_abcdef00ghij*[Fpk, Fpkdiv6](f: var Fpk, l0, l1: Lin
   YY.prod2x(l0.b, l1.b)
   ZZ.prod2x(l0.c, l1.c)
 
-  var V{.noInit.}: doublePrec(Fpkdiv6)  
+  var V{.noInit.}: doublePrec(Fpkdiv6)
   var t0{.noInit.}, t1{.noInit.}: Fpkdiv6
 
   # r0 = (zz'+ξxx', zy'+z'y, yy')
@@ -698,7 +698,7 @@ func prod_zy00x0_zy00x0_into_abcdef00ghij*[Fpk, Fpkdiv6](f: var Fpk, l0, l1: Lin
 
 # ############################################################
 #
-#          𝔽pᵏ by line - 𝔽pᵏ cubic over quadratic         
+#          𝔽pᵏ by line - 𝔽pᵏ cubic over quadratic
 #
 # ############################################################
 
@@ -815,7 +815,7 @@ func prod_xzy000_xzy000_into_abcdefghij00*[Fpk, Fpkdiv6](f: var Fpk, l0, l1: Lin
   #    = v1
   #
   # r1 is computed in 3 extra muls in the base field 𝔽pᵏᐟ⁶ (Karatsuba product in quadratic field)
-  # 
+  #
   # If we dive deeper:
   # r1 = a0b1 + a1b0 = (xy'+yx', zy'+yz')      (Schoolbook - 4 muls)
   # r10 = zy'+yz' = (x+y)(x'+y') - xx' - yy'
@@ -835,7 +835,7 @@ func prod_xzy000_xzy000_into_abcdefghij00*[Fpk, Fpkdiv6](f: var Fpk, l0, l1: Lin
   YY.prod2x(l0.b, l1.b)
   ZZ.prod2x(l0.c, l1.c)
 
-  var V{.noInit.}: doublePrec(Fpkdiv6)  
+  var V{.noInit.}: doublePrec(Fpkdiv6)
   var t0{.noInit.}, t1{.noInit.}: Fpkdiv6
 
   # r0 = a0 b0 = (x, z).(x', z')
@@ -844,7 +844,7 @@ func prod_xzy000_xzy000_into_abcdefghij00*[Fpk, Fpkdiv6](f: var Fpk, l0, l1: Lin
   V.prod2x(ZZ, NonResidue)
   V.sum2xMod(V, XX)
   f.c0.c0.redc2x(V)
-  
+
   t0.sum(l0.a, l0.c)
   t1.sum(l1.a, l1.c)
   V.prod2x(t0, t1)
@@ -987,7 +987,7 @@ func prod_zx00y0_zx00y0_into_abcd00efghij*[Fpk, Fpkdiv6](f: var Fpk, l0, l1: Lin
   #    = (a0 + a2) * (b0 + b2) - v0 - v2
   #
   # r2 is computed in 3 extra muls in the base field 𝔽pᵏᐟ⁶ (Karatsuba product in quadratic field)
-  # 
+  #
   # If we dive deeper:
   # r2 = a0b2 + a2b0 = (zy'+yz', xy'+x'y)      (Schoolbook - 4 muls)
   # r20 = zy'+z'y = (z+y)(z'+y') - zz' - yy'
@@ -1007,7 +1007,7 @@ func prod_zx00y0_zx00y0_into_abcd00efghij*[Fpk, Fpkdiv6](f: var Fpk, l0, l1: Lin
   YY.prod2x(l0.b, l1.b)
   ZZ.prod2x(l0.c, l1.c)
 
-  var V{.noInit.}: doublePrec(Fpkdiv6)  
+  var V{.noInit.}: doublePrec(Fpkdiv6)
   var t0{.noInit.}, t1{.noInit.}: Fpkdiv6
 
   # r0 = a0 b0 = (z, x).(z', x')
@@ -1016,7 +1016,7 @@ func prod_zx00y0_zx00y0_into_abcd00efghij*[Fpk, Fpkdiv6](f: var Fpk, l0, l1: Lin
   V.prod2x(XX, NonResidue)
   V.sum2xMod(V, ZZ)
   f.c0.c0.redc2x(V)
-  
+
   t0.sum(l0.c, l0.a)
   t1.sum(l1.c, l1.a)
   V.prod2x(t0, t1)
@@ -1046,7 +1046,7 @@ func prod_zx00y0_zx00y0_into_abcd00efghij*[Fpk, Fpkdiv6](f: var Fpk, l0, l1: Lin
 
 # ############################################################
 #
-#                    Sparse multiplication         
+#                    Sparse multiplication
 #
 # ############################################################
 
@@ -1397,3 +1397,5 @@ func mul_by_2_lines*[Fpk, Fpkdiv6](f: var Fpk, line0, line1: Line[Fpkdiv6]) {.in
   var t{.noInit.}: Fpk
   t.prod_from_2_lines(line0, line1)
   f.mul_by_prod_of_2_lines(t)
+
+# func asFpk
