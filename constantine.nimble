@@ -332,6 +332,7 @@ template setupCommand(): untyped {.dirty.} =
     # Not available in MinGW https://github.com/libressl-portable/portable/issues/54
     flags &= " --passC:-fstack-protector-strong"
   let command = "nim " & lang & cc & " -d:release " & flags &
+    " --panics:on " & # Defects are not catchable
     " --verbosity:0 --outdir:build/testsuite -r --hints:off --warnings:off " &
     " --nimcache:nimcache/" & path & " " &
     path
@@ -363,6 +364,7 @@ template setupBench(): untyped {.dirty.} =
   if not useAsm:
     cc &= " -d:CttASM=false"
   let command = "nim " & lang & cc &
+       " --panics:on " & # Defects are not catchable
        " -d:danger --verbosity:0 -o:build/bench/" & benchName & "_" & compiler & "_" & (if useAsm: "useASM" else: "noASM") &
        " --nimcache:nimcache/benches/" & benchName & "_" & compiler & "_" & (if useAsm: "useASM" else: "noASM") &
        runFlag & "--hints:off --warnings:off benchmarks/" & benchName & ".nim"
@@ -451,6 +453,7 @@ proc genDynamicBindings(bindingsName, prefixNimMain: string) =
     #             - heap-allocated strings for hex-string or decimal strings
     echo "Compiling dynamic library: bindings/generated/" & libName
     exec "nim c -f " & flags & " --noMain -d:danger --app:lib --gc:arc " &
+         " --panics:on " & # Defects are not catchable
          " --verbosity:0 --hints:off --warnings:off " &
          " --nimMainPrefix:" & prefixNimMain &
          " --out:" & libName & " --outdir:bindings/generated " &
@@ -481,6 +484,7 @@ proc genStaticBindings(bindingsName, prefixNimMain: string) =
     #             - heap-allocated strings for hex-string or decimal strings
     echo "Compiling static library:  bindings/generated/" & libName
     exec "nim c -f " & flags & " --noMain -d:danger --app:staticLib --gc:arc " &
+         " --panics:on " & # Defects are not catchable
          " --verbosity:0 --hints:off --warnings:off " &
          " --nimMainPrefix:" & prefixNimMain &
          " --out:" & libName & " --outdir:bindings/generated " &
