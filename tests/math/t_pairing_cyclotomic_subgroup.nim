@@ -18,7 +18,7 @@ import
   ../../constantine/math/pairings/cyclotomic_subgroups,
   ../../constantine/math/isogenies/frobenius,
   # Test utilities
-  ../../helpers/[prng_unsafe, static_for]
+  ../../helpers/prng_unsafe
 
 const
   Iters = 4

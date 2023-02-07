@@ -13,7 +13,6 @@ import
   ../constantine/math/io/io_bigints,
   ../constantine/math/constants/zoo_square_roots,
   # Helpers
-  ../helpers/static_for,
   ./bench_fields_template
 
 # ############################################################

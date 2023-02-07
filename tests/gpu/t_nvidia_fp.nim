@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 
-import 
+import
   # Standard library
   std/[unittest, times],
   # Internal
@@ -17,7 +17,7 @@ import
   ../../constantine/math/arithmetic,
   ../../constantine/math_gpu/fields_nvidia,
   # Test utilities
-  ../../helpers/[prng_unsafe, static_for]
+  ../../helpers/prng_unsafe
 
 var rng: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
@@ -87,7 +87,7 @@ proc t_field_add(curve: static Curve) =
     let b = rng.random_long01Seq(Fp[curve])
 
     var rCPU, rGPU_32, rGPU_64: Fp[curve]
-    
+
     rCPU.sum(a, b)
     fpAdd32.exec(rGPU_32, a, b)
     fpAdd64.exec(rGPU_64, a, b)
@@ -101,7 +101,7 @@ proc t_field_add(curve: static Curve) =
     let b = rng.random_long01Seq(Fr[curve])
 
     var rCPU, rGPU_32, rGPU_64: Fr[curve]
-    
+
     rCPU.sum(a, b)
     frAdd32.exec(rGPU_32, a, b)
     frAdd64.exec(rGPU_64, a, b)

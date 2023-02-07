@@ -12,7 +12,6 @@ import
   ../constantine/math/arithmetic,
   ../constantine/math/extension_fields,
   # Helpers
-  ../helpers/static_for,
   ./bench_summary_template
 
 # ############################################################

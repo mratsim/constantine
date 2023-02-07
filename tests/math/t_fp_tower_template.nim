@@ -23,7 +23,7 @@ import
   ../../constantine/math/arithmetic,
   ../../constantine/math/io/io_extfields,
   # Test utilities
-  ../../helpers/[prng_unsafe, static_for]
+  ../../helpers/prng_unsafe
 
 export unittest # Generic sandwich
 

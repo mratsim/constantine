@@ -19,7 +19,7 @@ import
   ../constantine/math/arithmetic,
   ../constantine/math/extension_fields,
   # Helpers
-  ../helpers/[prng_unsafe, static_for],
+  ../helpers/prng_unsafe,
   ./platforms,
   # Standard library
   std/[monotimes, times, strformat, strutils]
@@ -218,7 +218,7 @@ proc reduce2x*(T: typedesc, iters: int) =
     r.redc2x(t)
 
 proc reduce2xViaDivision*(T: typedesc, iters: int) =
-  
+
   const bits2x = 2 * T.C.getCurveBitWidth()
   var r: matchingBigInt(T.C)
   let t = rng.random_unsafe(BigInt[bits2x])
