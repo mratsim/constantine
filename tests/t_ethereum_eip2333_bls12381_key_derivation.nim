@@ -13,7 +13,7 @@ import
   ../constantine/math/io/io_bigints,
   ../constantine/math/config/curves,
   ../constantine/math/arithmetic/bigints,
-  ../constantine/platforms/abstractions
+  ../constantine/platforms/[abstractions, codecs]
 
 type SecretKey = matchingOrderBigInt(BLS12_381)
 
@@ -22,7 +22,7 @@ proc toBytes(hex: string): seq[byte] =
   let length = hex.len shr 1 - int(hex[0] == '0' and (hex[1] in {'x', 'X'}))
 
   result.newSeq(length)
-  hex.hexToPaddedByteArray(result, bigEndian)
+  result.paddedFromHex(hex, bigEndian)
 
 proc test0 =
   let seed = toBytes"0xc55257c360c07c72029aebc1b53c05ed0362ada38ead3e3e9efa3708e53495531f09a6987599d18264c1e1c92f2cf141630c7a3c4ab7c81b2f001698e7463b04"

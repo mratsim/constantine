@@ -1,7 +1,7 @@
 import
   # Internals
   ../constantine/hashes,
-  ../constantine/math/io/io_bigints,
+  ../constantine/platforms/codecs,
   # Helpers
   ../helpers/prng_unsafe
 
@@ -156,7 +156,7 @@ proc main() =
       rng.innerTest(1_000_000 ..< 50_000_000)
 
     echo "SHA256 - Differential testing vs OpenSSL - SUCCESS"
-  
+
   else:
     echo "SHA256 - Differential testing vs OpenSSL - [SKIPPED]"
 

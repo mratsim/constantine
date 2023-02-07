@@ -90,7 +90,7 @@ type
   DynWord = uint32 or uint64
   BigNum[T: DynWord] = object
     bits: uint32
-    limbs: seq[T] 
+    limbs: seq[T]
 
 # Serialization
 # ------------------------------------------------
@@ -102,14 +102,14 @@ func byteLen(bits: SomeInteger): SomeInteger {.inline.} =
 func wordsRequiredForBits(bits, wordBitwidth: SomeInteger): SomeInteger {.inline.} =
   ## Compute the number of limbs required
   ## from the announced bit length
-  
+
   debug: doAssert wordBitwidth == 32 or wordBitwidth == 64        # Power of 2
   (bits + wordBitwidth - 1) shr log2_vartime(uint32 wordBitwidth) # 5x to 55x faster than dividing by wordBitwidth
 
 func fromHex[T](a: var BigNum[T], s: string) =
    var bytes = newSeq[byte](a.bits.byteLen())
-   hexToPaddedByteArray(s, bytes, bigEndian)
-   
+   bytes.paddedFromHex(s, bigEndian)
+
    # 2. Convert canonical uint to BigNum
    const wordBitwidth = sizeof(T) * 8
    a.limbs.unmarshal(bytes, wordBitwidth, bigEndian)
@@ -117,7 +117,7 @@ func fromHex[T](a: var BigNum[T], s: string) =
 func fromHex[T](BN: type BigNum[T], bits: uint32, s: string): BN =
   const wordBitwidth = sizeof(T) * 8
   let numWords = wordsRequiredForBits(bits, wordBitwidth)
-  
+
   result.bits = bits
   result.limbs.setLen(numWords)
   result.fromHex(s)
@@ -160,7 +160,7 @@ func negInvModWord[T](M: BigNum[T]): T =
   ##
   ## µ ≡ -1/M[0] (mod 2^64)
   checkValidModulus(M)
-  
+
   result = invModBitwidth(M.limbs[0])
   # negate to obtain the negative inverse
   result = not(result) + 1
@@ -175,11 +175,11 @@ type
   WordSize* = enum
     size32
     size64
-  
+
   Field* = enum
     fp
     fr
-  
+
   FieldConst* = object
     wordTy: TypeRef
     fieldTy: TypeRef
@@ -193,7 +193,7 @@ type
     prefix*: string
     wordSize*: WordSize
     fp*: FieldConst
-    fr*: FieldConst 
+    fr*: FieldConst
 
   Opcode* = enum
     opFpAdd = "fp_add"
@@ -203,7 +203,7 @@ proc setFieldConst(fc: var FieldConst, ctx: ContextRef, wordSize: WordSize, modB
   let wordTy = case wordSize
     of size32: ctx.int32_t()
     of size64: ctx.int64_t()
-  
+
   let wordBitwidth = case wordSize
     of size32: 32'u32
     of size64: 64'u32
@@ -212,7 +212,7 @@ proc setFieldConst(fc: var FieldConst, ctx: ContextRef, wordSize: WordSize, modB
 
   fc.wordTy = wordTy
   fc.fieldTy = array_t(wordTy, numWords)
-  
+
   case wordSize
   of size32:
     let m = BigNum[uint32].fromHex(modBits, modulus)
@@ -239,13 +239,13 @@ proc init*(
        prefix: string, wordSize: WordSize,
        fpBits: uint32, fpMod: string,
        frBits: uint32, frMod: string): CurveMetadata =
-    
+
   result = C(prefix: prefix, wordSize: wordSize)
   result.fp.setFieldConst(ctx, wordSize, fpBits, fpMod)
   result.fr.setFieldConst(ctx, wordSize, frBits, frMod)
 
 proc genSymbol*(cm: CurveMetadata, opcode: Opcode): string {.inline.} =
-  cm.prefix & 
+  cm.prefix &
     (if cm.wordSize == size32: "32b_" else: "64b_") &
     $opcode
 
@@ -282,7 +282,7 @@ func getSpareBits*(cm: CurveMetadata, field: Field): uint8 {.inline.} =
 # ############################################################
 
 # For array access we need to use:
-# 
+#
 #   builder.extractValue(array, index, name)
 #   builder.insertValue(array, index, value, name)
 #

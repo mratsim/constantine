@@ -10,7 +10,7 @@ import
   std/unittest,
   ../constantine/mac/mac_hmac,
   ../constantine/hashes,
-  ../constantine/math/io/io_bigints
+  ../constantine/platforms/codecs
 
 type TestVector = object
   key: seq[byte]
@@ -25,15 +25,15 @@ proc doTest(key, data, digest: string) =
   doAssert (data.len and 1) == 0, "An hex string must be of even length"
   doAssert (digest.len and 1) == 0, "An hex string must be of even length"
   doAssert digest.len <= 64, "HMAC-SHA256 hex string must be at most length 64 (32 bytes)"
- 
+
   tv.key.newSeq(key.len div 2)
-  key.hexToPaddedByteArray(tv.key, bigEndian)
+  tv.key.paddedFromHex(key, bigEndian)
 
   tv.data.newSeq(data.len div 2)
-  data.hexToPaddedByteArray(tv.data, bigEndian)
+  tv.data.paddedFromHex(data, bigEndian)
 
   tv.truncatedLen = digest.len div 2
-  digest.hexToPaddedByteArray(tv.digest, bigEndian)
+  tv.digest.paddedFromHex(digest, bigEndian)
 
   var output{.noInit.}: array[32, byte]
 
