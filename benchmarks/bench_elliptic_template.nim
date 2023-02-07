@@ -152,7 +152,8 @@ proc scalarMulUnsafeMinHammingWeightRecodingBench*(EC: typedesc, iters: int) =
   const bits = EC.F.C.getCurveOrderBitwidth()
 
   var r {.noInit.}: EC
-  var P = rng.random_unsafe(EC) # TODO: clear cofactor
+  var P = rng.random_unsafe(EC)
+  P.clearCofactor()
 
   let exponent = rng.random_unsafe(BigInt[bits])
 

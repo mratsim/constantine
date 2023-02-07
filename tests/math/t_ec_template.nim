@@ -914,10 +914,12 @@ proc run_EC_multi_scalar_mul_impl*[N: static int](
             naive_tmp.scalarMulGeneric(coefs[i])
             naive += naive_tmp
 
-          var msm: EC
-          msm.multiScalarMul_vartime(coefs, points)
+          var msm, msm_opt: EC
+          msm.multiScalarMul_baseline_vartime(coefs, points)
+          msm_opt.multiScalarMul_opt_vartime(coefs, points)
 
           doAssert bool(naive == msm)
+          doAssert bool(naive == msm_opt)
 
         test(ec, gen = Uniform)
         test(ec, gen = HighHammingWeight)

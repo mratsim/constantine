@@ -18,7 +18,7 @@ import
     ec_multi_scalar_mul],
   ../constantine/math/constants/zoo_subgroups,
   # Helpers
-  ../helpers/[static_for, prng_unsafe],
+  ../helpers/prng_unsafe,
   ./bench_elliptic_template,
   ./bench_blueprint
 
@@ -44,7 +44,7 @@ proc msmBench*(EC: typedesc, numPoints: int, iters: int) =
     scalars[i] = rng.random_unsafe(BigInt[bits])
 
   var r{.noInit.}: EC
-  var startNaive, stopNaive, startMSMbaseline, stopMSMbaseline: MonoTime
+  var startNaive, stopNaive, startMSMbaseline, stopMSMbaseline, startMSMopt, stopMSMopt: MonoTime
 
   block:
     bench("EC scalar muls                " & align($numPoints, 7) & " (scalars " & $bits & "-bit, points) pairs ", EC, iters):
@@ -58,16 +58,29 @@ proc msmBench*(EC: typedesc, numPoints: int, iters: int) =
       stopNaive = getMonotime()
 
   block:
-    bench("EC multi-scalar-mul           " & align($numPoints, 7) & " (scalars " & $bits & "-bit, points) pairs ", EC, iters):
+    bench("EC multi-scalar-mul baseline  " & align($numPoints, 7) & " (scalars " & $bits & "-bit, points) pairs ", EC, iters):
       startMSMbaseline = getMonotime()
-      r.multiScalarMul_vartime(scalars, points)
+      r.multiScalarMul_baseline_vartime(scalars, points)
       stopMSMbaseline = getMonotime()
+
+  block:
+    bench("EC multi-scalar-mul optimized " & align($numPoints, 7) & " (scalars " & $bits & "-bit, points) pairs ", EC, iters):
+      startMSMopt = getMonotime()
+      r.multiScalarMul_opt_vartime(scalars, points)
+      stopMSMopt = getMonotime()
 
   let perfNaive = inNanoseconds((stopNaive-startNaive) div iters)
   let perfMSMbaseline = inNanoseconds((stopMSMbaseline-startMSMbaseline) div iters)
+  let perfMSMopt = inNanoseconds((stopMSMopt-startMSMopt) div iters)
 
-  let speedup = float(perfNaive) / float(perfMSMbaseline)
-  echo &"Speedup ratio over naive linear combination: {speedup:>6.3f}x"
+  let speedupBaseline = float(perfNaive) / float(perfMSMbaseline)
+  echo &"Speedup ratio baseline over naive linear combination: {speedupBaseline:>6.3f}x"
+
+  let speedupOpt = float(perfNaive) / float(perfMSMopt)
+  echo &"Speedup ratio optimized over naive linear combination: {speedupOpt:>6.3f}x"
+
+  let speedupOptBaseline = float(perfMSMbaseline) / float(perfMSMopt)
+  echo &"Speedup ratio optimized over baseline linear combination: {speedupOptBaseline:>6.3f}x"
 
 # ############################################################
 #
@@ -91,15 +104,23 @@ proc main() =
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
     separator()
-    for numPoints in [10, 100, 1000, 10000, 100000, 1000000]:
+    for numPoints in [10, 100, 1000, 10000, 100000]:
+      let batchIters = max(1, Iters div numPoints)
+      msmBench(ECP_ShortW_Prj[Fp[curve], G1], numPoints, batchIters)
+      separator()
+    for numPoints in [64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536]:
       let batchIters = max(1, Iters div numPoints)
       msmBench(ECP_ShortW_Prj[Fp[curve], G1], numPoints, batchIters)
       separator()
     separator()
-    for numPoints in [10, 100, 1000, 10000, 100000, 1000000]:
+    for numPoints in [10, 100, 1000, 10000, 100000]:
       let batchIters = max(1, Iters div numPoints)
       msmBench(ECP_ShortW_Jac[Fp[curve], G1], numPoints, batchIters)
-    separator()
+      separator()
+    for numPoints in [64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536]:
+      let batchIters = max(1, Iters div numPoints)
+      msmBench(ECP_ShortW_Prj[Fp[curve], G1], numPoints, batchIters)
+      separator()
     separator()
 
 main()
