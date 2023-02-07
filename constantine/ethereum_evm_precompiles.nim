@@ -114,8 +114,7 @@ func eth_evm_ecadd*(
 
   # Auto-pad with zero
   var padded: array[128, byte]
-  let lastIdx = min(inputs.len, 128) - 1
-  padded[0 .. lastIdx] = inputs.toOpenArray(0, lastIdx)
+  padded.copy(0, inputs, 0, min(inputs.len, 128))
 
   var P{.noInit.}, Q{.noInit.}, R{.noInit.}: ECP_ShortW_Prj[Fp[BN254_Snarks], G1]
 
@@ -171,8 +170,7 @@ func eth_evm_ecmul*(
 
   # Auto-pad with zero
   var padded: array[128, byte]
-  let lastIdx = min(inputs.len, 128) - 1
-  padded[0 .. lastIdx] = inputs.toOpenArray(0, lastIdx)
+  padded.copy(0, inputs, 0, min(inputs.len, 128))
 
   var P{.noInit.}: ECP_ShortW_Prj[Fp[BN254_Snarks], G1]
 
