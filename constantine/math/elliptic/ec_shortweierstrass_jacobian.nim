@@ -642,6 +642,12 @@ func `-=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac) {.inline.} =
   nQ.neg(Q)
   P.sum(P, nQ)
 
+func `-=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Aff) {.inline.} =
+  ## In-place point substraction
+  var nQ {.noInit.}: typeof(Q)
+  nQ.neg(Q)
+  P.madd(P, nQ)
+
 func affine*[F; G](
        aff: var ECP_ShortW_Aff[F, G],
        jac: ECP_ShortW_Jac[F, G]) =

@@ -9,6 +9,7 @@
 import
   # Internals
   ../../../constantine/math/arithmetic,
+  ../../../constantine/math/ec_shortweierstrass,
   ../../../constantine/math/io/io_bigints
 
 # Support files for testing Elliptic Curve arithmetic
@@ -39,14 +40,15 @@ func unsafe_ECmul_double_add*[EC](
   var scalarCanonical: array[(scalar.bits+7) div 8, byte]
   scalarCanonical.marshal(scalar, bigEndian)
 
-  var t0: typeof(P)
-  t0.setInf()
+  var Paff {.noinit.}: affine(EC)
+  Paff.affine(P)
+
+  P.setInf()
   for scalarByte in scalarCanonical:
     for bit in unpack(scalarByte):
-      t0.double()
+      P.double()
       if bit:
-        t0 += P
-  P = t0
+        P += Paff
 
 func unsafe_ECmul_minHammingWeight*[EC](
        P: var EC,
@@ -60,15 +62,16 @@ func unsafe_ECmul_minHammingWeight*[EC](
   ## This is UNSAFE to use in production and only intended for testing purposes.
   ##
   ## This is highly VULNERABLE to timing attacks and power analysis attacks
-  var t0{.noInit.}: typeof(P)
-  t0.setInf()
+  var Paff {.noinit.}: affine(EC)
+  Paff.affine(P)
+
+  P.setInf()
   for bit in recoding_l2r_vartime(scalar):
-    t0.double()
+    P.double()
     if bit == 1:
-      t0 += P
+      P += Paff
     elif bit == -1:
-      t0 -= P
-  P = t0
+      P -= Paff
 
 func unsafe_ECmul_signed_windowed*[EC](
        P: var EC,
@@ -89,16 +92,20 @@ func unsafe_ECmul_signed_windowed*[EC](
   var P2{.noInit.}: EC
   P2.double(P)
 
-  var tab {.noinit.}: array[precompSize, EC]
-  tab[0] = P
-  for i in 1 ..< tab.len:
-    tab[i].sum(tab[i-1], P2)
+  var tabEC {.noinit.}: array[precompSize, EC]
+  tabEC[0] = P
+  for i in 1 ..< tabEC.len:
+    tabEC[i].sum(tabEC[i-1], P2)
+
+  var tab {.noinit.}: array[precompSize, affine(EC)]
+  tab.batchAffine(tabEC)
 
   # init
   if naf[naf.len-1] > 0:
-    P = tab[naf[naf.len-1] shr 1]
+    P.fromAffine(tab[naf[naf.len-1] shr 1])
   elif naf[naf.len-1] < 0:
-    P.neg(tab[-naf[naf.len-1] shr 1])
+    P.fromAffine(tab[-naf[naf.len-1] shr 1])
+    P.neg()
   else:
     P.setInf()
 
