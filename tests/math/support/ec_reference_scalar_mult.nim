@@ -96,9 +96,9 @@ func unsafe_ECmul_signed_windowed*[EC](
 
   # init
   if naf[naf.len-1] > 0:
-    P = tab[(naf[naf.len-1] - 1) shr 1]
+    P = tab[naf[naf.len-1] shr 1]
   elif naf[naf.len-1] < 0:
-    P.neg(tab[(-naf[naf.len-1] - 1) shr 1])
+    P.neg(tab[-naf[naf.len-1] shr 1])
   else:
     P.setInf()
 
@@ -107,6 +107,6 @@ func unsafe_ECmul_signed_windowed*[EC](
     P.double()
     let digit = naf[naf.len-1-i]
     if digit > 0:
-      P += tab[(digit - 1) shr 1]
+      P += tab[digit shr 1]
     elif digit < 0:
-      P -= tab[(-digit - 1) shr 1]
+      P -= tab[-digit shr 1]
