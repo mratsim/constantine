@@ -16,7 +16,10 @@ import
 
 # No exceptions allowed in core cryptographic operations
 {.push raises: [].}
-{.push checks: off.}
+# {.push checks: off.}
+
+{.localpassC:"-fsanitize=address".}
+{.passL:"-fsanitize=address".}
 
 # ########################################################### #
 #                                                             #
@@ -207,8 +210,11 @@ func multiScalarMulImpl_opt_vartime[EC](r: var EC, coefs: openArray[BigInt], poi
 
   debug: assert coefs.len == points.len
 
-  const numWindows = (BigInt.bits + c - 1) div c
-  const numBuckets = 1 shl c # Technically 2ᶜ-1 since bucket 0 is unused
+  # When c = 2, the digits can be 0, 1, 2, 3
+  # if the MSB is set, we substract 4, hence the signed digit can be 0, 1, -2, -1
+  # We add 1 unsed bucket at position 0 for now to allow indexing directly with the value
+  const numBuckets = 1 shl (c-1) + 1
+  const numWindows = (BigInt.bits + c - 1) div c + 1 # signed overflow
 
   let bucketsBuf = allocHeapArray(EC, numWindows*numBuckets)
   let miniMSMs = allocHeapArray(EC, numWindows)
@@ -220,12 +226,22 @@ func multiScalarMulImpl_opt_vartime[EC](r: var EC, coefs: openArray[BigInt], poi
 
   # 1. Bucket accumulation
   for j in 0 ..< points.len:
+    var carry = 0
     for w in 0 ..< numWindows:
-      let b = coefs[j].digit_vartime(w, c)
-      if b == 0: # bucket 0 is unused, no need to add [0]Pⱼ
+      var digit = carry
+      if (w * c) < BigInt.bits:
+        digit += coefs[j].digit_vartime(w, c).int
+
+      if digit == 0: # bucket 0 is unused, no need to add [0]Pⱼ
         continue
+      elif digit >= 1 shl (c-1):
+        debug: doAssert w != numWindows-1, "numWindows: " & $numWindows & " for " & $BigInt.bits & "-bit scalars with window " & $c
+        digit -= 1 shl c
+        carry = 1
+        buckets[w, -digit] -= points[j]
       else:
-        buckets[w, b.int] += points[j]
+        carry = 0
+        buckets[w, digit] += points[j]
 
   # 2. Bucket reduction
   block:
