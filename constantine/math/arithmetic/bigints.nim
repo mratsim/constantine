@@ -61,7 +61,7 @@ export BigInt
 # https://github.com/mratsim/constantine/issues/15
 
 # No exceptions allowed
-{.push raises: [].}
+{.push raises: [], checks: off.}
 {.push inline.}
 
 # Initialization
@@ -491,6 +491,8 @@ func invmod*[bits](r: var BigInt[bits], a, M: BigInt[bits]) =
   one.setOne()
   r.invmod(a, one, M)
 
+{.pop.} # inline
+
 # ############################################################
 #
 #                   Recoding
@@ -503,10 +505,12 @@ iterator recoding_l2r_vartime*(a: BigInt): int8 =
   ## with minimal Hamming Weight to minimize operations
   ## in Miller Loop and vartime scalar multiplications
   ##
-  ## Tagged vartime as it returns an int8
-  ## - Optimal Left-to-Right Binary Signed-Digit Recoding
-  ##   Joye, Yen, 2000
-  ##   https://marcjoye.github.io/papers/JY00sd2r.pdf
+  ## ⚠️ While the recoding is constant-time,
+  ##   usage of this recoding is intended vartime
+  #
+  # - Optimal Left-to-Right Binary Signed-Digit Recoding
+  #   Joye, Yen, 2000
+  #   https://marcjoye.github.io/papers/JY00sd2r.pdf
 
   # As the caller is copy-pasted at each yield
   # we rework the algorithm so that we have a single yield point
@@ -538,5 +542,107 @@ iterator recoding_l2r_vartime*(a: BigInt): int8 =
     else:
       break
 
-{.pop.} # inline
+iterator recoding_r2l_windowed_vartime*(a: BigInt, windowLogSize: int): int8 =
+  ## This is a minimum-Hamming-Weight right-to-left windowed recoding with the following properties
+  ## 1. The most significant non-zero bit is positive.
+  ## 2. Among any w consecutive digits, at most one is non-zero.
+  ## 3. Each non-zero digit is odd and less than 2ʷ⁻¹ in absolute value.
+  ## 4. The length of the recoding is at most BigInt.bits + 1
+  ##
+  ## ⚠️ not constant-time
+  #
+  # - Elliptic Curves in Cryptography
+  #   Blake, Seroussi, Smart, 1999
+  #
+  # - Efficient Arithmetic on Koblitz Curves
+  #   Jerome A. Solinas, 2000
+  #   https://decred.org/research/solinas2000.pdf
+  #
+  # - Guide to Elliptic Curve Cryptography
+  #   Hankerson, Menezes, Vanstone, 2004
+
+  let sMax = 1 shl (windowLogSize - 1)
+  let uMax = sMax + sMax
+  let mask = uMax - 1
+
+  var a {.noInit.} = a
+  var zeroes = 0
+
+  while true:
+    # 1. Count zeroes in LSB
+    var ctz = 0
+    for i in 0 ..< a.limbs.len:
+      let ai = a.limbs[i]
+      if ai.isZero().bool:
+        ctz += WordBitWidth
+      else:
+        ctz += BaseType(ai).countTrailingZeroBits_vartime().int
+        break
+
+    # 2. Remove them
+    if ctz >= WordBitWidth:
+      let wordOffset = int(ctz shr log2_vartime(uint32 WordBitWidth))
+      for i in 0 ..< a.limbs.len-wordOffset:
+        a.limbs[i] = a.limbs[i+wordOffset]
+      for i in a.limbs.len-wordOffset ..< a.limbs.len:
+        a.limbs[i] = Zero
+      ctz = ctz and (WordBitWidth-1)
+      zeroes += wordOffset * WordBitWidth
+    if ctz > 0:
+      a.shiftRight(ctz)
+      zeroes += ctz
+
+    # 3. Yield - We merge yield points with a goto-based state machine
+    # Nim copy-pastes the iterator for-loop body at yield points, we don't want to duplicate code
+    # hence we need a single yield point
+
+    type State = enum
+      StatePrepareYield
+      StateYield
+      StateExit
+
+    var yieldVal = 0'i8
+    var nextState = StatePrepareYield
+
+    var state {.goto.} = StatePrepareYield
+    case state
+    of StatePrepareYield:
+      # 3.a Yield zeroes
+      zeroes -= 1
+      if zeroes >= 0:
+        state = StateYield # goto StateYield
+
+      # 3.b Yield the least significant window
+      var lsw = a.limbs[0].int and mask # signed is important
+      a.shiftRight(windowLogSize)
+      if (lsw and sMax) != 0:           # MSB of window set
+        a += One                        #   Lend 2ʷ to next digit
+        lsw -= uMax                     #   push from [0, 2ʷ) to [-2ʷ⁻¹, 2ʷ⁻¹)
+
+      zeroes = windowLogSize-1
+      yieldVal = lsw.int8
+      nextState = StateExit
+      # Fall through StateYield
+
+    of StateYield:
+      yield yieldVal
+      case nextState
+      of StatePrepareYield: state = StatePrepareYield
+      of StateExit:         state = StateExit
+      else:                 unreachable()
+
+    of StateExit:
+      if a.isZero().bool:
+        break
+
+func recodeWindowed_r2l_vartime*[bits: static int](
+       naf: var array[bits+1, int8], a: BigInt[bits], window: int) =
+  ## Minimum Hamming-Weight windowed NAF recoding
+  var i = 0
+  for digit in a.recoding_r2l_windowed_vartime(window):
+    naf[i] = digit
+    i += 1
+  for j in i ..< bits+1:
+    naf[j] = 0
+
 {.pop.} # raises no exceptions

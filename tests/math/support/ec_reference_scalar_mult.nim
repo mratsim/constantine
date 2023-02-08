@@ -69,3 +69,44 @@ func unsafe_ECmul_minHammingWeight*[EC](
     elif bit == -1:
       t0 -= P
   P = t0
+
+func unsafe_ECmul_signed_windowed*[EC](
+       P: var EC,
+       scalar: BigInt, window: static int) =
+  ## **Unsafe** Elliptic Curve Scalar Multiplication
+  ##
+  ##   P <- [k] P
+  ##
+  ## This uses windowed-NAF (wNAF)
+
+  # Signed digits divides precomputation table size by 2
+  # Odd-only divides precomputation table size by another 2
+  const precompSize = 1 shl (window - 2)
+
+  var naf {.noInit.}: array[BigInt.bits+1, int8]
+  naf.recodeWindowed_r2l_vartime(scalar, window)
+
+  var P2{.noInit.}: EC
+  P2.double(P)
+
+  var tab {.noinit.}: array[precompSize, EC]
+  tab[0] = P
+  for i in 1 ..< tab.len:
+    tab[i].sum(tab[i-1], P2)
+
+  # init
+  if naf[naf.len-1] > 0:
+    P = tab[(naf[naf.len-1] - 1) shr 1]
+  elif naf[naf.len-1] < 0:
+    P.neg(tab[(-naf[naf.len-1] - 1) shr 1])
+  else:
+    P.setInf()
+
+  # steady state
+  for i in 1 ..< naf.len:
+    P.double()
+    let digit = naf[naf.len-1-i]
+    if digit > 0:
+      P += tab[(digit - 1) shr 1]
+    elif digit < 0:
+      P -= tab[(-digit - 1) shr 1]

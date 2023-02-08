@@ -412,7 +412,7 @@ proc run_EC_mul_vs_ref_impl*(
   const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
-    test "EC " & G1_or_G2 & " mul constant-time is equivalent to a simple double-and-add algorithm":
+    test "EC " & G1_or_G2 & " mul constant-time is equivalent to a simple double-and-add and recoded algorithms":
       proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< ItersMul:
           let a = rng.random_point(EC, randZ, gen)
@@ -423,14 +423,17 @@ proc run_EC_mul_vs_ref_impl*(
             impl = a
             reference = a
             refMinWeight = a
+            refWNAF = a
 
           impl.scalarMulGeneric(exponent)
           reference.unsafe_ECmul_double_add(exponent)
           refMinWeight.unsafe_ECmul_minHammingWeight(exponent)
+          refWNAF.unsafe_ECmul_signed_windowed(exponent, window = 5)
 
           check:
             bool(impl == reference)
             bool(impl == refMinWeight)
+            bool(impl == refWNAF)
 
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Uniform)

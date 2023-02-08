@@ -134,7 +134,7 @@ func ctz_impl_vartime(n: uint64): uint64 =
   let isolateLSB = n xor (n-1)
   uint64 lookup[(isolateLSB * 0x03f79d71b4cb0a89'u64) shr 58]
 
-func countTrailingZeroBits*[T: SomeUnsignedInt](n: T): T {.inline.} =
+func countTrailingZeroBits_vartime*[T: SomeUnsignedInt](n: T): T {.inline.} =
   ## Count the number of trailing zero bits of an integer
   when nimvm:
     if n == 0:
