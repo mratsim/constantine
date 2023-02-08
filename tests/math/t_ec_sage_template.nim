@@ -23,71 +23,19 @@ import
     ec_scalar_mul,
     ec_endomorphism_accel],
   # Test utilities
-  ./support/ec_reference_scalar_mult
+  ../../constantine/math/elliptic/ec_scalar_mul_vartime
 
 export unittest, abstractions, arithmetic # Generic sandwich
 
 # Serialization
 # --------------------------------------------------------------------------
 
-macro matchingScalar*(EC: type ECP_ShortW_Aff): untyped =
-  ## Workaround the annoying type system
-  ## 1. Higher-kinded type
-  ## 2. Computation in type section needs template or macro indirection
-  ## 3. Converting NimNode to typedesc
-  ##      https://github.com/nim-lang/Nim/issues/6785
-  # BigInt[EC.F.C.getCurveOrderBitwidth()]
-
-  let ec = EC.getTypeImpl()
-  # echo ec.treerepr
-  # BracketExpr
-  # Sym "typeDesc"
-  # BracketExpr
-  #   Sym "ECP_ShortW_Aff"
-  #   BracketExpr
-  #     Sym "Fp"
-  #     IntLit 12
-  #   IntLit 0
-
-  doAssert ec[0].eqIdent"typedesc"
-  doAssert ec[1][0].eqIdent"ECP_ShortW_Aff"
-  ec[1][1].expectkind(nnkBracketExpr)
-  doAssert ($ec[1][1][0]).startsWith"Fp"
-
-  let curve = Curve(ec[1][1][1].intVal)
-  let bitwidth = getAST(getCurveOrderBitwidth(curve))
-  result = nnkBracketExpr.newTree(
-    bindSym"BigInt",
-    bitwidth
-  )
-
-macro matchingNonResidueType*(EC: type ECP_ShortW_Aff): untyped =
-  ## Workaround the annoying type system
-  ## 1. Higher-kinded type
-  ## 2. Computation in type section needs template or macro indirection
-  ## 3. Converting NimNode to typedesc
-  ##      https://github.com/nim-lang/Nim/issues/6785
-  let ec = EC.getTypeImpl()
-  doAssert ec[0].eqIdent"typedesc"
-  doAssert ec[1][0].eqIdent"ECP_ShortW_Aff"
-  ec[1][1].expectkind(nnkBracketExpr)
-  doAssert ($ec[1][1][0]).startsWith"Fp"
-
-  # int or array[2, int]
-  if ec[1][1][0].eqIdent"Fp":
-    result = bindSym"int"
-  elif ec[1][1][0].eqIdent"Fp2":
-    result = nnkBracketExpr.newTree(
-      bindSym"array",
-      newLit 2,
-      bindSym"int"
-    )
-
 type
-  TestVector*[EC: ECP_ShortW_Aff] = object
+  TestVector*[EC: ECP_ShortW_Aff, bits: static int] = object
     id: int
     P: EC
-    scalar: matchingScalar(EC)
+    scalarBits: int
+    scalar: BigInt[bits]
     Q: EC
 
   EC_G1_hex = object
@@ -102,7 +50,7 @@ type
     x: Fp2_hex
     y: Fp2_hex
 
-  ScalarMulTestG1[EC: ECP_ShortW_Aff] = object
+  ScalarMulTestG1[EC: ECP_ShortW_Aff, bits: static int] = object
     curve: string
     group: string
     modulus: string
@@ -112,9 +60,9 @@ type
     a: string
     b: string
     # vectors ------------------
-    vectors: seq[TestVector[EC]]
+    vectors: seq[TestVector[EC, bits]]
 
-  ScalarMulTestG2[EC: ECP_ShortW_Aff] = object
+  ScalarMulTestG2[EC: ECP_ShortW_Aff, bits: static int] = object
     curve: string
     group: string
     modulus: string
@@ -128,9 +76,12 @@ type
     twist: string
     non_residue_fp: int
     G2_field: string
-    non_residue_twist: matchingNonResidueType(EC) # int or array[2, int]
+    when EC.F is Fp:
+      non_residue_twist: int
+    else:
+      non_residue_twist: array[2, int]
     # vectors ------------------
-    vectors: seq[TestVector[EC]]
+    vectors: seq[TestVector[EC, bits]]
 
 const
   TestVectorsDir* =
@@ -170,7 +121,8 @@ proc parseHook*(src: string, pos: var int, value: var ECP_ShortW_Aff) =
 proc loadVectors(TestType: typedesc): TestType =
   const group = when TestType.EC.G == G1: "G1"
                 else: "G2"
-  const filename = "tv_" & $TestType.EC.F.C & "_scalar_mul_" & group & ".json"
+  const filename = "tv_" & $TestType.EC.F.C & "_scalar_mul_" & group & "_" & $TestType.bits & "bit.json"
+  echo "Loading: ", filename
   let content = readFile(TestVectorsDir/filename)
   result = content.fromJson(TestType)
 
@@ -178,7 +130,7 @@ proc loadVectors(TestType: typedesc): TestType =
 # ------------------------------------------------------------------------
 
 proc run_scalar_mul_test_vs_sage*(
-       EC: typedesc,
+       EC: typedesc, bits: static int,
        moduleName: string
      ) =
   echo "\n------------------------------------------------------\n"
@@ -186,41 +138,51 @@ proc run_scalar_mul_test_vs_sage*(
 
   when EC.G == G1:
     const G1_or_G2 = "G1"
-    let vec = loadVectors(ScalarMulTestG1[ECP_ShortW_Aff[EC.F, EC.G]])
+    let vec = loadVectors(ScalarMulTestG1[ECP_ShortW_Aff[EC.F, EC.G], bits])
   else:
     const G1_or_G2 = "G2"
-    let vec = loadVectors(ScalarMulTestG2[ECP_ShortW_Aff[EC.F, EC.G]])
+    let vec = loadVectors(ScalarMulTestG2[ECP_ShortW_Aff[EC.F, EC.G], bits])
 
   const coord = when EC is ECP_ShortW_Prj: " Projective coordinates "
                 elif EC is ECP_ShortW_Jac: " Jacobian coordinates "
 
-  const testSuiteDesc = "Scalar Multiplication " & $EC.F.C & " " & G1_or_G2 & " vs SageMath"
+  const testSuiteDesc = "Scalar Multiplication " & $EC.F.C & " " & G1_or_G2 & " vs SageMath - " & $bits & "-bit scalar"
 
-  suite testSuiteDesc & " [" & $WordBitWidth & "-bit mode]":
+  suite testSuiteDesc & " [" & $WordBitWidth & "-bit words]":
     for i in 0 ..< vec.vectors.len:
-      test "test " & $vec.vectors[i].id & " - " & $EC:
+      test "test " & $vec.vectors[i].id & " - " & $EC & " - " & $bits & "-bit scalar":
         var
           P{.noInit.}: EC
           Q {.noInit.}: EC
           impl {.noInit.}: EC
           reference {.noInit.}: EC
-          endo {.noInit.}: EC
+          refMinWeight {.noInit.}: EC
 
         P.fromAffine(vec.vectors[i].P)
         Q.fromAffine(vec.vectors[i].Q)
         impl = P
         reference = P
-        endo = P
+        refMinWeight = P
 
         impl.scalarMulGeneric(vec.vectors[i].scalar)
-        reference.unsafe_ECmul_double_add(vec.vectors[i].scalar)
-        endo.scalarMulEndo(vec.vectors[i].scalar)
+        reference.scalarMul_doubleAdd_vartime(vec.vectors[i].scalar)
+        refMinWeight.scalarMul_minHammingWeight_vartime(vec.vectors[i].scalar)
 
         doAssert: bool(Q == reference)
         doAssert: bool(Q == impl)
-        doAssert: bool(Q == endo)
+        doAssert: bool(Q == refMinWeight)
 
-        when EC.F is Fp: # Test windowed endomorphism acceleration
-          var endoW = P
-          endoW.scalarMulGLV_m2w2(vec.vectors[i].scalar)
-          doAssert: bool(Q == endoW)
+        staticFor w, 2, 14:
+          var refWNAF = P
+          refWNAF.scalarMul_minHammingWeight_windowed_vartime(vec.vectors[i].scalar, window = w)
+          check: bool(impl == refWNAF)
+
+        when bits >= 196: # All endomorphisms constants are below this threshold
+          var endo = P
+          endo.scalarMulEndo(vec.vectors[i].scalar)
+          doAssert: bool(Q == endo)
+
+          when EC.F is Fp: # Test windowed endomorphism acceleration
+            var endoW = P
+            endoW.scalarMulGLV_m2w2(vec.vectors[i].scalar)
+            doAssert: bool(Q == endoW)

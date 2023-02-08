@@ -56,7 +56,7 @@ proc testRoundtrip(curve: static Curve, gen: static RandomGen) =
     "\n  b: " & b.toHex()
 
 proc main() =
-  suite "Packed <-> Unsaturated limbs roundtrips" & " [" & $WordBitWidth & "-bit mode]":
+  suite "Packed <-> Unsaturated limbs roundtrips" & " [" & $WordBitWidth & "-bit words]":
     const Iters = 10000
     test "BN254_Snarks":
       for _ in 0 ..< Iters:

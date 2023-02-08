@@ -542,7 +542,7 @@ iterator recoding_l2r_vartime*(a: BigInt): int8 =
     else:
       break
 
-iterator recoding_r2l_windowed_vartime*(a: BigInt, windowLogSize: int): int8 =
+iterator recoding_r2l_windowed_vartime*(a: BigInt, windowLogSize: int): int =
   ## This is a minimum-Hamming-Weight right-to-left windowed recoding with the following properties
   ## 1. The most significant non-zero bit is positive.
   ## 2. Among any w consecutive digits, at most one is non-zero.
@@ -601,7 +601,7 @@ iterator recoding_r2l_windowed_vartime*(a: BigInt, windowLogSize: int): int8 =
       StateYield
       StateExit
 
-    var yieldVal = 0'i8
+    var yieldVal = 0
     var nextState = StatePrepareYield
 
     var state {.goto.} = StatePrepareYield
@@ -620,7 +620,7 @@ iterator recoding_r2l_windowed_vartime*(a: BigInt, windowLogSize: int): int8 =
         lsw -= uMax                     #   push from [0, 2ʷ) to [-2ʷ⁻¹, 2ʷ⁻¹)
 
       zeroes = windowLogSize-1
-      yieldVal = lsw.int8
+      yieldVal = lsw
       nextState = StateExit
       # Fall through StateYield
 
@@ -636,11 +636,12 @@ iterator recoding_r2l_windowed_vartime*(a: BigInt, windowLogSize: int): int8 =
         break
 
 func recodeWindowed_r2l_vartime*[bits: static int](
-       naf: var array[bits+1, int8], a: BigInt[bits], window: int) =
+       naf: var array[bits+1, SomeSignedInt], a: BigInt[bits], window: int) =
   ## Minimum Hamming-Weight windowed NAF recoding
+  type I = SomeSignedInt
   var i = 0
   for digit in a.recoding_r2l_windowed_vartime(window):
-    naf[i] = digit
+    naf[i] = I(digit)
     i += 1
   for j in i ..< bits+1:
     naf[j] = 0

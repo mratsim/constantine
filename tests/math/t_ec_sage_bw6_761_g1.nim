@@ -20,22 +20,23 @@ import
 # this creates bad codegen, in the C code, the `value`parameter gets the wrong type
 # TODO: upstream
 
-run_scalar_mul_test_vs_sage(
-  ECP_ShortW_Prj[Fp[BW6_761], G1],
-  "t_ec_sage_bw6_761_g1_projective"
-)
+staticFor(bits, [BW6_761.getCurveOrderBitwidth()]):
+  run_scalar_mul_test_vs_sage(
+    ECP_ShortW_Prj[Fp[BW6_761], G1], bits,
+    "t_ec_sage_bw6_761_g1_projective"
+  )
 
-run_scalar_mul_test_vs_sage(
-  ECP_ShortW_Jac[Fp[BW6_761], G1],
-  "t_ec_sage_bw6_761_g1_jacobian"
-)
+  run_scalar_mul_test_vs_sage(
+    ECP_ShortW_Jac[Fp[BW6_761], G1], bits,
+    "t_ec_sage_bw6_761_g1_jacobian"
+  )
 
-# run_scalar_mul_test_vs_sage(
-#   ECP_ShortW_Prj[Fp[BW6_761], G2],
-#   "t_ec_sage_bw6_761_g2_projective"
-# )
+  # run_scalar_mul_test_vs_sage(
+  #   ECP_ShortW_Prj[Fp[BW6_761], G2], bits,
+  #   "t_ec_sage_bw6_761_g2_projective"
+  # )
 
-# run_scalar_mul_test_vs_sage(
-#   ECP_ShortW_Jac[Fp[BW6_761], G2],
-#   "t_ec_sage_bw6_761_g2_jacobian"
-# )
+  # run_scalar_mul_test_vs_sage(
+  #   ECP_ShortW_Jac[Fp[BW6_761], G2], bits,
+  #   "t_ec_sage_bw6_761_g2_jacobian"
+  # )

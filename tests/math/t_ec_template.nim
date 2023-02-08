@@ -32,7 +32,7 @@ import
   ../../constantine/math/constants/zoo_subgroups,
   # Test utilities
   ../../helpers/prng_unsafe,
-  ./support/ec_reference_scalar_mult
+  ../../constantine/math/elliptic/ec_scalar_mul_vartime
 
 export unittest, abstractions, arithmetic # Generic sandwich
 
@@ -260,7 +260,7 @@ proc run_EC_mul_sanity_tests*(
             reference = a
 
           impl.scalarMulGeneric(BigInt[bits]())
-          reference.unsafe_ECmul_double_add(BigInt[bits]())
+          reference.scalarMul_doubleAdd_vartime(BigInt[bits]())
 
           check:
             bool(impl.isInf())
@@ -286,7 +286,7 @@ proc run_EC_mul_sanity_tests*(
             reference = a
 
           impl.scalarMulGeneric(exponent)
-          reference.unsafe_ECmul_double_add(exponent)
+          reference.scalarMul_doubleAdd_vartime(exponent)
 
           check:
             bool(impl == a)
@@ -314,7 +314,7 @@ proc run_EC_mul_sanity_tests*(
             reference = a
 
           impl.scalarMulGeneric(exponent)
-          reference.unsafe_ECmul_double_add(exponent)
+          reference.scalarMul_doubleAdd_vartime(exponent)
 
           check:
             bool(impl == doubleA)
@@ -363,20 +363,20 @@ proc run_EC_mul_distributive_tests*(
           fReference.sum(a, b)
 
           fImpl.scalarMulGeneric(exponent)
-          fReference.unsafe_ECmul_double_add(exponent)
+          fReference.scalarMul_doubleAdd_vartime(exponent)
 
           # [k]a + [k]b - Distributed
           var kaImpl = a
           var kaRef = a
 
           kaImpl.scalarMulGeneric(exponent)
-          kaRef.unsafe_ECmul_double_add(exponent)
+          kaRef.scalarMul_doubleAdd_vartime(exponent)
 
           var kbImpl = b
           var kbRef = b
 
           kbImpl.scalarMulGeneric(exponent)
-          kbRef.unsafe_ECmul_double_add(exponent)
+          kbRef.scalarMul_doubleAdd_vartime(exponent)
 
           var kakbImpl{.noInit.}, kakbRef{.noInit.}: EC
           kakbImpl.sum(kaImpl, kbImpl)
@@ -417,23 +417,32 @@ proc run_EC_mul_vs_ref_impl*(
         for _ in 0 ..< ItersMul:
           let a = rng.random_point(EC, randZ, gen)
 
-          let exponent = rng.random_unsafe(BigInt[bits])
+          # We want to test how window methods handles unbalanced 0/1
+          let exponent = rng.random_long01Seq(BigInt[bits])
 
           var
             impl = a
             reference = a
             refMinWeight = a
-            refWNAF = a
 
           impl.scalarMulGeneric(exponent)
-          reference.unsafe_ECmul_double_add(exponent)
-          refMinWeight.unsafe_ECmul_minHammingWeight(exponent)
-          refWNAF.unsafe_ECmul_signed_windowed(exponent, window = 5)
+          reference.scalarMul_doubleAdd_vartime(exponent)
+          refMinWeight.scalarMul_minHammingWeight_vartime(exponent)
 
           check:
             bool(impl == reference)
             bool(impl == refMinWeight)
-            bool(impl == refWNAF)
+
+          proc refWNaf(w: static int) = # workaround staticFor symbol visibility
+            var refWNAF = a
+            refWNAF.scalarMul_minHammingWeight_windowed_vartime(exponent, window = w)
+            check: bool(impl == refWNAF)
+
+          refWNaf(2)
+          refWNaf(3)
+          refWNaf(5)
+          refWNaf(8)
+          refWNaf(13)
 
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Uniform)

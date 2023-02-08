@@ -30,7 +30,7 @@ import
   ./platforms,
   ./bench_blueprint,
   # Reference unsafe scalar multiplication
-  ../tests/math/support/ec_reference_scalar_mult
+  ../constantine/math/elliptic/ec_scalar_mul_vartime
 
 export notes
 export abstractions # generic sandwich on SecretBool and SecretBool in Jacobian sum
@@ -93,9 +93,37 @@ proc affFromJacBench*(EC: typedesc, iters: int) =
   bench("EC Jacobian to Affine " & $EC.G, EC, iters):
     r.affine(P)
 
-proc scalarMulGenericBench*(EC: typedesc, window: static int, iters: int) =
-  const bits = EC.F.C.getCurveOrderBitwidth()
+proc affFromProjBatchBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int) =
+  var r = newSeq[affine(EC)](numPoints)
+  var points = newSeq[EC](numPoints)
 
+  for i in 0 ..< numPoints:
+    points[i] = rng.random_unsafe(EC)
+
+  if useBatching:
+    bench("EC Projective to Affine -   batched " & $EC.G & " (" & $numPoints & " points)", EC, iters):
+      r.asUnchecked().batchAffine(points.asUnchecked(), numPoints)
+  else:
+    bench("EC Projective to Affine - unbatched " & $EC.G & " (" & $numPoints & " points)", EC, iters):
+      for i in 0 ..< numPoints:
+        r[i].affine(points[i])
+
+proc affFromJacBatchBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int) =
+  var r = newSeq[affine(EC)](numPoints)
+  var points = newSeq[EC](numPoints)
+
+  for i in 0 ..< numPoints:
+    points[i] = rng.random_unsafe(EC)
+
+  if useBatching:
+    bench("EC Jacobian to Affine -   batched " & $EC.G & " (" & $numPoints & " points)", EC, iters):
+      r.asUnchecked().batchAffine(points.asUnchecked(), numPoints)
+  else:
+    bench("EC Jacobian to Affine - unbatched " & $EC.G & " (" & $numPoints & " points)", EC, iters):
+      for i in 0 ..< numPoints:
+        r[i].affine(points[i])
+
+proc scalarMulGenericBench*(EC: typedesc, bits, window: static int, iters: int) =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
@@ -106,9 +134,7 @@ proc scalarMulGenericBench*(EC: typedesc, window: static int, iters: int) =
     r = P
     r.scalarMulGeneric(exponent, window)
 
-proc scalarMulEndo*(EC: typedesc, iters: int) =
-  const bits = EC.F.C.getCurveOrderBitwidth()
-
+proc scalarMulEndo*(EC: typedesc, bits: static int, iters: int) =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
@@ -119,9 +145,7 @@ proc scalarMulEndo*(EC: typedesc, iters: int) =
     r = P
     r.scalarMulEndo(exponent)
 
-proc scalarMulEndoWindow*(EC: typedesc, iters: int) =
-  const bits = EC.F.C.getCurveOrderBitwidth()
-
+proc scalarMulEndoWindow*(EC: typedesc, bits: static int, iters: int) =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
@@ -135,9 +159,7 @@ proc scalarMulEndoWindow*(EC: typedesc, iters: int) =
     else:
       {.error: "Not implemented".}
 
-proc scalarMulUnsafeDoubleAddBench*(EC: typedesc, iters: int) =
-  const bits = EC.F.C.getCurveOrderBitwidth()
-
+proc scalarMulUnsafeDoubleAddBench*(EC: typedesc, bits: static int, iters: int) =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
@@ -146,11 +168,9 @@ proc scalarMulUnsafeDoubleAddBench*(EC: typedesc, iters: int) =
 
   bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (unsafe reference DoubleAdd)", EC, iters):
     r = P
-    r.unsafe_ECmul_double_add(exponent)
+    r.scalarMul_doubleAdd_vartime(exponent)
 
-proc scalarMulUnsafeMinHammingWeightRecodingBench*(EC: typedesc, iters: int) =
-  const bits = EC.F.C.getCurveOrderBitwidth()
-
+proc scalarMulUnsafeMinHammingWeightRecodingBench*(EC: typedesc, bits: static int, iters: int) =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
@@ -159,11 +179,9 @@ proc scalarMulUnsafeMinHammingWeightRecodingBench*(EC: typedesc, iters: int) =
 
   bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (unsafe min Hamming Weight recoding)", EC, iters):
     r = P
-    r.unsafe_ECmul_minHammingWeight(exponent)
+    r.scalarMul_minHammingWeight_vartime(exponent)
 
-proc scalarMulUnsafeWNAFBench*(EC: typedesc, window: static int, iters: int) =
-  const bits = EC.F.C.getCurveOrderBitwidth()
-
+proc scalarMulUnsafeWNAFBench*(EC: typedesc, bits, window: static int, iters: int) =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
@@ -172,7 +190,7 @@ proc scalarMulUnsafeWNAFBench*(EC: typedesc, window: static int, iters: int) =
 
   bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (unsafe wNAF-" & $window & ")", EC, iters):
     r = P
-    r.unsafe_ECmul_signed_windowed(exponent, window)
+    r.scalarMul_minHammingWeight_windowed_vartime(exponent, window)
 
 proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int) =
   var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](numPoints)

@@ -8,9 +8,13 @@
 
 import
   # Internals
-  ../../../constantine/math/arithmetic,
-  ../../../constantine/math/ec_shortweierstrass,
-  ../../../constantine/math/io/io_bigints
+  ../arithmetic,
+  ../ec_shortweierstrass,
+  ../io/io_bigints,
+  ../../platforms/abstractions
+
+{.push raises: [].} # No exceptions allowed in core cryptographic operations
+{.push checks: off.} # No defects due to array bound checking or signed integer overflow allowed
 
 # Support files for testing Elliptic Curve arithmetic
 # ------------------------------------------------------------------------------
@@ -25,18 +29,15 @@ iterator unpack(scalarByte: byte): bool =
   yield bool((scalarByte and 0b00000010) shr 1)
   yield bool( scalarByte and 0b00000001)
 
-func unsafe_ECmul_double_add*[EC](
-       P: var EC,
-       scalar: BigInt,
-     ) =
-  ## **Unsafe** Elliptic Curve Scalar Multiplication
+func scalarMul_doubleAdd_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime].} =
+  ## **Variable-time** Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P
   ##
-  ## This uses the double-and-add algorithm to verify the constant-time production implementation
-  ## This is UNSAFE to use in production and only intended for testing purposes.
+  ## This uses the double-and-add algorithm
+  ## This MUST NOT be used with secret data.
   ##
-  ## This is highly VULNERABLE to timing attacks and power analysis attacks
+  ## This is highly VULNERABLE to timing attacks and power analysis attacks.
   var scalarCanonical: array[(scalar.bits+7) div 8, byte]
   scalarCanonical.marshal(scalar, bigEndian)
 
@@ -50,16 +51,14 @@ func unsafe_ECmul_double_add*[EC](
       if bit:
         P += Paff
 
-func unsafe_ECmul_minHammingWeight*[EC](
-       P: var EC,
-       scalar: BigInt) =
-  ## **Unsafe** Elliptic Curve Scalar Multiplication
+func scalarMul_minHammingWeight_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime].}  =
+  ## **Variable-time** Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P
   ##
   ## This uses an online recoding with minimum Hamming Weight
   ## (which is not NAF, NAF is least-significant bit to most)
-  ## This is UNSAFE to use in production and only intended for testing purposes.
+  ## This MUST NOT be used with secret data.
   ##
   ## This is highly VULNERABLE to timing attacks and power analysis attacks
   var Paff {.noinit.}: affine(EC)
@@ -73,20 +72,30 @@ func unsafe_ECmul_minHammingWeight*[EC](
     elif bit == -1:
       P -= Paff
 
-func unsafe_ECmul_signed_windowed*[EC](
-       P: var EC,
-       scalar: BigInt, window: static int) =
-  ## **Unsafe** Elliptic Curve Scalar Multiplication
+func scalarMul_minHammingWeight_windowed_vartime*[EC](P: var EC, scalar: BigInt, window: static int) {.tags:[VarTime].} =
+  ## **Variable-time** Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P
   ##
   ## This uses windowed-NAF (wNAF)
+  ## This MUST NOT be used with secret data.
+  ##
+  ## This is highly VULNERABLE to timing attacks and power analysis attacks
 
   # Signed digits divides precomputation table size by 2
   # Odd-only divides precomputation table size by another 2
   const precompSize = 1 shl (window - 2)
 
-  var naf {.noInit.}: array[BigInt.bits+1, int8]
+  when window <= 8:
+    type I = int8
+  elif window <= 16:
+    type I = int16
+  elif window <= 32:
+    type I = int32
+  else:
+    type I = int64
+
+  var naf {.noInit.}: array[BigInt.bits+1, I]
   naf.recodeWindowed_r2l_vartime(scalar, window)
 
   var P2{.noInit.}: EC

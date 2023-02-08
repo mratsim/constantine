@@ -81,7 +81,7 @@ def serialize_EC_Fp2(P):
 # Generator
 # ---------------------------------------------------------
 
-def genScalarMulG1(curve_name, curve_config, count, seed):
+def genScalarMulG1(curve_name, curve_config, count, seed, scalarBits = None):
   p = curve_config[curve_name]['field']['modulus']
   r = curve_config[curve_name]['field']['order']
   form = curve_config[curve_name]['curve']['form']
@@ -109,13 +109,14 @@ def genScalarMulG1(curve_name, curve_config, count, seed):
   for i in progressbar(range(count)):
     v = {}
     P = G1.random_point()
-    scalar = randrange(r)
+    scalar = randrange(1 << scalarBits) if scalarBits else randrange(r)
 
     P *= cofactor # clear cofactor
     Q = scalar * P
 
     v['id'] = i
     v['P'] = serialize_EC_Fp(P)
+    v['scalarBits'] = scalarBits if scalarBits else r.bit_length()
     v['scalar'] = serialize_bigint(scalar)
     v['Q'] = serialize_EC_Fp(Q)
     vectors.append(v)
@@ -123,7 +124,7 @@ def genScalarMulG1(curve_name, curve_config, count, seed):
   out['vectors'] = vectors
   return out
 
-def genScalarMulG2(curve_name, curve_config, count, seed):
+def genScalarMulG2(curve_name, curve_config, count, seed, scalarBits = None):
   p = curve_config[curve_name]['field']['modulus']
   r = curve_config[curve_name]['field']['order']
   form = curve_config[curve_name]['curve']['form']
@@ -197,7 +198,7 @@ def genScalarMulG2(curve_name, curve_config, count, seed):
   for i in progressbar(range(count)):
       v = {}
       P = G2.random_point()
-      scalar = randrange(r)
+      scalar = randrange(1 << scalarBits) if scalarBits else randrange(r)
 
       P *= cofactor # clear cofactor
       Q = scalar * P
@@ -205,10 +206,12 @@ def genScalarMulG2(curve_name, curve_config, count, seed):
       v['id'] = i
       if G2_field == 'Fp2':
         v['P'] = serialize_EC_Fp2(P)
+        v['scalarBits'] = scalarBits if scalarBits else r.bit_length()
         v['scalar'] = serialize_bigint(scalar)
         v['Q'] = serialize_EC_Fp2(Q)
       elif G2_field == 'Fp':
         v['P'] = serialize_EC_Fp(P)
+        v['scalarBits'] = scalarBits if scalarBits else r.bit_length()
         v['scalar'] = serialize_bigint(scalar)
         v['Q'] = serialize_EC_Fp(Q)
       vectors.append(v)
@@ -222,7 +225,7 @@ def genScalarMulG2(curve_name, curve_config, count, seed):
 if __name__ == "__main__":
   # Usage
   # BLS12-381
-  # sage sage/derive_pairing.sage BLS12_381 G1
+  # sage sage/testgen_scalar_mul.sage BLS12_381 G1 {scalarBits: optional int}
 
   from argparse import ArgumentParser
 
@@ -232,6 +235,9 @@ if __name__ == "__main__":
 
   curve = args.curve[0]
   group = args.curve[1]
+  scalarBits = None
+  if len(args.curve) > 2:
+    scalarBits = int(args.curve[2])
 
   if curve not in Curves:
     raise ValueError(
@@ -245,16 +251,17 @@ if __name__ == "__main__":
       ' is not a valid group, expected G1 or G2 instead'
     )
   else:
-    print(f'\nGenerating test vectors tv_{curve}_scalar_mul_{group}.json')
+    bits = scalarBits if scalarBits else Curves[curve]['field']['order'].bit_length()
+    print(f'\nGenerating test vectors tv_{curve}_scalar_mul_{group}_{bits}bit.json')
     print('----------------------------------------------------\n')
 
     count = 40
     seed = 1337
 
     if group == 'G1':
-      out = genScalarMulG1(curve, Curves, count, seed)
+      out = genScalarMulG1(curve, Curves, count, seed, scalarBits)
     elif group == 'G2':
-      out = genScalarMulG2(curve, Curves, count, seed)
+      out = genScalarMulG2(curve, Curves, count, seed, scalarBits)
 
-    with open(f'tv_{curve}_scalar_mul_{group}.json', 'w') as f:
+    with open(f'tv_{curve}_scalar_mul_{group}_{bits}bits.json', 'w') as f:
       json.dump(out, f, indent=2)

@@ -260,8 +260,11 @@ const benchDesc = [
   "bench_fp6",
   "bench_fp12",
   "bench_ec_g1",
+  "bench_ec_g1_scalar_mul",
   "bench_ec_g1_batch",
+  "bench_ec_g1_msm",
   "bench_ec_g2",
+  "bench_ec_g2_scalar_mul",
   "bench_pairing_bls12_377",
   "bench_pairing_bls12_381",
   "bench_pairing_bn254_nogami",
@@ -830,6 +833,24 @@ task bench_ec_g1_batch_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (
 task bench_ec_g1_batch_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (batch ops) - Clang no Assembly":
   runBench("bench_ec_g1_batch", "clang", useAsm = false)
 
+# Elliptic curve G1 - scalar multiplication
+# ------------------------------------------
+
+task bench_ec_g1_scalar_mul, "Run benchmark on Elliptic Curve group 𝔾1 (Scalar Multiplication) - Default compiler":
+  runBench("bench_ec_g1_scalar_mul")
+
+task bench_ec_g1_scalar_mul_gcc, "Run benchmark on Elliptic Curve group 𝔾1 (Scalar Multiplication) - GCC":
+  runBench("bench_ec_g1_scalar_mul", "gcc")
+
+task bench_ec_g1_scalar_mul_clang, "Run benchmark on Elliptic Curve group 𝔾1 (Scalar Multiplication) - Clang":
+  runBench("bench_ec_g1_scalar_mul", "clang")
+
+task bench_ec_g1_scalar_mul_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Scalar Multiplication) - GCC no Assembly":
+  runBench("bench_ec_g1_scalar_mul", "gcc", useAsm = false)
+
+task bench_ec_g1_scalar_mul_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Scalar Multiplication) - Clang no Assembly":
+  runBench("bench_ec_g1_scalar_mul", "clang", useAsm = false)
+
 # Elliptic curve G1 - Multi-scalar-mul
 # ------------------------------------------
 
@@ -865,6 +886,24 @@ task bench_ec_g2_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾2 - GCC n
 
 task bench_ec_g2_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾2 - Clang no Assembly":
   runBench("bench_ec_g2", "clang", useAsm = false)
+
+# Elliptic curve G2 - scalar multiplication
+# ------------------------------------------
+
+task bench_ec_g2_scalar_mul, "Run benchmark on Elliptic Curve group 𝔾2 (Multi-Scalar-Mul) - Default compiler":
+  runBench("bench_ec_g2_scalar_mul")
+
+task bench_ec_g2_scalar_mul_gcc, "Run benchmark on Elliptic Curve group 𝔾2 (Multi-Scalar-Mul) - GCC":
+  runBench("bench_ec_g2_scalar_mul", "gcc")
+
+task bench_ec_g2_scalar_mul_clang, "Run benchmark on Elliptic Curve group 𝔾2 (Multi-Scalar-Mul) - Clang":
+  runBench("bench_ec_g2_scalar_mul", "clang")
+
+task bench_ec_g2_scalar_mul_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾2 (Multi-Scalar-Mul) - GCC no Assembly":
+  runBench("bench_ec_g2_scalar_mul", "gcc", useAsm = false)
+
+task bench_ec_g2_scalar_mul_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾2 (Multi-Scalar-Mul) - Clang no Assembly":
+  runBench("bench_ec_g2_scalar_mul", "clang", useAsm = false)
 
 # Pairings
 # ------------------------------------------

@@ -115,7 +115,7 @@ proc run_hash_to_curve_test(
 
   let testSuiteDesc = "Hash to Curve " & $EC.F.C & " " & G1_or_G2 & " - official specs " & spec_version & " test vectors"
 
-  suite testSuiteDesc & " [" & $WordBitWidth & "-bit mode]":
+  suite testSuiteDesc & " [" & $WordBitWidth & "-bit words]":
 
     doAssert vec.hash == "sha256"
     doAssert vec.k == "0x80" # 128
@@ -150,7 +150,7 @@ proc run_hash_to_curve_svdw_test(
 
   let testSuiteDesc = "Hash to Curve " & $EC.F.C & " " & G1_or_G2 & " - official specs " & spec_version & " test vectors"
 
-  suite testSuiteDesc & " [" & $WordBitWidth & "-bit mode]":
+  suite testSuiteDesc & " [" & $WordBitWidth & "-bit words]":
 
     doAssert vec.hash == "sha256"
     doAssert vec.k == "0x80" # 128

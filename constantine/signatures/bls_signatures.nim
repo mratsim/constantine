@@ -9,7 +9,7 @@
 import
     ../math/[ec_shortweierstrass, extension_fields],
     ../math/io/io_bigints,
-    ../math/elliptic/ec_shortweierstrass_batch_ops,
+    ../math/elliptic/ec_scalar_mul_vartime,
     ../math/pairings/[pairings_generic, miller_accumulators],
     ../math/constants/zoo_generators,
     ../math/config/curves,
@@ -366,32 +366,6 @@ func init*[T0, T1: char|byte](
 
   H.hash(ctx.secureBlinding, secureRandomBytes, accumSepTag)
 
-func scalarMul_minHammingWeight_vartime[EC](
-       P: var EC,
-       scalar: BigInt,
-     ) {.tags:[VarTime].} =
-  ## **Variable-time** Elliptic Curve Scalar Multiplication
-  ##
-  ##   P <- [k] P
-  ##
-  ## This uses an online recoding with minimum Hamming Weight
-  ## (which is not NAF, NAF is least-significant bit to most)
-  ## Due to those scalars being 64-bit, window-method or endomorphism acceleration are slower
-  ## than double-and-add.
-  ##
-  ## This is highly VULNERABLE to timing attacks and power analysis attacks.
-  ## For our usecase, scaling with a random number not in attacker control,
-  ## leaking the scalar bits is not an issue.
-  var t0{.noInit.}: typeof(P)
-  t0.setInf()
-  for bit in recoding_l2r_vartime(scalar):
-    t0.double()
-    if bit == 1:
-      t0 += P
-    elif bit == -1:
-      t0 -= P
-  P = t0
-
 func update*[T: char|byte, Pubkey, Sig: ECP_ShortW_Aff](
        ctx: var BLSBatchSigAccumulator,
        pubkey: Pubkey,
@@ -456,8 +430,8 @@ func update*[T: char|byte, Pubkey, Sig: ECP_ShortW_Aff](
 
     var randFactor{.noInit.}: BigInt[64]
     randFactor.unmarshal(ctx.secureBlinding.toOpenArray(0, 7), bigEndian)
-    pkG1_jac.scalarMul_minHammingWeight_vartime(randFactor)
-    sigG2_jac.scalarMul_minHammingWeight_vartime(randFactor)
+    pkG1_jac.scalarMul_minHammingWeight_windowed_vartime(randFactor, window = 3)
+    sigG2_jac.scalarMul_minHammingWeight_windowed_vartime(randFactor, window = 3)
 
     if ctx.aggSigOnce == false:
       ctx.aggSig = sigG2_jac
@@ -492,8 +466,8 @@ func update*[T: char|byte, Pubkey, Sig: ECP_ShortW_Aff](
 
     var randFactor{.noInit.}: BigInt[64]
     randFactor.unmarshal(ctx.secureBlinding.toOpenArray(0, 7), bigEndian)
-    hmsgG1_jac.scalarMul_minHammingWeight_vartime(randFactor)
-    sigG1_jac.scalarMul_minHammingWeight_vartime(randFactor)
+    hmsgG1_jac.scalarMul_minHammingWeight_windowed_vartime(randFactor, window = 3)
+    sigG1_jac.scalarMul_minHammingWeight_windowed_vartime(randFactor, window = 3)
 
     if ctx.aggSigOnce == false:
       ctx.aggSig = sigG1_jac

@@ -19,7 +19,7 @@ import
 echo "\n------------------------------------------------------\n"
 
 proc mainArith() =
-  suite "isZero" & " [" & $WordBitWidth & "-bit mode]":
+  suite "isZero" & " [" & $WordBitWidth & "-bit words]":
     test "isZero for zero":
       var x: BigInt[128]
       check: x.isZero().bool
@@ -49,7 +49,7 @@ proc mainArith() =
         check: static(not x.isZero().bool)
 
 
-  suite "Arithmetic operations - Addition" & " [" & $WordBitWidth & "-bit mode]":
+  suite "Arithmetic operations - Addition" & " [" & $WordBitWidth & "-bit words]":
     test "Adding 2 zeros":
       var a = fromHex(BigInt[128], "0x00000000000000000000000000000000")
       let b = fromHex(BigInt[128], "0x00000000000000000000000000000000")
@@ -149,7 +149,7 @@ proc mainArith() =
           bool(a == c)
           not bool(carry)
 
-  suite "BigInt + SecretWord" & " [" & $WordBitWidth & "-bit mode]":
+  suite "BigInt + SecretWord" & " [" & $WordBitWidth & "-bit words]":
     test "Addition limbs carry":
       block: # P256 / 2
         var a = BigInt[256].fromhex"0x7fffffff800000008000000000000000000000007fffffffffffffffffffffff"
@@ -160,7 +160,7 @@ proc mainArith() =
         check: bool(a == expected)
 
 proc mainMul() =
-  suite "Multi-precision multiplication" & " [" & $WordBitWidth & "-bit mode]":
+  suite "Multi-precision multiplication" & " [" & $WordBitWidth & "-bit words]":
     test "Same size operand into double size result":
       block:
         var r = canary(BigInt[256])
@@ -201,7 +201,7 @@ proc mainMul() =
         check: bool(r == expected)
 
 proc mainMulHigh() =
-  suite "Multi-precision multiplication keeping only high words" & " [" & $WordBitWidth & "-bit mode]":
+  suite "Multi-precision multiplication keeping only high words" & " [" & $WordBitWidth & "-bit words]":
     test "Same size operand into double size result - discard first word":
       block:
         var r = canary(BigInt[256])
@@ -287,7 +287,7 @@ proc mainMulHigh() =
         check: bool(r == expected)
 
 proc mainSquare() =
-  suite "Multi-precision multiplication" & " [" & $WordBitWidth & "-bit mode]":
+  suite "Multi-precision multiplication" & " [" & $WordBitWidth & "-bit words]":
     test "Squaring is consistent with multiplication (rBits = 2*aBits)":
       block:
         let a = BigInt[200].fromHex"0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDE"
@@ -309,7 +309,7 @@ proc mainSquare() =
         check: bool(rmul == rsqr)
 
 proc mainModular() =
-  suite "Modular operations - small modulus" & " [" & $WordBitWidth & "-bit mode]":
+  suite "Modular operations - small modulus" & " [" & $WordBitWidth & "-bit words]":
     # Vectors taken from Stint - https://github.com/status-im/nim-stint
     test "100 mod 13":
       # Test 1 word and more than 1 word
@@ -368,7 +368,7 @@ proc mainModular() =
         "\n  r (low-level repr): " & $r &
         "\n  expected (ll repr): " & $expected
 
-  suite "Modular operations - small modulus - Stint specific failures highlighted by property-based testing" & " [" & $WordBitWidth & "-bit mode]":
+  suite "Modular operations - small modulus - Stint specific failures highlighted by property-based testing" & " [" & $WordBitWidth & "-bit words]":
     # Vectors taken from Stint - https://github.com/status-im/nim-stint
     test "Modulo: 65696211516342324 mod 174261910798982":
       let u = 65696211516342324'u64
@@ -401,7 +401,7 @@ proc mainModular() =
         "\n  expected (ll repr): " & $expected
 
 proc mainNeg() =
-  suite "Conditional negation" & " [" & $WordBitWidth & "-bit mode]":
+  suite "Conditional negation" & " [" & $WordBitWidth & "-bit words]":
     test "Conditional negation":
       block:
         var a = fromHex(BigInt[128], "0x12345678FF11FFAA00321321CAFECAFE")
@@ -499,7 +499,7 @@ proc mainNeg() =
           bool(b == b2)
 
 proc mainCopySwap() =
-  suite "Copy and Swap" & " [" & $WordBitWidth & "-bit mode]":
+  suite "Copy and Swap" & " [" & $WordBitWidth & "-bit words]":
     test "Conditional copy":
       block:
         var a = fromHex(BigInt[128], "0x12345678FF11FFAA00321321CAFECAFE")
@@ -545,7 +545,7 @@ proc mainCopySwap() =
           bool(eB == b)
 
 proc mainModularInverse() =
-  suite "Modular Inverse (with odd modulus)" & " [" & $WordBitWidth & "-bit mode]":
+  suite "Modular Inverse (with odd modulus)" & " [" & $WordBitWidth & "-bit words]":
     # Note: We don't define multi-precision multiplication
     #       because who needs it when you have Montgomery?
     #       ¯\(ツ)/¯

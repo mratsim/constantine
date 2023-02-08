@@ -58,6 +58,8 @@ func decomposeEndo*[M, scalBits, L: static int](
   ##     We need to test the mini scalar, which is 65 bits so 2 Fp so about 2 cycles
   ##     and negate it as well.
 
+  static: doAssert scalBits >= L, "Cannot decompose a scalar smaller than a mini-scalar or the decomposition coefficient"
+
   # Equal when no window or no negative handling, greater otherwise
   static: doAssert L >= (scalBits + M - 1) div M + 1
   const w = F.C.getCurveOrderBitwidth().wordsRequired()
