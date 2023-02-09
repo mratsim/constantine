@@ -451,3 +451,7 @@ func fromAffine*[F, G](
   proj.x = aff.x
   proj.y = aff.y
   proj.z.setOne()
+
+  let inf = aff.isInf()
+  proj.x.csetZero(inf)
+  proj.z.csetZero(inf)

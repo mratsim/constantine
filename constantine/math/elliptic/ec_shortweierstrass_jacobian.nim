@@ -555,10 +555,7 @@ func madd*[F; G: static Subgroup](
 
   r = o
 
-func double*[F; G: static Subgroup](
-       r: var ECP_ShortW_Jac[F, G],
-       P: ECP_ShortW_Jac[F, G]
-     ) =
+func double*[F; G: static Subgroup](r: var ECP_ShortW_Jac[F, G], P: ECP_ShortW_Jac[F, G]) =
   ## Elliptic curve point doubling for Short Weierstrass curves in projective coordinate
   ##
   ##   R = [2] P
@@ -665,3 +662,4 @@ func fromAffine*[F; G](
   jac.x = aff.x
   jac.y = aff.y
   jac.z.setOne()
+  jac.z.csetZero(aff.isInf())

@@ -108,6 +108,9 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/math/t_ec_shortw_jac_g1_mul_vs_ref.nim", false),
   # ("tests/math/t_ec_shortw_jac_g1_mixed_add.nim", false),
 
+  ("tests/math/t_ec_shortw_jacext_g1_add_double.nim", false),
+  ("tests/math/t_ec_shortw_jacext_g1_mixed_add.nim", false),
+
   # ("tests/math/t_ec_twedwards_prj_add_double", false),
   # ("tests/math/t_ec_twedwards_prj_mul_sanity", false),
   # ("tests/math/t_ec_twedwards_prj_mul_distri", false),
@@ -181,6 +184,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ----------------------------------------------------------
   ("tests/math/t_ec_shortw_prj_g1_batch_add.nim", false),
   ("tests/math/t_ec_shortw_jac_g1_batch_add.nim", false),
+  ("tests/math/t_ec_shortw_jacext_g1_batch_add.nim", false),
   ("tests/math/t_ec_shortw_prj_g1_msm.nim", false),
   ("tests/math/t_ec_shortw_jac_g1_msm.nim", false),
 

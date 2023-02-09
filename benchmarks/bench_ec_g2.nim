@@ -13,7 +13,8 @@ import
   ../constantine/math/extension_fields,
   ../constantine/math/elliptic/[
     ec_shortweierstrass_projective,
-    ec_shortweierstrass_jacobian],
+    ec_shortweierstrass_jacobian,
+    ec_shortweierstrass_jacobian_extended],
   # Helpers
   ./bench_elliptic_template,
   # Standard library
@@ -47,10 +48,13 @@ proc main() =
     const curve = AvailableCurves[i]
     addBench(ECP_ShortW_Prj[Fp2[curve], G2], Iters)
     addBench(ECP_ShortW_Jac[Fp2[curve], G2], Iters)
+    addBench(ECP_ShortW_JacExt[Fp2[curve], G2], Iters)
     mixedAddBench(ECP_ShortW_Prj[Fp2[curve], G2], Iters)
     mixedAddBench(ECP_ShortW_Jac[Fp2[curve], G2], Iters)
+    mixedAddBench(ECP_ShortW_JacExt[Fp2[curve], G2], Iters)
     doublingBench(ECP_ShortW_Prj[Fp2[curve], G2], Iters)
     doublingBench(ECP_ShortW_Jac[Fp2[curve], G2], Iters)
+    doublingBench(ECP_ShortW_JacExt[Fp2[curve], G2], Iters)
     separator()
     affFromProjBench(ECP_ShortW_Prj[Fp2[curve], G2], MulIters)
     affFromJacBench(ECP_ShortW_Jac[Fp2[curve], G2], MulIters)

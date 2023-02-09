@@ -22,6 +22,7 @@ import
   ../../constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_jacobian,
+    ec_shortweierstrass_jacobian_extended,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_batch_ops,
     ec_twistededwards_affine,
@@ -35,6 +36,21 @@ import
   ../../constantine/math/elliptic/ec_scalar_mul_vartime
 
 export unittest, abstractions, arithmetic # Generic sandwich
+
+# Extended Jacobian generic bindings
+# ----------------------------------
+# All vartime procedures MUST be tagged vartime
+# Hence we do not expose `sum` or `+=` for extended jacobian operation to prevent `vartime` mistakes
+# we create a local `sum` or `+=` for this module only
+
+func sum[F; G: static Subgroup](r: var ECP_ShortW_JacExt[F, G], P, Q: ECP_ShortW_JacExt[F, G]) =
+  r.sum_vartime(P, Q)
+func `+=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_JacExt[F, G]) =
+  P.sum_vartime(P, Q)
+func madd[F; G: static Subgroup](r: var ECP_ShortW_JacExt[F, G], P: ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_Aff[F, G]) =
+  r.madd_vartime(P, Q)
+func `+=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_Aff[F, G]) =
+  P.madd_vartime(P, Q)
 
 type
   RandomGen* = enum
@@ -66,15 +82,6 @@ func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen)
       else:
         result = rng.random_long01Seq_with_randZ(EC)
 
-template pairingGroup(EC: typedesc): string =
-  when EC is (ECP_ShortW_Aff or ECP_ShortW_Prj or ECP_ShortW_Jac):
-    when EC.G == G1:
-      "G1"
-    else:
-      "G2"
-  else:
-    ""
-
 proc run_EC_addition_tests*(
        ec: typedesc,
        Iters: static int,
@@ -88,12 +95,10 @@ proc run_EC_addition_tests*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  const G1_or_G2 = pairingGroup(ec)
-
   const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form with projective coordinates"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
-    test "The infinity point is the neutral element w.r.t. to EC " & G1_or_G2 & " addition":
+    test "The infinity point is the neutral element w.r.t. to EC " & $ec.G & " addition":
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         var inf {.noInit.}: EC
         inf.setInf()
@@ -125,6 +130,40 @@ proc run_EC_addition_tests*(
       test(ec, randZ = false, gen = Long01Sequence)
       test(ec, randZ = true, gen = Long01Sequence)
 
+    test "Infinity point from affine conversion gives proper result":
+      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
+        var affInf {.noInit.}: affine(EC)
+        var inf {.noInit.}: EC
+        affInf.setInf()
+        inf.fromAffine(affInf)
+        check: bool inf.isInf()
+
+        for _ in 0 ..< Iters:
+          var r{.noInit.}: EC
+          let P = rng.random_point(EC, randZ, gen)
+
+          r.sum(P, inf)
+          check: bool(r == P)
+
+          r.sum(inf, P)
+          check: bool(r == P)
+
+          # Aliasing tests
+          r = P
+          r += inf
+          check: bool(r == P)
+
+          r = inf
+          r += P
+          check: bool(r == P)
+
+      test(ec, randZ = false, gen = Uniform)
+      test(ec, randZ = true, gen = Uniform)
+      test(ec, randZ = false, gen = HighHammingWeight)
+      test(ec, randZ = true, gen = HighHammingWeight)
+      test(ec, randZ = false, gen = Long01Sequence)
+      test(ec, randZ = true, gen = Long01Sequence)
+
     test "Adding opposites gives an infinity point":
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< Iters:
@@ -146,7 +185,7 @@ proc run_EC_addition_tests*(
       test(ec, randZ = false, gen = Long01Sequence)
       test(ec, randZ = true, gen = Long01Sequence)
 
-    test "EC " & G1_or_G2 & " add is commutative":
+    test "EC " & $ec.G & " add is commutative":
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< Iters:
           var r0{.noInit.}, r1{.noInit.}: EC
@@ -164,7 +203,7 @@ proc run_EC_addition_tests*(
       test(ec, randZ = false, gen = Long01Sequence)
       test(ec, randZ = true, gen = Long01Sequence)
 
-    test "EC " & G1_or_G2 & " add is associative":
+    test "EC " & $ec.G & " add is associative":
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< Iters:
           let a = rng.random_point(EC, randZ, gen)
@@ -213,7 +252,7 @@ proc run_EC_addition_tests*(
       test(ec, randZ = false, gen = Long01Sequence)
       test(ec, randZ = true, gen = Long01Sequence)
 
-    test "EC " & G1_or_G2 & " double and EC " & G1_or_G2 & " add are consistent":
+    test "EC " & $ec.G & " double and EC " & $ec.G & " add are consistent":
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< Iters:
           let a = rng.random_point(EC, randZ, gen)
@@ -245,12 +284,10 @@ proc run_EC_mul_sanity_tests*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  const G1_or_G2 = pairingGroup(ec)
-
   const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
-    test "EC " & G1_or_G2 & " mul [0]P == Inf":
+    test "EC " & $ec.G & " mul [0]P == Inf":
       proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< ItersMul:
           let a = rng.random_point(EC, randZ, gen)
@@ -273,7 +310,7 @@ proc run_EC_mul_sanity_tests*(
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Long01Sequence)
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Long01Sequence)
 
-    test "EC " & G1_or_G2 & " mul [1]P == P":
+    test "EC " & $ec.G & " mul [1]P == P":
       proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< ItersMul:
           let a = rng.random_point(EC, randZ, gen)
@@ -299,7 +336,7 @@ proc run_EC_mul_sanity_tests*(
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Long01Sequence)
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Long01Sequence)
 
-    test "EC " & G1_or_G2 & " mul [2]P == P.double()":
+    test "EC " & $ec.G & " mul [2]P == P.double()":
       proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< ItersMul:
           let a = rng.random_point(EC, randZ, gen)
@@ -340,13 +377,11 @@ proc run_EC_mul_distributive_tests*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  const G1_or_G2 = pairingGroup(ec)
-
   const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
 
-    test "EC " & G1_or_G2 & " mul is distributive over EC add":
+    test "EC " & $ec.G & " mul is distributive over EC add":
       proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< ItersMul:
           let a = rng.random_point(EC, randZ, gen)
@@ -407,12 +442,10 @@ proc run_EC_mul_vs_ref_impl*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  const G1_or_G2 = pairingGroup(ec)
-
   const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
-    test "EC " & G1_or_G2 & " mul constant-time is equivalent to a simple double-and-add and recoded algorithms":
+    test "EC " & $ec.G & " mul constant-time is equivalent to a simple double-and-add and recoded algorithms":
       proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< ItersMul:
           let a = rng.random_point(EC, randZ, gen)
@@ -464,15 +497,10 @@ proc run_EC_mixed_add_impl*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  when ec.G == G1:
-    const G1_or_G2 = "G1"
-  else:
-    const G1_or_G2 = "G2"
-
   const testSuiteDesc = "Elliptic curve mixed addition for Short Weierstrass form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
-    test "EC " & G1_or_G2 & " mixed addition is consistent with general addition":
+    test "EC " & $ec.G & " mixed addition is consistent with general addition":
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< Iters:
           let a = rng.random_point(EC, randZ, gen)
@@ -494,7 +522,7 @@ proc run_EC_mixed_add_impl*(
       test(ec, randZ = false, gen = Long01Sequence)
       test(ec, randZ = true, gen = Long01Sequence)
 
-    test "EC " & G1_or_G2 & " mixed addition - doubling":
+    test "EC " & $ec.G & " mixed addition - doubling":
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< Iters:
           let a = rng.random_point(EC, randZ, gen)
@@ -519,7 +547,7 @@ proc run_EC_mixed_add_impl*(
       test(ec, randZ = false, gen = Long01Sequence)
       test(ec, randZ = true, gen = Long01Sequence)
 
-    test "EC " & G1_or_G2 & " mixed addition - adding infinity LHS":
+    test "EC " & $ec.G & " mixed addition - adding infinity LHS":
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< Iters:
           var a{.noInit.}: EC
@@ -542,7 +570,31 @@ proc run_EC_mixed_add_impl*(
       test(ec, randZ = false, gen = HighHammingWeight)
       test(ec, randZ = false, gen = Long01Sequence)
 
-    test "EC " & G1_or_G2 & " mixed addition - adding infinity RHS":
+    test "EC " & $ec.G & " mixed addition - adding infinity RHS":
+      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
+        for _ in 0 ..< Iters:
+          let a = rng.random_point(EC, randZ, gen)
+          var naAff{.noInit.}: ECP_ShortW_Aff[EC.F, EC.G]
+          naAff.affine(a)
+          naAff.neg()
+
+          var r{.noInit.}: EC
+          r.madd(a, naAff)
+
+          check: r.isInf().bool
+
+          r = a
+          r += naAff
+          check: r.isInf().bool
+
+      test(ec, randZ = false, gen = Uniform)
+      test(ec, randZ = true, gen = Uniform)
+      test(ec, randZ = false, gen = HighHammingWeight)
+      test(ec, randZ = true, gen = HighHammingWeight)
+      test(ec, randZ = false, gen = Long01Sequence)
+      test(ec, randZ = true, gen = Long01Sequence)
+
+    test "EC " & $ec.G & " mixed addition - adding opposites":
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< Iters:
           let a = rng.random_point(EC, randZ, gen)
@@ -576,11 +628,6 @@ proc run_EC_subgroups_cofactors_impl*(
   rng.seed(seed)
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
-
-  when ec.G == G1:
-    const G1_or_G2 = "G1"
-  else:
-    const G1_or_G2 = "G2"
 
   const testSuiteDesc = "Elliptic curve subgroup check and cofactor clearing"
 
@@ -639,7 +686,7 @@ proc run_EC_subgroups_cofactors_impl*(
       test(ec, randZ = false, gen = Long01Sequence)
       test(ec, randZ = true, gen = Long01Sequence)
 
-      echo "    [SUCCESS] Test finished with ", inSubgroup, " points in ", G1_or_G2, " subgroup and ",
+      echo "    [SUCCESS] Test finished with ", inSubgroup, " points in ", $ec.G, " subgroup and ",
               offSubgroup, " points on curve but not in subgroup (before cofactor clearing)"
 
 proc run_EC_affine_conversion*(
@@ -655,12 +702,10 @@ proc run_EC_affine_conversion*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  const G1_or_G2 = pairingGroup(ec)
-
   const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
-    test "EC " & G1_or_G2 & " batchAffine is consistent with single affine conversion":
+    test "EC " & $ec.G & " batchAffine is consistent with single affine conversion":
       proc test(EC: typedesc, gen: RandomGen) =
         const batchSize = 10
         for _ in 0 ..< Iters:
@@ -820,11 +865,6 @@ proc run_EC_batch_add_impl*[N: static int](
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  when ec.G == G1:
-    const G1_or_G2 = "G1"
-  else:
-    const G1_or_G2 = "G2"
-
   const testSuiteDesc = "Elliptic curve batch addition for Short Weierstrass form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
@@ -851,7 +891,7 @@ proc run_EC_batch_add_impl*[N: static int](
         test(ec, gen = HighHammingWeight)
         test(ec, gen = Long01Sequence)
 
-      test "EC " & G1_or_G2 & " batch addition (N=" & $n & ") - special cases":
+      test "EC " & $ec.G & " batch addition (N=" & $n & ") - special cases":
         proc test(EC: typedesc, gen: RandomGen) =
           var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](n)
 
@@ -897,11 +937,6 @@ proc run_EC_multi_scalar_mul_impl*[N: static int](
   rng.seed(seed)
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
-
-  when ec.G == G1:
-    const G1_or_G2 = "G1"
-  else:
-    const G1_or_G2 = "G2"
 
   const testSuiteDesc = "Elliptic curve multi-scalar-multiplication for Short Weierstrass form"
 

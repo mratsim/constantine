@@ -12,7 +12,8 @@ import
   ../extension_fields,
   ./ec_shortweierstrass_affine,
   ./ec_shortweierstrass_jacobian,
-  ./ec_shortweierstrass_projective
+  ./ec_shortweierstrass_projective,
+  ./ec_shortweierstrass_jacobian_extended
 
 # No exceptions allowed, or array bound checks or integer overflow
 {.push raises: [], checks:off.}
@@ -354,11 +355,18 @@ func accum_half_vartime[F; G: static Subgroup](
       # Store result
       points[0] = r
 
-# Batch addition: jacobian
+# Batch addition - High-level
 # ------------------------------------------------------------
 
+template `+=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_Aff[F, G]) =
+  # All vartime procedures MUST be tagged vartime
+  # Hence we do not expose `+=` for extended jacobian operation to prevent `vartime` mistakes
+  # The following algorithms are all tagged vartime, hence for genericity
+  # we create a local `+=` for this module only
+  P.madd_vartime(P, Q)
+
 func accumSum_chunk_vartime[F; G: static Subgroup](
-       r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G]),
+       r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G] or ECP_ShortW_JacExt[F, G]),
        points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
        lambdas: ptr UncheckedArray[tuple[num, den: F]],
        len: uint) =
@@ -386,7 +394,7 @@ func accumSum_chunk_vartime[F; G: static Subgroup](
     r += points[i]
 
 func sum_batch_vartime*[F; G: static Subgroup](
-       r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G]),
+       r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G] or ECP_ShortW_JacExt[F, G]),
        points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], pointsLen: int) {.noInline.} =
   ## Batch addition of `points` into `r`
   ## `r` is overwritten
@@ -426,7 +434,7 @@ func sum_batch_vartime*[F; G: static Subgroup](
     r.accumSum_chunk_vartime(accumulators, lambdas, uint n)
 
 func sum_batch_vartime*[F; G: static Subgroup](
-       r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G]),
+       r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G] or ECP_ShortW_JacExt[F, G]),
        points: openArray[ECP_ShortW_Aff[F, G]]) {.inline.} =
   ## Batch addition of `points` into `r`
   ## `r` is overwritten

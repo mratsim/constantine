@@ -22,6 +22,7 @@ import
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
+    ec_shortweierstrass_jacobian_extended,
     ec_shortweierstrass_batch_ops,
     ec_scalar_mul, ec_endomorphism_accel],
     ../constantine/math/constants/zoo_subgroups,
@@ -63,8 +64,13 @@ proc addBench*(EC: typedesc, iters: int) =
   var r {.noInit.}: EC
   let P = rng.random_unsafe(EC)
   let Q = rng.random_unsafe(EC)
-  bench("EC Add " & $EC.G, EC, iters):
-    r.sum(P, Q)
+
+  when EC is ECP_ShortW_JacExt:
+    bench("EC Add vartime " & $EC.G, EC, iters):
+      r.sum_vartime(P, Q)
+  else:
+    bench("EC Add " & $EC.G, EC, iters):
+      r.sum(P, Q)
 
 proc mixedAddBench*(EC: typedesc, iters: int) =
   var r {.noInit.}: EC
@@ -72,8 +78,13 @@ proc mixedAddBench*(EC: typedesc, iters: int) =
   let Q = rng.random_unsafe(EC)
   var Qaff: ECP_ShortW_Aff[EC.F, EC.G]
   Qaff.affine(Q)
-  bench("EC Mixed Addition " & $EC.G, EC, iters):
-    r.madd(P, Qaff)
+
+  when EC is ECP_ShortW_JacExt:
+    bench("EC Mixed Addition vartime " & $EC.G, EC, iters):
+      r.madd_vartime(P, Qaff)
+  else:
+    bench("EC Mixed Addition " & $EC.G, EC, iters):
+      r.madd(P, Qaff)
 
 proc doublingBench*(EC: typedesc, iters: int) =
   var r {.noInit.}: EC
