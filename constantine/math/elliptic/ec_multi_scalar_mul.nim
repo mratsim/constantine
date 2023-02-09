@@ -7,19 +7,15 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/[abstractions, allocs, views],
+  ../../platforms/abstractions,
   ../arithmetic,
   ../extension_fields,
   ../io/io_bigints,
-  ./ec_shortweierstrass_affine,
-  ./ec_shortweierstrass_jacobian
+  ../ec_shortweierstrass
 
 # No exceptions allowed in core cryptographic operations
 {.push raises: [].}
-# {.push checks: off.}
-
-{.localpassC:"-fsanitize=address".}
-{.passL:"-fsanitize=address".}
+{.push checks: off.}
 
 # ########################################################### #
 #                                                             #
@@ -79,16 +75,25 @@ func digit_vartime(a: BigInt, index: int, bitsize: static int): uint {.inline, t
     else:
       return uint(word shr pos) and DigitMask
 
-func multiScalarMulImpl_baseline_vartime[EC](r: var EC, coefs: openArray[BigInt], points: openArray[ECP_ShortW_Aff], c: static int) =
+func multiScalarMulImpl_baseline_vartime[F, G; bits: static int](
+       r: var ECP_ShortW[F, G],
+       coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
+       N: int, c: static int) =
   ## Inner implementation of MSM, for static dispatch over c, the bucket bit length
   ## This is a straightforward simple translation of BDLO12, section 4
-  debug: assert coefs.len == points.len
 
-  const numWindows = (BigInt.bits + c - 1) div c
-  const numBuckets = 1 shl c # Technically 2ᶜ-1 since bucket 0 is unused
+  # Prologue
+  # --------
 
-  let buckets = allocHeapArray(EC, numBuckets)
+  const numBuckets = 1 shl c - 1 # bucket 0 is unused
+  const numWindows = (bits + c - 1) div c
+  type EC = typeof(r)
+
   let miniMSMs = allocHeapArray(EC, numWindows)
+  let buckets = allocHeapArray(EC, numBuckets)
+
+  # Algorithm
+  # ---------
 
   for w in 0 ..< numWindows:
     # Place our points in a bucket corresponding to
@@ -97,12 +102,12 @@ func multiScalarMulImpl_baseline_vartime[EC](r: var EC, coefs: openArray[BigInt]
       buckets[i].setInf()
 
     # 1. Bucket accumulation.                            Cost: n - (2ᶜ-1) => n points in 2ᶜ-1 buckets, first point per bucket is just copied
-    for j in 0 ..< points.len:
+    for j in 0 ..< N:
       let b = coefs[j].digit_vartime(w, c)
       if b == 0: # bucket 0 is unused, no need to add [0]Pⱼ
         continue
       else:
-        buckets[b] += points[j]
+        buckets[b-1] += points[j]
 
     # 2. Bucket reduction.                               Cost: 2x(2ᶜ-2) => 2 additions per 2ᶜ-1 bucket, last bucket is just copied
     # We have ordered subset sums in each bucket, we now need to compute the mini-MSM
@@ -112,13 +117,11 @@ func multiScalarMulImpl_baseline_vartime[EC](r: var EC, coefs: openArray[BigInt]
     miniMSM = buckets[numBuckets-1]
 
     # Example with c = 3, 2³ = 8
-    for k in countdown(numBuckets-2, 1):
+    for k in countdown(numBuckets-2, 0):
       accumBuckets += buckets[k] # Stores S₈ then    S₈+S₇ then       S₈+S₇+S₆ then ...
       miniMSM += accumBuckets    # Stores S₈ then [2]S₈+S₇ then [3]S₈+[2]S₇+S₆ then ...
 
     miniMSMs[w] = miniMSM
-
-  buckets.freeHeap()
 
   # 3. Final reduction.                                  Cost: (b/c - 1)x(c+1) => b/c windows, first is copied, c doublings + 1 addition per window
   r = miniMSMs[numWindows-1]
@@ -127,6 +130,12 @@ func multiScalarMulImpl_baseline_vartime[EC](r: var EC, coefs: openArray[BigInt]
       r.double()
     r += miniMSMs[w]
 
+  # Cleanup
+  # -------
+
+  # We could free buckets before step 3, but we don't want to flush miniMSMs from cache
+  # by going into deallocation code
+  buckets.freeHeap()
   miniMSMs.freeHeap()
 
 func bestBucketBitSize*(inputSize: int, orderBitwidth: static int): int {.inline.} =
@@ -170,31 +179,36 @@ func bestBucketBitSize*(inputSize: int, orderBitwidth: static int): int {.inline
 func multiScalarMul_baseline_vartime*[EC](r: var EC, coefs: openArray[BigInt], points: openArray[ECP_ShortW_Aff]) =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
-  let c = bestBucketBitSize(points.len, BigInt.bits)
+  debug: doAssert coefs.len == points.len
+
+  let N = points.len
+  let coefs = coefs.asUnchecked()
+  let points = points.asUnchecked()
+  let c = bestBucketBitSize(N, BigInt.bits)
 
   case c
-  of  2: multiScalarMulImpl_baseline_vartime(r, coefs, points, c =  2)
-  of  3: multiScalarMulImpl_baseline_vartime(r, coefs, points, c =  3)
-  of  4: multiScalarMulImpl_baseline_vartime(r, coefs, points, c =  4)
-  of  5: multiScalarMulImpl_baseline_vartime(r, coefs, points, c =  5)
-  of  6: multiScalarMulImpl_baseline_vartime(r, coefs, points, c =  6)
-  of  7: multiScalarMulImpl_baseline_vartime(r, coefs, points, c =  7)
-  of  8: multiScalarMulImpl_baseline_vartime(r, coefs, points, c =  8)
-  of  9: multiScalarMulImpl_baseline_vartime(r, coefs, points, c =  9)
-  of 10: multiScalarMulImpl_baseline_vartime(r, coefs, points, c = 10)
-  of 11: multiScalarMulImpl_baseline_vartime(r, coefs, points, c = 11)
-  of 12: multiScalarMulImpl_baseline_vartime(r, coefs, points, c = 12)
-  of 13: multiScalarMulImpl_baseline_vartime(r, coefs, points, c = 13)
-  of 14: multiScalarMulImpl_baseline_vartime(r, coefs, points, c = 14)
-  of 15: multiScalarMulImpl_baseline_vartime(r, coefs, points, c = 15)
-  of 16: multiScalarMulImpl_baseline_vartime(r, coefs, points, c = 16)
-  of 17: multiScalarMulImpl_baseline_vartime(r, coefs, points, c = 17)
-  of 18: multiScalarMulImpl_baseline_vartime(r, coefs, points, c = 18)
-  of 19: multiScalarMulImpl_baseline_vartime(r, coefs, points, c = 19)
-  of 20: multiScalarMulImpl_baseline_vartime(r, coefs, points, c = 20)
-  of 21: multiScalarMulImpl_baseline_vartime(r, coefs, points, c = 21)
-  of 22: multiScalarMulImpl_baseline_vartime(r, coefs, points, c = 22)
-  of 23: multiScalarMulImpl_baseline_vartime(r, coefs, points, c = 23)
+  of  2: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c =  2)
+  of  3: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c =  3)
+  of  4: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c =  4)
+  of  5: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c =  5)
+  of  6: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c =  6)
+  of  7: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c =  7)
+  of  8: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c =  8)
+  of  9: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c =  9)
+  of 10: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 10)
+  of 11: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 11)
+  of 12: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 12)
+  of 13: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 13)
+  of 14: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 14)
+  of 15: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 15)
+  of 16: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 16)
+  of 17: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 17)
+  of 18: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 18)
+  of 19: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 19)
+  of 20: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 20)
+  of 21: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 21)
+  of 22: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 22)
+  of 23: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 23)
   else:
     unreachable()
 
@@ -204,58 +218,71 @@ func multiScalarMul_baseline_vartime*[EC](r: var EC, coefs: openArray[BigInt], p
 # There are ways to avoid FFTs, none to avoid Multi-Scalar-Multiplication
 # Hence optimizing it is worth millions, see https://zprize.io
 
-func multiScalarMulImpl_opt_vartime[EC](r: var EC, coefs: openArray[BigInt], points: openArray[ECP_ShortW_Aff], c: static int) =
+func signedRecoding[N: static int, I: SomeSignedInt](
+       recoded: var array[N, I], scalar: BigInt, c: static int) =
+  static: doAssert sizeof(I) * 8 >= c
+  var carry = 0
+  for w in 0 ..< N:
+    var digit = carry
+    if w*c < BigInt.bits:
+      digit += cast[int](scalar.digit_vartime(w, c))
+
+    if digit >= 1 shl (c-1):
+      debug: doAssert w != N-1, "numWindows: " & $N & " for " & $BigInt.bits & "-bit scalars with window " & $c
+      digit -= 1 shl c
+      carry = 1
+    else:
+      carry = 0
+    recoded[w] = cast[I](digit)
+
+func multiScalarMulImpl_opt_vartime[F, G; bits: static int](
+       r: var ECP_ShortW[F, G],
+       coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
+       N: int, c: static int) =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
 
-  debug: assert coefs.len == points.len
+  # Prologue
+  # --------
+  const numBuckets = 1 shl (c-1)
+  const numWindows = (bits + c - 1) div c + 1 # signed overflow
+  type EC = typeof(r)
+  type I = (when c <=  8: int8
+            elif c <= 16: int16
+            else:         int32)
 
-  # When c = 2, the digits can be 0, 1, 2, 3
-  # if the MSB is set, we substract 4, hence the signed digit can be 0, 1, -2, -1
-  # We add 1 unsed bucket at position 0 for now to allow indexing directly with the value
-  const numBuckets = 1 shl (c-1) + 1
-  const numWindows = (BigInt.bits + c - 1) div c + 1 # signed overflow
-
-  let bucketsBuf = allocHeapArray(EC, numWindows*numBuckets)
   let miniMSMs = allocHeapArray(EC, numWindows)
+  let buckets = allocHeapArray(EC, numBuckets)
+  let recoded = allocHeapArray(array[numWindows, I], N)
 
-  for i in 0 ..< numWindows*numBuckets:
-    bucketsBuf[i].setInf()
+  # 0. Recode points into signed digits
+  for j in 0 ..< N:
+    recoded[j].signedRecoding(coefs[j], c)
 
-  let buckets = bucketsBuf.toMatrixView(numWindows, numBuckets)
+  # Algorithm
+  # ---------
+  for w in 0 ..< numWindows:
+    for i in 0 ..< numBuckets:
+      buckets[i].setInf()
 
-  # 1. Bucket accumulation
-  for j in 0 ..< points.len:
-    var carry = 0
-    for w in 0 ..< numWindows:
-      var digit = carry
-      if (w * c) < BigInt.bits:
-        digit += coefs[j].digit_vartime(w, c).int
+    # 1. Bucket accumulation
+    for j in 0 ..< N:
+      var digit = cast[int](recoded[j][w])
+      if digit > 0:
+        buckets[digit-1] += points[j]
+      elif digit < 0:
+        buckets[-digit-1] -= points[j]
 
-      if digit == 0: # bucket 0 is unused, no need to add [0]Pⱼ
-        continue
-      elif digit >= 1 shl (c-1):
-        debug: doAssert w != numWindows-1, "numWindows: " & $numWindows & " for " & $BigInt.bits & "-bit scalars with window " & $c
-        digit -= 1 shl c
-        carry = 1
-        buckets[w, -digit] -= points[j]
-      else:
-        carry = 0
-        buckets[w, digit] += points[j]
+    # 2. Bucket reduction
+    var accumBuckets{.noInit.}, miniMSM{.noInit.}: EC
+    accumBuckets = buckets[numBuckets-1]
+    miniMSM = buckets[numBuckets-1]
 
-  # 2. Bucket reduction
-  block:
-    let accumBuckets = allocHeapArray(EC, numWindows)
-    for k in countdown(numBuckets-1, 1):
-      for w in 0 ..< numWindows:
-        if k == numBuckets-1:
-          accumBuckets[w] = buckets[w, numBuckets-1]
-          miniMSMs[w]     = buckets[w, numBuckets-1]
-        else:
-          accumBuckets[w] += buckets[w, k]
-          miniMSMs[w]     += accumBuckets[w]
-    accumBuckets.freeHeap()
-  bucketsBuf.freeHeap()
+    for k in countdown(numBuckets-2, 0):
+      accumBuckets += buckets[k]
+      miniMSM += accumBuckets
+
+    miniMSMs[w] = miniMSM
 
   # 3. Final reduction.
   r = miniMSMs[numWindows-1]
@@ -264,35 +291,44 @@ func multiScalarMulImpl_opt_vartime[EC](r: var EC, coefs: openArray[BigInt], poi
       r.double()
     r += miniMSMs[w]
 
+  # Cleanup
+  # -------
+  recoded.freeHeap()
+  buckets.freeHeap()
   miniMSMs.freeHeap()
 
 func multiScalarMul_opt_vartime*[EC](r: var EC, coefs: openArray[BigInt], points: openArray[ECP_ShortW_Aff]) =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
-  let c = bestBucketBitSize(points.len, BigInt.bits)
+  debug: doAssert coefs.len == points.len
+
+  let N = points.len
+  let coefs = coefs.asUnchecked()
+  let points = points.asunchecked()
+  let c = bestBucketBitSize(N, BigInt.bits)
 
   case c
-  of  2: multiScalarMulImpl_opt_vartime(r, coefs, points, c =  2)
-  of  3: multiScalarMulImpl_opt_vartime(r, coefs, points, c =  3)
-  of  4: multiScalarMulImpl_opt_vartime(r, coefs, points, c =  4)
-  of  5: multiScalarMulImpl_opt_vartime(r, coefs, points, c =  5)
-  of  6: multiScalarMulImpl_opt_vartime(r, coefs, points, c =  6)
-  of  7: multiScalarMulImpl_opt_vartime(r, coefs, points, c =  7)
-  of  8: multiScalarMulImpl_opt_vartime(r, coefs, points, c =  8)
-  of  9: multiScalarMulImpl_opt_vartime(r, coefs, points, c =  9)
-  of 10: multiScalarMulImpl_opt_vartime(r, coefs, points, c = 10)
-  of 11: multiScalarMulImpl_opt_vartime(r, coefs, points, c = 11)
-  of 12: multiScalarMulImpl_opt_vartime(r, coefs, points, c = 12)
-  of 13: multiScalarMulImpl_opt_vartime(r, coefs, points, c = 13)
-  of 14: multiScalarMulImpl_opt_vartime(r, coefs, points, c = 14)
-  of 15: multiScalarMulImpl_opt_vartime(r, coefs, points, c = 15)
-  of 16: multiScalarMulImpl_opt_vartime(r, coefs, points, c = 16)
-  of 17: multiScalarMulImpl_opt_vartime(r, coefs, points, c = 17)
-  of 18: multiScalarMulImpl_opt_vartime(r, coefs, points, c = 18)
-  of 19: multiScalarMulImpl_opt_vartime(r, coefs, points, c = 19)
-  of 20: multiScalarMulImpl_opt_vartime(r, coefs, points, c = 20)
-  of 21: multiScalarMulImpl_opt_vartime(r, coefs, points, c = 21)
-  of 22: multiScalarMulImpl_opt_vartime(r, coefs, points, c = 22)
-  of 23: multiScalarMulImpl_opt_vartime(r, coefs, points, c = 23)
+  of  2: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c =  2)
+  of  3: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c =  3)
+  of  4: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c =  4)
+  of  5: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c =  5)
+  of  6: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c =  6)
+  of  7: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c =  7)
+  of  8: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c =  8)
+  of  9: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c =  9)
+  of 10: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 10)
+  of 11: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 11)
+  of 12: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 12)
+  of 13: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 13)
+  of 14: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 14)
+  of 15: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 15)
+  of 16: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 16)
+  of 17: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 17)
+  of 18: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 18)
+  of 19: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 19)
+  of 20: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 20)
+  of 21: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 21)
+  of 22: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 22)
+  of 23: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 23)
   else:
     unreachable()
