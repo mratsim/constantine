@@ -13,7 +13,6 @@ import
   pkg/jsony,
   # Internals
   ../../constantine/platforms/abstractions,
-  ../../constantine/math/config/curves,
   ../../constantine/math/[arithmetic, extension_fields],
   ../../constantine/math/io/[io_bigints, io_ec],
   ../../constantine/math/elliptic/[
@@ -22,6 +21,7 @@ import
     ec_shortweierstrass_jacobian,
     ec_scalar_mul,
     ec_endomorphism_accel],
+  ../../constantine/math/constants/zoo_endomorphisms,
   # Test utilities
   ../../constantine/math/elliptic/ec_scalar_mul_vartime
 
@@ -177,7 +177,7 @@ proc run_scalar_mul_test_vs_sage*(
           refWNAF.scalarMul_minHammingWeight_windowed_vartime(vec.vectors[i].scalar, window = w)
           check: bool(impl == refWNAF)
 
-        when bits >= 196: # All endomorphisms constants are below this threshold
+        when bits >= EndomorphismThreshold: # All endomorphisms constants are below this threshold
           var endo = P
           endo.scalarMulEndo(vec.vectors[i].scalar)
           doAssert: bool(Q == endo)
