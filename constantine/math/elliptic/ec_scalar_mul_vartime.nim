@@ -72,7 +72,7 @@ func scalarMul_minHammingWeight_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[
     elif bit == -1:
       P -= Paff
 
-func scalarMul_minHammingWeight_windowed_vartime*[EC](P: var EC, scalar: BigInt, window: static int) {.tags:[VarTime].} =
+func scalarMul_minHammingWeight_windowed_vartime*[EC](P: var EC, scalar: BigInt, window: static int) {.tags:[VarTime, Alloca].} =
   ## **Variable-time** Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P

@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/[abstractions, allocs],
+  ../../platforms/abstractions,
   ../config/curves,
   ../extension_fields,
   ../elliptic/[
@@ -78,7 +78,7 @@ func millerLoopGenericBN*[C](
        Ps: ptr UncheckedArray[ECP_ShortW_Aff[Fp[C], G1]],
        Qs: ptr UncheckedArray[ECP_ShortW_Aff[Fp2[C], G2]],
        N: int
-     ) {.meter.} =
+     ) {.noinline, meter.} =
   ## Generic Miller Loop for BN curves
   ## Computes f{6u+2,Q}(P) with u the BN curve parameter
   var

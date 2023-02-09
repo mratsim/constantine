@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/[abstractions, allocs],
+  ../../platforms/abstractions,
   ../../platforms/threadpool/threadpool,
   ./ec_shortweierstrass_affine,
   ./ec_shortweierstrass_jacobian,
@@ -68,7 +68,7 @@ iterator items(c: ChunkDescriptor): tuple[chunkID, start, stopEx: int] =
 proc sum_batch_vartime_parallel*[F; G: static Subgroup](
        tp: Threadpool,
        r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G]),
-       points: openArray[ECP_ShortW_Aff[F, G]]) =
+       points: openArray[ECP_ShortW_Aff[F, G]]) {.noInline.} =
   ## Batch addition of `points` into `r`
   ## `r` is overwritten
   ## Compute is parallelized, if beneficial.

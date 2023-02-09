@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/[abstractions, allocs],
+  ../../platforms/abstractions,
   ../arithmetic,
   ../extension_fields,
   ./ec_shortweierstrass_affine,
@@ -27,7 +27,7 @@ import
 func batchAffine*[F, G](
        affs: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
        projs: ptr UncheckedArray[ECP_ShortW_Prj[F, G]],
-       N: int) =
+       N: int) {.noInline.} =
   # Algorithm: Montgomery's batch inversion
   # - Speeding the Pollard and Elliptic Curve Methods of Factorization
   #   Section 10.3.1
@@ -87,7 +87,7 @@ func batchAffine*[N: static int, F, G](
 func batchAffine*[F, G](
        affs: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
        jacs: ptr UncheckedArray[ECP_ShortW_Jac[F, G]],
-       N: int) =
+       N: int) {.noInline.} =
   # Algorithm: Montgomery's batch inversion
   # - Speeding the Pollard and Elliptic Curve Methods of Factorization
   #   Section 10.3.1
@@ -230,7 +230,7 @@ func affineAdd[F; G: static Subgroup](
 func accum_half_vartime[F; G: static Subgroup](
        points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
        lambdas: ptr UncheckedArray[tuple[num, den: F]],
-       len: uint) {.tags:[VarTime], noinline.} =
+       len: uint) {.tags:[VarTime].} =
   ## Affine accumulation of half the points into the other half
   ## Warning ⚠️ : variable-time
   ##
@@ -246,8 +246,6 @@ func accum_half_vartime[F; G: static Subgroup](
   ##
   ## Output:
   ## - r
-  ##
-  ## Warning ⚠️ : cannot be inlined if used in loop due to the use of alloca
 
   debug: doAssert len and 1 == 0, "There must be an even number of points"
 
@@ -389,7 +387,7 @@ func accumSum_chunk_vartime[F; G: static Subgroup](
 
 func sum_batch_vartime*[F; G: static Subgroup](
        r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G]),
-       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], pointsLen: int) =
+       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], pointsLen: int) {.noInline.} =
   ## Batch addition of `points` into `r`
   ## `r` is overwritten
 

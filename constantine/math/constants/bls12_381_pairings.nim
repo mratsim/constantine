@@ -13,8 +13,7 @@ import
   ../extension_fields,
   ../elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
   ../pairings/[cyclotomic_subgroups, miller_loops],
-  ../isogenies/frobenius,
-  ../../platforms/allocs
+  ../isogenies/frobenius
 
 # Slow generic implementation
 # ------------------------------------------------------------
@@ -66,7 +65,7 @@ func millerLoopAddchain*(
        Qs: ptr UncheckedArray[ECP_ShortW_Aff[Fp2[BLS12_381], G2]],
        Ps: ptr UncheckedArray[ECP_ShortW_Aff[Fp[BLS12_381], G1]],
        N: int
-     ) =
+     ) {.noInline.} =
   ## Generic Miller Loop for BLS12 curve
   ## Computes f{u,Q}(P) with u the BLS curve parameter
 

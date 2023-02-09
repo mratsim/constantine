@@ -24,16 +24,18 @@
 # stack allocation is strongly preferred where necessary.
 
 # We use Nim effect system to track allocating subroutines
-type HeapAlloc* = object
+type
+  Alloca*    = object
+  HeapAlloc* = object
 
 # Bindings
 # ----------------------------------------------------------------------------------
 # We wrap them with int instead of size_t / csize_t
 
 when defined(windows):
-  proc alloca(size: int): pointer {.header: "<malloc.h>".}
+  proc alloca(size: int): pointer {.tags:[Alloca], header: "<malloc.h>".}
 else:
-  proc alloca(size: int): pointer {.header: "<alloca.h>".}
+  proc alloca(size: int): pointer {.tags:[Alloca], header: "<alloca.h>".}
 
 proc malloc(size: int): pointer {.tags:[HeapAlloc], header: "<stdlib.h>".}
 proc free(p: pointer) {.tags:[HeapAlloc], header: "<stdlib.h>".}

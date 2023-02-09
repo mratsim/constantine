@@ -13,8 +13,7 @@ import
   ../extension_fields,
   ../elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
   ../pairings/[cyclotomic_subgroups, miller_loops],
-  ../isogenies/frobenius,
-  ../../platforms/allocs
+  ../isogenies/frobenius
 
 # Slow generic implementation
 # ------------------------------------------------------------
@@ -65,7 +64,7 @@ func millerLoopAddchain*(
        Qs: ptr UncheckedArray[ECP_ShortW_Aff[Fp2[BN254_Nogami], G2]],
        Ps: ptr UncheckedArray[ECP_ShortW_Aff[Fp[BN254_Nogami], G1]],
        N: int
-     ) =
+     ) {.noInline.} =
   ## Miller Loop for BN254-Nogami curve
   ## Computes f{6u+2,Q}(P) with u the BLS curve parameter
   var Ts = allocStackArray(ECP_ShortW_Prj[Fp2[BN254_Nogami], G2], N)

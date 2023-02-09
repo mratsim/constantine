@@ -18,7 +18,8 @@ import
     extended_precision
   ],
   ./bithacks,
-  ./static_for
+  ./static_for,
+  ./allocs
 
 export
   ct_types,
@@ -28,7 +29,8 @@ export
   extended_precision,
   ct_division,
   bithacks,
-  staticFor
+  staticFor,
+  allocs
 
 when X86 and GCC_Compatible:
   import isa/[cpuinfo_x86, macro_assembler_x86]
