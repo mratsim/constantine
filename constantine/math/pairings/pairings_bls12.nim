@@ -159,8 +159,7 @@ func pairing_bls12*[C](
   ## Compute the optimal Ate Pairing for BLS12 curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
-  # gt.millerLoopAddchain(Q, P)
-  gt.millerLoopGenericBLS12(Q, P)
+  gt.millerLoopAddchain(Q, P)
   gt.finalExpEasy()
   gt.finalExpHard_BLS12()
 

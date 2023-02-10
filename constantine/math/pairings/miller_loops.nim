@@ -57,24 +57,36 @@ func basicMillerLoop*[FT, F1, F2](
     doAssert FT.C == F2.C
 
   const naf = ate_param.recodeNafForPairing()
-  var line {.noInit.}: Line[F2]
+  var line0 {.noInit.}, line1 {.noInit.}: Line[F2]
   var nQ {.noInit.}: ECP_ShortW_Aff[F2, G2]
   f.setOne()
   nQ.neg(Q)
 
-  for i in countdown(naf.len-1, 0):
+  block: # naf.len - 1
+    line0.line_double(T, P)
+    let bit = naf[naf.len-1]
+    if bit == 1:
+      line1.line_add(T, Q, P)
+      f.prod_from_2_lines(line0, line1)
+    elif bit == -1:
+      line1.line_add(T, nQ, P)
+      f.prod_from_2_lines(line0, line1)
+    else:
+      f.mul_by_line(line0)
+
+  for i in countdown(naf.len-2, 0):
     let bit = naf[i]
-    if i != naf.len-1:
-      f.square()
-    line.line_double(T, P)
-    f.mul_by_line(line)
+    f.square()
+    line0.line_double(T, P)
 
     if bit == 1:
-      line.line_add(T, Q, P)
-      f.mul_by_line(line)
+      line1.line_add(T, Q, P)
+      f.mul_by_2_lines(line0, line1)
     elif bit == -1:
-      line.line_add(T, nQ, P)
-      f.mul_by_line(line)
+      line1.line_add(T, nQ, P)
+      f.mul_by_2_lines(line0, line1)
+    else:
+      f.mul_by_line(line0)
 
 func millerCorrectionBN*[FT, F1, F2](
        f: var FT,
@@ -146,68 +158,59 @@ func miller_init_double_then_add*[FT, F1, F2](
     doAssert FT.C == F2.C
     doAssert numDoublings >= 1
 
-  var line {.noInit.}: Line[F2]
-
-  # First step: 0b10, T <- Q, f = 1 (mod p¹²), f *= line
-  # ----------------------------------------------------
+  var line0 {.noInit.}, line1 {.noInit.}: Line[F2]
   T.fromAffine(Q)
 
-  # f.square() -> square(1)
-  line.line_double(T, P)
+  # First step: 0b1..., T <- Q, f = 1 (mod p¹²), f *= line
+  line0.line_double(T, P)
 
-  # Doubling steps: 0b10...00
-  # ----------------------------------------------------
-
-  # Process all doublings, the second is special cased
-  # as:
-  # - The first line is squared (sparse * sparse)
-  # - The second is (somewhat-sparse * sparse)
+  # Second step: 0b10 or 0b11
+  # If we have more than 1 doubling, we square the line instead of squaring f
   when numDoublings >= 2:
-    f.prod_from_2_lines(line, line)
-    line.line_double(T, P)
-    f.mul_by_line(line)
-    for _ in 2 ..< numDoublings:
-      f.square()
-      line.line_double(T, P)
-      f.mul_by_line(line)
+    f.prod_from_2_lines(line0, line0)
+    line0.line_double(T, P)
+
+  # Doublings step: 0b10...0
+  for _ in 2 ..< numDoublings:
+    # Apply previous line0
+    f.mul_by_line(line0)
+    f.square()
+    line0.line_double(T, P)
 
   # Addition step: 0b10...01
-  # ------------------------------------------------
-
-  # If there was only a single doubling needed,
-  # we special case the addition as
-  # - The first line and second are sparse (sparse * sparse)
+  line1.line_add(T, Q, P)
   when numDoublings == 1:
-    # f *= line <=> f = line for the first iteration
-    var line2 {.noInit.}: Line[F2]
-    line2.line_add(T, Q, P)
-    f.prod_from_2_lines(line, line2)
+    f.prod_from_2_lines(line0, line1)
   else:
-    line.line_add(T, Q, P)
-    f.mul_by_line(line)
+    f.mul_by_2_lines(line0, line1)
 
 func miller_accum_double_then_add*[FT, F1, F2](
        f: var FT,
        T: var ECP_ShortW_Prj[F2, G2],
        Q: ECP_ShortW_Aff[F2, G2],
        P: ECP_ShortW_Aff[F1, G1],
-       numDoublings: int,
-       add = true) =
+       numDoublings: int, add = true) =
   ## Continue a Miller Loop with
   ## - `numDoubling` doublings
   ## - 1 add
   ##
   ## f and T are updated
 
-  var line {.noInit.}: Line[F2]
-  for _ in 0 ..< numDoublings:
+  var line0 {.noInit.}, line1 {.noInit.}: Line[F2]
+
+  f.square()
+  line0.line_double(T, P)
+
+  for _ in 1 ..< numDoublings:
+    f.mul_by_line(line0)
     f.square()
-    line.line_double(T, P)
-    f.mul_by_line(line)
+    line0.line_double(T, P)
 
   if add:
-    line.line_add(T, Q, P)
-    f.mul_by_line(line)
+    line1.line_add(T, Q, P)
+    f.mul_by_2_lines(line0, line1)
+  else:
+    f.mul_by_line(line0)
 
 # Miller Loop - multi-pairing
 # ----------------------------------------------------------------------------
@@ -271,10 +274,8 @@ func add_jToN_negateQ[FT, F1, F2](
        Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
        N: int)=
   ## Addition steps for pairings 0 to N
-
   var nQ{.noInit.}: ECP_ShortW_Aff[F2, G2]
 
-  {.push checks: off.} # No OverflowError or IndexError allowed
   # Sparse merge 2 by 2, starting from 0
   for i in countup(j, N-1, 2):
     if i+1 >= N:

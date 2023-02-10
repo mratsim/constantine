@@ -168,7 +168,7 @@ func pairing_bn*[C](
   ## Compute the optimal Ate Pairing for BN curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
-  when false: # C == BN254_Nogami:
+  when C == BN254_Nogami:
     gt.millerLoopAddChain(Q, P)
   else:
     gt.millerLoopGenericBN(Q, P)
@@ -184,7 +184,7 @@ func pairing_bn*[N: static int, C](
   ## Output:
   ##   The product of pairings
   ##   e(P₀, Q₀) * e(P₁, Q₁) * e(P₂, Q₂) * ... * e(Pₙ, Qₙ) ∈ Gt
-  when false: # C == BN254_Nogami:
+  when C == BN254_Nogami:
     gt.millerLoopAddChain(Qs.asUnchecked(), Ps.asUnchecked(), N)
   else:
     gt.millerLoopGenericBN(Qs.asUnchecked(), Ps.asUnchecked(), N)
