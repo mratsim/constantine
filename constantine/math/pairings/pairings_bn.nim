@@ -16,7 +16,6 @@ import
   ],
   ../isogenies/frobenius,
   ../constants/zoo_pairings,
-  ./lines_eval,
   ./cyclotomic_subgroups,
   ./miller_loops
 
@@ -58,17 +57,14 @@ func millerLoopGenericBN*[C](
   var T {.noInit.}: ECP_ShortW_Prj[Fp2[C], G2]
   T.fromAffine(Q)
 
-  basicMillerLoop(
-    f, T,
-    P, Q,
-    pairing(C, ate_param), pairing(C, ate_param_isNeg)
-  )
+  basicMillerLoop(f, T, P, Q, pairing(C, ate_param))
+
+  when pairing(C, ate_param_is_neg):
+    f.conj()
+    T.neg()
 
   # Ate pairing for BN curves needs adjustment after basic Miller loop
-  f.millerCorrectionBN(
-    T, Q, P,
-    pairing(C, ate_param_isNeg)
-  )
+  f.millerCorrectionBN(T, Q, P)
 
 func millerLoopGenericBN*[C](
        f: var Fp12[C],
@@ -82,15 +78,16 @@ func millerLoopGenericBN*[C](
   for i in 0 ..< N:
     Ts[i].fromAffine(Qs[i])
 
-  basicMillerLoop(
-    f, Ts,
-    Ps, Qs, N,
-    pairing(C, ate_param), pairing(C, ate_param_isNeg)
-  )
+  basicMillerLoop(f, Ts, Ps, Qs, N, pairing(C, ate_param))
+
+  when pairing(C, ate_param_is_neg):
+    f.conj()
+    for i in 0 ..< N:
+      Ts[i].neg()
 
   # Ate pairing for BN curves needs adjustment after basic Miller loop
   for i in 0 ..< N:
-    f.millerCorrectionBN(Ts[i], Qs[i], Ps[i], pairing(C, ate_param_isNeg))
+    f.millerCorrectionBN(Ts[i], Qs[i], Ps[i])
 
 func finalExpGeneric[C: static Curve](f: var Fp12[C]) =
   ## A generic and slow implementation of final exponentiation

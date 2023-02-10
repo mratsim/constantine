@@ -54,9 +54,10 @@ func millerLoopAddchain*(
 
   # Negative AteParam
   f.conj()
+  T.neg()
 
   # Ate pairing for BN curves needs adjustment after basic Miller loop
-  f.millerCorrectionBN(T, Q, P, BN254_Nogami_pairing_ate_param_isNeg)
+  f.millerCorrectionBN(T, Q, P)
 
 func millerLoopAddchain*(
        f: var Fp12[BN254_Nogami],
@@ -76,9 +77,11 @@ func millerLoopAddchain*(
 
   # Negative AteParam
   f.conj()
+  for i in 0 ..< N:
+    Ts[i].neg()
 
   for i in 0 ..< N:
-    f.millerCorrectionBN(Ts[i], Qs[i], Ps[i], BN254_Nogami_pairing_ate_param_isNeg)
+    f.millerCorrectionBN(Ts[i], Qs[i], Ps[i])
 
 func cycl_exp_by_curve_param*(
        r: var Fp12[BN254_Nogami], a: Fp12[BN254_Nogami],

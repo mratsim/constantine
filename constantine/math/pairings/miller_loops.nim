@@ -17,7 +17,7 @@ import
   ./lines_eval
 
 # No exceptions allowed
-{.push raises: [].}
+{.push raises: [], checks: off.}
 
 # ############################################################
 #                                                            #
@@ -43,10 +43,15 @@ func basicMillerLoop*[FT, F1, F2](
        T: var ECP_ShortW_Prj[F2, G2],
        P: ECP_ShortW_Aff[F1, G1],
        Q: ECP_ShortW_Aff[F2, G2],
-       ate_param: static BigInt,
-       ate_param_isNeg: static bool
-    ) =
+       ate_param: static BigInt) =
   ## Basic Miller loop iterations
+  ##
+  ## Multiplications by constants in the Miller loop is eliminated by final exponentiation
+  ## aka cofactor clearing in the pairing group.
+  ##
+  ## This means that there is no need to inverse/conjugate when `ate_param_isNeg` is false
+  ## in the general case.
+  ## If further processing is required, `ate_param_isNeg` must be taken into account by the caller.
   static:
     doAssert FT.C == F1.C
     doAssert FT.C == F2.C
@@ -71,26 +76,19 @@ func basicMillerLoop*[FT, F1, F2](
       line.line_add(T, nQ, P)
       f.mul_by_line(line)
 
-  when ate_param_isNeg:
-    # In GT, x^-1 == conjugate(x)
-    # Remark 7.1, chapter 7.1.1 of Guide to Pairing-Based Cryptography, El Mrabet, 2017
-    f.conj()
-
 func millerCorrectionBN*[FT, F1, F2](
        f: var FT,
        T: var ECP_ShortW_Prj[F2, G2],
        Q: ECP_ShortW_Aff[F2, G2],
-       P: ECP_ShortW_Aff[F1, G1],
-       ate_param_isNeg: static bool
-     ) =
+       P: ECP_ShortW_Aff[F1, G1]) =
   ## Ate pairing for BN curves need adjustment after basic Miller loop
+  ## If `ate_param_isNeg` f must be cyclotomic inverted/conjugated
+  ## and T must be negated by the caller.
   static:
     doAssert FT.C == F1.C
     doAssert FT.C == F2.C
     doAssert FT.C.family() == BarretoNaehrig
 
-  when ate_param_isNeg:
-    T.neg()
   var V {.noInit.}: typeof(Q)
   var line1 {.noInit.}, line2 {.noInit.}: Line[F2]
 
@@ -136,8 +134,7 @@ func miller_init_double_then_add*[FT, F1, F2](
        T: var ECP_ShortW_Prj[F2, G2],
        Q: ECP_ShortW_Aff[F2, G2],
        P: ECP_ShortW_Aff[F1, G1],
-       numDoublings: static int
-     ) =
+       numDoublings: static int) =
   ## Start a Miller Loop with
   ## - `numDoubling` doublings
   ## - 1 add
@@ -149,7 +146,6 @@ func miller_init_double_then_add*[FT, F1, F2](
     doAssert FT.C == F2.C
     doAssert numDoublings >= 1
 
-  {.push checks: off.} # No OverflowError or IndexError allowed
   var line {.noInit.}: Line[F2]
 
   # First step: 0b10, T <- Q, f = 1 (mod p¹²), f *= line
@@ -190,28 +186,18 @@ func miller_init_double_then_add*[FT, F1, F2](
     line.line_add(T, Q, P)
     f.mul_by_line(line)
 
-  {.pop.} # No OverflowError or IndexError allowed
-
 func miller_accum_double_then_add*[FT, F1, F2](
        f: var FT,
        T: var ECP_ShortW_Prj[F2, G2],
        Q: ECP_ShortW_Aff[F2, G2],
        P: ECP_ShortW_Aff[F1, G1],
        numDoublings: int,
-       add = true
-     ) =
+       add = true) =
   ## Continue a Miller Loop with
   ## - `numDoubling` doublings
   ## - 1 add
   ##
   ## f and T are updated
-  #
-  # `numDoublings` and `add` can be hardcoded at compile-time
-  # to prevent fault attacks.
-  # But fault attacks only happen on embedded
-  # and embedded is likely to want to minimize codesize.
-  # What to do?
-  {.push checks: off.} # No OverflowError or IndexError allowed
 
   var line {.noInit.}: Line[F2]
   for _ in 0 ..< numDoublings:
@@ -240,7 +226,6 @@ func double_jToN[FT, F1, F2](
        N: int) =
   ## Doubling steps for pairings j to N
 
-  {.push checks: off.} # No OverflowError or IndexError allowed
   # Sparse merge 2 by 2, starting from j
   for i in countup(j, N-1, 2):
     if i+1 >= N:
@@ -254,8 +239,6 @@ func double_jToN[FT, F1, F2](
     line0.line_double(Ts[N-1], Ps[N-1])
     f.mul_by_line(line0)
 
-  {.pop.}
-
 func add_jToN[FT, F1, F2](
        f: var FT,
        j: static int,
@@ -266,7 +249,6 @@ func add_jToN[FT, F1, F2](
        N: int)=
   ## Addition steps for pairings 0 to N
 
-  {.push checks: off.} # No OverflowError or IndexError allowed
   # Sparse merge 2 by 2, starting from 0
   for i in countup(j, N-1, 2):
     if i+1 >= N:
@@ -279,8 +261,6 @@ func add_jToN[FT, F1, F2](
   if (N and 1) == 1: # N >= 2 and N is odd, there is a leftover
     line0.line_add(Ts[N-1], Qs[N-1], Ps[N-1])
     f.mul_by_line(line0)
-
-  {.pop.}
 
 func add_jToN_negateQ[FT, F1, F2](
        f: var FT,
@@ -311,18 +291,21 @@ func add_jToN_negateQ[FT, F1, F2](
     line0.line_add(Ts[N-1], nQ, Ps[N-1])
     f.mul_by_line(line0)
 
-  {.pop.}
-
 func basicMillerLoop*[FT, F1, F2](
        f: var FT,
        Ts: ptr UncheckedArray[ECP_ShortW_Prj[F2, G2]],
        Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
        Qs: ptr UncheckedArray[ECP_ShortW_Aff[F2, G2]],
        N: int,
-       ate_param: static Bigint,
-       ate_param_isNeg: static bool
-    ) =
+       ate_param: static Bigint) =
   ## Basic Miller loop iterations
+  ##
+  ## Multiplications by constants in the Miller loop is eliminated by final exponentiation
+  ## aka cofactor clearing in the pairing group.
+  ##
+  ## This means that there is no need to inverse/conjugate when `ate_param_isNeg` is false
+  ## in the general case.
+  ## If further processing is required, `ate_param_isNeg` must be taken into account by the caller.
 
   static:
     doAssert FT.C == F1.C
@@ -343,19 +326,13 @@ func basicMillerLoop*[FT, F1, F2](
     elif bit == -1:
       f.add_jToN_negateQ(j=0, line0, line1, Ts, Qs, Ps, N)
 
-  when ate_param_isNeg:
-    # In GT, x^-1 == conjugate(x)
-    # Remark 7.1, chapter 7.1.1 of Guide to Pairing-Based Cryptography, El Mrabet, 2017
-    f.conj()
-
 func miller_init_double_then_add*[FT, F1, F2](
        f: var FT,
        Ts: ptr UncheckedArray[ECP_ShortW_Prj[F2, G2]],
        Qs: ptr UncheckedArray[ECP_ShortW_Aff[F2, G2]],
        Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
        N: int,
-       numDoublings: static int
-     ) =
+       numDoublings: static int) =
   ## Start a Miller Loop
   ## This means
   ## - 1 doubling
@@ -367,7 +344,6 @@ func miller_init_double_then_add*[FT, F1, F2](
     doAssert FT.C == F1.C
     doAssert FT.C == F2.C
 
-  {.push checks: off.} # No OverflowError or IndexError allowed
   var line0 {.noInit.}, line1 {.noInit.}: Line[F2]
 
   # First step: T <- Q, f = 1 (mod p¹²), f *= line
@@ -408,8 +384,6 @@ func miller_init_double_then_add*[FT, F1, F2](
   else:
     f.add_jToN(j=0,line0, line1, Ts, Qs, Ps, N)
 
-  {.pop.} # No OverflowError or IndexError allowed
-
 func miller_accum_double_then_add*[FT, F1, F2](
        f: var FT,
        Ts: ptr UncheckedArray[ECP_ShortW_Prj[F2, G2]],
@@ -417,8 +391,7 @@ func miller_accum_double_then_add*[FT, F1, F2](
        Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
        N: int,
        numDoublings: int,
-       add = true
-     ) =
+       add = true) =
   ## Continue a Miller Loop with
   ## - `numDoubling` doublings
   ## - 1 add

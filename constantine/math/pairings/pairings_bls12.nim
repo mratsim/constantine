@@ -18,7 +18,6 @@ import
   ../constants/zoo_pairings,
   ../arithmetic,
   ./cyclotomic_subgroups,
-  ./lines_eval,
   ./miller_loops
 
 export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11225
@@ -62,11 +61,7 @@ func millerLoopGenericBLS12*[C](
   var T {.noInit.}: ECP_ShortW_Prj[Fp2[C], G2]
   T.fromAffine(Q)
 
-  basicMillerLoop(
-    f, T,
-    P, Q,
-    pairing(C, ate_param), pairing(C, ate_param_isNeg)
-  )
+  basicMillerLoop(f, T, P, Q, pairing(C, ate_param))
 
 func millerLoopGenericBLS12*[C](
        f: var Fp12[C],
@@ -80,11 +75,7 @@ func millerLoopGenericBLS12*[C](
   for i in 0 ..< N:
     Ts[i].fromAffine(Qs[i])
 
-  basicMillerLoop(
-    f, Ts,
-    Ps, Qs, N,
-    pairing(C, ate_param), pairing(C, ate_param_isNeg)
-  )
+  basicMillerLoop(f, Ts, Ps, Qs, N, pairing(C, ate_param))
 
 func finalExpGeneric[C: static Curve](f: var Fp12[C]) =
   ## A generic and slow implementation of final exponentiation
@@ -168,6 +159,7 @@ func pairing_bls12*[C](
   ## Compute the optimal Ate Pairing for BLS12 curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
+  # gt.millerLoopAddchain(Q, P)
   gt.millerLoopGenericBLS12(Q, P)
   gt.finalExpEasy()
   gt.finalExpHard_BLS12()
@@ -181,6 +173,7 @@ func pairing_bls12*[N: static int, C](
   ## Output:
   ##   The product of pairings
   ##   e(P₀, Q₀) * e(P₁, Q₁) * e(P₂, Q₂) * ... * e(Pₙ, Qₙ) ∈ Gt
+  # gt.millerLoopAddchain(Qs.asUnchecked(), Ps.asUnchecked(), N)
   gt.millerLoopGenericBLS12(Qs.asUnchecked(), Ps.asUnchecked(), N)
   gt.finalExpEasy()
   gt.finalExpHard_BLS12()
