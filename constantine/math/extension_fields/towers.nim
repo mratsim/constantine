@@ -301,7 +301,7 @@ template doublePrec*(T: type ExtensionField): type =
   when T is QuadraticExt:
     when T.F is QuadraticExt: # Fp4Dbl
       QuadraticExt2x[QuadraticExt2x[doublePrec(T.F.F)]]
-    elif T.F is CubicExt:     
+    elif T.F is CubicExt:
       when T.F.F is QuadraticExt: # Fp12 over Fp6 over Fp2
         QuadraticExt2x[CubicExt2x[QuadraticExt2x[doublePrec(T.F.F.F)]]]
     elif T.F is Fp:           # Fp2Dbl
@@ -704,7 +704,7 @@ func prod2x*(
 func prefer_3sqr_over_2mul(F: type ExtensionField): bool {.compileTime.} =
   ## Returns true
   ## if time(3sqr) < time(2mul) in the extension fields
-  
+
   let a = default(F)
   # No shortcut in the VM
   when a.c0 is ExtensionField:
@@ -716,7 +716,7 @@ func prefer_3sqr_over_2mul(F: type ExtensionField): bool {.compileTime.} =
 func has_large_NR_norm(C: static Curve): bool =
   ## Returns true if the non-residue of the extension fields
   ## has a large norm
-  
+
   const j = C.getNonResidueFp()
   const u = C.getNonResidueFp2()[0]
   const v = C.getNonResidueFp2()[1]
@@ -908,7 +908,7 @@ func square_generic(r: var QuadraticExt, a: QuadraticExt) =
 
   when QuadraticExt.prefer_3sqr_over_2mul() or
        # Other path multiplies twice by non-residue
-       QuadraticExt.C.has_large_NR_norm(): 
+       QuadraticExt.C.has_large_NR_norm():
     var v0 {.noInit.}, v1 {.noInit.}: typeof(r.c0)
     v0.square(a.c0)
     v1.square(a.c1)
@@ -977,7 +977,7 @@ func square2x_disjoint*[Fdbl, F](
 # -------------------------------------------------------------------
 
 func prodImpl_fp4o2_p3mod8[C: static Curve](r: var Fp4[C], a, b: Fp4[C]) =
-  ## Returns r = a * b 
+  ## Returns r = a * b
   ## For 𝔽p4/𝔽p2 with p ≡ 3 (mod 8),
   ##   hence 𝔽p QNR is 𝑖 = √-1 as p ≡ 3 (mod 8) implies p ≡ 3 (mod 4)
   ##   and 𝔽p SNR is (1 + i)
@@ -987,7 +987,7 @@ func prodImpl_fp4o2_p3mod8[C: static Curve](r: var Fp4[C], a, b: Fp4[C]) =
     n_a01{.noInit.}, n_a11{.noInit.}: Fp[C]
 
     t{.noInit.}: Fp4[C]
-  
+
   b10_m_b11.diff(b.c1.c0, b.c1.c1)
   b10_p_b11.sum(b.c1.c0, b.c1.c1)
   n_a01.neg(a.c0.c1)
@@ -1337,7 +1337,7 @@ func square*(r: var QuadraticExt, a: QuadraticExt) =
     elif QuadraticExt is Fp4[BLS12_377]:
       # TODO BLS12-377 slowness to fix
       r.square_generic(a)
-    else: 
+    else:
       r.square_disjoint(a.c0, a.c1)
 
 func square*(a: var QuadraticExt) =
@@ -1620,7 +1620,7 @@ func square_Chung_Hasan_SQR3(r: var CubicExt, a: CubicExt) =
 # -------------------------------------------------------------------
 
 func prodImpl_fp6o2_p3mod8[C: static Curve](r: var Fp6[C], a, b: Fp6[C]) =
-  ## Returns r = a * b 
+  ## Returns r = a * b
   ## For 𝔽p6/𝔽p2 with p ≡ 3 (mod 8),
   ##   hence 𝔽p QNR is 𝑖 = √-1 as p ≡ 3 (mod 8) implies p ≡ 3 (mod 4)
   ##   and 𝔽p SNR is (1 + i)
@@ -1662,7 +1662,7 @@ func prodImpl_fp6o2_p3mod8[C: static Curve](r: var Fp6[C], a, b: Fp6[C]) =
 # -------------------------------------------------------------------
 
 func prodImpl(r: var CubicExt, a, b: CubicExt) =
-  ## Returns r = a * b 
+  ## Returns r = a * b
   ## Algorithm is Karatsuba
   var v0{.noInit.}, v1{.noInit.}, v2{.noInit.}: typeof(r.c0)
   var t0{.noInit.}, t1{.noInit.}, t2{.noInit.}: typeof(r.c0)
@@ -1838,9 +1838,9 @@ func mul_sparse_by_xy0*[Fpkdiv3](r: var CubicExt, a: CubicExt,
                                  x, y: Fpkdiv3) =
   ## Sparse multiplication of a cubic extension element
   ## with coordinates (a₀, a₁, a₂) by (b₀, b₁, 0)
-  ## 
+  ##
   ## r and a must not alias
-  
+
   # v0 = a0 b0
   # v1 = a1 b1
   # v2 = a2 b2 = 0
@@ -1881,7 +1881,7 @@ func mul2x_sparse_by_xy0*[Fpkdiv3](r: var CubicExt2x, a: CubicExt,
                                  x, y: Fpkdiv3) =
   ## Sparse multiplication of a cubic extension element
   ## with coordinates (a₀, a₁, a₂) by (b₀, b₁, 0)
-  ## 
+  ##
   ## r and a must not alias
 
   static: doAssert a.c0 is Fpkdiv3
@@ -1911,7 +1911,7 @@ func mul2x_sparse_by_xy0*[Fpkdiv3](r: var CubicExt2x, a: CubicExt,
 func mul_sparse_by_0yz*[Fpkdiv3](r: var CubicExt, a: CubicExt, y, z: Fpkdiv3) =
   ## Sparse multiplication of a cubic extension element
   ## with coordinates (a₀, a₁, a₂) by (0, b₁, b₂)
-  ## 
+  ##
   ## r and a must not alias
 
   # v0 = a0 b0 = 0
@@ -1932,7 +1932,7 @@ func mul_sparse_by_0yz*[Fpkdiv3](r: var CubicExt, a: CubicExt, y, z: Fpkdiv3) =
   var
     v1 {.noInit.}: Fpkdiv3
     v2 {.noInit.}: Fpkdiv3
-  
+
   v1.prod(a.c1, y)
   v2.prod(a.c2, z)
 
@@ -1953,7 +1953,7 @@ func mul_sparse_by_0yz*[Fpkdiv3](r: var CubicExt, a: CubicExt, y, z: Fpkdiv3) =
 func mul2x_sparse_by_0yz*[Fpkdiv3](r: var CubicExt2x, a: CubicExt, y, z: Fpkdiv3) =
   ## Sparse multiplication of a cubic extension element
   ## with coordinates (a₀, a₁, a₂) by (0, b₁, b₂)
-  ## 
+  ##
   ## r and a must not alias
   static: doAssert a.c0 is Fpkdiv3
 
@@ -1962,7 +1962,7 @@ func mul2x_sparse_by_0yz*[Fpkdiv3](r: var CubicExt2x, a: CubicExt, y, z: Fpkdiv3
     V2 {.noInit.}: doubleprec(Fpkdiv3)
     t1 {.noInit.}: Fpkdiv3
     t2 {.noInit.}: Fpkdiv3
-  
+
   V1.prod2x(a.c1, y)
   V2.prod2x(a.c2, z)
 
@@ -2082,7 +2082,7 @@ func inv2xImpl(r: var CubicExt, a: CubicExt) =
   t2.prod2x(A, a.c0)
   t.sum2xUnr(t, t2)
   f.redc2x(t)
-  
+
   f.inv()
 
   # (a0 + a1 v + a2 v²)^-1 = (A + B v + C v²) / F

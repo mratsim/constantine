@@ -59,29 +59,29 @@ func millerLoopAddchain*(
   # Ate pairing for BN curves needs adjustment after basic Miller loop
   f.millerCorrectionBN(T, Q, P)
 
-# func millerLoopAddchain*(
-#        f: var Fp12[BN254_Nogami],
-#        Qs: ptr UncheckedArray[ECP_ShortW_Aff[Fp2[BN254_Nogami], G2]],
-#        Ps: ptr UncheckedArray[ECP_ShortW_Aff[Fp[BN254_Nogami], G1]],
-#        N: int
-#      ) {.noInline.} =
-#   ## Miller Loop for BN254-Nogami curve
-#   ## Computes f{6u+2,Q}(P) with u the BLS curve parameter
-#   var Ts = allocStackArray(ECP_ShortW_Prj[Fp2[BN254_Nogami], G2], N)
+func millerLoopAddchain*(
+       f: var Fp12[BN254_Nogami],
+       Qs: ptr UncheckedArray[ECP_ShortW_Aff[Fp2[BN254_Nogami], G2]],
+       Ps: ptr UncheckedArray[ECP_ShortW_Aff[Fp[BN254_Nogami], G1]],
+       N: int
+     ) {.noInline.} =
+  ## Miller Loop for BN254-Nogami curve
+  ## Computes f{6u+2,Q}(P) with u the BLS curve parameter
+  var Ts = allocStackArray(ECP_ShortW_Prj[Fp2[BN254_Nogami], G2], N)
 
-#   f.miller_init_double_then_add( Ts, Qs, Ps, N, 1)               # 0b11
-#   f.miller_accum_double_then_add(Ts, Qs, Ps, N, 6)               # 0b11000001
-#   f.miller_accum_double_then_add(Ts, Qs, Ps, N, 1)               # 0b110000011
-#   f.miller_accum_double_then_add(Ts, Qs, Ps, N, 54)              # 0b110000011000000000000000000000000000000000000000000000000000001
-#   f.miller_accum_double_then_add(Ts, Qs, Ps, N, 2, add = false)  # 0b11000001100000000000000000000000000000000000000000000000000000100
+  f.miller_init_double_then_add( Ts, Qs, Ps, N, 1)               # 0b11
+  f.miller_accum_double_then_add(Ts, Qs, Ps, N, 6)               # 0b11000001
+  f.miller_accum_double_then_add(Ts, Qs, Ps, N, 1)               # 0b110000011
+  f.miller_accum_double_then_add(Ts, Qs, Ps, N, 54)              # 0b110000011000000000000000000000000000000000000000000000000000001
+  f.miller_accum_double_then_add(Ts, Qs, Ps, N, 2, add = false)  # 0b11000001100000000000000000000000000000000000000000000000000000100
 
-#   # Negative AteParam
-#   f.conj()
-#   for i in 0 ..< N:
-#     Ts[i].neg()
+  # Negative AteParam
+  f.conj()
+  for i in 0 ..< N:
+    Ts[i].neg()
 
-#   for i in 0 ..< N:
-#     f.millerCorrectionBN(Ts[i], Qs[i], Ps[i])
+  for i in 0 ..< N:
+    f.millerCorrectionBN(Ts[i], Qs[i], Ps[i])
 
 func cycl_exp_by_curve_param*(
        r: var Fp12[BN254_Nogami], a: Fp12[BN254_Nogami],

@@ -172,7 +172,6 @@ func pairing_bls12*[N: static int, C](
   ## Output:
   ##   The product of pairings
   ##   e(P₀, Q₀) * e(P₁, Q₁) * e(P₂, Q₂) * ... * e(Pₙ, Qₙ) ∈ Gt
-  # gt.millerLoopAddchain(Qs.asUnchecked(), Ps.asUnchecked(), N)
-  gt.millerLoopGenericBLS12(Qs.asUnchecked(), Ps.asUnchecked(), N)
+  gt.millerLoopAddchain(Qs.asUnchecked(), Ps.asUnchecked(), N)
   gt.finalExpEasy()
   gt.finalExpHard_BLS12()
