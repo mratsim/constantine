@@ -33,20 +33,16 @@ export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11
 
 func millerLoopBW6_761_naive[C](
        f: var Fp6[C],
-       P: ECP_ShortW_Aff[Fp[C], G1],
-       Q: ECP_ShortW_Aff[Fp[C], G2]
+       Q: ECP_ShortW_Aff[Fp[C], G2],
+       P: ECP_ShortW_Aff[Fp[C], G1]
      ) =
   ## Miller Loop for BW6_761 curve
   ## Computes f_{u+1,Q}(P)*Frobenius(f_{u*(u^2-u-1),Q}(P))
-
-  var
-    T {.noInit.}: ECP_ShortW_Prj[Fp[C], G2]
-    line {.noInit.}: Line[Fp[C]]
-
+  var T {.noInit.}: ECP_ShortW_Prj[Fp[C], G2]
   T.fromAffine(Q)
 
   basicMillerLoop(
-    f, line, T,
+    f, T,
     P, Q,
     pairing(C, ate_param_1_unopt), pairing(C, ate_param_1_unopt_isNeg)
   )
@@ -55,7 +51,7 @@ func millerLoopBW6_761_naive[C](
   T.fromAffine(Q)
 
   basicMillerLoop(
-    f2, line, T,
+    f2, T,
     P, Q,
     pairing(C, ate_param_2_unopt), pairing(C, ate_param_2_unopt_isNeg)
   )
@@ -79,16 +75,15 @@ func finalExpHard_BW6_761*[C: static Curve](f: var Fp6[C]) =
 
 func millerLoopBW6_761_opt_to_debug[C](
        f: var Fp6[C],
-       P: ECP_ShortW_Aff[Fp[C], G1],
-       Q: ECP_ShortW_Aff[Fp[C], G2]
+       Q: ECP_ShortW_Aff[Fp[C], G2],
+       P: ECP_ShortW_Aff[Fp[C], G1]
      ) {.used.} =
   ## Miller Loop Otpimized for BW6_761 curve
 
   # 1st part: f_{u,Q}(P)
   # ------------------------------
-  var
-    T {.noInit.}: ECP_ShortW_Prj[Fp[C], G2]
-    line {.noInit.}: Line[Fp[C]]
+  var T {.noInit.}: ECP_ShortW_Prj[Fp[C], G2]
+  var line {.noInit.}: Line[Fp[C]]
 
   T.fromAffine(Q)
   f.setOne()
@@ -161,6 +156,6 @@ func pairing_bw6_761_reference*[C](
   ##
   ## Reference implementation
   {.error: "BW6_761 Miller loop is not working yet".}
-  gt.millerLoopBW6_761_naive(P, Q)
+  gt.millerLoopBW6_761_naive(Q, P)
   gt.finalExpEasy()
   gt.finalExpHard_BW6_761()

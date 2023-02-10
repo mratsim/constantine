@@ -50,19 +50,16 @@ export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11
 
 func millerLoopGenericBN*[C](
        f: var Fp12[C],
+       Q: ECP_ShortW_Aff[Fp2[C], G2],
        P: ECP_ShortW_Aff[Fp[C], G1],
-       Q: ECP_ShortW_Aff[Fp2[C], G2]
      ) {.meter.} =
   ## Generic Miller Loop for BN curves
   ## Computes f{6u+2,Q}(P) with u the BN curve parameter
-  var
-    T {.noInit.}: ECP_ShortW_Prj[Fp2[C], G2]
-    line {.noInit.}: Line[Fp2[C]]
-
+  var T {.noInit.}: ECP_ShortW_Prj[Fp2[C], G2]
   T.fromAffine(Q)
 
   basicMillerLoop(
-    f, line, T,
+    f, T,
     P, Q,
     pairing(C, ate_param), pairing(C, ate_param_isNeg)
   )
@@ -75,21 +72,18 @@ func millerLoopGenericBN*[C](
 
 func millerLoopGenericBN*[C](
        f: var Fp12[C],
-       Ps: ptr UncheckedArray[ECP_ShortW_Aff[Fp[C], G1]],
        Qs: ptr UncheckedArray[ECP_ShortW_Aff[Fp2[C], G2]],
+       Ps: ptr UncheckedArray[ECP_ShortW_Aff[Fp[C], G1]],
        N: int
-     ) {.noinline, meter.} =
+     ) {.noinline, tags:[Alloca], meter.} =
   ## Generic Miller Loop for BN curves
   ## Computes f{6u+2,Q}(P) with u the BN curve parameter
-  var
-    Ts = allocStackArray(ECP_ShortW_Prj[Fp2[C], G2], N)
-    line0 {.noInit.}, line1 {.noInit.}: Line[Fp2[C]]
-
+  var Ts = allocStackArray(ECP_ShortW_Prj[Fp2[C], G2], N)
   for i in 0 ..< N:
     Ts[i].fromAffine(Qs[i])
 
   basicMillerLoop(
-    f, line0, line1, Ts,
+    f, Ts,
     Ps, Qs, N,
     pairing(C, ate_param), pairing(C, ate_param_isNeg)
   )
@@ -177,10 +171,10 @@ func pairing_bn*[C](
   ## Compute the optimal Ate Pairing for BN curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
-  when C == BN254_Nogami:
+  when false: # C == BN254_Nogami:
     gt.millerLoopAddChain(Q, P)
   else:
-    gt.millerLoopGenericBN(P, Q)
+    gt.millerLoopGenericBN(Q, P)
   gt.finalExpEasy()
   gt.finalExpHard_BN()
 
@@ -193,9 +187,9 @@ func pairing_bn*[N: static int, C](
   ## Output:
   ##   The product of pairings
   ##   e(P₀, Q₀) * e(P₁, Q₁) * e(P₂, Q₂) * ... * e(Pₙ, Qₙ) ∈ Gt
-  when C == BN254_Nogami:
+  when false: # C == BN254_Nogami:
     gt.millerLoopAddChain(Qs.asUnchecked(), Ps.asUnchecked(), N)
   else:
-    gt.millerLoopGenericBN(Ps.asUnchecked(), Qs.asUnchecked(), N)
+    gt.millerLoopGenericBN(Qs.asUnchecked(), Ps.asUnchecked(), N)
   gt.finalExpEasy()
   gt.finalExpHard_BN()

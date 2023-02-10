@@ -21,8 +21,7 @@ import
 # The bit count must be exact for the Miller loop
 const BLS12_377_pairing_ate_param* = block:
   # BLS12 Miller loop is parametrized by u
-  # +1 to bitlength so that we can mul by 3 for NAF encoding
-  BigInt[64+1].fromHex"0x8508c00000000001"
+  BigInt[64].fromHex"0x8508c00000000001"
 
 const BLS12_377_pairing_ate_param_isNeg* = false
 

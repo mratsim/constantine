@@ -553,11 +553,11 @@ func invmod*[bits](r: var BigInt[bits], a, M: BigInt[bits]) =
 # - https://vulms.vu.edu.pk/Courses/CS501/Downloads/Bit-Pair%20Recoding.pdf
 # - http://www.ecs.umass.edu/ece/koren/arith/simulator/ModBooth/
 
-iterator recoding_l2r_vartime*(a: BigInt): int8 =
+iterator recoding_l2r_signed_vartime*[bits: static int](a: BigInt[bits]): int8 =
   ## This is a minimum-Hamming-Weight left-to-right recoding.
   ## It outputs signed {-1, 0, 1} bits from MSB to LSB
   ## with minimal Hamming Weight to minimize operations
-  ## in Miller Loop and vartime scalar multiplications
+  ## in Miller Loops and vartime scalar multiplications
   ##
   ## ⚠️ While the recoding is constant-time,
   ##   usage of this recoding is intended vartime
@@ -568,12 +568,12 @@ iterator recoding_l2r_vartime*(a: BigInt): int8 =
 
   var bi, bi1, ri, ri1, ri2: int8
 
-  var i = a.bits
+  var i = bits
   while true:
-    if i == a.bits: # We rely on compiler to hoist this branch out of the loop.
+    if i == bits: # We rely on compiler to hoist this branch out of the loop.
       ri = 0
-      ri1 = int8 a.bit(a.bits-1)
-      ri2 = int8 a.bit(a.bits-2)
+      ri1 = int8 a.bit(bits-1)
+      ri2 = int8 a.bit(bits-2)
       bi = 0
     else:
       bi = bi1
@@ -585,14 +585,72 @@ iterator recoding_l2r_vartime*(a: BigInt): int8 =
         ri2 = int8 a.bit(i-2)
 
     bi1 = (bi + ri1 + ri2) shr 1
-    yield -2*bi + ri + bi1
+    let r = -2*bi + ri + bi1
+    yield r
 
-    if i > 0:
+    if i != 0:
       i -= 1
     else:
       break
 
-iterator recoding_r2l_windowed_vartime*(a: BigInt, windowLogSize: int): int {.tags:[VarTime].} =
+func recode_l2r_signed_vartime*[bits: static int](
+       recoded: var array[bits+1, SomeSignedInt], a: BigInt[bits]): int {.tags:[VarTime].} =
+  ## Recode left-to-right (MSB to LSB)
+  ## Output from most significant to least significant
+  ## Returns the number of bits used
+  type I = SomeSignedInt
+  var i = 0
+  for bit in a.recoding_l2r_signed_vartime():
+    recoded[i] = I(bit)
+    inc i
+  return i
+
+iterator recoding_r2l_signed_vartime*[bits: static int](a: BigInt[bits]): int8 =
+  ## This is a minimum-Hamming-Weight left-to-right recoding.
+  ## It outputs signed {-1, 0, 1} bits from LSB to MSB
+  ## with minimal Hamming Weight to minimize operations
+  ## in Miller Loops and vartime scalar multiplications
+  ##
+  ## ⚠️ While the recoding is constant-time,
+  ##   usage of this recoding is intended vartime
+  ##
+  ## Implementation uses 2-NAF
+  # This is equivalent to `var r = (3a - a); if (r and 1) == 0: r shr 1`
+  var ci, ci1, ri, ri1: int8
+
+  var i = 0
+  while i <= bits:
+    if i == 0: # We rely on compiler to hoist this branch out of the loop.
+      ri = int8 a.bit(0)
+      ri1 = int8 a.bit(1)
+      ci = 0
+    else:
+      ci = ci1
+      ri = ri1
+      if i >= bits - 1:
+        ri1 = 0
+      else:
+        ri1 = int8 a.bit(i+1)
+
+    ci1 = (ci + ri + ri1) shr 1
+    let r = ci + ri - 2*ci1
+    yield r
+
+    i += 1
+
+func recode_r2l_signed_vartime*[bits: static int](
+       recoded: var array[bits+1, SomeSignedInt], a: BigInt[bits]): int {.tags:[VarTime].} =
+  ## Recode right-to-left (LSB to MSB)
+  ## Output from least significant to most significant
+  ## Returns the number of bits used
+  type I = SomeSignedInt
+  var i = 0
+  for bit in a.recoding_r2l_signed_vartime():
+    recoded[i] = I(bit)
+    inc i
+  return i
+
+iterator recoding_r2l_signed_window_vartime*(a: BigInt, windowLogSize: int): int {.tags:[VarTime].} =
   ## This is a minimum-Hamming-Weight right-to-left windowed recoding with the following properties
   ## 1. The most significant non-zero bit is positive.
   ## 2. Among any w consecutive digits, at most one is non-zero.
@@ -675,17 +733,17 @@ iterator recoding_r2l_windowed_vartime*(a: BigInt, windowLogSize: int): int {.ta
       if a.isZero().bool:
         break
 
-func recode_r2l_windowed_vartime*[bits: static int](
-       naf: var array[bits+1, SomeSignedInt], a: BigInt[bits], window: int) {.tags:[VarTime].} =
+func recode_r2l_signed_window_vartime*[bits: static int](
+       naf: var array[bits+1, SomeSignedInt], a: BigInt[bits], window: int): int {.tags:[VarTime].} =
   ## Minimum Hamming-Weight windowed NAF recoding
   ## Output from least significant to most significant
+  ## Returns the number of bits used
   type I = SomeSignedInt
   var i = 0
-  for digit in a.recoding_r2l_windowed_vartime(window):
+  for digit in a.recoding_r2l_signed_window_vartime(window):
     naf[i] = I(digit)
     i += 1
-  for j in i ..< bits+1:
-    naf[j] = 0
+  return i
 
 func signedRecoding*[N: static int, I: SomeSignedInt](
        recoded: var array[N, I], scalar: BigInt, c: static int) =
@@ -728,6 +786,6 @@ func getBoothEncoding*(digit: SecretWord, bitsize: static int): SignedSecretWord
   let t = SignedSecretWord((digit + One) shr 1)
 
   # Select the result to return
-  return (t and not(isNegMask)) or ((-t) and isNegMask)
+  return (t and not isNegMask) or (-t and isNegMask)
 
 {.pop.} # raises no exceptions

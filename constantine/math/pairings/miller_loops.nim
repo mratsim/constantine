@@ -7,10 +7,12 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  ../config/curves,
   ../elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective
   ],
+  ../arithmetic,
   ../isogenies/frobenius,
   ./lines_eval
 
@@ -23,13 +25,25 @@ import
 #                                                            #
 # ############################################################
 
+func recodeNafForPairing(ate: BigInt): seq[int8] {.compileTime.} =
+  ## We need a NAF recoding and we need to skip the MSB for pairings
+  var recoded: array[ate.bits+1, int8]
+  let recodedLen = recoded.recode_r2l_signed_vartime(ate)
+  var msbPos = recodedLen-1
+  while true:
+    if recoded[msbPos] != 0:
+      break
+    else:
+      msbPos -= 1
+      doAssert msbPos >= 0
+  result = recoded[0 ..< msbPos]
+
 func basicMillerLoop*[FT, F1, F2](
        f: var FT,
-       line: var Line[F2],
        T: var ECP_ShortW_Prj[F2, G2],
        P: ECP_ShortW_Aff[F1, G1],
        Q: ECP_ShortW_Aff[F2, G2],
-       ate_param: auto,
+       ate_param: static BigInt,
        ate_param_isNeg: static bool
     ) =
   ## Basic Miller loop iterations
@@ -37,24 +51,23 @@ func basicMillerLoop*[FT, F1, F2](
     doAssert FT.C == F1.C
     doAssert FT.C == F2.C
 
-  f.setOne()
+  const naf = ate_param.recodeNafForPairing()
+  var line {.noInit.}: Line[F2]
   var nQ {.noInit.}: ECP_ShortW_Aff[F2, G2]
+  f.setOne()
   nQ.neg(Q)
 
-  template u: untyped = ate_param
-  var u3 = ate_param
-  u3 *= 3
-  for i in countdown(u3.bits - 2, 1):
-    if i != u3.bits - 2:
+  for i in countdown(naf.len-1, 0):
+    let bit = naf[i]
+    if i != naf.len-1:
       f.square()
     line.line_double(T, P)
     f.mul_by_line(line)
 
-    let naf = u3.bit(i).int8 - u.bit(i).int8 # This can throw exception
-    if naf == 1:
+    if bit == 1:
       line.line_add(T, Q, P)
       f.mul_by_line(line)
-    elif naf == -1:
+    elif bit == -1:
       line.line_add(T, nQ, P)
       f.mul_by_line(line)
 
@@ -74,6 +87,7 @@ func millerCorrectionBN*[FT, F1, F2](
   static:
     doAssert FT.C == F1.C
     doAssert FT.C == F2.C
+    doAssert FT.C.family() == BarretoNaehrig
 
   when ate_param_isNeg:
     T.neg()
@@ -301,12 +315,11 @@ func add_jToN_negateQ[FT, F1, F2](
 
 func basicMillerLoop*[FT, F1, F2](
        f: var FT,
-       line0, line1: var Line[F2],
        Ts: ptr UncheckedArray[ECP_ShortW_Prj[F2, G2]],
        Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
        Qs: ptr UncheckedArray[ECP_ShortW_Aff[F2, G2]],
        N: int,
-       ate_param: auto,
+       ate_param: static Bigint,
        ate_param_isNeg: static bool
     ) =
   ## Basic Miller loop iterations
@@ -315,20 +328,19 @@ func basicMillerLoop*[FT, F1, F2](
     doAssert FT.C == F1.C
     doAssert FT.C == F2.C
 
+  const naf = ate_param.recodeNafForPairing()
+  var line0{.noInit.}, line1{.noinit.}: Line[F2]
   f.setOne()
 
-  template u: untyped = ate_param
-  var u3 = ate_param
-  u3 *= 3
-  for i in countdown(u3.bits - 2, 1):
-    if i != u3.bits - 2:
+  for i in countdown(naf.len-1, 0):
+    let bit = naf[i]
+    if i != naf.len-1:
       f.square()
     f.double_jToN(j=0, line0, line1, Ts, Ps, N)
 
-    let naf = u3.bit(i).int8 - u.bit(i).int8 # This can throw exception
-    if naf == 1:
+    if bit == 1:
       f.add_jToN(j=0, line0, line1, Ts, Qs, Ps, N)
-    elif naf == -1:
+    elif bit == -1:
       f.add_jToN_negateQ(j=0, line0, line1, Ts, Qs, Ps, N)
 
   when ate_param_isNeg:

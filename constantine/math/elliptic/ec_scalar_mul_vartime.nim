@@ -65,7 +65,7 @@ func scalarMul_minHammingWeight_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[
   Paff.affine(P)
 
   P.setInf()
-  for bit in recoding_l2r_vartime(scalar):
+  for bit in recoding_l2r_signed_vartime(scalar):
     P.double()
     if bit == 1:
       P += Paff
@@ -96,7 +96,7 @@ func scalarMul_minHammingWeight_windowed_vartime*[EC](P: var EC, scalar: BigInt,
     type I = int64
 
   var naf {.noInit.}: array[BigInt.bits+1, I]
-  naf.recode_r2l_windowed_vartime(scalar, window)
+  let nafLen = naf.recode_r2l_signed_window_vartime(scalar, window)
 
   var P2{.noInit.}: EC
   P2.double(P)
@@ -110,18 +110,18 @@ func scalarMul_minHammingWeight_windowed_vartime*[EC](P: var EC, scalar: BigInt,
   tab.batchAffine(tabEC)
 
   # init
-  if naf[naf.len-1] > 0:
-    P.fromAffine(tab[naf[naf.len-1] shr 1])
-  elif naf[naf.len-1] < 0:
-    P.fromAffine(tab[-naf[naf.len-1] shr 1])
+  if naf[nafLen-1] > 0:
+    P.fromAffine(tab[naf[nafLen-1] shr 1])
+  elif naf[nafLen-1] < 0:
+    P.fromAffine(tab[-naf[nafLen-1] shr 1])
     P.neg()
   else:
     P.setInf()
 
   # steady state
-  for i in 1 ..< naf.len:
+  for i in 1 ..< nafLen:
     P.double()
-    let digit = naf[naf.len-1-i]
+    let digit = naf[nafLen-1-i]
     if digit > 0:
       P += tab[digit shr 1]
     elif digit < 0:

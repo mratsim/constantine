@@ -21,8 +21,7 @@ import
 # The bit count must be exact for the Miller loop
 const BN254_Nogami_pairing_ate_param* = block:
   # BN Miller loop is parametrized by 6u+2
-  # +2 to bitlength so that we can mul by 3 for NAF encoding
-  BigInt[65+2].fromHex"0x18300000000000004"
+  BigInt[65].fromHex"0x18300000000000004"
 
 const BN254_Nogami_pairing_ate_param_isNeg* = true
 

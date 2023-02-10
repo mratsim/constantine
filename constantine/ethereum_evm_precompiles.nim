@@ -348,7 +348,7 @@ func eth_evm_ecpairing*(
     if statusQ != cttEVM_Success:
       return statusQ
 
-    gt1.millerLoopGenericBN(P, Q)
+    gt1.millerLoopGenericBN(Q, P)
     if i == 0:
       gt0 = gt1
     else:

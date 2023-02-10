@@ -54,21 +54,35 @@ export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11
 
 func millerLoopGenericBLS12*[C](
        f: var Fp12[C],
-       P: ECP_ShortW_Aff[Fp[C], G1],
-       Q: ECP_ShortW_Aff[Fp2[C], G2]
+       Q: ECP_ShortW_Aff[Fp2[C], G2],
+       P: ECP_ShortW_Aff[Fp[C], G1]
      ) {.meter.} =
   ## Generic Miller Loop for BLS12 curve
   ## Computes f{u,Q}(P) with u the BLS curve parameter
-
-  var
-    T {.noInit.}: ECP_ShortW_Prj[Fp2[C], G2]
-    line {.noInit.}: Line[Fp2[C]]
-
+  var T {.noInit.}: ECP_ShortW_Prj[Fp2[C], G2]
   T.fromAffine(Q)
 
   basicMillerLoop(
-    f, line, T,
+    f, T,
     P, Q,
+    pairing(C, ate_param), pairing(C, ate_param_isNeg)
+  )
+
+func millerLoopGenericBLS12*[C](
+       f: var Fp12[C],
+       Qs: ptr UncheckedArray[ECP_ShortW_Aff[Fp2[C], G2]],
+       Ps: ptr UncheckedArray[ECP_ShortW_Aff[Fp[C], G1]],
+       N: int
+     ) {.noinline, tags:[Alloca], meter.} =
+  ## Generic Miller Loop for BLS12 curve
+  ## Computes f{u,Q}(P) with u the BLS curve parameter
+  var Ts = allocStackArray(ECP_ShortW_Prj[Fp2[C], G2], N)
+  for i in 0 ..< N:
+    Ts[i].fromAffine(Qs[i])
+
+  basicMillerLoop(
+    f, Ts,
+    Ps, Qs, N,
     pairing(C, ate_param), pairing(C, ate_param_isNeg)
   )
 
@@ -86,7 +100,7 @@ func pairing_bls12_reference*[C](
   ## Output: e(P, Q) ∈ Gt
   ##
   ## Reference implementation
-  gt.millerLoopGenericBLS12(P, Q)
+  gt.millerLoopGenericBLS12(Q, P)
   gt.finalExpGeneric()
 
 # Optimized pairing implementation
@@ -154,7 +168,7 @@ func pairing_bls12*[C](
   ## Compute the optimal Ate Pairing for BLS12 curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
-  gt.millerLoopAddchain(Q, P)
+  gt.millerLoopGenericBLS12(Q, P)
   gt.finalExpEasy()
   gt.finalExpHard_BLS12()
 
@@ -167,6 +181,6 @@ func pairing_bls12*[N: static int, C](
   ## Output:
   ##   The product of pairings
   ##   e(P₀, Q₀) * e(P₁, Q₁) * e(P₂, Q₂) * ... * e(Pₙ, Qₙ) ∈ Gt
-  gt.millerLoopAddchain(Qs.asUnchecked(), Ps.asUnchecked(), N)
+  gt.millerLoopGenericBLS12(Qs.asUnchecked(), Ps.asUnchecked(), N)
   gt.finalExpEasy()
   gt.finalExpHard_BLS12()
