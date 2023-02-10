@@ -707,9 +707,12 @@ func prefer_3sqr_over_2mul(F: type ExtensionField): bool {.compileTime.} =
 
   let a = default(F)
   # No shortcut in the VM
-  when a.c0 is ExtensionField:
-    when a.c0.c0 is ExtensionField:
+  when a.c0 is Fp12:
+    # Benchmarked on BLS12-381
+    when a.c0.c0 is Fp6:
       return true
+    elif a.c0.c0 is Fp4:
+      return false
     else: return false
   else: return false
 
@@ -2142,7 +2145,7 @@ func inv*(r: var CubicExt, a: CubicExt) =
   ## Incidentally this avoids extra check
   ## to convert Jacobian and Projective coordinates
   ## to affine for elliptic curve
-  when true:
+  when CubicExt.C.has_large_field_elem() or r is Fp12:
     r.invImpl(a)
   else:
     r.inv2xImpl(a)
