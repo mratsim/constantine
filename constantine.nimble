@@ -216,6 +216,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ----------------------------------------------------------
   ("tests/math/t_pairing_bn254_nogami_multi.nim", false),
   ("tests/math/t_pairing_bn254_snarks_multi.nim", false),
+  ("tests/math/t_pairing_bls12_377_multi.nim", false),
   ("tests/math/t_pairing_bls12_381_multi.nim", false),
 
   # Prime order fields

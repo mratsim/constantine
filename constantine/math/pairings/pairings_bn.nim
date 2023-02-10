@@ -184,7 +184,7 @@ func pairing_bn*[N: static int, C](
   ## Output:
   ##   The product of pairings
   ##   e(P₀, Q₀) * e(P₁, Q₁) * e(P₂, Q₂) * ... * e(Pₙ, Qₙ) ∈ Gt
-  when C == BN254_Nogami:
+  when false: # C == BN254_Nogami:
     gt.millerLoopAddChain(Qs.asUnchecked(), Ps.asUnchecked(), N)
   else:
     gt.millerLoopGenericBN(Qs.asUnchecked(), Ps.asUnchecked(), N)

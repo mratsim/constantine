@@ -59,27 +59,27 @@ func millerLoopAddchain*(
   # Negative AteParam, conjugation eliminated by final exponentiation
   # f.conj()
 
-func millerLoopAddchain*(
-       f: var Fp12[BLS12_381],
-       Qs: ptr UncheckedArray[ECP_ShortW_Aff[Fp2[BLS12_381], G2]],
-       Ps: ptr UncheckedArray[ECP_ShortW_Aff[Fp[BLS12_381], G1]],
-       N: int
-     ) {.noInline.} =
-  ## Generic Miller Loop for BLS12 curve
-  ## Computes f{u,Q}(P) with u the BLS curve parameter
+# func millerLoopAddchain*(
+#        f: var Fp12[BLS12_381],
+#        Qs: ptr UncheckedArray[ECP_ShortW_Aff[Fp2[BLS12_381], G2]],
+#        Ps: ptr UncheckedArray[ECP_ShortW_Aff[Fp[BLS12_381], G1]],
+#        N: int
+#      ) {.noInline.} =
+#   ## Generic Miller Loop for BLS12 curve
+#   ## Computes f{u,Q}(P) with u the BLS curve parameter
 
-  var Ts = allocStackArray(ECP_ShortW_Prj[Fp2[BLS12_381], G2], N)
+#   var Ts = allocStackArray(ECP_ShortW_Prj[Fp2[BLS12_381], G2], N)
 
-  # Ate param addition chain
-  # Hex: 0xd201000000010000
-  # Bin: 0b1101001000000001000000000000000000000000000000010000000000000000
+#   # Ate param addition chain
+#   # Hex: 0xd201000000010000
+#   # Bin: 0b1101001000000001000000000000000000000000000000010000000000000000
 
-  f.miller_init_double_then_add( Ts, Qs, Ps, N, 1)               # 0b11
-  f.miller_accum_double_then_add(Ts, Qs, Ps, N, 2)               # 0b1101
-  f.miller_accum_double_then_add(Ts, Qs, Ps, N, 3)               # 0b1101001
-  f.miller_accum_double_then_add(Ts, Qs, Ps, N, 9)               # 0b1101001000000001
-  f.miller_accum_double_then_add(Ts, Qs, Ps, N, 32)              # 0b110100100000000100000000000000000000000000000001
-  f.miller_accum_double_then_add(Ts, Qs, Ps, N, 16, add = false) # 0b1101001000000001000000000000000000000000000000010000000000000000
+#   f.miller_init_double_then_add( Ts, Qs, Ps, N, 1)               # 0b11
+#   f.miller_accum_double_then_add(Ts, Qs, Ps, N, 2)               # 0b1101
+#   f.miller_accum_double_then_add(Ts, Qs, Ps, N, 3)               # 0b1101001
+#   f.miller_accum_double_then_add(Ts, Qs, Ps, N, 9)               # 0b1101001000000001
+#   f.miller_accum_double_then_add(Ts, Qs, Ps, N, 32)              # 0b110100100000000100000000000000000000000000000001
+#   f.miller_accum_double_then_add(Ts, Qs, Ps, N, 16, add = false) # 0b1101001000000001000000000000000000000000000000010000000000000000
 
 func cycl_exp_by_curve_param_div2*(
        r: var Fp12[BLS12_381], a: Fp12[BLS12_381],

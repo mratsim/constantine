@@ -220,77 +220,71 @@ func miller_accum_double_then_add*[FT, F1, F2](
 # See `multi_pairing.md``
 # We implement Aranha approach
 
+func isOdd(n: int): bool {.inline.} = bool(n and 1)
+
 func double_jToN[FT, F1, F2](
        f: var FT,
        j: static int,
-       line0, line1: var Line[F2],
+       lineOddRemainder: var Line[F2],
        Ts: ptr UncheckedArray[ECP_ShortW_Prj[F2, G2]],
        Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
        N: int) =
   ## Doubling steps for pairings j to N
+  ## if N is odd, lineOddRemainder must be applied to `f`
 
+  var line0{.noInit.}, line1{.noInit.}: Line[F2]
   # Sparse merge 2 by 2, starting from j
-  for i in countup(j, N-1, 2):
-    if i+1 >= N:
-      break
-
+  for i in countup(j, N-2, 2):
     line0.line_double(Ts[i], Ps[i])
     line1.line_double(Ts[i+1], Ps[i+1])
     f.mul_by_2_lines(line0, line1)
 
-  if (N and 1) == 1: # N >= 2 and N is odd, there is a leftover
-    line0.line_double(Ts[N-1], Ps[N-1])
-    f.mul_by_line(line0)
+  if N.isOdd(): # N >= 2 and N is odd, there is a leftover
+    lineOddRemainder.line_double(Ts[N-1], Ps[N-1])
 
 func add_jToN[FT, F1, F2](
        f: var FT,
        j: static int,
-       line0, line1: var Line[F2],
+       lineOddRemainder: var Line[F2],
        Ts: ptr UncheckedArray[ECP_ShortW_Prj[F2, G2]],
        Qs: ptr UncheckedArray[ECP_ShortW_Aff[F2, G2]],
        Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
        N: int)=
   ## Addition steps for pairings 0 to N
 
+  var line0{.noInit.}, line1{.noInit.}: Line[F2]
   # Sparse merge 2 by 2, starting from 0
-  for i in countup(j, N-1, 2):
-    if i+1 >= N:
-      break
-
+  for i in countup(j, N-2, 2):
     line0.line_add(Ts[i], Qs[i], Ps[i])
     line1.line_add(Ts[i+1], Qs[i+1], Ps[i+1])
     f.mul_by_2_lines(line0, line1)
 
-  if (N and 1) == 1: # N >= 2 and N is odd, there is a leftover
-    line0.line_add(Ts[N-1], Qs[N-1], Ps[N-1])
-    f.mul_by_line(line0)
+  if N.isOdd(): # N >= 2 and N is odd, there is a leftover
+    lineOddRemainder.line_add(Ts[N-1], Qs[N-1], Ps[N-1])
 
 func add_jToN_negateQ[FT, F1, F2](
        f: var FT,
        j: static int,
-       line0, line1: var Line[F2],
+       lineOddRemainder: var Line[F2],
        Ts: ptr UncheckedArray[ECP_ShortW_Prj[F2, G2]],
        Qs: ptr UncheckedArray[ECP_ShortW_Aff[F2, G2]],
        Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
        N: int)=
   ## Addition steps for pairings 0 to N
+
   var nQ{.noInit.}: ECP_ShortW_Aff[F2, G2]
-
+  var line0{.noInit.}, line1{.noInit.}: Line[F2]
   # Sparse merge 2 by 2, starting from 0
-  for i in countup(j, N-1, 2):
-    if i+1 >= N:
-      break
-
+  for i in countup(j, N-2, 2):
     nQ.neg(Qs[i])
     line0.line_add(Ts[i], nQ, Ps[i])
     nQ.neg(Qs[i+1])
     line1.line_add(Ts[i+1], nQ, Ps[i+1])
     f.mul_by_2_lines(line0, line1)
 
-  if (N and 1) == 1: # N >= 2 and N is odd, there is a leftover
+  if N.isOdd(): # N >= 2 and N is odd, there is a leftover
     nQ.neg(Qs[N-1])
-    line0.line_add(Ts[N-1], nQ, Ps[N-1])
-    f.mul_by_line(line0)
+    lineOddRemainder.line_add(Ts[N-1], nQ, Ps[N-1])
 
 func basicMillerLoop*[FT, F1, F2](
        f: var FT,
@@ -313,95 +307,113 @@ func basicMillerLoop*[FT, F1, F2](
     doAssert FT.C == F2.C
 
   const naf = ate_param.recodeNafForPairing()
-  var line0{.noInit.}, line1{.noinit.}: Line[F2]
+  var lineOddRemainder0{.noInit.}, lineOddRemainder1{.noinit.}: Line[F2]
   f.setOne()
 
   for i in countdown(naf.len-1, 0):
     let bit = naf[i]
     if i != naf.len-1:
       f.square()
-    f.double_jToN(j=0, line0, line1, Ts, Ps, N)
+    f.double_jToN(j=0, lineOddRemainder0, Ts, Ps, N)
 
     if bit == 1:
-      f.add_jToN(j=0, line0, line1, Ts, Qs, Ps, N)
+      f.add_jToN(j=0, lineOddRemainder1, Ts, Qs, Ps, N)
     elif bit == -1:
-      f.add_jToN_negateQ(j=0, line0, line1, Ts, Qs, Ps, N)
+      f.add_jToN_negateQ(j=0, lineOddRemainder1, Ts, Qs, Ps, N)
 
-func miller_init_double_then_add*[FT, F1, F2](
-       f: var FT,
-       Ts: ptr UncheckedArray[ECP_ShortW_Prj[F2, G2]],
-       Qs: ptr UncheckedArray[ECP_ShortW_Aff[F2, G2]],
-       Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
-       N: int,
-       numDoublings: static int) =
-  ## Start a Miller Loop
-  ## This means
-  ## - 1 doubling
-  ## - 1 add
-  ##
-  ## f is overwritten
-  ## Ts are overwritten by Qs
-  static:
-    doAssert FT.C == F1.C
-    doAssert FT.C == F2.C
+    if N.isOdd():
+      if bit == 0:
+        f.mul_by_line(lineOddRemainder0)
+      else:
+        f.mul_by_2_lines(lineOddRemainder0, lineOddRemainder1)
 
-  var line0 {.noInit.}, line1 {.noInit.}: Line[F2]
+# func miller_init_double_then_add*[FT, F1, F2](
+#        f: var FT,
+#        Ts: ptr UncheckedArray[ECP_ShortW_Prj[F2, G2]],
+#        Qs: ptr UncheckedArray[ECP_ShortW_Aff[F2, G2]],
+#        Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
+#        N: int,
+#        numDoublings: static int) =
+#   ## Start a Miller Loop
+#   ## This means
+#   ## - 1 doubling
+#   ## - 1 add
+#   ##
+#   ## f is overwritten
+#   ## Ts are overwritten by Qs
 
-  # First step: T <- Q, f = 1 (mod p¹²), f *= line
-  # ----------------------------------------------
-  for i in 0 ..< N:
-    Ts[i].fromAffine(Qs[i])
+#   if N == 1:
+#     f.miller_init_double_then_add(Ts[0], Qs[0], Ps[0], numDoublings)
+#     return
 
-  line0.line_double(Ts[0], Ps[0])
-  if N >= 2:
-    line1.line_double(Ts[1], Ps[1])
-    f.prod_from_2_lines(line0, line1)
-    f.double_jToN(j=2, line0, line1, Ts, Ps, N)
+#   static:
+#     doAssert FT.C == F1.C
+#     doAssert FT.C == F2.C
 
-  # Doubling steps: 0b10...00
-  # ------------------------------------------------
-  when numDoublings > 1: # Already did the MSB doubling
-    if N == 1:           # f = line0
-      f.prod_from_2_lines(line0, line0) # f.square()
-      line0.line_double(Ts[0], Ps[0])
-      f.mul_by_line(line0)
-      for _ in 2 ..< numDoublings:
-        f.square()
-        f.double_jtoN(j=0, line0, line1, Ts, Ps, N)
-    else:
-      for _ in 0 ..< numDoublings:
-        f.square()
-        f.double_jtoN(j=0, line0, line1, Ts, Ps, N)
+#   var lineOddRemainder0 {.noInit.}, lineOddRemainder1 {.noInit.}: Line[F2]
+#   for i in 0 ..< N:
+#     Ts[i].fromAffine(Qs[i])
 
-  # Addition step: 0b10...01
-  # ------------------------------------------------
+#   # First step: T <- Q, f = 1 (mod p¹²), f *= line
+#   lineOddRemainder0.line_double(Ts[0], Ps[0])
+#   lineOddRemainder1.line_double(Ts[1], Ps[1])
+#   f.prod_from_2_lines(lineOddRemainder0, lineOddRemainder1)
+#   f.double_jToN(j=2, lineOddRemainder0, Ts, Ps, N)
 
-  when numDoublings == 1:
-    if N == 1: # f = line0
-      line1.line_add(Ts[0], Qs[0], Ps[0])
-      f.prod_from_2_lines(line0, line1)
-    else:
-      f.add_jToN(j=0,line0, line1, Ts, Qs, Ps, N)
-  else:
-    f.add_jToN(j=0,line0, line1, Ts, Qs, Ps, N)
+#   # Second step: 0b10 or 0b11
+#   when numDoublings >= 2:
+#     f.double_jToN(j=0, lineOddRemainder1, Ts, Ps, N)
+#     if (N and 1) == 1:
+#       f.mul_by_2_lines(lineOddRemainder0, lineOddRemainder1)
+#     else:
+#       f.mul_by_line(lineOddRemainder0)
 
-func miller_accum_double_then_add*[FT, F1, F2](
-       f: var FT,
-       Ts: ptr UncheckedArray[ECP_ShortW_Prj[F2, G2]],
-       Qs: ptr UncheckedArray[ECP_ShortW_Aff[F2, G2]],
-       Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
-       N: int,
-       numDoublings: int,
-       add = true) =
-  ## Continue a Miller Loop with
-  ## - `numDoubling` doublings
-  ## - 1 add
-  ##
-  ## f and T are updated
-  var line0{.noInit.}, line1{.noinit.}: Line[F2]
-  for _ in 0 ..< numDoublings:
-    f.square()
-    f.double_jtoN(j=0, line0, line1, Ts, Ps, N)
+#   # Doublings step: 0b10...0
+#   for _ in 2 ..< numDoublings:
 
-  if add:
-    f.add_jToN(j=0, line0, line1, Ts, Qs, Ps, N)
+
+#   when numDoublings > 1: # Already did the MSB doubling
+#     if N == 1:           # f = line0
+#       f.prod_from_2_lines(line0, line0) # f.square()
+#       line0.line_double(Ts[0], Ps[0])
+#       f.mul_by_line(line0)
+#       for _ in 2 ..< numDoublings:
+#         f.square()
+#         f.double_jtoN(j=0, line0, line1, Ts, Ps, N)
+#     else:
+#       for _ in 0 ..< numDoublings:
+#         f.square()
+#         f.double_jtoN(j=0, line0, line1, Ts, Ps, N)
+
+#   # Addition step: 0b10...01
+#   # ------------------------------------------------
+
+#   when numDoublings == 1:
+#     if N == 1: # f = line0
+#       line1.line_add(Ts[0], Qs[0], Ps[0])
+#       f.prod_from_2_lines(line0, line1)
+#     else:
+#       f.add_jToN(j=0,line0, line1, Ts, Qs, Ps, N)
+#   else:
+#     f.add_jToN(j=0,line0, line1, Ts, Qs, Ps, N)
+
+# func miller_accum_double_then_add*[FT, F1, F2](
+#        f: var FT,
+#        Ts: ptr UncheckedArray[ECP_ShortW_Prj[F2, G2]],
+#        Qs: ptr UncheckedArray[ECP_ShortW_Aff[F2, G2]],
+#        Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
+#        N: int,
+#        numDoublings: int,
+#        add = true) =
+#   ## Continue a Miller Loop with
+#   ## - `numDoubling` doublings
+#   ## - 1 add
+#   ##
+#   ## f and T are updated
+#   var line0{.noInit.}, line1{.noinit.}: Line[F2]
+#   for _ in 0 ..< numDoublings:
+#     f.square()
+#     f.double_jtoN(j=0, line0, line1, Ts, Ps, N)
+
+#   if add:
+#     f.add_jToN(j=0, line0, line1, Ts, Qs, Ps, N)
