@@ -354,7 +354,31 @@ func setBit*[bits: static int](a: var BigInt[bits], index: int) =
   let shifted = One shl (index and SelectMask)
   slot[] = slot[] or shifted
 
-# Multiplication by small cosntants
+func getWindowAt*(a: BigInt, bitIndex: int, bitsize: static int): SecretWord {.inline.} =
+  ## Access a window of `a` of size bitsize
+  static: doAssert bitsize <= WordBitWidth
+
+  const SlotShift = log2_vartime(WordBitWidth.uint32)
+  const WordMask = WordBitWidth - 1
+  const WindowMask = SecretWord((1 shl bitsize) - 1)
+
+  let slot     = bitIndex shr SlotShift
+  let word     = a.limbs[slot]                    # word in limbs
+  let pos      = bitIndex and WordMask            # position in the word
+
+  when bitsize.isPowerOf2_vartime():
+    # Bit extraction is aligned with 32-bit or 64-bit words
+    return SecretWord(word shr pos) and WindowMask
+  else:
+    # unaligned extraction, we might need to read the next word as well.
+    # This is constant-time, the branch does not depend on secret data.
+    if pos + bitsize > WordBitWidth and slot+1 < a.limbs.len:
+      # Read next word as well
+      return SecretWord((word shr pos) or (a.limbs[slot+1] shl (WordBitWidth-pos))) and WindowMask
+    else:
+      return SecretWord(word shr pos) and WindowMask
+
+# Multiplication by small constants
 # ------------------------------------------------------------
 
 func `*=`*(a: var BigInt, b: static int) =
@@ -498,6 +522,36 @@ func invmod*[bits](r: var BigInt[bits], a, M: BigInt[bits]) =
 #                   Recoding
 #
 # ############################################################
+#
+# Litterature
+#
+# - Elliptic Curves in Cryptography
+#   Blake, Seroussi, Smart, 1999
+#
+# - Efficient Arithmetic on Koblitz Curves
+#   Jerome A. Solinas, 2000
+#   https://decred.org/research/solinas2000.pdf
+#
+# - Optimal Left-to-Right Binary Signed-Digit Recoding
+#   Joye, Yen, 2000
+#   https://marcjoye.github.io/papers/JY00sd2r.pdf
+#
+# - Guide to Elliptic Curve Cryptography
+#   Hankerson, Menezes, Vanstone, 2004
+#
+# - Signed Binary Representations Revisited
+#   Katsuyuki Okeya, Katja Schmidt-Samoa, Christian Spahn, and Tsuyoshi Takagi, 2004
+#   https://eprint.iacr.org/2004/195.pdf
+#
+# - Some Explicit Formulae of NAF and its Left-to-Right Analogue
+#   Dong-Guk Han, Tetsuya Izu, and Tsuyoshi Takagi
+#   https://eprint.iacr.org/2005/384.pdf
+#
+# See also on Booth encoding and Modified Booth Encoding (bit-pair recoding)
+# - https://www.ece.ucdavis.edu/~bbaas/281/notes/Handout.booth.pdf
+# - https://vulms.vu.edu.pk/Courses/CS501/Downloads/Booth%20and%20bit%20pair%20encoding.pdf
+# - https://vulms.vu.edu.pk/Courses/CS501/Downloads/Bit-Pair%20Recoding.pdf
+# - http://www.ecs.umass.edu/ece/koren/arith/simulator/ModBooth/
 
 iterator recoding_l2r_vartime*(a: BigInt): int8 =
   ## This is a minimum-Hamming-Weight left-to-right recoding.
@@ -507,10 +561,6 @@ iterator recoding_l2r_vartime*(a: BigInt): int8 =
   ##
   ## ⚠️ While the recoding is constant-time,
   ##   usage of this recoding is intended vartime
-  #
-  # - Optimal Left-to-Right Binary Signed-Digit Recoding
-  #   Joye, Yen, 2000
-  #   https://marcjoye.github.io/papers/JY00sd2r.pdf
 
   # As the caller is copy-pasted at each yield
   # we rework the algorithm so that we have a single yield point
@@ -550,16 +600,6 @@ iterator recoding_r2l_windowed_vartime*(a: BigInt, windowLogSize: int): int {.ta
   ## 4. The length of the recoding is at most BigInt.bits + 1
   ##
   ## ⚠️ not constant-time
-  #
-  # - Elliptic Curves in Cryptography
-  #   Blake, Seroussi, Smart, 1999
-  #
-  # - Efficient Arithmetic on Koblitz Curves
-  #   Jerome A. Solinas, 2000
-  #   https://decred.org/research/solinas2000.pdf
-  #
-  # - Guide to Elliptic Curve Cryptography
-  #   Hankerson, Menezes, Vanstone, 2004
 
   let sMax = 1 shl (windowLogSize - 1)
   let uMax = sMax + sMax
@@ -635,9 +675,10 @@ iterator recoding_r2l_windowed_vartime*(a: BigInt, windowLogSize: int): int {.ta
       if a.isZero().bool:
         break
 
-func recodeWindowed_r2l_vartime*[bits: static int](
+func recode_r2l_windowed_vartime*[bits: static int](
        naf: var array[bits+1, SomeSignedInt], a: BigInt[bits], window: int) {.tags:[VarTime].} =
   ## Minimum Hamming-Weight windowed NAF recoding
+  ## Output from least significant to most significant
   type I = SomeSignedInt
   var i = 0
   for digit in a.recoding_r2l_windowed_vartime(window):
@@ -645,5 +686,48 @@ func recodeWindowed_r2l_vartime*[bits: static int](
     i += 1
   for j in i ..< bits+1:
     naf[j] = 0
+
+func signedRecoding*[N: static int, I: SomeSignedInt](
+       recoded: var array[N, I], scalar: BigInt, c: static int) =
+  static: doAssert sizeof(I) * 8 >= c
+  var carry = 0
+  for w in 0 ..< N:
+    var digit = carry
+    if w*c < BigInt.bits:
+      digit += cast[int](scalar.getWindowAt(w*c, c))
+
+    if digit >= 1 shl (c-1):
+      debug: doAssert w != N-1, "numWindows: " & $N & " for " & $BigInt.bits & "-bit scalars with window " & $c
+      digit -= 1 shl c
+      carry = 1
+    else:
+      carry = 0
+    recoded[w] = cast[I](digit)
+
+func getBoothEncoding*(digit: SecretWord, bitsize: static int): SignedSecretWord {.inline.} =
+  ## Get the signed booth encoding for `digit`
+  ##
+  ## This uses the fact that 999 = 100 - 1
+  ## It replaces string of binary 1 with 1...-1
+  ## i.e. 0111 becomes 1 0 0 -1
+  ##
+  ## This looks at [bitᵢ₊ₙ..bitᵢ | bitᵢ₋₁]
+  ## and encodes   [bitᵢ₊ₙ..bitᵢ]
+  ##
+  ## Notes:
+  ##   - This is not a minimum weight encoding unlike NAF
+  ##   - Due to constant-time requirement in scalar multiplication
+  ##     or bucketing large window in multi-scalar-multiplication
+  ##     minimum weight encoding might not lead to saving operations
+  ##   - Unlike NAF and wNAF encoding, there is no carry to propagate
+  ##     hence this is suitable for parallelization without encoding precomputation
+  ##     and for GPUs
+  let isNegMask = -SignedSecretWord(digit shr bitsize)
+
+  # Transform a string of 1's into 0
+  let t = SignedSecretWord((digit + One) shr 1)
+
+  # Select the result to return
+  return (t and not(isNegMask)) or ((-t) and isNegMask)
 
 {.pop.} # raises no exceptions

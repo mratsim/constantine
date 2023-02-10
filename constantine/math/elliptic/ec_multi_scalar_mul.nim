@@ -11,7 +11,8 @@ import
   ../arithmetic,
   ../extension_fields,
   ../io/io_bigints,
-  ../ec_shortweierstrass
+  ../ec_shortweierstrass,
+  ./ec_shortweierstrass_jacobian_extended
 
 # No exceptions allowed in core cryptographic operations
 {.push raises: [].}
@@ -50,31 +51,6 @@ import
 # The current iteration is a baseline before evaluating and adding various optimizations
 # (scalar recoding, change of coordinate systems, bucket sizing, sorting ...)
 
-func digit_vartime(a: BigInt, index: int, bitsize: static int): uint {.inline, tags:[VarTime].} =
-  ## Access a digit of `a` of size bitsize
-  ## Variable-time!
-  static: doAssert bitsize <= WordBitWidth
-
-  const SlotShift = log2_vartime(WordBitWidth.uint32)
-  const WordMask = WordBitWidth - 1
-  const DigitMask = (1 shl bitsize) - 1
-
-  let bitIndex = index * bitsize
-  let slot     = bitIndex shr SlotShift
-  let word     = a.limbs[slot]                    # word in limbs
-  let pos      = bitIndex and WordMask            # position in the word
-
-  when bitsize.isPowerOf2_vartime():
-    # Bit extraction is aligned with 32-bit or 64-bit words
-    return uint(word shr pos) and DigitMask
-  else:
-    # unaligned extraction, we might need to read the next word as well.
-    if pos + bitsize > WordBitWidth and slot+1 < a.limbs.len:
-      # Read next word as well
-      return uint((word shr pos) or (a.limbs[slot+1] shl (WordBitWidth-pos))) and DigitMask
-    else:
-      return uint(word shr pos) and DigitMask
-
 func multiScalarMulImpl_baseline_vartime[F, G; bits: static int](
        r: var ECP_ShortW[F, G],
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
@@ -103,7 +79,7 @@ func multiScalarMulImpl_baseline_vartime[F, G; bits: static int](
 
     # 1. Bucket accumulation.                            Cost: n - (2ᶜ-1) => n points in 2ᶜ-1 buckets, first point per bucket is just copied
     for j in 0 ..< N:
-      let b = coefs[j].digit_vartime(w, c)
+      let b = cast[int](coefs[j].getWindowAt(w*c, c))
       if b == 0: # bucket 0 is unused, no need to add [0]Pⱼ
         continue
       else:
@@ -218,22 +194,19 @@ func multiScalarMul_baseline_vartime*[EC](r: var EC, coefs: openArray[BigInt], p
 # There are ways to avoid FFTs, none to avoid Multi-Scalar-Multiplication
 # Hence optimizing it is worth millions, see https://zprize.io
 
-func signedRecoding[N: static int, I: SomeSignedInt](
-       recoded: var array[N, I], scalar: BigInt, c: static int) =
-  static: doAssert sizeof(I) * 8 >= c
-  var carry = 0
-  for w in 0 ..< N:
-    var digit = carry
-    if w*c < BigInt.bits:
-      digit += cast[int](scalar.digit_vartime(w, c))
-
-    if digit >= 1 shl (c-1):
-      debug: doAssert w != N-1, "numWindows: " & $N & " for " & $BigInt.bits & "-bit scalars with window " & $c
-      digit -= 1 shl c
-      carry = 1
-    else:
-      carry = 0
-    recoded[w] = cast[I](digit)
+# Extended Jacobian generic bindings
+# ----------------------------------
+# All vartime procedures MUST be tagged vartime
+# Hence we do not expose `sum` or `+=` for extended jacobian operation to prevent `vartime` mistakes
+# we create a local `sum` or `+=` for this module only
+func `+=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_JacExt[F, G]) {.inline.}=
+  P.sum_vartime(P, Q)
+func `+=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_Aff[F, G]) {.inline.}=
+  P.madd_vartime(P, Q)
+func `-=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_Aff[F, G]) {.inline.}=
+  var nQ {.noInit.}: typeof(Q)
+  nQ.neg(Q)
+  P.madd_vartime(P, nQ)
 
 func multiScalarMulImpl_opt_vartime[F, G; bits: static int](
        r: var ECP_ShortW[F, G],
@@ -252,7 +225,7 @@ func multiScalarMulImpl_opt_vartime[F, G; bits: static int](
             else:         int32)
 
   let miniMSMs = allocHeapArray(EC, numWindows)
-  let buckets = allocHeapArray(EC, numBuckets)
+  let buckets = allocHeapArray(jacobianExtended(EC), numBuckets)
   let recoded = allocHeapArray(array[numWindows, I], N)
 
   # 0. Recode points into signed digits
@@ -274,7 +247,7 @@ func multiScalarMulImpl_opt_vartime[F, G; bits: static int](
         buckets[-digit-1] -= points[j]
 
     # 2. Bucket reduction
-    var accumBuckets{.noInit.}, miniMSM{.noInit.}: EC
+    var accumBuckets{.noInit.}, miniMSM{.noInit.}: jacobianExtended(EC)
     accumBuckets = buckets[numBuckets-1]
     miniMSM = buckets[numBuckets-1]
 
@@ -282,7 +255,7 @@ func multiScalarMulImpl_opt_vartime[F, G; bits: static int](
       accumBuckets += buckets[k]
       miniMSM += accumBuckets
 
-    miniMSMs[w] = miniMSM
+    miniMSMs[w].fromJacobianExtended(miniMSM)
 
   # 3. Final reduction.
   r = miniMSMs[numWindows-1]

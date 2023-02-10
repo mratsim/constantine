@@ -96,7 +96,7 @@ func scalarMul_minHammingWeight_windowed_vartime*[EC](P: var EC, scalar: BigInt,
     type I = int64
 
   var naf {.noInit.}: array[BigInt.bits+1, I]
-  naf.recodeWindowed_r2l_vartime(scalar, window)
+  naf.recode_r2l_windowed_vartime(scalar, window)
 
   var P2{.noInit.}: EC
   P2.double(P)

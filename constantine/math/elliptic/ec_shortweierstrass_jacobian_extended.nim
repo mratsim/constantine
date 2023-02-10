@@ -11,7 +11,9 @@ import
   ../config/curves,
   ../arithmetic,
   ../extension_fields,
-  ./ec_shortweierstrass_affine
+  ./ec_shortweierstrass_affine,
+  ./ec_shortweierstrass_projective,
+  ./ec_shortweierstrass_jacobian
 
 export Subgroup
 
@@ -37,9 +39,7 @@ type ECP_ShortW_JacExt*[F; G: static Subgroup] = object
   ## Note that extended jacobian coordinates are not unique
   x*, y*, zz*, zzz*: F
 
-template affine*[F, G](_: type ECP_ShortW_JacExt[F, G]): typedesc =
-  ## Returns the affine type that corresponds to the Extended Jacobian type input
-  ECP_ShortW_Aff[F, G]
+func fromAffine*[F; G](jacext: var ECP_ShortW_JacExt[F, G], aff: ECP_ShortW_Aff[F, G]) {.inline.}
 
 func `==`*(P, Q: ECP_ShortW_JacExt): SecretBool =
   ## Constant-time equality check
@@ -68,28 +68,6 @@ func setInf*(P: var ECP_ShortW_JacExt) {.inline.} =
   P.y.setOne()
   P.zz.setZero()
   P.zzz.setZero()
-
-func affine*[F; G](
-       aff: var ECP_ShortW_Aff[F, G],
-       jacext: ECP_ShortW_JacExt[F, G]) =
-  var invZZ {.noInit.}, invZZZ{.noInit.}: F
-  invZZZ.inv(jacext.zzz)
-  invZZ.prod(jacext.zz, invZZZ, skipFinalSub = true)
-  invZZ.square(skipFinalSub = true)
-  aff.x.prod(jacext.x, invZZ)
-  aff.y.prod(jacext.y, invZZZ)
-
-func fromAffine*[F; G](
-       jacext: var ECP_ShortW_JacExt[F, G],
-       aff: ECP_ShortW_Aff[F, G]) {.inline.} =
-  jacext.x = aff.x
-  jacext.y = aff.y
-  jacext.zz.setOne()
-  jacext.zzz.setOne()
-
-  let inf = aff.isInf()
-  jacext.zz.csetZero(inf)
-  jacext.zzz.csetZero(inf)
 
 func trySetFromCoordsXandZ*[F; G](
        P: var ECP_ShortW_JacExt[F, G],
@@ -319,3 +297,58 @@ func madd_vartime*[F; G: static Subgroup](
 
   r.zz.prod(p.zz, PP)
   r.zzz.prod(p.zzz, PPP)
+
+# Conversions
+# -----------
+
+template affine*[F, G](_: type ECP_ShortW_JacExt[F, G]): typedesc =
+  ## Returns the affine type that corresponds to the Extended Jacobian type input
+  ECP_ShortW_Aff[F, G]
+
+template jacobianExtended*[EC](_: typedesc[EC]): typedesc =
+  ## Returns the affine type that corresponds to the Extended Jacobian type input
+  ECP_ShortW_JacExt[EC.F, EC.G]
+
+func affine*[F; G](
+       aff: var ECP_ShortW_Aff[F, G],
+       jacext: ECP_ShortW_JacExt[F, G]) =
+  var invZZ {.noInit.}, invZZZ{.noInit.}: F
+  invZZZ.inv(jacext.zzz)
+  invZZ.prod(jacext.zz, invZZZ, skipFinalSub = true)
+  invZZ.square(skipFinalSub = true)
+  aff.x.prod(jacext.x, invZZ)
+  aff.y.prod(jacext.y, invZZZ)
+
+func fromAffine*[F; G](
+       jacext: var ECP_ShortW_JacExt[F, G],
+       aff: ECP_ShortW_Aff[F, G]) {.inline.} =
+  jacext.x = aff.x
+  jacext.y = aff.y
+  jacext.zz.setOne()
+  jacext.zzz.setOne()
+
+  let inf = aff.isInf()
+  jacext.zz.csetZero(inf)
+  jacext.zzz.csetZero(inf)
+
+func fromJacobianExtended*[F; G](
+       prj: var ECP_ShortW_Prj[F, G],
+       jacext: ECP_ShortW_JacExt[F, G]) {.inline.} =
+  # Affine (x, y)
+  # Jacobian extended (xZ², yZ³, Z², Z³)
+  # Projective        (xZ', yZ', Z')
+  # We can choose Z' = Z⁵
+  prj.z.prod(jacext.zz, jacext.zzz)
+  prj.x.prod(jacext.x, jacext.zzz)
+  prj.y.prod(jacext.y, jacext.zz)
+
+func fromJacobianExtended*[F; G](
+       jac: var ECP_ShortW_Jac[F, G],
+       jacext: ECP_ShortW_JacExt[F, G]) {.inline.} =
+  # Affine (x, y)
+  # Jacobian extended (xZ²,  yZ³,  Z², Z³)
+  # Jacobian          (xZ'², yZ'³, Z')
+  # We can choose Z' = Z²
+  jac.x.prod(jacext.x, jacext.zz)
+  jac.y.prod(jacext.y, jacext.zzz)
+  jac.z = jacext.zz

@@ -119,7 +119,7 @@ proc main() =
       separator()
     for numPoints in [64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536]:
       let batchIters = max(1, Iters div numPoints)
-      msmBench(ECP_ShortW_Prj[Fp[curve], G1], numPoints, batchIters)
+      msmBench(ECP_ShortW_Jac[Fp[curve], G1], numPoints, batchIters)
       separator()
     separator()
 
