@@ -30,7 +30,7 @@ import
 
 proc evaluateBucketSizeBench*(iters: int) =
   bench("bestBucketBitSize", ECP_ShortW_Aff[Fp[BLS12_381], G1], iters):
-    discard bestBucketBitSize(inputSize = 1000000, orderBitwidth = 381)
+    discard bestBucketBitSize(inputSize = 1000000, orderBitwidth = 381, useSignedBuckets = false)
 
 proc msmBench*(EC: typedesc, numPoints: int, iters: int) =
   const bits = EC.F.C.getCurveOrderBitwidth()

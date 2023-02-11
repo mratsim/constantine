@@ -942,7 +942,7 @@ proc run_EC_multi_scalar_mul_impl*[N: static int](
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     for n in numPoints:
-      let bucketBits = bestBucketBitSize(n, ec.F.C.getCurveOrderBitwidth())
+      let bucketBits = bestBucketBitSize(n, ec.F.C.getCurveOrderBitwidth(), useSignedBuckets = false)
       test $ec & " Multi-scalar-mul (N=" & $n & ", bucket bits: " & $bucketBits & ")":
         proc test(EC: typedesc, gen: RandomGen) =
           var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](n)

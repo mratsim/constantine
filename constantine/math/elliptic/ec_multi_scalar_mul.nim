@@ -114,7 +114,7 @@ func multiScalarMulImpl_baseline_vartime[F, G; bits: static int](
   buckets.freeHeap()
   miniMSMs.freeHeap()
 
-func bestBucketBitSize*(inputSize: int, orderBitwidth: static int): int {.inline.} =
+func bestBucketBitSize*(inputSize: int, orderBitwidth: static int, useSignedBuckets: static bool): int {.inline.} =
   ## Evaluate the best bucket bit-size for the input size.
   ## That bucket size minimize group operations. It assumes that additions and doubling cost the same
   ## This ignore cache effect. Computation can become memory-bound, especially with large buckets
@@ -124,9 +124,9 @@ func bestBucketBitSize*(inputSize: int, orderBitwidth: static int): int {.inline
 
   # Raw operation cost is approximately
   # 1. Bucket accumulation
-  #      n - (2ᶜ-1) additions for b/c windows
+  #      n - (2ᶜ-1) additions for b/c windows    or n - (2ᶜ⁻¹-1) if using signed bucket
   # 2. Bucket reduction
-  #      2x(2ᶜ-2) additions for b/c windows
+  #      2x(2ᶜ-2) additions for b/c windows      or 2x(2ᶜ⁻¹-2)
   # 3. Final reduction
   #      (b/c - 1) x (c doublings + 1 addition)
   # Total
@@ -139,13 +139,14 @@ func bestBucketBitSize*(inputSize: int, orderBitwidth: static int): int {.inline
   const A = 10'f32  # Addition cost
   const D =  6'f32  # Doubling cost
 
+  const s = int useSignedBuckets
   let n = inputSize
   let b = float32(orderBitwidth)
   var minCost = float32(Inf)
   for c in 2 ..< 23:
     let b_over_c = b/c.float32
 
-    let bucket_accumulate_reduce = b_over_c * float32(n + (1 shl c) - 2) * A
+    let bucket_accumulate_reduce = b_over_c * float32(n + (1 shl (c-s)) - 2) * A
     let final_reduction = (b_over_c - 1'f32) * (c.float32*D + A)
     let cost = bucket_accumulate_reduce + final_reduction
     if cost < minCost:
@@ -160,9 +161,10 @@ func multiScalarMul_baseline_vartime*[EC](r: var EC, coefs: openArray[BigInt], p
   let N = points.len
   let coefs = coefs.asUnchecked()
   let points = points.asUnchecked()
-  let c = bestBucketBitSize(N, BigInt.bits)
+  let c = bestBucketBitSize(N, BigInt.bits, useSignedBuckets = false)
 
   case c
+  of  1: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c =  1)
   of  2: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c =  2)
   of  3: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c =  3)
   of  4: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c =  4)
@@ -247,12 +249,24 @@ func miniMSM[F, G; bits: static int](
   const top = bits - excess
 
   # 1. Bucket Accumulation
-  for j in 0 ..< N:
-    let (value, isNeg) = block:
-      when miniMsmKind == kBottomWindow: coefs[j].getSignedBottomWindow(c)
-      elif miniMsmKind == kTopWindow:    coefs[j].getSignedTopWindow(top, excess)
-      else:                              coefs[j].getSignedFullWindowAt(bitIndex, c)
-    buckets.accumulate(value, isNeg, points[j])
+  var curVal, nextVal: SecretWord
+  var curNeg, nextNeg: SecretBool
+
+  template getSignedWindow(j : int): tuple[val: SecretWord, neg: SecretBool] =
+    when miniMsmKind == kBottomWindow: coefs[j].getSignedBottomWindow(c)
+    elif miniMsmKind == kTopWindow:    coefs[j].getSignedTopWindow(top, excess)
+    else:                              coefs[j].getSignedFullWindowAt(bitIndex, c)
+
+  (curVal, curNeg) = getSignedWindow(0)
+  (nextVal, nextNeg) = getSignedWindow(1)
+  for j in 0 ..< N-1:
+    (nextVal, nextNeg) = getSignedWindow(j+1)
+    if nextVal.BaseType != 0:
+      prefetchLarge(buckets[nextVal.BaseType-1].addr, Write, HighTemporalLocality)
+    buckets.accumulate(curVal, curNeg, points[j])
+    curVal = nextVal
+    curNeg = nextNeg
+  buckets.accumulate(curVal, curNeg, points[N-1])
 
   # 2. Bucket Reduction
   var sliceSum{.noinit.}: ECP_ShortW_JacExt[F, G]
@@ -310,10 +324,11 @@ func multiScalarMul_opt_vartime*[EC](r: var EC, coefs: openArray[BigInt], points
 
   let N = points.len
   let coefs = coefs.asUnchecked()
-  let points = points.asunchecked()
-  let c = bestBucketBitSize(N, BigInt.bits)
+  let points = points.asUnchecked()
+  let c = bestBucketBitSize(N, BigInt.bits, useSignedBuckets = true)
 
   case c
+  of  1: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c =  1)
   of  2: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c =  2)
   of  3: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c =  3)
   of  4: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c =  4)

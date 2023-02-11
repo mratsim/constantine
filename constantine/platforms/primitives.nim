@@ -15,7 +15,8 @@ import
   ],
   compilers/[
     addcarry_subborrow,
-    extended_precision
+    extended_precision,
+    compiler_optim_hints
   ],
   ./bithacks,
   ./static_for,
@@ -30,7 +31,8 @@ export
   ct_division,
   bithacks,
   staticFor,
-  allocs
+  allocs,
+  compiler_optim_hints
 
 when X86 and GCC_Compatible:
   import isa/[cpuinfo_x86, macro_assembler_x86]
@@ -116,10 +118,20 @@ template asUnchecked*[T](a: openArray[T]): ptr UncheckedArray[T] =
 # to a function as `var` are passed by hidden pointers in Nim and the wrong
 # pointer will be modified. Templates are fine.
 
-func `+%`*(p: ptr, offset: SomeInteger): type(p) {.inline, noInit.}=
+func `+%`*(p: ptr or pointer, offset: SomeInteger): type(p) {.inline, noInit.}=
   ## Pointer increment
   {.emit: [result, " = ", p, " + ", offset, ";"].}
 
-func `+%=`*(p: var ptr, offset: SomeInteger){.inline.}=
+func `+%=`*(p: var (ptr or pointer), offset: SomeInteger){.inline.}=
   ## Pointer increment
   p = p +% offset
+
+func prefetchLarge*[T](
+        data: ptr T,
+        rw: static PrefetchRW = Read,
+        locality: static PrefetchLocality = HighTemporalLocality) {.inline.} =
+  ## Prefetch a large value
+  let pdata = pointer(data)
+  const span = sizeof(T) div 64 # 64 byte cache line
+  for i in 0 ..< span:
+    prefetch(pdata +% (i*64), rw, locality)
