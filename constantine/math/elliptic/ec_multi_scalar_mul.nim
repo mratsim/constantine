@@ -210,7 +210,7 @@ func `-=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_A
   nQ.neg(Q)
   P.madd_vartime(P, nQ)
 
-func accumulate[ECbucket, ECpoint](buckets: ptr UncheckedArray[ECbucket], val: SecretWord, negate: SecretBool, point: ECpoint) {.inline.} =
+func accumulate[ECbucket, ECpoint](buckets: ptr UncheckedArray[ECbucket], val: SecretWord, negate: SecretBool, point: ECpoint) {.inline, meter.} =
   let val = BaseType(val)
   if val == 0:
     return
@@ -219,7 +219,7 @@ func accumulate[ECbucket, ECpoint](buckets: ptr UncheckedArray[ECbucket], val: S
   else:
     buckets[val-1] += point
 
-func bucketReduce[EC](r: var EC, buckets: ptr UncheckedArray[EC], numBuckets: static int) =
+func bucketReduce[EC](r: var EC, buckets: ptr UncheckedArray[EC], numBuckets: static int) {.meter.} =
   # We interleave reduction with zero-ing the bucket to use instruction-level parallelism
 
   var accumBuckets{.noInit.}, sliceSum{.noInit.}: EC
@@ -241,7 +241,7 @@ func miniMSM[F, G; bits: static int](
        r: var ECP_ShortW[F, G],
        buckets: ptr UncheckedArray[ECP_ShortW_JacExt[F, G]],
        bitIndex: int, miniMsmKind: static MiniMsmKind, c: static int,
-       coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], N: int) =
+       coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], N: int) {.meter.} =
   ## Apply a mini-Multi-Scalar-Multiplication on [bitIndex, bitIndex+window)
   ## slice of all (coef, point) pairs
 
@@ -284,7 +284,7 @@ func miniMSM[F, G; bits: static int](
 func multiScalarMulImpl_opt_vartime[F, G; bits: static int](
        r: var ECP_ShortW[F, G],
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
-       N: int, c: static int) =
+       N: int, c: static int) {.meter.} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
 
@@ -317,7 +317,7 @@ func multiScalarMulImpl_opt_vartime[F, G; bits: static int](
   # -------
   buckets.freeHeap()
 
-func multiScalarMul_opt_vartime*[EC](r: var EC, coefs: openArray[BigInt], points: openArray[ECP_ShortW_Aff]) =
+func multiScalarMul_opt_vartime*[EC](r: var EC, coefs: openArray[BigInt], points: openArray[ECP_ShortW_Aff]) {.meter.} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
   debug: doAssert coefs.len == points.len

@@ -53,7 +53,7 @@ func setInf*(P: var ECP_ShortW_Jac) {.inline.} =
   P.y.setOne()
   P.z.setZero()
 
-func `==`*(P, Q: ECP_ShortW_Jac): SecretBool =
+func `==`*(P, Q: ECP_ShortW_Jac): SecretBool {.meter.} =
   ## Constant-time equality check
   ## This is a costly operation
   # Reminder: the representation is not unique
@@ -336,7 +336,7 @@ func sum*[F; G: static Subgroup](
        r: var ECP_ShortW_Jac[F, G],
        P, Q: ECP_ShortW_Jac[F, G],
        CoefA: static F
-     ) =
+     ) {.meter.} =
   ## Elliptic curve point addition for Short Weierstrass curves in Jacobian coordinates
   ## with the curve ``a`` being a parameter for summing on isogenous curves.
   ##
@@ -360,7 +360,7 @@ func sum*[F; G: static Subgroup](
 func sum*[F; G: static Subgroup](
        r: var ECP_ShortW_Jac[F, G],
        P, Q: ECP_ShortW_Jac[F, G]
-     ) =
+     ) {.meter.} =
   ## Elliptic curve point addition for Short Weierstrass curves in Jacobian coordinates
   ##
   ##   R = P + Q
@@ -382,7 +382,7 @@ func madd*[F; G: static Subgroup](
        r: var ECP_ShortW_Jac[F, G],
        P: ECP_ShortW_Jac[F, G],
        Q: ECP_ShortW_Aff[F, G]
-     ) =
+     ) {.meter.} =
   ## Elliptic curve mixed addition for Short Weierstrass curves in Jacobian coordinates
   ## with the curve ``a`` being a parameter for summing on isogenous curves.
   ##
@@ -554,7 +554,7 @@ func madd*[F; G: static Subgroup](
 
   r = o
 
-func double*[F; G: static Subgroup](r: var ECP_ShortW_Jac[F, G], P: ECP_ShortW_Jac[F, G]) =
+func double*[F; G: static Subgroup](r: var ECP_ShortW_Jac[F, G], P: ECP_ShortW_Jac[F, G]) {.meter.} =
   ## Elliptic curve point doubling for Short Weierstrass curves in projective coordinate
   ##
   ##   R = [2] P
@@ -650,7 +650,7 @@ template affine*[F, G](_: type ECP_ShortW_Jac[F, G]): typedesc =
 
 func affine*[F; G](
        aff: var ECP_ShortW_Aff[F, G],
-       jac: ECP_ShortW_Jac[F, G]) =
+       jac: ECP_ShortW_Jac[F, G]) {.meter.} =
   var invZ {.noInit.}, invZ2{.noInit.}: F
   invZ.inv(jac.z)
   invZ2.square(invZ, skipFinalSub = true)

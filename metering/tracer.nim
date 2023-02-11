@@ -57,7 +57,7 @@ var ctMetrics{.compileTime.}: seq[Metadata]
   ## Unfortunately the "seq" is emptied when passing the compileTime/runtime boundaries
   ## due to Nim bugs
 
-when CttTrace:
+when CttMeter or CttTrace:
   # strformat doesn't work in templates.
   from strutils import alignLeft, formatFloat
 
@@ -111,7 +111,7 @@ macro meterAnnotate(procAst: untyped): untyped =
   procAst.expectKind({nnkProcDef, nnkFuncDef})
 
   let id = ctMetrics.len
-  let name = procAst[0].repr
+  let name = procAst[0].repr & procAst[3].repr
   # TODO, get the module and the package the proc is coming from
   #       and the tag "Fp", "ec", "polynomial" ...
 
@@ -122,6 +122,24 @@ macro meterAnnotate(procAst: untyped): untyped =
   newBody.add getAst(fnEntry(name, id, startTime, startCycle))
   newbody.add nnkDefer.newTree(getAst(fnExit(name, id, startTime, startCycle)))
   newBody.add procAst.body
+
+  if procAst[4].kind != nnkEmpty:
+    # Timing procedures adds the TimeEffect tag, which interferes with {.tags:[VarTime].}
+    # as TimeEffect is not listed. We drop the `tags` for metering
+    var pragmas: NimNode
+    if procAst[4].len == 1:
+      if procAst[4][0].kind == nnkExprColonExpr and procAst[4][0][0].eqIdent"tags":
+        pragmas = newEmptyNode()
+      else:
+        pragmas = procAst[4]
+    else:
+      pragmas = nnkPragma.newTree()
+      for i in 0 ..< procAst[4].len:
+        if procAst[4][0].kind == nnkExprColonExpr and procAst[4][0][0].eqIdent"tags":
+          continue
+        else:
+          pragmas.add procAst[4][0]
+    procAst[4] = pragmas
 
   procAst.body = newBody
   result = procAst

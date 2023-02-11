@@ -152,7 +152,7 @@ func cneg*(P: var ECP_ShortW_Prj, ctl: CTBool) {.inline.} =
 func sum*[F; G: static Subgroup](
        r: var ECP_ShortW_Prj[F, G],
        P, Q: ECP_ShortW_Prj[F, G]
-     ) =
+     ) {.meter.} =
   ## Elliptic curve point addition for Short Weierstrass curves in projective coordinates
   ##
   ##   R = P + Q
@@ -252,7 +252,7 @@ func madd*[F; G: static Subgroup](
        r: var ECP_ShortW_Prj[F, G],
        P: ECP_ShortW_Prj[F, G],
        Q: ECP_ShortW_Aff[F, G]
-     ) =
+     ) {.meter.} =
   ## Elliptic curve mixed addition for Short Weierstrass curves
   ## with p in Projective coordinates and Q in affine coordinates
   ##
@@ -330,7 +330,7 @@ func madd*[F; G: static Subgroup](
 func double*[F; G: static Subgroup](
        r: var ECP_ShortW_Prj[F, G],
        P: ECP_ShortW_Prj[F, G]
-     ) =
+     ) {.meter.} =
   ## Elliptic curve point doubling for Short Weierstrass curves in projective coordinate
   ##
   ##   R = [2] P
@@ -441,7 +441,7 @@ template affine*[F, G](_: type ECP_ShortW_Prj[F, G]): typedesc =
 
 func affine*[F, G](
        aff: var ECP_ShortW_Aff[F, G],
-       proj: ECP_ShortW_Prj[F, G]) =
+       proj: ECP_ShortW_Prj[F, G]) {.meter.} =
   var invZ {.noInit.}: F
   invZ.inv(proj.z)
 
