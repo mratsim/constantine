@@ -37,9 +37,21 @@ type ECP_ShortW_Jac*[F; G: static Subgroup] = object
   ## Note that jacobian coordinates are not unique
   x*, y*, z*: F
 
-template affine*[F, G](_: type ECP_ShortW_Jac[F, G]): typedesc =
-  ## Returns the affine type that corresponds to the Jacobian type input
-  ECP_ShortW_Aff[F, G]
+func isInf*(P: ECP_ShortW_Jac): SecretBool {.inline.} =
+  ## Returns true if P is an infinity point
+  ## and false otherwise
+  ##
+  ## Note: the jacobian coordinates equation is
+  ##       Y² = X³ + aXZ⁴ + bZ⁶
+  ## A "zero" point is any point with coordinates X and Z = 0
+  ## Y can be anything
+  result = P.z.isZero()
+
+func setInf*(P: var ECP_ShortW_Jac) {.inline.} =
+  ## Set ``P`` to infinity
+  P.x.setOne()
+  P.y.setOne()
+  P.z.setZero()
 
 func `==`*(P, Q: ECP_ShortW_Jac): SecretBool =
   ## Constant-time equality check
@@ -63,21 +75,8 @@ func `==`*(P, Q: ECP_ShortW_Jac): SecretBool =
   b *= z1z1
   result = result and a == b
 
-func isInf*(P: ECP_ShortW_Jac): SecretBool {.inline.} =
-  ## Returns true if P is an infinity point
-  ## and false otherwise
-  ##
-  ## Note: the jacobian coordinates equation is
-  ##       Y² = X³ + aXZ⁴ + bZ⁶
-  ## A "zero" point is any point with coordinates X and Z = 0
-  ## Y can be anything
-  result = P.z.isZero()
-
-func setInf*(P: var ECP_ShortW_Jac) {.inline.} =
-  ## Set ``P`` to infinity
-  P.x.setOne()
-  P.y.setOne()
-  P.z.setZero()
+  # Ensure a zero-init point doesn't propagate 0s and match any
+  result = result and not(P.isInf() xor Q.isInf())
 
 func ccopy*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac, ctl: SecretBool) {.inline.} =
   ## Constant-time conditional copy
@@ -644,6 +643,10 @@ func `-=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Aff) {.inline.} =
   var nQ {.noInit.}: typeof(Q)
   nQ.neg(Q)
   P.madd(P, nQ)
+
+template affine*[F, G](_: type ECP_ShortW_Jac[F, G]): typedesc =
+  ## Returns the affine type that corresponds to the Jacobian type input
+  ECP_ShortW_Aff[F, G]
 
 func affine*[F; G](
        aff: var ECP_ShortW_Aff[F, G],

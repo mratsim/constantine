@@ -354,29 +354,24 @@ func setBit*[bits: static int](a: var BigInt[bits], index: int) =
   let shifted = One shl (index and SelectMask)
   slot[] = slot[] or shifted
 
-func getWindowAt*(a: BigInt, bitIndex: int, bitsize: static int): SecretWord {.inline.} =
+func getWindowAt*(a: BigInt, bitIndex: int, windowSize: static int): SecretWord {.inline.} =
   ## Access a window of `a` of size bitsize
-  static: doAssert bitsize <= WordBitWidth
+  static: doAssert windowSize <= WordBitWidth
 
   const SlotShift = log2_vartime(WordBitWidth.uint32)
   const WordMask = WordBitWidth - 1
-  const WindowMask = SecretWord((1 shl bitsize) - 1)
+  const WindowMask = SecretWord((1 shl windowSize) - 1)
 
   let slot     = bitIndex shr SlotShift
   let word     = a.limbs[slot]                    # word in limbs
   let pos      = bitIndex and WordMask            # position in the word
 
-  when bitsize.isPowerOf2_vartime():
-    # Bit extraction is aligned with 32-bit or 64-bit words
-    return SecretWord(word shr pos) and WindowMask
+  # This is constant-time, the branch does not depend on secret data.
+  if pos + windowSize > WordBitWidth and slot+1 < a.limbs.len:
+    # Read next word as well
+    return SecretWord((word shr pos) or (a.limbs[slot+1] shl (WordBitWidth-pos))) and WindowMask
   else:
-    # unaligned extraction, we might need to read the next word as well.
-    # This is constant-time, the branch does not depend on secret data.
-    if pos + bitsize > WordBitWidth and slot+1 < a.limbs.len:
-      # Read next word as well
-      return SecretWord((word shr pos) or (a.limbs[slot+1] shl (WordBitWidth-pos))) and WindowMask
-    else:
-      return SecretWord(word shr pos) and WindowMask
+    return SecretWord(word shr pos) and WindowMask
 
 # Multiplication by small constants
 # ------------------------------------------------------------
@@ -762,7 +757,7 @@ func signedRecoding*[N: static int, I: SomeSignedInt](
       carry = 0
     recoded[w] = cast[I](digit)
 
-func getBoothEncoding*(digit: SecretWord, bitsize: static int): SignedSecretWord {.inline.} =
+func getBoothEncoding*(digit: SecretWord, bitsize: static int): tuple[val: SecretWord, neg: SecretBool] {.inline.} =
   ## Get the signed booth encoding for `digit`
   ##
   ## This uses the fact that 999 = 100 - 1
@@ -780,12 +775,13 @@ func getBoothEncoding*(digit: SecretWord, bitsize: static int): SignedSecretWord
   ##   - Unlike NAF and wNAF encoding, there is no carry to propagate
   ##     hence this is suitable for parallelization without encoding precomputation
   ##     and for GPUs
-  let isNegMask = -SignedSecretWord(digit shr bitsize)
+  result.neg = SecretBool(digit shr bitsize)
 
-  # Transform a string of 1's into 0
-  let t = SignedSecretWord((digit + One) shr 1)
+  let negMask = -SecretWord(result.neg)
+  const valMask = SecretWord((1 shl bitsize) - 1)
 
-  # Select the result to return
-  return (t and not isNegMask) or (-t and isNegMask)
+  let encode = (digit + One) shr 1            # Lookup bitᵢ₋₁, flip series of 1's
+  result.val = (encode + negMask) xor negMask # absolute value
+  result.val = result.val and valMask
 
 {.pop.} # raises no exceptions

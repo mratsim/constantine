@@ -208,6 +208,79 @@ func `-=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_A
   nQ.neg(Q)
   P.madd_vartime(P, nQ)
 
+func accumulate[ECbucket, ECpoint](buckets: ptr UncheckedArray[ECbucket], val: SecretWord, negate: SecretBool, point: ECpoint) {.inline.} =
+  let val = BaseType(val)
+  if val == 0:
+    return
+  elif negate.bool:
+    buckets[val-1] -= point
+  else:
+    buckets[val-1] += point
+
+func bucketReduce[EC](r: var EC, buckets: ptr UncheckedArray[EC], numBuckets: static int) =
+  # We interleave reduction with zero-ing the bucket to use instruction-level parallelism
+
+  var accumBuckets{.noInit.}, sliceSum{.noInit.}: EC
+  accumBuckets = buckets[numBuckets-1]
+  r = buckets[numBuckets-1]
+  zeroMem(buckets[numBuckets-1].addr, sizeof(EC))
+
+  for k in countdown(numBuckets-2, 0):
+    accumBuckets += buckets[k]
+    r += accumBuckets
+    zeroMem(buckets[k].addr, sizeof(EC))
+
+func miniMSM[F, G; bits: static int](
+       r: var ECP_ShortW[F, G],
+       buckets: ptr UncheckedArray[ECP_ShortW_JacExt[F, G]],
+       bitIndex: int, window, c: static int,
+       coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], N: int) =
+  ## Apply a mini-Multi-Scalar-Multiplication on [bitIndex, bitIndex+window)
+  ## slice of all (coef, point) pairs
+  ##
+  ## For bitIndex != 0
+
+  # 1. Bucket Accumulation
+  for j in 0 ..< N:
+    let digit = coefs[j].getWindowAt(bitIndex-1, window+1) # get the bit on the left of LSB for Booth recoding
+    const hasExcess = window != c                          # Usually window == c, except for the excess top (bits mod c)
+    let (value, isNeg) = digit.getBoothEncoding(window + int(hasExcess)) # Add a top 0 for excess bits
+    buckets.accumulate(value, isNeg, points[j])
+
+  # 2. Bucket Reduction
+  var sliceSum{.noinit.}: ECP_ShortW_JacExt[F, G]
+  sliceSum.bucketReduce(buckets, numBuckets = 1 shl (c-1))
+
+  # 3. Mini-MSM on the slice [bitIndex, bitIndex+window)
+  var windowSum{.noInit.}: typeof(r)
+  windowSum.fromJacobianExtended(sliceSum)
+  r += windowSum
+  for _ in 0 ..< c:
+    r.double()
+
+func miniMSM0[F, G; bits: static int](
+       r: var ECP_ShortW[F, G],
+       buckets: ptr UncheckedArray[ECP_ShortW_JacExt[F, G]],
+       c: static int,
+       coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], N: int) =
+  ## Apply a mini-Multi-Scalar-Multiplication on [0, c)
+  ## slice of all (coef, point) pairs
+
+  # 1. Bucket Accumulation
+  for j in 0 ..< N:
+    let digit = coefs[j].getWindowAt(0, c) shl 1 # implicit 0 on the right of the LSB
+    let (value, isNeg) = digit.getBoothEncoding(c) # Add a top 0 for excess bits
+    buckets.accumulate(value, isNeg, points[j])
+
+  # 2. Bucket Reduction
+  var sliceSum{.noinit.}: ECP_ShortW_JacExt[F, G]
+  sliceSum.bucketReduce(buckets, numBuckets = 1 shl (c-1))
+
+  # 3. Mini-MSM on the least significant slice
+  var windowSum{.noInit.}: typeof(r)
+  windowSum.fromJacobianExtended(sliceSum)
+  r += windowSum
+
 func multiScalarMulImpl_opt_vartime[F, G; bits: static int](
        r: var ECP_ShortW[F, G],
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
@@ -215,60 +288,34 @@ func multiScalarMulImpl_opt_vartime[F, G; bits: static int](
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
 
-  # Prologue
-  # --------
+  # Setup
+  # -----
   const numBuckets = 1 shl (c-1)
-  const numWindows = (bits + c - 1) div c + 1 # signed overflow
   type EC = typeof(r)
-  type I = (when c <=  8: int8
-            elif c <= 16: int16
-            else:         int32)
 
-  let miniMSMs = allocHeapArray(EC, numWindows)
   let buckets = allocHeapArray(jacobianExtended(EC), numBuckets)
-  let recoded = allocHeapArray(array[numWindows, I], N)
-
-  # 0. Recode points into signed digits
-  for j in 0 ..< N:
-    recoded[j].signedRecoding(coefs[j], c)
+  zeroMem(buckets[0].addr, sizeof(jacobianExtended(EC)) * numBuckets)
 
   # Algorithm
   # ---------
-  for w in 0 ..< numWindows:
-    for i in 0 ..< numBuckets:
-      buckets[i].setInf()
+  const excess = bits mod c
+  const top = bits - excess
+  var w = top
 
-    # 1. Bucket accumulation
-    for j in 0 ..< N:
-      var digit = cast[int](recoded[j][w])
-      if digit > 0:
-        buckets[digit-1] += points[j]
-      elif digit < 0:
-        buckets[-digit-1] -= points[j]
+  if excess != 0 and w != 0: # Prologue
+    r.miniMSM(buckets, top, window = excess, c, coefs, points, N)
+    w -= c
 
-    # 2. Bucket reduction
-    var accumBuckets{.noInit.}, miniMSM{.noInit.}: jacobianExtended(EC)
-    accumBuckets = buckets[numBuckets-1]
-    miniMSM = buckets[numBuckets-1]
+  while w != 0:              # Steady state
+    r.miniMSM(buckets, w, window = c, c, coefs, points, N)
+    w -= c
 
-    for k in countdown(numBuckets-2, 0):
-      accumBuckets += buckets[k]
-      miniMSM += accumBuckets
-
-    miniMSMs[w].fromJacobianExtended(miniMSM)
-
-  # 3. Final reduction.
-  r = miniMSMs[numWindows-1]
-  for w in countdown(numWindows-2, 0):
-    for _ in 0 ..< c:
-      r.double()
-    r += miniMSMs[w]
+  block:
+    r.miniMSM0(buckets, c, coefs, points, N)
 
   # Cleanup
   # -------
-  recoded.freeHeap()
   buckets.freeHeap()
-  miniMSMs.freeHeap()
 
 func multiScalarMul_opt_vartime*[EC](r: var EC, coefs: openArray[BigInt], points: openArray[ECP_ShortW_Aff]) =
   ## Multiscalar multiplication:

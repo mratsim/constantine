@@ -41,6 +41,18 @@ type ECP_ShortW_JacExt*[F; G: static Subgroup] = object
 
 func fromAffine*[F; G](jacext: var ECP_ShortW_JacExt[F, G], aff: ECP_ShortW_Aff[F, G]) {.inline.}
 
+func isInf*(P: ECP_ShortW_JacExt): SecretBool {.inline.} =
+  ## Returns true if P is an infinity point
+  ## and false otherwise
+  result = P.zz.isZero()
+
+func setInf*(P: var ECP_ShortW_JacExt) {.inline.} =
+  ## Set ``P`` to infinity
+  P.x.setOne()
+  P.y.setOne()
+  P.zz.setZero()
+  P.zzz.setZero()
+
 func `==`*(P, Q: ECP_ShortW_JacExt): SecretBool =
   ## Constant-time equality check
   ## This is a costly operation
@@ -57,17 +69,8 @@ func `==`*(P, Q: ECP_ShortW_JacExt): SecretBool =
   b.prod(Q.y, P.zzz)
   result = result and a == b
 
-func isInf*(P: ECP_ShortW_JacExt): SecretBool {.inline.} =
-  ## Returns true if P is an infinity point
-  ## and false otherwise
-  result = P.zz.isZero()
-
-func setInf*(P: var ECP_ShortW_JacExt) {.inline.} =
-  ## Set ``P`` to infinity
-  P.x.setOne()
-  P.y.setOne()
-  P.zz.setZero()
-  P.zzz.setZero()
+  # Ensure a zero-init point doesn't propagate 0s and match any
+  result = result and not(P.isInf() xor Q.isInf())
 
 func trySetFromCoordsXandZ*[F; G](
        P: var ECP_ShortW_JacExt[F, G],

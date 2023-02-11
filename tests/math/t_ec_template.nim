@@ -933,7 +933,7 @@ proc run_EC_multi_scalar_mul_impl*[N: static int](
 
   # Random seed for reproducibility
   var rng: RngState
-  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  let seed = 1676113181 # uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
   rng.seed(seed)
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
