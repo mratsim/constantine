@@ -14,7 +14,8 @@ import
   ../elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
-    ec_shortweierstrass_jacobian
+    ec_shortweierstrass_jacobian,
+    ec_shortweierstrass_jacobian_extended
   ]
 
 # No exceptions allowed
@@ -27,7 +28,7 @@ import
 #
 # ############################################################
 
-func toHex*[EC: ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff](P: EC, indent: static int = 0): string =
+func toHex*[EC: ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff or ECP_ShortW_JacExt](P: EC, indent: static int = 0): string =
   ## Stringify an elliptic curve point to Hex
   ## Note. Leading zeros are not removed.
   ## Result is prefixed with 0x

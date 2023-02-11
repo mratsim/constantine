@@ -301,6 +301,7 @@ func multiScalarMulImpl_opt_vartime[F, G; bits: static int](
   const excess = bits mod c
   const top = bits - excess
   var w = top
+  r.setInf()
 
   if excess != 0 and w != 0: # Prologue
     r.miniMSM(buckets, w, kTopWindow, c, coefs, points, N)
