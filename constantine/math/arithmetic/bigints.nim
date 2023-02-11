@@ -652,6 +652,8 @@ iterator recoding_r2l_signed_window_vartime*(a: BigInt, windowLogSize: int): int
   ## 3. Each non-zero digit is odd and less than 2ʷ⁻¹ in absolute value.
   ## 4. The length of the recoding is at most BigInt.bits + 1
   ##
+  ## This returns input one digit at a time and not the whole window.
+  ##
   ## ⚠️ not constant-time
 
   let sMax = 1 shl (windowLogSize - 1)
@@ -733,6 +735,8 @@ func recode_r2l_signed_window_vartime*[bits: static int](
   ## Minimum Hamming-Weight windowed NAF recoding
   ## Output from least significant to most significant
   ## Returns the number of bits used
+  ##
+  ## The `naf` output is returned one digit at a time and not one window at a time
   type I = SomeSignedInt
   var i = 0
   for digit in a.recoding_r2l_signed_window_vartime(window):
@@ -740,25 +744,8 @@ func recode_r2l_signed_window_vartime*[bits: static int](
     i += 1
   return i
 
-func signedRecoding*[N: static int, I: SomeSignedInt](
-       recoded: var array[N, I], scalar: BigInt, c: static int) =
-  static: doAssert sizeof(I) * 8 >= c
-  var carry = 0
-  for w in 0 ..< N:
-    var digit = carry
-    if w*c < BigInt.bits:
-      digit += cast[int](scalar.getWindowAt(w*c, c))
-
-    if digit >= 1 shl (c-1):
-      debug: doAssert w != N-1, "numWindows: " & $N & " for " & $BigInt.bits & "-bit scalars with window " & $c
-      digit -= 1 shl c
-      carry = 1
-    else:
-      carry = 0
-    recoded[w] = cast[I](digit)
-
-func getBoothEncoding*(digit: SecretWord, bitsize: static int): tuple[val: SecretWord, neg: SecretBool] {.inline.} =
-  ## Get the signed booth encoding for `digit`
+func signedWindowEncoding(digit: SecretWord, bitsize: static int): tuple[val: SecretWord, neg: SecretBool] {.inline.} =
+  ## Get the signed window encoding for `digit`
   ##
   ## This uses the fact that 999 = 100 - 1
   ## It replaces string of binary 1 with 1...-1
@@ -775,6 +762,7 @@ func getBoothEncoding*(digit: SecretWord, bitsize: static int): tuple[val: Secre
   ##   - Unlike NAF and wNAF encoding, there is no carry to propagate
   ##     hence this is suitable for parallelization without encoding precomputation
   ##     and for GPUs
+  ##   - Implementation uses Booth encoding
   result.neg = SecretBool(digit shr bitsize)
 
   let negMask = -SecretWord(result.neg)
@@ -783,5 +771,34 @@ func getBoothEncoding*(digit: SecretWord, bitsize: static int): tuple[val: Secre
   let encode = (digit + One) shr 1            # Lookup bitᵢ₋₁, flip series of 1's
   result.val = (encode + negMask) xor negMask # absolute value
   result.val = result.val and valMask
+
+func getSignedFullWindowAt*(a: BigInt, bitIndex: int, windowSize: static int): tuple[val: SecretWord, neg: SecretBool] {.inline.} =
+  ## Access a signed window of `a` of size bitsize
+  ## Returns a signed encoding.
+  ##
+  ## The result is `windowSize` bits at a time.
+  ##
+  ## bitIndex != 0 and bitIndex mod windowSize == 0
+  debug: doAssert (bitIndex != 0) and (bitIndex mod windowSize) == 0
+  let digit = a.getWindowAt(bitIndex-1, windowSize+1) # get the bit on the right of the window for Booth encoding
+  return digit.signedWindowEncoding(windowSize)
+
+func getSignedBottomWindow*(a: BigInt, windowSize: static int): tuple[val: SecretWord, neg: SecretBool] {.inline.} =
+  ## Access the least significant signed window of `a` of size bitsize
+  ## Returns a signed encoding.
+  ##
+  ## The result is `windowSize` bits at a time.
+  let digit = a.getWindowAt(0, windowSize) shl 1 # Add implicit 0 on the right of LSB for Booth encoding
+  return digit.signedWindowEncoding(windowSize)
+
+func getSignedTopWindow*(a: BigInt, topIndex: int, excess: static int): tuple[val: SecretWord, neg: SecretBool] {.inline.} =
+  ## Access the least significant signed window of `a` of size bitsize
+  ## Returns a signed encoding.
+  ##
+  ## The result is `excess` bits at a time.
+  ##
+  ## bitIndex != 0 and bitIndex mod windowSize == 0
+  let digit = a.getWindowAt(topIndex-1, excess+1) # Add implicit 0 on the left of MSB and get the bit on the right of the window
+  return digit.signedWindowEncoding(excess+1)
 
 {.pop.} # raises no exceptions
