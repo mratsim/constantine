@@ -262,6 +262,8 @@ func miniMSM[F, G; bits: static int](
   for j in 0 ..< N-1:
     (nextVal, nextNeg) = getSignedWindow(j+1)
     if nextVal.BaseType != 0:
+      # In cryptography, points are indistinguishable from random
+      # hence, without prefetching, accessing the next bucket is a guaranteed cache miss
       prefetchLarge(buckets[nextVal.BaseType-1].addr, Write, HighTemporalLocality)
     buckets.accumulate(curVal, curNeg, points[j])
     curVal = nextVal
