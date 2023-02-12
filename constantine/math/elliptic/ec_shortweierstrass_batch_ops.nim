@@ -28,7 +28,7 @@ import
 func batchAffine*[F, G](
        affs: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
        projs: ptr UncheckedArray[ECP_ShortW_Prj[F, G]],
-       N: int) {.noInline.} =
+       N: int) {.noInline, tags:[Alloca].} =
   # Algorithm: Montgomery's batch inversion
   # - Speeding the Pollard and Elliptic Curve Methods of Factorization
   #   Section 10.3.1
@@ -88,7 +88,7 @@ func batchAffine*[N: static int, F, G](
 func batchAffine*[F, G](
        affs: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
        jacs: ptr UncheckedArray[ECP_ShortW_Jac[F, G]],
-       N: int) {.noInline.} =
+       N: int) {.noInline, tags:[Alloca].} =
   # Algorithm: Montgomery's batch inversion
   # - Speeding the Pollard and Elliptic Curve Methods of Factorization
   #   Section 10.3.1
@@ -299,7 +299,7 @@ func accum_half_vartime[F; G: static Subgroup](
   var accInv {.noInit.}: F
   accInv.setZero()
   points[len-1].y += accInv   # Undo skipFinalSub, ensure that the last accum is in canonical form, before inversion
-  accInv.inv(points[len-1].y)
+  accInv.inv_vartime(points[len-1].y)
 
   # Step 4: Compute the partial sums
 

@@ -556,10 +556,14 @@ proc mainModularInverse() =
 
         let expected = BigInt[16].fromUint(1969'u16)
         var r = canary(BigInt[16])
+        var r2 = canary(BigInt[16])
 
         r.invmod(a, M)
+        r2.invmod_vartime(a, M)
 
-        check: bool(r == expected)
+        check:
+          bool(r == expected)
+          bool(r2 == expected)
 
       block: # huge int
         let a = BigInt[381].fromUint(42'u16)
@@ -567,10 +571,14 @@ proc mainModularInverse() =
 
         let expected = BigInt[381].fromUint(1969'u16)
         var r = canary(BigInt[381])
+        var r2 = canary(BigInt[381])
 
         r.invmod(a, M)
+        r2.invmod_vartime(a, M)
 
-        check: bool(r == expected)
+        check:
+          bool(r == expected)
+          bool(r2 == expected)
 
     test "271^-1 (mod 383) = 106":
       block: # small int
@@ -579,10 +587,14 @@ proc mainModularInverse() =
 
         let expected = BigInt[16].fromUint(106'u16)
         var r = canary(BigInt[16])
+        var r2 = canary(BigInt[16])
 
         r.invmod(a, M)
+        r2.invmod_vartime(a, M)
 
-        check: bool(r == expected)
+        check:
+          bool(r == expected)
+          bool(r2 == expected)
 
       block: # huge int
         let a = BigInt[381].fromUint(271'u16)
@@ -590,10 +602,14 @@ proc mainModularInverse() =
 
         let expected = BigInt[381].fromUint(106'u16)
         var r = canary(BigInt[381])
+        var r2 = canary(BigInt[381])
 
         r.invmod(a, M)
+        r2.invmod_vartime(a, M)
 
-        check: bool(r == expected)
+        check:
+          bool(r == expected)
+          bool(r2 == expected)
 
     test "BN254_Modulus^-1 (mod BLS12_381)":
       let a = BigInt[381].fromHex("0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47")
@@ -602,9 +618,14 @@ proc mainModularInverse() =
       let expected = BigInt[381].fromHex("0x0636759a0f3034fa47174b2c0334902f11e9915b7bd89c6a2b3082b109abbc9837da17201f6d8286fe6203caa1b9d4c8")
 
       var r = canary(BigInt[381])
-      r.invmod(a, M)
+      var r2 = canary(BigInt[381])
 
-      check: bool(r == expected)
+      r.invmod(a, M)
+      r2.invmod_vartime(a, M)
+
+      check:
+        bool(r == expected)
+        bool(r2 == expected)
 
     test "0^-1 (mod any) = 0 (need for tower of extension fields)":
       block:
@@ -613,10 +634,14 @@ proc mainModularInverse() =
 
         let expected = BigInt[16].fromUint(0'u16)
         var r = canary(BigInt[16])
+        var r2 = canary(BigInt[16])
 
         r.invmod(a, M)
+        r2.invmod_vartime(a, M)
 
-        check: bool(r == expected)
+        check:
+          bool(r == expected)
+          bool(r2 == expected)
 
       block:
         let a = BigInt[381].fromUint(0'u16)
@@ -624,10 +649,14 @@ proc mainModularInverse() =
 
         let expected = BigInt[381].fromUint(0'u16)
         var r = canary(BigInt[381])
+        var r2 = canary(BigInt[381])
 
         r.invmod(a, M)
+        r2.invmod_vartime(a, M)
 
-        check: bool(r == expected)
+        check:
+          bool(r == expected)
+          bool(r2 == expected)
 
 mainArith()
 mainMul()

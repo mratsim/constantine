@@ -160,6 +160,13 @@ proc invBench*(T: typedesc, iters: int) =
   bench("Inversion (constant-time)", T, iters):
     r.inv(x)
 
+proc invVartimeBench*(T: typedesc, iters: int) =
+  var r: T
+  let x = rng.random_unsafe(T)
+  preventOptimAway(r)
+  bench("Inversion (variable-time)", T, iters):
+    r.inv_vartime(x)
+
 proc isSquareBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)
   bench("isSquare (constant-time)", T, iters):

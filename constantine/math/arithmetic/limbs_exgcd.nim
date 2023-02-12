@@ -342,18 +342,24 @@ func matVecMul_shr_k_mod_M[N, E: static int](
   d[N-1] = cd.lo
   e[N-1] = ce.lo
 
-func matVecMul_shr_k[N, E: static int](
+template matVecMul_shr_k_impl(
        t: TransitionMatrix,
-       f, g: var LimbsUnsaturated[N, E],
+       f, g: var LimbsUnsaturated,
+       Excess: static int,
+       numLimbsLeft: int or static int,
        k: static int
   ) =
   ## Compute
   ##
   ## [u v] [f]
   ## [q r].[g] / 2ᵏ
+  ##
+  ## Template so that it can be specialized
+  ## when iteration number is fixed and compiler can unroll, in constant-time case
+  ## or variable and the full buffer might not be used (vartime)
 
-  static: doAssert k == WordBitWidth - E
-  const Max = SignedSecretWord(MaxWord shr E)
+  static: doAssert k == WordBitWidth - Excess
+  const Max = SignedSecretWord(MaxWord shr Excess)
 
   let
     u = t.u
@@ -376,7 +382,7 @@ func matVecMul_shr_k[N, E: static int](
   cf.ashr(k)
   cg.ashr(k)
 
-  for i in 1 ..< N:
+  for i in 1 ..< numLimbsLeft:
     cf.ssumprodAccNoCarry(u, f[i], v, g[i])
     cg.ssumprodAccNoCarry(q, f[i], r, g[i])
     f[i-1] = cf.lo and Max
@@ -384,8 +390,11 @@ func matVecMul_shr_k[N, E: static int](
     cf.ashr(k)
     cg.ashr(k)
 
-  f[N-1] = cf.lo
-  g[N-1] = cg.lo
+  f[numLimbsLeft-1] = cf.lo
+  g[numLimbsLeft-1] = cg.lo
+
+func matVecMul_shr_k[N, E: static int](t: TransitionMatrix, f, g: var LimbsUnsaturated[N, E], k: static int) =
+  matVecMul_shr_k_impl(t, f, g, E, N, k)
 
 func invmodImpl[N, E](
        a: var LimbsUnsaturated[N, E],
@@ -666,3 +675,217 @@ func legendre*(a: Limbs, M: static Limbs, bits: static int): SecretWord =
   a2.fromPackedRepr(a)
 
   legendreImpl(a2, m2, k, bits)
+
+
+# ############################################################
+#
+#              Variable-time optimizations
+#
+# ############################################################
+
+const NegInvMod256 = [
+    # Stores tab[i div 2] = -i⁻¹ (mod 256), with i odd
+    # See "invModBitwidth" on "Dumas iterations"
+    # ax ≡ 1 (mod 2ᵏ) <=> ax(2 - ax) ≡ 1 (mod 2^(2k))
+    # a⁻¹ (mod 256) = a(2-a²)
+      -1, -235, -141, -183,  -57, -227, -133, -239,
+    -241,  -91, -253, -167,  -41,  -83, -245, -223,
+    -225, -203, -109, -151,  -25, -195, -101, -207,
+    -209,  -59, -221, -135,   -9,  -51, -213, -191,
+    -193, -171,  -77, -119, -249, -163,  -69, -175,
+    -177,  -27, -189, -103, -233,  -19, -181, -159,
+    -161, -139,  -45,  -87, -217, -131,  -37, -143,
+    -145, -251, -157,  -71, -201, -243, -149, -127,
+    -129, -107,  -13,  -55, -185,  -99,   -5, -111,
+    -113, -219, -125,  -39, -169, -211, -117,  -95,
+     -97,  -75, -237,  -23, -153,  -67, -229,  -79,
+     -81, -187,  -93,   -7, -137, -179,  -85,  -63,
+     -65,  -43, -205, -247, -121,  -35, -197,  -47,
+     -49, -155,  -61, -231, -105, -147,  -53,  -31,
+     -33,  -11, -173, -215,  -89,   -3, -165,  -15,
+     -17, -123,  -29, -199,  -73, -115,  -21, -255]
+
+func batchedDivsteps_vartime(
+       t: var TransitionMatrix,
+       eta: SignedSecretWord,
+       f0, g0: SecretWord,
+       k: static int
+     ): SignedSecretWord {.tags:[Vartime].} =
+  ## Bernstein-Yang eta (-delta) batch of divsteps
+  ## **Variable-Time**
+  ##
+  ## Output:
+  ## - return eta for the next batch of divsteps
+  ## - mutate t, the transition matrix to apply `numIters` divsteps at once
+  ##   t is scaled by 2ᵏ
+  ##
+  ## Input:
+  ## - f0, bottom limb of f
+  ## - g0, bottom limb of g
+  ## - k, the maximum batch size, transition matrix is scaled by 2ᵏ
+
+  template swapNeg(a, b) =
+    var tmp = -a
+    a = b
+    b = tmp
+
+  var
+    u = One
+    v = Zero
+    q = Zero
+    r = One
+    f = f0
+    g = g0
+
+    eta = SignedBaseType(eta)
+    bitsLeft = SignedBaseType k
+
+  while true:
+    # Count zeros up to bitsLeft and process a batch of divsteps up to that number
+    let zeros = (g.BaseType or (1.BaseType shl bitsLeft)).countTrailingZeroBits_vartime()
+    g = g shr zeros
+    u = u shl zeros
+    v = v shl zeros
+    eta -= SignedBaseType zeros
+    bitsLeft -= SignedBaseType zeros
+
+    if bitsLeft == 0:
+      break
+
+    # Now process, the 1's.
+    if eta < 0:
+      eta = -eta
+      swapNeg(f, g)
+      swapNeg(u, q)
+      swapNeg(v, r)
+
+    # We process up to 6 1's at once
+    const mask6 = SecretWord((1 shl 6) - 1)
+    let limit = min(eta+1, bitsLeft)
+    let maskLimit = (MaxWord shr (WordBitWidth - limit)) and mask6
+    # Find the multiple of f to add to cancel the bottom min(limit, 6) bits of g
+    let w = (g * SecretWord NegInvMod256[int((f and mask6) shr 1)]) and maskLimit
+
+    # Next iteration will have at least 6 0's to process at once
+    g += f*w
+    q += u*w
+    r += v*w
+
+  t.u = SignedSecretWord u
+  t.v = SignedSecretWord v
+  t.q = SignedSecretWord q
+  t.r = SignedSecretWord r
+  return SignedSecretWord(eta)
+
+func matVecMul_shr_k_partial(t: TransitionMatrix, f, g: var LimbsUnsaturated, len: int, k: static int) =
+  ## Matrix-Vector multiplication with top part of f and g being zeros
+  matVecMul_shr_k_impl(t, f, g, LimbsUnsaturated.Excess, len, k)
+
+func isZero_vartime(a: LimbsUnsaturated, limbsLeft: int): bool {.tags:[VarTime].} =
+  for i in 0 ..< limbsLeft:
+    if a[i].int != 0:
+      return false
+  return true
+
+func discardUnusedLimb_vartime[N, E: static int](limbsLeft: var int, f, g: var LimbsUnsaturated[N, E]) {.tags:[VarTime].} =
+  ## If f and g both don't use their last limb, it will propagate the sign down to the previous one
+  if limbsLeft == 1:
+    return
+
+  let fn = f[limbsLeft-1]
+  let gn = g[limbsLeft-1]
+  var mask = SignedSecretWord(0)
+  mask = mask or (fn xor fn.isNegMask()) # 0 if last limb has nothing left but its sign
+  mask = mask or (gn xor gn.isNegMask()) # 0 if last limb has nothing left but its sign
+  if SignedBaseType(mask) == 0:
+    f[limbsLeft-2] = f[limbsLeft-2] or fn.lshl(62) # if only sign is left, the last limb is 11..11 if negative
+    g[limbsLeft-2] = g[limbsLeft-2] or gn.lshl(62) # or 00..00 if positive
+    limbsLeft -= 1
+
+func invmodImpl_vartime[N, E: static int](
+       a: var LimbsUnsaturated[N, E],
+       F, M: LimbsUnsaturated[N, E],
+       invMod2powK: SecretWord,
+       k, bits: static int) {.tags:[VarTime].} =
+  ## **Variable-time** Modular inversion using Bernstein-Yang algorithm
+  ## r ≡ F.a⁻¹ (mod M)
+
+  # eta = -delta
+  var eta = cast[SignedSecretWord](-1)
+  var d{.noInit.}, e{.noInit.}: LimbsUnsaturated[N, E]
+  var f{.noInit.}, g{.noInit.}: LimbsUnsaturated[N, E]
+
+  d.setZero()
+  e = F
+
+  f = M
+  g = a
+
+  var limbsLeft = N
+
+  while true:
+    var t{.noInit.}: TransitionMatrix
+    # Compute transition matrix and next eta
+    eta = t.batchedDivsteps_vartime(eta, SecretWord f[0], SecretWord g[0], k)
+    # Apply the transition matrix
+    # [u v]    [d]
+    # [q r]/2ᵏ.[e]  mod M
+    t.matVecMul_shr_k_mod_M(d, e, k, M, invMod2powK)
+    # [u v]    [f]
+    # [q r]/2ᵏ.[g]
+    t.matVecMul_shr_k_partial(f, g, limbsLeft, k)
+    if g.isZero_vartime(limbsLeft):
+      break
+    limbsLeft.discardUnusedLimb_vartime(f, g)
+
+  d.canonicalize(signMask = f[limbsLeft-1].isNegMask(), M)
+  a = d
+
+func invmod_vartime*(
+       r: var Limbs, a: Limbs,
+       F, M: Limbs, bits: static int) {.tags:[VarTime].} =
+  ## Compute the scaled modular inverse of ``a`` modulo M
+  ## r ≡ F.a⁻¹ (mod M)
+  ##
+  ## M MUST be odd, M does not need to be prime.
+  ## ``a`` MUST be less than M.
+  const Excess = 2
+  const k = WordBitWidth - Excess
+  const NumUnsatWords = (bits + k - 1) div k
+
+  # Convert values to unsaturated repr
+  var m2 {.noInit.}: LimbsUnsaturated[NumUnsatWords, Excess]
+  var factor {.noInit.}: LimbsUnsaturated[NumUnsatWords, Excess]
+  m2.fromPackedRepr(M)
+  factor.fromPackedRepr(F)
+  let m0invK = SecretWord invMod2powK(BaseType M[0], k)
+
+  var a2 {.noInit.}: LimbsUnsaturated[NumUnsatWords, Excess]
+  a2.fromPackedRepr(a)
+  a2.invmodImpl_vartime(factor, m2, m0invK, k, bits)
+  r.fromUnsatRepr(a2)
+
+func invmod_vartime*(
+       r: var Limbs, a: Limbs,
+       F, M: static Limbs, bits: static int) {.tags:[VarTime].} =
+  ## Compute the scaled modular inverse of ``a`` modulo M
+  ## r ≡ F.a⁻¹ (mod M) (compile-time factor and modulus overload)
+  ##
+  ## with F and M known at compile-time
+  ##
+  ## M MUST be odd, M does not need to be prime.
+  ## ``a`` MUST be less than M.
+
+  const Excess = 2
+  const k = WordBitWidth - Excess
+  const NumUnsatWords = (bits + k - 1) div k
+
+  # Convert values to unsaturated repr
+  const m2 = LimbsUnsaturated[NumUnsatWords, Excess].fromPackedRepr(M)
+  const factor = LimbsUnsaturated[NumUnsatWords, Excess].fromPackedRepr(F)
+  const m0invK = SecretWord invMod2powK(BaseType M[0], k)
+
+  var a2 {.noInit.}: LimbsUnsaturated[NumUnsatWords, Excess]
+  a2.fromPackedRepr(a)
+  a2.invmodImpl_vartime(factor, m2, m0invK, k, bits)
+  r.fromUnsatRepr(a2)

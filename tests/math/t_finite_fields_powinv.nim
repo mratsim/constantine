@@ -210,11 +210,19 @@ proc main() =
         r.inv(x)
         check: bool r.isZero()
 
+        var r2: Fp[BLS12_381]
+        r2.inv_vartime(x)
+        check: bool r2.isZero()
+
       block:
         var r, x: Fp[BLS12_381]
         x.setOne()
         r.inv(x)
         check: bool r.isOne()
+
+        var r2: Fp[BLS12_381]
+        r2.inv_vartime(x)
+        check: bool r2.isOne()
 
       block:
         var r, x: Fp[BLS12_381]
@@ -228,6 +236,10 @@ proc main() =
 
         check:
           computed == expected
+
+        var r2: Fp[BLS12_381]
+        r2.inv_vartime(x)
+        let computed2 = r2.toHex()
 
     test "Specific tests on Fp[BN254_Snarks]":
       block:
@@ -244,6 +256,10 @@ proc main() =
         r.inv(x)
         check: bool(r == expected)
 
+        var r2: Fp[BN254_Snarks]
+        r2.inv_vartime(x)
+        check: bool(r2 == expected)
+
       block:
         var r, x, expected: Fp[BN254_Snarks]
         x.fromHex"0x0d2007d8aaface1b8501bfbe792974166e8f9ad6106e5b563604f0aea9ab06f6"
@@ -251,6 +267,10 @@ proc main() =
 
         r.inv(x)
         check: bool(r == expected)
+
+        var r2: Fp[BN254_Snarks]
+        r2.inv_vartime(x)
+        check: bool(r2 == expected)
 
     proc testRandomInv(curve: static Curve) =
       test "Random inversion testing on " & $Curve(curve):
@@ -264,6 +284,12 @@ proc main() =
           r.prod(aInv, a)
           check: bool r.isOne() or (a.isZero() and r.isZero())
 
+          aInv.inv_vartime(a)
+          r.prod(a, aInv)
+          check: bool r.isOne() or (a.isZero() and r.isZero())
+          r.prod(aInv, a)
+          check: bool r.isOne() or (a.isZero() and r.isZero())
+
         for _ in 0 ..< Iters:
           let a = rng.randomHighHammingWeight(Fp[curve])
           aInv.inv(a)
@@ -272,9 +298,20 @@ proc main() =
           r.prod(aInv, a)
           check: bool r.isOne() or (a.isZero() and r.isZero())
 
+          aInv.inv_vartime(a)
+          r.prod(a, aInv)
+          check: bool r.isOne() or (a.isZero() and r.isZero())
+          r.prod(aInv, a)
+          check: bool r.isOne() or (a.isZero() and r.isZero())
         for _ in 0 ..< Iters:
           let a = rng.random_long01Seq(Fp[curve])
           aInv.inv(a)
+          r.prod(a, aInv)
+          check: bool r.isOne() or (a.isZero() and r.isZero())
+          r.prod(aInv, a)
+          check: bool r.isOne() or (a.isZero() and r.isZero())
+
+          aInv.inv_vartime(a)
           r.prod(a, aInv)
           check: bool r.isOne() or (a.isZero() and r.isZero())
           r.prod(aInv, a)

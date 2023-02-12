@@ -61,6 +61,7 @@ proc main() =
     toFieldBench(Fp[curve], Iters)
     smallSeparator()
     invBench(Fp[curve], ExponentIters)
+    invVartimeBench(Fp[curve], ExponentIters)
     isSquareBench(Fp[curve], ExponentIters)
     sqrtBench(Fp[curve], ExponentIters)
     sqrtRatioBench(Fp[curve], ExponentIters)

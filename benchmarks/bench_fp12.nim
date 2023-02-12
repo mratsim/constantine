@@ -40,6 +40,7 @@ proc main() =
     mulBench(Fp12[curve], Iters)
     sqrBench(Fp12[curve], Iters)
     invBench(Fp12[curve], InvIters)
+    invVartimeBench(Fp12[curve], InvIters)
     separator()
 
 main()

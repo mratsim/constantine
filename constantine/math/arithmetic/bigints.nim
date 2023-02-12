@@ -514,6 +514,47 @@ func invmod*[bits](r: var BigInt[bits], a, M: BigInt[bits]) =
 
 # ############################################################
 #
+#                   **Variable-Time**
+#
+# ############################################################
+
+{.push inline.}
+
+func invmod_vartime*[bits](
+       r: var BigInt[bits],
+       a, F, M: BigInt[bits]) {.tags: [VarTime].} =
+  ## Compute the modular inverse of ``a`` modulo M
+  ## r ≡ F.a⁻¹ (mod M)
+  ##
+  ## M MUST be odd, M does not need to be prime.
+  ## ``a`` MUST be less than M.
+  r.limbs.invmod_vartime(a.limbs, F.limbs, M.limbs, bits)
+
+func invmod_vartime*[bits](
+       r: var BigInt[bits],
+       a: BigInt[bits],
+       F, M: static BigInt[bits]) {.tags: [VarTime].} =
+  ## Compute the modular inverse of ``a`` modulo M
+  ## r ≡ F.a⁻¹ (mod M)
+  ##
+  ## with F and M known at compile-time
+  ##
+  ## M MUST be odd, M does not need to be prime.
+  ## ``a`` MUST be less than M.
+  r.limbs.invmod_vartime(a.limbs, F.limbs, M.limbs, bits)
+
+func invmod_vartime*[bits](r: var BigInt[bits], a, M: BigInt[bits]) {.tags: [VarTime].} =
+  ## Compute the modular inverse of ``a`` modulo M
+  ##
+  ## The modulus ``M`` MUST be odd
+  var one {.noInit.}: BigInt[bits]
+  one.setOne()
+  r.invmod_vartime(a, one, M)
+
+{.pop.}
+
+# ############################################################
+#
 #                   Recoding
 #
 # ############################################################

@@ -79,10 +79,10 @@ template fmap(x: SignedSecretWord, op: untyped, y: SignedSecretWord): SignedSecr
   ## Apply op, and rewrap them
   SignedSecretWord(op(SecretWord(x), SecretWord(y)))
 
-template fmapAsgn(x: SignedSecretWord, op: untyped, y: SignedSecretWord) =
+template fmapAsgn(x: var SignedSecretWord, op: untyped, y: SignedSecretWord) =
   ## Unwrap x and y from their distinct type
   ## Apply assignment op, and rewrap them
-  op(SecretWord(x), SecretWord(y))
+  op(cast[var SecretWord](x.addr), SecretWord(y))
 
 template `and`*(x, y: SignedSecretWord): SignedSecretWord    = fmap(x, `and`, y)
 template `or`*(x, y: SignedSecretWord): SignedSecretWord     = fmap(x, `or`, y)

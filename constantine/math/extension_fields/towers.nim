@@ -1236,7 +1236,7 @@ func mul2x_sparse_by_0y*[Fdbl, F](
 # Inversion
 # -------------------------------------------------------------------
 
-func invImpl(r: var QuadraticExt, a: QuadraticExt) =
+func invImpl(r: var QuadraticExt, a: QuadraticExt, useVartime: static bool = false) =
   ## Compute the multiplicative inverse of ``a``
   ##
   ## The inverse of 0 is 0.
@@ -1260,14 +1260,17 @@ func invImpl(r: var QuadraticExt, a: QuadraticExt) =
     v0 -= v1              # v0 = a0² - β a1² (the norm / squared magnitude of a)
 
   # [1 Inv, 2 Sqr, 1 Add]
-  v1.inv(v0)              # v1 = 1 / (a0² - β a1²)
+  when useVartime:
+    v1.inv_vartime(v0)
+  else:
+    v1.inv(v0)            # v1 = 1 / (a0² - β a1²)
 
   # [1 Inv, 2 Mul, 2 Sqr, 1 Add, 1 Neg]
   r.c0.prod(a.c0, v1)     # r0 = a0 / (a0² - β a1²)
   v0.neg(v1)              # v0 = -1 / (a0² - β a1²)
   r.c1.prod(a.c1, v0)     # r1 = -a1 / (a0² - β a1²)
 
-func inv2xImpl(r: var QuadraticExt, a: QuadraticExt) =
+func inv2xImpl(r: var QuadraticExt, a: QuadraticExt, useVartime: static bool = false) =
   ## Compute the multiplicative inverse of ``a``
   ##
   ## The inverse of 0 is 0.
@@ -1287,7 +1290,10 @@ func inv2xImpl(r: var QuadraticExt, a: QuadraticExt) =
 
   # [1 Inv, 2 Sqr, 1 Add]
   t.redc2x(V0)
-  t.inv()                 # v1 = 1 / (a0² - β a1²)
+  when useVartime:
+    t.inv_vartime()
+  else:
+    t.inv()                 # v1 = 1 / (a0² - β a1²)
 
   # [1 Inv, 2 Mul, 2 Sqr, 1 Add, 1 Neg]
   r.c0.prod(a.c0, t)      # r0 = a0 / (a0² - β a1²)
@@ -1986,7 +1992,7 @@ func mul2x_sparse_by_0yz*[Fpkdiv3](r: var CubicExt2x, a: CubicExt, y, z: Fpkdiv3
 # Inversion
 # ----------------------------------------------------------------------
 
-func invImpl(r: var CubicExt, a: CubicExt) =
+func invImpl(r: var CubicExt, a: CubicExt, useVartime: static bool = false) =
   ## Compute the multiplicative inverse of ``a``
   ##
   ## The inverse of 0 is 0.
@@ -2034,14 +2040,17 @@ func invImpl(r: var CubicExt, a: CubicExt) =
   r.c0.prod(a.c0, A) # aliasing: last use of a₀, destroy r₀
   t += r.c0
 
-  t.inv()
+  when useVartime:
+    t.inv_vartime()
+  else:
+    t.inv()
 
   # (a0 + a1 v + a2 v²)^-1 = (A + B v + C v²) / F
   r.c0.prod(A, t)
   r.c1.prod(B, t)
   r.c2.prod(C, t)
 
-func inv2xImpl(r: var CubicExt, a: CubicExt) =
+func inv2xImpl(r: var CubicExt, a: CubicExt, useVartime: static bool = false) =
   ## Compute the multiplicative inverse of ``a``
   ## via lazy reduction
   ##
@@ -2086,7 +2095,10 @@ func inv2xImpl(r: var CubicExt, a: CubicExt) =
   t.sum2xUnr(t, t2)
   f.redc2x(t)
 
-  f.inv()
+  when useVartime:
+    f.inv_vartime()
+  else:
+    f.inv()
 
   # (a0 + a1 v + a2 v²)^-1 = (A + B v + C v²) / F
   r.c0.prod(A, f)
@@ -2182,6 +2194,45 @@ template prod*(r: var ExtensionField, a, b: ExtensionField, skipFinalSub: static
   # the base field and its extensions while benefitting from skipping
   # the final substraction on Fp
   r.prod(a, b)
+
+# ############################################################
+#                                                            #
+#                     Variable-time                          #
+#                                                            #
+# ############################################################
+
+func inv_vartime*(r: var QuadraticExt, a: QuadraticExt) {.tags:[VarTime].} =
+  ## Compute the multiplicative inverse of ``a``
+  ##
+  ## The inverse of 0 is 0.
+  ## Incidentally this avoids extra check
+  ## to convert Jacobian and Projective coordinates
+  ## to affine for elliptic curve
+  when true:
+    r.invImpl(a, useVartime = true)
+  else: # Lazy reduction, doesn't seem to gain speed.
+    r.inv2xImpl(a, useVartime = true)
+
+func inv_vartime*(r: var CubicExt, a: CubicExt) {.tags:[VarTime].} =
+  ## Compute the multiplicative inverse of ``a``
+  ##
+  ## The inverse of 0 is 0.
+  ## Incidentally this avoids extra check
+  ## to convert Jacobian and Projective coordinates
+  ## to affine for elliptic curve
+  when CubicExt.C.has_large_field_elem() or r is Fp12:
+    r.invImpl(a, useVartime = true)
+  else:
+    r.inv2xImpl(a, useVartime = true)
+
+func inv_vartime*(a: var ExtensionField) {.tags:[VarTime].} =
+  ## Compute the multiplicative inverse of ``a``
+  ##
+  ## The inverse of 0 is 0.
+  ## Incidentally this avoids extra check
+  ## to convert Jacobian and Projective coordinates
+  ## to affine for elliptic curve
+  a.invImpl(a, useVartime = true)
 
 {.pop.} # inline
 {.pop.} # raises no exceptions
