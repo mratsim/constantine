@@ -276,7 +276,7 @@ func miniMSM[F, G; bits: static int](
 
   # 3. Mini-MSM on the slice [bitIndex, bitIndex+window)
   var windowSum{.noInit.}: typeof(r)
-  windowSum.fromJacobianExtended(sliceSum)
+  windowSum.fromJacobianExtended_vartime(sliceSum)
   r += windowSum
 
   when miniMsmKind != kBottomWindow:

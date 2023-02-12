@@ -334,24 +334,30 @@ func fromAffine*[F; G](
   jacext.zz.csetZero(inf)
   jacext.zzz.csetZero(inf)
 
-func fromJacobianExtended*[F; G](
+func fromJacobianExtended_vartime*[F; G](
        prj: var ECP_ShortW_Prj[F, G],
-       jacext: ECP_ShortW_JacExt[F, G]) {.inline, meter.} =
+       jacext: ECP_ShortW_JacExt[F, G]) {.inline, meter, tags:[VarTime].} =
   # Affine (x, y)
   # Jacobian extended (xZ², yZ³, Z², Z³)
   # Projective        (xZ', yZ', Z')
   # We can choose Z' = Z⁵
+  if jacext.isInf().bool:
+    prj.setInf()
+    return
   prj.z.prod(jacext.zz, jacext.zzz)
   prj.x.prod(jacext.x, jacext.zzz)
   prj.y.prod(jacext.y, jacext.zz)
 
-func fromJacobianExtended*[F; G](
+func fromJacobianExtended_vartime*[F; G](
        jac: var ECP_ShortW_Jac[F, G],
-       jacext: ECP_ShortW_JacExt[F, G]) {.inline, meter.} =
+       jacext: ECP_ShortW_JacExt[F, G]) {.inline, meter, tags:[VarTime].} =
   # Affine (x, y)
   # Jacobian extended (xZ²,  yZ³,  Z², Z³)
   # Jacobian          (xZ'², yZ'³, Z')
   # We can choose Z' = Z²
+  if jacext.isInf().bool:
+    jac.setInf()
+    return
   jac.x.prod(jacext.x, jacext.zz)
   jac.y.prod(jacext.y, jacext.zzz)
   jac.z = jacext.zz
