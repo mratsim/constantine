@@ -129,9 +129,11 @@ func `+%=`*(p: var (ptr or pointer), offset: SomeInteger){.inline.}=
 func prefetchLarge*[T](
         data: ptr T,
         rw: static PrefetchRW = Read,
-        locality: static PrefetchLocality = HighTemporalLocality) {.inline.} =
+        locality: static PrefetchLocality = HighTemporalLocality,
+        maxCacheLines: static int = 0) {.inline.} =
   ## Prefetch a large value
   let pdata = pointer(data)
   const span = sizeof(T) div 64 # 64 byte cache line
-  for i in 0 ..< span:
+  const N = if maxCacheLines == 0: span else: min(span, maxCacheLines)
+  for i in 0 ..< N:
     prefetch(pdata +% (i*64), rw, locality)

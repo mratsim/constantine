@@ -12,7 +12,8 @@ import
   ../extension_fields,
   ../io/io_bigints,
   ../ec_shortweierstrass,
-  ./ec_shortweierstrass_jacobian_extended
+  ./ec_shortweierstrass_jacobian_extended,
+  ./ec_shortweierstrass_batch_ops
 
 # No exceptions allowed in core cryptographic operations
 {.push raises: [].}
@@ -205,41 +206,60 @@ func `+=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_J
   P.sum_vartime(P, Q)
 func `+=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_Aff[F, G]) {.inline.}=
   P.madd_vartime(P, Q)
-func `-=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_Aff[F, G]) {.inline.}=
-  var nQ {.noInit.}: typeof(Q)
-  nQ.neg(Q)
-  P.madd_vartime(P, nQ)
 
 func accumulate[ECbucket, ECpoint](buckets: ptr UncheckedArray[ECbucket], val: SecretWord, negate: SecretBool, point: ECpoint) {.inline, meter.} =
   let val = BaseType(val)
   if val == 0:
     return
   elif negate.bool:
-    buckets[val-1] -= point
+    var nP {.noInit.}: ECpoint
+    nP.neg(point)
+    when ECbucket is EcAddAccumulator_vartime:
+      buckets[val-1].update(nP)
+    else:
+      buckets[val-1] += nP
   else:
-    buckets[val-1] += point
+    when ECbucket is EcAddAccumulator_vartime:
+      buckets[val-1].update(point)
+    else:
+      buckets[val-1] += point
 
 func bucketReduce[EC](r: var EC, buckets: ptr UncheckedArray[EC], numBuckets: static int) {.meter.} =
   # We interleave reduction with zero-ing the bucket to use instruction-level parallelism
 
-  var accumBuckets{.noInit.}, sliceSum{.noInit.}: EC
+  var accumBuckets{.noInit.}: typeof(r)
   accumBuckets = buckets[numBuckets-1]
   r = buckets[numBuckets-1]
-  zeroMem(buckets[numBuckets-1].addr, sizeof(EC))
+  buckets[numBuckets-1].setInf()
 
   for k in countdown(numBuckets-2, 0):
     accumBuckets += buckets[k]
     r += accumBuckets
-    zeroMem(buckets[k].addr, sizeof(EC))
+    buckets[k].setInf()
+
+func bucketReduce[EC; EcBucket: EcAddAccumulator_vartime](r: var EC, buckets: ptr UncheckedArray[EcBucket], numBuckets: static int) {.meter.} =
+  # We interleave reduction with zero-ing the bucket to use instruction-level parallelism
+
+  var accumBuckets{.noInit.}: typeof(r)
+  buckets[numBuckets-1].finish(accumBuckets)
+  r = accumBuckets
+  buckets[numBuckets-1].init()
+
+  var t{.noInit.}: EC
+  for k in countdown(numBuckets-2, 0):
+    buckets[k].finish(t)
+    accumBuckets += t
+    r += accumBuckets
+    buckets[k].init()
 
 type MiniMsmKind = enum
   kTopWindow
   kFullWindow
   kBottomWindow
 
-func miniMSM[F, G; bits: static int](
+func miniMSM[EcBucket, F, G; bits: static int](
        r: var ECP_ShortW[F, G],
-       buckets: ptr UncheckedArray[ECP_ShortW_JacExt[F, G]],
+       buckets: ptr UncheckedArray[EcBucket],
        bitIndex: int, miniMsmKind: static MiniMsmKind, c: static int,
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], N: int) {.meter.} =
   ## Apply a mini-Multi-Scalar-Multiplication on [bitIndex, bitIndex+window)
@@ -264,7 +284,7 @@ func miniMSM[F, G; bits: static int](
     if nextVal.BaseType != 0:
       # In cryptography, points are indistinguishable from random
       # hence, without prefetching, accessing the next bucket is a guaranteed cache miss
-      prefetchLarge(buckets[nextVal.BaseType-1].addr, Write, HighTemporalLocality)
+      prefetchLarge(buckets[nextVal.BaseType-1].addr, Write, HighTemporalLocality, maxCacheLines = 2)
     buckets.accumulate(curVal, curNeg, points[j])
     curVal = nextVal
     curNeg = nextNeg
@@ -295,8 +315,48 @@ func multiScalarMulImpl_opt_vartime[F, G; bits: static int](
   const numBuckets = 1 shl (c-1)
   type EC = typeof(r)
 
-  let buckets = allocHeapArray(jacobianExtended(EC), numBuckets)
-  zeroMem(buckets[0].addr, sizeof(jacobianExtended(EC)) * numBuckets)
+  # We want to use affine coordinates, as they have an asymptotic addition cost of 6M (+ amortized inversion)
+  # compared to extended jacobian of 10M. The bigger the batch size, the bigger the amortization factor.
+  # But also the bigger the memory usage, and the number of buckets grows exponentially with c
+  # (which grows logarithmically with number of points).
+  # Assuming 48 byte field element (BLS12-381), so 96 bytes affine or 192 bytes extjac, we have
+  # an accumulator of size 192 + batchSize*96 + 4 (accumulator index)
+  #
+  # Here is a table of the batch size per bucket and total bucket memory depending on input size
+  # for the chosen formula (c+5)*(c+3) - 8*c, to determine the batch size
+  #
+  #   inputs    c     buckets    batch size        memory
+  #        1    2           2            19          4034
+  #        5    3           4            24          9988
+  #       10    4           8            31         25352
+  #       50    5          16            40         64528
+  #      100    6          32            51        162848
+  #      500    8         128            79        995456
+  #     1000    9         256            96       2408704
+  #     5000   11        1024           136      13566976
+  #    10000   11        1024           136      13566976
+  #    50000   14        8192           211     167518208
+  #   100000   14        8192           211     167518208
+  #   500000   17       65536           304    1925251072
+  #  1000000   17       65536           304    1925251072
+  #  5000000   20      524288           415   20988821504
+  # 10000000   21     1048576           456   46104838144
+  # 50000000   22     2097152           499  100866719744
+  #
+  # Note:
+  # - The computation of `c` minimizes the number of EC operations
+  #     but we might want to significantly reduce its growth after c == 14
+  #     to optimize for memory bandwidth/reduce cache misses
+  #     and also reduce memory usage.
+  # - We don't batch when c < 10
+  when true: # c < 10:
+    type EcBucket = jacobianExtended(EC)
+  else:
+    const accumBufferSize = (c+5)*(c+3) - 8*c
+    type EcBucket = EcAddAccumulator_vartime[jacobianExtended(EC), F, G, accumBufferSize]
+
+  let buckets = allocHeapArray(EcBucket, numBuckets)
+  zeroMem(buckets[0].addr, sizeof(EcBucket) * numBuckets)
 
   # Algorithm
   # ---------

@@ -14,6 +14,7 @@ import
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
+    ec_shortweierstrass_jacobian_extended,
     ec_shortweierstrass_batch_ops_parallel],
   ../constantine/platforms/threadpool/threadpool,
   # Helpers
@@ -57,40 +58,53 @@ const AvailableCurves = [
   BLS12_381,
 ]
 
+const testNumPoints = [10, 100, 1000, 10000, 100000]
+
 proc main() =
   separator()
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
     addBench(ECP_ShortW_Prj[Fp[curve], G1], Iters)
-    addBench(ECP_ShortW_Jac[Fp[curve], G1], Iters)
-    mixedAddBench(ECP_ShortW_Prj[Fp[curve], G1], Iters)
-    mixedAddBench(ECP_ShortW_Jac[Fp[curve], G1], Iters)
     doublingBench(ECP_ShortW_Prj[Fp[curve], G1], Iters)
+    mixedAddBench(ECP_ShortW_Prj[Fp[curve], G1], Iters)
+    addBench(ECP_ShortW_Jac[Fp[curve], G1], Iters)
     doublingBench(ECP_ShortW_Jac[Fp[curve], G1], Iters)
+    mixedAddBench(ECP_ShortW_Jac[Fp[curve], G1], Iters)
+    addBench(ECP_ShortW_JacExt[Fp[curve], G1], Iters)
+    doublingBench(ECP_ShortW_JacExt[Fp[curve], G1], Iters)
+    mixedAddBench(ECP_ShortW_JacExt[Fp[curve], G1], Iters)
     separator()
-    for numPoints in [10, 100, 1000, 10000, 100000, 1000000]:
+    for numPoints in testNumPoints:
       let batchIters = max(1, Iters div numPoints)
       multiAddBench(ECP_ShortW_Prj[Fp[curve], G1], numPoints, useBatching = false, batchIters)
     separator()
-    for numPoints in [10, 100, 1000, 10000, 100000, 1000000]:
+    for numPoints in testNumPoints:
       let batchIters = max(1, Iters div numPoints)
       multiAddBench(ECP_ShortW_Prj[Fp[curve], G1], numPoints, useBatching = true, batchIters)
     separator()
-    for numPoints in [10, 100, 1000, 10000, 100000, 1000000]:
+    for numPoints in testNumPoints:
       let batchIters = max(1, Iters div numPoints)
       multiAddParallelBench(ECP_ShortW_Prj[Fp[curve], G1], numPoints, batchIters)
     separator()
-    for numPoints in [10, 100, 1000, 10000, 100000, 1000000]:
+    for numPoints in testNumPoints:
       let batchIters = max(1, Iters div numPoints)
       multiAddBench(ECP_ShortW_Jac[Fp[curve], G1], numPoints, useBatching = false, batchIters)
     separator()
-    for numPoints in [10, 100, 1000, 10000, 100000, 1000000]:
+    for numPoints in testNumPoints:
       let batchIters = max(1, Iters div numPoints)
       multiAddBench(ECP_ShortW_Jac[Fp[curve], G1], numPoints, useBatching = true, batchIters)
     separator()
-    for numPoints in [10, 100, 1000, 10000, 100000, 1000000]:
+    for numPoints in testNumPoints:
       let batchIters = max(1, Iters div numPoints)
       multiAddParallelBench(ECP_ShortW_Jac[Fp[curve], G1], numPoints, batchIters)
+    separator()
+    for numPoints in testNumPoints:
+      let batchIters = max(1, Iters div numPoints)
+      multiAddBench(ECP_ShortW_JacExt[Fp[curve], G1], numPoints, useBatching = false, batchIters)
+    separator()
+    for numPoints in testNumPoints:
+      let batchIters = max(1, Iters div numPoints)
+      multiAddBench(ECP_ShortW_JacExt[Fp[curve], G1], numPoints, useBatching = true, batchIters)
     separator()
     separator()
 

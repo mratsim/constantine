@@ -60,6 +60,11 @@ template bench*(op: string, EC: typedesc, iters: int, body: untyped): untyped =
   measure(iters, startTime, stopTime, startClk, stopClk, body)
   report(op, fixEllipticDisplay(EC), startTime, stopTime, startClk, stopClk, iters)
 
+func `+=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_JacExt[F, G]) {.inline.}=
+  P.sum_vartime(P, Q)
+func `+=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_Aff[F, G]) {.inline.}=
+  P.madd_vartime(P, Q)
+
 proc addBench*(EC: typedesc, iters: int) =
   var r {.noInit.}: EC
   let P = rng.random_unsafe(EC)

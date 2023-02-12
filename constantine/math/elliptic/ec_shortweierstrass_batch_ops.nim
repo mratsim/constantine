@@ -363,13 +363,13 @@ template `+=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_Shor
   # Hence we do not expose `+=` for extended jacobian operation to prevent `vartime` mistakes
   # The following algorithms are all tagged vartime, hence for genericity
   # we create a local `+=` for this module only
-  P.madd_vartime(P, Q)
+  madd_vartime(P, P, Q)
 
 func accumSum_chunk_vartime[F; G: static Subgroup](
        r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G] or ECP_ShortW_JacExt[F, G]),
        points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
        lambdas: ptr UncheckedArray[tuple[num, den: F]],
-       len: uint) =
+       len: uint) {.tags:[VarTime].} =
   ## Accumulate `points` into r.
   ## `r` is NOT overwritten
   ## r += ∑ points
@@ -393,11 +393,11 @@ func accumSum_chunk_vartime[F; G: static Subgroup](
   for i in 0'u ..< n:
     r += points[i]
 
-func sum_batch_vartime*[F; G: static Subgroup](
+func accum_batch_vartime[F; G: static Subgroup](
        r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G] or ECP_ShortW_JacExt[F, G]),
-       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], pointsLen: int) {.noInline.} =
+       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], pointsLen: int) {.noInline, tags:[VarTime, Alloca].} =
   ## Batch addition of `points` into `r`
-  ## `r` is overwritten
+  ## `r` is accumulated into
 
   # We chunk the addition to limit memory usage
   # especially as we allocate on the stack.
@@ -418,8 +418,6 @@ func sum_batch_vartime*[F; G: static Subgroup](
   # After one chunk is processed we are well within all 64-bit CPU L2 cache bounds
   # as we halve after each chunk.
 
-  r.setInf()
-
   const maxTempMem = 262144 # 2¹⁸ = 262144
   const maxStride = maxTempMem div sizeof(ECP_ShortW_Aff[F, G])
 
@@ -435,10 +433,67 @@ func sum_batch_vartime*[F; G: static Subgroup](
 
 func sum_batch_vartime*[F; G: static Subgroup](
        r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G] or ECP_ShortW_JacExt[F, G]),
-       points: openArray[ECP_ShortW_Aff[F, G]]) {.inline.} =
+       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], pointsLen: int) {.inline, tags:[VarTime, Alloca].} =
+  ## Batch addition of `points` into `r`
+  ## `r` is overwritten
+  r.setInf()
+  r.accum_batch_vartime(points, pointsLen)
+
+func sum_batch_vartime*[F; G: static Subgroup](
+       r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G] or ECP_ShortW_JacExt[F, G]),
+       points: openArray[ECP_ShortW_Aff[F, G]]) {.inline, tags:[VarTime, Alloca].} =
   ## Batch addition of `points` into `r`
   ## `r` is overwritten
   if points.len == 0:
     r.setInf()
-    return
   r.sum_batch_vartime(points.asUnchecked(), points.len)
+
+# ############################################################
+#
+#                  EC Addition Accumulator
+#
+# ############################################################
+
+# Accumulators stores partial additions
+# They allow supporting EC additions in a streaming fashion
+
+type EcAddAccumulator_vartime*[EC, F; G: static Subgroup; AccumMax: static int] = object
+  ## Elliptic curve addition accumulator
+  ## **Variable-Time**
+  # The `cur` is dereferenced first so better locality if at the beginning
+  # Do we want alignment guarantees?
+  cur: uint32
+  accum: EC
+  buffer: array[AccumMax, ECP_ShortW_Aff[F, G]]
+
+func init*(ctx: var EcAddAccumulator_vartime) =
+  static: doAssert EcAddAccumulator_vartime.AccumMax >= 16, "There is no point in a EcAddBatchAccumulator if the batch size is too small"
+  ctx.accum.setInf()
+  ctx.cur = 0
+
+func consumeBuffer[EC, F; G: static Subgroup; AccumMax: static int](
+       ctx: var EcAddAccumulator_vartime[EC, F, G, AccumMax]) {.noInline, tags: [VarTime, Alloca].}=
+  if ctx.cur == 0:
+    return
+
+  let lambdas = allocStackArray(tuple[num, den: F], ctx.cur.int)
+  ctx.accum.accumSum_chunk_vartime(ctx.buffer.asUnchecked(), lambdas, ctx.cur.uint)
+  ctx.cur = 0
+
+func update*[EC, F, G; AccumMax: static int](
+        ctx: var EcAddAccumulator_vartime[EC, F, G, AccumMax],
+        P: ECP_ShortW_Aff[F, G]) =
+
+  if ctx.cur == AccumMax:
+    ctx.consumeBuffer()
+
+  ctx.buffer[ctx.cur] = P
+  ctx.cur += 1
+
+# TODO: `merge` for parallel recursive divide-and-conquer processing
+
+func finish*[EC, F, G; AccumMax: static int](
+        ctx: var EcAddAccumulator_vartime[EC, F, G, AccumMax],
+        accumulatedResult: var EC) =
+  ctx.consumeBuffer()
+  accumulatedResult = ctx.accum

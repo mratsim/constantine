@@ -267,7 +267,8 @@ const benchDesc = [
   "bench_ec_g1",
   "bench_ec_g1_scalar_mul",
   "bench_ec_g1_batch",
-  "bench_ec_g1_msm",
+  "bench_ec_g1_msm_bn254_snarks",
+  "bench_ec_g1_msm_bls12_381",
   "bench_ec_g2",
   "bench_ec_g2_scalar_mul",
   "bench_pairing_bls12_377",
@@ -859,20 +860,35 @@ task bench_ec_g1_scalar_mul_clang_noasm, "Run benchmark on Elliptic Curve group 
 # Elliptic curve G1 - Multi-scalar-mul
 # ------------------------------------------
 
-task bench_ec_g1_msm, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) - Default compiler":
-  runBench("bench_ec_g1_msm")
+task bench_ec_g1_msm_bn254_snarks, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BN254-Snarks - Default compiler":
+  runBench("bench_ec_g1_msm_bn254_snarks")
 
-task bench_ec_g1_msm_gcc, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) - GCC":
-  runBench("bench_ec_g1_msm", "gcc")
+task bench_ec_g1_msm_bn254_snarks_gcc, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BN254-Snarks - GCC":
+  runBench("bench_ec_g1_msm_bn254_snarks", "gcc")
 
-task bench_ec_g1_msm_clang, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) - Clang":
-  runBench("bench_ec_g1_msm", "clang")
+task bench_ec_g1_msm_bn254_snarks_clang, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BN254-Snarks - Clang":
+  runBench("bench_ec_g1_msm_bn254_snarks", "clang")
 
-task bench_ec_g1_msm_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) - GCC no Assembly":
-  runBench("bench_ec_g1_msm", "gcc", useAsm = false)
+task bench_ec_g1_msm_bn254_snarks_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BN254-Snarks - GCC no Assembly":
+  runBench("bench_ec_g1_msm_bn254_snarks", "gcc", useAsm = false)
 
-task bench_ec_g1_msm_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) - Clang no Assembly":
-  runBench("bench_ec_g1_msm", "clang", useAsm = false)
+task bench_ec_g1_msm_bn254_snarks_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BN254-Snarks - Clang no Assembly":
+  runBench("bench_ec_g1_msm_bn254_snarks", "clang", useAsm = false)
+
+task bench_ec_g1_msm_bls12_381, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BLS12-381 - Default compiler":
+  runBench("bench_ec_g1_msm_bls12_381")
+
+task bench_ec_g1_msm_bls12_381_gcc, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BLS12-381 - GCC":
+  runBench("bench_ec_g1_msm_bls12_381", "gcc")
+
+task bench_ec_g1_msm_bls12_381_clang, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BLS12-381 - Clang":
+  runBench("bench_ec_g1_msm_bls12_381", "clang")
+
+task bench_ec_g1_msm_bls12_381_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BLS12-381 - GCC no Assembly":
+  runBench("bench_ec_g1_msm_bls12_381", "gcc", useAsm = false)
+
+task bench_ec_g1_msm_bls12_381_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BLS12-381 - Clang no Assembly":
+  runBench("bench_ec_g1_msm_bls12_381", "clang", useAsm = false)
 
 # Elliptic curve G2
 # ------------------------------------------

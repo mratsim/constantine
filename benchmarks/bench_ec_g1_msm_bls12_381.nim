@@ -46,7 +46,7 @@ proc msmBench*(EC: typedesc, numPoints: int, iters: int) =
   var r{.noInit.}: EC
   var startNaive, stopNaive, startMSMbaseline, stopMSMbaseline, startMSMopt, stopMSMopt: MonoTime
 
-  block:
+  if numPoints <= 100000:
     bench("EC scalar muls                " & align($numPoints, 7) & " (scalars " & $bits & "-bit, points) pairs ", EC, iters):
       startNaive = getMonotime()
       var tmp: EC
@@ -73,11 +73,12 @@ proc msmBench*(EC: typedesc, numPoints: int, iters: int) =
   let perfMSMbaseline = inNanoseconds((stopMSMbaseline-startMSMbaseline) div iters)
   let perfMSMopt = inNanoseconds((stopMSMopt-startMSMopt) div iters)
 
-  let speedupBaseline = float(perfNaive) / float(perfMSMbaseline)
-  echo &"Speedup ratio baseline over naive linear combination: {speedupBaseline:>6.3f}x"
+  if numPoints <= 100000:
+    let speedupBaseline = float(perfNaive) / float(perfMSMbaseline)
+    echo &"Speedup ratio baseline over naive linear combination: {speedupBaseline:>6.3f}x"
 
-  let speedupOpt = float(perfNaive) / float(perfMSMopt)
-  echo &"Speedup ratio optimized over naive linear combination: {speedupOpt:>6.3f}x"
+    let speedupOpt = float(perfNaive) / float(perfMSMopt)
+    echo &"Speedup ratio optimized over naive linear combination: {speedupOpt:>6.3f}x"
 
   let speedupOptBaseline = float(perfMSMbaseline) / float(perfMSMopt)
   echo &"Speedup ratio optimized over baseline linear combination: {speedupOptBaseline:>6.3f}x"
@@ -93,9 +94,11 @@ proc msmBench*(EC: typedesc, numPoints: int, iters: int) =
 
 const Iters = 10_000
 const AvailableCurves = [
-  BN254_Snarks,
   BLS12_381,
 ]
+
+# const testNumPoints = [10, 100, 1000, 10000, 100000]
+const testNumPoints = [64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536]
 
 proc main() =
   separator()
@@ -104,20 +107,12 @@ proc main() =
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
     separator()
-    for numPoints in [10, 100, 1000, 10000, 100000]:
-      let batchIters = max(1, Iters div numPoints)
-      msmBench(ECP_ShortW_Prj[Fp[curve], G1], numPoints, batchIters)
-      separator()
-    for numPoints in [64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536]:
+    for numPoints in testNumPoints:
       let batchIters = max(1, Iters div numPoints)
       msmBench(ECP_ShortW_Prj[Fp[curve], G1], numPoints, batchIters)
       separator()
     separator()
-    for numPoints in [10, 100, 1000, 10000, 100000]:
-      let batchIters = max(1, Iters div numPoints)
-      msmBench(ECP_ShortW_Jac[Fp[curve], G1], numPoints, batchIters)
-      separator()
-    for numPoints in [64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536]:
+    for numPoints in testNumPoints:
       let batchIters = max(1, Iters div numPoints)
       msmBench(ECP_ShortW_Jac[Fp[curve], G1], numPoints, batchIters)
       separator()
