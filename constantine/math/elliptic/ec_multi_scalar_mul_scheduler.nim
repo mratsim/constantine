@@ -287,7 +287,7 @@ func sparseVectorAddition[F, G](
        bucketStatuses:  ptr UncheckedArray[set[BucketStatus]],
        points:          ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
        scheduledPoints: ptr UncheckedArray[ScheduledPoint],
-       numScheduled:    int32) {.tags:[VarTime, Alloca].}
+       numScheduled:    int32) {.noInline, tags:[VarTime, Alloca].}
 
 func prefetch*(sched: Scheduler, sp: ScheduledPoint) =
   let bucket = sp.bucket
@@ -400,7 +400,7 @@ func sparseVectorAddition[F, G](
        points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
        scheduledPoints: ptr UncheckedArray[ScheduledPoint],
        numScheduled: int32
-      ) = # {.tags:[VarTime, Alloca].} =
+      ) {.noInline, tags:[VarTime, Alloca].} =
   ## Does a sparse vector addition: buckets += scheduledPoints
   ## This implementation is optimized using batch affine inversion
   ## with an asymptotic cost for N points of N*6M + I

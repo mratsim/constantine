@@ -6,7 +6,9 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import ./ec_multi_scalar_mul_scheduler
+import ./ec_multi_scalar_mul_scheduler,
+       ./ec_endomorphism_accel,
+       ../constants/zoo_endomorphisms
 export bestBucketBitSize
 
 # No exceptions allowed in core cryptographic operations
@@ -35,7 +37,7 @@ export bestBucketBitSize
 func multiScalarMulImpl_reference_vartime[F, G; bits: static int](
        r: var ECP_ShortW[F, G],
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
-       N: int, c: static int) =
+       N: int, c: static int) {.tags:[VarTime, HeapAlloc].} =
   ## Inner implementation of MSM, for static dispatch over c, the bucket bit length
   ## This is a straightforward simple translation of BDLO12, section 4
 
@@ -90,7 +92,7 @@ func multiScalarMulImpl_reference_vartime[F, G; bits: static int](
   buckets.freeHeap()
   miniMSMs.freeHeap()
 
-func multiScalarMul_reference_vartime*[EC](r: var EC, coefs: openArray[BigInt], points: openArray[ECP_ShortW_Aff]) =
+func multiScalarMul_reference_vartime*[EC](r: var EC, coefs: openArray[BigInt], points: openArray[ECP_ShortW_Aff]) {.tags:[VarTime, HeapAlloc].} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
   debug: doAssert coefs.len == points.len
@@ -212,7 +214,7 @@ func miniMSM_jacext[F, G; bits: static int](
 func multiScalarMulJacExt_vartime[F, G; bits: static int](
        r: var ECP_ShortW[F, G],
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
-       N: int, c: static int) {.meter.} =
+       N: int, c: static int) {.tags:[VarTime, HeapAlloc], meter.} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
 
@@ -293,7 +295,7 @@ func miniMSM_affine[NumBuckets, QueueLen, F, G; bits: static int](
 func multiScalarMulAffine_vartime[F, G; bits: static int](
        r: var ECP_ShortW[F, G],
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
-       N: int, c: static int) {.meter.} =
+       N: int, c: static int) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
 
@@ -331,15 +333,12 @@ func multiScalarMulAffine_vartime[F, G; bits: static int](
   sched.freeHeap()
   buckets.freeHeap()
 
-func multiScalarMul_vartime*[EC](r: var EC, coefs: openArray[BigInt], points: openArray[ECP_ShortW_Aff]) {.meter.} =
+func multiScalarMul_dispatch_vartime[bits: static int, F, G](
+       r: var ECP_ShortW[F, G], coefs: ptr UncheckedArray[BigInt[bits]],
+       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], N: int) =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
-  debug: doAssert coefs.len == points.len
-
-  let N = points.len
-  let coefs = coefs.asUnchecked()
-  let points = points.asUnchecked()
-  let c = bestBucketBitSize(N, BigInt.bits, useSignedBuckets = true)
+  let c = bestBucketBitSize(N, bits, useSignedBuckets = true)
 
   case c
   of  2: multiScalarMulJacExt_vartime(r, coefs, points, N, c =  2)
@@ -366,3 +365,55 @@ func multiScalarMul_vartime*[EC](r: var EC, coefs: openArray[BigInt], points: op
   of 23: multiScalarMulAffine_vartime(r, coefs, points, N, c = 23)
   else:
     unreachable()
+
+func multiScalarMul_vartime*[bits: static int, F, G](
+       r: var ECP_ShortW[F, G],
+       coefs: openArray[BigInt[bits]],
+       points: openArray[ECP_ShortW_Aff[F, G]]) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
+  ## Multiscalar multiplication:
+  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
+
+  debug: doAssert coefs.len == points.len
+  let N = points.len
+
+  when bits <= F.C.getCurveOrderBitwidth() and
+       F.C.hasEndomorphismAcceleration():
+    # TODO, min amount of bits for endomorphisms?
+
+    const M = when F is Fp:  2
+              elif F is Fp2: 4
+              else: {.error: "Unconfigured".}
+
+    const L = (bits + M - 1) div M + 1
+    let splitCoefs   = allocHeapArray(array[M, BigInt[L]], N)
+    let endoBasis    = allocHeapArray(array[M, ECP_ShortW_Aff[F, G]], N)
+
+    for i in 0 ..< N:
+      var negatePoints {.noinit.}: array[M, SecretBool]
+      splitCoefs[i].decomposeEndo(negatePoints, coefs[i], F)
+      if negatePoints[0].bool:
+        endoBasis[i][0].neg(points[i])
+      else:
+        endoBasis[i][0] = points[i]
+
+      when F is Fp:
+        endoBasis[i][1].x.prod(points[i].x, F.C.getCubicRootOfUnity_mod_p())
+        if negatePoints[1].bool:
+          endoBasis[i][1].y.neg(points[i].y)
+        else:
+          endoBasis[i][1].y = points[i].y
+      else:
+        staticFor m, 1, M:
+          endoBasis[i][m].frobenius_psi(points[i], m)
+          if negatePoints[m].bool:
+            endoBasis[i][m].neg()
+
+    let endoCoefs = cast[ptr UncheckedArray[BigInt[L]]](splitCoefs)
+    let endoPoints  = cast[ptr UncheckedArray[ECP_ShortW_Aff[F, G]]](endoBasis)
+    multiScalarMul_dispatch_vartime(r, endoCoefs, endoPoints, M*N)
+
+    endoBasis.freeHeap()
+    splitCoefs.freeHeap()
+
+  else:
+    multiScalarMul_dispatch_vartime(r, coefs.asUnchecked(), points.asUnchecked(), N)

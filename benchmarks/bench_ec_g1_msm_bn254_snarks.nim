@@ -97,8 +97,8 @@ const AvailableCurves = [
   BN254_Snarks,
 ]
 
-# const testNumPoints = [10, 100, 1000, 10000, 100000]
-const testNumPoints = [64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072]
+const testNumPoints = [10, 100, 1000, 10000, 100000]
+# const testNumPoints = [64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072]
 
 proc main() =
   separator()
@@ -107,11 +107,11 @@ proc main() =
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
     separator()
-    for numPoints in testNumPoints:
-      let batchIters = max(1, Iters div numPoints)
-      msmBench(ECP_ShortW_Prj[Fp[curve], G1], numPoints, batchIters)
-      separator()
-    separator()
+    # for numPoints in testNumPoints:
+    #   let batchIters = max(1, Iters div numPoints)
+    #   msmBench(ECP_ShortW_Prj[Fp[curve], G1], numPoints, batchIters)
+    #   separator()
+    # separator()
     for numPoints in testNumPoints:
       let batchIters = max(1, Iters div numPoints)
       msmBench(ECP_ShortW_Jac[Fp[curve], G1], numPoints, batchIters)
