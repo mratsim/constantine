@@ -65,7 +65,7 @@ iterator items(c: ChunkDescriptor): tuple[chunkID, start, stopEx: int] =
       let chunkSize = c.baseChunkSize
       yield (chunkID, offset, min(offset+chunkSize, c.totalIters))
 
-proc sum_batch_vartime_parallel*[F; G: static Subgroup](
+proc sum_reduce_vartime_parallel*[F; G: static Subgroup](
        tp: Threadpool,
        r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G]),
        points: openArray[ECP_ShortW_Aff[F, G]]) {.noInline.} =
@@ -92,7 +92,7 @@ proc sum_batch_vartime_parallel*[F; G: static Subgroup](
   static: doAssert minNumPointsParallel <= maxNumPoints, "The curve " & $r.typeof & " requires large size and needs to be tuned."
 
   if points.len < minNumPointsParallel:
-    r.sum_batch_vartime(points)
+    r.sum_reduce_vartime(points)
     return
 
   let chunkDesc = computeBalancedChunks(
@@ -103,12 +103,12 @@ proc sum_batch_vartime_parallel*[F; G: static Subgroup](
   let partialResults = allocStackArray(r.typeof(), chunkDesc.numChunks)
 
   for iter in items(chunkDesc):
-    proc sum_batch_vartime_wrapper(res: ptr, p: ptr, pLen: int) {.nimcall.} =
+    proc sum_reduce_vartime_wrapper(res: ptr, p: ptr, pLen: int) {.nimcall.} =
       # The borrow checker prevents capturing `var` and `openArray`
       # so we capture pointers instead.
-      res[].sum_batch_vartime(p, pLen)
+      res[].sum_reduce_vartime(p, pLen)
 
-    tp.spawn partialResults[iter.chunkID].addr.sum_batch_vartime_wrapper(
+    tp.spawn partialResults[iter.chunkID].addr.sum_reduce_vartime_wrapper(
               points.asUnchecked() +% iter.start,
               iter.stopEx - iter.start)
 
@@ -122,7 +122,7 @@ proc sum_batch_vartime_parallel*[F; G: static Subgroup](
   else:
     let partialResultsAffine = allocStackArray(ECP_ShortW_Aff[F, G], chunkDesc.numChunks)
     partialResultsAffine.batchAffine(partialResults, chunkDesc.numChunks)
-    r.sum_batch_vartime(partialResultsAffine, chunkDesc.numChunks)
+    r.sum_reduce_vartime(partialResultsAffine, chunkDesc.numChunks)
 
 # Sanity checks
 # ---------------------------------------

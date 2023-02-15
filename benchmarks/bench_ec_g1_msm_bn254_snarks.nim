@@ -60,13 +60,13 @@ proc msmBench*(EC: typedesc, numPoints: int, iters: int) =
   block:
     bench("EC multi-scalar-mul baseline  " & align($numPoints, 7) & " (scalars " & $bits & "-bit, points) pairs ", EC, iters):
       startMSMbaseline = getMonotime()
-      r.multiScalarMul_baseline_vartime(scalars, points)
+      r.multiScalarMul_reference_vartime(scalars, points)
       stopMSMbaseline = getMonotime()
 
   block:
     bench("EC multi-scalar-mul optimized " & align($numPoints, 7) & " (scalars " & $bits & "-bit, points) pairs ", EC, iters):
       startMSMopt = getMonotime()
-      r.multiScalarMul_opt_vartime(scalars, points)
+      r.multiScalarMul_vartime(scalars, points)
       stopMSMopt = getMonotime()
 
   let perfNaive = inNanoseconds((stopNaive-startNaive) div iters)
@@ -97,6 +97,9 @@ const AvailableCurves = [
   BN254_Snarks,
 ]
 
+# const testNumPoints = [10, 100, 1000, 10000, 100000]
+const testNumPoints = [64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072]
+
 proc main() =
   separator()
   evaluateBucketSizeBench(Iters)
@@ -104,23 +107,15 @@ proc main() =
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
     separator()
-    for numPoints in [10, 100, 1000, 10000, 100000, 1000000]:
+    for numPoints in testNumPoints:
       let batchIters = max(1, Iters div numPoints)
       msmBench(ECP_ShortW_Prj[Fp[curve], G1], numPoints, batchIters)
       separator()
-    # for numPoints in [64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536]:
-    #   let batchIters = max(1, Iters div numPoints)
-    #   msmBench(ECP_ShortW_Prj[Fp[curve], G1], numPoints, batchIters)
-    #   separator()
     separator()
-    for numPoints in [10, 100, 1000, 10000, 100000, 1000000]:
+    for numPoints in testNumPoints:
       let batchIters = max(1, Iters div numPoints)
       msmBench(ECP_ShortW_Jac[Fp[curve], G1], numPoints, batchIters)
       separator()
-    # for numPoints in [64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536]:
-    #   let batchIters = max(1, Iters div numPoints)
-    #   msmBench(ECP_ShortW_Jac[Fp[curve], G1], numPoints, batchIters)
-    #   separator()
     separator()
 
 main()

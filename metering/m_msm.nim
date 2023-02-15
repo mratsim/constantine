@@ -36,7 +36,7 @@ proc msmMeter*(EC: typedesc, numPoints: int) =
   var r{.noInit.}: EC
   r.setinf()
   resetMetering()
-  r.multiScalarMul_opt_vartime(scalars, points)
+  r.multiScalarMul_vartime(scalars, points)
 
 resetMetering()
 msmMeter(ECP_ShortW_Jac[Fp[BLS12_381], G1], 10000)

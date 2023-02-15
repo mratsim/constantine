@@ -6,14 +6,8 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import
-  ../../platforms/abstractions,
-  ../arithmetic,
-  ../extension_fields,
-  ../io/io_bigints,
-  ../ec_shortweierstrass,
-  ./ec_shortweierstrass_jacobian_extended,
-  ./ec_shortweierstrass_batch_ops
+import ./ec_multi_scalar_mul_scheduler
+export bestBucketBitSize
 
 # No exceptions allowed in core cryptographic operations
 {.push raises: [].}
@@ -33,26 +27,12 @@ import
 # Multi-scalar multiplication does a linear combination of
 #   R = [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
 #
-# For now implement the simple bucket method as described in
-# - Faster batch forgery identification
-#   Daniel J. Bernstein, Jeroen Doumen, Tanja Lange, and Jan-Jaap Oosterwijk, 2012
-#   https://eprint.iacr.org/2012/549.pdf
-#
-# See also:
-# - Simple guide to fast linear combinations (aka multiexponentiations)
-#   Vitalik Buterin, 2020
-#   https://ethresear.ch/t/simple-guide-to-fast-linear-combinations-aka-multiexponentiations/7238
-#   https://github.com/ethereum/research/blob/5c6fec6/fast_linear_combinations/multicombs.py
-# - zkStudyClub: Multi-scalar multiplication: state of the art & new ideas
-#   Gus Gutoski, 2020
-#   https://www.youtube.com/watch?v=Bl5mQA7UL2I
-#
-# We want to scale to millions of points and eventually add multithreading so any bit twiddling that hinder
-# scalability is avoided.
-# The current iteration is a baseline before evaluating and adding various optimizations
+# The current iteration is a reference baseline before evaluating and adding various optimizations
 # (scalar recoding, change of coordinate systems, bucket sizing, sorting ...)
+#
+# See the litterature references at the top of `ec_multi_scalar_mul_scheduler.nim`
 
-func multiScalarMulImpl_baseline_vartime[F, G; bits: static int](
+func multiScalarMulImpl_reference_vartime[F, G; bits: static int](
        r: var ECP_ShortW[F, G],
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
        N: int, c: static int) =
@@ -61,7 +41,6 @@ func multiScalarMulImpl_baseline_vartime[F, G; bits: static int](
 
   # Prologue
   # --------
-
   const numBuckets = 1 shl c - 1 # bucket 0 is unused
   const numWindows = (bits + c - 1) div c
   type EC = typeof(r)
@@ -71,7 +50,6 @@ func multiScalarMulImpl_baseline_vartime[F, G; bits: static int](
 
   # Algorithm
   # ---------
-
   for w in 0 ..< numWindows:
     # Place our points in a bucket corresponding to
     # how many times their bit pattern in the current window of size c
@@ -109,52 +87,10 @@ func multiScalarMulImpl_baseline_vartime[F, G; bits: static int](
 
   # Cleanup
   # -------
-
-  # We could free buckets before step 3, but we don't want to flush miniMSMs from cache
-  # by going into deallocation code
   buckets.freeHeap()
   miniMSMs.freeHeap()
 
-func bestBucketBitSize*(inputSize: int, orderBitwidth: static int, useSignedBuckets: static bool): int {.inline.} =
-  ## Evaluate the best bucket bit-size for the input size.
-  ## That bucket size minimize group operations. It assumes that additions and doubling cost the same
-  ## This ignore cache effect. Computation can become memory-bound, especially with large buckets
-  ## that don't fit in L1 cache or worse (overflowing L2 cache or TLB).
-  ## Especially, scalars are expected to be indistinguishable from random so buckets accessed during accumulation
-  ## will be in a random pattern, triggering cache misses.
-
-  # Raw operation cost is approximately
-  # 1. Bucket accumulation
-  #      n - (2ᶜ-1) additions for b/c windows    or n - (2ᶜ⁻¹-1) if using signed bucket
-  # 2. Bucket reduction
-  #      2x(2ᶜ-2) additions for b/c windows      or 2x(2ᶜ⁻¹-2)
-  # 3. Final reduction
-  #      (b/c - 1) x (c doublings + 1 addition)
-  # Total
-  #   b/c (n + 2ᶜ - 2) A + (b/c - 1) x (c*D + A)
-  # https://www.youtube.com/watch?v=Bl5mQA7UL2I
-
-  # A doubling costs 50% of an addition with jacobian coordinates
-  # and between 60% (BLS12-381 G1) to 66% (BN254-Snarks G1)
-
-  const A = 10'f32  # Addition cost
-  const D =  6'f32  # Doubling cost
-
-  const s = int useSignedBuckets
-  let n = inputSize
-  let b = float32(orderBitwidth)
-  var minCost = float32(Inf)
-  for c in 2 ..< 23:
-    let b_over_c = b/c.float32
-
-    let bucket_accumulate_reduce = b_over_c * float32(n + (1 shl (c-s)) - 2) * A
-    let final_reduction = (b_over_c - 1'f32) * (c.float32*D + A)
-    let cost = bucket_accumulate_reduce + final_reduction
-    if cost < minCost:
-      minCost = cost
-      result = c
-
-func multiScalarMul_baseline_vartime*[EC](r: var EC, coefs: openArray[BigInt], points: openArray[ECP_ShortW_Aff]) =
+func multiScalarMul_reference_vartime*[EC](r: var EC, coefs: openArray[BigInt], points: openArray[ECP_ShortW_Aff]) =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
   debug: doAssert coefs.len == points.len
@@ -165,64 +101,50 @@ func multiScalarMul_baseline_vartime*[EC](r: var EC, coefs: openArray[BigInt], p
   let c = bestBucketBitSize(N, BigInt.bits, useSignedBuckets = false)
 
   case c
-  of  1: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c =  1)
-  of  2: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c =  2)
-  of  3: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c =  3)
-  of  4: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c =  4)
-  of  5: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c =  5)
-  of  6: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c =  6)
-  of  7: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c =  7)
-  of  8: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c =  8)
-  of  9: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c =  9)
-  of 10: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 10)
-  of 11: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 11)
-  of 12: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 12)
-  of 13: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 13)
-  of 14: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 14)
-  of 15: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 15)
-  of 16: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 16)
-  of 17: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 17)
-  of 18: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 18)
-  of 19: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 19)
-  of 20: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 20)
-  of 21: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 21)
-  of 22: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 22)
-  of 23: multiScalarMulImpl_baseline_vartime(r, coefs, points, N, c = 23)
+  of  2: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  2)
+  of  3: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  3)
+  of  4: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  4)
+  of  5: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  5)
+  of  6: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  6)
+  of  7: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  7)
+  of  8: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  8)
+  of  9: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  9)
+  of 10: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 10)
+  of 11: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 11)
+  of 12: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 12)
+  of 13: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 13)
+  of 14: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 14)
+  of 15: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 15)
+  of 16: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 16)
+  of 17: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 17)
+  of 18: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 18)
+  of 19: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 19)
+  of 20: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 20)
+  of 21: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 21)
+  of 22: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 22)
+  of 23: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 23)
   else:
     unreachable()
 
-# ------------------------------------------------------------------------------------------------------
+# ########################################################### #
+#                                                             #
+#                 Multi Scalar Multiplication                 #
+#                     Optimized versions                      #
+#                                                             #
+# ########################################################### #
 #
 # Multi-Scalar-Mul is the largest bottleneck in Zero-Knowledge-Proofs protocols
 # There are ways to avoid FFTs, none to avoid Multi-Scalar-Multiplication
 # Hence optimizing it is worth millions, see https://zprize.io
 
-# Extended Jacobian generic bindings
-# ----------------------------------
-# All vartime procedures MUST be tagged vartime
-# Hence we do not expose `sum` or `+=` for extended jacobian operation to prevent `vartime` mistakes
-# we create a local `sum` or `+=` for this module only
-func `+=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_JacExt[F, G]) {.inline.}=
-  P.sum_vartime(P, Q)
-func `+=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_Aff[F, G]) {.inline.}=
-  P.madd_vartime(P, Q)
-
-func accumulate[ECbucket, ECpoint](buckets: ptr UncheckedArray[ECbucket], val: SecretWord, negate: SecretBool, point: ECpoint) {.inline, meter.} =
+func accumulate[F, G](buckets: ptr UncheckedArray[ECP_ShortW_JacExt[F, G]], val: SecretWord, negate: SecretBool, point: ECP_ShortW_Aff[F, G]) {.inline, meter.} =
   let val = BaseType(val)
-  if val == 0:
+  if val == 0: # Skip [0]P
     return
   elif negate.bool:
-    var nP {.noInit.}: ECpoint
-    nP.neg(point)
-    when ECbucket is EcAddAccumulator_vartime:
-      buckets[val-1].update(nP)
-    else:
-      buckets[val-1] += nP
+    buckets[val-1] -= point
   else:
-    when ECbucket is EcAddAccumulator_vartime:
-      buckets[val-1].update(point)
-    else:
-      buckets[val-1] += point
+    buckets[val-1] += point
 
 func bucketReduce[EC](r: var EC, buckets: ptr UncheckedArray[EC], numBuckets: static int) {.meter.} =
   # We interleave reduction with zero-ing the bucket to use instruction-level parallelism
@@ -237,29 +159,14 @@ func bucketReduce[EC](r: var EC, buckets: ptr UncheckedArray[EC], numBuckets: st
     r += accumBuckets
     buckets[k].setInf()
 
-func bucketReduce[EC; EcBucket: EcAddAccumulator_vartime](r: var EC, buckets: ptr UncheckedArray[EcBucket], numBuckets: static int) {.meter.} =
-  # We interleave reduction with zero-ing the bucket to use instruction-level parallelism
-
-  var accumBuckets{.noInit.}: typeof(r)
-  buckets[numBuckets-1].finish(accumBuckets)
-  r = accumBuckets
-  buckets[numBuckets-1].init()
-
-  var t{.noInit.}: EC
-  for k in countdown(numBuckets-2, 0):
-    buckets[k].finish(t)
-    accumBuckets += t
-    r += accumBuckets
-    buckets[k].init()
-
 type MiniMsmKind = enum
   kTopWindow
   kFullWindow
   kBottomWindow
 
-func miniMSM[EcBucket, F, G; bits: static int](
+func miniMSM_jacext[F, G; bits: static int](
        r: var ECP_ShortW[F, G],
-       buckets: ptr UncheckedArray[EcBucket],
+       buckets: ptr UncheckedArray[ECP_ShortW_JacExt[F, G]],
        bitIndex: int, miniMsmKind: static MiniMsmKind, c: static int,
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], N: int) {.meter.} =
   ## Apply a mini-Multi-Scalar-Multiplication on [bitIndex, bitIndex+window)
@@ -278,7 +185,6 @@ func miniMSM[EcBucket, F, G; bits: static int](
     else:                              coefs[j].getSignedFullWindowAt(bitIndex, c)
 
   (curVal, curNeg) = getSignedWindow(0)
-  (nextVal, nextNeg) = getSignedWindow(1)
   for j in 0 ..< N-1:
     (nextVal, nextNeg) = getSignedWindow(j+1)
     if nextVal.BaseType != 0:
@@ -303,7 +209,7 @@ func miniMSM[EcBucket, F, G; bits: static int](
     for _ in 0 ..< c:
       r.double()
 
-func multiScalarMulImpl_opt_vartime[F, G; bits: static int](
+func multiScalarMulJacExt_vartime[F, G; bits: static int](
        r: var ECP_ShortW[F, G],
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
        N: int, c: static int) {.meter.} =
@@ -313,47 +219,7 @@ func multiScalarMulImpl_opt_vartime[F, G; bits: static int](
   # Setup
   # -----
   const numBuckets = 1 shl (c-1)
-  type EC = typeof(r)
-
-  # We want to use affine coordinates, as they have an asymptotic addition cost of 6M (+ amortized inversion)
-  # compared to extended jacobian of 10M. The bigger the batch size, the bigger the amortization factor.
-  # But also the bigger the memory usage, and the number of buckets grows exponentially with c
-  # (which grows logarithmically with number of points).
-  # Assuming 48 byte field element (BLS12-381), so 96 bytes affine or 192 bytes extjac, we have
-  # an accumulator of size 192 + batchSize*96 + 4 (accumulator index)
-  #
-  # Here is a table of the batch size per bucket and total bucket memory depending on input size
-  # for the chosen formula (c+5)*(c+3) - 8*c, to determine the batch size
-  #
-  #   inputs    c     buckets    batch size        memory
-  #        1    2           2            19          4034
-  #        5    3           4            24          9988
-  #       10    4           8            31         25352
-  #       50    5          16            40         64528
-  #      100    6          32            51        162848
-  #      500    8         128            79        995456
-  #     1000    9         256            96       2408704
-  #     5000   11        1024           136      13566976
-  #    10000   11        1024           136      13566976
-  #    50000   14        8192           211     167518208
-  #   100000   14        8192           211     167518208
-  #   500000   17       65536           304    1925251072
-  #  1000000   17       65536           304    1925251072
-  #  5000000   20      524288           415   20988821504
-  # 10000000   21     1048576           456   46104838144
-  # 50000000   22     2097152           499  100866719744
-  #
-  # Note:
-  # - The computation of `c` minimizes the number of EC operations
-  #     but we might want to significantly reduce its growth after c == 14
-  #     to optimize for memory bandwidth/reduce cache misses
-  #     and also reduce memory usage.
-  # - We don't batch when c < 10
-  when true: # c < 10:
-    type EcBucket = jacobianExtended(EC)
-  else:
-    const accumBufferSize = (c+5)*(c+3) - 8*c
-    type EcBucket = EcAddAccumulator_vartime[jacobianExtended(EC), F, G, accumBufferSize]
+  type EcBucket = ECP_ShortW_JacExt[F, G]
 
   let buckets = allocHeapArray(EcBucket, numBuckets)
   zeroMem(buckets[0].addr, sizeof(EcBucket) * numBuckets)
@@ -366,21 +232,106 @@ func multiScalarMulImpl_opt_vartime[F, G; bits: static int](
   r.setInf()
 
   if excess != 0 and w != 0: # Prologue
-    r.miniMSM(buckets, w, kTopWindow, c, coefs, points, N)
+    r.miniMSM_jacext(buckets, w, kTopWindow, c, coefs, points, N)
     w -= c
 
   while w != 0:              # Steady state
-    r.miniMSM(buckets, w, kFullWindow, c, coefs, points, N)
+    r.miniMSM_jacext(buckets, w, kFullWindow, c, coefs, points, N)
     w -= c
 
   block:                     # Epilogue
-    r.miniMSM(buckets, w, kBottomWindow, c, coefs, points, N)
+    r.miniMSM_jacext(buckets, w, kBottomWindow, c, coefs, points, N)
 
   # Cleanup
   # -------
   buckets.freeHeap()
 
-func multiScalarMul_opt_vartime*[EC](r: var EC, coefs: openArray[BigInt], points: openArray[ECP_ShortW_Aff]) {.meter.} =
+func miniMSM_affine[NumBuckets, QueueLen, F, G; bits: static int](
+       r: var ECP_ShortW[F, G],
+       sched: var Scheduler[NumBuckets, QueueLen, F, G],
+       bitIndex: int, miniMsmKind: static MiniMsmKind, c: static int,
+       coefs: ptr UncheckedArray[BigInt[bits]], N: int) {.meter.} =
+  ## Apply a mini-Multi-Scalar-Multiplication on [bitIndex, bitIndex+window)
+  ## slice of all (coef, point) pairs
+
+  const excess = bits mod c
+  const top = bits - excess
+  static: doAssert miniMsmKind != kTopWindow, "The top window is smaller in bits which increases collisions in scheduler."
+
+  sched.buckets[].init()
+
+  # 1. Bucket Accumulation
+  var curSP, nextSP: ScheduledPoint
+
+  template getSignedWindow(j : int): tuple[val: SecretWord, neg: SecretBool] =
+    when miniMsmKind == kBottomWindow: coefs[j].getSignedBottomWindow(c)
+    elif miniMsmKind == kTopWindow:    coefs[j].getSignedTopWindow(top, excess)
+    else:                              coefs[j].getSignedFullWindowAt(bitIndex, c)
+
+  curSP = scheduledPointDescriptor(0, getSignedWindow(0))
+  for j in 0 ..< N-1:
+    nextSP = scheduledPointDescriptor(j+1, getSignedWindow(j+1))
+    sched.prefetch(nextSP)
+    sched.schedule(curSP)
+    curSP = nextSP
+  sched.schedule(curSP)
+  sched.flushPendingAndReset()
+
+  # 2. Bucket Reduction
+  var sliceSum{.noInit.}: ECP_ShortW_JacExt[F, G]
+  sliceSum.bucketReduce(sched.buckets[])
+
+  # 3. Mini-MSM on the slice [bitIndex, bitIndex+window)
+  var windowSum{.noInit.}: typeof(r)
+  windowSum.fromJacobianExtended_vartime(sliceSum)
+  r += windowSum
+
+  when miniMsmKind != kBottomWindow:
+    for _ in 0 ..< c:
+      r.double()
+
+func multiScalarMulAffine_vartime[F, G; bits: static int](
+       r: var ECP_ShortW[F, G],
+       coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
+       N: int, c: static int) {.meter.} =
+  ## Multiscalar multiplication:
+  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
+
+  # Setup
+  # -----
+  const (numBuckets, queueLen) = c.deriveSchedulerConstants()
+  const schedQueueLen = max(32, queueLen)
+  let buckets = allocHeap(Buckets[numBuckets, F, G])
+  buckets[].init()
+  let sched = allocHeap(Scheduler[numBuckets, schedQueueLen, F, G])
+  sched[].init(points, buckets, 0, numBuckets.int32)
+
+  # Algorithm
+  # ---------
+  const excess = bits mod c
+  const top = bits - excess
+  var w = top
+  r.setInf()
+
+  if excess != 0 and w != 0: # Prologue
+    # The top might use only a few bits, the affine scheduler would likely have significant collisions
+    zeroMem(sched.buckets.ptJacExt.addr, buckets.ptJacExt.sizeof())
+    r.miniMSM_jacext(sched.buckets.ptJacExt.asUnchecked(), w, kTopWindow, c, coefs, points, N)
+    w -= c
+
+  while w != 0:              # Steady state
+    r.miniMSM_affine(sched[], w, kFullWindow, c, coefs, N)
+    w -= c
+
+  block:                     # Epilogue
+    r.miniMSM_affine(sched[], w, kBottomWindow, c, coefs, N)
+
+  # Cleanup
+  # -------
+  sched.freeHeap()
+  buckets.freeHeap()
+
+func multiScalarMul_vartime*[EC](r: var EC, coefs: openArray[BigInt], points: openArray[ECP_ShortW_Aff]) {.meter.} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
   debug: doAssert coefs.len == points.len
@@ -391,28 +342,27 @@ func multiScalarMul_opt_vartime*[EC](r: var EC, coefs: openArray[BigInt], points
   let c = bestBucketBitSize(N, BigInt.bits, useSignedBuckets = true)
 
   case c
-  of  1: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c =  1)
-  of  2: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c =  2)
-  of  3: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c =  3)
-  of  4: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c =  4)
-  of  5: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c =  5)
-  of  6: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c =  6)
-  of  7: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c =  7)
-  of  8: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c =  8)
-  of  9: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c =  9)
-  of 10: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 10)
-  of 11: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 11)
-  of 12: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 12)
-  of 13: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 13)
-  of 14: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 14)
-  of 15: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 15)
-  of 16: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 16)
-  of 17: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 17)
-  of 18: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 18)
-  of 19: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 19)
-  of 20: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 20)
-  of 21: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 21)
-  of 22: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 22)
-  of 23: multiScalarMulImpl_opt_vartime(r, coefs, points, N, c = 23)
+  of  2: multiScalarMulJacExt_vartime(r, coefs, points, N, c =  2)
+  of  3: multiScalarMulJacExt_vartime(r, coefs, points, N, c =  3)
+  of  4: multiScalarMulJacExt_vartime(r, coefs, points, N, c =  4)
+  of  5: multiScalarMulJacExt_vartime(r, coefs, points, N, c =  5)
+  of  6: multiScalarMulAffine_vartime(r, coefs, points, N, c =  6)
+  of  7: multiScalarMulAffine_vartime(r, coefs, points, N, c =  7)
+  of  8: multiScalarMulAffine_vartime(r, coefs, points, N, c =  8)
+  of  9: multiScalarMulAffine_vartime(r, coefs, points, N, c =  9)
+  of 10: multiScalarMulAffine_vartime(r, coefs, points, N, c = 10)
+  of 11: multiScalarMulAffine_vartime(r, coefs, points, N, c = 11)
+  of 12: multiScalarMulAffine_vartime(r, coefs, points, N, c = 12)
+  of 13: multiScalarMulAffine_vartime(r, coefs, points, N, c = 13)
+  of 14: multiScalarMulAffine_vartime(r, coefs, points, N, c = 14)
+  of 15: multiScalarMulAffine_vartime(r, coefs, points, N, c = 15)
+  of 16: multiScalarMulAffine_vartime(r, coefs, points, N, c = 16)
+  of 17: multiScalarMulAffine_vartime(r, coefs, points, N, c = 17)
+  of 18: multiScalarMulAffine_vartime(r, coefs, points, N, c = 18)
+  of 19: multiScalarMulAffine_vartime(r, coefs, points, N, c = 19)
+  of 20: multiScalarMulAffine_vartime(r, coefs, points, N, c = 20)
+  of 21: multiScalarMulAffine_vartime(r, coefs, points, N, c = 21)
+  of 22: multiScalarMulAffine_vartime(r, coefs, points, N, c = 22)
+  of 23: multiScalarMulAffine_vartime(r, coefs, points, N, c = 23)
   else:
     unreachable()

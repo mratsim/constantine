@@ -545,7 +545,7 @@ func finalVerify*(ctx: var BLSBatchSigAccumulator): bool =
 func aggregate*[T: ECP_ShortW_Aff](r: var T, points: openarray[T]) =
   ## Aggregate pubkeys or signatures
   var accum {.noinit.}: ECP_ShortW_Jac[T.F, T.G]
-  accum.sum_batch_vartime(points)
+  accum.sum_reduce_vartime(points)
   r.affine(accum)
 
 func fastAggregateVerify*[B1, B2: byte|char, Pubkey, Sig](

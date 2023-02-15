@@ -60,13 +60,13 @@ proc msmBench*(EC: typedesc, numPoints: int, iters: int) =
   block:
     bench("EC multi-scalar-mul baseline  " & align($numPoints, 7) & " (scalars " & $bits & "-bit, points) pairs ", EC, iters):
       startMSMbaseline = getMonotime()
-      r.multiScalarMul_baseline_vartime(scalars, points)
+      r.multiScalarMul_reference_vartime(scalars, points)
       stopMSMbaseline = getMonotime()
 
   block:
     bench("EC multi-scalar-mul optimized " & align($numPoints, 7) & " (scalars " & $bits & "-bit, points) pairs ", EC, iters):
       startMSMopt = getMonotime()
-      r.multiScalarMul_opt_vartime(scalars, points)
+      r.multiScalarMul_vartime(scalars, points)
       stopMSMopt = getMonotime()
 
   let perfNaive = inNanoseconds((stopNaive-startNaive) div iters)
@@ -98,7 +98,7 @@ const AvailableCurves = [
 ]
 
 # const testNumPoints = [10, 100, 1000, 10000, 100000]
-const testNumPoints = [64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536]
+const testNumPoints = [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072]
 
 proc main() =
   separator()

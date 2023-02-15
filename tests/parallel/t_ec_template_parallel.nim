@@ -99,7 +99,7 @@ proc run_EC_batch_add_parallel_impl*[N: static int](
           for i in 0 ..< n:
             r_ref += points[i]
 
-          tp.sum_batch_vartime_parallel(r_batch, points)
+          tp.sum_reduce_vartime_parallel(r_batch, points)
 
           check: bool(r_batch == r_ref)
 
@@ -137,7 +137,7 @@ proc run_EC_batch_add_parallel_impl*[N: static int](
           for i in 0 ..< n:
             r_ref += points[i]
 
-          tp.sum_batch_vartime_parallel(r_batch, points)
+          tp.sum_reduce_vartime_parallel(r_batch, points)
 
           check: bool(r_batch == r_ref)
 

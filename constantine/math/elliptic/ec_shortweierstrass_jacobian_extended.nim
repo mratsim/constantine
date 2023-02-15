@@ -301,6 +301,14 @@ func madd_vartime*[F; G: static Subgroup](
   r.zz.prod(p.zz, PP)
   r.zzz.prod(p.zzz, PPP)
 
+func msub_vartime*[F; G: static Subgroup](
+       r: var ECP_ShortW_JacExt[F, G],
+       p: ECP_ShortW_JacExt[F, G],
+       q: ECP_ShortW_Aff[F, G]) {.tags:[VarTime], inline.} =
+  var nQ {.noInit.}: ECP_ShortW_Aff[F, G]
+  nQ.neg(q)
+  r.madd_vartime(p, nQ)
+
 # Conversions
 # -----------
 

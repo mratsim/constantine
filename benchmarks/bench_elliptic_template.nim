@@ -218,7 +218,7 @@ proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int)
 
   if useBatching:
     bench("EC Multi Add batched                  " & $EC.G & " (" & $numPoints & " points)", EC, iters):
-      r.sum_batch_vartime(points)
+      r.sum_reduce_vartime(points)
   else:
     bench("EC Multi Mixed-Add unbatched          " & $EC.G & " (" & $numPoints & " points)", EC, iters):
       r.setInf()

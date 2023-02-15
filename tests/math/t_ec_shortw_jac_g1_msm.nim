@@ -14,7 +14,7 @@ import
   # Test utilities
   ./t_ec_template
 
-const numPoints = [1, 2, 8, 16, 128, 1024, 2048, 16384] # 32768, 262144, 1048576]
+const numPoints = [1, 2, 8, 16, 32, 64, 128, 1024, 2048, 16384] # 32768, 262144, 1048576]
 
 run_EC_multi_scalar_mul_impl(
     ec = ECP_ShortW_Jac[Fp[BN254_Snarks], G1],
