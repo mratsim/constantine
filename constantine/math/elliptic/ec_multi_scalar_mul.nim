@@ -356,13 +356,6 @@ func multiScalarMul_dispatch_vartime[bits: static int, F, G](
   of 14: multiScalarMulAffine_vartime(r, coefs, points, N, c = 14)
   of 15: multiScalarMulAffine_vartime(r, coefs, points, N, c = 15)
   of 16: multiScalarMulAffine_vartime(r, coefs, points, N, c = 16)
-  of 17: multiScalarMulAffine_vartime(r, coefs, points, N, c = 17)
-  of 18: multiScalarMulAffine_vartime(r, coefs, points, N, c = 18)
-  of 19: multiScalarMulAffine_vartime(r, coefs, points, N, c = 19)
-  of 20: multiScalarMulAffine_vartime(r, coefs, points, N, c = 20)
-  of 21: multiScalarMulAffine_vartime(r, coefs, points, N, c = 21)
-  of 22: multiScalarMulAffine_vartime(r, coefs, points, N, c = 22)
-  of 23: multiScalarMulAffine_vartime(r, coefs, points, N, c = 23)
   else:
     unreachable()
 

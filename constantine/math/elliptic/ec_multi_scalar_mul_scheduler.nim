@@ -190,7 +190,7 @@ func bestBucketBitSize*(inputSize: int, orderBitwidth: static int, useSignedBuck
   let n = inputSize
   let b = float32(orderBitwidth)
   var minCost = float32(Inf)
-  for c in 2 .. 23:
+  for c in 2 .. 17:
     let b_over_c = b/c.float32
 
     let bucket_accumulate_reduce = b_over_c * float32(n + (1 shl (c-s)) - 2) * A
@@ -199,6 +199,10 @@ func bestBucketBitSize*(inputSize: int, orderBitwidth: static int, useSignedBuck
     if cost < minCost:
       minCost = cost
       result = c
+
+  # Manual tuning, probably cache effect / memory bandwidth
+  if result >= 11:
+    result -= 1
 
 # Extended Jacobian generic bindings
 # ----------------------------------
