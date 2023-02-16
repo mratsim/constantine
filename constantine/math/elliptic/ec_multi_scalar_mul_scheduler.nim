@@ -190,7 +190,7 @@ func bestBucketBitSize*(inputSize: int, scalarBitwidth: static int, useSignedBuc
   let n = inputSize
   let b = float32(scalarBitwidth)
   var minCost = float32(Inf)
-  for c in 2 .. 20:
+  for c in 2 .. 21:
     let b_over_c = b/c.float32
 
     let bucket_accumulate_reduce = b_over_c * float32(n + (1 shl (c-s)) - 2) * A
@@ -201,12 +201,15 @@ func bestBucketBitSize*(inputSize: int, scalarBitwidth: static int, useSignedBuc
       result = c
 
   # Manual tuning, memory bandwidth / cache boundaries of
-  # L1, L2 caches, TLB and 64 alising conflict
-  # are not taken into account in previous formula
+  # L1, L2 caches, TLB and 64 aliasing conflict
+  # are not taken into account in previous formula.
+  # Each increase in c doubles memory used.
   when useManualTuning:
-    if 13 <= result:
+    if 14 <= result:
       result -= 1
     if 15 <= result:
+      result -= 1
+    if 16 <= result:
       result -= 1
 
 # Extended Jacobian generic bindings
