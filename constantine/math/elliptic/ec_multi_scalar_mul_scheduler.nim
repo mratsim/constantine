@@ -79,12 +79,12 @@ export abstractions, arithmetic,
 # - Each thread is assigned a range of buckets and keeps a scheduler
 #     start, stop: int32
 #     curQueue, curRescheduled: int32
-#     bucketMap: BigInt[NumNZBuckets]
-#     queue:       array[MaxCapacity, (Target Bucket, PointID)]
-#     rescheduled: array[32, (Target Bucket, PointID)]
+#     bucketMap:                BigInt[NumNZBuckets]
+#     queue:                    array[MaxCapacity, (Target Bucket, PointID)]
+#     rescheduled:              array[32, (Target Bucket, PointID)]
 #   - when the queue reaches max capacity, we compute a vector affine addition with the target buckets
 #     we interleave with prefetching to reduce cache misses.
-#   - when the rescheduled array reaches max capacity, we check if there are at least 64 items in the queue
+#   - when the rescheduled array reaches max capacity, we check if there are at least 32 items in the queue
 #     and if so schedule an vector addition otherwise we flush the queue into the EC ExtJac.
 #     i.e. in the worst case, when all points are the same, we fallback to the JacExt MSM.
 #   - As a stretch optimization, if many points in rescheduled queue target the same bucket
@@ -171,7 +171,7 @@ func bestBucketBitSize*(inputSize: int, scalarBitwidth: static int, useSignedBuc
 
   # Raw operation cost is approximately
   # 1. Bucket accumulation
-  #      n - (2ᶜ-1) additions for b/c windows    or n - (2ᶜ⁻¹-1) if using signed bucket
+  #      n - (2ᶜ-1) additions for b/c windows    or n - (2ᶜ⁻¹-1) if using signed buckets
   # 2. Bucket reduction
   #      2x(2ᶜ-2) additions for b/c windows      or 2x(2ᶜ⁻¹-2)
   # 3. Final reduction
@@ -386,7 +386,7 @@ func flushBuffer(sched: var Scheduler, buf: ptr UncheckedArray[ScheduledPoint], 
   count = 0
 
 func flushPendingAndReset*(sched: var Scheduler) =
-  if sched.numScheduled > MinVectorAddThreshold:
+  if sched.numScheduled >= MinVectorAddThreshold:
     sparseVectorAddition(
       sched.buckets.ptAff.asUnchecked(), sched.buckets.status.asUnchecked(),
       sched.points, sched.queue.asUnchecked(), sched.numScheduled)
@@ -596,7 +596,7 @@ when isMainModule:
       return
 
     let inputSize = 1 shl logInputSize
-    let c = inputSize.bestBucketBitSize(381, useSignedBucket = true, useManualTuning = false)
+    let c = inputSize.bestBucketBitSize(255, useSignedBuckets = true, useManualTuning = false)
     let twoPow = "2^"
     let numNZBuckets = 1 shl (c-1)
     let collisionMapSize = ((1 shl (c-1))+63) div 64 * 8 # Stored in BigInt[1 shl (c-1)]
