@@ -193,7 +193,7 @@ func batchAffine*[N: static int, F, G](
 # However, n inversions can use Montgomery's batch inversion
 # at the cost of 3(n-1)M + 1I
 #
-# Hence batch addition can have an asymptotic cost of
+# Hence sum reduction can have an asymptotic cost of
 #   5M + 1S
 # Compared to
 #   Jacobian addition:         12M + 4S

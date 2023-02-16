@@ -182,9 +182,9 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
 
   # Elliptic curve arithmetic - batch computation
   # ----------------------------------------------------------
-  ("tests/math/t_ec_shortw_prj_g1_batch_add.nim", false),
-  ("tests/math/t_ec_shortw_jac_g1_batch_add.nim", false),
-  ("tests/math/t_ec_shortw_jacext_g1_batch_add.nim", false),
+  ("tests/math/t_ec_shortw_prj_g1_sum_reduce.nim", false),
+  ("tests/math/t_ec_shortw_jac_g1_sum_reduce.nim", false),
+  ("tests/math/t_ec_shortw_jacext_g1_sum_reduce.nim", false),
   ("tests/math/t_ec_shortw_prj_g1_msm.nim", false),
   ("tests/math/t_ec_shortw_jac_g1_msm.nim", false),
 

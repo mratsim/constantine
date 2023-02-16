@@ -12,6 +12,7 @@ import
 
 # No exceptions allowed
 {.push raises: [].}
+{.push checks: off.}
 
 # ############################################################
 #
@@ -737,8 +738,8 @@ func batchedDivsteps_vartime(
     f = f0
     g = g0
 
-    eta = SignedBaseType(eta)
-    bitsLeft = SignedBaseType k
+    eta = cast[SignedBaseType](eta)
+    bitsLeft = cast[SignedBaseType](k)
 
   while true:
     # Count zeros up to bitsLeft and process a batch of divsteps up to that number
@@ -746,8 +747,8 @@ func batchedDivsteps_vartime(
     g = g shr zeros
     u = u shl zeros
     v = v shl zeros
-    eta -= SignedBaseType zeros
-    bitsLeft -= SignedBaseType zeros
+    eta -= cast[SignedBaseType](zeros)
+    bitsLeft -= cast[SignedBaseType](zeros)
 
     if bitsLeft == 0:
       break
@@ -797,9 +798,9 @@ func discardUnusedLimb_vartime[N, E: static int](limbsLeft: var int, f, g: var L
   var mask = SignedSecretWord(0)
   mask = mask or (fn xor fn.isNegMask()) # 0 if last limb has nothing left but its sign
   mask = mask or (gn xor gn.isNegMask()) # 0 if last limb has nothing left but its sign
-  if SignedBaseType(mask) == 0:
-    f[limbsLeft-2] = f[limbsLeft-2] or fn.lshl(62) # if only sign is left, the last limb is 11..11 if negative
-    g[limbsLeft-2] = g[limbsLeft-2] or gn.lshl(62) # or 00..00 if positive
+  if cast[SignedBaseType](mask) == 0:
+    f[limbsLeft-2] = f[limbsLeft-2] or fn.lshl(WordBitWidth-E) # if only sign is left, the last limb is 11..11 if negative
+    g[limbsLeft-2] = g[limbsLeft-2] or gn.lshl(WordBitWidth-E) # or 00..00 if positive
     limbsLeft -= 1
 
 func invmodImpl_vartime[N, E: static int](

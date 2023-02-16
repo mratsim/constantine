@@ -100,7 +100,7 @@ func multiScalarMul_reference_vartime*[EC](r: var EC, coefs: openArray[BigInt], 
   let N = points.len
   let coefs = coefs.asUnchecked()
   let points = points.asUnchecked()
-  let c = bestBucketBitSize(N, BigInt.bits, useSignedBuckets = false)
+  let c = bestBucketBitSize(N, BigInt.bits, useSignedBuckets = false, useManualTuning = false)
 
   case c
   of  2: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  2)
@@ -123,8 +123,6 @@ func multiScalarMul_reference_vartime*[EC](r: var EC, coefs: openArray[BigInt], 
   of 19: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 19)
   of 20: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 20)
   of 21: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 21)
-  of 22: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 22)
-  of 23: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 23)
   else:
     unreachable()
 
@@ -302,10 +300,9 @@ func multiScalarMulAffine_vartime[F, G; bits: static int](
   # Setup
   # -----
   const (numBuckets, queueLen) = c.deriveSchedulerConstants()
-  const schedQueueLen = max(32, queueLen)
   let buckets = allocHeap(Buckets[numBuckets, F, G])
   buckets[].init()
-  let sched = allocHeap(Scheduler[numBuckets, schedQueueLen, F, G])
+  let sched = allocHeap(Scheduler[numBuckets, queueLen, F, G])
   sched[].init(points, buckets, 0, numBuckets.int32)
 
   # Algorithm
@@ -338,7 +335,7 @@ func multiScalarMul_dispatch_vartime[bits: static int, F, G](
        points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], N: int) =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
-  let c = bestBucketBitSize(N, bits, useSignedBuckets = true)
+  let c = bestBucketBitSize(N, bits, useSignedBuckets = true, useManualTuning = true)
 
   case c
   of  2: multiScalarMulJacExt_vartime(r, coefs, points, N, c =  2)
@@ -356,6 +353,8 @@ func multiScalarMul_dispatch_vartime[bits: static int, F, G](
   of 14: multiScalarMulAffine_vartime(r, coefs, points, N, c = 14)
   of 15: multiScalarMulAffine_vartime(r, coefs, points, N, c = 15)
   of 16: multiScalarMulAffine_vartime(r, coefs, points, N, c = 16)
+  of 17: multiScalarMulAffine_vartime(r, coefs, points, N, c = 17)
+  of 18: multiScalarMulAffine_vartime(r, coefs, points, N, c = 18)
   else:
     unreachable()
 

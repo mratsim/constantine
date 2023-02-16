@@ -865,11 +865,11 @@ proc run_EC_batch_add_impl*[N: static int](
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  const testSuiteDesc = "Elliptic curve batch addition for Short Weierstrass form"
+  const testSuiteDesc = "Elliptic curve sum reduction for Short Weierstrass form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     for n in numPoints:
-      test $ec & " batch addition (N=" & $n & ")":
+      test $ec & " sum reduction (N=" & $n & ")":
         proc test(EC: typedesc, gen: RandomGen) =
           var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](n)
 
@@ -891,7 +891,7 @@ proc run_EC_batch_add_impl*[N: static int](
         test(ec, gen = HighHammingWeight)
         test(ec, gen = Long01Sequence)
 
-      test "EC " & $ec.G & " batch addition (N=" & $n & ") - special cases":
+      test "EC " & $ec.G & " sum reduction (N=" & $n & ") - special cases":
         proc test(EC: typedesc, gen: RandomGen) =
           var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](n)
 

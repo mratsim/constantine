@@ -161,7 +161,7 @@ export abstractions, arithmetic,
 #                                                             #
 # ########################################################### #
 
-func bestBucketBitSize*(inputSize: int, orderBitwidth: static int, useSignedBuckets: static bool): int {.inline.} =
+func bestBucketBitSize*(inputSize: int, scalarBitwidth: static int, useSignedBuckets, useManualTuning: static bool): int {.inline.} =
   ## Evaluate the best bucket bit-size for the input size.
   ## That bucket size minimize group operations.
   ## This ignore cache effect. Computation can become memory-bound, especially with large buckets
@@ -188,9 +188,9 @@ func bestBucketBitSize*(inputSize: int, orderBitwidth: static int, useSignedBuck
 
   const s = int useSignedBuckets
   let n = inputSize
-  let b = float32(orderBitwidth)
+  let b = float32(scalarBitwidth)
   var minCost = float32(Inf)
-  for c in 2 .. 17:
+  for c in 2 .. 20:
     let b_over_c = b/c.float32
 
     let bucket_accumulate_reduce = b_over_c * float32(n + (1 shl (c-s)) - 2) * A
@@ -200,9 +200,14 @@ func bestBucketBitSize*(inputSize: int, orderBitwidth: static int, useSignedBuck
       minCost = cost
       result = c
 
-  # Manual tuning, probably cache effect / memory bandwidth
-  if result >= 11:
-    result -= 1
+  # Manual tuning, memory bandwidth / cache boundaries of
+  # L1, L2 caches, TLB and 64 alising conflict
+  # are not taken into account in previous formula
+  when useManualTuning:
+    if 13 <= result:
+      result -= 1
+    if 15 <= result:
+      result -= 1
 
 # Extended Jacobian generic bindings
 # ----------------------------------
@@ -235,9 +240,9 @@ type
     ptJacExt*: array[N, ECP_ShortW_JacExt[F, G]] # Public for the top window
 
   ScheduledPoint* = object
-    bucket  {.bitsize:26.}:  int32 # Supports up to 2²⁵ =      33 554 432 buckets and -1 for the skipped bucket 0
-    sign    {.bitsize: 1.}: uint64
-    pointID {.bitsize:37.}: uint64 # Supports up to 2³⁷ = 137 438 953 472 points
+    bucket  {.bitsize:26.}: int64 # Supports up to 2²⁵ =      33 554 432 buckets and -1 for the skipped bucket 0
+    sign    {.bitsize: 1.}: int64
+    pointID {.bitsize:37.}: int64 # Supports up to 2³⁷ = 137 438 953 472 points
 
   Scheduler*[NumNZBuckets, QueueLen: static int, F; G: static Subgroup] = object
     points:                        ptr UncheckedArray[ECP_ShortW_Aff[F, G]]
@@ -259,7 +264,7 @@ func reset(buckets: var Buckets, index: int) {.inline.} =
 func deriveSchedulerConstants*(c: int): tuple[numNZBuckets, queueLen: int] {.compileTime.} =
   # Returns the number of non-zero buckets and the scheduler queue length
   result.numNZBuckets = 1 shl (c-1)
-  result.queueLen = 4*c*c - 16*c - 128
+  result.queueLen = max(MinVectorAddThreshold, 4*c*c - 16*c - 128)
 
 func init*[NumNZBuckets, QueueLen: static int, F; G: static Subgroup](
       sched: var Scheduler[NumNZBuckets, QueueLen, F, G], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
@@ -275,13 +280,13 @@ func init*[NumNZBuckets, QueueLen: static int, F; G: static Subgroup](
 
 func scheduledPointDescriptor*(pointIndex: int, pointDesc: tuple[val: SecretWord, neg: SecretBool]): ScheduledPoint {.inline.} =
   ScheduledPoint(
-    bucket:  cast[int32](pointDesc.val)-1, # shift bucket by 1 as bucket 0 is skipped
-    sign:    pointDesc.neg.uint64,
-    pointID: pointIndex.uint64)
+    bucket:  cast[int64](pointDesc.val)-1, # shift bucket by 1 as bucket 0 is skipped
+    sign:    cast[int64](pointDesc.neg),
+    pointID: cast[int64](pointIndex))
 
 func enqueuePoint(sched: var Scheduler, sp: ScheduledPoint) {.inline.} =
   sched.queue[sched.numScheduled] = sp
-  sched.collisionsMap.setBit(sp.bucket)
+  sched.collisionsMap.setBit(sp.bucket.int)
   sched.numScheduled += 1
 
 func handleCollision(sched: var Scheduler, sp: ScheduledPoint)
@@ -305,7 +310,7 @@ func prefetch*(sched: Scheduler, sp: ScheduledPoint) =
 func schedule*(sched: var Scheduler, sp: ScheduledPoint) =
   ## Schedule a point for accumulating in buckets
 
-  let bucket = sp.bucket
+  let bucket = int sp.bucket
   if not(sched.start <= bucket and bucket < sched.stopEx):
     return
 
@@ -588,7 +593,7 @@ when isMainModule:
       return
 
     let inputSize = 1 shl logInputSize
-    let c = inputSize.bestBucketBitSize(381, true)
+    let c = inputSize.bestBucketBitSize(381, useSignedBucket = true, useManualTuning = false)
     let twoPow = "2^"
     let numNZBuckets = 1 shl (c-1)
     let collisionMapSize = ((1 shl (c-1))+63) div 64 * 8 # Stored in BigInt[1 shl (c-1)]
