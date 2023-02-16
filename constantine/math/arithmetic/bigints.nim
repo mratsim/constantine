@@ -605,7 +605,7 @@ iterator recoding_l2r_signed_vartime*[bits: static int](a: BigInt[bits]): int8 =
   var bi, bi1, ri, ri1, ri2: int8
 
   var i = bits
-  while true:
+  while true:     # JY00 outputs at mots bits+1 digits
     if i == bits: # We rely on compiler to hoist this branch out of the loop.
       ri = 0
       ri1 = int8 a.bit(bits-1)
@@ -655,8 +655,8 @@ iterator recoding_r2l_signed_vartime*[bits: static int](a: BigInt[bits]): int8 =
   var ci, ci1, ri, ri1: int8
 
   var i = 0
-  while i <= bits:
-    if i == 0: # We rely on compiler to hoist this branch out of the loop.
+  while i <= bits: # 2-NAF outputs at most bits+1 digits
+    if i == 0:     # We rely on compiler to hoist this branch out of the loop.
       ri = int8 a.bit(0)
       ri1 = int8 a.bit(1)
       ci = 0
@@ -686,7 +686,7 @@ func recode_r2l_signed_vartime*[bits: static int](
     inc i
   return i
 
-iterator recoding_r2l_signed_window_vartime*(a: BigInt, windowLogSize: int): int {.tags:[VarTime].} =
+iterator recoding_r2l_signed_window_vartime*[bits: static int](a: BigInt[bits], windowLogSize: int): int {.tags:[VarTime].} =
   ## This is a minimum-Hamming-Weight right-to-left windowed recoding with the following properties
   ## 1. The most significant non-zero bit is positive.
   ## 2. Among any w consecutive digits, at most one is non-zero.
@@ -704,7 +704,8 @@ iterator recoding_r2l_signed_window_vartime*(a: BigInt, windowLogSize: int): int
   var a {.noInit.} = a
   var zeroes = 0
 
-  while true:
+  var j = 0
+  while j <= bits:
     # 1. Count zeroes in LSB
     var ctz = 0
     for i in 0 ..< a.limbs.len:
@@ -762,6 +763,9 @@ iterator recoding_r2l_signed_window_vartime*(a: BigInt, windowLogSize: int): int
 
     of StateYield:
       yield yieldVal
+      j += 1
+      if j > bits: # wNAF outputs at most bits+1 digits
+        break
       case nextState
       of StatePrepareYield: state = StatePrepareYield
       of StateExit:         state = StateExit

@@ -295,13 +295,27 @@ proc run_EC_mul_sanity_tests*(
           var
             impl = a
             reference = a
+            refMinWeight = a
 
           impl.scalarMulGeneric(BigInt[bits]())
           reference.scalarMul_doubleAdd_vartime(BigInt[bits]())
+          refMinWeight.scalarMul_minHammingWeight_vartime(BigInt[bits]())
 
           check:
             bool(impl.isInf())
             bool(reference.isInf())
+            bool(refMinWeight.isInf())
+
+          proc refWNaf(w: static int) = # workaround staticFor symbol visibility
+            var refWNAF = a
+            refWNAF.scalarMul_minHammingWeight_windowed_vartime(exponent, window = w)
+            check: bool(refWNAF.isInf())
+
+          refWNaf(2)
+          refWNaf(3)
+          refWNaf(5)
+          refWNaf(8)
+          refWNaf(13)
 
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Uniform)
