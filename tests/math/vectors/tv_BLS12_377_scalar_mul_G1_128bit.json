@@ -1,0 +1,532 @@
+{
+  "curve": "BLS12_377",
+  "group": "G1",
+  "modulus": "0x1ae3a4617c510eac63b05c06ca1493b1a22d9f300f5138f1ef3622fba094800170b5d44300000008508c00000000001",
+  "order": "0x12ab655e9a2ca55660b44d1e5c37b00159aa76fed00000010a11800000000001",
+  "cofactor": "0x170b5d44300000000000000000000000",
+  "form": "short_weierstrass",
+  "a": "0x0",
+  "b": "0x1",
+  "vectors": [
+    {
+      "id": 0,
+      "P": {
+        "x": "0x4e7e6dfa01ed0ceb6e66708b07cb5c6cd30a42eeb13d7b76f8d103a0a4d491450be6f526fc12f15209b792220c041e",
+        "y": "0xc782515159b7e7b9371e0e0caa387951317e993b1625d91869d4346621058a0960ef1b8b6eabb33cd5719694908a05"
+      },
+      "scalarBits": 128,
+      "scalar": "0xaa9b0e8fe9586648abf3f1e2e639ca1b",
+      "Q": {
+        "x": "0x1709a3d8ad0a9a3bcd36c5fe9e2caf59e66c3141fc95395f490aa72a85360cc1333b1bb4d36366bef24d1bd746a8fbd",
+        "y": "0x460d1258acdf0e164cccc297dc15cc53ba747da1f15306c975a512f0deca256c78a32b5190f295ac51d0de3640fba6"
+      }
+    },
+    {
+      "id": 1,
+      "P": {
+        "x": "0x495d5c49ea83853e43291970c787231e1bedf49a115a98d1f9bd0cacdbd2e5fe05525bd26beee23aefe0d3b3b0ee59",
+        "y": "0x10c26876835bdef3fddc694cdee6312081e8dfb74811e41cab582ff0c57b13d2fa09e8551ba9f7c709daa3c04eb180c"
+      },
+      "scalarBits": 128,
+      "scalar": "0x45078066192b74d2f3077f00f5bd1a50",
+      "Q": {
+        "x": "0x246626e09f8e81de8b6a84ebb20a23e5b4d1e9a28ddfc52ccca3682644004af5a0c503681517390c266752e6855c78",
+        "y": "0x23055dc0919c94aef168ea77d91c7b6b2cda2c8b9a1c040efa7baae0307b96b6cd1ac37e3287610ce949f99638fa1"
+      }
+    },
+    {
+      "id": 2,
+      "P": {
+        "x": "0x276146db802e6733a211d7568c3d34ba8907aaa5d6bab8d979c35527197d43e479a34a146f23acc2440bf19b5ff372",
+        "y": "0x10f6f53790e338882fd9153337612340fb8f563794a4d5c7c4f4cfc50ec9582cb1538a159a859e3ddfa3849ad1cee7c"
+      },
+      "scalarBits": 128,
+      "scalar": "0x1e64c537c6203d64905b63d034a4c247",
+      "Q": {
+        "x": "0xa59bf86e6d060e0940f7caf6f1c5c9981c3d5078ce9bf22a682bc57b5b16c5b6ecf9cd55e23716b083360dcfc635e8",
+        "y": "0x25ed4829d7b3a1d6f18ced65530d9ab243549d67fc2fdf36b4253d9b1431f2cab61e5e9591d40b902f89e9d415a1b4"
+      }
+    },
+    {
+      "id": 3,
+      "P": {
+        "x": "0x287d4af5ab70d2fde1f4b727f59c413c13795b5d101484366742a4b16b14206854eb4084fa18a2416f1eaa872e5720",
+        "y": "0x3bfd2cc512e70a13bdf0c61fcf0cb7f58a5e2f018338d1af35fc2f3148c4771b2251d1d80c3607eed9fb9700f3e55a"
+      },
+      "scalarBits": 128,
+      "scalar": "0x37046c3d14102a5aa3e9f46e33c70a75",
+      "Q": {
+        "x": "0x21c1cc07196a5ecd4ff65b6d4e9a0fcb64dc6a60ad2dfbccb66195a18845041bd50279f4f3f6627148df2c12b198be",
+        "y": "0xeb87ca33ea95c09970add25eb18010ec473bcd1392a2b654b46e872ad46bd388eaa701c6c7b24d2e323ed1333f4768"
+      }
+    },
+    {
+      "id": 4,
+      "P": {
+        "x": "0x12be5bee25b9ffc90706402b7e498308161692b09eb425a7efd8a7f546a616243943041007fb11d5318fbab1246b9f8",
+        "y": "0x1ab7be2a845c024ec6bc3b65e59a20826f020f639bf7d15c895d9634e246c6a277cac8aec0ae4bbd2bd93a3e20fc5fa"
+      },
+      "scalarBits": 128,
+      "scalar": "0x84062adbcf70582ea8cbd0388104f47f",
+      "Q": {
+        "x": "0x1919012b84c6e6a7715533bfe4e70b4b35e99c36507c7c7fbf3c36be040740b1a40a5c771f1f65035879ec4097fe71a",
+        "y": "0xba929e2b0fb36bfff08cc6c19fc1ba075ce6641a84f7dbc811046e6ba135145f35842fb9abf74dcc6c2e6d284d8058"
+      }
+    },
+    {
+      "id": 5,
+      "P": {
+        "x": "0x1355619f057ede740deb2cd6d627f170b5958295bd29d875cdd617e5f78482b867593ea914da2fcfc0d2865c54ea73f",
+        "y": "0xdb1d484e52e9dc0655b377b978ab27e615a9887a50c3b5f6d65511f341d07013698afdb6d104800345f46fa8124257"
+      },
+      "scalarBits": 128,
+      "scalar": "0x882db3e45eee839131bc7fe89ee4a859",
+      "Q": {
+        "x": "0x5a838aaf44e06076ecc16e9cdc4ebff6df52ecdd46bf80bb8d85827994966fe97174bc1a9261bc26899159aa9a1c5c",
+        "y": "0x9f227838c019b20301214f98d93b9d8ec2adc97b7451d2d59c688a89aecb5ea27ce3a25099cf6ff380e5a6924b9749"
+      }
+    },
+    {
+      "id": 6,
+      "P": {
+        "x": "0x53468e89531095642ce00990013f6adeeff7921ecfe5af0b9414fda35c7b320f025f3ee3642c120729e4cdde1c4304",
+        "y": "0xc7e38b915133c6ea43b9c4f8abd55633db9463acdf24c4b124c4d7266e164d6668ddf02f6c5b38d2af56e6f198b35a"
+      },
+      "scalarBits": 128,
+      "scalar": "0xacb5d62e3dcb16acfec66b6a9639e19d",
+      "Q": {
+        "x": "0x12cac7ddadd1f088651498718164c0cfbc4bd03477de6f68b7b24d3fc93f450fc4efab9a4f4dd3e9f0593dce838cfb6",
+        "y": "0x1a2c030bb7172d41ef69c5de917960011e73e5b0266113a67845dde1ff4147a96eac04d64990c24ec21166ac92cc819"
+      }
+    },
+    {
+      "id": 7,
+      "P": {
+        "x": "0x3e2591281ea16be00881f310f46c71e51b47d7ee8e7ca9a7019e8ea8a358a666d1010d03c5f7b88d27e6f4b8052be6",
+        "y": "0x16b5df69f5044a5a03ef58c87fcded16667a863cac64f36ec9c2e34abe49351e1d9c2362e787234701cf425399fba0"
+      },
+      "scalarBits": 128,
+      "scalar": "0x47c87b57b0ffa6e4acc601b44c062745",
+      "Q": {
+        "x": "0x76c0e32647ed84d8a93e0319b1ecb151c3322a8421f0f6eb4a5271b65c10c603af477a4f463cfd88fe93e73d9a0fb2",
+        "y": "0xb39a46e13bc2853a60f6d12b15b11238e54f22e5c671ca789ad1a98151dff1c2be629f34e5c26d94177d1d0b0e996f"
+      }
+    },
+    {
+      "id": 8,
+      "P": {
+        "x": "0x1818c7813f111507e933e61309cf58708ab64a582b40788ab295b989b04d5d4c81fa9a6485370dbd9b81fb9cfa53dce",
+        "y": "0x2a45f42de4771c2e05117daeaf8e015631be6e287b4624924be75670fb4cba2f102bcd308a6bb92f71cb78dbdd9c94"
+      },
+      "scalarBits": 128,
+      "scalar": "0xec1f23c50bcc7539c1b2bf408b3cae31",
+      "Q": {
+        "x": "0x16891716687097db20b9da77507f97052e38443417b01ed8ba894108e09a50c72853d63f36c325542d9d51051a48c8",
+        "y": "0x145f887eb34ef48456856174caa0ec9a196e067a89bf385b17558a8d00b8d4df7c83d2698f2619adf80ad09e0f6fd6b"
+      }
+    },
+    {
+      "id": 9,
+      "P": {
+        "x": "0x177aac33b94be8ea0ac43541bde6557a02effcf0ad50a21f54e800376d4148d216f2b3b9c2d0fa02d668f82f1689ae9",
+        "y": "0xf03cfe76d507957d733499ff1d8e2be91b74c4806ae84336a63f757ea95d6eab39b66be1315dad7a95471b0544a7d"
+      },
+      "scalarBits": 128,
+      "scalar": "0xae82ed32ae0dce28603d753132869747",
+      "Q": {
+        "x": "0x1241d1a3e3951da4b4533ab29b3c59228d0feaaf2273e3fcf1af694fc849a46d3401d020040d1153c283b7a78147815",
+        "y": "0x19a5d4f5e3e8d8c8664b993b07ae1ac9f28ca5d95c2ec44a12efa29fa72322af7e90d4d4713e721fcb6f18ed4e102c9"
+      }
+    },
+    {
+      "id": 10,
+      "P": {
+        "x": "0x1728af4646c1de324a8a4583b3aa1cf1b4984f286ae1fff8c1f0f8d6da3e04f3ebd08dc90b4a3b7917b385822625d53",
+        "y": "0x289ec3a6099f8dda44000cd7be36f8ae2d58b4dfaca410336451a9bd3f774f377b706b50b5759830431b242130b180"
+      },
+      "scalarBits": 128,
+      "scalar": "0xc28ab1fffa313a09140ad05d7de22f88",
+      "Q": {
+        "x": "0x10c78943d14640825a811f45882779860517f18b8f18cdd3568182ef9cb5030018ea0ae6ee32f9cc8db2ccab2e99a91",
+        "y": "0x27d9bca5cbb228458c47d0e6b6a62a1b1dda998786f46bb4ad26b488a59a4f7c165f6272118c31fd4d84e7bd2c2a4c"
+      }
+    },
+    {
+      "id": 11,
+      "P": {
+        "x": "0x10041fbb361a1b74d9d047f30baecac29a8a2f3a59b1bb01374b6459373c1379a66c1535f94a37fefacb04100de3395",
+        "y": "0x3fa571473c9c4279c10ba1b73b8d432f599c26b393b71191f3b10bafb8dc9bd4f8422bb86f398da93c26be25420d8f"
+      },
+      "scalarBits": 128,
+      "scalar": "0x85ae2bcd7326a51661bb91d8d229b94e",
+      "Q": {
+        "x": "0x11ff4fd5aace8e7c842af3e399fb7f15f1d95646cea40598b9870e46f1ce5d76f03f3ff7240e1a15cc31d521d77e13e",
+        "y": "0xa2352c2cef883238a3f390f26d9c214ecdf13b4b55f018d1640faf4c1ed675dace3dad3bd596595fa329853c92852f"
+      }
+    },
+    {
+      "id": 12,
+      "P": {
+        "x": "0x30ce29566b3601bef30e5a2396234292d09e149b419c510924a1efb4a1e8d07f8b45b4a40976efd3142ab795bf696b",
+        "y": "0x19f9726ee1f191037d80b39f26d117b844ff7e1220c3b474d0db7f8b9f4663028f634c2c1bf805f6309b8bd44070bf7"
+      },
+      "scalarBits": 128,
+      "scalar": "0xfa3c60ce06c019475dc88eb8544ef3d5",
+      "Q": {
+        "x": "0xf81ab9ebf6f6aeab5c72b22230714d8619f05743b15cedc39cf5a559574693fca91b13ab015f0ecbd6e50b1dbe4051",
+        "y": "0x1848e413ba45105969d9f2f4780037a3acb21cbc9122cd4b6e9707dc78d7939d59ac197bf786df3225776268e76e226"
+      }
+    },
+    {
+      "id": 13,
+      "P": {
+        "x": "0x14f822c615c4856c4a4469882dea0dbbc5782c7986d1e9002b52692cd73806aff9318a7dff6e15614c00b2880415acb",
+        "y": "0x113db589e941ca78661a1aa1a24d759dfe4bdd9290c9e2f77141f3c0bb1016964a267cf1a0da6cdfa46442d0303e389"
+      },
+      "scalarBits": 128,
+      "scalar": "0x4136523ea9b771bb688da5cadb6e9fe4",
+      "Q": {
+        "x": "0x203ea3027ffb931c9eb61b9ad51db2b3b36a5b53327534761599ac8d2c4d462a8f00a63d913cb9cb436fec3f414966",
+        "y": "0x11796a2dff2f536607e5c2fa9a0acb2e34248e20227b5a4e0b375ad1be9a3e8e0720425f12815a0fe6bcbd564060737"
+      }
+    },
+    {
+      "id": 14,
+      "P": {
+        "x": "0x111ddb965dcddbe70c29cbeefe31005dd9f8d434168ec5db320d84c7478a189fa5d5e841e7a8935de2ee57ddf007391",
+        "y": "0x14b1d68acd93ebcd604d22981d2fee92a4cadc69c2ce43e80f574b750bde81d03e319dcdb482a2851292fe7fb18557d"
+      },
+      "scalarBits": 128,
+      "scalar": "0xcd6cf922458072eb615f25df1b0d3134",
+      "Q": {
+        "x": "0x8ba5ae3a372dbc906493a1bbe9a7beec86699813d41ae2c2361784adfd5c2f1f1013c458ff8e3302d88fda14b8f645",
+        "y": "0xd306ef37f2bff511caa01f3563b9bead8f28885f2f5c985380b68d8d63be66d78ea87c0f716b2da72cf12c83508f13"
+      }
+    },
+    {
+      "id": 15,
+      "P": {
+        "x": "0x2659401e0e0a94b1972a4af2b90c6eed19fcbf6885fafe3946f26c6a9af9477a9ec0825310c126701f948cac1003ca",
+        "y": "0xb1fcf62203f411f1f0fb493b5e41c755d078e9adde16b211656ff7dfc27e4fa80c55a753d31c84a07f72b1153bdbca"
+      },
+      "scalarBits": 128,
+      "scalar": "0xad0f5d5a277be71a184937b73e97325d",
+      "Q": {
+        "x": "0x998ec09ea627bbfd91a1356ac1f6c5f18e76bd39e867b4b1e6e5f2813f309fea7e78c748e815bf00b1687e373d594c",
+        "y": "0x2feb6073385f799c5465e305a62abf31740f1f290b5417125b2b3804ec7ed2646eca12f510106f31a91d08dbf39ae6"
+      }
+    },
+    {
+      "id": 16,
+      "P": {
+        "x": "0x1175183ecc5dd314b2b22fed08f26e4306272c809315566fc0fe4a8b616d62d1a67f6a29c3dbf8f90c7d44a1b0cdf53",
+        "y": "0x1425bb46f998c2b0d4237c2148545d032cba429c1dbdc02a3455f99fa2c8caf2ff5d4422f17c66a9869144c19fad7cb"
+      },
+      "scalarBits": 128,
+      "scalar": "0xe682ca7ca0f3ea554b4854012e1f7bbd",
+      "Q": {
+        "x": "0x44c81ba36ca4c0098f0e0cb351c65e8393cc4ac15d72e3856ff6cb3490a5be3177834e820794d5160121170a3577b0",
+        "y": "0x9134a490c0b2026a8cf6d96cd721bdbf6ad7a5b0eb19971462cc07374433210996c525e8f0199bd1d619c18555c1b3"
+      }
+    },
+    {
+      "id": 17,
+      "P": {
+        "x": "0x388ff699b293e2b42139555e7af19a5f636655c31bc04869ab0a452dd38ef7b546e765694e68a54531a9b2f89740dc",
+        "y": "0xdf590a9f4e0773416e3c791d38eb437e7ab6a7398677e8eb3c0b1d16a302de2063da4dfb888521f5f2953cf5f6da61"
+      },
+      "scalarBits": 128,
+      "scalar": "0x479d68087db33f9edb3f7b2e4655fe0c",
+      "Q": {
+        "x": "0x245e0c34ea2f4d19758819d752d372437f02cd4167d5a6520c11666177d07a56c30295ffff0f212e2aeeda8f967620",
+        "y": "0x18265098461ab45c07803c736eaf6280966c0fd480b4cea2a602f3c34ea061c9fb9410ac057b86acb5a90ad6c8037bc"
+      }
+    },
+    {
+      "id": 18,
+      "P": {
+        "x": "0x132800485152cb47c073a7d139899a7ec23dfd04c0d12e7eed5ed31dfd7e38d4035d5ad41f1e5b196a08620c3fc40f5",
+        "y": "0x12f124d004c3e65fabdbb4b2fa835971c99dd2d762ab5be3ee838899375c8da436cf98d15131974489868bc61d4c2d9"
+      },
+      "scalarBits": 128,
+      "scalar": "0x9f00a8f966647a29b6c6e15898d87791",
+      "Q": {
+        "x": "0xa965603fbdba1e87f5276ed99c076258fc56b328d6645c82714b262a7d0c1bd3f109f6e35ab933c24aa2fc49c3e94d",
+        "y": "0x13d1ee63e7dac97f073a770dba122c95bfd3e623045a40e2c002c85e0a186967e978237990bcc9674a2fb05e512c195"
+      }
+    },
+    {
+      "id": 19,
+      "P": {
+        "x": "0x9fba3eebf5c132e08aef9de4f3c1137ec741e6468e7c6721b2e639b5d95df2dbbd4020fa8b9f7684cf350aa3c5b6e6",
+        "y": "0x10b30f1d21c1a55c1c844dff3195991d4ca40805db35df7ec99076f21da4123d01ad5e17c36422bb38a672aba320cac"
+      },
+      "scalarBits": 128,
+      "scalar": "0xb8f016734614949862a9f2be703935a5",
+      "Q": {
+        "x": "0x4bc54d5a6b087259a1305c078f6e250407f6ad9614a0a1ca152552fbfae033dd03b0e682fcbbd1ce30fe1d77a74323",
+        "y": "0xc683944a986123affb513255b54a3195a9c3b346e94c0dd04c5b9930f16757d72bc34c04aa126ce67f22d7c0254874"
+      }
+    },
+    {
+      "id": 20,
+      "P": {
+        "x": "0x488b356cb215af435f2a74a4ac8d1bbb6232fcf23334431526c0eb2f274cf793829c5548900eaf932e91e24297f557",
+        "y": "0x8a4eda46c67bf4670684ac661d8fbfb69d9de5dcabf9364ebff9342ef52cdb138f07deac2e8004c4c48a26dd60554b"
+      },
+      "scalarBits": 128,
+      "scalar": "0x3d8dfe73cb6b68207a89ea0c7b9e643a",
+      "Q": {
+        "x": "0x1080eff2cf1b3b5765aac4c347cbe299cef7e762b12b18ab92ae8b2ff3e2c4168f8cf03e2d628d3ce28c35f8e399fae",
+        "y": "0x5edaa8449a95f778b074f3e1075faf27fd1623aa76b36562032725f72d69a207326b7c1b346a48c2998623f4c8bff"
+      }
+    },
+    {
+      "id": 21,
+      "P": {
+        "x": "0x5b9535489b3dcb564e5cd90160573433d161e3f5a3b97c098a01cf34ee81ba56fc12146d7b8fcab0a917918d182ece",
+        "y": "0xe7216eb6f2f42387b23e8f9e796e33822fb1bd55170f4aed03f8a3b9ce3df8200d5f51a04e6f136cbe015372c47a0d"
+      },
+      "scalarBits": 128,
+      "scalar": "0xd40ddce44b970b7cd67d29cb5880f8d0",
+      "Q": {
+        "x": "0x7a835e88a24afc0783c09675c165b93c013729f5e05b320e850c1472d4a85e9ebf9dae1ff47b342720b523e55bfff3",
+        "y": "0xaaf9d57b5093314aa0cd9c718c8471dc1512f443e0c8011c075e0bbcf02be2cf508e49d48507a19e0a70db9412f9ee"
+      }
+    },
+    {
+      "id": 22,
+      "P": {
+        "x": "0xaa47e9a81d1d3ebb7a48814fac401fa03d54d632db938dab2acf70943df4e04836817efd4af8a8f70628920daa66ab",
+        "y": "0x179baa0ca89576836fe3762e486ef95c01aa4d0c07a4b147a0114dbf055e765968704268bf7bd4b95d5567c49ea85aa"
+      },
+      "scalarBits": 128,
+      "scalar": "0x9f78715604a94842ce30838a5c18f7f9",
+      "Q": {
+        "x": "0x18f230b98c3ae2dc8f593d9933e37106cd90f9cd426c380b98641f834c30338828ff9efb1f9d6e86e296f253f90c321",
+        "y": "0xc777781a05b434dfbb5b51f99acf2de59d911a1dbf89ca529b310815b96ba76786d5402b146f23d66bc06eb933f32"
+      }
+    },
+    {
+      "id": 23,
+      "P": {
+        "x": "0x10ea6964b9c1eaad4ea93a2b50a9cedc6445f0b5c7e3e6433a1dd8e8594fb30507416d13a44339babdeb584ed623c5e",
+        "y": "0x13f66ac8f9cd08cc6209e1140e333ef16e3896fcba63474e1a73616e8d7f69c70a0570e377a31c7ed012ef4b70fea81"
+      },
+      "scalarBits": 128,
+      "scalar": "0x7be9df6d017acbfcadb5031f793c06ed",
+      "Q": {
+        "x": "0x1900fa7431647ec5482c9120313603160b1cffdba27cba7f142e2ce57ad869c76504d79113134b7328907f966c74750",
+        "y": "0xe88ac8344a9860df995a96c3f14da8ae21df4c8b6c3c2b2231be3011375a72fb9bb4c5806c9a5c4bb866c4d8676c3c"
+      }
+    },
+    {
+      "id": 24,
+      "P": {
+        "x": "0x1a5c888350e7bffe4e53d18ac6b94c616e9d12206690ba4cfd0f477a8f66e074ce8d7230a68c91abf214e38d686779f",
+        "y": "0x11586f7a72db6a1c5ade98aa8e34f08dc1179c63905bb49aae38c604b151e69cf0cfe6e3d56d79fea5c4f7f5bc13821"
+      },
+      "scalarBits": 128,
+      "scalar": "0x231ebe12fbcfd6d3a12c17335ec9b638",
+      "Q": {
+        "x": "0xed30beb6e6c1c3eea3b866545598754b1c74f04dbb36056255798c7f1db24d4a29307bc7ad7e3815a247739811d31b",
+        "y": "0x19cadc4d81d4b91ab9b743d557ed5fcf20622fa92d9f7431930935074a9f2ce9cce9a28ffc7f60aeff0d274d55781f9"
+      }
+    },
+    {
+      "id": 25,
+      "P": {
+        "x": "0x13934df3e3d800ec4a2a973b55f2c4bde93af0cf18af7b2d2e4efe76beb69ed8b9d1b46bfffde4c87d0d01f91d873a",
+        "y": "0x6a23e5b0a7239a35c8d3d88ca8978c029b8af443890cfc4602fc4eeaf0e1cfd7a812ed5d658928696dc9b675de31b6"
+      },
+      "scalarBits": 128,
+      "scalar": "0xe3be7c42020e4e5f3d47ba88039e67d4",
+      "Q": {
+        "x": "0xc3a92a0a92c670391ae3a0b2ed0080d30a301139cf88a45d0969e6639c844d296d87c6e7cac6229b47ce536b95f40f",
+        "y": "0xc4d63afbb7fa8d07afb467697247beaa31f11d427ce0b946011dc8c46e7213b37267d816600b803433109561dcb6b0"
+      }
+    },
+    {
+      "id": 26,
+      "P": {
+        "x": "0x213f7089633df705bf852dd91516ffbc4bee92c7a6f5f5944a3b17116293a0dc932c8ece15ed1eb217b2e78adbd97b",
+        "y": "0x18ba49b6ea522ea96d96527960923e35b148a04fe8c3d4e228d53e0191b0ba6c2d73e8abb947e81cb12d83f61fd4a17"
+      },
+      "scalarBits": 128,
+      "scalar": "0x1673e44707f59e2eaee449fd48641225",
+      "Q": {
+        "x": "0x1f9502b1ed583d194a394e76b292c8538265a034bdbb0a7dce2033d75de0bc51f8a042c8ea598850d66aa651b864f2",
+        "y": "0x1107a9e95284dbe9b474b30d5e0afc6704e8883e0d87b756705fca1335eea7728ad384284a91d9d964323e350a159c3"
+      }
+    },
+    {
+      "id": 27,
+      "P": {
+        "x": "0x10bd99bf5a870cd25f762d54abf5553da02c2c417221219651c366ddb2e6e887ff3fa4a79e8e7297c3fc0c377d39efd",
+        "y": "0xded01e4ab02a9d3c9019bb73f34dadf83fb5df8c25b4a40c5a9fa00d9f8c01b7cfe0c4a213c6b688135b06e8db6753"
+      },
+      "scalarBits": 128,
+      "scalar": "0x33f9491e3269ff2de895375cc946ef4a",
+      "Q": {
+        "x": "0xe6164ce59b77f71d4bd901b4f0e1f0935e5ebaa0b045ab70cd9c0d8ac9073001350310a723f294a4f1bd9f882bdef4",
+        "y": "0x586743cdda76246e4e1ade6e99ec9395d3eb04933e50389644177638c724628da64fd9157302eb65bee47100b70491"
+      }
+    },
+    {
+      "id": 28,
+      "P": {
+        "x": "0xd9b773201b05913f8ae27d7c894dd16542b3495324462e66e26ec3c2866f446b3bd97cad95e1aff0123f60d89286d3",
+        "y": "0x6a4ca5ef1dc12422d0211814b79a2c09e9113c160164263e165fbbecfb49b80edce9e37ba98a3411cd99180c73dd8e"
+      },
+      "scalarBits": 128,
+      "scalar": "0x816a7cc005fb1546efc2c13d8643bf7a",
+      "Q": {
+        "x": "0x622ec1ced3fa4e14cb87b75c70bb901fbcd40ece8d434593aa208b2bb9649fdae6a09c5eabe9f8e0fa1d3ec2401fb2",
+        "y": "0xb61be6723195de1e77ddef845515232b05f8d228c9e9cbea6da9c0a096b3ea73ab09091fdad7d46988f61da73a18be"
+      }
+    },
+    {
+      "id": 29,
+      "P": {
+        "x": "0x16ee1e218518d4b130a2f60b63845a05b8abfd0585b3c39c471d915d6ff81d269bed019f3f97a42aa650e8be45288c4",
+        "y": "0xae0e0564f7639d32ba981e0fd5357a1227cf7f00a310b94255a4769689476739d376f09414cb55fc8aa1792d215c86"
+      },
+      "scalarBits": 128,
+      "scalar": "0x7b727060812eae0a48e31249ee16ef94",
+      "Q": {
+        "x": "0x1aca5ba8bbd2db89ef15cd715ce56b138cbb9e02ed7b1418289200459c4c3526f54a035b3a6fa625d90848b062857bb",
+        "y": "0xf936c1a0d227eba9e6defcd928c16995658c8d4f07cf0e9dce68f69bcafc84a4cecd1b79207c1946d9b5974b4c4622"
+      }
+    },
+    {
+      "id": 30,
+      "P": {
+        "x": "0x288db700888cc6cc6e837953ecc629ba5789fff7cc32c76b2b0f8c7a85e0ca330806ed464af1c2c0c212bb851738c5",
+        "y": "0x224f78b078e7e77d29629f3ded67154e31b51a3019f7c2c0a69fe75d3e512f7dafd894f2b02a4ea6ea06acb1e8de47"
+      },
+      "scalarBits": 128,
+      "scalar": "0x644b0fa53abe392b3fd7777b8d3ccc2",
+      "Q": {
+        "x": "0x1780c66def077b8d16866085f0391b2b30865a2d6e5b9a15fa8d3bf6879de0e2112a3a381ea8bce9b22b73579bca690",
+        "y": "0x6b0502a34ed6fa087099140b8c5f79be98eaf399556f1018d9018b0c048107783eae9f11a0cd06e02328819039b364"
+      }
+    },
+    {
+      "id": 31,
+      "P": {
+        "x": "0x24c51872f69ca17cc00e9048449137e5856d16759d90600efa516749d90bda76e5e4023932dca5f6ffd2ff678d620b",
+        "y": "0x6714e83a724e770353c89126d7ef5646238f0c3507584e35ccc8d28dbe94cc7979119bd9cb39111130acd98c2c7d5e"
+      },
+      "scalarBits": 128,
+      "scalar": "0x2504c5497acbadead3c6d90ab1ab94fd",
+      "Q": {
+        "x": "0x31c3d051d77be7e73afaa26d3719d328700e446527c9f1da1e1a6aa508aaf63089a2a935bbf724a9aaf935ffecaab0",
+        "y": "0x9baa601c1860d0585dc1a41af4ded64faf2f82787db31c1793ef47e1e51b362835beca160b47b6263a0202a3b9e823"
+      }
+    },
+    {
+      "id": 32,
+      "P": {
+        "x": "0x6eabcb02d02cec109d7dee31812a3328fc55ca6f1c54779df895161465b4799d57df4f6f49441a49659b94640ca8e",
+        "y": "0xeade889826710bfe36c9be5a397d605c416edab78aef8c2b4cd99b8c2b26488c8307f4054eb355616e155e92162239"
+      },
+      "scalarBits": 128,
+      "scalar": "0x1303fa1bd7dc4317ac41949fbda6bf22",
+      "Q": {
+        "x": "0x17054e047b23818789ca7a4c8570c034b5ef9e0c29a62e9db9faba14d5eceda68c22ae77c91c55ae7be851d797c3c9d",
+        "y": "0x16cb4523c79aff74d1198bbcd4dbdffaf354de4cc95b347e183adb38533d9c7284fc3e77bc00efe5dd857cb53488f8d"
+      }
+    },
+    {
+      "id": 33,
+      "P": {
+        "x": "0xad632965e6217824b73583cc2289064d06d23ec0ea5cd52010e5f50e4523d55ef52f4e714dfbcd21e081e505bbc16",
+        "y": "0xa2fb2e3d7c24e0e5c5c523ae0324dab62d8181336ae8b3453dca02492e59a2eadcb87b504e4d6db74bf36067999a7c"
+      },
+      "scalarBits": 128,
+      "scalar": "0x9a1bdcc64347d5aa0cf98e4c81e54330",
+      "Q": {
+        "x": "0xeb458189be92adc74f2962ded24ddac881ec4d6694a235cf5eacea83876b25509e6e41b60f29463501de5fdcd3ff58",
+        "y": "0x7382d008d656fd5e960f1db0775ae1f99f42c3f0b4dd05eb338f8e7ecbc4a76634c488d75c49afe45e5154b42e2cf2"
+      }
+    },
+    {
+      "id": 34,
+      "P": {
+        "x": "0x10a63254fe9b79cfcba46497503df4597202293729df02430d48150d541f6f0637c8184f2ac17ecc393acd6a17f5c2",
+        "y": "0x4f075f85da79d912f281fcc6836a026f8ef0f81b82895e44df9373a66bcb75ca3c9e2033f394d34c1aeaadd3860753"
+      },
+      "scalarBits": 128,
+      "scalar": "0x7512787e3234b1a6c595199161108c4d",
+      "Q": {
+        "x": "0x1123b9822c4417aedd73ab19db1d1b4f077fbb11c7eaed02ce388217bd8431858aac8fc17ea3e9c898e3ba99fa48a5f",
+        "y": "0x199489ac2687da83cbfdfdaf47c35017cab253de828b3f8dcb6f1a53bcf319012f02018cfdc119ba584eff95333bc19"
+      }
+    },
+    {
+      "id": 35,
+      "P": {
+        "x": "0x6319ac4d94b79a0334cf239d88bc0d1ed6f1ea53081df7c935ee2c16a9e088cf2d1ed13465b065d0a3eeedbdd8b74",
+        "y": "0x180e8293fc6523ae533a9e29d2ed2099fc09f2c5395c5c7ea86252161b90a0ccc18725b004340a1fdf4573f15b165a"
+      },
+      "scalarBits": 128,
+      "scalar": "0x1c413124dd59fdd8428cf3fd28db20d2",
+      "Q": {
+        "x": "0x23a74b891c912d708e1f66ecb8eef12a452f8d497d83a8a2fb169aa774e71b201020d9a89f2f1cc1e6c3c0fe4cbd6c",
+        "y": "0x2b08c76f79dd524de3912c465bb3ffe544c444f20baafb7e5770b50d5196c1782c889c9963db89ffa6ca147a96bf38"
+      }
+    },
+    {
+      "id": 36,
+      "P": {
+        "x": "0x1111e29571f5bffa7a969674580d3f95585a983940263f2816bb310a804dceedf8ca8c6f0a7b286a8fc60760c323b63",
+        "y": "0x1548c948803b6677a6c48523220bb6efce2177666532020cfd76cb12a12273c2b77ba7f68e68d6191fd10aff2f9a844"
+      },
+      "scalarBits": 128,
+      "scalar": "0xd43f6cd1ad51f001070d16cd4e8fb70d",
+      "Q": {
+        "x": "0x151a90b8dbbb49439093eca508c9939ed34219fcd7de071d2b1b9ba2708e94999a0391ddc3cae2ab65ccac50d62b0c",
+        "y": "0x16f25659173681cf0518105a14365f252cf475409204b2cd1742d5bd45ffef4a2ca9200ccdac7362f8b6a5948e8db53"
+      }
+    },
+    {
+      "id": 37,
+      "P": {
+        "x": "0xc1b7d38844f9725af35cf14c5a81b3b231cd17673bf72798ae6208f202ed22a91fc8bd8d7cd7096c2487ebb31579af",
+        "y": "0x982a2337b841eef7adfe56c5f2a8ed47fab2d580f4f6984a0d866a80a94646b2dd9470f7752d7972f0f9a152e92e43"
+      },
+      "scalarBits": 128,
+      "scalar": "0xa96847c540f26a02b972c1d322176bac",
+      "Q": {
+        "x": "0x19a5515db145672daa7042c165cd2e2aea1cfc8de803f8d9532cdb4e88959eca33a053369d6704946971ae752674b63",
+        "y": "0x2e179361daf368f7fee5cfabf0fdbb7dfd37027b4b40bc992307552d65911eb8f4c44a73aebd28c60b301703ebe7d9"
+      }
+    },
+    {
+      "id": 38,
+      "P": {
+        "x": "0x16ad569ef9eb8b408cfdb9f190ac6e2efe95143846fe4a99d23e1e27f8edec4f06ad274f602809dab1a09a423f304ed",
+        "y": "0xd5152fa043863feaf4b4f08494c6200a1d9f66ebf17d041ce64cf4f5b0514508a47486b6f19d935da9b863d83304a6"
+      },
+      "scalarBits": 128,
+      "scalar": "0x4337644111924b1dcc5f59b7145708d6",
+      "Q": {
+        "x": "0x65610857dfb4e0df73fd57f3b4bc9f430c42abf1f4bbe1310fd96b82a30b5a2dcc1540cacfa797b610135d5f702d2c",
+        "y": "0x143944a95c2bc38699a97945d66faeb00e314e2cf68217af067c4ad00e7e95233099359d3ece26fc660a81cf85358c5"
+      }
+    },
+    {
+      "id": 39,
+      "P": {
+        "x": "0xed1c79d8d4d52f4013a086345fcd53dbe6d57b8049c38be765be6d8665648543974b1b69594806dd1cf93dc2a3c98c",
+        "y": "0x1d7e5972aa71555d56d73da82729ca046642e10350a47cc6b75c5f1a4b549a2538820f7a66215539087fe2f41935ed"
+      },
+      "scalarBits": 128,
+      "scalar": "0x66f83070debb906ace6b600f5eeb959",
+      "Q": {
+        "x": "0x1493bd2869a247e47f96c6c4f927c4982560322c84acf2cdba3985db432067a5dda5f516a8a2375759a03bcff4d46c4",
+        "y": "0xa1a257dedbd2d32465bf515c6256c0e676e8da310d602c7d7f3e7f86561ebd53142403e56c266d9db64453b4c67eca"
+      }
+    }
+  ]
+}

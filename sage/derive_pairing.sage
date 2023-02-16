@@ -63,10 +63,7 @@ def genAteParam(curve_name, curve_config):
   buf += ate_comment
 
   ate_bits = int(ate_param).bit_length()
-  naf_bits = int(3*ate_param).bit_length() - ate_bits
-
-  buf += f'  # +{naf_bits} to bitlength so that we can mul by 3 for NAF encoding\n'
-  buf += f'  BigInt[{ate_bits}+{naf_bits}].fromHex"0x{Integer(abs(ate_param)).hex()}"\n\n'
+  buf += f'  BigInt[{ate_bits}].fromHex"0x{Integer(abs(ate_param)).hex()}"\n\n'
 
   buf += f'const {curve_name}_pairing_ate_param_isNeg* = {"true" if ate_param < 0 else "false"}'
 
@@ -198,7 +195,7 @@ def genFinalExp(curve_name, curve_config):
     scale = 3*(u^3-u^2+1)
     scaleDesc = ' * 3*(u^3-u^2+1)'
 
-  fexp = (pᵏ - 1)//r
+  fexp = (p^k - 1)//r
   fexp *= scale
 
   buf = f'const {curve_name}_pairing_finalexponent* = block:\n'

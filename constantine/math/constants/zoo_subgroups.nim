@@ -15,14 +15,16 @@ import
   ./bn254_snarks_subgroups,
   ./bw6_761_subgroups,
   ./pallas_subgroups,
-  ./vesta_subgroups
+  ./vesta_subgroups,
+  ./secp256k1_subgroups
 
 export
   bls12_377_subgroups,
   bls12_381_subgroups,
   bn254_nogami_subgroups,
   bn254_snarks_subgroups,
-  bw6_761_subgroups
+  bw6_761_subgroups,
+  secp256k1_subgroups
 
 func clearCofactor*[ECP](P: var ECP) {.inline.} =
   ## Clear the cofactor of a point on the curve

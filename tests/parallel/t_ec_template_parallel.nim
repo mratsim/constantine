@@ -78,12 +78,12 @@ proc run_EC_batch_add_parallel_impl*[N: static int](
   else:
     const G1_or_G2 = "G2"
 
-  const testSuiteDesc = "Elliptic curve parallel batch addition for Short Weierstrass form"
+  const testSuiteDesc = "Elliptic curve parallel sum reduction for Short Weierstrass form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
 
     for n in numPoints:
-      test $ec & " batch addition (N=" & $n & ")":
+      test $ec & " sum reduction (N=" & $n & ")":
         proc test(EC: typedesc, gen: RandomGen) =
           var tp = Threadpool.new()
           defer: tp.shutdown()
@@ -99,7 +99,7 @@ proc run_EC_batch_add_parallel_impl*[N: static int](
           for i in 0 ..< n:
             r_ref += points[i]
 
-          tp.sum_batch_vartime_parallel(r_batch, points)
+          tp.sum_reduce_vartime_parallel(r_batch, points)
 
           check: bool(r_batch == r_ref)
 
@@ -108,7 +108,7 @@ proc run_EC_batch_add_parallel_impl*[N: static int](
         test(ec, gen = HighHammingWeight)
         test(ec, gen = Long01Sequence)
 
-      test "EC " & G1_or_G2 & " batch addition (N=" & $n & ") - special cases":
+      test "EC " & G1_or_G2 & " sum reduction (N=" & $n & ") - special cases":
         proc test(EC: typedesc, gen: RandomGen) =
           var tp = Threadpool.new()
           defer: tp.shutdown()
@@ -137,7 +137,7 @@ proc run_EC_batch_add_parallel_impl*[N: static int](
           for i in 0 ..< n:
             r_ref += points[i]
 
-          tp.sum_batch_vartime_parallel(r_batch, points)
+          tp.sum_reduce_vartime_parallel(r_batch, points)
 
           check: bool(r_batch == r_ref)
 

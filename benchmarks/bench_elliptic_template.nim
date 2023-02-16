@@ -22,19 +22,21 @@ import
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
+    ec_shortweierstrass_jacobian_extended,
     ec_shortweierstrass_batch_ops,
     ec_scalar_mul, ec_endomorphism_accel],
+    ../constantine/math/constants/zoo_subgroups,
   # Helpers
   ../helpers/prng_unsafe,
   ./platforms,
   ./bench_blueprint,
   # Reference unsafe scalar multiplication
-  ../tests/math/support/ec_reference_scalar_mult
+  ../constantine/math/elliptic/ec_scalar_mul_vartime
 
 export notes
 export abstractions # generic sandwich on SecretBool and SecretBool in Jacobian sum
 
-proc separator*() = separator(177)
+proc separator*() = separator(206)
 
 macro fixEllipticDisplay(EC: typedesc): untyped =
   # At compile-time, enums are integers and their display is buggy
@@ -50,20 +52,30 @@ proc report(op, elliptic: string, start, stop: MonoTime, startClk, stopClk: int6
   let ns = inNanoseconds((stop-start) div iters)
   let throughput = 1e9 / float64(ns)
   when SupportsGetTicks:
-    echo &"{op:<60} {elliptic:<40} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
+    echo &"{op:<80} {elliptic:<40} {throughput:>15.3f} ops/s     {ns:>12} ns/op     {(stopClk - startClk) div iters:>12} CPU cycles (approx)"
   else:
-    echo &"{op:<60} {elliptic:<40} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
+    echo &"{op:<80} {elliptic:<40} {throughput:>15.3f} ops/s     {ns:>12} ns/op"
 
 template bench*(op: string, EC: typedesc, iters: int, body: untyped): untyped =
   measure(iters, startTime, stopTime, startClk, stopClk, body)
   report(op, fixEllipticDisplay(EC), startTime, stopTime, startClk, stopClk, iters)
 
+func `+=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_JacExt[F, G]) {.inline.}=
+  P.sum_vartime(P, Q)
+func `+=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_Aff[F, G]) {.inline.}=
+  P.madd_vartime(P, Q)
+
 proc addBench*(EC: typedesc, iters: int) =
   var r {.noInit.}: EC
   let P = rng.random_unsafe(EC)
   let Q = rng.random_unsafe(EC)
-  bench("EC Add " & $EC.G, EC, iters):
-    r.sum(P, Q)
+
+  when EC is ECP_ShortW_JacExt:
+    bench("EC Add vartime " & $EC.G, EC, iters):
+      r.sum_vartime(P, Q)
+  else:
+    bench("EC Add " & $EC.G, EC, iters):
+      r.sum(P, Q)
 
 proc mixedAddBench*(EC: typedesc, iters: int) =
   var r {.noInit.}: EC
@@ -71,8 +83,13 @@ proc mixedAddBench*(EC: typedesc, iters: int) =
   let Q = rng.random_unsafe(EC)
   var Qaff: ECP_ShortW_Aff[EC.F, EC.G]
   Qaff.affine(Q)
-  bench("EC Mixed Addition " & $EC.G, EC, iters):
-    r.madd(P, Qaff)
+
+  when EC is ECP_ShortW_JacExt:
+    bench("EC Mixed Addition vartime " & $EC.G, EC, iters):
+      r.madd_vartime(P, Qaff)
+  else:
+    bench("EC Mixed Addition " & $EC.G, EC, iters):
+      r.madd(P, Qaff)
 
 proc doublingBench*(EC: typedesc, iters: int) =
   var r {.noInit.}: EC
@@ -92,11 +109,40 @@ proc affFromJacBench*(EC: typedesc, iters: int) =
   bench("EC Jacobian to Affine " & $EC.G, EC, iters):
     r.affine(P)
 
-proc scalarMulGenericBench*(EC: typedesc, window: static int, iters: int) =
-  const bits = EC.F.C.getCurveOrderBitwidth()
+proc affFromProjBatchBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int) =
+  var r = newSeq[affine(EC)](numPoints)
+  var points = newSeq[EC](numPoints)
 
+  for i in 0 ..< numPoints:
+    points[i] = rng.random_unsafe(EC)
+
+  if useBatching:
+    bench("EC Projective to Affine -   batched " & $EC.G & " (" & $numPoints & " points)", EC, iters):
+      r.asUnchecked().batchAffine(points.asUnchecked(), numPoints)
+  else:
+    bench("EC Projective to Affine - unbatched " & $EC.G & " (" & $numPoints & " points)", EC, iters):
+      for i in 0 ..< numPoints:
+        r[i].affine(points[i])
+
+proc affFromJacBatchBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int) =
+  var r = newSeq[affine(EC)](numPoints)
+  var points = newSeq[EC](numPoints)
+
+  for i in 0 ..< numPoints:
+    points[i] = rng.random_unsafe(EC)
+
+  if useBatching:
+    bench("EC Jacobian to Affine -   batched " & $EC.G & " (" & $numPoints & " points)", EC, iters):
+      r.asUnchecked().batchAffine(points.asUnchecked(), numPoints)
+  else:
+    bench("EC Jacobian to Affine - unbatched " & $EC.G & " (" & $numPoints & " points)", EC, iters):
+      for i in 0 ..< numPoints:
+        r[i].affine(points[i])
+
+proc scalarMulGenericBench*(EC: typedesc, bits, window: static int, iters: int) =
   var r {.noInit.}: EC
-  let P = rng.random_unsafe(EC) # TODO: clear cofactor
+  var P = rng.random_unsafe(EC)
+  P.clearCofactor()
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
@@ -104,11 +150,10 @@ proc scalarMulGenericBench*(EC: typedesc, window: static int, iters: int) =
     r = P
     r.scalarMulGeneric(exponent, window)
 
-proc scalarMulEndo*(EC: typedesc, iters: int) =
-  const bits = EC.F.C.getCurveOrderBitwidth()
-
+proc scalarMulEndo*(EC: typedesc, bits: static int, iters: int) =
   var r {.noInit.}: EC
-  let P = rng.random_unsafe(EC) # TODO: clear cofactor
+  var P = rng.random_unsafe(EC)
+  P.clearCofactor()
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
@@ -116,11 +161,10 @@ proc scalarMulEndo*(EC: typedesc, iters: int) =
     r = P
     r.scalarMulEndo(exponent)
 
-proc scalarMulEndoWindow*(EC: typedesc, iters: int) =
-  const bits = EC.F.C.getCurveOrderBitwidth()
-
+proc scalarMulEndoWindow*(EC: typedesc, bits: static int, iters: int) =
   var r {.noInit.}: EC
-  let P = rng.random_unsafe(EC) # TODO: clear cofactor
+  var P = rng.random_unsafe(EC)
+  P.clearCofactor()
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
@@ -131,29 +175,38 @@ proc scalarMulEndoWindow*(EC: typedesc, iters: int) =
     else:
       {.error: "Not implemented".}
 
-proc scalarMulUnsafeDoubleAddBench*(EC: typedesc, iters: int) =
-  const bits = EC.F.C.getCurveOrderBitwidth()
-
+proc scalarMulUnsafeDoubleAddBench*(EC: typedesc, bits: static int, iters: int) =
   var r {.noInit.}: EC
-  let P = rng.random_unsafe(EC) # TODO: clear cofactor
+  var P = rng.random_unsafe(EC)
+  P.clearCofactor()
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
   bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (unsafe reference DoubleAdd)", EC, iters):
     r = P
-    r.unsafe_ECmul_double_add(exponent)
+    r.scalarMul_doubleAdd_vartime(exponent)
 
-proc scalarMulUnsafeMinHammingWeightRecodingBench*(EC: typedesc, iters: int) =
-  const bits = EC.F.C.getCurveOrderBitwidth()
-
+proc scalarMulUnsafeMinHammingWeightRecodingBench*(EC: typedesc, bits: static int, iters: int) =
   var r {.noInit.}: EC
-  var P = rng.random_unsafe(EC) # TODO: clear cofactor
+  var P = rng.random_unsafe(EC)
+  P.clearCofactor()
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
   bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (unsafe min Hamming Weight recoding)", EC, iters):
     r = P
-    r.unsafe_ECmul_minHammingWeight(exponent)
+    r.scalarMul_minHammingWeight_vartime(exponent)
+
+proc scalarMulUnsafeWNAFBench*(EC: typedesc, bits, window: static int, iters: int) =
+  var r {.noInit.}: EC
+  var P = rng.random_unsafe(EC)
+  P.clearCofactor()
+
+  let exponent = rng.random_unsafe(BigInt[bits])
+
+  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (unsafe wNAF-" & $window & ")", EC, iters):
+    r = P
+    r.scalarMul_minHammingWeight_windowed_vartime(exponent, window)
 
 proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int) =
   var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](numPoints)
@@ -165,9 +218,61 @@ proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int)
 
   if useBatching:
     bench("EC Multi Add batched                  " & $EC.G & " (" & $numPoints & " points)", EC, iters):
-      r.sum_batch_vartime(points)
+      r.sum_reduce_vartime(points)
   else:
     bench("EC Multi Mixed-Add unbatched          " & $EC.G & " (" & $numPoints & " points)", EC, iters):
       r.setInf()
       for i in 0 ..< numPoints:
         r += points[i]
+
+
+proc msmBench*(EC: typedesc, numPoints: int, iters: int) =
+  const bits = EC.F.C.getCurveOrderBitwidth()
+  var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](numPoints)
+  var scalars = newSeq[BigInt[bits]](numPoints)
+
+  for i in 0 ..< numPoints:
+    var tmp = rng.random_unsafe(EC)
+    tmp.clearCofactor()
+    points[i].affine(tmp)
+    scalars[i] = rng.random_unsafe(BigInt[bits])
+
+  var r{.noInit.}: EC
+  var startNaive, stopNaive, startMSMbaseline, stopMSMbaseline, startMSMopt, stopMSMopt: MonoTime
+
+  if numPoints <= 100000:
+    bench("EC scalar muls                " & align($numPoints, 7) & " (scalars " & $bits & "-bit, points) pairs ", EC, iters):
+      startNaive = getMonotime()
+      var tmp: EC
+      r.setInf()
+      for i in 0 ..< points.len:
+        tmp.fromAffine(points[i])
+        tmp.scalarMul(scalars[i])
+        r += tmp
+      stopNaive = getMonotime()
+
+  block:
+    bench("EC multi-scalar-mul baseline  " & align($numPoints, 7) & " (scalars " & $bits & "-bit, points) pairs ", EC, iters):
+      startMSMbaseline = getMonotime()
+      r.multiScalarMul_reference_vartime(scalars, points)
+      stopMSMbaseline = getMonotime()
+
+  block:
+    bench("EC multi-scalar-mul optimized " & align($numPoints, 7) & " (scalars " & $bits & "-bit, points) pairs ", EC, iters):
+      startMSMopt = getMonotime()
+      r.multiScalarMul_vartime(scalars, points)
+      stopMSMopt = getMonotime()
+
+  let perfNaive = inNanoseconds((stopNaive-startNaive) div iters)
+  let perfMSMbaseline = inNanoseconds((stopMSMbaseline-startMSMbaseline) div iters)
+  let perfMSMopt = inNanoseconds((stopMSMopt-startMSMopt) div iters)
+
+  if numPoints <= 100000:
+    let speedupBaseline = float(perfNaive) / float(perfMSMbaseline)
+    echo &"Speedup ratio baseline over naive linear combination: {speedupBaseline:>6.3f}x"
+
+    let speedupOpt = float(perfNaive) / float(perfMSMopt)
+    echo &"Speedup ratio optimized over naive linear combination: {speedupOpt:>6.3f}x"
+
+  let speedupOptBaseline = float(perfMSMbaseline) / float(perfMSMopt)
+  echo &"Speedup ratio optimized over baseline linear combination: {speedupOptBaseline:>6.3f}x"

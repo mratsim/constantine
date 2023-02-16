@@ -61,7 +61,7 @@ export BigInt
 # https://github.com/mratsim/constantine/issues/15
 
 # No exceptions allowed
-{.push raises: [].}
+{.push raises: [], checks: off.}
 {.push inline.}
 
 # Initialization
@@ -354,7 +354,26 @@ func setBit*[bits: static int](a: var BigInt[bits], index: int) =
   let shifted = One shl (index and SelectMask)
   slot[] = slot[] or shifted
 
-# Multiplication by small cosntants
+func getWindowAt*(a: BigInt, bitIndex: int, windowSize: static int): SecretWord {.inline.} =
+  ## Access a window of `a` of size bitsize
+  static: doAssert windowSize <= WordBitWidth
+
+  const SlotShift = log2_vartime(WordBitWidth.uint32)
+  const WordMask = WordBitWidth - 1
+  const WindowMask = SecretWord((1 shl windowSize) - 1)
+
+  let slot     = bitIndex shr SlotShift
+  let word     = a.limbs[slot]                    # word in limbs
+  let pos      = bitIndex and WordMask            # position in the word
+
+  # This is constant-time, the branch does not depend on secret data.
+  if pos + windowSize > WordBitWidth and slot+1 < a.limbs.len:
+    # Read next word as well
+    return SecretWord((word shr pos) or (a.limbs[slot+1] shl (WordBitWidth-pos))) and WindowMask
+  else:
+    return SecretWord(word shr pos) and WindowMask
+
+# Multiplication by small constants
 # ------------------------------------------------------------
 
 func `*=`*(a: var BigInt, b: static int) =
@@ -491,22 +510,93 @@ func invmod*[bits](r: var BigInt[bits], a, M: BigInt[bits]) =
   one.setOne()
   r.invmod(a, one, M)
 
+{.pop.} # inline
+
+# ############################################################
+#
+#                   **Variable-Time**
+#
+# ############################################################
+
+{.push inline.}
+
+func invmod_vartime*[bits](
+       r: var BigInt[bits],
+       a, F, M: BigInt[bits]) {.tags: [VarTime].} =
+  ## Compute the modular inverse of ``a`` modulo M
+  ## r ≡ F.a⁻¹ (mod M)
+  ##
+  ## M MUST be odd, M does not need to be prime.
+  ## ``a`` MUST be less than M.
+  r.limbs.invmod_vartime(a.limbs, F.limbs, M.limbs, bits)
+
+func invmod_vartime*[bits](
+       r: var BigInt[bits],
+       a: BigInt[bits],
+       F, M: static BigInt[bits]) {.tags: [VarTime].} =
+  ## Compute the modular inverse of ``a`` modulo M
+  ## r ≡ F.a⁻¹ (mod M)
+  ##
+  ## with F and M known at compile-time
+  ##
+  ## M MUST be odd, M does not need to be prime.
+  ## ``a`` MUST be less than M.
+  r.limbs.invmod_vartime(a.limbs, F.limbs, M.limbs, bits)
+
+func invmod_vartime*[bits](r: var BigInt[bits], a, M: BigInt[bits]) {.tags: [VarTime].} =
+  ## Compute the modular inverse of ``a`` modulo M
+  ##
+  ## The modulus ``M`` MUST be odd
+  var one {.noInit.}: BigInt[bits]
+  one.setOne()
+  r.invmod_vartime(a, one, M)
+
+{.pop.}
+
 # ############################################################
 #
 #                   Recoding
 #
 # ############################################################
+#
+# Litterature
+#
+# - Elliptic Curves in Cryptography
+#   Blake, Seroussi, Smart, 1999
+#
+# - Efficient Arithmetic on Koblitz Curves
+#   Jerome A. Solinas, 2000
+#   https://decred.org/research/solinas2000.pdf
+#
+# - Optimal Left-to-Right Binary Signed-Digit Recoding
+#   Joye, Yen, 2000
+#   https://marcjoye.github.io/papers/JY00sd2r.pdf
+#
+# - Guide to Elliptic Curve Cryptography
+#   Hankerson, Menezes, Vanstone, 2004
+#
+# - Signed Binary Representations Revisited
+#   Katsuyuki Okeya, Katja Schmidt-Samoa, Christian Spahn, and Tsuyoshi Takagi, 2004
+#   https://eprint.iacr.org/2004/195.pdf
+#
+# - Some Explicit Formulae of NAF and its Left-to-Right Analogue
+#   Dong-Guk Han, Tetsuya Izu, and Tsuyoshi Takagi
+#   https://eprint.iacr.org/2005/384.pdf
+#
+# See also on Booth encoding and Modified Booth Encoding (bit-pair recoding)
+# - https://www.ece.ucdavis.edu/~bbaas/281/notes/Handout.booth.pdf
+# - https://vulms.vu.edu.pk/Courses/CS501/Downloads/Booth%20and%20bit%20pair%20encoding.pdf
+# - https://vulms.vu.edu.pk/Courses/CS501/Downloads/Bit-Pair%20Recoding.pdf
+# - http://www.ecs.umass.edu/ece/koren/arith/simulator/ModBooth/
 
-iterator recoding_l2r_vartime*(a: BigInt): int8 =
+iterator recoding_l2r_signed_vartime*[bits: static int](a: BigInt[bits]): int8 =
   ## This is a minimum-Hamming-Weight left-to-right recoding.
   ## It outputs signed {-1, 0, 1} bits from MSB to LSB
   ## with minimal Hamming Weight to minimize operations
-  ## in Miller Loop and vartime scalar multiplications
+  ## in Miller Loops and vartime scalar multiplications
   ##
-  ## Tagged vartime as it returns an int8
-  ## - Optimal Left-to-Right Binary Signed-Digit Recoding
-  ##   Joye, Yen, 2000
-  ##   https://marcjoye.github.io/papers/JY00sd2r.pdf
+  ## ⚠️ While the recoding is constant-time,
+  ##   usage of this recoding is intended vartime
 
   # As the caller is copy-pasted at each yield
   # we rework the algorithm so that we have a single yield point
@@ -514,12 +604,12 @@ iterator recoding_l2r_vartime*(a: BigInt): int8 =
 
   var bi, bi1, ri, ri1, ri2: int8
 
-  var i = a.bits
+  var i = bits
   while true:
-    if i == a.bits: # We rely on compiler to hoist this branch out of the loop.
+    if i == bits: # We rely on compiler to hoist this branch out of the loop.
       ri = 0
-      ri1 = int8 a.bit(a.bits-1)
-      ri2 = int8 a.bit(a.bits-2)
+      ri1 = int8 a.bit(bits-1)
+      ri2 = int8 a.bit(bits-2)
       bi = 0
     else:
       bi = bi1
@@ -531,12 +621,225 @@ iterator recoding_l2r_vartime*(a: BigInt): int8 =
         ri2 = int8 a.bit(i-2)
 
     bi1 = (bi + ri1 + ri2) shr 1
-    yield -2*bi + ri + bi1
+    let r = -2*bi + ri + bi1
+    yield r
 
-    if i > 0:
+    if i != 0:
       i -= 1
     else:
       break
 
-{.pop.} # inline
+func recode_l2r_signed_vartime*[bits: static int](
+       recoded: var array[bits+1, SomeSignedInt], a: BigInt[bits]): int {.tags:[VarTime].} =
+  ## Recode left-to-right (MSB to LSB)
+  ## Output from most significant to least significant
+  ## Returns the number of bits used
+  type I = SomeSignedInt
+  var i = 0
+  for bit in a.recoding_l2r_signed_vartime():
+    recoded[i] = I(bit)
+    inc i
+  return i
+
+iterator recoding_r2l_signed_vartime*[bits: static int](a: BigInt[bits]): int8 =
+  ## This is a minimum-Hamming-Weight left-to-right recoding.
+  ## It outputs signed {-1, 0, 1} bits from LSB to MSB
+  ## with minimal Hamming Weight to minimize operations
+  ## in Miller Loops and vartime scalar multiplications
+  ##
+  ## ⚠️ While the recoding is constant-time,
+  ##   usage of this recoding is intended vartime
+  ##
+  ## Implementation uses 2-NAF
+  # This is equivalent to `var r = (3a - a); if (r and 1) == 0: r shr 1`
+  var ci, ci1, ri, ri1: int8
+
+  var i = 0
+  while i <= bits:
+    if i == 0: # We rely on compiler to hoist this branch out of the loop.
+      ri = int8 a.bit(0)
+      ri1 = int8 a.bit(1)
+      ci = 0
+    else:
+      ci = ci1
+      ri = ri1
+      if i >= bits - 1:
+        ri1 = 0
+      else:
+        ri1 = int8 a.bit(i+1)
+
+    ci1 = (ci + ri + ri1) shr 1
+    let r = ci + ri - 2*ci1
+    yield r
+
+    i += 1
+
+func recode_r2l_signed_vartime*[bits: static int](
+       recoded: var array[bits+1, SomeSignedInt], a: BigInt[bits]): int {.tags:[VarTime].} =
+  ## Recode right-to-left (LSB to MSB)
+  ## Output from least significant to most significant
+  ## Returns the number of bits used
+  type I = SomeSignedInt
+  var i = 0
+  for bit in a.recoding_r2l_signed_vartime():
+    recoded[i] = I(bit)
+    inc i
+  return i
+
+iterator recoding_r2l_signed_window_vartime*(a: BigInt, windowLogSize: int): int {.tags:[VarTime].} =
+  ## This is a minimum-Hamming-Weight right-to-left windowed recoding with the following properties
+  ## 1. The most significant non-zero bit is positive.
+  ## 2. Among any w consecutive digits, at most one is non-zero.
+  ## 3. Each non-zero digit is odd and less than 2ʷ⁻¹ in absolute value.
+  ## 4. The length of the recoding is at most BigInt.bits + 1
+  ##
+  ## This returns input one digit at a time and not the whole window.
+  ##
+  ## ⚠️ not constant-time
+
+  let sMax = 1 shl (windowLogSize - 1)
+  let uMax = sMax + sMax
+  let mask = uMax - 1
+
+  var a {.noInit.} = a
+  var zeroes = 0
+
+  while true:
+    # 1. Count zeroes in LSB
+    var ctz = 0
+    for i in 0 ..< a.limbs.len:
+      let ai = a.limbs[i]
+      if ai.isZero().bool:
+        ctz += WordBitWidth
+      else:
+        ctz += BaseType(ai).countTrailingZeroBits_vartime().int
+        break
+
+    # 2. Remove them
+    if ctz >= WordBitWidth:
+      let wordOffset = int(ctz shr log2_vartime(uint32 WordBitWidth))
+      for i in 0 ..< a.limbs.len-wordOffset:
+        a.limbs[i] = a.limbs[i+wordOffset]
+      for i in a.limbs.len-wordOffset ..< a.limbs.len:
+        a.limbs[i] = Zero
+      ctz = ctz and (WordBitWidth-1)
+      zeroes += wordOffset * WordBitWidth
+    if ctz > 0:
+      a.shiftRight(ctz)
+      zeroes += ctz
+
+    # 3. Yield - We merge yield points with a goto-based state machine
+    # Nim copy-pastes the iterator for-loop body at yield points, we don't want to duplicate code
+    # hence we need a single yield point
+
+    type State = enum
+      StatePrepareYield
+      StateYield
+      StateExit
+
+    var yieldVal = 0
+    var nextState = StatePrepareYield
+
+    var state {.goto.} = StatePrepareYield
+    case state
+    of StatePrepareYield:
+      # 3.a Yield zeroes
+      zeroes -= 1
+      if zeroes >= 0:
+        state = StateYield # goto StateYield
+
+      # 3.b Yield the least significant window
+      var lsw = a.limbs[0].int and mask # signed is important
+      a.shiftRight(windowLogSize)
+      if (lsw and sMax) != 0:           # MSB of window set
+        a += One                        #   Lend 2ʷ to next digit
+        lsw -= uMax                     #   push from [0, 2ʷ) to [-2ʷ⁻¹, 2ʷ⁻¹)
+
+      zeroes = windowLogSize-1
+      yieldVal = lsw
+      nextState = StateExit
+      # Fall through StateYield
+
+    of StateYield:
+      yield yieldVal
+      case nextState
+      of StatePrepareYield: state = StatePrepareYield
+      of StateExit:         state = StateExit
+      else:                 unreachable()
+
+    of StateExit:
+      if a.isZero().bool:
+        break
+
+func recode_r2l_signed_window_vartime*[bits: static int](
+       naf: var array[bits+1, SomeSignedInt], a: BigInt[bits], window: int): int {.tags:[VarTime].} =
+  ## Minimum Hamming-Weight windowed NAF recoding
+  ## Output from least significant to most significant
+  ## Returns the number of bits used
+  ##
+  ## The `naf` output is returned one digit at a time and not one window at a time
+  type I = SomeSignedInt
+  var i = 0
+  for digit in a.recoding_r2l_signed_window_vartime(window):
+    naf[i] = I(digit)
+    i += 1
+  return i
+
+func signedWindowEncoding(digit: SecretWord, bitsize: static int): tuple[val: SecretWord, neg: SecretBool] {.inline.} =
+  ## Get the signed window encoding for `digit`
+  ##
+  ## This uses the fact that 999 = 100 - 1
+  ## It replaces string of binary 1 with 1...-1
+  ## i.e. 0111 becomes 1 0 0 -1
+  ##
+  ## This looks at [bitᵢ₊ₙ..bitᵢ | bitᵢ₋₁]
+  ## and encodes   [bitᵢ₊ₙ..bitᵢ]
+  ##
+  ## Notes:
+  ##   - This is not a minimum weight encoding unlike NAF
+  ##   - Due to constant-time requirement in scalar multiplication
+  ##     or bucketing large window in multi-scalar-multiplication
+  ##     minimum weight encoding might not lead to saving operations
+  ##   - Unlike NAF and wNAF encoding, there is no carry to propagate
+  ##     hence this is suitable for parallelization without encoding precomputation
+  ##     and for GPUs
+  ##   - Implementation uses Booth encoding
+  result.neg = SecretBool(digit shr bitsize)
+
+  let negMask = -SecretWord(result.neg)
+  const valMask = SecretWord((1 shl bitsize) - 1)
+
+  let encode = (digit + One) shr 1            # Lookup bitᵢ₋₁, flip series of 1's
+  result.val = (encode + negMask) xor negMask # absolute value
+  result.val = result.val and valMask
+
+func getSignedFullWindowAt*(a: BigInt, bitIndex: int, windowSize: static int): tuple[val: SecretWord, neg: SecretBool] {.inline.} =
+  ## Access a signed window of `a` of size bitsize
+  ## Returns a signed encoding.
+  ##
+  ## The result is `windowSize` bits at a time.
+  ##
+  ## bitIndex != 0 and bitIndex mod windowSize == 0
+  debug: doAssert (bitIndex != 0) and (bitIndex mod windowSize) == 0
+  let digit = a.getWindowAt(bitIndex-1, windowSize+1) # get the bit on the right of the window for Booth encoding
+  return digit.signedWindowEncoding(windowSize)
+
+func getSignedBottomWindow*(a: BigInt, windowSize: static int): tuple[val: SecretWord, neg: SecretBool] {.inline.} =
+  ## Access the least significant signed window of `a` of size bitsize
+  ## Returns a signed encoding.
+  ##
+  ## The result is `windowSize` bits at a time.
+  let digit = a.getWindowAt(0, windowSize) shl 1 # Add implicit 0 on the right of LSB for Booth encoding
+  return digit.signedWindowEncoding(windowSize)
+
+func getSignedTopWindow*(a: BigInt, topIndex: int, excess: static int): tuple[val: SecretWord, neg: SecretBool] {.inline.} =
+  ## Access the least significant signed window of `a` of size bitsize
+  ## Returns a signed encoding.
+  ##
+  ## The result is `excess` bits at a time.
+  ##
+  ## bitIndex != 0 and bitIndex mod windowSize == 0
+  let digit = a.getWindowAt(topIndex-1, excess+1) # Add implicit 0 on the left of MSB and get the bit on the right of the window
+  return digit.signedWindowEncoding(excess+1)
+
 {.pop.} # raises no exceptions

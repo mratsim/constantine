@@ -15,10 +15,12 @@ import
   ],
   compilers/[
     addcarry_subborrow,
-    extended_precision
+    extended_precision,
+    compiler_optim_hints
   ],
   ./bithacks,
-  ./static_for
+  ./static_for,
+  ./allocs
 
 export
   ct_types,
@@ -28,7 +30,9 @@ export
   extended_precision,
   ct_division,
   bithacks,
-  staticFor
+  staticFor,
+  allocs,
+  compiler_optim_hints
 
 when X86 and GCC_Compatible:
   import isa/[cpuinfo_x86, macro_assembler_x86]
@@ -47,6 +51,9 @@ when X86 and GCC_Compatible:
 template debug*(body: untyped): untyped =
   when defined(debugConstantine):
     body
+
+func unreachable*() {.noReturn.} =
+  doAssert false, "Unreachable"
 
 # ############################################################
 #
@@ -111,10 +118,22 @@ template asUnchecked*[T](a: openArray[T]): ptr UncheckedArray[T] =
 # to a function as `var` are passed by hidden pointers in Nim and the wrong
 # pointer will be modified. Templates are fine.
 
-func `+%`*(p: ptr, offset: SomeInteger): type(p) {.inline, noInit.}=
+func `+%`*(p: ptr or pointer, offset: SomeInteger): type(p) {.inline, noInit.}=
   ## Pointer increment
   {.emit: [result, " = ", p, " + ", offset, ";"].}
 
-func `+%=`*(p: var ptr, offset: SomeInteger){.inline.}=
+func `+%=`*(p: var (ptr or pointer), offset: SomeInteger){.inline.}=
   ## Pointer increment
   p = p +% offset
+
+func prefetchLarge*[T](
+        data: ptr T,
+        rw: static PrefetchRW = Read,
+        locality: static PrefetchLocality = HighTemporalLocality,
+        maxCacheLines: static int = 0) {.inline.} =
+  ## Prefetch a large value
+  let pdata = pointer(data)
+  const span = sizeof(T) div 64 # 64 byte cache line
+  const N = if maxCacheLines == 0: span else: min(span, maxCacheLines)
+  for i in 0 ..< N:
+    prefetch(pdata +% (i*64), rw, locality)

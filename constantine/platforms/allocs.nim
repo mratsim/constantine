@@ -23,32 +23,37 @@
 #
 # stack allocation is strongly preferred where necessary.
 
+# We use Nim effect system to track allocating subroutines
+type
+  Alloca*    = object
+  HeapAlloc* = object
+
 # Bindings
 # ----------------------------------------------------------------------------------
 # We wrap them with int instead of size_t / csize_t
 
 when defined(windows):
-  proc alloca(size: int): pointer {.header: "<malloc.h>".}
+  proc alloca(size: int): pointer {.tags:[Alloca], header: "<malloc.h>".}
 else:
-  proc alloca(size: int): pointer {.header: "<alloca.h>".}
+  proc alloca(size: int): pointer {.tags:[Alloca], header: "<alloca.h>".}
 
-proc malloc(size: int): pointer {.sideeffect, header: "<stdlib.h>".}
-proc free(p: pointer) {.sideeffect, header: "<stdlib.h>".}
+proc malloc(size: int): pointer {.tags:[HeapAlloc], header: "<stdlib.h>".}
+proc free(p: pointer) {.tags:[HeapAlloc], header: "<stdlib.h>".}
 
 when defined(windows):
-  proc aligned_alloc_windows(size, alignment: int): pointer {.sideeffect,importc:"_aligned_malloc", header:"<malloc.h>".}
+  proc aligned_alloc_windows(size, alignment: int): pointer {.tags:[HeapAlloc],importc:"_aligned_malloc", header:"<malloc.h>".}
     # Beware of the arg order!
   proc aligned_alloc(alignment, size: int): pointer {.inline.} =
     aligned_alloc_windows(size, alignment)
-  proc aligned_free(p: pointer){.sideeffect,importc:"_aligned_free", header:"<malloc.h>".}
+  proc aligned_free(p: pointer){.tags:[HeapAlloc],importc:"_aligned_free", header:"<malloc.h>".}
 elif defined(osx):
-  proc posix_memalign(mem: var pointer, alignment, size: int){.sideeffect,importc, header:"<stdlib.h>".}
+  proc posix_memalign(mem: var pointer, alignment, size: int){.tags:[HeapAlloc],importc, header:"<stdlib.h>".}
   proc aligned_alloc(alignment, size: int): pointer {.inline.} =
     posix_memalign(result, alignment, size)
-  proc aligned_free(p: pointer) {.sideeffect, importc: "free", header: "<stdlib.h>".}
+  proc aligned_free(p: pointer) {.tags:[HeapAlloc], importc: "free", header: "<stdlib.h>".}
 else:
-  proc aligned_alloc(alignment, size: int): pointer {.sideeffect,importc, header:"<stdlib.h>".}
-  proc aligned_free(p: pointer) {.sideeffect, importc: "free", header: "<stdlib.h>".}
+  proc aligned_alloc(alignment, size: int): pointer {.tags:[HeapAlloc],importc, header:"<stdlib.h>".}
+  proc aligned_free(p: pointer) {.tags:[HeapAlloc], importc: "free", header: "<stdlib.h>".}
 
 # Helpers
 # ----------------------------------------------------------------------------------

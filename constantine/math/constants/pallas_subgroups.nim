@@ -19,7 +19,7 @@ import
 #
 # ############################################################
 
-func clearCofactorReference*(P: var ECP_ShortW_Prj[Fp[Pallas], G1]) {.inline.} =
+func clearCofactorReference*(P: var ECP_ShortW[Fp[Pallas], G1]) {.inline.} =
   ## Clear the cofactor of Pallas G1
   ## The Pasta curves have a prime-order group so this is a no-op
   discard
@@ -35,6 +35,6 @@ func isInSubgroup*(P: ECP_ShortW[Fp[Pallas], G1]): SecretBool {.inline.} =
   ## A point may be on a curve but not on the prime order r subgroup.
   ## Not checking subgroup exposes a protocol to small subgroup attacks.
   ## This is a no-op as on G1, all points are in the correct subgroup.
-  ## 
+  ##
   ## Warning ⚠: Assumes that P is on curve
   return CtTrue

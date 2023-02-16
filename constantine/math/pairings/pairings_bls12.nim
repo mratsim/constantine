@@ -18,7 +18,6 @@ import
   ../constants/zoo_pairings,
   ../arithmetic,
   ./cyclotomic_subgroups,
-  ./lines_eval,
   ./miller_loops
 
 export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11225
@@ -54,23 +53,29 @@ export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11
 
 func millerLoopGenericBLS12*[C](
        f: var Fp12[C],
-       P: ECP_ShortW_Aff[Fp[C], G1],
-       Q: ECP_ShortW_Aff[Fp2[C], G2]
+       Q: ECP_ShortW_Aff[Fp2[C], G2],
+       P: ECP_ShortW_Aff[Fp[C], G1]
      ) {.meter.} =
   ## Generic Miller Loop for BLS12 curve
   ## Computes f{u,Q}(P) with u the BLS curve parameter
-
-  var
-    T {.noInit.}: ECP_ShortW_Prj[Fp2[C], G2]
-    line {.noInit.}: Line[Fp2[C]]
-
+  var T {.noInit.}: ECP_ShortW_Prj[Fp2[C], G2]
   T.fromAffine(Q)
 
-  basicMillerLoop(
-    f, line, T,
-    P, Q,
-    pairing(C, ate_param), pairing(C, ate_param_isNeg)
-  )
+  basicMillerLoop(f, T, P, Q, pairing(C, ate_param))
+
+func millerLoopGenericBLS12*[C](
+       f: var Fp12[C],
+       Qs: ptr UncheckedArray[ECP_ShortW_Aff[Fp2[C], G2]],
+       Ps: ptr UncheckedArray[ECP_ShortW_Aff[Fp[C], G1]],
+       N: int
+     ) {.noinline, tags:[Alloca], meter.} =
+  ## Generic Miller Loop for BLS12 curve
+  ## Computes f{u,Q}(P) with u the BLS curve parameter
+  var Ts = allocStackArray(ECP_ShortW_Prj[Fp2[C], G2], N)
+  for i in 0 ..< N:
+    Ts[i].fromAffine(Qs[i])
+
+  basicMillerLoop(f, Ts, Ps, Qs, N, pairing(C, ate_param))
 
 func finalExpGeneric[C: static Curve](f: var Fp12[C]) =
   ## A generic and slow implementation of final exponentiation
@@ -86,7 +91,7 @@ func pairing_bls12_reference*[C](
   ## Output: e(P, Q) ∈ Gt
   ##
   ## Reference implementation
-  gt.millerLoopGenericBLS12(P, Q)
+  gt.millerLoopGenericBLS12(Q, P)
   gt.finalExpGeneric()
 
 # Optimized pairing implementation

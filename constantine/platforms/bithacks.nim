@@ -57,7 +57,7 @@ func log2_impl_vartime(n: uint32): uint32 =
           11, 14, 16, 18, 22, 25,  3, 30,
            8, 12, 20, 28, 15, 17, 24,  7,
           19, 27, 23,  6, 26,  5,  4, 31]
-  
+
   # Isolate MSB
   var n = n
   n = n or n shr 1 # first round down to one less than a power of 2
@@ -83,7 +83,7 @@ func log2_impl_vartime(n: uint64): uint64 {.inline.} =
           36, 17, 19, 29, 10, 13, 21, 56,
           45, 25, 31, 35, 16,  9, 12, 44,
           24, 15,  8, 23,  7,  6,  5, 63]
-  
+
   # Isolate MSB
   var n = n
   n = n or n shr 1 # first round down to one less than a power of 2
@@ -113,7 +113,7 @@ func ctz_impl_vartime(n: uint32): uint32 =
           30, 20, 18, 11, 13,  4,  7, 23,
           31, 15, 28, 21, 19, 10, 12,  6,
           14, 27,  9,  5, 26,  8, 25, 24]
-  
+
   let isolateLSB = n xor (n-1)
   uint32 lookup[(isolateLSB * 0x6EB14F9'u32) shr 27]
 
@@ -134,7 +134,7 @@ func ctz_impl_vartime(n: uint64): uint64 =
   let isolateLSB = n xor (n-1)
   uint64 lookup[(isolateLSB * 0x03f79d71b4cb0a89'u64) shr 58]
 
-func countTrailingZeroBits*[T: SomeUnsignedInt](n: T): T {.inline.} =
+func countTrailingZeroBits_vartime*[T: SomeUnsignedInt](n: T): T {.inline.} =
   ## Count the number of trailing zero bits of an integer
   when nimvm:
     if n == 0:
@@ -151,7 +151,7 @@ func isPowerOf2_vartime*(n: SomeUnsignedInt): bool {.inline.} =
   ## Returns true if n is a power of 2
   ## ⚠️ Result is bool instead of Secretbool,
   ## for compile-time or explicit vartime proc only.
-  (n and (n - 1)) == 0
+  (n and (n - 1)) == 0 and n > 0
 
 func nextPowerOfTwo_vartime*(n: uint32): uint32 {.inline.} =
   ## Returns x if x is a power of 2

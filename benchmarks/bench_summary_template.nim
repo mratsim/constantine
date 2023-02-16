@@ -172,7 +172,7 @@ proc millerLoopBLS12Bench*(C: static Curve, iters: int) =
 
   var f: Fp12[C]
   bench("Miller Loop BLS12", C, iters):
-    f.millerLoopGenericBLS12(P, Q)
+    f.millerLoopGenericBLS12(Q, P)
 
 proc millerLoopBNBench*(C: static Curve, iters: int) =
   let
@@ -181,7 +181,7 @@ proc millerLoopBNBench*(C: static Curve, iters: int) =
 
   var f: Fp12[C]
   bench("Miller Loop BN", C, iters):
-    f.millerLoopGenericBN(P, Q)
+    f.millerLoopGenericBN(Q, P)
 
 proc finalExpBLS12Bench*(C: static Curve, iters: int) =
   var r = rng.random_unsafe(Fp12[C])

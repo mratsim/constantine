@@ -15,7 +15,7 @@ import
   ../../constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective, ec_scalar_mul],
   # Test utilities
   ../../helpers/prng_unsafe,
-  ./support/ec_reference_scalar_mult,
+  ../../constantine/math/elliptic/ec_scalar_mul_vartime,
   ./t_ec_template
 
 const
@@ -49,7 +49,7 @@ suite "Order checks on BN254_Snarks":
           reference = a
 
         impl.scalarMulGeneric(exponent)
-        reference.unsafe_ECmul_double_add(exponent)
+        reference.scalarMul_doubleAdd_vartime(exponent)
 
         check:
           bool(impl.isInf())

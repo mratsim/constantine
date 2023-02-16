@@ -13,8 +13,7 @@ import
   ../extension_fields,
   ../elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
   ../pairings/[cyclotomic_subgroups, miller_loops],
-  ../isogenies/frobenius,
-  ../../platforms/allocs
+  ../isogenies/frobenius
 
 # Slow generic implementation
 # ------------------------------------------------------------
@@ -22,8 +21,7 @@ import
 # The bit count must be exact for the Miller loop
 const BLS12_381_pairing_ate_param* = block:
   # BLS12 Miller loop is parametrized by u
-  # +2 to bitlength so that we can mul by 3 for NAF encoding
-  BigInt[64+2].fromHex"0xd201000000010000"
+  BigInt[64].fromHex"0xd201000000010000"
 
 const BLS12_381_pairing_ate_param_isNeg* = true
 
@@ -66,7 +64,7 @@ func millerLoopAddchain*(
        Qs: ptr UncheckedArray[ECP_ShortW_Aff[Fp2[BLS12_381], G2]],
        Ps: ptr UncheckedArray[ECP_ShortW_Aff[Fp[BLS12_381], G1]],
        N: int
-     ) =
+     ) {.noInline.} =
   ## Generic Miller Loop for BLS12 curve
   ## Computes f{u,Q}(P) with u the BLS curve parameter
 

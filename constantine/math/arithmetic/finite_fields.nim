@@ -317,7 +317,7 @@ func div2*(a: var FF) {.meter.} =
   let wasOdd = a.mres.isOdd()
   a.mres.shiftRight(1)
   let carry {.used.} = a.mres.cadd(FF.getPrimePlus1div2(), wasOdd)
-  
+
   # a < M -> a/2 <= M/2:
   #   a/2 + M/2 < M if a is odd
   #   a/2       < M if a is even
@@ -550,9 +550,6 @@ template mulCheckSparse*(a: var Fp, b: Fp) =
   else:
     a *= b
 
-{.pop.} # inline
-{.pop.} # raises no exceptions
-
 # ############################################################
 #
 #            Field arithmetic ergonomic macros
@@ -577,7 +574,7 @@ macro addchain*(fn: untyped): untyped =
     if i + 1 != result[^1].len:
       # Modify all but the last
       if s.kind == nnkCall:
-        doAssert s[0].kind == nnkDotExpr, "Only method call syntax or infix syntax is supported in addition chains" 
+        doAssert s[0].kind == nnkDotExpr, "Only method call syntax or infix syntax is supported in addition chains"
         doAssert s[0][1].eqIdent"prod" or s[0][1].eqIdent"square" or s[0][1].eqIdent"square_repeated"
         s.add newLit(true)
       elif s.kind == nnkInfix:
@@ -590,8 +587,32 @@ macro addchain*(fn: untyped): untyped =
           s[2],
           newLit(true)
         )
-    
+
     body.add s
 
   result[^1] = body
   # echo result.toStrLit()
+
+# ############################################################
+#
+#                   **Variable-Time**
+#
+# ############################################################
+
+func inv_vartime*(r: var FF, a: FF) {.tags: [VarTime].} =
+  ## Variable-time Inversion modulo p
+  ##
+  ## The inverse of 0 is 0.
+  ## Incidentally this avoids extra check
+  ## to convert Jacobian and Projective coordinates
+  ## to affine for elliptic curve
+  r.mres.invmod_vartime(a.mres, FF.getR2modP(), FF.fieldMod())
+
+func inv_vartime*(a: var FF) {.tags: [VarTime].} =
+  ## Variable-time Inversion modulo p
+  ##
+  ## The inverse of 0 is 0.
+  ## Incidentally this avoids extra check
+  ## to convert Jacobian and Projective coordinates
+  ## to affine for elliptic curve
+  a.inv_vartime(a)

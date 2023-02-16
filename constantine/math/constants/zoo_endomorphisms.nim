@@ -49,3 +49,10 @@ func hasEndomorphismAcceleration*(C: static Curve): bool =
     Pallas,
     Vesta
   }
+
+const EndomorphismThreshold* = 196
+  ## We use substraction by maximum infinity norm coefficient
+  ## to split scalars for endomorphisms
+  ## For small scalars the substraction will overflow
+  ##
+  ## TODO: implement an alternative way to split scalars.

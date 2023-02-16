@@ -20,8 +20,7 @@ import
 # 1st part: f_{u+1,Q}(P)
 const BW6_761_pairing_ate_param_1_unopt* = block:
   # BW6-761 unoptimized Miller loop first part is parametrized by u+1
-  # +1 to bitlength so that we can mul by 3 for NAF encoding
-  BigInt[64+1].fromHex"0x8508c00000000002"
+  BigInt[64].fromHex"0x8508c00000000002"
 
 const BW6_761_pairing_ate_param_1_unopt_isNeg* = false
 

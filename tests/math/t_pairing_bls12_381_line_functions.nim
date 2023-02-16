@@ -64,7 +64,7 @@ func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen)
     else:
       result = rng.random_long01Seq_with_randZ(EC)
 
-suite "Pairing - Line Functions on BLS12-381" & " [" & $WordBitWidth & "-bit mode]":
+suite "Pairing - Line Functions on BLS12-381" & " [" & $WordBitWidth & "-bit words]":
   test "Line double - lt,t(P)":
     proc test_line_double(C: static Curve, randZ: bool, gen: RandomGen) =
       for _ in 0 ..< Iters:

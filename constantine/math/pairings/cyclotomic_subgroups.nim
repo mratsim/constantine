@@ -392,7 +392,7 @@ func cyclotomic_exp*[FT](r: var FT, a: FT, exponent: static BigInt, invert: bool
 
   r.setOne()
   var init = false
-  for bit in recoding_l2r_vartime(exponent):
+  for bit in recoding_l2r_signed_vartime(exponent):
     if init:
       r.cyclotomic_square()
     if bit == 1:

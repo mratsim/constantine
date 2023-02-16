@@ -48,6 +48,7 @@ proc main() =
     rdc2xBench(Fp2[curve], Iters)
     smallSeparator()
     invBench(Fp2[curve], InvIters)
+    invVartimeBench(Fp2[curve], InvIters)
     isSquareBench(Fp2[curve], InvIters)
     sqrtBench(Fp2[curve], InvIters)
     separator()

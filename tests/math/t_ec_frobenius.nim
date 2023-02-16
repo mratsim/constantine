@@ -49,7 +49,7 @@ proc test(
     R.frobenius_psi(P)
     doAssert: bool(R == Q)
 
-suite "ψ (Psi) - Untwist-Frobenius-Twist Endomorphism on G2 vs SageMath" & " [" & $WordBitWidth & "-bit mode]":
+suite "ψ (Psi) - Untwist-Frobenius-Twist Endomorphism on G2 vs SageMath" & " [" & $WordBitWidth & "-bit words]":
   # Generated via
   # - sage sage/frobenius_bn254_snarks.sage
   # - sage sage/frobenius_bls12_377.sage
@@ -214,7 +214,7 @@ suite "ψ (Psi) - Untwist-Frobenius-Twist Endomorphism on G2 vs SageMath" & " ["
     Qy1 = "77ef6850d4a8f181a10196398cd344011a44c50dce00e18578f3526301263492086d44c7c3d1db5b12499b4033116e1"
   )
 
-suite "ψ - psi(psi(P)) == psi2(P) - (Untwist-Frobenius-Twist Endomorphism)" & " [" & $WordBitWidth & "-bit mode]":
+suite "ψ - psi(psi(P)) == psi2(P) - (Untwist-Frobenius-Twist Endomorphism)" & " [" & $WordBitWidth & "-bit words]":
   const Iters = 8
   proc test(EC: typedesc, randZ: static bool, gen: static RandomGen) =
     for i in 0 ..< Iters:
@@ -247,7 +247,7 @@ suite "ψ - psi(psi(P)) == psi2(P) - (Untwist-Frobenius-Twist Endomorphism)" & "
   testAll(ECP_ShortW_Prj[Fp2[BLS12_381], G2])
   testAll(ECP_ShortW_Prj[Fp[BW6_761], G2])
 
-suite "ψ²(P) - [t]ψ(P) + [p]P = Inf" & " [" & $WordBitWidth & "-bit mode]":
+suite "ψ²(P) - [t]ψ(P) + [p]P = Inf" & " [" & $WordBitWidth & "-bit words]":
   const Iters = 10
   proc trace(C: static Curve): auto =
     # Returns (abs(trace), isNegativeSign)
@@ -314,7 +314,7 @@ suite "ψ²(P) - [t]ψ(P) + [p]P = Inf" & " [" & $WordBitWidth & "-bit mode]":
   testAll(ECP_ShortW_Prj[Fp2[BLS12_381], G2])
   testAll(ECP_ShortW_Prj[Fp[BW6_761], G2])
 
-suite "ψ⁴(P) - ψ²(P) + P = Inf (k-th cyclotomic polynomial with embedding degree k=12)" & " [" & $WordBitWidth & "-bit mode]":
+suite "ψ⁴(P) - ψ²(P) + P = Inf (k-th cyclotomic polynomial with embedding degree k=12)" & " [" & $WordBitWidth & "-bit words]":
   const Iters = 10
 
   proc test(EC: typedesc, randZ: static bool, gen: static RandomGen) =
@@ -344,7 +344,7 @@ suite "ψ⁴(P) - ψ²(P) + P = Inf (k-th cyclotomic polynomial with embedding d
   testAll(ECP_ShortW_Prj[Fp2[BLS12_377], G2])
   testAll(ECP_ShortW_Prj[Fp2[BLS12_381], G2])
 
-suite "ψ²(P) - ψ(P) + P = Inf (k-th cyclotomic polynomial with embedding degree k=6)" & " [" & $WordBitWidth & "-bit mode]":
+suite "ψ²(P) - ψ(P) + P = Inf (k-th cyclotomic polynomial with embedding degree k=6)" & " [" & $WordBitWidth & "-bit words]":
   const Iters = 10
 
   proc test(EC: typedesc, randZ: static bool, gen: static RandomGen) =

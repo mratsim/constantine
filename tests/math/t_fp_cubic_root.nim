@@ -23,7 +23,7 @@ proc checkCubeRootOfUnity(curve: static Curve) =
     check: bool cru.isOne()
 
 proc main() =
-  suite "Sanity checks on precomputed values" & " [" & $WordBitWidth & "-bit mode]":
+  suite "Sanity checks on precomputed values" & " [" & $WordBitWidth & "-bit words]":
     checkCubeRootOfUnity(BN254_Snarks)
     checkCubeRootOfUnity(BLS12_377)
     checkCubeRootOfUnity(BLS12_381)

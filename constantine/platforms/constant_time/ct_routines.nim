@@ -112,13 +112,7 @@ template `*=`*[T: Ct](x, y: T) =
 template `-`*[T: Ct](x: T): T =
   ## Unary minus returns the two-complement representation
   ## of an unsigned integer
-  # We could use "not(x) + 1" but the codegen is not optimal
-  when nimvm:
-    not(x) + T(1)
-  else: # Use C so that compiler uses the "neg" instructions
-    var neg: T
-    {.emit:[neg, " = -", x, ";"].}
-    neg
+  T(0) - x
 
 # ############################################################
 #
@@ -177,19 +171,6 @@ template cneg*[T: Ct](x: T, ctl: CTBool[T]): T =
 
 # ############################################################
 #
-#         Workaround system.nim `!=` template
-#
-# ############################################################
-
-# system.nim defines `!=` as a catchall template
-# in terms of `==` while we define `==` in terms of `!=`
-# So we would have not(not(noteq(x,y)))
-
-template trmFixSystemNotEq*{x != y}[T: Ct](x, y: T): CTBool[T] =
-  noteq(x, y)
-
-# ############################################################
-#
 #                       Table lookups
 #
 # ############################################################
@@ -217,15 +198,3 @@ template isNonZero*[T: Ct](x: T): CTBool[T] =
 template isZero*[T: Ct](x: T): CTBool[T] =
   # In x86 assembly, we can use "neg" + "adc"
   not isNonZero(x)
-
-# ############################################################
-#
-#             Transform x == 0 and x != 0
-#             into their optimized version
-#
-# ############################################################
-
-template trmIsZero*{x == 0}[T: Ct](x: T): CTBool[T] = x.isZero
-template trmIsZero*{0 == x}[T: Ct](x: T): CTBool[T] = x.isZero
-template trmIsNonZero*{x != 0}[T: Ct](x: T): CTBool[T] = x.isNonZero
-template trmIsNonZero*{0 != x}[T: Ct](x: T): CTBool[T] = x.isNonZero

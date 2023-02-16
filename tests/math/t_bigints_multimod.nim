@@ -17,7 +17,7 @@ import
 echo "\n------------------------------------------------------\n"
 
 proc main() =
-  suite "Bigints - Multiprecision modulo" & " [" & $WordBitWidth & "-bit mode]":
+  suite "Bigints - Multiprecision modulo" & " [" & $WordBitWidth & "-bit words]":
     test "bitsize 237 mod bitsize 192":
       let a = BigInt[237].fromHex("0x123456789012345678901234567890123456789012345678901234567890")
       let m = BigInt[192].fromHex("0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB")

@@ -242,6 +242,7 @@ func scalarMul*[EC](
   ## Those will be assumed to maintain constant-time property
   when BigInt.bits <= EC.F.C.getCurveOrderBitwidth() and
        EC.F.C.hasEndomorphismAcceleration():
+    # TODO, min amount of bits for endomorphisms?
     when EC.F is Fp:
       P.scalarMulGLV_m2w2(scalar)
     elif EC.F is Fp2:

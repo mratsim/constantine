@@ -13,8 +13,7 @@ import
   ../extension_fields,
   ../elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
   ../pairings/[cyclotomic_subgroups, miller_loops],
-  ../isogenies/frobenius,
-  ../../platforms/allocs
+  ../isogenies/frobenius
 
 # Slow generic implementation
 # ------------------------------------------------------------
@@ -22,8 +21,7 @@ import
 # The bit count must be exact for the Miller loop
 const BN254_Nogami_pairing_ate_param* = block:
   # BN Miller loop is parametrized by 6u+2
-  # +2 to bitlength so that we can mul by 3 for NAF encoding
-  BigInt[65+2].fromHex"0x18300000000000004"
+  BigInt[65].fromHex"0x18300000000000004"
 
 const BN254_Nogami_pairing_ate_param_isNeg* = true
 
@@ -56,16 +54,17 @@ func millerLoopAddchain*(
 
   # Negative AteParam
   f.conj()
+  T.neg()
 
   # Ate pairing for BN curves needs adjustment after basic Miller loop
-  f.millerCorrectionBN(T, Q, P, BN254_Nogami_pairing_ate_param_isNeg)
+  f.millerCorrectionBN(T, Q, P)
 
 func millerLoopAddchain*(
        f: var Fp12[BN254_Nogami],
        Qs: ptr UncheckedArray[ECP_ShortW_Aff[Fp2[BN254_Nogami], G2]],
        Ps: ptr UncheckedArray[ECP_ShortW_Aff[Fp[BN254_Nogami], G1]],
        N: int
-     ) =
+     ) {.noInline.} =
   ## Miller Loop for BN254-Nogami curve
   ## Computes f{6u+2,Q}(P) with u the BLS curve parameter
   var Ts = allocStackArray(ECP_ShortW_Prj[Fp2[BN254_Nogami], G2], N)
@@ -78,9 +77,11 @@ func millerLoopAddchain*(
 
   # Negative AteParam
   f.conj()
+  for i in 0 ..< N:
+    Ts[i].neg()
 
   for i in 0 ..< N:
-    f.millerCorrectionBN(Ts[i], Qs[i], Ps[i], BN254_Nogami_pairing_ate_param_isNeg)
+    f.millerCorrectionBN(Ts[i], Qs[i], Ps[i])
 
 func cycl_exp_by_curve_param*(
        r: var Fp12[BN254_Nogami], a: Fp12[BN254_Nogami],

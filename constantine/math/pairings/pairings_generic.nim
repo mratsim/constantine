@@ -21,11 +21,11 @@ func pairing*[C](gt: var Fp12[C], P, Q: auto) {.inline.} =
   else:
     {.error: "Pairing not implemented for " & $C.}
 
-func millerLoop*[C](gt: var Fp12[C], P, Q: auto, n: int) {.inline.} =
+func millerLoop*[C](gt: var Fp12[C], Q, P: auto, n: int) {.inline.} =
   when C == BN254_Snarks:
-    gt.millerLoopGenericBN(P, Q, n)
+    gt.millerLoopGenericBN(Q, P, n)
   else:
-    gt.millerLoopAddchain(P, Q, n)
+    gt.millerLoopAddchain(Q, P, n)
 
 func finalExp*[C](gt: var Fp12[C]){.inline.} =
   gt.finalExpEasy()

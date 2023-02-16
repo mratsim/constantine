@@ -99,14 +99,17 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ("tests/math/t_ec_shortw_prj_g1_add_double.nim", false),
   # ("tests/math/t_ec_shortw_prj_g1_mul_sanity.nim", false),
   # ("tests/math/t_ec_shortw_prj_g1_mul_distri.nim", false),
-  # ("tests/math/t_ec_shortw_prj_g1_mul_vs_ref.nim", false),
+  ("tests/math/t_ec_shortw_prj_g1_mul_vs_ref.nim", false),
   # ("tests/math/t_ec_shortw_prj_g1_mixed_add.nim", false),
 
   # ("tests/math/t_ec_shortw_jac_g1_add_double.nim", false),
   # ("tests/math/t_ec_shortw_jac_g1_mul_sanity.nim", false),
   # ("tests/math/t_ec_shortw_jac_g1_mul_distri.nim", false),
-  # ("tests/math/t_ec_shortw_jac_g1_mul_vs_ref.nim", false),
+  ("tests/math/t_ec_shortw_jac_g1_mul_vs_ref.nim", false),
   # ("tests/math/t_ec_shortw_jac_g1_mixed_add.nim", false),
+
+  ("tests/math/t_ec_shortw_jacext_g1_add_double.nim", false),
+  ("tests/math/t_ec_shortw_jacext_g1_mixed_add.nim", false),
 
   # ("tests/math/t_ec_twedwards_prj_add_double", false),
   # ("tests/math/t_ec_twedwards_prj_mul_sanity", false),
@@ -118,49 +121,49 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ("tests/math/t_ec_shortw_prj_g2_add_double_bn254_snarks.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mul_sanity_bn254_snarks.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mul_distri_bn254_snarks.nim", false),
-  # ("tests/math/t_ec_shortw_prj_g2_mul_vs_ref_bn254_snarks.nim", false),
+  ("tests/math/t_ec_shortw_prj_g2_mul_vs_ref_bn254_snarks.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mixed_add_bn254_snarks.nim", false),
 
   # ("tests/math/t_ec_shortw_prj_g2_add_double_bls12_381.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mul_sanity_bls12_381.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mul_distri_bls12_381.nim", false),
-  # ("tests/math/t_ec_shortw_prj_g2_mul_vs_ref_bls12_381.nim", false),
+  ("tests/math/t_ec_shortw_prj_g2_mul_vs_ref_bls12_381.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mixed_add_bls12_381.nim", false),
 
   # ("tests/math/t_ec_shortw_prj_g2_add_double_bls12_377.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mul_sanity_bls12_377.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mul_distri_bls12_377.nim", false),
-  # ("tests/math/t_ec_shortw_prj_g2_mul_vs_ref_bls12_377.nim", false),
+  ("tests/math/t_ec_shortw_prj_g2_mul_vs_ref_bls12_377.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mixed_add_bls12_377.nim", false),
 
   # ("tests/math/t_ec_shortw_prj_g2_add_double_bw6_761.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mul_sanity_bw6_761.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mul_distri_bw6_761.nim", false),
-  # ("tests/math/t_ec_shortw_prj_g2_mul_vs_ref_bw6_761.nim", false),
+  ("tests/math/t_ec_shortw_prj_g2_mul_vs_ref_bw6_761.nim", false),
   # ("tests/math/t_ec_shortw_prj_g2_mixed_add_bw6_761.nim", false),
 
   # ("tests/math/t_ec_shortw_jac_g2_add_double_bn254_snarks.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mul_sanity_bn254_snarks.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mul_distri_bn254_snarks.nim", false),
-  # ("tests/math/t_ec_shortw_jac_g2_mul_vs_ref_bn254_snarks.nim", false),
+  ("tests/math/t_ec_shortw_jac_g2_mul_vs_ref_bn254_snarks.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mixed_add_bn254_snarks.nim", false),
 
   # ("tests/math/t_ec_shortw_jac_g2_add_double_bls12_381.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mul_sanity_bls12_381.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mul_distri_bls12_381.nim", false),
-  # ("tests/math/t_ec_shortw_jac_g2_mul_vs_ref_bls12_381.nim", false),
+  ("tests/math/t_ec_shortw_jac_g2_mul_vs_ref_bls12_381.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mixed_add_bls12_381.nim", false),
 
   # ("tests/math/t_ec_shortw_jac_g2_add_double_bls12_377.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mul_sanity_bls12_377.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mul_distri_bls12_377.nim", false),
-  # ("tests/math/t_ec_shortw_jac_g2_mul_vs_ref_bls12_377.nim", false),
+  ("tests/math/t_ec_shortw_jac_g2_mul_vs_ref_bls12_377.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mixed_add_bls12_377.nim", false),
 
   # ("tests/math/t_ec_shortw_jac_g2_add_double_bw6_761.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mul_sanity_bw6_761.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mul_distri_bw6_761.nim", false),
-  # ("tests/math/t_ec_shortw_jac_g2_mul_vs_ref_bw6_761.nim", false),
+  ("tests/math/t_ec_shortw_jac_g2_mul_vs_ref_bw6_761.nim", false),
   # ("tests/math/t_ec_shortw_jac_g2_mixed_add_bw6_761.nim", false),
 
   # Elliptic curve arithmetic vs Sagemath
@@ -179,8 +182,11 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
 
   # Elliptic curve arithmetic - batch computation
   # ----------------------------------------------------------
-  ("tests/math/t_ec_shortw_prj_g1_batch_add.nim", false),
-  ("tests/math/t_ec_shortw_jac_g1_batch_add.nim", false),
+  ("tests/math/t_ec_shortw_prj_g1_sum_reduce.nim", false),
+  ("tests/math/t_ec_shortw_jac_g1_sum_reduce.nim", false),
+  ("tests/math/t_ec_shortw_jacext_g1_sum_reduce.nim", false),
+  ("tests/math/t_ec_shortw_prj_g1_msm.nim", false),
+  ("tests/math/t_ec_shortw_jac_g1_msm.nim", false),
 
   # Subgroups and cofactors
   # ----------------------------------------------------------
@@ -210,6 +216,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ----------------------------------------------------------
   ("tests/math/t_pairing_bn254_nogami_multi.nim", false),
   ("tests/math/t_pairing_bn254_snarks_multi.nim", false),
+  ("tests/math/t_pairing_bls12_377_multi.nim", false),
   ("tests/math/t_pairing_bls12_381_multi.nim", false),
 
   # Prime order fields
@@ -258,8 +265,12 @@ const benchDesc = [
   "bench_fp6",
   "bench_fp12",
   "bench_ec_g1",
+  "bench_ec_g1_scalar_mul",
   "bench_ec_g1_batch",
+  "bench_ec_g1_msm_bn254_snarks",
+  "bench_ec_g1_msm_bls12_381",
   "bench_ec_g2",
+  "bench_ec_g2_scalar_mul",
   "bench_pairing_bls12_377",
   "bench_pairing_bls12_381",
   "bench_pairing_bn254_nogami",
@@ -826,7 +837,58 @@ task bench_ec_g1_batch_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (
   runBench("bench_ec_g1_batch", "gcc", useAsm = false)
 
 task bench_ec_g1_batch_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (batch ops) - Clang no Assembly":
-  runBench("bench_ec_g1", "clang", useAsm = false)
+  runBench("bench_ec_g1_batch", "clang", useAsm = false)
+
+# Elliptic curve G1 - scalar multiplication
+# ------------------------------------------
+
+task bench_ec_g1_scalar_mul, "Run benchmark on Elliptic Curve group 𝔾1 (Scalar Multiplication) - Default compiler":
+  runBench("bench_ec_g1_scalar_mul")
+
+task bench_ec_g1_scalar_mul_gcc, "Run benchmark on Elliptic Curve group 𝔾1 (Scalar Multiplication) - GCC":
+  runBench("bench_ec_g1_scalar_mul", "gcc")
+
+task bench_ec_g1_scalar_mul_clang, "Run benchmark on Elliptic Curve group 𝔾1 (Scalar Multiplication) - Clang":
+  runBench("bench_ec_g1_scalar_mul", "clang")
+
+task bench_ec_g1_scalar_mul_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Scalar Multiplication) - GCC no Assembly":
+  runBench("bench_ec_g1_scalar_mul", "gcc", useAsm = false)
+
+task bench_ec_g1_scalar_mul_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Scalar Multiplication) - Clang no Assembly":
+  runBench("bench_ec_g1_scalar_mul", "clang", useAsm = false)
+
+# Elliptic curve G1 - Multi-scalar-mul
+# ------------------------------------------
+
+task bench_ec_g1_msm_bn254_snarks, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BN254-Snarks - Default compiler":
+  runBench("bench_ec_g1_msm_bn254_snarks")
+
+task bench_ec_g1_msm_bn254_snarks_gcc, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BN254-Snarks - GCC":
+  runBench("bench_ec_g1_msm_bn254_snarks", "gcc")
+
+task bench_ec_g1_msm_bn254_snarks_clang, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BN254-Snarks - Clang":
+  runBench("bench_ec_g1_msm_bn254_snarks", "clang")
+
+task bench_ec_g1_msm_bn254_snarks_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BN254-Snarks - GCC no Assembly":
+  runBench("bench_ec_g1_msm_bn254_snarks", "gcc", useAsm = false)
+
+task bench_ec_g1_msm_bn254_snarks_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BN254-Snarks - Clang no Assembly":
+  runBench("bench_ec_g1_msm_bn254_snarks", "clang", useAsm = false)
+
+task bench_ec_g1_msm_bls12_381, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BLS12-381 - Default compiler":
+  runBench("bench_ec_g1_msm_bls12_381")
+
+task bench_ec_g1_msm_bls12_381_gcc, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BLS12-381 - GCC":
+  runBench("bench_ec_g1_msm_bls12_381", "gcc")
+
+task bench_ec_g1_msm_bls12_381_clang, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BLS12-381 - Clang":
+  runBench("bench_ec_g1_msm_bls12_381", "clang")
+
+task bench_ec_g1_msm_bls12_381_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BLS12-381 - GCC no Assembly":
+  runBench("bench_ec_g1_msm_bls12_381", "gcc", useAsm = false)
+
+task bench_ec_g1_msm_bls12_381_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BLS12-381 - Clang no Assembly":
+  runBench("bench_ec_g1_msm_bls12_381", "clang", useAsm = false)
 
 # Elliptic curve G2
 # ------------------------------------------
@@ -845,6 +907,24 @@ task bench_ec_g2_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾2 - GCC n
 
 task bench_ec_g2_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾2 - Clang no Assembly":
   runBench("bench_ec_g2", "clang", useAsm = false)
+
+# Elliptic curve G2 - scalar multiplication
+# ------------------------------------------
+
+task bench_ec_g2_scalar_mul, "Run benchmark on Elliptic Curve group 𝔾2 (Multi-Scalar-Mul) - Default compiler":
+  runBench("bench_ec_g2_scalar_mul")
+
+task bench_ec_g2_scalar_mul_gcc, "Run benchmark on Elliptic Curve group 𝔾2 (Multi-Scalar-Mul) - GCC":
+  runBench("bench_ec_g2_scalar_mul", "gcc")
+
+task bench_ec_g2_scalar_mul_clang, "Run benchmark on Elliptic Curve group 𝔾2 (Multi-Scalar-Mul) - Clang":
+  runBench("bench_ec_g2_scalar_mul", "clang")
+
+task bench_ec_g2_scalar_mul_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾2 (Multi-Scalar-Mul) - GCC no Assembly":
+  runBench("bench_ec_g2_scalar_mul", "gcc", useAsm = false)
+
+task bench_ec_g2_scalar_mul_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾2 (Multi-Scalar-Mul) - Clang no Assembly":
+  runBench("bench_ec_g2_scalar_mul", "clang", useAsm = false)
 
 # Pairings
 # ------------------------------------------

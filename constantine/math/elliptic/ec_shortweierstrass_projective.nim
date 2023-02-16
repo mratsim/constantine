@@ -37,9 +37,21 @@ type ECP_ShortW_Prj*[F; G: static Subgroup] = object
   ## Note that projective coordinates are not unique
   x*, y*, z*: F
 
-template affine*[F, G](_: type ECP_ShortW_Prj[F, G]): typedesc =
-  ## Returns the affine type that corresponds to the Jacobian type input
-  ECP_ShortW_Aff[F, G]
+func isInf*(P: ECP_ShortW_Prj): SecretBool {.inline.} =
+  ## Returns true if P is an infinity point
+  ## and false otherwise
+  ##
+  ## Note: the projective coordinates equation is
+  ##       Y²Z = X³ + aXZ² + bZ³
+  ## A "zero" point is any point with coordinates X and Z = 0
+  ## Y can be anything
+  result = P.x.isZero() and P.z.isZero()
+
+func setInf*(P: var ECP_ShortW_Prj) {.inline.} =
+  ## Set ``P`` to infinity
+  P.x.setZero()
+  P.y.setOne()
+  P.z.setZero()
 
 func `==`*(P, Q: ECP_ShortW_Prj): SecretBool =
   ## Constant-time equality check
@@ -57,21 +69,8 @@ func `==`*(P, Q: ECP_ShortW_Prj): SecretBool =
   b.prod(Q.y, P.z)
   result = result and a == b
 
-func isInf*(P: ECP_ShortW_Prj): SecretBool {.inline.} =
-  ## Returns true if P is an infinity point
-  ## and false otherwise
-  ##
-  ## Note: the projective coordinates equation is
-  ##       Y²Z = X³ + aXZ² + bZ³
-  ## A "zero" point is any point with coordinates X and Z = 0
-  ## Y can be anything
-  result = P.x.isZero() and P.z.isZero()
-
-func setInf*(P: var ECP_ShortW_Prj) {.inline.} =
-  ## Set ``P`` to infinity
-  P.x.setZero()
-  P.y.setOne()
-  P.z.setZero()
+  # Ensure a zero-init point doesn't propagate 0s and match any
+  result = result and not(P.isInf() xor Q.isInf())
 
 func ccopy*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Prj, ctl: SecretBool) {.inline.} =
   ## Constant-time conditional copy
@@ -153,7 +152,7 @@ func cneg*(P: var ECP_ShortW_Prj, ctl: CTBool) {.inline.} =
 func sum*[F; G: static Subgroup](
        r: var ECP_ShortW_Prj[F, G],
        P, Q: ECP_ShortW_Prj[F, G]
-     ) =
+     ) {.meter.} =
   ## Elliptic curve point addition for Short Weierstrass curves in projective coordinates
   ##
   ##   R = P + Q
@@ -253,7 +252,7 @@ func madd*[F; G: static Subgroup](
        r: var ECP_ShortW_Prj[F, G],
        P: ECP_ShortW_Prj[F, G],
        Q: ECP_ShortW_Aff[F, G]
-     ) =
+     ) {.meter.} =
   ## Elliptic curve mixed addition for Short Weierstrass curves
   ## with p in Projective coordinates and Q in affine coordinates
   ##
@@ -331,7 +330,7 @@ func madd*[F; G: static Subgroup](
 func double*[F; G: static Subgroup](
        r: var ECP_ShortW_Prj[F, G],
        P: ECP_ShortW_Prj[F, G]
-     ) =
+     ) {.meter.} =
   ## Elliptic curve point doubling for Short Weierstrass curves in projective coordinate
   ##
   ##   R = [2] P
@@ -430,9 +429,19 @@ func `-=`*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Prj) {.inline.} =
   nQ.neg(Q)
   P.sum(P, nQ)
 
+func `-=`*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Aff) {.inline.} =
+  ## In-place point substraction
+  var nQ {.noInit.}: typeof(Q)
+  nQ.neg(Q)
+  P.madd(P, nQ)
+
+template affine*[F, G](_: type ECP_ShortW_Prj[F, G]): typedesc =
+  ## Returns the affine type that corresponds to the Jacobian type input
+  ECP_ShortW_Aff[F, G]
+
 func affine*[F, G](
        aff: var ECP_ShortW_Aff[F, G],
-       proj: ECP_ShortW_Prj[F, G]) =
+       proj: ECP_ShortW_Prj[F, G]) {.meter.} =
   var invZ {.noInit.}: F
   invZ.inv(proj.z)
 
@@ -445,3 +454,7 @@ func fromAffine*[F, G](
   proj.x = aff.x
   proj.y = aff.y
   proj.z.setOne()
+
+  let inf = aff.isInf()
+  proj.x.csetZero(inf)
+  proj.z.csetZero(inf)

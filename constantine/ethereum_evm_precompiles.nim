@@ -12,7 +12,7 @@ import
   ./math/[arithmetic, extension_fields],
   ./math/arithmetic/limbs_montgomery,
   ./math/ec_shortweierstrass,
-  ./math/pairings/[pairings_bn, miller_loops, cyclotomic_subgroups],
+  ./math/pairings/[pairings_generic, miller_accumulators],
   ./math/constants/zoo_subgroups,
   ./math/io/[io_bigints, io_fields]
 
@@ -86,8 +86,7 @@ func fromRawCoords(
 
   return cttEVM_Success
 
-func eth_evm_ecadd*(
-      r: var array[64, byte], inputs: openarray[byte]): CttEVMStatus =
+func eth_evm_ecadd*(r: var array[64, byte], inputs: openarray[byte]): CttEVMStatus =
   ## Elliptic Curve addition on BN254_Snarks
   ## (also called alt_bn128 in Ethereum specs
   ##  and bn256 in Ethereum tests)
@@ -142,8 +141,7 @@ func eth_evm_ecadd*(
     aff.y, bigEndian
   )
 
-func eth_evm_ecmul*(
-      r: var array[64, byte], inputs: openarray[byte]): CttEVMStatus =
+func eth_evm_ecmul*(r: var array[64, byte], inputs: openarray[byte]): CttEVMStatus =
   ## Elliptic Curve multiplication on BN254_Snarks
   ## (also called alt_bn128 in Ethereum specs
   ##  and bn256 in Ethereum tests)
@@ -192,7 +190,6 @@ func eth_evm_ecmul*(
     # which is 31.5% faster than plain windowed scalar multiplication
     # at the low cost of a modular reduction.
 
-    var sprime{.noInit.}: typeof(smod.mres)
     # Due to mismatch between the BigInt[256] input and the rest being BigInt[254]
     # we use the low-level getMont instead of 'fromBig'
     getMont(smod.mres.limbs, s.limbs,
@@ -200,8 +197,7 @@ func eth_evm_ecmul*(
                 Fr[BN254_Snarks].getR2modP().limbs,
                 Fr[BN254_Snarks].getNegInvModWord(),
                 Fr[BN254_Snarks].getSpareBits())
-    sprime = smod.toBig()
-    P.scalarMul(sprime)
+    P.scalarMul(smod.toBig())
   else:
     P.scalarMul(s)
 
@@ -323,9 +319,12 @@ func eth_evm_ecpairing*(
     r[r.len-1] = byte 1
     return
 
-  var gt0{.noInit.}, gt1{.noInit.}: Fp12[BN254_Snarks]
   var P{.noInit.}: ECP_ShortW_Aff[Fp[BN254_Snarks], G1]
   var Q{.noInit.}: ECP_ShortW_Aff[Fp2[BN254_Snarks], G2]
+
+  var acc {.noInit.}: MillerAccumulator[Fp[BN254_Snarks], Fp2[BN254_Snarks], Fp12[BN254_Snarks]]
+  acc.init()
+  var foundInfinity = false
 
   for i in 0 ..< N:
     let pos = i*192
@@ -348,15 +347,18 @@ func eth_evm_ecpairing*(
     if statusQ != cttEVM_Success:
       return statusQ
 
-    gt1.millerLoopGenericBN(P, Q)
-    if i == 0:
-      gt0 = gt1
-    else:
-      gt0 *= gt1
+    let regular = acc.update(P, Q)
+    if not regular:
+      foundInfinity = true
 
-  gt0.finalExpEasy()
-  gt0.finalExpHard_BN()
+  if foundInfinity: # pairing with infinity returns 1, hence no need to compute the following
+    r[r.len-1] = byte 1
+    return
+
+  var gt {.noinit.}: Fp12[BN254_Snarks]
+  acc.finish(gt)
+  gt.finalExp()
 
   zeroMem(r.addr, r.sizeof())
-  if gt0.isOne().bool:
+  if gt.isOne().bool:
     r[r.len-1] = byte 1

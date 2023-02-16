@@ -70,14 +70,14 @@ proc randomSqrtCheck(C: static Curve, gen: RandomGen) =
       bool(s == a or s == na)
 
 proc main() =
-  suite "Modular square root" & " [" & $WordBitWidth & "-bit mode]":
+  suite "Modular square root" & " [" & $WordBitWidth & "-bit words]":
     staticFor(curve, TestCurves):
       test "[𝔽p2] Random square root check for " & $curve:
         randomSqrtCheck(curve, gen = Uniform)
         randomSqrtCheck(curve, gen = HighHammingWeight)
         randomSqrtCheck(curve, gen = Long01Sequence)
 
-  suite "Modular square root - 32-bit bugs highlighted by property-based testing " & " [" & $WordBitWidth & "-bit mode]":
+  suite "Modular square root - 32-bit bugs highlighted by property-based testing " & " [" & $WordBitWidth & "-bit words]":
     test "sqrt_if_square invalid square BLS12_381 - #64":
       var a: Fp2[BLS12_381]
       a.fromHex(
@@ -98,7 +98,7 @@ proc main() =
         bool not a.isSquare()
         bool not a.sqrt_if_square()
 
-  suite "Modular square root - Assembly bugs highlighted by property-based testing " & " [" & $WordBitWidth & "-bit mode]":
+  suite "Modular square root - Assembly bugs highlighted by property-based testing " & " [" & $WordBitWidth & "-bit words]":
     test "Don't set Neg(Zero) fields to modulus (non-unique Montgomery repr) - #136":
       # https://github.com/mratsim/constantine/issues/136
       # and https://github.com/mratsim/constantine/issues/114

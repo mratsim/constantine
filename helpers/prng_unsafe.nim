@@ -15,6 +15,7 @@ import
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
+    ec_shortweierstrass_jacobian_extended,
     ec_twistededwards_affine,
     ec_twistededwards_projective],
   ../constantine/math/io/io_bigints,
@@ -153,10 +154,10 @@ func reduceViaMont[N: static int, F](reduced: var array[N, SecretWord], unreduce
   #  so for 384-bit prime (6-words on 64-bit CPUs), so 6*6 = 36, twice for multiplication and reduction
   #  significantly faster than division which works bit-by-bit due to constant-time requirement
   reduced.redc2xMont(unreduced,                          # a/R
-                     F.fieldMod().limbs, F.getNegInvModWord(), 
+                     F.fieldMod().limbs, F.getNegInvModWord(),
                      F.getSpareBits())
   reduced.mulMont(reduced, F.getR2modP().limbs,          # (a/R) * R² * R⁻¹ ≡ a (mod p)
-                  F.fieldMod().limbs, F.getNegInvModWord(), 
+                  F.fieldMod().limbs, F.getNegInvModWord(),
                   F.getSpareBits())
 
 func random_unsafe(rng: var RngState, a: var Limbs) =
@@ -282,19 +283,19 @@ func random_long01Seq(rng: var RngState, a: var ExtensionField) =
 # Elliptic curves
 # ------------------------------------------------------------
 
-type ECP = ECP_ShortW_Aff or ECP_ShortW_Prj or ECP_ShortW_Jac or
+type ECP = ECP_ShortW_Aff or ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_JacExt or
            ECP_TwEdwards_Aff or ECP_TwEdwards_Prj
-type ECP_ext = ECP_ShortW_Prj or ECP_ShortW_Jac or
+type ECP_ext = ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_JacExt or
                ECP_TwEdwards_Prj
 
 template trySetFromCoord[F](a: ECP, fieldElem: F): SecretBool =
-  when a is (ECP_ShortW_Aff or ECP_ShortW_Prj or ECP_ShortW_Jac):
+  when a is (ECP_ShortW_Aff or ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_JacExt):
     trySetFromCoordX(a, fieldElem)
   else:
     trySetFromCoordY(a, fieldElem)
 
 template trySetFromCoords[F](a: ECP, fieldElem, scale: F): SecretBool =
-  when a is (ECP_ShortW_Prj or ECP_ShortW_Jac):
+  when a is (ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_JacExt):
     trySetFromCoordsXandZ(a, fieldElem, scale)
   else:
     trySetFromCoordsYandZ(a, fieldElem, scale)

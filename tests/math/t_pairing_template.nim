@@ -99,7 +99,7 @@ template runPairingTests*(Iters: static int, C: static Curve, G1, G2, GT: typede
       doAssert bool(r == r3)
       doAssert bool(r2 == r3)
 
-  suite "Pairing - Optimal Ate on " & $C & " [" & $WordBitWidth & "-bit mode]":
+  suite "Pairing - Optimal Ate on " & $C & " [" & $WordBitWidth & "-bit words]":
     test "Bilinearity e([2]P, Q) = e(P, [2]Q) = e(P, Q)^2":
       test_bilinearity_double_impl(randZ = false, gen = Uniform)
       test_bilinearity_double_impl(randZ = false, gen = HighHammingWeight)
@@ -139,7 +139,7 @@ template runGTsubgroupTests*(Iters: static int, GT: typedesc, finalExpHard_fn: u
 
     stdout.write '\n'
 
-  suite "Pairing - GT subgroup " & $GT.C & " [" & $WordBitWidth & "-bit mode]":
+  suite "Pairing - GT subgroup " & $GT.C & " [" & $WordBitWidth & "-bit words]":
     test "Final Exponentiation and GT-subgroup membership":
       test_gt_impl(gen = Uniform)
       test_gt_impl(gen = HighHammingWeight)

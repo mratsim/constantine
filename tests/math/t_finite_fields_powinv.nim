@@ -29,7 +29,7 @@ echo "\n------------------------------------------------------\n"
 echo "test_finite_fields_powinv xoshiro512** seed: ", seed
 
 proc main() =
-  suite "Modular exponentiation over finite fields" & " [" & $WordBitWidth & "-bit mode]":
+  suite "Modular exponentiation over finite fields" & " [" & $WordBitWidth & "-bit words]":
     test "n² mod 101":
       let exponent = BigInt[64].fromUint(2'u64)
 
@@ -202,7 +202,7 @@ proc main() =
     testRandomDiv2 Pallas
     testRandomDiv2 Vesta
 
-  suite "Modular inversion over prime fields" & " [" & $WordBitWidth & "-bit mode]":
+  suite "Modular inversion over prime fields" & " [" & $WordBitWidth & "-bit words]":
     test "Specific tests on Fp[BLS12_381]":
       block: # No inverse exist for 0 --> should return 0 for projective/jacobian to affine coordinate conversion
         var r, x: Fp[BLS12_381]
@@ -210,11 +210,19 @@ proc main() =
         r.inv(x)
         check: bool r.isZero()
 
+        var r2: Fp[BLS12_381]
+        r2.inv_vartime(x)
+        check: bool r2.isZero()
+
       block:
         var r, x: Fp[BLS12_381]
         x.setOne()
         r.inv(x)
         check: bool r.isOne()
+
+        var r2: Fp[BLS12_381]
+        r2.inv_vartime(x)
+        check: bool r2.isOne()
 
       block:
         var r, x: Fp[BLS12_381]
@@ -228,6 +236,10 @@ proc main() =
 
         check:
           computed == expected
+
+        var r2: Fp[BLS12_381]
+        r2.inv_vartime(x)
+        let computed2 = r2.toHex()
 
     test "Specific tests on Fp[BN254_Snarks]":
       block:
@@ -244,6 +256,10 @@ proc main() =
         r.inv(x)
         check: bool(r == expected)
 
+        var r2: Fp[BN254_Snarks]
+        r2.inv_vartime(x)
+        check: bool(r2 == expected)
+
       block:
         var r, x, expected: Fp[BN254_Snarks]
         x.fromHex"0x0d2007d8aaface1b8501bfbe792974166e8f9ad6106e5b563604f0aea9ab06f6"
@@ -251,6 +267,10 @@ proc main() =
 
         r.inv(x)
         check: bool(r == expected)
+
+        var r2: Fp[BN254_Snarks]
+        r2.inv_vartime(x)
+        check: bool(r2 == expected)
 
     proc testRandomInv(curve: static Curve) =
       test "Random inversion testing on " & $Curve(curve):
@@ -264,6 +284,12 @@ proc main() =
           r.prod(aInv, a)
           check: bool r.isOne() or (a.isZero() and r.isZero())
 
+          aInv.inv_vartime(a)
+          r.prod(a, aInv)
+          check: bool r.isOne() or (a.isZero() and r.isZero())
+          r.prod(aInv, a)
+          check: bool r.isOne() or (a.isZero() and r.isZero())
+
         for _ in 0 ..< Iters:
           let a = rng.randomHighHammingWeight(Fp[curve])
           aInv.inv(a)
@@ -272,9 +298,20 @@ proc main() =
           r.prod(aInv, a)
           check: bool r.isOne() or (a.isZero() and r.isZero())
 
+          aInv.inv_vartime(a)
+          r.prod(a, aInv)
+          check: bool r.isOne() or (a.isZero() and r.isZero())
+          r.prod(aInv, a)
+          check: bool r.isOne() or (a.isZero() and r.isZero())
         for _ in 0 ..< Iters:
           let a = rng.random_long01Seq(Fp[curve])
           aInv.inv(a)
+          r.prod(a, aInv)
+          check: bool r.isOne() or (a.isZero() and r.isZero())
+          r.prod(aInv, a)
+          check: bool r.isOne() or (a.isZero() and r.isZero())
+
+          aInv.inv_vartime(a)
           r.prod(a, aInv)
           check: bool r.isOne() or (a.isZero() and r.isZero())
           r.prod(aInv, a)
@@ -295,7 +332,7 @@ proc main() =
 main()
 
 proc main_anti_regression =
-  suite "Bug highlighted by property-based testing" & " [" & $WordBitWidth & "-bit mode]":
+  suite "Bug highlighted by property-based testing" & " [" & $WordBitWidth & "-bit words]":
     # test "#30 - Euler's Criterion should be 1 for square on FKM12_447":
     #   var a: Fp[FKM12_447]
     #   # square of "0x406e5e74ee09c84fa0c59f2db3ac814a4937e2f57ecd3c0af4265e04598d643c5b772a6549a2d9b825445c34b8ba100fe8d912e61cfda43d"
