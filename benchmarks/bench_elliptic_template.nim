@@ -224,3 +224,55 @@ proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int)
       r.setInf()
       for i in 0 ..< numPoints:
         r += points[i]
+
+
+proc msmBench*(EC: typedesc, numPoints: int, iters: int) =
+  const bits = EC.F.C.getCurveOrderBitwidth()
+  var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](numPoints)
+  var scalars = newSeq[BigInt[bits]](numPoints)
+
+  for i in 0 ..< numPoints:
+    var tmp = rng.random_unsafe(EC)
+    tmp.clearCofactor()
+    points[i].affine(tmp)
+    scalars[i] = rng.random_unsafe(BigInt[bits])
+
+  var r{.noInit.}: EC
+  var startNaive, stopNaive, startMSMbaseline, stopMSMbaseline, startMSMopt, stopMSMopt: MonoTime
+
+  if numPoints <= 100000:
+    bench("EC scalar muls                " & align($numPoints, 7) & " (scalars " & $bits & "-bit, points) pairs ", EC, iters):
+      startNaive = getMonotime()
+      var tmp: EC
+      r.setInf()
+      for i in 0 ..< points.len:
+        tmp.fromAffine(points[i])
+        tmp.scalarMul(scalars[i])
+        r += tmp
+      stopNaive = getMonotime()
+
+  block:
+    bench("EC multi-scalar-mul baseline  " & align($numPoints, 7) & " (scalars " & $bits & "-bit, points) pairs ", EC, iters):
+      startMSMbaseline = getMonotime()
+      r.multiScalarMul_reference_vartime(scalars, points)
+      stopMSMbaseline = getMonotime()
+
+  block:
+    bench("EC multi-scalar-mul optimized " & align($numPoints, 7) & " (scalars " & $bits & "-bit, points) pairs ", EC, iters):
+      startMSMopt = getMonotime()
+      r.multiScalarMul_vartime(scalars, points)
+      stopMSMopt = getMonotime()
+
+  let perfNaive = inNanoseconds((stopNaive-startNaive) div iters)
+  let perfMSMbaseline = inNanoseconds((stopMSMbaseline-startMSMbaseline) div iters)
+  let perfMSMopt = inNanoseconds((stopMSMopt-startMSMopt) div iters)
+
+  if numPoints <= 100000:
+    let speedupBaseline = float(perfNaive) / float(perfMSMbaseline)
+    echo &"Speedup ratio baseline over naive linear combination: {speedupBaseline:>6.3f}x"
+
+    let speedupOpt = float(perfNaive) / float(perfMSMopt)
+    echo &"Speedup ratio optimized over naive linear combination: {speedupOpt:>6.3f}x"
+
+  let speedupOptBaseline = float(perfMSMbaseline) / float(perfMSMopt)
+  echo &"Speedup ratio optimized over baseline linear combination: {speedupOptBaseline:>6.3f}x"
