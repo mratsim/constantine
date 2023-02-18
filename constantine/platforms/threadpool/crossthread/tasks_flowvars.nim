@@ -31,7 +31,7 @@ type
     # ------------------
     parent*: ptr Task # When a task is awaiting, a thread can quickly prioritize the direct child of a task
 
-    thiefID*: Atomic[uint32] # ID of the worker that stole and run the task. For leapfrogging.
+    thiefID*: Atomic[int32] # ID of the worker that stole and run the task. For leapfrogging.
 
     # Result sync
     # ------------------
@@ -48,7 +48,7 @@ type
   Flowvar*[T] = object
     task: ptr Task
 
-const SentinelThief* = 0xFACADE'u32
+const SentinelThief* = 0xFACADE'i32
 
 proc new*(
        T: typedesc[Task],

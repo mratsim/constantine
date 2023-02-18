@@ -209,11 +209,11 @@ proc wakeAll*(ec: var EventCount) {.inline.} =
   if (prev and kAnyWaiterMask) != 0:
     ec.futex.wakeAll()
 
-proc getNumWaiters*(ec: var EventCount): tuple[preSleep, committedSleep: uint32] {.inline.} =
+proc getNumWaiters*(ec: var EventCount): tuple[preSleep, committedSleep: int32] {.inline.} =
   ## Get the number of idle threads:
   ## (planningToSleep, committedToSleep)
   let waiters = ec.state.load(moAcquire)
-  result.preSleep = uint32((waiters and kPreWaitMask) shr kPreWaitShift)
-  result.committedSleep = uint32(waiters and kWaitMask)
+  result.preSleep = cast[int32]((waiters and kPreWaitMask) shr kPreWaitShift)
+  result.committedSleep = cast[int32](waiters and kWaitMask)
 
 {.pop.} # {.push raises:[], checks:off.}
