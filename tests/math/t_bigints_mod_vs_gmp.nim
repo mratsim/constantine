@@ -107,8 +107,8 @@ proc main() =
 
     #########################################################
     # Conversion to GMP
-    const aLen = (aBits + 7) div 8
-    const mLen = (mBits + 7) div 8
+    const aLen = aBits.ceilDiv_vartime(8)
+    const mLen = mBits.ceilDiv_vartime(8)
 
     var aBuf: array[aLen, byte]
     var mBuf: array[mLen, byte]

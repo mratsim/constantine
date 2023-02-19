@@ -389,7 +389,7 @@ func primePlus1div2*(P: BigInt): BigInt =
 
 func primeMinus3div4_BE*[bits: static int](
        P: BigInt[bits]
-     ): array[(bits+7) div 8, byte] {.noInit.} =
+     ): array[bits.ceilDiv_vartime(8), byte] {.noInit.} =
   ## For an input prime `p`, compute (p-3)/4
   ## and return the result as a canonical byte array / octet string
   ## For use to check if a number is a square (quadratic residue)
@@ -408,7 +408,7 @@ func primeMinus3div4_BE*[bits: static int](
 
 func primeMinus5div8_BE*[bits: static int](
        P: BigInt[bits]
-     ): array[(bits+7) div 8, byte] {.noInit.} =
+     ): array[bits.ceilDiv_vartime(8), byte] {.noInit.} =
   ## For an input prime `p`, compute (p-5)/8
   ## and return the result as a canonical byte array / octet string
   ## For use to check if a number is a square (quadratic residue)

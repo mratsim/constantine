@@ -183,6 +183,6 @@ func powUnsafeExponent*[F; bits: static int](
   ## - memory access analysis
   ## - power analysis
   ## - timing analysis
-  var expBE {.noInit.}: array[(bits + 7) div 8, byte]
+  var expBE {.noInit.}: array[bits.ceilDiv_vartime(8), byte]
   expBE.marshal(exponent, bigEndian)
   a.powUnsafeExponent(expBE, window)

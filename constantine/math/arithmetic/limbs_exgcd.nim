@@ -191,7 +191,7 @@ proc partitionDivsteps(bits, wordBitWidth: int): tuple[totalIters, numChunks, ch
       # For any input, for gcd(f, g) with 0 <= g <= f <= Modulus with hddivstep variant (half-delta divstep)
       # (inversion g == 1)
       (45907*bits + 26313) div 19929
-  let numChunks = (totalIters + wordBitWidth-1) div wordBitWidth
+  let numChunks = totalIters.ceilDiv_vartime(wordBitWidth)
   let chunkSize = totalIters div numChunks
   let cutoff = totalIters mod numChunks
   return (totalIters, numChunks, chunkSize, cutoff)
@@ -444,7 +444,7 @@ func invmod*(
   ## ``a`` MUST be less than M.
   const Excess = 2
   const k = WordBitWidth - Excess
-  const NumUnsatWords = (bits + k - 1) div k
+  const NumUnsatWords = bits.ceilDiv_vartime(k)
 
   # Convert values to unsaturated repr
   var m2 {.noInit.}: LimbsUnsaturated[NumUnsatWords, Excess]
@@ -471,7 +471,7 @@ func invmod*(
 
   const Excess = 2
   const k = WordBitWidth - Excess
-  const NumUnsatWords = (bits + k - 1) div k
+  const NumUnsatWords = bits.ceilDiv_vartime(k)
 
   # Convert values to unsaturated repr
   const m2 = LimbsUnsaturated[NumUnsatWords, Excess].fromPackedRepr(M)
@@ -647,7 +647,7 @@ func legendre*(a, M: Limbs, bits: static int): SecretWord =
   ##                      ≡  0 (mod p), iff a is 0
   const Excess = 2
   const k = WordBitWidth - Excess
-  const NumUnsatWords = (bits + k - 1) div k
+  const NumUnsatWords = bits.ceilDiv_vartime(k)
 
   # Convert values to unsaturated repr
   var m2 {.noInit.}: LimbsUnsaturated[NumUnsatWords, Excess]
@@ -667,7 +667,7 @@ func legendre*(a: Limbs, M: static Limbs, bits: static int): SecretWord =
 
   const Excess = 2
   const k = WordBitWidth - Excess
-  const NumUnsatWords = (bits + k - 1) div k
+  const NumUnsatWords = bits.ceilDiv_vartime(k)
 
   # Convert values to unsaturated repr
   const m2 = LimbsUnsaturated[NumUnsatWords, Excess].fromPackedRepr(M)
@@ -852,7 +852,7 @@ func invmod_vartime*(
   ## ``a`` MUST be less than M.
   const Excess = 2
   const k = WordBitWidth - Excess
-  const NumUnsatWords = (bits + k - 1) div k
+  const NumUnsatWords = bits.ceilDiv_vartime(k)
 
   # Convert values to unsaturated repr
   var m2 {.noInit.}: LimbsUnsaturated[NumUnsatWords, Excess]
@@ -879,7 +879,7 @@ func invmod_vartime*(
 
   const Excess = 2
   const k = WordBitWidth - Excess
-  const NumUnsatWords = (bits + k - 1) div k
+  const NumUnsatWords = bits.ceilDiv_vartime(k)
 
   # Convert values to unsaturated repr
   const m2 = LimbsUnsaturated[NumUnsatWords, Excess].fromPackedRepr(M)

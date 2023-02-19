@@ -26,11 +26,6 @@ import
 
 # Helpers
 # ----------------------------------------------------------------
-func ceilDiv(a, b: uint): uint =
-  ## ceil division
-  ## ceil(a / b)
-  (a + b - 1) div b
-
 proc copyFrom[M, N: static int](output: var array[M, byte], bi: array[N, byte], cur: var uint) =
   static: doAssert M mod N == 0
   for i in 0'u ..< N:
@@ -113,7 +108,7 @@ func expandMessageXMD*[B1, B2, B3: byte|char, len_in_bytes: static int](
     doAssert output.len mod 8 == 0  # By spec
     doAssert output.len mod 32 == 0 # Assumed by copy optimization
 
-  let ell = ceilDiv(output.len.uint, DigestSize.uint)
+  let ell = output.len.ceilDiv_vartime(DigestSize)
   var l_i_b_str0 {.noInit.}: array[3, byte]
   l_i_b_str0.dumpRawInt(output.len.uint16, cursor = 0, bigEndian)
   l_i_b_str0[2] = 0
@@ -200,7 +195,7 @@ func hashToField*[Field; B1, B2, B3: byte|char, count: static int](
   ##   it is recommended to cache the reduced DST.
 
   const
-    L = int ceilDiv(Field.C.getCurveBitwidth() + k, 8)
+    L = ceilDiv_vartime(Field.C.getCurveBitwidth() + k, 8)
     m = block:
       when Field is Fp: 1
       elif Field is Fp2: 2

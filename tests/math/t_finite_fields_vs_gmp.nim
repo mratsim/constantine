@@ -62,8 +62,8 @@ proc binary_prologue[C: static Curve, N: static int](
 
   #########################################################
   # Conversion to GMP
-  const aLen = (C.getCurveBitwidth() + 7) div 8
-  const bLen = (C.getCurveBitwidth()  + 7) div 8
+  const aLen = C.getCurveBitwidth().ceilDiv_vartime(8)
+  const bLen = C.getCurveBitwidth().ceilDiv_vartime(8)
 
   var aBuf: array[aLen, byte]
   var bBuf: array[bLen, byte]
@@ -118,7 +118,7 @@ proc addTests(rng: var RngState, a, b, p, r: var mpz_t, C: static Curve) =
 
   const
     bits = C.getCurveBitwidth()
-    bufLen = (bits + 7) div 8
+    bufLen = bits.ceilDiv_vartime(8)
   var
     aTest, bTest{.noInit.}: Fp[C]
     aBuf, bBuf: array[bufLen, byte]
@@ -141,7 +141,7 @@ proc subTests(rng: var RngState, a, b, p, r: var mpz_t, C: static Curve) =
 
   const
     bits = C.getCurveBitwidth()
-    bufLen = (bits + 7) div 8
+    bufLen = bits.ceilDiv_vartime(8)
   var
     aTest, bTest{.noInit.}: Fp[C]
     aBuf, bBuf: array[bufLen, byte]
@@ -169,7 +169,7 @@ proc mulTests(rng: var RngState, a, b, p, r: var mpz_t, C: static Curve) =
 
   const
     bits = C.getCurveBitwidth()
-    bufLen = (bits + 7) div 8
+    bufLen = bits.ceilDiv_vartime(8)
   var
     aTest, bTest{.noInit.}: Fp[C]
     aBuf, bBuf: array[bufLen, byte]
@@ -193,7 +193,7 @@ proc invTests(rng: var RngState, a, b, p, r: var mpz_t, C: static Curve) =
 
   const
     bits = C.getCurveBitwidth()
-    bufLen = (bits + 7) div 8
+    bufLen = bits.ceilDiv_vartime(8)
   var
     aTest, bTest{.noInit.}: Fp[C]
     aBuf, bBuf: array[bufLen, byte]

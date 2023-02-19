@@ -57,6 +57,17 @@ func unreachable*() {.noReturn.} =
 
 # ############################################################
 #
+#                       Arithmetic
+#
+# ############################################################
+
+func ceilDiv_vartime*(a, b: SomeInteger): SomeInteger {.inline.} =
+  ## ceil division, to be used only on length or at compile-time
+  ## ceil(a / b)
+  (a + b - 1) div b
+
+# ############################################################
+#
 #                         Buffers
 #
 # ############################################################
