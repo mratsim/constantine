@@ -61,9 +61,11 @@ func unreachable*() {.noReturn.} =
 #
 # ############################################################
 
-func ceilDiv_vartime*(a, b: SomeInteger): SomeInteger {.inline.} =
+func ceilDiv_vartime*(a, b: auto): auto {.inline.} =
   ## ceil division, to be used only on length or at compile-time
   ## ceil(a / b)
+  # "LengthInDigits: static int" doesn't match "int"
+  # if "SomeInteger" is used instead of "autoi"
   (a + b - 1) div b
 
 # ############################################################

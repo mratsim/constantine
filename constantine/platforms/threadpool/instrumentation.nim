@@ -14,6 +14,10 @@ template log*(args: varargs[untyped]): untyped =
   c_printf(args)
   flushFile(stdout)
 
+template debugSplit*(body: untyped): untyped =
+  when defined(TP_DebugSplit) or defined(TP_Debug):
+    {.noSideEffect, gcsafe.}: body
+
 template debugTermination*(body: untyped): untyped =
   when defined(TP_DebugTermination) or defined(TP_Debug):
     {.noSideEffect, gcsafe.}: body

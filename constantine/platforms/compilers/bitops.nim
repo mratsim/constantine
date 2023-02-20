@@ -31,12 +31,12 @@ when GCC_Compatible:
       0
     else:
       when sizeof(n) == 8:
-        cint(64) - builtin_clzll(n)
+        cint(63) - builtin_clzll(n)
       else:
         cint(31) - builtin_clz(n.uint32)
 
   func ctz_c_compiler_vartime*(n: SomeUnsignedInt): cint {.inline.} =
-    ## Compute the number of trailing zeros 
+    ## Compute the number of trailing zeros
     ## in the bit representation of n using compiler builtin
     ## ⚠ Depending on the compiler:
     ## - It is undefined if n == 0
@@ -72,7 +72,7 @@ elif defined(icc):
     if fnc(index.addr, v) == 0:
       return default
     return index.int
-  
+
   func log2_c_compiler_vartime*(n: SomeUnsignedInt): cint {.inline.} =
     ## Compute the log2 of n using compiler builtin
     ## ⚠ Depending on the compiler:
@@ -82,7 +82,7 @@ elif defined(icc):
       bitscan(bitScanReverse64, n, default = 0)
     else:
       bitscan(bitScanReverse, c.uint32, default = 0)
-    
+
   func ctz_c_compiler_vartime*(n: SomeUnsignedInt): cint {.inline.} =
     ## Compute the number of trailing zero bits of n using compiler builtin
     ## ⚠ Depending on the compiler:
@@ -116,7 +116,7 @@ elif defined(vcc):
     if fnc(index.addr, v) == 0:
       return 0
     return index.int
-  
+
   func log2_c_compiler_vartime*(n: SomeUnsignedInt): cint {.inline.} =
     ## Compute the log2 of n using compiler builtin
     ## ⚠ Depending on the compiler:
@@ -126,7 +126,7 @@ elif defined(vcc):
       bitscan(bitScanReverse64, n, default = 0)
     else:
       bitscan(bitScanReverse, c.uint32, default = 0)
-    
+
   func ctz_c_compiler_vartime*(n: SomeUnsignedInt): cint {.inline.} =
     ## Compute the number of trailing zero bits of n using compiler builtin
     ## ⚠ Depending on the compiler:

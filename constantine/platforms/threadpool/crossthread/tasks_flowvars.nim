@@ -9,7 +9,7 @@
 import
   std/atomics,
   ../instrumentation,
-  ../../allocs,
+  ../../allocs, ../../primitives,
   ./backoff
 
 # Tasks have an efficient design so that a single heap allocation
@@ -39,10 +39,24 @@ type
     completed*: Atomic[bool]
     waiter*: Atomic[ptr EventNotifier]
 
+    # Data parallelism
+    # ------------------
+    isFirstIter*: bool       # Awaitable for-loops return true for first iter. Loops are split before first iter.
+    loopStart*: int
+    loopStop*: int
+    loopStride*: int
+    loopStepsLeft*: int
+    reduceWith*: ptr Task    # For parallel loop reduction, merge with other range result
+
+    # Dataflow parallelism
+    # --------------------
+    dependsOnEvent: bool     # We cannot leapfrog a task triggered by an event
+
     # Execution
     # ------------------
     fn*: proc (param: pointer) {.nimcall, gcsafe, raises: [].}
     # destroy*: proc (param: pointer) {.nimcall, gcsafe.} # Constantine only deals with plain old data
+    dataSize*: int32
     data*{.align:sizeof(int).}: UncheckedArray[byte]
 
   Flowvar*[T] = object
@@ -50,10 +64,10 @@ type
 
 const SentinelThief* = 0xFACADE'i32
 
-proc new*(
+proc newSpawn*(
        T: typedesc[Task],
        parent: ptr Task,
-       fn: proc (param: pointer) {.nimcall, gcsafe.}): ptr Task {.inline.} =
+       fn: proc (param: pointer) {.nimcall, gcsafe, raises: [].}): ptr Task =
 
   const size = sizeof(T)
 
@@ -64,12 +78,22 @@ proc new*(
   result.completed.store(false, moRelaxed)
   result.waiter.store(nil, moRelaxed)
   result.fn = fn
+  result.dataSize = 0
 
-proc new*(
+  result.isFirstIter = false
+  result.loopIdx = 0
+  result.loopStart = 0
+  result.loopStop = 0
+  result.loopStride = 0
+  result.reduceWith = nil
+
+  result.dependsOnEvent = false
+
+proc newSpawn*(
        T: typedesc[Task],
        parent: ptr Task,
        fn: proc (param: pointer) {.nimcall, gcsafe, raises: [].},
-       params: auto): ptr Task {.inline.} =
+       params: auto): ptr Task =
 
   const size = sizeof(T) + # size without Unchecked
                sizeof(params)
@@ -81,7 +105,75 @@ proc new*(
   result.completed.store(false, moRelaxed)
   result.waiter.store(nil, moRelaxed)
   result.fn = fn
+  result.dataSize = sizeof(params)
   cast[ptr[type params]](result.data)[] = params
+
+  result.isFirstIter = false
+  result.loopIdx = 0
+  result.loopStart = 0
+  result.loopStop = 0
+  result.loopStride = 0
+  result.reduceWith = nil
+
+  result.dependsOnEvent = false
+
+proc newLoop*(
+       T: typedesc[Task],
+       parent: ptr Task,
+       start, stop, stride: int,
+       isFirstIter: bool,
+       fn: proc (param: pointer) {.nimcall, gcsafe, raises: [].}): ptr Task =
+  const size = sizeof(T)
+  preCondition: start < stop
+
+  result = allocHeapUnchecked(T, size)
+  result.parent = parent
+  result.thiefID.store(SentinelThief, moRelaxed)
+  result.hasFuture = false
+  result.completed.store(false, moRelaxed)
+  result.waiter.store(nil, moRelaxed)
+  result.fn = fn
+  result.dataSize = 0
+
+  result.isFirstIter = isFirstIter
+  result.loopStart = start
+  result.loopStop = stop
+  result.loopStride = stride
+  result.loopStepsLeft = ceilDiv_vartime(stop-start, stride)
+  result.reduceWith = nil
+
+  result.dependsOnEvent = false
+
+proc newLoop*(
+       T: typedesc[Task],
+       parent: ptr Task,
+       start, stop, stride: int,
+       isFirstIter: bool,
+       fn: proc (param: pointer) {.nimcall, gcsafe, raises: [].},
+       params: auto): ptr Task =
+
+  const size = sizeof(T) + # size without Unchecked
+               sizeof(params)
+  preCondition: start < stop
+
+  result = allocHeapUnchecked(T, size)
+  result.parent = parent
+  result.thiefID.store(SentinelThief, moRelaxed)
+  result.hasFuture = false
+  result.completed.store(false, moRelaxed)
+  result.waiter.store(nil, moRelaxed)
+  result.fn = fn
+  result.dataSize = int32(sizeof(params))
+  cast[ptr[type params]](result.data)[] = params
+
+  result.isFirstIter = isFirstIter
+  result.loopStart = start
+  result.loopStop = stop
+  result.loopStride = stride
+  result.loopStepsLeft = ceilDiv_vartime(stop-start, stride)
+  result.reduceWith = nil
+
+  result.dependsOnEvent = false
 
 # proc `=copy`*[T](dst: var Flowvar[T], src: Flowvar[T]) {.error: "Futures/Flowvars cannot be copied".}
 

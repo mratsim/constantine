@@ -176,7 +176,7 @@ func initialize*(ec: var EventCount) {.inline.} =
 func `=destroy`*(ec: var EventCount) {.inline.} =
   ec.futex.teardown()
 
-proc sleepy*(ec: var Eventcount): ParkingTicket {.inline.} =
+proc sleepy*(ec: var Eventcount): ParkingTicket {.noInit, inline.} =
   ## To be called before checking if the condition to not sleep is met.
   ## Returns a ticket to be used when committing to sleep
   let prevState = ec.state.fetchAdd(kPreWait, moAcquireRelease)
@@ -209,7 +209,7 @@ proc wakeAll*(ec: var EventCount) {.inline.} =
   if (prev and kAnyWaiterMask) != 0:
     ec.futex.wakeAll()
 
-proc getNumWaiters*(ec: var EventCount): tuple[preSleep, committedSleep: int32] {.inline.} =
+proc getNumWaiters*(ec: var EventCount): tuple[preSleep, committedSleep: int32] {.noInit, inline.} =
   ## Get the number of idle threads:
   ## (planningToSleep, committedToSleep)
   let waiters = ec.state.load(moAcquire)

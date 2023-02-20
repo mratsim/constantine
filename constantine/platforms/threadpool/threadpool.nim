@@ -138,7 +138,7 @@ proc workerEntryFn(params: tuple[threadpool: Threadpool, id: WorkerID]) {.raises
     ctx.eventLoopReserve()
 
   debugTermination:
-    log(">>> Worker %2d shutting down <<<\n", ctx.id)
+    log(">>> Worker %3d shutting down <<<\n", ctx.id)
 
   # 1 matching barrier in threadpool.shutdown() for root thread
   discard params.threadpool.barrier.wait()
@@ -156,9 +156,9 @@ proc run*(ctx: var WorkerContext, task: ptr Task) {.raises:[].} =
   ## Run a task, frees it if it is not owned by a Flowvar
   let suspendedTask = workerContext.currentTask
   ctx.currentTask = task
-  debug: log("Worker %2d: running task.fn 0x%.08x (%d pending)\n", ctx.id, task.fn, ctx.taskqueue[].peek())
+  debug: log("Worker %3d: running task.fn 0x%.08x (%d pending)\n", ctx.id, task.fn, ctx.taskqueue[].peek())
   task.fn(task.data.addr)
-  debug: log("Worker %2d: completed task.fn 0x%.08x (%d pending)\n", ctx.id, task.fn, ctx.taskqueue[].peek())
+  debug: log("Worker %3d: completed task.fn 0x%.08x (%d pending)\n", ctx.id, task.fn, ctx.taskqueue[].peek())
   ctx.recentTasks += 1
   ctx.currentTask = suspendedTask
   if not task.hasFuture:
@@ -168,14 +168,14 @@ proc run*(ctx: var WorkerContext, task: ptr Task) {.raises:[].} =
   # Sync with an awaiting thread in completeFuture that didn't find work
   var expected = (ptr EventNotifier)(nil)
   if not compareExchange(task.waiter, expected, desired = ReadyFuture, moAcquireRelease):
-    debug: log("Worker %2d: completed task 0x%.08x, notifying waiter 0x%.08x\n", ctx.id, task, expected)
+    debug: log("Worker %3d: completed task 0x%.08x, notifying waiter 0x%.08x\n", ctx.id, task, expected)
     expected[].notify()
 
 proc schedule(ctx: var WorkerContext, tn: ptr Task, forceWake = false) {.inline.} =
   ## Schedule a task in the threadpool
   ## This wakes a sibling thread if our local queue is empty
   ## or forceWake is true.
-  debug: log("Worker %2d: schedule task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, tn, tn.parent, ctx.currentTask)
+  debug: log("Worker %3d: schedule task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, tn, tn.parent, ctx.currentTask)
 
   # Instead of notifying every time a task is scheduled, we notify
   # only when the worker queue is empty. This is a good approximation
@@ -188,6 +188,178 @@ proc schedule(ctx: var WorkerContext, tn: ptr Task, forceWake = false) {.inline.
   ctx.taskqueue[].push(tn)
   if forceWake or wasEmpty:
     ctx.threadpool.globalBackoff.wake()
+
+# Loop-level dynamic load-balancing
+# ---------------------------------------------
+# Inpired by
+# - Lazy binary-splitting: a run-time adaptive work-stealing scheduler.
+#   Tzannes, A., G. C. Caragea, R. Barua, and U. Vishkin.
+#   In PPoPP ’10, Bangalore, India, January 2010. ACM, pp. 179–190.
+#   https://user.eng.umd.edu/~barua/ppopp164.pdf
+# - Embracing Explicit Communication in Work-Stealing Runtime Systems.
+#   Andreas Prell, 2016
+#   https://epub.uni-bayreuth.de/id/eprint/2990/
+#
+# Instead of splitting loops ahead of time depending on the number of cores,
+# we split just-in-time depending on idle threads.
+# This allows the code to lazily evaluate when it's profitable to split,
+# making parallel-for performance portable to any CPU and any inner algorithm
+# unlike OpenMP or TBB for example, see design.md for performance unportability benchmark numbers.
+# This frees the developer from grain size / work splitting thresholds.
+
+iterator adaptativeSplitIntoBalancedChunks(
+           ctx: WorkerContext, task: var Task,
+           curLoopIndex: int, numIdle: int32
+         ): tuple[start, size: int] =
+  ## Split the iteration range based on the number of idle threads
+  ## returns chunks with parameters (start, stopEx, len)
+  ## Chunks are balanced, their size differs by at most 1.
+  ##
+  ## Updates the current task loopStop
+  #
+  # Unbalanced example:
+  #  Splitting 40 iterations on 12 threads
+  #  A simple chunking algorithm with division + remainder
+  #  will lead to a base chunk size of 40/12 = 3.
+  #  3*11 = 33, so last thread will do 7 iterations, more than twice the work.
+  #
+  # Note: Each division costs 55 cycles, 55x more than addition/substraction/bit operations
+  #       and they can't use instruction-level parallelism.
+  #       When dealing with loop ranges and strides we need to carefully craft our code to
+  #       only use division where unavoidable: dividing by the number of idle threads.
+  #       Loop metadata should allow us to avoid loop-bounds-related divisions completely.
+  preCondition: task.loopStepsLeft > 1
+  preCondition: curLoopIndex mod task.loopStride == 0
+
+  debugSplit:
+    log("Worker %3d: %3d steps left (start: %3d, current: %3d, stop: %3d, stride: %3d, %3d idle worker(s))\n",
+      ctx.id, task.loopStepsLeft, task.loopStart, curLoopIndex, task.loopStop, task.loopStride, numIdle)
+
+  # Send a chunk of work to all idle workers + ourselves
+  let availableWorkers = numIdle + 1
+  let baseChunkSize = task.loopStepsLeft div availableWorkers
+  let cutoff        = task.loopStepsLeft mod availableWorkers
+
+  block: # chunkID 0 is ours! My precious!!!
+    task.loopStepsLeft = baseChunkSize + int(0 < cutoff)
+    task.loopStop = min(task.loopStop, curLoopIndex + task.loopStepsLeft*task.loopStride)
+
+    debugSplit:
+      log("Worker %3d: keeping %3d step(s) locally (start: %3d, stop: %3d, stride: %3d, current: %3d)\n",
+        ctx.id, task.loopStepsLeft, task.loopStart, task.loopStop, task.loopStride, curLoopIndex)
+
+  for chunkID in 1 ..< availableWorkers:
+    # As the iterator callsite is copy-pasted, we want a single yield point.
+    var chunkSize = baseChunkSize
+    var offset    = curLoopIndex
+    if chunkID < cutoff:
+      chunkSize += 1
+      offset += task.loopStride*chunkSize*chunkID
+    else:
+      offset += task.loopStride*(baseChunkSize*chunkID + cutoff)
+    yield (offset, chunkSize)
+
+type BalancerBackoff = object
+  ## We want to dynamically split parallel loops depending on the number of idle threads.
+  ## However checking an atomic variable require synchronization which at the very least means
+  ## reloading its value in all caches, a guaranteed cache miss. In a tight loop,
+  ## this might be a significant cost, especially given that memory is often the bottleneck.
+  ##
+  ## There is no synchronization possible with thieves, unlike Prell PhD thesis.
+  ## We want to avoid the worst-case scenario in Tzannes paper, tight-loop with too many available cores
+  ## so the producer deque is always empty, leading to it spending all its CPU time splitting loops.
+  ## For this we split depending on the numbers of idle CPUs. This prevents also splitting unnecessarily.
+  ##
+  ## Tzannes et al mentions that checking the thread own deque emptiness is a good approximation of system load
+  ## with low overhead except in very fine-grained parallelism.
+  ## With a better approximation, by checking the number of idle threads we can instead
+  ## directly do the correct number of splits or avoid splitting. But this check is costly.
+  ##
+  ## To minimize checking cost while keeping latency low, even in bursty cases,
+  ## we use log-log iterated backoff.
+  ## - Adversarial Contention Resolution for Simple Channels
+  ##   Bender, Farach-Colton, He, Kuszmaul, Leiserson, 2005
+  ##   https://people.csail.mit.edu/bradley/papers/BenderFaHe05.pdf
+  nextCheck: int
+  windowLogSize: uint32 # while loopIndex < lastCheck + 2^windowLogSize, don't recheck.
+  round: uint32         # windowSize += 1 after log(windowLogSize) rounds
+
+proc splitAndDispatchLoop(ctx: var WorkerContext, task: ptr Task, curLoopIndex: int, numIdle: int32) =
+  # The iterator mutates the task with the first chunk metadata
+  let stop = task.loopStop
+  for (offset, numSteps) in ctx.adaptativeSplitIntoBalancedChunks(task[], curLoopIndex, numIdle):
+    if numSteps == 0:
+      break
+
+    let upperSplit = allocHeapUnchecked(Task, sizeof(Task) + task.dataSize)
+    copyMem(upperSplit, task, sizeof(Task) + task.dataSize)
+    upperSplit.isFirstIter   = false
+    upperSplit.loopStart     = offset
+    upperSplit.loopStop      = min(stop, offset + numSteps*upperSplit.loopStride)
+    upperSplit.loopStepsLeft = numSteps
+
+    debugSplit:
+      log("Worker %3d: sending %3d step(s)         (start: %3d, stop: %3d, stride: %3d)\n",
+           ctx.id, upperSplit.loopStepsLeft, upperSplit.loopStart, upperSplit.loopStop, upperSplit.loopStride)
+    ctx.taskqueue[].push(upperSplit)
+
+  ctx.threadpool.globalBackoff.wakeAll()
+
+proc loadBalanceLoop(ctx: var WorkerContext, task: ptr Task, curLoopIndex: int, backoff: var BalancerBackoff) {.inline.} =
+  ## Split a parallel loop when necessary
+  # Even though on the bigger side, this function is made inline to avoid
+  # function call overhead in tight parallel loops, push/pop-ing registers when the conditions are likely false.
+  if curLoopIndex == backoff.nextCheck:
+    if ctx.taskqueue[].peek() == 0:
+      let waiters = ctx.threadpool.globalBackoff.getNumWaiters()
+      let numIdle = waiters.preSleep + waiters.committedSleep
+      if numIdle > 0:
+        ctx.splitAndDispatchLoop(task, curLoopIndex, numIdle)
+        # On success, we exponentially reduce check window.
+        # Note: the thieves will start contributing as well.
+        backoff.windowLogSize -= 1
+        backoff.round = 0
+        if backoff.windowLogSize < 0:
+          backoff.windowLogSize = 0
+      else:
+        # On failure, we use log-log iterated backoff, an optimal backoff strategy
+        # suitable for bursts and adversarial conditions.
+        backoff.round += 1
+        if backoff.round >= log2_vartime(backoff.windowLogSize):
+          backoff.round = 0
+          backoff.windowLogSize += 1
+
+    backoff.nextCheck += task.loopStride shl backoff.windowLogSize
+
+template parallelForWrapper(
+    idx: untyped{ident},
+    prologue, loopBody, epilogue,
+    remoteAccum, resultTy,
+    returnStmt: untyped): untyped =
+  ## To be called within a loop task
+  ## Gets the loop bounds and iterate the over them
+  ## Also polls runtime status for dynamic loop splitting
+  ##
+  ## Loop prologue, epilogue,
+  ## remoteAccum, resultTy and returnStmt
+  ## are unused
+  block:
+    let this = workerContext.currentTask
+    var backoff = BalancerBackoff(
+      nextCheck: this.loopStart,
+      windowLogSize: 0,
+      round: 0
+    )
+    if not this.isFirstIter:
+      # Task was just stolen, no need to check runtime status. do one loop first
+      backoff.nextCheck += this.loopStride
+
+    var idx {.inject.} = this.loopStart
+    while idx < this.loopStop:
+      loadBalanceLoop(workerContext, this, idx, backoff)
+      loopBody
+      idx += this.loopStride
+      this.loopStepsLeft -= 1
 
 # Scheduler
 # ---------------------------------------------
@@ -315,7 +487,7 @@ proc tryLeapfrog(ctx: var WorkerContext, awaitedTask: ptr Task): ptr Task =
 
   var thiefID = SentinelThief
   while true:
-    debug: log("Worker %2d: waiting for thief to publish their ID\n", ctx.id)
+    debug: log("Worker %3d: waiting for thief to publish their ID\n", ctx.id)
     thiefID = awaitedTask.thiefID.load(moAcquire)
     if thiefID != SentinelThief:
       break
@@ -336,30 +508,30 @@ proc eventLoopRegular(ctx: var WorkerContext) {.raises:[], gcsafe.} =
   ## Each worker thread executes this loop over and over.
   while true:
     # 1. Pick from local queue
-    debug: log("Regular Worker %2d: eventLoopRegular 1 - searching task from local queue\n", ctx.id)
+    debug: log("Worker %3d: eventLoopRegular 1 - searching task from local queue\n", ctx.id)
     while (var task = ctx.taskqueue[].pop(); not task.isNil):
-      debug: log("Regular Worker %2d: eventLoopRegular 1 - running task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, task, task.parent, ctx.currentTask)
+      debug: log("Worker %3d: eventLoopRegular 1 - running task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, task, task.parent, ctx.currentTask)
       ctx.run(task)
 
     # 2. Run out of tasks, become a thief
-    debug: log("Regular Worker %2d: eventLoopRegular 2 - becoming a thief\n", ctx.id)
+    debug: log("Worker %3d: eventLoopRegular 2 - becoming a thief\n", ctx.id)
     let ticket = ctx.threadpool.globalBackoff.sleepy()
     if (var stolenTask = ctx.tryStealAdaptative(); not stolenTask.isNil):
       # We manage to steal a task, cancel sleep
       ctx.threadpool.globalBackoff.cancelSleep()
       # 2.a Run task
-      debug: log("Regular Worker %2d: eventLoopRegular 2.a - stole task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, stolenTask, stolenTask.parent, ctx.currentTask)
+      debug: log("Worker %3d: eventLoopRegular 2.a - stole task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, stolenTask, stolenTask.parent, ctx.currentTask)
       ctx.run(stolenTask)
     elif ctx.signal.terminate.load(moAcquire):
       # 2.b Threadpool has no more tasks and we were signaled to terminate
       ctx.threadpool.globalBackoff.cancelSleep()
-      debugTermination: log("Regular Worker %2d: eventLoopRegular 2.b - terminated\n", ctx.id)
+      debugTermination: log("Worker %3d: eventLoopRegular 2.b - terminated\n", ctx.id)
       break
     else:
       # 2.c Park the thread until a new task enters the threadpool
-      debug: log("Regular Worker %2d: eventLoopRegular 2.b - sleeping\n", ctx.id)
+      debug: log("Worker %3d: eventLoopRegular 2.b - sleeping\n", ctx.id)
       ctx.threadpool.globalBackoff.sleep(ticket)
-      debug: log("Regular Worker %2d: eventLoopRegular 2.b - waking\n", ctx.id)
+      debug: log("Worker %3d: eventLoopRegular 2.b - waking\n", ctx.id)
 
 proc eventLoopReserve(ctx: var WorkerContext) {.raises:[], gcsafe.} =
   ## A reserve worker is a relay when a thread is stuck awaiting a future completion.
@@ -373,40 +545,40 @@ proc eventLoopReserve(ctx: var WorkerContext) {.raises:[], gcsafe.} =
 
     if ctx.signal.terminate.load(moAcquire): # If terminated, we leave everything as-is, the regular workers will finish
       ctx.threadpool.reserveBackoff.cancelSleep()
-      debugTermination: log("Reserve Worker %2d: reserveSleepCheck - terminated\n", ctx.id)
+      debugTermination: log("Worker %3d: reserveSleepCheck - terminated\n", ctx.id)
       return
     elif numActiveReservists > ctx.threadpool.numIdleThreadsAwaitingFutures.load(moAcquire):
       ctx.threadpool.globalBackoff.wake() # In case we were just woken up for a task or we have tasks in our queue, pass the torch
-      debug: log("Reserve Worker %2d: reserveSleepCheck - going to sleep on reserve backoff\n", ctx.id)
+      debug: log("Worker %3d: reserveSleepCheck - going to sleep on reserve backoff\n", ctx.id)
       ctx.threadpool.reserveBackoff.sleep(ticket)
-      debug: log("Reserve Worker %2d: reserveSleepCheck - waking on reserve backoff\n", ctx.id)
+      debug: log("Worker %3d: reserveSleepCheck - waking on reserve backoff\n", ctx.id)
     else:
       ctx.threadpool.reserveBackoff.cancelSleep()
 
   while true:
     # 1. Pick from local queue
-    debug: log("Reserve Worker %2d: eventLoopReserve 1 - searching task from local queue\n", ctx.id)
+    debug: log("Worker %3d: eventLoopReserve 1 - searching task from local queue\n", ctx.id)
     while true:
       reserveSleepCheck()
       var task = ctx.taskqueue[].pop()
       if task.isNil():
         break
-      debug: log("Reserve Worker %2d: eventLoopReserve 1 - running task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, task, task.parent, ctx.currentTask)
+      debug: log("Worker %3d: eventLoopReserve 1 - running task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, task, task.parent, ctx.currentTask)
       ctx.run(task)
 
     # 2. Run out of tasks, become a thief
-    debug: log("Reserve Worker %2d: eventLoopReserve 2 - becoming a thief\n", ctx.id)
+    debug: log("Worker %3d: eventLoopReserve 2 - becoming a thief\n", ctx.id)
     let ticket = ctx.threadpool.globalBackoff.sleepy() # If using a reserve worker was necessary, sleep on the backoff for active threads
     if (var stolenTask = ctx.tryStealAdaptative(); not stolenTask.isNil):
       # We manage to steal a task, cancel sleep
       ctx.threadpool.globalBackoff.cancelSleep()
       # 2.a Run task
-      debug: log("Reserve Worker %2d: eventLoopReserve 2.a - stole task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, stolenTask, stolenTask.parent, ctx.currentTask)
+      debug: log("Worker %3d: eventLoopReserve 2.a - stole task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, stolenTask, stolenTask.parent, ctx.currentTask)
       ctx.run(stolenTask)
     elif ctx.signal.terminate.load(moAcquire):
       # 2.b Threadpool has no more tasks and we were signaled to terminate
       ctx.threadpool.globalBackoff.cancelSleep()
-      debugTermination: log("Reserve Worker %2d: eventLoopReserve 2.b - terminated\n", ctx.id)
+      debugTermination: log("Worker %3d: eventLoopReserve 2.b - terminated\n", ctx.id)
       break
     else:
       # 2.c Park the thread until a new task enters the threadpool.
@@ -417,9 +589,9 @@ proc eventLoopReserve(ctx: var WorkerContext) {.raises:[], gcsafe.} =
         ctx.threadpool.globalBackoff.cancelSleep()
         continue
 
-      debug: log("Reserve Worker %2d: eventLoopReserve 2.b - sleeping on active threads backoff\n", ctx.id)
+      debug: log("Worker %3d: eventLoopReserve 2.b - sleeping on active threads backoff\n", ctx.id)
       ctx.threadpool.globalBackoff.sleep(ticket)
-      debug: log("Reserve Worker %2d: eventLoopReserve 2.b - waking on active threads backoff\n", ctx.id)
+      debug: log("Worker %3d: eventLoopReserve 2.b - waking on active threads backoff\n", ctx.id)
 
 # Sync
 # ---------------------------------------------
@@ -442,16 +614,16 @@ proc completeFuture*[T](fv: Flowvar[T], parentResult: var T) {.raises:[].} =
 
   ## 1. Process all the children of the current tasks.
   ##    This ensures that we can give control back ASAP.
-  debug: log("Worker %2d: sync 1 - searching task from local queue\n", ctx.id)
+  debug: log("Worker %3d: sync 1 - searching task from local queue\n", ctx.id)
   while (let task = ctx.taskqueue[].pop(); not task.isNil):
     if task.parent != ctx.currentTask:
-      debug: log("Worker %2d: sync 1 - skipping non-direct descendant task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, task, task.parent, ctx.currentTask)
+      debug: log("Worker %3d: sync 1 - skipping non-direct descendant task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, task, task.parent, ctx.currentTask)
       ctx.schedule(task, forceWake = true) # reschedule task and wake a sibling to take it over.
       break
-    debug: log("Worker %2d: sync 1 - running task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, task, task.parent, ctx.currentTask)
+    debug: log("Worker %3d: sync 1 - running task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, task, task.parent, ctx.currentTask)
     ctx.run(task)
     if isFutReady():
-      debug: log("Worker %2d: sync 1 - future ready, exiting\n", ctx.id)
+      debug: log("Worker %3d: sync 1 - future ready, exiting\n", ctx.id)
       return
 
   ## 2. We run out-of-tasks or out-of-direct-child of our current awaited task
@@ -462,12 +634,12 @@ proc completeFuture*[T](fv: Flowvar[T], parentResult: var T) {.raises:[].} =
   ##    - Proactive work-stealing for futures
   ##      Kyle Singer, Yifan Xu, I-Ting Angelina Lee, 2019
   ##      https://dl.acm.org/doi/10.1145/3293883.3295735
-  debug: log("Worker %2d: sync 2 - future not ready, becoming a thief (currentTask 0x%.08x)\n", ctx.id, ctx.currentTask)
+  debug: log("Worker %3d: sync 2 - future not ready, becoming a thief (currentTask 0x%.08x)\n", ctx.id, ctx.currentTask)
   while not isFutReady():
     if (let leapTask = ctx.tryLeapfrog(fv.task); not leapTask.isNil):
       # Leapfrogging, the thief had an empty queue, hence if there are tasks in its queue, it's generated by our blocked task.
       # Help the thief clear those, as if it did not finish, it's likely blocked on those children tasks.
-      debug: log("Worker %2d: sync 2.1 - leapfrog task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, leapTask, leapTask.parent, ctx.currentTask)
+      debug: log("Worker %3d: sync 2.1 - leapfrog task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, leapTask, leapTask.parent, ctx.currentTask)
       ctx.run(leapTask)
     else:
       # At this point, we have significant design decisions:
@@ -498,7 +670,7 @@ proc syncAll*(tp: Threadpool) {.raises: [].} =
   template ctx: untyped = workerContext
 
   debugTermination:
-    log(">>> Worker %2d enters barrier <<<\n", ctx.id)
+    log(">>> Worker %3d enters barrier <<<\n", ctx.id)
 
   preCondition: ctx.id == 0
   preCondition: ctx.currentTask.isRootTask()
@@ -509,28 +681,32 @@ proc syncAll*(tp: Threadpool) {.raises: [].} =
 
   while true:
     # 1. Empty local tasks
-    debug: log("Worker %2d: syncAll 1 - searching task from local queue\n", ctx.id)
+    debug: log("Worker %3d: syncAll 1 - searching task from local queue\n", ctx.id)
     while (let task = ctx.taskqueue[].pop(); not task.isNil):
-      debug: log("Worker %2d: syncAll 1 - running task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, task, task.parent, ctx.currentTask)
+      debug: log("Worker %3d: syncAll 1 - running task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, task, task.parent, ctx.currentTask)
       ctx.run(task)
 
     # 2. Help other threads
-    debug: log("Worker %2d: syncAll 2 - becoming a thief\n", ctx.id)
+    debugTermination:
+      let regular = tp.globalBackoff.getNumWaiters()
+      let reserve = tp.reserveBackoff.getNumWaiters()
+      log("Worker %2d: syncAll 2 - becoming a thief - (preSleep: %d, sleeping %d) regular and (preSleep: %d, sleeping %d) reserve workers\n",
+          ctx.id, regular.preSleep, regular.committedSleep, reserve.preSleep, reserve.committedSleep)
     if (var stolenTask = ctx.tryStealAdaptative(); not stolenTask.isNil):
       # 2.a We stole some task
-      debug: log("Worker %2d: syncAll 2.a - stole task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, stolenTask, stolenTask.parent, ctx.currentTask)
+      debug: log("Worker %3d: syncAll 2.a - stole task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, stolenTask, stolenTask.parent, ctx.currentTask)
       ctx.run(stolenTask)
     elif tp.reserveBackoff.getNumWaiters() == (0'i32, tp.numThreads) and
          tp.globalBackoff.getNumWaiters() == (0'i32, tp.numThreads-1): # Don't count ourselves
       # 2.b all threads besides the current are parked
-      debugTermination: log("Worker %2d: syncAll 2.b - termination, all other threads sleeping\n", ctx.id)
+      debugTermination: log("Worker %3d: syncAll 2.b - termination, all other threads sleeping\n", ctx.id)
       break
     else:
       # 2.c We don't park as there is no notif for task completion
       cpuRelax()
 
   debugTermination:
-    log(">>> Worker %2d leaves barrier <<<\n", ctx.id)
+    log(">>> Worker %3d leaves barrier <<<\n", ctx.id)
 
 # Runtime
 # ---------------------------------------------
@@ -544,7 +720,9 @@ proc new*(T: type Threadpool, numThreads = countProcessors()): T {.raises: [Reso
 
   tp.barrier.init(2*numThreads.uint32)
   tp.globalBackoff.initialize()
+  tp.reserveBackoff.initialize()
   tp.numThreads = numThreads.int32
+  tp.numIdleThreadsAwaitingFutures.store(0, moRelaxed)
   # Allocate for `numThreads` regular workers and `numTHreads` reserve workers
   tp.workerQueues = allocHeapArrayAligned(Taskqueue, 2*numThreads, alignment = 64)
   tp.workers = allocHeapArrayAligned(Thread[(Threadpool, WorkerID)], 2*numThreads, alignment = 64)
@@ -606,6 +784,18 @@ proc shutdown*(tp: var Threadpool) {.raises:[].} =
 
 {.pop.} # raises:[]
 
+# ############################################################
+#                                                            #
+#                     User Interface                         #
+#                                                            #
+# ############################################################
+
+proc getThreadID(tp: Threadpool): int {.inline, used.} =
+  ## Returns the worker local ID.
+  ## This is a debug proc for logging purposes
+  ## The threadpool needs to be imported with {.all.} pragma
+  workerContext.id
+
 # Task parallel API
 # ---------------------------------------------
 
@@ -619,3 +809,25 @@ macro spawn*(tp: Threadpool, fnCall: typed): untyped =
   ##
   ## Tasks are processed approximately in Last-In-First-Out (LIFO) order
   result = spawnImpl(tp, fnCall, bindSym"workerContext", bindSym"schedule")
+
+# Data parallel API
+# ---------------------------------------------
+
+macro parallelFor*(tp: Threadpool, loopParams: untyped, body: untyped): untyped =
+  ## Parallel for loop.
+  ## Syntax:
+  ##
+  ## tp.parallelFor i in 0 ..< 10:
+  ##   echo(i)
+  ##
+  ## Variables from the external scope needs to be explicitly captured
+  ##
+  ##  var a = 100
+  ##  var b = 10
+  ##  parallelFor i in 0 ..< 10:
+  ##    captures: {a, b}
+  ##    echo a + b + i
+  result = parallelForImpl(
+    tp, bindSym"workerContext", bindSym"schedule",
+    bindSym"parallelForWrapper",
+    loopParams, stride = newLit(1), body)
