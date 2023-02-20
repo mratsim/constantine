@@ -104,6 +104,6 @@ Minimizing allocations to the utmost will significantly help on fine-grained tas
 - Weave solved that problem by having 2 levels of cache: a memory-pool for tasks and futures and a lookaside list that caches tasks to reduce further pressure on the memory pool.
 - Nim-taskpools does not address this problem, it has an allocation overhead per tasks of 1 for std/tasks, 1 for the linked list that holds them, 1 for the result channel/flowvar.
   Unlike GCC OpenMP which freezes on a fibonacci 40 benchmark, it can still finish but it's 20x slower than Weave.
-- Constantine's threadpool solves the problem by making everything intrusive to a task: the task data, the future, the linked list.
+- Constantine's threadpool solves the problem by making everything intrusive to a task: the task env, the future, the linked list.
 In fact this solution is even faster than Weave's, probably due to significantly less page faults and cache misses.
 Note that Weave has an even faster mode when futures don't escape their function by allocating them on the stack but without compiler support (heap allocation elision) that restricts the programs you can write.

@@ -41,7 +41,7 @@ proc spawnVoid(funcCall: NimNode, args, argsTy: NimNode, workerContext, schedule
   let withArgs = args.len > 0
   let threadpoolSpawn_fn = ident("tpSpawnVoidFn_" & fnName)
   var fnCall = newCall(fn)
-  let env = ident("tpSpawnVoidTaskEnv_")   # typed pointer to data
+  let env = ident("tpSpawnVoidTaskEnv_")   # typed pointer to env
 
   # Schedule
   let task = ident"tpSpawnVoidTask_"
@@ -87,7 +87,7 @@ proc spawnRet(funcCall: NimNode, retTy, args, argsTy: NimNode, workerContext, sc
   let fnName = $fn
   let threadpoolSpawn_fn = ident("tpSpawnRetFn_" & fnName)
   var fnCall = newCall(fn)
-  let env = ident("tpSpawnRetEnv_")   # typed pointer to data
+  let env = ident("tpSpawnRetEnv_")   # typed pointer to env
 
   # Schedule
   let task = ident"tpSpawnRetTask_"
@@ -96,11 +96,11 @@ proc spawnRet(funcCall: NimNode, retTy, args, argsTy: NimNode, workerContext, sc
   result = newStmtList()
 
   # tasks have no return value.
-  # 1. The start of the task `data` buffer will store the return value for the flowvar and awaiter/sync
+  # 1. The start of the task `env` buffer will store the return value for the flowvar and awaiter/sync
   # 2. We create a wrapper threadpoolSpawn_fn without return value that send the return value in the channel
   # 3. We package that wrapper function in a task
 
-  # We store the following in task.data:
+  # We store the following in task.env:
   #
   # | ptr Task | result | arg₀ | arg₁ | ... | argₙ
   let fut = ident"tpSpawnRetFut_"
@@ -118,8 +118,8 @@ proc spawnRet(funcCall: NimNode, retTy, args, argsTy: NimNode, workerContext, sc
     futArgsTy.add getTypeInst(funcCall[i])
     futArgs.add funcCall[i]
 
-  # data stores | ptr Task | result | arg₀ | arg₁ | ... | argₙ
-  # so arguments starts at data[2] in the wrapping funcCall functions
+  # env stores | ptr Task | result | arg₀ | arg₁ | ... | argₙ
+  # so arguments starts at env[2] in the wrapping funcCall functions
   for i in 1 ..< funcCall.len:
     fnCall.add nnkBracketExpr.newTree(
       env,
@@ -454,7 +454,7 @@ proc parallelForImpl*(tp: NimNode{nkSym}, workerContext, schedule, wrapper, loop
   # Package the body in a proc
   # --------------------------------------------------------
   let parForName = ident"tpParForSection"
-  let env = ident("tpParForEnv_") # typed pointer to data
+  let env = ident("tpParForEnv_") # typed pointer to env
   result.add packageParallelFor(
                 parForName, wrapper,
                 # prologue, loopBody, epilogue,

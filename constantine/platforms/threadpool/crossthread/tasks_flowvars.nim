@@ -56,8 +56,8 @@ type
     # ------------------
     fn*: proc (param: pointer) {.nimcall, gcsafe, raises: [].}
     # destroy*: proc (param: pointer) {.nimcall, gcsafe.} # Constantine only deals with plain old data
-    dataSize*: int32
-    data*{.align:sizeof(int).}: UncheckedArray[byte]
+    envSize*: int32
+    env*{.align:sizeof(int).}: UncheckedArray[byte]
 
   Flowvar*[T] = object
     task: ptr Task
@@ -78,13 +78,13 @@ proc newSpawn*(
   result.completed.store(false, moRelaxed)
   result.waiter.store(nil, moRelaxed)
   result.fn = fn
-  result.dataSize = 0
+  result.envSize = 0
 
   result.isFirstIter = false
-  result.loopIdx = 0
   result.loopStart = 0
   result.loopStop = 0
   result.loopStride = 0
+  result.loopStepsLeft = 0
   result.reduceWith = nil
 
   result.dependsOnEvent = false
@@ -105,14 +105,14 @@ proc newSpawn*(
   result.completed.store(false, moRelaxed)
   result.waiter.store(nil, moRelaxed)
   result.fn = fn
-  result.dataSize = sizeof(params)
-  cast[ptr[type params]](result.data)[] = params
+  result.envSize = int32 sizeof(params)
+  cast[ptr[type params]](result.env)[] = params
 
   result.isFirstIter = false
-  result.loopIdx = 0
   result.loopStart = 0
   result.loopStop = 0
   result.loopStride = 0
+  result.loopStepsLeft = 0
   result.reduceWith = nil
 
   result.dependsOnEvent = false
@@ -133,7 +133,7 @@ proc newLoop*(
   result.completed.store(false, moRelaxed)
   result.waiter.store(nil, moRelaxed)
   result.fn = fn
-  result.dataSize = 0
+  result.envSize = 0
 
   result.isFirstIter = isFirstIter
   result.loopStart = start
@@ -163,8 +163,8 @@ proc newLoop*(
   result.completed.store(false, moRelaxed)
   result.waiter.store(nil, moRelaxed)
   result.fn = fn
-  result.dataSize = int32(sizeof(params))
-  cast[ptr[type params]](result.data)[] = params
+  result.envSize = int32(sizeof(params))
+  cast[ptr[type params]](result.env)[] = params
 
   result.isFirstIter = isFirstIter
   result.loopStart = start
@@ -184,8 +184,8 @@ proc newFlowVar*(T: typedesc, task: ptr Task): Flowvar[T] {.inline.} =
   # Task with future references themselves so that readyWith can be called
   # within the constructed
   #   proc async_fn(param: pointer) {.nimcall.}
-  # that can only access data
-  cast[ptr ptr Task](task.data.addr)[] = task
+  # that can only access env
+  cast[ptr ptr Task](task.env.addr)[] = task
 
 proc cleanup*(fv: var Flowvar) {.inline.} =
   fv.task.freeHeap()
@@ -209,7 +209,7 @@ func readyWith*[T](task: ptr Task, childResult: T) {.inline.} =
   ## Send the Flowvar result from the child thread processing the task
   ## to its parent thread.
   precondition: not task.completed.load(moAcquire)
-  cast[ptr (ptr Task, T)](task.data.addr)[1] = childResult
+  cast[ptr (ptr Task, T)](task.env.addr)[1] = childResult
   task.completed.store(true, moRelease)
 
 proc sync*[T](fv: sink Flowvar[T]): T {.inline, gcsafe.} =

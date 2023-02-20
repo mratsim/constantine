@@ -157,7 +157,7 @@ proc run*(ctx: var WorkerContext, task: ptr Task) {.raises:[].} =
   let suspendedTask = workerContext.currentTask
   ctx.currentTask = task
   debug: log("Worker %3d: running task.fn 0x%.08x (%d pending)\n", ctx.id, task.fn, ctx.taskqueue[].peek())
-  task.fn(task.data.addr)
+  task.fn(task.env.addr)
   debug: log("Worker %3d: completed task.fn 0x%.08x (%d pending)\n", ctx.id, task.fn, ctx.taskqueue[].peek())
   ctx.recentTasks += 1
   ctx.currentTask = suspendedTask
@@ -284,6 +284,22 @@ type BalancerBackoff = object
   windowLogSize: uint32 # while loopIndex < lastCheck + 2^windowLogSize, don't recheck.
   round: uint32         # windowSize += 1 after log(windowLogSize) rounds
 
+func increase(backoff: var BalancerBackoff) =
+  # On failure, we use log-log iterated backoff, an optimal backoff strategy
+  # suitable for bursts and adversarial conditions.
+  backoff.round += 1
+  if backoff.round >= log2_vartime(backoff.windowLogSize):
+    backoff.round = 0
+    backoff.windowLogSize += 1
+
+func decrease(backoff: var BalancerBackoff) =
+  # On success, we exponentially reduce check window.
+  # Note: the thieves will start contributing as well.
+  backoff.windowLogSize -= 1
+  backoff.round = 0
+  if backoff.windowLogSize < 0:
+    backoff.windowLogSize = 0
+
 proc splitAndDispatchLoop(ctx: var WorkerContext, task: ptr Task, curLoopIndex: int, numIdle: int32) =
   # The iterator mutates the task with the first chunk metadata
   let stop = task.loopStop
@@ -291,8 +307,8 @@ proc splitAndDispatchLoop(ctx: var WorkerContext, task: ptr Task, curLoopIndex: 
     if numSteps == 0:
       break
 
-    let upperSplit = allocHeapUnchecked(Task, sizeof(Task) + task.dataSize)
-    copyMem(upperSplit, task, sizeof(Task) + task.dataSize)
+    let upperSplit = allocHeapUnchecked(Task, sizeof(Task) + task.envSize)
+    copyMem(upperSplit, task, sizeof(Task) + task.envSize)
     upperSplit.isFirstIter   = false
     upperSplit.loopStart     = offset
     upperSplit.loopStop      = min(stop, offset + numSteps*upperSplit.loopStride)
@@ -309,25 +325,18 @@ proc loadBalanceLoop(ctx: var WorkerContext, task: ptr Task, curLoopIndex: int, 
   ## Split a parallel loop when necessary
   # Even though on the bigger side, this function is made inline to avoid
   # function call overhead in tight parallel loops, push/pop-ing registers when the conditions are likely false.
-  if curLoopIndex == backoff.nextCheck:
+  if task.loopStepsLeft > 1 and curLoopIndex == backoff.nextCheck:
     if ctx.taskqueue[].peek() == 0:
       let waiters = ctx.threadpool.globalBackoff.getNumWaiters()
-      let numIdle = waiters.preSleep + waiters.committedSleep
+      # We assume that the worker that scheduled the task will work on it. I.e. idleness is underestimated.
+      let numIdle = waiters.preSleep + waiters.committedSleep + int32(task.isFirstIter)
       if numIdle > 0:
         ctx.splitAndDispatchLoop(task, curLoopIndex, numIdle)
-        # On success, we exponentially reduce check window.
-        # Note: the thieves will start contributing as well.
-        backoff.windowLogSize -= 1
-        backoff.round = 0
-        if backoff.windowLogSize < 0:
-          backoff.windowLogSize = 0
+        backoff.decrease()
       else:
-        # On failure, we use log-log iterated backoff, an optimal backoff strategy
-        # suitable for bursts and adversarial conditions.
-        backoff.round += 1
-        if backoff.round >= log2_vartime(backoff.windowLogSize):
-          backoff.round = 0
-          backoff.windowLogSize += 1
+        backoff.increase()
+    else:
+      backoff.increase()
 
     backoff.nextCheck += task.loopStride shl backoff.windowLogSize
 
@@ -606,7 +615,7 @@ proc completeFuture*[T](fv: Flowvar[T], parentResult: var T) {.raises:[].} =
   template isFutReady(): untyped =
     let isReady = fv.task.completed.load(moAcquire)
     if isReady:
-      parentResult = cast[ptr (ptr Task, T)](fv.task.data.addr)[1]
+      parentResult = cast[ptr (ptr Task, T)](fv.task.env.addr)[1]
     isReady
 
   if isFutReady():
@@ -674,10 +683,6 @@ proc syncAll*(tp: Threadpool) {.raises: [].} =
 
   preCondition: ctx.id == 0
   preCondition: ctx.currentTask.isRootTask()
-
-  # Empty all tasks
-  tp.globalBackoff.wakeAll()
-  tp.reserveBackoff.wakeAll()
 
   while true:
     # 1. Empty local tasks
