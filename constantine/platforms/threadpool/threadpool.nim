@@ -829,10 +829,31 @@ macro parallelFor*(tp: Threadpool, loopParams: untyped, body: untyped): untyped 
   ##
   ##  var a = 100
   ##  var b = 10
-  ##  parallelFor i in 0 ..< 10:
+  ##  tp.parallelFor i in 0 ..< 10:
   ##    captures: {a, b}
   ##    echo a + b + i
   result = parallelForImpl(
     tp, bindSym"workerContext", bindSym"schedule",
     bindSym"parallelForWrapper",
     loopParams, stride = newLit(1), body)
+
+macro parallelForStrided*(tp: Threadpool, loopParams: untyped, stride: int, body: untyped): untyped =
+  ## Parallel for loop with stride
+  ## Syntax:
+  ##
+  ## tp.parallelForStrided i in 0 ..< 10, stride = 2:
+  ##   echo(i)
+  ##   echo(i+1)
+  ##
+  ## Variables from the external scope needs to be explicitly captured
+  ##
+  ##  var a = 100
+  ##  var b = 10
+  ##  tp.parallelForStrided i in 0 ..< 10, stride = 2:
+  ##    captures: {a, b}
+  ##    echo a + b + i
+  ##    echo a + b + i+1
+  result = parallelForImpl(
+    tp, bindSym"workerContext", bindSym"schedule",
+    bindSym"parallelForWrapper",
+    loopParams, stride, body)
