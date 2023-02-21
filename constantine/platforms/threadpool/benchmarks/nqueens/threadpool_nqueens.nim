@@ -218,7 +218,7 @@ proc main() =
   echo "Benchmark:            N-queens"
   echo "Threads:              ", nthreads
   when not defined(windows):
-    echo "Time(us)              ", stop - start
+    echo "Time(ms)              ", stop - start
     echo "Max RSS (KB):         ", ru.ru_maxrss
     echo "Runtime RSS (KB):     ", rss
     echo "# of page faults:     ", flt
