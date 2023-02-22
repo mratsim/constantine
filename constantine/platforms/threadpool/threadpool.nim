@@ -27,6 +27,12 @@ export
   # flowvars
   Flowvar, isSpawned, isReady, sync
 
+# ############################################################
+#                                                            #
+#                           Types                            #
+#                                                            #
+# ############################################################
+
 type
   WorkerID = int32
   Signal = object
@@ -70,8 +76,11 @@ type
     # -- align: 64
     numIdleThreadsAwaitingFutures*{.align: 64.}: Atomic[int32]
 
-# Thread-local config
-# ---------------------------------------------
+# ############################################################
+#                                                            #
+#                         Workers                            #
+#                                                            #
+# ############################################################
 
 var workerContext {.threadvar.}: WorkerContext
   ## Thread-local Worker context
@@ -145,8 +154,11 @@ proc workerEntryFn(params: tuple[threadpool: Threadpool, id: WorkerID]) {.raises
 
   teardownWorker()
 
-# Tasks
-# ---------------------------------------------
+# ############################################################
+#                                                            #
+#                           Tasks                            #
+#                                                            #
+# ############################################################
 
 # Sentinel values
 const ReadyFuture = cast[ptr EventNotifier](0xCA11AB1E)
@@ -156,9 +168,9 @@ proc run*(ctx: var WorkerContext, task: ptr Task) {.raises:[].} =
   ## Run a task, frees it if it is not owned by a Flowvar
   let suspendedTask = workerContext.currentTask
   ctx.currentTask = task
-  debug: log("Worker %3d: running task.fn 0x%.08x (%d pending)\n", ctx.id, task.fn, ctx.taskqueue[].peek())
+  debug: log("Worker %3d: running task 0x%.08x (previous: 0x%.08x, %d pending, thiefID %d)\n", ctx.id, task, suspendedTask, ctx.taskqueue[].peek(), task.thiefID)
   task.fn(task.env.addr)
-  debug: log("Worker %3d: completed task.fn 0x%.08x (%d pending)\n", ctx.id, task.fn, ctx.taskqueue[].peek())
+  debug: log("Worker %3d: completed task 0x%.08x (%d pending)\n", ctx.id, task, ctx.taskqueue[].peek())
   ctx.recentTasks += 1
   ctx.currentTask = suspendedTask
   if not task.hasFuture:
@@ -189,8 +201,12 @@ proc schedule(ctx: var WorkerContext, tn: ptr Task, forceWake = false) {.inline.
   if forceWake or wasEmpty:
     ctx.threadpool.globalBackoff.wake()
 
-# Loop-level dynamic load-balancing
-# ---------------------------------------------
+# ############################################################
+#                                                            #
+#              Parallel-loops load-balancing                 #
+#                                                            #
+# ############################################################
+
 # Inpired by
 # - Lazy binary-splitting: a run-time adaptive work-stealing scheduler.
 #   Tzannes, A., G. C. Caragea, R. Barua, and U. Vishkin.
@@ -207,15 +223,21 @@ proc schedule(ctx: var WorkerContext, tn: ptr Task, forceWake = false) {.inline.
 # unlike OpenMP or TBB for example, see design.md for performance unportability benchmark numbers.
 # This frees the developer from grain size / work splitting thresholds.
 
-iterator adaptativeSplitIntoBalancedChunks(
-           ctx: WorkerContext, task: var Task,
+iterator splitUpperRanges(
+           ctx: WorkerContext, task: ptr Task,
            curLoopIndex: int, numIdle: int32
          ): tuple[start, size: int] =
   ## Split the iteration range based on the number of idle threads
   ## returns chunks with parameters (start, stopEx, len)
-  ## Chunks are balanced, their size differs by at most 1.
   ##
-  ## Updates the current task loopStop
+  ## - Chunks are balanced, their size differs by at most 1.
+  ##   Balanced workloads are scheduled with overhead similar to static scheduling.
+  ## - Split is adaptative, unlike static scheduling or guided scheduling in OpenMP
+  ##   it is based on idle workers and not the number of cores.
+  ##   If enough parallelism is exposed, for example due to nested parallelism,
+  ##   there is no splitting overhead.
+  ##
+  ## - Updates the current task loopStop with the lower range
   #
   # Unbalanced example:
   #  Splitting 40 iterations on 12 threads
@@ -232,8 +254,8 @@ iterator adaptativeSplitIntoBalancedChunks(
   preCondition: curLoopIndex mod task.loopStride == 0
 
   debugSplit:
-    log("Worker %3d: %3d steps left (start: %3d, current: %3d, stop: %3d, stride: %3d, %3d idle worker(s))\n",
-      ctx.id, task.loopStepsLeft, task.loopStart, curLoopIndex, task.loopStop, task.loopStride, numIdle)
+    log("Worker %3d: task 0x%.08x - %8d step(s) left                    (current: %3d, start: %3d, stop: %3d, stride: %3d, %3d idle worker(s))\n",
+      ctx.id, task, task.loopStepsLeft, curLoopIndex, task.loopStart, task.loopStop, task.loopStride, numIdle)
 
   # Send a chunk of work to all idle workers + ourselves
   let availableWorkers = numIdle + 1
@@ -245,8 +267,8 @@ iterator adaptativeSplitIntoBalancedChunks(
     task.loopStop = min(task.loopStop, curLoopIndex + task.loopStepsLeft*task.loopStride)
 
     debugSplit:
-      log("Worker %3d: keeping %3d step(s) locally (start: %3d, stop: %3d, stride: %3d, current: %3d)\n",
-        ctx.id, task.loopStepsLeft, task.loopStart, task.loopStop, task.loopStride, curLoopIndex)
+      log("Worker %3d: task 0x%.08x - %8d step(s) kept locally            (current: %3d, start: %3d, stop: %3d, stride: %3d)\n",
+        ctx.id, task, task.loopStepsLeft, curLoopIndex, task.loopStart, task.loopStop, task.loopStride)
 
   for chunkID in 1 ..< availableWorkers:
     # As the iterator callsite is copy-pasted, we want a single yield point.
@@ -284,7 +306,7 @@ type BalancerBackoff = object
   windowLogSize: uint32 # while loopIndex < lastCheck + 2^windowLogSize, don't recheck.
   round: uint32         # windowSize += 1 after log(windowLogSize) rounds
 
-func increase(backoff: var BalancerBackoff) =
+func increase(backoff: var BalancerBackoff) {.inline.} =
   # On failure, we use log-log iterated backoff, an optimal backoff strategy
   # suitable for bursts and adversarial conditions.
   backoff.round += 1
@@ -292,7 +314,7 @@ func increase(backoff: var BalancerBackoff) =
     backoff.round = 0
     backoff.windowLogSize += 1
 
-func decrease(backoff: var BalancerBackoff) =
+func decrease(backoff: var BalancerBackoff) {.inline.} =
   # On success, we exponentially reduce check window.
   # Note: the thieves will start contributing as well.
   backoff.windowLogSize -= 1
@@ -303,20 +325,32 @@ func decrease(backoff: var BalancerBackoff) =
 proc splitAndDispatchLoop(ctx: var WorkerContext, task: ptr Task, curLoopIndex: int, numIdle: int32) =
   # The iterator mutates the task with the first chunk metadata
   let stop = task.loopStop
-  for (offset, numSteps) in ctx.adaptativeSplitIntoBalancedChunks(task[], curLoopIndex, numIdle):
+  for (offset, numSteps) in ctx.splitUpperRanges(task, curLoopIndex, numIdle):
     if numSteps == 0:
       break
 
     let upperSplit = allocHeapUnchecked(Task, sizeof(Task) + task.envSize)
     copyMem(upperSplit, task, sizeof(Task) + task.envSize)
+
+    upperSplit.parent        = task
+    upperSplit.thiefID.store(SentinelThief, moRelaxed)
+    upperSplit.waiter.store(nil, moRelaxed)
+
     upperSplit.isFirstIter   = false
     upperSplit.loopStart     = offset
     upperSplit.loopStop      = min(stop, offset + numSteps*upperSplit.loopStride)
     upperSplit.loopStepsLeft = numSteps
 
+    if upperSplit.hasFuture:
+      # Update self-reference
+      cast[ptr ptr Task](upperSplit.env.addr)[] = upperSplit
+      # Create a private task-local linked-list of awaited tasks
+      task.reductionDAG = newReductionDagNode(task = upperSplit, next = task.reductionDAG)
+      upperSplit.reductionDAG = nil
+
     debugSplit:
-      log("Worker %3d: sending %3d step(s)         (start: %3d, stop: %3d, stride: %3d)\n",
-           ctx.id, upperSplit.loopStepsLeft, upperSplit.loopStart, upperSplit.loopStop, upperSplit.loopStride)
+      log("Worker %3d: task 0x%.08x - %8d step(s) sent in task 0x%.08x (start: %3d, stop: %3d, stride: %3d)\n",
+           ctx.id, task, upperSplit.loopStepsLeft, upperSplit, upperSplit.loopStart, upperSplit.loopStop, upperSplit.loopStride)
     ctx.taskqueue[].push(upperSplit)
 
   ctx.threadpool.globalBackoff.wakeAll()
@@ -370,8 +404,55 @@ template parallelForWrapper(
       idx += this.loopStride
       this.loopStepsLeft -= 1
 
-# Scheduler
-# ---------------------------------------------
+template parallelReduceWrapper(
+    idx: untyped{ident},
+    prologue, loopBody, merge,
+    remoteAccum, resultTy,
+    returnStmt: untyped): untyped =
+  ## To be called within a loop task
+  ## Gets the loop bounds and iterate the over them
+  ## Also polls runtime status for dynamic loop splitting
+  block:
+    let this = workerContext.currentTask
+    var backoff = BalancerBackoff(
+      nextCheck: this.loopStart,
+      windowLogSize: 0,
+      round: 0
+    )
+    if not this.isFirstIter:
+      # Task was just stolen, no need to check runtime status. do one loop first
+      backoff.nextCheck += this.loopStride
+
+    prologue
+
+    block: # loop body
+      var idx {.inject.} = this.loopStart
+      while idx < this.loopStop:
+        loadBalanceLoop(workerContext, this, idx, backoff)
+        loopBody
+        idx += this.loopStride
+        this.loopStepsLeft -= 1
+
+    block: # Merging with flowvars from remote threads
+      while not this.reductionDAG.isNil:
+        let reductionDagNode = this.reductionDAG
+        let remoteAccum = cast[Flowvar[resultTy]](reductionDagNode.task)
+        this.reductionDAG = reductionDagNode.next
+
+        merge
+
+        # In `merge` there should be a sync which frees `reductionDagNode.task`
+        freeHeap(reductionDagNode)
+
+    # TODO: supports epilogue to free memory from prologue
+
+    returnStmt
+
+# ############################################################
+#                                                            #
+#                       Scheduler                            #
+#                                                            #
+# ############################################################
 
 iterator pseudoRandomPermutation(randomSeed: uint32, maxExclusive: int32): int32 =
   ## Create a (low-quality) pseudo-random permutation from [0, max)
@@ -496,7 +577,7 @@ proc tryLeapfrog(ctx: var WorkerContext, awaitedTask: ptr Task): ptr Task =
 
   var thiefID = SentinelThief
   while true:
-    debug: log("Worker %3d: waiting for thief to publish their ID\n", ctx.id)
+    debug: log("Worker %3d: leapfrogging - waiting for thief of task 0x%.08x to publish their ID\n", ctx.id, awaitedTask)
     thiefID = awaitedTask.thiefID.load(moAcquire)
     if thiefID != SentinelThief:
       break
@@ -602,8 +683,11 @@ proc eventLoopReserve(ctx: var WorkerContext) {.raises:[], gcsafe.} =
       ctx.threadpool.globalBackoff.sleep(ticket)
       debug: log("Worker %3d: eventLoopReserve 2.b - waking on active threads backoff\n", ctx.id)
 
-# Sync
-# ---------------------------------------------
+# ############################################################
+#                                                            #
+#                 Futures & Synchronization                  #
+#                                                            #
+# ############################################################
 
 template isRootTask(task: ptr Task): bool =
   task == RootTask
@@ -695,7 +779,7 @@ proc syncAll*(tp: Threadpool) {.raises: [].} =
     debugTermination:
       let regular = tp.globalBackoff.getNumWaiters()
       let reserve = tp.reserveBackoff.getNumWaiters()
-      log("Worker %2d: syncAll 2 - becoming a thief - (preSleep: %d, sleeping %d) regular and (preSleep: %d, sleeping %d) reserve workers\n",
+      log("Worker %3d: syncAll 2 - becoming a thief - (preSleep: %d, sleeping %d) regular and (preSleep: %d, sleeping %d) reserve workers\n",
           ctx.id, regular.preSleep, regular.committedSleep, reserve.preSleep, reserve.committedSleep)
     if (var stolenTask = ctx.tryStealAdaptative(); not stolenTask.isNil):
       # 2.a We stole some task
@@ -713,8 +797,11 @@ proc syncAll*(tp: Threadpool) {.raises: [].} =
   debugTermination:
     log(">>> Worker %3d leaves barrier <<<\n", ctx.id)
 
-# Runtime
-# ---------------------------------------------
+# ############################################################
+#                                                            #
+#                     Runtime API                            #
+#                                                            #
+# ############################################################
 
 proc new*(T: type Threadpool, numThreads = countProcessors()): T {.raises: [ResourceExhaustedError].} =
   ## Initialize a threadpool that manages `numThreads` threads.
@@ -791,7 +878,7 @@ proc shutdown*(tp: var Threadpool) {.raises:[].} =
 
 # ############################################################
 #                                                            #
-#                     User Interface                         #
+#                     Parallel API                           #
 #                                                            #
 # ############################################################
 
@@ -817,6 +904,17 @@ macro spawn*(tp: Threadpool, fnCall: typed): untyped =
 
 # Data parallel API
 # ---------------------------------------------
+# TODO: we can fuse parallelFor and parallelForStrided
+#       in a single proc once {.experimental: "flexibleOptionalParams".}
+#       is not experimental anymore
+
+proc hasReduceSection(body: NimNode): bool =
+  for i in 0 ..< body.len:
+    if body[i].kind == nnkCall:
+      for j in 0 ..< body[i].len:
+        if body[i][j].kind == nnkObjConstr and body[i][j][0].eqIdent"reduceInto":
+          return true
+  return false
 
 macro parallelFor*(tp: Threadpool, loopParams: untyped, body: untyped): untyped =
   ## Parallel for loop.
@@ -832,10 +930,16 @@ macro parallelFor*(tp: Threadpool, loopParams: untyped, body: untyped): untyped 
   ##  tp.parallelFor i in 0 ..< 10:
   ##    captures: {a, b}
   ##    echo a + b + i
-  result = parallelForImpl(
-    tp, bindSym"workerContext", bindSym"schedule",
-    bindSym"parallelForWrapper",
-    loopParams, stride = newLit(1), body)
+  if body.hasReduceSection():
+    result = parallelReduceImpl(
+      tp, bindSym"workerContext", bindSym"schedule",
+      bindSym"parallelReduceWrapper",
+      loopParams, stride = newLit(1), body)
+  else:
+    result = parallelForImpl(
+      tp, bindSym"workerContext", bindSym"schedule",
+      bindSym"parallelForWrapper",
+      loopParams, stride = newLit(1), body)
 
 macro parallelForStrided*(tp: Threadpool, loopParams: untyped, stride: int, body: untyped): untyped =
   ## Parallel for loop with stride
@@ -853,7 +957,13 @@ macro parallelForStrided*(tp: Threadpool, loopParams: untyped, stride: int, body
   ##    captures: {a, b}
   ##    echo a + b + i
   ##    echo a + b + i+1
-  result = parallelForImpl(
-    tp, bindSym"workerContext", bindSym"schedule",
-    bindSym"parallelForWrapper",
-    loopParams, stride, body)
+  if body.hasReduceSection():
+    result = parallelReduceImpl(
+      tp, bindSym"workerContext", bindSym"schedule",
+      bindSym"parallelReduceWrapper",
+      loopParams, stride, body)
+  else:
+    result = parallelForImpl(
+      tp, bindSym"workerContext", bindSym"schedule",
+      bindSym"parallelForWrapper",
+      loopParams, stride, body)

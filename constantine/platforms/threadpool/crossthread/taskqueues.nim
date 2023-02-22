@@ -76,7 +76,7 @@ proc peek*(tq: var Taskqueue): int =
   ##
   ## This is a non-locking operation.
   let # Handle race conditions
-    b = tq.back.load(moAcquire)
+    b = tq.back.load(moRelaxed)  # Only the producer peeks in the threadpool so moRelaxed is enough
     f = tq.front.load(moAcquire)
 
   if b >= f:

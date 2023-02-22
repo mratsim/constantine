@@ -45,7 +45,7 @@ func initialize*(en: var EventNotifier) {.inline.} =
 func `=destroy`*(en: var EventNotifier) {.inline.} =
   en.futex.teardown()
 
-func `=`*(dst: var EventNotifier, src: EventNotifier) {.error: "An event notifier cannot be copied".}
+func `=copy`*(dst: var EventNotifier, src: EventNotifier) {.error: "An event notifier cannot be copied".}
 func `=sink`*(dst: var EventNotifier, src: EventNotifier) {.error: "An event notifier cannot be moved".}
 
 func prepareToPark*(en: var EventNotifier) {.inline.} =

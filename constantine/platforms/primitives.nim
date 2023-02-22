@@ -52,8 +52,12 @@ template debug*(body: untyped): untyped =
   when defined(debugConstantine):
     body
 
-func unreachable*() {.noReturn.} =
+proc builtin_unreachable(){.nodecl, importc: "__builtin_unreachable".}
+
+func unreachable*() {.noReturn, inline.} =
   doAssert false, "Unreachable"
+  when GCC_Compatible:
+    builtin_unreachable()
 
 # ############################################################
 #

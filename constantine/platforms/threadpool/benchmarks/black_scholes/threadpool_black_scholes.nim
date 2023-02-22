@@ -19,8 +19,7 @@
 
 import
   # Stdlib
-  strformat, os, strutils, math, system/ansi_c,
-  cpuinfo, streams, strscans,
+  system/ansi_c, std/[strformat, os, strutils, math, cpuinfo, streams, strscans],
   # Constantine
   ../../threadpool
 

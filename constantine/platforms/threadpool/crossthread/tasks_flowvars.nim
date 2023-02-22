@@ -31,7 +31,7 @@ type
     # ------------------
     parent*: ptr Task # When a task is awaiting, a thread can quickly prioritize the direct child of a task
 
-    thiefID*: Atomic[int32] # ID of the worker that stole and run the task. For leapfrogging.
+    thiefID*: Atomic[int32]  # ID of the worker that stole and run the task. For leapfrogging.
 
     # Result sync
     # ------------------
@@ -46,7 +46,7 @@ type
     loopStop*: int
     loopStride*: int
     loopStepsLeft*: int
-    reduceWith*: ptr Task    # For parallel loop reduction, merge with other range result
+    reductionDAG*: ptr ReductionDagNode # For parallel loop reduction, merge with other range result
 
     # Dataflow parallelism
     # --------------------
@@ -54,20 +54,35 @@ type
 
     # Execution
     # ------------------
-    fn*: proc (param: pointer) {.nimcall, gcsafe, raises: [].}
-    # destroy*: proc (param: pointer) {.nimcall, gcsafe.} # Constantine only deals with plain old data
+    fn*: proc (env: pointer) {.nimcall, gcsafe, raises: [].}
+    # destroy*: proc (env: pointer) {.nimcall, gcsafe.} # Constantine only deals with plain old data
     envSize*: int32
     env*{.align:sizeof(int).}: UncheckedArray[byte]
 
   Flowvar*[T] = object
+    ## A Flowvar is a placeholder for a future result that may be computed in parallel
     task: ptr Task
+
+  ReductionDagNode* = object
+    ## In a parallel reduction, when a loop a split the worker
+    ## keeps track of the tasks to gather results from in a private task-local linked-list.
+    ## Those forms a global computation directed acyclic graph
+    ## with the initial parallel reduction task as root.
+    # Note: While this requires an extra allocation per split
+    #       the alternative, making an intrusive linked-list of reduction tasks
+    #       require synchronization between threads.
+    task*: ptr Task
+    next*: ptr ReductionDagNode
+
+# Tasks
+# -------------------------------------------------------------------------
 
 const SentinelThief* = 0xFACADE'i32
 
 proc newSpawn*(
        T: typedesc[Task],
        parent: ptr Task,
-       fn: proc (param: pointer) {.nimcall, gcsafe, raises: [].}): ptr Task =
+       fn: proc (env: pointer) {.nimcall, gcsafe, raises: [].}): ptr Task =
 
   const size = sizeof(T)
 
@@ -85,14 +100,14 @@ proc newSpawn*(
   result.loopStop = 0
   result.loopStride = 0
   result.loopStepsLeft = 0
-  result.reduceWith = nil
+  result.reductionDAG = nil
 
   result.dependsOnEvent = false
 
 proc newSpawn*(
        T: typedesc[Task],
        parent: ptr Task,
-       fn: proc (param: pointer) {.nimcall, gcsafe, raises: [].},
+       fn: proc (env: pointer) {.nimcall, gcsafe, raises: [].},
        params: auto): ptr Task =
 
   const size = sizeof(T) + # size without Unchecked
@@ -113,7 +128,7 @@ proc newSpawn*(
   result.loopStop = 0
   result.loopStride = 0
   result.loopStepsLeft = 0
-  result.reduceWith = nil
+  result.reductionDAG = nil
 
   result.dependsOnEvent = false
 
@@ -122,7 +137,7 @@ proc newLoop*(
        parent: ptr Task,
        start, stop, stride: int,
        isFirstIter: bool,
-       fn: proc (param: pointer) {.nimcall, gcsafe, raises: [].}): ptr Task =
+       fn: proc (env: pointer) {.nimcall, gcsafe, raises: [].}): ptr Task =
   const size = sizeof(T)
   preCondition: start < stop
 
@@ -140,7 +155,7 @@ proc newLoop*(
   result.loopStop = stop
   result.loopStride = stride
   result.loopStepsLeft = ceilDiv_vartime(stop-start, stride)
-  result.reduceWith = nil
+  result.reductionDAG = nil
 
   result.dependsOnEvent = false
 
@@ -149,7 +164,7 @@ proc newLoop*(
        parent: ptr Task,
        start, stop, stride: int,
        isFirstIter: bool,
-       fn: proc (param: pointer) {.nimcall, gcsafe, raises: [].},
+       fn: proc (env: pointer) {.nimcall, gcsafe, raises: [].},
        params: auto): ptr Task =
 
   const size = sizeof(T) + # size without Unchecked
@@ -171,9 +186,12 @@ proc newLoop*(
   result.loopStop = stop
   result.loopStride = stride
   result.loopStepsLeft = ceilDiv_vartime(stop-start, stride)
-  result.reduceWith = nil
+  result.reductionDAG = nil
 
   result.dependsOnEvent = false
+
+# Flowvars
+# -------------------------------------------------------------------------
 
 # proc `=copy`*[T](dst: var Flowvar[T], src: Flowvar[T]) {.error: "Futures/Flowvars cannot be copied".}
 
@@ -183,7 +201,7 @@ proc newFlowVar*(T: typedesc, task: ptr Task): Flowvar[T] {.inline.} =
 
   # Task with future references themselves so that readyWith can be called
   # within the constructed
-  #   proc async_fn(param: pointer) {.nimcall.}
+  #   proc threadpoolSpawn_fn(env: pointer) {.nimcall.}
   # that can only access env
   cast[ptr ptr Task](task.env.addr)[] = task
 
@@ -212,10 +230,21 @@ func readyWith*[T](task: ptr Task, childResult: T) {.inline.} =
   cast[ptr (ptr Task, T)](task.env.addr)[1] = childResult
   task.completed.store(true, moRelease)
 
-proc sync*[T](fv: sink Flowvar[T]): T {.inline, gcsafe.} =
+proc sync*[T](fv: sink Flowvar[T]): T {.noInit, inline, gcsafe.} =
   ## Blocks the current thread until the flowvar is available
   ## and returned.
   ## The thread is not idle and will complete pending tasks.
   mixin completeFuture
+  if fv.task.isNil:
+    zeroMem(result.addr, sizeof(T))
+    return
   completeFuture(fv, result)
   cleanup(fv)
+
+# ReductionDagNodes
+# -------------------------------------------------------------------------
+
+proc newReductionDagNode*(task: ptr Task, next: ptr ReductionDagNode): ptr ReductionDagNode {.inline.} =
+  result = allocHeap(ReductionDagNode)
+  result.next = next
+  result.task = task

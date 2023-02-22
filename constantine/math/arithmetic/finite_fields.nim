@@ -591,7 +591,6 @@ macro addchain*(fn: untyped): untyped =
     body.add s
 
   result[^1] = body
-  # echo result.toStrLit()
 
 # ############################################################
 #
