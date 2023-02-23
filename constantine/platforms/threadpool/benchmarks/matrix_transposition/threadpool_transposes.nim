@@ -93,9 +93,11 @@ proc ctt2DTiledNestedTranspose(tp: Threadpool, M, N: int, bufIn, bufOut: ptr Unc
 
   const blck = 64 # const do not need to be captured
 
-  tp.parallelForStrided j in 0 ..< N, stride = blck:
+  tp.parallelFor j in 0 ..< N:
+    stride: blck
     captures: {tp, M, N, bufIn, bufOut}
-    tp.parallelForStrided i in 0 ..< M, stride = blck:
+    tp.parallelFor i in 0 ..< M:
+      stride: blck
       captures: {j, M, N, bufIn, bufOut}
       for jj in j ..< min(j+blck, N):
         for ii in i ..< min(i+blck, M):

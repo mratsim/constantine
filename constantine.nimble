@@ -251,6 +251,7 @@ const testDescThreadpool: seq[string] = @[
   "constantine/platforms/threadpool/benchmarks/nqueens/threadpool_nqueens.nim",
   # "constantine/platforms/threadpool/benchmarks/single_task_producer/threadpool_spc.nim", # Need timing not implemented on Windows
   # "constantine/platforms/threadpool/benchmarks/black_scholes/threadpool_black_scholes.nim", # Need input file
+  "constantine/platforms/threadpool/benchmarks/matrix_transposition/threadpool_transposes.nim",
   "constantine/platforms/threadpool/benchmarks/histogram_2D/threadpool_histogram.nim",
   "constantine/platforms/threadpool/benchmarks/logsumexp/threadpool_logsumexp.nim",
 ]

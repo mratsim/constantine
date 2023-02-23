@@ -71,8 +71,7 @@ proc rebuildUntypedAst*(ast: NimNode, dropRootStmtList = false): NimNode =
     else:
       return defaultMultipleChildren(node)
 
-  if dropRootStmtList:
-    ast.expectKind(nnkStmtList)
+  if dropRootStmtList and ast.kind == nnkStmtList:
     return rebuild(ast[0])
   else:
     result = rebuild(ast)

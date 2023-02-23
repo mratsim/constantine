@@ -325,8 +325,9 @@ type
     # - The loopTemplate reimplements the sections as well as runtime interaction
     #   for loop splitting checks and merging reduction accumulators with splitted tasks.
     #
-    # A side-benefit of the loopFn is that it allows borrow-checking if
-    # we captures `var parameters` or sequences.
+    # A side-benefit of the loopFn is that it allows borrow-checking:
+    # - error if we capture a `var parameter`
+    # - error if we forget to capture a runtime variable (compile-time constants do not have to be captured)
     loopFnName: NimNode   # inner function called by the closure once environment is retyped
     loopTemplate: NimNode # inner function implementation, defined in threadpool.nim
     prologue: NimNode
