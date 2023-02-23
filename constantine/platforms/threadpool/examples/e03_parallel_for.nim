@@ -48,7 +48,6 @@ block: # Nested loops
     var tp = Threadpool.new(numThreads = 4)
 
     tp.parallelFor i in 0 ..< 4:
-      captures: {tp}
       tp.parallelFor j in 0 ..< 8:
         captures: {i}
         log("Matrix[%d, %d]\n", i, j)

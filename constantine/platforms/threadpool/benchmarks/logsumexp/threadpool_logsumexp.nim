@@ -188,7 +188,8 @@ proc maxThreadpoolReduce[T: SomeFloat](tp: Threadpool, M: Matrix[T]) : T =
           localMax = max(localMax, M[i, j])
       merge(remoteMax: Flowvar[T]):
         localMax = max(localMax, sync(remoteMax))
-      return localMax
+      epilogue:
+        return localMax
 
   result = sync(globalMax)
 
@@ -206,7 +207,8 @@ proc logsumexpThreadpoolReduce[T: SomeFloat](tp: Threadpool, M: Matrix[T]): T =
           localLSE += exp(M[i, j] - alpha)
       merge(remoteLSE: Flowvar[T]):
         localLSE += sync(remoteLSE)
-      return localLSE
+      epilogue:
+        return localLSE
 
   result = alpha + ln(sync(lse))
 
@@ -225,7 +227,8 @@ proc maxThreadpoolCollapsed[T: SomeFloat](tp: Threadpool, M: Matrix[T]) : T =
         localMax = max(localMax, M.buffer[ij])
       merge(remoteMax: FlowVar[T]):
         localMax = max(localMax, sync(remoteMax))
-      return localMax
+      epilogue:
+        return localMax
 
   result = sync(globalMax)
 
@@ -242,7 +245,8 @@ proc logsumexpThreadpoolCollapsed[T: SomeFloat](tp: Threadpool, M: Matrix[T]): T
         localLSE += exp(M.buffer[ij] - alpha)
       merge(remoteLSE: Flowvar[T]):
         localLSE += sync(remoteLSE)
-      return localLSE
+      epilogue:
+        return localLSE
 
   result = alpha + ln(sync(lse))
 

@@ -108,10 +108,10 @@ proc newSpawn*(
        T: typedesc[Task],
        parent: ptr Task,
        fn: proc (env: pointer) {.nimcall, gcsafe, raises: [].},
-       params: auto): ptr Task =
+       env: auto): ptr Task =
 
   const size = sizeof(T) + # size without Unchecked
-               sizeof(params)
+               sizeof(env)
 
   result = allocHeapUnchecked(T, size)
   result.parent = parent
@@ -120,8 +120,8 @@ proc newSpawn*(
   result.completed.store(false, moRelaxed)
   result.waiter.store(nil, moRelaxed)
   result.fn = fn
-  result.envSize = int32 sizeof(params)
-  cast[ptr[type params]](result.env)[] = params
+  result.envSize = int32 sizeof(env)
+  cast[ptr[type env]](result.env)[] = env
 
   result.isFirstIter = false
   result.loopStart = 0
@@ -165,10 +165,10 @@ proc newLoop*(
        start, stop, stride: int,
        isFirstIter: bool,
        fn: proc (env: pointer) {.nimcall, gcsafe, raises: [].},
-       params: auto): ptr Task =
+       env: auto): ptr Task =
 
   const size = sizeof(T) + # size without Unchecked
-               sizeof(params)
+               sizeof(env)
   preCondition: start < stop
 
   result = allocHeapUnchecked(T, size)
@@ -178,8 +178,8 @@ proc newLoop*(
   result.completed.store(false, moRelaxed)
   result.waiter.store(nil, moRelaxed)
   result.fn = fn
-  result.envSize = int32(sizeof(params))
-  cast[ptr[type params]](result.env)[] = params
+  result.envSize = int32(sizeof(env))
+  cast[ptr[type env]](result.env)[] = env
 
   result.isFirstIter = isFirstIter
   result.loopStart = start

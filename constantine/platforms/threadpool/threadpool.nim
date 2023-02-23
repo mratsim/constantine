@@ -84,6 +84,7 @@ type
 
 var workerContext {.threadvar.}: WorkerContext
   ## Thread-local Worker context
+  ## We assume that a threadpool has exclusive ownership
 
 proc setupWorker() =
   ## Initialize the thread-local context of a worker
@@ -374,11 +375,7 @@ proc loadBalanceLoop(ctx: var WorkerContext, task: ptr Task, curLoopIndex: int, 
 
     backoff.nextCheck += task.loopStride shl backoff.windowLogSize
 
-template parallelForWrapper(
-    idx: untyped{ident},
-    prologue, loopBody, epilogue,
-    remoteAccum, resultTy,
-    returnStmt: untyped): untyped =
+template parallelForWrapper(idx: untyped{ident}, loopBody: untyped): untyped =
   ## To be called within a loop task
   ## Gets the loop bounds and iterate the over them
   ## Also polls runtime status for dynamic loop splitting
@@ -391,13 +388,12 @@ template parallelForWrapper(
     var backoff = BalancerBackoff(
       nextCheck: this.loopStart,
       windowLogSize: 0,
-      round: 0
-    )
+      round: 0)
     if not this.isFirstIter:
       # Task was just stolen, no need to check runtime status. do one loop first
       backoff.nextCheck += this.loopStride
 
-    var idx {.inject.} = this.loopStart
+    var idx = this.loopStart
     while idx < this.loopStop:
       loadBalanceLoop(workerContext, this, idx, backoff)
       loopBody
@@ -406,9 +402,8 @@ template parallelForWrapper(
 
 template parallelReduceWrapper(
     idx: untyped{ident},
-    prologue, loopBody, merge,
-    remoteAccum, resultTy,
-    returnStmt: untyped): untyped =
+    prologue, loopBody, mergeLocalWithRemote, epilogue,
+    remoteTaskAwaitable, awaitableType: untyped): untyped =
   ## To be called within a loop task
   ## Gets the loop bounds and iterate the over them
   ## Also polls runtime status for dynamic loop splitting
@@ -426,7 +421,7 @@ template parallelReduceWrapper(
     prologue
 
     block: # loop body
-      var idx {.inject.} = this.loopStart
+      var idx = this.loopStart
       while idx < this.loopStop:
         loadBalanceLoop(workerContext, this, idx, backoff)
         loopBody
@@ -436,17 +431,15 @@ template parallelReduceWrapper(
     block: # Merging with flowvars from remote threads
       while not this.reductionDAG.isNil:
         let reductionDagNode = this.reductionDAG
-        let remoteAccum = cast[Flowvar[resultTy]](reductionDagNode.task)
+        let remoteTaskAwaitable = cast[Flowvar[awaitableType]](reductionDagNode.task)
         this.reductionDAG = reductionDagNode.next
 
-        merge
+        mergeLocalWithRemote
 
         # In `merge` there should be a sync which frees `reductionDagNode.task`
         freeHeap(reductionDagNode)
 
-    # TODO: supports epilogue to free memory from prologue
-
-    returnStmt
+    epilogue
 
 # ############################################################
 #                                                            #
@@ -806,6 +799,13 @@ proc syncAll*(tp: Threadpool) {.raises: [].} =
 proc new*(T: type Threadpool, numThreads = countProcessors()): T {.raises: [ResourceExhaustedError].} =
   ## Initialize a threadpool that manages `numThreads` threads.
   ## Default to the number of logical processors available.
+  ##
+  ## A Constantine's threadpool cannot be instantiated
+  ## on a thread managed by another Constantine's threadpool
+  ## including the root thread.
+  ##
+  ## Mixing with other libraries' threadpools and runtime
+  ## will not impact correctness but may impact performance.
 
   type TpObj = typeof(default(Threadpool)[]) # due to C import, we need a dynamic sizeof
   var tp = allocHeapUncheckedAlignedPtr(Threadpool, sizeof(TpObj), alignment = 64)
@@ -908,14 +908,6 @@ macro spawn*(tp: Threadpool, fnCall: typed): untyped =
 #       in a single proc once {.experimental: "flexibleOptionalParams".}
 #       is not experimental anymore
 
-proc hasReduceSection(body: NimNode): bool =
-  for i in 0 ..< body.len:
-    if body[i].kind == nnkCall:
-      for j in 0 ..< body[i].len:
-        if body[i][j].kind == nnkObjConstr and body[i][j][0].eqIdent"reduceInto":
-          return true
-  return false
-
 macro parallelFor*(tp: Threadpool, loopParams: untyped, body: untyped): untyped =
   ## Parallel for loop.
   ## Syntax:
@@ -930,40 +922,14 @@ macro parallelFor*(tp: Threadpool, loopParams: untyped, body: untyped): untyped 
   ##  tp.parallelFor i in 0 ..< 10:
   ##    captures: {a, b}
   ##    echo a + b + i
+  ##
   if body.hasReduceSection():
     result = parallelReduceImpl(
-      tp, bindSym"workerContext", bindSym"schedule",
+      bindSym"workerContext", bindSym"schedule",
       bindSym"parallelReduceWrapper",
-      loopParams, stride = newLit(1), body)
+      loopParams, body)
   else:
     result = parallelForImpl(
-      tp, bindSym"workerContext", bindSym"schedule",
+      bindSym"workerContext", bindSym"schedule",
       bindSym"parallelForWrapper",
-      loopParams, stride = newLit(1), body)
-
-macro parallelForStrided*(tp: Threadpool, loopParams: untyped, stride: int, body: untyped): untyped =
-  ## Parallel for loop with stride
-  ## Syntax:
-  ##
-  ## tp.parallelForStrided i in 0 ..< 10, stride = 2:
-  ##   echo(i)
-  ##   echo(i+1)
-  ##
-  ## Variables from the external scope needs to be explicitly captured
-  ##
-  ##  var a = 100
-  ##  var b = 10
-  ##  tp.parallelForStrided i in 0 ..< 10, stride = 2:
-  ##    captures: {a, b}
-  ##    echo a + b + i
-  ##    echo a + b + i+1
-  if body.hasReduceSection():
-    result = parallelReduceImpl(
-      tp, bindSym"workerContext", bindSym"schedule",
-      bindSym"parallelReduceWrapper",
-      loopParams, stride, body)
-  else:
-    result = parallelForImpl(
-      tp, bindSym"workerContext", bindSym"schedule",
-      bindSym"parallelForWrapper",
-      loopParams, stride, body)
+      loopParams, body)

@@ -23,10 +23,6 @@ type
     buffer: ptr UncheckedArray[T]
     ld: int32
 
-func newMatrixNxN[T](n: int32): Matrix[T] {.inline.} =
-  result.buffer = cast[ptr UncheckedArray[T]](c_malloc(csize_t n*n*sizeof(T)))
-  result.ld = n
-
 template `[]`[T](mat: Matrix[T], row, col: Natural): T =
   # row-major storage
   assert row < mat.ld
@@ -195,8 +191,9 @@ proc generateHistogramThreadpoolReduce[T](tp: Threadpool, matrix: Matrix[T], his
             max = remoteMax
           for k in 0 ..< boxes:
             discard hist[k].addr.atomicFetchAdd(threadHist[k], ATOMIC_RELAXED)
-          # wv_free(threadHist.buffer) # TODO: we need an epilogue after the merges
-      return max
+      epilogue:
+        wv_free(threadHist.buffer)
+        return max
 
   return sync(distributedMax)
 

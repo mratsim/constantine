@@ -272,7 +272,7 @@ when compileOption("threads"):
     var tp = Threadpool.new()
 
     tp.parallelFor y in 0 ..< h:            # Loop over image rows
-      captures: {tp, buf, samples}
+      captures: {buf, samples}
       try:
         stderr.write &"\rRendering ({samples*4} samples per pixel) {100.0*y.float64/float(h-1):5.2f}%"
       except:

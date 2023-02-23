@@ -15,7 +15,8 @@ block:
             localSum += int64(i)
           merge(remoteSum: Flowvar[int64]):
             localSum += sync(remoteSum)
-          return localSum
+          epilogue:
+            return localSum
 
       result = sync(globalSum)
 

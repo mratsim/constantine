@@ -12,7 +12,8 @@ import
   std/[unittest, times],
   # Internal
   ../../constantine/platforms/gpu/[llvm, nvidia, ir],
-  ../../constantine/math/config/[curves, type_bigint],
+  ../../constantine/platforms/static_for,
+  ../../constantine/math/config/curves,
   ../../constantine/math/io/io_bigints,
   ../../constantine/math/arithmetic,
   ../../constantine/math_gpu/fields_nvidia,
@@ -34,8 +35,7 @@ proc init(T: type CurveMetadata, asy: Assembler_LLVM, curve: static Curve, wordS
       fpBits = uint32 curve.getCurveBitwidth(),
       fpMod = curve.Mod().toHex(),
       frBits = uint32 curve.getCurveOrderBitwidth(),
-      frMod = curve.getCurveOrder().toHex()
-    )
+      frMod = curve.getCurveOrder().toHex())
 
 proc genFieldAddPTX(asy: Assembler_LLVM, cm: CurveMetadata) =
   let fpAdd = asy.field_add_gen(cm, fp)
