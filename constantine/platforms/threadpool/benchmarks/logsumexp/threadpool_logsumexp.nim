@@ -9,9 +9,11 @@ import
   # Stdlib
   system/ansi_c, std/[strformat, os, strutils, cpuinfo, math, random, locks],
   # Constantine
-  ../../threadpool,
+  ../../threadpool
+
+when not defined(windows):
   # bench
-  ../wtime, ../resources
+  import ../wtime, ../resources
 
 # Helpers
 # -------------------------------------------------------
@@ -121,35 +123,47 @@ template runBench(procName: untyped, datasetSize, batchSize, numLabels: int64) =
   let data = newMatrix[float32](datasetSize, numLabels)
   data.initialize()
 
-  let start = wtime_msec()
+  when not defined(windows):
+    let start = wtime_msec()
 
-  var lse = 0'f32
-  memUsage(maxRSS, runtimeRSS, pageFaults):
+    var lse = 0'f32
+    memUsage(maxRSS, runtimeRSS, pageFaults):
+      # For simplicity we ignore the last few data points
+      for batchIdx in 0 ..< datasetSize div batchSize:
+        let X = data.rowView(batchIdx*batchSize, batchSize)
+        lse += procName(X)
+
+    let stop = wtime_msec()
+
+    reportBench(batchSize, numlabels, stop-start, maxRSS, runtimeRSS, pageFaults, lse)
+  else:
     # For simplicity we ignore the last few data points
     for batchIdx in 0 ..< datasetSize div batchSize:
       let X = data.rowView(batchIdx*batchSize, batchSize)
       lse += procName(X)
 
-  let stop = wtime_msec()
-
-  reportBench(batchSize, numlabels, stop-start, maxRSS, runtimeRSS, pageFaults, lse)
 
 template runBench(tp: Threadpool, procName: untyped, datasetSize, batchSize, numLabels: int64) =
   let data = newMatrix[float32](datasetSize, numLabels)
   data.initialize()
 
-  let start = wtime_msec()
+  when not defined(windows):
+    let start = wtime_msec()
 
-  var lse = 0'f32
-  memUsage(maxRSS, runtimeRSS, pageFaults):
-    # For simplicity we ignore the last few data points
+    var lse = 0'f32
+    memUsage(maxRSS, runtimeRSS, pageFaults):
+      # For simplicity we ignore the last few data points
+      for batchIdx in 0 ..< datasetSize div batchSize:
+        let X = data.rowView(batchIdx*batchSize, batchSize)
+        lse += procName(tp, X)
+
+    let stop = wtime_msec()
+
+    reportBench(batchSize, numlabels, stop-start, maxRSS, runtimeRSS, pageFaults, lse)
+  else:
     for batchIdx in 0 ..< datasetSize div batchSize:
       let X = data.rowView(batchIdx*batchSize, batchSize)
       lse += procName(tp, X)
-
-  let stop = wtime_msec()
-
-  reportBench(batchSize, numlabels, stop-start, maxRSS, runtimeRSS, pageFaults, lse)
 
 # Algo - Serial
 # -------------------------------------------------------

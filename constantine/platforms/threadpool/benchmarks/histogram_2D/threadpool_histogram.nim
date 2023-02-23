@@ -9,9 +9,12 @@ import
   # Stdlib
   system/ansi_c, std/[os, strutils, cpuinfo, math, strformat, locks],
   # Constantine
-  ../../threadpool,
+  ../../threadpool
+
+
+when not defined(windows):
   # bench
-  ../wtime, ../resources
+  import ../wtime, ../resources
 
 # Helpers
 # -------------------------------------------------------
@@ -21,7 +24,7 @@ import
 type
   Matrix[T: SomeFloat] = object
     buffer: ptr UncheckedArray[T]
-    ld: int32
+    ld: int
 
 template `[]`[T](mat: Matrix[T], row, col: Natural): T =
   # row-major storage
@@ -36,15 +39,15 @@ template `[]=`[T](mat: Matrix[T], row, col: Natural, value: T) =
 
 type
   Histogram = object
-    buffer: ptr UncheckedArray[int32]
-    len: int32
+    buffer: ptr UncheckedArray[int64]
+    len: int
 
-template `[]`(hist: Histogram, idx: Natural): int32 =
+template `[]`(hist: Histogram, idx: Natural): int64 =
   # row-major storage
   assert idx in 0 ..< hist.len
   hist.buffer[idx]
 
-template `[]=`(hist: Histogram, idx: Natural, value: int32) =
+template `[]=`(hist: Histogram, idx: Natural, value: int64) =
   assert idx in 0 ..< hist.len
   hist.buffer[idx] = value
 
@@ -59,7 +62,7 @@ proc wv_free*[T: ptr](p: T) {.inline.} =
 
 # -------------------------------------------------------
 
-proc prepareMatrix[T](matrix: var Matrix[T], N: int32) =
+proc prepareMatrix[T](matrix: var Matrix[T], N: int) =
   matrix.buffer = wv_alloc(T, N*N)
   matrix.ld = N
 
@@ -67,8 +70,8 @@ proc prepareMatrix[T](matrix: var Matrix[T], N: int32) =
     for j in 0 ..< N:
       matrix[i, j] = 1.0 / T(N) * T(i) * 100
 
-proc newHistogram(bins: int32): Histogram =
-  result.buffer = wv_alloc(int32, bins)
+proc newHistogram(bins: int): Histogram =
+  result.buffer = wv_alloc(int64, bins)
   result.len = bins
 
 # Reports
@@ -91,8 +94,7 @@ template memUsage(maxRSS, runtimeRSS, pageFaults: untyped{ident}, body: untyped)
 
 proc reportConfig(
     scheduler: string,
-    nthreads, N, bins: int
-  ) =
+    nthreads, N, bins: int) =
 
   echo "--------------------------------------------------------------------------"
   echo "Scheduler:                                    ", scheduler
@@ -102,7 +104,7 @@ proc reportConfig(
   echo "Histogram bins:                               ", bins
 
 proc reportBench(
-    time: float64, maxRSS, runtimeRss, pageFaults: int32, max: SomeFloat
+    time: float64, maxRSS, runtimeRss, pageFaults: int, max: SomeFloat
   ) =
   echo "--------------------------------------------------------------------------"
   echo "Time(ms):                                     ", round(time, 3)
@@ -114,20 +116,29 @@ proc reportBench(
 template runBench(tp: Threadpool, procName: untyped, matrix: Matrix, bins: int, parallel: static bool = true) =
   var hist = newHistogram(bins)
 
+  when not defined(windows):
+    block:
+      var max: matrix.T
+      let start = wtime_msec()
+      memUsage(maxRSS, runtimeRSS, pageFaults):
+        when parallel:
+          tp = Threadpool.new()
+          max = procName(tp, matrix, hist)
+          tp.shutdown()
+        else:
+          max = procName(matrix, hist)
+      let stop = wtime_msec()
 
-  block:
-    var max: matrix.T
-    let start = wtime_msec()
-    memUsage(maxRSS, runtimeRSS, pageFaults):
+      reportBench(stop-start, maxRSS, runtimeRSS, pageFaults, max)
+  else:
+    block:
+      var max: matrix.T
       when parallel:
         tp = Threadpool.new()
         max = procName(tp, matrix, hist)
         tp.shutdown()
       else:
         max = procName(matrix, hist)
-    let stop = wtime_msec()
-
-    reportBench(stop-start, maxRSS, runtimeRSS, pageFaults, max)
 
 # Algo
 # -------------------------------------------------------
@@ -147,7 +158,7 @@ proc generateHistogramSerial[T](matrix: Matrix[T], hist: Histogram): T =
                 abs(matrix[i, j] - matrix[i, j-1] + abs(matrix[i, j] - matrix[i, j+1]))
 
       # Compute index of histogram bin
-      let k = int32(sum * T(matrix.ld))
+      let k = int(sum * T(matrix.ld))
       hist[k] += 1
 
       # Keep track of the largest element
@@ -179,7 +190,7 @@ proc generateHistogramThreadpoolReduce[T](tp: Threadpool, matrix: Matrix[T], his
         for j in 1 ..< matrix.ld-1:
           let sum = abs(matrix[i, j] - matrix[i-1, j]) + abs(matrix[i,j] - matrix[i+1, j]) +
                     abs(matrix[i, j] - matrix[i, j-1] + abs(matrix[i, j] - matrix[i, j+1]))
-          let k = int32(sum * T(matrix.ld))
+          let k = int(sum * T(matrix.ld))
 
           threadHist[k] += 1
           if sum > max:
@@ -223,7 +234,7 @@ proc generateHistogramThreadpoolReduce[T](tp: Threadpool, matrix: Matrix[T], his
 #       for j in 1 ..< matrix.ld-1:
 #         let sum = abs(matrix[i, j] - matrix[i-1, j]) + abs(matrix[i,j] - matrix[i+1, j]) +
 #                   abs(matrix[i, j] - matrix[i, j-1] + abs(matrix[i, j] - matrix[i, j+1]))
-#         let k = int32(sum * T(matrix.ld))
+#         let k = int(sum * T(matrix.ld))
 
 #         threadHist[k] += 1
 #         if sum > threadMax:
@@ -245,16 +256,16 @@ proc generateHistogramThreadpoolReduce[T](tp: Threadpool, matrix: Matrix[T], his
 proc main() =
 
   var
-    matrixSize = 25000'i32
-    boxes = 1000'i32
+    matrixSize = 25000
+    boxes = 1000
 
   if paramCount() == 0:
     let exeName = getAppFilename().extractFilename()
     echo &"Usage: {exeName} <matrixSize: int> <boxes: int>"
     echo &"Running with default matrixSize={matrixSize}, boxes={boxes}"
   elif paramCount() == 2:
-    matrixSize = paramStr(1).parseInt().int32
-    boxes = paramStr(2).parseInt().int32
+    matrixSize = paramStr(1).parseInt()
+    boxes = paramStr(2).parseInt()
   else:
     let exeName = getAppFilename().extractFilename()
     echo &"Usage: {exeName} <matrixSize: int> <boxes: int>"

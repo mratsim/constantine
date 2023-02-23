@@ -468,7 +468,7 @@ proc generateAndScheduleLoopTask(ld: LoopDescriptor): NimNode =
   if ld.awaitableType.isNil():
     result = quote do:
       block enq_deq_task: # block for namespacing
-        let start = `start`      # Ensure single evaluation / side-effect
+        let start  = `start`      # Ensure single evaluation / side-effect
         let stopEx = `stopEx`
         if stopEx-start != 0:
           when bool(`withCaptures`):
@@ -489,7 +489,7 @@ proc generateAndScheduleLoopTask(ld: LoopDescriptor): NimNode =
     result = quote do:
       var `globalAwaitable`: FlowVar[`awaitableType`]
       block enq_deq_task: # Block for name spacing
-        let start = `start`      # Ensure single evaluation / side-effect
+        let start  = `start`      # Ensure single evaluation / side-effect
         let stopEx = `stopEx`
         if stopEx-start != 0:
           let taskSelfReference = cast[ptr Task](0xDEADBEEF)
