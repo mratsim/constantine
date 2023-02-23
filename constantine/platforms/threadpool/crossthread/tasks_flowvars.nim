@@ -29,7 +29,7 @@ type
   Task* = object
     # Intrusive metadata
     # ------------------
-    parent*: ptr Task # When a task is awaiting, a thread can quickly prioritize the direct child of a task
+    parent*: ptr Task        # When a task is awaiting, a thread can quickly prioritize the direct child of a task
 
     thiefID*: Atomic[int32]  # ID of the worker that stole and run the task. For leapfrogging.
 

@@ -258,6 +258,9 @@ proc generateHistogramThreadpoolReduce[T](tp: Threadpool, matrix: Matrix[T], his
 
 proc main() =
 
+  if sizeof(int) == 4:
+    echo "Running on 32-bit. This benchmark is requires 64-bit."
+
   var
     matrixSize = 25000
     boxes = 1000
