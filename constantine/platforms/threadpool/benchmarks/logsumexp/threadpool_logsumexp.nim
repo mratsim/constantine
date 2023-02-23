@@ -166,6 +166,7 @@ template runBench(tp: Threadpool, procName: untyped, datasetSize, batchSize, num
 
     reportBench(batchSize, numlabels, stop-start, maxRSS, runtimeRSS, pageFaults, lse)
   else:
+    var lse = 0'f32
     for batchIdx in 0 ..< datasetSize div batchSize:
       let X = data.rowView(batchIdx*batchSize, batchSize)
       lse += procName(tp, X)
