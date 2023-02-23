@@ -356,10 +356,10 @@ proc splitAndDispatchLoop(ctx: var WorkerContext, task: ptr Task, curLoopIndex: 
 
   ctx.threadpool.globalBackoff.wakeAll()
 
-proc loadBalanceLoop(ctx: var WorkerContext, task: ptr Task, curLoopIndex: int, backoff: var BalancerBackoff) {.inline.} =
+proc loadBalanceLoop(ctx: var WorkerContext, task: ptr Task, curLoopIndex: int, backoff: var BalancerBackoff) =
   ## Split a parallel loop when necessary
-  # Even though on the bigger side, this function is made inline to avoid
-  # function call overhead in tight parallel loops, push/pop-ing registers when the conditions are likely false.
+  # We might want to make this inline to cheapen the first check
+  # but it is 10% faster not inline on the transpose benchmark (memory-bandwidth bound)
   if task.loopStepsLeft > 1 and curLoopIndex == backoff.nextCheck:
     if ctx.taskqueue[].peek() == 0:
       let waiters = ctx.threadpool.globalBackoff.getNumWaiters()
@@ -923,13 +923,22 @@ macro parallelFor*(tp: Threadpool, loopParams: untyped, body: untyped): untyped 
   ##    captures: {a, b}
   ##    echo a + b + i
   ##
+  result = newStmtList()
+  result.add quote do:
+    # Avoid integer overflow checks in tight loop
+    # and no exceptions in code.
+    {.push checks:off.}
+
   if body.hasReduceSection():
-    result = parallelReduceImpl(
+    result.add parallelReduceImpl(
       bindSym"workerContext", bindSym"schedule",
       bindSym"parallelReduceWrapper",
       loopParams, body)
   else:
-    result = parallelForImpl(
+    result.add parallelForImpl(
       bindSym"workerContext", bindSym"schedule",
       bindSym"parallelForWrapper",
       loopParams, body)
+
+  result.add quote do:
+    {.pop.}
