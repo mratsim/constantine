@@ -180,7 +180,7 @@ proc teardownWorker(ctx: var WorkerContext) =
   ctx.localBackoff.`=destroy`()
   ctx.taskqueue[].teardown()
 
-proc eventLoopRegular(ctx: var WorkerContext) {.raises:[], gcsafe.}
+proc eventLoop(ctx: var WorkerContext) {.raises:[], gcsafe.}
 
 proc workerEntryFn(params: tuple[threadpool: Threadpool, id: WorkerID]) {.raises: [].} =
   ## On the start of the threadpool workers will execute this
@@ -199,7 +199,7 @@ proc workerEntryFn(params: tuple[threadpool: Threadpool, id: WorkerID]) {.raises
   # 1 matching barrier in Threadpool.new() for root thread
   discard params.threadpool.barrier.wait()
 
-  ctx.eventLoopRegular()
+  ctx.eventLoop()
 
   debugTermination:
     log(">>> Worker %3d shutting down <<<\n", ctx.id)
@@ -637,34 +637,34 @@ proc tryLeapfrog(ctx: var WorkerContext, awaitedTask: ptr Task): ptr Task =
     return leapTask
   return nil
 
-proc eventLoopRegular(ctx: var WorkerContext) {.raises:[], gcsafe.} =
+proc eventLoop(ctx: var WorkerContext) {.raises:[], gcsafe.} =
   ## Each worker thread executes this loop over and over.
   while true:
     # 1. Pick from local queue
-    debug: log("Worker %3d: eventLoopRegular 1 - searching task from local queue\n", ctx.id)
+    debug: log("Worker %3d: eventLoop 1 - searching task from local queue\n", ctx.id)
     while (var task = ctx.taskqueue[].pop(); not task.isNil):
-      debug: log("Worker %3d: eventLoopRegular 1 - running task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, task, task.parent, ctx.currentTask)
+      debug: log("Worker %3d: eventLoop 1 - running task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, task, task.parent, ctx.currentTask)
       ctx.run(task)
 
     # 2. Run out of tasks, become a thief
-    debug: log("Worker %3d: eventLoopRegular 2 - becoming a thief\n", ctx.id)
+    debug: log("Worker %3d: eventLoop 2 - becoming a thief\n", ctx.id)
     let ticket = ctx.threadpool.globalBackoff.sleepy()
     if (var stolenTask = ctx.tryStealAdaptative(); not stolenTask.isNil):
       # We manage to steal a task, cancel sleep
       ctx.threadpool.globalBackoff.cancelSleep()
       # 2.a Run task
-      debug: log("Worker %3d: eventLoopRegular 2.a - stole task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, stolenTask, stolenTask.parent, ctx.currentTask)
+      debug: log("Worker %3d: eventLoop 2.a - stole task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, stolenTask, stolenTask.parent, ctx.currentTask)
       ctx.run(stolenTask)
     elif ctx.signal.terminate.load(moAcquire):
       # 2.b Threadpool has no more tasks and we were signaled to terminate
       ctx.threadpool.globalBackoff.cancelSleep()
-      debugTermination: log("Worker %3d: eventLoopRegular 2.b - terminated\n", ctx.id)
+      debugTermination: log("Worker %3d: eventLoop 2.b - terminated\n", ctx.id)
       break
     else:
       # 2.c Park the thread until a new task enters the threadpool
-      debug: log("Worker %3d: eventLoopRegular 2.b - sleeping\n", ctx.id)
+      debug: log("Worker %3d: eventLoop 2.b - sleeping\n", ctx.id)
       ctx.threadpool.globalBackoff.sleep(ticket)
-      debug: log("Worker %3d: eventLoopRegular 2.b - waking\n", ctx.id)
+      debug: log("Worker %3d: eventLoop 2.b - waking\n", ctx.id)
 
 # ############################################################
 #                                                            #

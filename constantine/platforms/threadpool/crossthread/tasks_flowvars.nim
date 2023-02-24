@@ -135,8 +135,6 @@ proc newLoop*(
   result.loopStepsLeft = ceilDiv_vartime(stop-start, stride)
   result.reductionDAG = nil
 
-  result.dependsOnEvent = false
-
 proc newLoop*(
        T: typedesc[Task],
        parent: ptr Task,
