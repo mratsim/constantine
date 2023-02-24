@@ -20,12 +20,66 @@ import
   ./instrumentation,
   ./primitives/barriers,
   ./parallel_offloading,
-  ../allocs, ../bithacks,
-  ../../../helpers/prng_unsafe
+  ../allocs, ../bithacks
 
 export
   # flowvars
   Flowvar, isSpawned, isReady, sync
+
+# ############################################################
+#                                                            #
+#                            RNG                             #
+#                                                            #
+# ############################################################
+#
+# We don't need a CSPRNG, the RNG is to select a random victim when work-stealing
+#
+# - Scrambled Linear Pseudorandom Number Generators
+#   Blackman, Vigna, 2021
+#   https://vigna.di.unimi.it/ftp/papers/ScrambledLinear.pdf
+#   https://prng.di.unimi.it/
+
+type WorkStealingRng = object
+  ## This is the state of a Xoshiro256+ PRNG
+  ## It is used for work-stealing. The low bits have low linear complexity.
+  ## So we use the high 32 bits to seed our pseudo random walk of thread taskqueues.
+  s: array[4, uint64]
+
+func splitMix64(state: var uint64): uint64 =
+  state += 0x9e3779b97f4a7c15'u64
+  result = state
+  result = (result xor (result shr 30)) * 0xbf58476d1ce4e5b9'u64
+  result = (result xor (result shr 27)) * 0xbf58476d1ce4e5b9'u64
+  result = result xor (result shr 31)
+
+func seed(rng: var WorkStealingRng, x: SomeInteger) =
+  ## Seed the random number generator with a fixed seed
+  var sm64 = uint64(x)
+  rng.s[0] = splitMix64(sm64)
+  rng.s[1] = splitMix64(sm64)
+  rng.s[2] = splitMix64(sm64)
+  rng.s[3] = splitMix64(sm64)
+
+func rotl(x: uint64, k: static int): uint64 {.inline.} =
+  return (x shl k) or (x shr (64 - k))
+
+template `^=`(x: var uint64, y: uint64) =
+  x = x xor y
+
+func nextU32(rng: var WorkStealingRng): uint32 =
+  ## Compute a random uint32
+  # Need to use the high bits
+  result = uint32((rng.s[0] + rng.s[3]) shr 32)
+
+  let t = rng.s[1] shl 17
+  rng.s[2] ^= rng.s[0];
+  rng.s[3] ^= rng.s[1];
+  rng.s[1] ^= rng.s[2];
+  rng.s[0] ^= rng.s[3];
+
+  rng.s[2] ^= t;
+
+  rng.s[3] = rotl(rng.s[3], 45);
 
 # ############################################################
 #                                                            #
@@ -46,15 +100,15 @@ type
     threadpool: Threadpool
 
     # Tasks
-    taskqueue: ptr Taskqueue          # owned task queue
+    taskqueue: ptr Taskqueue    # owned task queue
     currentTask: ptr Task
 
     # Synchronization
-    localBackoff: EventNotifier       # Multi-Producer Single-Consumer backoff
-    signal: ptr Signal                # owned signal
+    localBackoff: EventNotifier # Multi-Producer Single-Consumer backoff
+    signal: ptr Signal          # owned signal
 
     # Thefts
-    rng: RngState                     # RNG state to select victims
+    rng: WorkStealingRng        # RNG state to select victims
 
     # Adaptative theft policy
     stealHalf: bool
@@ -255,7 +309,7 @@ iterator splitUpperRanges(
       ctx.id, task, task.loopStepsLeft, curLoopIndex, task.loopStart, task.loopStop, task.loopStride, numIdle)
 
   # Send a chunk of work to all idle workers + ourselves
-  let availableWorkers = numIdle + 1
+  let availableWorkers = cast[int](numIdle + 1)
   let baseChunkSize = task.loopStepsLeft div availableWorkers
   let cutoff        = task.loopStepsLeft mod availableWorkers
 
@@ -360,7 +414,7 @@ proc loadBalanceLoop(ctx: var WorkerContext, task: ptr Task, curLoopIndex: int, 
     if ctx.taskqueue[].peek() == 0:
       let waiters = ctx.threadpool.globalBackoff.getNumWaiters()
       # We assume that the worker that scheduled the task will work on it. I.e. idleness is underestimated.
-      let numIdle = waiters.preSleep + waiters.committedSleep + int32(task.isFirstIter)
+      let numIdle = waiters.preSleep + waiters.committedSleep + cast[int32](task.isFirstIter)
       if numIdle > 0:
         ctx.splitAndDispatchLoop(task, curLoopIndex, numIdle)
         backoff.decrease()
@@ -491,7 +545,7 @@ iterator pseudoRandomPermutation(randomSeed: uint32, maxExclusive: int32): int32
 
 proc tryStealOne(ctx: var WorkerContext): ptr Task =
   ## Try to steal a task.
-  let seed = ctx.rng.next().uint32
+  let seed = ctx.rng.nextU32()
   for targetId in seed.pseudoRandomPermutation(ctx.threadpool.numThreads):
     if targetId == ctx.id:
       continue
@@ -536,7 +590,7 @@ proc tryStealAdaptative(ctx: var WorkerContext): ptr Task =
   ctx.stealHalf = false
   # ctx.updateStealStrategy()
 
-  let seed = ctx.rng.next().uint32
+  let seed = ctx.rng.nextU32()
   for targetId in seed.pseudoRandomPermutation(ctx.threadpool.numThreads):
     if targetId == ctx.id:
       continue
