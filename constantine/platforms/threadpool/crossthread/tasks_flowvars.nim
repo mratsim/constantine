@@ -9,7 +9,7 @@
 import
   std/atomics,
   ../instrumentation,
-  ../../allocs, ../../primitives,
+  ../../allocs,
   ./backoff
 
 # Tasks have an efficient design so that a single heap allocation
@@ -27,14 +27,10 @@ import
 
 type
   Task* = object
-    # Intrusive metadata
+    # Synchronization
     # ------------------
     parent*: ptr Task        # When a task is awaiting, a thread can quickly prioritize the direct child of a task
-
     thiefID*: Atomic[int32]  # ID of the worker that stole and run the task. For leapfrogging.
-
-    # Result sync
-    # ------------------
     hasFuture*: bool         # Ownership: if a task has a future, the future deallocates it. Otherwise the worker thread does.
     completed*: Atomic[bool]
     waiter*: Atomic[ptr EventNotifier]
@@ -42,25 +38,20 @@ type
     # Data parallelism
     # ------------------
     isFirstIter*: bool       # Awaitable for-loops return true for first iter. Loops are split before first iter.
+    envSize*: int32          # This is used for splittable loop
     loopStart*: int
     loopStop*: int
     loopStride*: int
     loopStepsLeft*: int
     reductionDAG*: ptr ReductionDagNode # For parallel loop reduction, merge with other range result
 
-    # Dataflow parallelism
-    # --------------------
-    dependsOnEvent: bool     # We cannot leapfrog a task triggered by an event
-
     # Execution
     # ------------------
     fn*: proc (env: pointer) {.nimcall, gcsafe, raises: [].}
-    # destroy*: proc (env: pointer) {.nimcall, gcsafe.} # Constantine only deals with plain old data
-    envSize*: int32
+    # destroy*: proc (env: pointer) {.nimcall, gcsafe.} # Constantine only deals with plain old env
     env*{.align:sizeof(int).}: UncheckedArray[byte]
 
   Flowvar*[T] = object
-    ## A Flowvar is a placeholder for a future result that may be computed in parallel
     task: ptr Task
 
   ReductionDagNode* = object
@@ -82,7 +73,8 @@ const SentinelThief* = 0xFACADE'i32
 proc newSpawn*(
        T: typedesc[Task],
        parent: ptr Task,
-       fn: proc (env: pointer) {.nimcall, gcsafe, raises: [].}): ptr Task =
+       fn: proc (env: pointer) {.nimcall, gcsafe, raises: [].}
+     ): ptr Task {.inline.} =
 
   const size = sizeof(T)
 
@@ -93,22 +85,12 @@ proc newSpawn*(
   result.completed.store(false, moRelaxed)
   result.waiter.store(nil, moRelaxed)
   result.fn = fn
-  result.envSize = 0
-
-  result.isFirstIter = false
-  result.loopStart = 0
-  result.loopStop = 0
-  result.loopStride = 0
-  result.loopStepsLeft = 0
-  result.reductionDAG = nil
-
-  result.dependsOnEvent = false
 
 proc newSpawn*(
        T: typedesc[Task],
        parent: ptr Task,
        fn: proc (env: pointer) {.nimcall, gcsafe, raises: [].},
-       env: auto): ptr Task =
+       env: auto): ptr Task {.inline.} =
 
   const size = sizeof(T) + # size without Unchecked
                sizeof(env)
@@ -120,24 +102,20 @@ proc newSpawn*(
   result.completed.store(false, moRelaxed)
   result.waiter.store(nil, moRelaxed)
   result.fn = fn
-  result.envSize = int32 sizeof(env)
   cast[ptr[type env]](result.env)[] = env
 
-  result.isFirstIter = false
-  result.loopStart = 0
-  result.loopStop = 0
-  result.loopStride = 0
-  result.loopStepsLeft = 0
-  result.reductionDAG = nil
-
-  result.dependsOnEvent = false
+func ceilDiv_vartime*(a, b: auto): auto {.inline.} =
+  ## ceil division, to be used only on length or at compile-time
+  ## ceil(a / b)
+  (a + b - 1) div b
 
 proc newLoop*(
        T: typedesc[Task],
        parent: ptr Task,
        start, stop, stride: int,
        isFirstIter: bool,
-       fn: proc (env: pointer) {.nimcall, gcsafe, raises: [].}): ptr Task =
+       fn: proc (env: pointer) {.nimcall, gcsafe, raises: [].}
+      ): ptr Task =
   const size = sizeof(T)
   preCondition: start < stop
 
@@ -156,8 +134,6 @@ proc newLoop*(
   result.loopStride = stride
   result.loopStepsLeft = ceilDiv_vartime(stop-start, stride)
   result.reductionDAG = nil
-
-  result.dependsOnEvent = false
 
 proc newLoop*(
        T: typedesc[Task],
@@ -187,8 +163,6 @@ proc newLoop*(
   result.loopStride = stride
   result.loopStepsLeft = ceilDiv_vartime(stop-start, stride)
   result.reductionDAG = nil
-
-  result.dependsOnEvent = false
 
 # Flowvars
 # -------------------------------------------------------------------------
@@ -235,9 +209,6 @@ proc sync*[T](fv: sink Flowvar[T]): T {.noInit, inline, gcsafe.} =
   ## and returned.
   ## The thread is not idle and will complete pending tasks.
   mixin completeFuture
-  if fv.task.isNil:
-    zeroMem(result.addr, sizeof(T))
-    return
   completeFuture(fv, result)
   cleanup(fv)
 

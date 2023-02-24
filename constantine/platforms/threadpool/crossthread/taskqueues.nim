@@ -14,25 +14,21 @@
 #   David Chase, Yossi Lev, 1993
 #   https://www.dre.vanderbilt.edu/~schmidt/PDF/work-stealing-dequeue.pdf
 #
-# - Non-Blocking Steal-Half Work Queues
-#   Danny Hendler, Nir Shavit, 2002
-#   https://www.cs.bgu.ac.il/~hendlerd/papers/p280-hendler.pdf
-#
 # - Correct and Efficient Work-Stealing for Weak Memory Models
 #   Nhat Minh Lê, Antoniu Pop, Albert Cohen, Francesco Zappa Nardelli, 2013
 #   https://fzn.fr/readings/ppopp13.pdf
 #
-# The task queue implements the following push, pop, steal, stealHalf
+# The task queue implements the following push, pop, steal
 #
 #    front                                              back
 #                 ---------------------------------
 #  steal()     <- |         |          |          | <- push()
-#  stealHalf() <- | Task 0  |  Task 1  |  Task 2  | -> pop()
+#                 | Task 0  |  Task 1  |  Task 2  | -> pop()
 #  any thread     |         |          |          |    owner-only
 #                 ---------------------------------
 #
 # To reduce contention, stealing is done on the opposite end from push/pop
-# so that there is a race only for the very last task(s).
+# so that there is a race only for the very last task.
 
 {.push raises: [], checks: off.} # No exceptions in a multithreading datastructure
 
@@ -57,7 +53,7 @@ type
     ## Foreign threads steal at the front.
     ##
     ## There is no memory reclamation scheme for simplicity
-    front {.align: 64.}: Atomic[int]  # Consumers - steal/stealHalf
+    front {.align: 64.}: Atomic[int]  # Consumers - steal
     back: Atomic[int]                 # Producer  - push/pop
     buf: Atomic[ptr Buf]
     garbage: ptr Buf
@@ -215,72 +211,3 @@ proc steal*(thiefID: int32, tq: var Taskqueue): ptr Task =
       # Failed race.
       return nil
     result.thiefID.store(thiefID, moRelease)
-
-proc stealHalfImpl(dst: var Buf, dstBack: int, src: var Taskqueue): int =
-  ## Theft part of stealHalf:
-  ## - updates the victim metadata if successful
-  ## - uncommitted updates to the thief tq whether successful or not
-  ## Returns -1 if dst buffer is too small
-  ## Assumes `dst` buffer is empty (i.e. not ahead-of-time thefts)
-
-  while true:
-    # Try as long as there are something to steal, we are idling anyway.
-
-    var f = src.front.load(moAcquire)
-    fence(moSequentiallyConsistent)
-    let b = src.back.load(moAcquire)
-    var n = b-f
-    n = n - (n shr 1) # Division by 2 rounded up, so if only one task is left, we still get it.
-
-    if n <= 0:
-      return 0
-    if n > dst.capacity:
-      return -1
-
-    # Non-empty queue.
-    let sBuf = src.buf.load(moConsume)
-    for i in 0 ..< n: # Copy LIFO or FIFO?
-      dst[dstBack+i] = sBuf[][f+i]
-    if compareExchange(src.front, f, f+n, moSequentiallyConsistent, moRelaxed):
-      return n
-
-proc stealHalf*(thiefID: int32, dst: var Taskqueue, src: var Taskqueue): ptr Task =
-  ## Dequeue up to half of the items in the `src` tq, fom the front.
-  ## Return the last of those, or nil if none found
-
-  while true:
-    # Prepare for batch steal
-    let
-      bDst = dst.back.load(moRelaxed)
-      fDst = dst.front.load(moAcquire)
-    var dBuf = dst.buf.load(moAcquire)
-    let sBuf = src.buf.load(moAcquire)
-
-    if dBuf.capacity < sBuf.capacity:
-      # We could grow to sBuf/2 since we steal half, but we want to minimize
-      # churn if we are actually in the process of stealing and the buffers grows.
-      dst.grow(dBuf, sBuf.capacity, fDst, bDst)
-
-    # Steal
-    let n = dBuf[].stealHalfImpl(bDst, src)
-
-    if n == 0:
-      return nil
-    if n == -1:
-      # Oops, victim buffer grew bigger than ours, restart the whole process
-      continue
-
-    # Update metadata
-    for i in 0 ..< n:
-      dBuf[][bDst+i].thiefID.store(thiefID, moRelease)
-
-    # Commit/publish theft, return the first item for processing
-    let last = dBuf[][bDst+n-1]
-    fence(moSequentiallyConsistent)
-    if n == 1:
-      return last
-
-    # We have more than one item, so some must go in our queue
-    # they are already here but inaccessible for other thieves
-    dst.back.store(bDst+n-1, moRelease) # We assume that queue was empty and so dst.front didn't change
-    return last

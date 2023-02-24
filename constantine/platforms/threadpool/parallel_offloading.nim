@@ -41,7 +41,7 @@ proc spawnVoid(funcCall: NimNode, args, argsTy: NimNode, workerContext, schedule
   let fnName = $fn
   let withArgs = args.len > 0
   let tpSpawn_closure = ident("ctt_tpSpawnVoidClosure_" & fnName)
-  var loopFnCall = newCall(fn)
+  var fnCall = newCall(fn)
   let env = ident("ctt_tpSpawnVoidEnv_")   # typed pointer to env
 
   # Schedule
@@ -53,10 +53,10 @@ proc spawnVoid(funcCall: NimNode, args, argsTy: NimNode, workerContext, schedule
   if funcCall.len == 2:
     # With only 1 arg, the tuple syntax doesn't construct a tuple
     # let env = (123) # is an int
-    loopFnCall.add nnkDerefExpr.newTree(env)
+    fnCall.add nnkDerefExpr.newTree(env)
   else: # This handles the 0 arg case as well
     for i in 1 ..< funcCall.len:
-      loopFnCall.add nnkBracketExpr.newTree(
+      fnCall.add nnkBracketExpr.newTree(
         env,
         newLit i-1)
 
@@ -65,7 +65,7 @@ proc spawnVoid(funcCall: NimNode, args, argsTy: NimNode, workerContext, schedule
     proc `tpSpawn_closure`(env: pointer) {.nimcall, gcsafe, raises: [].} =
       when bool(`withArgs`):
         let `env` = cast[ptr `argsTy`](env)
-      `loopFnCall`
+      `fnCall`
 
   # Create the task
   result.add quote do:
@@ -88,7 +88,7 @@ proc spawnRet(funcCall: NimNode, retTy, args, argsTy: NimNode, workerContext, sc
   let fn = funcCall[0]
   let fnName = $fn
   let tpSpawn_closure = ident("ctt_tpSpawnRetClosure_" & fnName)
-  var loopFnCall = newCall(fn)
+  var fnCall = newCall(fn)
   let env = ident("ctt_tpSpawnRetEnv_")   # typed pointer to env
 
   # tasks have no return value.
@@ -117,12 +117,12 @@ proc spawnRet(funcCall: NimNode, retTy, args, argsTy: NimNode, workerContext, sc
   # env stores | ptr Task | result | arg₀ | arg₁ | ... | argₙ
   # so arguments starts at env[2] in the wrapping funcCall functions
   for i in 1 ..< funcCall.len:
-    loopFnCall.add nnkBracketExpr.newTree(env, newLit i+1)
+    fnCall.add nnkBracketExpr.newTree(env, newLit i+1)
 
   result.add quote do:
     proc `tpSpawn_closure`(env: pointer) {.nimcall, gcsafe, raises: [].} =
       let `env` = cast[ptr `envParamsTy`](env)
-      let res = `loopFnCall`
+      let res = `fnCall`
       readyWith(`env`[0], res)
 
   # Regenerate fresh ident, retTy has been tagged as a function call param

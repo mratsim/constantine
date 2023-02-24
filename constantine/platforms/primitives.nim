@@ -34,6 +34,10 @@ export
   allocs,
   compiler_optim_hints
 
+# Note:
+# - cpuinfo_x86 initialize globals with following CPU features detection.
+#   This will impact benchmarks that do not need it, such as the threadpool.
+
 when X86 and GCC_Compatible:
   import isa/[cpuinfo_x86, macro_assembler_x86]
   export cpuinfo_x86, macro_assembler_x86
@@ -69,7 +73,7 @@ func ceilDiv_vartime*(a, b: auto): auto {.inline.} =
   ## ceil division, to be used only on length or at compile-time
   ## ceil(a / b)
   # "LengthInDigits: static int" doesn't match "int"
-  # if "SomeInteger" is used instead of "autoi"
+  # if "SomeInteger" is used instead of "auto"
   (a + b - 1) div b
 
 # ############################################################

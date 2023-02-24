@@ -243,6 +243,8 @@ const testDescNvidia: seq[string] = @[
 const testDescThreadpool: seq[string] = @[
   "constantine/platforms/threadpool/examples/e01_simple_tasks.nim",
   "constantine/platforms/threadpool/examples/e02_parallel_pi.nim",
+  "constantine/platforms/threadpool/examples/e03_parallel_for.nim",
+  "constantine/platforms/threadpool/examples/e04_parallel_reduce.nim",
   # "constantine/platforms/threadpool/benchmarks/bouncing_producer_consumer/threadpool_bpc.nim", # Need timing not implemented on Windows
   "constantine/platforms/threadpool/benchmarks/dfs/threadpool_dfs.nim",
   "constantine/platforms/threadpool/benchmarks/fibonacci/threadpool_fib.nim",

@@ -200,13 +200,17 @@ proc cancelSleep*(ec: var Eventcount) {.inline.} =
 proc wake*(ec: var EventCount) {.inline.} =
   ## Wake a thread if at least 1 is parked
   let prev = ec.state.fetchAdd(kEpoch, moAcquireRelease)
-  if (prev and kAnyWaiterMask) != 0:
+  if (prev and kPreWaitMask) != 0:
+    # Some threads are in prewait and will see the epoch change
+    # no need to do an expensive syscall
+    return
+  if (prev and kWaitMask) != 0:
     ec.futex.wake()
 
 proc wakeAll*(ec: var EventCount) {.inline.} =
   ## Wake all threads if at least 1 is parked
   let prev = ec.state.fetchAdd(kEpoch, moAcquireRelease)
-  if (prev and kAnyWaiterMask) != 0:
+  if (prev and kWaitMask) != 0:
     ec.futex.wakeAll()
 
 proc getNumWaiters*(ec: var EventCount): tuple[preSleep, committedSleep: int32] {.noInit, inline.} =
