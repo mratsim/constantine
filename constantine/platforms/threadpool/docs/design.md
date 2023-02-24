@@ -76,20 +76,38 @@ Instead we can have each thread start working and use backpressure to lazily eva
 ### Backoff workers when awaiting a future
 
 This problem is quite tricky:
-- For latency, and to potentially create more work ASAP, we want such a worker to follow through on the blocked future ASAP.
-- For throughput, and because a scheduler is optimal only when greedy, we want an idle thread to take any available work.
-  - But what if the work then blocks that worker for 1s? This hurts latency and might lead to work starvation if the continuation would have created more work.
+- For latency we want the worker to continue as soon as the future is completed. This might also create more work and expose more parallelism opportunities (in recursive divide-and-conquer algorithms for example)
+- For throughput, and because a scheduler is optimal only when greedy (i.e. within 2x of the best schedule, see Cilk paper), we want an idle thread to take any available work ASAP.
+  - but what if that worker ends up with work that blocks it for a long-time? It may lead to work starvation.
 - There is no robust, cross-platform API, to wake a specific thread awaiting on a futex or condition variable.
   - The simplest design then would be to have an array of futexes, when backing-off sleep on those.
     The issue then is that when offering work you have to scan that array to find a worker to wake.
     Contrary to a idle worker, the waker is working so this scan hurts throughput and latency, and due to the many
     atomics operations required, will completely thrash the cache of that worker.
+  - The even more simple is to wake-all on future completion
   - Another potential data structure would be a concurrent sparse-set but designing concurrent data structures is difficult.
-    and locking would be expensive for an active worker
+    and locking would be expensive for an active worker.
+- Alternative designs would be:
+  - Not sleep
+  - Having reserve threads:
+    Before sleeping when blocked on a future the thread wakes a reserve thread. As the number of hardware resources is maintained we maintain throughput.
+    The waiting thread is also immediately available when the future is completed since it cannot be stuck in work.
+    A well-behaved program will always have at least 1 thread making progress among N, so a reserve of size N is sufficient.
+    Unfortunately, this solution suffers for high latency of wakeups and/or kernel context-switch.
+    For fine-grained tasks it is quite impactful: heat benchmark is 7x slower, fibonacci 1.5x, depth-first-search 2.5x.
+    For actual workload, the elliptic curve sum reduction is also significantly slower.
+  - Using continuations:
+    We could just store a continuation in the future so the thread that completes the future picks up the continuation.
 
-The solution in Constantine's threadpool to minimize latency and maximize throughput and avoid implementing another concurrent data structure is
-having "reserve threads". Before sleeping when blocked on a future the thread wakes a reserve thread. This maintain throughput, and the thread is immediately available
-as well when the future is completed. A well-behaved program will always have at least 1 thread making progress among N, so a reserve of size N is sufficient.
+The workaround for now is just to work on any available tasks to maximize throughput then sleep.
+This has 2 disadvantages:
+- For coarse-grain parallelism, if the  waiting thread steals a long task.
+  However, coarse-grain parallelism is easier to split into multiple tasks,
+  while exposing fine-grain parallelism and properly handling with its overhead is the usual problem.
+- As we can't wake a specific thread on a common futex or condition variable,
+  when awaiting a future, a thread sleeps on a local one.
+  Hence if no work can be stolen, the waiter sleeps. But if work is then recreated, it stays sleeping as only the global futex is notified.
+  Note that with hyperthreading, the sibling thread(s) can still use the core fully so throughput might not be impacted.
 
 ### Scheduler overhead/contention
 
