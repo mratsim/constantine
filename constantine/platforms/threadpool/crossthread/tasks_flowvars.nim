@@ -204,7 +204,7 @@ func readyWith*[T](task: ptr Task, childResult: T) {.inline.} =
   cast[ptr (ptr Task, T)](task.env.addr)[1] = childResult
   task.completed.store(true, moRelease)
 
-proc sync*[T](fv: sink Flowvar[T]): T {.inline, gcsafe.} =
+proc sync*[T](fv: sink Flowvar[T]): T {.noInit, inline, gcsafe.} =
   ## Blocks the current thread until the flowvar is available
   ## and returned.
   ## The thread is not idle and will complete pending tasks.
