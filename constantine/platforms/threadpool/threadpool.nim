@@ -81,6 +81,52 @@ func nextU32(rng: var WorkStealingRng): uint32 =
 
   rng.s[3] = rotl(rng.s[3], 45);
 
+iterator pseudoRandomPermutation(randomSeed: uint32, maxExclusive: int32): int32 =
+  ## Create (low-quality) pseudo-random permutations for [0, max)
+  # Design considerations and randomness constraint for work-stealing, see docs/random_permutations.md
+  #
+  # Linear Congruential Generator: https://en.wikipedia.org/wiki/Linear_congruential_generator
+  #
+  # Xₙ₊₁ = aXₙ+c (mod m) generates all random number mod m without repetition
+  # if and only if (Hull-Dobell theorem):
+  # 1. c and m are coprime
+  # 2. a-1 is divisible by all prime factors of m
+  # 3. a-1 is divisible by 4 if m is divisible by 4
+  #
+  # Alternative 1. By choosing a=1, all conditions are easy to reach.
+  #
+  # The randomness quality is not important besides distributing potential contention,
+  # i.e. randomly trying thread i, then i+1, then i+n-1 (mod n) is good enough.
+  #
+  # Assuming 6 threads, co-primes are [1, 5], which means the following permutations
+  # assuming we start with victim 0:
+  # - [0, 1, 2, 3, 4, 5]
+  # - [0, 5, 4, 3, 2, 1]
+  # While we don't care much about randoness quality, it's a bit disappointing.
+  #
+  # Alternative 2. We can choose m to be the next power of 2, meaning all odd integers are co-primes,
+  # consequently:
+  # - we don't need a GCD to find the coprimes
+  # - we don't need to cache coprimes, removing a cache-miss potential
+  # - a != 1, so we now have a multiplicative factor, which makes output more "random looking".
+
+  # n and (m-1) <=> n mod m, if m is a power of 2
+  let maxExclusive = cast[uint32](maxExclusive)
+  let M = maxExclusive.nextPowerOfTwo_vartime()
+  let c = (randomSeed and ((M shr 1) - 1)) * 2 + 1 # c odd and c ∈ [0, M)
+  let a = (randomSeed and ((M shr 2) - 1)) * 4 + 1 # a-1 divisible by 2 (all prime factors of m) and by 4 if m divisible by 4
+
+  let mask = M-1                                   # for mod M
+  let start = randomSeed and mask
+
+  var x = start
+  while true:
+    if x < maxExclusive:
+      yield cast[int32](x)
+    x = (a*x + c) and mask                         # ax + c (mod M), with M power of 2
+    if x == start:
+      break
+
 # ############################################################
 #                                                            #
 #                           Types                            #
@@ -109,13 +155,6 @@ type
 
     # Thefts
     rng: WorkStealingRng        # RNG state to select victims
-
-    # Adaptative theft policy
-    stealHalf: bool
-    recentTasks: int32
-    recentThefts: int32
-    recentTheftsAdaptative: int32
-    recentLeaps: int32
 
   Threadpool* = ptr object
     barrier: SyncBarrier                                         # Barrier for initialization and teardown
@@ -169,12 +208,6 @@ proc setupWorker(ctx: var WorkerContext) =
   # Init
   ctx.taskqueue[].init(initialCapacity = 32)
 
-  # Adaptative theft policy
-  ctx.recentTasks = 0
-  ctx.recentThefts = 0
-  ctx.recentTheftsAdaptative = 0
-  ctx.recentLeaps = 0
-
 proc teardownWorker(ctx: var WorkerContext) =
   ## Cleanup the thread-local context of a worker
   ctx.localBackoff.`=destroy`()
@@ -226,7 +259,6 @@ proc run*(ctx: var WorkerContext, task: ptr Task) {.raises:[].} =
   debug: log("Worker %3d: running task 0x%.08x (previous: 0x%.08x, %d pending, thiefID %d)\n", ctx.id, task, suspendedTask, ctx.taskqueue[].peek(), task.thiefID)
   task.fn(task.env.addr)
   debug: log("Worker %3d: completed task 0x%.08x (%d pending)\n", ctx.id, task, ctx.taskqueue[].peek())
-  ctx.recentTasks += 1
   ctx.currentTask = suspendedTask
   if not task.hasFuture:
     freeHeap(task)
@@ -426,13 +458,6 @@ proc loadBalanceLoop(ctx: var WorkerContext, task: ptr Task, curLoopIndex: int, 
     backoff.nextCheck += task.loopStride shl backoff.windowLogSize
 
 template parallelForWrapper(idx: untyped{ident}, loopBody: untyped): untyped =
-  ## To be called within a loop task
-  ## Gets the loop bounds and iterate the over them
-  ## Also polls runtime status for dynamic loop splitting
-  ##
-  ## Loop prologue, epilogue,
-  ## remoteAccum, resultTy and returnStmt
-  ## are unused
   block:
     let this = workerContext.currentTask
     var backoff = BalancerBackoff(
@@ -454,9 +479,6 @@ template parallelReduceWrapper(
     idx: untyped{ident},
     prologue, loopBody, mergeLocalWithRemote, epilogue,
     remoteTaskAwaitable, awaitableType: untyped): untyped =
-  ## To be called within a loop task
-  ## Gets the loop bounds and iterate the over them
-  ## Also polls runtime status for dynamic loop splitting
   block:
     let this = workerContext.currentTask
     var backoff = BalancerBackoff(
@@ -497,52 +519,6 @@ template parallelReduceWrapper(
 #                                                            #
 # ############################################################
 
-iterator pseudoRandomPermutation(randomSeed: uint32, maxExclusive: int32): int32 =
-  ## Create a (low-quality) pseudo-random permutation from [0, max)
-  # Design considerations and randomness constraint for work-stealing, see docs/random_permutations.md
-  #
-  # Linear Congruential Generator: https://en.wikipedia.org/wiki/Linear_congruential_generator
-  #
-  # Xₙ₊₁ = aXₙ+c (mod m) generates all random number mod m without repetition
-  # if and only if (Hull-Dobell theorem):
-  # 1. c and m are coprime
-  # 2. a-1 is divisible by all prime factors of m
-  # 3. a-1 is divisible by 4 if m is divisible by 4
-  #
-  # Alternative 1. By choosing a=1, all conditions are easy to reach.
-  #
-  # The randomness quality is not important besides distributing potential contention,
-  # i.e. randomly trying thread i, then i+1, then i+n-1 (mod n) is good enough.
-  #
-  # Assuming 6 threads, co-primes are [1, 5], which means the following permutations
-  # assuming we start with victim 0:
-  # - [0, 1, 2, 3, 4, 5]
-  # - [0, 5, 4, 3, 2, 1]
-  # While we don't care much about randoness quality, it's a bit disappointing.
-  #
-  # Alternative 2. We can choose m to be the next power of 2, meaning all odd integers are co-primes,
-  # consequently:
-  # - we don't need a GCD to find the coprimes
-  # - we don't need to cache coprimes, removing a cache-miss potential
-  # - a != 1, so we now have a multiplicative factor, which makes output more "random looking".
-
-  # n and (m-1) <=> n mod m, if m is a power of 2
-  let maxExclusive = cast[uint32](maxExclusive)
-  let M = maxExclusive.nextPowerOfTwo_vartime()
-  let c = (randomSeed and ((M shr 1) - 1)) * 2 + 1 # c odd and c ∈ [0, M)
-  let a = (randomSeed and ((M shr 2) - 1)) * 4 + 1 # a-1 divisible by 2 (all prime factors of m) and by 4 if m divisible by 4
-
-  let mask = M-1                                   # for mod M
-  let start = randomSeed and mask
-
-  var x = start
-  while true:
-    if x < maxExclusive:
-      yield cast[int32](x)
-    x = (a*x + c) and mask                         # ax + c (mod M), with M power of 2
-    if x == start:
-      break
-
 proc tryStealOne(ctx: var WorkerContext): ptr Task =
   ## Try to steal a task.
   let seed = ctx.rng.nextU32()
@@ -553,55 +529,6 @@ proc tryStealOne(ctx: var WorkerContext): ptr Task =
     let stolenTask = ctx.id.steal(ctx.threadpool.workerQueues[targetId])
 
     if not stolenTask.isNil():
-      ctx.recentThefts += 1
-      # Theft successful, there might be more work for idle threads, wake one
-      ctx.threadpool.globalBackoff.wake()
-      return stolenTask
-  return nil
-
-proc updateStealStrategy(ctx: var WorkerContext) =
-  ## Estimate work-stealing efficiency during the last interval
-  ## If the value is below a threshold, switch strategies
-  const StealAdaptativeInterval = 25
-  if ctx.recentTheftsAdaptative == StealAdaptativeInterval:
-    let recentTheftsNonAdaptative = ctx.recentThefts - ctx.recentTheftsAdaptative
-    let adaptativeTasks = ctx.recentTasks - ctx.recentLeaps - recentTheftsNonAdaptative
-
-    let ratio = adaptativeTasks.float32 / StealAdaptativeInterval.float32
-    if ctx.stealHalf and ratio < 2.0f:
-      # Tasks stolen are coarse-grained, steal only one to reduce re-steal
-      ctx.stealHalf = false
-    elif not ctx.stealHalf and ratio == 1.0f:
-      # All tasks processed were stolen tasks, we need to steal many at a time
-      ctx.stealHalf = true
-
-    # Reset interval
-    ctx.recentTasks = 0
-    ctx.recentThefts = 0
-    ctx.recentTheftsAdaptative = 0
-    ctx.recentLeaps = 0
-
-proc tryStealAdaptative(ctx: var WorkerContext): ptr Task =
-  ## Try to steal one or many tasks, depending on load
-
-  # TODO: while running 'threadpool/examples/e02_parallel_pi.nim'
-  #       stealHalf can error out in tasks_flowvars.nim with:
-  #       "precondition not task.completed.load(moAcquire)"
-  ctx.stealHalf = false
-  # ctx.updateStealStrategy()
-
-  let seed = ctx.rng.nextU32()
-  for targetId in seed.pseudoRandomPermutation(ctx.threadpool.numThreads):
-    if targetId == ctx.id:
-      continue
-
-    let stolenTask =
-      if ctx.stealHalf: ctx.id.stealHalf(ctx.taskqueue[], ctx.threadpool.workerQueues[targetId])
-      else:             ctx.id.steal(ctx.threadpool.workerQueues[targetId])
-
-    if not stolenTask.isNil():
-      ctx.recentThefts += 1
-      ctx.recentTheftsAdaptative += 1
       # Theft successful, there might be more work for idle threads, wake one
       ctx.threadpool.globalBackoff.wake()
       return stolenTask
@@ -631,7 +558,6 @@ proc tryLeapfrog(ctx: var WorkerContext, awaitedTask: ptr Task): ptr Task =
   # and don't leave tasks stranded in our queue.
   let leapTask = ctx.id.steal(ctx.threadpool.workerQueues[thiefID])
   if not leapTask.isNil():
-    ctx.recentLeaps += 1
     # Theft successful, there might be more work for idle threads, wake one
     ctx.threadpool.globalBackoff.wake()
     return leapTask
@@ -649,7 +575,7 @@ proc eventLoop(ctx: var WorkerContext) {.raises:[], gcsafe.} =
     # 2. Run out of tasks, become a thief
     debug: log("Worker %3d: eventLoop 2 - becoming a thief\n", ctx.id)
     let ticket = ctx.threadpool.globalBackoff.sleepy()
-    if (var stolenTask = ctx.tryStealAdaptative(); not stolenTask.isNil):
+    if (var stolenTask = ctx.tryStealOne(); not stolenTask.isNil):
       # We manage to steal a task, cancel sleep
       ctx.threadpool.globalBackoff.cancelSleep()
       # 2.a Run task
@@ -776,7 +702,7 @@ proc syncAll*(tp: Threadpool) {.raises: [].} =
       ctx.run(task)
 
     # 2. Help other threads
-    if (var stolenTask = ctx.tryStealAdaptative(); not stolenTask.isNil):
+    if (var stolenTask = ctx.tryStealOne(); not stolenTask.isNil):
       # 2.a We stole some task
       debug: log("Worker %3d: syncAll 2.a - stole task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, stolenTask, stolenTask.parent, ctx.currentTask)
       ctx.run(stolenTask)

@@ -22,13 +22,50 @@ Also neither supports putting awaiting threads to sleep when the future they wan
 | Communication mechanisms | Shared-memory | Message-passing / Channels | Shared-memory | Shared-memory
 | Load balancing strategy                                                                          | static (GCC), work-stealing (Intel/LLVM)                   | work-sharing / work-requesting                     | work-stealing | work-stealing                                      |
 | Blocked tasks don't block runtime                                                                | N/A                                                        | no                                                 | yes           | yes                                                |
-| Load-balancing strategy for task parallelism (important for fine-grained parallelism)            | global queue (GCC), steal-one (Intel/LLVM)                 | Adaptative steal-one/steal-half                    | steal-one     | steal-one (steal-half WIP)                         |
+| Load-balancing strategy for task parallelism (important for fine-grained parallelism)            | global queue (GCC), steal-one (Intel/LLVM)                 | Adaptative steal-one/steal-half                    | steal-one     | steal-one                                         |
 | Load-balancing strategy for data parallelism                                                     | eager splitting depending on iteration count and cpu count | lazy splitting depending on idle CPUs and workload | N/A           | lazy splitting depending on idle CPUs and workload |
 | Backoff worker when idle                                                                         | yes (?)                                                    | yes                                                | yes           | yes                                                |
 | Backoff worker when awaiting task but no work                                                    | N/A                                                        | no                                                 | no            | yes                                                |
 | Scheduler overhead/contention (measured on Fibonacci 40), important for fine-grained parallelism | Extreme: frozen runtime (GCC), high (Intel/LLVM)           | low to very low                                    | medium        | low                                                |
 
 ## Key features design
+
+### Scheduler overhead/contention
+
+#### Distributed task queues
+To enable fine-grained parallelism, i.e. parallelizing tasks in the microseconds range, it's critical to reduce contention.
+A global task queue will be hammered by N threads, leading to each thrashing each other caches.
+In contrast, distributed task queues with random victim selection significantly reduce contention.
+
+#### Memory allocation
+Another source of overhead is the allocator, the worst case for allocators is allocation in a thread and deallocation in another, especially if the
+allocating thread is always the same. Unfortunately this is common in producer-consumer workloads.
+Besides multithreaded allocations/deallocations will trigger costly atomic-swaps and possibly fragmentation.
+Minimizing allocations to the utmost will significantly help on fine-grained tasks.
+- Weave solved that problem by having 2 levels of cache: a memory-pool for tasks and futures and a lookaside list that caches tasks to reduce further pressure on the memory pool.
+- Nim-taskpools does not address this problem, it has an allocation overhead per tasks of 1 for std/tasks, 1 for the linked list that holds them, 1 for the result channel/flowvar.
+  Unlike GCC OpenMP which freezes on a fibonacci 40 benchmark, it can still finish but it's 20x slower than Weave.
+- Constantine's threadpool solves the problem by making everything intrusive to a task: the task env, the future, the linked list.
+In fact this solution is even faster than Weave's, probably due to significantly less page faults and cache misses.
+Note that Weave has an even faster mode when futures don't escape their function by allocating them on the stack but without compiler support (heap allocation elision) that restricts the programs you can write.
+
+### Load balancing for task parallelism
+
+When a worker runs out of task, it steals from others' task queues.
+They may steal one or multiple tasks.
+In case of severe load imbalance, a steal-half policy can quickly rebalance workers queue to the global average.
+This also helps reduce scheduler overhead by having logarithmically less steal attempts.
+However, it may lead to significantly more rebalancing if workers generate few tasks.
+
+Weave implements adaptative work-stealing with runtime selection of steal-one/steal-half
+- Embracing Explicit Communication in Work-Stealing Runtime Systems.\
+  Andreas Prell, 2016\
+  https://epub.uni-bayreuth.de/id/eprint/2990/
+
+Constantine's threadpool will likely adopt the same if the following task queues can be implemented with low overhead
+- Non-Blocking Steal-Half Work Queues\
+  Danny Hendler, Nir Shavit, 2002\
+  https://www.cs.bgu.ac.il/~hendlerd/papers/p280-hendler.pdf
 
 ### Load-balancing for data parallelism
 
@@ -108,20 +145,3 @@ This has 2 disadvantages:
   when awaiting a future, a thread sleeps on a local one.
   Hence if no work can be stolen, the waiter sleeps. But if work is then recreated, it stays sleeping as only the global futex is notified.
   Note that with hyperthreading, the sibling thread(s) can still use the core fully so throughput might not be impacted.
-
-### Scheduler overhead/contention
-
-To enable fine-grained parallelism, i.e. parallelizing tasks in the microseconds range, it's critical to reduce contention.
-A global task queue will be hammered by N threads, leading to each thrashing each other caches.
-In contrast, distributed task queues with random victim selection significantly reduce contention.
-
-Another source of overhead is the allocator, the worst case for allocators is allocation in a thread and deallocation in another, especially if the
-allocating thread is always the same. Unfortunately this is common in producer-consumer workloads.
-Besides multithreaded allocations/deallocations will trigger costly atomic-swaps and possibly fragmentation.
-Minimizing allocations to the utmost will significantly help on fine-grained tasks.
-- Weave solved that problem by having 2 levels of cache: a memory-pool for tasks and futures and a lookaside list that caches tasks to reduce further pressure on the memory pool.
-- Nim-taskpools does not address this problem, it has an allocation overhead per tasks of 1 for std/tasks, 1 for the linked list that holds them, 1 for the result channel/flowvar.
-  Unlike GCC OpenMP which freezes on a fibonacci 40 benchmark, it can still finish but it's 20x slower than Weave.
-- Constantine's threadpool solves the problem by making everything intrusive to a task: the task env, the future, the linked list.
-In fact this solution is even faster than Weave's, probably due to significantly less page faults and cache misses.
-Note that Weave has an even faster mode when futures don't escape their function by allocating them on the stack but without compiler support (heap allocation elision) that restricts the programs you can write.

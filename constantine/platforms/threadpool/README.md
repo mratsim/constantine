@@ -16,13 +16,11 @@ This threadpool will desirable properties are:
   and not dealing with threadpool contention, latencies and overheads.
 
 Compared to [Weave](https://github.com/mratsim/weave), here are the tradeoffs:
-- Constantine's threadpool only provide spawn/sync (task parallelism).\
-  There is no (extremely) optimized parallel for (data parallelism)\
-  or precise in/out dependencies (events / dataflow parallelism).
+- Constantine's threadpool provides spawn/sync (task parallelism)
+  and optimized parallelFor for (data parallelism).\
+  It however does not provide precise in/out dependencies (events / dataflow parallelism).
 - Constantine's threadpool has been significantly optimized to provide
-  overhead lower than Weave's default (and as low as Weave "lazy" + "alloca" allocation scheme)
-- Constantine's threadpool provides the same adaptative scheduling strategy as Weave
-  with additional enhancement (leapfrogging)
+  overhead lower than Weave's default (and as low as Weave "lazy" + "alloca" allocation scheme).
 
 Compared to [nim-taskpools](https://github.com/status-im), here are the tradeoffs:
 - Constantine does not use std/tasks:
@@ -36,3 +34,5 @@ Compared to [nim-taskpools](https://github.com/status-im), here are the tradeoff
 - Contention improvement, Constantine is entirely lock-free while Nim-taskpools need a lock+condition variable for putting threads to sleep
 - Powersaving improvement, threads sleep when awaiting for a task and there is no work available.
 - Scheduling improvement, Constantine's threadpool incorporate Weave's adaptative scheduling policy with additional enhancement (leapfrogging)
+
+See also [design.md](./docs/design.md)
