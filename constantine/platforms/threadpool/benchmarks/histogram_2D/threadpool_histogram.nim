@@ -260,6 +260,7 @@ proc main() =
 
   if sizeof(int) == 4:
     echo "Running on 32-bit. This benchmark is requires 64-bit."
+    return
 
   var
     matrixSize = 25000
