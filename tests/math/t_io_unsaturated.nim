@@ -42,7 +42,7 @@ proc testRoundtrip(curve: static Curve, gen: static RandomGen) =
   const bits = curve.getCurveBitwidth()
   const Excess = 2
   const UnsatBitwidth = WordBitWidth - Excess
-  const N = (bits + UnsatBitwidth-1) div UnsatBitwidth
+  const N = bits.ceilDiv_vartime(UnsatBitwidth)
 
   let a = rng.random_bigint(curve, gen)
   var u: LimbsUnsaturated[N, Excess]

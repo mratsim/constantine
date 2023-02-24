@@ -95,7 +95,7 @@ proc genCurveConstants(defs: seq[CurveParams]): NimNode =
         exported($curve & "_sexticTwist"),
         newLit curveDef.sexticTwist
       )
-    
+
     if curveDef.eq_form == TwistedEdwards and
          curveDef.coef_A.kind != NoCoef and curveDef.coef_D.kind != NoCoef:
       curveEllipticStmts.add newConstStmt(
@@ -117,8 +117,6 @@ proc genCurveConstants(defs: seq[CurveParams]): NimNode =
   )
 
   result.add curveEllipticStmts
-
-  # echo result.toStrLit()
 
 macro setupCurves(): untyped =
   result = genCurveConstants(curvesDefinitions)

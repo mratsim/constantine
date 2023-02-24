@@ -10,7 +10,7 @@ import
   system/ansi_c, std/[strformat, os, strutils, cpuinfo],
   # Library
   ../../threadpool
-  
+
 when not defined(windows):
   # bench
   import ../wtime
@@ -63,22 +63,31 @@ proc main() =
 
   # Staccato benches runtime init and exit as well
   when not defined(windows):
-    let start = wtime_usec()
+    let startRuntime = wtime_usec()
 
   tp = Threadpool.new()
+
+  when not defined(windows):
+    let startBench = wtime_usec()
+
   answer = test(depth, breadth)
+
+  when not defined(windows):
+    let stopBench = wtime_usec()
+
   tp.shutdown()
 
   when not defined(windows):
-    let stop = wtime_usec()
+    let stopRuntime = wtime_usec()
 
   echo "--------------------------------------------------------------------------"
-  echo "Scheduler:  Constantine's Threadpool"
-  echo "Benchmark:  dfs"
-  echo "Threads:    ", nthreads
+  echo "Scheduler:        Constantine's Threadpool"
+  echo "Benchmark:        dfs"
+  echo "Threads:          ", nthreads
   when not defined(windows):
-    echo "Time(us)    ", stop - start
-  echo "Output:     ", answer
+    echo "Time(us) runtime: ", stopRuntime - startRuntime
+    echo "Time(us) bench:   ", stopBench - startBench
+  echo "Output:           ", answer
   echo "--------------------------------------------------------------------------"
 
   quit 0

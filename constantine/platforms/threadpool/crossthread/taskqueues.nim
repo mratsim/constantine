@@ -76,7 +76,7 @@ proc peek*(tq: var Taskqueue): int =
   ##
   ## This is a non-locking operation.
   let # Handle race conditions
-    b = tq.back.load(moAcquire)
+    b = tq.back.load(moRelaxed)  # Only the producer peeks in the threadpool so moRelaxed is enough
     f = tq.front.load(moAcquire)
 
   if b >= f:
@@ -199,7 +199,7 @@ proc pop*(tq: var Taskqueue): ptr Task =
         # Empty queue, no thieves can have a pointer to an old retired buffer
         tq.garbageCollect()
 
-proc steal*(thiefID: uint32, tq: var Taskqueue): ptr Task =
+proc steal*(thiefID: int32, tq: var Taskqueue): ptr Task =
   ## Dequeue an item at the front. Takes ownership of the item
   ## This is intended for consumers.
   var f = tq.front.load(moAcquire)
@@ -244,7 +244,7 @@ proc stealHalfImpl(dst: var Buf, dstBack: int, src: var Taskqueue): int =
     if compareExchange(src.front, f, f+n, moSequentiallyConsistent, moRelaxed):
       return n
 
-proc stealHalf*(thiefID: uint32, dst: var Taskqueue, src: var Taskqueue): ptr Task =
+proc stealHalf*(thiefID: int32, dst: var Taskqueue, src: var Taskqueue): ptr Task =
   ## Dequeue up to half of the items in the `src` tq, fom the front.
   ## Return the last of those, or nil if none found
 

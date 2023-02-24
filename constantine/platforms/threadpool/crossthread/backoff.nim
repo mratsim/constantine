@@ -45,7 +45,7 @@ func initialize*(en: var EventNotifier) {.inline.} =
 func `=destroy`*(en: var EventNotifier) {.inline.} =
   en.futex.teardown()
 
-func `=`*(dst: var EventNotifier, src: EventNotifier) {.error: "An event notifier cannot be copied".}
+func `=copy`*(dst: var EventNotifier, src: EventNotifier) {.error: "An event notifier cannot be copied".}
 func `=sink`*(dst: var EventNotifier, src: EventNotifier) {.error: "An event notifier cannot be moved".}
 
 func prepareToPark*(en: var EventNotifier) {.inline.} =
@@ -176,7 +176,7 @@ func initialize*(ec: var EventCount) {.inline.} =
 func `=destroy`*(ec: var EventCount) {.inline.} =
   ec.futex.teardown()
 
-proc sleepy*(ec: var Eventcount): ParkingTicket {.inline.} =
+proc sleepy*(ec: var Eventcount): ParkingTicket {.noInit, inline.} =
   ## To be called before checking if the condition to not sleep is met.
   ## Returns a ticket to be used when committing to sleep
   let prevState = ec.state.fetchAdd(kPreWait, moAcquireRelease)
@@ -209,11 +209,11 @@ proc wakeAll*(ec: var EventCount) {.inline.} =
   if (prev and kAnyWaiterMask) != 0:
     ec.futex.wakeAll()
 
-proc getNumWaiters*(ec: var EventCount): tuple[preSleep, committedSleep: uint32] {.inline.} =
+proc getNumWaiters*(ec: var EventCount): tuple[preSleep, committedSleep: int32] {.noInit, inline.} =
   ## Get the number of idle threads:
   ## (planningToSleep, committedToSleep)
   let waiters = ec.state.load(moAcquire)
-  result.preSleep = uint32((waiters and kPreWaitMask) shr kPreWaitShift)
-  result.committedSleep = uint32(waiters and kWaitMask)
+  result.preSleep = cast[int32]((waiters and kPreWaitMask) shr kPreWaitShift)
+  result.committedSleep = cast[int32](waiters and kWaitMask)
 
 {.pop.} # {.push raises:[], checks:off.}

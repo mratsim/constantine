@@ -7,6 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import std/macros
+import ../../ast_rebuilder
 
 # ############################################################
 #
@@ -33,33 +34,6 @@ func flag*[E: enum](e: varargs[E]): Flag[E] {.inline.} =
 # Macros
 # ------------------------------------------------------------
 
-proc replaceSymsByIdents*(ast: NimNode): NimNode =
-  proc inspect(node: NimNode): NimNode =
-    case node.kind:
-    of {nnkIdent, nnkSym}:
-      return ident($node)
-    of nnkEmpty:
-      return node
-    of nnkLiterals:
-      return node
-    of nnkHiddenStdConv:
-      if node[1].kind == nnkIntLit:
-        return node[1]
-      else:
-        expectKind(node[1], nnkSym)
-        return ident($node[1])
-    of nnkConv: # type conversion needs to be replaced by a function call in untyped AST
-      var rTree = nnkCall.newTree()
-      for child in node:
-        rTree.add inspect(child)
-      return rTree
-    else:
-      var rTree = node.kind.newTree()
-      for child in node:
-        rTree.add inspect(child)
-      return rTree
-  result = inspect(ast)
-
 macro replacePragmasByInline(procAst: typed): untyped =
   ## Replace pragmas by the inline pragma
   ## We need a separate "typed" macro
@@ -76,7 +50,7 @@ macro replacePragmasByInline(procAst: typed): untyped =
   result.add newProc(
     name = procAst.name,
     params = params,
-    body = procAst.body.replaceSymsByIdents(),
+    body = procAst.body.rebuildUntypedAst(),
     procType = nnkProcDef,
     pragmas = nnkPragma.newTree(ident"inline", ident"nimcall")
   )
@@ -84,19 +58,19 @@ macro replacePragmasByInline(procAst: typed): untyped =
   result.add nnkPragma.newTree(ident"pop")
 
 macro wrapOpenArrayLenType*(ty: typedesc, procAst: untyped): untyped =
-  ## Wraps pointer+len library calls in properly typed and converted openArray calls 
+  ## Wraps pointer+len library calls in properly typed and converted openArray calls
   ##
   ## ```
   ## {.push cdecl.}
   ## proc foo*(r: int, a: openArray[CustomType], b: int) {.wrapOpenArrayLenType: uint32, importc: "foo", dynlib: "libfoo.so".}
   ## {.pop.}
   ## ```
-  ## 
+  ##
   ## is transformed into
-  ## 
+  ##
   ## ```
   ## proc foo(r: int, a: ptr CustomType, aLen: uint32, b: int) {.cdecl, importc: "foo", dynlib: "libfoo.so".}
-  ## 
+  ##
   ## proc foo*(r: int, a: openArray[CustomType], b: int) {.inline.} =
   ##   foo(r, a[0].unsafeAddr, a.len.uint32, b)
   ## ```

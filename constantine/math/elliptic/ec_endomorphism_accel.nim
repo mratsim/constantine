@@ -61,7 +61,7 @@ func decomposeEndo*[M, scalBits, L: static int](
   static: doAssert scalBits >= L, "Cannot decompose a scalar smaller than a mini-scalar or the decomposition coefficient"
 
   # Equal when no window or no negative handling, greater otherwise
-  static: doAssert L >= (scalBits + M - 1) div M + 1
+  static: doAssert L >= scalBits.ceilDiv_vartime(M) + 1
   const w = F.C.getCurveOrderBitwidth().wordsRequired()
 
   when M == 2:
@@ -129,7 +129,7 @@ func decomposeEndo*[M, scalBits, L: static int](
 # (For example generating a public-key)
 
 type
-  Recoded[LengthInDigits: static int] = distinct array[(LengthInDigits + 7) div 8, byte]
+  Recoded[LengthInDigits: static int] = distinct array[LengthInDigits.ceilDiv_vartime(8), byte]
   GLV_SAC[M, LengthInDigits: static int] = array[M, Recoded[LengthInDigits]]
     ## GLV-Based Sign-Aligned-Column representation
     ## see Faz-Hernandez, 2013
@@ -319,7 +319,7 @@ func scalarMulEndo*[scalBits; EC](
     {.error: "Unconfigured".}
 
   # 2. Decompose scalar into mini-scalars
-  const L = (scalBits + M - 1) div M + 1 # Alternatively, negative can be handled with an extra "+1"
+  const L = scalBits.ceilDiv_vartime(M) + 1 # Alternatively, negative can be handled with an extra "+1"
   var miniScalars {.noInit.}: array[M, BigInt[L]]
   var negatePoints {.noInit.}: array[M, SecretBool]
   miniScalars.decomposeEndo(negatePoints, scalar, P.F)
@@ -473,7 +473,7 @@ func computeRecodedLength(bitWidth, window: int): int =
   # Strangely in the paper this doesn't depend
   # "m", the GLV decomposition dimension.
   # lw = ⌈log2 r/w⌉+1 (optionally a second "+1" to handle negative mini scalars)
-  let lw = (bitWidth + window - 1) div window + 1
+  let lw = bitWidth.ceilDiv_vartime(window) + 1
   result = (lw mod window) + lw
 
 func scalarMulGLV_m2w2*[scalBits; EC](

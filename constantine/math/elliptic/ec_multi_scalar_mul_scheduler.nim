@@ -599,7 +599,7 @@ when isMainModule:
     let c = inputSize.bestBucketBitSize(255, useSignedBuckets = true, useManualTuning = false)
     let twoPow = "2^"
     let numNZBuckets = 1 shl (c-1)
-    let collisionMapSize = ((1 shl (c-1))+63) div 64 * 8 # Stored in BigInt[1 shl (c-1)]
+    let collisionMapSize = ceilDiv_vartime(1 shl (c-1), 64) * 8 # Stored in BigInt[1 shl (c-1)]
     let queueSize = 4*c*c - 16*c - 128
     let numCollisions = float(inputSize*queueSize) / float(numNZBuckets)
     let collisionPercentage = numCollisions / float(inputSize) * 100

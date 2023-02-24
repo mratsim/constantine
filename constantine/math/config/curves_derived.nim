@@ -116,5 +116,3 @@ macro genDerivedConstants*(mode: static DerivedConstantMode): untyped =
         M
       )
     )
-
-  # echo result.toStrLit()

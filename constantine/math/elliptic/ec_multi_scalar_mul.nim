@@ -44,7 +44,7 @@ func multiScalarMulImpl_reference_vartime[F, G; bits: static int](
   # Prologue
   # --------
   const numBuckets = 1 shl c - 1 # bucket 0 is unused
-  const numWindows = (bits + c - 1) div c
+  const numWindows = bits.ceilDiv_vartime(c)
   type EC = typeof(r)
 
   let miniMSMs = allocHeapArray(EC, numWindows)
@@ -376,7 +376,7 @@ func multiScalarMul_vartime*[bits: static int, F, G](
               elif F is Fp2: 4
               else: {.error: "Unconfigured".}
 
-    const L = (bits + M - 1) div M + 1
+    const L = bits.ceilDiv_vartime(M) + 1
     let splitCoefs   = allocHeapArray(array[M, BigInt[L]], N)
     let endoBasis    = allocHeapArray(array[M, ECP_ShortW_Aff[F, G]], N)
 

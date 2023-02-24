@@ -321,8 +321,6 @@ proc genFieldsConstants(defs: seq[CurveParams]): NimNode =
     exported("CurveOrderBitWidth"), MapCurveOrderBitWidth
   )
 
-  # echo result.toStrLit()
-
 macro declareCurves*(curves: untyped): untyped =
   ## Parse curve configuration and generates
   ##

@@ -67,7 +67,7 @@ func roundNextMultipleOf(x: int, n: static int): int {.inline.} =
     # n is a power of 2. (If compiler cannot prove that x>0 it does not make the optim)
     result = (x + n - 1) and not(n - 1)
   else:
-    result = ((x + n - 1) div n) * n
+    result = x.ceilDiv_vartime(n) * n
 
 # Stack allocation
 # ----------------------------------------------------------------------------------

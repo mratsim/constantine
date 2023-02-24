@@ -45,7 +45,7 @@ func computeBalancedChunks(start, stopEx, minChunkSize, maxChunkSize, targetNumC
     cutoff = totalIters mod numChunks
   elif baseChunkSize > maxChunkSize or (baseChunkSize == maxChunkSize and cutoff != 0):
     # After cutoff, we do baseChunkSize+1, and would run afoul of the maxChunkSize constraint (unless no remainder), hence ceildiv
-    numChunks = (totalIters + maxChunkSize - 1) div maxChunkSize # ceildiv
+    numChunks = totalIters.ceilDiv_vartime(maxChunkSize)
     baseChunkSize = totalIters div numChunks
     cutoff = totalIters mod numChunks
 

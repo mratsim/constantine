@@ -247,7 +247,7 @@ func random_long01Seq(rng: var RngState, a: var BigInt) =
   ## Initialize a bigint
   ## It is skewed towards producing strings of 1111... and 0000
   ## to trigger edge cases
-  var buf: array[(a.bits + 7) div 8, byte]
+  var buf: array[a.bits.ceilDiv_vartime(8), byte]
   rng.random_long01Seq(buf)
   let order = rng.sample_unsafe([bigEndian, littleEndian])
   if order == bigEndian:

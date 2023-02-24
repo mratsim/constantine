@@ -52,8 +52,25 @@ template debug*(body: untyped): untyped =
   when defined(debugConstantine):
     body
 
-func unreachable*() {.noReturn.} =
+proc builtin_unreachable(){.nodecl, importc: "__builtin_unreachable".}
+
+func unreachable*() {.noReturn, inline.} =
   doAssert false, "Unreachable"
+  when GCC_Compatible:
+    builtin_unreachable()
+
+# ############################################################
+#
+#                       Arithmetic
+#
+# ############################################################
+
+func ceilDiv_vartime*(a, b: auto): auto {.inline.} =
+  ## ceil division, to be used only on length or at compile-time
+  ## ceil(a / b)
+  # "LengthInDigits: static int" doesn't match "int"
+  # if "SomeInteger" is used instead of "autoi"
+  (a + b - 1) div b
 
 # ############################################################
 #

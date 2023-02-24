@@ -11,7 +11,7 @@ import ../../platforms/abstractions
 func wordsRequired*(bits: int): int {.compileTime.} =
   ## Compute the number of limbs required
   # from the **announced** bit length
-  (bits + WordBitWidth - 1) div WordBitWidth
+  bits.ceilDiv_vartime(WordBitWidth)
 
 type
   BigInt*[bits: static int] = object

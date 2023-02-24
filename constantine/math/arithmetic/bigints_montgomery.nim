@@ -142,7 +142,7 @@ func powMont*[mBits, eBits: static int](
   ##
   ## This is constant-time: the window optimization does
   ## not reveal the exponent bits or hamming weight
-  var expBE {.noInit.}: array[(ebits + 7) div 8, byte]
+  var expBE {.noInit.}: array[ebits.ceilDiv_vartime(8), byte]
   expBE.marshal(exponent, bigEndian)
 
   powMont(a, expBE, M, one, negInvModWord, windowSize, spareBits)
@@ -165,7 +165,7 @@ func powMontUnsafeExponent*[mBits, eBits: static int](
   ##
   ## This uses fixed window optimization
   ## A window size in the range [1, 5] must be chosen
-  var expBE {.noInit.}: array[(ebits + 7) div 8, byte]
+  var expBE {.noInit.}: array[ebits.ceilDiv_vartime(8), byte]
   expBE.marshal(exponent, bigEndian)
 
   powMontUnsafeExponent(a, expBE, M, one, negInvModWord, windowSize, spareBits)

@@ -355,7 +355,7 @@ func marshal*(
   ## or zero-padded right for little-endian.
   ## I.e least significant bit is aligned to buffer boundary
   debug:
-    doAssert dst.len >= (BigInt.bits + 7) div 8, block:
+    doAssert dst.len >= BigInt.bits.ceilDiv_vartime(8), block:
       "BigInt -> Raw int conversion: destination buffer is too small\n" &
       "  bits: " & $BigInt.bits & "\n" &
       "  bytes allocated: " & $dst.len & '\n'
@@ -389,7 +389,7 @@ func fromHex*(a: var BigInt, s: string) =
   ## Can work at compile-time to declare curve moduli from their hex strings
 
   # 1. Convert to canonical uint
-  const canonLen = (BigInt.bits + 8 - 1) div 8
+  const canonLen = BigInt.bits.ceilDiv_vartime(8)
   var bytes: array[canonLen, byte]
   bytes.paddedFromHex(s, bigEndian)
 
@@ -428,7 +428,7 @@ func appendHex*(dst: var string, big: BigInt, order: static Endianness = bigEndi
   ## This function may allocate.
 
   # 1. Convert Big Int to canonical uint
-  const canonLen = (big.bits + 8 - 1) div 8
+  const canonLen = big.bits.ceilDiv_vartime(8)
   var bytes: array[canonLen, byte]
   marshal(bytes, big, order)
 

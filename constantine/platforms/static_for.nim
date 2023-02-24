@@ -32,16 +32,14 @@ macro staticFor*(idx: untyped{nkIdent}, start, stopEx: static int, body: untyped
   for i in start ..< stopEx:
     result.add nnkBlockStmt.newTree(
       ident("unrolledIter_" & $idx & $i),
-      body.replaceNodes(idx, newLit i)
-    )
+      body.replaceNodes(idx, newLit i))
 
 macro staticForCountdown*(idx: untyped{nkIdent}, start, stopIncl: static int, body: untyped): untyped =
   result = newStmtList()
   for i in countdown(start, stopIncl):
     result.add nnkBlockStmt.newTree(
       ident("unrolledIter_" & $idx & $i),
-      body.replaceNodes(idx, newLit i)
-    )
+      body.replaceNodes(idx, newLit i))
 
 {.experimental: "dynamicBindSym".}
 
@@ -62,5 +60,4 @@ macro staticFor*(ident: untyped{nkIdent}, choices: typed, body: untyped): untype
   for choice in choices:
     result.add nnkBlockStmt.newTree(
       ident($ident & "_" & $choice.intVal),
-      body.replaceNodes(ident, choice)
-    )
+      body.replaceNodes(ident, choice))

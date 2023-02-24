@@ -38,7 +38,7 @@ func scalarMul_doubleAdd_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime
   ## This MUST NOT be used with secret data.
   ##
   ## This is highly VULNERABLE to timing attacks and power analysis attacks.
-  var scalarCanonical: array[(scalar.bits+7) div 8, byte]
+  var scalarCanonical: array[scalar.bits.ceilDiv_vartime(8), byte]
   scalarCanonical.marshal(scalar, bigEndian)
 
   var Paff {.noinit.}: affine(EC)

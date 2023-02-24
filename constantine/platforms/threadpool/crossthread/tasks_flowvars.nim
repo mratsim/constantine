@@ -9,7 +9,7 @@
 import
   std/atomics,
   ../instrumentation,
-  ../../allocs,
+  ../../allocs, ../../primitives,
   ./backoff
 
 # Tasks have an efficient design so that a single heap allocation
@@ -29,9 +29,9 @@ type
   Task* = object
     # Intrusive metadata
     # ------------------
-    parent*: ptr Task # When a task is awaiting, a thread can quickly prioritize the direct child of a task
+    parent*: ptr Task        # When a task is awaiting, a thread can quickly prioritize the direct child of a task
 
-    thiefID*: Atomic[uint32] # ID of the worker that stole and run the task. For leapfrogging.
+    thiefID*: Atomic[int32]  # ID of the worker that stole and run the task. For leapfrogging.
 
     # Result sync
     # ------------------
@@ -39,21 +39,50 @@ type
     completed*: Atomic[bool]
     waiter*: Atomic[ptr EventNotifier]
 
+    # Data parallelism
+    # ------------------
+    isFirstIter*: bool       # Awaitable for-loops return true for first iter. Loops are split before first iter.
+    loopStart*: int
+    loopStop*: int
+    loopStride*: int
+    loopStepsLeft*: int
+    reductionDAG*: ptr ReductionDagNode # For parallel loop reduction, merge with other range result
+
+    # Dataflow parallelism
+    # --------------------
+    dependsOnEvent: bool     # We cannot leapfrog a task triggered by an event
+
     # Execution
     # ------------------
-    fn*: proc (param: pointer) {.nimcall, gcsafe, raises: [].}
-    # destroy*: proc (param: pointer) {.nimcall, gcsafe.} # Constantine only deals with plain old data
-    data*{.align:sizeof(int).}: UncheckedArray[byte]
+    fn*: proc (env: pointer) {.nimcall, gcsafe, raises: [].}
+    # destroy*: proc (env: pointer) {.nimcall, gcsafe.} # Constantine only deals with plain old data
+    envSize*: int32
+    env*{.align:sizeof(int).}: UncheckedArray[byte]
 
   Flowvar*[T] = object
+    ## A Flowvar is a placeholder for a future result that may be computed in parallel
     task: ptr Task
 
-const SentinelThief* = 0xFACADE'u32
+  ReductionDagNode* = object
+    ## In a parallel reduction, when a loop a split the worker
+    ## keeps track of the tasks to gather results from in a private task-local linked-list.
+    ## Those forms a global computation directed acyclic graph
+    ## with the initial parallel reduction task as root.
+    # Note: While this requires an extra allocation per split
+    #       the alternative, making an intrusive linked-list of reduction tasks
+    #       require synchronization between threads.
+    task*: ptr Task
+    next*: ptr ReductionDagNode
 
-proc new*(
+# Tasks
+# -------------------------------------------------------------------------
+
+const SentinelThief* = 0xFACADE'i32
+
+proc newSpawn*(
        T: typedesc[Task],
        parent: ptr Task,
-       fn: proc (param: pointer) {.nimcall, gcsafe.}): ptr Task {.inline.} =
+       fn: proc (env: pointer) {.nimcall, gcsafe, raises: [].}): ptr Task =
 
   const size = sizeof(T)
 
@@ -64,15 +93,25 @@ proc new*(
   result.completed.store(false, moRelaxed)
   result.waiter.store(nil, moRelaxed)
   result.fn = fn
+  result.envSize = 0
 
-proc new*(
+  result.isFirstIter = false
+  result.loopStart = 0
+  result.loopStop = 0
+  result.loopStride = 0
+  result.loopStepsLeft = 0
+  result.reductionDAG = nil
+
+  result.dependsOnEvent = false
+
+proc newSpawn*(
        T: typedesc[Task],
        parent: ptr Task,
-       fn: proc (param: pointer) {.nimcall, gcsafe, raises: [].},
-       params: auto): ptr Task {.inline.} =
+       fn: proc (env: pointer) {.nimcall, gcsafe, raises: [].},
+       env: auto): ptr Task =
 
   const size = sizeof(T) + # size without Unchecked
-               sizeof(params)
+               sizeof(env)
 
   result = allocHeapUnchecked(T, size)
   result.parent = parent
@@ -81,7 +120,78 @@ proc new*(
   result.completed.store(false, moRelaxed)
   result.waiter.store(nil, moRelaxed)
   result.fn = fn
-  cast[ptr[type params]](result.data)[] = params
+  result.envSize = int32 sizeof(env)
+  cast[ptr[type env]](result.env)[] = env
+
+  result.isFirstIter = false
+  result.loopStart = 0
+  result.loopStop = 0
+  result.loopStride = 0
+  result.loopStepsLeft = 0
+  result.reductionDAG = nil
+
+  result.dependsOnEvent = false
+
+proc newLoop*(
+       T: typedesc[Task],
+       parent: ptr Task,
+       start, stop, stride: int,
+       isFirstIter: bool,
+       fn: proc (env: pointer) {.nimcall, gcsafe, raises: [].}): ptr Task =
+  const size = sizeof(T)
+  preCondition: start < stop
+
+  result = allocHeapUnchecked(T, size)
+  result.parent = parent
+  result.thiefID.store(SentinelThief, moRelaxed)
+  result.hasFuture = false
+  result.completed.store(false, moRelaxed)
+  result.waiter.store(nil, moRelaxed)
+  result.fn = fn
+  result.envSize = 0
+
+  result.isFirstIter = isFirstIter
+  result.loopStart = start
+  result.loopStop = stop
+  result.loopStride = stride
+  result.loopStepsLeft = ceilDiv_vartime(stop-start, stride)
+  result.reductionDAG = nil
+
+  result.dependsOnEvent = false
+
+proc newLoop*(
+       T: typedesc[Task],
+       parent: ptr Task,
+       start, stop, stride: int,
+       isFirstIter: bool,
+       fn: proc (env: pointer) {.nimcall, gcsafe, raises: [].},
+       env: auto): ptr Task =
+
+  const size = sizeof(T) + # size without Unchecked
+               sizeof(env)
+  preCondition: start < stop
+
+  result = allocHeapUnchecked(T, size)
+  result.parent = parent
+  result.thiefID.store(SentinelThief, moRelaxed)
+  result.hasFuture = false
+  result.completed.store(false, moRelaxed)
+  result.waiter.store(nil, moRelaxed)
+  result.fn = fn
+  result.envSize = int32(sizeof(env))
+  cast[ptr[type env]](result.env)[] = env
+
+  result.isFirstIter = isFirstIter
+  result.loopStart = start
+  result.loopStop = stop
+  result.loopStride = stride
+  result.loopStepsLeft = ceilDiv_vartime(stop-start, stride)
+  result.reductionDAG = nil
+
+  result.dependsOnEvent = false
+
+# Flowvars
+# -------------------------------------------------------------------------
 
 # proc `=copy`*[T](dst: var Flowvar[T], src: Flowvar[T]) {.error: "Futures/Flowvars cannot be copied".}
 
@@ -91,9 +201,9 @@ proc newFlowVar*(T: typedesc, task: ptr Task): Flowvar[T] {.inline.} =
 
   # Task with future references themselves so that readyWith can be called
   # within the constructed
-  #   proc async_fn(param: pointer) {.nimcall.}
-  # that can only access data
-  cast[ptr ptr Task](task.data.addr)[] = task
+  #   proc threadpoolSpawn_fn(env: pointer) {.nimcall.}
+  # that can only access env
+  cast[ptr ptr Task](task.env.addr)[] = task
 
 proc cleanup*(fv: var Flowvar) {.inline.} =
   fv.task.freeHeap()
@@ -117,13 +227,24 @@ func readyWith*[T](task: ptr Task, childResult: T) {.inline.} =
   ## Send the Flowvar result from the child thread processing the task
   ## to its parent thread.
   precondition: not task.completed.load(moAcquire)
-  cast[ptr (ptr Task, T)](task.data.addr)[1] = childResult
+  cast[ptr (ptr Task, T)](task.env.addr)[1] = childResult
   task.completed.store(true, moRelease)
 
-proc sync*[T](fv: sink Flowvar[T]): T {.inline, gcsafe.} =
+proc sync*[T](fv: sink Flowvar[T]): T {.noInit, inline, gcsafe.} =
   ## Blocks the current thread until the flowvar is available
   ## and returned.
   ## The thread is not idle and will complete pending tasks.
   mixin completeFuture
+  if fv.task.isNil:
+    zeroMem(result.addr, sizeof(T))
+    return
   completeFuture(fv, result)
   cleanup(fv)
+
+# ReductionDagNodes
+# -------------------------------------------------------------------------
+
+proc newReductionDagNode*(task: ptr Task, next: ptr ReductionDagNode): ptr ReductionDagNode {.inline.} =
+  result = allocHeap(ReductionDagNode)
+  result.next = next
+  result.task = task
