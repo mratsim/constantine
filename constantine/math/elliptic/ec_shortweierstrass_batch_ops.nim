@@ -236,7 +236,7 @@ func affineAdd*[F; G: static Subgroup](
 
 func accum_half_vartime[F; G: static Subgroup](
        points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
-       len: uint) {.noInline, tags:[VarTime, Alloca].} =
+       len: int) {.noInline, tags:[VarTime, Alloca].} =
   ## Affine accumulation of half the points into the other half
   ## Warning ⚠️ : variable-time
   ##
@@ -252,7 +252,7 @@ func accum_half_vartime[F; G: static Subgroup](
 
   debug: doAssert len and 1 == 0, "There must be an even number of points"
 
-  let N = int(len div 2)
+  let N = len shr 1
   let lambdas = allocStackArray(tuple[num, den: F], N)
 
   # Step 1: Compute numerators and denominators of λᵢ = λᵢ_num / λᵢ_den
@@ -368,13 +368,19 @@ template `+=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_Shor
   # we create a local `+=` for this module only
   madd_vartime(P, P, Q)
 
-func accumSum_chunk_vartime[F; G: static Subgroup](
+func accumSum_chunk_vartime*[F; G: static Subgroup](
        r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G] or ECP_ShortW_JacExt[F, G]),
-       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], len: uint) =
+       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], len: int) {.noInline, tags:[VarTime, Alloca].} =
   ## Accumulate `points` into r.
   ## `r` is NOT overwritten
   ## r += ∑ points
-  ## `points` are destroyed
+  ##
+  ## `len` should be chosen so that `len` points
+  ## use cache efficiently
+
+  let accumulators = allocStackArray(ECP_ShortW_Aff[F, G], len)
+  let size = len * sizeof(ECP_ShortW_Aff[F, G])
+  copyMem(accumulators[0].addr, points[0].unsafeAddr, size)
 
   const minNumPointsSerial = 16
   var n = len
@@ -392,12 +398,12 @@ func accumSum_chunk_vartime[F; G: static Subgroup](
     n = n div 2
 
   # Tail
-  for i in 0'u ..< n:
+  for i in 0 ..< n:
     r += points[i]
 
 func accum_batch_vartime[F; G: static Subgroup](
        r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G] or ECP_ShortW_JacExt[F, G]),
-       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], pointsLen: int) {.noInline, tags:[VarTime, Alloca].} =
+       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], pointsLen: int) =
   ## Batch accumulation of `points` into `r`
   ## `r` is accumulated into
 
@@ -423,14 +429,9 @@ func accum_batch_vartime[F; G: static Subgroup](
   const maxTempMem = 262144 # 2¹⁸ = 262144
   const maxStride = maxTempMem div sizeof(ECP_ShortW_Aff[F, G])
 
-  let n = min(maxStride, pointsLen)
-  let accumulators = allocStackArray(ECP_ShortW_Aff[F, G], n)
-
   for i in countup(0, pointsLen-1, maxStride):
     let n = min(maxStride, pointsLen - i)
-    let size = n * sizeof(ECP_ShortW_Aff[F, G])
-    copyMem(accumulators[0].addr, points[i].unsafeAddr, size)
-    r.accumSum_chunk_vartime(accumulators, uint n)
+    r.accumSum_chunk_vartime(points +% i, n)
 
 func sum_reduce_vartime*[F; G: static Subgroup](
        r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G] or ECP_ShortW_JacExt[F, G]),
@@ -477,8 +478,7 @@ func consumeBuffer[EC, F; G: static Subgroup; AccumMax: static int](
   if ctx.cur == 0:
     return
 
-  let lambdas = allocStackArray(tuple[num, den: F], ctx.cur.int)
-  ctx.accum.accumSum_chunk_vartime(ctx.buffer.asUnchecked(), lambdas, ctx.cur.uint)
+  ctx.accum.accumSum_chunk_vartime(ctx.buffer.asUnchecked(), ctx.cur)
   ctx.cur = 0
 
 func update*[EC, F, G; AccumMax: static int](

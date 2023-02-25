@@ -66,7 +66,7 @@ proc rebuildUntypedAst*(ast: NimNode, dropRootStmtList = false): NimNode =
           return rTree
       else:
         return defaultMultipleChildren(node)
-    of nnkClosedSymChoice:
+    of {nnkOpenSymChoice, nnkClosedSymChoice}:
       return rebuild(node[0])
     else:
       return defaultMultipleChildren(node)

@@ -66,6 +66,8 @@ type
     env*{.align:sizeof(int).}: UncheckedArray[byte]
 
   Flowvar*[T] = object
+    # Flowvar is a public object, but we don't want
+    # end-user to access the underlying task, so keep the field private.
     task: ptr Task
 
   ReductionDagNode* = object
@@ -290,13 +292,13 @@ func readyWith*[T](task: ptr Task, childResult: T) {.inline.} =
   precondition: not task.isCompleted()
   cast[ptr (ptr Task, T)](task.env.addr)[1] = childResult
 
-proc sync*[T](fv: sink Flowvar[T]): T {.noInit, inline, gcsafe.} =
-  ## Blocks the current thread until the flowvar is available
-  ## and returned.
-  ## The thread is not idle and will complete pending tasks.
-  mixin completeFuture
-  completeFuture(fv, result)
-  cleanup(fv)
+func copyResult*[T](dst: var T, fv: FlowVar[T]) {.inline.} =
+  ## Copy the result of a ready Flowvar to `dst`
+  dst = cast[ptr (ptr Task, T)](fv.task.env.addr)[1]
+
+func getTask*[T](fv: FlowVar[T]): ptr Task {.inline.} =
+  ## Copy the result of a ready Flowvar to `dst`
+  fv.task
 
 # ReductionDagNodes
 # -------------------------------------------------------------------------
