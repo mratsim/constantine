@@ -10,7 +10,7 @@ import
   std/atomics,
   ../instrumentation,
   ../../allocs,
-  ./backoff
+  ../primitives/futexes
 
 # Tasks have an efficient design so that a single heap allocation
 # is required per `spawn`.
@@ -26,19 +26,33 @@ import
 # (The name future is already used for IO scheduling)
 
 type
+  TaskState = object
+    ## This state allows synchronization between:
+    ## - a waiter that may sleep if no work and task is incomplete
+    ## - a thief that completes the task
+    ## - a waiter that frees task memory
+    ## - a waiter that will pick up the task continuation
+    ##
+    ## Supports up to 2¹⁵ = 32768 threads
+    completed: Futex
+    synchro: Atomic[uint32]
+    # type synchro = object
+    #   canBeFreed {.bitsize:  1.}: uint32 - Transfer ownership from thief to waiter
+    #   pad        {.bitsize:  1.}: uint32
+    #   waiterID   {.bitsize: 15.}: uint32 - ID of the waiter blocked on the task completion.
+    #   thiefID    {.bitsize: 15.}: uint32 - ID of the worker that stole and run the task. For leapfrogging.
+
   Task* = object
     # Synchronization
     # ------------------
-    parent*: ptr Task        # When a task is awaiting, a thread can quickly prioritize the direct child of a task
-    thiefID*: Atomic[int32]  # ID of the worker that stole and run the task. For leapfrogging.
-    hasFuture*: bool         # Ownership: if a task has a future, the future deallocates it. Otherwise the worker thread does.
-    completed*: Atomic[bool]
-    waiter*: Atomic[ptr EventNotifier]
+    state: TaskState
+    parent*: ptr Task  # Latency: When a task is awaited, a thread can quickly prioritize its direct children.
+    hasFuture*: bool   # Ownership: if a task has a future, the future deallocates it. Otherwise the worker thread does.
 
     # Data parallelism
     # ------------------
-    isFirstIter*: bool       # Awaitable for-loops return true for first iter. Loops are split before first iter.
-    envSize*: int32          # This is used for splittable loop
+    isFirstIter*: bool # Load-Balancing: New loops are split before first iter. Split loops are run once before reconsidering split.
+    envSize*: int32    # Metadata: In splittable loops we need to copy the `env` upon splitting
     loopStart*: int
     loopStop*: int
     loopStride*: int
@@ -65,10 +79,89 @@ type
     task*: ptr Task
     next*: ptr ReductionDagNode
 
-# Tasks
+# Task State
 # -------------------------------------------------------------------------
 
-const SentinelThief* = 0xFACADE'i32
+# Tasks have the following lifecycle:
+# - A task creator that schedule a task on its queue
+# - A task runner, task creator or thief, that runs the task
+# - Once the task is finished:
+#   - if the task has no future, the task runner frees the task
+#   - if the task has a future,
+#     - the task runner can immediately pick up new work
+#     - the awaiting thread frees the task
+#     - the awaiting thread might be sleeping and need to be woken up.
+#
+# There is a delicate dance as we are need to prevent 2 issues:
+#
+# 1. A deadlock:        if the waiter is never woken up after the thief completes the task
+# 2. A use-after-free:  if the thief tries to access the task after the waiter frees it.
+#
+# To solve 1, we need to set a `completed` flag, then check again if the waiter parked before.
+# To solve 2, we either need to ensure that after the `completed` flag is set, the task runner
+#             doesn't access the task anymore which is impossible due to 1;
+#             or we have the waiter spinlock on another flag `canBeFreed`.
+
+const # bitfield setup
+  kCanBeFreedShift = 31
+  kCanBeFreed      = 1'u32 shl kCanBeFreedShift
+  kCanBeFreedMask  = kCanBeFreed   # 0x80000000
+
+  kWaiterShift     = 15
+  kThiefMask       = (1'u32 shl kWaiterShift) - 1 # 0x00007FFF
+  kWaiterMask      = kThiefMask shl kWaiterShift  # 0x3FFF8000
+
+  SentinelWaiter = high(uint32) and kWaiterMask
+  SentinelThief* = high(uint32) and kThiefMask
+
+proc initSynchroState*(task: ptr Task) {.inline.} =
+  task.state.completed.store(0, moRelaxed)
+  task.state.synchro.store(SentinelWaiter or SentinelThief, moRelaxed)
+
+# Flowvar synchronization
+# -----------------------
+
+proc isGcReady*(task: ptr Task): bool {.inline.} =
+  ## Check if task can be freed by the waiter if it was stolen
+  (task.state.synchro.load(moAcquire) and kCanBeFreedMask) != 0
+
+proc setGcReady*(task: ptr Task) {.inline.} =
+  ## Thief transfers full task ownership to waiter
+  discard task.state.synchro.fetchAdd(kCanBeFreed, moRelease)
+
+proc isCompleted*(task: ptr Task): bool {.inline.} =
+  ## Check task completion
+  task.state.completed.load(moAcquire) != 0
+
+proc setCompleted*(task: ptr Task) {.inline.} =
+  ## Set a task to `complete`
+  ## Wake a waiter thread if there is one
+  task.state.completed.store(1, moRelaxed)
+  fence(moSequentiallyConsistent)
+  let waiter = task.state.synchro.load(moRelaxed)
+  if (waiter and kWaiterMask) != SentinelWaiter:
+    task.state.completed.wake()
+
+proc sleepUntilComplete*(task: ptr Task, waiterID: int32) {.inline.} =
+  ## Sleep while waiting for task completion
+  let waiter = (cast[uint32](waiterID) shl kWaiterShift) - SentinelWaiter
+  discard task.state.synchro.fetchAdd(waiter, moRelaxed)
+  fence(moAcquire)
+  while task.state.completed.load(moRelaxed) == 0:
+    task.state.completed.wait(0)
+
+# Leapfrogging synchronization
+# ----------------------------
+
+proc getThief*(task: ptr Task): uint32 {.inline.} =
+  task.state.synchro.load(moAcquire) and kThiefMask
+
+proc setThief*(task: ptr Task, thiefID: int32) {.inline.} =
+  let thief = cast[uint32](thiefID) - SentinelThief
+  discard task.state.synchro.fetchAdd(thief, moRelease)
+
+# Tasks
+# -------------------------------------------------------------------------
 
 proc newSpawn*(
        T: typedesc[Task],
@@ -79,11 +172,9 @@ proc newSpawn*(
   const size = sizeof(T)
 
   result = allocHeapUnchecked(T, size)
+  result.initSynchroState()
   result.parent = parent
-  result.thiefID.store(SentinelThief, moRelaxed)
   result.hasFuture = false
-  result.completed.store(false, moRelaxed)
-  result.waiter.store(nil, moRelaxed)
   result.fn = fn
 
 proc newSpawn*(
@@ -96,11 +187,9 @@ proc newSpawn*(
                sizeof(env)
 
   result = allocHeapUnchecked(T, size)
+  result.initSynchroState()
   result.parent = parent
-  result.thiefID.store(SentinelThief, moRelaxed)
   result.hasFuture = false
-  result.completed.store(false, moRelaxed)
-  result.waiter.store(nil, moRelaxed)
   result.fn = fn
   cast[ptr[type env]](result.env)[] = env
 
@@ -120,11 +209,9 @@ proc newLoop*(
   preCondition: start < stop
 
   result = allocHeapUnchecked(T, size)
+  result.initSynchroState()
   result.parent = parent
-  result.thiefID.store(SentinelThief, moRelaxed)
   result.hasFuture = false
-  result.completed.store(false, moRelaxed)
-  result.waiter.store(nil, moRelaxed)
   result.fn = fn
   result.envSize = 0
 
@@ -148,11 +235,9 @@ proc newLoop*(
   preCondition: start < stop
 
   result = allocHeapUnchecked(T, size)
+  result.initSynchroState()
   result.parent = parent
-  result.thiefID.store(SentinelThief, moRelaxed)
   result.hasFuture = false
-  result.completed.store(false, moRelaxed)
-  result.waiter.store(nil, moRelaxed)
   result.fn = fn
   result.envSize = int32(sizeof(env))
   cast[ptr[type env]](result.env)[] = env
@@ -180,6 +265,8 @@ proc newFlowVar*(T: typedesc, task: ptr Task): Flowvar[T] {.inline.} =
   cast[ptr ptr Task](task.env.addr)[] = task
 
 proc cleanup*(fv: var Flowvar) {.inline.} =
+  while not fv.task.isGcReady():
+    cpuRelax()
   fv.task.freeHeap()
   fv.task = nil
 
@@ -195,14 +282,13 @@ func isReady*[T](fv: Flowvar[T]): bool {.inline.} =
   ## In that case `sync` will not block.
   ## Otherwise the current will block to help on all the pending tasks
   ## until the Flowvar is ready.
-  fv.task.completed.load(moAcquire)
+  fv.task.isCompleted()
 
 func readyWith*[T](task: ptr Task, childResult: T) {.inline.} =
   ## Send the Flowvar result from the child thread processing the task
   ## to its parent thread.
-  precondition: not task.completed.load(moAcquire)
+  precondition: not task.isCompleted()
   cast[ptr (ptr Task, T)](task.env.addr)[1] = childResult
-  task.completed.store(true, moRelease)
 
 proc sync*[T](fv: sink Flowvar[T]): T {.noInit, inline, gcsafe.} =
   ## Blocks the current thread until the flowvar is available
