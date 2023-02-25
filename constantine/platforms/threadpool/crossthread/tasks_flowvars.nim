@@ -265,10 +265,8 @@ proc newFlowVar*(T: typedesc, task: ptr Task): Flowvar[T] {.inline.} =
   cast[ptr ptr Task](task.env.addr)[] = task
 
 proc cleanup*(fv: var Flowvar) {.inline.} =
-  debug: log("Worker N/A: waiting to free task 0x%.08x (canBeFreed %d, thiefID %d)\n", fv.task, fv.task.isGcReady(), fv.task.getThief())
   while not fv.task.isGcReady():
     cpuRelax()
-  debug: log("Worker N/A: ready to free task 0x%.08x (canBeFreed %d, thiefID %d)\n", fv.task, fv.task.isGcReady(), fv.task.getThief())
   fv.task.freeHeap()
   fv.task = nil
 
