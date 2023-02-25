@@ -113,7 +113,8 @@ Instead we can have each thread start working and use backpressure to lazily eva
 ### Backoff workers when awaiting a future
 
 This problem is quite tricky:
-- For latency we want the worker to continue as soon as the future is completed. This might also create more work and expose more parallelism opportunities (in recursive divide-and-conquer algorithms for example)
+- For latency we want the worker to continue as soon as the future is completed. This might also create more work and expose more parallelism opportunities (in recursive divide-and-conquer algorithms for example).\
+  Note that with hyperthreading, the sibling thread(s) can still use the core fully so throughput might not be impacted.
 - For throughput, and because a scheduler is optimal only when greedy (i.e. within 2x of the best schedule, see Cilk paper), we want an idle thread to take any available work ASAP.
   - but what if that worker ends up with work that blocks it for a long-time? It may lead to work starvation.
 - There is no robust, cross-platform API, to wake a specific thread awaiting on a futex or condition variable.
@@ -136,12 +137,13 @@ This problem is quite tricky:
   - Using continuations:
     We could just store a continuation in the future so the thread that completes the future picks up the continuation.
 
-The workaround for now is just to work on any available tasks to maximize throughput then sleep.
-This has 2 disadvantages:
-- For coarse-grain parallelism, if the  waiting thread steals a long task.
-  However, coarse-grain parallelism is easier to split into multiple tasks,
-  while exposing fine-grain parallelism and properly handling with its overhead is the usual problem.
-- As we can't wake a specific thread on a common futex or condition variable,
-  when awaiting a future, a thread sleeps on a local one.
-  Hence if no work can be stolen, the waiter sleeps. But if work is then recreated, it stays sleeping as only the global futex is notified.
-  Note that with hyperthreading, the sibling thread(s) can still use the core fully so throughput might not be impacted.
+Besides design issues, there are also engineering issues as we can't wake a specific thread on a common futex or condition variable.
+- Either a thread sleeps on a locally owned one, but how to communicate its address to the thief?
+  And how to synchronize freeing the task memory?
+  In particular, if we use the task as the medium, how to avoid race condition where:
+  task is completed by thief, task memory is freed by waiter, thief tries to get the waiter futex/condition variable
+  and triggers a use-after-free.
+- or its sleeps on the global and each stolen completed task triggers a wakeAll
+- or we create a backoff data structure where specific waiters can be woken up.
+
+Our solution is to embed the backoff structure in the task and add an additional flag to notify when the task can be freed safely.
