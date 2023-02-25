@@ -210,4 +210,4 @@ proc steal*(thiefID: int32, tq: var Taskqueue): ptr Task =
     if not compareExchange(tq.front, f, f+1, moSequentiallyConsistent, moRelaxed):
       # Failed race.
       return nil
-    result.thiefID.store(thiefID, moRelease)
+    result.setThief(thiefID)

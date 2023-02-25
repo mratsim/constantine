@@ -10,71 +10,7 @@ import
   std/atomics,
   ../primitives/futexes
 
-# We implement 2 datastructures to put threads to sleep:
-# 1. An event notifier to put an awaiting thread to sleep when the task they require is worked on by another thread
-# 2. An eventcount to put an idle thread to sleep
-
 {.push raises:[], checks:off.}
-
-# ############################################################
-#
-#                      Event Notifier
-#
-# ############################################################
-
-# Formal verification at: https://github.com/mratsim/weave/blob/7682784/formal_verification/event_notifiers.tla#L76-L109
-
-type
-  EventNotifier* = object
-    ## Multi Producers, Single Consumer event notification
-    ## This is can be seen as a wait-free condition variable for producers
-    ## that avoids them spending time in expensive kernel land due to mutexes.
-    # ---- Consumer specific ----
-    ticket{.align: 64.}: uint8  # A ticket for the consumer to sleep in a phase
-    # ---- Contention ---- no real need for padding as cache line should be reloaded in case of contention anyway
-    futex: Futex                # A Futex (atomic int32 that can put thread to sleep)
-    phase: Atomic[uint8]        # A binary timestamp, toggles between 0 and 1 (but there is no atomic "not")
-    signaled: Atomic[bool]      # Signaling condition
-
-func initialize*(en: var EventNotifier) {.inline.} =
-  en.futex.initialize()
-  en.ticket = 0
-  en.phase.store(0, moRelaxed)
-  en.signaled.store(false, moRelaxed)
-
-func `=destroy`*(en: var EventNotifier) {.inline.} =
-  en.futex.teardown()
-
-func `=copy`*(dst: var EventNotifier, src: EventNotifier) {.error: "An event notifier cannot be copied".}
-func `=sink`*(dst: var EventNotifier, src: EventNotifier) {.error: "An event notifier cannot be moved".}
-
-func prepareToPark*(en: var EventNotifier) {.inline.} =
-  ## The consumer intends to sleep soon.
-  ## This must be called before the formal notification
-  ## via a channel.
-  if not en.signaled.load(moRelaxed):
-    en.ticket = en.phase.load(moRelaxed)
-
-proc park*(en: var EventNotifier) {.inline.} =
-  ## Wait until we are signaled of an event
-  ## Thread is parked and does not consume CPU resources
-  ## This may wakeup spuriously.
-  if not en.signaled.load(moRelaxed):
-    if en.ticket == en.phase.load(moRelaxed):
-      en.futex.wait(0)
-  en.signaled.store(false, moRelaxed)
-  en.futex.initialize()
-
-proc notify*(en: var EventNotifier) {.inline.} =
-  ## Signal a thread that it can be unparked
-
-  if en.signaled.load(moRelaxed):
-    # Another producer is signaling
-    return
-  en.signaled.store(true, moRelease)
-  discard en.phase.fetchXor(1, moRelaxed)
-  en.futex.store(1, moRelease)
-  en.futex.wake()
 
 # ############################################################
 #
@@ -101,7 +37,6 @@ type
     ##     ec.sleep()
     ## ```
     waitset: Atomic[uint32]
-    # waitset is a bitfield
     # type waitset = object
     #   preSleep {.bitsize: 16.}: uint32
     #   committedSleep {.bitsize: 16.}: uint32

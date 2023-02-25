@@ -150,7 +150,6 @@ type
     currentTask: ptr Task
 
     # Synchronization
-    localBackoff: EventNotifier # Multi-Producer Single-Consumer backoff
     signal: ptr Signal          # owned signal
 
     # Thefts
@@ -184,6 +183,7 @@ var workerContext {.threadvar.}: WorkerContext
   ##         and use a Minimal Perfect Hash Function.
   ##         We can approximate a threadID by retrieving the address of a dummy thread-local variable.
   ##       - Or we sort threadID and use binary search
+  ##       The FlowVar would also need to store the Threadpool
 
 proc setupWorker(ctx: var WorkerContext) =
   ## Initialize the thread-local context of a worker
@@ -197,7 +197,6 @@ proc setupWorker(ctx: var WorkerContext) =
   ctx.rng.seed(0xEFFACED + ctx.id)
 
   # Synchronization
-  ctx.localBackoff.initialize()
   ctx.signal = addr ctx.threadpool.workerSignals[ctx.id]
   ctx.signal.terminate.store(false, moRelaxed)
 
@@ -210,7 +209,6 @@ proc setupWorker(ctx: var WorkerContext) =
 
 proc teardownWorker(ctx: var WorkerContext) =
   ## Cleanup the thread-local context of a worker
-  ctx.localBackoff.`=destroy`()
   ctx.taskqueue[].teardown()
 
 proc eventLoop(ctx: var WorkerContext) {.raises:[], gcsafe.}
@@ -249,32 +247,34 @@ proc workerEntryFn(params: tuple[threadpool: Threadpool, id: WorkerID]) {.raises
 # ############################################################
 
 # Sentinel values
-const ReadyFuture = cast[ptr EventNotifier](0xCA11AB1E)
 const RootTask = cast[ptr Task](0xEFFACED0)
 
 proc run*(ctx: var WorkerContext, task: ptr Task) {.raises:[].} =
   ## Run a task, frees it if it is not owned by a Flowvar
   let suspendedTask = ctx.currentTask
   ctx.currentTask = task
-  debug: log("Worker %3d: running task 0x%.08x (previous: 0x%.08x, %d pending, thiefID %d)\n", ctx.id, task, suspendedTask, ctx.taskqueue[].peek(), task.thiefID)
+  debug: log("Worker %3d: running task 0x%.08x (previous: 0x%.08x, %d pending, thiefID %d)\n", ctx.id, task, suspendedTask, ctx.taskqueue[].peek(), task.getThief())
   task.fn(task.env.addr)
   debug: log("Worker %3d: completed task 0x%.08x (%d pending)\n", ctx.id, task, ctx.taskqueue[].peek())
   ctx.currentTask = suspendedTask
-  if not task.hasFuture:
+
+  if not task.hasFuture: # Are we the final owner?
+    debug: log("Worker %3d: freeing task 0x%.08x with no future\n", ctx.id, task)
     freeHeap(task)
     return
 
+
   # Sync with an awaiting thread in completeFuture that didn't find work
-  var expected = (ptr EventNotifier)(nil)
-  if not compareExchange(task.waiter, expected, desired = ReadyFuture, moAcquireRelease):
-    debug: log("Worker %3d: completed task 0x%.08x, notifying waiter 0x%.08x\n", ctx.id, task, expected)
-    expected[].notify()
+  # and transfer ownership of the task to it.
+  debug: log("Worker %3d: transfering task 0x%.08x to future holder\n", ctx.id, task)
+  task.setCompleted()
+  task.setGcReady()
 
 proc schedule(ctx: var WorkerContext, tn: ptr Task, forceWake = false) {.inline.} =
   ## Schedule a task in the threadpool
   ## This wakes a sibling thread if our local queue is empty
   ## or forceWake is true.
-  debug: log("Worker %3d: schedule task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, tn, tn.parent, ctx.currentTask)
+  debug: log("Worker %3d: schedule task 0x%.08x (parent/current task 0x%.08x)\n", ctx.id, tn, tn.parent)
 
   # Instead of notifying every time a task is scheduled, we notify
   # only when the worker queue is empty. This is a good approximation
@@ -415,9 +415,8 @@ proc splitAndDispatchLoop(ctx: var WorkerContext, task: ptr Task, curLoopIndex: 
     let upperSplit = allocHeapUnchecked(Task, sizeof(Task) + task.envSize)
     copyMem(upperSplit, task, sizeof(Task) + task.envSize)
 
+    upperSplit.initSynchroState()
     upperSplit.parent        = task
-    upperSplit.thiefID.store(SentinelThief, moRelaxed)
-    upperSplit.waiter.store(nil, moRelaxed)
 
     upperSplit.isFirstIter   = false
     upperSplit.loopStart     = offset
@@ -547,8 +546,8 @@ proc tryLeapfrog(ctx: var WorkerContext, awaitedTask: ptr Task): ptr Task =
 
   var thiefID = SentinelThief
   while true:
-    debug: log("Worker %3d: leapfrogging - waiting for thief of task 0x%.08x to publish their ID\n", ctx.id, awaitedTask)
-    thiefID = awaitedTask.thiefID.load(moAcquire)
+    debug: log("Worker %3d: leapfrogging - waiting for thief of task 0x%.08x to publish their ID (thiefID read %d)\n", ctx.id, awaitedTask, thiefID)
+    thiefID = awaitedTask.getThief()
     if thiefID != SentinelThief:
       break
     cpuRelax()
@@ -579,7 +578,7 @@ proc eventLoop(ctx: var WorkerContext) {.raises:[], gcsafe.} =
       # We manage to steal a task, cancel sleep
       ctx.threadpool.globalBackoff.cancelSleep()
       # 2.a Run task
-      debug: log("Worker %3d: eventLoop 2.a - stole task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, stolenTask, stolenTask.parent, ctx.currentTask)
+      debug: log("Worker %3d: eventLoop 2.a - stole task 0x%.08x (parent 0x%.08x, current 0x%.08x, thiefID %d)\n", ctx.id, stolenTask, stolenTask.parent, ctx.currentTask, stolenTask.getThief())
       ctx.run(stolenTask)
     elif ctx.signal.terminate.load(moAcquire):
       # 2.b Threadpool has no more tasks and we were signaled to terminate
@@ -603,7 +602,7 @@ proc completeFuture*[T](fv: Flowvar[T], parentResult: var T) {.raises:[].} =
   template ctx: untyped = workerContext
 
   template isFutReady(): untyped =
-    let isReady = fv.task.completed.load(moAcquire)
+    let isReady = fv.task.isCompleted()
     if isReady:
       parentResult = cast[ptr (ptr Task, T)](fv.task.env.addr)[1]
     isReady
@@ -613,7 +612,7 @@ proc completeFuture*[T](fv: Flowvar[T], parentResult: var T) {.raises:[].} =
 
   ## 1. Process all the children of the current tasks.
   ##    This ensures that we can give control back ASAP.
-  debug: log("Worker %3d: sync 1 - searching task from local queue\n", ctx.id)
+  debug: log("Worker %3d: sync 1 - searching task from local queue (awaitedTask 0x%.08x)\n", ctx.id, fv.task)
   while (let task = ctx.taskqueue[].pop(); not task.isNil):
     if task.parent != ctx.currentTask:
       debug: log("Worker %3d: sync 1 - skipping non-direct descendant task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, task, task.parent, ctx.currentTask)
@@ -622,7 +621,7 @@ proc completeFuture*[T](fv: Flowvar[T], parentResult: var T) {.raises:[].} =
     debug: log("Worker %3d: sync 1 - running task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, task, task.parent, ctx.currentTask)
     ctx.run(task)
     if isFutReady():
-      debug: log("Worker %3d: sync 1 - future ready, exiting\n", ctx.id)
+      debug: log("Worker %3d: sync 1 - future ready, exiting (awaitedTask 0x%.08x)\n", ctx.id, fv.task)
       return
 
   # 2. We run out-of-tasks or out-of-direct-child of our current awaited task
@@ -636,6 +635,9 @@ proc completeFuture*[T](fv: Flowvar[T], parentResult: var T) {.raises:[].} =
   #
   # Design tradeoffs
   # ----------------
+  # see ./docs/design.md
+  #
+  # Rundown:
   #
   # At this point, we have significant design decisions:
   # - Do we steal from other workers in hope we advance our awaited task?
@@ -646,6 +648,10 @@ proc completeFuture*[T](fv: Flowvar[T], parentResult: var T) {.raises:[].} =
   #   Note: With hyperthreading, real hardware resources are 2x less than the reported number of cores.
   #         Hence parking might free contended memory bandwitdh or execution ports.
   # - Do we just not sleep, potentially wasting energy?
+  #   Note: on "empty tasks" (like Fibonacci), the constant hammering of threads
+  #         actually slows down performance by 2x.
+  #         This is a realistic scenario for IO (waiting to copy a network buffer for example)
+  #         but the second almost-empty benchmark, depth-first-search is actually faster by 17%.
   #
   # - If we work, we maximize throughput, but we increase latency to handle the future's continuation.
   #   If that continuation would have created more parallel work, we would actually have restricted parallelism.
@@ -657,31 +663,29 @@ proc completeFuture*[T](fv: Flowvar[T], parentResult: var T) {.raises:[].} =
   #   in theory maintains throughput and minimize the latency of the future's continuation
   #   but in practice, performance can worsen significantly on fine-grained parallelism.
 
-  debug: log("Worker %3d: sync 2 - future not ready, becoming a thief (currentTask 0x%.08x)\n", ctx.id, ctx.currentTask)
+  debug: log("Worker %3d: sync 2 - future not ready, becoming a thief (currentTask 0x%.08x, awaitedTask 0x%.08x)\n", ctx.id, ctx.currentTask, fv.task)
   while not isFutReady():
 
     if (let leapTask = ctx.tryLeapfrog(fv.task); not leapTask.isNil):
       # Leapfrogging, the thief had an empty queue, hence if there are tasks in its queue, it's generated by our blocked task.
       # Help the thief clear those, as if it did not finish, it's likely blocked on those children tasks.
-      debug: log("Worker %3d: sync 2.1 - leapfrog task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, leapTask, leapTask.parent, ctx.currentTask)
+      debug: log("Worker %3d: sync 2.1 - leapfrog task 0x%.08x (parent 0x%.08x, current 0x%.08x, thiefID %d, awaitedTask 0x%.08x)\n", ctx.id, leapTask, leapTask.parent, ctx.currentTask, leapTask.getThief(), fv.task)
       ctx.run(leapTask)
     elif (let stolenTask = ctx.tryStealOne(); not stolenTask.isNil):
       # We stole a task, we hope we advance our awaited task.
-      debug: log("Worker %3d: sync 2.2 - stole task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, stolenTask, stolenTask.parent, ctx.currentTask)
+      debug: log("Worker %3d: sync 2.2 - stole task 0x%.08x (parent 0x%.08x, current 0x%.08x, thiefID %d, awaitedTask 0x%.08x)\n", ctx.id, stolenTask, stolenTask.parent, ctx.currentTask, stolenTask.getThief(), fv.task)
       ctx.run(stolenTask)
     elif (let ownTask = ctx.taskqueue[].pop(); not ownTask.isNil):
       # We advance our own queue, this increases global throughput but may impact latency on the awaited task.
-      debug: log("Worker %3d: sync 2.3 - couldn't steal, running own task\n", ctx.id)
+      debug: log("Worker %3d: sync 2.3 - couldn't steal, running own task (awaitedTask 0x%.08x)\n", ctx.id, fv.task)
       ctx.run(ownTask)
     else:
       # Nothing to do, we park.
       # - On today's hyperthreaded systems, this might reduce contention on a core resources like memory caches and execution ports
       # - If more work is created, we won't be notified as we need to park on a dedicated notifier for precise wakeup when future is ready
-      ctx.localBackoff.prepareToPark()
-
-      var expected = (ptr EventNotifier)(nil)
-      if compareExchange(fv.task.waiter, expected, desired = ctx.localBackoff.addr, moAcquireRelease):
-        ctx.localBackoff.park()
+      debug: log("Worker %3d: sync 2.4 - Empty runtime, parking (awaitedTask 0x%.08x)\n", ctx.id, fv.task)
+      fv.task.sleepUntilComplete(ctx.id)
+      debug: log("Worker %3d: sync 2.4 - signaled, waking (awaitedTask 0x%.08x)\n", ctx.id, fv.task)
 
 proc syncAll*(tp: Threadpool) {.raises: [].} =
   ## Blocks until all pending tasks are completed
@@ -704,7 +708,7 @@ proc syncAll*(tp: Threadpool) {.raises: [].} =
     # 2. Help other threads
     if (var stolenTask = ctx.tryStealOne(); not stolenTask.isNil):
       # 2.a We stole some task
-      debug: log("Worker %3d: syncAll 2.a - stole task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, stolenTask, stolenTask.parent, ctx.currentTask)
+      debug: log("Worker %3d: syncAll 2.a - stole task 0x%.08x (parent 0x%.08x, current 0x%.08x, thiefID %d)\n", ctx.id, stolenTask, stolenTask.parent, ctx.currentTask, stolenTask.getThief())
       ctx.run(stolenTask)
     elif tp.globalBackoff.getNumWaiters() == (0'i32, tp.numThreads-1): # Don't count ourselves
       # 2.b all threads besides the current are parked
