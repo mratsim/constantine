@@ -84,7 +84,7 @@ proc sleep*(ec: var Eventcount, ticket: ParkingTicket) {.inline.} =
   ## Put a thread to sleep until notified.
   ## If the ticket becomes invalid (a notification has been received)
   ## by the time sleep is called, the thread won't enter sleep
-  discard ec.waitset.fetchAdd(kCommitToWait)
+  discard ec.waitset.fetchAdd(kCommitToWait, moRelease)
 
   while ec.events.load(moAcquire) == ticket.epoch:
     ec.events.wait(ticket.epoch)
