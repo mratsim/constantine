@@ -587,9 +587,9 @@ proc eventLoop(ctx: var WorkerContext) {.raises:[], gcsafe.} =
       break
     else:
       # 2.c Park the thread until a new task enters the threadpool
-      debug: log("Worker %3d: eventLoop 2.b - sleeping\n", ctx.id)
+      debugTermination: log("Worker %3d: eventLoop 2.b - sleeping\n", ctx.id)
       ctx.threadpool.globalBackoff.sleep(ticket)
-      debug: log("Worker %3d: eventLoop 2.b - waking\n", ctx.id)
+      debugTermination: log("Worker %3d: eventLoop 2.b - waking\n", ctx.id)
 
 # ############################################################
 #                                                            #
@@ -683,9 +683,9 @@ proc completeFuture*[T](fv: Flowvar[T], parentResult: var T) {.raises:[].} =
       # Nothing to do, we park.
       # - On today's hyperthreaded systems, this might reduce contention on a core resources like memory caches and execution ports
       # - If more work is created, we won't be notified as we need to park on a dedicated notifier for precise wakeup when future is ready
-      debug: log("Worker %3d: sync 2.4 - Empty runtime, parking (awaitedTask 0x%.08x)\n", ctx.id, fv.task)
+      debugTermination: log("Worker %3d: sync 2.4 - Empty runtime, parking (awaitedTask 0x%.08x)\n", ctx.id, fv.task)
       fv.task.sleepUntilComplete(ctx.id)
-      debug: log("Worker %3d: sync 2.4 - signaled, waking (awaitedTask 0x%.08x)\n", ctx.id, fv.task)
+      debugTermination: log("Worker %3d: sync 2.4 - signaled, waking (awaitedTask 0x%.08x)\n", ctx.id, fv.task)
 
 proc syncAll*(tp: Threadpool) {.raises: [].} =
   ## Blocks until all pending tasks are completed

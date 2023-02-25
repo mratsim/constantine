@@ -123,8 +123,7 @@ proc initSynchroState*(task: ptr Task) {.inline.} =
 
 proc isGcReady*(task: ptr Task): bool {.inline.} =
   ## Check if task can be freed by the waiter if it was stolen
-  let canBeFreed = (task.state.synchro.load(moAcquire) and kCanBeFreedMask)
-  return canBeFreed != 0
+  (task.state.synchro.load(moAcquire) and kCanBeFreedMask) != 0
 
 proc setGcReady*(task: ptr Task) {.inline.} =
   ## Thief transfers full task ownership to waiter
@@ -137,18 +136,19 @@ proc isCompleted*(task: ptr Task): bool {.inline.} =
 proc setCompleted*(task: ptr Task) {.inline.} =
   ## Set a task to `complete`
   ## Wake a waiter thread if there is one
-  task.state.completed.store(1, moRelease)
-  let waiter = task.state.synchro.load(moAcquire)
+  task.state.completed.store(1, moRelaxed)
+  fence(moSequentiallyConsistent)
+  let waiter = task.state.synchro.load(moRelaxed)
   if (waiter and kWaiterMask) != SentinelWaiter:
     task.state.completed.wake()
 
 proc sleepUntilComplete*(task: ptr Task, waiterID: int32) {.inline.} =
   ## Sleep while waiting for task completion
   let waiter = (cast[uint32](waiterID) shl kWaiterShift) - SentinelWaiter
-  discard task.state.synchro.fetchAdd(waiter, moRelease)
-  while task.state.completed.load(moAcquire) == 0:
+  discard task.state.synchro.fetchAdd(waiter, moRelaxed)
+  fence(moAcquire)
+  while task.state.completed.load(moRelaxed) == 0:
     task.state.completed.wait(0)
-  discard task.state.synchro.fetchSub(waiter, moRelease)
 
 # Leapfrogging synchronization
 # ----------------------------
