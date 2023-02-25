@@ -308,7 +308,7 @@ proc schedule(ctx: var WorkerContext, tn: ptr Task, forceWake = false) {.inline.
 
 iterator splitUpperRanges(
            ctx: WorkerContext, task: ptr Task,
-           curLoopIndex: int, numIdle: int32
+           curLoopIndex: int, approxIdle: int32
          ): tuple[start, size: int] =
   ## Split the iteration range based on the number of idle threads
   ## returns chunks with parameters (start, stopEx, len)
@@ -338,10 +338,10 @@ iterator splitUpperRanges(
 
   debugSplit:
     log("Worker %3d: task 0x%.08x - %8d step(s) left                    (current: %3d, start: %3d, stop: %3d, stride: %3d, %3d idle worker(s))\n",
-      ctx.id, task, task.loopStepsLeft, curLoopIndex, task.loopStart, task.loopStop, task.loopStride, numIdle)
+      ctx.id, task, task.loopStepsLeft, curLoopIndex, task.loopStart, task.loopStop, task.loopStride, approxIdle)
 
   # Send a chunk of work to all idle workers + ourselves
-  let availableWorkers = cast[int](numIdle + 1)
+  let availableWorkers = cast[int](approxIdle + 1)
   let baseChunkSize = task.loopStepsLeft div availableWorkers
   let cutoff        = task.loopStepsLeft mod availableWorkers
 
@@ -405,10 +405,10 @@ func decrease(backoff: var BalancerBackoff) {.inline.} =
   if backoff.windowLogSize < 0:
     backoff.windowLogSize = 0
 
-proc splitAndDispatchLoop(ctx: var WorkerContext, task: ptr Task, curLoopIndex: int, numIdle: int32) =
+proc splitAndDispatchLoop(ctx: var WorkerContext, task: ptr Task, curLoopIndex: int, approxIdle: int32) =
   # The iterator mutates the task with the first chunk metadata
   let stop = task.loopStop
-  for (offset, numSteps) in ctx.splitUpperRanges(task, curLoopIndex, numIdle):
+  for (offset, numSteps) in ctx.splitUpperRanges(task, curLoopIndex, approxIdle):
     if numSteps == 0:
       break
 
@@ -446,9 +446,9 @@ proc loadBalanceLoop(ctx: var WorkerContext, task: ptr Task, curLoopIndex: int, 
     if ctx.taskqueue[].peek() == 0:
       let waiters = ctx.threadpool.globalBackoff.getNumWaiters()
       # We assume that the worker that scheduled the task will work on it. I.e. idleness is underestimated.
-      let numIdle = waiters.preSleep + waiters.committedSleep + cast[int32](task.isFirstIter)
-      if numIdle > 0:
-        ctx.splitAndDispatchLoop(task, curLoopIndex, numIdle)
+      let approxIdle = waiters.preSleep + waiters.committedSleep + cast[int32](task.isFirstIter)
+      if approxIdle > 0:
+        ctx.splitAndDispatchLoop(task, curLoopIndex, approxIdle)
         backoff.decrease()
       else:
         backoff.increase()

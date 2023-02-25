@@ -7,7 +7,10 @@
 
 import std/atomics
 
-# A wrapper for Darwin futex.
+# OS primitives
+# ------------------------------------------------------------------------
+
+# Darwin futexes.
 # They are used in libc++ so likely to be very stable.
 # A new API appeared in OSX Big Sur (Jan 2021) ulock_wait2 and macOS pthread_cond_t has been migrated to it
 # - https://github.com/apple/darwin-xnu/commit/d4061fb0260b3ed486147341b72468f836ed6c8f#diff-08f993cc40af475663274687b7c326cc6c3031e0db3ac8de7b24624610616be6
@@ -73,9 +76,12 @@ const ULF_WAKE_MASK     = ULF_NO_ERRNO or
                           ULF_WAKE_THREAD or
                           ULF_WAKE_ALLOW_NON_OWNER
 
-proc ulock_wait(operation: uint32, address: pointer, value: uint64, timeout: uint32): cint {.importc:"__ulock_wait", cdecl.}
-proc ulock_wait2(operation: uint32, address: pointer, value: uint64, timeout, value2: uint64): cint {.importc:"__ulock_wait2", cdecl.}
+proc ulock_wait(operation: uint32, address: pointer, expected: uint64, timeout: uint32): cint {.importc:"__ulock_wait", cdecl.}
+proc ulock_wait2(operation: uint32, address: pointer, expected: uint64, timeout, value2: uint64): cint {.importc:"__ulock_wait2", cdecl.}
 proc ulock_wake(operation: uint32, address: pointer, wake_value: uint64): cint {.importc:"__ulock_wake", cdecl.}
+
+# Futex API
+# ------------------------------------------------------------------------
 
 type
   Futex* = object
@@ -90,15 +96,16 @@ proc teardown*(futex: var Futex) {.inline.} =
 proc load*(futex: var Futex, order: MemoryOrder): uint32 {.inline.} =
   futex.value.load(order)
 
-proc loadMut*(futex: var Futex): var Atomic[uint32] {.inline.} =
-  futex.value
-
 proc store*(futex: var Futex, value: uint32, order: MemoryOrder) {.inline.} =
   futex.value.store(value, order)
 
-proc wait*(futex: var Futex, refVal: uint32) {.inline.} =
-  ## Suspend a thread if the value of the futex is the same as refVal.
-  discard ulock_wait(UL_UNFAIR_LOCK64_SHARED or ULF_NO_ERRNO, futex.value.addr, uint64 refVal, 0)
+proc increment*(futex: var Futex, value: uint32, order: MemoryOrder): uint32 {.inline.} =
+  ## Increment a futex value, returns the previous one.
+  futex.value.fetchAdd(value, order)
+
+proc wait*(futex: var Futex, expected: uint32) {.inline.} =
+  ## Suspend a thread if the value of the futex is the same as expected.
+  discard ulock_wait(UL_UNFAIR_LOCK64_SHARED or ULF_NO_ERRNO, futex.value.addr, uint64 expected, 0)
 
 proc wake*(futex: var Futex) {.inline.} =
   ## Wake one thread (from the same process)

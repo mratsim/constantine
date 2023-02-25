@@ -8,21 +8,12 @@
 # An implementation of futex using Windows primitives
 
 import std/atomics, winlean
-export MemoryOrder
 
-type
-  Futex* = object
-    value: Atomic[uint32]
+# OS primitives
+# ------------------------------------------------------------------------
 
 # Contrary to the documentation, the futex related primitives are NOT in kernel32.dll
 # but in API-MS-Win-Core-Synch-l1-2-0.dll ¯\_(ツ)_/¯
-
-proc initialize*(futex: var Futex) {.inline.} =
-  futex.value.store(0, moRelaxed)
-
-proc teardown*(futex: var Futex) {.inline.} =
-  futex.value.store(0, moRelaxed)
-
 proc WaitOnAddress(
         Address: pointer, CompareAddress: pointer,
         AddressSize: csize_t, dwMilliseconds: DWORD
@@ -32,23 +23,37 @@ proc WaitOnAddress(
 proc WakeByAddressSingle(Address: pointer) {.importc, stdcall, dynlib: "API-MS-Win-Core-Synch-l1-2-0.dll".}
 proc WakeByAddressAll(Address: pointer) {.importc, stdcall, dynlib: "API-MS-Win-Core-Synch-l1-2-0.dll".}
 
+# Futex API
+# ------------------------------------------------------------------------
+
+type
+  Futex* = object
+    value: Atomic[uint32]
+
+proc initialize*(futex: var Futex) {.inline.} =
+  futex.value.store(0, moRelaxed)
+
+proc teardown*(futex: var Futex) {.inline.} =
+  futex.value.store(0, moRelaxed)
+
 proc load*(futex: var Futex, order: MemoryOrder): uint32 {.inline.} =
   futex.value.load(order)
-
-proc loadMut*(futex: var Futex): var Atomic[uint32] {.inline.} =
-  futex.value
 
 proc store*(futex: var Futex, value: uint32, order: MemoryOrder) {.inline.} =
   futex.value.store(value, order)
 
-proc wait*(futex: var Futex, refVal: uint32) {.inline.} =
-  ## Suspend a thread if the value of the futex is the same as refVal.
+proc increment*(futex: var Futex, value: uint32, order: MemoryOrder): uint32 {.inline.} =
+  ## Increment a futex value, returns the previous one.
+  futex.value.fetchAdd(value, order)
+
+proc wait*(futex: var Futex, expected: uint32) {.inline.} =
+  ## Suspend a thread if the value of the futex is the same as expected.
 
   # Returns TRUE if the wait succeeds or FALSE if not.
   # getLastError() will contain the error information, for example
   # if it failed due to a timeout.
   # We discard as this is not needed and simplifies compat with Linux futex
-  discard WaitOnAddress(futex.value.addr, refVal.unsafeAddr, csize_t sizeof(refVal), INFINITE)
+  discard WaitOnAddress(futex.value.addr, expected.unsafeAddr, csize_t sizeof(expected), INFINITE)
 
 proc wake*(futex: var Futex) {.inline.} =
   ## Wake one thread (from the same process)
