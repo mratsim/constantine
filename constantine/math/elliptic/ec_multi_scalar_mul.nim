@@ -241,15 +241,20 @@ func multiScalarMulJacExt_vartime*[F, G; bits: static int](
   var w = top
   r.setInf()
 
-  if excess != 0 and w != 0: # Prologue
-    r.miniMSM_jacext(buckets, w, kTopWindow, c, coefs, points, N)
-    w -= c
+  when top != 0:      # Prologue
+    when excess != 0:
+      r.miniMSM_jacext(buckets, w, kTopWindow, c, coefs, points, N)
+      w -= c
+    else:
+      # If c divides bits exactly, the signed windowed recoding still needs to see an extra 0
+      # Since we did r.setInf() earlier, this is a no-op
+      w -= c
 
-  while w != 0:              # Steady state
+  while w != 0:       # Steady state
     r.miniMSM_jacext(buckets, w, kFullWindow, c, coefs, points, N)
     w -= c
 
-  block:                     # Epilogue
+  block:              # Epilogue
     r.miniMSM_jacext(buckets, w, kBottomWindow, c, coefs, points, N)
 
   # Cleanup
@@ -329,17 +334,22 @@ func multiScalarMulAffine_vartime[F, G; bits: static int](
   var w = top
   r.setInf()
 
-  if excess != 0 and w != 0: # Prologue
-    # The top might use only a few bits, the affine scheduler would likely have significant collisions
-    zeroMem(sched.buckets.ptJacExt.addr, buckets.ptJacExt.sizeof())
-    r.miniMSM_jacext(sched.buckets.ptJacExt.asUnchecked(), w, kTopWindow, c, coefs, points, N)
-    w -= c
+  when top != 0:      # Prologue
+    when excess != 0:
+      # The top might use only a few bits, the affine scheduler would likely have significant collisions
+      zeroMem(sched.buckets.ptJacExt.addr, buckets.ptJacExt.sizeof())
+      r.miniMSM_jacext(sched.buckets.ptJacExt.asUnchecked(), w, kTopWindow, c, coefs, points, N)
+      w -= c
+    else:
+      # If c divides bits exactly, the signed windowed recoding still needs to see an extra 0
+      # Since we did r.setInf() earlier, this is a no-op
+      w -= c
 
-  while w != 0:              # Steady state
+  while w != 0:       # Steady state
     r.miniMSM_affine(sched[], w, kFullWindow, c, coefs, N)
     w -= c
 
-  block:                     # Epilogue
+  block:              # Epilogue
     r.miniMSM_affine(sched[], w, kBottomWindow, c, coefs, N)
 
   # Cleanup

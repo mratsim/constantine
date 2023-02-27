@@ -200,21 +200,22 @@ proc msmJacExt_vartime_parallel*[bits: static int, F, G](
           bitIndex = top, kTopWindow, c,
           coefs, points, N)
     else:
-      zeroMem(bucketsMatrix[(numWindows-1)*numBuckets].addr, sizeof(ECP_ShortW_JacExt[F, G]) * numBuckets)
-      r.bucketAccumReduce_jacext(
-          cast[ptr UncheckedArray[ECP_ShortW_JacExt[F, G]]](bucketsMatrix[(numWindows-1)*numBuckets].addr),
-          bitIndex = top, kFullWindow, c,
-          coefs, points, N)
+      r.setInf()
 
   tp.syncAll()
 
-  # 3. Final reduction
-  # r = miniMSMsResults[numWindows-1]
-  for w in countdown(numWindows-2, 0):
-    for _ in 0 ..< c:
-      r.double()
-    # discard sync miniMSMsReady[w]
-    r += miniMSMsResults[w]
+  # 3. Final reduction, r initialized to what would be miniMSMsReady[numWindows-1]
+  when excess != 0:
+    for w in countdown(numWindows-2, 0):
+      for _ in 0 ..< c:
+        r.double()
+      r += miniMSMsResults[w]
+  elif numWindows >= 2:
+    r = miniMSMsResults[numWindows-2]
+    for w in countdown(numWindows-3, 0):
+      for _ in 0 ..< c:
+        r.double()
+      r += miniMSMsResults[w]
 
   # Cleanup
   # -------
@@ -368,23 +369,32 @@ proc msmAffine_vartime_parallel*[bits: static int, F, G](
   # Last window is done sync on this thread, directly initializing r
   const excess = bits mod c
   const top = bits-excess
-  when excess != 0:
-    let buckets = allocHeapArray(ECP_ShortW_JacExt[F, G], numBuckets)
-    zeroMem(buckets[0].addr, sizeof(ECP_ShortW_JacExt[F, G]) * numBuckets)
-    r.bucketAccumReduce_jacext(buckets, bitIndex = top, kTopWindow, c,
-                               coefs, points, N)
-    buckets.freeHeap()
-  else:
-    bucketAccumReduce_parallel(
-      tp, r, bitIndex = top, kFullWindow, c,
-      coefs, points, N)
 
-  # 3. Final reduction, r is already initialized.
-  for w in countdown(numWindows-2, 0):
-    for _ in 0 ..< c:
-      r.double()
-    discard sync miniMSMsReady[w]
-    r += miniMSMsResults[w]
+  when top != 0:
+    when excess != 0:
+      let buckets = allocHeapArray(ECP_ShortW_JacExt[F, G], numBuckets)
+      zeroMem(buckets[0].addr, sizeof(ECP_ShortW_JacExt[F, G]) * numBuckets)
+      r.bucketAccumReduce_jacext(buckets, bitIndex = top, kTopWindow, c,
+                                coefs, points, N)
+      buckets.freeHeap()
+    else:
+      r.setInf()
+
+  # 3. Final reduction, r initialized to what would be miniMSMsReady[numWindows-1]
+  when excess != 0:
+    for w in countdown(numWindows-2, 0):
+      for _ in 0 ..< c:
+        r.double()
+      discard sync miniMSMsReady[w]
+      r += miniMSMsResults[w]
+  elif numWindows >= 2:
+    discard sync miniMSMsReady[numWindows-2]
+    r = miniMSMsResults[numWindows-2]
+    for w in countdown(numWindows-3, 0):
+      for _ in 0 ..< c:
+        r.double()
+      discard sync miniMSMsReady[w]
+      r += miniMSMsResults[w]
 
   # Cleanup
   # -------
@@ -407,7 +417,7 @@ proc multiScalarMul_dispatch_vartime_parallel[bits: static int, F, G](
   of  7: msmJacExt_vartime_parallel(tp, r, coefs, points, N, c =  7)
   of  8: msmJacExt_vartime_parallel(tp, r, coefs, points, N, c =  8)
   of  9: msmJacExt_vartime_parallel(tp, r, coefs, points, N, c =  9)
-  of 10: msmAffine_vartime_parallel(tp, r, coefs, points, N, c = 10)
+  of 10: msmJacExt_vartime_parallel(tp, r, coefs, points, N, c = 10)
   of 11: msmAffine_vartime_parallel(tp, r, coefs, points, N, c = 11)
   of 12: msmAffine_vartime_parallel(tp, r, coefs, points, N, c = 12)
   of 13: msmAffine_vartime_parallel(tp, r, coefs, points, N, c = 13)
