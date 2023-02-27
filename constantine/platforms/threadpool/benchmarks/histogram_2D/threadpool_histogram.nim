@@ -143,6 +143,8 @@ template runBench(tp: Threadpool, procName: untyped, matrix: Matrix, bins: int, 
       else:
         max = procName(matrix, hist)
 
+  wv_free(hist.buffer)
+
 # Algo
 # -------------------------------------------------------
 

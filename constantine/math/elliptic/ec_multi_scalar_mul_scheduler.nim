@@ -173,11 +173,11 @@ func bestBucketBitSize*(inputSize: int, scalarBitwidth: static int, useSignedBuc
   # 1. Bucket accumulation
   #      n - (2ᶜ-1) additions for b/c windows    or n - (2ᶜ⁻¹-1) if using signed buckets
   # 2. Bucket reduction
-  #      2x(2ᶜ-2) additions for b/c windows      or 2x(2ᶜ⁻¹-2)
+  #      2x(2ᶜ-2) additions for b/c windows      or 2*(2ᶜ⁻¹-2)
   # 3. Final reduction
   #      (b/c - 1) x (c doublings + 1 addition)
   # Total
-  #   b/c (n + 2ᶜ - 2) A + (b/c - 1) x (c*D + A)
+  #   b/c (n + 2ᶜ - 2) A + (b/c - 1) * (c*D + A)
   # https://www.youtube.com/watch?v=Bl5mQA7UL2I
 
   # A doubling costs 50% of an addition with jacobian coordinates
@@ -234,15 +234,16 @@ func `-=`*[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_
 # "Sharpening the axe will not delay cutting the wood" - Chinese proverb
 
 type
-  BucketStatus = enum
+  BucketStatus* = enum
     kAffine, kJacExt
 
   Buckets*[N: static int, F; G: static Subgroup] = object
-    status:    array[N, set[BucketStatus]]
-    ptAff:     array[N, ECP_ShortW_Aff[F, G]]
+    status*:   array[N, set[BucketStatus]]
+    ptAff*:    array[N, ECP_ShortW_Aff[F, G]]
     ptJacExt*: array[N, ECP_ShortW_JacExt[F, G]] # Public for the top window
 
   ScheduledPoint* = object
+    # Note: we cannot compute the size at compile-time due to https://github.com/nim-lang/Nim/issues/19040
     bucket  {.bitsize:26.}: int64 # Supports up to 2²⁵ =      33 554 432 buckets and -1 for the skipped bucket 0
     sign    {.bitsize: 1.}: int64
     pointID {.bitsize:37.}: int64 # Supports up to 2³⁷ = 137 438 953 472 points
@@ -261,7 +262,7 @@ const MinVectorAddThreshold = 32
 func init*(buckets: var Buckets) {.inline.} =
   zeroMem(buckets.status.addr, buckets.status.sizeof())
 
-func reset(buckets: var Buckets, index: int) {.inline.} =
+func reset*(buckets: var Buckets, index: int) {.inline.} =
   buckets.status[index] = {}
 
 func deriveSchedulerConstants*(c: int): tuple[numNZBuckets, queueLen: int] {.compileTime.} =

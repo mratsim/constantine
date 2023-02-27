@@ -57,8 +57,8 @@ const # bitfield setup
   # - Linux CPUSET supports up to 1024 threads (https://man7.org/linux/man-pages/man3/CPU_SET.3.html)
   #
   # Hardware limitations:
-  # - Xeon Platinum 9282, 56 cores - 112 threads per socket
-  #   - up to 8 sockets: 896 threads
+  # - Xeon Platinum 8490H, 60C/120T per socket
+  #   - up to 8 sockets: 960 threads
 
   kPreWaitShift = 8'u32
   kPreWait      = 1'u32 shl kPreWaitShift

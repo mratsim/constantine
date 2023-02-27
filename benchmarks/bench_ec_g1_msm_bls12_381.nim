@@ -11,16 +11,11 @@ import
   ../constantine/math/config/curves,
   ../constantine/math/arithmetic,
   ../constantine/math/elliptic/[
-    ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
-    ec_shortweierstrass_jacobian,
-    ec_scalar_mul,
-    ec_multi_scalar_mul],
-  ../constantine/math/constants/zoo_subgroups,
+    ec_shortweierstrass_jacobian],
   # Helpers
   ../helpers/prng_unsafe,
-  ./bench_elliptic_template,
-  ./bench_blueprint
+  ./bench_elliptic_parallel_template
 
 # ############################################################
 #
@@ -52,7 +47,7 @@ proc main() =
     # separator()
     for numPoints in testNumPoints:
       let batchIters = max(1, Iters div numPoints)
-      msmBench(ECP_ShortW_Jac[Fp[curve], G1], numPoints, batchIters)
+      msmParallelBench(ECP_ShortW_Jac[Fp[curve], G1], numPoints, batchIters)
       separator()
     separator()
 

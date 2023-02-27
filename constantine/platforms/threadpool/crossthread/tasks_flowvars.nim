@@ -195,9 +195,7 @@ proc newSpawn*(
   result.fn = fn
   cast[ptr[type env]](result.env)[] = env
 
-func ceilDiv_vartime*(a, b: auto): auto {.inline.} =
-  ## ceil division, to be used only on length or at compile-time
-  ## ceil(a / b)
+func ceilDiv_vartime(a, b: auto): auto {.inline.} =
   (a + b - 1) div b
 
 proc newLoop*(
@@ -289,7 +287,6 @@ func isReady*[T](fv: Flowvar[T]): bool {.inline.} =
 func readyWith*[T](task: ptr Task, childResult: T) {.inline.} =
   ## Send the Flowvar result from the child thread processing the task
   ## to its parent thread.
-  precondition: not task.isCompleted()
   cast[ptr (ptr Task, T)](task.env.addr)[1] = childResult
 
 func copyResult*[T](dst: var T, fv: FlowVar[T]) {.inline.} =

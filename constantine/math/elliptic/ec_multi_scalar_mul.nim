@@ -159,18 +159,16 @@ func bucketReduce[EC](r: var EC, buckets: ptr UncheckedArray[EC], numBuckets: st
     r += accumBuckets
     buckets[k].setInf()
 
-type MiniMsmKind = enum
+type MiniMsmKind* = enum
   kTopWindow
   kFullWindow
   kBottomWindow
 
-func miniMSM_jacext[F, G; bits: static int](
+func bucketAccumReduce_jacext*[F, G; bits: static int](
        r: var ECP_ShortW[F, G],
        buckets: ptr UncheckedArray[ECP_ShortW_JacExt[F, G]],
        bitIndex: int, miniMsmKind: static MiniMsmKind, c: static int,
-       coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], N: int) {.meter.} =
-  ## Apply a mini-Multi-Scalar-Multiplication on [bitIndex, bitIndex+window)
-  ## slice of all (coef, point) pairs
+       coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], N: int) =
 
   const excess = bits mod c
   const top = bits - excess
@@ -197,19 +195,31 @@ func miniMSM_jacext[F, G; bits: static int](
   buckets.accumulate(curVal, curNeg, points[N-1])
 
   # 2. Bucket Reduction
-  var sliceSum{.noinit.}: ECP_ShortW_JacExt[F, G]
-  sliceSum.bucketReduce(buckets, numBuckets = 1 shl (c-1))
+  var windowSum{.noinit.}: ECP_ShortW_JacExt[F, G]
+  windowSum.bucketReduce(buckets, numBuckets = 1 shl (c-1))
+
+  r.fromJacobianExtended_vartime(windowSum)
+
+func miniMSM_jacext[F, G; bits: static int](
+       r: var ECP_ShortW[F, G],
+       buckets: ptr UncheckedArray[ECP_ShortW_JacExt[F, G]],
+       bitIndex: int, miniMsmKind: static MiniMsmKind, c: static int,
+       coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], N: int) {.meter.} =
+  ## Apply a mini-Multi-Scalar-Multiplication on [bitIndex, bitIndex+window)
+  ## slice of all (coef, point) pairs
+
+  var windowSum{.noInit.}: typeof(r)
+  windowSum.bucketAccumReduce_jacext(
+    buckets, bitIndex, miniMsmKind, c,
+    coefs, points, N)
 
   # 3. Mini-MSM on the slice [bitIndex, bitIndex+window)
-  var windowSum{.noInit.}: typeof(r)
-  windowSum.fromJacobianExtended_vartime(sliceSum)
   r += windowSum
-
   when miniMsmKind != kBottomWindow:
     for _ in 0 ..< c:
       r.double()
 
-func multiScalarMulJacExt_vartime[F, G; bits: static int](
+func multiScalarMulJacExt_vartime*[F, G; bits: static int](
        r: var ECP_ShortW[F, G],
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
        N: int, c: static int) {.tags:[VarTime, HeapAlloc], meter.} =
@@ -246,21 +256,15 @@ func multiScalarMulJacExt_vartime[F, G; bits: static int](
   # -------
   buckets.freeHeap()
 
-func miniMSM_affine[NumBuckets, QueueLen, F, G; bits: static int](
-       r: var ECP_ShortW[F, G],
+func schedAccumulate*[NumBuckets, QueueLen, F, G; bits: static int](
        sched: var Scheduler[NumBuckets, QueueLen, F, G],
        bitIndex: int, miniMsmKind: static MiniMsmKind, c: static int,
        coefs: ptr UncheckedArray[BigInt[bits]], N: int) {.meter.} =
-  ## Apply a mini-Multi-Scalar-Multiplication on [bitIndex, bitIndex+window)
-  ## slice of all (coef, point) pairs
 
   const excess = bits mod c
   const top = bits - excess
   static: doAssert miniMsmKind != kTopWindow, "The top window is smaller in bits which increases collisions in scheduler."
 
-  sched.buckets[].init()
-
-  # 1. Bucket Accumulation
   var curSP, nextSP: ScheduledPoint
 
   template getSignedWindow(j : int): tuple[val: SecretWord, neg: SecretBool] =
@@ -277,13 +281,26 @@ func miniMSM_affine[NumBuckets, QueueLen, F, G; bits: static int](
   sched.schedule(curSP)
   sched.flushPendingAndReset()
 
+func miniMSM_affine[NumBuckets, QueueLen, F, G; bits: static int](
+       r: var ECP_ShortW[F, G],
+       sched: var Scheduler[NumBuckets, QueueLen, F, G],
+       bitIndex: int, miniMsmKind: static MiniMsmKind, c: static int,
+       coefs: ptr UncheckedArray[BigInt[bits]], N: int) {.meter.} =
+  ## Apply a mini-Multi-Scalar-Multiplication on [bitIndex, bitIndex+window)
+  ## slice of all (coef, point) pairs
+
+  sched.buckets[].init()
+
+  # 1. Bucket Accumulation
+  sched.schedAccumulate(bitIndex, miniMsmKind, c, coefs, N)
+
   # 2. Bucket Reduction
-  var sliceSum{.noInit.}: ECP_ShortW_JacExt[F, G]
-  sliceSum.bucketReduce(sched.buckets[])
+  var windowSum_jacext{.noInit.}: ECP_ShortW_JacExt[F, G]
+  windowSum_jacext.bucketReduce(sched.buckets[])
 
   # 3. Mini-MSM on the slice [bitIndex, bitIndex+window)
   var windowSum{.noInit.}: typeof(r)
-  windowSum.fromJacobianExtended_vartime(sliceSum)
+  windowSum.fromJacobianExtended_vartime(windowSum_jacext)
   r += windowSum
 
   when miniMsmKind != kBottomWindow:
@@ -368,8 +385,7 @@ func multiScalarMul_vartime*[bits: static int, F, G](
   debug: doAssert coefs.len == points.len
   let N = points.len
 
-  when bits <= F.C.getCurveOrderBitwidth() and
-       F.C.hasEndomorphismAcceleration():
+  when bits <= F.C.getCurveOrderBitwidth() and F.C.hasEndomorphismAcceleration():
     # TODO, min amount of bits for endomorphisms?
 
     const M = when F is Fp:  2

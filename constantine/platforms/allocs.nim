@@ -80,7 +80,7 @@ template allocStackUnchecked*(T: typedesc, size: int): ptr T =
   cast[ptr T](alloca(size))
 
 template allocStackArray*(T: typedesc, len: SomeInteger): ptr UncheckedArray[T] =
-  cast[ptr UncheckedArray[T]](alloca(sizeof(T) * len))
+  cast[ptr UncheckedArray[T]](alloca(sizeof(T) * cast[int](len)))
 
 # Heap allocation
 # ----------------------------------------------------------------------------------
@@ -93,14 +93,14 @@ proc allocHeapUnchecked*(T: typedesc, size: int): ptr T {.inline.} =
   cast[type result](malloc(size))
 
 proc allocHeapArray*(T: typedesc, len: SomeInteger): ptr UncheckedArray[T] {.inline.} =
-  cast[type result](malloc(sizeof(T) * len))
+  cast[type result](malloc(sizeof(T) * cast[int](len)))
 
 proc freeHeap*(p: pointer) {.inline.} =
   free(p)
 
 proc allocHeapAligned*(T: typedesc, alignment: static Natural): ptr T {.inline.} =
   # aligned_alloc requires allocating in multiple of the alignment.
-  const
+  let # Cannot be static with bitfields. Workaround https://github.com/nim-lang/Nim/issues/19040
     size = sizeof(T)
     requiredMem = size.roundNextMultipleOf(alignment)
 

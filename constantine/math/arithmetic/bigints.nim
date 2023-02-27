@@ -369,9 +369,9 @@ func getWindowAt*(a: BigInt, bitIndex: int, windowSize: static int): SecretWord 
   # This is constant-time, the branch does not depend on secret data.
   if pos + windowSize > WordBitWidth and slot+1 < a.limbs.len:
     # Read next word as well
-    return SecretWord((word shr pos) or (a.limbs[slot+1] shl (WordBitWidth-pos))) and WindowMask
+    return ((word shr pos) or (a.limbs[slot+1] shl (WordBitWidth-pos))) and WindowMask
   else:
-    return SecretWord(word shr pos) and WindowMask
+    return (word shr pos) and WindowMask
 
 # Multiplication by small constants
 # ------------------------------------------------------------

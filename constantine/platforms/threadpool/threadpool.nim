@@ -245,6 +245,35 @@ proc workerEntryFn(params: tuple[threadpool: Threadpool, id: WorkerID]) {.raises
 #                           Tasks                            #
 #                                                            #
 # ############################################################
+#
+# Task notification overview
+#
+# 2 strategies can be used to notify idle workers of new tasks entering the runtime
+#
+# 1. "notify-on-new": Always try to wake a worker on the backoff on new tasks.
+# 2. "notify-on-transition": Wake a worker if-and-only-if our queue was empty when scheduling the task.
+#
+# In the second case, we also need a notify on successful theft to maintain the invariant that
+# there is at least a thread looking for work if work is available, or all threads are busy.
+#
+# The notify-on-transition strategy minimizes kernel syscalls at the expense of reading an atomic,
+# our dequeue status (a guaranteed cache miss).
+# This is almost always the better tradeoff.
+# Furthermore, in work-stealing, having an empty dequeue is a good approximation for starvation.
+#
+# We can minimize syscalls in the "notify-on-new" strategy as well by reading the backoff status
+# and checking if there is an idle worker not yet parked or no parked threads at all.
+# In that case we also need a notification on successful theft,
+# in case 2 threads enqueueing work find concurrently the same non-parked idle worker, otherwise one task will be missed.
+#
+# The "notify-on-new" minimizes latency in case a producer enqueues tasks quickly.
+#
+# Lastly, when awaiting a future, a worker can give up its own queue if tasks are unrelated to the awaited task.
+# In "notify-on-transition" strategy, that worker needs to wake up a relay.
+#
+# Concretely on almost-empty tasks like fibonacci or DFS, "notify-on-new" is 10x slower.
+# However, when quickly enqueueing tasks, like Multi-Scalar Multiplication,
+# There is a noticeable ramp-up.This might be solved with steal-half.
 
 # Sentinel values
 const RootTask = cast[ptr Task](0xEFFACED0)
@@ -272,7 +301,7 @@ proc run(ctx: var WorkerContext, task: ptr Task) {.raises:[].} =
 
 proc schedule(ctx: var WorkerContext, tn: ptr Task, forceWake = false) {.inline.} =
   ## Schedule a task in the threadpool
-  ## This wakes a sibling thread if our local queue is empty
+  ## This wakes another worker if our local queue is empty
   ## or forceWake is true.
   debug: log("Worker %3d: schedule task 0x%.08x (parent/current task 0x%.08x)\n", ctx.id, tn, tn.parent)
 
