@@ -156,9 +156,11 @@ type
     rng: WorkStealingRng        # RNG state to select victims
 
   Threadpool* = ptr object
-    barrier: SyncBarrier                                         # Barrier for initialization and teardown
+    # All synchronization objects are put in their own cache-line to avoid invalidating
+    # and reloading cache for immutable fields
+    barrier{.align: 64.}: SyncBarrier                            # Barrier for initialization and teardown
     # -- align: 64
-    globalBackoff: EventCount                                    # Multi-Producer Multi-Consumer backoff
+    globalBackoff{.align: 64.}: EventCount                       # Multi-Producer Multi-Consumer backoff
     # -- align: 64
     numThreads*{.align: 64.}: int32                              # N regular workers
     workerQueues: ptr UncheckedArray[Taskqueue]                  # size N

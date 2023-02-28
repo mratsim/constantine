@@ -24,7 +24,7 @@ block:
 
     let sum1M = tp.sumReduce(1000000)
     echo "Sum reduce(0..1000000): ", sum1M
-    doAssert sum1M == 500_000_500_000'i64
+    doAssert sum1M == 500_000_500_000'i64, "incorrect sum was " & $sum1M
 
     tp.shutdown()
 
