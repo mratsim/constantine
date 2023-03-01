@@ -552,8 +552,9 @@ task test_bindings, "Test C bindings":
     exec "gcc -Iinclude -Llib -o build/testsuite/t_libctt_bls12_381_dl examples_c/t_libctt_bls12_381.c -lgmp -lconstantine_bls12_381"
     exec "LD_LIBRARY_PATH=lib ./build/testsuite/t_libctt_bls12_381_dl"
   else:
+    # Put DLL near the exe as LD_LIBRARY_PATH doesn't work even in an POSIX compatible shell
     exec "gcc -Iinclude -Llib -o build/testsuite/t_libctt_bls12_381_dl.exe examples_c/t_libctt_bls12_381.c -lgmp -lconstantine_bls12_381"
-    exec "PATH=$PATH:lib ./build/testsuite/t_libctt_bls12_381_dl.exe"
+    exec "./build/testsuite/t_libctt_bls12_381_dl.exe"
 
   echo "--> Testing statically linked library"
   when not defined(windows):
