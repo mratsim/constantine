@@ -468,12 +468,12 @@ proc genDynamicBindings(bindingsName, prefixNimMain: string) =
     #           In the future, Constantine might use:
     #             - heap-allocated sequences and objects manually managed or managed by destructors for multithreading.
     #             - heap-allocated strings for hex-string or decimal strings
-    echo "Compiling dynamic library: bindings/generated/" & libName
+    echo "Compiling dynamic library: lib/" & libName
     exec "nim c -f " & flags & " --noMain -d:danger --app:lib --gc:arc " &
          " --panics:on " & # Defects are not catchable
          " --verbosity:0 --hints:off --warnings:off " &
          " --nimMainPrefix:" & prefixNimMain &
-         " --out:" & libName & " --outdir:bindings/generated " &
+         " --out:" & libName & " --outdir:lib " &
          " --nimcache:nimcache/bindings/" & bindingsName &
          " bindings/" & bindingsName & ".nim"
 
@@ -483,9 +483,9 @@ proc genDynamicBindings(bindingsName, prefixNimMain: string) =
   elif defined(macosx):
     compile "lib" & bindingsName & ".dylib.arm", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
     compile "lib" & bindingsName & ".dylib.x64", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
-    exec "lipo bindings/generated/lib" & bindingsName & ".dylib.arm " &
-             " bindings/generated/lib" & bindingsName & ".dylib.x64 " &
-             " -output bindings/generated/lib" & bindingsName & ".dylib -create"
+    exec "lipo lib/lib" & bindingsName & ".dylib.arm " &
+             " lib/lib" & bindingsName & ".dylib.x64 " &
+             " -output lib/lib" & bindingsName & ".dylib -create"
 
   else:
     compile "lib" & bindingsName & ".so"
@@ -522,13 +522,13 @@ proc genStaticBindings(bindingsName, prefixNimMain: string) =
     compile "lib" & bindingsName & ".a"
 
 proc genHeaders(bindingsName: string) =
-  echo "Generating header:         bindings/generated/" & bindingsName & ".h"
+  echo "Generating header:         include/" & bindingsName & ".h"
   exec "nim c -d:release -d:CttGenerateHeaders " &
        " --verbosity:0 --hints:off --warnings:off " &
-       " --out:" & bindingsName & "_gen_header.exe --outdir:bindings/generated " &
+       " --out:" & bindingsName & "_gen_header.exe --outdir:build " &
        " --nimcache:nimcache/bindings/" & bindingsName & "_header" &
        " bindings/" & bindingsName & ".nim"
-  exec "bindings/generated/" & bindingsName & "_gen_header.exe bindings/generated"
+  exec "build/" & bindingsName & "_gen_header.exe include"
 
 proc genParallelCmdRunner() =
   exec "nim c --verbosity:0 --hints:off --warnings:off -d:release --out:build/pararun --nimcache:nimcache/pararun helpers/pararun.nim"
@@ -549,11 +549,11 @@ task test_bindings, "Test C bindings":
   exec "mkdir -p build/testsuite"
   echo "--> Testing dynamically linked library"
   when not defined(windows):
-    exec "gcc -Ibindings/generated -Lbindings/generated -o build/testsuite/t_libctt_bls12_381_dl tests/bindings/t_libctt_bls12_381.c -lgmp -lconstantine_bls12_381"
-    exec "LD_LIBRARY_PATH=bindings/generated ./build/testsuite/t_libctt_bls12_381_dl"
+    exec "gcc -Iinclude -Llib -o build/testsuite/t_libctt_bls12_381_dl examples_c/t_libctt_bls12_381.c -lgmp -lconstantine_bls12_381"
+    exec "LD_LIBRARY_PATH=lib ./build/testsuite/t_libctt_bls12_381_dl"
   else:
     # Put DLL near the exe as LD_LIBRARY_PATH doesn't work even in an POSIX compatible shell
-    exec "gcc -Ibindings/generated -Lbindings/generated -o build/testsuite/t_libctt_bls12_381_dl.exe tests/bindings/t_libctt_bls12_381.c -lgmp -lconstantine_bls12_381"
+    exec "gcc -Ilib -Linclude -o build/testsuite/t_libctt_bls12_381_dl.exe examples_c/t_libctt_bls12_381.c -lgmp -lconstantine_bls12_381"
     exec "./build/testsuite/t_libctt_bls12_381_dl.exe"
 
   echo "--> Testing statically linked library"

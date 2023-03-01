@@ -6,6 +6,9 @@
 //   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 // at your option. This file may not be copied, modified, or distributed except according to those terms.
 
+// This is a test to ensure Constantine's modular arithmetic is consistent with GMP.
+// While not intended as a tutorial, it showcases serialization, deserialization and computation.
+
 #include <assert.h>
 #include <gmp.h>
 #include <constantine_bls12_381.h>
@@ -34,7 +37,7 @@ void prologue(
        mpz_ptr p,
        bls12381_fp* a_ctt, bls12381_fp* b_ctt,
        byte a_buf[ByteLength], byte b_buf[ByteLength]) {
-  
+
   // Generate random value in the range 0 ..< 2^(bits-1)
   mpz_urandomb(a, gmp_rng, BitLength);
   mpz_urandomb(b, gmp_rng, BitLength);
@@ -65,7 +68,7 @@ void epilogue(
        mpz_ptr r, mpz_ptr a, mpz_ptr b,
        bls12381_fp* r_ctt, bls12381_fp* a_ctt, bls12381_fp* b_ctt,
        char* operation) {
-  
+
   byte r_raw_gmp[ByteLength];
   byte r_raw_ctt[ByteLength];
 
@@ -98,10 +101,10 @@ void epilogue(
 }
 
 int main(){
-  
+
   // Initialize the runtime. For Constantine, it populates CPU runtime detection dispatch.
   ctt_bls12381_init_NimMain();
-  
+
   gmp_randstate_t gmpRng;
   gmp_randinit_mt(gmpRng);
   // The GMP seed varies between run so that
