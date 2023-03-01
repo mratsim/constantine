@@ -514,9 +514,9 @@ proc genStaticBindings(bindingsName, prefixNimMain: string) =
   elif defined(macosx):
     compile "lib" & bindingsName & ".a.arm", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
     compile "lib" & bindingsName & ".a.x64", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
-    exec "lipo lib" & bindingsName & ".a.arm " &
-             " lib" & bindingsName & ".a.x64 " &
-             " -output lib" & bindingsName & ".a -create"
+    exec "lipo lib/lib" & bindingsName & ".a.arm " &
+             " lib/lib" & bindingsName & ".a.x64 " &
+             " -output lib/lib" & bindingsName & ".a -create"
 
   else:
     compile "lib" & bindingsName & ".a"
@@ -552,9 +552,8 @@ task test_bindings, "Test C bindings":
     exec "gcc -Iinclude -Llib -o build/testsuite/t_libctt_bls12_381_dl examples_c/t_libctt_bls12_381.c -lgmp -lconstantine_bls12_381"
     exec "LD_LIBRARY_PATH=lib ./build/testsuite/t_libctt_bls12_381_dl"
   else:
-    # Put DLL near the exe as LD_LIBRARY_PATH doesn't work even in an POSIX compatible shell
     exec "gcc -Ilib -Linclude -o build/testsuite/t_libctt_bls12_381_dl.exe examples_c/t_libctt_bls12_381.c -lgmp -lconstantine_bls12_381"
-    exec "./build/testsuite/t_libctt_bls12_381_dl.exe"
+    exec "PATH=$PATH:lib ./build/testsuite/t_libctt_bls12_381_dl.exe"
 
   echo "--> Testing statically linked library"
   when not defined(windows):
