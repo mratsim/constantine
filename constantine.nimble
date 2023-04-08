@@ -260,7 +260,9 @@ const testDescThreadpool: seq[string] = @[
 
 const testDescMultithreadedCrypto: seq[string] = @[
   "tests/parallel/t_ec_shortw_jac_g1_batch_add_parallel.nim",
-  "tests/parallel/t_ec_shortw_prj_g1_batch_add_parallel.nim"
+  "tests/parallel/t_ec_shortw_prj_g1_batch_add_parallel.nim",
+  "tests/parallel/t_ec_shortw_jac_g1_msm_parallel.nim",
+  "tests/parallel/t_ec_shortw_prj_g1_msm_parallel.nim",
 ]
 
 const benchDesc = [
@@ -574,6 +576,7 @@ task test, "Run all tests":
   cmdFile.addTestSet(requireGMP = true, testASM = true)
   cmdFile.addBenchSet(useASM = true)    # Build (but don't run) benches to ensure they stay relevant
   cmdFile.addTestSetThreadpool()
+  cmdFile.addTestSetMultithreadedCrypto()
   for cmd in cmdFile.splitLines():
     if cmd != "": # Windows doesn't like empty commands
       exec cmd
@@ -584,6 +587,7 @@ task test_no_asm, "Run all tests (no assembly)":
   cmdFile.addTestSet(requireGMP = true, testASM = false)
   cmdFile.addBenchSet(useASM = false)    # Build (but don't run) benches to ensure they stay relevant
   cmdFile.addTestSetThreadpool()
+  cmdFile.addTestSetMultithreadedCrypto(testASM = false)
   for cmd in cmdFile.splitLines():
     if cmd != "": # Windows doesn't like empty commands
       exec cmd
@@ -594,6 +598,7 @@ task test_no_gmp, "Run tests that don't require GMP":
   cmdFile.addTestSet(requireGMP = false, testASM = true)
   cmdFile.addBenchSet(useASM = true)    # Build (but don't run) benches to ensure they stay relevant
   cmdFile.addTestSetThreadpool()
+  cmdFile.addTestSetMultithreadedCrypto()
   for cmd in cmdFile.splitLines():
     if cmd != "": # Windows doesn't like empty commands
       exec cmd
@@ -604,11 +609,12 @@ task test_no_gmp_no_asm, "Run tests that don't require GMP using a pure Nim back
   cmdFile.addTestSet(requireGMP = false, testASM = false)
   cmdFile.addBenchSet(useASM = false)    # Build (but don't run) benches to ensure they stay relevant
   cmdFile.addTestSetThreadpool()
+  cmdFile.addTestSetMultithreadedCrypto(testASM = false)
   for cmd in cmdFile.splitLines():
     if cmd != "": # Windows doesn't like empty commands
       exec cmd
 
-task test_parallel, "Run all tests in parallel (via GNU parallel)":
+task test_parallel, "Run all tests in parallel":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   clearParallelBuild()
   genParallelCmdRunner()
@@ -622,11 +628,12 @@ task test_parallel, "Run all tests in parallel (via GNU parallel)":
   # Threadpool tests done serially
   cmdFile = ""
   cmdFile.addTestSetThreadpool()
+  cmdFile.addTestSetMultithreadedCrypto()
   for cmd in cmdFile.splitLines():
     if cmd != "": # Windows doesn't like empty commands
       exec cmd
 
-task test_parallel_no_asm, "Run all tests (without macro assembler) in parallel (via GNU parallel)":
+task test_parallel_no_asm, "Run all tests (without macro assembler) in parallel":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   clearParallelBuild()
   genParallelCmdRunner()
@@ -640,11 +647,12 @@ task test_parallel_no_asm, "Run all tests (without macro assembler) in parallel 
   # Threadpool tests done serially
   cmdFile = ""
   cmdFile.addTestSetThreadpool()
+  cmdFile.addTestSetMultithreadedCrypto(testASM = false)
   for cmd in cmdFile.splitLines():
     if cmd != "": # Windows doesn't like empty commands
       exec cmd
 
-task test_parallel_no_gmp, "Run all tests in parallel (via GNU parallel)":
+task test_parallel_no_gmp, "Run all tests in parallel":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   clearParallelBuild()
   genParallelCmdRunner()
@@ -658,11 +666,12 @@ task test_parallel_no_gmp, "Run all tests in parallel (via GNU parallel)":
   # Threadpool tests done serially
   cmdFile = ""
   cmdFile.addTestSetThreadpool()
+  cmdFile.addTestSetMultithreadedCrypto()
   for cmd in cmdFile.splitLines():
     if cmd != "": # Windows doesn't like empty commands
       exec cmd
 
-task test_parallel_no_gmp_no_asm, "Run all tests in parallel (via GNU parallel)":
+task test_parallel_no_gmp_no_asm, "Run all tests in parallel":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   clearParallelBuild()
   genParallelCmdRunner()
@@ -676,6 +685,7 @@ task test_parallel_no_gmp_no_asm, "Run all tests in parallel (via GNU parallel)"
   # Threadpool tests done serially
   cmdFile = ""
   cmdFile.addTestSetThreadpool()
+  cmdFile.addTestSetMultithreadedCrypto(testASM = false)
   for cmd in cmdFile.splitLines():
     if cmd != "": # Windows doesn't like empty commands
       exec cmd

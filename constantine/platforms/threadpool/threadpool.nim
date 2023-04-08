@@ -253,7 +253,6 @@ profileDecl(run_task)
 profileDecl(backoff_idle)
 profileDecl(backoff_awaiting)
 
-
 # ############################################################
 #                                                            #
 #                         Workers                            #
@@ -539,10 +538,9 @@ func increase(backoff: var BalancerBackoff) {.inline.} =
 func decrease(backoff: var BalancerBackoff) {.inline.} =
   # On success, we exponentially reduce check window.
   # Note: the thieves will start contributing as well.
-  backoff.windowLogSize -= 1
+  if backoff.windowLogSize > 0:
+    backoff.windowLogSize -= 1
   backoff.round = 0
-  if backoff.windowLogSize < 0:
-    backoff.windowLogSize = 0
 
 proc splitAndDispatchLoop(ctx: var WorkerContext, task: ptr Task, curLoopIndex: int, approxIdle: int32) =
   # The iterator mutates the task with the first chunk metadata
@@ -575,6 +573,7 @@ proc splitAndDispatchLoop(ctx: var WorkerContext, task: ptr Task, curLoopIndex: 
     ctx.taskqueue[].push(upperSplit)
 
   ctx.threadpool.globalBackoff.wakeAll()
+  ctx.incCounter(backoffGlobalSignalSent)
 
 proc loadBalanceLoop(ctx: var WorkerContext, task: ptr Task, curLoopIndex: int, backoff: var BalancerBackoff) =
   ## Split a parallel loop when necessary
@@ -670,6 +669,7 @@ proc tryStealOne(ctx: var WorkerContext): ptr Task =
     if not stolenTask.isNil():
       # Theft successful, there might be more work for idle threads, wake one
       ctx.threadpool.globalBackoff.wake()
+      ctx.incCounter(backoffGlobalSignalSent)
       return stolenTask
   return nil
 
@@ -697,6 +697,7 @@ proc tryLeapfrog(ctx: var WorkerContext, awaitedTask: ptr Task): ptr Task =
   if not leapTask.isNil():
     # Theft successful, there might be more work for idle threads, wake one
     ctx.threadpool.globalBackoff.wake()
+    ctx.incCounter(backoffGlobalSignalSent)
     return leapTask
   return nil
 
@@ -862,6 +863,8 @@ proc syncAll*(tp: Threadpool) {.raises: [].} =
   preCondition: ctx.id == 0
   preCondition: ctx.currentTask.isRootTask()
 
+  profileStop(run_task)
+
   while true:
     # 1. Empty local tasks
     debug: log("Worker %3d: syncAll 1 - searching task from local queue\n", ctx.id)
@@ -891,6 +894,8 @@ proc syncAll*(tp: Threadpool) {.raises: [].} =
 
   debugTermination:
     log(">>> Worker %3d leaves barrier <<<\n", ctx.id)
+
+  profileStart(run_task)
 
 # ############################################################
 #                                                            #
@@ -935,6 +940,7 @@ proc new*(T: type Threadpool, numThreads = countProcessors()): T {.raises: [Reso
 
   # Wait for the child threads
   discard tp.barrier.wait()
+  profileStart(run_task)
   return tp
 
 proc cleanup(tp: var Threadpool) {.raises: [].} =
@@ -956,6 +962,7 @@ proc shutdown*(tp: var Threadpool) {.raises:[].} =
   ## Wait until all tasks are processed and then shutdown the threadpool
   preCondition: workerContext.currentTask.isRootTask()
   tp.syncAll()
+  profileStop(run_task)
 
   # Signal termination to all threads
   for i in 0 ..< tp.numThreads:
@@ -1001,8 +1008,10 @@ proc sync*[T](fv: sink Flowvar[T]): T {.noInit, inline, gcsafe.} =
   ## Blocks the current thread until the flowvar is available
   ## and returned.
   ## The thread is not idle and will complete pending tasks.
+  profileStop(run_task)
   completeFuture(fv, result)
   cleanup(fv)
+  profileStart(run_task)
 
 # Data parallel API
 # ---------------------------------------------

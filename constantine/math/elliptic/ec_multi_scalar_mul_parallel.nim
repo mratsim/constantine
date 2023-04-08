@@ -142,11 +142,12 @@ template wrapperGenAccumReduce_jacext(miniMsmKind: untyped, c: static int) =
           buckets: ptr ECP_ShortW_JacExt[F, G] or ptr UncheckedArray[ECP_ShortW_JacExt[F, G]],
           bitIndex: int, coefs: ptr UncheckedArray[BigInt[bits]],
           points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
-          N: int) {.nimcall.} =
+          N: int): bool {.nimcall.} =
     const numBuckets = 1 shl (c-1)
     let buckets = cast[ptr UncheckedArray[ECP_ShortW_JacExt[F, G]]](buckets)
     zeroMem(buckets, sizeof(ECP_ShortW_JacExt[F, G]) * numBuckets)
     bucketAccumReduce_jacext(windowSum[], buckets, bitIndex, miniMsmKind, c, coefs, points, N)
+    return true
 
 proc msmJacExt_vartime_parallel*[bits: static int, F, G](
        tp: Threadpool,
@@ -165,6 +166,7 @@ proc msmJacExt_vartime_parallel*[bits: static int, F, G](
   # top window is done on this thread
   type EC = typeof(r)
   let miniMSMsResults = allocHeapArray(EC, numFullWindows)
+  let miniMSMsReady   = allocStackArray(FlowVar[bool], numFullWindows)
 
   wrapperGenAccumReduce_jacext(kFullWindow, c)
   wrapperGenAccumReduce_jacext(kBottomWindow, c)
@@ -176,17 +178,16 @@ proc msmJacExt_vartime_parallel*[bits: static int, F, G](
   # ---------
 
   block: # 1. Bucket accumulation and reduction
-    tp.spawn accumReduce_kBottomWindow_jacext(
-                       miniMSMsResults[0].addr,
-                       bucketsMatrix[0].addr,
-                       bitIndex = 0, coefs, points, N)
+    miniMSMsReady[0] = tp.spawn accumReduce_kBottomWindow_jacext(
+                                  miniMSMsResults[0].addr,
+                                  bucketsMatrix[0].addr,
+                                  bitIndex = 0, coefs, points, N)
 
-  tp.parallelFor w in 1 ..< numFullWindows:
-    captures: {miniMSMsResults, bucketsMatrix, coefs, points, N}
-    accumReduce_kFullWindow_jacext(
-      miniMSMsResults[w].addr,
-      bucketsMatrix[w*numBuckets].addr,
-      bitIndex = w*c, coefs, points, N)
+  for w in 1 ..< numFullWindows:
+    miniMSMsReady[w] = tp.spawn accumReduce_kFullWindow_jacext(
+                                  miniMSMsResults[w].addr,
+                                  bucketsMatrix[w*numBuckets].addr,
+                                  bitIndex = w*c, coefs, points, N)
 
   # Last window is done sync on this thread, directly initializing r
   const excess = bits mod c
@@ -202,19 +203,20 @@ proc msmJacExt_vartime_parallel*[bits: static int, F, G](
     else:
       r.setInf()
 
-  tp.syncAll()
-
   # 3. Final reduction, r initialized to what would be miniMSMsReady[numWindows-1]
   when excess != 0:
     for w in countdown(numWindows-2, 0):
       for _ in 0 ..< c:
         r.double()
+      discard sync miniMSMsReady[w]
       r += miniMSMsResults[w]
   elif numWindows >= 2:
+    discard sync miniMSMsReady[numWindows-2]
     r = miniMSMsResults[numWindows-2]
     for w in countdown(numWindows-3, 0):
       for _ in 0 ..< c:
         r.double()
+      discard sync miniMSMsReady[w]
       r += miniMSMsResults[w]
 
   # Cleanup
@@ -246,8 +248,9 @@ template wrapperGenAccumReduce(miniMsmKind: untyped, c: static int) =
           tp: Threadpool, windowSum: ptr ECP_ShortW[F, G],
           bitIndex: int, coefs: ptr UncheckedArray[BigInt[bits]],
           points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
-          N: int) {.nimcall.} =
+          N: int): bool {.nimcall.} =
     bucketAccumReduce_parallel(tp, windowSum[], bitIndex, miniMsmKind, c, coefs, points, N)
+    return true
 
 proc bucketAccumReduce_parallel[bits: static int, F, G](
        tp: Threadpool,
@@ -347,7 +350,7 @@ proc msmAffine_vartime_parallel*[bits: static int, F, G](
   # top window is done on this thread
   type EC = typeof(r)
   let miniMSMsResults = allocHeapArray(EC, numFullWindows)
-  # let miniMSMsReady   = allocStackArray(Flowvar[bool], numFullWindows)
+  let miniMSMsReady   = allocStackArray(Flowvar[bool], numFullWindows)
 
   wrapperGenAccumReduce(kFullWindow, c)
   wrapperGenAccumReduce(kBottomWindow, c)
@@ -356,14 +359,14 @@ proc msmAffine_vartime_parallel*[bits: static int, F, G](
   # ---------
 
   block: # 1. Bucket accumulation and reduction
-    tp.spawn accumReduce_kBottomWindow(
-               tp, miniMSMsResults[0].addr,
-               bitIndex = 0, coefs, points, N)
+    miniMSMsReady[0] = tp.spawn accumReduce_kBottomWindow(
+                                  tp, miniMSMsResults[0].addr,
+                                  bitIndex = 0, coefs, points, N)
 
-  tp.parallelFor w in 1 ..< numFullWindows:
-    captures: {tp, miniMSMsResults, coefs, points, N}
-    accumReduce_kFullWindow(tp, miniMSMsResults[w].addr,
-                            bitIndex = w*c, coefs, points, N)
+  for w in 1 ..< numFullWindows:
+    miniMSMsReady[w] = tp.spawn accumReduce_kFullWindow(
+                                  tp, miniMSMsResults[w].addr,
+                                  bitIndex = w*c, coefs, points, N)
 
   # Last window is done sync on this thread, directly initializing r
   const excess = bits mod c
@@ -379,22 +382,20 @@ proc msmAffine_vartime_parallel*[bits: static int, F, G](
     else:
       r.setInf()
 
-  tp.syncAll()
-
   # 3. Final reduction, r initialized to what would be miniMSMsReady[numWindows-1]
   when excess != 0:
     for w in countdown(numWindows-2, 0):
       for _ in 0 ..< c:
         r.double()
-      # discard sync miniMSMsReady[w]
+      discard sync miniMSMsReady[w]
       r += miniMSMsResults[w]
   elif numWindows >= 2:
-    # discard sync miniMSMsReady[numWindows-2]
+    discard sync miniMSMsReady[numWindows-2]
     r = miniMSMsResults[numWindows-2]
     for w in countdown(numWindows-3, 0):
       for _ in 0 ..< c:
         r.double()
-      # discard sync miniMSMsReady[w]
+      discard sync miniMSMsReady[w]
       r += miniMSMsResults[w]
 
   # Cleanup
