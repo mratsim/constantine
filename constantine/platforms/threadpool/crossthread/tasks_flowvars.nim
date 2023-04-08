@@ -25,6 +25,8 @@ import
 # Flowvars are also called future interchangeably.
 # (The name future is already used for IO scheduling)
 
+const NotALoop* = -1
+
 type
   TaskState = object
     ## This state allows synchronization between:
@@ -179,6 +181,9 @@ proc newSpawn*(
   result.hasFuture = false
   result.fn = fn
 
+  when defined(TP_Metrics):
+    result.loopStepsLeft = NotALoop
+
 proc newSpawn*(
        T: typedesc[Task],
        parent: ptr Task,
@@ -194,6 +199,9 @@ proc newSpawn*(
   result.hasFuture = false
   result.fn = fn
   cast[ptr[type env]](result.env)[] = env
+
+  when defined(TP_Metrics):
+    result.loopStepsLeft = NotALoop
 
 func ceilDiv_vartime(a, b: auto): auto {.inline.} =
   (a + b - 1) div b
