@@ -458,6 +458,8 @@ template withEndo[bits: static int, F, G](
            N: int, c: static int) =
   when bits <= F.C.getCurveOrderBitwidth() and hasEndomorphismAcceleration(F.C):
     let (endoCoefs, endoPoints, endoN) = applyEndomorphism_parallel(tp, coefs, points, N)
+    # Given that bits and N changed, we are able to use a bigger `c`
+    # but it has no significant impact on performance
     msmProc(tp, r, endoCoefs, endoPoints, endoN, c)
     freeHeap(endoCoefs)
     freeHeap(endoPoints)
@@ -472,6 +474,10 @@ proc multiScalarMul_dispatch_vartime_parallel[bits: static int, F, G](
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
   let c = bestBucketBitSize(N, bits, useSignedBuckets = true, useManualTuning = true)
 
+  # Given that bits and N change after applying an endomorphism,
+  # we are able to use a bigger `c`
+  # but it has no significant impact on performance
+
   case c
   of  2: withEndo(msmJacExt_vartime_parallel, tp, r, coefs, points, N, c =  2)
   of  3: withEndo(msmJacExt_vartime_parallel, tp, r, coefs, points, N, c =  3)
@@ -482,7 +488,9 @@ proc multiScalarMul_dispatch_vartime_parallel[bits: static int, F, G](
   of  8: withEndo(msmJacExt_vartime_parallel, tp, r, coefs, points, N, c =  8)
   of  9: withEndo(msmJacExt_vartime_parallel, tp, r, coefs, points, N, c =  9)
   of 10: withEndo(msmJacExt_vartime_parallel, tp, r, coefs, points, N, c = 10)
-  of 11: msmAffine_vartime_parallel(tp, r, coefs, points, N, c = 11)
+
+  of 11: withEndo(msmAffine_vartime_parallel, tp, r, coefs, points, N, c = 11)
+
   of 12: msmAffine_vartime_parallel(tp, r, coefs, points, N, c = 12)
   of 13: msmAffine_vartime_parallel(tp, r, coefs, points, N, c = 13)
   of 14: msmAffine_vartime_parallel(tp, r, coefs, points, N, c = 14)

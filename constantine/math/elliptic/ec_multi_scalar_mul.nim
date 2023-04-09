@@ -407,6 +407,8 @@ template withEndo[bits: static int, F, G](
            N: int, c: static int) =
   when bits <= F.C.getCurveOrderBitwidth() and hasEndomorphismAcceleration(F.C):
     let (endoCoefs, endoPoints, endoN) = applyEndomorphism(coefs, points, N)
+    # Given that bits and N changed, we are able to use a bigger `c`
+    # but it has no significant impact on performance
     msmProc(r, endoCoefs, endoPoints, endoN, c)
     freeHeap(endoCoefs)
     freeHeap(endoPoints)
@@ -420,6 +422,10 @@ func multiScalarMul_dispatch_vartime[bits: static int, F, G](
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
   let c = bestBucketBitSize(N, bits, useSignedBuckets = true, useManualTuning = true)
 
+  # Given that bits and N change after applying an endomorphism,
+  # we are able to use a bigger `c`
+  # but it has no significant impact on performance
+
   case c
   of  2: withEndo(multiScalarMulJacExt_vartime, r, coefs, points, N, c =  2)
   of  3: withEndo(multiScalarMulJacExt_vartime, r, coefs, points, N, c =  3)
@@ -428,6 +434,7 @@ func multiScalarMul_dispatch_vartime[bits: static int, F, G](
   of  6: withEndo(multiScalarMulJacExt_vartime, r, coefs, points, N, c =  6)
   of  7: withEndo(multiScalarMulJacExt_vartime, r, coefs, points, N, c =  7)
   of  8: withEndo(multiScalarMulJacExt_vartime, r, coefs, points, N, c =  8)
+
   of  9: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c =  9)
   of 10: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c = 10)
   of 11: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c = 11)
