@@ -9,6 +9,7 @@
 import ./ec_multi_scalar_mul_scheduler,
        ./ec_multi_scalar_mul,
        ./ec_endomorphism_accel,
+       ../extension_fields,
        ../constants/zoo_endomorphisms,
        ../../platforms/threadpool/threadpool
 export bestBucketBitSize
@@ -431,54 +432,65 @@ proc multiScalarMul_dispatch_vartime_parallel[bits: static int, F, G](
   else:
     unreachable()
 
+proc multiScalarMul_vartime_parallel_endo[bits: static int, F, G](
+       tp: Threadpool,
+       r: var ECP_ShortW[F, G],
+       coefs: ptr UncheckedArray[BigInt[bits]],
+       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
+       N: int) =
+  ## Multiscalar multiplication:
+  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
+
+  const M = when F is Fp:  2
+            elif F is Fp2: 4
+            else: {.error: "Unconfigured".}
+
+  const L = bits.ceilDiv_vartime(M) + 1
+  let splitCoefs   = allocHeapArray(array[M, BigInt[L]], N)
+  let endoBasis    = allocHeapArray(array[M, ECP_ShortW_Aff[F, G]], N)
+
+  tp.parallelFor i in 0 ..< N:
+    captures: {coefs, points, splitCoefs, endoBasis}
+
+    var negatePoints {.noinit.}: array[M, SecretBool]
+    splitCoefs[i].decomposeEndo(negatePoints, coefs[i], F)
+    if negatePoints[0].bool:
+      endoBasis[i][0].neg(points[i])
+    else:
+      endoBasis[i][0] = points[i]
+
+    when F is Fp:
+      endoBasis[i][1].x.prod(points[i].x, F.C.getCubicRootOfUnity_mod_p())
+      if negatePoints[1].bool:
+        endoBasis[i][1].y.neg(points[i].y)
+      else:
+        endoBasis[i][1].y = points[i].y
+    else:
+      staticFor m, 1, M:
+        endoBasis[i][m].frobenius_psi(points[i], m)
+        if negatePoints[m].bool:
+          endoBasis[i][m].neg()
+
+  tp.syncAll()
+
+  let endoCoefs = cast[ptr UncheckedArray[BigInt[L]]](splitCoefs)
+  let endoPoints  = cast[ptr UncheckedArray[ECP_ShortW_Aff[F, G]]](endoBasis)
+  tp.multiScalarMul_dispatch_vartime_parallel(r, endoCoefs, endoPoints, M*N)
+
+  endoBasis.freeHeap()
+  splitCoefs.freeHeap()
+
 proc multiScalarMul_vartime_parallel*[bits: static int, F, G](
        tp: Threadpool,
        r: var ECP_ShortW[F, G],
        coefs: openArray[BigInt[bits]],
        points: openArray[ECP_ShortW_Aff[F, G]]) {.meter.} =
-  ## Multiscalar multiplication:
-  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
 
   debug: doAssert coefs.len == points.len
   let N = points.len
 
   when bits <= F.C.getCurveOrderBitwidth() and F.C.hasEndomorphismAcceleration():
-    # TODO, min amount of bits for endomorphisms?
-
-    const M = when F is Fp:  2
-              elif F is Fp2: 4
-              else: {.error: "Unconfigured".}
-
-    const L = bits.ceilDiv_vartime(M) + 1
-    let splitCoefs   = allocHeapArray(array[M, BigInt[L]], N)
-    let endoBasis    = allocHeapArray(array[M, ECP_ShortW_Aff[F, G]], N)
-
-    for i in 0 ..< N:
-      var negatePoints {.noinit.}: array[M, SecretBool]
-      splitCoefs[i].decomposeEndo(negatePoints, coefs[i], F)
-      if negatePoints[0].bool:
-        endoBasis[i][0].neg(points[i])
-      else:
-        endoBasis[i][0] = points[i]
-
-      when F is Fp:
-        endoBasis[i][1].x.prod(points[i].x, F.C.getCubicRootOfUnity_mod_p())
-        if negatePoints[1].bool:
-          endoBasis[i][1].y.neg(points[i].y)
-        else:
-          endoBasis[i][1].y = points[i].y
-      else:
-        staticFor m, 1, M:
-          endoBasis[i][m].frobenius_psi(points[i], m)
-          if negatePoints[m].bool:
-            endoBasis[i][m].neg()
-
-    let endoCoefs = cast[ptr UncheckedArray[BigInt[L]]](splitCoefs)
-    let endoPoints  = cast[ptr UncheckedArray[ECP_ShortW_Aff[F, G]]](endoBasis)
-    tp.multiScalarMul_dispatch_vartime_parallel(r, endoCoefs, endoPoints, M*N)
-
-    endoBasis.freeHeap()
-    splitCoefs.freeHeap()
-
+    # TODO, min/max amount of bits for endomorphisms?
+    tp.multiScalarMul_vartime_parallel_endo(r, coefs.asUnchecked(), points.asUnchecked(), N)
   else:
     tp.multiScalarMul_dispatch_vartime_parallel(r, coefs.asUnchecked(), points.asUnchecked(), N)

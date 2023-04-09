@@ -135,6 +135,30 @@ template ascertain*(check: untyped) =
   ## Optional runtime check in the middle of processing
   assertContract("transient condition", check)
 
+# Metrics
+# ----------------------------------------------------------------------------------
+
+macro defCountersType*(name: untyped, countersDesc: static seq[tuple[field, desc: string]]): untyped =
+  var records = nnkRecList.newTree()
+
+  for (field, _) in countersDesc:
+    records.add newIdentDefs(ident(field), ident"int64")
+
+  result = nnkTypeSection.newTree(
+    nnkTypeDef.newTree(
+      name,
+      newEmptyNode(),
+      nnkObjectTy.newTree(
+        newEmptyNode(),
+        newEmptyNode(),
+        records
+      )
+    )
+  )
+
+macro getCounter*(counters: untyped, counterField: static string): untyped =
+  return nnkDotExpr.newTree(counters, ident(counterField))
+
 # Profiling
 # ----------------------------------------------------------------------------------
 
@@ -183,13 +207,13 @@ when defined(TP_Profile):
 
     result = newStmtList()
     let strUnit = ident"strUnit"
-    result.add newLetStmt(strUnit, newCall(bindSym"$", timerUnit))
+    result.add newConstStmt(strUnit, newCall(bindSym"$", timerUnit))
 
-    var formatString = "worker %3d: %10.3lf, %s, %s\n"
+    var formatString = "Worker %3d:   timerId %2d, %10.3lf, %s, %s\n"
 
     var cumulated = newCall(bindSym"getElapsedCumulatedTime")
     for i in 0 ..< ProfilerRegistry.len:
-      var fnCall = newCall(bindSym"c_printf", newLit(formatString), workerID)
+      var fnCall = newCall(bindSym"c_printf", newLit(formatString), workerID, newLit(i))
       let timer = ident("timer_" & ProfilerRegistry[i])
       fnCall.add newCall(bindSym"getElapsedTime", timer, timerUnit)
       fnCall.add strUnit
@@ -203,9 +227,10 @@ when defined(TP_Profile):
       bindSym"c_printf",
       newLit(formatString),
       workerID,
+      newLit(ProfilerRegistry.len),
       cumulated,
       strUnit,
-      newLit"cumulated time")
+      newLit"cumulated_time")
 
     result.add newCall(bindSym"flushFile", bindSym"stdout")
 

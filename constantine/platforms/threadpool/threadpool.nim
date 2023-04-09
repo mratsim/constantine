@@ -20,7 +20,7 @@ import
   ./instrumentation,
   ./primitives/barriers,
   ./parallel_offloading,
-  ../allocs, ../bithacks
+  ../allocs, ../bithacks, ../static_for
 
 export
   # flowvars
@@ -136,28 +136,29 @@ iterator pseudoRandomPermutation(randomSeed: uint32, maxExclusive: int32): int32
 #                                                            #
 # ############################################################
 
+let countersDesc {.compileTime.} = @[
+  ("tasksScheduled", "tasks scheduled"),
+  ("tasksStolen", "tasks stolen"),
+  ("tasksExecuted", "tasks executed"),
+  ("unrelatedTasksExecuted", "unrelated tasks executed"),
+  ("loopsSplit", "loops split"),
+  ("itersScheduled", "iterations scheduled"),
+  ("itersStolen", "iterations stolen"),
+  ("itersExecuted", "iterations executed"),
+  ("theftsIdle", "thefts while idle in event loop"),
+  ("theftsAwaiting", "thefts while awaiting a future"),
+  ("theftsLeapfrog", "leapfrogging thefts"),
+  ("backoffGlobalSleep", "sleeps on global backoff"),
+  ("backoffGlobalSignalSent", "signals sent on global backoff"),
+  ("backoffTaskAwaited", "sleeps on task-local backoff")
+]
+
+defCountersType(Counters, countersDesc)
+
 type
   WorkerID = int32
   Signal = object
     terminate {.align: 64.}: Atomic[bool]
-
-  Counters = object
-    tasksScheduled:          int64
-    tasksExecuted:           int64
-    unrelatedTasksExecuted:  int64
-    loopsScheduled:          int64
-    loopsExecuted:           int64
-    loopsIterScheduled:      int64
-    loopsIterExecuted:       int64
-    loopsSplit:              int64
-    theftsIdle:              int64 # Thefts in event loop
-    theftsAwaiting:          int64 # Thefts while awaiting a future
-    theftsLeapfrog:          int64
-    theftsLoops:             int64
-    theftsLoopIters:         int64
-    backoffGlobalSleep:      int64
-    backoffGlobalSignalSent: int64
-    backoffTaskAwaited:      int64
 
   WorkerContext = object
     ## Thread-local worker context
@@ -201,19 +202,17 @@ template metrics(body: untyped): untyped =
   when defined(TP_Metrics):
     block: {.noSideEffect, gcsafe.}: body
 
-template incCounter(ctx: WorkerContext, name: untyped{ident}, amount = 1) =
+template incCounter(ctx: var WorkerContext, name: untyped{ident}, amount = 1) =
   bind name
   metrics:
     # Assumes workerContext is in the calling context
     ctx.counters.name += amount
 
-template decCounter(ctx: WorkerContext, name: untyped{ident}) =
-  bind name
+proc calcDerivedMetrics(ctx: var WorkerContext) {.used.} =
   metrics:
-    # Assumes workerContext is in the calling context
-    ctx.counters.name -= 1
+    ctx.counters.tasksStolen = ctx.counters.theftsIdle + ctx.counters.theftsAwaiting
 
-proc printWorkerMetrics(ctx: WorkerContext) =
+proc printWorkerMetrics(ctx: var WorkerContext) =
   metrics:
     if ctx.id == 0:
       c_printf("\n")
@@ -222,24 +221,12 @@ proc printWorkerMetrics(ctx: WorkerContext) =
       c_printf("+========================================+\n")
       flushFile(stdout)
 
+    ctx.calcDerivedMetrics()
     discard ctx.threadpool.barrier.wait()
 
-    c_printf("Worker %3d: %7ld tasks scheduled\n", ctx.id, ctx.counters.tasksScheduled)
-    c_printf("Worker %3d: %7ld tasks executed\n", ctx.id, ctx.counters.tasksExecuted)
-    c_printf("Worker %3d: %7ld unrelated tasks executed\n", ctx.id, ctx.counters.unrelatedTasksExecuted)
-    c_printf("Worker %3d: %7ld loops scheduled\n", ctx.id, ctx.counters.loopsScheduled)
-    c_printf("Worker %3d: %7ld loops executed\n", ctx.id, ctx.counters.loopsExecuted)
-    c_printf("Worker %3d: %7ld loops' iterations scheduled\n", ctx.id, ctx.counters.loopsIterScheduled)
-    c_printf("Worker %3d: %7ld loops' iterations executed\n", ctx.id, ctx.counters.loopsIterExecuted)
-    c_printf("Worker %3d: %7ld loops' splits\n", ctx.id, ctx.counters.loopsSplit)
-    c_printf("Worker %3d: %7ld thefts while idle\n", ctx.id, ctx.counters.theftsIdle)
-    c_printf("Worker %3d: %7ld thefts while awaiting\n", ctx.id, ctx.counters.theftsAwaiting)
-    c_printf("Worker %3d: %7ld leapfrogging thefts\n", ctx.id, ctx.counters.theftsLeapfrog)
-    c_printf("Worker %3d: %7ld loops stolen\n", ctx.id, ctx.counters.theftsLoops)
-    c_printf("Worker %3d: %7ld loops' iterations stolen\n", ctx.id, ctx.counters.theftsLoopIters)
-    c_printf("Worker %3d: %7ld sleeps on global backoff\n", ctx.id, ctx.counters.backoffGlobalSleep)
-    c_printf("Worker %3d: %7ld signals sent on global backoff\n", ctx.id, ctx.counters.backoffGlobalSignalSent)
-    c_printf("Worker %3d: %7ld sleeps on task-local backoff\n", ctx.id, ctx.counters.backoffTaskAwaited)
+    staticFor i, 0, countersDesc.len:
+      const (propName, propDesc) = countersDesc[i]
+      c_printf("Worker %3d: counterId %2d, %10d, %-32s\n", ctx.id, i, ctx.counters.getCounter(propName), propDesc)
 
     flushFile(stdout)
 
@@ -380,10 +367,7 @@ proc run(ctx: var WorkerContext, task: ptr Task) {.raises:[].} =
   ctx.currentTask = suspendedTask
 
   ctx.incCounter(tasksExecuted)
-  ctx.incCounter(loopsExecuted):
-    if task.loopStepsLeft == NotALoop: 0
-    else: 1
-  ctx.incCounter(loopsIterExecuted):
+  ctx.incCounter(itersExecuted):
     if task.loopStepsLeft == NotALoop: 0
     else: (task.loopStop - task.loopStart + task.loopStride-1) div task.loopStride
 
@@ -411,10 +395,7 @@ proc schedule(ctx: var WorkerContext, task: ptr Task, forceWake = false) {.inlin
   ctx.taskqueue[].push(task)
 
   ctx.incCounter(tasksScheduled)
-  ctx.incCounter(loopsScheduled):
-    if task.loopStepsLeft == NotALoop: 0
-    else: 1
-  ctx.incCounter(loopsIterScheduled):
+  ctx.incCounter(itersScheduled):
     if task.loopStepsLeft == NotALoop: 0
     else: task.loopStepsLeft
 
@@ -717,10 +698,7 @@ proc eventLoop(ctx: var WorkerContext) {.raises:[], gcsafe.} =
       ctx.incCounter(backoffGlobalSignalSent)
 
       ctx.incCounter(theftsIdle)
-      ctx.incCounter(theftsLoops):
-        if stolenTask.loopStepsLeft == NotALoop: 0
-        else: 1
-      ctx.incCounter(theftsLoopIters):
+      ctx.incCounter(itersStolen):
         if stolenTask.loopStepsLeft == NotALoop: 0
         else: stolenTask.loopStepsLeft
       # 2.a Run task
@@ -734,7 +712,7 @@ proc eventLoop(ctx: var WorkerContext) {.raises:[], gcsafe.} =
     else:
       # 2.c Park the thread until a new task enters the threadpool
       debugTermination: log("Worker %3d: eventLoop 2.b - sleeping\n", ctx.id)
-      ctx.incCounter(backoffGlobalSleep, 1)
+      ctx.incCounter(backoffGlobalSleep)
       profile(backoff_idle):
         ctx.threadpool.globalBackoff.sleep(ticket)
       debugTermination: log("Worker %3d: eventLoop 2.b - waking\n", ctx.id)
@@ -820,10 +798,7 @@ proc completeFuture[T](fv: Flowvar[T], parentResult: var T) {.raises:[].} =
       # Leapfrogging, the thief had an empty queue, hence if there are tasks in its queue, it's generated by our blocked task.
       # Help the thief clear those, as if it did not finish, it's likely blocked on those children tasks.
       ctx.incCounter(theftsLeapfrog)
-      ctx.incCounter(theftsLoops):
-        if leapTask.loopStepsLeft == NotALoop: 0
-        else: 1
-      ctx.incCounter(theftsLoopIters):
+      ctx.incCounter(itersStolen):
         if leapTask.loopStepsLeft == NotALoop: 0
         else: leapTask.loopStepsLeft
 
@@ -836,10 +811,7 @@ proc completeFuture[T](fv: Flowvar[T], parentResult: var T) {.raises:[].} =
 
       # We stole a task, we hope we advance our awaited task.
       ctx.incCounter(theftsAwaiting)
-      ctx.incCounter(theftsLoops):
-        if stolenTask.loopStepsLeft == NotALoop: 0
-        else: 1
-      ctx.incCounter(theftsLoopIters):
+      ctx.incCounter(itersStolen):
         if stolenTask.loopStepsLeft == NotALoop: 0
         else: stolenTask.loopStepsLeft
 
@@ -890,10 +862,7 @@ proc syncAll*(tp: Threadpool) {.raises: [].} =
       ctx.incCounter(backoffGlobalSignalSent)
 
       ctx.incCounter(theftsIdle)
-      ctx.incCounter(theftsLoops):
-        if stolenTask.loopStepsLeft == NotALoop: 0
-        else: 1
-      ctx.incCounter(theftsLoopIters):
+      ctx.incCounter(itersStolen):
         if stolenTask.loopStepsLeft == NotALoop: 0
         else: stolenTask.loopStepsLeft
       ctx.run(stolenTask)
