@@ -143,7 +143,7 @@ template wrapperGenAccumReduce_jacext(miniMsmKind: untyped, c: static int) =
           buckets: ptr ECP_ShortW_JacExt[F, G] or ptr UncheckedArray[ECP_ShortW_JacExt[F, G]],
           bitIndex: int, coefs: ptr UncheckedArray[BigInt[bits]],
           points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
-          N: int): bool {.nimcall.} =
+          N: int): bool {.nimcall, used.} =
     const numBuckets = 1 shl (c-1)
     let buckets = cast[ptr UncheckedArray[ECP_ShortW_JacExt[F, G]]](buckets)
     zeroMem(buckets, sizeof(ECP_ShortW_JacExt[F, G]) * numBuckets)
@@ -269,7 +269,7 @@ proc bucketAccumReduce_parallel[bits: static int, F, G](
   while outerParallelism*innerParallelism < tp.numThreads:
     innerParallelism = innerParallelism shl 1
 
-  let numChunks = innerParallelism
+  let numChunks = 1'i32 # innerParallelism # TODO: unfortunately trying to expose more parallelism slows down the performance
   let chunkSize = int32(numBuckets) shr log2_vartime(cast[uint32](numChunks)) # Both are power of 2 so exact division
   let chunksReadiness = allocStackArray(FlowVar[bool], numChunks-1)           # Last chunk is done on this thread
 
@@ -403,43 +403,14 @@ proc msmAffine_vartime_parallel*[bits: static int, F, G](
   # -------
   miniMSMsResults.freeHeap()
 
-proc multiScalarMul_dispatch_vartime_parallel[bits: static int, F, G](
+proc applyEndomorphism_parallel[bits: static int, F, G](
        tp: Threadpool,
-       r: var ECP_ShortW[F, G], coefs: ptr UncheckedArray[BigInt[bits]],
-       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], N: int) =
-  ## Multiscalar multiplication:
-  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
-  let c = bestBucketBitSize(N, bits, useSignedBuckets = true, useManualTuning = true)
-
-  case c
-  of  2: msmJacExt_vartime_parallel(tp, r, coefs, points, N, c =  2)
-  of  3: msmJacExt_vartime_parallel(tp, r, coefs, points, N, c =  3)
-  of  4: msmJacExt_vartime_parallel(tp, r, coefs, points, N, c =  4)
-  of  5: msmJacExt_vartime_parallel(tp, r, coefs, points, N, c =  5)
-  of  6: msmJacExt_vartime_parallel(tp, r, coefs, points, N, c =  6)
-  of  7: msmJacExt_vartime_parallel(tp, r, coefs, points, N, c =  7)
-  of  8: msmJacExt_vartime_parallel(tp, r, coefs, points, N, c =  8)
-  of  9: msmJacExt_vartime_parallel(tp, r, coefs, points, N, c =  9)
-  of 10: msmJacExt_vartime_parallel(tp, r, coefs, points, N, c = 10)
-  of 11: msmAffine_vartime_parallel(tp, r, coefs, points, N, c = 11)
-  of 12: msmAffine_vartime_parallel(tp, r, coefs, points, N, c = 12)
-  of 13: msmAffine_vartime_parallel(tp, r, coefs, points, N, c = 13)
-  of 14: msmAffine_vartime_parallel(tp, r, coefs, points, N, c = 14)
-  of 15: msmAffine_vartime_parallel(tp, r, coefs, points, N, c = 15)
-  of 16: msmAffine_vartime_parallel(tp, r, coefs, points, N, c = 16)
-  of 17: msmAffine_vartime_parallel(tp, r, coefs, points, N, c = 17)
-  of 18: msmAffine_vartime_parallel(tp, r, coefs, points, N, c = 18)
-  else:
-    unreachable()
-
-proc multiScalarMul_vartime_parallel_endo[bits: static int, F, G](
-       tp: Threadpool,
-       r: var ECP_ShortW[F, G],
        coefs: ptr UncheckedArray[BigInt[bits]],
        points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
-       N: int) =
-  ## Multiscalar multiplication:
-  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
+       N: int): auto =
+  ## Decompose (coefs, points) into mini-scalars
+  ## Returns a new triplet (endoCoefs, endoPoints, N)
+  ## endoCoefs and endoPoints MUST be freed afterwards
 
   const M = when F is Fp:  2
             elif F is Fp2: 4
@@ -475,22 +446,60 @@ proc multiScalarMul_vartime_parallel_endo[bits: static int, F, G](
 
   let endoCoefs = cast[ptr UncheckedArray[BigInt[L]]](splitCoefs)
   let endoPoints  = cast[ptr UncheckedArray[ECP_ShortW_Aff[F, G]]](endoBasis)
-  tp.multiScalarMul_dispatch_vartime_parallel(r, endoCoefs, endoPoints, M*N)
 
-  endoBasis.freeHeap()
-  splitCoefs.freeHeap()
+  return (endoCoefs, endoPoints, M*N)
+
+template withEndo[bits: static int, F, G](
+           msmProc: untyped,
+           tp: Threadpool,
+           r: var ECP_ShortW[F, G],
+           coefs: ptr UncheckedArray[BigInt[bits]],
+           points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
+           N: int, c: static int) =
+  when bits <= F.C.getCurveOrderBitwidth() and hasEndomorphismAcceleration(F.C):
+    let (endoCoefs, endoPoints, endoN) = applyEndomorphism_parallel(tp, coefs, points, N)
+    msmProc(tp, r, endoCoefs, endoPoints, endoN, c)
+    freeHeap(endoCoefs)
+    freeHeap(endoPoints)
+  else:
+    msmProc(tp, r, coefs, points, N, c)
+
+proc multiScalarMul_dispatch_vartime_parallel[bits: static int, F, G](
+       tp: Threadpool,
+       r: var ECP_ShortW[F, G], coefs: ptr UncheckedArray[BigInt[bits]],
+       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], N: int) =
+  ## Multiscalar multiplication:
+  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
+  let c = bestBucketBitSize(N, bits, useSignedBuckets = true, useManualTuning = true)
+
+  case c
+  of  2: withEndo(msmJacExt_vartime_parallel, tp, r, coefs, points, N, c =  2)
+  of  3: withEndo(msmJacExt_vartime_parallel, tp, r, coefs, points, N, c =  3)
+  of  4: withEndo(msmJacExt_vartime_parallel, tp, r, coefs, points, N, c =  4)
+  of  5: withEndo(msmJacExt_vartime_parallel, tp, r, coefs, points, N, c =  5)
+  of  6: withEndo(msmJacExt_vartime_parallel, tp, r, coefs, points, N, c =  6)
+  of  7: withEndo(msmJacExt_vartime_parallel, tp, r, coefs, points, N, c =  7)
+  of  8: withEndo(msmJacExt_vartime_parallel, tp, r, coefs, points, N, c =  8)
+  of  9: withEndo(msmJacExt_vartime_parallel, tp, r, coefs, points, N, c =  9)
+  of 10: withEndo(msmJacExt_vartime_parallel, tp, r, coefs, points, N, c = 10)
+  of 11: msmAffine_vartime_parallel(tp, r, coefs, points, N, c = 11)
+  of 12: msmAffine_vartime_parallel(tp, r, coefs, points, N, c = 12)
+  of 13: msmAffine_vartime_parallel(tp, r, coefs, points, N, c = 13)
+  of 14: msmAffine_vartime_parallel(tp, r, coefs, points, N, c = 14)
+  of 15: msmAffine_vartime_parallel(tp, r, coefs, points, N, c = 15)
+  of 16: msmAffine_vartime_parallel(tp, r, coefs, points, N, c = 16)
+  of 17: msmAffine_vartime_parallel(tp, r, coefs, points, N, c = 17)
+  of 18: msmAffine_vartime_parallel(tp, r, coefs, points, N, c = 18)
+  else:
+    unreachable()
 
 proc multiScalarMul_vartime_parallel*[bits: static int, F, G](
        tp: Threadpool,
        r: var ECP_ShortW[F, G],
        coefs: openArray[BigInt[bits]],
-       points: openArray[ECP_ShortW_Aff[F, G]]) {.meter.} =
+       points: openArray[ECP_ShortW_Aff[F, G]]) {.meter, inline.} =
 
   debug: doAssert coefs.len == points.len
   let N = points.len
 
-  when bits <= F.C.getCurveOrderBitwidth() and F.C.hasEndomorphismAcceleration():
-    # TODO, min/max amount of bits for endomorphisms?
-    tp.multiScalarMul_vartime_parallel_endo(r, coefs.asUnchecked(), points.asUnchecked(), N)
-  else:
-    tp.multiScalarMul_dispatch_vartime_parallel(r, coefs.asUnchecked(), points.asUnchecked(), N)
+  tp.multiScalarMul_dispatch_vartime_parallel(r, coefs.asUnchecked(), points.asUnchecked(), N)

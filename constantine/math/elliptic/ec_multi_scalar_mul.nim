@@ -8,6 +8,7 @@
 
 import ./ec_multi_scalar_mul_scheduler,
        ./ec_endomorphism_accel,
+       ../extension_fields,
        ../constants/zoo_endomorphisms
 export bestBucketBitSize
 
@@ -357,6 +358,61 @@ func multiScalarMulAffine_vartime[F, G; bits: static int](
   sched.freeHeap()
   buckets.freeHeap()
 
+proc applyEndomorphism[bits: static int, F, G](
+       coefs: ptr UncheckedArray[BigInt[bits]],
+       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
+       N: int): auto =
+  ## Decompose (coefs, points) into mini-scalars
+  ## Returns a new triplet (endoCoefs, endoPoints, N)
+  ## endoCoefs and endoPoints MUST be freed afterwards
+
+  const M = when F is Fp:  2
+            elif F is Fp2: 4
+            else: {.error: "Unconfigured".}
+
+  const L = bits.ceilDiv_vartime(M) + 1
+  let splitCoefs   = allocHeapArray(array[M, BigInt[L]], N)
+  let endoBasis    = allocHeapArray(array[M, ECP_ShortW_Aff[F, G]], N)
+
+  for i in 0 ..< N:
+    var negatePoints {.noinit.}: array[M, SecretBool]
+    splitCoefs[i].decomposeEndo(negatePoints, coefs[i], F)
+    if negatePoints[0].bool:
+      endoBasis[i][0].neg(points[i])
+    else:
+      endoBasis[i][0] = points[i]
+
+    when F is Fp:
+      endoBasis[i][1].x.prod(points[i].x, F.C.getCubicRootOfUnity_mod_p())
+      if negatePoints[1].bool:
+        endoBasis[i][1].y.neg(points[i].y)
+      else:
+        endoBasis[i][1].y = points[i].y
+    else:
+      staticFor m, 1, M:
+        endoBasis[i][m].frobenius_psi(points[i], m)
+        if negatePoints[m].bool:
+          endoBasis[i][m].neg()
+
+  let endoCoefs = cast[ptr UncheckedArray[BigInt[L]]](splitCoefs)
+  let endoPoints  = cast[ptr UncheckedArray[ECP_ShortW_Aff[F, G]]](endoBasis)
+
+  return (endoCoefs, endoPoints, M*N)
+
+template withEndo[bits: static int, F, G](
+           msmProc: untyped,
+           r: var ECP_ShortW[F, G],
+           coefs: ptr UncheckedArray[BigInt[bits]],
+           points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
+           N: int, c: static int) =
+  when bits <= F.C.getCurveOrderBitwidth() and hasEndomorphismAcceleration(F.C):
+    let (endoCoefs, endoPoints, endoN) = applyEndomorphism(coefs, points, N)
+    msmProc(r, endoCoefs, endoPoints, endoN, c)
+    freeHeap(endoCoefs)
+    freeHeap(endoPoints)
+  else:
+    msmProc(r, coefs, points, N, c)
+
 func multiScalarMul_dispatch_vartime[bits: static int, F, G](
        r: var ECP_ShortW[F, G], coefs: ptr UncheckedArray[BigInt[bits]],
        points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], N: int) =
@@ -365,23 +421,23 @@ func multiScalarMul_dispatch_vartime[bits: static int, F, G](
   let c = bestBucketBitSize(N, bits, useSignedBuckets = true, useManualTuning = true)
 
   case c
-  of  2: multiScalarMulJacExt_vartime(r, coefs, points, N, c =  2)
-  of  3: multiScalarMulJacExt_vartime(r, coefs, points, N, c =  3)
-  of  4: multiScalarMulJacExt_vartime(r, coefs, points, N, c =  4)
-  of  5: multiScalarMulJacExt_vartime(r, coefs, points, N, c =  5)
-  of  6: multiScalarMulJacExt_vartime(r, coefs, points, N, c =  6)
-  of  7: multiScalarMulJacExt_vartime(r, coefs, points, N, c =  7)
-  of  8: multiScalarMulJacExt_vartime(r, coefs, points, N, c =  8)
-  of  9: multiScalarMulAffine_vartime(r, coefs, points, N, c =  9)
-  of 10: multiScalarMulAffine_vartime(r, coefs, points, N, c = 10)
-  of 11: multiScalarMulAffine_vartime(r, coefs, points, N, c = 11)
-  of 12: multiScalarMulAffine_vartime(r, coefs, points, N, c = 12)
-  of 13: multiScalarMulAffine_vartime(r, coefs, points, N, c = 13)
-  of 14: multiScalarMulAffine_vartime(r, coefs, points, N, c = 14)
-  of 15: multiScalarMulAffine_vartime(r, coefs, points, N, c = 15)
-  of 16: multiScalarMulAffine_vartime(r, coefs, points, N, c = 16)
-  of 17: multiScalarMulAffine_vartime(r, coefs, points, N, c = 17)
-  of 18: multiScalarMulAffine_vartime(r, coefs, points, N, c = 18)
+  of  2: withEndo(multiScalarMulJacExt_vartime, r, coefs, points, N, c =  2)
+  of  3: withEndo(multiScalarMulJacExt_vartime, r, coefs, points, N, c =  3)
+  of  4: withEndo(multiScalarMulJacExt_vartime, r, coefs, points, N, c =  4)
+  of  5: withEndo(multiScalarMulJacExt_vartime, r, coefs, points, N, c =  5)
+  of  6: withEndo(multiScalarMulJacExt_vartime, r, coefs, points, N, c =  6)
+  of  7: withEndo(multiScalarMulJacExt_vartime, r, coefs, points, N, c =  7)
+  of  8: withEndo(multiScalarMulJacExt_vartime, r, coefs, points, N, c =  8)
+  of  9: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c =  9)
+  of 10: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c = 10)
+  of 11: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c = 11)
+  of 12: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c = 12)
+  of 13: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c = 13)
+  of 14: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c = 14)
+  of 15: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c = 15)
+  of 16: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c = 16)
+  of 17: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c = 17)
+  of 18: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c = 18)
   else:
     unreachable()
 
@@ -395,43 +451,4 @@ func multiScalarMul_vartime*[bits: static int, F, G](
   debug: doAssert coefs.len == points.len
   let N = points.len
 
-  when bits <= F.C.getCurveOrderBitwidth() and F.C.hasEndomorphismAcceleration():
-    # TODO, min amount of bits for endomorphisms?
-
-    const M = when F is Fp:  2
-              elif F is Fp2: 4
-              else: {.error: "Unconfigured".}
-
-    const L = bits.ceilDiv_vartime(M) + 1
-    let splitCoefs   = allocHeapArray(array[M, BigInt[L]], N)
-    let endoBasis    = allocHeapArray(array[M, ECP_ShortW_Aff[F, G]], N)
-
-    for i in 0 ..< N:
-      var negatePoints {.noinit.}: array[M, SecretBool]
-      splitCoefs[i].decomposeEndo(negatePoints, coefs[i], F)
-      if negatePoints[0].bool:
-        endoBasis[i][0].neg(points[i])
-      else:
-        endoBasis[i][0] = points[i]
-
-      when F is Fp:
-        endoBasis[i][1].x.prod(points[i].x, F.C.getCubicRootOfUnity_mod_p())
-        if negatePoints[1].bool:
-          endoBasis[i][1].y.neg(points[i].y)
-        else:
-          endoBasis[i][1].y = points[i].y
-      else:
-        staticFor m, 1, M:
-          endoBasis[i][m].frobenius_psi(points[i], m)
-          if negatePoints[m].bool:
-            endoBasis[i][m].neg()
-
-    let endoCoefs = cast[ptr UncheckedArray[BigInt[L]]](splitCoefs)
-    let endoPoints  = cast[ptr UncheckedArray[ECP_ShortW_Aff[F, G]]](endoBasis)
-    multiScalarMul_dispatch_vartime(r, endoCoefs, endoPoints, M*N)
-
-    endoBasis.freeHeap()
-    splitCoefs.freeHeap()
-
-  else:
-    multiScalarMul_dispatch_vartime(r, coefs.asUnchecked(), points.asUnchecked(), N)
+  multiScalarMul_dispatch_vartime(r, coefs.asUnchecked(), points.asUnchecked(), N)

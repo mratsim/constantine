@@ -20,13 +20,14 @@ import
   ./instrumentation,
   ./primitives/barriers,
   ./parallel_offloading,
-  ../allocs, ../bithacks, ../static_for
+  ../allocs, ../bithacks
 
 export
   # flowvars
   Flowvar, isSpawned, isReady
 
 when defined(TP_Metrics):
+  import ../static_for
   import system/ansi_c
 
 # ############################################################
