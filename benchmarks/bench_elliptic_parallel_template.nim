@@ -65,7 +65,7 @@ proc msmParallelBench*(EC: typedesc, numPoints: int, iters: int) =
   var startNaive, stopNaive, startMSMbaseline, stopMSMbaseline, startMSMopt, stopMSMopt, startMSMpara, stopMSMpara: MonoTime
 
   if numPoints <= 100000:
-    bench("EC scalar muls                " & align($numPoints, 24) & " (scalars " & $bits & "-bit, points) pairs ", EC, iters):
+    bench("EC scalar muls                " & align($numPoints, 10) & " (" & $bits & "-bit coefs, points)", EC, iters):
       startNaive = getMonotime()
       var tmp: EC
       r.setInf()
@@ -76,13 +76,13 @@ proc msmParallelBench*(EC: typedesc, numPoints: int, iters: int) =
       stopNaive = getMonotime()
 
   block:
-    bench("EC multi-scalar-mul baseline  " & align($numPoints, 24) & " (scalars " & $bits & "-bit, points) pairs ", EC, iters):
+    bench("EC multi-scalar-mul baseline  " & align($numPoints, 10) & " (" & $bits & "-bit coefs, points)", EC, iters):
       startMSMbaseline = getMonotime()
       r.multiScalarMul_reference_vartime(scalars, points)
       stopMSMbaseline = getMonotime()
 
   block:
-    bench("EC multi-scalar-mul optimized " & align($numPoints, 24) & " (scalars " & $bits & "-bit, points) pairs ", EC, iters):
+    bench("EC multi-scalar-mul optimized " & align($numPoints, 10) & " (" & $bits & "-bit coefs, points)", EC, iters):
       startMSMopt = getMonotime()
       r.multiScalarMul_vartime(scalars, points)
       stopMSMopt = getMonotime()
@@ -90,7 +90,7 @@ proc msmParallelBench*(EC: typedesc, numPoints: int, iters: int) =
   block:
     var tp = Threadpool.new()
 
-    bench("EC multi-scalar-mul parallel " & align($tp.numThreads & " threads", 13) & align($numPoints, 12) & " (scalars " & $bits & "-bit, points) pairs ", EC, iters):
+    bench("EC multi-scalar-mul" & align($tp.numThreads & " threads", 11) & align($numPoints, 10) & " (" & $bits & "-bit coefs, points)", EC, iters):
       startMSMpara = getMonotime()
       tp.multiScalarMul_vartime_parallel(r, scalars, points)
       stopMSMpara = getMonotime()

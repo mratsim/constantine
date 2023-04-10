@@ -27,16 +27,16 @@ type ChunkDescriptor* = object
   start, numSteps: int
   numChunks*, baseChunkSize, cutoff: int
 
-iterator items*(c: ChunkDescriptor): tuple[chunkID, start, stopEx: int] =
+iterator items*(c: ChunkDescriptor): tuple[chunkID, start, size: int] =
   for chunkID in 0 ..< c.numChunks:
     if chunkID < c.cutoff:
       let offset = c.start + ((c.baseChunkSize + 1) * chunkID)
       let chunkSize = c.baseChunkSize + 1
-      yield (chunkID, offset, min(offset+chunkSize, c.numSteps))
+      yield (chunkID, offset, min(chunkSize, c.numSteps-offset))
     else:
       let offset = c.start + (c.baseChunkSize * chunkID) + c.cutoff
       let chunkSize = c.baseChunkSize
-      yield (chunkID, offset, min(offset+chunkSize, c.numSteps))
+      yield (chunkID, offset, min(chunkSize, c.numSteps-offset))
 
 func ceilDiv_vartime(a, b: auto): auto {.inline.} =
   (a + b - 1) div b

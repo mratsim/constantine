@@ -271,7 +271,7 @@ func deriveSchedulerConstants*(c: int): tuple[numNZBuckets, queueLen: int] {.com
   result.queueLen = max(MinVectorAddThreshold, 4*c*c - 16*c - 128)
 
 func init*[NumNZBuckets, QueueLen: static int, F; G: static Subgroup](
-      sched: var Scheduler[NumNZBuckets, QueueLen, F, G], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
+      sched: ptr Scheduler[NumNZBuckets, QueueLen, F, G], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
       buckets: ptr Buckets[NumNZBuckets, F, G], start, stopEx: int32) {.inline.} =
   ## init a scheduler overseeing buckets [start, stopEx)
   ## within the indices [0, NumNZBuckets). Bucket for value 0 is considered at index -1.
@@ -288,13 +288,13 @@ func scheduledPointDescriptor*(pointIndex: int, pointDesc: tuple[val: SecretWord
     sign:    cast[int64](pointDesc.neg),
     pointID: cast[int64](pointIndex))
 
-func enqueuePoint(sched: var Scheduler, sp: ScheduledPoint) {.inline.} =
+func enqueuePoint(sched: ptr Scheduler, sp: ScheduledPoint) {.inline.} =
   sched.queue[sched.numScheduled] = sp
   sched.collisionsMap.setBit(sp.bucket.int)
   sched.numScheduled += 1
 
-func handleCollision(sched: var Scheduler, sp: ScheduledPoint)
-func rescheduleCollisions(sched: var Scheduler)
+func handleCollision(sched: ptr Scheduler, sp: ScheduledPoint)
+func rescheduleCollisions(sched: ptr Scheduler)
 func sparseVectorAddition[F, G](
        buckets:         ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
        bucketStatuses:  ptr UncheckedArray[set[BucketStatus]],
@@ -302,7 +302,7 @@ func sparseVectorAddition[F, G](
        scheduledPoints: ptr UncheckedArray[ScheduledPoint],
        numScheduled:    int32) {.noInline, tags:[VarTime, Alloca].}
 
-func prefetch*(sched: Scheduler, sp: ScheduledPoint) =
+func prefetch*(sched: ptr Scheduler, sp: ScheduledPoint) =
   let bucket = sp.bucket
   if bucket == -1:
     return
@@ -311,7 +311,7 @@ func prefetch*(sched: Scheduler, sp: ScheduledPoint) =
   prefetchLarge(sched.buckets.ptAff[bucket].addr, Write, HighTemporalLocality, maxCacheLines = 1)
   prefetchLarge(sched.buckets.ptJacExt[bucket].addr, Write, HighTemporalLocality, maxCacheLines = 1)
 
-func schedule*(sched: var Scheduler, sp: ScheduledPoint) =
+func schedule*(sched: ptr Scheduler, sp: ScheduledPoint) =
   ## Schedule a point for accumulating in buckets
 
   let bucket = int sp.bucket
@@ -340,7 +340,7 @@ func schedule*(sched: var Scheduler, sp: ScheduledPoint) =
     sched.collisionsMap.setZero()
     sched.rescheduleCollisions()
 
-func handleCollision(sched: var Scheduler, sp: ScheduledPoint) =
+func handleCollision(sched: ptr Scheduler, sp: ScheduledPoint) =
   if sched.numCollisions < sched.collisions.len:
     sched.collisions[sched.numCollisions] = sp
     sched.numCollisions += 1
@@ -359,7 +359,7 @@ func handleCollision(sched: var Scheduler, sp: ScheduledPoint) =
   else:
     sched.buckets.ptJacExt[sp.bucket] -= sched.points[sp.pointID]
 
-func rescheduleCollisions(sched: var Scheduler) =
+func rescheduleCollisions(sched: ptr Scheduler) =
   template last: untyped = sched.numCollisions-1
   var i = last()
   while i >= 0:
@@ -371,7 +371,7 @@ func rescheduleCollisions(sched: var Scheduler) =
       sched.numCollisions -= 1
     i -= 1
 
-func flushBuffer(sched: var Scheduler, buf: ptr UncheckedArray[ScheduledPoint], count: var int32) =
+func flushBuffer(sched: ptr Scheduler, buf: ptr UncheckedArray[ScheduledPoint], count: var int32) =
   for i in 0 ..< count:
     let sp = buf[i]
     if kJacExt in sched.buckets.status[sp.bucket]:
@@ -386,7 +386,7 @@ func flushBuffer(sched: var Scheduler, buf: ptr UncheckedArray[ScheduledPoint], 
       sched.buckets.status[sp.bucket].incl(kJacExt)
   count = 0
 
-func flushPendingAndReset*(sched: var Scheduler) =
+func flushPendingAndReset*(sched: ptr Scheduler) =
   if sched.numScheduled >= MinVectorAddThreshold:
     sparseVectorAddition(
       sched.buckets.ptAff.asUnchecked(), sched.buckets.status.asUnchecked(),

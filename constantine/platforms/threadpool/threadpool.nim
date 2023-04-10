@@ -981,11 +981,24 @@ macro spawn*(tp: Threadpool, fnCall: typed): untyped =
   ##
   ## If the function calls returns a result, spawn will wrap it in a Flowvar.
   ## You can use `sync` to block the current thread and extract the asynchronous result from the flowvar.
-  ## You can use `isReady` to check if result is available and if subsequent
-  ## `spawn` returns immediately.
+  ## You can use `isReady` to check if result is available and if a subsequent
+  ## `sync` returns immediately.
   ##
   ## Tasks are processed approximately in Last-In-First-Out (LIFO) order
   result = spawnImpl(tp, fnCall, bindSym"workerContext", bindSym"schedule")
+
+macro spawnAwaitable*(tp: Threadpool, fnCall: typed): untyped =
+  ## Spawns the input function call asynchronously, potentially on another thread of execution.
+  ##
+  ## This allows awaiting a void function.
+  ## The result, once ready, is always `true`.
+  ##
+  ## You can use `sync` to block the current thread until the function is finished.
+  ## You can use `isReady` to check if result is available and if a subsequent
+  ## `sync` returns immediately.
+  ##
+  ## Tasks are processed approximately in Last-In-First-Out (LIFO) order
+  result = spawnAwaitableImpl(tp, fnCall, bindSym"workerContext", bindSym"schedule")
 
 proc sync*[T](fv: sink Flowvar[T]): T {.noInit, inline, gcsafe.} =
   ## Blocks the current thread until the flowvar is available

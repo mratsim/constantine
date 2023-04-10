@@ -137,18 +137,15 @@ export bestBucketBitSize
 # Parallel MSM Jacobian Extended
 # ------------------------------
 
-template wrapperGenAccumReduce_jacext(miniMsmKind: untyped, c: static int) =
-  proc `accumReduce _ miniMsmKind _ jacext`(
-          windowSum: ptr ECP_ShortW[F, G],
-          buckets: ptr ECP_ShortW_JacExt[F, G] or ptr UncheckedArray[ECP_ShortW_JacExt[F, G]],
-          bitIndex: int, coefs: ptr UncheckedArray[BigInt[bits]],
-          points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
-          N: int): bool {.nimcall, used.} =
-    const numBuckets = 1 shl (c-1)
-    let buckets = cast[ptr UncheckedArray[ECP_ShortW_JacExt[F, G]]](buckets)
-    zeroMem(buckets, sizeof(ECP_ShortW_JacExt[F, G]) * numBuckets)
-    bucketAccumReduce_jacext(windowSum[], buckets, bitIndex, miniMsmKind, c, coefs, points, N)
-    return true
+proc bucketAccumReduce_jacext_zeroMem[F, G; bits: static int](
+       windowSum: ptr ECP_ShortW[F, G],
+       buckets: ptr ECP_ShortW_JacExt[F, G] or ptr UncheckedArray[ECP_ShortW_JacExt[F, G]],
+       bitIndex: int, miniMsmKind: static MiniMsmKind, c: static int,
+       coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], N: int) =
+  const numBuckets = 1 shl (c-1)
+  let buckets = cast[ptr UncheckedArray[ECP_ShortW_JacExt[F, G]]](buckets)
+  zeroMem(buckets, sizeof(ECP_ShortW_JacExt[F, G]) * numBuckets)
+  bucketAccumReduce_jacext(windowSum[], buckets, bitIndex, miniMsmKind, c, coefs, points, N)
 
 proc msmJacExt_vartime_parallel*[bits: static int, F, G](
        tp: Threadpool,
@@ -169,26 +166,24 @@ proc msmJacExt_vartime_parallel*[bits: static int, F, G](
   let miniMSMsResults = allocHeapArray(EC, numFullWindows)
   let miniMSMsReady   = allocStackArray(FlowVar[bool], numFullWindows)
 
-  wrapperGenAccumReduce_jacext(kFullWindow, c)
-  wrapperGenAccumReduce_jacext(kBottomWindow, c)
-  wrapperGenAccumReduce_jacext(kTopWindow, c)
-
   let bucketsMatrix = allocHeapArray(ECP_ShortW_JacExt[F, G], numBuckets*numWindows)
 
   # Algorithm
   # ---------
 
   block: # 1. Bucket accumulation and reduction
-    miniMSMsReady[0] = tp.spawn accumReduce_kBottomWindow_jacext(
+    miniMSMsReady[0] = tp.spawnAwaitable bucketAccumReduce_jacext_zeroMem(
                                   miniMSMsResults[0].addr,
                                   bucketsMatrix[0].addr,
-                                  bitIndex = 0, coefs, points, N)
+                                  bitIndex = 0, kBottomWindow, c,
+                                  coefs, points, N)
 
   for w in 1 ..< numFullWindows:
-    miniMSMsReady[w] = tp.spawn accumReduce_kFullWindow_jacext(
+    miniMSMsReady[w] = tp.spawnAwaitable bucketAccumReduce_jacext_zeroMem(
                                   miniMSMsResults[w].addr,
                                   bucketsMatrix[w*numBuckets].addr,
-                                  bitIndex = w*c, coefs, points, N)
+                                  bitIndex = w*c, kFullWindow, c,
+                                  coefs, points, N)
 
   # Last window is done sync on this thread, directly initializing r
   const excess = bits mod c
@@ -196,11 +191,11 @@ proc msmJacExt_vartime_parallel*[bits: static int, F, G](
 
   when top != 0:
     when excess != 0:
-      zeroMem(bucketsMatrix[(numWindows-1)*numBuckets].addr, sizeof(ECP_ShortW_JacExt[F, G]) * numBuckets)
-      r.bucketAccumReduce_jacext(
-          cast[ptr UncheckedArray[ECP_ShortW_JacExt[F, G]]](bucketsMatrix[(numWindows-1)*numBuckets].addr),
-          bitIndex = top, kTopWindow, c,
-          coefs, points, N)
+      bucketAccumReduce_jacext_zeroMem(
+        r.addr,
+        bucketsMatrix[numFullWindows*numBuckets].addr,
+        bitIndex = top, kTopWindow, c,
+        coefs, points, N)
     else:
       r.setInf()
 
@@ -228,34 +223,10 @@ proc msmJacExt_vartime_parallel*[bits: static int, F, G](
 # Parallel MSM Affine
 # ------------------------------
 
-proc bucketAccumReduce_parallel[bits: static int, F, G](
-       tp: Threadpool,
-       r: var ECP_ShortW[F, G],
-       bitIndex: int,
-       miniMsmKind: static MiniMsmKind,  c: static int,
-       coefs: ptr UncheckedArray[BigInt[bits]],
-       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
-       N: int)
-
-template wrapperGenAccumulate(miniMsmKind: static MiniMsmKind, c: static int) =
-  proc accumulate(
-        sched: ptr Scheduler, bitIndex: int,
-        coefs: ptr UncheckedArray[BigInt[bits]], N: int): bool {.nimcall.} =
-    schedAccumulate(sched[], bitIndex, miniMsmKind, c, coefs, N)
-    return true
-
-template wrapperGenAccumReduce(miniMsmKind: untyped, c: static int) =
-  proc `accumReduce _ miniMsmKind`(
-          tp: Threadpool, windowSum: ptr ECP_ShortW[F, G],
-          bitIndex: int, coefs: ptr UncheckedArray[BigInt[bits]],
-          points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
-          N: int): bool {.nimcall.} =
-    bucketAccumReduce_parallel(tp, windowSum[], bitIndex, miniMsmKind, c, coefs, points, N)
-    return true
 
 proc bucketAccumReduce_parallel[bits: static int, F, G](
        tp: Threadpool,
-       r: var ECP_ShortW[F, G],
+       r: ptr ECP_ShortW[F, G],
        bitIndex: int,
        miniMsmKind: static MiniMsmKind,  c: static int,
        coefs: ptr UncheckedArray[BigInt[bits]],
@@ -278,16 +249,14 @@ proc bucketAccumReduce_parallel[bits: static int, F, G](
 
   buckets[].init()
 
-  wrapperGenAccumulate(miniMsmKind, c)
-
   block: # 1. Bucket Accumulation
     for chunkID in 0'i32 ..< numChunks-1:
       let idx = chunkID*chunkSize
-      scheds[chunkID].init(points, buckets, idx, idx+chunkSize)
-      chunksReadiness[chunkID] = tp.spawn accumulate(scheds[chunkID].addr, bitIndex, coefs, N)
+      scheds[chunkID].addr.init(points, buckets, idx, idx+chunkSize)
+      chunksReadiness[chunkID] = tp.spawnAwaitable schedAccumulate(scheds[chunkID].addr, bitIndex, miniMsmKind, c, coefs, N)
     # Last bucket is done sync on this thread
-    scheds[numChunks-1].init(points, buckets, (numChunks-1)*chunkSize, int32 numBuckets)
-    scheds[numChunks-1].schedAccumulate(bitIndex, miniMsmKind, c, coefs, N)
+    scheds[numChunks-1].addr.init(points, buckets, (numChunks-1)*chunkSize, int32 numBuckets)
+    scheds[numChunks-1].addr.schedAccumulate(bitIndex, miniMsmKind, c, coefs, N)
 
   block: # 2. Bucket reduction
     var windowSum{.noInit.}: ECP_ShortW_JacExt[F, G]
@@ -327,7 +296,7 @@ proc bucketAccumReduce_parallel[bits: static int, F, G](
       buckets[].reset(k)
       windowSum += accumBuckets
 
-    r.fromJacobianExtended_vartime(windowSum)
+    r[].fromJacobianExtended_vartime(windowSum)
 
   # Cleanup
   # ----------------
@@ -353,21 +322,20 @@ proc msmAffine_vartime_parallel*[bits: static int, F, G](
   let miniMSMsResults = allocHeapArray(EC, numFullWindows)
   let miniMSMsReady   = allocStackArray(Flowvar[bool], numFullWindows)
 
-  wrapperGenAccumReduce(kFullWindow, c)
-  wrapperGenAccumReduce(kBottomWindow, c)
-
   # Algorithm
   # ---------
 
   block: # 1. Bucket accumulation and reduction
-    miniMSMsReady[0] = tp.spawn accumReduce_kBottomWindow(
+    miniMSMsReady[0] = tp.spawnAwaitable bucketAccumReduce_parallel(
                                   tp, miniMSMsResults[0].addr,
-                                  bitIndex = 0, coefs, points, N)
+                                  bitIndex = 0, kBottomWIndow, c,
+                                  coefs, points, N)
 
   for w in 1 ..< numFullWindows:
-    miniMSMsReady[w] = tp.spawn accumReduce_kFullWindow(
+    miniMSMsReady[w] = tp.spawnAwaitable bucketAccumReduce_parallel(
                                   tp, miniMSMsResults[w].addr,
-                                  bitIndex = w*c, coefs, points, N)
+                                  bitIndex = w*c, kFullWIndow, c,
+                                  coefs, points, N)
 
   # Last window is done sync on this thread, directly initializing r
   const excess = bits mod c

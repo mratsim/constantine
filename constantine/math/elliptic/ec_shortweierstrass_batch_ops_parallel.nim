@@ -59,7 +59,7 @@ proc sum_reduce_vartime_parallelChunks[F; G: static Subgroup](
 
     tp.spawn partialResults[iter.chunkID].addr.sum_reduce_chunk_vartime_wrapper(
               points.asUnchecked() +% iter.start,
-              iter.stopEx - iter.start)
+              iter.size)
 
   tp.syncAll() # TODO: this prevents nesting in another parallel region
 

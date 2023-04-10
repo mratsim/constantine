@@ -35,8 +35,27 @@ import
 #                                                            #
 # ############################################################
 
+proc needTempStorage(argTy: NimNode): bool =
+  case argTy.kind
+  of nnkVarTy:
+    error("It is unsafe to capture a `var` parameter and pass it to another thread. Its memory location could be invalidated if the spawning proc returns before the worker thread finishes.")
+  of nnkStaticTy:
+    return false
+  of nnkBracketExpr:
+    if argTy[0].typeKind == ntyTypeDesc:
+      return false
+    else:
+      return true
+  of nnkCharLit..nnkNilLit:
+    return false
+  else:
+    return true
+
 proc spawnVoid(funcCall: NimNode, args, argsTy: NimNode, workerContext, schedule: NimNode): NimNode =
-  # Create the async function
+  ## Spawn a function that can be scheduled on another thread
+  ## without return value.
+  result = newStmtList()
+
   let fn = funcCall[0]
   let fnName = $fn
   let withArgs = args.len > 0
@@ -44,28 +63,30 @@ proc spawnVoid(funcCall: NimNode, args, argsTy: NimNode, workerContext, schedule
   var fnCall = newCall(fn)
   let env = ident("ctt_tpSpawnVoidEnv_")   # typed pointer to env
 
-  # Schedule
-  let task = ident"ctt_tpSpawnVoidTask_"
-  let scheduleBlock = newCall(schedule, workerContext, task)
+  # Closure unpacker
+  var envParams = nnkTupleConstr.newTree()
+  var envParamsTy = nnkTupleConstr.newTree()
+  var envOffset = 0
 
-  result = newStmtList()
-
-  if funcCall.len == 2:
-    # With only 1 arg, the tuple syntax doesn't construct a tuple
-    # let env = (123) # is an int
-    fnCall.add nnkDerefExpr.newTree(env)
-  else: # This handles the 0 arg case as well
-    for i in 1 ..< funcCall.len:
-      fnCall.add nnkBracketExpr.newTree(
-        env,
-        newLit i-1)
+  for i in 0 ..< args.len:
+    if argsTy[i].needTempStorage():
+      envParamsTy.add argsTy[i]
+      envParams.add args[i]
+      fnCall.add nnkBracketExpr.newTree(env, newLit envOffset)
+      envOffset += 1
+    else:
+      fnCall.add args[i]
 
   # Create the async call
   result.add quote do:
     proc `tpSpawn_closure`(env: pointer) {.nimcall, gcsafe, raises: [].} =
       when bool(`withArgs`):
-        let `env` = cast[ptr `argsTy`](env)
+        let `env` = cast[ptr `envParamsTy`](env)
       `fnCall`
+
+  # Schedule
+  let task = ident"ctt_tpSpawnVoidTask_"
+  let scheduleBlock = newCall(schedule, workerContext, task)
 
   # Create the task
   result.add quote do:
@@ -74,15 +95,82 @@ proc spawnVoid(funcCall: NimNode, args, argsTy: NimNode, workerContext, schedule
         let `task` = Task.newSpawn(
           parent = `workerContext`.currentTask,
           fn = `tpSpawn_closure`,
-          env = `args`)
+          env = `envParams`)
       else:
         let `task` = Task.newSpawn(
           parent = `workerContext`.currentTask,
           fn = `tpSpawn_closure`)
       `scheduleBlock`
 
+proc spawnVoidAwaitable(funcCall: NimNode, args, argsTy: NimNode, workerContext, schedule: NimNode): NimNode =
+  ## Spawn a function that can be scheduled on another thread
+  ## with a dummy awaitable return value
+  result = newStmtList()
+
+  let fn = funcCall[0]
+  let fnName = $fn
+  let tpSpawn_closure = ident("ctt_tpSpawnVoidAwaitableClosure_" & fnName)
+  var fnCall = newCall(fn)
+  let env = ident("ctt_tpSpawnVoidAwaitableEnv_")   # typed pointer to env
+
+  # tasks have no return value.
+  # 1. The start of the task `env` buffer will store the return value for the flowvar and awaiter/sync
+  # 2. We create a wrapper tpSpawn_closure without return value that send the return value in the channel
+  # 3. We package that wrapper function in a task
+
+  # We store the following in task.env:
+  #
+  # | ptr Task | result | arg₀ | arg₁ | ... | argₙ
+  let fut = ident"ctt_tpSpawnVoidAwaitableFut_"
+  let taskSelfReference = ident"ctt_taskSelfReference"
+
+  # Closure unpacker
+  # env stores | ptr Task | result | arg₀ | arg₁ | ... | argₙ
+  # so arguments starts at env[2] in the wrapping funcCall functions
+  var envParams = nnkTupleConstr.newTree()
+  var envParamsTy = nnkTupleConstr.newTree()
+  envParams.add taskSelfReference
+  envParamsTy.add nnkPtrTy.newTree(bindSym"Task")
+  envParams.add newLit(false)
+  envParamsTy.add getType(bool)
+  var envOffset = 2
+
+  for i in 0 ..< args.len:
+    if argsTy[i].needTempStorage():
+      envParamsTy.add argsTy[i]
+      envParams.add args[i]
+      fnCall.add nnkBracketExpr.newTree(env, newLit envOffset)
+      envOffset += 1
+    else:
+      fnCall.add args[i]
+
+  result.add quote do:
+    proc `tpSpawn_closure`(env: pointer) {.nimcall, gcsafe, raises: [].} =
+      let `env` = cast[ptr `envParamsTy`](env)
+      `fnCall`
+      readyWith(`env`[0], true)
+
+  # Schedule
+  let task = ident"ctt_tpSpawnVoidAwaitableTask_"
+  let scheduleBlock = newCall(schedule, workerContext, task)
+
+  # Create the task
+  result.add quote do:
+    block enq_deq_task:
+      let `taskSelfReference` = cast[ptr Task](0xDEADBEEF)
+
+      let `task` = Task.newSpawn(
+        parent = `workerContext`.currentTask,
+        fn = `tpSpawn_closure`,
+        env = `envParams`)
+      let `fut` = newFlowVar(bool, `task`)
+      `scheduleBlock`
+      # Return the future
+      `fut`
+
 proc spawnRet(funcCall: NimNode, retTy, args, argsTy: NimNode, workerContext, schedule: NimNode): NimNode =
-  # Create the async function
+  ## Spawn a function that can be scheduled on another thread
+  ## with an awaitable future return value.
   result = newStmtList()
 
   let fn = funcCall[0]
@@ -103,21 +191,25 @@ proc spawnRet(funcCall: NimNode, retTy, args, argsTy: NimNode, workerContext, sc
   let taskSelfReference = ident"ctt_taskSelfReference"
   let retVal = ident"ctt_retVal"
 
-  var envParams = nnkPar.newTree
-  var envParamsTy = nnkPar.newTree
+  # Closure unpacker
+  # env stores | ptr Task | result | arg₀ | arg₁ | ... | argₙ
+  # so arguments starts at env[2] in the wrapping funcCall functions
+  var envParams = nnkTupleConstr.newTree()
+  var envParamsTy = nnkTupleConstr.newTree()
   envParams.add taskSelfReference
   envParamsTy.add nnkPtrTy.newTree(bindSym"Task")
   envParams.add retVal
   envParamsTy.add retTy
+  var envOffset = 2
 
-  for i in 1 ..< funcCall.len:
-    envParamsTy.add getTypeInst(funcCall[i])
-    envParams.add funcCall[i]
-
-  # env stores | ptr Task | result | arg₀ | arg₁ | ... | argₙ
-  # so arguments starts at env[2] in the wrapping funcCall functions
-  for i in 1 ..< funcCall.len:
-    fnCall.add nnkBracketExpr.newTree(env, newLit i+1)
+  for i in 0 ..< args.len:
+    if argsTy[i].needTempStorage():
+      envParamsTy.add argsTy[i]
+      envParams.add args[i]
+      fnCall.add nnkBracketExpr.newTree(env, newLit envOffset)
+      envOffset += 1
+    else:
+      fnCall.add args[i]
 
   result.add quote do:
     proc `tpSpawn_closure`(env: pointer) {.nimcall, gcsafe, raises: [].} =
@@ -125,8 +217,8 @@ proc spawnRet(funcCall: NimNode, retTy, args, argsTy: NimNode, workerContext, sc
       let res = `fnCall`
       readyWith(`env`[0], res)
 
-  # Regenerate fresh ident, retTy has been tagged as a function call param
-  let retTy = ident($retTy)
+  # Schedule
+  let retTy = ident($retTy) # Regenerate fresh ident, retTy has been tagged as a function call param
   let task = ident"ctt_tpSpawnRetTask_"
   let scheduleBlock = newCall(schedule, workerContext, task)
 
@@ -154,8 +246,8 @@ proc spawnImpl*(tp: NimNode{nkSym}, funcCall: NimNode, workerContext, schedule: 
 
   # Get a serialized type and data for all function arguments
   # We use adhoc tuple
-  var argsTy = nnkPar.newTree()
-  var args = nnkPar.newTree()
+  var argsTy = nnkTupleConstr.newTree()
+  var args = nnkTupleConstr.newTree()
   for i in 1 ..< funcCall.len:
     argsTy.add getTypeInst(funcCall[i])
     args.add funcCall[i]
@@ -165,6 +257,29 @@ proc spawnImpl*(tp: NimNode{nkSym}, funcCall: NimNode, workerContext, schedule: 
     result = spawnVoid(funcCall, args, argsTy, workerContext, schedule)
   else:
     result = spawnRet(funcCall, retTy, args, argsTy, workerContext, schedule)
+
+  # Wrap in a block for namespacing
+  result = nnkBlockStmt.newTree(newEmptyNode(), result)
+
+proc spawnAwaitableImpl*(tp: NimNode{nkSym}, funcCall: NimNode, workerContext, schedule: NimNode): NimNode =
+  funcCall.expectKind(nnkCall)
+
+  # Get the return type if any
+  let retTy = funcCall[0].getImpl[3][0]
+  let needFuture = retTy.kind != nnkEmpty
+  if needFuture:
+    error "spawnAwaitable can only be used with procedures without returned values"
+
+  # Get a serialized type and data for all function arguments
+  # We use adhoc tuple
+  var argsTy = nnkTupleConstr.newTree()
+  var args = nnkTupleConstr.newTree()
+  for i in 1 ..< funcCall.len:
+    argsTy.add getTypeInst(funcCall[i])
+    args.add funcCall[i]
+
+  # Package in a task
+  result = spawnVoidAwaitable(funcCall, args, argsTy, workerContext, schedule)
 
   # Wrap in a block for namespacing
   result = nnkBlockStmt.newTree(newEmptyNode(), result)

@@ -263,7 +263,7 @@ func multiScalarMulJacExt_vartime*[F, G; bits: static int](
   buckets.freeHeap()
 
 func schedAccumulate*[NumBuckets, QueueLen, F, G; bits: static int](
-       sched: var Scheduler[NumBuckets, QueueLen, F, G],
+       sched: ptr Scheduler[NumBuckets, QueueLen, F, G],
        bitIndex: int, miniMsmKind: static MiniMsmKind, c: static int,
        coefs: ptr UncheckedArray[BigInt[bits]], N: int) {.meter.} =
 
@@ -289,7 +289,7 @@ func schedAccumulate*[NumBuckets, QueueLen, F, G; bits: static int](
 
 func miniMSM_affine[NumBuckets, QueueLen, F, G; bits: static int](
        r: var ECP_ShortW[F, G],
-       sched: var Scheduler[NumBuckets, QueueLen, F, G],
+       sched: ptr Scheduler[NumBuckets, QueueLen, F, G],
        bitIndex: int, miniMsmKind: static MiniMsmKind, c: static int,
        coefs: ptr UncheckedArray[BigInt[bits]], N: int) {.meter.} =
   ## Apply a mini-Multi-Scalar-Multiplication on [bitIndex, bitIndex+window)
@@ -326,7 +326,7 @@ func multiScalarMulAffine_vartime[F, G; bits: static int](
   let buckets = allocHeap(Buckets[numBuckets, F, G])
   buckets[].init()
   let sched = allocHeap(Scheduler[numBuckets, queueLen, F, G])
-  sched[].init(points, buckets, 0, numBuckets.int32)
+  sched.init(points, buckets, 0, numBuckets.int32)
 
   # Algorithm
   # ---------
@@ -347,11 +347,11 @@ func multiScalarMulAffine_vartime[F, G; bits: static int](
       w -= c
 
   while w != 0:       # Steady state
-    r.miniMSM_affine(sched[], w, kFullWindow, c, coefs, N)
+    r.miniMSM_affine(sched, w, kFullWindow, c, coefs, N)
     w -= c
 
   block:              # Epilogue
-    r.miniMSM_affine(sched[], w, kBottomWindow, c, coefs, N)
+    r.miniMSM_affine(sched, w, kBottomWindow, c, coefs, N)
 
   # Cleanup
   # -------
