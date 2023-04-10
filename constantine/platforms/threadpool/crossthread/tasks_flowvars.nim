@@ -25,6 +25,8 @@ import
 # Flowvars are also called future interchangeably.
 # (The name future is already used for IO scheduling)
 
+const NotALoop* = -1
+
 type
   TaskState = object
     ## This state allows synchronization between:
@@ -66,6 +68,8 @@ type
     env*{.align:sizeof(int).}: UncheckedArray[byte]
 
   Flowvar*[T] = object
+    # Flowvar is a public object, but we don't want
+    # end-user to access the underlying task, so keep the field private.
     task: ptr Task
 
   ReductionDagNode* = object
@@ -177,6 +181,9 @@ proc newSpawn*(
   result.hasFuture = false
   result.fn = fn
 
+  when defined(TP_Metrics):
+    result.loopStepsLeft = NotALoop
+
 proc newSpawn*(
        T: typedesc[Task],
        parent: ptr Task,
@@ -193,9 +200,10 @@ proc newSpawn*(
   result.fn = fn
   cast[ptr[type env]](result.env)[] = env
 
-func ceilDiv_vartime*(a, b: auto): auto {.inline.} =
-  ## ceil division, to be used only on length or at compile-time
-  ## ceil(a / b)
+  when defined(TP_Metrics):
+    result.loopStepsLeft = NotALoop
+
+func ceilDiv_vartime(a, b: auto): auto {.inline.} =
   (a + b - 1) div b
 
 proc newLoop*(
@@ -287,16 +295,15 @@ func isReady*[T](fv: Flowvar[T]): bool {.inline.} =
 func readyWith*[T](task: ptr Task, childResult: T) {.inline.} =
   ## Send the Flowvar result from the child thread processing the task
   ## to its parent thread.
-  precondition: not task.isCompleted()
   cast[ptr (ptr Task, T)](task.env.addr)[1] = childResult
 
-proc sync*[T](fv: sink Flowvar[T]): T {.noInit, inline, gcsafe.} =
-  ## Blocks the current thread until the flowvar is available
-  ## and returned.
-  ## The thread is not idle and will complete pending tasks.
-  mixin completeFuture
-  completeFuture(fv, result)
-  cleanup(fv)
+func copyResult*[T](dst: var T, fv: FlowVar[T]) {.inline.} =
+  ## Copy the result of a ready Flowvar to `dst`
+  dst = cast[ptr (ptr Task, T)](fv.task.env.addr)[1]
+
+func getTask*[T](fv: FlowVar[T]): ptr Task {.inline.} =
+  ## Copy the result of a ready Flowvar to `dst`
+  fv.task
 
 # ReductionDagNodes
 # -------------------------------------------------------------------------

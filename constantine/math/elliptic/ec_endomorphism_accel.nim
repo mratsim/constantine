@@ -223,8 +223,7 @@ func nDimMultiScalarRecoding[M, L: static int](
 func buildLookupTable[M: static int, EC, ECaff](
        P: EC,
        endomorphisms: array[M-1, EC],
-       lut: var array[1 shl (M-1), ECaff],
-     ) =
+       lut: var array[1 shl (M-1), ECaff]) =
   ## Build the lookup table from the base point P
   ## and the curve endomorphism
   #
@@ -295,7 +294,6 @@ func scalarMulEndo*[scalBits; EC](
   ## - Cofactor to be cleared
   ## - 0 <= scalar < curve order
   mixin affine
-  type ECaff = affine(EC)
   const C = P.F.C # curve
   static: doAssert scalBits <= C.getCurveOrderBitwidth(), "Do not use endomorphism to multiply beyond the curve order"
   when P.F is Fp:
@@ -341,7 +339,7 @@ func scalarMulEndo*[scalBits; EC](
       endomorphisms[i-1].cneg(negatePoints[i])
 
   # 4. Precompute lookup table
-  var lut {.noInit.}: array[1 shl (M-1), ECaff]
+  var lut {.noInit.}: array[1 shl (M-1), affine(EC)]
   buildLookupTable(P, endomorphisms, lut)
 
   # 5. Recode the miniscalars
@@ -355,7 +353,7 @@ func scalarMulEndo*[scalBits; EC](
 
   # 6. Proceed to GLV accelerated scalar multiplication
   var Q {.noInit.}: EC
-  var tmp {.noInit.}: ECaff
+  var tmp {.noInit.}: affine(EC)
   tmp.secretLookup(lut, recoded.tableIndex(L-1))
   Q.fromAffine(tmp)
 
@@ -493,7 +491,6 @@ func scalarMulGLV_m2w2*[scalBits; EC](
   ## - Cofactor to be cleared
   ## - 0 <= scalar < curve order
   mixin affine
-  type ECaff = affine(EC)
   const C = P0.F.C # curve
   static: doAssert: scalBits <= C.getCurveOrderBitwidth()
 
@@ -520,7 +517,7 @@ func scalarMulGLV_m2w2*[scalBits; EC](
     P1.cneg(negatePoints[1])
 
   # 4. Precompute lookup table
-  var lut {.noInit.}: array[8, ECaff]
+  var lut {.noInit.}: array[8, affine(EC)]
   buildLookupTable_m2w2(P0, P1, lut)
 
   # 5. Recode the miniscalars
@@ -534,7 +531,7 @@ func scalarMulGLV_m2w2*[scalBits; EC](
 
   # 6. Proceed to GLV accelerated scalar multiplication
   var Q {.noInit.}: EC
-  var tmp {.noInit.}: ECaff
+  var tmp {.noInit.}: affine(EC)
   var isNeg: SecretBool
 
   tmp.secretLookup(lut, recoded.w2TableIndex((L div 2) - 1, isNeg))

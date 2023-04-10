@@ -17,12 +17,16 @@ import
   std/[unittest, times],
   # Internals
   ../../constantine/platforms/abstractions,
+  ../../constantine/math/constants/zoo_subgroups,
   ../../constantine/math/[arithmetic, extension_fields],
   ../../constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_jacobian,
     ec_shortweierstrass_projective,
-    ec_shortweierstrass_batch_ops_parallel],
+    ec_shortweierstrass_batch_ops_parallel,
+    ec_scalar_mul,
+    ec_multi_scalar_mul,
+    ec_multi_scalar_mul_parallel],
   ../../constantine/platforms/threadpool/threadpool,
   # Test utilities
   ../../helpers/prng_unsafe
@@ -63,27 +67,21 @@ func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen)
 proc run_EC_batch_add_parallel_impl*[N: static int](
        ec: typedesc,
        numPoints: array[N, int],
-       moduleName: string
-     ) =
+       moduleName: string) =
 
   # Random seed for reproducibility
   var rng: RngState
-  let seed = 1674654772 # uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
   rng.seed(seed)
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  when ec.G == G1:
-    const G1_or_G2 = "G1"
-  else:
-    const G1_or_G2 = "G2"
-
   const testSuiteDesc = "Elliptic curve parallel sum reduction for Short Weierstrass form"
 
-  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
+  suite testSuiteDesc & " - " & $ec.G & " - [" & $WordBitWidth & "-bit mode]":
 
     for n in numPoints:
-      test $ec & " sum reduction (N=" & $n & ")":
+      test $ec & " parallel sum reduction (N=" & $n & ")":
         proc test(EC: typedesc, gen: RandomGen) =
           var tp = Threadpool.new()
           defer: tp.shutdown()
@@ -108,7 +106,7 @@ proc run_EC_batch_add_parallel_impl*[N: static int](
         test(ec, gen = HighHammingWeight)
         test(ec, gen = Long01Sequence)
 
-      test "EC " & G1_or_G2 & " sum reduction (N=" & $n & ") - special cases":
+      test "EC " & $ec.G & " parallel sum reduction (N=" & $n & ") - special cases":
         proc test(EC: typedesc, gen: RandomGen) =
           var tp = Threadpool.new()
           defer: tp.shutdown()
@@ -140,6 +138,52 @@ proc run_EC_batch_add_parallel_impl*[N: static int](
           tp.sum_reduce_vartime_parallel(r_batch, points)
 
           check: bool(r_batch == r_ref)
+
+        test(ec, gen = Uniform)
+        test(ec, gen = HighHammingWeight)
+        test(ec, gen = Long01Sequence)
+
+
+proc run_EC_multi_scalar_mul_parallel_impl*[N: static int](
+       ec: typedesc,
+       numPoints: array[N, int],
+       moduleName: string) =
+  # Random seed for reproducibility
+  var rng: RngState
+  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  rng.seed(seed)
+  echo "\n------------------------------------------------------\n"
+  echo moduleName, " xoshiro512** seed: ", seed
+
+  const testSuiteDesc = "Elliptic curve parallel multi-scalar-multiplication for Short Weierstrass form"
+
+  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
+    for n in numPoints:
+      let bucketBits = bestBucketBitSize(n, ec.F.C.getCurveOrderBitwidth(), useSignedBuckets = false, useManualTuning = false)
+      test $ec & " Parallel Multi-scalar-mul (N=" & $n & ", bucket bits: " & $bucketBits & ")":
+        proc test(EC: typedesc, gen: RandomGen) =
+          var tp = Threadpool.new()
+          defer: tp.shutdown()
+          var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](n)
+          var coefs = newSeq[BigInt[EC.F.C.getCurveOrderBitwidth()]](n)
+
+          for i in 0 ..< n:
+            var tmp = rng.random_unsafe(EC)
+            tmp.clearCofactor()
+            points[i].affine(tmp)
+            coefs[i] = rng.random_unsafe(BigInt[EC.F.C.getCurveOrderBitwidth()])
+
+          var naive, naive_tmp: EC
+          naive.setInf()
+          for i in 0 ..< n:
+            naive_tmp.fromAffine(points[i])
+            naive_tmp.scalarMul(coefs[i])
+            naive += naive_tmp
+
+          var msm: EC
+          tp.multiScalarMul_vartime_parallel(msm, coefs, points)
+
+          doAssert bool(naive == msm)
 
         test(ec, gen = Uniform)
         test(ec, gen = HighHammingWeight)

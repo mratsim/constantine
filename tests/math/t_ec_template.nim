@@ -972,7 +972,7 @@ proc run_EC_multi_scalar_mul_impl*[N: static int](
           naive.setInf()
           for i in 0 ..< n:
             naive_tmp.fromAffine(points[i])
-            naive_tmp.scalarMulGeneric(coefs[i])
+            naive_tmp.scalarMul(coefs[i])
             naive += naive_tmp
 
           var msm_ref, msm: EC

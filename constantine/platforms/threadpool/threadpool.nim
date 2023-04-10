@@ -24,7 +24,11 @@ import
 
 export
   # flowvars
-  Flowvar, isSpawned, isReady, sync
+  Flowvar, isSpawned, isReady
+
+when defined(TP_Metrics):
+  import ../static_for
+  import system/ansi_c
 
 # ############################################################
 #                                                            #
@@ -133,6 +137,25 @@ iterator pseudoRandomPermutation(randomSeed: uint32, maxExclusive: int32): int32
 #                                                            #
 # ############################################################
 
+let countersDesc {.compileTime.} = @[
+  ("tasksScheduled", "tasks scheduled"),
+  ("tasksStolen", "tasks stolen"),
+  ("tasksExecuted", "tasks executed"),
+  ("unrelatedTasksExecuted", "unrelated tasks executed"),
+  ("loopsSplit", "loops split"),
+  ("itersScheduled", "iterations scheduled"),
+  ("itersStolen", "iterations stolen"),
+  ("itersExecuted", "iterations executed"),
+  ("theftsIdle", "thefts while idle in event loop"),
+  ("theftsAwaiting", "thefts while awaiting a future"),
+  ("theftsLeapfrog", "leapfrogging thefts"),
+  ("backoffGlobalSleep", "sleeps on global backoff"),
+  ("backoffGlobalSignalSent", "signals sent on global backoff"),
+  ("backoffTaskAwaited", "sleeps on task-local backoff")
+]
+
+defCountersType(Counters, countersDesc)
+
 type
   WorkerID = int32
   Signal = object
@@ -155,15 +178,68 @@ type
     # Thefts
     rng: WorkStealingRng        # RNG state to select victims
 
+    when defined(TP_Metrics):
+      counters: Counters
+
   Threadpool* = ptr object
-    barrier: SyncBarrier                                         # Barrier for initialization and teardown
+    # All synchronization objects are put in their own cache-line to avoid invalidating
+    # and reloading cache for immutable fields
+    barrier{.align: 64.}: SyncBarrier                            # Barrier for initialization and teardown
     # -- align: 64
-    globalBackoff: EventCount                                    # Multi-Producer Multi-Consumer backoff
+    globalBackoff{.align: 64.}: EventCount                       # Multi-Producer Multi-Consumer backoff
     # -- align: 64
     numThreads*{.align: 64.}: int32                              # N regular workers
     workerQueues: ptr UncheckedArray[Taskqueue]                  # size N
     workers: ptr UncheckedArray[Thread[(Threadpool, WorkerID)]]  # size N
     workerSignals: ptr UncheckedArray[Signal]                    # size N
+
+# ############################################################
+#                                                            #
+#                          Metrics                           #
+#                                                            #
+# ############################################################
+
+template metrics(body: untyped): untyped =
+  when defined(TP_Metrics):
+    block: {.noSideEffect, gcsafe.}: body
+
+template incCounter(ctx: var WorkerContext, name: untyped{ident}, amount = 1) =
+  bind name
+  metrics:
+    # Assumes workerContext is in the calling context
+    ctx.counters.name += amount
+
+proc calcDerivedMetrics(ctx: var WorkerContext) {.used.} =
+  metrics:
+    ctx.counters.tasksStolen = ctx.counters.theftsIdle + ctx.counters.theftsAwaiting
+
+proc printWorkerMetrics(ctx: var WorkerContext) =
+  metrics:
+    if ctx.id == 0:
+      c_printf("\n")
+      c_printf("+========================================+\n")
+      c_printf("|  Per-worker statistics                 |\n")
+      c_printf("+========================================+\n")
+      flushFile(stdout)
+
+    ctx.calcDerivedMetrics()
+    discard ctx.threadpool.barrier.wait()
+
+    staticFor i, 0, countersDesc.len:
+      const (propName, propDesc) = countersDesc[i]
+      c_printf("Worker %3d: counterId %2d, %10d, %-32s\n", ctx.id, i, ctx.counters.getCounter(propName), propDesc)
+
+    flushFile(stdout)
+
+# ############################################################
+#                                                            #
+#                        Profiling                           #
+#                                                            #
+# ############################################################
+
+profileDecl(run_task)
+profileDecl(backoff_idle)
+profileDecl(backoff_awaiting)
 
 # ############################################################
 #                                                            #
@@ -238,6 +314,9 @@ proc workerEntryFn(params: tuple[threadpool: Threadpool, id: WorkerID]) {.raises
   # 1 matching barrier in threadpool.shutdown() for root thread
   discard params.threadpool.barrier.wait()
 
+  ctx.printWorkerMetrics()
+  ctx.id.printWorkerProfiling()
+
   ctx.teardownWorker()
 
 # ############################################################
@@ -245,24 +324,58 @@ proc workerEntryFn(params: tuple[threadpool: Threadpool, id: WorkerID]) {.raises
 #                           Tasks                            #
 #                                                            #
 # ############################################################
+#
+# Task notification overview
+#
+# 2 strategies can be used to notify idle workers of new tasks entering the runtime
+#
+# 1. "notify-on-new": Always try to wake a worker on the backoff on new tasks.
+# 2. "notify-on-transition": Wake a worker if-and-only-if our queue was empty when scheduling the task.
+#
+# In the second case, we also need a notify on successful theft to maintain the invariant that
+# there is at least a thread looking for work if work is available, or all threads are busy.
+#
+# The notify-on-transition strategy minimizes kernel syscalls at the expense of reading an atomic,
+# our dequeue status (a guaranteed cache miss).
+# This is almost always the better tradeoff.
+# Furthermore, in work-stealing, having an empty dequeue is a good approximation for starvation.
+#
+# We can minimize syscalls in the "notify-on-new" strategy as well by reading the backoff status
+# and checking if there is an idle worker not yet parked or no parked threads at all.
+# In that case we also need a notification on successful theft,
+# in case 2 threads enqueueing work find concurrently the same non-parked idle worker, otherwise one task will be missed.
+#
+# The "notify-on-new" minimizes latency in case a producer enqueues tasks quickly.
+#
+# Lastly, when awaiting a future, a worker can give up its own queue if tasks are unrelated to the awaited task.
+# In "notify-on-transition" strategy, that worker needs to wake up a relay.
+#
+# Concretely on almost-empty tasks like fibonacci or DFS, "notify-on-new" is 10x slower.
+# However, when quickly enqueueing tasks, like Multi-Scalar Multiplication,
+# There is a noticeable ramp-up.This might be solved with steal-half.
 
 # Sentinel values
 const RootTask = cast[ptr Task](0xEFFACED0)
 
-proc run*(ctx: var WorkerContext, task: ptr Task) {.raises:[].} =
+proc run(ctx: var WorkerContext, task: ptr Task) {.raises:[].} =
   ## Run a task, frees it if it is not owned by a Flowvar
   let suspendedTask = ctx.currentTask
   ctx.currentTask = task
   debug: log("Worker %3d: running task 0x%.08x (previous: 0x%.08x, %d pending, thiefID %d)\n", ctx.id, task, suspendedTask, ctx.taskqueue[].peek(), task.getThief())
-  task.fn(task.env.addr)
+  profile(run_task):
+    task.fn(task.env.addr)
   debug: log("Worker %3d: completed task 0x%.08x (%d pending)\n", ctx.id, task, ctx.taskqueue[].peek())
   ctx.currentTask = suspendedTask
+
+  ctx.incCounter(tasksExecuted)
+  ctx.incCounter(itersExecuted):
+    if task.loopStepsLeft == NotALoop: 0
+    else: (task.loopStop - task.loopStart + task.loopStride-1) div task.loopStride
 
   if not task.hasFuture: # Are we the final owner?
     debug: log("Worker %3d: freeing task 0x%.08x with no future\n", ctx.id, task)
     freeHeap(task)
     return
-
 
   # Sync with an awaiting thread in completeFuture that didn't find work
   # and transfer ownership of the task to it.
@@ -270,19 +383,26 @@ proc run*(ctx: var WorkerContext, task: ptr Task) {.raises:[].} =
   task.setCompleted()
   task.setGcReady()
 
-proc schedule(ctx: var WorkerContext, tn: ptr Task, forceWake = false) {.inline.} =
+proc schedule(ctx: var WorkerContext, task: ptr Task, forceWake = false) {.inline.} =
   ## Schedule a task in the threadpool
-  ## This wakes a sibling thread if our local queue is empty
+  ## This wakes another worker if our local queue is empty
   ## or forceWake is true.
-  debug: log("Worker %3d: schedule task 0x%.08x (parent/current task 0x%.08x)\n", ctx.id, tn, tn.parent)
+  debug: log("Worker %3d: schedule task 0x%.08x (parent/current task 0x%.08x)\n", ctx.id, task, task.parent)
 
   # Instead of notifying every time a task is scheduled, we notify
   # only when the worker queue is empty. This is a good approximation
   # of starvation in work-stealing.
   let wasEmpty = ctx.taskqueue[].peek() == 0
-  ctx.taskqueue[].push(tn)
+  ctx.taskqueue[].push(task)
+
+  ctx.incCounter(tasksScheduled)
+  ctx.incCounter(itersScheduled):
+    if task.loopStepsLeft == NotALoop: 0
+    else: task.loopStepsLeft
+
   if forceWake or wasEmpty:
     ctx.threadpool.globalBackoff.wake()
+    ctx.incCounter(backoffGlobalSignalSent)
 
 # ############################################################
 #                                                            #
@@ -400,10 +520,9 @@ func increase(backoff: var BalancerBackoff) {.inline.} =
 func decrease(backoff: var BalancerBackoff) {.inline.} =
   # On success, we exponentially reduce check window.
   # Note: the thieves will start contributing as well.
-  backoff.windowLogSize -= 1
+  if backoff.windowLogSize > 0:
+    backoff.windowLogSize -= 1
   backoff.round = 0
-  if backoff.windowLogSize < 0:
-    backoff.windowLogSize = 0
 
 proc splitAndDispatchLoop(ctx: var WorkerContext, task: ptr Task, curLoopIndex: int, approxIdle: int32) =
   # The iterator mutates the task with the first chunk metadata
@@ -436,6 +555,7 @@ proc splitAndDispatchLoop(ctx: var WorkerContext, task: ptr Task, curLoopIndex: 
     ctx.taskqueue[].push(upperSplit)
 
   ctx.threadpool.globalBackoff.wakeAll()
+  ctx.incCounter(backoffGlobalSignalSent)
 
 proc loadBalanceLoop(ctx: var WorkerContext, task: ptr Task, curLoopIndex: int, backoff: var BalancerBackoff) =
   ## Split a parallel loop when necessary
@@ -448,6 +568,7 @@ proc loadBalanceLoop(ctx: var WorkerContext, task: ptr Task, curLoopIndex: int, 
       let approxIdle = waiters.preSleep + waiters.committedSleep + cast[int32](task.isFirstIter)
       if approxIdle > 0:
         ctx.splitAndDispatchLoop(task, curLoopIndex, approxIdle)
+        ctx.incCounter(loopsSplit)
         backoff.decrease()
       else:
         backoff.increase()
@@ -528,8 +649,6 @@ proc tryStealOne(ctx: var WorkerContext): ptr Task =
     let stolenTask = ctx.id.steal(ctx.threadpool.workerQueues[targetId])
 
     if not stolenTask.isNil():
-      # Theft successful, there might be more work for idle threads, wake one
-      ctx.threadpool.globalBackoff.wake()
       return stolenTask
   return nil
 
@@ -555,8 +674,6 @@ proc tryLeapfrog(ctx: var WorkerContext, awaitedTask: ptr Task): ptr Task =
 
   let leapTask = ctx.id.steal(ctx.threadpool.workerQueues[thiefID])
   if not leapTask.isNil():
-    # Theft successful, there might be more work for idle threads, wake one
-    ctx.threadpool.globalBackoff.wake()
     return leapTask
   return nil
 
@@ -575,6 +692,16 @@ proc eventLoop(ctx: var WorkerContext) {.raises:[], gcsafe.} =
     if (var stolenTask = ctx.tryStealOne(); not stolenTask.isNil):
       # We manage to steal a task, cancel sleep
       ctx.threadpool.globalBackoff.cancelSleep()
+      # Theft successful, there might be more work for idle threads, wake one
+      # cancelSleep must be done before as wake has an optimization
+      # to not notify when a thread is sleepy
+      ctx.threadpool.globalBackoff.wake()
+      ctx.incCounter(backoffGlobalSignalSent)
+
+      ctx.incCounter(theftsIdle)
+      ctx.incCounter(itersStolen):
+        if stolenTask.loopStepsLeft == NotALoop: 0
+        else: stolenTask.loopStepsLeft
       # 2.a Run task
       debug: log("Worker %3d: eventLoop 2.a - stole task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, stolenTask, stolenTask.parent, ctx.currentTask)
       ctx.run(stolenTask)
@@ -586,7 +713,9 @@ proc eventLoop(ctx: var WorkerContext) {.raises:[], gcsafe.} =
     else:
       # 2.c Park the thread until a new task enters the threadpool
       debugTermination: log("Worker %3d: eventLoop 2.b - sleeping\n", ctx.id)
-      ctx.threadpool.globalBackoff.sleep(ticket)
+      ctx.incCounter(backoffGlobalSleep)
+      profile(backoff_idle):
+        ctx.threadpool.globalBackoff.sleep(ticket)
       debugTermination: log("Worker %3d: eventLoop 2.b - waking\n", ctx.id)
 
 # ############################################################
@@ -595,14 +724,14 @@ proc eventLoop(ctx: var WorkerContext) {.raises:[], gcsafe.} =
 #                                                            #
 # ############################################################
 
-proc completeFuture*[T](fv: Flowvar[T], parentResult: var T) {.raises:[].} =
+proc completeFuture[T](fv: Flowvar[T], parentResult: var T) {.raises:[].} =
   ## Eagerly complete an awaited FlowVar
   template ctx: untyped = workerContext
 
   template isFutReady(): untyped =
-    let isReady = fv.task.isCompleted()
+    let isReady = fv.isReady()
     if isReady:
-      parentResult = cast[ptr (ptr Task, T)](fv.task.env.addr)[1]
+      parentResult.copyResult(fv)
     isReady
 
   if isFutReady():
@@ -662,25 +791,46 @@ proc completeFuture*[T](fv: Flowvar[T], parentResult: var T) {.raises:[].} =
 
   debug: log("Worker %3d: sync 2 - future not ready, becoming a thief (currentTask 0x%.08x, awaitedTask 0x%.08x)\n", ctx.id, ctx.currentTask, fv.task)
   while not isFutReady():
-    if (let leapTask = ctx.tryLeapfrog(fv.task); not leapTask.isNil):
+    if (let leapTask = ctx.tryLeapfrog(fv.getTask()); not leapTask.isNil):
+      # Theft successful, there might be more work for idle threads, wake one
+      ctx.threadpool.globalBackoff.wake()
+      ctx.incCounter(backoffGlobalSignalSent)
+
       # Leapfrogging, the thief had an empty queue, hence if there are tasks in its queue, it's generated by our blocked task.
       # Help the thief clear those, as if it did not finish, it's likely blocked on those children tasks.
+      ctx.incCounter(theftsLeapfrog)
+      ctx.incCounter(itersStolen):
+        if leapTask.loopStepsLeft == NotALoop: 0
+        else: leapTask.loopStepsLeft
+
       debug: log("Worker %3d: sync 2.1 - leapfrog task 0x%.08x (parent 0x%.08x, current 0x%.08x, awaitedTask 0x%.08x)\n", ctx.id, leapTask, leapTask.parent, ctx.currentTask, fv.task)
       ctx.run(leapTask)
     elif (let stolenTask = ctx.tryStealOne(); not stolenTask.isNil):
+      # Theft successful, there might be more work for idle threads, wake one
+      ctx.threadpool.globalBackoff.wake()
+      ctx.incCounter(backoffGlobalSignalSent)
+
       # We stole a task, we hope we advance our awaited task.
+      ctx.incCounter(theftsAwaiting)
+      ctx.incCounter(itersStolen):
+        if stolenTask.loopStepsLeft == NotALoop: 0
+        else: stolenTask.loopStepsLeft
+
       debug: log("Worker %3d: sync 2.2 - stole task 0x%.08x (parent 0x%.08x, current 0x%.08x, awaitedTask 0x%.08x)\n", ctx.id, stolenTask, stolenTask.parent, ctx.currentTask, fv.task)
       ctx.run(stolenTask)
     elif (let ownTask = ctx.taskqueue[].pop(); not ownTask.isNil):
       # We advance our own queue, this increases global throughput but may impact latency on the awaited task.
       debug: log("Worker %3d: sync 2.3 - couldn't steal, running own task (awaitedTask 0x%.08x)\n", ctx.id, fv.task)
+      ctx.incCounter(unrelatedTasksExecuted)
       ctx.run(ownTask)
     else:
       # Nothing to do, we park.
       # - On today's hyperthreaded systems, this might reduce contention on a core resources like memory caches and execution ports
       # - If more work is created, we won't be notified as we need to park on a dedicated notifier for precise wakeup when future is ready
       debugTermination: log("Worker %3d: sync 2.4 - Empty runtime, parking (awaitedTask 0x%.08x)\n", ctx.id, fv.task)
-      fv.task.sleepUntilComplete(ctx.id)
+      ctx.incCounter(backoffTaskAwaited)
+      profile(backoff_awaiting):
+        fv.getTask().sleepUntilComplete(ctx.id)
       debugTermination: log("Worker %3d: sync 2.4 - signaled, waking (awaitedTask 0x%.08x)\n", ctx.id, fv.task)
 
 proc syncAll*(tp: Threadpool) {.raises: [].} =
@@ -694,6 +844,8 @@ proc syncAll*(tp: Threadpool) {.raises: [].} =
   preCondition: ctx.id == 0
   preCondition: ctx.currentTask.isRootTask()
 
+  profileStop(run_task)
+
   while true:
     # 1. Empty local tasks
     debug: log("Worker %3d: syncAll 1 - searching task from local queue\n", ctx.id)
@@ -705,6 +857,15 @@ proc syncAll*(tp: Threadpool) {.raises: [].} =
     if (var stolenTask = ctx.tryStealOne(); not stolenTask.isNil):
       # 2.a We stole some task
       debug: log("Worker %3d: syncAll 2.a - stole task 0x%.08x (parent 0x%.08x, current 0x%.08x)\n", ctx.id, stolenTask, stolenTask.parent, ctx.currentTask)
+
+      # Theft successful, there might be more work for idle threads, wake one
+      ctx.threadpool.globalBackoff.wake()
+      ctx.incCounter(backoffGlobalSignalSent)
+
+      ctx.incCounter(theftsIdle)
+      ctx.incCounter(itersStolen):
+        if stolenTask.loopStepsLeft == NotALoop: 0
+        else: stolenTask.loopStepsLeft
       ctx.run(stolenTask)
     elif tp.globalBackoff.getNumWaiters() == (0'i32, tp.numThreads-1): # Don't count ourselves
       # 2.b all threads besides the current are parked
@@ -716,6 +877,8 @@ proc syncAll*(tp: Threadpool) {.raises: [].} =
 
   debugTermination:
     log(">>> Worker %3d leaves barrier <<<\n", ctx.id)
+
+  profileStart(run_task)
 
 # ############################################################
 #                                                            #
@@ -760,6 +923,7 @@ proc new*(T: type Threadpool, numThreads = countProcessors()): T {.raises: [Reso
 
   # Wait for the child threads
   discard tp.barrier.wait()
+  profileStart(run_task)
   return tp
 
 proc cleanup(tp: var Threadpool) {.raises: [].} =
@@ -781,6 +945,7 @@ proc shutdown*(tp: var Threadpool) {.raises:[].} =
   ## Wait until all tasks are processed and then shutdown the threadpool
   preCondition: workerContext.currentTask.isRootTask()
   tp.syncAll()
+  profileStop(run_task)
 
   # Signal termination to all threads
   for i in 0 ..< tp.numThreads:
@@ -790,6 +955,9 @@ proc shutdown*(tp: var Threadpool) {.raises:[].} =
 
   # 1 matching barrier in workerEntryFn
   discard tp.barrier.wait()
+
+  workerContext.printWorkerMetrics()
+  workerContext.id.printWorkerProfiling()
 
   workerContext.teardownWorker()
   tp.cleanup()
@@ -813,11 +981,33 @@ macro spawn*(tp: Threadpool, fnCall: typed): untyped =
   ##
   ## If the function calls returns a result, spawn will wrap it in a Flowvar.
   ## You can use `sync` to block the current thread and extract the asynchronous result from the flowvar.
-  ## You can use `isReady` to check if result is available and if subsequent
-  ## `spawn` returns immediately.
+  ## You can use `isReady` to check if result is available and if a subsequent
+  ## `sync` returns immediately.
   ##
   ## Tasks are processed approximately in Last-In-First-Out (LIFO) order
   result = spawnImpl(tp, fnCall, bindSym"workerContext", bindSym"schedule")
+
+macro spawnAwaitable*(tp: Threadpool, fnCall: typed): untyped =
+  ## Spawns the input function call asynchronously, potentially on another thread of execution.
+  ##
+  ## This allows awaiting a void function.
+  ## The result, once ready, is always `true`.
+  ##
+  ## You can use `sync` to block the current thread until the function is finished.
+  ## You can use `isReady` to check if result is available and if a subsequent
+  ## `sync` returns immediately.
+  ##
+  ## Tasks are processed approximately in Last-In-First-Out (LIFO) order
+  result = spawnAwaitableImpl(tp, fnCall, bindSym"workerContext", bindSym"schedule")
+
+proc sync*[T](fv: sink Flowvar[T]): T {.noInit, inline, gcsafe.} =
+  ## Blocks the current thread until the flowvar is available
+  ## and returned.
+  ## The thread is not idle and will complete pending tasks.
+  profileStop(run_task)
+  completeFuture(fv, result)
+  cleanup(fv)
+  profileStart(run_task)
 
 # Data parallel API
 # ---------------------------------------------

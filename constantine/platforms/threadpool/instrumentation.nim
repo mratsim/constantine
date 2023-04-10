@@ -135,12 +135,136 @@ template ascertain*(check: untyped) =
   ## Optional runtime check in the middle of processing
   assertContract("transient condition", check)
 
+# Metrics
+# ----------------------------------------------------------------------------------
+
+macro defCountersType*(name: untyped, countersDesc: static seq[tuple[field, desc: string]]): untyped =
+  var records = nnkRecList.newTree()
+
+  for (field, _) in countersDesc:
+    records.add newIdentDefs(ident(field), ident"int64")
+
+  result = nnkTypeSection.newTree(
+    nnkTypeDef.newTree(
+      name,
+      newEmptyNode(),
+      nnkObjectTy.newTree(
+        newEmptyNode(),
+        newEmptyNode(),
+        records
+      )
+    )
+  )
+
+macro getCounter*(counters: untyped, counterField: static string): untyped =
+  return nnkDotExpr.newTree(counters, ident(counterField))
+
+# Profiling
+# ----------------------------------------------------------------------------------
+
+when defined(TP_Profile):
+  import ./primitives/timers
+  # On windows and Mac, timers.nim uses globals which we want to avoid where possible
+
+  var ProfilerRegistry {.compileTime.}: seq[string]
+
+  template checkName(name: untyped) {.used.} =
+    static:
+      if astToStr(name) notin ProfilerRegistry:
+        raise newException(
+          ValueError,
+          "Invalid profile name: \"" & astToStr(name) & "\"\n" &
+            "Only " & $ProfilerRegistry & " are valid")
+
+  # With untyped dirty templates we need to bind the symbol early
+  # otherwise they are resolved too late in a scope where they don't exist/
+  # Alternatively we export ./timer.nim.
+
+  template profileDecl*(name: untyped): untyped {.dirty.} =
+    bind ProfilerRegistry, Timer
+    static: ProfilerRegistry.add astToStr(name)
+    var `timer _ name`{.inject, threadvar.}: Timer
+
+  template profileInit*(name: untyped) {.dirty.} =
+    bind checkName, reset
+    checkName(name)
+    reset(`timer _ name`)
+
+  macro profileStart*(name: untyped): untyped =
+    newCall(bindSym"start", ident("timer_" & $name))
+
+  macro profileStop*(name: untyped): untyped =
+    newCall(bindSym"stop", ident("timer_" & $name))
+
+  template profile*(name, body: untyped): untyped =
+    profile_start(name)
+    body
+    profile_stop(name)
+
+  macro printWorkerProfiling*(workerID: SomeInteger): untyped =
+
+    let timerUnit = bindSym"kMilliseconds"
+
+    result = newStmtList()
+    let strUnit = ident"strUnit"
+    result.add newConstStmt(strUnit, newCall(bindSym"$", timerUnit))
+
+    var formatString = "Worker %3d:   timerId %2d, %10.3lf, %s, %s\n"
+
+    var cumulated = newCall(bindSym"getElapsedCumulatedTime")
+    for i in 0 ..< ProfilerRegistry.len:
+      var fnCall = newCall(bindSym"c_printf", newLit(formatString), workerID, newLit(i))
+      let timer = ident("timer_" & ProfilerRegistry[i])
+      fnCall.add newCall(bindSym"getElapsedTime", timer, timerUnit)
+      fnCall.add strUnit
+      fnCall.add newLit(ProfilerRegistry[i])
+
+      cumulated.add timer
+      result.add fnCall
+
+    cumulated.add timerUnit
+    result.add newCall(
+      bindSym"c_printf",
+      newLit(formatString),
+      workerID,
+      newLit(ProfilerRegistry.len),
+      cumulated,
+      strUnit,
+      newLit"cumulated_time")
+
+    result.add newCall(bindSym"flushFile", bindSym"stdout")
+
+else:
+  template profileDecl*(name: untyped): untyped = discard
+  template profileInit*(name: untyped) = discard
+  template profileStart*(name: untyped) = discard
+  template profileStop*(name: untyped) = discard
+  template profile*(name, body: untyped): untyped =
+    body
+  template printWorkerProfiling*(workerID: untyped): untyped = discard
+
 # Sanity checks
 # ----------------------------------------------------------------------------------
 
 when isMainModule:
-  proc assertGreater(x, y: int) =
-    postcondition(x > y)
 
-  # We should get a nicely formatted exception
-  assertGreater(10, 12)
+  block:
+    proc assertGreater(x, y: int) =
+      postcondition(x > y)
+
+    # We should get a nicely formatted exception
+    # assertGreater(10, 12)
+
+  block:
+    let ID = 0
+
+    profileDecl(run_task)
+    profileDecl(idle)
+
+    profileInit(run_task)
+    profileInit(idle)
+
+    profile(run_task):
+      discard
+
+    printWorkerProfiling(ID)
