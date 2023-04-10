@@ -40,11 +40,6 @@ proc main() =
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
     separator()
-    # for numPoints in testNumPoints:
-    #   let batchIters = max(1, Iters div numPoints)
-    #   msmBench(ECP_ShortW_Prj[Fp[curve], G1], numPoints, batchIters)
-    #   separator()
-    # separator()
     for numPoints in testNumPoints:
       let batchIters = max(1, Iters div numPoints)
       msmParallelBench(ECP_ShortW_Jac[Fp[curve], G1], numPoints, batchIters)
