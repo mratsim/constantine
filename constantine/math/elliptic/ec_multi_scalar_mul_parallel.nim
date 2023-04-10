@@ -76,11 +76,18 @@ export bestBucketBitSize
 #
 # Starting from 64 points, parallelism seems to always be beneficial (serial takes over 1 ms on laptop)
 #
-# There are 2 parallelism opportunities:
-# - 0.a MiniMSMs accumulation is straightforward as there are no data dependencies at all.
-# - 1.a Buckets accumulation needs to be parallelized over buckets and not points to avoid synchronization between threads.
+# There are 3 parallelism opportunities:
+# - 0.a MiniMSMs accumulation a.k.a "window-level paralllism"
+#       is straightforward as there are no data dependencies at all.
+# - 1.a Buckets accumulation a.k.a "bucket-level parallelism".
+#       Buckets needs to be parallelized over buckets and not points to avoid synchronization between threads.
+#       The disadvantage is that all threads scan all the points.
+# - and doing separate MSMs over part of the points, a.k.a "msm-level parallelism".
+#   As the number of points grows, the cost of scalar-mul per point diminishes at the rate O(n/log n) as we can increase the window size `c`
+#   to reduce the number of operations. However when `c` reaches 16, memory bandwidth becomes another bottleneck
+#   hence parallelizing at this level becomes interesting.
 #
-# We can parallelize the reductions but they would require extra doublings to "place the reduction" at the right bits.
+# We can also parallelize the reductions but they would require extra doublings to "place the reduction" at the right bits.
 # Example:
 #   let's say we compute the binary number 0b11010110
 #   Each 1 is add+double, each 0 is just double.
@@ -88,14 +95,14 @@ export bestBucketBitSize
 #   but now we need 4 extra doublings to shift the high part in the correct place.
 # Alternatively we can do "latency hiding", we start the computation before all results are available, and wait for the next part to finish.
 #
-# Now, with a small c, say 1024 inputs, c=9, the outer parallelism is large: 14 to 28 for 128-bit to 256-bit coefs.
-# For large c, say 262k inputs, c=16, the outer parallelism is small:         8 to 16 for 128-bit to 256-bit coefs.
+# Now, with a small c, say 1024 inputs, c=9, the window-level parallelism is large: 14 to 28 for 128-bit to 256-bit coefs.
+# For large c, say 262k inputs, c=16, the window-level parallelism is small:         8 to 16 for 128-bit to 256-bit coefs.
 #
 # Zero Knowledge protocols need to operate on millions of points, so we want to fully occupy high-end CPUs
 # - AMD EPYC 9654 96C/192T on 2 sockets hence 384 threads
 # - Intel Xeon Platinum 8490H 60C/120T on 8 sockets hence 960 threads
 #
-# Inner parallelism has a multiplicative factor on parallelism exposed
+# Bucket-level parallism has a multiplicative factor on parallelism exposed
 # Impact in order of importance of a high chunking factor:
 # + the more parallelism opportunities we offer.
 # - the more collision we have when setting up sparse vector affine addition
@@ -120,19 +127,8 @@ export bestBucketBitSize
 # 1. Do we schedule the top bits first, in hope they would be stolen. (FIFO thefts)
 # 2. or do we schedule the top bits last, so that once we reduce, we directly schedule a related task. (LIFO dequeueing)
 #
-# Lastly we can go further on latency hiding for the inner parallelism,
+# Lastly we can go further on latency hiding for the bucket-level parallelism,
 # having decreasing range sizes so that the top ranges are ready earlier for interleaving reduction.
-
-# Parallel spawn wrappers
-# -----------------------
-#
-# When spawning:
-# - The borrow checker prevents capturing var parameters so we need raw pointers
-# - We need a dummy return value (a bool for example) for the task to be awaitable
-# - static parameters are not supported (?). They disappear in the codegen
-#   but the threadpool will serialize them nonetheless.
-#
-# So we need wrappers to address all those needs
 
 # Parallel MSM Jacobian Extended
 # ------------------------------
