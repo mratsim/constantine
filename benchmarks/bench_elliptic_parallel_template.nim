@@ -75,7 +75,7 @@ proc msmParallelBench*(EC: typedesc, numPoints: int, iters: int) =
         r += tmp
     stopNaive = getMonotime()
 
-  block:
+  if numPoints <= 100000:
     startMSMbaseline = getMonotime()
     bench("EC multi-scalar-mul baseline  " & align($numPoints, 10) & " (" & $bits & "-bit coefs, points)", EC, iters):
       r.multiScalarMul_reference_vartime(scalars, points)
@@ -109,8 +109,8 @@ proc msmParallelBench*(EC: typedesc, numPoints: int, iters: int) =
     let speedupOpt = float(perfNaive) / float(perfMSMopt)
     echo &"Speedup ratio optimized over naive linear combination: {speedupOpt:>6.3f}x"
 
-  let speedupOptBaseline = float(perfMSMbaseline) / float(perfMSMopt)
-  echo &"Speedup ratio optimized over baseline linear combination: {speedupOptBaseline:>6.3f}x"
+    let speedupOptBaseline = float(perfMSMbaseline) / float(perfMSMopt)
+    echo &"Speedup ratio optimized over baseline linear combination: {speedupOptBaseline:>6.3f}x"
 
   let speedupParaOpt = float(perfMSMopt) / float(perfMSMpara)
   echo &"Speedup ratio parallel over optimized linear combination: {speedupParaOpt:>6.3f}x"

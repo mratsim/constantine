@@ -255,7 +255,7 @@ type
     numScheduled, numCollisions:   int32
     collisionsMap:                 BigInt[NumNZBuckets] # We use a BigInt as a bitmap, when all you have is an axe ...
     queue:                         array[QueueLen, ScheduledPoint]
-    collisions:                    array[32, ScheduledPoint]
+    collisions:                    array[QueueLen, ScheduledPoint]
 
 const MinVectorAddThreshold = 32
 
