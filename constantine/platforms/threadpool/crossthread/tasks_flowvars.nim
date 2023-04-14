@@ -8,6 +8,7 @@
 
 import
   std/atomics,
+  ./scoped_barriers,
   ../instrumentation,
   ../../allocs,
   ../primitives/futexes
@@ -49,6 +50,7 @@ type
     # ------------------
     state: TaskState
     parent*: ptr Task  # Latency: When a task is awaited, a thread can quickly prioritize its direct children.
+    scopedBarrier*: ptr ScopedBarrier
     hasFuture*: bool   # Ownership: if a task has a future, the future deallocates it. Otherwise the worker thread does.
 
     # Data parallelism
@@ -170,14 +172,18 @@ proc setThief*(task: ptr Task, thiefID: int32) {.inline.} =
 proc newSpawn*(
        T: typedesc[Task],
        parent: ptr Task,
+       scopedBarrier: ptr ScopedBarrier,
        fn: proc (env: pointer) {.nimcall, gcsafe, raises: [].}
      ): ptr Task {.inline.} =
 
   const size = sizeof(T)
 
+  scopedBarrier.registerDescendant()
+
   result = allocHeapUnchecked(T, size)
   result.initSynchroState()
   result.parent = parent
+  result.scopedBarrier = scopedBarrier
   result.hasFuture = false
   result.fn = fn
 
@@ -187,15 +193,19 @@ proc newSpawn*(
 proc newSpawn*(
        T: typedesc[Task],
        parent: ptr Task,
+       scopedBarrier: ptr ScopedBarrier,
        fn: proc (env: pointer) {.nimcall, gcsafe, raises: [].},
        env: auto): ptr Task {.inline.} =
 
   const size = sizeof(T) + # size without Unchecked
                sizeof(env)
 
+  scopedBarrier.registerDescendant()
+
   result = allocHeapUnchecked(T, size)
   result.initSynchroState()
   result.parent = parent
+  result.scopedBarrier = scopedBarrier
   result.hasFuture = false
   result.fn = fn
   cast[ptr[type env]](result.env)[] = env
@@ -209,6 +219,7 @@ func ceilDiv_vartime(a, b: auto): auto {.inline.} =
 proc newLoop*(
        T: typedesc[Task],
        parent: ptr Task,
+       scopedBarrier: ptr ScopedBarrier,
        start, stop, stride: int,
        isFirstIter: bool,
        fn: proc (env: pointer) {.nimcall, gcsafe, raises: [].}
@@ -216,9 +227,12 @@ proc newLoop*(
   const size = sizeof(T)
   preCondition: start < stop
 
+  scopedBarrier.registerDescendant()
+
   result = allocHeapUnchecked(T, size)
   result.initSynchroState()
   result.parent = parent
+  result.scopedBarrier = scopedBarrier
   result.hasFuture = false
   result.fn = fn
   result.envSize = 0
@@ -233,6 +247,7 @@ proc newLoop*(
 proc newLoop*(
        T: typedesc[Task],
        parent: ptr Task,
+       scopedBarrier: ptr ScopedBarrier,
        start, stop, stride: int,
        isFirstIter: bool,
        fn: proc (env: pointer) {.nimcall, gcsafe, raises: [].},
@@ -242,9 +257,12 @@ proc newLoop*(
                sizeof(env)
   preCondition: start < stop
 
+  scopedBarrier.registerDescendant()
+
   result = allocHeapUnchecked(T, size)
   result.initSynchroState()
   result.parent = parent
+  result.scopedBarrier = scopedBarrier
   result.hasFuture = false
   result.fn = fn
   result.envSize = int32(sizeof(env))

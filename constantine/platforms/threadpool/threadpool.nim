@@ -16,6 +16,7 @@ import
   ./crossthread/[
     taskqueues,
     backoff,
+    scoped_barriers,
     tasks_flowvars],
   ./instrumentation,
   ./primitives/barriers,
@@ -173,6 +174,7 @@ type
     currentTask: ptr Task
 
     # Synchronization
+    currentScope*: ptr ScopedBarrier # need to be exported for syncScope template
     signal: ptr Signal          # owned signal
 
     # Thefts
@@ -273,6 +275,7 @@ proc setupWorker(ctx: var WorkerContext) =
   ctx.rng.seed(0xEFFACED + ctx.id)
 
   # Synchronization
+  ctx.currentScope = nil
   ctx.signal = addr ctx.threadpool.workerSignals[ctx.id]
   ctx.signal.terminate.store(false, moRelaxed)
 
@@ -359,13 +362,21 @@ const RootTask = cast[ptr Task](0xEFFACED0)
 
 proc run(ctx: var WorkerContext, task: ptr Task) {.raises:[].} =
   ## Run a task, frees it if it is not owned by a Flowvar
+
   let suspendedTask = ctx.currentTask
+  let suspendedScope = ctx.currentScope
+
   ctx.currentTask = task
+  ctx.currentScope = task.scopedBarrier
+
   debug: log("Worker %3d: running task 0x%.08x (previous: 0x%.08x, %d pending, thiefID %d)\n", ctx.id, task, suspendedTask, ctx.taskqueue[].peek(), task.getThief())
   profile(run_task):
     task.fn(task.env.addr)
+  task.scopedBarrier.unlistDescendant()
   debug: log("Worker %3d: completed task 0x%.08x (%d pending)\n", ctx.id, task, ctx.taskqueue[].peek())
+
   ctx.currentTask = suspendedTask
+  ctx.currentScope = suspendedScope
 
   ctx.incCounter(tasksExecuted)
   ctx.incCounter(itersExecuted):
@@ -387,7 +398,7 @@ proc schedule(ctx: var WorkerContext, task: ptr Task, forceWake = false) {.inlin
   ## Schedule a task in the threadpool
   ## This wakes another worker if our local queue is empty
   ## or forceWake is true.
-  debug: log("Worker %3d: schedule task 0x%.08x (parent/current task 0x%.08x)\n", ctx.id, task, task.parent)
+  debug: log("Worker %3d: schedule task 0x%.08x (parent/current task 0x%.08x, scope 0x%.08x)\n", ctx.id, task, task.parent, task.scopedBarrier)
 
   # Instead of notifying every time a task is scheduled, we notify
   # only when the worker queue is empty. This is a good approximation
@@ -536,6 +547,7 @@ proc splitAndDispatchLoop(ctx: var WorkerContext, task: ptr Task, curLoopIndex: 
 
     upperSplit.initSynchroState()
     upperSplit.parent        = task
+    upperSplit.scopedBarrier.registerDescendant()
 
     upperSplit.isFirstIter   = false
     upperSplit.loopStart     = offset
@@ -839,7 +851,7 @@ proc syncAll*(tp: Threadpool) {.raises: [].} =
   template ctx: untyped = workerContext
 
   debugTermination:
-    log(">>> Worker %3d enters barrier <<<\n", ctx.id)
+    log(">>> Worker %3d enters global barrier <<<\n", ctx.id)
 
   preCondition: ctx.id == 0
   preCondition: ctx.currentTask.isRootTask()
@@ -879,6 +891,46 @@ proc syncAll*(tp: Threadpool) {.raises: [].} =
     log(">>> Worker %3d leaves barrier <<<\n", ctx.id)
 
   profileStart(run_task)
+
+proc wait(scopedBarrier: ptr ScopedBarrier) {.raises:[], gcsafe.} =
+  ## Wait at barrier until all descendant tasks are completed
+  template ctx: untyped = workerContext
+
+  debugTermination:
+    log(">>> Worker %3d enters scoped barrier 0x%.08x <<<\n", ctx.id, scopedBarrier)
+
+  while scopedBarrier.hasDescendantTasks():
+    # 1. Empty local tasks, the initial loop only has tasks from that scope or a child scope.
+    debug: log("Worker %3d: syncScope 1 - searching task from local queue\n", ctx.id)
+    while (let task = ctx.taskqueue[].pop(); not task.isNil):
+      debug: log("Worker %3d: syncScope 1 - running task 0x%.08x (parent 0x%.08x, current 0x%.08x, scope 0x%.08x)\n", ctx.id, task, task.parent, ctx.currentTask, task.scopedBarrier)
+      ctx.run(task)
+      if not scopedBarrier.hasDescendantTasks():
+        debugTermination:
+          log(">>> Worker %3d exits scoped barrier 0x%.08x <<<\n", ctx.id, scopedBarrier)
+        return
+
+    # TODO: consider leapfrogging
+
+    if (var stolenTask = ctx.tryStealOne(); not stolenTask.isNil):
+      # 2.a We stole some task
+      debug: log("Worker %3d: syncScope 2 - stole task 0x%.08x (parent 0x%.08x, current 0x%.08x, scope 0x%.08x)\n", ctx.id, stolenTask, stolenTask.parent, ctx.currentTask, stolenTask.scopedBarrier)
+
+      # Theft successful, there might be more work for idle threads, wake one
+      ctx.threadpool.globalBackoff.wake()
+      ctx.incCounter(backoffGlobalSignalSent)
+
+      ctx.incCounter(theftsIdle)
+      ctx.incCounter(itersStolen):
+        if stolenTask.loopStepsLeft == NotALoop: 0
+        else: stolenTask.loopStepsLeft
+      ctx.run(stolenTask)
+    else:
+      # TODO: backoff
+      cpuRelax()
+
+  debugTermination:
+    log(">>> Worker %3d exits scoped barrier 0x%.08x <<<\n", ctx.id, scopedBarrier)
 
 # ############################################################
 #                                                            #
@@ -972,6 +1024,20 @@ proc shutdown*(tp: var Threadpool) {.raises:[].} =
 #                     Parallel API                           #
 #                                                            #
 # ############################################################
+
+# Structured parallelism API
+# ---------------------------------------------
+
+template syncScope*(body: untyped): untyped =
+  block:
+    let suspendedScope = workerContext.currentScope
+    var scopedBarrier {.noInit.}: ScopedBarrier
+    initialize(scopedBarrier)
+    workerContext.currentScope = addr scopedBarrier
+    block:
+      body
+    wait(scopedBarrier.addr)
+    workerContext.currentScope = suspendedScope
 
 # Task parallel API
 # ---------------------------------------------

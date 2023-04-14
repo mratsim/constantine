@@ -31,7 +31,7 @@ proc sum_reduce_vartime_parallelChunks[F; G: static Subgroup](
   ## Batch addition of `points` into `r`
   ## `r` is overwritten
   ## Compute is parallelized, if beneficial.
-  ## This function cannot be nested in another parallel function
+  ## This function can be nested in another parallel function
 
   # Chunking constants in ec_shortweierstrass_batch_ops.nim
   const maxTempMem = 262144 # 2¹⁸ = 262144
@@ -50,18 +50,17 @@ proc sum_reduce_vartime_parallelChunks[F; G: static Subgroup](
 
   let partialResults = allocStackArray(r.typeof(), chunkDesc.numChunks)
 
-  for iter in items(chunkDesc):
-    proc sum_reduce_chunk_vartime_wrapper(res: ptr, p: ptr, pLen: int) {.nimcall.} =
-      # The borrow checker prevents capturing `var` and `openArray`
-      # so we capture pointers instead.
-      res[].setInf()
-      res[].accumSum_chunk_vartime(p, pLen)
+  syncScope:
+    for iter in items(chunkDesc):
+      proc sum_reduce_chunk_vartime_wrapper(res: ptr, p: ptr, pLen: int) {.nimcall.} =
+        # The borrow checker prevents capturing `var` and `openArray`
+        # so we capture pointers instead.
+        res[].setInf()
+        res[].accumSum_chunk_vartime(p, pLen)
 
-    tp.spawn partialResults[iter.chunkID].addr.sum_reduce_chunk_vartime_wrapper(
-              points.asUnchecked() +% iter.start,
-              iter.size)
-
-  tp.syncAll() # TODO: this prevents nesting in another parallel region
+      tp.spawn partialResults[iter.chunkID].addr.sum_reduce_chunk_vartime_wrapper(
+                points.asUnchecked() +% iter.start,
+                iter.size)
 
   const minChunkSizeSerial = 32
   if chunkDesc.numChunks < minChunkSizeSerial:

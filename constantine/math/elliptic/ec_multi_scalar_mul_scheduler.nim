@@ -190,7 +190,7 @@ func bestBucketBitSize*(inputSize: int, scalarBitwidth: static int, useSignedBuc
   let n = inputSize
   let b = float32(scalarBitwidth)
   var minCost = float32(Inf)
-  for c in 2 .. 21:
+  for c in 2 .. 20: # cap return value at 17 after manual tuning
     let b_over_c = b/c.float32
 
     let bucket_accumulate_reduce = b_over_c * float32(n + (1 shl (c-s)) - 2) * A
@@ -255,14 +255,14 @@ type
     numScheduled, numCollisions:   int32
     collisionsMap:                 BigInt[NumNZBuckets] # We use a BigInt as a bitmap, when all you have is an axe ...
     queue:                         array[QueueLen, ScheduledPoint]
-    collisions:                    array[32, ScheduledPoint]
+    collisions:                    array[QueueLen, ScheduledPoint]
 
 const MinVectorAddThreshold = 32
 
-func init*(buckets: var Buckets) {.inline.} =
+func init*(buckets: ptr Buckets) {.inline.} =
   zeroMem(buckets.status.addr, buckets.status.sizeof())
 
-func reset*(buckets: var Buckets, index: int) {.inline.} =
+func reset*(buckets: ptr Buckets, index: int) {.inline.} =
   buckets.status[index] = {}
 
 func deriveSchedulerConstants*(c: int): tuple[numNZBuckets, queueLen: int] {.compileTime.} =
@@ -281,6 +281,9 @@ func init*[NumNZBuckets, QueueLen: static int, F; G: static Subgroup](
   sched.stopEx        =  stopEx
   sched.numScheduled  =       0
   sched.numCollisions =       0
+
+func bucketInit*(sched: ptr Scheduler) {.inline.} =
+  zeroMem(sched.buckets.status.addr +% sched.start, (sched.stopEx-sched.start)*sizeof(set[BucketStatus]))
 
 func scheduledPointDescriptor*(pointIndex: int, pointDesc: tuple[val: SecretWord, neg: SecretBool]): ScheduledPoint {.inline.} =
   ScheduledPoint(
@@ -548,7 +551,7 @@ func sparseVectorAddition[F, G](
 
 func bucketReduce*[N, F, G](
        r: var ECP_ShortW_JacExt[F, G],
-       buckets: var Buckets[N, F, G]) =
+       buckets: ptr Buckets[N, F, G]) =
 
   var accumBuckets{.noinit.}: ECP_ShortW_JacExt[F, G]
 

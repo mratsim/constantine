@@ -65,35 +65,35 @@ proc msmParallelBench*(EC: typedesc, numPoints: int, iters: int) =
   var startNaive, stopNaive, startMSMbaseline, stopMSMbaseline, startMSMopt, stopMSMopt, startMSMpara, stopMSMpara: MonoTime
 
   if numPoints <= 100000:
+    startNaive = getMonotime()
     bench("EC scalar muls                " & align($numPoints, 10) & " (" & $bits & "-bit coefs, points)", EC, iters):
-      startNaive = getMonotime()
       var tmp: EC
       r.setInf()
       for i in 0 ..< points.len:
         tmp.fromAffine(points[i])
         tmp.scalarMul(scalars[i])
         r += tmp
-      stopNaive = getMonotime()
+    stopNaive = getMonotime()
 
-  block:
+  if numPoints <= 100000:
+    startMSMbaseline = getMonotime()
     bench("EC multi-scalar-mul baseline  " & align($numPoints, 10) & " (" & $bits & "-bit coefs, points)", EC, iters):
-      startMSMbaseline = getMonotime()
       r.multiScalarMul_reference_vartime(scalars, points)
-      stopMSMbaseline = getMonotime()
+    stopMSMbaseline = getMonotime()
 
   block:
+    startMSMopt = getMonotime()
     bench("EC multi-scalar-mul optimized " & align($numPoints, 10) & " (" & $bits & "-bit coefs, points)", EC, iters):
-      startMSMopt = getMonotime()
       r.multiScalarMul_vartime(scalars, points)
-      stopMSMopt = getMonotime()
+    stopMSMopt = getMonotime()
 
   block:
     var tp = Threadpool.new()
 
+    startMSMpara = getMonotime()
     bench("EC multi-scalar-mul" & align($tp.numThreads & " threads", 11) & align($numPoints, 10) & " (" & $bits & "-bit coefs, points)", EC, iters):
-      startMSMpara = getMonotime()
       tp.multiScalarMul_vartime_parallel(r, scalars, points)
-      stopMSMpara = getMonotime()
+    stopMSMpara = getMonotime()
 
     tp.shutdown()
 
@@ -109,8 +109,8 @@ proc msmParallelBench*(EC: typedesc, numPoints: int, iters: int) =
     let speedupOpt = float(perfNaive) / float(perfMSMopt)
     echo &"Speedup ratio optimized over naive linear combination: {speedupOpt:>6.3f}x"
 
-  let speedupOptBaseline = float(perfMSMbaseline) / float(perfMSMopt)
-  echo &"Speedup ratio optimized over baseline linear combination: {speedupOptBaseline:>6.3f}x"
+    let speedupOptBaseline = float(perfMSMbaseline) / float(perfMSMopt)
+    echo &"Speedup ratio optimized over baseline linear combination: {speedupOptBaseline:>6.3f}x"
 
   let speedupParaOpt = float(perfMSMopt) / float(perfMSMpara)
   echo &"Speedup ratio parallel over optimized linear combination: {speedupParaOpt:>6.3f}x"

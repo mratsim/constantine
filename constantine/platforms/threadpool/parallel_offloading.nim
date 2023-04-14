@@ -94,11 +94,13 @@ proc spawnVoid(funcCall: NimNode, args, argsTy: NimNode, workerContext, schedule
       when bool(`withArgs`):
         let `task` = Task.newSpawn(
           parent = `workerContext`.currentTask,
+          scopedBarrier = `workerContext`.currentScope,
           fn = `tpSpawn_closure`,
           env = `envParams`)
       else:
         let `task` = Task.newSpawn(
           parent = `workerContext`.currentTask,
+          scopedBarrier = `workerContext`.currentScope,
           fn = `tpSpawn_closure`)
       `scheduleBlock`
 
@@ -161,6 +163,7 @@ proc spawnVoidAwaitable(funcCall: NimNode, args, argsTy: NimNode, workerContext,
 
       let `task` = Task.newSpawn(
         parent = `workerContext`.currentTask,
+        scopedBarrier = `workerContext`.currentScope,
         fn = `tpSpawn_closure`,
         env = `envParams`)
       let `fut` = newFlowVar(bool, `task`)
@@ -230,6 +233,7 @@ proc spawnRet(funcCall: NimNode, retTy, args, argsTy: NimNode, workerContext, sc
 
       let `task` = Task.newSpawn(
         parent = `workerContext`.currentTask,
+        scopedBarrier = `workerContext`.currentScope,
         fn = `tpSpawn_closure`,
         env = `envParams`)
       let `fut` = newFlowVar(`retTy`, `task`)
@@ -589,6 +593,7 @@ proc generateAndScheduleLoopTask(ld: LoopDescriptor): NimNode =
           when bool(`withCaptures`):
             let `task` = Task.newLoop(
               parent = `workerContext`.currentTask,
+              scopedBarrier = `workerContext`.currentScope,
               start, stopEx, `stride`,
               isFirstIter = true,
               fn = `closureName`,
@@ -596,6 +601,7 @@ proc generateAndScheduleLoopTask(ld: LoopDescriptor): NimNode =
           else:
             let `task` = Task.newLoop(
               parent = `workerContext`.currentTask,
+              scopedBarrier = `workerContext`.currentScope,
               start, stopEx, `stride`,
               isFirstIter = true,
               fn = `closureName`)
@@ -613,6 +619,7 @@ proc generateAndScheduleLoopTask(ld: LoopDescriptor): NimNode =
           when bool(`withCaptures`):
             let `task` = Task.newLoop(
               parent = `workerContext`.currentTask,
+              scopedBarrier = `workerContext`.currentScope,
               start, stopEx, `stride`,
               isFirstIter = true,
               fn = `closureName`,
@@ -620,6 +627,7 @@ proc generateAndScheduleLoopTask(ld: LoopDescriptor): NimNode =
           else:
             let `task` = Task.newLoop(
               parent = `workerContext`.currentTask,
+              scopedBarrier = `workerContext`.currentScope,
               start, stopEx, `stride`,
               isFirstIter = true,
               fn = `closureName`,
