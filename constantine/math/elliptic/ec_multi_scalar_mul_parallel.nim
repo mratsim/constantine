@@ -448,6 +448,8 @@ proc msmAffine_vartime_parallel_split[bits: static int, EC, F, G](
     discard sync splitMSMsReady[i]
     r[] += splitMSMsResults[i]
 
+  freeHeap(splitMSMsResults)
+
 proc applyEndomorphism_parallel[bits: static int, F, G](
        tp: Threadpool,
        coefs: ptr UncheckedArray[BigInt[bits]],
@@ -465,29 +467,28 @@ proc applyEndomorphism_parallel[bits: static int, F, G](
   let splitCoefs   = allocHeapArray(array[M, BigInt[L]], N)
   let endoBasis    = allocHeapArray(array[M, ECP_ShortW_Aff[F, G]], N)
 
-  tp.parallelFor i in 0 ..< N:
-    captures: {coefs, points, splitCoefs, endoBasis}
+  syncScope:
+    tp.parallelFor i in 0 ..< N:
+      captures: {coefs, points, splitCoefs, endoBasis}
 
-    var negatePoints {.noinit.}: array[M, SecretBool]
-    splitCoefs[i].decomposeEndo(negatePoints, coefs[i], F)
-    if negatePoints[0].bool:
-      endoBasis[i][0].neg(points[i])
-    else:
-      endoBasis[i][0] = points[i]
-
-    when F is Fp:
-      endoBasis[i][1].x.prod(points[i].x, F.C.getCubicRootOfUnity_mod_p())
-      if negatePoints[1].bool:
-        endoBasis[i][1].y.neg(points[i].y)
+      var negatePoints {.noinit.}: array[M, SecretBool]
+      splitCoefs[i].decomposeEndo(negatePoints, coefs[i], F)
+      if negatePoints[0].bool:
+        endoBasis[i][0].neg(points[i])
       else:
-        endoBasis[i][1].y = points[i].y
-    else:
-      staticFor m, 1, M:
-        endoBasis[i][m].frobenius_psi(points[i], m)
-        if negatePoints[m].bool:
-          endoBasis[i][m].neg()
+        endoBasis[i][0] = points[i]
 
-  tp.syncAll()
+      when F is Fp:
+        endoBasis[i][1].x.prod(points[i].x, F.C.getCubicRootOfUnity_mod_p())
+        if negatePoints[1].bool:
+          endoBasis[i][1].y.neg(points[i].y)
+        else:
+          endoBasis[i][1].y = points[i].y
+      else:
+        staticFor m, 1, M:
+          endoBasis[i][m].frobenius_psi(points[i], m)
+          if negatePoints[m].bool:
+            endoBasis[i][m].neg()
 
   let endoCoefs = cast[ptr UncheckedArray[BigInt[L]]](splitCoefs)
   let endoPoints  = cast[ptr UncheckedArray[ECP_ShortW_Aff[F, G]]](endoBasis)
@@ -568,7 +569,9 @@ proc multiScalarMul_vartime_parallel*[bits: static int, EC, F, G](
        r: var EC,
        coefs: openArray[BigInt[bits]],
        points: openArray[ECP_ShortW_Aff[F, G]]) {.meter, inline.} =
-
+  ## Multiscalar multiplication:
+  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
+  ## This function can be nested in another parallel function
   debug: doAssert coefs.len == points.len
   let N = points.len
 
