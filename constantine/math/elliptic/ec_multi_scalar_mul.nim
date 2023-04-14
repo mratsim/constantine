@@ -118,12 +118,8 @@ func multiScalarMul_reference_vartime*[EC](r: var EC, coefs: openArray[BigInt], 
   of 13: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 13)
   of 14: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 14)
   of 15: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 15)
-  of 16: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 16)
-  of 17: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 17)
-  of 18: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 18)
-  of 19: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 19)
-  of 20: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 20)
-  of 21: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 21)
+
+  of 16..20: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 16)
   else:
     unreachable()
 
@@ -271,6 +267,8 @@ func schedAccumulate*[NumBuckets, QueueLen, F, G; bits: static int](
   const top = bits - excess
   static: doAssert miniMsmKind != kTopWindow, "The top window is smaller in bits which increases collisions in scheduler."
 
+  sched.bucketInit()
+
   var curSP, nextSP: ScheduledPoint
 
   template getSignedWindow(j : int): tuple[val: SecretWord, neg: SecretBool] =
@@ -295,14 +293,12 @@ func miniMSM_affine[NumBuckets, QueueLen, F, G; bits: static int](
   ## Apply a mini-Multi-Scalar-Multiplication on [bitIndex, bitIndex+window)
   ## slice of all (coef, point) pairs
 
-  sched.buckets[].init()
-
   # 1. Bucket Accumulation
   sched.schedAccumulate(bitIndex, miniMsmKind, c, coefs, N)
 
   # 2. Bucket Reduction
   var windowSum_jacext{.noInit.}: ECP_ShortW_JacExt[F, G]
-  windowSum_jacext.bucketReduce(sched.buckets[])
+  windowSum_jacext.bucketReduce(sched.buckets)
 
   # 3. Mini-MSM on the slice [bitIndex, bitIndex+window)
   var windowSum{.noInit.}: typeof(r)
@@ -324,7 +320,6 @@ func multiScalarMulAffine_vartime[F, G; bits: static int](
   # -----
   const (numBuckets, queueLen) = c.deriveSchedulerConstants()
   let buckets = allocHeap(Buckets[numBuckets, F, G])
-  buckets[].init()
   let sched = allocHeap(Scheduler[numBuckets, queueLen, F, G])
   sched.init(points, buckets, 0, numBuckets.int32)
 
@@ -440,11 +435,10 @@ func multiScalarMul_dispatch_vartime[bits: static int, F, G](
   of 11: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c = 11)
   of 12: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c = 12)
   of 13: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c = 13)
-  of 14: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c = 14)
-  of 15: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c = 15)
-  of 16: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c = 16)
-  of 17: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c = 17)
-  of 18: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c = 18)
+  of 14: multiScalarMulAffine_vartime(r, coefs, points, N, c = 14)
+  of 15: multiScalarMulAffine_vartime(r, coefs, points, N, c = 15)
+
+  of 16..17: multiScalarMulAffine_vartime(r, coefs, points, N, c = 16)
   else:
     unreachable()
 
