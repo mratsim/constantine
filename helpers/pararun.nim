@@ -55,7 +55,7 @@ proc release(s: AsyncSemaphore) =
 type WorkQueue = ref object
   sem: AsyncSemaphore
   cmdQueue: Deque[string]
-  outputQueue: AsyncQueue[tuple[cmd: string, output: AsyncQueue[string]]]
+  outputQueue: AsyncQueue[tuple[cmd: string, p: AsyncProcess, output: AsyncQueue[string]]]
 
 proc monitorProcessLoop(output: AsyncQueue[string], cmd: string, id, total: int, p: AsyncProcess, sem: AsyncSemaphore) {.async.} =
   # Ideally we want AsynStreams but that requires chronos, which doesn't support processes/pipes
@@ -86,12 +86,15 @@ proc monitorProcessLoop(output: AsyncQueue[string], cmd: string, id, total: int,
     await sleepAsync(backoff)
 
   doBuffering()
+  buf.setLen(0)
 
   let exitCode = p.peekExitCode()
   if exitCode != 0:
-    buf.add("==== Command exited with code " & $exitCode & " ====\n")
+    buf.add("\n" & '='.repeat(26) & " Command exited with code " & $exitCode & " " & '='.repeat(26) & '\n')
     buf.add("[FAIL]: '" & cmd & "' (#" & $id & "/" & $total & ")\n")
-    quit "[FAIL]: Command #" & $id & " exited with error " & $exitCode, exitCode
+    buf.add("[FAIL]: Command #" & $id & " exited with error " & $exitCode & '\n')
+    buf.add('='.repeat(80) & '\n')
+    output.putNoWait(buf)
 
   # close not exported: https://github.com/cheatfate/asynctools/issues/16
   p.inputHandle.close()
@@ -99,7 +102,8 @@ proc monitorProcessLoop(output: AsyncQueue[string], cmd: string, id, total: int,
   p.errorHandle.close()
 
   output.putNoWait("")
-  sem.release()
+  if exitCode == 0:
+    sem.release()
 
 proc enqueuePendingCommands(wq: WorkQueue) {.async.} =
   var id = 0
@@ -114,13 +118,13 @@ proc enqueuePendingCommands(wq: WorkQueue) {.async.} =
     let bufOut = newAsyncQueue[string]()
     asyncCheck bufOut.monitorProcessLoop(cmd, id, total, p, wq.sem)
 
-    wq.outputQueue.putNoWait((cmd, bufOut))
+    wq.outputQueue.putNoWait((cmd, p, bufOut))
 
 proc flushCommandsOutput(wq: WorkQueue, total: int) {.async.} =
   var id = 0
   while true:
     id += 1
-    let (cmd, processOutput) = await wq.outputQueue.get()
+    let (cmd, p, processOutput) = await wq.outputQueue.get()
 
     echo '\n', '='.repeat(80)
     echo "||\n|| Running #", id, "/", total, ": ", cmd ,"\n||"
@@ -132,6 +136,10 @@ proc flushCommandsOutput(wq: WorkQueue, total: int) {.async.} =
         break
       stdout.write(output)
 
+    let exitCode = p.peekExitCode()
+    if exitCode != 0:
+      quit exitCode
+
     if wq.cmdQueue.len == 0 and wq.outputQueue.len == 0:
       return
 
@@ -142,7 +150,7 @@ proc runCommands(commandFile: string, numWorkers: int) =
   let wq = WorkQueue(
     sem: AsyncSemaphore.new(numWorkers),
     cmdQueue: initDeque[string](),
-    outputQueue: newAsyncQueue[tuple[cmd: string, output: AsyncQueue[string]]]())
+    outputQueue: newAsyncQueue[tuple[cmd: string, p: AsyncProcess, output: AsyncQueue[string]]]())
 
   # Parse the file
   # --------------
