@@ -24,7 +24,7 @@ import
 # ############################################################
 
 # This module implements generic BLS signatures
-# https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04
+# https://www.ietf.org/archive/id/draft-irtf-cfrg-bls-signature-05.html
 # https://github.com/cfrg/draft-irtf-cfrg-bls-signature
 #
 # We use generic shortnames SecKey, PubKey, Sig
@@ -82,7 +82,7 @@ func coreSign*[Sig, SecKey](
   ## - `augmentation`, an optional augmentation to the message. This will be prepended,
   ##   prior to hashing.
   ##   This is used for building the "message augmentation" variant of BLS signatures
-  ##   https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04#section-3.2
+  ##   https://www.ietf.org/archive/id/draft-irtf-cfrg-bls-signature-05.html#section-3.2
   ##   which requires `CoreSign(SK, PK || message)`
   ##   and `CoreVerify(PK, PK || message, signature)`
   ## - `message` is the message to hash
@@ -219,6 +219,12 @@ func update*[Pubkey: ECP_ShortW_Aff](
       ctx.domainSepTag.toOpenArray(0, ctx.dst_len.int - 1))
 
     ctx.millerAccum.update(hmsgG1_aff, pubkey)
+
+func update*[Pubkey: ECP_ShortW_Aff](
+       ctx: var BLSAggregateSigAccumulator,
+       pubkey: Pubkey,
+       message: View[byte]): bool {.inline.} =
+  ctx.update(pubkey, message.toOpenArray())
 
 func merge*(ctxDst: var BLSAggregateSigAccumulator, ctxSrc: BLSAggregateSigAccumulator): bool =
   ## Merge 2 BLS signature accumulators: ctxDst <- ctxDst + ctxSrc
@@ -471,6 +477,13 @@ func update*[Pubkey, Sig: ECP_ShortW_Aff](
     var hmsgG1_aff {.noInit.}: ECP_ShortW_Aff[FF1, G1]
     hmsgG1_aff.affine(hmsgG1_jac)
     ctx.millerAccum.update(hmsgG1_aff, pubkey)
+
+func update*[Pubkey, Sig: ECP_ShortW_Aff](
+       ctx: var BLSBatchSigAccumulator,
+       pubkey: Pubkey,
+       message: View[byte],
+       signature: Sig): bool {.inline.} =
+  ctx.update(pubkey, message, signature)
 
 func merge*(ctxDst: var BLSBatchSigAccumulator, ctxSrc: BLSBatchSigAccumulator): bool =
   ## Merge 2 BLS signature accumulators: ctxDst <- ctxDst + ctxSrc

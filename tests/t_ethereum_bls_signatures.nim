@@ -9,7 +9,7 @@
 import
   std/[os, unittest, strutils],
   pkg/jsony,
-  ../constantine/blssig_pop_on_bls12381_g2,
+  ../constantine/ethereum_bls_signatures,
   ../constantine/platforms/codecs,
   ../constantine/hashes
 

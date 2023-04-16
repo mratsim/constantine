@@ -21,6 +21,9 @@ import
 type HKDF*[H: CryptoHash] = object
   hmac: HMAC[H]
 
+func clear*(ctx: var HKDF) {.inline.} =
+  ctx.hmac.clear()
+
 func hkdf_extract_init*[H: CryptoHash](
        ctx: var HKDF[H],
        salt: openArray[byte],
@@ -100,6 +103,9 @@ iterator hkdfExpandChunk*[H: CryptoHash; N: static int](
   ##
   ## Temporary:
   ## - ctx: a HMAC["cryptographic-hash"] context, for example HMAC[sha256].
+  ##
+  ## After iterating, the HKDF context should be cleared
+  ## if secret keying material was used.
 
   const HashLen = H.digestSize()
   static: doAssert N == HashLen
@@ -122,7 +128,8 @@ func hkdfExpand*[H: CryptoHash; K: static int](
                     output: var openArray[byte],
                     prk: array[K, byte],
                     info: openArray[byte],
-                    append: openArray[byte]) =
+                    append: openArray[byte],
+                    clearMem = false) =
   ## "Expand" step of HKDF
   ## Expand a fixed size pseudo random-key
   ## into several pseudo-random keys
@@ -158,13 +165,15 @@ func hkdfExpand*[H: CryptoHash; K: static int](
     if iStart+HashLen >= output.len:
       break
 
-  # ctx.clear() - TODO: very expensive
+  if clearMem:
+    ctx.clear()
 
 func hkdfExpand*[H: CryptoHash; K: static int](
                     ctx: var HKDF[H],
                     output: var openArray[byte],
                     prk: array[K, byte],
-                    info: openArray[byte]) {.inline.} =
+                    info: openArray[byte],
+                    clearMem = false) {.inline.} =
   ## "Expand" step of HKDF
   ## Expand a fixed size pseudo random-key
   ## into several pseudo-random keys
@@ -178,14 +187,15 @@ func hkdfExpand*[H: CryptoHash; K: static int](
   ##
   ## Temporary:
   ## - ctx: a HMAC["cryptographic-hash"] context, for example HMAC[sha256].
-  hkdfExpand(ctx, output, prk, info, default(array[0, byte]))
+  hkdfExpand(ctx, output, prk, info, default(array[0, byte]), clearMem)
 
 func hkdf*[H: CryptoHash, N: static int](
        Hash: typedesc[H],
        output: var openArray[byte],
        salt: openArray[byte],
        ikm: openArray[byte],
-       info: openArray[byte]) {.inline, genCharAPI.} =
+       info: openArray[byte],
+       clearMem = false) {.inline, genCharAPI.} =
   ## HKDF
   ## Inputs:
   ## - A hash function, with an output digest length HashLen
@@ -197,4 +207,4 @@ func hkdf*[H: CryptoHash, N: static int](
   var ctx{.noInit.}: HMAC[H]
   var prk{.noInit.}: array[H.digestSize(), byte]
   ctx.hkdfExtract(prk, salt, ikm)
-  ctx.hkdfExpand(output, prk, info)
+  ctx.hkdfExpand(output, prk, info, clearMem)

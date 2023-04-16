@@ -28,12 +28,13 @@ export
 
 ## ############################################################
 ##
-##              BLS Signatures on BLS12-381 G2
+##              BLS Signatures on for Ethereum
 ##
 ## ############################################################
 ##
 ## This module implements BLS Signatures (Boneh-Lynn-Schacham)
-## on top of the BLS12-381 curve (Barreto-Lynn-Scott).
+## on top of the BLS12-381 curve (Barreto-Lynn-Scott) G2.
+## for the Ethereum blockchain.
 ##
 ## Ciphersuite:
 ##
@@ -45,19 +46,21 @@ export
 ## - Domain separation tag: "BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_"
 ## - Hash function: SHA256
 ##
-## Currently Constantine does not provide popProve and popVerify
-## which are thin wrapper over sign/verify with
-## - the message to sign or verify being the compressed or uncompressed public key
-##   or another application-specific "hash_pubkey_to_point" scheme
-## - domain-separation-tag: "BLS_POP_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_"
+## Specs:
+## - https://github.com/ethereum/consensus-specs/blob/v1.2.0/specs/phase0/beacon-chain.md#bls-signatures
+## - https://github.com/ethereum/consensus-specs/blob/v1.2.0/specs/altair/bls.md
+## - https://www.ietf.org/archive/id/draft-irtf-cfrg-bls-signature-05.html
 ##
-## Constantine currently assumes that proof-of-possessions are handled at the application-level
+## Test vectors:
+## - https://github.com/ethereum/bls12-381-tests
 ##
-## In proof-of-stake blockchains, being part of the staker/validator sets
-## already serve as proof-of-possession.
+## The Ethereum blockchain uses the proof-of-possession scheme (PoP).
+## Each public key is associated with a deposit proof required to participate
+## in the blockchain consensus protocol, hence PopProve and PopVerify
+## as defined in the IETF spec are not needed.
 
 const DST = "BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_"
-const ffi_prefix {.used.} = "ctt_blssigpop_bls12381g2_"
+const ffi_prefix {.used.} = "ctt_eth_bls_"
 
 {.push raises: [], checks: off.} # No exceptions allowed in core cryptographic operations
 
@@ -90,26 +93,26 @@ type
 # Comparisons
 # ------------------------------------------------------------------------------------------------
 
-func pubkey_is_zero*(pubkey: PublicKey): bool {.exportc: ffi_prefix & "$1".} =
+func pubkey_is_zero*(pubkey: PublicKey): bool {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
   ## Returns true if input is 0
   bool(pubkey.raw.isInf())
 
-func signature_is_zero*(sig: Signature): bool {.exportc: ffi_prefix & "$1".} =
+func signature_is_zero*(sig: Signature): bool {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
   ## Returns true if input is 0
   bool(sig.raw.isInf())
 
-func pubkeys_are_equal*(a, b: PublicKey): bool {.exportc: ffi_prefix & "$1".} =
+func pubkeys_are_equal*(a, b: PublicKey): bool {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
   ## Returns true if inputs are equal
   bool(a.raw == b.raw)
 
-func signatures_are_equal*(a, b: Signature): bool {.exportc: ffi_prefix & "$1".} =
+func signatures_are_equal*(a, b: Signature): bool {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
   ## Returns true if inputs are equal
   bool(a.raw == b.raw)
 
 # Input validation
 # ------------------------------------------------------------------------------------------------
 
-func validate_seckey*(secret_key: SecretKey): CttBLSStatus {.exportc: ffi_prefix & "$1".} =
+func validate_seckey*(secret_key: SecretKey): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
   ## Validate the secret key.
   ## Regarding timing attacks, this will leak timing information only if the key is invalid.
   ## Namely, the secret key is 0 or the secret key is too large.
@@ -119,7 +122,7 @@ func validate_seckey*(secret_key: SecretKey): CttBLSStatus {.exportc: ffi_prefix
     return cttBLS_SecretKeyLargerThanCurveOrder
   return cttBLS_Success
 
-func validate_pubkey*(public_key: PublicKey): CttBLSStatus {.exportc: ffi_prefix & "$1".} =
+func validate_pubkey*(public_key: PublicKey): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
   ## Validate the public key.
   ## This is an expensive operation that can be cached
   if public_key.raw.isInf().bool():
@@ -129,7 +132,7 @@ func validate_pubkey*(public_key: PublicKey): CttBLSStatus {.exportc: ffi_prefix
   if not public_key.raw.isInSubgroup().bool():
     return cttBLS_PointNotInSubgroup
 
-func validate_signature*(signature: Signature): CttBLSStatus {.exportc: ffi_prefix & "$1".} =
+func validate_signature*(signature: Signature): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
   ## Validate the signature.
   ## This is an expensive operation that can be cached
   if signature.raw.isInf().bool():
@@ -160,17 +163,17 @@ func validate_signature*(signature: Signature): CttBLSStatus {.exportc: ffi_pref
 ##     The third-most significant bit is set if (and only if) this point is in compressed form
 ##     and it is not the point at infinity and its y-coordinate is the lexicographically largest of the two associated with the encoded x-coordinate.
 ##
-## - https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-04#appendix-A
+## - https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-05#appendix-A
 ## - https://docs.rs/bls12_381/latest/bls12_381/notes/serialization/index.html
 ##   - https://github.com/zkcrypto/bls12_381/blob/0.6.0/src/notes/serialization.rs
 
-func serialize_seckey*(dst: var array[32, byte], secret_key: SecretKey): CttBLSStatus {.exportc: ffi_prefix & "$1".} =
+func serialize_seckey*(dst: var array[32, byte], secret_key: SecretKey): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
   ## Serialize a secret key
   ## Returns cttBLS_Success if successful
   dst.marshal(secret_key.raw, bigEndian)
   return cttBLS_Success
 
-func serialize_pubkey_compressed*(dst: var array[48, byte], public_key: PublicKey): CttBLSStatus {.exportc: ffi_prefix & "$1".} =
+func serialize_pubkey_compressed*(dst: var array[48, byte], public_key: PublicKey): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
   ## Serialize a public key in compressed (Zcash) format
   ##
   ## Returns cttBLS_Success if successful
@@ -191,7 +194,7 @@ func serialize_pubkey_compressed*(dst: var array[48, byte], public_key: PublicKe
 
   return cttBLS_Success
 
-func serialize_signature_compressed*(dst: var array[96, byte], signature: Signature): CttBLSStatus {.exportc: ffi_prefix & "$1".} =
+func serialize_signature_compressed*(dst: var array[96, byte], signature: Signature): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
   ## Serialize a signature in compressed (Zcash) format
   ##
   ## Returns cttBLS_Success if successful
@@ -213,7 +216,7 @@ func serialize_signature_compressed*(dst: var array[96, byte], signature: Signat
 
   return cttBLS_Success
 
-func deserialize_seckey*(dst: var SecretKey, src: array[32, byte]): CttBLSStatus {.exportc: ffi_prefix & "$1".} =
+func deserialize_seckey*(dst: var SecretKey, src: array[32, byte]): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
   ## Deserialize a secret key
   ## This also validates the secret key.
   ##
@@ -226,7 +229,7 @@ func deserialize_seckey*(dst: var SecretKey, src: array[32, byte]): CttBLSStatus
     return status
   return cttBLS_Success
 
-func deserialize_pubkey_compressed_unchecked*(dst: var PublicKey, src: array[48, byte]): CttBLSStatus {.exportc: ffi_prefix & "$1".} =
+func deserialize_pubkey_compressed_unchecked*(dst: var PublicKey, src: array[48, byte]): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
   ## Deserialize a public_key in compressed (Zcash) format.
   ##
   ## Warning ⚠:
@@ -268,7 +271,7 @@ func deserialize_pubkey_compressed_unchecked*(dst: var PublicKey, src: array[48,
   let srcIsLargest = SecretBool((src[0] shr 5) and byte 1)
   dst.raw.y.cneg(isLexicographicallyLargest xor srcIsLargest)
 
-func deserialize_pubkey_compressed*(dst: var PublicKey, src: array[48, byte]): CttBLSStatus {.exportc: ffi_prefix & "$1".} =
+func deserialize_pubkey_compressed*(dst: var PublicKey, src: array[48, byte]): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
   ## Deserialize a public_key in compressed (Zcash) format
   ## This also validates the public key.
   ##
@@ -281,7 +284,7 @@ func deserialize_pubkey_compressed*(dst: var PublicKey, src: array[48, byte]): C
   if not(bool dst.raw.isInSubgroup()):
     return cttBLS_PointNotInSubgroup
 
-func deserialize_signature_compressed_unchecked*(dst: var Signature, src: array[96, byte]): CttBLSStatus {.exportc: ffi_prefix & "$1".} =
+func deserialize_signature_compressed_unchecked*(dst: var Signature, src: array[96, byte]): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
   ## Deserialize a signature in compressed (Zcash) format.
   ##
   ## Warning ⚠:
@@ -334,7 +337,7 @@ func deserialize_signature_compressed_unchecked*(dst: var Signature, src: array[
   let srcIsLargest = SecretBool((src[0] shr 5) and byte 1)
   dst.raw.y.cneg(isLexicographicallyLargest xor srcIsLargest)
 
-func deserialize_signature_compressed*(dst: var Signature, src: array[96, byte]): CttBLSStatus {.exportc: ffi_prefix & "$1".} =
+func deserialize_signature_compressed*(dst: var Signature, src: array[96, byte]): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
   ## Deserialize a public_key in compressed (Zcash) format
   ##
   ## Returns cttBLS_Success if successful
@@ -346,10 +349,15 @@ func deserialize_signature_compressed*(dst: var Signature, src: array[96, byte])
   if not(bool dst.raw.isInSubgroup()):
     return cttBLS_PointNotInSubgroup
 
+# SHA256 Hash
+# ------------------------------------------------------------------------------------------------
+
+# func sha256_hash*(digest: var array[32, byte], message: openArray[byte])
+
 # BLS Signatures
 # ------------------------------------------------------------------------------------------------
 
-func derive_pubkey*(public_key: var PublicKey, secret_key: SecretKey): CttBLSStatus {.exportc: ffi_prefix & "$1".} =
+func derive_pubkey*(public_key: var PublicKey, secret_key: SecretKey): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
   ## Derive the public key matching with a secret key
   ##
   ## Secret protection:
@@ -365,7 +373,7 @@ func derive_pubkey*(public_key: var PublicKey, secret_key: SecretKey): CttBLSSta
     return cttBLS_InvalidEncoding
   return cttBLS_Success
 
-func sign*(signature: var Signature, secret_key: SecretKey, message: openArray[byte]): CttBLSStatus {.exportc: ffi_prefix & "$1", genCharAPI.} =
+func sign*(signature: var Signature, secret_key: SecretKey, message: openArray[byte]): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1", genCharAPI.} =
   ## Produce a signature for the message under the specified secret key
   ## Signature is on BLS12-381 G2 (and public key on G1)
   ##
@@ -391,7 +399,7 @@ func sign*(signature: var Signature, secret_key: SecretKey, message: openArray[b
   coreSign(signature.raw, secretKey.raw, message, sha256, 128, augmentation = "", DST)
   return cttBLS_Success
 
-func verify*(public_key: PublicKey, message: openArray[byte], signature: Signature): CttBLSStatus {.exportc: ffi_prefix & "$1", genCharAPI.} =
+func verify*(public_key: PublicKey, message: openArray[byte], signature: Signature): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1", genCharAPI.} =
   ## Check that a signature is valid for a message
   ## under the provided public key.
   ## returns `true` if the signature is valid, `false` otherwise.
@@ -424,7 +432,7 @@ template unwrap[T: PublicKey|Signature](elems: openArray[T]): auto =
   # Unwrap collection of high-level type into collection of low-level type
   toOpenArray(cast[ptr UncheckedArray[typeof elems[0].raw]](elems[0].raw.unsafeAddr), elems.low, elems.high)
 
-func aggregate_pubkeys_unstable_api*(aggregate_pubkey: var PublicKey, pubkeys: openArray[PublicKey]) {.exportc: ffi_prefix & "$1".} =
+func aggregate_pubkeys_unstable_api*(aggregate_pubkey: var PublicKey, pubkeys: openArray[PublicKey]) =
   ## Aggregate public keys into one
   ## The individual public keys are assumed to be validated, either during deserialization
   ## or by validate_pubkeys
@@ -435,7 +443,7 @@ func aggregate_pubkeys_unstable_api*(aggregate_pubkey: var PublicKey, pubkeys: o
     return
   aggregate_pubkey.raw.aggregate(pubkeys.unwrap())
 
-func aggregate_signatures_unstable_api*(aggregate_sig: var Signature, signatures: openArray[Signature]) {.exportc: ffi_prefix & "$1".} =
+func aggregate_signatures_unstable_api*(aggregate_sig: var Signature, signatures: openArray[Signature]) =
   ## Aggregate signatures into one
   ## The individual signatures are assumed to be validated, either during deserialization
   ## or by validate_signature
@@ -446,7 +454,7 @@ func aggregate_signatures_unstable_api*(aggregate_sig: var Signature, signatures
     return
   aggregate_sig.raw.aggregate(signatures.unwrap())
 
-func fast_aggregate_verify*(pubkeys: openArray[PublicKey], message: openArray[byte], aggregate_sig: Signature): CttBLSStatus {.exportc: ffi_prefix & "$1", genCharAPI.} =
+func fast_aggregate_verify*(pubkeys: openArray[PublicKey], message: openArray[byte], aggregate_sig: Signature): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1", genCharAPI.} =
   ## Check that a signature is valid for a message
   ## under the aggregate of provided public keys.
   ## returns `true` if the signature is valid, `false` otherwise.
@@ -482,7 +490,52 @@ func fast_aggregate_verify*(pubkeys: openArray[PublicKey], message: openArray[by
     return cttBLS_Success
   return cttBLS_VerificationFailure
 
-func aggregate_verify*[Msg](pubkeys: openArray[PublicKey], messages: openArray[Msg], aggregate_sig: Signature): CttBLSStatus {.exportc: ffi_prefix & "$1".} =
+# C FFI
+func aggregate_verify*(pubkeys: ptr UncheckedArray[PublicKey],
+                       messages: ptr UncheckedArray[View[byte]],
+                       len: int,
+                       aggregate_sig: Signature): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
+  ## Verify the aggregated signature of multiple (pubkey, message) pairs
+  ## returns `true` if the signature is valid, `false` otherwise.
+  ##
+  ## For message domain separation purpose, the tag is `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_`
+  ##
+  ## Input:
+  ## - Public keys initialized by one of the key derivation or deserialization procedure.
+  ##   Or validated via validate_pubkey
+  ## - Messages
+  ## - a signature initialized by one of the key derivation or deserialization procedure.
+  ##   Or validated via validate_signature
+  ##
+  ## In particular, the public keys and signature are assumed to be on curve subgroup checked.
+  ##
+  ## To avoid splitting zeros and rogue keys attack:
+  ## 1. Public keys signing the same message MUST be aggregated and checked for 0 before calling this function.
+  ## 2. Augmentation or Proof of possessions must used for each public keys.
+
+  if len == 0:
+    # IETF spec precondition
+    return cttBLS_ZeroLengthAggregation
+
+  # Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
+  if aggregate_sig.raw.isInf().bool:
+    return cttBLS_PointAtInfinity
+
+  for i in 0 ..< len:
+    if pubkeys[i].raw.isInf().bool:
+      return cttBLS_PointAtInfinity
+
+  let verified = aggregateVerify(
+    pubkeys.toOpenArray(len).unwrap(),
+    messages.toOpenArray(len),
+    aggregate_sig.raw,
+    sha256, 128, DST)
+  if verified:
+    return cttBLS_Success
+  return cttBLS_VerificationFailure
+
+# Nim
+func aggregate_verify*[Msg](pubkeys: openArray[PublicKey], messages: openArray[Msg], aggregate_sig: Signature): CttBLSStatus =
   ## Verify the aggregated signature of multiple (pubkey, message) pairs
   ## returns `true` if the signature is valid, `false` otherwise.
   ##
@@ -524,7 +577,59 @@ func aggregate_verify*[Msg](pubkeys: openArray[PublicKey], messages: openArray[M
     return cttBLS_Success
   return cttBLS_VerificationFailure
 
-func batch_verify*[Msg](pubkeys: openArray[PublicKey], messages: openarray[Msg], signatures: openArray[Signature], secureRandomBytes: array[32, byte]): CttBLSStatus {.exportc: ffi_prefix & "$1".} =
+# C FFI
+func batch_verify*[Msg](pubkeys: ptr UncheckedArray[PublicKey],
+                        messages: ptr UncheckedArray[View[byte]],
+                        signatures: ptr UncheckedArray[Signature],
+                        len: int,
+                        secureRandomBytes: array[32, byte]): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
+  ## Verify that all (pubkey, message, signature) triplets are valid
+  ## returns `true` if all signatures are valid, `false` if at least one is invalid.
+  ##
+  ## For message domain separation purpose, the tag is `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_`
+  ##
+  ## Input:
+  ## - Public keys initialized by one of the key derivation or deserialization procedure.
+  ##   Or validated via validate_pubkey
+  ## - Messages
+  ## - Signatures initialized by one of the key derivation or deserialization procedure.
+  ##   Or validated via validate_signature
+  ##
+  ## In particular, the public keys and signature are assumed to be on curve subgroup checked.
+  ##
+  ## To avoid splitting zeros and rogue keys attack:
+  ## 1. Cryptographically-secure random bytes must be provided.
+  ## 2. Augmentation or Proof of possessions must used for each public keys.
+  ##
+  ## The secureRandomBytes will serve as input not under the attacker control to foil potential splitting zeros inputs.
+  ## The scheme assumes that the attacker cannot
+  ## resubmit 2^64 times forged (publickey, message, signature) triplets
+  ## against the same `secureRandomBytes`
+
+  if len == 0:
+    # IETF spec precondition
+    return cttBLS_ZeroLengthAggregation
+
+  # Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
+  for i in 0 ..< len:
+    if pubkeys[i].raw.isInf().bool:
+      return cttBLS_PointAtInfinity
+
+  for i in 0 ..< len:
+    if signatures[i].raw.isInf().bool:
+      return cttBLS_PointAtInfinity
+
+  let verified = batchVerify(
+    pubkeys.toOpenArray(len).unwrap(),
+    messages,
+    signatures.toOpenArray(len).unwrap(),
+    sha256, 128, DST, secureRandomBytes)
+  if verified:
+    return cttBLS_Success
+  return cttBLS_VerificationFailure
+
+# Nim
+func batch_verify*[Msg](pubkeys: openArray[PublicKey], messages: openarray[Msg], signatures: openArray[Signature], secureRandomBytes: array[32, byte]): CttBLSStatus =
   ## Verify that all (pubkey, message, signature) triplets are valid
   ## returns `true` if all signatures are valid, `false` if at least one is invalid.
   ##

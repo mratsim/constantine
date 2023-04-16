@@ -85,15 +85,17 @@ func clear*[H: CryptoHash](ctx: var HMAC[H]) =
   ctx.inner.clear()
   ctx.outer.clear()
 
-func mac*[H: CryptoHash, N: static int](
+func mac*[T0, T1: char|byte, H: CryptoHash, N: static int](
        Hash: type HMAC[H],
        tag: var array[N, byte],
-       message: openArray[byte],
-       secretKey: openArray[byte],
-       clearMem = false) {.genCharAPI.} =
+       message: openArray[T0],
+       secretKey: openArray[T1],
+       clearMem = false) =
   ## Produce an authentication tag from a message
   ## and a preshared unique non-reused secret key
-  static: doAssert N == H.digestSize
+  # TODO: we can't use the {.genCharAPI.} macro
+  #       due to 2 openArray[bytes] and the CryptoHash concept
+  static: doAssert N == H.digestSize()
 
   var ctx {.noInit.}: HMAC[H]
   ctx.init(secretKey)

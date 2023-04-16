@@ -9,6 +9,158 @@ license       = "MIT or Apache License 2.0"
 
 requires "nim >= 1.1.0"
 
+# Library compilation
+# ----------------------------------------------------------------
+
+proc releaseBuildOptions: string =
+  # -d:danger to avoid boundsCheck and overflowChecks that would trigger exceptions or allocations in a crypto library.
+  #           Those are internally guaranteed at compile-time by fixed-sized array
+  #           and checked at runtime with an appropriate error code if any for user-input.
+  #
+  # -gc:arc   Constantine stack allocates everything. Inputs are through unmanaged ptr+len.
+  #
+  # -fno-semantic-interposition
+  #           https://fedoraproject.org/wiki/Changes/PythonNoSemanticInterpositionSpeedup
+  #           Default in Clang, not default in GCC, prevents optimizations, not portable to non-Linux.
+  #           Also disabling this prevents overriding symbols which might actually be wanted in a cryptographic library
+  #
+  # -falign-functions=32
+  #           Reduce instructions cache misses
+  #           https://lkml.org/lkml/2015/5/21/443
+  " --verbosity:0 --hints:off --warnings:off " &
+  " --panics:on -d:noSignalHandler --mm:arc -d:useMalloc " & # Defects are not catchable
+  # " --passC:-flto=auto --passL:-flto=auto " &
+  " --passC:-fno-semantic-interposition " &
+  " --passC:-falign-functions=32 "
+
+type BindingsKind = enum
+  kCurve
+  kProtocol
+
+proc genDynamicBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: string) =
+  proc compile(libName: string, flags = "") =
+    echo "Compiling dynamic library: lib/" & libName
+    exec "nim c " &
+         #  " --cc:clang " &
+         " -d:danger --opt:size " &
+         flags &
+         releaseBuildOptions() &
+         " --noMain --app:staticLib " &
+         " --nimMainPrefix:" & prefixNimMain &
+         " --out:" & libName & " --outdir:lib " &
+         (block:
+           case bindingsKind
+           of kCurve:
+             " --nimcache:nimcache/bindings_curves/" & bindingsName &
+             " bindings_generators/" & bindingsName & ".nim"
+           of kProtocol:
+             " --nimcache:nimcache/bindings_protocols/" & bindingsName &
+             " constantine/" & bindingsName & ".nim")
+
+  let bindingsName = block:
+    case bindingsKind
+    of kCurve: bindingsName
+    of kProtocol: "constantine_" & bindingsName
+
+  when defined(windows):
+    compile bindingsName & ".dll"
+
+  elif defined(macosx):
+    compile "lib" & bindingsName & ".dylib.arm", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
+    compile "lib" & bindingsName & ".dylib.x64", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
+    exec "lipo lib/lib" & bindingsName & ".dylib.arm " &
+             " lib/lib" & bindingsName & ".dylib.x64 " &
+             " -output lib/lib" & bindingsName & ".dylib -create"
+
+  else:
+    compile "lib" & bindingsName & ".so"
+
+proc genStaticBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: string) =
+  proc compile(libName: string, flags = "") =
+    echo "Compiling static library:  lib/" & libName
+    exec "nim c " &
+         #  " --cc:clang " &
+         " -d:danger --opt:size " &
+         flags &
+         releaseBuildOptions() &
+         " --noMain --app:staticLib " &
+         " --nimMainPrefix:" & prefixNimMain &
+         " --out:" & libName & " --outdir:lib " &
+         (block:
+           case bindingsKind
+           of kCurve:
+             " --nimcache:nimcache/bindings_curves/" & bindingsName &
+             " bindings_generators/" & bindingsName & ".nim"
+           of kProtocol:
+             " --nimcache:nimcache/bindings_protocols/" & bindingsName &
+             " constantine/" & bindingsName & ".nim"
+         )
+
+  let bindingsName = block:
+    case bindingsKind
+    of kCurve: bindingsName
+    of kProtocol: "constantine_" & bindingsName
+
+  when defined(windows):
+    compile bindingsName & ".lib"
+
+  elif defined(macosx):
+    compile "lib" & bindingsName & ".a.arm", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
+    compile "lib" & bindingsName & ".a.x64", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
+    exec "lipo lib/lib" & bindingsName & ".a.arm " &
+             " lib/lib" & bindingsName & ".a.x64 " &
+             " -output lib/lib" & bindingsName & ".a -create"
+
+  else:
+    compile "lib" & bindingsName & ".a"
+
+proc genHeaders(bindingsName: string) =
+  echo "Generating header:         include/" & bindingsName & ".h"
+  exec "nim c -d:release -d:CttGenerateHeaders " &
+       releaseBuildOptions() &
+       " --out:" & bindingsName & "_gen_header.exe --outdir:build " &
+       " --nimcache:nimcache/bindings_curves_headers/" & bindingsName & "_header" &
+       " bindings_generators/" & bindingsName & ".nim"
+  exec "build/" & bindingsName & "_gen_header.exe include"
+
+task bindings, "Generate Constantine bindings":
+  # Curve arithmetic
+  genStaticBindings(kCurve, "constantine_bls12_381", "ctt_bls12381_init_")
+  genDynamicBindings(kCurve, "constantine_bls12_381", "ctt_bls12381_init_")
+  genHeaders("constantine_bls12_381")
+  echo ""
+  genStaticBindings(kCurve, "constantine_pasta", "ctt_pasta_init_")
+  genDynamicBindings(kCurve, "constantine_pasta", "ctt_pasta_init_")
+  genHeaders("constantine_pasta")
+  echo ""
+
+  # Protocols
+  genStaticBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_")
+  genDynamicBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_")
+
+task test_bindings, "Test C bindings":
+  exec "mkdir -p build/testsuite"
+  echo "--> Testing dynamically linked library"
+  when not defined(windows):
+    exec "gcc -Iinclude -Llib -o build/testsuite/t_libctt_bls12_381_dl examples_c/t_libctt_bls12_381.c -lgmp -lconstantine_bls12_381"
+    exec "LD_LIBRARY_PATH=lib ./build/testsuite/t_libctt_bls12_381_dl"
+  else:
+    # Put DLL near the exe as LD_LIBRARY_PATH doesn't work even in an POSIX compatible shell
+    exec "gcc -Iinclude -Llib -o build/testsuite/t_libctt_bls12_381_dl.exe examples_c/t_libctt_bls12_381.c -lgmp -lconstantine_bls12_381"
+    exec "./build/testsuite/t_libctt_bls12_381_dl.exe"
+
+  echo "--> Testing statically linked library"
+  when not defined(windows):
+    # Beware MacOS annoying linker with regards to static libraries
+    # The following standard way cannot be used on MacOS
+    # exec "gcc -Iinclude -Llib -o build/t_libctt_bls12_381_sl.exe examples_c/t_libctt_bls12_381.c -lgmp -Wl,-Bstatic -lconstantine_bls12_381 -Wl,-Bdynamic"
+
+    exec "gcc -Iinclude -o build/testsuite/t_libctt_bls12_381_sl examples_c/t_libctt_bls12_381.c lib/libconstantine_bls12_381.a -lgmp"
+    exec "./build/testsuite/t_libctt_bls12_381_sl"
+  else:
+    exec "gcc -Iinclude -o build/testsuite/t_libctt_bls12_381_sl.exe examples_c/t_libctt_bls12_381.c lib/constantine_bls12_381.lib -lgmp"
+    exec "./build/testsuite/t_libctt_bls12_381_sl.exe"
+
 # Test config
 # ----------------------------------------------------------------
 
@@ -232,7 +384,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Protocols
   # ----------------------------------------------------------
   ("tests/t_ethereum_evm_precompiles.nim", false),
-  ("tests/t_blssig_pop_on_bls12381_g2.nim", false),
+  ("tests/t_ethereum_bls_signatures.nim", false),
   ("tests/t_ethereum_eip2333_bls12381_key_derivation.nim", false),
 ]
 
@@ -291,7 +443,7 @@ const benchDesc = [
   "bench_poly1305",
   "bench_sha256",
   "bench_hash_to_curve",
-  "bench_blssig_on_bls12_381_g2"
+  "bench_ethereum_bls_signatures"
 ]
 
 # For temporary (hopefully) investigation that can only be reproduced in CI
@@ -308,7 +460,7 @@ const skipSanitizers = [
   "tests/math/t_ec_sage_bn254_snarks.nim",
   "tests/math/t_ec_sage_bls12_377.nim",
   "tests/math/t_ec_sage_bls12_381.nim",
-  "tests/t_blssig_pop_on_bls12381_g2.nim",
+  "tests/t_ethereum_bls_signatures.nim",
   "tests/t_hash_to_field.nim",
   "tests/t_hash_to_curve.nim",
   "tests/t_hash_to_curve_random.nim",
@@ -323,13 +475,14 @@ when defined(windows):
   const sanitizers = ""
 else:
   const sanitizers =
+    # Sanitizers are incompatible with nim default GC
+    # The conservative stack scanning of Nim default GC triggers, alignment UB and stack-buffer-overflow check.
     " --passC:-fsanitize=undefined --passL:-fsanitize=undefined" &
-    " --passC:-fno-sanitize-recover" & # Enforce crash on undefined behaviour
-    " --gc:none" # The conservative stack scanning of Nim default GC triggers, alignment UB and stack-buffer-overflow check.
+    " --passC:-fno-sanitize-recover" # Enforce crash on undefined behaviour
     # " --passC:-fsanitize=address --passL:-fsanitize=address" & # Requires too much stack for the inline assembly
 
 
-# Helper functions
+# Tests & Benchmarks helper functions
 # ----------------------------------------------------------------
 
 proc clearParallelBuild() =
@@ -350,9 +503,11 @@ template setupCommand(): untyped {.dirty.} =
   when not defined(windows):
     # Not available in MinGW https://github.com/libressl-portable/portable/issues/54
     flags &= " --passC:-fstack-protector-strong"
-  let command = "nim " & lang & cc & " -d:release " & flags &
-    " --panics:on " & # Defects are not catchable
-    " --verbosity:0 --outdir:build/testsuite -r --hints:off --warnings:off " &
+  let command = "nim " & lang & cc &
+    " -r -d:release " &
+    flags &
+    releaseBuildOptions() &
+    " --outdir:build/testsuite " &
     " --nimcache:nimcache/" & path & " " &
     path
 
@@ -383,10 +538,11 @@ template setupBench(): untyped {.dirty.} =
   if not useAsm:
     cc &= " -d:CttASM=false"
   let command = "nim " & lang & cc &
-       " --panics:on " & # Defects are not catchable
-       " -d:danger --verbosity:0 -o:build/bench/" & benchName & "_" & compiler & "_" & (if useAsm: "useASM" else: "noASM") &
+       " -d:danger --opt:size " &
+       releaseBuildOptions() &
+       " -o:build/bench/" & benchName & "_" & compiler & "_" & (if useAsm: "useASM" else: "noASM") &
        " --nimcache:nimcache/benches/" & benchName & "_" & compiler & "_" & (if useAsm: "useASM" else: "noASM") &
-       runFlag & "--hints:off --warnings:off benchmarks/" & benchName & ".nim"
+       runFlag & " benchmarks/" & benchName & ".nim"
 
 proc runBench(benchName: string, compiler = "", useAsm = true) =
   if not dirExists "build":
@@ -461,114 +617,11 @@ proc addBenchSet(cmdFile: var string, useAsm = true) =
   for bd in benchDesc:
     cmdFile.buildBenchBatch(bd, useASM = useASM)
 
-proc genDynamicBindings(bindingsName, prefixNimMain: string) =
-  proc compile(libName: string, flags = "") =
-    # -d:danger to avoid boundsCheck, overflowChecks that would trigger exceptions or allocations in a crypto library.
-    #           Those are internally guaranteed at compile-time by fixed-sized array
-    #           and checked at runtime with an appropriate error code if any for user-input.
-    # -gc:arc   Constantine stack allocates everything. Inputs are through unmanaged ptr+len.
-    #           In the future, Constantine might use:
-    #             - heap-allocated sequences and objects manually managed or managed by destructors for multithreading.
-    #             - heap-allocated strings for hex-string or decimal strings
-    echo "Compiling dynamic library: lib/" & libName
-    exec "nim c -f " & flags & " --noMain -d:danger --app:lib --gc:arc " &
-         " --panics:on " & # Defects are not catchable
-         " --verbosity:0 --hints:off --warnings:off " &
-         " --nimMainPrefix:" & prefixNimMain &
-         " --out:" & libName & " --outdir:lib " &
-         " --nimcache:nimcache/bindings/" & bindingsName &
-         " bindings/" & bindingsName & ".nim"
-
-  when defined(windows):
-    compile bindingsName & ".dll"
-
-  elif defined(macosx):
-    compile "lib" & bindingsName & ".dylib.arm", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
-    compile "lib" & bindingsName & ".dylib.x64", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
-    exec "lipo lib/lib" & bindingsName & ".dylib.arm " &
-             " lib/lib" & bindingsName & ".dylib.x64 " &
-             " -output lib/lib" & bindingsName & ".dylib -create"
-
-  else:
-    compile "lib" & bindingsName & ".so"
-
-proc genStaticBindings(bindingsName, prefixNimMain: string) =
-  proc compile(libName: string, flags = "") =
-    # -d:danger to avoid boundsCheck, overflowChecks that would trigger exceptions or allocations in a crypto library.
-    #           Those are internally guaranteed at compile-time by fixed-sized array
-    #           and checked at runtime with an appropriate error code if any for user-input.
-    # -gc:arc   Constantine stack allocates everything. Inputs are through unmanaged ptr+len.
-    #           In the future, Constantine might use:
-    #             - heap-allocated sequences and objects manually managed or managed by destructors for multithreading.
-    #             - heap-allocated strings for hex-string or decimal strings
-    echo "Compiling static library:  lib/" & libName
-    exec "nim c -f " & flags & " --noMain -d:danger --app:staticLib --gc:arc " &
-         " --panics:on " & # Defects are not catchable
-         " --verbosity:0 --hints:off --warnings:off " &
-         " --nimMainPrefix:" & prefixNimMain &
-         " --out:" & libName & " --outdir:lib " &
-         " --nimcache:nimcache/bindings/" & bindingsName &
-         " bindings/" & bindingsName & ".nim"
-
-  when defined(windows):
-    compile bindingsName & ".lib"
-
-  elif defined(macosx):
-    compile "lib" & bindingsName & ".a.arm", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
-    compile "lib" & bindingsName & ".a.x64", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
-    exec "lipo lib/lib" & bindingsName & ".a.arm " &
-             " lib/lib" & bindingsName & ".a.x64 " &
-             " -output lib/lib" & bindingsName & ".a -create"
-
-  else:
-    compile "lib" & bindingsName & ".a"
-
-proc genHeaders(bindingsName: string) =
-  echo "Generating header:         include/" & bindingsName & ".h"
-  exec "nim c -d:release -d:CttGenerateHeaders " &
-       " --verbosity:0 --hints:off --warnings:off " &
-       " --out:" & bindingsName & "_gen_header.exe --outdir:build " &
-       " --nimcache:nimcache/bindings/" & bindingsName & "_header" &
-       " bindings/" & bindingsName & ".nim"
-  exec "build/" & bindingsName & "_gen_header.exe include"
-
 proc genParallelCmdRunner() =
   exec "nim c --verbosity:0 --hints:off --warnings:off -d:release --out:build/pararun --nimcache:nimcache/pararun helpers/pararun.nim"
 
 # Tasks
 # ----------------------------------------------------------------
-
-task bindings, "Generate Constantine bindings":
-  genDynamicBindings("constantine_bls12_381", "ctt_bls12381_init_")
-  genStaticBindings("constantine_bls12_381", "ctt_bls12381_init_")
-  genHeaders("constantine_bls12_381")
-  echo ""
-  genDynamicBindings("constantine_pasta", "ctt_pasta_init_")
-  genStaticBindings("constantine_pasta", "ctt_pasta_init_")
-  genHeaders("constantine_pasta")
-
-task test_bindings, "Test C bindings":
-  exec "mkdir -p build/testsuite"
-  echo "--> Testing dynamically linked library"
-  when not defined(windows):
-    exec "gcc -Iinclude -Llib -o build/testsuite/t_libctt_bls12_381_dl examples_c/t_libctt_bls12_381.c -lgmp -lconstantine_bls12_381"
-    exec "LD_LIBRARY_PATH=lib ./build/testsuite/t_libctt_bls12_381_dl"
-  else:
-    # Put DLL near the exe as LD_LIBRARY_PATH doesn't work even in an POSIX compatible shell
-    exec "gcc -Iinclude -Llib -o build/testsuite/t_libctt_bls12_381_dl.exe examples_c/t_libctt_bls12_381.c -lgmp -lconstantine_bls12_381"
-    exec "./build/testsuite/t_libctt_bls12_381_dl.exe"
-
-  echo "--> Testing statically linked library"
-  when not defined(windows):
-    # Beware MacOS annoying linker with regards to static libraries
-    # The following standard way cannot be used on MacOS
-    # exec "gcc -Iinclude -Llib -o build/t_libctt_bls12_381_sl.exe examples_c/t_libctt_bls12_381.c -lgmp -Wl,-Bstatic -lconstantine_bls12_381 -Wl,-Bdynamic"
-
-    exec "gcc -Iinclude -o build/testsuite/t_libctt_bls12_381_sl examples_c/t_libctt_bls12_381.c lib/libconstantine_bls12_381.a -lgmp"
-    exec "./build/testsuite/t_libctt_bls12_381_sl"
-  else:
-    exec "gcc -Iinclude -o build/testsuite/t_libctt_bls12_381_sl.exe examples_c/t_libctt_bls12_381.c lib/constantine_bls12_381.lib -lgmp"
-    exec "./build/testsuite/t_libctt_bls12_381_sl.exe"
 
 task test, "Run all tests":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
@@ -1123,17 +1176,17 @@ task bench_hash_to_curve_clang_noasm, "Run Hash-to-Curve benchmarks":
 
 # BLS signatures
 # ------------------------------------------
-task bench_blssig_on_bls12_381_g2, "Run Hash-to-Curve benchmarks":
-  runBench("bench_blssig_on_bls12_381_g2")
+task bench_ethereum_bls_signatures, "Run Ethereum BLS signatures benchmarks":
+  runBench("bench_ethereum_bls_signatures")
 
-task bench_blssig_on_bls12_381_g2_gcc, "Run Hash-to-Curve benchmarks":
-  runBench("bench_blssig_on_bls12_381_g2", "gcc")
+task bench_ethereum_bls_signatures_gcc, "Run Ethereum BLS signatures benchmarks":
+  runBench("bench_ethereum_bls_signatures", "gcc")
 
-task bench_blssig_on_bls12_381_g2_clang, "Run Hash-to-Curve benchmarks":
-  runBench("bench_blssig_on_bls12_381_g2", "clang")
+task bench_ethereum_bls_signatures_clang, "Run Ethereum BLS signatures benchmarks":
+  runBench("bench_ethereum_bls_signatures", "clang")
 
-task bench_blssig_on_bls12_381_g2_gcc_noasm, "Run Hash-to-Curve benchmarks":
-  runBench("bench_blssig_on_bls12_381_g2", "gcc", useAsm = false)
+task bench_ethereum_bls_signatures_gcc_noasm, "Run Ethereum BLS signatures benchmarks":
+  runBench("bench_ethereum_bls_signatures", "gcc", useAsm = false)
 
-task bench_blssig_on_bls12_381_g2_clang_noasm, "Run Hash-to-Curve benchmarks":
-  runBench("bench_blssig_on_bls12_381_g2", "clang", useAsm = false)
+task bench_ethereum_bls_signatures_clang_noasm, "Run Ethereum BLS signatures benchmarks":
+  runBench("bench_ethereum_bls_signatures", "clang", useAsm = false)

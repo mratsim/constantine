@@ -12,14 +12,14 @@ import
   ./math/config/[curves, type_ff],
   ./math/arithmetic/[bigints, limbs_montgomery],
   ./math/io/io_bigints,
-  ./platforms/endians
+  ./platforms/[primitives, endians]
 
 # EIP2333: BLS12-381 Key Generation
 # ------------------------------------------------------------
 #
 # https://eips.ethereum.org/EIPS/eip-2333
 
-{.push raises: [].} # No exceptions
+{.push raises: [], checks: off.} # No exceptions
 
 type SecretKey = matchingOrderBigInt(BLS12_381)
 
@@ -52,7 +52,7 @@ func hkdf_mod_r(secretKey: var SecretKey, ikm: openArray[byte], key_info: openAr
     const L = 48
     var okm{.noInit.}: array[L, byte]
     const L_octetstring = L.uint16.toBytesBE()
-    ctx.hkdfExpand(okm, prk, key_info, append = L_octetstring)
+    ctx.hkdfExpand(okm, prk, key_info, append = L_octetstring, clearMem = true)
     #  7. x = OS2IP(OKM) mod r
     #  We reduce mod r via Montgomery reduction, instead of bigint division
     #  as constant-time division works bits by bits (384 bits) while
@@ -90,11 +90,12 @@ iterator ikm_to_lamport_SK(
 
   # 1. OKM = HKDF-Expand(PRK, "" , L)
   #    with L = K * 255 and K = 32 (sha256 output)
-  {.push checks: off.} # No OverflowError or IndexError allowed
   for i in ctx.hkdfExpandChunk(
             lamportSecretKeyChunk,
             prk, default(array[0, byte]), default(array[0, byte])):
     yield i
+
+  ctx.clear()
 
 func parent_SK_to_lamport_PK(
        lamportPublicKey: var array[32, byte],
@@ -118,8 +119,6 @@ func parent_SK_to_lamport_PK(
   ctx.init()
 
   var tmp{.noInit.}, chunk{.noInit.}: array[32, byte]
-
-  {.push checks: off.} # No OverflowError or IndexError allowed
 
   # 2. lamport_0 = IKM_to_lamport_SK(IKM, salt)
   # 6. for i = 1, .., 255 (inclusive)
@@ -159,15 +158,17 @@ func derive_child_secretKey*(
   parent_SK_to_lamport_PK(
     compressed_lamport_PK,
     parentSecretKey,
-    index,
-  )
+    index)
   childSecretKey.hkdf_mod_r(compressed_lamport_PK, key_info = default(array[0, byte]))
+  compressed_lamport_PK.setZero()
   return true
 
 func derive_master_secretKey*(
         masterSecretKey: var SecretKey,
         ikm: openArray[byte]): bool =
   ## EIP2333 Master key derivation
+  ## The input keying material SHOULD be cleared after use
+  ## to prevent leakage.
   if ikm.len < 32:
     return false
 

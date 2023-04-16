@@ -77,7 +77,7 @@ func expandMessageXMD*[len_in_bytes: static int](
   ## - `augmentation`, an optional augmentation to the message. This will be prepended,
   ##   prior to hashing.
   ##   This is used for building the "message augmentation" variant of BLS signatures
-  ##   https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04#section-3.2
+  ##   https://www.ietf.org/archive/id/draft-irtf-cfrg-bls-signature-05.html#section-3.2
   ##   which requires `CoreSign(SK, PK || message)`
   ##   and `CoreVerify(PK, PK || message, signature)`
   ## - `message` is the message to hash
@@ -186,7 +186,7 @@ func hashToField*[Field; count: static int](
   ## - `augmentation`, an optional augmentation to the message. This will be prepended,
   ##   prior to hashing.
   ##   This is used for building the "message augmentation" variant of BLS signatures
-  ##   https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04#section-3.2
+  ##   https://www.ietf.org/archive/id/draft-irtf-cfrg-bls-signature-05.html#section-3.2
   ##   which requires `CoreSign(SK, PK || message)`
   ##   and `CoreVerify(PK, PK || message, signature)`
   ## - `message` is the message to hash

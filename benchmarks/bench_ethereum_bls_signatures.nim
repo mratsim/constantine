@@ -9,7 +9,7 @@
 import
   # Internals
   ../constantine/[
-    blssig_pop_on_bls12381_g2,
+    ethereum_bls_signatures,
     ethereum_eip2333_bls12381_key_derivation],
   ../constantine/math/arithmetic,
   # Helpers
@@ -33,7 +33,7 @@ template bench(op: string, curve: string, iters: int, body: untyped): untyped =
 proc demoKeyGen(): tuple[seckey: SecretKey, pubkey: PublicKey] =
   # Don't do this at home, this is for benchmarking purposes
   # The RNG is NOT cryptographically secure
-  # The API for keygen is not ready in blssig_pop_on_bls12381_g2
+  # The API for keygen is not ready in ethereum_bls_signatures
   let ikm = rng.random_byte_seq(32)
   doAssert cast[ptr BigInt[255]](result.seckey.addr)[].derive_master_secretKey(ikm)
   let ok = result.pubkey.derive_pubkey(result.seckey)
@@ -162,7 +162,6 @@ proc benchVerifyMulti*(numSigs, iters: int) =
   bench("BLS verif of " & $numSigs & " msgs by "& $numSigs & " pubkeys", "BLS12_381", iters):
     for i in 0 ..< triplets.len:
       let ok = triplets[i].pubkey.verify(triplets[i].msg, triplets[i].sig)
-      doAssert ok == cttBLS_Success
 
 proc benchVerifyBatched*(numSigs, iters: int) =
   ## Verification of N pubkeys signing for N messages
@@ -189,7 +188,6 @@ proc benchVerifyBatched*(numSigs, iters: int) =
 
   bench("BLS serial batch verify of " & $numSigs & " msgs by "& $numSigs & " pubkeys (with blinding)", "BLS12_381", iters):
     let ok = batch_verify(pubkeys, messages, signatures, secureBlindingBytes)
-    doAssert ok == cttBLS_Success
 
 const Iters = 1000
 
