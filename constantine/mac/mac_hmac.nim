@@ -8,7 +8,7 @@
 
 import
   ../hashes,
-  ../platforms/primitives
+  ../platforms/[primitives, views]
 
 # HMAC: Keyed-Hashing for Message Authentication
 # ----------------------------------------------
@@ -26,19 +26,19 @@ type HMAC*[H: CryptoHash] = object
   inner: H
   outer: H
 
-func init*[H: CryptoHash, T: char|byte](ctx: var HMAC[H], secretKey: openArray[T]) =
+func init*[H: CryptoHash](ctx: var HMAC[H], secretKey: openArray[byte]) {.genCharAPI.} =
   ## Initialize a HMAC-based Message Authentication Code
   ## with a pre-shared secret key
   ## between the parties that want to authenticate messages between each other.
-  ## 
+  ##
   ## Keys should be at least the same size as the hash function output size.
-  ## 
+  ##
   ## Keys need to be chosen at random (or using a cryptographically strong
   ## pseudo-random generator seeded with a random seed), and periodically
   ## refreshed.
   var key{.noInit.}: array[H.internalBlockSize(), byte]
   if secretKey.len <= key.len:
-    copy(key, 0, secretKey, 0, secretKey.len)
+    rawCopy(key, 0, secretKey, 0, secretKey.len)
     for i in secretKey.len ..< key.len:
       key[i] = byte 0
   else:
@@ -62,15 +62,15 @@ func init*[H: CryptoHash, T: char|byte](ctx: var HMAC[H], secretKey: openArray[T
   ctx.outer.init()
   ctx.outer.update(key)
 
-func update*[H: CryptoHash, T: char|byte](ctx: var HMAC[H], message: openArray[T]) =
+func update*[H: CryptoHash](ctx: var HMAC[H], message: openArray[byte]) {.genCharAPI.} =
   ## Append a message to a HMAC authentication context.
   ## for incremental HMAC computation.
   ctx.inner.update(message)
 
-func finish*[H: CryptoHash, T: char|byte, N: static int](ctx: var HMAC[H], tag: var array[N, T]) =
+func finish*[H: CryptoHash, N: static int](ctx: var HMAC[H], tag: var array[N, byte]) =
   ## Finalize a HMAC authentication
   ## and output an authentication tag to the `tag` buffer
-  ## 
+  ##
   ## Output may be used truncated, with the leftmost bits are kept.
   ## It is recommended that the tag length is at least half the length of the hash output
   ## and at least 80-bits.
@@ -85,17 +85,16 @@ func clear*[H: CryptoHash](ctx: var HMAC[H]) =
   ctx.inner.clear()
   ctx.outer.clear()
 
-func mac*[T: char|byte, H: CryptoHash, N: static int](
+func mac*[H: CryptoHash, N: static int](
        Hash: type HMAC[H],
        tag: var array[N, byte],
-       message: openArray[T],
-       secretKey: openarray[T],
-       clearMem = false) =
+       message: openArray[byte],
+       secretKey: openArray[byte],
+       clearMem = false) {.genCharAPI.} =
   ## Produce an authentication tag from a message
   ## and a preshared unique non-reused secret key
-  
-  static: doAssert N == H.digestSize()
-  
+  static: doAssert N == H.digestSize
+
   var ctx {.noInit.}: HMAC[H]
   ctx.init(secretKey)
   ctx.update(message)

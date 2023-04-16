@@ -115,7 +115,7 @@ template testGen*(name, testData, TestType, body: untyped): untyped =
 testGen(deserialization_G1, testVector, DeserG1_test):
   var pubkey{.noInit.}: PublicKey
 
-  let status = pubkey.deserialize_public_key_compressed(testVector.input.pubkey)
+  let status = pubkey.deserialize_pubkey_compressed(testVector.input.pubkey)
   let success = status == cttBLS_Success or status == cttBLS_PointAtInfinity
 
   doAssert success == testVector.output, block:
@@ -126,7 +126,7 @@ testGen(deserialization_G1, testVector, DeserG1_test):
   if success: # Roundtrip
     var s{.noInit.}: array[48, byte]
 
-    let status2 = s.serialize_public_key_compressed(pubkey)
+    let status2 = s.serialize_pubkey_compressed(pubkey)
     doAssert status2 == cttBLS_Success
     doAssert s == testVector.input.pubkey, block:
       "\nSerialization roundtrip differs from expected \n" &
@@ -158,7 +158,7 @@ testGen(sign, testVector, Sign_test):
   var seckey{.noInit.}: SecretKey
   var sig{.noInit.}: Signature
 
-  let status = seckey.deserialize_secret_key(testVector.input.privkey)
+  let status = seckey.deserialize_seckey(testVector.input.privkey)
   if status != cttBLS_Success:
     doAssert testVector.output == default(array[96, byte])
     let status2 = sig.sign(seckey, testVector.input.message)
@@ -171,7 +171,7 @@ testGen(sign, testVector, Sign_test):
       var output{.noInit.}: Signature
       let status3 = output.deserialize_signature_compressed(testVector.output)
       doAssert status3 == cttBLS_Success
-      doAssert sig == output, block:
+      doAssert signatures_are_equal(sig, output), block:
         var sig_bytes{.noInit.}: array[96, byte]
         var roundtrip{.noInit.}: array[96, byte]
         let sb_status = sig_bytes.serialize_signature_compressed(sig)
@@ -198,7 +198,7 @@ testGen(verify, testVector, Verify_test):
     status = cttBLS_VerificationFailure
 
   block testChecks:
-    status = pubkey.deserialize_public_key_compressed(testVector.input.pubkey)
+    status = pubkey.deserialize_pubkey_compressed(testVector.input.pubkey)
     if status notin {cttBLS_Success, cttBLS_PointAtInfinity}:
       # For point at infinity, we want to make sure that "verify" itself handles them.
       break testChecks
@@ -218,7 +218,7 @@ testGen(verify, testVector, Verify_test):
   if success: # Extra codec testing
     block:
       var output{.noInit.}: array[48, byte]
-      let s = output.serialize_public_key_compressed(pubkey)
+      let s = output.serialize_pubkey_compressed(pubkey)
       doAssert s == cttBLS_Success
       doAssert output == testVector.input.pubkey
 
@@ -236,7 +236,7 @@ testGen(fast_aggregate_verify, testVector, FastAggregateVerify_test):
 
   block testChecks:
     for i in 0 ..< testVector.input.pubkeys.len:
-      status = pubkeys[i].deserialize_public_key_compressed(testVector.input.pubkeys[i])
+      status = pubkeys[i].deserialize_pubkey_compressed(testVector.input.pubkeys[i])
       if status notin {cttBLS_Success, cttBLS_PointAtInfinity}:
         # For point at infinity, we want to make sure that "verify" itself handles them.
         break testChecks
@@ -262,7 +262,7 @@ testGen(aggregate_verify, testVector, AggregateVerify_test):
 
   block testChecks:
     for i in 0 ..< testVector.input.pubkeys.len:
-      status = pubkeys[i].deserialize_public_key_compressed(testVector.input.pubkeys[i])
+      status = pubkeys[i].deserialize_pubkey_compressed(testVector.input.pubkeys[i])
       if status notin {cttBLS_Success, cttBLS_PointAtInfinity}:
         # For point at infinity, we want to make sure that "verify" itself handles them.
         break testChecks
@@ -288,7 +288,7 @@ testGen(batch_verify, testVector, BatchVerify_test):
 
   block testChecks:
     for i in 0 ..< testVector.input.pubkeys.len:
-      status = pubkeys[i].deserialize_public_key_compressed(testVector.input.pubkeys[i])
+      status = pubkeys[i].deserialize_pubkey_compressed(testVector.input.pubkeys[i])
       if status notin {cttBLS_Success, cttBLS_PointAtInfinity}:
         # For point at infinity, we want to make sure that "verify" itself handles them.
         break testChecks

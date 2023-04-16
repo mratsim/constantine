@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../platforms/abstractions,
+  ../platforms/[abstractions, views],
   ../math/arithmetic/bigints,
   ../math/arithmetic/[limbs, limbs_extmul],
   ../math/io/io_bigints
@@ -42,7 +42,7 @@ func partialReduce_1305[N1, N2: static int](r: var Limbs[N1], a: Limbs[N2]) =
   ##        2ᵐ-c ≡  0     (mod p)
   ##   <=>  2ᵐ   ≡  c     (mod p)   [1]
   ##   <=> a2ᵐ+b ≡ ac + b (mod p)
-  ## 
+  ##
   ## This partially reduces the input in range [0, 2¹³⁰)
   #
   # Assuming 64-bit words,
@@ -51,25 +51,25 @@ func partialReduce_1305[N1, N2: static int](r: var Limbs[N1], a: Limbs[N2]) =
   # Assuming 32-bit words,
   #   N1 = 5 words (160-bit necessary for 2¹³⁰-1)
   #   N2 = 8 words (288-bit necessary for 2¹³¹.2¹²⁴)
-  # 
+  #
   # from 64-bit, starting from [1]
   #   2ᵐ      ≡  c     (mod p)
   #   2¹³⁰    ≡  5     (mod p)
   # 2¹³⁰.2⁶²  ≡  5.2⁶² (mod p)
   #   2¹⁹²    ≡  5.2⁶² (mod p)
-  # 
+  #
   # Hence if we call a the [2¹⁹², 2²⁶⁰) range
   # and b the [0, 2¹⁹²) range
   # we have
   # a2¹⁹²+b ≡ a.5.2⁶² + b (mod p)
-  # 
+  #
   # Then we can handle the highest word which has
   # 62 bits that should be folded back as well
-  # 
+  #
   # Similarly for 32-bit
   #   2¹⁶⁰    ≡  5.2³⁰ (mod p)
   # and we need to fold back the top 30 bits
-  # 
+  #
   # But there is a twist. 5.2⁶² need 65-bit not 64
   # and 5.2³⁰ need 33-bit not 32
 
@@ -77,7 +77,7 @@ func partialReduce_1305[N1, N2: static int](r: var Limbs[N1], a: Limbs[N2]) =
     static:
       doAssert N1 == 3
       doAssert N2 == 4
-    
+
     block:
       # First pass, fold everything greater than 2¹⁹²-1
       # a2¹⁹²+b ≡ a.5.2⁶² + b (mod p)
@@ -99,7 +99,7 @@ func partialReduce_1305[N1, N2: static int](r: var Limbs[N1], a: Limbs[N2]) =
     static:
       doAssert N1 == 5
       doAssert N2 == 8
-    
+
     block:
       # First pass, fold everything greater than 2¹⁶⁰-1
       # a2¹⁶⁰+b ≡ a.5.2³⁰ + b (mod p)
@@ -109,7 +109,7 @@ func partialReduce_1305[N1, N2: static int](r: var Limbs[N1], a: Limbs[N2]) =
 
       staticFor i, 0, N1:
         r[i] = a[i]
-      
+
       mulDoubleAcc(r[2], r[1], r[0], a[5], cExcess)
       mulDoubleAcc(r[3], r[2], r[1], a[6], cExcess)
       mulDoubleAcc(r[4], r[3], r[2], a[7], cExcess)
@@ -122,7 +122,7 @@ func partialReduce_1305[N1, N2: static int](r: var Limbs[N1], a: Limbs[N2]) =
   var carry, carry2: Carry
   var hi = r[N1-1] shr (WordBitWidth - excessBits)
   r[N1-1] = r[N1-1] and (MaxWord shr excessBits)
-  
+
   # hi *= 5, with overflow stored in carry
   let hi4 = hi shl 2                   # Cannot overflow as we have 2 spare bits
   addC(carry2, hi, hi, hi4, Carry(0))  # Use the carry bit for storing a 63/31 bit result
@@ -132,7 +132,7 @@ func partialReduce_1305[N1, N2: static int](r: var Limbs[N1], a: Limbs[N2]) =
   addC(carry, r[1], r[1], SecretWord(carry2), carry)
   staticFor i, 2, N1:
     addC(carry, r[i], r[i], Zero, carry)
-  
+
 func finalReduce_1305[N: static int](a: var Limbs[N]) =
   ## Maps an input in redundant representation [0, 2¹³¹-10)
   ## to the canonical representation in [0, 2¹³⁰-5)
@@ -157,10 +157,10 @@ type Poly1305_CTX = object
 
 type poly1305* = Poly1305_CTX
 
-func macMessageBlocks[T: byte|char](
+func macMessageBlocks(
        acc: var BigInt[130+1],
        r: BigInt[124],
-       message: openArray[T],
+       message: openArray[byte],
        blockSize = BlockSize): uint =
   ## Authenticate a message block by block
   ## Poly1305 block size is 16 bytes.
@@ -180,20 +180,13 @@ func macMessageBlocks[T: byte|char](
 
   for curBlock in 0 ..< numBlocks:
     # range [0, 2¹²⁸-1)
-    when T is byte:
-      input.unmarshal(
-        message.toOpenArray(curBlock*BlockSize, curBlock*BlockSize + BlockSize - 1),
-        littleEndian
-      )
-    else:
-      input.unmarshal(
-        message.toOpenArrayByte(curBlock*BlockSize, curBlock*BlockSize + BlockSize - 1),
-        littleEndian
-      )
+    input.unmarshal(
+      message.toOpenArray(curBlock*BlockSize, curBlock*BlockSize + BlockSize - 1),
+      littleEndian)
     input.setBit(8*blockSize) # range [2¹²⁸, 2¹²⁸+2¹²⁸-1)
     acc += input              # range [2¹²⁸, 2¹³⁰-1+2¹²⁸+2¹²⁸-1)
     t.prod(acc, r)            # range [2²⁵⁶, (2¹²⁴-1)(2¹³⁰+2(2¹²⁸-1)))
-    
+
     acc.limbs.partialReduce_1305(t.limbs)
 
   return BlockSize * numBlocks.uint
@@ -213,7 +206,7 @@ func init*(ctx: var Poly1305_CTX, nonReusedKey: array[32, byte]) =
   ## nonReusedKey is an unique not-reused pre-shared key
   ## between the parties that want to authenticate messages between each other
   ctx.acc.setZero()
-  
+
   const clamp = BigInt[128].fromHex"0x0ffffffc0ffffffc0ffffffc0fffffff"
   ctx.r.unmarshal(nonReusedKey.toOpenArray(0, 15), littleEndian)
   staticFor i, 0, ctx.r.limbs.len:
@@ -224,7 +217,7 @@ func init*(ctx: var Poly1305_CTX, nonReusedKey: array[32, byte]) =
   ctx.msgLen = 0
   ctx.bufIdx = 0
 
-func update*[T: char|byte](ctx: var Poly1305_CTX, message: openArray[T]) =
+func update*(ctx: var Poly1305_CTX, message: openArray[byte]) {.genCharAPI.} =
   ## Append a message to a Poly1305 authentication context.
   ## for incremental Poly1305 computation
   ##
@@ -246,7 +239,7 @@ func update*[T: char|byte](ctx: var Poly1305_CTX, message: openArray[T]) =
   var # Message processing state machine
     cur = 0'u
     bytesLeft = message.len.uint
-  
+
   ctx.msgLen += bytesLeft
 
   if ctx.bufIdx != 0: # Previous partial update
@@ -255,21 +248,21 @@ func update*[T: char|byte](ctx: var Poly1305_CTX, message: openArray[T]) =
 
     if free > bytesLeft:
       # Enough free space, store in buffer
-      ctx.buf.copy(dStart = bufIdx, message, sStart = 0, len = bytesLeft)
+      ctx.buf.rawCopy(dStart = bufIdx, message, sStart = 0, len = bytesLeft)
       ctx.bufIdx += bytesLeft.uint8
       return
     else:
       # Fill the buffer and do one Poly1305 MAC
-      ctx.buf.copy(dStart = bufIdx, message, sStart = 0, len = free)
+      ctx.buf.rawCopy(dStart = bufIdx, message, sStart = 0, len = free)
       ctx.macBuffer(blockSize = BlockSize)
 
       # Update message state for further processing
       cur = free
       bytesLeft -= free
-  
+
   # Process n blocks (16 bytes each)
   let consumed = ctx.acc.macMessageBlocks(
-    ctx.r, 
+    ctx.r,
     message.toOpenArray(int cur, message.len-1),
     blockSize = BlockSize
   )
@@ -282,7 +275,7 @@ func update*[T: char|byte](ctx: var Poly1305_CTX, message: openArray[T]) =
       doAssert ctx.bufIdx == 0
       doAssert cur + bytesLeft == message.len.uint
 
-    ctx.buf.copy(dStart = 0'u, message, sStart = cur, len = bytesLeft)
+    ctx.buf.rawCopy(dStart = 0'u, message, sStart = cur, len = bytesLeft)
     ctx.bufIdx = uint8 bytesLeft
 
 func finish*(ctx: var Poly1305_CTX, tag: var array[16, byte]) =
@@ -305,7 +298,7 @@ func finish*(ctx: var Poly1305_CTX, tag: var array[16, byte]) =
   # Input is only partially reduced to [0, 2¹³⁰)
   # Map it to [0, 2¹³⁰-5)
   ctx.acc.limbs.finalReduce_1305()
-  
+
   # Starting from now, we only care about the 128 least significant bits
   var acc128{.noInit.}: BigInt[128]
   acc128.copyTruncatedFrom(ctx.acc)
@@ -328,15 +321,15 @@ func clear*(ctx: var Poly1305_CTX) =
   ctx.msgLen = 0
   ctx.bufIdx = 0
 
-func mac*[T: char|byte](
+func mac*(
        _: type poly1305,
        tag: var array[16, byte],
-       message: openArray[T],
+       message: openArray[byte],
        nonReusedKey: array[32, byte],
-       clearMem = false) =
+       clearMem = false) {.genCharAPI.} =
   ## Produce an authentication tag from a message
   ## and a preshared unique non-reused secret key
-  
+
   var ctx {.noInit.}: poly1305
   ctx.init(nonReusedKey)
   ctx.update(message)
@@ -345,11 +338,11 @@ func mac*[T: char|byte](
   if clearMem:
     ctx.clear()
 
-func mac*[T: char|byte](
+func mac*(
        _: type poly1305,
-       message: openArray[T],
+       message: openArray[byte],
        nonReusedKey: array[32, byte],
-       clearMem = false): array[16, byte]{.noInit.}=
+       clearMem = false): array[16, byte]{.noInit, genCharAPI.}=
   ## Produce an authentication tag from a message
   ## and a preshared unique non-reused secret key
   poly1305.mac(result, message, nonReusedKey, clearMem)

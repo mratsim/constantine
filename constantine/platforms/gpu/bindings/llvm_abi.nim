@@ -6,7 +6,7 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import ./utils
+import ./c_abi
 
 {.passc: gorge("llvm-config --cflags").}
 {.passl: gorge("llvm-config --libs").}
@@ -67,7 +67,7 @@ proc getBufferSize(buf: MemoryBufferRef): csize_t {.used, importc: "LLVMGetBuffe
 
 proc dispose(msg: ErrorMessageString) {.used, importc: "LLVMDisposeErrorMessage".}
 proc getErrorMessage(err: ErrorRef): ErrorMessageString {.used, importc: "LLVMGetErrorMessage".}
- 
+
 # ############################################################
 #
 #                         Module
@@ -117,7 +117,7 @@ proc verify(module: ModuleRef, failureAction: VerifierFailureAction, msg: var LL
 # - initializeNativeTarget()
 # - initializeNativeAsmPrinter()
 # are implemented in the development header macros and aren't in the LLVM library
-# We want to only depend on the runtime for installation ease and size. 
+# We want to only depend on the runtime for installation ease and size.
 #
 # We can emulate the calls based on:
 # - /usr/include/llvm-c/Target.h
@@ -375,7 +375,7 @@ proc getTypeOf*(v: ValueRef): TypeRef {.importc: "LLVMTypeOf".}
 proc getValueName2(v: ValueRef, rLen: var csize_t): cstring {.used, importc: "LLVMGetValueName2".}
   ## Returns the name of a valeu if it exists.
   ## `rLen` stores the returned string length
-  ## 
+  ##
   ## This is not free, it requires internal hash table access
   ## The return value does not have to be freed and is a pointer an internal LLVM data structure
 
@@ -473,7 +473,7 @@ proc getInlineAsm*(
 
 # Intermediate Representation
 # ------------------------------------------------------------
-# 
+#
 # - NSW: no signed wrap, signed value cannot over- or underflow.
 # - NUW: no unsigned wrap, unsigned value cannot over- or underflow.
 

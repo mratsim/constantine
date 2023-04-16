@@ -8,7 +8,7 @@
 
 import
   ./bindings/nvidia_abi {.all.},
-  ./bindings/utils,
+  ./bindings/c_abi,
   ./llvm, ./ir,
   ./nvidia_inlineasm,
   ../primitives
@@ -41,12 +41,12 @@ export
 #
 # Unified memory is fully supported starting from Pascal GPU (GTX 1080, 2016, Compute Capability SM6.0)
 # and require Kepler at minimum.
-# 
+#
 # Cuda 9 exposes the current explicit synchronization primitives (cooperative groups) and deprecated the old ones
 # Those primitives are particularly suitable for Volta GPUs (GTX 2080, 2018, Compute Capability SM7.5)
 # and requiring.
 #
-# Furthermore Pascal GPUs predates the high demand for deep learning and cryptocurrency mining 
+# Furthermore Pascal GPUs predates the high demand for deep learning and cryptocurrency mining
 # and were widely available at an affordable price point.
 # Also given iven that it's a 7 years old architecture,
 # it is unlikely that users have an older Nvidia GPU available.
@@ -64,7 +64,7 @@ export
 template check*(status: CUresult) =
   ## Check the status code of a CUDA operation
   ## Exit program with error if failure
-  
+
   let code = status # ensure that the input expression is evaluated once only
   if code != CUDA_SUCCESS:
     writeStackTrace()
@@ -77,15 +77,15 @@ func cuModuleGetFunction*(kernel: var CUfunction, module: CUmodule, fnName: open
   cuModuleGetFunction(kernel, module, fnName[0].unsafeAddr)
 
 proc cudaDeviceInit*(deviceID = 0'i32): CUdevice =
-  
+
   check cuInit(deviceID.uint32)
-  
+
   var devCount: int32
   check cuDeviceGetCount(devCount)
   if devCount == 0:
     echo "cudaDeviceInit error: no devices supporting CUDA"
     quit 1
-  
+
   var cuDevice: CUdevice
   check cuDeviceGet(cuDevice, deviceID)
   var name = newString(128)
@@ -99,7 +99,7 @@ proc cudaDeviceInit*(deviceID = 0'i32): CUdevice =
   if major < 6:
     echo "Error: Device ",deviceID," is not sm_60 (Pascal generation, GTX 1080) or later"
     quit 1
-  
+
   return cuDevice
 
 # ############################################################
@@ -110,7 +110,7 @@ proc cudaDeviceInit*(deviceID = 0'i32): CUdevice =
 
 proc tagCudaKernel(module: ModuleRef, fn: FnDef) =
   ## Tag a function as a Cuda Kernel, i.e. callable from host
-  
+
   doAssert fn.fnTy.getReturnType().isVoid(), block:
     "Kernels must not return values but function returns " & $fn.fnTy.getReturnType().getTypeKind()
 
@@ -129,10 +129,10 @@ proc setCallableCudaKernel*(module: ModuleRef, fn: FnDef) =
   ##
   ## A function named `addmod` can be found by appending _public
   ##   check cuModuleGetFunction(fnPointer, cuModule, "addmod_public")
-  
+
   let pubName = fn.fnImpl.getName() & "_public"
   let pubFn = module.addFunction(cstring(pubName), fn.fnTy)
-  
+
   let ctx = module.getContext()
   let builder = ctx.createBuilder()
   defer: builder.dispose()
@@ -160,11 +160,11 @@ proc codegenNvidiaPTX*(asy: Assembler_LLVM, sm: tuple[major, minor: int32]): str
   ## SM corresponds to the target GPU architecture Compute Capability
   ## - https://developer.nvidia.com/cuda-gpus
   ## - https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#compute-capabilities
-  ## 
+  ##
   ## This requires the following function to be called beforehand:
   ## - initializePasses()
   ## - initializeFullNVPTXTarget()
-  
+
   debug: doAssert asy.backend == bkNvidiaPTX
 
   asy.module.verify(AbortProcessAction)
@@ -242,9 +242,9 @@ proc exec*[T](jitFn: CUfunction, r: var T, a, b: T) =
 
     "Most CPUs (x86-64, ARM) are little-endian, as are Nvidia GPUs, which allows naive copying of parameters.\n" &
     "Your architecture '" & $hostCPU & "' is big-endian and GPU offloading is unsupported on it."
-  
+
   # We assume that all arguments are passed by reference in the Cuda kernel, hence the need for GPU alloc.
-  
+
   var rGPU, aGPU, bGPU: CUdeviceptr
   check cuMemAlloc(rGPU, csize_t sizeof(r))
   check cuMemAlloc(aGPU, csize_t sizeof(a))

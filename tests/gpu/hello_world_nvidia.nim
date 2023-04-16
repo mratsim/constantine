@@ -6,7 +6,7 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import ../../constantine/platforms/gpu/[llvm, nvidia, bindings/utils]
+import ../../constantine/platforms/gpu/[llvm, nvidia, bindings/c_abi]
 
 # ############################################################
 #
@@ -60,8 +60,8 @@ proc nvvmIRVersion*(majorIR, minorIR, majorDbg, minorDbg: var int32): NvvmResult
 
 proc nvvmCreateProgram*(prog: var NvvmProgram): NvvmResult
 proc nvvmDestroyProgram*(prog: var NvvmProgram): NvvmResult
-proc nvvmAddModuleToProgram*(prog: NvvmProgram, buffer: openArray[byte], name: cstring): NvvmResult {.wrapOpenArrayLenType: csize_t.} 
-proc nvvmLazyAddModuleToProgram*(prog: NvvmProgram, buffer: openArray[byte], name: cstring): NvvmResult {.wrapOpenArrayLenType: csize_t.} 
+proc nvvmAddModuleToProgram*(prog: NvvmProgram, buffer: openArray[byte], name: cstring): NvvmResult {.wrapOpenArrayLenType: csize_t.}
+proc nvvmLazyAddModuleToProgram*(prog: NvvmProgram, buffer: openArray[byte], name: cstring): NvvmResult {.wrapOpenArrayLenType: csize_t.}
 proc nvvmCompileProgram*(prog: NvvmProgram; numOptions: int32; options: cstringArray): NvvmResult
 proc nvvmVerifyProgram*(prog: NvvmProgram; numOptions: int32; options: cstringArray): NvvmResult
 proc nvvmGetCompiledResultSize*(prog: NvvmProgram; bufferSizeRet: var csize_t): NvvmResult
@@ -93,7 +93,7 @@ proc getNvvmLog(prog: NvvmProgram): string {.used.} =
 
 proc ptxCodegenViaNvidiaNvvm(module: ModuleRef, sm: tuple[major, minor: int32]): string =
   ## PTX codegen via Nvidia NVVM
-  
+
   # ######################################
   # LLVM -> NNVM handover
 
@@ -120,7 +120,7 @@ proc ptxCodegenViaNvidiaNvvm(module: ModuleRef, sm: tuple[major, minor: int32]):
 
 proc ptxCodegenViaLlvmNvptx(module: ModuleRef, sm: tuple[major, minor: int32]): string =
   ## PTX codegen via LLVM NVPTX
-  
+
   module.verify(AbortProcessAction)
 
   initializeFullNVPTXTarget()

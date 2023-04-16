@@ -9,7 +9,7 @@
 import
   ../hashes,
   ../mac/mac_hmac,
-  ../platforms/primitives
+  ../platforms/[primitives, views]
 
 # HMAC-based Extract-and-Expand Key Derivation Function (HKDF)
 # ------------------------------------------------------------
@@ -21,15 +21,15 @@ import
 type HKDF*[H: CryptoHash] = object
   hmac: HMAC[H]
 
-func hkdf_extract_init*[H: CryptoHash, S, I: char|byte](
+func hkdf_extract_init*[H: CryptoHash](
        ctx: var HKDF[H],
-       salt: openArray[S],
-       ikm: openArray[I]) {.inline.}=
+       salt: openArray[byte],
+       ikm: openArray[byte]) {.inline.}=
   ctx.hmac.init(salt)
   ctx.hmac.update(ikm)
 
-func hkdf_extract_append_to_IKM*[H: CryptoHash, T: char|byte](
-       ctx: var HKDF[H], append: openArray[T]) {.inline.} =
+func hkdf_extract_append_to_IKM*[H: CryptoHash](
+       ctx: var HKDF[H], append: openArray[byte]) {.inline.} =
   ctx.hmac.update(append)
 
 func hkdf_extract_finish*[H: CryptoHash, N: static int](
@@ -38,11 +38,11 @@ func hkdf_extract_finish*[H: CryptoHash, N: static int](
   static: doAssert H.digestSize == N
   ctx.hmac.finish(prk)
 
-func hkdfExtract*[H: CryptoHash;S,I: char|byte, N: static int](
+func hkdfExtract*[H: CryptoHash; N: static int](
                      ctx: var HKDF[H],
                      prk: var array[N, byte],
-                     salt: openArray[S],
-                     ikm: openArray[I]) {.inline.} =
+                     salt: openArray[byte],
+                     ikm: openArray[byte]) {.inline.} =
   ## "Extract" step of HKDF.
   ## Extract a fixed size pseudom-random key
   ## from an optional salt value
@@ -69,17 +69,17 @@ func hkdfExtract*[H: CryptoHash;S,I: char|byte, N: static int](
   ctx.hkdf_extract_init(salt, ikm)
   ctx.hkdf_extract_finish(prk)
 
-iterator hkdfExpandChunk*[H: CryptoHash; N: static int; I, A: char|byte](
+iterator hkdfExpandChunk*[H: CryptoHash; N: static int](
           ctx: var HKDF[H],
           chunk: var array[N, byte],
           prk: array[N, byte],
-          info: openArray[I],
-          append: openArray[A]): int =
+          info: openArray[byte],
+          append: openArray[byte]): int =
   ## "Expand" step of HKDF, with an iterator with up to 255 iterations.
-  ## 
+  ##
   ## Note: The output MUST be at most 255 iterations as per RFC5869
   ##       https://datatracker.ietf.org/doc/html/rfc5869
-  ## 
+  ##
   ## Expand a fixed size pseudo random-key
   ## into several pseudo-random keys
   ##
@@ -94,10 +94,10 @@ iterator hkdfExpandChunk*[H: CryptoHash; N: static int; I, A: char|byte](
   ## - chunk:
   ##   In:  OKMᵢ₋₁ (output keying material chunk i-1)
   ##   Out: OKMᵢ (output keying material chunk i).
-  ## 
+  ##
   ## Output:
   ## - returns the current chunk number i
-  ## 
+  ##
   ## Temporary:
   ## - ctx: a HMAC["cryptographic-hash"] context, for example HMAC[sha256].
 
@@ -117,12 +117,12 @@ iterator hkdfExpandChunk*[H: CryptoHash; N: static int; I, A: char|byte](
 
     yield i
 
-func hkdfExpand*[H: CryptoHash; K: static int; I, A: char|byte](
+func hkdfExpand*[H: CryptoHash; K: static int](
                     ctx: var HKDF[H],
                     output: var openArray[byte],
                     prk: array[K, byte],
-                    info: openArray[I],
-                    append: openArray[A]) =
+                    info: openArray[byte],
+                    append: openArray[byte]) =
   ## "Expand" step of HKDF
   ## Expand a fixed size pseudo random-key
   ## into several pseudo-random keys
@@ -153,18 +153,18 @@ func hkdfExpand*[H: CryptoHash; K: static int; I, A: char|byte](
   for i in ctx.hkdfExpandChunk(t, prk, info, append):
     let iStart = i * HashLen
     let size = min(HashLen, output.len - iStart)
-    copy(output, iStart, t, 0, size)
-   
+    rawCopy(output, iStart, t, 0, size)
+
     if iStart+HashLen >= output.len:
       break
 
   # ctx.clear() - TODO: very expensive
 
-func hkdfExpand*[H: CryptoHash; K: static int; I: char|byte](
+func hkdfExpand*[H: CryptoHash; K: static int](
                     ctx: var HKDF[H],
                     output: var openArray[byte],
                     prk: array[K, byte],
-                    info: openArray[I]) {.inline.} =
+                    info: openArray[byte]) {.inline.} =
   ## "Expand" step of HKDF
   ## Expand a fixed size pseudo random-key
   ## into several pseudo-random keys
@@ -180,15 +180,15 @@ func hkdfExpand*[H: CryptoHash; K: static int; I: char|byte](
   ## - ctx: a HMAC["cryptographic-hash"] context, for example HMAC[sha256].
   hkdfExpand(ctx, output, prk, info, default(array[0, byte]))
 
-func hkdf*[H: CryptoHash, N: static int, O, S, K, I: char|byte](
+func hkdf*[H: CryptoHash, N: static int](
        Hash: typedesc[H],
-       output: var openArray[O],
-       salt: openArray[S],
-       ikm: openArray[K],
-       info: openArray[I]) {.inline.} =
+       output: var openArray[byte],
+       salt: openArray[byte],
+       ikm: openArray[byte],
+       info: openArray[byte]) {.inline, genCharAPI.} =
   ## HKDF
   ## Inputs:
-  ## - A hash function, with an output digest length HashLen 
+  ## - A hash function, with an output digest length HashLen
   ## - An opttional salt value (non-secret random value), if not provided,
   ##   it is set to an array of HashLen zero bytes
   ## - A secret Input Keying Material

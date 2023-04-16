@@ -14,7 +14,8 @@ import
     ../math/constants/zoo_generators,
     ../math/config/curves,
     ../hash_to_curve/[hash_to_curve, h2c_hash_to_field],
-    ../hashes
+    ../hashes,
+    ../platforms/views
 
 # ############################################################
 #
@@ -56,14 +57,14 @@ func derivePubkey*[Pubkey, SecKey](pubkey: var Pubkey, seckey: SecKey): bool =
   pubkey.affine(pk)
   return true
 
-func coreSign*[B1, B2, B3: byte|char, Sig, SecKey](
+func coreSign*[Sig, SecKey](
     signature: var Sig,
     secretKey: SecKey,
-    message: openarray[B1],
+    message: openArray[byte],
     H: type CryptoHash,
     k: static int,
-    augmentation: openarray[B2],
-    domainSepTag: openarray[B3]) =
+    augmentation: openArray[byte],
+    domainSepTag: openArray[byte]) {.genCharAPI.} =
   ## Computes a signature for the message from the specified secret key.
   ##
   ## Output:
@@ -95,14 +96,14 @@ func coreSign*[B1, B2, B3: byte|char, Sig, SecKey](
 
   signature.affine(sig)
 
-func coreVerify*[B1, B2, B3: byte|char, Pubkey, Sig](
+func coreVerify*[Pubkey, Sig](
     pubkey: Pubkey,
-    message: openarray[B1],
+    message: openarray[byte],
     signature: Sig,
     H: type CryptoHash,
     k: static int,
-    augmentation: openarray[B2],
-    domainSepTag: openarray[B3]): bool =
+    augmentation: openarray[byte],
+    domainSepTag: openarray[byte]): bool {.genCharAPI.} =
   ## Check that a signature is valid
   ## for a message under the provided public key
   ## This assumes that the PublicKey and Signatures
@@ -165,8 +166,7 @@ type
     domainSepTag{.align: 64.}: array[255, byte] # Alignment to enable SIMD
     dst_len: uint8
 
-func init*[T: char|byte](
-       ctx: var BLSAggregateSigAccumulator, domainSepTag: openArray[T]) =
+func init*(ctx: var BLSAggregateSigAccumulator, domainSepTag: openArray[byte]) {.genCharAPI.} =
   ## Initializes a BLS Aggregate Signature accumulator context.
 
   type H = BLSAggregateSigAccumulator.H
@@ -176,22 +176,18 @@ func init*[T: char|byte](
   if domainSepTag.len > 255:
     var t {.noInit.}: array[H.digestSize(), byte]
     H.shortDomainSepTag(output = t, domainSepTag)
-    copy(ctx.domainSepTag, dStart = 0,
-        t, sStart = 0,
-        H.digestSize())
+    rawCopy(ctx.domainSepTag, dStart = 0, t, sStart = 0, H.digestSize())
     ctx.dst_len = uint8 H.digestSize()
   else:
-    copy(ctx.domainSepTag, dStart = 0,
-        domainSepTag, sStart = 0,
-        domainSepTag.len)
+    rawCopy(ctx.domainSepTag, dStart = 0, domainSepTag, sStart = 0, domainSepTag.len)
     ctx.dst_len = uint8 domainSepTag.len
   for i in ctx.dst_len ..< ctx.domainSepTag.len:
     ctx.domainSepTag[i] = byte 0
 
-func update*[T: char|byte, Pubkey: ECP_ShortW_Aff](
+func update*[Pubkey: ECP_ShortW_Aff](
        ctx: var BLSAggregateSigAccumulator,
        pubkey: Pubkey,
-       message: openArray[T]): bool =
+       message: openArray[byte]): bool {.genCharAPI.} =
   ## Add a (public key, message) pair
   ## to a BLS aggregate signature accumulator
   ##
@@ -318,8 +314,8 @@ type
     # 20*1 (blinding 64-bit) + 50 (Miller) + 50 (final exp) = 120
     secureBlinding{.align: 32.}: array[32, byte]
 
-func hash[DigestSize: static int, T0, T1: char|byte](
-      H: type CryptoHash, digest: var array[DigestSize, byte], input0: openArray[T0], input1: openArray[T1]) =
+func hash[DigestSize: static int](
+      H: type CryptoHash, digest: var array[DigestSize, byte], input0: openArray[byte], input1: openArray[byte]) =
 
   static: doAssert DigestSize == H.digestSize()
 
@@ -329,9 +325,9 @@ func hash[DigestSize: static int, T0, T1: char|byte](
   h.update(input1)
   h.finish(digest)
 
-func init*[T0, T1: char|byte](
-       ctx: var BLSBatchSigAccumulator, domainSepTag: openArray[T0],
-       secureRandomBytes: array[32, byte], accumSepTag: openArray[T1]) =
+func init*(
+       ctx: var BLSBatchSigAccumulator, domainSepTag: openArray[byte],
+       secureRandomBytes: array[32, byte], accumSepTag: openArray[byte]) {.genCharAPI.} =
   ## Initializes a Batch BLS Signature accumulator context.
   ##
   ## This requires cryptographically secure random bytes
@@ -352,25 +348,21 @@ func init*[T0, T1: char|byte](
   if domainSepTag.len > 255:
     var t {.noInit.}: array[H.digestSize(), byte]
     H.shortDomainSepTag(output = t, domainSepTag)
-    copy(ctx.domainSepTag, dStart = 0,
-        t, sStart = 0,
-        H.digestSize())
+    rawCopy(ctx.domainSepTag, dStart = 0, t, sStart = 0, H.digestSize())
     ctx.dst_len = uint8 H.digestSize()
   else:
-    copy(ctx.domainSepTag, dStart = 0,
-        domainSepTag, sStart = 0,
-        domainSepTag.len)
+    rawCopy(ctx.domainSepTag, dStart = 0, domainSepTag, sStart = 0, domainSepTag.len)
     ctx.dst_len = uint8 domainSepTag.len
   for i in ctx.dst_len ..< ctx.domainSepTag.len:
     ctx.domainSepTag[i] = byte 0
 
   H.hash(ctx.secureBlinding, secureRandomBytes, accumSepTag)
 
-func update*[T: char|byte, Pubkey, Sig: ECP_ShortW_Aff](
+func update*[Pubkey, Sig: ECP_ShortW_Aff](
        ctx: var BLSBatchSigAccumulator,
        pubkey: Pubkey,
-       message: openArray[T],
-       signature: Sig): bool =
+       message: openArray[byte],
+       signature: Sig): bool {.genCharAPI.} =
   ## Add a (public key, message, signature) triplet
   ## to a BLS signature accumulator
   ##
@@ -548,13 +540,13 @@ func aggregate*[T: ECP_ShortW_Aff](r: var T, points: openarray[T]) =
   accum.sum_reduce_vartime(points)
   r.affine(accum)
 
-func fastAggregateVerify*[B1, B2: byte|char, Pubkey, Sig](
+func fastAggregateVerify*[Pubkey, Sig](
     pubkeys: openArray[Pubkey],
-    message: openarray[B1],
+    message: openArray[byte],
     aggregateSignature: Sig,
     H: type CryptoHash,
     k: static int,
-    domainSepTag: openarray[B2]): bool =
+    domainSepTag: openArray[byte]): bool {.genCharAPI.} =
   ## Verify the aggregate of multiple signatures on the same message by multiple pubkeys
   ## Assumes pubkeys and sig have been checked for non-infinity and group-checked.
 
@@ -563,15 +555,19 @@ func fastAggregateVerify*[B1, B2: byte|char, Pubkey, Sig](
 
   var aggPubkey {.noinit.}: Pubkey
   aggPubkey.aggregate(pubkeys)
+
+  if bool(aggPubkey.isInf()):
+    return false
+
   aggPubkey.coreVerify(message, aggregateSignature, H, k, augmentation = "", domainSepTag)
 
-func aggregateVerify*[Msg; B: byte|char, Pubkey, Sig](
+func aggregateVerify*[Msg, Pubkey, Sig](
     pubkeys: openArray[Pubkey],
     messages: openArray[Msg],
     aggregateSignature: Sig,
     H: type CryptoHash,
     k: static int,
-    domainSepTag: openarray[B]): bool =
+    domainSepTag: openarray[byte]): bool {.genCharAPI.} =
   ## Verify the aggregated signature of multiple (pubkey, message) pairs
   ## Assumes pubkeys and the aggregated signature have been checked for non-infinity and group-checked.
   ##
@@ -598,14 +594,14 @@ func aggregateVerify*[Msg; B: byte|char, Pubkey, Sig](
 
   return accum.finalVerify(aggregateSignature)
 
-func batchVerify*[Msg; B: byte|char, Pubkey, Sig](
+func batchVerify*[Msg, Pubkey, Sig](
     pubkeys: openArray[Pubkey],
     messages: openArray[Msg],
     signatures: openArray[Sig],
     H: type CryptoHash,
     k: static int,
-    domainSepTag: openarray[B],
-    secureRandomBytes: array[32, byte]): bool =
+    domainSepTag: openarray[byte],
+    secureRandomBytes: array[32, byte]): bool {.genCharAPI.} =
   ## Verify that all (pubkey, message, signature) triplets are valid
   ##
   ## Returns false if there is at least one incorrect signature

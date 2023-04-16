@@ -86,17 +86,16 @@ func setZero*[N](a: var array[N, SomeNumber]){.inline.} =
   for i in 0 ..< a.len:
     a[i] = 0
 
-func copy*[T: byte|char](
+func rawCopy*(
        dst: var openArray[byte],
        dStart: SomeInteger,
-       src: openArray[T],
+       src: openArray[byte],
        sStart: SomeInteger,
        len: SomeInteger
      ) {.inline.} =
   ## Copy dst[dStart ..< dStart+len] = src[sStart ..< sStart+len]
   ## Unlike the standard library, this cannot throw
   ## even a defect.
-  ## It also handles copy of char into byte arrays
   debug:
     doAssert 0 <= dStart and dStart+len <= dst.len.uint, "dStart: " & $dStart & ", dStart+len: " & $(dStart+len) & ", dst.len: " & $dst.len
     doAssert 0 <= sStart and sStart+len <= src.len.uint, "sStart: " & $sStart & ", sStart+len: " & $(sStart+len) & ", src.len: " & $src.len
