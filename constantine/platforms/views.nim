@@ -150,7 +150,7 @@ macro genCharAPI*(procAst: untyped): untyped =
           wrapperBody.add ident($procAst.params[i][j])
 
   var pragmas = nnkPragma.newTree(ident"inline")
-  let skipPragmas = ["inline", "noinline", "noInline", "exportc", "exportcpp", "extern", "cdecl", "stdcall", "dynlib"]
+  let skipPragmas = ["inline", "noinline", "noInline", "exportc", "exportcpp", "extern", "cdecl", "stdcall", "dynlib", "libPrefix"]
   for i in 0 ..< procAst.pragma.len:
     if procAst.pragma[i].kind == nnkIdent:
       if $procAst.pragma[i] notin skipPragmas:

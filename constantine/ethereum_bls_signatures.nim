@@ -6,26 +6,6 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import
-    ./platforms/[abstractions, views],
-    ./math/config/curves,
-    ./math/[
-      ec_shortweierstrass,
-      extension_fields,
-      arithmetic,
-      constants/zoo_subgroups
-    ],
-    ./math/io/[io_bigints, io_fields],
-    hashes,
-    signatures/bls_signatures
-
-export
-  abstractions, # generic sandwich on SecretBool and SecretBool in Jacobian sumImpl
-  curves, # generic sandwich on matchingBigInt
-  extension_fields, # generic sandwich on extension field access
-  hashes, # generic sandwich on sha256
-  ec_shortweierstrass # generic sandwich on affine
-
 ## ############################################################
 ##
 ##              BLS Signatures on for Ethereum
@@ -60,20 +40,69 @@ export
 ## as defined in the IETF spec are not needed.
 
 const DST = "BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_"
-const ffi_prefix {.used.} = "ctt_eth_bls_"
+const prefix_ffi = "ctt_eth_bls_"
 
-{.push raises: [], checks: off.} # No exceptions allowed in core cryptographic operations
+# Dependencies exports for C FFI
+# ------------------------------------------------------------------------------------------------
+
+import ./zoo_exports
+
+static:
+  # Xxport SHA256 routines with a protocol specific prefix
+  # This exports sha256.init(), sha256.update(), sha256.finish() and sha256.clear()
+  prefix_sha256 = prefix_ffi & "_sha256_"
+
+import hashes
+export hashes # generic sandwich on sha256
+
+func sha256_hash*(digest: var array[32, byte], message: openArray[byte], clearMem: bool) {.libPrefix: prefix_ffi.} =
+  ## Compute the SHA-256 hash of message
+  ## and store the result in digest.
+  ## Optionally, clear the memory buffer used.
+
+  # There is an extra indirect function call as we use a generic `hash` concept but:
+  # - the indirection saves space (instead of duplicating `hash`)
+  # - minimal overhead compared to hashing time
+  # - Can be tail-call optimized into a goto jump instead of call/return
+  # - Can be LTO-optimized
+  sha256.hash(digest, message, clearMem)
+
+# Imports
+# ------------------------------------------------------------------------------------------------
+
+import
+    ./platforms/[abstractions, views],
+    ./math/config/curves,
+    ./math/[
+      ec_shortweierstrass,
+      extension_fields,
+      arithmetic,
+      constants/zoo_subgroups
+    ],
+    ./math/io/[io_bigints, io_fields],
+    signatures/bls_signatures
+
+export
+  abstractions, # generic sandwich on SecretBool and SecretBool in Jacobian sumImpl
+  curves, # generic sandwich on matchingBigInt
+  extension_fields, # generic sandwich on extension field access
+  ec_shortweierstrass # generic sandwich on affine
+
+# Protocol types
+# ------------------------------------------------------------------------------------------------
+
+{.checks: off.} # No exceptions allowed in core cryptographic operations
 
 type
-  SecretKey* {.byref, exportc: ffi_prefix & "seckey".} = object
+  SecretKey* {.byref, exportc: prefix_ffi & "seckey".} = object
     ## A BLS12_381 secret key
     raw: matchingOrderBigInt(BLS12_381)
 
-  PublicKey* {.byref, exportc: ffi_prefix & "pubkey".} = object
+  PublicKey* {.byref, exportc: prefix_ffi & "pubkey".} = object
     ## A BLS12_381 public key for BLS signature schemes with public keys on G1 and signatures on G2
     raw: ECP_ShortW_Aff[Fp[BLS12_381], G1]
 
-  Signature* {.byref, exportc: ffi_prefix & "signature".} = object
+  Signature* {.byref, exportc: prefix_ffi & "signature".} = object
     ## A BLS12_381 signature for BLS signature schemes with public keys on G1 and signatures on G2
     raw: ECP_ShortW_Aff[Fp2[BLS12_381], G2]
 
@@ -93,26 +122,26 @@ type
 # Comparisons
 # ------------------------------------------------------------------------------------------------
 
-func pubkey_is_zero*(pubkey: PublicKey): bool {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
+func pubkey_is_zero*(pubkey: PublicKey): bool {.libPrefix: prefix_ffi.} =
   ## Returns true if input is 0
   bool(pubkey.raw.isInf())
 
-func signature_is_zero*(sig: Signature): bool {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
+func signature_is_zero*(sig: Signature): bool {.libPrefix: prefix_ffi.} =
   ## Returns true if input is 0
   bool(sig.raw.isInf())
 
-func pubkeys_are_equal*(a, b: PublicKey): bool {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
+func pubkeys_are_equal*(a, b: PublicKey): bool {.libPrefix: prefix_ffi.} =
   ## Returns true if inputs are equal
   bool(a.raw == b.raw)
 
-func signatures_are_equal*(a, b: Signature): bool {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
+func signatures_are_equal*(a, b: Signature): bool {.libPrefix: prefix_ffi.} =
   ## Returns true if inputs are equal
   bool(a.raw == b.raw)
 
 # Input validation
 # ------------------------------------------------------------------------------------------------
 
-func validate_seckey*(secret_key: SecretKey): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
+func validate_seckey*(secret_key: SecretKey): CttBLSStatus {.libPrefix: prefix_ffi.} =
   ## Validate the secret key.
   ## Regarding timing attacks, this will leak timing information only if the key is invalid.
   ## Namely, the secret key is 0 or the secret key is too large.
@@ -122,7 +151,7 @@ func validate_seckey*(secret_key: SecretKey): CttBLSStatus {.cdecl, dynlib, expo
     return cttBLS_SecretKeyLargerThanCurveOrder
   return cttBLS_Success
 
-func validate_pubkey*(public_key: PublicKey): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
+func validate_pubkey*(public_key: PublicKey): CttBLSStatus {.libPrefix: prefix_ffi.} =
   ## Validate the public key.
   ## This is an expensive operation that can be cached
   if public_key.raw.isInf().bool():
@@ -132,7 +161,7 @@ func validate_pubkey*(public_key: PublicKey): CttBLSStatus {.cdecl, dynlib, expo
   if not public_key.raw.isInSubgroup().bool():
     return cttBLS_PointNotInSubgroup
 
-func validate_signature*(signature: Signature): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
+func validate_signature*(signature: Signature): CttBLSStatus {.libPrefix: prefix_ffi.} =
   ## Validate the signature.
   ## This is an expensive operation that can be cached
   if signature.raw.isInf().bool():
@@ -167,13 +196,13 @@ func validate_signature*(signature: Signature): CttBLSStatus {.cdecl, dynlib, ex
 ## - https://docs.rs/bls12_381/latest/bls12_381/notes/serialization/index.html
 ##   - https://github.com/zkcrypto/bls12_381/blob/0.6.0/src/notes/serialization.rs
 
-func serialize_seckey*(dst: var array[32, byte], secret_key: SecretKey): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
+func serialize_seckey*(dst: var array[32, byte], secret_key: SecretKey): CttBLSStatus {.libPrefix: prefix_ffi.} =
   ## Serialize a secret key
   ## Returns cttBLS_Success if successful
   dst.marshal(secret_key.raw, bigEndian)
   return cttBLS_Success
 
-func serialize_pubkey_compressed*(dst: var array[48, byte], public_key: PublicKey): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
+func serialize_pubkey_compressed*(dst: var array[48, byte], public_key: PublicKey): CttBLSStatus {.libPrefix: prefix_ffi.} =
   ## Serialize a public key in compressed (Zcash) format
   ##
   ## Returns cttBLS_Success if successful
@@ -194,7 +223,7 @@ func serialize_pubkey_compressed*(dst: var array[48, byte], public_key: PublicKe
 
   return cttBLS_Success
 
-func serialize_signature_compressed*(dst: var array[96, byte], signature: Signature): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
+func serialize_signature_compressed*(dst: var array[96, byte], signature: Signature): CttBLSStatus {.libPrefix: prefix_ffi.} =
   ## Serialize a signature in compressed (Zcash) format
   ##
   ## Returns cttBLS_Success if successful
@@ -216,7 +245,7 @@ func serialize_signature_compressed*(dst: var array[96, byte], signature: Signat
 
   return cttBLS_Success
 
-func deserialize_seckey*(dst: var SecretKey, src: array[32, byte]): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
+func deserialize_seckey*(dst: var SecretKey, src: array[32, byte]): CttBLSStatus {.libPrefix: prefix_ffi.} =
   ## Deserialize a secret key
   ## This also validates the secret key.
   ##
@@ -229,7 +258,7 @@ func deserialize_seckey*(dst: var SecretKey, src: array[32, byte]): CttBLSStatus
     return status
   return cttBLS_Success
 
-func deserialize_pubkey_compressed_unchecked*(dst: var PublicKey, src: array[48, byte]): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
+func deserialize_pubkey_compressed_unchecked*(dst: var PublicKey, src: array[48, byte]): CttBLSStatus {.libPrefix: prefix_ffi.} =
   ## Deserialize a public_key in compressed (Zcash) format.
   ##
   ## Warning ⚠:
@@ -271,7 +300,7 @@ func deserialize_pubkey_compressed_unchecked*(dst: var PublicKey, src: array[48,
   let srcIsLargest = SecretBool((src[0] shr 5) and byte 1)
   dst.raw.y.cneg(isLexicographicallyLargest xor srcIsLargest)
 
-func deserialize_pubkey_compressed*(dst: var PublicKey, src: array[48, byte]): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
+func deserialize_pubkey_compressed*(dst: var PublicKey, src: array[48, byte]): CttBLSStatus {.libPrefix: prefix_ffi.} =
   ## Deserialize a public_key in compressed (Zcash) format
   ## This also validates the public key.
   ##
@@ -284,7 +313,7 @@ func deserialize_pubkey_compressed*(dst: var PublicKey, src: array[48, byte]): C
   if not(bool dst.raw.isInSubgroup()):
     return cttBLS_PointNotInSubgroup
 
-func deserialize_signature_compressed_unchecked*(dst: var Signature, src: array[96, byte]): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
+func deserialize_signature_compressed_unchecked*(dst: var Signature, src: array[96, byte]): CttBLSStatus {.libPrefix: prefix_ffi.} =
   ## Deserialize a signature in compressed (Zcash) format.
   ##
   ## Warning ⚠:
@@ -337,7 +366,7 @@ func deserialize_signature_compressed_unchecked*(dst: var Signature, src: array[
   let srcIsLargest = SecretBool((src[0] shr 5) and byte 1)
   dst.raw.y.cneg(isLexicographicallyLargest xor srcIsLargest)
 
-func deserialize_signature_compressed*(dst: var Signature, src: array[96, byte]): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
+func deserialize_signature_compressed*(dst: var Signature, src: array[96, byte]): CttBLSStatus {.libPrefix: prefix_ffi.} =
   ## Deserialize a public_key in compressed (Zcash) format
   ##
   ## Returns cttBLS_Success if successful
@@ -349,15 +378,10 @@ func deserialize_signature_compressed*(dst: var Signature, src: array[96, byte])
   if not(bool dst.raw.isInSubgroup()):
     return cttBLS_PointNotInSubgroup
 
-# SHA256 Hash
-# ------------------------------------------------------------------------------------------------
-
-# func sha256_hash*(digest: var array[32, byte], message: openArray[byte])
-
 # BLS Signatures
 # ------------------------------------------------------------------------------------------------
 
-func derive_pubkey*(public_key: var PublicKey, secret_key: SecretKey): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
+func derive_pubkey*(public_key: var PublicKey, secret_key: SecretKey): CttBLSStatus {.libPrefix: prefix_ffi.} =
   ## Derive the public key matching with a secret key
   ##
   ## Secret protection:
@@ -373,7 +397,7 @@ func derive_pubkey*(public_key: var PublicKey, secret_key: SecretKey): CttBLSSta
     return cttBLS_InvalidEncoding
   return cttBLS_Success
 
-func sign*(signature: var Signature, secret_key: SecretKey, message: openArray[byte]): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1", genCharAPI.} =
+func sign*(signature: var Signature, secret_key: SecretKey, message: openArray[byte]): CttBLSStatus {.libPrefix: prefix_ffi, genCharAPI.} =
   ## Produce a signature for the message under the specified secret key
   ## Signature is on BLS12-381 G2 (and public key on G1)
   ##
@@ -399,7 +423,7 @@ func sign*(signature: var Signature, secret_key: SecretKey, message: openArray[b
   coreSign(signature.raw, secretKey.raw, message, sha256, 128, augmentation = "", DST)
   return cttBLS_Success
 
-func verify*(public_key: PublicKey, message: openArray[byte], signature: Signature): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1", genCharAPI.} =
+func verify*(public_key: PublicKey, message: openArray[byte], signature: Signature): CttBLSStatus {.libPrefix: prefix_ffi, genCharAPI.} =
   ## Check that a signature is valid for a message
   ## under the provided public key.
   ## returns `true` if the signature is valid, `false` otherwise.
@@ -454,7 +478,7 @@ func aggregate_signatures_unstable_api*(aggregate_sig: var Signature, signatures
     return
   aggregate_sig.raw.aggregate(signatures.unwrap())
 
-func fast_aggregate_verify*(pubkeys: openArray[PublicKey], message: openArray[byte], aggregate_sig: Signature): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1", genCharAPI.} =
+func fast_aggregate_verify*(pubkeys: openArray[PublicKey], message: openArray[byte], aggregate_sig: Signature): CttBLSStatus {.libPrefix: prefix_ffi, genCharAPI.} =
   ## Check that a signature is valid for a message
   ## under the aggregate of provided public keys.
   ## returns `true` if the signature is valid, `false` otherwise.
@@ -494,7 +518,7 @@ func fast_aggregate_verify*(pubkeys: openArray[PublicKey], message: openArray[by
 func aggregate_verify*(pubkeys: ptr UncheckedArray[PublicKey],
                        messages: ptr UncheckedArray[View[byte]],
                        len: int,
-                       aggregate_sig: Signature): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
+                       aggregate_sig: Signature): CttBLSStatus {.libPrefix: prefix_ffi.} =
   ## Verify the aggregated signature of multiple (pubkey, message) pairs
   ## returns `true` if the signature is valid, `false` otherwise.
   ##
@@ -582,7 +606,7 @@ func batch_verify*[Msg](pubkeys: ptr UncheckedArray[PublicKey],
                         messages: ptr UncheckedArray[View[byte]],
                         signatures: ptr UncheckedArray[Signature],
                         len: int,
-                        secureRandomBytes: array[32, byte]): CttBLSStatus {.cdecl, dynlib, exportc: ffi_prefix & "$1".} =
+                        secureRandomBytes: array[32, byte]): CttBLSStatus {.libPrefix: prefix_ffi.} =
   ## Verify that all (pubkey, message, signature) triplets are valid
   ## returns `true` if all signatures are valid, `false` if at least one is invalid.
   ##

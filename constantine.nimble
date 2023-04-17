@@ -41,11 +41,11 @@ proc genDynamicBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain:
   proc compile(libName: string, flags = "") =
     echo "Compiling dynamic library: lib/" & libName
     exec "nim c " &
+         " --noMain --app:lib " &
          #  " --cc:clang " &
          " -d:danger --opt:size " &
          flags &
          releaseBuildOptions() &
-         " --noMain --app:staticLib " &
          " --nimMainPrefix:" & prefixNimMain &
          " --out:" & libName & " --outdir:lib " &
          (block:
@@ -79,11 +79,11 @@ proc genStaticBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: 
   proc compile(libName: string, flags = "") =
     echo "Compiling static library:  lib/" & libName
     exec "nim c " &
+         " --noMain --app:staticLib " &
          #  " --cc:clang " &
          " -d:danger --opt:size " &
          flags &
          releaseBuildOptions() &
-         " --noMain --app:staticLib " &
          " --nimMainPrefix:" & prefixNimMain &
          " --out:" & libName & " --outdir:lib " &
          (block:

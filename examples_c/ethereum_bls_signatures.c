@@ -13,10 +13,9 @@
 
 #include <constantine_ethereum_bls_signatures.h>
 
-
 int main(){
 
-  // Initialize the runtime. For Constantine, it populates CPU runtime detection dispatch.
+  // Initialize the runtime. For Constantine, it populates the CPU runtime detection dispatch.
   ctt_eth_bls_init_NimMain();
 
   ctt_eth_bls_status status;
@@ -31,13 +30,33 @@ int main(){
     exit(1);
   }
 
-  // Sign a message
-  byte message[13] = "Mr F was here";
-  size_t message_len = sizeof(message);
-  printf("size: %d\n", message_len);
+  // Derive the matching public key
+  ctt_eth_bls_pubkey pubkey;
 
+  status = ctt_eth_bls_derive_pubkey(&pubkey, &seckey);
+  if (status != cttBLS_Success) {
+    printf("Public key derivation failure: status %d - %s\n", status, ctt_eth_bls_status_to_string(status));
+    exit(1);
+  }
+
+  // Sign a message
+  byte message[32];
   ctt_eth_bls_signature sig;
 
+  ctt_eth_bls_sha256_hash(message, "Mr F was here", 13);
+  status = ctt_eth_bls_sign(&sig, &seckey, message, 32);
+  if (status != cttBLS_Success) {
+    printf("Message signing failure: status %d - %s\n", status, ctt_eth_bls_status_to_string(status));
+    exit(1);
+  }
 
+  // Verify that a signature is valid for a message under the provided public key
+  status = ctt_eth_bls_verify(&pubkey, message, 32, &sig);
+  if (status != cttBLS_Success) {
+    printf("Signature verification failure: status %d - %s\n", status, ctt_eth_bls_status_to_string(status));
+    exit(1);
+  }
+
+  printf("Example BLS signature/verification protocol completed successfully\n");
   return 0;
 }

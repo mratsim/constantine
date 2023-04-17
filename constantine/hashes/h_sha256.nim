@@ -6,8 +6,10 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
+import ../zoo_exports
+
 import
-  ../platforms/[abstractions, endians],
+  ../platforms/[abstractions, endians, views],
   ./sha256/sha256_generic
 
 when UseASM_X86_32:
@@ -82,7 +84,7 @@ template internalBlockSize*(H: type sha256): int =
   ## Returns the byte size of the hash function ingested blocks
   BlockSize
 
-func init*(ctx: var Sha256Context) =
+func init*(ctx: var Sha256Context) {.libPrefix: prefix_sha256.} =
   ## Initialize or reinitialize a Sha256 context
 
   ctx.msgLen = 0
@@ -119,7 +121,7 @@ func initZeroPadded*(ctx: var Sha256Context) =
   ctx.s.H[6] = 0xbafef9ea'u32
   ctx.s.H[7] = 0x1837a9d8'u32
 
-func update*(ctx: var Sha256Context, message: openarray[byte]) =
+func update*(ctx: var Sha256Context, message: openarray[byte]) {.libPrefix: prefix_sha256, genCharAPI.} =
   ## Append a message to a SHA256 context
   ## for incremental SHA256 computation
   ##
@@ -160,22 +162,7 @@ func update*(ctx: var Sha256Context, message: openarray[byte]) =
 
   ctx.msgLen += message.len.uint
 
-func update*(ctx: var Sha256Context, message: openarray[char]) {.inline.} =
-  ## Append a message to a SHA256 context
-  ## for incremental SHA256 computation
-  ##
-  ## Security note: the tail of your message might be stored
-  ## in an internal buffer.
-  ## if sensitive content is used, ensure that
-  ## `ctx.finish(...)` and `ctx.clear()` are called as soon as possible.
-  ## Additionally ensure that the message(s) passed were stored
-  ## in memory considered secure for your threat model.
-  ##
-  ## For passwords and secret keys, you MUST NOT use raw SHA-256
-  ## use a Key Derivation Function instead (KDF)
-  ctx.update(message.toOpenArrayByte(message.low, message.high))
-
-func finish*(ctx: var Sha256Context, digest: var array[32, byte]) =
+func finish*(ctx: var Sha256Context, digest: var array[32, byte]) {.libPrefix: prefix_sha256.} =
   ## Finalize a SHA256 computation and output the
   ## message digest to the `digest` buffer.
   ##
@@ -205,7 +192,7 @@ func finish*(ctx: var Sha256Context, digest: var array[32, byte]) =
   ctx.s.hashMessageBlocks(ctx.buf.asUnchecked(), numBlocks = 1)
   digest.dumpHash(ctx.s)
 
-func clear*(ctx: var Sha256Context) =
+func clear*(ctx: var Sha256Context) {.libPrefix: prefix_sha256.} =
   ## Clear the context internal buffers
   ## Security note:
   ## For passwords and secret keys, you MUST NOT use raw SHA-256
