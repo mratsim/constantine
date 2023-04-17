@@ -43,7 +43,8 @@ int main(){
   byte message[32];
   ctt_eth_bls_signature sig;
 
-  ctt_eth_bls_sha256_hash(message, "Mr F was here", 13);
+  ctt_eth_bls_sha256_hash(message, "Mr F was here", 13, /* clear_memory = */ 0);
+
   status = ctt_eth_bls_sign(&sig, &seckey, message, 32);
   if (status != cttBLS_Success) {
     printf("Message signing failure: status %d - %s\n", status, ctt_eth_bls_status_to_string(status));

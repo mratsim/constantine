@@ -162,6 +162,7 @@ proc benchVerifyMulti*(numSigs, iters: int) =
   bench("BLS verif of " & $numSigs & " msgs by "& $numSigs & " pubkeys", "BLS12_381", iters):
     for i in 0 ..< triplets.len:
       let ok = triplets[i].pubkey.verify(triplets[i].msg, triplets[i].sig)
+      doAssert ok == cttBLS_Success
 
 proc benchVerifyBatched*(numSigs, iters: int) =
   ## Verification of N pubkeys signing for N messages
@@ -188,6 +189,7 @@ proc benchVerifyBatched*(numSigs, iters: int) =
 
   bench("BLS serial batch verify of " & $numSigs & " msgs by "& $numSigs & " pubkeys (with blinding)", "BLS12_381", iters):
     let ok = batch_verify(pubkeys, messages, signatures, secureBlindingBytes)
+    doAssert ok == cttBLS_Success
 
 const Iters = 1000
 

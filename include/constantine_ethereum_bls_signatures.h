@@ -140,7 +140,7 @@ void ctt_eth_bls_sha256_init(ctt_eth_bls_sha256_context* ctx);
  *  For passwords and secret keys, you MUST NOT use raw SHA-256
  *  use a Key Derivation Function instead (KDF)
  */
-void ctt_eth_bls_sha256_update(ctt_eth_bls_sha256_context* ctx, const byte* message, ptrdiff_t messageLen);
+void ctt_eth_bls_sha256_update(ctt_eth_bls_sha256_context* ctx, const byte* message, ptrdiff_t message_len);
 
 /** Finalize a SHA256 computation and output the
  *  message digest to the `digest` buffer.
@@ -166,7 +166,7 @@ void ctt_eth_bls_sha256_clear(ctt_eth_bls_sha256_context* ctx);
  *  and store the result in digest.
  *  Optionally, clear the memory buffer used.
  */
-void ctt_eth_bls_sha256_hash(byte digest[32], const byte* message, ptrdiff_t messageLen);
+void ctt_eth_bls_sha256_hash(byte digest[32], const byte* message, ptrdiff_t message_len, bool clear_memory);
 
 // Comparisons
 // ------------------------------------------------------------------------------------------------

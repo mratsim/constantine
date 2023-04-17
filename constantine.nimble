@@ -7,7 +7,12 @@ license       = "MIT or Apache License 2.0"
 # Dependencies
 # ----------------------------------------------------------------
 
-requires "nim >= 1.1.0"
+requires "nim >= 1.6.12"
+
+# Nimscript imports
+# ----------------------------------------------------------------
+
+import std/strformat
 
 # Library compilation
 # ----------------------------------------------------------------
@@ -27,9 +32,13 @@ proc releaseBuildOptions: string =
   # -falign-functions=32
   #           Reduce instructions cache misses
   #           https://lkml.org/lkml/2015/5/21/443
+
+  # " --cc:clang " &
+  " -d:danger " &
+  # " --opt:size " & # TODO --opt:size creates improper bls_sign with GCC (but not Clang). As if using uninitialized buffer.
   " --verbosity:0 --hints:off --warnings:off " &
   " --panics:on -d:noSignalHandler --mm:arc -d:useMalloc " & # Defects are not catchable
-  # " --passC:-flto=auto --passL:-flto=auto " &
+  # " --passC:-flto=auto --passL:-flto=auto " & # TODO Clang runs out of register with LTO and inline assembly
   " --passC:-fno-semantic-interposition " &
   " --passC:-falign-functions=32 "
 
@@ -43,19 +52,18 @@ proc genDynamicBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain:
     exec "nim c " &
          " --noMain --app:lib " &
          #  " --cc:clang " &
-         " -d:danger --opt:size " &
          flags &
          releaseBuildOptions() &
-         " --nimMainPrefix:" & prefixNimMain &
-         " --out:" & libName & " --outdir:lib " &
+         &" --nimMainPrefix:{prefixNimMain} " &
+         &" --out:{libName} --outdir:lib " &
          (block:
            case bindingsKind
            of kCurve:
-             " --nimcache:nimcache/bindings_curves/" & bindingsName &
-             " bindings_generators/" & bindingsName & ".nim"
+             &" --nimcache:nimcache/bindings_curves/{bindingsName}" &
+             &" bindings_generators/{bindingsName}.nim"
            of kProtocol:
-             " --nimcache:nimcache/bindings_protocols/" & bindingsName &
-             " constantine/" & bindingsName & ".nim")
+             &" --nimcache:nimcache/bindings_protocols/{bindingsName}" &
+             &" constantine/{bindingsName}.nim")
 
   let bindingsName = block:
     case bindingsKind
@@ -81,7 +89,6 @@ proc genStaticBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: 
     exec "nim c " &
          " --noMain --app:staticLib " &
          #  " --cc:clang " &
-         " -d:danger --opt:size " &
          flags &
          releaseBuildOptions() &
          " --nimMainPrefix:" & prefixNimMain &
@@ -116,7 +123,7 @@ proc genStaticBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: 
 
 proc genHeaders(bindingsName: string) =
   echo "Generating header:         include/" & bindingsName & ".h"
-  exec "nim c -d:release -d:CttGenerateHeaders " &
+  exec "nim c -d:CttGenerateHeaders " &
        releaseBuildOptions() &
        " --out:" & bindingsName & "_gen_header.exe --outdir:build " &
        " --nimcache:nimcache/bindings_curves_headers/" & bindingsName & "_header" &
@@ -138,28 +145,33 @@ task bindings, "Generate Constantine bindings":
   genStaticBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_")
   genDynamicBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_")
 
+proc testLib(path, testName, libName: string, useGMP: bool) =
+  let dynlibName = if defined(windows): libName & ".dll"
+                   elif defined(macosx): "lib" & libName & ".dylib"
+                   else: "lib" & libName & ".so"
+  let staticlibName = if defined(windows): libName & ".lib"
+                      else: "lib" & libName & ".a"
+
+  echo &"\n[Bindings: {path}/{testName}.c] Testing dynamically linked library {dynlibName}"
+  exec &"gcc -Iinclude -Llib -o build/testbindings/{testName}_dynlink.exe {path}/{testName}.c -l{libName} " & (if useGMP: "-lgmp" else: "")
+  when defined(windows):
+    # Put DLL near the exe as LD_LIBRARY_PATH doesn't work even in a POSIX compatible shell
+    exec &"./build/testbindings/{testName}_dynlink.exe"
+  else:
+    exec &"LD_LIBRARY_PATH=lib ./build/testbindings/{testName}_dynlink.exe"
+
+
+  echo &"\n[Bindings: {path}/{testName}.c] Testing statically linked library: {staticlibName}"
+  # Beware MacOS annoying linker with regards to static libraries
+  # The following standard way cannot be used on MacOS
+  # exec "gcc -Iinclude -Llib -o build/t_libctt_bls12_381_sl.exe examples_c/t_libctt_bls12_381.c -lgmp -Wl,-Bstatic -lconstantine_bls12_381 -Wl,-Bdynamic"
+  exec &"gcc -Iinclude -o build/testbindings/{testName}_staticlink.exe {path}/{testName}.c lib/{staticlibName} " & (if useGMP: "-lgmp" else: "")
+  exec &"./build/testbindings/{testName}_staticlink.exe"
+
 task test_bindings, "Test C bindings":
-  exec "mkdir -p build/testsuite"
-  echo "--> Testing dynamically linked library"
-  when not defined(windows):
-    exec "gcc -Iinclude -Llib -o build/testsuite/t_libctt_bls12_381_dl examples_c/t_libctt_bls12_381.c -lgmp -lconstantine_bls12_381"
-    exec "LD_LIBRARY_PATH=lib ./build/testsuite/t_libctt_bls12_381_dl"
-  else:
-    # Put DLL near the exe as LD_LIBRARY_PATH doesn't work even in an POSIX compatible shell
-    exec "gcc -Iinclude -Llib -o build/testsuite/t_libctt_bls12_381_dl.exe examples_c/t_libctt_bls12_381.c -lgmp -lconstantine_bls12_381"
-    exec "./build/testsuite/t_libctt_bls12_381_dl.exe"
-
-  echo "--> Testing statically linked library"
-  when not defined(windows):
-    # Beware MacOS annoying linker with regards to static libraries
-    # The following standard way cannot be used on MacOS
-    # exec "gcc -Iinclude -Llib -o build/t_libctt_bls12_381_sl.exe examples_c/t_libctt_bls12_381.c -lgmp -Wl,-Bstatic -lconstantine_bls12_381 -Wl,-Bdynamic"
-
-    exec "gcc -Iinclude -o build/testsuite/t_libctt_bls12_381_sl examples_c/t_libctt_bls12_381.c lib/libconstantine_bls12_381.a -lgmp"
-    exec "./build/testsuite/t_libctt_bls12_381_sl"
-  else:
-    exec "gcc -Iinclude -o build/testsuite/t_libctt_bls12_381_sl.exe examples_c/t_libctt_bls12_381.c lib/constantine_bls12_381.lib -lgmp"
-    exec "./build/testsuite/t_libctt_bls12_381_sl.exe"
+  exec "mkdir -p build/testbindings"
+  testLib("examples_c", "t_libctt_bls12_381", "constantine_bls12_381", useGMP = true)
+  testLib("examples_c", "ethereum_bls_signatures", "constantine_ethereum_bls_signatures", useGMP = false)
 
 # Test config
 # ----------------------------------------------------------------
@@ -452,22 +464,9 @@ const useDebug = [
   "tests/math/t_hash_sha256_vs_openssl.nim",
 ]
 
-# Tests that uses sequences require Nim GC, stack scanning and nil pointer passed to openarray
-# In particular the tests that uses the json test vectors, don't sanitize them.
-# we do use gc:none to help
+# Skip sanitizers for specific tests
 const skipSanitizers = [
-  "tests/math/t_ec_sage_bn254_nogami.nim",
-  "tests/math/t_ec_sage_bn254_snarks.nim",
-  "tests/math/t_ec_sage_bls12_377.nim",
-  "tests/math/t_ec_sage_bls12_381.nim",
-  "tests/t_ethereum_bls_signatures.nim",
-  "tests/t_hash_to_field.nim",
-  "tests/t_hash_to_curve.nim",
-  "tests/t_hash_to_curve_random.nim",
-  "tests/t_mac_poly1305.nim",
-  "tests/t_mac_hmac.nim",
-  "tests/t_kdf_hkdf.nim",
-  "tests/t_ethereum_eip2333_bls12381_key_derivation.nim"
+  "tests/t_"
 ]
 
 when defined(windows):
@@ -477,9 +476,14 @@ else:
   const sanitizers =
     # Sanitizers are incompatible with nim default GC
     # The conservative stack scanning of Nim default GC triggers, alignment UB and stack-buffer-overflow check.
-    " --passC:-fsanitize=undefined --passL:-fsanitize=undefined" &
+    # Address sanitizer requires free registers and needs to be disabled for some inline assembly files.
+    # Ensure you use --mm:arc -d:useMalloc
+    #
+    # Sanitizers are deactivated by default as they slow down CI by at least 6x
+
+    # " --passC:-fsanitize=undefined --passL:-fsanitize=undefined" &
+    # " --passC:-fsanitize=address --passL:-fsanitize=address" &
     " --passC:-fno-sanitize-recover" # Enforce crash on undefined behaviour
-    # " --passC:-fsanitize=address --passL:-fsanitize=address" & # Requires too much stack for the inline assembly
 
 
 # Tests & Benchmarks helper functions
@@ -504,7 +508,7 @@ template setupCommand(): untyped {.dirty.} =
     # Not available in MinGW https://github.com/libressl-portable/portable/issues/54
     flags &= " --passC:-fstack-protector-strong"
   let command = "nim " & lang & cc &
-    " -r -d:release " &
+    " -r " &
     flags &
     releaseBuildOptions() &
     " --outdir:build/testsuite " &
@@ -538,7 +542,6 @@ template setupBench(): untyped {.dirty.} =
   if not useAsm:
     cc &= " -d:CttASM=false"
   let command = "nim " & lang & cc &
-       " -d:danger --opt:size " &
        releaseBuildOptions() &
        " -o:build/bench/" & benchName & "_" & compiler & "_" & (if useAsm: "useASM" else: "noASM") &
        " --nimcache:nimcache/benches/" & benchName & "_" & compiler & "_" & (if useAsm: "useASM" else: "noASM") &
@@ -581,8 +584,11 @@ proc addTestSetNvidia(cmdFile: var string) =
     mkDir "build"
   echo "Found " & $testDescNvidia.len & " tests to run."
 
-  for path in testDescNvidia:
-    cmdFile.testBatch(flags = "", path)
+  for path in testDescThreadpool:
+    var flags = ""
+    if path notin skipSanitizers:
+      flags &= sanitizers
+    cmdFile.testBatch(flags, path)
 
 proc addTestSetThreadpool(cmdFile: var string) =
   if not dirExists "build":
@@ -590,7 +596,10 @@ proc addTestSetThreadpool(cmdFile: var string) =
   echo "Found " & $testDescThreadpool.len & " tests to run."
 
   for path in testDescThreadpool:
-    cmdFile.testBatch(flags = "--threads:on --linetrace:on --debugger:native", path)
+    var flags = " --threads:on --debugger:native "
+    if path notin skipSanitizers:
+      flags &= sanitizers
+    cmdFile.testBatch(flags, path)
 
 proc addTestSetMultithreadedCrypto(cmdFile: var string, test32bit = false, testASM = true) =
   if not dirExists "build":
