@@ -101,8 +101,7 @@ func mapToIsoCurve_sswuG1_opt3mod4[F](
   mapToIsoCurve_sswuG1_opt3mod4(
     xn, xd,
     yn,
-    u, xd3
-  )
+    u, xd3)
 
   # Convert to Jacobian
   r.z = xd          # Z = xd
@@ -120,8 +119,7 @@ func mapToIsoCurve_sswuG2_opt9mod16[F](
   mapToIsoCurve_sswuG2_opt9mod16(
     xn, xd,
     yn,
-    u, xd3
-  )
+    u, xd3)
 
   # Convert to Jacobian
   r.z = xd          # Z = xd
@@ -197,8 +195,7 @@ func hashToCurve_svdw*[F; G: static Subgroup](
        output: var ECP_ShortW_Jac[F, G],
        augmentation: openArray[byte],
        message: openArray[byte],
-       domainSepTag: openArray[byte]
-     ) {.genCharAPI.} =
+       domainSepTag: openArray[byte]) {.genCharAPI.} =
   ## Hash a message to an elliptic curve
   ##
   ## Arguments:
@@ -237,8 +234,7 @@ func hashToCurve_sswu*[F; G: static Subgroup](
        output: var ECP_ShortW_Jac[F, G],
        augmentation: openArray[byte],
        message: openArray[byte],
-       domainSepTag: openArray[byte]
-     ) {.genCharAPI.} =
+       domainSepTag: openArray[byte]) {.genCharAPI.} =
   ## Hash a message to an elliptic curve
   ##
   ## Arguments:
@@ -277,8 +273,7 @@ func hashToCurve*[F; G: static Subgroup](
        output: var ECP_ShortW_Jac[F, G],
        augmentation: openArray[byte],
        message: openArray[byte],
-       domainSepTag: openArray[byte]
-     ) {.inline, genCharAPI.} =
+       domainSepTag: openArray[byte]) {.inline, genCharAPI.} =
   ## Hash a message to an elliptic curve
   ##
   ## Arguments:
@@ -313,8 +308,7 @@ func hashToCurve*[F; G: static Subgroup](
        output: var (ECP_ShortW_Prj[F, G] or ECP_ShortW_Aff[F, G]),
        augmentation: openArray[byte],
        message: openArray[byte],
-       domainSepTag: openArray[byte]
-     ) {.inline, genCharAPI.} =
+       domainSepTag: openArray[byte]) {.inline, genCharAPI.} =
   ## Hash a message to an elliptic curve
   ##
   ## Arguments:

@@ -373,8 +373,8 @@ template matVecMul_shr_k_impl(
 
   # First iteration of [u v] [f]
   #                    [q r].[g]
-  cf.ssumprodAccNoCarry(u, f[0], v, g[0])
-  cg.ssumprodAccNoCarry(q, f[0], r, g[0])
+  ssumprodAccNoCarry(cf, u, f[0], v, g[0])
+  ssumprodAccNoCarry(cg, q, f[0], r, g[0])
   # bottom k bits are zero by construction
   debug:
     doAssert BaseType(cf.lo and Max) == 0, "bottom k bits should be 0, cf.lo: " & $BaseType(cf.lo)
@@ -384,8 +384,8 @@ template matVecMul_shr_k_impl(
   cg.ashr(k)
 
   for i in 1 ..< numLimbsLeft:
-    cf.ssumprodAccNoCarry(u, f[i], v, g[i])
-    cg.ssumprodAccNoCarry(q, f[i], r, g[i])
+    ssumprodAccNoCarry(cf, u, f[i], v, g[i])
+    ssumprodAccNoCarry(cg, q, f[i], r, g[i])
     f[i-1] = cf.lo and Max
     g[i-1] = cg.lo and Max
     cf.ashr(k)

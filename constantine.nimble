@@ -35,10 +35,10 @@ proc releaseBuildOptions: string =
 
   # " --cc:clang " &
   " -d:danger " &
-  # " --opt:size " & # TODO --opt:size creates improper bls_sign with GCC (but not Clang). As if using uninitialized buffer.
+  " --opt:size " & # TODO --opt:size creates improper bls_sign with GCC (but not Clang). As if using uninitialized buffer.
   " --verbosity:0 --hints:off --warnings:off " &
   " --panics:on -d:noSignalHandler --mm:arc -d:useMalloc " & # Defects are not catchable
-  # " --passC:-flto=auto --passL:-flto=auto " & # TODO Clang runs out of register with LTO and inline assembly
+  # " --passC:-flto --passL:-flto " & # TODO Clang runs out of register with LTO and inline assembly
   " --passC:-fno-semantic-interposition " &
   " --passC:-falign-functions=32 "
 
@@ -51,7 +51,6 @@ proc genDynamicBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain:
     echo "Compiling dynamic library: lib/" & libName
     exec "nim c " &
          " --noMain --app:lib " &
-         #  " --cc:clang " &
          flags &
          releaseBuildOptions() &
          &" --nimMainPrefix:{prefixNimMain} " &
@@ -88,7 +87,6 @@ proc genStaticBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: 
     echo "Compiling static library:  lib/" & libName
     exec "nim c " &
          " --noMain --app:staticLib " &
-         #  " --cc:clang " &
          flags &
          releaseBuildOptions() &
          " --nimMainPrefix:" & prefixNimMain &
