@@ -342,7 +342,7 @@ ctt_pure ctt_eth_bls_status ctt_eth_bls_verify(const ctt_eth_bls_pubkey* pubkey,
  *
  *  In particular, the public keys and signature are assumed to be on curve subgroup checked.
  */
-ctt_pure ctt_eth_bls_status ctt_eth_bls_fast_aggregate_verify(const ctt_eth_bls_pubkey pubkeys[],
+ctt_pure ctt_eth_bls_status ctt_eth_bls_fast_aggregate_verify(const ctt_eth_bls_pubkey pubkeys[], ptrdiff_t pubkeys_len,
                                                               const byte* message, ptrdiff_t message_len,
                                                               const ctt_eth_bls_signature* aggregate_sig);
 
