@@ -54,7 +54,7 @@ proc releaseBuildOptions: string =
   " --panics:on -d:noSignalHandler " &
   " --mm:arc -d:useMalloc " &
   " --verbosity:0 --hints:off --warnings:off " &
-  " --passC:-flto --passL:-flto " &
+  # " --passC:-flto --passL:-flto " &
   " --passC:-fno-semantic-interposition " &
   " --passC:-falign-functions=64 "
 
