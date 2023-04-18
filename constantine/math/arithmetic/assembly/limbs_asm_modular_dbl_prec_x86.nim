@@ -26,7 +26,8 @@ import
 # and so FpDbl would 768 bits.
 
 static: doAssert UseASM_X86_64
-{.localPassC:"-fomit-frame-pointer".} # Needed so that the compiler finds enough registers
+# Necessary for the compiler to find enough registers
+{.localPassC:"-fomit-frame-pointer".}  # (enabled at -O1)
 
 # Double-precision field addition
 # ------------------------------------------------------------

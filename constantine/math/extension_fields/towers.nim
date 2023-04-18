@@ -979,12 +979,17 @@ func square2x_disjoint*[Fdbl, F](
 # Multiplications (specializations)
 # -------------------------------------------------------------------
 
-func prodImpl_fp4o2_p3mod8[C: static Curve](r: var Fp4[C], a, b: Fp4[C]) =
+func prodImpl_fp4o2_complex_snr_1pi[C: static Curve](r: var Fp4[C], a, b: Fp4[C]) =
   ## Returns r = a * b
-  ## For 𝔽p4/𝔽p2 with p ≡ 3 (mod 8),
-  ##   hence 𝔽p QNR is 𝑖 = √-1 as p ≡ 3 (mod 8) implies p ≡ 3 (mod 4)
-  ##   and 𝔽p SNR is (1 + i)
-  static: doAssert C.has_P_3mod8_primeModulus()
+  ## For 𝔽p4/𝔽p2 with the following non-residue (NR) constraints:
+  ##   * -1 is a quadratic non-residue in 𝔽p hence 𝔽p2 has coordinates a+𝑖b with i = √-1. This implies p ≡ 3 (mod 4)
+  ##   * (1 + i) is a quadratic non-residue in 𝔽p hence 𝔽p2 has coordinates a+vb with v = √(1+𝑖).
+  ##
+  ## According to Benger-Scott 2009(https://eprint.iacr.org/2009/556.pdf)
+  ## About 2/3 of the p ≡ 3 (mod 8) primes are in this case
+  static:
+    doAssert C.getNonResidueFp() == -1
+    doAssert C.getNonresidueFp2() == (1, 1)
   var
     b10_m_b11{.noInit.}, b10_p_b11{.noInit.}: Fp[C]
     n_a01{.noInit.}, n_a11{.noInit.}: Fp[C]
@@ -1374,8 +1379,8 @@ func prod*(r: var QuadraticExt, a, b: QuadraticExt) =
     when QuadraticExt is Fp12 or r.typeof.F.C.has_large_field_elem():
       # BW6-761 requires too many registers for Dbl width path
       r.prod_generic(a, b)
-    elif QuadraticExt is Fp4 and QuadraticExt.C.has_P_3mod8_primeModulus():
-      r.prodImpl_fp4o2_p3mod8(a, b)
+    elif QuadraticExt is Fp4 and QuadraticExt.C.getNonResidueFp() == -1 and QuadraticExt.C.getNonResidueFp2() == (1, 1):
+      r.prodImpl_fp4o2_complex_snr_1pi(a, b)
     else:
       var d {.noInit.}: doublePrec(typeof(r))
       d.prod2x_disjoint(a.c0, a.c1, b.c0, b.c1)
@@ -1628,13 +1633,18 @@ func square_Chung_Hasan_SQR3(r: var CubicExt, a: CubicExt) =
 # Multiplications (specializations)
 # -------------------------------------------------------------------
 
-func prodImpl_fp6o2_p3mod8[C: static Curve](r: var Fp6[C], a, b: Fp6[C]) =
+func prodImpl_fp6o2_complex_snr_1pi[C: static Curve](r: var Fp6[C], a, b: Fp6[C]) =
   ## Returns r = a * b
-  ## For 𝔽p6/𝔽p2 with p ≡ 3 (mod 8),
-  ##   hence 𝔽p QNR is 𝑖 = √-1 as p ≡ 3 (mod 8) implies p ≡ 3 (mod 4)
-  ##   and 𝔽p SNR is (1 + i)
+  ## For 𝔽p4/𝔽p2 with the following non-residue (NR) constraints:
+  ##   * -1 is a quadratic non-residue in 𝔽p hence 𝔽p2 has coordinates a+𝑖b with i = √-1. This implies p ≡ 3 (mod 4)
+  ##   * (1 + i) is a cubic non-residue in 𝔽p hence 𝔽p2 has coordinates a+vb with v = √(1+𝑖).
+  ##
+  ## According to Benger-Scott 2009 (https://eprint.iacr.org/2009/556.pdf)
+  ## About 2/3 of the p ≡ 3 (mod 8) primes are in this case
   # https://eprint.iacr.org/2022/367 - Equation 8
-  static: doAssert C.has_P_3mod8_primeModulus()
+  static:
+    doAssert C.getNonResidueFp() == -1
+    doAssert C.getNonresidueFp2() == (1, 1)
   var
     b10_p_b11{.noInit.}, b10_m_b11{.noInit.}: Fp[C]
     b20_p_b21{.noInit.}, b20_m_b21{.noInit.}: Fp[C]
@@ -2133,8 +2143,8 @@ func prod*(r: var CubicExt, a, b: CubicExt) =
   ## Out-of-place multiplication
   when CubicExt.C.has_large_field_elem():
     r.prodImpl(a, b)
-  elif r is Fp6 and CubicExt.C.has_P_3mod8_primeModulus():
-    r.prodImpl_fp6o2_p3mod8(a, b)
+  elif r is Fp6 and CubicExt.C.getNonResidueFp() == -1 and CubicExt.C.getNonResidueFp2() == (1, 1):
+    r.prodImpl_fp6o2_complex_snr_1pi(a, b)
   else:
     var d {.noInit.}: doublePrec(typeof(r))
     d.prod2x(a, b)

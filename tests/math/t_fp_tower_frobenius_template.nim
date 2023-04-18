@@ -60,8 +60,7 @@ proc runFrobeniusTowerTests*[N](
       Iters: static int,
       TestCurves: static array[N, Curve],
       moduleName: string,
-      testSuiteDesc: string
-    ) =
+      testSuiteDesc: string) =
   # Random seed for reproducibility
   var rng: RngState
   let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
@@ -75,7 +74,6 @@ proc runFrobeniusTowerTests*[N](
           var a = rng.random_elem(Field, gen)
           var fa {.noInit.}: typeof(a)
           fa.frobenius_map(a, k = 1)
-
           a.powUnsafeExponent(Field.fieldMod(), window = 3)
           check: bool(a == fa)
 

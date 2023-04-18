@@ -117,7 +117,6 @@ debug:
       r = SecretWord r
 
     var a, b: array[2, SecretWord]
-    var e: array[2, SecretWord]
     smul(a[1], a[0], u, r)
     smul(b[1], b[0], v, q)
 

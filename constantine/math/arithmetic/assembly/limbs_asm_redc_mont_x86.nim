@@ -22,8 +22,8 @@ import
 
 static: doAssert UseASM_X86_32
 
-# Necessary for the compiler to find enough registers (enabled at -O1)
-{.localPassC:"-fomit-frame-pointer".}
+# Necessary for the compiler to find enough registers
+{.localPassC:"-fomit-frame-pointer".}  # (enabled at -O1)
 
 # Montgomery reduction
 # ------------------------------------------------------------

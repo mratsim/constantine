@@ -43,7 +43,7 @@ func getWindowLen(bufLen: int): uint =
 func powPrologue[F](a: var F, scratchspace: var openarray[F]): uint =
   ## Setup the scratchspace, then set a to 1.
   ## Returns the fixed-window size for exponentiation with window optimization
-  result = scratchspace.len.getWindowLen
+  result = scratchspace.len.getWindowLen()
   # Precompute window content, special case for window = 1
   # (i.e scratchspace has only space for 2 temporaries)
   # The content scratchspace[2+k] is set at [k]P
@@ -62,8 +62,7 @@ func powSquarings[F](
        tmp: var F,
        window: uint,
        acc, acc_len: var uint,
-       e: var int
-     ): tuple[k, bits: uint] {.inline.}=
+       e: var int): tuple[k, bits: uint] {.inline.}=
   ## Squaring step of exponentiation by squaring
   ## Get the next k bits in range [1, window)
   ## Square k times
@@ -105,8 +104,7 @@ func powSquarings[F](
 func powUnsafeExponent[F](
        a: var F,
        exponent: openArray[byte],
-       scratchspace: var openArray[F]
-     ) =
+       scratchspace: var openArray[F]) =
   ## Extension field exponentiation r = a^exponent (mod p^m)
   ##
   ## Warning ⚠️ :

@@ -394,7 +394,7 @@ macro sumprodMont_CIOS_spare2bits_gen[N, K: static int](
 func sumprodMont_CIOS_spare2bits_asm*[N, K: static int](
         r: var Limbs[N], a, b: array[K, Limbs[N]],
         M: Limbs[N], m0ninv: BaseType,
-        skipFinalSub: static bool) {.noInline.} =
+        skipFinalSub: static bool) =
   ## Sum of products ⅀aᵢ.bᵢ in the Montgomery domain
   ## If "skipFinalSub" is set
   ## the result is in the range [0, 2M)
