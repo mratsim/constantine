@@ -508,7 +508,7 @@ proc clearParallelBuild() =
   if fileExists(buildParallel):
     rmFile(buildParallel)
 
-template setupCommand(): untyped {.dirty.} =
+template setupTestCommand(): untyped {.dirty.} =
   var lang = "c"
   if existsEnv"TEST_LANG":
     lang = getEnv"TEST_LANG"
@@ -520,7 +520,7 @@ template setupCommand(): untyped {.dirty.} =
   var flags = flags
   when not defined(windows):
     # Not available in MinGW https://github.com/libressl-portable/portable/issues/54
-    flags &= " --passC:-fstack-protector-strong"
+    flags &= " --passC:-fstack-protector-strong --passC:-D_FORTIFY_SOURCE=2 "
   let command = "nim " & lang & cc &
     " -r " &
     flags &
@@ -536,7 +536,7 @@ proc test(cmd: string) =
   exec cmd
 
 proc testBatch(commands: var string, flags, path: string) =
-  setupCommand()
+  setupTestCommand()
   commands &= command & '\n'
 
 template setupBench(): untyped {.dirty.} =
@@ -583,11 +583,11 @@ proc addTestSet(cmdFile: var string, requireGMP: bool, test32bit = false, testAS
     if not(td.useGMP and not requireGMP):
       var flags = ""
       if not testASM:
-        flags &= " -d:CttASM=false"
+        flags &= " -d:CttASM=false "
       if test32bit:
-        flags &= " -d:Constantine32"
+        flags &= " -d:Constantine32 "
       if td.path in useDebug:
-        flags &= " -d:debugConstantine"
+        flags &= " -d:debugConstantine "
       if td.path notin skipSanitizers:
         flags &= sanitizers
 
