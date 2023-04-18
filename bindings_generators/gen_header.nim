@@ -16,14 +16,13 @@ import
 
 proc genHeaderLicense*(): string =
   """
-/*
- * Constantine
- * Copyright (c) 2018-2019    Status Research & Development GmbH
- * Copyright (c) 2020-Present Mamy André-Ratsimbazafy
- * Licensed and distributed under either of
- *   * MIT license (license terms in the root directory or at http://opensource.org/licenses/MIT).
- *   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
- * at your option. This file may not be copied, modified, or distributed except according to those terms.
+/** Constantine
+ *  Copyright (c) 2018-2019    Status Research & Development GmbH
+ *  Copyright (c) 2020-Present Mamy André-Ratsimbazafy
+ *  Licensed and distributed under either of
+ *    * MIT license (license terms in the root directory or at http://opensource.org/licenses/MIT).
+ *    * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
+ *  at your option. This file may not be copied, modified, or distributed except according to those terms.
  */
 """
 
@@ -102,7 +101,7 @@ proc declNimMain*(libName: string): string =
   ## - the Nim runtime if seqs, strings or heap-allocated types are used,
   ##   this is the case only if Constantine is multithreaded.
   ## - runtime CPU features detection
-  ## 
+  ##
   ## Assumes library is compiled with --nimMainPrefix:ctt_{libName}_
   &"""
 
@@ -124,9 +123,9 @@ proc toCrettype(node: NimNode): string =
   node.expectKind({nnkEmpty, nnkSym})
   if node.kind == nnkEmpty:
     # align iwth secret_bool and secret_word
-    "void       "  
+    "void       "
   else:
-    TypeMap[$node] 
+    TypeMap[$node]
 
 proc toCtrivialParam(name: string, typ: NimNode): string =
   typ.expectKind({nnkVarTy, nnkSym})
@@ -181,16 +180,16 @@ macro collectBindings*(cBindingsStr: untyped, body: typed): untyped =
     for fnDef in generator:
       if fnDef.kind notin {nnkProcDef, nnkFuncDef}:
         continue
-    
+
       cBindings &= "\n"
-      # rettype name(pType0* pName0, pType1* pName1, ...);    
+      # rettype name(pType0* pName0, pType1* pName1, ...);
       cBindings &= fnDef.params[0].toCrettype()
       cBindings &= ' '
       cBindings &= $fnDef.name
       cBindings &= '('
       for i in 1 ..< fnDef.params.len:
         if i != 1: cBindings &= ", "
-        
+
         let paramDef = fnDef.params[i]
         paramDef.expectKind(nnkIdentDefs)
         let pType = paramDef[^2]
@@ -198,7 +197,7 @@ macro collectBindings*(cBindingsStr: untyped, body: typed): untyped =
         paramDef[^1].expectKind(nnkEmpty)
 
         for j in 0 ..< paramDef.len - 2:
-          if j != 0: cBindings &= ", " 
+          if j != 0: cBindings &= ", "
           var name = $paramDef[j]
           cBindings &= toCparam(name.split('`')[0], pType)
 

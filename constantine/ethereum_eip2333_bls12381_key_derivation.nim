@@ -12,18 +12,18 @@ import
   ./math/config/[curves, type_ff],
   ./math/arithmetic/[bigints, limbs_montgomery],
   ./math/io/io_bigints,
-  ./platforms/endians
+  ./platforms/[primitives, endians]
 
 # EIP2333: BLS12-381 Key Generation
 # ------------------------------------------------------------
 #
 # https://eips.ethereum.org/EIPS/eip-2333
 
-{.push raises: [].} # No exceptions
+{.push raises: [], checks: off.} # No exceptions
 
 type SecretKey = matchingOrderBigInt(BLS12_381)
 
-func hkdf_mod_r[T: char|byte](secretKey: var SecretKey, ikm: openArray[byte], key_info: openArray[T]) =
+func hkdf_mod_r(secretKey: var SecretKey, ikm: openArray[byte], key_info: openArray[byte]) =
   ## Ethereum 2 EIP-2333, extracts this from the BLS signature schemes
   # 1. salt = "BLS-SIG-KEYGEN-SALT-"
   # 2. SK = 0
@@ -52,7 +52,7 @@ func hkdf_mod_r[T: char|byte](secretKey: var SecretKey, ikm: openArray[byte], ke
     const L = 48
     var okm{.noInit.}: array[L, byte]
     const L_octetstring = L.uint16.toBytesBE()
-    ctx.hkdfExpand(okm, prk, key_info, append = L_octetstring)
+    ctx.hkdfExpand(okm, prk, key_info, append = L_octetstring, clearMem = true)
     #  7. x = OS2IP(OKM) mod r
     #  We reduce mod r via Montgomery reduction, instead of bigint division
     #  as constant-time division works bits by bits (384 bits) while
@@ -64,10 +64,10 @@ func hkdf_mod_r[T: char|byte](secretKey: var SecretKey, ikm: openArray[byte], ke
     seckeyDbl.unmarshal(okm, bigEndian)
     # secretKey.reduce(seckeyDbl, BLS12_381.getCurveOrder())
     secretKey.limbs.redc2xMont(seckeyDbl.limbs,                                      # seckey/R
-                               BLS12_381.getCurveOrder().limbs, Fr[BLS12_381].getNegInvModWord(), 
+                               BLS12_381.getCurveOrder().limbs, Fr[BLS12_381].getNegInvModWord(),
                                Fr[BLS12_381].getSpareBits())
     secretKey.limbs.mulMont(secretKey.limbs, Fr[BLS12_381].getR2modP().limbs,        # (seckey/R) * R² * R⁻¹ = seckey
-                            BLS12_381.getCurveOrder().limbs, Fr[BLS12_381].getNegInvModWord(), 
+                            BLS12_381.getCurveOrder().limbs, Fr[BLS12_381].getNegInvModWord(),
                             Fr[BLS12_381].getSpareBits())
 
     if bool secretKey.isZero():
@@ -90,11 +90,12 @@ iterator ikm_to_lamport_SK(
 
   # 1. OKM = HKDF-Expand(PRK, "" , L)
   #    with L = K * 255 and K = 32 (sha256 output)
-  {.push checks: off.} # No OverflowError or IndexError allowed
   for i in ctx.hkdfExpandChunk(
             lamportSecretKeyChunk,
-            prk, "",""):
+            prk, default(array[0, byte]), default(array[0, byte])):
     yield i
+
+  ctx.clear()
 
 func parent_SK_to_lamport_PK(
        lamportPublicKey: var array[32, byte],
@@ -102,7 +103,7 @@ func parent_SK_to_lamport_PK(
        index: uint32) =
   ## Derives the index'th child's lamport PublicKey
   ## from the parent SecretKey
-  
+
   # 0. salt = I2OSP(index, 4)
   let salt{.noInit.} = index.toBytesBE()
 
@@ -119,8 +120,6 @@ func parent_SK_to_lamport_PK(
 
   var tmp{.noInit.}, chunk{.noInit.}: array[32, byte]
 
-  {.push checks: off.} # No OverflowError or IndexError allowed
-
   # 2. lamport_0 = IKM_to_lamport_SK(IKM, salt)
   # 6. for i = 1, .., 255 (inclusive)
   #        lamport_PK = lamport_PK | SHA256(lamport_0[i])
@@ -130,7 +129,7 @@ func parent_SK_to_lamport_PK(
     if i == 254:
       # We iterate from 0
       break
-  
+
   # 3. not_IKM = flip_bits(parent_SK)
   for i in 0 ..< 32:
     ikm[i] = not ikm[i]
@@ -152,26 +151,26 @@ func parent_SK_to_lamport_PK(
 func derive_child_secretKey*(
         childSecretKey: var SecretKey,
         parentSecretKey: SecretKey,
-        index: uint32
-     ): bool =
+        index: uint32): bool =
   ## EIP2333 Child Key derivation function
   var compressed_lamport_PK{.noInit.}: array[32, byte]
   # 0. compressed_lamport_PK = parent_SK_to_lamport_PK(parent_SK, index)
   parent_SK_to_lamport_PK(
     compressed_lamport_PK,
     parentSecretKey,
-    index,
-  )
-  childSecretKey.hkdf_mod_r(compressed_lamport_PK, key_info = "")
+    index)
+  childSecretKey.hkdf_mod_r(compressed_lamport_PK, key_info = default(array[0, byte]))
+  compressed_lamport_PK.setZero()
   return true
 
 func derive_master_secretKey*(
         masterSecretKey: var SecretKey,
-        ikm: openArray[byte]
-     ): bool =
+        ikm: openArray[byte]): bool =
   ## EIP2333 Master key derivation
+  ## The input keying material SHOULD be cleared after use
+  ## to prevent leakage.
   if ikm.len < 32:
     return false
 
-  masterSecretKey.hkdf_mod_r(ikm, key_info = "")
+  masterSecretKey.hkdf_mod_r(ikm, key_info = default(array[0, byte]))
   return true

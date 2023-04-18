@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  std/[os, strutils, cpuinfo, strformat, deques, terminal],
+  std/[os, strutils, cpuinfo, strformat, deques],
   std/[asyncfutures, asyncdispatch],
   asynctools/[asyncproc, asyncpipe, asyncsync]
 
@@ -46,7 +46,7 @@ proc release(s: AsyncSemaphore) =
   if s.waiters.len > 0:
     let waiter = s.waiters.popFirst()
     waiter.complete()
-  
+
   doAssert s.slots in {0..s.max}
 
 # Task runner
@@ -55,72 +55,90 @@ proc release(s: AsyncSemaphore) =
 type WorkQueue = ref object
   sem: AsyncSemaphore
   cmdQueue: Deque[string]
-  outputQueue: AsyncQueue[tuple[cmd: string, p: AsyncProcess]]
-  lineBuf: string
+  outputQueue: AsyncQueue[tuple[cmd: string, p: AsyncProcess, output: AsyncQueue[string]]]
 
-proc releaseOnProcessExit(sem: AsyncSemaphore, p: AsyncProcess) {.async.} =
-  # TODO: addProcess callback on exit is cleaner but locks the AsyncPipe "readInto"
-  #
-  # p.processID.addProcess do (fd: AsyncFD) -> bool:
-  #   sem.release()
-  #
-  # see also: https://forum.nim-lang.org/t/5565
-  # and https://github.com/cheatfate/asynctools/issues/20
+proc monitorProcessLoop(output: AsyncQueue[string], cmd: string, id, total: int, p: AsyncProcess, sem: AsyncSemaphore) {.async.} =
+  # Ideally we want AsynStreams but that requires chronos, which doesn't support processes/pipes
+  # Or the nimboost package that hasn't been updated since 2019. So poor man's streams.
+  template doBuffering: untyped =
+    while true:
+      buf.setLen(256)
+      let charsRead = await p.outputHandle.readInto(buf[0].addr, buf.len)
+      if charsRead > 0:
+        buf.setLen(charsRead)
+        output.putNoWait(buf)
+      else:
+        break
 
+  var buf = newString(256)
+  doBuffering()
+
+  # Despite the output being empty we might still get STILL_ACTIVE: https://github.com/cheatfate/asynctools/blob/84ced6d/asynctools/asyncproc.nim#L24
+  # Unfortunately this gives "Resource temporarily unavailable" so we use exponential backoff.
+  # See also:
+  #  - https://github.com/cheatfate/asynctools/issues/20
+  #  - https://forum.nim-lang.org/t/5565
+  #
+  # let exitCode = await p.waitForExit()
   var backoff = 8
   while p.running():
     backoff = min(backoff*2, 1024) # Exponential backoff
     await sleepAsync(backoff)
-  sem.release()
+
+  doBuffering()
+  buf.setLen(0)
+
+  let exitCode = p.peekExitCode()
+  if exitCode != 0:
+    buf.add("\n" & '='.repeat(26) & " Command exited with code " & $exitCode & " " & '='.repeat(26) & '\n')
+    buf.add("[FAIL]: '" & cmd & "' (#" & $id & "/" & $total & ")\n")
+    buf.add("[FAIL]: Command #" & $id & " exited with error " & $exitCode & '\n')
+    buf.add('='.repeat(80) & '\n')
+    output.putNoWait(buf)
+
+  # close not exported: https://github.com/cheatfate/asynctools/issues/16
+  p.inputHandle.close()
+  p.outputHandle.close()
+  p.errorHandle.close()
+
+  output.putNoWait("")
+  if exitCode == 0:
+    sem.release()
 
 proc enqueuePendingCommands(wq: WorkQueue) {.async.} =
+  var id = 0
+  let total = wq.cmdQueue.len
   while wq.cmdQueue.len > 0:
+    id += 1
+
     await wq.sem.acquire()
     let cmd = wq.cmdQueue.popFirst()
-    let p = cmd.startProcess(
-      options = {poStdErrToStdOut, poUsePath, poEvalCommand}
-    )
-    p.inputHandle.close()
+    let p = cmd.startProcess(options = {poStdErrToStdOut, poUsePath, poEvalCommand})
 
-    asyncCheck wq.sem.releaseOnProcessExit(p)
-    wq.outputQueue.putNoWait((cmd, p))
+    let bufOut = newAsyncQueue[string]()
+    asyncCheck bufOut.monitorProcessLoop(cmd, id, total, p, wq.sem)
 
-proc flushCommandsOutput(wq: WorkQueue) {.async.} =
+    wq.outputQueue.putNoWait((cmd, p, bufOut))
+
+proc flushCommandsOutput(wq: WorkQueue, total: int) {.async.} =
   var id = 0
   while true:
-    let (cmd, p) = await wq.outputQueue.get()
-    
-    echo '\n', '='.repeat(80)
-    echo "||\n|| Running: ", cmd ,"\n||"
-    echo '='.repeat(80)
-    
-    while true:
-      let charsRead = await p.outputHandle.readInto(wq.lineBuf[0].addr, wq.lineBuf.len)
-      if charsRead == 0:
-        break
-      let charsWritten = stdout.writeBuffer(wq.lineBuf[0].addr, charsRead)
-      doAssert charsRead == charsWritten
-    
-    # close not exported: https://github.com/cheatfate/asynctools/issues/16
-    p.outputHandle.close()
-    
-    let exitCode = p.peekExitCode()
-    if exitCode == 259:
-      echo "==== Command exited with code 259 ===="
-      echo "[SKIP]: '", cmd, "' (#", id, ")"
-      echo "==== Custom stacktrace ===="
-      writeStackTrace()
-      echo "==== Custom stacktrace ===="
-      echo "[SKIP]: Assuming process was unregistered when trying to retrieve its exit code"
-    elif exitCode != 0:
-      echo "==== Command exited with code ", exitCode, " ===="
-      echo "[FAIL]: '", cmd, "' (#", id, ")"
-      echo "==== Custom stacktrace ===="
-      writeStackTrace()
-      echo "==== Custom stacktrace ===="
-      quit "[FAIL]: Command #" & $id & " exited with error " & $exitCode, exitCode
-
     id += 1
+    let (cmd, p, processOutput) = await wq.outputQueue.get()
+
+    echo '\n', '='.repeat(80)
+    echo "||\n|| Running #", id, "/", total, ": ", cmd ,"\n||"
+    echo '='.repeat(80)
+
+    while true:
+      let output = await processOutput.get()
+      if output == "":
+        break
+      stdout.write(output)
+
+    let exitCode = p.peekExitCode()
+    if exitCode != 0:
+      quit exitCode
 
     if wq.cmdQueue.len == 0 and wq.outputQueue.len == 0:
       return
@@ -132,9 +150,7 @@ proc runCommands(commandFile: string, numWorkers: int) =
   let wq = WorkQueue(
     sem: AsyncSemaphore.new(numWorkers),
     cmdQueue: initDeque[string](),
-    outputQueue: newAsyncQueue[tuple[cmd: string, p: AsyncProcess]](),
-    lineBuf: newString(max(80, terminalWidth()))
-  )
+    outputQueue: newAsyncQueue[tuple[cmd: string, p: AsyncProcess, output: AsyncQueue[string]]]())
 
   # Parse the file
   # --------------
@@ -142,16 +158,17 @@ proc runCommands(commandFile: string, numWorkers: int) =
     if cmd.len == 0: continue
     wq.cmdQueue.addLast(cmd)
 
-  echo "Found ", wq.cmdQueue.len, " commands to run"
-  
+  let total = wq.cmdQueue.len
+  echo "Found ", total, " commands to run"
+
   # Run the commands
   # ----------------
   asyncCheck wq.enqueuePendingCommands()
-  waitFor wq.flushCommandsOutput()
+  waitFor wq.flushCommandsOutput(total)
 
 # Main
 # ----------------------------------------------------------------
-  
+
 proc main() =
   var commandFile: string
   var numWorkers = countProcessors()
@@ -162,7 +179,7 @@ proc main() =
 
   if paramCount() >= 1:
     commandFile = paramStr(1)
-  
+
   if paramCount() == 2:
     numWorkers = paramStr(2).parseInt()
 

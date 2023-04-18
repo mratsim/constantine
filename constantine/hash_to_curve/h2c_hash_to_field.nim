@@ -8,7 +8,7 @@
 
 import
   # Internals
-  ../platforms/[abstractions, endians],
+  ../platforms/[abstractions, endians, views],
   ../hashes,
   ../math/io/[io_bigints, io_fields],
   ../math/config/curves,
@@ -37,10 +37,10 @@ template strxor(b_i: var array, b0: array): untyped =
     b_i[i] = b_i[i] xor b0[i]
 # ----------------------------------------------------------------
 
-func shortDomainSepTag*[DigestSize: static int, B: byte|char](
+func shortDomainSepTag*[DigestSize: static int](
        H: type CryptoHash,
        output: var array[DigestSize, byte],
-       oversizedDST: openarray[B]) =
+       oversizedDST: openArray[byte]) {.genCharAPI.} =
   ## Compute a short Domain Separation Tag
   ## from a domain separation tag larger than 255 bytes
   ##
@@ -52,13 +52,13 @@ func shortDomainSepTag*[DigestSize: static int, B: byte|char](
   ctx.update oversizedDST
   ctx.finish(output)
 
-func expandMessageXMD*[B1, B2, B3: byte|char, len_in_bytes: static int](
+func expandMessageXMD*[len_in_bytes: static int](
        H: type CryptoHash,
        output: var array[len_in_bytes, byte],
-       augmentation: openarray[B1],
-       message: openarray[B2],
-       domainSepTag: openarray[B3]
-     ) =
+       augmentation: openArray[byte],
+       message: openArray[byte],
+       domainSepTag: openArray[byte]
+     ) {.genCharAPI.} =
   ## The expand_message_xmd function produces a uniformly random byte
   ## string using a cryptographic hash function H that outputs "b" bits,
   ## with b >= 2*k and k the target security level (for example 128-bit)
@@ -77,7 +77,7 @@ func expandMessageXMD*[B1, B2, B3: byte|char, len_in_bytes: static int](
   ## - `augmentation`, an optional augmentation to the message. This will be prepended,
   ##   prior to hashing.
   ##   This is used for building the "message augmentation" variant of BLS signatures
-  ##   https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04#section-3.2
+  ##   https://www.ietf.org/archive/id/draft-irtf-cfrg-bls-signature-05.html#section-3.2
   ##   which requires `CoreSign(SK, PK || message)`
   ##   and `CoreVerify(PK, PK || message, signature)`
   ## - `message` is the message to hash
@@ -163,14 +163,14 @@ func mulMont(r: var BigInt, a, b: BigInt, FF: type) {.inline.} =
     FF.getSpareBits()
   )
 
-func hashToField*[Field; B1, B2, B3: byte|char, count: static int](
+func hashToField*[Field; count: static int](
        H: type CryptoHash,
        k: static int,
        output: var array[count, Field],
-       augmentation: openarray[B1],
-       message: openarray[B2],
-       domainSepTag: openarray[B3]
-     ) =
+       augmentation: openArray[byte],
+       message: openArray[byte],
+       domainSepTag: openArray[byte]
+     ) {.genCharAPI.} =
   ## Hash to a field or an extension field
   ## https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-5.3
   ##
@@ -186,7 +186,7 @@ func hashToField*[Field; B1, B2, B3: byte|char, count: static int](
   ## - `augmentation`, an optional augmentation to the message. This will be prepended,
   ##   prior to hashing.
   ##   This is used for building the "message augmentation" variant of BLS signatures
-  ##   https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04#section-3.2
+  ##   https://www.ietf.org/archive/id/draft-irtf-cfrg-bls-signature-05.html#section-3.2
   ##   which requires `CoreSign(SK, PK || message)`
   ##   and `CoreVerify(PK, PK || message, signature)`
   ## - `message` is the message to hash

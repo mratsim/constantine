@@ -45,10 +45,6 @@ func has_P_3mod4_primeModulus*(C: static Curve): static bool =
   ## Returns true iff p ≡ 3 (mod 4)
   (BaseType(C.Mod.limbs[0]) and 3) == 3
 
-func has_P_3mod8_primeModulus*(C: static Curve): static bool =
-  ## Returns true iff p ≡ 3 (mod 8)
-  (BaseType(C.Mod.limbs[0]) and 7) == 3
-
 func has_P_5mod8_primeModulus*(C: static Curve): static bool =
   ## Returns true iff p ≡ 5 (mod 8)
   (BaseType(C.Mod.limbs[0]) and 7) == 5

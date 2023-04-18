@@ -56,11 +56,11 @@ func redc2xMont_CIOS[N: static int](
        M: array[N, SecretWord],
        m0ninv: BaseType, skipFinalSub: static bool = false) =
   ## Montgomery reduce a double-precision bigint modulo M
-  ## 
+  ##
   ## This maps
   ## - [0, 4p²) -> [0, 2p) with skipFinalSub
   ## - [0, 4p²) -> [0, p) without
-  ## 
+  ##
   ## skipFinalSub skips the final substraction step.
   # - Analyzing and Comparing Montgomery Multiplication Algorithms
   #   Cetin Kaya Koc and Tolga Acar and Burton S. Kaliski Jr.
@@ -125,11 +125,11 @@ func redc2xMont_Comba[N: static int](
        M: array[N, SecretWord],
        m0ninv: BaseType, skipFinalSub: static bool = false) {.used.} =
   ## Montgomery reduce a double-precision bigint modulo M
-  ## 
+  ##
   ## This maps
   ## - [0, 4p²) -> [0, 2p) with skipFinalSub
   ## - [0, 4p²) -> [0, p) without
-  ## 
+  ##
   ## skipFinalSub skips the final substraction step.
   # We use Product Scanning / Comba multiplication
   var t, u, v = Zero
@@ -179,11 +179,11 @@ func mulMont_CIOS_sparebit(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipF
   ## This requires the most significant word of the Modulus
   ##   M[^1] < high(SecretWord) shr 1 (i.e. less than 0b01111...1111)
   ## https://hackmd.io/@gnark/modular_multiplication
-  ## 
+  ##
   ## This maps
   ## - [0, 2p) -> [0, 2p) with skipFinalSub
   ## - [0, 2p) -> [0, p) without
-  ## 
+  ##
   ## skipFinalSub skips the final substraction step.
 
   # We want all the computation to be kept in registers
@@ -262,11 +262,11 @@ func mulMont_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) {.used.} =
 
 func mulMont_FIPS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipFinalSub: static bool = false) =
   ## Montgomery Multiplication using Finely Integrated Product Scanning (FIPS)
-  ## 
+  ##
   ## This maps
   ## - [0, 2p) -> [0, 2p) with skipFinalSub
   ## - [0, 2p) -> [0, p) without
-  ## 
+  ##
   ## skipFinalSub skips the final substraction step.
   # - Architectural Enhancements for Montgomery
   #   Multiplication on Embedded RISC Processors
@@ -310,11 +310,11 @@ func sumprodMont_CIOS_spare2bits[K: static int](
        skipFinalSub: static bool = false) =
   ## Compute r = ⅀aᵢ.bᵢ (mod M) (suim of products)
   ## This requires 2 unused bits in the field element representation
-  ## 
+  ##
   ## This maps
   ## - [0, 2p) -> [0, 2p) with skipFinalSub
   ## - [0, 2p) -> [0, p) without
-  ## 
+  ##
   ## skipFinalSub skips the final substraction step.
 
   # We want all the computation to be kept in registers
@@ -398,7 +398,7 @@ func sumprodMont_CIOS_spare2bits[K: static int](
 
 # Montgomery Conversion
 # ------------------------------------------------------------
-# 
+#
 # In Montgomery form, inputs are scaled by a constant R
 # so a' = aR (mod p) and b' = bR (mod p)
 #
@@ -453,7 +453,7 @@ func redc2xMont*[N: static int](
        m0ninv: BaseType,
        spareBits: static int, skipFinalSub: static bool = false) {.inline.} =
   ## Montgomery reduce a double-precision bigint modulo M
-  
+
   const skipFinalSub = skipFinalSub and spareBits >= 2
 
   when UseASM_X86_64 and r.len <= 6:
@@ -543,14 +543,17 @@ func sumprodMont*[N: static int](
         r: var Limbs, a, b: array[N, Limbs],
         M: Limbs, m0ninv: BaseType,
         spareBits: static int,
-        skipFinalSub: static bool = false) {.inline.} =
+        skipFinalSub: static bool = false) {.noInline.} =
+  ## Compute r <- ⅀aᵢ.bᵢ (mod M) (sum of products)
+  # This function must be noInline or GCC miscompiles
+  # with LTO, see https://github.com/mratsim/constantine/issues/230
   when spareBits >= 2:
     when UseASM_X86_64 and r.len in {2 .. 6}:
       if ({.noSideEffect.}: hasAdx()):
         r.sumprodMont_CIOS_spare2bits_asm_adx(a, b, M, m0ninv, skipFinalSub)
       else:
         r.sumprodMont_CIOS_spare2bits_asm(a, b, M, m0ninv, skipFinalSub)
-    else:  
+    else:
       r.sumprodMont_CIOS_spare2bits(a, b, M, m0ninv, skipFinalSub)
   else:
     r.mulMont(a[0], b[0], M, m0ninv, spareBits, skipFinalSub = false)
@@ -719,7 +722,7 @@ func powMontSquarings(
 
   # We have k bits and can do k squaring
   for i in 0 ..< k:
-    a.squareMont(a, M, m0ninv, spareBits)  
+    a.squareMont(a, M, m0ninv, spareBits)
 
   return (k, bits)
 

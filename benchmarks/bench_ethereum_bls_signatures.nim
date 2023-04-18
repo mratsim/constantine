@@ -9,7 +9,7 @@
 import
   # Internals
   ../constantine/[
-    blssig_pop_on_bls12381_g2,
+    ethereum_bls_signatures,
     ethereum_eip2333_bls12381_key_derivation],
   ../constantine/math/arithmetic,
   # Helpers
@@ -33,10 +33,10 @@ template bench(op: string, curve: string, iters: int, body: untyped): untyped =
 proc demoKeyGen(): tuple[seckey: SecretKey, pubkey: PublicKey] =
   # Don't do this at home, this is for benchmarking purposes
   # The RNG is NOT cryptographically secure
-  # The API for keygen is not ready in blssig_pop_on_bls12381_g2
+  # The API for keygen is not ready in ethereum_bls_signatures
   let ikm = rng.random_byte_seq(32)
   doAssert cast[ptr BigInt[255]](result.seckey.addr)[].derive_master_secretKey(ikm)
-  let ok = result.pubkey.derive_public_key(result.seckey)
+  let ok = result.pubkey.derive_pubkey(result.seckey)
   doAssert ok == cttBLS_Success
 
 proc benchDeserPubkey*(iters: int) =
@@ -44,26 +44,26 @@ proc benchDeserPubkey*(iters: int) =
   var pk_comp{.noInit.}: array[48, byte]
 
   # Serialize compressed
-  let ok = pk_comp.serialize_public_key_compressed(pk)
+  let ok = pk_comp.serialize_pubkey_compressed(pk)
   doAssert ok == cttBLS_Success
 
   var pk2{.noInit.}: PublicKey
 
   bench("Pubkey deserialization (full checks)", "BLS12_381 G1", iters):
-    let status = pk2.deserialize_public_key_compressed(pk_comp)
+    let status = pk2.deserialize_pubkey_compressed(pk_comp)
 
 proc benchDeserPubkeyUnchecked*(iters: int) =
   let (sk, pk) = demoKeyGen()
   var pk_comp{.noInit.}: array[48, byte]
 
   # Serialize compressed
-  let ok = pk_comp.serialize_public_key_compressed(pk)
+  let ok = pk_comp.serialize_pubkey_compressed(pk)
   doAssert ok == cttBLS_Success
 
   var pk2{.noInit.}: PublicKey
 
   bench("Pubkey deserialization (skip checks)", "BLS12_381 G1", iters):
-    let status = pk2.deserialize_public_key_compressed_unchecked(pk_comp)
+    let status = pk2.deserialize_pubkey_compressed_unchecked(pk_comp)
 
 proc benchDeserSig*(iters: int) =
   let (sk, pk) = demoKeyGen()
@@ -139,7 +139,7 @@ proc benchFastAggregateVerify*(numKeys, iters: int) =
     let status = sigs[i].sign(sk, msg)
     doAssert status == cttBLS_Success
 
-  aggSig.aggregate_signatures(sigs)
+  aggSig.aggregate_signatures_unstable_api(sigs)
 
   bench("BLS agg verif of 1 msg by " & $numKeys & " pubkeys", "BLS12_381", iters):
     let valid = validators.fast_aggregate_verify(msg, aggSig)

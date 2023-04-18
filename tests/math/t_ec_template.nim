@@ -85,10 +85,7 @@ func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen)
 proc run_EC_addition_tests*(
        ec: typedesc,
        Iters: static int,
-       moduleName: string
-     ) =
-
-
+       moduleName: string) =
   var rng: RngState
   let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
   rng.seed(seed)
@@ -274,9 +271,7 @@ proc run_EC_addition_tests*(
 proc run_EC_mul_sanity_tests*(
        ec: typedesc,
        ItersMul: static int,
-       moduleName: string
-     ) =
-
+       moduleName: string) =
   # Random seed for reproducibility
   var rng: RngState
   let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
@@ -306,16 +301,16 @@ proc run_EC_mul_sanity_tests*(
             bool(reference.isInf())
             bool(refMinWeight.isInf())
 
-          proc refWNaf(w: static int) = # workaround staticFor symbol visibility
+          proc refWNaf(bits, w: static int) = # workaround staticFor symbol visibility
             var refWNAF = a
-            refWNAF.scalarMul_minHammingWeight_windowed_vartime(exponent, window = w)
+            refWNAF.scalarMul_minHammingWeight_windowed_vartime(BigInt[bits](), window = w)
             check: bool(refWNAF.isInf())
 
-          refWNaf(2)
-          refWNaf(3)
-          refWNaf(5)
-          refWNaf(8)
-          refWNaf(13)
+          refWNaf(bits, w = 2)
+          refWNaf(bits, w = 3)
+          refWNaf(bits, w = 5)
+          refWNaf(bits, w = 8)
+          refWNaf(bits, w = 13)
 
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Uniform)
@@ -381,9 +376,7 @@ proc run_EC_mul_sanity_tests*(
 proc run_EC_mul_distributive_tests*(
        ec: typedesc,
        ItersMul: static int,
-       moduleName: string
-     ) =
-
+       moduleName: string) =
   # Random seed for reproducibility
   var rng: RngState
   let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
@@ -446,9 +439,7 @@ proc run_EC_mul_distributive_tests*(
 proc run_EC_mul_vs_ref_impl*(
        ec: typedesc,
        ItersMul: static int,
-       moduleName: string
-     ) =
-
+       moduleName: string) =
   # Random seed for reproducibility
   var rng: RngState
   let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
@@ -501,9 +492,7 @@ proc run_EC_mul_vs_ref_impl*(
 proc run_EC_mixed_add_impl*(
        ec: typedesc,
        Iters: static int,
-       moduleName: string
-     ) =
-
+       moduleName: string) =
   # Random seed for reproducibility
   var rng: RngState
   let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
@@ -634,8 +623,7 @@ proc run_EC_mixed_add_impl*(
 proc run_EC_subgroups_cofactors_impl*(
        ec: typedesc,
        ItersMul: static int,
-       moduleName: string
-     ) =
+       moduleName: string) =
   # Random seed for reproducibility
   var rng: RngState
   let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
@@ -706,9 +694,7 @@ proc run_EC_subgroups_cofactors_impl*(
 proc run_EC_affine_conversion*(
        ec: typedesc,
        Iters: static int,
-       moduleName: string
-     ) =
-
+       moduleName: string) =
   # Random seed for reproducibility
   var rng: RngState
   let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
@@ -869,9 +855,7 @@ proc run_EC_conversion_failures*(
 proc run_EC_batch_add_impl*[N: static int](
        ec: typedesc,
        numPoints: array[N, int],
-       moduleName: string
-     ) =
-
+       moduleName: string) =
   # Random seed for reproducibility
   var rng: RngState
   let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
@@ -942,9 +926,7 @@ proc run_EC_batch_add_impl*[N: static int](
 proc run_EC_multi_scalar_mul_impl*[N: static int](
        ec: typedesc,
        numPoints: array[N, int],
-       moduleName: string
-     ) =
-
+       moduleName: string) =
   # Random seed for reproducibility
   var rng: RngState
   let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32

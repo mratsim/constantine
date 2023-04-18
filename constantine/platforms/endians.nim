@@ -34,9 +34,9 @@ template blobFrom*(dst: var openArray[byte], src: SomeUnsignedInt, startIdx: int
     for i in 0 ..< sizeof(src):
       dst[startIdx+sizeof(src)-1-i] = toByte(src shr (i * 8))
 
-func parseFromBlob*[T: byte|char](
+func parseFromBlob*(
            dst: var SomeUnsignedInt,
-           src: openArray[T],
+           src: openArray[byte],
            cursor: var uint, endian: static Endianness) {.inline.} =
   ## Read an unsigned integer from a raw binary blob.
   ## The `cursor` represents the current index in the array and is updated
@@ -63,8 +63,8 @@ func parseFromBlob*[T: byte|char](
   dst = accum
   cursor.inc(L)
 
-func dumpRawInt*[T: byte|char](
-           dst: var openArray[T],
+func dumpRawInt*(
+           dst: var openArray[byte],
            src: SomeUnsignedInt,
            cursor: uint, endian: static Endianness) {.inline.} =
   ## Dump an integer into raw binary form

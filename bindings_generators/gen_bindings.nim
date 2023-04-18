@@ -18,8 +18,11 @@ export curves, curves_primitives
 # This files provides template for C bindings generation
 
 template genBindingsField*(Field: untyped) =
-  {.push cdecl, dynlib, exportc,  raises: [].} # No exceptions allowed
-  
+  when appType == "lib":
+    {.push cdecl, dynlib, exportc,  raises: [].} # No exceptions allowed
+  else:
+    {.push cdecl, exportc,  raises: [].} # No exceptions allowed
+
   func `ctt _ Field _ unmarshalBE`(dst: var Field, src: openarray[byte]) =
     ## Deserialize
     unmarshalBE(dst, src)
@@ -77,7 +80,7 @@ template genBindingsField*(Field: untyped) =
 
   func `ctt _ Field _ mul_in_place`(a: var Field, b: Field) =
     a *= b
-  
+
   func `ctt _ Field _ square`(r: var Field, a: Field) =
     r.square(a)
 
@@ -86,10 +89,10 @@ template genBindingsField*(Field: untyped) =
   # --------------------------------------------------------------------------------------
   func `ctt _ Field _ div2`(a: var Field) =
     a.div2()
-  
+
   func `ctt _ Field _ inv`(r: var Field, a: Field) =
     r.inv(a)
-  
+
   func `ctt _ Field _ inv_in_place`(a: var Field) =
     a.inv()
   # --------------------------------------------------------------------------------------
@@ -98,10 +101,10 @@ template genBindingsField*(Field: untyped) =
 
   func `ctt _ Field _ cswap`(a, b: var Field, ctl: SecretBool) =
     a.cswap(b, ctl)
-  
+
   func `ctt _ Field _ cset_zero`(a: var Field, ctl: SecretBool) =
     a.csetZero(ctl)
-  
+
   func `ctt _ Field _ cset_one`(a: var Field, ctl: SecretBool) =
     a.csetOne(ctl)
 
@@ -118,7 +121,10 @@ template genBindingsField*(Field: untyped) =
 
 
 template genBindingsFieldSqrt*(Field: untyped) =
-  {.push cdecl, dynlib, exportc,  raises: [].} # No exceptions allowed
+  when appType == "lib":
+    {.push cdecl, dynlib, exportc,  raises: [].} # No exceptions allowed
+  else:
+    {.push cdecl, exportc,  raises: [].} # No exceptions allowed
 
   func `ctt _ Field _ is_square`(a: Field): SecretBool =
     a.isSquare()
@@ -148,7 +154,10 @@ template genBindingsFieldSqrt*(Field: untyped) =
 
 
 template genBindingsExtField*(Field: untyped) =
-  {.push cdecl, dynlib, exportc,  raises: [].} # No exceptions allowed
+  when appType == "lib":
+    {.push cdecl, dynlib, exportc,  raises: [].} # No exceptions allowed
+  else:
+    {.push cdecl, exportc,  raises: [].} # No exceptions allowed
 
   # --------------------------------------------------------------------------------------
   func `ctt _ Field _ is_eq`(a, b: Field): SecretBool =
@@ -195,13 +204,13 @@ template genBindingsExtField*(Field: untyped) =
 
   func `ctt _ Field _ conj`(r: var Field, a: Field) =
     r.conj(a)
-  
+
   func `ctt _ Field _ conj_in_place`(a: var Field) =
     a.conj()
 
   func `ctt _ Field _ conjneg`(r: var Field, a: Field) =
     r.conjneg(a)
-  
+
   func `ctt _ Field _ conjneg_in_place`(a: var Field) =
     a.conjneg()
 
@@ -211,7 +220,7 @@ template genBindingsExtField*(Field: untyped) =
 
   func `ctt _ Field _ mul_in_place`(a: var Field, b: Field) =
     a *= b
-  
+
   func `ctt _ Field _ square`(r: var Field, a: Field) =
     r.square(a)
 
@@ -220,10 +229,10 @@ template genBindingsExtField*(Field: untyped) =
   # --------------------------------------------------------------------------------------
   func `ctt _ Field _ div2`(a: var Field) =
     a.div2()
-  
+
   func `ctt _ Field _ inv`(r: var Field, a: Field) =
     r.inv(a)
-  
+
   func `ctt _ Field _ inv_in_place`(a: var Field) =
     a.inv()
   # --------------------------------------------------------------------------------------
@@ -232,7 +241,7 @@ template genBindingsExtField*(Field: untyped) =
 
   func `ctt _ Field _ cset_zero`(a: var Field, ctl: SecretBool) =
     a.csetZero(ctl)
-  
+
   func `ctt _ Field _ cset_one`(a: var Field, ctl: SecretBool) =
     a.csetOne(ctl)
 
@@ -248,7 +257,10 @@ template genBindingsExtField*(Field: untyped) =
   {.pop.}
 
 template genBindingsExtFieldSqrt*(Field: untyped) =
-  {.push cdecl, dynlib, exportc,  raises: [].} # No exceptions allowed
+  when appType == "lib":
+    {.push cdecl, dynlib, exportc,  raises: [].} # No exceptions allowed
+  else:
+    {.push cdecl, exportc,  raises: [].} # No exceptions allowed
 
   func `ctt _ Field _ is_square`(a: Field): SecretBool =
     a.isSquare()
@@ -262,12 +274,15 @@ template genBindingsExtFieldSqrt*(Field: untyped) =
   {.pop}
 
 template genBindings_EC_ShortW_Affine*(ECP, Field: untyped) =
-  {.push cdecl, dynlib, exportc,  raises: [].} # No exceptions allowed
+  when appType == "lib":
+    {.push cdecl, dynlib, exportc,  raises: [].} # No exceptions allowed
+  else:
+    {.push cdecl, exportc,  raises: [].} # No exceptions allowed
 
   # --------------------------------------------------------------------------------------
   func `ctt _ ECP _ is_eq`(P, Q: ECP): SecretBool =
     P == Q
-  
+
   func `ctt _ ECP _ is_inf`(P: ECP): SecretBool =
     P.isInf()
 
@@ -276,7 +291,7 @@ template genBindings_EC_ShortW_Affine*(ECP, Field: untyped) =
 
   func `ctt _ ECP _ ccopy`(P: var ECP, Q: ECP, ctl: SecretBool) =
     P.ccopy(Q, ctl)
-  
+
   func `ctt _ ECP _ is_on_curve`(x, y: Field): SecretBool =
     isOnCurve(x, y, ECP.G)
 
@@ -289,12 +304,15 @@ template genBindings_EC_ShortW_Affine*(ECP, Field: untyped) =
   {.pop.}
 
 template genBindings_EC_ShortW_NonAffine*(ECP, ECP_Aff, Field: untyped) =
-  {.push cdecl, dynlib, exportc,  raises: [].} # No exceptions allowed
+  when appType == "lib":
+    {.push cdecl, dynlib, exportc,  raises: [].} # No exceptions allowed
+  else:
+    {.push cdecl, exportc,  raises: [].} # No exceptions allowed
 
   # --------------------------------------------------------------------------------------
   func `ctt _ ECP _ is_eq`(P, Q: ECP): SecretBool =
     P == Q
-  
+
   func `ctt _ ECP _ is_inf`(P: ECP): SecretBool =
     P.isInf()
 
@@ -303,7 +321,7 @@ template genBindings_EC_ShortW_NonAffine*(ECP, ECP_Aff, Field: untyped) =
 
   func `ctt _ ECP _ ccopy`(P: var ECP, Q: ECP, ctl: SecretBool) =
     P.ccopy(Q, ctl)
-  
+
   func `ctt _ ECP _ neg`(P: var ECP, Q: ECP) =
     P.neg(Q)
 
@@ -327,7 +345,7 @@ template genBindings_EC_ShortW_NonAffine*(ECP, ECP_Aff, Field: untyped) =
 
   func `ctt _ ECP _ double_in_place`(P: var ECP) =
     P.double()
-  
+
   func `ctt _ ECP _ affine`(dst: var ECP_Aff, src: ECP) =
     dst.affine(src)
 

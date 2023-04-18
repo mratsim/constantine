@@ -1,21 +1,21 @@
-// Constantine
-// Copyright (c) 2018-2019    Status Research & Development GmbH
-// Copyright (c) 2020-Present Mamy André-Ratsimbazafy
-// Licensed and distributed under either of
-//   * MIT license (license terms in the root directory or at http://opensource.org/licenses/MIT).
-//   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
-// at your option. This file may not be copied, modified, or distributed except according to those terms.
+/** Constantine
+ *  Copyright (c) 2018-2019    Status Research & Development GmbH
+ *  Copyright (c) 2020-Present Mamy André-Ratsimbazafy
+ *  Licensed and distributed under either of
+ *    * MIT license (license terms in the root directory or at http://opensource.org/licenses/MIT).
+ *    * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
+ *  at your option. This file may not be copied, modified, or distributed except according to those terms.
+ */
 
 // This is a test to ensure Constantine's modular arithmetic is consistent with GMP.
 // While not intended as a tutorial, it showcases serialization, deserialization and computation.
 
 #include <assert.h>
-#include <gmp.h>
-#include <constantine_bls12_381.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef unsigned char byte;
+#include <gmp.h>
+#include <constantine_bls12_381.h>
 
 // https://gmplib.org/manual/Integer-Import-and-Export.html
 const int GMP_WordLittleEndian = -1;

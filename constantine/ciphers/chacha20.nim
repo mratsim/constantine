@@ -6,7 +6,7 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import ../platforms/endians
+import ../platforms/[endians, views]
 
 # ############################################################
 #
@@ -79,18 +79,18 @@ func chacha20_block(
 
   # uint32 are 4 bytes so multiply destination by 4
   for i in 0'u ..< 4:
-    key_stream.dumpRawInt(state[i] + cccc[i], i shl 2, littleEndian) 
+    key_stream.dumpRawInt(state[i] + cccc[i], i shl 2, littleEndian)
   for i in 4'u ..< 12:
     key_stream.dumpRawInt(state[i] + key[i-4], i shl 2, littleEndian)
   key_stream.dumpRawInt(state[12] + block_counter, 12 shl 2, littleEndian)
   for i in 13'u ..< 16:
     key_stream.dumpRawInt(state[i] + nonce[i-13], i shl 2, littleEndian)
 
-func chacha20_cipher*[T: byte|char](
+func chacha20_cipher*(
        key: array[32, byte],
        counter: uint32,
        nonce: array[12, byte],
-       data: var openarray[T]): uint32 =
+       data: var openArray[byte]): uint32 {.genCharAPI.} =
   ## Encrypt or decrypt `data` using the ChaCha20 cipher
   ## - `key` is a 256-bit (32 bytes) secret shared encryption/decryption key.
   ## - `counter`. A monotonically increasing value per encryption.

@@ -28,8 +28,8 @@ static: doAssert UseASM_X86_64
 
 # MULX/ADCX/ADOX
 {.localPassC:"-madx -mbmi2".}
-# Necessary for the compiler to find enough registers (enabled at -O1)
-{.localPassC:"-fomit-frame-pointer".}
+# Necessary for the compiler to find enough registers
+{.localPassC:"-fomit-frame-pointer".} # (enabled at -O1)
 
 # No exceptions allowed
 {.push raises: [].}
@@ -48,8 +48,7 @@ func has1extraBit(F: type Fp): bool =
 
 func sqrx2x_complex_asm_adx*(
         r: var array[2, FpDbl],
-        a: array[2, Fp]
-      ) =
+        a: array[2, Fp]) =
   ## Complex squaring on 𝔽p2
   # This specialized proc inlines all calls and avoids many ADX support checks.
   # and push/pop for paramater passing.
@@ -69,8 +68,7 @@ func sqrx2x_complex_asm_adx*(
 
 func sqrx_complex_sparebit_asm_adx*(
         r: var array[2, Fp],
-        a: array[2, Fp]
-      ) =
+        a: array[2, Fp]) =
   ## Complex squaring on 𝔽p2
   # This specialized proc inlines all calls and avoids many ADX support checks.
   # and push/pop for paramater passing.
@@ -91,8 +89,7 @@ func sqrx_complex_sparebit_asm_adx*(
 
 func mul2x_fp2_complex_asm_adx*(
         r: var array[2, FpDbl],
-        a, b: array[2, Fp]
-      ) =
+        a, b: array[2, Fp]) =
   ## Complex multiplication on 𝔽p2
   var D {.noInit.}: typeof(r.c0)
   var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0)
@@ -121,15 +118,15 @@ func mul_fp2_complex_asm_adx*(
   ## Complex multiplication on 𝔽p2
   var d {.noInit.}: array[2,doublePrec(Fp)]
   d.mul2x_fp2_complex_asm_adx(a, b)
-  r.c0.mres.limbs.redcMont_asm_adx_inline(
+  # Inlining redcMont_asm_adx causes GCC to miscompile with -Os (--opt:size)
+  # see https://github.com/mratsim/constantine/issues/229
+  r.c0.mres.limbs.redcMont_asm_adx(
     d.c0.limbs2x,
     Fp.fieldMod().limbs,
     Fp.getNegInvModWord(),
-    Fp.getSpareBits()
-  )
-  r.c1.mres.limbs.redcMont_asm_adx_inline(
+    Fp.getSpareBits())
+  r.c1.mres.limbs.redcMont_asm_adx(
     d.c1.limbs2x,
     Fp.fieldMod().limbs,
     Fp.getNegInvModWord(),
-    Fp.getSpareBits()
-  )
+    Fp.getSpareBits())

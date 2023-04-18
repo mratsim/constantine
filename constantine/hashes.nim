@@ -6,6 +6,8 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
+import platforms/views
+
 # ############################################################
 #
 #                Hash Function concept
@@ -30,23 +32,19 @@ type
 
     # Context
     # -------------------------------------------
-    # update/finish are not matching properly
-
-    # type B = char or byte
     ctx.init()
-    # ctx.update(openarray[B])
-    # ctx.finish(var array[H.digestSize, byte])
+    ctx.update(openarray[byte])
+    ctx.finish(var array[H.digestSize, byte])
     ctx.clear()
 
-func hash*[DigestSize: static int, T: char|byte](
+func hash*[DigestSize: static int](
        HashKind: type CryptoHash,
        digest: var array[DigestSize, byte],
-       message: openarray[T],
-       clearMem = false) =
+       message: openArray[byte],
+       clearMem = false) {.genCharAPI.} =
   ## Produce a digest from a message
   static: doAssert DigestSize == HashKind.type.digestSize
 
-  mixin update, finish
   var ctx {.noInit.}: HashKind
   ctx.init()
   ctx.update(message)
@@ -55,10 +53,10 @@ func hash*[DigestSize: static int, T: char|byte](
   if clearMem:
     ctx.clear()
 
-func hash*[T: char|byte](
+func hash*(
        HashKind: type CryptoHash,
-       message: openarray[T],
-       clearmem = false): array[HashKind.digestSize, byte] {.noInit.} =
+       message: openArray[byte],
+       clearmem = false): array[HashKind.digestSize, byte] {.noInit, genCharAPI.} =
   ## Produce a digest from a message
   HashKind.hash(result, message, clearMem)
 

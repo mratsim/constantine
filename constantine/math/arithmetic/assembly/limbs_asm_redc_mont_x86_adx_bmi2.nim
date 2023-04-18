@@ -23,8 +23,8 @@ static: doAssert UseASM_X86_64
 
 # MULX/ADCX/ADOX
 {.localPassC:"-madx -mbmi2".}
-# Necessary for the compiler to find enough registers (enabled at -O1)
-{.localPassC:"-fomit-frame-pointer".}
+# Necessary for the compiler to find enough registers
+{.localPassC:"-fomit-frame-pointer".} # (enabled at -O1)
 
 # No exceptions allowed
 {.push raises: [].}
@@ -37,8 +37,7 @@ macro redc2xMont_adx_gen[N: static int](
        a_PIR: array[N*2, SecretWord],
        M_PIR: array[N, SecretWord],
        m0ninv_REG: BaseType,
-       spareBits: static int, skipFinalSub: static bool
-      ) =
+       spareBits: static int, skipFinalSub: static bool) =
 
   # No register spilling handling
   doAssert N <= 6, "The Assembly-optimized montgomery multiplication requires at most 6 limbs."
@@ -141,28 +140,18 @@ macro redc2xMont_adx_gen[N: static int](
   # Code generation
   result.add ctx.generate()
 
-func redcMont_asm_adx_inline*[N: static int](
-       r: var array[N, SecretWord],
-       a: array[N*2, SecretWord],
-       M: array[N, SecretWord],
-       m0ninv: BaseType,
-       spareBits: static int,
-       skipFinalSub: static bool = false
-      ) {.inline.} =
-  ## Constant-time Montgomery reduction
-  ## Inline-version
-  redc2xMont_adx_gen(r, a, M, m0ninv, spareBits, skipFinalSub)
-
 func redcMont_asm_adx*[N: static int](
        r: var array[N, SecretWord],
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
        m0ninv: BaseType,
        spareBits: static int,
-       skipFinalSub: static bool = false
-      ) =
+       skipFinalSub: static bool = false) {.noInline.} =
   ## Constant-time Montgomery reduction
-  redcMont_asm_adx_inline(r, a, M, m0ninv, spareBits, skipFinalSub)
+  # Inlining redcMont_asm_adx twice in mul_fp2_complex_asm_adx
+  # causes GCC to miscompile with -Os (--opt:size)
+  # see https://github.com/mratsim/constantine/issues/229
+  redc2xMont_adx_gen(r, a, M, m0ninv, spareBits, skipFinalSub)
 
 # Montgomery conversion
 # ----------------------------------------------------------
@@ -205,7 +194,7 @@ macro mulMont_by_1_adx_gen[N: static int](
     C = scratch[0] # Stores the high-part of muliplication
 
   let scratchSym = scratch.nimSymbol
-  
+
   # Copy a in t
   result.add quote do:
     var `scratchSym` {.noInit, used.}: Limbs[`scratchSlots`]

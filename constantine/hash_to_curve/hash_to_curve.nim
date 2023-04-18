@@ -8,7 +8,7 @@
 
 import
   # Internals
-  ../platforms/abstractions,
+  ../platforms/[abstractions, views],
   ../math/config/curves,
   ../math/[arithmetic, extension_fields],
   ../math/constants/[zoo_hash_to_curve, zoo_subgroups],
@@ -43,7 +43,7 @@ func mapToCurve_svdw[F, G](
   ## Deterministically map a field element u
   ## to an elliptic curve point `r`
   ## https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-14#section-6.6.1
-  
+
   var
     tv1 {.noInit.}, tv2{.noInit.}, tv3{.noInit.}: F
     tv4{.noInit.}: F
@@ -62,7 +62,7 @@ func mapToCurve_svdw[F, G](
     tv1.c1.neg()
   tv3.prod(tv1, tv2)
   tv3.inv()
-  
+
   tv4.prod(u, tv1)
   tv4 *= tv3
   tv4.mulCheckSparse(h2cConst(F.C, svdw, G, z3))
@@ -87,7 +87,7 @@ func mapToCurve_svdw[F, G](
 
   r.y.curve_eq_rhs(r.x, G)
   r.y.sqrt()
-  
+
   r.y.cneg(sgn0(u) xor sgn0(r.y))
 
 func mapToIsoCurve_sswuG1_opt3mod4[F](
@@ -101,8 +101,7 @@ func mapToIsoCurve_sswuG1_opt3mod4[F](
   mapToIsoCurve_sswuG1_opt3mod4(
     xn, xd,
     yn,
-    u, xd3
-  )
+    u, xd3)
 
   # Convert to Jacobian
   r.z = xd          # Z = xd
@@ -120,8 +119,7 @@ func mapToIsoCurve_sswuG2_opt9mod16[F](
   mapToIsoCurve_sswuG2_opt9mod16(
     xn, xd,
     yn,
-    u, xd3
-  )
+    u, xd3)
 
   # Convert to Jacobian
   r.z = xd          # Z = xd
@@ -167,7 +165,7 @@ func mapToCurve_sswu_fusedAdd[F; G: static Subgroup](
     # Simplified Shallue-van de Woestijne-Ulas method for AB == 0
 
     var P0{.noInit.}, P1{.noInit.}: ECP_ShortW_Jac[F, G]
-    
+
     # 1. Map to E' isogenous to E
     when F is Fp and F.C.has_P_3mod4_primeModulus():
       # 1. Map to E'1 isogenous to E1
@@ -191,16 +189,13 @@ func mapToCurve_sswu_fusedAdd[F; G: static Subgroup](
 # Hash to curve
 # ----------------------------------------------------------------
 
-func hashToCurve_svdw*[
-         F; G: static Subgroup;
-         B1, B2, B3: byte|char](
+func hashToCurve_svdw*[F; G: static Subgroup](
        H: type CryptoHash,
        k: static int,
        output: var ECP_ShortW_Jac[F, G],
-       augmentation: openarray[B1],
-       message: openarray[B2],
-       domainSepTag: openarray[B3]
-     ) =
+       augmentation: openArray[byte],
+       message: openArray[byte],
+       domainSepTag: openArray[byte]) {.genCharAPI.} =
   ## Hash a message to an elliptic curve
   ##
   ## Arguments:
@@ -215,14 +210,14 @@ func hashToCurve_svdw*[
   ## - `augmentation`, an optional augmentation to the message. This will be prepended,
   ##   prior to hashing.
   ##   This is used for building the "message augmentation" variant of BLS signatures
-  ##   https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04#section-3.2
+  ##   https://www.ietf.org/archive/id/draft-irtf-cfrg-bls-signature-05.html#section-3.2
   ##   which requires `CoreSign(SK, PK || message)`
   ##   and `CoreVerify(PK, PK || message, signature)`
   ## - `message` is the message to hash
   ## - `domainSepTag` is the protocol domain separation tag (DST).
 
   var u{.noInit.}: array[2, F]
-  if domainSepTag.len <= 255: 
+  if domainSepTag.len <= 255:
     H.hashToField(k, u, augmentation, message, domainSepTag)
   else:
     const N = H.type.digestSize()
@@ -233,16 +228,13 @@ func hashToCurve_svdw*[
   output.mapToCurve_svdw_fusedAdd(u[0], u[1])
   output.clearCofactor()
 
-func hashToCurve_sswu*[
-         F; G: static Subgroup;
-         B1, B2, B3: byte|char](
+func hashToCurve_sswu*[F; G: static Subgroup](
        H: type CryptoHash,
        k: static int,
        output: var ECP_ShortW_Jac[F, G],
-       augmentation: openarray[B1],
-       message: openarray[B2],
-       domainSepTag: openarray[B3]
-     ) =
+       augmentation: openArray[byte],
+       message: openArray[byte],
+       domainSepTag: openArray[byte]) {.genCharAPI.} =
   ## Hash a message to an elliptic curve
   ##
   ## Arguments:
@@ -257,14 +249,14 @@ func hashToCurve_sswu*[
   ## - `augmentation`, an optional augmentation to the message. This will be prepended,
   ##   prior to hashing.
   ##   This is used for building the "message augmentation" variant of BLS signatures
-  ##   https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04#section-3.2
+  ##   https://www.ietf.org/archive/id/draft-irtf-cfrg-bls-signature-05.html#section-3.2
   ##   which requires `CoreSign(SK, PK || message)`
   ##   and `CoreVerify(PK, PK || message, signature)`
   ## - `message` is the message to hash
   ## - `domainSepTag` is the protocol domain separation tag (DST).
 
   var u{.noInit.}: array[2, F]
-  if domainSepTag.len <= 255: 
+  if domainSepTag.len <= 255:
     H.hashToField(k, u, augmentation, message, domainSepTag)
   else:
     const N = H.type.digestSize()
@@ -275,16 +267,13 @@ func hashToCurve_sswu*[
   output.mapToCurve_sswu_fusedAdd(u[0], u[1])
   output.clearCofactor()
 
-func hashToCurve*[
-         F; G: static Subgroup;
-         B1, B2, B3: byte|char](
+func hashToCurve*[F; G: static Subgroup](
        H: type CryptoHash,
        k: static int,
        output: var ECP_ShortW_Jac[F, G],
-       augmentation: openarray[B1],
-       message: openarray[B2],
-       domainSepTag: openarray[B3]
-     ) {.inline.} =
+       augmentation: openArray[byte],
+       message: openArray[byte],
+       domainSepTag: openArray[byte]) {.inline, genCharAPI.} =
   ## Hash a message to an elliptic curve
   ##
   ## Arguments:
@@ -299,7 +288,7 @@ func hashToCurve*[
   ## - `augmentation`, an optional augmentation to the message. This will be prepended,
   ##   prior to hashing.
   ##   This is used for building the "message augmentation" variant of BLS signatures
-  ##   https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04#section-3.2
+  ##   https://www.ietf.org/archive/id/draft-irtf-cfrg-bls-signature-05.html#section-3.2
   ##   which requires `CoreSign(SK, PK || message)`
   ##   and `CoreVerify(PK, PK || message, signature)`
   ## - `message` is the message to hash
@@ -313,16 +302,13 @@ func hashToCurve*[
   else:
     {.error: "Not implemented".}
 
-func hashToCurve*[
-         F; G: static Subgroup;
-         B1, B2, B3: byte|char](
+func hashToCurve*[F; G: static Subgroup](
        H: type CryptoHash,
        k: static int,
        output: var (ECP_ShortW_Prj[F, G] or ECP_ShortW_Aff[F, G]),
-       augmentation: openarray[B1],
-       message: openarray[B2],
-       domainSepTag: openarray[B3]
-     ) {.inline.} =
+       augmentation: openArray[byte],
+       message: openArray[byte],
+       domainSepTag: openArray[byte]) {.inline, genCharAPI.} =
   ## Hash a message to an elliptic curve
   ##
   ## Arguments:
@@ -337,12 +323,12 @@ func hashToCurve*[
   ## - `augmentation`, an optional augmentation to the message. This will be prepended,
   ##   prior to hashing.
   ##   This is used for building the "message augmentation" variant of BLS signatures
-  ##   https://tools.ietf.org/html/draft-irtf-cfrg-bls-signature-04#section-3.2
+  ##   https://www.ietf.org/archive/id/draft-irtf-cfrg-bls-signature-05.html#section-3.2
   ##   which requires `CoreSign(SK, PK || message)`
   ##   and `CoreVerify(PK, PK || message, signature)`
   ## - `message` is the message to hash
   ## - `domainSepTag` is the protocol domain separation tag (DST).
-  
+
   var Pjac{.noInit.}: ECP_ShortW_Jac[F, G]
   H.hashToCurve(k, Pjac, augmentation, message, domainSepTag)
   when output is ECP_ShortW_Prj:

@@ -28,8 +28,9 @@ import
 
 static: doAssert UseASM_X86_64
 
-# Necessary for the compiler to find enough registers (enabled at -O1)
-{.localPassC:"-fomit-frame-pointer".}
+# Necessary for the compiler to find enough registers
+{.localPassC:"-fomit-frame-pointer".}  # (enabled at -O1)
+{.localPassC:"-fno-sanitize=address".} # need 15 registers out of 16 (1 reserved for stack pointer, none available for Address Sanitizer)
 
 # Montgomery multiplication
 # ------------------------------------------------------------
@@ -37,8 +38,7 @@ static: doAssert UseASM_X86_64
 macro mulMont_CIOS_sparebit_gen[N: static int](
         r_PIR: var Limbs[N], a_PIR, b_PIR,
         M_PIR: Limbs[N], m0ninv_REG: BaseType,
-        skipFinalSub: static bool
-      ): untyped =
+        skipFinalSub: static bool): untyped =
   ## Generate an optimized Montgomery Multiplication kernel
   ## using the CIOS method
   ##
@@ -184,25 +184,18 @@ macro mulMont_CIOS_sparebit_gen[N: static int](
     )
   result.add ctx.generate()
 
-func mulMont_CIOS_sparebit_asm*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipFinalSub: static bool = false) =
+func mulMont_CIOS_sparebit_asm*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipFinalSub: static bool = false) {.noInline.} =
   ## Constant-time Montgomery multiplication
   ## If "skipFinalSub" is set
   ## the result is in the range [0, 2M)
   ## otherwise the result is in the range [0, M)
-  ## 
+  ##
   ## This procedure can only be called if the modulus doesn't use the full bitwidth of its underlying representation
+  # This MUST be noInline or Clang will run out of registers with LTO
   r.mulMont_CIOS_sparebit_gen(a, b, M, m0ninv, skipFinalSub)
 
 # Montgomery Squaring
 # ------------------------------------------------------------
-
-func square_asm_inline[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) {.inline.} =
-  ## Multi-precision Squaring
-  ## Assumes r doesn't alias a
-  ## Extra indirection as the generator assumes that
-  ## arrays are pointers, which is true for parameters
-  ## but not for stack variables
-  sqr_gen(r, a)
 
 func squareMont_CIOS_asm*[N](
        r: var Limbs[N],
@@ -211,8 +204,8 @@ func squareMont_CIOS_asm*[N](
        spareBits: static int, skipFinalSub: static bool) =
   ## Constant-time modular squaring
   var r2x {.noInit.}: Limbs[2*N]
-  r2x.square_asm_inline(a)
-  r.redcMont_asm_inline(r2x, M, m0ninv, spareBits, skipFinalSub)
+  square_asm(r2x, a)
+  r.redcMont_asm(r2x, M, m0ninv, spareBits, skipFinalSub)
 
 # Montgomery Sum of Products
 # ------------------------------------------------------------
@@ -220,11 +213,10 @@ func squareMont_CIOS_asm*[N](
 macro sumprodMont_CIOS_spare2bits_gen[N, K: static int](
         r_PIR: var Limbs[N], a_PIR, b_PIR: array[K, Limbs[N]],
         M_PIR: Limbs[N], m0ninv_REG: BaseType,
-        skipFinalSub: static bool
-      ): untyped =
+        skipFinalSub: static bool): untyped =
   ## Generate an optimized Montgomery merged sum of products ⅀aᵢ.bᵢ kernel
   ## using the CIOS method
-  ## 
+  ##
   ## This requires 2 spare bits in the most significant word
   ## so that we can skip the intermediate reductions
 
@@ -276,7 +268,7 @@ macro sumprodMont_CIOS_spare2bits_gen[N, K: static int](
     tN = scratch[2]                                  # High part of extended precision multiplication
     C = scratch[3]                                   # Carry during reduction step
     r = scratch[4]                                   # Stores the `r` operand
-    S = scratch[5]                                   # Mul step: Stores the carry A 
+    S = scratch[5]                                   # Mul step: Stores the carry A
                                                      # Red step: Stores (t[0] * m0ninv) mod 2ʷ
 
   # Registers used:
@@ -338,7 +330,7 @@ macro sumprodMont_CIOS_spare2bits_gen[N, K: static int](
         ctx.add t[0], rax
         ctx.adc rdx, 0
       ctx.mov A, rdx
-      
+
       for j in 1 ..< N:
         ctx.comment "        (A,t[j])  := t[j] + a[k][j]*b[k][i] + A"
         ctx.mov rax, a[k, j]
@@ -351,7 +343,7 @@ macro sumprodMont_CIOS_spare2bits_gen[N, K: static int](
         ctx.`xor` A, A
         ctx.add t[j], rax
         ctx.adc A, rdx
-      
+
       ctx.comment "    tN += A"
       ctx.add tN, A
 
@@ -407,6 +399,6 @@ func sumprodMont_CIOS_spare2bits_asm*[N, K: static int](
   ## If "skipFinalSub" is set
   ## the result is in the range [0, 2M)
   ## otherwise the result is in the range [0, M)
-  ## 
+  ##
   ## This procedure can only be called if the modulus doesn't use the full bitwidth of its underlying representation
   r.sumprodMont_CIOS_spare2bits_gen(a, b, M, m0ninv, skipFinalSub)

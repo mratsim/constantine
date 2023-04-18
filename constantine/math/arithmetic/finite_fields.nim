@@ -249,8 +249,7 @@ func sumprod*[N: static int](r: var FF, a, b: array[N, FF], skipFinalSub: static
   r.mres.sumprodMont(
     cast[ptr array[N, typeof(a[0].mres)]](a.unsafeAddr)[],
     cast[ptr array[N, typeof(b[0].mres)]](b.unsafeAddr)[],
-    FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits(), skipFinalSub
-  )
+    FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits(), skipFinalSub)
 
 # ############################################################
 #

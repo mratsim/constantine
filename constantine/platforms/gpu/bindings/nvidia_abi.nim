@@ -12,7 +12,7 @@
 #
 # ############################################################
 
-import ./utils
+import ./c_abi
 
 # ############################################################
 #
@@ -466,7 +466,7 @@ type
     CU_DEVICE_ATTRIBUTE_DEFERRED_MAPPING_CUDA_ARRAY_SUPPORTED = 121,        ## Device supports deferred mapping CUDA arrays and CUDA mipmapped arrays */
     CU_DEVICE_ATTRIBUTE_CAN_USE_64_BIT_STREAM_MEM_OPS_V2 = 122,             ## 64-bit operations are supported in ::cuStreamBatchMemOp_v2 and related v2 MemOp APIs. */
     CU_DEVICE_ATTRIBUTE_CAN_USE_STREAM_WAIT_VALUE_NOR_V2 = 123,             ## ::CU_STREAM_WAIT_VALUE_NOR is supported by v2 MemOp APIs. */
-    CU_DEVICE_ATTRIBUTE_DMA_BUF_SUPPORTED = 124,                            ## Device supports buffer sharing with dma_buf mechanism. */ 
+    CU_DEVICE_ATTRIBUTE_DMA_BUF_SUPPORTED = 124,                            ## Device supports buffer sharing with dma_buf mechanism. */
     CU_DEVICE_ATTRIBUTE_MAX
 
   CUmemAttach_flags* = enum

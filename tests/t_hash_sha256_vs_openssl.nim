@@ -39,7 +39,7 @@ when not defined(windows):
         digest: ptr array[32, byte] = nil
       ): ptr array[32, byte] {.cdecl, dynlib: DLLSSLName, importc.}
 
-  # proc EVP_Q_digest[T: byte| char](
+  # proc EVP_Q_digest[T: byte|char](
   #                 ossl_libctx: pointer,
   #                 algoName: cstring,
   #                 propq: cstring,
@@ -49,7 +49,7 @@ when not defined(windows):
 
   proc SHA256_OpenSSL[T: byte|char](
         digest: var array[32, byte],
-        s: openarray[T]) =
+        s: openArray[T]) =
     discard SHA256(s, digest.addr)
     # discard EVP_Q_digest(nil, "SHA256", nil, s, digest, nil)
 
