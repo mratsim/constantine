@@ -43,8 +43,7 @@ proc mulx_by_word(
        t: OperandArray,
        a: Operand, # Pointer in scratchspace
        word0: Operand,
-       lo: Operand
-     ) =
+       lo: Operand) =
   ## Multiply the `a[0..<N]` by `word` and store in `t[0..<N]`
   ## and carry register `C` (t[N])
   ## `t` and `C` overwritten
@@ -90,8 +89,7 @@ proc mulaccx_by_word(
        a: Operand, # Pointer in scratchspace
        i: int,
        word: Operand,
-       lo: Operand
-     ) =
+       lo: Operand) =
   ## Multiply the `a[0..<N]` by `word`
   ## and accumulate in `t[0..<N]`
   ## and carry register `C` (t[N])
@@ -132,8 +130,7 @@ proc partialRedx(
        M: OperandArray,
        m0ninv: Operand,
        lo: Operand or Register,
-       S: Operand
-     ) =
+       S: Operand) =
     ## Partial Montgomery reduction
     ## For CIOS method
     ## `C` the update carry flag (represents t[N])
@@ -308,7 +305,7 @@ func squareMont_CIOS_asm_adx*[N](
        spareBits: static int, skipFinalSub: static bool) =
   ## Constant-time modular squaring
   var r2x {.noInit.}: Limbs[2*N]
-  r2x.square_asm_adx_inline(a)
+  r2x.square_asm_adx(a)
   r.redcMont_asm_adx(r2x, M, m0ninv, spareBits, skipFinalSub)
 
 # Montgomery Sum of Products
@@ -317,8 +314,7 @@ func squareMont_CIOS_asm_adx*[N](
 macro sumprodMont_CIOS_spare2bits_adx_gen[N, K: static int](
         r_PIR: var Limbs[N], a_PIR, b_PIR: array[K, Limbs[N]],
         M_PIR: Limbs[N], m0ninv_REG: BaseType,
-        skipFinalSub: static bool
-      ): untyped =
+        skipFinalSub: static bool): untyped =
   ## Generate an optimized Montgomery merged sum of products ⅀aᵢ.bᵢ kernel
   ## using the CIOS method
   ##
@@ -486,7 +482,7 @@ macro sumprodMont_CIOS_spare2bits_adx_gen[N, K: static int](
 func sumprodMont_CIOS_spare2bits_asm_adx*[N, K: static int](
         r: var Limbs[N], a, b: array[K, Limbs[N]],
         M: Limbs[N], m0ninv: BaseType,
-        skipFinalSub: static bool) =
+        skipFinalSub: static bool) {.noInline.} =
   ## Sum of products ⅀aᵢ.bᵢ in the Montgomery domain
   ## If "skipFinalSub" is set
   ## the result is in the range [0, 2M)

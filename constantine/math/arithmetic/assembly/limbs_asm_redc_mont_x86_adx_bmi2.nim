@@ -146,8 +146,11 @@ func redcMont_asm_adx*[N: static int](
        M: array[N, SecretWord],
        m0ninv: BaseType,
        spareBits: static int,
-       skipFinalSub: static bool = false) =
+       skipFinalSub: static bool = false) {.noInline.} =
   ## Constant-time Montgomery reduction
+  # Inlining redcMont_asm_adx twice in mul_fp2_complex_asm_adx
+  # causes GCC to miscompile with -Os (--opt:size)
+  # see https://github.com/mratsim/constantine/issues/229
   redc2xMont_adx_gen(r, a, M, m0ninv, spareBits, skipFinalSub)
 
 # Montgomery conversion

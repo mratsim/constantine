@@ -36,8 +36,7 @@ proc mulx_by_word(
        ctx: var Assembler_x86,
        r0: Operand,
        a, t: OperandArray,
-       word0: Operand
-     ) =
+       word0: Operand) =
   ## Multiply the `a[0..<N]` by `word`
   ## and store in `[t[n..1]:r0]`
   ## with [t[n..1]:r0] = tn, tn-1, ... t1, r0
@@ -74,8 +73,7 @@ proc mulaccx_by_word(
        r: OperandArray,
        i: int,
        a, t: OperandArray,
-       word: Operand
-     ) =
+       word: Operand) =
   ## Multiply the `a[0..<N]` by `word`
   ## and store in `[t[n..0]:r0]`
   ## with [t[n..0]:r0] = tn, tn-1, ... t1, r0
@@ -603,12 +601,7 @@ macro sqrx_gen*[rLen, aLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs[aLe
   # Codegen
   result.add ctx.generate
 
-func square_asm_adx_inline*[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) {.inline.} =
-  ## Multi-precision Squaring
-  ## inline version
-  sqrx_gen(r, a)
-
 func square_asm_adx*[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) =
   ## Multi-precision Squaring
   ## Assumes r doesn't alias a
-  square_asm_adx_inline(r, a)
+  sqrx_gen(r, a)

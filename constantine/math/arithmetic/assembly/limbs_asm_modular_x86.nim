@@ -30,17 +30,16 @@ static: doAssert UseASM_X86_32
 proc finalSubNoOverflowImpl*(
        ctx: var Assembler_x86,
        r: Operand or OperandArray,
-       a, M, scratch: OperandArray
-     ) =
+       a, M, scratch: OperandArray) =
   ## Reduce `a` into `r` modulo `M`
   ## To be used when the modulus does not use the full bitwidth of the storing words
   ## for example a 255-bit modulus in n words of total max size 2^256
-  ## 
+  ##
   ## r, a, scratch, scratchReg are mutated
   ## M is read-only
   let N = M.len
   ctx.comment "Final substraction (cannot overflow its limbs)"
-  
+
   # Substract the modulus, and test a < p with the last borrow
   ctx.mov scratch[0], a[0]
   ctx.sub scratch[0], M[0]
@@ -58,12 +57,11 @@ proc finalSubMayOverflowImpl*(
        ctx: var Assembler_x86,
        r: Operand or OperandArray,
        a, M, scratch: OperandArray,
-       scratchReg: Operand or Register or OperandReuse
-     ) =
+       scratchReg: Operand or Register or OperandReuse) =
   ## Reduce `a` into `r` modulo `M`
   ## To be used when the final substraction can
   ## also overflow the limbs (a 2^256 order of magnitude modulus stored in n words of total max size 2^256)
-  ## 
+  ##
   ## r, a, scratch, scratchReg are mutated
   ## M is read-only
   let N = M.len
@@ -97,7 +95,7 @@ macro finalSub_gen*[N: static int](
   ## Returns:
   ##   a-M if a > M
   ##   a otherwise
-  ## 
+  ##
   ## - r_PIR is a pointer to the result array, mutated,
   ## - a_EIR is an array of registers, mutated,
   ## - M_PIR is a pointer to an array, read-only,
@@ -173,8 +171,9 @@ macro addmod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N], spareBits: s
 
   result.add ctx.generate()
 
-func addmod_asm*(r: var Limbs, a, b, m: Limbs, spareBits: static int) =
+func addmod_asm*(r: var Limbs, a, b, m: Limbs, spareBits: static int) {.noInline.} =
   ## Constant-time modular addition
+  # This MUST be noInline or Clang will run out of registers with LTO
   addmod_gen(r, a, b, m, spareBits)
 
 # Field substraction
@@ -233,9 +232,10 @@ macro submod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N]): untyped =
 
   result.add ctx.generate
 
-func submod_asm*(r: var Limbs, a, b, M: Limbs) =
+func submod_asm*(r: var Limbs, a, b, M: Limbs) {.noInline.} =
   ## Constant-time modular substraction
   ## Warning, does not handle aliasing of a and b
+  # This MUST be noInline or Clang will run out of registers with LTO
   submod_gen(r, a, b, M)
 
 # Field negation

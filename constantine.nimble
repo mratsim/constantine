@@ -18,29 +18,45 @@ import std/strformat
 # ----------------------------------------------------------------
 
 proc releaseBuildOptions: string =
-  # -d:danger to avoid boundsCheck and overflowChecks that would trigger exceptions or allocations in a crypto library.
+  # -d:danger --opt:size
+  #           to avoid boundsCheck and overflowChecks that would trigger exceptions or allocations in a crypto library.
   #           Those are internally guaranteed at compile-time by fixed-sized array
   #           and checked at runtime with an appropriate error code if any for user-input.
   #
-  # -gc:arc   Constantine stack allocates everything. Inputs are through unmanaged ptr+len.
+  #           Furthermore we optimize for size, the performance critical procedures
+  #           either use assembly or are unrolled manually with staticFor,
+  #           Optimizations at -O3 deal with loops and branching
+  #           which we mostly don't have. It's better to optimize
+  #           for instructions cache.
+  #
+  # --panics:on -d:noSignalHandler
+  #           Even with `raises: []`, Nim still has an exception path
+  #           for defects, for example array out-of-bound accesses (though deactivated with -d:danger)
+  #           This turns them into panics, removing exceptiosn from the library.
+  #           We also remove signal handlers as it's not our business.
+  #
+  # -mm:arc -d:useMalloc
+  #           Constantine stack allocates everything (except for multithreading).
+  #           Inputs are through unmanaged ptr+len. So we don't want any runtime.
+  #           Combined with -d:useMalloc, sanitizers and valgrind work as in C,
+  #           even for test cases that needs to allocate (json inputs).
   #
   # -fno-semantic-interposition
   #           https://fedoraproject.org/wiki/Changes/PythonNoSemanticInterpositionSpeedup
   #           Default in Clang, not default in GCC, prevents optimizations, not portable to non-Linux.
   #           Also disabling this prevents overriding symbols which might actually be wanted in a cryptographic library
   #
-  # -falign-functions=32
-  #           Reduce instructions cache misses
+  # -falign-functions=64
+  #           Reduce instructions cache misses.
   #           https://lkml.org/lkml/2015/5/21/443
-
-  # " --cc:clang " &
-  " -d:danger " &
-  " --opt:size " & # TODO --opt:size creates improper bls_sign with GCC (but not Clang). As if using uninitialized buffer.
+  #           Our non-inlined functions are large so size cost is minimal.
+  " -d:danger --opt:size " &
+  " --panics:on -d:noSignalHandler " &
+  " --mm:arc -d:useMalloc " &
   " --verbosity:0 --hints:off --warnings:off " &
-  " --panics:on -d:noSignalHandler --mm:arc -d:useMalloc " & # Defects are not catchable
-  # " --passC:-flto --passL:-flto " & # TODO Clang runs out of register with LTO and inline assembly
+  " --passC:-flto --passL:-flto " &
   " --passC:-fno-semantic-interposition " &
-  " --passC:-falign-functions=32 "
+  " --passC:-falign-functions=64 "
 
 type BindingsKind = enum
   kCurve

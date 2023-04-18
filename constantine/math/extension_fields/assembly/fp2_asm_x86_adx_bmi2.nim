@@ -118,6 +118,8 @@ func mul_fp2_complex_asm_adx*(
   ## Complex multiplication on 𝔽p2
   var d {.noInit.}: array[2,doublePrec(Fp)]
   d.mul2x_fp2_complex_asm_adx(a, b)
+  # Inlining redcMont_asm_adx causes GCC to miscompile with -Os (--opt:size)
+  # see https://github.com/mratsim/constantine/issues/229
   r.c0.mres.limbs.redcMont_asm_adx(
     d.c0.limbs2x,
     Fp.fieldMod().limbs,

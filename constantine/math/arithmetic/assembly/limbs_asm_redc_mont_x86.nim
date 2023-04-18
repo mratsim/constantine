@@ -33,9 +33,7 @@ macro redc2xMont_gen*[N: static int](
        a_PIR: array[N*2, SecretWord],
        M_PIR: array[N, SecretWord],
        m0ninv_REG: BaseType,
-       spareBits: static int, skipFinalSub: static bool
-      ) =
-
+       spareBits: static int, skipFinalSub: static bool) =
   # No register spilling handling
   doAssert N > 2, "The Assembly-optimized montgomery reduction requires a minimum of 2 limbs."
   doAssert N <= 6, "The Assembly-optimized montgomery reduction requires at most 6 limbs."
@@ -152,7 +150,7 @@ macro redc2xMont_gen*[N: static int](
 
   # v is invalidated from now on
   let t = repackRegisters(v, u[N], u[N+1])
-  
+
   if spareBits >= 2 and skipFinalSub:
     for i in 0 ..< N:
       ctx.mov r_temp[i], u[i]
@@ -164,29 +162,17 @@ macro redc2xMont_gen*[N: static int](
   # Code generation
   result.add ctx.generate()
 
-func redcMont_asm_inline*[N: static int](
-       r: var array[N, SecretWord],
-       a: array[N*2, SecretWord],
-       M: array[N, SecretWord],
-       m0ninv: BaseType,
-       spareBits: static int,
-       skipFinalSub: static bool = false
-      ) {.inline.} =
-  ## Constant-time Montgomery reduction
-  ## Inline-version
-  redc2xMont_gen(r, a, M, m0ninv, spareBits, skipFinalSub)
-
 func redcMont_asm*[N: static int](
        r: var array[N, SecretWord],
        a: array[N*2, SecretWord],
        M: array[N, SecretWord],
        m0ninv: BaseType,
        spareBits: static int,
-       skipFinalSub: static bool
-      ) =
+       skipFinalSub: static bool) {.noInline.}  =
   ## Constant-time Montgomery reduction
+  # This MUST be noInline or Clang will run out of registers with LTO
   static: doAssert UseASM_X86_64, "This requires x86-64."
-  redcMont_asm_inline(r, a, M, m0ninv, spareBits, skipFinalSub)
+  redc2xMont_gen(r, a, M, m0ninv, spareBits, skipFinalSub)
 
 # Montgomery conversion
 # ----------------------------------------------------------
@@ -230,7 +216,7 @@ macro mulMont_by_1_gen[N: static int](
     m = scratch[1] # Stores (t[0] * m0ninv) mod 2ʷ
 
   let scratchSym = scratch.nimSymbol
-  
+
   # Copy a in t
   result.add quote do:
     var `scratchSym` {.noInit, used.}: Limbs[`scratchSlots`]

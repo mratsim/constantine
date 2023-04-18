@@ -38,8 +38,7 @@ static: doAssert UseASM_X86_64
 macro mulMont_CIOS_sparebit_gen[N: static int](
         r_PIR: var Limbs[N], a_PIR, b_PIR,
         M_PIR: Limbs[N], m0ninv_REG: BaseType,
-        skipFinalSub: static bool
-      ): untyped =
+        skipFinalSub: static bool): untyped =
   ## Generate an optimized Montgomery Multiplication kernel
   ## using the CIOS method
   ##
@@ -185,25 +184,18 @@ macro mulMont_CIOS_sparebit_gen[N: static int](
     )
   result.add ctx.generate()
 
-func mulMont_CIOS_sparebit_asm*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipFinalSub: static bool = false) =
+func mulMont_CIOS_sparebit_asm*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipFinalSub: static bool = false) {.noInline.} =
   ## Constant-time Montgomery multiplication
   ## If "skipFinalSub" is set
   ## the result is in the range [0, 2M)
   ## otherwise the result is in the range [0, M)
   ##
   ## This procedure can only be called if the modulus doesn't use the full bitwidth of its underlying representation
+  # This MUST be noInline or Clang will run out of registers with LTO
   r.mulMont_CIOS_sparebit_gen(a, b, M, m0ninv, skipFinalSub)
 
 # Montgomery Squaring
 # ------------------------------------------------------------
-
-func square_asm_inline[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) {.inline.} =
-  ## Multi-precision Squaring
-  ## Assumes r doesn't alias a
-  ## Extra indirection as the generator assumes that
-  ## arrays are pointers, which is true for parameters
-  ## but not for stack variables
-  sqr_gen(r, a)
 
 func squareMont_CIOS_asm*[N](
        r: var Limbs[N],
@@ -212,8 +204,8 @@ func squareMont_CIOS_asm*[N](
        spareBits: static int, skipFinalSub: static bool) =
   ## Constant-time modular squaring
   var r2x {.noInit.}: Limbs[2*N]
-  r2x.square_asm_inline(a)
-  r.redcMont_asm_inline(r2x, M, m0ninv, spareBits, skipFinalSub)
+  square_asm(r2x, a)
+  r.redcMont_asm(r2x, M, m0ninv, spareBits, skipFinalSub)
 
 # Montgomery Sum of Products
 # ------------------------------------------------------------
@@ -221,8 +213,7 @@ func squareMont_CIOS_asm*[N](
 macro sumprodMont_CIOS_spare2bits_gen[N, K: static int](
         r_PIR: var Limbs[N], a_PIR, b_PIR: array[K, Limbs[N]],
         M_PIR: Limbs[N], m0ninv_REG: BaseType,
-        skipFinalSub: static bool
-      ): untyped =
+        skipFinalSub: static bool): untyped =
   ## Generate an optimized Montgomery merged sum of products ⅀aᵢ.bᵢ kernel
   ## using the CIOS method
   ##
@@ -403,7 +394,7 @@ macro sumprodMont_CIOS_spare2bits_gen[N, K: static int](
 func sumprodMont_CIOS_spare2bits_asm*[N, K: static int](
         r: var Limbs[N], a, b: array[K, Limbs[N]],
         M: Limbs[N], m0ninv: BaseType,
-        skipFinalSub: static bool) =
+        skipFinalSub: static bool) {.noInline.} =
   ## Sum of products ⅀aᵢ.bᵢ in the Montgomery domain
   ## If "skipFinalSub" is set
   ## the result is in the range [0, 2M)
