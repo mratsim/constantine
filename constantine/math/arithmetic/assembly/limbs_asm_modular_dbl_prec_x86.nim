@@ -93,7 +93,7 @@ macro addmod2x_gen[N: static int](R: var Limbs[N], A, B: Limbs[N], m: Limbs[N di
 
   result.add ctx.generate
 
-func addmod2x_asm*[N: static int](r: var Limbs[N], a, b: Limbs[N], M: Limbs[N div 2]) =
+func addmod2x_asm*[N: static int](r: var Limbs[N], a, b: Limbs[N], M: Limbs[N div 2]) {.noInline.} =
   ## Constant-time double-precision addition
   ## Output is conditionally reduced by 2ⁿp
   ## to stay in the [0, 2ⁿp) range
@@ -159,7 +159,7 @@ macro submod2x_gen[N: static int](R: var Limbs[N], A, B: Limbs[N], m: Limbs[N di
 
   result.add ctx.generate
 
-func submod2x_asm*[N: static int](r: var Limbs[N], a, b: Limbs[N], M: Limbs[N div 2]) =
+func submod2x_asm*[N: static int](r: var Limbs[N], a, b: Limbs[N], M: Limbs[N div 2]) {.noInline.} =
   ## Constant-time double-precision substraction
   ## Output is conditionally reduced by 2ⁿp
   ## to stay in the [0, 2ⁿp) range
@@ -233,6 +233,6 @@ macro negmod2x_gen[N: static int](R: var Limbs[N], A: Limbs[N], m: Limbs[N div 2
     var `usym`{.noinit, used.}: typeof(`A`)
   result.add ctx.generate
 
-func negmod2x_asm*[N: static int](r: var Limbs[N], a: Limbs[N], M: Limbs[N div 2]) =
+func negmod2x_asm*[N: static int](r: var Limbs[N], a: Limbs[N], M: Limbs[N div 2]) {.noInline.} =
   ## Constant-time double-precision negation
   negmod2x_gen(r, a, M)
