@@ -34,7 +34,7 @@ macro ccopy_gen[N: static int](a_PIR: var Limbs[N], b_PIR: Limbs[N], ctl: Secret
   var ctx = init(Assembler_x86, BaseType)
 
   let
-    a = asmArray(a_PIR, N, PointerInReg, UnmutatedPointerToWriteMem)
+    a = asmArray(a_PIR, N, PointerInReg, UnmutatedPointerToReadWriteMem)
     b = asmArray(b_PIR, N, PointerInReg, Input)
 
     control = asmValue(ctl, Reg, Input)

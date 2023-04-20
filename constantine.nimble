@@ -50,6 +50,7 @@ proc releaseBuildOptions: string =
   #           Reduce instructions cache misses.
   #           https://lkml.org/lkml/2015/5/21/443
   #           Our non-inlined functions are large so size cost is minimal.
+  # " --cc:clang " &
   " -d:danger --opt:size " &
   " --panics:on -d:noSignalHandler " &
   " --mm:arc -d:useMalloc " &

@@ -61,6 +61,7 @@ type
     ## GCC extended assembly modifier
     Input               = ""
     Input_Commutative   = "%"
+    UnmutatedPointerToReadWriteMem = ""
     UnmutatedPointerToWriteMem = "" # The pointer itself is not modified but the memory pointer to is.
     Output_Overwrite    = "="
     Output_EarlyClobber = "=&"
@@ -114,7 +115,7 @@ type
   Stack* = object
 
 const SpecificRegisters = {RCX, RDX, R8, RAX}
-const OutputReg = {UnmutatedPointerToWriteMem, Output_EarlyClobber, InputOutput, InputOutput_EnsureClobber, Output_Overwrite, ClobberedRegister}
+const OutputReg = {UnmutatedPointerToReadWriteMem, UnmutatedPointerToWriteMem, Output_EarlyClobber, InputOutput, InputOutput_EnsureClobber, Output_Overwrite, ClobberedRegister}
 
 func hash(od: OperandDesc): Hash =
   {.noSideEffect.}:
@@ -184,7 +185,7 @@ func asmValue*(nimSymbol: NimNode, rm: RM, constraint: Constraint): Operand =
 func asmArray*(nimSymbol: NimNode, len: int, rm: RM, constraint: Constraint): OperandArray =
   doAssert rm in {MemOffsettable, PointerInReg, ElemsInReg}
 
-  if constraint == UnmutatedPointerToWriteMem:
+  if constraint in {UnmutatedPointerToReadWriteMem, UnmutatedPointerToWriteMem}:
     doAssert rm == PointerInReg
 
   # We need to dereference the hidden pointer of var param
@@ -203,16 +204,13 @@ func asmArray*(nimSymbol: NimNode, len: int, rm: RM, constraint: Constraint): Op
   result.nimSymbol = nimSymbol
   result.buf.setLen(len)
 
-  if rm in {MemOffsettable, PointerInReg}:
+  if rm == PointerInReg:
     let desc = OperandDesc(
                   asmId: "[" & symStr & "]",
                   nimSymbol: nimSymbol,
                   rm: rm,
-                  constraint: constraint)
-    if rm == MemOffsettable:
-      desc.cEmit = "*" & symStr
-    else:
-      desc.cEmit = symStr
+                  constraint: constraint,
+                  cEmit: symStr)
 
     for i in 0 ..< len:
       result.buf[i] = Operand(
@@ -220,8 +218,12 @@ func asmArray*(nimSymbol: NimNode, len: int, rm: RM, constraint: Constraint): Op
         kind: kFromArray,
         offset: i)
   else:
-    # We can't store an array in register so we create assign individual register
-    # per array elements instead
+    # For ElemsInReg
+    #   We can't store an array in register so we create assign individual register
+    #   per array elements instead
+    # For MemOffsettable
+    #   Creating a base address like PointerInReg works with GCC but LLVM miscompiles
+    #   so we create individual memory locations.
     for i in 0 ..< len:
       result.buf[i] = Operand(
         desc: OperandDesc(
@@ -323,7 +325,7 @@ func generate*(a: Assembler_x86): NimNode =
     decl = odesc.asmId & "\"" & $odesc.constraint & $odesc.rm & "\"" &
             " (`" & odesc.cEmit & "`)"
 
-    if odesc.constraint in {Input, Input_Commutative, UnmutatedPointerToWriteMem}:
+    if odesc.constraint in {Input, Input_Commutative, UnmutatedPointerToReadWriteMem, UnmutatedPointerToWriteMem}:
       inOperands.add decl
     else:
       outOperands.add decl
