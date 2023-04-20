@@ -32,7 +32,7 @@ static: doAssert UseASM_X86_64
 # Double-precision field addition
 # ------------------------------------------------------------
 
-macro addmod2x_gen[N: static int](R: var Limbs[N], A, B: Limbs[N], m: Limbs[N div 2]): untyped =
+macro addmod2x_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR: Limbs[N], M_PIR: Limbs[N div 2]): untyped =
   ## Generate an optimized out-of-place double-precision addition kernel
 
   result = newStmtList()
@@ -41,23 +41,23 @@ macro addmod2x_gen[N: static int](R: var Limbs[N], A, B: Limbs[N], m: Limbs[N di
   let
     H = N div 2
 
-    r = init(OperandArray, nimSymbol = R, N, PointerInReg, InputOutput)
+    r = asmArray(r_PIR, N, PointerInReg, InputOutput)
     # We reuse the reg used for b for overflow detection
-    b = init(OperandArray, nimSymbol = B, N, PointerInReg, InputOutput)
+    b = asmArray(b_PIR, N, PointerInReg, InputOutput)
     # We could force m as immediate by specializing per moduli
-    M = init(OperandArray, nimSymbol = m, N, PointerInReg, Input)
+    M = asmArray(M_PIR, N, PointerInReg, Input)
     # If N is too big, we need to spill registers. TODO.
-    u = init(OperandArray, nimSymbol = ident"U", H, ElemsInReg, InputOutput)
-    v = init(OperandArray, nimSymbol = ident"V", H, ElemsInReg, InputOutput)
+    uSym = ident"u"
+    vSym = ident"v"
+    u = asmArray(uSym, H, ElemsInReg, InputOutput)
+    v = asmArray(vSym, H, ElemsInReg, InputOutput)
 
-  let usym = u.nimSymbol
-  let vsym = v.nimSymbol
   result.add quote do:
-    var `usym`{.noinit.}, `vsym` {.noInit.}: typeof(`A`)
+    var `uSym`{.noinit.}, `vSym` {.noInit.}: typeof(`a_PIR`)
     staticFor i, 0, `H`:
-      `usym`[i] = `A`[i]
+      `uSym`[i] = `a_PIR`[i]
     staticFor i, `H`, `N`:
-      `vsym`[i-`H`] = `A`[i]
+      `vSym`[i-`H`] = `a_PIR`[i]
 
   # Addition
   # u = a[0..<H] + b[0..<H], v = a[H..<N]
@@ -92,7 +92,7 @@ macro addmod2x_gen[N: static int](R: var Limbs[N], A, B: Limbs[N], m: Limbs[N di
     ctx.cmovnc u[i],  v[i]
     ctx.mov r[i+H], u[i]
 
-  result.add ctx.generate
+  result.add ctx.generate()
 
 func addmod2x_asm*[N: static int](r: var Limbs[N], a, b: Limbs[N], M: Limbs[N div 2]) {.noInline.} =
   ## Constant-time double-precision addition
@@ -103,7 +103,7 @@ func addmod2x_asm*[N: static int](r: var Limbs[N], a, b: Limbs[N], M: Limbs[N di
 # Double-precision field substraction
 # ------------------------------------------------------------
 
-macro submod2x_gen[N: static int](R: var Limbs[N], A, B: Limbs[N], m: Limbs[N div 2]): untyped =
+macro submod2x_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR: Limbs[N], M_PIR: Limbs[N div 2]): untyped =
   ## Generate an optimized out-of-place double-precision substraction kernel
 
   result = newStmtList()
@@ -112,23 +112,23 @@ macro submod2x_gen[N: static int](R: var Limbs[N], A, B: Limbs[N], m: Limbs[N di
   let
     H = N div 2
 
-    r = init(OperandArray, nimSymbol = R, N, PointerInReg, InputOutput)
+    r = asmArray(r_PIR, N, PointerInReg, InputOutput)
     # We reuse the reg used for b for overflow detection
-    b = init(OperandArray, nimSymbol = B, N, PointerInReg, InputOutput)
+    b = asmArray(b_PIR, N, PointerInReg, InputOutput)
     # We could force m as immediate by specializing per moduli
-    M = init(OperandArray, nimSymbol = m, N, PointerInReg, Input)
+    M = asmArray(M_PIR, N, PointerInReg, Input)
     # If N is too big, we need to spill registers. TODO.
-    u = init(OperandArray, nimSymbol = ident"U", H, ElemsInReg, InputOutput)
-    v = init(OperandArray, nimSymbol = ident"V", H, ElemsInReg, InputOutput)
+    uSym = ident"u"
+    vSym = ident"v"
+    u = asmArray(uSym, H, ElemsInReg, InputOutput)
+    v = asmArray(vSym, H, ElemsInReg, InputOutput)
 
-  let usym = u.nimSymbol
-  let vsym = v.nimSymbol
   result.add quote do:
-    var `usym`{.noinit.}, `vsym` {.noInit.}: typeof(`A`)
+    var `uSym`{.noinit.}, `vSym` {.noInit.}: typeof(`a_PIR`)
     staticFor i, 0, `H`:
-      `usym`[i] = `A`[i]
+      `uSym`[i] = `a_PIR`[i]
     staticFor i, `H`, `N`:
-      `vsym`[i-`H`] = `A`[i]
+      `vSym`[i-`H`] = `a_PIR`[i]
 
   # Substraction
   # u = a[0..<H] - b[0..<H], v = a[H..<N]
@@ -158,7 +158,7 @@ macro submod2x_gen[N: static int](R: var Limbs[N], A, B: Limbs[N], m: Limbs[N di
     ctx.adc u[i], v[i]
     ctx.mov r[i+H], u[i]
 
-  result.add ctx.generate
+  result.add ctx.generate()
 
 func submod2x_asm*[N: static int](r: var Limbs[N], a, b: Limbs[N], M: Limbs[N div 2]) {.noInline.} =
   ## Constant-time double-precision substraction
@@ -169,7 +169,7 @@ func submod2x_asm*[N: static int](r: var Limbs[N], a, b: Limbs[N], M: Limbs[N di
 # Double-precision field negation
 # ------------------------------------------------------------
 
-macro negmod2x_gen[N: static int](R: var Limbs[N], A: Limbs[N], m: Limbs[N div 2]): untyped =
+macro negmod2x_gen[N: static int](r_PIR: var Limbs[N], a_PIR: Limbs[N], M_PIR: Limbs[N div 2]): untyped =
   ## Generate an optimized modular negation kernel
 
   result = newStmtList()
@@ -178,22 +178,20 @@ macro negmod2x_gen[N: static int](R: var Limbs[N], A: Limbs[N], m: Limbs[N div 2
   let
     H = N div 2
 
-    a = init(OperandArray, nimSymbol = A, N, PointerInReg, Input)
-    r = init(OperandArray, nimSymbol = R, N, PointerInReg, InputOutput)
-    u = init(OperandArray, nimSymbol = ident"U", N, ElemsInReg, Output_EarlyClobber)
+    a = asmArray(a_PIR, N, PointerInReg, Input)
+    r = asmArray(r_PIR, N, PointerInReg, InputOutput)
+    uSym = ident"u"
+    u = asmArray(uSym, N, ElemsInReg, Output_EarlyClobber)
     # We could force m as immediate by specializing per moduli
     # We reuse the reg used for m for overflow detection
-    M = init(OperandArray, nimSymbol = m, N, PointerInReg, InputOutput)
+    M = asmArray(M_PIR, N, PointerInReg, InputOutput)
 
-    isZero = Operand(
-      desc: OperandDesc(
-        asmId: "[isZero]",
-        nimSymbol: ident"isZero",
-        rm: Reg,
-        constraint: Output_EarlyClobber,
-        cEmit: "isZero"
-      )
-    )
+    isZeroSym = ident"isZero"
+    isZero = asmValue(isZeroSym, Reg, Output_EarlyClobber)
+
+  result.add quote do:
+    var `isZerosym`{.noInit.}: BaseType
+    var `usym`{.noinit, used.}: typeof(`a_PIR`)
 
   # Substraction 2ⁿp - a
   # The lower half of 2ⁿp is filled with zero
@@ -227,12 +225,7 @@ macro negmod2x_gen[N: static int](R: var Limbs[N], A: Limbs[N], m: Limbs[N div 2
     ctx.cmovz u[i-H], isZero
     ctx.mov r[i], u[i-H]
 
-  let isZerosym = isZero.desc.nimSymbol
-  let usym = u.nimSymbol
-  result.add quote do:
-    var `isZerosym`{.noInit.}: BaseType
-    var `usym`{.noinit, used.}: typeof(`A`)
-  result.add ctx.generate
+  result.add ctx.generate()
 
 func negmod2x_asm*[N: static int](r: var Limbs[N], a: Limbs[N], M: Limbs[N div 2]) {.noInline.} =
   ## Constant-time double-precision negation

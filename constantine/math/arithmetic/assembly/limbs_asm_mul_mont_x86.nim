@@ -58,23 +58,17 @@ macro mulMont_CIOS_sparebit_gen[N: static int](
     scratchSlots = 6
 
     # We could force M as immediate by specializing per moduli
-    M = init(OperandArray, nimSymbol = M_PIR, N, PointerInReg, Input)
+    M = asmArray(M_PIR, N, PointerInReg, Input)
     # If N is too big, we need to spill registers. TODO.
-    t = init(OperandArray, nimSymbol = ident"t", N, ElemsInReg, Output_EarlyClobber)
+    tSym = ident"t"
+    t = asmArray(tSym, N, ElemsInReg, Output_EarlyClobber)
     # MultiPurpose Register slots
-    scratch = init(OperandArray, nimSymbol = ident"scratch", scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
+    scratchSym = ident"scratch"
+    scratch = asmArray(scratchSym, scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
 
     # MUL requires RAX and RDX
 
-    m0ninv = Operand(
-               desc: OperandDesc(
-                 asmId: "[m0ninv]",
-                 nimSymbol: m0ninv_REG,
-                 rm: MemOffsettable,
-                 constraint: Input,
-                 cEmit: "&" & $m0ninv_REG
-               )
-             )
+    m0ninv = asmValue(m0ninv_REG, Mem, Input)
 
     # We're really constrained by register and somehow setting as memory doesn't help
     # So we store the result `r` in the scratch space and then reload it in RDX
@@ -96,12 +90,10 @@ macro mulMont_CIOS_sparebit_gen[N: static int](
   # but this prevent reusing the same code for multiple curves like BLS12-377 and BLS12-381
   # We might be able to save registers by having `r` and `M` be memory operand as well
 
-  let tsym = t.nimSymbol
-  let scratchSym = scratch.nimSymbol
   result.add quote do:
     static: doAssert: sizeof(SecretWord) == sizeof(ByteAddress)
 
-    var `tsym`{.noInit, used.}: typeof(`r_PIR`)
+    var `tSym`{.noInit, used.}: typeof(`r_PIR`)
     # Assumes 64-bit limbs on 64-bit arch (or you can't store an address)
     var `scratchSym` {.noInit.}: Limbs[`scratchSlots`]
     `scratchSym`[0] = cast[SecretWord](`a_PIR`[0].unsafeAddr)
@@ -178,10 +170,7 @@ macro mulMont_CIOS_sparebit_gen[N: static int](
     for i in 0 ..< N:
       ctx.mov r2[i], t[i]
   else:
-    ctx.finalSubNoOverflowImpl(
-      r2, t, M,
-      scratch
-    )
+    ctx.finalSubNoOverflowImpl(r2, t, M,scratch)
   result.add ctx.generate()
 
 func mulMont_CIOS_sparebit_asm*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipFinalSub: static bool = false) {.noInline.} =
@@ -242,23 +231,17 @@ macro sumprodMont_CIOS_spare2bits_gen[N, K: static int](
     scratchSlots = 6
 
     # We could force M as immediate by specializing per moduli
-    M = init(OperandArray, nimSymbol = M_PIR, N, PointerInReg, Input)
+    M = asmArray(M_PIR, N, PointerInReg, Input)
     # If N is too big, we need to spill registers. TODO.
-    t = init(OperandArray, nimSymbol = ident"t", N, ElemsInReg, Output_EarlyClobber)
+    tSym = ident"t"
+    t = asmArray(tSym, N, ElemsInReg, Output_EarlyClobber)
     # MultiPurpose Register slots
-    scratch = init(OperandArray, nimSymbol = ident"scratch", scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
+    scratchSym = ident"scratch"
+    scratch = asmArray(scratchSym, scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
 
     # MUL requires RAX and RDX
 
-    m0ninv = Operand(
-               desc: OperandDesc(
-                 asmId: "[m0ninv]",
-                 nimSymbol: m0ninv_REG,
-                 rm: MemOffsettable,
-                 constraint: Input,
-                 cEmit: "&" & $m0ninv_REG
-               )
-             )
+    m0ninv = asmValue(m0ninv_REG, Mem, Input)
 
     # We're really constrained by register and somehow setting as memory doesn't help
     # So we store the result `r` in the scratch space and then reload it in RDX
@@ -280,9 +263,6 @@ macro sumprodMont_CIOS_spare2bits_gen[N, K: static int](
   # We can save 1 by hardcoding M as immediate (and m0ninv)
   # but this prevent reusing the same code for multiple curves like BLS12-377 and BLS12-381
   # We might be able to save registers by having `r` and `M` be memory operand as well
-
-  let tsym = t.nimSymbol
-  let scratchSym = scratch.nimSymbol
   result.add quote do:
     static: doAssert: sizeof(SecretWord) == sizeof(ByteAddress)
 

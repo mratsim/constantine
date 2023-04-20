@@ -17,16 +17,13 @@ type
   RM* = enum
     ## Register or Memory operand
     # https://gcc.gnu.org/onlinedocs/gcc/Simple-Constraints.html
+    # We don't use the "Any" constraint like rm, g, oi or ri. It's unsure how to mix the differing semantics
     Reg            = "r"
     Mem            = "m"
-    AnyRegOrMem    = "rm" # use "r, m" instead?
     Imm            = "i"
     MemOffsettable = "o"
-    AnyRegMemImm   = "g"
-    AnyMemOffImm   = "oi"
-    AnyRegImm      = "ri"
 
-    PointerInReg   = "r" # Store an array pointer
+    PointerInReg   = "r" # Store an array pointer. ⚠️ for const arrays, this may generate incorrect code with LTO and constant folding.
     ElemsInReg     = "r" # Store each individual array element in reg
 
     # Specific registers
@@ -159,15 +156,32 @@ func init*(T: type Assembler_x86, Word: typedesc[SomeUnsignedInt]): Assembler_x8
   result.wordSize = sizeof(Word)
   result.wordBitWidth = result.wordSize * 8
 
-func init*(T: type OperandArray, nimSymbol: NimNode, len: int, rm: RM, constraint: Constraint): OperandArray =
-  doAssert rm in {
-    MemOffsettable,
-    AnyMemOffImm,
-    PointerInReg,
-    ElemsInReg
-  } or rm in SpecificRegisters
+func asmValue*(nimSymbol: NimNode, rm: RM, constraint: Constraint): Operand =
+  {.noSideEffect.}:
+    let symStr = try: # Why does this raise a generic exception?
+      $nimSymbol
+    except:
+      raise newException(Defect, "Broke Nim!")
 
-  result.buf.setLen(len)
+  if rm in {Mem, MemOffsettable}:
+    return Operand(
+      desc: OperandDesc(
+        asmId: "[" & symStr & "]",
+        nimSymbol: nimSymbol,
+        rm: rm,
+        constraint: constraint,
+        cEmit: "*&" & symStr))
+  else:
+    return Operand(
+      desc: OperandDesc(
+        asmId: "[" & symStr & "]",
+        nimSymbol: nimSymbol,
+        rm: rm,
+        constraint: constraint,
+        cEmit: symStr))
+
+func asmArray*(nimSymbol: NimNode, len: int, rm: RM, constraint: Constraint): OperandArray =
+  doAssert rm in {MemOffsettable, PointerInReg, ElemsInReg}
 
   # We need to dereference the hidden pointer of var param
   let isHiddenDeref = nimSymbol.kind == nnkHiddenDeref
@@ -180,22 +194,24 @@ func init*(T: type OperandArray, nimSymbol: NimNode, len: int, rm: RM, constrain
       raise newException(Defect, "Broke Nim!")
 
   result.nimSymbol = nimSymbol
+  result.buf.setLen(len)
 
-  if rm in {PointerInReg, MemOffsettable, AnyMemOffImm} or
-     rm in SpecificRegisters:
+  if rm in {MemOffsettable, PointerInReg}:
     let desc = OperandDesc(
                   asmId: "[" & symStr & "]",
                   nimSymbol: nimSymbol,
                   rm: rm,
-                  constraint: constraint,
-                  cEmit: symStr
-                )
+                  constraint: constraint)
+    if rm == MemOffsettable:
+      desc.cEmit = "*" & symStr
+    else:
+      desc.cEmit = symStr
+
     for i in 0 ..< len:
       result.buf[i] = Operand(
         desc: desc,
         kind: kFromArray,
-        offset: i
-      )
+        offset: i)
   else:
     # We can't store an array in register so we create assign individual register
     # per array elements instead
@@ -296,19 +312,11 @@ func generate*(a: Assembler_x86): NimNode =
 
   for odesc in a.operands.items():
     var decl: string
-    if odesc.rm in SpecificRegisters:
-      # [a] "rbx" (`a`)
-      decl = odesc.asmId & "\"" & $odesc.constraint & $odesc.rm & "\"" &
-             " (`" & odesc.cEmit & "`)"
-    elif odesc.rm in {Mem, AnyRegOrMem, MemOffsettable, AnyRegMemImm, AnyMemOffImm}:
-      # [a] "+r" (`*a`)
-      # We need to deref the pointer to memory
-      decl = odesc.asmId & " \"" & $odesc.constraint & $odesc.rm & "\"" &
-             " (`*" & odesc.cEmit & "`)"
-    else:
-      # [a] "+r" (`a[0]`)
-      decl = odesc.asmId & " \"" & $odesc.constraint & $odesc.rm & "\"" &
-             " (`" & odesc.cEmit & "`)"
+    # [a] "rbx" (`a`) for specific registers
+    # [a] "+r" (`*a_ptr`) for pointer to memory
+    # [a] "+r" (`a[0]`) for array cells
+    decl = odesc.asmId & "\"" & $odesc.constraint & $odesc.rm & "\"" &
+            " (`" & odesc.cEmit & "`)"
 
     if odesc.constraint in {Input, Input_Commutative}:
       inOperands.add decl
@@ -384,7 +392,7 @@ func getStrOffset(a: Assembler_x86, op: Operand): string =
   # - 8%rax works with Clang
   # - 8(%rax) works with both
 
-  if op.desc.rm in {Mem, AnyRegOrMem, MemOffsettable, AnyMemOffImm, AnyRegMemImm}:
+  if op.desc.rm in {Mem, MemOffsettable}:
     # Directly accessing memory
     if op.offset == 0:
       return "%" & op.desc.asmId
@@ -631,7 +639,7 @@ func add*(a: var Assembler_x86, dst: Register, src: Operand) =
 func adc*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- dst + src + carry
   doAssert dst.desc.constraint in OutputReg
-  doAssert dst.desc.rm notin {Mem, MemOffsettable, AnyRegOrMem},
+  doAssert dst.desc.rm notin {Mem, MemOffsettable},
     "Using addcarry with a memory destination, this incurs significant performance penalties."
 
   a.codeFragment("adc", src, dst)
@@ -645,7 +653,7 @@ func adc*(a: var Assembler_x86, dst, src: Register) =
 func adc*(a: var Assembler_x86, dst: Operand, imm: int) =
   ## Does: dst <- dst + imm + borrow
   doAssert dst.desc.constraint in OutputReg
-  doAssert dst.desc.rm notin {Mem, MemOffsettable, AnyRegOrMem},
+  doAssert dst.desc.rm notin {Mem, MemOffsettable},
     "Using addcarry with a memory destination, this incurs significant performance penalties."
 
   a.codeFragment("adc", imm, dst)
@@ -671,7 +679,7 @@ func sub*(a: var Assembler_x86, dst, src: Operand) =
 func sbb*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- dst - src - borrow
   doAssert dst.desc.constraint in OutputReg
-  doAssert dst.desc.rm notin {Mem, MemOffsettable, AnyRegOrMem},
+  doAssert dst.desc.rm notin {Mem, MemOffsettable},
     "Using subborrow with a memory destination, this incurs significant performance penalties."
 
   a.codeFragment("sbb", src, dst)
@@ -680,7 +688,7 @@ func sbb*(a: var Assembler_x86, dst, src: Operand) =
 func sbb*(a: var Assembler_x86, dst: Operand, imm: int) =
   ## Does: dst <- dst - imm - borrow
   doAssert dst.desc.constraint in OutputReg
-  doAssert dst.desc.rm notin {Mem, MemOffsettable, AnyRegOrMem},
+  doAssert dst.desc.rm notin {Mem, MemOffsettable},
     "Using subborrow with a memory destination, this incurs significant performance penalties."
 
   a.codeFragment("sbb", imm, dst)
@@ -712,6 +720,12 @@ func sar*(a: var Assembler_x86, dst: Operand, imm: int) =
   a.codeFragment("sar", imm, dst)
   a.areFlagsClobbered = true
 
+func `and`*(a: var Assembler_x86, dst: Operand, src: Register) =
+  ## Compute the bitwise AND of x and y and
+  ## set the Sign, Zero and Parity flags
+  a.codeFragment("and", src, dst)
+  a.areFlagsClobbered = true
+
 func `and`*(a: var Assembler_x86, dst: OperandReuse, imm: int) =
   ## Compute the bitwise AND of x and y and
   ## set the Sign, Zero and Parity flags
@@ -740,6 +754,12 @@ func test*(a: var Assembler_x86, x, y: OperandReuse) =
   ## Compute the bitwise AND of x and y and
   ## set the Sign, Zero and Parity flags
   a.codeFragment("test", x, y)
+  a.areFlagsClobbered = true
+
+func `or`*(a: var Assembler_x86, dst: Register, src: Operand) =
+  ## Compute the bitwise or of x and y and
+  ## reset all flags
+  a.codeFragment("or", src, dst)
   a.areFlagsClobbered = true
 
 func `or`*(a: var Assembler_x86, dst, src: Operand) =
@@ -829,6 +849,14 @@ func cmovnc*(a: var Assembler_x86, dst, src: Operand) =
   doAssert dst.desc.constraint in OutputReg, $dst.repr
 
   a.codeFragment("cmovnc", src, dst)
+  # No clobber
+
+func cmovz*(a: var Assembler_x86, dst: Operand, src: Register) =
+  ## Does: dst <- src if the zero flag is not set
+  doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register: " & $dst.repr
+  doAssert dst.desc.constraint in OutputReg, $dst.repr
+
+  a.codeFragment("cmovz", src, dst)
   # No clobber
 
 func cmovz*(a: var Assembler_x86, dst, src: Operand) =

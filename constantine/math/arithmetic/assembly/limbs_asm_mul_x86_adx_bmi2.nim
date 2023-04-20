@@ -120,35 +120,33 @@ macro mulx_gen[rLen, aLen, bLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limb
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = init(OperandArray, nimSymbol = r_PIR, rLen, PointerInReg, InputOutput_EnsureClobber)
-    a = init(OperandArray, nimSymbol = a_PIR, aLen, PointerInReg, Input)
-    b = init(OperandArray, nimSymbol = b_PIR, bLen, PointerInReg, Input)
+    r = asmArray(r_PIR, rLen, PointerInReg, InputOutput_EnsureClobber)
+    a = asmArray(a_PIR, aLen, PointerInReg, Input)
+    b = asmArray(b_PIR, bLen, PointerInReg, Input)
 
     # MULX requires RDX
 
+    tSym = ident"t"
     tSlots = aLen+1 # Extra for high word
 
   var # If aLen is too big, we need to spill registers. TODO.
-    t = init(OperandArray, nimSymbol = ident"t", tSlots, ElemsInReg, Output_EarlyClobber)
+    t = asmArray(tSym, tSlots, ElemsInReg, Output_EarlyClobber)
 
   # Prologue
-  let tsym = t.nimSymbol
   result.add quote do:
-    var `tsym`{.noInit, used.}: array[`tSlots`, BaseType]
+    var `tSym`{.noInit, used.}: array[`tSlots`, BaseType]
 
   for i in 0 ..< min(rLen, bLen):
     if i == 0:
       ctx.mulx_by_word(
         r[0],
         a, t,
-        b[0]
-      )
+        b[0])
     else:
       ctx.mulaccx_by_word(
         r, i,
         a, t,
-        b[i]
-      )
+        b[i])
 
       t.rotateLeft()
 
@@ -163,7 +161,7 @@ macro mulx_gen[rLen, aLen, bLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limb
       ctx.mov r[i], rax
 
   # Codegen
-  result.add ctx.generate
+  result.add ctx.generate()
 
 func mul_asm_adx_inline*[rLen, aLen, bLen: static int](
        r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) {.inline.} =
@@ -575,21 +573,20 @@ macro sqrx_gen*[rLen, aLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs[aLe
     # t = 2 * a.len = 12
     # We use the full x86 register set.
 
-    r = init(OperandArray, nimSymbol = r_PIR, rLen, PointerInReg, InputOutput)
-    a = init(OperandArray, nimSymbol = a_PIR, aLen, PointerInReg, Input)
+    r = asmArray(r_PIR, rLen, PointerInReg, InputOutput)
+    a = asmArray(a_PIR, aLen, PointerInReg, Input)
 
     # MULX requires RDX
-
+    tSym = ident"t"
     tSlots = aLen+1 # Extra for high word
 
   var # If aLen is too big, we need to spill registers. TODO.
-    t = init(OperandArray, nimSymbol = ident"t", tSlots, ElemsInReg, Output_EarlyClobber)
+    t = asmArray(tSym, tSlots, ElemsInReg, Output_EarlyClobber)
 
   # Prologue
   # -------------------------------
-  let tsym = t.nimSymbol
   result.add quote do:
-    var `tsym`{.noInit, used.}: array[`tSlots`, BaseType]
+    var `tSym`{.noInit, used.}: array[`tSlots`, BaseType]
 
   if aLen == 4:
     ctx.sqrx_gen4L(r, a, t)
@@ -599,7 +596,7 @@ macro sqrx_gen*[rLen, aLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs[aLe
     error: "Not implemented"
 
   # Codegen
-  result.add ctx.generate
+  result.add ctx.generate()
 
 func square_asm_adx*[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) =
   ## Multi-precision Squaring

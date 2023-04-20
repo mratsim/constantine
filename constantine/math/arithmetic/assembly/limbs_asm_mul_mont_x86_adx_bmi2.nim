@@ -193,13 +193,15 @@ macro mulMont_CIOS_sparebit_adx_gen[N: static int](
   let
     scratchSlots = 6
 
-    r = init(OperandArray, nimSymbol = r_PIR, N, PointerInReg, InputOutput_EnsureClobber)
+    r = asmArray(r_PIR, N, PointerInReg, InputOutput_EnsureClobber)
     # We could force M as immediate by specializing per moduli
-    M = init(OperandArray, nimSymbol = M_PIR, N, PointerInReg, Input)
+    M = asmArray(M_PIR, N, PointerInReg, Input)
     # If N is too big, we need to spill registers. TODO.
-    t = init(OperandArray, nimSymbol = ident"t", N, ElemsInReg, Output_EarlyClobber)
+    tSym = ident"t"
+    t = asmArray(tSym, N, ElemsInReg, Output_EarlyClobber)
     # MultiPurpose Register slots
-    scratch = init(OperandArray, nimSymbol = ident"scratch", scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
+    scratchSym = ident"scratch"
+    scratch = asmArray(scratchSym, scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
 
     # MULX requires RDX as well
 
@@ -221,8 +223,6 @@ macro mulMont_CIOS_sparebit_adx_gen[N: static int](
   # but this prevent reusing the same code for multiple curves like BLS12-377 and BLS12-381
   # We might be able to save registers by having `r` and `M` be memory operand as well
 
-  let tsym = t.nimSymbol
-  let scratchSym = scratch.nimSymbol
   result.add quote do:
     static: doAssert: sizeof(SecretWord) == sizeof(ByteAddress)
 
@@ -275,7 +275,7 @@ macro mulMont_CIOS_sparebit_adx_gen[N: static int](
       scratch
     )
 
-  result.add ctx.generate
+  result.add ctx.generate()
 
 func mulMont_CIOS_sparebit_asm_adx_inline*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipFinalSub: static bool = false) {.inline.} =
   ## Constant-time Montgomery multiplication
@@ -343,23 +343,17 @@ macro sumprodMont_CIOS_spare2bits_adx_gen[N, K: static int](
     scratchSlots = 6
 
     # We could force M as immediate by specializing per moduli
-    M = init(OperandArray, nimSymbol = M_PIR, N, PointerInReg, Input)
+    M = asmArray(M_PIR, N, PointerInReg, Input)
     # If N is too big, we need to spill registers. TODO.
-    t = init(OperandArray, nimSymbol = ident"t", N, ElemsInReg, Output_EarlyClobber)
+    tSym = ident"t"
+    t = asmArray(tSym, N, ElemsInReg, Output_EarlyClobber)
     # MultiPurpose Register slots
-    scratch = init(OperandArray, nimSymbol = ident"scratch", scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
+    scratchSym = ident"scratch"
+    scratch = asmArray(scratchSym, scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
 
     # MULX requires RDX as well
 
-    m0ninv = Operand(
-               desc: OperandDesc(
-                 asmId: "[m0ninv]",
-                 nimSymbol: m0ninv_REG,
-                 rm: MemOffsettable,
-                 constraint: Input,
-                 cEmit: "&" & $m0ninv_REG
-               )
-             )
+    m0ninv = asmValue(m0ninv_REG, Mem, Input)
 
     # We're really constrained by register and somehow setting as memory doesn't help
     # So we store the result `r` in the scratch space and then reload it in RDX
@@ -382,8 +376,6 @@ macro sumprodMont_CIOS_spare2bits_adx_gen[N, K: static int](
   # but this prevent reusing the same code for multiple curves like BLS12-377 and BLS12-381
   # We might be able to save registers by having `r` and `M` be memory operand as well
 
-  let tsym = t.nimSymbol
-  let scratchSym = scratch.nimSymbol
   result.add quote do:
     static: doAssert: sizeof(SecretWord) == sizeof(ByteAddress)
 
@@ -473,10 +465,7 @@ macro sumprodMont_CIOS_spare2bits_adx_gen[N, K: static int](
       ctx.mov r2[i], t[i]
   else:
     ctx.comment "  Final substraction"
-    ctx.finalSubNoOverflowImpl(
-      r2, t, M,
-      scratch
-    )
+    ctx.finalSubNoOverflowImpl(r2, t, M, scratch)
   result.add ctx.generate()
 
 func sumprodMont_CIOS_spare2bits_asm_adx*[N, K: static int](

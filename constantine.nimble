@@ -158,6 +158,7 @@ task bindings, "Generate Constantine bindings":
   # Protocols
   genStaticBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_")
   genDynamicBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_")
+  echo ""
 
 proc testLib(path, testName, libName: string, useGMP: bool) =
   let dynlibName = if defined(windows): libName & ".dll"
@@ -173,7 +174,7 @@ proc testLib(path, testName, libName: string, useGMP: bool) =
     exec &"./build/testbindings/{testName}_dynlink.exe"
   else:
     exec &"LD_LIBRARY_PATH=lib ./build/testbindings/{testName}_dynlink.exe"
-
+  echo ""
 
   echo &"\n[Bindings: {path}/{testName}.c] Testing statically linked library: {staticlibName}"
   # Beware MacOS annoying linker with regards to static libraries
@@ -181,6 +182,7 @@ proc testLib(path, testName, libName: string, useGMP: bool) =
   # exec "gcc -Iinclude -Llib -o build/t_libctt_bls12_381_sl.exe examples_c/t_libctt_bls12_381.c -lgmp -Wl,-Bstatic -lconstantine_bls12_381 -Wl,-Bdynamic"
   exec &"gcc -Iinclude -o build/testbindings/{testName}_staticlink.exe {path}/{testName}.c lib/{staticlibName} " & (if useGMP: "-lgmp" else: "")
   exec &"./build/testbindings/{testName}_staticlink.exe"
+  echo ""
 
 task test_bindings, "Test C bindings":
   exec "mkdir -p build/testbindings"

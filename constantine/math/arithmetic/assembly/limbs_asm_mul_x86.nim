@@ -29,7 +29,7 @@ static: doAssert UseASM_X86_64 # Need 8 registers just for mul
 # Multiplication
 # -----------------------------------------------------------------------------------------------
 
-macro mul_gen[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) =
+macro mul_gen[rLen, aLen, bLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs[aLen], b_PIR: Limbs[bLen]) =
   ## Comba multiplication generator
   ## `a`, `b`, `r` can have a different number of limbs
   ## if `r`.limbs.len < a.limbs.len + b.limbs.len
@@ -42,54 +42,29 @@ macro mul_gen[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], 
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    arrR = init(OperandArray, nimSymbol = r, rLen, PointerInReg, InputOutput_EnsureClobber)
-    arrA = init(OperandArray, nimSymbol = a, aLen, PointerInReg, Input)
-    arrB = init(OperandArray, nimSymbol = b, bLen, PointerInReg, Input)
+    r = asmArray(r_PIR, rLen, PointerInReg, InputOutput_EnsureClobber)
+    a = asmArray(a_PIR, aLen, PointerInReg, Input)
+    b = asmArray(b_PIR, bLen, PointerInReg, Input)
 
-    t = Operand(
-      desc: OperandDesc(
-        asmId: "[t]",
-        nimSymbol: ident"t",
-        rm: Reg,
-        constraint: Output_EarlyClobber,
-        cEmit: "t"
-      )
-    )
-
-    u = Operand(
-      desc: OperandDesc(
-        asmId: "[u]",
-        nimSymbol: ident"u",
-        rm: Reg,
-        constraint: Output_EarlyClobber,
-        cEmit: "u"
-      )
-    )
-
-    v = Operand(
-      desc: OperandDesc(
-        asmId: "[v]",
-        nimSymbol: ident"v",
-        rm: Reg,
-        constraint: Output_EarlyClobber,
-        cEmit: "v"
-      )
-    )
+    tSym = ident"t"
+    t = asmValue(tSym, Reg, Output_EarlyClobber)
+    uSym = ident"u"
+    u = asmValue(uSym, Reg, Output_EarlyClobber)
+    vSym = ident"v"
+    v = asmValue(vSym, Reg, Output_EarlyClobber)
 
     # MUL requires RAX and RDX
 
   # Prologue
-  let tsym = t.desc.nimSymbol
-  let usym = u.desc.nimSymbol
-  let vsym = v.desc.nimSymbol
   result.add quote do:
-    var `tsym`{.noInit.}, `usym`{.noInit.}, `vsym`{.noInit.}: BaseType # zero-init
+    var `tSym`{.noInit.}, `uSym`{.noInit.}, `vSym`{.noInit.}: BaseType
 
-  # Algorithm
+  # Zero-init
   ctx.`xor` u, u
   ctx.`xor` v, v
   ctx.`xor` t, t
 
+  # Algorithm
   let stopEx = min(aLen+bLen, rLen)
 
   for i in 0 ..< stopEx:
@@ -100,13 +75,13 @@ macro mul_gen[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], 
     let ia = i - ib
     for j in 0 ..< min(aLen - ia, ib+1):
       # (t, u, v) <- (t, u, v) + a[ia+j] * b[ib-j]
-      ctx.mov rax, arrB[ib-j]
-      ctx.mul rdx, rax, arrA[ia+j], rax
+      ctx.mov rax, b[ib-j]
+      ctx.mul rdx, rax, a[ia+j], rax
       ctx.add v, rax
       ctx.adc u, rdx
       ctx.adc t, 0
 
-    ctx.mov arrR[i], v
+    ctx.mov r[i], v
 
     if i != stopEx - 1:
       ctx.mov v, u
@@ -116,10 +91,10 @@ macro mul_gen[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], 
   if aLen+bLen < rLen:
     ctx.`xor` rax, rax
     for i in aLen+bLen ..< rLen:
-      ctx.mov arrR[i], rax
+      ctx.mov r[i], rax
 
   # Codegen
-  result.add ctx.generate
+  result.add ctx.generate()
 
 func mul_asm*[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) =
   ## Multi-precision Multiplication
@@ -129,7 +104,7 @@ func mul_asm*[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], 
 # Squaring
 # -----------------------------------------------------------------------------------------------
 
-macro sqr_gen*[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) =
+macro sqr_gen*[rLen, aLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs[aLen]) =
   ## Comba squaring generator
   ## `a` and `r` can have a different number of limbs
   ## if `r`.limbs.len < a.limbs.len * 2
@@ -142,51 +117,26 @@ macro sqr_gen*[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) =
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    arrR = init(OperandArray, nimSymbol = r, rLen, PointerInReg, InputOutput_EnsureClobber)
-    arrA = init(OperandArray, nimSymbol = a, aLen, PointerInReg, Input)
+    r = asmArray(r_PIR, rLen, PointerInReg, InputOutput_EnsureClobber)
+    a = asmArray(a_PIR, aLen, PointerInReg, Input)
 
-    t = Operand(
-      desc: OperandDesc(
-        asmId: "[t]",
-        nimSymbol: ident"t",
-        rm: Reg,
-        constraint: Output_EarlyClobber,
-        cEmit: "t"
-      )
-    )
-
-    u = Operand(
-      desc: OperandDesc(
-        asmId: "[u]",
-        nimSymbol: ident"u",
-        rm: Reg,
-        constraint: Output_EarlyClobber,
-        cEmit: "u"
-      )
-    )
-
-    v = Operand(
-      desc: OperandDesc(
-        asmId: "[v]",
-        nimSymbol: ident"v",
-        rm: Reg,
-        constraint: Output_EarlyClobber,
-        cEmit: "v"
-      )
-    )
+    tSym = ident"t"
+    t = asmValue(tSym, Reg, Output_EarlyClobber)
+    uSym = ident"u"
+    u = asmValue(uSym, Reg, Output_EarlyClobber)
+    vSym = ident"v"
+    v = asmValue(vSym, Reg, Output_EarlyClobber)
 
   # Prologue
-  let tsym = t.desc.nimSymbol
-  let usym = u.desc.nimSymbol
-  let vsym = v.desc.nimSymbol
   result.add quote do:
-    var `tsym`{.noInit.}, `usym`{.noInit.}, `vsym`{.noInit.}: BaseType # zero-init
+    var `tSym`{.noInit.}, `uSym`{.noInit.}, `vSym`{.noInit.}: BaseType
 
-  # Algorithm
+  # Zero-init
   ctx.`xor` u, u
   ctx.`xor` v, v
   ctx.`xor` t, t
 
+  # Algorithm
   let stopEx = min(aLen*2, rLen)
 
   for i in 0 ..< stopEx:
@@ -200,8 +150,8 @@ macro sqr_gen*[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) =
       let k2 = ib-j
       if k1 < k2:
         # (t, u, v) <- (t, u, v) + 2 * a[k1] * a[k2]
-        ctx.mov rax, arrA[k2]
-        ctx.mul rdx, rax, arrA[k1], rax
+        ctx.mov rax, a[k2]
+        ctx.mul rdx, rax, a[k1], rax
         ctx.add rax, rax
         ctx.adc rdx, rdx
         ctx.adc t, 0
@@ -210,15 +160,15 @@ macro sqr_gen*[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) =
         ctx.adc t, 0
       elif k1 == k2:
         # (t, u, v) <- (t, u, v) + a[k1] * a[k2]
-        ctx.mov rax, arrA[k2]
-        ctx.mul rdx, rax, arrA[k1], rax
+        ctx.mov rax, a[k2]
+        ctx.mul rdx, rax, a[k1], rax
         ctx.add v, rax
         ctx.adc u, rdx
         ctx.adc t, 0
       else:
         discard
 
-    ctx.mov arrR[i], v
+    ctx.mov r[i], v
 
     if i != stopEx - 1:
       ctx.mov v, u
@@ -228,10 +178,10 @@ macro sqr_gen*[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) =
   if aLen*2 < rLen:
     ctx.`xor` rax, rax
     for i in aLen*2 ..< rLen:
-      ctx.mov arrR[i], rax
+      ctx.mov r[i], rax
 
   # Codegen
-  result.add ctx.generate
+  result.add ctx.generate()
 
 func square_asm*[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) =
   ## Multi-precision Squaring

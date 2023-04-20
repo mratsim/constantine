@@ -142,11 +142,15 @@ proc runTowerTests*[N](
         block:
           var r{.noinit.}: Field
           r.square(One)
-          check: bool(r == One)
+          doAssert bool(r == One),
+            "\n(" & $Field & "): Expected one: " & One.toHex() & "\n" &
+            "got: " & r.toHex()
         block:
           var r{.noinit.}: Field
           r.prod(One, One)
-          check: bool(r == One)
+          doAssert bool(r == One),
+            "\n(" & $Field & "): Expected one: " & One.toHex() & "\n" &
+            "got: " & r.toHex()
 
       staticFor(curve, TestCurves):
         test(ExtField(ExtDegree, curve))
@@ -168,12 +172,16 @@ proc runTowerTests*[N](
           var r: Field
           r.square(Two)
 
-          check: bool(r == Four)
+          doAssert bool(r == Four),
+            "\n(" & $Field & "): Expected 4: " & Four.toHex() & "\n" &
+            "got: " & r.toHex()
         block:
           var r: Field
           r.prod(Two, Two)
 
-          check: bool(r == Four)
+          doAssert bool(r == Four),
+            "\n(" & $Field & "): Expected 4: " & Four.toHex() & "\n" &
+            "got: " & r.toHex()
 
       staticFor(curve, TestCurves):
         test(ExtField(ExtDegree, curve))
@@ -197,12 +205,16 @@ proc runTowerTests*[N](
           var u: Field
           u.square(Three)
 
-          check: bool(u == Nine)
+          doAssert bool(u == Nine),
+            "\n(" & $Field & "): Expected 9: " & Nine.toHex() & "\n" &
+            "got: " & u.toHex()
         block:
           var u: Field
           u.prod(Three, Three)
 
-          check: bool(u == Nine)
+          doAssert bool(u == Nine),
+            "\n(" & $Field & "): Expected 9: " & Nine.toHex() & "\n" &
+            "got: " & u.toHex()
 
       staticFor(curve, TestCurves):
         test(ExtField(ExtDegree, curve))
@@ -226,12 +238,16 @@ proc runTowerTests*[N](
           var u: Field
           u.square(MinusThree)
 
-          check: bool(u == Nine)
+          doAssert bool(u == Nine),
+            "\n(" & $Field & "): Expected 9: " & Nine.toHex() & "\n" &
+            "got: " & u.toHex()
         block:
           var u: Field
           u.prod(MinusThree, MinusThree)
 
-          check: bool(u == Nine)
+          doAssert bool(u == Nine),
+            "\n(" & $Field & "): Expected 9: " & Nine.toHex() & "\n" &
+            "got: " & u.toHex()
 
       staticFor(curve, TestCurves):
         test(ExtField(ExtDegree, curve))

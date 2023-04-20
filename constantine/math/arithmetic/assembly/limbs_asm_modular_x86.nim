@@ -57,19 +57,19 @@ proc finalSubNoOverflowImpl*(
 proc finalSubMayOverflowImpl*(
        ctx: var Assembler_x86,
        r: Operand or OperandArray,
-       a, M, scratch: OperandArray,
-       scratchReg: Operand or Register or OperandReuse) =
+       a, M, scratch: OperandArray) =
   ## Reduce `a` into `r` modulo `M`
   ## To be used when the final substraction can
   ## also overflow the limbs (a 2^256 order of magnitude modulus stored in n words of total max size 2^256)
   ##
-  ## r, a, scratch, scratchReg are mutated
+  ## r, a, scratch
   ## M is read-only
+  ## This clobbers RAX
   let N = M.len
   ctx.comment "Final substraction (may carry)"
 
-  # Mask: scratchReg contains 0xFFFF or 0x0000
-  ctx.sbb scratchReg, scratchReg
+  # Mask: rax contains 0xFFFF or 0x0000
+  ctx.sbb rax, rax
 
   # Now substract the modulus, and test a < p with the last borrow
   ctx.mov scratch[0], a[0]
@@ -80,7 +80,7 @@ proc finalSubMayOverflowImpl*(
 
   # If it overflows here, it means that it was
   # smaller than the modulus and we don't need `scratch`
-  ctx.sbb scratchReg, 0
+  ctx.sbb rax, 0
 
   # If we borrowed it means that we were smaller than
   # the modulus and we don't need "scratch"
@@ -89,9 +89,10 @@ proc finalSubMayOverflowImpl*(
     ctx.mov r[i], a[i]
 
 macro finalSub_gen*[N: static int](
-       r_PIR: var array[N, SecretWord],
-       a_EIR, M_PIR: array[N, SecretWord],
-       scratch_EIR: var array[N, SecretWord],
+       r_PIR: var Limbs[N],
+       a_EIR: Limbs[N],
+       M_PIR: Limbs[N],
+       scratch_EIR: var Limbs[N],
        mayOverflow: static bool): untyped =
   ## Returns:
   ##   a-M if a > M
@@ -106,28 +107,24 @@ macro finalSub_gen*[N: static int](
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = init(OperandArray, nimSymbol = r_PIR, N, PointerInReg, InputOutput)
+    r = asmArray(r_PIR, N, PointerInReg, InputOutput)
     # We reuse the reg used for b for overflow detection
-    a = init(OperandArray, nimSymbol = a_EIR, N, ElemsInReg, InputOutput)
+    a = asmArray(a_EIR, N, ElemsInReg, InputOutput)
     # We could force m as immediate by specializing per moduli
-    M = init(OperandArray, nimSymbol = M_PIR, N, PointerInReg, Input)
-    t = init(OperandArray, nimSymbol = scratch_EIR, N, ElemsInReg, Output_EarlyClobber)
+    M = asmArray(M_PIR, N, PointerInReg, Input)
+    t = asmArray(scratch_EIR, N, ElemsInReg, Output_EarlyClobber)
 
   if mayOverflow:
-    ctx.finalSubMayOverflowImpl(
-      r, a, M, t, rax
-    )
+    ctx.finalSubMayOverflowImpl(r, a, M, t)
   else:
-    ctx.finalSubNoOverflowImpl(
-      r, a, M, t
-    )
+    ctx.finalSubNoOverflowImpl(r, a, M, t)
 
   result.add ctx.generate()
 
 # Field addition
 # ------------------------------------------------------------
 
-macro addmod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N], spareBits: static int): untyped =
+macro addmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_PIR: Limbs[N], spareBits: static int): untyped =
   ## Generate an optimized modular addition kernel
   # Register pressure note:
   #   We could generate a kernel per modulus m by hardcoding it as immediate
@@ -139,21 +136,20 @@ macro addmod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N], spareBits: s
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = init(OperandArray, nimSymbol = R, N, PointerInReg, InputOutput)
-    # We reuse the reg used for b for overflow detection
-    b = init(OperandArray, nimSymbol = B, N, PointerInReg, InputOutput)
+    r = asmArray(r_PIR, N, PointerInReg, InputOutput)
+    b = asmArray(b_PIR, N, PointerInReg, InputOutput)
     # We could force m as immediate by specializing per moduli
-    M = init(OperandArray, nimSymbol = m, N, PointerInReg, Input)
+    M = asmArray(M_PIR, N, PointerInReg, Input)
     # If N is too big, we need to spill registers. TODO.
-    u = init(OperandArray, nimSymbol = ident"u", N, ElemsInReg, InputOutput)
-    v = init(OperandArray, nimSymbol = ident"v", N, ElemsInReg, Output_EarlyClobber)
+    uSym = ident"u"
+    vSym = ident"v"
+    u = asmArray(uSym, N, ElemsInReg, InputOutput)
+    v = asmArray(vSym, N, ElemsInReg, Output_EarlyClobber)
 
-  let usym = u.nimSymbol
-  let vsym = v.nimSymbol
   result.add quote do:
-    var `usym`{.noinit.}, `vsym` {.noInit, used.}: typeof(`A`)
+    var `usym`{.noinit.}, `vsym` {.noInit, used.}: typeof(`a_PIR`)
     staticFor i, 0, `N`:
-      `usym`[i] = `A`[i]
+      `usym`[i] = `a_PIR`[i]
 
   # Addition
   ctx.add u[0], b[0]
@@ -166,9 +162,7 @@ macro addmod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N], spareBits: s
   if spareBits >= 1:
     ctx.finalSubNoOverflowImpl(r, u, M, v)
   else:
-    ctx.finalSubMayOverflowImpl(
-      r, u, M, v, b.reuseRegister()
-    )
+    ctx.finalSubMayOverflowImpl(r, u, M, v)
 
   result.add ctx.generate()
 
@@ -180,7 +174,7 @@ func addmod_asm*(r: var Limbs, a, b, m: Limbs, spareBits: static int) {.noInline
 # Field substraction
 # ------------------------------------------------------------
 
-macro submod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N]): untyped =
+macro submod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_PIR: Limbs[N]): untyped =
   ## Generate an optimized modular addition kernel
   # Register pressure note:
   #   We could generate a kernel per modulus m by hardocing it as immediate
@@ -192,21 +186,20 @@ macro submod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N]): untyped =
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = init(OperandArray, nimSymbol = R, N, PointerInReg, InputOutput)
-    # We reuse the reg used for b for overflow detection
-    b = init(OperandArray, nimSymbol = B, N, PointerInReg, InputOutput)
+    r = asmArray(r_PIR, N, PointerInReg, InputOutput)
+    b = asmArray(b_PIR, N, PointerInReg, InputOutput)
     # We could force m as immediate by specializing per moduli
-    M = init(OperandArray, nimSymbol = m, N, PointerInReg, Input)
+    M = asmArray(M_PIR, N, PointerInReg, Input)
     # If N is too big, we need to spill registers. TODO.
-    u = init(OperandArray, nimSymbol = ident"U", N, ElemsInReg, InputOutput)
-    v = init(OperandArray, nimSymbol = ident"V", N, ElemsInReg, Output_EarlyClobber)
+    uSym = ident"u"
+    vSym = ident"v"
+    u = asmArray(uSym, N, ElemsInReg, InputOutput)
+    v = asmArray(vSym, N, ElemsInReg, Output_EarlyClobber)
 
-  let usym = u.nimSymbol
-  let vsym = v.nimSymbol
   result.add quote do:
-    var `usym`{.noinit.}, `vsym` {.noInit, used.}: typeof(`A`)
+    var `usym`{.noinit.}, `vsym` {.noInit, used.}: typeof(`a_PIR`)
     staticFor i, 0, `N`:
-      `usym`[i] = `A`[i]
+      `usym`[i] = `a_PIR`[i]
 
   # Substraction
   ctx.sub u[0], b[0]
@@ -231,7 +224,7 @@ macro submod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N]): untyped =
     ctx.adc u[i], v[i]
     ctx.mov r[i], u[i]
 
-  result.add ctx.generate
+  result.add ctx.generate()
 
 func submod_asm*(r: var Limbs, a, b, M: Limbs) {.noInline.} =
   ## Constant-time modular substraction
@@ -242,19 +235,23 @@ func submod_asm*(r: var Limbs, a, b, M: Limbs) {.noInline.} =
 # Field negation
 # ------------------------------------------------------------
 
-macro negmod_gen[N: static int](R: var Limbs[N], A, m: Limbs[N]): untyped =
+macro negmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, M_PIR: Limbs[N]): untyped =
   ## Generate an optimized modular negation kernel
 
   result = newStmtList()
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    a = init(OperandArray, nimSymbol = A, N, PointerInReg, Input)
-    r = init(OperandArray, nimSymbol = R, N, PointerInReg, InputOutput)
-    u = init(OperandArray, nimSymbol = ident"U", N, ElemsInReg, Output_EarlyClobber)
+    a = asmArray(a_PIR, N, PointerInReg, Input)
+    r = asmArray(r_PIR, N, PointerInReg, InputOutput)
+    uSym = ident"u"
+    u = asmArray(uSym, N, ElemsInReg, Output_EarlyClobber)
     # We could force m as immediate by specializing per moduli
     # We reuse the reg used for m for overflow detection
-    M = init(OperandArray, nimSymbol = m, N, PointerInReg, InputOutput)
+    M = asmArray(M_PIR, N, PointerInReg, InputOutput)
+
+  result.add quote do:
+    var `usym`{.noinit, used.}: typeof(`a_PIR`)
 
   # Substraction m - a
   ctx.mov u[0], M[0]
@@ -274,10 +271,7 @@ macro negmod_gen[N: static int](R: var Limbs[N], A, m: Limbs[N]): untyped =
     ctx.cmovz u[i], isZero
     ctx.mov r[i], u[i]
 
-  let usym = u.nimSymbol
-  result.add quote do:
-    var `usym`{.noinit, used.}: typeof(`A`)
-  result.add ctx.generate
+  result.add ctx.generate()
 
 func negmod_asm*(r: var Limbs, a, m: Limbs) =
   ## Constant-time modular negation

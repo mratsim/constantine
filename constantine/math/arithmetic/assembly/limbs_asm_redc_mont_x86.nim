@@ -46,15 +46,15 @@ macro redc2xMont_gen*[N: static int](
   # so we store everything in scratchspaces restoring as needed
   let
     # We could force M as immediate by specializing per moduli
-    M = init(OperandArray, nimSymbol = M_PIR, N, PointerInReg, Input)
+    M = asmArray(M_PIR, N, PointerInReg, Input)
     # MUL requires RAX and RDX
 
   let uSlots = N+2
   let vSlots = max(N-2, 3)
 
   var # Scratchspaces
-    u = init(OperandArray, nimSymbol = ident"U", uSlots, ElemsInReg, InputOutput_EnsureClobber)
-    v = init(OperandArray, nimSymbol = ident"V", vSlots, ElemsInReg, InputOutput_EnsureClobber)
+    u = asmArray(nimSymbol = ident"u", uSlots, ElemsInReg, InputOutput_EnsureClobber)
+    v = asmArray(nimSymbol = ident"v", vSlots, ElemsInReg, InputOutput_EnsureClobber)
 
   # Prologue
   let usym = u.nimSymbol
@@ -157,7 +157,7 @@ macro redc2xMont_gen*[N: static int](
   elif spareBits >= 1:
     ctx.finalSubNoOverflowImpl(r, u, M, t)
   else:
-    ctx.finalSubMayOverflowImpl(r, u, M, t, rax)
+    ctx.finalSubMayOverflowImpl(r, u, M, t)
 
   # Code generation
   result.add ctx.generate()
@@ -192,34 +192,22 @@ macro mulMont_by_1_gen[N: static int](
   # RAX and RDX are defacto used due to the MUL instructions
   # so we store everything in scratchspaces restoring as needed
   let
-    scratchSlots = 2
-
-    t = init(OperandArray, nimSymbol = t_EIR, N, ElemsInReg, InputOutput_EnsureClobber)
+    t = asmArray(t_EIR, N, ElemsInReg, InputOutput_EnsureClobber)
     # We could force M as immediate by specializing per moduli
-    M = init(OperandArray, nimSymbol = M_PIR, N, PointerInReg, Input)
-    # MultiPurpose Register slots
-    scratch = init(OperandArray, nimSymbol = ident"scratch", scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
+    M = asmArray(M_PIR, N, MemOffsettable, Input)
 
     # MUL requires RAX and RDX
 
-    m0ninv = Operand(
-               desc: OperandDesc(
-                 asmId: "[m0ninv]",
-                 nimSymbol: m0ninv_REG,
-                 rm: MemOffsettable,
-                 constraint: Input,
-                 cEmit: "&" & $m0ninv_REG
-               )
-             )
-
-    C = scratch[0] # Stores the high-part of muliplication
-    m = scratch[1] # Stores (t[0] * m0ninv) mod 2ʷ
-
-  let scratchSym = scratch.nimSymbol
+    m0ninv = asmValue(m0ninv_REG, Mem, Input)
+    Csym = ident"C"
+    C = asmValue(Csym, Reg, Output_EarlyClobber) # Stores the high-part of muliplication
+    mSym = ident"m"
+    m = asmValue(msym, Reg, Output_EarlyClobber) # Stores (t[0] * m0ninv) mod 2ʷ
 
   # Copy a in t
   result.add quote do:
-    var `scratchSym` {.noInit, used.}: Limbs[`scratchSlots`]
+    var `Csym` {.noInit, used.}: BaseType
+    var `mSym` {.noInit, used.}: BaseType
 
   # Algorithm
   # ---------------------------------------------------------
