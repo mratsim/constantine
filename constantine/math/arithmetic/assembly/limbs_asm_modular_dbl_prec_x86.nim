@@ -41,7 +41,7 @@ macro addmod2x_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR: Limbs[N], M
   let
     H = N div 2
 
-    r = asmArray(r_PIR, N, PointerInReg, InputOutput)
+    r = asmArray(r_PIR, N, PointerInReg, UnmutatedPointerToWriteMem)
     # We reuse the reg used for b for overflow detection
     b = asmArray(b_PIR, N, PointerInReg, InputOutput)
     # We could force m as immediate by specializing per moduli
@@ -112,7 +112,7 @@ macro submod2x_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR: Limbs[N], M
   let
     H = N div 2
 
-    r = asmArray(r_PIR, N, PointerInReg, InputOutput)
+    r = asmArray(r_PIR, N, PointerInReg, UnmutatedPointerToWriteMem)
     # We reuse the reg used for b for overflow detection
     b = asmArray(b_PIR, N, PointerInReg, InputOutput)
     # We could force m as immediate by specializing per moduli
@@ -179,12 +179,12 @@ macro negmod2x_gen[N: static int](r_PIR: var Limbs[N], a_PIR: Limbs[N], M_PIR: L
     H = N div 2
 
     a = asmArray(a_PIR, N, PointerInReg, Input)
-    r = asmArray(r_PIR, N, PointerInReg, InputOutput)
+    r = asmArray(r_PIR, N, PointerInReg, UnmutatedPointerToWriteMem)
     uSym = ident"u"
     u = asmArray(uSym, N, ElemsInReg, Output_EarlyClobber)
     # We could force m as immediate by specializing per moduli
     # We reuse the reg used for m for overflow detection
-    M = asmArray(M_PIR, N, PointerInReg, InputOutput)
+    M = asmArray(M_PIR, N, PointerInReg, Input)
 
     isZeroSym = ident"isZero"
     isZero = asmValue(isZeroSym, Reg, Output_EarlyClobber)

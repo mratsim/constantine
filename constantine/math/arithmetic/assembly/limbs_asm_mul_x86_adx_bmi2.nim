@@ -120,7 +120,7 @@ macro mulx_gen[rLen, aLen, bLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limb
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = asmArray(r_PIR, rLen, PointerInReg, InputOutput_EnsureClobber)
+    r = asmArray(r_PIR, rLen, PointerInReg, UnmutatedPointerToWriteMem)
     a = asmArray(a_PIR, aLen, PointerInReg, Input)
     b = asmArray(b_PIR, bLen, PointerInReg, Input)
 
@@ -573,7 +573,7 @@ macro sqrx_gen*[rLen, aLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs[aLe
     # t = 2 * a.len = 12
     # We use the full x86 register set.
 
-    r = asmArray(r_PIR, rLen, PointerInReg, InputOutput)
+    r = asmArray(r_PIR, rLen, PointerInReg, UnmutatedPointerToWriteMem)
     a = asmArray(a_PIR, aLen, PointerInReg, Input)
 
     # MULX requires RDX

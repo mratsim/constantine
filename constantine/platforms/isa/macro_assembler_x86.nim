@@ -61,6 +61,7 @@ type
     ## GCC extended assembly modifier
     Input               = ""
     Input_Commutative   = "%"
+    UnmutatedPointerToWriteMem = "" # The pointer itself is not modified but the memory pointer to is.
     Output_Overwrite    = "="
     Output_EarlyClobber = "=&"
     InputOutput         = "+"
@@ -74,7 +75,7 @@ type
     k2dArrayAddr
 
   Operand* = object
-    desc*: OperandDesc
+    desc: OperandDesc
     case kind: OpKind
     of kRegister:
       discard
@@ -86,20 +87,20 @@ type
       dims: array[2, int]
       buf2d: seq[Operand]
 
-  OperandDesc* = ref object
-    asmId*: string          # [a] - ASM id
-    nimSymbol*: NimNode     # a   - Nim nimSymbol
-    rm*: RM
-    constraint*: Constraint
-    cEmit*: string          # C emit for example a->limbs
+  OperandDesc = ref object
+    asmId: string          # [a] - ASM id
+    nimSymbol: NimNode     # a   - Nim nimSymbol
+    rm: RM
+    constraint: Constraint
+    cEmit: string          # C emit for example a->limbs
 
   OperandArray* = object
-    nimSymbol*: NimNode
+    nimSymbol: NimNode
     buf: seq[Operand]
 
   OperandReuse* = object
     # Allow reusing a register
-    asmId*: string
+    asmId: string
 
   Assembler_x86* = object
     code: string
@@ -113,7 +114,7 @@ type
   Stack* = object
 
 const SpecificRegisters = {RCX, RDX, R8, RAX}
-const OutputReg = {Output_EarlyClobber, InputOutput, InputOutput_EnsureClobber, Output_Overwrite, ClobberedRegister}
+const OutputReg = {UnmutatedPointerToWriteMem, Output_EarlyClobber, InputOutput, InputOutput_EnsureClobber, Output_Overwrite, ClobberedRegister}
 
 func hash(od: OperandDesc): Hash =
   {.noSideEffect.}:
@@ -183,9 +184,15 @@ func asmValue*(nimSymbol: NimNode, rm: RM, constraint: Constraint): Operand =
 func asmArray*(nimSymbol: NimNode, len: int, rm: RM, constraint: Constraint): OperandArray =
   doAssert rm in {MemOffsettable, PointerInReg, ElemsInReg}
 
+  if constraint == UnmutatedPointerToWriteMem:
+    doAssert rm == PointerInReg
+
   # We need to dereference the hidden pointer of var param
-  let isHiddenDeref = nimSymbol.kind == nnkHiddenDeref
-  let nimSymbol = if isHiddenDeref: nimSymbol[0]
+  let isPtr = nimSymbol.kind in {nnkHiddenDeref, nnkPtrTy}
+  let isAddr = nimSymbol.kind in {nnkInfix, nnkCall} and (nimSymbol[0].eqIdent"addr" or nimSymbol[0].eqIdent"unsafeAddr")
+
+  let nimSymbol = if isPtr: nimSymbol[0]
+                  elif isAddr: nimSymbol[1]
                   else: nimSymbol
   {.noSideEffect.}:
     let symStr = try: # Why does this raise a generic exception?
@@ -273,8 +280,7 @@ func as2dArrayAddr*(op: Operand, rows, cols: int): Operand =
     result.buf2d[i] = Operand(
       desc: op.desc,
       kind: kFromArray,
-      offset: i
-    )
+      offset: i)
 
 # Code generation
 # ------------------------------------------------------------------------------------------------------------
@@ -296,8 +302,7 @@ func setToCarryFlag*(a: var Assembler_x86, carry: NimNode) =
     nimSymbol: ident(symStr),
     rm: CarryFlag,
     constraint: Output_Overwrite,
-    cEmit: symStr
-  )
+    cEmit: symStr)
 
   a.operands.incl(desc)
 
@@ -318,11 +323,12 @@ func generate*(a: Assembler_x86): NimNode =
     decl = odesc.asmId & "\"" & $odesc.constraint & $odesc.rm & "\"" &
             " (`" & odesc.cEmit & "`)"
 
-    if odesc.constraint in {Input, Input_Commutative}:
+    if odesc.constraint in {Input, Input_Commutative, UnmutatedPointerToWriteMem}:
       inOperands.add decl
     else:
       outOperands.add decl
 
+    # TODO: PointerInReg adds a dummy memory operand hence "memClobbered" is not necessary.
     if odesc.rm == PointerInReg and odesc.constraint in {Output_Overwrite, Output_EarlyClobber, InputOutput, InputOutput_EnsureClobber}:
       memClobbered = true
 

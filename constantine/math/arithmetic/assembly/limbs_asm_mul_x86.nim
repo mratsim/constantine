@@ -42,7 +42,7 @@ macro mul_gen[rLen, aLen, bLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = asmArray(r_PIR, rLen, PointerInReg, InputOutput_EnsureClobber)
+    r = asmArray(r_PIR, rLen, PointerInReg, UnmutatedPointerToWriteMem)
     a = asmArray(a_PIR, aLen, PointerInReg, Input)
     b = asmArray(b_PIR, bLen, PointerInReg, Input)
 
@@ -117,7 +117,7 @@ macro sqr_gen*[rLen, aLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs[aLen
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = asmArray(r_PIR, rLen, PointerInReg, InputOutput_EnsureClobber)
+    r = asmArray(r_PIR, rLen, PointerInReg, UnmutatedPointerToWriteMem)
     a = asmArray(a_PIR, aLen, PointerInReg, Input)
 
     tSym = ident"t"

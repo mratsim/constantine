@@ -51,20 +51,19 @@ macro redc2xMont_gen*[N: static int](
 
   let uSlots = N+2
   let vSlots = max(N-2, 3)
-
+  let uSym = ident"u"
+  let vSym = ident"v"
   var # Scratchspaces
-    u = asmArray(nimSymbol = ident"u", uSlots, ElemsInReg, InputOutput_EnsureClobber)
-    v = asmArray(nimSymbol = ident"v", vSlots, ElemsInReg, InputOutput_EnsureClobber)
+    u = asmArray(uSym, uSlots, ElemsInReg, InputOutput_EnsureClobber)
+    v = asmArray(vSym, vSlots, ElemsInReg, InputOutput_EnsureClobber)
 
   # Prologue
-  let usym = u.nimSymbol
-  let vsym = v.nimSymbol
   result.add quote do:
-    var `usym`{.noinit, used.}: Limbs[`uSlots`]
-    var `vsym` {.noInit.}: Limbs[`vSlots`]
-    `vsym`[0] = cast[SecretWord](`r_PIR`[0].unsafeAddr)
-    `vsym`[1] = cast[SecretWord](`a_PIR`[0].unsafeAddr)
-    `vsym`[2] = SecretWord(`m0ninv_REG`)
+    var `uSym`{.noinit, used.}: Limbs[`uSlots`]
+    var `vSym` {.noInit.}: Limbs[`vSlots`]
+    `vSym`[0] = cast[SecretWord](`r_PIR`[0].unsafeAddr)
+    `vSym`[1] = cast[SecretWord](`a_PIR`[0].unsafeAddr)
+    `vSym`[2] = SecretWord(`m0ninv_REG`)
 
   let r_temp = v[0].asArrayAddr(len = N)
   let a = v[1].asArrayAddr(len = 2*N)

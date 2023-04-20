@@ -193,7 +193,7 @@ macro mulMont_CIOS_sparebit_adx_gen[N: static int](
   let
     scratchSlots = 6
 
-    r = asmArray(r_PIR, N, PointerInReg, InputOutput_EnsureClobber)
+    r = asmArray(r_PIR, N, PointerInReg, UnmutatedPointerToWriteMem)
     # We could force M as immediate by specializing per moduli
     M = asmArray(M_PIR, N, PointerInReg, Input)
     # If N is too big, we need to spill registers. TODO.

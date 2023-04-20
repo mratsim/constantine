@@ -34,7 +34,7 @@ macro ccopy_gen[N: static int](a_PIR: var Limbs[N], b_PIR: Limbs[N], ctl: Secret
   var ctx = init(Assembler_x86, BaseType)
 
   let
-    a = asmArray(a_PIR, N, PointerInReg, InputOutput)
+    a = asmArray(a_PIR, N, PointerInReg, UnmutatedPointerToWriteMem)
     b = asmArray(b_PIR, N, PointerInReg, Input)
 
     control = asmValue(ctl, Reg, Input)
@@ -78,7 +78,7 @@ macro add_gen[N: static int](carry: var Carry, r_PIR: var Limbs[N], a_PIR, b_PIR
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = asmArray(r_PIR, N, PointerInReg, InputOutput)
+    r = asmArray(r_PIR, N, PointerInReg, InputOutput) # TODO: otherwise wrong Poly1305 results
     a = asmArray(a_PIR, N, PointerInReg, Input)
     b = asmArray(b_PIR, N, PointerInReg, Input)
 
@@ -123,7 +123,7 @@ macro sub_gen[N: static int](borrow: var Borrow, r_PIR: var Limbs[N], a_PIR, b_P
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = asmArray(r_PIR, N, PointerInReg, InputOutput)
+    r = asmArray(r_PIR, N, PointerInReg, InputOutput) # TODO: otherwise wrong endomorphism acceleration results
     a = asmArray(a_PIR, N, PointerInReg, Input)
     b = asmArray(b_PIR, N, PointerInReg, Input)
 

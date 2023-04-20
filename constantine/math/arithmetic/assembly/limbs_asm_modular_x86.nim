@@ -62,7 +62,7 @@ proc finalSubMayOverflowImpl*(
   ## To be used when the final substraction can
   ## also overflow the limbs (a 2^256 order of magnitude modulus stored in n words of total max size 2^256)
   ##
-  ## r, a, scratch
+  ## r, a, scratch are mutated
   ## M is read-only
   ## This clobbers RAX
   let N = M.len
@@ -107,7 +107,7 @@ macro finalSub_gen*[N: static int](
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = asmArray(r_PIR, N, PointerInReg, InputOutput)
+    r = asmArray(r_PIR, N, PointerInReg, UnmutatedPointerToWriteMem)
     # We reuse the reg used for b for overflow detection
     a = asmArray(a_EIR, N, ElemsInReg, InputOutput)
     # We could force m as immediate by specializing per moduli
@@ -136,8 +136,8 @@ macro addmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_PIR: Limbs[
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = asmArray(r_PIR, N, PointerInReg, InputOutput)
-    b = asmArray(b_PIR, N, PointerInReg, InputOutput)
+    r = asmArray(r_PIR, N, PointerInReg, UnmutatedPointerToWriteMem)
+    b = asmArray(b_PIR, N, PointerInReg, Input)
     # We could force m as immediate by specializing per moduli
     M = asmArray(M_PIR, N, PointerInReg, Input)
     # If N is too big, we need to spill registers. TODO.
@@ -186,8 +186,8 @@ macro submod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_PIR: Limbs[
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = asmArray(r_PIR, N, PointerInReg, InputOutput)
-    b = asmArray(b_PIR, N, PointerInReg, InputOutput)
+    r = asmArray(r_PIR, N, PointerInReg, UnmutatedPointerToWriteMem)
+    b = asmArray(b_PIR, N, PointerInReg, InputOutput) # register reused for underflow detection
     # We could force m as immediate by specializing per moduli
     M = asmArray(M_PIR, N, PointerInReg, Input)
     # If N is too big, we need to spill registers. TODO.
@@ -243,7 +243,7 @@ macro negmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, M_PIR: Limbs[N]): un
   var ctx = init(Assembler_x86, BaseType)
   let
     a = asmArray(a_PIR, N, PointerInReg, Input)
-    r = asmArray(r_PIR, N, PointerInReg, InputOutput)
+    r = asmArray(r_PIR, N, PointerInReg, UnmutatedPointerToWriteMem)
     uSym = ident"u"
     u = asmArray(uSym, N, ElemsInReg, Output_EarlyClobber)
     # We could force m as immediate by specializing per moduli
