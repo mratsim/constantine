@@ -46,7 +46,7 @@ macro redc2xMont_gen*[N: static int](
   # so we store everything in scratchspaces restoring as needed
   let
     # We could force M as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, PointerInReg, Input)
+    M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
     # MUL requires RAX and RDX
 
   let uSlots = N+2
@@ -54,8 +54,8 @@ macro redc2xMont_gen*[N: static int](
   let uSym = ident"u"
   let vSym = ident"v"
   var # Scratchspaces
-    u = asmArray(uSym, uSlots, ElemsInReg, InputOutput_EnsureClobber)
-    v = asmArray(vSym, vSlots, ElemsInReg, InputOutput_EnsureClobber)
+    u = asmArray(uSym, uSlots, ElemsInReg, asmInputOutputEarlyClobber)
+    v = asmArray(vSym, vSlots, ElemsInReg, asmInputOutputEarlyClobber)
 
   # Prologue
   result.add quote do:
@@ -65,8 +65,8 @@ macro redc2xMont_gen*[N: static int](
     `vSym`[1] = cast[SecretWord](`a_PIR`[0].unsafeAddr)
     `vSym`[2] = SecretWord(`m0ninv_REG`)
 
-  let r_temp = v[0].asArrayAddr(len = N)
-  let a = v[1].asArrayAddr(len = 2*N)
+  let r_temp = v[0].asArrayAddr(r_PIR, len = N, memIndirect = memWrite)
+  let a = v[1].asArrayAddr(a_PIR, len = 2*N, memIndirect = memRead)
   let m0ninv = v[2]
 
   # Algorithm
@@ -136,7 +136,7 @@ macro redc2xMont_gen*[N: static int](
 
   if not(spareBits >= 2 and skipFinalSub):
     ctx.mov rdx, r_temp
-  let r = rdx.asArrayAddr(len = N)
+  let r = rdx.asArrayAddr(r_PIR, len = N, memIndirect = memWrite)
 
   # This does a[i+n] += hi
   # but in a separate carry chain, fused with the
@@ -191,17 +191,17 @@ macro mulMont_by_1_gen[N: static int](
   # RAX and RDX are defacto used due to the MUL instructions
   # so we store everything in scratchspaces restoring as needed
   let
-    t = asmArray(t_EIR, N, ElemsInReg, InputOutput_EnsureClobber)
+    t = asmArray(t_EIR, N, ElemsInReg, asmInputOutputEarlyClobber)
     # We could force M as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, MemOffsettable, Input)
+    M = asmArray(M_PIR, N, MemOffsettable, asmInput)
 
     # MUL requires RAX and RDX
 
-    m0ninv = asmValue(m0ninv_REG, Mem, Input)
+    m0ninv = asmValue(m0ninv_REG, Mem, asmInput)
     Csym = ident"C"
-    C = asmValue(Csym, Reg, Output_EarlyClobber) # Stores the high-part of muliplication
+    C = asmValue(Csym, Reg, asmOutputEarlyClobber) # Stores the high-part of muliplication
     mSym = ident"m"
-    m = asmValue(msym, Reg, Output_EarlyClobber) # Stores (t[0] * m0ninv) mod 2ʷ
+    m = asmValue(msym, Reg, asmOutputEarlyClobber) # Stores (t[0] * m0ninv) mod 2ʷ
 
   # Copy a in t
   result.add quote do:

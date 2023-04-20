@@ -19,7 +19,7 @@ import
 # ############################################################
 
 # Note: We can refer to at most 30 registers in inline assembly
-#       and "InputOutput" registers count double
+#       and "asmInputOutput" registers count double
 #       They are nice to let the compiler deals with mov
 #       but too constraining so we move things ourselves.
 
@@ -120,9 +120,9 @@ macro mulx_gen[rLen, aLen, bLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limb
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = asmArray(r_PIR, rLen, PointerInReg, UnmutatedPointerToWriteMem)
-    a = asmArray(a_PIR, aLen, PointerInReg, Input)
-    b = asmArray(b_PIR, bLen, PointerInReg, Input)
+    r = asmArray(r_PIR, rLen, PointerInReg, asmInput, memIndirect = memWrite)
+    a = asmArray(a_PIR, aLen, PointerInReg, asmInput, memIndirect = memRead)
+    b = asmArray(b_PIR, bLen, PointerInReg, asmInput, memIndirect = memRead)
 
     # MULX requires RDX
 
@@ -130,7 +130,7 @@ macro mulx_gen[rLen, aLen, bLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limb
     tSlots = aLen+1 # Extra for high word
 
   var # If aLen is too big, we need to spill registers. TODO.
-    t = asmArray(tSym, tSlots, ElemsInReg, Output_EarlyClobber)
+    t = asmArray(tSym, tSlots, ElemsInReg, asmOutputEarlyClobber)
 
   # Prologue
   result.add quote do:
@@ -573,15 +573,15 @@ macro sqrx_gen*[rLen, aLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs[aLe
     # t = 2 * a.len = 12
     # We use the full x86 register set.
 
-    r = asmArray(r_PIR, rLen, PointerInReg, UnmutatedPointerToWriteMem)
-    a = asmArray(a_PIR, aLen, PointerInReg, Input)
+    r = asmArray(r_PIR, rLen, PointerInReg, asmInput, memIndirect = memWrite)
+    a = asmArray(a_PIR, aLen, PointerInReg, asmInput, memIndirect = memRead)
 
     # MULX requires RDX
     tSym = ident"t"
     tSlots = aLen+1 # Extra for high word
 
   var # If aLen is too big, we need to spill registers. TODO.
-    t = asmArray(tSym, tSlots, ElemsInReg, Output_EarlyClobber)
+    t = asmArray(tSym, tSlots, ElemsInReg, asmOutputEarlyClobber)
 
   # Prologue
   # -------------------------------

@@ -19,7 +19,7 @@ import
 # ############################################################
 
 # Note: We can refer to at most 30 registers in inline assembly
-#       and "InputOutput" registers count double
+#       and "asmInputOutput" registers count double
 #       They are nice to let the compiler deals with mov
 #       but too constraining so we move things ourselves.
 
@@ -107,12 +107,12 @@ macro finalSub_gen*[N: static int](
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = asmArray(r_PIR, N, PointerInReg, UnmutatedPointerToWriteMem)
+    r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
     # We reuse the reg used for b for overflow detection
-    a = asmArray(a_EIR, N, ElemsInReg, InputOutput)
+    a = asmArray(a_EIR, N, ElemsInReg, asmInputOutput)
     # We could force m as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, PointerInReg, Input)
-    t = asmArray(scratch_EIR, N, ElemsInReg, Output_EarlyClobber)
+    M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
+    t = asmArray(scratch_EIR, N, ElemsInReg, asmOutputEarlyClobber)
 
   if mayOverflow:
     ctx.finalSubMayOverflowImpl(r, a, M, t)
@@ -136,15 +136,15 @@ macro addmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_PIR: Limbs[
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = asmArray(r_PIR, N, PointerInReg, UnmutatedPointerToWriteMem)
-    b = asmArray(b_PIR, N, PointerInReg, Input)
+    r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
+    b = asmArray(b_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
     # We could force m as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, PointerInReg, Input)
+    M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
     # If N is too big, we need to spill registers. TODO.
     uSym = ident"u"
     vSym = ident"v"
-    u = asmArray(uSym, N, ElemsInReg, InputOutput)
-    v = asmArray(vSym, N, ElemsInReg, Output_EarlyClobber)
+    u = asmArray(uSym, N, ElemsInReg, asmInputOutput)
+    v = asmArray(vSym, N, ElemsInReg, asmOutputEarlyClobber)
 
   result.add quote do:
     var `usym`{.noinit.}, `vsym` {.noInit, used.}: typeof(`a_PIR`)
@@ -186,15 +186,15 @@ macro submod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_PIR: Limbs[
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = asmArray(r_PIR, N, PointerInReg, UnmutatedPointerToWriteMem)
-    b = asmArray(b_PIR, N, PointerInReg, InputOutput) # register reused for underflow detection
+    r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
+    b = asmArray(b_PIR, N, PointerInReg, asmInputOutput, memIndirect = memRead) # register reused for underflow detection
     # We could force m as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, PointerInReg, Input)
+    M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
     # If N is too big, we need to spill registers. TODO.
     uSym = ident"u"
     vSym = ident"v"
-    u = asmArray(uSym, N, ElemsInReg, InputOutput)
-    v = asmArray(vSym, N, ElemsInReg, Output_EarlyClobber)
+    u = asmArray(uSym, N, ElemsInReg, asmInputOutput)
+    v = asmArray(vSym, N, ElemsInReg, asmOutputEarlyClobber)
 
   result.add quote do:
     var `usym`{.noinit.}, `vsym` {.noInit, used.}: typeof(`a_PIR`)
@@ -242,13 +242,13 @@ macro negmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, M_PIR: Limbs[N]): un
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    a = asmArray(a_PIR, N, PointerInReg, Input)
-    r = asmArray(r_PIR, N, PointerInReg, UnmutatedPointerToWriteMem)
+    a = asmArray(a_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
+    r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
     uSym = ident"u"
-    u = asmArray(uSym, N, ElemsInReg, Output_EarlyClobber)
+    u = asmArray(uSym, N, ElemsInReg, asmOutputEarlyClobber)
     # We could force m as immediate by specializing per moduli
     # We reuse the reg used for m for overflow detection
-    M = asmArray(M_PIR, N, PointerInReg, InputOutput)
+    M = asmArray(M_PIR, N, PointerInReg, asmInputOutput, memIndirect = memRead)
 
   result.add quote do:
     var `usym`{.noinit, used.}: typeof(`a_PIR`)

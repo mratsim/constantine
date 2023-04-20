@@ -19,7 +19,7 @@ import
 # ############################################################
 
 # Note: We can refer to at most 30 registers in inline assembly
-#       and "InputOutput" registers count double
+#       and "asmInputOutput" registers count double
 #       They are nice to let the compiler deals with mov
 #       but too constraining so we move things ourselves.
 
@@ -42,16 +42,16 @@ macro mul_gen[rLen, aLen, bLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = asmArray(r_PIR, rLen, PointerInReg, UnmutatedPointerToWriteMem)
-    a = asmArray(a_PIR, aLen, PointerInReg, Input)
-    b = asmArray(b_PIR, bLen, PointerInReg, Input)
+    r = asmArray(r_PIR, rLen, PointerInReg, asmInput, memIndirect = memWrite)
+    a = asmArray(a_PIR, aLen, PointerInReg, asmInput, memIndirect = memRead)
+    b = asmArray(b_PIR, bLen, PointerInReg, asmInput, memIndirect = memRead)
 
     tSym = ident"t"
-    t = asmValue(tSym, Reg, Output_EarlyClobber)
+    t = asmValue(tSym, Reg, asmOutputEarlyClobber)
     uSym = ident"u"
-    u = asmValue(uSym, Reg, Output_EarlyClobber)
+    u = asmValue(uSym, Reg, asmOutputEarlyClobber)
     vSym = ident"v"
-    v = asmValue(vSym, Reg, Output_EarlyClobber)
+    v = asmValue(vSym, Reg, asmOutputEarlyClobber)
 
     # MUL requires RAX and RDX
 
@@ -117,15 +117,15 @@ macro sqr_gen*[rLen, aLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs[aLen
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = asmArray(r_PIR, rLen, PointerInReg, UnmutatedPointerToWriteMem)
-    a = asmArray(a_PIR, aLen, PointerInReg, Input)
+    r = asmArray(r_PIR, rLen, PointerInReg, asmInput, memIndirect = memWrite)
+    a = asmArray(a_PIR, aLen, PointerInReg, asmInput, memIndirect = memRead)
 
     tSym = ident"t"
-    t = asmValue(tSym, Reg, Output_EarlyClobber)
+    t = asmValue(tSym, Reg, asmOutputEarlyClobber)
     uSym = ident"u"
-    u = asmValue(uSym, Reg, Output_EarlyClobber)
+    u = asmValue(uSym, Reg, asmOutputEarlyClobber)
     vSym = ident"v"
-    v = asmValue(vSym, Reg, Output_EarlyClobber)
+    v = asmValue(vSym, Reg, asmOutputEarlyClobber)
 
   # Prologue
   result.add quote do:

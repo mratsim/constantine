@@ -22,7 +22,7 @@ import
 # ############################################################
 
 # Note: We can refer to at most 30 registers in inline assembly
-#       and "InputOutput" registers count double
+#       and "asmInputOutput" registers count double
 #       They are nice to let the compiler deals with mov
 #       but too constraining so we move things ourselves.
 
@@ -193,20 +193,20 @@ macro mulMont_CIOS_sparebit_adx_gen[N: static int](
   let
     scratchSlots = 6
 
-    r = asmArray(r_PIR, N, PointerInReg, UnmutatedPointerToWriteMem)
+    r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
     # We could force M as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, PointerInReg, Input)
+    M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
     # If N is too big, we need to spill registers. TODO.
     tSym = ident"t"
-    t = asmArray(tSym, N, ElemsInReg, Output_EarlyClobber)
+    t = asmArray(tSym, N, ElemsInReg, asmOutputEarlyClobber)
     # MultiPurpose Register slots
     scratchSym = ident"scratch"
-    scratch = asmArray(scratchSym, scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
+    scratch = asmArray(scratchSym, scratchSlots, ElemsInReg, asmInputOutputEarlyClobber)
 
     # MULX requires RDX as well
 
-    a = scratch[0].asArrayAddr(len = N) # Store the `a` operand
-    b = scratch[1].asArrayAddr(len = N) # Store the `b` operand
+    a = scratch[0].asArrayAddr(a_PIR, len = N, memIndirect = memRead) # Store the `a` operand
+    b = scratch[1].asArrayAddr(b_PIR, len = N, memIndirect = memRead) # Store the `b` operand
     A = scratch[2]                      # High part of extended precision multiplication
     C = scratch[3]
     m0ninv = scratch[4]                 # Modular inverse of M[0]
@@ -343,23 +343,23 @@ macro sumprodMont_CIOS_spare2bits_adx_gen[N, K: static int](
     scratchSlots = 6
 
     # We could force M as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, PointerInReg, Input)
+    M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
     # If N is too big, we need to spill registers. TODO.
     tSym = ident"t"
-    t = asmArray(tSym, N, ElemsInReg, Output_EarlyClobber)
+    t = asmArray(tSym, N, ElemsInReg, asmOutputEarlyClobber)
     # MultiPurpose Register slots
     scratchSym = ident"scratch"
-    scratch = asmArray(scratchSym, scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
+    scratch = asmArray(scratchSym, scratchSlots, ElemsInReg, asmInputOutputEarlyClobber)
 
     # MULX requires RDX as well
 
-    m0ninv = asmValue(m0ninv_REG, Mem, Input)
+    m0ninv = asmValue(m0ninv_REG, Mem, asmInput)
 
     # We're really constrained by register and somehow setting as memory doesn't help
     # So we store the result `r` in the scratch space and then reload it in RDX
     # before the scratchspace is used in final substraction
-    a = scratch[0].as2dArrayAddr(rows = K, cols = N) # Store the `a` operand
-    b = scratch[1].as2dArrayAddr(rows = K, cols = N) # Store the `b` operand
+    a = scratch[0].as2dArrayAddr(a_PIR, rows = K, cols = N, memIndirect = memRead) # Store the `a` operand
+    b = scratch[1].as2dArrayAddr(b_PIR, rows = K, cols = N, memIndirect = memRead) # Store the `b` operand
     tN = scratch[2]                                  # High part of extended precision multiplication
     C = scratch[3]                                   # Carry during reduction step
     r = scratch[4]                                   # Stores the `r` operand
@@ -457,7 +457,7 @@ macro sumprodMont_CIOS_spare2bits_adx_gen[N, K: static int](
     )
 
   ctx.mov rax, r # move r away from scratchspace that will be used for final substraction
-  let r2 = rax.asArrayAddr(len = N)
+  let r2 = rax.asArrayAddr(r_PIR, len = N, memIndirect = memWrite)
 
   if skipFinalSub:
     ctx.comment "  Copy result"

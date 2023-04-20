@@ -59,15 +59,19 @@ else:
 type
   Constraint* = enum
     ## GCC extended assembly modifier
-    Input               = ""
-    Input_Commutative   = "%"
-    UnmutatedPointerToReadWriteMem = ""
-    UnmutatedPointerToWriteMem = "" # The pointer itself is not modified but the memory pointer to is.
-    Output_Overwrite    = "="
-    Output_EarlyClobber = "=&"
-    InputOutput         = "+"
-    InputOutput_EnsureClobber = "+&" # For register InputOutput, clang needs "+&" bug?
-    ClobberedRegister
+    asmInput               = ""
+    asmInputCommutative   = "%"
+    asmOutputOverwrite    = "="
+    asmOutputEarlyClobber = "=&"
+    asmInputOutput         = "+"
+    asmInputOutputEarlyClobber = "+&" # For register asmInputOutput, clang needs "+&" bug?
+    asmClobberedRegister
+
+  MemIndirectAccess* = enum
+    memNoAccess
+    memRead
+    memWrite
+    memReadWrite
 
   OpKind = enum
     kRegister
@@ -94,6 +98,7 @@ type
     rm: RM
     constraint: Constraint
     cEmit: string          # C emit for example a->limbs
+    memClobbered: seq[(MemIndirectAccess, string)]
 
   OperandArray* = object
     nimSymbol: NimNode
@@ -115,12 +120,26 @@ type
   Stack* = object
 
 const SpecificRegisters = {RCX, RDX, R8, RAX}
-const OutputReg = {UnmutatedPointerToReadWriteMem, UnmutatedPointerToWriteMem, Output_EarlyClobber, InputOutput, InputOutput_EnsureClobber, Output_Overwrite, ClobberedRegister}
+const OutputReg = {asmOutputEarlyClobber, asmInputOutput, asmInputOutputEarlyClobber, asmOutputOverwrite, asmClobberedRegister}
+
+func toString*(nimSymbol: NimNode): string =
+  # We need to dereference the hidden pointer of var param
+  let isPtr = nimSymbol.kind in {nnkHiddenDeref, nnkPtrTy}
+  let isAddr = nimSymbol.kind in {nnkInfix, nnkCall} and (nimSymbol[0].eqIdent"addr" or nimSymbol[0].eqIdent"unsafeAddr")
+
+  let nimSymbol = if isPtr: nimSymbol[0]
+                  elif isAddr: nimSymbol[1]
+                  else: nimSymbol
+  {.noSideEffect.}:
+    try: # Why does this raise a generic exception?
+      return $nimSymbol
+    except:
+      raise newException(Defect, "Broke Nim!")
 
 func hash(od: OperandDesc): Hash =
   {.noSideEffect.}:
     try: # Why does this raise a generic exception?
-      hash($od.nimSymbol)
+      hash(od.nimSymbol.toString())
     except:
       raise newException(Defect, "Broke Nim")
 
@@ -182,24 +201,28 @@ func asmValue*(nimSymbol: NimNode, rm: RM, constraint: Constraint): Operand =
         constraint: constraint,
         cEmit: symStr))
 
-func asmArray*(nimSymbol: NimNode, len: int, rm: RM, constraint: Constraint): OperandArray =
+func genMemClobber*(nimSymbol: NimNode, len: int, memIndirect: MemIndirectAccess): string =
+  let baseType = nimSymbol.getTypeImpl()[2].getTypeImpl()[0]
+  let cBaseType = if baseType.sameType(getType(uint64)): "NU64"
+                  else: "NU32"
+
+  let symStr = nimSymbol.toString()
+
+  case memIndirect
+  of memRead:
+    return "\"m\" (`*(const " & cBaseType & " (*)[" & $len & "]) " & symStr & "`)"
+  of memWrite:
+    return "\"=m\" (`*(" & cBaseType & " (*)[" & $len & "]) " & symStr & "`)"
+  of memReadWrite:
+    return "\"+m\" (`*(" & cBaseType & " (*)[" & $len & "]) " & symStr & "`)"
+  else:
+    doAssert false, "Indirect access kind not specified"
+
+func asmArray*(nimSymbol: NimNode, len: int, rm: RM, constraint: Constraint, memIndirect = memNoAccess): OperandArray =
   doAssert rm in {MemOffsettable, PointerInReg, ElemsInReg}
+  doAssert (rm == PointerInReg) xor (memIndirect == memNoAccess)
 
-  if constraint in {UnmutatedPointerToReadWriteMem, UnmutatedPointerToWriteMem}:
-    doAssert rm == PointerInReg
-
-  # We need to dereference the hidden pointer of var param
-  let isPtr = nimSymbol.kind in {nnkHiddenDeref, nnkPtrTy}
-  let isAddr = nimSymbol.kind in {nnkInfix, nnkCall} and (nimSymbol[0].eqIdent"addr" or nimSymbol[0].eqIdent"unsafeAddr")
-
-  let nimSymbol = if isPtr: nimSymbol[0]
-                  elif isAddr: nimSymbol[1]
-                  else: nimSymbol
-  {.noSideEffect.}:
-    let symStr = try: # Why does this raise a generic exception?
-      $nimSymbol
-    except:
-      raise newException(Defect, "Broke Nim!")
+  let symStr = nimSymbol.toString()
 
   result.nimSymbol = nimSymbol
   result.buf.setLen(len)
@@ -210,7 +233,8 @@ func asmArray*(nimSymbol: NimNode, len: int, rm: RM, constraint: Constraint): Op
                   nimSymbol: nimSymbol,
                   rm: rm,
                   constraint: constraint,
-                  cEmit: symStr)
+                  cEmit: symStr,
+                  memClobbered: @[(memIndirect, genMemClobber(nimSymbol, len, memIndirect))])
 
     for i in 0 ..< len:
       result.buf[i] = Operand(
@@ -231,53 +255,56 @@ func asmArray*(nimSymbol: NimNode, len: int, rm: RM, constraint: Constraint): Op
                   nimSymbol: ident(symStr & $i),
                   rm: rm,
                   constraint: constraint,
-                  cEmit: symStr & "[" & $i & "]"
-              ),
-        kind: kRegister
-      )
+                  cEmit: symStr & "[" & $i & "]"),
+        kind: kRegister)
 
-func asArrayAddr*(op: Operand, len: int): Operand =
+func asArrayAddr*(op: Operand, memPointer: NimNode, len: int, memIndirect: MemIndirectAccess): Operand =
   ## Use the value stored in an operand as an array address
   doAssert op.desc.rm in {Reg, PointerInReg, ElemsInReg}+SpecificRegisters
   result = Operand(
     kind: kArrayAddr,
     desc: nil,
-    buf: newSeq[Operand](len)
-  )
+    buf: newSeq[Operand](len))
+
+  op.desc.memClobbered.add (memIndirect, genMemClobber(memPointer, len, memIndirect))
+
   for i in 0 ..< len:
     result.buf[i] = Operand(
       desc: op.desc,
       kind: kFromArray,
-      offset: i
-    )
+      offset: i)
 
-func asArrayAddr*(op: Register, len: int): Operand =
+func asArrayAddr*(op: Register, mempointer: NimNode, len: int, memIndirect: MemIndirectAccess): Operand =
   ## Use the value stored in an operand as an array address
   result = Operand(
     kind: kArrayAddr,
     desc: nil,
-    buf: newSeq[Operand](len)
-  )
-  for i in 0 ..< len:
-    result.buf[i] = Operand(
-      desc: OperandDesc(
+    buf: newSeq[Operand](len))
+
+  let desc = OperandDesc(
         asmId: $op,
         rm: ClobberedReg,
-        constraint: ClobberedRegister
-      ),
-      kind: kFromArray,
-      offset: i
-    )
+        constraint: asmClobberedRegister)
 
-func as2dArrayAddr*(op: Operand, rows, cols: int): Operand =
+  desc.memClobbered = @[(memIndirect, genMemClobber(memPointer, len, memIndirect))]
+
+  for i in 0 ..< len:
+    result.buf[i] = Operand(
+      desc: desc,
+      kind: kFromArray,
+      offset: i)
+
+func as2dArrayAddr*(op: Operand, mempointer: NimNode, rows, cols: int, memIndirect: MemIndirectAccess): Operand =
   ## Use the value stored in an operand as an array address
   doAssert op.desc.rm in {Reg, PointerInReg, ElemsInReg}+SpecificRegisters
   result = Operand(
     kind: k2dArrayAddr,
     desc: nil,
     dims: [rows, cols],
-    buf2d: newSeq[Operand](rows*cols)
-  )
+    buf2d: newSeq[Operand](rows*cols))
+
+  op.desc.memClobbered.add (memIndirect, genMemClobber(memPointer, rows*cols, memIndirect))
+
   for i in 0 ..< rows*cols:
     result.buf2d[i] = Operand(
       desc: op.desc,
@@ -303,7 +330,7 @@ func setToCarryFlag*(a: var Assembler_x86, carry: NimNode) =
     asmId: "",
     nimSymbol: ident(symStr),
     rm: CarryFlag,
-    constraint: Output_Overwrite,
+    constraint: asmOutputOverwrite,
     cEmit: symStr)
 
   a.operands.incl(desc)
@@ -325,14 +352,21 @@ func generate*(a: Assembler_x86): NimNode =
     decl = odesc.asmId & "\"" & $odesc.constraint & $odesc.rm & "\"" &
             " (`" & odesc.cEmit & "`)"
 
-    if odesc.constraint in {Input, Input_Commutative, UnmutatedPointerToReadWriteMem, UnmutatedPointerToWriteMem}:
+    if odesc.constraint in {asmInput, asmInputCommutative}:
       inOperands.add decl
     else:
       outOperands.add decl
 
-    # TODO: PointerInReg adds a dummy memory operand hence "memClobbered" is not necessary.
-    if odesc.rm == PointerInReg and odesc.constraint in {Output_Overwrite, Output_EarlyClobber, InputOutput, InputOutput_EnsureClobber}:
-      memClobbered = true
+    for (memIndirect, memDesc) in odesc.memClobbered:
+      # TODO: precise clobbering. GCC and Clang complain about impossible constraints or reaching coloring depth
+      if memIndirect != memRead:
+        memClobbered = true
+        break
+
+      # if memIndirect == memRead:
+      #   inOperands.add memDesc
+      # else:
+      #   outOperands.add memDesc
 
   var params: string
   params.add ": " & outOperands.join(", ") & '\n'
@@ -379,15 +413,14 @@ func generate*(a: Assembler_x86): NimNode =
   )
   result = nnkBlockStmt.newTree(
     newEmptyNode(),
-    result
-  )
+    result)
 
 func getStrOffset(a: Assembler_x86, op: Operand): string =
   if op.kind != kFromArray:
     if op.kind in {kArrayAddr, k2dArrayAddr}:
       # We are operating on an array pointer
       # instead of array elements
-      if op.buf[0].desc.constraint == ClobberedRegister:
+      if op.buf[0].desc.constraint == asmClobberedRegister:
         return "%%" & op.buf[0].desc.asmId
       else:
         return "%" & op.buf[0].desc.asmId
@@ -438,7 +471,7 @@ func codeFragment(a: var Assembler_x86, instr: string, op: Operand) =
   else:
     error "Unsupported bitwidth: " & $a.wordBitWidth
 
-  if op.desc.constraint != ClobberedRegister:
+  if op.desc.constraint != asmClobberedRegister:
     a.operands.incl op.desc
 
 func codeFragment(a: var Assembler_x86, instr: string, op0, op1: Operand) =
@@ -456,9 +489,9 @@ func codeFragment(a: var Assembler_x86, instr: string, op0, op1: Operand) =
   else:
     error "Unsupported bitwidth: " & $a.wordBitWidth
 
-  if op0.desc.constraint != ClobberedRegister:
+  if op0.desc.constraint != asmClobberedRegister:
     a.operands.incl op0.desc
-  if op1.desc.constraint != ClobberedRegister:
+  if op1.desc.constraint != asmClobberedRegister:
     a.operands.incl op1.desc
 
 func codeFragment(a: var Assembler_x86, instr: string, op: Operand, reg: Register) =
@@ -474,7 +507,7 @@ func codeFragment(a: var Assembler_x86, instr: string, op: Operand, reg: Registe
     a.code &= instr & "l " & off & ", %%" & $reg & '\n'
 
   # op.desc can be nil for renamed registers (using asArrayAddr)
-  if not op.desc.isNil and op.desc.constraint != ClobberedRegister:
+  if not op.desc.isNil and op.desc.constraint != asmClobberedRegister:
     a.operands.incl op.desc
   a.regClobbers.incl reg
 
@@ -490,7 +523,7 @@ func codeFragment(a: var Assembler_x86, instr: string, reg: Register, op: Operan
   else:
     a.code &= instr & "l %%" & $reg & ", " & off & '\n'
 
-  if op.desc.constraint != ClobberedRegister:
+  if op.desc.constraint != asmClobberedRegister:
     a.operands.incl op.desc
   a.regClobbers.incl reg
 
@@ -519,7 +552,7 @@ func codeFragment(a: var Assembler_x86, instr: string, imm: int, op: Operand) =
   else:
     a.code &= instr & "l $" & $imm & ", " & off & '\n'
 
-  if op.desc.constraint != ClobberedRegister:
+  if op.desc.constraint != asmClobberedRegister:
     a.operands.incl op.desc
 
 func codeFragment(a: var Assembler_x86, instr: string, reg: Register, op: OperandReuse) =
@@ -587,7 +620,7 @@ func codeFragment(a: var Assembler_x86, instr: string, op0: OperandReuse, op1: O
   else:
     a.code &= instr & "l %" & $op0.asmId & ", " & off1 & '\n'
 
-  if op1.desc.constraint != ClobberedRegister:
+  if op1.desc.constraint != asmClobberedRegister:
     a.operands.incl op1.desc
 
 func codeFragment(a: var Assembler_x86, instr: string, op0: Operand, op1: OperandReuse) =
@@ -602,11 +635,11 @@ func codeFragment(a: var Assembler_x86, instr: string, op0: Operand, op1: Operan
   else:
     a.code &= instr & "l " & off0 & ", %" & $op1.asmId & '\n'
 
-  if op0.desc.constraint != ClobberedRegister:
+  if op0.desc.constraint != asmClobberedRegister:
     a.operands.incl op0.desc
 
 func reuseRegister*(reg: OperandArray): OperandReuse =
-  doAssert reg.buf[0].desc.constraint == InputOutput
+  doAssert reg.buf[0].desc.constraint == asmInputOutput
   result.asmId = reg.buf[0].desc.asmId
 
 func comment*(a: var Assembler_x86, comment: string) =
@@ -619,12 +652,26 @@ func repackRegisters*(regArr: OperandArray, regs: varargs[Operand]): OperandArra
   result.buf.add regs
   result.nimSymbol = nil
 
+func isOutput(op: Operand): bool =
+  if op.desc.constraint in OutputReg:
+    return true
+
+  if op.desc.rm == PointerInReg:
+    doAssert op.desc.memClobbered.len == 1
+    if op.desc.memClobbered[0][0] in {memWrite, memReadWrite}:
+      return true
+
+  # Currently there is no facility to track writes through an ElemsInReg + asArrayAddr
+
+  return false
+
+
 # Instructions
 # ------------------------------------------------------------------------------------------------------------
 
 func add*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- dst + src
-  doAssert dst.desc.constraint in OutputReg
+  doAssert dst.isOutput()
   a.codeFragment("add", src, dst)
   a.areFlagsClobbered = true
 
@@ -635,7 +682,7 @@ func add*(a: var Assembler_x86, dst, src: Register) =
 
 func add*(a: var Assembler_x86, dst: Operand, src: Register) =
   ## Does: dst <- dst + src
-  doAssert dst.desc.constraint in OutputReg
+  doAssert dst.isOutput()
   a.codeFragment("add", src, dst)
   a.areFlagsClobbered = true
 
@@ -646,7 +693,7 @@ func add*(a: var Assembler_x86, dst: Register, src: Operand) =
 
 func adc*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- dst + src + carry
-  doAssert dst.desc.constraint in OutputReg
+  doAssert dst.isOutput()
   doAssert dst.desc.rm notin {Mem, MemOffsettable},
     "Using addcarry with a memory destination, this incurs significant performance penalties."
 
@@ -660,7 +707,7 @@ func adc*(a: var Assembler_x86, dst, src: Register) =
 
 func adc*(a: var Assembler_x86, dst: Operand, imm: int) =
   ## Does: dst <- dst + imm + borrow
-  doAssert dst.desc.constraint in OutputReg
+  doAssert dst.isOutput()
   doAssert dst.desc.rm notin {Mem, MemOffsettable},
     "Using addcarry with a memory destination, this incurs significant performance penalties."
 
@@ -669,7 +716,7 @@ func adc*(a: var Assembler_x86, dst: Operand, imm: int) =
 
 func adc*(a: var Assembler_x86, dst: Operand, src: Register) =
   ## Does: dst <- dst + src
-  doAssert dst.desc.constraint in OutputReg
+  doAssert dst.isOutput()
   a.codeFragment("adc", src, dst)
   a.areFlagsClobbered = true
 
@@ -680,13 +727,13 @@ func adc*(a: var Assembler_x86, dst: Register, imm: int) =
 
 func sub*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- dst - src
-  doAssert dst.desc.constraint in OutputReg
+  doAssert dst.isOutput()
   a.codeFragment("sub", src, dst)
   a.areFlagsClobbered = true
 
 func sbb*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- dst - src - borrow
-  doAssert dst.desc.constraint in OutputReg
+  doAssert dst.isOutput()
   doAssert dst.desc.rm notin {Mem, MemOffsettable},
     "Using subborrow with a memory destination, this incurs significant performance penalties."
 
@@ -695,7 +742,7 @@ func sbb*(a: var Assembler_x86, dst, src: Operand) =
 
 func sbb*(a: var Assembler_x86, dst: Operand, imm: int) =
   ## Does: dst <- dst - imm - borrow
-  doAssert dst.desc.constraint in OutputReg
+  doAssert dst.isOutput()
   doAssert dst.desc.rm notin {Mem, MemOffsettable},
     "Using subborrow with a memory destination, this incurs significant performance penalties."
 
@@ -724,7 +771,7 @@ func sbb*(a: var Assembler_x86, dst, src: OperandReuse) =
 
 func sar*(a: var Assembler_x86, dst: Operand, imm: int) =
   ## Does Arithmetic Right Shift (i.e. with sign extension)
-  doAssert dst.desc.constraint in OutputReg
+  doAssert dst.isOutput()
   a.codeFragment("sar", imm, dst)
   a.areFlagsClobbered = true
 
@@ -796,28 +843,28 @@ func `xor`*(a: var Assembler_x86, dst, src: Register) =
 
 func mov*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- src
-  doAssert dst.desc.constraint in OutputReg, $dst.repr
+  doAssert dst.isOutput(), $dst.repr
 
   a.codeFragment("mov", src, dst)
   # No clobber
 
 func mov*(a: var Assembler_x86, dst: Operand, src: OperandReuse) =
   ## Does: dst <- src
-  doAssert dst.desc.constraint in OutputReg, $dst.repr
+  doAssert dst.isOutput(), $dst.repr
 
   a.codeFragment("mov", src, dst)
   # No clobber
 
 func mov*(a: var Assembler_x86, dst: OperandReuse, src: Operand) =
   ## Does: dst <- src
-  # doAssert dst.desc.constraint in OutputReg, $dst.repr
+  # doAssert dst.isOutput(), $dst.repr
 
   a.codeFragment("mov", src, dst)
   # No clobber
 
 func mov*(a: var Assembler_x86, dst: Operand, imm: int) =
   ## Does: dst <- imm
-  doAssert dst.desc.constraint in OutputReg, $dst.repr
+  doAssert dst.isOutput(), $dst.repr
 
   a.codeFragment("mov", imm, dst)
   # No clobber
@@ -840,13 +887,13 @@ func mov*(a: var Assembler_x86, dst: Register, src: OperandReuse) =
 
 func mov*(a: var Assembler_x86, dst: OperandReuse, src: Register) =
   ## Does: dst <- imm
-  # doAssert dst.desc.constraint in OutputReg, $dst.repr
+  # doAssert dst.isOutput(), $dst.repr
   a.codeFragment("mov", src, dst)
 
 func cmovc*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- src if the carry flag is set
   doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register: " & $dst.repr
-  doAssert dst.desc.constraint in OutputReg, $dst.repr
+  doAssert dst.isOutput(), $dst.repr
 
   a.codeFragment("cmovc", src, dst)
   # No clobber
@@ -854,7 +901,7 @@ func cmovc*(a: var Assembler_x86, dst, src: Operand) =
 func cmovnc*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- src if the carry flag is not set
   doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register: " & $dst.repr
-  doAssert dst.desc.constraint in OutputReg, $dst.repr
+  doAssert dst.isOutput(), $dst.repr
 
   a.codeFragment("cmovnc", src, dst)
   # No clobber
@@ -862,7 +909,7 @@ func cmovnc*(a: var Assembler_x86, dst, src: Operand) =
 func cmovz*(a: var Assembler_x86, dst: Operand, src: Register) =
   ## Does: dst <- src if the zero flag is not set
   doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register: " & $dst.repr
-  doAssert dst.desc.constraint in OutputReg, $dst.repr
+  doAssert dst.isOutput(), $dst.repr
 
   a.codeFragment("cmovz", src, dst)
   # No clobber
@@ -870,7 +917,7 @@ func cmovz*(a: var Assembler_x86, dst: Operand, src: Register) =
 func cmovz*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- src if the zero flag is not set
   doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register: " & $dst.repr
-  doAssert dst.desc.constraint in OutputReg, $dst.repr
+  doAssert dst.isOutput(), $dst.repr
 
   a.codeFragment("cmovz", src, dst)
   # No clobber
@@ -878,7 +925,7 @@ func cmovz*(a: var Assembler_x86, dst, src: Operand) =
 func cmovz*(a: var Assembler_x86, dst: Operand, src: OperandReuse) =
   ## Does: dst <- src if the zero flag is not set
   doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register: " & $dst.repr
-  doAssert dst.desc.constraint in OutputReg, $dst.repr
+  doAssert dst.isOutput(), $dst.repr
 
   a.codeFragment("cmovz", src, dst)
   # No clobber
@@ -886,7 +933,7 @@ func cmovz*(a: var Assembler_x86, dst: Operand, src: OperandReuse) =
 func cmovnz*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- src if the zero flag is not set
   doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register: " & $dst.repr
-  doAssert dst.desc.constraint in OutputReg, $dst.repr
+  doAssert dst.isOutput(), $dst.repr
 
   a.codeFragment("cmovnz", src, dst)
   # No clobber
@@ -894,7 +941,7 @@ func cmovnz*(a: var Assembler_x86, dst, src: Operand) =
 func cmovnz*(a: var Assembler_x86, dst: Operand, src: OperandReuse) =
   ## Does: dst <- src if the zero flag is not set
   doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register: " & $dst.repr
-  doAssert dst.desc.constraint in OutputReg, $dst.repr
+  doAssert dst.isOutput(), $dst.repr
 
   a.codeFragment("cmovnz", src, dst)
   # No clobber
@@ -902,7 +949,7 @@ func cmovnz*(a: var Assembler_x86, dst: Operand, src: OperandReuse) =
 func cmovs*(a: var Assembler_x86, dst, src: Operand) =
   ## Does: dst <- src if the sign flag
   doAssert dst.desc.rm in {Reg, ElemsInReg}, "The destination operand must be a register: " & $dst.repr
-  doAssert dst.desc.constraint in OutputReg, $dst.repr
+  doAssert dst.isOutput(), $dst.repr
 
   a.codeFragment("cmovs", src, dst)
   # No clobber
@@ -920,7 +967,7 @@ func mul*(a: var Assembler_x86, dHi, dLo: Register, src0: Operand, src1: Registe
 func imul*(a: var Assembler_x86, dst, src: Operand) =
   ## Does dst <- dst * src, keeping only the low half
   doAssert dst.desc.rm in {Reg, ElemsInReg}+SpecificRegisters, "The destination operand must be a register: " & $dst.repr
-  doAssert dst.desc.constraint in OutputReg, $dst.repr
+  doAssert dst.isOutput(), $dst.repr
 
   a.codeFragment("imul", src, dst)
 
@@ -1026,7 +1073,7 @@ func adcx*(a: var Assembler_x86, dst: Operand|OperandReuse|Register, src: Operan
   ## Does: dst <- dst + src + carry
   ## and only sets the carry flag
   when dst is Operand:
-    doAssert dst.desc.constraint in OutputReg, $dst.repr
+    doAssert dst.isOutput(), $dst.repr
     doAssert dst.desc.rm in {Reg, ElemsInReg}+SpecificRegisters, "The destination operand must be a register: " & $dst.repr
   a.codeFragment("adcx", src, dst)
   a.areFlagsClobbered = true
@@ -1035,7 +1082,7 @@ func adox*(a: var Assembler_x86, dst: Operand|OperandReuse|Register, src: Operan
   ## Does: dst <- dst + src + overflow
   ## and only sets the overflow flag
   when dst is Operand:
-    doAssert dst.desc.constraint in OutputReg, $dst.repr
+    doAssert dst.isOutput(), $dst.repr
     doAssert dst.desc.rm in {Reg, ElemsInReg}+SpecificRegisters, "The destination operand must be a register: " & $dst.repr
   a.codeFragment("adox", src, dst)
   a.areFlagsClobbered = true

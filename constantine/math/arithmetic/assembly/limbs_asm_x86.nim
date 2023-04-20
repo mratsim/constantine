@@ -19,7 +19,7 @@ import
 # ############################################################
 
 # Note: We can refer to at most 30 registers in inline assembly
-#       and "InputOutput" registers count double
+#       and "asmInputOutput" registers count double
 #       They are nice to let the compiler deals with mov
 #       but too constraining so we move things ourselves.
 
@@ -34,17 +34,17 @@ macro ccopy_gen[N: static int](a_PIR: var Limbs[N], b_PIR: Limbs[N], ctl: Secret
   var ctx = init(Assembler_x86, BaseType)
 
   let
-    a = asmArray(a_PIR, N, PointerInReg, UnmutatedPointerToReadWriteMem)
-    b = asmArray(b_PIR, N, PointerInReg, Input)
+    a = asmArray(a_PIR, N, PointerInReg, asmInput, memIndirect = memReadWrite)
+    b = asmArray(b_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
 
-    control = asmValue(ctl, Reg, Input)
+    control = asmValue(ctl, Reg, asmInput)
 
     t0Sym = ident"t0"
     t1Sym = ident"t1"
 
   var # Swappable registers to break dependency chains
-    t0 = asmValue(t0Sym, Reg, Output_EarlyClobber)
-    t1 = asmValue(t1Sym, Reg, Output_EarlyClobber)
+    t0 = asmValue(t0Sym, Reg, asmOutputEarlyClobber)
+    t1 = asmValue(t1Sym, Reg, asmOutputEarlyClobber)
 
   # Prologue
   result.add quote do:
@@ -78,16 +78,16 @@ macro add_gen[N: static int](carry: var Carry, r_PIR: var Limbs[N], a_PIR, b_PIR
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = asmArray(r_PIR, N, PointerInReg, InputOutput) # TODO: otherwise wrong Poly1305 results
-    a = asmArray(a_PIR, N, PointerInReg, Input)
-    b = asmArray(b_PIR, N, PointerInReg, Input)
+    r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
+    a = asmArray(a_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
+    b = asmArray(b_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
 
     t0Sym = ident"t0"
     t1Sym = ident"t1"
 
   var # Swappable registers to break dependency chains
-    t0 = asmValue(t0Sym, Reg, Output_EarlyClobber)
-    t1 = asmValue(t1Sym, Reg, Output_EarlyClobber)
+    t0 = asmValue(t0Sym, Reg, asmOutputEarlyClobber)
+    t1 = asmValue(t1Sym, Reg, asmOutputEarlyClobber)
 
   # Prologue
   result.add quote do:
@@ -123,16 +123,16 @@ macro sub_gen[N: static int](borrow: var Borrow, r_PIR: var Limbs[N], a_PIR, b_P
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = asmArray(r_PIR, N, PointerInReg, InputOutput) # TODO: otherwise wrong endomorphism acceleration results
-    a = asmArray(a_PIR, N, PointerInReg, Input)
-    b = asmArray(b_PIR, N, PointerInReg, Input)
+    r = asmArray(r_PIR, N, PointerInReg, asmInputOutput, memIndirect = memWrite)
+    a = asmArray(a_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
+    b = asmArray(b_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
 
     t0Sym = ident"t0"
     t1Sym = ident"t1"
 
   var # Swappable registers to break dependency chains
-    t0 = asmValue(t0Sym, Reg, Output_EarlyClobber)
-    t1 = asmValue(t1Sym, Reg, Output_EarlyClobber)
+    t0 = asmValue(t0Sym, Reg, asmOutputEarlyClobber)
+    t1 = asmValue(t1Sym, Reg, asmOutputEarlyClobber)
 
   # Prologue
   result.add quote do:
