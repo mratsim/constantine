@@ -21,11 +21,6 @@ import
 #
 # ############################################################
 
-# Note: We can refer to at most 30 registers in inline assembly
-#       and "asmInputOutput" registers count double
-#       They are nice to let the compiler deals with mov
-#       but too constraining so we move things ourselves.
-
 static: doAssert UseASM_X86_64
 
 # MULX/ADCX/ADOX
@@ -273,15 +268,6 @@ macro mulMont_CIOS_sparebit_adx_gen[N: static int](
 
   result.add ctx.generate()
 
-func mulMont_CIOS_sparebit_asm_adx_inline*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipFinalSub: static bool = false) {.inline.} =
-  ## Constant-time Montgomery multiplication
-  ## If "skipFinalSub" is set
-  ## the result is in the range [0, 2M)
-  ## otherwise the result is in the range [0, M)
-  ##
-  ## This procedure can only be called if the modulus doesn't use the full bitwidth of its underlying representation
-  r.mulMont_CIOS_sparebit_adx_gen(a, b, M, m0ninv, skipFinalSub)
-
 func mulMont_CIOS_sparebit_asm_adx*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipFinalSub: static bool = false) =
   ## Constant-time Montgomery multiplication
   ## If "skipFinalSub" is set
@@ -289,7 +275,7 @@ func mulMont_CIOS_sparebit_asm_adx*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseTy
   ## otherwise the result is in the range [0, M)
   ##
   ## This procedure can only be called if the modulus doesn't use the full bitwidth of its underlying representation
-  r.mulMont_CIOS_sparebit_asm_adx_inline(a, b, M, m0ninv, skipFinalSub)
+  r.mulMont_CIOS_sparebit_adx_gen(a, b, M, m0ninv, skipFinalSub)
 
 # Montgomery Squaring
 # ------------------------------------------------------------

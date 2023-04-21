@@ -18,11 +18,6 @@ import
 #
 # ############################################################
 
-# Note: We can refer to at most 30 registers in inline assembly
-#       and "asmInputOutput" registers count double
-#       They are nice to let the compiler deals with mov
-#       but too constraining so we move things ourselves.
-
 static: doAssert UseASM_X86_32
 
 # Copy
@@ -61,7 +56,7 @@ macro ccopy_gen[N: static int](a_PIR: var Limbs[N], b_MEM: Limbs[N], ctl: Secret
   # Codegen
   result.add ctx.generate()
 
-func ccopy_asm*(a: var Limbs, b: Limbs, ctl: SecretBool) {.inline.}=
+func ccopy_asm*(a: var Limbs, b: Limbs, ctl: SecretBool) =
   ## Constant-time conditional copy
   ## If ctl is true: b is copied into a
   ## if ctl is false: b is not copied and a is untouched
@@ -109,7 +104,7 @@ macro add_gen[N: static int](carry: var Carry, r_PIR: var Limbs[N], a_MEM, b_MEM
   # Codegen
   result.add ctx.generate()
 
-func add_asm*(r: var Limbs, a, b: Limbs): Carry {.inline.}=
+func add_asm*(r: var Limbs, a, b: Limbs): Carry =
   ## Constant-time addition
   add_gen(result, r, a, b)
 
@@ -154,6 +149,6 @@ macro sub_gen[N: static int](borrow: var Borrow, r_PIR: var Limbs[N], a_MEM, b_M
   # Codegen
   result.add ctx.generate()
 
-func sub_asm*(r: var Limbs, a, b: Limbs): Borrow {.inline.}=
+func sub_asm*(r: var Limbs, a, b: Limbs): Borrow =
   ## Constant-time substraction
   sub_gen(result, r, a, b)

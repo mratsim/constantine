@@ -18,11 +18,6 @@ import
 #
 # ############################################################
 
-# Note: We can refer to at most 30 registers in inline assembly
-#       and "asmInputOutput" registers count double
-#       They are nice to let the compiler deals with mov
-#       but too constraining so we move things ourselves.
-
 static: doAssert UseASM_X86_64
 
 # MULX/ADCX/ADOX
@@ -163,18 +158,11 @@ macro mulx_gen[rLen, aLen, bLen: static int](r_PIR: var Limbs[rLen], a_MEM: Limb
   # Codegen
   result.add ctx.generate()
 
-func mul_asm_adx_inline*[rLen, aLen, bLen: static int](
-       r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) {.inline.} =
-  ## Multi-precision Multiplication
-  ## Assumes r doesn't alias a or b
-  ## Inline version
-  mulx_gen(r, a, b)
-
 func mul_asm_adx*[rLen, aLen, bLen: static int](
        r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) =
   ## Multi-precision Multiplication
   ## Assumes r doesn't alias a or b
-  mul_asm_adx_inline(r, a, b)
+  mulx_gen(r, a, b)
 
 # Squaring
 # -----------------------------------------------------------------------------------------------
