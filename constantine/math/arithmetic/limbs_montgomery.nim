@@ -543,10 +543,8 @@ func sumprodMont*[N: static int](
         r: var Limbs, a, b: array[N, Limbs],
         M: Limbs, m0ninv: BaseType,
         spareBits: static int,
-        skipFinalSub: static bool = false) {.noInline.} =
+        skipFinalSub: static bool = false) =
   ## Compute r <- ⅀aᵢ.bᵢ (mod M) (sum of products)
-  # This function must be noInline or GCC miscompiles
-  # with LTO, see https://github.com/mratsim/constantine/issues/230
   when spareBits >= 2:
     when UseASM_X86_64 and r.len in {2 .. 6}:
       if ({.noSideEffect.}: hasAdx()):

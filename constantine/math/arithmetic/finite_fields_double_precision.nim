@@ -118,7 +118,7 @@ func sum2xMod*(r: var FpDbl, a, b: FpDbl) =
   ## Output is conditionally reduced by 2ⁿp
   ## to stay in the [0, 2ⁿp) range
   when UseASM_X86_64:
-    addmod2x_asm(r.limbs2x, a.limbs2x, b.limbs2x, FpDbl.C.Mod.limbs)
+    addmod2x_asm(r.limbs2x, a.limbs2x, b.limbs2x, FpDbl.C.Mod.limbs, Fp[FpDbl.C].getSpareBits())
   else:
     # Addition step
     var overflowed = SecretBool r.limbs2x.sum(a.limbs2x, b.limbs2x)

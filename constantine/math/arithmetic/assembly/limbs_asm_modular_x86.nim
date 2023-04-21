@@ -140,7 +140,7 @@ macro addmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_PIR: Limbs[
     r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
     b = asmArray(b_PIR, N, PointerInReg, if spareBits >= 1: asmInput else: asmInputOutput, memIndirect = memRead)
     # We could force m as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, MemOffsettable, asmInput)
+    M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
     # If N is too big, we need to spill registers. TODO.
     uSym = ident"u"
     vSym = ident"v"
@@ -167,9 +167,8 @@ macro addmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_PIR: Limbs[
 
   result.add ctx.generate()
 
-func addmod_asm*(r: var Limbs, a, b, m: Limbs, spareBits: static int) {.noInline.} =
+func addmod_asm*(r: var Limbs, a, b, m: Limbs, spareBits: static int) =
   ## Constant-time modular addition
-  # This MUST be noInline or Clang will run out of registers with LTO
   addmod_gen(r, a, b, m, spareBits)
 
 # Field substraction
@@ -227,10 +226,9 @@ macro submod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_PIR: Limbs[
 
   result.add ctx.generate()
 
-func submod_asm*(r: var Limbs, a, b, M: Limbs) {.noInline.} =
+func submod_asm*(r: var Limbs, a, b, M: Limbs) =
   ## Constant-time modular substraction
   ## Warning, does not handle aliasing of a and b
-  # This MUST be noInline or Clang will run out of registers with LTO
   submod_gen(r, a, b, M)
 
 # Field negation

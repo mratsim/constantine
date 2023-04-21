@@ -45,7 +45,7 @@ macro redc2xMont_adx_gen[N: static int](
   result = newStmtList()
 
   var ctx = init(Assembler_x86, BaseType)
-  let M = asmArray(M_PIR, N, MemOffsettable, asmInput)
+  let M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
 
   let uSlots = N+1
   let vSlots = max(N-1, 5)
@@ -144,7 +144,7 @@ func redcMont_asm_adx*[N: static int](
        M: array[N, SecretWord],
        m0ninv: BaseType,
        spareBits: static int,
-       skipFinalSub: static bool = false) {.noInline.} =
+       skipFinalSub: static bool = false) =
   ## Constant-time Montgomery reduction
   # Inlining redcMont_asm_adx twice in mul_fp2_complex_asm_adx
   # causes GCC to miscompile with -Os (--opt:size)
@@ -171,7 +171,7 @@ macro mulMont_by_1_adx_gen[N: static int](
   let
     t = asmArray(t_EIR, N, ElemsInReg, asmInputOutputEarlyClobber)
     # We could force M as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, MemOffsettable, asmInput)
+    M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
 
     # MUL requires RAX and RDX
 

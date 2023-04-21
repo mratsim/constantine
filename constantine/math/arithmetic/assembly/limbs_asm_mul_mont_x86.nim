@@ -58,7 +58,7 @@ macro mulMont_CIOS_sparebit_gen[N: static int](
     scratchSlots = 6
 
     # We could force M as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, MemOffsettable, asmInput)
+    M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
     # If N is too big, we need to spill registers. TODO.
     tSym = ident"t"
     t = asmArray(tSym, N, ElemsInReg, asmOutputEarlyClobber)
@@ -173,14 +173,13 @@ macro mulMont_CIOS_sparebit_gen[N: static int](
     ctx.finalSubNoOverflowImpl(r2, t, M, scratch)
   result.add ctx.generate()
 
-func mulMont_CIOS_sparebit_asm*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipFinalSub: static bool = false) {.noInline.} =
+func mulMont_CIOS_sparebit_asm*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipFinalSub: static bool = false) =
   ## Constant-time Montgomery multiplication
   ## If "skipFinalSub" is set
   ## the result is in the range [0, 2M)
   ## otherwise the result is in the range [0, M)
   ##
   ## This procedure can only be called if the modulus doesn't use the full bitwidth of its underlying representation
-  # This MUST be noInline or Clang will run out of registers with LTO
   r.mulMont_CIOS_sparebit_gen(a, b, M, m0ninv, skipFinalSub)
 
 # Montgomery Squaring
@@ -231,7 +230,7 @@ macro sumprodMont_CIOS_spare2bits_gen[N, K: static int](
     scratchSlots = 6
 
     # We could force M as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, MemOffsettable, asmInput)
+    M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
     # If N is too big, we need to spill registers. TODO.
     tSym = ident"t"
     t = asmArray(tSym, N, ElemsInReg, asmOutputEarlyClobber)

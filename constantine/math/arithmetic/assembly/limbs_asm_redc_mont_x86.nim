@@ -46,7 +46,7 @@ macro redc2xMont_gen*[N: static int](
   # so we store everything in scratchspaces restoring as needed
   let
     # We could force M as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, MemOffsettable, asmInput)
+    M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
     # MUL requires RAX and RDX
 
   let uSlots = N+2
@@ -167,9 +167,8 @@ func redcMont_asm*[N: static int](
        M: array[N, SecretWord],
        m0ninv: BaseType,
        spareBits: static int,
-       skipFinalSub: static bool) {.noInline.}  =
+       skipFinalSub: static bool) =
   ## Constant-time Montgomery reduction
-  # This MUST be noInline or Clang will run out of registers with LTO
   static: doAssert UseASM_X86_64, "This requires x86-64."
   redc2xMont_gen(r, a, M, m0ninv, spareBits, skipFinalSub)
 
@@ -193,7 +192,7 @@ macro mulMont_by_1_gen[N: static int](
   let
     t = asmArray(t_EIR, N, ElemsInReg, asmInputOutputEarlyClobber)
     # We could force M as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, MemOffsettable, asmInput)
+    M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
 
     # MUL requires RAX and RDX
 

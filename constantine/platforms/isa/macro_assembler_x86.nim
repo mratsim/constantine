@@ -391,11 +391,10 @@ func generate*(a: Assembler_x86): NimNode =
         memClobbered = true
         break
 
-      if memIndirect == memRead:
-        # inOperands.add memDesc
-        discard
-      else:
-        outOperands.add memDesc
+      # if memIndirect == memRead:
+      #   inOperands.add memDesc
+      # else:
+      #   outOperands.add memDesc
 
   var params: string
   params.add ": " & outOperands.join(", ") & '\n'
@@ -473,6 +472,9 @@ func getStrOffset(a: Assembler_x86, op: Operand): string =
   # - or invalid: 8+(%rax)
   # also warning about 'o' constraint: https://groups.google.com/g/llvm-dev/c/dfsPzWP_H1E
   # and https://stackoverflow.com/questions/34446928/llvm-reports-unsupported-inline-asm-input-with-type-void-matching-output-w
+  #
+  # So we use the q/k modifier: https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html#x86Operandmodifiers
+  # so that the PointerInReg are passed correctly with register names to linker even with constant folding
 
   if op.desc.rm in {Mem, MemOffsettable}:
     # Directly accessing memory
@@ -481,19 +483,20 @@ func getStrOffset(a: Assembler_x86, op: Operand): string =
     if defined(gcc):
       return $(op.offset * a.wordSize) & "+%" & op.desc.asmId
     elif defined(clang):
-      return $(op.offset * a.wordSize) & "+0%" & op.desc.asmId
+      return $(op.offset * a.wordSize) & "%" & op.desc.asmId
     else:
       error "Unconfigured compiler"
   elif op.desc.rm == PointerInReg or
        op.desc.rm in SpecificRegisters or
        (op.desc.rm == ElemsInReg and op.kind == kFromArray):
-    if op.offset == 0:
-      return "(%" & op.desc.asmId & ')'
-    # GCC & Clang seemed to disagree on pointer indexing
-    # in the past and required different codegen
-    # if defined(gcc):
-    #   return $(op.offset * a.wordSize) & "+(%" & op.desc.asmId & ')'
-    return $(op.offset * a.wordSize) & "(%" & op.desc.asmId & ')'
+    if a.wordBitWidth == 64:
+      if op.offset == 0:
+        return "(%q" & op.desc.asmId & ')'
+      return $(op.offset * a.wordSize) & "(%q" & op.desc.asmId & ')'
+    else:
+      if op.offset == 0:
+        return "(%k" & op.desc.asmId & ')'
+      return $(op.offset * a.wordSize) & "(%k" & op.desc.asmId & ')'
   elif op.desc.rm == ClobberedReg: # Array in clobbered register
     if op.offset == 0:
       return "(%%" & op.desc.asmId & ')'
