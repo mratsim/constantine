@@ -272,6 +272,6 @@ macro negmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, M_PIR: Limbs[N]): un
 
   result.add ctx.generate()
 
-func negmod_asm*(r: var Limbs, a, m: Limbs) =
+func negmod_asm*(r: var Limbs, a, M: Limbs) =
   ## Constant-time modular negation
-  negmod_gen(r, a, m)
+  negmod_gen(r, a, M)
