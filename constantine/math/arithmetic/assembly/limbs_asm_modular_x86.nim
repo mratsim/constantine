@@ -92,7 +92,7 @@ proc finalSubMayOverflowImpl*(
 macro finalSub_gen*[N: static int](
        r_PIR: var Limbs[N],
        a_EIR: Limbs[N],
-       M_PIR: Limbs[N],
+       M_MEM: Limbs[N],
        scratch_EIR: var Limbs[N],
        mayOverflow: static bool): untyped =
   ## Returns:
@@ -101,7 +101,7 @@ macro finalSub_gen*[N: static int](
   ##
   ## - r_PIR is a pointer to the result array, mutated,
   ## - a_EIR is an array of registers, mutated,
-  ## - M_PIR is a pointer to an array, read-only,
+  ## - M_MEM is a pointer to an array, read-only,
   ## - scratch_EIR is an array of registers, mutated
   ## - mayOverflow is set to true when the carry flag also needs to be read
   result = newStmtList()
@@ -112,7 +112,7 @@ macro finalSub_gen*[N: static int](
     # We reuse the reg used for b for overflow detection
     a = asmArray(a_EIR, N, ElemsInReg, asmInputOutput)
     # We could force m as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
+    M = asmArray(M_MEM, N, MemOffsettable, asmInput)
     t = asmArray(scratch_EIR, N, ElemsInReg, asmOutputEarlyClobber)
 
   if mayOverflow:
@@ -125,7 +125,7 @@ macro finalSub_gen*[N: static int](
 # Field addition
 # ------------------------------------------------------------
 
-macro addmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_PIR: Limbs[N], spareBits: static int): untyped =
+macro addmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_MEM: Limbs[N], spareBits: static int): untyped =
   ## Generate an optimized modular addition kernel
   # Register pressure note:
   #   We could generate a kernel per modulus m by hardcoding it as immediate
@@ -140,7 +140,7 @@ macro addmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_PIR: Limbs[
     r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
     b = asmArray(b_PIR, N, PointerInReg, if spareBits >= 1: asmInput else: asmInputOutput, memIndirect = memRead)
     # We could force m as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
+    M = asmArray(M_MEM, N, MemOffsettable, asmInput)
     # If N is too big, we need to spill registers. TODO.
     uSym = ident"u"
     vSym = ident"v"
@@ -174,7 +174,7 @@ func addmod_asm*(r: var Limbs, a, b, m: Limbs, spareBits: static int) =
 # Field substraction
 # ------------------------------------------------------------
 
-macro submod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_PIR: Limbs[N]): untyped =
+macro submod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_MEM: Limbs[N]): untyped =
   ## Generate an optimized modular addition kernel
   # Register pressure note:
   #   We could generate a kernel per modulus m by hardocing it as immediate
@@ -187,9 +187,9 @@ macro submod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_PIR: Limbs[
   var ctx = init(Assembler_x86, BaseType)
   let
     r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
-    b = asmArray(b_PIR, N, PointerInReg, asmInputOutput, memIndirect = memRead) # register reused for underflow detection
+    b = asmArray(b_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memRead) # register reused for underflow detection
     # We could force m as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
+    M = asmArray(M_MEM, N, MemOffsettable, asmInput)
     # If N is too big, we need to spill registers. TODO.
     uSym = ident"u"
     vSym = ident"v"
@@ -234,7 +234,7 @@ func submod_asm*(r: var Limbs, a, b, M: Limbs) =
 # Field negation
 # ------------------------------------------------------------
 
-macro negmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, M_PIR: Limbs[N]): untyped =
+macro negmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, M_MEM: Limbs[N]): untyped =
   ## Generate an optimized modular negation kernel
 
   result = newStmtList()
@@ -247,7 +247,7 @@ macro negmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, M_PIR: Limbs[N]): un
     u = asmArray(uSym, N, ElemsInReg, asmOutputEarlyClobber)
     # We could force m as immediate by specializing per moduli
     # We reuse the reg used for m for overflow detection
-    M = asmArray(M_PIR, N, PointerInReg, asmInputOutput, memIndirect = memRead)
+    M = asmArray(M_MEM, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memRead)
 
   result.add quote do:
     var `usym`{.noinit, used.}: typeof(`a_PIR`)

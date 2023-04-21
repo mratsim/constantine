@@ -37,7 +37,7 @@ static: doAssert UseASM_X86_64
 # Fallback when no ADX and BMI2 support (MULX, ADCX, ADOX)
 macro mulMont_CIOS_sparebit_gen[N: static int](
         r_PIR: var Limbs[N], a_PIR, b_PIR,
-        M_PIR: Limbs[N], m0ninv_REG: BaseType,
+        M_MEM: Limbs[N], m0ninv_REG: BaseType,
         skipFinalSub: static bool): untyped =
   ## Generate an optimized Montgomery Multiplication kernel
   ## using the CIOS method
@@ -58,7 +58,7 @@ macro mulMont_CIOS_sparebit_gen[N: static int](
     scratchSlots = 6
 
     # We could force M as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
+    M = asmArray(M_MEM, N, MemOffsettable, asmInput)
     # If N is too big, we need to spill registers. TODO.
     tSym = ident"t"
     t = asmArray(tSym, N, ElemsInReg, asmOutputEarlyClobber)
@@ -200,7 +200,7 @@ func squareMont_CIOS_asm*[N](
 
 macro sumprodMont_CIOS_spare2bits_gen[N, K: static int](
         r_PIR: var Limbs[N], a_PIR, b_PIR: array[K, Limbs[N]],
-        M_PIR: Limbs[N], m0ninv_REG: BaseType,
+        M_MEM: Limbs[N], m0ninv_REG: BaseType,
         skipFinalSub: static bool): untyped =
   ## Generate an optimized Montgomery merged sum of products ⅀aᵢ.bᵢ kernel
   ## using the CIOS method
@@ -230,7 +230,7 @@ macro sumprodMont_CIOS_spare2bits_gen[N, K: static int](
     scratchSlots = 6
 
     # We could force M as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
+    M = asmArray(M_MEM, N, MemOffsettable, asmInput)
     # If N is too big, we need to spill registers. TODO.
     tSym = ident"t"
     t = asmArray(tSym, N, ElemsInReg, asmOutputEarlyClobber)

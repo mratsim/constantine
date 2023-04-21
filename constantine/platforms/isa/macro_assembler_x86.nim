@@ -393,9 +393,9 @@ func generate*(a: Assembler_x86): NimNode =
     for (memIndirect, memDesc) in odesc.memClobbered:
       # TODO: precise clobbering.
       # GCC and Clang complain about impossible constraints or reaching coloring depth
-      # when we do precise constraints for inputs
+      # when we do precise constraints for pointer indirect accesses
 
-      # If only out clobbers, the Poly1305 MAC test fails without mem clobbers
+      # the Poly1305 MAC test fails without mem clobbers
       if memIndirect != memRead:
         memClobbered = true
         break
@@ -487,10 +487,26 @@ func getStrOffset(a: Assembler_x86, op: Operand): string =
 
   if op.desc.rm in {Mem, MemOffsettable}:
     # Directly accessing memory
-    if op.offset == 0:
-      return "%" & op.desc.asmId
+    if defined(gcc):
+      if a.wordBitWidth == 64:
+        if op.offset == 0:
+          return "%q" & op.desc.asmId
+        return "%q" & op.desc.asmId & " + " & $(op.offset * a.wordSize)
+      else:
+        if op.offset == 0:
+          return "%d" & op.desc.asmId
+        return "%d" & op.desc.asmId & " + " & $(op.offset * a.wordSize)
+    elif defined(clang):
+      if a.wordBitWidth == 64:
+        if op.offset == 0:
+          return "QWORD ptr %" & op.desc.asmId
+        return "QWORD ptr " & $(op.offset * a.wordSize) & "%" & op.desc.asmId
+      else:
+        if op.offset == 0:
+          return "DWORD ptr %" & op.desc.asmId
+        return "DWORD ptr " & $(op.offset * a.wordSize) & "%" & op.desc.asmId
     else:
-      return "%" & op.desc.asmId & " + " & $(op.offset * a.wordSize)
+      error "Unsupported compiler"
 
   elif op.desc.rm == PointerInReg or
        op.desc.rm in SpecificRegisters or
@@ -653,7 +669,7 @@ func codeFragment(a: var Assembler_x86, instr: string, op0: OperandReuse, op1: O
 
 
 func reuseRegister*(reg: OperandArray): OperandReuse =
-  doAssert reg.buf[0].desc.constraint == asmInputOutput
+  doAssert reg.buf[0].desc.constraint in {asmInputOutput, asmInputOutputEarlyClobber}
   result.asmId = reg.buf[0].desc.asmId
 
 func comment*(a: var Assembler_x86, comment: string) =

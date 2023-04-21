@@ -123,7 +123,7 @@ macro sub_gen[N: static int](borrow: var Borrow, r_PIR: var Limbs[N], a_PIR, b_P
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = asmArray(r_PIR, N, PointerInReg, asmInputOutput, memIndirect = memWrite)
+    r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
     a = asmArray(a_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
     b = asmArray(b_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
 

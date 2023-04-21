@@ -31,7 +31,7 @@ static: doAssert UseASM_X86_32
 macro redc2xMont_gen*[N: static int](
        r_PIR: var array[N, SecretWord],
        a_PIR: array[N*2, SecretWord],
-       M_PIR: array[N, SecretWord],
+       M_MEM: array[N, SecretWord],
        m0ninv_REG: BaseType,
        spareBits: static int, skipFinalSub: static bool) =
   # No register spilling handling
@@ -46,7 +46,7 @@ macro redc2xMont_gen*[N: static int](
   # so we store everything in scratchspaces restoring as needed
   let
     # We could force M as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
+    M = asmArray(M_MEM, N, MemOffsettable, asmInput)
     # MUL requires RAX and RDX
 
   let uSlots = N+2
@@ -177,7 +177,7 @@ func redcMont_asm*[N: static int](
 
 macro mulMont_by_1_gen[N: static int](
        t_EIR: var array[N, SecretWord],
-       M_PIR: array[N, SecretWord],
+       M_MEM: array[N, SecretWord],
        m0ninv_REG: BaseType) =
 
   # No register spilling handling
@@ -192,7 +192,7 @@ macro mulMont_by_1_gen[N: static int](
   let
     t = asmArray(t_EIR, N, ElemsInReg, asmInputOutputEarlyClobber)
     # We could force M as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
+    M = asmArray(M_MEM, N, MemOffsettable, asmInput)
 
     # MUL requires RAX and RDX
 
