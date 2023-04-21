@@ -17,17 +17,17 @@ import std/strformat
 # Library compilation
 # ----------------------------------------------------------------
 
-proc releaseBuildOptions(compiler = "", useLTO = true): string =
+proc releaseBuildOptions(useLTO = true): string =
   # -d:danger --opt:size
   #           to avoid boundsCheck and overflowChecks that would trigger exceptions or allocations in a crypto library.
   #           Those are internally guaranteed at compile-time by fixed-sized array
   #           and checked at runtime with an appropriate error code if any for user-input.
   #
-  #           Furthermore we optimize for size, the performance critical procedures
+  #           Furthermore we may optimize for size, the performance critical procedures
   #           either use assembly or are unrolled manually with staticFor,
   #           Optimizations at -O3 deal with loops and branching
-  #           which we mostly don't have. It's better to optimize
-  #           for instructions cache.
+  #           which we mostly don't have.
+  #           Hence optimizing for instructions cache may pay off.
   #
   # --panics:on -d:noSignalHandler
   #           Even with `raises: []`, Nim still has an exception path
@@ -50,14 +50,16 @@ proc releaseBuildOptions(compiler = "", useLTO = true): string =
   #           Reduce instructions cache misses.
   #           https://lkml.org/lkml/2015/5/21/443
   #           Our non-inlined functions are large so size cost is minimal.
-  let compiler = if compiler != "": " --cc:" & compiler
-                  else: ""
+  let envCC = getEnv"CC"
+  let compiler = if envCC != "": " --cc:" & envCC
+                 else: ""
   let lto = if useLTO: " --passC:-flto=auto --passL:-flto=auto "
             else: ""
 
   compiler &
   lto &
-  " -d:danger --opt:size " &
+  " -d:danger " &
+  # " --opt:size " &
   " --panics:on -d:noSignalHandler " &
   " --mm:arc -d:useMalloc " &
   " --verbosity:0 --hints:off --warnings:off " &
@@ -68,7 +70,7 @@ type BindingsKind = enum
   kCurve
   kProtocol
 
-proc genDynamicBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: string, compiler = "") =
+proc genDynamicBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: string) =
   proc compile(libName: string, flags = "") =
     echo "Compiling dynamic library: lib/" & libName
 
@@ -76,7 +78,7 @@ proc genDynamicBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain:
 
     exec "nim c " &
          flags &
-         releaseBuildOptions(compiler, useLTO = true) &
+         releaseBuildOptions(useLTO = true) &
          " --noMain --app:lib " &
          &" --nimMainPrefix:{prefixNimMain} " &
          &" --out:{libName} --outdir:lib " &
@@ -107,13 +109,13 @@ proc genDynamicBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain:
   else:
     compile "lib" & bindingsName & ".so"
 
-proc genStaticBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: string, compiler = "") =
+proc genStaticBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: string) =
   proc compile(libName: string, flags = "") =
     echo "Compiling static library:  lib/" & libName
 
     exec "nim c " &
          flags &
-         releaseBuildOptions(compiler, useLTO = false) &
+         releaseBuildOptions(useLTO = false) &
          " --noMain --app:staticLib " &
          &" --nimMainPrefix:{prefixNimMain} " &
          &" --out:{libName} --outdir:lib " &
@@ -169,47 +171,16 @@ task bindings, "Generate Constantine bindings":
   genDynamicBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_")
   echo ""
 
-task bindings_gcc, "Generate Constantine bindings (GCC)":
-  # Curve arithmetic
-  genStaticBindings(kCurve, "constantine_bls12_381", "ctt_bls12381_init_", compiler = "gcc")
-  genDynamicBindings(kCurve, "constantine_bls12_381", "ctt_bls12381_init_", compiler = "gcc")
-  genHeaders("constantine_bls12_381")
-  echo ""
-  genStaticBindings(kCurve, "constantine_pasta", "ctt_pasta_init_", compiler = "gcc")
-  genDynamicBindings(kCurve, "constantine_pasta", "ctt_pasta_init_", compiler = "gcc")
-  genHeaders("constantine_pasta")
-  echo ""
-
-  # Protocols
-  genStaticBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_", compiler = "gcc")
-  genDynamicBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_", compiler = "gcc")
-  echo ""
-
-task bindings_clang, "Generate Constantine bindings (Clang)":
-  # Curve arithmetic
-  genStaticBindings(kCurve, "constantine_bls12_381", "ctt_bls12381_init_", compiler = "clang")
-  genDynamicBindings(kCurve, "constantine_bls12_381", "ctt_bls12381_init_", compiler = "clang")
-  genHeaders("constantine_bls12_381")
-  echo ""
-  genStaticBindings(kCurve, "constantine_pasta", "ctt_pasta_init_", compiler = "clang")
-  genDynamicBindings(kCurve, "constantine_pasta", "ctt_pasta_init_", compiler = "clang")
-  genHeaders("constantine_pasta")
-  echo ""
-
-  # Protocols
-  genStaticBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_", compiler = "clang")
-  genDynamicBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_", compiler = "clang")
-  echo ""
-
-proc testLib(path, testName, libName: string, useGMP: bool, compiler = "") =
+proc testLib(path, testName, libName: string, useGMP: bool) =
   let dynlibName = if defined(windows): libName & ".dll"
                    elif defined(macosx): "lib" & libName & ".dylib"
                    else: "lib" & libName & ".so"
   let staticlibName = if defined(windows): libName & ".lib"
                       else: "lib" & libName & ".a"
 
-  let cc = if compiler != "": compiler
-           else: "gcc"
+  let envCC = getEnv"CC"
+  let cc = if envCC != "": envCC
+                 else: ""
 
   echo &"\n[Bindings: {path}/{testName}.c] Testing dynamically linked library {dynlibName}"
   exec &"{cc} -Iinclude -Llib -o build/testbindings/{testName}_dynlink.exe {path}/{testName}.c -l{libName} " & (if useGMP: "-lgmp" else: "")
@@ -232,16 +203,6 @@ task test_bindings, "Test C bindings":
   exec "mkdir -p build/testbindings"
   testLib("examples_c", "t_libctt_bls12_381", "constantine_bls12_381", useGMP = true)
   testLib("examples_c", "ethereum_bls_signatures", "constantine_ethereum_bls_signatures", useGMP = false)
-
-task test_bindings_gcc, "Test C bindings (GCC)":
-  exec "mkdir -p build/testbindings"
-  testLib("examples_c", "t_libctt_bls12_381", "constantine_bls12_381", useGMP = true, compiler = "gcc")
-  testLib("examples_c", "ethereum_bls_signatures", "constantine_ethereum_bls_signatures", useGMP = false, compiler = "gcc")
-
-task test_bindings_clang, "Test C bindings (Clang)":
-  exec "mkdir -p build/testbindings"
-  testLib("examples_c", "t_libctt_bls12_381", "constantine_bls12_381", useGMP = true, compiler = "clang")
-  testLib("examples_c", "ethereum_bls_signatures", "constantine_ethereum_bls_signatures", useGMP = false, compiler = "clang")
 
 # Test config
 # ----------------------------------------------------------------
@@ -572,11 +533,12 @@ template setupTestCommand(): untyped {.dirty.} =
   var flags = flags
   when not defined(windows):
     # Not available in MinGW https://github.com/libressl-portable/portable/issues/54
-    flags &= " --passC:-fstack-protector-strong --passC:-D_FORTIFY_SOURCE=2 "
+    flags &= " --passC:-fstack-protector-strong "
+    # flags &= " --passC:-D_FORTIFY_SOURCE=2 "
   let command = "nim " & lang &
     " -r " &
     flags &
-    releaseBuildOptions(compiler = getEnv"CC") &
+    releaseBuildOptions() &
     " --outdir:build/testsuite " &
     &" --nimcache:nimcache/{path} " &
     path
@@ -591,41 +553,33 @@ proc testBatch(commands: var string, flags, path: string) =
   setupTestCommand()
   commands &= command & '\n'
 
-template setupBench(): untyped {.dirty.} =
-  let runFlag = if run: " -r "
+proc setupBench(benchName: string, run: bool, useAsm: bool): string =
+  var runFlags = if run: " -r "
                 else: " "
 
-  var lang = " c "
-  if existsEnv"TEST_LANG":
-    lang = getEnv"TEST_LANG"
-
-  var cc = ""
-  if compiler != "":
-    cc = compiler
-  elif existsEnv"CC":
-    cc = getEnv"CC"
+  let envCC = getEnv"CC"
+  let cc = if envCC != "": envCC
+           else: "defaultcompiler"
 
   var asmStatus = "useASM"
   if not useAsm:
-    cc &= " -d:CttASM=false"
+    runFlags &= " -d:CttASM=false"
     asmStatus = "noASM"
-  let command = "nim " & lang &
-       releaseBuildOptions(compiler = cc) &
+  let command = "nim c " & runFlags &
+       releaseBuildOptions() &
        &" -o:build/bench/{benchName}_{cc}_{asmStatus}" &
        &" --nimcache:nimcache/benches/{benchName}_{cc}_{asmStatus}" &
-       runFlag & &" benchmarks/{benchName}.nim"
+       &" benchmarks/{benchName}.nim"
+  return command
 
-proc runBench(benchName: string, compiler = "", useAsm = true) =
+proc runBench(benchName: string, useAsm = true) =
   if not dirExists "build":
     mkDir "build"
-  let run = true
-  setupBench()
+  let command = setupBench(benchName, run = true, useAsm)
   exec command
 
-proc buildBenchBatch(commands: var string, benchName: string, compiler = "", useAsm = true) =
-  let run = false
-  let compiler = ""
-  setupBench()
+proc buildBenchBatch(commands: var string, benchName: string, useAsm = true) =
+  let command = setupBench(benchName, run = false, useAsm)
   commands &= command & '\n'
 
 proc addTestSet(cmdFile: var string, requireGMP: bool, test32bit = false, testASM = true) =
@@ -639,9 +593,9 @@ proc addTestSet(cmdFile: var string, requireGMP: bool, test32bit = false, testAS
       if not testASM:
         flags &= " -d:CttASM=false "
       if test32bit:
-        flags &= " -d:Constantine32 "
+        flags &= " -d:Ctt32 "
       if td.path in useDebug:
-        flags &= " -d:debugConstantine "
+        flags &= " -d:CttDebug "
       if td.path notin skipSanitizers:
         flags &= sanitizers
 
@@ -679,9 +633,9 @@ proc addTestSetMultithreadedCrypto(cmdFile: var string, test32bit = false, testA
     if not testASM:
       flags &= " -d:CttASM=false"
     if test32bit:
-      flags &= " -d:Constantine32"
+      flags &= " -d:Ctt32"
     if td in useDebug:
-      flags &= " -d:debugConstantine"
+      flags &= " -d:CttDebug"
     if td notin skipSanitizers:
       flags &= sanitizers
 
@@ -844,389 +798,199 @@ task test_nvidia, "Run all tests for Nvidia GPUs":
 # Finite field 𝔽p
 # ------------------------------------------
 
-task bench_fp, "Run benchmark 𝔽p with your default compiler":
+task bench_fp, "Run benchmark 𝔽p with your CC compiler":
   runBench("bench_fp")
 
-task bench_fp_gcc, "Run benchmark 𝔽p with gcc":
-  runBench("bench_fp", "gcc")
-
-task bench_fp_clang, "Run benchmark 𝔽p with clang":
-  runBench("bench_fp", "clang")
-
-task bench_fp_gcc_noasm, "Run benchmark 𝔽p with gcc - no Assembly":
-  runBench("bench_fp", "gcc", useAsm = false)
-
-task bench_fp_clang_noasm, "Run benchmark 𝔽p with clang - no Assembly":
-  runBench("bench_fp", "clang", useAsm = false)
+task bench_fp_noasm, "Run benchmark 𝔽p with your CC compiler - no Assembly":
+  runBench("bench_fp", useAsm = false)
 
 # Double-precision field 𝔽pDbl
 # ------------------------------------------
 
-task bench_fpdbl, "Run benchmark 𝔽pDbl with your default compiler":
+task bench_fpdbl, "Run benchmark 𝔽pDbl with your CC compiler":
   runBench("bench_fp_double_precision")
 
-task bench_fpdbl_gcc, "Run benchmark 𝔽p with gcc":
-  runBench("bench_fp_double_precision", "gcc")
+task bench_fpdbl_noasm, "Run benchmark 𝔽p with CC compiler - no Assembly":
+  runBench("bench_fp_double_precision", useAsm = false)
 
-task bench_fpdbl_clang, "Run benchmark 𝔽p with clang":
-  runBench("bench_fp_double_precision", "clang")
-
-task bench_fpdbl_gcc_noasm, "Run benchmark 𝔽p with gcc - no Assembly":
-  runBench("bench_fp_double_precision", "gcc", useAsm = false)
-
-task bench_fpdbl_clang_noasm, "Run benchmark 𝔽p with clang - no Assembly":
-  runBench("bench_fp_double_precision", "clang", useAsm = false)
 
 # Extension field 𝔽p2
 # ------------------------------------------
 
-task bench_fp2, "Run benchmark with 𝔽p2 your default compiler":
+task bench_fp2, "Run benchmark 𝔽p2 with your CC compiler":
   runBench("bench_fp2")
 
-task bench_fp2_gcc, "Run benchmark 𝔽p2 with gcc":
-  runBench("bench_fp2", "gcc")
-
-task bench_fp2_clang, "Run benchmark 𝔽p2 with clang":
-  runBench("bench_fp2", "clang")
-
-task bench_fp2_gcc_noasm, "Run benchmark 𝔽p2 with gcc - no Assembly":
-  runBench("bench_fp2", "gcc", useAsm = false)
-
-task bench_fp2_clang_noasm, "Run benchmark 𝔽p2 with clang - no Assembly":
-  runBench("bench_fp2", "clang", useAsm = false)
+task bench_fp2_noasm, "Run benchmark 𝔽p2 with CC compiler - no Assembly":
+  runBench("bench_fp2", useAsm = false)
 
 # Extension field 𝔽p4
 # ------------------------------------------
 
-task bench_fp4, "Run benchmark with 𝔽p4 your default compiler":
+task bench_fp4, "Run benchmark 𝔽p4 with your CC compiler":
   runBench("bench_fp4")
 
-task bench_fp4_gcc, "Run benchmark 𝔽p4 with gcc":
-  runBench("bench_fp4", "gcc")
+task bench_fp4_noasm, "Run benchmark 𝔽p4 with CC compiler - no Assembly":
+  runBench("bench_fp4", useAsm = false)
 
-task bench_fp4_clang, "Run benchmark 𝔽p4 with clang":
-  runBench("bench_fp4", "clang")
-
-task bench_fp4_gcc_noasm, "Run benchmark 𝔽p4 with gcc - no Assembly":
-  runBench("bench_fp4", "gcc", useAsm = false)
-
-task bench_fp4_clang_noasm, "Run benchmark 𝔽p4 with clang - no Assembly":
-  runBench("bench_fp4", "clang", useAsm = false)
 
 # Extension field 𝔽p6
 # ------------------------------------------
 
-task bench_fp6, "Run benchmark with 𝔽p6 your default compiler":
+task bench_fp6, "Run benchmark 𝔽p6 with your CC compiler":
   runBench("bench_fp6")
 
-task bench_fp6_gcc, "Run benchmark 𝔽p6 with gcc":
-  runBench("bench_fp6", "gcc")
-
-task bench_fp6_clang, "Run benchmark 𝔽p6 with clang":
-  runBench("bench_fp6", "clang")
-
-task bench_fp6_gcc_noasm, "Run benchmark 𝔽p6 with gcc - no Assembly":
-  runBench("bench_fp6", "gcc", useAsm = false)
-
-task bench_fp6_clang_noasm, "Run benchmark 𝔽p6 with clang - no Assembly":
-  runBench("bench_fp6", "clang", useAsm = false)
+task bench_fp6_noasm, "Run benchmark 𝔽p6 with CC compiler - no Assembly":
+  runBench("bench_fp6", useAsm = false)
 
 # Extension field 𝔽p12
 # ------------------------------------------
 
-task bench_fp12, "Run benchmark with 𝔽p12 your default compiler":
+task bench_fp12, "Run benchmark 𝔽p12 with your CC compiler":
   runBench("bench_fp12")
 
-task bench_fp12_gcc, "Run benchmark 𝔽p12 with gcc":
-  runBench("bench_fp12", "gcc")
-
-task bench_fp12_clang, "Run benchmark 𝔽p12 with clang":
-  runBench("bench_fp12", "clang")
-
-task bench_fp12_gcc_noasm, "Run benchmark 𝔽p12 with gcc - no Assembly":
-  runBench("bench_fp12", "gcc", useAsm = false)
-
-task bench_fp12_clang_noasm, "Run benchmark 𝔽p12 with clang - no Assembly":
-  runBench("bench_fp12", "clang", useAsm = false)
+task bench_fp12_noasm, "Run benchmark 𝔽p12 with CC compiler - no Assembly":
+  runBench("bench_fp12", useAsm = false)
 
 # Elliptic curve G1
 # ------------------------------------------
 
-task bench_ec_g1, "Run benchmark on Elliptic Curve group 𝔾1 - Default compiler":
+task bench_ec_g1, "Run benchmark on Elliptic Curve group 𝔾1 - CC compiler":
   runBench("bench_ec_g1")
 
-task bench_ec_g1_gcc, "Run benchmark on Elliptic Curve group 𝔾1 - GCC":
-  runBench("bench_ec_g1", "gcc")
+task bench_ec_g1_noasm, "Run benchmark on Elliptic Curve group 𝔾1 - CC compiler no Assembly":
+  runBench("bench_ec_g1", useAsm = false)
 
-task bench_ec_g1_clang, "Run benchmark on Elliptic Curve group 𝔾1 - Clang":
-  runBench("bench_ec_g1", "clang")
-
-task bench_ec_g1_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾1 - GCC no Assembly":
-  runBench("bench_ec_g1", "gcc", useAsm = false)
-
-task bench_ec_g1_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾1 - Clang no Assembly":
-  runBench("bench_ec_g1", "clang", useAsm = false)
 
 # Elliptic curve G1 - batch operations
 # ------------------------------------------
 
-task bench_ec_g1_batch, "Run benchmark on Elliptic Curve group 𝔾1 (batch ops) - Default compiler":
+task bench_ec_g1_batch, "Run benchmark on Elliptic Curve group 𝔾1 (batch ops) - CC compiler":
   runBench("bench_ec_g1_batch")
 
-task bench_ec_g1_batch_gcc, "Run benchmark on Elliptic Curve group 𝔾1 (batch ops) - GCC":
-  runBench("bench_ec_g1_batch", "gcc")
+task bench_ec_g1_batch_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (batch ops) - CC compiler no Assembly":
+  runBench("bench_ec_g1_batch", useAsm = false)
 
-task bench_ec_g1_batch_clang, "Run benchmark on Elliptic Curve group 𝔾1 (batch ops) - Clang":
-  runBench("bench_ec_g1_batch", "clang")
-
-task bench_ec_g1_batch_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (batch ops) - GCC no Assembly":
-  runBench("bench_ec_g1_batch", "gcc", useAsm = false)
-
-task bench_ec_g1_batch_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (batch ops) - Clang no Assembly":
-  runBench("bench_ec_g1_batch", "clang", useAsm = false)
 
 # Elliptic curve G1 - scalar multiplication
 # ------------------------------------------
 
-task bench_ec_g1_scalar_mul, "Run benchmark on Elliptic Curve group 𝔾1 (Scalar Multiplication) - Default compiler":
+task bench_ec_g1_scalar_mul, "Run benchmark on Elliptic Curve group 𝔾1 (Scalar Multiplication) - CC compiler":
   runBench("bench_ec_g1_scalar_mul")
 
-task bench_ec_g1_scalar_mul_gcc, "Run benchmark on Elliptic Curve group 𝔾1 (Scalar Multiplication) - GCC":
-  runBench("bench_ec_g1_scalar_mul", "gcc")
-
-task bench_ec_g1_scalar_mul_clang, "Run benchmark on Elliptic Curve group 𝔾1 (Scalar Multiplication) - Clang":
-  runBench("bench_ec_g1_scalar_mul", "clang")
-
-task bench_ec_g1_scalar_mul_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Scalar Multiplication) - GCC no Assembly":
-  runBench("bench_ec_g1_scalar_mul", "gcc", useAsm = false)
-
-task bench_ec_g1_scalar_mul_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Scalar Multiplication) - Clang no Assembly":
-  runBench("bench_ec_g1_scalar_mul", "clang", useAsm = false)
+task bench_ec_g1_scalar_mul_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Scalar Multiplication) - CC compiler no Assembly":
+  runBench("bench_ec_g1_scalar_mul", useAsm = false)
 
 # Elliptic curve G1 - Multi-scalar-mul
 # ------------------------------------------
 
-task bench_ec_g1_msm_bn254_snarks, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BN254-Snarks - Default compiler":
+task bench_ec_g1_msm_bn254_snarks, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BN254-Snarks - CC compiler":
   runBench("bench_ec_g1_msm_bn254_snarks")
 
-task bench_ec_g1_msm_bn254_snarks_gcc, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BN254-Snarks - GCC":
-  runBench("bench_ec_g1_msm_bn254_snarks", "gcc")
+task bench_ec_g1_msm_bn254_snarks_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BN254-Snarks - CC compiler no Assembly":
+  runBench("bench_ec_g1_msm_bn254_snarks", useAsm = false)
 
-task bench_ec_g1_msm_bn254_snarks_clang, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BN254-Snarks - Clang":
-  runBench("bench_ec_g1_msm_bn254_snarks", "clang")
-
-task bench_ec_g1_msm_bn254_snarks_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BN254-Snarks - GCC no Assembly":
-  runBench("bench_ec_g1_msm_bn254_snarks", "gcc", useAsm = false)
-
-task bench_ec_g1_msm_bn254_snarks_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BN254-Snarks - Clang no Assembly":
-  runBench("bench_ec_g1_msm_bn254_snarks", "clang", useAsm = false)
-
-task bench_ec_g1_msm_bls12_381, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BLS12-381 - Default compiler":
+task bench_ec_g1_msm_bls12_381, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BLS12-381 - CC compiler":
   runBench("bench_ec_g1_msm_bls12_381")
 
-task bench_ec_g1_msm_bls12_381_gcc, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BLS12-381 - GCC":
-  runBench("bench_ec_g1_msm_bls12_381", "gcc")
-
-task bench_ec_g1_msm_bls12_381_clang, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BLS12-381 - Clang":
-  runBench("bench_ec_g1_msm_bls12_381", "clang")
-
-task bench_ec_g1_msm_bls12_381_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BLS12-381 - GCC no Assembly":
-  runBench("bench_ec_g1_msm_bls12_381", "gcc", useAsm = false)
-
-task bench_ec_g1_msm_bls12_381_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BLS12-381 - Clang no Assembly":
-  runBench("bench_ec_g1_msm_bls12_381", "clang", useAsm = false)
+task bench_ec_g1_msm_bls12_381_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BLS12-381 - CC compiler no Assembly":
+  runBench("bench_ec_g1_msm_bls12_381", useAsm = false)
 
 # Elliptic curve G2
 # ------------------------------------------
 
-task bench_ec_g2, "Run benchmark on Elliptic Curve group 𝔾2 - Default compiler":
+task bench_ec_g2, "Run benchmark on Elliptic Curve group 𝔾2 - CC compiler":
   runBench("bench_ec_g2")
 
-task bench_ec_g2_gcc, "Run benchmark on Elliptic Curve group 𝔾2 - GCC":
-  runBench("bench_ec_g2", "gcc")
-
-task bench_ec_g2_clang, "Run benchmark on Elliptic Curve group 𝔾2 - Clang":
-  runBench("bench_ec_g2", "clang")
-
-task bench_ec_g2_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾2 - GCC no Assembly":
-  runBench("bench_ec_g2", "gcc", useAsm = false)
-
-task bench_ec_g2_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾2 - Clang no Assembly":
-  runBench("bench_ec_g2", "clang", useAsm = false)
+task bench_ec_g2_noasm, "Run benchmark on Elliptic Curve group 𝔾2 - CC compiler no Assembly":
+  runBench("bench_ec_g2", useAsm = false)
 
 # Elliptic curve G2 - scalar multiplication
 # ------------------------------------------
 
-task bench_ec_g2_scalar_mul, "Run benchmark on Elliptic Curve group 𝔾2 (Multi-Scalar-Mul) - Default compiler":
+task bench_ec_g2_scalar_mul, "Run benchmark on Elliptic Curve group 𝔾2 (Multi-Scalar-Mul) - CC compiler":
   runBench("bench_ec_g2_scalar_mul")
 
-task bench_ec_g2_scalar_mul_gcc, "Run benchmark on Elliptic Curve group 𝔾2 (Multi-Scalar-Mul) - GCC":
-  runBench("bench_ec_g2_scalar_mul", "gcc")
 
-task bench_ec_g2_scalar_mul_clang, "Run benchmark on Elliptic Curve group 𝔾2 (Multi-Scalar-Mul) - Clang":
-  runBench("bench_ec_g2_scalar_mul", "clang")
-
-task bench_ec_g2_scalar_mul_gcc_noasm, "Run benchmark on Elliptic Curve group 𝔾2 (Multi-Scalar-Mul) - GCC no Assembly":
-  runBench("bench_ec_g2_scalar_mul", "gcc", useAsm = false)
-
-task bench_ec_g2_scalar_mul_clang_noasm, "Run benchmark on Elliptic Curve group 𝔾2 (Multi-Scalar-Mul) - Clang no Assembly":
-  runBench("bench_ec_g2_scalar_mul", "clang", useAsm = false)
+task bench_ec_g2_scalar_mul_noasm, "Run benchmark on Elliptic Curve group 𝔾2 (Multi-Scalar-Mul) - CC compiler no Assembly":
+  runBench("bench_ec_g2_scalar_mul", useAsm = false)
 
 # Pairings
 # ------------------------------------------
 
-task bench_pairing_bls12_377, "Run pairings benchmarks for BLS12-377 - Default compiler":
+task bench_pairing_bls12_377, "Run pairings benchmarks for BLS12-377 - CC compiler":
   runBench("bench_pairing_bls12_377")
 
-task bench_pairing_bls12_377_gcc, "Run pairings benchmarks for BLS12-377 - GCC":
-  runBench("bench_pairing_bls12_377", "gcc")
-
-task bench_pairing_bls12_377_clang, "Run pairings benchmarks for BLS12-377 - Clang":
-  runBench("bench_pairing_bls12_377", "clang")
-
-task bench_pairing_bls12_377_gcc_noasm, "Run pairings benchmarks for BLS12-377 - GCC no Assembly":
-  runBench("bench_pairing_bls12_377", "gcc", useAsm = false)
-
-task bench_pairing_bls12_377_clang_noasm, "Run pairings benchmarks for BLS12-377 - Clang no Assembly":
-  runBench("bench_pairing_bls12_377", "clang", useAsm = false)
+task bench_pairing_bls12_377_noasm, "Run pairings benchmarks for BLS12-377 - CC compiler no Assembly":
+  runBench("bench_pairing_bls12_377", useAsm = false)
 
 # --
 
-task bench_pairing_bls12_381, "Run pairings benchmarks for BLS12-381 - Default compiler":
+task bench_pairing_bls12_381, "Run pairings benchmarks for BLS12-381 - CC compiler":
   runBench("bench_pairing_bls12_381")
 
-task bench_pairing_bls12_381_gcc, "Run pairings benchmarks for BLS12-381 - GCC":
-  runBench("bench_pairing_bls12_381", "gcc")
-
-task bench_pairing_bls12_381_clang, "Run pairings benchmarks for BLS12-381 - Clang":
-  runBench("bench_pairing_bls12_381", "clang")
-
-task bench_pairing_bls12_381_gcc_noasm, "Run pairings benchmarks for BLS12-381 - GCC no Assembly":
-  runBench("bench_pairing_bls12_381", "gcc", useAsm = false)
-
-task bench_pairing_bls12_381_clang_noasm, "Run pairings benchmarks for BLS12-381 - Clang no Assembly":
-  runBench("bench_pairing_bls12_381", "clang", useAsm = false)
+task bench_pairing_bls12_381_noasm, "Run pairings benchmarks for BLS12-381 - CC compiler no Assembly":
+  runBench("bench_pairing_bls12_381", useAsm = false)
 
 # --
 
-task bench_pairing_bn254_nogami, "Run pairings benchmarks for BN254-Nogami - Default compiler":
+task bench_pairing_bn254_nogami, "Run pairings benchmarks for BN254-Nogami - CC compiler":
   runBench("bench_pairing_bn254_nogami")
 
-task bench_pairing_bn254_nogami_gcc, "Run pairings benchmarks for BN254-Nogami - GCC":
-  runBench("bench_pairing_bn254_nogami", "gcc")
-
-task bench_pairing_bn254_nogami_clang, "Run pairings benchmarks for BN254-Nogami - Clang":
-  runBench("bench_pairing_bn254_nogami", "clang")
-
-task bench_pairing_bn254_nogami_gcc_noasm, "Run pairings benchmarks for BN254-Nogami - GCC no Assembly":
-  runBench("bench_pairing_bn254_nogami", "gcc", useAsm = false)
-
-task bench_pairing_bn254_nogami_clang_noasm, "Run pairings benchmarks for BN254-Nogami - Clang no Assembly":
-  runBench("bench_pairing_bn254_nogami", "clang", useAsm = false)
+task bench_pairing_bn254_nogami_noasm, "Run pairings benchmarks for BN254-Nogami - CC compiler no Assembly":
+  runBench("bench_pairing_bn254_nogami", useAsm = false)
 
 # --
 
-task bench_pairing_bn254_snarks, "Run pairings benchmarks for BN254-Snarks - Default compiler":
+task bench_pairing_bn254_snarks, "Run pairings benchmarks for BN254-Snarks - CC compiler":
   runBench("bench_pairing_bn254_snarks")
 
-task bench_pairing_bn254_snarks_gcc, "Run pairings benchmarks for BN254-Snarks - GCC":
-  runBench("bench_pairing_bn254_snarks", "gcc")
-
-task bench_pairing_bn254_snarks_clang, "Run pairings benchmarks for BN254-Snarks - Clang":
-  runBench("bench_pairing_bn254_snarks", "clang")
-
-task bench_pairing_bn254_snarks_gcc_noasm, "Run pairings benchmarks for BN254-Snarks - GCC no Assembly":
-  runBench("bench_pairing_bn254_snarks", "gcc", useAsm = false)
-
-task bench_pairing_bn254_snarks_clang_noasm, "Run pairings benchmarks for BN254-Snarks - Clang no Assembly":
-  runBench("bench_pairing_bn254_snarks", "clang", useAsm = false)
+task bench_pairing_bn254_snarks_noasm, "Run pairings benchmarks for BN254-Snarks - CC compiler no Assembly":
+  runBench("bench_pairing_bn254_snarks", useAsm = false)
 
 
 # Curve summaries
 # ------------------------------------------
 
-task bench_summary_bls12_377, "Run summary benchmarks for BLS12-377 - Default compiler":
+task bench_summary_bls12_377, "Run summary benchmarks for BLS12-377 - CC compiler":
   runBench("bench_summary_bls12_377")
 
-task bench_summary_bls12_377_gcc, "Run summary benchmarks for BLS12-377 - GCC":
-  runBench("bench_summary_bls12_377", "gcc")
 
-task bench_summary_bls12_377_clang, "Run summary benchmarks for BLS12-377 - Clang":
-  runBench("bench_summary_bls12_377", "clang")
-
-task bench_summary_bls12_377_gcc_noasm, "Run summary benchmarks for BLS12-377 - GCC no Assembly":
-  runBench("bench_summary_bls12_377", "gcc", useAsm = false)
-
-task bench_summary_bls12_377_clang_noasm, "Run summary benchmarks for BLS12-377 - Clang no Assembly":
-  runBench("bench_summary_bls12_377", "clang", useAsm = false)
+task bench_summary_bls12_377_noasm, "Run summary benchmarks for BLS12-377 - CC compiler no Assembly":
+  runBench("bench_summary_bls12_377", useAsm = false)
 
 # --
 
-task bench_summary_bls12_381, "Run summary benchmarks for BLS12-381 - Default compiler":
+task bench_summary_bls12_381, "Run summary benchmarks for BLS12-381 - CC compiler":
   runBench("bench_summary_bls12_381")
 
-task bench_summary_bls12_381_gcc, "Run summary benchmarks for BLS12-381 - GCC":
-  runBench("bench_summary_bls12_381", "gcc")
-
-task bench_summary_bls12_381_clang, "Run summary benchmarks for BLS12-381 - Clang":
-  runBench("bench_summary_bls12_381", "clang")
-
-task bench_summary_bls12_381_gcc_noasm, "Run summary benchmarks for BLS12-381 - GCC no Assembly":
-  runBench("bench_summary_bls12_381", "gcc", useAsm = false)
-
-task bench_summary_bls12_381_clang_noasm, "Run summary benchmarks for BLS12-381 - Clang no Assembly":
-  runBench("bench_summary_bls12_381", "clang", useAsm = false)
+task bench_summary_bls12_381_noasm, "Run summary benchmarks for BLS12-381 - CC compiler no Assembly":
+  runBench("bench_summary_bls12_381", useAsm = false)
 
 # --
 
-task bench_summary_bn254_nogami, "Run summary benchmarks for BN254-Nogami - Default compiler":
+task bench_summary_bn254_nogami, "Run summary benchmarks for BN254-Nogami - CC compiler":
   runBench("bench_summary_bn254_nogami")
 
-task bench_summary_bn254_nogami_gcc, "Run summary benchmarks for BN254-Nogami - GCC":
-  runBench("bench_summary_bn254_nogami", "gcc")
-
-task bench_summary_bn254_nogami_clang, "Run summary benchmarks for BN254-Nogami - Clang":
-  runBench("bench_summary_bn254_nogami", "clang")
-
-task bench_summary_bn254_nogami_gcc_noasm, "Run summary benchmarks for BN254-Nogami - GCC no Assembly":
-  runBench("bench_summary_bn254_nogami", "gcc", useAsm = false)
-
-task bench_summary_bn254_nogami_clang_noasm, "Run summary benchmarks for BN254-Nogami - Clang no Assembly":
-  runBench("bench_summary_bn254_nogami", "clang", useAsm = false)
+task bench_summary_bn254_nogami_noasm, "Run summary benchmarks for BN254-Nogami - CC compiler no Assembly":
+  runBench("bench_summary_bn254_nogami", useAsm = false)
 
 # --
 
-task bench_summary_bn254_snarks, "Run summary benchmarks for BN254-Snarks - Default compiler":
+task bench_summary_bn254_snarks, "Run summary benchmarks for BN254-Snarks - CC compiler":
   runBench("bench_summary_bn254_snarks")
 
-task bench_summary_bn254_snarks_gcc, "Run summary benchmarks for BN254-Snarks - GCC":
-  runBench("bench_summary_bn254_snarks", "gcc")
 
-task bench_summary_bn254_snarks_clang, "Run summary benchmarks for BN254-Snarks - Clang":
-  runBench("bench_summary_bn254_snarks", "clang")
-
-task bench_summary_bn254_snarks_gcc_noasm, "Run summary benchmarks for BN254-Snarks - GCC no Assembly":
-  runBench("bench_summary_bn254_snarks", "gcc", useAsm = false)
-
-task bench_summary_bn254_snarks_clang_noasm, "Run summary benchmarks for BN254-Snarks - Clang no Assembly":
-  runBench("bench_summary_bn254_snarks", "clang", useAsm = false)
+task bench_summary_bn254_snarks_noasm, "Run summary benchmarks for BN254-Snarks - CC compiler no Assembly":
+  runBench("bench_summary_bn254_snarks", useAsm = false)
 
 # --
 
-task bench_summary_pasta, "Run summary benchmarks for the Pasta curves - Default compiler":
+task bench_summary_pasta, "Run summary benchmarks for the Pasta curves - CC compiler":
   runBench("bench_summary_pasta")
 
-task bench_summary_pasta_gcc, "Run summary benchmarks for the Pasta curves - GCC":
-  runBench("bench_summary_pasta", "gcc")
 
-task bench_summary_pasta_clang, "Run summary benchmarks for the Pasta curves - Clang":
-  runBench("bench_summary_pasta", "clang")
-
-task bench_summary_pasta_gcc_noasm, "Run summary benchmarks for the Pasta curves - GCC no Assembly":
-  runBench("bench_summary_pasta", "gcc", useAsm = false)
-
-task bench_summary_pasta_clang_noasm, "Run summary benchmarks for the Pasta curves - Clang no Assembly":
-  runBench("bench_summary_pasta", "clang", useAsm = false)
+task bench_summary_pasta_noasm, "Run summary benchmarks for the Pasta curves - CC compiler no Assembly":
+  runBench("bench_summary_pasta", useAsm = false)
 
 # Hashes
 # ------------------------------------------
@@ -1239,31 +1003,13 @@ task bench_sha256, "Run SHA256 benchmarks":
 task bench_hash_to_curve, "Run Hash-to-Curve benchmarks":
   runBench("bench_hash_to_curve")
 
-task bench_hash_to_curve_gcc, "Run Hash-to-Curve benchmarks":
-  runBench("bench_hash_to_curve", "gcc")
-
-task bench_hash_to_curve_clang, "Run Hash-to-Curve benchmarks":
-  runBench("bench_hash_to_curve", "clang")
-
-task bench_hash_to_curve_gcc_noasm, "Run Hash-to-Curve benchmarks":
-  runBench("bench_hash_to_curve", "gcc", useAsm = false)
-
-task bench_hash_to_curve_clang_noasm, "Run Hash-to-Curve benchmarks":
-  runBench("bench_hash_to_curve", "clang", useAsm = false)
+task bench_hash_to_curve_noasm, "Run Hash-to-Curve benchmarks - No Assembly":
+  runBench("bench_hash_to_curve", useAsm = false)
 
 # BLS signatures
 # ------------------------------------------
-task bench_ethereum_bls_signatures, "Run Ethereum BLS signatures benchmarks":
+task bench_ethereum_bls_signatures, "Run Ethereum BLS signatures benchmarks - CC compiler":
   runBench("bench_ethereum_bls_signatures")
 
-task bench_ethereum_bls_signatures_gcc, "Run Ethereum BLS signatures benchmarks":
-  runBench("bench_ethereum_bls_signatures", "gcc")
-
-task bench_ethereum_bls_signatures_clang, "Run Ethereum BLS signatures benchmarks":
-  runBench("bench_ethereum_bls_signatures", "clang")
-
-task bench_ethereum_bls_signatures_gcc_noasm, "Run Ethereum BLS signatures benchmarks":
-  runBench("bench_ethereum_bls_signatures", "gcc", useAsm = false)
-
-task bench_ethereum_bls_signatures_clang_noasm, "Run Ethereum BLS signatures benchmarks":
-  runBench("bench_ethereum_bls_signatures", "clang", useAsm = false)
+task bench_ethereum_bls_signatures_noasm, "Run Ethereum BLS signatures benchmarks - CC compiler no assembly":
+  runBench("bench_ethereum_bls_signatures", useAsm = false)

@@ -139,5 +139,5 @@ macro debugConsts(): untyped {.used.} =
   result.add quote do:
     echo "----------------------------------------------------------------------------"
 
-# debug: # displayed with -d:debugConstantine
+# debug: # displayed with -d:CttDebug
 #   debugConsts()

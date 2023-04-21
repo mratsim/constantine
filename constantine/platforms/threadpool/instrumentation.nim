@@ -34,7 +34,7 @@ import std/macros
 # --------------------------------------------------------
 
 # Everything should be a template that doesn't produce any code
-# when debugConstantine is not defined.
+# when CttDebug is not defined.
 # Those checks are controlled by a custom flag instead of
 # "--boundsChecks" or "--nilChecks" to decouple them from user code checks.
 # Furthermore, we want them to be very lightweight on performance

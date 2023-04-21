@@ -48,7 +48,7 @@ type
     # Clobbered register
     ClobberedReg
 
-when sizeof(int) == 8 and not defined(Constantine32):
+when sizeof(int) == 8 and not defined(Ctt32):
   type
     Register* = enum
       rbx
