@@ -601,7 +601,7 @@ proc addTestSetNvidia(cmdFile: var string) =
     mkDir "build"
   echo "Found " & $testDescNvidia.len & " tests to run."
 
-  for path in testDescThreadpool:
+  for path in testDescNvidia:
     var flags = ""
     if path notin skipSanitizers:
       flags &= sanitizers

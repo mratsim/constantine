@@ -44,7 +44,7 @@ macro replacePragmasByInline(procAst: typed): untyped =
 
   result = newStmtList()
 
-  # The push cdecl is applied multiple times :/, so fight push with push
+  # The push noconv is applied multiple times :/, so fight push with push
   result.add nnkPragma.newTree(ident"push", ident"nimcall", ident"inline")
 
   result.add newProc(
@@ -61,7 +61,7 @@ macro wrapOpenArrayLenType*(ty: typedesc, procAst: untyped): untyped =
   ## Wraps pointer+len library calls in properly typed and converted openArray calls
   ##
   ## ```
-  ## {.push cdecl.}
+  ## {.push noconv.}
   ## proc foo*(r: int, a: openArray[CustomType], b: int) {.wrapOpenArrayLenType: uint32, importc: "foo", dynlib: "libfoo.so".}
   ## {.pop.}
   ## ```
@@ -69,7 +69,7 @@ macro wrapOpenArrayLenType*(ty: typedesc, procAst: untyped): untyped =
   ## is transformed into
   ##
   ## ```
-  ## proc foo(r: int, a: ptr CustomType, aLen: uint32, b: int) {.cdecl, importc: "foo", dynlib: "libfoo.so".}
+  ## proc foo(r: int, a: ptr CustomType, aLen: uint32, b: int) {.noconv, importc: "foo", dynlib: "libfoo.so".}
   ##
   ## proc foo*(r: int, a: openArray[CustomType], b: int) {.inline.} =
   ##   foo(r, a[0].unsafeAddr, a.len.uint32, b)
@@ -140,7 +140,7 @@ macro wrapOpenArrayLenType*(ty: typedesc, procAst: untyped): untyped =
 
 when isMainModule:
   expandMacros:
-    {.push cdecl.}
+    {.push noconv.}
 
     proc foo(x: int, a: openArray[uint32], name: cstring) {.wrapOpenArrayLenType: cuint.} =
       discard
