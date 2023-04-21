@@ -45,7 +45,7 @@ macro redc2xMont_adx_gen[N: static int](
   result = newStmtList()
 
   var ctx = init(Assembler_x86, BaseType)
-  let M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
+  let M = asmArray(M_PIR, N, MemOffsettable, asmInput)
 
   let uSlots = N+1
   let vSlots = max(N-1, 5)
@@ -171,7 +171,7 @@ macro mulMont_by_1_adx_gen[N: static int](
   let
     t = asmArray(t_EIR, N, ElemsInReg, asmInputOutputEarlyClobber)
     # We could force M as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
+    M = asmArray(M_PIR, N, MemOffsettable, asmInput)
 
     # MUL requires RAX and RDX
 

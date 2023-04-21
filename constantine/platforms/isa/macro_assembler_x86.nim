@@ -21,7 +21,7 @@ type
     Reg            = "r"
     Mem            = "m"
     Imm            = "i"
-    MemOffsettable = "o"
+    MemOffsettable = "o" # 'o' constraint might not work fully https://groups.google.com/g/llvm-dev/c/dfsPzWP_H1E
 
     PointerInReg   = "r" # Store an array pointer. ⚠️ for const arrays, this may generate incorrect code with LTO and constant folding.
     ElemsInReg     = "r" # Store each individual array element in reg
@@ -97,7 +97,7 @@ type
     nimSymbol: NimNode     # a   - Nim nimSymbol
     rm: RM
     constraint: Constraint
-    cEmit: string          # C emit for example a->limbs
+    constraintString: string          # C emit for example a->limbs
     memClobbered: seq[(MemIndirectAccess, string)]
 
   OperandArray* = object
@@ -177,31 +177,14 @@ func init*(T: type Assembler_x86, Word: typedesc[SomeUnsignedInt]): Assembler_x8
   result.wordSize = sizeof(Word)
   result.wordBitWidth = result.wordSize * 8
 
-func asmValue*(nimSymbol: NimNode, rm: RM, constraint: Constraint): Operand =
-  {.noSideEffect.}:
-    let symStr = try: # Why does this raise a generic exception?
-      $nimSymbol
-    except:
-      raise newException(Defect, "Broke Nim!")
+func setConstraintString(desc: OperandDesc, symbolString: string) =
+  # [a] "rbx" (`a`) for specific registers
+  # [a] "+r" (`*a_ptr`) for pointer to memory
+  # [a] "+r" (`a[0]`) for array cells
+  desc.constraintString = desc.asmId & "\"" & $desc.constraint & $desc.rm & "\"" &
+          " (`" & symbolString & "`)"
 
-  if rm in {Mem, MemOffsettable}:
-    return Operand(
-      desc: OperandDesc(
-        asmId: "[" & symStr & "]",
-        nimSymbol: nimSymbol,
-        rm: rm,
-        constraint: constraint,
-        cEmit: "*&" & symStr))
-  else:
-    return Operand(
-      desc: OperandDesc(
-        asmId: "[" & symStr & "]",
-        nimSymbol: nimSymbol,
-        rm: rm,
-        constraint: constraint,
-        cEmit: symStr))
-
-func genMemClobber*(nimSymbol: NimNode, len: int, memIndirect: MemIndirectAccess): string =
+func genMemClobber(nimSymbol: NimNode, len: int, memIndirect: MemIndirectAccess): string =
   let baseType = nimSymbol.getTypeImpl()[2].getTypeImpl()[0]
   let cBaseType = if baseType.sameType(getType(uint64)): "NU64"
                   else: "NU32"
@@ -218,6 +201,24 @@ func genMemClobber*(nimSymbol: NimNode, len: int, memIndirect: MemIndirectAccess
   else:
     doAssert false, "Indirect access kind not specified"
 
+func asmValue*(nimSymbol: NimNode, rm: RM, constraint: Constraint): Operand =
+  {.noSideEffect.}:
+    let symStr = try: # Why does this raise a generic exception?
+      $nimSymbol
+    except:
+      raise newException(Defect, "Broke Nim!")
+
+  let desc = OperandDesc(
+        asmId: "[" & symStr & "]",
+        nimSymbol: nimSymbol,
+        rm: rm,
+        constraint: constraint)
+  if rm in {Mem, MemOffsettable}:
+    desc.setConstraintString("*&" & symStr)
+  else:
+    desc.setConstraintString(symStr)
+  return Operand(desc: desc)
+
 func asmArray*(nimSymbol: NimNode, len: int, rm: RM, constraint: Constraint, memIndirect = memNoAccess): OperandArray =
   doAssert rm in {MemOffsettable, PointerInReg, ElemsInReg}
   doAssert (rm == PointerInReg) xor (memIndirect == memNoAccess)
@@ -233,10 +234,43 @@ func asmArray*(nimSymbol: NimNode, len: int, rm: RM, constraint: Constraint, mem
                   nimSymbol: nimSymbol,
                   rm: rm,
                   constraint: constraint,
-                  cEmit: symStr,
                   memClobbered: @[(memIndirect, genMemClobber(nimSymbol, len, memIndirect))])
+    desc.setConstraintString(symStr)
 
     for i in 0 ..< len:
+      result.buf[i] = Operand(
+        desc: desc,
+        kind: kFromArray,
+        offset: i)
+  elif rm == MemOffsettable:
+    # For MemOffsettable
+    #   Creating a base address like PointerInReg works with GCC but LLVM miscompiles
+    #   so we create individual memory locations.
+
+    # With MemOffsettable it's actually direct access, translate
+    let memIndirect = if constraint == asmInput: memRead
+                      elif constraint == asmOutputOverwrite: memWrite
+                      elif constraint == asmInputOutput: memReadWrite
+                      else: raise newException(Defect, "Invalid constraint for MemOffsettable: " & $constraint)
+
+    # https://stackoverflow.com/questions/67993984/clang-errors-expected-register-with-inline-x86-assembly-works-with-gcc#comment120189933_67995035
+    # We dereference+cast to "+m" (*(NU64 (*)[6]) myArray)
+    # to ensure same treatment of "NU64* myArray" and "NU64 myArray[6]" as in C
+    let desc = OperandDesc(
+                  asmId: "[" & symStr & "]",
+                  nimSymbol: nimSymbol,
+                  rm: rm,
+                  constraint: constraint,
+                  constraintString: "[" & symStr & "] " & genMemClobber(nimSymbol, len, memIndirect))
+
+    for i in 0 ..< len:
+      # let desc = OperandDesc(
+      #             asmId: "[" & symStr & $i & "]",
+      #             nimSymbol: ident(symStr & $i),
+      #             rm: rm,
+      #             constraint: constraint)
+      # desc.setConstraintString(symStr & "[" & $i & "]")
+
       result.buf[i] = Operand(
         desc: desc,
         kind: kFromArray,
@@ -245,17 +279,15 @@ func asmArray*(nimSymbol: NimNode, len: int, rm: RM, constraint: Constraint, mem
     # For ElemsInReg
     #   We can't store an array in register so we create assign individual register
     #   per array elements instead
-    # For MemOffsettable
-    #   Creating a base address like PointerInReg works with GCC but LLVM miscompiles
-    #   so we create individual memory locations.
     for i in 0 ..< len:
-      result.buf[i] = Operand(
-        desc: OperandDesc(
+      let desc = OperandDesc(
                   asmId: "[" & symStr & $i & "]",
                   nimSymbol: ident(symStr & $i),
                   rm: rm,
-                  constraint: constraint,
-                  cEmit: symStr & "[" & $i & "]"),
+                  constraint: constraint)
+      desc.setConstraintString(symStr & "[" & $i & "]")
+      result.buf[i] = Operand(
+        desc: desc,
         kind: kRegister)
 
 func asArrayAddr*(op: Operand, memPointer: NimNode, len: int, memIndirect: MemIndirectAccess): Operand =
@@ -274,7 +306,7 @@ func asArrayAddr*(op: Operand, memPointer: NimNode, len: int, memIndirect: MemIn
       kind: kFromArray,
       offset: i)
 
-func asArrayAddr*(op: Register, mempointer: NimNode, len: int, memIndirect: MemIndirectAccess): Operand =
+func asArrayAddr*(op: Register, memPointer: NimNode, len: int, memIndirect: MemIndirectAccess): Operand =
   ## Use the value stored in an operand as an array address
   result = Operand(
     kind: kArrayAddr,
@@ -294,7 +326,7 @@ func asArrayAddr*(op: Register, mempointer: NimNode, len: int, memIndirect: MemI
       kind: kFromArray,
       offset: i)
 
-func as2dArrayAddr*(op: Operand, mempointer: NimNode, rows, cols: int, memIndirect: MemIndirectAccess): Operand =
+func as2dArrayAddr*(op: Operand, memPointer: NimNode, rows, cols: int, memIndirect: MemIndirectAccess): Operand =
   ## Use the value stored in an operand as an array address
   doAssert op.desc.rm in {Reg, PointerInReg, ElemsInReg}+SpecificRegisters
   result = Operand(
@@ -330,9 +362,8 @@ func setToCarryFlag*(a: var Assembler_x86, carry: NimNode) =
     asmId: "",
     nimSymbol: ident(symStr),
     rm: CarryFlag,
-    constraint: asmOutputOverwrite,
-    cEmit: symStr)
-
+    constraint: asmOutputOverwrite)
+  desc.setConstraintString(symStr)
   a.operands.incl(desc)
 
 func generate*(a: Assembler_x86): NimNode =
@@ -345,28 +376,26 @@ func generate*(a: Assembler_x86): NimNode =
     memClobbered = false
 
   for odesc in a.operands.items():
-    var decl: string
-    # [a] "rbx" (`a`) for specific registers
-    # [a] "+r" (`*a_ptr`) for pointer to memory
-    # [a] "+r" (`a[0]`) for array cells
-    decl = odesc.asmId & "\"" & $odesc.constraint & $odesc.rm & "\"" &
-            " (`" & odesc.cEmit & "`)"
-
     if odesc.constraint in {asmInput, asmInputCommutative}:
-      inOperands.add decl
+      inOperands.add odesc.constraintString
     else:
-      outOperands.add decl
+      outOperands.add odesc.constraintString
 
     for (memIndirect, memDesc) in odesc.memClobbered:
-      # TODO: precise clobbering. GCC and Clang complain about impossible constraints or reaching coloring depth
+      # TODO: precise clobbering.
+      # GCC and Clang complain about impossible constraints or reaching coloring depth
+      # when we do precise constraints for inputs
+
+      # If only out clobbers, the Poly1305 MAC test fails without mem clobbers
       if memIndirect != memRead:
         memClobbered = true
         break
 
-      # if memIndirect == memRead:
-      #   inOperands.add memDesc
-      # else:
-      #   outOperands.add memDesc
+      if memIndirect == memRead:
+        # inOperands.add memDesc
+        discard
+      else:
+        outOperands.add memDesc
 
   var params: string
   params.add ": " & outOperands.join(", ") & '\n'
@@ -427,11 +456,23 @@ func getStrOffset(a: Assembler_x86, op: Operand): string =
     else:
       return "%" & op.desc.asmId
 
-  # Beware GCC / Clang differences with array offsets
+  # Beware GCC / Clang differences with displacements
   # https://lists.llvm.org/pipermail/llvm-dev/2017-August/116202.html
-  # - 8+%rax works with GCC
-  # - 8%rax works with Clang
-  # - 8(%rax) works with both
+  # - Memory operand:
+  #   - 8+%[variable] works with GCC
+  #   - 8%[variable] works with Clang
+  # - Pointer operand
+  #   - 8(%rax) works with both
+  #
+  # In Clang
+  # for 8[M], it might become:
+  # - invalid:  8BLS12_381_Order(%rip) with LTO constant propagation
+  # - or valid: 8(%rax)
+  # for 8+[M], it might become:
+  # - valid 8+BLS12_381_Order(%rip) with LTO constant propagation
+  # - or invalid: 8+(%rax)
+  # also warning about 'o' constraint: https://groups.google.com/g/llvm-dev/c/dfsPzWP_H1E
+  # and https://stackoverflow.com/questions/34446928/llvm-reports-unsupported-inline-asm-input-with-type-void-matching-output-w
 
   if op.desc.rm in {Mem, MemOffsettable}:
     # Directly accessing memory
@@ -440,7 +481,7 @@ func getStrOffset(a: Assembler_x86, op: Operand): string =
     if defined(gcc):
       return $(op.offset * a.wordSize) & "+%" & op.desc.asmId
     elif defined(clang):
-      return $(op.offset * a.wordSize) & "%" & op.desc.asmId
+      return $(op.offset * a.wordSize) & "+0%" & op.desc.asmId
     else:
       error "Unconfigured compiler"
   elif op.desc.rm == PointerInReg or

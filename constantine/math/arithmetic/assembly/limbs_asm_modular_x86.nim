@@ -57,7 +57,8 @@ proc finalSubNoOverflowImpl*(
 proc finalSubMayOverflowImpl*(
        ctx: var Assembler_x86,
        r: Operand or OperandArray,
-       a, M, scratch: OperandArray) =
+       a, M, scratch: OperandArray,
+       scratchReg: Operand or Register or OperandReuse = rax) =
   ## Reduce `a` into `r` modulo `M`
   ## To be used when the final substraction can
   ## also overflow the limbs (a 2^256 order of magnitude modulus stored in n words of total max size 2^256)
@@ -68,8 +69,8 @@ proc finalSubMayOverflowImpl*(
   let N = M.len
   ctx.comment "Final substraction (may carry)"
 
-  # Mask: rax contains 0xFFFF or 0x0000
-  ctx.sbb rax, rax
+  # Mask: scratchReg contains 0xFFFF or 0x0000
+  ctx.sbb scratchReg, scratchReg
 
   # Now substract the modulus, and test a < p with the last borrow
   ctx.mov scratch[0], a[0]
@@ -80,7 +81,7 @@ proc finalSubMayOverflowImpl*(
 
   # If it overflows here, it means that it was
   # smaller than the modulus and we don't need `scratch`
-  ctx.sbb rax, 0
+  ctx.sbb scratchReg, 0
 
   # If we borrowed it means that we were smaller than
   # the modulus and we don't need "scratch"
@@ -137,9 +138,9 @@ macro addmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_PIR: Limbs[
   var ctx = init(Assembler_x86, BaseType)
   let
     r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
-    b = asmArray(b_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
+    b = asmArray(b_PIR, N, PointerInReg, if spareBits >= 1: asmInput else: asmInputOutput, memIndirect = memRead)
     # We could force m as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
+    M = asmArray(M_PIR, N, MemOffsettable, asmInput)
     # If N is too big, we need to spill registers. TODO.
     uSym = ident"u"
     vSym = ident"v"
@@ -162,7 +163,7 @@ macro addmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_PIR: Limbs[
   if spareBits >= 1:
     ctx.finalSubNoOverflowImpl(r, u, M, v)
   else:
-    ctx.finalSubMayOverflowImpl(r, u, M, v)
+    ctx.finalSubMayOverflowImpl(r, u, M, v, scratchReg = b.reuseRegister())
 
   result.add ctx.generate()
 

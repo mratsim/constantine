@@ -58,7 +58,7 @@ macro mulMont_CIOS_sparebit_gen[N: static int](
     scratchSlots = 6
 
     # We could force M as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
+    M = asmArray(M_PIR, N, MemOffsettable, asmInput)
     # If N is too big, we need to spill registers. TODO.
     tSym = ident"t"
     t = asmArray(tSym, N, ElemsInReg, asmOutputEarlyClobber)
@@ -231,7 +231,7 @@ macro sumprodMont_CIOS_spare2bits_gen[N, K: static int](
     scratchSlots = 6
 
     # We could force M as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
+    M = asmArray(M_PIR, N, MemOffsettable, asmInput)
     # If N is too big, we need to spill registers. TODO.
     tSym = ident"t"
     t = asmArray(tSym, N, ElemsInReg, asmOutputEarlyClobber)

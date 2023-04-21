@@ -46,7 +46,7 @@ macro redc2xMont_gen*[N: static int](
   # so we store everything in scratchspaces restoring as needed
   let
     # We could force M as immediate by specializing per moduli
-    M = asmArray(M_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
+    M = asmArray(M_PIR, N, MemOffsettable, asmInput)
     # MUL requires RAX and RDX
 
   let uSlots = N+2
