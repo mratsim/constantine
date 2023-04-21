@@ -74,8 +74,6 @@ proc genDynamicBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain:
   proc compile(libName: string, flags = "") =
     echo "Compiling dynamic library: lib/" & libName
 
-
-
     exec "nim c " &
          flags &
          releaseBuildOptions(useLTO = true) &
