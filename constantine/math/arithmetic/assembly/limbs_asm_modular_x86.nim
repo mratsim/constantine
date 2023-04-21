@@ -167,9 +167,9 @@ macro addmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_MEM: Limbs[
 
   result.add ctx.generate()
 
-func addmod_asm*(r: var Limbs, a, b, m: Limbs, spareBits: static int) =
+func addmod_asm*(r: var Limbs, a, b, M: Limbs, spareBits: static int) =
   ## Constant-time modular addition
-  addmod_gen(r, a, b, m, spareBits)
+  addmod_gen(r, a, b, M, spareBits)
 
 # Field substraction
 # ------------------------------------------------------------
@@ -234,14 +234,14 @@ func submod_asm*(r: var Limbs, a, b, M: Limbs) =
 # Field negation
 # ------------------------------------------------------------
 
-macro negmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, M_MEM: Limbs[N]): untyped =
+macro negmod_gen[N: static int](r_PIR: var Limbs[N], a_MEM, M_MEM: Limbs[N]): untyped =
   ## Generate an optimized modular negation kernel
 
   result = newStmtList()
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    a = asmArray(a_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
+    a = asmArray(a_MEM, N, MemOffsettable, asmInput)
     r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
     uSym = ident"u"
     u = asmArray(uSym, N, ElemsInReg, asmOutputEarlyClobber)
@@ -250,7 +250,7 @@ macro negmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, M_MEM: Limbs[N]): un
     M = asmArray(M_MEM, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memRead)
 
   result.add quote do:
-    var `usym`{.noinit, used.}: typeof(`a_PIR`)
+    var `usym`{.noinit, used.}: typeof(`a_MEM`)
 
   # Substraction m - a
   ctx.mov u[0], M[0]

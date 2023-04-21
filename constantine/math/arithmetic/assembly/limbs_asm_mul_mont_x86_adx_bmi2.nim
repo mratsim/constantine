@@ -193,7 +193,7 @@ macro mulMont_CIOS_sparebit_adx_gen[N: static int](
   let
     scratchSlots = 6
 
-    r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
+    r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite) # Changing that to MemOffsetable triggers an error in negmod in test_bindings. Missing clobber?
     # We could force M as immediate by specializing per moduli
     M = asmArray(M_MEM, N, MemOffsettable, asmInput)
     # If N is too big, we need to spill registers. TODO.
@@ -250,21 +250,18 @@ macro mulMont_CIOS_sparebit_adx_gen[N: static int](
         A, t,
         a,
         b[0],
-        C
-      )
+        C)
     else:
       ctx.mulaccx_by_word(
         A, t,
         a, i,
         b[i],
-        C
-      )
+        C)
 
     ctx.partialRedx(
       A, t,
       M, m0ninv,
-      lo, C
-    )
+      lo, C)
 
   if skipFinalSub:
     for i in 0 ..< N:
@@ -272,8 +269,7 @@ macro mulMont_CIOS_sparebit_adx_gen[N: static int](
   else:
     ctx.finalSubNoOverflowImpl(
       r, t, M,
-      scratch
-    )
+      scratch)
 
   result.add ctx.generate()
 

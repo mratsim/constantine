@@ -29,7 +29,7 @@ static: doAssert UseASM_X86_64 # Need 8 registers just for mul
 # Multiplication
 # -----------------------------------------------------------------------------------------------
 
-macro mul_gen[rLen, aLen, bLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs[aLen], b_PIR: Limbs[bLen]) =
+macro mul_gen[rLen, aLen, bLen: static int](r_PIR: var Limbs[rLen], a_MEM: Limbs[aLen], b_MEM: Limbs[bLen]) =
   ## Comba multiplication generator
   ## `a`, `b`, `r` can have a different number of limbs
   ## if `r`.limbs.len < a.limbs.len + b.limbs.len
@@ -43,8 +43,8 @@ macro mul_gen[rLen, aLen, bLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs
   var ctx = init(Assembler_x86, BaseType)
   let
     r = asmArray(r_PIR, rLen, PointerInReg, asmInput, memIndirect = memWrite)
-    a = asmArray(a_PIR, aLen, PointerInReg, asmInput, memIndirect = memRead)
-    b = asmArray(b_PIR, bLen, PointerInReg, asmInput, memIndirect = memRead)
+    a = asmArray(a_MEM, aLen, MemOffsettable, asmInput)
+    b = asmArray(b_MEM, aLen, MemOffsettable, asmInput)
 
     tSym = ident"t"
     t = asmValue(tSym, Reg, asmOutputEarlyClobber)
@@ -104,7 +104,7 @@ func mul_asm*[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], 
 # Squaring
 # -----------------------------------------------------------------------------------------------
 
-macro sqr_gen*[rLen, aLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs[aLen]) =
+macro sqr_gen*[rLen, aLen: static int](r_PIR: var Limbs[rLen], a_MEM: Limbs[aLen]) =
   ## Comba squaring generator
   ## `a` and `r` can have a different number of limbs
   ## if `r`.limbs.len < a.limbs.len * 2
@@ -118,7 +118,7 @@ macro sqr_gen*[rLen, aLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs[aLen
   var ctx = init(Assembler_x86, BaseType)
   let
     r = asmArray(r_PIR, rLen, PointerInReg, asmInput, memIndirect = memWrite)
-    a = asmArray(a_PIR, aLen, PointerInReg, asmInput, memIndirect = memRead)
+    a = asmArray(a_MEM, aLen, MemOffsettable, asmInput)
 
     tSym = ident"t"
     t = asmValue(tSym, Reg, asmOutputEarlyClobber)

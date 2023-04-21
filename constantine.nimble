@@ -17,7 +17,7 @@ import std/strformat
 # Library compilation
 # ----------------------------------------------------------------
 
-proc releaseBuildOptions: string =
+proc releaseBuildOptions(compiler = "", useLTO = true): string =
   # -d:danger --opt:size
   #           to avoid boundsCheck and overflowChecks that would trigger exceptions or allocations in a crypto library.
   #           Those are internally guaranteed at compile-time by fixed-sized array
@@ -50,12 +50,17 @@ proc releaseBuildOptions: string =
   #           Reduce instructions cache misses.
   #           https://lkml.org/lkml/2015/5/21/443
   #           Our non-inlined functions are large so size cost is minimal.
-  # " --cc:clang " &
+  let compiler = if compiler != "": " --cc:" & compiler
+                  else: ""
+  let lto = if useLTO: " --passC:-flto=auto --passL:-flto=auto "
+            else: ""
+
+  compiler &
+  lto &
   " -d:danger --opt:size " &
   " --panics:on -d:noSignalHandler " &
   " --mm:arc -d:useMalloc " &
   " --verbosity:0 --hints:off --warnings:off " &
-  " --passC:-flto=auto --passL:-flto=auto " &
   " --passC:-fno-semantic-interposition " &
   " --passC:-falign-functions=64 "
 
@@ -63,13 +68,16 @@ type BindingsKind = enum
   kCurve
   kProtocol
 
-proc genDynamicBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: string) =
+proc genDynamicBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: string, compiler = "") =
   proc compile(libName: string, flags = "") =
     echo "Compiling dynamic library: lib/" & libName
+
+
+
     exec "nim c " &
-         " --noMain --app:lib " &
          flags &
-         releaseBuildOptions() &
+         releaseBuildOptions(compiler, useLTO = true) &
+         " --noMain --app:lib " &
          &" --nimMainPrefix:{prefixNimMain} " &
          &" --out:{libName} --outdir:lib " &
          (block:
@@ -99,24 +107,24 @@ proc genDynamicBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain:
   else:
     compile "lib" & bindingsName & ".so"
 
-proc genStaticBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: string) =
+proc genStaticBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: string, compiler = "") =
   proc compile(libName: string, flags = "") =
     echo "Compiling static library:  lib/" & libName
+
     exec "nim c " &
-         " --noMain --app:staticLib " &
          flags &
-         releaseBuildOptions() &
-         " --nimMainPrefix:" & prefixNimMain &
-         " --out:" & libName & " --outdir:lib " &
+         releaseBuildOptions(compiler, useLTO = false) &
+         " --noMain --app:staticLib " &
+         &" --nimMainPrefix:{prefixNimMain} " &
+         &" --out:{libName} --outdir:lib " &
          (block:
            case bindingsKind
            of kCurve:
-             " --nimcache:nimcache/bindings_curves/" & bindingsName &
-             " bindings_generators/" & bindingsName & ".nim"
+             &" --nimcache:nimcache/bindings_curves/{bindingsName}" &
+             &" bindings_generators/{bindingsName}.nim"
            of kProtocol:
-             " --nimcache:nimcache/bindings_protocols/" & bindingsName &
-             " constantine/" & bindingsName & ".nim"
-         )
+             &" --nimcache:nimcache/bindings_protocols/{bindingsName}" &
+             &" constantine/{bindingsName}.nim")
 
   let bindingsName = block:
     case bindingsKind
@@ -139,7 +147,7 @@ proc genStaticBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: 
 proc genHeaders(bindingsName: string) =
   echo "Generating header:         include/" & bindingsName & ".h"
   exec "nim c -d:CttGenerateHeaders " &
-       releaseBuildOptions() &
+       releaseBuildOptions(useLTO = false) &
        " --out:" & bindingsName & "_gen_header.exe --outdir:build " &
        " --nimcache:nimcache/bindings_curves_headers/" & bindingsName & "_header" &
        " bindings_generators/" & bindingsName & ".nim"
@@ -161,15 +169,50 @@ task bindings, "Generate Constantine bindings":
   genDynamicBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_")
   echo ""
 
-proc testLib(path, testName, libName: string, useGMP: bool) =
+task bindings_gcc, "Generate Constantine bindings (GCC)":
+  # Curve arithmetic
+  genStaticBindings(kCurve, "constantine_bls12_381", "ctt_bls12381_init_", compiler = "gcc")
+  genDynamicBindings(kCurve, "constantine_bls12_381", "ctt_bls12381_init_", compiler = "gcc")
+  genHeaders("constantine_bls12_381")
+  echo ""
+  genStaticBindings(kCurve, "constantine_pasta", "ctt_pasta_init_", compiler = "gcc")
+  genDynamicBindings(kCurve, "constantine_pasta", "ctt_pasta_init_", compiler = "gcc")
+  genHeaders("constantine_pasta")
+  echo ""
+
+  # Protocols
+  genStaticBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_", compiler = "gcc")
+  genDynamicBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_", compiler = "gcc")
+  echo ""
+
+task bindings_clang, "Generate Constantine bindings (Clang)":
+  # Curve arithmetic
+  genStaticBindings(kCurve, "constantine_bls12_381", "ctt_bls12381_init_", compiler = "clang")
+  genDynamicBindings(kCurve, "constantine_bls12_381", "ctt_bls12381_init_", compiler = "clang")
+  genHeaders("constantine_bls12_381")
+  echo ""
+  genStaticBindings(kCurve, "constantine_pasta", "ctt_pasta_init_", compiler = "clang")
+  genDynamicBindings(kCurve, "constantine_pasta", "ctt_pasta_init_", compiler = "clang")
+  genHeaders("constantine_pasta")
+  echo ""
+
+  # Protocols
+  genStaticBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_", compiler = "clang")
+  genDynamicBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_", compiler = "clang")
+  echo ""
+
+proc testLib(path, testName, libName: string, useGMP: bool, compiler = "") =
   let dynlibName = if defined(windows): libName & ".dll"
                    elif defined(macosx): "lib" & libName & ".dylib"
                    else: "lib" & libName & ".so"
   let staticlibName = if defined(windows): libName & ".lib"
                       else: "lib" & libName & ".a"
 
+  let cc = if compiler != "": compiler
+           else: "gcc"
+
   echo &"\n[Bindings: {path}/{testName}.c] Testing dynamically linked library {dynlibName}"
-  exec &"gcc -Iinclude -Llib -o build/testbindings/{testName}_dynlink.exe {path}/{testName}.c -l{libName} " & (if useGMP: "-lgmp" else: "")
+  exec &"{cc} -Iinclude -Llib -o build/testbindings/{testName}_dynlink.exe {path}/{testName}.c -l{libName} " & (if useGMP: "-lgmp" else: "")
   when defined(windows):
     # Put DLL near the exe as LD_LIBRARY_PATH doesn't work even in a POSIX compatible shell
     exec &"./build/testbindings/{testName}_dynlink.exe"
@@ -181,7 +224,7 @@ proc testLib(path, testName, libName: string, useGMP: bool) =
   # Beware MacOS annoying linker with regards to static libraries
   # The following standard way cannot be used on MacOS
   # exec "gcc -Iinclude -Llib -o build/t_libctt_bls12_381_sl.exe examples_c/t_libctt_bls12_381.c -lgmp -Wl,-Bstatic -lconstantine_bls12_381 -Wl,-Bdynamic"
-  exec &"gcc -Iinclude -o build/testbindings/{testName}_staticlink.exe {path}/{testName}.c lib/{staticlibName} " & (if useGMP: "-lgmp" else: "")
+  exec &"{cc} -Iinclude -o build/testbindings/{testName}_staticlink.exe {path}/{testName}.c lib/{staticlibName} " & (if useGMP: "-lgmp" else: "")
   exec &"./build/testbindings/{testName}_staticlink.exe"
   echo ""
 
@@ -189,6 +232,16 @@ task test_bindings, "Test C bindings":
   exec "mkdir -p build/testbindings"
   testLib("examples_c", "t_libctt_bls12_381", "constantine_bls12_381", useGMP = true)
   testLib("examples_c", "ethereum_bls_signatures", "constantine_ethereum_bls_signatures", useGMP = false)
+
+task test_bindings_gcc, "Test C bindings (GCC)":
+  exec "mkdir -p build/testbindings"
+  testLib("examples_c", "t_libctt_bls12_381", "constantine_bls12_381", useGMP = true, compiler = "gcc")
+  testLib("examples_c", "ethereum_bls_signatures", "constantine_ethereum_bls_signatures", useGMP = false, compiler = "gcc")
+
+task test_bindings_clang, "Test C bindings (Clang)":
+  exec "mkdir -p build/testbindings"
+  testLib("examples_c", "t_libctt_bls12_381", "constantine_bls12_381", useGMP = true, compiler = "clang")
+  testLib("examples_c", "ethereum_bls_signatures", "constantine_ethereum_bls_signatures", useGMP = false, compiler = "clang")
 
 # Test config
 # ----------------------------------------------------------------
@@ -516,20 +569,16 @@ template setupTestCommand(): untyped {.dirty.} =
   if existsEnv"TEST_LANG":
     lang = getEnv"TEST_LANG"
 
-  var cc = ""
-  if existsEnv"CC":
-    cc = " --cc:" & getEnv"CC"
-
   var flags = flags
   when not defined(windows):
     # Not available in MinGW https://github.com/libressl-portable/portable/issues/54
     flags &= " --passC:-fstack-protector-strong --passC:-D_FORTIFY_SOURCE=2 "
-  let command = "nim " & lang & cc &
+  let command = "nim " & lang &
     " -r " &
     flags &
-    releaseBuildOptions() &
+    releaseBuildOptions(compiler = getEnv"CC") &
     " --outdir:build/testsuite " &
-    " --nimcache:nimcache/" & path & " " &
+    &" --nimcache:nimcache/{path} " &
     path
 
 proc test(cmd: string) =
@@ -552,17 +601,19 @@ template setupBench(): untyped {.dirty.} =
 
   var cc = ""
   if compiler != "":
-    cc = "--cc:" & compiler
+    cc = compiler
   elif existsEnv"CC":
-    cc = " --cc:" & getEnv"CC"
+    cc = getEnv"CC"
 
+  var asmStatus = "useASM"
   if not useAsm:
     cc &= " -d:CttASM=false"
-  let command = "nim " & lang & cc &
-       releaseBuildOptions() &
-       " -o:build/bench/" & benchName & "_" & compiler & "_" & (if useAsm: "useASM" else: "noASM") &
-       " --nimcache:nimcache/benches/" & benchName & "_" & compiler & "_" & (if useAsm: "useASM" else: "noASM") &
-       runFlag & " benchmarks/" & benchName & ".nim"
+    asmStatus = "noASM"
+  let command = "nim " & lang &
+       releaseBuildOptions(compiler = cc) &
+       &" -o:build/bench/{benchName}_{cc}_{asmStatus}" &
+       &" --nimcache:nimcache/benches/{benchName}_{cc}_{asmStatus}" &
+       runFlag & &" benchmarks/{benchName}.nim"
 
 proc runBench(benchName: string, compiler = "", useAsm = true) =
   if not dirExists "build":

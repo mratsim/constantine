@@ -32,7 +32,7 @@ static: doAssert UseASM_X86_64
 # Double-precision field addition
 # ------------------------------------------------------------
 
-macro addmod2x_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR: Limbs[N], M_MEM: Limbs[N div 2], spareBits: static int): untyped =
+macro addmod2x_gen[N: static int](r_PIR: var Limbs[N], a_MEM, b_PIR: Limbs[N], M_MEM: Limbs[N div 2], spareBits: static int): untyped =
   ## Generate an optimized out-of-place double-precision addition kernel
 
   result = newStmtList()
@@ -53,11 +53,11 @@ macro addmod2x_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR: Limbs[N], M
     v = asmArray(vSym, H, ElemsInReg, asmInputOutput)
 
   result.add quote do:
-    var `uSym`{.noinit.}, `vSym` {.noInit.}: typeof(`a_PIR`)
+    var `uSym`{.noinit.}, `vSym` {.noInit.}: typeof(`a_MEM`)
     staticFor i, 0, `H`:
-      `uSym`[i] = `a_PIR`[i]
+      `uSym`[i] = `a_MEM`[i]
     staticFor i, `H`, `N`:
-      `vSym`[i-`H`] = `a_PIR`[i]
+      `vSym`[i-`H`] = `a_MEM`[i]
 
   # Addition
   # u = a[0..<H] + b[0..<H], v = a[H..<N]
@@ -109,7 +109,7 @@ func addmod2x_asm*[N: static int](r: var Limbs[N], a, b: Limbs[N], M: Limbs[N di
 # Double-precision field substraction
 # ------------------------------------------------------------
 
-macro submod2x_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR: Limbs[N], M_MEM: Limbs[N div 2]): untyped =
+macro submod2x_gen[N: static int](r_PIR: var Limbs[N], a_MEM, b_PIR: Limbs[N], M_MEM: Limbs[N div 2]): untyped =
   ## Generate an optimized out-of-place double-precision substraction kernel
 
   result = newStmtList()
@@ -130,11 +130,11 @@ macro submod2x_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR: Limbs[N], M
     v = asmArray(vSym, H, ElemsInReg, asmInputOutput)
 
   result.add quote do:
-    var `uSym`{.noinit.}, `vSym` {.noInit.}: typeof(`a_PIR`)
+    var `uSym`{.noinit.}, `vSym` {.noInit.}: typeof(`a_MEM`)
     staticFor i, 0, `H`:
-      `uSym`[i] = `a_PIR`[i]
+      `uSym`[i] = `a_MEM`[i]
     staticFor i, `H`, `N`:
-      `vSym`[i-`H`] = `a_PIR`[i]
+      `vSym`[i-`H`] = `a_MEM`[i]
 
   # Substraction
   # u = a[0..<H] - b[0..<H], v = a[H..<N]
@@ -175,7 +175,7 @@ func submod2x_asm*[N: static int](r: var Limbs[N], a, b: Limbs[N], M: Limbs[N di
 # Double-precision field negation
 # ------------------------------------------------------------
 
-macro negmod2x_gen[N: static int](r_PIR: var Limbs[N], a_PIR: Limbs[N], M_MEM: Limbs[N div 2]): untyped =
+macro negmod2x_gen[N: static int](r_PIR: var Limbs[N], a_MEM: Limbs[N], M_MEM: Limbs[N div 2]): untyped =
   ## Generate an optimized modular negation kernel
 
   result = newStmtList()
@@ -184,7 +184,7 @@ macro negmod2x_gen[N: static int](r_PIR: var Limbs[N], a_PIR: Limbs[N], M_MEM: L
   let
     H = N div 2
 
-    a = asmArray(a_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
+    a = asmArray(a_MEM, N, MemOffsettable, asmInput)
     r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
     uSym = ident"u"
     u = asmArray(uSym, N, ElemsInReg, asmOutputEarlyClobber)
@@ -197,7 +197,7 @@ macro negmod2x_gen[N: static int](r_PIR: var Limbs[N], a_PIR: Limbs[N], M_MEM: L
 
   result.add quote do:
     var `isZerosym`{.noInit.}: BaseType
-    var `usym`{.noinit, used.}: typeof(`a_PIR`)
+    var `usym`{.noinit, used.}: typeof(`a_MEM`)
 
   # Substraction 2ⁿp - a
   # The lower half of 2ⁿp is filled with zero

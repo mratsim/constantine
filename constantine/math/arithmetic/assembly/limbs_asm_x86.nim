@@ -27,7 +27,7 @@ static: doAssert UseASM_X86_32
 
 # Copy
 # ------------------------------------------------------------
-macro ccopy_gen[N: static int](a_PIR: var Limbs[N], b_PIR: Limbs[N], ctl: SecretBool): untyped =
+macro ccopy_gen[N: static int](a_PIR: var Limbs[N], b_MEM: Limbs[N], ctl: SecretBool): untyped =
   ## Generate an optimized conditional copy kernel
   result = newStmtList()
 
@@ -35,7 +35,7 @@ macro ccopy_gen[N: static int](a_PIR: var Limbs[N], b_PIR: Limbs[N], ctl: Secret
 
   let
     a = asmArray(a_PIR, N, PointerInReg, asmInput, memIndirect = memReadWrite)
-    b = asmArray(b_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
+    b = asmArray(b_MEM, N, MemOffsettable, asmInput)
 
     control = asmValue(ctl, Reg, asmInput)
 
@@ -71,7 +71,7 @@ func ccopy_asm*(a: var Limbs, b: Limbs, ctl: SecretBool) {.inline.}=
 # Addition
 # ------------------------------------------------------------
 
-macro add_gen[N: static int](carry: var Carry, r_PIR: var Limbs[N], a_PIR, b_PIR: Limbs[N]): untyped =
+macro add_gen[N: static int](carry: var Carry, r_PIR: var Limbs[N], a_MEM, b_MEM: Limbs[N]): untyped =
   ## Generate an optimized out-of-place addition kernel
 
   result = newStmtList()
@@ -79,8 +79,8 @@ macro add_gen[N: static int](carry: var Carry, r_PIR: var Limbs[N], a_PIR, b_PIR
   var ctx = init(Assembler_x86, BaseType)
   let
     r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
-    a = asmArray(a_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
-    b = asmArray(b_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
+    a = asmArray(a_MEM, N, MemOffsettable, asmInput)
+    b = asmArray(b_MEM, N, MemOffsettable, asmInput)
 
     t0Sym = ident"t0"
     t1Sym = ident"t1"
@@ -116,7 +116,7 @@ func add_asm*(r: var Limbs, a, b: Limbs): Carry {.inline.}=
 # Substraction
 # ------------------------------------------------------------
 
-macro sub_gen[N: static int](borrow: var Borrow, r_PIR: var Limbs[N], a_PIR, b_PIR: Limbs[N]): untyped =
+macro sub_gen[N: static int](borrow: var Borrow, r_PIR: var Limbs[N], a_MEM, b_MEM: Limbs[N]): untyped =
   ## Generate an optimized out-of-place substraction kernel
 
   result = newStmtList()
@@ -124,8 +124,8 @@ macro sub_gen[N: static int](borrow: var Borrow, r_PIR: var Limbs[N], a_PIR, b_P
   var ctx = init(Assembler_x86, BaseType)
   let
     r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
-    a = asmArray(a_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
-    b = asmArray(b_PIR, N, PointerInReg, asmInput, memIndirect = memRead)
+    a = asmArray(a_MEM, N, MemOffsettable, asmInput)
+    b = asmArray(b_MEM, N, MemOffsettable, asmInput)
 
     t0Sym = ident"t0"
     t1Sym = ident"t1"

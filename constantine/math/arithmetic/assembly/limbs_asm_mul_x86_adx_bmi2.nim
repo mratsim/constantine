@@ -108,7 +108,7 @@ proc mulaccx_by_word(
   ctx.adcx hi, rdx
   ctx.adox hi, rdx
 
-macro mulx_gen[rLen, aLen, bLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs[aLen], b_PIR: Limbs[bLen]) =
+macro mulx_gen[rLen, aLen, bLen: static int](r_PIR: var Limbs[rLen], a_MEM: Limbs[aLen], b_MEM: Limbs[bLen]) =
   ## `a`, `b`, `r` can have a different number of limbs
   ## if `r`.limbs.len < a.limbs.len + b.limbs.len
   ## The result will be truncated, i.e. it will be
@@ -121,8 +121,8 @@ macro mulx_gen[rLen, aLen, bLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limb
   var ctx = init(Assembler_x86, BaseType)
   let
     r = asmArray(r_PIR, rLen, PointerInReg, asmInput, memIndirect = memWrite)
-    a = asmArray(a_PIR, aLen, PointerInReg, asmInput, memIndirect = memRead)
-    b = asmArray(b_PIR, bLen, PointerInReg, asmInput, memIndirect = memRead)
+    a = asmArray(a_MEM, aLen, MemOffsettable, asmInput)
+    b = asmArray(b_MEM, bLen, MemOffsettable, asmInput)
 
     # MULX requires RDX
 
@@ -556,7 +556,7 @@ func sqrx_gen6L(ctx: var Assembler_x86, r, a: OperandArray, t: var OperandArray)
   merge_diag_and_partsum(r, a, hi1, lo1, zero, 4)
   merge_diag_and_partsum(r, a, hi2, lo2, zero, 5)
 
-macro sqrx_gen*[rLen, aLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs[aLen]) =
+macro sqrx_gen*[rLen, aLen: static int](r_PIR: var Limbs[rLen], a_MEM: Limbs[aLen]) =
   ## Squaring
   ## `a` and `r` can have a different number of limbs
   ## if `r`.limbs.len < a.limbs.len * 2
@@ -574,7 +574,7 @@ macro sqrx_gen*[rLen, aLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs[aLe
     # We use the full x86 register set.
 
     r = asmArray(r_PIR, rLen, PointerInReg, asmInput, memIndirect = memWrite)
-    a = asmArray(a_PIR, aLen, PointerInReg, asmInput, memIndirect = memRead)
+    a = asmArray(a_MEM, aLen, MemOffsettable, asmInput)
 
     # MULX requires RDX
     tSym = ident"t"
