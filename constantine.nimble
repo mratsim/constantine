@@ -50,8 +50,7 @@ proc releaseBuildOptions(useLTO = true): string =
   #           Reduce instructions cache misses.
   #           https://lkml.org/lkml/2015/5/21/443
   #           Our non-inlined functions are large so size cost is minimal.
-  let envCC = getEnv"CC"
-  let compiler = if envCC != "": " --cc:" & envCC
+  let compiler = if existsEnv"CC": " --cc:" & getEnv"CC"
                  else: ""
   let lto = if useLTO: " --passC:-flto=auto --passL:-flto=auto "
             else: ""
@@ -176,9 +175,8 @@ proc testLib(path, testName, libName: string, useGMP: bool) =
   let staticlibName = if defined(windows): libName & ".lib"
                       else: "lib" & libName & ".a"
 
-  let envCC = getEnv"CC"
-  let cc = if envCC != "": envCC
-                 else: ""
+  let cc = if existsEnv"CC": getEnv"CC"
+           else: "gcc"
 
   echo &"\n[Bindings: {path}/{testName}.c] Testing dynamically linked library {dynlibName}"
   exec &"{cc} -Iinclude -Llib -o build/testbindings/{testName}_dynlink.exe {path}/{testName}.c -l{libName} " & (if useGMP: "-lgmp" else: "")
@@ -555,8 +553,7 @@ proc setupBench(benchName: string, run: bool, useAsm: bool): string =
   var runFlags = if run: " -r "
                 else: " "
 
-  let envCC = getEnv"CC"
-  let cc = if envCC != "": envCC
+  let cc = if existsEnv"CC": getEnv"CC"
            else: "defaultcompiler"
 
   var asmStatus = "useASM"
