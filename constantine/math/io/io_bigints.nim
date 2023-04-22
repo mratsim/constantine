@@ -41,8 +41,7 @@ export BigInt, wordsRequired
 func unmarshalLE[T](
         dst: var openArray[T],
         src: openarray[byte],
-        wordBitWidth: static int
-     ) =
+        wordBitWidth: static int) =
   ## Parse an unsigned integer from its canonical
   ## little-endian unsigned representation
   ## and store it into a BigInt
@@ -85,8 +84,7 @@ func unmarshalLE[T](
 func unmarshalBE[T](
         dst: var openArray[T],
         src: openarray[byte],
-        wordBitWidth: static int
-     ) =
+        wordBitWidth: static int) =
   ## Parse an unsigned integer from its canonical
   ## big-endian unsigned representation (octet string)
   ## and store it into a BigInt.

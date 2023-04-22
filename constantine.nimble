@@ -498,9 +498,22 @@ const skipSanitizers = [
 
 when defined(windows):
   # UBSAN is not available on mingw
+  # https://github.com/libressl-portable/portable/issues/54
   const sanitizers = ""
 else:
   const sanitizers =
+
+    " --passC:-fstack-protector-strong " &
+
+    # Fortify source wouldn't help us detect errors in cosntantine
+    # because everything is stack allocated
+    # except with the threadpool:
+    # - https://developers.redhat.com/blog/2021/04/16/broadening-compiler-checks-for-buffer-overflows-in-_fortify_source#what_s_next_for__fortify_source
+    # - https://developers.redhat.com/articles/2023/02/06/how-improve-application-security-using-fortifysource3#how_to_improve_application_fortification
+    # We also don't use memcpy as it is not constant-time and our copy is compile-time sized.
+
+    " --passC:-D_FORTIFY_SOURCE=3 " &
+
     # Sanitizers are incompatible with nim default GC
     # The conservative stack scanning of Nim default GC triggers, alignment UB and stack-buffer-overflow check.
     # Address sanitizer requires free registers and needs to be disabled for some inline assembly files.
@@ -510,8 +523,8 @@ else:
 
     # " --passC:-fsanitize=undefined --passL:-fsanitize=undefined" &
     # " --passC:-fsanitize=address --passL:-fsanitize=address" &
-    " --passC:-fno-sanitize-recover" # Enforce crash on undefined behaviour
-
+    # " --passC:-fno-sanitize-recover" # Enforce crash on undefined behaviour
+    ""
 
 # Tests & Benchmarks helper functions
 # ----------------------------------------------------------------
@@ -521,17 +534,12 @@ proc clearParallelBuild() =
   if fileExists(buildParallel):
     rmFile(buildParallel)
 
-template setupTestCommand(): untyped {.dirty.} =
+proc setupTestCommand(flags, path: string): string =
   var lang = "c"
   if existsEnv"TEST_LANG":
     lang = getEnv"TEST_LANG"
 
-  var flags = flags
-  when not defined(windows):
-    # Not available in MinGW https://github.com/libressl-portable/portable/issues/54
-    flags &= " --passC:-fstack-protector-strong "
-    # flags &= " --passC:-D_FORTIFY_SOURCE=2 "
-  let command = "nim " & lang &
+  return "nim " & lang &
     " -r " &
     flags &
     releaseBuildOptions() &
@@ -546,26 +554,36 @@ proc test(cmd: string) =
   exec cmd
 
 proc testBatch(commands: var string, flags, path: string) =
-  setupTestCommand()
-  commands &= command & '\n'
+  # With LTO, the linker produces lots of spurious warnings when copying into openArrays/strings
+
+  let flags = if defined(gcc): flags & " --passC:-Wno-stringop-overflow --passL:-Wno-stringop-overflow "
+              else: flags
+
+  commands = commands & setupTestCommand(flags, path) & '\n'
 
 proc setupBench(benchName: string, run: bool, useAsm: bool): string =
-  var runFlags = if run: " -r "
-                else: " "
+  var runFlags = " "
+  if run: # Beware of https://github.com/nim-lang/Nim/issues/21704
+    runFlags = runFlags & " -r "
+
+  var asmStatus = "useASM"
+  if not useAsm:
+    runFlags = runFlags & " -d:CttASM=false "
+    asmStatus = "noASM"
+
+  if defined(gcc):
+    # With LTO, the linker produces lots of spurious warnings when copying into openArrays/strings
+    runFlags = runFlags & " --passC:-Wno-stringop-overflow --passL:-Wno-stringop-overflow "
 
   let cc = if existsEnv"CC": getEnv"CC"
            else: "defaultcompiler"
 
-  var asmStatus = "useASM"
-  if not useAsm:
-    runFlags &= " -d:CttASM=false"
-    asmStatus = "noASM"
-  let command = "nim c " & runFlags &
+  return "nim c " &
+       runFlags &
        releaseBuildOptions() &
        &" -o:build/bench/{benchName}_{cc}_{asmStatus}" &
        &" --nimcache:nimcache/benches/{benchName}_{cc}_{asmStatus}" &
        &" benchmarks/{benchName}.nim"
-  return command
 
 proc runBench(benchName: string, useAsm = true) =
   if not dirExists "build":
@@ -575,7 +593,7 @@ proc runBench(benchName: string, useAsm = true) =
 
 proc buildBenchBatch(commands: var string, benchName: string, useAsm = true) =
   let command = setupBench(benchName, run = false, useAsm)
-  commands &= command & '\n'
+  commands = commands & command & '\n'
 
 proc addTestSet(cmdFile: var string, requireGMP: bool, test32bit = false, testASM = true) =
   if not dirExists "build":
@@ -584,15 +602,15 @@ proc addTestSet(cmdFile: var string, requireGMP: bool, test32bit = false, testAS
 
   for td in testDesc:
     if not(td.useGMP and not requireGMP):
-      var flags = ""
+      var flags = "" # Beware of https://github.com/nim-lang/Nim/issues/21704
       if not testASM:
-        flags &= " -d:CttASM=false "
+        flags = flags & " -d:CttASM=false "
       if test32bit:
-        flags &= " -d:Ctt32 "
+        flags = flags & " -d:Ctt32 "
       if td.path in useDebug:
-        flags &= " -d:CttDebug "
+        flags = flags & " -d:CttDebug "
       if td.path notin skipSanitizers:
-        flags &= sanitizers
+        flags = flags & sanitizers
 
       cmdFile.testBatch(flags, td.path)
 
@@ -602,9 +620,9 @@ proc addTestSetNvidia(cmdFile: var string) =
   echo "Found " & $testDescNvidia.len & " tests to run."
 
   for path in testDescNvidia:
-    var flags = ""
+    var flags = "" # Beware of https://github.com/nim-lang/Nim/issues/21704
     if path notin skipSanitizers:
-      flags &= sanitizers
+      flags = flags & sanitizers
     cmdFile.testBatch(flags, path)
 
 proc addTestSetThreadpool(cmdFile: var string) =
@@ -615,7 +633,7 @@ proc addTestSetThreadpool(cmdFile: var string) =
   for path in testDescThreadpool:
     var flags = " --threads:on --debugger:native "
     if path notin skipSanitizers:
-      flags &= sanitizers
+      flags = flags & sanitizers
     cmdFile.testBatch(flags, path)
 
 proc addTestSetMultithreadedCrypto(cmdFile: var string, test32bit = false, testASM = true) =
@@ -626,13 +644,13 @@ proc addTestSetMultithreadedCrypto(cmdFile: var string, test32bit = false, testA
   for td in testDescMultithreadedCrypto:
     var flags = " --threads:on --debugger:native"
     if not testASM:
-      flags &= " -d:CttASM=false"
+      flags = flags & " -d:CttASM=false "
     if test32bit:
-      flags &= " -d:Ctt32"
+      flags = flags & " -d:Ctt32 "
     if td in useDebug:
-      flags &= " -d:CttDebug"
+      flags = flags & " -d:CttDebug "
     if td notin skipSanitizers:
-      flags &= sanitizers
+      flags = flags & sanitizers
 
     cmdFile.testBatch(flags, td)
 

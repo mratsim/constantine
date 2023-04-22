@@ -25,6 +25,10 @@ jobs:
             cpu: amd64
             TEST_LANG: c
             BACKEND: NO_ASM
+          - os: windows
+            cpu: amd64
+            TEST_LANG: c
+            BACKEND: ASM
           - os: macos
             cpu: amd64
             TEST_LANG: c
