@@ -74,7 +74,7 @@ type BindingsKind = enum
   kCurve
   kProtocol
 
-proc genDynamicBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: string, useASM: bool) =
+proc genDynamicBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: string, useASM = true) =
   proc compile(libName: string, flags = "") =
     echo "Compiling dynamic library: lib/" & libName
 
@@ -111,7 +111,7 @@ proc genDynamicBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain:
   else:
     compile "lib" & bindingsName & ".so"
 
-proc genStaticBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: string, useASM: bool) =
+proc genStaticBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: string, useASM = true) =
   proc compile(libName: string, flags = "") =
     echo "Compiling static library:  lib/" & libName
 
@@ -151,7 +151,7 @@ proc genStaticBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: 
 proc genHeaders(bindingsName: string) =
   echo "Generating header:         include/" & bindingsName & ".h"
   exec "nim c -d:CttGenerateHeaders " &
-       releaseBuildOptions(useLTO = false) &
+       " -d:release " &
        " --out:" & bindingsName & "_gen_header.exe --outdir:build " &
        " --nimcache:nimcache/bindings_curves_headers/" & bindingsName & "_header" &
        " bindings_generators/" & bindingsName & ".nim"

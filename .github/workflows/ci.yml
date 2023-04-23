@@ -232,7 +232,7 @@ jobs:
       - name: Run Constantine tests (Windows with Assembly)
         # So "test_bindings" uses C and can find GMP
         # but nim-gmp cannot find GMP on Windows CI
-        if: runner.os == 'Windows' && matrix.target.BACKEND == 'NO_ASM'
+        if: runner.os == 'Windows' && matrix.target.BACKEND == 'ASM'
         shell: msys2 {0}
         run: |
           cd constantine
