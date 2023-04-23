@@ -25,9 +25,11 @@ The implementations are accompanied with SAGE code used as reference implementat
   - [Table of Contents](#table-of-contents)
   - [Target audience](#target-audience)
   - [Protocols](#protocols)
-  - [Curves supported in the backend](#curves-supported-in-the-backend)
   - [Installation](#installation)
-  - [Dependencies](#dependencies)
+    - [From C](#from-c)
+    - [From Nim](#from-nim)
+  - [Dependencies & Requirements](#dependencies--requirements)
+  - [Curves supported in the backend](#curves-supported-in-the-backend)
   - [Security](#security)
     - [Disclaimer](#disclaimer)
     - [Security disclosure](#security-disclosure)
@@ -36,6 +38,7 @@ The implementations are accompanied with SAGE code used as reference implementat
     - [In zero-knowledge proofs](#in-zero-knowledge-proofs)
     - [Measuring performance](#measuring-performance)
       - [BLS12_381 Clang + inline Assembly](#bls12_381-clang--inline-assembly)
+      - [Parallelism](#parallelism)
   - [Why Nim](#why-nim)
   - [Compiler caveats](#compiler-caveats)
     - [Inline assembly](#inline-assembly)
@@ -67,26 +70,110 @@ Protocols to address these goals, (authenticated) encryption, signature, traitor
 are designed.\
 Note: some goals might be mutually exclusive, for example "plausible deniability" and "non-repudiation".
 
-After [installation](#installation), the available high-level protocols are:
+## Installation
 
-- [x] Ethereum EVM precompiles on BN254_Snarks (also called alt_bn128 or bn256 in Ethereum)
+### From C
 
-  `import constantine/ethereum_evm_precompiles`
-- [x] BLS signature on BLS12-381 G2 as used in Ethereum 2.
+1. Install a C compiler, for example:
+    - Debian/Ubuntu `sudo apt update && sudo apt install build-essential`
+    - Archlinux `pacman -S base-devel`
+
+2. Install nim, it is available in most distros package manager for Linux and Homebrew for MacOS
+   Windows binaries are on the official website: https://nim-lang.org/install_unix.html
+    - Debian/Ubuntu `sudo apt install nim`
+    - Archlinux `pacman -S nim`
+
+3. Compile the bindings.
+    - Recommended: \
+      `CC:clang nimble bindings`
+    - or `nimble bindings_no_asm`\
+     to compile without assembly (otherwise it autodetects support)
+    - or with default compiler\
+      `nimble bindings`
+
+4. Ensure bindings work
+    - `nimble test_bindings`
+
+5. Bindings location
+    - The bindings are put in `constantine/lib`
+    - The headers are in [constantine/include](./include) for example [Ethereum BLS signatures](./include/constantine_ethereum_bls_signatures.h)
+
+6. Read the examples in [examples_c](./examples_c):
+   - Using the [Ethereum BLS signatures bindings from C](./examples_c/ethereum_bls_signatures.c)
+   - Testing Constantine BLS12-381 vs GMP [./examples_c/t_libctt_bls12_381.c](./examples_c/t_libctt_bls12_381.c)
+
+The bindings currently provided are:
+
+- Ethereum BLS signatures on BLS12-381 G2
   Cryptographic suite: `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_`
 
   This scheme is also used in the following blockchains:
   Algorand, Chia, Dfinity, Filecoin, Tezos, Zcash.
   They may have their pubkeys on G1 and signatures on G2 like Ethereum or the other way around.
 
-  > Parameter discussion:
-  >
-  > As Ethereum validators' pubkeys are duplicated, stored and transmitter over and over in the protocol,
-  having them be as small as possible was important.
-  On another hand, BLS signatures were first popularized due to their succinctness.
-  And having signatures on G1 is useful when short signatures are desired, in embedded for example.
-- [x] SHA256 hash
-- ...
+- BLS12-381 arithmetic:
+  - field arithmetic
+    - on Fr (i.e. modulo the 255-bit curve order)
+    - on Fp (i.e. modulo the 381-bit prime modulus)
+    - on Fp2
+  - elliptic curve arithmetic:
+    - on elliptic curve over Fp (EC G1) with affine, jacobian and homogenous projective coordinates
+    - on elliptic curve over Fp2 (EC G2) with affine, jacobian and homogenous projective coordinates
+  - currently not exposed: \
+    scalar multiplication, multi-scalar multiplications \
+    pairings and multi-pairings \
+    are implemented but not exposed
+  - _All operations are constant-time unless explicitly mentioned_ vartime
+
+- The Pasta curves: Pallas and Vesta
+  - field arithmetic
+    - on Fr (i.e. modulo the 255-bit curve order)
+    - on Fp (i.e. modulo the 255-bit prime modulus)
+  - elliptic curve arithmetic:
+    - on elliptic curve over Fp (EC G1) with affine, jacobian and homogenous projective coordinates
+  - currently not exposed: \
+    scalar multiplication, multi-scalar multiplications \
+    are implemented but not exposed
+  - _All operations are constant-time unless explicitly mentioned_ vartime
+
+### From Nim
+
+You can install the developement version of the library through nimble with the following command
+```
+nimble install https://github.com/mratsim/constantine@#master
+```
+
+## Dependencies & Requirements
+
+For speed it is recommended to use Clang (see [Compiler-caveats](#Compiler-caveats)).
+In particular GCC generates inefficient add-with-carry code.
+
+Constantine requires at least:
+- GCC 7 \
+  Previous versions generated incorrect add-with-carry code.
+- Clang 14 \
+  On x86-64, inline assembly is used to workaround compilers having issues optimizing large integer arithmetic,
+  and also ensure constant-time code. \
+  Constantine uses the intel assembly syntax to address issues with the default AT&T syntax and constants propagated in Clang. \
+  Clang 14 added support for `-masm=intel`. \
+  \
+  On MacOS, Apple Clang does not support Intel assembly syntax, use Homebrew Clang instead or compile without assembly.\
+  _Note that Apple is discontinuing Intel CPU throughough their product line so this will impact only older model and Mac Pro_
+
+On Windows, Constantine is tested with MinGW. The Microsoft Visual C++ Compiler is not configured.
+
+Constantine has no dependencies, even on Nim standard library except:
+- for testing
+  - jsony for parsing json test vectors
+  - the Nim standard library for unittesting, formatting and datetime.
+  - GMP for testing against GMP
+- for benchmarking
+  - The Nim standard libreary for timing and formatting
+- for Nvidia GPU backend:
+  - the LLVM runtime ("dev" version with headers is not needed)
+  - the CUDA runtime ("dev" version with headers is not needed)
+- at compile-time
+  - we need the std/macros library to generate Nim code.
 
 ## Curves supported in the backend
 
@@ -108,41 +195,9 @@ The following curves are configured:
   - Jubjub, a curve embedded in BLS12-381 scalar field to be used in zk-SNARKS circuits.
   - Bandersnatch, a more efficient curve embedded in BLS12-381 scalar field to be used in zk-SNARKS circuits.
 - Other curves
-  - Edwards25519, used in ed25519 and X25519 from TLS 1.3 protocol and the Signal protocol.
-
+  - Edwards25519, used in ed25519 and X25519 from TLS 1.3 protocol and the Signal protocol. \
     With Ristretto, it can be used in bulletproofs.
   - The Pasta curves (Pallas and Vesta) for the Halo 2 proof system (Zcash).
-
-
-## Installation
-
-You can install the developement version of the library through nimble with the following command
-```
-nimble install https://github.com/mratsim/constantine@#master
-```
-
-For speed it is recommended to prefer Clang, MSVC or ICC over GCC (see [Compiler-caveats](#Compiler-caveats)).
-
-Further if using GCC, GCC 7 at minimum is required, previous versions
-generated incorrect add-with-carry code.
-
-On x86-64, inline assembly is used to workaround compilers having issues optimizing large integer arithmetic,
-and also ensure constant-time code.
-
-## Dependencies
-
-Constantine has no dependencies, even on Nim standard library except:
-- for testing
-  - jsony for parsing json test vectors
-  - the Nim standard library for unittesting, formatting and datetime.
-  - GMP for testing against GMP
-- for benchmarking
-  - The Nim standard libreary for timing and formatting
-- for Nvidia GPU backend:
-  - the LLVM runtime ("dev" version with headers is not needed)
-  - the CUDA runtime ("dev" version with headers is not needed)
-- at compile-time
-  - we need the std/macros library to generate Nim code.
 
 ## Security
 
@@ -217,47 +272,79 @@ To measure the performance of Constantine
 
 ```bash
 git clone https://github.com/mratsim/constantine
-nimble bench_fp             # Using default compiler + Assembly
-nimble bench_fp_clang       # Using Clang + Assembly (recommended)
-nimble bench_fp_gcc         # Using GCC + Assembly (decent)
-nimble bench_fp_clang_noasm # Using Clang only (acceptable)
-nimble bench_fp_gcc         # Using GCC only (slowest)
-nimble bench_fp2
-# ...
-nimble bench_ec_g1_clang
-nimble bench_ec_g2_clang
-nimble bench_pairing_bn254_nogami_clang
-nimble bench_pairing_bn254_snarks_clang
-nimble bench_pairing_bls12_377_clang
-nimble bench_pairing_bls12_381_clang
+
+# Default compiler
+nimble bench_fp
+
+# Arithmetic
+CC=clang nimble bench_fp  # Using Clang + Assembly (recommended)
+CC=clang nimble bench_fp2
+CC=clang nimble bench_fp12
+
+# Scalar multiplication and pairings
+CC=clang nimble bench_ec_g1_scalar_mul
+CC=clang nimble bench_ec_g2_scalar_mul
+CC=clang nimble bench_pairing_bls12_381
 
 # And per-curve summaries
-nimble bench_summary_bn254_nogami_clang
-nimble bench_summary_bn254_snarks_clang
-nimble bench_summary_bls12_377_clang
-nimble bench_summary_bls12_381_clang
+CC=clang nimble bench_summary_bn254_nogami
+CC=clang nimble bench_summary_bn254_snarks
+CC=clang nimble bench_summary_bls12_377
+CC=clang nimble bench_summary_bls12_381
+
+# The Ethereum BLS signature protocol
+CC=clang nimble bench_ethereum_bls_signatures
+
+# Multi-scalar multiplication
+CC=clang nimble bench_ec_g1_msm_bls12_381
+CC=clang nimble bench_ec_g1_msm_bn256_snarks
 ```
+
+The full list of benchmarks is available in the [`benchmarks`](./benchmarks) folder.
 
 As mentioned in the [Compiler caveats](#compiler-caveats) section, GCC is up to 2x slower than Clang due to mishandling of carries and register usage.
 
-On my machine i9-11980HK (8 cores 2.6GHz, turbo 5GHz), for Clang + Assembly, **all being constant-time** (including scalar multiplication, square root and inversion).
-
 #### BLS12_381 (Clang + inline Assembly)
 
-```
---------------------------------------------------------------------------------------------------------------------------------------------------------
-EC ScalarMul 255-bit G1             ECP_ShortW_Prj[Fp[BLS12_381]]                  16086.740 ops/s         62163 ns/op        205288 CPU cycles (approx)
-EC ScalarMul 255-bit G1             ECP_ShortW_Jac[Fp[BLS12_381]]                  16670.834 ops/s         59985 ns/op        198097 CPU cycles (approx)
-EC ScalarMul 255-bit G2             ECP_ShortW_Prj[Fp2[BLS12_381]]                  8333.403 ops/s        119999 ns/op        396284 CPU cycles (approx)
-EC ScalarMul 255-bit G2             ECP_ShortW_Jac[Fp2[BLS12_381]]                  9300.682 ops/s        107519 ns/op        355071 CPU cycles (approx)
---------------------------------------------------------------------------------------------------------------------------------------------------------
-Miller Loop BLS12                   BLS12_381                                       5102.223 ops/s        195993 ns/op        647251 CPU cycles (approx)
-Final Exponentiation BLS12          BLS12_381                                       4209.109 ops/s        237580 ns/op        784588 CPU cycles (approx)
-Pairing BLS12                       BLS12_381                                       2343.045 ops/s        426795 ns/op       1409453 CPU cycles (approx)
---------------------------------------------------------------------------------------------------------------------------------------------------------
-Hash to G2 (Draft #11)              BLS12_381                                       6558.495 ops/s        152474 ns/op        503531 CPU cycles (approx)
---------------------------------------------------------------------------------------------------------------------------------------------------------
-```
+On my machine i9-11980HK (8 cores 2.6GHz, turbo 5GHz), for Clang + Assembly, **all being constant-time** (including scalar multiplication, square root and inversion).
+
+![BLS12-381 perf summary](./media/bls12_381_perf_summary_i9-11980HK.png)
+
+![BLS12-381 Multi-Scalar multiplication 1](./media/bls12_381_msm_i9-11980HK-8cores_1.png)
+![BLS12-381 Multi-Scalar multiplication 2](./media/bls12_381_msm_i9-11980HK-8cores_2.png)
+![BLS12-381 Multi-Scalar multiplication 3](./media/bls12_381_msm_i9-11980HK-8cores_3.png)
+
+On a i9-9980XE (18 cores,watercooled, overclocked, 4.1GHz all core turbo)
+
+![BN254-Snarks multi-sclar multiplication](./media/bn254_snarks_msm-i9-9980XE-18cores.png)
+
+#### Parallelism
+
+Constantine multithreaded primitives are powered by a highly tuned threadpool and stress-tested for:
+- scheduler overhead
+- load balancing with extreme imbalance
+- nested data parallelism
+- contention
+- speculative/conditional parallelism
+
+and provides the following paradigms:
+- Future-based task-parallelism
+- Data parallelism (nestable and awaitable for loops)
+  - including arbitrary parallel reductions
+- Dataflow parallelism / Stream parallelism / Graph Parallelism / Pipeline parallelism
+- Structured Parallelism
+
+The threadpool parallel-for loops use lazy loop splitting and are fully adaptative to the workload being scheduled, the threads in-flight load and the hardware speed unlike most (all?) runtime, see:
+- OpenMP woes depending on hardware and workload: https://github.com/zy97140/omp-benchmark-for-pytorch
+- Raytracing ideal runtime, adapt to pixel compute load: ![load distribution](./media/parallel_load_distribution.png)\
+  Most (all?) production runtime use scheduling A (split on number of threads like GCC OpenMP) or B (eager splitting, unable to adapt to actual work like LLVM/Intel OpenMP or Intel TBB) while Constantine uses C.
+
+The threadpool provides efficient backoff strategy to conserve power based on:
+- eventcounts / futexes, for low overhead backoff
+- log-log iterated backoff, a provably optimal backoff strategy used for wireless communication to minimize communication in parallel for-loops
+
+The research papers on high performance multithreading available in Weave repo: https://github.com/mratsim/weave/tree/7682784/research.\
+_Note: The threadpool is not backed by Weave but by an inspired runtime that has been significantly simplified for ease of auditing. In particular it uses shared-memory based work-stealing instead of channel-based work-requesting for load balancing as distributed computing is not a target, ..., yet._
 
 ## Why Nim
 
