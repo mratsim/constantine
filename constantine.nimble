@@ -157,6 +157,22 @@ proc genHeaders(bindingsName: string) =
        " bindings_generators/" & bindingsName & ".nim"
   exec "build/" & bindingsName & "_gen_header.exe include"
 
+task bindings, "Generate Constantine bindings (no assembly)":
+  # Curve arithmetic
+  genStaticBindings(kCurve, "constantine_bls12_381", "ctt_bls12381_init_")
+  genDynamicBindings(kCurve, "constantine_bls12_381", "ctt_bls12381_init_")
+  genHeaders("constantine_bls12_381")
+  echo ""
+  genStaticBindings(kCurve, "constantine_pasta", "ctt_pasta_init_")
+  genDynamicBindings(kCurve, "constantine_pasta", "ctt_pasta_init_")
+  genHeaders("constantine_pasta")
+  echo ""
+
+  # Protocols
+  genStaticBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_")
+  genDynamicBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_")
+  echo ""
+
 task bindings_no_asm, "Generate Constantine bindings (no assembly)":
   # Curve arithmetic
   genStaticBindings(kCurve, "constantine_bls12_381", "ctt_bls12381_init_", useASM = false)
