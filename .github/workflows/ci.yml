@@ -176,7 +176,19 @@ jobs:
 
       - name: Install test dependencies (macOS)
         if: runner.os == 'macOS'
-        run: brew install gmp
+        run: |
+          brew install gmp
+          mkdir -p external/bin
+          cat << EOF > external/bin/clang
+          #!/bin/bash
+          exec $(brew --prefix llvm@15)/bin/clang "\$@"
+          EOF
+          cat << EOF > external/bin/clang++
+          #!/bin/bash
+          exec $(brew --prefix llvm@15)/bin/clang++ "\$@"
+          EOF
+          chmod 755 external/bin/{clang,clang++}
+          echo '${{ github.workspace }}/external/bin' >> $GITHUB_PATH
 
       - name: Setup MSYS2 (Windows)
         if: runner.os == 'Windows'
@@ -214,9 +226,19 @@ jobs:
         shell: bash
         run: |
           cd constantine
-          nimble bindings             --verbose
+          nimble bindings_no_asm      --verbose
           nimble test_bindings        --verbose
           nimble test_parallel_no_asm --verbose
+      - name: Run Constantine tests (Windows with Assembly)
+        # So "test_bindings" uses C and can find GMP
+        # but nim-gmp cannot find GMP on Windows CI
+        if: runner.os == 'Windows' && matrix.target.BACKEND == 'NO_ASM'
+        shell: msys2 {0}
+        run: |
+          cd constantine
+          nimble bindings             --verbose
+          nimble test_bindings        --verbose
+          nimble test_parallel_no_gmp --verbose
       - name: Run Constantine tests (Windows no Assembly)
         # So "test_bindings" uses C and can find GMP
         # but nim-gmp cannot find GMP on Windows CI
@@ -224,6 +246,6 @@ jobs:
         shell: msys2 {0}
         run: |
           cd constantine
-          nimble bindings                    --verbose
+          nimble bindings_no_asm             --verbose
           nimble test_bindings               --verbose
           nimble test_parallel_no_gmp_no_asm --verbose

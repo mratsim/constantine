@@ -17,7 +17,7 @@ import std/strformat
 # Library compilation
 # ----------------------------------------------------------------
 
-proc releaseBuildOptions(useLTO = true): string =
+proc releaseBuildOptions(useASM, useLTO = true): string =
   # -d:danger --opt:size
   #           to avoid boundsCheck and overflowChecks that would trigger exceptions or allocations in a crypto library.
   #           Those are internally guaranteed at compile-time by fixed-sized array
@@ -52,10 +52,15 @@ proc releaseBuildOptions(useLTO = true): string =
   #           Our non-inlined functions are large so size cost is minimal.
   let compiler = if existsEnv"CC": " --cc:" & getEnv"CC"
                  else: ""
+
+  let noASM = if not useASM: " -d:CttASM=false "
+              else: ""
+
   let lto = if useLTO: " --passC:-flto=auto --passL:-flto=auto "
             else: ""
 
   compiler &
+  noASM &
   lto &
   " -d:danger " &
   # " --opt:size " &
@@ -69,13 +74,13 @@ type BindingsKind = enum
   kCurve
   kProtocol
 
-proc genDynamicBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: string) =
+proc genDynamicBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: string, useASM: bool) =
   proc compile(libName: string, flags = "") =
     echo "Compiling dynamic library: lib/" & libName
 
     exec "nim c " &
          flags &
-         releaseBuildOptions(useLTO = true) &
+         releaseBuildOptions(useASM, useLTO = true) &
          " --noMain --app:lib " &
          &" --nimMainPrefix:{prefixNimMain} " &
          &" --out:{libName} --outdir:lib " &
@@ -106,13 +111,13 @@ proc genDynamicBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain:
   else:
     compile "lib" & bindingsName & ".so"
 
-proc genStaticBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: string) =
+proc genStaticBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: string, useASM: bool) =
   proc compile(libName: string, flags = "") =
     echo "Compiling static library:  lib/" & libName
 
     exec "nim c " &
          flags &
-         releaseBuildOptions(useLTO = false) &
+         releaseBuildOptions(useASM, useLTO = false) &
          " --noMain --app:staticLib " &
          &" --nimMainPrefix:{prefixNimMain} " &
          &" --out:{libName} --outdir:lib " &
@@ -152,20 +157,20 @@ proc genHeaders(bindingsName: string) =
        " bindings_generators/" & bindingsName & ".nim"
   exec "build/" & bindingsName & "_gen_header.exe include"
 
-task bindings, "Generate Constantine bindings":
+task bindings_no_asm, "Generate Constantine bindings (no assembly)":
   # Curve arithmetic
-  genStaticBindings(kCurve, "constantine_bls12_381", "ctt_bls12381_init_")
-  genDynamicBindings(kCurve, "constantine_bls12_381", "ctt_bls12381_init_")
+  genStaticBindings(kCurve, "constantine_bls12_381", "ctt_bls12381_init_", useASM = false)
+  genDynamicBindings(kCurve, "constantine_bls12_381", "ctt_bls12381_init_", useASM = false)
   genHeaders("constantine_bls12_381")
   echo ""
-  genStaticBindings(kCurve, "constantine_pasta", "ctt_pasta_init_")
-  genDynamicBindings(kCurve, "constantine_pasta", "ctt_pasta_init_")
+  genStaticBindings(kCurve, "constantine_pasta", "ctt_pasta_init_", useASM = false)
+  genDynamicBindings(kCurve, "constantine_pasta", "ctt_pasta_init_", useASM = false)
   genHeaders("constantine_pasta")
   echo ""
 
   # Protocols
-  genStaticBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_")
-  genDynamicBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_")
+  genStaticBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_", useASM = false)
+  genDynamicBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_", useASM = false)
   echo ""
 
 proc testLib(path, testName, libName: string, useGMP: bool) =
@@ -534,7 +539,7 @@ proc clearParallelBuild() =
   if fileExists(buildParallel):
     rmFile(buildParallel)
 
-proc setupTestCommand(flags, path: string): string =
+proc setupTestCommand(flags, path: string, useASM: bool): string =
   var lang = "c"
   if existsEnv"TEST_LANG":
     lang = getEnv"TEST_LANG"
@@ -542,7 +547,7 @@ proc setupTestCommand(flags, path: string): string =
   return "nim " & lang &
     " -r " &
     flags &
-    releaseBuildOptions() &
+    releaseBuildOptions(useASM) &
     " --outdir:build/testsuite " &
     &" --nimcache:nimcache/{path} " &
     path
@@ -553,23 +558,21 @@ proc test(cmd: string) =
   echo "=============================================================================================="
   exec cmd
 
-proc testBatch(commands: var string, flags, path: string) =
+proc testBatch(commands: var string, flags, path: string, useASM = true) =
   # With LTO, the linker produces lots of spurious warnings when copying into openArrays/strings
 
   let flags = if defined(gcc): flags & " --passC:-Wno-stringop-overflow --passL:-Wno-stringop-overflow "
               else: flags
 
-  commands = commands & setupTestCommand(flags, path) & '\n'
+  commands = commands & setupTestCommand(flags, path, useASM) & '\n'
 
 proc setupBench(benchName: string, run: bool, useAsm: bool): string =
   var runFlags = " "
   if run: # Beware of https://github.com/nim-lang/Nim/issues/21704
     runFlags = runFlags & " -r "
 
-  var asmStatus = "useASM"
-  if not useAsm:
-    runFlags = runFlags & " -d:CttASM=false "
-    asmStatus = "noASM"
+  let asmStatus = if useASM: "useASM"
+                  else: "noASM"
 
   if defined(gcc):
     # With LTO, the linker produces lots of spurious warnings when copying into openArrays/strings
@@ -580,7 +583,7 @@ proc setupBench(benchName: string, run: bool, useAsm: bool): string =
 
   return "nim c " &
        runFlags &
-       releaseBuildOptions() &
+       releaseBuildOptions(useASM) &
        &" -o:build/bench/{benchName}_{cc}_{asmStatus}" &
        &" --nimcache:nimcache/benches/{benchName}_{cc}_{asmStatus}" &
        &" benchmarks/{benchName}.nim"
@@ -595,7 +598,7 @@ proc buildBenchBatch(commands: var string, benchName: string, useAsm = true) =
   let command = setupBench(benchName, run = false, useAsm)
   commands = commands & command & '\n'
 
-proc addTestSet(cmdFile: var string, requireGMP: bool, test32bit = false, testASM = true) =
+proc addTestSet(cmdFile: var string, requireGMP: bool, test32bit = false, useASM = true) =
   if not dirExists "build":
     mkDir "build"
   echo "Found " & $testDesc.len & " tests to run."
@@ -603,8 +606,6 @@ proc addTestSet(cmdFile: var string, requireGMP: bool, test32bit = false, testAS
   for td in testDesc:
     if not(td.useGMP and not requireGMP):
       var flags = "" # Beware of https://github.com/nim-lang/Nim/issues/21704
-      if not testASM:
-        flags = flags & " -d:CttASM=false "
       if test32bit:
         flags = flags & " -d:Ctt32 "
       if td.path in useDebug:
@@ -612,7 +613,7 @@ proc addTestSet(cmdFile: var string, requireGMP: bool, test32bit = false, testAS
       if td.path notin skipSanitizers:
         flags = flags & sanitizers
 
-      cmdFile.testBatch(flags, td.path)
+      cmdFile.testBatch(flags, td.path, useASM)
 
 proc addTestSetNvidia(cmdFile: var string) =
   if not dirExists "build":
@@ -636,15 +637,13 @@ proc addTestSetThreadpool(cmdFile: var string) =
       flags = flags & sanitizers
     cmdFile.testBatch(flags, path)
 
-proc addTestSetMultithreadedCrypto(cmdFile: var string, test32bit = false, testASM = true) =
+proc addTestSetMultithreadedCrypto(cmdFile: var string, test32bit = false, useASM = true) =
   if not dirExists "build":
     mkDir "build"
   echo "Found " & $testDescMultithreadedCrypto.len & " tests to run."
 
   for td in testDescMultithreadedCrypto:
     var flags = " --threads:on --debugger:native"
-    if not testASM:
-      flags = flags & " -d:CttASM=false "
     if test32bit:
       flags = flags & " -d:Ctt32 "
     if td in useDebug:
@@ -652,7 +651,7 @@ proc addTestSetMultithreadedCrypto(cmdFile: var string, test32bit = false, testA
     if td notin skipSanitizers:
       flags = flags & sanitizers
 
-    cmdFile.testBatch(flags, td)
+    cmdFile.testBatch(flags, td, useASM)
 
 proc addBenchSet(cmdFile: var string, useAsm = true) =
   if not dirExists "build":
@@ -670,7 +669,7 @@ proc genParallelCmdRunner() =
 task test, "Run all tests":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   var cmdFile: string
-  cmdFile.addTestSet(requireGMP = true, testASM = true)
+  cmdFile.addTestSet(requireGMP = true, useASM = true)
   cmdFile.addBenchSet(useASM = true)    # Build (but don't run) benches to ensure they stay relevant
   cmdFile.addTestSetThreadpool()
   cmdFile.addTestSetMultithreadedCrypto()
@@ -681,10 +680,10 @@ task test, "Run all tests":
 task test_no_asm, "Run all tests (no assembly)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   var cmdFile: string
-  cmdFile.addTestSet(requireGMP = true, testASM = false)
+  cmdFile.addTestSet(requireGMP = true, useASM = false)
   cmdFile.addBenchSet(useASM = false)    # Build (but don't run) benches to ensure they stay relevant
   cmdFile.addTestSetThreadpool()
-  cmdFile.addTestSetMultithreadedCrypto(testASM = false)
+  cmdFile.addTestSetMultithreadedCrypto(useASM = false)
   for cmd in cmdFile.splitLines():
     if cmd != "": # Windows doesn't like empty commands
       exec cmd
@@ -692,7 +691,7 @@ task test_no_asm, "Run all tests (no assembly)":
 task test_no_gmp, "Run tests that don't require GMP":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   var cmdFile: string
-  cmdFile.addTestSet(requireGMP = false, testASM = true)
+  cmdFile.addTestSet(requireGMP = false, useASM = true)
   cmdFile.addBenchSet(useASM = true)    # Build (but don't run) benches to ensure they stay relevant
   cmdFile.addTestSetThreadpool()
   cmdFile.addTestSetMultithreadedCrypto()
@@ -703,10 +702,10 @@ task test_no_gmp, "Run tests that don't require GMP":
 task test_no_gmp_no_asm, "Run tests that don't require GMP using a pure Nim backend":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
   var cmdFile: string
-  cmdFile.addTestSet(requireGMP = false, testASM = false)
+  cmdFile.addTestSet(requireGMP = false, useASM = false)
   cmdFile.addBenchSet(useASM = false)    # Build (but don't run) benches to ensure they stay relevant
   cmdFile.addTestSetThreadpool()
-  cmdFile.addTestSetMultithreadedCrypto(testASM = false)
+  cmdFile.addTestSetMultithreadedCrypto(useASM = false)
   for cmd in cmdFile.splitLines():
     if cmd != "": # Windows doesn't like empty commands
       exec cmd
@@ -717,7 +716,7 @@ task test_parallel, "Run all tests in parallel":
   genParallelCmdRunner()
 
   var cmdFile: string
-  cmdFile.addTestSet(requireGMP = true, testASM = true)
+  cmdFile.addTestSet(requireGMP = true, useASM = true)
   cmdFile.addBenchSet(useASM = true)    # Build (but don't run) benches to ensure they stay relevant
   writeFile(buildParallel, cmdFile)
   exec "build/pararun " & buildParallel
@@ -736,7 +735,7 @@ task test_parallel_no_asm, "Run all tests (without macro assembler) in parallel"
   genParallelCmdRunner()
 
   var cmdFile: string
-  cmdFile.addTestSet(requireGMP = true, testASM = false)
+  cmdFile.addTestSet(requireGMP = true, useASM = false)
   cmdFile.addBenchSet(useASM = false)
   writeFile(buildParallel, cmdFile)
   exec "build/pararun " & buildParallel
@@ -744,7 +743,7 @@ task test_parallel_no_asm, "Run all tests (without macro assembler) in parallel"
   # Threadpool tests done serially
   cmdFile = ""
   cmdFile.addTestSetThreadpool()
-  cmdFile.addTestSetMultithreadedCrypto(testASM = false)
+  cmdFile.addTestSetMultithreadedCrypto(useASM = false)
   for cmd in cmdFile.splitLines():
     if cmd != "": # Windows doesn't like empty commands
       exec cmd
@@ -755,7 +754,7 @@ task test_parallel_no_gmp, "Run all tests in parallel":
   genParallelCmdRunner()
 
   var cmdFile: string
-  cmdFile.addTestSet(requireGMP = false, testASM = true)
+  cmdFile.addTestSet(requireGMP = false, useASM = true)
   cmdFile.addBenchSet(useASM = true)    # Build (but don't run) benches to ensure they stay relevant
   writeFile(buildParallel, cmdFile)
   exec "build/pararun " & buildParallel
@@ -774,7 +773,7 @@ task test_parallel_no_gmp_no_asm, "Run all tests in parallel":
   genParallelCmdRunner()
 
   var cmdFile: string
-  cmdFile.addTestSet(requireGMP = false, testASM = false)
+  cmdFile.addTestSet(requireGMP = false, useASM = false)
   cmdFile.addBenchSet(useASM = false)    # Build (but don't run) benches to ensure they stay relevant
   writeFile(buildParallel, cmdFile)
   exec "build/pararun " & buildParallel
@@ -782,7 +781,7 @@ task test_parallel_no_gmp_no_asm, "Run all tests in parallel":
   # Threadpool tests done serially
   cmdFile = ""
   cmdFile.addTestSetThreadpool()
-  cmdFile.addTestSetMultithreadedCrypto(testASM = false)
+  cmdFile.addTestSetMultithreadedCrypto(useASM = false)
   for cmd in cmdFile.splitLines():
     if cmd != "": # Windows doesn't like empty commands
       exec cmd
