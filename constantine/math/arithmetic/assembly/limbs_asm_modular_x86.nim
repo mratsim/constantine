@@ -109,7 +109,7 @@ macro finalSub_gen*[N: static int](
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
+    r = asmArray(r_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite) # MemOffsettable is the better constraint but compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it).
     # We reuse the reg used for b for overflow detection
     a = asmArray(a_EIR, N, ElemsInReg, asmInputOutput)
     # We could force m as immediate by specializing per moduli
@@ -138,7 +138,7 @@ macro addmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_MEM, M_MEM: Limbs[
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
+    r = asmArray(r_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite) # MemOffsettable is the better constraint but compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it).
     b = asmArray(b_MEM, N, MemOffsettable, asmInput)
     # We could force m as immediate by specializing per moduli
     M = asmArray(M_MEM, N, MemOffsettable, asmInput)
@@ -193,7 +193,7 @@ macro submod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_MEM: Limbs[
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
+    r = asmArray(r_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite) # MemOffsettable is the better constraint but compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it).
     b = asmArray(b_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memRead) # register reused for underflow detection
     # We could force m as immediate by specializing per moduli
     M = asmArray(M_MEM, N, MemOffsettable, asmInput)
@@ -249,7 +249,7 @@ macro negmod_gen[N: static int](r_PIR: var Limbs[N], a_MEM, M_MEM: Limbs[N]): un
   var ctx = init(Assembler_x86, BaseType)
   let
     a = asmArray(a_MEM, N, MemOffsettable, asmInput)
-    r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
+    r = asmArray(r_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite) # MemOffsettable is the better constraint but compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it).
     uSym = ident"u"
     u = asmArray(uSym, N, ElemsInReg, asmOutputEarlyClobber)
     # We could force m as immediate by specializing per moduli

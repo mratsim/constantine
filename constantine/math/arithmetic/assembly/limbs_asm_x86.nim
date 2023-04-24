@@ -29,7 +29,7 @@ macro ccopy_gen[N: static int](a_PIR: var Limbs[N], b_MEM: Limbs[N], ctl: Secret
   var ctx = init(Assembler_x86, BaseType)
 
   let
-    a = asmArray(a_PIR, N, PointerInReg, asmInput, memIndirect = memReadWrite)
+    a = asmArray(a_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memReadWrite) # MemOffsettable is the better constraint but compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it).
     b = asmArray(b_MEM, N, MemOffsettable, asmInput)
 
     control = asmValue(ctl, Reg, asmInput)
@@ -73,7 +73,7 @@ macro add_gen[N: static int](carry: var Carry, r_PIR: var Limbs[N], a_MEM, b_MEM
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
+    r = asmArray(r_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite) # MemOffsettable is the better constraint but compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it).
     a = asmArray(a_MEM, N, MemOffsettable, asmInput)
     b = asmArray(b_MEM, N, MemOffsettable, asmInput)
 
@@ -118,7 +118,7 @@ macro sub_gen[N: static int](borrow: var Borrow, r_PIR: var Limbs[N], a_MEM, b_M
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
+    r = asmArray(r_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite) # MemOffsettable is the better constraint but compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it).
     a = asmArray(a_MEM, N, MemOffsettable, asmInput)
     b = asmArray(b_MEM, N, MemOffsettable, asmInput)
 

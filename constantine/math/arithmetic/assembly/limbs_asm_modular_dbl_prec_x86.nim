@@ -42,7 +42,7 @@ macro addmod2x_gen[N: static int](r_PIR: var Limbs[N], a_MEM, b_MEM: Limbs[N], M
   let
     H = N div 2
 
-    r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
+    r = asmArray(r_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite) # MemOffsettable is the better constraint but compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it).
     b = asmArray(b_MEM, N, MemOffsettable, asmInput)
     # We could force m as immediate by specializing per moduli
     M = asmArray(M_MEM, H, MemOffsettable, asmInput)
@@ -106,9 +106,8 @@ macro submod2x_gen[N: static int](r_PIR: var Limbs[N], a_MEM, b_PIR: Limbs[N], M
   let
     H = N div 2
 
-    r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
-    # We reuse the reg used for b for overflow detection
-    b = asmArray(b_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memRead)
+    r = asmArray(r_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite) # MemOffsettable is the better constraint but compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it).
+    b = asmArray(b_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memRead)  # We reuse the reg used for b for overflow detection
     # We could force m as immediate by specializing per moduli
     M = asmArray(M_MEM, H, MemOffsettable, asmInput)
     # If N is too big, we need to spill registers. TODO.
@@ -173,7 +172,7 @@ macro negmod2x_gen[N: static int](r_PIR: var Limbs[N], a_MEM: Limbs[N], M_MEM: L
     H = N div 2
 
     a = asmArray(a_MEM, N, MemOffsettable, asmInput)
-    r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
+    r = asmArray(r_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite) # MemOffsettable is the better constraint but compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it).
     uSym = ident"u"
     u = asmArray(uSym, N, ElemsInReg, asmOutputEarlyClobber)
     # We could force m as immediate by specializing per moduli

@@ -188,7 +188,7 @@ macro mulMont_CIOS_sparebit_adx_gen[N: static int](
   let
     scratchSlots = 6
 
-    r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite) # Changing that to MemOffsetable triggers an error in negmod in test_bindings. Missing clobber?
+    r = asmArray(r_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite) # MemOffsettable is the better constraint but compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it). # Changing that to MemOffsetable triggers an error in negmod in test_bindings. Missing clobber?
     # We could force M as immediate by specializing per moduli
     M = asmArray(M_MEM, N, MemOffsettable, asmInput)
     # If N is too big, we need to spill registers. TODO.

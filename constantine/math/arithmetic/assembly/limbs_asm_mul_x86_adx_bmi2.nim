@@ -115,7 +115,7 @@ macro mulx_gen[rLen, aLen, bLen: static int](r_PIR: var Limbs[rLen], a_MEM: Limb
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = asmArray(r_PIR, rLen, PointerInReg, asmInput, memIndirect = memWrite)
+    r = asmArray(r_PIR, rLen, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite) # MemOffsettable is the better constraint but compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it).
     a = asmArray(a_MEM, aLen, MemOffsettable, asmInput)
     b = asmArray(b_MEM, bLen, MemOffsettable, asmInput)
 
@@ -561,7 +561,7 @@ macro sqrx_gen*[rLen, aLen: static int](r_PIR: var Limbs[rLen], a_MEM: Limbs[aLe
     # t = 2 * a.len = 12
     # We use the full x86 register set.
 
-    r = asmArray(r_PIR, rLen, PointerInReg, asmInput, memIndirect = memWrite)
+    r = asmArray(r_PIR, rLen, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite) # MemOffsettable is the better constraint but compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it).
     a = asmArray(a_MEM, aLen, MemOffsettable, asmInput)
 
     # MULX requires RDX
