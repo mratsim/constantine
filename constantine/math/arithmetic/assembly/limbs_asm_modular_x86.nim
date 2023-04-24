@@ -126,7 +126,8 @@ macro finalSub_gen*[N: static int](
 # Field addition
 # ------------------------------------------------------------
 
-macro addmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_MEM, M_MEM: Limbs[N], spareBits: static int): untyped =
+
+macro addmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_MEM: Limbs[N], spareBits: static int): untyped =
   ## Generate an optimized modular addition kernel
   # Register pressure note:
   #   We could generate a kernel per modulus m by hardcoding it as immediate
@@ -138,8 +139,8 @@ macro addmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_MEM, M_MEM: Limbs[
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = asmArray(r_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite) # MemOffsettable is the better constraint but compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it).
-    b = asmArray(b_MEM, N, MemOffsettable, asmInput)
+    r = asmArray(r_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite) # MemOffsettable is the better constraint but_ec_shortw_prj_g1_sum_reduce.nimt compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it).
+    b = asmArray(b_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memRead)  # LLVM Gold linker runs out of registers in t_ec_shortw_prj_g1_sum_reduce if we use b as Memoffsettable and a separate overflow register
     # We could force m as immediate by specializing per moduli
     M = asmArray(M_MEM, N, MemOffsettable, asmInput)
     # If N is too big, we need to spill registers. TODO.
@@ -148,16 +149,10 @@ macro addmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_MEM, M_MEM: Limbs[
     u = asmArray(uSym, N, ElemsInReg, asmInputOutput)
     v = asmArray(vSym, N, ElemsInReg, asmOutputEarlyClobber)
 
-    overflowRegSym = ident"overflowReg"
-    overflowReg = asmValue(overflowRegSym, Reg, asmOutputOverwrite)
-
   result.add quote do:
     var `usym`{.noinit.}, `vsym` {.noInit, used.}: typeof(`a_PIR`)
     staticFor i, 0, `N`:
       `usym`[i] = `a_PIR`[i]
-
-    when `sparebits` == 0:
-      var `overflowRegSym`{.noInit.}: BaseType
 
   # Addition
   ctx.add u[0], b[0]
@@ -170,7 +165,7 @@ macro addmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_MEM, M_MEM: Limbs[
   if spareBits >= 1:
     ctx.finalSubNoOverflowImpl(r, u, M, v, a_in_scratch = true)
   else:
-    ctx.finalSubMayOverflowImpl(r, u, M, v, a_in_scratch = true, scratchReg = overflowReg)
+    ctx.finalSubMayOverflowImpl(r, u, M, v, a_in_scratch = true, scratchReg = b.reuseRegister())
 
   result.add ctx.generate()
 
