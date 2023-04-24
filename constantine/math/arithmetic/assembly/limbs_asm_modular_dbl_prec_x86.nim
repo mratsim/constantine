@@ -10,6 +10,7 @@ import
   # Standard library
   std/macros,
   # Internal
+  ./limbs_asm_modular_x86,
   ../../../platforms/abstractions
 
 # ############################################################
@@ -32,7 +33,7 @@ static: doAssert UseASM_X86_64
 # Double-precision field addition
 # ------------------------------------------------------------
 
-macro addmod2x_gen[N: static int](r_PIR: var Limbs[N], a_MEM, b_PIR: Limbs[N], M_MEM: Limbs[N div 2], spareBits: static int): untyped =
+macro addmod2x_gen[N: static int](r_PIR: var Limbs[N], a_MEM, b_MEM: Limbs[N], M_MEM: Limbs[N div 2], spareBits: static int): untyped =
   ## Generate an optimized out-of-place double-precision addition kernel
 
   result = newStmtList()
@@ -42,15 +43,17 @@ macro addmod2x_gen[N: static int](r_PIR: var Limbs[N], a_MEM, b_PIR: Limbs[N], M
     H = N div 2
 
     r = asmArray(r_PIR, N, PointerInReg, asmInput, memIndirect = memWrite)
-    # We reuse the reg used for b for overflow detection
-    b = asmArray(b_PIR, N, PointerInReg, if spareBits >= 1: asmInput else: asmInputOutput, memIndirect = memRead)
+    b = asmArray(b_MEM, N, MemOffsettable, asmInput)
     # We could force m as immediate by specializing per moduli
-    M = asmArray(M_MEM, N, MemOffsettable, asmInput)
+    M = asmArray(M_MEM, H, MemOffsettable, asmInput)
     # If N is too big, we need to spill registers. TODO.
     uSym = ident"u"
     vSym = ident"v"
     u = asmArray(uSym, H, ElemsInReg, asmInputOutput)
     v = asmArray(vSym, H, ElemsInReg, asmInputOutput)
+
+    overflowRegSym = ident"overflowReg"
+    overflowReg = asmValue(overflowRegSym, Reg, asmOutputOverwrite)
 
   result.add quote do:
     var `uSym`{.noinit.}, `vSym` {.noInit.}: typeof(`a_MEM`)
@@ -58,6 +61,9 @@ macro addmod2x_gen[N: static int](r_PIR: var Limbs[N], a_MEM, b_PIR: Limbs[N], M
       `uSym`[i] = `a_MEM`[i]
     staticFor i, `H`, `N`:
       `vSym`[i-`H`] = `a_MEM`[i]
+
+    when `sparebits` == 0:
+      var `overflowRegSym`{.noInit.}: BaseType
 
   # Addition
   # u = a[0..<H] + b[0..<H], v = a[H..<N]
@@ -72,31 +78,13 @@ macro addmod2x_gen[N: static int](r_PIR: var Limbs[N], a_MEM, b_PIR: Limbs[N], M
     ctx.adc v[i-H], b[i]
     ctx.mov u[i-H], v[i-H]
 
+  let rUpperHalf = r.subset(H, N)
+
   if spareBits >= 1:
     # Now substract the modulus to test a < 2ⁿp
-    ctx.sub v[0], M[0]
-    for i in 1 ..< H:
-      ctx.sbb v[i], M[i]
+    ctx.finalSubNoOverflowImpl(rUpperHalf, v, M, u)
   else:
-    # Mask: overflowed contains 0xFFFF or 0x0000
-    # TODO: unnecessary if MSB never set, i.e. "Field.getSpareBits >= 1"
-    let overflowed = b.reuseRegister()
-    ctx.sbb overflowed, overflowed
-
-    # Now substract the modulus to test a < 2ⁿp
-    ctx.sub v[0], M[0]
-    for i in 1 ..< H:
-      ctx.sbb v[i], M[i]
-
-    # If it overflows here, it means that it was
-    # smaller than the modulus and we don't need v
-    ctx.sbb overflowed, 0
-
-  # Conditional Mov and
-  # and store result
-  for i in 0 ..< H:
-    ctx.cmovnc u[i],  v[i]
-    ctx.mov r[i+H], u[i]
+    ctx.finalSubMayOverflowImpl(rUpperHalf, v, M, u, scratchReg = overflowReg)
 
   result.add ctx.generate()
 
@@ -122,7 +110,7 @@ macro submod2x_gen[N: static int](r_PIR: var Limbs[N], a_MEM, b_PIR: Limbs[N], M
     # We reuse the reg used for b for overflow detection
     b = asmArray(b_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memRead)
     # We could force m as immediate by specializing per moduli
-    M = asmArray(M_MEM, N, MemOffsettable, asmInput)
+    M = asmArray(M_MEM, H, MemOffsettable, asmInput)
     # If N is too big, we need to spill registers. TODO.
     uSym = ident"u"
     vSym = ident"v"

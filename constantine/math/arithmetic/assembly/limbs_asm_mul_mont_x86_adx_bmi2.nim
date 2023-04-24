@@ -435,8 +435,7 @@ macro sumprodMont_CIOS_spare2bits_adx_gen[N, K: static int](
     ctx.partialRedx(
       tN, t,
       M, m0ninv,
-      rax, C
-    )
+      rax, C)
 
   ctx.mov rax, r # move r away from scratchspace that will be used for final substraction
   let r2 = rax.asArrayAddr(r_PIR, len = N, memIndirect = memWrite)

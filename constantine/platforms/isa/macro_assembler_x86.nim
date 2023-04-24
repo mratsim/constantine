@@ -682,6 +682,12 @@ func repackRegisters*(regArr: OperandArray, regs: varargs[Operand]): OperandArra
   result.buf.add regs
   result.nimSymbol = nil
 
+func subset*(regArr: OperandArray, start, stopEx: int): OperandArray =
+  ## Keep a subset of registers
+  result.nimSymbol = nil
+  for i in start ..< stopEx:
+    result.buf.add regArr[i]
+
 func isOutput(op: Operand): bool =
   if op.desc.constraint in OutputReg:
     return true

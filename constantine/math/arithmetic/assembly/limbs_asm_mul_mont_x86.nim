@@ -361,8 +361,7 @@ macro sumprodMont_CIOS_spare2bits_gen[N, K: static int](
     ctx.comment "  Final substraction"
     ctx.finalSubNoOverflowImpl(
       r2, t, M,
-      scratch
-    )
+      scratch)
   result.add ctx.generate()
 
 func sumprodMont_CIOS_spare2bits_asm*[N, K: static int](
