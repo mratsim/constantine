@@ -22,10 +22,10 @@ import
 
 const
   Iters = 4
-  TestCurves = [
-    BN254_Nogami,
+  TestCurves = [ # Note activating some combination of curves causes miscompile / bad constant propagation with LTO in Windows MinGW GCC 12.2 (but not 8.1 or not 12.2 on Linux)
+    # BN254_Nogami,
     BN254_Snarks,
-    BLS12_377,
+    # BLS12_377,
     BLS12_381
   ]
 

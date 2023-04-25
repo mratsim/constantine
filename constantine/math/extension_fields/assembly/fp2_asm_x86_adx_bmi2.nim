@@ -94,14 +94,14 @@ func mul2x_fp2_complex_asm_adx*(
   var D {.noInit.}: typeof(r.c0)
   var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0)
 
-  r.c0.limbs2x.mul_asm_adx(a.c0.mres.limbs, b.c0.mres.limbs)
-  D.limbs2x.mul_asm_adx(a.c1.mres.limbs, b.c1.mres.limbs)
   when Fp.has1extraBit():
     t0.sumUnr(a.c0, a.c1)
     t1.sumUnr(b.c0, b.c1)
   else:
     t0.sum(a.c0, a.c1)
     t1.sum(b.c0, b.c1)
+  r.c0.limbs2x.mul_asm_adx(a.c0.mres.limbs, b.c0.mres.limbs)
+  D.limbs2x.mul_asm_adx(a.c1.mres.limbs, b.c1.mres.limbs)
   r.c1.limbs2x.mul_asm_adx(t0.mres.limbs, t1.mres.limbs)
   when Fp.has1extraBit():
     r.c1.diff2xUnr(r.c1, r.c0)
