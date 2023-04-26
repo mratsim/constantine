@@ -50,7 +50,7 @@ import ./zoo_exports
 static:
   # Xxport SHA256 routines with a protocol specific prefix
   # This exports sha256.init(), sha256.update(), sha256.finish() and sha256.clear()
-  prefix_sha256 = prefix_ffi & "_sha256_"
+  prefix_sha256 = prefix_ffi & "sha256_"
 
 import hashes
 export hashes # generic sandwich on sha256

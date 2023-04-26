@@ -52,7 +52,7 @@ type
 
   NvvmProgram = distinct pointer
 
-{.push cdecl, importc, dynlib: "libnvvm.so".}
+{.push noconv, importc, dynlib: "libnvvm.so".}
 
 proc nvvmGetErrorString*(r: NvvmResult): cstring
 proc nvvmVersion*(major, minor: var int32): NvvmResult
@@ -69,7 +69,7 @@ proc nvvmGetCompiledResult*(prog: NvvmProgram; buffer: ptr char): NvvmResult
 proc nvvmGetProgramLogSize*(prog: NvvmProgram; bufferSizeRet: var csize_t): NvvmResult
 proc nvvmGetProgramLog*(prog: NvvmProgram; buffer: ptr char): NvvmResult
 
-{.pop.} # {.push cdecl, importc, header: "<nvvm.h>".}
+{.pop.} # {.push noconv, importc, header: "<nvvm.h>".}
 
 # ############################################################
 #

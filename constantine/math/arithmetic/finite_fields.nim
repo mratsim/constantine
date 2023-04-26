@@ -152,7 +152,7 @@ func setMinusOne*(a: var FF) =
 
 func neg*(r: var FF, a: FF) {.meter.} =
   ## Negate modulo p
-  when UseASM_X86_64:
+  when UseASM_X86_64 and a.mres.limbs.len <= 6: # TODO: handle spilling
     negmod_asm(r.mres.limbs, a.mres.limbs, FF.fieldMod().limbs)
   else:
     # If a = 0 we need r = 0 and not r = M

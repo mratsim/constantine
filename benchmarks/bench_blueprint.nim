@@ -60,7 +60,7 @@ echo "  release: ", defined(release)
 echo "  danger: ", defined(danger)
 echo "  inline assembly: ", UseASM_X86_64
 
-when (sizeof(int) == 4) or defined(Constantine32):
+when (sizeof(int) == 4) or defined(Ctt32):
   echo "⚠️ Warning: using Constantine with 32-bit limbs"
 else:
   echo "Using Constantine with 64-bit limbs"

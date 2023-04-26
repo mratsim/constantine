@@ -35,7 +35,7 @@ static: doAssert UseASM_X86_64
 macro redc2xMont_adx_gen[N: static int](
        r_PIR: var array[N, SecretWord],
        a_PIR: array[N*2, SecretWord],
-       M_PIR: array[N, SecretWord],
+       M_MEM: array[N, SecretWord],
        m0ninv_REG: BaseType,
        spareBits: static int, skipFinalSub: static bool) =
 
@@ -45,30 +45,28 @@ macro redc2xMont_adx_gen[N: static int](
   result = newStmtList()
 
   var ctx = init(Assembler_x86, BaseType)
-  let
-    # We could force M as immediate by specializing per moduli
-    M = init(OperandArray, nimSymbol = M_PIR, N, PointerInReg, Input)
+  let M = asmArray(M_MEM, N, MemOffsettable, asmInput)
 
   let uSlots = N+1
   let vSlots = max(N-1, 5)
+  let uSym = ident"u"
+  let vSym = ident"v"
 
   var # Scratchspaces
-    u = init(OperandArray, nimSymbol = ident"U", uSlots, ElemsInReg, InputOutput_EnsureClobber)
-    v = init(OperandArray, nimSymbol = ident"V", vSlots, ElemsInReg, InputOutput_EnsureClobber)
+    u = asmArray(uSym, uSlots, ElemsInReg, asmInputOutputEarlyClobber)
+    v = asmArray(vSym, vSlots, ElemsInReg, asmInputOutputEarlyClobber)
 
   # Prologue
-  let usym = u.nimSymbol
-  let vsym = v.nimSymbol
   result.add quote do:
     static: doAssert: sizeof(SecretWord) == sizeof(ByteAddress)
-    var `usym`{.noinit, used.}: Limbs[`uSlots`]
-    var `vsym` {.noInit.}: Limbs[`vSlots`]
-    `vsym`[0] = cast[SecretWord](`r_PIR`[0].unsafeAddr)
-    `vsym`[1] = cast[SecretWord](`a_PIR`[0].unsafeAddr)
-    `vsym`[2] = SecretWord(`m0ninv_REG`)
+    var `uSym`{.noinit, used.}: Limbs[`uSlots`]
+    var `vSym` {.noInit.}: Limbs[`vSlots`]
+    `vSym`[0] = cast[SecretWord](`r_PIR`[0].unsafeAddr)
+    `vSym`[1] = cast[SecretWord](`a_PIR`[0].unsafeAddr)
+    `vSym`[2] = SecretWord(`m0ninv_REG`)
 
-  let r_temp = v[0].asArrayAddr(len = N)
-  let a = v[1].asArrayAddr(len = 2*N)
+  let r_temp = v[0]
+  let a = v[1].asArrayAddr(a_PIR, len = 2*N, memIndirect = memRead)
   let m0ninv = v[2]
   let lo = v[3]
   let hi = v[4]
@@ -116,7 +114,7 @@ macro redc2xMont_adx_gen[N: static int](
     u.rotateLeft()
 
   ctx.mov rdx, r_temp
-  let r = rdx.asArrayAddr(len = N)
+  let r = rdx.asArrayAddr(r_PIR, len = N, memIndirect = memWrite)
 
   # This does a[i+n] += hi
   # but in a separate carry chain, fused with the
@@ -135,7 +133,7 @@ macro redc2xMont_adx_gen[N: static int](
   elif spareBits >= 1:
     ctx.finalSubNoOverflowImpl(r, u, M, t)
   else:
-    ctx.finalSubMayOverflowImpl(r, u, M, t, hi)
+    ctx.finalSubMayOverflowImpl(r, u, M, t)
 
   # Code generation
   result.add ctx.generate()
@@ -146,7 +144,7 @@ func redcMont_asm_adx*[N: static int](
        M: array[N, SecretWord],
        m0ninv: BaseType,
        spareBits: static int,
-       skipFinalSub: static bool = false) {.noInline.} =
+       skipFinalSub: static bool = false) =
   ## Constant-time Montgomery reduction
   # Inlining redcMont_asm_adx twice in mul_fp2_complex_asm_adx
   # causes GCC to miscompile with -Os (--opt:size)
@@ -158,7 +156,7 @@ func redcMont_asm_adx*[N: static int](
 
 macro mulMont_by_1_adx_gen[N: static int](
        t_EIR: var array[N, SecretWord],
-       M_PIR: array[N, SecretWord],
+       M_MEM: array[N, SecretWord],
        m0ninv_REG: BaseType) =
 
   # No register spilling handling
@@ -171,33 +169,20 @@ macro mulMont_by_1_adx_gen[N: static int](
   # RAX and RDX are defacto used due to the MUL instructions
   # so we store everything in scratchspaces restoring as needed
   let
-    scratchSlots = 1
-
-    t = init(OperandArray, nimSymbol = t_EIR, N, ElemsInReg, InputOutput_EnsureClobber)
+    t = asmArray(t_EIR, N, ElemsInReg, asmInputOutputEarlyClobber)
     # We could force M as immediate by specializing per moduli
-    M = init(OperandArray, nimSymbol = M_PIR, N, PointerInReg, Input)
-    # MultiPurpose Register slots
-    scratch = init(OperandArray, nimSymbol = ident"scratch", scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
+    M = asmArray(M_MEM, N, MemOffsettable, asmInput)
 
     # MUL requires RAX and RDX
 
-    m0ninv = Operand(
-               desc: OperandDesc(
-                 asmId: "[m0ninv]",
-                 nimSymbol: m0ninv_REG,
-                 rm: MemOffsettable,
-                 constraint: Input,
-                 cEmit: "&" & $m0ninv_REG
-               )
-             )
+    m0ninv = asmValue(m0ninv_REG, Mem, asmInput)
 
-    C = scratch[0] # Stores the high-part of muliplication
-
-  let scratchSym = scratch.nimSymbol
+    Csym = ident"C"
+    C = asmValue(Csym, Reg, asmOutputEarlyClobber) # Stores the high-part of muliplication
 
   # Copy a in t
   result.add quote do:
-    var `scratchSym` {.noInit, used.}: Limbs[`scratchSlots`]
+    var `Csym` {.noInit, used.}: BaseType
 
   # Algorithm
   # ---------------------------------------------------------

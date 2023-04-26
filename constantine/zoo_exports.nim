@@ -15,7 +15,7 @@
 #         that internally uses `sha256.hash`,
 #         the ideal outcome is for `sha256.hash to be exported as `ctt_sha256_hash` and
 #         have `hash_to_curve` directly use that.
-# 3. Furthermore while compiling Nim only, no export marker (cdecl, dynlib, exportc) are used.
+# 3. Furthermore while compiling Nim only, no export marker (noconv, dynlib, exportc) are used.
 #
 # Each prefix must be modified before importing the module to export
 
@@ -37,7 +37,7 @@ macro libPrefix*(prefix: static string, procAst: untyped): untyped =
     if pragmas.kind == nnkEmpty:
       pragmas = nnkPragma.newTree()
 
-    pragmas.add ident"cdecl"
+    pragmas.add ident"noconv"
     pragmas.add nnkExprColonExpr.newTree(
       ident"exportc",
       newLit(prefix & "$1"))

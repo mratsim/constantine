@@ -33,7 +33,7 @@ else:
 proc SHA256[T: byte|char](
        msg: openarray[T],
        digest: ptr array[32, byte] = nil
-     ): ptr array[32, byte] {.cdecl, dynlib: DLLSSLName, importc.}
+     ): ptr array[32, byte] {.noconv, dynlib: DLLSSLName, importc.}
 
 proc SHA256_OpenSSL[T: byte|char](
        digest: var array[32, byte],

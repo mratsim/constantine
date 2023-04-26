@@ -26,7 +26,7 @@ static: echo "[Constantine] Using library " & libLLVM
 # also link to libLLVM, for example if they implement a virtual machine (for the EVM, for Snarks/zero-knowledge, ...).
 # Hence Constantine should always use LLVM context to "namespace" its own codegen and avoid collisions in the global context.
 
-{.push cdecl, dynlib: libLLVM.}
+{.push noconv, dynlib: libLLVM.}
 
 # ############################################################
 #
@@ -571,4 +571,4 @@ proc memset*(builder: BuilderRef, `ptr`, val, len: ValueRef, align: uint32) {.im
 proc memcpy*(builder: BuilderRef, dst: ValueRef, dstAlign: uint32, src: ValueRef, srcAlign: uint32, size: ValueRef) {.importc: "LLVMBuildMemcpy".}
 proc memmove*(builder: BuilderRef, dst: ValueRef, dstAlign: uint32, src: ValueRef, srcAlign: uint32, size: ValueRef) {.importc: "LLVMBuildMemmove".}
 
-{.pop.} # {.used, hint[Name]: off, cdecl, dynlib: libLLVM.}
+{.pop.} # {.used, hint[Name]: off, noconv, dynlib: libLLVM.}

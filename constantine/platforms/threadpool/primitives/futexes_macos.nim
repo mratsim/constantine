@@ -76,9 +76,9 @@ const ULF_WAKE_MASK     = ULF_NO_ERRNO or
                           ULF_WAKE_THREAD or
                           ULF_WAKE_ALLOW_NON_OWNER
 
-proc ulock_wait(operation: uint32, address: pointer, expected: uint64, timeout: uint32): cint {.importc:"__ulock_wait", cdecl.}
-proc ulock_wait2(operation: uint32, address: pointer, expected: uint64, timeout, value2: uint64): cint {.importc:"__ulock_wait2", cdecl.}
-proc ulock_wake(operation: uint32, address: pointer, wake_value: uint64): cint {.importc:"__ulock_wake", cdecl.}
+proc ulock_wait(operation: uint32, address: pointer, expected: uint64, timeout: uint32): cint {.importc:"__ulock_wait", noconv.}
+proc ulock_wait2(operation: uint32, address: pointer, expected: uint64, timeout, value2: uint64): cint {.importc:"__ulock_wait2", noconv.}
+proc ulock_wake(operation: uint32, address: pointer, wake_value: uint64): cint {.importc:"__ulock_wake", noconv.}
 
 # Futex API
 # ------------------------------------------------------------------------

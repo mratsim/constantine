@@ -18,11 +18,6 @@ import
 #
 # ############################################################
 
-# Note: We can refer to at most 30 registers in inline assembly
-#       and "InputOutput" registers count double
-#       They are nice to let the compiler deals with mov
-#       but too constraining so we move things ourselves.
-
 static: doAssert UseASM_X86_64
 
 # MULX/ADCX/ADOX
@@ -108,7 +103,7 @@ proc mulaccx_by_word(
   ctx.adcx hi, rdx
   ctx.adox hi, rdx
 
-macro mulx_gen[rLen, aLen, bLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs[aLen], b_PIR: Limbs[bLen]) =
+macro mulx_gen[rLen, aLen, bLen: static int](r_PIR: var Limbs[rLen], a_MEM: Limbs[aLen], b_MEM: Limbs[bLen]) =
   ## `a`, `b`, `r` can have a different number of limbs
   ## if `r`.limbs.len < a.limbs.len + b.limbs.len
   ## The result will be truncated, i.e. it will be
@@ -120,35 +115,33 @@ macro mulx_gen[rLen, aLen, bLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limb
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = init(OperandArray, nimSymbol = r_PIR, rLen, PointerInReg, InputOutput_EnsureClobber)
-    a = init(OperandArray, nimSymbol = a_PIR, aLen, PointerInReg, Input)
-    b = init(OperandArray, nimSymbol = b_PIR, bLen, PointerInReg, Input)
+    r = asmArray(r_PIR, rLen, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite) # MemOffsettable is the better constraint but compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it).
+    a = asmArray(a_MEM, aLen, MemOffsettable, asmInput)
+    b = asmArray(b_MEM, bLen, MemOffsettable, asmInput)
 
     # MULX requires RDX
 
+    tSym = ident"t"
     tSlots = aLen+1 # Extra for high word
 
   var # If aLen is too big, we need to spill registers. TODO.
-    t = init(OperandArray, nimSymbol = ident"t", tSlots, ElemsInReg, Output_EarlyClobber)
+    t = asmArray(tSym, tSlots, ElemsInReg, asmOutputEarlyClobber)
 
   # Prologue
-  let tsym = t.nimSymbol
   result.add quote do:
-    var `tsym`{.noInit, used.}: array[`tSlots`, BaseType]
+    var `tSym`{.noInit, used.}: array[`tSlots`, BaseType]
 
   for i in 0 ..< min(rLen, bLen):
     if i == 0:
       ctx.mulx_by_word(
         r[0],
         a, t,
-        b[0]
-      )
+        b[0])
     else:
       ctx.mulaccx_by_word(
         r, i,
         a, t,
-        b[i]
-      )
+        b[i])
 
       t.rotateLeft()
 
@@ -163,20 +156,13 @@ macro mulx_gen[rLen, aLen, bLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limb
       ctx.mov r[i], rax
 
   # Codegen
-  result.add ctx.generate
-
-func mul_asm_adx_inline*[rLen, aLen, bLen: static int](
-       r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) {.inline.} =
-  ## Multi-precision Multiplication
-  ## Assumes r doesn't alias a or b
-  ## Inline version
-  mulx_gen(r, a, b)
+  result.add ctx.generate()
 
 func mul_asm_adx*[rLen, aLen, bLen: static int](
        r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) =
   ## Multi-precision Multiplication
   ## Assumes r doesn't alias a or b
-  mul_asm_adx_inline(r, a, b)
+  mulx_gen(r, a, b)
 
 # Squaring
 # -----------------------------------------------------------------------------------------------
@@ -558,7 +544,7 @@ func sqrx_gen6L(ctx: var Assembler_x86, r, a: OperandArray, t: var OperandArray)
   merge_diag_and_partsum(r, a, hi1, lo1, zero, 4)
   merge_diag_and_partsum(r, a, hi2, lo2, zero, 5)
 
-macro sqrx_gen*[rLen, aLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs[aLen]) =
+macro sqrx_gen*[rLen, aLen: static int](r_PIR: var Limbs[rLen], a_MEM: Limbs[aLen]) =
   ## Squaring
   ## `a` and `r` can have a different number of limbs
   ## if `r`.limbs.len < a.limbs.len * 2
@@ -575,21 +561,20 @@ macro sqrx_gen*[rLen, aLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs[aLe
     # t = 2 * a.len = 12
     # We use the full x86 register set.
 
-    r = init(OperandArray, nimSymbol = r_PIR, rLen, PointerInReg, InputOutput)
-    a = init(OperandArray, nimSymbol = a_PIR, aLen, PointerInReg, Input)
+    r = asmArray(r_PIR, rLen, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite) # MemOffsettable is the better constraint but compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it).
+    a = asmArray(a_MEM, aLen, MemOffsettable, asmInput)
 
     # MULX requires RDX
-
+    tSym = ident"t"
     tSlots = aLen+1 # Extra for high word
 
   var # If aLen is too big, we need to spill registers. TODO.
-    t = init(OperandArray, nimSymbol = ident"t", tSlots, ElemsInReg, Output_EarlyClobber)
+    t = asmArray(tSym, tSlots, ElemsInReg, asmOutputEarlyClobber)
 
   # Prologue
   # -------------------------------
-  let tsym = t.nimSymbol
   result.add quote do:
-    var `tsym`{.noInit, used.}: array[`tSlots`, BaseType]
+    var `tSym`{.noInit, used.}: array[`tSlots`, BaseType]
 
   if aLen == 4:
     ctx.sqrx_gen4L(r, a, t)
@@ -599,7 +584,7 @@ macro sqrx_gen*[rLen, aLen: static int](r_PIR: var Limbs[rLen], a_PIR: Limbs[aLe
     error: "Not implemented"
 
   # Codegen
-  result.add ctx.generate
+  result.add ctx.generate()
 
 func square_asm_adx*[rLen, aLen: static int](r: var Limbs[rLen], a: Limbs[aLen]) =
   ## Multi-precision Squaring

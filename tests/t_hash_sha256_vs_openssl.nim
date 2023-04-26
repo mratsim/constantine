@@ -37,7 +37,7 @@ when not defined(windows):
   proc SHA256[T: byte|char](
         msg: openarray[T],
         digest: ptr array[32, byte] = nil
-      ): ptr array[32, byte] {.cdecl, dynlib: DLLSSLName, importc.}
+      ): ptr array[32, byte] {.noconv, dynlib: DLLSSLName, importc.}
 
   # proc EVP_Q_digest[T: byte|char](
   #                 ossl_libctx: pointer,
@@ -45,7 +45,7 @@ when not defined(windows):
   #                 propq: cstring,
   #                 data: openArray[T],
   #                 digest: var array[32, byte],
-  #                 size: ptr uint): int32 {.cdecl, dynlib: DLLSSLName, importc.}
+  #                 size: ptr uint): int32 {.noconv, dynlib: DLLSSLName, importc.}
 
   proc SHA256_OpenSSL[T: byte|char](
         digest: var array[32, byte],

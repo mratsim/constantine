@@ -19,9 +19,9 @@ export curves, curves_primitives
 
 template genBindingsField*(Field: untyped) =
   when appType == "lib":
-    {.push cdecl, dynlib, exportc,  raises: [].} # No exceptions allowed
+    {.push noconv, dynlib, exportc,  raises: [].} # No exceptions allowed
   else:
-    {.push cdecl, exportc,  raises: [].} # No exceptions allowed
+    {.push noconv, exportc,  raises: [].} # No exceptions allowed
 
   func `ctt _ Field _ unmarshalBE`(dst: var Field, src: openarray[byte]) =
     ## Deserialize
@@ -122,9 +122,9 @@ template genBindingsField*(Field: untyped) =
 
 template genBindingsFieldSqrt*(Field: untyped) =
   when appType == "lib":
-    {.push cdecl, dynlib, exportc,  raises: [].} # No exceptions allowed
+    {.push noconv, dynlib, exportc,  raises: [].} # No exceptions allowed
   else:
-    {.push cdecl, exportc,  raises: [].} # No exceptions allowed
+    {.push noconv, exportc,  raises: [].} # No exceptions allowed
 
   func `ctt _ Field _ is_square`(a: Field): SecretBool =
     a.isSquare()
@@ -155,9 +155,9 @@ template genBindingsFieldSqrt*(Field: untyped) =
 
 template genBindingsExtField*(Field: untyped) =
   when appType == "lib":
-    {.push cdecl, dynlib, exportc,  raises: [].} # No exceptions allowed
+    {.push noconv, dynlib, exportc,  raises: [].} # No exceptions allowed
   else:
-    {.push cdecl, exportc,  raises: [].} # No exceptions allowed
+    {.push noconv, exportc,  raises: [].} # No exceptions allowed
 
   # --------------------------------------------------------------------------------------
   func `ctt _ Field _ is_eq`(a, b: Field): SecretBool =
@@ -258,9 +258,9 @@ template genBindingsExtField*(Field: untyped) =
 
 template genBindingsExtFieldSqrt*(Field: untyped) =
   when appType == "lib":
-    {.push cdecl, dynlib, exportc,  raises: [].} # No exceptions allowed
+    {.push noconv, dynlib, exportc,  raises: [].} # No exceptions allowed
   else:
-    {.push cdecl, exportc,  raises: [].} # No exceptions allowed
+    {.push noconv, exportc,  raises: [].} # No exceptions allowed
 
   func `ctt _ Field _ is_square`(a: Field): SecretBool =
     a.isSquare()
@@ -275,9 +275,9 @@ template genBindingsExtFieldSqrt*(Field: untyped) =
 
 template genBindings_EC_ShortW_Affine*(ECP, Field: untyped) =
   when appType == "lib":
-    {.push cdecl, dynlib, exportc,  raises: [].} # No exceptions allowed
+    {.push noconv, dynlib, exportc,  raises: [].} # No exceptions allowed
   else:
-    {.push cdecl, exportc,  raises: [].} # No exceptions allowed
+    {.push noconv, exportc,  raises: [].} # No exceptions allowed
 
   # --------------------------------------------------------------------------------------
   func `ctt _ ECP _ is_eq`(P, Q: ECP): SecretBool =
@@ -305,9 +305,9 @@ template genBindings_EC_ShortW_Affine*(ECP, Field: untyped) =
 
 template genBindings_EC_ShortW_NonAffine*(ECP, ECP_Aff, Field: untyped) =
   when appType == "lib":
-    {.push cdecl, dynlib, exportc,  raises: [].} # No exceptions allowed
+    {.push noconv, dynlib, exportc,  raises: [].} # No exceptions allowed
   else:
-    {.push cdecl, exportc,  raises: [].} # No exceptions allowed
+    {.push noconv, exportc,  raises: [].} # No exceptions allowed
 
   # --------------------------------------------------------------------------------------
   func `ctt _ ECP _ is_eq`(P, Q: ECP): SecretBool =

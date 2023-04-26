@@ -4,7 +4,7 @@ proc cpuidX86(eaxi, ecxi: int32): tuple[eax, ebx, ecx, edx: int32] {.used.}=
   when defined(vcc):
     # limited inline asm support in vcc, so intrinsics, here we go:
     proc cpuidVcc(cpuInfo: ptr int32; functionID, subFunctionID: int32)
-      {.cdecl, importc: "__cpuidex", header: "intrin.h".}
+      {.noconv, importc: "__cpuidex", header: "intrin.h".}
     cpuidVcc(addr result.eax, eaxi, ecxi)
   else:
     var (eaxr, ebxr, ecxr, edxr) = (0'i32, 0'i32, 0'i32, 0'i32)

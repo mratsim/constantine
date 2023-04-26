@@ -18,11 +18,6 @@ import
 #
 # ############################################################
 
-# Note: We can refer to at most 30 registers in inline assembly
-#       and "InputOutput" registers count double
-#       They are nice to let the compiler deals with mov
-#       but too constraining so we move things ourselves.
-
 static: doAssert UseASM_X86_32
 
 # Necessary for the compiler to find enough registers
@@ -31,7 +26,8 @@ static: doAssert UseASM_X86_32
 proc finalSubNoOverflowImpl*(
        ctx: var Assembler_x86,
        r: Operand or OperandArray,
-       a, M, scratch: OperandArray) =
+       a, M, scratch: OperandArray,
+       a_in_scratch = false) =
   ## Reduce `a` into `r` modulo `M`
   ## To be used when the modulus does not use the full bitwidth of the storing words
   ## for example a 255-bit modulus in n words of total max size 2^256
@@ -42,10 +38,12 @@ proc finalSubNoOverflowImpl*(
   ctx.comment "Final substraction (cannot overflow its limbs)"
 
   # Substract the modulus, and test a < p with the last borrow
-  ctx.mov scratch[0], a[0]
+  if not a_in_scratch:
+    ctx.mov scratch[0], a[0]
   ctx.sub scratch[0], M[0]
   for i in 1 ..< N:
-    ctx.mov scratch[i], a[i]
+    if not a_in_scratch:
+      ctx.mov scratch[i], a[i]
     ctx.sbb scratch[i], M[i]
 
   # If we borrowed it means that we were smaller than
@@ -58,13 +56,15 @@ proc finalSubMayOverflowImpl*(
        ctx: var Assembler_x86,
        r: Operand or OperandArray,
        a, M, scratch: OperandArray,
-       scratchReg: Operand or Register or OperandReuse) =
+       a_in_scratch = false,
+       scratchReg: Operand or Register or OperandReuse = rax) =
   ## Reduce `a` into `r` modulo `M`
   ## To be used when the final substraction can
   ## also overflow the limbs (a 2^256 order of magnitude modulus stored in n words of total max size 2^256)
   ##
-  ## r, a, scratch, scratchReg are mutated
+  ## r, a, scratch are mutated
   ## M is read-only
+  ## This clobbers RAX
   let N = M.len
   ctx.comment "Final substraction (may carry)"
 
@@ -72,10 +72,12 @@ proc finalSubMayOverflowImpl*(
   ctx.sbb scratchReg, scratchReg
 
   # Now substract the modulus, and test a < p with the last borrow
-  ctx.mov scratch[0], a[0]
+  if not a_in_scratch:
+    ctx.mov scratch[0], a[0]
   ctx.sub scratch[0], M[0]
   for i in 1 ..< N:
-    ctx.mov scratch[i], a[i]
+    if not a_in_scratch:
+      ctx.mov scratch[i], a[i]
     ctx.sbb scratch[i], M[i]
 
   # If it overflows here, it means that it was
@@ -89,9 +91,10 @@ proc finalSubMayOverflowImpl*(
     ctx.mov r[i], a[i]
 
 macro finalSub_gen*[N: static int](
-       r_PIR: var array[N, SecretWord],
-       a_EIR, M_PIR: array[N, SecretWord],
-       scratch_EIR: var array[N, SecretWord],
+       r_PIR: var Limbs[N],
+       a_EIR: Limbs[N],
+       M_MEM: Limbs[N],
+       scratch_EIR: var Limbs[N],
        mayOverflow: static bool): untyped =
   ## Returns:
   ##   a-M if a > M
@@ -99,35 +102,32 @@ macro finalSub_gen*[N: static int](
   ##
   ## - r_PIR is a pointer to the result array, mutated,
   ## - a_EIR is an array of registers, mutated,
-  ## - M_PIR is a pointer to an array, read-only,
+  ## - M_MEM is a pointer to an array, read-only,
   ## - scratch_EIR is an array of registers, mutated
   ## - mayOverflow is set to true when the carry flag also needs to be read
   result = newStmtList()
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = init(OperandArray, nimSymbol = r_PIR, N, PointerInReg, InputOutput)
+    r = asmArray(r_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite) # MemOffsettable is the better constraint but compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it).
     # We reuse the reg used for b for overflow detection
-    a = init(OperandArray, nimSymbol = a_EIR, N, ElemsInReg, InputOutput)
+    a = asmArray(a_EIR, N, ElemsInReg, asmInputOutput)
     # We could force m as immediate by specializing per moduli
-    M = init(OperandArray, nimSymbol = M_PIR, N, PointerInReg, Input)
-    t = init(OperandArray, nimSymbol = scratch_EIR, N, ElemsInReg, Output_EarlyClobber)
+    M = asmArray(M_MEM, N, MemOffsettable, asmInput)
+    t = asmArray(scratch_EIR, N, ElemsInReg, asmOutputEarlyClobber)
 
   if mayOverflow:
-    ctx.finalSubMayOverflowImpl(
-      r, a, M, t, rax
-    )
+    ctx.finalSubMayOverflowImpl(r, a, M, t)
   else:
-    ctx.finalSubNoOverflowImpl(
-      r, a, M, t
-    )
+    ctx.finalSubNoOverflowImpl(r, a, M, t)
 
   result.add ctx.generate()
 
 # Field addition
 # ------------------------------------------------------------
 
-macro addmod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N], spareBits: static int): untyped =
+
+macro addmod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_MEM: Limbs[N], spareBits: static int): untyped =
   ## Generate an optimized modular addition kernel
   # Register pressure note:
   #   We could generate a kernel per modulus m by hardcoding it as immediate
@@ -139,21 +139,20 @@ macro addmod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N], spareBits: s
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = init(OperandArray, nimSymbol = R, N, PointerInReg, InputOutput)
-    # We reuse the reg used for b for overflow detection
-    b = init(OperandArray, nimSymbol = B, N, PointerInReg, InputOutput)
+    r = asmArray(r_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite) # MemOffsettable is the better constraint but_ec_shortw_prj_g1_sum_reduce.nimt compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it).
+    b = asmArray(b_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memRead)  # LLVM Gold linker runs out of registers in t_ec_shortw_prj_g1_sum_reduce if we use b as Memoffsettable and a separate overflow register
     # We could force m as immediate by specializing per moduli
-    M = init(OperandArray, nimSymbol = m, N, PointerInReg, Input)
+    M = asmArray(M_MEM, N, MemOffsettable, asmInput)
     # If N is too big, we need to spill registers. TODO.
-    u = init(OperandArray, nimSymbol = ident"u", N, ElemsInReg, InputOutput)
-    v = init(OperandArray, nimSymbol = ident"v", N, ElemsInReg, Output_EarlyClobber)
+    uSym = ident"u"
+    vSym = ident"v"
+    u = asmArray(uSym, N, ElemsInReg, asmInputOutput)
+    v = asmArray(vSym, N, ElemsInReg, asmOutputEarlyClobber)
 
-  let usym = u.nimSymbol
-  let vsym = v.nimSymbol
   result.add quote do:
-    var `usym`{.noinit.}, `vsym` {.noInit, used.}: typeof(`A`)
+    var `usym`{.noinit.}, `vsym` {.noInit, used.}: typeof(`a_PIR`)
     staticFor i, 0, `N`:
-      `usym`[i] = `A`[i]
+      `usym`[i] = `a_PIR`[i]
 
   # Addition
   ctx.add u[0], b[0]
@@ -164,23 +163,20 @@ macro addmod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N], spareBits: s
     ctx.mov v[i], u[i]
 
   if spareBits >= 1:
-    ctx.finalSubNoOverflowImpl(r, u, M, v)
+    ctx.finalSubNoOverflowImpl(r, u, M, v, a_in_scratch = true)
   else:
-    ctx.finalSubMayOverflowImpl(
-      r, u, M, v, b.reuseRegister()
-    )
+    ctx.finalSubMayOverflowImpl(r, u, M, v, a_in_scratch = true, scratchReg = b.reuseRegister())
 
   result.add ctx.generate()
 
-func addmod_asm*(r: var Limbs, a, b, m: Limbs, spareBits: static int) {.noInline.} =
+func addmod_asm*(r: var Limbs, a, b, M: Limbs, spareBits: static int) =
   ## Constant-time modular addition
-  # This MUST be noInline or Clang will run out of registers with LTO
-  addmod_gen(r, a, b, m, spareBits)
+  addmod_gen(r, a, b, M, spareBits)
 
 # Field substraction
 # ------------------------------------------------------------
 
-macro submod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N]): untyped =
+macro submod_gen[N: static int](r_PIR: var Limbs[N], a_PIR, b_PIR, M_MEM: Limbs[N]): untyped =
   ## Generate an optimized modular addition kernel
   # Register pressure note:
   #   We could generate a kernel per modulus m by hardocing it as immediate
@@ -192,21 +188,20 @@ macro submod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N]): untyped =
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    r = init(OperandArray, nimSymbol = R, N, PointerInReg, InputOutput)
-    # We reuse the reg used for b for overflow detection
-    b = init(OperandArray, nimSymbol = B, N, PointerInReg, InputOutput)
+    r = asmArray(r_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite) # MemOffsettable is the better constraint but compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it).
+    b = asmArray(b_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memRead) # register reused for underflow detection
     # We could force m as immediate by specializing per moduli
-    M = init(OperandArray, nimSymbol = m, N, PointerInReg, Input)
+    M = asmArray(M_MEM, N, MemOffsettable, asmInput)
     # If N is too big, we need to spill registers. TODO.
-    u = init(OperandArray, nimSymbol = ident"U", N, ElemsInReg, InputOutput)
-    v = init(OperandArray, nimSymbol = ident"V", N, ElemsInReg, Output_EarlyClobber)
+    uSym = ident"u"
+    vSym = ident"v"
+    u = asmArray(uSym, N, ElemsInReg, asmInputOutput)
+    v = asmArray(vSym, N, ElemsInReg, asmOutputEarlyClobber)
 
-  let usym = u.nimSymbol
-  let vsym = v.nimSymbol
   result.add quote do:
-    var `usym`{.noinit.}, `vsym` {.noInit, used.}: typeof(`A`)
+    var `usym`{.noinit.}, `vsym` {.noInit, used.}: typeof(`a_PIR`)
     staticFor i, 0, `N`:
-      `usym`[i] = `A`[i]
+      `usym`[i] = `a_PIR`[i]
 
   # Substraction
   ctx.sub u[0], b[0]
@@ -231,30 +226,37 @@ macro submod_gen[N: static int](R: var Limbs[N], A, B, m: Limbs[N]): untyped =
     ctx.adc u[i], v[i]
     ctx.mov r[i], u[i]
 
-  result.add ctx.generate
+  result.add ctx.generate()
 
-func submod_asm*(r: var Limbs, a, b, M: Limbs) {.noInline.} =
+func submod_asm*(r: var Limbs, a, b, M: Limbs) =
   ## Constant-time modular substraction
   ## Warning, does not handle aliasing of a and b
-  # This MUST be noInline or Clang will run out of registers with LTO
   submod_gen(r, a, b, M)
 
 # Field negation
 # ------------------------------------------------------------
 
-macro negmod_gen[N: static int](R: var Limbs[N], A, m: Limbs[N]): untyped =
+macro negmod_gen[N: static int](r_PIR: var Limbs[N], a_MEM, M_MEM: Limbs[N]): untyped =
   ## Generate an optimized modular negation kernel
 
   result = newStmtList()
 
   var ctx = init(Assembler_x86, BaseType)
   let
-    a = init(OperandArray, nimSymbol = A, N, PointerInReg, Input)
-    r = init(OperandArray, nimSymbol = R, N, PointerInReg, InputOutput)
-    u = init(OperandArray, nimSymbol = ident"U", N, ElemsInReg, Output_EarlyClobber)
+    a = asmArray(a_MEM, N, MemOffsettable, asmInput)
+    r = asmArray(r_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite) # MemOffsettable is the better constraint but compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it).
+    uSym = ident"u"
+    u = asmArray(uSym, N, ElemsInReg, asmOutputEarlyClobber)
     # We could force m as immediate by specializing per moduli
     # We reuse the reg used for m for overflow detection
-    M = init(OperandArray, nimSymbol = m, N, PointerInReg, InputOutput)
+    M = asmArray(M_MEM, N, MemOffsettable, asmInput)
+
+    isZeroSym = ident"isZero"
+    isZero = asmValue(isZeroSym, Reg, asmOutputEarlyClobber)
+
+  result.add quote do:
+    var `usym`{.noinit, used.}: typeof(`a_MEM`)
+    var `isZeroSym`{.noinit.}: BaseType
 
   # Substraction m - a
   ctx.mov u[0], M[0]
@@ -264,7 +266,6 @@ macro negmod_gen[N: static int](R: var Limbs[N], A, m: Limbs[N]): untyped =
     ctx.sbb u[i], a[i]
 
   # Deal with a == 0
-  let isZero = M.reuseRegister()
   ctx.mov isZero, a[0]
   for i in 1 ..< N:
     ctx.`or` isZero, a[i]
@@ -274,11 +275,8 @@ macro negmod_gen[N: static int](R: var Limbs[N], A, m: Limbs[N]): untyped =
     ctx.cmovz u[i], isZero
     ctx.mov r[i], u[i]
 
-  let usym = u.nimSymbol
-  result.add quote do:
-    var `usym`{.noinit, used.}: typeof(`A`)
-  result.add ctx.generate
+  result.add ctx.generate()
 
-func negmod_asm*(r: var Limbs, a, m: Limbs) =
+func negmod_asm*(r: var Limbs, a, M: Limbs) =
   ## Constant-time modular negation
-  negmod_gen(r, a, m)
+  negmod_gen(r, a, M)

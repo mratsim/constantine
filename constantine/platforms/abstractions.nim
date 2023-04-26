@@ -17,7 +17,7 @@ import ../../metering/tracer
 
 export primitives, tracer
 
-when sizeof(int) == 8 and not defined(Constantine32):
+when sizeof(int) == 8 and not defined(Ctt32):
   type
     BaseType* = uint64
       ## Physical BigInt for conversion in "normal integers"
@@ -67,7 +67,7 @@ type VarTime*   = object
 
 type SignedSecretWord* = distinct SecretWord
 
-when sizeof(int) == 8 and not defined(Constantine32):
+when sizeof(int) == 8 and not defined(Ctt32):
   type
     SignedBaseType* = int64
 else:

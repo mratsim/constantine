@@ -482,7 +482,7 @@ type
   CUstream* = distinct pointer
   CUdeviceptr* = distinct pointer
 
-{.push cdecl, importc, dynlib: "libcuda.so".}
+{.push noconv, importc, dynlib: "libcuda.so".}
 
 proc cuInit*(flags: uint32): CUresult
 
@@ -515,4 +515,4 @@ proc cuMemFree*(devptr: CUdeviceptr): CUresult
 proc cuMemcpyHtoD*(dst: CUdeviceptr, src: pointer, size: csize_t): CUresult
 proc cuMemcpyDtoH*(dst: pointer, src: CUdeviceptr, size: csize_t): CUresult
 
-{.pop.} # {.push cdecl, importc, dynlib: "libcuda.so".}
+{.pop.} # {.push noconv, importc, dynlib: "libcuda.so".}

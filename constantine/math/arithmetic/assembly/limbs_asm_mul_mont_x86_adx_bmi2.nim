@@ -21,11 +21,6 @@ import
 #
 # ############################################################
 
-# Note: We can refer to at most 30 registers in inline assembly
-#       and "InputOutput" registers count double
-#       They are nice to let the compiler deals with mov
-#       but too constraining so we move things ourselves.
-
 static: doAssert UseASM_X86_64
 
 # MULX/ADCX/ADOX
@@ -176,7 +171,7 @@ proc partialRedx(
 
 macro mulMont_CIOS_sparebit_adx_gen[N: static int](
         r_PIR: var Limbs[N], a_PIR, b_PIR,
-        M_PIR: Limbs[N], m0ninv_REG: BaseType,
+        M_MEM: Limbs[N], m0ninv_REG: BaseType,
         skipFinalSub: static bool): untyped =
   ## Generate an optimized Montgomery Multiplication kernel
   ## using the CIOS method
@@ -193,18 +188,20 @@ macro mulMont_CIOS_sparebit_adx_gen[N: static int](
   let
     scratchSlots = 6
 
-    r = init(OperandArray, nimSymbol = r_PIR, N, PointerInReg, InputOutput_EnsureClobber)
+    r = asmArray(r_PIR, N, PointerInReg, asmInputOutputEarlyClobber, memIndirect = memWrite) # MemOffsettable is the better constraint but compilers say it is impossible. Use early clobber to ensure it is not affected by constant propagation at slight pessimization (reloading it). # Changing that to MemOffsetable triggers an error in negmod in test_bindings. Missing clobber?
     # We could force M as immediate by specializing per moduli
-    M = init(OperandArray, nimSymbol = M_PIR, N, PointerInReg, Input)
+    M = asmArray(M_MEM, N, MemOffsettable, asmInput)
     # If N is too big, we need to spill registers. TODO.
-    t = init(OperandArray, nimSymbol = ident"t", N, ElemsInReg, Output_EarlyClobber)
+    tSym = ident"t"
+    t = asmArray(tSym, N, ElemsInReg, asmOutputEarlyClobber)
     # MultiPurpose Register slots
-    scratch = init(OperandArray, nimSymbol = ident"scratch", scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
+    scratchSym = ident"scratch"
+    scratch = asmArray(scratchSym, scratchSlots, ElemsInReg, asmInputOutputEarlyClobber)
 
     # MULX requires RDX as well
 
-    a = scratch[0].asArrayAddr(len = N) # Store the `a` operand
-    b = scratch[1].asArrayAddr(len = N) # Store the `b` operand
+    a = scratch[0].asArrayAddr(a_PIR, len = N, memIndirect = memRead) # Store the `a` operand
+    b = scratch[1].asArrayAddr(b_PIR, len = N, memIndirect = memRead) # Store the `b` operand
     A = scratch[2]                      # High part of extended precision multiplication
     C = scratch[3]
     m0ninv = scratch[4]                 # Modular inverse of M[0]
@@ -221,8 +218,6 @@ macro mulMont_CIOS_sparebit_adx_gen[N: static int](
   # but this prevent reusing the same code for multiple curves like BLS12-377 and BLS12-381
   # We might be able to save registers by having `r` and `M` be memory operand as well
 
-  let tsym = t.nimSymbol
-  let scratchSym = scratch.nimSymbol
   result.add quote do:
     static: doAssert: sizeof(SecretWord) == sizeof(ByteAddress)
 
@@ -250,21 +245,18 @@ macro mulMont_CIOS_sparebit_adx_gen[N: static int](
         A, t,
         a,
         b[0],
-        C
-      )
+        C)
     else:
       ctx.mulaccx_by_word(
         A, t,
         a, i,
         b[i],
-        C
-      )
+        C)
 
     ctx.partialRedx(
       A, t,
       M, m0ninv,
-      lo, C
-    )
+      lo, C)
 
   if skipFinalSub:
     for i in 0 ..< N:
@@ -272,19 +264,9 @@ macro mulMont_CIOS_sparebit_adx_gen[N: static int](
   else:
     ctx.finalSubNoOverflowImpl(
       r, t, M,
-      scratch
-    )
+      scratch)
 
-  result.add ctx.generate
-
-func mulMont_CIOS_sparebit_asm_adx_inline*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipFinalSub: static bool = false) {.inline.} =
-  ## Constant-time Montgomery multiplication
-  ## If "skipFinalSub" is set
-  ## the result is in the range [0, 2M)
-  ## otherwise the result is in the range [0, M)
-  ##
-  ## This procedure can only be called if the modulus doesn't use the full bitwidth of its underlying representation
-  r.mulMont_CIOS_sparebit_adx_gen(a, b, M, m0ninv, skipFinalSub)
+  result.add ctx.generate()
 
 func mulMont_CIOS_sparebit_asm_adx*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipFinalSub: static bool = false) =
   ## Constant-time Montgomery multiplication
@@ -293,7 +275,7 @@ func mulMont_CIOS_sparebit_asm_adx*(r: var Limbs, a, b, M: Limbs, m0ninv: BaseTy
   ## otherwise the result is in the range [0, M)
   ##
   ## This procedure can only be called if the modulus doesn't use the full bitwidth of its underlying representation
-  r.mulMont_CIOS_sparebit_asm_adx_inline(a, b, M, m0ninv, skipFinalSub)
+  r.mulMont_CIOS_sparebit_adx_gen(a, b, M, m0ninv, skipFinalSub)
 
 # Montgomery Squaring
 # ------------------------------------------------------------
@@ -313,7 +295,7 @@ func squareMont_CIOS_asm_adx*[N](
 
 macro sumprodMont_CIOS_spare2bits_adx_gen[N, K: static int](
         r_PIR: var Limbs[N], a_PIR, b_PIR: array[K, Limbs[N]],
-        M_PIR: Limbs[N], m0ninv_REG: BaseType,
+        M_MEM: Limbs[N], m0ninv_REG: BaseType,
         skipFinalSub: static bool): untyped =
   ## Generate an optimized Montgomery merged sum of products ⅀aᵢ.bᵢ kernel
   ## using the CIOS method
@@ -343,29 +325,23 @@ macro sumprodMont_CIOS_spare2bits_adx_gen[N, K: static int](
     scratchSlots = 6
 
     # We could force M as immediate by specializing per moduli
-    M = init(OperandArray, nimSymbol = M_PIR, N, PointerInReg, Input)
+    M = asmArray(M_MEM, N, MemOffsettable, asmInput)
     # If N is too big, we need to spill registers. TODO.
-    t = init(OperandArray, nimSymbol = ident"t", N, ElemsInReg, Output_EarlyClobber)
+    tSym = ident"t"
+    t = asmArray(tSym, N, ElemsInReg, asmOutputEarlyClobber)
     # MultiPurpose Register slots
-    scratch = init(OperandArray, nimSymbol = ident"scratch", scratchSlots, ElemsInReg, InputOutput_EnsureClobber)
+    scratchSym = ident"scratch"
+    scratch = asmArray(scratchSym, scratchSlots, ElemsInReg, asmInputOutputEarlyClobber)
 
     # MULX requires RDX as well
 
-    m0ninv = Operand(
-               desc: OperandDesc(
-                 asmId: "[m0ninv]",
-                 nimSymbol: m0ninv_REG,
-                 rm: MemOffsettable,
-                 constraint: Input,
-                 cEmit: "&" & $m0ninv_REG
-               )
-             )
+    m0ninv = asmValue(m0ninv_REG, Mem, asmInput)
 
     # We're really constrained by register and somehow setting as memory doesn't help
     # So we store the result `r` in the scratch space and then reload it in RDX
     # before the scratchspace is used in final substraction
-    a = scratch[0].as2dArrayAddr(rows = K, cols = N) # Store the `a` operand
-    b = scratch[1].as2dArrayAddr(rows = K, cols = N) # Store the `b` operand
+    a = scratch[0].as2dArrayAddr(a_PIR, rows = K, cols = N, memIndirect = memRead) # Store the `a` operand
+    b = scratch[1].as2dArrayAddr(b_PIR, rows = K, cols = N, memIndirect = memRead) # Store the `b` operand
     tN = scratch[2]                                  # High part of extended precision multiplication
     C = scratch[3]                                   # Carry during reduction step
     r = scratch[4]                                   # Stores the `r` operand
@@ -382,8 +358,6 @@ macro sumprodMont_CIOS_spare2bits_adx_gen[N, K: static int](
   # but this prevent reusing the same code for multiple curves like BLS12-377 and BLS12-381
   # We might be able to save registers by having `r` and `M` be memory operand as well
 
-  let tsym = t.nimSymbol
-  let scratchSym = scratch.nimSymbol
   result.add quote do:
     static: doAssert: sizeof(SecretWord) == sizeof(ByteAddress)
 
@@ -461,11 +435,10 @@ macro sumprodMont_CIOS_spare2bits_adx_gen[N, K: static int](
     ctx.partialRedx(
       tN, t,
       M, m0ninv,
-      rax, C
-    )
+      rax, C)
 
   ctx.mov rax, r # move r away from scratchspace that will be used for final substraction
-  let r2 = rax.asArrayAddr(len = N)
+  let r2 = rax.asArrayAddr(r_PIR, len = N, memIndirect = memWrite)
 
   if skipFinalSub:
     ctx.comment "  Copy result"
@@ -473,10 +446,7 @@ macro sumprodMont_CIOS_spare2bits_adx_gen[N, K: static int](
       ctx.mov r2[i], t[i]
   else:
     ctx.comment "  Final substraction"
-    ctx.finalSubNoOverflowImpl(
-      r2, t, M,
-      scratch
-    )
+    ctx.finalSubNoOverflowImpl(r2, t, M, scratch)
   result.add ctx.generate()
 
 func sumprodMont_CIOS_spare2bits_asm_adx*[N, K: static int](

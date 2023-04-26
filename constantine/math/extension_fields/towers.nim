@@ -856,14 +856,16 @@ func prod2x_complex(r: var QuadraticExt2x, a, b: Fp2) =
   var D {.noInit.}: typeof(r.c0)
   var t0 {.noInit.}, t1 {.noInit.}: typeof(a.c0)
 
-  r.c0.prod2x(a.c0, b.c0)        # r0 = a0 b0
-  D.prod2x(a.c1, b.c1)           # d =  a1 b1
   when Fp2.has1extraBit():
     t0.sumUnr(a.c0, a.c1)
     t1.sumUnr(b.c0, b.c1)
   else:
     t0.sum(a.c0, a.c1)
     t1.sum(b.c0, b.c1)
+
+  r.c0.prod2x(a.c0, b.c0)        # r0 = a0 b0
+  D.prod2x(a.c1, b.c1)           # d =  a1 b1
+
   r.c1.prod2x(t0, t1)            # r1 = (b0 + b1)(a0 + a1)
   when Fp2.has1extraBit():
     r.c1.diff2xUnr(r.c1, r.c0)   # r1 = (b0 + b1)(a0 + a1) - a0 b0
@@ -1052,15 +1054,15 @@ func prod2x_disjoint*[Fdbl, F](
   var V0 {.noInit.}, V1 {.noInit.}: typeof(r.c0) # Double-precision
   var t0 {.noInit.}, t1 {.noInit.}: typeof(a0)   # Single-width
 
-  # Require 2 extra bits
-  V0.prod2x(a0, b0)             # v0 = a0b0
-  V1.prod2x(a1, b1)             # v1 = a1b1
   when F.has1extraBit():
     t0.sumUnr(a0, a1)
     t1.sumUnr(b0, b1)
   else:
     t0.sum(a0, a1)
     t1.sum(b0, b1)
+
+  V0.prod2x(a0, b0)             # v0 = a0b0
+  V1.prod2x(a1, b1)             # v1 = a1b1
 
   r.c1.prod2x(t0, t1)           # r1 = (a0 + a1)(b0 + b1)
   r.c1.diff2xMod(r.c1, V0)      # r1 = (a0 + a1)(b0 + b1) - a0b0
