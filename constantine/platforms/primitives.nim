@@ -13,7 +13,7 @@ import
     multiplexers,
     ct_division
   ],
-  compilers/[
+  intrinsics/[
     addcarry_subborrow,
     extended_precision,
     compiler_optim_hints
