@@ -24,7 +24,7 @@ type
     ctx*: ContextRef
     module*: ModuleRef
     builder*: BuilderRef
-    i1_t*, i32_t*, i64_t*, void_t*: TypeRef
+    i1_t*, i32_t*, i64_t*, i128_t*, void_t*: TypeRef
     backend*: Backend
 
   Backend* = enum
@@ -54,7 +54,8 @@ proc new*(T: type Assembler_LLVM, backend: Backend, moduleName: cstring): Assemb
   result.builder = result.ctx.createBuilder()
   result.i1_t = result.ctx.int1_t()
   result.i32_t = result.ctx.int32_t()
-  result.i64_t = result.ctx.int32_t()
+  result.i64_t = result.ctx.int64_t()
+  result.i128_t = result.ctx.int128_t()
   result.void_t = result.ctx.void_t()
   result.backend = backend
 

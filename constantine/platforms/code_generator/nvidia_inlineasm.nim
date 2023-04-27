@@ -20,7 +20,7 @@ import
 # instructions -> inline assembly -> argument mapping
 
 # Inline assembly looks like this:
-# 
+#
 # C:    asm volatile ("add.cc.u64 %0, %1, %2;" : "=l"(c) : "l"(a), "l"(b) : "memory" );
 # LLVM: call i64 asm "add.cc.u64 $0, $1, $2;", "=l,l,l,~{memory}"(i64 %1, i64 %2)
 #
@@ -30,16 +30,16 @@ import
 # 2. Generate u32 and u64 `getInlineAsm()` definition (that is associated with an LLVM IR ContextRef)
 # 3. Create an initialization proc to be called after initializing the LLVM ContextRef
 #    For each instruction, return a routine with signature that mirrors LLVM builtin instructions:
-#    
+#
 #    proc myInstr(builder: BuilderRef, lhs, rhs: ValueRef, name: cstring): ValueRef =
 #      let numBits = lhs.getTypeOf().getIntTypeWidth()
-#      if numBits == 32: 
+#      if numBits == 32:
 #        builder.call2(inlineAsmFnType, inlineAsmFn32, [arg0, arg1, ...], name)
-#      elif numBits == 64: 
+#      elif numBits == 64:
 #        builder.call2(inlineAsmFnType, inlineAsmFn64, [arg0, arg1, ...], name)
 #      else:
 #        doAssert false, "Unsupported int" & $numBits
-# 
+#
 # To create `inlineAsmFn32` and `inlineAsmFn64` we may use `getInlineAsm` just before the corresponding
 # builder.call2. This allows us to define freestanding functions.
 # The potential issue is the overhead of repeated definition of add/sub/mul/muladd
@@ -94,7 +94,7 @@ macro genInstr(body: untyped): untyped =
     let fnTy = ident"fnTy"
     let ctx = ident"ctx"
     let lhs = op[2][0][3][0]
-    
+
     instrBody.add quote do:
       let `ctx` = builder.getContext()
       # lhs: ValueRef or uint32 or uint64
@@ -143,6 +143,8 @@ macro genInstr(body: untyped): untyped =
 
     # We could have generic constraint string generation, but we only have 2 arities to support
     # and codegen without quote do would be even more verbose and hard to read.
+
+    # TODO: commutative inputs
     if arity == 2:
       let op0 = operands[0]
       let op1 = operands[1]
@@ -201,7 +203,7 @@ macro genInstr(body: untyped): untyped =
     else:
       instrBody.add quote do:
         let `asmString` = static(`instr` & ".u") & $`numBits` & static(" " & `instrParam`)
-    
+
     instrBody.add quote do:
       # Chapter 6 of https://docs.nvidia.com/cuda/pdf/NVVM_IR_Specification.pdf
       # inteldialect is not supported (but the NVPTX dialect is akin to intel dialect)
@@ -217,8 +219,7 @@ macro genInstr(body: untyped): untyped =
         hasSideEffects = LlvmBool(0),
         isAlignStack = LlvmBool(0),
         dialect = InlineAsmDialectATT,
-        canThrow = LlvmBool(0)
-      ) 
+        canThrow = LlvmBool(0))
 
     # 5. Call it
     let opArray = nnkBracket.newTree()
@@ -235,8 +236,7 @@ macro genInstr(body: untyped): untyped =
     # builder.call2(ty, inlineASM, [lhs, rhs], name)
     instrBody.add newCall(
       ident"call2", ident"builder", fnTy,
-      inlineASM, opArray, ident"name"
-    )
+      inlineASM, opArray, ident"name")
 
     # 6. Create the function signature
     var opDefs: seq[NimNode]
@@ -273,8 +273,7 @@ macro genInstr(body: untyped): untyped =
       name = nnkPostfix.newTree(ident"*", instrName),
       params = opDefs,
       procType = nnkProcDef,
-      body = instrBody
-    )
+      body = instrBody)
 
 # Inline PTX assembly
 # ------------------------------------------------------------
@@ -293,7 +292,7 @@ macro genInstr(body: untyped): untyped =
 #
 # https://docs.nvidia.com/cuda/inline-ptx-assembly/index.html#constraints
 # There is a separate constraint letter for each PTX register type:
-# 
+#
 # "h" = .u16 reg
 # "r" = .u32 reg
 # "l" = .u64 reg
@@ -304,13 +303,13 @@ macro genInstr(body: untyped): untyped =
 #
 #
 # 1.2.3. Incorrect Optimization
-# 
+#
 # The compiler assumes that an asm() statement has no side effects except to change the output operands. To ensure that the asm is not deleted or moved during generation of PTX, you should use the volatile keyword, e.g.:
-# 
+#
 # asm volatile ("mov.u32 %0, %%clock;" : "=r"(x));
-# 
+#
 # Normally any memory that is written to will be specified as an out operand, but if there is a hidden side effect on user memory (for example, indirect access of a memory location via an operand), or if you want to stop any memory optimizations around the asm() statement performed during generation of PTX, you can add a “memory” clobbers specification after a 3rd colon, e.g.:
-# 
+#
 # asm volatile ("mov.u32 %0, %%clock;" : "=r"(x) :: "memory");
 # asm ("st.u32 [%0], %1;" : "r"(p), "r"(x) :: "memory");
 #
@@ -331,7 +330,7 @@ macro genInstr(body: untyped): untyped =
 
 genInstr():
   # The PTX is without size indicator i.e. add.cc instead of add.cc.u32
-  # Both version will be generated. 
+  # Both version will be generated.
   #
   # op name:       ("ptx",        "args;",            "constraints", [params])
 
@@ -356,7 +355,7 @@ genInstr():
   op mulhiadd_cio: ("madc.hi.cc", "$0, $1, $2, $3;", "=rl,rln,rln,rln", [lmul, rmul, addend])
 
   # Conditional mov / select
-  
+
   # slct r, a, b, c;
   # r <- (c >= 0) ? a : b;
   op slct:         ({"slct",".s32"},     "$0, $1, $2, $3;", "=rl,rln,rln,rn", [ifPos, ifNeg, condition])
