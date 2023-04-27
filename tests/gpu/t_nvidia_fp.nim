@@ -11,12 +11,12 @@ import
   # Standard library
   std/[unittest, times],
   # Internal
-  ../../constantine/platforms/gpu/[llvm, nvidia, ir],
+  ../../constantine/platforms/code_generator/[llvm, nvidia, ir],
   ../../constantine/platforms/static_for,
   ../../constantine/math/config/curves,
   ../../constantine/math/io/io_bigints,
   ../../constantine/math/arithmetic,
-  ../../constantine/math_gpu/fields_nvidia,
+  ../../constantine/math_codegen/fields_nvidia,
   # Test utilities
   ../../helpers/prng_unsafe
 

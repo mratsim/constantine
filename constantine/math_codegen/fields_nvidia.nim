@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../platforms/gpu/[llvm, nvidia, ir]
+  ../platforms/code_generator/[llvm, nvidia, ir]
 
 # ############################################################
 #
@@ -21,10 +21,10 @@ import
 proc finalSubMayOverflow*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, r, a: Array) =
   ## If a >= Modulus: r <- a-M
   ## else:            r <- a
-  ## 
+  ##
   ## This is constant-time straightline code.
   ## Due to warp divergence, the overhead of doing comparison with shortcutting might not be worth it on GPU.
-  ## 
+  ##
   ## To be used when the final substraction can
   ## also overflow the limbs (a 2^256 order of magnitude modulus stored in n words of total max size 2^256)
 
@@ -48,15 +48,15 @@ proc finalSubMayOverflow*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, 
   let underflowedModulus = bld.sub_bi(overflowedLimbs, 0'u32)
 
   for i in 0 ..< N:
-    r[i] = bld.slct(scratch[i], a[i], underflowedModulus) 
+    r[i] = bld.slct(scratch[i], a[i], underflowedModulus)
 
 proc finalSubNoOverflow*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, r, a: Array) =
   ## If a >= Modulus: r <- a-M
   ## else:            r <- a
-  ## 
+  ##
   ## This is constant-time straightline code.
   ## Due to warp divergence, the overhead of doing comparison with shortcutting might not be worth it on GPU.
-  ## 
+  ##
   ## To be used when the modulus does not use the full bitwidth of the storing words
   ## (say using 255 bits for the modulus out of 256 available in words)
 
@@ -65,7 +65,7 @@ proc finalSubNoOverflow*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, r
   let scratch = bld.makeArray(fieldTy)
   let M = cm.getModulus(field)
   let N = M.len
- 
+
   # Now substract the modulus, and test a < M with the last borrow
   scratch[0] = bld.sub_bo(a[0], M[0])
   for i in 1 ..< N:
@@ -80,7 +80,7 @@ proc finalSubNoOverflow*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, r
 proc field_add_gen*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field): FnDef =
   ## Generate an optimized modular addition kernel
   ## with parameters `a, b, modulus: Limbs -> Limbs`
-  
+
   let procName = cm.genSymbol(block:
     case field
     of fp: opFpAdd
@@ -94,14 +94,14 @@ proc field_add_gen*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field): FnDef
   asy.builder.positionAtEnd(blck)
 
   let bld = asy.builder
-  
+
   let r = bld.asArray(addModKernel.getParam(0), fieldTy)
   let a = bld.asArray(addModKernel.getParam(1), fieldTy)
   let b = bld.asArray(addModKernel.getParam(2), fieldTy)
 
   let t = bld.makeArray(fieldTy)
   let N = cm.getNumWords(field)
-  
+
   t[0] = bld.add_co(a[0], b[0])
   for i in 1 ..< N:
     t[i] = bld.add_cio(a[i], b[i])
