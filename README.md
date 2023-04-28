@@ -37,7 +37,9 @@ The implementations are accompanied with SAGE code used as reference implementat
     - [In blockchain](#in-blockchain)
     - [In zero-knowledge proofs](#in-zero-knowledge-proofs)
     - [Measuring performance](#measuring-performance)
-      - [BLS12_381 Clang + inline Assembly](#bls12_381-clang--inline-assembly)
+      - [Ethereum BLS signatures over BLS12-381 G2](#ethereum-bls-signatures-over-bls12-381-g2)
+      - [BLS12-381 detailed benchmarks](#bls12-381-detailed-benchmarks)
+      - [BN254-Snarks Multi-Scalar-Multiplication benchmarks](#bn254-snarks-multi-scalar-multiplication-benchmarks)
       - [Parallelism](#parallelism)
   - [Why Nim](#why-nim)
   - [Compiler caveats](#compiler-caveats)
@@ -304,7 +306,11 @@ The full list of benchmarks is available in the [`benchmarks`](./benchmarks) fol
 
 As mentioned in the [Compiler caveats](#compiler-caveats) section, GCC is up to 2x slower than Clang due to mishandling of carries and register usage.
 
-#### BLS12_381 (Clang + inline Assembly)
+#### Ethereum BLS signatures (over BLS12-381 G2)
+
+![Bench Ethereum BLS signature](./media/ethereum_bls_signatures.png)
+
+#### BLS12-381 detailed benchmarks
 
 On my machine i9-11980HK (8 cores 2.6GHz, turbo 5GHz), for Clang + Assembly, **all being constant-time** (including scalar multiplication, square root and inversion).
 
@@ -314,9 +320,11 @@ On my machine i9-11980HK (8 cores 2.6GHz, turbo 5GHz), for Clang + Assembly, **a
 ![BLS12-381 Multi-Scalar multiplication 2](./media/bls12_381_msm_i9-11980HK-8cores_2.png)
 ![BLS12-381 Multi-Scalar multiplication 3](./media/bls12_381_msm_i9-11980HK-8cores_3.png)
 
+#### BN254-Snarks Multi-Scalar-Multiplication benchmarks
+
 On a i9-9980XE (18 cores,watercooled, overclocked, 4.1GHz all core turbo)
 
-![BN254-Snarks multi-sclar multiplication](./media/bn254_snarks_msm-i9-9980XE-18cores.png)
+![BN254-Snarks multi-scalar multiplication](./media/bn254_snarks_msm-i9-9980XE-18cores.png)
 
 #### Parallelism
 
