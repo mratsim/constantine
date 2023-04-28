@@ -57,8 +57,8 @@ type
     CubicExt[Fp2[C]]
 
   Fp12*[C: static Curve] =
-    # CubicExt[Fp4[C]]
-    QuadraticExt[Fp6[C]]
+    CubicExt[Fp4[C]]
+    # QuadraticExt[Fp6[C]]
 
 template c0*(a: ExtensionField): auto =
   a.coords[0]

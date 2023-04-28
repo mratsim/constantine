@@ -45,7 +45,7 @@ macro fixEllipticDisplay(EC: typedesc): untyped =
   var name = $instantiated[1][0] # EllipticEquationFormCoordinates
   let fieldName = $instantiated[1][1][0]
   let curveName = $Curve(instantiated[1][1][1].intVal)
-  name.add "[" & fieldName & "[" & curveName & "]]"
+  name.add "[" & fieldName & "[" & curveName & ']'
   result = newLit name
 
 proc report(op, elliptic: string, start, stop: MonoTime, startClk, stopClk: int64, iters: int) =
