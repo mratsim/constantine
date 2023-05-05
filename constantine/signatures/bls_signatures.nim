@@ -34,28 +34,19 @@ import
 {.push raises: [].} # No exceptions allowed in core cryptographic operations
 {.push checks: off.} # No defects due to array bound checking or signed integer overflow allowed
 
-func derivePubkey*[Pubkey, SecKey](pubkey: var Pubkey, seckey: SecKey): bool =
+func derivePubkey*[Pubkey, SecKey](pubkey: var Pubkey, seckey: SecKey) =
   ## Generates the public key associated with the input secret key.
   ##
-  ## Returns:
-  ## - false is secret key is invalid (SK == 0 or >= BLS12-381 curve order),
-  ##   true otherwise
-  ##   By construction no public API should ever instantiate
-  ##   an invalid secretkey in the first place.
+  ## The secret key MUST be in range (0, curve order)
+  ## 0 is INVALID
   const Group = Pubkey.G
   type Field = Pubkey.F
   const EC = Field.C
-
-  if seckey.isZero().bool:
-    return false
-  if bool(seckey >= EC.getCurveOrder()):
-    return false
 
   var pk {.noInit.}: ECP_ShortW_Jac[Field, Group]
   pk.fromAffine(EC.getGenerator($Group))
   pk.scalarMul(seckey)
   pubkey.affine(pk)
-  return true
 
 func coreSign*[Sig, SecKey](
     signature: var Sig,

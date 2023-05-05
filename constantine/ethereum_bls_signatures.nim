@@ -48,7 +48,7 @@ const prefix_ffi = "ctt_eth_bls_"
 import ./zoo_exports
 
 static:
-  # Xxport SHA256 routines with a protocol specific prefix
+  # Export SHA256 routines with a protocol specific prefix
   # This exports sha256.init(), sha256.update(), sha256.finish() and sha256.clear()
   prefix_sha256 = prefix_ffi & "sha256_"
 
@@ -80,13 +80,17 @@ import
       constants/zoo_subgroups
     ],
     ./math/io/[io_bigints, io_fields],
-    signatures/bls_signatures
+    signatures/bls_signatures,
+    serialization/codecs_bls12_381
 
 export
   abstractions, # generic sandwich on SecretBool and SecretBool in Jacobian sumImpl
   curves, # generic sandwich on matchingBigInt
   extension_fields, # generic sandwich on extension field access
-  ec_shortweierstrass # generic sandwich on affine
+  ec_shortweierstrass, # generic sandwich on affine
+
+  CttCodecScalarStatus,
+  CttCodecEccStatus
 
 # Protocol types
 # ------------------------------------------------------------------------------------------------
@@ -109,13 +113,7 @@ type
   CttBLSStatus* = enum
     cttBLS_Success
     cttBLS_VerificationFailure
-    cttBLS_InvalidEncoding
-    cttBLS_CoordinateGreaterOrEqualThanModulus
     cttBLS_PointAtInfinity
-    cttBLS_PointNotOnCurve
-    cttBLS_PointNotInSubgroup
-    cttBLS_ZeroSecretKey
-    cttBLS_SecretKeyLargerThanCurveOrder
     cttBLS_ZeroLengthAggregation
     cttBLS_InconsistentLengthsOfInputs
 
@@ -141,263 +139,93 @@ func signatures_are_equal*(a, b: Signature): bool {.libPrefix: prefix_ffi.} =
 # Input validation
 # ------------------------------------------------------------------------------------------------
 
-func validate_seckey*(secret_key: SecretKey): CttBLSStatus {.libPrefix: prefix_ffi.} =
+func validate_seckey*(secret_key: SecretKey): CttCodecScalarStatus {.libPrefix: prefix_ffi.} =
   ## Validate the secret key.
   ## Regarding timing attacks, this will leak timing information only if the key is invalid.
   ## Namely, the secret key is 0 or the secret key is too large.
-  if secret_key.raw.isZero().bool():
-    return cttBLS_ZeroSecretKey
-  if bool(secret_key.raw >= BLS12_381.getCurveOrder()):
-    return cttBLS_SecretKeyLargerThanCurveOrder
-  return cttBLS_Success
+  return secret_key.raw.validate_scalar()
 
-func validate_pubkey*(public_key: PublicKey): CttBLSStatus {.libPrefix: prefix_ffi.} =
+func validate_pubkey*(public_key: PublicKey): CttCodecEccStatus {.libPrefix: prefix_ffi.} =
   ## Validate the public key.
   ## This is an expensive operation that can be cached
-  if public_key.raw.isInf().bool():
-    return cttBLS_PointAtInfinity
-  if not isOnCurve(public_key.raw.x, public_key.raw.y, G1).bool():
-    return cttBLS_PointNotOnCurve
-  if not public_key.raw.isInSubgroup().bool():
-    return cttBLS_PointNotInSubgroup
+  return public_key.raw.validate_g1()
 
-func validate_signature*(signature: Signature): CttBLSStatus {.libPrefix: prefix_ffi.} =
+func validate_signature*(signature: Signature): CttCodecEccStatus {.libPrefix: prefix_ffi.} =
   ## Validate the signature.
   ## This is an expensive operation that can be cached
-  if signature.raw.isInf().bool():
-    return cttBLS_PointAtInfinity
-  if not isOnCurve(signature.raw.x, signature.raw.y, G2).bool():
-    return cttBLS_PointNotOnCurve
-  if not signature.raw.isInSubgroup().bool():
-    return cttBLS_PointNotInSubgroup
+  return signature.raw.validate_g2()
 
 # Codecs
 # ------------------------------------------------------------------------------------------------
 
-## BLS12-381 serialization
-##
-##     𝔽p elements are encoded in big-endian form. They occupy 48 bytes in this form.
-##     𝔽p2​ elements are encoded in big-endian form, meaning that the 𝔽p2​ element c0+c1u
-##     is represented by the 𝔽p​ element c1​ followed by the 𝔽p element c0​.
-##     This means 𝔽p2​ elements occupy 96 bytes in this form.
-##     The group 𝔾1​ uses 𝔽p elements for coordinates. The group 𝔾2​ uses 𝔽p2​ elements for coordinates.
-##     𝔾1​ and 𝔾2​ elements can be encoded in uncompressed form (the x-coordinate followed by the y-coordinate) or in compressed form (just the x-coordinate).
-##     𝔾1​ elements occupy 96 bytes in uncompressed form, and 48 bytes in compressed form.
-##     𝔾2​ elements occupy 192 bytes in uncompressed form, and 96 bytes in compressed form.
-##
-## The most-significant three bits of a 𝔾1​ or 𝔾2​ encoding should be masked away before the coordinate(s) are interpreted. These bits are used to unambiguously represent the underlying element:
-##
-##     The most significant bit, when set, indicates that the point is in compressed form. Otherwise, the point is in uncompressed form.
-##     The second-most significant bit indicates that the point is at infinity. If this bit is set, the remaining bits of the group element’s encoding should be set to zero.
-##     The third-most significant bit is set if (and only if) this point is in compressed form
-##     and it is not the point at infinity and its y-coordinate is the lexicographically largest of the two associated with the encoded x-coordinate.
-##
-## - https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-05#appendix-A
-## - https://docs.rs/bls12_381/latest/bls12_381/notes/serialization/index.html
-##   - https://github.com/zkcrypto/bls12_381/blob/0.6.0/src/notes/serialization.rs
-
-func serialize_seckey*(dst: var array[32, byte], secret_key: SecretKey): CttBLSStatus {.libPrefix: prefix_ffi.} =
+func serialize_seckey*(dst: var array[32, byte], secret_key: SecretKey): CttCodecScalarStatus {.libPrefix: prefix_ffi.} =
   ## Serialize a secret key
-  ## Returns cttBLS_Success if successful
-  dst.marshal(secret_key.raw, bigEndian)
-  return cttBLS_Success
+  ## Returns cttCodecScalar_Success if successful
+  return dst.serialize_scalar(secret_key.raw)
 
-func serialize_pubkey_compressed*(dst: var array[48, byte], public_key: PublicKey): CttBLSStatus {.libPrefix: prefix_ffi.} =
+func serialize_pubkey_compressed*(dst: var array[48, byte], public_key: PublicKey): CttCodecEccStatus {.libPrefix: prefix_ffi.} =
   ## Serialize a public key in compressed (Zcash) format
   ##
-  ## Returns cttBLS_Success if successful
-  if public_key.raw.isInf().bool():
-    for i in 0 ..< dst.len:
-      dst[i] = byte 0
-    dst[0] = byte 0b11000000 # Compressed + Infinity
-    return cttBLS_Success
+  ## Returns cttCodecEcc_Success if successful
+  return dst.serialize_g1_compressed(public_key.raw)
 
-  dst.marshal(public_key.raw.x, bigEndian)
-  # The curve equation has 2 solutions for y² = x³ + 4 with y unknown and x known
-  # The lexicographically largest will have bit 381 set to 1
-  # (and bit 383 for the compressed representation)
-  # The solutions are {y, p-y} hence the lexicographyically largest is greater than p/2
-  # so with exact integers, as p is odd, greater or equal (p+1)/2
-  let lexicographicallyLargest = byte(public_key.raw.y.toBig() >= Fp[BLS12_381].getPrimePlus1div2())
-  dst[0] = dst[0] or (0b10000000 or (lexicographicallyLargest shl 5))
-
-  return cttBLS_Success
-
-func serialize_signature_compressed*(dst: var array[96, byte], signature: Signature): CttBLSStatus {.libPrefix: prefix_ffi.} =
+func serialize_signature_compressed*(dst: var array[96, byte], signature: Signature): CttCodecEccStatus {.libPrefix: prefix_ffi.} =
   ## Serialize a signature in compressed (Zcash) format
   ##
   ## Returns cttBLS_Success if successful
-  if signature.raw.isInf().bool():
-    for i in 0 ..< dst.len:
-      dst[i] = byte 0
-    dst[0] = byte 0b11000000 # Compressed + Infinity
-    return cttBLS_Success
+  return dst.serialize_g2_compressed(signature.raw)
 
-  dst.toOpenArray(0, 48-1).marshal(signature.raw.x.c1, bigEndian)
-  dst.toOpenArray(48, 96-1).marshal(signature.raw.x.c0, bigEndian)
-
-  let isLexicographicallyLargest =
-    if signature.raw.y.c1.isZero().bool():
-      byte(signature.raw.y.c0.toBig() >= Fp[BLS12_381].getPrimePlus1div2())
-    else:
-      byte(signature.raw.y.c1.toBig() >= Fp[BLS12_381].getPrimePlus1div2())
-  dst[0] = dst[0] or (byte 0b10000000 or (isLexicographicallyLargest shl 5))
-
-  return cttBLS_Success
-
-func deserialize_seckey*(dst: var SecretKey, src: array[32, byte]): CttBLSStatus {.libPrefix: prefix_ffi.} =
+func deserialize_seckey*(dst: var SecretKey, src: array[32, byte]): CttCodecScalarStatus {.libPrefix: prefix_ffi.} =
   ## Deserialize a secret key
   ## This also validates the secret key.
   ##
   ## This is protected against side-channel unless your key is invalid.
   ## In that case it will like whether it's all zeros or larger than the curve order.
-  dst.raw.unmarshal(src, bigEndian)
-  let status = validate_seckey(dst)
-  if status != cttBLS_Success:
-    dst.raw.setZero()
-    return status
-  return cttBLS_Success
+  return dst.raw.deserialize_scalar(src)
 
-func deserialize_pubkey_compressed_unchecked*(dst: var PublicKey, src: array[48, byte]): CttBLSStatus {.libPrefix: prefix_ffi.} =
+func deserialize_pubkey_compressed_unchecked*(dst: var PublicKey, src: array[48, byte]): CttCodecEccStatus {.libPrefix: prefix_ffi.} =
   ## Deserialize a public_key in compressed (Zcash) format.
   ##
   ## Warning ⚠:
   ##   This procedure skips the very expensive subgroup checks.
   ##   Not checking subgroup exposes a protocol to small subgroup attacks.
   ##
-  ## Returns cttBLS_Success if successful
+  ## Returns cttCodecEcc_Success if successful
+  return dst.raw.deserialize_g1_compressed_unchecked(src)
 
-  # src must have the compressed flag
-  if (src[0] and byte 0b10000000) == byte 0:
-    return cttBLS_InvalidEncoding
-
-  # if infinity, src must be all zeros
-  if (src[0] and byte 0b01000000) != 0:
-    if (src[0] and byte 0b00111111) != 0: # Check all the remaining bytes in MSB
-      return cttBLS_InvalidEncoding
-    for i in 1 ..< src.len:
-      if src[i] != byte 0:
-        return cttBLS_InvalidEncoding
-    dst.raw.setInf()
-    return cttBLS_PointAtInfinity
-
-  # General case
-  var t{.noInit.}: matchingBigInt(BLS12_381)
-  t.unmarshal(src, bigEndian)
-  t.limbs[t.limbs.len-1] = t.limbs[t.limbs.len-1] and (MaxWord shr 3) # The first 3 bytes contain metadata to mask out
-
-  if bool(t >= BLS12_381.Mod()):
-    return cttBLS_CoordinateGreaterOrEqualThanModulus
-
-  var x{.noInit.}: Fp[BLS12_381]
-  x.fromBig(t)
-
-  let onCurve = dst.raw.trySetFromCoordX(x)
-  if not(bool onCurve):
-    return cttBLS_PointNotOnCurve
-
-  let isLexicographicallyLargest = dst.raw.y.toBig() >= Fp[BLS12_381].getPrimePlus1div2()
-  let srcIsLargest = SecretBool((src[0] shr 5) and byte 1)
-  dst.raw.y.cneg(isLexicographicallyLargest xor srcIsLargest)
-
-func deserialize_pubkey_compressed*(dst: var PublicKey, src: array[48, byte]): CttBLSStatus {.libPrefix: prefix_ffi.} =
+func deserialize_pubkey_compressed*(dst: var PublicKey, src: array[48, byte]): CttCodecEccStatus {.libPrefix: prefix_ffi.} =
   ## Deserialize a public_key in compressed (Zcash) format
   ## This also validates the public key.
   ##
-  ## Returns cttBLS_Success if successful
+  ## Returns cttCodecEcc_Success if successful
+  return dst.raw.deserialize_g1_compressed(src)
 
-  result = deserialize_pubkey_compressed_unchecked(dst, src)
-  if result != cttBLS_Success:
-    return result
-
-  if not(bool dst.raw.isInSubgroup()):
-    return cttBLS_PointNotInSubgroup
-
-func deserialize_signature_compressed_unchecked*(dst: var Signature, src: array[96, byte]): CttBLSStatus {.libPrefix: prefix_ffi.} =
+func deserialize_signature_compressed_unchecked*(dst: var Signature, src: array[96, byte]): CttCodecEccStatus {.libPrefix: prefix_ffi.} =
   ## Deserialize a signature in compressed (Zcash) format.
   ##
   ## Warning ⚠:
   ##   This procedure skips the very expensive subgroup checks.
   ##   Not checking subgroup exposes a protocol to small subgroup attacks.
   ##
-  ## Returns cttBLS_Success if successful
+  ## Returns cttCodecEcc_Success if successful
+  return dst.raw.deserialize_g2_compressed_unchecked(src)
 
-  # src must have the compressed flag
-  if (src[0] and byte 0b10000000) == byte 0:
-    return cttBLS_InvalidEncoding
-
-  # if infinity, src must be all zeros
-  if (src[0] and byte 0b01000000) != 0:
-    if (src[0] and byte 0b00111111) != 0: # Check all the remaining bytes in MSB
-      return cttBLS_InvalidEncoding
-    for i in 1 ..< src.len:
-      if src[i] != byte 0:
-        return cttBLS_InvalidEncoding
-    dst.raw.setInf()
-    return cttBLS_PointAtInfinity
-
-  # General case
-  var t{.noInit.}: matchingBigInt(BLS12_381)
-  t.unmarshal(src.toOpenArray(0, 48-1), bigEndian)
-  t.limbs[t.limbs.len-1] = t.limbs[t.limbs.len-1] and (MaxWord shr 3) # The first 3 bytes contain metadata to mask out
-
-  if bool(t >= BLS12_381.Mod()):
-    return cttBLS_CoordinateGreaterOrEqualThanModulus
-
-  var x{.noInit.}: Fp2[BLS12_381]
-  x.c1.fromBig(t)
-
-  t.unmarshal(src.toOpenArray(48, 96-1), bigEndian)
-  if bool(t >= BLS12_381.Mod()):
-    return cttBLS_CoordinateGreaterOrEqualThanModulus
-
-  x.c0.fromBig(t)
-
-  let onCurve = dst.raw.trySetFromCoordX(x)
-  if not(bool onCurve):
-    return cttBLS_PointNotOnCurve
-
-  let isLexicographicallyLargest =
-    if dst.raw.y.c1.isZero().bool():
-      dst.raw.y.c0.toBig() >= Fp[BLS12_381].getPrimePlus1div2()
-    else:
-      dst.raw.y.c1.toBig() >= Fp[BLS12_381].getPrimePlus1div2()
-
-  let srcIsLargest = SecretBool((src[0] shr 5) and byte 1)
-  dst.raw.y.cneg(isLexicographicallyLargest xor srcIsLargest)
-
-func deserialize_signature_compressed*(dst: var Signature, src: array[96, byte]): CttBLSStatus {.libPrefix: prefix_ffi.} =
+func deserialize_signature_compressed*(dst: var Signature, src: array[96, byte]): CttCodecEccStatus {.libPrefix: prefix_ffi.} =
   ## Deserialize a public_key in compressed (Zcash) format
   ##
-  ## Returns cttBLS_Success if successful
-
-  result = deserialize_signature_compressed_unchecked(dst, src)
-  if result != cttBLS_Success:
-    return result
-
-  if not(bool dst.raw.isInSubgroup()):
-    return cttBLS_PointNotInSubgroup
+  ## Returns cttCodecEcc_Success if successful
+  return dst.raw.deserialize_g2_compressed(src)
 
 # BLS Signatures
 # ------------------------------------------------------------------------------------------------
 
-func derive_pubkey*(public_key: var PublicKey, secret_key: SecretKey): CttBLSStatus {.libPrefix: prefix_ffi.} =
+func derive_pubkey*(public_key: var PublicKey, secret_key: SecretKey) {.libPrefix: prefix_ffi.} =
   ## Derive the public key matching with a secret key
   ##
-  ## Secret protection:
-  ## - A valid secret key will only leak that it is valid.
-  ## - An invalid secret key will leak whether it's all zero or larger than the curve order.
-  let status = validate_seckey(secret_key)
-  if status != cttBLS_Success:
-    return status
+  ## The secret_key MUST be validated
+  public_key.raw.derivePubkey(secret_key.raw)
 
-  let ok = public_key.raw.derivePubkey(secret_key.raw)
-  if not ok:
-    # This is unreachable since validate_seckey would have caught those
-    return cttBLS_InvalidEncoding
-  return cttBLS_Success
-
-func sign*(signature: var Signature, secret_key: SecretKey, message: openArray[byte]): CttBLSStatus {.libPrefix: prefix_ffi, genCharAPI.} =
+func sign*(signature: var Signature, secret_key: SecretKey, message: openArray[byte]) {.libPrefix: prefix_ffi, genCharAPI.} =
   ## Produce a signature for the message under the specified secret key
   ## Signature is on BLS12-381 G2 (and public key on G1)
   ##
@@ -407,21 +235,12 @@ func sign*(signature: var Signature, secret_key: SecretKey, message: openArray[b
   ## - A secret key
   ## - A message
   ##
+  ## The secret_key MUST be validated
+  ##
   ## Output:
   ## - `signature` is overwritten with `message` signed with `secretKey`
   ##   with the scheme
-  ## - A status code indicating success or if the secret key is invalid.
-  ##
-  ## Secret protection:
-  ## - A valid secret key will only leak that it is valid.
-  ## - An invalid secret key will leak whether it's all zero or larger than the curve order.
-  let status = validate_seckey(secret_key)
-  if status != cttBLS_Success:
-    signature.raw.setInf()
-    return status
-
   coreSign(signature.raw, secretKey.raw, message, sha256, 128, augmentation = "", DST)
-  return cttBLS_Success
 
 func verify*(public_key: PublicKey, message: openArray[byte], signature: Signature): CttBLSStatus {.libPrefix: prefix_ffi, genCharAPI.} =
   ## Check that a signature is valid for a message

@@ -1,7 +1,7 @@
 import
   # Internals
   ../constantine/hashes,
-  ../constantine/platforms/codecs,
+  ../constantine/serialization/codecs,
   # Helpers
   ../helpers/prng_unsafe
 

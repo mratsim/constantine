@@ -12,7 +12,7 @@ import
   ../constantine/math/config/[curves_declaration, type_ff],
   ../constantine/math/extension_fields/towers,
   ../constantine/math/io/[io_fields, io_extfields],
-  ../constantine/platforms/codecs
+  ../constantine/serialization/codecs
 
 # Test vectors for expandMessageXMD
 # ----------------------------------------------------------------------

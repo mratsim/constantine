@@ -409,7 +409,7 @@ func primeMinus3div4_BE*[bits: static int](
   discard tmp.sub(3)
   tmp.shiftRight(2)
 
-  result.marshal(tmp, bigEndian)
+  discard result.marshal(tmp, bigEndian)
 
 func primeMinus5div8_BE*[bits: static int](
        P: BigInt[bits]
@@ -428,7 +428,7 @@ func primeMinus5div8_BE*[bits: static int](
   discard tmp.sub(5)
   tmp.shiftRight(3)
 
-  result.marshal(tmp, bigEndian)
+  discard result.marshal(tmp, bigEndian)
 
 # ############################################################
 #

@@ -11,7 +11,8 @@
 #   - Burning memory to ensure secrets are not left after dealloc.
 
 import
-  ../../platforms/[abstractions, endians, codecs],
+  ../../platforms/abstractions,
+  ../../serialization/[codecs, io_limbs],
   ../arithmetic/bigints,
   ../config/type_bigint
 
@@ -28,129 +29,10 @@ export BigInt, wordsRequired
 # that contains secret data
 {.push raises: [], checks: off.}
 
-# Note: the parsing/serialization routines were initially developed
-#       with an internal representation that used 31 bits out of a uint32
-#       or 63-bits out of an uint64
-
-# TODO: the in-place API should return a bool
-#       to indicate success.
-#       the out-of place API are for configuration,
-#       prototyping, research and debugging purposes,
-#       and can use exceptions.
-
-func unmarshalLE[T](
-        dst: var openArray[T],
-        src: openarray[byte],
-        wordBitWidth: static int) =
-  ## Parse an unsigned integer from its canonical
-  ## little-endian unsigned representation
-  ## and store it into a BigInt
-  ##
-  ## Constant-Time:
-  ##   - no leaks
-  ##
-  ## Can work at compile-time
-  ##
-  ## It is possible to use a 63-bit representation out of a 64-bit words
-  ## by setting `wordBitWidth` to something different from sizeof(T) * 8
-  ## This might be useful for architectures with no add-with-carry instructions.
-  # TODO: error on destination to small
-
-  var
-    dst_idx = 0
-    acc = T(0)
-    acc_len = 0
-
-  for src_idx in 0 ..< src.len:
-    let src_byte = T(src[src_idx])
-
-    # buffer reads
-    acc = acc or (src_byte shl acc_len)
-    acc_len += 8 # We count bit by bit
-
-    # if full, dump
-    if acc_len >= wordBitWidth:
-      dst[dst_idx] = acc
-      inc dst_idx
-      acc_len -= wordBitWidth
-      acc = src_byte shr (8 - acc_len)
-
-  if dst_idx < dst.len:
-    dst[dst_idx] = acc
-
-  for i in dst_idx + 1 ..< dst.len:
-    dst[i] = T(0)
-
-func unmarshalBE[T](
-        dst: var openArray[T],
-        src: openarray[byte],
-        wordBitWidth: static int) =
-  ## Parse an unsigned integer from its canonical
-  ## big-endian unsigned representation (octet string)
-  ## and store it into a BigInt.
-  ##
-  ## In cryptography specifications, this is often called
-  ## "Octet string to Integer"
-  ##
-  ## Constant-Time:
-  ##   - no leaks
-  ##
-  ## Can work at compile-time
-  ##
-  ## It is possible to use a 63-bit representation out of a 64-bit words
-  ## by setting `wordBitWidth` to something different from sizeof(T) * 8
-  ## This might be useful for architectures with no add-with-carry instructions.
-
-  var
-    dst_idx = 0
-    acc = T(0)
-    acc_len = 0
-
-  const wordBitWidth = sizeof(T) * 8
-
-  for src_idx in countdown(src.len-1, 0):
-    let src_byte = T(src[src_idx])
-
-    # buffer reads
-    acc = acc or (src_byte shl acc_len)
-    acc_len += 8 # We count bit by bit
-
-    # if full, dump
-    if acc_len >= wordBitWidth:
-      dst[dst_idx] = acc
-      inc dst_idx
-      acc_len -= wordBitWidth
-      acc = src_byte shr (8 - acc_len)
-
-  if dst_idx < dst.len:
-    dst[dst_idx] = acc
-
-  for i in dst_idx + 1 ..< dst.len:
-    dst[i] = T(0)
-
-func unmarshal*[T](
-        dst: var openArray[T],
-        src: openarray[byte],
-        wordBitWidth: static int,
-        srcEndianness: static Endianness) {.inline.} =
-  ## Parse an unsigned integer from its canonical
-  ## big-endian or little-endian unsigned representation
-  ##
-  ## Constant-Time:
-  ##   - no leaks
-  ##
-  ## Can work at compile-time to embed curve moduli
-  ## from a canonical integer representation
-
-  when srcEndianness == littleEndian:
-    dst.unmarshalLE(src, wordBitWidth)
-  else:
-    dst.unmarshalBE(src, wordBitWidth)
-
 func unmarshal*(
         dst: var BigInt,
         src: openarray[byte],
-        srcEndianness: static Endianness) {.inline.}=
+        srcEndianness: static Endianness): bool {.discardable, inline.} =
   ## Parse an unsigned integer from its canonical
   ## big-endian or little-endian unsigned representation
   ## And store it into a BigInt of size `bits`
@@ -160,12 +42,26 @@ func unmarshal*(
   ##
   ## Can work at compile-time to embed curve moduli
   ## from a canonical integer representation
-  dst.limbs.unmarshal(src, WordBitWidth, srcEndianness)
+  ##
+  ## Returns "true" on success
+  ## Returns "false" if destination buffer is too small
+  ##
+  ## As this is used internally to build serialization primitives
+  ## we assume that the buffer is properly-sized
+  ## and hence the result is discardable
+
+  debug:
+    doAssert BigInt.bits.ceilDiv_vartime(8) >= src.len, block:
+      "Raw int -> BigInt conversion: destination buffer is too small\n" &
+      "  bits: " & $BigInt.bits & "\n" &
+      "  input bytes: " & $src.len & '\n'
+
+  return dst.limbs.unmarshal(src, WordBitWidth, srcEndianness)
 
 func unmarshal*(
         T: type BigInt,
         src: openarray[byte],
-        srcEndianness: static Endianness): T {.inline.}=
+        srcEndianness: static Endianness): T {.inline.} =
   ## Parse an unsigned integer from its canonical
   ## big-endian or little-endian unsigned representation
   ## And store it into a BigInt of size `bits`
@@ -175,21 +71,21 @@ func unmarshal*(
   ##
   ## Can work at compile-time to embed curve moduli
   ## from a canonical integer representation
-  result.limbs.unmarshal(src, WordBitWidth, srcEndianness)
+  discard result.limbs.unmarshal(src, WordBitWidth, srcEndianness)
 
 func fromUint*(
         T: type BigInt,
-        src: SomeUnsignedInt): T {.inline.}=
+        src: SomeUnsignedInt): T {.inline.} =
   ## Parse a regular unsigned integer
   ## and store it into a BigInt of size `bits`
-  result.unmarshal(cast[array[sizeof(src), byte]](src), cpuEndian)
+  discard result.unmarshal(cast[array[sizeof(src), byte]](src), cpuEndian)
 
 func fromUint*(
         dst: var BigInt,
-        src: SomeUnsignedInt) {.inline.}=
+        src: SomeUnsignedInt) {.inline.} =
   ## Parse a regular unsigned integer
   ## and store it into a BigInt of size `bits`
-  dst.unmarshal(cast[array[sizeof(src), byte]](src), cpuEndian)
+  discard dst.unmarshal(cast[array[sizeof(src), byte]](src), cpuEndian)
 
 # ############################################################
 #
@@ -197,153 +93,10 @@ func fromUint*(
 #
 # ############################################################
 
-func marshalLE[T](
-        dst: var openarray[byte],
-        src: openArray[T],
-        wordBitWidth: static int) =
-  ## Serialize a bigint into its canonical little-endian representation
-  ## I.e least significant bit first
-  ##
-  ## It is possible to use a 63-bit representation out of a 64-bit words
-  ## by setting `wordBitWidth` to something different from sizeof(T) * 8
-  ## This might be useful for architectures with no add-with-carry instructions.
-
-  var
-    src_idx, dst_idx = 0
-    acc_len = 0
-
-  when sizeof(T) == 8:
-    type BT = uint64
-  elif sizeof(T) == 4:
-    type BT = uint32
-  else:
-    {.error "Unsupported word size uint" & $(sizeof(T) * 8).}
-
-  var acc = BT(0)
-
-  var tail = dst.len
-  while tail > 0:
-    let w = if src_idx < src.len: BT(src[src_idx])
-            else: 0
-    inc src_idx
-
-    if acc_len == 0:
-      # We need to refill the buffer to output 64-bit
-      acc = w
-      acc_len = wordBitWidth
-    else:
-      when wordBitWidth == sizeof(T) * 8:
-        let lo = acc
-        acc = w
-      else: # If using 63-bit (or less) out of uint64
-        let lo = (w shl acc_len) or acc
-        dec acc_len
-        acc = w shr (wordBitWidth - acc_len)
-
-      if tail >= sizeof(T):
-        # Unrolled copy
-        dst.blobFrom(src = lo, dst_idx, littleEndian)
-        dst_idx += sizeof(T)
-        tail -= sizeof(T)
-      else:
-        # Process the tail and exit
-        when cpuEndian == littleEndian:
-          # When requesting little-endian on little-endian platform
-          # we can just copy each byte
-          # tail is inclusive
-          for i in 0 ..< tail:
-            dst[dst_idx+i] = toByte(lo shr (i*8))
-        else: # TODO check this
-          # We need to copy from the end
-          for i in 0 ..< tail:
-            dst[dst_idx+i] = toByte(lo shr ((tail-i)*8))
-        return
-
-func marshalBE[T](
-        dst: var openarray[byte],
-        src: openArray[T],
-        wordBitWidth: static int) =
-  ## Serialize a bigint into its canonical big-endian representation
-  ## (octet string)
-  ## I.e most significant bit first
-  ##
-  ## In cryptography specifications, this is often called
-  ## "Octet string to Integer"
-  ##
-  ## It is possible to use a 63-bit representation out of a 64-bit words
-  ## by setting `wordBitWidth` to something different from sizeof(T) * 8
-  ## This might be useful for architectures with no add-with-carry instructions.
-
-  var
-    src_idx = 0
-    acc_len = 0
-
-  when sizeof(T) == 8:
-    type BT = uint64
-  elif sizeof(T) == 4:
-    type BT = uint32
-  else:
-    {.error "Unsupported word size uint" & $(sizeof(T) * 8).}
-
-  var acc = BT(0)
-
-  var tail = dst.len
-  while tail > 0:
-    let w = if src_idx < src.len: BT(src[src_idx])
-            else: 0
-    inc src_idx
-
-    if acc_len == 0:
-      # We need to refill the buffer to output 64-bit
-      acc = w
-      acc_len = wordBitWidth
-    else:
-      when wordBitWidth == sizeof(T) * 8:
-        let lo = acc
-        acc = w
-      else: # If using 63-bit (or less) out of uint64
-        let lo = (w shl acc_len) or acc
-        dec acc_len
-        acc = w shr (wordBitWidth - acc_len)
-
-      if tail >= sizeof(T):
-        # Unrolled copy
-        tail -= sizeof(T)
-        dst.blobFrom(src = lo, tail, bigEndian)
-      else:
-        # Process the tail and exit
-        when cpuEndian == littleEndian:
-          # When requesting little-endian on little-endian platform
-          # we can just copy each byte
-          # tail is inclusive
-          for i in 0 ..< tail:
-            dst[tail-1-i] = toByte(lo shr (i*8))
-        else: # TODO check this
-          # We need to copy from the end
-          for i in 0 ..< tail:
-            dst[tail-1-i] = toByte(lo shr ((tail-i)*8))
-        return
-
-func marshal*[T](
-        dst: var openArray[byte],
-        src: openArray[T],
-        wordBitWidth: static int,
-        dstEndianness: static Endianness) {.inline.} =
-  ## Serialize a bigint into its canonical big-endian or little endian
-  ## representation.
-  ##
-  ## If the buffer is bigger, output will be zero-padded left for big-endian
-  ## or zero-padded right for little-endian.
-  ## I.e least significant bit is aligned to buffer boundary
-  when dstEndianness == littleEndian:
-    marshalLE(dst, src, wordBitWidth)
-  else:
-    marshalBE(dst, src, wordBitWidth)
-
 func marshal*(
         dst: var openArray[byte],
         src: BigInt,
-        dstEndianness: static Endianness) {.inline.} =
+        dstEndianness: static Endianness): bool {.discardable, inline.} =
   ## Serialize a bigint into its canonical big-endian or little endian
   ## representation.
   ## A destination buffer of size "(BigInt.bits + 7) div 8" at minimum is needed,
@@ -352,6 +105,13 @@ func marshal*(
   ## If the buffer is bigger, output will be zero-padded left for big-endian
   ## or zero-padded right for little-endian.
   ## I.e least significant bit is aligned to buffer boundary
+  ##
+  ## Returns "true" on success
+  ## Returns "false" if destination buffer is too small
+  ##
+  ## As this is used internally to build serialization primitives
+  ## we assume that the buffer is properly-sized
+  ## and hence the result is discardable
   debug:
     doAssert dst.len >= BigInt.bits.ceilDiv_vartime(8), block:
       "BigInt -> Raw int conversion: destination buffer is too small\n" &
@@ -361,7 +121,7 @@ func marshal*(
   when BigInt.bits == 0:
     zeroMem(dst, dst.len)
 
-  dst.marshal(src.limbs, WordBitWidth, dstEndianness)
+  return dst.marshal(src.limbs, WordBitWidth, dstEndianness)
 
 {.pop.} # {.push raises: [].}
 

@@ -267,7 +267,7 @@ if __name__ == "__main__":
       f.write('\n\n')
       f.write(inspect.cleandoc(f"""
         import
-          ../config/curves,,
+          ../config/curves,
           ../io/[io_bigints, io_fields]
 
         # {curve} G1

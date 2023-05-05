@@ -12,7 +12,7 @@ import
   # 3rd party
   pkg/jsony,
   # Internals
-  ../constantine/platforms/codecs,
+  ../constantine/serialization/codecs,
   ../constantine/ethereum_evm_precompiles
 
 type

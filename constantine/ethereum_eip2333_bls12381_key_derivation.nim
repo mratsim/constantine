@@ -12,7 +12,8 @@ import
   ./math/config/[curves, type_ff],
   ./math/arithmetic/[bigints, limbs_montgomery],
   ./math/io/io_bigints,
-  ./platforms/[primitives, endians]
+  ./platforms/primitives,
+  ./serialization/endians
 
 # EIP2333: BLS12-381 Key Generation
 # ------------------------------------------------------------

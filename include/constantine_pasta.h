@@ -28,6 +28,12 @@ typedef __UINT64_TYPE__  uint64_t;
 #include <stdint.h>
 #endif
 
+#if defined(__STDC_VERSION__) && __STDC_VERSION__>=199901
+# define bool _Bool
+#else
+# define bool unsigned char
+#endif
+
 typedef size_t           secret_word;
 typedef size_t           secret_bool;
 typedef uint8_t          byte;
@@ -52,8 +58,8 @@ typedef struct { vesta_fp x, y, z; } vesta_ec_prj;
  */
 void ctt_pasta_init_NimMain(void);
 
-void        ctt_pallas_fr_unmarshalBE(pallas_fr* dst, const byte src[], ptrdiff_t src_len);
-void        ctt_pallas_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const pallas_fr* src);
+bool ctt_pallas_fr_unmarshalBE(pallas_fr* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
+bool ctt_pallas_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const pallas_fr* src) __attribute__((warn_unused_result));
 secret_bool ctt_pallas_fr_is_eq(const pallas_fr* a, const pallas_fr* b);
 secret_bool ctt_pallas_fr_is_zero(const pallas_fr* a);
 secret_bool ctt_pallas_fr_is_one(const pallas_fr* a);
@@ -83,8 +89,8 @@ void        ctt_pallas_fr_cset_one(pallas_fr* a, const secret_bool ctl);
 void        ctt_pallas_fr_cneg_in_place(pallas_fr* a, const secret_bool ctl);
 void        ctt_pallas_fr_cadd_in_place(pallas_fr* a, const pallas_fr* b, const secret_bool ctl);
 void        ctt_pallas_fr_csub_in_place(pallas_fr* a, const pallas_fr* b, const secret_bool ctl);
-void        ctt_pallas_fp_unmarshalBE(pallas_fp* dst, const byte src[], ptrdiff_t src_len);
-void        ctt_pallas_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const pallas_fp* src);
+bool ctt_pallas_fp_unmarshalBE(pallas_fp* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
+bool ctt_pallas_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const pallas_fp* src) __attribute__((warn_unused_result));
 secret_bool ctt_pallas_fp_is_eq(const pallas_fp* a, const pallas_fp* b);
 secret_bool ctt_pallas_fp_is_zero(const pallas_fp* a);
 secret_bool ctt_pallas_fp_is_one(const pallas_fp* a);
@@ -122,8 +128,8 @@ secret_bool ctt_pallas_fp_sqrt_if_square_in_place(pallas_fp* a);
 void        ctt_pallas_fp_sqrt_invsqrt(pallas_fp* sqrt, pallas_fp* invsqrt, const pallas_fp* a);
 secret_bool ctt_pallas_fp_sqrt_invsqrt_if_square(pallas_fp* sqrt, pallas_fp* invsqrt, const pallas_fp* a);
 secret_bool ctt_pallas_fp_sqrt_ratio_if_square(pallas_fp* r, const pallas_fp* u, const pallas_fp* v);
-void        ctt_vesta_fr_unmarshalBE(vesta_fr* dst, const byte src[], ptrdiff_t src_len);
-void        ctt_vesta_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const vesta_fr* src);
+bool ctt_vesta_fr_unmarshalBE(vesta_fr* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
+bool ctt_vesta_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const vesta_fr* src) __attribute__((warn_unused_result));
 secret_bool ctt_vesta_fr_is_eq(const vesta_fr* a, const vesta_fr* b);
 secret_bool ctt_vesta_fr_is_zero(const vesta_fr* a);
 secret_bool ctt_vesta_fr_is_one(const vesta_fr* a);
@@ -153,8 +159,8 @@ void        ctt_vesta_fr_cset_one(vesta_fr* a, const secret_bool ctl);
 void        ctt_vesta_fr_cneg_in_place(vesta_fr* a, const secret_bool ctl);
 void        ctt_vesta_fr_cadd_in_place(vesta_fr* a, const vesta_fr* b, const secret_bool ctl);
 void        ctt_vesta_fr_csub_in_place(vesta_fr* a, const vesta_fr* b, const secret_bool ctl);
-void        ctt_vesta_fp_unmarshalBE(vesta_fp* dst, const byte src[], ptrdiff_t src_len);
-void        ctt_vesta_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const vesta_fp* src);
+bool ctt_vesta_fp_unmarshalBE(vesta_fp* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
+bool ctt_vesta_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const vesta_fp* src) __attribute__((warn_unused_result));
 secret_bool ctt_vesta_fp_is_eq(const vesta_fp* a, const vesta_fp* b);
 secret_bool ctt_vesta_fp_is_zero(const vesta_fp* a);
 secret_bool ctt_vesta_fp_is_one(const vesta_fp* a);
