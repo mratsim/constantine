@@ -39,7 +39,6 @@
 ## in the blockchain consensus protocol, hence PopProve and PopVerify
 ## as defined in the IETF spec are not needed.
 
-const DST = "BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_"
 const prefix_ffi = "ctt_eth_bls_"
 
 # Dependencies exports for C FFI
@@ -91,6 +90,8 @@ export
 
   CttCodecScalarStatus,
   CttCodecEccStatus
+
+const DomainSeparationTag = asBytes"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_"
 
 # Protocol types
 # ------------------------------------------------------------------------------------------------
@@ -240,7 +241,7 @@ func sign*(signature: var Signature, secret_key: SecretKey, message: openArray[b
   ## Output:
   ## - `signature` is overwritten with `message` signed with `secretKey`
   ##   with the scheme
-  coreSign(signature.raw, secretKey.raw, message, sha256, 128, augmentation = "", DST)
+  coreSign(signature.raw, secretKey.raw, message, sha256, 128, augmentation = "", DomainSeparationTag)
 
 func verify*(public_key: PublicKey, message: openArray[byte], signature: Signature): CttBLSStatus {.libPrefix: prefix_ffi, genCharAPI.} =
   ## Check that a signature is valid for a message
@@ -266,7 +267,7 @@ func verify*(public_key: PublicKey, message: openArray[byte], signature: Signatu
   if bool(public_key.raw.isInf() or signature.raw.isInf()):
     return cttBLS_PointAtInfinity
 
-  let verified = coreVerify(public_key.raw, message, signature.raw, sha256, 128, augmentation = "", DST)
+  let verified = coreVerify(public_key.raw, message, signature.raw, sha256, 128, augmentation = "", DomainSeparationTag)
   if verified:
     return cttBLS_Success
   return cttBLS_VerificationFailure
@@ -328,7 +329,7 @@ func fast_aggregate_verify*(pubkeys: openArray[PublicKey], message: openArray[by
   let verified = fastAggregateVerify(
     pubkeys.unwrap(),
     message, aggregate_sig.raw,
-    sha256, 128, DST)
+    sha256, 128, DomainSeparationTag)
   if verified:
     return cttBLS_Success
   return cttBLS_VerificationFailure
@@ -372,7 +373,7 @@ func aggregate_verify*(pubkeys: ptr UncheckedArray[PublicKey],
     pubkeys.toOpenArray(len).unwrap(),
     messages.toOpenArray(len),
     aggregate_sig.raw,
-    sha256, 128, DST)
+    sha256, 128, DomainSeparationTag)
   if verified:
     return cttBLS_Success
   return cttBLS_VerificationFailure
@@ -415,7 +416,7 @@ func aggregate_verify*[Msg](pubkeys: openArray[PublicKey], messages: openArray[M
   let verified = aggregateVerify(
     pubkeys.unwrap(),
     messages, aggregate_sig.raw,
-    sha256, 128, DST)
+    sha256, 128, DomainSeparationTag)
   if verified:
     return cttBLS_Success
   return cttBLS_VerificationFailure
@@ -466,7 +467,7 @@ func batch_verify*[Msg](pubkeys: ptr UncheckedArray[PublicKey],
     pubkeys.toOpenArray(len).unwrap(),
     messages,
     signatures.toOpenArray(len).unwrap(),
-    sha256, 128, DST, secureRandomBytes)
+    sha256, 128, DomainSeparationTag, secureRandomBytes)
   if verified:
     return cttBLS_Success
   return cttBLS_VerificationFailure
@@ -516,7 +517,7 @@ func batch_verify*[Msg](pubkeys: openArray[PublicKey], messages: openarray[Msg],
     pubkeys.unwrap(),
     messages,
     signatures.unwrap(),
-    sha256, 128, DST, secureRandomBytes)
+    sha256, 128, DomainSeparationTag, secureRandomBytes)
   if verified:
     return cttBLS_Success
   return cttBLS_VerificationFailure

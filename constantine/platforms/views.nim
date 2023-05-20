@@ -24,10 +24,28 @@ template toOpenArray*[T](p: ptr UncheckedArray[T], len: int): openArray[T] =
 type View*[T] = object
   # TODO, use `lent UncheckedArray[T]` for proper borrow-checking - https://github.com/nim-lang/Nim/issues/21674
   data: ptr UncheckedArray[T]
-  len: int
+  len*: int
 
 template toOpenArray*[T](v: View[T]): openArray[T] =
   v.data.toOpenArray(0, v.len-1)
+
+func toView*[T](data: ptr UncheckedArray[T], len: int) {.inline.} =
+  View[T](data: data, len: len)
+
+func `[]`*[T](v: View[T], idx: int): lent T {.inline.} =
+  v.data[idx]
+
+type MutableView*[T] {.borrow: `.`.} = distinct View[T]
+
+template toOpenArray*[T](v: MutableView[T]): openArray[T] =
+  v.data.toOpenArray(0, v.len-1)
+
+func toMutableView*[T](data: ptr UncheckedArray[T], len: int) {.inline.} =
+  View[T](data: data, len: len)
+func `[]`*[T](v: MutableView[T], idx: int): var T {.inline.} =
+  v.data[idx]
+func `[]=`*[T](v: MutableView[T], idx: int, val: T) {.inline.} =
+  v.data[idx] = val
 
 # Binary blob API
 # ---------------------------------------------------------

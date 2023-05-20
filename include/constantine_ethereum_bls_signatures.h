@@ -96,15 +96,15 @@ static const char* ctt_eth_bls_status_to_string(ctt_eth_bls_status status) {
 
 typedef enum __attribute__((__packed__)) {
     cttCodecScalar_Success,
-    cttCodecScalar_ScalarLargerThanCurveOrder,
     cttCodecScalar_Zero,
+    cttCodecScalar_ScalarLargerThanCurveOrder,
 } ctt_codec_scalar_status;
 
 static const char* ctt_codec_scalar_status_to_string(ctt_codec_scalar_status status) {
   static const char* const statuses[] = {
     "cttCodecScalar_Success",
-    "cttCodecScalar_ScalarLargerThanCurveOrder",
     "cttCodecScalar_Zero",
+    "cttCodecScalar_ScalarLargerThanCurveOrder",
   };
   size_t length = sizeof statuses / sizeof *statuses;
   if (0 <= status && status < length) {

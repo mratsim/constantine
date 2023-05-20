@@ -138,7 +138,7 @@ func unmarshal*[T](
         dst: var openArray[T],
         src: openarray[byte],
         wordBitWidth: static int,
-        srcEndianness: static Endianness): bool {.inline.} =
+        srcEndianness: static Endianness): bool {.inline, discardable.} =
   ## Parse an unsigned integer from its canonical
   ## big-endian or little-endian unsigned representation
   ##
@@ -316,7 +316,7 @@ func marshal*[T](
         dst: var openArray[byte],
         src: openArray[T],
         wordBitWidth: static int,
-        dstEndianness: static Endianness): bool {.inline.} =
+        dstEndianness: static Endianness): bool {.inline, discardable.} =
   ## Serialize a bigint into its canonical big-endian or little endian
   ## representation.
   ##

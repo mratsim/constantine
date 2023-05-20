@@ -35,9 +35,6 @@ func random_bigint*(rng: var RngState, curve: static Curve, gen: static RandomGe
   else:
     rng.random_long01Seq(matchingBigInt(curve))
 
-# debug
-import std/strutils
-
 proc testRoundtrip(curve: static Curve, gen: static RandomGen) =
   const bits = curve.getCurveBitwidth()
   const Excess = 2

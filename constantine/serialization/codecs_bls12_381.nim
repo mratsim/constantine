@@ -51,8 +51,8 @@ import
 type
   CttCodecScalarStatus* = enum
     cttCodecScalar_Success
-    cttCodecScalar_ScalarLargerThanCurveOrder
     cttCodecScalar_Zero
+    cttCodecScalar_ScalarLargerThanCurveOrder
 
   CttCodecEccStatus* = enum
     cttCodecEcc_Success
@@ -62,9 +62,9 @@ type
     cttCodecEcc_PointNotInSubgroup
     cttCodecEcc_PointAtInfinity
 
-  Scalar = matchingOrderBigInt(BLS12_381)
-  G1P = ECP_ShortW_Aff[Fp[BLS12_381], G1]
-  G2P = ECP_ShortW_Aff[Fp2[BLS12_381], G2]
+  Scalar* = matchingOrderBigInt(BLS12_381)
+  G1P* = ECP_ShortW_Aff[Fp[BLS12_381], G1]
+  G2P* = ECP_ShortW_Aff[Fp2[BLS12_381], G2]
 
 
 # Input validation
@@ -118,7 +118,7 @@ func deserialize_scalar*(dst: var Scalar, src: array[32, byte]): CttCodecScalarS
   ## This is protected against side-channel unless the scalar is invalid.
   ## In that case it will leak whether it's all zeros or larger than the curve order.
   ##
-  ## Warning: this leaks a 0 scalar as this is a special-case in most protocols
+  ## This special-cases (and leaks) 0 scalar as this is a special-case in most protocols
   ## or completely invalid (for secret keys).
   dst.unmarshal(src, bigEndian)
   let status = validate_scalar(dst)

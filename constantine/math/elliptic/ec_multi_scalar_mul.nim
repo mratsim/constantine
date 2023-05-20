@@ -444,6 +444,16 @@ func multiScalarMul_dispatch_vartime[bits: static int, F, G](
 
 func multiScalarMul_vartime*[bits: static int, F, G](
        r: var ECP_ShortW[F, G],
+       coefs: ptr UncheckedArray[BigInt[bits]],
+       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
+       N: int) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
+  ## Multiscalar multiplication:
+  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
+
+  multiScalarMul_dispatch_vartime(r, coefs, points, len)
+
+func multiScalarMul_vartime*[bits: static int, F, G](
+       r: var ECP_ShortW[F, G],
        coefs: openArray[BigInt[bits]],
        points: openArray[ECP_ShortW_Aff[F, G]]) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
   ## Multiscalar multiplication:
