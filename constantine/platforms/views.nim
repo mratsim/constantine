@@ -47,6 +47,173 @@ func `[]`*[T](v: MutableView[T], idx: int): var T {.inline.} =
 func `[]=`*[T](v: MutableView[T], idx: int, val: T) {.inline.} =
   v.data[idx] = val
 
+# StridedView type
+# ---------------------------------------------------------
+# using the borrow checker with `lent` requires a recent Nim
+# https://github.com/nim-lang/Nim/issues/21674
+
+type
+  StridedView*[T] = object
+    ## A strided view over an (unowned) data buffer
+    len*: int
+    stride: int
+    offset: int
+    data: ptr UncheckedArray[T]
+
+func `[]`*[T](v: StridedView[T], idx: int): lent T {.inline.} =
+  v.data[v.offset + idx*v.stride]
+
+func `[]`*[T](v: var StridedView[T], idx: int): var T {.inline.} =
+  v.data[v.offset + idx*v.stride]
+
+func `[]=`*[T](v: var StridedView[T], idx: int, val: T) {.inline.} =
+  v.data[v.offset + idx*v.stride] = val
+
+func toStridedView*[T](oa: openArray[T]): StridedView[T] {.inline.} =
+  result.len = oa.len
+  result.stride = 1
+  result.offset = 0
+  result.data = cast[ptr UncheckedArray[T]](oa[0].unsafeAddr)
+
+func toStridedView*[T](p: ptr UncheckedArray[T], len: int): StridedView[T] {.inline.} =
+  result.len = len
+  result.stride = 1
+  result.offset = 0
+  result.data = p
+
+iterator items*[T](v: StridedView[T]): lent T =
+  var cur = v.offset
+  for _ in 0 ..< v.len:
+    yield v.data[cur]
+    cur += v.stride
+
+func `$`*(v: StridedView): string =
+  result = "StridedView["
+  var first = true
+  for elem in v:
+    if not first:
+      result &= ", "
+    else:
+      first = false
+    result &= $elem
+  result &= ']'
+
+func toHex*(v: StridedView): string =
+  mixin toHex
+
+  result = "StridedView["
+  var first = true
+  for elem in v:
+    if not first:
+      result &= ", "
+    else:
+      first = false
+    result &= elem.toHex()
+  result &= ']'
+
+# FFT-specific splitting
+# -------------------------------------------------------------------------------
+
+func splitAlternate*(t: StridedView): tuple[even, odd: StridedView] {.inline.} =
+  ## Split the tensor into 2
+  ## partitioning the input every other index
+  ## even: indices [0, 2, 4, ...]
+  ## odd: indices [ 1, 3, 5, ...]
+  assert (t.len and 1) == 0, "The tensor must contain an even number of elements"
+
+  let half = t.len shr 1
+  let skipHalf = t.stride shl 1
+
+  result.even.len = half
+  result.even.stride = skipHalf
+  result.even.offset = t.offset
+  result.even.data = t.data
+
+  result.odd.len = half
+  result.odd.stride = skipHalf
+  result.odd.offset = t.offset + t.stride
+  result.odd.data = t.data
+
+func splitMiddle*(t: StridedView): tuple[left, right: StridedView] {.inline.} =
+  ## Split the tensor into 2
+  ## partitioning into left and right halves.
+  ## left:  indices [0, 1, 2, 3]
+  ## right: indices  [4, 5, 6, 7]
+  assert (t.len and 1) == 0, "The tensor must contain an even number of elements"
+
+  let half = t.len shr 1
+
+  result.left.len = half
+  result.left.stride = t.stride
+  result.left.offset = t.offset
+  result.left.data = t.data
+
+  result.right.len = half
+  result.right.stride = t.stride
+  result.right.offset = t.offset + half
+  result.right.data = t.data
+
+func skipHalf*(t: StridedView): StridedView {.inline.} =
+  ## Pick one every other indices
+  ## output: [0, 2, 4, ...]
+  assert (t.len and 1) == 0, "The tensor must contain an even number of elements"
+
+  result.len = t.len shr 1
+  result.stride = t.stride shl 1
+  result.offset = t.offset
+  result.data = t.data
+
+func slice*(v: StridedView, start, stop, step: int): StridedView {.inline.} =
+  ## Slice a view
+  ## stop is inclusive
+  # General tensor slicing algorithm is
+  # https://github.com/mratsim/Arraymancer/blob/71cf616/src/arraymancer/tensor/private/p_accessors_macros_read.nim#L26-L56
+  #
+  # for i, slice in slices:
+  #   # Check if we start from the end
+  #   let a = if slice.a_from_end: result.shape[i] - slice.a
+  #           else: slice.a
+  #
+  #   let b = if slice.b_from_end: result.shape[i] - slice.b
+  #           else: slice.b
+  #
+  #   # Compute offset:
+  #   result.offset += a * result.strides[i]
+  #   # Now change shape and strides
+  #   result.strides[i] *= slice.step
+  #   result.shape[i] = abs((b-a) div slice.step) + 1
+  #
+  # with slices being of size 1, as we have a monodimensional Tensor
+  # and the slice being a..<b with the reverse case: len-1 -> 0
+  #
+  # result is preinitialized with a copy of v (shape, stride, offset, data)
+  result.offset = v.offset + start * v.stride
+  result.stride = v.stride * step
+  result.len = abs((stop-start) div step) + 1
+  result.data = v.data
+
+func reversed*(v: StridedView): StridedView {.inline.} =
+  # Hopefully the compiler optimizes div by -1
+  v.slice(v.len-1, 0, -1)
+
+# Debugging helpers
+# ---------------------------------------------------------
+
+when defined(debugConstantine):
+  import std/[strformat, strutils]
+
+  func display*[F](name: string, indent: int, oa: openArray[F]) =
+    debugEcho strutils.indent(name & ", openarray of " & $F & " of length " & $oa.len, indent)
+    for i in 0 ..< oa.len:
+      debugEcho strutils.indent(&"    {i:>2}: {oa[i].toHex()}", indent)
+    debugEcho strutils.indent(name & "  " & $F & " -- FIN\n", indent)
+
+  func display*[F](name: string, indent: int, v: StridedView[F]) =
+    debugEcho strutils.indent(name & ", view of " & $F & " of length " & $v.len, indent)
+    for i in 0 ..< v.len:
+      debugEcho strutils.indent(&"    {i:>2}: {v[i].toHex()}", indent)
+    debugEcho strutils.indent(name & "  " & $F & " -- FIN\n", indent)
+
 # Binary blob API
 # ---------------------------------------------------------
 #

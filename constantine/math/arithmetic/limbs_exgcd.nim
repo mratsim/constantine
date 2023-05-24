@@ -742,7 +742,7 @@ func batchedDivsteps_vartime(
 
   while true:
     # Count zeros up to bitsLeft and process a batch of divsteps up to that number
-    let zeros = (g.BaseType or (1.BaseType shl bitsLeft)).countTrailingZeroBits_vartime()
+    let zeros = (BaseType(g) or (BaseType(1) shl bitsLeft)).countTrailingZeroBits_vartime()
     g = g shr zeros
     u = u shl zeros
     v = v shl zeros

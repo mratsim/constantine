@@ -645,9 +645,16 @@ func `-=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Aff) {.inline.} =
   nQ.neg(Q)
   P.madd(P, nQ)
 
+# Conversions
+# -----------
+
 template affine*[F, G](_: type ECP_ShortW_Jac[F, G]): typedesc =
   ## Returns the affine type that corresponds to the Jacobian type input
   ECP_ShortW_Aff[F, G]
+
+template jacobian*[F, G](_: type ECP_ShortW_Aff[F, G]): typedesc =
+  ## Returns the jacobian type that corresponds to the affine type input
+  ECP_ShortW_Jac[F, G]
 
 func affine*[F; G](
        aff: var ECP_ShortW_Aff[F, G],

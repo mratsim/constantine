@@ -192,8 +192,6 @@ proc init*(T: type FFTDescriptor, maxScale: uint8): T =
 #
 # ############################################################
 
-{.experimental: "views".}
-
 when isMainModule:
   import
     std/[times, monotimes, strformat],

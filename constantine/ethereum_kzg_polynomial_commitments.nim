@@ -50,7 +50,7 @@ const BYTES_PER_FIELD_ELEMENT = 32
 # Presets
 # ------------------------------------------------------------
 
-const FIELD_ELEMENTS_PER_BLOB = 4096
+const FIELD_ELEMENTS_PER_BLOB {.intdefine.} = 4096
 const FIAT_SHAMIR_PROTOCOL_DOMAIN = asBytes"FSBLOBVERIFY_V1_"
 const RANDOM_CHALLENGE_KZG_BATCH_DOMAIN = asBytes"RCKZGBATCH___V1_"
 
