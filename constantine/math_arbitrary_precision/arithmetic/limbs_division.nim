@@ -6,7 +6,9 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import ../../platforms/abstractions
+import
+  ../../platforms/abstractions,
+  ./limbs_views
 
 # No exceptions allowed
 {.push raises: [].}
@@ -21,107 +23,6 @@ import ../../platforms/abstractions
 # and given that reductions are not in hot path in Constantine
 # we use type-erased procedures, instead of instantiating
 # one per number of limbs combination
-
-# Type-erasure
-# ------------------------------------------------------------
-
-type
-  LimbsView = ptr UncheckedArray[SecretWord]
-    ## Type-erased fixed-precision limbs
-    ##
-    ## This type mirrors the Limb type and is used
-    ## for some low-level computation API
-    ## This design
-    ## - avoids code bloat due to generic monomorphization
-    ##   otherwise limbs routines would have an instantiation for
-    ##   each number of words.
-    ##
-    ## Accesses should be done via BigIntViewConst / BigIntViewConst
-    ## to have the compiler check for mutability
-
-  # "Indirection" to enforce pointer types deep immutability
-  LimbsViewConst = distinct LimbsView
-    ## Immutable view into the limbs of a BigInt
-  LimbsViewMut = distinct LimbsView
-    ## Mutable view into a BigInt
-  LimbsViewAny = LimbsViewConst or LimbsViewMut
-
-# Deep Mutability safety
-# ------------------------------------------------------------
-
-template view(a: Limbs): LimbsViewConst =
-  ## Returns a borrowed type-erased immutable view to a bigint
-  LimbsViewConst(cast[LimbsView](a.unsafeAddr))
-
-template view(a: var Limbs): LimbsViewMut =
-  ## Returns a borrowed type-erased mutable view to a mutable bigint
-  LimbsViewMut(cast[LimbsView](a.addr))
-
-template `[]`*(v: LimbsViewConst, limbIdx: int): SecretWord =
-  LimbsView(v)[limbIdx]
-
-template `[]`*(v: LimbsViewMut, limbIdx: int): var SecretWord =
-  LimbsView(v)[limbIdx]
-
-template `[]=`*(v: LimbsViewMut, limbIdx: int, val: SecretWord) =
-  LimbsView(v)[limbIdx] = val
-
-# Copy
-# ------------------------------------------------------------
-
-func copyWords(
-       a: LimbsViewMut, startA: int,
-       b: LimbsViewAny, startB: int,
-       numWords: int
-     ) =
-  ## Copy a slice of B into A. This properly deals
-  ## with overlaps when A and B are slices of the same buffer
-  if startA > startB:
-    for i in countdown(numWords-1, 0):
-      a[startA+i] = b[startB+i]
-  else:
-    for i in 0 ..< numWords:
-      a[startA+i] = b[startB+i]
-
-# Type-erased add-sub
-# ------------------------------------------------------------
-
-func cadd(a: LimbsViewMut, b: LimbsViewAny, ctl: SecretBool, len: int): Carry =
-  ## Type-erased conditional addition
-  ## Returns the carry
-  ##
-  ## if ctl is true: a <- a + b
-  ## if ctl is false: a <- a
-  ## The carry is always computed whether ctl is true or false
-  ##
-  ## Time and memory accesses are the same whether a copy occurs or not
-  result = Carry(0)
-  var sum: SecretWord
-  for i in 0 ..< len:
-    addC(result, sum, a[i], b[i], result)
-    ctl.ccopy(a[i], sum)
-
-func csub(a: LimbsViewMut, b: LimbsViewAny, ctl: SecretBool, len: int): Borrow =
-  ## Type-erased conditional addition
-  ## Returns the borrow
-  ##
-  ## if ctl is true: a <- a - b
-  ## if ctl is false: a <- a
-  ## The borrow is always computed whether ctl is true or false
-  ##
-  ## Time and memory accesses are the same whether a copy occurs or not
-  result = Borrow(0)
-  var diff: SecretWord
-  for i in 0 ..< len:
-    subB(result, diff, a[i], b[i], result)
-    ctl.ccopy(a[i], diff)
-
-# Modular reduction
-# ------------------------------------------------------------
-
-func numWordsFromBits(bits: int): int {.inline.} =
-  const divShiftor = log2_vartime(uint32(WordBitWidth))
-  result = (bits + WordBitWidth - 1) shr divShiftor
 
 func shlAddMod_estimate(a: LimbsViewMut, aLen: int,
                         c: SecretWord, M: LimbsViewConst, mBits: int
@@ -190,10 +91,7 @@ func shlAddMod_estimate(a: LimbsViewMut, aLen: int,
       subB(borrow, a[i], a[i], qp_lo, Borrow(0))
       carry += SecretWord(borrow) # Adjust if borrow
 
-    over_p = mux(
-              a[i] == M[i], over_p,
-              a[i] > M[i]
-            )
+    over_p = mux(a[i] == M[i], over_p, a[i] > M[i])
 
   # Fix quotient, the true quotient is either q-1, q or q+1
   #

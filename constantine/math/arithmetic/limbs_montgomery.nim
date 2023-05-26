@@ -46,7 +46,7 @@ when UseASM_X86_64:
 #   to save on code size.
 
 # No exceptions allowed
-{.push raises: [].}
+{.push raises: [], checks: off.}
 
 # Montgomery Reduction
 # ------------------------------------------------------------
@@ -570,7 +570,7 @@ func fromMont*(r: var Limbs, a, M: Limbs,
   ## with W = M.len
   ## and R = (2^WordBitWidth)^W
   ##
-  ## Does "a * R^-1 (mod M)"
+  ## Does "a * R^-1 (mod M)" = montMul(a, 1)
   ##
   ## This is called a Montgomery Reduction
   ## The Montgomery Magic Constant is µ = -1/N mod M

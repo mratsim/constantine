@@ -39,7 +39,7 @@ func invsqrt_p3mod4(r: var Fp, a: Fp) =
   # Algorithm
   #
   #
-  # From Euler's criterion: 
+  # From Euler's criterion:
   #    𝛘(a) = a^((p-1)/2)) ≡ 1 (mod p) if square
   # a^((p-1)/2)) * a^-1 ≡ 1/a  (mod p)
   # a^((p-3)/2))        ≡ 1/a  (mod p)
@@ -106,7 +106,7 @@ func invsqrt_p5mod8(r: var Fp, a: Fp) =
   # and α = (β/2a)⁽¹⸍²⁾= (2a)^(((p-1)/4 - 1)/2) = (2a)^((p-5)/8)
   static: doAssert Fp.C.has_P_5mod8_primeModulus()
   var alpha{.noInit.}, beta{.noInit.}: Fp
-  
+
   # α = (2a)^((p-5)/8)
   alpha.double(a)
   beta = alpha
@@ -120,12 +120,12 @@ func invsqrt_p5mod8(r: var Fp, a: Fp) =
   # β = 2aα²
   r.square(alpha)
   beta *= r
-  
+
   # √a = αa(β − 1), so 1/√a = α(β − 1)
   r.setOne()
   beta -= r
   r.prod(alpha, beta)
-  
+
 
 # Specialized routines for addchain-based square roots
 # ------------------------------------------------------------
@@ -299,9 +299,9 @@ func isSquare*(a: Fp): SecretBool =
 func sqrt_ratio_if_square*(r: var Fp, u, v: Fp): SecretBool {.inline.} =
   ## If u/v is a square, compute √(u/v)
   ## if not, the result is undefined
-  ## 
+  ##
   ## r must not alias u or v
-  ## 
+  ##
   ## The square root, if it exist is multivalued,
   ## i.e. both (u/v)² == (-u/v)²
   ## This procedure returns a deterministic result
