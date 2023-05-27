@@ -730,9 +730,8 @@ func powMont*(
        M, one: Limbs,
        m0ninv: BaseType,
        scratchspace: var openarray[Limbs],
-       spareBits: static int
-      ) =
-  ## Modular exponentiation r = a^exponent mod M
+       spareBits: static int) =
+  ## Modular exponentiation a <- a^exponent (mod M)
   ## in the Montgomery domain
   ##
   ## This uses fixed-window optimization if possible
@@ -791,7 +790,7 @@ func powMont*(
     scratchspace[0].mulMont(a, scratchspace[1], M, m0ninv, spareBits)
     a.ccopy(scratchspace[0], SecretWord(bits).isNonZero())
 
-func powMontUnsafeExponent*(
+func powMont_vartime*(
        a: var Limbs,
        exponent: openarray[byte],
        M, one: Limbs,
@@ -799,7 +798,7 @@ func powMontUnsafeExponent*(
        scratchspace: var openarray[Limbs],
        spareBits: static int
       ) =
-  ## Modular exponentiation r = a^exponent mod M
+  ## Modular exponentiation a <- a^exponent (mod M)
   ## in the Montgomery domain
   ##
   ## Warning ⚠️ :

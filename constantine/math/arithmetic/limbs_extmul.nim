@@ -36,6 +36,7 @@ when UseASM_X86_64:
 
 func prod_comba[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) =
   ## Extended precision multiplication
+  ## `r` must not alias ``a`` or ``b``
   # We use Product Scanning / Comba multiplication
   var t, u, v = Zero
   const stopEx = min(a.len+b.len, r.len)
@@ -59,7 +60,7 @@ func prod_comba[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen]
     for i in aLen+bLen ..< rLen:
       r[i] = Zero
 
-func prod*[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) {.inline.} =
+func prod*[rLen, aLen, bLen: static int](r{.noalias.}: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) {.inline.} =
   ## Multi-precision multiplication
   ## r <- a*b
   ##

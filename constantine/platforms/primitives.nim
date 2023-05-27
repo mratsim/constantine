@@ -82,7 +82,7 @@ func ceilDiv_vartime*(a, b: auto): auto {.inline.} =
 #
 # ############################################################
 
-func setZero*[N](a: var array[N, SomeNumber]){.inline.} =
+func setZero*(a: var openArray[SomeNumber]){.inline.} =
   for i in 0 ..< a.len:
     a[i] = 0
 

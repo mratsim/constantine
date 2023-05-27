@@ -211,4 +211,4 @@ proc powUnsafeBench*(T: typedesc, iters: int) =
   let exponent = rng.random_unsafe(BigInt[T.C.getCurveOrderBitwidth()])
   bench("Exp curve order (Leak exponent bits) - " & $exponent.bits & "-bit", T, iters):
     var r = x
-    r.powUnsafeExponent(exponent)
+    r.pow_vartime(exponent)

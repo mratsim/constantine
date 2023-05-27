@@ -104,7 +104,7 @@ func powMont*[mBits: static int](
   var scratchSpace {.noInit.}: array[scratchLen, Limbs[mBits.wordsRequired]]
   powMont(a.limbs, exponent, M.limbs, one.limbs, negInvModWord, scratchSpace, spareBits)
 
-func powMontUnsafeExponent*[mBits: static int](
+func powMont_vartime*[mBits: static int](
        a: var BigInt[mBits], exponent: openarray[byte],
        M, one: BigInt[mBits], negInvModWord: BaseType, windowSize: static int,
        spareBits: static int
@@ -126,7 +126,7 @@ func powMontUnsafeExponent*[mBits: static int](
   const scratchLen = if windowSize == 1: 2
                      else: (1 shl windowSize) + 1
   var scratchSpace {.noInit.}: array[scratchLen, Limbs[mBits.wordsRequired]]
-  powMontUnsafeExponent(a.limbs, exponent, M.limbs, one.limbs, negInvModWord, scratchSpace, spareBits)
+  powMont_vartime(a.limbs, exponent, M.limbs, one.limbs, negInvModWord, scratchSpace, spareBits)
 
 func powMont*[mBits, eBits: static int](
        a: var BigInt[mBits], exponent: BigInt[eBits],
@@ -147,7 +147,7 @@ func powMont*[mBits, eBits: static int](
 
   powMont(a, expBE, M, one, negInvModWord, windowSize, spareBits)
 
-func powMontUnsafeExponent*[mBits, eBits: static int](
+func powMont_vartime*[mBits, eBits: static int](
        a: var BigInt[mBits], exponent: BigInt[eBits],
        M, one: BigInt[mBits], negInvModWord: BaseType, windowSize: static int,
        spareBits: static int
@@ -168,7 +168,7 @@ func powMontUnsafeExponent*[mBits, eBits: static int](
   var expBE {.noInit.}: array[ebits.ceilDiv_vartime(8), byte]
   expBE.marshal(exponent, bigEndian)
 
-  powMontUnsafeExponent(a, expBE, M, one, negInvModWord, windowSize, spareBits)
+  powMont_vartime(a, expBE, M, one, negInvModWord, windowSize, spareBits)
 
 {.pop.} # inline
 {.pop.} # raises no exceptions

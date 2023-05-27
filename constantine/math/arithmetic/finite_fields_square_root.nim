@@ -49,7 +49,7 @@ func invsqrt_p3mod4(r: var Fp, a: Fp) =
     r.invsqrt_addchain(a)
   else:
     r = a
-    r.powUnsafeExponent(Fp.getPrimeMinus3div4_BE())
+    r.pow_vartime(Fp.getPrimeMinus3div4_BE())
 
 # Specialized routine for p ≡ 5 (mod 8)
 # ------------------------------------------------------------
@@ -113,7 +113,7 @@ func invsqrt_p5mod8(r: var Fp, a: Fp) =
   when Fp.C.hasSqrtAddchain():
     alpha.invsqrt_addchain_pminus5over8(alpha)
   else:
-    alpha.powUnsafeExponent(Fp.getPrimeMinus5div8_BE())
+    alpha.pow_vartime(Fp.getPrimeMinus5div8_BE())
 
   # Note: if r aliases a, for inverse square root we don't use `a` again
 
@@ -140,7 +140,7 @@ func precompute_tonelli_shanks(a_pre_exp: var Fp, a: Fp) =
     a_pre_exp.precompute_tonelli_shanks_addchain(a)
   else:
     a_pre_exp = a
-    a_pre_exp.powUnsafeExponent(Fp.C.tonelliShanks(exponent))
+    a_pre_exp.pow_vartime(Fp.C.tonelliShanks(exponent))
 
 func invsqrt_tonelli_shanks_pre(
        invsqrt: var Fp,

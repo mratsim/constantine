@@ -309,7 +309,7 @@ func powMont*(
     s0.mulMont_FIPS(a, s1, M, m0ninv, mBits)
     a.ccopyWords(0, s0, 0, SecretWord(bits).isNonZero(), N)
 
-func powMontUnsafeExponent*(
+func powMont_vartime*(
        a: LimbsViewMut,
        exponent: openarray[byte],
        M, one: LimbsViewConst,
@@ -317,7 +317,7 @@ func powMontUnsafeExponent*(
        scratchspace: LimbsViewMut,
        scratchLen: int,
        mBits: int) =
-  ## Modular exponentiation r = a^exponent mod M
+  ## Modular exponentiation a <- a^exponent (mod M)
   ## in the Montgomery domain
   ##
   ## Warning ⚠️ :

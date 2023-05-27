@@ -1,0 +1,44 @@
+# Constantine
+# Copyright (c) 2018-2019    Status Research & Development GmbH
+# Copyright (c) 2020-Present Mamy André-Ratsimbazafy
+# Licensed and distributed under either of
+#   * MIT license (license terms in the root directory or at http://opensource.org/licenses/MIT).
+#   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
+# at your option. This file may not be copied, modified, or distributed except according to those terms.
+
+import
+  # Internal
+  ../../platforms/[abstractions, allocs]
+
+func prod_comba(r: var openArray[SecretWord], a, b: openArray[SecretWord]) {.noInline, tags: [Alloca].} =
+  ## Extended precision multiplication
+  # We use Product Scanning / Comba multiplication
+  var t, u, v = Zero
+  let stopEx = min(a.len+b.len, r.len)
+
+  let tmp = allocStackArray(SecretWord, a.len+b.len)
+
+  for i in 0 ..< stopEx:
+    # Invariant for product scanning:
+    # if we multiply accumulate by a[k1] * b[k2]
+    # we have k1+k2 == i
+    let ib = min(b.len-1, i)
+    let ia = i - ib
+    for j in  0 ..< min(a.len - ia, ib+1):
+      mulAcc(t, u, v, a[ia+j], b[ib-j])
+
+    tmp[i] = v
+    if i < stopEx-1:
+      v = u
+      u = t
+      t = Zero
+
+  for i in 0 ..< a.len+b.len:
+    r[i] = tmp[i]
+
+  for i in a.len+b.len ..< r.len:
+    r[i] = Zero
+
+func prod*(r: var openArray[SecretWord], a, b: openArray[SecretWord]) {.inline.}=
+  ## Extended precision multiplication
+  r.prod_comba(a, b)

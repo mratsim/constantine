@@ -101,7 +101,7 @@ func powSquarings[F](
 
   return (k, bits)
 
-func powUnsafeExponent[F](
+func pow_vartime[F](
        a: var F,
        exponent: openArray[byte],
        scratchspace: var openArray[F]) =
@@ -136,7 +136,7 @@ func powUnsafeExponent[F](
         scratchspace[0].prod(a, scratchspace[1])
       a = scratchspace[0]
 
-func powUnsafeExponent*[F](
+func pow_vartime*[F](
        a: var F,
        exponent: openArray[byte],
        window: static int
@@ -159,9 +159,9 @@ func powUnsafeExponent*[F](
   const scratchLen = if window == 1: 2
                      else: (1 shl window) + 1
   var scratchSpace {.noInit.}: array[scratchLen, typeof(a)]
-  a.powUnsafeExponent(exponent, scratchspace)
+  a.pow_vartime(exponent, scratchspace)
 
-func powUnsafeExponent*[F; bits: static int](
+func pow_vartime*[F; bits: static int](
        a: var F,
        exponent: BigInt[bits],
        window: static int
@@ -183,4 +183,4 @@ func powUnsafeExponent*[F; bits: static int](
   ## - timing analysis
   var expBE {.noInit.}: array[bits.ceilDiv_vartime(8), byte]
   expBE.marshal(exponent, bigEndian)
-  a.powUnsafeExponent(expBE, window)
+  a.pow_vartime(expBE, window)

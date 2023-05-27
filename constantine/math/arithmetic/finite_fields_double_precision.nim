@@ -22,7 +22,7 @@ type FpDbl*[C: static Curve] = object
   ## Double-precision Fp element
   ## A FpDbl is a partially-reduced double-precision element of Fp
   ## The allowed range is [0, 2ⁿp)
-  ## with n = w*WordBitSize
+  ## with n = w*WordBitWidth
   ## and w the number of words necessary to represent p on the machine.
   ## Concretely a 381-bit p needs 6*64 bits limbs (hence 384 bits total)
   ## and so FpDbl would 768 bits.
