@@ -772,8 +772,7 @@ func powMont*(
       a, exponent, M, m0ninv,
       scratchspace[0], window,
       acc, acc_len, e,
-      spareBits
-    )
+      spareBits)
 
     # Window lookup: we set scratchspace[1] to the lookup value.
     # If the window length is 1, then it's already set.
@@ -820,8 +819,7 @@ func powMont_vartime*(
       a, exponent, M, m0ninv,
       scratchspace[0], window,
       acc, acc_len, e,
-      spareBits
-    )
+      spareBits)
 
     ## Warning ⚠️: Exposes the exponent bits
     if bits != 0:

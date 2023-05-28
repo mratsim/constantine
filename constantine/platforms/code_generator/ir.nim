@@ -161,10 +161,7 @@ func negInvModWord[T](M: BigNum[T]): T =
   ##
   ## µ ≡ -1/M[0] (mod 2^64)
   checkValidModulus(M)
-
-  result = invModBitwidth(M.limbs[0])
-  # negate to obtain the negative inverse
-  result = not(result) + 1
+  return M.limbs[0].negInvModWord()
 
 # ############################################################
 #

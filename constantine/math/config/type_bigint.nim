@@ -36,11 +36,11 @@ debug:
     result[0] = '0'
     result[1] = 'x'
     var a = a
-    for j in countdown(result.len-1, 0):
+    for j in countdown(result.len-1, 2):
       result[j] = hexChars.secretLookup(a and SecretWord 0xF)
       a = a shr 4
 
-  func toString*(a: Limbs): string =
+  func toString*(a: openArray[SecretWord]): string =
     result = "["
     result.add " " & toHex(a[0])
     for i in 1 ..< a.len:

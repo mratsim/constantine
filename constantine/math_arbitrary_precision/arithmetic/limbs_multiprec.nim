@@ -29,6 +29,39 @@ func neg*(a: var openArray[SecretWord]) =
   for i in 1 ..< a.len:
     addC(carry, a[i], not(a[i]), Zero, carry)
 
+func addMP*(r {.noAlias.}: var openArray[SecretWord], a, b: openArray[SecretWord]): bool =
+  ## r <- a + b
+  ##   and
+  ## returns the carry
+  ##
+  ## Requirements:
+  ## - r.len >= a.len
+  ## - r.len >= b.len
+
+  debug:
+    doAssert r.len >= a.len
+    doAssert r.len >= b.len
+
+  if a.len < b.len:
+    return r.addMP(b, a)
+
+  let minLen = b.len
+  let maxLen = a.len
+
+  var carry = Carry(0)
+  for i in 0 ..< minLen:
+    addC(carry, r[i], a[i], b[i], carry)
+  for i in minLen ..< maxLen:
+    addC(carry, r[i], a[i], Zero, carry)
+
+  if maxLen < r.len:
+    r[maxLen] = SecretWord(carry)
+    for i in maxLen+1 ..< r.len:
+      r[i] = Zero
+    return false # the rest cannot carry
+  else:
+    return bool carry
+
 func subMP*(r {.noAlias.}: var openArray[SecretWord], a, b: openArray[SecretWord]): bool =
   ## r <- a - b
   ##   and

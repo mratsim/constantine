@@ -79,6 +79,8 @@ func powMod2k_vartime*(
   ## - r and a don't alias
 
   # TODO window method
+  # TODO Euler totient φ(2ᵏ) = 2ᵏ⁻¹, hence we can do "exponent mod (2ᵏ⁻¹)"
+  # with a left to right exponentiation
 
   for i in 0 ..< r.len:
     r[i] = Zero

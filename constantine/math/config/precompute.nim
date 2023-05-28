@@ -287,6 +287,10 @@ func invModBitwidth*[T: SomeUnsignedInt](a: T): T =
   for _ in 0 ..< k:          # at each iteration we get the inverse mod(2^2k)
     result *= 2 - a * result # x' = x(2 - ax)
 
+func negInvModWord*[T: SomeUnsignedInt or SecretWord](a: T): T =
+  let t = invModBitwidth(BaseType a)
+  return T(-SecretWord(t))
+
 func negInvModWord*(M: BigInt): BaseType =
   ## Returns the Montgomery domain magic constant for the input modulus:
   ##
@@ -299,10 +303,7 @@ func negInvModWord*(M: BigInt): BaseType =
   ##
   ## µ ≡ -1/M[0] (mod 2^64)
   checkValidModulus(M)
-
-  result = invModBitwidth(BaseType M.limbs[0])
-  # negate to obtain the negative inverse
-  result = not(result) + 1
+  return BaseType M.limbs[0].negInvModWord()
 
 func r_powmod(n: static int, M: BigInt): BigInt =
   ## Returns the Montgomery domain magic constant for the input modulus:

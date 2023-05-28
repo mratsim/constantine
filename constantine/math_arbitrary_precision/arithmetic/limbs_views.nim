@@ -46,6 +46,14 @@ template view*(a: var Limbs): LimbsViewMut =
   ## Returns a borrowed type-erased mutable view to a mutable bigint
   LimbsViewMut(cast[LimbsView](a.addr))
 
+template view*(a: openArray[SecretWord]): LimbsViewConst =
+  ## Returns a borrowed type-erased immutable view to a bigint
+  LimbsViewConst(cast[LimbsView](a[0].unsafeAddr))
+
+template view*(a: var openArray[SecretWord]): LimbsViewMut =
+  ## Returns a borrowed type-erased mutable view to a mutable bigint
+  LimbsViewMut(cast[LimbsView](a[0].addr))
+
 template `[]`*(v: LimbsViewConst, limbIdx: int): SecretWord =
   LimbsView(v)[limbIdx]
 
