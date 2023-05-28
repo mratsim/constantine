@@ -16,7 +16,7 @@ func prod_comba(r: var openArray[SecretWord], a, b: openArray[SecretWord]) {.noI
   var t, u, v = Zero
   let stopEx = min(a.len+b.len, r.len)
 
-  let tmp = allocStackArray(SecretWord, a.len+b.len)
+  let tmp = allocStackArray(SecretWord, stopEx)
 
   for i in 0 ..< stopEx:
     # Invariant for product scanning:
@@ -33,10 +33,10 @@ func prod_comba(r: var openArray[SecretWord], a, b: openArray[SecretWord]) {.noI
       u = t
       t = Zero
 
-  for i in 0 ..< a.len+b.len:
+  for i in 0 ..< stopEx:
     r[i] = tmp[i]
 
-  for i in a.len+b.len ..< r.len:
+  for i in stopEx ..< r.len:
     r[i] = Zero
 
 func prod*(r: var openArray[SecretWord], a, b: openArray[SecretWord]) {.inline.}=

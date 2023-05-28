@@ -9,7 +9,9 @@
 import
   # Internal
   ../../platforms/abstractions,
-  ./limbs_extmul
+  ../../math/arithmetic/limbs_exgcd,
+  ./limbs_extmul,
+  ./limbs_multiprec
 
 # No exceptions allowed
 {.push raises: [], checks: off.}
@@ -21,7 +23,7 @@ func mod2k_vartime*(a: var openArray[SecretWord], k: uint) =
 
   let hiIndex = k.int shr SlotShift
 
-  if a.len < hiIndex:
+  if a.len <= hiIndex:
     return
 
   let bitPos = k and SelectMask
@@ -29,9 +31,25 @@ func mod2k_vartime*(a: var openArray[SecretWord], k: uint) =
   if bitPos != 0:
     let mask = (One shl bitPos) - One
     a[hiIndex] = a[hiIndex] and mask
+  else:
+    a[hiIndex] = Zero
 
   for i in hiIndex+1 ..< a.len:
     a[i] = Zero
+
+func submod2k_vartime*(r{.noAlias.}: var openArray[SecretWord], a, b: openArray[SecretWord], k: uint) =
+  ## r <- a - b (mod 2ᵏ)
+  debug:
+    const SlotShift = log2_vartime(WordBitWidth.uint32)
+    doAssert r.len > k.int shr SlotShift
+
+  if a.len >= b.len:
+    let underflow {.used.} = r.subMP(a, b)
+  else:
+    let underflow {.used.} = r.subMP(b, a)
+    r.neg()
+
+  r.mod2k_vartime(k)
 
 func mulmod2k_vartime*(r: var openArray[SecretWord], a, b: openArray[SecretWord], k: uint) {.inline.} =
   ## r <- a*b (mod 2ᵏ)
@@ -71,3 +89,56 @@ func powMod2k_vartime*(
       r.mulmod2k_vartime(r, r, k)
       if bit:
         r.mulmod2k_vartime(r, a, k)
+
+func invModBitwidth(a: SecretWord): SecretWord {.borrow.}
+  ## Inversion a⁻¹ (mod 2³²) or a⁻¹ (mod 2⁶⁴)
+
+func invMod2k_vartime*(a: var openArray[SecretWord], k: uint) {.noInline, tags: [Alloca].} =
+  ## Inversion a⁻¹ (mod 2ᵏ)
+  ## with 2ᵏ a multi-precision integer.
+  #
+  # Algorithm:
+  # - Dumas iteration based on Newton-Raphson (see litterature in invModBitwidth)
+  #   ax ≡ 1 (mod 2ᵏ) <=> ax(2 - ax) ≡ 1 (mod 2²ᵏ)
+  #   which grows in O(log(log(a)))
+  # - start with a seed inverse a'⁻¹ (mod 2ⁿ)
+  #   we can start with 2³² or 2⁶⁴
+  # - Double the number of correct bits at each Dumas iteration
+  # - once n >= k, reduce mod 2ᵏ
+
+  var x = allocStackArray(SecretWord, a.len)
+  var t = allocStackArray(SecretWord, a.len)
+  var u = allocStackArray(SecretWord, a.len)
+
+  x[0] = a[0].invModBitwidth()
+  for i in 1 ..< a.len:
+    x[i] = Zero
+
+  var correctWords = 1
+
+  while correctWords.uint*WordBitWidth < k:
+    # x *= 2-ax
+    let words = 2*correctWords
+    t.toOpenArray(0, words-1)
+     .mulmod2k_vartime(
+       x.toOpenArray(0, correctWords-1),
+       a.toOpenArray(0, words-1),
+       words.uint*WordBitWidth)
+
+    u.toOpenArray(0, words-1)
+     .submod2k_vartime(
+       [SecretWord 2],
+       t.toOpenArray(0, words-1),
+       words.uint*WordBitWidth)
+
+    x.toOpenArray(0, words-1)
+     .mulmod2k_vartime(
+       x.toOpenArray(0, correctWords-1),
+       u.toOpenArray(0, words-1),
+       words.uint*WordBitWidth)
+
+    correctWords = words
+
+  x.toOpenArray(0, a.len-1).mod2k_vartime(k)
+  for i in 0 ..< a.len:
+    a[i] = x[i]
