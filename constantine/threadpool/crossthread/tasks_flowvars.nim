@@ -8,10 +8,10 @@
 
 import
   std/atomics,
-  ./scoped_barriers,
+  ../../platforms/allocs,
+  ../primitives/futexes,
   ../instrumentation,
-  ../../allocs,
-  ../primitives/futexes
+  ./scoped_barriers
 
 # Tasks have an efficient design so that a single heap allocation
 # is required per `spawn`.

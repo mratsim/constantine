@@ -6,6 +6,8 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
+{.push used.} # Some SIMDs are implemented but not exported.
+
 static: doAssert defined(i386) or defined(amd64)
 
 # SIMD throughput and latency:
@@ -123,7 +125,7 @@ func mm_shuffle_epi8(a, b: m128i): m128i {.importc: "_mm_shuffle_epi8", x86.}
   ## if z is set, the corresponding d is set to zero.
   ## otherwise uvwx represents a binary number in 0..15,
   ##           the corresponding d will be set to a(uvwx)
-  ## 
+  ##
   ## for i in 0 ..< 16:
   ##  if bitand(b[i], 0x80) != 0:
   ##   dst[i] = 0
@@ -139,7 +141,7 @@ func mm_shuffle_epi8(a, b: m128i): m128i {.importc: "_mm_shuffle_epi8", x86.}
 func mm_blend_epi16(a, b: m128i, imm8: int32 or uint32): m128i {.importc: "_mm_blend_epi16", x86.}
   ## Blend packed 16-bit integers from a and b using control mask imm8,
   ## and store the results in dst.
-  ## 
+  ##
   ## FOR j := 0 to 7
   ## i := j*16
   ## IF imm8[j]
@@ -175,7 +177,7 @@ func mm_mask_add_epi32(src: m128i, mask: mmask8, a, b: m128i): m128i {.importc: 
 func mm_sha256msg1_epu32(a, b: m128i): m128i {.importc: "_mm_sha256msg1_epu32", x86.}
   ## Perform an intermediate calculation for the next four SHA256 message values (unsigned 32-bit integers)
   ## using previous message values from a and b, and store the result in dst.
-  ## 
+  ##
   ## W4 := b[31:0]
   ## W3 := a[127:96]
   ## W2 := a[95:64]
@@ -189,7 +191,7 @@ func mm_sha256msg1_epu32(a, b: m128i): m128i {.importc: "_mm_sha256msg1_epu32", 
 func mm_sha256msg2_epu32(a, b: m128i): m128i {.importc: "_mm_sha256msg2_epu32", x86.}
   ## Perform the final calculation for the next four SHA256 message values (unsigned 32-bit integers)
   ## using previous message values from a and b, and store the result in dst.
-  ## 
+  ##
   ## W14 := b[95:64]
   ## W15 := b[127:96]
   ## W16 := a[31:0] + sigma1(W14)
@@ -208,7 +210,7 @@ func mm_sha256rnds2_epu32(cdgh, abef, k: m128i): m128i {.importc: "_mm_sha256rnd
   ##   and a pre-computed sum of the next 2 round message values (unsigned 32-bit integers)
   ##     and the corresponding round constants from k,
   ## and store the updated SHA256 state (A,B,E,F) in dst.
-  ## 
+  ##
   ## A[0] := b[127:96]
   ## B[0] := b[95:64]
   ## C[0] := a[127:96]
@@ -269,9 +271,9 @@ template shuf_u32x4*(a: m128i, mask: int32 or uint32): m128i =
 template blend_u16x8*(a, b: m128i, mask: int32 or uint32): m128i =
   mm_blend_epi16(a, b, mask)
 
-template sha256_msg1*(a, b: m128i): m128i = 
+template sha256_msg1*(a, b: m128i): m128i =
   mm_sha256msg1_epu32(a, b)
-template sha256_msg2*(a, b: m128i): m128i = 
+template sha256_msg2*(a, b: m128i): m128i =
   mm_sha256msg2_epu32(a, b)
 template sha256_2rounds*(cdgh, abef, k: m128i): m128i =
   mm_sha256rnds2_epu32(cdgh, abef, k)

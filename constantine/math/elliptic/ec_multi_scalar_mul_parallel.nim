@@ -11,7 +11,7 @@ import ./ec_multi_scalar_mul_scheduler,
        ./ec_endomorphism_accel,
        ../extension_fields,
        ../constants/zoo_endomorphisms,
-       ../../platforms/threadpool/[threadpool, partitioners]
+       ../../threadpool/[threadpool, partitioners]
 export bestBucketBitSize
 
 # No exceptions allowed in core cryptographic operations

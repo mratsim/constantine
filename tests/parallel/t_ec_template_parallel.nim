@@ -27,7 +27,7 @@ import
     ec_scalar_mul,
     ec_multi_scalar_mul,
     ec_multi_scalar_mul_parallel],
-  ../../constantine/platforms/threadpool/threadpool,
+  ../../constantine/threadpool/threadpool,
   # Test utilities
   ../../helpers/prng_unsafe
 
