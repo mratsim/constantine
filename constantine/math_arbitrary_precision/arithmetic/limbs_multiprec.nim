@@ -19,6 +19,73 @@ import
 # This file implements multi-precision primitives
 # with unbalanced number of limbs.
 
+# Logical Shift Right
+# --------------------------------------------------------
+
+func shrSmall(r {.noalias.}: var openArray[SecretWord], a: openArray[SecretWord], k: SomeInteger) =
+  ## Shift right by k.
+  ##
+  ## k MUST be less than the base word size (2^32 or 2^64)
+  # Note: for speed, loading a[i] and a[i+1]
+  #       instead of a[i-1] and a[i]
+  #       is probably easier to parallelize for the compiler
+  #       (antidependence WAR vs loop-carried dependence RAW)
+  for i in 0 ..< a.len-1:
+    r[i] = (a[i] shr k) or (a[i+1] shl (WordBitWidth - k))
+  r[a.len-1] = a[a.len-1] shr k
+
+  for i in a.len ..< r.len:
+    r[i] = Zero
+
+func shrLarge(r {.noalias.}: var openArray[SecretWord], a: openArray[SecretWord], w, shift: SomeInteger) =
+  ## Shift right by `w` words + `shift` bits
+  if w >= a.len:
+    r.setZero()
+    return
+
+  for i in w ..< a.len-1:
+    r[i-w] = (a[i] shr shift) or (a[i+1] shl (WordBitWidth - shift))
+  if a.len-1-w < r.len:
+    r[a.len-1-w] = a[a.len-1] shr shift
+
+  for i in a.len-w ..< r.len:
+    r[i] = Zero
+
+func shrWords(r {.noalias.}: var openArray[SecretWord], a: openArray[SecretWord], w: SomeInteger) =
+  ## Shift right by w word
+
+  for i in 0 ..< a.len-w:
+    r[i] = a[i+w]
+
+  for i in a.len-w ..< r.len:
+    r[i] = Zero
+
+func shiftRight_vartime*(r {.noalias.}: var openArray[SecretWord], a: openArray[SecretWord], k: SomeInteger) =
+  ## Shift `a` right by k bits and store in `r`
+  if k == 0:
+    let min = min(a.len, r.len)
+    for i in 0 ..< min:
+      r[i] = a[i]
+    for i in min ..< r.len:
+      r[i] = Zero
+    return
+
+  if k < WordBitWidth:
+    r.shrSmall(a, k)
+    return
+
+  # w = k div WordBitWidth, shift = k mod WordBitWidth
+  let w     = k shr static(log2_vartime(uint32(WordBitWidth)))
+  let shift = k and (WordBitWidth - 1)
+
+  if shift == 0:
+    r.shrWords(a, w)
+  else:
+    r.shrLarge(a, w, shift)
+
+# Arithmetic
+# --------------------------------------------------------
+
 func neg*(a: var openArray[SecretWord]) =
   ## Computes the additive inverse -a
   ## in 2-complement representation

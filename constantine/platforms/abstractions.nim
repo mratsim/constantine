@@ -67,9 +67,51 @@ const
   One* = SecretWord(1)
   MaxWord* = SecretWord(high(BaseType))
 
+func wordsRequired*(bits: int): int {.inline.} =
+  ## Compute the number of limbs required
+  ## from the **announced** bit length
+
+  # bits.ceilDiv_vartime(WordBitWidth)
+  # with guarantee to avoid division (especially at compile-time)
+  const divShiftor = log2_vartime(uint32(WordBitWidth))
+  result = (bits + WordBitWidth - 1) shr divShiftor
+
+func isOdd*(a: SecretWord): SecretBool {.inline.} =
+  SecretBool(a and One)
+
+func isOdd*(a: openArray[SecretWord]): SecretBool {.inline.} =
+  SecretBool(a[0] and One)
+
+func isEven*(a: openArray[SecretWord]): SecretBool {.inline.} =
+  not a.isOdd
+
 func setZero*(a: var openArray[SecretWord]){.inline.} =
   for i in 0 ..< a.len:
     a[i] = Zero
+
+func setOne*(a: var openArray[SecretWord]){.inline.} =
+  a[0] = One
+  for i in 1 ..< a.len:
+    a[i] = Zero
+
+debug: # Don't allow printing secret words by default
+  func toHex*(a: SecretWord): string =
+    const hexChars = "0123456789abcdef"
+    const L = 2*sizeof(SecretWord)
+    result = newString(2 + L)
+    result[0] = '0'
+    result[1] = 'x'
+    var a = a
+    for j in countdown(result.len-1, 2):
+      result[j] = hexChars.secretLookup(a and SecretWord 0xF)
+      a = a shr 4
+
+  func toString*(a: openArray[SecretWord]): string =
+    result = "["
+    result.add " " & toHex(a[0])
+    for i in 1 ..< a.len:
+      result.add ", " & toHex(a[i])
+    result.add "]"
 
 # ############################################################
 #

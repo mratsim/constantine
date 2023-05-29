@@ -8,7 +8,8 @@
 
 import
   ../../platforms/abstractions,
-  ./limbs_views
+  ./limbs_views,
+  ./limbs_fixedprec
 
 # No exceptions allowed
 {.push raises: [].}
@@ -37,7 +38,7 @@ func shlAddMod_estimate(a: LimbsViewMut, aLen: int,
 
   # Aliases
   # ----------------------------------------------------------------------
-  let MLen = numWordsFromBits(mBits)
+  let MLen = wordsRequired(mBits)
 
   # Captures aLen and MLen
   template `[]`(v: untyped, limbIdxFromEnd: BackwardsIndex): SecretWord {.dirty.}=
@@ -134,12 +135,12 @@ func shlAddMod(a: LimbsViewMut, aLen: int,
     discard a.cadd(M, ctl = neg, aLen)
     discard a.csub(M, ctl = tooBig, aLen)
 
-func reduce(r: LimbsViewMut,
+func reduce*(r: LimbsViewMut,
             a: LimbsViewAny, aBits: int,
             M: LimbsViewConst, mBits: int) =
   ## Reduce `a` modulo `M` and store the result in `r`
-  let aLen = numWordsFromBits(aBits)
-  let mLen = numWordsFromBits(mBits)
+  let aLen = wordsRequired(aBits)
+  let mLen = wordsRequired(mBits)
   let rLen = mLen
 
   if aBits < mBits:

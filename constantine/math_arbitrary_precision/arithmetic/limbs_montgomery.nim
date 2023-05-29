@@ -10,7 +10,8 @@ import
   # Internal
   ../../platforms/[abstractions, allocs, bithacks],
   ./limbs_views,
-  ./limbs_mod
+  ./limbs_mod,
+  ./limbs_fixedprec
 
 # No exceptions allowed
 {.push raises: [], checks: off.}
@@ -105,7 +106,7 @@ func mulMont_FIPS*(
   #   Multiplication on 8-bit AVR Microcontrollers
   #   Zhe Liu and Johann Großschädl, 2013
   #   https://eprint.iacr.org/2013/882.pdf
-  let L = numWordsFromBits(mBits)
+  let L = wordsRequired(mBits)
   var z = LimbsViewMut allocStackArray(SecretWord, L)
   z.setZero(L)
 
@@ -150,7 +151,7 @@ func fromMont*(r: LimbsViewMut, a: LimbsViewAny, M: LimbsViewConst,
   ## This is called a Montgomery Reduction
   ## The Montgomery Magic Constant is µ = -1/N mod M
   ## is used internally and can be precomputed with m0ninv(Curve)
-  let N = numWordsFromBits(mBits)
+  let N = wordsRequired(mBits)
   var t = LimbsViewMut allocStackArray(SecretWord, N)
   t.copyWords(0, a, 0, N)
 
@@ -233,14 +234,14 @@ func powMontPrologue(
        m0ninv: SecretWord,
        scratchspace: LimbsViewMut,
        scratchLen: int,
-       mBits: int): uint =
+       mBits: int): uint {.tags:[Alloca].} =
   ## Setup the scratchspace
   ## Returns the fixed-window size for exponentiation with window optimization.
   # Precompute window content, special case for window = 1
   # (i.e scratchspace has only space for 2 temporaries)
   # The content scratchspace[2+k] is set at aᵏ
   # with scratchspace[0] untouched
-  let wordLen = numWordsFromBits(mBits)
+  let wordLen = wordsRequired(mBits)
   result = scratchLen.getWindowLen(wordLen)
   if result == 1:
     scratchspace.copyWords(1*wordLen, a, 0, wordLen)
@@ -336,7 +337,7 @@ func powMont*(
   ## A window of size 5 requires (2^5 + 1)*(381 + 7)/8 = 33 * 48 bytes = 1584 bytes
   ## of scratchspace (on the stack).
 
-  let N = numWordsFromBits(mBits)
+  let N = wordsRequired(mBits)
   let window = powMontPrologue(a, M, one, m0ninv, scratchspace, scratchLen, mBits)
 
   # We process bits with from most to least significant.
@@ -379,7 +380,7 @@ func powMont_vartime*(
        m0ninv: SecretWord,
        scratchspace: LimbsViewMut,
        scratchLen: int,
-       mBits: int) =
+       mBits: int) {.tags:[VarTime, Alloca].} =
   ## Modular exponentiation a <- a^exponent (mod M)
   ## in the Montgomery domain
   ##
@@ -391,7 +392,7 @@ func powMont_vartime*(
   ## - timing analysis
 
   # TODO: scratchspace[1] is unused when window > 1
-  let N = numWordsFromBits(mBits)
+  let N = wordsRequired(mBits)
   let window = powMontPrologue(a, M, one, m0ninv, scratchspace, scratchLen, mBits)
 
   var

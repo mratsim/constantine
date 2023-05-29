@@ -12,10 +12,10 @@ import
   ../../math/config/precompute,
   ./limbs_views,
   ./limbs_montgomery,
-  ./limbs_mod2k
-
-
-import ../../math/config/type_bigint
+  ./limbs_mod2k,
+  ./limbs_multiprec,
+  ./limbs_extmul,
+  ./limbs_division
 
 # No exceptions allowed
 {.push raises: [], checks: off.}
@@ -34,7 +34,7 @@ import ../../math/config/type_bigint
 
 # TODO: choose between:
 # - openArray + countLeadingZeros
-# - bits + numWordsFromBits
+# - bits + wordsRequired
 # for parameter passing
 # This also impacts ergonomics of allocStackArray
 #
@@ -46,33 +46,32 @@ func powOddMod_vartime*(
        a: openArray[SecretWord],
        exponent: openArray[byte],
        M: openArray[SecretWord],
-       window: int) {.noInline, tags:[Alloca].} =
+       window: int) {.noInline, tags:[Alloca, VarTime].} =
   ## r <- a^exponent (mod M) with M odd
+  ## assumes a < M
   ##
   ## At least (2^window + 4) * sizeof(M) stack space will be allocated.
-  ##
-  ## TODO: we require the last M words to be != 0 (i.e. no extra zero words in modulus)
 
   debug:
-    doAssert bool(M[0] and One)
-    doAssert BaseType(M[M.len-1]) != 0
+    doAssert bool(M.isOdd())
 
-  let mBits = 1 + int(log2_vartime(BaseType M[M.len-1])) + int(WordBitWidth*(M.len - 1))
+  let mBits  = M.getBits_vartime()
+  let L      = wordsRequired(mBits)
   let m0ninv = M[0].negInvModWord()
-  var rMont      = allocStackArray(SecretWord, M.len)
+  var rMont  = allocStackArray(SecretWord, L)
 
   block:
-    var r2Buf      = allocStackArray(SecretWord, M.len)
-    template r2: untyped = r2Buf.toOpenArray(0, M.len-1)
+    var r2Buf = allocStackArray(SecretWord, L)
+    template r2: untyped = r2Buf.toOpenArray(0, L-1)
     r2.r2_vartime(M)
     rMont.LimbsViewMut.getMont(a.view(), M.view(), LimbsViewConst r2.view(), m0ninv, mBits)
 
   block:
-    var oneMontBuf = allocStackArray(SecretWord, M.len)
-    template oneMont: untyped = oneMontBuf.toOpenArray(0, M.len-1)
+    var oneMontBuf = allocStackArray(SecretWord, L)
+    template oneMont: untyped = oneMontBuf.toOpenArray(0, L-1)
     oneMont.oneMont_vartime(M)
 
-    let scratchLen = M.len * ((1 shl window) + 1)
+    let scratchLen = L * ((1 shl window) + 1)
     var scratchSpace = allocStackArray(SecretWord, scratchLen)
 
     rMont.LimbsViewMut.powMont_vartime(
@@ -80,3 +79,115 @@ func powOddMod_vartime*(
       m0ninv, LimbsViewMut scratchSpace, scratchLen, mBits)
 
   r.view().fromMont(LimbsViewConst rMont, M.view(), m0ninv, mBits)
+
+
+func powMod_vartime*(
+       r: var openArray[SecretWord],
+       a: openArray[SecretWord],
+       exponent: openArray[byte],
+       M: openArray[SecretWord],
+       window: int) {.noInline, tags:[Alloca, VarTime].} =
+  ## r <- a^exponent (mod M) with M odd
+  ## assumes a < exponent
+  ##
+  ## At least (2^window + 4) * sizeof(M) stack space will be allocated.
+
+  # Special cases: early returns
+  # -------------------------------------------------------------------
+  let mBits = M.getBits_vartime()
+  if mBits < 2: # Check if modulus = 0 or 1
+    r.setZero()
+    return
+
+  let eBits = exponent.getBits_vartime()
+  if eBits == 0: # Check if exponent == 0
+    r.setOne()   # a⁰ = 1 and 0⁰ = 1
+    return
+
+  let aBits = a.getBits_vartime()
+  if aBits < 2:  # Check if a == 0 or a == 1
+    r[0] = a[0]
+    for i in 1 ..< r.len:
+      r[i] = Zero
+    return
+
+  # Odd modulus
+  # -------------------------------------------------------------------
+  if M.isOdd().bool:
+    r.powOddMod_vartime(a, exponent, M, window)
+    return
+
+  # Even modulus
+  # -------------------------------------------------------------------
+
+  var i = 0
+
+  # Find the first non-zero word from right-to-left. (a != 0)
+  while i < M.len-1:
+    if bool(M[i] != Zero):
+      break
+    i += 1
+
+  let ctz = int(countTrailingZeroBits_vartime(BaseType M[i])) +
+            WordBitWidth*i
+
+  # Even modulus: power of two (mod 2ᵏ)
+  # -------------------------------------------------------------------
+
+  if mBits-ctz == 1: # The modulus is a power of 2
+    r.powMod2k_vartime(a, exponent, k = uint mBits)
+    return
+
+  # Even modulus: general case
+  # -------------------------------------------------------------------
+  #
+  # We split exponentiation aᵉ (mod M)
+  # into a₁ = aᵉ (mod q)
+  #  and a₂ = aᵉ (mod 2ᵏ)
+  # with M = q.2ᵏ
+  # and we recombine the results using the Chinese Remainder Theorem.
+  # following
+  #   Montgomery reduction with even modulus
+  #   Çetin Kaya Koç, 1994
+  #   https://cetinkayakoc.net/docs/j34.pdf
+
+  let qBits = mBits-ctz
+  let pBits = 1+ctz
+  let qWords = qBits.wordsRequired()
+  let pWords = pBits.wordsRequired()
+
+  var tBuf  = allocStackArray(SecretWord, qWords)
+  var qBuf  = allocStackArray(SecretWord, qWords)
+  var a1Buf = allocStackArray(SecretWord, qWords)
+  var a2Buf = allocStackArray(SecretWord, pWords)
+  var yBuf =  allocStackArray(SecretWord, pWords)
+  var qInv2kBuf = allocStackArray(SecretWord, pWords)
+
+  template t: untyped = tBuf.toOpenArray(0, qWords-1)
+  template q: untyped = qBuf.toOpenArray(0, qWords-1)
+  template a1: untyped = a1Buf.toOpenArray(0, qWords-1)
+  template a2: untyped = a2Buf.toOpenArray(0, pWords-1)
+  template y: untyped = yBuf.toOpenArray(0, pWords-1)
+  template qInv2k: untyped = qInv2kBuf.toOpenArray(0, pWords-1)
+
+  q.shiftRight_vartime(M, ctz)
+
+  tBuf.LimbsViewMut.reduce(a.view(), aBits, LimbsViewConst qBuf, qBits)
+  a1.powOddMod_vartime(t, exponent, q, window)
+  a2.powMod2k_vartime(a, exponent, k = uint ctz)
+
+  block:
+    let min = min(pWords, qWords)
+    for i in 0 ..< min:
+      qInv2k[i] = q[i]
+    for i in min ..< pWords:
+      qInv2k[i] = Zero
+
+  qInv2k.invMod2k_vartime(uint ctz)
+  y.submod2k_vartime(a2, a1, uint ctz)
+  y.mulmod2k_vartime(y, qInv2k, uint ctz)
+
+  var qyBuf = allocStackArray(SecretWord, M.len)
+  template qy: untyped = qyBuf.toOpenArray(0, M.len-1)
+  qy.prod(q, y)
+  discard r.addMP(qy, a1)

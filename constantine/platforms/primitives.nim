@@ -86,6 +86,11 @@ func setZero*(a: var openArray[SomeNumber]){.inline.} =
   for i in 0 ..< a.len:
     a[i] = 0
 
+func setOne*(a: var openArray[SomeNumber]){.inline.} =
+  a[0] = 1
+  for i in 1 ..< a.len:
+    a[i] = 0
+
 func rawCopy*(
        dst: var openArray[byte],
        dStart: SomeInteger,

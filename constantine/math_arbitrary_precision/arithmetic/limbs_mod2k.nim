@@ -10,6 +10,7 @@ import
   # Internal
   ../../platforms/abstractions,
   ../../math/arithmetic/limbs_exgcd,
+  ./limbs_views,
   ./limbs_extmul,
   ./limbs_multiprec
 
@@ -41,12 +42,20 @@ func submod2k_vartime*(r{.noAlias.}: var openArray[SecretWord], a, b: openArray[
   ## r <- a - b (mod 2ᵏ)
   debug:
     const SlotShift = log2_vartime(WordBitWidth.uint32)
-    doAssert r.len > k.int shr SlotShift
+    doAssert r.len >= k.int shr SlotShift, block:
+      "r.len: " & $r.len & "\n" &
+      "k: " & $k & "\n" &
+      "k/WordBitWidth: " & $(k.int shr SlotShift)
+
+  # We can compute (mod 2ʷ) with w >= k
+  # Hence we truncate the substraction to the next multiple of the word size
+  template trunc(x: openArray[SecretWord]): openArray[SecretWord] =
+    x.toOpenArray(0, k.int.wordsRequired()-1)
 
   if a.len >= b.len:
-    let underflow {.used.} = r.subMP(a, b)
+    let underflow {.used.} = r.subMP(a.trunc(), b.trunc())
   else:
-    let underflow {.used.} = r.subMP(b, a)
+    let underflow {.used.} = r.subMP(b.trunc(), a.trunc())
     r.neg()
 
   r.mod2k_vartime(k)
@@ -97,24 +106,20 @@ func powMod2k_vartime*(
   for i in 0 ..< r.len:
     r[i] = Zero
 
-  var msb = -1
-  for i in 0 ..< exponent.len:
-    if exponent[i] != byte 0:
-      msb = int(log2_vartime(BaseType exponent[i])) + 8*(exponent.len-1-i)
-      break
+  let msb = getMSB_vartime(exponent)
 
   if msb == -1: # exponent is 0
     r[0] = One  # x⁰ = 1, even for 0⁰
     return
 
-  if not bool(a[0] and One) and # if a is even
-     1+msb >= k.int: # The msb of a n-bit integer is at n-1
-    return           # r ≡ aᵉ (mod 2ᵏ) ≡ (2b)ᵏ⁺ⁿ (mod 2ᵏ) ≡ 2ᵏ.2ⁿ.bᵏ⁺ⁿ (mod 2ᵏ) ≡ 0 (mod 2ᵏ)
+  if a.isEven().bool and # if a is even
+     1+msb >= k.int:     # The msb of a n-bit integer is at n-1
+    return               # r ≡ aᵉ (mod 2ᵏ) ≡ (2b)ᵏ⁺ⁿ (mod 2ᵏ) ≡ 2ᵏ.2ⁿ.bᵏ⁺ⁿ (mod 2ᵏ) ≡ 0 (mod 2ᵏ)
 
   var bitsLeft = msb+1
-  if bool(a[0] and One) and # if a is odd
+  if a.isOdd().bool and   # if a is odd
      int(k-1) < bitsLeft:
-    bitsLeft = int(k-1)
+    bitsLeft = int(k-1)   # Euler's totient acceleration
 
   r[0] = One
 

@@ -14,6 +14,8 @@ import ../../platforms/abstractions
 # Datatype
 # ------------------------------------------------------------
 
+# TODO: cleanup openArray vs LimbsView
+
 type
   LimbsView* = ptr UncheckedArray[SecretWord]
     ## Type-erased fixed-precision limbs
@@ -100,57 +102,21 @@ func ccopyWords*(
     for i in 0 ..< numWords:
       ctl.ccopy(a[startA+i], b[startB+i])
 
-# Comparison
+# Bit operations
 # ------------------------------------------------------------
 
-func lt*(a, b: distinct LimbsViewAny, len: int): SecretBool =
-  ## Returns true if a < b
-  ## Comparison is constant-time
-  var diff: SecretWord
-  var borrow: Borrow
-  for i in 0 ..< len:
-    subB(borrow, diff, a[i], b[i], borrow)
+func getMSB_vartime*[T](a: openArray[T]): int =
+  ## Returns the position of the most significant bit
+  ## of `a`.
+  ## Returns -1 if a == 0
+  result = -1
+  for i in countdown(a.len-1, 0):
+    if bool a[i] != T(0):
+      return int(log2_vartime(uint64 a[i])) + 8*sizeof(T)*i
 
-  result = (SecretBool)(borrow)
-
-# Type-erased add-sub
-# ------------------------------------------------------------
-
-func cadd*(a: LimbsViewMut, b: LimbsViewAny, ctl: SecretBool, len: int): Carry =
-  ## Type-erased conditional addition
-  ## Returns the carry
-  ##
-  ## if ctl is true: a <- a + b
-  ## if ctl is false: a <- a
-  ## The carry is always computed whether ctl is true or false
-  ##
-  ## Time and memory accesses are the same whether a copy occurs or not
-  result = Carry(0)
-  var sum: SecretWord
-  for i in 0 ..< len:
-    addC(result, sum, a[i], b[i], result)
-    ctl.ccopy(a[i], sum)
-
-func csub*(a: LimbsViewMut, b: LimbsViewAny, ctl: SecretBool, len: int): Borrow =
-  ## Type-erased conditional addition
-  ## Returns the borrow
-  ##
-  ## if ctl is true: a <- a - b
-  ## if ctl is false: a <- a
-  ## The borrow is always computed whether ctl is true or false
-  ##
-  ## Time and memory accesses are the same whether a copy occurs or not
-  result = Borrow(0)
-  var diff: SecretWord
-  for i in 0 ..< len:
-    subB(result, diff, a[i], b[i], result)
-    ctl.ccopy(a[i], diff)
-
-# Modular reduction
-# ------------------------------------------------------------
-
-func numWordsFromBits*(bits: int): int {.inline.} =
-  const divShiftor = log2_vartime(uint32(WordBitWidth))
-  result = (bits + WordBitWidth - 1) shr divShiftor
+func getBits_vartime*[T](a: openArray[T]): int {.inline.} =
+  ## Returns the number of bits used by `a`
+  ## Returns 0 for 0
+  1 + getMSB_vartime(a)
 
 {.pop.} # raises no exceptions
