@@ -57,15 +57,15 @@ proc test_sameBaseProduct(C: static Curve, gen: RandomGen) =
   b.div2()
 
   var xa = x
-  xa.pow_vartime(a, window = 3)
+  xa.powUnsafeExponent(a, window = 3)
 
   var xb = x
-  xb.pow_vartime(b, window = 3)
+  xb.powUnsafeExponent(b, window = 3)
 
   var xapb = x
   var apb: BigInt[128]
   discard apb.sum(a, b)
-  xapb.pow_vartime(apb, window = 3)
+  xapb.powUnsafeExponent(apb, window = 3)
 
   xa *= xb
   doAssert: bool(xa == xapb)
@@ -82,10 +82,10 @@ proc test_powpow(C: static Curve, gen: RandomGen) =
 
   var y = x
 
-  x.pow_vartime(a, window = 3)
-  x.pow_vartime(b, window = 3)
+  x.powUnsafeExponent(a, window = 3)
+  x.powUnsafeExponent(b, window = 3)
 
-  y.pow_vartime(ab, window = 3)
+  y.powUnsafeExponent(ab, window = 3)
   doAssert: bool(x == y)
 
 proc test_powprod(C: static Curve, gen: RandomGen) =
@@ -98,10 +98,10 @@ proc test_powprod(C: static Curve, gen: RandomGen) =
   var xy{.noInit.}: Fp12[C]
   xy.prod(x, y)
 
-  xy.pow_vartime(a, window=3)
+  xy.powUnsafeExponent(a, window=3)
 
-  x.pow_vartime(a, window=3)
-  y.pow_vartime(a, window=3)
+  x.powUnsafeExponent(a, window=3)
+  y.powUnsafeExponent(a, window=3)
 
   x *= y
 
@@ -112,7 +112,7 @@ proc test_pow0(C: static Curve, gen: RandomGen) =
   var x = rng.random_elem(Fp12[C], gen)
   var a: BigInt[128] # 0-init
 
-  x.pow_vartime(a, window=3)
+  x.powUnsafeExponent(a, window=3)
   doAssert: bool x.isOne()
 
 proc test_0pow0(C: static Curve, gen: RandomGen) =
@@ -120,7 +120,7 @@ proc test_0pow0(C: static Curve, gen: RandomGen) =
   var x: Fp12[C] # 0-init
   var a: BigInt[128] # 0-init
 
-  x.pow_vartime(a, window=3)
+  x.powUnsafeExponent(a, window=3)
   doAssert: bool x.isOne()
 
 proc test_powinv(C: static Curve, gen: RandomGen) =
@@ -137,10 +137,10 @@ proc test_powinv(C: static Curve, gen: RandomGen) =
   cswap(a, b, a < b)
 
   var xa = x
-  xa.pow_vartime(a, window = 3)
+  xa.powUnsafeExponent(a, window = 3)
 
   var xb = x
-  xb.pow_vartime(b, window = 3)
+  xb.powUnsafeExponent(b, window = 3)
 
   xb.inv()
   xa *= xb
@@ -148,7 +148,7 @@ proc test_powinv(C: static Curve, gen: RandomGen) =
   var xamb = x
   var amb: BigInt[128]
   discard amb.diff(a, b)
-  xamb.pow_vartime(amb, window = 3)
+  xamb.powUnsafeExponent(amb, window = 3)
 
   doAssert: bool(xa == xamb)
 
@@ -160,10 +160,10 @@ proc test_invpow(C: static Curve, gen: RandomGen) =
   var a = rng.random_elem(BigInt[128], gen)
 
   var xa = x
-  xa.pow_vartime(a, window = 3)
+  xa.powUnsafeExponent(a, window = 3)
 
   var ya = y
-  ya.pow_vartime(a, window = 3)
+  ya.powUnsafeExponent(a, window = 3)
   ya.inv()
   xa *= ya
 
@@ -171,7 +171,7 @@ proc test_invpow(C: static Curve, gen: RandomGen) =
   var invy = y
   invy.inv()
   xqya *= invy
-  xqya.pow_vartime(a, window = 3)
+  xqya.powUnsafeExponent(a, window = 3)
 
   doAssert: bool(xa == xqya)
 
