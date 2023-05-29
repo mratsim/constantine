@@ -213,6 +213,12 @@ jobs:
           nimble refresh --verbose -y
           nimble install --verbose -y gmp jsony asynctools
 
+      - name: Print Nim version
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          nim -v
+
       - name: Run Constantine tests (UNIX with Assembly)
         if: runner.os != 'Windows' && matrix.target.BACKEND == 'ASM'
         shell: bash

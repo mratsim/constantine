@@ -685,7 +685,6 @@ proc genParallelCmdRunner() =
 
 task test, "Run all tests":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
-  exec "nim -v"
   var cmdFile: string
   cmdFile.addTestSet(requireGMP = true, useASM = true)
   cmdFile.addBenchSet(useASM = true)    # Build (but don't run) benches to ensure they stay relevant
@@ -697,7 +696,6 @@ task test, "Run all tests":
 
 task test_no_asm, "Run all tests (no assembly)":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
-  exec "nim -v"
   var cmdFile: string
   cmdFile.addTestSet(requireGMP = true, useASM = false)
   cmdFile.addBenchSet(useASM = false)    # Build (but don't run) benches to ensure they stay relevant
@@ -709,7 +707,6 @@ task test_no_asm, "Run all tests (no assembly)":
 
 task test_no_gmp, "Run tests that don't require GMP":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
-  exec "nim -v"
   var cmdFile: string
   cmdFile.addTestSet(requireGMP = false, useASM = true)
   cmdFile.addBenchSet(useASM = true)    # Build (but don't run) benches to ensure they stay relevant
@@ -721,7 +718,6 @@ task test_no_gmp, "Run tests that don't require GMP":
 
 task test_no_gmp_no_asm, "Run tests that don't require GMP using a pure Nim backend":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
-  exec "nim -v"
   var cmdFile: string
   cmdFile.addTestSet(requireGMP = false, useASM = false)
   cmdFile.addBenchSet(useASM = false)    # Build (but don't run) benches to ensure they stay relevant
@@ -733,7 +729,6 @@ task test_no_gmp_no_asm, "Run tests that don't require GMP using a pure Nim back
 
 task test_parallel, "Run all tests in parallel":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
-  exec "nim -v"
   clearParallelBuild()
   genParallelCmdRunner()
 
@@ -753,7 +748,6 @@ task test_parallel, "Run all tests in parallel":
 
 task test_parallel_no_asm, "Run all tests (without macro assembler) in parallel":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
-  exec "nim -v"
   clearParallelBuild()
   genParallelCmdRunner()
 
@@ -773,7 +767,6 @@ task test_parallel_no_asm, "Run all tests (without macro assembler) in parallel"
 
 task test_parallel_no_gmp, "Run all tests in parallel":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
-  exec "nim -v"
   clearParallelBuild()
   genParallelCmdRunner()
 
@@ -793,7 +786,6 @@ task test_parallel_no_gmp, "Run all tests in parallel":
 
 task test_parallel_no_gmp_no_asm, "Run all tests in parallel":
   # -d:testingCurves is configured in a *.nim.cfg for convenience
-  exec "nim -v"
   clearParallelBuild()
   genParallelCmdRunner()
 
@@ -812,7 +804,6 @@ task test_parallel_no_gmp_no_asm, "Run all tests in parallel":
       exec cmd
 
 task test_threadpool, "Run all tests for the builtin threadpool":
-  exec "nim -v"
   var cmdFile: string
   cmdFile.addTestSetThreadpool()
   for cmd in cmdFile.splitLines():
@@ -820,7 +811,6 @@ task test_threadpool, "Run all tests for the builtin threadpool":
       exec cmd
 
 task test_multithreaded_crypto, "Run all tests for multithreaded cryptography":
-  exec "nim -v"
   var cmdFile: string
   cmdFile.addTestSetMultithreadedCrypto()
   for cmd in cmdFile.splitLines():
@@ -828,7 +818,6 @@ task test_multithreaded_crypto, "Run all tests for multithreaded cryptography":
       exec cmd
 
 task test_nvidia, "Run all tests for Nvidia GPUs":
-  exec "nim -v"
   var cmdFile: string
   cmdFile.addTestSetNvidia()
   for cmd in cmdFile.splitLines():
