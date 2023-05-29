@@ -56,20 +56,14 @@ func mulmod2k_vartime*(r: var openArray[SecretWord], a, b: openArray[SecretWord]
   r.prod(a, b)
   r.mod2k_vartime(k)
 
-iterator unpack(scalarByte: byte): bool =
-  yield bool((scalarByte and 0b10000000) shr 7)
-  yield bool((scalarByte and 0b01000000) shr 6)
-  yield bool((scalarByte and 0b00100000) shr 5)
-  yield bool((scalarByte and 0b00010000) shr 4)
-  yield bool((scalarByte and 0b00001000) shr 3)
-  yield bool((scalarByte and 0b00000100) shr 2)
-  yield bool((scalarByte and 0b00000010) shr 1)
-  yield bool( scalarByte and 0b00000001)
+iterator unpackLE(scalarByte: byte): bool =
+  for i in 0 ..< 8:
+    yield bool((scalarByte shr i) and 1)
 
 func powMod2k_vartime*(
        r{.noAlias.}: var openArray[SecretWord],
        a{.noAlias.}: openArray[SecretWord],
-       exponent: openArray[byte], k: uint) =
+       exponent: openArray[byte], k: uint) {.noInline, tags: [Alloca].} =
   ## r <- a^exponent (mod 2ᵏ)
   ##
   ## Requires:
@@ -78,19 +72,68 @@ func powMod2k_vartime*(
   ## - r.len >= ceilDiv(k, WordBitWidth) = (k+63)/64
   ## - r and a don't alias
 
-  # TODO window method
-  # TODO Euler totient φ(2ᵏ) = 2ᵏ⁻¹, hence we can do "exponent mod (2ᵏ⁻¹)"
-  # with a left to right exponentiation
+  # Fast special cases:
+  # 1. if a is even, it can be represented as a = 2b
+  #    if exponent e is greater than k, e = k+n
+  #    we have r ≡ aᵉ (mod 2ᵏ) ≡ (2b)ᵏ⁺ⁿ (mod 2ᵏ)
+  #                            ≡ 2ᵏ.2ⁿ.bᵏ⁺ⁿ (mod 2ᵏ)
+  #                            ≡ 0 (mod 2ᵏ)
+  # 2. if a is odd, a and 2ᵏ are coprime
+  #    we can apply the Euler's totient theorem (https://en.wikipedia.org/wiki/Euler%27s_theorem
+  #    i.e. aᵠ⁽²^ᵏ⁾ ≡ 1 (mod 2ᵏ)
+  #    with
+  #    - ψ(n), the Euler's totient function, the count of coprimes in [0, n)
+  #      ψ(2ᵏ) = 2ᵏ⁻¹ as half the number (i.e. the odd numbers) are coprimes
+  #      with a power of 2.
+  #    - e' = e (mod ψ(2ᵏ))
+  #      aᵉ (mod 2ᵏ) ≡ aᵉ' (mod 2ᵏ)
+  #
+  # The remaining case is when a is even
+  # and exponent < 2ᵏ⁻¹
+  #
+  # We use LSB to MSB square-and-multiply algorithm
+  # with early stopping when we reach ψ(2ᵏ) if a is odd
 
   for i in 0 ..< r.len:
     r[i] = Zero
+
+  var msb = -1
+  for i in 0 ..< exponent.len:
+    if exponent[i] != byte 0:
+      msb = int(log2_vartime(BaseType exponent[i])) + 8*(exponent.len-1-i)
+      break
+
+  if msb == -1: # exponent is 0
+    r[0] = One  # x⁰ = 1, even for 0⁰
+    return
+
+  if not bool(a[0] and One) and # if a is even
+     1+msb >= k.int: # The msb of a n-bit integer is at n-1
+    return           # r ≡ aᵉ (mod 2ᵏ) ≡ (2b)ᵏ⁺ⁿ (mod 2ᵏ) ≡ 2ᵏ.2ⁿ.bᵏ⁺ⁿ (mod 2ᵏ) ≡ 0 (mod 2ᵏ)
+
+  var bitsLeft = msb+1
+  if bool(a[0] and One) and # if a is odd
+     int(k-1) < bitsLeft:
+    bitsLeft = int(k-1)
+
   r[0] = One
 
-  for e in exponent:
-    for bit in unpack(e):
-      r.mulmod2k_vartime(r, r, k)
+  var sBuf = allocStackArray(SecretWord, r.len)
+  template s: untyped = sBuf.toOpenArray(0, r.len-1)
+
+  for i in 0 ..< r.len:
+    # range [r.len, a.len) will be truncated (mod 2ᵏ)
+    sBuf[i] = a[i]
+
+  # TODO: sliding window
+  for i in countdown(exponent.len-1, 0):
+    for bit in unpackLE(exponent[i]):
       if bit:
-        r.mulmod2k_vartime(r, a, k)
+        r.mulmod2k_vartime(r, s, k)
+      s.mulmod2k_vartime(s, s, k)
+      bitsLeft -= 1
+      if bitsLeft == 0:
+        return
 
 func invModBitwidth(a: SecretWord): SecretWord {.borrow.}
   ## Inversion a⁻¹ (mod 2³²) or a⁻¹ (mod 2⁶⁴)
