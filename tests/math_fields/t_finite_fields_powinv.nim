@@ -151,7 +151,7 @@ proc main() =
 
         let expected = "0x0636759a0f3034fa47174b2c0334902f11e9915b7bd89c6a2b3082b109abbc9837da17201f6d8286fe6203caa1b9d4c8"
 
-        x.powUnsafeExponent(exponent)
+        x.pow_vartime(exponent)
         let computed = x.toHex()
 
         check:
@@ -338,7 +338,7 @@ proc main_anti_regression =
     #   # square of "0x406e5e74ee09c84fa0c59f2db3ac814a4937e2f57ecd3c0af4265e04598d643c5b772a6549a2d9b825445c34b8ba100fe8d912e61cfda43d"
     #   a.fromHex("0x1e6511b2bfabd7d32d8df7492c66df29ade7fdb21bb0d8f6cacfccb05e45a812a27cd087e1bbb2d202ee29f75a021a6a68d990a2a5e73410")
 
-    #   a.powUnsafeExponent(FKM12_447.getPrimeMinus1div2_BE())
+    #   a.pow_vartime(FKM12_447.getPrimeMinus1div2_BE())
     #   check: bool a.isOne()
 
     test "#42 - a^(p-3)/4 (inverse square root)":
@@ -357,7 +357,7 @@ proc main_anti_regression =
       discard pm3div4.sub SecretWord(3)
       pm3div4.shiftRight(2)
 
-      a.powUnsafeExponent(pm3div4)
+      a.pow_vartime(pm3div4)
 
       var expected: Fp[BLS12_381]
       expected.fromHex"ec6fc6cd4d8a3afe1114d5288759b40a87b6b2f001c8c41693f13132be04de21ca22ea38bded36f3748e06d7b4c348c"
@@ -380,7 +380,7 @@ proc main_anti_regression =
       discard pm3div4.sub SecretWord(3)
       pm3div4.shiftRight(2)
 
-      a.powUnsafeExponent(pm3div4)
+      a.pow_vartime(pm3div4)
 
       var expected: Fp[BLS12_381]
       expected.fromHex"16bf380e9b6d01aa6961c4fcee02a00cb827b52d0eb2b541ea8b598d32100d0bd7dc9a600852b49f0379e63ba9c5d35e"
