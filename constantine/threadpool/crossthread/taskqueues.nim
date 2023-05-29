@@ -34,8 +34,8 @@
 
 import
   std/atomics,
+  ../../platforms/allocs,
   ../instrumentation,
-  ../../allocs,
   ./tasks_flowvars
 
 type

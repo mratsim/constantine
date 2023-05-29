@@ -453,21 +453,21 @@ const testDescNvidia: seq[string] = @[
 ]
 
 const testDescThreadpool: seq[string] = @[
-  "constantine/platforms/threadpool/examples/e01_simple_tasks.nim",
-  "constantine/platforms/threadpool/examples/e02_parallel_pi.nim",
-  "constantine/platforms/threadpool/examples/e03_parallel_for.nim",
-  "constantine/platforms/threadpool/examples/e04_parallel_reduce.nim",
-  # "constantine/platforms/threadpool/benchmarks/bouncing_producer_consumer/threadpool_bpc.nim", # Need timing not implemented on Windows
-  "constantine/platforms/threadpool/benchmarks/dfs/threadpool_dfs.nim",
-  "constantine/platforms/threadpool/benchmarks/fibonacci/threadpool_fib.nim",
-  "constantine/platforms/threadpool/benchmarks/heat/threadpool_heat.nim",
-  # "constantine/platforms/threadpool/benchmarks/matmul_cache_oblivious/threadpool_matmul_co.nim",
-  "constantine/platforms/threadpool/benchmarks/nqueens/threadpool_nqueens.nim",
-  # "constantine/platforms/threadpool/benchmarks/single_task_producer/threadpool_spc.nim", # Need timing not implemented on Windows
-  # "constantine/platforms/threadpool/benchmarks/black_scholes/threadpool_black_scholes.nim", # Need input file
-  "constantine/platforms/threadpool/benchmarks/matrix_transposition/threadpool_transposes.nim",
-  "constantine/platforms/threadpool/benchmarks/histogram_2D/threadpool_histogram.nim",
-  "constantine/platforms/threadpool/benchmarks/logsumexp/threadpool_logsumexp.nim",
+  "constantine/threadpool/examples/e01_simple_tasks.nim",
+  "constantine/threadpool/examples/e02_parallel_pi.nim",
+  "constantine/threadpool/examples/e03_parallel_for.nim",
+  "constantine/threadpool/examples/e04_parallel_reduce.nim",
+  # "constantine/threadpool/benchmarks/bouncing_producer_consumer/threadpool_bpc.nim", # Need timing not implemented on Windows
+  "constantine/threadpool/benchmarks/dfs/threadpool_dfs.nim",
+  "constantine/threadpool/benchmarks/fibonacci/threadpool_fib.nim",
+  "constantine/threadpool/benchmarks/heat/threadpool_heat.nim",
+  # "constantine/threadpool/benchmarks/matmul_cache_oblivious/threadpool_matmul_co.nim",
+  "constantine/threadpool/benchmarks/nqueens/threadpool_nqueens.nim",
+  # "constantine/threadpool/benchmarks/single_task_producer/threadpool_spc.nim", # Need timing not implemented on Windows
+  # "constantine/threadpool/benchmarks/black_scholes/threadpool_black_scholes.nim", # Need input file
+  "constantine/threadpool/benchmarks/matrix_transposition/threadpool_transposes.nim",
+  "constantine/threadpool/benchmarks/histogram_2D/threadpool_histogram.nim",
+  "constantine/threadpool/benchmarks/logsumexp/threadpool_logsumexp.nim",
 ]
 
 const testDescMultithreadedCrypto: seq[string] = @[

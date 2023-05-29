@@ -8,7 +8,7 @@
 import
   std/macros,
   ./crossthread/tasks_flowvars,
-  ../ast_rebuilder
+  ../platforms/ast_rebuilder
 
 # Parallel offloading API
 # -----------------------

@@ -21,7 +21,7 @@ import
     ec_multi_scalar_mul_parallel],
   ../constantine/math/constants/zoo_subgroups,
   # Threadpool
-  ../constantine/platforms/threadpool/threadpool,
+  ../constantine/threadpool/threadpool,
   # Helpers
   ../helpers/prng_unsafe,
   ./bench_elliptic_template,

@@ -8,7 +8,7 @@
 
 import
   ../../platforms/abstractions,
-  ../../platforms/threadpool/[threadpool, partitioners],
+  ../../threadpool/[threadpool, partitioners],
   ./ec_shortweierstrass_affine,
   ./ec_shortweierstrass_jacobian,
   ./ec_shortweierstrass_projective,
