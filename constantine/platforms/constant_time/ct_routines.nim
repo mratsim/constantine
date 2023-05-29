@@ -157,7 +157,10 @@ template `<=`*[T: Ct](x, y: T): CTBool[T] =
   not(y < x)
 
 template `xor`*[T: Ct](x, y: CTBool[T]): CTBool[T] =
-  CTBool[T](noteq(T(x), T(y)))
+  {.push hint[ConvFromXtoItselfNotNeeded]: off.}
+  let r = CTBool[T](noteq(T(x), T(y)))
+  {.pop.}
+  r
 
 # ############################################################
 #
