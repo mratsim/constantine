@@ -120,14 +120,19 @@ func shlAddMod(a: LimbsViewMut, aLen: int,
     let R = mBits and (WordBitWidth - 1)
 
     # (hi, lo) = a * 2^64 + c
-    let hi = (a[0] shl (WordBitWidth-R)) or (c shr R)
-    let lo = c shl (WordBitWidth-R)
-    let m0 = M[0] shl (WordBitWidth-R)
+    if R == 0:
+      var q, r: SecretWord
+      div2n1n(q, r, a[0], c, M[0])  # (hi, lo) mod M
+      a[0] = r
+    else:
+      let hi = (a[0] shl (WordBitWidth-R)) or (c shr R)
+      let lo = c shl (WordBitWidth-R)
+      let m0 = M[0] shl (WordBitWidth-R)
 
-    var q, r: SecretWord
-    div2n1n(q, r, hi, lo, m0)  # (hi, lo) mod M
+      var q, r: SecretWord
+      div2n1n(q, r, hi, lo, m0)  # (hi, lo) mod M
 
-    a[0] = r shr (WordBitWidth-R)
+      a[0] = r shr (WordBitWidth-R)
 
   else:
     ## Multiple limbs

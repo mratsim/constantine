@@ -12,9 +12,8 @@ import
   # Third-party
   gmp,
   # Internal
-  ../../constantine/math/io/io_bigints,
-  ../../constantine/math/arithmetic,
-  ../../constantine/platforms/primitives,
+  ../../constantine/math/[arithmetic, io/io_bigints],
+  ../../constantine/platforms/[primitives, codecs],
   # Test utilities
   ../../helpers/prng_unsafe
 
@@ -25,6 +24,9 @@ var bitSizeRNG {.compileTime.} = initRand(1234)
 const CryptoModSizes = [
   # Modulus sizes occuring in crypto
   # To be tested more often
+
+  # Special-case
+  64,
 
   # RSA
   1024,
@@ -59,7 +61,7 @@ macro testRandomModSizes(numSizes: static int, aBits, mBits, body: untyped): unt
   result = newStmtList()
 
   for _ in 0 ..< numSizes:
-    let aBitsVal = bitSizeRNG.rand(126 .. 8192)
+    let aBitsVal = bitSizeRNG.rand(62 .. 8192)
     let mBitsVal = block:
       # Pick from curve modulus if odd
       if bool(bitSizeRNG.rand(high(int)) and 1):
@@ -95,7 +97,7 @@ proc main() =
   mpz_init(m)
   mpz_init(r)
 
-  testRandomModSizes(12, aBits, mBits):
+  testRandomModSizes(60, aBits, mBits):
     # echo "--------------------------------------------------------------------------------"
     echo "Testing: random dividend (" & align($aBits, 4) & "-bit) -- random modulus (" & align($mBits, 4) & "-bit)"
 

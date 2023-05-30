@@ -56,7 +56,6 @@ func r_powmod_vartime(r: var openArray[SecretWord], M: openArray[SecretWord], n:
   let
     w = M.len
     msb = int log2_vartime(BaseType M[M.len-1])
-    bits = 1 + msb + WordBitWidth*(w - 1)
     start = (w-1)*WordBitWidth + msb
     stop = n*WordBitWidth*w
 
@@ -156,7 +155,7 @@ func fromMont*(r: LimbsViewMut, a: LimbsViewAny, M: LimbsViewConst,
   t.copyWords(0, a, 0, N)
 
   for i in 0 ..< N:
-    let m = t[0] * SecretWord(m0ninv)
+    let m = t[0] * m0ninv
     var C, lo: SecretWord
     muladd1(C, lo, m, M[0], t[0])
     for j in 1 ..< N:

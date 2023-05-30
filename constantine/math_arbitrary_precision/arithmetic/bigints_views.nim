@@ -55,6 +55,7 @@ func powOddMod_vartime*(
   debug:
     doAssert bool(M.isOdd())
 
+  let aBits  = a.getBits_vartime()
   let mBits  = M.getBits_vartime()
   let L      = wordsRequired(mBits)
   let m0ninv = M[0].negInvModWord()
@@ -64,7 +65,18 @@ func powOddMod_vartime*(
     var r2Buf = allocStackArray(SecretWord, L)
     template r2: untyped = r2Buf.toOpenArray(0, L-1)
     r2.r2_vartime(M)
-    rMont.LimbsViewMut.getMont(a.view(), M.view(), LimbsViewConst r2.view(), m0ninv, mBits)
+
+    # Conversion to Montgomery can auto-reduced by up to M*R
+    # if we use redc2xMont (a/R) and montgomery multiplication by R³
+    # For now, we call explicit reduction as it can handle all sizes.
+    # TODO: explicit reduction uses constant-time division which is **very** expensive
+    # TODO: fix https://github.com/mratsim/constantine/issues/241
+    if a.len != M.len:
+      let t = allocStackArray(SecretWord, L)
+      t.LimbsViewMut.reduce(a.view(), aBits, M.view(), mBits)
+      rMont.LimbsViewMut.getMont(LimbsViewConst t, M.view(), LimbsViewConst r2.view(), m0ninv, mBits)
+    else:
+      rMont.LimbsViewMut.getMont(a.view(), M.view(), LimbsViewConst r2.view(), m0ninv, mBits)
 
   block:
     var oneMontBuf = allocStackArray(SecretWord, L)
@@ -156,14 +168,12 @@ func powMod_vartime*(
   let qWords = qBits.wordsRequired()
   let pWords = pBits.wordsRequired()
 
-  var tBuf  = allocStackArray(SecretWord, qWords)
   var qBuf  = allocStackArray(SecretWord, qWords)
   var a1Buf = allocStackArray(SecretWord, qWords)
   var a2Buf = allocStackArray(SecretWord, pWords)
   var yBuf =  allocStackArray(SecretWord, pWords)
   var qInv2kBuf = allocStackArray(SecretWord, pWords)
 
-  template t: untyped = tBuf.toOpenArray(0, qWords-1)
   template q: untyped = qBuf.toOpenArray(0, qWords-1)
   template a1: untyped = a1Buf.toOpenArray(0, qWords-1)
   template a2: untyped = a2Buf.toOpenArray(0, pWords-1)
@@ -172,8 +182,7 @@ func powMod_vartime*(
 
   q.shiftRight_vartime(M, ctz)
 
-  tBuf.LimbsViewMut.reduce(a.view(), aBits, LimbsViewConst qBuf, qBits)
-  a1.powOddMod_vartime(t, exponent, q, window)
+  a1.powOddMod_vartime(a, exponent, q, window)
   a2.powMod2k_vartime(a, exponent, k = uint ctz)
 
   block:

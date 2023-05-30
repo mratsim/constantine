@@ -289,7 +289,9 @@ func invModBitwidth*[T: SomeUnsignedInt](a: T): T =
 
 func negInvModWord*[T: SomeUnsignedInt or SecretWord](a: T): T =
   let t = invModBitwidth(BaseType a)
+  {.push hint[ConvFromXtoItselfNotNeeded]: off.}
   return T(-SecretWord(t))
+  {.pop.}
 
 func negInvModWord*(M: BigInt): BaseType =
   ## Returns the Montgomery domain magic constant for the input modulus:
