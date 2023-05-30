@@ -194,10 +194,10 @@ proc benchAll(desc: seq[BenchDesc]) =
   let ratioNimBigInt =  float64(perfNimBigInt) / float64(perfCttArb)
 
   echo ""
-  echo &"Perf ratio Constantine Generic vs Crypto Fixed precision: {ratioCrypto:>8.3f}x"
-  echo &"Perf ratio Constantine Generic vs GMP:                    {ratioGMP:>8.3f}x"
-  echo &"Perf ratio Constantine Generic vs Stint:                  {ratioStint:>8.3f}x"
-  echo &"Perf ratio Constantine Generic vs nim-bigints:            {ratioNimBigInt:>8.3f}x"
+  echo &"Perf ratio Constantine generic vs crypto fixed precision: {ratioCrypto:>8.3f}x"
+  echo &"Perf ratio Constantine generic vs GMP:                    {ratioGMP:>8.3f}x"
+  echo &"Perf ratio Constantine generic vs Stint:                  {ratioStint:>8.3f}x"
+  echo &"Perf ratio Constantine generic vs nim-bigints:            {ratioNimBigInt:>8.3f}x"
 
 
 when isMainModule:

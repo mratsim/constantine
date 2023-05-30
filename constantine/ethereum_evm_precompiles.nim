@@ -8,13 +8,14 @@
 
 import
   ./platforms/abstractions,
-  ./math/config/curves,
+  ./math/config/[curves, precompute],
   ./math/[arithmetic, extension_fields],
   ./math/arithmetic/limbs_montgomery,
   ./math/ec_shortweierstrass,
   ./math/pairings/[pairings_generic, miller_accumulators],
   ./math/constants/zoo_subgroups,
-  ./math/io/[io_bigints, io_fields]
+  ./math/io/[io_bigints, io_fields],
+  ./math_arbitrary_precision/arithmetic/bigints_views
 
 # ############################################################
 #
@@ -28,10 +29,11 @@ import
 type
   CttEVMStatus* = enum
     cttEVM_Success
+    cttEVM_InvalidInputSize
+    cttEVM_InvalidOutputSize
     cttEVM_IntLargerThanModulus
     cttEVM_PointNotOnCurve
     cttEVM_PointNotInSubgroup
-    cttEVM_InvalidInputLength
 
 func parseRawUint(
        dst: var Fp[BN254_Snarks],
@@ -86,7 +88,7 @@ func fromRawCoords(
 
   return cttEVM_Success
 
-func eth_evm_ecadd*(r: var array[64, byte], inputs: openarray[byte]): CttEVMStatus =
+func eth_evm_ecadd*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus =
   ## Elliptic Curve addition on BN254_Snarks
   ## (also called alt_bn128 in Ethereum specs
   ##  and bn256 in Ethereum tests)
@@ -111,6 +113,9 @@ func eth_evm_ecadd*(r: var array[64, byte], inputs: openarray[byte]): CttEVMStat
   ##
   ## Spec https://eips.ethereum.org/EIPS/eip-196
 
+  if r.len != 64:
+    return cttEVM_InvalidOutputSize
+
   # Auto-pad with zero
   var padded: array[128, byte]
   padded.rawCopy(0, inputs, 0, min(inputs.len, 128))
@@ -119,14 +124,12 @@ func eth_evm_ecadd*(r: var array[64, byte], inputs: openarray[byte]): CttEVMStat
 
   let statusP = P.fromRawCoords(
     x = padded.toOpenArray(0, 31),
-    y = padded.toOpenArray(32, 63)
-  )
+    y = padded.toOpenArray(32, 63))
   if statusP != cttEVM_Success:
     return statusP
   let statusQ = Q.fromRawCoords(
     x = padded.toOpenArray(64, 95),
-    y = padded.toOpenArray(96, 127)
-  )
+    y = padded.toOpenArray(96, 127))
   if statusQ != cttEVM_Success:
     return statusQ
 
@@ -135,13 +138,13 @@ func eth_evm_ecadd*(r: var array[64, byte], inputs: openarray[byte]): CttEVMStat
   aff.affine(R)
 
   r.toOpenArray(0, 31).marshal(
-    aff.x, bigEndian
-  )
+    aff.x, bigEndian)
   r.toOpenArray(32, 63).marshal(
-    aff.y, bigEndian
-  )
+    aff.y, bigEndian)
 
-func eth_evm_ecmul*(r: var array[64, byte], inputs: openarray[byte]): CttEVMStatus =
+  return cttEVM_Success
+
+func eth_evm_ecmul*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus =
   ## Elliptic Curve multiplication on BN254_Snarks
   ## (also called alt_bn128 in Ethereum specs
   ##  and bn256 in Ethereum tests)
@@ -166,6 +169,9 @@ func eth_evm_ecmul*(r: var array[64, byte], inputs: openarray[byte]): CttEVMStat
   ##
   ## Spec https://eips.ethereum.org/EIPS/eip-196
 
+  if r.len != 64:
+    return cttEVM_InvalidOutputSize
+
   # Auto-pad with zero
   var padded: array[128, byte]
   padded.rawCopy(0, inputs, 0, min(inputs.len, 128))
@@ -174,8 +180,7 @@ func eth_evm_ecmul*(r: var array[64, byte], inputs: openarray[byte]): CttEVMStat
 
   let statusP = P.fromRawCoords(
     x = padded.toOpenArray(0, 31),
-    y = padded.toOpenArray(32, 63)
-  )
+    y = padded.toOpenArray(32, 63))
   if statusP != cttEVM_Success:
     return statusP
 
@@ -205,11 +210,11 @@ func eth_evm_ecmul*(r: var array[64, byte], inputs: openarray[byte]): CttEVMStat
   aff.affine(P)
 
   r.toOpenArray(0, 31).marshal(
-    aff.x, bigEndian
-  )
+    aff.x, bigEndian)
   r.toOpenArray(32, 63).marshal(
-    aff.y, bigEndian
-  )
+    aff.y, bigEndian)
+
+  return cttEVM_Success
 
 func subgroupCheck(P: ECP_ShortW_Aff[Fp2[BN254_Snarks], G2]): bool =
   ## A point may be on a curve but in case the curve has a cofactor != 1
@@ -289,7 +294,7 @@ func fromRawCoords(
   return cttEVM_Success
 
 func eth_evm_ecpairing*(
-      r: var array[32, byte], inputs: openarray[byte]): CttEVMStatus =
+      r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus =
   ## Elliptic Curve pairing on BN254_Snarks
   ## (also called alt_bn128 in Ethereum specs
   ##  and bn256 in Ethereum tests)
@@ -305,19 +310,21 @@ func eth_evm_ecpairing*(
   ##   cttEVM_Success
   ##   cttEVM_IntLargerThanModulus
   ##   cttEVM_PointNotOnCurve
-  ##   cttEVM_InvalidInputLength
+  ##   cttEVM_InvalidInputSize
   ##
   ## Spec https://eips.ethereum.org/EIPS/eip-197
+  if r.len != 32:
+    return cttEVM_InvalidOutputSize
 
   let N = inputs.len div 192
   if inputs.len mod 192 != 0:
-    return cttEVM_InvalidInputLength
+    return cttEVM_InvalidInputSize
 
   if N == 0:
     # Spec: "Empty input is valid and results in returning one."
     zeroMem(r.addr, r.sizeof())
     r[r.len-1] = byte 1
-    return
+    return cttEVM_Success
 
   var P{.noInit.}: ECP_ShortW_Aff[Fp[BN254_Snarks], G1]
   var Q{.noInit.}: ECP_ShortW_Aff[Fp2[BN254_Snarks], G2]
@@ -331,8 +338,8 @@ func eth_evm_ecpairing*(
 
     let statusP = P.fromRawCoords(
       x = inputs.toOpenArray(pos, pos+31),
-      y = inputs.toOpenArray(pos+32, pos+63)
-    )
+      y = inputs.toOpenArray(pos+32, pos+63))
+
     if statusP != cttEVM_Success:
       return statusP
 
@@ -342,8 +349,8 @@ func eth_evm_ecpairing*(
       x1 = inputs.toOpenArray(pos+64, pos+95),
       x0 = inputs.toOpenArray(pos+96, pos+127),
       y1 = inputs.toOpenArray(pos+128, pos+159),
-      y0 = inputs.toOpenArray(pos+160, pos+191)
-    )
+      y0 = inputs.toOpenArray(pos+160, pos+191))
+
     if statusQ != cttEVM_Success:
       return statusQ
 
@@ -353,7 +360,7 @@ func eth_evm_ecpairing*(
 
   if foundInfinity: # pairing with infinity returns 1, hence no need to compute the following
     r[r.len-1] = byte 1
-    return
+    return cttEVM_Success
 
   var gt {.noinit.}: Fp12[BN254_Snarks]
   acc.finish(gt)
@@ -362,3 +369,112 @@ func eth_evm_ecpairing*(
   zeroMem(r.addr, r.sizeof())
   if gt.isOne().bool:
     r[r.len-1] = byte 1
+  return cttEVM_Success
+
+func eth_evm_modexp*(r: var openArray[byte], inputs: openArray[byte]): CttEVMStatus {.noInline, tags:[Alloca, Vartime].} =
+  ## Modular exponentiation
+  ##
+  ## Name: MODEXP
+  ##
+  ## Inputs:
+  ## - `baseLen`:     32 bytes base integer length (in bytes)
+  ## - `exponentLen`: 32 bytes exponent length (in bytes)
+  ## - `modulusLen`:  32 bytes modulus length (in bytes)
+  ## - `base`:        base integer (`baseLen` bytes)
+  ## - `exponent`:    exponent (`exponentLen` bytes)
+  ## - `modulus`:     modulus (`modulusLen` bytes)
+  ##
+  ## Limitation:
+  ## - At the moment we require that `base` use less or equal 32 or 64 bit words
+  ##   than modulus. i.e. with k = 32/8 or 64/8
+  ##   (baseLen + k - 1) div k <= (modulusLen + k - 1) div k
+  ##
+  ## Output:
+  ## - baseᵉˣᵖᵒⁿᵉⁿᵗ (mod modulus)
+  ##   The result buffer `r` MUST match the modulusLen
+  ## - status code:
+  ##   cttEVM_Success
+  ##   cttEVM_InvalidInputSize if the lengths require more than 32-bit or 64-bit addressing (depending on hardware)
+  ##   cttEVM_InvalidOutputSize
+  ##
+  ## Spec
+  ##   Yellow Paper Appendix E
+  ##   EIP-198 - https://github.com/ethereum/EIPs/blob/master/EIPS/eip-198.md
+  ##
+  ## Hardware considerations:
+  ##   This procedure stack allocates a table of (16+1)*modulusLen and many stack temporaries.
+  ##   Make sure to validate gas costs and reject large inputs to bound stack usage.
+
+  # Input parse sizes
+  # -----------------
+  let
+    bL = BigInt[256].unmarshal(inputs.toOpenArray(0, 31), bigEndian)
+    eL = BigInt[256].unmarshal(inputs.toOpenArray(32, 63), bigEndian)
+    mL = BigInt[256].unmarshal(inputs.toOpenArray(64, 95), bigEndian)
+
+    maxSize = BigInt[256].fromUint(high(uint)) # A CPU can only address up to high(uint)
+
+  # Input validation
+  # -----------------
+  if bool(bL > maxSize):
+    return cttEVM_InvalidInputSize
+  if bool(eL > maxSize):
+    return cttEVM_InvalidInputSize
+  if bool(mL > maxSize):
+    return cttEVM_InvalidInputSize
+
+  let
+    baseLen = cast[int](bL.limbs[0])
+    exponentLen = cast[int](eL.limbs[0])
+    modulusLen = cast[int](mL.limbs[0])
+
+  if r.len != modulusLen:
+    return cttEVM_InvalidOutputSize
+
+  if baseLen.ceilDiv_vartime(WordBitWidth div 8) > modulusLen.ceilDiv_vartime(WordBitWidth div 8):
+    return cttEVM_InvalidInputSize
+
+  # Special cases
+  # ----------------------
+  if modulusLen == 0:
+    r.setZero()
+    return cttEVM_Success
+  if exponentLen == 0:
+    r.setZero()
+    r[r.len-1] = byte 1 # 0^0 = 1 and x^0 = 1
+    return cttEVM_Success
+  if baseLen == 0:
+    r.setZero()
+    return cttEVM_Success
+
+  # Input deserialization
+  # ---------------------
+  var baseBuf = allocStackArray(SecretWord, baseLen)
+  var modulusBuf = allocStackArray(SecretWord, modulusLen)
+  var outputBuf = allocStackArray(SecretWord, modulusLen)
+
+  template base(): untyped = baseBuf.toOpenArray(0, baseLen-1)
+  template modulus(): untyped = modulusBuf.toOpenArray(0, modulusLen-1)
+  template output(): untyped = outputBuf.toOpenArray(0, modulusLen-1)
+
+  # Inclusive stops
+  let baseStart = 96
+  let baseStop  = baseStart+baseLen-1
+  let expStart  = baseStop+1
+  let expStop   = expStart+exponentLen-1
+  let modStart  = expStop+1
+  let modStop   = modStart+modulusLen-1
+
+  base.toOpenArray(0, baseLen-1).unmarshal(inputs.toOpenArray(baseStart, baseStop), WordBitWidth, bigEndian)
+  modulus.toOpenArray(0, modulusLen-1).unmarshal(inputs.toOpenArray(modStart, modStop), WordBitWidth, bigEndian)
+  template exponent(): untyped =
+    inputs.toOpenArray(expStart, expStop)
+
+  # Computation
+  # ---------------------
+  output.powMod_vartime(base, exponent, modulus, window = 4)
+
+  # Output serialization
+  # ---------------------
+  r.marshal(output, WordBitWidth, bigEndian)
+  return cttEVM_Success
