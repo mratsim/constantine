@@ -64,7 +64,7 @@ func powOddMod_vartime*(
   block:
     var r2Buf = allocStackArray(SecretWord, L)
     template r2: untyped = r2Buf.toOpenArray(0, L-1)
-    r2.r2_vartime(M)
+    r2.r2_vartime(M.toOpenArray(0, L-1))
 
     # Conversion to Montgomery can auto-reduced by up to M*R
     # if we use redc2xMont (a/R) and montgomery multiplication by R³
@@ -81,7 +81,7 @@ func powOddMod_vartime*(
   block:
     var oneMontBuf = allocStackArray(SecretWord, L)
     template oneMont: untyped = oneMontBuf.toOpenArray(0, L-1)
-    oneMont.oneMont_vartime(M)
+    oneMont.oneMont_vartime(M.toOpenArray(0, L-1))
 
     let scratchLen = L * ((1 shl window) + 1)
     var scratchSpace = allocStackArray(SecretWord, scratchLen)
@@ -165,17 +165,17 @@ func powMod_vartime*(
 
   let qBits = mBits-ctz
   let pBits = 1+ctz
-  let qWords = qBits.wordsRequired()
+  # let qWords = qBits.wordsRequired() # TODO: use minimum size for q
   let pWords = pBits.wordsRequired()
 
-  var qBuf  = allocStackArray(SecretWord, qWords)
-  var a1Buf = allocStackArray(SecretWord, qWords)
+  var qBuf  = allocStackArray(SecretWord, M.len)
+  var a1Buf = allocStackArray(SecretWord, M.len)
   var a2Buf = allocStackArray(SecretWord, pWords)
   var yBuf =  allocStackArray(SecretWord, pWords)
   var qInv2kBuf = allocStackArray(SecretWord, pWords)
 
-  template q: untyped = qBuf.toOpenArray(0, qWords-1)
-  template a1: untyped = a1Buf.toOpenArray(0, qWords-1)
+  template q: untyped = qBuf.toOpenArray(0, M.len-1)
+  template a1: untyped = a1Buf.toOpenArray(0, M.len-1)
   template a2: untyped = a2Buf.toOpenArray(0, pWords-1)
   template y: untyped = yBuf.toOpenArray(0, pWords-1)
   template qInv2k: untyped = qInv2kBuf.toOpenArray(0, pWords-1)
@@ -186,7 +186,7 @@ func powMod_vartime*(
   a2.powMod2k_vartime(a, exponent, k = uint ctz)
 
   block:
-    let min = min(pWords, qWords)
+    let min = min(pWords, M.len)
     for i in 0 ..< min:
       qInv2k[i] = q[i]
     for i in min ..< pWords:

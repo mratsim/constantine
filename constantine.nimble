@@ -825,6 +825,12 @@ task test_nvidia, "Run all tests for Nvidia GPUs":
     if cmd != "": # Windows doesn't like empty commands
       exec cmd
 
+# BigInt benchmark
+# ------------------------------------------
+
+task bench_powmod, "Run modular exponentiation benchmark with your CC compiler":
+  runBench("bench_powmod")
+
 # Finite field 𝔽p
 # ------------------------------------------
 
