@@ -238,6 +238,8 @@ func checkValidModulus(M: BigInt) =
   const expectedMsb = M.bits-1 - WordBitWidth * (M.limbs.len - 1)
   let msb = log2_vartime(BaseType(M.limbs[M.limbs.len-1]))
 
+  # This is important for the constant-time explicit modulo operation
+  # "reduce" and bigint division.
   doAssert msb == expectedMsb, "Internal Error: the modulus must use all declared bits and only those:\n" &
     "    Modulus '" & M.toHex() & "' is declared with " & $M.bits &
     " bits but uses " & $(msb + WordBitWidth * (M.limbs.len - 1)) & " bits."

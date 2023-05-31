@@ -32,7 +32,8 @@ func shrSmall(r {.noalias.}: var openArray[SecretWord], a: openArray[SecretWord]
   #       (antidependence WAR vs loop-carried dependence RAW)
   for i in 0 ..< a.len-1:
     r[i] = (a[i] shr k) or (a[i+1] shl (WordBitWidth - k))
-  r[a.len-1] = a[a.len-1] shr k
+  if a.len-1 < r.len:
+    r[a.len-1] = a[a.len-1] shr k
 
   for i in a.len ..< r.len:
     r[i] = Zero

@@ -144,6 +144,8 @@ func reduce*(r: LimbsViewMut,
             a: LimbsViewAny, aBits: int,
             M: LimbsViewConst, mBits: int) =
   ## Reduce `a` modulo `M` and store the result in `r`
+  ##
+  ## The modulus `M` most-significant bit at `mBits` MUST be set.
   let aLen = wordsRequired(aBits)
   let mLen = wordsRequired(mBits)
   let rLen = mLen
@@ -173,6 +175,8 @@ func reduce*[aLen, mLen](r: var Limbs[mLen],
   ## Reduce `a` modulo `M` and store the result in `r`
   ##
   ## This uses constant-time division
+  ##
+  ## The modulus `M` most-significant bit at `mBits` MUST be set.
   # This is implemented via type-erased indirection to avoid
   # a significant amount of code duplication if instantiated for
   # varying bitwidth.

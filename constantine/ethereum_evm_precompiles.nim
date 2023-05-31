@@ -105,6 +105,7 @@ func eth_evm_ecadd*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStat
   ## If the length is greater than 128 bytes, input is truncated to 128 bytes.
   ##
   ## Output
+  ## - Output buffer MUST be of length 64 bytes
   ## - A G1 point R with coordinates (Px + Qx, Py + Qy)
   ## - Status code:
   ##   cttEVM_Success
@@ -161,6 +162,7 @@ func eth_evm_ecmul*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStat
   ## If the length is greater than 96 bytes, input is truncated to 96 bytes.
   ##
   ## Output
+  ## - Output buffer MUST be of length 64 bytes
   ## - A G1 point R = [s]P
   ## - Status code:
   ##   cttEVM_Success
@@ -305,6 +307,7 @@ func eth_evm_ecpairing*(
   ## - An array of [(P0, Q0), (P1, Q1), ... (Pk, Qk)] points in (G1, G2)
   ##
   ## Output
+  ## - Output buffer MUST be of length 32 bytes
   ## - 0 or 1 in uint256 BigEndian representation
   ## - Status code:
   ##   cttEVM_Success
@@ -322,7 +325,7 @@ func eth_evm_ecpairing*(
 
   if N == 0:
     # Spec: "Empty input is valid and results in returning one."
-    zeroMem(r.addr, r.sizeof())
+    zeroMem(r[0].addr, r.len-1)
     r[r.len-1] = byte 1
     return cttEVM_Success
 
@@ -359,6 +362,7 @@ func eth_evm_ecpairing*(
       foundInfinity = true
 
   if foundInfinity: # pairing with infinity returns 1, hence no need to compute the following
+    zeroMem(r[0].addr, r.len-1)
     r[r.len-1] = byte 1
     return cttEVM_Success
 
@@ -366,7 +370,7 @@ func eth_evm_ecpairing*(
   acc.finish(gt)
   gt.finalExp()
 
-  zeroMem(r.addr, r.sizeof())
+  zeroMem(r[0].addr, r.len)
   if gt.isOne().bool:
     r[r.len-1] = byte 1
   return cttEVM_Success
@@ -384,14 +388,9 @@ func eth_evm_modexp*(r: var openArray[byte], inputs: openArray[byte]): CttEVMSta
   ## - `exponent`:    exponent (`exponentLen` bytes)
   ## - `modulus`:     modulus (`modulusLen` bytes)
   ##
-  ## Limitation:
-  ## - At the moment we require that `base` use less or equal 32 or 64 bit words
-  ##   than modulus. i.e. with k = 32/8 or 64/8
-  ##   (baseLen + k - 1) div k <= (modulusLen + k - 1) div k
-  ##
   ## Output:
   ## - baseᵉˣᵖᵒⁿᵉⁿᵗ (mod modulus)
-  ##   The result buffer `r` MUST match the modulusLen
+  ##   The result buffer size `r` MUST match the modulusLen
   ## - status code:
   ##   cttEVM_Success
   ##   cttEVM_InvalidInputSize if the lengths require more than 32-bit or 64-bit addressing (depending on hardware)
