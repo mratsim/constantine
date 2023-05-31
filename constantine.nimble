@@ -923,6 +923,12 @@ task bench_ec_g1_scalar_mul_noasm, "Run benchmark on Elliptic Curve group 𝔾1 
 # Elliptic curve G1 - Multi-scalar-mul
 # ------------------------------------------
 
+task bench_ec_g1_msm_pasta, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for Pasta curves - CC compiler":
+  runBench("bench_ec_g1_msm_pasta")
+
+task bench_ec_g1_msm_pasta_noasm, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for Pasta curves - CC compiler no Assembly":
+  runBench("bench_ec_g1_msm_pasta", useAsm = false)
+
 task bench_ec_g1_msm_bn254_snarks, "Run benchmark on Elliptic Curve group 𝔾1 (Multi-Scalar-Mul) for BN254-Snarks - CC compiler":
   runBench("bench_ec_g1_msm_bn254_snarks")
 
