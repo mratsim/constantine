@@ -235,9 +235,9 @@ jobs:
         shell: bash
         run: |
           cd constantine
-          nimble bindings_no_asm      --verbose
-          nimble test_bindings        --verbose
-          nimble test_parallel_no_asm --verbose
+          CTT_ASM=0 nimble bindings      --verbose
+          nimble test_bindings           --verbose
+          CTT_ASM=0 nimble test_parallel --verbose
       - name: Run Constantine tests (Windows with Assembly)
         # So "test_bindings" uses C and can find GMP
         # but nim-gmp cannot find GMP on Windows CI
@@ -255,6 +255,6 @@ jobs:
         shell: msys2 {0}
         run: |
           cd constantine
-          nimble bindings_no_asm             --verbose
-          nimble test_bindings               --verbose
-          nimble test_parallel_no_gmp_no_asm --verbose
+          CTT_ASM=0 nimble bindings      --verbose
+          nimble test_bindings           --verbose
+          CTT_ASM=0 test_parallel_no_gmp --verbose

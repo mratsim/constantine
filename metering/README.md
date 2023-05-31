@@ -50,7 +50,7 @@ reportCli(Metrics, flags)
 
 After compiling with
 ```
-nim c -r --hints:off --warnings:off --verbosity:0 -d:danger -d:CttMeter --outdir:build metering/m_pairings.nim
+nim c -r --hints:off --warnings:off --verbosity:0 -d:danger -d:CTT_METER --outdir:build metering/m_pairings.nim
 ```
 
 We get

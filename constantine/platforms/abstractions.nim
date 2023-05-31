@@ -19,8 +19,8 @@ export primitives, tracer
 
 # ------------------------------------------------------------
 
-const CttASM {.booldefine.} = true
-const UseASM_X86_32* = CttASM and X86 and GCC_Compatible
+const CTT_ASM {.booldefine.} = true
+const UseASM_X86_32* = CTT_ASM and X86 and GCC_Compatible
 const UseASM_X86_64* = sizeof(pointer)*8 == 64 and UseASM_X86_32
 
 # We use Nim effect system to track vartime subroutines
@@ -32,7 +32,7 @@ type VarTime*   = object
 #
 # ############################################################
 
-when sizeof(int) == 8 and not defined(Ctt32):
+when sizeof(int) == 8 and not defined(CTT_32):
   type
     BaseType* = uint64
       ## Physical BigInt for conversion in "normal integers"
@@ -121,7 +121,7 @@ debug: # Don't allow printing secret words by default
 
 type SignedSecretWord* = distinct SecretWord
 
-when sizeof(int) == 8 and not defined(Ctt32):
+when sizeof(int) == 8 and not defined(CTT_32):
   type
     SignedBaseType* = int64
 else:

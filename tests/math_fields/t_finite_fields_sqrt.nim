@@ -26,7 +26,7 @@ rng.seed(seed)
 echo "\n------------------------------------------------------\n"
 echo "test_finite_fields_sqrt xoshiro512** seed: ", seed
 
-static: doAssert defined(testingCurves), "This modules requires the -d:testingCurves compile option"
+static: doAssert defined(CTT_TEST_CURVES), "This modules requires the -d:CTT_TEST_CURVES compile option"
 
 proc exhaustiveCheck(C: static Curve, modulus: static int) =
   test "Exhaustive square root check for " & $Curve(C):

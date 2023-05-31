@@ -27,7 +27,7 @@ export
   # flowvars
   Flowvar, isSpawned, isReady
 
-when defined(TP_Metrics):
+when defined(CTT_THREADPOOL_METRICS):
   import ../platforms/static_for
   import system/ansi_c
 
@@ -180,7 +180,7 @@ type
     # Thefts
     rng: WorkStealingRng        # RNG state to select victims
 
-    when defined(TP_Metrics):
+    when defined(CTT_THREADPOOL_METRICS):
       counters: Counters
 
   Threadpool* = ptr object
@@ -202,7 +202,7 @@ type
 # ############################################################
 
 template metrics(body: untyped): untyped =
-  when defined(TP_Metrics):
+  when defined(CTT_THREADPOOL_METRICS):
     block: {.noSideEffect, gcsafe.}: body
 
 template incCounter(ctx: var WorkerContext, name: untyped{ident}, amount = 1) =

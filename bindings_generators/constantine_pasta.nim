@@ -13,10 +13,10 @@ type
   pallas_fp = Fp[Pallas]
   vesta_fr = Fr[Vesta]
   vesta_fp = Fp[Vesta]
-  pallas_ec_aff = ECP_ShortW_Aff[Fp[Pallas], G1] 
+  pallas_ec_aff = ECP_ShortW_Aff[Fp[Pallas], G1]
   pallas_ec_jac = ECP_ShortW_Jac[Fp[Pallas], G1]
   pallas_ec_prj = ECP_ShortW_Prj[Fp[Pallas], G1]
-  vesta_ec_aff = ECP_ShortW_Aff[Fp[Vesta], G1] 
+  vesta_ec_aff = ECP_ShortW_Aff[Fp[Vesta], G1]
   vesta_ec_jac = ECP_ShortW_Jac[Fp[Vesta], G1]
   vesta_ec_prj = ECP_ShortW_Prj[Fp[Vesta], G1]
 
@@ -35,9 +35,9 @@ collectBindings(cBindings):
   genBindings_EC_ShortW_NonAffine(vesta_ec_prj, vesta_ec_aff, vesta_fp)
 
 # Write header
-when isMainModule and defined(CttGenerateHeaders):
+when isMainModule and defined(CTT_GENERATE_HEADERS):
   import std/[os, strformat]
-  
+
   proc main() =
     # echo "Running bindings generation for " & getAppFilename().extractFilename()
 
