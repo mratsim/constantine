@@ -92,7 +92,7 @@ func millerLoopGenericBN*[C](
 func finalExpGeneric[C: static Curve](f: var Fp12[C]) =
   ## A generic and slow implementation of final exponentiation
   ## for sanity checks purposes.
-  f.powUnsafeExponent(C.pairing(finalexponent), window = 3)
+  f.pow_vartime(C.pairing(finalexponent), window = 3)
 
 func pairing_bn_reference*[C](
        gt: var Fp12[C],

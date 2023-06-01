@@ -46,7 +46,7 @@ when UseASM_X86_64:
 #   to save on code size.
 
 # No exceptions allowed
-{.push raises: [].}
+{.push raises: [], checks: off.}
 
 # Montgomery Reduction
 # ------------------------------------------------------------
@@ -570,7 +570,7 @@ func fromMont*(r: var Limbs, a, M: Limbs,
   ## with W = M.len
   ## and R = (2^WordBitWidth)^W
   ##
-  ## Does "a * R^-1 (mod M)"
+  ## Does "a * R^-1 (mod M)" = montMul(a, 1)
   ##
   ## This is called a Montgomery Reduction
   ## The Montgomery Magic Constant is µ = -1/N mod M
@@ -730,9 +730,8 @@ func powMont*(
        M, one: Limbs,
        m0ninv: BaseType,
        scratchspace: var openarray[Limbs],
-       spareBits: static int
-      ) =
-  ## Modular exponentiation r = a^exponent mod M
+       spareBits: static int) =
+  ## Modular exponentiation a <- a^exponent (mod M)
   ## in the Montgomery domain
   ##
   ## This uses fixed-window optimization if possible
@@ -773,8 +772,7 @@ func powMont*(
       a, exponent, M, m0ninv,
       scratchspace[0], window,
       acc, acc_len, e,
-      spareBits
-    )
+      spareBits)
 
     # Window lookup: we set scratchspace[1] to the lookup value.
     # If the window length is 1, then it's already set.
@@ -791,7 +789,7 @@ func powMont*(
     scratchspace[0].mulMont(a, scratchspace[1], M, m0ninv, spareBits)
     a.ccopy(scratchspace[0], SecretWord(bits).isNonZero())
 
-func powMontUnsafeExponent*(
+func powMont_vartime*(
        a: var Limbs,
        exponent: openarray[byte],
        M, one: Limbs,
@@ -799,7 +797,7 @@ func powMontUnsafeExponent*(
        scratchspace: var openarray[Limbs],
        spareBits: static int
       ) =
-  ## Modular exponentiation r = a^exponent mod M
+  ## Modular exponentiation a <- a^exponent (mod M)
   ## in the Montgomery domain
   ##
   ## Warning ⚠️ :
@@ -821,8 +819,7 @@ func powMontUnsafeExponent*(
       a, exponent, M, m0ninv,
       scratchspace[0], window,
       acc, acc_len, e,
-      spareBits
-    )
+      spareBits)
 
     ## Warning ⚠️: Exposes the exponent bits
     if bits != 0:

@@ -39,7 +39,7 @@ func invsqrt_p3mod4(r: var Fp, a: Fp) =
   # Algorithm
   #
   #
-  # From Euler's criterion: 
+  # From Euler's criterion:
   #    𝛘(a) = a^((p-1)/2)) ≡ 1 (mod p) if square
   # a^((p-1)/2)) * a^-1 ≡ 1/a  (mod p)
   # a^((p-3)/2))        ≡ 1/a  (mod p)
@@ -49,7 +49,7 @@ func invsqrt_p3mod4(r: var Fp, a: Fp) =
     r.invsqrt_addchain(a)
   else:
     r = a
-    r.powUnsafeExponent(Fp.getPrimeMinus3div4_BE())
+    r.pow_vartime(Fp.getPrimeMinus3div4_BE())
 
 # Specialized routine for p ≡ 5 (mod 8)
 # ------------------------------------------------------------
@@ -106,26 +106,26 @@ func invsqrt_p5mod8(r: var Fp, a: Fp) =
   # and α = (β/2a)⁽¹⸍²⁾= (2a)^(((p-1)/4 - 1)/2) = (2a)^((p-5)/8)
   static: doAssert Fp.C.has_P_5mod8_primeModulus()
   var alpha{.noInit.}, beta{.noInit.}: Fp
-  
+
   # α = (2a)^((p-5)/8)
   alpha.double(a)
   beta = alpha
   when Fp.C.hasSqrtAddchain():
     alpha.invsqrt_addchain_pminus5over8(alpha)
   else:
-    alpha.powUnsafeExponent(Fp.getPrimeMinus5div8_BE())
+    alpha.pow_vartime(Fp.getPrimeMinus5div8_BE())
 
   # Note: if r aliases a, for inverse square root we don't use `a` again
 
   # β = 2aα²
   r.square(alpha)
   beta *= r
-  
+
   # √a = αa(β − 1), so 1/√a = α(β − 1)
   r.setOne()
   beta -= r
   r.prod(alpha, beta)
-  
+
 
 # Specialized routines for addchain-based square roots
 # ------------------------------------------------------------
@@ -140,7 +140,7 @@ func precompute_tonelli_shanks(a_pre_exp: var Fp, a: Fp) =
     a_pre_exp.precompute_tonelli_shanks_addchain(a)
   else:
     a_pre_exp = a
-    a_pre_exp.powUnsafeExponent(Fp.C.tonelliShanks(exponent))
+    a_pre_exp.pow_vartime(Fp.C.tonelliShanks(exponent))
 
 func invsqrt_tonelli_shanks_pre(
        invsqrt: var Fp,
@@ -299,9 +299,9 @@ func isSquare*(a: Fp): SecretBool =
 func sqrt_ratio_if_square*(r: var Fp, u, v: Fp): SecretBool {.inline.} =
   ## If u/v is a square, compute √(u/v)
   ## if not, the result is undefined
-  ## 
+  ##
   ## r must not alias u or v
-  ## 
+  ##
   ## The square root, if it exist is multivalued,
   ## i.e. both (u/v)² == (-u/v)²
   ## This procedure returns a deterministic result

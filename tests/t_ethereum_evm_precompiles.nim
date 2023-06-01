@@ -16,14 +16,14 @@ import
   ../constantine/ethereum_evm_precompiles
 
 type
-  BN256Tests = object
+  PrecompileTests = object
     `func`: string
     fork: string
-    data: seq[BN256Test]
+    data: seq[PrecompileTest]
 
   HexString = string
 
-  BN256Test = object
+  PrecompileTest = object
     Input: HexString
     Expected: HexString
     Name: string
@@ -38,36 +38,39 @@ proc loadVectors(TestType: typedesc, filename: string): TestType =
   let content = readFile(TestVectorsDir/filename)
   result = content.fromJson(TestType)
 
-template runBN256Tests(filename: string, funcname: untyped, osize: static int) =
-  proc `bn256testrunner _ funcname`() =
-    let vec = loadVectors(BN256Tests, filename)
-    echo "Running ", filename
+template runPrecompileTests(filename: string, funcname: untyped) =
+  block:
+    proc `PrecompileTestrunner _ funcname`() =
+      let vec = loadVectors(PrecompileTests, filename)
+      echo "Running ", filename
 
-    for test in vec.data:
-      stdout.write "    Testing " & test.Name & " ... "
+      for test in vec.data:
+        stdout.write "    Testing " & test.Name & " ... "
 
-      # Length: 2 hex characters -> 1 byte
-      var inputbytes = newSeq[byte](test.Input.len div 2)
-      inputbytes.paddedFromHex(test.Input, bigEndian)
+        # Length: 2 hex characters -> 1 byte
+        var inputbytes = newSeq[byte](test.Input.len div 2)
+        inputbytes.paddedFromHex(test.Input, bigEndian)
 
-      var r: array[osize, byte]
-      var expected: array[osize, byte]
+        var expected = newSeq[byte](test.Expected.len div 2)
+        expected.paddedFromHex(test.Expected, bigEndian)
 
-      let status = funcname(r, inputbytes)
-      if status != cttEVM_Success:
-        reset(r)
+        var r = newSeq[byte](test.Expected.len div 2)
 
-      expected.paddedFromHex(test.Expected, bigEndian)
+        let status = funcname(r, inputbytes)
+        if status != cttEVM_Success:
+          reset(r)
 
-      doAssert r == expected, "[Test Failure]\n" &
-        "  " & funcname.astToStr & " status: " & $status & "\n" &
-        "  " & "result:   " & r.toHex() & "\n" &
-        "  " & "expected: " & expected.toHex() & '\n'
+        doAssert r == expected, "[Test Failure]\n" &
+          "  " & funcname.astToStr & " status: " & $status & "\n" &
+          "  " & "result:   " & r.toHex() & "\n" &
+          "  " & "expected: " & expected.toHex() & '\n'
 
-      stdout.write "Success\n"
+        stdout.write "Success\n"
 
-  `bn256testrunner _ funcname`()
+    `PrecompileTestrunner _ funcname`()
 
-runBN256Tests("bn256Add.json", eth_evm_ecadd, 64)
-runBN256Tests("bn256mul.json", eth_evm_ecmul, 64)
-runBN256Tests("pairing.json", eth_evm_ecpairing, 32)
+runPrecompileTests("bn256Add.json", eth_evm_ecadd)
+runPrecompileTests("bn256mul.json", eth_evm_ecmul)
+runPrecompileTests("pairing.json", eth_evm_ecpairing)
+runPrecompileTests("modexp.json", eth_evm_modexp)
+runPrecompileTests("modexp_eip2565.json", eth_evm_modexp)

@@ -63,12 +63,12 @@ func millerLoopBW6_761_naive[C](
 func finalExpGeneric[C: static Curve](f: var Fp6[C]) =
   ## A generic and slow implementation of final exponentiation
   ## for sanity checks purposes.
-  f.powUnsafeExponent(C.pairing(finalexponent), window = 3)
+  f.pow_vartime(C.pairing(finalexponent), window = 3)
 
 func finalExpHard_BW6_761*[C: static Curve](f: var Fp6[C]) =
   ## A generic and slow implementation of final exponentiation
   ## for sanity checks purposes.
-  f.powUnsafeExponent(C.pairing(finalexponent_hard), window = 3)
+  f.pow_vartime(C.pairing(finalexponent_hard), window = 3)
 
 # Optimized pairing implementation
 # ----------------------------------------------------------------

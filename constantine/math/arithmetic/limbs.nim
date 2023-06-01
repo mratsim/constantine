@@ -160,14 +160,6 @@ func isOne*(a: Limbs): SecretBool =
   ## Returns true if ``a`` is equal to one
   a.eq(One)
 
-func isOdd*(a: Limbs): SecretBool =
-  ## Returns true if a is odd
-  SecretBool(a[0] and One)
-
-func isEven*(a: Limbs): SecretBool =
-  ## Returns true if a is even
-  not SecretBool(a[0] and One)
-
 # Bit manipulation
 # ------------------------------------------------------------
 

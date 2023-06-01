@@ -100,7 +100,7 @@ func byteLen(bits: SomeInteger): SomeInteger {.inline.} =
   ## Length in bytes to serialize BigNum
   (bits + 7) shr 3 # (bits + 8 - 1) div 8
 
-func wordsRequiredForBits(bits, wordBitwidth: SomeInteger): SomeInteger {.inline.} =
+func wordsRequired(bits, wordBitwidth: SomeInteger): SomeInteger {.inline.} =
   ## Compute the number of limbs required
   ## from the announced bit length
 
@@ -117,7 +117,7 @@ func fromHex[T](a: var BigNum[T], s: string) =
 
 func fromHex[T](BN: type BigNum[T], bits: uint32, s: string): BN =
   const wordBitwidth = sizeof(T) * 8
-  let numWords = wordsRequiredForBits(bits, wordBitwidth)
+  let numWords = wordsRequired(bits, wordBitwidth)
 
   result.bits = bits
   result.limbs.setLen(numWords)
@@ -161,10 +161,7 @@ func negInvModWord[T](M: BigNum[T]): T =
   ##
   ## µ ≡ -1/M[0] (mod 2^64)
   checkValidModulus(M)
-
-  result = invModBitwidth(M.limbs[0])
-  # negate to obtain the negative inverse
-  result = not(result) + 1
+  return M.limbs[0].negInvModWord()
 
 # ############################################################
 #
@@ -209,7 +206,7 @@ proc setFieldConst(fc: var FieldConst, ctx: ContextRef, wordSize: WordSize, modB
     of size32: 32'u32
     of size64: 64'u32
 
-  let numWords = wordsRequiredForBits(modBits, wordBitwidth)
+  let numWords = wordsRequired(modBits, wordBitwidth)
 
   fc.wordTy = wordTy
   fc.fieldTy = array_t(wordTy, numWords)

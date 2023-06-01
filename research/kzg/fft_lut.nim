@@ -30,7 +30,7 @@ func buildRootLUT(F: type Fr): array[32, F] =
   var i = result.len - 1
   exponent.shiftRight(i)
   result[i].fromUint(BLS12_381_Fr_primitive_root)
-  result[i].powUnsafeExponent(exponent)
+  result[i].pow_vartime(exponent)
 
   while i > 0:
     result[i-1].square(result[i])

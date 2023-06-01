@@ -42,7 +42,7 @@ import
 #
 # ############################################################
 
-func invModBitwidth(a: BaseType): BaseType =
+func invModBitwidth*(a: BaseType): BaseType =
   # Modular inverse algorithm:
   # Explanation p11 "Dumas iterations" based on Newton-Raphson:
   # - Cetin Kaya Koc (2017), https://eprint.iacr.org/2017/411
@@ -67,7 +67,7 @@ func invModBitwidth(a: BaseType): BaseType =
   for _ in 0 ..< k:          # at each iteration we get the inverse mod(2^2k)
     result *= 2 - a * result # x' = x(2 - ax)
 
-func invMod2powK(M0: BaseType, k: static BaseType): BaseType =
+func invMod2k(M0: BaseType, k: static BaseType): BaseType =
   ## Compute 1/M mod 2ᵏ
   ## from M[0]
   # Algorithm: Cetin Kaya Koc (2017) p11, https://eprint.iacr.org/2017/411
@@ -278,7 +278,7 @@ func matVecMul_shr_k_mod_M[N, E: static int](
        d, e: var LimbsUnsaturated[N, E],
        k: static int,
        M: LimbsUnsaturated[N, E],
-       invMod2powK: SecretWord
+       invMod2k: SecretWord
   ) =
   ## Compute
   ##
@@ -318,8 +318,8 @@ func matVecMul_shr_k_mod_M[N, E: static int](
   me.cadd(q, sign_d)
   me.cadd(r, sign_e)
 
-  md = md - (SignedSecretWord(invMod2powK * SecretWord(cd.lo) + SecretWord(md)) and Max)
-  me = me - (SignedSecretWord(invMod2powK * SecretWord(ce.lo) + SecretWord(me)) and Max)
+  md = md - (SignedSecretWord(invMod2k * SecretWord(cd.lo) + SecretWord(md)) and Max)
+  me = me - (SignedSecretWord(invMod2k * SecretWord(ce.lo) + SecretWord(me)) and Max)
 
   # First iteration of [u v] [d]   [md]
   #                    [q r].[e] + [me].M[0]
@@ -399,7 +399,7 @@ func matVecMul_shr_k[N, E: static int](t: TransitionMatrix, f, g: var LimbsUnsat
 func invmodImpl[N, E](
        a: var LimbsUnsaturated[N, E],
        F, M: LimbsUnsaturated[N, E],
-       invMod2powK: SecretWord,
+       invMod2k: SecretWord,
        k, bits: static int) =
   ## Modular inversion using Bernstein-Yang algorithm
   ## r ≡ F.a⁻¹ (mod M)
@@ -425,7 +425,7 @@ func invmodImpl[N, E](
     # Apply the transition matrix
     # [u v]    [d]
     # [q r]/2ᵏ.[e]  mod M
-    t.matVecMul_shr_k_mod_M(d, e, k, M, invMod2powK)
+    t.matVecMul_shr_k_mod_M(d, e, k, M, invMod2k)
     # [u v]    [f]
     # [q r]/2ᵏ.[g]
     t.matVecMul_shr_k(f, g, k)
@@ -450,7 +450,7 @@ func invmod*(
   var factor {.noInit.}: LimbsUnsaturated[NumUnsatWords, Excess]
   m2.fromPackedRepr(M)
   factor.fromPackedRepr(F)
-  let m0invK = SecretWord invMod2powK(BaseType M[0], k)
+  let m0invK = SecretWord invMod2k(BaseType M[0], k)
 
   var a2 {.noInit.}: LimbsUnsaturated[NumUnsatWords, Excess]
   a2.fromPackedRepr(a)
@@ -475,7 +475,7 @@ func invmod*(
   # Convert values to unsaturated repr
   const m2 = LimbsUnsaturated[NumUnsatWords, Excess].fromPackedRepr(M)
   const factor = LimbsUnsaturated[NumUnsatWords, Excess].fromPackedRepr(F)
-  const m0invK = SecretWord invMod2powK(BaseType M[0], k)
+  const m0invK = SecretWord invMod2k(BaseType M[0], k)
 
   var a2 {.noInit.}: LimbsUnsaturated[NumUnsatWords, Excess]
   a2.fromPackedRepr(a)
@@ -805,7 +805,7 @@ func discardUnusedLimb_vartime[N, E: static int](limbsLeft: var int, f, g: var L
 func invmodImpl_vartime[N, E: static int](
        a: var LimbsUnsaturated[N, E],
        F, M: LimbsUnsaturated[N, E],
-       invMod2powK: SecretWord,
+       invMod2k: SecretWord,
        k, bits: static int) {.tags:[VarTime].} =
   ## **Variable-time** Modular inversion using Bernstein-Yang algorithm
   ## r ≡ F.a⁻¹ (mod M)
@@ -830,7 +830,7 @@ func invmodImpl_vartime[N, E: static int](
     # Apply the transition matrix
     # [u v]    [d]
     # [q r]/2ᵏ.[e]  mod M
-    t.matVecMul_shr_k_mod_M(d, e, k, M, invMod2powK)
+    t.matVecMul_shr_k_mod_M(d, e, k, M, invMod2k)
     # [u v]    [f]
     # [q r]/2ᵏ.[g]
     t.matVecMul_shr_k_partial(f, g, limbsLeft, k)
@@ -858,7 +858,7 @@ func invmod_vartime*(
   var factor {.noInit.}: LimbsUnsaturated[NumUnsatWords, Excess]
   m2.fromPackedRepr(M)
   factor.fromPackedRepr(F)
-  let m0invK = SecretWord invMod2powK(BaseType M[0], k)
+  let m0invK = SecretWord invMod2k(BaseType M[0], k)
 
   var a2 {.noInit.}: LimbsUnsaturated[NumUnsatWords, Excess]
   a2.fromPackedRepr(a)
@@ -883,7 +883,7 @@ func invmod_vartime*(
   # Convert values to unsaturated repr
   const m2 = LimbsUnsaturated[NumUnsatWords, Excess].fromPackedRepr(M)
   const factor = LimbsUnsaturated[NumUnsatWords, Excess].fromPackedRepr(F)
-  const m0invK = SecretWord invMod2powK(BaseType M[0], k)
+  const m0invK = SecretWord invMod2k(BaseType M[0], k)
 
   var a2 {.noInit.}: LimbsUnsaturated[NumUnsatWords, Excess]
   a2.fromPackedRepr(a)

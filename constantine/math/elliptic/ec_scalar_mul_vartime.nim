@@ -19,15 +19,9 @@ import
 # Support files for testing Elliptic Curve arithmetic
 # ------------------------------------------------------------------------------
 
-iterator unpack(scalarByte: byte): bool =
-  yield bool((scalarByte and 0b10000000) shr 7)
-  yield bool((scalarByte and 0b01000000) shr 6)
-  yield bool((scalarByte and 0b00100000) shr 5)
-  yield bool((scalarByte and 0b00010000) shr 4)
-  yield bool((scalarByte and 0b00001000) shr 3)
-  yield bool((scalarByte and 0b00000100) shr 2)
-  yield bool((scalarByte and 0b00000010) shr 1)
-  yield bool( scalarByte and 0b00000001)
+iterator unpackBE(scalarByte: byte): bool =
+  for i in countdown(7, 0):
+    yield bool((scalarByte shr i) and 1)
 
 func scalarMul_doubleAdd_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime].} =
   ## **Variable-time** Elliptic Curve Scalar Multiplication
@@ -46,7 +40,7 @@ func scalarMul_doubleAdd_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime
 
   P.setInf()
   for scalarByte in scalarCanonical:
-    for bit in unpack(scalarByte):
+    for bit in unpackBE(scalarByte):
       P.double()
       if bit:
         P += Paff

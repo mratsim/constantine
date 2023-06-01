@@ -372,7 +372,7 @@ func pow*(a: var FF, exponent: openarray[byte]) =
     FF.getSpareBits()
   )
 
-func powUnsafeExponent*(a: var FF, exponent: BigInt) =
+func pow_vartime*(a: var FF, exponent: BigInt) =
   ## Exponentiation modulo p
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a big integer
@@ -384,14 +384,14 @@ func powUnsafeExponent*(a: var FF, exponent: BigInt) =
   ## - power analysis
   ## - timing analysis
   const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.powMontUnsafeExponent(
+  a.mres.powMont_vartime(
     exponent,
     FF.fieldMod(), FF.getMontyOne(),
     FF.getNegInvModWord(), windowSize,
     FF.getSpareBits()
   )
 
-func powUnsafeExponent*(a: var FF, exponent: openarray[byte]) =
+func pow_vartime*(a: var FF, exponent: openarray[byte]) =
   ## Exponentiation modulo p
   ## ``a``: a field element to be exponentiated
   ## ``exponent``: a big integer a big integer in canonical big endian representation
@@ -403,7 +403,7 @@ func powUnsafeExponent*(a: var FF, exponent: openarray[byte]) =
   ## - power analysis
   ## - timing analysis
   const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.powMontUnsafeExponent(
+  a.mres.powMont_vartime(
     exponent,
     FF.fieldMod(), FF.getMontyOne(),
     FF.getNegInvModWord(), windowSize,
