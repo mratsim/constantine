@@ -160,6 +160,10 @@ jobs:
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-fast update -qq
+
+          # Try to fix "E: Unable to correct problems, you have held broken packages."
+          sudo apt-fast clean
+
           sudo DEBIAN_FRONTEND='noninteractive' apt-fast install \
             --no-install-recommends -yq \
             gcc-multilib g++-multilib \
@@ -255,6 +259,6 @@ jobs:
         shell: msys2 {0}
         run: |
           cd constantine
-          CTT_ASM=0 nimble bindings      --verbose
-          nimble test_bindings           --verbose
-          CTT_ASM=0 test_parallel_no_gmp --verbose
+          CTT_ASM=0 nimble bindings             --verbose
+          nimble test_bindings                  --verbose
+          CTT_ASM=0 nimble test_parallel_no_gmp --verbose
