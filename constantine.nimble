@@ -310,13 +310,13 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Field
   # ----------------------------------------------------------
   ("tests/math_fields/t_io_fields", false),
-  # ("tests/math_fields/t_finite_fields.nim", false),
-  # ("tests/math_fields/t_finite_fields_conditional_arithmetic.nim", false),
-  # ("tests/math_fields/t_finite_fields_mulsquare.nim", false),
-  # ("tests/math_fields/t_finite_fields_sqrt.nim", false),
-  # ("tests/math_fields/t_finite_fields_powinv.nim", false),
-  # ("tests/math_fields/t_finite_fields_vs_gmp.nim", true),
-  # ("tests/math_fields/t_fp_cubic_root.nim", false),
+  ("tests/math_fields/t_finite_fields.nim", false),
+  ("tests/math_fields/t_finite_fields_conditional_arithmetic.nim", false),
+  ("tests/math_fields/t_finite_fields_mulsquare.nim", false),
+  ("tests/math_fields/t_finite_fields_sqrt.nim", false),
+  ("tests/math_fields/t_finite_fields_powinv.nim", false),
+  ("tests/math_fields/t_finite_fields_vs_gmp.nim", true),
+  ("tests/math_fields/t_fp_cubic_root.nim", false),
 
   # Double-precision finite fields
   # ----------------------------------------------------------
@@ -345,17 +345,17 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
 
   # Elliptic curve arithmetic
   # ----------------------------------------------------------
-  # ("tests/math_elliptic_curves/t_ec_conversion.nim", false),
+  ("tests/math_elliptic_curves/t_ec_conversion.nim", false),
 
   # Elliptic curve arithmetic G1
   # ----------------------------------------------------------
-  # ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_add_double.nim", false),
+  ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_add_double.nim", false),
   # ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_mul_sanity.nim", false),
   # ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_mul_distri.nim", false),
   ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_mul_vs_ref.nim", false),
   # ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_mixed_add.nim", false),
 
-  # ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_add_double.nim", false),
+  ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_add_double.nim", false),
   # ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_mul_sanity.nim", false),
   # ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_mul_distri.nim", false),
   ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_mul_vs_ref.nim", false),

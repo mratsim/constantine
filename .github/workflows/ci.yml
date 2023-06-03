@@ -220,11 +220,12 @@ jobs:
           nimble refresh --verbose -y
           nimble install --verbose -y gmp jsony asynctools
 
-      - name: Print Nim version
-        if: runner.os != 'Windows'
+      - name: Print Nim & compiler versions
         shell: bash
+        # gcc is an alias to Clang on MacOS
         run: |
           nim -v
+          gcc -v 
 
       - name: Run Constantine tests (UNIX with Assembly)
         if: runner.os != 'Windows' && matrix.target.BACKEND == 'ASM'
