@@ -25,7 +25,7 @@ rng.seed(seed)
 echo "\n------------------------------------------------------\n"
 echo "test_finite_fields_mulsquare xoshiro512** seed: ", seed
 
-static: doAssert defined(testingCurves), "This modules requires the -d:testingCurves compile option"
+static: doAssert defined(CTT_TEST_CURVES), "This modules requires the -d:CTT_TEST_CURVES compile option"
 
 proc sanity(C: static Curve) =
   test "Squaring 0,1,2 with " & $Curve(C) & " [FastSquaring = " & $(Fp[C].getSpareBits() >= 2) & "]":

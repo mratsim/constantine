@@ -187,7 +187,7 @@ proc newSpawn*(
   result.hasFuture = false
   result.fn = fn
 
-  when defined(TP_Metrics):
+  when defined(CTT_THREADPOOL_METRICS):
     result.loopStepsLeft = NotALoop
 
 proc newSpawn*(
@@ -210,7 +210,7 @@ proc newSpawn*(
   result.fn = fn
   cast[ptr[type env]](result.env)[] = env
 
-  when defined(TP_Metrics):
+  when defined(CTT_THREADPOOL_METRICS):
     result.loopStepsLeft = NotALoop
 
 func ceilDiv_vartime(a, b: auto): auto {.inline.} =

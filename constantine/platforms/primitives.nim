@@ -53,7 +53,7 @@ when X86 and GCC_Compatible:
 # ############################################################
 
 template debug*(body: untyped): untyped =
-  when defined(CttDebug):
+  when defined(CTT_DEBUG):
     body
 
 proc builtin_unreachable(){.nodecl, importc: "__builtin_unreachable".}

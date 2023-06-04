@@ -21,7 +21,7 @@ import
     ec_multi_scalar_mul_parallel],
   ../constantine/math/constants/zoo_subgroups,
   # Threadpool
-  ../constantine/threadpool/threadpool,
+  ../constantine/threadpool/[threadpool, partitioners],
   # Helpers
   ../helpers/prng_unsafe,
   ./bench_elliptic_template,
@@ -55,11 +55,32 @@ proc msmParallelBench*(EC: typedesc, numPoints: int, iters: int) =
   var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](numPoints)
   var scalars = newSeq[BigInt[bits]](numPoints)
 
-  for i in 0 ..< numPoints:
-    var tmp = rng.random_unsafe(EC)
-    tmp.clearCofactor()
-    points[i].affine(tmp)
-    scalars[i] = rng.random_unsafe(BigInt[bits])
+  # Creating millions of points and clearing their cofactor takes a long long time
+  var tp = Threadpool.new()
+
+  proc genCoefPointPairs(rngSeed: uint64, start, len: int, points: ptr ECP_ShortW_Aff[EC.F, EC.G], scalars: ptr BigInt[bits]) {.nimcall.} =
+    let points = cast[ptr UncheckedArray[ECP_ShortW_Aff[EC.F, EC.G]]](points) # TODO use views to reduce verbosity
+    let scalars = cast[ptr UncheckedArray[BigInt[bits]]](scalars)
+
+    # RNGs are not threadsafe, create a threadlocal one seeded from the global RNG
+    var threadRng: RngState
+    threadRng.seed(rngSeed)
+
+    for i in start ..< start + len:
+      var tmp = threadRng.random_unsafe(EC)
+      tmp.clearCofactor()
+      points[i].affine(tmp)
+      scalars[i] = rng.random_unsafe(BigInt[bits])
+
+  let chunks = balancedChunksPrioNumber(0, numPoints, tp.numThreads)
+
+  syncScope:
+    for (id, start, size) in items(chunks):
+      tp.spawn genCoefPointPairs(rng.next(), start, size, points[0].addr, scalars[0].addr)
+
+  # Even if child threads are sleeping, it seems like perf is lower when there are threads around
+  # maybe because the kernel has more overhead or time quantum to keep track off so shut them down.
+  tp.shutdown()
 
   var r{.noInit.}: EC
   var startNaive, stopNaive, startMSMbaseline, stopMSMbaseline, startMSMopt, stopMSMopt, startMSMpara, stopMSMpara: MonoTime
@@ -88,7 +109,7 @@ proc msmParallelBench*(EC: typedesc, numPoints: int, iters: int) =
     stopMSMopt = getMonotime()
 
   block:
-    var tp = Threadpool.new()
+    tp = Threadpool.new()
 
     startMSMpara = getMonotime()
     bench("EC multi-scalar-mul" & align($tp.numThreads & " threads", 11) & align($numPoints, 10) & " (" & $bits & "-bit coefs, points)", EC, iters):

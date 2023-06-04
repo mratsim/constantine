@@ -12,10 +12,10 @@ type
   bls12381_fr = Fr[BLS12_381]
   bls12381_fp = Fp[BLS12_381]
   bls12381_fp2 = Fp2[BLS12_381]
-  bls12381_ec_g1_aff = ECP_ShortW_Aff[Fp[BLS12_381], G1] 
+  bls12381_ec_g1_aff = ECP_ShortW_Aff[Fp[BLS12_381], G1]
   bls12381_ec_g1_jac = ECP_ShortW_Jac[Fp[BLS12_381], G1]
   bls12381_ec_g1_prj = ECP_ShortW_Prj[Fp[BLS12_381], G1]
-  bls12381_ec_g2_aff = ECP_ShortW_Aff[Fp2[BLS12_381], G2] 
+  bls12381_ec_g2_aff = ECP_ShortW_Aff[Fp2[BLS12_381], G2]
   bls12381_ec_g2_jac = ECP_ShortW_Jac[Fp2[BLS12_381], G2]
   bls12381_ec_g2_prj = ECP_ShortW_Prj[Fp2[BLS12_381], G2]
 
@@ -33,9 +33,9 @@ collectBindings(cBindings):
   genBindings_EC_ShortW_NonAffine(bls12381_ec_g2_prj, bls12381_ec_g2_aff, bls12381_fp2)
 
 # Write header
-when isMainModule and defined(CttGenerateHeaders):
+when isMainModule and defined(CTT_GENERATE_HEADERS):
   import std/[os, strformat]
-  
+
   proc main() =
     # echo "Running bindings generation for " & getAppFilename().extractFilename()
 

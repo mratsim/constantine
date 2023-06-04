@@ -159,7 +159,7 @@ proc parseCurveDecls*(defs: var seq[CurveParams], curves: NimNode) =
       offset = 1
       testCurve = curveParams[0][1].boolVal
 
-    if testCurve and defined(testingCurves):
+    if testCurve and defined(CTT_TEST_CURVES):
       continue
 
     # Parameters

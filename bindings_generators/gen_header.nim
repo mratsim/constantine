@@ -203,7 +203,7 @@ macro collectBindings*(cBindingsStr: untyped, body: typed): untyped =
 
       cBindings &= ");"
 
-  if defined(CttGenerateHeaders):
+  if defined(CTT_GENERATE_HEADERS):
     result = newConstStmt(cBindingsStr, newLit cBindings)
   else:
     result = body

@@ -12,7 +12,7 @@ import  std/unittest,
         ../../constantine/math/io/[io_bigints, io_fields],
         ../../constantine/math/config/curves
 
-static: doAssert defined(testingCurves), "This modules requires the -d:testingCurves compile option"
+static: doAssert defined(CTT_TEST_CURVES), "This modules requires the -d:CTT_TEST_CURVES compile option"
 
 echo "\n------------------------------------------------------\n"
 
@@ -340,7 +340,7 @@ proc largeField() =
 
         r.fromField(a)
         expected.limbs.redc2xMont(d.limbs2x, Secp256k1.Mod().limbs, Fp[Secp256k1].getNegInvModWord(), Fp[Secp256k1].getSpareBits())
- 
+
         check: bool(r == expected)
 
     test "fromMont doesn't need a final substraction with 255-bit prime (1 spare bit)":
@@ -365,7 +365,7 @@ proc largeField() =
 
         r.fromField(a)
         expected.limbs.redc2xMont(d.limbs2x, Edwards25519.Mod().limbs, Fp[Edwards25519].getNegInvModWord(), Fp[Edwards25519].getSpareBits())
- 
+
         check: bool(r == expected)
 
 largeField()

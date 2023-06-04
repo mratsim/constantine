@@ -18,7 +18,7 @@ import
   ../../helpers/prng_unsafe
 
 
-static: doAssert defined(testingCurves), "This modules requires the -d:testingCurves compile option"
+static: doAssert defined(CTT_TEST_CURVES), "This modules requires the -d:CTT_TEST_CURVES compile option"
 
 const Iters = 8
 
