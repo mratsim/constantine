@@ -43,8 +43,10 @@ func isInf*(P: ECP_ShortW_Jac): SecretBool {.inline.} =
   ##
   ## Note: the jacobian coordinates equation is
   ##       Y² = X³ + aXZ⁴ + bZ⁶
-  ## A "zero" point is any point with coordinates X and Z = 0
-  ## Y can be anything
+  ## 
+  ## When Z = 0 in the equation, it reduces to
+  ## Y² = X³
+  ## (yZ³)² = (xZ²)³ which is true for any x, y coordinates
   result = P.z.isZero()
 
 func setInf*(P: var ECP_ShortW_Jac) {.inline.} =

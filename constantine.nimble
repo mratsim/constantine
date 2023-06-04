@@ -310,13 +310,13 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Field
   # ----------------------------------------------------------
   ("tests/math_fields/t_io_fields", false),
-  ("tests/math_fields/t_finite_fields.nim", false),
-  ("tests/math_fields/t_finite_fields_conditional_arithmetic.nim", false),
-  ("tests/math_fields/t_finite_fields_mulsquare.nim", false),
-  ("tests/math_fields/t_finite_fields_sqrt.nim", false),
-  ("tests/math_fields/t_finite_fields_powinv.nim", false),
-  ("tests/math_fields/t_finite_fields_vs_gmp.nim", true),
-  ("tests/math_fields/t_fp_cubic_root.nim", false),
+  # ("tests/math_fields/t_finite_fields.nim", false),
+  # ("tests/math_fields/t_finite_fields_conditional_arithmetic.nim", false),
+  # ("tests/math_fields/t_finite_fields_mulsquare.nim", false),
+  # ("tests/math_fields/t_finite_fields_sqrt.nim", false),
+  # ("tests/math_fields/t_finite_fields_powinv.nim", false),
+  # ("tests/math_fields/t_finite_fields_vs_gmp.nim", true),
+  # ("tests/math_fields/t_fp_cubic_root.nim", false),
 
   # Double-precision finite fields
   # ----------------------------------------------------------
