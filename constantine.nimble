@@ -219,6 +219,10 @@ task bindings, "Generate Constantine bindings":
   genDynamicBindings(kCurve, "constantine_pasta", "ctt_pasta_init_")
   genHeaders("constantine_pasta")
   echo ""
+  genStaticBindings(kCurve, "constantine_bn254_snarks", "ctt_bn254snarks_init_")
+  genDynamicBindings(kCurve, "constantine_bn254_snarks", "ctt_bn254snarks_init_")
+  genHeaders("constantine_bn254_snarks")
+  echo ""
 
   # Protocols
   genStaticBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_")
