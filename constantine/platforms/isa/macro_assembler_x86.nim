@@ -139,11 +139,7 @@ func toString*(nimSymbol: NimNode): string =
   let nimSymbol = if isPtr: nimSymbol[0]
                   elif isAddr: nimSymbol[1]
                   else: nimSymbol
-  {.noSideEffect.}:
-    try: # Why does this raise a generic exception?
-      return $nimSymbol
-    except:
-      raise newException(Defect, "Broke Nim!")
+  return $nimSymbol
 
 func hash(od: OperandDesc): Hash =
   {.noSideEffect.}:
@@ -208,8 +204,7 @@ func genMemClobber(nimSymbol: NimNode, len: int, memIndirect: MemIndirectAccess)
     doAssert false, "Indirect access kind not specified"
 
 func asmValue*(nimSymbol: NimNode, rm: RM, constraint: Constraint): Operand =
-  {.noSideEffect.}:
-    let symStr = $nimSymbol
+  let symStr = $nimSymbol
 
   let desc = OperandDesc(
         asmId: "[" & symStr & "]",
@@ -355,8 +350,7 @@ func setToCarryFlag*(a: var Assembler_x86, carry: NimNode) =
   let isHiddenDeref = carry.kind == nnkHiddenDeref
   let nimSymbol = if isHiddenDeref: carry[0]
                   else: carry
-  {.noSideEffect.}:
-    let symStr = $nimSymbol
+  let symStr = $nimSymbol
 
   let desc = OperandDesc(
     asmId: "",

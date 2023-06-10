@@ -160,28 +160,136 @@ func ifft*[EC](
 #   Knauth, Adas, Whitfield, Wang, Ickler, Conrad, Serang, 2017
 #   https://arxiv.org/pdf/1708.01873.pdf
 
-func deriveLogTileSize(T: typedesc): int =
-  ## Returns the log of the tile size
-  # `lscpu` can return correct values.
+func optimalLogTileSize(T: type): uint =
+  ## Returns the optimal log of the tile size
+  ## depending on the type and common L1 cache size
+  # `lscpu` can return desired cache values.
   # We underestimate modern cache sizes so that performance is good even on older architectures.
-  const cacheLine = 64     # Size of a cache line
-  const l1Size = 32 * 1024 # Size of L1 cache
-  const elems_per_cacheline = max(1, cacheLine div sizeof(T))
 
-  var q = l1Size div sizeof(T)
+  # 1. Derive ideal size depending on the type
+  const cacheLine = 64'u     # Size of a cache line
+  const l1Size = 32'u * 1024 # Size of L1 cache
+  const elems_per_cacheline = max(1'u, cacheLine div T.sizeof().uint)
+
+  var q = l1Size div T.sizeof().uint
   q = q div 2 # use only half of the cache, this limits cache eviction, especially with hyperthreading.
-  q = q.uint32.nextPowerOfTwo_vartime().log2_vartime().int
+  q = q.nextPowerOfTwo_vartime().log2_vartime()
   q = q div 2 # 2²𐞥 should be smaller than the cache
 
-  # If the cache line can accomodate spare elements
-  #
-  while 1 shl q < elems_per_cacheline:
+  # If the cache line can accommodate spare elements
+  # increment the tile size
+  while 1'u shl q < elems_per_cacheline:
     q += 1
 
-  return
+  return q
 
-func bit_reversal_permutation[N: static int, T](buf: array[N, T]) =
-  ## Bit reversal permutation using a cache-blocking algorithm
+func deriveLogTileSize(T: type, logN: uint): uint =
+  ## Returns the log of the tile size
+
+  # 1. Compute the optimal tile size
+  type typ = T # Workaround "cannot evaluate at compile-time"
+  var q = optimalLogTileSize(typ)
+
+  # 2. We want to ensure logN - 2*q > 0
+  while int(logN) - int(q+q) < 0:
+    q -= 1
+
+  return q
+
+
+func bit_reversal_permutation*[T](buf: var openArray[T]) =
+  ## In-place bit reversal permutation using a cache-blocking algorithm
+  #
+  # We adapt the following out-of-place algorithm to in-place.
+  #
+  # for b = 0 to 2ˆ(lgN-2q) - 1
+  #   b’ = r(b)
+  #   for a = 0 to 2ˆq - 1
+  #     a’ = r(a)
+  #     for c = 0 to 2ˆq - 1
+  #       T[a’c] = A[abc]
+  #
+  #   for c = 0 to 2ˆq - 1
+  #     c’ = r(c)                <- Note: typo in paper, they say c'=r(a)
+  #     for a’ = 0 to 2ˆq - 1
+  #       B[c’b’a’] = T[a’c]
+  #
+  # As we are in-place, A and B refer to the same buffer and
+  # we don't want to destructively write to B.
+  # Instead we swap B and T to save the overwritten slot.
+  #
+  # Due to bitreversal being an involution, we can redo the first loop
+  # to place the overwritten data in there corect slot.
+  #
+  # Hence
+  #
+  # for b = 0 to 2ˆ(lgN-2q) - 1
+  #   b’ = r(b)
+  #   for a = 0 to 2ˆq - 1
+  #     a’ = r(a)
+  #     for c = 0 to 2ˆq - 1
+  #       T[a’c] = A[abc]
+  #
+  #   for c = 0 to 2ˆq - 1
+  #     c’ = r(c)
+  #     for a’ = 0 to 2ˆq - 1
+  #       if abc < c'b'a'
+  #         swap(A[c’b’a’], T[a’c])
+  #
+  #   for a = 0 to 2ˆq - 1
+  #     a’ = r(a)
+  #     for c = 0 to 2ˆq - 1
+  #       c’ = r(c)
+  #       if abc < c'b'a'
+  #         swap(A[abc], T[a’c])
+
+  debug: doAssert buf.len.uint.isPowerOf2_vartime()
+
+  let logN = log2_vartime(uint buf.len)
+  let logTileSize = deriveLogTileSize(T, logN)
+  let logBLen = logN - 2*logTileSize
+  let bLen = 1'u shl logBlen
+  let tileSize = 1'u shl logTileSize
+
+  let t = allocHeapArray(T, tileSize*tileSize)
+
+  for b in 0'u ..< bLen:
+    let bRev = reverseBits(b, logBLen)
+
+    for a in 0'u ..< tileSize:
+      let aRev = reverseBits(a, logTileSize)
+      for c in 0'u ..< tileSize:
+        # T[a’c] = A[abc]
+        let tIdx = (aRev shl logTileSize) or c
+        let idx = (a shl (logBLen+logTileSize)) or
+                  (b shl logTileSize) or c
+        t[tIdx] = buf[idx]
+
+    for c in 0'u ..< tileSize:
+      let cRev = reverseBits(c, logTileSize)
+      for aRev in 0'u ..< tileSize:
+        let a = reverseBits(aRev, logTileSize)
+        let idx = (a shl (logBLen+logTileSize)) or
+                  (b shl logTileSize) or c
+        let idxRev = (cRev shl (logBLen+logTileSize)) or
+                     (bRev shl logTileSize) or aRev
+        if idx < idxRev:
+          let tIdx = (aRev shl logTileSize) or c
+          swap(buf[idxRev], t[tIdx])
+
+    for a in 0'u ..< tileSize:
+      let aRev = reverseBits(a, logTileSize)
+      for c in 0'u ..< tileSize:
+        let cRev = reverseBits(c, logTileSize)
+        let idx = (a shl (logBLen+logTileSize)) or
+                  (b shl logTileSize) or c
+        let idxRev = (cRev shl (logBLen+logTileSize)) or
+                     (bRev shl logTileSize) or aRev
+        if idx < idxRev:
+          let tIdx = (aRev shl logTileSize) or c
+          swap(buf[idx], t[tIdx])
+
+  freeHeap(t)
 
 # ############################################################
 #
@@ -195,7 +303,8 @@ when isMainModule:
     std/[times, monotimes, strformat],
     ../../../helpers/prng_unsafe,
     ../constants/zoo_generators,
-    ../io/[io_fields, io_ec]
+    ../io/[io_fields, io_ec],
+    ../../platforms/static_for
 
   const ctt_eth_kzg_fr_pow2_roots_of_unity = [
     # primitive_root⁽ᵐᵒᵈᵘˡᵘˢ⁻¹⁾/⁽²^ⁱ⁾ for i in [0, 32)
@@ -306,6 +415,44 @@ when isMainModule:
       let ns = inNanoseconds((stop-start) div NumIters)
       echo &"FFT scale {scale:>2}     {ns:>8} ns/op"
 
+
+  proc bit_reversal() =
+    let k = 28
+
+    echo "Bit-reversal permutation 2^", k, " = ", 1 shl k, " int64"
+
+    var a = newSeq[int64](1 shl k)
+    for i in 0'i64 ..< a.len:
+      a[i] = i
+
+    var b = newSeq[int64](1 shl k)
+
+    let startNaive = getMonotime()
+    for i in 0'i64 ..< a.len:
+      # It's better to make prefetching easy on the write side
+      b[i] = a[int reverseBits(uint64 i, uint64 k)]
+    let stopNaive = getMonotime()
+
+    echo "Naive bit-reversal: ", inMilliseconds(stopNaive-startNaive), " ms"
+
+    let startOpt = getMonotime()
+    a.bit_reversal_permutation()
+    let stopOpt = getMonotime()
+
+    echo "Optimized bit-reversal: ", inMilliseconds(stopOpt-startOpt), " ms"
+
+    doAssert a == b
+    echo "SUCCESS bit reversal permutation"
+
+    block:
+      let optTile = 1 shl optimalLogTileSize(uint64)
+      echo "optimal tile size for uint64: ", optTile, "x", optTile," (", sizeof(uint64) * optTile * optTile, " bytes)"
+
+    block:
+      let optTile = 1 shl optimalLogTileSize(ECP_ShortW_Aff[Fp[BLS12_381], G1])
+      echo "optimal tile size for ECP_ShortW_Aff[Fp[BLS12_381], G1]: ", optTile, "x", optTile," (", sizeof(ECP_ShortW_Aff[Fp[BLS12_381], G1]) * optTile * optTile, " bytes)"
+
   roundtrip()
   warmup()
   bench()
+  bit_reversal()

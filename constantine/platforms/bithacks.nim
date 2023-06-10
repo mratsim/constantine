@@ -153,10 +153,10 @@ func isPowerOf2_vartime*(n: SomeUnsignedInt): bool {.inline.} =
   ## for compile-time or explicit vartime proc only.
   (n and (n - 1)) == 0 and n > 0
 
-func nextPowerOfTwo_vartime*(n: uint32): uint32 {.inline.} =
+func nextPowerOfTwo_vartime*(n: SomeUnsignedInt): SomeUnsignedInt {.inline.} =
   ## Returns x if x is a power of 2
   ## or the next biggest power of 2
-  1'u32 shl (log2_vartime(n-1) + 1)
+  1.SomeUnsignedInt shl (log2_vartime(n-1) + 1)
 
 func swapBytes_impl(n: uint32): uint32 {.inline.} =
   result = n
@@ -179,59 +179,20 @@ func swapBytes*(n: SomeUnsignedInt): SomeUnsignedInt {.inline.} =
   else:
     swapBytes_c_compiler(n)
 
-func reverseBits*(n: uint32): uint32 {.inline.} =
-  when true:
-    var n = n
-    n = ((n and 0x55555555'u32) shl 1) or ((n and 0xaaaaaaaa'u32) shr 1)
-    n = ((n and 0x33333333'u32) shl 2) or ((n and 0xcccccccc'u32) shr 2)
-    n = ((n and 0x0f0f0f0f'u32) shl 4) or ((n and 0xf0f0f0f0'u32) shr 4)
+func reverseBits*(n, k : uint32): uint32 {.inline.} =
+  ## Bit reversal permutation with n ∈ [0, 2ᵏ)
+  # Swap bytes - allow vectorization by using raw Nim impl instead of compiler builtin
+  var n = swapBytes_impl(n)
+  n = ((n and 0x55555555'u32) shl 1) or ((n and 0xaaaaaaaa'u32) shr 1)
+  n = ((n and 0x33333333'u32) shl 2) or ((n and 0xcccccccc'u32) shr 2)
+  n = ((n and 0x0f0f0f0f'u32) shl 4) or ((n and 0xf0f0f0f0'u32) shr 4)
+  return n shr (32 - k)
 
-    # Swap bytes - allow vectorization by using raw Nim impl instead of compiler builtin
-    n = swapBytes_impl(n)
-  else:
-    # Modern compiler should either:
-    # - either hardcode / constant propagate the bitmask m
-    # - or use fused shift+add (with LEA on x86 or add on ARM), if immediates are too costly
-    #
-    # and also vectorize the code if used for arrays
-
-    # Swap bytes - allow vectorization by using raw Nim impl instead of compiler builtin
-    var n = (n shl 16) or (n shr 16)
-    var m = 0x00ff00ff'u32
-    n = ((n shr 8) and m) or ((n shl 8) and not m)
-
-    # Reverse bits
-    m = m xor (m shl 4); n = ((n shr 4) and m) or ((n shl 4) and not m)
-    m = m xor (m shl 2); n = ((n shr 2) and m) or ((n shl 2) and not m)
-    m = m xor (m shl 1); n = ((n shr 1) and m) or ((n shl 1) and not m)
-
-  return n
-
-func reverseBits*(n: uint64): uint64 {.inline.} =
-  when true:
-    var n = n
-    n = ((n and 0x5555555555555555'u64) shl 1) or ((n and 0xaaaaaaaaaaaaaaaa'u64) shr 1)
-    n = ((n and 0x3333333333333333'u64) shl 2) or ((n and 0xcccccccccccccccc'u64) shr 2)
-    n = ((n and 0x0f0f0f0f0f0f0f0f'u64) shl 4) or ((n and 0xf0f0f0f0f0f0f0f0'u64) shr 4)
-
-    # Swap bytes - allow vectorization by using raw Nim impl instead of compiler builtin
-    n = swapBytes_impl(n)
-  else:
-    # Modern compiler should either:
-    # - either hardcode / constant propagate the bitmask m
-    # - or use fused shift+add (with LEA on x86 or add on ARM), if immediates are too costly
-    #
-    # and also vectorize the code if used for arrays
-
-    # Swap bytes - allow vectorization by using raw Nim impl instead of compiler builtin
-    var n = (n shl 32) or (n shr 32)
-    var m = 0x0000ffff0000ffff'u64
-    n = ((n shr 16) and m) or ((n shl 16) and not m)
-    m = m xor (m shl 8); n = ((n shr 8) and m) or ((n shl 8) and not m)
-
-    # Reverse bits
-    m = m xor (m shl 4); n = ((n shr 4) and m) or ((n shl 4) and not m)
-    m = m xor (m shl 2); n = ((n shr 2) and m) or ((n shl 2) and not m)
-    m = m xor (m shl 1); n = ((n shr 1) and m) or ((n shl 1) and not m)
-
-    return n
+func reverseBits*(n, k: uint64): uint64 {.inline.} =
+  ## Bit reversal permutation with n ∈ [0, 2ᵏ)
+  # Swap bytes - allow vectorization by using raw Nim impl instead of compiler builtin
+  var n = swapBytes_impl(n)
+  n = ((n and 0x5555555555555555'u64) shl 1) or ((n and 0xaaaaaaaaaaaaaaaa'u64) shr 1)
+  n = ((n and 0x3333333333333333'u64) shl 2) or ((n and 0xcccccccccccccccc'u64) shr 2)
+  n = ((n and 0x0f0f0f0f0f0f0f0f'u64) shl 4) or ((n and 0xf0f0f0f0f0f0f0f0'u64) shr 4)
+  return n shr (64 - k)
