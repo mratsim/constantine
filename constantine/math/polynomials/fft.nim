@@ -23,7 +23,7 @@ import
 # ----------------------------------------------------------------
 
 type
-  FFTStatus = enum
+  FFTStatus* = enum
     FFTS_Success
     FFTS_TooManyValues = "Input length greater than the field 2-adicity (number of roots of unity)"
     FFTS_SizeNotPowerOfTwo = "Input must be of a power of 2 length"
@@ -32,7 +32,7 @@ type
     ## Metadata for FFT on Elliptic Curve
     order*: int
     rootsOfUnity*: ptr UncheckedArray[matchingOrderBigInt(EC.F.C)]
-      ## domain, starting and ending with 1, length cardinality+1
+      ## domain, starting and ending with 1, length is cardinality+1
       ## This allows FFT and inverse FFT to use the same buffer for roots.
 
 func computeRootsOfUnity[EC](ctx: var ECFFT_Descriptor[EC], generatorRootOfUnity: auto) =
@@ -77,8 +77,7 @@ func simpleFT[EC; bits: static int](
 func fft_internal[EC; bits: static int](
        output: var StridedView[EC],
        vals: StridedView[EC],
-       rootsOfUnity: StridedView[BigInt[bits]]
-     ) =
+       rootsOfUnity: StridedView[BigInt[bits]]) =
   if output.len <= 4:
     simpleFT(output, vals, rootsOfUnity)
     return
@@ -187,8 +186,11 @@ func deriveLogTileSize(T: type, logN: uint): uint =
   ## Returns the log of the tile size
 
   # 1. Compute the optimal tile size
-  type typ = T # Workaround "cannot evaluate at compile-time"
-  var q = optimalLogTileSize(typ)
+
+  # type typ = T                          # Workaround "cannot evaluate at compile-time"
+  # var q = static(optimalLogTileSize(T)) # crashes the compiler in Error: internal error: nightlies/nim-1.6.12/compiler/semtypes.nim(1921, 22)
+
+  var q = optimalLogTileSize(T)
 
   # 2. We want to ensure logN - 2*q > 0
   while int(logN) - int(q+q) < 0:

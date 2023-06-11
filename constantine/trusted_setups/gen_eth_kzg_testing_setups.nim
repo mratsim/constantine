@@ -14,6 +14,7 @@ import
   ../math/io/io_fields,
   ../math/constants/zoo_generators,
   ../platforms/abstractions,
+  ../serialization/endians,
   std/streams
 
 # This tool generates the same testing setups that are used in Ethereum consensus-spec
@@ -102,27 +103,62 @@ const ctt_eth_kzg_fr_pow2_roots_of_unity = [
   Fr[BLS12_381].fromHex"0x4b5371495990693fad1715b02e5713b5f070bb00e28a193d63e7cb4906ffc93f"
 ]
 
-func newTrustedSetup(
+func newTrustedSetupImpl(
        EC: typedesc, secret: auto, length: int): seq[EC] =
 
-  var ts = newSeq[jacobian(EC)](length)
-  result.newSeq(length)
+  result.setLen(length)
 
-  var P {.noInit.}: jacobian(EC)
+  var P {.noInit.}: EC
   P.fromAffine(EC.F.C.getGenerator($EC.G))
-  ts[0] = P
+  result[0] = P
   for i in 1 ..< length:
     P.scalarMul_minHammingWeight_windowed_vartime(secret, window = 5)
-    ts[i] = P
+    result[i] = P
 
+func newTrustedSetupMonomial(EC: typedesc, secret: auto, length: int): seq[EC] =
+  let ts = newTrustedSetupImpl(projective(EC), secret, length)
+  result.setLen(length)
   batchAffine(result.asUnchecked(), ts.asUnchecked(), length)
+
+func getLagrange[EC](fftDesc: ECFFT_Descriptor[EC], monomial: seq[EC]): seq[EC] =
+  ## Get a polynomial in lagrange basis from a polynomial in monomial form.
+  ## The polynomial is also bit-reversal permuted.
+
+  result.setLen(monomial.len)
+  let status = fftDesc.ifft(result, monomial)
+  doAssert status == FFTS_Success, "Ethereum testing trusted setup failure during Lagrange form: " & $status
+
+  result.bit_reversal_permutation()
+
+func newTrustedSetupLagrange[EC](fftDesc: ECFFT_Descriptor[EC], secret: auto, length: int): auto =
+  let ts = newTrustedSetupImpl(EC, secret, length)
+  let ts2 = fftDesc.getLagrange(ts)
+
+  let tsAffine = newSeq[affine(EC)](length)
+  batchAffine(tsAffine.asUnchecked(), ts2.asUnchecked(), length)
+  return tsAffine
+
+proc padNUL64(f: FileStream) =
+  ## Pad NUL bytes until we reach a 64-byte boundary
+  let pos = f.getPosition()
+  let posMod64 = pos and 63
+
+  let pad = default(array[63, byte])
+  if posMod64 != 0:
+    f.writeData(pad[0].unsafeAddr, 64-posMod64)
 
 proc genEthereumKzgTestingTrustedSetup(filepath: string, secret: auto, length: int) =
   ## Generate an Ethereum KZG testing trusted setup
   ## in the Trusted Setup Interchange Format
+  ## `length` is the length of the SRS 𝔾1
+  ## the SRS 𝔾2 is fixed at 65.
+  ## SRS 𝔾1 and roots of unity are bit-reversal permuted
+
+  static: doAssert cpuEndian == littleEndian, "Trusted setup creation is only supported on little-endian CPUs at the moment."
+  doAssert length.uint.isPowerOf2_vartime(), "Expected power of 2 but found length " & $length
 
   let f = openFileStream(filepath, fmWrite)
-  f.write"\u2203\u222A\u2208\u220E" # ∃⋃∈∎ in UTF-16. (magic bytes)
+  f.write"∃⋃∈∎" # ∃⋃∈∎ in UTF-8. (magic bytes)
 
   # v1.0
   f.write 'v'
@@ -136,24 +172,74 @@ proc genEthereumKzgTestingTrustedSetup(filepath: string, secret: auto, length: i
   # Curve
   const curve = "bls12_381"
   f.write curve
-  const padCurve = array[15 - curve.len, byte] # zero-nit padding
-  f.write padCurve
+  let padCurve = default(array[15 - curve.len, byte]) # zero-init padding
+  f.writeData(padCurve[0].unsafeAddr, padCurve.len)
 
   # Number of fields
   f.write uint8 3
 
+  block: # Metadata 1 - srs 𝔾1 points - bit-reversal permuted
+    var meta: array[32, byte]
+    meta[0..<12] = asBytes"srs_lagrange"
 
+    meta[15..<17] = asBytes"g1"
+    meta[17..<20] = asBytes"brp"
+    meta[20..<24] = toBytes(uint32 sizeof(ECP_ShortW_Aff[Fp[BLS12_381], G1]), littleEndian)
+    meta[24..<32] = toBytes(uint64 length, littleEndian)
+
+    f.write meta
+
+  block: # Metadata 2 - srs 𝔾2 points (hardcoded to 65)
+    var meta: array[32, byte]
+    meta[0..<12] = asBytes"srs_monomial"
+
+    meta[15..<17] = asBytes"g2"
+    meta[17..<20] = asBytes"asc"
+    meta[20..<24] = toBytes(uint32 sizeof(ECP_ShortW_Aff[Fp2[BLS12_381], G2]), littleEndian)
+    meta[24..<32] = toBytes(65'u64, littleEndian)
+
+    f.write meta
+
+  # Projective coordinates are slightly faster than jacobian on 𝔾1
+  var fftDesc = ECFFTDescriptor[ECP_ShortW_Prj[Fp[BLS12_381], G1]].new(
+    order = length, ctt_eth_kzg_fr_pow2_roots_of_unity[log2_vartime(length.uint)])
+
+  block: # Metadata 3 - roots of unity - bit-reversal permuted
+    var meta: array[32, byte]
+    meta[0..<11] = asBytes"roots_unity"
+
+    meta[15..<17] = asBytes"fr"
+    meta[17..<20] = asBytes"brp"
+    meta[20..<24] = toBytes(uint32 sizeof(fftDesc.rootsOfUnity[0]), littleEndian)
+    meta[24..<32] = toBytes(fftDesc.order.uint64, littleEndian)
+
+    f.write meta
+
+  f.padNUL64()
+
+  block: # Data 1 - srs 𝔾1 points - bit-reversal permuted
+    let ts1 = fftDesc.newTrustedSetupLagrange(secret, length)
+    # Raw dump requires little-endian
+    f.writeData(ts1[0].unsafeAddr, sizeof(ts1[0]) * length)
+
+  f.padNUL64()
+
+  block: # Data 2 - srs 𝔾2 points - bit-reversal permuted
+    const g2Length = 65
+    let ts2 = ECP_ShortW_Aff[Fp2[BLS12_381], G2].newTrustedSetupMonomial(secret, g2Length)
+    # Raw dump requires little-endian
+    f.writeData(ts2[0].unsafeAddr, sizeof(ts2[0]) * g2Length)
+
+  f.padNUL64()
+
+  bit_reversal_permutation(fftDesc.rootsOfUnity.toOpenArray(0, fftDesc.order-1))
+  block: # Data 2 - roots of unity - bit-reversal permuted
+    # Raw dump requires little-endian
+    f.writeData(fftDesc.rootsOfUnity, sizeof(fftDesc.rootsOfUnity[0]) * fftDesc.order)
 
 when isMainModule:
-  import ../math/io/[io_bigints, io_ec]
+  import ../math/io/io_bigints
 
-  let secret = BigInt[11].fromUint(1337'u64)
-  let ts1 = newTrustedSetup(ECP_ShortW_Aff[Fp[BLS12_381], G1], secret, 4)
-
-  for i in 0 ..< ts1.len:
-    echo "ts1[", i, "]: ", ts1[i].toHex()
-
-  let ts2 = newTrustedSetup(ECP_ShortW_Aff[Fp2[BLS12_381], G2], secret, 65)
-
-  for i in 0 ..< ts2.len:
-    echo "ts2[", i, "]: ", ts2[i].toHex()
+  let testSecret = BigInt[11].fromUint(1337'u64)
+  genEthereumKzgTestingTrustedSetup("trusted_setup_ethereum_kzg_test_minimal.tsif", testSecret, 4)
+  genEthereumKzgTestingTrustedSetup("trusted_setup_ethereum_kzg_test_mainnet.tsif", testSecret, 4096)

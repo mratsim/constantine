@@ -5,26 +5,26 @@
 <!-- TOC -->
 
 - [Trusted Setup Interchange Format](#trusted-setup-interchange-format)
-  - [Table of contents](#table-of-contents)
-  - [Overview](#overview)
-  - [Metadata](#metadata)
-  - [Schema items descriptors](#schema-items-descriptors)
-    - [Quick algebra refresher](#quick-algebra-refresher)
-    - [Notation](#notation)
-    - [Schema items](#schema-items)
-      - [Recommendation](#recommendation)
-  - [Data](#data)
-    - [𝔾1 and 𝔾2: Elliptic curve serialization](#%F0%9D%94%BE1-and-%F0%9D%94%BE2-elliptic-curve-serialization)
-    - [𝔽r and 𝔽p: Finite Fields serialization](#%F0%9D%94%BDr-and-%F0%9D%94%BDp-finite-fields-serialization)
-      - [Representation](#representation)
-        - [Montgomery 32-bit vs 64-bit](#montgomery-32-bit-vs-64-bit)
-        - [Special-form primes [unspecified]](#special-form-primes-unspecified)
-    - [𝔽p² serialization](#%F0%9D%94%BDp%C2%B2-serialization)
-    - [Larger extension field serialization [unspecified]](#larger-extension-field-serialization-unspecified)
-      - [𝔽p⁴](#%F0%9D%94%BDp%E2%81%B4)
-      - [𝔽p¹² / 𝔾t](#%F0%9D%94%BDp%C2%B9%C2%B2--%F0%9D%94%BEt)
-  - [Copyright](#copyright)
-  - [Citation](#citation)
+    - [Table of contents](#table-of-contents)
+    - [Overview](#overview)
+    - [Metadata](#metadata)
+    - [Schema items descriptors](#schema-items-descriptors)
+        - [Quick algebra refresher](#quick-algebra-refresher)
+        - [Notation](#notation)
+        - [Schema items](#schema-items)
+            - [Recommendation](#recommendation)
+    - [Data](#data)
+        - [𝔾1 and 𝔾2: Elliptic curve serialization](#%F0%9D%94%BE1-and-%F0%9D%94%BE2-elliptic-curve-serialization)
+        - [𝔽r and 𝔽p: Finite Fields serialization](#%F0%9D%94%BDr-and-%F0%9D%94%BDp-finite-fields-serialization)
+            - [Representation](#representation)
+                - [Montgomery 32-bit vs 64-bit](#montgomery-32-bit-vs-64-bit)
+                - [Special-form primes [unspecified]](#special-form-primes-unspecified)
+        - [𝔽p² serialization](#%F0%9D%94%BDp%C2%B2-serialization)
+        - [Larger extension field serialization [unspecified]](#larger-extension-field-serialization-unspecified)
+            - [𝔽p⁴](#%F0%9D%94%BDp%E2%81%B4)
+            - [𝔽p¹² / 𝔾t](#%F0%9D%94%BDp%C2%B9%C2%B2--%F0%9D%94%BEt)
+    - [Copyright](#copyright)
+    - [Citation](#citation)
 
 <!-- /TOC -->
 
@@ -56,11 +56,11 @@ most (all?) big integer backends cryptographic or not (GMP, LLVM APint, Go bigin
 
 We described the format with `n` schema items and `i` an integer in the range `[0, n)`
 
-| Offset (byte) | Name         | Description                               | Size (in bytes) | Syntax                                                      | Example                                                                                                                  | Rationale                                                                                                                                      |
-|---------------|--------------|-------------------------------------------|-----------------|-------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
-| 0             | Magic number | Fixed bytes at the beginning of each file | 12              | Hex E288 83 E288 AA E288 88 E288 8E                         | Unicode string "∃⋃∈∎". Read as "There exists an union of elements of proofs" Unicode: [U+2203, U+222A, U+2208, U+220E] encoded in UTF-16 | Distinguish the file format even with incorrect extension.                                                                                     |
-| 12            | version      | format version                            | 4               | v{major}.{minor}                                            | `v1.0`                                                                                                                   | Compatibility and graceful decoding failures.                                                                                                  |
-| 16            | protocol     | a protocol name                           | 32              | any lowercase a-z 0-9 and underscore, padded with NUL bytes | `ethereum_deneb_kzg`                                                                                                     | Graceful errors. For namespacing it is recommended to use `{application}_{fork/version/proposal that introduced the trusted setup}_{protocol}` |
+| Offset (byte) | Name         | Description                               | Size (in bytes) | Syntax                                                      | Example                                                                                                                                 | Rationale                                                                                                                                      |
+|---------------|--------------|-------------------------------------------|-----------------|-------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| 0             | Magic number | Fixed bytes at the beginning of each file | 12              | Hex E28883 E28B83 E28888 E2888E                             | Unicode string "∃⋃∈∎". Read as "There exists an union of elements of proofs" Unicode: [U+2203, U+222A, U+2208, U+220E] encoded in UTF-8 | Distinguish the file format even with incorrect extension.                                                                                     |
+| 12            | version      | format version                            | 4               | v{major}.{minor}                                            | `v1.0`                                                                                                                                  | Compatibility and graceful decoding failures.                                                                                                  |
+| 16            | protocol     | a protocol name                           | 32              | any lowercase a-z 0-9 and underscore, padded with NUL bytes | `ethereum_deneb_kzg`                                                                                                                    | Graceful errors. For namespacing it is recommended to use `{application}_{fork/version/proposal that introduced the trusted setup}_{protocol}` |
 | 48            | Curve | Elliptic curve name | 15 | any lowercase a-z 0-9 and underscore, padded with NUL bytes | `bls12_381` or `bn254_snarks` or `bandersnatch` or `edwards25519` or `montgomery25519` | Size chosen to fit long curve names like `bandersnatch` or `edwards25519`. Ideally the name uniquely identify the curve, for example there are multiple BN254 curves in the litterature (but only one used in trusted setups) and there are multiple representations of Curve25519 (Montgomery or Twisted Edwards)
 | 63            | fields  | number of data fields `n`       | 1               | {n}, `n` is encoded as a 8-bit integer | `3` | Compute byte offsets and buffer(s) size |
 | 64            | 1ˢᵗ schema item | Metadata | 32 | see dedicated section | see dedicated section | |
