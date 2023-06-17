@@ -98,3 +98,16 @@ func toBytes*(num: SomeUnsignedInt, endianness: static Endianness): array[sizeof
   else:
     for i in 0 ..< L:
       result[i] = toByte(num shr (i * 8))
+
+func fromBytes*(T: type SomeUnsignedInt, bytes: openArray[byte], endianness: static Endianness): T {.inline.} =
+  const L = sizeof(T)
+  debug:
+    doAssert bytes.len == L
+
+  # Note: result is zero-init
+  when endianness == cpuEndian:
+    for i in 0 ..< L:
+      result = result or (T(bytes[i]) shl (i*8))
+  else:
+    for i in 0 ..< L:
+      result = result or (T(bytes[i]) shl ((L-1-i) * 8))
