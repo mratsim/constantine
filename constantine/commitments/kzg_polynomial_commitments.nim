@@ -265,8 +265,8 @@ func kzg_prove*[N: static int, C: static Curve](
 
 func kzg_verify*[F2; C: static Curve](
        commitment: ECP_ShortW_Aff[Fp[C], G1],
-       challenge: matchingOrderBigInt(C),
-       eval_at_challenge: matchingOrderBigInt(C),
+       challenge: BigInt, # matchingOrderBigInt(C),
+       eval_at_challenge: BigInt, # matchingOrderBigInt(C),
        proof: ECP_ShortW_Aff[Fp[C], G1],
        tauG2: ECP_ShortW_Aff[F2, G2]): bool =
   ## Verify a short KZG proof that ``p(challenge) = eval_at_challenge``
@@ -312,13 +312,13 @@ func kzg_verify*[F2; C: static Curve](
   commitment_minus_eval_at_challenge_G1.scalarMul(eval_at_challenge)
   commitment_minus_eval_at_challenge_G1.diff(commitmentJac, commitment_minus_eval_at_challenge_G1)
 
-  var tmzH {.noInit.}: ECP_ShortW_Aff[F2, G2]
-  var cmyH {.noInit.}: ECP_ShortW_Aff[Fp[C], G1]
-  tmzH.affine(tau_minus_challenge_H)
-  cmyH.affine(commitment_minus_eval_at_challenge_G)
+  var tmzG2 {.noInit.}: ECP_ShortW_Aff[F2, G2]
+  var cmyG1 {.noInit.}: ECP_ShortW_Aff[Fp[C], G1]
+  tmzG2.affine(tau_minus_challenge_G2)
+  cmyG1.affine(commitment_minus_eval_at_challenge_G1)
 
   # e([proof]₁, [τ]₂ - [challenge]₂) * e([commitment]₁ - [eval_at_challenge]₁, [-1]₂)
   var gt {.noInit.}: C.getGT()
-  gt.pairing([proof, cmyH], [tmzH, negG2])
+  gt.pairing([proof, cmyG1], [tmzG2, negG2])
 
   return gt.isOne().bool()

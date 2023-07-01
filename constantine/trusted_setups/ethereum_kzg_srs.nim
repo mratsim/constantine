@@ -12,6 +12,8 @@ import
   ../platforms/abstractions,
   ../serialization/endians,
   ../math/constants/zoo_generators,
+  ../math/polynomials/polynomials,
+  ../math/io/io_fields,
 
   std/streams
 
@@ -90,7 +92,7 @@ type
     # For most schemes (Marlin, Plonk, Sonic, Ethereum's Deneb), only [τ]H is needed
     # but Ethereum's sharding will need 64 (65 with the generator H)
 
-    roots_of_unity*{.align: 64.}: array[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]]
+    domain*{.align: 64.}: PolyDomainEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]]
 
   TrustedSetupStatus* = enum
     tsSuccess
@@ -244,9 +246,13 @@ proc loadTrustedSetup*(ctx: ptr EthereumKZGContext, filePath: string): TrustedSe
       if status64Balign != tsSuccess:
         return status64Balign
 
-      len = f.readData(ctx.roots_of_unity.addr, sizeof(ctx.roots_of_unity))
-      if len != sizeof(ctx.roots_of_unity):
+      len = f.readData(ctx.domain.rootsOfUnity.addr, sizeof(ctx.domain.rootsOfUnity))
+      if len != sizeof(ctx.domain.rootsOfUnity):
         return tsInvalidFile
+
+      # Compute the inverse of the domain degree
+      ctx.domain.invMaxDegree.fromUint(ctx.domain.rootsOfUnity.len.uint64)
+      ctx.domain.invMaxDegree.inv_vartime()
 
     block: # Last sanity check
       # When the srs is in monomial form we can check that

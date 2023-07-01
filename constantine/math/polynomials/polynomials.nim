@@ -24,7 +24,7 @@ type
     ##
     ## mapping to the canonical formula
     ## p(x) = a₀ + a₁ x + a₂ x² + ... + aₙ xⁿ
-    coefs*: array[N, Field]
+    coefs*{.align: 64.}: array[N, Field]
 
   PolynomialEval*[N: static int, Field] = object
     ## A polynomial in Lagrange basis (evaluation form)
@@ -36,11 +36,11 @@ type
     ##
     ## https://ethresear.ch/t/kate-commitments-from-the-lagrange-basis-without-ffts/6950
     ## https://en.wikipedia.org/wiki/Lagrange_polynomial#Barycentric_form
-    evals*: array[N, Field]
+    evals*{.align: 64.}: array[N, Field]
 
   PolyDomainEval*[N: static int, Field] = object
     ## Metadata for polynomial in Lagrange basis (evaluation form)
-    rootsOfUnity*: array[N, Field]
+    rootsOfUnity*{.align: 64.}: array[N, Field]
     invMaxDegree*: Field
 
 func inverseRootsMinusZ_vartime*[N: static int, Field](

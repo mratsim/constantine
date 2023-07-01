@@ -44,8 +44,7 @@ import
       ec_shortweierstrass,
       extension_fields,
       arithmetic,
-      constants/zoo_subgroups
-    ],
+      constants/zoo_subgroups],
     ../math/io/[io_bigints, io_fields]
 
 type

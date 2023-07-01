@@ -11,12 +11,15 @@ import
   math/io/io_bigints,
   math/[ec_shortweierstrass, arithmetic, extension_fields],
   math/arithmetic/limbs_montgomery,
-  math/elliptic/[ec_scalar_mul, ec_multi_scalar_mul],
-  math/pairings/pairings_generic,
-  math/constants/zoo_generators,
+  math/elliptic/ec_multi_scalar_mul,
+  math/polynomials/polynomials,
+  commitments/kzg_polynomial_commitments,
   hashes,
-  platforms/[abstractions, views],
-  serialization/[codecs_bls12_381, endians]
+  platforms/[abstractions, views, allocs],
+  serialization/[codecs_bls12_381, endians],
+  trusted_setups/ethereum_kzg_srs
+
+export loadTrustedSetup
 
 ## ############################################################
 ##
@@ -58,13 +61,6 @@ const RANDOM_CHALLENGE_KZG_BATCH_DOMAIN = asBytes"RCKZGBATCH___V1_"
 # ------------------------------------------------------------
 const BYTES_PER_BLOB = BYTES_PER_FIELD_ELEMENT*FIELD_ELEMENTS_PER_BLOB
 
-# Aliases
-# ------------------------------------------------------------
-
-type
-  G1Point = ECP_ShortW_Aff[Fp[BLS12_381], G1]
-  G2Point = ECP_ShortW_Aff[Fp2[BLS12_381], G2]
-
 # Protocol Types
 # ------------------------------------------------------------
 
@@ -77,74 +73,15 @@ type
   KZGProof*      = object
     raw: ECP_ShortW_Aff[Fp[BLS12_381], G1]
 
-
   CttEthKzgStatus* = enum
     cttEthKZG_Success
+    cttEthKZG_VerificationFailure
+    cttEthKZG_ScalarZero
     cttEthKZG_ScalarLargerThanCurveOrder
-    cttEthKZG_InvalidEncoding
-    cttEthKZG_CoordinateGreaterThanOrEqualModulus
-    cttEthKZG_PointNotOnCurve
-    cttEthKZG_PointNotInSubGroup
-
-
-# Trusted setup
-# ------------------------------------------------------------
-
-const KZG_SETUP_G2_LENGTH = 65
-
-# On the number of 𝔾2 points:
-#   - In the Deneb specs, https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/deneb/polynomial-commitments.md
-#     only KZG_SETUP_G2[1] is used.
-#   - In SONIC, section 6.2, https://eprint.iacr.org/2019/099.pdf
-#     H and [α]H, the generator of 𝔾2 and its scalar multiplication by a random secret from trusted setup, are needed.
-#   - In Marlin, section 2.5, https://eprint.iacr.org/2019/1047.pdf
-#     H and [β]H, the generator of 𝔾2 and its scalar multiplication by a random secret from trusted setup, are needed.
-#   - In Plonk, section 3.1, https://eprint.iacr.org/2019/953
-#     [1]₂ and [x]₂, i.e. [1] scalar multiplied by the generator of 𝔾2 and [x] scalar multiplied by the generator of 𝔾2, x a random secret from trusted setup, are needed.
-#   - In Vitalik's Plonk article, section Polynomial commitments, https://vitalik.ca/general/2019/09/22/plonk.html#polynomial-commitments
-#     [s]G₂, i.e a random secret [s] scalar multiplied by the generator of 𝔾2, is needed
-#
-#   The extra 63 points are expected to be used for sharding https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/_features/sharding/polynomial-commitments.md
-#   for KZG multiproofs for 64 shards: https://dankradfeist.de/ethereum/2021/06/18/pcs-multiproofs.html
-#
-# Note:
-#   The batched proofs (different polynomials) used in Deneb specs
-#   are different from multiproofs
-
-type KZGContext = object
-  ## KZG commitment context
-
-  # Trusted setup, see https://vitalik.ca/general/2022/03/14/trustedsetup.html
-
-  srs_lagrange_g1: array[FIELD_ELEMENTS_PER_BLOB, G1Point]
-  # Part of the Structured Reference String (SRS) holding the 𝔾1 points
-  # This is used for committing to polynomials and producing an opening proof at
-  # a random value (chosen via Fiat-Shamir heuristic)
-  #
-  # Referring to the 𝔾1 generator as G, in monomial basis / coefficient form we would store:
-  #   [G, [τ]G, [τ²]G, ... [τ⁴⁰⁹⁶]G]
-  # with τ a random secret derived from a multi-party computation ceremony
-  # with at least one honest random secret contributor (also called KZG ceremony or powers-of-tau ceremony)
-  #
-  # For efficiency we operate only on the evaluation form of polynomials over 𝔾1 (i.e. the Lagrange basis)
-  # i.e. for agreed upon [ω⁰, ω¹, ..., ω⁴⁰⁹⁶]
-  # we store [f(ω⁰), f(ω¹), ..., f(ω⁴⁰⁹⁶)]
-  #
-  # https://en.wikipedia.org/wiki/Lagrange_polynomial#Barycentric_form
-  #
-  # Conversion can be done with a discrete Fourier transform.
-
-  srs_monomial_g2: array[KZG_SETUP_G2_LENGTH, G2Point]
-  # Part of the SRS holding the 𝔾2 points
-  #
-  # Referring to the 𝔾2 generator as H, we store
-  #   [H, [τ]H, [τ²]H, ..., [τ⁶⁴]H]
-  # with τ a random secret derived from a multi-party computation ceremony
-  # with at least one honest random secret contributor (also called KZG ceremony or powers-of-tau ceremony)
-  #
-  # This is used to verify commitments.
-  # For most schemes (Marlin, Plonk, Sonic, Ethereum's Deneb), only [τ]H is needed
-  # but Ethereum's sharding will need 64 (65 with the generator H)
+    cttEthKZG_EccInvalidEncoding
+    cttEthKZG_EccCoordinateGreaterThanOrEqualModulus
+    cttEthKZG_EccPointNotOnCurve
+    cttEthKZG_EccPointNotInSubGroup
 
 # Fiat-Shamir challenges
 # ------------------------------------------------------------
@@ -203,6 +140,14 @@ func computePowers(dst: MutableView[Fr[BLS12_381]], base: Fr[BLS12_381]) =
 # Conversion
 # ------------------------------------------------------------
 
+func bytes_to_bls_bigint(dst: var matchingOrderBigInt(BLS12_381), src: array[32, byte]): CttCodecScalarStatus =
+  ## Convert untrusted bytes to a trusted and validated BLS scalar field element.
+  ## This function does not accept inputs greater than the BLS modulus.
+  let status = dst.deserialize_scalar(src)
+  if status notin {cttCodecScalar_Success, cttCodecScalar_Zero}:
+    return status
+  return cttCodecScalar_Success
+
 func bytes_to_bls_field(dst: var Fr[BLS12_381], src: array[32, byte]): CttCodecScalarStatus =
   ## Convert untrusted bytes to a trusted and validated BLS scalar field element.
   ## This function does not accept inputs greater than the BLS modulus.
@@ -229,18 +174,107 @@ func bytes_to_kzg_proof(dst: var KZGProof, src: array[48, byte]): CttCodecEccSta
     return cttCodecEcc_Success
   return status
 
-func blob_to_polynomial(dst: ptr Polynomial, blob: Blob): CttCodecScalarStatus =
+func blob_to_bigint_polynomial(
+       dst: ptr PolynomialEval[FIELD_ELEMENTS_PER_BLOB, matchingOrderBigInt(BLS12_381)],
+       blob: ptr Blob): CttCodecScalarStatus =
   ## Convert a blob to a polynomial in evaluation form
 
   static:
-    doAssert sizeof(Polynomial) == sizeof(Blob)
+    doAssert sizeof(dst[]) == sizeof(Blob)
     doAssert sizeof(array[FIELD_ELEMENTS_PER_BLOB, array[32, byte]]) == sizeof(Blob)
 
   let view = cast[ptr array[FIELD_ELEMENTS_PER_BLOB, array[32, byte]]](blob.unsafeAddr())
 
   for i in 0 ..< FIELD_ELEMENTS_PER_BLOB:
-    let status = dst[i].bytes_to_bls_field(view[i])
+    let status = dst.evals[i].bytes_to_bls_bigint(view[i])
     if status != cttCodecScalar_Success:
       return status
 
   return cttCodecScalar_Success
+
+func blob_to_field_polynomial(
+       dst: ptr PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]],
+       blob: ptr Blob): CttCodecScalarStatus =
+  ## Convert a blob to a polynomial in evaluation form
+
+  static:
+    doAssert sizeof(dst[]) == sizeof(Blob)
+    doAssert sizeof(array[FIELD_ELEMENTS_PER_BLOB, array[32, byte]]) == sizeof(Blob)
+
+  let view = cast[ptr array[FIELD_ELEMENTS_PER_BLOB, array[32, byte]]](blob.unsafeAddr())
+
+  for i in 0 ..< FIELD_ELEMENTS_PER_BLOB:
+    let status = dst.evals[i].bytes_to_bls_field(view[i])
+    if status != cttCodecScalar_Success:
+      return status
+
+  return cttCodecScalar_Success
+
+# Ethereum KZG public API
+# ------------------------------------------------------------
+
+template check(evalExpr: CttCodecScalarStatus): untyped =
+  block:
+    let status = evalExpr # Ensure single evaluation
+    case status
+    of cttCodecScalar_Success:                          discard
+    of cttCodecScalar_Zero:                             discard
+    of cttCodecScalar_ScalarLargerThanCurveOrder:       return cttEthKZG_ScalarLargerThanCurveOrder
+
+template check(evalExpr: CttCodecEccStatus): untyped =
+  block:
+    let status = evalExpr # Ensure single evaluation
+    case status
+    of cttCodecEcc_Success:                             discard
+    of cttCodecEcc_InvalidEncoding:                     return cttEthKZG_EccInvalidEncoding
+    of cttCodecEcc_CoordinateGreaterThanOrEqualModulus: return cttEthKZG_EccCoordinateGreaterThanOrEqualModulus
+    of cttCodecEcc_PointNotOnCurve:                     return cttEthKZG_EccPointNotOnCurve
+    of cttCodecEcc_PointNotInSubgroup:                  return cttEthKZG_EccPointNotInSubGroup
+    of cttCodecEcc_PointAtInfinity:                     discard
+
+func blob_to_kzg_commitment*(
+       ctx: ptr EthereumKZGContext,
+       dst: var array[48, byte],
+       blob: ptr Blob): CttEthKzgStatus =
+  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, matchingOrderBigInt(BLS12_381)], 64)
+  let status = poly.blob_to_bigint_polynomial(blob)
+  if status == cttCodecScalar_Zero:
+    return cttEthKZG_ScalarZero
+  elif status == cttCodecScalar_ScalarLargerThanCurveOrder:
+    return cttEthKZG_ScalarLargerThanCurveOrder
+
+  var r {.noInit.}: ECP_ShortW_Jac[Fp[BLS12_381], G1]
+  r.multiScalarMul_vartime(poly.evals, ctx.srs_lagrange_g1)
+
+  var r_aff {.noinit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1]
+  r_aff.affine(r)
+  discard dst.serialize_g1_compressed(r_aff)
+
+  freeHeap(poly)
+  return cttEthKZG_Success
+
+func verify_kzg_proof*(
+       ctx: ptr EthereumKZGContext,
+       commitment_bytes: array[48, byte],
+       z_bytes: array[32, byte],
+       y_bytes: array[32, byte],
+       proof_bytes: array[48, byte]): CttEthKzgStatus =
+  ## Verify KZG proof that p(z) == y where p(z) is the polynomial represented by "polynomial_kzg"
+
+  var commitment {.noInit.}: KZGCommitment
+  check commitment.bytes_to_kzg_commitment(commitment_bytes)
+
+  var challenge {.noInit.}: matchingOrderBigInt(BLS12_381)
+  check challenge.bytes_to_bls_bigint(z_bytes)
+
+  var eval_at_challenge {.noInit.}: matchingOrderBigInt(BLS12_381)
+  check eval_at_challenge.bytes_to_bls_bigint(y_bytes)
+
+  var proof {.noInit.}: KZGProof
+  check proof.bytes_to_kzg_proof(proof_bytes)
+
+  let verif = kzg_verify(commitment.raw, challenge, eval_at_challenge, proof.raw, ctx.srs_monomial_g2[1])
+  if verif:
+    return cttEthKZG_Success
+  else:
+    return cttEthKZG_VerificationFailure
