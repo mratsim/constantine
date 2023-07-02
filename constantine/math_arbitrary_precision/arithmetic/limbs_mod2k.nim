@@ -112,18 +112,18 @@ func powMod2k_vartime*(
     r[0] = One  # x⁰ = 1, even for 0⁰
     return
 
-  let aTrailingZeroes = block:
-    var i = 0
-    while i < a.len-1:
-      if bool(a[i] != Zero):
-        break
-      i += 1
-    int(countTrailingZeroBits_vartime(BaseType a[i])) +
-            WordBitWidth*i
-
-  if a.isEven().bool and           # if a is even
-     aTrailingZeroes+msb >= k.int: # The msb of a n-bit integer is at n-1
-    return                         # r ≡ aᵉ (mod 2ᵏ) ≡ (2b)ᵏ⁺ⁿ (mod 2ᵏ) ≡ 2ᵏ.2ⁿ.bᵏ⁺ⁿ (mod 2ᵏ) ≡ 0 (mod 2ᵏ)
+  if a.isEven().bool:
+    let aTrailingZeroes = block:
+      var i = 0
+      while i < a.len-1:
+        if bool(a[i] != Zero):
+          break
+        i += 1
+      int(countTrailingZeroBits_vartime(BaseType a[i])) +
+              WordBitWidth*i
+                                     # if a is even, a = 2b and if e > k then there exists n such that e = k+n
+    if aTrailingZeroes+msb >= k.int: # r ≡ aᵉ (mod 2ᵏ) ≡ (2b)ᵏ⁺ⁿ (mod 2ᵏ) ≡ 2ᵏ.2ⁿ.bᵏ⁺ⁿ (mod 2ᵏ) ≡ 0 (mod 2ᵏ)
+      return                         # we can generalize to a = 2ᵗᶻb with tz the number of trailing zeros.
 
   var bitsLeft = msb+1
   if a.isOdd().bool and   # if a is odd
