@@ -375,7 +375,7 @@ func eth_evm_ecpairing*(
     r[r.len-1] = byte 1
   return cttEVM_Success
 
-func eth_evm_modexp*(r: var openArray[byte], inputs: openArray[byte]): CttEVMStatus {.noInline, tags:[Alloca, Vartime].} =
+func eth_evm_modexp*(r: var openArray[byte], inputs: openArray[byte]): CttEVMStatus {.noInline, tags:[Alloca, Vartime, TimeEffect].} =
   ## Modular exponentiation
   ##
   ## Name: MODEXP
@@ -423,49 +423,54 @@ func eth_evm_modexp*(r: var openArray[byte], inputs: openArray[byte]): CttEVMSta
     return cttEVM_InvalidInputSize
 
   let
-    baseLen = cast[int](bL.limbs[0])
-    exponentLen = cast[int](eL.limbs[0])
-    modulusLen = cast[int](mL.limbs[0])
+    baseByteLen = cast[int](bL.limbs[0])
+    exponentByteLen = cast[int](eL.limbs[0])
+    modulusByteLen = cast[int](mL.limbs[0])
 
-  if r.len != modulusLen:
+    baseWordLen = baseByteLen.ceilDiv_vartime(WordBitWidth div 8)
+    exponentWordLen = exponentByteLen.ceilDiv_vartime(WordBitWidth div 8)
+    modulusWordLen = modulusByteLen.ceilDiv_vartime(WordBitWidth div 8)
+
+  if r.len != modulusByteLen:
     return cttEVM_InvalidOutputSize
 
-  if baseLen.ceilDiv_vartime(WordBitWidth div 8) > modulusLen.ceilDiv_vartime(WordBitWidth div 8):
+  if baseWordLen > modulusWordLen:
     return cttEVM_InvalidInputSize
 
   # Special cases
   # ----------------------
-  if modulusLen == 0:
+  if modulusByteLen == 0:
     r.setZero()
     return cttEVM_Success
-  if exponentLen == 0:
+  if exponentByteLen == 0:
     r.setZero()
     r[r.len-1] = byte 1 # 0^0 = 1 and x^0 = 1
     return cttEVM_Success
-  if baseLen == 0:
+  if baseByteLen == 0:
     r.setZero()
     return cttEVM_Success
 
   # Input deserialization
   # ---------------------
-  var baseBuf = allocStackArray(SecretWord, baseLen)
-  var modulusBuf = allocStackArray(SecretWord, modulusLen)
-  var outputBuf = allocStackArray(SecretWord, modulusLen)
-
-  template base(): untyped = baseBuf.toOpenArray(0, baseLen-1)
-  template modulus(): untyped = modulusBuf.toOpenArray(0, modulusLen-1)
-  template output(): untyped = outputBuf.toOpenArray(0, modulusLen-1)
 
   # Inclusive stops
   let baseStart = 96
-  let baseStop  = baseStart+baseLen-1
+  let baseStop  = baseStart+baseByteLen-1
   let expStart  = baseStop+1
-  let expStop   = expStart+exponentLen-1
+  let expStop   = expStart+exponentByteLen-1
   let modStart  = expStop+1
-  let modStop   = modStart+modulusLen-1
+  let modStop   = modStart+modulusByteLen-1
 
-  base.toOpenArray(0, baseLen-1).unmarshal(inputs.toOpenArray(baseStart, baseStop), WordBitWidth, bigEndian)
-  modulus.toOpenArray(0, modulusLen-1).unmarshal(inputs.toOpenArray(modStart, modStop), WordBitWidth, bigEndian)
+  var baseBuf = allocStackArray(SecretWord, baseWordLen)
+  var modulusBuf = allocStackArray(SecretWord, modulusWordLen)
+  var outputBuf = allocStackArray(SecretWord, modulusWordLen)
+
+  template base(): untyped = baseBuf.toOpenArray(0, baseWordLen-1)
+  template modulus(): untyped = modulusBuf.toOpenArray(0, modulusWordLen-1)
+  template output(): untyped = outputBuf.toOpenArray(0, modulusWordLen-1)
+
+  base.toOpenArray(0, baseWordLen-1).unmarshal(inputs.toOpenArray(baseStart, baseStop), WordBitWidth, bigEndian)
+  modulus.toOpenArray(0, modulusWordLen-1).unmarshal(inputs.toOpenArray(modStart, modStop), WordBitWidth, bigEndian)
   template exponent(): untyped =
     inputs.toOpenArray(expStart, expStop)
 
