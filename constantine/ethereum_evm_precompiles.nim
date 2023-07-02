@@ -375,7 +375,7 @@ func eth_evm_ecpairing*(
     r[r.len-1] = byte 1
   return cttEVM_Success
 
-func eth_evm_modexp*(r: var openArray[byte], inputs: openArray[byte]): CttEVMStatus {.noInline, tags:[Alloca, Vartime, TimeEffect].} =
+func eth_evm_modexp*(r: var openArray[byte], inputs: openArray[byte]): CttEVMStatus {.noInline, tags:[Alloca, Vartime].} =
   ## Modular exponentiation
   ##
   ## Name: MODEXP
