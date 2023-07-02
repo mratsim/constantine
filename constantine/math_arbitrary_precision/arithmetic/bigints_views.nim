@@ -70,7 +70,6 @@ func powOddMod_vartime*(
     # if we use redc2xMont (a/R) and montgomery multiplication by R³
     # For now, we call explicit reduction as it can handle all sizes.
     # TODO: explicit reduction uses constant-time division which is **very** expensive
-    # TODO: fix https://github.com/mratsim/constantine/issues/241
     if a.len != M.len:
       let t = allocStackArray(SecretWord, L)
       t.LimbsViewMut.reduce(a.view(), aBits, M.view(), mBits)
