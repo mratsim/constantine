@@ -102,8 +102,8 @@ func rawCopy*(
   ## Unlike the standard library, this cannot throw
   ## even a defect.
   debug:
-    doAssert 0 <= dStart and dStart+len <= dst.len.uint, "dStart: " & $dStart & ", dStart+len: " & $(dStart+len) & ", dst.len: " & $dst.len
-    doAssert 0 <= sStart and sStart+len <= src.len.uint, "sStart: " & $sStart & ", sStart+len: " & $(sStart+len) & ", src.len: " & $src.len
+    doAssert 0 <= dStart and int(dStart+len) <= dst.len, "dStart: " & $dStart & ", dStart+len: " & $(dStart+len) & ", dst.len: " & $dst.len
+    doAssert 0 <= sStart and int(sStart+len) <= src.len, "sStart: " & $sStart & ", sStart+len: " & $(sStart+len) & ", src.len: " & $src.len
 
   {.push checks: off.} # No OverflowError or IndexError allowed
   for i in 0 ..< len:

@@ -147,7 +147,7 @@ func powMod_vartime*(
   # -------------------------------------------------------------------
 
   if mBits-ctz == 1: # The modulus is a power of 2
-    r.powMod2k_vartime(a, exponent, k = uint mBits)
+    r.powMod2k_vartime(a, exponent, k = uint ctz)
     return
 
   # Even modulus: general case
