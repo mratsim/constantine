@@ -428,7 +428,6 @@ func eth_evm_modexp*(r: var openArray[byte], inputs: openArray[byte]): CttEVMSta
     modulusByteLen = cast[int](mL.limbs[0])
 
     baseWordLen = baseByteLen.ceilDiv_vartime(WordBitWidth div 8)
-    exponentWordLen = exponentByteLen.ceilDiv_vartime(WordBitWidth div 8)
     modulusWordLen = modulusByteLen.ceilDiv_vartime(WordBitWidth div 8)
 
   if r.len != modulusByteLen:

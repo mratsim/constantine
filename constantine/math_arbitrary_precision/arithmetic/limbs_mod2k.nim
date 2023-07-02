@@ -112,9 +112,18 @@ func powMod2k_vartime*(
     r[0] = One  # x⁰ = 1, even for 0⁰
     return
 
-  if a.isEven().bool and # if a is even
-     1+msb >= k.int:     # The msb of a n-bit integer is at n-1
-    return               # r ≡ aᵉ (mod 2ᵏ) ≡ (2b)ᵏ⁺ⁿ (mod 2ᵏ) ≡ 2ᵏ.2ⁿ.bᵏ⁺ⁿ (mod 2ᵏ) ≡ 0 (mod 2ᵏ)
+  let aTrailingZeroes = block:
+    var i = 0
+    while i < a.len-1:
+      if bool(a[i] != Zero):
+        break
+      i += 1
+    int(countTrailingZeroBits_vartime(BaseType a[i])) +
+            WordBitWidth*i
+
+  if a.isEven().bool and           # if a is even
+     aTrailingZeroes+msb >= k.int: # The msb of a n-bit integer is at n-1
+    return                         # r ≡ aᵉ (mod 2ᵏ) ≡ (2b)ᵏ⁺ⁿ (mod 2ᵏ) ≡ 2ᵏ.2ⁿ.bᵏ⁺ⁿ (mod 2ᵏ) ≡ 0 (mod 2ᵏ)
 
   var bitsLeft = msb+1
   if a.isOdd().bool and   # if a is odd
@@ -130,7 +139,7 @@ func powMod2k_vartime*(
     # range [r.len, a.len) will be truncated (mod 2ᵏ)
     sBuf[i] = a[i]
 
-  # TODO: sliding window
+  # TODO: sliding/fixed window exponentiation
   for i in countdown(exponent.len-1, 0):
     for bit in unpackLE(exponent[i]):
       if bit:

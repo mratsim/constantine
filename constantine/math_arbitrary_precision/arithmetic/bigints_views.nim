@@ -131,15 +131,16 @@ func powMod_vartime*(
   # Even modulus
   # -------------------------------------------------------------------
 
-  var i = 0
+  let ctz = block:
+    var i = 0
 
-  # Find the first non-zero word from right-to-left. (a != 0)
-  while i < M.len-1:
-    if bool(M[i] != Zero):
-      break
-    i += 1
+    # Find the first non-zero word from right-to-left. (a != 0)
+    while i < M.len-1:
+      if bool(M[i] != Zero):
+        break
+      i += 1
 
-  let ctz = int(countTrailingZeroBits_vartime(BaseType M[i])) +
+    int(countTrailingZeroBits_vartime(BaseType M[i])) +
             WordBitWidth*i
 
   # Even modulus: power of two (mod 2ᵏ)

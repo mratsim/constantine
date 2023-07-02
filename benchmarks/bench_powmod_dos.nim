@@ -56,14 +56,12 @@ proc main() =
   var r = newSeq[byte](32)
   var ticks, nanoseconds: int64
 
-  const Iters = 1 # 22058
+  const Iters = 22058
 
   for i in 0 ..< Iters:
       bench(
         (let _ = r.eth_evm_modexp(input)),
         ticks, nanoseconds)
-
-  debugEcho r.toHex()
 
   report("EVM Modexp", nanoseconds, ticks, Iters)
 
