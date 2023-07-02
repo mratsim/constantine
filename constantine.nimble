@@ -483,7 +483,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Hashing to elliptic curves
   # ----------------------------------------------------------
   ("tests/t_hash_to_field.nim", false),
-  # ("tests/t_hash_to_curve_random.nim", false),
+  ("tests/t_hash_to_curve_random.nim", false),
   ("tests/t_hash_to_curve.nim", false),
 
   # Protocols

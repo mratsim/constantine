@@ -43,7 +43,7 @@ func isInf*(P: ECP_ShortW_Jac): SecretBool {.inline.} =
   ##
   ## Note: the jacobian coordinates equation is
   ##       Y² = X³ + aXZ⁴ + bZ⁶
-  ## 
+  ##
   ## When Z = 0 in the equation, it reduces to
   ## Y² = X³
   ## (yZ³)² = (xZ²)³ which is true for any x, y coordinates
@@ -209,6 +209,15 @@ template sumImpl[F; G: static Subgroup](
   # | Y₃ = R*(V-X₃)-S₁*HHH          | Y₃ = M*(S-X₃)-YY*YY                      |                   |                |
   # | Z₃ = Z₁*Z₂*H                  | Z₃ = Y₁*Z₁                               |                   |                |
 
+  # "when" static evaluation doesn't shortcut booleans :/
+  # which causes issues when CoefA isn't an int but Fp or Fp2
+  when CoefA is int:
+    const CoefA_eq_zero = CoefA == 0
+    const CoefA_eq_minus3 {.used.} = CoefA == -3
+  else:
+    const CoefA_eq_zero = false
+    const CoefA_eq_minus3 = false
+
   var Z1Z1 {.noInit.}, U1 {.noInit.}, S1 {.noInit.}, H {.noInit.}, R {.noinit.}: F
 
   block: # Addition-only, check for exceptional cases
@@ -218,7 +227,7 @@ template sumImpl[F; G: static Subgroup](
     S1 *= P.y           # S₁ = Y₁*Z₂³
     U1.prod(P.x, Z2Z2)  # U₁ = X₁*Z₂²
 
-    Z1Z1.square(P.z, skipFinalSub = true)
+    Z1Z1.square(P.z, skipFinalSub = not CoefA_eq_minus3)
     S2.prod(P.z, Z1Z1, skipFinalSub = true)
     S2 *= Q.y           # S₂ = Y₂*Z₁³
     U2.prod(Q.x, Z1Z1)  # U₂ = X₂*Z₁²
@@ -248,15 +257,6 @@ template sumImpl[F; G: static Subgroup](
   V_or_S *= HH_or_YY       # V = U₁*HH (add) or S = X₁*YY (dbl)
 
   block: # Compute M for doubling
-    # "when" static evaluation doesn't shortcut booleans :/
-    # which causes issues when CoefA isn't an int but Fp or Fp2
-    when CoefA is int:
-      const CoefA_eq_zero = CoefA == 0
-      const CoefA_eq_minus3 {.used.} = CoefA == -3
-    else:
-      const CoefA_eq_zero = false
-      const CoefA_eq_minus3 = false
-
     when CoefA_eq_zero:
       var a {.noInit.} = H
       var b {.noInit.} = HH_or_YY
@@ -289,7 +289,7 @@ template sumImpl[F; G: static Subgroup](
       var b{.noInit.} = HH_or_YY
       a.ccopy(P.x, isDbl)
       b.ccopy(P.x, isDbl)
-      HHH_or_Mpre.prod(a, b, true)  # HHH or X₁²
+      HHH_or_Mpre.prod(a, b)  # HHH or X₁²
 
       # Assuming doubling path
       a.square(HHH_or_Mpre, skipFinalSub = true)
@@ -430,6 +430,17 @@ func madd*[F; G: static Subgroup](
   # | Z₃ = Z₁*Z₂*H                  | Z₃ = Y₁*Z₁                               |                   |                |
   #
   # For mixed adddition we just set Z₂ = 1
+
+  # "when" static evaluation doesn't shortcut booleans :/
+  # which causes issues when CoefA isn't an int but Fp or Fp2
+  const CoefA = F.C.getCoefA()
+  when CoefA is int:
+    const CoefA_eq_zero = CoefA == 0
+    const CoefA_eq_minus3 {.used.} = CoefA == -3
+  else:
+    const CoefA_eq_zero = false
+    const CoefA_eq_minus3 = false
+
   var Z1Z1 {.noInit.}, U1 {.noInit.}, S1 {.noInit.}, H {.noInit.}, R {.noinit.}: F
 
   block: # Addition-only, check for exceptional cases
@@ -437,7 +448,7 @@ func madd*[F; G: static Subgroup](
     U1 = P.x
     S1 = P.y
 
-    Z1Z1.square(P.z, skipFinalSub = true)
+    Z1Z1.square(P.z, skipFinalSub = not CoefA_eq_minus3)
     S2.prod(P.z, Z1Z1, skipFinalSub = true)
     S2 *= Q.y           # S₂ = Y₂*Z₁³
     U2.prod(Q.x, Z1Z1)  # U₂ = X₂*Z₁²
@@ -467,16 +478,6 @@ func madd*[F; G: static Subgroup](
   V_or_S *= HH_or_YY       # V = U₁*HH (add) or S = X₁*YY (dbl)
 
   block: # Compute M for doubling
-    # "when" static evaluation doesn't shortcut booleans :/
-    # which causes issues when CoefA isn't an int but Fp or Fp2
-    const CoefA = F.C.getCoefA()
-    when CoefA is int:
-      const CoefA_eq_zero = CoefA == 0
-      const CoefA_eq_minus3 {.used.} = CoefA == -3
-    else:
-      const CoefA_eq_zero = false
-      const CoefA_eq_minus3 = false
-
     when CoefA_eq_zero:
       var a {.noInit.} = H
       var b {.noInit.} = HH_or_YY
@@ -509,7 +510,7 @@ func madd*[F; G: static Subgroup](
       var b{.noInit.} = HH_or_YY
       a.ccopy(P.x, isDbl)
       b.ccopy(P.x, isDbl)
-      HHH_or_Mpre.prod(a, b, true)  # HHH or X₁²
+      HHH_or_Mpre.prod(a, b)        # HHH or X₁²
 
       # Assuming doubling path
       a.square(HHH_or_Mpre, skipFinalSub = true)
