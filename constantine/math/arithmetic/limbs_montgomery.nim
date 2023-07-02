@@ -609,7 +609,13 @@ func getMont*(r: var Limbs, a, M, r2modM: Limbs,
   ## Important: `r` is overwritten
   ## The result `r` buffer size MUST be at least the size of `M` buffer
   # Reference: https://eprint.iacr.org/2017/1057.pdf
-  mulMont(r, a, r2ModM, M, m0ninv, spareBits)
+
+  # For conversion to a field element (in the Montgomery domain), we do not use the "no-carry" optimization:
+  #    While Montgomery Reduction can map inputs [0, 4p²) -> [0, p)
+  #    that range is not valid with the no-carry optimization,
+  #    hence an unreduced input that uses 256-bit while prime is 254-bit
+  #    can have an incorrect representation.
+  mulMont_FIPS(r, a, r2ModM, M, m0ninv, skipFinalSub = false)
 
 # Montgomery Modular Exponentiation
 # ------------------------------------------

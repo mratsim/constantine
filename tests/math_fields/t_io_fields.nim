@@ -156,4 +156,14 @@ proc main() =
 
         check: p == hex
 
+    test "Fuzz #1 - incorrect reduction of BigInt":
+      block:
+        var a{.noInit.}: Fp[BN254_Snarks]
+        a.fromBig(BigInt[254].fromHex("0xdd1119d0c5b065898a0848e21c209153f4622f06cb763e7ef00eef28b94780f8"))
+
+        var b{.noInit.}: Fp[BN254_Snarks]
+        b.fromBig(BigInt[254].fromHex("0x1b7fe00540e9e4e2a8c73208161b2fdd965c84c129af1449ff8cbecd57538bdc"))
+
+        doAssert bool(a == b)
+
 main()
