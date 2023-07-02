@@ -295,8 +295,7 @@ template sumImpl[F; G: static Subgroup](
       a.square(HHH_or_Mpre, skipFinalSub = true)
       a *= HHH_or_Mpre              # a = 3X₁²
       b.square(Z1Z1)
-      # b.mulCheckSparse(CoefA)     # TODO: broken static compile-time type inference
-      b *= CoefA                    # b = αZZ, with α the "a" coefficient of the curve
+      b.mulCheckSparse(CoefA)       # b = αZZ, with α the "a" coefficient of the curve
 
       a += b
       a.div2()
@@ -516,8 +515,7 @@ func madd*[F; G: static Subgroup](
       a.square(HHH_or_Mpre, skipFinalSub = true)
       a *= HHH_or_Mpre              # a = 3X₁²
       b.square(Z1Z1)
-      # b.mulCheckSparse(CoefA)     # TODO: broken static compile-time type inference
-      b *= CoefA                    # b = αZZ, with α the "a" coefficient of the curve
+      b.mulCheckSparse(CoefA)       # b = αZZ, with α the "a" coefficient of the curve
 
       a += b
       a.div2()
