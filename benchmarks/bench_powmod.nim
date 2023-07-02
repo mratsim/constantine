@@ -47,7 +47,7 @@ from bigints import nil # force qualified import to avoid conflicts on BigInt
 proc report(op: string, elapsedNs: int64, elapsedCycles: int64, iters: int) =
   let ns = elapsedNs div iters
   let cycles = elapsedCycles div iters
-  let throughput = 1e9 / float64(elapsedNs)
+  let throughput = 1e9 / float64(ns)
   when SupportsGetTicks:
     echo &"{op:<45} {throughput:>15.3f} ops/s {ns:>16} ns/op {cycles:>12} CPU cycles (approx)"
   else:
