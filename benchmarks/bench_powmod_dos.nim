@@ -64,5 +64,6 @@ proc main() =
         ticks, nanoseconds)
 
   report("EVM Modexp", nanoseconds, ticks, Iters)
+  echo "Total time: ", nanoseconds.float64 / 1e6, " ms"
 
 main()
