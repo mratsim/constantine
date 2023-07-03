@@ -1440,11 +1440,11 @@ func mul_sparse_by_x0*(a: var QuadraticExt, sparseB: QuadraticExt) =
   a.mul_sparse_by_x0(a, sparseB)
 
 template mulCheckSparse*(a: var QuadraticExt, b: QuadraticExt) =
-  when b.isOne().bool:
+  when isOne(b).bool:
     discard
-  elif b.isMinusOne().bool:
+  elif isMinusOne(b).bool:
     a.neg()
-  elif b.c0.isZero().bool and b.c1.isOne().bool:
+  elif isZero(c0(b)).bool and isOne(c1(b)).bool:
     var t {.noInit.}: type(a.c0)
     when fromComplexExtension(b):
       t.neg(a.c1)
@@ -1454,7 +1454,7 @@ template mulCheckSparse*(a: var QuadraticExt, b: QuadraticExt) =
       t.prod(a.c1, NonResidue)
       a.c1 = a.c0
       a.c0 = t
-  elif b.c0.isZero().bool and b.c1.isMinusOne().bool:
+  elif isZero(c0(b)).bool and isMinusOne(c1(b)).bool:
     var t {.noInit.}: type(a.c0)
     when fromComplexExtension(b):
       t = a.c1
@@ -1464,9 +1464,9 @@ template mulCheckSparse*(a: var QuadraticExt, b: QuadraticExt) =
       t.prod(a.c1, NonResidue)
       a.c1.neg(a.c0)
       a.c0.neg(t)
-  elif b.c0.isZero().bool:
+  elif isZero(c0(b)).bool:
     a.mul_sparse_by_0y(b)
-  elif b.c1.isZero().bool:
+  elif isZero(c1(b)).bool:
     a.mul_sparse_by_x0(b)
   else:
     a *= b

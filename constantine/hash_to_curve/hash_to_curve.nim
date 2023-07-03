@@ -133,12 +133,12 @@ func mapToCurve_svdw_fusedAdd[F; G: static Subgroup](
   ## finite or extension field F
   ## to an elliptic curve E
   ## and add them
-  var P0{.noInit.}, P1{.noInit.}: ECP_ShortW_Aff[F, G]
-  P0.mapToCurve_svdw(u0)
-  P1.mapToCurve_svdw(u1)
+  var Q0{.noInit.}, Q1{.noInit.}: ECP_ShortW_Aff[F, G]
+  Q0.mapToCurve_svdw(u0)
+  Q1.mapToCurve_svdw(u1)
 
-  r.fromAffine(P0)
-  r += P1
+  r.fromAffine(Q0)
+  r += Q1
 
 func mapToCurve_sswu_fusedAdd[F; G: static Subgroup](
        r: var ECP_ShortW_Jac[F, G],
@@ -164,25 +164,24 @@ func mapToCurve_sswu_fusedAdd[F; G: static Subgroup](
     # https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-6.6.3
     # Simplified Shallue-van de Woestijne-Ulas method for AB == 0
 
-    var P0{.noInit.}, P1{.noInit.}: ECP_ShortW_Jac[F, G]
+    var Q0{.noInit.}, Q1{.noInit.}: ECP_ShortW_Jac[F, G]
 
     # 1. Map to E' isogenous to E
     when F is Fp and F.C.has_P_3mod4_primeModulus():
       # 1. Map to E'1 isogenous to E1
-      P0.mapToIsoCurve_sswuG1_opt3mod4(u0)
-      P1.mapToIsoCurve_sswuG1_opt3mod4(u1)
-      P0.sum(P0, P1, h2CConst(F.C, sswu, G1, Aprime_E1))
+      Q0.mapToIsoCurve_sswuG1_opt3mod4(u0)
+      Q1.mapToIsoCurve_sswuG1_opt3mod4(u1)
+      Q0.sum(Q0, Q1, h2CConst(F.C, sswu, G1, Aprime_E1))
     elif F is Fp2 and F.C.has_Psquare_9mod16_primePower():
-      # p ≡ 3 (mod 4) => p² ≡ 9 (mod 16)
       # 1. Map to E'2 isogenous to E2
-      P0.mapToIsoCurve_sswuG2_opt9mod16(u0)
-      P1.mapToIsoCurve_sswuG2_opt9mod16(u1)
-      P0.sum(P0, P1, h2CConst(F.C, sswu, G2, Aprime_E2))
+      Q0.mapToIsoCurve_sswuG2_opt9mod16(u0)
+      Q1.mapToIsoCurve_sswuG2_opt9mod16(u1)
+      Q0.sum(Q0, Q1, h2CConst(F.C, sswu, G2, Aprime_E2))
     else:
       {.error: "Not implemented".}
 
     # 2. Map from E'2 to E2
-    r.h2c_isogeny_map(P0)
+    r.h2c_isogeny_map(Q0)
   else:
     {.error: "Not implemented".}
 
