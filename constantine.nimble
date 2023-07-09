@@ -302,7 +302,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/math_bigints/t_io_bigints.nim", false),
   # ("tests/math_bigints/t_bigints.nim", false),
   # ("tests/math_bigints/t_bigints_multimod.nim", false),
-  # ("tests/math_bigints/t_bigints_mul_vs_gmp.nim", true),
+  ("tests/math_bigints/t_bigints_mul_vs_gmp.nim", true),
   # ("tests/math_bigints/t_bigints_mul_high_words_vs_gmp.nim", true),
 
   # Big ints - arbitrary precision
