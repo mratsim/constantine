@@ -165,7 +165,7 @@ func powMod_vartime*(
 
   let qBits = mBits-ctz
   let pBits = 1+ctz
-  # let qWords = qBits.wordsRequired() # TODO: use minimum size for q
+  let qWords = qBits.wordsRequired()
   let pWords = pBits.wordsRequired()
 
   var qBuf  = allocStackArray(SecretWord, M.len)
@@ -174,7 +174,7 @@ func powMod_vartime*(
   var yBuf =  allocStackArray(SecretWord, pWords)
   var qInv2kBuf = allocStackArray(SecretWord, pWords)
 
-  template q: untyped = qBuf.toOpenArray(0, M.len-1)
+  template q: untyped = qBuf.toOpenArray(0, M.len-1) # TODO use qWords instead of M.len
   template a1: untyped = a1Buf.toOpenArray(0, M.len-1)
   template a2: untyped = a2Buf.toOpenArray(0, pWords-1)
   template y: untyped = yBuf.toOpenArray(0, pWords-1)
@@ -185,14 +185,7 @@ func powMod_vartime*(
   a1.powOddMod_vartime(a, exponent, q, window)
   a2.powMod2k_vartime(a, exponent, k = uint ctz)
 
-  block:
-    let min = min(pWords, M.len)
-    for i in 0 ..< min:
-      qInv2k[i] = q[i]
-    for i in min ..< pWords:
-      qInv2k[i] = Zero
-
-  qInv2k.invMod2k_vartime(uint ctz)
+  qInv2k.invMod2k_vartime(qBuf.toOpenArray(0, qWords-1), uint ctz)
   y.submod2k_vartime(a2, a1, uint ctz)
   y.mulmod2k_vartime(y, qInv2k, uint ctz)
 
