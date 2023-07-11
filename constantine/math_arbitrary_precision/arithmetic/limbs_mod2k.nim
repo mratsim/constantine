@@ -43,14 +43,17 @@ func submod2k_vartime*(r{.noAlias.}: var openArray[SecretWord], a, b: openArray[
   debug:
     const SlotShift = log2_vartime(WordBitWidth.uint32)
     doAssert r.len >= k.int shr SlotShift, block:
-      "r.len: " & $r.len & "\n" &
-      "k: " & $k & "\n" &
-      "k/WordBitWidth: " & $(k.int shr SlotShift)
+      "\n" &
+      "  r.len: " & $r.len & "\n" &
+      "  k: " & $k & "\n" &
+      "  k/WordBitWidth: " & $(k.int shr SlotShift) &
+      "\n" # [AssertionDefect]
 
   # We can compute (mod 2ʷ) with w >= k
   # Hence we truncate the substraction to the next multiple of the word size
   template trunc(x: openArray[SecretWord]): openArray[SecretWord] =
-    x.toOpenArray(0, k.int.wordsRequired()-1)
+    let truncHi =  min(x.len, k.int.wordsRequired()) - 1
+    x.toOpenArray(0, truncHi)
 
   if a.len >= b.len:
     let underflow {.used.} = r.subMP(a.trunc(), b.trunc())
@@ -135,7 +138,7 @@ func powMod2k_vartime*(
   var sBuf = allocStackArray(SecretWord, r.len)
   template s: untyped = sBuf.toOpenArray(0, r.len-1)
 
-  for i in 0 ..< r.len:
+  for i in 0 ..< min(r.len, a.len):
     # range [r.len, a.len) will be truncated (mod 2ᵏ)
     sBuf[i] = a[i]
 
@@ -152,7 +155,7 @@ func powMod2k_vartime*(
 func invModBitwidth(a: SecretWord): SecretWord {.borrow.}
   ## Inversion a⁻¹ (mod 2³²) or a⁻¹ (mod 2⁶⁴)
 
-func invMod2k_vartime*(a: var openArray[SecretWord], k: uint) {.noInline, tags: [Alloca].} =
+func invMod2k_vartime*(r: var openArray[SecretWord], a: openArray[SecretWord], k: uint) {.noInline, tags: [Alloca].} =
   ## Inversion a⁻¹ (mod 2ᵏ)
   ## with 2ᵏ a multi-precision integer.
   #
@@ -165,23 +168,32 @@ func invMod2k_vartime*(a: var openArray[SecretWord], k: uint) {.noInline, tags: 
   # - Double the number of correct bits at each Dumas iteration
   # - once n >= k, reduce mod 2ᵏ
 
-  var x = allocStackArray(SecretWord, a.len)
-  var t = allocStackArray(SecretWord, a.len)
-  var u = allocStackArray(SecretWord, a.len)
+  debug:
+    const SlotShift = log2_vartime(WordBitWidth.uint32)
+    doAssert r.len >= k.int shr SlotShift, block:
+      "\n" &
+      "  r.len: " & $r.len & "\n" &
+      "  k: " & $k & "\n" &
+      "  k/WordBitWidth: " & $(k.int shr SlotShift) &
+      "\n" # [AssertionDefect]
+
+  var x = allocStackArray(SecretWord, r.len)
+  var t = allocStackArray(SecretWord, r.len)
+  var u = allocStackArray(SecretWord, r.len)
 
   x[0] = a[0].invModBitwidth()
-  for i in 1 ..< a.len:
+  for i in 1 ..< r.len:
     x[i] = Zero
 
   var correctWords = 1
 
   while correctWords.uint*WordBitWidth < k:
     # x *= 2-ax
-    let words = 2*correctWords
+    let words = min(r.len, 2*correctWords)
     t.toOpenArray(0, words-1)
      .mulmod2k_vartime(
        x.toOpenArray(0, correctWords-1),
-       a.toOpenArray(0, words-1),
+       a.toOpenArray(0, a.len-1),
        words.uint*WordBitWidth)
 
     u.toOpenArray(0, words-1)
@@ -198,6 +210,6 @@ func invMod2k_vartime*(a: var openArray[SecretWord], k: uint) {.noInline, tags: 
 
     correctWords = words
 
-  x.toOpenArray(0, a.len-1).mod2k_vartime(k)
-  for i in 0 ..< a.len:
-    a[i] = x[i]
+  x.toOpenArray(0, r.len-1).mod2k_vartime(k)
+  for i in 0 ..< r.len:
+    r[i] = x[i]
