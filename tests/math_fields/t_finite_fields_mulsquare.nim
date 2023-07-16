@@ -331,7 +331,17 @@ proc random_sumprod(C: static Curve, N: static int) =
 
       r.sumprod(a, b)
 
-      doAssert bool(r == r_ref)
+      doAssert bool(r == r_ref), block:
+        var aStr = "   [\"" & a[0].toHex() & "\",\n "
+        for i in 1 ..< N-1:
+          aStr &= "   \"" & a[i].toHex() & "\",\n "
+        aStr &= "   \"" & a[N-1].toHex() & "\"]\n"
+        var bStr = "   [\"" & b[0].toHex() & "\",\n "
+        for i in 1 ..< N-1:
+          bStr &= "   \"" & b[i].toHex() & "\",\n "
+        bStr &= "   \"" & b[N-1].toHex() & "\"]\n"
+
+        "\na:\n" & aStr & "\n" & "b:\n" & bStr
 
   template sumProdMax() =
     block:
@@ -381,3 +391,35 @@ suite "Random sum products is consistent with naive " & " [" & $WordBitWidth & "
     for _ in 0 ..< Iters:
       staticFor N, 2, MaxLength:
         random_sumprod(BLS12_381, N)
+
+suite "Anti-regression suite" :
+  test "Fuzzing failure #208":
+    var a = [
+      Fp[BN254_Snarks].fromHex"0x0b75f0b660e27ec6d5220f6211b8a4ae6d899403120eaf0311fe70331ade3d94",
+      Fp[BN254_Snarks].fromHex"0x1249a4b841852b5e34a383d86582dfc9daaeb21327cd4c8c1259af3cde9976b5",
+      Fp[BN254_Snarks].fromHex"0x20f5038383dbe3cdb86d663d22b918bda7754d6e8d939d959f58da68368d09b7",
+      Fp[BN254_Snarks].fromHex"0x1b989f0a60ce802069cb493cc208d2dc4a646b93b4913781116ed5d9445a9304",
+      Fp[BN254_Snarks].fromHex"0x213ed7527348d6e69218ca6f670ac042f2772cef4837b7ce5d08f850cfef9689",
+      Fp[BN254_Snarks].fromHex"0x05abdcb70ebda6a0be036391392276b223e68376c3a05fa6c4b48aa3fa6f10db",
+      Fp[BN254_Snarks].fromHex"0x121ec3625121f1fd310b4ad2269de996baad1860dbade730fd625f4b597b9b51"
+    ]
+    var b = [
+      Fp[BN254_Snarks].fromHex"0x01a437d8098bd72616b1842b6d222c957ab98dfaf20b91ac18f32f74906093fb",
+      Fp[BN254_Snarks].fromHex"0x1ebdf2ee7f3efc7bee4792cdd3fac0ba70fff7113b87f798b66d739c018b6b4b",
+      Fp[BN254_Snarks].fromHex"0x0bb015a9dccd285f28abe4688a11fb11e8e49fa0eee9a7033809f856fcadec5a",
+      Fp[BN254_Snarks].fromHex"0x1569e6e0189c538f95a2c3c068129bc2f4ee6eab11cff219e385314fb0c3a982",
+      Fp[BN254_Snarks].fromHex"0x0cc5c44649bab5a5f806c64d1b1047b62edcf7487cf550e4f5595796821ce6ba",
+      Fp[BN254_Snarks].fromHex"0x06e03c9a13d17dc26cea2cca7b7904c5b137766da920252078e8a8a5f5e9d54a",
+      Fp[BN254_Snarks].fromHex"0x00f092e5435db8f33fa3f2e6984edb4c9c0d9889c1dd42e72d2bb0c6917d5990"
+    ]
+
+    var r, r_ref, t: Fp[BN254_Snarks]
+
+    r_ref.prod(a[0], b[0])
+    for i in 1 ..< a.len:
+      t.prod(a[i], b[i])
+      r_ref += t
+
+    r.sumprod(a, b)
+
+    doAssert bool(r == r_ref)
