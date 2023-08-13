@@ -19,7 +19,7 @@ import
   serialization/[codecs_bls12_381, endians],
   trusted_setups/ethereum_kzg_srs
 
-export loadTrustedSetup
+export loadTrustedSetup, TrustedSetupStatus, EthereumKZGContext
 
 ## ############################################################
 ##
@@ -278,3 +278,31 @@ func verify_kzg_proof*(
     return cttEthKZG_Success
   else:
     return cttEthKZG_VerificationFailure
+
+# Ethereum Trusted Setup
+# ------------------------------------------------------------
+
+# Temporary workaround, hardcoding the testing trusted setups
+
+# To be removed, no modules that use heap allocation are used at runtime
+import std/[os, strutils]
+
+const TrustedSetupMainnet =
+  currentSourcePath.rsplit(DirSep, 1)[0] /
+  "trusted_setups" /
+  "trusted_setup_ethereum_kzg_test_mainnet.tsif"
+
+proc load_ethereum_kzg_test_trusted_setup_mainnet*(): ptr EthereumKZGContext =
+  ## This is a convenience function for the Ethereum mainnet testing trusted setups.
+  ## It is insecure and will be replaced once the KZG ceremony is done.
+
+  let ctx = allocHeapAligned(EthereumKZGContext, alignment = 64)
+
+  let tsStatus = ctx.loadTrustedSetup(TrustedSetupMainnet)
+  doAssert tsStatus == tsSuccess, "\n[Trusted Setup Error] " & $tsStatus
+
+  echo "Trusted Setup loaded successfully"
+  return ctx
+
+proc delete*(ctx: ptr EthereumKZGContext) =
+  freeHeapAligned(ctx)
