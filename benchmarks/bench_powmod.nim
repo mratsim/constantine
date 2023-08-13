@@ -2,7 +2,8 @@ import
   ../constantine/math/arithmetic,
   ../constantine/math/io/[io_bigints, io_fields],
   ../constantine/math/config/curves,
-  ../constantine/platforms/[abstractions, codecs],
+  ../constantine/platforms/abstractions,
+  ../constantine/serialization/codecs,
   ../constantine/math_arbitrary_precision/arithmetic/bigints_views,
   ../helpers/prng_unsafe,
   ./platforms, ./bench_blueprint

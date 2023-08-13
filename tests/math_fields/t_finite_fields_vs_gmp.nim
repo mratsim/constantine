@@ -12,7 +12,8 @@ import
   # Third-party
   gmp,
   # Internal
-  ../../constantine/platforms/[abstractions, codecs],
+  ../../constantine/platforms/abstractions,
+  ../../constantine/serialization/codecs,
   ../../constantine/math/io/[io_bigints, io_fields],
   ../../constantine/math/arithmetic,
   ../../constantine/math/config/curves,

@@ -8,7 +8,8 @@
 
 import
   ./platforms/abstractions,
-  ./math/config/[curves, precompute],
+  ./serialization/io_limbs,
+  ./math/config/curves,
   ./math/[arithmetic, extension_fields],
   ./math/arithmetic/limbs_montgomery,
   ./math/ec_shortweierstrass,
@@ -138,11 +139,8 @@ func eth_evm_ecadd*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStat
   var aff{.noInit.}: ECP_ShortW_Aff[Fp[BN254_Snarks], G1]
   aff.affine(R)
 
-  r.toOpenArray(0, 31).marshal(
-    aff.x, bigEndian)
-  r.toOpenArray(32, 63).marshal(
-    aff.y, bigEndian)
-
+  r.toOpenArray(0, 31).marshal(aff.x, bigEndian)
+  r.toOpenArray(32, 63).marshal(aff.y, bigEndian)
   return cttEVM_Success
 
 func eth_evm_ecmul*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus =
@@ -211,11 +209,8 @@ func eth_evm_ecmul*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStat
   var aff{.noInit.}: ECP_ShortW_Aff[Fp[BN254_Snarks], G1]
   aff.affine(P)
 
-  r.toOpenArray(0, 31).marshal(
-    aff.x, bigEndian)
-  r.toOpenArray(32, 63).marshal(
-    aff.y, bigEndian)
-
+  r.toOpenArray(0, 31).marshal(aff.x, bigEndian)
+  r.toOpenArray(32, 63).marshal(aff.y, bigEndian)
   return cttEVM_Success
 
 func subgroupCheck(P: ECP_ShortW_Aff[Fp2[BN254_Snarks], G2]): bool =

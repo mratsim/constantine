@@ -18,15 +18,13 @@
 # Or the minimal tensor implementation challenge:
 # https://github.com/SimonDanisch/julia-challenge/blob/b8ed3b6/nim/nim_sol_mratsim.nim#L4-L26
 
-{.experimental: "views".}
-
 type
   View*[T] = object
     ## A strided view over an (unowned) data buffer
     len*: int
     stride: int
     offset: int
-    data: lent UncheckedArray[T]
+    data: ptr UncheckedArray[T]
 
 func `[]`*[T](v: View[T], idx: int): lent T {.inline.} =
   v.data[v.offset + idx*v.stride]
@@ -43,7 +41,7 @@ func toView*[T](oa: openArray[T]): View[T] {.inline.} =
   result.len = oa.len
   result.stride = 1
   result.offset = 0
-  result.data = cast[lent UncheckedArray[T]](oa[0].unsafeAddr)
+  result.data = cast[ptr UncheckedArray[T]](oa[0].unsafeAddr)
 
 iterator items*[T](v: View[T]): lent T =
   var cur = v.offset
@@ -168,16 +166,16 @@ func reversed*(v: View): View {.inline.} =
 import strformat, strutils
 
 func display*[F](name: string, indent: int, oa: openArray[F]) =
-  debugEcho indent(name & ", openarray of " & $F & " of length " & $oa.len, indent)
+  debugEcho strutils.indent(name & ", openarray of " & $F & " of length " & $oa.len, indent)
   for i in 0 ..< oa.len:
-    debugEcho indent(&"    {i:>2}: {oa[i].toHex()}", indent)
-  debugEcho indent(name & "  " & $F & " -- FIN\n", indent)
+    debugEcho strutils.indent(&"    {i:>2}: {oa[i].toHex()}", indent)
+  debugEcho strutils.indent(name & "  " & $F & " -- FIN\n", indent)
 
 func display*[F](name: string, indent: int, v: View[F]) =
-  debugEcho indent(name & ", view of " & $F & " of length " & $v.len, indent)
+  debugEcho strutils.indent(name & ", view of " & $F & " of length " & $v.len, indent)
   for i in 0 ..< v.len:
-    debugEcho indent(&"    {i:>2}: {v[i].toHex()}", indent)
-  debugEcho indent(name & "  " & $F & " -- FIN\n", indent)
+    debugEcho strutils.indent(&"    {i:>2}: {v[i].toHex()}", indent)
+  debugEcho strutils.indent(name & "  " & $F & " -- FIN\n", indent)
 
 # ############################################################
 #

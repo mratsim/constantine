@@ -622,7 +622,7 @@ func fromFpk*[Fpkdiv6, Fpk](
   #
   # with z = SNR¹ᐟ⁶
   #
-  # The cubic over quadatric towering
+  # The cubic over quadratic towering
   # ---------------------------------
   #
   #   (a₀ + a₁ u) + (a₂ + a₃u) v + (a₄ + a₅u) v²

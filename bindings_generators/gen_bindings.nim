@@ -23,11 +23,11 @@ template genBindingsField*(Field: untyped) =
   else:
     {.push noconv, exportc,  raises: [].} # No exceptions allowed
 
-  func `ctt _ Field _ unmarshalBE`(dst: var Field, src: openarray[byte]) =
+  func `ctt _ Field _ unmarshalBE`(dst: var Field, src: openarray[byte]): bool =
     ## Deserialize
     unmarshalBE(dst, src)
 
-  func `ctt _ Field _ marshalBE`(dst: var openarray[byte], src: Field) =
+  func `ctt _ Field _ marshalBE`(dst: var openarray[byte], src: Field): bool =
     marshalBE(dst, src)
   # --------------------------------------------------------------------------------------
   func `ctt _ Field _ is_eq`(a, b: Field): SecretBool =

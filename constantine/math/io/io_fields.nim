@@ -48,7 +48,7 @@ func fromInt*(dst: var FF,
 
 func marshal*(dst: var openarray[byte],
                        src: FF,
-                       dstEndianness: static Endianness) =
+                       dstEndianness: static Endianness): bool {.discardable.} =
   ## Serialize a finite field element to its canonical big-endian or little-endian
   ## representation
   ## With `bits` the number of bits of the field modulus

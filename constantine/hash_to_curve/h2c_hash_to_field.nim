@@ -8,7 +8,8 @@
 
 import
   # Internals
-  ../platforms/[abstractions, endians, views],
+  ../platforms/[abstractions, views],
+  ../serialization/endians,
   ../hashes,
   ../math/io/[io_bigints, io_fields],
   ../math/config/curves,

@@ -153,7 +153,46 @@ func isPowerOf2_vartime*(n: SomeUnsignedInt): bool {.inline.} =
   ## for compile-time or explicit vartime proc only.
   (n and (n - 1)) == 0 and n > 0
 
-func nextPowerOfTwo_vartime*(n: uint32): uint32 {.inline.} =
+func nextPowerOfTwo_vartime*(n: SomeUnsignedInt): SomeUnsignedInt {.inline.} =
   ## Returns x if x is a power of 2
   ## or the next biggest power of 2
-  1'u32 shl (log2_vartime(n-1) + 1)
+  1.SomeUnsignedInt shl (log2_vartime(n-1) + 1)
+
+func swapBytes_impl(n: uint32): uint32 {.inline.} =
+  result = n
+  result = ((result shl 8) and 0xff00ff00'u32) or ((result shr 8) and 0x00ff00ff'u32)
+  result = (result shl 16) or (result shr 16)
+
+func swapBytes_impl(n: uint64): uint64 {.inline.} =
+  result = n
+  result = ((result shl 8) and 0xff00ff00ff00ff00'u64) or ((result shr 8) and 0x00ff00ff00ff00ff'u64)
+  result = ((result shl 16) and 0xffff0000ffff0000'u64) or ((result shr 16) and 0x0000ffff0000ffff'u64)
+  result = (result shl 32) or (result shr 32)
+
+func swapBytes*(n: SomeUnsignedInt): SomeUnsignedInt {.inline.} =
+  # Note:
+  #   using the raw Nim implementation:
+  #     - leads to vectorized code if swapping an array
+  #     - leads to builtin swap on modern compilers
+  when nimvm:
+    swapBytes_impl(n)
+  else:
+    swapBytes_c_compiler(n)
+
+func reverseBits*(n, k : uint32): uint32 {.inline.} =
+  ## Bit reversal permutation with n ∈ [0, 2ᵏ)
+  # Swap bytes - allow vectorization by using raw Nim impl instead of compiler builtin
+  var n = swapBytes_impl(n)
+  n = ((n and 0x55555555'u32) shl 1) or ((n and 0xaaaaaaaa'u32) shr 1)
+  n = ((n and 0x33333333'u32) shl 2) or ((n and 0xcccccccc'u32) shr 2)
+  n = ((n and 0x0f0f0f0f'u32) shl 4) or ((n and 0xf0f0f0f0'u32) shr 4)
+  return n shr (32 - k)
+
+func reverseBits*(n, k: uint64): uint64 {.inline.} =
+  ## Bit reversal permutation with n ∈ [0, 2ᵏ)
+  # Swap bytes - allow vectorization by using raw Nim impl instead of compiler builtin
+  var n = swapBytes_impl(n)
+  n = ((n and 0x5555555555555555'u64) shl 1) or ((n and 0xaaaaaaaaaaaaaaaa'u64) shr 1)
+  n = ((n and 0x3333333333333333'u64) shl 2) or ((n and 0xcccccccccccccccc'u64) shr 2)
+  n = ((n and 0x0f0f0f0f0f0f0f0f'u64) shl 4) or ((n and 0xf0f0f0f0f0f0f0f0'u64) shr 4)
+  return n shr (64 - k)

@@ -9,7 +9,8 @@
 import
   ../../math/config/[curves, precompute],
   ../../math/io/io_bigints,
-  ../primitives, ../bithacks, ../endians, ../codecs,
+  ../primitives, ../bithacks,
+  ../../serialization/[endians, codecs],
   ./llvm
 
 # ############################################################

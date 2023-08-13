@@ -90,6 +90,14 @@ func setOne*(a: var openArray[SomeNumber]){.inline.} =
   a[0] = 1
   for i in 1 ..< a.len:
     a[i] = 0
+    
+func asBytes*(s: static string): auto =
+  ## Reinterpret a compile-time string as an array of bytes
+  const N = s.len
+  var r: array[N, byte]
+  for i in 0 ..< s.len:
+    r[i] = byte s[i]
+  return r
 
 func rawCopy*(
        dst: var openArray[byte],
@@ -107,7 +115,7 @@ func rawCopy*(
 
   {.push checks: off.} # No OverflowError or IndexError allowed
   for i in 0 ..< len:
-    dst[dStart + i] = byte src[sStart + i]
+    dst[dStart + i] = src[sStart + i]
 
 func rotateRight*[N: static int, T](a: var array[N, T]) {.inline.} =
   # Rotate right (Somehow we can't use a generic template here)

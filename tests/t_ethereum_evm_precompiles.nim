@@ -8,11 +8,11 @@
 
 import
   # Standard library
-  std/[times, os, strutils, macros],
+  std/[os, strutils],
   # 3rd party
   pkg/jsony,
   # Internals
-  ../constantine/platforms/codecs,
+  ../constantine/serialization/codecs,
   ../constantine/ethereum_evm_precompiles
 
 type

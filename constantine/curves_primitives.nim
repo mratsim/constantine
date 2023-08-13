@@ -50,15 +50,22 @@ export
   type_ff.Fr,
   type_ff.FF
 
-func unmarshalBE*(dst: var FF, src: openarray[byte]) =
+func unmarshalBE*(dst: var FF, src: openarray[byte]): bool =
+  ## Return true on success
+  ## Return false if destination is too small compared to source
   var raw {.noInit.}: typeof dst.mres
-  raw.unmarshal(src, bigEndian)
+  let ok = raw.unmarshal(src, bigEndian)
+  if not ok:
+    return false
   dst.fromBig(raw)
+  return true
 
-func marshalBE*(dst: var openarray[byte], src: FF) =
+func marshalBE*(dst: var openarray[byte], src: FF): bool =
+  ## Return true on success
+  ## Return false if destination is too small compared to source
   var raw {.noInit.}: typeof src.mres
   raw.fromField(src)
-  dst.marshal(src, bigEndian)
+  return dst.marshal(src, bigEndian)
 
 export arithmetic.ccopy
 export arithmetic.cswap

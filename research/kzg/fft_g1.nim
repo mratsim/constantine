@@ -11,7 +11,7 @@ import
   ../../constantine/math/config/curves,
   ../../constantine/math/arithmetic,
   ../../constantine/math/ec_shortweierstrass,
-  ../../constantine/math/io/[io_fields, io_ec],
+  ../../constantine/math/io/[io_fields, io_ec, io_bigints],
   # Research
   ./strided_views,
   ./fft_lut
@@ -31,12 +31,12 @@ import
 # - https://github.com/zkcrypto/bellman/blob/10c5010/src/domain.rs#L272-L315
 # - Modern Computer Arithmetic, Brent and Zimmermann, p53 algorithm 2.2
 #   https://members.loria.fr/PZimmermann/mca/mca-cup-0.5.9.pdf
-
 # ############################################################
 #
 #            Finite-Field Fast Fourier Transform
 #
 # ############################################################
+
 #
 # This is a research, unoptimized implementation of
 # Finite Field Fast Fourier Transform
@@ -176,7 +176,7 @@ func ifft*[EC](
 
   var invLen {.noInit.}: Fr[EC.F.C]
   invLen.fromUint(vals.len.uint64)
-  invLen.inv()
+  invLen.inv_vartime()
   let inv = invLen.toBig()
 
   for i in 0..< output.len:
@@ -200,8 +200,6 @@ proc init*(T: type FFTDescriptor, maxScale: uint8): T =
 #                    Sanity checks
 #
 # ############################################################
-
-{.experimental: "views".}
 
 when isMainModule:
   import
@@ -230,7 +228,7 @@ when isMainModule:
     var res = newSeq[EC_G1](data.len)
     let ifftOk = ifft(fftDesc, res, coefs)
     doAssert ifftOk == FFTS_Success
-    # display("res", 0, coefs)
+    # display("res", 0, res)
 
     for i in 0 ..< res.len:
       if bool(res[i] != data[i]):

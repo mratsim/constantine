@@ -439,6 +439,11 @@ template affine*[F, G](_: type ECP_ShortW_Prj[F, G]): typedesc =
   ## Returns the affine type that corresponds to the Jacobian type input
   ECP_ShortW_Aff[F, G]
 
+template projective*[F, G](_: type ECP_ShortW_Aff[F, G]): typedesc =
+  ## Returns the projective type that corresponds to the affine type input
+  ECP_ShortW_Prj[F, G]
+
+
 func affine*[F, G](
        aff: var ECP_ShortW_Aff[F, G],
        proj: ECP_ShortW_Prj[F, G]) {.meter.} =

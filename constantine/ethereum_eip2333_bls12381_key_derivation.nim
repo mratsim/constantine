@@ -12,7 +12,8 @@ import
   ./math/config/[curves, type_ff],
   ./math/arithmetic/[bigints, limbs_montgomery],
   ./math/io/io_bigints,
-  ./platforms/[primitives, endians]
+  ./platforms/primitives,
+  ./serialization/endians
 
 # EIP2333: BLS12-381 Key Generation
 # ------------------------------------------------------------
@@ -51,7 +52,7 @@ func hkdf_mod_r(secretKey: var SecretKey, ikm: openArray[byte], key_info: openAr
     # 6. OKM = HKDF-Expand(PRK, key_info || I2OSP(L, 2), L)
     const L = 48
     var okm{.noInit.}: array[L, byte]
-    const L_octetstring = L.uint16.toBytesBE()
+    const L_octetstring = L.uint16.toBytes(bigEndian)
     ctx.hkdfExpand(okm, prk, key_info, append = L_octetstring, clearMem = true)
     #  7. x = OS2IP(OKM) mod r
     #  We reduce mod r via Montgomery reduction, instead of bigint division
@@ -105,7 +106,7 @@ func parent_SK_to_lamport_PK(
   ## from the parent SecretKey
 
   # 0. salt = I2OSP(index, 4)
-  let salt{.noInit.} = index.toBytesBE()
+  let salt{.noInit.} = index.toBytes(bigEndian)
 
   # 1. IKM = I2OSP(parent_SK, 32)
   var ikm {.noinit.}: array[32, byte]
