@@ -415,6 +415,9 @@ func prod2x*(r: var ExtensionField2x, a: ExtensionField2x, b: static int) =
 # 𝔽p
 # ----------------------------------------------------------------
 
+template fromComplexExtension*(elem: Fp): static bool =
+  false
+
 func `*=`*(a: var Fp, _: type NonResidue) =
   ## Multiply an element of 𝔽p by the quadratic non-residue
   ## chosen to construct 𝔽p2
@@ -427,7 +430,7 @@ func prod*(r: var Fp, a: Fp, _: type NonResidue) =
   static: doAssert Fp.C.getNonResidueFp() != -1, "𝔽p2 should be specialized for complex extension"
   r.prod(a, Fp.C.getNonResidueFp())
 
-func prod2x(r: var FpDbl, a: FpDbl, _: type NonResidue) =
+func prod2x*(r: var FpDbl, a: FpDbl, _: type NonResidue) =
   ## Multiply an element of 𝔽p by the quadratic non-residue
   ## chosen to construct 𝔽p2
   static: doAssert FpDbl.C.getNonResidueFp() != -1, "𝔽p2 should be specialized for complex extension"

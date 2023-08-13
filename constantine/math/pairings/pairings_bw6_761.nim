@@ -41,20 +41,20 @@ func millerLoopBW6_761_naive[C](
   var T {.noInit.}: ECP_ShortW_Prj[Fp[C], G2]
   T.fromAffine(Q)
 
-  basicMillerLoop(
-    f, T,
-    P, Q,
-    pairing(C, ate_param_1_unopt), pairing(C, ate_param_1_unopt_isNeg)
-  )
+  basicMillerLoop(f, T, P, Q, pairing(C, ate_param_1_unopt))
+
+  when pairing(C, ate_param_1_unopt_isNeg):
+    f.conj()
+    T.neg()
 
   var f2 {.noInit.}: typeof(f)
   T.fromAffine(Q)
 
-  basicMillerLoop(
-    f2, T,
-    P, Q,
-    pairing(C, ate_param_2_unopt), pairing(C, ate_param_2_unopt_isNeg)
-  )
+  basicMillerLoop(f2, T, P, Q, pairing(C, ate_param_2_unopt))
+
+  when pairing(C, ate_param_2_unopt_isNeg):
+    f2.conj()
+    T.neg()
 
   let t = f2
   f2.frobenius_map(t)
@@ -155,7 +155,7 @@ func pairing_bw6_761_reference*[C](
   ## Output: e(P, Q) ∈ Gt
   ##
   ## Reference implementation
-  {.error: "BW6_761 Miller loop is not working yet".}
+  # {.error: "BW6_761 Miller loop is not working yet".}
   gt.millerLoopBW6_761_naive(Q, P)
   gt.finalExpEasy()
   gt.finalExpHard_BW6_761()
