@@ -2,7 +2,7 @@ import
   ../constantine/ethereum_evm_precompiles,
   ./platforms, ./bench_blueprint,
 
-  ../constantine/platforms/codecs
+  ../constantine/serialization/codecs
 
 proc report(op: string, elapsedNs: int64, elapsedCycles: int64, iters: int) =
   let ns = elapsedNs div iters

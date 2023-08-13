@@ -47,7 +47,7 @@ func computeRootsOfUnity[EC](ctx: var ECFFT_Descriptor[EC], generatorRootOfUnity
 
   doAssert ctx.rootsOfUnity[ctx.order].isOne().bool()
 
-func new*(T: type ECFFT_Descriptor, order: int, generatorRootOfUnity: auto): T =
+func new(T: type ECFFT_Descriptor, order: int, generatorRootOfUnity: auto): T =
   result.order = order
   result.rootsOfUnity = allocHeapArrayAligned(matchingOrderBigInt(T.EC.F.C), order+1, alignment = 64)
 

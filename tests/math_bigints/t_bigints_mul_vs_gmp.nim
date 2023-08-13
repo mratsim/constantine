@@ -16,7 +16,7 @@ import
   ../../constantine/math/arithmetic,
   ../../constantine/platforms/abstractions,
   # Test utilities
-  ../../constantine/platforms/codecs,
+  ../../constantine/serialization/codecs,
   ../../helpers/prng_unsafe
 
 echo "\n------------------------------------------------------\n"
