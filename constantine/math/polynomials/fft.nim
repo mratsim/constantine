@@ -9,6 +9,7 @@
 import
   ../config/curves,
   ../arithmetic,
+  ../io/io_bigints,
   ../ec_shortweierstrass,
   ../elliptic/ec_scalar_mul_vartime,
   ../../platforms/[abstractions, allocs, views]
@@ -47,11 +48,14 @@ func computeRootsOfUnity[EC](ctx: var ECFFT_Descriptor[EC], generatorRootOfUnity
 
   doAssert ctx.rootsOfUnity[ctx.order].isOne().bool()
 
-func new(T: type ECFFT_Descriptor, order: int, generatorRootOfUnity: auto): T =
+func new*(T: type ECFFT_Descriptor, order: int, generatorRootOfUnity: auto): T =
   result.order = order
   result.rootsOfUnity = allocHeapArrayAligned(matchingOrderBigInt(T.EC.F.C), order+1, alignment = 64)
 
   result.computeRootsOfUnity(generatorRootOfUnity)
+
+func delete*(ctx: ECFFT_Descriptor) =
+  ctx.rootsOfUnity.freeHeapAligned()
 
 func simpleFT[EC; bits: static int](
        output: var StridedView[EC],
@@ -135,13 +139,12 @@ func ifft*[EC](
   var voutput = output.toStridedView()
   fft_internal(voutput, vals.toStridedView(), rootz)
 
-  var invLen {.noInit.}: Fr[EC.F.C]
+  var invLen {.noInit.}: matchingOrderBigInt(EC.F.C)
   invLen.fromUint(vals.len.uint64)
-  invLen.inv_vartime()
-  let inv = invLen.toBig()
+  invLen.invmod_vartime(invLen, EC.F.C.getCurveOrder())
 
   for i in 0 ..< output.len:
-    output[i].scalarMul_minHammingWeight_windowed_vartime(inv, window = 5)
+    output[i].scalarMul_minHammingWeight_windowed_vartime(invLen, window = 5)
 
   return FFTS_Success
 
@@ -221,7 +224,7 @@ func bit_reversal_permutation*[T](buf: var openArray[T]) =
   # Instead we swap B and T to save the overwritten slot.
   #
   # Due to bitreversal being an involution, we can redo the first loop
-  # to place the overwritten data in there corect slot.
+  # to place the overwritten data in its correct slot.
   #
   # Hence
   #
@@ -349,6 +352,8 @@ when isMainModule:
 
   proc roundtrip() =
     let fftDesc = ECFFT_Descriptor[EC_G1].new(order = 1 shl 4, ctt_eth_kzg_fr_pow2_roots_of_unity[4])
+    defer: fftDesc.delete()
+
     var data = newSeq[EC_G1](fftDesc.order)
     data[0].fromAffine(BLS12_381.getGenerator("G1"))
     for i in 1 ..< fftDesc.order:
@@ -416,6 +421,8 @@ when isMainModule:
 
       let ns = inNanoseconds((stop-start) div NumIters)
       echo &"FFT scale {scale:>2}     {ns:>8} ns/op"
+
+      fftDesc.delete()
 
 
   proc bit_reversal() =

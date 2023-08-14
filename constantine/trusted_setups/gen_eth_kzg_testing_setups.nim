@@ -203,6 +203,7 @@ proc genEthereumKzgTestingTrustedSetup(filepath: string, secret: auto, length: i
   # Projective coordinates are slightly faster than jacobian on 𝔾1
   var fftDesc = ECFFTDescriptor[ECP_ShortW_Prj[Fp[BLS12_381], G1]].new(
     order = length, ctt_eth_kzg_fr_pow2_roots_of_unity[log2_vartime(length.uint)])
+  defer: fftDesc.delete()
 
   block: # Metadata 3 - roots of unity - bit-reversal permuted
     var meta: array[32, byte]
