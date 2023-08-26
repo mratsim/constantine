@@ -52,7 +52,7 @@ when defined(windows):
 
   proc sysrand*[T](buffer: var T): bool {.inline.} =
     ## Fills the buffer with cryptographically secure random data
-    return RtlGenRandom(buffer.addr, sizeof(T))
+    return RtlGenRandom(buffer.addr, culong sizeof(T))
 
 elif defined(linux):
   proc syscall(sysno: clong): cint {.importc, header:"<unistd.h>", varargs.}
@@ -123,7 +123,7 @@ elif defined(ios) or defined(macosx):
 
   type CCRNGStatus {.importc, header: "<CommonCrypto/CommonRandom.h>".} = distinct int32
 
-  let kCCSuccess {.importc, header: "<CommonCrypto/CommonCryptoError.h>".} = CCRNGStatus
+  let kCCSuccess {.importc, header: "<CommonCrypto/CommonCryptoError.h>".}: CCRNGStatus
     # https://opensource.apple.com/source/CommonCrypto/CommonCrypto-60061.30.1/include/CommonCryptoError.h.auto.html
 
   proc CCRandomGenerateBytes(pbuffer: pointer, len: int): CCRNGStatus {.sideeffect, tags: [CSPRNG], importc, header: "<CommonCrypto/CommonRandom.h>".}
