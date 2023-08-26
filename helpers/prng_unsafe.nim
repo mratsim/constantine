@@ -39,6 +39,9 @@ import
 #
 # We use 2^512 to cover the range the base field elements
 
+# We use Nim effect system to track RNG subroutines
+type UnsafePRNG* = object
+
 type RngState* = object
   ## This is the state of a Xoshiro512** PRNG
   ## Unsafe: for testing and benchmarking purposes only
@@ -69,7 +72,7 @@ func rotl(x: uint64, k: static int): uint64 {.inline.} =
 template `^=`(x: var uint64, y: uint64) =
   x = x xor y
 
-func next*(rng: var RngState): uint64 =
+func next*(rng: var RngState): uint64 {.tags: [UnsafePRNG].} =
   ## Compute a random uint64 from the input state
   ## using xoshiro512** algorithm by Vigna et al
   ## State is updated.
