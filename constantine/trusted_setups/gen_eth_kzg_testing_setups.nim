@@ -167,7 +167,10 @@ proc genEthereumKzgTestingTrustedSetup(filepath: string, secret: auto, length: i
   f.write uint8 0
 
   # Protocol
-  f.write"ethereum_deneb_kzg"
+  const protocol = "ethereum_deneb_kzg"
+  f.write protocol
+  let padProtocol = default(array[32 - protocol.len, byte]) # zero-init padding
+  f.writeData(padProtocol[0].unsafeAddr, padProtocol.len)
 
   # Curve
   const curve = "bls12_381"
@@ -225,7 +228,7 @@ proc genEthereumKzgTestingTrustedSetup(filepath: string, secret: auto, length: i
 
   f.padNUL64()
 
-  block: # Data 2 - srs 𝔾2 points - bit-reversal permuted
+  block: # Data 2 - srs 𝔾2 points
     const g2Length = 65
     let ts2 = ECP_ShortW_Aff[Fp2[BLS12_381], G2].newTrustedSetupMonomial(secret, g2Length)
     # Raw dump requires little-endian
@@ -234,7 +237,7 @@ proc genEthereumKzgTestingTrustedSetup(filepath: string, secret: auto, length: i
   f.padNUL64()
 
   bit_reversal_permutation(fftDesc.rootsOfUnity.toOpenArray(0, fftDesc.order-1))
-  block: # Data 2 - roots of unity - bit-reversal permuted
+  block: # Data 3 - roots of unity - bit-reversal permuted
     # Raw dump requires little-endian
     f.writeData(fftDesc.rootsOfUnity, sizeof(fftDesc.rootsOfUnity[0]) * fftDesc.order)
 
