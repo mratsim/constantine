@@ -38,7 +38,8 @@ when defined(windows):
   # - https://github.com/rust-random/getrandom/issues/314
   # - https://learn.microsoft.com/en-us/archive/blogs/michael_howard/cryptographically-secure-random-number-on-windows-without-using-cryptoapi
 
-  proc RtlGenRandom(pbuffer: pointer, len: culong): bool {.importc, stdcall, dynlib: "advapi32.dll", sideeffect, tags: [CSPRNG].}
+  proc RtlGenRandom(pbuffer: pointer, len: culong): bool {.importc: "SystemFunction036", stdcall, dynlib: "advapi32.dll", sideeffect, tags: [CSPRNG].}
+    #https://learn.microsoft.com/en-us/archive/blogs/michael_howard/cryptographically-secure-random-number-on-windows-without-using-cryptoapi
     # https://learn.microsoft.com/en-us/windows/win32/api/ntsecapi/nf-ntsecapi-rtlgenrandom
     #
     # BOOLEAN RtlGenRandom(
@@ -125,6 +126,8 @@ elif defined(ios) or defined(macosx):
 
   let kCCSuccess {.importc, header: "<CommonCrypto/CommonCryptoError.h>".}: CCRNGStatus
     # https://opensource.apple.com/source/CommonCrypto/CommonCrypto-60061.30.1/include/CommonCryptoError.h.auto.html
+
+  func `==`(x, y: CCRNGStatus): bool {.borrow.}
 
   proc CCRandomGenerateBytes(pbuffer: pointer, len: int): CCRNGStatus {.sideeffect, tags: [CSPRNG], importc, header: "<CommonCrypto/CommonRandom.h>".}
     # https://opensource.apple.com/source/CommonCrypto/CommonCrypto-60178.40.2/include/CommonRandom.h.auto.html
