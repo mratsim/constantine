@@ -274,9 +274,13 @@ const buildParallel = "test_parallel.txt"
 #   Basic primitives should stay on to catch compiler regressions.
 const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
 
+  # CSPRNG
+  # ----------------------------------------------------------
+  ("tests/t_csprngs.nim", false),
+
   # Hashing vs OpenSSL
   # ----------------------------------------------------------
-  ("tests/t_hash_sha256_vs_openssl.nim", true), # skip OpenSSL tests on Windows
+  ("tests/t_hash_sha256_vs_openssl.nim", false), # skip OpenSSL tests on Windows
 
   # Ciphers
   # ----------------------------------------------------------

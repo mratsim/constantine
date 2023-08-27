@@ -23,7 +23,7 @@ const
   FUTEX_WAIT_PRIVATE = 128
   FUTEX_WAKE_PRIVATE = 129
 
-proc syscall(sysno: clong): cint {.header:"<unistd.h>", varargs.}
+proc syscall(sysno: clong): cint {.importc, header:"<unistd.h>", varargs.}
 
 proc sysFutex(
        futexAddr: pointer, operation: uint32, expected: uint32 or int32,
