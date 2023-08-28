@@ -419,8 +419,8 @@ func update*[Pubkey, Sig: ECP_ShortW_Aff](
 
     var randFactor{.noInit.}: BigInt[64]
     randFactor.unmarshal(ctx.secureBlinding.toOpenArray(0, 7), bigEndian)
-    pkG1_jac.scalarMul_minHammingWeight_windowed_vartime(randFactor, window = 3)
-    sigG2_jac.scalarMul_minHammingWeight_windowed_vartime(randFactor, window = 3)
+    pkG1_jac.scalarMul_vartime(randFactor)
+    sigG2_jac.scalarMul_vartime(randFactor)
 
     if ctx.aggSigOnce == false:
       ctx.aggSig = sigG2_jac
@@ -455,8 +455,8 @@ func update*[Pubkey, Sig: ECP_ShortW_Aff](
 
     var randFactor{.noInit.}: BigInt[64]
     randFactor.unmarshal(ctx.secureBlinding.toOpenArray(0, 7), bigEndian)
-    hmsgG1_jac.scalarMul_minHammingWeight_windowed_vartime(randFactor, window = 3)
-    sigG1_jac.scalarMul_minHammingWeight_windowed_vartime(randFactor, window = 3)
+    hmsgG1_jac.scalarMul_vartime(randFactor)
+    sigG1_jac.scalarMul_vartime(randFactor)
 
     if ctx.aggSigOnce == false:
       ctx.aggSig = sigG1_jac

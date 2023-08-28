@@ -11,6 +11,7 @@ import
   ../../constantine/math/config/curves,
   ../../constantine/math/arithmetic,
   ../../constantine/math/ec_shortweierstrass,
+  ../../constantine/math/elliptic/ec_scalar_mul_vartime,
   ../../constantine/math/io/[io_fields, io_ec, io_bigints],
   # Research
   ./strided_views,
@@ -105,10 +106,10 @@ func simpleFT[EC; bits: static int](
 
   for i in 0 ..< L:
     last = vals[0]
-    last.scalarMul(rootsOfUnity[0])
+    last.scalarMul_vartime(rootsOfUnity[0])
     for j in 1 ..< L:
       v = vals[j]
-      v.scalarMul(rootsOfUnity[(i*j) mod L])
+      v.scalarMul_vartime(rootsOfUnity[(i*j) mod L])
       last += v
     output[i] = last
 
@@ -135,7 +136,7 @@ func fft_internal[EC; bits: static int](
   for i in 0 ..< half:
     # FFT Butterfly
     y_times_root = output[i+half]
-    y_times_root   .scalarMul(rootsOfUnity[i])
+    y_times_root   .scalarMul_vartime(rootsOfUnity[i])
     output[i+half] .diff(output[i], y_times_root)
     output[i]      += y_times_root
 
@@ -180,7 +181,7 @@ func ifft*[EC](
   let inv = invLen.toBig()
 
   for i in 0..< output.len:
-    output[i].scalarMul(inv)
+    output[i].scalarMul_vartime(inv)
 
   return FFTS_Success
 
@@ -262,7 +263,7 @@ when isMainModule:
 
     warmup()
 
-    for scale in 4 ..< 10:
+    for scale in 4 ..< 16:
       # Setup
 
       let desc = FFTDescriptor[EC_G1].init(uint8 scale)

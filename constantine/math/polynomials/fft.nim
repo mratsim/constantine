@@ -71,10 +71,10 @@ func simpleFT[EC; bits: static int](
 
   for i in 0 ..< L:
     last = vals[0]
-    last.scalarMul_minHammingWeight_windowed_vartime(rootsOfUnity[0], window = 5)
+    last.scalarMul_vartime(rootsOfUnity[0])
     for j in 1 ..< L:
       v = vals[j]
-      v.scalarMul_minHammingWeight_windowed_vartime(rootsOfUnity[(i*j) mod L], window = 5)
+      v.scalarMul_vartime(rootsOfUnity[(i*j) mod L])
       last += v
     output[i] = last
 
@@ -100,7 +100,7 @@ func fft_internal[EC; bits: static int](
   for i in 0 ..< half:
     # FFT Butterfly
     y_times_root = output[i+half]
-    y_times_root   .scalarMul_minHammingWeight_windowed_vartime(rootsOfUnity[i], window = 5)
+    y_times_root   .scalarMul_vartime(rootsOfUnity[i])
     output[i+half] .diff(output[i], y_times_root)
     output[i]      += y_times_root
 
@@ -144,7 +144,7 @@ func ifft*[EC](
   invLen.invmod_vartime(invLen, EC.F.C.getCurveOrder())
 
   for i in 0 ..< output.len:
-    output[i].scalarMul_minHammingWeight_windowed_vartime(invLen, window = 5)
+    output[i].scalarMul_vartime(invLen)
 
   return FFTS_Success
 

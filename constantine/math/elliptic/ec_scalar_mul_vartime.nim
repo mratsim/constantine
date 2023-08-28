@@ -8,20 +8,27 @@
 
 import
   # Internals
+  ./ec_endomorphism_accel,
   ../arithmetic,
+  ../extension_fields,
   ../ec_shortweierstrass,
   ../io/io_bigints,
-  ../../platforms/abstractions
+  ../constants/zoo_endomorphisms,
+  ../../platforms/abstractions,
+  ../../math_arbitrary_precision/arithmetic/limbs_views
 
 {.push raises: [].} # No exceptions allowed in core cryptographic operations
 {.push checks: off.} # No defects due to array bound checking or signed integer overflow allowed
 
-# Support files for testing Elliptic Curve arithmetic
+# Bit operations
 # ------------------------------------------------------------------------------
 
 iterator unpackBE(scalarByte: byte): bool =
   for i in countdown(7, 0):
     yield bool((scalarByte shr i) and 1)
+
+# Variable-time scalar multiplication
+# ------------------------------------------------------------------------------
 
 func scalarMul_doubleAdd_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime].} =
   ## **Variable-time** Elliptic Curve Scalar Multiplication
@@ -39,11 +46,17 @@ func scalarMul_doubleAdd_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime
   Paff.affine(P)
 
   P.setInf()
+  var isInf = true
+
   for scalarByte in scalarCanonical:
     for bit in unpackBE(scalarByte):
-      P.double()
+      if not isInf:
+        P.double()
       if bit:
-        P += Paff
+        if isInf:
+          P.fromAffine(Paff)
+        else:
+          P += Paff
 
 func scalarMul_minHammingWeight_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime].}  =
   ## **Variable-time** Elliptic Curve Scalar Multiplication
@@ -120,3 +133,57 @@ func scalarMul_minHammingWeight_windowed_vartime*[EC](P: var EC, scalar: BigInt,
       P += tab[digit shr 1]
     elif digit < 0:
       P -= tab[-digit shr 1]
+
+func scalarMul_vartime*[scalBits; EC](
+       P: var EC,
+       scalar: BigInt[scalBits]
+     ) {.inline.} =
+  ## Elliptic Curve Scalar Multiplication
+  ##
+  ##   P <- [k] P
+  ##
+  ## This select the best algorithm depending on heuristics
+  ## and the scalar being multiplied.
+  ## The scalar MUST NOT be a secret as this does not use side-channel countermeasures
+  ##
+  ## This may use endomorphism acceleration.
+  ## As endomorphism acceleration requires:
+  ## - Cofactor to be cleared
+  ## - 0 <= scalar < curve order
+  ## Those conditions will be assumed.
+
+  when P.F is Fp:
+    const M = 2
+  elif P.F is Fp2:
+    const M = 4
+  else:
+    {.error: "Unconfigured".}
+
+  const L = scalBits.ceilDiv_vartime(M) + 1
+
+  let usedBits = scalar.limbs.getBits_vartime()
+
+  when scalBits == EC.F.C.getCurveOrderBitwidth and
+       EC.F.C.hasEndomorphismAcceleration():
+    if usedBits >= L:
+      # The constant-time implementation is extremely efficient
+      when EC.F is Fp:
+        P.scalarMulGLV_m2w2(scalar)
+      elif EC.F is Fp2:
+        P.scalarMulEndo(scalar)
+      else: # Curves defined on Fp^m with m > 2
+        {.error: "Unreachable".}
+      return
+
+  if 64 < usedBits:
+    # With a window of 5, we precompute 2^3 = 8 points
+    P.scalarMul_minHammingWeight_windowed_vartime(scalar, window = 5)
+  elif 8 <= usedBits and usedBits <= 64:
+    # With a window of 3, we precompute 2^1 = 2 points
+    P.scalarMul_minHammingWeight_windowed_vartime(scalar, window = 3)
+  elif usedBits == 1:
+    discard
+  elif usedBits == 0:
+    P.setInf()
+  else:
+    P.scalarMul_doubleAdd_vartime(scalar)
