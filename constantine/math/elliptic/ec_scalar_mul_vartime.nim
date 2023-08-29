@@ -55,6 +55,7 @@ func scalarMul_doubleAdd_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime
       if bit:
         if isInf:
           P.fromAffine(Paff)
+          isInf = false
         else:
           P += Paff
 
