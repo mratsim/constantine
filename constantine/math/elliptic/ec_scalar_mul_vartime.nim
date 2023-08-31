@@ -14,6 +14,7 @@ import
   ../ec_shortweierstrass,
   ../io/io_bigints,
   ../constants/zoo_endomorphisms,
+  ../isogenies/frobenius,
   ../../platforms/abstractions,
   ../../math_arbitrary_precision/arithmetic/limbs_views
 
@@ -59,6 +60,38 @@ func scalarMul_doubleAdd_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime
         else:
           P += Paff
 
+func scalarMul_doubleAdd_smallscalar_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime].} =
+  ## **Variable-time** Elliptic Curve Scalar Multiplication
+  ## This is optimized for small scalars < 16-bits
+  ## for which affine transformation cannot be amortized over
+  ## 16 doublings + 8 additions
+  ##
+  ##   P <- [k] P
+  ##
+  ## This uses the double-and-add algorithm
+  ## This MUST NOT be used with secret data.
+  ##
+  ## This is highly VULNERABLE to timing attacks and power analysis attacks.
+  var scalarCanonical: array[scalar.bits.ceilDiv_vartime(8), byte]
+  scalarCanonical.marshal(scalar, bigEndian)
+
+  var Porig {.noinit.}: EC
+  Porig = P
+
+  P.setInf()
+  var isInf = true
+
+  for scalarByte in scalarCanonical:
+    for bit in unpackBE(scalarByte):
+      if not isInf:
+        P.double()
+      if bit:
+        if isInf:
+          P = Porig
+          isInf = false
+        else:
+          P += Porig
+
 func scalarMul_minHammingWeight_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime].}  =
   ## **Variable-time** Elliptic Curve Scalar Multiplication
   ##
@@ -80,6 +113,36 @@ func scalarMul_minHammingWeight_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[
     elif bit == -1:
       P -= Paff
 
+func initNAF[precompSize, NafMax: static int, EC, ECaff](
+       P: var EC,
+       tab: array[precompSize, ECaff],
+       naf: array[NafMax, int8], nafLen: int,
+       nafIteratorIdx: int): bool {.inline.} =
+
+  let digit = naf[nafLen-1-nafIteratorIdx]
+  if digit > 0:
+    P.fromAffine(tab[digit shr 1])
+    return true
+  elif digit < 0:
+    P.fromAffine(tab[digit shr 1])
+    P.neg()
+    return true
+  else:
+    P.setInf()
+    return false
+
+func accumNAF[precompSize, NafMax: static int, EC, ECaff](
+       P: var EC,
+       tab: array[precompSize, ECaff],
+       naf: array[NafMax, int8], nafLen: int,
+       nafIteratorIdx: int) {.inline.} =
+
+    let digit = naf[nafLen-1-nafIteratorIdx]
+    if digit > 0:
+      P += tab[digit shr 1]
+    elif digit < 0:
+      P -= tab[-digit shr 1]
+
 func scalarMul_minHammingWeight_windowed_vartime*[EC](P: var EC, scalar: BigInt, window: static int) {.tags:[VarTime, Alloca].} =
   ## **Variable-time** Elliptic Curve Scalar Multiplication
   ##
@@ -92,48 +155,121 @@ func scalarMul_minHammingWeight_windowed_vartime*[EC](P: var EC, scalar: BigInt,
 
   # Signed digits divides precomputation table size by 2
   # Odd-only divides precomputation table size by another 2
+
   const precompSize = 1 shl (window - 2)
-
-  when window <= 8:
-    type I = int8
-  elif window <= 16:
-    type I = int16
-  elif window <= 32:
-    type I = int32
-  else:
-    type I = int64
-
-  var naf {.noInit.}: array[BigInt.bits+1, I]
-  let nafLen = naf.recode_r2l_signed_window_vartime(scalar, window)
-
-  var P2{.noInit.}: EC
-  P2.double(P)
+  static: doAssert window < 8, "Window is too large and precomputation would use " & $(precompSize * sizeof(EC)) & " stack space."
 
   var tabEC {.noinit.}: array[precompSize, EC]
+  var P2{.noInit.}: EC
   tabEC[0] = P
+  P2.double(P)
   for i in 1 ..< tabEC.len:
     tabEC[i].sum(tabEC[i-1], P2)
 
   var tab {.noinit.}: array[precompSize, affine(EC)]
   tab.batchAffine(tabEC)
 
-  # init
-  if naf[nafLen-1] > 0:
-    P.fromAffine(tab[naf[nafLen-1] shr 1])
-  elif naf[nafLen-1] < 0:
-    P.fromAffine(tab[-naf[nafLen-1] shr 1])
-    P.neg()
-  else:
-    P.setInf()
+  var naf {.noInit.}: array[BigInt.bits+1, int8]
+  let nafLen = naf.recode_r2l_signed_window_vartime(scalar, window)
 
-  # steady state
-  for i in 1 ..< nafLen:
-    P.double()
-    let digit = naf[nafLen-1-i]
-    if digit > 0:
-      P += tab[digit shr 1]
-    elif digit < 0:
-      P -= tab[-digit shr 1]
+  var isInit = false
+  for i in 0 ..< nafLen:
+    if isInit:
+      P.double()
+      P.accumNAF(tab, naf, nafLen, i)
+    else:
+      isInit = P.initNAF(tab, naf, nafLen, i)
+
+func scalarMulEndo_minHammingWeight_windowed_vartime*[scalBits: static int; EC](
+       P: var EC,
+       scalar: BigInt[scalBits],
+       window: static int) {.tags:[VarTime, Alloca].} =
+  ## Endomorphism-accelerated windowed vartime scalar multiplication
+  ##
+  ##   P <- [k] P
+  ##
+  ## This uses windowed-NAF (wNAF)
+  ## This MUST NOT be used with secret data.
+  ##
+  ## This is highly VULNERABLE to timing attacks and power analysis attacks
+
+  # Signed digits divides precomputation table size by 2
+  # Odd-only divides precomputation table size by another 2
+  const precompSize = 1 shl (window - 2)
+  static: doAssert window < 8, "Window is too large and precomputation would use " & $(precompSize * sizeof(EC)) & " stack space."
+
+  when P.F is Fp:
+    const M = 2
+    # 1. Compute endomorphisms
+    var endomorphisms {.noInit.}: array[M-1, EC]
+    when P.G == G1:
+      endomorphisms[0] = P
+      endomorphisms[0].x *= EC.F.C.getCubicRootOfUnity_mod_p()
+    else:
+      endomorphisms[0].frobenius_psi(P, 2)
+
+  elif P.F is Fp2:
+    const M = 4
+    # 1. Compute endomorphisms
+    var endomorphisms {.noInit.}: array[M-1, EC]
+    endomorphisms[0].frobenius_psi(P)
+    endomorphisms[1].frobenius_psi(P, 2)
+    endomorphisms[2].frobenius_psi(P, 3)
+  else:
+    {.error: "Unconfigured".}
+
+  # 2. Decompose scalar into mini-scalars
+  const L = scalBits.ceilDiv_vartime(M) + 1
+  var miniScalars {.noInit.}: array[M, BigInt[L]]
+  var negatePoints {.noInit.}: array[M, SecretBool]
+  miniScalars.decomposeEndo(negatePoints, scalar, EC.F)
+
+  # 3. Handle negative mini-scalars
+  if negatePoints[0].bool:
+    P.neg()
+  for m in 1 ..< M:
+    if negatePoints[m].bool:
+      endomorphisms[m-1].neg()
+
+  # 4. EC precomputed table
+  var tabEC {.noinit.}: array[M, array[precompSize, EC]]
+  for m in 0 ..< M:
+    var P2{.noInit.}: EC
+    if m == 0:
+      tabEC[0][0] = P
+      P2.double(P)
+    else:
+      tabEC[m][0] = endomorphisms[m-1]
+      P2.double(endomorphisms[m-1])
+    for i in 1 ..< tabEC[m].len:
+      tabEC[m][i].sum(tabEC[m][i-1], P2)
+
+  var tab {.noinit.}: array[M, array[precompSize, affine(EC)]]
+  tab.batchAffine(tabEC)
+
+  # 5. wNAF precomputed tables
+  const NafLen = L+1
+  var tabNaf {.noinit.}: array[M, array[NafLen, int8]]
+
+  for m in 0 ..< M:
+    # tabNaf returns NAF from least-significant to most significant bits
+    let miniScalarLen = tabNaf[m].recode_r2l_signed_window_vartime(miniScalars[m], window)
+    # We compute from most significant to least significant
+    # so we pad with 0
+    for i in miniScalarLen ..< NafLen:
+      tabNaf[m][i] = 0
+
+  # 6. Compute
+  var isInit = false
+
+  for i in 0 ..< NafLen:
+    if isInit:
+      P.double()
+    for m in 0 ..< M:
+      if isInit:
+        P.accumNAF(tab[m], tabNaf[m], NafLen, i)
+      else:
+        isInit = P.initNAF(tab[m], tabNaf[m], NafLen, i)
 
 func scalarMul_vartime*[scalBits; EC](
        P: var EC,
@@ -167,11 +303,10 @@ func scalarMul_vartime*[scalBits; EC](
   when scalBits == EC.F.C.getCurveOrderBitwidth and
        EC.F.C.hasEndomorphismAcceleration():
     if usedBits >= L:
-      # The constant-time implementation is extremely efficient
       when EC.F is Fp:
-        P.scalarMulGLV_m2w2(scalar)
+        P.scalarMulEndo_minHammingWeight_windowed_vartime(scalar, window = 4)
       elif EC.F is Fp2:
-        P.scalarMulEndo(scalar)
+        P.scalarMulEndo_minHammingWeight_windowed_vartime(scalar, window = 3)
       else: # Curves defined on Fp^m with m > 2
         {.error: "Unreachable".}
       return
@@ -179,7 +314,7 @@ func scalarMul_vartime*[scalBits; EC](
   if 64 < usedBits:
     # With a window of 5, we precompute 2^3 = 8 points
     P.scalarMul_minHammingWeight_windowed_vartime(scalar, window = 5)
-  elif 8 <= usedBits and usedBits <= 64:
+  elif 16 < usedBits and usedBits <= 64:
     # With a window of 3, we precompute 2^1 = 2 points
     P.scalarMul_minHammingWeight_windowed_vartime(scalar, window = 3)
   elif usedBits == 1:
@@ -187,4 +322,4 @@ func scalarMul_vartime*[scalBits; EC](
   elif usedBits == 0:
     P.setInf()
   else:
-    P.scalarMul_doubleAdd_vartime(scalar)
+    P.scalarMul_doubleAdd_smallscalar_vartime(scalar)

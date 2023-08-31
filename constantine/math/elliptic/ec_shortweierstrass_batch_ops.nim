@@ -151,6 +151,16 @@ func batchAffine*[N: static int, F, G](
        jacs: array[N, ECP_ShortW_Jac[F, G]]) {.inline.} =
   batchAffine(affs.asUnchecked(), jacs.asUnchecked(), N)
 
+func batchAffine*[M, N: static int, F, G](
+       affs: var array[M, array[N, ECP_ShortW_Aff[F, G]]],
+       projs: array[M, array[N, ECP_ShortW_Prj[F, G]]]) {.inline.} =
+  batchAffine(affs[0].asUnchecked(), projs[0].asUnchecked(), M*N)
+
+func batchAffine*[M, N: static int, F, G](
+       affs: var array[M, array[N, ECP_ShortW_Aff[F, G]]],
+       projs: array[M, array[N, ECP_ShortW_Jac[F, G]]]) {.inline.} =
+  batchAffine(affs[0].asUnchecked(), projs[0].asUnchecked(), M*N)
+
 # ############################################################
 #
 #             Elliptic Curve in Short Weierstrass form

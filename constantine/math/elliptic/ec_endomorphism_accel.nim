@@ -280,8 +280,7 @@ func secretLookup[T](dst: var T, table: openArray[T], index: SecretWord) =
 
 func scalarMulEndo*[scalBits; EC](
        P: var EC,
-       scalar: BigInt[scalBits]
-     ) =
+       scalar: BigInt[scalBits]) =
   ## Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P

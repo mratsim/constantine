@@ -175,38 +175,49 @@ proc scalarMulEndoWindow*(EC: typedesc, bits: static int, iters: int) =
     else:
       {.error: "Not implemented".}
 
-proc scalarMulUnsafeDoubleAddBench*(EC: typedesc, bits: static int, iters: int) =
+proc scalarMulVartimeDoubleAddBench*(EC: typedesc, bits: static int, iters: int) =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
-  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (unsafe reference DoubleAdd)", EC, iters):
+  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (vartime reference DoubleAdd)", EC, iters):
     r = P
     r.scalarMul_doubleAdd_vartime(exponent)
 
-proc scalarMulUnsafeMinHammingWeightRecodingBench*(EC: typedesc, bits: static int, iters: int) =
+proc scalarMulVartimeMinHammingWeightRecodingBench*(EC: typedesc, bits: static int, iters: int) =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
-  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (unsafe min Hamming Weight recoding)", EC, iters):
+  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (vartime min Hamming Weight recoding)", EC, iters):
     r = P
     r.scalarMul_minHammingWeight_vartime(exponent)
 
-proc scalarMulUnsafeWNAFBench*(EC: typedesc, bits, window: static int, iters: int) =
+proc scalarMulVartimeWNAFBench*(EC: typedesc, bits, window: static int, iters: int) =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
-  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (unsafe wNAF-" & $window & ")", EC, iters):
+  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (vartime wNAF-" & $window & ")", EC, iters):
     r = P
     r.scalarMul_minHammingWeight_windowed_vartime(exponent, window)
+
+proc scalarMulVartimeEndoWNAFBench*(EC: typedesc, bits, window: static int, iters: int) =
+  var r {.noInit.}: EC
+  var P = rng.random_unsafe(EC)
+  P.clearCofactor()
+
+  let exponent = rng.random_unsafe(BigInt[bits])
+
+  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (vartime endomorphism + wNAF-" & $window & ")", EC, iters):
+    r = P
+    r.scalarMulEndo_minHammingWeight_windowed_vartime(exponent, window)
 
 proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int) =
   var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](numPoints)

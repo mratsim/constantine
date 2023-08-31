@@ -479,8 +479,6 @@ proc run_EC_mul_vs_ref_impl*(
           refWNaf(2)
           refWNaf(3)
           refWNaf(5)
-          refWNaf(8)
-          refWNaf(13)
 
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Uniform)
