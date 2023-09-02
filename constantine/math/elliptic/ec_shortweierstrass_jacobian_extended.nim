@@ -200,11 +200,15 @@ func sum_vartime*[F; G: static Subgroup](
       r.setInf()
       return
 
-  var PP{.noInit.}, PPP{.noInit.}, Q{.noInit.}: F
+  var PPP{.noInit.}, Q{.noInit.}: F
 
-  PP.square(P)
-  PPP.prod(PP, P)
-  Q.prod(U, PP)
+  PPP.square(P)
+
+  Q.prod(U, PPP)
+  r.zz.prod(p.zz, q.zz)
+  r.zz *= PPP
+
+  PPP *= P
 
   r.x.square(R)
   P.double(Q)
@@ -216,8 +220,6 @@ func sum_vartime*[F; G: static Subgroup](
   R *= Q
   r.y.diff(R, r.y)
 
-  r.zz.prod(p.zz, q.zz)
-  r.zz *= PP
   r.zzz.prod(p.zzz, q.zzz)
   r.zzz *= PPP
 

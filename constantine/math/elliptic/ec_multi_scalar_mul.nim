@@ -76,8 +76,8 @@ func multiScalarMulImpl_reference_vartime[F, G; bits: static int](
 
     # Example with c = 3, 2³ = 8
     for k in countdown(numBuckets-2, 0):
-      accumBuckets += buckets[k] # Stores S₈ then    S₈+S₇ then       S₈+S₇+S₆ then ...
-      miniMSM += accumBuckets    # Stores S₈ then [2]S₈+S₇ then [3]S₈+[2]S₇+S₆ then ...
+      accumBuckets.sum_vartime(accumBuckets, buckets[k]) # Stores S₈ then    S₈+S₇ then       S₈+S₇+S₆ then ...
+      miniMSM.sum_vartime(miniMSM, accumBuckets)         # Stores S₈ then [2]S₈+S₇ then [3]S₈+[2]S₇+S₆ then ...
 
     miniMSMs[w] = miniMSM
 
@@ -86,7 +86,7 @@ func multiScalarMulImpl_reference_vartime[F, G; bits: static int](
   for w in countdown(numWindows-2, 0):
     for _ in 0 ..< c:
       r.double()
-    r += miniMSMs[w]
+    r.sum_vartime(r, miniMSMs[w])
 
   # Cleanup
   # -------
@@ -152,8 +152,8 @@ func bucketReduce[EC](r: var EC, buckets: ptr UncheckedArray[EC], numBuckets: st
   buckets[numBuckets-1].setInf()
 
   for k in countdown(numBuckets-2, 0):
-    accumBuckets += buckets[k]
-    r += accumBuckets
+    accumBuckets.sum_vartime(accumBuckets, buckets[k])
+    r.sum_vartime(r, accumBuckets)
     buckets[k].setInf()
 
 type MiniMsmKind* = enum
@@ -211,7 +211,7 @@ func miniMSM_jacext[F, G; bits: static int](
     coefs, points, N)
 
   # 3. Mini-MSM on the slice [bitIndex, bitIndex+window)
-  r += windowSum
+  r.sum_vartime(r, windowSum)
   when miniMsmKind != kBottomWindow:
     for _ in 0 ..< c:
       r.double()
@@ -303,7 +303,7 @@ func miniMSM_affine[NumBuckets, QueueLen, F, G; bits: static int](
   # 3. Mini-MSM on the slice [bitIndex, bitIndex+window)
   var windowSum{.noInit.}: typeof(r)
   windowSum.fromJacobianExtended_vartime(windowSum_jacext)
-  r += windowSum
+  r.sum_vartime(r, windowSum)
 
   when miniMsmKind != kBottomWindow:
     for _ in 0 ..< c:
