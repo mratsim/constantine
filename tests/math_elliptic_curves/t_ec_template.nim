@@ -698,17 +698,19 @@ proc run_EC_mixed_add_impl*(
           bAff.affine(b)
           bz1.fromAffine(bAff) # internals special-case Z=1
 
-          var r_generic, r_mixed, r_vartime, r_vartime2: EC
+          var r_generic, r_mixed, r_vartime, r_vartime2, r_vartime3: EC
 
           r_generic.sum(a, b)
           r_mixed.madd(a, bAff)
           r_vartime.sum_vartime(a, bz1)
           r_vartime2.sum_vartime(a, b)
+          r_vartime3.madd_vartime(a, bAff)
 
           check:
             bool(r_generic == r_mixed)
             bool(r_generic == r_vartime)
             bool(r_generic == r_vartime2)
+            bool(r_generic == r_vartime3)
 
       test(ec, randZ = false, gen = Uniform)
       test(ec, randZ = true, gen = Uniform)
@@ -726,16 +728,18 @@ proc run_EC_mixed_add_impl*(
           aAff.affine(a)
           az1.fromAffine(aAff)
 
-          var r_generic, r_mixed, r_vartime, r_vartime2: EC
+          var r_generic, r_mixed, r_vartime, r_vartime2, r_vartime3: EC
 
           r_generic.double(a)
           r_mixed.madd(a, aAff)
           r_vartime.sum_vartime(a, a)
           r_vartime2.sum_vartime(a, az1)
+          r_vartime3.madd_vartime(a, aAff)
           check:
             bool(r_generic == r_mixed)
             bool(r_generic == r_vartime)
             bool(r_generic == r_vartime2)
+            bool(r_generic == r_vartime3)
 
           # Aliasing test
           r_mixed = a
@@ -744,10 +748,13 @@ proc run_EC_mixed_add_impl*(
           r_vartime.sum_vartime(r_vartime, a)
           r_vartime2 = az1
           r_vartime2.sum_vartime(r_vartime2, az1)
+          r_vartime3 = a
+          r_vartime3.madd_vartime(r_vartime3, aAff)
           check:
             bool(r_generic == r_mixed)
             bool(r_generic == r_vartime)
             bool(r_generic == r_vartime2)
+            bool(r_generic == r_vartime3)
 
       test(ec, randZ = false, gen = Uniform)
       test(ec, randZ = true, gen = Uniform)
@@ -777,20 +784,27 @@ proc run_EC_mixed_add_impl*(
             bool(a == r_mixed)
 
           # vartime - internals special-case Z=1
-          var r_vartime: EC
+          var r_vartime, r_vartime2: EC
           var b: EC
           b.fromAffine(bAff)
 
           a.setInf()
           r_vartime.sum_vartime(a, b)
+          r_vartime2.madd_vartime(a, bAff)
 
-          check: bool(r_vartime == r_mixed)
+          check:
+            bool(r_vartime == r_mixed)
+            bool(r_vartime2 == r_mixed)
 
           # Aliasing
           r_vartime.setInf()
           r_vartime.sum_vartime(r_vartime, b)
+          r_vartime2.setInf()
+          r_vartime2.sum_vartime(r_vartime2, b)
 
-          check: bool(r_vartime == r_mixed)
+          check:
+            bool(r_vartime == r_mixed)
+            bool(r_vartime2 == r_mixed)
 
       test(ec, randZ = false, gen = Uniform)
       test(ec, randZ = false, gen = HighHammingWeight)
@@ -813,19 +827,26 @@ proc run_EC_mixed_add_impl*(
           check: bool(r == a)
 
           # vartime
-          var r_vartime: EC
+          var r_vartime, r_vartime2: EC
           var b: EC
           b.fromAffine(bAff)
 
           r_vartime.sum_vartime(a, b)
+          r_vartime2.madd_vartime(a, bAff)
 
-          check: bool(r_vartime == r)
+          check:
+            bool(r_vartime == r)
+            bool(r_vartime2 == r)
 
           # Aliasing
           r_vartime = a
           r_vartime.sum_vartime(r_vartime, b)
+          r_vartime2 = a
+          r_vartime2.sum_vartime(r_vartime2, b)
 
-          check: bool(r_vartime == r)
+          check:
+            bool(r_vartime == r)
+            bool(r_vartime2 == r)
 
       test(ec, randZ = false, gen = Uniform)
       test(ec, randZ = true, gen = Uniform)
@@ -853,19 +874,26 @@ proc run_EC_mixed_add_impl*(
           check: r.isInf().bool
 
           # vartime
-          var r_vartime: EC
+          var r_vartime, r_vartime2: EC
           var na: EC
           na.fromAffine(naAff)
 
           r_vartime.sum_vartime(a, na)
+          r_vartime2.madd_vartime(a, naAff)
 
-          check: bool(r_vartime == r)
+          check:
+            bool(r_vartime == r)
+            bool(r_vartime2 == r)
 
           # Aliasing
           r_vartime = a
           r_vartime.sum_vartime(r_vartime, na)
+          r_vartime2 = a
+          r_vartime2.madd_vartime(r_vartime2, naAff)
 
-          check: bool(r_vartime == r)
+          check:
+            bool(r_vartime == r)
+            bool(r_vartime2 == r)
 
       test(ec, randZ = false, gen = Uniform)
       test(ec, randZ = true, gen = Uniform)

@@ -30,6 +30,10 @@ iterator unpackBE(scalarByte: byte): bool =
 
 # Variable-time scalar multiplication
 # ------------------------------------------------------------------------------
+template `+=`[F; G: static Subgroup](P: var ECP_ShortW[F, G], Q: ECP_ShortW_Aff[F, G]) =
+  P.madd_vartime(P, Q)
+template `-=`[F; G: static Subgroup](P: var ECP_ShortW[F, G], Q: ECP_ShortW_Aff[F, G]) =
+  P.msub_vartime(P, Q)
 
 func scalarMul_doubleAdd_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime].} =
   ## **Variable-time** Elliptic Curve Scalar Multiplication
@@ -60,37 +64,93 @@ func scalarMul_doubleAdd_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime
         else:
           P += Paff
 
-func scalarMul_doubleAdd_smallscalar_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime].} =
+func scalarMul_addchain_4bit_vartime[EC](P: var EC, scalar: BigInt) {.tags:[VarTime].} =
   ## **Variable-time** Elliptic Curve Scalar Multiplication
-  ## This is optimized for small scalars < 16-bits
-  ## for which affine transformation cannot be amortized over
-  ## 16 doublings + 8 additions
-  ##
-  ##   P <- [k] P
-  ##
-  ## This uses the double-and-add algorithm
-  ## This MUST NOT be used with secret data.
-  ##
-  ## This is highly VULNERABLE to timing attacks and power analysis attacks.
-  var scalarCanonical: array[scalar.bits.ceilDiv_vartime(8), byte]
-  scalarCanonical.marshal(scalar, bigEndian)
+  ## This can only handle for small scalars up to 2⁴ = 16 excluded
+  let s = uint scalar.limbs[0]
 
-  var Porig {.noinit.}: EC
-  Porig = P
-
-  P.setInf()
-  var isInf = true
-
-  for scalarByte in scalarCanonical:
-    for bit in unpackBE(scalarByte):
-      if not isInf:
-        P.double()
-      if bit:
-        if isInf:
-          P = Porig
-          isInf = false
-        else:
-          P += Porig
+  case s
+  of 0:
+    P.setInf()
+  of 1:
+    return
+  of 2:
+    P.double()
+  of 3:
+    var t {.noInit.}: EC
+    t.double(P)
+    P.sum_vartime(P, t)
+  of 4:
+    P.double()
+    P.double()
+  of 5:
+    var t {.noInit.}: EC
+    t.double(P)
+    t.double(P)
+    P.sum_vartime(P, t)
+  of 6:
+    var t {.noInit.}: EC
+    t.double(P)
+    P.sum_vartime(P, t)
+    P.double()
+  of 7:
+    var t {.noInit.}: EC
+    t.double(P)
+    t.double()
+    t.double()
+    P.diff_vartime(t, P)
+  of 8:
+    P.double()
+    P.double()
+    P.double()
+  of 9:
+    var t {.noInit.}: EC
+    t.double(P)
+    t.double()
+    t.double()
+    P.sum_vartime(P, t)
+  of 10:
+    var t {.noInit.}: EC
+    t.double(P)
+    t.double()
+    P.sum_vartime(P, t)
+    P.double()
+  of 11:
+    var t1 {.noInit.}, t2 {.noInit.}: EC
+    t1.double(P)  # [2]P
+    t2.double(t1)
+    t2.double()   # [8]P
+    t1.sum_vartime(t1, t2)
+    P.sum_vartime(P, t1)
+  of 12:
+    var t1 {.noInit.}, t2 {.noInit.}: EC
+    t1.double(P)
+    t1.double()   # [4]P
+    t2.double(t1) # [8]P
+    P.sum_vartime(t1, t2)
+  of 13:
+    var t1 {.noInit.}, t2 {.noInit.}: EC
+    t1.double(P)
+    t1.double()   # [4]P
+    t2.double(t1) # [8]P
+    t1.sum_vartime(t1, t2)
+    P.sum_vartime(P, t1)
+  of 14:
+    var t {.noInit.}: EC
+    t.double(P)
+    t.double()
+    t.double()
+    t.diff_vartime(t, P) # [7]P
+    P.double(t)
+  of 15:
+    var t {.noInit.}: EC
+    t.double(P)
+    t.double()
+    t.double()
+    t.double()
+    P.diff_vartime(t, P)
+  else:
+    unreachable()
 
 func scalarMul_minHammingWeight_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime].}  =
   ## **Variable-time** Elliptic Curve Scalar Multiplication
@@ -164,7 +224,7 @@ func scalarMul_minHammingWeight_windowed_vartime*[EC](P: var EC, scalar: BigInt,
   tabEC[0] = P
   P2.double(P)
   for i in 1 ..< tabEC.len:
-    tabEC[i].sum(tabEC[i-1], P2)
+    tabEC[i].sum_vartime(tabEC[i-1], P2)
 
   var tab {.noinit.}: array[precompSize, affine(EC)]
   tab.batchAffine(tabEC)
@@ -242,7 +302,7 @@ func scalarMulEndo_minHammingWeight_windowed_vartime*[scalBits: static int; EC](
       tabEC[m][0] = endomorphisms[m-1]
       P2.double(endomorphisms[m-1])
     for i in 1 ..< tabEC[m].len:
-      tabEC[m][i].sum(tabEC[m][i-1], P2)
+      tabEC[m][i].sum_vartime(tabEC[m][i-1], P2)
 
   var tab {.noinit.}: array[M, array[precompSize, affine(EC)]]
   tab.batchAffine(tabEC)
@@ -314,12 +374,10 @@ func scalarMul_vartime*[scalBits; EC](
   if 64 < usedBits:
     # With a window of 5, we precompute 2^3 = 8 points
     P.scalarMul_minHammingWeight_windowed_vartime(scalar, window = 5)
-  elif 16 < usedBits and usedBits <= 64:
+  elif 16 < usedBits:
     # With a window of 3, we precompute 2^1 = 2 points
     P.scalarMul_minHammingWeight_windowed_vartime(scalar, window = 3)
-  elif usedBits == 1:
-    discard
-  elif usedBits == 0:
-    P.setInf()
+  elif 4 < usedBits:
+    P.scalarMul_doubleAdd_vartime(scalar)
   else:
-    P.scalarMul_doubleAdd_smallscalar_vartime(scalar)
+    P.scalarMul_addchain_4bit_vartime(scalar)

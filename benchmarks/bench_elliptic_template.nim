@@ -52,9 +52,9 @@ proc report(op, elliptic: string, start, stop: MonoTime, startClk, stopClk: int6
   let ns = inNanoseconds((stop-start) div iters)
   let throughput = 1e9 / float64(ns)
   when SupportsGetTicks:
-    echo &"{op:<68} {elliptic:<32} {throughput:>15.3f} ops/s {ns:>16} ns/op {(stopClk - startClk) div iters:>12} CPU cycles (approx)"
+    echo &"{op:<68} {elliptic:<36} {throughput:>15.3f} ops/s {ns:>16} ns/op {(stopClk - startClk) div iters:>12} CPU cycles (approx)"
   else:
-    echo &"{op:<68} {elliptic:<32} {throughput:>15.3f} ops/s {ns:>16} ns/op"
+    echo &"{op:<68} {elliptic:<36} {throughput:>15.3f} ops/s {ns:>16} ns/op"
 
 template bench*(op: string, EC: typedesc, iters: int, body: untyped): untyped =
   measure(iters, startTime, stopTime, startClk, stopClk, body)
@@ -92,8 +92,12 @@ proc mixedAddBench*(EC: typedesc, iters: int) =
     bench("EC Mixed Addition vartime " & $EC.G, EC, iters):
       r.madd_vartime(P, Qaff)
   else:
-    bench("EC Mixed Addition " & $EC.G, EC, iters):
-      r.madd(P, Qaff)
+    block:
+      bench("EC Mixed Addition " & $EC.G, EC, iters):
+        r.madd(P, Qaff)
+    block:
+      bench("EC Mixed Addition vartime " & $EC.G, EC, iters):
+        r.madd_vartime(P, Qaff)
 
 proc doublingBench*(EC: typedesc, iters: int) =
   var r {.noInit.}: EC

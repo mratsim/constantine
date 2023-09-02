@@ -64,18 +64,18 @@ func simpleFT[EC; bits: static int](
   # FFT is a recursive algorithm
   # This is the base-case using a O(n²) algorithm
 
-  # TODO: endomorphism acceleration for windowed-NAF
-
   let L = output.len
   var last {.noInit.}, v {.noInit.}: EC
 
+  var v0w0 {.noInit.} = vals[0]
+  v0w0.scalarMul_vartime(rootsOfUnity[0])
+
   for i in 0 ..< L:
-    last = vals[0]
-    last.scalarMul_vartime(rootsOfUnity[0])
+    last = v0w0
     for j in 1 ..< L:
       v = vals[j]
       v.scalarMul_vartime(rootsOfUnity[(i*j) mod L])
-      last += v
+      last.sum_vartime(last, v)
     output[i] = last
 
 func fft_internal[EC; bits: static int](
@@ -101,8 +101,8 @@ func fft_internal[EC; bits: static int](
     # FFT Butterfly
     y_times_root = output[i+half]
     y_times_root   .scalarMul_vartime(rootsOfUnity[i])
-    output[i+half] .diff(output[i], y_times_root)
-    output[i]      += y_times_root
+    output[i+half] .diff_vartime(output[i], y_times_root)
+    output[i]      .sum_vartime(output[i], y_times_root)
 
 func fft*[EC](
        desc: ECFFT_Descriptor[EC],
