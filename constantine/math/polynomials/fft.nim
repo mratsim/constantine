@@ -104,7 +104,7 @@ func fft_internal[EC; bits: static int](
     output[i+half] .diff_vartime(output[i], y_times_root)
     output[i]      .sum_vartime(output[i], y_times_root)
 
-func fft*[EC](
+func fft_vartime*[EC](
        desc: ECFFT_Descriptor[EC],
        output: var openarray[EC],
        vals: openarray[EC]): FFT_Status =
@@ -121,7 +121,7 @@ func fft*[EC](
   fft_internal(voutput, vals.toStridedView(), rootz)
   return FFTS_Success
 
-func ifft*[EC](
+func ifft_vartime*[EC](
        desc: ECFFT_Descriptor[EC],
        output: var openarray[EC],
        vals: openarray[EC]): FFT_Status =
@@ -360,12 +360,12 @@ when isMainModule:
       data[i].madd(data[i-1], BLS12_381.getGenerator("G1"))
 
     var coefs = newSeq[EC_G1](data.len)
-    let fftOk = fft(fftDesc, coefs, data)
+    let fftOk = fft_vartime(fftDesc, coefs, data)
     doAssert fftOk == FFTS_Success
     # display("coefs", 0, coefs)
 
     var res = newSeq[EC_G1](data.len)
-    let ifftOk = ifft(fftDesc, res, coefs)
+    let ifftOk = ifft_vartime(fftDesc, res, coefs)
     doAssert ifftOk == FFTS_Success
     # display("res", 0, res)
 
@@ -415,7 +415,7 @@ when isMainModule:
       # Bench
       let start = getMonotime()
       for i in 0 ..< NumIters:
-        let status = fftDesc.fft(coefsOut, data)
+        let status = fftDesc.fft_vartime(coefsOut, data)
         doAssert status == FFTS_Success
       let stop = getMonotime()
 

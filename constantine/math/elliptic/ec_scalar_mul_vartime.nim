@@ -360,7 +360,7 @@ func scalarMul_vartime*[scalBits; EC](
 
   let usedBits = scalar.limbs.getBits_vartime()
 
-  when scalBits == EC.F.C.getCurveOrderBitwidth and
+  when scalBits == EC.F.C.getCurveOrderBitwidth() and
        EC.F.C.hasEndomorphismAcceleration():
     if usedBits >= L:
       when EC.F is Fp:
