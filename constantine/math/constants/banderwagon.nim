@@ -34,6 +34,12 @@ func `==`*(P, Q: ECP_TwEdwards_Prj[Fp[Banderwagon]]): SecretBool =
   rhs.prod(Q.x, P.y)
   result = result and lhs == rhs
 
+func map_to_field*(P: ECP_TwEdwards_Prj[Fp[Banderwagon]]): Fp =
+  ## Map a point on the Banderwagon curve to the base field
+  ## 
+  result.prod(P.x, P.y.inv())
+  
+
 # ############################################################
 #
 #                Subgroup Check
