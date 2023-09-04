@@ -8,10 +8,13 @@
 
 import
   # Internals
+  ./ec_shortweierstrass_affine,
+  ./ec_shortweierstrass_jacobian,
+  ./ec_shortweierstrass_projective,
   ./ec_endomorphism_accel,
+  ./ec_shortweierstrass_batch_ops,
   ../arithmetic,
   ../extension_fields,
-  ../ec_shortweierstrass,
   ../io/io_bigints,
   ../constants/zoo_endomorphisms,
   ../isogenies/frobenius,
@@ -30,9 +33,9 @@ iterator unpackBE(scalarByte: byte): bool =
 
 # Variable-time scalar multiplication
 # ------------------------------------------------------------------------------
-template `+=`[F; G: static Subgroup](P: var ECP_ShortW[F, G], Q: ECP_ShortW_Aff[F, G]) =
+template `+=`[F; G: static Subgroup](P: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G]), Q: ECP_ShortW_Aff[F, G]) =
   P.madd_vartime(P, Q)
-template `-=`[F; G: static Subgroup](P: var ECP_ShortW[F, G], Q: ECP_ShortW_Aff[F, G]) =
+template `-=`[F; G: static Subgroup](P: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G]), Q: ECP_ShortW_Aff[F, G]) =
   P.msub_vartime(P, Q)
 
 func scalarMul_doubleAdd_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime].} =
@@ -334,7 +337,7 @@ func scalarMulEndo_minHammingWeight_windowed_vartime*[scalBits: static int; EC](
 func scalarMul_vartime*[scalBits; EC](
        P: var EC,
        scalar: BigInt[scalBits]
-     ) {.inline.} =
+     ) =
   ## Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P

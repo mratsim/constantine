@@ -55,7 +55,7 @@ func parseRawUint(
   return cttEVM_Success
 
 func fromRawCoords(
-       dst: var ECP_ShortW_Prj[Fp[BN254_Snarks], G1],
+       dst: var ECP_ShortW_Jac[Fp[BN254_Snarks], G1],
        x, y: openarray[byte]): CttEVMStatus =
 
   # Deserialization
@@ -122,7 +122,7 @@ func eth_evm_ecadd*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStat
   var padded: array[128, byte]
   padded.rawCopy(0, inputs, 0, min(inputs.len, 128))
 
-  var P{.noInit.}, Q{.noInit.}, R{.noInit.}: ECP_ShortW_Prj[Fp[BN254_Snarks], G1]
+  var P{.noInit.}, Q{.noInit.}, R{.noInit.}: ECP_ShortW_Jac[Fp[BN254_Snarks], G1]
 
   let statusP = P.fromRawCoords(
     x = padded.toOpenArray(0, 31),
@@ -135,7 +135,7 @@ func eth_evm_ecadd*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStat
   if statusQ != cttEVM_Success:
     return statusQ
 
-  R.sum(P, Q)
+  R.sum_vartime(P, Q)
   var aff{.noInit.}: ECP_ShortW_Aff[Fp[BN254_Snarks], G1]
   aff.affine(R)
 
@@ -176,7 +176,7 @@ func eth_evm_ecmul*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStat
   var padded: array[128, byte]
   padded.rawCopy(0, inputs, 0, min(inputs.len, 128))
 
-  var P{.noInit.}: ECP_ShortW_Prj[Fp[BN254_Snarks], G1]
+  var P{.noInit.}: ECP_ShortW_Jac[Fp[BN254_Snarks], G1]
 
   let statusP = P.fromRawCoords(
     x = padded.toOpenArray(0, 31),
@@ -202,9 +202,9 @@ func eth_evm_ecmul*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStat
                 Fr[BN254_Snarks].getR2modP().limbs,
                 Fr[BN254_Snarks].getNegInvModWord(),
                 Fr[BN254_Snarks].getSpareBits())
-    P.scalarMul(smod.toBig())
+    P.scalarMul_vartime(smod.toBig())
   else:
-    P.scalarMul(s)
+    P.scalarMul_vartime(s)
 
   var aff{.noInit.}: ECP_ShortW_Aff[Fp[BN254_Snarks], G1]
   aff.affine(P)
@@ -217,7 +217,7 @@ func subgroupCheck(P: ECP_ShortW_Aff[Fp2[BN254_Snarks], G2]): bool =
   ## A point may be on a curve but in case the curve has a cofactor != 1
   ## that point may not be in the correct cyclic subgroup.
   ## If we are on the subgroup of order r then [r]P = 0
-  var Q{.noInit.}: ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]
+  var Q{.noInit.}: ECP_ShortW_Jac[Fp2[BN254_Snarks], G2]
   Q.fromAffine(P)
   return bool(Q.isInSubgroup())
 
