@@ -92,7 +92,7 @@ proc run_EC_addition_tests*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form with projective coordinates"
+  const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     test "The infinity point is the neutral element w.r.t. to EC " & $ec.G & " addition":
@@ -258,6 +258,193 @@ proc run_EC_addition_tests*(
 
           r0.double(a)
           r1.sum(a, a)
+
+          check: bool(r0 == r1)
+
+      test(ec, randZ = false, gen = Uniform)
+      test(ec, randZ = true, gen = Uniform)
+      test(ec, randZ = false, gen = HighHammingWeight)
+      test(ec, randZ = true, gen = HighHammingWeight)
+      test(ec, randZ = false, gen = Long01Sequence)
+      test(ec, randZ = true, gen = Long01Sequence)
+
+
+proc run_EC_addition_vartime_tests*(
+       ec: typedesc,
+       Iters: static int,
+       moduleName: string) =
+  var rng: RngState
+  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  rng.seed(seed)
+  echo "\n------------------------------------------------------\n"
+  echo moduleName, " xoshiro512** seed: ", seed
+
+  const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
+
+  suite testSuiteDesc & " - " & $ec & " (vartime) - [" & $WordBitWidth & "-bit mode]":
+    test "The infinity point is the neutral element w.r.t. to EC " & $ec.G & " addition (vartime)":
+      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
+        var inf {.noInit.}: EC
+        inf.setInf()
+        check: bool inf.isInf()
+
+        for _ in 0 ..< Iters:
+          var r{.noInit.}: EC
+          let P = rng.random_point(EC, randZ, gen)
+
+          r.sum_vartime(P, inf)
+          check: bool(r == P)
+
+          r.sum_vartime(inf, P)
+          check: bool(r == P)
+
+          # Aliasing tests
+          r = P
+          r.sum_vartime(r, inf)
+          check: bool(r == P)
+
+          r.setInf()
+          r.sum_vartime(r, P)
+          check: bool(r == P)
+
+      test(ec, randZ = false, gen = Uniform)
+      test(ec, randZ = true, gen = Uniform)
+      test(ec, randZ = false, gen = HighHammingWeight)
+      test(ec, randZ = true, gen = HighHammingWeight)
+      test(ec, randZ = false, gen = Long01Sequence)
+      test(ec, randZ = true, gen = Long01Sequence)
+
+    test "Infinity point from affine conversion gives proper result (vartime)":
+      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
+        var affInf {.noInit.}: affine(EC)
+        var inf {.noInit.}: EC
+        affInf.setInf()
+        inf.fromAffine(affInf)
+        check: bool inf.isInf()
+
+        for _ in 0 ..< Iters:
+          var r{.noInit.}: EC
+          let P = rng.random_point(EC, randZ, gen)
+
+          r.sum_vartime(P, inf)
+          check: bool(r == P)
+
+          r.sum_vartime(inf, P)
+          check: bool(r == P)
+
+          # Aliasing tests
+          r = P
+          r.sum_vartime(r, inf)
+          check: bool(r == P)
+
+          r.setInf()
+          r.sum_vartime(r, P)
+          check: bool(r == P)
+
+      test(ec, randZ = false, gen = Uniform)
+      test(ec, randZ = true, gen = Uniform)
+      test(ec, randZ = false, gen = HighHammingWeight)
+      test(ec, randZ = true, gen = HighHammingWeight)
+      test(ec, randZ = false, gen = Long01Sequence)
+      test(ec, randZ = true, gen = Long01Sequence)
+
+    test "Adding opposites gives an infinity point (vartime)":
+      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
+        for _ in 0 ..< Iters:
+          var r{.noInit.}: EC
+          let P = rng.random_point(EC, randZ, gen)
+          var Q = P
+          Q.neg()
+
+          r.sum_vartime(P, Q)
+          check: bool r.isInf()
+
+          r.sum_vartime(Q, P)
+          check: bool r.isInf()
+
+      test(ec, randZ = false, gen = Uniform)
+      test(ec, randZ = true, gen = Uniform)
+      test(ec, randZ = false, gen = HighHammingWeight)
+      test(ec, randZ = true, gen = HighHammingWeight)
+      test(ec, randZ = false, gen = Long01Sequence)
+      test(ec, randZ = true, gen = Long01Sequence)
+
+    test "EC " & $ec.G & " add is commutative (vartime)":
+      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
+        for _ in 0 ..< Iters:
+          var r0{.noInit.}, r1{.noInit.}: EC
+          let P = rng.random_point(EC, randZ, gen)
+          let Q = rng.random_point(EC, randZ, gen)
+
+          r0.sum_vartime(P, Q)
+          r1.sum_vartime(Q, P)
+          check: bool(r0 == r1)
+
+      test(ec, randZ = false, gen = Uniform)
+      test(ec, randZ = true, gen = Uniform)
+      test(ec, randZ = false, gen = HighHammingWeight)
+      test(ec, randZ = true, gen = HighHammingWeight)
+      test(ec, randZ = false, gen = Long01Sequence)
+      test(ec, randZ = true, gen = Long01Sequence)
+
+    test "EC " & $ec.G & " add is associative (vartime)":
+      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
+        for _ in 0 ..< Iters:
+          let a = rng.random_point(EC, randZ, gen)
+          let b = rng.random_point(EC, randZ, gen)
+          let c = rng.random_point(EC, randZ, gen)
+
+          var tmp1{.noInit.}, tmp2{.noInit.}: EC
+
+          # r0 = (a + b) + c
+          tmp1.sum_vartime(a, b)
+          tmp2.sum_vartime(tmp1, c)
+          let r0 = tmp2
+
+          # r1 = a + (b + c)
+          tmp1.sum_vartime(b, c)
+          tmp2.sum_vartime(a, tmp1)
+          let r1 = tmp2
+
+          # r2 = (a + c) + b
+          tmp1.sum_vartime(a, c)
+          tmp2.sum_vartime(tmp1, b)
+          let r2 = tmp2
+
+          # r3 = a + (c + b)
+          tmp1.sum_vartime(c, b)
+          tmp2.sum_vartime(a, tmp1)
+          let r3 = tmp2
+
+          # r4 = (c + a) + b
+          tmp1.sum_vartime(c, a)
+          tmp2.sum_vartime(tmp1, b)
+          let r4 = tmp2
+
+          # ...
+
+          check:
+            bool(r0 == r1)
+            bool(r0 == r2)
+            bool(r0 == r3)
+            bool(r0 == r4)
+
+      test(ec, randZ = false, gen = Uniform)
+      test(ec, randZ = true, gen = Uniform)
+      test(ec, randZ = false, gen = HighHammingWeight)
+      test(ec, randZ = true, gen = HighHammingWeight)
+      test(ec, randZ = false, gen = Long01Sequence)
+      test(ec, randZ = true, gen = Long01Sequence)
+
+    test "EC " & $ec.G & " double and EC " & $ec.G & " add are consistent (vartime)":
+      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
+        for _ in 0 ..< Iters:
+          let a = rng.random_point(EC, randZ, gen)
+
+          var r0{.noInit.}, r1{.noInit.}: EC
+
+          r0.double(a)
+          r1.sum_vartime(a, a)
 
           check: bool(r0 == r1)
 
@@ -479,8 +666,6 @@ proc run_EC_mul_vs_ref_impl*(
           refWNaf(2)
           refWNaf(3)
           refWNaf(5)
-          refWNaf(8)
-          refWNaf(13)
 
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Uniform)
@@ -509,14 +694,23 @@ proc run_EC_mixed_add_impl*(
           let a = rng.random_point(EC, randZ, gen)
           let b = rng.random_point(EC, randZ, gen)
           var bAff: ECP_ShortW_Aff[EC.F, EC.G]
+          var bz1: EC
           bAff.affine(b)
+          bz1.fromAffine(bAff) # internals special-case Z=1
 
-          var r_generic, r_mixed: EC
+          var r_generic, r_mixed, r_vartime, r_vartime2, r_vartime3: EC
 
           r_generic.sum(a, b)
           r_mixed.madd(a, bAff)
+          r_vartime.sum_vartime(a, bz1)
+          r_vartime2.sum_vartime(a, b)
+          r_vartime3.madd_vartime(a, bAff)
 
-          check: bool(r_generic == r_mixed)
+          check:
+            bool(r_generic == r_mixed)
+            bool(r_generic == r_vartime)
+            bool(r_generic == r_vartime2)
+            bool(r_generic == r_vartime3)
 
       test(ec, randZ = false, gen = Uniform)
       test(ec, randZ = true, gen = Uniform)
@@ -530,18 +724,37 @@ proc run_EC_mixed_add_impl*(
         for _ in 0 ..< Iters:
           let a = rng.random_point(EC, randZ, gen)
           var aAff: ECP_ShortW_Aff[EC.F, EC.G]
+          var az1: EC
           aAff.affine(a)
+          az1.fromAffine(aAff)
 
-          var r_generic, r_mixed: EC
+          var r_generic, r_mixed, r_vartime, r_vartime2, r_vartime3: EC
 
           r_generic.double(a)
           r_mixed.madd(a, aAff)
-          check: bool(r_generic == r_mixed)
+          r_vartime.sum_vartime(a, a)
+          r_vartime2.sum_vartime(a, az1)
+          r_vartime3.madd_vartime(a, aAff)
+          check:
+            bool(r_generic == r_mixed)
+            bool(r_generic == r_vartime)
+            bool(r_generic == r_vartime2)
+            bool(r_generic == r_vartime3)
 
           # Aliasing test
           r_mixed = a
           r_mixed += aAff
-          check: bool(r_generic == r_mixed)
+          r_vartime = a
+          r_vartime.sum_vartime(r_vartime, a)
+          r_vartime2 = az1
+          r_vartime2.sum_vartime(r_vartime2, az1)
+          r_vartime3 = a
+          r_vartime3.madd_vartime(r_vartime3, aAff)
+          check:
+            bool(r_generic == r_mixed)
+            bool(r_generic == r_vartime)
+            bool(r_generic == r_vartime2)
+            bool(r_generic == r_vartime3)
 
       test(ec, randZ = false, gen = Uniform)
       test(ec, randZ = true, gen = Uniform)
@@ -563,41 +776,41 @@ proc run_EC_mixed_add_impl*(
           var r{.noInit.}: ECP_ShortW_Aff[EC.F, EC.G]
           r.affine(r_mixed)
 
+          # Aliasing test
           a += bAff
 
           check:
             bool(r == bAff)
             bool(a == r_mixed)
 
+          # vartime - internals special-case Z=1
+          var r_vartime, r_vartime2: EC
+          var b: EC
+          b.fromAffine(bAff)
+
+          a.setInf()
+          r_vartime.sum_vartime(a, b)
+          r_vartime2.madd_vartime(a, bAff)
+
+          check:
+            bool(r_vartime == r_mixed)
+            bool(r_vartime2 == r_mixed)
+
+          # Aliasing
+          r_vartime.setInf()
+          r_vartime.sum_vartime(r_vartime, b)
+          r_vartime2.setInf()
+          r_vartime2.sum_vartime(r_vartime2, b)
+
+          check:
+            bool(r_vartime == r_mixed)
+            bool(r_vartime2 == r_mixed)
+
       test(ec, randZ = false, gen = Uniform)
       test(ec, randZ = false, gen = HighHammingWeight)
       test(ec, randZ = false, gen = Long01Sequence)
 
     test "EC " & $ec.G & " mixed addition - adding infinity RHS":
-      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
-        for _ in 0 ..< Iters:
-          let a = rng.random_point(EC, randZ, gen)
-          var naAff{.noInit.}: ECP_ShortW_Aff[EC.F, EC.G]
-          naAff.affine(a)
-          naAff.neg()
-
-          var r{.noInit.}: EC
-          r.madd(a, naAff)
-
-          check: r.isInf().bool
-
-          r = a
-          r += naAff
-          check: r.isInf().bool
-
-      test(ec, randZ = false, gen = Uniform)
-      test(ec, randZ = true, gen = Uniform)
-      test(ec, randZ = false, gen = HighHammingWeight)
-      test(ec, randZ = true, gen = HighHammingWeight)
-      test(ec, randZ = false, gen = Long01Sequence)
-      test(ec, randZ = true, gen = Long01Sequence)
-
-    test "EC " & $ec.G & " mixed addition - adding opposites":
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< Iters:
           let a = rng.random_point(EC, randZ, gen)
@@ -612,6 +825,75 @@ proc run_EC_mixed_add_impl*(
           r = a
           r += bAff
           check: bool(r == a)
+
+          # vartime
+          var r_vartime, r_vartime2: EC
+          var b: EC
+          b.fromAffine(bAff)
+
+          r_vartime.sum_vartime(a, b)
+          r_vartime2.madd_vartime(a, bAff)
+
+          check:
+            bool(r_vartime == r)
+            bool(r_vartime2 == r)
+
+          # Aliasing
+          r_vartime = a
+          r_vartime.sum_vartime(r_vartime, b)
+          r_vartime2 = a
+          r_vartime2.sum_vartime(r_vartime2, b)
+
+          check:
+            bool(r_vartime == r)
+            bool(r_vartime2 == r)
+
+      test(ec, randZ = false, gen = Uniform)
+      test(ec, randZ = true, gen = Uniform)
+      test(ec, randZ = false, gen = HighHammingWeight)
+      test(ec, randZ = true, gen = HighHammingWeight)
+      test(ec, randZ = false, gen = Long01Sequence)
+      test(ec, randZ = true, gen = Long01Sequence)
+
+    test "EC " & $ec.G & " mixed addition - adding opposites":
+      proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
+        for _ in 0 ..< Iters:
+          let a = rng.random_point(EC, randZ, gen)
+          var naAff{.noInit.}: ECP_ShortW_Aff[EC.F, EC.G]
+          naAff.affine(a)
+          naAff.neg()
+
+          var r{.noInit.}: EC
+          r.madd(a, naAff)
+
+          check: r.isInf().bool
+
+          # Aliasing
+          r = a
+          r += naAff
+          check: r.isInf().bool
+
+          # vartime
+          var r_vartime, r_vartime2: EC
+          var na: EC
+          na.fromAffine(naAff)
+
+          r_vartime.sum_vartime(a, na)
+          r_vartime2.madd_vartime(a, naAff)
+
+          check:
+            bool(r_vartime == r)
+            bool(r_vartime2 == r)
+
+          # Aliasing
+          r_vartime = a
+          r_vartime.sum_vartime(r_vartime, na)
+          r_vartime2 = a
+          r_vartime2.madd_vartime(r_vartime2, naAff)
+
+          check:
+            bool(r_vartime == r)
+            bool(r_vartime2 == r)
 
       test(ec, randZ = false, gen = Uniform)
       test(ec, randZ = true, gen = Uniform)

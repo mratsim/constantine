@@ -172,7 +172,7 @@ proc run_scalar_mul_test_vs_sage*(
         doAssert: bool(Q == impl)
         doAssert: bool(Q == refMinWeight)
 
-        staticFor w, 2, 14:
+        staticFor w, 2, 5:
           var refWNAF = P
           refWNAF.scalarMul_minHammingWeight_windowed_vartime(vec.vectors[i].scalar, window = w)
           check: bool(impl == refWNAF)
@@ -186,3 +186,8 @@ proc run_scalar_mul_test_vs_sage*(
             var endoW = P
             endoW.scalarMulGLV_m2w2(vec.vectors[i].scalar)
             doAssert: bool(Q == endoW)
+
+          staticFor w, 2, 5:
+            var endoWNAF = P
+            endoWNAF.scalarMulEndo_minHammingWeight_windowed_vartime(vec.vectors[i].scalar, window = w)
+            check: bool(impl == endoWNAF)

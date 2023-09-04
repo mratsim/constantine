@@ -66,7 +66,7 @@ proc sum_reduce_vartime_parallelChunks[F; G: static Subgroup](
   if chunkDesc.numChunks < minChunkSizeSerial:
     r.setInf()
     for i in 0 ..< chunkDesc.numChunks:
-      r += partialResults[i]
+      r.sum_vartime(r, partialResults[i])
   else:
     let partialResultsAffine = allocStackArray(ECP_ShortW_Aff[F, G], chunkDesc.numChunks)
     partialResultsAffine.batchAffine(partialResults, chunkDesc.numChunks)
@@ -99,7 +99,7 @@ proc sum_reduce_vartime_parallelFor[F; G: static Subgroup](
         let n = min(maxStride, pointsLen-i)
         localSum.accumSum_chunk_vartime(p +% i, n)
       merge(remoteSum: Flowvar[typeof(r)]):
-        localSum += sync(remoteSum)
+        localSum.sum_vartime(localSum, sync(remoteSum))
       epilogue:
         return localSum
 

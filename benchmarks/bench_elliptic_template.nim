@@ -52,9 +52,9 @@ proc report(op, elliptic: string, start, stop: MonoTime, startClk, stopClk: int6
   let ns = inNanoseconds((stop-start) div iters)
   let throughput = 1e9 / float64(ns)
   when SupportsGetTicks:
-    echo &"{op:<68} {elliptic:<32} {throughput:>15.3f} ops/s {ns:>16} ns/op {(stopClk - startClk) div iters:>12} CPU cycles (approx)"
+    echo &"{op:<68} {elliptic:<36} {throughput:>15.3f} ops/s {ns:>16} ns/op {(stopClk - startClk) div iters:>12} CPU cycles (approx)"
   else:
-    echo &"{op:<68} {elliptic:<32} {throughput:>15.3f} ops/s {ns:>16} ns/op"
+    echo &"{op:<68} {elliptic:<36} {throughput:>15.3f} ops/s {ns:>16} ns/op"
 
 template bench*(op: string, EC: typedesc, iters: int, body: untyped): untyped =
   measure(iters, startTime, stopTime, startClk, stopClk, body)
@@ -74,8 +74,12 @@ proc addBench*(EC: typedesc, iters: int) =
     bench("EC Add vartime " & $EC.G, EC, iters):
       r.sum_vartime(P, Q)
   else:
-    bench("EC Add " & $EC.G, EC, iters):
-      r.sum(P, Q)
+    block:
+      bench("EC Add " & $EC.G, EC, iters):
+        r.sum(P, Q)
+    block:
+      bench("EC Add vartime " & $EC.G, EC, iters):
+        r.sum_vartime(P, Q)
 
 proc mixedAddBench*(EC: typedesc, iters: int) =
   var r {.noInit.}: EC
@@ -88,8 +92,12 @@ proc mixedAddBench*(EC: typedesc, iters: int) =
     bench("EC Mixed Addition vartime " & $EC.G, EC, iters):
       r.madd_vartime(P, Qaff)
   else:
-    bench("EC Mixed Addition " & $EC.G, EC, iters):
-      r.madd(P, Qaff)
+    block:
+      bench("EC Mixed Addition " & $EC.G, EC, iters):
+        r.madd(P, Qaff)
+    block:
+      bench("EC Mixed Addition vartime " & $EC.G, EC, iters):
+        r.madd_vartime(P, Qaff)
 
 proc doublingBench*(EC: typedesc, iters: int) =
   var r {.noInit.}: EC
@@ -175,38 +183,49 @@ proc scalarMulEndoWindow*(EC: typedesc, bits: static int, iters: int) =
     else:
       {.error: "Not implemented".}
 
-proc scalarMulUnsafeDoubleAddBench*(EC: typedesc, bits: static int, iters: int) =
+proc scalarMulVartimeDoubleAddBench*(EC: typedesc, bits: static int, iters: int) =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
-  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (unsafe reference DoubleAdd)", EC, iters):
+  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (vartime reference DoubleAdd)", EC, iters):
     r = P
     r.scalarMul_doubleAdd_vartime(exponent)
 
-proc scalarMulUnsafeMinHammingWeightRecodingBench*(EC: typedesc, bits: static int, iters: int) =
+proc scalarMulVartimeMinHammingWeightRecodingBench*(EC: typedesc, bits: static int, iters: int) =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
-  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (unsafe min Hamming Weight recoding)", EC, iters):
+  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (vartime min Hamming Weight recoding)", EC, iters):
     r = P
     r.scalarMul_minHammingWeight_vartime(exponent)
 
-proc scalarMulUnsafeWNAFBench*(EC: typedesc, bits, window: static int, iters: int) =
+proc scalarMulVartimeWNAFBench*(EC: typedesc, bits, window: static int, iters: int) =
   var r {.noInit.}: EC
   var P = rng.random_unsafe(EC)
   P.clearCofactor()
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
-  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (unsafe wNAF-" & $window & ")", EC, iters):
+  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (vartime wNAF-" & $window & ")", EC, iters):
     r = P
     r.scalarMul_minHammingWeight_windowed_vartime(exponent, window)
+
+proc scalarMulVartimeEndoWNAFBench*(EC: typedesc, bits, window: static int, iters: int) =
+  var r {.noInit.}: EC
+  var P = rng.random_unsafe(EC)
+  P.clearCofactor()
+
+  let exponent = rng.random_unsafe(BigInt[bits])
+
+  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (vartime endomorphism + wNAF-" & $window & ")", EC, iters):
+    r = P
+    r.scalarMulEndo_minHammingWeight_windowed_vartime(exponent, window)
 
 proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int) =
   var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](numPoints)

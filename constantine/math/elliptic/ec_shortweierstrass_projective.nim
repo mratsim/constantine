@@ -464,3 +464,220 @@ func fromAffine*[F, G](
   proj.x.csetZero(inf)
   proj.y.csetOne(inf)
   proj.z.csetZero(inf)
+
+# Variable-time
+# -------------
+
+# In some primitives like FFTs, the extra work done for constant-time
+# is amplified by O(n log n) which may result in extra tens of minutes
+# to hours of computations. Those primitives do not need constant-timeness.
+
+func sum_vartime*[F; G: static Subgroup](
+       r: var ECP_ShortW_Prj[F, G],
+       p, q: ECP_ShortW_Prj[F, G])
+       {.tags:[VarTime], meter.} =
+  ## **Variable-time** homogeneous projective addition
+  ##
+  ## This MUST NOT be used with secret data.
+  ##
+  ## This is highly VULNERABLE to timing attacks and power analysis attacks.
+
+  if p.isInf().bool:
+    r = q
+    return
+  if q.isInf().bool:
+    r = p
+    return
+
+  # Accelerate mixed additions
+  let isPz1 = p.z.isOne().bool
+  let isQz1 = q.z.isOne().bool
+
+  # Addition, Cohen et al, 1998
+  # General case:            12M + 4S + 6add + 1*2
+  # https://hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#addition-add-1998-cmo-2
+  #
+  # Y₁Z₂ = Y₁*Z₂
+  # X₁Z₂ = X₁*Z₂
+  # Z₁Z₂ = Z₁*Z₂
+  # u = Y₂*Z₁-Y₁Z₂
+  # uu = u²
+  # v = X₂*Z₁-X₁Z₂
+  # vv = v²
+  # vvv = v*vv
+  # R = vv*X₁Z₂
+  # A = uu*Z₁Z₂-vvv-2*R
+  # X₃ = v*A
+  # Y₃ = u*(R-A)-vvv*Y₁Z₂
+  # Z₃ = vvv*Z₁Z₂
+
+  var Y1Z2 {.noInit.}, R {.noInit.}: F
+  var U {.noInit.}, V {.noInit.}: F
+
+  if isQz1:
+    R = p.x
+    Y1Z2 = p.y
+  else:
+    R.prod(p.x, q.z)     # X₁Z₂
+    Y1Z2.prod(p.y, q.z)
+  if isPz1:
+    U = q.y
+    V = q.x
+  else:
+    U.prod(q.y, p.z)
+    V.prod(q.x, p.z)
+  V -= R
+
+  if V.isZero().bool:    # Same x coordinate
+    if bool(U == Y1Z2):  # case P = Q
+      r.double(p)
+      return
+    else:
+      r.setInf()         # case P = -Q
+      return
+
+  var VVV{.noInit.}: F
+
+  VVV.square(V, skipFinalSub = true)
+  R *= VVV
+  VVV *= V
+
+  r.y.diff(U, Y1Z2)      # u = Y₂*Z₁-Y₁Z₂
+  U.square(r.y)          # uu = u²
+
+  # A and Z₃ depend on Z₁Z₂
+  template A:untyped = U
+  if isQz1:
+    if isPz1:
+      r.z = VVV
+    else:
+      A.prod(U, p.z)
+      r.z.prod(VVV, p.z)
+  else:
+    if isPz1:
+      A.prod(U, q.z)
+      r.z.prod(VVV, q.z)
+    else:
+      r.z.prod(p.z, q.z, skipFinalSub = true)
+      A.prod(U, r.z)
+      r.z *= VVV
+
+  A -= VVV
+  A -= R
+  A -= R                  # A = uu*Z₁Z₂-vvv-2*R
+
+  r.x.prod(V, A)
+
+  R -= A
+  Y1Z2 *= VVV
+  r.y *= R
+  r.y -= Y1Z2
+
+func madd_vartime*[F; G: static Subgroup](
+       r: var ECP_ShortW_Prj[F, G],
+       p: ECP_ShortW_Prj[F, G],
+       q: ECP_ShortW_Aff[F, G])
+       {.tags:[VarTime], meter.} =
+  ## **Variable-time** homogeneous projective mixed addition
+  ##
+  ## This MUST NOT be used with secret data.
+  ##
+  ## This is highly VULNERABLE to timing attacks and power analysis attacks.
+
+  if p.isInf().bool:
+    r.fromAffine(q)
+    return
+  if q.isInf().bool:
+    r = p
+    return
+
+  # Accelerate mixed additions
+  let isPz1 = p.z.isOne().bool
+
+  # Addition, Cohen et al, 1998
+  # General case:            12M + 4S + 6add + 1*2
+  # https://hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#addition-add-1998-cmo-2
+  #
+  # Y₁Z₂ = Y₁*Z₂
+  # X₁Z₂ = X₁*Z₂
+  # Z₁Z₂ = Z₁*Z₂
+  # u = Y₂*Z₁-Y₁Z₂
+  # uu = u²
+  # v = X₂*Z₁-X₁Z₂
+  # vv = v²
+  # vvv = v*vv
+  # R = vv*X₁Z₂
+  # A = uu*Z₁Z₂-vvv-2*R
+  # X₃ = v*A
+  # Y₃ = u*(R-A)-vvv*Y₁Z₂
+  # Z₃ = vvv*Z₁Z₂
+
+  var Y1Z2 {.noInit.}, R {.noInit.}: F
+  var U {.noInit.}, V {.noInit.}: F
+
+  R = p.x
+  Y1Z2 = p.y
+
+  if isPz1:
+    U = q.y
+    V = q.x
+  else:
+    U.prod(q.y, p.z)
+    V.prod(q.x, p.z)
+  V -= R
+
+  if V.isZero().bool:    # Same x coordinate
+    if bool(U == Y1Z2):  # case P = Q
+      r.double(p)
+      return
+    else:
+      r.setInf()         # case P = -Q
+      return
+
+  var VVV{.noInit.}: F
+
+  VVV.square(V, skipFinalSub = true)
+  R *= VVV
+  VVV *= V
+
+  r.y.diff(U, Y1Z2)      # u = Y₂*Z₁-Y₁Z₂
+  U.square(r.y)          # uu = u²
+
+  # A and Z₃ depend on Z₁Z₂
+  template A:untyped = U
+  if isPz1:
+    r.z = VVV
+  else:
+    A.prod(U, p.z)
+    r.z.prod(VVV, p.z)
+
+  A -= VVV
+  A -= R
+  A -= R                  # A = uu*Z₁Z₂-vvv-2*R
+
+  r.x.prod(V, A)
+
+  R -= A
+  Y1Z2 *= VVV
+  r.y *= R
+  r.y -= Y1Z2
+
+func diff_vartime*(r: var ECP_ShortW_Prj, P, Q: ECP_ShortW_Prj) {.inline.} =
+  ## r = P - Q
+  ##
+  ## This MUST NOT be used with secret data.
+  ##
+  ## This is highly VULNERABLE to timing attacks and power analysis attacks.
+  var nQ {.noInit.}: typeof(Q)
+  nQ.neg(Q)
+  r.sum_vartime(P, nQ)
+
+func msub_vartime*(r: var ECP_ShortW_Prj, P: ECP_ShortW_Prj, Q: ECP_ShortW_Aff) {.inline.} =
+  ## r = P - Q
+  ##
+  ## This MUST NOT be used with secret data.
+  ##
+  ## This is highly VULNERABLE to timing attacks and power analysis attacks.
+  var nQ {.noInit.}: typeof(Q)
+  nQ.neg(Q)
+  r.madd_vartime(P, nQ)

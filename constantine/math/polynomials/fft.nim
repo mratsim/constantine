@@ -64,18 +64,18 @@ func simpleFT[EC; bits: static int](
   # FFT is a recursive algorithm
   # This is the base-case using a O(n²) algorithm
 
-  # TODO: endomorphism acceleration for windowed-NAF
-
   let L = output.len
   var last {.noInit.}, v {.noInit.}: EC
 
+  var v0w0 {.noInit.} = vals[0]
+  v0w0.scalarMul_vartime(rootsOfUnity[0])
+
   for i in 0 ..< L:
-    last = vals[0]
-    last.scalarMul_minHammingWeight_windowed_vartime(rootsOfUnity[0], window = 5)
+    last = v0w0
     for j in 1 ..< L:
       v = vals[j]
-      v.scalarMul_minHammingWeight_windowed_vartime(rootsOfUnity[(i*j) mod L], window = 5)
-      last += v
+      v.scalarMul_vartime(rootsOfUnity[(i*j) mod L])
+      last.sum_vartime(last, v)
     output[i] = last
 
 func fft_internal[EC; bits: static int](
@@ -100,11 +100,11 @@ func fft_internal[EC; bits: static int](
   for i in 0 ..< half:
     # FFT Butterfly
     y_times_root = output[i+half]
-    y_times_root   .scalarMul_minHammingWeight_windowed_vartime(rootsOfUnity[i], window = 5)
-    output[i+half] .diff(output[i], y_times_root)
-    output[i]      += y_times_root
+    y_times_root   .scalarMul_vartime(rootsOfUnity[i])
+    output[i+half] .diff_vartime(output[i], y_times_root)
+    output[i]      .sum_vartime(output[i], y_times_root)
 
-func fft*[EC](
+func fft_vartime*[EC](
        desc: ECFFT_Descriptor[EC],
        output: var openarray[EC],
        vals: openarray[EC]): FFT_Status =
@@ -121,7 +121,7 @@ func fft*[EC](
   fft_internal(voutput, vals.toStridedView(), rootz)
   return FFTS_Success
 
-func ifft*[EC](
+func ifft_vartime*[EC](
        desc: ECFFT_Descriptor[EC],
        output: var openarray[EC],
        vals: openarray[EC]): FFT_Status =
@@ -144,7 +144,7 @@ func ifft*[EC](
   invLen.invmod_vartime(invLen, EC.F.C.getCurveOrder())
 
   for i in 0 ..< output.len:
-    output[i].scalarMul_minHammingWeight_windowed_vartime(invLen, window = 5)
+    output[i].scalarMul_vartime(invLen)
 
   return FFTS_Success
 
@@ -360,12 +360,12 @@ when isMainModule:
       data[i].madd(data[i-1], BLS12_381.getGenerator("G1"))
 
     var coefs = newSeq[EC_G1](data.len)
-    let fftOk = fft(fftDesc, coefs, data)
+    let fftOk = fft_vartime(fftDesc, coefs, data)
     doAssert fftOk == FFTS_Success
     # display("coefs", 0, coefs)
 
     var res = newSeq[EC_G1](data.len)
-    let ifftOk = ifft(fftDesc, res, coefs)
+    let ifftOk = ifft_vartime(fftDesc, res, coefs)
     doAssert ifftOk == FFTS_Success
     # display("res", 0, res)
 
@@ -415,7 +415,7 @@ when isMainModule:
       # Bench
       let start = getMonotime()
       for i in 0 ..< NumIters:
-        let status = fftDesc.fft(coefsOut, data)
+        let status = fftDesc.fft_vartime(coefsOut, data)
         doAssert status == FFTS_Success
       let stop = getMonotime()
 
