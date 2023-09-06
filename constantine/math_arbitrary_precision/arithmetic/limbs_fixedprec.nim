@@ -30,7 +30,7 @@ import
 # Comparison
 # ------------------------------------------------------------
 
-func lt*(a, b: distinct LimbsViewAny, len: int): SecretBool =
+func lt*(a, b: distinct LimbsViewAny, len: int): SecretBool {.meter.} =
   ## Returns true if a < b
   ## Comparison is constant-time
   var diff: SecretWord
@@ -43,7 +43,7 @@ func lt*(a, b: distinct LimbsViewAny, len: int): SecretBool =
 # Type-erased add-sub
 # ------------------------------------------------------------
 
-func cadd*(a: LimbsViewMut, b: LimbsViewAny, ctl: SecretBool, len: int): Carry =
+func cadd*(a: LimbsViewMut, b: LimbsViewAny, ctl: SecretBool, len: int): Carry {.meter.} =
   ## Type-erased conditional addition
   ## Returns the carry
   ##
@@ -58,7 +58,7 @@ func cadd*(a: LimbsViewMut, b: LimbsViewAny, ctl: SecretBool, len: int): Carry =
     addC(result, sum, a[i], b[i], result)
     ctl.ccopy(a[i], sum)
 
-func csub*(a: LimbsViewMut, b: LimbsViewAny, ctl: SecretBool, len: int): Borrow =
+func csub*(a: LimbsViewMut, b: LimbsViewAny, ctl: SecretBool, len: int): Borrow {.meter.} =
   ## Type-erased conditional addition
   ## Returns the borrow
   ##

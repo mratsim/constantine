@@ -17,7 +17,7 @@ import
 # No exceptions allowed
 {.push raises: [], checks: off.}
 
-func mod2k_vartime*(a: var openArray[SecretWord], k: uint) =
+func mod2k_vartime*(a: var openArray[SecretWord], k: uint) {.meter.} =
   ## a <- a (mod 2ᵏ)
   const SlotShift = log2_vartime(WordBitWidth.uint32)
   const SelectMask = WordBitWidth - 1
@@ -38,7 +38,7 @@ func mod2k_vartime*(a: var openArray[SecretWord], k: uint) =
   for i in hiIndex+1 ..< a.len:
     a[i] = Zero
 
-func submod2k_vartime*(r{.noAlias.}: var openArray[SecretWord], a, b: openArray[SecretWord], k: uint) =
+func submod2k_vartime*(r{.noAlias.}: var openArray[SecretWord], a, b: openArray[SecretWord], k: uint) {.meter.} =
   ## r <- a - b (mod 2ᵏ)
   debug:
     const SlotShift = log2_vartime(WordBitWidth.uint32)
@@ -63,7 +63,7 @@ func submod2k_vartime*(r{.noAlias.}: var openArray[SecretWord], a, b: openArray[
 
   r.mod2k_vartime(k)
 
-func mulmod2k_vartime*(r: var openArray[SecretWord], a, b: openArray[SecretWord], k: uint) {.inline.} =
+func mulmod2k_vartime*(r: var openArray[SecretWord], a, b: openArray[SecretWord], k: uint) {.inline, meter.} =
   ## r <- a*b (mod 2ᵏ)
   r.prod(a, b)
   r.mod2k_vartime(k)
@@ -75,7 +75,7 @@ iterator unpackLE(scalarByte: byte): bool =
 func powMod2k_vartime*(
        r{.noAlias.}: var openArray[SecretWord],
        a{.noAlias.}: openArray[SecretWord],
-       exponent: openArray[byte], k: uint) {.noInline, tags: [Alloca].} =
+       exponent: openArray[byte], k: uint) {.noInline, tags: [Alloca], meter.} =
   ## r <- a^exponent (mod 2ᵏ)
   ##
   ## Requires:
@@ -155,7 +155,7 @@ func powMod2k_vartime*(
 func invModBitwidth(a: SecretWord): SecretWord {.borrow.}
   ## Inversion a⁻¹ (mod 2³²) or a⁻¹ (mod 2⁶⁴)
 
-func invMod2k_vartime*(r: var openArray[SecretWord], a: openArray[SecretWord], k: uint) {.noInline, tags: [Alloca].} =
+func invMod2k_vartime*(r: var openArray[SecretWord], a: openArray[SecretWord], k: uint) {.noInline, tags: [Alloca], meter.} =
   ## Inversion a⁻¹ (mod 2ᵏ)
   ## with 2ᵏ a multi-precision integer.
   #

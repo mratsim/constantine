@@ -88,7 +88,7 @@ func batchAffine*[N: static int, F, G](
 func batchAffine*[F, G](
        affs: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
        jacs: ptr UncheckedArray[ECP_ShortW_Jac[F, G]],
-       N: int) {.noInline, tags:[Alloca].} =
+       N: int) {.noInline, tags:[Alloca], meter.} =
   # Algorithm: Montgomery's batch inversion
   # - Speeding the Pollard and Elliptic Curve Methods of Factorization
   #   Section 10.3.1

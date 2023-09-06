@@ -142,7 +142,7 @@ func shlAddMod(a: LimbsViewMut, aLen: int,
 
 func reduce*(r: LimbsViewMut,
             a: LimbsViewAny, aBits: int,
-            M: LimbsViewConst, mBits: int) =
+            M: LimbsViewConst, mBits: int) {.meter.} =
   ## Reduce `a` modulo `M` and store the result in `r`
   ##
   ## The modulus `M` most-significant bit at `mBits` MUST be set.

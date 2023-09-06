@@ -33,6 +33,11 @@ proc reportCli*(metrics: seq[Metadata], flags: string) =
     for m in metrics:
       if m.numCalls == 0:
         continue
+
+      let shortname = block:
+        if m.procName.len <= 150: m.procName.replace('\n', ' ')
+        else: m.procName[0..145].replace('\n', ' ') & " ..."
+
       # TODO: running variance / standard deviation but the Welford method is quite costly.
       #       https://nim-lang.org/docs/stats.html / https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
       let cumulTimeUs = m.cumulatedTimeNs.float64 * 1e-3
@@ -40,11 +45,11 @@ proc reportCli*(metrics: seq[Metadata], flags: string) =
       let throughput = 1e6 / avgTimeUs
       let cumulCyclesBillions = m.cumulatedCycles.float64 * 1e-9
       let avgCyclesBillions = cumulCyclesBillions / m.numCalls.float64
-      echo &"""|{m.procName:<150}|{m.numCalls:>14}|{throughput:>20.3f}|{cumulTimeUs:>15.3f}|{avgTimeUs:>17.3f}|"""
+      echo &"""|{shortname:<150}|{m.numCalls:>14}|{throughput:>20.3f}|{cumulTimeUs:>15.3f}|{avgTimeUs:>17.3f}|"""
     echo lineSep
 
   else:
-    const lineSep = &"""|{'-'.repeat(50)}|{'-'.repeat(14)}|{'-'.repeat(20)}|{'-'.repeat(15)}|{'-'.repeat(17)}|"""
+    const lineSep = &"""|{'-'.repeat(150)}|{'-'.repeat(14)}|{'-'.repeat(20)}|{'-'.repeat(15)}|{'-'.repeat(17)}|"""
     echo "\n"
     echo lineSep
     echo &"""|{"Procedures":^150}|{"# of Calls":^14}|{"Throughput (ops/s)":^20}|{"Time (µs)":^15}|{"Avg Time (µs)":^17}|"""
@@ -53,10 +58,15 @@ proc reportCli*(metrics: seq[Metadata], flags: string) =
     for m in metrics:
       if m.numCalls == 0:
         continue
+
+      let shortname = block:
+        if m.procName.len <= 150: m.procName.replace('\n', ' ')
+        else: m.procName[0..145].replace('\n', ' ') & " ..."
+
       # TODO: running variance / standard deviation but the Welford method is quite costly.
       #       https://nim-lang.org/docs/stats.html / https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford's_online_algorithm
       let cumulTimeUs = m.cumulatedTimeNs.float64 * 1e-3
       let avgTimeUs = cumulTimeUs / m.numCalls.float64
       let throughput = 1e6 / avgTimeUs
-      echo &"""|{m.procName:<150}|{m.numCalls:>14}|{throughput:>20.3f}|{cumulTimeUs:>15.3f}|{avgTimeUs:>17.3f}|"""
+      echo &"""|{shortname:<150}|{m.numCalls:>14}|{throughput:>20.3f}|{cumulTimeUs:>15.3f}|{avgTimeUs:>17.3f}|"""
     echo lineSep

@@ -46,7 +46,7 @@ func powOddMod_vartime*(
        a: openArray[SecretWord],
        exponent: openArray[byte],
        M: openArray[SecretWord],
-       window: int) {.noInline, tags:[Alloca, VarTime].} =
+       window: int) {.noInline, tags:[Alloca, VarTime], meter.} =
   ## r <- a^exponent (mod M) with M odd
   ## assumes a < M
   ##
@@ -97,7 +97,7 @@ func powMod_vartime*(
        a: openArray[SecretWord],
        exponent: openArray[byte],
        M: openArray[SecretWord],
-       window: int) {.noInline, tags:[Alloca, VarTime].} =
+       window: int) {.noInline, tags:[Alloca, VarTime], meter.} =
   ## r <- a^exponent (mod M) with M odd
   ## assumes a < exponent
   ##
