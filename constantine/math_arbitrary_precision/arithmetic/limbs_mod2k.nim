@@ -109,7 +109,7 @@ func powMod2k_vartime*(
   for i in 0 ..< r.len:
     r[i] = Zero
 
-  let msb = getMSB_vartime(exponent)
+  let msb = getMSB_BE_vartime(exponent)
 
   if msb == -1: # exponent is 0
     r[0] = One  # x⁰ = 1, even for 0⁰
