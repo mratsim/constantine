@@ -10,7 +10,7 @@ import
   std/[os, unittest, strutils],
   pkg/jsony,
   ../constantine/ethereum_bls_signatures,
-  ../constantine/platforms/codecs,
+  ../constantine/serialization/codecs,
   ../constantine/hashes
 
 type
@@ -116,7 +116,7 @@ testGen(deserialization_G1, testVector, DeserG1_test):
   var pubkey{.noInit.}: PublicKey
 
   let status = pubkey.deserialize_pubkey_compressed(testVector.input.pubkey)
-  let success = status == cttBLS_Success or status == cttBLS_PointAtInfinity
+  let success = status == cttCodecEcc_Success or status == cttCodecEcc_PointAtInfinity
 
   doAssert success == testVector.output, block:
     "\nDeserialization differs from expected \n" &
@@ -127,7 +127,7 @@ testGen(deserialization_G1, testVector, DeserG1_test):
     var s{.noInit.}: array[48, byte]
 
     let status2 = s.serialize_pubkey_compressed(pubkey)
-    doAssert status2 == cttBLS_Success
+    doAssert status2 == cttCodecEcc_Success
     doAssert s == testVector.input.pubkey, block:
       "\nSerialization roundtrip differs from expected \n" &
       "   serialized: 0x" & $s.toHex() & " (" & $status2 & ")\n" &
@@ -137,7 +137,7 @@ testGen(deserialization_G2, testVector, DeserG2_test):
   var sig{.noInit.}: Signature
 
   let status = sig.deserialize_signature_compressed(testVector.input.signature)
-  let success = status == cttBLS_Success or status == cttBLS_PointAtInfinity
+  let success = status == cttCodecEcc_Success or status == cttCodecEcc_PointAtInfinity
 
   doAssert success == testVector.output, block:
     "\nDeserialization differs from expected \n" &
@@ -148,7 +148,7 @@ testGen(deserialization_G2, testVector, DeserG2_test):
     var s{.noInit.}: array[96, byte]
 
     let status2 = s.serialize_signature_compressed(sig)
-    doAssert status2 == cttBLS_Success
+    doAssert status2 == cttCodecEcc_Success
     doAssert s == testVector.input.signature, block:
       "\nSerialization roundtrip differs from expected \n" &
       "   serialized: 0x" & $s.toHex() & " (" & $status2 & ")\n" &
@@ -159,18 +159,16 @@ testGen(sign, testVector, Sign_test):
   var sig{.noInit.}: Signature
 
   let status = seckey.deserialize_seckey(testVector.input.privkey)
-  if status != cttBLS_Success:
+  if status != cttCodecScalar_Success:
     doAssert testVector.output == default(array[96, byte])
-    let status2 = sig.sign(seckey, testVector.input.message)
-    doAssert status2 != cttBLS_Success
+    sig.sign(seckey, testVector.input.message)
   else:
-    let status2 = sig.sign(seckey, testVector.input.message)
-    doAssert status2 == cttBLS_Success
+    sig.sign(seckey, testVector.input.message)
 
     block: # deserialize the output for extra codec testing
       var output{.noInit.}: Signature
-      let status3 = output.deserialize_signature_compressed(testVector.output)
-      doAssert status3 == cttBLS_Success
+      let status2 = output.deserialize_signature_compressed(testVector.output)
+      doAssert status2 == cttCodecEcc_Success
       doAssert signatures_are_equal(sig, output), block:
         var sig_bytes{.noInit.}: array[96, byte]
         var roundtrip{.noInit.}: array[96, byte]
@@ -184,32 +182,32 @@ testGen(sign, testVector, Sign_test):
 
     block: # serialize the result for extra codec testing
       var sig_bytes{.noInit.}: array[96, byte]
-      let status3 = sig_bytes.serialize_signature_compressed(sig)
-      doAssert status3 == cttBLS_Success
+      let status2 = sig_bytes.serialize_signature_compressed(sig)
+      doAssert status2 == cttCodecEcc_Success
       doAssert sig_bytes == testVector.output, block:
          "\nResult signature differs from expected \n" &
-         "   computed: 0x" & $sig_bytes.toHex() & " (" & $status3 & ")\n" &
+         "   computed: 0x" & $sig_bytes.toHex() & " (" & $status2 & ")\n" &
          "   expected: 0x" & $testVector.output.toHex()
 
 testGen(verify, testVector, Verify_test):
   var
     pubkey{.noInit.}: PublicKey
     signature{.noInit.}: Signature
-    status = cttBLS_VerificationFailure
+    status = (cttBLS_VerificationFailure, cttCodecEcc_InvalidEncoding)
 
   block testChecks:
-    status = pubkey.deserialize_pubkey_compressed(testVector.input.pubkey)
-    if status notin {cttBLS_Success, cttBLS_PointAtInfinity}:
+    status[1] = pubkey.deserialize_pubkey_compressed(testVector.input.pubkey)
+    if status[1] notin {cttCodecEcc_Success, cttCodecEcc_PointAtInfinity}:
       # For point at infinity, we want to make sure that "verify" itself handles them.
       break testChecks
-    status = signature.deserialize_signature_compressed(testVector.input.signature)
-    if status notin {cttBLS_Success, cttBLS_PointAtInfinity}:
+    status[1] = signature.deserialize_signature_compressed(testVector.input.signature)
+    if status[1] notin {cttCodecEcc_Success, cttCodecEcc_PointAtInfinity}:
       # For point at infinity, we want to make sure that "verify" itself handles them.
       break testChecks
 
-    status = pubkey.verify(testVector.input.message, signature)
+    status[0] = pubkey.verify(testVector.input.message, signature)
 
-  let success = status == cttBLS_Success
+  let success = status == (cttBLS_Success, cttCodecEcc_Success)
   doAssert success == testVector.output, block:
     "Verification differs from expected \n" &
     "   valid sig? " & $success & " (" & $status & ")\n" &
@@ -219,36 +217,36 @@ testGen(verify, testVector, Verify_test):
     block:
       var output{.noInit.}: array[48, byte]
       let s = output.serialize_pubkey_compressed(pubkey)
-      doAssert s == cttBLS_Success
+      doAssert s == cttCodecEcc_Success
       doAssert output == testVector.input.pubkey
 
     block:
       var output{.noInit.}: array[96, byte]
       let s = output.serialize_signature_compressed(signature)
-      doAssert s == cttBLS_Success
+      doAssert s == cttCodecEcc_Success
       doAssert output == testVector.input.signature
 
 testGen(fast_aggregate_verify, testVector, FastAggregateVerify_test):
   var
     pubkeys = newSeq[PublicKey](testVector.input.pubkeys.len)
     signature{.noInit.}: Signature
-    status = cttBLS_VerificationFailure
+    status = (cttBLS_VerificationFailure, cttCodecEcc_InvalidEncoding)
 
   block testChecks:
     for i in 0 ..< testVector.input.pubkeys.len:
-      status = pubkeys[i].deserialize_pubkey_compressed(testVector.input.pubkeys[i])
-      if status notin {cttBLS_Success, cttBLS_PointAtInfinity}:
+      status[1] = pubkeys[i].deserialize_pubkey_compressed(testVector.input.pubkeys[i])
+      if status[1] notin {cttCodecEcc_Success, cttCodecEcc_PointAtInfinity}:
         # For point at infinity, we want to make sure that "verify" itself handles them.
         break testChecks
 
-    status = signature.deserialize_signature_compressed(testVector.input.signature)
-    if status notin {cttBLS_Success, cttBLS_PointAtInfinity}:
+    status[1] = signature.deserialize_signature_compressed(testVector.input.signature)
+    if status[1] notin {cttCodecEcc_Success, cttCodecEcc_PointAtInfinity}:
       # For point at infinity, we want to make sure that "verify" itself handles them.
       break testChecks
 
-    status = pubkeys.fast_aggregate_verify(testVector.input.message, signature)
+    status[0] = pubkeys.fast_aggregate_verify(testVector.input.message, signature)
 
-  let success = status == cttBLS_Success
+  let success = status == (cttBLS_Success, cttCodecEcc_Success)
   doAssert success == testVector.output, block:
     "Verification differs from expected \n" &
     "   valid sig? " & $success & " (" & $status & ")\n" &
@@ -258,23 +256,23 @@ testGen(aggregate_verify, testVector, AggregateVerify_test):
   var
     pubkeys = newSeq[PublicKey](testVector.input.pubkeys.len)
     signature{.noInit.}: Signature
-    status = cttBLS_VerificationFailure
+    status = (cttBLS_VerificationFailure, cttCodecEcc_InvalidEncoding)
 
   block testChecks:
     for i in 0 ..< testVector.input.pubkeys.len:
-      status = pubkeys[i].deserialize_pubkey_compressed(testVector.input.pubkeys[i])
-      if status notin {cttBLS_Success, cttBLS_PointAtInfinity}:
+      status[1] = pubkeys[i].deserialize_pubkey_compressed(testVector.input.pubkeys[i])
+      if status[1] notin {cttCodecEcc_Success, cttCodecEcc_PointAtInfinity}:
         # For point at infinity, we want to make sure that "verify" itself handles them.
         break testChecks
 
-    status = signature.deserialize_signature_compressed(testVector.input.signature)
-    if status notin {cttBLS_Success, cttBLS_PointAtInfinity}:
+    status[1] = signature.deserialize_signature_compressed(testVector.input.signature)
+    if status[1] notin {cttCodecEcc_Success, cttCodecEcc_PointAtInfinity}:
       # For point at infinity, we want to make sure that "verify" itself handles them.
       break testChecks
 
-    status = pubkeys.aggregate_verify(testVector.input.messages, signature)
+    status[0] = pubkeys.aggregate_verify(testVector.input.messages, signature)
 
-  let success = status == cttBLS_Success
+  let success = status == (cttBLS_Success, cttCodecEcc_Success)
   doAssert success == testVector.output, block:
     "Verification differs from expected \n" &
     "   valid sig? " & $success & " (" & $status & ")\n" &
@@ -284,26 +282,26 @@ testGen(batch_verify, testVector, BatchVerify_test):
   var
     pubkeys = newSeq[PublicKey](testVector.input.pubkeys.len)
     signatures = newSeq[Signature](testVector.input.signatures.len)
-    status = cttBLS_VerificationFailure
+    status = (cttBLS_VerificationFailure, cttCodecEcc_InvalidEncoding)
 
   block testChecks:
     for i in 0 ..< testVector.input.pubkeys.len:
-      status = pubkeys[i].deserialize_pubkey_compressed(testVector.input.pubkeys[i])
-      if status notin {cttBLS_Success, cttBLS_PointAtInfinity}:
+      status[1] = pubkeys[i].deserialize_pubkey_compressed(testVector.input.pubkeys[i])
+      if status[1] notin {cttCodecEcc_Success, cttCodecEcc_PointAtInfinity}:
         # For point at infinity, we want to make sure that "verify" itself handles them.
         break testChecks
 
     for i in 0 ..< testVector.input.signatures.len:
-      status = signatures[i].deserialize_signature_compressed(testVector.input.signatures[i])
-      if status notin {cttBLS_Success, cttBLS_PointAtInfinity}:
+      status[1] = signatures[i].deserialize_signature_compressed(testVector.input.signatures[i])
+      if status[1] notin {cttCodecEcc_Success, cttCodecEcc_PointAtInfinity}:
         # For point at infinity, we want to make sure that "verify" itself handles them.
         break testChecks
 
     let randomBytes = sha256.hash("totally non-secure source of entropy")
 
-    status = pubkeys.batch_verify(testVector.input.messages, signatures, randomBytes)
+    status[0] = pubkeys.batch_verify(testVector.input.messages, signatures, randomBytes)
 
-  let success = status == cttBLS_Success
+  let success = status == (cttBLS_Success, cttCodecEcc_Success)
   doAssert success == testVector.output, block:
     "Verification differs from expected \n" &
     "   valid sig? " & $success & " (" & $status & ")\n" &

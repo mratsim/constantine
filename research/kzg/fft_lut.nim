@@ -17,7 +17,7 @@ import
 # we can precompute everything in Sage
 # and auto-generate the file.
 
-const BLS12_381_Fr_primitive_root = 5
+const BLS12_381_Fr_primitive_root = 7
 
 func buildRootLUT(F: type Fr): array[32, F] =
   ## [pow(PRIMITIVE_ROOT, (MODULUS - 1) // (2**i), MODULUS) for i in range(32)]

@@ -6,7 +6,7 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import ./abstractions
+import ../platforms/abstractions
 
 # perf critical we don't want bound checks here
 # So no checks and we avoid signed int to ensur eno exceptions.
@@ -88,9 +88,26 @@ func dumpRawInt*(
     for i in 0'u ..< L:
       dst[cursor+i] = toByte(src shr ((L-i-1) * 8))
 
-func toBytesBE*(num: SomeUnsignedInt): array[sizeof(num), byte] {.noInit, inline.}=
+func toBytes*(num: SomeUnsignedInt, endianness: static Endianness): array[sizeof(num), byte] {.noInit, inline.}=
   ## Store an integer into an array of bytes
   ## in big endian representation
   const L = sizeof(num)
-  for i in 0 ..< L:
-    result[i] = toByte(num shr ((L-1-i) * 8))
+  when endianness == bigEndian:
+    for i in 0 ..< L:
+      result[i] = toByte(num shr ((L-1-i) * 8))
+  else:
+    for i in 0 ..< L:
+      result[i] = toByte(num shr (i * 8))
+
+func fromBytes*(T: type SomeUnsignedInt, bytes: openArray[byte], endianness: static Endianness): T {.inline.} =
+  const L = sizeof(T)
+  debug:
+    doAssert bytes.len == L
+
+  # Note: result is zero-init
+  when endianness == cpuEndian:
+    for i in 0 ..< L:
+      result = result or (T(bytes[i]) shl (i*8))
+  else:
+    for i in 0 ..< L:
+      result = result or (T(bytes[i]) shl ((L-1-i) * 8))

@@ -18,43 +18,39 @@ int main(){
   // Initialize the runtime. For Constantine, it populates the CPU runtime detection dispatch.
   ctt_eth_bls_init_NimMain();
 
-  ctt_eth_bls_status status;
+  // Protocol and deserialization statuses
+  ctt_eth_bls_status      bls_status;
+  ctt_codec_scalar_status scalar_status;
+  ctt_codec_ecc_status    ecc_status;
 
   // Declare an example insecure non-cryptographically random non-secret key. DO NOT USE IN PRODUCTION.
   byte raw_seckey[32] = "Security pb becomes key mgmt pb!";
   ctt_eth_bls_seckey seckey;
 
-  status = ctt_eth_bls_deserialize_seckey(&seckey, raw_seckey);
-  if (status != cttBLS_Success) {
-    printf("Secret key deserialization failure: status %d - %s\n", status, ctt_eth_bls_status_to_string(status));
+  scalar_status = ctt_eth_bls_deserialize_seckey(&seckey, raw_seckey);
+  if (scalar_status != cttCodecScalar_Success) {
+    printf(
+      "Secret key deserialization failure: status %d - %s\n",
+      scalar_status,
+      ctt_codec_scalar_status_to_string(scalar_status)
+    );
     exit(1);
   }
 
   // Derive the matching public key
   ctt_eth_bls_pubkey pubkey;
-
-  status = ctt_eth_bls_derive_pubkey(&pubkey, &seckey);
-  if (status != cttBLS_Success) {
-    printf("Public key derivation failure: status %d - %s\n", status, ctt_eth_bls_status_to_string(status));
-    exit(1);
-  }
+  ctt_eth_bls_derive_pubkey(&pubkey, &seckey);
 
   // Sign a message
   byte message[32];
   ctt_eth_bls_signature sig;
-
   ctt_eth_bls_sha256_hash(message, "Mr F was here", 13, /* clear_memory = */ 0);
-
-  status = ctt_eth_bls_sign(&sig, &seckey, message, 32);
-  if (status != cttBLS_Success) {
-    printf("Message signing failure: status %d - %s\n", status, ctt_eth_bls_status_to_string(status));
-    exit(1);
-  }
+  ctt_eth_bls_sign(&sig, &seckey, message, 32);
 
   // Verify that a signature is valid for a message under the provided public key
-  status = ctt_eth_bls_verify(&pubkey, message, 32, &sig);
-  if (status != cttBLS_Success) {
-    printf("Signature verification failure: status %d - %s\n", status, ctt_eth_bls_status_to_string(status));
+  bls_status = ctt_eth_bls_verify(&pubkey, message, 32, &sig);
+  if (bls_status != cttBLS_Success) {
+    printf("Signature verification failure: status %d - %s\n", bls_status, ctt_eth_bls_status_to_string(bls_status));
     exit(1);
   }
 

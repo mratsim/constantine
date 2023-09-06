@@ -1,0 +1,5 @@
+input:
+  blobs: []
+  commitments: []
+  proofs: []
+output: true

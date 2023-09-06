@@ -200,7 +200,7 @@ proc msmJacExt_vartime_parallel*[bits: static int, EC, F, G](
       for _ in 0 ..< c:
         r[].double()
       discard sync miniMSMsReady[w]
-      r[] += miniMSMsResults[w]
+      r[].sum_vartime(r[], miniMSMsResults[w])
   elif numWindows >= 2:
     discard sync miniMSMsReady[numWindows-2]
     r[] = miniMSMsResults[numWindows-2]
@@ -208,7 +208,7 @@ proc msmJacExt_vartime_parallel*[bits: static int, EC, F, G](
       for _ in 0 ..< c:
         r[].double()
       discard sync miniMSMsReady[w]
-      r[] += miniMSMsResults[w]
+      r[].sum_vartime(r[], miniMSMsResults[w])
 
   # Cleanup
   # -------
@@ -389,7 +389,7 @@ proc msmAffine_vartime_parallel*[bits: static int, EC, F, G](
       for _ in 0 ..< c:
         r[].double()
       discard sync miniMSMsReady[w]
-      r[] += miniMSMsResults[w]
+      r[].sum_vartime(r[], miniMSMsResults[w])
   elif numWindows >= 2:
     discard sync miniMSMsReady[numWindows-2]
     r[] = miniMSMsResults[numWindows-2]
@@ -397,7 +397,7 @@ proc msmAffine_vartime_parallel*[bits: static int, EC, F, G](
       for _ in 0 ..< c:
         r[].double()
       discard sync miniMSMsReady[w]
-      r[] += miniMSMsResults[w]
+      r[].sum_vartime(r[], miniMSMsResults[w])
 
   # Cleanup
   # -------
@@ -446,7 +446,7 @@ proc msmAffine_vartime_parallel_split[bits: static int, EC, F, G](
 
   for i in countdown(msmParallelism-2, 0):
     discard sync splitMSMsReady[i]
-    r[] += splitMSMsResults[i]
+    r[].sum_vartime(r[], splitMSMsResults[i])
 
   freeHeap(splitMSMsResults)
 

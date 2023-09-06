@@ -16,6 +16,7 @@ import
   ../../constantine/math/arithmetic,
   ../../constantine/platforms/abstractions,
   # Test utilities
+  ../../constantine/serialization/codecs,
   ../../helpers/prng_unsafe
 
 echo "\n------------------------------------------------------\n"
@@ -60,6 +61,10 @@ proc main() =
   mpz_init(r)
   mpz_init(a)
   mpz_init(b)
+  defer:
+    mpz_clear(b)
+    mpz_clear(a)
+    mpz_clear(r)
 
   testRandomModSizes(12, rBits, aBits, bBits):
     # echo "--------------------------------------------------------------------------------"
@@ -117,8 +122,8 @@ proc main() =
       discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
       discard mpz_export(bBuf[0].addr, bW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, b)
       "\nMultiplication with operands\n" &
-      "  a (" & align($aBits, 4) & "-bit):   " & aBuf.toHex & "\n" &
-      "  b (" & align($bBits, 4) & "-bit):   " & bBuf.toHex & "\n" &
+      "  a (" & align($aBits, 4) & "-bit):   " & aBuf.toHex() & "\n" &
+      "  b (" & align($bBits, 4) & "-bit):   " & bBuf.toHex() & "\n" &
       "into r of size " & align($rBits, 4) & "-bit failed:" & "\n" &
       "  GMP:            " & rGMP.toHex() & "\n" &
       "  Constantine:    " & rConstantine.toHex() & "\n" &

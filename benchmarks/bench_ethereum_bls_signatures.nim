@@ -36,16 +36,15 @@ proc demoKeyGen(): tuple[seckey: SecretKey, pubkey: PublicKey] =
   # The API for keygen is not ready in ethereum_bls_signatures
   let ikm = rng.random_byte_seq(32)
   doAssert cast[ptr BigInt[255]](result.seckey.addr)[].derive_master_secretKey(ikm)
-  let ok = result.pubkey.derive_pubkey(result.seckey)
-  doAssert ok == cttBLS_Success
+  result.pubkey.derive_pubkey(result.seckey)
 
 proc benchDeserPubkey*(iters: int) =
   let (sk, pk) = demoKeyGen()
   var pk_comp{.noInit.}: array[48, byte]
 
   # Serialize compressed
-  let ok = pk_comp.serialize_pubkey_compressed(pk)
-  doAssert ok == cttBLS_Success
+  let status = pk_comp.serialize_pubkey_compressed(pk)
+  doAssert status == cttCodecEcc_Success
 
   var pk2{.noInit.}: PublicKey
 
@@ -57,8 +56,8 @@ proc benchDeserPubkeyUnchecked*(iters: int) =
   var pk_comp{.noInit.}: array[48, byte]
 
   # Serialize compressed
-  let ok = pk_comp.serialize_pubkey_compressed(pk)
-  doAssert ok == cttBLS_Success
+  let status = pk_comp.serialize_pubkey_compressed(pk)
+  doAssert status == cttCodecEcc_Success
 
   var pk2{.noInit.}: PublicKey
 
@@ -73,12 +72,11 @@ proc benchDeserSig*(iters: int) =
     sig_comp{.noInit.}: array[96, byte]
     sig {.noInit.}: Signature
 
-  let status = sig.sign(sk, msg)
-  doAssert status == cttBLS_Success
+  sig.sign(sk, msg)
 
   # Serialize compressed
-  let ok = sig_comp.serialize_signature_compressed(sig)
-  doAssert ok == cttBLS_Success
+  let status = sig_comp.serialize_signature_compressed(sig)
+  doAssert status == cttCodecEcc_Success
 
   var sig2{.noInit.}: Signature
 
@@ -93,12 +91,11 @@ proc benchDeserSigUnchecked*(iters: int) =
     sig_comp{.noInit.}: array[96, byte]
     sig {.noInit.}: Signature
 
-  let status = sig.sign(sk, msg)
-  doAssert status == cttBLS_Success
+  sig.sign(sk, msg)
 
   # Serialize compressed
-  let ok = sig_comp.serialize_signature_compressed(sig)
-  doAssert ok == cttBLS_Success
+  let status = sig_comp.serialize_signature_compressed(sig)
+  doAssert status == cttCodecEcc_Success
 
   var sig2{.noInit.}: Signature
 
@@ -112,15 +109,14 @@ proc benchSign*(iters: int) =
   var sig: Signature
 
   bench("BLS signature", "BLS12_381 G2", iters):
-    let status = sig.sign(sk, msg)
+    sig.sign(sk, msg)
 
 proc benchVerify*(iters: int) =
   let (sk, pk) = demoKeyGen()
   let msg = "Mr F was here"
 
   var sig: Signature
-  let ok = sig.sign(sk, msg)
-  doAssert ok == cttBLS_Success
+  sig.sign(sk, msg)
 
   bench("BLS verification", "BLS12_381", iters):
     let valid = pk.verify(msg, sig)
@@ -136,8 +132,7 @@ proc benchFastAggregateVerify*(numKeys, iters: int) =
   for i in 0 ..< numKeys:
     let (sk, pk) = demoKeyGen()
     validators[i] = pk
-    let status = sigs[i].sign(sk, msg)
-    doAssert status == cttBLS_Success
+    sigs[i].sign(sk, msg)
 
   aggSig.aggregate_signatures_unstable_api(sigs)
 
@@ -155,8 +150,7 @@ proc benchVerifyMulti*(numSigs, iters: int) =
   for i in 0 ..< numSigs:
     let (sk, pk) = demoKeyGen()
     sha256.hash(hashedMsg, "msg" & $i)
-    let status = sig.sign(sk, hashedMsg)
-    doAssert status == cttBLS_Success
+    sig.sign(sk, hashedMsg)
     triplets.add (pk, hashedMsg, sig)
 
   bench("BLS verif of " & $numSigs & " msgs by "& $numSigs & " pubkeys", "BLS12_381", iters):
@@ -178,8 +172,7 @@ proc benchVerifyBatched*(numSigs, iters: int) =
   for i in 0 ..< numSigs:
     let (sk, pk) = demoKeyGen()
     sha256.hash(hashedMsg, "msg" & $i)
-    let status = sig.sign(sk, hashedMsg)
-    doAssert status == cttBLS_Success
+    sig.sign(sk, hashedMsg)
 
     pubkeys.add pk
     messages.add hashedMsg

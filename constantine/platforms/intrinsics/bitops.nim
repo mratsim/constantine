@@ -49,6 +49,12 @@ when GCC_Compatible:
       else:
         builtin_ctz(n.uint32)
 
+  func builtin_swapBytes(n: uint32): uint32 {.importc: "__builtin_bswap32", nodecl.}
+  func builtin_swapBytes(n: uint64): uint64 {.importc: "__builtin_bswap64", nodecl.}
+
+  func swapBytes_c_compiler*(n: SomeUnsignedInt): SomeUnsignedInt {.inline.} =
+    builtin_swapBytes(n)
+
 elif defined(icc):
   func bitScanReverse(r: var uint32, n: uint32): uint8 {.importc: "_BitScanReverse", header: "<immintrin.h>".}
     ## Returns 0 if n is zero and non-zero otherwise
@@ -93,6 +99,12 @@ elif defined(icc):
     else:
       bitscan(bitScanForward, c.uint32, default = 0)
 
+  func builtin_swapBytes(n: uint32): uint32 {.importc: "_bswap", nodecl.}
+  func builtin_swapBytes(n: uint64): uint64 {.importc: "_bswap64", nodecl.}
+
+  func swapBytes_c_compiler*(n: SomeUnsignedInt): SomeUnsignedInt {.inline.} =
+    builtin_swapBytes(n)
+
 elif defined(vcc):
   func bitScanReverse(p: ptr uint32, b: uint32): uint8 {.importc: "_BitScanReverse", header: "<intrin.h>".}
     ## Returns 0 if n s no set bit and non-zero otherwise
@@ -136,6 +148,12 @@ elif defined(vcc):
       bitscan(bitScanForward64, n, default = sizeof(n) * 8)
     else:
       bitscan(bitScanForward, c.uint32, default = sizeof(n) * 8)
+
+  func builtin_swapBytes(n: uint32): uint32 {.importc: "_byteswap_ulong", cdecl, header: "<intrin.h>".}
+  func builtin_swapBytes(n: uint64): uint64 {.importc: "_byteswap_uint64", cdecl, header: "<intrin.h>".}
+
+  func swapBytes_c_compiler*(n: SomeUnsignedInt): SomeUnsignedInt {.inline.} =
+    builtin_swapBytes(n)
 
 else:
   {. error: "Unsupported compiler".}

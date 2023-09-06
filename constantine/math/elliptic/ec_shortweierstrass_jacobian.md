@@ -71,7 +71,7 @@ Let's look first at Cohen et al, 1998 formulae
 | S₁ = Y₁*Z₂*Z₂Z₂              |                                              |                 |                |
 | S₂ = Y₂*Z₁*Z₁Z₁              |                                              |                 |                |
 | H = U₂-U₁ # P=-Q, P=Inf, P=Q |                                              |                 |                |
-| F = S₂-S₁ # Q=Inf            |                                              |                 |                |
+| R = S₂-S₁ # Q=Inf            |                                              |                 |                |
 |                              |                                              |                 |                |
 | HH = H²                      | YY = Y₁²                                     |                 |                |
 | HHH = H*HH                   | M = 3*X₁²+a*ZZ²                              | 3(X₁-Z₁)(X₁+Z₁) | 3*X₁²          |

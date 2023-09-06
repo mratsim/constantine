@@ -74,13 +74,7 @@ typedef struct { struct ctt_eth_bls_fp2 x, y; } ctt_eth_bls_signature;
 typedef enum __attribute__((__packed__)) {
     cttBLS_Success,
     cttBLS_VerificationFailure,
-    cttBLS_InvalidEncoding,
-    cttBLS_CoordinateGreaterOrEqualThanModulus,
     cttBLS_PointAtInfinity,
-    cttBLS_PointNotOnCurve,
-    cttBLS_PointNotInSubgroup,
-    cttBLS_ZeroSecretKey,
-    cttBLS_SecretKeyLargerThanCurveOrder,
     cttBLS_ZeroLengthAggregation,
     cttBLS_InconsistentLengthsOfInputs,
 } ctt_eth_bls_status;
@@ -89,13 +83,7 @@ static const char* ctt_eth_bls_status_to_string(ctt_eth_bls_status status) {
   static const char* const statuses[] = {
     "cttBLS_Success",
     "cttBLS_VerificationFailure",
-    "cttBLS_InvalidEncoding",
-    "cttBLS_CoordinateGreaterOrEqualThanModulus",
     "cttBLS_PointAtInfinity",
-    "cttBLS_PointNotOnCurve",
-    "cttBLS_PointNotInSubgroup",
-    "cttBLS_ZeroSecretKey",
-    "cttBLS_SecretKeyLargerThanCurveOrder",
     "cttBLS_ZeroLengthAggregation",
     "cttBLS_InconsistentLengthsOfInputs",
   };
@@ -104,6 +92,50 @@ static const char* ctt_eth_bls_status_to_string(ctt_eth_bls_status status) {
     return statuses[status];
   }
   return "cttBLS_InvalidStatusCode";
+}
+
+typedef enum __attribute__((__packed__)) {
+    cttCodecScalar_Success,
+    cttCodecScalar_Zero,
+    cttCodecScalar_ScalarLargerThanCurveOrder,
+} ctt_codec_scalar_status;
+
+static const char* ctt_codec_scalar_status_to_string(ctt_codec_scalar_status status) {
+  static const char* const statuses[] = {
+    "cttCodecScalar_Success",
+    "cttCodecScalar_Zero",
+    "cttCodecScalar_ScalarLargerThanCurveOrder",
+  };
+  size_t length = sizeof statuses / sizeof *statuses;
+  if (0 <= status && status < length) {
+    return statuses[status];
+  }
+  return "cttCodecScalar_InvalidStatusCode";
+}
+
+typedef enum __attribute__((__packed__)) {
+    cttCodecEcc_Success,
+    cttCodecEcc_InvalidEncoding,
+    cttCodecEcc_CoordinateGreaterThanOrEqualModulus,
+    cttCodecEcc_PointNotOnCurve,
+    cttCodecEcc_PointNotInSubgroup,
+    cttCodecEcc_PointAtInfinity,
+} ctt_codec_ecc_status;
+
+static const char* ctt_codec_ecc_status_to_string(ctt_eth_bls_status status) {
+  static const char* const statuses[] = {
+    "cttCodecEcc_Success",
+    "cttCodecEcc_InvalidEncoding",
+    "cttCodecEcc_CoordinateGreaterThanOrEqualModulus",
+    "cttCodecEcc_PointNotOnCurve",
+    "cttCodecEcc_PointNotInSubgroup",
+    "cttCodecEcc_PointAtInfinity",
+  };
+  size_t length = sizeof statuses / sizeof *statuses;
+  if (0 <= status && status < length) {
+    return statuses[status];
+  }
+  return "cttCodecEcc_InvalidStatusCode";
 }
 
 // Initialization
@@ -171,13 +203,13 @@ void ctt_eth_bls_sha256_hash(byte digest[32], const byte* message, ptrdiff_t mes
 // Comparisons
 // ------------------------------------------------------------------------------------------------
 
-ctt_pure bool ctt_eth_bls_pubkey_is_zero(const ctt_eth_bls_pubkey* pubkey);
-ctt_pure bool ctt_eth_bls_signature_is_zero(const ctt_eth_bls_signature* sig);
+ctt_pure bool ctt_eth_bls_pubkey_is_zero(const ctt_eth_bls_pubkey* pubkey) __attribute__((warn_unused_result));
+ctt_pure bool ctt_eth_bls_signature_is_zero(const ctt_eth_bls_signature* sig) __attribute__((warn_unused_result));
 
 ctt_pure bool ctt_eth_bls_pubkeys_are_equal(const ctt_eth_bls_pubkey* a,
-                                            const ctt_eth_bls_pubkey* b);
+                                            const ctt_eth_bls_pubkey* b) __attribute__((warn_unused_result));
 ctt_pure bool ctt_eth_bls_signatures_are_equal(const ctt_eth_bls_signature* a,
-                                               const ctt_eth_bls_signature* b);
+                                               const ctt_eth_bls_signature* b) __attribute__((warn_unused_result));
 
 // Input validation
 // ------------------------------------------------------------------------------------------------
@@ -187,39 +219,39 @@ ctt_pure bool ctt_eth_bls_signatures_are_equal(const ctt_eth_bls_signature* a,
  *  Regarding timing attacks, this will leak timing information only if the key is invalid.
  *  Namely, the secret key is 0 or the secret key is too large.
  */
-ctt_pure ctt_eth_bls_status ctt_eth_bls_validate_seckey(const ctt_eth_bls_seckey* seckey);
+ctt_pure ctt_codec_scalar_status ctt_eth_bls_validate_seckey(const ctt_eth_bls_seckey* seckey) __attribute__((warn_unused_result));
 
 /** Validate the public key.
  *
  *  This is an expensive operation that can be cached.
  */
-ctt_pure ctt_eth_bls_status ctt_eth_bls_validate_pubkey(const ctt_eth_bls_pubkey* pubkey);
+ctt_pure ctt_codec_ecc_status ctt_eth_bls_validate_pubkey(const ctt_eth_bls_pubkey* pubkey) __attribute__((warn_unused_result));
 
 /** Validate the signature.
  *
  *  This is an expensive operation that can be cached.
  */
-ctt_pure ctt_eth_bls_status ctt_eth_bls_validate_signature(const ctt_eth_bls_signature* pubkey);
+ctt_pure ctt_codec_ecc_status ctt_eth_bls_validate_signature(const ctt_eth_bls_signature* pubkey) __attribute__((warn_unused_result));
 
 // Codecs
 // ------------------------------------------------------------------------------------------------
 /** Serialize a secret key
  *
- *  Returns cttBLS_Success if successful
+ *  Returns cttCodecScalar_Success if successful
  */
-ctt_eth_bls_status ctt_eth_bls_serialize_seckey(byte dst[32], const ctt_eth_bls_seckey* seckey);
+ctt_codec_scalar_status ctt_eth_bls_serialize_seckey(byte dst[32], const ctt_eth_bls_seckey* seckey) __attribute__((warn_unused_result));
 
 /** Serialize a public key in compressed (Zcash) format
  *
- *  Returns cttBLS_Success if successful
+ *  Returns cttCodecEcc_Success if successful
  */
-ctt_eth_bls_status ctt_eth_bls_serialize_pubkey_compressed(byte dst[48], const ctt_eth_bls_pubkey* pubkey);
+ctt_codec_ecc_status ctt_eth_bls_serialize_pubkey_compressed(byte dst[48], const ctt_eth_bls_pubkey* pubkey) __attribute__((warn_unused_result));
 
 /** Serialize a signature in compressed (Zcash) format
  *
- *  Returns cttBLS_Success if successful
+ *  Returns cttCodecEcc_Success if successful
  */
-ctt_eth_bls_status ctt_eth_bls_serialize_signature_compressed(byte dst[96], const ctt_eth_bls_signature* sig);
+ctt_codec_ecc_status ctt_eth_bls_serialize_signature_compressed(byte dst[96], const ctt_eth_bls_signature* sig) __attribute__((warn_unused_result));
 
 /** Deserialize a secret key
  *  This also validates the secret key.
@@ -227,7 +259,7 @@ ctt_eth_bls_status ctt_eth_bls_serialize_signature_compressed(byte dst[96], cons
  *  This is protected against side-channel unless your key is invalid.
  *  In that case it will like whether it's all zeros or larger than the curve order.
  */
-ctt_eth_bls_status ctt_eth_bls_deserialize_seckey(ctt_eth_bls_seckey* seckey, const byte src[32]);
+ctt_codec_scalar_status ctt_eth_bls_deserialize_seckey(ctt_eth_bls_seckey* seckey, const byte src[32]) __attribute__((warn_unused_result));
 
 /** Deserialize a public key in compressed (Zcash) format.
  *  This does not validate the public key.
@@ -238,16 +270,16 @@ ctt_eth_bls_status ctt_eth_bls_deserialize_seckey(ctt_eth_bls_seckey* seckey, co
  *    This procedure skips the very expensive subgroup checks.
  *    Not checking subgroup exposes a protocol to small subgroup attacks.
  *
- *  Returns cttBLS_Success if successful
+ *  Returns cttCodecEcc_Success if successful
  */
-ctt_eth_bls_status ctt_eth_bls_deserialize_pubkey_compressed_unchecked(ctt_eth_bls_pubkey* pubkey, const byte src[48]);
+ctt_codec_ecc_status ctt_eth_bls_deserialize_pubkey_compressed_unchecked(ctt_eth_bls_pubkey* pubkey, const byte src[48]) __attribute__((warn_unused_result));
 
 /** Deserialize a public_key in compressed (Zcash) format.
  *  This also validates the public key.
  *
- *  Returns cttBLS_Success if successful
+ *  Returns cttCodecEcc_Success if successful
  */
-ctt_eth_bls_status ctt_eth_bls_deserialize_pubkey_compressed(ctt_eth_bls_pubkey* pubkey, const byte src[48]);
+ctt_codec_ecc_status ctt_eth_bls_deserialize_pubkey_compressed(ctt_eth_bls_pubkey* pubkey, const byte src[48]) __attribute__((warn_unused_result));
 
 /** Deserialize a signature in compressed (Zcash) format.
  *  This does not validate the signature.
@@ -258,16 +290,16 @@ ctt_eth_bls_status ctt_eth_bls_deserialize_pubkey_compressed(ctt_eth_bls_pubkey*
  *    This procedure skips the very expensive subgroup checks.
  *    Not checking subgroup exposes a protocol to small subgroup attacks.
  *
- *  Returns cttBLS_Success if successful
+ *  Returns cttCodecEcc_Success if successful
  */
-ctt_eth_bls_status ctt_eth_bls_deserialize_signature_compressed_unchecked(ctt_eth_bls_signature* sig, const byte src[96]);
+ctt_codec_ecc_status ctt_eth_bls_deserialize_signature_compressed_unchecked(ctt_eth_bls_signature* sig, const byte src[96]) __attribute__((warn_unused_result));
 
 /** Deserialize a signature in compressed (Zcash) format.
  *  This also validates the signature.
  *
- *  Returns cttBLS_Success if successful
+ *  Returns cttCodecEcc_Success if successful
  */
-ctt_eth_bls_status ctt_eth_bls_deserialize_signature_compressed(ctt_eth_bls_signature* sig, const byte src[96]);
+ctt_codec_ecc_status ctt_eth_bls_deserialize_signature_compressed(ctt_eth_bls_signature* sig, const byte src[96]) __attribute__((warn_unused_result));
 
 // BLS signatures
 // ------------------------------------------------------------------------------------------------
@@ -278,7 +310,7 @@ ctt_eth_bls_status ctt_eth_bls_deserialize_signature_compressed(ctt_eth_bls_sign
  *  - A valid secret key will only leak that it is valid.
  *  - An invalid secret key will leak whether it's all zero or larger than the curve order.
  */
-ctt_eth_bls_status ctt_eth_bls_derive_pubkey(ctt_eth_bls_pubkey* pubkey, const ctt_eth_bls_seckey* seckey);
+void ctt_eth_bls_derive_pubkey(ctt_eth_bls_pubkey* pubkey, const ctt_eth_bls_seckey* seckey);
 
 /** Produce a signature for the message under the specified secret key
  *  Signature is on BLS12-381 G2 (and public key on G1)
@@ -298,9 +330,9 @@ ctt_eth_bls_status ctt_eth_bls_derive_pubkey(ctt_eth_bls_pubkey* pubkey, const c
  *  - A valid secret key will only leak that it is valid.
  *  - An invalid secret key will leak whether it's all zero or larger than the curve order.
  */
-ctt_eth_bls_status ctt_eth_bls_sign(ctt_eth_bls_signature* sig,
-                                    const ctt_eth_bls_seckey* seckey,
-                                    const byte* message, ptrdiff_t message_len);
+void ctt_eth_bls_sign(ctt_eth_bls_signature* sig,
+                      const ctt_eth_bls_seckey* seckey,
+                      const byte* message, ptrdiff_t message_len);
 
 /** Check that a signature is valid for a message
  *  under the provided public key.
@@ -323,7 +355,7 @@ ctt_eth_bls_status ctt_eth_bls_sign(ctt_eth_bls_signature* sig,
  */
 ctt_pure ctt_eth_bls_status ctt_eth_bls_verify(const ctt_eth_bls_pubkey* pubkey,
                                                const byte* message, ptrdiff_t message_len,
-                                               const ctt_eth_bls_signature* sig);
+                                               const ctt_eth_bls_signature* sig) __attribute__((warn_unused_result));
 
 // TODO: API for pubkeys and signature aggregation. Return a bool or a status code or nothing?
 
@@ -344,7 +376,7 @@ ctt_pure ctt_eth_bls_status ctt_eth_bls_verify(const ctt_eth_bls_pubkey* pubkey,
  */
 ctt_pure ctt_eth_bls_status ctt_eth_bls_fast_aggregate_verify(const ctt_eth_bls_pubkey pubkeys[], ptrdiff_t pubkeys_len,
                                                               const byte* message, ptrdiff_t message_len,
-                                                              const ctt_eth_bls_signature* aggregate_sig);
+                                                              const ctt_eth_bls_signature* aggregate_sig) __attribute__((warn_unused_result));
 
 #ifdef __cplusplus
 }

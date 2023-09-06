@@ -14,11 +14,6 @@ import
   std/[times, strformat],
   gmp
 
-# debug
-import
-  ../../constantine/platforms/codecs,
-  ../../constantine/math/io/io_bigints
-
 const # https://gmplib.org/manual/Integer-Import-and-Export.html
   GMP_WordLittleEndian = -1'i32
   GMP_WordNativeEndian = 0'i32

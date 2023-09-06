@@ -184,7 +184,7 @@ template sumImpl[F; G: static Subgroup](
   ## to simple side-channel attacks (SCA)
   ## This is done by using a "complete" or "exception-free" addition law.
   #
-  # Implementation, see write-up at the bottom.
+  # Implementation, see write-up in the accompanying Markdown file.
   # We fuse addition and doubling with condition copy by swapping
   # terms with the following table
   #
@@ -403,7 +403,7 @@ func madd*[F; G: static Subgroup](
   ## to simple side-channel attacks (SCA)
   ## This is done by using a "complete" or "exception-free" addition law.
   #
-  # Implementation, see write-up at the bottom.
+  # Implementation, see write-up in the accompanying markdown file.
   # We fuse addition and doubling with condition copy by swapping
   # terms with the following table
   #
@@ -645,9 +645,16 @@ func `-=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Aff) {.inline.} =
   nQ.neg(Q)
   P.madd(P, nQ)
 
+# Conversions
+# -----------
+
 template affine*[F, G](_: type ECP_ShortW_Jac[F, G]): typedesc =
   ## Returns the affine type that corresponds to the Jacobian type input
   ECP_ShortW_Aff[F, G]
+
+template jacobian*[F, G](_: type ECP_ShortW_Aff[F, G]): typedesc =
+  ## Returns the jacobian type that corresponds to the affine type input
+  ECP_ShortW_Jac[F, G]
 
 func affine*[F; G](
        aff: var ECP_ShortW_Aff[F, G],
@@ -667,3 +674,247 @@ func fromAffine*[F; G](
   jac.y = aff.y
   jac.z.setOne()
   jac.z.csetZero(aff.isInf())
+
+# Variable-time
+# -------------
+
+# In some primitives like FFTs, the extra work done for constant-time
+# is amplified by O(n log n) which may result in extra tens of minutes
+# to hours of computations. Those primitives do not need constant-timeness.
+
+func sum_vartime*[F; G: static Subgroup](
+       r: var ECP_ShortW_Jac[F, G],
+       p, q: ECP_ShortW_Jac[F, G])
+       {.tags:[VarTime], meter.} =
+  ## **Variable-time** Jacobian addition
+  ##
+  ## This MUST NOT be used with secret data.
+  ##
+  ## This is highly VULNERABLE to timing attacks and power analysis attacks.
+
+  if p.isInf().bool:
+    r = q
+    return
+  if q.isInf().bool:
+    r = p
+    return
+
+  # Accelerate mixed additions
+  let isPz1 = p.z.isOne().bool
+  let isQz1 = q.z.isOne().bool
+
+  # Addition, Cohen et al, 1998
+  # General case:            12M + 4S + 6add + 1*2
+  #
+  # Mixed-addition:          8M + 3S + 6add + 1*2
+  # Affine+Affine->Jacobian: 4M + 2S + 6add + 1*2
+
+  # |  Addition, Cohen et al, 1998  |
+  # |  12M + 4S + 6add + 1*2        |
+  # | ----------------------------- |
+  # | Z₁Z₁ = Z₁²                    |
+  # | Z₂Z₂ = Z₂²                    |
+  # |                               |
+  # | U₁ = X₁*Z₂Z₂                  |
+  # | U₂ = X₂*Z₁Z₁                  |
+  # | S₁ = Y₁*Z₂*Z₂Z₂               |
+  # | S₂ = Y₂*Z₁*Z₁Z₁               |
+  # | H  = U₂-U₁ # P=-Q, P=Inf, P=Q |
+  # | R  = S₂-S₁ # Q=Inf            |
+  # |                               |
+  # | HH  = H²                      |
+  # | V   = U₁*HH                   |
+  # | HHH = H*HH                    |
+  # |                               |
+  # | X₃ = R²-HHH-2*V               |
+  # | Y₃ = R*(V-X₃)-S₁*HHH          |
+  # | Z₃ = Z₁*Z₂*H                  |
+
+  var U {.noInit.}, S{.noInit.}, H{.noInit.}, R{.noInit.}: F
+
+  if not isPz1:                            # case Z₁ != 1
+    R.square(p.z, skipFinalSub = true)     #   Z₁Z₁ = Z₁²
+  if isQz1:                                # case Z₂ = 1
+    U = p.x                                #   U₁ = X₁*Z₂Z₂
+    if isPz1:                              #   case Z₁ = Z₂ = 1
+      H = q.x
+    else:
+      H.prod(q.x, R)
+    H -= U                                 #   H  = U₂-U₁
+    S = p.y                                #   S₁ = Y₁*Z₂*Z₂Z₂
+  else:                                    # case Z₂ != 1
+    S.square(q.z, skipFinalSub = true)
+    U.prod(p.x, S)                         #   U₁ = X₁*Z₂Z₂
+    if isPz1:
+      H = q.x
+    else:
+      H.prod(q.x, R)
+    H -= U                                 #   H  = U₂-U₁
+    S.prod(S, q.z, skipFinalSub = true)
+    S *= p.y                               #   S₁ = Y₁*Z₂*Z₂Z₂
+  if isPz1:
+    R = q.y
+  else:
+    R.prod(R, p.z, skipFinalSub = true)
+    R *= q.y                               #   S₂ = Y₂*Z₁*Z₁Z₁
+  R -= S                                   # R  = S₂-S₁
+
+  if H.isZero().bool:                      # Same x coordinate
+    if R.isZero().bool:                    # case P = Q
+      r.double(p)
+      return
+    else:                                  # case P = -Q
+      r.setInf()
+      return
+
+  var HHH{.noInit.}: F
+  template V: untyped = U
+
+  HHH.square(H, skipFinalSub = true)
+  V *= HHH                                # V   = U₁*HH
+  HHH *= H                                # HHH = H*HH
+
+  # X₃ = R²-HHH-2*V, we use the y coordinate as temporary (should we? cache misses?)
+  r.y.square(R)
+  r.y -= V
+  r.y -= V
+  r.x.diff(r.y, HHH)
+
+  # Y₃ = R*(V-X₃)-S₁*HHH
+  V -= r.x
+  V *= R
+  HHH *= S
+  r.y.diff(V, HHH)
+
+  # Z₃ = Z₁*Z₂*H
+  if isPz1:
+    if isQz1:
+      r.z = H
+    else:
+      r.z.prod(H, q.z)
+  else:
+    if isQz1:
+      r.z.prod(H, p.z)
+    else:
+      r.z.prod(p.z, q.z, skipFinalSub = true)
+      r.z *= H
+
+func madd_vartime*[F; G: static Subgroup](
+       r: var ECP_ShortW_Jac[F, G],
+       p: ECP_ShortW_Jac[F, G],
+       q: ECP_ShortW_Aff[F, G])
+       {.tags:[VarTime], meter.} =
+  ## **Variable-time** Jacobian mixed addition
+  ##
+  ## This MUST NOT be used with secret data.
+  ##
+  ## This is highly VULNERABLE to timing attacks and power analysis attacks.
+
+  if p.isInf().bool:
+    r.fromAffine(q)
+    return
+  if q.isInf().bool:
+    r = p
+    return
+
+  # Accelerate mixed additions
+  let isPz1 = p.z.isOne().bool
+
+  # Addition, Cohen et al, 1998
+  #
+  # Mixed-addition:          8M + 3S + 6add + 1*2
+  # Affine+Affine->Jacobian: 4M + 2S + 6add + 1*2
+
+  # |  Addition, Cohen et al, 1998  |
+  # |  12M + 4S + 6add + 1*2        |
+  # | ----------------------------- |
+  # | Z₁Z₁ = Z₁²                    |
+  # | Z₂Z₂ = Z₂²                    |
+  # |                               |
+  # | U₁ = X₁*Z₂Z₂                  |
+  # | U₂ = X₂*Z₁Z₁                  |
+  # | S₁ = Y₁*Z₂*Z₂Z₂               |
+  # | S₂ = Y₂*Z₁*Z₁Z₁               |
+  # | H  = U₂-U₁ # P=-Q, P=Inf, P=Q |
+  # | R  = S₂-S₁ # Q=Inf            |
+  # |                               |
+  # | HH  = H²                      |
+  # | V   = U₁*HH                   |
+  # | HHH = H*HH                    |
+  # |                               |
+  # | X₃ = R²-HHH-2*V               |
+  # | Y₃ = R*(V-X₃)-S₁*HHH          |
+  # | Z₃ = Z₁*Z₂*H                  |
+
+  var U {.noInit.}, S{.noInit.}, H{.noInit.}, R{.noInit.}: F
+
+  if not isPz1:                            # case Z₁ != 1
+    R.square(p.z, skipFinalSub = true)     #   Z₁Z₁ = Z₁²
+
+  U = p.x                                  #   U₁ = X₁*Z₂Z₂
+  if isPz1:                                #   case Z₁ = Z₂ = 1
+    H = q.x
+  else:
+    H.prod(q.x, R)
+  H -= U                                   #   H  = U₂-U₁
+  S = p.y                                  #   S₁ = Y₁*Z₂*Z₂Z₂
+
+  if isPz1:
+    R = q.y
+  else:
+    R.prod(R, p.z, skipFinalSub = true)
+    R *= q.y                               #   S₂ = Y₂*Z₁*Z₁Z₁
+  R -= S                                   # R  = S₂-S₁
+
+  if H.isZero().bool:                      # Same x coordinate
+    if R.isZero().bool:                    # case P = Q
+      r.double(p)
+      return
+    else:                                  # case P = -Q
+      r.setInf()
+      return
+
+  var HHH{.noInit.}: F
+  template V: untyped = U
+
+  HHH.square(H, skipFinalSub = true)
+  V *= HHH                                # V   = U₁*HH
+  HHH *= H                                # HHH = H*HH
+
+  # X₃ = R²-HHH-2*V, we use the y coordinate as temporary (should we? cache misses?)
+  r.y.square(R)
+  r.y -= V
+  r.y -= V
+  r.x.diff(r.y, HHH)
+
+  # Y₃ = R*(V-X₃)-S₁*HHH
+  V -= r.x
+  V *= R
+  HHH *= S
+  r.y.diff(V, HHH)
+
+  # Z₃ = Z₁*Z₂*H
+  if isPz1:
+    r.z = H
+  else:
+    r.z.prod(H, p.z)
+
+func diff_vartime*(r: var ECP_ShortW_Jac, P, Q: ECP_ShortW_Jac) {.inline.} =
+  ## r = P - Q
+  ##
+  ## This MUST NOT be used with secret data.
+  ##
+  ## This is highly VULNERABLE to timing attacks and power analysis attacks.
+  var nQ {.noInit.}: typeof(Q)
+  nQ.neg(Q)
+  r.sum_vartime(P, nQ)
+
+func msub_vartime*(r: var ECP_ShortW_Jac, P: ECP_ShortW_Jac, Q: ECP_ShortW_Aff) {.inline.} =
+  ## r = P - Q
+  ##
+  ## This MUST NOT be used with secret data.
+  ##
+  ## This is highly VULNERABLE to timing attacks and power analysis attacks.
+  var nQ {.noInit.}: typeof(Q)
+  nQ.neg(Q)
+  r.madd_vartime(P, nQ)

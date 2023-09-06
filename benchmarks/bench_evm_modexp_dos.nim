@@ -5,7 +5,6 @@ import
   ../constantine/platforms/abstractions,
   ./platforms, ./bench_blueprint
 
-
 proc report(op: string, elapsedNs: int64, elapsedCycles: int64, iters: int) =
   let ns = elapsedNs div iters
   let cycles = elapsedCycles div iters

@@ -9,7 +9,8 @@
 import ../zoo_exports
 
 import
-  ../platforms/[abstractions, endians, views],
+  ../platforms/[abstractions, views],
+  ../serialization/endians,
   ./sha256/sha256_generic
 
 when UseASM_X86_32:

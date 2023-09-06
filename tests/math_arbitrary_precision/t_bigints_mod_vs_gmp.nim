@@ -13,7 +13,8 @@ import
   gmp,
   # Internal
   ../../constantine/math/[arithmetic, io/io_bigints],
-  ../../constantine/platforms/[primitives, codecs],
+  ../../constantine/platforms/primitives,
+  ../../constantine/serialization/codecs,
   # Test utilities
   ../../helpers/prng_unsafe
 

@@ -15,7 +15,9 @@ import
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
-    ec_shortweierstrass_jacobian_extended
+    ec_shortweierstrass_jacobian_extended,
+    ec_twistededwards_projective,
+    ec_twistededwards_affine
   ]
 
 # No exceptions allowed
@@ -42,6 +44,32 @@ func toHex*[EC: ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff or ECP_ShortW
 
   var aff {.noInit.}: ECP_ShortW_Aff[EC.F, EC.G]
   when EC isnot ECP_ShortW_Aff:
+    aff.affine(P)
+  else:
+    aff = P
+
+  const sp = spaces(indent)
+
+  result = sp & $EC & "(\n" & sp & "  x: "
+  result.appendHex(aff.x)
+  result &= ",\n" & sp & "  y: "
+  result.appendHex(aff.y)
+  result &= "\n" & sp & ")"
+
+func toHex*[EC: ECP_TwEdwards_Aff or ECP_TwEdwards_Prj](P: EC, indent: static int = 0): string =
+  ## Stringify an elliptic curve point to Hex for Twisted Edwards Curve
+  ## Note. Leading zeros are not removed.
+  ## Result is prefixed with 0x
+  ##
+  ## Output will be padded with 0s to maintain constant-time.
+  ##
+  ## CT:
+  ##   - no leaks
+  ##
+  ## This proc output may change format in the future
+
+  var aff {.noInit.}: ECP_TwEdwards_Aff[EC.F]
+  when EC isnot ECP_TwEdwards_Aff:
     aff.affine(P)
   else:
     aff = P

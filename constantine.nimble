@@ -1,6 +1,6 @@
 packageName   = "constantine"
 version       = "0.0.1"
-author        = "Status Research & Development GmbH"
+author        = "Mamy Ratsimbazafy"
 description   = "This library provides thoroughly tested and highly-optimized implementations of cryptography protocols."
 license       = "MIT or Apache License 2.0"
 
@@ -274,9 +274,13 @@ const buildParallel = "test_parallel.txt"
 #   Basic primitives should stay on to catch compiler regressions.
 const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
 
+  # CSPRNG
+  # ----------------------------------------------------------
+  ("tests/t_csprngs.nim", false),
+
   # Hashing vs OpenSSL
   # ----------------------------------------------------------
-  ("tests/t_hash_sha256_vs_openssl.nim", true), # skip OpenSSL tests on Windows
+  ("tests/t_hash_sha256_vs_openssl.nim", false), # skip OpenSSL tests on Windows
 
   # Ciphers
   # ----------------------------------------------------------
@@ -302,7 +306,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/math_bigints/t_io_bigints.nim", false),
   # ("tests/math_bigints/t_bigints.nim", false),
   # ("tests/math_bigints/t_bigints_multimod.nim", false),
-  # ("tests/math_bigints/t_bigints_mul_vs_gmp.nim", true),
+  ("tests/math_bigints/t_bigints_mul_vs_gmp.nim", true),
   # ("tests/math_bigints/t_bigints_mul_high_words_vs_gmp.nim", true),
 
   # Big ints - arbitrary precision
@@ -549,7 +553,8 @@ const benchDesc = [
   "bench_poly1305",
   "bench_sha256",
   "bench_hash_to_curve",
-  "bench_ethereum_bls_signatures"
+  "bench_ethereum_bls_signatures",
+  "bench_evm_modexp_dos",
 ]
 
 # For temporary (hopefully) investigation that can only be reproduced in CI
@@ -558,28 +563,37 @@ const useDebug = [
   "tests/t_hash_sha256_vs_openssl.nim",
 ]
 
-# Skip sanitizers for specific tests
-const skipSanitizers = [
+# Skip stack hardening for specific tests
+const skipStackHardening = [
   "tests/t_"
+]
+# use sanitizers for specific tests
+const useSanitizers = [
+  "tests/math_arbitrary_precision/t_bigints_powmod_vs_gmp.nim",
+  "tests/t_ethereum_evm_modexp.nim",
+  "tests/t_etherem_evm_precompiles.nim",
 ]
 
 when defined(windows):
   # UBSAN is not available on mingw
   # https://github.com/libressl-portable/portable/issues/54
   const sanitizers = ""
+  const stackHardening = ""
 else:
-  const sanitizers =
+  const stackHardening =
 
     " --passC:-fstack-protector-strong " &
 
-    # Fortify source wouldn't help us detect errors in cosntantine
+    # Fortify source wouldn't help us detect errors in Constantine
     # because everything is stack allocated
     # except with the threadpool:
     # - https://developers.redhat.com/blog/2021/04/16/broadening-compiler-checks-for-buffer-overflows-in-_fortify_source#what_s_next_for__fortify_source
     # - https://developers.redhat.com/articles/2023/02/06/how-improve-application-security-using-fortifysource3#how_to_improve_application_fortification
     # We also don't use memcpy as it is not constant-time and our copy is compile-time sized.
 
-    " --passC:-D_FORTIFY_SOURCE=3 " &
+    " --passC:-D_FORTIFY_SOURCE=3 "
+
+  const sanitizers =
 
     # Sanitizers are incompatible with nim default GC
     # The conservative stack scanning of Nim default GC triggers, alignment UB and stack-buffer-overflow check.
@@ -588,10 +602,10 @@ else:
     #
     # Sanitizers are deactivated by default as they slow down CI by at least 6x
 
-    # " --passC:-fsanitize=undefined --passL:-fsanitize=undefined" &
-    # " --passC:-fsanitize=address --passL:-fsanitize=address" &
-    # " --passC:-fno-sanitize-recover" # Enforce crash on undefined behaviour
-    ""
+    " --mm:arc -d:useMalloc" &
+    " --passC:-fsanitize=undefined --passL:-fsanitize=undefined" &
+    " --passC:-fsanitize=address --passL:-fsanitize=address" &
+    " --passC:-fno-sanitize-recover" # Enforce crash on undefined behaviour
 
 # Tests & Benchmarks helper functions
 # ----------------------------------------------------------------
@@ -669,7 +683,9 @@ proc addTestSet(cmdFile: var string, requireGMP: bool) =
       var flags = "" # Beware of https://github.com/nim-lang/Nim/issues/21704
       if td.path in useDebug:
         flags = flags & " -d:CTT_DEBUG "
-      if td.path notin skipSanitizers:
+      if td.path notin skipStackHardening:
+        flags = flags & stackHardening
+      if td.path in useSanitizers:
         flags = flags & sanitizers
 
       cmdFile.testBatch(flags, td.path)
@@ -681,7 +697,9 @@ proc addTestSetNvidia(cmdFile: var string) =
 
   for path in testDescNvidia:
     var flags = "" # Beware of https://github.com/nim-lang/Nim/issues/21704
-    if path notin skipSanitizers:
+    if path notin skipStackHardening:
+      flags = flags & stackHardening
+    if path in useSanitizers:
       flags = flags & sanitizers
     cmdFile.testBatch(flags, path)
 
@@ -692,7 +710,9 @@ proc addTestSetThreadpool(cmdFile: var string) =
 
   for path in testDescThreadpool:
     var flags = " --threads:on --debugger:native "
-    if path notin skipSanitizers:
+    if path notin skipStackHardening:
+      flags = flags & stackHardening
+    if path in useSanitizers:
       flags = flags & sanitizers
     cmdFile.testBatch(flags, path)
 
@@ -705,9 +725,10 @@ proc addTestSetMultithreadedCrypto(cmdFile: var string) =
     var flags = " --threads:on --debugger:native"
     if td in useDebug:
       flags = flags & " -d:CTT_DEBUG "
-    if td notin skipSanitizers:
+    if td notin skipStackHardening:
+      flags = flags & stackHardening
+    if td in useSanitizers:
       flags = flags & sanitizers
-
     cmdFile.testBatch(flags, td)
 
 proc addBenchSet(cmdFile: var string) =

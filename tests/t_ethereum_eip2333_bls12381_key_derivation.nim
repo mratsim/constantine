@@ -13,7 +13,8 @@ import
   ../constantine/math/io/io_bigints,
   ../constantine/math/config/curves,
   ../constantine/math/arithmetic/bigints,
-  ../constantine/platforms/[abstractions, codecs]
+  ../constantine/platforms/abstractions,
+  ../constantine/serialization/codecs
 
 type SecretKey = matchingOrderBigInt(BLS12_381)
 

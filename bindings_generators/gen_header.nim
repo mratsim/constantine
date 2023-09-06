@@ -68,6 +68,12 @@ typedef __UINT64_TYPE__  uint64_t;
 #else
 #include <stdint.h>
 #endif
+
+#if defined(__STDC_VERSION__) && __STDC_VERSION__>=199901
+# define bool _Bool
+#else
+# define bool unsigned char
+#endif
 """
 
 proc genCttBaseTypedef*(): string =
@@ -115,6 +121,7 @@ void ctt_{libName}_init_NimMain(void);"""
 # -------------------------------------------
 
 let TypeMap {.compileTime.} = newStringTable({
+  "bool": "bool",
   "SecretBool": "secret_bool",
   "SecretWord": "secret_word"
 })
@@ -201,7 +208,10 @@ macro collectBindings*(cBindingsStr: untyped, body: typed): untyped =
           var name = $paramDef[j]
           cBindings &= toCparam(name.split('`')[0], pType)
 
-      cBindings &= ");"
+      if fnDef.params[0].eqIdent"bool":
+        cBindings &= ") __attribute__((warn_unused_result));"
+      else:
+        cBindings &= ");"
 
   if defined(CTT_GENERATE_HEADERS):
     result = newConstStmt(cBindingsStr, newLit cBindings)

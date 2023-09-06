@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../constantine/platforms/codecs,
+  ../constantine/serialization/codecs,
   ../constantine/[hashes, mac/mac_hmac, kdf/kdf_hkdf]
 
 proc hexToBytes(s: string): seq[byte] =

@@ -28,6 +28,12 @@ typedef __UINT64_TYPE__  uint64_t;
 #include <stdint.h>
 #endif
 
+#if defined(__STDC_VERSION__) && __STDC_VERSION__>=199901
+# define bool _Bool
+#else
+# define bool unsigned char
+#endif
+
 typedef size_t           secret_word;
 typedef size_t           secret_bool;
 typedef uint8_t          byte;
@@ -51,8 +57,8 @@ typedef struct { bls12381_fp2 x, y, z; } bls12381_ec_g2_prj;
  */
 void ctt_bls12381_init_NimMain(void);
 
-void        ctt_bls12381_fr_unmarshalBE(bls12381_fr* dst, const byte src[], ptrdiff_t src_len);
-void        ctt_bls12381_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const bls12381_fr* src);
+bool ctt_bls12381_fr_unmarshalBE(bls12381_fr* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
+bool ctt_bls12381_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const bls12381_fr* src) __attribute__((warn_unused_result));
 secret_bool ctt_bls12381_fr_is_eq(const bls12381_fr* a, const bls12381_fr* b);
 secret_bool ctt_bls12381_fr_is_zero(const bls12381_fr* a);
 secret_bool ctt_bls12381_fr_is_one(const bls12381_fr* a);
@@ -82,8 +88,8 @@ void        ctt_bls12381_fr_cset_one(bls12381_fr* a, const secret_bool ctl);
 void        ctt_bls12381_fr_cneg_in_place(bls12381_fr* a, const secret_bool ctl);
 void        ctt_bls12381_fr_cadd_in_place(bls12381_fr* a, const bls12381_fr* b, const secret_bool ctl);
 void        ctt_bls12381_fr_csub_in_place(bls12381_fr* a, const bls12381_fr* b, const secret_bool ctl);
-void        ctt_bls12381_fp_unmarshalBE(bls12381_fp* dst, const byte src[], ptrdiff_t src_len);
-void        ctt_bls12381_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const bls12381_fp* src);
+bool ctt_bls12381_fp_unmarshalBE(bls12381_fp* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
+bool ctt_bls12381_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const bls12381_fp* src) __attribute__((warn_unused_result));
 secret_bool ctt_bls12381_fp_is_eq(const bls12381_fp* a, const bls12381_fp* b);
 secret_bool ctt_bls12381_fp_is_zero(const bls12381_fp* a);
 secret_bool ctt_bls12381_fp_is_one(const bls12381_fp* a);
