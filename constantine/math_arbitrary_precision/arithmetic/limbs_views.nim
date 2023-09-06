@@ -111,7 +111,7 @@ func getMSB_vartime*[T](a: openArray[T]): int =
   ## Returns -1 if a == 0
   result = -1
   for i in countdown(a.len-1, 0):
-    if bool a[i] != T(0):
+    if bool(a[i] != T(0)):
       return int(log2_vartime(uint64 a[i])) + 8*sizeof(T)*i
 
 func getBits_vartime*[T](a: openArray[T]): int {.inline.} =
