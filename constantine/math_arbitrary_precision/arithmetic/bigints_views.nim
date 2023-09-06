@@ -55,8 +55,8 @@ func powOddMod_vartime*(
   debug:
     doAssert bool(M.isOdd())
 
-  let aBits  = a.getBits_vartime()
-  let mBits  = M.getBits_vartime()
+  let aBits  = a.getBits_LE_vartime()
+  let mBits  = M.getBits_LE_vartime()
   let L      = wordsRequired(mBits)
   let m0ninv = M[0].negInvModWord()
   var rMont  = allocStackArray(SecretWord, L)
@@ -105,17 +105,17 @@ func powMod_vartime*(
 
   # Special cases: early returns
   # -------------------------------------------------------------------
-  let mBits = M.getBits_vartime()
+  let mBits = M.getBits_LE_vartime()
   if mBits < 2: # Check if modulus = 0 or 1
     r.setZero()
     return
 
-  let eBits = exponent.getBits_vartime()
+  let eBits = exponent.getBits_BE_vartime()
   if eBits == 0: # Check if exponent == 0
     r.setOne()   # a⁰ = 1 and 0⁰ = 1
     return
 
-  let aBits = a.getBits_vartime()
+  let aBits = a.getBits_LE_vartime()
   if aBits < 2:  # Check if a == 0 or a == 1
     r[0] = a[0]
     for i in 1 ..< r.len:

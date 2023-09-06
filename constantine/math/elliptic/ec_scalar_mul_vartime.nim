@@ -361,7 +361,7 @@ func scalarMul_vartime*[scalBits; EC](
 
   const L = scalBits.ceilDiv_vartime(M) + 1
 
-  let usedBits = scalar.limbs.getBits_vartime()
+  let usedBits = scalar.limbs.getBits_LE_vartime()
 
   when scalBits == EC.F.C.getCurveOrderBitwidth() and
        EC.F.C.hasEndomorphismAcceleration():

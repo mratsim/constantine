@@ -97,9 +97,9 @@ proc test(rng: var RngState) =
   mpz_clear(rr)
 
   let
-    aBits = a.getBits_vartime()
-    eBits = e.getBits_vartime()
-    mBits = M.getBits_vartime()
+    aBits = a.getBits_LE_vartime()
+    eBits = e.getBits_BE_vartime()
+    mBits = M.getBits_LE_vartime()
 
   rCtt.powMod_vartime(a, e, M, window = 4)
 

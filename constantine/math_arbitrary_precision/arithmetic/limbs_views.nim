@@ -105,18 +105,40 @@ func ccopyWords*(
 # Bit operations
 # ------------------------------------------------------------
 
-func getMSB_vartime*[T](a: openArray[T]): int =
+func getMSB_BE_vartime*(a: openArray[byte]): int =
   ## Returns the position of the most significant bit
   ## of `a`.
   ## Returns -1 if a == 0
+  ##
+  ## Input MUST be ordered from most to least significant byte
   result = -1
-  for i in countdown(a.len-1, 0):
-    if bool(a[i] != T(0)):
-      return int(log2_vartime(uint64 a[i])) + 8*sizeof(T)*i
+  for i in 0 ..< a.len:
+    if bool a[i] != 0:
+      return int(log2_vartime(uint32 a[i])) + 8*sizeof(byte)*(a.len-1-i)
 
-func getBits_vartime*[T](a: openArray[T]): int {.inline.} =
+func getBits_BE_vartime*(a: openArray[byte]): int {.inline.} =
   ## Returns the number of bits used by `a`
   ## Returns 0 for 0
-  1 + getMSB_vartime(a)
+  ##
+  ## Input MUST be ordered from least to most significant byte
+  1 + getMSB_BE_vartime(a)
+
+func getMSB_LE_vartime(a: openArray[SecretWord]): int =
+  ## Returns the position of the most significant bit
+  ## of `a`.
+  ## Returns -1 if a == 0
+  ##
+  ## Input MUST be ordered from least to most significant word
+  result = -1
+  for i in countdown(a.len-1, 0):
+    if bool a[i] != Zero:
+      return int(log2_vartime(uint64 a[i])) + 8*sizeof(SecretWord)*i
+
+func getBits_LE_vartime*(a: openArray[SecretWord]): int {.inline.} =
+  ## Returns the number of bits used by `a`
+  ## Returns 0 for 0
+  ##
+  ## Input MUST be ordered from least to most significant word
+  1 + getMSB_LE_vartime(a)
 
 {.pop.} # raises no exceptions
