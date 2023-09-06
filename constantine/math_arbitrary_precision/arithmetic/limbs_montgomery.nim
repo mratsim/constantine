@@ -11,7 +11,8 @@ import
   ../../platforms/[abstractions, allocs, bithacks],
   ./limbs_views,
   ./limbs_mod,
-  ./limbs_fixedprec
+  ./limbs_fixedprec,
+  ./limbs_division
 
 # No exceptions allowed
 {.push raises: [], checks: off.}
@@ -68,7 +69,16 @@ func r_powmod_vartime(r: var openArray[SecretWord], M: openArray[SecretWord], n:
 
 func oneMont_vartime*(r: var openArray[SecretWord], M: openArray[SecretWord]) {.meter.} =
   ## Returns 1 in Montgomery domain:
-  r.r_powmod_vartime(M, 1)
+
+  # r.r_powmod_vartime(M, 1)
+
+  let mBits = getBits_LE_vartime(M)
+
+  let t = allocStackArray(SecretWord, M.len + 1)
+  zeroMem(t, M.len*sizeof(SecretWord))
+  t[M.len] = One
+
+  r.view().reduce(LimbsViewMut t, M.len*WordBitWidth+1, M.view(), mBits)
 
 func r2_vartime*(r: var openArray[SecretWord], M: openArray[SecretWord]) {.meter.} =
   ## Returns the Montgomery domain magic constant for the input modulus:
@@ -77,7 +87,17 @@ func r2_vartime*(r: var openArray[SecretWord], M: openArray[SecretWord]) {.meter
   ##
   ## Assuming a field modulus of size 256-bit with 63-bit words, we require 5 words
   ##   R² ≡ ((2^63)^5)^2 (mod M) = 2^630 (mod M)
-  r.r_powmod_vartime(M, 2)
+
+  # r.r_powmod_vartime(M, 2)
+
+  let mBits = getBits_LE_vartime(M)
+
+  let t = allocStackArray(SecretWord, 2*M.len + 1)
+  zeroMem(t, 2*M.len*sizeof(SecretWord))
+  t[2*M.len] = One
+
+  r.view().reduce(LimbsViewMut t, 2*M.len*WordBitWidth+1, M.view(), mBits)
+
 
 # Montgomery multiplication
 # ------------------------------------------

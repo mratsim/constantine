@@ -88,7 +88,7 @@ when CTT_METER or CTT_TRACE:
       let stopTime = getMonoTime()
       when SupportsGetTicks:
         let elapsedCycles = stopCycle - startCycle
-      let elapsedTime = inMicroseconds(stopTime - startTime)
+      let elapsedTime = inNanoseconds(stopTime - startTime)
 
       discard Metrics[id].cumulatedTimeNs.atomicInc(elapsedTime)
       when SupportsGetTicks:

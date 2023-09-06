@@ -29,7 +29,7 @@ let input = [
     0x33,
 
     # Exponent
-    0x01,
+    0x07,
 
     # Modulus
     0x04, 0xea, 0xbb, 0x12, 0x55, 0x88, 0xd7, 0x3c, 0xad, 0x22, 0xea, 0x2b, 0x4a, 0x77, 0x6e, 0x9d,
@@ -48,5 +48,6 @@ resetMetering()
 
 let status = eth_evm_modexp(r, input)
 doAssert status == cttEVM_Success
+
 const flags = if UseASM_X86_64 or UseASM_X86_32: "UseAssembly" else: "NoAssembly"
 reportCli(Metrics, flags)
