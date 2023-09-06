@@ -57,6 +57,12 @@ func powOddMod_vartime*(
 
   let aBits  = a.getBits_LE_vartime()
   let mBits  = M.getBits_LE_vartime()
+  let eBits  = exponent.getBits_BE_vartime()
+
+  if eBits == 1:
+    r.view().reduce(a.view(), aBits, M.view(), mBits)
+    return
+
   let L      = wordsRequired(mBits)
   let m0ninv = M[0].negInvModWord()
   var rMont  = allocStackArray(SecretWord, L)

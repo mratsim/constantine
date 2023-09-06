@@ -115,6 +115,13 @@ func powMod2k_vartime*(
     r[0] = One  # x⁰ = 1, even for 0⁰
     return
 
+  if msb == 0: # exponent is 1
+    for i in 0 ..< min(r.len, a.len):
+      # range [r.len, a.len) will be truncated (mod 2ᵏ)
+      r[i] = a[i]
+    r.mod2k_vartime(k)
+    return
+
   if a.isEven().bool:
     let aTrailingZeroes = block:
       var i = 0
