@@ -120,7 +120,7 @@ func eth_evm_ecadd*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStat
 
   # Auto-pad with zero
   var padded: array[128, byte]
-  padded.rawCopy(0, inputs, 0, min(inputs.len, 128))
+  padded.rawCopy(0, inputs, 0, min(inputs.len, padded.len))
 
   var P{.noInit.}, Q{.noInit.}, R{.noInit.}: ECP_ShortW_Jac[Fp[BN254_Snarks], G1]
 
@@ -173,8 +173,8 @@ func eth_evm_ecmul*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStat
     return cttEVM_InvalidOutputSize
 
   # Auto-pad with zero
-  var padded: array[128, byte]
-  padded.rawCopy(0, inputs, 0, min(inputs.len, 128))
+  var padded: array[96, byte]
+  padded.rawCopy(0, inputs, 0, min(inputs.len, padded.len))
 
   var P{.noInit.}: ECP_ShortW_Jac[Fp[BN254_Snarks], G1]
 
@@ -401,10 +401,15 @@ func eth_evm_modexp*(r: var openArray[byte], inputs: openArray[byte]): CttEVMSta
 
   # Input parse sizes
   # -----------------
+
+  # Auto-pad with zero
+  var paddedLengths: array[96, byte]
+  paddedLengths.rawCopy(0, inputs, 0, min(inputs.len, paddedLengths.len))
+
   let
-    bL = BigInt[256].unmarshal(inputs.toOpenArray(0, 31), bigEndian)
-    eL = BigInt[256].unmarshal(inputs.toOpenArray(32, 63), bigEndian)
-    mL = BigInt[256].unmarshal(inputs.toOpenArray(64, 95), bigEndian)
+    bL = BigInt[256].unmarshal(paddedLengths.toOpenArray(0, 31), bigEndian)
+    eL = BigInt[256].unmarshal(paddedLengths.toOpenArray(32, 63), bigEndian)
+    mL = BigInt[256].unmarshal(paddedLengths.toOpenArray(64, 95), bigEndian)
 
     maxSize = BigInt[256].fromUint(high(uint)) # A CPU can only address up to high(uint)
 
@@ -433,13 +438,20 @@ func eth_evm_modexp*(r: var openArray[byte], inputs: openArray[byte]): CttEVMSta
 
   # Special cases
   # ----------------------
+  if paddedLengths.len + baseByteLen + exponentByteLen >= inputs.len:
+    # Modulus value is in the infinitely right padded zeros input, hence is zero.
+    r.setZero()
+    return cttEVM_Success
+
   if modulusByteLen == 0:
     r.setZero()
     return cttEVM_Success
+
   if exponentByteLen == 0:
     r.setZero()
     r[r.len-1] = byte 1 # 0^0 = 1 and x^0 = 1
     return cttEVM_Success
+
   if baseByteLen == 0:
     r.setZero()
     return cttEVM_Success
@@ -448,25 +460,42 @@ func eth_evm_modexp*(r: var openArray[byte], inputs: openArray[byte]): CttEVMSta
   # ---------------------
 
   # Inclusive stops
-  let baseStart = 96
+  # Due to special-case checks and early returns,
+  # only the modulus can require right-padding with zeros here
+  # inputs[expStop] cannot buffer overflow
+  let baseStart = paddedLengths.len
   let baseStop  = baseStart+baseByteLen-1
   let expStart  = baseStop+1
   let expStop   = expStart+exponentByteLen-1
   let modStart  = expStop+1
   let modStop   = modStart+modulusByteLen-1
 
+  # We assume that gas checks prevent numbers too big for stack allocation.
   var baseBuf = allocStackArray(SecretWord, baseWordLen)
   var modulusBuf = allocStackArray(SecretWord, modulusWordLen)
   var outputBuf = allocStackArray(SecretWord, modulusWordLen)
 
   template base(): untyped = baseBuf.toOpenArray(0, baseWordLen-1)
+  template exponent(): untyped = inputs.toOpenArray(expStart, expStop)
   template modulus(): untyped = modulusBuf.toOpenArray(0, modulusWordLen-1)
   template output(): untyped = outputBuf.toOpenArray(0, modulusWordLen-1)
 
+  # Base deserialization
   base.toOpenArray(0, baseWordLen-1).unmarshal(inputs.toOpenArray(baseStart, baseStop), WordBitWidth, bigEndian)
-  modulus.toOpenArray(0, modulusWordLen-1).unmarshal(inputs.toOpenArray(modStart, modStop), WordBitWidth, bigEndian)
-  template exponent(): untyped =
-    inputs.toOpenArray(expStart, expStop)
+
+  # Modulus deserialization
+  let realLen = paddedLengths.len + baseByteLen + exponentByteLen + modulusByteLen
+  let overflowLen = realLen - inputs.len
+  if overflowLen > 0:
+    let physLen = inputs.len-modStart # Length of data physically present (i.e. excluding padded zeros)
+    var paddedModBuf = allocStackArray(byte, modulusByteLen)
+    template paddedMod(): untyped = paddedModBuf.toOpenArray(0, modulusByteLen-1)
+
+    paddedMod.rawCopy(0, inputs, modStart, physLen)
+    zeroMem(paddedMod[physLen].addr, overflowLen)
+    modulus.unmarshal(paddedMod, WordBitWidth, bigEndian)
+  else:
+    modulus.unmarshal(inputs.toOpenArray(modStart, modStop), WordBitWidth, bigEndian)
 
   # Computation
   # ---------------------
