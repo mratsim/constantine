@@ -168,14 +168,14 @@ func powMod_vartime*(
   let qWords = qBits.wordsRequired()
   let pWords = pBits.wordsRequired()
 
-  var qBuf  = allocStackArray(SecretWord, M.len)
-  var a1Buf = allocStackArray(SecretWord, M.len)
+  var qBuf  = allocStackArray(SecretWord, qWords)
+  var a1Buf = allocStackArray(SecretWord, qWords)
   var a2Buf = allocStackArray(SecretWord, pWords)
   var yBuf =  allocStackArray(SecretWord, pWords)
   var qInv2kBuf = allocStackArray(SecretWord, pWords)
 
-  template q: untyped = qBuf.toOpenArray(0, M.len-1) # TODO use qWords instead of M.len
-  template a1: untyped = a1Buf.toOpenArray(0, M.len-1)
+  template q: untyped = qBuf.toOpenArray(0, qWords-1)
+  template a1: untyped = a1Buf.toOpenArray(0, qWords-1)
   template a2: untyped = a2Buf.toOpenArray(0, pWords-1)
   template y: untyped = yBuf.toOpenArray(0, pWords-1)
   template qInv2k: untyped = qInv2kBuf.toOpenArray(0, pWords-1)
