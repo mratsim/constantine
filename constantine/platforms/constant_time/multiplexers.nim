@@ -7,6 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import ./ct_types
+import ../isa/macro_assembler_x86
 
 # ############################################################
 #
@@ -45,20 +46,47 @@ func ccopy_fallback[T](ctl: CTBool[T], x: var T, y: T) {.inline.}=
 # x86 and x86-64
 # ------------------------------------------------------------
 
-template mux_x86_impl() {.dirty.} =
-  static: doAssert(X86)
-  static: doAssert(GCC_Compatible)
+when UseAsmSyntaxIntel:
+  template mux_x86_impl() {.dirty.} =
+    static: doAssert(X86)
+    static: doAssert(GCC_Compatible)
 
-  var muxed = x
-  asm """
-    test %[ctl], %[ctl]
-    cmovz %[muxed], %[y]
-    : [muxed] "+r" (`muxed`)
-    : [ctl] "r" (`ctl`), [y] "r" (`y`)
-    : "cc"
-  """
-  muxed
+    var muxed = x
+    asm """
+      test %[ctl], %[ctl]
+      cmovz %[muxed], %[y]
+      : [muxed] "+r" (`muxed`)
+      : [ctl] "r" (`ctl`), [y] "r" (`y`)
+      : "cc"
+    """
+    muxed
+else:
+  template mux_x86_impl() {.dirty.} =
+    static: doAssert(X86)
+    static: doAssert(GCC_Compatible)
 
+    when sizeof(T) == 8:
+      var muxed = x
+      asm """
+        testq %[ctl], %[ctl]
+        cmovzq %[y], %[muxed]
+        : [muxed] "+r" (`muxed`)
+        : [ctl] "r" (`ctl`), [y] "r" (`y`)
+        : "cc"
+      """
+      muxed
+    elif sizeof(T) == 4:
+      var muxed = x
+      asm """
+        testl %[ctl], %[ctl]
+        cmovzl %[y], %[muxed]
+        : [muxed] "+r" (`muxed`)
+        : [ctl] "r" (`ctl`), [y] "r" (`y`)
+        : "cc"
+      """
+      muxed
+    else:
+      {.error: "Unsupported word size".}
 
 func mux_x86[T](ctl: CTBool[T], x, y: T): T {.inline.}=
   ## Multiplexer / selector
@@ -74,29 +102,73 @@ func mux_x86[T: CTBool](ctl: CTBool, x, y: T): T {.inline.}=
   ## So equivalent to ctl? x: y
   mux_x86_impl()
 
-func ccopy_x86[T](ctl: CTBool[T], x: var T, y: T) {.inline.}=
-  ## Conditional copy
-  ## Copy ``y`` into ``x`` if ``ctl`` is true
-  static: doAssert(X86)
-  static: doAssert(GCC_Compatible)
+when UseAsmSyntaxIntel:
+  func ccopy_x86[T](ctl: CTBool[T], x: var T, y: T) {.inline.}=
+    ## Conditional copy
+    ## Copy ``y`` into ``x`` if ``ctl`` is true
+    static: doAssert(X86)
+    static: doAssert(GCC_Compatible)
 
-  when defined(cpp):
-    asm """
-        test %[ctl], %[ctl]
-        cmovnz %[x], %[y]
-        : [x] "+r" (`x`)
-        : [ctl] "r" (`ctl`), [y] "r" (`y`)
-        : "cc"
-      """
+    when defined(cpp):
+      asm """
+          test %[ctl], %[ctl]
+          cmovnz %[x], %[y]
+          : [x] "+r" (`x`)
+          : [ctl] "r" (`ctl`), [y] "r" (`y`)
+          : "cc"
+        """
 
-  else:
-    asm """
-        test %[ctl], %[ctl]
-        cmovnz %[x], %[y]
-        : [x] "+r" (`*x`)
-        : [ctl] "r" (`ctl`), [y] "r" (`y`)
-        : "cc"
-      """
+    else:
+      asm """
+          test %[ctl], %[ctl]
+          cmovnz %[x], %[y]
+          : [x] "+r" (`*x`)
+          : [ctl] "r" (`ctl`), [y] "r" (`y`)
+          : "cc"
+        """
+else:
+  func ccopy_x86[T](ctl: CTBool[T], x: var T, y: T) {.inline.}=
+    ## Conditional copy
+    ## Copy ``y`` into ``x`` if ``ctl`` is true
+    static: doAssert(X86)
+    static: doAssert(GCC_Compatible)
+
+    when sizeof(T) == 8:
+      when defined(cpp):
+        asm """
+          testq %[ctl], %[ctl]
+          cmovnzq %[y], %[x]
+          : [x] "+r" (`x`)
+          : [ctl] "r" (`ctl`), [y] "r" (`y`)
+          : "cc"
+        """
+      else:
+        asm """
+          testq %[ctl], %[ctl]
+          cmovnzq %[y], %[x]
+          : [x] "+r" (`*x`)
+          : [ctl] "r" (`ctl`), [y] "r" (`y`)
+          : "cc"
+        """
+    elif sizeof(T) == 4:
+      when defined(cpp):
+        asm """
+          testl %[ctl], %[ctl]
+          cmovnzl %[y], %[x]
+          : [x] "+r" (`x`)
+          : [ctl] "r" (`ctl`), [y] "r" (`y`)
+          : "cc"
+        """
+      else:
+        asm """
+          testl %[ctl], %[ctl]
+          cmovnzl %[y], %[x]
+          : [x] "+r" (`*x`)
+          : [ctl] "r" (`ctl`), [y] "r" (`y`)
+          : "cc"
+        """
+    else:
+      {.error: "Unsupported word size".}
 
 # Public functions
 # ------------------------------------------------------------
