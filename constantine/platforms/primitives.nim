@@ -90,7 +90,7 @@ func setOne*(a: var openArray[SomeNumber]){.inline.} =
   a[0] = 1
   for i in 1 ..< a.len:
     a[i] = 0
-    
+
 func asBytes*(s: static string): auto =
   ## Reinterpret a compile-time string as an array of bytes
   const N = s.len
@@ -104,8 +104,7 @@ func rawCopy*(
        dStart: SomeInteger,
        src: openArray[byte],
        sStart: SomeInteger,
-       len: SomeInteger
-     ) {.inline.} =
+       len: SomeInteger) {.inline.} =
   ## Copy dst[dStart ..< dStart+len] = src[sStart ..< sStart+len]
   ## Unlike the standard library, this cannot throw
   ## even a defect.

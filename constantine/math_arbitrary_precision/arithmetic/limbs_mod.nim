@@ -17,7 +17,7 @@ import
 #
 # ############################################################
 
-func addmod_vartime*(r: var openArray[SecretWord], a, b, M: openArray[SecretWord]) =
+func addmod_vartime*(r: var openArray[SecretWord], a, b, M: openArray[SecretWord]) {.meter.} =
   ## r <- a+b (mod M)
   ## assumes a and b are in the range [0, M)
 
@@ -43,6 +43,6 @@ func addmod_vartime*(r: var openArray[SecretWord], a, b, M: openArray[SecretWord
     for i in 0 ..< r.len:
       r[i] = t[i]
 
-func doublemod_vartime*(r: var openArray[SecretWord], a, M: openArray[SecretWord]) {.inline.} =
+func doublemod_vartime*(r: var openArray[SecretWord], a, M: openArray[SecretWord]) {.inline, meter.} =
   ## r <- 2a (mod M)
   r.addmod_vartime(a, a, M)

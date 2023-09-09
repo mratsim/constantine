@@ -38,7 +38,7 @@ template `+=`[F; G: static Subgroup](P: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_
 template `-=`[F; G: static Subgroup](P: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G]), Q: ECP_ShortW_Aff[F, G]) =
   P.msub_vartime(P, Q)
 
-func scalarMul_doubleAdd_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime].} =
+func scalarMul_doubleAdd_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime], meter.} =
   ## **Variable-time** Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P
@@ -67,7 +67,7 @@ func scalarMul_doubleAdd_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime
         else:
           P += Paff
 
-func scalarMul_addchain_4bit_vartime[EC](P: var EC, scalar: BigInt) {.tags:[VarTime].} =
+func scalarMul_addchain_4bit_vartime[EC](P: var EC, scalar: BigInt) {.tags:[VarTime], meter.} =
   ## **Variable-time** Elliptic Curve Scalar Multiplication
   ## This can only handle for small scalars up to 2⁴ = 16 excluded
   let s = uint scalar.limbs[0]
@@ -206,7 +206,7 @@ func accumNAF[precompSize, NafMax: static int, EC, ECaff](
     elif digit < 0:
       P -= tab[-digit shr 1]
 
-func scalarMul_minHammingWeight_windowed_vartime*[EC](P: var EC, scalar: BigInt, window: static int) {.tags:[VarTime, Alloca].} =
+func scalarMul_minHammingWeight_windowed_vartime*[EC](P: var EC, scalar: BigInt, window: static int) {.tags:[VarTime, Alloca], meter.} =
   ## **Variable-time** Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P
@@ -246,7 +246,7 @@ func scalarMul_minHammingWeight_windowed_vartime*[EC](P: var EC, scalar: BigInt,
 func scalarMulEndo_minHammingWeight_windowed_vartime*[scalBits: static int; EC](
        P: var EC,
        scalar: BigInt[scalBits],
-       window: static int) {.tags:[VarTime, Alloca].} =
+       window: static int) {.tags:[VarTime, Alloca], meter.} =
   ## Endomorphism-accelerated windowed vartime scalar multiplication
   ##
   ##   P <- [k] P

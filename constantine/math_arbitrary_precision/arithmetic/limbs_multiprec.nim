@@ -61,7 +61,7 @@ func shrWords(r {.noalias.}: var openArray[SecretWord], a: openArray[SecretWord]
   for i in a.len-w ..< r.len:
     r[i] = Zero
 
-func shiftRight_vartime*(r {.noalias.}: var openArray[SecretWord], a: openArray[SecretWord], k: SomeInteger) =
+func shiftRight_vartime*(r {.noalias.}: var openArray[SecretWord], a: openArray[SecretWord], k: SomeInteger) {.meter.} =
   ## Shift `a` right by k bits and store in `r`
   if k == 0:
     let min = min(a.len, r.len)
@@ -87,7 +87,7 @@ func shiftRight_vartime*(r {.noalias.}: var openArray[SecretWord], a: openArray[
 # Arithmetic
 # --------------------------------------------------------
 
-func neg*(a: var openArray[SecretWord]) =
+func neg*(a: var openArray[SecretWord]) {.meter.} =
   ## Computes the additive inverse -a
   ## in 2-complement representation
 
@@ -97,7 +97,7 @@ func neg*(a: var openArray[SecretWord]) =
   for i in 1 ..< a.len:
     addC(carry, a[i], not(a[i]), Zero, carry)
 
-func addMP*(r {.noAlias.}: var openArray[SecretWord], a, b: openArray[SecretWord]): bool =
+func addMP*(r {.noAlias.}: var openArray[SecretWord], a, b: openArray[SecretWord]): bool {.meter.} =
   ## r <- a + b
   ##   and
   ## returns the carry
@@ -130,7 +130,7 @@ func addMP*(r {.noAlias.}: var openArray[SecretWord], a, b: openArray[SecretWord
   else:
     return bool carry
 
-func subMP*(r {.noAlias.}: var openArray[SecretWord], a, b: openArray[SecretWord]): bool =
+func subMP*(r {.noAlias.}: var openArray[SecretWord], a, b: openArray[SecretWord]): bool {.meter.} =
   ## r <- a - b
   ##   and
   ## returns false if a >= b

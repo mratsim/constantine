@@ -39,6 +39,6 @@ func prod_comba(r: var openArray[SecretWord], a, b: openArray[SecretWord]) {.noI
   for i in stopEx ..< r.len:
     r[i] = Zero
 
-func prod*(r: var openArray[SecretWord], a, b: openArray[SecretWord]) {.inline.}=
+func prod*(r: var openArray[SecretWord], a, b: openArray[SecretWord]) {.inline, meter.}=
   ## Extended precision multiplication
   r.prod_comba(a, b)

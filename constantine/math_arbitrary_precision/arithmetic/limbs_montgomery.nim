@@ -11,7 +11,8 @@ import
   ../../platforms/[abstractions, allocs, bithacks],
   ./limbs_views,
   ./limbs_mod,
-  ./limbs_fixedprec
+  ./limbs_fixedprec,
+  ./limbs_division
 
 # No exceptions allowed
 {.push raises: [], checks: off.}
@@ -66,18 +67,37 @@ func r_powmod_vartime(r: var openArray[SecretWord], M: openArray[SecretWord], n:
   for i in start ..< stop:
     r.doublemod_vartime(r, M)
 
-func oneMont_vartime*(r: var openArray[SecretWord], M: openArray[SecretWord]) =
+func oneMont_vartime*(r: var openArray[SecretWord], M: openArray[SecretWord]) {.meter.} =
   ## Returns 1 in Montgomery domain:
-  r.r_powmod_vartime(M, 1)
 
-func r2_vartime*(r: var openArray[SecretWord], M: openArray[SecretWord]) =
+  # r.r_powmod_vartime(M, 1)
+
+  let mBits = getBits_LE_vartime(M)
+
+  let t = allocStackArray(SecretWord, M.len + 1)
+  zeroMem(t, M.len*sizeof(SecretWord))
+  t[M.len] = One
+
+  r.view().reduce(LimbsViewMut t, M.len*WordBitWidth+1, M.view(), mBits)
+
+func r2_vartime*(r: var openArray[SecretWord], M: openArray[SecretWord]) {.meter.} =
   ## Returns the Montgomery domain magic constant for the input modulus:
   ##
   ##   R² ≡ R² (mod M) with R = (2^WordBitWidth)^numWords
   ##
   ## Assuming a field modulus of size 256-bit with 63-bit words, we require 5 words
   ##   R² ≡ ((2^63)^5)^2 (mod M) = 2^630 (mod M)
-  r.r_powmod_vartime(M, 2)
+
+  # r.r_powmod_vartime(M, 2)
+
+  let mBits = getBits_LE_vartime(M)
+
+  let t = allocStackArray(SecretWord, 2*M.len + 1)
+  zeroMem(t, 2*M.len*sizeof(SecretWord))
+  t[2*M.len] = One
+
+  r.view().reduce(LimbsViewMut t, 2*M.len*WordBitWidth+1, M.view(), mBits)
+
 
 # Montgomery multiplication
 # ------------------------------------------
@@ -88,7 +108,7 @@ func mulMont_FIPS*(
        M: LimbsViewConst,
        m0ninv: SecretWord,
        mBits: int,
-       skipFinalSub: static bool = false) {.noInline, tags:[Alloca].} =
+       skipFinalSub: static bool = false) {.noInline, tags:[Alloca], meter.} =
   ## Montgomery Multiplication using Finely Integrated Product Scanning (FIPS)
   ##
   ## This maps
@@ -138,7 +158,7 @@ func mulMont_FIPS*(
 # ------------------------------------------
 
 func fromMont*(r: LimbsViewMut, a: LimbsViewAny, M: LimbsViewConst,
-               m0ninv: SecretWord, mBits: int) {.noInline, tags:[Alloca].} =
+               m0ninv: SecretWord, mBits: int) {.noInline, tags:[Alloca], meter.} =
   ## Transform a bigint ``a`` from it's Montgomery N-residue representation (mod N)
   ## to the regular natural representation (mod N)
   ##
@@ -166,7 +186,7 @@ func fromMont*(r: LimbsViewMut, a: LimbsViewAny, M: LimbsViewConst,
   r.copyWords(0, t, 0, N)
 
 func getMont*(r: LimbsViewMut, a: LimbsViewAny, M, r2modM: LimbsViewConst,
-                   m0ninv: SecretWord, mBits: int) {.inline.} =
+                   m0ninv: SecretWord, mBits: int) {.inline, meter.} =
   ## Transform a bigint ``a`` from it's natural representation (mod N)
   ## to a the Montgomery n-residue representation
   ##
@@ -233,7 +253,7 @@ func powMontPrologue(
        m0ninv: SecretWord,
        scratchspace: LimbsViewMut,
        scratchLen: int,
-       mBits: int): uint {.tags:[Alloca].} =
+       mBits: int): uint {.tags:[Alloca], meter.} =
   ## Setup the scratchspace
   ## Returns the fixed-window size for exponentiation with window optimization.
   # Precompute window content, special case for window = 1
@@ -263,7 +283,7 @@ func powMontSquarings(
         tmp: LimbsViewMut,
         window: uint,
         acc, acc_len: var uint,
-        e: var int): tuple[k, bits: uint] {.inline.}=
+        e: var int): tuple[k, bits: uint] {.inline, meter.}=
   ## Squaring step of exponentiation by squaring
   ## Get the next k bits in range [1, window)
   ## Square k times
@@ -309,7 +329,7 @@ func powMont*(
        m0ninv: SecretWord,
        scratchspace: LimbsViewMut,
        scratchLen: int,
-       mBits: int) =
+       mBits: int) {.meter.} =
   ## Modular exponentiation r = a^exponent mod M
   ## in the Montgomery domain
   ##
@@ -379,7 +399,7 @@ func powMont_vartime*(
        m0ninv: SecretWord,
        scratchspace: LimbsViewMut,
        scratchLen: int,
-       mBits: int) {.tags:[VarTime, Alloca].} =
+       mBits: int) {.tags:[VarTime, Alloca], meter.} =
   ## Modular exponentiation a <- a^exponent (mod M)
   ## in the Montgomery domain
   ##
