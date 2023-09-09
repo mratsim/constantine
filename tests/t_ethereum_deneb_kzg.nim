@@ -8,7 +8,7 @@
 
 import
   # Standard library
-  std/[os, strutils, streams],
+  std/[os, strutils, streams, unittest],
   # 3rd party
   pkg/yaml,
   # Internals
@@ -32,35 +32,81 @@ const
   VerifyKzgTestDir =
     TestVectorsDir / "verify_kzg_proof" / "small"
 
+const SkippedTests = [
+  ""
+]
+
+iterator walkTests*(testDir: string, skipped: var int): (string, string) =
+  for file in walkDirRec(testDir, relative = true):
+    if file in SkippedTests:
+      echo "[WARNING] Skipping - ", file
+      inc skipped
+      continue
+
+    yield (testDir, file)
+
 proc loadVectors(filename: string): YamlNode =
   var s = filename.openFileStream()
   defer: s.close()
   load(s, result)
 
-proc testVerifyKzgProof(ctx: ptr EthereumKZGContext, filename: string) =
-  let tv = loadVectors(VerifyKzgTestDir / filename / "data.yaml")
+template testGen*(name, testData: untyped, directory: string, body: untyped): untyped {.dirty.} =
+  ## Generates a test proc
+  ## with identifier "test_name"
+  ## The test vector data is available as JsonNode under the
+  ## the variable passed as `testData`
+  proc `test _ name`(ctx: ptr EthereumKZGContext) =
+    var count = 0 # Need to fail if walkDir doesn't return anything
+    var skipped = 0
+    for dir, file in walkTests(directory, skipped):
+      stdout.write("       " & astToStr(name) & " test: " & alignLeft(file, 70))
+      let testData = loadVectors(dir/file)
 
-  let
-    commitment = array[48, byte].fromHex(tv["input"]["commitment"].content)
-    z = array[32, byte].fromHex(tv["input"]["z"].content)
-    y = array[32, byte].fromHex(tv["input"]["y"].content)
-    proof = array[48, byte].fromHex(tv["input"]["proof"].content)
+      body
 
-  stdout.write("       " & "verify_kzg_proof" & " test: " & alignLeft(filename, 70))
-  let status = ctx.verify_kzg_proof(commitment, z, y, proof)
+      inc count
+
+    doAssert count > 0, "Empty or inexisting test folder: " & astToStr(name)
+    if skipped > 0:
+      echo "[Warning]: ", skipped, " tests skipped."
+
+template parseAssign(dstVariable: untyped, size: static int, hexInput: string) =
+  block:
+    let prefixBytes = 2*int(hexInput.startsWith("0x"))
+    let expectedLength = size*2 + prefixBytes
+    if hexInput.len != expectedLength:
+      let encodedBytes = (hexInput.len - prefixBytes) div 2
+      stdout.write "[ Incorrect input length for '" &
+                      astToStr(dstVariable) &
+                      "': encoding " & $encodedBytes & " bytes" &
+                      " instead of expected " & $size & " ]\n"
+
+      doAssert testVector["output"].content == "null"
+      # We're in a template, this shortcuts the caller `walkTests`
+      continue
+  let dstVariable{.inject.} = array[size, byte].fromHex(hexInput)
+
+testGen(verify_kzg_proof, testVector, VerifyKzgTestDir):
+  parseAssign(commitment, 48, testVector["input"]["commitment"].content)
+  parseAssign(z,          32, testVector["input"]["z"].content)
+  parseAssign(y,          32, testVector["input"]["y"].content)
+  parseAssign(proof,      48, testVector["input"]["proof"].content)
+
+  let status = verify_kzg_proof(ctx, commitment, z, y, proof)
   stdout.write "[" & $status & "]\n"
 
   if status == cttEthKZG_Success:
-    doAssert tv["output"].content == "true"
+    doAssert testVector["output"].content == "true"
   elif status == cttEthKZG_VerificationFailure:
-    doAssert tv["output"].content == "false"
+    doAssert testVector["output"].content == "false"
   else:
-    doAssert tv["output"].content == "null"
+    doAssert testVector["output"].content == "null"
 
 block:
-  let ctx = load_ethereum_kzg_test_trusted_setup_mainnet()
+  suite "Ethereum Deneb Hardfork / EIP-4844 / Proto-Danksharding / KZG Polynomial Commitments":
+    let ctx = load_ethereum_kzg_test_trusted_setup_mainnet()
 
-  ctx.testVerifyKzgProof("verify_kzg_proof_case_correct_proof_0b16242de3e9c686")
-  ctx.testVerifyKzgProof("verify_kzg_proof_case_incorrect_proof_0b16242de3e9c686")
+    test "verify_kzg_proof(commitment: array[48, byte], z, y: array[32, byte], proof: array[48, byte]) -> bool":
+      ctx.test_verify_kzg_proof()
 
-  ctx.delete()
+    ctx.delete()
