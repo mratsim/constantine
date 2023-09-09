@@ -12,7 +12,7 @@ import
   ./limbs,
   ./limbs_extmul,
   ./limbs_exgcd,
-  ../../math_arbitrary_precision/arithmetic/limbs_division
+  ../../math_arbitrary_precision/arithmetic/limbs_divmod
 
 export BigInt
 

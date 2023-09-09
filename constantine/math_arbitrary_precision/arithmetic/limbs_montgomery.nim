@@ -12,7 +12,7 @@ import
   ./limbs_views,
   ./limbs_mod,
   ./limbs_fixedprec,
-  ./limbs_division
+  ./limbs_divmod
 
 # No exceptions allowed
 {.push raises: [], checks: off.}

@@ -555,6 +555,8 @@ const benchDesc = [
   "bench_hash_to_curve",
   "bench_ethereum_bls_signatures",
   "bench_evm_modexp_dos",
+  "bench_gmp_modexp",
+  "bench_gmp_modmul"
 ]
 
 # For temporary (hopefully) investigation that can only be reproduced in CI

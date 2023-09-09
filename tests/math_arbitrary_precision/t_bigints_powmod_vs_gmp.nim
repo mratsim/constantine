@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../constantine/math_arbitrary_precision/arithmetic/[bigints_views, limbs_views, limbs_division],
+  ../../constantine/math_arbitrary_precision/arithmetic/[bigints_views, limbs_views, limbs_divmod],
   ../../constantine/platforms/abstractions,
   ../../helpers/prng_unsafe,
 

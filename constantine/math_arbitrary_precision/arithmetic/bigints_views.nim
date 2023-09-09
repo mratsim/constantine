@@ -15,7 +15,7 @@ import
   ./limbs_mod2k,
   ./limbs_multiprec,
   ./limbs_extmul,
-  ./limbs_division
+  ./limbs_divmod
 
 # No exceptions allowed
 {.push raises: [], checks: off.}
