@@ -89,9 +89,9 @@ type
 
 func fromDigest(dst: var Fr[BLS12_381], src: array[32, byte]) =
   ## Convert a SHA256 digest to an element in the scalar field Fr[BLS12-381]
-  ## hash_to_bls_field: https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/deneb/polynomial-commitments.md#hash_to_bls_field
+  ## hash_to_bls_field: https://github.com/ethereum/consensus-specs/blob/v1.4.0-beta.1/specs/deneb/polynomial-commitments.md#hash_to_bls_field
   var scalar {.noInit.}: BigInt[256]
-  scalar.unmarshal(src, littleEndian)
+  scalar.unmarshal(src, bigEndian)
 
   # Due to mismatch between the BigInt[256] input
   # and Fr[BLS12_381] being built on top of BigInt[255]
@@ -111,7 +111,7 @@ func fiatShamirChallenge(dst: var Fr[BLS12_381], blob: Blob, commitmentBytes: ar
   transcript.update(FIAT_SHAMIR_PROTOCOL_DOMAIN)
 
   # Append the degree of polynomial as a domain separator
-  transcript.update(FIELD_ELEMENTS_PER_BLOB.uint64.toBytes(littleEndian))
+  transcript.update(FIELD_ELEMENTS_PER_BLOB.uint64.toBytes(bigEndian))
   transcript.update(default(array[16-sizeof(uint64), byte]))
 
   transcript.update(blob)
