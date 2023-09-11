@@ -29,8 +29,6 @@ import
 const
   TestVectorsDir =
     currentSourcePath.rsplit(DirSep, 1)[0] / "protocol_ethereum_deneb_kzg"
-  VerifyKzgTestDir =
-    TestVectorsDir / "verify_kzg_proof" / "small"
 
 const SkippedTests = [
   ""
@@ -50,7 +48,7 @@ proc loadVectors(filename: string): YamlNode =
   defer: s.close()
   load(s, result)
 
-template testGen*(name, testData: untyped, directory: string, body: untyped): untyped {.dirty.} =
+template testGen*(name, testData: untyped, body: untyped): untyped {.dirty.} =
   ## Generates a test proc
   ## with identifier "test_name"
   ## The test vector data is available as JsonNode under the
@@ -58,7 +56,8 @@ template testGen*(name, testData: untyped, directory: string, body: untyped): un
   proc `test _ name`(ctx: ptr EthereumKZGContext) =
     var count = 0 # Need to fail if walkDir doesn't return anything
     var skipped = 0
-    for dir, file in walkTests(directory, skipped):
+    const testdir = TestVectorsDir / astToStr(name)/"small"
+    for dir, file in walkTests(testdir, skipped):
       stdout.write("       " & astToStr(name) & " test: " & alignLeft(file, 70))
       let testData = loadVectors(dir/file)
 
@@ -84,15 +83,33 @@ template parseAssign(dstVariable: untyped, size: static int, hexInput: string) =
       doAssert testVector["output"].content == "null"
       # We're in a template, this shortcuts the caller `walkTests`
       continue
-  let dstVariable{.inject.} = array[size, byte].fromHex(hexInput)
 
-testGen(verify_kzg_proof, testVector, VerifyKzgTestDir):
+  var dstVariable{.inject.} = new(array[size, byte])
+  dstVariable[].fromHex(hexInput)
+
+testGen(blob_to_kzg_commitment, testVector):
+  parseAssign(blob, 32*4096, testVector["input"]["blob"].content)
+
+  var commitment: array[48, byte]
+
+  let status = blob_to_kzg_commitment(ctx, commitment, blob[].addr)
+  stdout.write "[" & $status & "]\n"
+
+  if status == cttEthKZG_Success:
+    parseAssign(expectedCommit, 48, testVector["output"].content)
+    doAssert bool(commitment == expectedCommit[]), block:
+      "\ncommitment: " & commitment.toHex() &
+      "\nexpected:   " & expectedCommit[].toHex() & "\n"
+  else:
+    doAssert testVector["output"].content == "null"
+
+testGen(verify_kzg_proof, testVector):
   parseAssign(commitment, 48, testVector["input"]["commitment"].content)
   parseAssign(z,          32, testVector["input"]["z"].content)
   parseAssign(y,          32, testVector["input"]["y"].content)
   parseAssign(proof,      48, testVector["input"]["proof"].content)
 
-  let status = verify_kzg_proof(ctx, commitment, z, y, proof)
+  let status = verify_kzg_proof(ctx, commitment[], z[], y[], proof[])
   stdout.write "[" & $status & "]\n"
 
   if status == cttEthKZG_Success:
@@ -105,6 +122,9 @@ testGen(verify_kzg_proof, testVector, VerifyKzgTestDir):
 block:
   suite "Ethereum Deneb Hardfork / EIP-4844 / Proto-Danksharding / KZG Polynomial Commitments":
     let ctx = load_ethereum_kzg_test_trusted_setup_mainnet()
+
+    test "blob_to_kzg_commitment(dst: var array[48, byte], blob: ptr array[4096, byte])":
+      ctx.test_blob_to_kzg_commitment()
 
     test "verify_kzg_proof(commitment: array[48, byte], z, y: array[32, byte], proof: array[48, byte]) -> bool":
       ctx.test_verify_kzg_proof()

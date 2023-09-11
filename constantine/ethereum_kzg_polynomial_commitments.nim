@@ -7,17 +7,17 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  math/config/curves,
-  math/io/io_bigints,
-  math/[ec_shortweierstrass, arithmetic, extension_fields],
-  math/arithmetic/limbs_montgomery,
-  math/elliptic/ec_multi_scalar_mul,
-  math/polynomials/polynomials,
-  commitments/kzg_polynomial_commitments,
-  hashes,
-  platforms/[abstractions, views, allocs],
-  serialization/[codecs_bls12_381, endians],
-  trusted_setups/ethereum_kzg_srs
+  ./math/config/curves,
+  ./math/io/io_bigints,
+  ./math/[ec_shortweierstrass, arithmetic, extension_fields],
+  ./math/arithmetic/limbs_montgomery,
+  ./math/elliptic/ec_multi_scalar_mul,
+  ./math/polynomials/polynomials,
+  ./commitments/kzg_polynomial_commitments,
+  ./hashes,
+  ./platforms/[abstractions, views, allocs],
+  ./serialization/[codecs_bls12_381, endians],
+  ./trusted_setups/ethereum_kzg_srs
 
 export loadTrustedSetup, TrustedSetupStatus, EthereumKZGContext
 
@@ -183,7 +183,7 @@ func blob_to_bigint_polynomial(
     doAssert sizeof(dst[]) == sizeof(Blob)
     doAssert sizeof(array[FIELD_ELEMENTS_PER_BLOB, array[32, byte]]) == sizeof(Blob)
 
-  let view = cast[ptr array[FIELD_ELEMENTS_PER_BLOB, array[32, byte]]](blob.unsafeAddr())
+  let view = cast[ptr array[FIELD_ELEMENTS_PER_BLOB, array[32, byte]]](blob)
 
   for i in 0 ..< FIELD_ELEMENTS_PER_BLOB:
     let status = dst.evals[i].bytes_to_bls_bigint(view[i])
@@ -201,7 +201,7 @@ func blob_to_field_polynomial(
     doAssert sizeof(dst[]) == sizeof(Blob)
     doAssert sizeof(array[FIELD_ELEMENTS_PER_BLOB, array[32, byte]]) == sizeof(Blob)
 
-  let view = cast[ptr array[FIELD_ELEMENTS_PER_BLOB, array[32, byte]]](blob.unsafeAddr())
+  let view = cast[ptr array[FIELD_ELEMENTS_PER_BLOB, array[32, byte]]](blob)
 
   for i in 0 ..< FIELD_ELEMENTS_PER_BLOB:
     let status = dst.evals[i].bytes_to_bls_field(view[i])
@@ -238,10 +238,12 @@ func blob_to_kzg_commitment*(
        blob: ptr Blob): CttEthKzgStatus =
   let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, matchingOrderBigInt(BLS12_381)], 64)
   let status = poly.blob_to_bigint_polynomial(blob)
-  if status == cttCodecScalar_Zero:
-    return cttEthKZG_ScalarZero
-  elif status == cttCodecScalar_ScalarLargerThanCurveOrder:
+  if status == cttCodecScalar_ScalarLargerThanCurveOrder:
     return cttEthKZG_ScalarLargerThanCurveOrder
+  elif status != cttCodecScalar_Success:
+    debugEcho "Unreachable status in blob_to_kzg_commitment: ", status
+    debugEcho "Panicking ..."
+    quit 1
 
   var r {.noInit.}: ECP_ShortW_Jac[Fp[BLS12_381], G1]
   r.multiScalarMul_vartime(poly.evals, ctx.srs_lagrange_g1)

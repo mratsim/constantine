@@ -97,6 +97,9 @@ func toHex*(bytes: openarray[byte]): string =
     result[2 + 2*i] = hexChars.secretLookup(SecretWord bi shr 4 and 0xF)
     result[2 + 2*i+1] = hexChars.secretLookup(SecretWord bi and 0xF)
 
+func fromHex*(dst: var openArray[byte], hex: string) =
+  dst.paddedFromHex(hex, bigEndian)
+
 func fromHex*[N: static int](T: type array[N, byte], hex: string): T =
   result.paddedFromHex(hex, bigEndian)
 

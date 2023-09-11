@@ -125,7 +125,7 @@ func getLagrange[EC](fftDesc: ECFFT_Descriptor[EC], monomial: seq[EC]): seq[EC] 
   ## The polynomial is also bit-reversal permuted.
 
   result.setLen(monomial.len)
-  let status = fftDesc.ifft(result, monomial)
+  let status = fftDesc.ifft_vartime(result, monomial)
   doAssert status == FFTS_Success, "Ethereum testing trusted setup failure during Lagrange form: " & $status
 
   result.bit_reversal_permutation()
