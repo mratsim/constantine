@@ -27,10 +27,10 @@ import
   ./codecs_status_codes
 
 type
-  EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
-  EC_A* = ECP_TwEdwards_Aff[Fp[Banderwagon]]
+  EC_Prj* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
+  EC_Aff* = ECP_TwEdwards_Aff[Fp[Banderwagon]]
 
-func serialize*(dst: var array[32, byte], P: EC_P): CttCodecEccStatus =
+func serialize*(dst: var array[32, byte], P: EC_Prj): CttCodecEccStatus =
   ## Serialize a Banderwagon point(x, y) in the format
   ## 
   ## serialized bits = 256
@@ -38,6 +38,7 @@ func serialize*(dst: var array[32, byte], P: EC_P): CttCodecEccStatus =
   ## remaining 255 bits -> x ( big endian format )
   ## 
   ## Returns cttCodecEcc_Success if successful
+  ## Spec: https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Serialisation
 
   # Setting all bits to 0 for the point of infinity
   if P.isInf().bool():
@@ -46,7 +47,7 @@ func serialize*(dst: var array[32, byte], P: EC_P): CttCodecEccStatus =
     return cttCodecEcc_Success
   
   # Convert the projective points into affine format before encoding
-  var aff {.noInit.}: EC_A
+  var aff {.noInit.}: EC_Aff
   aff.affine(P)
 
   dst.marshal(aff.x, bigEndian)
@@ -56,7 +57,7 @@ func serialize*(dst: var array[32, byte], P: EC_P): CttCodecEccStatus =
 
   return cttCodecEcc_Success
 
-func deserialize_unchecked*(dst: var EC_P, src: array[32, byte]): CttCodecEccStatus =
+func deserialize_unchecked*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccStatus =
   ## Deserialize a Banderwagon point (x, y) in format
   ## 
   ## serialized bits = 256
@@ -64,7 +65,7 @@ func deserialize_unchecked*(dst: var EC_P, src: array[32, byte]): CttCodecEccSta
   ## remaining 255 bits -> x ( big endian format )
   ## 
   ## Returns cttCodecEcc_Success if successful
-  ## 
+  ## https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Serialisation
   # If infinity, src must be all zeros
   var check: bool = true
   for i in 0 ..< src.len:
@@ -94,7 +95,7 @@ func deserialize_unchecked*(dst: var EC_P, src: array[32, byte]): CttCodecEccSta
 
   return cttCodecEcc_Success
 
-func deserialize*(dst: var EC_P, src: array[32, byte]): CttCodecEccStatus =
+func deserialize*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccStatus =
   ## Deserialize a Banderwagon point (x, y) in format
   ## 
   ## Also checks if the point lies in the banderwagon scheme subgroup
