@@ -23,10 +23,6 @@ import
 # Aliases
 # ------------------------------------------------------------
 
-type
-  G1Point = ECP_ShortW_Aff[Fp[BLS12_381], G1]
-  G2Point = ECP_ShortW_Aff[Fp2[BLS12_381], G2]
-
 # Presets
 # ------------------------------------------------------------
 const FIELD_ELEMENTS_PER_BLOB* {.intdefine.} = 4096
@@ -62,7 +58,7 @@ type
 
     # Trusted setup, see https://vitalik.ca/general/2022/03/14/trustedsetup.html
 
-    srs_lagrange_g1*{.align: 64.}: array[FIELD_ELEMENTS_PER_BLOB, G1Point]
+    srs_lagrange_g1*{.align: 64.}: PolynomialEval[FIELD_ELEMENTS_PER_BLOB, ECP_ShortW_Aff[Fp[BLS12_381], G1]]
     # Part of the Structured Reference String (SRS) holding the 𝔾1 points
     # This is used for committing to polynomials and producing an opening proof at
     # a random value (chosen via Fiat-Shamir heuristic)
@@ -80,7 +76,7 @@ type
     #
     # Conversion can be done with a discrete Fourier transform.
 
-    srs_monomial_g2*{.align: 64.}: array[KZG_SETUP_G2_LENGTH, G2Point]
+    srs_monomial_g2*{.align: 64.}: PolynomialCoef[KZG_SETUP_G2_LENGTH, ECP_ShortW_Aff[Fp2[BLS12_381], G2]]
     # Part of the SRS holding the 𝔾2 points
     #
     # Referring to the 𝔾2 generator as H, we store
@@ -257,7 +253,7 @@ proc loadTrustedSetup*(ctx: ptr EthereumKZGContext, filePath: string): TrustedSe
     block: # Last sanity check
       # When the srs is in monomial form we can check that
       # the first point is the generator
-      if bool(ctx.srs_monomial_g2[0] != BLS12_381.getGenerator"G2"):
+      if bool(ctx.srs_monomial_g2.coefs[0] != BLS12_381.getGenerator"G2"):
         return tsWrongPreset
 
     return tsSuccess

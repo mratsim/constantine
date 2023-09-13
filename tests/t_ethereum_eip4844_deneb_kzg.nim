@@ -13,7 +13,7 @@ import
   pkg/yaml,
   # Internals
   ../constantine/serialization/codecs,
-  ../constantine/ethereum_kzg_polynomial_commitments
+  ../constantine/ethereum_eip4844_kzg_polynomial_commitments
 
 # Organization
 #
@@ -28,7 +28,7 @@ import
 
 const
   TestVectorsDir =
-    currentSourcePath.rsplit(DirSep, 1)[0] / "protocol_ethereum_deneb_kzg"
+    currentSourcePath.rsplit(DirSep, 1)[0] / "protocol_ethereum_eip4844_deneb_kzg"
 
 const SkippedTests = [
   ""
@@ -103,6 +103,29 @@ testGen(blob_to_kzg_commitment, testVector):
   else:
     doAssert testVector["output"].content == "null"
 
+testGen(compute_kzg_proof, testVector):
+  parseAssign(blob, 32*4096, testVector["input"]["blob"].content)
+  parseAssign(z, 32, testVector["input"]["z"].content)
+
+  var proof: array[48, byte]
+  var y: array[32, byte]
+
+  let status = compute_kzg_proof(ctx, proof, y, blob[].addr, z[])
+  stdout.write "[" & $status & "]\n"
+
+  if status == cttEthKZG_Success:
+    parseAssign(expectedEvalAtChallenge, 32, testVector["output"][1].content)
+    parseAssign(expectedProof, 48, testVector["output"][0].content)
+
+    doAssert bool(y == expectedEvalAtChallenge[]), block:
+      "\ny (= p(z)): " & y.toHex() &
+      "\nexpected:   " & expectedEvalAtChallenge[].toHex() & "\n"
+    doAssert bool(proof == expectedProof[]), block:
+      "\nproof:    " & proof.toHex() &
+      "\nexpected: " & expectedProof[].toHex() & "\n"
+  else:
+    doAssert testVector["output"].content == "null"
+
 testGen(verify_kzg_proof, testVector):
   parseAssign(commitment, 48, testVector["input"]["commitment"].content)
   parseAssign(z,          32, testVector["input"]["z"].content)
@@ -125,6 +148,9 @@ block:
 
     test "blob_to_kzg_commitment(dst: var array[48, byte], blob: ptr array[4096, byte])":
       ctx.test_blob_to_kzg_commitment()
+
+    # test "compute_kzg_proof(proof: var array[48, byte], y: var array[32, byte], blob: ptr array[4096, byte], z: array[32, byte])":
+    #   ctx.test_compute_kzg_proof()
 
     test "verify_kzg_proof(commitment: array[48, byte], z, y: array[32, byte], proof: array[48, byte]) -> bool":
       ctx.test_verify_kzg_proof()

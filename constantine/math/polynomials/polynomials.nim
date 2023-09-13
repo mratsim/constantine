@@ -18,15 +18,15 @@ import
 ## ############################################################
 
 type
-  PolynomialCoef*[N: static int, Field] = object
+  PolynomialCoef*[N: static int, Group] = object
     ## A polynomial in monomial basis
     ## [a₀, a₁, a₂, ..., aₙ]
     ##
     ## mapping to the canonical formula
-    ## p(x) = a₀ + a₁ x + a₂ x² + ... + aₙ xⁿ
-    coefs*{.align: 64.}: array[N, Field]
+    ## p(x) = a₀ + a₁ x + a₂ x² + ... + aₙ₋₁ xⁿ⁻¹
+    coefs*{.align: 64.}: array[N, Group]
 
-  PolynomialEval*[N: static int, Field] = object
+  PolynomialEval*[N: static int, Group] = object
     ## A polynomial in Lagrange basis (evaluation form)
     ## [f(0), f(ω), ..., f(ωⁿ⁻¹)]
     ## with n < 2³² and ω a root of unity
@@ -36,7 +36,7 @@ type
     ##
     ## https://ethresear.ch/t/kate-commitments-from-the-lagrange-basis-without-ffts/6950
     ## https://en.wikipedia.org/wiki/Lagrange_polynomial#Barycentric_form
-    evals*{.align: 64.}: array[N, Field]
+    evals*{.align: 64.}: array[N, Group]
 
   PolyDomainEval*[N: static int, Field] = object
     ## Metadata for polynomial in Lagrange basis (evaluation form)
@@ -59,39 +59,43 @@ func inverseRootsMinusZ_vartime*[N: static int, Field](
   # ω is a root of unity of order N,
   # so if ωⁱ-z == 0, it can only happen in one place
   var accInv{.noInit.}: Field
+  var rootsMinusZ{.noInit.}: array[N, Field]
+
+  accInv.setOne()
   var index0 = -1
 
   for i in 0 ..< N:
-    invRootsMinusZ[i].diff(domain.rootsOfUnity[i], z)
+    rootsMinusZ[i].diff(domain.rootsOfUnity[i], z)
 
-    if invRootsMinusZ[i].isZero().bool():
+    if rootsMinusZ[i].isZero().bool():
       index0 = i
+      invRootsMinusZ[i].setZero()
       continue
 
-    if i == 0:
-      accInv = invRootsMinusZ[i]
-    else:
-      accInv *= invRootsMinusZ[i]
+    invRootsMinusZ[i] = accInv
+    accInv *= rootsMinusZ[i]
 
   accInv.inv_vartime()
 
   for i in countdown(N-1, 1):
     if i == index0:
-      invRootsMinusZ[i].setZero()
       continue
 
     invRootsMinusZ[i] *= accInv
-    accInv *= domain.rootsOfUnity[i]
+    accInv *= rootsMinusZ[i]
 
-  invRootsMinusZ[0] *= accInv
+  if index0 == 0:
+    invRootsMinusZ[0].setZero()
+  else: # invRootsMinusZ[0] was init to accInv=1
+    invRootsMinusZ[0] = accInv
   return index0
 
 func evalPolyAt_vartime*[N: static int, Field](
        r: var Field,
        poly: PolynomialEval[N, Field],
-       domain: PolyDomainEval[N, Field],
+       z: Field,
        invRootsMinusZ: array[N, Field],
-       z: Field) =
+       domain: PolyDomainEval[N, Field]) =
   ## Evaluate a polynomial in evaluation form
   ## at the point z
   ## z MUST NOT be one of the roots of unity
@@ -103,22 +107,22 @@ func evalPolyAt_vartime*[N: static int, Field](
   for i in 0 ..< N:
     var summand {.noInit.}: Field
     summand.prod(domain.rootsOfUnity[i], invRootsMinusZ[i])
-    summand *= poly[i]
+    summand *= poly.evals[i]
     r += summand
 
   var t {.noInit.}: Field
   t = z
-  const numDoublings = log2_vartime(N) # N is a power of 2
-  t.square_repeated(numDoublings)      # exponentiation by a power of 2
+  const numDoublings = log2_vartime(uint32 N) # N is a power of 2
+  t.square_repeated(int numDoublings)         # exponentiation by a power of 2
   t.diff(Field(mres: Field.getMontyOne()), t) # TODO: refactor getMontyOne to getOne and return a field element.
   r *= t
   r *= domain.invMaxDegree
 
 func differenceQuotientEvalOffDomain*[N: static int, Field](
        r: var PolynomialEval[N, Field],
-       invRootsMinusZ: array[N, Field],
        poly: PolynomialEval[N, Field],
-       pZ: Field) =
+       pZ: Field,
+       invRootsMinusZ: array[N, Field]) =
   ## Compute r(x) = (p(x) - p(z)) / (x - z)
   ##
   ## for z != ωⁱ a power of a root of unity
@@ -131,15 +135,15 @@ func differenceQuotientEvalOffDomain*[N: static int, Field](
   for i in 0 ..< N:
     # qᵢ = (p(ωⁱ) - p(z))/(ωⁱ-z)
     var qi {.noinit.}: Field
-    qi.diff(poly[i], pZ)
-    r[i].prod(qi, invRootsMinusZ[i])
+    qi.diff(poly.evals[i], pZ)
+    r.evals[i].prod(qi, invRootsMinusZ[i])
 
 func differenceQuotientEvalInDomain*[N: static int, Field](
        r: var PolynomialEval[N, Field],
-       invRootsMinusZ: array[N, Field],
        poly: PolynomialEval[N, Field],
-       domain: PolyDomainEval[N, Field],
-       zIndex: int) =
+       zIndex: int,
+       invRootsMinusZ: array[N, Field],
+       domain: PolyDomainEval[N, Field]) =
   ## Compute r(x) = (p(x) - p(z)) / (x - z)
   ##
   ## for z = ωⁱ a power of a root of unity
@@ -149,16 +153,7 @@ func differenceQuotientEvalInDomain*[N: static int, Field](
   ##   - rootsOfUnity:    ωⁱ
   ##   - invRootsMinusZ:  1/(ωⁱ-z)
   ##   - zIndex:          the index of the root of unity power that matches z = ωⁱᵈˣ
-  r[zIndex].setZero()
-  template invZ(): untyped =
-    # 1/z
-    #  from ωⁿ = 1 and z = ωⁱᵈˣ
-    #  hence ωⁿ⁻ⁱᵈˣ = 1/z
-    #  Note if using bit-reversal permutation (BRP):
-    #    BRP maintains the relationship
-    #    that the inverse of ωⁱ is at position n-i (mod n) in the array of roots of unity
-    static: doAssert N.isPowerOf2_vartime()
-    domain.rootsOfUnity[(N-zIndex) and (N-1)]
+  r.evals[zIndex].setZero()
 
   for i in 0 ..< N:
     if i == zIndex:
@@ -168,8 +163,8 @@ func differenceQuotientEvalInDomain*[N: static int, Field](
 
     # qᵢ = (p(ωⁱ) - p(z))/(ωⁱ-z)
     var qi {.noinit.}: Field
-    qi.diff(poly[i], poly[zIndex])
-    r[i].prod(qi, invRootsMinusZ[i])
+    qi.diff(poly.evals[i], poly.evals[zIndex])
+    r.evals[i].prod(qi, invRootsMinusZ[i])
 
     # q'ᵢ = -qᵢ * ωⁱ/z
     # q'idx = ∑ q'ᵢ
@@ -187,6 +182,17 @@ func differenceQuotientEvalInDomain*[N: static int, Field](
     # For small Ethereum KZG, n = 2¹² = 4096, we're already at the breaking point
     # even if an iteration takes a single cycle with instruction-level parallelism
     var ri {.noinit.}: Field
-    ri.neg(domain.rootsOfUnity[i])
-    ri *= invZ
-    r[zIndex].prod(ri, qi)
+    ri.neg(r.evals[i])                                 # -qᵢ
+    ri *= domain.rootsOfUnity[(i+N-zIndex) and (N-1)]  # -qᵢ * ωⁱ/z (explanation at the bottom)
+    r.evals[zIndex] += ri                              # r[zIndex] = ∑ -qᵢ * ωⁱ/z
+
+    # ωⁱ/z computation detail
+    #  from ωⁿ = 1 and z = ωⁱᵈˣ
+    #  hence ωⁿ⁻ⁱᵈˣ = 1/z
+    #  Note if using bit-reversal permutation (BRP):
+    #    BRP maintains the relationship
+    #    that the inverse of ωⁱ is at position n-i (mod n) in the array of roots of unity
+    #
+    # We want ωⁱ/z which translate to ωⁱ*ωⁿ⁻ⁱᵈˣ hence ωⁱ⁺ⁿ⁻ⁱᵈˣ
+    # with the roots of unity being a cyclic group of order N so we compute i+N-zIndex (mod N)
+    static: doAssert N.isPowerOf2_vartime()
