@@ -205,11 +205,9 @@ func kzg_prove*[N: static int, C: static Curve](
 
   # Compute 1/(ωⁱ - z) with ω a root of unity, i in [0, N).
   # zIndex = i if ωⁱ - z == 0 (it is the i-th root of unity) and -1 otherwise.
-  var zIndex = invRootsMinusZ[].inverseRootsMinusZ_vartime(domain, challenge)
-
-  # debugEcho "\n\n  roots[1]: ", domain.rootsOfUnity[1].toHex()
-  # debugEcho "\n\n  roots[2]: ", domain.rootsOfUnity[2].toHex()
-
+  let zIndex = invRootsMinusZ[].inverseRootsMinusZ_vartime(
+                                  domain, challenge,
+                                  earlyReturnOnZero = false)
 
   if zIndex == -1:
     # p(z)
@@ -293,10 +291,10 @@ func kzg_verify*[F2; C: static Curve](
   tauG2Jac.fromAffine(tauG2)
   commitmentJac.fromAffine(commitment)
 
-  tau_minus_challenge_G2.scalarMul(challenge)
+  tau_minus_challenge_G2.scalarMul_vartime(challenge)
   tau_minus_challenge_G2.diff(tauG2Jac, tau_minus_challenge_G2)
 
-  commitment_minus_eval_at_challenge_G1.scalarMul(eval_at_challenge)
+  commitment_minus_eval_at_challenge_G1.scalarMul_vartime(eval_at_challenge)
   commitment_minus_eval_at_challenge_G1.diff(commitmentJac, commitment_minus_eval_at_challenge_G1)
 
   var tmzG2 {.noInit.}: ECP_ShortW_Aff[F2, G2]

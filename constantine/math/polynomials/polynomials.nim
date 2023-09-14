@@ -51,14 +51,19 @@ type
 func inverseRootsMinusZ_vartime*[N: static int, Field](
        invRootsMinusZ: var array[N, Field],
        domain: PolyDomainEval[N, Field],
-       z: Field): int =
+       z: Field,
+       earlyReturnOnZero: static bool): int =
   ## Compute 1/(ωⁱ-z) for i in [0, N)
   ##
   ## Returns -1 if z ∉ {1, ω, ω², ... , ωⁿ⁻¹}
   ## Returns the index of ωⁱ==z otherwise
   ##
-  ## If ωⁱ-z == 0, the other inverses are still computed
-  ## and 0 is returned at that index.
+  ## If ωⁱ-z == 0 AND earlyReturnOnZero is false
+  ##   the other inverses are still computed
+  ##   and 0 is returned at that index
+  ## If ωⁱ-z == 0 AND earlyReturnOnZero is true
+  ##   the index of ωⁱ==z is returned
+  ##   the content of invRootsMinusZ is undefined
 
   # Mongomery's batch inversion
   # ω is a root of unity of order N,
@@ -69,13 +74,19 @@ func inverseRootsMinusZ_vartime*[N: static int, Field](
   accInv.setOne()
   var index0 = -1
 
-  for i in 0 ..< N:
-    rootsMinusZ[i].diff(domain.rootsOfUnity[i], z)
+  when earlyReturnOnZero: # Split computation in 2 phases
+    for i in 0 ..< N:
+      rootsMinusZ[i].diff(domain.rootsOfUnity[i], z)
+      if rootsMinusZ[i].isZero().bool():
+        return i
 
-    if rootsMinusZ[i].isZero().bool():
-      index0 = i
-      invRootsMinusZ[i].setZero()
-      continue
+  for i in 0 ..< N:
+    when not earlyReturnOnZero: # Fused substraction and batch inversion
+      rootsMinusZ[i].diff(domain.rootsOfUnity[i], z)
+      if rootsMinusZ[i].isZero().bool():
+        index0 = i
+        invRootsMinusZ[i].setZero()
+        continue
 
     invRootsMinusZ[i] = accInv
     accInv *= rootsMinusZ[i]

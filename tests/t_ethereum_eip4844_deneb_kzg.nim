@@ -160,6 +160,21 @@ testGen(compute_blob_kzg_proof, testVector):
   else:
     doAssert testVector["output"].content == "null"
 
+testGen(verify_blob_kzg_proof, testVector):
+  parseAssign(blob,  32*4096, testVector["input"]["blob"].content)
+  parseAssign(commitment, 48, testVector["input"]["commitment"].content)
+  parseAssign(proof,      48, testVector["input"]["proof"].content)
+
+  let status = verify_blob_kzg_proof(ctx, blob[].addr, commitment[], proof[])
+  stdout.write "[" & $status & "]\n"
+
+  if status == cttEthKZG_Success:
+    doAssert testVector["output"].content == "true"
+  elif status == cttEthKZG_VerificationFailure:
+    doAssert testVector["output"].content == "false"
+  else:
+    doAssert testVector["output"].content == "null"
+
 block:
   suite "Ethereum Deneb Hardfork / EIP-4844 / Proto-Danksharding / KZG Polynomial Commitments":
     let ctx = load_ethereum_kzg_test_trusted_setup_mainnet()
@@ -175,5 +190,8 @@ block:
 
     test "compute_blob_kzg_proof(proof: var array[48, byte], blob: ptr array[4096, byte], commitment: array[48, byte])":
       ctx.test_compute_blob_kzg_proof()
+
+    test "verify_blob_kzg_proof(blob: ptr array[4096, byte], commitment: array[48, byte], proof: var array[48, byte])":
+      ctx.test_verify_blob_kzg_proof()
 
     ctx.delete()

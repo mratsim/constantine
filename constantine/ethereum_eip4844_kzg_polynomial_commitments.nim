@@ -388,6 +388,60 @@ func compute_blob_kzg_proof*(
   freeHeap(poly)
   return cttEthKZG_Success
 
+func verify_blob_kzg_proof*(
+       ctx: ptr EthereumKZGContext,
+       blob: ptr Blob,
+       commitment_bytes: array[48, byte],
+       proof_bytes: array[48, byte]): CttEthKzgStatus =
+  ## Given a blob and a KZG proof, verify that the blob data corresponds to the provided commitment.
+
+  var commitment {.noInit.}: KZGCommitment
+  check commitment.bytes_to_kzg_commitment(commitment_bytes)
+
+  # Blob -> Polynomial
+  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], 64)
+  var status = poly.blob_to_field_polynomial(blob)
+  if status == cttCodecScalar_ScalarLargerThanCurveOrder:
+    freeHeap(poly)
+    return cttEthKZG_ScalarLargerThanCurveOrder
+  elif status != cttCodecScalar_Success:
+    debugEcho "Unreachable status in compute_kzg_proof: ", status
+    debugEcho "Panicking ..."
+    quit 1
+
+  var proof {.noInit.}: KZGProof
+  check proof.bytes_to_kzg_proof(proof_bytes)
+
+  var challengeFr {.noInit.}: Fr[BLS12_381]
+  challengeFr.fiatShamirChallenge(blob[], commitment_bytes)
+
+  var challenge, eval_at_challenge {.noInit.}: matchingOrderBigInt(BLS12_381)
+  challenge.fromField(challengeFr)
+
+  let invRootsMinusZ = allocHeapAligned(array[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], alignment = 64)
+
+  # Compute 1/(ωⁱ - z) with ω a root of unity, i in [0, N).
+  # zIndex = i if ωⁱ - z == 0 (it is the i-th root of unity) and -1 otherwise.
+  let zIndex = invRootsMinusZ[].inverseRootsMinusZ_vartime(
+                                  ctx.domain, challengeFr,
+                                  earlyReturnOnZero = true)
+
+  if zIndex == -1:
+    var eval_at_challenge_fr{.noInit.}: Fr[BLS12_381]
+    eval_at_challenge_fr.evalPolyAt_vartime(
+      poly[], challengeFr,
+      invRootsMinusZ[],
+      ctx.domain)
+    eval_at_challenge.fromField(eval_at_challenge_fr)
+  else:
+    eval_at_challenge.fromField(poly.evals[zIndex])
+
+  let verif = kzg_verify(commitment.raw, challenge, eval_at_challenge, proof.raw, ctx.srs_monomial_g2.coefs[1])
+  if verif:
+    return cttEthKZG_Success
+  else:
+    return cttEthKZG_VerificationFailure
+
 # Ethereum Trusted Setup
 # ------------------------------------------------------------
 
