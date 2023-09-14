@@ -110,9 +110,9 @@ func fiatShamirChallenge(dst: var Fr[BLS12_381], blob: Blob, commitmentBytes: ar
 
   transcript.update(FIAT_SHAMIR_PROTOCOL_DOMAIN)
 
-  # Append the degree of polynomial as a domain separator
-  transcript.update(FIELD_ELEMENTS_PER_BLOB.uint64.toBytes(bigEndian))
+  # Append the degree of polynomial as 16-byte big-endian integer as a domain separator
   transcript.update(default(array[16-sizeof(uint64), byte]))
+  transcript.update(FIELD_ELEMENTS_PER_BLOB.uint64.toBytes(bigEndian))
 
   transcript.update(blob)
   transcript.update(commitmentBytes)
@@ -315,7 +315,7 @@ func compute_kzg_proof*(
     proof, y,
     poly[], ctx.domain,
     z, ctx.srs_lagrange_g1,
-    bitreversedDomain = true)
+    isBitReversedDomain = true)
 
   discard proof_bytes.serialize_g1_compressed(proof) # cannot fail
   y_bytes.marshal(y, bigEndian) # cannot fail
@@ -348,6 +348,45 @@ func verify_kzg_proof*(
     return cttEthKZG_Success
   else:
     return cttEthKZG_VerificationFailure
+
+func compute_blob_kzg_proof*(
+       ctx: ptr EthereumKZGContext,
+       proof_bytes: var array[48, byte],
+       blob: ptr Blob,
+       commitment_bytes: array[48, byte]): CttEthKzgStatus =
+  ## Given a blob, return the KZG proof that is used to verify it against the commitment.
+  ## This method does not verify that the commitment is correct with respect to `blob`.
+
+  var commitment {.noInit.}: KZGCommitment
+  check commitment.bytes_to_kzg_commitment(commitment_bytes)
+
+  # Blob -> Polynomial
+  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], 64)
+  var status = poly.blob_to_field_polynomial(blob)
+  if status == cttCodecScalar_ScalarLargerThanCurveOrder:
+    freeHeap(poly)
+    return cttEthKZG_ScalarLargerThanCurveOrder
+  elif status != cttCodecScalar_Success:
+    debugEcho "Unreachable status in compute_kzg_proof: ", status
+    debugEcho "Panicking ..."
+    quit 1
+
+  var challenge {.noInit.}: Fr[BLS12_381]
+  challenge.fiatShamirChallenge(blob[], commitment_bytes)
+
+  var y {.noInit.}: Fr[BLS12_381]                         # y = p(z), eval at challenge z
+  var proof {.noInit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
+
+  kzg_prove(
+    proof, y,
+    poly[], ctx.domain,
+    challenge, ctx.srs_lagrange_g1,
+    isBitReversedDomain = true)
+
+  discard proof_bytes.serialize_g1_compressed(proof) # cannot fail
+
+  freeHeap(poly)
+  return cttEthKZG_Success
 
 # Ethereum Trusted Setup
 # ------------------------------------------------------------

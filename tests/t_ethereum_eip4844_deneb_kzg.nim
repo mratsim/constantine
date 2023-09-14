@@ -58,7 +58,7 @@ template testGen*(name, testData: untyped, body: untyped): untyped {.dirty.} =
     var skipped = 0
     const testdir = TestVectorsDir / astToStr(name)/"small"
     for dir, file in walkTests(testdir, skipped):
-      stdout.write("       " & astToStr(name) & " test: " & alignLeft(file, 70))
+      stdout.write("       " & alignLeft(astToStr(name) & " test:", 36) & alignLeft(file, 90))
       let testData = loadVectors(dir/file)
 
       body
@@ -142,6 +142,24 @@ testGen(verify_kzg_proof, testVector):
   else:
     doAssert testVector["output"].content == "null"
 
+testGen(compute_blob_kzg_proof, testVector):
+  parseAssign(blob,  32*4096, testVector["input"]["blob"].content)
+  parseAssign(commitment, 48, testVector["input"]["commitment"].content)
+
+  var proof: array[48, byte]
+
+  let status = compute_blob_kzg_proof(ctx, proof, blob[].addr, commitment[])
+  stdout.write "[" & $status & "]\n"
+
+  if status == cttEthKZG_Success:
+    parseAssign(expectedProof, 48, testVector["output"].content)
+
+    doAssert bool(proof == expectedProof[]), block:
+      "\nproof:    " & proof.toHex() &
+      "\nexpected: " & expectedProof[].toHex() & "\n"
+  else:
+    doAssert testVector["output"].content == "null"
+
 block:
   suite "Ethereum Deneb Hardfork / EIP-4844 / Proto-Danksharding / KZG Polynomial Commitments":
     let ctx = load_ethereum_kzg_test_trusted_setup_mainnet()
@@ -154,5 +172,8 @@ block:
 
     test "verify_kzg_proof(commitment: array[48, byte], z, y: array[32, byte], proof: array[48, byte]) -> bool":
       ctx.test_verify_kzg_proof()
+
+    test "compute_blob_kzg_proof(proof: var array[48, byte], blob: ptr array[4096, byte], commitment: array[48, byte])":
+      ctx.test_compute_blob_kzg_proof()
 
     ctx.delete()
