@@ -211,14 +211,14 @@ jobs:
         run: |
           pacman -S --needed --noconfirm mingw-w64-x86_64-gmp
           nimble refresh --verbose -y
-          nimble install --verbose -y gmp jsony asynctools yaml
+          nimble install --verbose -y gmp jsony asynctools yaml@1.1.0
 
       - name: Install test dependencies
         if: runner.os != 'Windows'
         shell: bash
         run: |
           nimble refresh --verbose -y
-          nimble install --verbose -y gmp jsony asynctools yaml
+          nimble install --verbose -y gmp jsony asynctools yaml@1.1.0
 
       - name: Print Nim & compiler versions
         shell: bash
