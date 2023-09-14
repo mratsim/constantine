@@ -178,7 +178,7 @@ type G1aff[C: static Curve] = ECP_ShortW_Aff[Fp[C], G1]
 func kzg_commit*[N: static int, C: static Curve](
        commitment: var ECP_ShortW_Aff[Fp[C], G1],
        poly_evals: array[N, BigInt],
-       powers_of_tau: PolynomialEval[N, G1aff[C]]) =
+       powers_of_tau: PolynomialEval[N, G1aff[C]]) {.tags:[Alloca, HeapAlloc, Vartime].} =
 
   var commitmentJac {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
   commitmentJac.multiScalarMul_vartime(poly_evals, powers_of_tau.evals)
@@ -191,11 +191,11 @@ func kzg_prove*[N: static int, C: static Curve](
        domain: PolyDomainEval[N, Fr[C]],
        challenge: Fr[C],
        powers_of_tau: PolynomialEval[N, G1aff[C]],
-       isBitReversedDomain: static bool) =
+       isBitReversedDomain: static bool) {.tags:[Alloca, HeapAlloc, Vartime].} =
 
   # Note:
   #   The order of inputs in
-  #  `kzg_prove`, `evalPolyAt_vartime`, `differenceQuotientEvalOffDomain`, `differenceQuotientEvalInDomain`
+  #  `kzg_prove`, `evalPolyAt`, `differenceQuotientEvalOffDomain`, `differenceQuotientEvalInDomain`
   #  minimizes register changes when parameter passing.
   #
   # z = challenge in the following code
@@ -211,7 +211,7 @@ func kzg_prove*[N: static int, C: static Curve](
 
   if zIndex == -1:
     # p(z)
-    eval_at_challenge.evalPolyAt_vartime(
+    eval_at_challenge.evalPolyAt(
       poly, challenge,
       invRootsMinusZ[],
       domain)
@@ -253,7 +253,7 @@ func kzg_verify*[F2; C: static Curve](
        challenge: BigInt, # matchingOrderBigInt(C),
        eval_at_challenge: BigInt, # matchingOrderBigInt(C),
        proof: ECP_ShortW_Aff[Fp[C], G1],
-       tauG2: ECP_ShortW_Aff[F2, G2]): bool =
+       tauG2: ECP_ShortW_Aff[F2, G2]): bool {.tags:[Alloca, Vartime].} =
   ## Verify a short KZG proof that ``p(challenge) = eval_at_challenge``
   ## without doing the whole p(challenge) computation
   #

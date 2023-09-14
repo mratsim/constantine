@@ -214,6 +214,8 @@ func blob_to_field_polynomial(
 # ------------------------------------------------------------
 
 template check(evalExpr: CttCodecScalarStatus): untyped =
+  # Translate codec status code to KZG status code
+  # Beware of resource cleanup like heap allocation, this can early exit the caller.
   block:
     let status = evalExpr # Ensure single evaluation
     case status
@@ -222,6 +224,8 @@ template check(evalExpr: CttCodecScalarStatus): untyped =
     of cttCodecScalar_ScalarLargerThanCurveOrder:       return cttEthKZG_ScalarLargerThanCurveOrder
 
 template check(evalExpr: CttCodecEccStatus): untyped =
+  # Translate codec status code to KZG status code
+  # Beware of resource cleanup like heap allocation, this can early exit the caller.
   block:
     let status = evalExpr # Ensure single evaluation
     case status
@@ -255,7 +259,7 @@ func blob_to_kzg_commitment*(
   let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, matchingOrderBigInt(BLS12_381)], 64)
   let status = poly.blob_to_bigint_polynomial(blob)
   if status == cttCodecScalar_ScalarLargerThanCurveOrder:
-    freeHeap(poly)
+    freeHeapAligned(poly)
     return cttEthKZG_ScalarLargerThanCurveOrder
   elif status != cttCodecScalar_Success:
     debugEcho "Unreachable status in blob_to_kzg_commitment: ", status
@@ -266,7 +270,7 @@ func blob_to_kzg_commitment*(
   kzg_commit(r, poly.evals, ctx.srs_lagrange_g1) # symbol resolution need explicit generics
   discard dst.serialize_g1_compressed(r)
 
-  freeHeap(poly)
+  freeHeapAligned(poly)
   return cttEthKZG_Success
 
 func compute_kzg_proof*(
@@ -274,7 +278,7 @@ func compute_kzg_proof*(
        proof_bytes: var array[48, byte],
        y_bytes: var array[32, byte],
        blob: ptr Blob,
-       z_bytes: array[32, byte]): CttEthKzgStatus =
+       z_bytes: array[32, byte]): CttEthKzgStatus {.tags:[Alloca, HeapAlloc, Vartime].} =
   ## Generate:
   ## - y = p(z), the evaluation of p at the challenge z, with p being the Blob interpreted as a polynomial.
   ## - A zero-knowledge proof of correct evaluation.
@@ -289,24 +293,23 @@ func compute_kzg_proof*(
   ##   - at τ, p(τ) is the commitment
   ##   - and at the verification challenge z.
 
+  # Random or Fiat-Shamir challenge
+  var z {.noInit.}: Fr[BLS12_381]
+  var status = bytes_to_bls_field(z, z_bytes)
+  if status != cttCodecScalar_Success:
+    # cttCodecScalar_Zero is not possible
+    return cttEthKZG_ScalarLargerThanCurveOrder
+
   # Blob -> Polynomial
   let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], 64)
-  var status = poly.blob_to_field_polynomial(blob)
+  status = poly.blob_to_field_polynomial(blob)
   if status == cttCodecScalar_ScalarLargerThanCurveOrder:
-    freeHeap(poly)
+    freeHeapAligned(poly)
     return cttEthKZG_ScalarLargerThanCurveOrder
   elif status != cttCodecScalar_Success:
     debugEcho "Unreachable status in compute_kzg_proof: ", status
     debugEcho "Panicking ..."
     quit 1
-
-  # Random or Fiat-Shamir challenge
-  var z {.noInit.}: Fr[BLS12_381]
-  status = bytes_to_bls_field(z, z_bytes)
-  if status != cttCodecScalar_Success:
-    # cttCodecScalar_Zero is not possible
-    freeHeap(poly)
-    return cttEthKZG_ScalarLargerThanCurveOrder
 
   var y {.noInit.}: Fr[BLS12_381]                         # y = p(z), eval at challenge z
   var proof {.noInit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
@@ -320,7 +323,7 @@ func compute_kzg_proof*(
   discard proof_bytes.serialize_g1_compressed(proof) # cannot fail
   y_bytes.marshal(y, bigEndian) # cannot fail
 
-  freeHeap(poly)
+  freeHeapAligned(poly)
   return cttEthKZG_Success
 
 func verify_kzg_proof*(
@@ -328,7 +331,7 @@ func verify_kzg_proof*(
        commitment_bytes: array[48, byte],
        z_bytes: array[32, byte],
        y_bytes: array[32, byte],
-       proof_bytes: array[48, byte]): CttEthKzgStatus =
+       proof_bytes: array[48, byte]): CttEthKzgStatus {.tags:[Alloca, Vartime].} =
   ## Verify KZG proof that p(z) == y where p(z) is the polynomial represented by "polynomial_kzg"
 
   var commitment {.noInit.}: KZGCommitment
@@ -353,7 +356,7 @@ func compute_blob_kzg_proof*(
        ctx: ptr EthereumKZGContext,
        proof_bytes: var array[48, byte],
        blob: ptr Blob,
-       commitment_bytes: array[48, byte]): CttEthKzgStatus =
+       commitment_bytes: array[48, byte]): CttEthKzgStatus {.tags:[Alloca, HeapAlloc, Vartime].} =
   ## Given a blob, return the KZG proof that is used to verify it against the commitment.
   ## This method does not verify that the commitment is correct with respect to `blob`.
 
@@ -364,7 +367,7 @@ func compute_blob_kzg_proof*(
   let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], 64)
   var status = poly.blob_to_field_polynomial(blob)
   if status == cttCodecScalar_ScalarLargerThanCurveOrder:
-    freeHeap(poly)
+    freeHeapAligned(poly)
     return cttEthKZG_ScalarLargerThanCurveOrder
   elif status != cttCodecScalar_Success:
     debugEcho "Unreachable status in compute_kzg_proof: ", status
@@ -385,32 +388,32 @@ func compute_blob_kzg_proof*(
 
   discard proof_bytes.serialize_g1_compressed(proof) # cannot fail
 
-  freeHeap(poly)
+  freeHeapAligned(poly)
   return cttEthKZG_Success
 
 func verify_blob_kzg_proof*(
        ctx: ptr EthereumKZGContext,
        blob: ptr Blob,
        commitment_bytes: array[48, byte],
-       proof_bytes: array[48, byte]): CttEthKzgStatus =
+       proof_bytes: array[48, byte]): CttEthKzgStatus {.tags:[Alloca, HeapAlloc, Vartime].} =
   ## Given a blob and a KZG proof, verify that the blob data corresponds to the provided commitment.
 
   var commitment {.noInit.}: KZGCommitment
   check commitment.bytes_to_kzg_commitment(commitment_bytes)
 
+  var proof {.noInit.}: KZGProof
+  check proof.bytes_to_kzg_proof(proof_bytes)
+
   # Blob -> Polynomial
   let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], 64)
   var status = poly.blob_to_field_polynomial(blob)
   if status == cttCodecScalar_ScalarLargerThanCurveOrder:
-    freeHeap(poly)
+    freeHeapAligned(poly)
     return cttEthKZG_ScalarLargerThanCurveOrder
   elif status != cttCodecScalar_Success:
     debugEcho "Unreachable status in compute_kzg_proof: ", status
     debugEcho "Panicking ..."
     quit 1
-
-  var proof {.noInit.}: KZGProof
-  check proof.bytes_to_kzg_proof(proof_bytes)
 
   var challengeFr {.noInit.}: Fr[BLS12_381]
   challengeFr.fiatShamirChallenge(blob[], commitment_bytes)
@@ -428,13 +431,16 @@ func verify_blob_kzg_proof*(
 
   if zIndex == -1:
     var eval_at_challenge_fr{.noInit.}: Fr[BLS12_381]
-    eval_at_challenge_fr.evalPolyAt_vartime(
+    eval_at_challenge_fr.evalPolyAt(
       poly[], challengeFr,
       invRootsMinusZ[],
       ctx.domain)
     eval_at_challenge.fromField(eval_at_challenge_fr)
   else:
     eval_at_challenge.fromField(poly.evals[zIndex])
+
+  freeHeapAligned(invRootsMinusZ)
+  freeHeapAligned(poly)
 
   let verif = kzg_verify(commitment.raw, challenge, eval_at_challenge, proof.raw, ctx.srs_monomial_g2.coefs[1])
   if verif:

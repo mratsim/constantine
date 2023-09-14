@@ -106,7 +106,7 @@ func inverseRootsMinusZ_vartime*[N: static int, Field](
     invRootsMinusZ[0] = accInv
   return index0
 
-func evalPolyAt_vartime*[N: static int, Field](
+func evalPolyAt*[N: static int, Field](
        r: var Field,
        poly: PolynomialEval[N, Field],
        z: Field,
