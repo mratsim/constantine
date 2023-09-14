@@ -149,8 +149,8 @@ block:
     test "blob_to_kzg_commitment(dst: var array[48, byte], blob: ptr array[4096, byte])":
       ctx.test_blob_to_kzg_commitment()
 
-    # test "compute_kzg_proof(proof: var array[48, byte], y: var array[32, byte], blob: ptr array[4096, byte], z: array[32, byte])":
-    #   ctx.test_compute_kzg_proof()
+    test "compute_kzg_proof(proof: var array[48, byte], y: var array[32, byte], blob: ptr array[4096, byte], z: array[32, byte])":
+      ctx.test_compute_kzg_proof()
 
     test "verify_kzg_proof(commitment: array[48, byte], z, y: array[32, byte], proof: array[48, byte]) -> bool":
       ctx.test_verify_kzg_proof()

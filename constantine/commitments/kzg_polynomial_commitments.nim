@@ -190,7 +190,8 @@ func kzg_prove*[N: static int, C: static Curve](
        poly: PolynomialEval[N, Fr[C]],
        domain: PolyDomainEval[N, Fr[C]],
        challenge: Fr[C],
-       powers_of_tau: PolynomialEval[N, G1aff[C]]) =
+       powers_of_tau: PolynomialEval[N, G1aff[C]],
+       isBitReversedDomain: static bool) =
 
   # Note:
   #   The order of inputs in
@@ -227,7 +228,7 @@ func kzg_prove*[N: static int, C: static Curve](
 
     # q(x) = (p(x) - p(z)) / (x - z)
     diffQuotientPolyFr[].differenceQuotientEvalInDomain(
-      poly, zIndex, invRootsMinusZ[], domain)
+      poly, uint32 zIndex, invRootsMinusZ[], domain, isBitReversedDomain)
 
   freeHeapAligned(invRootsMinusZ)
 
@@ -242,7 +243,7 @@ func kzg_prove*[N: static int, C: static Curve](
   var proofJac {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
   proofJac.multiScalarMul_vartime(diffQuotientPolyBigInt[], powers_of_tau.evals)
   proof.affine(proofJac)
-  
+
   freeHeapAligned(diffQuotientPolyBigInt)
 
 

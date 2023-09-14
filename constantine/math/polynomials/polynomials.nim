@@ -40,6 +40,11 @@ type
 
   PolyDomainEval*[N: static int, Field] = object
     ## Metadata for polynomial in Lagrange basis (evaluation form)
+    ##
+    ## Note on inverses
+    ##   1/ωⁱ (mod N) = ωⁿ⁻ⁱ (mod N)
+    ## Hence in canonical representation rootsOfUnity[(N-i) and (N-1)] contains the inverse of rootsOfUnity[i]
+    ## This translates into rootsOfUnity[brp((N-brp(i)) and (N-1))] when bit-reversal permuted
     rootsOfUnity*{.align: 64.}: array[N, Field]
     invMaxDegree*: Field
 
@@ -141,9 +146,10 @@ func differenceQuotientEvalOffDomain*[N: static int, Field](
 func differenceQuotientEvalInDomain*[N: static int, Field](
        r: var PolynomialEval[N, Field],
        poly: PolynomialEval[N, Field],
-       zIndex: int,
+       zIndex: uint32,
        invRootsMinusZ: array[N, Field],
-       domain: PolyDomainEval[N, Field]) =
+       domain: PolyDomainEval[N, Field],
+       isBitReversedDomain: static bool) =
   ## Compute r(x) = (p(x) - p(z)) / (x - z)
   ##
   ## for z = ωⁱ a power of a root of unity
@@ -153,9 +159,14 @@ func differenceQuotientEvalInDomain*[N: static int, Field](
   ##   - rootsOfUnity:    ωⁱ
   ##   - invRootsMinusZ:  1/(ωⁱ-z)
   ##   - zIndex:          the index of the root of unity power that matches z = ωⁱᵈˣ
+
+  static:
+    # For powers of 2: x mod N == x and (N-1)
+    doAssert N.isPowerOf2_vartime()
+
   r.evals[zIndex].setZero()
 
-  for i in 0 ..< N:
+  for i in 0'u32 ..< N:
     if i == zIndex:
       # https://dankradfeist.de/ethereum/2021/06/18/pcs-multiproofs.html
       # section "Dividing when one of the points is zero".
@@ -168,31 +179,32 @@ func differenceQuotientEvalInDomain*[N: static int, Field](
 
     # q'ᵢ = -qᵢ * ωⁱ/z
     # q'idx = ∑ q'ᵢ
-    # since z is a power of ω, ωⁱ/z = ωⁱ⁻ⁱᵈˣ
-    # However some protocols use bit-reversal permutation (brp) to store the ωⁱ
-    # Hence retrieving the data would require roots[brp((brp(i)-brp(index)) mod n)] for those
-    # But is this fast? There is no single instruction for reversing bits of an integer.
-    # and the reversal depends on N.
-    # - https://stackoverflow.com/questions/746171/efficient-algorithm-for-bit-reversal-from-msb-lsb-to-lsb-msb-in-c
-    # - https://stackoverflow.com/questions/52226858/bit-reversal-algorithm-by-rutkowska
-    # - https://www.hpl.hp.com/techreports/93/HPL-93-89.pdf
-    # - https://graphics.stanford.edu/~seander/bithacks.html#BitReverseObvious
-    # The C version from Stanford's bithacks need log₂(n) loop iterations
-    # A 254~255-bit multiplication takes 38 cycles, we need 3 brp so at most ~13 cycles per brp
-    # For small Ethereum KZG, n = 2¹² = 4096, we're already at the breaking point
-    # even if an iteration takes a single cycle with instruction-level parallelism
     var ri {.noinit.}: Field
-    ri.neg(r.evals[i])                                 # -qᵢ
-    ri *= domain.rootsOfUnity[(i+N-zIndex) and (N-1)]  # -qᵢ * ωⁱ/z (explanation at the bottom)
-    r.evals[zIndex] += ri                              # r[zIndex] = ∑ -qᵢ * ωⁱ/z
+    ri.neg(r.evals[i])                                  # -qᵢ
+    when isBitReversedDomain:
+      const logN = log2_vartime(uint32 N)
+      let invZidx = N - reverseBits(uint32 zIndex, logN)
+      let canonI = reverseBits(i, logN)
+      let idx = reverseBits((canonI + invZidx) and (N-1), logN)
+      ri *= domain.rootsOfUnity[idx]                    # -qᵢ * ωⁱ/z  (explanation at the bottom)
+    else:
+      ri *= domain.rootsOfUnity[(i+N-zIndex) and (N-1)] # -qᵢ * ωⁱ/z  (explanation at the bottom)
+    r.evals[zIndex] += ri                               # r[zIndex] = ∑ -qᵢ * ωⁱ/z
 
-    # ωⁱ/z computation detail
-    #  from ωⁿ = 1 and z = ωⁱᵈˣ
-    #  hence ωⁿ⁻ⁱᵈˣ = 1/z
-    #  Note if using bit-reversal permutation (BRP):
-    #    BRP maintains the relationship
-    #    that the inverse of ωⁱ is at position n-i (mod n) in the array of roots of unity
+    # * 1/z computation detail
+    #    from ωⁿ = 1 and z = ωⁱᵈˣ
+    #    hence ωⁿ⁻ⁱᵈˣ = 1/z
+    #    However our z may be in bit-reversal permuted
     #
-    # We want ωⁱ/z which translate to ωⁱ*ωⁿ⁻ⁱᵈˣ hence ωⁱ⁺ⁿ⁻ⁱᵈˣ
-    # with the roots of unity being a cyclic group of order N so we compute i+N-zIndex (mod N)
-    static: doAssert N.isPowerOf2_vartime()
+    # * We want ωⁱ/z which translate to ωⁱ*ωⁿ⁻ⁱᵈˣ hence ωⁱ⁺ⁿ⁻ⁱᵈˣ
+    #   with the roots of unity being a cyclic group of order N so we compute i+N-zIndex (mod N)
+    #
+    #   However some protocols use bit-reversal permutation (brp) to store the ωⁱ
+    #   Hence retrieving the data requires roots[brp((brp(i)-n-brp(idx)) mod n)] for those (note: n = brp(n))
+    #
+    #   For Ethereum:
+    #     A 254~255-bit multiplication takes 11ns / 38 cycles (Fr[BLS12-381]),
+    #     A brp with n = 2¹² = 4096 (for EIP4844) takes about 6ns
+    #   We could also cache either ωⁿ⁻ⁱ or a map i' = brp(n - brp(i))
+    #   in non-brp order but cache misses are expensive
+    #   and brp can benefits from instruction-level parallelism

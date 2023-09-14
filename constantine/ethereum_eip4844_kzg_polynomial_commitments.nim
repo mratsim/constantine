@@ -314,7 +314,8 @@ func compute_kzg_proof*(
   kzg_prove(
     proof, y,
     poly[], ctx.domain,
-    z, ctx.srs_lagrange_g1)
+    z, ctx.srs_lagrange_g1,
+    bitreversedDomain = true)
 
   discard proof_bytes.serialize_g1_compressed(proof) # cannot fail
   y_bytes.marshal(y, bigEndian) # cannot fail
