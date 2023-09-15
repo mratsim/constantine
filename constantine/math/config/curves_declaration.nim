@@ -155,7 +155,7 @@ declareCurves:
     coef_a: -5
     coef_d: "6389c12633c267cbc66e3bf86be3b6d8cb66677177e54f92b369f2f5188d58e7"
 
-  curve Banderwagon: # Bandwagon is a prime subgroup constructed over the Bandersnatach Curve.
+  curve Banderwagon: # Banderwagon is a prime subgroup constructed over the Bandersnatch Curve.
     # https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq
     bitwidth: 255
     modulus: "0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001"
