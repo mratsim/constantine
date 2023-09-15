@@ -211,21 +211,21 @@ jobs:
         run: |
           pacman -S --needed --noconfirm mingw-w64-x86_64-gmp
           nimble refresh --verbose -y
-          nimble install --verbose -y gmp jsony asynctools
+          nimble install --verbose -y gmp jsony asynctools yaml@1.1.0
 
       - name: Install test dependencies
         if: runner.os != 'Windows'
         shell: bash
         run: |
           nimble refresh --verbose -y
-          nimble install --verbose -y gmp jsony asynctools
+          nimble install --verbose -y gmp jsony asynctools yaml@1.1.0
 
       - name: Print Nim & compiler versions
         shell: bash
         # gcc is an alias to Clang on MacOS
         run: |
           nim -v
-          gcc -v 
+          gcc -v
 
       - name: Run Constantine tests (UNIX with Assembly)
         if: runner.os != 'Windows' && matrix.target.BACKEND == 'ASM'

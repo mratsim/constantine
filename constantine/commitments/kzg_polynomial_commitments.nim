@@ -104,7 +104,7 @@ import
 ## We have 2 parties, a Prover and a Verifier.
 ##
 ## They share a public Structured Reference String (SRS), also called trusted setup:
-##   srs_g1: [[1]₁, [τ]₁, [τ²]₁, ... [τⁿ]₁] also called powers of tau, with a bounded degree n
+##   srs_g1: [[1]₁, [τ]₁, [τ²]₁, ... [τⁿ⁻¹]₁] also called powers of tau, with a bounded degree n-1
 ##   srs_g2: [[1]₂, [τ]₂]
 ##
 ## τ and its powers are secrets that no one know, we only work with [τⁱ]₁ and [τ]₂
@@ -120,7 +120,7 @@ import
 ##
 ## 0. A data blob is interpreted as up to n 𝔽r elements
 ##    corresponding to a polynomial p(x) = blob₀ + blob₁ x + blob₂ x² + ... + blobₙ₋₁ xⁿ⁻¹
-##                                  p(x) = ∑ blobᵢ xⁱ
+##                                  p(x) = ∑₀ⁿ⁻¹ blobᵢ xⁱ
 ##
 ##    So we can commit/prove up to 4096*log₂(r) bits of data
 ##    For Ethereum, n = 4096 and log₂(r) = 255 bits
@@ -167,42 +167,7 @@ import
 ##   [(ω⁰, p(ω⁰)), (ω¹, p(ω¹)), (ω², p(ω²)), ..., (ωⁿ⁻¹, p(ωⁿ⁻¹))]
 ##   with ω ∈ 𝔽r a root of unity of order n, i.e. ωⁿ = 1
 
-type
-  PowersOfTauCoef[D: static int, F; G: static Subgroup] = object
-    coefs: array[D, ECP_ShortW_Aff[F, G]]
-
-  PowersOfTauEval[D: static int, F; G: static Subgroup] = object
-    evals: array[D, ECP_ShortW_Aff[F, G]]
-
-  G1aff[C: static Curve] = ECP_ShortW_Aff[Fp[C], G1]
-  G1jac[C: static Curve] = ECP_ShortW_Jac[Fp[C], G1]
-
-# Helper functions
-# ------------------------------------------------------------
-
-func g1_lincomb[C: static Curve](r: var G1jac[C],
-                points: ptr UncheckedArray[G1aff[C]],
-                scalars: ptr UncheckedArray[matchingOrderBigInt(C)],
-                len: int) =
-  ## Multi-scalar-multiplication / linear combination
-  r.raw.multiScalarMul_vartime(
-    scalars,
-    cast[ptr UncheckedArray[typeof points[0].raw]](points),
-    len)
-
-func g1_lincomb[C: static Curve](r: var G1jac[C],
-                points: ptr UncheckedArray[G1aff[C]],
-                scalars: ptr UncheckedArray[Fr[C]],
-                len: int) =
-  ## Multi-scalar-multiplication / linear combination
-  let scalars2 = allocHeapArray(matchingOrderBigInt(C), len)
-
-  for i in 0 ..< len:
-    scalars2[i].fromField(scalars[i])
-
-  r.g1_lincomb(points, scalars2, len)
-
-  scalars2.freeHeap()
+type G1aff[C: static Curve] = ECP_ShortW_Aff[Fp[C], G1]
 
 # KZG - Prover - Lagrange basis
 # ------------------------------------------------------------
@@ -211,54 +176,74 @@ func g1_lincomb[C: static Curve](r: var G1jac[C],
 # as the powers of τ
 
 func kzg_commit*[N: static int, C: static Curve](
-       commitment: var ECP_ShortW_Jac[Fp[C], G1],
-       poly_evals: array[N, matchingOrderBigInt(C)],
-       powers_of_tau: PowersOfTauEval[N, Fp[C], G1]) =
-  commitment.g1_lincomb(powers_of_tau.evals.asUnchecked(), poly_evals.asUnchecked(), N)
+       commitment: var ECP_ShortW_Aff[Fp[C], G1],
+       poly_evals: array[N, BigInt],
+       powers_of_tau: PolynomialEval[N, G1aff[C]]) {.tags:[Alloca, HeapAlloc, Vartime].} =
+
+  var commitmentJac {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
+  commitmentJac.multiScalarMul_vartime(poly_evals, powers_of_tau.evals)
+  commitment.affine(commitmentJac)
 
 func kzg_prove*[N: static int, C: static Curve](
-       proof: var ECP_ShortW_Jac[Fp[C], G1],
+       proof: var ECP_ShortW_Aff[Fp[C], G1],
        eval_at_challenge: var Fr[C],
        poly: PolynomialEval[N, Fr[C]],
        domain: PolyDomainEval[N, Fr[C]],
        challenge: Fr[C],
-       powers_of_tau: PowersOfTauEval[N, Fp[C], G1]) =
+       powers_of_tau: PolynomialEval[N, G1aff[C]],
+       isBitReversedDomain: static bool) {.tags:[Alloca, HeapAlloc, Vartime].} =
 
   # Note:
   #   The order of inputs in
-  #  `kzg_prove`, `evalPolyAt_vartime`, `differenceQuotientEvalOffDomain`, `differenceQuotientEvalInDomain`
+  #  `kzg_prove`, `evalPolyAt`, `differenceQuotientEvalOffDomain`, `differenceQuotientEvalInDomain`
   #  minimizes register changes when parameter passing.
+  #
+  # z = challenge in the following code
 
-  # z = challenge
+  let diffQuotientPolyFr = allocHeapAligned(PolynomialEval[N, Fr[C]], alignment = 64)
+  let invRootsMinusZ = allocHeapAligned(array[N, Fr[C]], alignment = 64)
 
-  let invRootsMinusZ = allocHeap(array[N, Fr[C]])
-  let diffQuotientPoly = allocHeap(PolynomialEval[N, Fr[C]])
-
-  let zIndex = invRootsMinusZ.inverseRootsMinusZ_vartime(domain, challenge)
+  # Compute 1/(ωⁱ - z) with ω a root of unity, i in [0, N).
+  # zIndex = i if ωⁱ - z == 0 (it is the i-th root of unity) and -1 otherwise.
+  let zIndex = invRootsMinusZ[].inverseRootsMinusZ_vartime(
+                                  domain, challenge,
+                                  earlyReturnOnZero = false)
 
   if zIndex == -1:
     # p(z)
-    eval_at_challenge.evalPolyAt_vartime(
-      invRootsMinusZ,
-      poly, domain,
-      challenge)
+    eval_at_challenge.evalPolyAt(
+      poly, challenge,
+      invRootsMinusZ[],
+      domain)
 
     # q(x) = (p(x) - p(z)) / (x - z)
-    diffQuotientPoly.differenceQuotientEvalOffDomain(
-      invRootsMinusZ, poly, eval_at_challenge)
+    diffQuotientPolyFr[].differenceQuotientEvalOffDomain(
+      poly, eval_at_challenge, invRootsMinusZ[])
   else:
     # p(z)
     # But the challenge z is equal to one of the roots of unity (how likely is that?)
-    eval_at_challenge = poly[zIndex]
+    eval_at_challenge = poly.evals[zIndex]
 
     # q(x) = (p(x) - p(z)) / (x - z)
-    diffQuotientPoly.differenceQuotientEvalInDomain(
-      invRootsMinusZ, poly, domain, zIndex)
+    diffQuotientPolyFr[].differenceQuotientEvalInDomain(
+      poly, uint32 zIndex, invRootsMinusZ[], domain, isBitReversedDomain)
 
-  proof.g1_lincomb(powers_of_tau.evals.asUnchecked(), diffQuotientPoly.asUnchecked(), N)
+  freeHeapAligned(invRootsMinusZ)
 
-  freeHeap(diffQuotientPoly)
-  freeHeap(invRootsMinusZ)
+  const orderBits = C.getCurveOrderBitwidth()
+  let diffQuotientPolyBigInt = allocHeapAligned(array[N, BigInt[orderBits]], alignment = 64)
+
+  for i in 0 ..< N:
+    diffQuotientPolyBigInt[i].fromField(diffQuotientPolyFr.evals[i])
+
+  freeHeapAligned(diffQuotientPolyFr)
+
+  var proofJac {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
+  proofJac.multiScalarMul_vartime(diffQuotientPolyBigInt[], powers_of_tau.evals)
+  proof.affine(proofJac)
+
+  freeHeapAligned(diffQuotientPolyBigInt)
+
 
 # KZG - Verifier
 # ------------------------------------------------------------
@@ -268,7 +253,7 @@ func kzg_verify*[F2; C: static Curve](
        challenge: BigInt, # matchingOrderBigInt(C),
        eval_at_challenge: BigInt, # matchingOrderBigInt(C),
        proof: ECP_ShortW_Aff[Fp[C], G1],
-       tauG2: ECP_ShortW_Aff[F2, G2]): bool =
+       tauG2: ECP_ShortW_Aff[F2, G2]): bool {.tags:[Alloca, Vartime].} =
   ## Verify a short KZG proof that ``p(challenge) = eval_at_challenge``
   ## without doing the whole p(challenge) computation
   #
@@ -306,10 +291,10 @@ func kzg_verify*[F2; C: static Curve](
   tauG2Jac.fromAffine(tauG2)
   commitmentJac.fromAffine(commitment)
 
-  tau_minus_challenge_G2.scalarMul(challenge)
+  tau_minus_challenge_G2.scalarMul_vartime(challenge)
   tau_minus_challenge_G2.diff(tauG2Jac, tau_minus_challenge_G2)
 
-  commitment_minus_eval_at_challenge_G1.scalarMul(eval_at_challenge)
+  commitment_minus_eval_at_challenge_G1.scalarMul_vartime(eval_at_challenge)
   commitment_minus_eval_at_challenge_G1.diff(commitmentJac, commitment_minus_eval_at_challenge_G1)
 
   var tmzG2 {.noInit.}: ECP_ShortW_Aff[F2, G2]

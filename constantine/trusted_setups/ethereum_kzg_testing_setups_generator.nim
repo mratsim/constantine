@@ -125,7 +125,7 @@ func getLagrange[EC](fftDesc: ECFFT_Descriptor[EC], monomial: seq[EC]): seq[EC] 
   ## The polynomial is also bit-reversal permuted.
 
   result.setLen(monomial.len)
-  let status = fftDesc.ifft(result, monomial)
+  let status = fftDesc.ifft_vartime(result, monomial)
   doAssert status == FFTS_Success, "Ethereum testing trusted setup failure during Lagrange form: " & $status
 
   result.bit_reversal_permutation()
@@ -208,6 +208,7 @@ proc genEthereumKzgTestingTrustedSetup(filepath: string, secret: auto, length: i
   # Projective coordinates are slightly faster than jacobian on 𝔾1
   var fftDesc = ECFFTDescriptor[ECP_ShortW_Prj[Fp[BLS12_381], G1]].new(
     order = length, ctt_eth_kzg_fr_pow2_roots_of_unity[log2_vartime(length.uint)])
+  defer: fftDesc.delete()
 
   block: # Metadata 3 - roots of unity - bit-reversal permuted
     var meta: array[32, byte]
@@ -229,7 +230,7 @@ proc genEthereumKzgTestingTrustedSetup(filepath: string, secret: auto, length: i
 
   f.padNUL64()
 
-  block: # Data 2 - srs 𝔾2 points - bit-reversal permuted
+  block: # Data 2 - srs 𝔾2 points
     const g2Length = 65
     let ts2 = ECP_ShortW_Aff[Fp2[BLS12_381], G2].newTrustedSetupMonomial(secret, g2Length)
     # Raw dump requires little-endian
@@ -238,7 +239,7 @@ proc genEthereumKzgTestingTrustedSetup(filepath: string, secret: auto, length: i
   f.padNUL64()
 
   bit_reversal_permutation(fftDesc.rootsOfUnity.toOpenArray(0, fftDesc.order-1))
-  block: # Data 2 - roots of unity - bit-reversal permuted
+  block: # Data 3 - roots of unity - bit-reversal permuted
     # Raw dump requires little-endian
     # and we convert them all to Montgomery form
     for i in 0 ..< fftDesc.order:

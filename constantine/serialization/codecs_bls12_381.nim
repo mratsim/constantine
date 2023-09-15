@@ -61,7 +61,6 @@ type
     cttCodecEcc_PointNotInSubgroup
     cttCodecEcc_PointAtInfinity
 
-  Scalar* = matchingOrderBigInt(BLS12_381)
   G1P* = ECP_ShortW_Aff[Fp[BLS12_381], G1]
   G2P* = ECP_ShortW_Aff[Fp2[BLS12_381], G2]
 
@@ -69,7 +68,7 @@ type
 # Input validation
 # ------------------------------------------------------------------------------------------------
 
-func validate_scalar*(scalar: Scalar): CttCodecScalarStatus =
+func validate_scalar*(scalar: matchingOrderBigInt(BLS12_381)): CttCodecScalarStatus =
   ## Validate a scalar
   ## Regarding timing attacks, this will leak information
   ## if the scalar is 0 or larger than the curve order.
@@ -104,13 +103,13 @@ func validate_g2*(g2Point: G2P): CttCodecEccStatus =
 # Codecs
 # ------------------------------------------------------------------------------------------------
 
-func serialize_scalar*(dst: var array[32, byte], scalar: Scalar): CttCodecScalarStatus =
+func serialize_scalar*(dst: var array[32, byte], scalar: matchingOrderBigInt(BLS12_381)): CttCodecScalarStatus =
   ## Serialize a scalar
   ## Returns cttCodecScalar_Success if successful
   dst.marshal(scalar, bigEndian)
   return cttCodecScalar_Success
 
-func deserialize_scalar*(dst: var Scalar, src: array[32, byte]): CttCodecScalarStatus =
+func deserialize_scalar*(dst: var matchingOrderBigInt(BLS12_381), src: array[32, byte]): CttCodecScalarStatus =
   ## Deserialize a scalar
   ## Also validates the scalar range
   ##
