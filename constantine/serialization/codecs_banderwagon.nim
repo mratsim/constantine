@@ -22,7 +22,6 @@ import
   ../math/[
     extension_fields,
     arithmetic,
-    constants/banderwagon,
     constants/banderwagon_subgroups
   ],
   ../math/io/[io_bigints, io_fields],
