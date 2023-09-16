@@ -14,6 +14,9 @@ import
   ../extension_fields,
   ../elliptic/ec_twistededwards_projective
 
+export
+  ec_twistededwards_projective.`==`
+
 func `==`*(P, Q: ECP_TwEdwards_Prj[Fp[Banderwagon]]): SecretBool =
   ## Equality check for points in the Banderwagon Group
   ## The equals method is different for the quotient group
