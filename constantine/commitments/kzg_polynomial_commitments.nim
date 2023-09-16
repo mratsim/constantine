@@ -9,7 +9,7 @@
 import
   ../math/config/curves,
   ../math/[ec_shortweierstrass, arithmetic, extension_fields],
-  ../math/elliptic/[ec_scalar_mul, ec_multi_scalar_mul],
+  ../math/elliptic/[ec_multi_scalar_mul, ec_shortweierstrass_batch_ops],
   ../math/pairings/pairings_generic,
   ../math/constants/zoo_generators,
   ../math/polynomials/polynomials,
@@ -305,5 +305,118 @@ func kzg_verify*[F2; C: static Curve](
   # e([proof]₁, [τ]₂ - [challenge]₂) * e([commitment]₁ - [eval_at_challenge]₁, [-1]₂)
   var gt {.noInit.}: C.getGT()
   gt.pairing([proof, cmyG1], [tmzG2, negG2])
+
+  return gt.isOne().bool()
+
+func kzg_verify_batch*[bits: static int, F2; C: static Curve](
+       commitments: ptr UncheckedArray[ECP_ShortW_Aff[Fp[C], G1]],
+       challenges: ptr UncheckedArray[Fr[C]],
+       evals_at_challenges: ptr UncheckedArray[BigInt[bits]],
+       proofs: ptr UncheckedArray[ECP_ShortW_Aff[Fp[C], G1]],
+       linearIndepRandNumbers: ptr UncheckedArray[Fr[C]],
+       n: int,
+       tauG2: ECP_ShortW_Aff[F2, G2]): bool {.tags:[HeapAlloc, Alloca, Vartime].} =
+  ## Verify multiple KZG proofs efficiently
+  ##
+  ## Parameters
+  ##
+  ## `n` verification sets
+  ## A verification set i (commitmentᵢ, challengeᵢ, eval_at_challengeᵢ, proofᵢ)
+  ## is passed in a "struct-of-arrays" fashion.
+  ##
+  ## Notation:
+  ##   i ∈ [0, n), a verification set with ID i
+  ##   [a]₁ corresponds to the scalar multiplication [a]G by the generator G of the group 𝔾1
+  ##
+  ## - `commitments`: `n` commitments [commitmentᵢ]₁
+  ## - `challenges`: `n` challenges zᵢ
+  ## - `evals_at_challenges`: `n` evaluation yᵢ = pᵢ(zᵢ)
+  ## - `proofs`: `n` [proof]₁
+  ## - `linearIndepRandNumbers`: `n` linearly independant numbers that are not in control
+  ##                               of a prover (potentially malicious).
+  ## - `n`: the number of verification sets
+  ##
+  ## For all (commitmentᵢ, challengeᵢ, eval_at_challengeᵢ, proofᵢ),
+  ## we verify the relation
+  ##   proofᵢ.(τ - zᵢ) = pᵢ(τ)-pᵢ(zᵢ)
+  ##
+  ## As τ is the secret from the trusted setup, boxed in [τ]₁ and [τ]₂,
+  ## we rewrite the equality check using pairings
+  ##
+  ##   e([proofᵢ]₁, [τ]₂ - [challengeᵢ]₂) . e([commitmentᵢ]₁ - [eval_at_challengeᵢ]₁, [-1]₂) = 1
+  ##
+  ## Or batched using Feist-Khovratovich method
+  ##
+  ##  e(∑ [rᵢ][proofᵢ]₁, [τ]₂) . e(∑[rᵢ]([commitmentᵢ]₁ - [eval_at_challengeᵢ]₁) + ∑[rᵢ][zᵢ][proofᵢ]₁, [-1]₂) = 1
+  #
+  # Described in:
+  # - https://github.com/ethereum/consensus-specs/blob/v1.4.0-beta.1/specs/deneb/polynomial-commitments.md#verify_kzg_proof_batch
+  # - https://dankradfeist.de/ethereum/2021/06/18/pcs-multiproofs.html]\
+  # - Fast amortized KZG proofs
+  #   Feist, Khovratovich
+  #   https://eprint.iacr.org/2023/033
+  # - https://alinush.github.io/2021/06/17/Feist-Khovratovich-technique-for-computing-KZG-proofs-fast.html
+
+  static: doAssert BigInt[bits] is matchingOrderBigInt(C)
+
+  var sums_jac {.noInit.}: array[2, ECP_ShortW_Jac[Fp[C], G1]]
+  template sum_rand_proofs: untyped = sums_jac[0]
+  template sum_commit_minus_evals_G1: untyped = sums_jac[1]
+  var sum_rand_challenge_proofs {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
+
+  # ∑ [rᵢ][proofᵢ]₁
+  # ---------------
+  let coefs = allocHeapArrayAligned(matchingOrderBigInt(C), n, alignment = 64)
+  for i in 0 ..< n:
+    coefs[i].fromField(linearIndepRandNumbers[i])
+
+  sum_rand_proofs.multiScalarMul_vartime(coefs, proofs, n)
+
+  # ∑[rᵢ]([commitmentᵢ]₁ - [eval_at_challengeᵢ]₁)
+  # ---------------------------------------------
+  #
+  # We interleave allocation and deallocation, which hurts cache reuse
+  # i.e. when alloc is being done, it's better to do all allocs as the metadata will already be in cache
+  #
+  # but it's more important to minimize memory usage especially if we want to comit with 2^26+ points
+  #
+  # We dealloc in reverse alloc order, to avoid leaving holes in the allocator pages.
+  let commits_min_evals = allocHeapArrayAligned(ECP_ShortW_Aff[Fp[C], G1], n, alignment = 64)
+  let commits_min_evals_jac = allocHeapArrayAligned(ECP_ShortW_Jac[Fp[C], G1], n, alignment = 64)
+
+  for i in 0 ..< n:
+    commits_min_evals_jac[i].fromAffine(commitments[i])
+    var boxed_eval {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
+    boxed_eval.fromAffine(C.getGenerator("G1"))
+    boxed_eval.scalarMul_vartime(evals_at_challenges[i])
+    commits_min_evals_jac[i].diff_vartime(commits_min_evals_jac[i], boxed_eval)
+
+  commits_min_evals.batchAffine(commits_min_evals_jac, n)
+  freeHeapAligned(commits_min_evals_jac)
+  sum_commit_minus_evals_G1.multiScalarMul_vartime(coefs, commits_min_evals, n)
+  freeHeapAligned(commits_min_evals)
+
+  # ∑[rᵢ][zᵢ][proofᵢ]₁
+  var tmp {.noInit.}: Fr[C]
+  for i in 0 ..< n:
+    tmp.prod(linearIndepRandNumbers[i], challenges[i])
+    coefs[i].fromField(tmp)
+
+  sum_rand_challenge_proofs.multiScalarMul_vartime(coefs, proofs, n)
+  freeHeapAligned(coefs)
+
+  # e(∑ [rᵢ][proofᵢ]₁, [τ]₂) . e(∑[rᵢ]([commitmentᵢ]₁ - [eval_at_challengeᵢ]₁) + ∑[rᵢ][zᵢ][proofᵢ]₁, [-1]₂) = 1
+  template sum_of_sums: untyped = sums_jac[1]
+
+  sum_of_sums.sum_vartime(sum_commit_minus_evals_G1, sum_rand_challenge_proofs)
+
+  var sums {.noInit.}: array[2, ECP_ShortW_Aff[Fp[C], G1]]
+  sums.batchAffine(sums_jac)
+
+  var negG2 {.noInit.}: ECP_ShortW_Aff[F2, G2]
+  negG2.neg(C.getGenerator("G2"))
+
+  var gt {.noInit.}: C.getGT()
+  gt.pairing(sums, [tauG2, negG2])
 
   return gt.isOne().bool()

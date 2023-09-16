@@ -12,6 +12,7 @@ import
   # 3rd party
   pkg/yaml,
   # Internals
+  ../constantine/hashes,
   ../constantine/serialization/codecs,
   ../constantine/ethereum_eip4844_kzg_polynomial_commitments
 
@@ -86,6 +87,35 @@ template parseAssign(dstVariable: untyped, size: static int, hexInput: string) =
 
   var dstVariable{.inject.} = new(array[size, byte])
   dstVariable[].fromHex(hexInput)
+
+template parseAssignList(dstVariable: untyped, elemSize: static int, hexListInput: YamlNode) =
+
+  var dstVariable{.inject.} = newSeq[array[elemSize, byte]]()
+
+  block exitHappyPath:
+    block exitException:
+      for elem in hexListInput:
+        let hexInput = elem.content
+
+        let prefixBytes = 2*int(hexInput.startsWith("0x"))
+        let expectedLength = elemSize*2 + prefixBytes
+        if hexInput.len != expectedLength:
+          let encodedBytes = (hexInput.len - prefixBytes) div 2
+          stdout.write "[ Incorrect input length for '" &
+                          astToStr(dstVariable) &
+                          "': encoding " & $encodedBytes & " bytes" &
+                          " instead of expected " & $elemSize & " ]\n"
+
+          doAssert testVector["output"].content == "null"
+          break exitException
+        else:
+          dstVariable.setLen(dstVariable.len + 1)
+          dstVariable[^1].fromHex(hexInput)
+
+      break exitHappyPath
+
+    # We're in a template, this shortcuts the caller `walkTests`
+    continue
 
 testGen(blob_to_kzg_commitment, testVector):
   parseAssign(blob, 32*4096, testVector["input"]["blob"].content)
@@ -175,6 +205,46 @@ testGen(verify_blob_kzg_proof, testVector):
   else:
     doAssert testVector["output"].content == "null"
 
+testGen(verify_blob_kzg_proof_batch, testVector):
+  parseAssignList(blobs,  32*4096, testVector["input"]["blobs"])
+  parseAssignList(commitments, 48, testVector["input"]["commitments"])
+  parseAssignList(proofs,      48, testVector["input"]["proofs"])
+
+  if blobs.len != commitments.len:
+    stdout.write "[ Length mismatch between blobs and commitments ]\n"
+    doAssert testVector["output"].content == "null"
+    continue
+  if blobs.len != proofs.len:
+    stdout.write "[ Length mismatch between blobs and proofs ]\n"
+    doAssert testVector["output"].content == "null"
+    continue
+
+  # For reproducibility/debugging we don't use the CSPRNG here
+  var randomBlinding {.noInit.}: array[32, byte]
+  sha256.hash(randomBlinding, "The wizard quickly jinxed the gnomes before they vaporized.")
+
+  template asUnchecked[T](a: openArray[T]): ptr UncheckedArray[T] =
+    if a.len > 0:
+      cast[ptr UncheckedArray[T]](a[0].unsafeAddr)
+    else:
+      nil
+
+  let status = verify_blob_kzg_proof_batch(
+                 ctx,
+                 blobs.asUnchecked(),
+                 commitments.asUnchecked(),
+                 proofs.asUnchecked(),
+                 blobs.len,
+                 randomBlinding)
+  stdout.write "[" & $status & "]\n"
+
+  if status == cttEthKZG_Success:
+    doAssert testVector["output"].content == "true"
+  elif status == cttEthKZG_VerificationFailure:
+    doAssert testVector["output"].content == "false"
+  else:
+    doAssert testVector["output"].content == "null"
+
 block:
   suite "Ethereum Deneb Hardfork / EIP-4844 / Proto-Danksharding / KZG Polynomial Commitments":
     let ctx = load_ethereum_kzg_test_trusted_setup_mainnet()
@@ -191,7 +261,10 @@ block:
     test "compute_blob_kzg_proof(proof: var array[48, byte], blob: ptr array[4096, byte], commitment: array[48, byte])":
       ctx.test_compute_blob_kzg_proof()
 
-    test "verify_blob_kzg_proof(blob: ptr array[4096, byte], commitment: array[48, byte], proof: var array[48, byte])":
+    test "verify_blob_kzg_proof(blob: ptr array[4096, byte], commitment, proof: array[48, byte])":
       ctx.test_verify_blob_kzg_proof()
+
+    test "verify_blob_kzg_proof_batch(blobs: ptr UncheckedArray[array[4096, byte]], commitments, proofs: ptr UncheckedArray[array[48, byte]], n: int, secureRandomBytes: array[32, byte])":
+      ctx.test_verify_blob_kzg_proof_batch()
 
     ctx.delete()
