@@ -16,7 +16,7 @@ import
   ./commitments/kzg_polynomial_commitments,
   ./hashes,
   ./platforms/[abstractions, views, allocs],
-  ./serialization/[codecs_bls12_381, endians],
+  ./serialization/[codecs_status_codes, codecs_bls12_381, endians],
   ./trusted_setups/ethereum_kzg_srs
 
 export loadTrustedSetup, TrustedSetupStatus, EthereumKZGContext
