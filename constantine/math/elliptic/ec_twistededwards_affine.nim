@@ -201,7 +201,8 @@ func cneg*(P: var ECP_TwEdwards_Aff, ctl: CTBool) =
 
 func `==`*(P, Q: ECP_TwEdwards_Aff[Fp[Banderwagon]]): SecretBool =
   ## Equality check for points in the Banderwagon Group
-  ## The equals method is different for the quotient group
+  ## The equality check is optimized for the quotient group
+  ## see: https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Equality-check
   ## 
   ## Check for the (0,0) point, which is possible
   ## 
