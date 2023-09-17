@@ -214,14 +214,12 @@ func blob_to_field_polynomial(
 #
 # We use a simple goto state machine to handle errors and cleanup (if allocs were done)
 # and have 2 different checks:
-# - Either we are in "defaultPath(state)" section that shortcuts to resource cleanup on error
+# - Either we are in "HappyPath" section that shortcuts to resource cleanup on error
 # - or there are no resources to clean and we can early return from a function.
 
 template check(evalExpr: CttCodecScalarStatus): untyped {.dirty.} =
   # Translate codec status code to KZG status code
   # Beware of resource cleanup like heap allocation, this can early exit the caller.
-  when declared(usingGotos): # TODO: this unfortunately doesn't work
-    {.error: "Using early return 'check' when resource cleanup might be needed after errors.".}
   block:
     let status = evalExpr # Ensure single evaluation
     case status
@@ -232,8 +230,6 @@ template check(evalExpr: CttCodecScalarStatus): untyped {.dirty.} =
 template check(evalExpr: CttCodecEccStatus): untyped {.dirty.} =
   # Translate codec status code to KZG status code
   # Beware of resource cleanup like heap allocation, this can early exit the caller.
-  when declared(usingGotos): # TODO: this unfortunately doesn't work
-    {.error: "Using early return 'check' when resource cleanup might be needed after errors.".}
   block:
     let status = evalExpr # Ensure single evaluation
     case status
@@ -244,37 +240,27 @@ template check(evalExpr: CttCodecEccStatus): untyped {.dirty.} =
     of cttCodecEcc_PointNotInSubgroup:                  return cttEthKZG_EccPointNotInSubGroup
     of cttCodecEcc_PointAtInfinity:                     discard
 
-type JumpTarget = enum
-  JumpToComputing, JumpToExiting
-
-template defaultPath(state, body: untyped): untyped =
-  const usingGotos {.used.} = true
-  var state {.goto.} = JumpToComputing
-  case state
-  of JumpToComputing:
-    body
-  of JumpToExiting:
-    discard
-
-template check(state: untyped, evalExpr: CttCodecScalarStatus): untyped =
+template check(Section: untyped, evalExpr: CttCodecScalarStatus): untyped {.dirty.} =
   # Translate codec status code to KZG status code
+  # Exit current code block
   block:
     let status = evalExpr # Ensure single evaluation
     case status
     of cttCodecScalar_Success:                          discard
     of cttCodecScalar_Zero:                             discard
-    of cttCodecScalar_ScalarLargerThanCurveOrder:       result = cttEthKZG_EccPointNotInSubGroup; state = JumpToExiting
+    of cttCodecScalar_ScalarLargerThanCurveOrder:       result = cttEthKZG_EccPointNotInSubGroup; break Section
 
-template check(state: untyped, evalExpr: CttCodecEccStatus): untyped =
+template check(Section: untyped, evalExpr: CttCodecEccStatus): untyped {.dirty.} =
   # Translate codec status code to KZG status code
+  # Exit current code block
   block:
     let status = evalExpr # Ensure single evaluation
     case status
     of cttCodecEcc_Success:                             discard
-    of cttCodecEcc_InvalidEncoding:                     result = cttEthKZG_EccInvalidEncoding; state = JumpToExiting
-    of cttCodecEcc_CoordinateGreaterThanOrEqualModulus: result = cttEthKZG_EccCoordinateGreaterThanOrEqualModulus; state = JumpToExiting
-    of cttCodecEcc_PointNotOnCurve:                     result = cttEthKZG_EccPointNotOnCurve; state = JumpToExiting
-    of cttCodecEcc_PointNotInSubgroup:                  result = cttEthKZG_EccPointNotInSubGroup; state = JumpToExiting
+    of cttCodecEcc_InvalidEncoding:                     result = cttEthKZG_EccInvalidEncoding; break Section
+    of cttCodecEcc_CoordinateGreaterThanOrEqualModulus: result = cttEthKZG_EccCoordinateGreaterThanOrEqualModulus; break Section
+    of cttCodecEcc_PointNotOnCurve:                     result = cttEthKZG_EccPointNotOnCurve; break Section
+    of cttCodecEcc_PointNotInSubgroup:                  result = cttEthKZG_EccPointNotInSubGroup; break Section
     of cttCodecEcc_PointAtInfinity:                     discard
 
 func blob_to_kzg_commitment*(
@@ -300,8 +286,8 @@ func blob_to_kzg_commitment*(
 
   let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, matchingOrderBigInt(BLS12_381)], 64)
 
-  defaultPath(state):
-    check state, poly.blob_to_bigint_polynomial(blob)
+  block HappyPath:
+    check HappyPath, poly.blob_to_bigint_polynomial(blob)
 
     var r {.noinit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1]
     kzg_commit(r, poly.evals, ctx.srs_lagrange_g1) # symbol resolution need explicit generics
@@ -338,9 +324,9 @@ func compute_kzg_proof*(
 
   let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], 64)
 
-  defaultPath(state):
+  block HappyPath:
     # Blob -> Polynomial
-    check state, poly.blob_to_field_polynomial(blob)
+    check HappyPath, poly.blob_to_field_polynomial(blob)
 
     # KZG Prove
     var y {.noInit.}: Fr[BLS12_381]                         # y = p(z), eval at challenge z
@@ -402,9 +388,9 @@ func compute_blob_kzg_proof*(
   # Blob -> Polynomial
   let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], 64)
 
-  defaultPath(state):
+  block HappyPath:
     # Blob -> Polynomial
-    check state, poly.blob_to_field_polynomial(blob)
+    check HappyPath, poly.blob_to_field_polynomial(blob)
 
     # Fiat-Shamir challenge
     var challenge {.noInit.}: Fr[BLS12_381]
@@ -443,9 +429,9 @@ func verify_blob_kzg_proof*(
   let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], 64)
   let invRootsMinusZ = allocHeapAligned(array[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], alignment = 64)
 
-  defaultPath(state):
+  block HappyPath:
     # Blob -> Polynomial
-    check state, poly.blob_to_field_polynomial(blob)
+    check HappyPath, poly.blob_to_field_polynomial(blob)
 
     # Fiat-Shamir challenge
     var challengeFr {.noInit.}: Fr[BLS12_381]
@@ -520,10 +506,10 @@ func verify_blob_kzg_proof_batch*(
   let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], alignment = 64)
   let invRootsMinusZ = allocHeapAligned(array[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], alignment = 64)
 
-  defaultPath(state):
+  block HappyPath:
     for i in 0 ..< n:
-      check state, commitments[i].bytes_to_kzg_commitment(commitments_bytes[i])
-      check state, poly.blob_to_field_polynomial(blobs[i].addr)
+      check HappyPath, commitments[i].bytes_to_kzg_commitment(commitments_bytes[i])
+      check HappyPath, poly.blob_to_field_polynomial(blobs[i].addr)
       challenges[i].fiatShamirChallenge(blobs[i], commitments_bytes[i])
 
       # Lagrange Polynomial evaluation
@@ -544,7 +530,7 @@ func verify_blob_kzg_proof_batch*(
       else:
         evals_at_challenges[i].fromField(poly.evals[zIndex])
 
-      check state, proofs[i].bytes_to_kzg_proof(proof_bytes[i])
+      check HappyPath, proofs[i].bytes_to_kzg_proof(proof_bytes[i])
 
     var randomBlindingFr {.noInit.}: Fr[BLS12_381]
     block blinding: # Ensure we don't multiply by 0 for blinding
