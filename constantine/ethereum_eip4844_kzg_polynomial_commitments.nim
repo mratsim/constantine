@@ -7,6 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  std/typetraits,
+
   ./math/config/curves,
   ./math/io/[io_bigints, io_fields],
   ./math/[ec_shortweierstrass, arithmetic, extension_fields],
@@ -15,7 +17,7 @@ import
   ./math/polynomials/polynomials,
   ./commitments/kzg_polynomial_commitments,
   ./hashes,
-  ./platforms/[abstractions, views, allocs],
+  ./platforms/[abstractions, allocs],
   ./serialization/[codecs_bls12_381, endians],
   ./trusted_setups/ethereum_kzg_srs
 
@@ -67,11 +69,9 @@ const BYTES_PER_BLOB = BYTES_PER_FIELD_ELEMENT*FIELD_ELEMENTS_PER_BLOB
 type
   Blob* = array[BYTES_PER_BLOB, byte]
 
-  KZGCommitment* = object
-    raw: ECP_ShortW_Aff[Fp[BLS12_381], G1]
+  KZGCommitment* = distinct ECP_ShortW_Aff[Fp[BLS12_381], G1]
 
-  KZGProof*      = object
-    raw: ECP_ShortW_Aff[Fp[BLS12_381], G1]
+  KZGProof*      = distinct ECP_ShortW_Aff[Fp[BLS12_381], G1]
 
   CttEthKzgStatus* = enum
     cttEthKZG_Success
@@ -121,21 +121,20 @@ func fiatShamirChallenge(dst: var Fr[BLS12_381], blob: Blob, commitmentBytes: ar
   transcript.finish(challenge)
   dst.fromDigest(challenge)
 
-func computePowers(dst: MutableView[Fr[BLS12_381]], base: Fr[BLS12_381]) =
+func computePowers(dst: ptr UncheckedArray[Fr[BLS12_381]], len: int, base: Fr[BLS12_381]) =
   ## We need linearly independent random numbers
   ## for batch proof sampling.
   ## Powers are linearly independent.
   ## It's also likely faster than calling a fast RNG + modular reduction
   ## to be in 0 < number < curve_order
   ## since modular reduction needs modular multiplication anyway.
-  let N = dst.len
+  let N = len
   if N >= 1:
     dst[0].setOne()
   if N >= 2:
     dst[1] = base
-  if N >= 3:
-    for i in 2 ..< N:
-      dst[i].prod(dst[i-1], base)
+  for i in 2 ..< N:
+    dst[i].prod(dst[i-1], base)
 
 # Conversion
 # ------------------------------------------------------------
@@ -160,7 +159,7 @@ func bytes_to_bls_field(dst: var Fr[BLS12_381], src: array[32, byte]): CttCodecS
 
 func bytes_to_kzg_commitment(dst: var KZGCommitment, src: array[48, byte]): CttCodecEccStatus =
   ## Convert untrusted bytes into a trusted and validated KZGCommitment.
-  let status = dst.raw.deserialize_g1_compressed(src)
+  let status = dst.distinctBase().deserialize_g1_compressed(src)
   if status == cttCodecEcc_PointAtInfinity:
     # Point at infinity is allowed
     return cttCodecEcc_Success
@@ -168,7 +167,7 @@ func bytes_to_kzg_commitment(dst: var KZGCommitment, src: array[48, byte]): CttC
 
 func bytes_to_kzg_proof(dst: var KZGProof, src: array[48, byte]): CttCodecEccStatus =
   ## Convert untrusted bytes into a trusted and validated KZGProof.
-  let status = dst.raw.deserialize_g1_compressed(src)
+  let status = dst.distinctBase().deserialize_g1_compressed(src)
   if status == cttCodecEcc_PointAtInfinity:
     # Point at infinity is allowed
     return cttCodecEcc_Success
@@ -212,8 +211,13 @@ func blob_to_field_polynomial(
 
 # Ethereum KZG public API
 # ------------------------------------------------------------
+#
+# We use a simple goto state machine to handle errors and cleanup (if allocs were done)
+# and have 2 different checks:
+# - Either we are in "HappyPath" section that shortcuts to resource cleanup on error
+# - or there are no resources to clean and we can early return from a function.
 
-template check(evalExpr: CttCodecScalarStatus): untyped =
+template check(evalExpr: CttCodecScalarStatus): untyped {.dirty.} =
   # Translate codec status code to KZG status code
   # Beware of resource cleanup like heap allocation, this can early exit the caller.
   block:
@@ -223,7 +227,7 @@ template check(evalExpr: CttCodecScalarStatus): untyped =
     of cttCodecScalar_Zero:                             discard
     of cttCodecScalar_ScalarLargerThanCurveOrder:       return cttEthKZG_ScalarLargerThanCurveOrder
 
-template check(evalExpr: CttCodecEccStatus): untyped =
+template check(evalExpr: CttCodecEccStatus): untyped {.dirty.} =
   # Translate codec status code to KZG status code
   # Beware of resource cleanup like heap allocation, this can early exit the caller.
   block:
@@ -234,6 +238,29 @@ template check(evalExpr: CttCodecEccStatus): untyped =
     of cttCodecEcc_CoordinateGreaterThanOrEqualModulus: return cttEthKZG_EccCoordinateGreaterThanOrEqualModulus
     of cttCodecEcc_PointNotOnCurve:                     return cttEthKZG_EccPointNotOnCurve
     of cttCodecEcc_PointNotInSubgroup:                  return cttEthKZG_EccPointNotInSubGroup
+    of cttCodecEcc_PointAtInfinity:                     discard
+
+template check(Section: untyped, evalExpr: CttCodecScalarStatus): untyped {.dirty.} =
+  # Translate codec status code to KZG status code
+  # Exit current code block
+  block:
+    let status = evalExpr # Ensure single evaluation
+    case status
+    of cttCodecScalar_Success:                          discard
+    of cttCodecScalar_Zero:                             discard
+    of cttCodecScalar_ScalarLargerThanCurveOrder:       result = cttEthKZG_EccPointNotInSubGroup; break Section
+
+template check(Section: untyped, evalExpr: CttCodecEccStatus): untyped {.dirty.} =
+  # Translate codec status code to KZG status code
+  # Exit current code block
+  block:
+    let status = evalExpr # Ensure single evaluation
+    case status
+    of cttCodecEcc_Success:                             discard
+    of cttCodecEcc_InvalidEncoding:                     result = cttEthKZG_EccInvalidEncoding; break Section
+    of cttCodecEcc_CoordinateGreaterThanOrEqualModulus: result = cttEthKZG_EccCoordinateGreaterThanOrEqualModulus; break Section
+    of cttCodecEcc_PointNotOnCurve:                     result = cttEthKZG_EccPointNotOnCurve; break Section
+    of cttCodecEcc_PointNotInSubgroup:                  result = cttEthKZG_EccPointNotInSubGroup; break Section
     of cttCodecEcc_PointAtInfinity:                     discard
 
 func blob_to_kzg_commitment*(
@@ -256,22 +283,20 @@ func blob_to_kzg_commitment*(
   ##   - and at the verification challenge z.
   ##
   ##   with proof = [(p(τ) - p(z)) / (τ-z)]₁
-  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, matchingOrderBigInt(BLS12_381)], 64)
-  let status = poly.blob_to_bigint_polynomial(blob)
-  if status == cttCodecScalar_ScalarLargerThanCurveOrder:
-    freeHeapAligned(poly)
-    return cttEthKZG_ScalarLargerThanCurveOrder
-  elif status != cttCodecScalar_Success:
-    debugEcho "Unreachable status in blob_to_kzg_commitment: ", status
-    debugEcho "Panicking ..."
-    quit 1
 
-  var r {.noinit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1]
-  kzg_commit(r, poly.evals, ctx.srs_lagrange_g1) # symbol resolution need explicit generics
-  discard dst.serialize_g1_compressed(r)
+  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, matchingOrderBigInt(BLS12_381)], 64)
+
+  block HappyPath:
+    check HappyPath, poly.blob_to_bigint_polynomial(blob)
+
+    var r {.noinit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1]
+    kzg_commit(r, poly.evals, ctx.srs_lagrange_g1)
+    discard dst.serialize_g1_compressed(r)
+
+    result = cttEthKZG_Success
 
   freeHeapAligned(poly)
-  return cttEthKZG_Success
+  return result
 
 func compute_kzg_proof*(
        ctx: ptr EthereumKZGContext,
@@ -295,36 +320,30 @@ func compute_kzg_proof*(
 
   # Random or Fiat-Shamir challenge
   var z {.noInit.}: Fr[BLS12_381]
-  var status = bytes_to_bls_field(z, z_bytes)
-  if status != cttCodecScalar_Success:
-    # cttCodecScalar_Zero is not possible
-    return cttEthKZG_ScalarLargerThanCurveOrder
+  check z.bytes_to_bls_field(z_bytes)
 
-  # Blob -> Polynomial
   let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], 64)
-  status = poly.blob_to_field_polynomial(blob)
-  if status == cttCodecScalar_ScalarLargerThanCurveOrder:
-    freeHeapAligned(poly)
-    return cttEthKZG_ScalarLargerThanCurveOrder
-  elif status != cttCodecScalar_Success:
-    debugEcho "Unreachable status in compute_kzg_proof: ", status
-    debugEcho "Panicking ..."
-    quit 1
 
-  var y {.noInit.}: Fr[BLS12_381]                         # y = p(z), eval at challenge z
-  var proof {.noInit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
+  block HappyPath:
+    # Blob -> Polynomial
+    check HappyPath, poly.blob_to_field_polynomial(blob)
 
-  kzg_prove(
-    proof, y,
-    poly[], ctx.domain,
-    z, ctx.srs_lagrange_g1,
-    isBitReversedDomain = true)
+    # KZG Prove
+    var y {.noInit.}: Fr[BLS12_381]                         # y = p(z), eval at challenge z
+    var proof {.noInit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
 
-  discard proof_bytes.serialize_g1_compressed(proof) # cannot fail
-  y_bytes.marshal(y, bigEndian) # cannot fail
+    kzg_prove(
+      proof, y,
+      poly[], ctx.domain,
+      z, ctx.srs_lagrange_g1,
+      isBitReversedDomain = true)
+
+    discard proof_bytes.serialize_g1_compressed(proof) # cannot fail
+    y_bytes.marshal(y, bigEndian) # cannot fail
+    result = cttEthKZG_Success
 
   freeHeapAligned(poly)
-  return cttEthKZG_Success
+  return result
 
 func verify_kzg_proof*(
        ctx: ptr EthereumKZGContext,
@@ -346,7 +365,10 @@ func verify_kzg_proof*(
   var proof {.noInit.}: KZGProof
   check proof.bytes_to_kzg_proof(proof_bytes)
 
-  let verif = kzg_verify(commitment.raw, challenge, eval_at_challenge, proof.raw, ctx.srs_monomial_g2.coefs[1])
+  let verif = kzg_verify(ECP_ShortW_Aff[Fp[BLS12_381], G1](commitment),
+                         challenge, eval_at_challenge,
+                         ECP_ShortW_Aff[Fp[BLS12_381], G1](proof),
+                         ctx.srs_monomial_g2.coefs[1])
   if verif:
     return cttEthKZG_Success
   else:
@@ -365,31 +387,31 @@ func compute_blob_kzg_proof*(
 
   # Blob -> Polynomial
   let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], 64)
-  var status = poly.blob_to_field_polynomial(blob)
-  if status == cttCodecScalar_ScalarLargerThanCurveOrder:
-    freeHeapAligned(poly)
-    return cttEthKZG_ScalarLargerThanCurveOrder
-  elif status != cttCodecScalar_Success:
-    debugEcho "Unreachable status in compute_kzg_proof: ", status
-    debugEcho "Panicking ..."
-    quit 1
 
-  var challenge {.noInit.}: Fr[BLS12_381]
-  challenge.fiatShamirChallenge(blob[], commitment_bytes)
+  block HappyPath:
+    # Blob -> Polynomial
+    check HappyPath, poly.blob_to_field_polynomial(blob)
 
-  var y {.noInit.}: Fr[BLS12_381]                         # y = p(z), eval at challenge z
-  var proof {.noInit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
+    # Fiat-Shamir challenge
+    var challenge {.noInit.}: Fr[BLS12_381]
+    challenge.fiatShamirChallenge(blob[], commitment_bytes)
 
-  kzg_prove(
-    proof, y,
-    poly[], ctx.domain,
-    challenge, ctx.srs_lagrange_g1,
-    isBitReversedDomain = true)
+    # KZG Prove
+    var y {.noInit.}: Fr[BLS12_381]                         # y = p(z), eval at challenge z
+    var proof {.noInit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
 
-  discard proof_bytes.serialize_g1_compressed(proof) # cannot fail
+    kzg_prove(
+      proof, y,
+      poly[], ctx.domain,
+      challenge, ctx.srs_lagrange_g1,
+      isBitReversedDomain = true)
+
+    discard proof_bytes.serialize_g1_compressed(proof) # cannot fail
+
+    result = cttEthKZG_Success
 
   freeHeapAligned(poly)
-  return cttEthKZG_Success
+  return result
 
 func verify_blob_kzg_proof*(
        ctx: ptr EthereumKZGContext,
@@ -404,49 +426,156 @@ func verify_blob_kzg_proof*(
   var proof {.noInit.}: KZGProof
   check proof.bytes_to_kzg_proof(proof_bytes)
 
-  # Blob -> Polynomial
   let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], 64)
-  var status = poly.blob_to_field_polynomial(blob)
-  if status == cttCodecScalar_ScalarLargerThanCurveOrder:
-    freeHeapAligned(poly)
-    return cttEthKZG_ScalarLargerThanCurveOrder
-  elif status != cttCodecScalar_Success:
-    debugEcho "Unreachable status in compute_kzg_proof: ", status
-    debugEcho "Panicking ..."
-    quit 1
-
-  var challengeFr {.noInit.}: Fr[BLS12_381]
-  challengeFr.fiatShamirChallenge(blob[], commitment_bytes)
-
-  var challenge, eval_at_challenge {.noInit.}: matchingOrderBigInt(BLS12_381)
-  challenge.fromField(challengeFr)
-
   let invRootsMinusZ = allocHeapAligned(array[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], alignment = 64)
 
-  # Compute 1/(ωⁱ - z) with ω a root of unity, i in [0, N).
-  # zIndex = i if ωⁱ - z == 0 (it is the i-th root of unity) and -1 otherwise.
-  let zIndex = invRootsMinusZ[].inverseRootsMinusZ_vartime(
-                                  ctx.domain, challengeFr,
-                                  earlyReturnOnZero = true)
+  block HappyPath:
+    # Blob -> Polynomial
+    check HappyPath, poly.blob_to_field_polynomial(blob)
 
-  if zIndex == -1:
-    var eval_at_challenge_fr{.noInit.}: Fr[BLS12_381]
-    eval_at_challenge_fr.evalPolyAt(
-      poly[], challengeFr,
-      invRootsMinusZ[],
-      ctx.domain)
-    eval_at_challenge.fromField(eval_at_challenge_fr)
-  else:
-    eval_at_challenge.fromField(poly.evals[zIndex])
+    # Fiat-Shamir challenge
+    var challengeFr {.noInit.}: Fr[BLS12_381]
+    challengeFr.fiatShamirChallenge(blob[], commitment_bytes)
+
+    var challenge, eval_at_challenge {.noInit.}: matchingOrderBigInt(BLS12_381)
+    challenge.fromField(challengeFr)
+
+    # Lagrange Polynomial evaluation
+    # ------------------------------
+    # 1. Compute 1/(ωⁱ - z) with ω a root of unity, i in [0, N).
+    #    zIndex = i if ωⁱ - z == 0 (it is the i-th root of unity) and -1 otherwise.
+    let zIndex = invRootsMinusZ[].inverseRootsMinusZ_vartime(
+                                    ctx.domain, challengeFr,
+                                    earlyReturnOnZero = true)
+
+    # 2. Actual evaluation
+    if zIndex == -1:
+      var eval_at_challenge_fr{.noInit.}: Fr[BLS12_381]
+      eval_at_challenge_fr.evalPolyAt(
+        poly[], challengeFr,
+        invRootsMinusZ[],
+        ctx.domain)
+      eval_at_challenge.fromField(eval_at_challenge_fr)
+    else:
+      eval_at_challenge.fromField(poly.evals[zIndex])
+
+    # KZG verification
+    let verif = kzg_verify(ECP_ShortW_Aff[Fp[BLS12_381], G1](commitment),
+                          challenge, eval_at_challenge,
+                          ECP_ShortW_Aff[Fp[BLS12_381], G1](proof),
+                          ctx.srs_monomial_g2.coefs[1])
+    if verif:
+      result =  cttEthKZG_Success
+    else:
+      result = cttEthKZG_VerificationFailure
 
   freeHeapAligned(invRootsMinusZ)
   freeHeapAligned(poly)
+  return result
 
-  let verif = kzg_verify(commitment.raw, challenge, eval_at_challenge, proof.raw, ctx.srs_monomial_g2.coefs[1])
-  if verif:
-    return cttEthKZG_Success
-  else:
+func verify_blob_kzg_proof_batch*(
+       ctx: ptr EthereumKZGContext,
+       blobs: ptr UncheckedArray[Blob],
+       commitments_bytes: ptr UncheckedArray[array[48, byte]],
+       proof_bytes: ptr UncheckedArray[array[48, byte]],
+       n: int,
+       secureRandomBytes: array[32, byte]): CttEthKzgStatus {.tags:[Alloca, HeapAlloc, Vartime].} =
+  ## Verify `n` (blob, commitment, proof) sets efficiently
+  ##
+  ## `n` is the number of verifications set
+  ## - if n is negative, this procedure returns verification failure
+  ## - if n is zero, this procedure returns verification success
+  ##
+  ## `secureRandomBytes` random byte must come from a cryptographically secure RNG
+  ## or computed through the Fiat-Shamir heuristic.
+  ## It serves as a random number
+  ## that is not in the control of a potential attacker to prevent potential
+  ## rogue commitments attacks due to homomorphic properties of pairings,
+  ## i.e. commitments that are linear combination of others and sum would be zero.
+
+  if n < 0:
     return cttEthKZG_VerificationFailure
+  if n == 0:
+    return cttEthKZG_Success
+
+  let commitments = allocHeapArrayAligned(KZGCommitment, n, alignment = 64)
+  let challenges = allocHeapArrayAligned(Fr[BLS12_381], n, alignment = 64)
+  let evals_at_challenges = allocHeapArrayAligned(matchingOrderBigInt(BLS12_381), n, alignment = 64)
+  let proofs = allocHeapArrayAligned(KZGProof, n, alignment = 64)
+
+  let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], alignment = 64)
+  let invRootsMinusZ = allocHeapAligned(array[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], alignment = 64)
+
+  block HappyPath:
+    for i in 0 ..< n:
+      check HappyPath, commitments[i].bytes_to_kzg_commitment(commitments_bytes[i])
+      check HappyPath, poly.blob_to_field_polynomial(blobs[i].addr)
+      challenges[i].fiatShamirChallenge(blobs[i], commitments_bytes[i])
+
+      # Lagrange Polynomial evaluation
+      # ------------------------------
+      # 1. Compute 1/(ωⁱ - z) with ω a root of unity, i in [0, N).
+      #    zIndex = i if ωⁱ - z == 0 (it is the i-th root of unity) and -1 otherwise.
+      let zIndex = invRootsMinusZ[].inverseRootsMinusZ_vartime(
+                                      ctx.domain, challenges[i],
+                                      earlyReturnOnZero = true)
+      # 2. Actual evaluation
+      if zIndex == -1:
+        var eval_at_challenge_fr{.noInit.}: Fr[BLS12_381]
+        eval_at_challenge_fr.evalPolyAt(
+          poly[], challenges[i],
+          invRootsMinusZ[],
+          ctx.domain)
+        evals_at_challenges[i].fromField(eval_at_challenge_fr)
+      else:
+        evals_at_challenges[i].fromField(poly.evals[zIndex])
+
+      check HappyPath, proofs[i].bytes_to_kzg_proof(proof_bytes[i])
+
+    var randomBlindingFr {.noInit.}: Fr[BLS12_381]
+    block blinding: # Ensure we don't multiply by 0 for blinding
+      # 1. Try with the random number supplied
+      for i in 0 ..< secureRandomBytes.len:
+        if secureRandomBytes[i] != byte 0:
+          randomBlindingFr.fromDigest(secureRandomBytes)
+          break blinding
+      # 2. If it's 0 (how?!), we just hash all the Fiat-Shamir challenges
+      var transcript: sha256
+      transcript.init()
+      transcript.update(RANDOM_CHALLENGE_KZG_BATCH_DOMAIN)
+      transcript.update(cast[ptr UncheckedArray[byte]](challenges).toOpenArray(0, n*sizeof(Fr[BLS12_381])-1))
+
+      var blindingBytes {.noInit.}: array[32, byte]
+      transcript.finish(blindingBytes)
+      randomBlindingFr.fromDigest(blindingBytes)
+
+    let linearIndepRandNumbers = allocHeapArrayAligned(Fr[BLS12_381], n, alignment = 64)
+    linearIndepRandNumbers.computePowers(n, randomBlindingFr)
+
+    type EcAffArray = ptr UncheckedArray[ECP_ShortW_Aff[Fp[BLS12_381], G1]]
+    let verif = kzg_verify_batch(
+                  cast[EcAffArray](commitments),
+                  challenges,
+                  evals_at_challenges,
+                  cast[EcAffArray](proofs),
+                  linearIndepRandNumbers,
+                  n,
+                  ctx.srs_monomial_g2.coefs[1])
+    if verif:
+      result =  cttEthKZG_Success
+    else:
+      result = cttEthKZG_VerificationFailure
+
+    freeHeapAligned(linearIndepRandNumbers)
+
+  freeHeapAligned(invRootsMinusZ)
+  freeHeapAligned(poly)
+  freeHeapAligned(proofs)
+  freeHeapAligned(evals_at_challenges)
+  freeHeapAligned(challenges)
+  freeHeapAligned(commitments)
+
+  return result
 
 # Ethereum Trusted Setup
 # ------------------------------------------------------------

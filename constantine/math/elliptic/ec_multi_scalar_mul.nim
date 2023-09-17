@@ -446,9 +446,9 @@ func multiScalarMul_vartime*[bits: static int, F, G](
        r: var ECP_ShortW[F, G],
        coefs: ptr UncheckedArray[BigInt[bits]],
        points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
-       N: int) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
+       len: int) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
   ## Multiscalar multiplication:
-  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
+  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
 
   multiScalarMul_dispatch_vartime(r, coefs, points, len)
 
@@ -457,7 +457,7 @@ func multiScalarMul_vartime*[bits: static int, F, G](
        coefs: openArray[BigInt[bits]],
        points: openArray[ECP_ShortW_Aff[F, G]]) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
   ## Multiscalar multiplication:
-  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
+  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
 
   debug: doAssert coefs.len == points.len
   let N = points.len
