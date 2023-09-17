@@ -290,7 +290,7 @@ func blob_to_kzg_commitment*(
     check HappyPath, poly.blob_to_bigint_polynomial(blob)
 
     var r {.noinit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1]
-    kzg_commit(r, poly.evals, ctx.srs_lagrange_g1) # symbol resolution need explicit generics
+    kzg_commit(r, poly.evals, ctx.srs_lagrange_g1)
     discard dst.serialize_g1_compressed(r)
 
     result = cttEthKZG_Success

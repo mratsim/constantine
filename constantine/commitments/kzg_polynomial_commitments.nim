@@ -378,7 +378,7 @@ func kzg_verify_batch*[bits: static int, F2; C: static Curve](
   # We interleave allocation and deallocation, which hurts cache reuse
   # i.e. when alloc is being done, it's better to do all allocs as the metadata will already be in cache
   #
-  # but it's more important to minimize memory usage especially if we want to comit with 2^26+ points
+  # but it's more important to minimize memory usage especially if we want to commit with 2^26+ points
   #
   # We dealloc in reverse alloc order, to avoid leaving holes in the allocator pages.
   let commits_min_evals = allocHeapArrayAligned(ECP_ShortW_Aff[Fp[C], G1], n, alignment = 64)
