@@ -6,7 +6,9 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import std/macros
+import
+  std/macros,
+  primitives
 
 # OpenArray type
 # ---------------------------------------------------------
@@ -29,11 +31,22 @@ type View*[T] = object
 template toOpenArray*[T](v: View[T]): openArray[T] =
   v.data.toOpenArray(0, v.len-1)
 
-func toView*[T](data: ptr UncheckedArray[T], len: int) {.inline.} =
+func toView*[T](oa: openArray[T]): View[T] {.inline.} =
+  View[T](data: cast[ptr UncheckedArray[T]](oa[0].unsafeAddr), len: oa.len)
+
+func toView*[T](data: ptr UncheckedArray[T], len: int): View[T] {.inline.} =
   View[T](data: data, len: len)
 
 func `[]`*[T](v: View[T], idx: int): lent T {.inline.} =
   v.data[idx]
+
+func chunk*[T](v: View[T], start, len: int): View[T] {.inline.} =
+  ## Create a sub-chunk from a view
+  debug:
+    doAssert start >= 0
+    doAssert start + len <= v.len
+  result.data = v.data +% start
+  result.len = len
 
 type MutableView*[T] {.borrow: `.`.} = distinct View[T]
 

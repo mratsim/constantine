@@ -198,7 +198,7 @@ func update*[Pubkey: ECP_ShortW_Aff](
       augmentation = "", message,
       ctx.domainSepTag.toOpenArray(0, ctx.dst_len.int - 1))
 
-    ctx.millerAccum.update(pubkey, hmsgG2_aff)
+    return ctx.millerAccum.update(pubkey, hmsgG2_aff)
 
   else:
     # Pubkey on G2, H(message) and Signature on G1
@@ -209,7 +209,7 @@ func update*[Pubkey: ECP_ShortW_Aff](
       augmentation = "", message,
       ctx.domainSepTag.toOpenArray(0, ctx.dst_len.int - 1))
 
-    ctx.millerAccum.update(hmsgG1_aff, pubkey)
+    return ctx.millerAccum.update(hmsgG1_aff, pubkey)
 
 func update*[Pubkey: ECP_ShortW_Aff](
        ctx: var BLSAggregateSigAccumulator,
@@ -227,6 +227,7 @@ func merge*(ctxDst: var BLSAggregateSigAccumulator, ctxSrc: BLSAggregateSigAccum
     return false
 
   ctxDst.millerAccum.merge(ctxSrc.millerAccum)
+  return true
 
 func finalVerify*[F, G](ctx: var BLSAggregateSigAccumulator, aggregateSignature: ECP_ShortW_Aff[F, G]): bool =
   ## Finish batch and/or aggregate signature verification and returns the final result.
@@ -439,7 +440,7 @@ func update*[Pubkey, Sig: ECP_ShortW_Aff](
       augmentation = "", message,
       ctx.domainSepTag.toOpenArray(0, ctx.dst_len.int - 1))
 
-    ctx.millerAccum.update(pkG1_aff, hmsgG2_aff)
+    return ctx.millerAccum.update(pkG1_aff, hmsgG2_aff)
 
   else:
     # Pubkey on G2, H(message) and Signature on G1
@@ -467,7 +468,7 @@ func update*[Pubkey, Sig: ECP_ShortW_Aff](
     type FF1 = BLSBatchSigAccumulator.FF1
     var hmsgG1_aff {.noInit.}: ECP_ShortW_Aff[FF1, G1]
     hmsgG1_aff.affine(hmsgG1_jac)
-    ctx.millerAccum.update(hmsgG1_aff, pubkey)
+    return ctx.millerAccum.update(hmsgG1_aff, pubkey)
 
 func update*[Pubkey, Sig: ECP_ShortW_Aff](
        ctx: var BLSBatchSigAccumulator,
@@ -482,7 +483,7 @@ func merge*(ctxDst: var BLSBatchSigAccumulator, ctxSrc: BLSBatchSigAccumulator):
   ## Returns false if they have inconsistent DomainSeparationTag and true otherwise.
   if ctxDst.dst_len != ctxSrc.dst_len:
     return false
-  if not equalMem(ctxDst.domainSepTag.addr, ctxSrc.domainSepTag.addr, ctxDst.domainSepTag.len):
+  if not equalMem(ctxDst.domainSepTag.addr, ctxSrc.domainSepTag.unsafeAddr, ctxDst.domainSepTag.len):
     return false
 
   ctxDst.millerAccum.merge(ctxSrc.millerAccum)
@@ -494,6 +495,7 @@ func merge*(ctxDst: var BLSBatchSigAccumulator, ctxSrc: BLSBatchSigAccumulator):
     ctxDst.aggSigOnce = true
 
   BLSBatchSigAccumulator.H.hash(ctxDst.secureBlinding, ctxDst.secureBlinding, ctxSrc.secureBlinding)
+  return true
 
 func finalVerify*(ctx: var BLSBatchSigAccumulator): bool =
   ## Finish batch and/or aggregate signature verification and returns the final result.
