@@ -477,6 +477,18 @@ func update*[Pubkey, Sig: ECP_ShortW_Aff](
        signature: Sig): bool {.inline.} =
   ctx.update(pubkey, message, signature)
 
+func handover*(ctx: var BLSBatchSigAccumulator) {.inline.} =
+  ## Prepare accumulator for cheaper merging.
+  ##
+  ## In a multi-threaded context, multiple accumulators can be created and process subsets of the batch in parallel.
+  ## Accumulators can then be merged:
+  ##    merger_accumulator += mergee_accumulator
+  ## Merging will involve an expensive reduction operation when an accumulation threshold of 8 is reached.
+  ## However merging two reduced accumulators is 136x cheaper.
+  ##
+  ## `Handover` forces this reduction on local threads to limit the burden on the merger thread.
+  ctx.millerAccum.handover()
+
 func merge*(ctxDst: var BLSBatchSigAccumulator, ctxSrc: BLSBatchSigAccumulator): bool =
   ## Merge 2 BLS signature accumulators: ctxDst <- ctxDst + ctxSrc
   ##

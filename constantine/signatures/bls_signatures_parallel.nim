@@ -154,6 +154,7 @@ proc batchVerify_parallel*[Msg, Pubkey, Sig](
       if not ctx[].update(pubkeys[i], messages[i], signatures[i]):
         return false
 
+    ctx[].handover()
     return true
 
   let partialStates = allocStackArray(Flowvar[bool], numAccums)
@@ -173,7 +174,7 @@ proc batchVerify_parallel*[Msg, Pubkey, Sig](
 
   # Stage 2: Reduce partial pairings
   # --------------------------------
-  if true: # numAccums < 4: # Linear merge
+  if numAccums < 4: # Linear merge
     result = sync partialStates[0]
     for i in 1 ..< numAccums:
       result = result and sync partialStates[i]

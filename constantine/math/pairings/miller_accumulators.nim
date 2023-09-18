@@ -102,6 +102,18 @@ func update*[FF1, FF2, FpK](ctx: var MillerAccumulator[FF1, FF2, FpK], P: ECP_Sh
   ctx.len += 1
   return true
 
+func handover*(ctx: var MillerAccumulator) {.inline.} =
+  ## Prepare accumulator for cheaper merging.
+  ##
+  ## In a multi-threaded context, multiple accumulators can be created and process subsets of the batch in parallel.
+  ## Accumulators can then be merged:
+  ##    merger_accumulator += mergee_accumulator
+  ## Merging will involve an expensive reduction operation when an accumulation threshold of 8 is reached.
+  ## However merging two reduced accumulators is 136x cheaper.
+  ##
+  ## `Handover` forces this reduction on local threads to limit the burden on the merger thread.
+  ctx.consumeBuffers()
+
 func merge*(ctxDst: var MillerAccumulator, ctxSrc: MillerAccumulator) =
   ## Merge ctxDst <- ctxDst + ctxSrc
   var sCur = 0'u
