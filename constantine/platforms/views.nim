@@ -8,7 +8,7 @@
 
 import
   std/macros,
-  primitives
+  ./primitives
 
 # OpenArray type
 # ---------------------------------------------------------
