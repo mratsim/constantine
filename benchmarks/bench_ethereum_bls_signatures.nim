@@ -214,6 +214,8 @@ proc benchVerifyBatchedParallel*(numSigs, iters: int) =
     let ok = tp.batch_verify_parallel(pubkeys, messages, signatures, secureBlindingBytes)
     doAssert ok == cttBLS_Success, "invalid status: " & $ok
 
+  tp.shutdown()
+
 const Iters = 1000
 
 proc main() =
