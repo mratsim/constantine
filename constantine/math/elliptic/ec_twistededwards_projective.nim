@@ -313,6 +313,14 @@ func diff*(r: var ECP_TwEdwards_Prj,
   nQ.neg(Q)
   r.sum(P, nQ)
 
+template affine*[F](_: type ECP_TwEdwards_Prj[F]): typedesc =
+  ## Returns the affine type that corresponds to the Jacobian type input
+  ECP_TwEdwards_Aff[F]
+
+template projective*[F](_: type ECP_TwEdwards_Aff[F]): typedesc =
+  ## Returns the projective type that corresponds to the affine type input
+  ECP_TwEdwards_Aff[F]
+
 func affine*[F](
        aff: var ECP_TwEdwards_Aff[F],
        proj: ECP_TwEdwards_Prj[F]) =
@@ -322,9 +330,9 @@ func affine*[F](
   aff.x.prod(proj.x, invZ)
   aff.y.prod(proj.y, invZ)
 
-func projective*[F](
-       proj: var ECP_TwEdwards_Aff[F],
-       aff: ECP_TwEdwards_Prj[F]) {.inline.} =
+func fromAffine*[F](
+       proj: var ECP_TwEdwards_Prj[F],
+       aff: ECP_TwEdwards_Aff[F]) {.inline.} =
   proj.x = aff.x
   proj.y = aff.y
   proj.z.setOne()

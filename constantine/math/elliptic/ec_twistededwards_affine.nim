@@ -39,6 +39,11 @@ func isInf*(P: ECP_TwEdwards_Aff): SecretBool =
   ## and false otherwise
   result = P.x.isZero() and P.y.isOne()
 
+func setInf*(P: var ECP_TwEdwards_Aff) {.inline.} =
+  ## Set ``P`` to infinity
+  P.x.setZero()
+  P.y.setOne()
+
 
 func isOnCurve*[F](x, y: F): SecretBool =
   ## Returns true if the (x, y) coordinates

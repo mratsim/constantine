@@ -34,3 +34,9 @@ run_EC_mul_distributive_tests(
     ItersMul = ItersMul,
     moduleName = "test_ec_twistededwards_projective_mul_distributive_" & $Bandersnatch
   )
+
+run_EC_mul_distributive_tests(
+    ec = ECP_TwEdwards_Prj[Fp[Banderwagon]],
+    ItersMul = ItersMul,
+    moduleName = "test_ec_twistededwards_projective_mul_distributive_" & $Banderwagon
+  )

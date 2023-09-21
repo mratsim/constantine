@@ -95,7 +95,7 @@ proc run_EC_addition_tests*(
   const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
-    test "The infinity point is the neutral element w.r.t. to EC " & $ec.G & " addition":
+    test "The infinity point is the neutral element w.r.t. to EC " & " addition":
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         var inf {.noInit.}: EC
         inf.setInf()
@@ -182,7 +182,7 @@ proc run_EC_addition_tests*(
       test(ec, randZ = false, gen = Long01Sequence)
       test(ec, randZ = true, gen = Long01Sequence)
 
-    test "EC " & $ec.G & " add is commutative":
+    test "EC" & " add is commutative":
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< Iters:
           var r0{.noInit.}, r1{.noInit.}: EC
@@ -200,7 +200,7 @@ proc run_EC_addition_tests*(
       test(ec, randZ = false, gen = Long01Sequence)
       test(ec, randZ = true, gen = Long01Sequence)
 
-    test "EC " & $ec.G & " add is associative":
+    test "EC" & " add is associative":
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< Iters:
           let a = rng.random_point(EC, randZ, gen)
@@ -249,7 +249,7 @@ proc run_EC_addition_tests*(
       test(ec, randZ = false, gen = Long01Sequence)
       test(ec, randZ = true, gen = Long01Sequence)
 
-    test "EC " & $ec.G & " double and EC " & $ec.G & " add are consistent":
+    test "EC " & " double and EC " & " add are consistent":
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< Iters:
           let a = rng.random_point(EC, randZ, gen)
@@ -469,7 +469,7 @@ proc run_EC_mul_sanity_tests*(
   const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
-    test "EC " & $ec.G & " mul [0]P == Inf":
+    test "EC " & " mul [0]P == Inf":
       proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< ItersMul:
           let a = rng.random_point(EC, randZ, gen)
@@ -506,7 +506,7 @@ proc run_EC_mul_sanity_tests*(
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Long01Sequence)
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Long01Sequence)
 
-    test "EC " & $ec.G & " mul [1]P == P":
+    test "EC " & " mul [1]P == P":
       proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< ItersMul:
           let a = rng.random_point(EC, randZ, gen)
@@ -532,7 +532,7 @@ proc run_EC_mul_sanity_tests*(
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Long01Sequence)
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Long01Sequence)
 
-    test "EC " & $ec.G & " mul [2]P == P.double()":
+    test "EC " & " mul [2]P == P.double()":
       proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< ItersMul:
           let a = rng.random_point(EC, randZ, gen)
@@ -575,7 +575,7 @@ proc run_EC_mul_distributive_tests*(
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
 
-    test "EC " & $ec.G & " mul is distributive over EC add":
+    test "EC" & " mul is distributive over EC add":
       proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< ItersMul:
           let a = rng.random_point(EC, randZ, gen)
