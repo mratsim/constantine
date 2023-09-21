@@ -51,11 +51,12 @@ func serialize*(dst: var array[32, byte], P: EC_Prj): CttCodecEccStatus =
   var aff {.noInit.}: EC_Aff
   aff.affine(P)
 
+  let lexicographicallyLargest = aff.y.toBig() >= Fp[Banderwagon].getPrimeMinus1div2()
+
+  if lexicographicallyLargest.bool():
+    aff.x.neg()
+
   dst.marshal(aff.x, bigEndian)
-
-  let lexicographicallyLargest = byte(aff.y.toBig() >= Fp[Banderwagon].getPrimePlus1div2())
-  dst[0] = dst[0] or (lexicographicallyLargest shl 7) # setting the MSB to sign(y)
-
   return cttCodecEcc_Success
 
 func deserialize_unchecked*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccStatus =
@@ -90,7 +91,7 @@ func deserialize_unchecked*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccS
   if not(bool onCurve):
     return cttCodecEcc_PointNotOnCurve
 
-  let isLexicographicallyLargest = dst.y.toBig() >= Fp[Banderwagon].getPrimePlus1div2()
+  let isLexicographicallyLargest = dst.y.toBig() >= Fp[Banderwagon].getPrimeMinus1div2()
   let srcIsLargest = SecretBool((src[0] shr 7) and byte 1)
   dst.y.cneg(isLexicographicallyLargest xor srcIsLargest)
 

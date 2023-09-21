@@ -392,6 +392,16 @@ func primePlus1div2*(P: BigInt): BigInt =
   let carry = result.add(1)
   doAssert not carry
 
+func primeMinus1div2*(P: BigInt): BigInt =
+  ## Compute (P-1)/2
+  ## For use in constant-time modular inversion
+  ##
+  ## Warning ⚠️: Result is in the canonical domain (not Montgomery)
+
+  result = P
+  discard result.sub(1)
+  result.shiftRight(1)
+
 func primeMinus3div4_BE*[bits: static int](
        P: BigInt[bits]
      ): array[bits.ceilDiv_vartime(8), byte] {.noInit.} =
