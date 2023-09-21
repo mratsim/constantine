@@ -279,11 +279,11 @@ func double*[Field](
   
   # (B-C-D) => 2X1Y1, but With squaring and 2 substractions instead of mul + addition
   # In practice, squaring is not cheap enough to compasate the extra substraction cost.
+  E.square(P.x)
   r.x.prod(P.x, P.y)
   r.x.double()
 
   D.square(P.y)
-  E.square(P.x)
   E *= Field.C.getCoefA()
 
   r.y.sum(E, D)    # Ry stores F = E+D
