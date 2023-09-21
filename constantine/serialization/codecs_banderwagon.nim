@@ -53,7 +53,7 @@ func serialize*(dst: var array[32, byte], P: EC_Prj): CttCodecEccStatus =
 
   let lexicographicallyLargest = aff.y.toBig() >= Fp[Banderwagon].getPrimeMinus1div2()
 
-  if lexicographicallyLargest.bool():
+  if not lexicographicallyLargest.bool():
     aff.x.neg()
 
   dst.marshal(aff.x, bigEndian)
