@@ -92,8 +92,7 @@ func deserialize_unchecked*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccS
     return cttCodecEcc_PointNotOnCurve
 
   let isLexicographicallyLargest = dst.y.toBig() >= Fp[Banderwagon].getPrimeMinus1div2()
-  let srcIsLargest = SecretBool((src[0] shr 7) and byte 1)
-  dst.y.cneg(isLexicographicallyLargest xor srcIsLargest)
+  dst.y.cneg(not isLexicographicallyLargest)
 
   return cttCodecEcc_Success
 
