@@ -227,7 +227,7 @@ if __name__ == "__main__":
 
     count = 40
     seed = 1337
-    message_vector_len = 2
+    message_vector_len = 100
 
     if group == 'G1':
       out = gen_ped_comm_G1(curve, Curves, count, seed, message_vector_len, scalarBits)
