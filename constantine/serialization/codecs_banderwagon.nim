@@ -34,9 +34,10 @@ type
 func serialize*(dst: var array[32, byte], P: EC_Prj): CttCodecEccStatus =
   ## Serialize a Banderwagon point(x, y) in the format
   ## 
-  ## serialized bits = 256
-  ## 1st bit -> sign(y)
-  ## remaining 255 bits -> x ( big endian format )
+  ## serialize = bigEndian( sign(y) * x )
+  ## If y is not lexicographically largest
+  ## set x -> -x
+  ## then serialize
   ## 
   ## Returns cttCodecEcc_Success if successful
   ## Spec: https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Serialisation
@@ -62,9 +63,8 @@ func serialize*(dst: var array[32, byte], P: EC_Prj): CttCodecEccStatus =
 func deserialize_unchecked*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccStatus =
   ## Deserialize a Banderwagon point (x, y) in format
   ## 
-  ## serialized bits = 256
-  ## 1st bit -> sign(y)
-  ## remaining 255 bits -> x ( big endian format )
+  ## if y is not lexicographically largest
+  ## set y -> -y
   ## 
   ## Returns cttCodecEcc_Success if successful
   ## https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Serialisation

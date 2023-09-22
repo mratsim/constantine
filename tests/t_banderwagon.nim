@@ -24,7 +24,9 @@ import
 
 type
   EC* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
+  Bytes* = array[32, byte]
 
+# The generator point from Banderwagon
 var generator = Banderwagon.getGenerator()
 
 # serialized points which lie on Banderwagon
@@ -47,7 +49,8 @@ const expected_bit_strings: array[16, string] = [
   "0x3fa4384b2fa0ecc3c0582223602921daaa893a97b64bdf94dcaa504e8b7b9e5f",
 ]
 
-# serlialized points which don't lie on Banderwagon
+## These are all points which will be shown to be on the curve
+## but are not in the correct subgroup
 const bad_bit_string: array[16, string] = [
   "0x1b6989e2393c65bbad7567929cdbd72bbf0218521d975b0fb209fba0ee493c32",
   "0x280e608d5bbbe84b16aac62aa450e8921840ea563f1c9c266e0240d89cbe6a78",
@@ -67,71 +70,117 @@ const bad_bit_string: array[16, string] = [
   "0x120faa1df94d5d831bbb69fc44816e25afd27288a333299ac3c94518fd0e016f",
 ]
 
+# ############################################################
+#
+#              Banderwagon Serialization Tests
+#
+# ############################################################
 suite "Banderwagon Serialization Tests":
   var points: seq[EC]
+
+  ## Check encoding if it is as expected or not
   test "Test Encoding from Fixed Vectors":
     proc testSerialize(len: int) =
+      # First the point is set to generator P
+      # then with each iteration 2P, 4P, . . . doubling
       var point {.noInit.}: EC
       point.fromAffine(generator)
 
       for i in 0 ..< len:
-        var arr: array[32, byte]
+        var arr: Bytes
         let stat = arr.serialize(point)
+
+        # Check if the serialization took place and in expected way
         doAssert stat == cttCodecEcc_Success, "Serialization Failed"
         doAssert expected_bit_strings[i] == arr.toHex(), "bit string does not match expected"
         points.add(point)
-        point.double()
+
+        point.double() #doubling the point
 
     testSerialize(expected_bit_strings.len)
   
+  ## Check decoding if it is as expected or not
   test "Decoding Each bit string":
     proc testDeserialization(len: int) =
+      # Checks if the point serialized in the previous
+      # tests matches with the deserialization of expected strings 
       for i, bit_string in expected_bit_strings:
-        var arr: array[32, byte]
-        arr.fromHex(bit_string)
+
+        # converts serialized value in hex to byte array
+        var arr: Bytes
+        arr.fromHex(bit_string) 
+
+        # deserialization from expected bits
         var point{.noInit.}: EC
-        let stat = point.deserialize(arr)
+        let stat = point.deserialize(arr) 
+
+        # Assertion check for the Deserialization Success & correctness
         doAssert stat == cttCodecEcc_Success, "Deserialization Failed"
         doAssert (point == points[i]).bool(), "Decoded Element is different from expected element"
 
     testDeserialization(expected_bit_strings.len)
   
+  # Check if the subgroup check is working on eliminating
+  # points which don't lie on banderwagon, while 
+  # deserializing from an untrusted source
   test "Decoding Points Not on Curve":
     proc testBadPointDeserialization(len: int) =
+      # Checks whether the bad bit string
+      # get deserialized, it should return error -> cttCodecEcc_PointNotInSubgroup
       for bit_string in bad_bit_string:
-        var arr: array[32, byte]
+
+        # converts serialized value in hex to byte array
+        var arr: Bytes
         arr.fromHex(bit_string)
+
+        # deserialization from bits
         var point{.noInit.}: EC
         let stat = point.deserialize(arr)
+
+        # Assertion check for error
         doAssert stat == cttCodecEcc_PointNotInSubgroup, "Bad point Deserialization Failed, in subgroup check"
     
     testBadPointDeserialization(bad_bit_string.len)
 
+
+# ############################################################
+#
+#           Banderwagon Point Operations Tests
+#
+# ############################################################
 suite "Banderwagon Points Tests":
+
+  ## Tests if the operation are consistent & correct
+  ## consistency of Addition with doubling
+  ## and correctness of the subtraction
   test "Test for Addition, Subtraction, Doubling":
     proc testAddSubDouble() =
       var a, b, gen_point, identity {.noInit.} : EC
       gen_point.fromAffine(generator)
 
+      # Setting the identity Element
       identity.x.setZero()
       identity.y.setOne()
       identity.z.setOne()
 
-      a.sum(gen_point, gen_point)
-      b.double(gen_point)
+      a.sum(gen_point, gen_point) # a = g+g = 2g
+      b.double(gen_point)         # b = 2g
 
-      doAssert (not (a == gen_point).bool()), "The generator should not have order < 2"
-      doAssert (a == b).bool(), "Add and Double formulae do not match"
+      doAssert (not (a == gen_point).bool()), "The generator should not have order < 2" 
+      doAssert (a == b).bool(), "Add and Double formulae do not match" # Checks is doubling and addition are consistent
 
-      a.diff(a, b)
+      a.diff(a, b) # a <- a - b
       doAssert (a == identity).bool(), "Sub formula is incorrect; any point minus itself should give the identity point"
 
     testAddSubDouble()
 
-
+  ## Points that differ by a two torsion point
+  ## are equal, where the two torsion point is not the point at infinity 
   test "Test Two Torsion Equality":
     proc testTwoTorsion() =
       var two_torsion: EC
+
+      # Setting the two torsion point
       two_torsion.x.setZero()
       two_torsion.y.setMinusOne()
       two_torsion.z.setOne()
@@ -141,13 +190,14 @@ suite "Banderwagon Points Tests":
 
       for i in 0 ..< 1000:
         var point_plus_torsion: EC
-        point_plus_torsion.sum(point, two_torsion)
+        point_plus_torsion.sum(point, two_torsion) # adding generator with two torsion point
 
         doAssert (point == point_plus_torsion).bool(), "points that differ by an order-2 point should be equal"
         
-        var point_bytes: array[32, byte]
+        # Serializing to the point and point added with two torsion point
+        var point_bytes: Bytes
         let stat1 = point_bytes.serialize(point)
-        var plus_point_bytes: array[32, byte]
+        var plus_point_bytes: Bytes
         let stat2 = plus_point_bytes.serialize(point_plus_torsion)
 
         doAssert stat1 == cttCodecEcc_Success and stat2 == cttCodecEcc_Success, "Serialization Failed"
