@@ -27,8 +27,8 @@ const seed* = asBytes"eth_verkle_oct_2021"
 type
   EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
 
-func generate_random_elements* (num_points: var uint64) : ECP_TwEdwards_Prj[Fp[Banderwagon]] {.inline.} =
-    var points {.noInit.} : array[256, ECP_TwEdwards_Prj[Fp[Banderwagon]]]
+func generate_random_elements* (num_points: var uint64) : seq[ECP_TwEdwards_Prj[Fp[Banderwagon]]] {.inline.} =
+    var points {.noInit.} : seq[ ECP_TwEdwards_Prj[Fp[Banderwagon]]]
 
     var incrementer: uint64 = 0
 
@@ -61,36 +61,4 @@ func generate_random_elements* (num_points: var uint64) : ECP_TwEdwards_Prj[Fp[B
         if (point_found.deserialize(x_as_Bytes) == cttCodecEcc_Success):
             points[incrementer] = point_found
 
-
-
-
-
-
-        
-
-        
-
-        
-
-
-        
-
-        
-
-
-
-
-
-
-        
-
-
-
-
-
-
-
-
-
-
-
+    return points
