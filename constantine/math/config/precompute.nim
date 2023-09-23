@@ -399,7 +399,7 @@ func primeMinus1div2*(P: BigInt): BigInt =
   ## Warning ⚠️: Result is in the canonical domain (not Montgomery)
 
   result = P
-  discard result.sub(1)
+  # discard result.sub(1) # right-shifting automatically implies "-1" for odd numbers (which all prime >2 are).
   result.shiftRight(1)
 
 func primeMinus3div4_BE*[bits: static int](
