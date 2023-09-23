@@ -17,6 +17,7 @@ import
   ./curve25519_sqrt,
   ./jubjub_sqrt,
   ./bandersnatch_sqrt,
+  ./banderwagon_sqrt,
   ./pallas_sqrt,
   ./vesta_sqrt
 
@@ -29,6 +30,7 @@ export
   curve25519_sqrt,
   jubjub_sqrt,
   bandersnatch_sqrt,
+  banderwagon_sqrt,
   pallas_sqrt,
   vesta_sqrt
 

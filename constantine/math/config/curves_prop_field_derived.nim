@@ -104,6 +104,11 @@ macro getPrimePlus1div2*(ff: type FF): untyped =
   ## Warning ⚠️: Result in canonical domain (not Montgomery)
   result = bindConstant(ff, "PrimePlus1div2")
 
+macro getPrimeMinus1div2*(ff: type FF): untyped =
+  ## Get (P-1) / 2 for an odd prime
+  ## Warning ⚠️: Result in canonical domain (not Montgomery)
+  result = bindConstant(ff, "PrimeMinus1div2")
+
 macro getPrimeMinus3div4_BE*(ff: type FF): untyped =
   ## Get (P-3) / 4 in big-endian serialized format
   result = bindConstant(ff, "PrimeMinus3div4_BE")

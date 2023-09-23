@@ -7,20 +7,17 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  std/macros,
   ../config/curves,
-  ./bls12_381_generators,
-  ./bn254_snarks_generators,
-  ./bandersnatch_generators,
-  ./banderwagon_generators
+  ../elliptic/ec_twistededwards_affine,
+  ../io/[io_fields, io_extfields]
 
-{.experimental: "dynamicbindsym".}
+{.used.}
 
-macro getGenerator*(C: static Curve, subgroup: static string = ""): untyped =
-  ## Returns the curve subgroup generator.
-  ## Pairing-friendly curves expect G1 or G2
-  
-  if subgroup == "":
-    return bindSym($C & "_generator")
-  else:
-    return bindSym($C & "_generator_" & subgroup)
+# Generators
+# -----------------------------------------------------------------
+# https://eprint.iacr.org/2021/1152.pdf
+
+const Banderwagon_generator* = ECP_TwEdwards_Aff[Fp[Banderwagon]](
+  x: Fp[Banderwagon].fromHex("29c132cc2c0b34c5743711777bbe42f32b79c022ad998465e1e71866a252ae18"),
+  y: Fp[Banderwagon].fromHex("2a6c669eda123e0f157d8b50badcd586358cad81eee464605e3167b6cc974166")
+)

@@ -6,21 +6,16 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import
-  std/macros,
-  ../config/curves,
-  ./bls12_381_generators,
-  ./bn254_snarks_generators,
-  ./bandersnatch_generators,
-  ./banderwagon_generators
+type
+  CttCodecScalarStatus* = enum
+    cttCodecScalar_Success
+    cttCodecScalar_Zero
+    cttCodecScalar_ScalarLargerThanCurveOrder
 
-{.experimental: "dynamicbindsym".}
-
-macro getGenerator*(C: static Curve, subgroup: static string = ""): untyped =
-  ## Returns the curve subgroup generator.
-  ## Pairing-friendly curves expect G1 or G2
-  
-  if subgroup == "":
-    return bindSym($C & "_generator")
-  else:
-    return bindSym($C & "_generator_" & subgroup)
+  CttCodecEccStatus* = enum
+    cttCodecEcc_Success
+    cttCodecEcc_InvalidEncoding
+    cttCodecEcc_CoordinateGreaterThanOrEqualModulus
+    cttCodecEcc_PointNotOnCurve
+    cttCodecEcc_PointNotInSubgroup
+    cttCodecEcc_PointAtInfinity

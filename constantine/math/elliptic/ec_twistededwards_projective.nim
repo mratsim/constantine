@@ -13,6 +13,7 @@ import
   ../extension_fields,
   ./ec_twistededwards_affine
 
+
 # ############################################################
 #
 #             Elliptic Curve in Twisted Edwards form
@@ -64,6 +65,25 @@ func ccopy*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Prj, ctl: SecretBool) {.i
   ## Time and memory accesses are the same whether a copy occurs or not
   for fP, fQ in fields(P, Q):
     ccopy(fP, fQ, ctl)
+
+func trySetFromCoordX*[F](
+       P: var ECP_TwEdwards_Prj[F], 
+       x: F): SecretBool =
+  ## Try to create a point on the elliptic curve from X co-ordinate
+  ##   ax²+y²=1+dx²y²    (affine coordinate)
+  ## 
+  ## The `Z` coordinates is set to 1
+  ## 
+  ## return true and update `P` if `y` leads to a valid point
+  ## return false otherwise, in that case `P` is undefined.
+  
+  var Q{.noInit.}: ECP_TwEdwards_Aff[F]
+  result = Q.trySetFromCoordX(x)
+
+  P.x = Q.x
+  P.y = Q.y 
+  P.z.setOne()
+
 
 func trySetFromCoordY*[F](
        P: var ECP_TwEdwards_Prj[F],
@@ -259,11 +279,11 @@ func double*[Field](
   
   # (B-C-D) => 2X1Y1, but With squaring and 2 substractions instead of mul + addition
   # In practice, squaring is not cheap enough to compasate the extra substraction cost.
+  E.square(P.x)
   r.x.prod(P.x, P.y)
   r.x.double()
 
   D.square(P.y)
-  E.square(P.x)
   E *= Field.C.getCoefA()
 
   r.y.sum(E, D)    # Ry stores F = E+D
@@ -293,6 +313,14 @@ func diff*(r: var ECP_TwEdwards_Prj,
   nQ.neg(Q)
   r.sum(P, nQ)
 
+template affine*[F](_: type ECP_TwEdwards_Prj[F]): typedesc =
+  ## Returns the affine type that corresponds to the Jacobian type input
+  ECP_TwEdwards_Aff[F]
+
+template projective*[F](_: type ECP_TwEdwards_Aff[F]): typedesc =
+  ## Returns the projective type that corresponds to the affine type input
+  ECP_TwEdwards_Aff[F]
+
 func affine*[F](
        aff: var ECP_TwEdwards_Aff[F],
        proj: ECP_TwEdwards_Prj[F]) =
@@ -302,9 +330,36 @@ func affine*[F](
   aff.x.prod(proj.x, invZ)
   aff.y.prod(proj.y, invZ)
 
-func projective*[F](
-       proj: var ECP_TwEdwards_Aff[F],
-       aff: ECP_TwEdwards_Prj[F]) {.inline.} =
+func fromAffine*[F](
+       proj: var ECP_TwEdwards_Prj[F],
+       aff: ECP_TwEdwards_Aff[F]) {.inline.} =
   proj.x = aff.x
   proj.y = aff.y
   proj.z.setOne()
+
+# ############################################################
+#
+#              Banderwagon Specific Operations
+#
+# ############################################################
+
+func `==`*(P, Q: ECP_TwEdwards_Prj[Fp[Banderwagon]]): SecretBool =
+  ## Equality check for points in the Banderwagon Group
+  ## The equality check is optimized for the quotient group
+  ## see: https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Equality-check
+  ## 
+  ## Check for the (0,0) point, which is possible
+  ## 
+  ## This is a costly operation
+
+  var lhs{.noInit.}, rhs{.noInit.}: typeof(P).F
+
+  # Check for the zero points
+  result = not(P.x.is_zero() and P.y.is_zero())
+  result = result or not(Q.x.is_zero() and Q.y.is_zero())
+
+  ## Check for the equality of the points
+  ## X1 * Y2 == X2 * Y1
+  lhs.prod(P.x, Q.y)
+  rhs.prod(Q.x, P.y)
+  result = result and lhs == rhs

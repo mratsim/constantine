@@ -33,3 +33,9 @@ run_EC_addition_tests(
     Iters = Iters,
     moduleName = "test_ec_twistededwards_projective_add_double_" & $Bandersnatch
   )
+
+run_EC_addition_tests(
+    ec = ECP_TwEdwards_Prj[Fp[Banderwagon]],
+    Iters = Iters,
+    moduleName = "test_ec_twistededwards_projective_add_double_" & $Banderwagon
+  )

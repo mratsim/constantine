@@ -80,6 +80,7 @@ import
     ],
     ./math/io/[io_bigints, io_fields],
     signatures/bls_signatures,
+    serialization/codecs_status_codes,
     serialization/codecs_bls12_381
 
 export

@@ -155,6 +155,24 @@ declareCurves:
     coef_a: -5
     coef_d: "6389c12633c267cbc66e3bf86be3b6d8cb66677177e54f92b369f2f5188d58e7"
 
+  curve Banderwagon: # Banderwagon is a prime subgroup constructed over the Bandersnatch Curve.
+    # https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq
+    bitwidth: 255
+    modulus: "0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001"
+
+    # Weierstrass form: y² = x³ − 3763200000x − 7867596800000
+    # Mongomery form: By² = x³ + Ax² + x
+    #   B=0x300c3385d13bedb7c9e229e185c4ce8b1dd3b71366bb97c30855c0aa41d62727
+    #   A=0x4247698f4e32ad45a293959b4ca17afa4a2d2317e4c6ce5023e1f
+    # Twisted Edwards form: −5x² + y² = 1 + dx²y²
+    #   d = 138827208126141220649022263972958607803 / 171449701953573178309673572579671231137
+    order: "0x1cfb69d4ca675f520cce760202687600ff8f87007419047174fd06b52876e7e1"
+    orderBitwidth: 253
+    cofactor: 4
+    eq_form: TwistedEdwards
+    coef_a: -5
+    coef_d: "6389c12633c267cbc66e3bf86be3b6d8cb66677177e54f92b369f2f5188d58e7"
+
   curve Edwards25519: # Bernstein curve
     bitwidth: 255
     modulus: "0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed"

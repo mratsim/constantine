@@ -45,22 +45,11 @@ import
       extension_fields,
       arithmetic,
       constants/zoo_subgroups],
-    ../math/io/[io_bigints, io_fields]
+    ../math/io/[io_bigints, io_fields],
+    ./codecs_status_codes
 
 type
-  CttCodecScalarStatus* = enum
-    cttCodecScalar_Success
-    cttCodecScalar_Zero
-    cttCodecScalar_ScalarLargerThanCurveOrder
-
-  CttCodecEccStatus* = enum
-    cttCodecEcc_Success
-    cttCodecEcc_InvalidEncoding
-    cttCodecEcc_CoordinateGreaterThanOrEqualModulus
-    cttCodecEcc_PointNotOnCurve
-    cttCodecEcc_PointNotInSubgroup
-    cttCodecEcc_PointAtInfinity
-
+  Scalar* = matchingOrderBigInt(BLS12_381)
   G1P* = ECP_ShortW_Aff[Fp[BLS12_381], G1]
   G2P* = ECP_ShortW_Aff[Fp2[BLS12_381], G2]
 
