@@ -20,7 +20,8 @@ import
     codecs
   ],
   ../constantine/math/arithmetic,
-  ../constantine/math/constants/zoo_generators
+  ../constantine/math/constants/zoo_generators,
+  ../constantine/ethereum_verkle_primitives
 
 type
   EC* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
@@ -69,6 +70,11 @@ const bad_bit_string: array[16, string] = [
   "0x6671109a7a15f4852ead3298318595a36010930fddbd3c8f667c6390e7ac3c66",
   "0x120faa1df94d5d831bbb69fc44816e25afd27288a333299ac3c94518fd0e016f",
 ]
+
+const expected_scalar_field_elements: array[2, string] = [
+  "0x0e0c604381ef3cd11bdc84e8faa59b542fbbc92f800ed5767f21e5dbc59840ce",
+  "0x0a21f7dfa8ddaf6ef6f2044f13feec50cbb963996112fa1de4e3f52dbf6b7b6d"
+] # test data generated from go-ipa implementation
 
 # ############################################################
 #
@@ -207,3 +213,21 @@ suite "Banderwagon Points Tests":
 
     testTwoTorsion()
 
+suite "Banderwagon Elements Mapping":
+  test "Testing Multi Map To Base Field":
+    proc testMultiMapToBaseField() =
+      var A, B, genPoint {.noInit.}: EC
+      genPoint.fromAffine(generator)
+
+      A.sum(genPoint, genPoint)
+      B.double(genPoint)
+      B.double()
+
+      var expected_a, expected_b: Fr[Banderwagon]
+      expected_a.MapToScalarField(A)
+      expected_b.MapToScalarField(B)
+
+      doAssert expected_a.toHex() == expected_scalar_field_elements[0], "Mapping to Scalar Field Incorrect"
+      doAssert expected_b.toHex() == expected_scalar_field_elements[1], "Mapping to Scalar Field Incorrect"
+
+    testMultiMapToBaseField()
