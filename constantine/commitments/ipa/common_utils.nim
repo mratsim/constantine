@@ -31,7 +31,7 @@ type
   EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
 
 
-func generate_random_elements* (points: var  seq[ECP_TwEdwards_Prj[Fp[Banderwagon]]] , num_points: var uint64)  =
+func generate_random_elements* [Field](points: var  openArray[Field] , num_points: uint64)  =
 
     var incrementer: uint64 = 0
 
@@ -48,21 +48,22 @@ func generate_random_elements* (points: var  seq[ECP_TwEdwards_Prj[Fp[Banderwago
 
         digest.finish(hash)
 
-        var x {.noInit.}:  EC_P   
-        var xFinal {.noInit.}: EC_P
+        var x {.noInit.}:  Field
+        var xFinal {.noInit.}: Field
 
-        if(x.deserialize(hash) == cttCodecEcc_Success):
-            xFinal = x
-
+        x.deserialize(hash)
+        doAssert(cttCodecEcc_Success)
         incrementer=incrementer+1
 
         var x_as_Bytes {.noInit.} : array[32, byte]
-        if(x_as_Bytes.serialize(xFinal) == cttCodecEcc_Success):
-            x_as_Bytes = x_as_Bytes
+        x_as_Bytes.serialize(x)
+        doAssert(cttCodecEcc_Success)
 
         var point_found {.noInit.} : EC_P
-        if (point_found.deserialize(x_as_Bytes) == cttCodecEcc_Success):
-            points[incrementer] = point_found
+        point_found.deserialize(x_as_Bytes)
+
+        doAssert(cttCodecEcc_Success)
+        points[incrementer] = point_found
 
 
 # ############################################################
