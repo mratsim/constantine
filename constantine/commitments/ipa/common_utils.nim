@@ -16,6 +16,8 @@ import
     ../../../constantine/math/arithmetic,
     ../../../constantine/math/elliptic/ec_scalar_mul,
     ../../../constantine/platforms/bithacks,
+    ../../../constantine/math/io/[io_fields],
+    ../../../constantine/curves_primitives,
     ../../../constantine/serialization/[codecs_banderwagon,codecs_status_codes]
 
 # ############################################################
@@ -29,8 +31,7 @@ type
   EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
 
 
-func generate_random_elements* (num_points: var uint64) : seq[ECP_TwEdwards_Prj[Fp[Banderwagon]]] {.inline.} =
-    var points {.noInit.} : seq[ ECP_TwEdwards_Prj[Fp[Banderwagon]]]
+func generate_random_elements* (points: var  seq[ECP_TwEdwards_Prj[Fp[Banderwagon]]] , num_points: var uint64)  =
 
     var incrementer: uint64 = 0
 
@@ -63,7 +64,6 @@ func generate_random_elements* (num_points: var uint64) : seq[ECP_TwEdwards_Prj[
         if (point_found.deserialize(x_as_Bytes) == cttCodecEcc_Success):
             points[incrementer] = point_found
 
-    return points
 
 # ############################################################
 #
@@ -71,84 +71,62 @@ func generate_random_elements* (num_points: var uint64) : seq[ECP_TwEdwards_Prj[
 #
 # ############################################################
 
-proc compute_inner_products (a,b : var seq[EC_P]): EC_P =
-
-    if (not (len(a) == len(b))):
-        echo "a and b are of different lengths! cannot perform inner prod"
+func compute_inner_products* [Field] (res: var Field, a,b : openArray[Field]): bool {.discardable.} =
     
-    var result {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
-
-    result.x.setZero()
-    result.y.setZero()
-    result.z.setZero()
-
+    let check1 = true
+    if (not (len(a) == len(b))):
+        check1 = false
+    res.setZero()
     for i in 0..len(a):
-        var tmp: EC_P
-        tmp.x.prod(tmp.x,a[i].x)
-        tmp.y.prod(tmp.y,b[i].y)
+        var tmp {.noInit.} : Field 
+        tmp.prod(a[i], b[i])
+        res += tmp
 
-        result += tmp
-
-    return result
-
+    return check1
 # ############################################################
 #
 #                    Folding functions
 #
 # ############################################################
 
-proc fold_scalars (a,b: var seq[EC_P], x: var EC_P) : seq[EC_P]  =
-    if (not (len(a) == len(b))):
-        echo "slices are not of equal length"
-
-    var result {.noInit.}: seq[EC_P]
-    for i in 0..len(a):
-        var bx {.noInit.}: EC_P
-
-        bx.x.prod(x.x,b[i].x)
-        bx.y.prod(x.y,b[i].y)
-
-        result[i].sum(bx, a[i])
-
-    return result
-
-proc fold_points (a,b: var seq[EC_P], x: var EC_P) : seq[EC_P]  =
-    if (not (len(a)==len(b))):
-        echo "scalar slices are not of equal length"
+func fold_scalars* [Field] (res: var openArray[Field], a,b : openArray[Field], x: Field)=
     
-    var result {.noInit.}: seq[EC_P]
+    doAssert(len(a)==len(b))
+
+    var res {.noInit.}: Field
     for i in 0..len(a):
-        var bx {.noInit.}: EC_P
+        var bx {.noInit.}: Field
+        bx.prod(x, b[i])
+        res[i].sum(bx, a[i])
 
-        b[i].scalarMul(x.x.toBig())
-        b[i].scalarMul(x.y.toBig())
 
+func fold_points* [Field] (res: var openArray[Field], a,b : openArray[Field], x: Field)=
+    
+    doAssert (len(a)==len(b)), "Should have equal lengths!"
+    for i in 0..len(a):
+        var bx {.noInit.}: Field
+
+        b[i].scalarMul(x.toBig())
         bx = b[i]
-        result[i].sum(bx, a[i])
+        res[i].sum(bx, a[i])
 
-    return result
 
-proc split_scalars (x: var seq[EC_P]) : tuple[a,b: seq[EC_P]] =
-    if (not (len(x)mod 2 == 0)):
-        echo "the slices should have an even length"
-    
+func split_scalars* [Field] (x: var Field) : tuple[a1,a2: openArray[Field]]=
+
+    doAssert (len(x)mod 2 == 0), "Should have equal lengths!"  
     let mid = len(x) div 2
-    return (x[0..mid-1], x[mid..len(x)-1])
+    let (a1,a2) = (x[0..mid-1], x[mid..len(x)-1])
 
-proc compute_num_rounds (vectorSize: var uint32) : uint32 = 
+func compute_num_rounds* [float64] (res: var float64, vectorSize: SomeUnsignedInt)= 
 
-    if vectorSize == 0:
-        echo "Zero is not a valid input!"
+    doAssert (vectorSize == 0), "Zero is not a valid input!"
 
     let isP2 = isPowerOf2_vartime(vectorSize) and isPowerOf2_vartime(vectorSize - 1)
 
-    if not(isP2):
-        echo "not a power of 2, hence not a valid inputs"
+    doAssert (isP2 == 1), "not a power of 2, hence not a valid inputs"
 
-    var res {.noInit.}: float64
     res = float64(log2_vartime(vectorSize))
 
-    return uint32(res)
     
     
 
