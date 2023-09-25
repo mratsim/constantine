@@ -178,7 +178,7 @@ func compute_barycentric_coefficients* [PrecomputedWeightsObj]( point : var ECP_
   tmp.diff(point, i_Fp)
   totalProd.x.prod(totalProd.x, tmp.x)
   totalProd.y.prod(totalProd.y, tmp.y)
-  totalProd.z.prod(totalProd.z, tmp.z)
+
 
   lagrangeEval = computeZMinusXi(lagrangeEval)
 
@@ -204,7 +204,8 @@ func get_weight_ratios* [precomp: var PrecomputedWeights] (numerator: var int, d
   let b = precomp.barycentric_weights[denominator + midpoint]
 
   var result {.noInit.}: EC_P
-  result.prod(a, b)
+  result.x.prod(a.x, b.x)
+  result.y.prod(a.y,b.y)
   return result
 
 func get_barycentric_inverse_weight_inverses* [precomp: var PrecomputedWeights] (i: var int): EC_P=
@@ -236,12 +237,14 @@ func division_on_domain* [precomp: var PrecomputedWeights](index: var uint8, f: 
       let denominatorInv = precomp.get_inverted_element(absDenominator, is_negative)
 
       quotient[i].diff(f[i], y)
-      quotient[i].prod(quotient[i], denominatorInv)
+      quotient[i].x.prod(quotient[i].x, denominatorInv.x)
+      quotient[i].y.prod(quotient[i].y, denominatorInv.y)
 
       let weight_ratios = precomp.get_weight_ratios(int(index), i)
 
       var tmp {.noInit.}: EC_P
-      tmp.prod(weight_ratios, quotient[i])
+      tmp.x.prod(weight_ratios.x, quotient[i].x)
+      tmp.y.prod(weight_ratios.y, quotient[i].y)
       quotient[index].diff(quotient[index], tmp)
   
   return quotient
