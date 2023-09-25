@@ -42,7 +42,7 @@ func prime_subgroup_generator* () : ECP_TwEdwards_Prj[Fp[Banderwagon]]=
   return generator_prj
 
 func check_for_duplicate_field_elems* (points: var seq[EC_P] ): bool = 
-    var seen = initTable[EC_P, bool]()
+    let seen =  initTable[EC_P, bool]()
     #initializes a hashMap of ECP_TwistedEdwards_Prj[Fp[Banderwagon]] points 
     #from prime_subgroup_generator, for faster search and elimination
     for item in points.items():

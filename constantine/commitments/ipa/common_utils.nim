@@ -15,7 +15,7 @@ import
     ../../../constantine/hashes,
     ../../../constantine/math/arithmetic,
     ../../../constantine/math/elliptic/ec_scalar_mul,
-    ../../../constantine/platforms/bithacks,
+    ../../../constantine/platforms/[bithacks,views],
     ../../../constantine/math/io/[io_fields],
     ../../../constantine/curves_primitives,
     ../../../constantine/serialization/[codecs_banderwagon,codecs_status_codes]
@@ -49,7 +49,6 @@ func generate_random_elements* [Field](points: var  openArray[Field] , num_point
         digest.finish(hash)
 
         var x {.noInit.}:  Field
-        var xFinal {.noInit.}: Field
 
         x.deserialize(hash)
         doAssert(cttCodecEcc_Success)
@@ -92,10 +91,9 @@ func compute_inner_products* [Field] (res: var Field, a,b : openArray[Field]): b
 
 func fold_scalars* [Field] (res: var openArray[Field], a,b : openArray[Field], x: Field)=
     
-    doAssert(len(a)==len(b))
+    doAssert a.len == b.len , "Lengths should be equal!"
 
-    var res {.noInit.}: Field
-    for i in 0..len(a):
+    for i in 0..a.len:
         var bx {.noInit.}: Field
         bx.prod(x, b[i])
         res[i].sum(bx, a[i])
@@ -103,8 +101,9 @@ func fold_scalars* [Field] (res: var openArray[Field], a,b : openArray[Field], x
 
 func fold_points* [Field] (res: var openArray[Field], a,b : openArray[Field], x: Field)=
     
-    doAssert (len(a)==len(b)), "Should have equal lengths!"
-    for i in 0..len(a):
+    doAssert a.len == b.len , "Should have equal lengths!"
+
+    for i in 0..a.len:
         var bx {.noInit.}: Field
 
         b[i].scalarMul(x.toBig())
@@ -112,11 +111,23 @@ func fold_points* [Field] (res: var openArray[Field], a,b : openArray[Field], x:
         res[i].sum(bx, a[i])
 
 
-func split_scalars* [Field] (x: var Field) : tuple[a1,a2: openArray[Field]]=
+func split_scalars* (t: var StridedView) : tuple[a1,a2: StridedView] {.inline.}=
 
-    doAssert (len(x)mod 2 == 0), "Should have equal lengths!"  
-    let mid = len(x) div 2
-    let (a1,a2) = (x[0..mid-1], x[mid..len(x)-1])
+    doAssert (t.len and 1), "Length must be even!"  
+
+    let mid = t.len shr 1
+
+    var result {.noInit.}: StridedView
+    result.a1.len = mid
+    result.a1.stride = t.stride
+    result.a1.offset = t.offset
+    result.a1.data = t.data
+
+    result.a2.len = mid
+    result.a2.stride = t.stride
+    result.a2.offset = t.offset + mid
+    result.a2.data = t.data
+
 
 func compute_num_rounds* [float64] (res: var float64, vectorSize: SomeUnsignedInt)= 
 
