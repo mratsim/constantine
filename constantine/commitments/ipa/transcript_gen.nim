@@ -21,76 +21,62 @@ import
     ../../../constantine/hashes,
     ../../../constantine/serialization/[codecs_banderwagon,codecs_status_codes]
 
-{.used.}
-
 type 
-    Transcript = object
+    Transcript* = object
      state: sha256
 
 type
   EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
+  EC_P_Fr* = ECP_TwEdwards_Prj[Fr[Banderwagon]]
 
-func new_transcript_gen*[Transcript](label: var seq[byte]): Transcript =
-    var state {.noInit.} : sha256
-    state.init()
-    state.update(label)
-    Transcript = {state}
-    return Transcript
+func new_transcript_gen*[Transcript](res: var Transcript, label: seq[byte]) =
+    res.init()
+    res.update(label)
 
-func message_append* [Transcript]( message: var seq[byte], label: var seq[byte]) =
-    var state {.noInit.}: sha256
-    state.init()
-    state.update(label)
-    state.update(message)
-    Transcript = {state}
 
-func message_append_u64* [Transcript](label: var seq[byte], num_value: var uint64) = 
-    var state {.noInit.}: sha256
-    state.init()
-    state.update(label)
-    state.update(num_value.toBytes(bigEndian))
+func message_append* [Transcript]( res: var Transcript, message: seq[byte], label: seq[byte]) =
+    res.init()
+    res.update(label)
+    res.update(message)
 
-    Transcript = {state}
 
-func domain_separator* [Transcript](label: var seq[byte]) =
+func message_append_u64* [Transcript](res: var Transcript, label: seq[byte], num_value: uint64) = 
+    res.init()
+    res.update(label)
+    res.update(num_value.toBytes(bigEndian))
+
+func domain_separator* [Transcript](res: var Transcript, label: seq[byte]) =
     var state {.noInit.} : sha256
     state.update(label)
-    Transcript = {state}
 
-func point_append* [Transcript] (label: var seq[byte], point: var EC_P) =
-    var state {.noInit.} : sha256
+
+func point_append* [Transcript] (res: var Transcript, label: seq[byte], point: EC_P) =
     var bytes {.noInit.}: array[32, byte]
-    if point.serialize(bytes) == cttCodecEcc_Success:
-        point = point
-    state = message_append(bytes, label)
-    Transcript = {state}
+    doAssert point.serialize(bytes) == cttCodecEcc_Success
+    res.message_append(bytes, label)
 
-func scalar_append* [Transcript] (label: var seq[byte], scalar: var ECP_TwEdwards_Prj[Fr[Banderwagon]]) =
-    var state {.noInit.}: sha256
+
+func scalar_append* [Transcript] (res: var Transcript, label: seq[byte], scalar: EC_P_Fr) =
     var bytes {.noInit.}: array[32, byte]
-    if scalar.serialize(bytes) == cttCodecEcc_Success:
-        bytes = bytes
-    state = message_append(bytes, label)
-    Transcript = {state}
+
+    doAssert scalar.serialize(bytes) == cttCodecEcc_Success
+    res.message_append(bytes, label)
+
 
 
 ## Generating Challenge Scalars based on the Fiat Shamir method
-func generate_challenge_scalar_multiproof* [Transcript](label: var seq[byte]) : ECP_TwEdwards_Prj[Fr[Banderwagon]] =
-    var state {.noInit.}: sha256
+func generate_challenge_scalar_multiproof* [EC_P_Fr] (gen: var EC_P_Fr, label: seq[byte]) =
+    var state {.noInit.}: Transcript
     state.init()
-    state = domain_separator(label)
+    state.domain_separator(label)
 
     var hash: array[32, byte]
     state.finish(hash)
 
-    var scalar {.noInit.}: ECP_TwEdwards_Prj[Fr[Banderwagon]]
-    if hash.deserialize(scalar) == cttCodecEcc_Success:
-        scalar = scalar
+    doAssert hash.deserialize(gen) == cttCodecEcc_Success
 
-    state = scalar_append(label, scalar)
-    Transcript = {state}
+    state.scalar_append(label, gen)
 
-    return scalar
 
     
 

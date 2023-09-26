@@ -30,33 +30,24 @@ const
  DOMAIN: uint64 = 256
 
 
-proc barycentric_weights (element : var uint64) : ECP_TwEdwards_Prj[Fp[Banderwagon]] = 
- if element > DOMAIN:
-  echo"The domain is [0,255], and $element is not in the domain"
+func barycentric_weights* [EC_P] (res: var EC_P, element :  uint64) = 
+ doAssert (element > DOMAIN), "The domain is [0,255], and $element is not in the domain"
 
  var domain_element_Fp: ECP_TwEdwards_Prj[Fp[Banderwagon]]
 
 
- var total : ECP_TwEdwards_Prj[Fp[Banderwagon]]
-
- total.x.setOne()
- total.y.setOne()
- total.z.setOne()
+ var total {.noInit.} : FF
+ total.setOne()
 
  for i in uint64(0)..DOMAIN:
-  if i == element:
-    continue
+   assert(not(i == element))
 
-  var i_Fp: ECP_TwEdwards_Prj[Fp[Banderwagon]] = cast[ECP_TwEdwards_Prj[Fp[Banderwagon]]](i)
-  # var conv_i_Fp: uint64 = cast[uint64](i_Fp)
-  var temp : ECP_TwEdwards_Prj[Fp[Banderwagon]]
-  temp.diff(domain_element_Fp,i_Fp)
-
-  total.x.prod(total.x,temp.x)
-  total.y.prod(total.y,temp.y)
-  total.z.prod(total.z,temp.z)
+   var i_Fp: ECP_TwEdwards_Prj[Fp[Banderwagon]] = cast[ECP_TwEdwards_Prj[Fp[Banderwagon]]](i)
+ 
+   var temp {.noInit.}: FF
+   temp.diff(domain_element_Fp,i_Fp)
+   total.prod(total, temp)
   
- return total
 
 
 

@@ -31,7 +31,16 @@ type
   EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
 
 
-func generate_random_elements* [Field](points: var  openArray[Field] , num_points: uint64)  =
+type
+    IPASettings* = object
+     SRS : openArray[EC_P]
+     Q_val : EC_P
+     PrecomputedWeights: 
+
+
+
+
+func generate_random_elements* [FF](points: var  openArray[FF] , num_points: uint64)  =
 
     var incrementer: uint64 = 0
 
@@ -48,7 +57,7 @@ func generate_random_elements* [Field](points: var  openArray[Field] , num_point
 
         digest.finish(hash)
 
-        var x {.noInit.}:  Field
+        var x {.noInit.}:  FF
 
         x.deserialize(hash)
         doAssert(cttCodecEcc_Success)
@@ -71,14 +80,14 @@ func generate_random_elements* [Field](points: var  openArray[Field] , num_point
 #
 # ############################################################
 
-func compute_inner_products* [Field] (res: var Field, a,b : openArray[Field]): bool {.discardable.} =
+func compute_inner_products* [FF] (res: var FF, a,b : openArray[FF]): bool {.discardable.} =
     
     let check1 = true
     if (not (len(a) == len(b))):
         check1 = false
     res.setZero()
     for i in 0..len(a):
-        var tmp {.noInit.} : Field 
+        var tmp {.noInit.} : FF 
         tmp.prod(a[i], b[i])
         res += tmp
 
@@ -89,22 +98,22 @@ func compute_inner_products* [Field] (res: var Field, a,b : openArray[Field]): b
 #
 # ############################################################
 
-func fold_scalars* [Field] (res: var openArray[Field], a,b : openArray[Field], x: Field)=
+func fold_scalars* [FF] (res: var openArray[FF], a,b : openArray[FF], x: FF)=
     
     doAssert a.len == b.len , "Lengths should be equal!"
 
     for i in 0..a.len:
-        var bx {.noInit.}: Field
+        var bx {.noInit.}: FF
         bx.prod(x, b[i])
         res[i].sum(bx, a[i])
 
 
-func fold_points* [Field] (res: var openArray[Field], a,b : openArray[Field], x: Field)=
+func fold_points* [FF] (res: var openArray[FF], a,b : openArray[FF], x: FF)=
     
     doAssert a.len == b.len , "Should have equal lengths!"
 
     for i in 0..a.len:
-        var bx {.noInit.}: Field
+        var bx {.noInit.}: FF
 
         b[i].scalarMul(x.toBig())
         bx = b[i]
