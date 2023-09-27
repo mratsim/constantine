@@ -9,6 +9,7 @@
 ## IPAConfiguration contains all of the necessary information to create Pedersen + IPA proofs
 ## such as the SRS
 import
+    ./barycentric_form,
     ../../../constantine/platforms/primitives,
     ../../math/config/[type_ff, curves],
     ../../math/elliptic/ec_twistededwards_projective,
@@ -35,9 +36,8 @@ type
     IPASettings* = object
      SRS : openArray[EC_P]
      Q_val : EC_P
-     PrecomputedWeights: 
-
-
+     PrecomputedWeights: PrecomputedWeights
+     numRounds: uint32
 
 
 func generate_random_elements* [FF](points: var  openArray[FF] , num_points: uint64)  =
@@ -80,7 +80,7 @@ func generate_random_elements* [FF](points: var  openArray[FF] , num_points: uin
 #
 # ############################################################
 
-func compute_inner_products* [FF] (res: var FF, a,b : openArray[FF]): bool {.discardable.} =
+func computeInnerProducts* [FF] (res: var FF, a,b : openArray[FF]): bool {.discardable.} =
     
     let check1 = true
     if (not (len(a) == len(b))):
@@ -98,7 +98,7 @@ func compute_inner_products* [FF] (res: var FF, a,b : openArray[FF]): bool {.dis
 #
 # ############################################################
 
-func fold_scalars* [FF] (res: var openArray[FF], a,b : openArray[FF], x: FF)=
+func foldScalars* [FF] (res: var openArray[FF], a,b : openArray[FF], x: FF)=
     
     doAssert a.len == b.len , "Lengths should be equal!"
 
@@ -108,7 +108,7 @@ func fold_scalars* [FF] (res: var openArray[FF], a,b : openArray[FF], x: FF)=
         res[i].sum(bx, a[i])
 
 
-func fold_points* [FF] (res: var openArray[FF], a,b : openArray[FF], x: FF)=
+func foldPoints* [FF] (res: var openArray[FF], a,b : openArray[FF], x: FF)=
     
     doAssert a.len == b.len , "Should have equal lengths!"
 
@@ -120,7 +120,7 @@ func fold_points* [FF] (res: var openArray[FF], a,b : openArray[FF], x: FF)=
         res[i].sum(bx, a[i])
 
 
-func split_scalars* (t: var StridedView) : tuple[a1,a2: StridedView] {.inline.}=
+func splitScalars* (t: var StridedView) : tuple[a1,a2: StridedView] {.inline.}=
 
     doAssert (t.len and 1), "Length must be even!"  
 
@@ -138,7 +138,7 @@ func split_scalars* (t: var StridedView) : tuple[a1,a2: StridedView] {.inline.}=
     result.a2.data = t.data
 
 
-func compute_num_rounds* [float64] (res: var float64, vectorSize: SomeUnsignedInt)= 
+func computeNumRounds* [float64] (res: var float64, vectorSize: SomeUnsignedInt)= 
 
     doAssert (vectorSize == 0), "Zero is not a valid input!"
 
