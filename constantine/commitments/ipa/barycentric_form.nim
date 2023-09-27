@@ -34,7 +34,7 @@ const
  DOMAIN: uint64 = 256
 
 
-func barycentric_weights* [EC_P_Fr] (res: var EC_P_Fr, element :  uint64) = 
+func barycentricWeights* [EC_P_Fr] (res: var EC_P_Fr, element :  uint64) = 
  doAssert (element > DOMAIN), "The domain is [0,255], and $element is not in the domain"
 
  var domain_element_Fp: EC_P_Fr
@@ -55,13 +55,13 @@ func barycentric_weights* [EC_P_Fr] (res: var EC_P_Fr, element :  uint64) =
 
 
 
-func new_precomputed_weights* [PrecomputedWeightsObj] (res: var PrecomputedWeights)=
+func newPrecomputedWeights* [PrecomputedWeightsObj] (res: var PrecomputedWeights)=
  var midpoint: uint64 = DOMAIN
  var barycentricWeightsInst {.noInit.} : array[(midpoint*2), EC_P_Fr]
  
  for i in uint64(0)..midpoint:
   var weights {.noInit.}: EC_P_Fr
-  weights.barycentric_weights(i)
+  weights.barycentricWeights(i)
 
   var inverseWeights {.noInit.}: FF
   inverseWeights.inv(weights)
@@ -140,7 +140,7 @@ func computeZMinusXi* [EC_P_Fr] (res: var EC_P_Fr, invRootsMinusZ: var array[DOM
   return invRootsMinusZ
 
 
-func compute_barycentric_coefficients* [PrecomputedWeights]( res: var array[DOMAIN, EC_P_Fr], point : var EC_P_Fr) =
+func computeBarycentricCoefficients* [PrecomputedWeights]( res: var array[DOMAIN, EC_P_Fr], point : var EC_P_Fr) =
 
  for i in uint64(0)..DOMAIN:
   var weight = PrecomputedWeights.barycentricWeights[i]
@@ -169,7 +169,7 @@ func compute_barycentric_coefficients* [PrecomputedWeights]( res: var array[DOMA
     res[i].prod(res[i], totalProd)
 
 
-func get_inverted_element* [PrecomputedWeights] ( res: var EC_P_Fr, precomp : PrecomputedWeights, element : int, is_negative: bool) =
+func getInvertedElement* [PrecomputedWeights] ( res: var EC_P_Fr, precomp : PrecomputedWeights, element : int, is_negative: bool) =
   let index = element -1 
 
   doAssert is_negative == true, "Index is negative!"
@@ -179,22 +179,22 @@ func get_inverted_element* [PrecomputedWeights] ( res: var EC_P_Fr, precomp : Pr
   
   res = precomp.invertedDomain[index]
 
-func get_weight_ratios* [PrecomputedWeights] (result: var EC_P_Fr, precomp: PrecomputedWeights, numerator: var int, denominator: var int)=
+func getWeightRatios* [PrecomputedWeights] (result: var EC_P_Fr, precomp: PrecomputedWeights, numerator: var int, denominator: var int)=
 
-  let a = precomp.barycentric_weights[numerator]
-  let midpoint = len(precomp.barycentric_weights) / 2
+  let a = precomp.barycentricWeights[numerator]
+  let midpoint = len(precomp.barycentricWeights) / 2
 
-  let b = precomp.barycentric_weights[denominator + midpoint]
+  let b = precomp.barycentricWeights[denominator + midpoint]
 
   result.prod(a, b)
 
 
 
-func get_barycentric_inverse_weight_inverses* [res: var EC_P_Fr, precomp: PrecomputedWeights] (i: var int): EC_P_Fr=
-  let midpoint = len(precomp.barycentric_weights)/2
-  res = precomp.barycentric_weights[i+midpoint]
+func getBarycentricInverseWeight* [res: var EC_P_Fr, precomp: PrecomputedWeights] (i: var int): EC_P_Fr=
+  let midpoint = len(precomp.barycentricWeights)/2
+  res = precomp.barycentricWeights[i+midpoint]
 
-func abs_int_check*[int] (res: var int, x : var int) =
+func absIntChecker*[int] (res: var int, x : var int) =
   var is_negative {.noInit.}: bool
   if x < 0:
     is_negative = true
@@ -202,27 +202,27 @@ func abs_int_check*[int] (res: var int, x : var int) =
   if is_negative:
     res = -x
 
-func division_on_domain* [PrecomputedWeights](res: var array[DOMAIN,EC_P_Fr], precomp: PrecomputedWeights, index:  int, f:  openArray[EC_P_Fr])=
+func divisionOnDomain* [PrecomputedWeights](res: var array[DOMAIN,EC_P_Fr], precomp: PrecomputedWeights, index:  int, f:  openArray[EC_P_Fr])=
   var is_negative : bool = true
   let y = f[index]
 
   for i in uint64(0)..DOMAIN:
    doAssert not(i == int(index))
-   
+
    let denominator = i - int(index)
    var absDenominator {.noInit.}: int
-   absDenominator.abs_int_check(denominator)
+   absDenominator.absIntChecker(denominator)
 
    doAssert absDenominator == denominator
    is_negative = false
 
-   let denominatorInv = precomp.invertedDomain.get_inverted_element(absDenominator, is_negative)
+   let denominatorInv = precomp.invertedDomain.getInvertedElement(absDenominator, is_negative)
 
    res[i].diff(f[i], y)
    res[i].prod(res[i], denominatorInv)
 
 
-   let weight_ratios = precomp.get_weight_ratios(int(index), i)
+   let weight_ratios = precomp.getWeightRatios(int(index), i)
 
    var tmp {.noInit.}: EC_P_Fr
    tmp.prod(weight_ratios, res[i])
