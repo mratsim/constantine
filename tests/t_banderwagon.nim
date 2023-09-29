@@ -213,17 +213,28 @@ suite "Banderwagon Points Tests":
 
     testTwoTorsion()
 
+# ############################################################
+#
+#     Banderwagon Points Mapped to Scalar Field ( Fp -> Fr )
+#
+# ############################################################
 suite "Banderwagon Elements Mapping":
+
+  ## Tests if the mapping from Fp to Fr 
+  ## is working as expected or not
   test "Testing Multi Map To Base Field":
     proc testMultiMapToBaseField() =
       var A, B, genPoint {.noInit.}: EC
       genPoint.fromAffine(generator)
 
-      A.sum(genPoint, genPoint)
-      B.double(genPoint)
-      B.double()
+      A.sum(genPoint, genPoint) # A = g+g = 2g
+      B.double(genPoint)        # B = 2g
+      B.double()                # B = 2B = 4g
 
       var expected_a, expected_b: Fr[Banderwagon]
+
+      # conver the points A & B which are in Fp
+      # to the their mapped Fr points 
       expected_a.mapToScalarField(A)
       expected_b.mapToScalarField(B)
 

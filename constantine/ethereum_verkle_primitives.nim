@@ -21,16 +21,30 @@ import
   
 
 func mapToBaseField*(dst: var Fp[Banderwagon],p: ECP_TwEdwards_Prj[Fp[Banderwagon]]) =
+  ## The mapping chosen for the Banderwagon Curve is x/y
+  ## 
+  ## This function takes a Banderwagon element & then
+  ## computes the x/y value and returns as an Fp element
+  ## 
+  ## Spec : https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Map-To-Field
+  
   var invY: Fp[Banderwagon]
-  invY.inv(p.y)
-  dst.prod(p.x, invY)
+  invY.inv(p.y)             # invY = 1/Y
+  dst.prod(p.x, invY)       # dst = (X) * (1/Y)
 
 func mapToScalarField*(res: var Fr[Banderwagon], p: ECP_TwEdwards_Prj[Fp[Banderwagon]]): bool {.discardable.} =
-  var baseField: Fp[Banderwagon]
-  baseField.mapToBaseField(p)
-  var baseFieldBytes: array[32, byte]
+  ## This function takes the x/y value from the above function as Fp element 
+  ## and convert that to bytes in Big Endian, 
+  ## and then load that to a Fr element
+  ## 
+  ## Spec : https://hackmd.io/wliPP_RMT4emsucVuCqfHA?view#MapToFieldElement
 
-  let check1 = baseFieldBytes.marshalBE(baseField)
-  let check2 = res.unmarshalBE(baseFieldBytes)
+  var baseField: Fp[Banderwagon]
+  var baseFieldBytes: array[32, byte]
+  
+  baseField.mapToBaseField(p)   # compute the defined mapping
+
+  let check1 = baseFieldBytes.marshalBE(baseField)  # Fp -> bytes
+  let check2 = res.unmarshalBE(baseFieldBytes)      # bytes -> Fr
 
   return check1 and check2
