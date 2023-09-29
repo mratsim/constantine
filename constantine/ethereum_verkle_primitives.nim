@@ -20,13 +20,14 @@ import
   ./curves_primitives
   
 
-func mapToBaseField*(p: ECP_TwEdwards_Prj[Fp[Banderwagon]]): Fp[Banderwagon] =
+func mapToBaseField*(dst: var Fp[Banderwagon],p: ECP_TwEdwards_Prj[Fp[Banderwagon]]) =
   var invY: Fp[Banderwagon]
   invY.inv(p.y)
-  result.prod(p.x, invY)
+  dst.prod(p.x, invY)
 
-func MapToScalarField*(res: var Fr[Banderwagon], p: ECP_TwEdwards_Prj[Fp[Banderwagon]]): bool {.discardable.} =
-  var baseField: Fp[Banderwagon] = p.mapToBaseField()
+func mapToScalarField*(res: var Fr[Banderwagon], p: ECP_TwEdwards_Prj[Fp[Banderwagon]]): bool {.discardable.} =
+  var baseField: Fp[Banderwagon]
+  baseField.mapToBaseField(p)
   var baseFieldBytes: array[32, byte]
 
   let check1 = baseFieldBytes.marshalBE(baseField)

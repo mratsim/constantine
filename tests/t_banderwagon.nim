@@ -224,8 +224,8 @@ suite "Banderwagon Elements Mapping":
       B.double()
 
       var expected_a, expected_b: Fr[Banderwagon]
-      expected_a.MapToScalarField(A)
-      expected_b.MapToScalarField(B)
+      expected_a.mapToScalarField(A)
+      expected_b.mapToScalarField(B)
 
       doAssert expected_a.toHex() == expected_scalar_field_elements[0], "Mapping to Scalar Field Incorrect"
       doAssert expected_b.toHex() == expected_scalar_field_elements[1], "Mapping to Scalar Field Incorrect"
