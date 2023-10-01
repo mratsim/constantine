@@ -107,14 +107,11 @@ func computeZMinusXi* [EC_P_Fr] (res: var EC_P_Fr, invRootsMinusZ: var array[DOM
   var index0 = -1
 
   when earlyReturnOnZero: # Split computation in 2 phases
-    for i in 0 ..< N:
-      rootsMinusZ[i].diff(domain.rootsOfUnity[i], z)
-      if rootsMinusZ[i].isZero().bool():
-        return i
+    if rootsMinusZ[i].isZero().bool():
+      return i
 
   for i in 0 ..< DOMAIN:
     when not earlyReturnOnZero: # Fused substraction and batch inversion
-      rootsMinusZ[i].diff(domain.rootsOfUnity[i], z)
       if rootsMinusZ[i].isZero().bool():
         index0 = i
         invRootsMinusZ[i].setZero()
