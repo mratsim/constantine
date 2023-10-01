@@ -88,11 +88,13 @@ func batchAffine*[M, N: static int, F](
   batchAffine(affs[0].asUnchecked(), projs[0].asUnchecked(), M*N)
 
 func batchInvert_vartime*[N: static int, F](elements: var array[N, F]) =
-  # TODO: optimize
+  ##  Montgomery's batch inversion
+  ##  This function person the inversion in-place
   var res: array[N, F]
   var zeros: array[N, bool]
+
   var accumulator: F
-  accumulator.setOne()
+  accumulator.setOne()    # sets the accumulator to 1
 
   for i in 0 ..< N: 
     if elements[i].isZero().bool():
@@ -102,7 +104,7 @@ func batchInvert_vartime*[N: static int, F](elements: var array[N, F]) =
     res[i] = accumulator
     accumulator *= elements[i]
 
-  accumulator.inv_vartime()
+  accumulator.inv_vartime()   # inversion of the accumulator
 
   for i in countdown(N-1, 0):
     if zeros[i] == true:

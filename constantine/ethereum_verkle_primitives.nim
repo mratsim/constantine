@@ -52,10 +52,24 @@ func mapToScalarField*(res: var Fr[Banderwagon], p: ECP_TwEdwards_Prj[Fp[Banderw
 
   return check1 and check2
 
+## ############################################################
+##
+##                      Batch Operations
+##
+## ############################################################
 func batchMapToScalarField*[N: static int](
       res: var array[N, Fr[Banderwagon]], 
       points: array[N, ECP_TwEdwards_Prj[Fp[Banderwagon]]]): bool {.discardable.} =
-
+  ## This function performs the `mapToScalarField` operation
+  ## on a batch of points
+  ## 
+  ## The batch inversion used in this using
+  ## the montogomenry trick, makes is faster than
+  ## just iterating of over the array of points and 
+  ## converting the curve points to field elements
+  ## 
+  ## Spec : https://hackmd.io/wliPP_RMT4emsucVuCqfHA?view#MapToFieldElement
+  
   var ys: array[N, Fp[Banderwagon]]
 
   for i in 0 ..< N:

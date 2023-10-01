@@ -244,6 +244,74 @@ suite "Banderwagon Elements Mapping":
 
     testMultiMapToBaseField()
 
+# ############################################################
+#
+#               Banderwagon Batch Operations
+#
+# ############################################################
+suite "Batch Operations on Banderwagon":
+
+  ## Tests if the Batch Affine operations are
+  ## consistent with the signular affine operation
+  ## Using the concept of point double from generator point
+  ## we try to achive this
+  test "BatchAffine and fromAffine Consistency":
+    proc testbatch(n: static int) =
+      var g, temp {.noInit.}: EC
+      g.fromAffine(generator)     # setting the generator point
+
+      var aff{.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+      aff = generator
+
+      var points_prj: array[n, EC]
+      var points_aff: array[n, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+
+      for i in 0 ..< n:
+        points_prj[i] = g
+        g.double()          # doubling the point
+
+      points_aff.batchAffine(points_prj) # performs the batch operation
+      
+      # checking correspondence with singular affine conversion
+      for i in 0 ..< n:
+        doAssert (points_aff[i] == aff).bool(), "batch inconsistent with singular ops"
+        temp.fromAffine(aff)
+        temp.double()
+        aff.affine(temp)      
+
+    testbatch(1000)
+
+  ## Tests to check if the Motgomery Batch Inversion
+  ## Check if the Batch Inversion is consistent with
+  ## it's respective sigular inversion operation of field elements
+  test "Batch Inversion":
+    proc batchInvert(n: static int) = 
+      var one, two: EC
+      var arr_fp: array[n, Fp[Banderwagon]]   # array for Fp field elements
+
+      one.fromAffine(generator)   # setting the 1st generator point
+      two.fromAffine(generator)   # setting the 2nd generator point
+
+      for i in 0 ..< n:
+        arr_fp[i] = one.x
+        one.double()
+
+      arr_fp.batchInvert_vartime()
+
+      # Checking the correspondence with singular element inversion
+      for i in 0 ..< n:
+        var temp: Fp[Banderwagon]
+        temp.inv(two.x)
+        doAssert (arr_fp[i] == temp).bool(), "Batch Inversion in consistent"
+        two.double()
+
+    batchInvert(1000)
+
+  ## Tests to check if the Batch Map to Scalar Field
+  ## is consistent with it's respective singular operation
+  ## of mapping from Fp to Fr
+  ## Using the concept of point double from generator point
+  ## we try to achive this
   test "Testing Batch Map to Base Field":
     proc testBatchMapToBaseField() =
       var A, B, g: EC
@@ -265,53 +333,4 @@ suite "Banderwagon Elements Mapping":
       doAssert (expected_a == scalars[0]).bool(), "expected scalar for point `A` is incorrect"
       doAssert (expected_b == scalars[1]).bool(), "expected scalar for point `B` is incorrect"
 
-
     testBatchMapToBaseField()
-
-  # TODO: shift to appropiate file
-  test "BatchAffine and fromAffine Consistency":
-    proc testbatch(n: static int) =
-      var g, temp {.noInit.}: EC
-      g.fromAffine(generator)
-      var aff{.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
-      aff = generator
-
-      var points_prj: array[n, EC]
-      var points_aff: array[n, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
-
-      for i in 0 ..< n:
-        points_prj[i] = g
-        g.double()
-
-      points_aff.batchAffine(points_prj)
-
-      for i in 0 ..< n:
-        doAssert (points_aff[i] == aff).bool(), "batch inconsistent with singular ops"
-        temp.fromAffine(aff)
-        temp.double()
-        aff.affine(temp)      
-
-    testbatch(1000)
-
-  test "Batch Inversion":
-    proc batchInvert(n: static int) = 
-      var one, two: EC
-      var arr_fp: array[n, Fp[Banderwagon]]
-
-      one.fromAffine(generator)
-      two.fromAffine(generator)
-
-      for i in 0 ..< n:
-        arr_fp[i] = one.x
-        one.double()
-
-      arr_fp.batchInvert_vartime()
-
-      for i in 0 ..< n:
-        var temp: Fp[Banderwagon]
-        temp.inv(two.x)
-        doAssert (arr_fp[i] == temp).bool(), "Batch Inversion in consistent"
-        two.double()
-
-
-    batchInvert(100)
