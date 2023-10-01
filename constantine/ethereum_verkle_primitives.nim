@@ -15,7 +15,10 @@
 import
   ./math/config/[type_ff, curves],
   ./math/arithmetic,
-  ./math/elliptic/ec_twistededwards_projective,
+  ./math/elliptic/[
+    ec_twistededwards_projective,
+    ec_twistededwards_batch_ops
+    ],
   ./math/io/[io_bigints, io_fields],
   ./curves_primitives
   
@@ -48,3 +51,25 @@ func mapToScalarField*(res: var Fr[Banderwagon], p: ECP_TwEdwards_Prj[Fp[Banderw
   let check2 = res.unmarshalBE(baseFieldBytes)      # bytes -> Fr
 
   return check1 and check2
+
+func batchMapToScalarField*[N: static int](
+      res: var array[N, Fr[Banderwagon]], 
+      points: array[N, ECP_TwEdwards_Prj[Fp[Banderwagon]]]): bool {.discardable.} =
+
+  var ys: array[N, Fp[Banderwagon]]
+
+  for i in 0 ..< N:
+    ys[i] = points[i].y
+  
+  ys.batchInvert_vartime()
+
+  var check: bool
+  for i in 0 ..< N:
+    var mappedElement: Fp[Banderwagon]
+    var bytes: array[32, byte]
+
+    mappedElement.prod(points[i].x, ys[i])
+    check = bytes.marshalBE(mappedElement)
+    check = check and res[i].unmarshalBE(bytes)
+
+  return check  

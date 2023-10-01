@@ -11,7 +11,8 @@ import
   ../constantine/math/config/[type_ff, curves],
   ../constantine/math/elliptic/[
     ec_twistededwards_affine,
-    ec_twistededwards_projective
+    ec_twistededwards_projective,
+    ec_twistededwards_batch_ops
   ],
   ../constantine/math/io/io_fields,
   ../constantine/serialization/[
@@ -222,7 +223,7 @@ suite "Banderwagon Elements Mapping":
 
   ## Tests if the mapping from Fp to Fr 
   ## is working as expected or not
-  test "Testing Multi Map To Base Field":
+  test "Testing Map To Base Field":
     proc testMultiMapToBaseField() =
       var A, B, genPoint {.noInit.}: EC
       genPoint.fromAffine(generator)
@@ -242,3 +243,75 @@ suite "Banderwagon Elements Mapping":
       doAssert expected_b.toHex() == expected_scalar_field_elements[1], "Mapping to Scalar Field Incorrect"
 
     testMultiMapToBaseField()
+
+  test "Testing Batch Map to Base Field":
+    proc testBatchMapToBaseField() =
+      var A, B, g: EC
+      g.fromAffine(generator)
+
+      A.sum(g, g)
+      B.double(g)
+      B.double()
+
+      var expected_a, expected_b: Fr[Banderwagon]
+      expected_a.mapToScalarField(A)
+      expected_b.mapToScalarField(B)
+
+      var ARes, BRes: Fr[Banderwagon]
+      var scalars: array[2, Fr[Banderwagon]] = [ARes, BRes]
+      var fps: array[2, EC] = [A, B]
+
+      doAssert scalars.batchMapToScalarField(fps), "Batch Map to Scalar Failed"
+      doAssert (expected_a == scalars[0]).bool(), "expected scalar for point `A` is incorrect"
+      doAssert (expected_b == scalars[1]).bool(), "expected scalar for point `B` is incorrect"
+
+
+    testBatchMapToBaseField()
+
+  # TODO: shift to appropiate file
+  test "BatchAffine and fromAffine Consistency":
+    proc testbatch(n: static int) =
+      var g, temp {.noInit.}: EC
+      g.fromAffine(generator)
+      var aff{.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+      aff = generator
+
+      var points_prj: array[n, EC]
+      var points_aff: array[n, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+
+      for i in 0 ..< n:
+        points_prj[i] = g
+        g.double()
+
+      points_aff.batchAffine(points_prj)
+
+      for i in 0 ..< n:
+        doAssert (points_aff[i] == aff).bool(), "batch inconsistent with singular ops"
+        temp.fromAffine(aff)
+        temp.double()
+        aff.affine(temp)      
+
+    testbatch(1000)
+
+  test "Batch Inversion":
+    proc batchInvert(n: static int) = 
+      var one, two: EC
+      var arr_fp: array[n, Fp[Banderwagon]]
+
+      one.fromAffine(generator)
+      two.fromAffine(generator)
+
+      for i in 0 ..< n:
+        arr_fp[i] = one.x
+        one.double()
+
+      arr_fp.batchInvert_vartime()
+
+      for i in 0 ..< n:
+        var temp: Fp[Banderwagon]
+        temp.inv(two.x)
+        doAssert (arr_fp[i] == temp).bool(), "Batch Inversion in consistent"
+        two.double()
+
+
+    batchInvert(100)
