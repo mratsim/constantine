@@ -38,7 +38,7 @@ import
 proc needTempStorage(argTy: NimNode): bool =
   case argTy.kind
   of nnkVarTy:
-    error("It is unsafe to capture a `var` parameter and pass it to another thread. Its memory location could be invalidated if the spawning proc returns before the worker thread finishes.")
+    error("It is unsafe to capture a `var` parameter '" & repr(argTy) & "' and pass it to another thread. Its memory location could be invalidated if the spawning proc returns before the worker thread finishes.")
   of nnkStaticTy:
     return false
   of nnkBracketExpr:
