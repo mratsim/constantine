@@ -46,7 +46,7 @@ proc blob_to_bigint_polynomial_parallel(
        dst: ptr PolynomialEval[FIELD_ELEMENTS_PER_BLOB, matchingOrderBigInt(BLS12_381)],
        blob: ptr Blob): CttCodecScalarStatus =
   ## Convert a blob to a polynomial in evaluation form
-  mixin accStatus
+  mixin globalStatus
 
   static:
     doAssert sizeof(dst[]) == sizeof(Blob)
@@ -56,20 +56,23 @@ proc blob_to_bigint_polynomial_parallel(
 
   tp.parallelFor i in 0 ..< FIELD_ELEMENTS_PER_BLOB:
     captures: {dst, view}
-    reduceInto(accStatus: CttCodecScalarStatus):
+    reduceInto(globalStatus: CttCodecScalarStatus):
       prologue:
-        var localStatus {.noInit.}: CttCodecScalarStatus
+        var workerStatus = cttCodecScalar_Success
       forLoop:
-        localStatus = dst.evals[i].bytes_to_bls_bigint(view[i])
+        let iterStatus = dst.evals[i].bytes_to_bls_bigint(view[i])
+        if workerStatus == cttCodecScalar_Success:
+          # Propagate errors, if any it comes from current iteration
+          workerStatus = iterStatus
       merge(remoteFutureStatus: Flowvar[CttCodecScalarStatus]):
         let remoteStatus = sync(remoteFutureStatus)
-        if localStatus == cttCodecScalar_Success:
-          # Propagate errors, if any the remote status is in error
-          localStatus = remoteStatus
+        if workerStatus == cttCodecScalar_Success:
+          # Propagate errors, if any it comes from remote worker
+          workerStatus = remoteStatus
       epilogue:
-        return localStatus
+        return workerStatus
 
-  return sync(accStatus)
+  return sync(globalStatus)
 
 proc blob_to_field_polynomial_parallel_async(
        tp: Threadpool,
@@ -77,7 +80,7 @@ proc blob_to_field_polynomial_parallel_async(
        blob: ptr Blob): Flowvar[CttCodecScalarStatus] =
   ## Convert a blob to a polynomial in evaluation form
   ## The result is a `Flowvar` handle and MUST be awaited with `sync`
-  mixin accStatus
+  mixin globalStatus
 
   static:
     doAssert sizeof(dst[]) == sizeof(Blob)
@@ -87,18 +90,23 @@ proc blob_to_field_polynomial_parallel_async(
 
   tp.parallelFor i in 0 ..< FIELD_ELEMENTS_PER_BLOB:
     captures: {dst, view}
-    reduceInto(accStatus: CttCodecScalarStatus):
+    reduceInto(globalStatus: CttCodecScalarStatus):
       prologue:
-        var localStatus {.noInit.}: CttCodecScalarStatus
+        var workerStatus = cttCodecScalar_Success
       forLoop:
-        localStatus = dst.evals[i].bytes_to_bls_field(view[i])
+        let iterStatus = dst.evals[i].bytes_to_bls_field(view[i])
+        if workerStatus == cttCodecScalar_Success:
+          # Propagate errors, if any it comes from current iteration
+          workerStatus = iterStatus
       merge(remoteFutureStatus: Flowvar[CttCodecScalarStatus]):
         let remoteStatus = sync(remoteFutureStatus)
-        if localStatus == cttCodecScalar_Success:
-          # Propagate errors, if any the remote status is in error
-          localStatus = remoteStatus
+        if workerStatus == cttCodecScalar_Success:
+          # Propagate errors, if any it comes from remote worker
+          workerStatus = remoteStatus
       epilogue:
-        return localStatus
+        return workerStatus
+
+  return globalStatus
 
 # Ethereum KZG public API
 # ------------------------------------------------------------
@@ -324,7 +332,7 @@ proc verify_blob_kzg_proof_batch_parallel*(
   ## rogue commitments attacks due to homomorphic properties of pairings,
   ## i.e. commitments that are linear combination of others and sum would be zero.
 
-  mixin accStatus
+  mixin globalStatus
 
   if n < 0:
     return cttEthKZG_VerificationFailure
@@ -341,21 +349,23 @@ proc verify_blob_kzg_proof_batch_parallel*(
 
   block HappyPath:
     tp.parallelFor i in 0 ..< n:
-      captures: {commitments, commitments_bytes,
+      captures: {tp, ctx,
+                 commitments, commitments_bytes,
                  polys, blobs,
                  challenges, evals_at_challenges,
+                 proofs, proof_bytes,
                  invRootsMinusZs}
-      reduceInto(accStatus: CttEthKzgStatus):
+      reduceInto(globalStatus: CttEthKzgStatus):
         prologue:
-          var localStatus {.noInit.}: CttEthKzgStatus
+          var workerStatus {.noInit.}: CttEthKzgStatus
         forLoop:
           let polyStatusFut = tp.blob_to_field_polynomial_parallel_async(polys[i].addr, blobs[i].addr)
           let challengeStatusFut = tp.spawnAwaitable challenges[i].addr.fiatShamirChallenge(blobs[i].addr, commitments_bytes[i].addr)
 
-          localStatus = kzgifyStatus commitments[i].bytes_to_kzg_commitment(commitments_bytes[i])
+          workerStatus = kzgifyStatus commitments[i].bytes_to_kzg_commitment(commitments_bytes[i])
           let polyStatus = kzgifyStatus sync(polyStatusFut)
-          if localStatus == cttEthKZG_Success:
-            localStatus = polyStatus
+          if workerStatus == cttEthKZG_Success:
+            workerStatus = polyStatus
           discard sync(challengeStatusFut)
 
           # Lagrange Polynomial evaluation
@@ -378,18 +388,18 @@ proc verify_blob_kzg_proof_batch_parallel*(
             evals_at_challenges[i].fromField(polys[i].evals[zIndex])
 
           let proofStatus = kzgifyStatus proofs[i].bytes_to_kzg_proof(proof_bytes[i])
-          if localStatus == cttEthKZG_Success:
-            localStatus = proofStatus
+          if workerStatus == cttEthKZG_Success:
+            workerStatus = proofStatus
 
         merge(remoteStatusFut: Flowvar[CttEthKzgStatus]):
           let remoteStatus = sync(remoteStatusFut)
-          if localStatus == cttEthKZG_Success:
-            localStatus = remoteStatus
+          if workerStatus == cttEthKZG_Success:
+            workerStatus = remoteStatus
         epilogue:
-          return localStatus
+          return workerStatus
 
 
-    result = sync(accStatus)
+    result = sync(globalStatus)
     if result != cttEthKZG_Success:
       break HappyPath
 

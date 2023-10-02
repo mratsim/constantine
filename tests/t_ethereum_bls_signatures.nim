@@ -302,7 +302,7 @@ testGen(batch_verify, testVector, BatchVerify_test):
 
     status[0] = pubkeys.batch_verify(testVector.input.messages, signatures, randomBytes)
 
-    var tp = Threadpool.new(numThreads = 4)
+    let tp = Threadpool.new(numThreads = 4)
     let parallelStatus = tp.batch_verify_parallel(pubkeys, testVector.input.messages, signatures, randomBytes)
     doAssert status[0] == parallelStatus, block:
       "\nSerial status:   " & $status[0] &

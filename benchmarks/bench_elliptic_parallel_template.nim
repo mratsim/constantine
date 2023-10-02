@@ -43,7 +43,7 @@ proc multiAddParallelBench*(EC: typedesc, numPoints: int, iters: int) =
 
   var r{.noInit.}: EC
 
-  var tp = Threadpool.new()
+  let tp = Threadpool.new()
 
   bench("EC parallel batch add  (" & align($tp.numThreads, 2) & " threads)   " & $EC.G & " (" & $numPoints & " points)", EC, iters):
     tp.sum_reduce_vartime_parallel(r, points)

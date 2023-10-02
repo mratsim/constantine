@@ -44,14 +44,17 @@ proc evalPolyAt_parallel*[N: static int, Field](
     captures: {poly, domain, invRootsMinusZ}
     reduceInto(globalSum: Field):
       prologue:
-        var localSum {.noInit.}: Field
+        var workerSum {.noInit.}: Field
+        workerSum.setZero()
       forLoop:
-        localSum.prod(domain.rootsOfUnity[i], invRootsMinusZ[i])
-        localSum *= poly.evals[i]
+        var iterSummand {.noInit.}: Field
+        iterSummand.prod(domain.rootsOfUnity[i], invRootsMinusZ[i])
+        iterSummand *= poly.evals[i]
+        workerSum += iterSummand
       merge(remoteSum: Flowvar[Field]):
-        localSum += sync(remoteSum)
+        workerSum += sync(remoteSum)
       epilogue:
-        return localSum
+        return workerSum
 
   var t {.noInit.}: Field
   t = z[]
@@ -86,6 +89,7 @@ proc differenceQuotientEvalOffDomain_parallel*[N: static int, Field](
 
   syncScope:
     tp.parallelFor i in 0 ..< N:
+      captures: {r, poly, pZ, invRootsMinusZ}
       # qᵢ = (p(ωⁱ) - p(z))/(ωⁱ-z)
       var qi {.noinit.}: Field
       qi.diff(poly.evals[i], pZ[])
@@ -121,10 +125,12 @@ proc differenceQuotientEvalInDomain_parallel*[N: static int, Field](
     captures: {r, poly, domain, invRootsMinusZ, zIndex}
     reduceInto(evalsZindex: Field):
       prologue:
-        var ri {.noInit.}: Field
+        var worker_ri {.noInit.}: Field
+        worker_ri.setZero()
       forLoop:
+        var iter_ri {.noInit.}: Field
         if i == int(zIndex):
-          ri.setZero()
+          iter_ri.setZero()
         else:
           # qᵢ = (p(ωⁱ) - p(z))/(ωⁱ-z)
           var qi {.noinit.}: Field
@@ -133,18 +139,19 @@ proc differenceQuotientEvalInDomain_parallel*[N: static int, Field](
 
           # q'ᵢ = -qᵢ * ωⁱ/z
           # q'idx = ∑ q'ᵢ
-          ri.neg(r.evals[i])                                  # -qᵢ
+          iter_ri.neg(r.evals[i])                                  # -qᵢ
           when isBitReversedDomain:
             const logN = log2_vartime(uint32 N)
             let invZidx = N - reverseBits(uint32 zIndex, logN)
             let canonI = reverseBits(uint32 i, logN)
             let idx = reverseBits((canonI + invZidx) and (N-1), logN)
-            ri *= domain.rootsOfUnity[idx]                    # -qᵢ * ωⁱ/z  (explanation at the bottom of serial impl)
+            iter_ri *= domain.rootsOfUnity[idx]                    # -qᵢ * ωⁱ/z  (explanation at the bottom of serial impl)
           else:
-            ri *= domain.rootsOfUnity[(i+N-zIndex) and (N-1)] # -qᵢ * ωⁱ/z  (explanation at the bottom of serial impl)
+            iter_ri *= domain.rootsOfUnity[(i+N-zIndex) and (N-1)] # -qᵢ * ωⁱ/z  (explanation at the bottom of serial impl)
+          worker_ri += iter_ri
       merge(remote_ri: Flowvar[Field]):
-        ri += sync(remote_ri)
+        worker_ri += sync(remote_ri)
       epilogue:
-        return ri
+        return worker_ri
 
   r.evals[zIndex] = sync(evalsZindex)

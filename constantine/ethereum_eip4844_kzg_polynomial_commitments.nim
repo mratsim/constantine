@@ -248,7 +248,7 @@ template check(Section: untyped, evalExpr: CttCodecScalarStatus): untyped {.dirt
     case status
     of cttCodecScalar_Success:                          discard
     of cttCodecScalar_Zero:                             discard
-    of cttCodecScalar_ScalarLargerThanCurveOrder:       result = cttEthKZG_EccPointNotInSubGroup; break Section
+    of cttCodecScalar_ScalarLargerThanCurveOrder:       result = cttEthKZG_ScalarLargerThanCurveOrder; break Section
 
 template check(Section: untyped, evalExpr: CttCodecEccStatus): untyped {.dirty.} =
   # Translate codec status code to KZG status code

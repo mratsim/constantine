@@ -16,7 +16,7 @@ block: # Async without result
 
     echo "\nSanity check 1: Printing 123456 654321 in parallel"
 
-    var tp = Threadpool.new(numThreads = 4)
+    let tp = Threadpool.new(numThreads = 4)
     tp.spawn displayInt(123456)
     tp.spawn displayInt(654321)
     tp.shutdown()
