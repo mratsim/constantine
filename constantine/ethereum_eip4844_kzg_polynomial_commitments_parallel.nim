@@ -163,8 +163,8 @@ proc compute_kzg_proof_parallel*(
        blob: ptr Blob,
        z_bytes: array[32, byte]): CttEthKzgStatus =
   ## Generate:
+  ## - A proof of correct evaluation.
   ## - y = p(z), the evaluation of p at the challenge z, with p being the Blob interpreted as a polynomial.
-  ## - A zero-knowledge proof of correct evaluation.
   ##
   ## Mathematical description
   ##   [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁, with p(τ) being the commitment, i.e. the evaluation of p at the powers of τ

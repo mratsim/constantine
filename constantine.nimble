@@ -556,6 +556,7 @@ const benchDesc = [
   "bench_sha256",
   "bench_hash_to_curve",
   "bench_ethereum_bls_signatures",
+  "bench_ethereum_kzg_eip4844",
   "bench_evm_modexp_dos",
   "bench_gmp_modexp",
   "bench_gmp_modmul"
