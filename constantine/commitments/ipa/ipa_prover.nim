@@ -8,7 +8,7 @@
 
 # ############################################################
 #
-#      All the util functions for Inner Product Arguments
+# All the util functions for Inner Product Arguments Prover
 #
 # ############################################################
 
@@ -49,7 +49,7 @@ const
 
 # Further reference refer to this https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
 
-func createIPAProof*[IPAProof] (res: var IPAProof, transcript: Transcript, ic: IPASettings, commitment: EC_P, a: openArray[EC_P_Fr], evalPoint: EC_P_Fr )=
+func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var Transcript, ic: IPASettings, commitment: EC_P, a: openArray[EC_P_Fr], evalPoint: EC_P_Fr )=
   transcript.domain_separator(asBytes"ipa")
   var b {.noInit.}: array[DOMAIN, EC_P_Fr]
   
@@ -58,9 +58,7 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: Transcript, ic: I
 
   var check {.noInit.}: bool
   
-  check = innerProd.computeInnerProducts(a,b.toBig())
-
-  assert check == true, "Could not compute the Inner Product"
+  innerProd.computeInnerProducts(a,b.toBig())
 
   transcript.pointAppend(commitment, asBytes"C")
   transcript.scalarAppend(evalPoint, asBytes"input point")
