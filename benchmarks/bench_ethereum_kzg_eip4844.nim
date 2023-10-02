@@ -8,7 +8,7 @@
 
 import
   # Internals
-  ../constantine/ethereum_eip4844_kzg_polynomial_commitments_parallel,
+  ../constantine/ethereum_eip4844_kzg_parallel,
   ../constantine/math/io/io_fields,
   ../constantine/math/config/[curves, type_ff],
   ../constantine/threadpool/threadpool,

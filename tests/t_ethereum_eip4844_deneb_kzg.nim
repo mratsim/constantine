@@ -14,7 +14,7 @@ import
   # Internals
   ../constantine/hashes,
   ../constantine/serialization/codecs,
-  ../constantine/ethereum_eip4844_kzg_polynomial_commitments
+  ../constantine/ethereum_eip4844_kzg
 
 # Organization
 #
