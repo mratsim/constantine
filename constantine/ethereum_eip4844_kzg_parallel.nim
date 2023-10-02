@@ -15,7 +15,7 @@ import
   ./math/polynomials/polynomials_parallel,
   ./hashes,
   ./commitments/kzg_polynomial_commitments_parallel,
-  ./serialization/codecs_bls12_381,
+  ./serialization/[codecs_status_codes, codecs_bls12_381],
   ./math/io/io_fields,
   ./platforms/[abstractions, allocs],
   ./threadpool/threadpool
