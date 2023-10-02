@@ -169,7 +169,7 @@ proc batchVerify_parallel*[Msg, Pubkey, Sig](
       id.uint.toBytes(bigEndian))
 
   # Note: to avoid memory leaks, even if there is a `false` partial state
-  #       (for example due to a point at infinit),
+  #       (for example due to a point at infinity),
   #       we still need to call `sync` on all tasks.
 
   # Stage 2: Reduce partial pairings
