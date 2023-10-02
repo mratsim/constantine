@@ -82,18 +82,13 @@ func generate_random_elements* [FF](points: var  openArray[FF] , num_points: uin
 #
 # ############################################################
 
-func computeInnerProducts* [FF] (res: var FF, a,b : openArray[FF]): bool {.discardable.} =
-    
-    let check1 = true
-    if (not (len(a) == len(b))):
-        check1 = false
+func computeInnerProducts* [FF] (res: var FF, a,b : openArray[FF])=
+    debug: doAssert (a.len == b.len), "The lengths must be equal!"
     res.setZero()
     for i in 0..len(a):
         var tmp {.noInit.} : FF 
         tmp.prod(a[i], b[i])
         res += tmp
-
-    return check1
 
 # ############################################################
 #
