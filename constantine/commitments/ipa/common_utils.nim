@@ -275,8 +275,3 @@ func multiScalarMul_reference_vartime_Prj*[EC_P](r: var EC_P, coefs: openArray[B
 func pedersen_commit_single*[EC_P] (res: var EC_P, groupPoints:EC_P, polynomial: EC_P_Fr)=
     doAssert groupPoints.len == polynomial.len, "Group Elements and Polynomials should be having the same length!"
     res.multiScalarMul_reference_vartime_Prj(groupPoints, polynomial.toBig())
-
-
-
-
-

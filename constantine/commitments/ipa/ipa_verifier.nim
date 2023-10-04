@@ -124,12 +124,3 @@ func checkIPAProof*[bool] (res: var bool, transcript: Transcript, ic: IPASetting
 
     if got == commitment:
         res = true
-
-
-
-
-
-    
-    
-
-    
