@@ -357,12 +357,14 @@ proc verify_blob_kzg_proof_batch_parallel*(
                  invRootsMinusZs}
       reduceInto(globalStatus: CttEthKzgStatus):
         prologue:
-          var workerStatus {.noInit.}: CttEthKzgStatus
+          var workerStatus = cttEthKZG_Success
         forLoop:
           let polyStatusFut = tp.blob_to_field_polynomial_parallel_async(polys[i].addr, blobs[i].addr)
           let challengeStatusFut = tp.spawnAwaitable challenges[i].addr.fiatShamirChallenge(blobs[i].addr, commitments_bytes[i].addr)
 
-          workerStatus = kzgifyStatus commitments[i].bytes_to_kzg_commitment(commitments_bytes[i])
+          let commitmentStatus = kzgifyStatus commitments[i].bytes_to_kzg_commitment(commitments_bytes[i])
+          if workerStatus == cttEthKZG_Success:
+            workerStatus = commitmentStatus
           let polyStatus = kzgifyStatus sync(polyStatusFut)
           if workerStatus == cttEthKZG_Success:
             workerStatus = polyStatus
