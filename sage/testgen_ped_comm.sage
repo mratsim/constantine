@@ -12,7 +12,7 @@
 
 # ############################################################
 #
-#            Pedersen Commitment test generator
+#            Pedersen Commitment + Inner Product Argument Test Generator
 #
 # ############################################################
 
