@@ -21,9 +21,8 @@ import ./bls_signatures{.all.}
 export bls_signatures
 
 import
-  ../threadpool/[threadpool, partitioners],
+  ../threadpool/threadpool,
   ../platforms/[abstractions, allocs, views],
-  ../serialization/endians,
   ../hashes,
   ../math/ec_shortweierstrass
 
@@ -37,31 +36,23 @@ import
 #
 # Assuming we have N (public key, message, signature) triplets to verify
 # on P processor/threads.
-# We want B batches with B = P
+# We want B batches with B = (idle) P
 # Each processing W work items with W = N/B or N/B + 1
 #
 # Step 0: Initialize an accumulator per thread.
-# Step 1: Compute partial pairings, W work items per thread.
-# Step 2: Merge the B partial pairings
+# Step 1: Compute partial pairings, W work items per thread. (~190μs - Miller loops)
+# Step 2: Merge the B partial pairings                       (~1.3μs - Fp12 multiplications)
+# Step 4: Final verification                                 (~233μs - Final Exponentiation)
 #
-# For step 2 we have 2 strategies.
+# (Timings are per operation on a 2.6GHz, turbo 5Ghz i9-11980HK CPU for BLS12-381 pairings.)
 #
-# Strategy A: a simple linear merge
-# ```
-# for i in 1 ..< P:
-#   accums[0].merge(accums[i])
-# ```
-# which requires P operations.
+# We rely on the lazy tree splitting
+# of Constantine's threadpool to only split computation if there is an idle worker.
+# We force the base case for splitting to be 2 for efficiency but
+# the actual base case auto-adapts to runtime conditions
+# and may be 100 for example if all other threads are busy.
 #
-# Strategy B: A divide-and-conquer algorithm
-# We binary split the merge until we hit the base case:
-# ```
-# accums[i].merge(accums[i+1])
-# ```
-#
-# As pairing merge (Fp12 multiplication) is costly
-# (~10000 CPU cycles on Skylake-X with ADCX/ADOX instructions)
-# and for Ethereum we would at least have 6 sets:
+# In Ethereum consensus, blocks may require up to 6 verifications:
 # - block proposals signatures
 # - randao reveal signatures
 # - proposer slashings signatures
@@ -69,21 +60,9 @@ import
 # - attestations signatures
 # - validator exits signatures
 # not counting deposits signatures which may be invalid
-# The merging would be 60k cycles if linear
-# or 10k * log2(6) = 30k cycles if divide-and-conquer on 6+ cores
-# Note that as the tree processing progresses, less threads are required
-# for full parallelism so even with less than 6 cores, the speedup should be important.
-# But on the other side, it's hard to utilize all cores of a high-core count machine.
 #
-# Note 1: a pairing is about 3400k cycles so the optimization is only noticeable
-# when we do multi-block batches,
-# for example batching 20 blocks would require 1200k cycles for a linear merge.
-#
-# Note 2: Skylake-X is a very recent family, with bigint instructions MULX/ADCX/ADOX,
-# multiply everything by 2~3 on a Raspberry Pi
-# and scale by core frequency.
-#
-# Note 3: 3M cycles is 1ms at 3GHz.
+# And signature verification is the bottleneck for fast syncing and may reduce sync speed
+# by hours or days.
 
 proc batchVerify_parallel*[Msg, Pubkey, Sig](
        tp: Threadpool,
@@ -93,7 +72,7 @@ proc batchVerify_parallel*[Msg, Pubkey, Sig](
        H: type CryptoHash,
        k: static int,
        domainSepTag: openArray[byte],
-       secureRandomBytes: array[32, byte]): bool {.noInline, genCharAPI.} =
+       secureRandomBytes: array[32, byte]): bool {.genCharAPI.} =
   ## Verify that all (pubkey, message, signature) triplets are valid
   ##
   ## Returns false if there is at least one incorrect signature
@@ -109,7 +88,6 @@ proc batchVerify_parallel*[Msg, Pubkey, Sig](
   ## The blinding scheme also assumes that the attacker cannot
   ## resubmit 2^64 times forged (publickey, message, signature) triplets
   ## against the same `secureRandomBytes`
-
   if tp.numThreads == 1:
     return batchVerify(pubkeys, messages, signatures, H, k, domainSepTag, secureRandomBytes)
 
@@ -122,99 +100,50 @@ proc batchVerify_parallel*[Msg, Pubkey, Sig](
   type FF1 = Pubkey.F
   type FF2 = Sig.F
   type FpK = Sig.F.C.getGT()
+  type Acc = BLSBatchSigAccumulator[H, FF1, FF2, Fpk, ECP_ShortW_Jac[Sig.F, Sig.G], k]
+  type BlsCompute = tuple[status: bool, accumulator: Acc]
 
-  # Stage 0: Setup per-thread accumulators
   let N = pubkeys.len
-  let numAccums = min(N, tp.numThreads)
-  let accums = allocHeapArray(BLSBatchSigAccumulator[H, FF1, FF2, Fpk, ECP_ShortW_Jac[Sig.F, Sig.G], k], numAccums)
-  let chunkingDescriptor = balancedChunksPrioNumber(0, N, numAccums)
-  let
-    pubkeysView = pubkeys.toView()
-    messagesView = messages.toView()
-    signaturesView = signatures.toView()
-    dstView = domainSepTag.toView()
+  let pubkeys = pubkeys.asUnchecked()
+  let messages = messages.asUnchecked()
+  let signatures = signatures.asUnchecked()
+  let dstLen = domainSepTag.len
+  let domainSepTag = domainSepTag.toView()
+  let secureRandomBytes = secureRandomBytes.unsafeAddr
 
+  mixin globalBlsCompute
 
-  # Stage 1: Accumulate partial pairings (Miller Loops)
-  # ---------------------------------------------------
-  proc accumChunk(
-         ctx: ptr BLSBatchSigAccumulator,
-         pubkeys: View[Pubkey],
-         messages: View[Msg],
-         signatures: View[Sig],
-         domainSepTag: View[byte],
-         secureRandomBytes: array[32, byte],
-         accumSepTag: array[sizeof(int), byte]): bool {.nimcall, gcsafe, tags: [Alloca, VarTime].} =
-    ctx[].init(
-      domainSepTag.toOpenArray(),
-      secureRandomBytes,
-      accumSepTag)
+  tp.parallelFor i in 0 ..< N:
+    stride: 2 # Min threshold seems to be at least 2 Miller Loop per worker thread
+    captures: {pubkeys, messages, signatures, N, domainSepTag, secureRandomBytes}
+    reduceInto(globalBlsCompute: tuple[status: bool, accumulator: ptr Acc]):
+      prologue:
+        var workerAcc = allocHeap(Acc)
+        workerAcc[].init(
+              domainSepTag.toOpenArray(),
+              secureRandomBytes[],
+              # We don't have access to `i` in the prologue so `accumSepTag`
+              # cannot be initialized on an unique per-thread value,
+              # however the merging is not under control of a potential attacker
+              # and would change the accumulator separation tag.
+              accumSepTag = "leaf")
+        var workerStatusOk = true
+      forLoop:
+        if workerStatusOk:
+          workerStatusOk = workerAcc[].update(pubkeys[i], messages[i], signatures[i])
+      merge(remoteBls: Future[BlsCompute]):
+        let (remoteStatus, remoteAcc) = sync(remoteBls)
+        if workerStatusOk:
+          workerStatusOk = remoteStatus
+        if workerStatusOk:
+          workerStatusOk = workerAcc[].merge(remoteAcc[])
+        freeHeap(remoteAcc)
+      epilogue:
+        workerAcc[].handover()
+        return (workerStatusOk, workerAcc)
 
-    for i in 0 ..< pubkeys.len:
-      if not ctx[].update(pubkeys[i], messages[i], signatures[i]):
-        return false
-
-    ctx[].handover()
-    return true
-
-  let partialStates = allocStackArray(Flowvar[bool], numAccums)
-  for (id, start, size) in items(chunkingDescriptor):
-    partialStates[id] = tp.spawn accumChunk(
-      accums[id].addr,
-      pubkeysView.chunk(start, size),
-      messagesView.chunk(start, size),
-      signaturesView.chunk(start, size),
-      dstView,
-      secureRandomBytes,
-      id.uint.toBytes(bigEndian))
-
-  # Note: to avoid memory leaks, even if there is a `false` partial state
-  #       (for example due to a point at infinity),
-  #       we still need to call `sync` on all tasks.
-
-  # Stage 2: Reduce partial pairings
-  # --------------------------------
-  if numAccums < 4: # Linear merge
-    result = sync partialStates[0]
-    for i in 1 ..< numAccums:
-      result = result and sync partialStates[i]
-      if result: # As long as no error is returned, accumulate
-        result = result and accums[0].merge(accums[i])
-    if not result: # Don't proceed to final exponentiation if there is already an error
-      return false
-
-  else: # Parallel logarithmic merge via recursive divide-and-conquer
-    proc treeMergeAccums(
-           tp: Threadpool,
-           partialStates: ptr UncheckedArray[FlowVar[bool]],
-           accums: ptr UncheckedArray[BLSBatchSigAccumulator[H, FF1, FF2, Fpk, ECP_ShortW_Jac[Sig.F, Sig.G], k]],
-           start, stopEx: int): bool {.nimcall, gcsafe.} =
-      let mid = (start + stopEx) shr 1
-      if stopEx - start == 1:
-        # Odd number of batches
-        return true
-      elif stopEx-start == 2:
-        # Leaf node
-        result = sync partialStates[start]
-        result = result and sync partialStates[stopEx-1]
-        if not result: # If an error was returned, no need to accumulate
-          return false
-        return accums[start].merge(accums[stopEx-1])
-
-      # Subtree puts partial reduction in "start"
-      let leftOkFV = tp.spawn treeMergeAccums(tp, partialStates, accums, start, mid)
-      # Subtree puts partial reduction in "mid"
-      let rightOkFV = treeMergeAccums(tp, partialStates, accums, mid, stopEx)
-
-      # Wait for all subtrees, important: don't shortcut booleans as future/flowvar memory is released on sync
-      let leftOk = sync(leftOkFV)
-      let rightOk = rightOkFV
-      if not leftOk or not rightOk:
-        return false
-      return accums[start].merge(accums[mid])
-
-    let ok = tp.treeMergeAccums(partialStates, accums, start = 0, stopEx = numAccums)
-    if not ok:
-      return false
-
-  return accums[0].finalVerify()
+  let (status, globalAcc) = sync(globalBlsCompute)
+  result = status
+  if result:
+    result = globalAcc[].finalVerify()
+  freeHeap(globalAcc)

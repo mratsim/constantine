@@ -13,6 +13,8 @@ import
     ethereum_eip2333_bls12381_key_derivation],
   ../constantine/math/arithmetic,
   ../constantine/threadpool/threadpool,
+  # Std
+  std/[os, cpuinfo],
   # Helpers
   ../helpers/prng_unsafe,
   ./bench_blueprint
@@ -197,7 +199,13 @@ proc benchVerifyBatchedParallel*(numSigs, iters: int) =
   var hashedMsg: array[32, byte]
   var sig: Signature
 
-  tp = Threadpool.new()
+
+  var numThreads: int
+  if existsEnv"CTT_NUM_THREADS":
+    numThreads = getEnv"CTT_NUM_THREADS".parseInt()
+  else:
+    numThreads = countProcessors()
+  tp = Threadpool.new(numThreads)
 
   for i in 0 ..< numSigs:
     let (sk, pk) = demoKeyGen()
