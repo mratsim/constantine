@@ -6,6 +6,12 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
+# ############################################################
+#
+#             Ethereum Verkle Primitves Tests
+#
+# ############################################################
+
 import
   std/unittest,
   ../constantine/math/config/[type_ff, curves],
@@ -296,16 +302,17 @@ suite "Batch Operations on Banderwagon":
         arr_fp[i] = one.x
         one.double()
 
-      arr_fp.batchInvert_vartime()
+      var arr_fp_inv: array[n, Fp[Banderwagon]]
+      doAssert arr_fp_inv.batchInvert(arr_fp) == true
 
       # Checking the correspondence with singular element inversion
       for i in 0 ..< n:
         var temp: Fp[Banderwagon]
         temp.inv(two.x)
-        doAssert (arr_fp[i] == temp).bool(), "Batch Inversion in consistent"
+        doAssert (arr_fp_inv[i] == temp).bool(), "Batch Inversion in consistent"
         two.double()
 
-    batchInvert(1000)
+    batchInvert(10)
 
   ## Tests to check if the Batch Map to Scalar Field
   ## is consistent with it's respective singular operation

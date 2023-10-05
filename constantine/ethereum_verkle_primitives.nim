@@ -57,9 +57,9 @@ func mapToScalarField*(res: var Fr[Banderwagon], p: ECP_TwEdwards_Prj[Fp[Banderw
 ##                      Batch Operations
 ##
 ## ############################################################
-func batchMapToScalarField*[N: static int](
-      res: var array[N, Fr[Banderwagon]], 
-      points: array[N, ECP_TwEdwards_Prj[Fp[Banderwagon]]]): bool {.discardable.} =
+func batchMapToScalarField*(
+      res: var openArray[Fr[Banderwagon]], 
+      points: openArray[ECP_TwEdwards_Prj[Fp[Banderwagon]]]): bool {.discardable.} =
   ## This function performs the `mapToScalarField` operation
   ## on a batch of points
   ## 
@@ -70,19 +70,24 @@ func batchMapToScalarField*[N: static int](
   ## 
   ## Spec : https://hackmd.io/wliPP_RMT4emsucVuCqfHA?view#MapToFieldElement
   
-  var ys: array[N, Fp[Banderwagon]]
+  var check: bool = true
+  check = check and (res.len == points.len)
+
+  let N = res.len
+  var ys = allocStackArray(Fp[Banderwagon], N)
+  var ys_inv = allocStackArray(Fp[Banderwagon], N)
+
 
   for i in 0 ..< N:
     ys[i] = points[i].y
   
-  ys.batchInvert_vartime()
+  ys_inv.batchInvert(ys, N)
 
-  var check: bool
   for i in 0 ..< N:
     var mappedElement: Fp[Banderwagon]
     var bytes: array[32, byte]
 
-    mappedElement.prod(points[i].x, ys[i])
+    mappedElement.prod(points[i].x, ys_inv[i])
     check = bytes.marshalBE(mappedElement)
     check = check and res[i].unmarshalBE(bytes)
 

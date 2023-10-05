@@ -87,11 +87,14 @@ func batchAffine*[M, N: static int, F](
        projs: array[M, array[N, ECP_TwEdwards_Prj[F]]]) {.inline.} =
   batchAffine(affs[0].asUnchecked(), projs[0].asUnchecked(), M*N)
 
-func batchInvert_vartime*[N: static int, F](elements: var array[N, F]) =
+func batchInvert*[F](
+        dst: ptr UncheckedArray[F],
+        elements: ptr UncheckedArray[F],
+        N: int
+      ) {.noInline.} =
   ##  Montgomery's batch inversion
-  ##  This function person the inversion in-place
-  var res: array[N, F]
-  var zeros: array[N, bool]
+  var zeros = allocStackArray(bool, N)
+  zeroMem(zeros, N)
 
   var accumulator: F
   accumulator.setOne()    # sets the accumulator to 1
@@ -101,15 +104,20 @@ func batchInvert_vartime*[N: static int, F](elements: var array[N, F]) =
       zeros[i] = true
       continue
 
-    res[i] = accumulator
+    dst[i] = accumulator
     accumulator *= elements[i]
 
-  accumulator.inv_vartime()   # inversion of the accumulator
+  accumulator.inv()   # inversion of the accumulator
 
   for i in countdown(N-1, 0):
     if zeros[i] == true:
       continue
-    res[i] *= accumulator
+    dst[i] *= accumulator
     accumulator *= elements[i]
 
-  elements = res
+func batchInvert*[F](dst: openArray[F], source: openArray[F]): bool {.inline.} =
+  if dst.len != source.len:
+    return false
+  let N = dst.len
+  batchInvert(dst.asUnchecked(), source.asUnchecked(), N)
+  return true
