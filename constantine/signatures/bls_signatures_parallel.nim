@@ -21,8 +21,9 @@ import ./bls_signatures{.all.}
 export bls_signatures
 
 import
-  ../threadpool/threadpool,
+  ../threadpool/[threadpool, partitioners],
   ../platforms/[abstractions, allocs, views],
+  ../serialization/endians,
   ../hashes,
   ../math/ec_shortweierstrass
 
@@ -72,7 +73,7 @@ proc batchVerify_parallel*[Msg, Pubkey, Sig](
        H: type CryptoHash,
        k: static int,
        domainSepTag: openArray[byte],
-       secureRandomBytes: array[32, byte]): bool {.genCharAPI.} =
+       secureRandomBytes: array[32, byte]): bool {.noInline, genCharAPI.} =
   ## Verify that all (pubkey, message, signature) triplets are valid
   ##
   ## Returns false if there is at least one incorrect signature
@@ -88,6 +89,7 @@ proc batchVerify_parallel*[Msg, Pubkey, Sig](
   ## The blinding scheme also assumes that the attacker cannot
   ## resubmit 2^64 times forged (publickey, message, signature) triplets
   ## against the same `secureRandomBytes`
+
   if tp.numThreads == 1:
     return batchVerify(pubkeys, messages, signatures, H, k, domainSepTag, secureRandomBytes)
 
@@ -100,50 +102,64 @@ proc batchVerify_parallel*[Msg, Pubkey, Sig](
   type FF1 = Pubkey.F
   type FF2 = Sig.F
   type FpK = Sig.F.C.getGT()
-  type Acc = BLSBatchSigAccumulator[H, FF1, FF2, Fpk, ECP_ShortW_Jac[Sig.F, Sig.G], k]
-  type BlsCompute = tuple[status: bool, accumulator: Acc]
 
+  # Stage 0: Setup per-thread accumulators
   let N = pubkeys.len
-  let pubkeys = pubkeys.asUnchecked()
-  let messages = messages.asUnchecked()
-  let signatures = signatures.asUnchecked()
-  let dstLen = domainSepTag.len
-  let domainSepTag = domainSepTag.toView()
-  let secureRandomBytes = secureRandomBytes.unsafeAddr
+  let numAccums = min(N, tp.numThreads)
+  let accums = allocHeapArray(BLSBatchSigAccumulator[H, FF1, FF2, Fpk, ECP_ShortW_Jac[Sig.F, Sig.G], k], numAccums)
+  let chunkingDescriptor = balancedChunksPrioNumber(0, N, numAccums)
+  let
+    pubkeysView = pubkeys.toView()
+    messagesView = messages.toView()
+    signaturesView = signatures.toView()
+    dstView = domainSepTag.toView()
 
-  mixin globalBlsCompute
+  # Stage 1: Accumulate partial pairings (Miller Loops)
+  # ---------------------------------------------------
+  proc accumChunk(
+         ctx: ptr BLSBatchSigAccumulator,
+         pubkeys: View[Pubkey],
+         messages: View[Msg],
+         signatures: View[Sig],
+         domainSepTag: View[byte],
+         secureRandomBytes: array[32, byte],
+         accumSepTag: array[sizeof(int), byte]): bool {.nimcall, gcsafe, tags: [Alloca, VarTime].} =
+    ctx[].init(
+      domainSepTag.toOpenArray(),
+      secureRandomBytes,
+      accumSepTag)
 
-  tp.parallelFor i in 0 ..< N:
-    stride: 2 # Min threshold seems to be at least 2 Miller Loop per worker thread
-    captures: {pubkeys, messages, signatures, N, domainSepTag, secureRandomBytes}
-    reduceInto(globalBlsCompute: tuple[status: bool, accumulator: ptr Acc]):
-      prologue:
-        var workerAcc = allocHeap(Acc)
-        workerAcc[].init(
-              domainSepTag.toOpenArray(),
-              secureRandomBytes[],
-              # We don't have access to `i` in the prologue so `accumSepTag`
-              # cannot be initialized on an unique per-thread value,
-              # however the merging is not under control of a potential attacker
-              # and would change the accumulator separation tag.
-              accumSepTag = "leaf")
-        var workerStatusOk = true
-      forLoop:
-        if workerStatusOk:
-          workerStatusOk = workerAcc[].update(pubkeys[i], messages[i], signatures[i])
-      merge(remoteBls: Future[BlsCompute]):
-        let (remoteStatus, remoteAcc) = sync(remoteBls)
-        if workerStatusOk:
-          workerStatusOk = remoteStatus
-        if workerStatusOk:
-          workerStatusOk = workerAcc[].merge(remoteAcc[])
-        freeHeap(remoteAcc)
-      epilogue:
-        workerAcc[].handover()
-        return (workerStatusOk, workerAcc)
+    for i in 0 ..< pubkeys.len:
+      if not ctx[].update(pubkeys[i], messages[i], signatures[i]):
+        return false
 
-  let (status, globalAcc) = sync(globalBlsCompute)
-  result = status
-  if result:
-    result = globalAcc[].finalVerify()
-  freeHeap(globalAcc)
+    ctx[].handover()
+    return true
+
+  let partialStates = allocStackArray(Flowvar[bool], numAccums)
+  for (id, start, size) in items(chunkingDescriptor):
+    partialStates[id] = tp.spawn accumChunk(
+      accums[id].addr,
+      pubkeysView.chunk(start, size),
+      messagesView.chunk(start, size),
+      signaturesView.chunk(start, size),
+      dstView,
+      secureRandomBytes,
+      id.uint.toBytes(bigEndian))
+
+  # Note: to avoid memory leaks, even if there is a `false` partial state
+  #       (for example due to a point at infinity),
+  #       we still need to call `sync` on all tasks.
+
+  # Stage 2: Reduce partial pairings
+  # --------------------------------
+  # Linear merge with latency hiding, we could consider a parallel logarithmic merge via a binary tree merge / divide-and-conquer
+  result = sync partialStates[0]
+  for i in 1 ..< numAccums:
+    result = result and sync partialStates[i]
+    if result: # As long as no error is returned, accumulate
+      result = result and accums[0].merge(accums[i])
+  if not result: # Don't proceed to final exponentiation if there is already an error
+    return false
+
+  return accums[0].finalVerify()
