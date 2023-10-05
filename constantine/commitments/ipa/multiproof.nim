@@ -185,132 +185,114 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: Transcript
     res.IPAprv = ipaProof
     res.D = D
 
-    # Mutliproof verifier verifies the multiproof for several polynomials in the evaluation form
-    # The list of triplets (C,Y, Z) represents each polynomial commitment, evaluation
-    # result, and evaluation point in the domain 
-    func verifyMultiproof* [bool] (res: var bool, transcript : Transcript, ipaSettings: IPASettings, proof: MultiProof, Cs: openArray[EC_P], Ys: openArray[EC_P_Fr], Zs: openArray[uint8])=
-        transcript.domain_separator(asBytes"multiproof")
+# Mutliproof verifier verifies the multiproof for several polynomials in the evaluation form
+# The list of triplets (C,Y, Z) represents each polynomial commitment, evaluation
+# result, and evaluation point in the domain 
+func verifyMultiproof* [bool] (res: var bool, transcript : Transcript, ipaSettings: IPASettings, proof: MultiProof, Cs: openArray[EC_P], Ys: openArray[EC_P_Fr], Zs: openArray[uint8])=
+    transcript.domain_separator(asBytes"multiproof")
 
-        debug: doAssert Cs.len == Ys.len, "Number of commitments and the Number of output points don't match!"
+    debug: doAssert Cs.len == Ys.len, "Number of commitments and the Number of output points don't match!"
 
-        debug: doAssert Cs.len == Zs.len, "Number of commitments and the Number of input points don't match!"
+    debug: doAssert Cs.len == Zs.len, "Number of commitments and the Number of input points don't match!"
 
-        let num_queries = Cs.len
+    let num_queries = Cs.len
 
-        var checker {.noInit.}: bool
-        checker = num_queries == 0
+    var checker {.noInit.}: bool
+    checker = num_queries == 0
 
-        debug: doAssert num_queries == 0, "Number of queries is zero!"
+    debug: doAssert num_queries == 0, "Number of queries is zero!"
 
-        for i in 0..num_queries:
-            transcript.pointAppend(Cs[i], asBytes"C")
+    for i in 0..num_queries:
+        transcript.pointAppend(Cs[i], asBytes"C")
 
-            var z {.noInit.} : EC_P_Fr
-            z.domainToFrElem(Zs[i])
+        var z {.noInit.} : EC_P_Fr
+        z.domainToFrElem(Zs[i])
 
-            transcript.scalarAppend(z, asBytes"z")
-            transcript.scalarAppend(Ys[i], asBytes"y")
+        transcript.scalarAppend(z, asBytes"z")
+        transcript.scalarAppend(Ys[i], asBytes"y")
 
-        var r {.noInit.}: EC_P_Fr
-        r = transcript.generateChallengeScalar(asBytes"r")
+    var r {.noInit.}: EC_P_Fr
+    r = transcript.generateChallengeScalar(asBytes"r")
 
-        var powersOfr {.noInit.}: openArray[EC_P_Fr]
-        powersOfr.computePowersOfElem(r, num_queries)
+    var powersOfr {.noInit.}: openArray[EC_P_Fr]
+    powersOfr.computePowersOfElem(r, num_queries)
 
-        transcript.pointAppend(proof.D, asBytes"D")
+    transcript.pointAppend(proof.D, asBytes"D")
 
-        var t {.noInit.}: EC_P_Fr
-        t = transcript.generateChallengeScalar(asBytes"t")
+    var t {.noInit.}: EC_P_Fr
+    t = transcript.generateChallengeScalar(asBytes"t")
 
-        # Computing the polynomials in the Lagrange form grouped by evaluation point, 
-        # and the needed helper scalars
-        var groupedEvals {.noInit.}: array[DOMAIN, EC_P_Fr]
+    # Computing the polynomials in the Lagrange form grouped by evaluation point, 
+    # and the needed helper scalars
+    var groupedEvals {.noInit.}: array[DOMAIN, EC_P_Fr]
 
-        for i in 0..num_queries:
+    for i in 0..num_queries:
 
-            var z {.noInit.}: uint8
-            z = Zs[i]
+        var z {.noInit.}: uint8
+        z = Zs[i]
 
-            var r {.noInit.} : openArray[EC_P_Fr]
-            r = powersOfr[i]
+        var r {.noInit.} : openArray[EC_P_Fr]
+        r = powersOfr[i]
 
-            var scaledEvals {.noInit.}: EC_P_Fr
-            scaledEvals.prod(r, Ys[i])
+        var scaledEvals {.noInit.}: EC_P_Fr
+        scaledEvals.prod(r, Ys[i])
 
-            groupedEvals[z] += scaledEvals
+        groupedEvals[z] += scaledEvals
 
-            #Calculating the helper scalar denominatoer, which is 1 / t - z_i
-            var helperScalarDeno {.noInit.} : array[DOMAIN, EC_P_Fr]
+        #Calculating the helper scalar denominatoer, which is 1 / t - z_i
+        var helperScalarDeno {.noInit.} : array[DOMAIN, EC_P_Fr]
 
-            for i in 0..DOMAIN:
-                var z {.noInit.}: EC_P_Fr
-                z.domainToFrElem(uint8(i))
+        for i in 0..DOMAIN:
+            var z {.noInit.}: EC_P_Fr
+            z.domainToFrElem(uint8(i))
 
-                helperScalarDeno[i].diff(t, z)
+            helperScalarDeno[i].diff(t, z)
 
-            helperScalarDeno.computeZMinusXi(helperScalarDeno)
+        helperScalarDeno.computeZMinusXi(helperScalarDeno)
 
-            # Compute g_2(t) = SUMMATION (y_i * r^i) / (t - z_i) = SUMMATION (y_i * r) * helperScalarDeno
-            var g2t {.noInit.} : EC_P_Fr
-            g2t.setZero()
+        # Compute g_2(t) = SUMMATION (y_i * r^i) / (t - z_i) = SUMMATION (y_i * r) * helperScalarDeno
+        var g2t {.noInit.} : EC_P_Fr
+        g2t.setZero()
 
-            for i in 0..DOMAIN:
-                if groupedEvals[i].isZero():
-                    continue
+        for i in 0..DOMAIN:
+            if groupedEvals[i].isZero():
+                continue
 
-                var tmp {.noInit.}: EC_P_Fr
-                tmp.prod(groupedEvals[i], helperScalarDeno[i])
-                g2t += tmp
+            var tmp {.noInit.}: EC_P_Fr
+            tmp.prod(groupedEvals[i], helperScalarDeno[i])
+            g2t += tmp
 
-            
-            # Compute E = SUMMATION C_i * (r^i /  t - z_i) = SUMMATION C_i * MSM_SCALARS
-            var msmScalars {.noInit.}: array[Cs.len, EC_P_Fr]
+        
+        # Compute E = SUMMATION C_i * (r^i /  t - z_i) = SUMMATION C_i * MSM_SCALARS
+        var msmScalars {.noInit.}: array[Cs.len, EC_P_Fr]
 
-            var Csnp {.noInit.}: array[Cs.len, EC_P]
+        var Csnp {.noInit.}: array[Cs.len, EC_P]
 
-            for i in 0..Cs.len:
-                Csnp[i] = Cs[i]
+        for i in 0..Cs.len:
+            Csnp[i] = Cs[i]
 
-                msmScalars[i].prod(powersOfr[i], helperScalarDeno[Zs[i]])
-            
-            var E {.noInit.}: EC_P
+            msmScalars[i].prod(powersOfr[i], helperScalarDeno[Zs[i]])
+        
+        var E {.noInit.}: EC_P
 
-            var checks2 {.noInit.}: bool
-            checks2 = E.multiScalarMul_reference_vartime_Prj(Csnp, msmScalars.toBig())
+        var checks2 {.noInit.}: bool
+        checks2 = E.multiScalarMul_reference_vartime_Prj(Csnp, msmScalars.toBig())
 
-            debug: doAssert checks2 == 1, "Could not compute E!"
+        debug: doAssert checks2 == 1, "Could not compute E!"
 
-            transcript.pointAppend(E, asBytes"E")
+        transcript.pointAppend(E, asBytes"E")
 
-            var EMinusD {.noInit.} : EC_P
-            EMinusD.diff(E, proof.D)
+        var EMinusD {.noInit.} : EC_P
+        EMinusD.diff(E, proof.D)
 
-            res.checkIPAProof(transcript, ipaSetting, EMinusD, proof.IPAprv, t, g2t)
+        res.checkIPAProof(transcript, ipaSetting, EMinusD, proof.IPAprv, t, g2t)
 
 
 func mutliProofEquality* [bool] (res: var bool, mp: MultiProof, other: MultiProof)=
     if not(mp.IPAprv == other.IPAprv):
         res = false
     
-    res = mp.D == other.D
+    res = mp.D == other.Ds
 
             
-
-        
-            
-
-
-
-
-
-
-        
-    
-
-
-    
-
-
-
-
 
