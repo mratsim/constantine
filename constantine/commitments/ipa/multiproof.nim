@@ -285,7 +285,7 @@ func verifyMultiproof* [bool] (res: var bool, transcript : Transcript, ipaSettin
         var EMinusD {.noInit.} : EC_P
         EMinusD.diff(E, proof.D)
 
-        res.checkIPAProof(transcript, ipaSetting, EMinusD, proof.IPAprv, t, g2t)
+        res.checkIPAProof(transcript, ipaSettings, EMinusD, proof.IPAprv, t, g2t)
 
 
 func mutliProofEquality* [bool] (res: var bool, mp: MultiProof, other: MultiProof)=
