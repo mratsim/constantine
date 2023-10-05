@@ -263,6 +263,36 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: Transcript
                 g2t += tmp
 
             
+            # Compute E = SUMMATION C_i * (r^i /  t - z_i) = SUMMATION C_i * MSM_SCALARS
+            var msmScalars {.noInit.}: array[Cs.len, EC_P_Fr]
+
+            var Csnp {.noInit.}: array[Cs.len, EC_P]
+
+            for i in 0..Cs.len:
+                Csnp[i] = Cs[i]
+
+                msmScalars[i].prod(powersOfr[i], helperScalarDeno[Zs[i]])
+            
+            var E {.noInit.}: EC_P
+
+            var checks2 {.noInit.}: bool
+            checks2 = E.multiScalarMul_reference_vartime_Prj(Csnp, msmScalars.toBig())
+
+            debug: doAssert checks2 == 1, "Could not compute E!"
+
+            transcript.pointAppend(E, asBytes"E")
+
+            var EMinusD {.noInit.} : EC_P
+            EMinusD.diff(E, proof.D)
+
+            res.checkIPAProof(transcript, ipaSetting, EMinusD, proof.IPAprv, t, g2t)
+
+
+func mutliProofEquality* [bool] (res: var bool, mp: MultiProof, other: MultiProof)=
+    if not(mp.IPAprv == other.IPAprv):
+        res = false
+    
+    res = mp.D == other.D
 
             
 
