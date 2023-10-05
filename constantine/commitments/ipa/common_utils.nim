@@ -231,7 +231,7 @@ func multiScalarMulImpl_reference_vartime[F, G; bits: static int](
   buckets.freeHeap()
   miniMSMs.freeHeap()
 
-func multiScalarMul_reference_vartime_Prj*[EC_P](r: var EC_P, coefs: openArray[BigInt], points: openArray[EC_P]) {.tags:[VarTime, HeapAlloc].} =
+func multiScalarMul_reference_vartime_Prj*[FF](r: var FF, coefs: openArray[BigInt], points: openArray[FF]) {.tags:[VarTime, HeapAlloc].} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
   debug: doAssert coefs.len == points.len
