@@ -9,22 +9,25 @@
 import
   # Internals
   ../constantine/[
-    ethereum_bls_signatures,
+    ethereum_bls_signatures_parallel,
     ethereum_eip2333_bls12381_key_derivation],
   ../constantine/math/arithmetic,
+  ../constantine/threadpool/threadpool,
+  # Std
+  std/[os, cpuinfo],
   # Helpers
   ../helpers/prng_unsafe,
   ./bench_blueprint
 
-proc separator*() = separator(167)
+proc separator*() = separator(180)
 
 proc report(op, curve: string, startTime, stopTime: MonoTime, startClk, stopClk: int64, iters: int) =
   let ns = inNanoseconds((stopTime-startTime) div iters)
   let throughput = 1e9 / float64(ns)
   when SupportsGetTicks:
-    echo &"{op:<75} {curve:<15} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
+    echo &"{op:<88} {curve:<15} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
   else:
-    echo &"{op:<75} {curve:<15} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
+    echo &"{op:<8} {curve:<15} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
 
 template bench(op: string, curve: string, iters: int, body: untyped): untyped =
   measure(iters, startTime, stopTime, startClk, stopClk, body)
@@ -184,6 +187,43 @@ proc benchVerifyBatched*(numSigs, iters: int) =
     let ok = batch_verify(pubkeys, messages, signatures, secureBlindingBytes)
     doAssert ok == cttBLS_Success
 
+proc benchVerifyBatchedParallel*(numSigs, iters: int) =
+  ## Verification of N pubkeys signing for N messages
+
+  var
+    tp: Threadpool
+    pubkeys: seq[PublicKey]
+    messages: seq[array[32, byte]]
+    signatures: seq[Signature]
+
+  var hashedMsg: array[32, byte]
+  var sig: Signature
+
+
+  var numThreads: int
+  if existsEnv"CTT_NUM_THREADS":
+    numThreads = getEnv"CTT_NUM_THREADS".parseInt()
+  else:
+    numThreads = countProcessors()
+  tp = Threadpool.new(numThreads)
+
+  for i in 0 ..< numSigs:
+    let (sk, pk) = demoKeyGen()
+    sha256.hash(hashedMsg, "msg" & $i)
+    sig.sign(sk, hashedMsg)
+
+    pubkeys.add pk
+    messages.add hashedMsg
+    signatures.add sig
+
+  let secureBlindingBytes = sha256.hash("Mr F was here")
+
+  bench("BLS parallel batch verify (" & $tp.numThreads & " threads) of " & $numSigs & " msgs by "& $numSigs & " pubkeys (with blinding)", "BLS12_381", iters):
+    let ok = tp.batch_verify_parallel(pubkeys, messages, signatures, secureBlindingBytes)
+    doAssert ok == cttBLS_Success, "invalid status: " & $ok
+
+  tp.shutdown()
+
 const Iters = 1000
 
 proc main() =
@@ -202,16 +242,19 @@ proc main() =
   # Simulate Block verification (at most 6 signatures per block)
   benchVerifyMulti(numSigs = 6, iters = 10)
   benchVerifyBatched(numSigs = 6, iters = 10)
+  benchVerifyBatchedParallel(numSigs = 6, iters = 10)
   separator()
 
   # Simulate 10 blocks verification
   benchVerifyMulti(numSigs = 60, iters = 10)
   benchVerifyBatched(numSigs = 60, iters = 10)
+  benchVerifyBatchedParallel(numSigs = 60, iters = 10)
   separator()
 
   # Simulate 30 blocks verification
   benchVerifyMulti(numSigs = 180, iters = 10)
   benchVerifyBatched(numSigs = 180, iters = 10)
+  benchVerifyBatchedParallel(numSigs = 180, iters = 10)
   separator()
 
 main()

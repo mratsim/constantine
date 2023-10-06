@@ -6,12 +6,19 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
+# ############################################################
+#
+#             Ethereum Verkle Primitves Tests
+#
+# ############################################################
+
 import
   std/unittest,
   ../constantine/math/config/[type_ff, curves],
   ../constantine/math/elliptic/[
     ec_twistededwards_affine,
-    ec_twistededwards_projective
+    ec_twistededwards_projective,
+    ec_twistededwards_batch_ops
   ],
   ../constantine/math/io/io_fields,
   ../constantine/serialization/[
@@ -20,7 +27,8 @@ import
     codecs
   ],
   ../constantine/math/arithmetic,
-  ../constantine/math/constants/zoo_generators
+  ../constantine/math/constants/zoo_generators,
+  ../constantine/ethereum_verkle_primitives
 
 type
   EC* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
@@ -69,6 +77,11 @@ const bad_bit_string: array[16, string] = [
   "0x6671109a7a15f4852ead3298318595a36010930fddbd3c8f667c6390e7ac3c66",
   "0x120faa1df94d5d831bbb69fc44816e25afd27288a333299ac3c94518fd0e016f",
 ]
+
+const expected_scalar_field_elements: array[2, string] = [
+  "0x0e0c604381ef3cd11bdc84e8faa59b542fbbc92f800ed5767f21e5dbc59840ce",
+  "0x0a21f7dfa8ddaf6ef6f2044f13feec50cbb963996112fa1de4e3f52dbf6b7b6d"
+] # test data generated from go-ipa implementation
 
 # ############################################################
 #
@@ -207,3 +220,124 @@ suite "Banderwagon Points Tests":
 
     testTwoTorsion()
 
+# ############################################################
+#
+#     Banderwagon Points Mapped to Scalar Field ( Fp -> Fr )
+#
+# ############################################################
+suite "Banderwagon Elements Mapping":
+
+  ## Tests if the mapping from Fp to Fr 
+  ## is working as expected or not
+  test "Testing Map To Base Field":
+    proc testMultiMapToBaseField() =
+      var A, B, genPoint {.noInit.}: EC
+      genPoint.fromAffine(generator)
+
+      A.sum(genPoint, genPoint) # A = g+g = 2g
+      B.double(genPoint)        # B = 2g
+      B.double()                # B = 2B = 4g
+
+      var expected_a, expected_b: Fr[Banderwagon]
+
+      # conver the points A & B which are in Fp
+      # to the their mapped Fr points 
+      expected_a.mapToScalarField(A)
+      expected_b.mapToScalarField(B)
+
+      doAssert expected_a.toHex() == expected_scalar_field_elements[0], "Mapping to Scalar Field Incorrect"
+      doAssert expected_b.toHex() == expected_scalar_field_elements[1], "Mapping to Scalar Field Incorrect"
+
+    testMultiMapToBaseField()
+
+# ############################################################
+#
+#               Banderwagon Batch Operations
+#
+# ############################################################
+suite "Batch Operations on Banderwagon":
+
+  ## Tests if the Batch Affine operations are
+  ## consistent with the signular affine operation
+  ## Using the concept of point double from generator point
+  ## we try to achive this
+  test "BatchAffine and fromAffine Consistency":
+    proc testbatch(n: static int) =
+      var g, temp {.noInit.}: EC
+      g.fromAffine(generator)     # setting the generator point
+
+      var aff{.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+      aff = generator
+
+      var points_prj: array[n, EC]
+      var points_aff: array[n, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+
+      for i in 0 ..< n:
+        points_prj[i] = g
+        g.double()          # doubling the point
+
+      points_aff.batchAffine(points_prj) # performs the batch operation
+      
+      # checking correspondence with singular affine conversion
+      for i in 0 ..< n:
+        doAssert (points_aff[i] == aff).bool(), "batch inconsistent with singular ops"
+        temp.fromAffine(aff)
+        temp.double()
+        aff.affine(temp)      
+
+    testbatch(1000)
+
+  ## Tests to check if the Motgomery Batch Inversion
+  ## Check if the Batch Inversion is consistent with
+  ## it's respective sigular inversion operation of field elements
+  test "Batch Inversion":
+    proc batchInvert(n: static int) = 
+      var one, two: EC
+      var arr_fp: array[n, Fp[Banderwagon]]   # array for Fp field elements
+
+      one.fromAffine(generator)   # setting the 1st generator point
+      two.fromAffine(generator)   # setting the 2nd generator point
+
+      for i in 0 ..< n:
+        arr_fp[i] = one.x
+        one.double()
+
+      var arr_fp_inv: array[n, Fp[Banderwagon]]
+      doAssert arr_fp_inv.batchInvert(arr_fp) == true
+
+      # Checking the correspondence with singular element inversion
+      for i in 0 ..< n:
+        var temp: Fp[Banderwagon]
+        temp.inv(two.x)
+        doAssert (arr_fp_inv[i] == temp).bool(), "Batch Inversion in consistent"
+        two.double()
+
+    batchInvert(10)
+
+  ## Tests to check if the Batch Map to Scalar Field
+  ## is consistent with it's respective singular operation
+  ## of mapping from Fp to Fr
+  ## Using the concept of point double from generator point
+  ## we try to achive this
+  test "Testing Batch Map to Base Field":
+    proc testBatchMapToBaseField() =
+      var A, B, g: EC
+      g.fromAffine(generator)
+
+      A.sum(g, g)
+      B.double(g)
+      B.double()
+
+      var expected_a, expected_b: Fr[Banderwagon]
+      expected_a.mapToScalarField(A)
+      expected_b.mapToScalarField(B)
+
+      var ARes, BRes: Fr[Banderwagon]
+      var scalars: array[2, Fr[Banderwagon]] = [ARes, BRes]
+      var fps: array[2, EC] = [A, B]
+
+      doAssert scalars.batchMapToScalarField(fps), "Batch Map to Scalar Failed"
+      doAssert (expected_a == scalars[0]).bool(), "expected scalar for point `A` is incorrect"
+      doAssert (expected_b == scalars[1]).bool(), "expected scalar for point `B` is incorrect"
+
+    testBatchMapToBaseField()

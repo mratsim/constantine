@@ -83,7 +83,7 @@ proc run_EC_batch_add_parallel_impl*[N: static int](
     for n in numPoints:
       test $ec & " parallel sum reduction (N=" & $n & ")":
         proc test(EC: typedesc, gen: RandomGen) =
-          var tp = Threadpool.new()
+          let tp = Threadpool.new()
           defer: tp.shutdown()
 
           var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](n)
@@ -108,7 +108,7 @@ proc run_EC_batch_add_parallel_impl*[N: static int](
 
       test "EC " & $ec.G & " parallel sum reduction (N=" & $n & ") - special cases":
         proc test(EC: typedesc, gen: RandomGen) =
-          var tp = Threadpool.new()
+          let tp = Threadpool.new()
           defer: tp.shutdown()
 
           var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](n)
@@ -162,7 +162,7 @@ proc run_EC_multi_scalar_mul_parallel_impl*[N: static int](
       let bucketBits = bestBucketBitSize(n, ec.F.C.getCurveOrderBitwidth(), useSignedBuckets = false, useManualTuning = false)
       test $ec & " Parallel Multi-scalar-mul (N=" & $n & ", bucket bits: " & $bucketBits & ")":
         proc test(EC: typedesc, gen: RandomGen) =
-          var tp = Threadpool.new()
+          let tp = Threadpool.new()
           defer: tp.shutdown()
           var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](n)
           var coefs = newSeq[BigInt[EC.F.C.getCurveOrderBitwidth()]](n)

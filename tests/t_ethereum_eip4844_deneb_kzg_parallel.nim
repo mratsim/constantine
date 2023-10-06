@@ -14,7 +14,8 @@ import
   # Internals
   ../constantine/hashes,
   ../constantine/serialization/codecs,
-  ../constantine/ethereum_eip4844_kzg
+  ../constantine/ethereum_eip4844_kzg_parallel,
+  ../constantine/threadpool/threadpool
 
 # Organization
 #
@@ -54,7 +55,7 @@ template testGen*(name, testData: untyped, body: untyped): untyped {.dirty.} =
   ## with identifier "test_name"
   ## The test vector data is available as JsonNode under the
   ## the variable passed as `testData`
-  proc `test _ name`(ctx: ptr EthereumKZGContext) =
+  proc `test _ name`(tp: Threadpool, ctx: ptr EthereumKZGContext) =
     var count = 0 # Need to fail if walkDir doesn't return anything
     var skipped = 0
     const testdir = TestVectorsDir / astToStr(name)/"small"
@@ -122,7 +123,7 @@ testGen(blob_to_kzg_commitment, testVector):
 
   var commitment: array[48, byte]
 
-  let status = blob_to_kzg_commitment(ctx, commitment, blob[].addr)
+  let status = tp.blob_to_kzg_commitment_parallel(ctx, commitment, blob[].addr)
   stdout.write "[" & $status & "]\n"
 
   if status == cttEthKZG_Success:
@@ -140,7 +141,7 @@ testGen(compute_kzg_proof, testVector):
   var proof: array[48, byte]
   var y: array[32, byte]
 
-  let status = compute_kzg_proof(ctx, proof, y, blob[].addr, z[])
+  let status = tp.compute_kzg_proof_parallel(ctx, proof, y, blob[].addr, z[])
   stdout.write "[" & $status & "]\n"
 
   if status == cttEthKZG_Success:
@@ -178,7 +179,7 @@ testGen(compute_blob_kzg_proof, testVector):
 
   var proof: array[48, byte]
 
-  let status = compute_blob_kzg_proof(ctx, proof, blob[].addr, commitment[])
+  let status = tp.compute_blob_kzg_proof_parallel(ctx, proof, blob[].addr, commitment[])
   stdout.write "[" & $status & "]\n"
 
   if status == cttEthKZG_Success:
@@ -195,7 +196,7 @@ testGen(verify_blob_kzg_proof, testVector):
   parseAssign(commitment, 48, testVector["input"]["commitment"].content)
   parseAssign(proof,      48, testVector["input"]["proof"].content)
 
-  let status = verify_blob_kzg_proof(ctx, blob[].addr, commitment[], proof[])
+  let status = tp.verify_blob_kzg_proof_parallel(ctx, blob[].addr, commitment[], proof[])
   stdout.write "[" & $status & "]\n"
 
   if status == cttEthKZG_Success:
@@ -229,7 +230,7 @@ testGen(verify_blob_kzg_proof_batch, testVector):
     else:
       nil
 
-  let status = verify_blob_kzg_proof_batch(
+  let status = tp.verify_blob_kzg_proof_batch_parallel(
                  ctx,
                  blobs.asUnchecked(),
                  commitments.asUnchecked(),
@@ -246,25 +247,28 @@ testGen(verify_blob_kzg_proof_batch, testVector):
     doAssert testVector["output"].content == "null"
 
 block:
-  suite "Ethereum Deneb Hardfork / EIP-4844 / Proto-Danksharding / KZG Polynomial Commitments":
+  suite "Ethereum Deneb Hardfork / EIP-4844 / Proto-Danksharding / KZG Polynomial Commitments (Parallel)":
     let ctx = load_ethereum_kzg_test_trusted_setup_mainnet()
+    let tp = Threadpool.new()
 
-    test "blob_to_kzg_commitment(dst: var array[48, byte], blob: ptr array[4096, byte])":
-      ctx.test_blob_to_kzg_commitment()
+    test "blob_to_kzg_commitment_parallel(tp: Threadpool, dst: var array[48, byte], blob: ptr array[4096, byte])":
+      test_blob_to_kzg_commitment(tp, ctx)
 
-    test "compute_kzg_proof(proof: var array[48, byte], y: var array[32, byte], blob: ptr array[4096, byte], z: array[32, byte])":
-      ctx.test_compute_kzg_proof()
+    test "compute_kzg_proof_parallel(tp: Threadpool, proof: var array[48, byte], y: var array[32, byte], blob: ptr array[4096, byte], z: array[32, byte])":
+      test_compute_kzg_proof(tp, ctx)
 
-    test "verify_kzg_proof(commitment: array[48, byte], z, y: array[32, byte], proof: array[48, byte]) -> bool":
-      ctx.test_verify_kzg_proof()
+    # Not parallelized
+    # test "verify_kzg_proof(commitment: array[48, byte], z, y: array[32, byte], proof: array[48, byte]) -> bool":
+    #   test_verify_kzg_proof(tp, ctx)
 
-    test "compute_blob_kzg_proof(proof: var array[48, byte], blob: ptr array[4096, byte], commitment: array[48, byte])":
-      ctx.test_compute_blob_kzg_proof()
+    test "compute_blob_kzg_proof_parallel(tp: Threadpool, proof: var array[48, byte], blob: ptr array[4096, byte], commitment: array[48, byte])":
+      test_compute_blob_kzg_proof(tp, ctx)
 
-    test "verify_blob_kzg_proof(blob: ptr array[4096, byte], commitment, proof: array[48, byte])":
-      ctx.test_verify_blob_kzg_proof()
+    test "verify_blob_kzg_proof_parallel(tp: Threadpool, blob: ptr array[4096, byte], commitment, proof: array[48, byte])":
+      test_verify_blob_kzg_proof(tp, ctx)
 
-    test "verify_blob_kzg_proof_batch(blobs: ptr UncheckedArray[array[4096, byte]], commitments, proofs: ptr UncheckedArray[array[48, byte]], n: int, secureRandomBytes: array[32, byte])":
-      ctx.test_verify_blob_kzg_proof_batch()
+    test "verify_blob_kzg_proof_batch_parallel(tp: Threadpool, blobs: ptr UncheckedArray[array[4096, byte]], commitments, proofs: ptr UncheckedArray[array[48, byte]], n: int, secureRandomBytes: array[32, byte])":
+      test_verify_blob_kzg_proof_batch(tp, ctx)
 
+    tp.shutdown()
     ctx.delete()

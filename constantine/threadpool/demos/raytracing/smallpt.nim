@@ -223,7 +223,7 @@ when compileOption("threads"):
      # We need the buffer raw address
     let buf = cast[ptr UncheckedArray[Vec]](C[0].addr)
 
-    var tp = Threadpool.new()
+    let tp = Threadpool.new()
 
     tp.parallelFor y in 0 ..< h:            # Loop over image rows
       captures: {tp, buf, samples}
@@ -269,7 +269,7 @@ when compileOption("threads"):
      # We need the buffer raw address
     let buf = cast[ptr UncheckedArray[Vec]](C[0].addr)
 
-    var tp = Threadpool.new()
+    let tp = Threadpool.new()
 
     tp.parallelFor y in 0 ..< h:            # Loop over image rows
       captures: {buf, samples}

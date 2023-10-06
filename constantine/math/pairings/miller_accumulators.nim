@@ -50,40 +50,40 @@ import
 # and we can choose N to be way less than 68.
 # So for compactness we take Aranha's approach.
 
-const AccumMax = 8
+const MillerAccumMax = 8
 # Max buffer size before triggering a Miller Loop.
 # Assuming pairing costs 100, with 50 for Miller Loop and 50 for Final exponentiation.
 #
 # N unbatched pairings would cost              N*100
 # N maximally batched pairings would cost      N*50 + 50
-# N AccumMax batched pairings would cost       N*50 + N/AccumMax*(Fpᵏ mul) + 50
+# N AccumMax batched pairings would cost       N*50 + N/MillerAccumMax*(Fpᵏ mul) + 50
 #
 # Fpᵏ mul costs 0.7% of a Miller Loop and so is negligeable.
 # By choosing AccumMax = 8, we amortized the cost to below 0.1% per pairing.
 
 type MillerAccumulator*[FF1, FF2; FpK: ExtensionField] = object
   accum: FpK
-  Ps: array[AccumMax, ECP_ShortW_Aff[FF1, G1]]
-  Qs: array[AccumMax, ECP_ShortW_Aff[FF2, G2]]
-  cur: uint32
+  Ps: array[MillerAccumMax, ECP_ShortW_Aff[FF1, G1]]
+  Qs: array[MillerAccumMax, ECP_ShortW_Aff[FF2, G2]]
+  len: uint32
   accOnce: bool
 
 func init*(ctx: var MillerAccumulator) =
-  ctx.cur = 0
+  ctx.len = 0
   ctx.accOnce = false
 
 func consumeBuffers[FF1, FF2, FpK](ctx: var MillerAccumulator[FF1, FF2, FpK]) =
-  if ctx.cur == 0:
+  if ctx.len == 0:
     return
 
   var t{.noInit.}: FpK
-  t.millerLoop(ctx.Qs.asUnchecked(), ctx.Ps.asUnchecked(), ctx.cur.int)
+  t.millerLoop(ctx.Qs.asUnchecked(), ctx.Ps.asUnchecked(), ctx.len.int)
   if ctx.accOnce:
     ctx.accum *= t
   else:
     ctx.accum = t
     ctx.accOnce = true
-  ctx.cur = 0
+  ctx.len = 0
 
 func update*[FF1, FF2, FpK](ctx: var MillerAccumulator[FF1, FF2, FpK], P: ECP_ShortW_Aff[FF1, G1], Q: ECP_ShortW_Aff[FF2, G2]): bool =
   ## Aggregate another set for pairing
@@ -94,34 +94,54 @@ func update*[FF1, FF2, FpK](ctx: var MillerAccumulator[FF1, FF2, FpK], P: ECP_Sh
   if P.isInf().bool or Q.isInf().bool:
     return false
 
-  if ctx.cur == AccumMax:
+  if ctx.len == MillerAccumMax:
     ctx.consumeBuffers()
 
-  ctx.Ps[ctx.cur] = P
-  ctx.Qs[ctx.cur] = Q
-  ctx.cur += 1
+  ctx.Ps[ctx.len] = P
+  ctx.Qs[ctx.len] = Q
+  ctx.len += 1
   return true
+
+func handover*(ctx: var MillerAccumulator) {.inline.} =
+  ## Prepare accumulator for cheaper merging.
+  ##
+  ## In a multi-threaded context, multiple accumulators can be created and process subsets of the batch in parallel.
+  ## Accumulators can then be merged:
+  ##    merger_accumulator += mergee_accumulator
+  ## Merging will involve an expensive reduction operation when an accumulation threshold of 8 is reached.
+  ## However merging two reduced accumulators is 136x cheaper.
+  ##
+  ## `Handover` forces this reduction on local threads to limit the burden on the merger thread.
+  ctx.consumeBuffers()
 
 func merge*(ctxDst: var MillerAccumulator, ctxSrc: MillerAccumulator) =
   ## Merge ctxDst <- ctxDst + ctxSrc
-  var dCur = ctxDst.cur
   var sCur = 0'u
-  var itemsLeft = ctxSrc.cur
+  var itemsLeft = ctxSrc.len
 
-  if dCur != 0 and dCur+itemsLeft >= AccumMax:
+  if ctxDst.len + itemsLeft >= MillerAccumMax:
     # Previous partial update, fill the buffer and do one miller loop
-    let free = AccumMax - dCur
+    let free = MillerAccumMax - ctxDst.len
     for i in 0 ..< free:
-      ctxDst[dCur+i] = ctxSrc[i]
+      ctxDst.Ps[ctxDst.len+i] = ctxSrc.Ps[i]
+      ctxDst.Qs[ctxDst.len+i] = ctxSrc.Qs[i]
+    ctxDst.len = MillerAccumMax
     ctxDst.consumeBuffers()
-    dCur = 0
     sCur = free
     itemsLeft -= free
 
-  if itemsLeft != 0:
-    # Store the tail
-    for i in 0 ..< itemsLeft:
-      ctxDst[dCur+i] = ctxSrc[sCur+i]
+  # Store the tail
+  for i in 0 ..< itemsLeft:
+    ctxDst.Ps[ctxDst.len+i] = ctxSrc.Ps[sCur+i]
+    ctxDst.Qs[ctxDst.len+i] = ctxSrc.Qs[sCur+i]
+
+  ctxDst.len += itemsLeft
+
+  if ctxDst.accOnce and ctxSrc.accOnce:
+    ctxDst.accum *= ctxSrc.accum
+  elif ctxSrc.accOnce:
+    ctxDst.accum = ctxSrc.accum
+    ctxDst.accOnce = true
 
 func finish*[FF1, FF2, FpK](ctx: var MillerAccumulator[FF1, FF2, FpK], multiMillerLoopResult: var Fpk) =
   ## Output the accumulation of multiple Miller Loops

@@ -30,18 +30,12 @@ proc sum_reduce_vartime_parallelChunks[F; G: static Subgroup](
        points: openArray[ECP_ShortW_Aff[F, G]]) {.noInline.} =
   ## Batch addition of `points` into `r`
   ## `r` is overwritten
-  ## Compute is parallelized, if beneficial.
-  ## This function can be nested in another parallel function
+  ## Scales better for large number of points
 
   # Chunking constants in ec_shortweierstrass_batch_ops.nim
   const maxTempMem = 262144 # 2¹⁸ = 262144
   const maxChunkSize = maxTempMem div sizeof(ECP_ShortW_Aff[F, G])
   const minChunkSize = (maxChunkSize * 60) div 100 # We want 60%~100% full chunks
-
-  if points.len <= maxChunkSize:
-    r.setInf()
-    r.accumSum_chunk_vartime(points.asUnchecked(), points.len)
-    return
 
   let chunkDesc = balancedChunksPrioSize(
     start = 0, stopEx = points.len,
@@ -72,48 +66,58 @@ proc sum_reduce_vartime_parallelChunks[F; G: static Subgroup](
     partialResultsAffine.batchAffine(partialResults, chunkDesc.numChunks)
     r.sum_reduce_vartime(partialResultsAffine, chunkDesc.numChunks)
 
-proc sum_reduce_vartime_parallelFor[F; G: static Subgroup](
+proc sum_reduce_vartime_parallelAccums[F; G: static Subgroup](
        tp: Threadpool,
        r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G]),
        points: openArray[ECP_ShortW_Aff[F, G]]) =
   ## Batch addition of `points` into `r`
   ## `r` is overwritten
-  ## Compute is parallelized, if beneficial.
+  ## 2x faster for low number of points
 
-  mixin globalSum
+  const maxTempMem = 1 shl 18 # 2¹⁸ = 262144
+  const maxChunkSize = maxTempMem div sizeof(ECP_ShortW_Aff[F, G])
+  type Acc = EcAddAccumulator_vartime[typeof(r), F, G, maxChunkSize]
 
-  const maxTempMem = 262144 # 2¹⁸ = 262144
-  const maxStride = maxTempMem div sizeof(ECP_ShortW_Aff[F, G])
+  let ps = points.asUnchecked()
+  let N = points.len
 
-  let p = points.asUnchecked
-  let pointsLen = points.len
+  mixin globalAcc
 
-  tp.parallelFor i in 0 ..< points.len:
-    stride: maxStride
-    captures: {p, pointsLen}
-    reduceInto(globalSum: typeof(r)):
+  const chunkSize = 32
+
+  tp.parallelFor i in 0 ..< N:
+    stride: chunkSize
+    captures: {ps, N}
+    reduceInto(globalAcc: ptr Acc):
       prologue:
-        var localSum {.noInit.}: typeof(r)
-        localSum.setInf()
+        var workerAcc = allocHeap(Acc)
+        workerAcc[].init()
       forLoop:
-        let n = min(maxStride, pointsLen-i)
-        localSum.accumSum_chunk_vartime(p +% i, n)
-      merge(remoteSum: Flowvar[typeof(r)]):
-        localSum.sum_vartime(localSum, sync(remoteSum))
+        for j in i ..< min(i+chunkSize, N):
+          workerAcc[].update(ps[j])
+      merge(remoteAccFut: Flowvar[ptr Acc]):
+        let remoteAcc = sync(remoteAccFut)
+        workerAcc[].merge(remoteAcc[])
+        freeHeap(remoteAcc)
       epilogue:
-        return localSum
+        workerAcc[].handover()
+        return workerAcc
 
-  r = sync(globalSum)
+  let ctx = sync(globalAcc)
+  ctx[].finish(r)
+  freeHeap(ctx)
 
 proc sum_reduce_vartime_parallel*[F; G: static Subgroup](
        tp: Threadpool,
        r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G]),
        points: openArray[ECP_ShortW_Aff[F, G]]) {.inline.} =
-  ## Batch addition of `points` into `r`
+  ## Parallel Batch addition of `points` into `r`
   ## `r` is overwritten
-  ## Compute is parallelized, if beneficial.
-  ## This function cannot be nested in another parallel function
-  when false:
-    tp.sum_reduce_vartime_parallelFor(r, points)
+
+  if points.len < 256:
+    r.setInf()
+    r.accumSum_chunk_vartime(points.asUnchecked(), points.len)
+  elif points.len < 8192:
+    tp.sum_reduce_vartime_parallelAccums(r, points)
   else:
     tp.sum_reduce_vartime_parallelChunks(r, points)
