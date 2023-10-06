@@ -497,6 +497,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_ethereum_bls_signatures.nim", false),
   ("tests/t_ethereum_eip2333_bls12381_key_derivation.nim", false),
   ("tests/t_ethereum_eip4844_deneb_kzg.nim", false),
+  ("tests/t_ethereum_eip4844_deneb_kzg_parallel.nim", false),
 ]
 
 const testDescNvidia: seq[string] = @[
@@ -555,6 +556,7 @@ const benchDesc = [
   "bench_sha256",
   "bench_hash_to_curve",
   "bench_ethereum_bls_signatures",
+  "bench_ethereum_eip4844_kzg",
   "bench_evm_modexp_dos",
   "bench_gmp_modexp",
   "bench_gmp_modmul"
@@ -974,3 +976,8 @@ task bench_hash_to_curve, "Run Hash-to-Curve benchmarks":
 # ------------------------------------------
 task bench_ethereum_bls_signatures, "Run Ethereum BLS signatures benchmarks - CC compiler":
   runBench("bench_ethereum_bls_signatures")
+
+# EIP 4844 - KZG Polynomial Commitments
+# ------------------------------------------
+task bench_ethereum_eip4844_kzg, "Run Ethereum EIP4844 KZG Polynomial commitment - CC compiler":
+  runBench("bench_ethereum_eip4844_kzg")

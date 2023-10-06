@@ -337,7 +337,7 @@ proc main() =
       flt = ru.ru_minflt
 
     let start = wtime_msec()
-  var tp = Threadpool.new(numThreads = nthreads)
+  let tp = Threadpool.new(numThreads = nthreads)
   tp.blackScholesConstantine(ctx.addr)
   tp.shutdown()
 

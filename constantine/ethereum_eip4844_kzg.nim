@@ -102,7 +102,7 @@ func fromDigest(dst: var Fr[BLS12_381], src: array[32, byte]) =
           Fr[BLS12_381].getNegInvModWord(),
           Fr[BLS12_381].getSpareBits())
 
-func fiatShamirChallenge(dst: var Fr[BLS12_381], blob: Blob, commitmentBytes: array[BYTES_PER_COMMITMENT, byte]) =
+func fiatShamirChallenge(dst: ptr Fr[BLS12_381], blob: ptr Blob, commitmentBytes: ptr array[BYTES_PER_COMMITMENT, byte]) =
   ## Compute a Fiat-Shamir challenge
   ## compute_challenge: https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/deneb/polynomial-commitments.md#compute_challenge
   var transcript {.noInit.}: sha256
@@ -114,12 +114,12 @@ func fiatShamirChallenge(dst: var Fr[BLS12_381], blob: Blob, commitmentBytes: ar
   transcript.update(default(array[16-sizeof(uint64), byte]))
   transcript.update(FIELD_ELEMENTS_PER_BLOB.uint64.toBytes(bigEndian))
 
-  transcript.update(blob)
-  transcript.update(commitmentBytes)
+  transcript.update(blob[])
+  transcript.update(commitmentBytes[])
 
   var challenge {.noInit.}: array[32, byte]
   transcript.finish(challenge)
-  dst.fromDigest(challenge)
+  dst[].fromDigest(challenge)
 
 func computePowers(dst: ptr UncheckedArray[Fr[BLS12_381]], len: int, base: Fr[BLS12_381]) =
   ## We need linearly independent random numbers
@@ -217,7 +217,7 @@ func blob_to_field_polynomial(
 # - Either we are in "HappyPath" section that shortcuts to resource cleanup on error
 # - or there are no resources to clean and we can early return from a function.
 
-template check(evalExpr: CttCodecScalarStatus): untyped {.dirty.} =
+template checkReturn(evalExpr: CttCodecScalarStatus): untyped {.dirty.} =
   # Translate codec status code to KZG status code
   # Beware of resource cleanup like heap allocation, this can early exit the caller.
   block:
@@ -227,7 +227,7 @@ template check(evalExpr: CttCodecScalarStatus): untyped {.dirty.} =
     of cttCodecScalar_Zero:                             discard
     of cttCodecScalar_ScalarLargerThanCurveOrder:       return cttEthKZG_ScalarLargerThanCurveOrder
 
-template check(evalExpr: CttCodecEccStatus): untyped {.dirty.} =
+template checkReturn(evalExpr: CttCodecEccStatus): untyped {.dirty.} =
   # Translate codec status code to KZG status code
   # Beware of resource cleanup like heap allocation, this can early exit the caller.
   block:
@@ -248,7 +248,7 @@ template check(Section: untyped, evalExpr: CttCodecScalarStatus): untyped {.dirt
     case status
     of cttCodecScalar_Success:                          discard
     of cttCodecScalar_Zero:                             discard
-    of cttCodecScalar_ScalarLargerThanCurveOrder:       result = cttEthKZG_EccPointNotInSubGroup; break Section
+    of cttCodecScalar_ScalarLargerThanCurveOrder:       result = cttEthKZG_ScalarLargerThanCurveOrder; break Section
 
 template check(Section: untyped, evalExpr: CttCodecEccStatus): untyped {.dirty.} =
   # Translate codec status code to KZG status code
@@ -305,8 +305,8 @@ func compute_kzg_proof*(
        blob: ptr Blob,
        z_bytes: array[32, byte]): CttEthKzgStatus {.tags:[Alloca, HeapAlloc, Vartime].} =
   ## Generate:
+  ## - A proof of correct evaluation.
   ## - y = p(z), the evaluation of p at the challenge z, with p being the Blob interpreted as a polynomial.
-  ## - A zero-knowledge proof of correct evaluation.
   ##
   ## Mathematical description
   ##   [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁, with p(τ) being the commitment, i.e. the evaluation of p at the powers of τ
@@ -320,7 +320,7 @@ func compute_kzg_proof*(
 
   # Random or Fiat-Shamir challenge
   var z {.noInit.}: Fr[BLS12_381]
-  check z.bytes_to_bls_field(z_bytes)
+  checkReturn z.bytes_to_bls_field(z_bytes)
 
   let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], 64)
 
@@ -354,16 +354,16 @@ func verify_kzg_proof*(
   ## Verify KZG proof that p(z) == y where p(z) is the polynomial represented by "polynomial_kzg"
 
   var commitment {.noInit.}: KZGCommitment
-  check commitment.bytes_to_kzg_commitment(commitment_bytes)
+  checkReturn commitment.bytes_to_kzg_commitment(commitment_bytes)
 
   var challenge {.noInit.}: matchingOrderBigInt(BLS12_381)
-  check challenge.bytes_to_bls_bigint(z_bytes)
+  checkReturn challenge.bytes_to_bls_bigint(z_bytes)
 
   var eval_at_challenge {.noInit.}: matchingOrderBigInt(BLS12_381)
-  check eval_at_challenge.bytes_to_bls_bigint(y_bytes)
+  checkReturn eval_at_challenge.bytes_to_bls_bigint(y_bytes)
 
   var proof {.noInit.}: KZGProof
-  check proof.bytes_to_kzg_proof(proof_bytes)
+  checkReturn proof.bytes_to_kzg_proof(proof_bytes)
 
   let verif = kzg_verify(ECP_ShortW_Aff[Fp[BLS12_381], G1](commitment),
                          challenge, eval_at_challenge,
@@ -383,7 +383,7 @@ func compute_blob_kzg_proof*(
   ## This method does not verify that the commitment is correct with respect to `blob`.
 
   var commitment {.noInit.}: KZGCommitment
-  check commitment.bytes_to_kzg_commitment(commitment_bytes)
+  checkReturn commitment.bytes_to_kzg_commitment(commitment_bytes)
 
   # Blob -> Polynomial
   let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], 64)
@@ -394,7 +394,7 @@ func compute_blob_kzg_proof*(
 
     # Fiat-Shamir challenge
     var challenge {.noInit.}: Fr[BLS12_381]
-    challenge.fiatShamirChallenge(blob[], commitment_bytes)
+    challenge.addr.fiatShamirChallenge(blob, commitment_bytes.unsafeAddr)
 
     # KZG Prove
     var y {.noInit.}: Fr[BLS12_381]                         # y = p(z), eval at challenge z
@@ -421,10 +421,10 @@ func verify_blob_kzg_proof*(
   ## Given a blob and a KZG proof, verify that the blob data corresponds to the provided commitment.
 
   var commitment {.noInit.}: KZGCommitment
-  check commitment.bytes_to_kzg_commitment(commitment_bytes)
+  checkReturn commitment.bytes_to_kzg_commitment(commitment_bytes)
 
   var proof {.noInit.}: KZGProof
-  check proof.bytes_to_kzg_proof(proof_bytes)
+  checkReturn proof.bytes_to_kzg_proof(proof_bytes)
 
   let poly = allocHeapAligned(PolynomialEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], 64)
   let invRootsMinusZ = allocHeapAligned(array[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]], alignment = 64)
@@ -435,7 +435,7 @@ func verify_blob_kzg_proof*(
 
     # Fiat-Shamir challenge
     var challengeFr {.noInit.}: Fr[BLS12_381]
-    challengeFr.fiatShamirChallenge(blob[], commitment_bytes)
+    challengeFr.addr.fiatShamirChallenge(blob, commitment_bytes.unsafeAddr)
 
     var challenge, eval_at_challenge {.noInit.}: matchingOrderBigInt(BLS12_381)
     challenge.fromField(challengeFr)
@@ -510,7 +510,7 @@ func verify_blob_kzg_proof_batch*(
     for i in 0 ..< n:
       check HappyPath, commitments[i].bytes_to_kzg_commitment(commitments_bytes[i])
       check HappyPath, poly.blob_to_field_polynomial(blobs[i].addr)
-      challenges[i].fiatShamirChallenge(blobs[i], commitments_bytes[i])
+      challenges[i].addr.fiatShamirChallenge(blobs[i].addr, commitments_bytes[i].addr)
 
       # Lagrange Polynomial evaluation
       # ------------------------------

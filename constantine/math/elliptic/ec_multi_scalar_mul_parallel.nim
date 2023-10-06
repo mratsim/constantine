@@ -576,3 +576,14 @@ proc multiScalarMul_vartime_parallel*[bits: static int, EC, F, G](
   let N = points.len
 
   tp.multiScalarMul_dispatch_vartime_parallel(r.addr, coefs.asUnchecked(), points.asUnchecked(), N)
+
+proc multiScalarMul_vartime_parallel*[bits: static int, EC, F, G](
+       tp: Threadpool,
+       r: ptr EC,
+       coefs: ptr UncheckedArray[BigInt[bits]],
+       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
+       len: int) {.meter, inline.} =
+  ## Multiscalar multiplication:
+  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
+  ## This function can be nested in another parallel function
+  tp.multiScalarMul_dispatch_vartime_parallel(r, coefs, points, len)

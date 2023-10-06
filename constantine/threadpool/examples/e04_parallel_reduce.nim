@@ -20,7 +20,7 @@ block:
 
       result = sync(globalSum)
 
-    var tp = Threadpool.new(numThreads = 4)
+    let tp = Threadpool.new(numThreads = 4)
 
     let sum1M = tp.sumReduce(1000000)
     echo "Sum reduce(0..1000000): ", sum1M

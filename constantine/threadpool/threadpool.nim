@@ -950,7 +950,7 @@ proc new*(T: type Threadpool, numThreads = countProcessors()): T {.raises: [Reso
   ## will not impact correctness but may impact performance.
 
   type TpObj = typeof(default(Threadpool)[]) # due to C import, we need a dynamic sizeof
-  var tp = allocHeapUncheckedAlignedPtr(Threadpool, sizeof(TpObj), alignment = 64)
+  let tp = allocHeapUncheckedAlignedPtr(Threadpool, sizeof(TpObj), alignment = 64)
 
   tp.barrier.init(numThreads.uint32)
   tp.globalBackoff.initialize()
@@ -978,7 +978,7 @@ proc new*(T: type Threadpool, numThreads = countProcessors()): T {.raises: [Reso
   profileStart(run_task)
   return tp
 
-proc cleanup(tp: var Threadpool) {.raises: [].} =
+proc cleanup(tp: Threadpool) {.raises: [].} =
   ## Cleanup all resources allocated by the threadpool
   preCondition: workerContext.currentTask.isRootTask()
 
@@ -993,7 +993,7 @@ proc cleanup(tp: var Threadpool) {.raises: [].} =
 
   tp.freeHeapAligned()
 
-proc shutdown*(tp: var Threadpool) {.raises:[].} =
+proc shutdown*(tp: Threadpool) {.raises:[].} =
   ## Wait until all tasks are processed and then shutdown the threadpool
   preCondition: workerContext.currentTask.isRootTask()
   tp.syncAll()
