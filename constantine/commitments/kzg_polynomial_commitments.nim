@@ -397,6 +397,7 @@ func kzg_verify_batch*[bits: static int, F2; C: static Curve](
   freeHeapAligned(commits_min_evals)
 
   # ∑[rᵢ][zᵢ][proofᵢ]₁
+  # ------------------
   var tmp {.noInit.}: Fr[C]
   for i in 0 ..< n:
     tmp.prod(linearIndepRandNumbers[i], challenges[i])
@@ -406,6 +407,7 @@ func kzg_verify_batch*[bits: static int, F2; C: static Curve](
   freeHeapAligned(coefs)
 
   # e(∑ [rᵢ][proofᵢ]₁, [τ]₂) . e(∑[rᵢ]([commitmentᵢ]₁ - [eval_at_challengeᵢ]₁) + ∑[rᵢ][zᵢ][proofᵢ]₁, [-1]₂) = 1
+  # -----------------------------------------------------------------------------------------------------------
   template sum_of_sums: untyped = sums_jac[1]
 
   sum_of_sums.sum_vartime(sum_commit_minus_evals_G1, sum_rand_challenge_proofs)

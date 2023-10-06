@@ -6,7 +6,7 @@ block:
     echo "Running 'threadpool/examples/e03_parallel_for.nim'"
     echo "=============================================================================================="
 
-    var tp = Threadpool.new(numThreads = 4)
+    let tp = Threadpool.new(numThreads = 4)
 
     tp.parallelFor i in 0 ..< 100:
       log("%d\n", i)
@@ -24,7 +24,7 @@ block: # Capturing outside scope
     echo "Running 'threadpool/examples/e03_parallel_for.nim'"
     echo "=============================================================================================="
 
-    var tp = Threadpool.new(numThreads = 4)
+    let tp = Threadpool.new(numThreads = 4)
 
     var a = 100
     var b = 10
@@ -45,7 +45,7 @@ block: # Nested loops
     echo "Running 'threadpool/examples/e03_parallel_for.nim'"
     echo "=============================================================================================="
 
-    var tp = Threadpool.new(numThreads = 4)
+    let tp = Threadpool.new(numThreads = 4)
 
     tp.parallelFor i in 0 ..< 4:
       tp.parallelFor j in 0 ..< 8:
