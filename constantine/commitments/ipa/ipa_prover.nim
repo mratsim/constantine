@@ -16,14 +16,12 @@ import
   ./[transcript_gen, common_utils],
   ../../../constantine/platforms/primitives,
   ../../math/config/[type_ff, curves],
-  ../../math/elliptic/ec_twistededwards_projective,
-  ../../../constantine/hashes,
+  ../../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
   ../../../constantine/math/arithmetic,
   ../../../constantine/math/elliptic/ec_scalar_mul, 
-  ../../../constantine/platforms/[bithacks,views],
+  ../../../constantine/platforms/[views],
   ../../../constantine/math/io/[io_fields],
-  ../../../constantine/curves_primitives,
-  ../../../constantine/serialization/[codecs_banderwagon,codecs_status_codes]
+  ../../../constantine/curves_primitives
 
 type
   EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]

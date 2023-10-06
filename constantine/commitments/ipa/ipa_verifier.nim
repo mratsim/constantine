@@ -10,14 +10,12 @@ import
   ./[transcript_gen, common_utils, ipa_prover, barycentric_form],
   ../../../constantine/platforms/primitives,
   ../../math/config/[type_ff, curves],
-  ../../math/elliptic/ec_twistededwards_projective,
-  ../../../constantine/hashes,
+  ../../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
   ../../../constantine/math/arithmetic,
   ../../../constantine/math/elliptic/ec_scalar_mul, 
-  ../../../constantine/platforms/[bithacks,views],
+  ../../../constantine/platforms/[views],
   ../../../constantine/math/io/[io_fields],
-  ../../../constantine/curves_primitives,
-  ../../../constantine/serialization/[codecs_banderwagon,codecs_status_codes]
+  ../../../constantine/curves_primitives
 
 # ############################################################
 #
@@ -71,7 +69,7 @@ func checkIPAProof*[bool] (res: var bool, transcript: Transcript, ic: IPASetting
     let challenges = generateChallengesForIPA(transcript, proof)
 
     var challengesInv {.noInit.}: openArray[EC_P_Fr] 
-    challengesInv.computeZMinusXi(challenges)
+    challengesInv.batchInvert(challenges)
 
     for i in 0..challenges.len:
         let x = challenges[i]

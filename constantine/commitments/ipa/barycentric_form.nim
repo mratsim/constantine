@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 import 
  ../../../constantine/math/config/[type_ff, curves],
- ../../../constantine/math/elliptic/ec_twistededwards_projective,
+ ../../../constantine/math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
  ../../../constantine/math/arithmetic/[finite_fields],
  ../../../constantine/math/arithmetic
 
@@ -98,43 +98,6 @@ func newPrecomputedWeights* [PrecomputedWeightsObj] (res: var PrecomputedWeights
 # func BatchInversion(points : seq[EC_P_Fr]) : seq[EC_P_Fr] =
 #  var result : array[len(points),EC_P_Fr]
 
-func computeZMinusXi* [EC_P_Fr] (res: var EC_P_Fr, invRootsMinusZ: var array[DOMAIN, EC_P_Fr], earlyReturnOnZero: static bool)= 
-  var accInv{.noInit.}: FF
-  var rootsMinusZ{.noInit.}: array[DOMAIN, EC_P_Fr]
-
-  accInv.setOne()
-
-  var index0 = -1
-
-  when earlyReturnOnZero: # Split computation in 2 phases
-    if rootsMinusZ[i].isZero().bool():
-      return i
-
-  for i in 0 ..< DOMAIN:
-    when not earlyReturnOnZero: # Fused substraction and batch inversion
-      if rootsMinusZ[i].isZero().bool():
-        index0 = i
-        invRootsMinusZ[i].setZero()
-        continue
-
-    invRootsMinusZ[i] = accInv
-    accInv *= rootsMinusZ[i]
-
-  accInv.inv_vartime()
-
-  for i in countdown(DOMAIN-1, 1):
-    if i == index0:
-      continue
-
-    invRootsMinusZ[i] *= accInv
-    accInv *= rootsMinusZ[i]
-
-  if index0 == 0:
-    invRootsMinusZ[0].setZero()
-  else: # invRootsMinusZ[0] was init to accInv=1
-    invRootsMinusZ[0] = accInv
-  
-  return invRootsMinusZ
 
 
 func computeBarycentricCoefficients* [PrecomputedWeights]( res: var array[DOMAIN, EC_P_Fr], point : var EC_P_Fr) =
@@ -160,7 +123,7 @@ func computeBarycentricCoefficients* [PrecomputedWeights]( res: var array[DOMAIN
 
   totalProd.prod(totalProd, tmp)
 
-  res.computeZMinusXi(res)
+  res.batchInvert(res)
 
   for i in uint64(0)..DOMAIN:
     res[i].prod(res[i], totalProd)

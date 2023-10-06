@@ -10,14 +10,11 @@ import
   ./[transcript_gen, common_utils, ipa_prover, barycentric_form],
   ../../../constantine/platforms/primitives,
   ../../math/config/[type_ff, curves],
-  ../../math/elliptic/ec_twistededwards_projective,
-  ../../../constantine/hashes,
+  ../../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
   ../../../constantine/math/arithmetic,
-  ../../../constantine/math/elliptic/ec_scalar_mul, 
-  ../../../constantine/platforms/[bithacks,views],
+  ../../../constantine/platforms/[views],
   ../../../constantine/math/io/[io_fields],
-  ../../../constantine/curves_primitives,
-  ../../../constantine/serialization/[codecs_banderwagon,codecs_status_codes]
+  ../../../constantine/curves_primitives
 
 
 # ############################################################
@@ -144,7 +141,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: Transcript
         deno.diff(t,z)
         #TODO: fr element append() ?
         
-    denInv.computeZMinusXi(denInv)
+    denInv.batchInvert(denInv)
 
     #Compute h(X) = g1(X)
     var hx {.noInit.}: array[DOMAIN, EC_P_Fr]
@@ -248,7 +245,7 @@ func verifyMultiproof* [bool] (res: var bool, transcript : Transcript, ipaSettin
 
             helperScalarDeno[i].diff(t, z)
 
-        helperScalarDeno.computeZMinusXi(helperScalarDeno)
+        helperScalarDeno.batchInvert(helperScalarDeno)
 
         # Compute g_2(t) = SUMMATION (y_i * r^i) / (t - z_i) = SUMMATION (y_i * r) * helperScalarDeno
         var g2t {.noInit.} : EC_P_Fr
@@ -291,7 +288,6 @@ func verifyMultiproof* [bool] (res: var bool, transcript : Transcript, ipaSettin
 func mutliProofEquality* [bool] (res: var bool, mp: MultiProof, other: MultiProof)=
     if not(mp.IPAprv == other.IPAprv):
         res = false
-    
     res = mp.D == other.Ds
 
             

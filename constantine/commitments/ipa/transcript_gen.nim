@@ -12,10 +12,8 @@
 #
 # ############################################################
 import
-    std/typetraits,
     ../../platforms/primitives,
     ../../serialization/endians,
-    ../../../constantine/platforms/primitives,
     ../../math/config/[type_ff, curves],
     ../../math/elliptic/ec_twistededwards_projective,
     ../../../constantine/hashes,

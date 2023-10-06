@@ -19,7 +19,6 @@ import
     ../../../constantine/math/elliptic/[ec_multi_scalar_mul, ec_multi_scalar_mul_scheduler],
     ../../../constantine/platforms/[bithacks,views],
     ../../../constantine/math/io/[io_fields],
-    ../../../constantine/math/constants/zoo_endomorphisms,
     ../../../constantine/curves_primitives,
     ../../../constantine/serialization/[codecs_banderwagon,codecs_status_codes]
 
