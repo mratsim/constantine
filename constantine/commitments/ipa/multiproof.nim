@@ -27,7 +27,7 @@ import
 
 type
   EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
-  EC_P_Fr* = ECP_TwEdwards_Prj[Fr[Banderwagon]]
+  EC_P_Fr* = Fr[Banderwagon]
 
 type 
     MultiProof* = object
@@ -36,17 +36,17 @@ type
 
 const DOMAIN = 256
 
-# Converts the const DOMAIN 256 to ECP_TwEdwards_Prj[Fr[Banderwagon]]
+# Converts the const DOMAIN 256 to Fr[Banderwagon]
 func domainToFrElem* [EC_P_Fr] (res: var EC_P_Fr, inp: uint8)=
     var x {.noInit.} : EC_P_Fr
     x.setUint(uint64(inp))
     res = x
 
-# Computes the powers of an ECP_TwEdwards_Prj[Fr[Banderwagon]] element
-func computePowersOfElem [FF] (res: var openArray[FF], x: FF, degree: SomeUnsignedInt)= 
+# Computes the powers of an Fr[Banderwagon] element
+func computePowersOfElem* [EC_P_Fr] (res: var openArray[EC_P_Fr], x: EC_P_Fr, degree: SomeSignedInt)= 
     res[0].setOne()
 
-    for i in 0..degree:
+    for i in 0..<degree:
         res[i].prod(res[i-1], x)
     
 # createMultiProof creates a multi-proof for several polynomials in the evaluation form
@@ -67,7 +67,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: Transcript
 
     #TODO: add BatchNormalize() for Banderwagon EC_P
 
-    for i in 0..num_queries:
+    for i in 0..<num_queries:
         transcript.pointAppend(Cs[i],asBytes"C")
         var z {.noInit.} : EC_P_Fr
         z.domainToFrElem(Zs[i])
@@ -75,8 +75,8 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: Transcript
 
         # deducing the `y` value
 
-        let f = Fs[i]
-        let y = f[Zs[i]]
+        var f = Fs[i]
+        var y = f[Zs[i]]
 
         transcript.scalarAppend(y, asBytes"y")
 
@@ -91,8 +91,8 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: Transcript
 
     var groupedFs {.noInit.}: array[DOMAIN, openArray[EC_P_Fr]]
 
-    for i in 0..num_queries:
-        let z = Zs[i]
+    for i in 0..<num_queries:
+        var z = Zs[i]
         
         if groupedFs[z].len == 0:
             groupedFs[z]: array[DOMAIN, EC_P_Fr]
@@ -100,10 +100,10 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: Transcript
         var r {.noInit.}: EC_P_Fr
         r = powersOfr[i]
 
-        for j in 0..DOMAIN:
+        for j in 0..<DOMAIN:
             var scaledEvals {.noInit.}: EC_P_Fr
             scaledEvals.prod(r, Fs[i][j])
-            groupedFs[z][j].add(groupedFs[z][j], scaledEvals)
+            groupedFs[z][j].sum(groupedFs[z][j], scaledEvals)
         
     
     var gx {.noInit.}: array[DOMAIN, EC_P_Fr]
@@ -116,7 +116,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: Transcript
         var quotient {.noInit.} : openArray[EC_P_Fr]
         quotient = ipaSetting.PrecomputedWeights.divisionOnDomain(uint8(idx), f)
 
-        for j in  0..DOMAIN:
+        for j in  0..<DOMAIN:
             gx[j] += quotient[j]
         
     var D {.noInit.}: EC_P
@@ -145,7 +145,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: Transcript
 
     #Compute h(X) = g1(X)
     var hx {.noInit.}: array[DOMAIN, EC_P_Fr]
-    let denInvIdx = 0
+    var denInvIdx = 0
 
     for _,f in groupedFs:
         if f.len == 0:
@@ -154,13 +154,13 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: Transcript
         for k in 0..DOMAIN:
             var tmp {.noInit.}: EC_P_Fr
             tmp.prod(f[k], denInv[denInvIdx])
-            hx[k].add(hx[k], tmp)
+            hx[k].sum(hx[k], tmp)
 
         denInvIdx = denInvIdx + 1
 
     var hMinusg {.noInit.}: array[DOMAIN, EC_P_Fr]
 
-    for i in 0..DOMAIN:
+    for i in 0..<DOMAIN:
         hMinusg.diff(hx[i],gx[i])
 
     var E {.noInit.}: EC_P
@@ -192,14 +192,14 @@ func verifyMultiproof* [bool] (res: var bool, transcript : Transcript, ipaSettin
 
     debug: doAssert Cs.len == Zs.len, "Number of commitments and the Number of input points don't match!"
 
-    let num_queries = Cs.len
+    var num_queries = Cs.len
 
     var checker {.noInit.}: bool
     checker = num_queries == 0
 
     debug: doAssert num_queries == 0, "Number of queries is zero!"
 
-    for i in 0..num_queries:
+    for i in 0..<num_queries:
         transcript.pointAppend(Cs[i], asBytes"C")
 
         var z {.noInit.} : EC_P_Fr
@@ -223,7 +223,7 @@ func verifyMultiproof* [bool] (res: var bool, transcript : Transcript, ipaSettin
     # and the needed helper scalars
     var groupedEvals {.noInit.}: array[DOMAIN, EC_P_Fr]
 
-    for i in 0..num_queries:
+    for i in 0..<num_queries:
 
         var z {.noInit.}: uint8
         z = Zs[i]
@@ -236,10 +236,10 @@ func verifyMultiproof* [bool] (res: var bool, transcript : Transcript, ipaSettin
 
         groupedEvals[z] += scaledEvals
 
-        #Calculating the helper scalar denominatoer, which is 1 / t - z_i
+        #Calculating the helper scalar denominator, which is 1 / t - z_i
         var helperScalarDeno {.noInit.} : array[DOMAIN, EC_P_Fr]
 
-        for i in 0..DOMAIN:
+        for i in 0..<DOMAIN:
             var z {.noInit.}: EC_P_Fr
             z.domainToFrElem(uint8(i))
 
@@ -251,7 +251,7 @@ func verifyMultiproof* [bool] (res: var bool, transcript : Transcript, ipaSettin
         var g2t {.noInit.} : EC_P_Fr
         g2t.setZero()
 
-        for i in 0..DOMAIN:
+        for i in 0..<DOMAIN:
             if groupedEvals[i].isZero():
                 continue
 
@@ -265,7 +265,7 @@ func verifyMultiproof* [bool] (res: var bool, transcript : Transcript, ipaSettin
 
         var Csnp {.noInit.}: array[Cs.len, EC_P]
 
-        for i in 0..Cs.len:
+        for i in 0..<Cs.len:
             Csnp[i] = Cs[i]
 
             msmScalars[i].prod(powersOfr[i], helperScalarDeno[Zs[i]])

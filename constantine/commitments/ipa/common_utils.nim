@@ -32,7 +32,6 @@ const seed* = asBytes"eth_verkle_oct_2021"
 type
   EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
 
-
 type
     IPASettings* = object
      SRS : openArray[EC_P]
@@ -84,7 +83,7 @@ func generate_random_elements* [FF](points: var  openArray[FF] , num_points: uin
 func computeInnerProducts* [FF] (res: var FF, a,b : openArray[FF])=
     debug: doAssert (a.len == b.len), "The lengths must be equal!"
     res.setZero()
-    for i in 0..len(a):
+    for i in 0..<len(a):
         var tmp {.noInit.} : FF 
         tmp.prod(a[i], b[i])
         res += tmp
@@ -99,7 +98,7 @@ func foldScalars* [FF] (res: var openArray[FF], a,b : openArray[FF], x: FF)=
     
     doAssert a.len == b.len , "Lengths should be equal!"
 
-    for i in 0..a.len:
+    for i in 0..<a.len:
         var bx {.noInit.}: FF
         bx.prod(x, b[i])
         res[i].sum(bx, a[i])
@@ -109,7 +108,7 @@ func foldPoints* [FF] (res: var openArray[FF], a,b : openArray[FF], x: FF)=
     
     doAssert a.len == b.len , "Should have equal lengths!"
 
-    for i in 0..a.len:
+    for i in 0..<a.len:
         var bx {.noInit.}: FF
 
         b[i].scalarMul(x.toBig())
@@ -121,7 +120,7 @@ func splitScalars* (t: var StridedView) : tuple[a1,a2: StridedView] {.inline.}=
 
     doAssert (t.len and 1), "Length must be even!"  
 
-    let mid = t.len shr 1
+    var mid = t.len shr 1
 
     var result {.noInit.}: StridedView
     result.a1.len = mid
@@ -138,7 +137,7 @@ func splitPoints* (t: var StridedView) : tuple[l,r: StridedView] {.inline.}=
 
     doAssert (t.len and 1), "Length must be even!"
 
-    let mid = t.len shr 1
+    var mid = t.len shr 1
 
     var result {.noInit.}: StridedView
     result.a1.len = mid
@@ -156,7 +155,7 @@ func computeNumRounds* [float64] (res: var float64, vectorSize: SomeUnsignedInt)
 
     doAssert (vectorSize == 0), "Zero is not a valid input!"
 
-    let isP2 = isPowerOf2_vartime(vectorSize) and isPowerOf2_vartime(vectorSize - 1)
+    var isP2 = isPowerOf2_vartime(vectorSize) and isPowerOf2_vartime(vectorSize - 1)
 
     doAssert (isP2 == 1), "not a power of 2, hence not a valid inputs"
 
@@ -185,8 +184,8 @@ func multiScalarMulImpl_reference_vartime[F, G; bits: static int](
   const numWindows = bits.ceilDiv_vartime(c)
   type EC = typeof(r)
 
-  let miniMSMs = allocHeapArray(EC, numWindows)
-  let buckets = allocHeapArray(EC, numBuckets)
+  var miniMSMs = allocHeapArray(EC, numWindows)
+  var buckets = allocHeapArray(EC, numBuckets)
 
   # Algorithm
   # ---------
@@ -198,7 +197,7 @@ func multiScalarMulImpl_reference_vartime[F, G; bits: static int](
 
     # 1. Bucket accumulation.                            Cost: n - (2ᶜ-1) => n points in 2ᶜ-1 buckets, first point per bucket is just copied
     for j in 0 ..< N:
-      let b = cast[int](coefs[j].getWindowAt(w*c, c))
+      var b = cast[int](coefs[j].getWindowAt(w*c, c))
       if b == 0: # bucket 0 is unused, no need to add [0]Pⱼ
         continue
       else:
@@ -235,10 +234,10 @@ func multiScalarMul_reference_vartime_Prj*[FF](r: var FF, coefs: openArray[BigIn
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
   debug: doAssert coefs.len == points.len
 
-  let N = points.len
-  let coefs = coefs.asUnchecked()
-  let points = points.asUnchecked()
-  let c = bestBucketBitSize(N, BigInt.bits, useSignedBuckets = false, useManualTuning = false)
+  var N = points.len
+  var coefs = coefs.asUnchecked()
+  var points = points.asUnchecked()
+  var c = bestBucketBitSize(N, BigInt.bits, useSignedBuckets = false, useManualTuning = false)
 
   case c
   of  2: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  2)

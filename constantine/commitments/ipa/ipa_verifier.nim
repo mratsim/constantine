@@ -25,13 +25,13 @@ import
 
 type
   EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
-  EC_P_Fr* = ECP_TwEdwards_Prj[Fr[Banderwagon]]
+  EC_P_Fr* = Fr[Banderwagon]
 
 func generateChallengesForIPA* [EC_P_Fr] (res: var EC_P_Fr, transcript: Transcript, proof: IPAProof)=
 
-    let challenges = array[proof.L_vector.len, EC_P_Fr]
+    var challenges = array[proof.L_vector.len, EC_P_Fr]
 
-    for i in 0..proof.L.len:
+    for i in 0..<proof.L.len:
         transcript.pointAppend(proof.L_vector[i], asBytes"L")
         transcript.pointAppend(proof.R_vector[i], asBytes"R")
         challenges[i] = transcript.generateChallengeScalar(asBytes"x")
@@ -50,13 +50,13 @@ func checkIPAProof*[bool] (res: var bool, transcript: Transcript, ic: IPASetting
     if not(proof.L_vector.len == int(ic.numRounds)):
         res = false
 
-    let b = ic.PrecomputedWeights.computeBarycentricCoefficients(evalPoint)
+    var b = ic.PrecomputedWeights.computeBarycentricCoefficients(evalPoint)
 
     transcript.pointAppend(commitment, asBytes"C")
     transcript.scalarAppend(evalPoint, asBytes"input point")
     transcript.scalarAppend(result, asBytes"output point")
 
-    let w = transcript.generateChallengeScalar(asBytes"w")
+    var w = transcript.generateChallengeScalar(asBytes"w")
 
     # Rescaling of q read https://hackmd.io/mJeCRcawTRqr9BooVpHv5g#Re-defining-the-quotient
     var q {.noInit.}: EC_P
@@ -64,28 +64,28 @@ func checkIPAProof*[bool] (res: var bool, transcript: Transcript, ic: IPASetting
 
     var qy {.noInit.}: EC_P
     qy.scalarMul(q, result.toBig())
-    commitment.add(commitment, qy)
+    commitment.sum(commitment, qy)
 
-    let challenges = generateChallengesForIPA(transcript, proof)
+    var challenges = generateChallengesForIPA(transcript, proof)
 
     var challengesInv {.noInit.}: openArray[EC_P_Fr] 
     challengesInv.batchInvert(challenges)
 
-    for i in 0..challenges.len:
-        let x = challenges[i]
-        let L = proof.L_vector[i]
-        let R = proof.R_vector[i]
+    for i in 0..<challenges.len:
+        var x = challenges[i]
+        var L = proof.L_vector[i]
+        var R = proof.R_vector[i]
 
         commitment = pedersen_commit_single([commitment, L, R], [EC_P_Fr.setOne(), x, challengesInv[i]])
 
-    let g = ic.SRS
+    var g = ic.SRS
     
     var foldingScalars {.noInit.}: array[g.len, EC_P_Fr]
 
-    for i in 0..g.len:
-        let scalar = EC_P_Fr.setOne()
+    for i in 0..<g.len:
+        var scalar = EC_P_Fr.setOne()
 
-        for challengeIndex in 0..challenges.len:
+        for challengeIndex in 0..<challenges.len:
             doAssert i and (1 shl (7 - challengeIndex)) > 0
             scalar *= challengesInv[challengeIndex]
 
@@ -118,7 +118,7 @@ func checkIPAProof*[bool] (res: var bool, transcript: Transcript, ic: IPASetting
     p2a.prod(b0, proof.A_scalar)
     p2.scalarMul(q, p2a.toBig())
 
-    got.add(p1, p2)
+    got.sum(p1, p2)
 
     if got == commitment:
         res = true

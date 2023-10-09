@@ -29,8 +29,8 @@ const seed* = asBytes"eth_verkle_oct_2021"
 type 
  CRS = object
   num : uint64
-  groupEl:  seq[ECP_TwEdwards_Prj[Fr[Banderwagon]]]
-  queryEl: ECP_TwEdwards_Prj[Fr[Banderwagon]]
+  groupEl:  seq[Fr[Banderwagon]]
+  queryEl: Fr[Banderwagon]
 
 type
   EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
@@ -42,7 +42,7 @@ func prime_subgroup_generator* () : ECP_TwEdwards_Prj[Fp[Banderwagon]]=
   return generator_prj
 
 func check_for_duplicate_field_elems* (points: var seq[EC_P] ): bool = 
-    let seen =  initTable[EC_P, bool]()
+    var seen =  initTable[EC_P, bool]()
     #initializes a hashMap of ECP_TwistedEdwards_Prj[Fp[Banderwagon]] points 
     #from prime_subgroup_generator, for faster search and elimination
     for item in points.items():
@@ -58,7 +58,7 @@ func newCRS* [CRSobj: var CRS] (num : var uint64) : CRS =
     var iteratorr {.noInit.} : EC_P
     for iteratorr in groupEl.items():
         groupEl.add(generate_random_elements(num))
-    let queryEl :  prime_subgroup_generator()
+    var queryEl :  prime_subgroup_generator()
 
     if check_for_duplicate_field_elems(groupEl) == false:
         CRSobj  = {num, groupEl, queryEl}

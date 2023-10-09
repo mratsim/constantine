@@ -25,7 +25,7 @@ import
 
 type
   EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
-  EC_P_Fr* = ECP_TwEdwards_Prj[Fr[Banderwagon]]
+  EC_P_Fr* = Fr[Banderwagon]
 
 type 
     IPAProof* = object
@@ -62,14 +62,14 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var Transcript, i
   transcript.scalarAppend(evalPoint, asBytes"input point")
   transcript.scalarAppend(innerProd, asBytes"output point")
 
-  let w = transcript.generateChallengeScalar("w")
+  var w = transcript.generateChallengeScalar("w")
 
   var q {.noInit.} : EC_P
   q.scalarMul(ic.Q_val, w.toBig())
 
-  let num_rounds = ic.numRounds
+  var num_rounds = ic.numRounds
 
-  let current_basis = ic.SRS
+  var current_basis = ic.SRS
 
   var L {.noInit.}: array[num_rounds, EC_P]
 
