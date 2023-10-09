@@ -145,9 +145,12 @@ func powMod2k_vartime*(
   var sBuf = allocStackArray(SecretWord, r.len)
   template s: untyped = sBuf.toOpenArray(0, r.len-1)
 
-  for i in 0 ..< min(r.len, a.len):
+  let truncLen = min(r.len, a.len)
+  for i in 0 ..< truncLen:
     # range [r.len, a.len) will be truncated (mod 2ᵏ)
     sBuf[i] = a[i]
+  for i in truncLen ..< r.len:
+    sBuf[i] = Zero
 
   # TODO: sliding/fixed window exponentiation
   for i in countdown(exponent.len-1, 0):
