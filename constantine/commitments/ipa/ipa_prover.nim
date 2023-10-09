@@ -141,7 +141,8 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var Transcript, i
   res.A_scalar = a[0]
 
 
-# func serializeIPA* [IPAProof] (res: var IPAProof)=
+func serializeIPA* [IPAProof] (res: var IPAProof)=
+  for 
   
 
 

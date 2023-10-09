@@ -32,12 +32,14 @@ type
   Bytes* = array[32, byte]
 
 type 
-    Point* = EC_P_Fr
+    Point* = object 
+     x: EFr
+     y: EFr
 
 type 
-    Points* =  openArray[Point]
+    Points* =  seq[Point]
 
-type Poly* = openArray[EC_P_Fr]
+type Poly* = seq[EFr]
 
 func evaluate* [EC_P_Fr] (point: var EC_P_Fr, poly: Poly) = 
     var powers {.noInit.}: array[2,EC_P_Fr]
@@ -55,7 +57,7 @@ func evaluate* [EC_P_Fr] (point: var EC_P_Fr, poly: Poly) =
 
 
 
-func interpolate* [Poly] (res: var Poly, points: Points) =
+func interpolate*[Poly](res: var Poly, points: Points) =
     
     var one {.noInit.} : EFr
     one.setOne()
@@ -68,14 +70,17 @@ func interpolate* [Poly] (res: var Poly, points: Points) =
 
     doAssert max_degree_plus_one < 2, "Should be interpolating for degree >= 1!"
 
-    var coeffs {.noInit.} : array[2, EFr]
+    var coeffs {.noInit.} : Poly
 
     for k in 0..<points.len:
-        var point : Point  = points[k]
 
+        var point {.noInit.} : Point
+        point = points[k]
 
-        var x_k  = point.x
-        var y_k  = point.y
+        var x_k {.noInit.} : EFr 
+        x_k = point.x
+        var y_k {.noInit.} : EFr 
+        y_k = point.y
 
         var contribution {.noInit.}: seq[EFr]
         var denominator {.noInit.}: EFr
@@ -86,8 +91,10 @@ func interpolate* [Poly] (res: var Poly, points: Points) =
 
         for j in 0..points.len:
 
-            var point : EC_P_Fr = points[j]
-            var x_j : BigInt = point.x
+            var point {.noInit.}: Point 
+            point = points[j]
+            var x_j {.noInit.} : EFr 
+            x_j = point.x
 
             if j == k:
                 continue
@@ -107,7 +114,7 @@ func interpolate* [Poly] (res: var Poly, points: Points) =
 
                 var mul_by_minus_x_j {.noInit}: seq[EFr]
                 for _, el in  contribution:
-                    var tmp = el
+                    var tmp : EFr = el
                     tmp *= x_j
                     tmp.diff(zero,tmp)
                     mul_by_minus_x_j.add(tmp)
@@ -123,8 +130,8 @@ func interpolate* [Poly] (res: var Poly, points: Points) =
                 
             
         
-        denominator.inv(denominator)
-        doAssert not(denominator.isZero()), "Denominator should not be zero!"
+        denominator.inv_vartime(denominator)
+        doAssert not(denominator.isZero().bool() == true), "Denominator should not be zero!"
 
         for i in 0..<contribution.len:
             var tmp = contribution[i]
@@ -134,6 +141,19 @@ func interpolate* [Poly] (res: var Poly, points: Points) =
 
         
     res=coeffs
+
+
+# func *setEval [EFr] (res: var EFr, x : EFr)=
+
+#     var tmp_a {.noInit.} : EFr
+
+#     var one {.noInit.}: EFr
+#     one.setOne()
+
+#     tmp_a.diff(x, one)
+#     tmp_b.sum(x, one)
+        
+
 
 
 

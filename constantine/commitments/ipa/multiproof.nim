@@ -139,7 +139,11 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: Transcript
         var deno {.noInit.}: EC_P_Fr
 
         deno.diff(t,z)
-        #TODO: fr element append() ?
+        var idxx = 0
+        denInv[idxx] = deno
+        idxx = idxx + 1
+
+
         
     denInv.batchInvert(denInv)
 

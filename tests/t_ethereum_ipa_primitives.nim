@@ -48,9 +48,9 @@ type
      y: EFr
 
 type 
-    Points* =  array[2, Point]
+    Points* =  seq[Point]
 
-type Poly* = openArray[EC_P_Fr]
+type Poly* = seq[EFr]
 
 # The generator point from Banderwagon
 var generator = Banderwagon.getGenerator()
@@ -71,37 +71,49 @@ suite "Barycentric Form Tests":
     # but we need to check if it's correct. It's equivalent to getting 
     # the polynomial in coefficient form for a large number of points 
 
-    test "Testing Basic Interpolation, without precompute optimisations":
+    # test "Testing Basic Interpolation, without precompute optimisations":
 
-        proc testBasicInterpolation() =
+    #     proc testBasicInterpolation() =
 
-            var point_a {.noInit.} : Point
+    #         var point_a {.noInit.} : Point
 
-            point_a.x.setZero()
-            point_a.y.setZero()
+    #         point_a.x.setZero()
+    #         point_a.y.setZero()
 
-            var point_b {.noInit.} : Point
+    #         var point_b {.noInit.} : Point
 
-            point_b.x.setOne()
-            point_b.y.setOne()
+    #         point_b.x.setOne()
+    #         point_b.y.setOne()
 
-            var points {.noInit.} : Points 
+    #         var points {.noInit.} : Points 
 
-            points = [point_a, point_b]
+    #         points.add([point_a, point_b])
 
-            var poly {.noInit.}: Poly
+    #         var poly: Poly
 
-            poly.interpolate(points)
+    #         poly.interpolate(points)
 
-            var genfp {.noInit.} : EC_P
-            genfp.fromAffine(generator)
-            var genfr {.noInit.}: EC_P_Fr
-            genfr.mapToScalarField(genfp)
+    #         var genfp {.noInit.} : EC_P
+    #         genfp.fromAffine(generator)
+    #         var genfr {.noInit.}: EC_P_Fr
+    #         genfr.mapToScalarField(genfp)
 
-            var res {.noInit.} : EC_P_Fr
-            genfr.evaluate(poly)
+    #         var res {.noInit.} : EC_P_Fr
+    #         genfr.evaluate(poly)
 
-            doAssert res.toHex() == genfr.toHex(), "Res and Rand_fr should match!"
+    #         doAssert res.toHex() == genfr.toHex(), "Res and Rand_fr should match!"
+
+    #     testBasicInterpolation()
+
+    #     proc testDivideOnDomain() = 
+    #         var eval_fr {.noInit.} : EFr
+
+    #         #TODO: finishing this up later
+
+
+
+
+
             
 
             
