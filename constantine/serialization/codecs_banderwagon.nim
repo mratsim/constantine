@@ -135,7 +135,12 @@ func serialize_scalar*(dst: var array[32, byte], scalar: matchingOrderBigInt(Ban
   ## Returns cttCodecScalar_Success if successful
   dst.marshal(scalar, bigEndian)
   return cttCodecScalar_Success
-
+## ############################################################
+##
+##              Banderwagon Scalar Deserialization
+##
+## ############################################################
+## 
 func deserialize_scalar*(dst: var matchingOrderBigInt(Banderwagon), src: array[32, byte]): CttCodecScalarStatus =
   ## Deserialize a scalar
   ## Also validates the scalar range
