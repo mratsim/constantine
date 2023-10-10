@@ -6,6 +6,7 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 import 
+ ./helper_types,
  ../../../constantine/math/config/[type_ff, curves],
  ../../../constantine/math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
  ../../../constantine/math/arithmetic/[finite_fields],
@@ -18,21 +19,6 @@ import
 # ############################################################
 
 # Please refer to https://hackmd.io/mJeCRcawTRqr9BooVpHv5g 
-
-type
-  EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
-  EC_P_Fr* = Fr[Banderwagon]
-
-type 
- PrecomputedWeights* = object
-  barycentricWeights: openArray[EC_P_Fr]
-  invertedDomain: openArray[EC_P_Fr]
-  
-
-# The domain size shall always be equal to 256, because this the degree of the polynomial we want to commit to
-const
- DOMAIN: uint64 = 256
-
 
 func barycentricWeights* [EC_P_Fr] (res: var EC_P_Fr, element :  uint64) = 
  doAssert (element > DOMAIN), "The domain is [0,255], and $element is not in the domain"
@@ -159,7 +145,7 @@ func absIntChecker*[int] (res: var int, x : int) =
   if x < 0:
     is_negative = true
 
-  if is_negative:
+  if is_negative == true:
     res = -x
 
 func divisionOnDomain* [EC_P_Fr](res: var array[DOMAIN,EC_P_Fr], precomp: PrecomputedWeights, index:  int, f:  openArray[EC_P_Fr])=

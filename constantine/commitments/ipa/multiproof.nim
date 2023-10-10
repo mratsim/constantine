@@ -7,8 +7,9 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ./[transcript_gen, common_utils, ipa_prover, barycentric_form],
+  ./[transcript_gen, common_utils, ipa_prover, barycentric_form, helper_types],
   ../../../constantine/platforms/primitives,
+  ../../../constantine/hashes,
   ../../math/config/[type_ff, curves],
   ../../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
   ../../../constantine/math/arithmetic,
@@ -24,17 +25,6 @@ import
 # ############################################################
 
 # The multiproof is a multi-proving system for several polynomials in the evaluation form
-
-type
-  EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
-  EC_P_Fr* = Fr[Banderwagon]
-
-type 
-    MultiProof* = object
-     IPAprv: IPAProof
-     D: EC_P
-
-const DOMAIN = 256
 
 # Converts the const DOMAIN 256 to Fr[Banderwagon]
 func domainToFrElem* [EC_P_Fr] (res: var EC_P_Fr, inp: uint8)=
@@ -52,7 +42,7 @@ func computePowersOfElem* [EC_P_Fr] (res: var openArray[EC_P_Fr], x: EC_P_Fr, de
 # createMultiProof creates a multi-proof for several polynomials in the evaluation form
 # The list of triplets are as follows : (C, Fs, Z) represents each polynomial commitment
 # and their evalutation in the domain, and the evaluating point respectively
-func createMultiProof* [MultiProof] (res: var MultiProof, transcript: Transcript, ipaSetting: IPASettings, Cs: openArray[EC_P], Fs: openArray[openArray[EC_P_Fr]], Zs: openArray[uint8])=
+func createMultiProof* [MultiProof] (res: var MultiProof, transcript: sha256, ipaSetting: IPASettings, Cs: openArray[EC_P], Fs: openArray[openArray[EC_P_Fr]], Zs: openArray[uint8])=
     transcript.domain_separator(asBytes"multiproof")
 
     for f in Fs:
@@ -189,7 +179,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: Transcript
 # Mutliproof verifier verifies the multiproof for several polynomials in the evaluation form
 # The list of triplets (C,Y, Z) represents each polynomial commitment, evaluation
 # result, and evaluation point in the domain 
-func verifyMultiproof* [bool] (res: var bool, transcript : Transcript, ipaSettings: IPASettings, proof: MultiProof, Cs: openArray[EC_P], Ys: openArray[EC_P_Fr], Zs: openArray[uint8])=
+func verifyMultiproof* [bool] (res: var bool, transcript : sha256, ipaSettings: IPASettings, proof: MultiProof, Cs: openArray[EC_P], Ys: openArray[EC_P_Fr], Zs: openArray[uint8])=
     transcript.domain_separator(asBytes"multiproof")
 
     debug: doAssert Cs.len == Ys.len, "Number of commitments and the Number of output points don't match!"

@@ -9,7 +9,7 @@
 ## IPAConfiguration contains all of the necessary information to create Pedersen + IPA proofs
 ## such as the SRS
 import
-    ./barycentric_form,
+    ./[barycentric_form,helper_types],
     ../../../constantine/platforms/primitives,
     ../../math/config/[type_ff, curves],
     ../../math/elliptic/ec_twistededwards_projective,
@@ -27,17 +27,7 @@ import
 #               Random Element Generator
 #
 # ############################################################
-const seed* = asBytes"eth_verkle_oct_2021"
 
-type
-  EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
-
-type
-    IPASettings* = object
-     SRS : openArray[EC_P]
-     Q_val : EC_P
-     PrecomputedWeights: PrecomputedWeights
-     numRounds: uint32
 
 
 func generate_random_elements* [FF](points: var  openArray[FF] , num_points: uint64)  =

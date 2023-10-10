@@ -7,9 +7,10 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ./[transcript_gen, common_utils, ipa_prover, barycentric_form],
+  ./[transcript_gen, common_utils, ipa_prover, barycentric_form, helper_types],
   ../../../constantine/platforms/primitives,
   ../../math/config/[type_ff, curves],
+  ../../../constantine/hashes,
   ../../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
   ../../../constantine/math/arithmetic,
   ../../../constantine/math/elliptic/ec_scalar_mul, 
@@ -23,11 +24,7 @@ import
 #
 # ############################################################
 
-type
-  EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
-  EC_P_Fr* = Fr[Banderwagon]
-
-func generateChallengesForIPA* [EC_P_Fr] (res: var EC_P_Fr, transcript: Transcript, proof: IPAProof)=
+func generateChallengesForIPA* [EC_P_Fr] (res: var EC_P_Fr, transcript: sha256, proof: IPAProof)=
 
     var challenges = array[proof.L_vector.len, EC_P_Fr]
 
@@ -41,7 +38,7 @@ func generateChallengesForIPA* [EC_P_Fr] (res: var EC_P_Fr, transcript: Transcri
 # Check IPA proof verifier a IPA proof for a committed polynomial in evaluation form
 # It verifies whether the proof is valid for the given polynomial at the evaluation `evalPoint`
 # and cross-checking it with `result`
-func checkIPAProof*[bool] (res: var bool, transcript: Transcript, ic: IPASettings, commitment: var EC_P, proof: IPAProof, evalPoint: EC_P_Fr, result: EC_P_Fr)=
+func checkIPAProof*[bool] (res: var bool, transcript: sha256, ic: IPASettings, commitment: var EC_P, proof: IPAProof, evalPoint: EC_P_Fr, result: EC_P_Fr)=
     transcript.domain_separator(asBytes"ipa")
 
     if not(proof.L_vector.len == proof.R_vector.len):

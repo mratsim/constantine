@@ -13,8 +13,9 @@
 # ############################################################
 
 import
-  ./[transcript_gen, common_utils],
+  ./[transcript_gen, common_utils, helper_types],
   ../../../constantine/platforms/primitives,
+  ../../../constantine/hashes,
   ../../math/config/[type_ff, curves],
   ../../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
   ../../../constantine/math/arithmetic,
@@ -22,19 +23,6 @@ import
   ../../../constantine/platforms/[views],
   ../../../constantine/math/io/[io_fields],
   ../../../constantine/curves_primitives
-
-type
-  EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
-  EC_P_Fr* = Fr[Banderwagon]
-
-type 
-    IPAProof* = object
-     L_vector: openArray[EC_P]
-     R_vector: openArray[EC_P]
-     A_scalar: EC_P_Fr
-
-const
- DOMAIN: uint64 = 256
 
 # ############################################################
 #
@@ -47,7 +35,7 @@ const
 
 # Further reference refer to this https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
 
-func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var Transcript, ic: IPASettings, commitment: EC_P, a: openArray[EC_P_Fr], evalPoint: EC_P_Fr )=
+func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: IPASettings, commitment: EC_P, a: openArray[EC_P_Fr], evalPoint: EC_P_Fr )=
   transcript.domain_separator(asBytes"ipa")
   var b {.noInit.}: array[DOMAIN, EC_P_Fr]
   
@@ -140,9 +128,34 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var Transcript, i
   res.R_vector = R
   res.A_scalar = a[0]
 
+type 
+  serIPA* = object
+   ls: openArray[string]
+   rs: openArray[string]
 
-func serializeIPA* [IPAProof] (res: var IPAProof)=
-  for 
+
+func serializeIPA* [serIPA] (res: var serIPA, ip: IPAProof)=
+  var serializedProofs {.noInit.} : array[DOMAIN, string]
+  for el in ip.L_vector:
+    
+    var idx = 0
+    serializedProofs[idx] = el.toHex()
+
+  res.ls = serializedProofs
+  var serializedProofsb {.noInit.} : array[DOMAIN, string]
+
+  for ar in ip.R_vector:
+    
+    var idx = 0
+    serializedProofsb[idx] = ar.toHex()
+  res.rs = serializedProofsb
+
+
+
+
+
+
+
   
 
 
