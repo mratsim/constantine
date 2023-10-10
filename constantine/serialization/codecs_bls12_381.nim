@@ -129,9 +129,11 @@ func serialize_g1_compressed*(dst: var array[48, byte], g1Point: G1P): CttCodecE
   # The curve equation has 2 solutions for y² = x³ + 4 with y unknown and x known
   # The lexicographically largest will have bit 381 set to 1
   # (and bit 383 for the compressed representation)
-  # The solutions are {y, p-y} hence the lexicographyically largest is greater than p/2
-  # so with exact integers, as p is odd, greater or equal (p+1)/2
-  let lexicographicallyLargest = byte(g1Point.y.toBig() >= Fp[BLS12_381].getPrimePlus1div2())
+  # The solutions are {y, p-y}.
+  # The field contains [0, p-1] hence lexicographically largest
+  # are numbers greater or equal (p-1)/2
+  # https://github.com/zkcrypto/bls12_381/blob/0.7.0/src/fp.rs#L271-L277
+  let lexicographicallyLargest = byte(g1Point.y.toBig() >= Fp[BLS12_381].getPrimeMinus1div2())
   dst[0] = dst[0] or (0b10000000 or (lexicographicallyLargest shl 5))
 
   return cttCodecEcc_Success
