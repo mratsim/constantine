@@ -170,28 +170,28 @@ func powMod_vartime*(
   #   https://cetinkayakoc.net/docs/j34.pdf
 
   let qBits = mBits-ctz
-  let pBits = 1+ctz
+  let kBits = 1+ctz
   let qWords = qBits.wordsRequired()
-  let pWords = pBits.wordsRequired()
+  let kWords = kBits.wordsRequired()
 
   var qBuf  = allocStackArray(SecretWord, qWords)
   var a1Buf = allocStackArray(SecretWord, qWords)
-  var a2Buf = allocStackArray(SecretWord, pWords)
-  var yBuf =  allocStackArray(SecretWord, pWords)
-  var qInv2kBuf = allocStackArray(SecretWord, pWords)
+  var a2Buf = allocStackArray(SecretWord, kWords)
+  var yBuf =  allocStackArray(SecretWord, kWords)
+  var qInv2kBuf = allocStackArray(SecretWord, kWords)
 
   template q: untyped = qBuf.toOpenArray(0, qWords-1)
   template a1: untyped = a1Buf.toOpenArray(0, qWords-1)
-  template a2: untyped = a2Buf.toOpenArray(0, pWords-1)
-  template y: untyped = yBuf.toOpenArray(0, pWords-1)
-  template qInv2k: untyped = qInv2kBuf.toOpenArray(0, pWords-1)
+  template a2: untyped = a2Buf.toOpenArray(0, kWords-1)
+  template y: untyped = yBuf.toOpenArray(0, kWords-1)
+  template qInv2k: untyped = qInv2kBuf.toOpenArray(0, kWords-1)
 
   q.shiftRight_vartime(M, ctz)
 
   a1.powOddMod_vartime(a, exponent, q, window)
   a2.powMod2k_vartime(a, exponent, k = uint ctz)
 
-  qInv2k.invMod2k_vartime(qBuf.toOpenArray(0, qWords-1), uint ctz)
+  qInv2k.invMod2k_vartime(q, uint ctz)
   y.submod2k_vartime(a2, a1, uint ctz)
   y.mulmod2k_vartime(y, qInv2k, uint ctz)
 
