@@ -15,7 +15,8 @@ import
   ./limbs_mod2k,
   ./limbs_multiprec,
   ./limbs_extmul,
-  ./limbs_divmod
+  ./limbs_divmod,
+  ./limbs_divmod_vartime
 
 # No exceptions allowed
 {.push raises: [], checks: off.}
@@ -61,6 +62,7 @@ func powOddMod_vartime*(
 
   if eBits == 1:
     r.view().reduce(a.view(), aBits, M.view(), mBits)
+    # discard r.reduce_vartime(a, M)
     return
 
   let L      = wordsRequired(mBits)
@@ -77,8 +79,9 @@ func powOddMod_vartime*(
     # For now, we call explicit reduction as it can handle all sizes.
     # TODO: explicit reduction uses constant-time division which is **very** expensive
     if a.len != M.len:
-      let t = allocStackArray(SecretWord, L)
+      var t = allocStackArray(SecretWord, L)
       t.LimbsViewMut.reduce(a.view(), aBits, M.view(), mBits)
+      # discard t.toOpenArray(0, L-1).reduce_vartime(a, M)
       rMont.LimbsViewMut.getMont(LimbsViewConst t, M.view(), LimbsViewConst r2.view(), m0ninv, mBits)
     else:
       rMont.LimbsViewMut.getMont(a.view(), M.view(), LimbsViewConst r2.view(), m0ninv, mBits)

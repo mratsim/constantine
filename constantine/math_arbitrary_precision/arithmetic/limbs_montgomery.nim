@@ -12,7 +12,8 @@ import
   ./limbs_views,
   ./limbs_mod,
   ./limbs_fixedprec,
-  ./limbs_divmod
+  ./limbs_divmod,
+  ./limbs_divmod_vartime
 
 # No exceptions allowed
 {.push raises: [], checks: off.}
@@ -72,13 +73,13 @@ func oneMont_vartime*(r: var openArray[SecretWord], M: openArray[SecretWord]) {.
 
   # r.r_powmod_vartime(M, 1)
 
-  let mBits = getBits_LE_vartime(M)
-
   let t = allocStackArray(SecretWord, M.len + 1)
   zeroMem(t, M.len*sizeof(SecretWord))
   t[M.len] = One
 
+  let mBits = getBits_LE_vartime(M)
   r.view().reduce(LimbsViewMut t, M.len*WordBitWidth+1, M.view(), mBits)
+  # discard r.reduce_vartime(t.toOpenArray(0, M.len), M)
 
 func r2_vartime*(r: var openArray[SecretWord], M: openArray[SecretWord]) {.meter.} =
   ## Returns the Montgomery domain magic constant for the input modulus:
@@ -90,14 +91,13 @@ func r2_vartime*(r: var openArray[SecretWord], M: openArray[SecretWord]) {.meter
 
   # r.r_powmod_vartime(M, 2)
 
-  let mBits = getBits_LE_vartime(M)
-
   let t = allocStackArray(SecretWord, 2*M.len + 1)
   zeroMem(t, 2*M.len*sizeof(SecretWord))
   t[2*M.len] = One
 
+  let mBits = getBits_LE_vartime(M)
   r.view().reduce(LimbsViewMut t, 2*M.len*WordBitWidth+1, M.view(), mBits)
-
+  # discard r.reduce_vartime(t.toOpenArray(0, 2*M.len), M)
 
 # Montgomery multiplication
 # ------------------------------------------
