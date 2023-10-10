@@ -8,72 +8,70 @@
 
 # ############################################################
 #
-#         Transcript Generator for Challenge Scalars
+#         sha256 Generator for Challenge Scalars
 #
 # ############################################################
 import
-    ../../platforms/primitives,
+    ./helper_types,
+    ../../platforms/[primitives,abstractions],
     ../../serialization/endians,
     ../../math/config/[type_ff, curves],
+    ../../math/[extension_fields, arithmetic],
     ../../math/elliptic/ec_twistededwards_projective,
     ../../../constantine/hashes,
     ../../../constantine/serialization/[codecs_banderwagon,codecs_status_codes]
 
-type 
-    Transcript* = object
-     state: sha256
 
-type
-  EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
-  EC_P_Fr* = ECP_TwEdwards_Prj[Fr[Banderwagon]]
 
-func newTranscriptGen*[Transcript](res: var Transcript, label: openArray[byte]) =
+func newTranscriptGen*[sha256](res: var sha256, label: openArray[byte]) =
     res.init()
     res.update(label)
 
 
-func messageAppend* [Transcript]( res: var Transcript, message: openArray[byte], label: openArray[byte]) =
+func messageAppend* [sha256]( res: var sha256, message: openArray[byte], label: openArray[byte]) =
     res.init()
     res.update(label)
     res.update(message)
 
 
-func messageAppend_u64* [Transcript](res: var Transcript, label: openArray[byte], num_value: uint64) = 
+func messageAppend_u64* [sha256](res: var sha256, label: openArray[byte], num_value: uint64) = 
     res.init()
     res.update(label)
     res.update(num_value.toBytes(bigEndian))
 
-func domainSeparator* [Transcript](res: var Transcript, label: openArray[byte]) =
+func domainSeparator* [sha256](res: var sha256, label: openArray[byte]) =
     var state {.noInit.} : sha256
     state.update(label)
 
 
-func pointAppend* [Transcript] (res: var Transcript, label: openArray[byte], point: EC_P) =
+func pointAppend* [sha256] (res: var sha256, label: openArray[byte], point: EC_P) =
     var bytes {.noInit.}: array[32, byte]
-    doAssert point.serialize(bytes) == cttCodecEcc_Success
-    res.messageAppend(bytes, label)
+    if(point.serialize(bytes) == cttCodecEcc_Success):
+        res.messageAppend(bytes, label)
 
 
-func scalarAppend* [Transcript] (res: var Transcript, label: openArray[byte], scalar: EC_P_Fr) =
+func scalarAppend* [sha256] (res: var sha256, label: openArray[byte], scalar: matchingOrderBigInt(Banderwagon)) =
     var bytes {.noInit.}: array[32, byte]
 
-    doAssert scalar.serialize(bytes) == cttCodecEcc_Success
-    res.messageAppend(bytes, label)
+    if(bytes.serialize_scalar(scalar) == cttCodecScalar_Success):
+        res.messageAppend(bytes, label)
 
 
 
 ## Generating Challenge Scalars based on the Fiat Shamir method
-func generateChallengeScalar* [EC_P_Fr] (gen: var EC_P_Fr, label: openArray[byte]) =
-    var state {.noInit.}: Transcript
-    state.init()
-    state.domainSeparator(label)
+func generateChallengeScalar* (gen: var matchingOrderBigInt(Banderwagon), label: openArray[byte]) =
+    var transcript {.noInit.}: sha256
+    transcript.init()
+    transcript.domainSeparator(label)
 
     var hash: array[32, byte]
-    state.finish(hash)
+    transcript.finish(hash)
 
-    doAssert hash.deserialize(gen) == cttCodecEcc_Success
+    if(gen.deserialize_scalar(hash) == cttCodecScalar_Success):
 
-    state.scalarAppend(label, gen)
+        transcript.clear()
+
+        transcript.scalarAppend(label, gen)
 
 
     
