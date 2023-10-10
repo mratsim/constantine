@@ -14,6 +14,7 @@ import
   # Internal
   ../constantine/math/io/io_bigints,
   ../constantine/math/arithmetic,
+  ../constantine/math_arbitrary_precision/arithmetic/limbs_divmod_vartime,
   ../constantine/platforms/abstractions,
   ../constantine/serialization/codecs,
   # Test utilities
@@ -124,6 +125,13 @@ proc main() =
     let stopCTTMod = getMonoTime()
     echo "Constantine - ", aBits, " mod ", bBits, "           -> ", bBits,  " mod: ", float(inNanoseconds((stopCTTmod-startCTTmod)))/float(NumIters), " ns"
 
+    let startCTTvartimeMod = getMonoTime()
+    var q {.noInit.}: BigInt[bBits]
+    for _ in 0 ..< NumIters:
+      discard divRem_vartime(q.limbs, rTestMod.limbs, aTest.limbs, bTest.limbs)
+    let stopCTTvartimeMod = getMonoTime()
+    echo "Constantine - ", aBits, " mod ", bBits, " (vartime) -> ", bBits,  " mod: ", float(inNanoseconds((stopCTTvartimeMod-startCTTvartimeMod)))/float(NumIters), " ns"
+
     echo "----"
     # Modular reduction - double-size
 
@@ -139,7 +147,12 @@ proc main() =
     let stopCTTMod2 = getMonoTime()
     echo "Constantine - ", rBits, " mod ", bBits, "           -> ", bBits,  " mod: ", float(inNanoseconds((stopCTTmod2-startCTTmod2)))/float(NumIters), " ns"
 
-    # Constantine
+    let startCTTvartimeMod2 = getMonoTime()
+    var q2 {.noInit.}: BigInt[bBits]
+    for _ in 0 ..< NumIters:
+      discard divRem_vartime(q2.limbs, rTestMod.limbs, rTest.limbs, bTest.limbs)
+    let stopCTTvartimeMod2 = getMonoTime()
+    echo "Constantine - ", rBits, " mod ", bBits, " (vartime) -> ", bBits,  " mod: ", float(inNanoseconds((stopCTTvartimeMod2-startCTTvartimeMod2)))/float(NumIters), " ns"
 
     echo ""
 
