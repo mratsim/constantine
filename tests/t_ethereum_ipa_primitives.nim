@@ -101,6 +101,11 @@ suite "Barycentric Form Tests":
 
     #         #TODO: finishing this up later
 
+# ############################################################
+#
+#          Test for Transcript and Challenge Scalar
+#
+# ############################################################
 suite "Transcript Tests":
 
     test "Some Test Vectors":

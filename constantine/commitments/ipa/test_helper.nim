@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import 
-    ./[multiproof],
+    ./[multiproof, barycentric_form],
     ./helper_types,
     ../../../constantine/math/config/[type_ff, curves],
     ../../../constantine/math/elliptic/[
@@ -126,19 +126,66 @@ func interpolate* [EC_P_Fr] (res: var openArray[EC_P_Fr], points: openArray[Coor
             res[i].sum(res[i], tmp)
 
         
+#Initiating evaluation points z in the FiniteField (253)
+func setEval* [EC_P_Fr] (res: var EC_P_Fr, x : EC_P_Fr)=
 
+    var tmp_a {.noInit.} : EC_P_Fr
 
+    var one {.noInit.}: EC_P_Fr
+    one.setOne()
 
-# func *setEval [EC_P_Fr] (res: var EC_P_Fr, x : EC_P_Fr)=
+    tmp_a.diff(x, one)
 
-#     var tmp_a {.noInit.} : EC_P_Fr
+    var tmp_b : EC_P_Fr
+    tmp_b.sum(x, one)
 
-#     var one {.noInit.}: EC_P_Fr
-#     one.setOne()
+    var tmp_c : EC_P_Fr = one
 
-#     tmp_a.diff(x, one)
-#     tmp_b.sum(x, one)
-        
+    for i in 0..<253:
+        tmp_c *= x 
+
+    res.prod(tmp_a, tmp_b)
+    res *= tmp_c
+
+#Evaluating the point z outside of DOMAIN, here the DOMAIN is 0-256, whereas the FieldSize is
+#everywhere outside of it which is upto a 253 bit number, or 2²⁵³.
+func evalOutsideDomain* [EC_P_Fr] (res: var EC_P_Fr, precomp: PrecomputedWeights, f: openArray[EC_P_Fr], point: EC_P_Fr)=
+
+    var pointMinusDomain {.noInit.} : array[DOMAIN, EC_P_Fr]
+    for i in 0..<DOMAIN:
+
+        var i_fr {.noInit.} : EC_P_Fr
+        i_fr.setUint(uint64(i))
+
+        pointMinusDomain[i].diff(point, i_fr)
+        pointMinusDomain[i].inv(pointMinusDomain[i])
+
+    var summand {.noInit.}: EC_P_Fr
+    summand.setZero()
+
+    for x_i in 0..<pointMinusDomain.len:
+        var weight {.noInit.} : EC_P_Fr
+        weight.getBarycentricInverseWeight(x_i)
+
+        var term: EC_P_Fr
+        term.prod(weight, f[x_i])
+        term.prod(term, pointMinusDomain[x_i])
+
+        summand += term
+
+    res.setOne()
+
+    for i in 0..<DOMAIN:
+
+        var i_fr {.noInit.}: EC_P_Fr
+        i_fr.setUint(uint64(i))
+
+        var tmp {.noInit.}: EC_P_Fr
+        tmp.diff(point, i_fr)
+
+        res *= summand
+
+func testPoly256* [EC_P_Fr] ()
 
 
 

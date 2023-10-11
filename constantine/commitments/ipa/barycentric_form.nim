@@ -148,6 +148,8 @@ func absIntChecker*[int] (res: var int, x : int) =
   if is_negative == true:
     res = -x
 
+
+
 func divisionOnDomain* [EC_P_Fr](res: var array[DOMAIN,EC_P_Fr], precomp: PrecomputedWeights, index:  int, f:  openArray[EC_P_Fr])=
   var is_negative : bool = true
   var y = f[index]
