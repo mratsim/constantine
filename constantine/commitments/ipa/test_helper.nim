@@ -209,8 +209,32 @@ func isScalarEqHex(scalar: matchingOrderBigInt(Banderwagon), expected: string) :
     if scalar_bytes.serialize_scalar(scalar) == cttCodecScalar_Success:
         doAssert (scalar_bytes.toHex() == expected).bool() == true, "Scalar does not equal to the expected hex value!"
 
+func getDegreeOfPoly* [int] (res: var int, p: openArray[EC_P_Fr]) = 
+    for d in countdown(p.len - 1, 0):
+        if not(p[d].isZero().bool()):
+            res = d
+    
+        else:
+            res = -1
+
+# proc polynomialLongDivision (nn, dd: seq[EC_P_Fr]) : tuple[q,r : seq[EC_P_Fr], ok: bool]=
+#     var degdd {.noInit.} : int
+#     degdd.getDegreeOfPoly(dd)
+    
+#     if degdd < 0:
+#         return(newSeq[EC_P_Fr](), newSeq[EC_P_Fr](), false)
+
+#     nn.push(r)
+#     var degnn {.noInit.} : int 
+#     if degnn > degdd:
+#         q = newSeq[EC_P_Fr](degnn - degdd + 1)
+#         while degnn >= degdd:
+#             var d = newSeq[EC_P_Fr](degnn + 1)
+#              copyMem(addr d[degnn-degdd], addr dd[0], dd.len * sizeof(Element))
 
 
+
+    
     
 
 
