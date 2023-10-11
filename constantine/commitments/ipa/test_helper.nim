@@ -185,7 +185,35 @@ func evalOutsideDomain* [EC_P_Fr] (res: var EC_P_Fr, precomp: PrecomputedWeights
 
         res *= summand
 
-func testPoly256* [EC_P_Fr] ()
+func testPoly256* [EC_P_Fr] (res: var array[DOMAIN,EC_P_Fr], polynomialUint: uint64)=
+
+    var n = polynomialUint.len
+    doAssert (polynomialUint.len > 256).bool() == true, "Cannot exceed 256 coeffs!"
+
+    for i in 0..<n:
+        res[i].setUint(polynomialUint[i])
+    
+    var pad = 256 - n
+    for i in n..<pad:
+        res[i].setZero()
+
+func isPointEqHex(point: EC_P, expected: string): bool {.discardable.} =
+
+    var point_bytes {.noInit.} : Bytes
+    if point_bytes.serialize(point) == cttCodecEcc_Success:
+        doAssert (point_bytes.toHex() == expected).bool() == true, "Point does not equal to the expected hex value!"
+
+func isScalarEqHex(scalar: matchingOrderBigInt(Banderwagon), expected: string) : bool {.discardable.} =
+
+    var scalar_bytes {.noInit.} : Bytes
+    if scalar_bytes.serialize_scalar(scalar) == cttCodecScalar_Success:
+        doAssert (scalar_bytes.toHex() == expected).bool() == true, "Scalar does not equal to the expected hex value!"
+
+
+
+    
+
+
 
 
 
