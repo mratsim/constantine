@@ -20,20 +20,23 @@ import
 
 # Please refer to https://hackmd.io/mJeCRcawTRqr9BooVpHv5g 
 
-func barycentricWeights* [EC_P_Fr] (res: var EC_P_Fr, element :  BigInt) = 
- doAssert (uint(element) > uint(DOMAIN)), "The domain is [0,255], and $element is not in the domain"
+func barycentricWeights* [EC_P_Fr] (res: var EC_P_Fr, element : static int) = 
+ doAssert (element > DOMAIN), "The domain is [0,255], and $element is not in the domain"
 
  var domain_element_Fr: EC_P_Fr
- domain_element_Fr.fromBig(element)
+ var bigndom{.noInit.} : BigInt[element] #this won't work
+ bigndom.setUint(uint(element))
+ domain_element_Fr.fromBig(bigndom)
 
  res.setOne()
 
  for i in uint(0)..<uint(DOMAIN):
    assert(not(i == uint(element)))
 
-   var i_Fr: EC_P_Fr = cast[EC_P_Fr](i)
+   var i_Fr {.noInit.}: EC_P_Fr 
 
-   var bigi{.noInit.} : BigInt[i]
+   var bigi{.noInit.} : BigInt[i] #cannot evaluate at compile time
+   bigi.setUint(uint(i))
    i_Fr.fromBig(bigi)
  
    var temp {.noInit.}: EC_P_Fr
@@ -41,40 +44,36 @@ func barycentricWeights* [EC_P_Fr] (res: var EC_P_Fr, element :  BigInt) =
    res.prod(res, temp)
   
 
+
+
 func newPrecomputedWeights* [PrecomputedWeights] (res: var PrecomputedWeights, midpoint: static int)=
- var barycentricWeightsInst: array[256*2, EC_P_Fr]
+ res.barycentricWeights: array[256*2, EC_P_Fr]
  
  for i in 0..midpoint:
   var weights {.noInit.}: EC_P_Fr
-  weights.barycentricWeights(BigInt[i])
+  weights.barycentricWeights(i) #cannot eval at compile time
 
   var inverseWeights {.noInit.}: EC_P_Fr
   inverseWeights.inv(weights)
 
-  barycentricWeightsInst[i] = weights
-  barycentricWeightsInst[i+midpoint] = inverseWeights
+  res.barycentricWeights[i] = weights
+  res.barycentricWeights[i+midpoint] = inverseWeights
 
   midpoint = DOMAIN - 1
-  var invertedDomainInst: array[(midpoint*2), EC_P_Fr] 
+  res.invertedDomain: array[(midpoint*2), EC_P_Fr] 
 
-  for i in uint64(0)..<DOMAIN:
+  for i in 0..<DOMAIN:
    var k: EC_P_Fr = cast[EC_P_Fr](i)
 
    k.inv(k)
 
    var neg_k : EC_P_Fr
-
    var zero : EC_P_Fr
    zero.setZero()
-
    neg_k.diff(zero, k)
+   res.invertedDomain[i-1] = k
+   res.invertedDomain[(i-1) + midpoint] = neg_k
 
-   invertedDomainInst[i-1] = k
-
-   invertedDomainInst[(i-1) + midpoint] = neg_k
-
-   res.barycentricWeights = barycentricWeightsInst
-   res.invertedDomain = invertedDomainInst
 
 
 # func BatchInversion(points : seq[EC_P_Fr]) : seq[EC_P_Fr] =
