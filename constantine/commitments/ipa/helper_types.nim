@@ -29,29 +29,29 @@ type
 
 type 
     IPAProof* = object
-     L_vector: openArray[EC_P]
-     R_vector: openArray[EC_P]
-     A_scalar: EC_P_Fr
+     L_vector*: openArray[EC_P]
+     R_vector*: openArray[EC_P]
+     A_scalar*: EC_P_Fr
 
 type 
     MultiProof* = object
-     IPAprv: IPAProof
-     D: EC_P
+     IPAprv*: IPAProof
+     D*: EC_P
 
 const
- DOMAIN*: uint64 = 256
+ DOMAIN*: int = 256
 
 type 
  PrecomputedWeights* = object
-  barycentricWeights: openArray[EC_P_Fr]
-  invertedDomain: openArray[EC_P_Fr]
+  barycentricWeights*: array[512,EC_P_Fr]
+  invertedDomain*: array[512,EC_P_Fr]
 
 type
    IPASettings* = object
-    SRS : openArray[EC_P]
-    Q_val : EC_P
-    PrecomputedWeights: PrecomputedWeights
-    numRounds: uint32
+    SRS*: openArray[EC_P]
+    Q_val*: EC_P
+    PrecomputedWeights*: PrecomputedWeights
+    numRounds*: uint32
 
 const seed* = asBytes"eth_verkle_oct_2021"
 

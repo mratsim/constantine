@@ -36,7 +36,7 @@ func domainToFrElem* [EC_P_Fr] (res: var EC_P_Fr, inp: uint8)=
 func computePowersOfElem* [EC_P_Fr] (res: var openArray[EC_P_Fr], x: EC_P_Fr, degree: SomeSignedInt)= 
     res[0].setOne()
 
-    for i in 0..<degree:
+    for i in 1..<degree:
         res[i].prod(res[i-1], x)
     
 # createMultiProof creates a multi-proof for several polynomials in the evaluation form
