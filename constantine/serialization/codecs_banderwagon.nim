@@ -126,17 +126,19 @@ func serializeBatch*(
 
   # collect all the z coordinates
   var zs: array[N, Fp[Banderwagon]]
+  var zs_inv: array[N, Fp[Banderwagon]]
   for i in 0 ..< N:
     zs[i] = points[i].z
 
-  zs.batchInvert_vartime()
+  if not zs_inv.batchInvert(zs):
+    return cttCodecEcc_InternalBatchOperationFailure
   
   for i in 0 ..< N:
     var X: Fp[Banderwagon]
     var Y: Fp[Banderwagon]
 
-    X.prod(points[i].x, zs[i])
-    Y.prod(points[i].y, zs[i])
+    X.prod(points[i].x, zs_inv[i])
+    Y.prod(points[i].y, zs_inv[i])
 
     let lexicographicallyLargest = Y.toBig() >= Fp[Banderwagon].getPrimeMinus1div2()
     if not lexicographicallyLargest.bool():

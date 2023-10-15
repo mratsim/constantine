@@ -121,3 +121,6 @@ func batchInvert*[F](dst: openArray[F], source: openArray[F]): bool {.inline.} =
   let N = dst.len
   batchInvert(dst.asUnchecked(), source.asUnchecked(), N)
   return true
+
+# func batchInvert*[N: static int, F](dst: array[N, F], src: array[N, F]) =
+#   batchInvert(dst.asUnchecked(), src.asUnchecked(), N)
