@@ -111,3 +111,42 @@ func deserialize*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccStatus =
     return cttCodecEcc_PointNotInSubgroup
 
   return cttCodecEcc_Success
+
+## ############################################################
+##
+##              Banderwagon Batch Serialization
+##
+## ############################################################
+
+func serializeBatch*(
+    dst: ptr UncheckedArray[array[32, byte]],
+    points: ptr UncheckedArray[EC_Prj],
+    N: static int,
+  ) : CttCodecEccStatus =
+
+  # collect all the z coordinates
+  var zs: array[N, Fp[Banderwagon]]
+  for i in 0 ..< N:
+    zs[i] = points[i].z
+
+  zs.batchInvert_vartime()
+  
+  for i in 0 ..< N:
+    var X: Fp[Banderwagon]
+    var Y: Fp[Banderwagon]
+
+    X.prod(points[i].x, zs[i])
+    Y.prod(points[i].y, zs[i])
+
+    let lexicographicallyLargest = Y.toBig() >= Fp[Banderwagon].getPrimeMinus1div2()
+    if not lexicographicallyLargest.bool():
+      X.neg()
+
+    dst[i].marshal(X, bigEndian)
+
+  return cttCodecEcc_Success
+
+func serializeBatch*[N: static int](
+        dst: var array[N, array[32, byte]],
+        points: array[N, EC_Prj]): CttCodecEccStatus =
+  return serializeBatch(dst.asUnchecked(), points.asUnchecked(), N)
