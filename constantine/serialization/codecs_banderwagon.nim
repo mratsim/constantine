@@ -130,8 +130,7 @@ func serializeBatch*(
   for i in 0 ..< N:
     zs[i] = points[i].z
 
-  if not zs_inv.batchInvert(zs):
-    return cttCodecEcc_InternalBatchOperationFailure
+  discard zs_inv.batchInvert(zs)
   
   for i in 0 ..< N:
     var X: Fp[Banderwagon]

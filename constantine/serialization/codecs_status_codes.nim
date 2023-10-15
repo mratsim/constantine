@@ -19,4 +19,3 @@ type
     cttCodecEcc_PointNotOnCurve
     cttCodecEcc_PointNotInSubgroup
     cttCodecEcc_PointAtInfinity
-    cttCodecEcc_InternalBatchOperationFailure
