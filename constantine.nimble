@@ -8,6 +8,8 @@ license       = "MIT or Apache License 2.0"
 # ----------------------------------------------------------------
 
 requires "nim >= 1.6.12"
+installDirs "constantine",
+            "metering"
 
 # Nimscript imports
 # ----------------------------------------------------------------
