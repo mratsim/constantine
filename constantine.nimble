@@ -4,12 +4,12 @@ author        = "Mamy Ratsimbazafy"
 description   = "This library provides thoroughly tested and highly-optimized implementations of cryptography protocols."
 license       = "MIT or Apache License 2.0"
 
+installDirs = @["constantine", "metering"]
+
 # Dependencies
 # ----------------------------------------------------------------
 
 requires "nim >= 1.6.12"
-installDirs "constantine",
-            "metering"
 
 # Nimscript imports
 # ----------------------------------------------------------------
