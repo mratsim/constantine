@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import 
-    ../constantine/commitments/ipa/[barycentric_form,test_helper, helper_types, transcript_gen],
+    ../constantine/commitments/ipa/[barycentric_form,test_helper, helper_types, transcript_gen, common_utils],
     ../constantine/hashes,
     std/[unittest],
     ../constantine/math/config/[type_ff, curves],
@@ -86,30 +86,79 @@ suite "Barycentric Form Tests":
             var genfr : EC_P_Fr
             genfr.mapToScalarField(genfp)
 
-            var res : EC_P_Fr
-            genfr.evaluate(poly,2)
+            var res {.noInit.}: EC_P_Fr
+            res.evaluate(poly,gen_fr,2)
+            
+            echo res.toHex() 
+            echo genfr.toHex() 
 
-            doAssert res.toHex() == genfr.toHex(), "Res and Rand_fr should match!"
+            doAssert (res.toHex()==genfr.toHex()) == true, "Not matching!"
 
         testBasicInterpolation()
 
     test "Testing Barycentric Precompute Coefficients":
         proc testBarycentricPrecomputeCoefficients()=
 
-            var p_outside_dom {.noInit.}: EC_P_Fr
+            var p_outside_dom: EC_P_Fr
 
-            p_outside_dom.fromHex("0xd48")
+            var i_bg : matchingOrderBigInt(Banderwagon)
+            i_bg.setUint(uint64(3400))
+            
+            p_outside_dom.fromBig(i_bg)
 
-            var testVals: array[10,uint] = [1,2,3,4,5,6,7,8,9,10]
+            echo p_outside_dom.toHex()
 
-            var precomp {.noInit.}: PrecomputedWeights
+            var testVals: array[10,uint64] = [1,2,3,4,5,6,7,8,9,10] 
+            
+            var lagrange_values : array[256,EC_P_Fr]
+            lagrange_values.testPoly256(testVals)
 
-            precomp.newPrecomputedWeights(256)
+            var precomp: PrecomputedWeights
+
+            precomp.newPrecomputedWeights()
+            var bar_coeffs {.noInit.}: array[256, EC_P_Fr]
+
+            bar_coeffs.computeBarycentricCoefficients(precomp, p_outside_dom)
+            var got {.noInit.}: EC_P_Fr
+
+            got.computeInnerProducts(lagrange_values, bar_coeffs)
+
+            var expected {.noInit.}: EC_P_Fr
+            expected.evalOutsideDomain(precomp, lagrange_values, p_outside_dom)
+
+            var points : array[256, Coord]
+            for k in 0..<256:
+                var x: matchingOrderBigInt(Banderwagon)
+                x.setUint(uint64(k))
+                var x_fr : EC_P_Fr
+                x_fr.fromBig(x)
+
+                var point : Coord
+                point.x = x_fr
+                point.y = lagrange_values[k]
+
+                points[k]=point
+
+            var poly_coeff {.noInit.}: array[DOMAIN, EC_P_Fr]
+            poly_coeff.interpolate(points, DOMAIN)
+
+            var expected2 {.noInit.}: EC_P_Fr
+            expected2.evaluate(poly_coeff, p_outside_dom, DOMAIN)
+
+            echo got.toHex()
+            echo expected.toHex()
+            echo expected2.toHex()
+
+            #TODO needs better testing?
+            doAssert (expected2 == expected).bool() == true, "Problem with Barycentric Weights!"
+            doAssert (expected2 == got).bool() == true, "Problem with Inner Products!"
+
+        testBarycentricPrecomputeCoefficients()
 
 
     # test "Testing Polynomial Division":
 
-    #     proc testPolynomialDivTest() = 
+    #     proc testPolynomialDiv() = 
 
     #         var one {.noInit.} : EC_P_Fr
     #         one.setOne()
@@ -127,20 +176,50 @@ suite "Barycentric Form Tests":
     #         two.fromHex("0x2")
 
     #         #(X-1)(X-2) =  2 - 3X + X^2
-    #         var poly_coeff_num :seq[EC_P_Fr] 
+    #         var poly_coeff_num :array[3,EC_P_Fr] 
     #         poly_coeff_num[0] = two
     #         poly_coeff_num[1] = minusThree
     #         poly_coeff_num[2] = one
 
+    #         var poly_coeff_den: array[2,EC_P_Fr] 
+    #         poly_coeff_den[0]= minusOne
+    #         poly_coeff_den[1]= one
 
-    #         var poly_coeff_den: seq[EC_P_Fr] 
-    #         poly_coeff_den[0..1]= [minusOne, one]
+    #         var res{.noInit.} :  tuple[q,r : array[DOMAIN, EC_P_Fr], ok: bool]
 
-           
+    #         const n1: int= 2
+    #         const n2: int = 3
+    #         res.polynomialLongDivision(poly_coeff_num, poly_coeff_den, n1, n2)
 
-    #         let result = polynomialLongDivision(poly_coeff_num, poly_coeff_den)
+    #         var quotient : array[DOMAIN,EC_P_Fr] = res.q
+    #         var rem: array[DOMAIN,EC_P_Fr] = res.r
+    #         var okay: bool = res.ok
 
-    #         var quotient : seq[EC_P_Fr] = result.q
+    #         doAssert okay == true, "Poly long div failed"
+
+    #         for i in 0..<rem.len:
+    #             doAssert rem[i].isZero().bool() == true, "Remainder should be 0"
+
+    #         var genfp : EC_P
+    #         genfp.fromAffine(generator)
+    #         var genfr : EC_P_Fr
+    #         genfr.mapToScalarField(genfp)
+
+    #         var got : EC_P_Fr
+    #         got.evaluate(quotient, genfr, DOMAIN)
+
+    #         var expected {.noInit.} : EC_P_Fr
+    #         expected.sum(genfr, minusTwo)
+
+    #         doAssert got.toHex()==expected.toHex() == true, "Quotient is not correct"
+
+    #     testPolynomialDiv()
+        
+
+
+
+            
+
 
 
 
@@ -156,7 +235,7 @@ suite "Barycentric Form Tests":
 # ############################################################
 suite "Transcript Tests":
 
-    test "Some Test Vectors":
+    test "Some Test Vectors 0":
 
         proc testVec()=
 
@@ -164,14 +243,34 @@ suite "Transcript Tests":
             tr.newTranscriptGen(asBytes"simple_protocol")
 
             var challenge1 {.noInit.}: matchingOrderBigInt(Banderwagon)
-            challenge1.generateChallengeScalar(asBytes"simple_challenge")
+            challenge1.generateChallengeScalar(tr,asBytes"simple_challenge")
 
             var challenge2 {.noInit.}: matchingOrderBigInt(Banderwagon)
-            challenge2.generateChallengeScalar(asBytes"simple_challenge")
+            challenge2.generateChallengeScalar(tr,asBytes"simple_challenge")
 
-            doAssert (challenge1==challenge2).bool() == true , "Transcripts matched!"
+            doAssert (challenge1==challenge2).bool() == false , "calling ChallengeScalar twice should yield two different challenges"
 
         testVec()
+
+    test "Some Test Vectors 1":
+
+        proc testVec1()=
+
+            var tr {.noInit.}: sha256
+            var tr2 {.noInit.}: sha256
+            tr.newTranscriptGen(asBytes"simple_protocol")
+            tr2.newTranscriptGen(asBytes"simple_protocol")
+            
+
+            var challenge1 {.noInit.}: matchingOrderBigInt(Banderwagon)
+            challenge1.generateChallengeScalar(tr,asBytes"ethereum_challenge")
+
+            var challenge2 {.noInit.}: matchingOrderBigInt(Banderwagon)
+            challenge2.generateChallengeScalar(tr2,asBytes"ethereum_challenge")
+
+            doAssert (challenge1==challenge2).bool() == true , "calling ChallengeScalar twice should yield the same challenge"
+
+        testVec1()
 
 
 

@@ -30,7 +30,7 @@ import
 
 
 
-func generate_random_elements* [FF](points: var  openArray[FF] , num_points: uint64)  =
+func generate_random_elements* [EC_P_Fr](points: var  openArray[EC_P_Fr] , num_points: uint64)  =
 
     var incrementer: uint64 = 0
 
@@ -47,7 +47,7 @@ func generate_random_elements* [FF](points: var  openArray[FF] , num_points: uin
 
         digest.finish(hash)
 
-        var x {.noInit.}:  FF
+        var x {.noInit.}:  EC_P_Fr
 
         x.deserialize(hash)
         doAssert(cttCodecEcc_Success)
@@ -70,13 +70,13 @@ func generate_random_elements* [FF](points: var  openArray[FF] , num_points: uin
 #
 # ############################################################
 
-func computeInnerProducts* [FF] (res: var FF, a,b : openArray[FF])=
-    debug: doAssert (a.len == b.len), "The lengths must be equal!"
-    res.setZero()
-    for i in 0..<len(a):
-        var tmp {.noInit.} : FF 
-        tmp.prod(a[i], b[i])
-        res += tmp
+func computeInnerProducts* [EC_P_Fr] (res: var EC_P_Fr, a,b : openArray[EC_P_Fr])=
+    if a.len == b.len:
+      res.setZero()
+      for i in 0..<b.len:
+          var tmp {.noInit.} : EC_P_Fr 
+          tmp.prod(a[i], b[i])
+          res.sum(res,tmp)
 
 # ############################################################
 #
@@ -84,22 +84,22 @@ func computeInnerProducts* [FF] (res: var FF, a,b : openArray[FF])=
 #
 # ############################################################
 
-func foldScalars* [FF] (res: var openArray[FF], a,b : openArray[FF], x: FF)=
+func foldScalars* [EC_P_Fr] (res: var openArray[EC_P_Fr], a,b : openArray[EC_P_Fr], x: EC_P_Fr)=
     
     doAssert a.len == b.len , "Lengths should be equal!"
 
     for i in 0..<a.len:
-        var bx {.noInit.}: FF
+        var bx {.noInit.}: EC_P_Fr
         bx.prod(x, b[i])
         res[i].sum(bx, a[i])
 
 
-func foldPoints* [FF] (res: var openArray[FF], a,b : openArray[FF], x: FF)=
+func foldPoints* [EC_P_Fr] (res: var openArray[EC_P_Fr], a,b : openArray[EC_P_Fr], x: EC_P_Fr)=
     
     doAssert a.len == b.len , "Should have equal lengths!"
 
     for i in 0..<a.len:
-        var bx {.noInit.}: FF
+        var bx {.noInit.}: EC_P_Fr
 
         b[i].scalarMul(x.toBig())
         bx = b[i]
@@ -219,7 +219,7 @@ func multiScalarMulImpl_reference_vartime[F, G; bits: static int](
   buckets.freeHeap()
   miniMSMs.freeHeap()
 
-func multiScalarMul_reference_vartime_Prj*[FF](r: var FF, coefs: openArray[BigInt], points: openArray[FF]) {.tags:[VarTime, HeapAlloc].} =
+func multiScalarMul_reference_vartime_Prj*[EC_P_Fr](r: var EC_P_Fr, coefs: openArray[BigInt], points: openArray[EC_P_Fr]) {.tags:[VarTime, HeapAlloc].} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
   debug: doAssert coefs.len == points.len

@@ -130,25 +130,20 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
 
 type 
   serIPA* = object
-   ls: openArray[string]
-   rs: openArray[string]
+   lv*: Bytes
+   rv*: Bytes
+   asc*: Bytes
 
 
-func serializeIPA* [serIPA] (res: var serIPA, ip: IPAProof)=
-  var serializedProofs {.noInit.} : array[DOMAIN, string]
-  for el in ip.L_vector:
-    
-    var idx = 0
-    serializedProofs[idx] = el.toHex()
+func serialzeIPAProof* [serIPA] (res : var serIPA, proof : IPAProof)=
+  let stat1 = res.lv.serializeBatch(proof.L_vector)
+  doAssert stat1 == cttCodecEcc_Success, "Serialization Failed"
+  let stat2 = res.rv.serializeBatch(proof.R_vector)
+  doAssert stat2 == cttCodecEcc_Success, "Serialization Failed"
 
-  res.ls = serializedProofs
-  var serializedProofsb {.noInit.} : array[DOMAIN, string]
+  res.asc.serialize_scalar(proof.A_scalar)
 
-  for ar in ip.R_vector:
-    
-    var idx = 0
-    serializedProofsb[idx] = ar.toHex()
-  res.rs = serializedProofsb
+
 
 
 

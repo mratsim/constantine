@@ -59,9 +59,7 @@ func scalarAppend* [sha256] (res: var sha256, label: openArray[byte], scalar: ma
 
 
 ## Generating Challenge Scalars based on the Fiat Shamir method
-func generateChallengeScalar* (gen: var matchingOrderBigInt(Banderwagon), label: openArray[byte]) =
-    var transcript {.noInit.}: sha256
-    transcript.init()
+func generateChallengeScalar* (gen: var matchingOrderBigInt(Banderwagon), transcript: var sha256, label: openArray[byte]) =
     transcript.domainSeparator(label)
 
     var hash: array[32, byte]
