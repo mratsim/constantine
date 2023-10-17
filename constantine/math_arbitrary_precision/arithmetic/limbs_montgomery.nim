@@ -77,9 +77,7 @@ func oneMont_vartime*(r: var openArray[SecretWord], M: openArray[SecretWord]) {.
   zeroMem(t, M.len*sizeof(SecretWord))
   t[M.len] = One
 
-  let mBits = getBits_LE_vartime(M)
-  r.view().reduce(LimbsViewMut t, M.len*WordBitWidth+1, M.view(), mBits)
-  # discard r.reduce_vartime(t.toOpenArray(0, M.len), M)
+  discard r.reduce_vartime(t.toOpenArray(0, M.len), M)
 
 func r2_vartime*(r: var openArray[SecretWord], M: openArray[SecretWord]) {.meter.} =
   ## Returns the Montgomery domain magic constant for the input modulus:
@@ -95,9 +93,7 @@ func r2_vartime*(r: var openArray[SecretWord], M: openArray[SecretWord]) {.meter
   zeroMem(t, 2*M.len*sizeof(SecretWord))
   t[2*M.len] = One
 
-  let mBits = getBits_LE_vartime(M)
-  r.view().reduce(LimbsViewMut t, 2*M.len*WordBitWidth+1, M.view(), mBits)
-  # discard r.reduce_vartime(t.toOpenArray(0, 2*M.len), M)
+  discard r.reduce_vartime(t.toOpenArray(0, 2*M.len), M)
 
 # Montgomery multiplication
 # ------------------------------------------

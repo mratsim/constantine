@@ -13,7 +13,7 @@ import
   ./limbs_fixedprec
 
 # No exceptions allowed
-{.push raises: [].}
+{.push raises: [], checks: off.}
 
 # ############################################################
 #
@@ -105,6 +105,21 @@ func shlAddMod_multiprec_vartime(
 
   return q
 
+func shortDiv_vartime*(remainder: var SecretWord, n_hi, n_lo, d: SecretWord, normFactor: int): SecretWord =
+  # We normalize d with clz so that the MSB is set
+  # And normalize (n_hi * 2^64 + n_hi) by normFactor as well to maintain the result
+  # This ensures that (n_hi, n_hi)/d fits in a limb.
+  if normFactor == 0:
+    div2n1n_vartime(result, remainder, n_hi, n_lo, d)
+  else:
+    let clz = WordBitWidth-normFactor
+    let hi = (n_hi shl clz) or (n_lo shr normFactor)
+    let lo = n_lo shl clz
+    let d = d shl clz
+
+    div2n1n_vartime(result, remainder, hi, lo, d)
+    remainder = remainder shr clz
+
 func shlAddMod_vartime(a: var openArray[SecretWord], c: SecretWord,
                        M: openArray[SecretWord], mBits: int): SecretWord {.meter.} =
   ## Fused modular left-shift + add
@@ -123,24 +138,7 @@ func shlAddMod_vartime(a: var openArray[SecretWord], c: SecretWord,
     let R = mBits and (WordBitWidth - 1)
 
     # (hi, lo) = a * 2^64 + c
-    if R == 0:
-      # We can delegate this R == 0 case to the
-      # shlAddMod_multiprec, with the same result.
-      # But isn't it faster to handle it here?
-      var q, r: SecretWord
-      div2n1n_vartime(q, r, a[0], c, M[0])
-      a[0] = r
-      return q
-    else:
-      let clz = WordBitWidth-R
-      let hi = (a[0] shl clz) or (c shr R)
-      let lo = c shl clz
-      let m0 = M[0] shl clz
-
-      var q, r: SecretWord
-      div2n1n(q, r, hi, lo, m0)
-      a[0] = r shr clz
-      return q
+    return shortDiv_vartime(remainder = a[0], n_hi = a[0], n_lo = c, d = M[0], normFactor = R)
   else:
     return shlAddMod_multiprec_vartime(a, c, M, mBits)
 
@@ -211,7 +209,7 @@ func divRem_vartime*(
 
 func reduce_vartime*(r: var openArray[SecretWord],
                      a, b: openArray[SecretWord]): bool {.noInline, meter.} =
-  let aOffset = a.len - b.len
+  let aOffset = max(a.len - b.len, 0)
   var qBuf = allocStackArray(SecretWord, aOffset+1)
   template q: untyped = qBuf.toOpenArray(0, aOffset)
   result = divRem_vartime(q, r, a, b)

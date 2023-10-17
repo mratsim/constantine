@@ -12,7 +12,7 @@ import
   ./limbs_fixedprec
 
 # No exceptions allowed
-{.push raises: [].}
+{.push raises: [], checks: off.}
 
 # ############################################################
 #
