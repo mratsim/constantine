@@ -195,7 +195,7 @@ func divRem_vartime*(
     # Now shift-left the copied words while adding the new word mod b
 
     for i in countdown(aOffset, 0):
-      q[i] = shlAddMod_multiprec_vartime(
+      q[i] = shlAddMod_vartime(
               r.toOpenArray(0, rLen-1),
               a[i],
               b.toOpenArray(0, bLen-1),
@@ -211,16 +211,10 @@ func divRem_vartime*(
 
 func reduce_vartime*(r: var openArray[SecretWord],
                      a, b: openArray[SecretWord]): bool {.noInline, meter.} =
-  let aBits = getBits_LE_vartime(a)
-  let bBits = getBits_LE_vartime(b)
-  let aLen = wordsRequired(aBits)
-  let bLen = wordsRequired(bBits)
-
   let aOffset = a.len - b.len
-  var qBuf = allocHeapArray(SecretWord, aOffset+1)
+  var qBuf = allocStackArray(SecretWord, aOffset+1)
   template q: untyped = qBuf.toOpenArray(0, aOffset)
   result = divRem_vartime(q, r, a, b)
-  freeHeap(qBuf)
 
 # ############################################################
 #
