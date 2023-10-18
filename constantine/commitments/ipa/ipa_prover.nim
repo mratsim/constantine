@@ -13,7 +13,7 @@
 # ############################################################
 
 import
-  ./[transcript_gen, common_utils, helper_types],
+  ./[transcript_gen, common_utils, helper_types, barycentric_form],
   ../../../constantine/platforms/primitives,
   ../../../constantine/hashes,
   ../../math/config/[type_ff, curves],
@@ -22,7 +22,8 @@ import
   ../../../constantine/math/elliptic/ec_scalar_mul, 
   ../../../constantine/platforms/[views],
   ../../../constantine/math/io/[io_fields],
-  ../../../constantine/curves_primitives
+  ../../../constantine/curves_primitives,
+  ../../../constantine/ethereum_verkle_primitives
 
 # ############################################################
 #
@@ -34,6 +35,16 @@ import
 # and Split points that are used in the IPA polynomial
 
 # Further reference refer to this https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
+
+
+
+# Initiates a new IPASetting
+func genIPAConfig*(res: var IPASettings) : bool {.inline.}=
+  res.SRS.generate_random_points(uint64(DOMAIN))
+  res.Q_val.fromAffine(Banderwagon.getGenerator())
+  res.precompWeights.newPrecomputedWeights()
+  res.numRounds.computeNumRounds(uint64(DOMAIN))
+  return true
 
 func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: IPASettings, commitment: EC_P, a: openArray[EC_P_Fr], evalPoint: EC_P_Fr )=
   transcript.domain_separator(asBytes"ipa")

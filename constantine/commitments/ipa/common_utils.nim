@@ -30,7 +30,7 @@ import
 
 
 
-func generate_random_elements* [EC_P_Fr](points: var  openArray[EC_P_Fr] , num_points: uint64)  =
+func generate_random_points* [EC_P](points: var  openArray[EC_P] , num_points: uint64)  =
 
     var incrementer: uint64 = 0
 
@@ -47,20 +47,20 @@ func generate_random_elements* [EC_P_Fr](points: var  openArray[EC_P_Fr] , num_p
 
         digest.finish(hash)
 
-        var x {.noInit.}:  EC_P_Fr
+        var x {.noInit.}:  EC_P
 
-        x.deserialize(hash)
-        doAssert(cttCodecEcc_Success)
+        let stat1 =  x.deserialize(hash) 
+        doAssert stat1 == cttCodecEcc_Success, "Deserialization Failure!"
         incrementer=incrementer+1
 
         var x_as_Bytes {.noInit.} : array[32, byte]
-        x_as_Bytes.serialize(x)
-        doAssert(cttCodecEcc_Success)
+        let stat2 = x_as_Bytes.serialize(x)
+        doAssert stat2  == cttCodecEcc_Success, "Serialization Failure!"
 
         var point_found {.noInit.} : EC_P
-        point_found.deserialize(x_as_Bytes)
+        let stat3 = point_found.deserialize(x_as_Bytes)
 
-        doAssert(cttCodecEcc_Success)
+        doAssert stat3 == cttCodecEcc_Success, "Deserialization Failure!"
         points[incrementer] = point_found
 
 
@@ -74,7 +74,7 @@ func computeInnerProducts* [EC_P_Fr] (res: var EC_P_Fr, a,b : openArray[EC_P_Fr]
     if a.len == b.len:
       res.setZero()
       for i in 0..<b.len:
-          var tmp {.noInit.} : EC_P_Fr 
+          var tmp : EC_P_Fr 
           tmp.prod(a[i], b[i])
           res.sum(res,tmp)
 
@@ -141,15 +141,15 @@ func splitPoints* (t: var StridedView) : tuple[l,r: StridedView] {.inline.}=
     result.a2.data = t.data  
 
 
-func computeNumRounds* [float64] (res: var float64, vectorSize: SomeUnsignedInt)= 
+func computeNumRounds* [uint64] (res: var uint64, vectorSize: SomeUnsignedInt)= 
 
-    doAssert (vectorSize == 0), "Zero is not a valid input!"
+    doAssert (vectorSize == uint64(0)).bool() == false, "Zero is not a valid input!"
 
-    var isP2 = isPowerOf2_vartime(vectorSize) and isPowerOf2_vartime(vectorSize - 1)
+    var isP2 : bool = isPowerOf2_vartime(vectorSize)
 
-    doAssert (isP2 == 1), "not a power of 2, hence not a valid inputs"
+    doAssert isP2 == true, "not a power of 2, hence not a valid inputs"
 
-    res = float64(log2_vartime(vectorSize))
+    res = uint64(float64(log2_vartime(vectorSize)))
 
 # ############################################################
 #

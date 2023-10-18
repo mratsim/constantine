@@ -21,7 +21,8 @@ import
   ../../../constantine/math/elliptic/ec_scalar_mul, 
   ../../../constantine/platforms/[views],
   ../../../constantine/math/io/[io_fields],
-  ../../../constantine/curves_primitives
+  ../../../constantine/curves_primitives,
+  ../../../constantine/ethereum_verkle_primitives
 
 type
   EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
@@ -44,14 +45,14 @@ const
 type 
  PrecomputedWeights* = object
   barycentricWeights*: array[512,EC_P_Fr]
-  invertedDomain*: array[512,EC_P_Fr]
+  invertedDomain*: array[510,EC_P_Fr]
 
 type
    IPASettings* = object
-    SRS*: openArray[EC_P]
+    SRS*: array[DOMAIN,EC_P]
     Q_val*: EC_P
-    PrecomputedWeights*: PrecomputedWeights
-    numRounds*: uint32
+    precompWeights*: PrecomputedWeights
+    numRounds*: uint64
 
 const seed* = asBytes"eth_verkle_oct_2021"
 
@@ -61,3 +62,5 @@ type
     Coord* = object 
      x*: EC_P_Fr
      y*: EC_P_Fr
+
+var generator* = Banderwagon.getGenerator()

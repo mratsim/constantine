@@ -22,7 +22,7 @@ import
 
 func newPrecomputedWeights* [PrecomputedWeights] (res: var PrecomputedWeights)=
  
- var midpoint: uint64 = 256-1
+ var midpoint: uint64 = 256
  for i in uint64(0)..<midpoint:
   var weights {.noInit.}: EC_P_Fr
   weights.computeBarycentricWeights(i) 
@@ -35,7 +35,7 @@ func newPrecomputedWeights* [PrecomputedWeights] (res: var PrecomputedWeights)=
 
   midpoint = uint64(DOMAIN) - 1
 
-  for i in uint64(1)..<uint64(DOMAIN):
+  for i in 1..<DOMAIN:
    var k {.noInit.}: EC_P_Fr
    var i_bg {.noInit.} : matchingOrderBigInt(Banderwagon)
    i_bg.setUint(uint64(i))
@@ -49,7 +49,7 @@ func newPrecomputedWeights* [PrecomputedWeights] (res: var PrecomputedWeights)=
    zero.setZero()
    neg_k.diff(zero, k)
    res.invertedDomain[i-1] = k
-   res.invertedDomain[(i-1) + midpoint] = neg_k
+   res.invertedDomain[(i-1) + int(midpoint)] = neg_k
 
 
 func computeBarycentricWeights* [EC_P_Fr] (res: var EC_P_Fr, element : uint64) = 
@@ -82,38 +82,39 @@ func computeBarycentricWeights* [EC_P_Fr] (res: var EC_P_Fr, element : uint64) =
 
 
 
-func computeBarycentricCoefficients* [EC_P_Fr]( res: var openArray[EC_P_Fr], precomp: PrecomputedWeights, point : var EC_P_Fr) =
+func computeBarycentricCoefficients* [EC_P_Fr]( res: var openArray[EC_P_Fr], precomp: PrecomputedWeights, point : EC_P_Fr) =
+  for i in 0..<DOMAIN:
+    var weight: EC_P_Fr
+    weight = precomp.barycentricWeights[i]
+    var i_bg: matchingOrderBigInt(Banderwagon)
+    i_bg.setUint(uint64(i))
+    var i_fr: EC_P_Fr
+    i_fr.fromBig(i_bg)
 
- for i in uint64(0)..<uint64(DOMAIN):
-  var weight : EC_P_Fr
-  weight = precomp.barycentricWeights[i]
-  var i_bg {.noInit.} : matchingOrderBigInt(Banderwagon)
-  i_bg.setUint(uint64(i))
-  var i_Fr {.noInit.} : EC_P_Fr
-  i_Fr.fromBig(i_bg)
+    res[i].diff(point, i_fr)
+    res[i].prod(res[i], weight)
   
-  res[i].diff(point, i_Fr)
-  res[i].prod(res[i],weight)
- var totalProd : EC_P_Fr
+  var totalProd: EC_P_Fr
+  totalProd.setOne()
 
- totalProd.setOne()
+  for i in 0..<DOMAIN:
+    var i_bg: matchingOrderBigInt(Banderwagon)
+    i_bg.setUint(uint64(i))
+    var i_fr: EC_P_Fr
+    i_fr.fromBig(i_bg)
 
- for i in 0..<DOMAIN:
-  var i_bg {.noInit.} : matchingOrderBigInt(Banderwagon)
-  i_bg.setUint(uint64(i))
-  var i_Fr {.noInit.} : EC_P_Fr
-  i_Fr.fromBig(i_bg)
+    var tmp: EC_P_Fr
+    tmp.diff(point, i_fr)
 
+    totalProd.prod(totalProd, tmp)
 
-  var tmp {.noInit.} : EC_P_Fr
-  tmp.diff(point, i_Fr)
+  for i in 0..<DOMAIN:
+    res[i].inv(res[i])
+    #not using batch inversion for now
 
-  totalProd.prod(totalProd, tmp)
+  for i in 0..<DOMAIN:
+    res[i].prod(res[i], totalprod)
 
-  doAssert res.batchInvert(res) == true
-
-  for i in uint64(0)..<uint64(DOMAIN):
-    res[i].prod(res[i], totalProd)
 
 
 func getInvertedElement* [EC_P_Fr] ( res: var EC_P_Fr, precomp : PrecomputedWeights, element : int, is_negative: bool) =

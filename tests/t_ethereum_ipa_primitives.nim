@@ -7,7 +7,13 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import 
-    ../constantine/commitments/ipa/[barycentric_form,test_helper, helper_types, transcript_gen, common_utils],
+    ../constantine/commitments/ipa/[
+        barycentric_form,
+        test_helper, 
+        helper_types, 
+        transcript_gen, 
+        common_utils,
+        ipa_prover],
     ../constantine/hashes,
     std/[unittest],
     ../constantine/math/config/[type_ff, curves],
@@ -99,7 +105,7 @@ suite "Barycentric Form Tests":
     test "Testing Barycentric Precompute Coefficients":
         proc testBarycentricPrecomputeCoefficients()=
 
-            var p_outside_dom: EC_P_Fr
+            var p_outside_dom : EC_P_Fr
 
             var i_bg : matchingOrderBigInt(Banderwagon)
             i_bg.setUint(uint64(3400))
@@ -113,22 +119,34 @@ suite "Barycentric Form Tests":
             var lagrange_values : array[256,EC_P_Fr]
             lagrange_values.testPoly256(testVals)
 
-            var precomp: PrecomputedWeights
+            var precomp {.noInit.}: PrecomputedWeights
 
             precomp.newPrecomputedWeights()
-            var bar_coeffs {.noInit.}: array[256, EC_P_Fr]
+
+            for i in 0..<10:
+                echo "Barycentric Weights"
+                echo precomp.barycentricWeights[i].toHex()
+                echo "Inverted Domain"
+                echo precomp.invertedDomain[i].toHex() 
+            
+            var bar_coeffs: array[256, EC_P_Fr]
 
             bar_coeffs.computeBarycentricCoefficients(precomp, p_outside_dom)
-            var got {.noInit.}: EC_P_Fr
+
+            for i in 0..<10:
+                echo "Barycentric Coefficients"
+                echo bar_coeffs[i].toHex()
+
+            var got: EC_P_Fr
 
             got.computeInnerProducts(lagrange_values, bar_coeffs)
 
-            var expected {.noInit.}: EC_P_Fr
+            var expected : EC_P_Fr
             expected.evalOutsideDomain(precomp, lagrange_values, p_outside_dom)
 
-            var points : array[256, Coord]
+            var points: array[256, Coord]
             for k in 0..<256:
-                var x: matchingOrderBigInt(Banderwagon)
+                var x : matchingOrderBigInt(Banderwagon)
                 x.setUint(uint64(k))
                 var x_fr : EC_P_Fr
                 x_fr.fromBig(x)
@@ -138,15 +156,30 @@ suite "Barycentric Form Tests":
                 point.y = lagrange_values[k]
 
                 points[k]=point
+            echo "Printing the Points"
 
-            var poly_coeff {.noInit.}: array[DOMAIN, EC_P_Fr]
+            for i in 0..<10:
+                echo "X points"
+                echo points[i].x.toHex()
+                echo "Y points"
+                echo points[i].y.toHex()
+
+            var poly_coeff : array[DOMAIN, EC_P_Fr]
             poly_coeff.interpolate(points, DOMAIN)
 
-            var expected2 {.noInit.}: EC_P_Fr
+            echo "Printing the Polynomial Coefficients!"
+
+            for i in 0..<20:
+                echo poly_coeff[i].toHex()
+
+            var expected2: EC_P_Fr
             expected2.evaluate(poly_coeff, p_outside_dom, DOMAIN)
 
+            echo "Inner Prod Arguments value"
             echo got.toHex()
+            echo "Eval outside domain value"
             echo expected.toHex()
+            echo "Interpolation and Evalution value"
             echo expected2.toHex()
 
             #TODO needs better testing?
@@ -271,26 +304,17 @@ suite "Transcript Tests":
             doAssert (challenge1==challenge2).bool() == true , "calling ChallengeScalar twice should yield the same challenge"
 
         testVec1()
+# ############################################################
+#
+#                     Test for IPA Proofs    
+#
+# ############################################################
+suite "IPA proof tests":
+    test "Test for initiating IPA proof configuration":
+        proc testMain()=
+            var ipaConfig: IPASettings
+            let stat1 = ipaConfig.genIPAConfig()
+            doAssert stat1 == true, "Could not generate new IPA Config properly!"
+        testMain()
 
-
-
-
-
-
-
-            
-
-            
-
-
-
-
-
-
-
-
-
-
-
-
-
+        
