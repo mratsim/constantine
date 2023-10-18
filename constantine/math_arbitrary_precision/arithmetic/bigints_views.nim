@@ -15,7 +15,7 @@ import
   ./limbs_mod2k,
   ./limbs_multiprec,
   ./limbs_extmul,
-  ./limbs_divmod
+  ./limbs_divmod_vartime
 
 # No exceptions allowed
 {.push raises: [], checks: off.}
@@ -41,7 +41,34 @@ import
 # Also need to take into account constant-time for RSA
 # i.e. countLeadingZeros can only be done on public moduli.
 
-func powOddMod_vartime*(
+iterator unpackBE(scalarByte: byte): bool =
+  for i in countdown(7, 0):
+    yield bool((scalarByte shr i) and 1)
+
+func pow_vartime(
+       r: var openArray[SecretWord],
+       a: openArray[SecretWord],
+       exponent: openArray[byte]) {.tags:[VarTime, Alloca], meter.} =
+  ## r <- a^exponent
+
+  r.setOne()
+  var isOne = true
+
+  for e in exponent:
+    for bit in unpackBE(e):
+      if not isOne:
+        r.square_vartime(r)
+      if bit:
+        if isOne:
+          for i in 0 ..< a.len:
+            r[i] = a[i]
+          for i in a.len ..< r.len:
+            r[i] = Zero
+          isOne = false
+        else:
+          r.prod_vartime(r, a)
+
+func powOddMod_vartime(
        r: var openArray[SecretWord],
        a: openArray[SecretWord],
        exponent: openArray[byte],
@@ -55,33 +82,20 @@ func powOddMod_vartime*(
   debug:
     doAssert bool(M.isOdd())
 
-  let aBits  = a.getBits_LE_vartime()
   let mBits  = M.getBits_LE_vartime()
   let eBits  = exponent.getBits_BE_vartime()
 
   if eBits == 1:
-    r.view().reduce(a.view(), aBits, M.view(), mBits)
+    discard r.reduce_vartime(a, M)
     return
 
   let L      = wordsRequired(mBits)
   let m0ninv = M[0].negInvModWord()
-  var rMont  = allocStackArray(SecretWord, L)
 
-  block:
-    var r2Buf = allocStackArray(SecretWord, L)
-    template r2: untyped = r2Buf.toOpenArray(0, L-1)
-    r2.r2_vartime(M.toOpenArray(0, L-1))
+  var aMont_buf = allocStackArray(SecretWord, L)
+  template aMont: untyped = aMont_buf.toOpenArray(0, L-1)
 
-    # Conversion to Montgomery can auto-reduced by up to M*R
-    # if we use redc2xMont (a/R) and montgomery multiplication by R³
-    # For now, we call explicit reduction as it can handle all sizes.
-    # TODO: explicit reduction uses constant-time division which is **very** expensive
-    if a.len != M.len:
-      let t = allocStackArray(SecretWord, L)
-      t.LimbsViewMut.reduce(a.view(), aBits, M.view(), mBits)
-      rMont.LimbsViewMut.getMont(LimbsViewConst t, M.view(), LimbsViewConst r2.view(), m0ninv, mBits)
-    else:
-      rMont.LimbsViewMut.getMont(a.view(), M.view(), LimbsViewConst r2.view(), m0ninv, mBits)
+  aMont.getMont_vartime(a, M)
 
   block:
     var oneMontBuf = allocStackArray(SecretWord, L)
@@ -91,12 +105,11 @@ func powOddMod_vartime*(
     let scratchLen = L * ((1 shl window) + 1)
     var scratchSpace = allocStackArray(SecretWord, scratchLen)
 
-    rMont.LimbsViewMut.powMont_vartime(
+    aMont_buf.LimbsViewMut.powMont_vartime(
       exponent, M.view(), LimbsViewConst oneMontBuf,
       m0ninv, LimbsViewMut scratchSpace, scratchLen, mBits)
 
-  r.view().fromMont(LimbsViewConst rMont, M.view(), m0ninv, mBits)
-
+  r.view().fromMont(LimbsViewConst aMont_buf, M.view(), m0ninv, mBits)
 
 func powMod_vartime*(
        r: var openArray[SecretWord],
@@ -126,6 +139,14 @@ func powMod_vartime*(
     r[0] = a[0]
     for i in 1 ..< r.len:
       r[i] = Zero
+    return
+
+  # No modular reduction needed
+  # -------------------------------------------------------------------
+  if eBits < WordBitWidth and
+     aBits.uint shr (WordBitWidth - eBits) == 0 and # handle overflow of uint128 [0, aBits] << eBits
+     aBits.uint shl eBits < mBits.uint:
+    r.pow_vartime(a, exponent)
     return
 
   # Odd modulus
@@ -197,5 +218,5 @@ func powMod_vartime*(
 
   var qyBuf = allocStackArray(SecretWord, M.len)
   template qy: untyped = qyBuf.toOpenArray(0, M.len-1)
-  qy.prod(q, y)
+  qy.prod_vartime(q, y)
   discard r.addMP(qy, a1)

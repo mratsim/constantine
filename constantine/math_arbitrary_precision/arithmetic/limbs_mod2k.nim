@@ -65,7 +65,12 @@ func submod2k_vartime*(r{.noAlias.}: var openArray[SecretWord], a, b: openArray[
 
 func mulmod2k_vartime*(r: var openArray[SecretWord], a, b: openArray[SecretWord], k: uint) {.inline, meter.} =
   ## r <- a*b (mod 2ᵏ)
-  r.prod(a, b)
+  r.prod_vartime(a, b)
+  r.mod2k_vartime(k)
+
+func sqrmod2k_vartime*(r: var openArray[SecretWord], a: openArray[SecretWord], k: uint) {.inline, meter.} =
+  ## r <- a² (mod 2ᵏ)
+  r.square_vartime(a)
   r.mod2k_vartime(k)
 
 iterator unpackLE(scalarByte: byte): bool =
@@ -153,11 +158,11 @@ func powMod2k_vartime*(
     sBuf[i] = Zero
 
   # TODO: sliding/fixed window exponentiation
-  for i in countdown(exponent.len-1, 0):
+  for i in countdown(exponent.len-1, 0): # Little-endian exponentiation
     for bit in unpackLE(exponent[i]):
       if bit:
         r.mulmod2k_vartime(r, s, k)
-      s.mulmod2k_vartime(s, s, k)
+      s.sqrmod2k_vartime(s, k)
       bitsLeft -= 1
       if bitsLeft == 0:
         return

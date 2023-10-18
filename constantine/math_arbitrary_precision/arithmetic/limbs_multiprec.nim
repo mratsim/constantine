@@ -54,6 +54,9 @@ func shrLarge(r {.noalias.}: var openArray[SecretWord], a: openArray[SecretWord]
 
 func shrWords(r {.noalias.}: var openArray[SecretWord], a: openArray[SecretWord], w: SomeInteger) =
   ## Shift right by w word
+  if w >= a.len:
+    r.setZero()
+    return
 
   for i in 0 ..< a.len-w:
     r[i] = a[i+w]
@@ -83,6 +86,68 @@ func shiftRight_vartime*(r {.noalias.}: var openArray[SecretWord], a: openArray[
     r.shrWords(a, w)
   else:
     r.shrLarge(a, w, shift)
+
+func shlSmall(r: var openArray[SecretWord], a: openArray[SecretWord], k: SomeInteger) =
+  ## Compute the `shift left` operation of x and k
+  ##
+  ## k MUST be less than the base word size (2^32 or 2^64)
+  r[0] = a[0] shl k
+  for i in 1 ..< a.len:
+    r[i] = (a[i] shl k) or (a[i-1] shr (WordBitWidth - k))
+
+  for i in a.len ..< r.len:
+    r[i] = Zero
+
+func shlLarge(r: var openArray[SecretWord], a: openArray[SecretWord], w, shift: SomeInteger) =
+  ## Shift left by `w` words + `shift` bits
+  ## Assumes `r` is 0 initialized
+  if w >= a.len:
+    return
+
+  r[w] = a[0] shl shift
+  for i in 1+w ..< r.len:
+    r[i] = (a[i-w] shl shift) or (a[i-w-1] shr (WordBitWidth - shift))
+
+  for i in a.len-w ..< r.len:
+    r[i] = Zero
+
+func shlWords(r: var openArray[SecretWord], a: openArray[SecretWord], w: SomeInteger) =
+  ## Shift left by w word
+  if w >= r.len:
+    r.setZero()
+    return
+
+  for i in 0 ..< w:
+    r[i] = Zero
+
+  for i in w ..< a.len+w:
+    r[i] = a[i-w]
+
+  for i in a.len+w ..< r.len:
+    r[i] = Zero
+
+func shiftLeft_vartime*(r: var openArray[SecretWord], a: openArray[SecretWord], k: SomeInteger) {.meter.} =
+  ## Shift `a` left by k bits and store in `r`
+  if k == 0:
+    let min = min(a.len, r.len)
+    for i in 0 ..< min:
+      r[i] = a[i]
+    for i in min ..< r.len:
+      r[i] = Zero
+    return
+
+  if k < WordBitWidth:
+    r.shlSmall(a, k)
+    return
+
+  # w = k div WordBitWidth, shift = k mod WordBitWidth
+  let w     = k shr static(log2_vartime(uint32(WordBitWidth)))
+  let shift = k and (WordBitWidth - 1)
+
+  if shift == 0:
+    r.shlWords(a, w)
+  else:
+    r.shlLarge(a, w, shift)
 
 # Arithmetic
 # --------------------------------------------------------
