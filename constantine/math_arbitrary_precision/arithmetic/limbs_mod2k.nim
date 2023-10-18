@@ -158,7 +158,7 @@ func powMod2k_vartime*(
     sBuf[i] = Zero
 
   # TODO: sliding/fixed window exponentiation
-  for i in countdown(exponent.len-1, 0):
+  for i in countdown(exponent.len-1, 0): # Little-endian exponentiation
     for bit in unpackLE(exponent[i]):
       if bit:
         r.mulmod2k_vartime(r, s, k)

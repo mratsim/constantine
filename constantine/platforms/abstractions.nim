@@ -67,6 +67,16 @@ const
   One* = SecretWord(1)
   MaxWord* = SecretWord(high(BaseType))
 
+func bytesRequired*(bits: int): int {.inline.} =
+  ## Compute the number of limbs required
+  ## from the **announced** bit length
+
+  # bits.ceilDiv_vartime(WordBitWidth)
+  # with guarantee to avoid division (especially at compile-time)
+  const bitsInByte = 8
+  const divShiftor = log2_vartime(uint32 bitsInByte)
+  result = (bits + bitsInByte - 1) shr divShiftor
+
 func wordsRequired*(bits: int): int {.inline.} =
   ## Compute the number of limbs required
   ## from the **announced** bit length

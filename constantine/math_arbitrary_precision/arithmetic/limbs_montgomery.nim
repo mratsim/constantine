@@ -416,7 +416,10 @@ func powMont_vartime*(
 
   # TODO: scratchspace[1] is unused when window > 1
   let N = wordsRequired(mBits)
-  let window = powMontPrologue_vartime(a, exponent.len, M, one, m0ninv, scratchspace, scratchLen, mBits)
+  let eBits = exponent.getBits_BE_vartime()
+  let eBytes = bytesRequired(eBits)
+
+  let window = powMontPrologue_vartime(a, eBytes, M, one, m0ninv, scratchspace, scratchLen, mBits)
 
   var
     acc, acc_len: uint
@@ -425,9 +428,11 @@ func powMont_vartime*(
   let s0 = cast[LimbsViewMut](scratchspace[0].addr)
   let s1 = cast[LimbsViewConst](scratchspace[1*N].addr)
 
-  while acc_len > 0 or e < exponent.len:
+  while acc_len > 0 or e < eBytes:
     let (_, bits) = powMontSquarings(
-      a, exponent, M, m0ninv, mBits,
+      a,
+      exponent.toOpenArray(exponent.len - eBytes, exponent.len-1), # BigEndian slicing
+      M, m0ninv, mBits,
       s0, window,
       acc, acc_len, e)
 
