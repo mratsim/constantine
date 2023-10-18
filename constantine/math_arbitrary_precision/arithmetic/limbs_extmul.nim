@@ -8,7 +8,8 @@
 
 import
   # Internal
-  ../../platforms/[abstractions, allocs]
+  ../../platforms/[abstractions, allocs],
+  ./limbs_views
 
 func prod_comba(r: var openArray[SecretWord], a, b: openArray[SecretWord]) {.noInline, tags: [Alloca].} =
   ## Extended precision multiplication
@@ -42,3 +43,22 @@ func prod_comba(r: var openArray[SecretWord], a, b: openArray[SecretWord]) {.noI
 func prod*(r: var openArray[SecretWord], a, b: openArray[SecretWord]) {.inline, meter.}=
   ## Extended precision multiplication
   r.prod_comba(a, b)
+
+func prod_vartime*(r: var openArray[SecretWord], a, b: openArray[SecretWord]) {.inline, meter.}=
+  ## Extended precision multiplication (vartime)
+
+  let aBits  = a.getBits_LE_vartime()
+  let bBits  = b.getBits_LE_vartime()
+
+  let aWords = wordsRequired(aBits)
+  let bWords = wordsRequired(bBits)
+  let rWords = wordsRequired(aBits + bBits)
+
+  r.toOpenArray(0, rWords-1)
+   .prod_comba(
+    a.toOpenArray(0, aWords-1),
+    b.toOpenArray(0, bWords-1)
+   )
+
+  for i in rWords ..< r.len:
+    r[i] = Zero

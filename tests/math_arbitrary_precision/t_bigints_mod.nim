@@ -15,7 +15,8 @@ r.reduce(a, M)
 doAssert r2.limbs.reduce_vartime(a.limbs, M.limbs)
 
 let rU64 = 0xa0e5cb56a1c08396'u64 mod 0xae57180eceb0206f'u64
-echo r.toHex()
+# echo r.toHex()
 
 doAssert rU64 == a.limbs[0].uint64
 doAssert bool(a == r)
+echo "SUCCESS: t_bigints_mod.nim"

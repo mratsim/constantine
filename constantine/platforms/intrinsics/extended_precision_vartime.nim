@@ -59,43 +59,7 @@ func div2n1n_nim_vartime[T: SomeUnsignedInt](q, r: var T, n_hi, n_lo, d: T) {.ta
   q = (q1 shl halfSize) or q2
   r = r2
 
-
-when UseASM_X86_64:
-  func div2n1n_128_vartime(q, r: var uint64, n_hi, n_lo, d: uint64) {.inline, tags:[VarTime].}=
-    ## Division uint128 by uint64
-    ## Warning ⚠️ :
-    ##   - if n_hi == d, quotient does not fit in an uint64 and will throw SIGFPE
-    ##   - if n_hi > d result is undefined
-
-    # DIV r/m64
-    # Divide RDX:RAX (n_hi:n_lo) by r/m64
-    #
-    # Inputs
-    #   - numerator high word in RDX,
-    #   - numerator low word in RAX,
-    #   - divisor as r/m parameter (register or memory at the compiler discretion)
-    # Result
-    #   - Quotient in RAX
-    #   - Remainder in RDX
-
-    # 1. name the register/memory "divisor"
-    # 2. don't forget to dereference the var hidden pointer
-    # 3. -
-    # 4. no clobbered registers beside explicitly used RAX and RDX
-    when defined(cpp):
-      asm """
-        div %[divisor]
-        :"=rax" (`q`), "=rdx" (`r`)
-        :"rdx" (`n_hi`), "rax" (`n_lo`), [divisor] "rm" (`d`)
-      """
-    else:
-      asm """
-        div %[divisor]
-        :"=rax" (*`q`), "=rdx" (*`r`)
-        :"rdx" (`n_hi`), "rax" (`n_lo`), [divisor] "rm" (`d`)
-      """
-
-elif sizeof(int) == 8 and defined(vcc):
+when sizeof(int) == 8 and defined(vcc):
   func udiv128_vartime(highDividend, lowDividend, divisor: uint64, remainder: var uint64): uint64 {.importc:"_udiv128", header: "<intrin.h>", nodecl, tags:[VarTime].}
     ## Division 128 by 64, Microsoft only, 64-bit only,
     ## returns quotient as return value remainder as var parameter

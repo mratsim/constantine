@@ -7,8 +7,9 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../constantine/math_arbitrary_precision/arithmetic/[bigints_views, limbs_views, limbs_divmod],
+  ../../constantine/math_arbitrary_precision/arithmetic/[bigints_views, limbs_views],
   ../../constantine/platforms/abstractions,
+  ../../constantine/serialization/codecs,
   ../../helpers/prng_unsafe,
 
   std/[times, strformat],
@@ -74,22 +75,10 @@ proc test(rng: var RngState) =
   ee.mpz_import(eLen, GMP_MostSignificantWordFirst, sizeof(byte), GMP_WordNativeEndian, 0, e[0].addr)
   mm.mpz_import(mLen, GMP_LeastSignificantWordFirst, sizeof(SecretWord), GMP_WordNativeEndian, 0, M[0].addr)
 
-  debug:
-    echo "----------------------------------------------"
-    echo "  a (Ctt): ", a.toString()
-    echo "  a (GMP): ", aa.toHex()
-    echo "  e (Ctt): ", e.toHex()
-    echo "  e (GMP): ", ee.toHex()
-    echo "  M (Ctt): ", M.toString()
-    echo "  M (GMP): ", mm.toHex()
-
   rr.mpz_powm(aa, ee, mm)
 
   var rWritten: csize
   discard rGMP[0].addr.mpz_export(rWritten.addr, GMP_LeastSignificantWordFirst, sizeof(SecretWord), GMP_WordNativeEndian, 0, rr)
-
-  debug:
-    echo "  r (GMP): ", rr.toHex()
 
   mpz_clear(aa)
   mpz_clear(ee)
@@ -103,15 +92,18 @@ proc test(rng: var RngState) =
 
   rCtt.powMod_vartime(a, e, M, window = 4)
 
-  debug:
-    echo "  r (GMP): " & rGMP.toString()
-    echo "  r (Ctt): " & rCtt.toString()
-
   doAssert (seq[BaseType])(rGMP) == (seq[BaseType])(rCtt), block:
-    "Failure with sizes:\n" &
+    "\nModular exponentiation failure:\n" &
     &"  a.len (word): {a.len:>3}, a.bits: {aBits:>4}\n" &
     &"  e.len (byte): {e.len:>3}, e.bits: {eBits:>4}\n" &
-    &"  M.len (word): {M.len:>3}, M.bits: {mBits:>4}\n"
+    &"  M.len (word): {M.len:>3}, M.bits: {mBits:>4}\n" &
+    "  ------------------------------------------------\n" &
+    &"  a: {aa.toHex()}\n" &
+    &"  e: {ee.toHex()}\n" &
+    &"  M: {mm.toHex()}\n" &
+    "  ------------------------------------------------\n" &
+    &"  r (GMP): {rGMP.toString()}\n" &
+    &"  r (Ctt): {rCtt.toString()}\n"
 
 
 for _ in 0 ..< Iters:

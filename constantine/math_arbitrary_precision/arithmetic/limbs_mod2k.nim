@@ -65,7 +65,7 @@ func submod2k_vartime*(r{.noAlias.}: var openArray[SecretWord], a, b: openArray[
 
 func mulmod2k_vartime*(r: var openArray[SecretWord], a, b: openArray[SecretWord], k: uint) {.inline, meter.} =
   ## r <- a*b (mod 2ᵏ)
-  r.prod(a, b)
+  r.prod_vartime(a, b)
   r.mod2k_vartime(k)
 
 iterator unpackLE(scalarByte: byte): bool =

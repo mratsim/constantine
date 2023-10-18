@@ -42,7 +42,7 @@ import
 # Also need to take into account constant-time for RSA
 # i.e. countLeadingZeros can only be done on public moduli.
 
-func powOddMod_vartime*(
+func powOddMod_vartime(
        r: var openArray[SecretWord],
        a: openArray[SecretWord],
        exponent: openArray[byte],
@@ -67,24 +67,11 @@ func powOddMod_vartime*(
 
   let L      = wordsRequired(mBits)
   let m0ninv = M[0].negInvModWord()
-  var rMont  = allocStackArray(SecretWord, L)
 
-  block:
-    var r2Buf = allocStackArray(SecretWord, L)
-    template r2: untyped = r2Buf.toOpenArray(0, L-1)
-    r2.r2_vartime(M.toOpenArray(0, L-1))
+  var aMont_buf = allocStackArray(SecretWord, L)
+  template aMont: untyped = aMont_buf.toOpenArray(0, L-1)
 
-    # Conversion to Montgomery can auto-reduced by up to M*R
-    # if we use redc2xMont (a/R) and montgomery multiplication by R³
-    # For now, we call explicit reduction as it can handle all sizes.
-    # TODO: explicit reduction uses constant-time division which is **very** expensive
-    if a.len != M.len:
-      var t = allocStackArray(SecretWord, L)
-      t.LimbsViewMut.reduce(a.view(), aBits, M.view(), mBits)
-      # discard t.toOpenArray(0, L-1).reduce_vartime(a, M)
-      rMont.LimbsViewMut.getMont(LimbsViewConst t, M.view(), LimbsViewConst r2.view(), m0ninv, mBits)
-    else:
-      rMont.LimbsViewMut.getMont(a.view(), M.view(), LimbsViewConst r2.view(), m0ninv, mBits)
+  aMont.getMont_vartime(a, M)
 
   block:
     var oneMontBuf = allocStackArray(SecretWord, L)
@@ -94,11 +81,11 @@ func powOddMod_vartime*(
     let scratchLen = L * ((1 shl window) + 1)
     var scratchSpace = allocStackArray(SecretWord, scratchLen)
 
-    rMont.LimbsViewMut.powMont_vartime(
+    aMont_buf.LimbsViewMut.powMont_vartime(
       exponent, M.view(), LimbsViewConst oneMontBuf,
       m0ninv, LimbsViewMut scratchSpace, scratchLen, mBits)
 
-  r.view().fromMont(LimbsViewConst rMont, M.view(), m0ninv, mBits)
+  r.view().fromMont(LimbsViewConst aMont_buf, M.view(), m0ninv, mBits)
 
 
 func powMod_vartime*(
@@ -200,5 +187,5 @@ func powMod_vartime*(
 
   var qyBuf = allocStackArray(SecretWord, M.len)
   template qy: untyped = qyBuf.toOpenArray(0, M.len-1)
-  qy.prod(q, y)
+  qy.prod_vartime(q, y)
   discard r.addMP(qy, a1)

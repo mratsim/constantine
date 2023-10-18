@@ -9,8 +9,7 @@
 import
   ../../platforms/abstractions,
   ../../platforms/intrinsics/extended_precision_vartime,
-  ./limbs_views,
-  ./limbs_fixedprec
+  ./limbs_views
 
 # No exceptions allowed
 {.push raises: [], checks: off.}
@@ -67,7 +66,7 @@ func shlAddMod_multiprec_vartime(
     return q
   else:
     var r: SecretWord
-    div2n1n(q, r, a0, a1, m0)           # else instead of being of by 0, 1 or 2
+    div2n1n_vartime(q, r, a0, a1, m0)   # else instead of being of by 0, 1 or 2
     q -= One                            # we return q-1 to be off by -1, 0 or 1
 
   # Now substract a*2^64 - q*m
@@ -107,7 +106,7 @@ func shlAddMod_multiprec_vartime(
 
 func shortDiv_vartime*(remainder: var SecretWord, n_hi, n_lo, d: SecretWord, normFactor: int): SecretWord =
   # We normalize d with clz so that the MSB is set
-  # And normalize (n_hi * 2^64 + n_hi) by normFactor as well to maintain the result
+  # And normalize (n_hi * 2^64 + n_lo) by normFactor as well to maintain the result
   # This ensures that (n_hi, n_hi)/d fits in a limb.
   if normFactor == 0:
     div2n1n_vartime(result, remainder, n_hi, n_lo, d)
