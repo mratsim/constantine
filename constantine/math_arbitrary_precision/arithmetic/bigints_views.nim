@@ -15,7 +15,6 @@ import
   ./limbs_mod2k,
   ./limbs_multiprec,
   ./limbs_extmul,
-  ./limbs_divmod,
   ./limbs_divmod_vartime
 
 # No exceptions allowed
@@ -42,6 +41,33 @@ import
 # Also need to take into account constant-time for RSA
 # i.e. countLeadingZeros can only be done on public moduli.
 
+iterator unpackBE(scalarByte: byte): bool =
+  for i in countdown(7, 0):
+    yield bool((scalarByte shr i) and 1)
+
+func pow_vartime(
+       r: var openArray[SecretWord],
+       a: openArray[SecretWord],
+       exponent: openArray[byte]) {.tags:[VarTime, Alloca], meter.} =
+  ## r <- a^exponent
+
+  r.setOne()
+  var isOne = true
+
+  for e in exponent:
+    for bit in unpackBE(e):
+      if not isOne:
+        r.square_vartime(r)
+      if bit:
+        if isOne:
+          for i in 0 ..< a.len:
+            r[i] = a[i]
+          for i in a.len ..< r.len:
+            r[i] = Zero
+          isOne = false
+        else:
+          r.prod_vartime(r, a)
+
 func powOddMod_vartime(
        r: var openArray[SecretWord],
        a: openArray[SecretWord],
@@ -56,13 +82,11 @@ func powOddMod_vartime(
   debug:
     doAssert bool(M.isOdd())
 
-  let aBits  = a.getBits_LE_vartime()
   let mBits  = M.getBits_LE_vartime()
   let eBits  = exponent.getBits_BE_vartime()
 
   if eBits == 1:
-    r.view().reduce(a.view(), aBits, M.view(), mBits)
-    # discard r.reduce_vartime(a, M)
+    discard r.reduce_vartime(a, M)
     return
 
   let L      = wordsRequired(mBits)
@@ -86,7 +110,6 @@ func powOddMod_vartime(
       m0ninv, LimbsViewMut scratchSpace, scratchLen, mBits)
 
   r.view().fromMont(LimbsViewConst aMont_buf, M.view(), m0ninv, mBits)
-
 
 func powMod_vartime*(
        r: var openArray[SecretWord],
@@ -116,6 +139,14 @@ func powMod_vartime*(
     r[0] = a[0]
     for i in 1 ..< r.len:
       r[i] = Zero
+    return
+
+  # No modular reduction needed
+  # -------------------------------------------------------------------
+  if eBits < WordBitWidth and
+     aBits.uint shr (WordBitWidth - eBits) == 0 and # handle overflow of uint128 [0, aBits] << eBits
+     aBits.uint shl eBits < mBits.uint:
+    r.pow_vartime(a, exponent)
     return
 
   # Odd modulus

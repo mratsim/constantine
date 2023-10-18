@@ -56,9 +56,8 @@ func prod_comba[rLen, aLen, bLen: static int](r: var Limbs[rLen], a: Limbs[aLen]
       u = t
       t = Zero
 
-  if aLen+bLen < rLen:
-    for i in aLen+bLen ..< rLen:
-      r[i] = Zero
+  for i in aLen+bLen ..< rLen:
+    r[i] = Zero
 
 func prod*[rLen, aLen, bLen: static int](r{.noalias.}: var Limbs[rLen], a: Limbs[aLen], b: Limbs[bLen]) {.inline.} =
   ## Multi-precision multiplication
@@ -156,9 +155,8 @@ func square_Comba[rLen, aLen](
       u = t
       t = Zero
 
-  if aLen*2 < rLen:
-    for i in aLen*2 ..< rLen:
-      r[i] = Zero
+  for i in aLen*2 ..< rLen:
+    r[i] = Zero
 
 func square_operandScan[rLen, aLen](
        r: var Limbs[rLen],

@@ -68,6 +68,11 @@ func mulmod2k_vartime*(r: var openArray[SecretWord], a, b: openArray[SecretWord]
   r.prod_vartime(a, b)
   r.mod2k_vartime(k)
 
+func sqrmod2k_vartime*(r: var openArray[SecretWord], a: openArray[SecretWord], k: uint) {.inline, meter.} =
+  ## r <- a² (mod 2ᵏ)
+  r.square_vartime(a)
+  r.mod2k_vartime(k)
+
 iterator unpackLE(scalarByte: byte): bool =
   for i in 0 ..< 8:
     yield bool((scalarByte shr i) and 1)
@@ -157,7 +162,7 @@ func powMod2k_vartime*(
     for bit in unpackLE(exponent[i]):
       if bit:
         r.mulmod2k_vartime(r, s, k)
-      s.mulmod2k_vartime(s, s, k)
+      s.sqrmod2k_vartime(s, k)
       bitsLeft -= 1
       if bitsLeft == 0:
         return
