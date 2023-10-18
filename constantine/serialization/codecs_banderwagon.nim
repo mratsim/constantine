@@ -17,7 +17,8 @@ import
   ../math/config/curves,
   ../math/elliptic/[
     ec_twistededwards_affine,
-    ec_twistededwards_projective
+    ec_twistededwards_projective,
+    ec_twistededwards_batch_ops
   ],
   ../math/[
     extension_fields,
@@ -121,16 +122,16 @@ func deserialize*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccStatus =
 func serializeBatch*(
     dst: ptr UncheckedArray[array[32, byte]],
     points: ptr UncheckedArray[EC_Prj],
-    N: static int,
-  ) : CttCodecEccStatus =
+    N: int,
+  ) : CttCodecEccStatus {.noInline.} =
 
   # collect all the z coordinates
-  var zs: array[N, Fp[Banderwagon]]
-  var zs_inv: array[N, Fp[Banderwagon]]
+  var zs = allocStackArray(Fp[Banderwagon], N)
+  var zs_inv = allocStackArray(Fp[Banderwagon], N)
   for i in 0 ..< N:
     zs[i] = points[i].z
 
-  discard zs_inv.batchInvert(zs)
+  zs_inv.batchInvert(zs, N)
   
   for i in 0 ..< N:
     var X: Fp[Banderwagon]
@@ -149,5 +150,5 @@ func serializeBatch*(
 
 func serializeBatch*[N: static int](
         dst: var array[N, array[32, byte]],
-        points: array[N, EC_Prj]): CttCodecEccStatus =
+        points: array[N, EC_Prj]): CttCodecEccStatus {.inline.} =
   return serializeBatch(dst.asUnchecked(), points.asUnchecked(), N)

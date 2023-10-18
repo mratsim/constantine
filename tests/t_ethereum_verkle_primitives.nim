@@ -303,7 +303,7 @@ suite "Batch Operations on Banderwagon":
         one.double()
 
       var arr_fp_inv: array[n, Fp[Banderwagon]]
-      doAssert arr_fp_inv.batchInvert(arr_fp) == true
+      arr_fp_inv.batchInvert(arr_fp)
 
       # Checking the correspondence with singular element inversion
       for i in 0 ..< n:
