@@ -28,9 +28,6 @@ import
 
 func oneMont_vartime*(r: var openArray[SecretWord], M: openArray[SecretWord]) {.meter.} =
   ## Returns 1 in Montgomery domain:
-
-  # r.r_powmod_vartime(M, 1)
-
   let t = allocStackArray(SecretWord, M.len + 1)
   zeroMem(t, M.len*sizeof(SecretWord))
   t[M.len] = One
