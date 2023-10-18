@@ -26,7 +26,7 @@ import
 # Montgomery magic constants
 # ------------------------------------------
 
-func oneMont_vartime*(r: var openArray[SecretWord], M: openArray[SecretWord]) {.meter.} =
+func oneMont_vartime*(r: var openArray[SecretWord], M: openArray[SecretWord]) {.noInline, meter.} =
   ## Returns 1 in Montgomery domain:
   let t = allocStackArray(SecretWord, M.len + 1)
   zeroMem(t, M.len*sizeof(SecretWord))
