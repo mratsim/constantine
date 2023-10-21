@@ -8,8 +8,8 @@
 
 import
   std/[strformat, strutils],
-  ../benchmarks/platforms,
-  tracer
+  ./benchmarking,
+  ./tracer
 
 # Reporting benchmark result
 # -------------------------------------------------------

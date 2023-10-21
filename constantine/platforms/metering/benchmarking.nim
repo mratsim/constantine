@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 when defined(amd64): # TODO defined(i386) but it seems like RDTSC call is misconfigured
-  import ../constantine/platforms/metering/benchmarking
+  import cycle_count/x86
   export getTicks, cpuName
 
   const SupportsCPUName* = true

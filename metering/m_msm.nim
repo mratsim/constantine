@@ -8,7 +8,7 @@
 
 import
   std/times,
-  ./reports, ./tracer,
+  ../constantine/platforms/metering/[reports, tracer],
   ../constantine/math/config/curves,
   ../constantine/math/[arithmetic, extension_fields, ec_shortweierstrass],
   ../constantine/math/constants/zoo_subgroups,

@@ -13,7 +13,7 @@
 # ############################################################
 
 import ./primitives
-import ../../metering/tracer
+import ./metering/tracer
 
 export primitives, tracer
 
