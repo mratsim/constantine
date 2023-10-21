@@ -16,7 +16,7 @@
 import ../abstractions
 
 func div2n1n_nim_vartime[T: SomeUnsignedInt](q, r: var T, n_hi, n_lo, d: T) {.tags:[VarTime].}=
-  ## Division uint128 by uint64
+  ## Division uint128 by uint64 or uint64 by uint32
   ## Warning ⚠️ :
   ##   - if n_hi == d, quotient does not fit in an uint64 and will throw SIGFPE
   ##   - if n_hi > d result is undefined
@@ -108,15 +108,16 @@ func div2n1n_vartime*(q, r: var SecretWord, n_hi, n_lo, d: SecretWord) {.inline.
   ## To avoid issues, n_hi, n_lo, d should be normalized.
   ## i.e. shifted (== multiplied by the same power of 2)
   ## so that the most significant bit in d is set.
-  when sizeof(int) == 4:
+  when sizeof(int) == 4 or defined(CTT_32):
     let dividend = (uint64(n_hi) shl 32) or uint64(n_lo)
     let divisor = uint64(d)
-    q = uint32(dividend div divisor)
-    r = uint32(dividend mod divisor)
-  when nimvm:
-    div2n1n_nim_vartime(BaseType q, BaseType r, BaseType n_hi, BaseType n_lo, BaseType d)
+    q = SecretWord(dividend div divisor)
+    r = SecretWord(dividend mod divisor)
   else:
-    when declared(div2n1n_128_vartime):
-      div2n1n_128_vartime(BaseType q, BaseType r, BaseType n_hi, BaseType n_lo, BaseType d)
-    else:
+    when nimvm:
       div2n1n_nim_vartime(BaseType q, BaseType r, BaseType n_hi, BaseType n_lo, BaseType d)
+    else:
+      when declared(div2n1n_128_vartime):
+        div2n1n_128_vartime(BaseType q, BaseType r, BaseType n_hi, BaseType n_lo, BaseType d)
+      else:
+        div2n1n_nim_vartime(BaseType q, BaseType r, BaseType n_hi, BaseType n_lo, BaseType d)
