@@ -248,16 +248,20 @@ proc getGlobalPassRegistry(): PassRegistryRef {.importc: "LLVMGetGlobalPassRegis
 proc initializeCore(registry: PassRegistryRef) {.importc: "LLVMInitializeCore".}
 proc initializeTransformUtils(registry: PassRegistryRef) {.importc: "LLVMInitializeTransformUtils".}
 proc initializeScalarOpts(registry: PassRegistryRef) {.importc: "LLVMInitializeScalarOpts".}
-proc initializeObjCARCOpts(registry: PassRegistryRef) {.importc: "LLVMInitializeObjCARCOpts".}
 proc initializeVectorization(registry: PassRegistryRef) {.importc: "LLVMInitializeVectorization".}
 proc initializeInstCombine(registry: PassRegistryRef) {.importc: "LLVMInitializeInstCombine".}
-proc initializeAggressiveInstCombiner(registry: PassRegistryRef) {.importc: "LLVMInitializeAggressiveInstCombiner".}
 proc initializeIPO(registry: PassRegistryRef) {.importc: "LLVMInitializeIPO".}
-proc initializeInstrumentation(registry: PassRegistryRef) {.importc: "LLVMInitializeInstrumentation".}
 proc initializeAnalysis(registry: PassRegistryRef) {.importc: "LLVMInitializeAnalysis".}
 proc initializeIPA(registry: PassRegistryRef) {.importc: "LLVMInitializeIPA".}
 proc initializeCodeGen(registry: PassRegistryRef) {.importc: "LLVMInitializeCodeGen".}
 proc initializeTarget(registry: PassRegistryRef) {.importc: "LLVMInitializeTarget".}
+
+# Removed in LLVM 16
+# ------------------
+# proc initializeObjCARCOpts(registry: PassRegistryRef) {.importc: "LLVMInitializeObjCARCOpts".}
+# proc initializeAggressiveInstCombiner(registry: PassRegistryRef) {.importc: "LLVMInitializeAggressiveInstCombiner".}
+# proc initializeInstrumentation(registry: PassRegistryRef) {.importc: "LLVMInitializeInstrumentation".}
+
 {.pop.}
 
 # https://llvm.org/doxygen/group__LLVMCTarget.html

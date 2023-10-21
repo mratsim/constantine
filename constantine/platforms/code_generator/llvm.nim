@@ -120,7 +120,7 @@ template emitToFile*(t: TargetMachineRef, m: ModuleRef,
     writeStackTrace()
     stderr.write("\"emitToFile\" for module '" & astToStr(module) & "' " & $instantiationInfo() & " exited with error: " & $cstring(errMsg) & '\n')
     errMsg.dispose()
-    quit 1 
+    quit 1
 
 template emitToString*(t: TargetMachineRef, m: ModuleRef, codegen: CodeGenFileType): string =
   ## Codegen to string
@@ -147,16 +147,19 @@ proc initializePasses* =
   registry.initializeCore()
   registry.initializeTransformUtils()
   registry.initializeScalarOpts()
-  registry.initializeObjCARCOpts()
   registry.initializeVectorization()
   registry.initializeInstCombine()
-  registry.initializeAggressiveInstCombiner()
   registry.initializeIPO()
-  registry.initializeInstrumentation()
   registry.initializeAnalysis()
   registry.initializeIPA()
   registry.initializeCodeGen()
   registry.initializeTarget()
+
+  # Removed in LLVM 16
+  # --------------------------------
+  # registry.initializeObjCARCOpts()
+  # registry.initializeAggressiveInstCombiner()
+  # registry.initializeInstrumentation()
 
 # Builder
 # ------------------------------------------------------------
