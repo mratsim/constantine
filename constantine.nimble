@@ -12,7 +12,7 @@ requires "nim >= 1.6.12"
 # Nimscript imports
 # ----------------------------------------------------------------
 
-import std/[strformat, strutils]
+import std/[strformat, strutils, os, tables]
 
 # Environment variables
 # ----------------------------------------------------------------
@@ -98,12 +98,16 @@ proc releaseBuildOptions(useLTO = true): string =
   #           Reduce instructions cache misses.
   #           https://lkml.org/lkml/2015/5/21/443
   #           Our non-inlined functions are large so size cost is minimal.
+  #
+  # -fmerge-all-constants
+  #           Merge identical constants and variables, in particular
+  #           field and curve arithmetic constant arrays.
   let compiler = if existsEnv"CC": " --cc:" & getEnv"CC"
                  else: ""
 
   let (useAsmIfAble, force32) = getEnvVars()
   let envASM = if not useAsmIfAble: " -d:CTT_ASM=false "
-              else: ""
+               else: ""
   let env32 = if force32: " -d:CTT_32 "
               else: ""
 
@@ -119,115 +123,159 @@ proc releaseBuildOptions(useLTO = true): string =
   " --mm:arc -d:useMalloc " &
   " --verbosity:0 --hints:off --warnings:off " &
   " --passC:-fno-semantic-interposition " &
-  " --passC:-falign-functions=64 "
+  " --passC:-falign-functions=64 " &
+  " --passC:-fmerge-all-constants"
 
-type BindingsKind = enum
+proc rustBuild(): string =
+  # Force Rust compilation, we force Clang compiler
+  # and use it's LTO-thin capabilities fro Nim<->Rust cross-language LTO
+  # - https://blog.llvm.org/2019/09/closing-gap-cross-language-lto-between.html
+  # - https://github.com/rust-lang/rust/pull/58057
+  # - https://doc.rust-lang.org/rustc/linker-plugin-lto.html
+
+  let compiler = " --cc:clang "
+  let lto = " --passC:-flto=thin --passL:-flto=thin "
+
+  compiler &
+  lto &
+  " -d:danger " &
+  # " --opt:size " &
+  " --panics:on -d:noSignalHandler " &
+  " --mm:arc -d:useMalloc " &
+  " --verbosity:0 --hints:off --warnings:off " &
+  " --passC:-fno-semantic-interposition " &
+  " --passC:-falign-functions=64 " &
+  " --passC:-fmerge-all-constants"
+
+type PrimitiveKind = enum
   kCurve
   kProtocol
 
-proc genDynamicBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: string) =
+proc genDynamicLib(primitiveKind: PrimitiveKind, primitiveName, prefixNimMain, outdir, nimcache: string) =
   proc compile(libName: string, flags = "") =
-    echo "Compiling dynamic library: lib/" & libName
+    echo &"Compiling dynamic library: {outdir}/" & libName
 
     exec "nim c " &
          flags &
          releaseBuildOptions(useLTO = true) &
          " --noMain --app:lib " &
          &" --nimMainPrefix:{prefixNimMain} " &
-         &" --out:{libName} --outdir:lib " &
+         &" --out:{libName} --outdir:{outdir} " &
          (block:
-           case bindingsKind
+           case primitiveKind
            of kCurve:
-             &" --nimcache:nimcache/bindings_curves/{bindingsName}" &
-             &" bindings_generators/{bindingsName}.nim"
+             &" --nimcache:{nimcache}/{primitiveName}" &
+             &" bindings_generators/{primitiveName}.nim"
            of kProtocol:
-             &" --nimcache:nimcache/bindings_protocols/{bindingsName}" &
-             &" constantine/{bindingsName}.nim")
+             &" --nimcache:{nimcache}/{primitiveName}" &
+             &" constantine/{primitiveName}.nim")
 
-  let bindingsName = block:
-    case bindingsKind
-    of kCurve: bindingsName
-    of kProtocol: "constantine_" & bindingsName
+  let primitiveName = block:
+    case primitiveKind
+    of kCurve: primitiveName
+    of kProtocol: "constantine_" & primitiveName
 
   when defined(windows):
-    compile bindingsName & ".dll"
+    compile primitiveName & ".dll"
 
   elif defined(macosx):
-    compile "lib" & bindingsName & ".dylib.arm", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
-    compile "lib" & bindingsName & ".dylib.x64", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
-    exec "lipo lib/lib" & bindingsName & ".dylib.arm " &
-             " lib/lib" & bindingsName & ".dylib.x64 " &
-             " -output lib/lib" & bindingsName & ".dylib -create"
+    compile "lib" & primitiveName & ".dylib.arm", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
+    compile "lib" & primitiveName & ".dylib.x64", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
+    exec "lipo {outdir}/lib" & primitiveName & ".dylib.arm " &
+             " {outdir}/lib" & primitiveName & ".dylib.x64 " &
+             " -output {outdir}/lib" & primitiveName & ".dylib -create"
 
   else:
-    compile "lib" & bindingsName & ".so"
+    compile "lib" & primitiveName & ".so"
 
-proc genStaticBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: string) =
+proc genStaticLib(primitiveKind: PrimitiveKind, primitiveName, prefixNimMain, outdir, nimcache: string, rustLib = false) =
   proc compile(libName: string, flags = "") =
-    echo "Compiling static library:  lib/" & libName
+    echo &"Compiling static library:  {outdir}/" & libName
 
     exec "nim c " &
          flags &
-         releaseBuildOptions(useLTO = false) &
+         (if rustLib: rustBuild() else: releaseBuildOptions(useLTO = false)) &
          " --noMain --app:staticLib " &
          &" --nimMainPrefix:{prefixNimMain} " &
-         &" --out:{libName} --outdir:lib " &
+         &" --out:{libName} --outdir:{outdir} " &
          (block:
-           case bindingsKind
+           case primitiveKind
            of kCurve:
-             &" --nimcache:nimcache/bindings_curves/{bindingsName}" &
-             &" bindings_generators/{bindingsName}.nim"
+             &" --nimcache:{nimcache}/{primitiveName}" &
+             &" bindings_generators/{primitiveName}.nim"
            of kProtocol:
-             &" --nimcache:nimcache/bindings_protocols/{bindingsName}" &
-             &" constantine/{bindingsName}.nim")
+             &" --nimcache:{nimcache}/{primitiveName}" &
+             &" constantine/{primitiveName}.nim")
 
-  let bindingsName = block:
-    case bindingsKind
-    of kCurve: bindingsName
-    of kProtocol: "constantine_" & bindingsName
+  let primitiveName = block:
+    case primitiveKind
+    of kCurve: primitiveName
+    of kProtocol: "constantine_" & primitiveName
 
   when defined(windows):
-    compile bindingsName & ".lib"
+    compile primitiveName & ".lib"
 
   elif defined(macosx):
-    compile "lib" & bindingsName & ".a.arm", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
-    compile "lib" & bindingsName & ".a.x64", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
-    exec "lipo lib/lib" & bindingsName & ".a.arm " &
-             " lib/lib" & bindingsName & ".a.x64 " &
-             " -output lib/lib" & bindingsName & ".a -create"
+    compile "lib" & primitiveName & ".a.arm", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
+    compile "lib" & primitiveName & ".a.x64", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
+    exec "lipo {outdir}/lib" & primitiveName & ".a.arm " &
+             " {outdir}/lib" & primitiveName & ".a.x64 " &
+             " -output {outdir}/lib" & primitiveName & ".a -create"
 
   else:
-    compile "lib" & bindingsName & ".a"
+    compile "lib" & primitiveName & ".a"
 
-proc genHeaders(bindingsName: string) =
-  echo "Generating header:         include/" & bindingsName & ".h"
+proc genHeader(primitiveName: string) =
+  echo "Generating header:         include/" & primitiveName & ".h"
   exec "nim c -d:CTT_GENERATE_HEADERS " &
        " -d:release " &
        " --verbosity:0 --hints:off --warnings:off " &
-       " --out:" & bindingsName & "_gen_header.exe --outdir:build " &
-       " --nimcache:nimcache/bindings_curves_headers/" & bindingsName & "_header" &
-       " bindings_generators/" & bindingsName & ".nim"
-  exec "build/" & bindingsName & "_gen_header.exe include"
+       " --out:" & primitiveName & "_gen_header.exe --outdir:build " &
+       " --nimcache:nimcache/libcurves_headers/" & primitiveName & "_header" &
+       " bindings_generators/" & primitiveName & ".nim"
+  exec "build/" & primitiveName & "_gen_header.exe include"
 
-task bindings, "Generate Constantine bindings":
+task make_libs, "Build Constantine libraries":
   # Curve arithmetic
-  genStaticBindings(kCurve, "constantine_bls12_381", "ctt_bls12381_init_")
-  genDynamicBindings(kCurve, "constantine_bls12_381", "ctt_bls12381_init_")
-  genHeaders("constantine_bls12_381")
+  genStaticLib(kCurve, "constantine_bls12_381", "ctt_bls12_381_init_", "lib", "nimcache")
+  genDynamicLib(kCurve, "constantine_bls12_381", "ctt_bls12_381_init_", "lib", "nimcache")
+  genHeader("constantine_bls12_381")
   echo ""
-  genStaticBindings(kCurve, "constantine_pasta", "ctt_pasta_init_")
-  genDynamicBindings(kCurve, "constantine_pasta", "ctt_pasta_init_")
-  genHeaders("constantine_pasta")
+  genStaticLib(kCurve, "constantine_pasta", "ctt_pasta_init_", "lib", "nimcache")
+  genDynamicLib(kCurve, "constantine_pasta", "ctt_pasta_init_", "lib", "nimcache")
+  genHeader("constantine_pasta")
   echo ""
-  genStaticBindings(kCurve, "constantine_bn254_snarks", "ctt_bn254snarks_init_")
-  genDynamicBindings(kCurve, "constantine_bn254_snarks", "ctt_bn254snarks_init_")
-  genHeaders("constantine_bn254_snarks")
+  genStaticLib(kCurve, "constantine_bn254_snarks", "ctt_bn254_snarks_init_", "lib", "nimcache")
+  genDynamicLib(kCurve, "constantine_bn254_snarks", "ctt_bn254_snarks_init_", "lib", "nimcache")
+  genHeader("constantine_bn254_snarks")
   echo ""
 
   # Protocols
-  genStaticBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_")
-  genDynamicBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_")
+  genStaticLib(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_", "lib", "nimcache")
+  genDynamicLib(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_", "lib", "nimcache")
   echo ""
+
+task make_lib_rust, "Build Constantine libraries (use within a Rust build.rs script)":
+  doAssert existsEnv"OUT_DIR", "Cargo needs to set the \"OUT_DIR\" environment variable"
+  let rustOutDir = getEnv"OUT_DIR"
+
+  doAssert existsEnv"CTT_RUST_LIB", "Cargo needs to set the \"CTT_RUST_LIB\" to the Rust package being built"
+  let rustLib = getEnv"CTT_RUST_LIB"
+
+  const mapLib = {
+      # Elliptic curves
+      "ctt-curve-bls12-381":               (kCurve, "constantine_bls12_381", "ctt_bls12_381_init_"),
+      "ctt-curve-bn254-snarks":            (kCurve, "constantine_bn254_snarks", "ctt_bn254_snarks_init_"),
+      "ctt-curve-pasta":                   (kCurve, "constantine_pasta", "ctt_pasta_init_"),
+      # Protocols
+      "ctt-proto-ethereum-bls-signatures": (kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_"),
+    }.toTable()
+
+  if not mapLib.hasKey(rustLib):
+    echo &"Build script for package '{rustLib}' is not configured on the Nim side."
+
+  let (libKind, libName, libInitProc) = mapLib[rustLib]
+  genStaticLib(libKind, libName, libInitProc, rustOutDir, rustOutDir/"nimcache")
 
 proc testLib(path, testName, libName: string, useGMP: bool) =
   let dynlibName = if defined(windows): libName & ".dll"
@@ -264,7 +312,7 @@ task test_bindings, "Test C bindings":
 # Test config
 # ----------------------------------------------------------------
 
-const buildParallel = "test_parallel.txt"
+const buildParallel = "build/testsuite_parallel.txt"
 
 # Testing strategy: to reduce CI time we test leaf functionality
 #   and skip testing codepath that would be exercised by leaves.

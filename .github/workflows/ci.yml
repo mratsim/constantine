@@ -236,7 +236,7 @@ jobs:
         shell: bash
         run: |
           cd constantine
-          nimble bindings      --verbose
+          nimble make_libs     --verbose
           nimble test_bindings --verbose
           nimble test_parallel --verbose
       - name: Run Constantine tests (UNIX no Assembly)
@@ -244,7 +244,7 @@ jobs:
         shell: bash
         run: |
           cd constantine
-          CTT_ASM=0 nimble bindings      --verbose
+          CTT_ASM=0 nimble make_libs     --verbose
           nimble test_bindings           --verbose
           CTT_ASM=0 nimble test_parallel --verbose
       - name: Run Constantine tests (Windows with Assembly)
@@ -254,7 +254,7 @@ jobs:
         shell: msys2 {0}
         run: |
           cd constantine
-          nimble bindings             --verbose
+          nimble make_libs            --verbose
           nimble test_bindings        --verbose
           nimble test_parallel_no_gmp --verbose
       - name: Run Constantine tests (Windows no Assembly)
@@ -264,6 +264,6 @@ jobs:
         shell: msys2 {0}
         run: |
           cd constantine
-          CTT_ASM=0 nimble bindings             --verbose
+          CTT_ASM=0 nimble make_libs            --verbose
           nimble test_bindings                  --verbose
           CTT_ASM=0 nimble test_parallel_no_gmp --verbose

@@ -9,28 +9,28 @@
 import ./gen_bindings, ./gen_header
 
 type
-  bn254snarks_fr = Fr[BN254_Snarks]
-  bn254snarks_fp = Fp[BN254_Snarks]
-  bn254snarks_fp2 = Fp2[BN254_Snarks]
-  bn254snarks_ec_g1_aff = ECP_ShortW_Aff[Fp[BN254_Snarks], G1]
-  bn254snarks_ec_g1_jac = ECP_ShortW_Jac[Fp[BN254_Snarks], G1]
-  bn254snarks_ec_g1_prj = ECP_ShortW_Prj[Fp[BN254_Snarks], G1]
-  bn254snarks_ec_g2_aff = ECP_ShortW_Aff[Fp2[BN254_Snarks], G2]
-  bn254snarks_ec_g2_jac = ECP_ShortW_Jac[Fp2[BN254_Snarks], G2]
-  bn254snarks_ec_g2_prj = ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]
+  bn254_snarks_fr = Fr[BN254_Snarks]
+  bn254_snarks_fp = Fp[BN254_Snarks]
+  bn254_snarks_fp2 = Fp2[BN254_Snarks]
+  bn254_snarks_ec_g1_aff = ECP_ShortW_Aff[Fp[BN254_Snarks], G1]
+  bn254_snarks_ec_g1_jac = ECP_ShortW_Jac[Fp[BN254_Snarks], G1]
+  bn254_snarks_ec_g1_prj = ECP_ShortW_Prj[Fp[BN254_Snarks], G1]
+  bn254_snarks_ec_g2_aff = ECP_ShortW_Aff[Fp2[BN254_Snarks], G2]
+  bn254_snarks_ec_g2_jac = ECP_ShortW_Jac[Fp2[BN254_Snarks], G2]
+  bn254_snarks_ec_g2_prj = ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]
 
 collectBindings(cBindings):
-  genBindingsField(bn254snarks_fr)
-  genBindingsField(bn254snarks_fp)
-  genBindingsFieldSqrt(bn254snarks_fp)
-  genBindingsExtField(bn254snarks_fp2)
-  genBindingsExtFieldSqrt(bn254snarks_fp2)
-  genBindings_EC_ShortW_Affine(bn254snarks_ec_g1_aff, bn254snarks_fp)
-  genBindings_EC_ShortW_NonAffine(bn254snarks_ec_g1_jac, bn254snarks_ec_g1_aff, bn254snarks_fp)
-  genBindings_EC_ShortW_NonAffine(bn254snarks_ec_g1_prj, bn254snarks_ec_g1_aff, bn254snarks_fp)
-  genBindings_EC_ShortW_Affine(bn254snarks_ec_g2_aff, bn254snarks_fp2)
-  genBindings_EC_ShortW_NonAffine(bn254snarks_ec_g2_jac, bn254snarks_ec_g2_aff, bn254snarks_fp2)
-  genBindings_EC_ShortW_NonAffine(bn254snarks_ec_g2_prj, bn254snarks_ec_g2_aff, bn254snarks_fp2)
+  genBindingsField(bn254_snarks_fr)
+  genBindingsField(bn254_snarks_fp)
+  genBindingsFieldSqrt(bn254_snarks_fp)
+  genBindingsExtField(bn254_snarks_fp2)
+  genBindingsExtFieldSqrt(bn254_snarks_fp2)
+  genBindings_EC_ShortW_Affine(bn254_snarks_ec_g1_aff, bn254_snarks_fp)
+  genBindings_EC_ShortW_NonAffine(bn254_snarks_ec_g1_jac, bn254_snarks_ec_g1_aff, bn254_snarks_fp)
+  genBindings_EC_ShortW_NonAffine(bn254_snarks_ec_g1_prj, bn254_snarks_ec_g1_aff, bn254_snarks_fp)
+  genBindings_EC_ShortW_Affine(bn254_snarks_ec_g2_aff, bn254_snarks_fp2)
+  genBindings_EC_ShortW_NonAffine(bn254_snarks_ec_g2_jac, bn254_snarks_ec_g2_aff, bn254_snarks_fp2)
+  genBindings_EC_ShortW_NonAffine(bn254_snarks_ec_g2_prj, bn254_snarks_ec_g2_aff, bn254_snarks_fp2)
 
 # Write header
 when isMainModule and defined(CTT_GENERATE_HEADERS):
@@ -55,31 +55,31 @@ when isMainModule and defined(CTT_GENERATE_HEADERS):
     header &= '\n'
     header &= genWordsRequired()
     header &= '\n'
-    header &= genField("bn254snarks_fr", BN254_Snarks.getCurveOrderBitWidth())
+    header &= genField("bn254_snarks_fr", BN254_Snarks.getCurveOrderBitWidth())
     header &= '\n'
-    header &= genField("bn254snarks_fp", BN254_Snarks.getCurveBitWidth())
+    header &= genField("bn254_snarks_fp", BN254_Snarks.getCurveBitWidth())
     header &= '\n'
-    header &= genExtField("bn254snarks_fp2", 2, "bn254snarks_fp")
+    header &= genExtField("bn254_snarks_fp2", 2, "bn254_snarks_fp")
     header &= '\n'
-    header &= genEllipticCurvePoint("bn254snarks_ec_g1_aff", "x, y", "bn254snarks_fp")
+    header &= genEllipticCurvePoint("bn254_snarks_ec_g1_aff", "x, y", "bn254_snarks_fp")
     header &= '\n'
-    header &= genEllipticCurvePoint("bn254snarks_ec_g1_jac", "x, y, z", "bn254snarks_fp")
+    header &= genEllipticCurvePoint("bn254_snarks_ec_g1_jac", "x, y, z", "bn254_snarks_fp")
     header &= '\n'
-    header &= genEllipticCurvePoint("bn254snarks_ec_g1_prj", "x, y, z", "bn254snarks_fp")
+    header &= genEllipticCurvePoint("bn254_snarks_ec_g1_prj", "x, y, z", "bn254_snarks_fp")
     header &= '\n'
-    header &= genEllipticCurvePoint("bn254snarks_ec_g2_aff", "x, y", "bn254snarks_fp2")
+    header &= genEllipticCurvePoint("bn254_snarks_ec_g2_aff", "x, y", "bn254_snarks_fp2")
     header &= '\n'
-    header &= genEllipticCurvePoint("bn254snarks_ec_g2_jac", "x, y, z", "bn254snarks_fp2")
+    header &= genEllipticCurvePoint("bn254_snarks_ec_g2_jac", "x, y, z", "bn254_snarks_fp2")
     header &= '\n'
-    header &= genEllipticCurvePoint("bn254snarks_ec_g2_prj", "x, y, z", "bn254snarks_fp2")
+    header &= genEllipticCurvePoint("bn254_snarks_ec_g2_prj", "x, y, z", "bn254_snarks_fp2")
     header &= '\n'
-    header &= declNimMain("bn254snarks")
+    header &= declNimMain("bn254_snarks")
     header &= '\n'
     header &= cBindings
     header &= '\n'
 
     header = genCpp(header)
-    header = genHeader("BN@%$SNARKS", header)
+    header = genHeader("BN254SNARKS", header)
     header = genHeaderLicense() & header
 
     writeFile(dir/"constantine_bn254_snarks.h", header)

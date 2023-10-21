@@ -9,28 +9,28 @@
 import ./gen_bindings, ./gen_header
 
 type
-  bls12381_fr = Fr[BLS12_381]
-  bls12381_fp = Fp[BLS12_381]
-  bls12381_fp2 = Fp2[BLS12_381]
-  bls12381_ec_g1_aff = ECP_ShortW_Aff[Fp[BLS12_381], G1]
-  bls12381_ec_g1_jac = ECP_ShortW_Jac[Fp[BLS12_381], G1]
-  bls12381_ec_g1_prj = ECP_ShortW_Prj[Fp[BLS12_381], G1]
-  bls12381_ec_g2_aff = ECP_ShortW_Aff[Fp2[BLS12_381], G2]
-  bls12381_ec_g2_jac = ECP_ShortW_Jac[Fp2[BLS12_381], G2]
-  bls12381_ec_g2_prj = ECP_ShortW_Prj[Fp2[BLS12_381], G2]
+  bls12_381_fr = Fr[BLS12_381]
+  bls12_381_fp = Fp[BLS12_381]
+  bls12_381_fp2 = Fp2[BLS12_381]
+  bls12_381_ec_g1_aff = ECP_ShortW_Aff[Fp[BLS12_381], G1]
+  bls12_381_ec_g1_jac = ECP_ShortW_Jac[Fp[BLS12_381], G1]
+  bls12_381_ec_g1_prj = ECP_ShortW_Prj[Fp[BLS12_381], G1]
+  bls12_381_ec_g2_aff = ECP_ShortW_Aff[Fp2[BLS12_381], G2]
+  bls12_381_ec_g2_jac = ECP_ShortW_Jac[Fp2[BLS12_381], G2]
+  bls12_381_ec_g2_prj = ECP_ShortW_Prj[Fp2[BLS12_381], G2]
 
 collectBindings(cBindings):
-  genBindingsField(bls12381_fr)
-  genBindingsField(bls12381_fp)
-  genBindingsFieldSqrt(bls12381_fp)
-  genBindingsExtField(bls12381_fp2)
-  genBindingsExtFieldSqrt(bls12381_fp2)
-  genBindings_EC_ShortW_Affine(bls12381_ec_g1_aff, bls12381_fp)
-  genBindings_EC_ShortW_NonAffine(bls12381_ec_g1_jac, bls12381_ec_g1_aff, bls12381_fp)
-  genBindings_EC_ShortW_NonAffine(bls12381_ec_g1_prj, bls12381_ec_g1_aff, bls12381_fp)
-  genBindings_EC_ShortW_Affine(bls12381_ec_g2_aff, bls12381_fp2)
-  genBindings_EC_ShortW_NonAffine(bls12381_ec_g2_jac, bls12381_ec_g2_aff, bls12381_fp2)
-  genBindings_EC_ShortW_NonAffine(bls12381_ec_g2_prj, bls12381_ec_g2_aff, bls12381_fp2)
+  genBindingsField(bls12_381_fr)
+  genBindingsField(bls12_381_fp)
+  genBindingsFieldSqrt(bls12_381_fp)
+  genBindingsExtField(bls12_381_fp2)
+  genBindingsExtFieldSqrt(bls12_381_fp2)
+  genBindings_EC_ShortW_Affine(bls12_381_ec_g1_aff, bls12_381_fp)
+  genBindings_EC_ShortW_NonAffine(bls12_381_ec_g1_jac, bls12_381_ec_g1_aff, bls12_381_fp)
+  genBindings_EC_ShortW_NonAffine(bls12_381_ec_g1_prj, bls12_381_ec_g1_aff, bls12_381_fp)
+  genBindings_EC_ShortW_Affine(bls12_381_ec_g2_aff, bls12_381_fp2)
+  genBindings_EC_ShortW_NonAffine(bls12_381_ec_g2_jac, bls12_381_ec_g2_aff, bls12_381_fp2)
+  genBindings_EC_ShortW_NonAffine(bls12_381_ec_g2_prj, bls12_381_ec_g2_aff, bls12_381_fp2)
 
 # Write header
 when isMainModule and defined(CTT_GENERATE_HEADERS):
@@ -55,23 +55,23 @@ when isMainModule and defined(CTT_GENERATE_HEADERS):
     header &= '\n'
     header &= genWordsRequired()
     header &= '\n'
-    header &= genField("bls12381_fr", BLS12_381.getCurveOrderBitWidth())
+    header &= genField("bls12_381_fr", BLS12_381.getCurveOrderBitWidth())
     header &= '\n'
-    header &= genField("bls12381_fp", BLS12_381.getCurveBitWidth())
+    header &= genField("bls12_381_fp", BLS12_381.getCurveBitWidth())
     header &= '\n'
-    header &= genExtField("bls12381_fp2", 2, "bls12381_fp")
+    header &= genExtField("bls12_381_fp2", 2, "bls12_381_fp")
     header &= '\n'
-    header &= genEllipticCurvePoint("bls12381_ec_g1_aff", "x, y", "bls12381_fp")
+    header &= genEllipticCurvePoint("bls12_381_ec_g1_aff", "x, y", "bls12_381_fp")
     header &= '\n'
-    header &= genEllipticCurvePoint("bls12381_ec_g1_jac", "x, y, z", "bls12381_fp")
+    header &= genEllipticCurvePoint("bls12_381_ec_g1_jac", "x, y, z", "bls12_381_fp")
     header &= '\n'
-    header &= genEllipticCurvePoint("bls12381_ec_g1_prj", "x, y, z", "bls12381_fp")
+    header &= genEllipticCurvePoint("bls12_381_ec_g1_prj", "x, y, z", "bls12_381_fp")
     header &= '\n'
-    header &= genEllipticCurvePoint("bls12381_ec_g2_aff", "x, y", "bls12381_fp2")
+    header &= genEllipticCurvePoint("bls12_381_ec_g2_aff", "x, y", "bls12_381_fp2")
     header &= '\n'
-    header &= genEllipticCurvePoint("bls12381_ec_g2_jac", "x, y, z", "bls12381_fp2")
+    header &= genEllipticCurvePoint("bls12_381_ec_g2_jac", "x, y, z", "bls12_381_fp2")
     header &= '\n'
-    header &= genEllipticCurvePoint("bls12381_ec_g2_prj", "x, y, z", "bls12381_fp2")
+    header &= genEllipticCurvePoint("bls12_381_ec_g2_prj", "x, y, z", "bls12_381_fp2")
     header &= '\n'
     header &= declNimMain("bls12381")
     header &= '\n'

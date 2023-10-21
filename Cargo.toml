@@ -1,0 +1,11 @@
+[workspace]
+
+members = [
+    "constantine-rust/ctt-curve-bls12-381",
+    "constantine-rust/ctt-curve-bn254-snarks",
+    "constantine-rust/ctt-curve-pasta",
+    "constantine-rust/ctt-proto-ethereum-bls-signatures",
+]
+
+[profile.dev]
+lto = "thin" # The Nim static library is compiled with LTO, always enable it
