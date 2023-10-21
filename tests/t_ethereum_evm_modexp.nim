@@ -206,7 +206,7 @@ suite "EVM ModExp precompile (EIP-198)":
         0xa0]
     var r = newSeq[byte](1)
     let status = r.eth_evm_modexp(input)
-    doAssert status == cttEVM_Success
+    doAssert status == cttEVM_Success, "Failure status: " & $status
 
   test "Audit #6 - DOS Vector 1":
     let input = [
