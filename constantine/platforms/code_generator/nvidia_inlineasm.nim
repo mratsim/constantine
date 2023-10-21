@@ -96,7 +96,7 @@ macro genInstr(body: untyped): untyped =
     let lhs = op[2][0][3][0]
 
     instrBody.add quote do:
-      let `ctx` = builder.getContext()
+      let `ctx` {.used.} = builder.getContext()
       # lhs: ValueRef or uint32 or uint64
       let `numBits` = when `lhs` is ValueRef|ConstValueRef: `lhs`.getTypeOf().getIntTypeWidth()
                       else: 8*sizeof(`lhs`)
@@ -226,13 +226,11 @@ macro genInstr(body: untyped): untyped =
     for op in operands:
       # when op is ValueRef: op
       # else: constInt(uint64(op))
-      opArray.add newCall(
-        bindSym"ValueRef",
-        nnkWhenStmt.newTree(
-          nnkElifBranch.newTree(nnkInfix.newTree(ident"is", op, bindSym"AnyValueRef"), op),
-          nnkElse.newTree(newCall(ident"constInt", regTy, newCall(ident"uint64", op)))
+      opArray.add nnkWhenStmt.newTree(
+          nnkElifBranch.newTree(nnkInfix.newTree(ident"is", op, bindSym"ValueRef"), op),
+          nnkElifBranch.newTree(nnkInfix.newTree(ident"is", op, bindSym"ConstValueRef"), newCall(ident"ValueRef", op)),
+          nnkElse.newTree(newCall(ident"ValueRef", newCall(ident"constInt", regTy, newCall(ident"uint64", op))))
         )
-      )
     # builder.call2(ty, inlineASM, [lhs, rhs], name)
     instrBody.add newCall(
       ident"call2", ident"builder", fnTy,
