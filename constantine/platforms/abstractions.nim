@@ -17,28 +17,19 @@ import ../../metering/tracer
 
 export primitives, tracer
 
-# ------------------------------------------------------------
-
-const CTT_ASM {.booldefine.} = true
-const UseASM_X86_32* = CTT_ASM and X86 and GCC_Compatible
-const UseASM_X86_64* = sizeof(pointer)*8 == 64 and UseASM_X86_32
-
-# We use Nim effect system to track vartime subroutines
-type VarTime*   = object
-
 # ############################################################
 #
 #                      Secret Words
 #
 # ############################################################
 
-when sizeof(int) == 8 and not defined(CTT_32):
+when CTT_32:
   type
-    BaseType* = uint64
+    BaseType* = uint32
       ## Physical BigInt for conversion in "normal integers"
 else:
   type
-    BaseType* = uint32
+    BaseType* = uint64
       ## Physical BigInt for conversion in "normal integers"
 
 type
@@ -131,12 +122,12 @@ debug: # Don't allow printing secret words by default
 
 type SignedSecretWord* = distinct SecretWord
 
-when sizeof(int) == 8 and not defined(CTT_32):
-  type
-    SignedBaseType* = int64
-else:
+when CTT_32:
   type
     SignedBaseType* = int32
+else:
+  type
+    SignedBaseType* = int64
 
 template fmap(x: SignedSecretWord, op: untyped, y: SignedSecretWord): SignedSecretWord =
   ## Unwrap x and y from their distinct type

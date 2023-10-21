@@ -136,7 +136,7 @@ func sum2xMod*(r: var FpDbl, a, b: FpDbl) =
 
     # Conditional reduction by 2ⁿp
     staticFor i, 0, N:
-      SecretBool(overflowed).ccopy(r.limbs2x[i+N], t[i])
+      overflowed.ccopy(r.limbs2x[i+N], t[i])
 
 func neg2xMod*(r: var FpDbl, a: FpDbl) =
   ## Double-precision modular substraction

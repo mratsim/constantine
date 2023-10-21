@@ -7,7 +7,8 @@ import
 
 proc report(op: string, elapsedNs: int64, elapsedCycles: int64, iters: int) =
   let ns = elapsedNs div iters
-  let cycles = elapsedCycles div iters
+  when SupportsGetTicks:
+    let cycles = elapsedCycles div iters
   let throughput = 1e9 / float64(ns)
   when SupportsGetTicks:
     echo &"{op:<70} {throughput:>15.3f} ops/s {ns:>16} ns/op {cycles:>12} CPU cycles (approx)"
@@ -17,12 +18,15 @@ proc report(op: string, elapsedNs: int64, elapsedCycles: int64, iters: int) =
 template bench(fnCall: untyped, ticks, ns: var int64): untyped =
   block:
     let startTime = getMonotime()
-    let startClock = getTicks()
+    when SupportsGetTicks:
+      let startClock = getTicks()
     fnCall
-    let stopClock = getTicks()
+    when SupportsGetTicks:
+      let stopClock = getTicks()
     let stopTime = getMonotime()
 
-    ticks += stopClock - startClock
+    when SupportsGetTicks:
+      ticks += stopClock - startClock
     ns += inNanoseconds(stopTime-startTime)
 
 func computeGasFee(inputs: openArray[byte]): tuple[eip128, eip2565: int] =
@@ -91,8 +95,8 @@ func computeGasFee(inputs: openArray[byte]): tuple[eip128, eip2565: int] =
     baseStop  = baseStart+baseByteLen-1
     expStart  = baseStop+1
     expStop   = expStart+exponentByteLen-1
-    modStart  = expStop+1
-    modStop   = modStart+modulusByteLen-1
+    # modStart  = expStop+1
+    # modStop   = modStart+modulusByteLen-1
 
   template exponent(): untyped =
     inputs.toOpenArray(expStart, expStop)
