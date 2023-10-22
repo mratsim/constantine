@@ -53,13 +53,13 @@ static const char* ctt_eth_bls_status_to_string(ctt_eth_bls_status status) {
 // Comparisons
 // ------------------------------------------------------------------------------------------------
 
-ctt_pure ctt_bool ctt_eth_bls_pubkey_is_zero(const ctt_eth_bls_pubkey* pubkey) __attribute__((warn_unused_result));
-ctt_pure ctt_bool ctt_eth_bls_signature_is_zero(const ctt_eth_bls_signature* sig) __attribute__((warn_unused_result));
+ctt_bool ctt_eth_bls_pubkey_is_zero(const ctt_eth_bls_pubkey* pubkey) __attribute__((warn_unused_result));
+ctt_bool ctt_eth_bls_signature_is_zero(const ctt_eth_bls_signature* sig) __attribute__((warn_unused_result));
 
-ctt_pure ctt_bool ctt_eth_bls_pubkeys_are_equal(const ctt_eth_bls_pubkey* a,
-                                                const ctt_eth_bls_pubkey* b) __attribute__((warn_unused_result));
-ctt_pure ctt_bool ctt_eth_bls_signatures_are_equal(const ctt_eth_bls_signature* a,
-                                                   const ctt_eth_bls_signature* b) __attribute__((warn_unused_result));
+ctt_bool ctt_eth_bls_pubkeys_are_equal(const ctt_eth_bls_pubkey* a,
+                                       const ctt_eth_bls_pubkey* b) __attribute__((warn_unused_result));
+ctt_bool ctt_eth_bls_signatures_are_equal(const ctt_eth_bls_signature* a,
+                                          const ctt_eth_bls_signature* b) __attribute__((warn_unused_result));
 
 // Input validation
 // ------------------------------------------------------------------------------------------------
@@ -69,19 +69,19 @@ ctt_pure ctt_bool ctt_eth_bls_signatures_are_equal(const ctt_eth_bls_signature* 
  *  Regarding timing attacks, this will leak timing information only if the key is invalid.
  *  Namely, the secret key is 0 or the secret key is too large.
  */
-ctt_pure ctt_codec_scalar_status ctt_eth_bls_validate_seckey(const ctt_eth_bls_seckey* seckey) __attribute__((warn_unused_result));
+ctt_codec_scalar_status ctt_eth_bls_validate_seckey(const ctt_eth_bls_seckey* seckey) __attribute__((warn_unused_result));
 
 /** Validate the public key.
  *
  *  This is an expensive operation that can be cached.
  */
-ctt_pure ctt_codec_ecc_status ctt_eth_bls_validate_pubkey(const ctt_eth_bls_pubkey* pubkey) __attribute__((warn_unused_result));
+ctt_codec_ecc_status ctt_eth_bls_validate_pubkey(const ctt_eth_bls_pubkey* pubkey) __attribute__((warn_unused_result));
 
 /** Validate the signature.
  *
  *  This is an expensive operation that can be cached.
  */
-ctt_pure ctt_codec_ecc_status ctt_eth_bls_validate_signature(const ctt_eth_bls_signature* pubkey) __attribute__((warn_unused_result));
+ctt_codec_ecc_status ctt_eth_bls_validate_signature(const ctt_eth_bls_signature* pubkey) __attribute__((warn_unused_result));
 
 // Codecs
 // ------------------------------------------------------------------------------------------------
@@ -203,9 +203,9 @@ void ctt_eth_bls_sign(ctt_eth_bls_signature* sig,
  *
  *  In particular, the public key and signature are assumed to be on curve and subgroup-checked.
  */
-ctt_pure ctt_eth_bls_status ctt_eth_bls_verify(const ctt_eth_bls_pubkey* pubkey,
-                                               const byte* message, ptrdiff_t message_len,
-                                               const ctt_eth_bls_signature* sig) __attribute__((warn_unused_result));
+ctt_eth_bls_status ctt_eth_bls_verify(const ctt_eth_bls_pubkey* pubkey,
+                                      const byte* message, ptrdiff_t message_len,
+                                      const ctt_eth_bls_signature* sig) __attribute__((warn_unused_result));
 
 // TODO: API for pubkeys and signature aggregation. Return a bool or a status code or nothing?
 
@@ -224,9 +224,9 @@ ctt_pure ctt_eth_bls_status ctt_eth_bls_verify(const ctt_eth_bls_pubkey* pubkey,
  *
  *  In particular, the public keys and signature are assumed to be on curve subgroup checked.
  */
-ctt_pure ctt_eth_bls_status ctt_eth_bls_fast_aggregate_verify(const ctt_eth_bls_pubkey pubkeys[], ptrdiff_t pubkeys_len,
-                                                              const byte* message, ptrdiff_t message_len,
-                                                              const ctt_eth_bls_signature* aggregate_sig) __attribute__((warn_unused_result));
+ctt_eth_bls_status ctt_eth_bls_fast_aggregate_verify(const ctt_eth_bls_pubkey pubkeys[], ptrdiff_t pubkeys_len,
+                                                     const byte* message, ptrdiff_t message_len,
+                                                     const ctt_eth_bls_signature* aggregate_sig) __attribute__((warn_unused_result));
 
 #ifdef __cplusplus
 }

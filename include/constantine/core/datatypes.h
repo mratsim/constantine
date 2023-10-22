@@ -53,14 +53,6 @@ typedef uint8_t          byte;
 // ------------------------------------------------------------------------------------------------
 
 #if defined(_MSC_VER)
-#  define ctt_pure __declspec(noalias)
-#elif defined(__GNUC__)
-#  define ctt_pure __attribute__((pure))
-#else
-#  define ctt_pure
-#endif
-
-#if defined(_MSC_VER)
 #  define ctt_align(x)  __declspec(align(x))
 #else
 #  define ctt_align(x)  __attribute__((aligned(x)))
