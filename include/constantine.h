@@ -9,6 +9,9 @@
 #ifndef __CTT_H_CONSTANTINE__
 #define __CTT_H_CONSTANTINE__
 
+// Hash functions
+#include "constantine/hashes/sha256.h"
+
 // Curves
 #include "constantine/curves/bls12_381.h"
 #include "constantine/curves/bn254_snarks.h"

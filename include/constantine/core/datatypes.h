@@ -15,6 +15,7 @@ extern "C" {
 
 // Basic Types
 // ------------------------------------------------------------------------------------------------
+// If we can, we want zero dependencies
 
 #if defined(__SIZE_TYPE__) && defined(__PTRDIFF_TYPE__)
 typedef __SIZE_TYPE__    size_t;
@@ -33,9 +34,9 @@ typedef __UINT64_TYPE__  uint64_t;
 
 // https://github.com/nim-lang/Nim/blob/v1.6.12/lib/nimbase.h#L318
 #if defined(__STDC_VERSION__) && __STDC_VERSION__>=199901
-# define bool _Bool
+# define ctt_bool _Bool
 #else
-# define bool unsigned char
+# define ctt_bool unsigned char
 #endif
 
 typedef size_t           secret_word;
@@ -45,9 +46,8 @@ typedef uint8_t          byte;
 // Sizes
 // ------------------------------------------------------------------------------------------------
 
-#define BYTES(bits) ((int) ((bits) + 8 - 1) / 8)
-#define WordBitWidth         (sizeof(secret_word)*8)
-#define words_required(bits) ((bits+WordBitWidth-1)/WordBitWidth)
+#define CTT_WORD_BITWIDTH        (sizeof(secret_word)*8)
+#define CTT_WORDS_REQUIRED(bits) ((bits+CTT_WORD_BITWIDTH-1)/CTT_WORD_BITWIDTH)
 
 // Attributes
 // ------------------------------------------------------------------------------------------------
@@ -61,9 +61,9 @@ typedef uint8_t          byte;
 #endif
 
 #if defined(_MSC_VER)
-#  define align(x)  __declspec(align(x))
+#  define ctt_align(x)  __declspec(align(x))
 #else
-#  define align(x)  __attribute__((aligned(x)))
+#  define ctt_align(x)  __attribute__((aligned(x)))
 #endif
 
 // Initialization
@@ -72,7 +72,7 @@ typedef uint8_t          byte;
 /** Initializes the library:
  *  - detect CPU features like ADX instructions support (MULX, ADCX, ADOX)
  */
-void ctt_NimMain(void);
+void ctt_init_NimMain(void);
 
 #ifdef __cplusplus
 }

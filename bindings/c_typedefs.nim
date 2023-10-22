@@ -26,10 +26,12 @@ proc genHeaderLicense*(): string =
  */
 """
 
-proc genHeader*(name, body: string): string =
+proc genHeaderGuardAndInclude*(name, body: string): string =
   &"""
 #ifndef __CTT_H_{name}__
 #define __CTT_H_{name}__
+
+#include "constantine/core/datatypes.h"
 
 {body}
 
@@ -70,9 +72,9 @@ typedef __UINT64_TYPE__  uint64_t;
 #endif
 
 #if defined(__STDC_VERSION__) && __STDC_VERSION__>=199901
-# define bool _Bool
+# define ctt_bool _Bool
 #else
-# define bool unsigned char
+# define ctt_bool unsigned char
 #endif
 """
 
@@ -85,12 +87,12 @@ typedef uint8_t          byte;
 
 proc genWordsRequired*(): string =
   """
-#define WordBitWidth         (sizeof(secret_word)*8)
-#define words_required(bits) ((bits+WordBitWidth-1)/WordBitWidth)
+#define CTT_WORD_BITWIDTH        (sizeof(secret_word)*8)
+#define CTT_WORDS_REQUIRED(bits) ((bits+WordBitWidth-1)/WordBitWidth)
 """
 
 proc genField*(name: string, bits: int): string =
-  &"typedef struct {{ secret_word limbs[words_required({bits})]; }} {name};"
+  &"typedef struct {{ secret_word limbs[CTT_WORDS_REQUIRED({bits})]; }} {name};"
 
 proc genExtField*(name: string, degree: int, basename: string): string =
   &"typedef struct {{ {basename} c[{degree}]; }} {name};"
@@ -121,7 +123,7 @@ void ctt_{libName}_init_NimMain(void);"""
 # -------------------------------------------
 
 let TypeMap {.compileTime.} = newStringTable({
-  "bool": "bool",
+  "bool":       "ctt_bool   ",
   "SecretBool": "secret_bool",
   "SecretWord": "secret_word"
 })

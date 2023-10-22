@@ -15,14 +15,14 @@
 extern "C" {
 #endif
 
-typedef struct { secret_word limbs[words_required(255)]; } vesta_fr;
-typedef struct { secret_word limbs[words_required(255)]; } vesta_fp;
+typedef struct { secret_word limbs[CTT_WORDS_REQUIRED(255)]; } vesta_fr;
+typedef struct { secret_word limbs[CTT_WORDS_REQUIRED(255)]; } vesta_fp;
 typedef struct { vesta_fp x, y; } vesta_ec_aff;
 typedef struct { vesta_fp x, y, z; } vesta_ec_jac;
 typedef struct { vesta_fp x, y, z; } vesta_ec_prj;
 
-bool ctt_vesta_fr_unmarshalBE(vesta_fr* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
-bool ctt_vesta_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const vesta_fr* src) __attribute__((warn_unused_result));
+ctt_bool    ctt_vesta_fr_unmarshalBE(vesta_fr* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
+ctt_bool    ctt_vesta_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const vesta_fr* src) __attribute__((warn_unused_result));
 secret_bool ctt_vesta_fr_is_eq(const vesta_fr* a, const vesta_fr* b);
 secret_bool ctt_vesta_fr_is_zero(const vesta_fr* a);
 secret_bool ctt_vesta_fr_is_one(const vesta_fr* a);
@@ -52,8 +52,8 @@ void        ctt_vesta_fr_cset_one(vesta_fr* a, const secret_bool ctl);
 void        ctt_vesta_fr_cneg_in_place(vesta_fr* a, const secret_bool ctl);
 void        ctt_vesta_fr_cadd_in_place(vesta_fr* a, const vesta_fr* b, const secret_bool ctl);
 void        ctt_vesta_fr_csub_in_place(vesta_fr* a, const vesta_fr* b, const secret_bool ctl);
-bool ctt_vesta_fp_unmarshalBE(vesta_fp* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
-bool ctt_vesta_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const vesta_fp* src) __attribute__((warn_unused_result));
+ctt_bool    ctt_vesta_fp_unmarshalBE(vesta_fp* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
+ctt_bool    ctt_vesta_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const vesta_fp* src) __attribute__((warn_unused_result));
 secret_bool ctt_vesta_fp_is_eq(const vesta_fp* a, const vesta_fp* b);
 secret_bool ctt_vesta_fp_is_zero(const vesta_fp* a);
 secret_bool ctt_vesta_fp_is_one(const vesta_fp* a);

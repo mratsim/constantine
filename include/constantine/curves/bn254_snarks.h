@@ -15,8 +15,8 @@
 extern "C" {
 #endif
 
-typedef struct { secret_word limbs[words_required(254)]; } bn254_snarks_fr;
-typedef struct { secret_word limbs[words_required(254)]; } bn254_snarks_fp;
+typedef struct { secret_word limbs[CTT_WORDS_REQUIRED(254)]; } bn254_snarks_fr;
+typedef struct { secret_word limbs[CTT_WORDS_REQUIRED(254)]; } bn254_snarks_fp;
 typedef struct { bn254_snarks_fp c[2]; } bn254_snarks_fp2;
 typedef struct { bn254_snarks_fp x, y; } bn254_snarks_ec_g1_aff;
 typedef struct { bn254_snarks_fp x, y, z; } bn254_snarks_ec_g1_jac;
@@ -25,8 +25,8 @@ typedef struct { bn254_snarks_fp2 x, y; } bn254_snarks_ec_g2_aff;
 typedef struct { bn254_snarks_fp2 x, y, z; } bn254_snarks_ec_g2_jac;
 typedef struct { bn254_snarks_fp2 x, y, z; } bn254_snarks_ec_g2_prj;
 
-bool ctt_bn254_snarks_fr_unmarshalBE(bn254_snarks_fr* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
-bool ctt_bn254_snarks_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const bn254_snarks_fr* src) __attribute__((warn_unused_result));
+ctt_bool    ctt_bn254_snarks_fr_unmarshalBE(bn254_snarks_fr* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
+ctt_bool    ctt_bn254_snarks_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const bn254_snarks_fr* src) __attribute__((warn_unused_result));
 secret_bool ctt_bn254_snarks_fr_is_eq(const bn254_snarks_fr* a, const bn254_snarks_fr* b);
 secret_bool ctt_bn254_snarks_fr_is_zero(const bn254_snarks_fr* a);
 secret_bool ctt_bn254_snarks_fr_is_one(const bn254_snarks_fr* a);
@@ -56,8 +56,8 @@ void        ctt_bn254_snarks_fr_cset_one(bn254_snarks_fr* a, const secret_bool c
 void        ctt_bn254_snarks_fr_cneg_in_place(bn254_snarks_fr* a, const secret_bool ctl);
 void        ctt_bn254_snarks_fr_cadd_in_place(bn254_snarks_fr* a, const bn254_snarks_fr* b, const secret_bool ctl);
 void        ctt_bn254_snarks_fr_csub_in_place(bn254_snarks_fr* a, const bn254_snarks_fr* b, const secret_bool ctl);
-bool ctt_bn254_snarks_fp_unmarshalBE(bn254_snarks_fp* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
-bool ctt_bn254_snarks_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const bn254_snarks_fp* src) __attribute__((warn_unused_result));
+ctt_bool    ctt_bn254_snarks_fp_unmarshalBE(bn254_snarks_fp* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
+ctt_bool    ctt_bn254_snarks_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const bn254_snarks_fp* src) __attribute__((warn_unused_result));
 secret_bool ctt_bn254_snarks_fp_is_eq(const bn254_snarks_fp* a, const bn254_snarks_fp* b);
 secret_bool ctt_bn254_snarks_fp_is_zero(const bn254_snarks_fp* a);
 secret_bool ctt_bn254_snarks_fp_is_one(const bn254_snarks_fp* a);

@@ -1,6 +1,7 @@
 [workspace]
-
+resolver = "2"
 members = [
+    "constantine-rust/constantine-sys",
     "constantine-rust/ctt-curve-bls12-381",
     "constantine-rust/ctt-curve-bn254-snarks",
     "constantine-rust/ctt-curve-pasta",

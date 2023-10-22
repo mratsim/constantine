@@ -15,14 +15,14 @@
 extern "C" {
 #endif
 
-typedef struct { secret_word limbs[words_required(255)]; } pallas_fr;
-typedef struct { secret_word limbs[words_required(255)]; } pallas_fp;
+typedef struct { secret_word limbs[CTT_WORDS_REQUIRED(255)]; } pallas_fr;
+typedef struct { secret_word limbs[CTT_WORDS_REQUIRED(255)]; } pallas_fp;
 typedef struct { pallas_fp x, y; } pallas_ec_aff;
 typedef struct { pallas_fp x, y, z; } pallas_ec_jac;
 typedef struct { pallas_fp x, y, z; } pallas_ec_prj;
 
-bool ctt_pallas_fr_unmarshalBE(pallas_fr* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
-bool ctt_pallas_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const pallas_fr* src) __attribute__((warn_unused_result));
+ctt_bool    ctt_pallas_fr_unmarshalBE(pallas_fr* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
+ctt_bool    ctt_pallas_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const pallas_fr* src) __attribute__((warn_unused_result));
 secret_bool ctt_pallas_fr_is_eq(const pallas_fr* a, const pallas_fr* b);
 secret_bool ctt_pallas_fr_is_zero(const pallas_fr* a);
 secret_bool ctt_pallas_fr_is_one(const pallas_fr* a);
@@ -52,8 +52,8 @@ void        ctt_pallas_fr_cset_one(pallas_fr* a, const secret_bool ctl);
 void        ctt_pallas_fr_cneg_in_place(pallas_fr* a, const secret_bool ctl);
 void        ctt_pallas_fr_cadd_in_place(pallas_fr* a, const pallas_fr* b, const secret_bool ctl);
 void        ctt_pallas_fr_csub_in_place(pallas_fr* a, const pallas_fr* b, const secret_bool ctl);
-bool ctt_pallas_fp_unmarshalBE(pallas_fp* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
-bool ctt_pallas_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const pallas_fp* src) __attribute__((warn_unused_result));
+ctt_bool    ctt_pallas_fp_unmarshalBE(pallas_fp* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
+ctt_bool    ctt_pallas_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const pallas_fp* src) __attribute__((warn_unused_result));
 secret_bool ctt_pallas_fp_is_eq(const pallas_fp* a, const pallas_fp* b);
 secret_bool ctt_pallas_fp_is_zero(const pallas_fp* a);
 secret_bool ctt_pallas_fp_is_one(const pallas_fp* a);

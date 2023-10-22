@@ -11,12 +11,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <constantine_ethereum_bls_signatures.h>
+#include <constantine.h>
 
 int main(){
 
   // Initialize the runtime. For Constantine, it populates the CPU runtime detection dispatch.
-  ctt_eth_bls_init_NimMain();
+  ctt_init_NimMain();
 
   // Protocol and deserialization statuses
   ctt_eth_bls_status      bls_status;
@@ -44,7 +44,7 @@ int main(){
   // Sign a message
   byte message[32];
   ctt_eth_bls_signature sig;
-  ctt_eth_bls_sha256_hash(message, "Mr F was here", 13, /* clear_memory = */ 0);
+  ctt_sha256_hash(message, "Mr F was here", 13, /* clear_memory = */ 0);
   ctt_eth_bls_sign(&sig, &seckey, message, 32);
 
   // Verify that a signature is valid for a message under the provided public key

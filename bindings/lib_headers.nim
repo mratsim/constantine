@@ -31,7 +31,7 @@ proc writeHeader_classicCurve(filepath: string, curve: string, modBits, orderBit
   header &= '\n'
 
   header = genCpp(header)
-  header = genHeader(curve.toUpperASCII(), header)
+  header = genHeaderGuardAndInclude(curve.toUpperASCII(), header)
   header = genHeaderLicense() & header
 
   writeFile(filepath, header)
@@ -63,7 +63,7 @@ proc writeHeader_pairingFriendly(filepath: string, curve: string, modBits, order
   header &= '\n'
 
   header = genCpp(header)
-  header = genHeader(curve.toUpperASCII(), header)
+  header = genHeaderGuardAndInclude(curve.toUpperASCII(), header)
   header = genHeaderLicense() & header
 
   writeFile(filepath, header)
@@ -72,7 +72,7 @@ proc writeHeader(dirPath: string, C: static Curve, curve_decls: string) =
   const modBits = C.getCurveBitWidth()
   const orderBits = C.getCurveOrderBitWidth()
   let curve = ($C).toLowerASCII()
-  let relPath = dirPath/"curve"/curve & ".h"
+  let relPath = dirPath/"constantine"/"curves"/curve & ".h"
 
   when C.family() == NoFamily:
     relPath.writeHeader_classicCurve(curve, modBits, orderBits, curve_decls)

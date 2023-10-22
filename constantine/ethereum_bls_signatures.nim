@@ -46,25 +46,13 @@ const prefix_ffi = "ctt_eth_bls_"
 
 import ./zoo_exports
 
-static:
-  # Export SHA256 routines with a protocol specific prefix
-  # This exports sha256.init(), sha256.update(), sha256.finish() and sha256.clear()
-  prefix_sha256 = prefix_ffi & "sha256_"
+# static:
+#   # Export SHA256 routines with a protocol specific prefix
+#   # This exports sha256.init(), sha256.update(), sha256.finish() and sha256.clear()
+#   prefix_sha256 = prefix_ffi & "sha256_"
 
 import hashes
 export hashes # generic sandwich on sha256
-
-func sha256_hash*(digest: var array[32, byte], message: openArray[byte], clearMem: bool) {.libPrefix: prefix_ffi.} =
-  ## Compute the SHA-256 hash of message
-  ## and store the result in digest.
-  ## Optionally, clear the memory buffer used.
-
-  # There is an extra indirect function call as we use a generic `hash` concept but:
-  # - the indirection saves space (instead of duplicating `hash`)
-  # - minimal overhead compared to hashing time
-  # - Can be tail-call optimized into a goto jump instead of call/return
-  # - Can be LTO-optimized
-  sha256.hash(digest, message, clearMem)
 
 # Imports
 # ------------------------------------------------------------------------------------------------

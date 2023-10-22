@@ -15,8 +15,8 @@
 extern "C" {
 #endif
 
-typedef struct { secret_word limbs[words_required(255)]; } bls12_381_fr;
-typedef struct { secret_word limbs[words_required(381)]; } bls12_381_fp;
+typedef struct { secret_word limbs[CTT_WORDS_REQUIRED(255)]; } bls12_381_fr;
+typedef struct { secret_word limbs[CTT_WORDS_REQUIRED(381)]; } bls12_381_fp;
 typedef struct { bls12_381_fp c[2]; } bls12_381_fp2;
 typedef struct { bls12_381_fp x, y; } bls12_381_ec_g1_aff;
 typedef struct { bls12_381_fp x, y, z; } bls12_381_ec_g1_jac;
@@ -25,8 +25,8 @@ typedef struct { bls12_381_fp2 x, y; } bls12_381_ec_g2_aff;
 typedef struct { bls12_381_fp2 x, y, z; } bls12_381_ec_g2_jac;
 typedef struct { bls12_381_fp2 x, y, z; } bls12_381_ec_g2_prj;
 
-bool ctt_bls12_381_fr_unmarshalBE(bls12_381_fr* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
-bool ctt_bls12_381_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const bls12_381_fr* src) __attribute__((warn_unused_result));
+ctt_bool    ctt_bls12_381_fr_unmarshalBE(bls12_381_fr* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
+ctt_bool    ctt_bls12_381_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const bls12_381_fr* src) __attribute__((warn_unused_result));
 secret_bool ctt_bls12_381_fr_is_eq(const bls12_381_fr* a, const bls12_381_fr* b);
 secret_bool ctt_bls12_381_fr_is_zero(const bls12_381_fr* a);
 secret_bool ctt_bls12_381_fr_is_one(const bls12_381_fr* a);
@@ -56,8 +56,8 @@ void        ctt_bls12_381_fr_cset_one(bls12_381_fr* a, const secret_bool ctl);
 void        ctt_bls12_381_fr_cneg_in_place(bls12_381_fr* a, const secret_bool ctl);
 void        ctt_bls12_381_fr_cadd_in_place(bls12_381_fr* a, const bls12_381_fr* b, const secret_bool ctl);
 void        ctt_bls12_381_fr_csub_in_place(bls12_381_fr* a, const bls12_381_fr* b, const secret_bool ctl);
-bool ctt_bls12_381_fp_unmarshalBE(bls12_381_fp* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
-bool ctt_bls12_381_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const bls12_381_fp* src) __attribute__((warn_unused_result));
+ctt_bool    ctt_bls12_381_fp_unmarshalBE(bls12_381_fp* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
+ctt_bool    ctt_bls12_381_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const bls12_381_fp* src) __attribute__((warn_unused_result));
 secret_bool ctt_bls12_381_fp_is_eq(const bls12_381_fp* a, const bls12_381_fp* b);
 secret_bool ctt_bls12_381_fp_is_zero(const bls12_381_fp* a);
 secret_bool ctt_bls12_381_fp_is_one(const bls12_381_fp* a);

@@ -15,7 +15,7 @@
 #include <stdlib.h>
 
 #include <gmp.h>
-#include <constantine_bls12_381.h>
+#include <constantine.h>
 
 // https://gmplib.org/manual/Integer-Import-and-Export.html
 const int GMP_WordLittleEndian = -1;
@@ -31,19 +31,35 @@ const int GMP_LeastSignificantWordFirst = -1;
 #define Modulus "0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaab"
 #define Iter 24
 
-void prologue(
+
+// Beware of convention, Constantine serialization returns true/'1' for success
+// but top-level program status code returns 0 for success
+#define CHECK(fn_call)                \
+            do {                      \
+                int status = fn_call; \
+                /* printf("status %d for '%s'\n", status, #fn_call); */ \
+                if (status != 0) {    \
+                    return 1;         \
+                }                     \
+            } while (0)
+
+int prologue(
        gmp_randstate_t gmp_rng,
        mpz_ptr a, mpz_ptr b,
        mpz_ptr p,
-       bls12381_fp* a_ctt, bls12381_fp* b_ctt,
+       bls12_381_fp* a_ctt, bls12_381_fp* b_ctt,
        byte a_buf[ByteLength], byte b_buf[ByteLength]) {
 
-  // Generate random value in the range 0 ..< 2^(bits-1)
+  // Generate random value in the range [0, 2^(bits-1))
   mpz_urandomb(a, gmp_rng, BitLength);
   mpz_urandomb(b, gmp_rng, BitLength);
 
   // Set modulus to curve modulus
   mpz_set_str(p, Modulus, 0);
+
+  // Restrict to [0, p)
+  mpz_mod(a, a, p);
+  mpz_mod(b, b, p);
 
   // GMP -> Constantine
   size_t aW, bW;
@@ -53,8 +69,10 @@ void prologue(
   assert(ByteLength >= aW);
   assert(ByteLength >= bW);
 
-  ctt_bls12381_fp_unmarshalBE(a_ctt, a_buf, aW);
-  ctt_bls12381_fp_unmarshalBE(b_ctt, b_buf, bW);
+  CHECK(!ctt_bls12_381_fp_unmarshalBE(a_ctt, a_buf, aW));
+  CHECK(!ctt_bls12_381_fp_unmarshalBE(b_ctt, b_buf, bW));
+
+  return 0;
 }
 
 void dump_hex(byte a[ByteLength]){
@@ -64,9 +82,9 @@ void dump_hex(byte a[ByteLength]){
   }
 }
 
-void epilogue(
+int epilogue(
        mpz_ptr r, mpz_ptr a, mpz_ptr b,
-       bls12381_fp* r_ctt, bls12381_fp* a_ctt, bls12381_fp* b_ctt,
+       bls12_381_fp* r_ctt, bls12_381_fp* a_ctt, bls12_381_fp* b_ctt,
        char* operation) {
 
   byte r_raw_gmp[ByteLength];
@@ -77,7 +95,7 @@ void epilogue(
   mpz_export(r_raw_gmp, &rW, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, r);
 
   // Constantine -> Raw
-  ctt_bls12381_fp_marshalBE(r_raw_ctt, ByteLength, r_ctt);
+  CHECK(!ctt_bls12_381_fp_marshalBE(r_raw_ctt, ByteLength, r_ctt));
 
   // Check
   for (int g = 0, c = ByteLength-rW; g < rW; g+=1, c+=1) {
@@ -98,12 +116,13 @@ void epilogue(
     }
   }
   printf(".");
+  return 0;
 }
 
 int main(){
 
   // Initialize the runtime. For Constantine, it populates CPU runtime detection dispatch.
-  ctt_bls12381_init_NimMain();
+  ctt_init_NimMain();
 
   gmp_randstate_t gmpRng;
   gmp_randinit_mt(gmpRng);
@@ -121,111 +140,111 @@ int main(){
   mpz_init(p);
   mpz_init(r);
 
-  bls12381_fp a_ctt, b_ctt, r_ctt;
+  bls12_381_fp a_ctt, b_ctt, r_ctt;
   byte a_buf[ByteLength], b_buf[ByteLength];
 
   for (int i = 0; i < Iter; ++i){
-    prologue(
+    CHECK(prologue(
       gmpRng,
       a, b, p,
       &a_ctt, &b_ctt,
       a_buf, b_buf
-    );
+    ));
 
     mpz_neg(r, a);
     mpz_mod(r, r, p);
-    ctt_bls12381_fp_neg(&r_ctt, &a_ctt);
+    ctt_bls12_381_fp_neg(&r_ctt, &a_ctt);
 
-    epilogue(
+    CHECK(epilogue(
       r, a, b,
       &r_ctt, &a_ctt, &b_ctt,
       "negation"
-    );
+    ));
   }
   printf(" SUCCESS negation\n");
 
   for (int i = 0; i < Iter; ++i){
-    prologue(
+    CHECK(prologue(
       gmpRng,
       a, b, p,
       &a_ctt, &b_ctt,
       a_buf, b_buf
-    );
+    ));
 
     mpz_add(r, a, b);
     mpz_mod(r, r, p);
-    ctt_bls12381_fp_sum(&r_ctt, &a_ctt, &b_ctt);
+    ctt_bls12_381_fp_sum(&r_ctt, &a_ctt, &b_ctt);
 
-    epilogue(
+    CHECK(epilogue(
       r, a, b,
       &r_ctt, &a_ctt, &b_ctt,
       "addition"
-    );
+    ));
   }
   printf(" SUCCESS addition\n");
 
   for (int i = 0; i < Iter; ++i){
-    prologue(
+    CHECK(prologue(
       gmpRng,
       a, b, p,
       &a_ctt, &b_ctt,
       a_buf, b_buf
-    );
+    ));
 
     mpz_mul(r, a, b);
     mpz_mod(r, r, p);
-    ctt_bls12381_fp_prod(&r_ctt, &a_ctt, &b_ctt);
+    ctt_bls12_381_fp_prod(&r_ctt, &a_ctt, &b_ctt);
 
-    epilogue(
+    CHECK(epilogue(
       r, a, b,
       &r_ctt, &a_ctt, &b_ctt,
       "multiplication"
-    );
+    ));
   }
   printf(" SUCCESS multiplication\n");
 
   for (int i = 0; i < Iter; ++i){
-    prologue(
+    CHECK(prologue(
       gmpRng,
       a, b, p,
       &a_ctt, &b_ctt,
       a_buf, b_buf
-    );
+    ));
 
     mpz_invert(r, a, p);
-    ctt_bls12381_fp_inv(&r_ctt, &a_ctt);
+    ctt_bls12_381_fp_inv(&r_ctt, &a_ctt);
 
-    epilogue(
+    CHECK(epilogue(
       r, a, b,
       &r_ctt, &a_ctt, &b_ctt,
       "inversion"
-    );
+    ));
   }
   printf(" SUCCESS inversion\n");
 
   for (int i = 0; i < Iter; ++i){
-    prologue(
+    CHECK(prologue(
       gmpRng,
       a, b, p,
       &a_ctt, &b_ctt,
       a_buf, b_buf
-    );
+    ));
 
     int is_square_gmp = mpz_legendre(a, p) == -1 ? 0:1;
-    int is_square_ctt = ctt_bls12381_fp_is_square(&a_ctt);
+    int is_square_ctt = ctt_bls12_381_fp_is_square(&a_ctt);
 
     assert(is_square_gmp == is_square_ctt);
   }
   printf(" SUCCESS Legendre symbol / is_square\n");
 
-  // TODO: THere are a "positive" and "negative" square roots
+  // TODO: There are a "positive" and "negative" square roots
   // for (int i = 0; i < Iter; ++i){
-  //   prologue(
+  //   CHECK(prologue(
   //     gmpRng,
   //     a, b, p,
   //     &a_ctt, &b_ctt,
   //     a_buf, b_buf
-  //   );
+  //   ));
 
   //   if (mpz_congruent_ui_p(p, 3, 4)) {
   //     // a^((p+1)/4) (mod p)
@@ -235,13 +254,13 @@ int main(){
   //   } else {
   //     assert(0);
   //   }
-  //   ctt_bls12381_fp_prod(&r_ctt, &a_ctt, &b_ctt);
+  //   ctt_bls12_381_fp_prod(&r_ctt, &a_ctt, &b_ctt);
 
-  //   epilogue(
+  //   CHECK(epilogue(
   //     r, a, b,
   //     &r_ctt, &a_ctt, &b_ctt,
   //     "square root"
-  //   );
+  //   ));
   // }
   // printf(" SUCCESS square root\n");
 

@@ -21,8 +21,10 @@
 
 # Exportable functions
 # ----------------------------------------------------------------------------------------------
+# A module that import these functions can modify their C prefix, if needed.
+# By assigning to the prefix, in a static block **before** importing the module.
 
-var prefix_sha256* {.compileTime.} = ""
+var prefix_sha256* {.compileTime.} = "ctt_sha256_"
 
 # Conditional exports
 # ----------------------------------------------------------------------------------------------
