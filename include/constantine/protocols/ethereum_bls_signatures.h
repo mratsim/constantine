@@ -9,52 +9,10 @@
 #ifndef __CTT_H_ETHEREUM_BLS_SIGNATURES__
 #define __CTT_H_ETHEREUM_BLS_SIGNATURES__
 
+#include "constantine/core/datatypes.h"
+
 #ifdef __cplusplus
 extern "C" {
-#endif
-
-// Basic Types
-// ------------------------------------------------------------------------------------------------
-
-#if defined(__SIZE_TYPE__) && defined(__PTRDIFF_TYPE__)
-typedef __SIZE_TYPE__    size_t;
-typedef __PTRDIFF_TYPE__ ptrdiff_t;
-#else
-#include <stddef.h>
-#endif
-
-#if defined(__UINT8_TYPE__) && defined(__UINT32_TYPE__) && defined(__UINT64_TYPE__)
-typedef __UINT8_TYPE__   uint8_t;
-typedef __UINT32_TYPE__  uint32_t;
-typedef __UINT64_TYPE__  uint64_t;
-#else
-#include <stdint.h>
-#endif
-
-// https://github.com/nim-lang/Nim/blob/v1.6.12/lib/nimbase.h#L318
-#if defined(__STDC_VERSION__) && __STDC_VERSION__>=199901
-# define bool _Bool
-#else
-# define bool unsigned char
-#endif
-
-typedef uint8_t          byte;
-
-// Attributes
-// ------------------------------------------------------------------------------------------------
-
-#if defined(_MSC_VER)
-#  define ctt_pure __declspec(noalias)
-#elif defined(__GNUC__)
-#  define ctt_pure __attribute__((pure))
-#else
-#  define ctt_pure
-#endif
-
-#if defined(_MSC_VER)
-#  define align(x)  __declspec(align(x))
-#else
-#  define align(x)  __attribute__((aligned(x)))
 #endif
 
 // BLS signature types
@@ -62,7 +20,6 @@ typedef uint8_t          byte;
 
 #define FIELD_BITS 381
 #define ORDER_BITS 255
-#define BYTES(bits) ((int) ((bits) + 8 - 1) / 8)
 
 struct ctt_eth_bls_fp { byte raw[BYTES(FIELD_BITS)]; };
 struct ctt_eth_bls_fp2 { struct ctt_eth_bls_fp coords[2]; };

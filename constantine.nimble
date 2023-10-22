@@ -235,7 +235,7 @@ proc genHeader(primitiveName: string) =
        " bindings_generators/" & primitiveName & ".nim"
   exec "build/" & primitiveName & "_gen_header.exe include"
 
-task make_libs, "Build Constantine libraries":
+task make_lib, "Build Constantine library":
   # Curve arithmetic
   genStaticLib(kCurve, "constantine_bls12_381", "ctt_bls12_381_init_", "lib", "nimcache")
   genDynamicLib(kCurve, "constantine_bls12_381", "ctt_bls12_381_init_", "lib", "nimcache")
@@ -255,7 +255,7 @@ task make_libs, "Build Constantine libraries":
   genDynamicLib(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_", "lib", "nimcache")
   echo ""
 
-task make_lib_rust, "Build Constantine libraries (use within a Rust build.rs script)":
+task make_lib_rust, "Build Constantine library (use within a Rust build.rs script)":
   doAssert existsEnv"OUT_DIR", "Cargo needs to set the \"OUT_DIR\" environment variable"
   let rustOutDir = getEnv"OUT_DIR"
 

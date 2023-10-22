@@ -6,40 +6,14 @@
  *    * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
  *  at your option. This file may not be copied, modified, or distributed except according to those terms.
  */
-#ifndef __CTT_H_BLS12381__
-#define __CTT_H_BLS12381__
+#ifndef __CTT_H_BLS12_381__
+#define __CTT_H_BLS12_381__
+
+#include "constantine/core/datatypes.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#if defined(__SIZE_TYPE__) && defined(__PTRDIFF_TYPE__)
-typedef __SIZE_TYPE__    size_t;
-typedef __PTRDIFF_TYPE__ ptrdiff_t;
-#else
-#include <stddef.h>
-#endif
-
-#if defined(__UINT8_TYPE__) && defined(__UINT32_TYPE__) && defined(__UINT64_TYPE__)
-typedef __UINT8_TYPE__   uint8_t;
-typedef __UINT32_TYPE__  uint32_t;
-typedef __UINT64_TYPE__  uint64_t;
-#else
-#include <stdint.h>
-#endif
-
-#if defined(__STDC_VERSION__) && __STDC_VERSION__>=199901
-# define bool _Bool
-#else
-# define bool unsigned char
-#endif
-
-typedef size_t           secret_word;
-typedef size_t           secret_bool;
-typedef uint8_t          byte;
-
-#define WordBitWidth         (sizeof(secret_word)*8)
-#define words_required(bits) ((bits+WordBitWidth-1)/WordBitWidth)
 
 typedef struct { secret_word limbs[words_required(255)]; } bls12_381_fr;
 typedef struct { secret_word limbs[words_required(381)]; } bls12_381_fp;
@@ -50,12 +24,6 @@ typedef struct { bls12_381_fp x, y, z; } bls12_381_ec_g1_prj;
 typedef struct { bls12_381_fp2 x, y; } bls12_381_ec_g2_aff;
 typedef struct { bls12_381_fp2 x, y, z; } bls12_381_ec_g2_jac;
 typedef struct { bls12_381_fp2 x, y, z; } bls12_381_ec_g2_prj;
-
-/*
- * Initializes the library:
- * - detect CPU features like ADX instructions support (MULX, ADCX, ADOX)
- */
-void ctt_bls12381_init_NimMain(void);
 
 bool ctt_bls12_381_fr_unmarshalBE(bls12_381_fr* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
 bool ctt_bls12_381_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const bls12_381_fr* src) __attribute__((warn_unused_result));

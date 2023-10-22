@@ -126,7 +126,7 @@ let TypeMap {.compileTime.} = newStringTable({
   "SecretWord": "secret_word"
 })
 
-proc toCrettype(node: NimNode): string =
+proc toCrettype*(node: NimNode): string =
   node.expectKind({nnkEmpty, nnkSym})
   if node.kind == nnkEmpty:
     # align iwth secret_bool and secret_word
@@ -134,7 +134,7 @@ proc toCrettype(node: NimNode): string =
   else:
     TypeMap[$node]
 
-proc toCtrivialParam(name: string, typ: NimNode): string =
+proc toCtrivialParam*(name: string, typ: NimNode): string =
   typ.expectKind({nnkVarTy, nnkSym})
 
   let isVar = typ.kind == nnkVarTy
@@ -151,7 +151,7 @@ proc toCtrivialParam(name: string, typ: NimNode): string =
     # Pass-by-reference
     constify & sTyp & "* " & name
 
-proc toCparam(name: string, typ: NimNode): string =
+proc toCparam*(name: string, typ: NimNode): string =
   typ.expectKind({nnkVarTy, nnkCall, nnkSym})
 
   if typ.kind == nnkCall:
@@ -174,46 +174,3 @@ proc toCparam(name: string, typ: NimNode): string =
       sTyp & " " & name & "[], ptrdiff_t " & name & "_len"
   else:
     toCtrivialParam(name, typ)
-
-macro collectBindings*(cBindingsStr: untyped, body: typed): untyped =
-  ## Collect function definitions from a generator template
-
-  body.expectKind(nnkStmtList)
-
-  var cBindings: string
-
-  for generator in body:
-    generator.expectKind(nnkStmtList)
-    for fnDef in generator:
-      if fnDef.kind notin {nnkProcDef, nnkFuncDef}:
-        continue
-
-      cBindings &= "\n"
-      # rettype name(pType0* pName0, pType1* pName1, ...);
-      cBindings &= fnDef.params[0].toCrettype()
-      cBindings &= ' '
-      cBindings &= $fnDef.name
-      cBindings &= '('
-      for i in 1 ..< fnDef.params.len:
-        if i != 1: cBindings &= ", "
-
-        let paramDef = fnDef.params[i]
-        paramDef.expectKind(nnkIdentDefs)
-        let pType = paramDef[^2]
-        # No default value
-        paramDef[^1].expectKind(nnkEmpty)
-
-        for j in 0 ..< paramDef.len - 2:
-          if j != 0: cBindings &= ", "
-          var name = $paramDef[j]
-          cBindings &= toCparam(name.split('`')[0], pType)
-
-      if fnDef.params[0].eqIdent"bool":
-        cBindings &= ") __attribute__((warn_unused_result));"
-      else:
-        cBindings &= ");"
-
-  if defined(CTT_GENERATE_HEADERS):
-    result = newConstStmt(cBindingsStr, newLit cBindings)
-  else:
-    result = body
