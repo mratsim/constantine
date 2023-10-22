@@ -15,8 +15,8 @@
 
 import ../abstractions
 
-func div2n1n_nim_vartime[T: SomeUnsignedInt](q, r: var T, n_hi, n_lo, d: T) {.tags:[VarTime].}=
-  ## Division uint128 by uint64
+func div2n1n_nim_vartime[T: SomeUnsignedInt](q, r: var T, n_hi, n_lo, d: T) {.used, tags:[VarTime].}=
+  ## Division uint128 by uint64 or uint64 by uint32
   ## Warning ⚠️ :
   ##   - if n_hi == d, quotient does not fit in an uint64 and will throw SIGFPE
   ##   - if n_hi > d result is undefined
@@ -59,7 +59,7 @@ func div2n1n_nim_vartime[T: SomeUnsignedInt](q, r: var T, n_hi, n_lo, d: T) {.ta
   q = (q1 shl halfSize) or q2
   r = r2
 
-when sizeof(int) == 8 and defined(vcc):
+when not(CTT_32) and defined(vcc):
   func udiv128_vartime(highDividend, lowDividend, divisor: uint64, remainder: var uint64): uint64 {.importc:"_udiv128", header: "<intrin.h>", nodecl, tags:[VarTime].}
     ## Division 128 by 64, Microsoft only, 64-bit only,
     ## returns quotient as return value remainder as var parameter
@@ -74,7 +74,7 @@ when sizeof(int) == 8 and defined(vcc):
       ##   - if n_hi > d result is undefined
       q = udiv128_vartime(n_hi, n_lo, d, r)
 
-elif sizeof(int) == 8 and GCC_Compatible:
+elif not(CTT_32) and GCC_Compatible:
   type
     uint128{.importc: "unsigned __int128".} = object
 
@@ -108,15 +108,16 @@ func div2n1n_vartime*(q, r: var SecretWord, n_hi, n_lo, d: SecretWord) {.inline.
   ## To avoid issues, n_hi, n_lo, d should be normalized.
   ## i.e. shifted (== multiplied by the same power of 2)
   ## so that the most significant bit in d is set.
-  when sizeof(int) == 4:
+  when CTT_32:
     let dividend = (uint64(n_hi) shl 32) or uint64(n_lo)
     let divisor = uint64(d)
-    q = uint32(dividend div divisor)
-    r = uint32(dividend mod divisor)
-  when nimvm:
-    div2n1n_nim_vartime(BaseType q, BaseType r, BaseType n_hi, BaseType n_lo, BaseType d)
+    q = SecretWord(dividend div divisor)
+    r = SecretWord(dividend mod divisor)
   else:
-    when declared(div2n1n_128_vartime):
-      div2n1n_128_vartime(BaseType q, BaseType r, BaseType n_hi, BaseType n_lo, BaseType d)
-    else:
+    when nimvm:
       div2n1n_nim_vartime(BaseType q, BaseType r, BaseType n_hi, BaseType n_lo, BaseType d)
+    else:
+      when declared(div2n1n_128_vartime):
+        div2n1n_128_vartime(BaseType q, BaseType r, BaseType n_hi, BaseType n_lo, BaseType d)
+      else:
+        div2n1n_nim_vartime(BaseType q, BaseType r, BaseType n_hi, BaseType n_lo, BaseType d)

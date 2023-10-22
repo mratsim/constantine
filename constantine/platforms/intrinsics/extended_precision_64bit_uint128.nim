@@ -6,7 +6,9 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import ../constant_time/ct_types
+import
+  ../config,
+  ../constant_time/ct_types
 
 # ############################################################
 #
@@ -86,7 +88,7 @@ func smul*(hi, lo: var Ct[uint64], a, b: Ct[uint64]) {.inline.} =
   ##
   ## Inputs are intentionally unsigned
   ## as we use their unchecked raw representation for cryptography
-  ## 
+  ##
   ## This is constant-time on most hardware
   ## See: https://www.bearssl.org/ctmul.html
   block:

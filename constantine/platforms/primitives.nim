@@ -7,6 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  ./config,
   constant_time/[
     ct_types,
     ct_routines,
@@ -23,6 +24,7 @@ import
   ./allocs
 
 export
+  config,
   ct_types,
   ct_routines,
   multiplexers,

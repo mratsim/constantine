@@ -433,9 +433,6 @@ func eth_evm_modexp*(r: var openArray[byte], inputs: openArray[byte]): CttEVMSta
   if r.len != modulusByteLen:
     return cttEVM_InvalidOutputSize
 
-  if baseWordLen > modulusWordLen:
-    return cttEVM_InvalidInputSize
-
   # Special cases
   # ----------------------
   if paddedLengths.len + baseByteLen + exponentByteLen >= inputs.len:
