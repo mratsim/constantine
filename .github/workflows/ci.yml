@@ -10,17 +10,23 @@ jobs:
         nim_version: [version-1-6] # [version-1-4, devel]
         target:
           - os: linux
-            cpu: amd64
+            cpu: i386
             TEST_LANG: c
             BACKEND: NO_ASM
           - os: linux
             cpu: i386
             TEST_LANG: c
+            BACKEND: ASM
+
+          - os: linux
+            cpu: amd64
+            TEST_LANG: c
             BACKEND: NO_ASM
           - os: linux
             cpu: amd64
             TEST_LANG: c
             BACKEND: ASM
+
           - os: windows
             cpu: amd64
             TEST_LANG: c
@@ -29,6 +35,7 @@ jobs:
             cpu: amd64
             TEST_LANG: c
             BACKEND: ASM
+
           - os: macos
             cpu: amd64
             TEST_LANG: c

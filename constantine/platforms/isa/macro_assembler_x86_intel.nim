@@ -466,14 +466,17 @@ func getStrOffset(a: Assembler_x86, op: Operand): string =
   if op.desc.rm in {Mem, MemOffsettable}:
     # Directly accessing memory
     if defined(gcc):
+      # https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html#x86-Operand-Modifiers
+      # q: Print the DImode name of the register.
+      # k: Print the SImode name of the register.
       if a.wordBitWidth == 64:
         if op.offset == 0:
           return "%q" & op.desc.asmId
         return "%q" & op.desc.asmId & " + " & $(op.offset * a.wordSize)
       else:
         if op.offset == 0:
-          return "%d" & op.desc.asmId
-        return "%d" & op.desc.asmId & " + " & $(op.offset * a.wordSize)
+          return "%k" & op.desc.asmId
+        return "%k" & op.desc.asmId & " + " & $(op.offset * a.wordSize)
     elif defined(clang):
       if a.wordBitWidth == 64:
         if op.offset == 0:
