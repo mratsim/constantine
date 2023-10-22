@@ -20,7 +20,7 @@ const CTT_TRACE {.booldefine.} = off # For manual "debug-echo"-style timing.
 
 when CTT_METER or CTT_TRACE:
 
-  import ../benchmarks/platforms
+  import ./benchmarking
 
   type
     Metadata* = object

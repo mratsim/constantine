@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ./reports, ./tracer,
+  ../constantine/platforms/metering/[reports, tracer],
   ../constantine/ethereum_evm_precompiles,
   ../constantine/platforms/abstractions
 
