@@ -11,6 +11,15 @@ fn main() {
         .parent()
         .expect("constantine-rust is nested");
 
+    // Avoid full recompilation
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=Cargo.toml");
+    println!("cargo:rerun-if-changed={}", cargo_dir.join(".cargo").join("config.toml").display());
+    println!("cargo:rerun-if-changed={}", root_dir.join("Cargo.toml").display());
+    println!("cargo:rerun-if-changed={}", root_dir.join("constantine").display());
+    println!("cargo:rerun-if-changed={}", root_dir.join("bindings").display());
+    println!("cargo:rerun-if-changed={}", root_dir.join("constantine.nimble").display());
+
     println!("Building Constantine library ...");
 
     Command::new("nimble")
@@ -23,7 +32,5 @@ fn main() {
 
     println!("cargo:rustc-link-search=native={}", out_dir.display());
     println!("cargo:rustc-link-lib=static=constantine");
-    // Avoid full recompilation
-    println!("cargo:rerun-if-changed={}", root_dir.join("constantine").display());
-    println!("cargo:rerun-if-changed={}", root_dir.join("bindings").display());
+
 }

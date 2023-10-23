@@ -8,5 +8,16 @@ members = [
     "constantine-rust/ctt-proto-ethereum-bls-signatures",
 ]
 
+# The Nim static library is compiled with ThinLTO, always enable it
+
 [profile.dev]
-lto = "thin" # The Nim static library is compiled with LTO, always enable it
+lto = "thin"
+
+[profile.test]
+lto = "thin"
+
+[profile.release]
+lto = "thin"
+
+[profile.bench]
+lto = "thin"
