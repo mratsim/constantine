@@ -267,7 +267,7 @@ jobs:
         shell: msys2 {0}
         run: |
           cd constantine
-          CTT_ASM=0 nimble make_libs            --verbose
+          CTT_ASM=0 nimble make_lib             --verbose
           nimble make_headers                   --verbose
           nimble test_lib                       --verbose
           CTT_ASM=0 nimble test_parallel_no_gmp --verbose

@@ -12,7 +12,7 @@ requires "nim >= 1.6.12"
 # Nimscript imports
 # ----------------------------------------------------------------
 
-import std/[strformat, strutils, os, tables]
+import std/[strformat, strutils, os]
 
 # Environment variables
 # ----------------------------------------------------------------
@@ -164,9 +164,9 @@ proc genDynamicLib(prefixNimMain, outdir, nimcache: string) =
   elif defined(macosx):
     compile "libconstantine.dylib.arm", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
     compile "libconstantine.dylib.x64", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
-    exec "lipo {outdir}/libconstantine.dylib.arm " &
-             " {outdir}/libconstantine.dylib.x64 " &
-             " -output {outdir}/libconstantine.dylib -create"
+    exec &"lipo {outdir}/libconstantine.dylib.arm " &
+             &" {outdir}/libconstantine.dylib.x64 " &
+             &" -output {outdir}/libconstantine.dylib -create"
 
   else:
     compile "libconstantine.so"
@@ -190,9 +190,9 @@ proc genStaticLib(prefixNimMain, outdir, nimcache: string, rustLib = false) =
   elif defined(macosx):
     compile "libconstantine.a.arm", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
     compile "libconstantine.a.x64", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
-    exec "lipo {outdir}/libconstantine.a.arm " &
-             " {outdir}/libconstantine.a.x64 " &
-             " -output {outdir}/libconstantine.a -create"
+    exec &"lipo {outdir}/libconstantine.a.arm " &
+             &" {outdir}/libconstantine.a.x64 " &
+             &" -output {outdir}/libconstantine.a -create"
 
   else:
     compile "libconstantine.a"
@@ -249,7 +249,7 @@ task test_lib, "Test C library":
 # Test config
 # ----------------------------------------------------------------
 
-const buildParallel = "build/testsuite_parallel.txt"
+const buildParallel = "build/test_suite_parallel.txt"
 
 # Testing strategy: to reduce CI time we test leaf functionality
 #   and skip testing codepath that would be exercised by leaves.
@@ -615,7 +615,7 @@ proc setupTestCommand(flags, path: string): string =
     " -r " &
     flags &
     releaseBuildOptions() &
-    " --outdir:build/testsuite " &
+    " --outdir:build/test_suite " &
     &" --nimcache:nimcache/{path} " &
     path
 
