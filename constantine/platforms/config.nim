@@ -9,7 +9,7 @@
 # Compiler and CPU architecture configuration
 # ------------------------------------------------------------
 
-const GCC_Compatible* = defined(gcc) or defined(clang) or defined(llvm_gcc)
+const GCC_Compatible* = defined(gcc) or defined(clang) or defined(llvm_gcc) or defined(icc)
 const X86* = defined(amd64) or defined(i386)
 
 when sizeof(int) == 8 and GCC_Compatible:

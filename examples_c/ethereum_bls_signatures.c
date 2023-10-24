@@ -14,10 +14,6 @@
 #include <constantine.h>
 
 int main(){
-
-  // Initialize the runtime. For Constantine, it populates the CPU runtime detection dispatch.
-  ctt_init_NimMain();
-
   // Protocol and deserialization statuses
   ctt_eth_bls_status      bls_status;
   ctt_codec_scalar_status scalar_status;

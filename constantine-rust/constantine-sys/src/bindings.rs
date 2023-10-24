@@ -3,34 +3,30 @@
 pub type secret_word = usize;
 pub type secret_bool = usize;
 pub type byte = u8;
-extern "C" {
-    #[doc = " Initializes the library:\n  - detect CPU features like ADX instructions support (MULX, ADCX, ADOX)"]
-    pub fn ctt_init_NimMain();
-}
 #[repr(C)]
 #[repr(align(64))]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct ctt_sha256_context {
-    pub message_schedule: [u32; 16usize],
-    pub buf: [byte; 64usize],
-    pub msgLen: u64,
+    message_schedule: [u32; 16usize],
+    buf: [byte; 64usize],
+    msgLen: u64,
 }
 #[test]
 fn bindgen_test_layout_ctt_sha256_context() {
-    const UNINIT: ::std::mem::MaybeUninit<ctt_sha256_context> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<ctt_sha256_context> = ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<ctt_sha256_context>(),
+        ::core::mem::size_of::<ctt_sha256_context>(),
         192usize,
         concat!("Size of: ", stringify!(ctt_sha256_context))
     );
     assert_eq!(
-        ::std::mem::align_of::<ctt_sha256_context>(),
+        ::core::mem::align_of::<ctt_sha256_context>(),
         64usize,
         concat!("Alignment of ", stringify!(ctt_sha256_context))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).message_schedule) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).message_schedule) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -40,7 +36,7 @@ fn bindgen_test_layout_ctt_sha256_context() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).buf) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).buf) as usize - ptr as usize },
         64usize,
         concat!(
             "Offset of field: ",
@@ -50,7 +46,7 @@ fn bindgen_test_layout_ctt_sha256_context() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).msgLen) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).msgLen) as usize - ptr as usize },
         128usize,
         concat!(
             "Offset of field: ",
@@ -90,26 +86,26 @@ extern "C" {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct bls12_381_fr {
-    pub limbs: [secret_word; 4usize],
+    limbs: [secret_word; 4usize],
 }
 #[test]
 fn bindgen_test_layout_bls12_381_fr() {
-    const UNINIT: ::std::mem::MaybeUninit<bls12_381_fr> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<bls12_381_fr> = ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<bls12_381_fr>(),
+        ::core::mem::size_of::<bls12_381_fr>(),
         32usize,
         concat!("Size of: ", stringify!(bls12_381_fr))
     );
     assert_eq!(
-        ::std::mem::align_of::<bls12_381_fr>(),
+        ::core::mem::align_of::<bls12_381_fr>(),
         8usize,
         concat!("Alignment of ", stringify!(bls12_381_fr))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).limbs) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).limbs) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -120,26 +116,26 @@ fn bindgen_test_layout_bls12_381_fr() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct bls12_381_fp {
-    pub limbs: [secret_word; 6usize],
+    limbs: [secret_word; 6usize],
 }
 #[test]
 fn bindgen_test_layout_bls12_381_fp() {
-    const UNINIT: ::std::mem::MaybeUninit<bls12_381_fp> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<bls12_381_fp> = ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<bls12_381_fp>(),
+        ::core::mem::size_of::<bls12_381_fp>(),
         48usize,
         concat!("Size of: ", stringify!(bls12_381_fp))
     );
     assert_eq!(
-        ::std::mem::align_of::<bls12_381_fp>(),
+        ::core::mem::align_of::<bls12_381_fp>(),
         8usize,
         concat!("Alignment of ", stringify!(bls12_381_fp))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).limbs) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).limbs) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -150,26 +146,26 @@ fn bindgen_test_layout_bls12_381_fp() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct bls12_381_fp2 {
-    pub c: [bls12_381_fp; 2usize],
+    c: [bls12_381_fp; 2usize],
 }
 #[test]
 fn bindgen_test_layout_bls12_381_fp2() {
-    const UNINIT: ::std::mem::MaybeUninit<bls12_381_fp2> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<bls12_381_fp2> = ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<bls12_381_fp2>(),
+        ::core::mem::size_of::<bls12_381_fp2>(),
         96usize,
         concat!("Size of: ", stringify!(bls12_381_fp2))
     );
     assert_eq!(
-        ::std::mem::align_of::<bls12_381_fp2>(),
+        ::core::mem::align_of::<bls12_381_fp2>(),
         8usize,
         concat!("Alignment of ", stringify!(bls12_381_fp2))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).c) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).c) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -180,27 +176,28 @@ fn bindgen_test_layout_bls12_381_fp2() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct bls12_381_ec_g1_aff {
-    pub x: bls12_381_fp,
-    pub y: bls12_381_fp,
+    x: bls12_381_fp,
+    y: bls12_381_fp,
 }
 #[test]
 fn bindgen_test_layout_bls12_381_ec_g1_aff() {
-    const UNINIT: ::std::mem::MaybeUninit<bls12_381_ec_g1_aff> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<bls12_381_ec_g1_aff> =
+        ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<bls12_381_ec_g1_aff>(),
+        ::core::mem::size_of::<bls12_381_ec_g1_aff>(),
         96usize,
         concat!("Size of: ", stringify!(bls12_381_ec_g1_aff))
     );
     assert_eq!(
-        ::std::mem::align_of::<bls12_381_ec_g1_aff>(),
+        ::core::mem::align_of::<bls12_381_ec_g1_aff>(),
         8usize,
         concat!("Alignment of ", stringify!(bls12_381_ec_g1_aff))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -210,7 +207,7 @@ fn bindgen_test_layout_bls12_381_ec_g1_aff() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
         48usize,
         concat!(
             "Offset of field: ",
@@ -221,28 +218,29 @@ fn bindgen_test_layout_bls12_381_ec_g1_aff() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct bls12_381_ec_g1_jac {
-    pub x: bls12_381_fp,
-    pub y: bls12_381_fp,
-    pub z: bls12_381_fp,
+    x: bls12_381_fp,
+    y: bls12_381_fp,
+    z: bls12_381_fp,
 }
 #[test]
 fn bindgen_test_layout_bls12_381_ec_g1_jac() {
-    const UNINIT: ::std::mem::MaybeUninit<bls12_381_ec_g1_jac> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<bls12_381_ec_g1_jac> =
+        ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<bls12_381_ec_g1_jac>(),
+        ::core::mem::size_of::<bls12_381_ec_g1_jac>(),
         144usize,
         concat!("Size of: ", stringify!(bls12_381_ec_g1_jac))
     );
     assert_eq!(
-        ::std::mem::align_of::<bls12_381_ec_g1_jac>(),
+        ::core::mem::align_of::<bls12_381_ec_g1_jac>(),
         8usize,
         concat!("Alignment of ", stringify!(bls12_381_ec_g1_jac))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -252,7 +250,7 @@ fn bindgen_test_layout_bls12_381_ec_g1_jac() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
         48usize,
         concat!(
             "Offset of field: ",
@@ -262,7 +260,7 @@ fn bindgen_test_layout_bls12_381_ec_g1_jac() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).z) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).z) as usize - ptr as usize },
         96usize,
         concat!(
             "Offset of field: ",
@@ -273,28 +271,29 @@ fn bindgen_test_layout_bls12_381_ec_g1_jac() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct bls12_381_ec_g1_prj {
-    pub x: bls12_381_fp,
-    pub y: bls12_381_fp,
-    pub z: bls12_381_fp,
+    x: bls12_381_fp,
+    y: bls12_381_fp,
+    z: bls12_381_fp,
 }
 #[test]
 fn bindgen_test_layout_bls12_381_ec_g1_prj() {
-    const UNINIT: ::std::mem::MaybeUninit<bls12_381_ec_g1_prj> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<bls12_381_ec_g1_prj> =
+        ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<bls12_381_ec_g1_prj>(),
+        ::core::mem::size_of::<bls12_381_ec_g1_prj>(),
         144usize,
         concat!("Size of: ", stringify!(bls12_381_ec_g1_prj))
     );
     assert_eq!(
-        ::std::mem::align_of::<bls12_381_ec_g1_prj>(),
+        ::core::mem::align_of::<bls12_381_ec_g1_prj>(),
         8usize,
         concat!("Alignment of ", stringify!(bls12_381_ec_g1_prj))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -304,7 +303,7 @@ fn bindgen_test_layout_bls12_381_ec_g1_prj() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
         48usize,
         concat!(
             "Offset of field: ",
@@ -314,7 +313,7 @@ fn bindgen_test_layout_bls12_381_ec_g1_prj() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).z) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).z) as usize - ptr as usize },
         96usize,
         concat!(
             "Offset of field: ",
@@ -325,27 +324,28 @@ fn bindgen_test_layout_bls12_381_ec_g1_prj() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct bls12_381_ec_g2_aff {
-    pub x: bls12_381_fp2,
-    pub y: bls12_381_fp2,
+    x: bls12_381_fp2,
+    y: bls12_381_fp2,
 }
 #[test]
 fn bindgen_test_layout_bls12_381_ec_g2_aff() {
-    const UNINIT: ::std::mem::MaybeUninit<bls12_381_ec_g2_aff> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<bls12_381_ec_g2_aff> =
+        ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<bls12_381_ec_g2_aff>(),
+        ::core::mem::size_of::<bls12_381_ec_g2_aff>(),
         192usize,
         concat!("Size of: ", stringify!(bls12_381_ec_g2_aff))
     );
     assert_eq!(
-        ::std::mem::align_of::<bls12_381_ec_g2_aff>(),
+        ::core::mem::align_of::<bls12_381_ec_g2_aff>(),
         8usize,
         concat!("Alignment of ", stringify!(bls12_381_ec_g2_aff))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -355,7 +355,7 @@ fn bindgen_test_layout_bls12_381_ec_g2_aff() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
         96usize,
         concat!(
             "Offset of field: ",
@@ -366,28 +366,29 @@ fn bindgen_test_layout_bls12_381_ec_g2_aff() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct bls12_381_ec_g2_jac {
-    pub x: bls12_381_fp2,
-    pub y: bls12_381_fp2,
-    pub z: bls12_381_fp2,
+    x: bls12_381_fp2,
+    y: bls12_381_fp2,
+    z: bls12_381_fp2,
 }
 #[test]
 fn bindgen_test_layout_bls12_381_ec_g2_jac() {
-    const UNINIT: ::std::mem::MaybeUninit<bls12_381_ec_g2_jac> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<bls12_381_ec_g2_jac> =
+        ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<bls12_381_ec_g2_jac>(),
+        ::core::mem::size_of::<bls12_381_ec_g2_jac>(),
         288usize,
         concat!("Size of: ", stringify!(bls12_381_ec_g2_jac))
     );
     assert_eq!(
-        ::std::mem::align_of::<bls12_381_ec_g2_jac>(),
+        ::core::mem::align_of::<bls12_381_ec_g2_jac>(),
         8usize,
         concat!("Alignment of ", stringify!(bls12_381_ec_g2_jac))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -397,7 +398,7 @@ fn bindgen_test_layout_bls12_381_ec_g2_jac() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
         96usize,
         concat!(
             "Offset of field: ",
@@ -407,7 +408,7 @@ fn bindgen_test_layout_bls12_381_ec_g2_jac() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).z) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).z) as usize - ptr as usize },
         192usize,
         concat!(
             "Offset of field: ",
@@ -418,28 +419,29 @@ fn bindgen_test_layout_bls12_381_ec_g2_jac() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct bls12_381_ec_g2_prj {
-    pub x: bls12_381_fp2,
-    pub y: bls12_381_fp2,
-    pub z: bls12_381_fp2,
+    x: bls12_381_fp2,
+    y: bls12_381_fp2,
+    z: bls12_381_fp2,
 }
 #[test]
 fn bindgen_test_layout_bls12_381_ec_g2_prj() {
-    const UNINIT: ::std::mem::MaybeUninit<bls12_381_ec_g2_prj> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<bls12_381_ec_g2_prj> =
+        ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<bls12_381_ec_g2_prj>(),
+        ::core::mem::size_of::<bls12_381_ec_g2_prj>(),
         288usize,
         concat!("Size of: ", stringify!(bls12_381_ec_g2_prj))
     );
     assert_eq!(
-        ::std::mem::align_of::<bls12_381_ec_g2_prj>(),
+        ::core::mem::align_of::<bls12_381_ec_g2_prj>(),
         8usize,
         concat!("Alignment of ", stringify!(bls12_381_ec_g2_prj))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -449,7 +451,7 @@ fn bindgen_test_layout_bls12_381_ec_g2_prj() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
         96usize,
         concat!(
             "Offset of field: ",
@@ -459,7 +461,7 @@ fn bindgen_test_layout_bls12_381_ec_g2_prj() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).z) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).z) as usize - ptr as usize },
         192usize,
         concat!(
             "Offset of field: ",
@@ -470,6 +472,7 @@ fn bindgen_test_layout_bls12_381_ec_g2_prj() {
     );
 }
 extern "C" {
+    #[must_use]
     pub fn ctt_bls12_381_fr_unmarshalBE(
         dst: *mut bls12_381_fr,
         src: *const byte,
@@ -477,6 +480,7 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[must_use]
     pub fn ctt_bls12_381_fr_marshalBE(
         dst: *mut byte,
         dst_len: isize,
@@ -591,6 +595,7 @@ extern "C" {
     );
 }
 extern "C" {
+    #[must_use]
     pub fn ctt_bls12_381_fp_unmarshalBE(
         dst: *mut bls12_381_fp,
         src: *const byte,
@@ -598,6 +603,7 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[must_use]
     pub fn ctt_bls12_381_fp_marshalBE(
         dst: *mut byte,
         dst_len: isize,
@@ -1216,26 +1222,26 @@ extern "C" {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct bn254_snarks_fr {
-    pub limbs: [secret_word; 4usize],
+    limbs: [secret_word; 4usize],
 }
 #[test]
 fn bindgen_test_layout_bn254_snarks_fr() {
-    const UNINIT: ::std::mem::MaybeUninit<bn254_snarks_fr> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<bn254_snarks_fr> = ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<bn254_snarks_fr>(),
+        ::core::mem::size_of::<bn254_snarks_fr>(),
         32usize,
         concat!("Size of: ", stringify!(bn254_snarks_fr))
     );
     assert_eq!(
-        ::std::mem::align_of::<bn254_snarks_fr>(),
+        ::core::mem::align_of::<bn254_snarks_fr>(),
         8usize,
         concat!("Alignment of ", stringify!(bn254_snarks_fr))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).limbs) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).limbs) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -1246,26 +1252,26 @@ fn bindgen_test_layout_bn254_snarks_fr() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct bn254_snarks_fp {
-    pub limbs: [secret_word; 4usize],
+    limbs: [secret_word; 4usize],
 }
 #[test]
 fn bindgen_test_layout_bn254_snarks_fp() {
-    const UNINIT: ::std::mem::MaybeUninit<bn254_snarks_fp> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<bn254_snarks_fp> = ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<bn254_snarks_fp>(),
+        ::core::mem::size_of::<bn254_snarks_fp>(),
         32usize,
         concat!("Size of: ", stringify!(bn254_snarks_fp))
     );
     assert_eq!(
-        ::std::mem::align_of::<bn254_snarks_fp>(),
+        ::core::mem::align_of::<bn254_snarks_fp>(),
         8usize,
         concat!("Alignment of ", stringify!(bn254_snarks_fp))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).limbs) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).limbs) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -1276,26 +1282,26 @@ fn bindgen_test_layout_bn254_snarks_fp() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct bn254_snarks_fp2 {
-    pub c: [bn254_snarks_fp; 2usize],
+    c: [bn254_snarks_fp; 2usize],
 }
 #[test]
 fn bindgen_test_layout_bn254_snarks_fp2() {
-    const UNINIT: ::std::mem::MaybeUninit<bn254_snarks_fp2> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<bn254_snarks_fp2> = ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<bn254_snarks_fp2>(),
+        ::core::mem::size_of::<bn254_snarks_fp2>(),
         64usize,
         concat!("Size of: ", stringify!(bn254_snarks_fp2))
     );
     assert_eq!(
-        ::std::mem::align_of::<bn254_snarks_fp2>(),
+        ::core::mem::align_of::<bn254_snarks_fp2>(),
         8usize,
         concat!("Alignment of ", stringify!(bn254_snarks_fp2))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).c) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).c) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -1306,28 +1312,28 @@ fn bindgen_test_layout_bn254_snarks_fp2() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct bn254_snarks_ec_g1_aff {
-    pub x: bn254_snarks_fp,
-    pub y: bn254_snarks_fp,
+    x: bn254_snarks_fp,
+    y: bn254_snarks_fp,
 }
 #[test]
 fn bindgen_test_layout_bn254_snarks_ec_g1_aff() {
-    const UNINIT: ::std::mem::MaybeUninit<bn254_snarks_ec_g1_aff> =
-        ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<bn254_snarks_ec_g1_aff> =
+        ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<bn254_snarks_ec_g1_aff>(),
+        ::core::mem::size_of::<bn254_snarks_ec_g1_aff>(),
         64usize,
         concat!("Size of: ", stringify!(bn254_snarks_ec_g1_aff))
     );
     assert_eq!(
-        ::std::mem::align_of::<bn254_snarks_ec_g1_aff>(),
+        ::core::mem::align_of::<bn254_snarks_ec_g1_aff>(),
         8usize,
         concat!("Alignment of ", stringify!(bn254_snarks_ec_g1_aff))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -1337,7 +1343,7 @@ fn bindgen_test_layout_bn254_snarks_ec_g1_aff() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
         32usize,
         concat!(
             "Offset of field: ",
@@ -1348,29 +1354,29 @@ fn bindgen_test_layout_bn254_snarks_ec_g1_aff() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct bn254_snarks_ec_g1_jac {
-    pub x: bn254_snarks_fp,
-    pub y: bn254_snarks_fp,
-    pub z: bn254_snarks_fp,
+    x: bn254_snarks_fp,
+    y: bn254_snarks_fp,
+    z: bn254_snarks_fp,
 }
 #[test]
 fn bindgen_test_layout_bn254_snarks_ec_g1_jac() {
-    const UNINIT: ::std::mem::MaybeUninit<bn254_snarks_ec_g1_jac> =
-        ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<bn254_snarks_ec_g1_jac> =
+        ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<bn254_snarks_ec_g1_jac>(),
+        ::core::mem::size_of::<bn254_snarks_ec_g1_jac>(),
         96usize,
         concat!("Size of: ", stringify!(bn254_snarks_ec_g1_jac))
     );
     assert_eq!(
-        ::std::mem::align_of::<bn254_snarks_ec_g1_jac>(),
+        ::core::mem::align_of::<bn254_snarks_ec_g1_jac>(),
         8usize,
         concat!("Alignment of ", stringify!(bn254_snarks_ec_g1_jac))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -1380,7 +1386,7 @@ fn bindgen_test_layout_bn254_snarks_ec_g1_jac() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
         32usize,
         concat!(
             "Offset of field: ",
@@ -1390,7 +1396,7 @@ fn bindgen_test_layout_bn254_snarks_ec_g1_jac() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).z) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).z) as usize - ptr as usize },
         64usize,
         concat!(
             "Offset of field: ",
@@ -1401,29 +1407,29 @@ fn bindgen_test_layout_bn254_snarks_ec_g1_jac() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct bn254_snarks_ec_g1_prj {
-    pub x: bn254_snarks_fp,
-    pub y: bn254_snarks_fp,
-    pub z: bn254_snarks_fp,
+    x: bn254_snarks_fp,
+    y: bn254_snarks_fp,
+    z: bn254_snarks_fp,
 }
 #[test]
 fn bindgen_test_layout_bn254_snarks_ec_g1_prj() {
-    const UNINIT: ::std::mem::MaybeUninit<bn254_snarks_ec_g1_prj> =
-        ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<bn254_snarks_ec_g1_prj> =
+        ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<bn254_snarks_ec_g1_prj>(),
+        ::core::mem::size_of::<bn254_snarks_ec_g1_prj>(),
         96usize,
         concat!("Size of: ", stringify!(bn254_snarks_ec_g1_prj))
     );
     assert_eq!(
-        ::std::mem::align_of::<bn254_snarks_ec_g1_prj>(),
+        ::core::mem::align_of::<bn254_snarks_ec_g1_prj>(),
         8usize,
         concat!("Alignment of ", stringify!(bn254_snarks_ec_g1_prj))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -1433,7 +1439,7 @@ fn bindgen_test_layout_bn254_snarks_ec_g1_prj() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
         32usize,
         concat!(
             "Offset of field: ",
@@ -1443,7 +1449,7 @@ fn bindgen_test_layout_bn254_snarks_ec_g1_prj() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).z) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).z) as usize - ptr as usize },
         64usize,
         concat!(
             "Offset of field: ",
@@ -1454,28 +1460,28 @@ fn bindgen_test_layout_bn254_snarks_ec_g1_prj() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct bn254_snarks_ec_g2_aff {
-    pub x: bn254_snarks_fp2,
-    pub y: bn254_snarks_fp2,
+    x: bn254_snarks_fp2,
+    y: bn254_snarks_fp2,
 }
 #[test]
 fn bindgen_test_layout_bn254_snarks_ec_g2_aff() {
-    const UNINIT: ::std::mem::MaybeUninit<bn254_snarks_ec_g2_aff> =
-        ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<bn254_snarks_ec_g2_aff> =
+        ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<bn254_snarks_ec_g2_aff>(),
+        ::core::mem::size_of::<bn254_snarks_ec_g2_aff>(),
         128usize,
         concat!("Size of: ", stringify!(bn254_snarks_ec_g2_aff))
     );
     assert_eq!(
-        ::std::mem::align_of::<bn254_snarks_ec_g2_aff>(),
+        ::core::mem::align_of::<bn254_snarks_ec_g2_aff>(),
         8usize,
         concat!("Alignment of ", stringify!(bn254_snarks_ec_g2_aff))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -1485,7 +1491,7 @@ fn bindgen_test_layout_bn254_snarks_ec_g2_aff() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
         64usize,
         concat!(
             "Offset of field: ",
@@ -1496,29 +1502,29 @@ fn bindgen_test_layout_bn254_snarks_ec_g2_aff() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct bn254_snarks_ec_g2_jac {
-    pub x: bn254_snarks_fp2,
-    pub y: bn254_snarks_fp2,
-    pub z: bn254_snarks_fp2,
+    x: bn254_snarks_fp2,
+    y: bn254_snarks_fp2,
+    z: bn254_snarks_fp2,
 }
 #[test]
 fn bindgen_test_layout_bn254_snarks_ec_g2_jac() {
-    const UNINIT: ::std::mem::MaybeUninit<bn254_snarks_ec_g2_jac> =
-        ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<bn254_snarks_ec_g2_jac> =
+        ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<bn254_snarks_ec_g2_jac>(),
+        ::core::mem::size_of::<bn254_snarks_ec_g2_jac>(),
         192usize,
         concat!("Size of: ", stringify!(bn254_snarks_ec_g2_jac))
     );
     assert_eq!(
-        ::std::mem::align_of::<bn254_snarks_ec_g2_jac>(),
+        ::core::mem::align_of::<bn254_snarks_ec_g2_jac>(),
         8usize,
         concat!("Alignment of ", stringify!(bn254_snarks_ec_g2_jac))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -1528,7 +1534,7 @@ fn bindgen_test_layout_bn254_snarks_ec_g2_jac() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
         64usize,
         concat!(
             "Offset of field: ",
@@ -1538,7 +1544,7 @@ fn bindgen_test_layout_bn254_snarks_ec_g2_jac() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).z) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).z) as usize - ptr as usize },
         128usize,
         concat!(
             "Offset of field: ",
@@ -1549,29 +1555,29 @@ fn bindgen_test_layout_bn254_snarks_ec_g2_jac() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct bn254_snarks_ec_g2_prj {
-    pub x: bn254_snarks_fp2,
-    pub y: bn254_snarks_fp2,
-    pub z: bn254_snarks_fp2,
+    x: bn254_snarks_fp2,
+    y: bn254_snarks_fp2,
+    z: bn254_snarks_fp2,
 }
 #[test]
 fn bindgen_test_layout_bn254_snarks_ec_g2_prj() {
-    const UNINIT: ::std::mem::MaybeUninit<bn254_snarks_ec_g2_prj> =
-        ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<bn254_snarks_ec_g2_prj> =
+        ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<bn254_snarks_ec_g2_prj>(),
+        ::core::mem::size_of::<bn254_snarks_ec_g2_prj>(),
         192usize,
         concat!("Size of: ", stringify!(bn254_snarks_ec_g2_prj))
     );
     assert_eq!(
-        ::std::mem::align_of::<bn254_snarks_ec_g2_prj>(),
+        ::core::mem::align_of::<bn254_snarks_ec_g2_prj>(),
         8usize,
         concat!("Alignment of ", stringify!(bn254_snarks_ec_g2_prj))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -1581,7 +1587,7 @@ fn bindgen_test_layout_bn254_snarks_ec_g2_prj() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
         64usize,
         concat!(
             "Offset of field: ",
@@ -1591,7 +1597,7 @@ fn bindgen_test_layout_bn254_snarks_ec_g2_prj() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).z) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).z) as usize - ptr as usize },
         128usize,
         concat!(
             "Offset of field: ",
@@ -1602,6 +1608,7 @@ fn bindgen_test_layout_bn254_snarks_ec_g2_prj() {
     );
 }
 extern "C" {
+    #[must_use]
     pub fn ctt_bn254_snarks_fr_unmarshalBE(
         dst: *mut bn254_snarks_fr,
         src: *const byte,
@@ -1609,6 +1616,7 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[must_use]
     pub fn ctt_bn254_snarks_fr_marshalBE(
         dst: *mut byte,
         dst_len: isize,
@@ -1734,6 +1742,7 @@ extern "C" {
     );
 }
 extern "C" {
+    #[must_use]
     pub fn ctt_bn254_snarks_fp_unmarshalBE(
         dst: *mut bn254_snarks_fp,
         src: *const byte,
@@ -1741,6 +1750,7 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    #[must_use]
     pub fn ctt_bn254_snarks_fp_marshalBE(
         dst: *mut byte,
         dst_len: isize,
@@ -2402,26 +2412,26 @@ extern "C" {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct pallas_fr {
-    pub limbs: [secret_word; 4usize],
+    limbs: [secret_word; 4usize],
 }
 #[test]
 fn bindgen_test_layout_pallas_fr() {
-    const UNINIT: ::std::mem::MaybeUninit<pallas_fr> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<pallas_fr> = ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<pallas_fr>(),
+        ::core::mem::size_of::<pallas_fr>(),
         32usize,
         concat!("Size of: ", stringify!(pallas_fr))
     );
     assert_eq!(
-        ::std::mem::align_of::<pallas_fr>(),
+        ::core::mem::align_of::<pallas_fr>(),
         8usize,
         concat!("Alignment of ", stringify!(pallas_fr))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).limbs) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).limbs) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -2432,26 +2442,26 @@ fn bindgen_test_layout_pallas_fr() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct pallas_fp {
-    pub limbs: [secret_word; 4usize],
+    limbs: [secret_word; 4usize],
 }
 #[test]
 fn bindgen_test_layout_pallas_fp() {
-    const UNINIT: ::std::mem::MaybeUninit<pallas_fp> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<pallas_fp> = ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<pallas_fp>(),
+        ::core::mem::size_of::<pallas_fp>(),
         32usize,
         concat!("Size of: ", stringify!(pallas_fp))
     );
     assert_eq!(
-        ::std::mem::align_of::<pallas_fp>(),
+        ::core::mem::align_of::<pallas_fp>(),
         8usize,
         concat!("Alignment of ", stringify!(pallas_fp))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).limbs) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).limbs) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -2462,27 +2472,27 @@ fn bindgen_test_layout_pallas_fp() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct pallas_ec_aff {
-    pub x: pallas_fp,
-    pub y: pallas_fp,
+    x: pallas_fp,
+    y: pallas_fp,
 }
 #[test]
 fn bindgen_test_layout_pallas_ec_aff() {
-    const UNINIT: ::std::mem::MaybeUninit<pallas_ec_aff> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<pallas_ec_aff> = ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<pallas_ec_aff>(),
+        ::core::mem::size_of::<pallas_ec_aff>(),
         64usize,
         concat!("Size of: ", stringify!(pallas_ec_aff))
     );
     assert_eq!(
-        ::std::mem::align_of::<pallas_ec_aff>(),
+        ::core::mem::align_of::<pallas_ec_aff>(),
         8usize,
         concat!("Alignment of ", stringify!(pallas_ec_aff))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -2492,7 +2502,7 @@ fn bindgen_test_layout_pallas_ec_aff() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
         32usize,
         concat!(
             "Offset of field: ",
@@ -2503,28 +2513,28 @@ fn bindgen_test_layout_pallas_ec_aff() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct pallas_ec_jac {
-    pub x: pallas_fp,
-    pub y: pallas_fp,
-    pub z: pallas_fp,
+    x: pallas_fp,
+    y: pallas_fp,
+    z: pallas_fp,
 }
 #[test]
 fn bindgen_test_layout_pallas_ec_jac() {
-    const UNINIT: ::std::mem::MaybeUninit<pallas_ec_jac> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<pallas_ec_jac> = ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<pallas_ec_jac>(),
+        ::core::mem::size_of::<pallas_ec_jac>(),
         96usize,
         concat!("Size of: ", stringify!(pallas_ec_jac))
     );
     assert_eq!(
-        ::std::mem::align_of::<pallas_ec_jac>(),
+        ::core::mem::align_of::<pallas_ec_jac>(),
         8usize,
         concat!("Alignment of ", stringify!(pallas_ec_jac))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -2534,7 +2544,7 @@ fn bindgen_test_layout_pallas_ec_jac() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
         32usize,
         concat!(
             "Offset of field: ",
@@ -2544,7 +2554,7 @@ fn bindgen_test_layout_pallas_ec_jac() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).z) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).z) as usize - ptr as usize },
         64usize,
         concat!(
             "Offset of field: ",
@@ -2555,28 +2565,28 @@ fn bindgen_test_layout_pallas_ec_jac() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct pallas_ec_prj {
-    pub x: pallas_fp,
-    pub y: pallas_fp,
-    pub z: pallas_fp,
+    x: pallas_fp,
+    y: pallas_fp,
+    z: pallas_fp,
 }
 #[test]
 fn bindgen_test_layout_pallas_ec_prj() {
-    const UNINIT: ::std::mem::MaybeUninit<pallas_ec_prj> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<pallas_ec_prj> = ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<pallas_ec_prj>(),
+        ::core::mem::size_of::<pallas_ec_prj>(),
         96usize,
         concat!("Size of: ", stringify!(pallas_ec_prj))
     );
     assert_eq!(
-        ::std::mem::align_of::<pallas_ec_prj>(),
+        ::core::mem::align_of::<pallas_ec_prj>(),
         8usize,
         concat!("Alignment of ", stringify!(pallas_ec_prj))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -2586,7 +2596,7 @@ fn bindgen_test_layout_pallas_ec_prj() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
         32usize,
         concat!(
             "Offset of field: ",
@@ -2596,7 +2606,7 @@ fn bindgen_test_layout_pallas_ec_prj() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).z) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).z) as usize - ptr as usize },
         64usize,
         concat!(
             "Offset of field: ",
@@ -2607,10 +2617,12 @@ fn bindgen_test_layout_pallas_ec_prj() {
     );
 }
 extern "C" {
+    #[must_use]
     pub fn ctt_pallas_fr_unmarshalBE(dst: *mut pallas_fr, src: *const byte, src_len: isize)
         -> bool;
 }
 extern "C" {
+    #[must_use]
     pub fn ctt_pallas_fr_marshalBE(dst: *mut byte, dst_len: isize, src: *const pallas_fr) -> bool;
 }
 extern "C" {
@@ -2701,10 +2713,12 @@ extern "C" {
     pub fn ctt_pallas_fr_csub_in_place(a: *mut pallas_fr, b: *const pallas_fr, ctl: secret_bool);
 }
 extern "C" {
+    #[must_use]
     pub fn ctt_pallas_fp_unmarshalBE(dst: *mut pallas_fp, src: *const byte, src_len: isize)
         -> bool;
 }
 extern "C" {
+    #[must_use]
     pub fn ctt_pallas_fp_marshalBE(dst: *mut byte, dst_len: isize, src: *const pallas_fp) -> bool;
 }
 extern "C" {
@@ -2967,26 +2981,26 @@ extern "C" {
     pub fn ctt_pallas_ec_prj_from_affine(dst: *mut pallas_ec_prj, src: *const pallas_ec_aff);
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct vesta_fr {
-    pub limbs: [secret_word; 4usize],
+    limbs: [secret_word; 4usize],
 }
 #[test]
 fn bindgen_test_layout_vesta_fr() {
-    const UNINIT: ::std::mem::MaybeUninit<vesta_fr> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<vesta_fr> = ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<vesta_fr>(),
+        ::core::mem::size_of::<vesta_fr>(),
         32usize,
         concat!("Size of: ", stringify!(vesta_fr))
     );
     assert_eq!(
-        ::std::mem::align_of::<vesta_fr>(),
+        ::core::mem::align_of::<vesta_fr>(),
         8usize,
         concat!("Alignment of ", stringify!(vesta_fr))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).limbs) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).limbs) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -2997,26 +3011,26 @@ fn bindgen_test_layout_vesta_fr() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct vesta_fp {
-    pub limbs: [secret_word; 4usize],
+    limbs: [secret_word; 4usize],
 }
 #[test]
 fn bindgen_test_layout_vesta_fp() {
-    const UNINIT: ::std::mem::MaybeUninit<vesta_fp> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<vesta_fp> = ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<vesta_fp>(),
+        ::core::mem::size_of::<vesta_fp>(),
         32usize,
         concat!("Size of: ", stringify!(vesta_fp))
     );
     assert_eq!(
-        ::std::mem::align_of::<vesta_fp>(),
+        ::core::mem::align_of::<vesta_fp>(),
         8usize,
         concat!("Alignment of ", stringify!(vesta_fp))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).limbs) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).limbs) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -3027,27 +3041,27 @@ fn bindgen_test_layout_vesta_fp() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct vesta_ec_aff {
-    pub x: vesta_fp,
-    pub y: vesta_fp,
+    x: vesta_fp,
+    y: vesta_fp,
 }
 #[test]
 fn bindgen_test_layout_vesta_ec_aff() {
-    const UNINIT: ::std::mem::MaybeUninit<vesta_ec_aff> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<vesta_ec_aff> = ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<vesta_ec_aff>(),
+        ::core::mem::size_of::<vesta_ec_aff>(),
         64usize,
         concat!("Size of: ", stringify!(vesta_ec_aff))
     );
     assert_eq!(
-        ::std::mem::align_of::<vesta_ec_aff>(),
+        ::core::mem::align_of::<vesta_ec_aff>(),
         8usize,
         concat!("Alignment of ", stringify!(vesta_ec_aff))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -3057,7 +3071,7 @@ fn bindgen_test_layout_vesta_ec_aff() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
         32usize,
         concat!(
             "Offset of field: ",
@@ -3068,28 +3082,28 @@ fn bindgen_test_layout_vesta_ec_aff() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct vesta_ec_jac {
-    pub x: vesta_fp,
-    pub y: vesta_fp,
-    pub z: vesta_fp,
+    x: vesta_fp,
+    y: vesta_fp,
+    z: vesta_fp,
 }
 #[test]
 fn bindgen_test_layout_vesta_ec_jac() {
-    const UNINIT: ::std::mem::MaybeUninit<vesta_ec_jac> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<vesta_ec_jac> = ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<vesta_ec_jac>(),
+        ::core::mem::size_of::<vesta_ec_jac>(),
         96usize,
         concat!("Size of: ", stringify!(vesta_ec_jac))
     );
     assert_eq!(
-        ::std::mem::align_of::<vesta_ec_jac>(),
+        ::core::mem::align_of::<vesta_ec_jac>(),
         8usize,
         concat!("Alignment of ", stringify!(vesta_ec_jac))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -3099,7 +3113,7 @@ fn bindgen_test_layout_vesta_ec_jac() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
         32usize,
         concat!(
             "Offset of field: ",
@@ -3109,7 +3123,7 @@ fn bindgen_test_layout_vesta_ec_jac() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).z) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).z) as usize - ptr as usize },
         64usize,
         concat!(
             "Offset of field: ",
@@ -3120,28 +3134,28 @@ fn bindgen_test_layout_vesta_ec_jac() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct vesta_ec_prj {
-    pub x: vesta_fp,
-    pub y: vesta_fp,
-    pub z: vesta_fp,
+    x: vesta_fp,
+    y: vesta_fp,
+    z: vesta_fp,
 }
 #[test]
 fn bindgen_test_layout_vesta_ec_prj() {
-    const UNINIT: ::std::mem::MaybeUninit<vesta_ec_prj> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<vesta_ec_prj> = ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<vesta_ec_prj>(),
+        ::core::mem::size_of::<vesta_ec_prj>(),
         96usize,
         concat!("Size of: ", stringify!(vesta_ec_prj))
     );
     assert_eq!(
-        ::std::mem::align_of::<vesta_ec_prj>(),
+        ::core::mem::align_of::<vesta_ec_prj>(),
         8usize,
         concat!("Alignment of ", stringify!(vesta_ec_prj))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -3151,7 +3165,7 @@ fn bindgen_test_layout_vesta_ec_prj() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
         32usize,
         concat!(
             "Offset of field: ",
@@ -3161,7 +3175,7 @@ fn bindgen_test_layout_vesta_ec_prj() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).z) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).z) as usize - ptr as usize },
         64usize,
         concat!(
             "Offset of field: ",
@@ -3172,9 +3186,11 @@ fn bindgen_test_layout_vesta_ec_prj() {
     );
 }
 extern "C" {
+    #[must_use]
     pub fn ctt_vesta_fr_unmarshalBE(dst: *mut vesta_fr, src: *const byte, src_len: isize) -> bool;
 }
 extern "C" {
+    #[must_use]
     pub fn ctt_vesta_fr_marshalBE(dst: *mut byte, dst_len: isize, src: *const vesta_fr) -> bool;
 }
 extern "C" {
@@ -3265,9 +3281,11 @@ extern "C" {
     pub fn ctt_vesta_fr_csub_in_place(a: *mut vesta_fr, b: *const vesta_fr, ctl: secret_bool);
 }
 extern "C" {
+    #[must_use]
     pub fn ctt_vesta_fp_unmarshalBE(dst: *mut vesta_fp, src: *const byte, src_len: isize) -> bool;
 }
 extern "C" {
+    #[must_use]
     pub fn ctt_vesta_fp_marshalBE(dst: *mut byte, dst_len: isize, src: *const vesta_fp) -> bool;
 }
 extern "C" {
@@ -3515,14 +3533,14 @@ extern "C" {
     pub fn ctt_vesta_ec_prj_from_affine(dst: *mut vesta_ec_prj, src: *const vesta_ec_aff);
 }
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq)]
 pub enum ctt_codec_scalar_status {
     cttCodecScalar_Success = 0,
     cttCodecScalar_Zero = 1,
     cttCodecScalar_ScalarLargerThanCurveOrder = 2,
 }
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq)]
 pub enum ctt_codec_ecc_status {
     cttCodecEcc_Success = 0,
     cttCodecEcc_InvalidEncoding = 1,
@@ -3532,26 +3550,26 @@ pub enum ctt_codec_ecc_status {
     cttCodecEcc_PointAtInfinity = 5,
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct ctt_eth_bls_fp {
-    pub raw: [byte; 48usize],
+    raw: [byte; 48usize],
 }
 #[test]
 fn bindgen_test_layout_ctt_eth_bls_fp() {
-    const UNINIT: ::std::mem::MaybeUninit<ctt_eth_bls_fp> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<ctt_eth_bls_fp> = ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<ctt_eth_bls_fp>(),
+        ::core::mem::size_of::<ctt_eth_bls_fp>(),
         48usize,
         concat!("Size of: ", stringify!(ctt_eth_bls_fp))
     );
     assert_eq!(
-        ::std::mem::align_of::<ctt_eth_bls_fp>(),
+        ::core::mem::align_of::<ctt_eth_bls_fp>(),
         1usize,
         concat!("Alignment of ", stringify!(ctt_eth_bls_fp))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).raw) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).raw) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -3562,26 +3580,26 @@ fn bindgen_test_layout_ctt_eth_bls_fp() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct ctt_eth_bls_fp2 {
-    pub coords: [ctt_eth_bls_fp; 2usize],
+    coords: [ctt_eth_bls_fp; 2usize],
 }
 #[test]
 fn bindgen_test_layout_ctt_eth_bls_fp2() {
-    const UNINIT: ::std::mem::MaybeUninit<ctt_eth_bls_fp2> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<ctt_eth_bls_fp2> = ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<ctt_eth_bls_fp2>(),
+        ::core::mem::size_of::<ctt_eth_bls_fp2>(),
         96usize,
         concat!("Size of: ", stringify!(ctt_eth_bls_fp2))
     );
     assert_eq!(
-        ::std::mem::align_of::<ctt_eth_bls_fp2>(),
+        ::core::mem::align_of::<ctt_eth_bls_fp2>(),
         1usize,
         concat!("Alignment of ", stringify!(ctt_eth_bls_fp2))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).coords) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).coords) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -3592,26 +3610,26 @@ fn bindgen_test_layout_ctt_eth_bls_fp2() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct ctt_eth_bls_seckey {
-    pub raw: [byte; 32usize],
+    raw: [byte; 32usize],
 }
 #[test]
 fn bindgen_test_layout_ctt_eth_bls_seckey() {
-    const UNINIT: ::std::mem::MaybeUninit<ctt_eth_bls_seckey> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<ctt_eth_bls_seckey> = ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<ctt_eth_bls_seckey>(),
+        ::core::mem::size_of::<ctt_eth_bls_seckey>(),
         32usize,
         concat!("Size of: ", stringify!(ctt_eth_bls_seckey))
     );
     assert_eq!(
-        ::std::mem::align_of::<ctt_eth_bls_seckey>(),
+        ::core::mem::align_of::<ctt_eth_bls_seckey>(),
         1usize,
         concat!("Alignment of ", stringify!(ctt_eth_bls_seckey))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).raw) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).raw) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -3622,27 +3640,27 @@ fn bindgen_test_layout_ctt_eth_bls_seckey() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct ctt_eth_bls_pubkey {
-    pub x: ctt_eth_bls_fp,
-    pub y: ctt_eth_bls_fp,
+    x: ctt_eth_bls_fp,
+    y: ctt_eth_bls_fp,
 }
 #[test]
 fn bindgen_test_layout_ctt_eth_bls_pubkey() {
-    const UNINIT: ::std::mem::MaybeUninit<ctt_eth_bls_pubkey> = ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<ctt_eth_bls_pubkey> = ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<ctt_eth_bls_pubkey>(),
+        ::core::mem::size_of::<ctt_eth_bls_pubkey>(),
         96usize,
         concat!("Size of: ", stringify!(ctt_eth_bls_pubkey))
     );
     assert_eq!(
-        ::std::mem::align_of::<ctt_eth_bls_pubkey>(),
+        ::core::mem::align_of::<ctt_eth_bls_pubkey>(),
         1usize,
         concat!("Alignment of ", stringify!(ctt_eth_bls_pubkey))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -3652,7 +3670,7 @@ fn bindgen_test_layout_ctt_eth_bls_pubkey() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
         48usize,
         concat!(
             "Offset of field: ",
@@ -3663,28 +3681,28 @@ fn bindgen_test_layout_ctt_eth_bls_pubkey() {
     );
 }
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 pub struct ctt_eth_bls_signature {
-    pub x: ctt_eth_bls_fp2,
-    pub y: ctt_eth_bls_fp2,
+    x: ctt_eth_bls_fp2,
+    y: ctt_eth_bls_fp2,
 }
 #[test]
 fn bindgen_test_layout_ctt_eth_bls_signature() {
-    const UNINIT: ::std::mem::MaybeUninit<ctt_eth_bls_signature> =
-        ::std::mem::MaybeUninit::uninit();
+    const UNINIT: ::core::mem::MaybeUninit<ctt_eth_bls_signature> =
+        ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::std::mem::size_of::<ctt_eth_bls_signature>(),
+        ::core::mem::size_of::<ctt_eth_bls_signature>(),
         192usize,
         concat!("Size of: ", stringify!(ctt_eth_bls_signature))
     );
     assert_eq!(
-        ::std::mem::align_of::<ctt_eth_bls_signature>(),
+        ::core::mem::align_of::<ctt_eth_bls_signature>(),
         1usize,
         concat!("Alignment of ", stringify!(ctt_eth_bls_signature))
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).x) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
@@ -3694,7 +3712,7 @@ fn bindgen_test_layout_ctt_eth_bls_signature() {
         )
     );
     assert_eq!(
-        unsafe { ::std::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
+        unsafe { ::core::ptr::addr_of!((*ptr).y) as usize - ptr as usize },
         96usize,
         concat!(
             "Offset of field: ",
@@ -3705,7 +3723,7 @@ fn bindgen_test_layout_ctt_eth_bls_signature() {
     );
 }
 #[repr(u8)]
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq)]
 pub enum ctt_eth_bls_status {
     cttBLS_Success = 0,
     cttBLS_VerificationFailure = 1,
@@ -3714,40 +3732,48 @@ pub enum ctt_eth_bls_status {
     cttBLS_InconsistentLengthsOfInputs = 4,
 }
 extern "C" {
+    #[must_use]
     pub fn ctt_eth_bls_pubkey_is_zero(pubkey: *const ctt_eth_bls_pubkey) -> bool;
 }
 extern "C" {
+    #[must_use]
     pub fn ctt_eth_bls_signature_is_zero(sig: *const ctt_eth_bls_signature) -> bool;
 }
 extern "C" {
+    #[must_use]
     pub fn ctt_eth_bls_pubkeys_are_equal(
         a: *const ctt_eth_bls_pubkey,
         b: *const ctt_eth_bls_pubkey,
     ) -> bool;
 }
 extern "C" {
+    #[must_use]
     pub fn ctt_eth_bls_signatures_are_equal(
         a: *const ctt_eth_bls_signature,
         b: *const ctt_eth_bls_signature,
     ) -> bool;
 }
 extern "C" {
+    #[must_use]
     #[doc = " Validate the secret key.\n\n  Regarding timing attacks, this will leak timing information only if the key is invalid.\n  Namely, the secret key is 0 or the secret key is too large."]
     pub fn ctt_eth_bls_validate_seckey(
         seckey: *const ctt_eth_bls_seckey,
     ) -> ctt_codec_scalar_status;
 }
 extern "C" {
+    #[must_use]
     #[doc = " Validate the public key.\n\n  This is an expensive operation that can be cached."]
     pub fn ctt_eth_bls_validate_pubkey(pubkey: *const ctt_eth_bls_pubkey) -> ctt_codec_ecc_status;
 }
 extern "C" {
+    #[must_use]
     #[doc = " Validate the signature.\n\n  This is an expensive operation that can be cached."]
     pub fn ctt_eth_bls_validate_signature(
         pubkey: *const ctt_eth_bls_signature,
     ) -> ctt_codec_ecc_status;
 }
 extern "C" {
+    #[must_use]
     #[doc = " Serialize a secret key\n\n  Returns cttCodecScalar_Success if successful"]
     pub fn ctt_eth_bls_serialize_seckey(
         dst: *mut byte,
@@ -3755,6 +3781,7 @@ extern "C" {
     ) -> ctt_codec_scalar_status;
 }
 extern "C" {
+    #[must_use]
     #[doc = " Serialize a public key in compressed (Zcash) format\n\n  Returns cttCodecEcc_Success if successful"]
     pub fn ctt_eth_bls_serialize_pubkey_compressed(
         dst: *mut byte,
@@ -3762,6 +3789,7 @@ extern "C" {
     ) -> ctt_codec_ecc_status;
 }
 extern "C" {
+    #[must_use]
     #[doc = " Serialize a signature in compressed (Zcash) format\n\n  Returns cttCodecEcc_Success if successful"]
     pub fn ctt_eth_bls_serialize_signature_compressed(
         dst: *mut byte,
@@ -3769,6 +3797,7 @@ extern "C" {
     ) -> ctt_codec_ecc_status;
 }
 extern "C" {
+    #[must_use]
     #[doc = " Deserialize a secret key\n  This also validates the secret key.\n\n  This is protected against side-channel unless your key is invalid.\n  In that case it will like whether it's all zeros or larger than the curve order."]
     pub fn ctt_eth_bls_deserialize_seckey(
         seckey: *mut ctt_eth_bls_seckey,
@@ -3776,6 +3805,7 @@ extern "C" {
     ) -> ctt_codec_scalar_status;
 }
 extern "C" {
+    #[must_use]
     #[doc = " Deserialize a public key in compressed (Zcash) format.\n  This does not validate the public key.\n  It is intended for cases where public keys are stored in a trusted location\n  and validation can be cached.\n\n  Warning ⚠:\n    This procedure skips the very expensive subgroup checks.\n    Not checking subgroup exposes a protocol to small subgroup attacks.\n\n  Returns cttCodecEcc_Success if successful"]
     pub fn ctt_eth_bls_deserialize_pubkey_compressed_unchecked(
         pubkey: *mut ctt_eth_bls_pubkey,
@@ -3783,6 +3813,7 @@ extern "C" {
     ) -> ctt_codec_ecc_status;
 }
 extern "C" {
+    #[must_use]
     #[doc = " Deserialize a public_key in compressed (Zcash) format.\n  This also validates the public key.\n\n  Returns cttCodecEcc_Success if successful"]
     pub fn ctt_eth_bls_deserialize_pubkey_compressed(
         pubkey: *mut ctt_eth_bls_pubkey,
@@ -3790,6 +3821,7 @@ extern "C" {
     ) -> ctt_codec_ecc_status;
 }
 extern "C" {
+    #[must_use]
     #[doc = " Deserialize a signature in compressed (Zcash) format.\n  This does not validate the signature.\n  It is intended for cases where public keys are stored in a trusted location\n  and validation can be cached.\n\n  Warning ⚠:\n    This procedure skips the very expensive subgroup checks.\n    Not checking subgroup exposes a protocol to small subgroup attacks.\n\n  Returns cttCodecEcc_Success if successful"]
     pub fn ctt_eth_bls_deserialize_signature_compressed_unchecked(
         sig: *mut ctt_eth_bls_signature,
@@ -3797,6 +3829,7 @@ extern "C" {
     ) -> ctt_codec_ecc_status;
 }
 extern "C" {
+    #[must_use]
     #[doc = " Deserialize a signature in compressed (Zcash) format.\n  This also validates the signature.\n\n  Returns cttCodecEcc_Success if successful"]
     pub fn ctt_eth_bls_deserialize_signature_compressed(
         sig: *mut ctt_eth_bls_signature,
@@ -3820,6 +3853,7 @@ extern "C" {
     );
 }
 extern "C" {
+    #[must_use]
     #[doc = " Check that a signature is valid for a message\n  under the provided public key.\n  returns `true` if the signature is valid, `false` otherwise.\n\n  For message domain separation purpose, the tag is `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_`\n\n  Input:\n  - A public key initialized by one of the key derivation or deserialization procedure.\n    Or validated via validate_pubkey\n  - A message\n  - A signature initialized by one of the key derivation or deserialization procedure.\n    Or validated via validate_signature\n\n  Output:\n  - a status code with verification success if signature is valid\n    or indicating verification failure\n\n  In particular, the public key and signature are assumed to be on curve and subgroup-checked."]
     pub fn ctt_eth_bls_verify(
         pubkey: *const ctt_eth_bls_pubkey,
@@ -3829,6 +3863,7 @@ extern "C" {
     ) -> ctt_eth_bls_status;
 }
 extern "C" {
+    #[must_use]
     #[doc = " Check that a signature is valid for a message\n  under the aggregate of provided public keys.\n  returns `true` if the signature is valid, `false` otherwise.\n\n  For message domain separation purpose, the tag is `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_`\n\n  Input:\n  - Public keys initialized by one of the key derivation or deserialization procedure.\n    Or validated via validate_pubkey\n  - A message\n  - A signature initialized by one of the key derivation or deserialization procedure.\n    Or validated via validate_signature\n\n  In particular, the public keys and signature are assumed to be on curve subgroup checked."]
     pub fn ctt_eth_bls_fast_aggregate_verify(
         pubkeys: *const ctt_eth_bls_pubkey,

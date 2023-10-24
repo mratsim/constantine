@@ -120,10 +120,6 @@ int epilogue(
 }
 
 int main(){
-
-  // Initialize the runtime. For Constantine, it populates CPU runtime detection dispatch.
-  ctt_init_NimMain();
-
   gmp_randstate_t gmpRng;
   gmp_randinit_mt(gmpRng);
   // The GMP seed varies between run so that

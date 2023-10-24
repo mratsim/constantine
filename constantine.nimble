@@ -145,7 +145,7 @@ proc rustBuild(): string =
   lto &
   compilerFlags()
 
-proc genDynamicLib(prefixNimMain, outdir, nimcache: string) =
+proc genDynamicLib(outdir, nimcache: string) =
   proc compile(libName: string, flags = "") =
     echo &"Compiling dynamic library: {outdir}/" & libName
 
@@ -153,7 +153,7 @@ proc genDynamicLib(prefixNimMain, outdir, nimcache: string) =
          flags &
          releaseBuildOptions(useLTO = true) &
          " --noMain --app:lib " &
-         &" --nimMainPrefix:{prefixNimMain} " &
+         &" --nimMainPrefix:ctt_init_ " & # Constantine is designed so that NimMain isn't needed, provided --mm:arc -d:useMalloc --panics:on -d:noSignalHandler
          &" --out:{libName} --outdir:{outdir} " &
          &" --nimcache:{nimcache}/libconstantine_dynamic" &
          &" bindings/lib_constantine.nim"
@@ -171,7 +171,7 @@ proc genDynamicLib(prefixNimMain, outdir, nimcache: string) =
   else:
     compile "libconstantine.so"
 
-proc genStaticLib(prefixNimMain, outdir, nimcache: string, rustLib = false) =
+proc genStaticLib(outdir, nimcache: string, rustLib = false) =
   proc compile(libName: string, flags = "") =
     echo &"Compiling static library:  {outdir}/" & libName
 
@@ -179,7 +179,7 @@ proc genStaticLib(prefixNimMain, outdir, nimcache: string, rustLib = false) =
          flags &
          (if rustLib: rustBuild() else: releaseBuildOptions(useLTO = false)) &
          " --noMain --app:staticLib " &
-         &" --nimMainPrefix:{prefixNimMain} " &
+         &" --nimMainPrefix:ctt_init_ " & # Constantine is designed so that NimMain isn't needed, provided --mm:arc -d:useMalloc --panics:on -d:noSignalHandler
          &" --out:{libName} --outdir:{outdir} " &
          &" --nimcache:{nimcache}/libconstantine_static" & (if rustLib: "_rust" else: "") &
          &" bindings/lib_constantine.nim"
@@ -206,13 +206,13 @@ task make_headers, "Regenerate Constantine headers":
        " bindings/lib_headers.nim"
 
 task make_lib, "Build Constantine library":
-  genStaticLib("ctt_init_", "lib", "nimcache")
-  genDynamicLib("ctt_init_", "lib", "nimcache")
+  genStaticLib("lib", "nimcache")
+  genDynamicLib("lib", "nimcache")
 
 task make_lib_rust, "Build Constantine library (use within a Rust build.rs script)":
   doAssert existsEnv"OUT_DIR", "Cargo needs to set the \"OUT_DIR\" environment variable"
   let rustOutDir = getEnv"OUT_DIR"
-  genStaticLib("ctt_init_", rustOutDir, rustOutDir/"nimcache", rustLib = true)
+  genStaticLib(rustOutDir, rustOutDir/"nimcache", rustLib = true)
 
 proc testLib(path, testName: string, useGMP: bool) =
   let dynlibName = if defined(windows): "constantine.dll"
@@ -730,7 +730,7 @@ proc addBenchSet(cmdFile: var string) =
     cmdFile.buildBenchBatch(bd)
 
 proc genParallelCmdRunner() =
-  exec "nim c --verbosity:0 --hints:off --warnings:off -d:release --out:build/pararun --nimcache:nimcache/pararun helpers/pararun.nim"
+  exec "nim c --verbosity:0 --hints:off --warnings:off -d:release --out:build/test_suite/pararun --nimcache:nimcache/test_suite/pararun helpers/pararun.nim"
 
 # Tasks
 # ----------------------------------------------------------------
@@ -766,7 +766,7 @@ task test_parallel, "Run all tests in parallel":
   cmdFile.addTestSet(requireGMP = true)
   cmdFile.addBenchSet()    # Build (but don't run) benches to ensure they stay relevant
   writeFile(buildParallel, cmdFile)
-  exec "build/pararun " & buildParallel
+  exec "build/test_suite/pararun " & buildParallel
 
   # Threadpool tests done serially
   cmdFile = ""
@@ -785,7 +785,7 @@ task test_parallel_no_gmp, "Run in parallel tests that don't require GMP":
   cmdFile.addTestSet(requireGMP = false)
   cmdFile.addBenchSet()    # Build (but don't run) benches to ensure they stay relevant
   writeFile(buildParallel, cmdFile)
-  exec "build/pararun " & buildParallel
+  exec "build/test_suite/pararun " & buildParallel
 
   # Threadpool tests done serially
   cmdFile = ""

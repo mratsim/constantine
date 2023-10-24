@@ -58,13 +58,7 @@ typedef uint8_t          byte;
 #  define ctt_align(x)  __attribute__((aligned(x)))
 #endif
 
-// Initialization
 // ------------------------------------------------------------------------------------------------
-
-/** Initializes the library:
- *  - detect CPU features like ADX instructions support (MULX, ADCX, ADOX)
- */
-void ctt_init_NimMain(void);
 
 #ifdef __cplusplus
 }
