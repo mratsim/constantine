@@ -9,65 +9,21 @@
 #ifndef __CTT_H_ETHEREUM_BLS_SIGNATURES__
 #define __CTT_H_ETHEREUM_BLS_SIGNATURES__
 
+#include "constantine/core/datatypes.h"
+#include "constantine/core/serialization.h"
+#include "constantine/hashes/sha256.h"
+
 #ifdef __cplusplus
 extern "C" {
-#endif
-
-// Basic Types
-// ------------------------------------------------------------------------------------------------
-
-#if defined(__SIZE_TYPE__) && defined(__PTRDIFF_TYPE__)
-typedef __SIZE_TYPE__    size_t;
-typedef __PTRDIFF_TYPE__ ptrdiff_t;
-#else
-#include <stddef.h>
-#endif
-
-#if defined(__UINT8_TYPE__) && defined(__UINT32_TYPE__) && defined(__UINT64_TYPE__)
-typedef __UINT8_TYPE__   uint8_t;
-typedef __UINT32_TYPE__  uint32_t;
-typedef __UINT64_TYPE__  uint64_t;
-#else
-#include <stdint.h>
-#endif
-
-// https://github.com/nim-lang/Nim/blob/v1.6.12/lib/nimbase.h#L318
-#if defined(__STDC_VERSION__) && __STDC_VERSION__>=199901
-# define bool _Bool
-#else
-# define bool unsigned char
-#endif
-
-typedef uint8_t          byte;
-
-// Attributes
-// ------------------------------------------------------------------------------------------------
-
-#if defined(_MSC_VER)
-#  define ctt_pure __declspec(noalias)
-#elif defined(__GNUC__)
-#  define ctt_pure __attribute__((pure))
-#else
-#  define ctt_pure
-#endif
-
-#if defined(_MSC_VER)
-#  define align(x)  __declspec(align(x))
-#else
-#  define align(x)  __attribute__((aligned(x)))
 #endif
 
 // BLS signature types
 // ------------------------------------------------------------------------------------------------
 
-#define FIELD_BITS 381
-#define ORDER_BITS 255
-#define BYTES(bits) ((int) ((bits) + 8 - 1) / 8)
-
-struct ctt_eth_bls_fp { byte raw[BYTES(FIELD_BITS)]; };
+struct ctt_eth_bls_fp { byte raw[48]; };
 struct ctt_eth_bls_fp2 { struct ctt_eth_bls_fp coords[2]; };
 
-typedef struct { byte raw[BYTES(ORDER_BITS)]; } ctt_eth_bls_seckey;
+typedef struct { byte raw[32]; } ctt_eth_bls_seckey;
 typedef struct { struct ctt_eth_bls_fp  x, y; } ctt_eth_bls_pubkey;
 typedef struct { struct ctt_eth_bls_fp2 x, y; } ctt_eth_bls_signature;
 
@@ -94,122 +50,16 @@ static const char* ctt_eth_bls_status_to_string(ctt_eth_bls_status status) {
   return "cttBLS_InvalidStatusCode";
 }
 
-typedef enum __attribute__((__packed__)) {
-    cttCodecScalar_Success,
-    cttCodecScalar_Zero,
-    cttCodecScalar_ScalarLargerThanCurveOrder,
-} ctt_codec_scalar_status;
-
-static const char* ctt_codec_scalar_status_to_string(ctt_codec_scalar_status status) {
-  static const char* const statuses[] = {
-    "cttCodecScalar_Success",
-    "cttCodecScalar_Zero",
-    "cttCodecScalar_ScalarLargerThanCurveOrder",
-  };
-  size_t length = sizeof statuses / sizeof *statuses;
-  if (0 <= status && status < length) {
-    return statuses[status];
-  }
-  return "cttCodecScalar_InvalidStatusCode";
-}
-
-typedef enum __attribute__((__packed__)) {
-    cttCodecEcc_Success,
-    cttCodecEcc_InvalidEncoding,
-    cttCodecEcc_CoordinateGreaterThanOrEqualModulus,
-    cttCodecEcc_PointNotOnCurve,
-    cttCodecEcc_PointNotInSubgroup,
-    cttCodecEcc_PointAtInfinity,
-} ctt_codec_ecc_status;
-
-static const char* ctt_codec_ecc_status_to_string(ctt_eth_bls_status status) {
-  static const char* const statuses[] = {
-    "cttCodecEcc_Success",
-    "cttCodecEcc_InvalidEncoding",
-    "cttCodecEcc_CoordinateGreaterThanOrEqualModulus",
-    "cttCodecEcc_PointNotOnCurve",
-    "cttCodecEcc_PointNotInSubgroup",
-    "cttCodecEcc_PointAtInfinity",
-  };
-  size_t length = sizeof statuses / sizeof *statuses;
-  if (0 <= status && status < length) {
-    return statuses[status];
-  }
-  return "cttCodecEcc_InvalidStatusCode";
-}
-
-// Initialization
-// ------------------------------------------------------------------------------------------------
-
-/** Initializes the library:
- *  - detect CPU features like ADX instructions support (MULX, ADCX, ADOX)
- */
-void ctt_eth_bls_init_NimMain(void);
-
-// SHA-256
-// ------------------------------------------------------------------------------------------------
-
-typedef struct {
-  align(64) uint32_t message_schedule[16];
-  align(64) byte     buf[64];
-            uint64_t msgLen;
-} ctt_eth_bls_sha256_context;
-
-/** Initialize or reinitialize a Sha256 context.
- */
-void ctt_eth_bls_sha256_init(ctt_eth_bls_sha256_context* ctx);
-
-/** Append a message to a SHA256 context
- *  for incremental SHA256 computation
- *
- *  Security note: the tail of your message might be stored
- *  in an internal buffer.
- *  if sensitive content is used, ensure that
- *  `ctx.finish(...)` and `ctx.clear()` are called as soon as possible.
- *  Additionally ensure that the message(s) passed were stored
- *  in memory considered secure for your threat model.
- *
- *  For passwords and secret keys, you MUST NOT use raw SHA-256
- *  use a Key Derivation Function instead (KDF)
- */
-void ctt_eth_bls_sha256_update(ctt_eth_bls_sha256_context* ctx, const byte* message, ptrdiff_t message_len);
-
-/** Finalize a SHA256 computation and output the
- *  message digest to the `digest` buffer.
- *
- *  Security note: this does not clear the internal buffer.
- *  if sensitive content is used, use "ctx.clear()"
- *  and also make sure that the message(s) passed were stored
- *  in memory considered secure for your threat model.
- *
- *  For passwords and secret keys, you MUST NOT use raw SHA-256
- *  use a Key Derivation Function instead (KDF)
- */
-void ctt_eth_bls_sha256_finish(ctt_eth_bls_sha256_context* ctx, byte digest[32]);
-
-/** Clear the context internal buffers
- *  Security note:
- *  For passwords and secret keys, you MUST NOT use raw SHA-256
- *  use a Key Derivation Function instead (KDF)
- */
-void ctt_eth_bls_sha256_clear(ctt_eth_bls_sha256_context* ctx);
-
-/** Compute the SHA-256 hash of message
- *  and store the result in digest.
- *  Optionally, clear the memory buffer used.
- */
-void ctt_eth_bls_sha256_hash(byte digest[32], const byte* message, ptrdiff_t message_len, bool clear_memory);
-
 // Comparisons
 // ------------------------------------------------------------------------------------------------
 
-ctt_pure bool ctt_eth_bls_pubkey_is_zero(const ctt_eth_bls_pubkey* pubkey) __attribute__((warn_unused_result));
-ctt_pure bool ctt_eth_bls_signature_is_zero(const ctt_eth_bls_signature* sig) __attribute__((warn_unused_result));
+ctt_bool ctt_eth_bls_pubkey_is_zero(const ctt_eth_bls_pubkey* pubkey) __attribute__((warn_unused_result));
+ctt_bool ctt_eth_bls_signature_is_zero(const ctt_eth_bls_signature* sig) __attribute__((warn_unused_result));
 
-ctt_pure bool ctt_eth_bls_pubkeys_are_equal(const ctt_eth_bls_pubkey* a,
-                                            const ctt_eth_bls_pubkey* b) __attribute__((warn_unused_result));
-ctt_pure bool ctt_eth_bls_signatures_are_equal(const ctt_eth_bls_signature* a,
-                                               const ctt_eth_bls_signature* b) __attribute__((warn_unused_result));
+ctt_bool ctt_eth_bls_pubkeys_are_equal(const ctt_eth_bls_pubkey* a,
+                                       const ctt_eth_bls_pubkey* b) __attribute__((warn_unused_result));
+ctt_bool ctt_eth_bls_signatures_are_equal(const ctt_eth_bls_signature* a,
+                                          const ctt_eth_bls_signature* b) __attribute__((warn_unused_result));
 
 // Input validation
 // ------------------------------------------------------------------------------------------------
@@ -219,19 +69,19 @@ ctt_pure bool ctt_eth_bls_signatures_are_equal(const ctt_eth_bls_signature* a,
  *  Regarding timing attacks, this will leak timing information only if the key is invalid.
  *  Namely, the secret key is 0 or the secret key is too large.
  */
-ctt_pure ctt_codec_scalar_status ctt_eth_bls_validate_seckey(const ctt_eth_bls_seckey* seckey) __attribute__((warn_unused_result));
+ctt_codec_scalar_status ctt_eth_bls_validate_seckey(const ctt_eth_bls_seckey* seckey) __attribute__((warn_unused_result));
 
 /** Validate the public key.
  *
  *  This is an expensive operation that can be cached.
  */
-ctt_pure ctt_codec_ecc_status ctt_eth_bls_validate_pubkey(const ctt_eth_bls_pubkey* pubkey) __attribute__((warn_unused_result));
+ctt_codec_ecc_status ctt_eth_bls_validate_pubkey(const ctt_eth_bls_pubkey* pubkey) __attribute__((warn_unused_result));
 
 /** Validate the signature.
  *
  *  This is an expensive operation that can be cached.
  */
-ctt_pure ctt_codec_ecc_status ctt_eth_bls_validate_signature(const ctt_eth_bls_signature* pubkey) __attribute__((warn_unused_result));
+ctt_codec_ecc_status ctt_eth_bls_validate_signature(const ctt_eth_bls_signature* pubkey) __attribute__((warn_unused_result));
 
 // Codecs
 // ------------------------------------------------------------------------------------------------
@@ -353,9 +203,9 @@ void ctt_eth_bls_sign(ctt_eth_bls_signature* sig,
  *
  *  In particular, the public key and signature are assumed to be on curve and subgroup-checked.
  */
-ctt_pure ctt_eth_bls_status ctt_eth_bls_verify(const ctt_eth_bls_pubkey* pubkey,
-                                               const byte* message, ptrdiff_t message_len,
-                                               const ctt_eth_bls_signature* sig) __attribute__((warn_unused_result));
+ctt_eth_bls_status ctt_eth_bls_verify(const ctt_eth_bls_pubkey* pubkey,
+                                      const byte* message, ptrdiff_t message_len,
+                                      const ctt_eth_bls_signature* sig) __attribute__((warn_unused_result));
 
 // TODO: API for pubkeys and signature aggregation. Return a bool or a status code or nothing?
 
@@ -374,9 +224,9 @@ ctt_pure ctt_eth_bls_status ctt_eth_bls_verify(const ctt_eth_bls_pubkey* pubkey,
  *
  *  In particular, the public keys and signature are assumed to be on curve subgroup checked.
  */
-ctt_pure ctt_eth_bls_status ctt_eth_bls_fast_aggregate_verify(const ctt_eth_bls_pubkey pubkeys[], ptrdiff_t pubkeys_len,
-                                                              const byte* message, ptrdiff_t message_len,
-                                                              const ctt_eth_bls_signature* aggregate_sig) __attribute__((warn_unused_result));
+ctt_eth_bls_status ctt_eth_bls_fast_aggregate_verify(const ctt_eth_bls_pubkey pubkeys[], ptrdiff_t pubkeys_len,
+                                                     const byte* message, ptrdiff_t message_len,
+                                                     const ctt_eth_bls_signature* aggregate_sig) __attribute__((warn_unused_result));
 
 #ifdef __cplusplus
 }

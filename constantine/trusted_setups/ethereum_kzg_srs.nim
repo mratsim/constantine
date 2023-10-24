@@ -15,7 +15,7 @@ import
   ../math/polynomials/polynomials,
   ../math/io/io_fields,
 
-  std/streams
+  std/streams # TODO: use the C streams which do not allocate, are exception-free and are guaranteed not to bring unremovable runtime procs.
 
 # Ensure all exceptions are converted to error codes
 {.push raises: [], checks: off.}
