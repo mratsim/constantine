@@ -6,7 +6,9 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import std/[macros, strutils, sets, hashes, algorithm]
+import
+  std/[macros, strutils, sets, hashes, algorithm],
+  ../config
 
 # A compile-time inline assembler
 
@@ -39,21 +41,21 @@ type
     # Clobbered register
     ClobberedReg
 
-when sizeof(int) == 8 and not defined(CTT_32):
-  type
-    Register* = enum
-      rbx
-      rdx
-      r8
-      rax
-      xmm0
-else:
+when CTT_32:
   type
     Register* = enum
       rbx  = "ebx"
       rdx  = "edx"
       r8   = "r8d"
       rax  = "eax"
+      xmm0
+else:
+  type
+    Register* = enum
+      rbx
+      rdx
+      r8
+      rax
       xmm0
 
 type
@@ -464,14 +466,17 @@ func getStrOffset(a: Assembler_x86, op: Operand): string =
   if op.desc.rm in {Mem, MemOffsettable}:
     # Directly accessing memory
     if defined(gcc):
+      # https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html#x86-Operand-Modifiers
+      # q: Print the DImode name of the register.
+      # k: Print the SImode name of the register.
       if a.wordBitWidth == 64:
         if op.offset == 0:
           return "%q" & op.desc.asmId
         return "%q" & op.desc.asmId & " + " & $(op.offset * a.wordSize)
       else:
         if op.offset == 0:
-          return "%d" & op.desc.asmId
-        return "%d" & op.desc.asmId & " + " & $(op.offset * a.wordSize)
+          return "%k" & op.desc.asmId
+        return "%k" & op.desc.asmId & " + " & $(op.offset * a.wordSize)
     elif defined(clang):
       if a.wordBitWidth == 64:
         if op.offset == 0:

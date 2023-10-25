@@ -13,6 +13,7 @@
 # ############################################################
 
 import
+  ../config,
   ./addcarry_subborrow,
   ../constant_time/ct_types,
   ../constant_time/ct_routines

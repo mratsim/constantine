@@ -295,6 +295,8 @@ func serializeBatch*[N: static int](
         dst: var array[N, array[32, byte]],
         points: array[N, EC_Prj]): CttCodecEccStatus =
   return serializeBatch(dst.asUnchecked(), points.asUnchecked(), N)
+
+
             
 
 

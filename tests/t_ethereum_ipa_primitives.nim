@@ -317,4 +317,11 @@ suite "IPA proof tests":
             doAssert stat1 == true, "Could not generate new IPA Config properly!"
         testMain()
 
+    test "Test for IPA Proof of Creation and Verification"
+        proc testIPAProofCreateAndVerify()=
+            var point {.noInit.} : EC_P_Fr
+
+            var i_bg {.noInit.} : matchingOrderBigInt(Banderwagon)
+            i_bg.setUint(uint(1234))
+
         

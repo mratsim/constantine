@@ -10,20 +10,23 @@ jobs:
         nim_version: [version-1-6] # [version-1-4, devel]
         target:
           - os: linux
+            cpu: i386
+            TEST_LANG: c
+            BACKEND: NO_ASM
+          - os: linux
+            cpu: i386
+            TEST_LANG: c
+            BACKEND: ASM
+
+          - os: linux
             cpu: amd64
             TEST_LANG: c
             BACKEND: NO_ASM
-
-          # 32-bit CI failing with https://github.com/mratsim/constantine/issues/244
-          # "E: Unable to correct problems, you have held broken packages.""
-          # - os: linux
-          #   cpu: i386
-          #   TEST_LANG: c
-          #   BACKEND: NO_ASM
           - os: linux
             cpu: amd64
             TEST_LANG: c
             BACKEND: ASM
+
           - os: windows
             cpu: amd64
             TEST_LANG: c
@@ -32,6 +35,7 @@ jobs:
             cpu: amd64
             TEST_LANG: c
             BACKEND: ASM
+
           - os: macos
             cpu: amd64
             TEST_LANG: c
@@ -232,16 +236,18 @@ jobs:
         shell: bash
         run: |
           cd constantine
-          nimble bindings      --verbose
-          nimble test_bindings --verbose
+          nimble make_lib      --verbose
+          nimble make_headers  --verbose
+          nimble test_lib      --verbose
           nimble test_parallel --verbose
       - name: Run Constantine tests (UNIX no Assembly)
         if: runner.os != 'Windows' && matrix.target.BACKEND == 'NO_ASM'
         shell: bash
         run: |
           cd constantine
-          CTT_ASM=0 nimble bindings      --verbose
-          nimble test_bindings           --verbose
+          CTT_ASM=0 nimble make_lib      --verbose
+          nimble make_headers            --verbose
+          nimble test_lib                --verbose
           CTT_ASM=0 nimble test_parallel --verbose
       - name: Run Constantine tests (Windows with Assembly)
         # So "test_bindings" uses C and can find GMP
@@ -250,8 +256,9 @@ jobs:
         shell: msys2 {0}
         run: |
           cd constantine
-          nimble bindings             --verbose
-          nimble test_bindings        --verbose
+          nimble make_lib             --verbose
+          nimble make_headers         --verbose
+          nimble test_lib             --verbose
           nimble test_parallel_no_gmp --verbose
       - name: Run Constantine tests (Windows no Assembly)
         # So "test_bindings" uses C and can find GMP
@@ -260,6 +267,7 @@ jobs:
         shell: msys2 {0}
         run: |
           cd constantine
-          CTT_ASM=0 nimble bindings             --verbose
-          nimble test_bindings                  --verbose
+          CTT_ASM=0 nimble make_lib             --verbose
+          nimble make_headers                   --verbose
+          nimble test_lib                       --verbose
           CTT_ASM=0 nimble test_parallel_no_gmp --verbose

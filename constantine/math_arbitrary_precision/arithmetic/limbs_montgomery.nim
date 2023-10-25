@@ -10,9 +10,9 @@ import
   # Internal
   ../../platforms/[abstractions, allocs, bithacks],
   ./limbs_views,
-  ./limbs_mod,
+  ./limbs_multiprec,
   ./limbs_fixedprec,
-  ./limbs_divmod
+  ./limbs_divmod_vartime
 
 # No exceptions allowed
 {.push raises: [], checks: off.}
@@ -26,77 +26,13 @@ import
 # Montgomery magic constants
 # ------------------------------------------
 
-func r_powmod_vartime(r: var openArray[SecretWord], M: openArray[SecretWord], n: static int) =
-  ## Returns the Montgomery domain magic constant for the input modulus:
-  ##
-  ##   R ≡ R (mod M) with R = (2^WordBitWidth)^numWords
-  ##   or
-  ##   R² ≡ R² (mod M) with R = (2^WordBitWidth)^numWords
-  ##
-  ## Assuming a field modulus of size 256-bit with 63-bit words, we require 5 words
-  ##   R² ≡ ((2^63)^5)^2 (mod M) = 2^630 (mod M)
-
-  # Algorithm
-  # Bos and Montgomery, Montgomery Arithmetic from a Software Perspective
-  # https://eprint.iacr.org/2017/1057.pdf
-  #
-  # For R = r^n = 2^wn and 2^(wn − 1) ≤ N < 2^wn
-  # r^n = 2^63 in on 64-bit and w the number of words
-  #
-  # 1. C0 = 2^(wn - 1), the power of two immediately less than N
-  # 2. for i in 1 ... wn+1
-  #      Ci = C(i-1) + C(i-1) (mod M)
-  #
-  # Thus: C(wn+1) ≡ 2^(wn+1) C0 ≡ 2^(wn + 1) 2^(wn - 1) ≡ 2^(2wn) ≡ (2^wn)^2 ≡ R² (mod M)
-
-  debug:
-    doAssert bool(M[0] and One)
-    doAssert BaseType(M[M.len-1]) != 0
-    doAssert r.len == M.len
-
-  let
-    w = M.len
-    msb = int log2_vartime(BaseType M[M.len-1])
-    start = (w-1)*WordBitWidth + msb
-    stop = n*WordBitWidth*w
-
-  for i in 0 ..< r.len-1:
-    r[i] = Zero
-  r[r.len-1] = SecretWord(BaseType(1) shl msb) # C0 = 2^(wn-1), the power of 2 immediatly less than the modulus
-
-  for i in start ..< stop:
-    r.doublemod_vartime(r, M)
-
-func oneMont_vartime*(r: var openArray[SecretWord], M: openArray[SecretWord]) {.meter.} =
+func oneMont_vartime*(r: var openArray[SecretWord], M: openArray[SecretWord]) {.noInline, meter.} =
   ## Returns 1 in Montgomery domain:
-
-  # r.r_powmod_vartime(M, 1)
-
-  let mBits = getBits_LE_vartime(M)
-
   let t = allocStackArray(SecretWord, M.len + 1)
   zeroMem(t, M.len*sizeof(SecretWord))
   t[M.len] = One
 
-  r.view().reduce(LimbsViewMut t, M.len*WordBitWidth+1, M.view(), mBits)
-
-func r2_vartime*(r: var openArray[SecretWord], M: openArray[SecretWord]) {.meter.} =
-  ## Returns the Montgomery domain magic constant for the input modulus:
-  ##
-  ##   R² ≡ R² (mod M) with R = (2^WordBitWidth)^numWords
-  ##
-  ## Assuming a field modulus of size 256-bit with 63-bit words, we require 5 words
-  ##   R² ≡ ((2^63)^5)^2 (mod M) = 2^630 (mod M)
-
-  # r.r_powmod_vartime(M, 2)
-
-  let mBits = getBits_LE_vartime(M)
-
-  let t = allocStackArray(SecretWord, 2*M.len + 1)
-  zeroMem(t, 2*M.len*sizeof(SecretWord))
-  t[2*M.len] = One
-
-  r.view().reduce(LimbsViewMut t, 2*M.len*WordBitWidth+1, M.view(), mBits)
+  discard r.reduce_vartime(t.toOpenArray(0, M.len), M)
 
 
 # Montgomery multiplication
@@ -206,6 +142,21 @@ func getMont*(r: LimbsViewMut, a: LimbsViewAny, M, r2modM: LimbsViewConst,
   # Reference: https://eprint.iacr.org/2017/1057.pdf
   mulMont_FIPS(r, a, r2ModM, M, m0ninv, mBits)
 
+func getMont_vartime*(r: var openArray[SecretWord], a, M: openArray[SecretWord]) {.noInline, meter.} =
+  ## Transform a bigint ``a`` from it's natural representation (mod N)
+  ## to a the Montgomery n-residue representation
+  ##
+  ## Shift + reduction based
+  let aBits  = a.getBits_LE_vartime()
+  let mBits  = M.getBits_LE_vartime()
+  let L      = wordsRequired(mBits)
+  let aR_len = wordsRequired(aBits) + L
+
+  var aR_buf = allocStackArray(SecretWord, aR_len)
+  template aR: untyped = aR_Buf.toOpenArray(0, aR_len - 1)
+
+  aR.shiftLeft_vartime(a, WordBitWidth * L)
+  discard r.reduce_vartime(aR, M)
 
 # Montgomery Modular Exponentiation
 # ------------------------------------------
@@ -248,6 +199,30 @@ func getWindowLen(bufLen, wordLen: int): uint =
   while ((1 shl result) + 1)*wordLen > bufLen:
     dec result
 
+func precomputeWindow(
+       a: LimbsViewMut,
+       M, one: LimbsViewConst,
+       m0ninv: SecretWord,
+       scratchspace: LimbsViewMut,
+       wordLen: int,
+       mBits: int,
+       windowLen: uint) =
+  # Precompute window content, special case for window = 1
+  # (i.e scratchspace has only space for 2 temporaries)
+  # The content scratchspace[2+k] is set at aᵏ
+  # with scratchspace[0] untouched
+  if windowLen == 1:
+    scratchspace.copyWords(1*wordLen, a, 0, wordLen)
+  else:
+    scratchspace.copyWords(2*wordLen, a, 0, wordLen)
+    for k in 2 ..< 1 shl windowLen:
+      let sk1 = cast[LimbsViewMut](scratchspace[(k+1)*wordLen].addr)
+      let sk = cast[LimbsViewConst](scratchspace[k*wordLen].addr)
+      sk1.mulMont_FIPS(sk, a, M, m0ninv, mBits)
+
+  # Set a to one
+  a.copyWords(0, one, 0, wordLen)
+
 func powMontPrologue(
        a: LimbsViewMut, M, one: LimbsViewConst,
        m0ninv: SecretWord,
@@ -262,17 +237,11 @@ func powMontPrologue(
   # with scratchspace[0] untouched
   let wordLen = wordsRequired(mBits)
   result = scratchLen.getWindowLen(wordLen)
-  if result == 1:
-    scratchspace.copyWords(1*wordLen, a, 0, wordLen)
-  else:
-    scratchspace.copyWords(2*wordLen, a, 0, wordLen)
-    for k in 2 ..< 1 shl result:
-      let sk1 = cast[LimbsViewMut](scratchspace[(k+1)*wordLen].addr)
-      let sk = cast[LimbsViewConst](scratchspace[k*wordLen].addr)
-      sk1.mulMont_FIPS(sk, a, M, m0ninv, mBits)
-
-  # Set a to one
-  a.copyWords(0, one, 0, wordLen)
+  precomputeWindow(
+    a, M, one,
+    m0ninv, scratchSpace,
+    wordLen, mBits,
+    result)
 
 func powMontSquarings(
         a: LimbsViewMut,
@@ -392,6 +361,38 @@ func powMont*(
     s0.mulMont_FIPS(a, s1, M, m0ninv, mBits)
     a.ccopyWords(0, s0, 0, SecretWord(bits).isNonZero(), N)
 
+# Montgomery Modular Exponentiation (vartime)
+# -------------------------------------------
+
+func getWindowLen_vartime(bufLen, expLen, wordLen: int): uint =
+  ## Compute the maximum window size that fits in the scratchspace buffer
+  if expLen == 1:
+    return 1
+  else:
+    return getWindowLen(bufLen, wordLen)
+
+func powMontPrologue_vartime(
+       a: LimbsViewMut,
+       expLen: int,
+       M, one: LimbsViewConst,
+       m0ninv: SecretWord,
+       scratchspace: LimbsViewMut,
+       scratchLen: int,
+       mBits: int): uint {.tags:[Alloca], meter.} =
+  ## Setup the scratchspace
+  ## Returns the fixed-window size for exponentiation with window optimization.
+  # Precompute window content, special case for window = 1
+  # (i.e scratchspace has only space for 2 temporaries)
+  # The content scratchspace[2+k] is set at aᵏ
+  # with scratchspace[0] untouched
+  let wordLen = wordsRequired(mBits)
+  result = scratchLen.getWindowLen_vartime(expLen, wordLen)
+  precomputeWindow(
+    a, M, one,
+    m0ninv, scratchSpace,
+    wordLen, mBits,
+    result)
+
 func powMont_vartime*(
        a: LimbsViewMut,
        exponent: openArray[byte],
@@ -412,7 +413,10 @@ func powMont_vartime*(
 
   # TODO: scratchspace[1] is unused when window > 1
   let N = wordsRequired(mBits)
-  let window = powMontPrologue(a, M, one, m0ninv, scratchspace, scratchLen, mBits)
+  let eBits = exponent.getBits_BE_vartime()
+  let eBytes = bytesRequired(eBits)
+
+  let window = powMontPrologue_vartime(a, eBytes, M, one, m0ninv, scratchspace, scratchLen, mBits)
 
   var
     acc, acc_len: uint
@@ -421,9 +425,11 @@ func powMont_vartime*(
   let s0 = cast[LimbsViewMut](scratchspace[0].addr)
   let s1 = cast[LimbsViewConst](scratchspace[1*N].addr)
 
-  while acc_len > 0 or e < exponent.len:
+  while acc_len > 0 or e < eBytes:
     let (_, bits) = powMontSquarings(
-      a, exponent, M, m0ninv, mBits,
+      a,
+      exponent.toOpenArray(exponent.len - eBytes, exponent.len-1), # BigEndian slicing
+      M, m0ninv, mBits,
       s0, window,
       acc, acc_len, e)
 

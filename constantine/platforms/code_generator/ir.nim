@@ -10,7 +10,7 @@ import
   ../../math/config/[curves, precompute],
   ../../math/io/io_bigints,
   ../primitives, ../bithacks,
-  ../../serialization/[endians, codecs],
+  ../../serialization/[endians, codecs, io_limbs],
   ./llvm
 
 # ############################################################

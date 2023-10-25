@@ -15,6 +15,7 @@ import
   ../../constantine/math/[arithmetic, io/io_bigints],
   ../../constantine/platforms/primitives,
   ../../constantine/serialization/codecs,
+  ../../constantine/math_arbitrary_precision/arithmetic/limbs_divmod_vartime,
   # Test utilities
   ../../helpers/prng_unsafe
 
@@ -126,8 +127,9 @@ proc main() =
     # Modulus
     mpz_mod(r, a, m)
 
-    var rTest: BigInt[mBits]
+    var rTest, rTest_vartime: BigInt[mBits]
     rTest.reduce(aTest, mTest)
+    doAssert rTest_vartime.limbs.reduce_vartime(aTest.limbs, mTest.limbs)
 
     #########################################################
     # Check
@@ -139,8 +141,9 @@ proc main() =
     var rGMP: array[mLen, byte]
     discard mpz_export(rGMP[0].addr, rW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, r)
 
-    var rConstantine: array[mLen, byte]
+    var rConstantine, rCttVartime: array[mLen, byte]
     marshal(rConstantine, rTest, bigEndian)
+    marshal(rCttVartime, rTest_vartime, bigEndian)
 
     # echo "rGMP: ", rGMP.toHex()
     # echo "rConstantine: ", rConstantine.toHex()
@@ -157,5 +160,21 @@ proc main() =
       "  GMP:            " & rGMP.toHex() & "\n" &
       "  Constantine:    " & rConstantine.toHex() & "\n" &
       "(Note that GMP aligns bytes left while constantine aligns bytes right)"
+
+    doAssert rGMP.toOpenArray(0, rW-1) == rCttVartime.toOpenArray(mLen-rW, mLen-1), block:
+      # Reexport as bigEndian for debugging
+      discard mpz_export(aBuf[0].addr, aW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, a)
+      discard mpz_export(mBuf[0].addr, mW.addr, GMP_MostSignificantWordFirst, 1, GMP_WordNativeEndian, 0, m)
+      "\nModulus with operands\n" &
+      "  a (" & align($aBits, 4) & "-bit):   " & aBuf.toHex & "\n" &
+      "  m (" & align($mBits, 4) & "-bit):   " & mBuf.toHex & "\n" &
+      "failed:" & "\n" &
+      "  GMP:            " & rGMP.toHex() & "\n" &
+      "  Constantine:    " & rCttVartime.toHex() & "\n" &
+      "(Note that GMP aligns bytes left while constantine aligns bytes right)"
+
+  mpz_clear(a)
+  mpz_clear(m)
+  mpz_clear(r)
 
 main()

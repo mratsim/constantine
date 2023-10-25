@@ -12,7 +12,7 @@ requires "nim >= 1.6.12"
 # Nimscript imports
 # ----------------------------------------------------------------
 
-import std/[strformat, strutils]
+import std/[strformat, strutils, os]
 
 # Environment variables
 # ----------------------------------------------------------------
@@ -65,7 +65,7 @@ proc getEnvVars(): tuple[useAsmIfAble, force32: bool] =
 # Library compilation
 # ----------------------------------------------------------------
 
-proc releaseBuildOptions(useLTO = true): string =
+func compilerFlags(): string =
   # -d:danger --opt:size
   #           to avoid boundsCheck and overflowChecks that would trigger exceptions or allocations in a crypto library.
   #           Those are internally guaranteed at compile-time by fixed-sized array
@@ -80,7 +80,7 @@ proc releaseBuildOptions(useLTO = true): string =
   # --panics:on -d:noSignalHandler
   #           Even with `raises: []`, Nim still has an exception path
   #           for defects, for example array out-of-bound accesses (though deactivated with -d:danger)
-  #           This turns them into panics, removing exceptiosn from the library.
+  #           This turns them into panics, removing exceptions from the library.
   #           We also remove signal handlers as it's not our business.
   #
   # -mm:arc -d:useMalloc
@@ -98,12 +98,28 @@ proc releaseBuildOptions(useLTO = true): string =
   #           Reduce instructions cache misses.
   #           https://lkml.org/lkml/2015/5/21/443
   #           Our non-inlined functions are large so size cost is minimal.
+  #
+  # -fmerge-all-constants
+  #           Merge identical constants and variables, in particular
+  #           field and curve arithmetic constant arrays.
+
+  " -d:danger " &
+  # " --opt:size " &
+  " --panics:on -d:noSignalHandler " &
+  " --mm:arc -d:useMalloc " &
+  " --verbosity:0 --hints:off --warnings:off " &
+  " --passC:-fno-semantic-interposition " &
+  " --passC:-falign-functions=64 " &
+  " --passC:-fmerge-all-constants"
+
+proc releaseBuildOptions(useLTO = true): string =
+
   let compiler = if existsEnv"CC": " --cc:" & getEnv"CC"
                  else: ""
 
   let (useAsmIfAble, force32) = getEnvVars()
   let envASM = if not useAsmIfAble: " -d:CTT_ASM=false "
-              else: ""
+               else: ""
   let env32 = if force32: " -d:CTT_32 "
               else: ""
 
@@ -113,158 +129,127 @@ proc releaseBuildOptions(useLTO = true): string =
   compiler &
   envASM & env32 &
   lto &
-  " -d:danger " &
-  # " --opt:size " &
-  " --panics:on -d:noSignalHandler " &
-  " --mm:arc -d:useMalloc " &
-  " --verbosity:0 --hints:off --warnings:off " &
-  " --passC:-fno-semantic-interposition " &
-  " --passC:-falign-functions=64 "
+  compilerFlags()
 
-type BindingsKind = enum
-  kCurve
-  kProtocol
+proc rustBuild(): string =
+  # Force Rust compilation, we force Clang compiler
+  # and use it's LTO-thin capabilities fro Nim<->Rust cross-language LTO
+  # - https://blog.llvm.org/2019/09/closing-gap-cross-language-lto-between.html
+  # - https://github.com/rust-lang/rust/pull/58057
+  # - https://doc.rust-lang.org/rustc/linker-plugin-lto.html
 
-proc genDynamicBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: string) =
+  let compiler = " --cc:clang "
+  let lto = " --passC:-flto=thin --passL:-flto=thin "
+
+  compiler &
+  lto &
+  compilerFlags()
+
+proc genDynamicLib(outdir, nimcache: string) =
   proc compile(libName: string, flags = "") =
-    echo "Compiling dynamic library: lib/" & libName
+    echo &"Compiling dynamic library: {outdir}/" & libName
 
     exec "nim c " &
          flags &
          releaseBuildOptions(useLTO = true) &
          " --noMain --app:lib " &
-         &" --nimMainPrefix:{prefixNimMain} " &
-         &" --out:{libName} --outdir:lib " &
-         (block:
-           case bindingsKind
-           of kCurve:
-             &" --nimcache:nimcache/bindings_curves/{bindingsName}" &
-             &" bindings_generators/{bindingsName}.nim"
-           of kProtocol:
-             &" --nimcache:nimcache/bindings_protocols/{bindingsName}" &
-             &" constantine/{bindingsName}.nim")
-
-  let bindingsName = block:
-    case bindingsKind
-    of kCurve: bindingsName
-    of kProtocol: "constantine_" & bindingsName
+         &" --nimMainPrefix:ctt_init_ " & # Constantine is designed so that NimMain isn't needed, provided --mm:arc -d:useMalloc --panics:on -d:noSignalHandler
+         &" --out:{libName} --outdir:{outdir} " &
+         &" --nimcache:{nimcache}/libconstantine_dynamic" &
+         &" bindings/lib_constantine.nim"
 
   when defined(windows):
-    compile bindingsName & ".dll"
+    compile "constantine.dll"
 
   elif defined(macosx):
-    compile "lib" & bindingsName & ".dylib.arm", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
-    compile "lib" & bindingsName & ".dylib.x64", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
-    exec "lipo lib/lib" & bindingsName & ".dylib.arm " &
-             " lib/lib" & bindingsName & ".dylib.x64 " &
-             " -output lib/lib" & bindingsName & ".dylib -create"
+    compile "libconstantine.dylib.arm", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
+    compile "libconstantine.dylib.x64", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
+    exec &"lipo {outdir}/libconstantine.dylib.arm " &
+             &" {outdir}/libconstantine.dylib.x64 " &
+             &" -output {outdir}/libconstantine.dylib -create"
 
   else:
-    compile "lib" & bindingsName & ".so"
+    compile "libconstantine.so"
 
-proc genStaticBindings(bindingsKind: BindingsKind, bindingsName, prefixNimMain: string) =
+proc genStaticLib(outdir, nimcache: string, rustLib = false) =
   proc compile(libName: string, flags = "") =
-    echo "Compiling static library:  lib/" & libName
+    echo &"Compiling static library:  {outdir}/" & libName
 
     exec "nim c " &
          flags &
-         releaseBuildOptions(useLTO = false) &
+         (if rustLib: rustBuild() else: releaseBuildOptions(useLTO = false)) &
          " --noMain --app:staticLib " &
-         &" --nimMainPrefix:{prefixNimMain} " &
-         &" --out:{libName} --outdir:lib " &
-         (block:
-           case bindingsKind
-           of kCurve:
-             &" --nimcache:nimcache/bindings_curves/{bindingsName}" &
-             &" bindings_generators/{bindingsName}.nim"
-           of kProtocol:
-             &" --nimcache:nimcache/bindings_protocols/{bindingsName}" &
-             &" constantine/{bindingsName}.nim")
-
-  let bindingsName = block:
-    case bindingsKind
-    of kCurve: bindingsName
-    of kProtocol: "constantine_" & bindingsName
+         &" --nimMainPrefix:ctt_init_ " & # Constantine is designed so that NimMain isn't needed, provided --mm:arc -d:useMalloc --panics:on -d:noSignalHandler
+         &" --out:{libName} --outdir:{outdir} " &
+         &" --nimcache:{nimcache}/libconstantine_static" & (if rustLib: "_rust" else: "") &
+         &" bindings/lib_constantine.nim"
 
   when defined(windows):
-    compile bindingsName & ".lib"
+    compile "constantine.lib"
 
   elif defined(macosx):
-    compile "lib" & bindingsName & ".a.arm", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
-    compile "lib" & bindingsName & ".a.x64", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
-    exec "lipo lib/lib" & bindingsName & ".a.arm " &
-             " lib/lib" & bindingsName & ".a.x64 " &
-             " -output lib/lib" & bindingsName & ".a -create"
+    compile "libconstantine.a.arm", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
+    compile "libconstantine.a.x64", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
+    exec &"lipo {outdir}/libconstantine.a.arm " &
+             &" {outdir}/libconstantine.a.x64 " &
+             &" -output {outdir}/libconstantine.a -create"
 
   else:
-    compile "lib" & bindingsName & ".a"
+    compile "libconstantine.a"
 
-proc genHeaders(bindingsName: string) =
-  echo "Generating header:         include/" & bindingsName & ".h"
-  exec "nim c -d:CTT_GENERATE_HEADERS " &
+task make_headers, "Regenerate Constantine headers":
+  exec "nim c -r -d:CTT_MAKE_HEADERS " &
        " -d:release " &
        " --verbosity:0 --hints:off --warnings:off " &
-       " --out:" & bindingsName & "_gen_header.exe --outdir:build " &
-       " --nimcache:nimcache/bindings_curves_headers/" & bindingsName & "_header" &
-       " bindings_generators/" & bindingsName & ".nim"
-  exec "build/" & bindingsName & "_gen_header.exe include"
+       " --outdir:build/make " &
+       " --nimcache:nimcache/libcurves_headers " &
+       " bindings/lib_headers.nim"
 
-task bindings, "Generate Constantine bindings":
-  # Curve arithmetic
-  genStaticBindings(kCurve, "constantine_bls12_381", "ctt_bls12381_init_")
-  genDynamicBindings(kCurve, "constantine_bls12_381", "ctt_bls12381_init_")
-  genHeaders("constantine_bls12_381")
-  echo ""
-  genStaticBindings(kCurve, "constantine_pasta", "ctt_pasta_init_")
-  genDynamicBindings(kCurve, "constantine_pasta", "ctt_pasta_init_")
-  genHeaders("constantine_pasta")
-  echo ""
-  genStaticBindings(kCurve, "constantine_bn254_snarks", "ctt_bn254snarks_init_")
-  genDynamicBindings(kCurve, "constantine_bn254_snarks", "ctt_bn254snarks_init_")
-  genHeaders("constantine_bn254_snarks")
-  echo ""
+task make_lib, "Build Constantine library":
+  genStaticLib("lib", "nimcache")
+  genDynamicLib("lib", "nimcache")
 
-  # Protocols
-  genStaticBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_")
-  genDynamicBindings(kProtocol, "ethereum_bls_signatures", "ctt_eth_bls_init_")
-  echo ""
+task make_lib_rust, "Build Constantine library (use within a Rust build.rs script)":
+  doAssert existsEnv"OUT_DIR", "Cargo needs to set the \"OUT_DIR\" environment variable"
+  let rustOutDir = getEnv"OUT_DIR"
+  genStaticLib(rustOutDir, rustOutDir/"nimcache", rustLib = true)
 
-proc testLib(path, testName, libName: string, useGMP: bool) =
-  let dynlibName = if defined(windows): libName & ".dll"
-                   elif defined(macosx): "lib" & libName & ".dylib"
-                   else: "lib" & libName & ".so"
-  let staticlibName = if defined(windows): libName & ".lib"
-                      else: "lib" & libName & ".a"
+proc testLib(path, testName: string, useGMP: bool) =
+  let dynlibName = if defined(windows): "constantine.dll"
+                   elif defined(macosx): "libconstantine.dylib"
+                   else: "libconstantine.so"
+  let staticlibName = if defined(windows): "constantine.lib"
+                      else: "libconstantine.a"
 
   let cc = if existsEnv"CC": getEnv"CC"
            else: "gcc"
 
-  echo &"\n[Bindings: {path}/{testName}.c] Testing dynamically linked library {dynlibName}"
-  exec &"{cc} -Iinclude -Llib -o build/testbindings/{testName}_dynlink.exe {path}/{testName}.c -l{libName} " & (if useGMP: "-lgmp" else: "")
+  echo &"\n[Test: {path}/{testName}.c] Testing dynamic library {dynlibName}"
+  exec &"{cc} -Iinclude -Llib -o build/test_lib/{testName}_dynlink.exe {path}/{testName}.c -lconstantine " & (if useGMP: "-lgmp" else: "")
   when defined(windows):
     # Put DLL near the exe as LD_LIBRARY_PATH doesn't work even in a POSIX compatible shell
-    exec &"./build/testbindings/{testName}_dynlink.exe"
+    exec &"./build/test_lib/{testName}_dynlink.exe"
   else:
-    exec &"LD_LIBRARY_PATH=lib ./build/testbindings/{testName}_dynlink.exe"
+    exec &"LD_LIBRARY_PATH=lib ./build/test_lib/{testName}_dynlink.exe"
   echo ""
 
-  echo &"\n[Bindings: {path}/{testName}.c] Testing statically linked library: {staticlibName}"
+  echo &"\n[Test: {path}/{testName}.c] Testing static library: {staticlibName}"
   # Beware MacOS annoying linker with regards to static libraries
   # The following standard way cannot be used on MacOS
-  # exec "gcc -Iinclude -Llib -o build/t_libctt_bls12_381_sl.exe examples_c/t_libctt_bls12_381.c -lgmp -Wl,-Bstatic -lconstantine_bls12_381 -Wl,-Bdynamic"
-  exec &"{cc} -Iinclude -o build/testbindings/{testName}_staticlink.exe {path}/{testName}.c lib/{staticlibName} " & (if useGMP: "-lgmp" else: "")
-  exec &"./build/testbindings/{testName}_staticlink.exe"
+  # exec "gcc -Iinclude -Llib -o build/t_libctt_bls12_381_sl.exe examples_c/t_libctt_bls12_381.c -lgmp -Wl,-Bstatic -lconstantine -Wl,-Bdynamic"
+  exec &"{cc} -Iinclude -o build/test_lib/{testName}_staticlink.exe {path}/{testName}.c lib/{staticlibName} " & (if useGMP: "-lgmp" else: "")
+  exec &"./build/test_lib/{testName}_staticlink.exe"
   echo ""
 
-task test_bindings, "Test C bindings":
-  exec "mkdir -p build/testbindings"
-  testLib("examples_c", "t_libctt_bls12_381", "constantine_bls12_381", useGMP = true)
-  testLib("examples_c", "ethereum_bls_signatures", "constantine_ethereum_bls_signatures", useGMP = false)
+task test_lib, "Test C library":
+  exec "mkdir -p build/test_lib"
+  testLib("examples_c", "t_libctt_bls12_381", useGMP = true)
+  testLib("examples_c", "ethereum_bls_signatures", useGMP = false)
 
 # Test config
 # ----------------------------------------------------------------
 
-const buildParallel = "test_parallel.txt"
+const buildParallel = "build/test_suite_parallel.txt"
 
 # Testing strategy: to reduce CI time we test leaf functionality
 #   and skip testing codepath that would be exercised by leaves.
@@ -630,7 +615,7 @@ proc setupTestCommand(flags, path: string): string =
     " -r " &
     flags &
     releaseBuildOptions() &
-    " --outdir:build/testsuite " &
+    " --outdir:build/test_suite " &
     &" --nimcache:nimcache/{path} " &
     path
 
@@ -745,7 +730,7 @@ proc addBenchSet(cmdFile: var string) =
     cmdFile.buildBenchBatch(bd)
 
 proc genParallelCmdRunner() =
-  exec "nim c --verbosity:0 --hints:off --warnings:off -d:release --out:build/pararun --nimcache:nimcache/pararun helpers/pararun.nim"
+  exec "nim c --verbosity:0 --hints:off --warnings:off -d:release --out:build/test_suite/pararun --nimcache:nimcache/test_suite/pararun helpers/pararun.nim"
 
 # Tasks
 # ----------------------------------------------------------------
@@ -781,7 +766,7 @@ task test_parallel, "Run all tests in parallel":
   cmdFile.addTestSet(requireGMP = true)
   cmdFile.addBenchSet()    # Build (but don't run) benches to ensure they stay relevant
   writeFile(buildParallel, cmdFile)
-  exec "build/pararun " & buildParallel
+  exec "build/test_suite/pararun " & buildParallel
 
   # Threadpool tests done serially
   cmdFile = ""
@@ -800,7 +785,7 @@ task test_parallel_no_gmp, "Run in parallel tests that don't require GMP":
   cmdFile.addTestSet(requireGMP = false)
   cmdFile.addBenchSet()    # Build (but don't run) benches to ensure they stay relevant
   writeFile(buildParallel, cmdFile)
-  exec "build/pararun " & buildParallel
+  exec "build/test_suite/pararun " & buildParallel
 
   # Threadpool tests done serially
   cmdFile = ""

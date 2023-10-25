@@ -6,7 +6,9 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import std/[macros, strutils, sets, hashes, algorithm]
+import
+  std/[macros, strutils, sets, hashes, algorithm],
+  ../config
 
 # A compile-time inline assembler
 
@@ -39,21 +41,21 @@ type
     # Clobbered register
     ClobberedReg
 
-when sizeof(int) == 8 and not defined(CTT_32):
-  type
-    Register* = enum
-      rbx
-      rdx
-      r8
-      rax
-      xmm0
-else:
+when CTT_32:
   type
     Register* = enum
       rbx  = "ebx"
       rdx  = "edx"
       r8   = "r8d"
       rax  = "eax"
+      xmm0
+else:
+  type
+    Register* = enum
+      rbx
+      rdx
+      r8
+      rax
       xmm0
 
 type

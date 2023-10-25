@@ -12,7 +12,7 @@ import
   ./limbs_fixedprec
 
 # No exceptions allowed
-{.push raises: [].}
+{.push raises: [], checks: off.}
 
 # ############################################################
 #
@@ -63,7 +63,7 @@ func shlAddMod_estimate(a: LimbsViewMut, aLen: int,
     a1 = (a[^1] shl (WordBitWidth-R)) or (a[^2] shr R)
     m0 = (M[^1] shl (WordBitWidth-R)) or (M[^2] shr R)
 
-  # m0 has its high bit set. (a0, a1)/p0 fits in a limb.
+  # m0 has its high bit set. (a0, a1)/m0 fits in a limb.
   # Get a quotient q, at most we will be 2 iterations off
   # from the true quotient
   var q, r: SecretWord
@@ -78,29 +78,29 @@ func shlAddMod_estimate(a: LimbsViewMut, aLen: int,
 
   # Now substract a*2^64 - q*p
   var carry = Zero
-  var over_p = CtTrue                            # Track if quotient greater than the modulus
+  var overM = CtTrue                             # Track if quotient greater than the modulus
 
   for i in 0 ..< MLen:
-    var qp_lo: SecretWord
+    var qm_lo: SecretWord
 
-    block: # q*p
-      # q * p + carry (doubleword) carry from previous limb
-      muladd1(carry, qp_lo, q, M[i], carry)
+    block: # q*m
+      # q * m + carry (doubleword) carry from previous limb
+      muladd1(carry, qm_lo, q, M[i], carry)
 
     block: # a*2^64 - q*p
       var borrow: Borrow
-      subB(borrow, a[i], a[i], qp_lo, Borrow(0))
+      subB(borrow, a[i], a[i], qm_lo, Borrow(0))
       carry += SecretWord(borrow) # Adjust if borrow
 
-    over_p = mux(a[i] == M[i], over_p, a[i] > M[i])
+    overM = mux(a[i] == M[i], overM, a[i] > M[i])
 
   # Fix quotient, the true quotient is either q-1, q or q+1
   #
-  # if carry < q or carry == q and over_p we must do "a -= p"
-  # if carry > hi (negative result) we must do "a += p"
+  # if carry < q or carry == q and over_p we must do "a -= m"
+  # if carry > hi (negative result) we must do "a += m"
 
   result.neg = carry > hi
-  result.tooBig = not(result.neg) and (over_p or (carry < hi))
+  result.tooBig = not(result.neg) and (overM or (carry < hi))
 
 func shlAddMod(a: LimbsViewMut, aLen: int,
                c: SecretWord, M: LimbsViewConst, mBits: int) =

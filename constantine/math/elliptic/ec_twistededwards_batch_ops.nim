@@ -115,9 +115,9 @@ func batchInvert*[F](
     dst[i] *= accumulator
     accumulator *= elements[i]
 
-func batchInvert*[F](dst: openArray[F], source: openArray[F]): bool {.inline.} =
-  if dst.len != source.len:
-    return false
-  let N = dst.len
-  batchInvert(dst.asUnchecked(), source.asUnchecked(), N)
-  return true
+func batchInvert*[F](dst: var openArray[F], source: openArray[F]) {.inline.} =
+  debug: doAssert dst.len == source.len
+  batchInvert(dst.asUnchecked(), source.asUnchecked(), dst.len)
+
+func batchInvert*[N: static int, F](dst: var array[N, F], src: array[N, F]) =
+  batchInvert(dst.asUnchecked(), src.asUnchecked(), N)
