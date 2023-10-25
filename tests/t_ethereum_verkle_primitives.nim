@@ -303,7 +303,7 @@ suite "Batch Operations on Banderwagon":
         one.double()
 
       var arr_fp_inv: array[n, Fp[Banderwagon]]
-      doAssert arr_fp_inv.batchInvert(arr_fp) == true
+      arr_fp_inv.batchInvert(arr_fp)
 
       # Checking the correspondence with singular element inversion
       for i in 0 ..< n:
@@ -341,3 +341,27 @@ suite "Batch Operations on Banderwagon":
       doAssert (expected_b == scalars[1]).bool(), "expected scalar for point `B` is incorrect"
 
     testBatchMapToBaseField()
+
+  ## Check encoding if it is as expected or not
+  test "Test Batch Encoding from Fixed Vectors":
+    proc testBatchSerialize(len: static int) =
+      # First the point is set to generator P
+      # then with each iteration 2P, 4P, . . . doubling
+      var points: array[len, EC]
+      var point {.noInit.}: EC
+      point.fromAffine(generator)
+      
+      for i in 0 ..< len:
+        points[i] = point
+        point.double() #doubling the point
+
+      var arr: array[len, Bytes]
+      let stat = arr.serializeBatch(points)
+
+      # Check if the serialization took place and in expected way
+      doAssert stat == cttCodecEcc_Success, "Serialization Failed"
+
+      for i in 0 ..< len:
+        doAssert expected_bit_strings[i] == arr[i].toHex(), "bit string does not match expected"
+
+    testBatchSerialize(expected_bit_strings.len)

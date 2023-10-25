@@ -17,7 +17,8 @@ import
   ../math/config/curves,
   ../math/elliptic/[
     ec_twistededwards_affine,
-    ec_twistededwards_projective
+    ec_twistededwards_projective,
+    ec_twistededwards_batch_ops
   ],
   ../math/[
     extension_fields,
@@ -111,3 +112,43 @@ func deserialize*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccStatus =
     return cttCodecEcc_PointNotInSubgroup
 
   return cttCodecEcc_Success
+
+## ############################################################
+##
+##              Banderwagon Batch Serialization
+##
+## ############################################################
+
+func serializeBatch*(
+    dst: ptr UncheckedArray[array[32, byte]],
+    points: ptr UncheckedArray[EC_Prj],
+    N: int,
+  ) : CttCodecEccStatus {.noInline.} =
+
+  # collect all the z coordinates
+  var zs = allocStackArray(Fp[Banderwagon], N)
+  var zs_inv = allocStackArray(Fp[Banderwagon], N)
+  for i in 0 ..< N:
+    zs[i] = points[i].z
+
+  zs_inv.batchInvert(zs, N)
+  
+  for i in 0 ..< N:
+    var X: Fp[Banderwagon]
+    var Y: Fp[Banderwagon]
+
+    X.prod(points[i].x, zs_inv[i])
+    Y.prod(points[i].y, zs_inv[i])
+
+    let lexicographicallyLargest = Y.toBig() >= Fp[Banderwagon].getPrimeMinus1div2()
+    if not lexicographicallyLargest.bool():
+      X.neg()
+
+    dst[i].marshal(X, bigEndian)
+
+  return cttCodecEcc_Success
+
+func serializeBatch*[N: static int](
+        dst: var array[N, array[32, byte]],
+        points: array[N, EC_Prj]): CttCodecEccStatus {.inline.} =
+  return serializeBatch(dst.asUnchecked(), points.asUnchecked(), N)
