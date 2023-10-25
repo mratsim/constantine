@@ -159,7 +159,7 @@ func computeNumRounds* [uint64] (res: var uint64, vectorSize: SomeUnsignedInt)=
 # Helper function in computing the Pedersen Commitments of scalars with group elements
 
 
-func multiScalarMulImpl_reference_vartime[F, G; bits: static int](
+func multiScalarMulImpl_reference_vartime[EC_P; bits: static int](
        r: var EC_P,
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[EC_P],
        N: int, c: static int) {.tags:[VarTime, HeapAlloc].} =
@@ -200,8 +200,8 @@ func multiScalarMulImpl_reference_vartime[F, G; bits: static int](
 
     # Example with c = 3, 2³ = 8
     for k in countdown(numBuckets-2, 0):
-      accumBuckets.sum_vartime(accumBuckets, buckets[k]) # Stores S₈ then    S₈+S₇ then       S₈+S₇+S₆ then ...
-      miniMSM.sum_vartime(miniMSM, accumBuckets)         # Stores S₈ then [2]S₈+S₇ then [3]S₈+[2]S₇+S₆ then ...
+      accumBuckets.sum(accumBuckets, buckets[k]) # Stores S₈ then    S₈+S₇ then       S₈+S₇+S₆ then ...
+      miniMSM.sum(miniMSM, accumBuckets)         # Stores S₈ then [2]S₈+S₇ then [3]S₈+[2]S₇+S₆ then ...
 
     miniMSMs[w] = miniMSM
 
@@ -210,7 +210,7 @@ func multiScalarMulImpl_reference_vartime[F, G; bits: static int](
   for w in countdown(numWindows-2, 0):
     for _ in 0 ..< c:
       r.double()
-    r.sum_vartime(r, miniMSMs[w])
+    r.sum(r, miniMSMs[w])
 
   # Cleanup
   # -------
@@ -259,8 +259,8 @@ func multiScalarMul_reference_vartime_Prj*[EC_P](r: var EC_P, points: openArray[
 # Further reference refer to this https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
 
 func pedersen_commit_varbasis*[EC_P] (res: var EC_P, groupPoints: openArray[EC_P], polynomial: openArray[EC_P_Fr])=
-    doAssert groupPoints.len == polynomial.len, "Group Elements and Polynomials should be having the same length!"
-    var poly_big : array[DOMAIN, matchingOrderBigInt(Banderwagon)]
-    for i in DOMAIN:
-      poly_big[i].fromBig(polynomial[i])
-    res.multiScalarMul_reference_vartime_Prj(groupPoints, poly_big)
+  doAssert groupPoints.len == polynomial.len, "Group Elements and Polynomials should be having the same length!"
+  var poly_big : array[256, matchingOrderBigInt(Banderwagon)]
+  for i in 0..<256:
+    poly_big[i] = polynomial[i].toBig()
+  res.multiScalarMul_reference_vartime_Prj(groupPoints, poly_big)

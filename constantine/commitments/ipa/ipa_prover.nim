@@ -127,22 +127,25 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
     L[i] = C_L
     R[i] = C_R
 
-    transcript.pointAppend(C_L,asBytes"L")
-    transcript.pointAppend(C_R,asBytes"R")
+    transcript.pointAppend(asBytes"L", C_L.toBig())
+    transcript.pointAppend(asBytes"R", C_R.toBig())
+
+    var x_big {.noInit.}: matchingOrderBigInt(Banderwagon)
+    x_big.generateChallengeScalar(transcript, asBytes"x")
 
     var x {.noInit.}: EC_P_Fr
-    x.generateChallengeScalar(asBytes"x")
+    x.fromBig(x_big)
 
     var xInv {.noInit.}: EC_P_Fr
     xInv.inv(x)
 
-    a.foldScalars(a_L.data, a_R.data, x)
+    a.foldScalars(a_L.toOpenArray(), a_R.toOpenArray(), x)
 
-    b.foldScalars(b_L.data, b_R.data, xInv)
+    b.foldScalars(b_L.toOpenArray(), b_R.toOpenArray(), xInv)
 
-    current_basis.foldPoints(G_L.data, G_R.data, xInv)
+    current_basis.foldPoints(G_L.toOpenArray(), G_R.toOpenArray(), xInv)
 
-  debug: doAssert not(a.len == 1), "Length of `a` should be 1 at the end of the reduction"
+  doAssert not(a.len == 1), "Length of `a` should be 1 at the end of the reduction"
 
   res.L_vector = L
   res.R_vector = R
