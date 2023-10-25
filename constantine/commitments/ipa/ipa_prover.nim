@@ -48,70 +48,81 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
   transcript.domain_separator(asBytes"ipa")
   var b {.noInit.}: array[DOMAIN, EC_P_Fr]
   
-  b = ic.PrecomputedWeights.computeBarycentricCoefficients(evalPoint)
+  b.computeBarycentricCoefficients(ic.precompWeights,evalPoint)
   var innerProd {.noInit.}: EC_P_Fr
 
   var check {.noInit.}: bool
-  
-  innerProd.computeInnerProducts(a,b.toBig())
 
-  transcript.pointAppend(commitment, asBytes"C")
-  transcript.scalarAppend(evalPoint, asBytes"input point")
-  transcript.scalarAppend(innerProd, asBytes"output point")
+  innerProd.computeInnerProducts(a,b)
 
-  var w = transcript.generateChallengeScalar("w")
+  transcript.pointAppend(asBytes"C", commitment)
+  transcript.scalarAppend(asBytes"input point", evalPoint.toBig())
+  transcript.scalarAppend(asBytes"output point", innerProd.toBig())
+
+  var w : matchingOrderBigInt(Banderwagon)
+  w.generateChallengeScalar(transcript,asBytes"w")
 
   var q {.noInit.} : EC_P
-  q.scalarMul(ic.Q_val, w.toBig())
+  q = ic.Q_val
+  q.scalarMul(w)
+
+  var current_basis {.noInit.}: array[DOMAIN, EC_P]
+  current_basis = ic.SRS
 
   var num_rounds = ic.numRounds
 
-  var current_basis = ic.SRS
+  var L {.noInit.}: array[8, EC_P]
 
-  var L {.noInit.}: array[num_rounds, EC_P]
+  var R {.noInit.}: array[8, EC_P]
 
-  var R {.noInit.}: array[num_rounds, EC_P]
+  var a_stri = a.toView()
+  var b_stri = b.toView()
+  var current_basis_stri = current_basis.toView()
 
   for i in 0..<int(num_rounds):
-    
-    var a_L, a_R {.noInit.}: EC_P_Fr
 
-    a_L.toStridedView()
-    a_R.toStridedView()
+    var (a_L, a_R) = a_stri.splitScalars()
+    var (b_L, b_R) = b_stri.splitScalars()
 
-    (a_L, a_R).splitScalars(a)
-
-    var b_L, b_R {.noInit.}: EC_P_Fr
-
-    b_L.toStridedView()
-    b_R.toStridedView()
-
-    (b_L, b_R).splitScalars(b)
-
-    var G_L, G_R {.noInit.}: EC_P
-
-    G_L.toStridedView()
-    G_R.toStridedView()
-
-    (G_L, G_R).splitPoints(current_basis)
+    var (G_L, G_R) = current_basis_stri.splitPoints()
 
     var z_L {.noInit.}: EC_P_Fr
-    z_L.computeInnerProducts(a_R.data, b_L.data)
+    z_L.computeInnerProducts(a_R.toOpenArray(), b_L.toOpenArray())
 
     var z_R {.noInit.}: EC_P_Fr
-    z_R.computeInnerProducts(a_L.data, b_R.data)
+    z_R.computeInnerProducts(a_L.toOpenArray(), b_R.toOpenArray())
+    var one : EC_P_Fr
+    one.setOne()
 
     var C_L_1 {.noInit.}: EC_P
-    C_L_1.pedersen_commit_single(G_L.data, a_R.data)
+    C_L_1.pedersen_commit_varbasis(G_L.toOpenArray(), a_R.toOpenArray())
+
+    var fp1 : array[2, EC_P]
+    fp1[0] = C_L_1
+    fp1[1] = q
+
+    var fr1 : array[2, EC_P_Fr]
+    fr1[0] = one
+    fr1[1] = z_L
 
     var C_L {.noInit.}: EC_P
-    C_L.pedersen_commit_single([C_L_1, q], [EC_P_Fr.setOne(), z_L.data])
+    C_L.pedersen_commit_varbasis(fp1,fr1)
 
     var C_R_1 {.noInit.}: EC_P
-    C_R_1.pedersen_commit_single(G_R.data, a_L.data)
+    C_R_1.pedersen_commit_varbasis(G_R.toOpenArray(), a_L.toOpenArray())
 
     var C_R {.noInit.}: EC_P
-    C_R.pedersen_commit_single([C_R_1, q], [EC_P_Fr.setOne(), z_R.data])
+
+
+    var fp2 : array[2, EC_P]
+    fp2[0]=C_R_1
+    fp2[1]=q
+
+    var fr2: array[2, EC_P_Fr]
+    fr2[0]=one
+    fr2[1]=z_R
+
+    C_R.pedersen_commit_varbasis(fp2, fr2)
 
     L[i] = C_L
     R[i] = C_R

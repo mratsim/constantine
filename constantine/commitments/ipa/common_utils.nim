@@ -20,7 +20,7 @@ import
     ../../../constantine/platforms/[bithacks,views],
     ../../../constantine/math/io/[io_fields],
     ../../../constantine/curves_primitives,
-    ../../../constantine/serialization/[codecs_banderwagon,codecs_status_codes]
+    ../../../constantine/serialization/[codecs_banderwagon,codecs_status_codes, endians]
 
 # ############################################################
 #
@@ -33,15 +33,13 @@ import
 func generate_random_points* [EC_P](points: var  openArray[EC_P] , num_points: uint64)  =
 
     var incrementer: uint64 = 0
-
     while uint64(len(points)) !=  num_points:
 
         var digest : sha256
         digest.init()
         digest.update(seed)
 
-        var b {.noInit.} : array[8, byte]
-        digest.update(b)
+        digest.update(incrementer.toBytes(bigEndian))
 
         var hash {.noInit.} : array[32, byte]
 
@@ -106,13 +104,13 @@ func foldPoints* [EC_P_Fr] (res: var openArray[EC_P_Fr], a,b : openArray[EC_P_Fr
         res[i].sum(bx, a[i])
 
 
-func splitScalars* (t: var StridedView) : tuple[a1,a2: StridedView] {.inline.}=
+func splitScalars* (t: var View) : tuple[a1,a2: View] {.inline.}=
 
-    doAssert (t.len and 1), "Length must be even!"  
+    doAssert (t.len and 1) == 0, "Length must be even!"  
 
     var mid = t.len shr 1
 
-    var result {.noInit.}: StridedView
+    var result {.noInit.}: View
     result.a1.len = mid
     result.a1.stride = t.stride
     result.a1.offset = t.offset
@@ -121,15 +119,15 @@ func splitScalars* (t: var StridedView) : tuple[a1,a2: StridedView] {.inline.}=
     result.a2.len = mid
     result.a2.stride = t.stride
     result.a2.offset = t.offset + mid
-    result.a2.data = t.data
+    result.a2.data = t.data 
 
-func splitPoints* (t: var StridedView) : tuple[l,r: StridedView] {.inline.}=
+func splitPoints* (t: var View) : tuple[l,r: View] {.inline.}=
 
-    doAssert (t.len and 1), "Length must be even!"
+    doAssert (t.len and 1) == 0, "Length must be even!"
 
     var mid = t.len shr 1
 
-    var result {.noInit.}: StridedView
+    var result {.noInit.}: View
     result.a1.len = mid
     result.a1.stride = t.stride
     result.a1.offset = t.offset
@@ -219,7 +217,7 @@ func multiScalarMulImpl_reference_vartime[F, G; bits: static int](
   buckets.freeHeap()
   miniMSMs.freeHeap()
 
-func multiScalarMul_reference_vartime_Prj*[EC_P_Fr](r: var EC_P_Fr, coefs: openArray[BigInt], points: openArray[EC_P_Fr]) {.tags:[VarTime, HeapAlloc].} =
+func multiScalarMul_reference_vartime_Prj*[EC_P](r: var EC_P, points: openArray[EC_P], coefs: openArray[BigInt]) {.tags:[VarTime, HeapAlloc].} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
   debug: doAssert coefs.len == points.len
@@ -260,6 +258,9 @@ func multiScalarMul_reference_vartime_Prj*[EC_P_Fr](r: var EC_P_Fr, coefs: openA
 
 # Further reference refer to this https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
 
-func pedersen_commit_single*[EC_P] (res: var EC_P, groupPoints:EC_P, polynomial: EC_P_Fr)=
+func pedersen_commit_varbasis*[EC_P] (res: var EC_P, groupPoints: openArray[EC_P], polynomial: openArray[EC_P_Fr])=
     doAssert groupPoints.len == polynomial.len, "Group Elements and Polynomials should be having the same length!"
-    res.multiScalarMul_reference_vartime_Prj(groupPoints, polynomial.toBig())
+    var poly_big : array[DOMAIN, matchingOrderBigInt(Banderwagon)]
+    for i in DOMAIN:
+      poly_big[i].fromBig(polynomial[i])
+    res.multiScalarMul_reference_vartime_Prj(groupPoints, poly_big)

@@ -30,8 +30,8 @@ type
 
 type 
     IPAProof* = object
-     L_vector*: openArray[EC_P]
-     R_vector*: openArray[EC_P]
+     L_vector*: array[8,EC_P]
+     R_vector*: array[8,EC_P]
      A_scalar*: EC_P_Fr
 
 type 

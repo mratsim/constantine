@@ -46,7 +46,7 @@ func domainSeparator* [sha256](res: var sha256, label: openArray[byte]) =
 
 func pointAppend* [sha256] (res: var sha256, label: openArray[byte], point: EC_P) =
     var bytes {.noInit.}: array[32, byte]
-    if(point.serialize(bytes) == cttCodecEcc_Success):
+    if(bytes.serialize(point) == cttCodecEcc_Success):
         res.messageAppend(bytes, label)
 
 

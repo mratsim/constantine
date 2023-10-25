@@ -317,11 +317,30 @@ suite "IPA proof tests":
             doAssert stat1 == true, "Could not generate new IPA Config properly!"
         testMain()
 
-    test "Test for IPA Proof of Creation and Verification"
+    test "Test for IPA Proof of Creation and Verification":
         proc testIPAProofCreateAndVerify()=
-            var point {.noInit.} : EC_P_Fr
+            var point : EC_P_Fr
+            var ipaConfig: IPASettings
+            let stat1 = ipaConfig.genIPAConfig()
 
+            var testGeneratedPoints: array[256,EC_P]
+            testGeneratedPoints.generate_random_points(256)
+
+            # from a shared view
             var i_bg {.noInit.} : matchingOrderBigInt(Banderwagon)
-            i_bg.setUint(uint(1234))
+            i_bg.setUint(uint64(123456789))
+            point.fromBig(i_bg)
 
-        
+            # from the prover's side
+            var testVals : array[14, uint64] = [1,2,3,4,5,6,7,8,9,10,11,12,13,14]
+            var poly: array[256,EC_P_Fr]
+            poly.testPoly256(testVals)
+
+            var prover_comm : EC_P
+            prover_comm.pedersen_commit_varbasis(testGeneratedPoints, poly)
+
+            var prover_transcript: sha256
+            prover_transcript.newTranscriptGen(asBytes"ipa")
+
+            var ipaProof {.noInit.}: IPAProof
+            ipaProof.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
