@@ -74,8 +74,6 @@ var
   hasSseImpl: bool
   # 2000 - Pentium 4 Willamette
   hasSse2Impl: bool
-  # 2002 - Pentium 4 Northwood
-  hasSimultaneousMultithreadingImpl: bool
   # 2004 - Pentium 4 Prescott
   hasSse3Impl: bool
   hasCas16BImpl: bool
@@ -93,7 +91,6 @@ var
   hasAvxImpl: bool
   # 2012 - Core iX-3XXX Ivy Bridge
   hasRdrandImpl: bool
-  # fs/gs access for thread-local memory through assembly
   # 2013 - Core iX-4XXX Haswell
   hasAvx2Impl: bool
   hasFma3Impl: bool
@@ -147,7 +144,7 @@ proc detectCpuFeaturesX86() {.loadTime.} =
   # leaf 1, EDX
   hasSseImpl                        = leaf1.edx.test(25)
   hasSse2Impl                       = leaf1.edx.test(26)
-  hasSimultaneousMultithreadingImpl = leaf1.edx.test(28)
+  # hasSimultaneousMultithreadingImpl = leaf1.edx.test(28)
 
   # leaf 7, eax
   # hasSha512Impl        = leaf7.eax.test(0)    # SHA512 - 2024 Intel Arrow Lake and Lunar Lake processor
@@ -199,11 +196,6 @@ proc hasSse*(): bool {.inline.} =
 # ------------------------------------------
 proc hasSse2*(): bool {.inline.} =
   return hasSse2Impl
-
-# 2002 - Pentium 4 Northwood
-# ------------------------------------------
-proc hasSimultaneousMultithreading*(): bool {.inline.} =
-  return hasSimultaneousMultithreadingImpl
 
 # 2004 - Pentium 4 Prescott
 # ------------------------------------------

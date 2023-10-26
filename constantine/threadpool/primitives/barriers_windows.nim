@@ -10,7 +10,7 @@
 
 # -----------------------------------------------------------------------
 
-# Technically in <synchapi.h> but MSVC complains with 
+# Technically in <synchapi.h> but MSVC complains with
 # @m..@s..@sweave@sscheduler.nim.cpp
 # C:\Program Files (x86)\Windows Kits\10\include\10.0.17763.0\um\winnt.h(154): fatal error C1189: #error:  "No Target Architecture"
 
@@ -18,8 +18,10 @@ type
   WinBool* = int32
     ## WinBool uses opposite convention as posix, != 0 meaning success.
   SynchronizationBarrier*{.importc:"SYNCHRONIZATION_BARRIER", header:"<windows.h>".} = object
+  WinBool* = int32
+    ## WinBool uses opposite convention as posix, != 0 meaning success.
 
-var SYNCHRONIZATION_BARRIER_FLAGS_NO_DELETE* {.importc, header: "<windows.h>".}: uint32
+let SYNCHRONIZATION_BARRIER_FLAGS_NO_DELETE* {.importc, header: "<windows.h>".}: uint32
   ## Skip expensive checks on barrier enter if a barrier is never deleted.
 
 proc EnterSynchronizationBarrier*(lpBarrier: var SynchronizationBarrier, dwFlags: uint32): WinBool {.importc, stdcall, header: "<windows.h>".}

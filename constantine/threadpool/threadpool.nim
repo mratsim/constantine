@@ -12,14 +12,14 @@ when not compileOption("threads"):
 {.push raises: [], checks: off.}
 
 import
-  std/[cpuinfo, atomics, macros],
+  std/[atomics, macros],
   ./crossthread/[
     taskqueues,
     backoff,
     scoped_barriers,
     tasks_flowvars],
   ./instrumentation,
-  ./primitives/barriers,
+  ./primitives/[barriers, topology],
   ./parallel_offloading,
   ../platforms/[allocs, bithacks]
 
@@ -939,9 +939,9 @@ proc wait(scopedBarrier: ptr ScopedBarrier) {.raises:[], gcsafe.} =
 #                                                            #
 # ############################################################
 
-proc new*(T: type Threadpool, numThreads = countProcessors()): T {.raises: [ResourceExhaustedError].} =
-  ## Initialize a threadpool that manages `num_threads` threads.
-  ## Default to the number of logical processors available.
+proc new*(T: type Threadpool, numThreads = getNumPhysicalCores()): T {.raises: [ResourceExhaustedError].} =
+  ## Initialize a threadpool that manages `numThreads` threads.
+  ## Default to the number of physical processors available.
   ##
   ## A Constantine's threadpool cannot be instantiated
   ## on a thread managed by another Constantine's threadpool
