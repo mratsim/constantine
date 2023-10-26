@@ -131,13 +131,11 @@ func marshal*(
 #
 # ############################################################
 
-func fromHex*(a: var BigInt, s: string) =
+func fromHex*(a: var BigInt, s: string, order: static Endianness = bigEndian) =
   ## Convert a hex string to BigInt that can hold
   ## the specified number of bits
   ##
   ## For example `fromHex(BigInt[256], "0x123456")`
-  ##
-  ## Hex string is assumed big-endian
   ##
   ## Procedure is constant-time except for the presence (or absence) of the 0x prefix.
   ##
@@ -152,15 +150,16 @@ func fromHex*(a: var BigInt, s: string) =
   bytes.paddedFromHex(s, bigEndian)
 
   # 2. Convert canonical uint to Big Int
-  a.unmarshal(bytes, bigEndian)
+  a.unmarshal(bytes, order)
 
-func fromHex*(T: type BigInt, s: string): T {.noInit.} =
+func fromHex*(
+        T: type BigInt,
+        s: string,
+        order: static Endianness = bigEndian): T {.noInit.} =
   ## Convert a hex string to BigInt that can hold
   ## the specified number of bits
   ##
   ## For example `fromHex(BigInt[256], "0x123456")`
-  ##
-  ## Hex string is assumed big-endian
   ##
   ## Procedure is constant-time except for the presence (or absence) of the 0x prefix.
   ##
@@ -168,7 +167,7 @@ func fromHex*(T: type BigInt, s: string): T {.noInit.} =
   ## You MUST NOT use it for production.
   ##
   ## Can work at compile-time to declare curve moduli from their hex strings
-  result.fromHex(s)
+  result.fromHex(s, order)
 
 func appendHex*(dst: var string, big: BigInt, order: static Endianness = bigEndian) =
   ## Append the BigInt hex into an accumulator
