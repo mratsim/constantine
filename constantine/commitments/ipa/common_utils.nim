@@ -92,51 +92,16 @@ func foldScalars* [EC_P_Fr] (res: var openArray[EC_P_Fr], a,b : openArray[EC_P_F
         res[i].sum(bx, a[i])
 
 
-func foldPoints* [EC_P_Fr] (res: var openArray[EC_P_Fr], a,b : openArray[EC_P_Fr], x: EC_P_Fr)=
+func foldPoints* [EC_P] (res: var openArray[EC_P], a,b : var openArray[EC_P], x: EC_P_Fr)=
     
     doAssert a.len == b.len , "Should have equal lengths!"
 
     for i in 0..<a.len:
-        var bx {.noInit.}: EC_P_Fr
+        var bx {.noInit.}: EC_P
 
         b[i].scalarMul(x.toBig())
         bx = b[i]
         res[i].sum(bx, a[i])
-
-
-func splitScalars* (t: var View) : tuple[a1,a2: View] {.inline.}=
-
-    doAssert (t.len and 1) == 0, "Length must be even!"  
-
-    var mid = t.len shr 1
-
-    var result {.noInit.}: View
-    result.a1.len = mid
-    result.a1.stride = t.stride
-    result.a1.offset = t.offset
-    result.a1.data = t.data
-
-    result.a2.len = mid
-    result.a2.stride = t.stride
-    result.a2.offset = t.offset + mid
-    result.a2.data = t.data 
-
-func splitPoints* (t: var View) : tuple[l,r: View] {.inline.}=
-
-    doAssert (t.len and 1) == 0, "Length must be even!"
-
-    var mid = t.len shr 1
-
-    var result {.noInit.}: View
-    result.a1.len = mid
-    result.a1.stride = t.stride
-    result.a1.offset = t.offset
-    result.a1.data = t.data
-
-    result.a2.len = mid
-    result.a2.stride = t.stride
-    result.a2.offset = t.offset + mid
-    result.a2.data = t.data  
 
 
 func computeNumRounds* [uint64] (res: var uint64, vectorSize: SomeUnsignedInt)= 

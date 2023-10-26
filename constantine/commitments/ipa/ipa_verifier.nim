@@ -24,16 +24,12 @@ import
 #
 # ############################################################
 
-func generateChallengesForIPA* [EC_P_Fr] (res: var EC_P_Fr, transcript: sha256, proof: IPAProof)=
+func generateChallengesForIPA* [EC_P_Fr] (res: openArray[matchingOrderBigInt(Banderwagon)], transcript: sha256, proof: IPAProof)=
+    for i in 0..<8:
+        transcript.pointAppend( asBytes"L", proof.L_vector[i])
+        transcript.pointAppend( asBytes"R", proof.R_vector[i])
+        res[i].generateChallengeScalar(transcript,asBytes"x")
 
-    var challenges = array[proof.L_vector.len, EC_P_Fr]
-
-    for i in 0..<proof.L.len:
-        transcript.pointAppend(proof.L_vector[i], asBytes"L")
-        transcript.pointAppend(proof.R_vector[i], asBytes"R")
-        challenges[i] = transcript.generateChallengeScalar(asBytes"x")
-
-    res = challenges
 
 # Check IPA proof verifier a IPA proof for a committed polynomial in evaluation form
 # It verifies whether the proof is valid for the given polynomial at the evaluation `evalPoint`
@@ -47,25 +43,32 @@ func checkIPAProof*[bool] (res: var bool, transcript: sha256, ic: IPASettings, c
     if not(proof.L_vector.len == int(ic.numRounds)):
         res = false
 
-    var b = ic.PrecomputedWeights.computeBarycentricCoefficients(evalPoint)
+    var b {.noInit.}: array[DOMAIN, EC_P_Fr]
+    b.computeBarycentricCoefficients(ic.precompWeights,evalPoint)
 
-    transcript.pointAppend(commitment, asBytes"C")
-    transcript.scalarAppend(evalPoint, asBytes"input point")
-    transcript.scalarAppend(result, asBytes"output point")
+    transcript.pointAppend(asBytes"C", commitment)
+    transcript.scalarAppend(asBytes"input point", evalPoint.toBig())
+    transcript.scalarAppend(asBytes"output point", result.toBig())
 
-    var w = transcript.generateChallengeScalar(asBytes"w")
+    var w : matchingOrderBigInt(Banderwagon)
+    w.generateChallengeScalar(transcript,asBytes"w")
 
     # Rescaling of q read https://hackmd.io/mJeCRcawTRqr9BooVpHv5g#Re-defining-the-quotient
     var q {.noInit.}: EC_P
     q.scalarMul(ic.Q_val, result.toBig())
 
-    var qy {.noInit.}: EC_P
-    qy.scalarMul(q, result.toBig())
-    commitment.sum(commitment, qy)
+    var q {.noInit.} : EC_P
+    q = ic.Q_val
+    q.scalarMul(w)
 
-    var challenges = generateChallengesForIPA(transcript, proof)
+    var challenges_big: array[8, matchingOrderBigInt(Banderwagon)]
+    challenges_big.generateChallengesForIPA(transcript, proof)
 
-    var challengesInv {.noInit.}: openArray[EC_P_Fr] 
+    var challenges: array[8,EC_P_Fr]
+    for i in 0..<8:
+        challenges[i].fromBig(challenges_big[i])
+
+    var challengesInv {.noInit.}: array[8,EC_P_Fr] 
     challengesInv.batchInvert(challenges)
 
     for i in 0..<challenges.len:
@@ -73,7 +76,20 @@ func checkIPAProof*[bool] (res: var bool, transcript: sha256, ic: IPASettings, c
         var L = proof.L_vector[i]
         var R = proof.R_vector[i]
 
-        commitment = pedersen_commit_single([commitment, L, R], [EC_P_Fr.setOne(), x, challengesInv[i]])
+        var p1: array[3, EC_P]
+        p11[0] = commitment
+        p11[1] = L
+        p11[2] = R
+
+        var p2: array[3, EC_P_Fr]
+        var one: EC_P_Fr
+        one.setOne()
+
+        p22[0] = one
+        p22[1] = x
+        p22[2] = challengesInv[i]
+
+        commitment = pedersen_commit_varbasis(p11, p22)
 
     var g = ic.SRS
     
@@ -84,23 +100,26 @@ func checkIPAProof*[bool] (res: var bool, transcript: sha256, ic: IPASettings, c
 
         for challengeIndex in 0..<challenges.len:
             doAssert i and (1 shl (7 - challengeIndex)) > 0
-            scalar *= challengesInv[challengeIndex]
+            scalar.prod(scalar,challengesInv[challengeIndex])
 
         foldingScalars[i] = scalar
 
     var g0 {.noInit.}: EC_P
+    
+    var foldingScalars_big : matchingOrderBigInt(Banderwagon)
+
 
     var checks1 {.noInit.} : bool
-    checks1 = g0.multiScalarMul_reference_vartime_Prj(g, foldingScalars)
+    checks1 = g0.multiScalarMul_reference_vartime_Prj(g, foldingScalars).bool()
 
-    debug: doAssert checks1 == true, "Could not compute g0!"
+    doAssert checks1 == true, "Could not compute g0!"
 
     var checks2 {.noInit.} : bool
 
     var b0 {.noInit.} : EC_P_Fr
-    checks2 = b0.computeInnerProducts(b, foldingScalars)
+    checks2 = b0.computeInnerProducts(b, foldingScalars).bool()
 
-    debug: doAssert checks2 == true, "Could not compute b0!"
+    doAssert checks2 == true, "Could not compute b0!"
 
 
     var got {.noInit.} : EC_P

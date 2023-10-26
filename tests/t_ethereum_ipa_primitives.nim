@@ -344,3 +344,16 @@ suite "IPA proof tests":
 
             var ipaProof {.noInit.}: IPAProof
             ipaProof.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
+
+            var precomp {.noInit.}: PrecomputedWeights
+
+            precomp.newPrecomputedWeights()
+            var lagrange_coeffs : array[DOMAIN, EC_P_Fr]
+
+            lagrange_coeffs.computeBarycentricCoefficients(precomp, point)
+
+            var innerProd : EC_P_Fr
+            innerProd.computeInnerProducts(poly, lagrange_coeffs)
+
+            
+

@@ -44,7 +44,7 @@ func genIPAConfig*(res: var IPASettings) : bool {.inline.}=
   res.numRounds.computeNumRounds(uint64(DOMAIN))
   return true
 
-func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: IPASettings, commitment: EC_P, a: openArray[EC_P_Fr], evalPoint: EC_P_Fr )=
+func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: IPASettings, commitment: EC_P, a: var openArray[EC_P_Fr], evalPoint: EC_P_Fr ) : bool {.inline.}=
   transcript.domain_separator(asBytes"ipa")
   var b {.noInit.}: array[DOMAIN, EC_P_Fr]
   
@@ -75,16 +75,16 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
 
   var R {.noInit.}: array[8, EC_P]
 
-  var a_stri = a.toView()
-  var b_stri = b.toView()
-  var current_basis_stri = current_basis.toView()
+  var a_stri = a.toStridedView()
+  var b_stri = b.toStridedView()
+  var current_basis_stri = current_basis.toStridedView()
 
   for i in 0..<int(num_rounds):
 
-    var (a_L, a_R) = a_stri.splitScalars()
-    var (b_L, b_R) = b_stri.splitScalars()
+    var (a_L, a_R) = a_stri.splitMiddle()
+    var (b_L, b_R) = b_stri.splitMiddle()
 
-    var (G_L, G_R) = current_basis_stri.splitPoints()
+    var (G_L, G_R) = current_basis_stri.splitMiddle()
 
     var z_L {.noInit.}: EC_P_Fr
     z_L.computeInnerProducts(a_R.toOpenArray(), b_L.toOpenArray())
@@ -127,16 +127,16 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
     L[i] = C_L
     R[i] = C_R
 
-    transcript.pointAppend(asBytes"L", C_L.toBig())
-    transcript.pointAppend(asBytes"R", C_R.toBig())
+    transcript.pointAppend(asBytes"L", C_L)
+    transcript.pointAppend(asBytes"R", C_R)
 
-    var x_big {.noInit.}: matchingOrderBigInt(Banderwagon)
+    var x_big: matchingOrderBigInt(Banderwagon)
     x_big.generateChallengeScalar(transcript, asBytes"x")
 
-    var x {.noInit.}: EC_P_Fr
+    var x: EC_P_Fr
     x.fromBig(x_big)
 
-    var xInv {.noInit.}: EC_P_Fr
+    var xInv: EC_P_Fr
     xInv.inv(x)
 
     a.foldScalars(a_L.toOpenArray(), a_R.toOpenArray(), x)
@@ -150,6 +150,7 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
   res.L_vector = L
   res.R_vector = R
   res.A_scalar = a[0]
+  return true
 
 type 
   serIPA* = object
