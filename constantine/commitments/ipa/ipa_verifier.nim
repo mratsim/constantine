@@ -24,7 +24,7 @@ import
 #
 # ############################################################
 
-func generateChallengesForIPA* [EC_P_Fr] (res: openArray[matchingOrderBigInt(Banderwagon)], transcript: sha256, proof: IPAProof)=
+func generateChallengesForIPA*(res: var openArray[matchingOrderBigInt(Banderwagon)], transcript: var sha256, proof: IPAProof)=
     for i in 0..<8:
         transcript.pointAppend( asBytes"L", proof.L_vector[i])
         transcript.pointAppend( asBytes"R", proof.R_vector[i])
@@ -34,7 +34,7 @@ func generateChallengesForIPA* [EC_P_Fr] (res: openArray[matchingOrderBigInt(Ban
 # Check IPA proof verifier a IPA proof for a committed polynomial in evaluation form
 # It verifies whether the proof is valid for the given polynomial at the evaluation `evalPoint`
 # and cross-checking it with `result`
-func checkIPAProof*[bool] (res: var bool, transcript: sha256, ic: IPASettings, commitment: var EC_P, proof: IPAProof, evalPoint: EC_P_Fr, result: EC_P_Fr)=
+func checkIPAProof*[bool] (res: var bool, transcript: var sha256, ic: IPASettings, commitment: var EC_P, proof: IPAProof, evalPoint: EC_P_Fr, result: EC_P_Fr)=
     transcript.domain_separator(asBytes"ipa")
 
     if not(proof.L_vector.len == proof.R_vector.len):
@@ -55,11 +55,14 @@ func checkIPAProof*[bool] (res: var bool, transcript: sha256, ic: IPASettings, c
 
     # Rescaling of q read https://hackmd.io/mJeCRcawTRqr9BooVpHv5g#Re-defining-the-quotient
     var q {.noInit.}: EC_P
-    q.scalarMul(ic.Q_val, result.toBig())
-
-    var q {.noInit.} : EC_P
     q = ic.Q_val
     q.scalarMul(w)
+
+    var qy {.noInit.}: EC_P
+    qy = q
+    qy.scalarMul(result.toBig())
+    commitment.sum(commitment, qy)
+
 
     var challenges_big: array[8, matchingOrderBigInt(Banderwagon)]
     challenges_big.generateChallengesForIPA(transcript, proof)
@@ -76,12 +79,12 @@ func checkIPAProof*[bool] (res: var bool, transcript: sha256, ic: IPASettings, c
         var L = proof.L_vector[i]
         var R = proof.R_vector[i]
 
-        var p1: array[3, EC_P]
+        var p11: array[3, EC_P]
         p11[0] = commitment
         p11[1] = L
         p11[2] = R
 
-        var p2: array[3, EC_P_Fr]
+        var p22: array[3, EC_P_Fr]
         var one: EC_P_Fr
         one.setOne()
 
@@ -89,52 +92,54 @@ func checkIPAProof*[bool] (res: var bool, transcript: sha256, ic: IPASettings, c
         p22[1] = x
         p22[2] = challengesInv[i]
 
-        commitment = pedersen_commit_varbasis(p11, p22)
+        commitment.pedersen_commit_varbasis(p11, p22, p22.len)
 
-    var g = ic.SRS
+    var g {.noInit.}: array[DOMAIN, EC_P]
+    g = ic.SRS
     
     var foldingScalars {.noInit.}: array[g.len, EC_P_Fr]
 
     for i in 0..<g.len:
-        var scalar = EC_P_Fr.setOne()
+        var scalar : EC_P_Fr
+        scalar.setOne()
 
         for challengeIndex in 0..<challenges.len:
-            doAssert i and (1 shl (7 - challengeIndex)) > 0
-            scalar.prod(scalar,challengesInv[challengeIndex])
+            let im = 1 shl (7 - challengeIndex)
+            if ((i and im).int() > 0).bool() == true:
+                scalar.prod(scalar,challengesInv[challengeIndex])
 
         foldingScalars[i] = scalar
 
     var g0 {.noInit.}: EC_P
     
-    var foldingScalars_big : matchingOrderBigInt(Banderwagon)
+    var foldingScalars_big : array[g.len,matchingOrderBigInt(Banderwagon)]
+    
+    for i in 0..<DOMAIN:
+        foldingScalars_big[i] = foldingScalars[i].toBig()
 
-
-    var checks1 {.noInit.} : bool
-    checks1 = g0.multiScalarMul_reference_vartime_Prj(g, foldingScalars).bool()
-
-    doAssert checks1 == true, "Could not compute g0!"
-
-    var checks2 {.noInit.} : bool
+ 
+    g0.multiScalarMul_reference_vartime_Prj(g, foldingScalars_big)
 
     var b0 {.noInit.} : EC_P_Fr
-    checks2 = b0.computeInnerProducts(b, foldingScalars).bool()
-
-    doAssert checks2 == true, "Could not compute b0!"
-
+    b0.computeInnerProducts(b, foldingScalars)
 
     var got {.noInit.} : EC_P
     # g0 * a + (a * b) * Q
 
     var p1 {.noInit.}: EC_P
-    p1.scalarMul(g0, proof.A_scalar.toBig())
+    p1 = g0
+    p1.scalarMul(proof.A_scalar.toBig())
 
     var p2 {.noInit.} : EC_P
     var p2a {.noInit.} : EC_P_Fr
 
     p2a.prod(b0, proof.A_scalar)
-    p2.scalarMul(q, p2a.toBig())
+    p2 = q
+    p2.scalarMul(p2a.toBig())
 
     got.sum(p1, p2)
 
-    if got == commitment:
+    if (got == commitment).bool() == true:
         res = true
+
+        

@@ -51,8 +51,6 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
   b.computeBarycentricCoefficients(ic.precompWeights,evalPoint)
   var innerProd {.noInit.}: EC_P_Fr
 
-  var check {.noInit.}: bool
-
   innerProd.computeInnerProducts(a,b)
 
   transcript.pointAppend(asBytes"C", commitment)
@@ -95,7 +93,7 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
     one.setOne()
 
     var C_L_1 {.noInit.}: EC_P
-    C_L_1.pedersen_commit_varbasis(G_L.toOpenArray(), a_R.toOpenArray())
+    C_L_1.pedersen_commit_varbasis(G_L.toOpenArray(), a_R.toOpenArray(), a_R.len)
 
     var fp1 : array[2, EC_P]
     fp1[0] = C_L_1
@@ -106,10 +104,10 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
     fr1[1] = z_L
 
     var C_L {.noInit.}: EC_P
-    C_L.pedersen_commit_varbasis(fp1,fr1)
+    C_L.pedersen_commit_varbasis(fp1,fr1, fr1.len)
 
     var C_R_1 {.noInit.}: EC_P
-    C_R_1.pedersen_commit_varbasis(G_R.toOpenArray(), a_L.toOpenArray())
+    C_R_1.pedersen_commit_varbasis(G_R.toOpenArray(), a_L.toOpenArray(), a_L.len)
 
     var C_R {.noInit.}: EC_P
 
@@ -122,7 +120,7 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
     fr2[0]=one
     fr2[1]=z_R
 
-    C_R.pedersen_commit_varbasis(fp2, fr2)
+    C_R.pedersen_commit_varbasis(fp2, fr2, fr2.len)
 
     L[i] = C_L
     R[i] = C_R

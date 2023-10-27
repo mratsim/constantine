@@ -108,9 +108,7 @@ func computeBarycentricCoefficients* [EC_P_Fr]( res: var openArray[EC_P_Fr], pre
 
     totalProd.prod(totalProd, tmp)
 
-  for i in 0..<DOMAIN:
-    res[i].inv(res[i])
-    #not using batch inversion for now
+  res.batchInvert(res)
 
   for i in 0..<DOMAIN:
     res[i].prod(res[i], totalprod)

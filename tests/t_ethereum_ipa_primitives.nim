@@ -13,7 +13,8 @@ import
         helper_types, 
         transcript_gen, 
         common_utils,
-        ipa_prover],
+        ipa_prover,
+        ipa_verifier],
     ../constantine/hashes,
     std/[unittest],
     ../constantine/math/config/[type_ff, curves],
@@ -247,14 +248,6 @@ suite "Barycentric Form Tests":
     #         doAssert got.toHex()==expected.toHex() == true, "Quotient is not correct"
 
     #     testPolynomialDiv()
-        
-
-
-
-            
-
-
-
 
     #     proc testDivideOnDomain() = 
     #         var eval_fr {.noInit.} : EC_P_Fr
@@ -327,7 +320,7 @@ suite "IPA proof tests":
             testGeneratedPoints.generate_random_points(256)
 
             # from a shared view
-            var i_bg {.noInit.} : matchingOrderBigInt(Banderwagon)
+            var i_bg : matchingOrderBigInt(Banderwagon)
             i_bg.setUint(uint64(123456789))
             point.fromBig(i_bg)
 
@@ -337,15 +330,16 @@ suite "IPA proof tests":
             poly.testPoly256(testVals)
 
             var prover_comm : EC_P
-            prover_comm.pedersen_commit_varbasis(testGeneratedPoints, poly)
+            prover_comm.pedersen_commit_varbasis(testGeneratedPoints, poly, poly.len)
 
             var prover_transcript: sha256
             prover_transcript.newTranscriptGen(asBytes"ipa")
 
-            var ipaProof {.noInit.}: IPAProof
-            ipaProof.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
+            var ipaProof: IPAProof
+            let stat = ipaProof.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
+            doAssert stat==true, "Problem creating IPA proof"
 
-            var precomp {.noInit.}: PrecomputedWeights
+            var precomp : PrecomputedWeights
 
             precomp.newPrecomputedWeights()
             var lagrange_coeffs : array[DOMAIN, EC_P_Fr]
@@ -355,5 +349,19 @@ suite "IPA proof tests":
             var innerProd : EC_P_Fr
             innerProd.computeInnerProducts(poly, lagrange_coeffs)
 
-            
+            # Verifier view 
+            var verifier_comm : EC_P
+            verifier_comm = prover_comm
+
+            var verifier_transcript: sha256
+            verifier_transcript.newTranscriptGen(asBytes"ipa")
+
+            var ok: bool
+            ok.checkIPAProof(verifier_transcript, ipaConfig, verifier_comm, ipaProof, point, innerProd)
+
+            doAssert ok == true, "Issue in checking IPA proof!"
+        testIPAProofCreateAndVerify()
+
+
+
 

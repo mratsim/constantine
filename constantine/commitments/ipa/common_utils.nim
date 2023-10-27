@@ -18,7 +18,7 @@ import
     ../../../constantine/math/elliptic/ec_scalar_mul,
     ../../../constantine/math/elliptic/[ec_multi_scalar_mul, ec_multi_scalar_mul_scheduler],
     ../../../constantine/platforms/[bithacks,views],
-    ../../../constantine/math/io/[io_fields],
+    ../../../constantine/math/io/[io_fields, io_ec, io_bigints],
     ../../../constantine/curves_primitives,
     ../../../constantine/serialization/[codecs_banderwagon,codecs_status_codes, endians]
 
@@ -223,9 +223,9 @@ func multiScalarMul_reference_vartime_Prj*[EC_P](r: var EC_P, points: openArray[
 
 # Further reference refer to this https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
 
-func pedersen_commit_varbasis*[EC_P] (res: var EC_P, groupPoints: openArray[EC_P], polynomial: openArray[EC_P_Fr])=
+func pedersen_commit_varbasis*[EC_P] (res: var EC_P, groupPoints: openArray[EC_P], polynomial: openArray[EC_P_Fr], n: int)=
   doAssert groupPoints.len == polynomial.len, "Group Elements and Polynomials should be having the same length!"
-  var poly_big : array[256, matchingOrderBigInt(Banderwagon)]
-  for i in 0..<256:
+  var poly_big = newSeq[matchingOrderBigInt(Banderwagon)](n)
+  for i in 0..<n:
     poly_big[i] = polynomial[i].toBig()
   res.multiScalarMul_reference_vartime_Prj(groupPoints, poly_big)
