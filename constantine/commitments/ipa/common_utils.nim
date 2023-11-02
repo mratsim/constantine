@@ -33,6 +33,7 @@ import
 func generate_random_points* [EC_P](points: var  openArray[EC_P] , num_points: uint64)  =
 
     var incrementer: uint64 = 0
+    var idx: int = 0
     while uint64(len(points)) !=  num_points:
 
         var digest : sha256
@@ -59,7 +60,8 @@ func generate_random_points* [EC_P](points: var  openArray[EC_P] , num_points: u
         let stat3 = point_found.deserialize(x_as_Bytes)
 
         doAssert stat3 == cttCodecEcc_Success, "Deserialization Failure!"
-        points[incrementer] = point_found
+        points[idx] = point_found
+        idx=idx+1
 
 
 # ############################################################
@@ -69,13 +71,21 @@ func generate_random_points* [EC_P](points: var  openArray[EC_P] , num_points: u
 # ############################################################
 
 func computeInnerProducts* [EC_P_Fr] (res: var EC_P_Fr, a,b : openArray[EC_P_Fr])=
-    if a.len == b.len:
-      res.setZero()
-      for i in 0..<b.len:
-          var tmp : EC_P_Fr 
-          tmp.prod(a[i], b[i])
-          res.sum(res,tmp)
+  if a.len == b.len:
+    res.setZero()
+    for i in 0..<b.len:
+        var tmp : EC_P_Fr 
+        tmp.prod(a[i], b[i])
+        res.sum(res,tmp)
 
+func computeInnerProducts* [EC_P_Fr] (res: var EC_P_Fr, a,b: StridedView[EC_P_Fr])=
+  if a.len == b.len:
+    res.setZero()
+  for i in 0..<b.len:
+      var tmp : EC_P_Fr 
+      tmp.prod(a[i], b[i])
+      res.sum(res,tmp)
+  
 # ############################################################
 #
 #                    Folding functions

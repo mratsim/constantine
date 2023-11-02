@@ -85,10 +85,10 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
     var (G_L, G_R) = current_basis_stri.splitMiddle()
 
     var z_L {.noInit.}: EC_P_Fr
-    z_L.computeInnerProducts(a_R.toOpenArray(), b_L.toOpenArray())
+    z_L.computeInnerProducts(a_R, b_L)
 
     var z_R {.noInit.}: EC_P_Fr
-    z_R.computeInnerProducts(a_L.toOpenArray(), b_R.toOpenArray())
+    z_R.computeInnerProducts(a_L, b_R)
     var one : EC_P_Fr
     one.setOne()
 
@@ -110,7 +110,6 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
     C_R_1.pedersen_commit_varbasis(G_R.toOpenArray(), a_L.toOpenArray(), a_L.len)
 
     var C_R {.noInit.}: EC_P
-
 
     var fp2 : array[2, EC_P]
     fp2[0]=C_R_1
@@ -150,12 +149,48 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
   res.A_scalar = a[0]
   return true
 
+# ############################################################
+#
+#                IPA proof equality checker
+#
+# ############################################################
+
+func isIPAProofEqual* (res: var bool, p1: IPAProof, p2: IPAProof)=
+  const num_rounds = 8
+  res = true
+  if p1.L_vector.len != p2.R_vector.len:
+    res = false
+
+  if p1.R_vector.len != p2.R_vector.len:
+    res = false
+
+  if p1.L_vector.len != p1.R_vector.len:
+    res = false
+
+  for i in 0..<num_rounds:
+    var exp_li = p1.L_vector[i]
+    var exp_ri = p1.R_vector[i]
+
+    var got_li = p2.L_vector[i]
+    var got_ri = p2.R_vector[i]
+
+    if not(exp_li == got_li).bool():
+      res = false
+
+    if not(exp_ri == got_ri).bool():
+      res = false
+
+  if not(p1.A_scalar == p2.A_scalar).bool():
+    res = false
+
+  res = true
+
+
 type 
   serIPA* = object
    lv*: Bytes
    rv*: Bytes
    asc*: Bytes
-
 
 func serialzeIPAProof* [serIPA] (res : var serIPA, proof : IPAProof)=
   let stat1 = res.lv.serializeBatch(proof.L_vector)

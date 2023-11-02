@@ -310,6 +310,45 @@ suite "IPA proof tests":
             doAssert stat1 == true, "Could not generate new IPA Config properly!"
         testMain()
 
+    test "Test for IPA proof equality":
+        proc testIPAProofEquality()=
+            var point: EC_P_Fr
+            var ipaConfig: IPASettings
+            let stat1 = ipaConfig.genIPAConfig()
+
+            var testGeneratedPoints: array[256, EC_P]
+            testGeneratedPoints.generate_random_points(256)
+
+            var prover_transcript: sha256
+            prover_transcript.newTranscriptGen(asBytes"ipa")
+
+            #from a shared view
+            var i_bg: matchingOrderBigInt(Banderwagon)
+            i_bg.setUint(uint64(12345))
+            point.fromBig(i_bg)
+
+            #from the prover's side
+            var testVals: array[5, uint64] = [1,2,3,4,5]
+            var poly: array[256, EC_P_Fr]
+            poly.testPoly256(testVals)
+
+            var prover_comm: EC_P
+            prover_comm.pedersen_commit_varbasis(testGeneratedPoints, poly, poly.len)
+
+            var ipaProof1: IPAProof
+            let stat11 = ipaProof1.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
+            doAssert stat11 == true, "Problem creating IPA proof 1"
+
+            var ipaProof2: IPAProof
+            let stat22 = ipaProof2.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
+            doAssert stat22 == true, "Problem creating IPA proof 2"
+
+            var stat33: bool
+            stat33.isIPAProofEqual(ipaProof1,ipaProof2)
+            doAssert stat33 == true, "IPA proofs aren't equal"
+
+        testIPAProofEquality()
+
     test "Test for IPA Proof of Creation and Verification":
         proc testIPAProofCreateAndVerify()=
             var point : EC_P_Fr
@@ -361,6 +400,7 @@ suite "IPA proof tests":
 
             doAssert ok == true, "Issue in checking IPA proof!"
         testIPAProofCreateAndVerify()
+
 
 
 
