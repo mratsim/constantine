@@ -27,7 +27,11 @@ proc c_fclose(f: File): cint {.importc: "fclose", header: "<stdio.h>".}
 proc detectNumPhysicalCoresLinux*(): int32 =
   ## Detect the number of physical cores on Linux.
   ## This uses several syscalls to read from sysfs
-  ## and might not be compatible with restrictions in trusted enclaves.
+  ## and might not be compatible with restrictions in trusted enclaves
+  ## or hardened Linux installations (https://github.com/Kicksecure/security-misc/blob/master/usr/libexec/security-misc/hide-hardware-info)
+  ##
+  ## This can only handle up to 64 cores (logical or physical)
+  ## CPU based solution using CPUID-like instructions should be preferred.
 
   result = 0
 
@@ -38,7 +42,7 @@ proc detectNumPhysicalCoresLinux*(): int32 =
   var i = cint 0
   while true:
     if i == 64:
-      c_printf("[Constantine's Threadpool] The Linux topology detection fallback only supports up to 64 cores (hardware of software)\n")
+      c_printf("[Constantine's Threadpool] The Linux topology detection fallback only supports up to 64 cores (hardware or software)\n")
       return
 
     if ((logiCoresBitField shr i) and 1) != 0:
@@ -71,4 +75,3 @@ proc detectNumPhysicalCoresLinux*(): int32 =
 
     i += 1
     discard c_fclose(f)
-

@@ -57,6 +57,8 @@
 #     So a parser needs to make several assumptions and attract edge cases.
 #   - They also need file descriptors / syscalls
 #     which are painful to support (if not unsupported) in trusted enclaves like SGX
+#   - Hardened Linux installation might restrict reading from /proc/cpuinfo or sysfs.
+#     https://github.com/Kicksecure/security-misc/blob/master/usr/libexec/security-misc/hide-hardware-info
 #
 #   For non-x86 (i.e. enclave support is not in scope), reading sysfs is a more stable option.
 #
@@ -87,16 +89,16 @@ elif defined(windows):
 elif defined(linux):
   import ./topology_linux
 
-proc getNumPhysicalCores*(): int32 =
+proc getNumPhysicalCores*(): int {.inline.} =
   when defined(ios) or defined(macosx):
-    detectNumPhysicalCoresMacOS()
+    int detectNumPhysicalCoresMacOS()
   elif defined(freebsd):
-    detectNumPhysicalCoresFreeBSD()
+    int detectNumPhysicalCoresFreeBSD()
   elif defined(windows):
-    detectNumPhysicalCoresWindows()
+    int detectNumPhysicalCoresWindows()
 
   # TODO
   # elif defined(amd64) or defined(i386):
 
   elif defined(linux):
-    detectNumPhysicalCoresLinux()
+    int detectNumPhysicalCoresLinux()
