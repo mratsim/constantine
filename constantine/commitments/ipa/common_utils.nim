@@ -71,20 +71,20 @@ func generate_random_points* [EC_P](points: var  openArray[EC_P] , num_points: u
 # ############################################################
 
 func computeInnerProducts* [EC_P_Fr] (res: var EC_P_Fr, a,b : openArray[EC_P_Fr])=
-  if a.len == b.len:
-    res.setZero()
-    for i in 0..<b.len:
-        var tmp : EC_P_Fr 
-        tmp.prod(a[i], b[i])
-        res.sum(res,tmp)
+  doAssert (a.len == b.len).bool() == true, "Scalar lengths don't match!"
+  res.setZero()
+  for i in 0..<b.len:
+    var tmp : EC_P_Fr 
+    tmp.prod(a[i], b[i])
+    res.sum(res,tmp)
 
 func computeInnerProducts* [EC_P_Fr] (res: var EC_P_Fr, a,b: StridedView[EC_P_Fr])=
-  if a.len == b.len:
-    res.setZero()
+  doAssert (a.len == b.len).bool() == true, "Scalar lengths don't match!"
+  res.setZero()
   for i in 0..<b.len:
-      var tmp : EC_P_Fr 
-      tmp.prod(a[i], b[i])
-      res.sum(res,tmp)
+    var tmp : EC_P_Fr 
+    tmp.prod(a[i], b[i])
+    res.sum(res,tmp)
   
 # ############################################################
 #

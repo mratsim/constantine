@@ -183,7 +183,11 @@ func isIPAProofEqual* (res: var bool, p1: IPAProof, p2: IPAProof)=
   if not(p1.A_scalar == p2.A_scalar).bool():
     res = false
 
-  res = true
+  else:
+    res = true
+
+
+
 
 
 type 

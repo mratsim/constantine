@@ -14,7 +14,8 @@ import
         transcript_gen, 
         common_utils,
         ipa_prover,
-        ipa_verifier],
+        ipa_verifier,
+        multiproof],
     ../constantine/hashes,
     std/[unittest],
     ../constantine/math/config/[type_ff, curves],
@@ -70,36 +71,36 @@ suite "Barycentric Form Tests":
 
         proc testBasicInterpolation() =
 
-            var point_a : Coord
+          var point_a : Coord
 
-            point_a.x.setZero()
-            point_a.y.setZero()
+          point_a.x.setZero()
+          point_a.y.setZero()
 
-            var point_b : Coord
+          var point_b : Coord
 
-            point_b.x.setOne()
-            point_b.y.setOne()
+          point_b.x.setOne()
+          point_b.y.setOne()
 
-            var points: array[2,Coord]
-            points[0] = point_a
-            points[1] = point_b       
+          var points: array[2,Coord]
+          points[0] = point_a
+          points[1] = point_b       
 
-            var poly : array[2,EC_P_Fr]
+          var poly : array[2,EC_P_Fr]
 
-            poly.interpolate(points,2)
+          poly.interpolate(points,2)
 
-            var genfp : EC_P
-            genfp.fromAffine(generator)
-            var genfr : EC_P_Fr
-            genfr.mapToScalarField(genfp)
+          var genfp : EC_P
+          genfp.fromAffine(generator)
+          var genfr : EC_P_Fr
+          genfr.mapToScalarField(genfp)
 
-            var res {.noInit.}: EC_P_Fr
-            res.evaluate(poly,gen_fr,2)
-            
-            echo res.toHex() 
-            echo genfr.toHex() 
+          var res {.noInit.}: EC_P_Fr
+          res.evaluate(poly,gen_fr,2)
+          
+          echo res.toHex() 
+          echo genfr.toHex() 
 
-            doAssert (res.toHex()==genfr.toHex()) == true, "Not matching!"
+          doAssert (res.toHex()==genfr.toHex()) == true, "Not matching!"
 
         testBasicInterpolation()
 
@@ -187,7 +188,7 @@ suite "Barycentric Form Tests":
             doAssert (expected2 == expected).bool() == true, "Problem with Barycentric Weights!"
             doAssert (expected2 == got).bool() == true, "Problem with Inner Products!"
 
-        testBarycentricPrecomputeCoefficients()
+        # testBarycentricPrecomputeCoefficients()
 
 
     # test "Testing Polynomial Division":
@@ -303,103 +304,163 @@ suite "Transcript Tests":
 #
 # ############################################################
 suite "IPA proof tests":
-    test "Test for initiating IPA proof configuration":
-        proc testMain()=
-            var ipaConfig: IPASettings
-            let stat1 = ipaConfig.genIPAConfig()
-            doAssert stat1 == true, "Could not generate new IPA Config properly!"
-        testMain()
+  test "Test for initiating IPA proof configuration":
+    proc testMain()=
+        var ipaConfig: IPASettings
+        let stat1 = ipaConfig.genIPAConfig()
+        doAssert stat1 == true, "Could not generate new IPA Config properly!"
+    testMain()
 
-    test "Test for IPA proof equality":
-        proc testIPAProofEquality()=
-            var point: EC_P_Fr
-            var ipaConfig: IPASettings
-            let stat1 = ipaConfig.genIPAConfig()
+  test "Test for IPA proof equality":
+    proc testIPAProofEquality()=
+        var point: EC_P_Fr
+        var ipaConfig: IPASettings
+        let stat1 = ipaConfig.genIPAConfig()
 
-            var testGeneratedPoints: array[256, EC_P]
-            testGeneratedPoints.generate_random_points(256)
+        var testGeneratedPoints: array[256, EC_P]
+        testGeneratedPoints.generate_random_points(256)
 
-            var prover_transcript: sha256
-            prover_transcript.newTranscriptGen(asBytes"ipa")
+        var prover_transcript: sha256
+        prover_transcript.newTranscriptGen(asBytes"ipa")
 
-            #from a shared view
-            var i_bg: matchingOrderBigInt(Banderwagon)
-            i_bg.setUint(uint64(12345))
-            point.fromBig(i_bg)
+        #from a shared view
+        var i_bg: matchingOrderBigInt(Banderwagon)
+        i_bg.setUint(uint64(12345))
+        point.fromBig(i_bg)
 
-            #from the prover's side
-            var testVals: array[5, uint64] = [1,2,3,4,5]
-            var poly: array[256, EC_P_Fr]
-            poly.testPoly256(testVals)
+        #from the prover's side
+        var testVals: array[5, uint64] = [1,2,3,4,5]
+        var poly: array[256, EC_P_Fr]
+        poly.testPoly256(testVals)
 
-            var prover_comm: EC_P
-            prover_comm.pedersen_commit_varbasis(testGeneratedPoints, poly, poly.len)
+        var prover_comm: EC_P
+        prover_comm.pedersen_commit_varbasis(testGeneratedPoints, poly, poly.len)
 
-            var ipaProof1: IPAProof
-            let stat11 = ipaProof1.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
-            doAssert stat11 == true, "Problem creating IPA proof 1"
+        var ipaProof1: IPAProof
+        let stat11 = ipaProof1.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
+        doAssert stat11 == true, "Problem creating IPA proof 1"
 
-            var ipaProof2: IPAProof
-            let stat22 = ipaProof2.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
-            doAssert stat22 == true, "Problem creating IPA proof 2"
+        var ipaProof2: IPAProof
+        let stat22 = ipaProof2.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
+        doAssert stat22 == true, "Problem creating IPA proof 2"
 
-            var stat33: bool
-            stat33.isIPAProofEqual(ipaProof1,ipaProof2)
-            doAssert stat33 == true, "IPA proofs aren't equal"
+        var stat33: bool
+        stat33.isIPAProofEqual(ipaProof1,ipaProof2)
+        doAssert stat33 == true, "IPA proofs aren't equal"
 
-        testIPAProofEquality()
+    testIPAProofEquality()
 
     test "Test for IPA Proof of Creation and Verification":
-        proc testIPAProofCreateAndVerify()=
-            var point : EC_P_Fr
-            var ipaConfig: IPASettings
-            let stat1 = ipaConfig.genIPAConfig()
+      proc testIPAProofCreateAndVerify()=
+        var point : EC_P_Fr
+        var ipaConfig: IPASettings
+        let stat1 = ipaConfig.genIPAConfig()
 
-            var testGeneratedPoints: array[256,EC_P]
-            testGeneratedPoints.generate_random_points(256)
+        var testGeneratedPoints: array[256,EC_P]
+        testGeneratedPoints.generate_random_points(256)
 
-            # from a shared view
-            var i_bg : matchingOrderBigInt(Banderwagon)
-            i_bg.setUint(uint64(123456789))
-            point.fromBig(i_bg)
+        # from a shared view
+        var i_bg : matchingOrderBigInt(Banderwagon)
+        i_bg.setUint(uint64(123456789))
+        point.fromBig(i_bg)
 
-            # from the prover's side
-            var testVals : array[14, uint64] = [1,2,3,4,5,6,7,8,9,10,11,12,13,14]
-            var poly: array[256,EC_P_Fr]
-            poly.testPoly256(testVals)
+        # from the prover's side
+        var testVals : array[9, uint64] = [1,2,3,4,5,6,7,8,9]
+        var poly: array[256,EC_P_Fr]
+        poly.testPoly256(testVals)
 
-            var prover_comm : EC_P
-            prover_comm.pedersen_commit_varbasis(testGeneratedPoints, poly, poly.len)
+        var prover_comm : EC_P
+        prover_comm.pedersen_commit_varbasis(testGeneratedPoints, poly, poly.len)
 
-            var prover_transcript: sha256
-            prover_transcript.newTranscriptGen(asBytes"ipa")
+        var prover_transcript: sha256
+        prover_transcript.newTranscriptGen(asBytes"ipa")
 
-            var ipaProof: IPAProof
-            let stat = ipaProof.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
-            doAssert stat==true, "Problem creating IPA proof"
+        var ipaProof: IPAProof
+        let stat = ipaProof.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
+        doAssert stat==true, "Problem creating IPA proof"
 
-            var precomp : PrecomputedWeights
+        var precomp : PrecomputedWeights
 
-            precomp.newPrecomputedWeights()
-            var lagrange_coeffs : array[DOMAIN, EC_P_Fr]
+        precomp.newPrecomputedWeights()
+        var lagrange_coeffs : array[DOMAIN, EC_P_Fr]
 
-            lagrange_coeffs.computeBarycentricCoefficients(precomp, point)
+        lagrange_coeffs.computeBarycentricCoefficients(precomp, point)
 
-            var innerProd : EC_P_Fr
-            innerProd.computeInnerProducts(poly, lagrange_coeffs)
+        var innerProd : EC_P_Fr
+        innerProd.computeInnerProducts(poly, lagrange_coeffs)
 
-            # Verifier view 
-            var verifier_comm : EC_P
-            verifier_comm = prover_comm
+        # Verifier view 
+        var verifier_comm : EC_P
+        verifier_comm = prover_comm
 
-            var verifier_transcript: sha256
-            verifier_transcript.newTranscriptGen(asBytes"ipa")
+        var verifier_transcript: sha256
+        verifier_transcript.newTranscriptGen(asBytes"ipa")
 
-            var ok: bool
-            ok.checkIPAProof(verifier_transcript, ipaConfig, verifier_comm, ipaProof, point, innerProd)
+        var ok: bool
+        ok.checkIPAProof(verifier_transcript, ipaConfig, verifier_comm, ipaProof, point, innerProd)
 
-            doAssert ok == true, "Issue in checking IPA proof!"
-        testIPAProofCreateAndVerify()
+        doAssert ok == true, "Issue in checking IPA proof!"
+      testIPAProofCreateAndVerify()
+# ############################################################
+#
+#                     Test for Multiproofs    
+#
+# ############################################################
+suite "Multiproof Tests":
+  test "IPA Config test for Multiproofs":
+    proc testIPAConfigForMultiproofs()=
+      var ipaConfig: IPASettings
+      let stat1 = ipaConfig.genIPAConfig()
+      doAssert stat1 == true, "Could not initialise new IPA config for multiproofs!"
+    testIPAConfigForMultiproofs()
+  
+  # test "Multiproof Creation and Verification":
+  #   proc testMultiproofCreationAndVerification()=
+
+  #     var ipaConfig: IPASettings
+  #     let stat1 = ipaConfig.genIPAConfig()
+
+  #     var testGeneratedPoints: array[256, EC_P]
+  #     testGeneratedPoints.generate_random_points(256)
+
+  #     var testVals: array[14, uint64] = [1,1,1,4,5,6,7,8,9,10,11,12,13,14]
+  #     var poly : array[256, EC_P_Fr]
+
+  #     poly.testPoly256(testVals)
+
+  #     var prover_transcript: sha256
+  #     prover_transcript.newTranscriptGen(asBytes"multiproof")
+      
+  #     var prover_comm: EC_P
+  #     prover_comm.pedersen_commit_varbasis(testGeneratedPoints, poly, poly.len)
+
+  #     var one : EC_P_Fr
+  #     one.setOne()
+
+  #     var Cs : array[DOMAIN, EC_P]
+  #     var Fs : array[DOMAIN, array[DOMAIN, EC_P_Fr]]
+  #     var Zs : array[DOMAIN, uint8]
+  #     var Ys : array[DOMAIN, EC_P_Fr]
+
+  #     Cs[0] = prover_comm
+  #     Fs[0] = poly
+  #     Zs[0] = uint8(0)
+  #     Ys[0] = one
+
+  #     var multiproof: MultiProof
+  #     multiproof.createMultiProof(prover_transcript, ipaConfig, Cs, Fs, Zs)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

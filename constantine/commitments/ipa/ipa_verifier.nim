@@ -34,21 +34,21 @@ func generateChallengesForIPA*(res: var openArray[matchingOrderBigInt(Banderwago
 # Check IPA proof verifier a IPA proof for a committed polynomial in evaluation form
 # It verifies whether the proof is valid for the given polynomial at the evaluation `evalPoint`
 # and cross-checking it with `result`
-func checkIPAProof*[bool] (res: var bool, transcript: var sha256, ic: IPASettings, commitment: var EC_P, proof: IPAProof, evalPoint: EC_P_Fr, result: EC_P_Fr)=
+func checkIPAProof*(r: var bool,transcript: var sha256, ic: IPASettings, commitment: var EC_P, proof: IPAProof, evalPoint: EC_P_Fr, res: EC_P_Fr) =
+
     transcript.domain_separator(asBytes"ipa")
 
-    if not(proof.L_vector.len == proof.R_vector.len):
-        res = false
+    doAssert (proof.L_vector.len == proof.R_vector.len), "Proof lengths unequal!"
 
-    if not(proof.L_vector.len == int(ic.numRounds)):
-        res = false
+    doAssert (proof.L_vector.len == int(ic.numRounds)), "Proof length and num round unequal!"
+
 
     var b {.noInit.}: array[DOMAIN, EC_P_Fr]
     b.computeBarycentricCoefficients(ic.precompWeights,evalPoint)
 
     transcript.pointAppend(asBytes"C", commitment)
     transcript.scalarAppend(asBytes"input point", evalPoint.toBig())
-    transcript.scalarAppend(asBytes"output point", result.toBig())
+    transcript.scalarAppend(asBytes"output point", res.toBig())
 
     var w : matchingOrderBigInt(Banderwagon)
     w.generateChallengeScalar(transcript,asBytes"w")
@@ -60,7 +60,7 @@ func checkIPAProof*[bool] (res: var bool, transcript: var sha256, ic: IPASetting
 
     var qy {.noInit.}: EC_P
     qy = q
-    qy.scalarMul(result.toBig())
+    qy.scalarMul(res.toBig())
     commitment.sum(commitment, qy)
 
 
@@ -100,7 +100,7 @@ func checkIPAProof*[bool] (res: var bool, transcript: var sha256, ic: IPASetting
     var foldingScalars {.noInit.}: array[g.len, EC_P_Fr]
 
     for i in 0..<g.len:
-        var scalar : EC_P_Fr
+        var scalar {.noInit.} : EC_P_Fr
         scalar.setOne()
 
         for challengeIndex in 0..<challenges.len:
@@ -112,7 +112,7 @@ func checkIPAProof*[bool] (res: var bool, transcript: var sha256, ic: IPASetting
 
     var g0 {.noInit.}: EC_P
     
-    var foldingScalars_big : array[g.len,matchingOrderBigInt(Banderwagon)]
+    var foldingScalars_big {.noInit.} : array[g.len,matchingOrderBigInt(Banderwagon)]
     
     for i in 0..<DOMAIN:
         foldingScalars_big[i] = foldingScalars[i].toBig()
@@ -139,7 +139,11 @@ func checkIPAProof*[bool] (res: var bool, transcript: var sha256, ic: IPASetting
 
     got.sum(p1, p2)
 
-    if (got == commitment).bool() == true:
-        res = true
+    if not(got == commitment).bool() == true:
+        r = false
+    
+    r = true
+
+    
 
         

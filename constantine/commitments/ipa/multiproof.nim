@@ -42,7 +42,7 @@ func computePowersOfElem* [EC_P_Fr] (res: var openArray[EC_P_Fr], x: EC_P_Fr, de
 # createMultiProof creates a multi-proof for several polynomials in the evaluation form
 # The list of triplets are as follows : (C, Fs, Z) represents each polynomial commitment
 # and their evalutation in the domain, and the evaluating point respectively
-func createMultiProof* [MultiProof] (res: var MultiProof, transcript: sha256, ipaSetting: IPASettings, Cs: openArray[EC_P], Fs: openArray[openArray[EC_P_Fr]], Zs: openArray[uint8])=
+func createMultiProof* [MultiProof] (res: var MultiProof, transcript: sha256, ipaSetting: IPASettings, Cs: openArray[EC_P], Fs: array[DOMAIN, array[DOMAIN, EC_P_Fr]], Zs: openArray[uint8])=
     transcript.domain_separator(asBytes"multiproof")
 
     for f in Fs:
@@ -79,7 +79,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: sha256, ip
     # Inorder to compute g(x), we first compute the polynomials in lagrange form grouped by evaluation points
     # then we compute g(x), this is eventually limit the numbers of divisionOnDomain calls up to the domain size 
 
-    var groupedFs {.noInit.}: array[DOMAIN, openArray[EC_P_Fr]]
+    var groupedFs {.noInit.}: array[DOMAIN, array[DOMAIN, EC_P_Fr]]
 
     for i in 0..<num_queries:
         var z = Zs[i]
