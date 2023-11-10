@@ -288,7 +288,7 @@ func verifyMultiproof* [bool] (res: var bool, transcript : sha256, ipaSettings: 
 func mutliProofEquality*(res: var bool, mp: MultiProof, other: MultiProof)=
     if not(mp.IPAprv == other.IPAprv):
         res = false
-    res = (mp.D == other.Ds).bool()
+    res = (mp.D == other.D).bool()
 
             
 
