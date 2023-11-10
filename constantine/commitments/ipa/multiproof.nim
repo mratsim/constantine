@@ -42,7 +42,7 @@ func computePowersOfElem* [EC_P_Fr] (res: var openArray[EC_P_Fr], x: EC_P_Fr, de
 # createMultiProof creates a multi-proof for several polynomials in the evaluation form
 # The list of triplets are as follows : (C, Fs, Z) represents each polynomial commitment
 # and their evalutation in the domain, and the evaluating point respectively
-func createMultiProof* [MultiProof] (res: var MultiProof, transcript: sha256, ipaSetting: IPASettings, Cs: openArray[EC_P], Fs: array[DOMAIN, array[DOMAIN, EC_P_Fr]], Zs: openArray[uint8])=
+func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256, ipaSetting: IPASettings, Cs: openArray[EC_P], Fs: array[DOMAIN, array[DOMAIN, EC_P_Fr]], Zs: openArray[uint8], precomp: PrecomputedWeights, basis: array[DOMAIN, EC_P])=
     transcript.domain_separator(asBytes"multiproof")
 
     for f in Fs:
@@ -52,16 +52,20 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: sha256, ip
 
     debug: doAssert Cs.len == Zs.len, "Number of commitments is NOT same as number of Points"
 
-    var num_queries {.noInit.} : SomeUnsignedInt
-    num_queries = Cs.len 
+    var num_queries {.noInit.} : uint8
+    num_queries = uint8(Cs.len)
 
-    #TODO: add BatchNormalize() for Banderwagon EC_P
+    var Cs_prime {.noInit.} : array[DOMAIN, EC_P]
+    for i in 0..<DOMAIN:
+        Cs_prime[i] = Cs[i]
+
+    
 
     for i in 0..<num_queries:
-        transcript.pointAppend(Cs[i],asBytes"C")
+        transcript.pointAppend(asBytes"C", Cs_prime[i])
         var z {.noInit.} : EC_P_Fr
         z.domainToFrElem(Zs[i])
-        transcript.scalarAppend(z, asBytes"z")
+        transcript.scalarAppend(asBytes"z",z.toBig())
 
         # deducing the `y` value
 
@@ -70,8 +74,8 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: sha256, ip
 
         transcript.scalarAppend(y, asBytes"y")
 
-    var r {.noInit.} : EC_P_Fr
-    r = transcript.generateChallengeScalar(asBytes"r")
+    var r {.noInit.} : matchingOrderBigInt(Banderwagon)
+    r.generateChallengeScalar(transcript,asBytes"r")
 
     var powersOfr {.noInit.}: openArray[EC_P_Fr]
     powersOfr.computePowersOfElem(r, num_queries)
@@ -103,19 +107,21 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: sha256, ip
         if f.len == 0:
             continue
 
-        var quotient {.noInit.} : openArray[EC_P_Fr]
-        quotient = ipaSetting.PrecomputedWeights.divisionOnDomain(uint8(idx), f)
+        var quotient {.noInit.} : array[DOMAIN,EC_P_Fr]
+        var passer : int
+        passer = int(idx)
+        quotient.divisionOnDomain(precomp, passer, f)
 
         for j in  0..<DOMAIN:
             gx[j] += quotient[j]
         
     var D {.noInit.}: EC_P
-    D.pedersen_commit_single(gx)
+    D.pedersen_commit_varbasis(basis, gx, gx.len)
 
     transcript.pointAppend(D, asBytes"D")
 
     var t {.noInit.}: EC_P_Fr
-    t = transcript.generateChallengeScalar(asBytes"t")
+    t.generateChallengeScalar(transcript,asBytes"t")
 
     # Computing the denominator inverses only for referenced evaluation points.
     var denInv {.noInit.}: array[DOMAIN, EC_P_Fr]
@@ -134,8 +140,8 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: sha256, ip
         idxx = idxx + 1
 
 
-        
-    denInv.batchInvert(denInv)
+    var denInv_prime {.noInit.} : EC_P_Fr
+    denInv_prime.batchInvert(denInv)
 
     #Compute h(X) = g1(X)
     var hx {.noInit.}: array[DOMAIN, EC_P_Fr]
@@ -145,7 +151,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: sha256, ip
         if f.len == 0:
             continue
 
-        for k in 0..DOMAIN:
+        for k in 0..<DOMAIN:
             var tmp {.noInit.}: EC_P_Fr
             tmp.prod(f[k], denInv[denInvIdx])
             hx[k].sum(hx[k], tmp)
@@ -158,9 +164,9 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: sha256, ip
         hMinusg.diff(hx[i],gx[i])
 
     var E {.noInit.}: EC_P
-    #TODO: replace pedersen_commit_single with a multiple polynomials commit function
-    E.pedersen_commit_single(hx)
-    transcript.pointAppend(E, asBytes"E")
+
+    E.pedersen_commit_varbasis(basis, hx, hx.len)
+    transcript.pointAppend(asBytes"E",E)
 
     var EMinusD {.noInit.}: EC_P
 
@@ -169,7 +175,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: sha256, ip
     var ipaProof {.noInit.} : IPAProof
     var checks {.noInit.}: bool
 
-    checks = ipaProof.createIPAProof(transcript, ipaSetting, EMinusD, hMinusg, t)
+    let checks = ipaProof.createIPAProof(transcript, ipaSetting, EMinusD, hMinusg, t)
 
     debug: doAssert checks == 1, "Could not compute IPA Proof!"
 
@@ -199,11 +205,11 @@ func verifyMultiproof* [bool] (res: var bool, transcript : sha256, ipaSettings: 
         var z {.noInit.} : EC_P_Fr
         z.domainToFrElem(Zs[i])
 
-        transcript.scalarAppend(z, asBytes"z")
-        transcript.scalarAppend(Ys[i], asBytes"y")
+        transcript.scalarAppend(asBytes"z", z.toBig())
+        transcript.scalarAppend(asBytes"y", Ys[i].toBig())
 
     var r {.noInit.}: EC_P_Fr
-    r = transcript.generateChallengeScalar(asBytes"r")
+    r.generateChallengeScalar(transcript,asBytes"r")
 
     var powersOfr {.noInit.}: openArray[EC_P_Fr]
     powersOfr.computePowersOfElem(r, num_queries)
@@ -279,10 +285,10 @@ func verifyMultiproof* [bool] (res: var bool, transcript : sha256, ipaSettings: 
         res.checkIPAProof(transcript, ipaSettings, EMinusD, proof.IPAprv, t, g2t)
 
 
-func mutliProofEquality* [bool] (res: var bool, mp: MultiProof, other: MultiProof)=
+func mutliProofEquality*(res: var bool, mp: MultiProof, other: MultiProof)=
     if not(mp.IPAprv == other.IPAprv):
         res = false
-    res = mp.D == other.Ds
+    res = (mp.D == other.Ds).bool()
 
             
 

@@ -17,13 +17,12 @@ import
   ../../../constantine/platforms/primitives,
   ../../../constantine/hashes,
   ../../math/config/[type_ff, curves],
-  ../../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
+  ../../math/elliptic/[ec_twistededwards_projective],
   ../../../constantine/math/arithmetic,
   ../../../constantine/math/elliptic/ec_scalar_mul, 
   ../../../constantine/platforms/[views],
   ../../../constantine/math/io/[io_fields],
-  ../../../constantine/curves_primitives,
-  ../../../constantine/ethereum_verkle_primitives
+  ../../../constantine/curves_primitives
 
 # ############################################################
 #
