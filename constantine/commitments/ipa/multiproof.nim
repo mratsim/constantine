@@ -185,7 +185,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
 # Mutliproof verifier verifies the multiproof for several polynomials in the evaluation form
 # The list of triplets (C,Y, Z) represents each polynomial commitment, evaluation
 # result, and evaluation point in the domain 
-func verifyMultiproof* [bool] (res: var bool, transcript : sha256, ipaSettings: IPASettings, proof: MultiProof, Cs: openArray[EC_P], Ys: openArray[EC_P_Fr], Zs: openArray[uint8])=
+func verifyMultiproof* [bool] (res: var bool, transcript : sha256, ipaSettings: IPASettings, multiProof: MultiProof, Cs: openArray[EC_P], Ys: openArray[EC_P_Fr], Zs: openArray[uint8])=
     transcript.domain_separator(asBytes"multiproof")
 
     debug: doAssert Cs.len == Ys.len, "Number of commitments and the Number of output points don't match!"
@@ -208,16 +208,16 @@ func verifyMultiproof* [bool] (res: var bool, transcript : sha256, ipaSettings: 
         transcript.scalarAppend(asBytes"z", z.toBig())
         transcript.scalarAppend(asBytes"y", Ys[i].toBig())
 
-    var r {.noInit.}: EC_P_Fr
+    var r {.noInit.}: matchingOrderBigInt(Banderwagon)
     r.generateChallengeScalar(transcript,asBytes"r")
 
     var powersOfr {.noInit.}: openArray[EC_P_Fr]
     powersOfr.computePowersOfElem(r, num_queries)
 
-    transcript.pointAppend(proof.D, asBytes"D")
+    transcript.pointAppend(asBytes"D", multiProof.D)
 
-    var t {.noInit.}: EC_P_Fr
-    t = transcript.generateChallengeScalar(asBytes"t")
+    var t {.noInit.}: matchingOrderBigInt(Banderwagon)
+    t.generateChallengeScalar(transcript, asBytes"t")
 
     # Computing the polynomials in the Lagrange form grouped by evaluation point, 
     # and the needed helper scalars
@@ -280,9 +280,9 @@ func verifyMultiproof* [bool] (res: var bool, transcript : sha256, ipaSettings: 
         transcript.pointAppend(E, asBytes"E")
 
         var EMinusD {.noInit.} : EC_P
-        EMinusD.diff(E, proof.D)
+        EMinusD.diff(E, multiProof.D)
 
-        res.checkIPAProof(transcript, ipaSettings, EMinusD, proof.IPAprv, t, g2t)
+        res.checkIPAProof(transcript, ipaSettings, EMinusD, multiProof.IPAprv, t, g2t)
 
 
 func mutliProofEquality*(res: var bool, mp: MultiProof, other: MultiProof)=
