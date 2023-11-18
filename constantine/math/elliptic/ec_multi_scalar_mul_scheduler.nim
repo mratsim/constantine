@@ -297,9 +297,12 @@ func prefetch*(sched: ptr Scheduler, sp: ScheduledPoint) =
   if bucket == -1:
     return
 
+  const cachelinesAff = min(1, sizeof(Scheduler.ECaff) shr 6) # div 64
+  const cachelinesPoint = min(1, sizeof(Scheduler.EC) shr 6) # div 64
+
   prefetch(sched.buckets.status[bucket].addr, Write, HighTemporalLocality)
-  prefetchLarge(sched.buckets.ptAff[bucket].addr, Write, HighTemporalLocality, maxCacheLines = 1)
-  prefetchLarge(sched.buckets.pt[bucket].addr, Write, HighTemporalLocality, maxCacheLines = 1)
+  prefetchLarge(sched.buckets.ptAff[bucket].addr, Write, HighTemporalLocality, maxCacheLines = cachelinesAff)
+  prefetchLarge(sched.buckets.pt[bucket].addr, Write, HighTemporalLocality, maxCacheLines = cachelinesPoint)
 
 func schedule*(sched: ptr Scheduler, sp: ScheduledPoint) =
   ## Schedule a point for accumulating in buckets
