@@ -358,8 +358,8 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/math_elliptic_curves/t_ec_shortw_jacext_g1_mixed_add.nim", false),
 
   # ("tests/math_elliptic_curves/t_ec_twedwards_prj_add_double", false),
-  # ("tests/math_elliptic_curves/t_ec_twedwards_prj_mul_sanity", false),
-  # ("tests/math_elliptic_curves/t_ec_twedwards_prj_mul_distri", false),
+  ("tests/math_elliptic_curves/t_ec_twedwards_prj_mul_sanity", false),
+  ("tests/math_elliptic_curves/t_ec_twedwards_prj_mul_distri", false),
 
 
   # Elliptic curve arithmetic G2

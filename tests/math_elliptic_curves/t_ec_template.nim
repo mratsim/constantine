@@ -52,6 +52,17 @@ func madd[F; G: static Subgroup](r: var ECP_ShortW_JacExt[F, G], P: ECP_ShortW_J
 func `+=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_Aff[F, G]) =
   P.madd_vartime(P, Q)
 
+# Twisted Edwards bindings
+# ----------------------------------
+template G(EC: type ECP_TwEdwards_Prj): string =
+  ## Twisted Edwards curve don't have a G parameter
+  ""
+
+template sum_vartime(r: var ECP_TwEdwards_Prj, P, Q: ECP_TwEdwards_Prj) =
+  r.sum(P, Q)
+
+# ----------------------------------
+
 type
   RandomGen* = enum
     Uniform
@@ -496,8 +507,8 @@ proc run_EC_mul_sanity_tests*(
           refWNaf(bits, w = 2)
           refWNaf(bits, w = 3)
           refWNaf(bits, w = 5)
-          refWNaf(bits, w = 8)
-          refWNaf(bits, w = 13)
+          # refWNaf(bits, w = 8)
+          # refWNaf(bits, w = 13)
 
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Uniform)

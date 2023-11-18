@@ -423,17 +423,15 @@ func diff*(r: var ECP_ShortW_Prj, P, Q: ECP_ShortW_Prj) {.inline.} =
   nQ.neg(Q)
   r.sum(P, nQ)
 
-func `-=`*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Prj) {.inline.} =
-  ## In-place point substraction
+func diff*(r: var ECP_ShortW_Prj, P: ECP_ShortW_Prj, Q: ECP_ShortW_Aff) {.inline.} =
+  ## r = P - Q
   var nQ {.noInit.}: typeof(Q)
   nQ.neg(Q)
-  P.sum(P, nQ)
+  r.madd(P, nQ)
 
-func `-=`*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Aff) {.inline.} =
+func `-=`*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Prj or ECP_ShortW_Aff) {.inline.} =
   ## In-place point substraction
-  var nQ {.noInit.}: typeof(Q)
-  nQ.neg(Q)
-  P.madd(P, nQ)
+  P.diff(P, Q)
 
 template affine*[F, G](_: type ECP_ShortW_Prj[F, G]): typedesc =
   ## Returns the affine type that corresponds to the Jacobian type input
@@ -681,3 +679,17 @@ func msub_vartime*(r: var ECP_ShortW_Prj, P: ECP_ShortW_Prj, Q: ECP_ShortW_Aff) 
   var nQ {.noInit.}: typeof(Q)
   nQ.neg(Q)
   r.madd_vartime(P, nQ)
+
+template `~+=`*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Prj) =
+  ## Variable-time in-place point addition
+  P.sum_vartime(P, Q)
+
+template `~+=`*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Aff) =
+  ## Variable-time in-place point mixed addition
+  P.madd_vartime(P, Q)
+
+template `~-=`*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Prj) =
+  P.diff_vartime(P, Q)
+
+template `~-=`*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Aff) =
+  P.msub_vartime(P, Q)
