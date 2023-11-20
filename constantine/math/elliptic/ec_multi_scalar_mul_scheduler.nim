@@ -10,10 +10,14 @@ import
   ../../platforms/abstractions,
   ../arithmetic,
   ../ec_shortweierstrass,
-  ./ec_shortweierstrass_batch_ops
+  ./ec_shortweierstrass_batch_ops,
+  ./ec_twistededwards_projective,
+  ./ec_twistededwards_affine
 
 export abstractions, arithmetic,
-       ec_shortweierstrass
+       ec_shortweierstrass,
+       ec_twistededwards_projective,
+       ec_twistededwards_affine
 
 # No exceptions allowed in core cryptographic operations
 {.push raises: [].}
@@ -182,6 +186,7 @@ func bestBucketBitSize*(inputSize: int, scalarBitwidth: static int, useSignedBuc
   # A doubling costs 50% of an addition with jacobian coordinates
   # and between 60% (BLS12-381 G1) to 66% (BN254-Snarks G1)
 
+  # TODO: tuning for Twisted Edwards
   const A = 10'f32  # Addition cost
   const D =  6'f32  # Doubling cost
 

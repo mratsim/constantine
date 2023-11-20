@@ -403,9 +403,10 @@ template withEndo[bits: static int, EC, ECaff](
   else:
     msmProc(r, coefs, points, N, c)
 
-func multiScalarMul_dispatch_vartime[bits: static int, EC, ECaff](
-       r: var EC, coefs: ptr UncheckedArray[BigInt[bits]],
-       points: ptr UncheckedArray[ECaff], N: int) =
+func multiScalarMul_dispatch_vartime[bits: static int, F, G](
+       r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G]),
+       coefs: ptr UncheckedArray[BigInt[bits]],
+       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], N: int) =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
   let c = bestBucketBitSize(N, bits, useSignedBuckets = true, useManualTuning = true)
@@ -432,6 +433,39 @@ func multiScalarMul_dispatch_vartime[bits: static int, EC, ECaff](
   of 15: multiScalarMulAffine_vartime(r, coefs, points, N, c = 15)
 
   of 16..17: multiScalarMulAffine_vartime(r, coefs, points, N, c = 16)
+  else:
+    unreachable()
+
+func multiScalarMul_dispatch_vartime[bits: static int, F](
+       r: var ECP_TwEdwards_Prj[F], coefs: ptr UncheckedArray[BigInt[bits]],
+       points: ptr UncheckedArray[ECP_TwEdwards_Aff[F]], N: int) =
+  ## Multiscalar multiplication:
+  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
+
+  # TODO: tune for Twisted Edwards
+  let c = bestBucketBitSize(N, bits, useSignedBuckets = true, useManualTuning = true)
+
+  # Given that bits and N change after applying an endomorphism,
+  # we are able to use a bigger `c`
+  # but it has no significant impact on performance
+
+  case c
+  of  2: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  2)
+  of  3: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  3)
+  of  4: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  4)
+  of  5: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  5)
+  of  6: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  6)
+  of  7: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  7)
+  of  8: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  8)
+  of  9: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  9)
+  of 10: withEndo(multiScalarMul_vartime, r, coefs, points, N, c = 10)
+  of 11: withEndo(multiScalarMul_vartime, r, coefs, points, N, c = 11)
+  of 12: withEndo(multiScalarMul_vartime, r, coefs, points, N, c = 12)
+  of 13: withEndo(multiScalarMul_vartime, r, coefs, points, N, c = 13)
+  of 14: multiScalarMul_vartime(r, coefs, points, N, c = 14)
+  of 15: multiScalarMul_vartime(r, coefs, points, N, c = 15)
+
+  of 16..17: multiScalarMul_vartime(r, coefs, points, N, c = 16)
   else:
     unreachable()
 

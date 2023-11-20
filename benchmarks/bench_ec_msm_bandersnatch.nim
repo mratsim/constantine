@@ -10,9 +10,7 @@ import
   # Internals
   ../constantine/math/config/curves,
   ../constantine/math/arithmetic,
-  ../constantine/math/elliptic/[
-    ec_shortweierstrass_projective,
-    ec_shortweierstrass_jacobian],
+  ../constantine/math/elliptic/ec_twistededwards_projective,
   # Helpers
   ../helpers/prng_unsafe,
   ./bench_elliptic_parallel_template
@@ -28,21 +26,22 @@ import
 
 const Iters = 10_000
 const AvailableCurves = [
-  BN254_Snarks,
+  Bandersnatch
 ]
 
 # const testNumPoints = [10, 100, 1000, 10000, 100000]
-const testNumPoints = [64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 1 shl 22]
-# const testNumPoints = [1 shl 16, 1 shl 22]
+# const testNumPoints = [64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072]
+const testNumPoints = [1 shl 8, 1 shl 9, 1 shl 10, 1 shl 11, 1 shl 12, 1 shl 13, 1 shl 14, 1 shl 15, 1 shl 16, 1 shl 17, 1 shl 22]
 
 proc main() =
   separator()
   staticFor i, 0, AvailableCurves.len:
     const curve = AvailableCurves[i]
+    var ctx = createBenchMsmContext(ECP_TwEdwards_Prj[Fp[curve]], testNumPoints)
     separator()
     for numPoints in testNumPoints:
       let batchIters = max(1, Iters div numPoints)
-      msmParallelBench(ECP_ShortW_Jac[Fp[curve], G1], numPoints, batchIters)
+      ctx.msmParallelBench(numPoints, batchIters)
       separator()
     separator()
 

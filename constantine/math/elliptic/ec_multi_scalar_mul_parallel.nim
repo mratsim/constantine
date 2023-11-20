@@ -526,10 +526,11 @@ template withEndo[bits: static int, EC, ECaff](
   else:
     msmProc(tp, r, coefs, points, N, c, useParallelBuckets)
 
-proc multiScalarMul_dispatch_vartime_parallel[bits: static int, EC, ECaff](
+proc multiScalarMul_dispatch_vartime_parallel[bits: static int, F, G](
        tp: Threadpool,
-       r: ptr EC, coefs: ptr UncheckedArray[BigInt[bits]],
-       points: ptr UncheckedArray[ECaff], N: int) =
+       r: ptr (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G]),
+       coefs: ptr UncheckedArray[BigInt[bits]],
+       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], N: int) =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
   let c = bestBucketBitSize(N, bits, useSignedBuckets = true, useManualTuning = true)
@@ -558,6 +559,39 @@ proc multiScalarMul_dispatch_vartime_parallel[bits: static int, EC, ECaff](
   of 15: msmAffine_vartime_parallel_split(tp, r, coefs, points, N, c = 14, useParallelBuckets = true)
   of 16: msmAffine_vartime_parallel_split(tp, r, coefs, points, N, c = 15, useParallelBuckets = true)
   of 17: msmAffine_vartime_parallel_split(tp, r, coefs, points, N, c = 16, useParallelBuckets = true)
+  else:
+    unreachable()
+
+proc multiScalarMul_dispatch_vartime_parallel[bits: static int, F](
+       tp: Threadpool,
+       r: ptr ECP_TwEdwards_Prj[F], coefs: ptr UncheckedArray[BigInt[bits]],
+       points: ptr UncheckedArray[ECP_TwEdwards_Aff[F]], N: int) =
+  ## Multiscalar multiplication:
+  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
+  let c = bestBucketBitSize(N, bits, useSignedBuckets = true, useManualTuning = true)
+
+  # Given that bits and N change after applying an endomorphism,
+  # we are able to use a bigger `c`
+  # but it has no significant impact on performance
+
+  case c
+  of  2: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  2)
+  of  3: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  3)
+  of  4: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  4)
+  of  5: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  5)
+  of  6: withEndo(msm_vartime_parallel, tp, r, coefs, points, N, c =  6)
+
+  of   7: msm_vartime_parallel(tp, r, coefs, points, N, c =  7)
+  of   8: msm_vartime_parallel(tp, r, coefs, points, N, c =  8)
+  of   9: msm_vartime_parallel(tp, r, coefs, points, N, c =  9)
+  of  10: msm_vartime_parallel(tp, r, coefs, points, N, c = 10)
+  of  11: msm_vartime_parallel(tp, r, coefs, points, N, c = 11)
+  of  12: msm_vartime_parallel(tp, r, coefs, points, N, c = 12)
+  of  13: msm_vartime_parallel(tp, r, coefs, points, N, c = 13)
+  of  14: msm_vartime_parallel(tp, r, coefs, points, N, c = 14)
+  of  15: msm_vartime_parallel(tp, r, coefs, points, N, c = 16)
+
+  of  16..17: msm_vartime_parallel(tp, r, coefs, points, N, c = 16)
   else:
     unreachable()
 

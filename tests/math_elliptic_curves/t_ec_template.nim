@@ -1227,14 +1227,14 @@ proc run_EC_multi_scalar_mul_impl*[N: static int](
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  const testSuiteDesc = "Elliptic curve multi-scalar-multiplication for Short Weierstrass form"
+  const testSuiteDesc = "Elliptic curve multi-scalar-multiplication"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     for n in numPoints:
       let bucketBits = bestBucketBitSize(n, ec.F.C.getCurveOrderBitwidth(), useSignedBuckets = false, useManualTuning = false)
       test $ec & " Multi-scalar-mul (N=" & $n & ", bucket bits: " & $bucketBits & ")":
         proc test(EC: typedesc, gen: RandomGen) =
-          var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](n)
+          var points = newSeq[affine(EC)](n)
           var coefs = newSeq[BigInt[EC.F.C.getCurveOrderBitwidth()]](n)
 
           for i in 0 ..< n:
