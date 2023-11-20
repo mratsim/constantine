@@ -13,6 +13,7 @@ import
   ./ec_shortweierstrass_projective,
   ./ec_endomorphism_accel,
   ./ec_shortweierstrass_batch_ops,
+  ./ec_twistededwards_batch_ops,
   ../arithmetic,
   ../extension_fields,
   ../io/io_bigints,
@@ -24,19 +25,9 @@ import
 {.push raises: [].} # No exceptions allowed in core cryptographic operations
 {.push checks: off.} # No defects due to array bound checking or signed integer overflow allowed
 
-# Bit operations
-# ------------------------------------------------------------------------------
-
 iterator unpackBE(scalarByte: byte): bool =
   for i in countdown(7, 0):
     yield bool((scalarByte shr i) and 1)
-
-# Variable-time scalar multiplication
-# ------------------------------------------------------------------------------
-template `+=`[F; G: static Subgroup](P: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G]), Q: ECP_ShortW_Aff[F, G]) =
-  P.madd_vartime(P, Q)
-template `-=`[F; G: static Subgroup](P: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G]), Q: ECP_ShortW_Aff[F, G]) =
-  P.msub_vartime(P, Q)
 
 func scalarMul_doubleAdd_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime], meter.} =
   ## **Variable-time** Elliptic Curve Scalar Multiplication
@@ -65,7 +56,7 @@ func scalarMul_doubleAdd_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime
           P.fromAffine(Paff)
           isInf = false
         else:
-          P += Paff
+          P ~+= Paff
 
 func scalarMul_addchain_4bit_vartime[EC](P: var EC, scalar: BigInt) {.tags:[VarTime], meter.} =
   ## **Variable-time** Elliptic Curve Scalar Multiplication
@@ -82,7 +73,7 @@ func scalarMul_addchain_4bit_vartime[EC](P: var EC, scalar: BigInt) {.tags:[VarT
   of 3:
     var t {.noInit.}: EC
     t.double(P)
-    P.sum_vartime(P, t)
+    P ~+= t
   of 4:
     P.double()
     P.double()
@@ -90,11 +81,11 @@ func scalarMul_addchain_4bit_vartime[EC](P: var EC, scalar: BigInt) {.tags:[VarT
     var t {.noInit.}: EC
     t.double(P)
     t.double(P)
-    P.sum_vartime(P, t)
+    P ~+= t
   of 6:
     var t {.noInit.}: EC
     t.double(P)
-    P.sum_vartime(P, t)
+    P ~+= t
     P.double()
   of 7:
     var t {.noInit.}: EC
@@ -111,20 +102,20 @@ func scalarMul_addchain_4bit_vartime[EC](P: var EC, scalar: BigInt) {.tags:[VarT
     t.double(P)
     t.double()
     t.double()
-    P.sum_vartime(P, t)
+    P ~+= t
   of 10:
     var t {.noInit.}: EC
     t.double(P)
     t.double()
-    P.sum_vartime(P, t)
+    P ~+= t
     P.double()
   of 11:
     var t1 {.noInit.}, t2 {.noInit.}: EC
     t1.double(P)  # [2]P
     t2.double(t1)
     t2.double()   # [8]P
-    t1.sum_vartime(t1, t2)
-    P.sum_vartime(P, t1)
+    t1 ~+= t2
+    P ~+= t1
   of 12:
     var t1 {.noInit.}, t2 {.noInit.}: EC
     t1.double(P)
@@ -136,14 +127,14 @@ func scalarMul_addchain_4bit_vartime[EC](P: var EC, scalar: BigInt) {.tags:[VarT
     t1.double(P)
     t1.double()   # [4]P
     t2.double(t1) # [8]P
-    t1.sum_vartime(t1, t2)
-    P.sum_vartime(P, t1)
+    t1 ~+= t2
+    P ~+= t1
   of 14:
     var t {.noInit.}: EC
     t.double(P)
     t.double()
     t.double()
-    t.diff_vartime(t, P) # [7]P
+    t ~-= P # [7]P
     P.double(t)
   of 15:
     var t {.noInit.}: EC
@@ -172,9 +163,9 @@ func scalarMul_minHammingWeight_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[
   for bit in recoding_l2r_signed_vartime(scalar):
     P.double()
     if bit == 1:
-      P += Paff
+      P ~+= Paff
     elif bit == -1:
-      P -= Paff
+      P ~-= Paff
 
 func initNAF[precompSize, NafMax: static int, EC, ECaff](
        P: var EC,
@@ -202,9 +193,9 @@ func accumNAF[precompSize, NafMax: static int, EC, ECaff](
 
     let digit = naf[nafLen-1-nafIteratorIdx]
     if digit > 0:
-      P += tab[digit shr 1]
+      P ~+= tab[digit shr 1]
     elif digit < 0:
-      P -= tab[-digit shr 1]
+      P ~-= tab[-digit shr 1]
 
 func scalarMul_minHammingWeight_windowed_vartime*[EC](P: var EC, scalar: BigInt, window: static int) {.tags:[VarTime, Alloca], meter.} =
   ## **Variable-time** Elliptic Curve Scalar Multiplication

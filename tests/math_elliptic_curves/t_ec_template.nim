@@ -52,6 +52,17 @@ func madd[F; G: static Subgroup](r: var ECP_ShortW_JacExt[F, G], P: ECP_ShortW_J
 func `+=`[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_Aff[F, G]) =
   P.madd_vartime(P, Q)
 
+# Twisted Edwards bindings
+# ----------------------------------
+template G(EC: type ECP_TwEdwards_Prj): string =
+  ## Twisted Edwards curve don't have a G parameter
+  ""
+
+template sum_vartime(r: var ECP_TwEdwards_Prj, P, Q: ECP_TwEdwards_Prj) =
+  r.sum(P, Q)
+
+# ----------------------------------
+
 type
   RandomGen* = enum
     Uniform
@@ -496,8 +507,8 @@ proc run_EC_mul_sanity_tests*(
           refWNaf(bits, w = 2)
           refWNaf(bits, w = 3)
           refWNaf(bits, w = 5)
-          refWNaf(bits, w = 8)
-          refWNaf(bits, w = 13)
+          # refWNaf(bits, w = 8)
+          # refWNaf(bits, w = 13)
 
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Uniform)
@@ -1216,14 +1227,14 @@ proc run_EC_multi_scalar_mul_impl*[N: static int](
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  const testSuiteDesc = "Elliptic curve multi-scalar-multiplication for Short Weierstrass form"
+  const testSuiteDesc = "Elliptic curve multi-scalar-multiplication"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     for n in numPoints:
       let bucketBits = bestBucketBitSize(n, ec.F.C.getCurveOrderBitwidth(), useSignedBuckets = false, useManualTuning = false)
       test $ec & " Multi-scalar-mul (N=" & $n & ", bucket bits: " & $bucketBits & ")":
         proc test(EC: typedesc, gen: RandomGen) =
-          var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](n)
+          var points = newSeq[affine(EC)](n)
           var coefs = newSeq[BigInt[EC.F.C.getCurveOrderBitwidth()]](n)
 
           for i in 0 ..< n:

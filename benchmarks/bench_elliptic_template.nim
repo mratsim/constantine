@@ -35,6 +35,7 @@ import
 
 export notes
 export abstractions # generic sandwich on SecretBool and SecretBool in Jacobian sum
+export bench_blueprint
 
 proc separator*() = separator(179)
 
