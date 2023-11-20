@@ -633,17 +633,15 @@ func diff*(r: var ECP_ShortW_Jac, P, Q: ECP_ShortW_Jac) {.inline.} =
   nQ.neg(Q)
   r.sum(P, nQ)
 
-func `-=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac) {.inline.} =
-  ## In-place point substraction
+func diff*(r: var ECP_ShortW_Jac, P: ECP_ShortW_Jac, Q: ECP_ShortW_Aff) {.inline.} =
+  ## r = P - Q
   var nQ {.noInit.}: typeof(Q)
   nQ.neg(Q)
-  P.sum(P, nQ)
+  r.madd(P, nQ)
 
-func `-=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Aff) {.inline.} =
+func `-=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac or ECP_ShortW_Aff) {.inline.} =
   ## In-place point substraction
-  var nQ {.noInit.}: typeof(Q)
-  nQ.neg(Q)
-  P.madd(P, nQ)
+  P.diff(P, Q)
 
 # Conversions
 # -----------
@@ -918,3 +916,17 @@ func msub_vartime*(r: var ECP_ShortW_Jac, P: ECP_ShortW_Jac, Q: ECP_ShortW_Aff) 
   var nQ {.noInit.}: typeof(Q)
   nQ.neg(Q)
   r.madd_vartime(P, nQ)
+
+template `~+=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac) =
+  ## Variable-time in-place point addition
+  P.sum_vartime(P, Q)
+
+template `~+=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Aff) =
+  ## Variable-time in-place point mixed addition
+  P.madd_vartime(P, Q)
+
+template `~-=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac) =
+  P.diff_vartime(P, Q)
+
+template `~-=`*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Aff) =
+  P.msub_vartime(P, Q)

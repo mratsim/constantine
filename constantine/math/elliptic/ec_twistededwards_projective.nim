@@ -27,7 +27,7 @@ type ECP_TwEdwards_Prj*[F] = object
   ## with a, d ≠ 0 and a ≠ d
   ##
   ## over a field F
-  ## 
+  ##
   ## in projective coordinate (X, Y, Z)
   ## with x = X/Z and y = Y/Z
   ## hence (aX² + Y²)Z² = Z⁴ + dX²Y²
@@ -67,21 +67,21 @@ func ccopy*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Prj, ctl: SecretBool) {.i
     ccopy(fP, fQ, ctl)
 
 func trySetFromCoordX*[F](
-       P: var ECP_TwEdwards_Prj[F], 
+       P: var ECP_TwEdwards_Prj[F],
        x: F): SecretBool =
   ## Try to create a point on the elliptic curve from X co-ordinate
   ##   ax²+y²=1+dx²y²    (affine coordinate)
-  ## 
+  ##
   ## The `Z` coordinates is set to 1
-  ## 
+  ##
   ## return true and update `P` if `y` leads to a valid point
   ## return false otherwise, in that case `P` is undefined.
-  
+
   var Q{.noInit.}: ECP_TwEdwards_Aff[F]
   result = Q.trySetFromCoordX(x)
 
   P.x = Q.x
-  P.y = Q.y 
+  P.y = Q.y
   P.z.setOne()
 
 
@@ -98,7 +98,7 @@ func trySetFromCoordY*[F](
   ##
   ## Note: Dedicated robust procedures for hashing-to-curve
   ##       will be provided, this is intended for testing purposes.
-  ## 
+  ##
   ##       For **test case generation only**,
   ##       this is preferred to generating random point
   ##       via random scalar multiplication of the curve generator
@@ -107,7 +107,7 @@ func trySetFromCoordY*[F](
   ##       - scalar multiplication works
   ##       - a generator point is defined
   ##       i.e. you can't test unless everything is already working
-  
+
   var Q{.noInit.}: ECP_TwEdwards_Aff[F]
   result = Q.trySetFromCoordY(y)
 
@@ -126,7 +126,7 @@ func trySetFromCoordsYandZ*[F](
   ##
   ## Note: Dedicated robust procedures for hashing-to-curve
   ##       will be provided, this is intended for testing purposes.
-  ## 
+  ##
   ##       For **test case generation only**,
   ##       this is preferred to generating random point
   ##       via random scalar multiplication of the curve generator
@@ -135,7 +135,7 @@ func trySetFromCoordsYandZ*[F](
   ##       - scalar multiplication works
   ##       - a generator point is defined
   ##       i.e. you can't test unless everything is already working
-  
+
   var Q{.noInit.}: ECP_TwEdwards_Aff[F]
   result = Q.trySetFromCoordY(y)
 
@@ -158,10 +158,9 @@ func cneg*(P: var ECP_TwEdwards_Prj, ctl: CTBool) {.inline.} =
   ## Negate if ``ctl`` is true
   P.x.cneg(ctl)
 
-func sum*[Field](
-       r: var ECP_TwEdwards_Prj[Field],
-       P, Q: ECP_TwEdwards_Prj[Field]
-     ) =
+func sum*[F](
+       r: var ECP_TwEdwards_Prj[F],
+       P, Q: ECP_TwEdwards_Prj[F]) =
   ## Elliptic curve point addition for Twisted Edwards curves in projective coordinates
   ##
   ##   R = P + Q
@@ -192,24 +191,24 @@ func sum*[Field](
   #   Y3 = A*G*(D-a*C)
   #   Z3 = F*G
   var
-    A{.noInit.}, B{.noInit.}, C{.noInit.}: Field
-    D{.noInit.}, E{.noInit.}, F{.noInit.}: Field
-    G{.noInit.}: Field
+    A{.noInit.}, B{.noInit.}, C{.noInit.}: F
+    D{.noInit.}, E{.noInit.}, F{.noInit.}: F
+    G{.noInit.}: F
 
   A.prod(P.z, Q.z)
   B.square(A)
   C.prod(P.x, Q.x)
   D.prod(P.y, Q.y)
   E.prod(C, D)
-  when Field.C.getCoefD() is int:
+  when F.C.getCoefD() is int:
     # conversion at compile-time
     const coefD = block:
-      var d: Field
-      d.fromInt F.C.getCoefD() 
+      var d: F
+      d.fromInt F.C.getCoefD()
       d
     E *= coefD
   else:
-    E *= Field.C.getCoefD()
+    E *= F.C.getCoefD()
   F.diff(B, E)
   G.sum(B, E)
 
@@ -221,12 +220,12 @@ func sum*[Field](
   E.sum(Q.x, Q.y)
   B *= E          # B = (X1+Y1)*(X2+Y2)
   E.sum(C, D)     # E = C+D
-  
+
   # Y3 = A*G*(D-a*C)
-  when Field.C.getCoefA() == -1:
+  when F.C.getCoefA() == -1:
     r.y = E       # (D-a*C) = D+C
   else:
-    r.y.prod(C, Field.C.getCoefA())
+    r.y.prod(C, F.C.getCoefA())
     r.y.diff(D, r.y)
   r.y *= A
   r.y *= G
@@ -239,10 +238,86 @@ func sum*[Field](
   # Z3 = F*G
   r.z.prod(F, G)
 
-func double*[Field](
-       r: var ECP_TwEdwards_Prj[Field],
-       P: ECP_TwEdwards_Prj[Field]
-     ) =
+func madd*[F](
+       r: var ECP_TwEdwards_Prj[F],
+       P: ECP_TwEdwards_Prj[F],
+       Q: ECP_TwEdwards_Aff[F]) =
+  ## Elliptic curve point mixed addition for Twisted Edwards curves in projective coordinates
+  ##
+  ##   R = P + Q
+  ##
+  ## Twisted Edwards curves have the following equation in projective coordinates
+  ##   (aX² + Y²)Z² = Z⁴ + dX²Y²
+  ## from the affine equation
+  ##   ax²+y²=1+dx²y²
+  ##
+  ## ``r`` is initialized/overwritten with the sum
+  ## ``r`` may alias P
+  ##
+  ## Implementation is constant-time, in particular it will not expose
+  ## that P == Q or P == -Q or P or Q are the infinity points
+  ## to simple side-channel attacks (SCA)
+  ## This is done by using a "complete" or "exception-free" addition law.
+  #
+  # https://www.hyperelliptic.org/EFD/g1p/auto-twisted-projective.html#addition-madd-2008-bbjlp
+  # Cost: 9M + 1S + 1*a + 1*d + 7add.
+  #   B = Z1²
+  #   C = X1*X2
+  #   D = Y1*Y2
+  #   E = d*C*D
+  #   F = B-E
+  #   G = B+E
+  #   X3 = Z1*F*((X1+Y1)*(X2+Y2)-C-D)
+  #   Y3 = Z1*G*(D-a*C)
+  #   Z3 = F*G
+  var
+    B{.noInit.}, C{.noInit.}: F
+    D{.noInit.}, E{.noInit.}, F{.noInit.}: F
+    G{.noInit.}: F
+
+  B.square(P.z)
+  C.prod(P.x, Q.x)
+  D.prod(P.y, Q.y)
+  E.prod(C, D)
+  when F.C.getCoefD() is int:
+    # conversion at compile-time
+    const coefD = block:
+      var d: F
+      d.fromInt F.C.getCoefD()
+      d
+    E *= coefD
+  else:
+    E *= F.C.getCoefD()
+  F.diff(B, E)
+  G.sum(B, E)
+
+  # Aliasing: B and E are unused
+  # We store (P.x+P.y)*(Q.x+Q.y)
+  # so that using r.x or r.y is safe even in case of aliasing
+
+  B.sum(P.x, P.y)
+  E.sum(Q.x, Q.y)
+  B *= E          # B = (X1+Y1)*(X2+Y2)
+  E.sum(C, D)     # E = C+D
+
+  # Y3 = A*G*(D-a*C)
+  when F.C.getCoefA() == -1:
+    r.y = E       # (D-a*C) = D+C
+  else:
+    r.y.prod(C, F.C.getCoefA())
+    r.y.diff(D, r.y)
+  r.y *= P.z
+  r.y *= G
+
+  # X3 = A*F*((X1+Y1)*(X2+Y2)-C-D)
+  B -= E
+  r.x.prod(P.z, F)
+  r.x *= B
+
+  # Z3 = F*G
+  r.z.prod(F, G)
+
+func double*[F](r: var ECP_TwEdwards_Prj[F], P: ECP_TwEdwards_Prj[F]) =
   ## Elliptic curve point doubling for Twisted Edwards curves in projective coordinates
   ##
   ##   R = [2] P
@@ -261,7 +336,7 @@ func double*[Field](
   ## This is done by using a "complete" or "exception-free" addition law.
   #
   # https://www.hyperelliptic.org/EFD/g1p/auto-twisted-projective.html#addition-add-2008-bbjlp
-  # Cost: 3M + 4S + 1*a + 6add + 1*2. 
+  # Cost: 3M + 4S + 1*a + 6add + 1*2.
   #  B = (X1+Y1)²
   #  C = X1²
   #  D = Y1²
@@ -274,9 +349,9 @@ func double*[Field](
   #  Z3 = F*J
 
   var
-    D{.noInit.}, E{.noInit.}: Field
-    H{.noInit.}, J{.noInit.}: FIeld
-  
+    D{.noInit.}, E{.noInit.}: F
+    H{.noInit.}, J{.noInit.}: F
+
   # (B-C-D) => 2X1Y1, but With squaring and 2 substractions instead of mul + addition
   # In practice, squaring is not cheap enough to compasate the extra substraction cost.
   E.square(P.x)
@@ -284,7 +359,7 @@ func double*[Field](
   r.x.double()
 
   D.square(P.y)
-  E *= Field.C.getCoefA()
+  E *= F.C.getCoefA()
 
   r.y.sum(E, D)    # Ry stores F = E+D
   H.square(P.z)
@@ -300,18 +375,35 @@ func `+=`*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Prj) {.inline.} =
   ## In-place point addition
   P.sum(P, Q)
 
+func `+=`*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Aff) {.inline.} =
+  ## In-place point mixed addition
+  P.madd(P, Q)
+
 func double*(P: var ECP_TwEdwards_Prj) {.inline.} =
   ## In-place EC doubling
   P.double(P)
 
-func diff*(r: var ECP_TwEdwards_Prj,
-              P, Q: ECP_TwEdwards_Prj
-     ) {.inline.} =
+func diff*(r: var ECP_TwEdwards_Prj, P, Q: ECP_TwEdwards_Prj) {.inline.} =
   ## r = P - Q
   ## Can handle r and Q aliasing
   var nQ {.noInit.}: typeof(Q)
   nQ.neg(Q)
   r.sum(P, nQ)
+
+func msub*(r: var ECP_TwEdwards_Prj, P: ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Aff) {.inline.} =
+  ## r = P - Q
+  ## Can handle r and Q aliasing
+  var nQ {.noInit.}: typeof(Q)
+  nQ.neg(Q)
+  r.madd(P, nQ)
+
+func `-=`*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Prj) {.inline.} =
+  ## In-place point substraction
+  P.diff(P, Q)
+
+func `-=`*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Aff) {.inline.} =
+  ## In-place point substraction
+  P.msub(P, Q)
 
 template affine*[F](_: type ECP_TwEdwards_Prj[F]): typedesc =
   ## Returns the affine type that corresponds to the Jacobian type input
@@ -337,6 +429,46 @@ func fromAffine*[F](
   proj.y = aff.y
   proj.z.setOne()
 
+# Vartime overloading
+# ------------------------------------------------------------
+# For generic vartime operations on both ShortWeierstrass curves and Twisted Edwards
+
+func sum_vartime*[F](
+       r: var ECP_TwEdwards_Prj[F],
+       P, Q: ECP_TwEdwards_Prj[F]) {.inline.} =
+  r.sum(P, Q)
+
+func madd_vartime*[F](
+       r: var ECP_TwEdwards_Prj[F],
+       P: ECP_TwEdwards_Prj[F],
+       Q: ECP_TwEdwards_Aff[F]) {.inline.} =
+  r.madd(P, Q)
+
+func diff_vartime*[F](
+       r: var ECP_TwEdwards_Prj[F],
+       P, Q: ECP_TwEdwards_Prj[F]) {.inline.} =
+  r.diff(P, Q)
+
+func msub_vartime*[F](
+       r: var ECP_TwEdwards_Prj[F],
+       P: ECP_TwEdwards_Prj[F],
+       Q: ECP_TwEdwards_Aff[F]) {.inline.} =
+  r.msub(P, Q)
+
+template `~+=`*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Prj) =
+  ## Variable-time in-place point addition
+  P.sum_vartime(P, Q)
+
+template `~+=`*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Aff) =
+  ## Variable-time in-place point mixed addition
+  P.madd_vartime(P, Q)
+
+template `~-=`*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Prj) =
+  P.diff_vartime(P, Q)
+
+template `~-=`*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Aff) =
+  P.msub_vartime(P, Q)
+
 # ############################################################
 #
 #              Banderwagon Specific Operations
@@ -347,9 +479,9 @@ func `==`*(P, Q: ECP_TwEdwards_Prj[Fp[Banderwagon]]): SecretBool =
   ## Equality check for points in the Banderwagon Group
   ## The equality check is optimized for the quotient group
   ## see: https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Equality-check
-  ## 
+  ##
   ## Check for the (0,0) point, which is possible
-  ## 
+  ##
   ## This is a costly operation
 
   var lhs{.noInit.}, rhs{.noInit.}: typeof(P).F

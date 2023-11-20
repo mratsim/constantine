@@ -35,9 +35,9 @@ export bestBucketBitSize
 #
 # See the litterature references at the top of `ec_multi_scalar_mul_scheduler.nim`
 
-func multiScalarMulImpl_reference_vartime[F, G; bits: static int](
-       r: var ECP_ShortW[F, G],
-       coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
+func multiScalarMulImpl_reference_vartime[bits: static int, EC, ECaff](
+       r: var EC,
+       coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECaff],
        N: int, c: static int) {.tags:[VarTime, HeapAlloc].} =
   ## Inner implementation of MSM, for static dispatch over c, the bucket bit length
   ## This is a straightforward simple translation of BDLO12, section 4
@@ -46,7 +46,6 @@ func multiScalarMulImpl_reference_vartime[F, G; bits: static int](
   # --------
   const numBuckets = 1 shl c - 1 # bucket 0 is unused
   const numWindows = bits.ceilDiv_vartime(c)
-  type EC = typeof(r)
 
   let miniMSMs = allocHeapArray(EC, numWindows)
   let buckets = allocHeapArray(EC, numBuckets)
@@ -65,7 +64,7 @@ func multiScalarMulImpl_reference_vartime[F, G; bits: static int](
       if b == 0: # bucket 0 is unused, no need to add [0]Pⱼ
         continue
       else:
-        buckets[b-1] += points[j]
+        buckets[b-1] ~+= points[j]
 
     # 2. Bucket reduction.                               Cost: 2x(2ᶜ-2) => 2 additions per 2ᶜ-1 bucket, last bucket is just copied
     # We have ordered subset sums in each bucket, we now need to compute the mini-MSM
@@ -76,8 +75,8 @@ func multiScalarMulImpl_reference_vartime[F, G; bits: static int](
 
     # Example with c = 3, 2³ = 8
     for k in countdown(numBuckets-2, 0):
-      accumBuckets.sum_vartime(accumBuckets, buckets[k]) # Stores S₈ then    S₈+S₇ then       S₈+S₇+S₆ then ...
-      miniMSM.sum_vartime(miniMSM, accumBuckets)         # Stores S₈ then [2]S₈+S₇ then [3]S₈+[2]S₇+S₆ then ...
+      accumBuckets ~+= buckets[k] # Stores S₈ then    S₈+S₇ then       S₈+S₇+S₆ then ...
+      miniMSM ~+= accumBuckets    # Stores S₈ then [2]S₈+S₇ then [3]S₈+[2]S₇+S₆ then ...
 
     miniMSMs[w] = miniMSM
 
@@ -86,14 +85,14 @@ func multiScalarMulImpl_reference_vartime[F, G; bits: static int](
   for w in countdown(numWindows-2, 0):
     for _ in 0 ..< c:
       r.double()
-    r.sum_vartime(r, miniMSMs[w])
+    r ~+= miniMSMs[w]
 
   # Cleanup
   # -------
   buckets.freeHeap()
   miniMSMs.freeHeap()
 
-func multiScalarMul_reference_vartime*[EC](r: var EC, coefs: openArray[BigInt], points: openArray[ECP_ShortW_Aff]) {.tags:[VarTime, HeapAlloc].} =
+func multiScalarMul_reference_vartime*[EC, ECaff](r: var EC, coefs: openArray[BigInt], points: openArray[ECaff]) {.tags:[VarTime, HeapAlloc].} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
   debug: doAssert coefs.len == points.len
@@ -134,14 +133,14 @@ func multiScalarMul_reference_vartime*[EC](r: var EC, coefs: openArray[BigInt], 
 # There are ways to avoid FFTs, none to avoid Multi-Scalar-Multiplication
 # Hence optimizing it is worth millions, see https://zprize.io
 
-func accumulate[F, G](buckets: ptr UncheckedArray[ECP_ShortW_JacExt[F, G]], val: SecretWord, negate: SecretBool, point: ECP_ShortW_Aff[F, G]) {.inline, meter.} =
+func accumulate[EC, ECaff](buckets: ptr UncheckedArray[EC], val: SecretWord, negate: SecretBool, point: ECaff) {.inline, meter.} =
   let val = BaseType(val)
   if val == 0: # Skip [0]P
     return
   elif negate.bool:
-    buckets[val-1] -= point
+    buckets[val-1] ~-= point
   else:
-    buckets[val-1] += point
+    buckets[val-1] ~+= point
 
 func bucketReduce[EC](r: var EC, buckets: ptr UncheckedArray[EC], numBuckets: static int) {.meter.} =
   # We interleave reduction with zero-ing the bucket to use instruction-level parallelism
@@ -152,8 +151,8 @@ func bucketReduce[EC](r: var EC, buckets: ptr UncheckedArray[EC], numBuckets: st
   buckets[numBuckets-1].setInf()
 
   for k in countdown(numBuckets-2, 0):
-    accumBuckets.sum_vartime(accumBuckets, buckets[k])
-    r.sum_vartime(r, accumBuckets)
+    accumBuckets ~+= buckets[k]
+    r ~+= accumBuckets
     buckets[k].setInf()
 
 type MiniMsmKind* = enum
@@ -161,11 +160,11 @@ type MiniMsmKind* = enum
   kFullWindow
   kBottomWindow
 
-func bucketAccumReduce_jacext*[F, G; bits: static int](
-       r: var ECP_ShortW[F, G],
-       buckets: ptr UncheckedArray[ECP_ShortW_JacExt[F, G]],
+func bucketAccumReduce*[bits: static int, EC, ECaff](
+       r: var EC,
+       buckets: ptr UncheckedArray[EC],
        bitIndex: int, miniMsmKind: static MiniMsmKind, c: static int,
-       coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], N: int) =
+       coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECaff], N: int) =
 
   const excess = bits mod c
   const top = bits - excess
@@ -192,33 +191,30 @@ func bucketAccumReduce_jacext*[F, G; bits: static int](
   buckets.accumulate(curVal, curNeg, points[N-1])
 
   # 2. Bucket Reduction
-  var windowSum{.noinit.}: ECP_ShortW_JacExt[F, G]
-  windowSum.bucketReduce(buckets, numBuckets = 1 shl (c-1))
+  r.bucketReduce(buckets, numBuckets = 1 shl (c-1))
 
-  r.fromJacobianExtended_vartime(windowSum)
-
-func miniMSM_jacext[F, G; bits: static int](
-       r: var ECP_ShortW[F, G],
-       buckets: ptr UncheckedArray[ECP_ShortW_JacExt[F, G]],
+func miniMSM[bits: static int, EC, ECaff](
+       r: var EC,
+       buckets: ptr UncheckedArray[EC],
        bitIndex: int, miniMsmKind: static MiniMsmKind, c: static int,
-       coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], N: int) {.meter.} =
+       coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECaff], N: int) {.meter.} =
   ## Apply a mini-Multi-Scalar-Multiplication on [bitIndex, bitIndex+window)
   ## slice of all (coef, point) pairs
 
   var windowSum{.noInit.}: typeof(r)
-  windowSum.bucketAccumReduce_jacext(
+  windowSum.bucketAccumReduce(
     buckets, bitIndex, miniMsmKind, c,
     coefs, points, N)
 
   # 3. Mini-MSM on the slice [bitIndex, bitIndex+window)
-  r.sum_vartime(r, windowSum)
+  r ~+= windowSum
   when miniMsmKind != kBottomWindow:
     for _ in 0 ..< c:
       r.double()
 
-func multiScalarMulJacExt_vartime*[F, G; bits: static int](
-       r: var ECP_ShortW[F, G],
-       coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
+func multiScalarMul_vartime*[bits: static int, EC, ECaff](
+       r: var EC,
+       coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECaff],
        N: int, c: static int) {.tags:[VarTime, HeapAlloc], meter.} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
@@ -226,10 +222,9 @@ func multiScalarMulJacExt_vartime*[F, G; bits: static int](
   # Setup
   # -----
   const numBuckets = 1 shl (c-1)
-  type EcBucket = ECP_ShortW_JacExt[F, G]
 
-  let buckets = allocHeapArray(EcBucket, numBuckets)
-  zeroMem(buckets[0].addr, sizeof(EcBucket) * numBuckets)
+  let buckets = allocHeapArray(EC, numBuckets)
+  zeroMem(buckets[0].addr, sizeof(EC) * numBuckets)
 
   # Algorithm
   # ---------
@@ -240,7 +235,7 @@ func multiScalarMulJacExt_vartime*[F, G; bits: static int](
 
   when top != 0:      # Prologue
     when excess != 0:
-      r.miniMSM_jacext(buckets, w, kTopWindow, c, coefs, points, N)
+      r.miniMSM(buckets, w, kTopWindow, c, coefs, points, N)
       w -= c
     else:
       # If c divides bits exactly, the signed windowed recoding still needs to see an extra 0
@@ -248,11 +243,11 @@ func multiScalarMulJacExt_vartime*[F, G; bits: static int](
       w -= c
 
   while w != 0:       # Steady state
-    r.miniMSM_jacext(buckets, w, kFullWindow, c, coefs, points, N)
+    r.miniMSM(buckets, w, kFullWindow, c, coefs, points, N)
     w -= c
 
   block:              # Epilogue
-    r.miniMSM_jacext(buckets, w, kBottomWindow, c, coefs, points, N)
+    r.miniMSM(buckets, w, kBottomWindow, c, coefs, points, N)
 
   # Cleanup
   # -------
@@ -285,9 +280,9 @@ func schedAccumulate*[NumBuckets, QueueLen, F, G; bits: static int](
   sched.schedule(curSP)
   sched.flushPendingAndReset()
 
-func miniMSM_affine[NumBuckets, QueueLen, F, G; bits: static int](
-       r: var ECP_ShortW[F, G],
-       sched: ptr Scheduler[NumBuckets, QueueLen, F, G],
+func miniMSM_affine[NumBuckets, QueueLen, EC, ECaff; bits: static int](
+       r: var EC,
+       sched: ptr Scheduler[NumBuckets, QueueLen, EC, ECaff],
        bitIndex: int, miniMsmKind: static MiniMsmKind, c: static int,
        coefs: ptr UncheckedArray[BigInt[bits]], N: int) {.meter.} =
   ## Apply a mini-Multi-Scalar-Multiplication on [bitIndex, bitIndex+window)
@@ -297,21 +292,19 @@ func miniMSM_affine[NumBuckets, QueueLen, F, G; bits: static int](
   sched.schedAccumulate(bitIndex, miniMsmKind, c, coefs, N)
 
   # 2. Bucket Reduction
-  var windowSum_jacext{.noInit.}: ECP_ShortW_JacExt[F, G]
-  windowSum_jacext.bucketReduce(sched.buckets)
+  var windowSum{.noInit.}: EC
+  windowSum.bucketReduce(sched.buckets)
 
   # 3. Mini-MSM on the slice [bitIndex, bitIndex+window)
-  var windowSum{.noInit.}: typeof(r)
-  windowSum.fromJacobianExtended_vartime(windowSum_jacext)
-  r.sum_vartime(r, windowSum)
+  r ~+= windowSum
 
   when miniMsmKind != kBottomWindow:
     for _ in 0 ..< c:
       r.double()
 
-func multiScalarMulAffine_vartime[F, G; bits: static int](
-       r: var ECP_ShortW[F, G],
-       coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
+func multiScalarMulAffine_vartime[bits: static int, EC, ECaff](
+       r: var EC,
+       coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECaff],
        N: int, c: static int) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
@@ -319,8 +312,8 @@ func multiScalarMulAffine_vartime[F, G; bits: static int](
   # Setup
   # -----
   const (numBuckets, queueLen) = c.deriveSchedulerConstants()
-  let buckets = allocHeap(Buckets[numBuckets, F, G])
-  let sched = allocHeap(Scheduler[numBuckets, queueLen, F, G])
+  let buckets = allocHeap(Buckets[numBuckets, EC, ECaff])
+  let sched = allocHeap(Scheduler[numBuckets, queueLen, EC, ECaff])
   sched.init(points, buckets, 0, numBuckets.int32)
 
   # Algorithm
@@ -333,8 +326,8 @@ func multiScalarMulAffine_vartime[F, G; bits: static int](
   when top != 0:      # Prologue
     when excess != 0:
       # The top might use only a few bits, the affine scheduler would likely have significant collisions
-      zeroMem(sched.buckets.ptJacExt.addr, buckets.ptJacExt.sizeof())
-      r.miniMSM_jacext(sched.buckets.ptJacExt.asUnchecked(), w, kTopWindow, c, coefs, points, N)
+      zeroMem(sched.buckets.pt.addr, buckets.pt.sizeof())
+      r.miniMSM(sched.buckets.pt.asUnchecked(), w, kTopWindow, c, coefs, points, N)
       w -= c
     else:
       # If c divides bits exactly, the signed windowed recoding still needs to see an extra 0
@@ -353,32 +346,32 @@ func multiScalarMulAffine_vartime[F, G; bits: static int](
   sched.freeHeap()
   buckets.freeHeap()
 
-proc applyEndomorphism[bits: static int, F, G](
+proc applyEndomorphism[bits: static int, ECaff](
        coefs: ptr UncheckedArray[BigInt[bits]],
-       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
+       points: ptr UncheckedArray[ECaff],
        N: int): auto =
   ## Decompose (coefs, points) into mini-scalars
   ## Returns a new triplet (endoCoefs, endoPoints, N)
   ## endoCoefs and endoPoints MUST be freed afterwards
 
-  const M = when F is Fp:  2
-            elif F is Fp2: 4
+  const M = when ECaff.F is Fp:  2
+            elif ECaff.F is Fp2: 4
             else: {.error: "Unconfigured".}
 
   const L = bits.ceilDiv_vartime(M) + 1
   let splitCoefs   = allocHeapArray(array[M, BigInt[L]], N)
-  let endoBasis    = allocHeapArray(array[M, ECP_ShortW_Aff[F, G]], N)
+  let endoBasis    = allocHeapArray(array[M, ECaff], N)
 
   for i in 0 ..< N:
     var negatePoints {.noinit.}: array[M, SecretBool]
-    splitCoefs[i].decomposeEndo(negatePoints, coefs[i], F)
+    splitCoefs[i].decomposeEndo(negatePoints, coefs[i], ECaff.F)
     if negatePoints[0].bool:
       endoBasis[i][0].neg(points[i])
     else:
       endoBasis[i][0] = points[i]
 
-    when F is Fp:
-      endoBasis[i][1].x.prod(points[i].x, F.C.getCubicRootOfUnity_mod_p())
+    when ECaff.F is Fp:
+      endoBasis[i][1].x.prod(points[i].x, ECaff.F.C.getCubicRootOfUnity_mod_p())
       if negatePoints[1].bool:
         endoBasis[i][1].y.neg(points[i].y)
       else:
@@ -390,17 +383,17 @@ proc applyEndomorphism[bits: static int, F, G](
           endoBasis[i][m].neg()
 
   let endoCoefs = cast[ptr UncheckedArray[BigInt[L]]](splitCoefs)
-  let endoPoints  = cast[ptr UncheckedArray[ECP_ShortW_Aff[F, G]]](endoBasis)
+  let endoPoints  = cast[ptr UncheckedArray[ECaff]](endoBasis)
 
   return (endoCoefs, endoPoints, M*N)
 
-template withEndo[bits: static int, F, G](
+template withEndo[bits: static int, EC, ECaff](
            msmProc: untyped,
-           r: var ECP_ShortW[F, G],
+           r: var EC,
            coefs: ptr UncheckedArray[BigInt[bits]],
-           points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
+           points: ptr UncheckedArray[ECaff],
            N: int, c: static int) =
-  when bits <= F.C.getCurveOrderBitwidth() and hasEndomorphismAcceleration(F.C):
+  when bits <= EC.F.C.getCurveOrderBitwidth() and hasEndomorphismAcceleration(EC.F.C):
     let (endoCoefs, endoPoints, endoN) = applyEndomorphism(coefs, points, N)
     # Given that bits and N changed, we are able to use a bigger `c`
     # but it has no significant impact on performance
@@ -411,7 +404,8 @@ template withEndo[bits: static int, F, G](
     msmProc(r, coefs, points, N, c)
 
 func multiScalarMul_dispatch_vartime[bits: static int, F, G](
-       r: var ECP_ShortW[F, G], coefs: ptr UncheckedArray[BigInt[bits]],
+       r: var (ECP_ShortW_Jac[F, G] or ECP_ShortW_Prj[F, G]),
+       coefs: ptr UncheckedArray[BigInt[bits]],
        points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], N: int) =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
@@ -422,13 +416,13 @@ func multiScalarMul_dispatch_vartime[bits: static int, F, G](
   # but it has no significant impact on performance
 
   case c
-  of  2: withEndo(multiScalarMulJacExt_vartime, r, coefs, points, N, c =  2)
-  of  3: withEndo(multiScalarMulJacExt_vartime, r, coefs, points, N, c =  3)
-  of  4: withEndo(multiScalarMulJacExt_vartime, r, coefs, points, N, c =  4)
-  of  5: withEndo(multiScalarMulJacExt_vartime, r, coefs, points, N, c =  5)
-  of  6: withEndo(multiScalarMulJacExt_vartime, r, coefs, points, N, c =  6)
-  of  7: withEndo(multiScalarMulJacExt_vartime, r, coefs, points, N, c =  7)
-  of  8: withEndo(multiScalarMulJacExt_vartime, r, coefs, points, N, c =  8)
+  of  2: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  2)
+  of  3: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  3)
+  of  4: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  4)
+  of  5: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  5)
+  of  6: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  6)
+  of  7: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  7)
+  of  8: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  8)
 
   of  9: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c =  9)
   of 10: withEndo(multiScalarMulAffine_vartime, r, coefs, points, N, c = 10)
@@ -442,20 +436,53 @@ func multiScalarMul_dispatch_vartime[bits: static int, F, G](
   else:
     unreachable()
 
-func multiScalarMul_vartime*[bits: static int, F, G](
-       r: var ECP_ShortW[F, G],
+func multiScalarMul_dispatch_vartime[bits: static int, F](
+       r: var ECP_TwEdwards_Prj[F], coefs: ptr UncheckedArray[BigInt[bits]],
+       points: ptr UncheckedArray[ECP_TwEdwards_Aff[F]], N: int) =
+  ## Multiscalar multiplication:
+  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
+
+  # TODO: tune for Twisted Edwards
+  let c = bestBucketBitSize(N, bits, useSignedBuckets = true, useManualTuning = true)
+
+  # Given that bits and N change after applying an endomorphism,
+  # we are able to use a bigger `c`
+  # but it has no significant impact on performance
+
+  case c
+  of  2: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  2)
+  of  3: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  3)
+  of  4: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  4)
+  of  5: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  5)
+  of  6: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  6)
+  of  7: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  7)
+  of  8: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  8)
+  of  9: withEndo(multiScalarMul_vartime, r, coefs, points, N, c =  9)
+  of 10: withEndo(multiScalarMul_vartime, r, coefs, points, N, c = 10)
+  of 11: withEndo(multiScalarMul_vartime, r, coefs, points, N, c = 11)
+  of 12: withEndo(multiScalarMul_vartime, r, coefs, points, N, c = 12)
+  of 13: withEndo(multiScalarMul_vartime, r, coefs, points, N, c = 13)
+  of 14: multiScalarMul_vartime(r, coefs, points, N, c = 14)
+  of 15: multiScalarMul_vartime(r, coefs, points, N, c = 15)
+
+  of 16..17: multiScalarMul_vartime(r, coefs, points, N, c = 16)
+  else:
+    unreachable()
+
+func multiScalarMul_vartime*[bits: static int, EC, ECaff](
+       r: var EC,
        coefs: ptr UncheckedArray[BigInt[bits]],
-       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
+       points: ptr UncheckedArray[ECaff],
        len: int) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
 
   multiScalarMul_dispatch_vartime(r, coefs, points, len)
 
-func multiScalarMul_vartime*[bits: static int, F, G](
-       r: var ECP_ShortW[F, G],
+func multiScalarMul_vartime*[bits: static int, EC, ECaff](
+       r: var EC,
        coefs: openArray[BigInt[bits]],
-       points: openArray[ECP_ShortW_Aff[F, G]]) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
+       points: openArray[ECaff]) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
 

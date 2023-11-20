@@ -9,6 +9,7 @@
 import
   # Internals
   ../config/curves,
+  ./bandersnatch_subgroups,
   ./bls12_377_subgroups,
   ./bls12_381_subgroups,
   ./bn254_nogami_subgroups,
@@ -19,6 +20,7 @@ import
   ./secp256k1_subgroups
 
 export
+  bandersnatch_subgroups,
   bls12_377_subgroups,
   bls12_381_subgroups,
   bn254_nogami_subgroups,

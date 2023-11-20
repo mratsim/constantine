@@ -10,11 +10,14 @@ import
   ../../platforms/abstractions,
   ../arithmetic,
   ../ec_shortweierstrass,
-  ./ec_shortweierstrass_jacobian_extended,
-  ./ec_shortweierstrass_batch_ops
+  ./ec_shortweierstrass_batch_ops,
+  ./ec_twistededwards_projective,
+  ./ec_twistededwards_affine
 
 export abstractions, arithmetic,
-       ec_shortweierstrass, ec_shortweierstrass_jacobian_extended
+       ec_shortweierstrass,
+       ec_twistededwards_projective,
+       ec_twistededwards_affine
 
 # No exceptions allowed in core cryptographic operations
 {.push raises: [].}
@@ -183,6 +186,7 @@ func bestBucketBitSize*(inputSize: int, scalarBitwidth: static int, useSignedBuc
   # A doubling costs 50% of an addition with jacobian coordinates
   # and between 60% (BLS12-381 G1) to 66% (BN254-Snarks G1)
 
+  # TODO: tuning for Twisted Edwards
   const A = 10'f32  # Addition cost
   const D =  6'f32  # Doubling cost
 
@@ -212,18 +216,6 @@ func bestBucketBitSize*(inputSize: int, scalarBitwidth: static int, useSignedBuc
     if 16 <= result:
       result -= 1
 
-# Extended Jacobian generic bindings
-# ----------------------------------
-# All vartime procedures MUST be tagged vartime
-# Hence we do not expose `sum` or `+=` for extended jacobian operation to prevent `vartime` mistakes
-# we create a local `sum` or `+=` for this module only
-func `+=`*[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_JacExt[F, G]) {.inline.}=
-  P.sum_vartime(P, Q)
-func `+=`*[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_Aff[F, G]) {.inline.}=
-  P.madd_vartime(P, Q)
-func `-=`*[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_Aff[F, G]) {.inline.}=
-  P.msub_vartime(P, Q)
-
 # ########################################################### #
 #                                                             #
 #                       Scheduler                             #
@@ -235,12 +227,12 @@ func `-=`*[F; G: static Subgroup](P: var ECP_ShortW_JacExt[F, G], Q: ECP_ShortW_
 
 type
   BucketStatus* = enum
-    kAffine, kJacExt
+    kAffine, kNonAffine
 
-  Buckets*[N: static int, F; G: static Subgroup] = object
+  Buckets*[N: static int, EC, ECaff] = object
     status*:   array[N, set[BucketStatus]]
-    ptAff*:    array[N, ECP_ShortW_Aff[F, G]]
-    ptJacExt*: array[N, ECP_ShortW_JacExt[F, G]] # Public for the top window
+    ptAff*:    array[N, ECaff]
+    pt*:       array[N, EC]
 
   ScheduledPoint* = object
     # Note: we cannot compute the size at compile-time due to https://github.com/nim-lang/Nim/issues/19040
@@ -248,9 +240,9 @@ type
     sign    {.bitsize: 1.}: int64
     pointID {.bitsize:37.}: int64 # Supports up to 2³⁷ = 137 438 953 472 points
 
-  Scheduler*[NumNZBuckets, QueueLen: static int, F; G: static Subgroup] = object
-    points:                        ptr UncheckedArray[ECP_ShortW_Aff[F, G]]
-    buckets*:                      ptr Buckets[NumNZBuckets, F, G]
+  Scheduler*[NumNZBuckets, QueueLen: static int, EC, ECaff] = object
+    points:                        ptr UncheckedArray[ECaff]
+    buckets*:                      ptr Buckets[NumNZBuckets, EC, ECaff]
     start, stopEx:                 int32                # Bucket range
     numScheduled, numCollisions:   int32
     collisionsMap:                 BigInt[NumNZBuckets] # We use a BigInt as a bitmap, when all you have is an axe ...
@@ -270,9 +262,9 @@ func deriveSchedulerConstants*(c: int): tuple[numNZBuckets, queueLen: int] {.com
   result.numNZBuckets = 1 shl (c-1)
   result.queueLen = max(MinVectorAddThreshold, 4*c*c - 16*c - 128)
 
-func init*[NumNZBuckets, QueueLen: static int, F; G: static Subgroup](
-      sched: ptr Scheduler[NumNZBuckets, QueueLen, F, G], points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
-      buckets: ptr Buckets[NumNZBuckets, F, G], start, stopEx: int32) {.inline.} =
+func init*[NumNZBuckets, QueueLen: static int, EC, ECaff](
+      sched: ptr Scheduler[NumNZBuckets, QueueLen, EC, ECaff], points: ptr UncheckedArray[ECaff],
+      buckets: ptr Buckets[NumNZBuckets, EC, ECaff], start, stopEx: int32) {.inline.} =
   ## init a scheduler overseeing buckets [start, stopEx)
   ## within the indices [0, NumNZBuckets). Bucket for value 0 is considered at index -1.
   sched.points        =  points
@@ -298,10 +290,10 @@ func enqueuePoint(sched: ptr Scheduler, sp: ScheduledPoint) {.inline.} =
 
 func handleCollision(sched: ptr Scheduler, sp: ScheduledPoint)
 func rescheduleCollisions(sched: ptr Scheduler)
-func sparseVectorAddition[F, G](
-       buckets:         ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
+func sparseVectorAddition[ECaff](
+       buckets:         ptr UncheckedArray[ECaff],
        bucketStatuses:  ptr UncheckedArray[set[BucketStatus]],
-       points:          ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
+       points:          ptr UncheckedArray[ECaff],
        scheduledPoints: ptr UncheckedArray[ScheduledPoint],
        numScheduled:    int32) {.noInline, tags:[VarTime, Alloca].}
 
@@ -310,9 +302,12 @@ func prefetch*(sched: ptr Scheduler, sp: ScheduledPoint) =
   if bucket == -1:
     return
 
+  const cachelinesAff = min(1, sizeof(Scheduler.ECaff) shr 6) # div 64
+  const cachelinesPoint = min(1, sizeof(Scheduler.EC) shr 6) # div 64
+
   prefetch(sched.buckets.status[bucket].addr, Write, HighTemporalLocality)
-  prefetchLarge(sched.buckets.ptAff[bucket].addr, Write, HighTemporalLocality, maxCacheLines = 1)
-  prefetchLarge(sched.buckets.ptJacExt[bucket].addr, Write, HighTemporalLocality, maxCacheLines = 1)
+  prefetchLarge(sched.buckets.ptAff[bucket].addr, Write, HighTemporalLocality, maxCacheLines = cachelinesAff)
+  prefetchLarge(sched.buckets.pt[bucket].addr, Write, HighTemporalLocality, maxCacheLines = cachelinesPoint)
 
 func schedule*(sched: ptr Scheduler, sp: ScheduledPoint) =
   ## Schedule a point for accumulating in buckets
@@ -350,17 +345,17 @@ func handleCollision(sched: ptr Scheduler, sp: ScheduledPoint) =
     return
 
   # If we want to optimize for a workload were many multipliers are the same, it's here
-  if kJacExt notin sched.buckets.status[sp.bucket]:
-    sched.buckets.ptJacExt[sp.bucket].fromAffine(sched.points[sp.pointID])
+  if kNonAffine notin sched.buckets.status[sp.bucket]:
+    sched.buckets.pt[sp.bucket].fromAffine(sched.points[sp.pointID])
     if sp.sign != 0:
-      sched.buckets.ptJacExt[sp.bucket].neg()
-    sched.buckets.status[sp.bucket].incl(kJacExt)
+      sched.buckets.pt[sp.bucket].neg()
+    sched.buckets.status[sp.bucket].incl(kNonAffine)
     return
 
   if sp.sign == 0:
-    sched.buckets.ptJacExt[sp.bucket] += sched.points[sp.pointID]
+    sched.buckets.pt[sp.bucket] ~+= sched.points[sp.pointID]
   else:
-    sched.buckets.ptJacExt[sp.bucket] -= sched.points[sp.pointID]
+    sched.buckets.pt[sp.bucket] ~-= sched.points[sp.pointID]
 
 func rescheduleCollisions(sched: ptr Scheduler) =
   template last: untyped = sched.numCollisions-1
@@ -377,16 +372,16 @@ func rescheduleCollisions(sched: ptr Scheduler) =
 func flushBuffer(sched: ptr Scheduler, buf: ptr UncheckedArray[ScheduledPoint], count: var int32) =
   for i in 0 ..< count:
     let sp = buf[i]
-    if kJacExt in sched.buckets.status[sp.bucket]:
+    if kNonAffine in sched.buckets.status[sp.bucket]:
       if sp.sign == 0:
-        sched.buckets.ptJacExt[sp.bucket] += sched.points[sp.pointID]
+        sched.buckets.pt[sp.bucket] ~+= sched.points[sp.pointID]
       else:
-        sched.buckets.ptJacExt[sp.bucket] -= sched.points[sp.pointID]
+        sched.buckets.pt[sp.bucket] ~-= sched.points[sp.pointID]
     else:
-      sched.buckets.ptJacExt[sp.bucket].fromAffine(sched.points[sp.pointID])
+      sched.buckets.pt[sp.bucket].fromAffine(sched.points[sp.pointID])
       if sp.sign != 0:
-        sched.buckets.ptJacExt[sp.bucket].neg()
-      sched.buckets.status[sp.bucket].incl(kJacExt)
+        sched.buckets.pt[sp.bucket].neg()
+      sched.buckets.status[sp.bucket].incl(kNonAffine)
   count = 0
 
 func flushPendingAndReset*(sched: ptr Scheduler) =
@@ -410,10 +405,10 @@ func flushPendingAndReset*(sched: ptr Scheduler) =
 #                                                             #
 # ########################################################### #
 
-func sparseVectorAddition[F, G](
-       buckets: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
+func sparseVectorAddition[ECaff](
+       buckets: ptr UncheckedArray[ECaff],
        bucketStatuses: ptr UncheckedArray[set[BucketStatus]],
-       points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]],
+       points: ptr UncheckedArray[ECaff],
        scheduledPoints: ptr UncheckedArray[ScheduledPoint],
        numScheduled: int32
       ) {.noInline, tags:[VarTime, Alloca].} =
@@ -432,6 +427,8 @@ func sparseVectorAddition[F, G](
 
   type SpecialCase = enum
     kRegular, kInfLhs, kInfRhs, kOpposite
+
+  type F = ECaff.F
 
   let lambdas = allocStackArray(tuple[num, den: F], numScheduled)
   let accumDen = allocStackArray(F, numScheduled)
@@ -517,7 +514,7 @@ func sparseVectorAddition[F, G](
     accumDen[i].prod(accumDen[i], lambdas[i].num, skipFinalSub = true)
 
     # Compute EC addition
-    var r{.noInit.}: ECP_ShortW_Aff[F, G]
+    var r{.noInit.}: ECaff
     r.affineAdd(lambda = accumDen[i], buckets[sps[i].bucket], points[sps[i].pointID]) # points[sps[i].pointID].y unused even if sign is negative
 
     # Store result
@@ -543,25 +540,25 @@ func sparseVectorAddition[F, G](
       accumDen[0].prod(lambdas[0].num, accInv, skipFinalSub = true)
 
       # Compute EC addition
-      var r{.noInit.}: ECP_ShortW_Aff[F, G]
+      var r{.noInit.}: ECaff
       r.affineAdd(lambda = accumDen[0], buckets[sps[0].bucket], points[sps[0].pointID])
 
       # Store result
       buckets[sps[0].bucket] = r
 
-func bucketReduce*[N, F, G](
-       r: var ECP_ShortW_JacExt[F, G],
-       buckets: ptr Buckets[N, F, G]) =
+func bucketReduce*[N, EC, ECaff](
+       r: var EC,
+       buckets: ptr Buckets[N, EC, ECaff]) =
 
-  var accumBuckets{.noinit.}: ECP_ShortW_JacExt[F, G]
+  var accumBuckets{.noinit.}: EC
 
   if kAffine in buckets.status[N-1]:
-    if kJacExt in buckets.status[N-1]:
-      accumBuckets.madd_vartime(buckets.ptJacExt[N-1], buckets.ptAff[N-1])
+    if kNonAffine in buckets.status[N-1]:
+      accumBuckets.madd_vartime(buckets.pt[N-1], buckets.ptAff[N-1])
     else:
       accumBuckets.fromAffine(buckets.ptAff[N-1])
-  elif kJacExt in buckets.status[N-1]:
-    accumBuckets = buckets.ptJacExt[N-1]
+  elif kNonAffine in buckets.status[N-1]:
+    accumBuckets = buckets.pt[N-1]
   else:
     accumBuckets.setInf()
   r = accumBuckets
@@ -569,17 +566,17 @@ func bucketReduce*[N, F, G](
 
   for k in countdown(N-2, 0):
     if kAffine in buckets.status[k]:
-      if kJacExt in buckets.status[k]:
-        var t{.noInit.}: ECP_ShortW_JacExt[F, G]
-        t.madd_vartime(buckets.ptJacExt[k], buckets.ptAff[k])
-        accumBuckets += t
+      if kNonAffine in buckets.status[k]:
+        var t{.noInit.}: EC
+        t.madd_vartime(buckets.pt[k], buckets.ptAff[k])
+        accumBuckets ~+= t
       else:
-        accumBuckets += buckets.ptAff[k]
-    elif kJacExt in buckets.status[k]:
-      accumBuckets += buckets.ptJacExt[k]
+        accumBuckets ~+= buckets.ptAff[k]
+    elif kNonAffine in buckets.status[k]:
+      accumBuckets ~+= buckets.pt[k]
 
     buckets.reset(k)
-    r += accumBuckets
+    r ~+= accumBuckets
 
 # ########################################################### #
 #                                                             #

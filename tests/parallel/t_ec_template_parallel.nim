@@ -23,6 +23,8 @@ import
     ec_shortweierstrass_affine,
     ec_shortweierstrass_jacobian,
     ec_shortweierstrass_projective,
+    ec_twistededwards_affine,
+    ec_twistededwards_projective,
     ec_shortweierstrass_batch_ops_parallel,
     ec_scalar_mul,
     ec_multi_scalar_mul,
@@ -40,7 +42,7 @@ type
     Long01Sequence
 
 func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen): EC {.noInit.} =
-  when EC is ECP_ShortW_Aff:
+  when EC is (ECP_ShortW_Aff or ECP_TwEdwards_Aff):
     if gen == Uniform:
       result = rng.random_unsafe(EC)
     elif gen == HighHammingWeight:
@@ -155,16 +157,16 @@ proc run_EC_multi_scalar_mul_parallel_impl*[N: static int](
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  const testSuiteDesc = "Elliptic curve parallel multi-scalar-multiplication for Short Weierstrass form"
+  const testSuiteDesc = "Elliptic curve parallel multi-scalar-multiplication"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     for n in numPoints:
       let bucketBits = bestBucketBitSize(n, ec.F.C.getCurveOrderBitwidth(), useSignedBuckets = false, useManualTuning = false)
-      test $ec & " Parallel Multi-scalar-mul (N=" & $n & ", bucket bits: " & $bucketBits & ")":
+      test $ec & " Parallel Multi-scalar-mul (N=" & $n & ", bucket bits (default): " & $bucketBits & ")":
         proc test(EC: typedesc, gen: RandomGen) =
           let tp = Threadpool.new()
           defer: tp.shutdown()
-          var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](n)
+          var points = newSeq[affine(EC)](n)
           var coefs = newSeq[BigInt[EC.F.C.getCurveOrderBitwidth()]](n)
 
           for i in 0 ..< n:
