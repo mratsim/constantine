@@ -7,6 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  tables,
   ./[transcript_gen, common_utils, ipa_prover, barycentric_form, helper_types],
   ../../../constantine/platforms/primitives,
   ../../../constantine/hashes,
@@ -27,7 +28,7 @@ import
 # The multiproof is a multi-proving system for several polynomials in the evaluation form
 
 # Converts the const DOMAIN 256 to Fr[Banderwagon]
-func domainToFrElem* [EC_P_Fr] (res: var EC_P_Fr, inp: uint8)=
+func domainToFrElem* [EC_P_Fr] (res: var EC_P_Fr, inp: matchingOrderBigInt(Banderwagon))=
     var x {.noInit.} : EC_P_Fr
     x.setUint(uint64(inp))
     res = x
@@ -35,14 +36,28 @@ func domainToFrElem* [EC_P_Fr] (res: var EC_P_Fr, inp: uint8)=
 # Computes the powers of an Fr[Banderwagon] element
 func computePowersOfElem* [EC_P_Fr] (res: var openArray[EC_P_Fr], x: EC_P_Fr, degree: SomeSignedInt)= 
     res[0].setOne()
-
     for i in 1..<degree:
         res[i].prod(res[i-1], x)
+
+# # Checking for duplicate field elements and removing them
+# func checkDedups* (points: openArray[EC_P]): bool=
+#     var seen = initTable[EC_P, bool]()
+
+#     for item in points.items():
+#         if seen.hasKey(item).bool():
+#             return true
+#         else:
+#             seen[item] = true
+#     return false
+
+# # BatchNormalize() normalizes a slice of group elements
+# func batchNormalize* [EC_P] (res: var openArray[EC_P], inp: openArray[EC_P])=
+
     
 # createMultiProof creates a multi-proof for several polynomials in the evaluation form
 # The list of triplets are as follows : (C, Fs, Z) represents each polynomial commitment
 # and their evalutation in the domain, and the evaluating point respectively
-func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256, ipaSetting: IPASettings, Cs: openArray[EC_P], Fs: array[DOMAIN, array[DOMAIN, EC_P_Fr]], Zs: openArray[uint8], precomp: PrecomputedWeights, basis: array[DOMAIN, EC_P])=
+func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256, ipaSetting: IPASettings, Cs: openArray[EC_P], Fs: array[DOMAIN, array[DOMAIN, EC_P_Fr]], Zs: openArray[matchingOrderBigInt(Banderwagon)], precomp: PrecomputedWeights, basis: array[DOMAIN, EC_P])=
     transcript.domain_separator(asBytes"multiproof")
 
     for f in Fs:
@@ -58,8 +73,6 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
     var Cs_prime {.noInit.} : array[DOMAIN, EC_P]
     for i in 0..<DOMAIN:
         Cs_prime[i] = Cs[i]
-
-    
 
     for i in 0..<num_queries:
         transcript.pointAppend(asBytes"C", Cs_prime[i])
@@ -77,8 +90,11 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
     var r {.noInit.} : matchingOrderBigInt(Banderwagon)
     r.generateChallengeScalar(transcript,asBytes"r")
 
-    var powersOfr {.noInit.}: openArray[EC_P_Fr]
-    powersOfr.computePowersOfElem(r, num_queries)
+    var r_fr {.noInit.}: EC_P_Fr
+    r_fr.fromBig(r)
+
+    var powersOfr {.noInit.}: array[DOMAIN,EC_P_Fr]
+    powersOfr.computePowersOfElem(r_fr, int(num_queries))
 
     # Inorder to compute g(x), we first compute the polynomials in lagrange form grouped by evaluation points
     # then we compute g(x), this is eventually limit the numbers of divisionOnDomain calls up to the domain size 
@@ -120,12 +136,13 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
 
     transcript.pointAppend(D, asBytes"D")
 
-    var t {.noInit.}: EC_P_Fr
+    var t {.noInit.}: matchingOrderBigInt(Banderwagon)
     t.generateChallengeScalar(transcript,asBytes"t")
 
     # Computing the denominator inverses only for referenced evaluation points.
     var denInv {.noInit.}: array[DOMAIN, EC_P_Fr]
-    denInv.setZero()
+    for i in 0..<DOMAIN:
+        denInv[i].setZero()
 
     for z,f in groupedFs:
         if f.len == 0:
@@ -161,7 +178,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
     var hMinusg {.noInit.}: array[DOMAIN, EC_P_Fr]
 
     for i in 0..<DOMAIN:
-        hMinusg.diff(hx[i],gx[i])
+        hMinusg[i].diff(hx[i],gx[i])
 
     var E {.noInit.}: EC_P
 
@@ -173,7 +190,6 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
     EMinusD.diff(E,D)
 
     var ipaProof {.noInit.} : IPAProof
-    var checks {.noInit.}: bool
 
     let checks = ipaProof.createIPAProof(transcript, ipaSetting, EMinusD, hMinusg, t)
 
@@ -285,10 +301,10 @@ func verifyMultiproof* [bool] (res: var bool, transcript : sha256, ipaSettings: 
         res.checkIPAProof(transcript, ipaSettings, EMinusD, multiProof.IPAprv, t, g2t)
 
 
-func mutliProofEquality*(res: var bool, mp: MultiProof, other: MultiProof)=
-    if not(mp.IPAprv == other.IPAprv):
-        res = false
-    res = (mp.D == other.D).bool()
+# func mutliProofEquality*(res: var bool, mp: MultiProof, other: MultiProof)=
+#     if not(mp.IPAprv == other.IPAprv):
+#         res = false
+#     res = (mp.D == other.D).bool()
 
             
 

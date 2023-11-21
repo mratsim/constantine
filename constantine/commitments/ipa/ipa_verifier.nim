@@ -11,6 +11,7 @@ import
   ../../../constantine/platforms/primitives,
   ../../math/config/[type_ff, curves],
   ../../../constantine/hashes,
+  ../../../constantine/math/elliptic/[ec_multi_scalar_mul, ec_multi_scalar_mul_scheduler],
   ../../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
   ../../../constantine/math/arithmetic,
   ../../../constantine/math/elliptic/ec_scalar_mul, 
@@ -92,7 +93,7 @@ func checkIPAProof*(r: var bool,transcript: var sha256, ic: IPASettings, commitm
         p22[1] = x
         p22[2] = challengesInv[i]
 
-        commitment.pedersen_commit_varbasis(p11, p22, p22.len)
+        commitment.pedersen_commit_varbasis(p11, p11.len, p22, p22.len)
 
     var g {.noInit.}: array[DOMAIN, EC_P]
     g = ic.SRS
@@ -117,8 +118,12 @@ func checkIPAProof*(r: var bool,transcript: var sha256, ic: IPASettings, commitm
     for i in 0..<DOMAIN:
         foldingScalars_big[i] = foldingScalars[i].toBig()
 
+    var g_aff {.noInit.} : array[DOMAIN, EC_P_Aff]
+
+    for i in 0..<DOMAIN:
+        g_aff[i].affine(g[i])
  
-    g0.multiScalarMul_reference_vartime_Prj(g, foldingScalars_big)
+    g0.multiScalarMul_reference_vartime(foldingScalars_big, g_aff)
 
     var b0 {.noInit.} : EC_P_Fr
     b0.computeInnerProducts(b, foldingScalars)

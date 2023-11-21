@@ -16,7 +16,7 @@ import
   ../../../constantine/platforms/primitives,
   ../../../constantine/hashes,
   ../../math/config/[type_ff, curves],
-  ../../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
+  ../../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_affine, ec_twistededwards_batch_ops],
   ../../../constantine/math/arithmetic,
   ../../../constantine/math/elliptic/ec_scalar_mul, 
   ../../../constantine/platforms/[views],
@@ -27,6 +27,7 @@ import
 type
   EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
   EC_P_Fr* = Fr[Banderwagon]
+  EC_P_Aff* = ECP_TwEdwards_Aff[Fp[Banderwagon]]
 
 type 
     IPAProof* = object

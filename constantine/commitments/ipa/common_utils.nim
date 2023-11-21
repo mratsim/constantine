@@ -124,103 +124,6 @@ func computeNumRounds* [uint64] (res: var uint64, vectorSize: SomeUnsignedInt)=
 
     res = uint64(float64(log2_vartime(vectorSize)))
 
-# ############################################################
-#
-#   Reference Multiscalar Multiplication of ECP_TwEdwardsPrj
-#
-# ############################################################
-
-#A reference from https://github.com/mratsim/constantine/blob/master/constantine/math/elliptic/ec_multi_scalar_mul.nim#L96-L124
-# Helper function in computing the Pedersen Commitments of scalars with group elements
-
-
-func multiScalarMulImpl_reference_vartime[EC_P; bits: static int](
-       r: var EC_P,
-       coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[EC_P],
-       N: int, c: static int) {.tags:[VarTime, HeapAlloc].} =
-  ## Inner implementation of MSM, for static dispatch over c, the bucket bit length
-  ## This is a straightforward simple translation of BDLO12, section 4
-
-  # Prologue
-  # --------
-  const numBuckets = 1 shl c - 1 # bucket 0 is unused
-  const numWindows = bits.ceilDiv_vartime(c)
-  type EC = typeof(r)
-
-  var miniMSMs = allocHeapArray(EC, numWindows)
-  var buckets = allocHeapArray(EC, numBuckets)
-
-  # Algorithm
-  # ---------
-  for w in 0 ..< numWindows:
-    # Place our points in a bucket corresponding to
-    # how many times their bit pattern in the current window of size c
-    for i in 0 ..< numBuckets:
-      buckets[i].setInf()
-
-    # 1. Bucket accumulation.                            Cost: n - (2ᶜ-1) => n points in 2ᶜ-1 buckets, first point per bucket is just copied
-    for j in 0 ..< N:
-      var b = cast[int](coefs[j].getWindowAt(w*c, c))
-      if b == 0: # bucket 0 is unused, no need to add [0]Pⱼ
-        continue
-      else:
-        buckets[b-1] += points[j]
-
-    # 2. Bucket reduction.                               Cost: 2x(2ᶜ-2) => 2 additions per 2ᶜ-1 bucket, last bucket is just copied
-    # We have ordered subset sums in each bucket, we now need to compute the mini-MSM
-    #   [1]S₁ + [2]S₂ + [3]S₃ + ... + [2ᶜ-1]S₂c₋₁
-    var accumBuckets{.noInit.}, miniMSM{.noInit.}: EC
-    accumBuckets = buckets[numBuckets-1]
-    miniMSM = buckets[numBuckets-1]
-
-    # Example with c = 3, 2³ = 8
-    for k in countdown(numBuckets-2, 0):
-      accumBuckets.sum(accumBuckets, buckets[k]) # Stores S₈ then    S₈+S₇ then       S₈+S₇+S₆ then ...
-      miniMSM.sum(miniMSM, accumBuckets)         # Stores S₈ then [2]S₈+S₇ then [3]S₈+[2]S₇+S₆ then ...
-
-    miniMSMs[w] = miniMSM
-
-  # 3. Final reduction.                                  Cost: (b/c - 1)x(c+1) => b/c windows, first is copied, c doublings + 1 addition per window
-  r = miniMSMs[numWindows-1]
-  for w in countdown(numWindows-2, 0):
-    for _ in 0 ..< c:
-      r.double()
-    r.sum(r, miniMSMs[w])
-
-  # Cleanup
-  # -------
-  buckets.freeHeap()
-  miniMSMs.freeHeap()
-
-func multiScalarMul_reference_vartime_Prj*[EC_P](r: var EC_P, points: openArray[EC_P], coefs: openArray[BigInt]) {.tags:[VarTime, HeapAlloc].} =
-  ## Multiscalar multiplication:
-  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
-  debug: doAssert coefs.len == points.len
-
-  var N = points.len
-  var coefs = coefs.asUnchecked()
-  var points = points.asUnchecked()
-  var c = bestBucketBitSize(N, BigInt.bits, useSignedBuckets = false, useManualTuning = false)
-
-  case c
-  of  2: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  2)
-  of  3: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  3)
-  of  4: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  4)
-  of  5: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  5)
-  of  6: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  6)
-  of  7: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  7)
-  of  8: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  8)
-  of  9: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  9)
-  of 10: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 10)
-  of 11: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 11)
-  of 12: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 12)
-  of 13: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 13)
-  of 14: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 14)
-  of 15: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 15)
-
-  of 16..20: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 16)
-  else:
-    unreachable()
 
 # ############################################################
 #
@@ -233,9 +136,14 @@ func multiScalarMul_reference_vartime_Prj*[EC_P](r: var EC_P, points: openArray[
 
 # Further reference refer to this https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
 
-func pedersen_commit_varbasis*[EC_P] (res: var EC_P, groupPoints: openArray[EC_P], polynomial: openArray[EC_P_Fr], n: int)=
+func pedersen_commit_varbasis*[EC_P] (res: var EC_P, groupPoints: openArray[EC_P], g: int,  polynomial: openArray[EC_P_Fr], n: int)=
   doAssert groupPoints.len == polynomial.len, "Group Elements and Polynomials should be having the same length!"
   var poly_big = newSeq[matchingOrderBigInt(Banderwagon)](n)
   for i in 0..<n:
     poly_big[i] = polynomial[i].toBig()
-  res.multiScalarMul_reference_vartime_Prj(groupPoints, poly_big)
+
+  var groupPoints_aff = newSeq[EC_P_Aff](g)
+  for i in 0..<g:
+    groupPoints_aff[i].affine(groupPoints[i])
+
+  res.multiScalarMul_reference_vartime(poly_big,groupPoints)
