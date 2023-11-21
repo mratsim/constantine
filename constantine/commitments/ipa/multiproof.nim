@@ -15,7 +15,7 @@ import
   ../../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
   ../../../constantine/math/arithmetic,
   ../../../constantine/platforms/[views],
-  ../../../constantine/math/io/[io_fields],
+  ../../../constantine/math/io/[io_bigints,io_fields],
   ../../../constantine/curves_primitives
 
 
@@ -28,9 +28,16 @@ import
 # The multiproof is a multi-proving system for several polynomials in the evaluation form
 
 # Converts the const DOMAIN 256 to Fr[Banderwagon]
+func domainToFrElem* [EC_P_Fr] (res: var EC_P_Fr, inp: uint8)=
+    var x {.noInit.} : EC_P_Fr
+    var x_big {.noInit.}: matchingOrderBigInt(Banderwagon)
+    x_big.fromUint(inp)
+    x.fromBig(x_big)
+    res = x
+
 func domainToFrElem* [EC_P_Fr] (res: var EC_P_Fr, inp: matchingOrderBigInt(Banderwagon))=
     var x {.noInit.} : EC_P_Fr
-    x.setUint(uint64(inp))
+    x.fromBig(inp)
     res = x
 
 # Computes the powers of an Fr[Banderwagon] element
@@ -57,7 +64,7 @@ func computePowersOfElem* [EC_P_Fr] (res: var openArray[EC_P_Fr], x: EC_P_Fr, de
 # createMultiProof creates a multi-proof for several polynomials in the evaluation form
 # The list of triplets are as follows : (C, Fs, Z) represents each polynomial commitment
 # and their evalutation in the domain, and the evaluating point respectively
-func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256, ipaSetting: IPASettings, Cs: openArray[EC_P], Fs: array[DOMAIN, array[DOMAIN, EC_P_Fr]], Zs: openArray[matchingOrderBigInt(Banderwagon)], precomp: PrecomputedWeights, basis: array[DOMAIN, EC_P])=
+func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256, ipaSetting: IPASettings, Cs: openArray[EC_P], Fs: array[DOMAIN, array[DOMAIN, EC_P_Fr]], Zs: openArray[uint8], precomp: PrecomputedWeights, basis: array[DOMAIN, EC_P])=
     transcript.domain_separator(asBytes"multiproof")
 
     for f in Fs:
@@ -67,8 +74,8 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
 
     debug: doAssert Cs.len == Zs.len, "Number of commitments is NOT same as number of Points"
 
-    var num_queries {.noInit.} : uint8
-    num_queries = uint8(Cs.len)
+    var num_queries {.noInit.} : int
+    num_queries = Cs.len
 
     var Cs_prime {.noInit.} : array[DOMAIN, EC_P]
     for i in 0..<DOMAIN:
@@ -83,9 +90,10 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
         # deducing the `y` value
 
         var f = Fs[i]
-        var y = f[Zs[i]]
 
-        transcript.scalarAppend(y, asBytes"y")
+        var y = f[int(Zs[i])]
+
+        transcript.scalarAppend(asBytes"y", y.toBig())
 
     var r {.noInit.} : matchingOrderBigInt(Banderwagon)
     r.generateChallengeScalar(transcript,asBytes"r")
@@ -132,12 +140,15 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
             gx[j] += quotient[j]
         
     var D {.noInit.}: EC_P
-    D.pedersen_commit_varbasis(basis, gx, gx.len)
+    D.pedersen_commit_varbasis(basis,basis.len, gx, gx.len)
 
-    transcript.pointAppend(D, asBytes"D")
+    transcript.pointAppend(asBytes"D", D)
 
     var t {.noInit.}: matchingOrderBigInt(Banderwagon)
     t.generateChallengeScalar(transcript,asBytes"t")
+
+    var t_fr {.noInit.}: EC_P_Fr
+    t_fr.fromBig(t)
 
     # Computing the denominator inverses only for referenced evaluation points.
     var denInv {.noInit.}: array[DOMAIN, EC_P_Fr]
@@ -148,7 +159,8 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
         if f.len == 0:
             continue
 
-        z.domainToFrElem(uint8(z))
+        var z_bg {.noInit.} : matchingOrderBigInt(Banderwagon)
+        z_bg.domainToFrElem(z.toBig())
         var deno {.noInit.}: EC_P_Fr
 
         deno.diff(t,z)
@@ -157,7 +169,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
         idxx = idxx + 1
 
 
-    var denInv_prime {.noInit.} : EC_P_Fr
+    var denInv_prime {.noInit.} : array[DOMAIN, EC_P_Fr]
     denInv_prime.batchInvert(denInv)
 
     #Compute h(X) = g1(X)
@@ -182,7 +194,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
 
     var E {.noInit.}: EC_P
 
-    E.pedersen_commit_varbasis(basis, hx, hx.len)
+    E.pedersen_commit_varbasis(basis,basis.len, hx, hx.len)
     transcript.pointAppend(asBytes"E",E)
 
     var EMinusD {.noInit.}: EC_P
@@ -191,7 +203,8 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
 
     var ipaProof {.noInit.} : IPAProof
 
-    let checks = ipaProof.createIPAProof(transcript, ipaSetting, EMinusD, hMinusg, t)
+    var checks: bool
+    checks = ipaProof.createIPAProof(transcript, ipaSetting, EMinusD, hMinusg, t_fr)
 
     debug: doAssert checks == 1, "Could not compute IPA Proof!"
 
