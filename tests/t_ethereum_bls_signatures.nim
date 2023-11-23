@@ -194,7 +194,7 @@ testGen(verify, testVector, Verify_test):
   var
     pubkey{.noInit.}: PublicKey
     signature{.noInit.}: Signature
-    status = (cttBLS_VerificationFailure, cttCodecEcc_InvalidEncoding)
+    status = (cttEthBLS_VerificationFailure, cttCodecEcc_InvalidEncoding)
 
   block testChecks:
     status[1] = pubkey.deserialize_pubkey_compressed(testVector.input.pubkey)
@@ -208,7 +208,7 @@ testGen(verify, testVector, Verify_test):
 
     status[0] = pubkey.verify(testVector.input.message, signature)
 
-  let success = status == (cttBLS_Success, cttCodecEcc_Success)
+  let success = status == (cttEthBLS_Success, cttCodecEcc_Success)
   doAssert success == testVector.output, block:
     "Verification differs from expected \n" &
     "   valid sig? " & $success & " (" & $status & ")\n" &
@@ -231,7 +231,7 @@ testGen(fast_aggregate_verify, testVector, FastAggregateVerify_test):
   var
     pubkeys = newSeq[PublicKey](testVector.input.pubkeys.len)
     signature{.noInit.}: Signature
-    status = (cttBLS_VerificationFailure, cttCodecEcc_InvalidEncoding)
+    status = (cttEthBLS_VerificationFailure, cttCodecEcc_InvalidEncoding)
 
   block testChecks:
     for i in 0 ..< testVector.input.pubkeys.len:
@@ -247,7 +247,7 @@ testGen(fast_aggregate_verify, testVector, FastAggregateVerify_test):
 
     status[0] = pubkeys.fast_aggregate_verify(testVector.input.message, signature)
 
-  let success = status == (cttBLS_Success, cttCodecEcc_Success)
+  let success = status == (cttEthBLS_Success, cttCodecEcc_Success)
   doAssert success == testVector.output, block:
     "Verification differs from expected \n" &
     "   valid sig? " & $success & " (" & $status & ")\n" &
@@ -257,7 +257,7 @@ testGen(aggregate_verify, testVector, AggregateVerify_test):
   var
     pubkeys = newSeq[PublicKey](testVector.input.pubkeys.len)
     signature{.noInit.}: Signature
-    status = (cttBLS_VerificationFailure, cttCodecEcc_InvalidEncoding)
+    status = (cttEthBLS_VerificationFailure, cttCodecEcc_InvalidEncoding)
 
   block testChecks:
     for i in 0 ..< testVector.input.pubkeys.len:
@@ -273,7 +273,7 @@ testGen(aggregate_verify, testVector, AggregateVerify_test):
 
     status[0] = pubkeys.aggregate_verify(testVector.input.messages, signature)
 
-  let success = status == (cttBLS_Success, cttCodecEcc_Success)
+  let success = status == (cttEthBLS_Success, cttCodecEcc_Success)
   doAssert success == testVector.output, block:
     "Verification differs from expected \n" &
     "   valid sig? " & $success & " (" & $status & ")\n" &
@@ -283,7 +283,7 @@ testGen(batch_verify, testVector, BatchVerify_test):
   var
     pubkeys = newSeq[PublicKey](testVector.input.pubkeys.len)
     signatures = newSeq[Signature](testVector.input.signatures.len)
-    status = (cttBLS_VerificationFailure, cttCodecEcc_InvalidEncoding)
+    status = (cttEthBLS_VerificationFailure, cttCodecEcc_InvalidEncoding)
 
   block testChecks:
     for i in 0 ..< testVector.input.pubkeys.len:
@@ -309,7 +309,7 @@ testGen(batch_verify, testVector, BatchVerify_test):
       "\nParallel status: " & $parallelStatus & '\n'
     tp.shutdown()
 
-  let success = status == (cttBLS_Success, cttCodecEcc_Success)
+  let success = status == (cttEthBLS_Success, cttCodecEcc_Success)
   doAssert success == testVector.output, block:
     "Verification differs from expected \n" &
     "   valid sig? " & $success & " (" & $status & ")\n" &

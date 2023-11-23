@@ -53,7 +53,7 @@ const KZG_SETUP_G2_LENGTH = 65
 
 
 type
-  EthereumKZGContext* = object
+  EthereumKZGContext* {.exportc: "ctt_eth_kzg4844_context".}= object
     ## KZG commitment context
 
     # Trusted setup, see https://vitalik.ca/general/2022/03/14/trustedsetup.html
@@ -109,6 +109,7 @@ proc skipMod64(f: FileStream): TrustedSetupStatus =
     return tsInvalidFile
 
 proc loadTrustedSetup*(ctx: ptr EthereumKZGContext, filePath: string): TrustedSetupStatus =
+  # TODO, use C cstring so the library is exportable and usable from C
 
   static: doAssert cpuEndian == littleEndian, "Trusted setup creation is only supported on little-endian CPUs at the moment."
 

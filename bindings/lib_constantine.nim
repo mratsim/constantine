@@ -20,6 +20,7 @@ import
   ./lib_curves,
   # Protocols
   ../constantine/ethereum_bls_signatures,
+  ../constantine/ethereum_eip4844_kzg,
 
   # Ensure globals like proc from kernel32.dll are populated at library load time
   ./lib_autoload

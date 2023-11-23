@@ -3870,11 +3870,11 @@ fn bindgen_test_layout_ctt_eth_bls_signature() {
 #[repr(u8)]
 #[derive(Copy, Clone, Hash, PartialEq, Eq)]
 pub enum ctt_eth_bls_status {
-    cttBLS_Success = 0,
-    cttBLS_VerificationFailure = 1,
-    cttBLS_PointAtInfinity = 2,
-    cttBLS_ZeroLengthAggregation = 3,
-    cttBLS_InconsistentLengthsOfInputs = 4,
+    cttEthBLS_Success = 0,
+    cttEthBLS_VerificationFailure = 1,
+    cttEthBLS_PointAtInfinity = 2,
+    cttEthBLS_ZeroLengthAggregation = 3,
+    cttEthBLS_InconsistentLengthsOfInputs = 4,
 }
 extern "C" {
     #[must_use]
