@@ -128,7 +128,7 @@ proc releaseBuildOptions(useLTO = false): string =
   let lto = if useLTO: " --passC:-flto=auto --passL:-flto=auto "
             else: ""
 
-  let lto_syntax = if useLTO: "  -d:UseAsmSyntaxIntel "
+  let lto_syntax = if useLTO: "  -d:UseAsmSyntaxIntel=true "
                    else: "  -d:UseAsmSyntaxIntel=false "
 
   compiler &
@@ -157,7 +157,7 @@ proc genDynamicLib(outdir, nimcache: string) =
 
     exec "nim c " &
          flags &
-         releaseBuildOptions(useLTO = true) &
+         releaseBuildOptions(useLTO = false) &
          " --noMain --app:lib " &
          &" --nimMainPrefix:ctt_init_ " & # Constantine is designed so that NimMain isn't needed, provided --mm:arc -d:useMalloc --panics:on -d:noSignalHandler
          &" --out:{libName} --outdir:{outdir} " &
