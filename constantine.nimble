@@ -114,7 +114,7 @@ func compilerFlags(): string =
 
 const Apple = defined(macos) or defined(macox) or defined(ios)
 
-proc releaseBuildOptions(useLTO = not Apple): string =
+proc releaseBuildOptions(useLTO = false): string =
 
   let compiler = if existsEnv"CC": " --cc:" & getEnv"CC"
                  else: ""
