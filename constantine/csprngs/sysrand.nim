@@ -100,7 +100,7 @@ elif defined(linux):
     ## Fills the buffer with cryptographically secure random data
     return urandom(buffer.addr, sizeof(T))
 
-elif defined(ios) or defined(macosx):
+elif defined(ios) or defined(macosx) or defined(macos):
   # There are 4 APIs we can use
   # - The getentropy(2) system call (similar to OpenBSD)
   # - The random device (/dev/random)

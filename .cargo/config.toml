@@ -1,3 +1,7 @@
 [build]
 # https://doc.rust-lang.org/rustc/linker-plugin-lto.html
 rustflags="-Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld"
+
+# Note, on MacOS, for Intel targets, LTO on the Nim code is not used
+# as Apple Clang does not support the Intel assembly syntax.
+# Unfortunately the AT&T syntax causes issues when LTO inlines constants into inline assembly.

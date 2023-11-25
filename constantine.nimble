@@ -112,7 +112,9 @@ func compilerFlags(): string =
   " --passC:-falign-functions=64 " &
   " --passC:-fmerge-all-constants"
 
-proc releaseBuildOptions(useLTO = true): string =
+const Apple = defined(macos) or defined(macox) or defined(ios)
+
+proc releaseBuildOptions(useLTO = not Apple): string =
 
   let compiler = if existsEnv"CC": " --cc:" & getEnv"CC"
                  else: ""
@@ -126,9 +128,12 @@ proc releaseBuildOptions(useLTO = true): string =
   let lto = if useLTO: " --passC:-flto=auto --passL:-flto=auto "
             else: ""
 
+  let lto_syntax = if useLTO: "  -d:UseAsmSyntaxIntel "
+                   else: "  -d:UseAsmSyntaxIntel=false "
+
   compiler &
   envASM & env32 &
-  lto &
+  lto & lto_syntax &
   compilerFlags()
 
 proc rustBuild(): string =
@@ -139,7 +144,8 @@ proc rustBuild(): string =
   # - https://doc.rust-lang.org/rustc/linker-plugin-lto.html
 
   let compiler = " --cc:clang "
-  let lto = " --passC:-flto=thin --passL:-flto=thin "
+  let lto = if Apple: ""
+            else: " --passC:-flto=thin --passL:-flto=thin "
 
   compiler &
   lto &
@@ -161,7 +167,7 @@ proc genDynamicLib(outdir, nimcache: string) =
   when defined(windows):
     compile "constantine.dll"
 
-  elif defined(macosx):
+  elif defined(macosx) or defined(macos):
     compile "libconstantine.dylib.arm", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
     compile "libconstantine.dylib.x64", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
     exec &"lipo {outdir}/libconstantine.dylib.arm " &
@@ -187,7 +193,7 @@ proc genStaticLib(outdir, nimcache: string, rustLib = false) =
   when defined(windows):
     compile "constantine.lib"
 
-  elif defined(macosx):
+  elif defined(macosx) or defined(macos):
     compile "libconstantine.a.arm", "--cpu:arm64 -l:'-target arm64-apple-macos11' -t:'-target arm64-apple-macos11'"
     compile "libconstantine.a.x64", "--cpu:amd64 -l:'-target x86_64-apple-macos10.12' -t:'-target x86_64-apple-macos10.12'"
     exec &"lipo {outdir}/libconstantine.a.arm " &
@@ -216,7 +222,7 @@ task make_lib_rust, "Build Constantine library (use within a Rust build.rs scrip
 
 proc testLib(path, testName: string, useGMP: bool) =
   let dynlibName = if defined(windows): "constantine.dll"
-                   elif defined(macosx): "libconstantine.dylib"
+                   elif defined(macosx) or defined(macos): "libconstantine.dylib"
                    else: "libconstantine.so"
   let staticlibName = if defined(windows): "constantine.lib"
                       else: "libconstantine.a"

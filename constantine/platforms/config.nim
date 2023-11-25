@@ -28,4 +28,20 @@ const UseASM_X86_64* = not(CTT_32) and UseASM_X86_32
 when UseASM_X86_64:
   static: doAssert bool(sizeof(pointer)*8 == 64), "Only 32-bit and 64-bit platforms are supported"
 
-const UseAsmSyntaxIntel* {.booldefine.} = true
+const UseAsmSyntaxIntel* {.booldefine.} = not(defined(macos) or defined(macosx) or defined(ios))
+  ## When using LTO with AT&T syntax
+  ## - GCC will give spurious "Warning: missing operand; zero assumed" with AT&T syntax
+  ## - Clang will wrongly combine memory offset and constant propagated address of constants
+  ##
+  ## Intel syntax does not have such limitation.
+  ## However
+  ## - Global "-masm=intel" composition with other libraries that use AT&T inline assembly
+  ## - It is not supported on Apple Clang due to missing
+  ##   commit: https://github.com/llvm/llvm-project/commit/ae98182cf7341181e4aa815c372a072dec82779f
+  ##   Revision: https://reviews.llvm.org/D113707
+  ##
+  ## As a workaround:
+  ## - Intel assembly is used on a per-file basis
+  ##   and does not affect other libraries that might be compiled together with Constantine.
+  ## - It is deactivated on MacOs / iOS.
+  ##   That means LTO will not work on MacOS unless upstream Clang is used instead of Apple fork.
