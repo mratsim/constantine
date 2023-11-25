@@ -26,11 +26,6 @@ import
 
 static: doAssert UseASM_X86_64
 
-# MULX/ADCX/ADOX
-{.localPassC:"-madx -mbmi2".}
-# Necessary for the compiler to find enough registers
-{.localPassC:"-fomit-frame-pointer".} # (enabled at -O1)
-
 # No exceptions allowed
 {.push raises: [].}
 
@@ -112,8 +107,7 @@ func mul2x_fp2_complex_asm_adx*(
 
 func mul_fp2_complex_asm_adx*(
         r: var array[2, Fp],
-        a, b: array[2, Fp]
-      ) =
+        a, b: array[2, Fp]) =
   ## Complex multiplication on 𝔽p2
   var d {.noInit.}: array[2,doublePrec(Fp)]
   d.mul2x_fp2_complex_asm_adx(a, b)

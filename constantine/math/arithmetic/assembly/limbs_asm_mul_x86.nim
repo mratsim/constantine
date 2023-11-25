@@ -21,6 +21,9 @@ import
 static: doAssert UseASM_X86_64 # Need 8 registers just for mul
                                # and 32-bit only has 8 max.
 
+when UseAsmSyntaxIntel:
+  {.localpassC:"-masm=intel".}
+
 # Multiplication
 # -----------------------------------------------------------------------------------------------
 

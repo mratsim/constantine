@@ -23,6 +23,9 @@ static: doAssert UseASM_X86_32
 # Necessary for the compiler to find enough registers
 {.localPassC:"-fomit-frame-pointer".}  # (enabled at -O1)
 
+when UseAsmSyntaxIntel:
+  {.localpassC:"-masm=intel".}
+
 proc finalSubNoOverflowImpl*(
        ctx: var Assembler_x86,
        r: Operand or OperandArray,

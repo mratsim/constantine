@@ -41,6 +41,10 @@ type
     # Clobbered register
     ClobberedReg
 
+    # We can replace m and o by p constraint for optimization but this triggers impossible constraints in some cases
+    # See https://stackoverflow.com/questions/20965114/gcc-inline-assembly-using-modifier-p-and-constraint-p-over-m-in-linux-kern
+    # and https://lists.openwall.net/linux-kernel/2009/08/01/115
+
 when CTT_32:
   type
     Register* = enum
@@ -188,11 +192,11 @@ func genMemClobber(nimSymbol: NimNode, len: int, memIndirect: MemIndirectAccess)
 
   case memIndirect
   of memRead:
-    return "\"m\" (`*(const " & cBaseType & " (*)[" & $len & "]) " & symStr & "`)"
+    return "\"o\" (`*(const " & cBaseType & " (*)[" & $len & "]) " & symStr & "`)"
   of memWrite:
-    return "\"=m\" (`*(" & cBaseType & " (*)[" & $len & "]) " & symStr & "`)"
+    return "\"=o\" (`*(" & cBaseType & " (*)[" & $len & "]) " & symStr & "`)"
   of memReadWrite:
-    return "\"+m\" (`*(" & cBaseType & " (*)[" & $len & "]) " & symStr & "`)"
+    return "\"+o\" (`*(" & cBaseType & " (*)[" & $len & "]) " & symStr & "`)"
   else:
     doAssert false, "Indirect access kind not specified"
 
@@ -468,6 +472,9 @@ func getStrOffset(a: Assembler_x86, op: Operand): string =
     # Directly accessing memory
     if op.offset == 0:
       return "%" & op.desc.asmId
+    # For optimization we might want to use the P modifier here
+    # See https://stackoverflow.com/questions/20965114/gcc-inline-assembly-using-modifier-p-and-constraint-p-over-m-in-linux-kern
+    #     https://lists.openwall.net/linux-kernel/2009/08/01/115
     if defined(gcc):
       return $(op.offset * a.wordSize) & "+%" & op.desc.asmId
     elif defined(clang):
@@ -479,15 +486,15 @@ func getStrOffset(a: Assembler_x86, op: Operand): string =
        (op.desc.rm == ElemsInReg and op.kind == kFromArray):
     if a.wordBitWidth == 64:
       if op.offset == 0:
-        return "(%q" & op.desc.asmId & ')'
+        return "0(%q" & op.desc.asmId & ')'
       return $(op.offset * a.wordSize) & "(%q" & op.desc.asmId & ')'
     else:
       if op.offset == 0:
-        return "(%k" & op.desc.asmId & ')'
+        return "0(%k" & op.desc.asmId & ')'
       return $(op.offset * a.wordSize) & "(%k" & op.desc.asmId & ')'
   elif op.desc.rm == ClobberedReg: # Array in clobbered register
     if op.offset == 0:
-      return "(%%" & op.desc.asmId & ')'
+      return "0(%%" & op.desc.asmId & ')'
     return $(op.offset * a.wordSize) & "(%%" & op.desc.asmId & ')'
   else:
     error "Unsupported: " & $op.desc.rm.ord

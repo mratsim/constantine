@@ -16,8 +16,6 @@ when UseAsmSyntaxIntel:
   # However when constant are propagated, 8(%[identifier]) can also expand to
   # 8BLS12_381_Modulus(%rip) i.e. the compiler tries to forward to the linker the relative address of a constant
   # and due to naive string mixin it fails.
-  {.passC:"-masm=intel".}
-
   import ./macro_assembler_x86_intel
   export macro_assembler_x86_intel
 else:

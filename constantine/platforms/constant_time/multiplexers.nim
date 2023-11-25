@@ -47,47 +47,40 @@ func ccopy_fallback[T](ctl: CTBool[T], x: var T, y: T) {.inline.}=
 # x86 and x86-64
 # ------------------------------------------------------------
 
-when UseAsmSyntaxIntel:
-  template mux_x86_impl() {.dirty.} =
-    static: doAssert(X86)
-    static: doAssert(GCC_Compatible)
+# Note, we don't need the Intel syntax here, contrary to field arithmetic assembly.
+# And the {.localpassC:"-masm=intel".} is local to those files.
 
+
+const
+  nim_v2 = (NimMajor, NimMinor) > (1, 6)
+  noExplicitPtrDeref = defined(cpp) or nim_v2
+
+template mux_x86_impl() {.dirty.} =
+  static: doAssert(X86)
+  static: doAssert(GCC_Compatible)
+
+  when sizeof(T) == 8:
     var muxed = x
     asm """
-      test %[ctl], %[ctl]
-      cmovz %[muxed], %[y]
+      testq %[ctl], %[ctl]
+      cmovzq %[y], %[muxed]
       : [muxed] "+r" (`muxed`)
       : [ctl] "r" (`ctl`), [y] "r" (`y`)
       : "cc"
     """
     muxed
-else:
-  template mux_x86_impl() {.dirty.} =
-    static: doAssert(X86)
-    static: doAssert(GCC_Compatible)
-
-    when sizeof(T) == 8:
-      var muxed = x
-      asm """
-        testq %[ctl], %[ctl]
-        cmovzq %[y], %[muxed]
-        : [muxed] "+r" (`muxed`)
-        : [ctl] "r" (`ctl`), [y] "r" (`y`)
-        : "cc"
-      """
-      muxed
-    elif sizeof(T) == 4:
-      var muxed = x
-      asm """
-        testl %[ctl], %[ctl]
-        cmovzl %[y], %[muxed]
-        : [muxed] "+r" (`muxed`)
-        : [ctl] "r" (`ctl`), [y] "r" (`y`)
-        : "cc"
-      """
-      muxed
-    else:
-      {.error: "Unsupported word size".}
+  elif sizeof(T) == 4:
+    var muxed = x
+    asm """
+      testl %[ctl], %[ctl]
+      cmovzl %[y], %[muxed]
+      : [muxed] "+r" (`muxed`)
+      : [ctl] "r" (`ctl`), [y] "r" (`y`)
+      : "cc"
+    """
+    muxed
+  else:
+    {.error: "Unsupported word size".}
 
 func mux_x86[T](ctl: CTBool[T], x, y: T): T {.inline.}=
   ## Multiplexer / selector
@@ -103,73 +96,48 @@ func mux_x86[T: CTBool](ctl: CTBool, x, y: T): T {.inline.}=
   ## So equivalent to ctl? x: y
   mux_x86_impl()
 
-when UseAsmSyntaxIntel:
-  func ccopy_x86[T](ctl: CTBool[T], x: var T, y: T) {.inline.}=
-    ## Conditional copy
-    ## Copy ``y`` into ``x`` if ``ctl`` is true
-    static: doAssert(X86)
-    static: doAssert(GCC_Compatible)
+func ccopy_x86[T](ctl: CTBool[T], x: var T, y: T) {.inline.}=
+  ## Conditional copy
+  ## Copy ``y`` into ``x`` if ``ctl`` is true
+  static: doAssert(X86)
+  static: doAssert(GCC_Compatible)
 
-    when defined(cpp):
+  when sizeof(T) == 8:
+    when noExplicitPtrDeref:
       asm """
-          test %[ctl], %[ctl]
-          cmovnz %[x], %[y]
-          : [x] "+r" (`x`)
-          : [ctl] "r" (`ctl`), [y] "r" (`y`)
-          : "cc"
-        """
-
+        testq %[ctl], %[ctl]
+        cmovnzq %[y], %[x]
+        : [x] "+r" (`x`)
+        : [ctl] "r" (`ctl`), [y] "r" (`y`)
+        : "cc"
+      """
     else:
       asm """
-          test %[ctl], %[ctl]
-          cmovnz %[x], %[y]
-          : [x] "+r" (`*x`)
-          : [ctl] "r" (`ctl`), [y] "r" (`y`)
-          : "cc"
-        """
-else:
-  func ccopy_x86[T](ctl: CTBool[T], x: var T, y: T) {.inline.}=
-    ## Conditional copy
-    ## Copy ``y`` into ``x`` if ``ctl`` is true
-    static: doAssert(X86)
-    static: doAssert(GCC_Compatible)
-
-    when sizeof(T) == 8:
-      when defined(cpp):
-        asm """
-          testq %[ctl], %[ctl]
-          cmovnzq %[y], %[x]
-          : [x] "+r" (`x`)
-          : [ctl] "r" (`ctl`), [y] "r" (`y`)
-          : "cc"
-        """
-      else:
-        asm """
-          testq %[ctl], %[ctl]
-          cmovnzq %[y], %[x]
-          : [x] "+r" (*`x`)
-          : [ctl] "r" (`ctl`), [y] "r" (`y`)
-          : "cc"
-        """
-    elif sizeof(T) == 4:
-      when defined(cpp):
-        asm """
-          testl %[ctl], %[ctl]
-          cmovnzl %[y], %[x]
-          : [x] "+r" (`x`)
-          : [ctl] "r" (`ctl`), [y] "r" (`y`)
-          : "cc"
-        """
-      else:
-        asm """
-          testl %[ctl], %[ctl]
-          cmovnzl %[y], %[x]
-          : [x] "+r" (*`x`)
-          : [ctl] "r" (`ctl`), [y] "r" (`y`)
-          : "cc"
-        """
+        testq %[ctl], %[ctl]
+        cmovnzq %[y], %[x]
+        : [x] "+r" (*`x`)
+        : [ctl] "r" (`ctl`), [y] "r" (`y`)
+        : "cc"
+      """
+  elif sizeof(T) == 4:
+    when noExplicitPtrDeref:
+      asm """
+        testl %[ctl], %[ctl]
+        cmovnzl %[y], %[x]
+        : [x] "+r" (`x`)
+        : [ctl] "r" (`ctl`), [y] "r" (`y`)
+        : "cc"
+      """
     else:
-      {.error: "Unsupported word size".}
+      asm """
+        testl %[ctl], %[ctl]
+        cmovnzl %[y], %[x]
+        : [x] "+r" (*`x`)
+        : [ctl] "r" (`ctl`), [y] "r" (`y`)
+        : "cc"
+      """
+  else:
+    {.error: "Unsupported word size".}
 
 # Public functions
 # ------------------------------------------------------------
