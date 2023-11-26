@@ -18,6 +18,7 @@ import
   ../constantine/threadpool,
   ./lib_hashes,
   ./lib_curves,
+  ../constantine/csprngs,
   # Protocols
   ../constantine/ethereum_bls_signatures,
   ../constantine/ethereum_eip4844_kzg,
