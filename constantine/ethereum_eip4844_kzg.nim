@@ -21,7 +21,7 @@ import
   ./serialization/[codecs_status_codes, codecs_bls12_381, endians],
   ./trusted_setups/ethereum_kzg_srs
 
-export loadTrustedSetup, TrustedSetupStatus, EthereumKZGContext
+export loadTrustedSetup_tsif, TrustedSetupStatus, EthereumKZGContext
 
 ## ############################################################
 ##
@@ -593,15 +593,13 @@ const TrustedSetupMainnet =
   "trusted_setups" /
   "trusted_setup_ethereum_kzg_test_mainnet.tsif"
 
-proc load_ethereum_kzg_test_trusted_setup_mainnet*(): ptr EthereumKZGContext {.libPrefix: prefix_ffi.} =
+proc load_ethereum_kzg_test_trusted_setup_mainnet*(): ptr EthereumKZGContext {.libPrefix: prefix_ffi, raises: [OSError, IOError].} =
   ## This is a convenience function for the Ethereum mainnet testing trusted setups.
   ## It is insecure and will be replaced once the KZG ceremony is done.
 
   let ctx = allocHeapAligned(EthereumKZGContext, alignment = 64)
-
-  let tsStatus = ctx.loadTrustedSetup(TrustedSetupMainnet)
+  let tsStatus = ctx.loadTrustedSetup_tsif(TrustedSetupMainnet)
   doAssert tsStatus == tsSuccess, "\n[Trusted Setup Error] " & $tsStatus
-
   echo "Trusted Setup loaded successfully"
   return ctx
 
