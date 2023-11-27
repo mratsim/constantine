@@ -57,7 +57,7 @@ when defined(windows):
   proc sysrand*(buffer: pointer, len: csize_t): bool {.libPrefix: prefix_ffi.} =
     ## Fills the buffer with cryptographically secure random data
     ## Returns true on success, false otherwise
-    return RtlGenRandom(buffer.addr, culong len)
+    return RtlGenRandom(buffer, culong len)
 
 elif defined(linux):
   proc syscall(sysno: clong): cint {.importc, header:"<unistd.h>", varargs.}
@@ -136,7 +136,7 @@ elif defined(ios) or defined(macosx) or defined(macos):
   proc sysrand*[T](buffer: pointer, len: csize_t): bool {.libPrefix: prefix_ffi.} =
     ## Fills the buffer with cryptographically secure random data
     ## Returns true on success, false otherwise
-    if kCCSuccess == CCRandomGenerateBytes(buffer.addr, len):
+    if kCCSuccess == CCRandomGenerateBytes(buffer, len):
       return true
     return false
 
