@@ -147,7 +147,7 @@ else:
         asm """
           testq %[ctl], %[ctl]
           cmovnzq %[y], %[x]
-          : [x] "+r" (`*x`)
+          : [x] "+r" (*`x`)
           : [ctl] "r" (`ctl`), [y] "r" (`y`)
           : "cc"
         """
@@ -164,7 +164,7 @@ else:
         asm """
           testl %[ctl], %[ctl]
           cmovnzl %[y], %[x]
-          : [x] "+r" (`*x`)
+          : [x] "+r" (*`x`)
           : [ctl] "r" (`ctl`), [y] "r" (`y`)
           : "cc"
         """
