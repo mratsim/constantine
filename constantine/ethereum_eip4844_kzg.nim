@@ -43,7 +43,7 @@ export loadTrustedSetup_tsif, TrustedSetupStatus, EthereumKZGContext
 ## - Audited reference implementation
 ##   https://github.com/ethereum/c-kzg-4844
 
-const prefix_ffi = "ctt_eth_kzg4844_"
+const prefix_eth_kzg_4844 = "ctt_eth_kzg4844_"
 import ./zoo_exports
 
 # Constants
@@ -58,7 +58,7 @@ const BYTES_PER_FIELD_ELEMENT = 32
 # Presets
 # ------------------------------------------------------------
 
-const FIELD_ELEMENTS_PER_BLOB {.intdefine.} = 4096
+const FIELD_ELEMENTS_PER_BLOB = 4096
 const FIAT_SHAMIR_PROTOCOL_DOMAIN = asBytes"FSBLOBVERIFY_V1_"
 const RANDOM_CHALLENGE_KZG_BATCH_DOMAIN = asBytes"RCKZGBATCH___V1_"
 
@@ -269,7 +269,7 @@ template check(Section: untyped, evalExpr: CttCodecEccStatus): untyped {.dirty.}
 func blob_to_kzg_commitment*(
        ctx: ptr EthereumKZGContext,
        dst: var array[48, byte],
-       blob: ptr Blob): CttEthKzgStatus {.libPrefix: prefix_ffi.} =
+       blob: ptr Blob): CttEthKzgStatus {.libPrefix: prefix_eth_kzg_4844.} =
   ## Compute a commitment to the `blob`.
   ## The commitment can be verified without needing the full `blob`
   ##
@@ -306,7 +306,7 @@ func compute_kzg_proof*(
        proof_bytes: var array[48, byte],
        y_bytes: var array[32, byte],
        blob: ptr Blob,
-       z_bytes: array[32, byte]): CttEthKzgStatus {.libPrefix: prefix_ffi, tags:[Alloca, HeapAlloc, Vartime].} =
+       z_bytes: array[32, byte]): CttEthKzgStatus {.libPrefix: prefix_eth_kzg_4844, tags:[Alloca, HeapAlloc, Vartime].} =
   ## Generate:
   ## - A proof of correct evaluation.
   ## - y = p(z), the evaluation of p at the challenge z, with p being the Blob interpreted as a polynomial.
@@ -353,7 +353,7 @@ func verify_kzg_proof*(
        commitment_bytes: array[48, byte],
        z_bytes: array[32, byte],
        y_bytes: array[32, byte],
-       proof_bytes: array[48, byte]): CttEthKzgStatus {.libPrefix: prefix_ffi, tags:[Alloca, Vartime].} =
+       proof_bytes: array[48, byte]): CttEthKzgStatus {.libPrefix: prefix_eth_kzg_4844, tags:[Alloca, Vartime].} =
   ## Verify KZG proof that p(z) == y where p(z) is the polynomial represented by "polynomial_kzg"
 
   var commitment {.noInit.}: KZGCommitment
@@ -381,7 +381,7 @@ func compute_blob_kzg_proof*(
        ctx: ptr EthereumKZGContext,
        proof_bytes: var array[48, byte],
        blob: ptr Blob,
-       commitment_bytes: array[48, byte]): CttEthKzgStatus {.libPrefix: prefix_ffi, tags:[Alloca, HeapAlloc, Vartime].} =
+       commitment_bytes: array[48, byte]): CttEthKzgStatus {.libPrefix: prefix_eth_kzg_4844, tags:[Alloca, HeapAlloc, Vartime].} =
   ## Given a blob, return the KZG proof that is used to verify it against the commitment.
   ## This method does not verify that the commitment is correct with respect to `blob`.
 
@@ -420,7 +420,7 @@ func verify_blob_kzg_proof*(
        ctx: ptr EthereumKZGContext,
        blob: ptr Blob,
        commitment_bytes: array[48, byte],
-       proof_bytes: array[48, byte]): CttEthKzgStatus {.libPrefix: prefix_ffi, tags:[Alloca, HeapAlloc, Vartime].} =
+       proof_bytes: array[48, byte]): CttEthKzgStatus {.libPrefix: prefix_eth_kzg_4844, tags:[Alloca, HeapAlloc, Vartime].} =
   ## Given a blob and a KZG proof, verify that the blob data corresponds to the provided commitment.
 
   var commitment {.noInit.}: KZGCommitment
@@ -482,7 +482,7 @@ func verify_blob_kzg_proof_batch*(
        commitments_bytes: ptr UncheckedArray[array[48, byte]],
        proof_bytes: ptr UncheckedArray[array[48, byte]],
        n: int,
-       secureRandomBytes: array[32, byte]): CttEthKzgStatus {.libPrefix: prefix_ffi, tags:[Alloca, HeapAlloc, Vartime].} =
+       secureRandomBytes: array[32, byte]): CttEthKzgStatus {.libPrefix: prefix_eth_kzg_4844, tags:[Alloca, HeapAlloc, Vartime].} =
   ## Verify `n` (blob, commitment, proof) sets efficiently
   ##
   ## `n` is the number of verifications set
@@ -593,7 +593,7 @@ const TrustedSetupMainnet =
   "trusted_setups" /
   "trusted_setup_ethereum_kzg_test_mainnet.tsif"
 
-proc load_ethereum_kzg_test_trusted_setup_mainnet*(): ptr EthereumKZGContext {.libPrefix: prefix_ffi, raises: [OSError, IOError].} =
+proc load_ethereum_kzg_test_trusted_setup_mainnet*(): ptr EthereumKZGContext {.libPrefix: prefix_eth_kzg_4844, raises: [OSError, IOError].} =
   ## This is a convenience function for the Ethereum mainnet testing trusted setups.
   ## It is insecure and will be replaced once the KZG ceremony is done.
 
