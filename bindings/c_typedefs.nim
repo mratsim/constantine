@@ -32,10 +32,8 @@ proc genHeaderGuardAndInclude*(name, body: string): string =
 #define __CTT_H_{name}__
 
 #include "constantine/core/datatypes.h"
-
 {body}
-
-#endif
+#endif // __CTT_H_{name}__
 """
 
 proc genCpp*(body: string): string {.raises:[ValueError].} =
@@ -43,9 +41,7 @@ proc genCpp*(body: string): string {.raises:[ValueError].} =
 #ifdef __cplusplus
 extern "C" {{
 #endif
-
 {body}
-
 #ifdef __cplusplus
 }}
 #endif
@@ -91,6 +87,9 @@ proc genWordsRequired*(): string =
 #define CTT_WORDS_REQUIRED(bits) ((bits+WordBitWidth-1)/WordBitWidth)
 """
 
+proc genBigInt*(bits: int): string =
+  &"typedef struct {{ secret_word limbs[CTT_WORDS_REQUIRED({bits})]; }} big{bits};"
+
 proc genField*(name: string, bits: int): string =
   &"typedef struct {{ secret_word limbs[CTT_WORDS_REQUIRED({bits})]; }} {name};"
 
@@ -125,7 +124,11 @@ void ctt_{libName}_init_NimMain(void);"""
 let TypeMap {.compileTime.} = newStringTable({
   "bool":       "ctt_bool   ",
   "SecretBool": "secret_bool",
-  "SecretWord": "secret_word"
+  "SecretWord": "secret_word",
+
+  # Parallel only, proc are so long we don't care about alignment
+  "csize_t":    "size_t",
+  "Threadpool": "ctt_threadpool*"
 })
 
 proc toCrettype*(node: NimNode): string =
@@ -137,24 +140,33 @@ proc toCrettype*(node: NimNode): string =
     TypeMap[$node]
 
 proc toCtrivialParam*(name: string, typ: NimNode): string =
-  typ.expectKind({nnkVarTy, nnkSym})
+  typ.expectKind({nnkVarTy, nnkPtrTy, nnkSym})
 
   let isVar = typ.kind == nnkVarTy
+  let isPtr = typ.kind == nnkPtrTy
+
   let constify = if isVar: ""
                  else: "const "
+  let ptrify = isVar or isPtr
 
-  let sTyp = if isVar: $typ[0]
+  let sTyp = if ptrify: $typ[0]
              else: $typ
 
   if sTyp in TypeMap:
-    # Pass-by-value
-    constify & TypeMap[sTyp] & " " & name
+    # Pass-by-value unless explicit pointer
+    # if explicit pointer, apply `const` modifier where relevant
+    let ptrify = if ptrify: "*"
+                 else: ""
+    if isPtr:
+      constify & TypeMap[sTyp] & ptrify & " " & name
+    else:
+      TypeMap[sTyp] & ptrify & " " & name
   else:
     # Pass-by-reference
     constify & sTyp & "* " & name
 
 proc toCparam*(name: string, typ: NimNode): string =
-  typ.expectKind({nnkVarTy, nnkCall, nnkSym})
+  typ.expectKind({nnkVarTy, nnkCall, nnkSym, nnkPtrTy})
 
   if typ.kind == nnkCall:
     typ[0].expectKind(nnkOpenSymChoice)
@@ -174,5 +186,20 @@ proc toCparam*(name: string, typ: NimNode): string =
       TypeMap[sTyp] & " " & name & "[], ptrdiff_t " & name & "_len"
     else:
       sTyp & " " & name & "[], ptrdiff_t " & name & "_len"
+  elif typ.kind == nnkPtrTy and typ[0].kind == nnkCall:
+    typ[0][0].expectKind(nnkOpenSymChoice)
+    doAssert typ[0][0][0].eqIdent"[]"
+    doAssert typ[0][1].eqIdent"UncheckedArray"
+
+    let innerType = typ[0][2].getTypeInst()
+    if innerType.kind == nnkBracketExpr:
+      doAssert innerType[0].eqIdent"BigInt"
+      "const big" & $innerType[1].intVal & " " & name & "[]"
+    else:
+      let sTyp = $innerType
+      if sTyp in TypeMap:
+        "const " & TypeMap[sTyp] & " " & name & "[]"
+      else:
+        "const " & sTyp & " " & name & "[]"
   else:
     toCtrivialParam(name, typ)

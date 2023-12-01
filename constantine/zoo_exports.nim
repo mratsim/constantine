@@ -32,23 +32,30 @@ var prefix_sha256* {.compileTime.} = "ctt_sha256_"
 import std/macros
 
 macro libPrefix*(prefix: static string, procAst: untyped): untyped =
-  if prefix == "":
-    return procAst
-  else:
-    var pragmas = procAst.pragma
-    if pragmas.kind == nnkEmpty:
-      pragmas = nnkPragma.newTree()
+  var pragmas = procAst.pragma
+  if pragmas.kind == nnkEmpty:
+    pragmas = nnkPragma.newTree()
 
+  # Ensure all exceptions are caught.
+  pragmas.add nnkExprColonExpr.newTree(
+    ident"raises",
+    nnkBracket.newTree())
+
+  if appType != "lib" and appType != "staticLib":
+    # extern only does name-mangling but allows for dead-code elimination.
+    pragmas.add nnkExprColonExpr.newTree(
+      ident"extern",
+      newLit(prefix & "$1"))
+  else:
+    # exportc only does name-mangling and dead-code elimination.
+    # use the OS default call convention
     pragmas.add ident"noconv"
     pragmas.add nnkExprColonExpr.newTree(
       ident"exportc",
       newLit(prefix & "$1"))
-    pragmas.add nnkExprColonExpr.newTree(
-      ident"raises",
-      nnkBracket.newTree())
 
-    if appType == "lib":
-      pragmas.add ident"dynlib"
+  if appType == "lib":
+    pragmas.add ident"dynlib"
 
-    result = procAst
-    result.pragma = pragmas
+  result = procAst
+  result.pragma = pragmas

@@ -12,11 +12,12 @@
 #
 # ############################################################
 
-import std/[os, strformat, strutils]
+import std/[os, strformat, strutils, intsets]
 import ./c_typedefs, ./lib_curves
+import ../constantine/platforms/static_for
 
 proc writeHeader_classicCurve(filepath: string, curve: string, modBits, orderBits: int, curve_decls: string) =
-  var header: string
+  var header = "\n"
   header &= genField(&"{curve}_fr", orderBits)
   header &= '\n'
   header &= genField(&"{curve}_fp", modBits)
@@ -30,7 +31,7 @@ proc writeHeader_classicCurve(filepath: string, curve: string, modBits, orderBit
   header &= curve_decls
   header &= '\n'
 
-  header = genCpp(header)
+  header = "\n" & genCpp(header)
   header = genHeaderGuardAndInclude(curve.toUpperASCII(), header)
   header = genHeaderLicense() & header
 
@@ -40,7 +41,7 @@ proc writeHeader_pairingFriendly(filepath: string, curve: string, modBits, order
   let fpK = if g2_extfield == 1: "fp"
               else: "fp" & $g2_extfield
 
-  var header: string
+  var header = "\n"
   header &= genField(&"{curve}_fr", orderBits)
   header &= '\n'
   header &= genField(&"{curve}_fp", modBits)
@@ -62,7 +63,7 @@ proc writeHeader_pairingFriendly(filepath: string, curve: string, modBits, order
   header &= curve_decls
   header &= '\n'
 
-  header = genCpp(header)
+  header = "\n" & genCpp(header)
   header = genHeaderGuardAndInclude(curve.toUpperASCII(), header)
   header = genHeaderLicense() & header
 
@@ -82,16 +83,80 @@ proc writeHeader(dirPath: string, C: static Curve, curve_decls: string) =
 
   echo "Generated header: ", relPath
 
+proc writeParallelHeader(dirPath: string, C: static Curve, curve_decls: string) =
+  const modBits = C.getCurveBitWidth()
+  const orderBits = C.getCurveOrderBitWidth()
+  let curve = ($C).toLowerASCII()
+  let relPath = dirPath/"constantine"/"curves"/curve & "_parallel.h"
+
+  var includes: string
+  includes &= "#include \"constantine/core/threadpool.h\""
+  includes &= '\n'
+  includes &= &"#include \"constantine/curves/bigints.h\""
+  includes &= '\n'
+  includes &= &"#include \"constantine/curves/{curve}.h\""
+  includes &= '\n'
+
+  var header: string
+  header &= curve_decls
+  header &= '\n'
+
+  header = "\n" & genCpp(header)
+  header = genHeaderGuardAndInclude(curve.toUpperASCII() & "_PARALLEL", includes & header)
+  header = genHeaderLicense() & header
+
+  writeFile(relPath, header)
+  echo "Generated header: ", relPath
+
+proc writeBigIntHeader(dirPath: string, bigSizes: IntSet) =
+  let relPath = dirPath/"constantine"/"curves"/"bigints.h"
+
+  var header = "\n"
+
+  for size in bigSizes:
+    header &= genBigInt(size)
+    header &= '\n'
+
+  header = "\n" & genCpp(header)
+  header = genHeaderGuardAndInclude("BIGINTS", header)
+  header = genHeaderLicense() & header
+
+  writeFile(relPath, header)
+  echo "Generated header: ", relPath
+
 proc writeCurveHeaders(dir: string) =
   static: doAssert defined(CTT_MAKE_HEADERS), " Pass '-d:CTT_MAKE_HEADERS' to the compiler so that curves declarations are collected."
 
-  writeHeader(dir, BLS12_381, cBindings_bls12_381)
-  writeHeader(dir, BN254_Snarks, cBindings_bn254_snarks)
-  writeHeader(dir, Pallas, cBindings_pallas)
-  writeHeader(dir, Vesta, cBindings_vesta)
+  const curveMappings = {
+    BLS12_381: cBindings_bls12_381,
+    BN254_Snarks: cBindings_bn254_snarks,
+    Pallas: cBindings_pallas,
+    Vesta: cBindings_vesta
+  }
+
+  staticFor i, 0, curveMappings.len:
+    writeHeader(dir, curveMappings[i][0], curveMappings[i][1])
+
+proc writeCurveParallelHeaders(dir: string) =
+  static: doAssert defined(CTT_MAKE_HEADERS), " Pass '-d:CTT_MAKE_HEADERS' to the compiler so that curves declarations are collected."
+
+  const curveMappings = {
+    BLS12_381: cBindings_bls12_381_parallel,
+    BN254_Snarks: cBindings_bn254_snarks_parallel,
+    Pallas: cBindings_pallas_parallel,
+    Vesta: cBindings_vesta_parallel
+  }
+
+  var bigSizes = initIntSet()
+
+  staticFor i, 0, curveMappings.len:
+    writeParallelHeader(dir, curveMappings[i][0], curveMappings[i][1])
+    bigSizes.incl(curveMappings[i][0].getCurveOrderBitWidth())
+
+  dir.writeBigIntHeader(bigSizes)
 
 when isMainModule:
   proc main() {.inline.} =
     writeCurveHeaders("include")
-
+    writeCurveParallelHeaders("include")
   main()

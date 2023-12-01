@@ -8,15 +8,8 @@
 
 # ############################################################
 #
-#                    Constantine library
+#                    Constantine's threadpool
 #
 # ############################################################
 
-{.push warning[UnusedImport]: off.}
-
-import
-  ./lib_threadpool,
-  ./lib_hashes,
-  ./lib_curves,
-  # Protocols
-  ../constantine/ethereum_bls_signatures
+import ../constantine/threadpool

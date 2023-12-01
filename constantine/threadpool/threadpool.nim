@@ -23,6 +23,8 @@ import
   ./parallel_offloading,
   ../platforms/[allocs, bithacks]
 
+import ../zoo_exports
+
 export
   # flowvars
   Flowvar, isSpawned, isReady
@@ -938,8 +940,8 @@ proc wait(scopedBarrier: ptr ScopedBarrier) {.raises:[], gcsafe.} =
 #                                                            #
 # ############################################################
 
-proc new*(T: type Threadpool, numThreads = countProcessors()): T {.raises: [ResourceExhaustedError].} =
-  ## Initialize a threadpool that manages `numThreads` threads.
+proc new*(T: type Threadpool, numThreads = countProcessors()): T {.libPrefix: "ctt_threadpool_", raises: [ResourceExhaustedError].} =
+  ## Initialize a threadpool that manages `num_threads` threads.
   ## Default to the number of logical processors available.
   ##
   ## A Constantine's threadpool cannot be instantiated
@@ -993,7 +995,7 @@ proc cleanup(tp: Threadpool) {.raises: [].} =
 
   tp.freeHeapAligned()
 
-proc shutdown*(tp: Threadpool) {.raises:[].} =
+proc shutdown*(tp: Threadpool) {.raises:[], libPrefix: "ctt_threadpool_".} =
   ## Wait until all tasks are processed and then shutdown the threadpool
   preCondition: workerContext.currentTask.isRootTask()
   tp.syncAll()

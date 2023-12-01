@@ -232,4 +232,4 @@ ctt_eth_bls_status ctt_eth_bls_fast_aggregate_verify(const ctt_eth_bls_pubkey pu
 }
 #endif
 
-#endif
+#endif // __CTT_H_ETHEREUM_BLS_SIGNATURES__

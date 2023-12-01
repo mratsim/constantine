@@ -1,9 +1,9 @@
 [package]
-name = "ctt-curve-bn254-snarks"
+name = "constantine-zal-halo2curves"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-constantine-sys = { path = "../constantine-sys" }
+constantine-curves = { path = "../constantine-curves" }

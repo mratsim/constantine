@@ -63,4 +63,4 @@ static const char* ctt_codec_ecc_status_to_string(ctt_codec_ecc_status status) {
 }
 #endif
 
-#endif
+#endif // __CTT_H_SERIALIZATION__

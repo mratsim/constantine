@@ -190,6 +190,7 @@ proc genDynamicLib(outdir, nimcache: string) =
     exec "nim c " &
          flags &
          releaseBuildOptions(bmDynamicLib) &
+         " --threads:on " &
          " --noMain --app:lib " &
          &" --nimMainPrefix:ctt_init_ " & # Constantine is designed so that NimMain isn't needed, provided --mm:arc -d:useMalloc --panics:on -d:noSignalHandler
          &" --out:{libName} --outdir:{outdir} " &
@@ -209,17 +210,18 @@ proc genDynamicLib(outdir, nimcache: string) =
   else:
     compile "libconstantine.so"
 
-proc genStaticLib(outdir, nimcache: string, rustLib = false) =
+proc genStaticLib(outdir, nimcache: string) =
   proc compile(libName: string, flags = "") =
     echo &"Compiling static library:  {outdir}/" & libName
 
     exec "nim c " &
          flags &
          releaseBuildOptions(bmStaticLib) &
+         " --threads:on " &
          " --noMain --app:staticlib " &
          &" --nimMainPrefix:ctt_init_ " & # Constantine is designed so that NimMain isn't needed, provided --mm:arc -d:useMalloc --panics:on -d:noSignalHandler
          &" --out:{libName} --outdir:{outdir} " &
-         &" --nimcache:{nimcache}/libconstantine_static" & (if rustLib: "_rust" else: "") &
+         &" --nimcache:{nimcache}/libconstantine_static" &
          &" bindings/lib_constantine.nim"
 
   when defined(windows):
@@ -238,6 +240,7 @@ proc genStaticLib(outdir, nimcache: string, rustLib = false) =
 task make_headers, "Regenerate Constantine headers":
   exec "nim c -r -d:CTT_MAKE_HEADERS " &
        " -d:release " &
+       " --threads:on " &
        " --verbosity:0 --hints:off --warnings:off " &
        " --outdir:build/make " &
        " --nimcache:nimcache/libcurves_headers " &
@@ -250,7 +253,7 @@ task make_lib, "Build Constantine library":
 task make_lib_rust, "Build Constantine library (use within a Rust build.rs script)":
   doAssert existsEnv"OUT_DIR", "Cargo needs to set the \"OUT_DIR\" environment variable"
   let rustOutDir = getEnv"OUT_DIR"
-  genStaticLib(rustOutDir, rustOutDir/"nimcache", rustLib = true)
+  genStaticLib(rustOutDir, rustOutDir/"nimcache")
 
 proc testLib(path, testName: string, useGMP: bool) =
   let dynlibName = if defined(windows): "constantine.dll"

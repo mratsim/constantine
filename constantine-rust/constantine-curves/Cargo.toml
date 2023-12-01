@@ -1,5 +1,5 @@
 [package]
-name = "ctt-proto-ethereum-bls-signatures"
+name = "constantine-curves"
 version = "0.1.0"
 edition = "2021"
 
