@@ -168,7 +168,9 @@ proc releaseBuildOptions(buildMode = bmBinary): string =
   #   "-s -flinker-output=nolto-rel"
   #   with an extra C compiler call
   #   to consolidate all objects into one.
-  let ltoFlags = " -d:lto " # " --UseAsmSyntaxIntel --passC:-flto=auto --passL:-flto=auto "
+  let ltoFlags = " -d:lto " & # " --UseAsmSyntaxIntel --passC:-flto=auto --passL:-flto=auto "
+                 # With LTO, the GCC linker produces lots of spurious warnings when copying into openArrays/strings
+                 " --passC:-Wno-stringop-overflow --passL:-Wno-stringop-overflow "
 
   let apple = defined(macos) or defined(macox) or defined(ios)
   let ltoOptions = if useLtoDefault:
@@ -670,11 +672,6 @@ proc test(cmd: string) =
   exec cmd
 
 proc testBatch(commands: var string, flags, path: string) =
-  # With LTO, the linker produces lots of spurious warnings when copying into openArrays/strings
-
-  let flags = if defined(gcc): flags & " --passC:-Wno-stringop-overflow --passL:-Wno-stringop-overflow "
-              else: flags
-
   commands = commands & setupTestCommand(flags, path) & '\n'
 
 proc setupBench(benchName: string, run: bool): string =
@@ -683,10 +680,6 @@ proc setupBench(benchName: string, run: bool): string =
     runFlags = runFlags & " -r "
 
   let asmStatus = if getEnvVars().useAsmIfAble: "asmIfAvailable" else: "noAsm"
-
-  if defined(gcc):
-    # With LTO, the linker produces lots of spurious warnings when copying into openArrays/strings
-    runFlags = runFlags & " --passC:-Wno-stringop-overflow --passL:-Wno-stringop-overflow "
 
   let cc = if existsEnv"CC": getEnv"CC"
            else: "defaultcompiler"
