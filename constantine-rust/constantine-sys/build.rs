@@ -18,6 +18,7 @@ fn main() {
     println!("cargo:rerun-if-changed={}", root_dir.join("Cargo.toml").display());
     println!("cargo:rerun-if-changed={}", root_dir.join("constantine").display());
     println!("cargo:rerun-if-changed={}", root_dir.join("bindings").display());
+    println!("cargo:rerun-if-changed={}", root_dir.join("include").display());
     println!("cargo:rerun-if-changed={}", root_dir.join("constantine.nimble").display());
 
     println!("Building Constantine library ...");

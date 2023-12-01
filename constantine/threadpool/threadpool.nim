@@ -940,7 +940,7 @@ proc wait(scopedBarrier: ptr ScopedBarrier) {.raises:[], gcsafe.} =
 #                                                            #
 # ############################################################
 
-proc new*(T: type Threadpool, numThreads = countProcessors()): T {.libPrefix: "ctt_threadpool_", raises: [ResourceExhaustedError].} =
+proc new*(T: type Threadpool, numThreads = countProcessors()): T {.raises: [ResourceExhaustedError].} =
   ## Initialize a threadpool that manages `num_threads` threads.
   ## Default to the number of logical processors available.
   ##
