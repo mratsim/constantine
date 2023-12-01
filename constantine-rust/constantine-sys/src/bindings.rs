@@ -3536,7 +3536,7 @@ fn bindgen_test_layout_big254() {
 extern "C" {
     pub fn ctt_bls12_381_g1_jac_multi_scalar_mul_vartime_parallel(
         tp: *const ctt_threadpool,
-        r: *const bls12_381_g1_jac,
+        r: *mut bls12_381_g1_jac,
         coefs: *const big255,
         points: *const bls12_381_g1_aff,
         len: usize,
@@ -3545,7 +3545,7 @@ extern "C" {
 extern "C" {
     pub fn ctt_bls12_381_g1_prj_multi_scalar_mul_vartime_parallel(
         tp: *const ctt_threadpool,
-        r: *const bls12_381_g1_prj,
+        r: *mut bls12_381_g1_prj,
         coefs: *const big255,
         points: *const bls12_381_g1_aff,
         len: usize,
@@ -3554,7 +3554,7 @@ extern "C" {
 extern "C" {
     pub fn ctt_bn254_snarks_g1_jac_multi_scalar_mul_vartime_parallel(
         tp: *const ctt_threadpool,
-        r: *const bn254_snarks_g1_jac,
+        r: *mut bn254_snarks_g1_jac,
         coefs: *const big254,
         points: *const bn254_snarks_g1_aff,
         len: usize,
@@ -3563,7 +3563,7 @@ extern "C" {
 extern "C" {
     pub fn ctt_bn254_snarks_g1_prj_multi_scalar_mul_vartime_parallel(
         tp: *const ctt_threadpool,
-        r: *const bn254_snarks_g1_prj,
+        r: *mut bn254_snarks_g1_prj,
         coefs: *const big254,
         points: *const bn254_snarks_g1_aff,
         len: usize,
@@ -3572,7 +3572,7 @@ extern "C" {
 extern "C" {
     pub fn ctt_pallas_ec_jac_multi_scalar_mul_vartime_parallel(
         tp: *const ctt_threadpool,
-        r: *const pallas_ec_jac,
+        r: *mut pallas_ec_jac,
         coefs: *const big255,
         points: *const pallas_ec_aff,
         len: usize,
@@ -3581,7 +3581,7 @@ extern "C" {
 extern "C" {
     pub fn ctt_pallas_ec_prj_multi_scalar_mul_vartime_parallel(
         tp: *const ctt_threadpool,
-        r: *const pallas_ec_prj,
+        r: *mut pallas_ec_prj,
         coefs: *const big255,
         points: *const pallas_ec_aff,
         len: usize,
@@ -3590,7 +3590,7 @@ extern "C" {
 extern "C" {
     pub fn ctt_vesta_ec_jac_multi_scalar_mul_vartime_parallel(
         tp: *const ctt_threadpool,
-        r: *const vesta_ec_jac,
+        r: *mut vesta_ec_jac,
         coefs: *const big255,
         points: *const vesta_ec_aff,
         len: usize,
@@ -3599,7 +3599,7 @@ extern "C" {
 extern "C" {
     pub fn ctt_vesta_ec_prj_multi_scalar_mul_vartime_parallel(
         tp: *const ctt_threadpool,
-        r: *const vesta_ec_prj,
+        r: *mut vesta_ec_prj,
         coefs: *const big255,
         points: *const vesta_ec_aff,
         len: usize,
