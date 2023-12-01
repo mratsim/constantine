@@ -128,7 +128,7 @@ let TypeMap {.compileTime.} = newStringTable({
 
   # Parallel only, proc are so long we don't care about alignment
   "csize_t":    "size_t",
-  "Threadpool": "ctt_threadpool*"
+  "Threadpool": "const ctt_threadpool*"
 })
 
 proc toCrettype*(node: NimNode): string =

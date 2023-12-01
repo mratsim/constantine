@@ -18,6 +18,11 @@
 #include "constantine/curves/pallas.h"
 #include "constantine/curves/vesta.h"
 
+#include "constantine/curves/bls12_381_parallel.h"
+#include "constantine/curves/bn254_snarks_parallel.h"
+#include "constantine/curves/pallas_parallel.h"
+#include "constantine/curves/vesta_parallel.h"
+
 // Protocols
 #include "constantine/protocols/ethereum_bls_signatures.h"
 

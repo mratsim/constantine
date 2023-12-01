@@ -18,8 +18,8 @@
 extern "C" {
 #endif
 
-void        ctt_bn254_snarks_ec_g1_jac_multi_scalar_mul_vartime_parallel(ctt_threadpool* tp, const bn254_snarks_ec_g1_jac* r, const big254 coefs[], const bn254_snarks_ec_g1_aff points[], size_t len);
-void        ctt_bn254_snarks_ec_g1_prj_multi_scalar_mul_vartime_parallel(ctt_threadpool* tp, const bn254_snarks_ec_g1_prj* r, const big254 coefs[], const bn254_snarks_ec_g1_aff points[], size_t len);
+void        ctt_bn254_snarks_g1_jac_multi_scalar_mul_vartime_parallel(const ctt_threadpool* tp, const bn254_snarks_g1_jac* r, const big254 coefs[], const bn254_snarks_g1_aff points[], size_t len);
+void        ctt_bn254_snarks_g1_prj_multi_scalar_mul_vartime_parallel(const ctt_threadpool* tp, const bn254_snarks_g1_prj* r, const big254 coefs[], const bn254_snarks_g1_aff points[], size_t len);
 
 #ifdef __cplusplus
 }

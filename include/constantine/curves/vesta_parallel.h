@@ -18,8 +18,8 @@
 extern "C" {
 #endif
 
-void        ctt_vesta_ec_jac_multi_scalar_mul_vartime_parallel(ctt_threadpool* tp, const vesta_ec_jac* r, const big255 coefs[], const vesta_ec_aff points[], size_t len);
-void        ctt_vesta_ec_prj_multi_scalar_mul_vartime_parallel(ctt_threadpool* tp, const vesta_ec_prj* r, const big255 coefs[], const vesta_ec_aff points[], size_t len);
+void        ctt_vesta_ec_jac_multi_scalar_mul_vartime_parallel(const ctt_threadpool* tp, const vesta_ec_jac* r, const big255 coefs[], const vesta_ec_aff points[], size_t len);
+void        ctt_vesta_ec_prj_multi_scalar_mul_vartime_parallel(const ctt_threadpool* tp, const vesta_ec_prj* r, const big255 coefs[], const vesta_ec_aff points[], size_t len);
 
 #ifdef __cplusplus
 }
