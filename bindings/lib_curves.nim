@@ -45,8 +45,8 @@ collectBindings(cBindings_bls12_381):
   genBindings_EC_ShortW_NonAffine(bls12_381_g2_prj, bls12_381_g2_aff)
 
 collectBindings(cBindings_bls12_381_parallel):
-  genParallelBindings_EC_ShortW_NonAffine(bls12_381_g1_jac, bls12_381_g1_aff)
-  genParallelBindings_EC_ShortW_NonAffine(bls12_381_g1_prj, bls12_381_g1_aff)
+  genParallelBindings_EC_ShortW_NonAffine(bls12_381_g1_jac, bls12_381_g1_aff, bls12_381_fr)
+  genParallelBindings_EC_ShortW_NonAffine(bls12_381_g1_prj, bls12_381_g1_aff, bls12_381_fr)
 # ----------------------------------------------------------
 
 type
@@ -74,8 +74,8 @@ collectBindings(cBindings_bn254_snarks):
   genBindings_EC_ShortW_NonAffine(bn254_snarks_g2_prj, bn254_snarks_g2_aff)
 
 collectBindings(cBindings_bn254_snarks_parallel):
-  genParallelBindings_EC_ShortW_NonAffine(bn254_snarks_g1_jac, bn254_snarks_g1_aff)
-  genParallelBindings_EC_ShortW_NonAffine(bn254_snarks_g1_prj, bn254_snarks_g1_aff)
+  genParallelBindings_EC_ShortW_NonAffine(bn254_snarks_g1_jac, bn254_snarks_g1_aff, bn254_snarks_fr)
+  genParallelBindings_EC_ShortW_NonAffine(bn254_snarks_g1_prj, bn254_snarks_g1_aff, bn254_snarks_fr)
 
 # ----------------------------------------------------------
 
@@ -95,8 +95,8 @@ collectBindings(cBindings_pallas):
   genBindings_EC_ShortW_NonAffine(pallas_ec_prj, pallas_ec_aff)
 
 collectBindings(cBindings_pallas_parallel):
-  genParallelBindings_EC_ShortW_NonAffine(pallas_ec_jac, pallas_ec_aff)
-  genParallelBindings_EC_ShortW_NonAffine(pallas_ec_prj, pallas_ec_aff)
+  genParallelBindings_EC_ShortW_NonAffine(pallas_ec_jac, pallas_ec_aff, pallas_fr)
+  genParallelBindings_EC_ShortW_NonAffine(pallas_ec_prj, pallas_ec_aff, pallas_fr)
 
 type
   vesta_fr = Fr[Vesta]
@@ -114,7 +114,7 @@ collectBindings(cBindings_vesta):
   genBindings_EC_ShortW_NonAffine(vesta_ec_prj, vesta_ec_aff)
 
 collectBindings(cBindings_vesta_parallel):
-  genParallelBindings_EC_ShortW_NonAffine(vesta_ec_jac, vesta_ec_aff)
-  genParallelBindings_EC_ShortW_NonAffine(vesta_ec_prj, vesta_ec_aff)
+  genParallelBindings_EC_ShortW_NonAffine(vesta_ec_jac, vesta_ec_aff, vesta_fr)
+  genParallelBindings_EC_ShortW_NonAffine(vesta_ec_prj, vesta_ec_aff, vesta_fr)
 
 # ----------------------------------------------------------

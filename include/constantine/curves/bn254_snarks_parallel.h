@@ -18,8 +18,10 @@
 extern "C" {
 #endif
 
-void        ctt_bn254_snarks_g1_jac_multi_scalar_mul_vartime_parallel(const ctt_threadpool* tp, bn254_snarks_g1_jac* r, const big254 coefs[], const bn254_snarks_g1_aff points[], size_t len);
-void        ctt_bn254_snarks_g1_prj_multi_scalar_mul_vartime_parallel(const ctt_threadpool* tp, bn254_snarks_g1_prj* r, const big254 coefs[], const bn254_snarks_g1_aff points[], size_t len);
+void        ctt_bn254_snarks_g1_jac_multi_scalar_mul_big_coefs_vartime_parallel(const ctt_threadpool* tp, bn254_snarks_g1_jac* r, const big254 coefs[], const bn254_snarks_g1_aff points[], size_t len);
+void        ctt_bn254_snarks_g1_jac_multi_scalar_mul_fr_coefs_vartime_parallel(const ctt_threadpool* tp, bn254_snarks_g1_jac* r, const bn254_snarks_fr coefs[], const bn254_snarks_g1_aff points[], size_t len);
+void        ctt_bn254_snarks_g1_prj_multi_scalar_mul_big_coefs_vartime_parallel(const ctt_threadpool* tp, bn254_snarks_g1_prj* r, const big254 coefs[], const bn254_snarks_g1_aff points[], size_t len);
+void        ctt_bn254_snarks_g1_prj_multi_scalar_mul_fr_coefs_vartime_parallel(const ctt_threadpool* tp, bn254_snarks_g1_prj* r, const bn254_snarks_fr coefs[], const bn254_snarks_g1_aff points[], size_t len);
 
 #ifdef __cplusplus
 }

@@ -40,10 +40,10 @@ impl MsmAccel<bn256::G1Affine> for CttEngine {
         assert_eq!(coeffs.len(), bases.len());
         let mut result: MaybeUninit<bn254_snarks_g1_prj> = MaybeUninit::uninit();
         unsafe {
-            ctt_bn254_snarks_g1_prj_multi_scalar_mul_vartime_parallel(
+            ctt_bn254_snarks_g1_prj_multi_scalar_mul_fr_coefs_vartime_parallel(
                self.ctx,
                result.as_mut_ptr(),
-               coeffs.as_ptr() as *const big254,
+               coeffs.as_ptr() as *const bn254_snarks_fr,
                bases.as_ptr() as *const bn254_snarks_g1_aff,
                bases.len()
             );

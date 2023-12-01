@@ -3534,7 +3534,7 @@ fn bindgen_test_layout_big254() {
     );
 }
 extern "C" {
-    pub fn ctt_bls12_381_g1_jac_multi_scalar_mul_vartime_parallel(
+    pub fn ctt_bls12_381_g1_jac_multi_scalar_mul_big_coefs_vartime_parallel(
         tp: *const ctt_threadpool,
         r: *mut bls12_381_g1_jac,
         coefs: *const big255,
@@ -3543,7 +3543,16 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn ctt_bls12_381_g1_prj_multi_scalar_mul_vartime_parallel(
+    pub fn ctt_bls12_381_g1_jac_multi_scalar_mul_fr_coefs_vartime_parallel(
+        tp: *const ctt_threadpool,
+        r: *mut bls12_381_g1_jac,
+        coefs: *const bls12_381_fr,
+        points: *const bls12_381_g1_aff,
+        len: usize,
+    );
+}
+extern "C" {
+    pub fn ctt_bls12_381_g1_prj_multi_scalar_mul_big_coefs_vartime_parallel(
         tp: *const ctt_threadpool,
         r: *mut bls12_381_g1_prj,
         coefs: *const big255,
@@ -3552,7 +3561,16 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn ctt_bn254_snarks_g1_jac_multi_scalar_mul_vartime_parallel(
+    pub fn ctt_bls12_381_g1_prj_multi_scalar_mul_fr_coefs_vartime_parallel(
+        tp: *const ctt_threadpool,
+        r: *mut bls12_381_g1_prj,
+        coefs: *const bls12_381_fr,
+        points: *const bls12_381_g1_aff,
+        len: usize,
+    );
+}
+extern "C" {
+    pub fn ctt_bn254_snarks_g1_jac_multi_scalar_mul_big_coefs_vartime_parallel(
         tp: *const ctt_threadpool,
         r: *mut bn254_snarks_g1_jac,
         coefs: *const big254,
@@ -3561,7 +3579,16 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn ctt_bn254_snarks_g1_prj_multi_scalar_mul_vartime_parallel(
+    pub fn ctt_bn254_snarks_g1_jac_multi_scalar_mul_fr_coefs_vartime_parallel(
+        tp: *const ctt_threadpool,
+        r: *mut bn254_snarks_g1_jac,
+        coefs: *const bn254_snarks_fr,
+        points: *const bn254_snarks_g1_aff,
+        len: usize,
+    );
+}
+extern "C" {
+    pub fn ctt_bn254_snarks_g1_prj_multi_scalar_mul_big_coefs_vartime_parallel(
         tp: *const ctt_threadpool,
         r: *mut bn254_snarks_g1_prj,
         coefs: *const big254,
@@ -3570,7 +3597,16 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn ctt_pallas_ec_jac_multi_scalar_mul_vartime_parallel(
+    pub fn ctt_bn254_snarks_g1_prj_multi_scalar_mul_fr_coefs_vartime_parallel(
+        tp: *const ctt_threadpool,
+        r: *mut bn254_snarks_g1_prj,
+        coefs: *const bn254_snarks_fr,
+        points: *const bn254_snarks_g1_aff,
+        len: usize,
+    );
+}
+extern "C" {
+    pub fn ctt_pallas_ec_jac_multi_scalar_mul_big_coefs_vartime_parallel(
         tp: *const ctt_threadpool,
         r: *mut pallas_ec_jac,
         coefs: *const big255,
@@ -3579,7 +3615,16 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn ctt_pallas_ec_prj_multi_scalar_mul_vartime_parallel(
+    pub fn ctt_pallas_ec_jac_multi_scalar_mul_fr_coefs_vartime_parallel(
+        tp: *const ctt_threadpool,
+        r: *mut pallas_ec_jac,
+        coefs: *const pallas_fr,
+        points: *const pallas_ec_aff,
+        len: usize,
+    );
+}
+extern "C" {
+    pub fn ctt_pallas_ec_prj_multi_scalar_mul_big_coefs_vartime_parallel(
         tp: *const ctt_threadpool,
         r: *mut pallas_ec_prj,
         coefs: *const big255,
@@ -3588,7 +3633,16 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn ctt_vesta_ec_jac_multi_scalar_mul_vartime_parallel(
+    pub fn ctt_pallas_ec_prj_multi_scalar_mul_fr_coefs_vartime_parallel(
+        tp: *const ctt_threadpool,
+        r: *mut pallas_ec_prj,
+        coefs: *const pallas_fr,
+        points: *const pallas_ec_aff,
+        len: usize,
+    );
+}
+extern "C" {
+    pub fn ctt_vesta_ec_jac_multi_scalar_mul_big_coefs_vartime_parallel(
         tp: *const ctt_threadpool,
         r: *mut vesta_ec_jac,
         coefs: *const big255,
@@ -3597,10 +3651,28 @@ extern "C" {
     );
 }
 extern "C" {
-    pub fn ctt_vesta_ec_prj_multi_scalar_mul_vartime_parallel(
+    pub fn ctt_vesta_ec_jac_multi_scalar_mul_fr_coefs_vartime_parallel(
+        tp: *const ctt_threadpool,
+        r: *mut vesta_ec_jac,
+        coefs: *const vesta_fr,
+        points: *const vesta_ec_aff,
+        len: usize,
+    );
+}
+extern "C" {
+    pub fn ctt_vesta_ec_prj_multi_scalar_mul_big_coefs_vartime_parallel(
         tp: *const ctt_threadpool,
         r: *mut vesta_ec_prj,
         coefs: *const big255,
+        points: *const vesta_ec_aff,
+        len: usize,
+    );
+}
+extern "C" {
+    pub fn ctt_vesta_ec_prj_multi_scalar_mul_fr_coefs_vartime_parallel(
+        tp: *const ctt_threadpool,
+        r: *mut vesta_ec_prj,
+        coefs: *const vesta_fr,
         points: *const vesta_ec_aff,
         len: usize,
     );

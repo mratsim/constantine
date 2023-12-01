@@ -18,8 +18,10 @@
 extern "C" {
 #endif
 
-void        ctt_bls12_381_g1_jac_multi_scalar_mul_vartime_parallel(const ctt_threadpool* tp, bls12_381_g1_jac* r, const big255 coefs[], const bls12_381_g1_aff points[], size_t len);
-void        ctt_bls12_381_g1_prj_multi_scalar_mul_vartime_parallel(const ctt_threadpool* tp, bls12_381_g1_prj* r, const big255 coefs[], const bls12_381_g1_aff points[], size_t len);
+void        ctt_bls12_381_g1_jac_multi_scalar_mul_big_coefs_vartime_parallel(const ctt_threadpool* tp, bls12_381_g1_jac* r, const big255 coefs[], const bls12_381_g1_aff points[], size_t len);
+void        ctt_bls12_381_g1_jac_multi_scalar_mul_fr_coefs_vartime_parallel(const ctt_threadpool* tp, bls12_381_g1_jac* r, const bls12_381_fr coefs[], const bls12_381_g1_aff points[], size_t len);
+void        ctt_bls12_381_g1_prj_multi_scalar_mul_big_coefs_vartime_parallel(const ctt_threadpool* tp, bls12_381_g1_prj* r, const big255 coefs[], const bls12_381_g1_aff points[], size_t len);
+void        ctt_bls12_381_g1_prj_multi_scalar_mul_fr_coefs_vartime_parallel(const ctt_threadpool* tp, bls12_381_g1_prj* r, const bls12_381_fr coefs[], const bls12_381_g1_aff points[], size_t len);
 
 #ifdef __cplusplus
 }
