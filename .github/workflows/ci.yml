@@ -246,7 +246,6 @@ jobs:
           nim -v
           gcc -v
           clang -v
-          llvm-config --version
           rustup --version
 
       - name: Run Constantine as C library tests (with Assembly)
