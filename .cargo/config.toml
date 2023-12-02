@@ -2,12 +2,16 @@
 # Use "CTT_LTO=1 cargo build" to force LTO on the Nim side
 #
 # Notes:
-#  Even without full-LTO, Constantine does partial LTO within the Nim library.
 #
-#  On MacOS, for Intel targets, LTO and partial LTO are not used
-#  as Apple Clang does not support the Intel assembly syntax.
+#  On MacOS, for Intel targets,
+#  Apple Clang does not support the Intel assembly syntax.
 #  Unfortunately the combination Clang + AT&T syntax causes issues
 #  when LTO propagates constants into inline assembly.
+#  Upstream Clang/LLVM can be used instead.
+#
+#  Note that Rust LLVM and Clang LLVM might be incompatible
+#  if the base LLVM versions differ.
+#  For example before LLVM 15 opaque pointers in IR triggered an error.
 
 [build]
 # https://doc.rust-lang.org/rustc/linker-plugin-lto.html

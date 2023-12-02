@@ -25,11 +25,10 @@ import std/[strformat, strutils, os]
 #
 # - CTT_LTO=1
 #        Enable LTO builds.
-#        This is:
+#        By default this is:
 #        - Disabled for binaries
 #        - Enabled for dynamic libraries, unless on MacOS or iOS
-#        - Disabled for static libraries,
-#          however partial LTO up to Constantine public API boundaries is done.
+#        - Disabled for static libraries
 #
 # Runtime environment variables
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
