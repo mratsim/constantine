@@ -14,45 +14,37 @@ jobs:
             cpu: i386
             TEST_LANG: c
             BACKEND: NO_ASM
-            SHELL: bash
           - os: linux
             cpu: i386
             TEST_LANG: c
             BACKEND: ASM
-            SHELL: bash
 
           - os: linux
             cpu: amd64
             TEST_LANG: c
             BACKEND: NO_ASM
-            SHELL: bash
           - os: linux
             cpu: amd64
             TEST_LANG: c
             BACKEND: ASM
-            SHELL: bash
 
           - os: windows
             cpu: amd64
             TEST_LANG: c
             BACKEND: NO_ASM
-            SHELL: msys2 {0}
           - os: windows
             cpu: amd64
             TEST_LANG: c
             BACKEND: ASM
-            SHELL: msys2 {0}
 
           - os: macos
             cpu: amd64
             TEST_LANG: c
             BACKEND: NO_ASM
-            SHELL: bash
           - os: macos
             cpu: amd64
             TEST_LANG: c
             BACKEND: ASM
-            SHELL: bash
         include:
           - target:
               os: linux
@@ -252,7 +244,7 @@ jobs:
 
       - name: Run Constantine as C library tests (with Assembly)
         if: matrix.target.BACKEND == 'ASM'
-        shell: ${{ matrix.target.SHELL }}
+        shell: bash
         run: |
           cd constantine
           nimble make_lib      --verbose
@@ -260,7 +252,24 @@ jobs:
           nimble test_lib      --verbose
       - name: Run Constantine as C library tests (NO Assembly)
         if: matrix.target.BACKEND == 'NO_ASM'
-        shell: ${{ matrix.target.SHELL }}
+        shell: bash
+        run: |
+          cd constantine
+          CTT_ASM=0 nimble make_lib --verbose
+          nimble make_headers       --verbose
+          nimble test_lib           --verbose
+
+      - name: Run Constantine as C library tests (with Assembly)
+        if: matrix.target.BACKEND == 'ASM'
+        shell: bash
+        run: |
+          cd constantine
+          nimble make_lib      --verbose
+          nimble make_headers  --verbose
+          nimble test_lib      --verbose
+      - name: Run Constantine as C library tests (no Assembly)
+        if: matrix.target.BACKEND == 'NO_ASM'
+        shell: bash
         run: |
           cd constantine
           CTT_ASM=0 nimble make_lib --verbose
@@ -269,7 +278,7 @@ jobs:
 
       - name: Run Constantine as Rust library tests (with Assembly)
         if: matrix.target.BACKEND == 'ASM'
-        shell: ${{ matrix.target.SHELL }}
+        shell: bash
         run: |
           cd constantine
           rustup update ${{ matrix.rust_toolchain }} && rustup default ${{ matrix.rust_toolchain }}
@@ -277,27 +286,27 @@ jobs:
           cargo test  --verbose
       - name: Run Constantine as Rust library tests (NO Assembly)
         if: matrix.target.BACKEND == 'NO_ASM'
-        shell: ${{ matrix.target.SHELL }}
+        shell: bash
         run: |
           cd constantine
           rustup update ${{ matrix.rust_toolchain }} && rustup default ${{ matrix.rust_toolchain }}
           CTT_ASM=0 cargo build --verbose
           CTT_ASM=0 cargo test  --verbose
 
-      - name: Run Constantine in-depth tests (with GMP, with Assembly)
+      - name: Run Constantine in-depth tests (Unix - with GMP, with Assembly)
         if: runner.os != 'Windows' && matrix.target.BACKEND == 'ASM'
-        shell: msys2 {0}
+        shell: bash
         run: |
           cd constantine
           nimble test_parallel --verbose
-      - name: Run Constantine in-depth tests (with GMP, no Assembly)
+      - name: Run Constantine in-depth tests (Unix - with GMP, no Assembly)
         if: runner.os != 'Windows' && matrix.target.BACKEND == 'NO_ASM'
-        shell: msys2 {0}
+        shell: bash
         run: |
           cd constantine
           CTT_ASM=0 nimble test_parallel --verbose
 
-      - name: Run Constantine in-depth tests (no GMP, with Assembly)
+      - name: Run Constantine in-depth tests (Windows - no GMP, with Assembly)
         # So "test_bindings" uses C and can find GMP
         # but nim-gmp cannot find GMP on Windows CI
         if: runner.os == 'Windows' && matrix.target.BACKEND == 'ASM'
@@ -305,7 +314,7 @@ jobs:
         run: |
           cd constantine
           nimble test_parallel_no_gmp --verbose
-      - name: Run Constantine in-depth tests (no GMP, no Assembly)
+      - name: Run Constantine in-depth tests (Windows - no GMP, no Assembly)
         # So "test_bindings" uses C and can find GMP
         # but nim-gmp cannot find GMP on Windows CI
         if: runner.os == 'Windows' && matrix.target.BACKEND == 'NO_ASM'
