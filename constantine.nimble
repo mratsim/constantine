@@ -168,7 +168,7 @@ proc releaseBuildOptions(buildMode = bmBinary): string =
   #   "-s -flinker-output=nolto-rel"
   #   with an extra C compiler call
   #   to consolidate all objects into one.
-  let ltoFlags = " -d:lto_incremental " # " --UseAsmSyntaxIntel --passC:-flto=auto --passL:-flto=auto "
+  let ltoFlags = " -d:lto " # " --UseAsmSyntaxIntel --passC:-flto=auto --passL:-flto=auto "
 
   let apple = defined(macos) or defined(macox) or defined(ios)
   let ltoOptions = if useLtoDefault:
