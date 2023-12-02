@@ -29,9 +29,6 @@ static: doAssert UseASM_X86_64
 {.localPassC:"-fomit-frame-pointer".}  # (enabled at -O1)
 {.localPassC:"-fno-sanitize=address".} # need 15 registers out of 16 (1 reserved for stack pointer, none available for Address Sanitizer)
 
-when UseAsmSyntaxIntel:
-  {.localpassC:"-masm=intel".}
-
 # Montgomery Multiplication
 # ------------------------------------------------------------
 

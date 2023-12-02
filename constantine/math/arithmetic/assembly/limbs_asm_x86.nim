@@ -20,9 +20,6 @@ import
 
 static: doAssert UseASM_X86_32
 
-when UseAsmSyntaxIntel:
-  {.localpassC:"-masm=intel".}
-
 # Copy
 # ------------------------------------------------------------
 macro ccopy_gen[N: static int](a_PIR: var Limbs[N], b_MEM: Limbs[N], ctl: SecretBool): untyped =

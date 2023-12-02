@@ -23,6 +23,14 @@ import std/[strformat, strutils, os]
 # - CTT_ASM=0
 #        Disable assembly backend. Otherwise use ASM for supported CPUs and fallback to generic code otherwise.
 #
+# - CTT_LTO=1
+#        Enable LTO builds.
+#        This is:
+#        - Disabled for binaries
+#        - Enabled for dynamic libraries, unless on MacOS or iOS
+#        - Disabled for static libraries,
+#          however partial LTO up to Constantine public API boundaries is done.
+#
 # Runtime environment variables
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
@@ -51,16 +59,21 @@ import std/[strformat, strutils, os]
 # - CTT_THREADPOOL_DEBUG_SPLIT
 # - CTT_THREADPOOL_DEBUG_TERMINATION
 
-proc getEnvVars(): tuple[useAsmIfAble, force32: bool] =
+proc getEnvVars(): tuple[useAsmIfAble, force32, forceLto, useLtoDefault: bool] =
   if existsEnv"CTT_ASM":
     result.useAsmIfAble = parseBool(getEnv"CTT_ASM")
   else:
     result.useAsmIfAble = true
   if existsEnv"CTT_32":
-    result.force32 = true
+    result.force32 = parseBool(getEnv"CTT_ASM")
   else:
     result.force32 = false
-
+  if existsEnv"CTT_LTO":
+    result.forceLto = parseBool(getEnv"CTT_LTO")
+    result.useLtoDefault = false
+  else:
+    result.forceLto = false
+    result.useLtoDefault = true
 
 # Library compilation
 # ----------------------------------------------------------------
@@ -112,44 +125,64 @@ func compilerFlags(): string =
   " --passC:-falign-functions=64 " &
   " --passC:-fmerge-all-constants"
 
-const Apple = defined(macos) or defined(macox) or defined(ios)
+type BuildMode = enum
+  bmBinary
+  bmStaticLib
+  bmDynamicLib
 
-proc releaseBuildOptions(useLTO = false): string =
+proc releaseBuildOptions(buildMode = bmBinary): string =
 
   let compiler = if existsEnv"CC": " --cc:" & getEnv"CC"
                  else: ""
 
-  let (useAsmIfAble, force32) = getEnvVars()
+  let (useAsmIfAble, force32, forceLTO, useLtoDefault) = getEnvVars()
   let envASM = if not useAsmIfAble: " -d:CTT_ASM=false "
                else: ""
   let env32 = if force32: " -d:CTT_32 "
               else: ""
 
-  let lto = if useLTO: " --passC:-flto=auto --passL:-flto=auto "
-            else: ""
+  # LTO config
+  # -------------------------------------------------------------------------------
+  # This is impacted by:
+  # - LTO: LTO requires Intel Assembly for Clang
+  # - MacOS / iOS: Default Apple Clang does not support Intel Assembly
+  # - Rust backend:
+  #     Using Clang, we can do Nim<->Rust cross-language LTO
+  #     - https://blog.llvm.org/2019/09/closing-gap-cross-language-lto-between.html
+  #     - https://github.com/rust-lang/rust/pull/58057
+  #     - https://doc.rust-lang.org/rustc/linker-plugin-lto.html
+  # - Ergonomics of LTO for static libraries
+  #   LTO on static libraries requires proper match on compiler
+  #   and even on compiler versions,
+  #   for example LLVM 17 uses opaque pointers while LLVM 14 does not
+  #   and in CI when combining default Rust (LLVM 17) and Clang/LLD (LLVM 14)
+  #   we get failures.
+  #
+  # Hence:
+  # - for binaries, LTO defaults to none and is left to the application discretion.
+  #   for Constantine testing, LTO is used on non-Apple platforms.
+  # - for dynamic libraries, LTO is used on non-Apple platforms.
+  # - for static libraries, including Rust backend
+  #   LTO is disabled.
+  #
+  #   To retain performance partial linking can used via
+  #   "-s -flinker-output=nolto-rel"
+  #   with an extra C compiler call
+  #   to consolidate all objects into one.
+  let ltoFlags = " -d:lto_incremental " # " --UseAsmSyntaxIntel --passC:-flto=auto --passL:-flto=auto "
 
-  let lto_syntax = if useLTO: "  -d:UseAsmSyntaxIntel=true "
-                   else: "  -d:UseAsmSyntaxIntel=false "
+  let apple = defined(macos) or defined(macox) or defined(ios)
+  let ltoOptions = if useLtoDefault:
+                     if apple: ""
+                     elif buildMode == bmStaticLib: ""
+                     else: ltoFlags
+                   elif forceLto: ltoFlags
+                   else: ""
 
   compiler &
-  envASM & env32 &
-  lto & lto_syntax &
-  compilerFlags()
-
-proc rustBuild(): string =
-  # Force Rust compilation, we force Clang compiler
-  # and use it's LTO-thin capabilities fro Nim<->Rust cross-language LTO
-  # - https://blog.llvm.org/2019/09/closing-gap-cross-language-lto-between.html
-  # - https://github.com/rust-lang/rust/pull/58057
-  # - https://doc.rust-lang.org/rustc/linker-plugin-lto.html
-
-  let compiler = " --cc:clang "
-  let lto = if Apple: ""
-            else: " --passC:-flto=thin --passL:-flto=thin "
-
-  compiler &
-  lto &
-  compilerFlags()
+    envASM & env32 &
+    ltoOptions &
+    compilerFlags()
 
 proc genDynamicLib(outdir, nimcache: string) =
   proc compile(libName: string, flags = "") =
@@ -157,7 +190,7 @@ proc genDynamicLib(outdir, nimcache: string) =
 
     exec "nim c " &
          flags &
-         releaseBuildOptions(useLTO = false) &
+         releaseBuildOptions(bmDynamicLib) &
          " --noMain --app:lib " &
          &" --nimMainPrefix:ctt_init_ " & # Constantine is designed so that NimMain isn't needed, provided --mm:arc -d:useMalloc --panics:on -d:noSignalHandler
          &" --out:{libName} --outdir:{outdir} " &
@@ -183,7 +216,7 @@ proc genStaticLib(outdir, nimcache: string, rustLib = false) =
 
     exec "nim c " &
          flags &
-         (if rustLib: rustBuild() else: releaseBuildOptions(useLTO = false)) &
+         releaseBuildOptions(bmStaticLib) &
          " --noMain --app:staticlib " &
          &" --nimMainPrefix:ctt_init_ " & # Constantine is designed so that NimMain isn't needed, provided --mm:arc -d:useMalloc --panics:on -d:noSignalHandler
          &" --out:{libName} --outdir:{outdir} " &

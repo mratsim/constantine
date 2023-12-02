@@ -25,9 +25,6 @@ static: doAssert UseASM_X86_64
 # Necessary for the compiler to find enough registers
 # {.localPassC:"-fomit-frame-pointer".}  # (enabled at -O1)
 
-when UseAsmSyntaxIntel:
-  {.localpassC:"-masm=intel".}
-
 # Multiplication
 # ------------------------------------------------------------
 proc mulx_by_word(
