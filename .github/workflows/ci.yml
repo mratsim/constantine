@@ -235,12 +235,19 @@ jobs:
           nimble refresh --verbose -y
           nimble install --verbose -y gmp jsony asynctools yaml@1.1.0
 
-      - name: Print Nim & compiler versions
+      - name: Install Rust
+        shell: bash
+        run: rustup update ${{ matrix.rust_toolchain }} && rustup default ${{ matrix.rust_toolchain }}
+
+      - name: Print Nim, Rust & compilers' versions
         shell: bash
         # gcc is an alias to Clang on MacOS
         run: |
           nim -v
           gcc -v
+          clang -v
+          llvm-config --version
+          rustup --version
 
       - name: Run Constantine as C library tests (with Assembly)
         if: matrix.target.BACKEND == 'ASM'
@@ -281,7 +288,6 @@ jobs:
         shell: bash
         run: |
           cd constantine
-          rustup update ${{ matrix.rust_toolchain }} && rustup default ${{ matrix.rust_toolchain }}
           cargo build --verbose
           cargo test  --verbose
       - name: Run Constantine as Rust library tests (NO Assembly)
