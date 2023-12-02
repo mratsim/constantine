@@ -189,6 +189,16 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew install gmp
+      - name: Install Clang with Intel Assembly support (macOS)
+        if: runner.os == 'macOS'
+        # Apple Clang does not support Intel syntax due to missing
+        # commit: https://github.com/llvm/llvm-project/commit/ae98182cf7341181e4aa815c372a072dec82779f
+        # Revision: https://reviews.llvm.org/D113707
+        # Apple upstream: FB12137688
+
+        # Furthermore, Apple Clang can delete symbols when building a static library
+        # in particular the hasAdxImpl bool for CPU runtime detection.
+        run: |
           mkdir -p external/bin
           cat << EOF > external/bin/clang
           #!/bin/bash

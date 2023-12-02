@@ -41,6 +41,10 @@ type
     # Clobbered register
     ClobberedReg
 
+    # We can replace m and o by p constraint for optimization but this triggers impossible constraints in some cases
+    # See https://stackoverflow.com/questions/20965114/gcc-inline-assembly-using-modifier-p-and-constraint-p-over-m-in-linux-kern
+    # and https://lists.openwall.net/linux-kernel/2009/08/01/115
+
 when CTT_32:
   type
     Register* = enum
@@ -188,11 +192,11 @@ func genMemClobber(nimSymbol: NimNode, len: int, memIndirect: MemIndirectAccess)
 
   case memIndirect
   of memRead:
-    return "\"m\" (`*(const " & cBaseType & " (*)[" & $len & "]) " & symStr & "`)"
+    return "\"o\" (`*(const " & cBaseType & " (*)[" & $len & "]) " & symStr & "`)"
   of memWrite:
-    return "\"=m\" (`*(" & cBaseType & " (*)[" & $len & "]) " & symStr & "`)"
+    return "\"=o\" (`*(" & cBaseType & " (*)[" & $len & "]) " & symStr & "`)"
   of memReadWrite:
-    return "\"+m\" (`*(" & cBaseType & " (*)[" & $len & "]) " & symStr & "`)"
+    return "\"+o\" (`*(" & cBaseType & " (*)[" & $len & "]) " & symStr & "`)"
   else:
     doAssert false, "Indirect access kind not specified"
 

@@ -8,16 +8,22 @@ members = [
     "constantine-rust/ctt-proto-ethereum-bls-signatures",
 ]
 
-# The Nim static library is compiled with ThinLTO, always enable it
-
-[profile.dev]
-lto = "thin"
-
-[profile.test]
-lto = "thin"
-
-[profile.release]
-lto = "thin"
-
-[profile.bench]
-lto = "thin"
+# If Nim static library is compiled with Clang ThinLTO, enable it on Rust side
+# and add the following to ".cargo/config.toml"
+#
+#    [build]
+#    # https://doc.rust-lang.org/rustc/linker-plugin-lto.html
+#    rustflags="-Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld"
+#
+#
+# [profile.dev]
+# lto = "thin"
+#
+# [profile.test]
+# lto = "thin"
+#
+# [profile.release]
+# lto = "thin"
+#
+# [profile.bench]
+# lto = "thin"

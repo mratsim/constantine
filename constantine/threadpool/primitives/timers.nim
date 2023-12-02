@@ -66,7 +66,7 @@ when defined(linux):
     ## Returns the elapsed time in nano-seconds from ticks
     stop.int64 - start.int64
 
-elif defined(macosx):
+elif defined(macosx) or defined(macos) or defined(ios):
   type
     MachTimebaseInfoData {.pure, final, importc: "mach_timebase_info_data_t", header: "<mach/mach_time.h>".} = object
       numer, denom: int32
