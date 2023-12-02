@@ -42,6 +42,7 @@ fn main() {
     println!("Building Constantine library ...");
 
     Command::new("nimble")
+        .env("CC", "clang")
         .arg("make_lib_rust")
         .current_dir(root_dir)
         .stdout(Stdio::inherit())
