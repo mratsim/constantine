@@ -24,3 +24,10 @@ members = [
 #
 # [profile.bench]
 # lto = "thin"
+
+[profile.bench]
+opt-level = 3
+debug = false
+debug-assertions = false
+overflow-checks = false
+codegen-units = 1

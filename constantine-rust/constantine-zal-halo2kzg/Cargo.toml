@@ -1,9 +1,11 @@
 [package]
-name = "constantine-zal-halo2curves"
+name = "constantine-zal-halo2kzg"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+authors = ["Mamy André-Ratsimbazafy"]
+license = "MIT/Apache-2.0"
+repository = "https://github.com/mratsim/constantine"
 
 [dependencies]
 constantine-sys = { path = "../constantine-sys" }
@@ -13,3 +15,15 @@ halo2curves = { git = 'https://github.com/taikoxyz/halo2curves', branch = "pr-ps
 ark-std = "0.3"
 rand_core = { version = "0.6", default-features = false }
 num_cpus = "1.16.0"
+
+# Benchmark-only dependencies
+criterion = { version = "0.3", features = ["html_reports"] }
+rand_xorshift = "0.3"
+maybe-rayon = { version = "0.1.0", default-features = false }
+
+# Ensure we bench Halo2curves with full optimizations
+halo2curves = { git = 'https://github.com/taikoxyz/halo2curves', branch = "pr-pse-exec-engine", features = ["multicore", "asm"]}
+
+[[bench]]
+name = "msm"
+harness = false

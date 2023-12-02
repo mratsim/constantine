@@ -6,13 +6,14 @@
 //!   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 //! at your option. This file may not be copied, modified, or distributed except according to those terms.
 
+//! Implementation of the ZK Accel Layer using Constantine as a backend
 //! See https://github.com/privacy-scaling-explorations/halo2/issues/216
 
-use std::mem;
 use ::core::mem::MaybeUninit;
 use constantine_sys::*;
 use halo2curves::bn256;
-use halo2curves::zal::{ZalEngine, MsmAccel};
+use halo2curves::zal::{MsmAccel, ZalEngine};
+use std::mem;
 
 pub struct CttEngine {
     ctx: *mut ctt_threadpool,
@@ -21,8 +22,8 @@ pub struct CttEngine {
 impl CttEngine {
     #[inline(always)]
     pub fn new(num_threads: usize) -> CttEngine {
-        let ctx = unsafe{ ctt_threadpool_new(num_threads) };
-        CttEngine{ctx}
+        let ctx = unsafe { ctt_threadpool_new(num_threads) };
+        CttEngine { ctx }
     }
 }
 
@@ -32,20 +33,19 @@ impl Drop for CttEngine {
     }
 }
 
-impl ZalEngine for CttEngine{}
+impl ZalEngine for CttEngine {}
 
 impl MsmAccel<bn256::G1Affine> for CttEngine {
     fn msm(&self, coeffs: &[bn256::Fr], bases: &[bn256::G1Affine]) -> bn256::G1 {
-
         assert_eq!(coeffs.len(), bases.len());
         let mut result: MaybeUninit<bn254_snarks_g1_prj> = MaybeUninit::uninit();
         unsafe {
             ctt_bn254_snarks_g1_prj_multi_scalar_mul_fr_coefs_vartime_parallel(
-               self.ctx,
-               result.as_mut_ptr(),
-               coeffs.as_ptr() as *const bn254_snarks_fr,
-               bases.as_ptr() as *const bn254_snarks_g1_aff,
-               bases.len()
+                self.ctx,
+                result.as_mut_ptr(),
+                coeffs.as_ptr() as *const bn254_snarks_fr,
+                bases.as_ptr() as *const bn254_snarks_g1_aff,
+                bases.len(),
             );
             mem::transmute::<MaybeUninit<bn254_snarks_g1_prj>, bn256::G1>(result)
         }
@@ -61,10 +61,10 @@ mod tests {
 
     use halo2curves::bn256;
     use halo2curves::ff::Field;
-    use halo2curves::group::{Curve, Group};
     use halo2curves::group::prime::PrimeCurveAffine;
-    use halo2curves::zal::MsmAccel;
+    use halo2curves::group::{Curve, Group};
     use halo2curves::msm::best_multiexp;
+    use halo2curves::zal::MsmAccel;
 
     #[test]
     fn t_threadpool() {
@@ -105,5 +105,4 @@ mod tests {
     fn t_msm_zal() {
         run_msm_zal(3, 14);
     }
-
 }
