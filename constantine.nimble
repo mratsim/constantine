@@ -184,7 +184,7 @@ proc genStaticLib(outdir, nimcache: string, rustLib = false) =
     exec "nim c " &
          flags &
          (if rustLib: rustBuild() else: releaseBuildOptions(useLTO = false)) &
-         " --noMain --app:staticLib " &
+         " --noMain --app:staticlib " &
          &" --nimMainPrefix:ctt_init_ " & # Constantine is designed so that NimMain isn't needed, provided --mm:arc -d:useMalloc --panics:on -d:noSignalHandler
          &" --out:{libName} --outdir:{outdir} " &
          &" --nimcache:{nimcache}/libconstantine_static" & (if rustLib: "_rust" else: "") &

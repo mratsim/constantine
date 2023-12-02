@@ -189,27 +189,27 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew install gmp
-      # - name: Install Clang with Intel Assembly support (macOS)
-      #   if: runner.os == 'macOS'
-      #   # Apple Clang does not support Intel syntax due to missing
-      #   # commit: https://github.com/llvm/llvm-project/commit/ae98182cf7341181e4aa815c372a072dec82779f
-      #   # Revision: https://reviews.llvm.org/D113707
+      - name: Install Clang with Intel Assembly support (macOS)
+        if: runner.os == 'macOS'
+        # Apple Clang does not support Intel syntax due to missing
+        # commit: https://github.com/llvm/llvm-project/commit/ae98182cf7341181e4aa815c372a072dec82779f
+        # Revision: https://reviews.llvm.org/D113707
+        # Apple upstream: FB12137688
 
-      #   # We test without LTO on Mac
-      #   # Uncomment the following to use upstream clang/llvm
-      #   # and test with LTO on Macs
-      #   run: |
-      #     mkdir -p external/bin
-      #     cat << EOF > external/bin/clang
-      #     #!/bin/bash
-      #     exec $(brew --prefix llvm@15)/bin/clang "\$@"
-      #     EOF
-      #     cat << EOF > external/bin/clang++
-      #     #!/bin/bash
-      #     exec $(brew --prefix llvm@15)/bin/clang++ "\$@"
-      #     EOF
-      #     chmod 755 external/bin/{clang,clang++}
-      #     echo '${{ github.workspace }}/external/bin' >> $GITHUB_PATH
+        # Furthermore, Apple Clang can delete symbols when building a static library
+        # in particular the hasAdxImpl bool for CPU runtime detection.
+        run: |
+          mkdir -p external/bin
+          cat << EOF > external/bin/clang
+          #!/bin/bash
+          exec $(brew --prefix llvm@15)/bin/clang "\$@"
+          EOF
+          cat << EOF > external/bin/clang++
+          #!/bin/bash
+          exec $(brew --prefix llvm@15)/bin/clang++ "\$@"
+          EOF
+          chmod 755 external/bin/{clang,clang++}
+          echo '${{ github.workspace }}/external/bin' >> $GITHUB_PATH
 
       - name: Setup MSYS2 (Windows)
         if: runner.os == 'Windows'
