@@ -287,16 +287,15 @@ jobs:
         shell: bash
         run: |
           cd constantine
-          cargo build
-          cargo test
+          rustup update ${{ matrix.rust_toolchain }} && rustup default ${{ matrix.rust_toolchain }}
+          cargo test -vv
       - name: Run Constantine as Rust library tests (NO Assembly)
         if: matrix.target.BACKEND == 'NO_ASM'
         shell: bash
         run: |
           cd constantine
           rustup update ${{ matrix.rust_toolchain }} && rustup default ${{ matrix.rust_toolchain }}
-          CTT_ASM=0 cargo build
-          CTT_ASM=0 cargo test
+          CTT_ASM=0 cargo test -vv
 
       - name: Run Constantine in-depth tests (Unix - with GMP, with Assembly)
         if: runner.os != 'Windows' && matrix.target.BACKEND == 'ASM'
