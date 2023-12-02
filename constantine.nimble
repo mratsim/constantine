@@ -20,10 +20,14 @@ import std/[strformat, strutils, os]
 # Compile-time environment variables
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
-# - CTT_ASM=0
+# - CC="clang" or "nim c --cc:clang ..."
+#       Specify the compiler.
+#       Clang is recommended for fastest performance.
+#
+# - CTT_ASM=0 or "nim c -d:CTT_ASM=0 ..."
 #        Disable assembly backend. Otherwise use ASM for supported CPUs and fallback to generic code otherwise.
 #
-# - CTT_LTO=1
+# - CTT_LTO=1 or "nim c -d:lto ..." or "nim c -d:lto_incremental ..."
 #        Enable LTO builds.
 #        By default this is:
 #        - Disabled for binaries
@@ -40,23 +44,23 @@ import std/[strformat, strutils, os]
 # Developer, debug, profiling and metrics environment variables
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
-# - CTT_32
+# - CTT_32 or "nim c -d:CTT_32 ..."
 #        Compile Constantine with 32-bit backend. Otherwise autodetect.
 #
-# - CTT_DEBUG
+# - "nim c -d:CTT_DEBUG ..."
 #        Add preconditions, invariants and post-conditions checks.
 #        This may leak the erroring data. Do not use with secrets.
 #
-# - CTT_GENERATE_HEADERS
-# - CTT_TEST_CURVES
+# - "nim c -d:CTT_GENERATE_HEADERS ..."
+# - "nim c -d:CTT_TEST_CURVES ..."
 #
-# - CTT_THREADPOOL_ASSERTS
-# - CTT_THREADPOOL_METRICS
-# - CTT_THREADPOOL_PROFILE
+# - "nim c -d:CTT_THREADPOOL_ASSERTS ..."
+# - "nim c -d:CTT_THREADPOOL_METRICS ..."
+# - "nim c -d:CTT_THREADPOOL_PROFILE ..."
 #
-# - CTT_THREADPOOL_DEBUG
-# - CTT_THREADPOOL_DEBUG_SPLIT
-# - CTT_THREADPOOL_DEBUG_TERMINATION
+# - "nim c -d:CTT_THREADPOOL_DEBUG"
+# - "nim c -d:CTT_THREADPOOL_DEBUG_SPLIT"
+# - "nim c -d:CTT_THREADPOOL_DEBUG_TERMINATION"
 
 proc getEnvVars(): tuple[useAsmIfAble, force32, forceLto, useLtoDefault: bool] =
   if existsEnv"CTT_ASM":
