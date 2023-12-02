@@ -158,10 +158,12 @@ jobs:
         run: |
           sudo DEBIAN_FRONTEND='noninteractive' apt-fast install \
             --no-install-recommends -yq \
-            libgmp-dev
+            libgmp-dev \
+            llvm
 
       - name: Install test dependencies (Linux i386)
         if: runner.os == 'Linux' && matrix.target.cpu == 'i386'
+        # We don't install LLVM as the Rust libraries that call Constantine are 64-bit only.
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-fast update -qq
@@ -224,7 +226,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: msys2 {0}
         run: |
-          pacman -S --needed --noconfirm mingw-w64-x86_64-gmp
+          pacman -S --needed --noconfirm mingw-w64-x86_64-gmp mingw-w64-x86_64-llvm
           nimble refresh --verbose -y
           nimble install --verbose -y gmp jsony asynctools yaml@1.1.0
 
@@ -241,12 +243,15 @@ jobs:
 
       - name: Print Nim, Rust & compilers' versions
         shell: bash
-        # gcc is an alias to Clang on MacOS
+        # gcc is an alias to Apple Clang on MacOS
         run: |
           nim -v
           gcc -v
           clang -v
           rustup --version
+          if [[ '${{ matrix.target.cpu }}' != 'i386' ]]; then
+            llvm-config --version
+          fi
 
       - name: Run Constantine as C library tests (with Assembly)
         if: matrix.target.BACKEND == 'ASM'
@@ -257,23 +262,6 @@ jobs:
           nimble make_headers  --verbose
           nimble test_lib      --verbose
       - name: Run Constantine as C library tests (NO Assembly)
-        if: matrix.target.BACKEND == 'NO_ASM'
-        shell: bash
-        run: |
-          cd constantine
-          CTT_ASM=0 nimble make_lib --verbose
-          nimble make_headers       --verbose
-          nimble test_lib           --verbose
-
-      - name: Run Constantine as C library tests (with Assembly)
-        if: matrix.target.BACKEND == 'ASM'
-        shell: bash
-        run: |
-          cd constantine
-          nimble make_lib      --verbose
-          nimble make_headers  --verbose
-          nimble test_lib      --verbose
-      - name: Run Constantine as C library tests (no Assembly)
         if: matrix.target.BACKEND == 'NO_ASM'
         shell: bash
         run: |
