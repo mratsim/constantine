@@ -263,17 +263,37 @@ jobs:
             sysctl -a | grep hw.optional
           fi
 
-      - name: Run Constantine as C library tests (with Assembly)
-        if: matrix.target.BACKEND == 'ASM'
+      - name: Run Constantine as C library tests (UNIX with Assembly)
+        if: runner.os != 'Windows' && matrix.target.BACKEND == 'ASM'
         shell: bash
         run: |
           cd constantine
           nimble make_lib      --verbose
           nimble make_headers  --verbose
           nimble test_lib      --verbose
-      - name: Run Constantine as C library tests (NO Assembly)
-        if: matrix.target.BACKEND == 'NO_ASM'
+      - name: Run Constantine as C library tests (UNIX no Assembly)
+        if: runner.os != 'Windows' && matrix.target.BACKEND == 'NO_ASM'
         shell: bash
+        run: |
+          cd constantine
+          CTT_ASM=0 nimble make_lib --verbose
+          nimble make_headers       --verbose
+          nimble test_lib           --verbose
+      - name: Run Constantine as C library tests (Windows with Assembly)
+        # So "test_bindings" uses C and can find GMP
+        # but nim-gmp cannot find GMP on Windows CI
+        if: runner.os == 'Windows' && matrix.target.BACKEND == 'ASM'
+        shell: msys2 {0}
+        run: |
+          cd constantine
+          nimble make_lib     --verbose
+          nimble make_headers --verbose
+          nimble test_lib     --verbose
+      - name: Run Constantine as C library tests (Windows no Assembly)
+        # So "test_bindings" uses C and can find GMP
+        # but nim-gmp cannot find GMP on Windows CI
+        if: runner.os == 'Windows' && matrix.target.BACKEND == 'NO_ASM'
+        shell: msys2 {0}
         run: |
           cd constantine
           CTT_ASM=0 nimble make_lib --verbose
