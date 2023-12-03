@@ -9,7 +9,7 @@ import
   # Stdlib
   system/ansi_c, std/[strformat, os, strutils, cpuinfo],
   # Library
-  ../../threadpool
+  ../../constantine/threadpool
 
 when not defined(windows):
   # bench

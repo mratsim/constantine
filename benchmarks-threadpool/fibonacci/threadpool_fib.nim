@@ -2,7 +2,7 @@ import
   # STD lib
   std/[os, strutils, cpuinfo, strformat, math],
   # Library
-  ../../threadpool
+  ../../constantine/threadpool
 
 when not defined(windows):
   # bench
