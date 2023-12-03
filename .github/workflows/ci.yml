@@ -251,11 +251,16 @@ jobs:
           gcc -v
           clang -v
           rustup --version
-          if [[ '${{ matrix.target.cpu }}' != 'i386' ]]; then
+          if [[ '${{ matrix.target.cpu }}' != 'i386' && '${{ runner.os }}' != 'Windows' ]]; then
             llvm-config --version
           fi
-          if [[ '${{ runner.os }}' != 'Windows' ]]; then
+          if [[ '${{ runner.os }}' == 'Linux' ]]; then
             cat /proc/cpuinfo
+          fi
+          if [[ '${{ runner.os }}' == 'macOS' ]]; then
+            sysctl -a | grep machdep.cpu
+            sysctl -a | grep hw | grep cpu
+            sysctl -a | grep hw.optional
           fi
 
       - name: Run Constantine as C library tests (with Assembly)
