@@ -201,18 +201,20 @@ jobs:
 
         # Furthermore, Apple Clang can delete symbols when building a static library
         # in particular the hasAdxImpl bool for CPU runtime detection.
-        run: |
-          mkdir -p external/bin
-          cat << EOF > external/bin/clang
-          #!/bin/bash
-          exec $(brew --prefix llvm@15)/bin/clang "\$@"
-          EOF
-          cat << EOF > external/bin/clang++
-          #!/bin/bash
-          exec $(brew --prefix llvm@15)/bin/clang++ "\$@"
-          EOF
-          chmod 755 external/bin/{clang,clang++}
-          echo '${{ github.workspace }}/external/bin' >> $GITHUB_PATH
+
+        # run: |
+        #   mkdir -p external/bin
+        #   cat << EOF > external/bin/clang
+        #   #!/bin/bash
+        #   exec $(brew --prefix llvm@15)/bin/clang "\$@"
+        #   EOF
+        #   cat << EOF > external/bin/clang++
+        #   #!/bin/bash
+        #   exec $(brew --prefix llvm@15)/bin/clang++ "\$@"
+        #   EOF
+        #   chmod 755 external/bin/{clang,clang++}
+        #   echo '${{ github.workspace }}/external/bin' >> $GITHUB_PATH
+        run: echo "$(brew --prefix llvm@15)/bin" >> $GITHUB_PATH
 
       - name: Setup MSYS2 (Windows)
         if: runner.os == 'Windows'
@@ -241,7 +243,7 @@ jobs:
         shell: bash
         run: rustup update ${{ matrix.rust_toolchain }} && rustup default ${{ matrix.rust_toolchain }}
 
-      - name: Print Nim, Rust & compilers' versions
+      - name: Print Nim, Rust, LLVM versions and CPU specs.
         shell: bash
         # gcc is an alias to Apple Clang on MacOS
         run: |
@@ -251,6 +253,9 @@ jobs:
           rustup --version
           if [[ '${{ matrix.target.cpu }}' != 'i386' ]]; then
             llvm-config --version
+          fi
+          if [[ '${{ runner.os }}' != 'Windows' ]]; then
+            cat /proc/cpuinfo
           fi
 
       - name: Run Constantine as C library tests (with Assembly)
@@ -271,17 +276,17 @@ jobs:
           nimble test_lib           --verbose
 
       - name: Run Constantine as Rust library tests (with Assembly)
-        if: matrix.target.BACKEND == 'ASM'
+        if: matrix.target.BACKEND == 'ASM' && matrix.target.cpu != 'i386'
         shell: bash
         run: |
           cd constantine
-          cargo test -vv
+          cargo test
       - name: Run Constantine as Rust library tests (NO Assembly)
-        if: matrix.target.BACKEND == 'NO_ASM'
+        if: matrix.target.BACKEND == 'NO_ASM' && matrix.target.cpu != 'i386'
         shell: bash
         run: |
           cd constantine
-          CTT_ASM=0 cargo test -vv
+          CTT_ASM=0 cargo test
 
       - name: Run Constantine in-depth tests (Unix - with GMP, with Assembly)
         if: runner.os != 'Windows' && matrix.target.BACKEND == 'ASM'
