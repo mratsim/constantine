@@ -23,7 +23,15 @@ fn main() {
         .expect("failed to execute process");
 
     println!("cargo:rustc-link-search=native={}", out_dir.display());
-    println!("cargo:rustc-link-lib=static=constantine");
+    
+    // On windows stable channel (msvc) expects constantine.lib
+    // while stable-gnu channel (gcc) expects libconstantine.a
+    // hence we use +verbatim
+    #[cfg(target_family = "windows")]
+    println!("cargo:rustc-link-lib=static:+verbatim=constantine.lib");
+
+    #[cfg(target_family = "unix")]
+    println!("cargo:rustc-link-lib=static:+verbatim=libconstantine.a");
 
     // Avoid full recompilation
     println!("cargo:rerun-if-changed=build.rs");

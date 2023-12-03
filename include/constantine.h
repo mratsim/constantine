@@ -9,6 +9,11 @@
 #ifndef __CTT_H_CONSTANTINE__
 #define __CTT_H_CONSTANTINE__
 
+// Core functions
+#include "constantine/core/datatypes.h"
+#include "constantine/core/serialization.h"
+#include "constantine/core/threadpool.h"
+
 // Hash functions
 #include "constantine/hashes/sha256.h"
 

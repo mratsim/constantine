@@ -23,7 +23,7 @@ import
   ./parallel_offloading,
   ../platforms/[allocs, bithacks]
 
-import ../zoo_exports
+import ../zoo_exports, dll_autoload
 
 export
   # flowvars
@@ -953,17 +953,19 @@ proc new*(T: type Threadpool, numThreads = countProcessors()): T {.raises: [Reso
 
   type TpObj = typeof(default(Threadpool)[]) # due to C import, we need a dynamic sizeof
   let tp = allocHeapUncheckedAlignedPtr(Threadpool, sizeof(TpObj), alignment = 64)
-
   tp.barrier.init(numThreads.uint32)
   tp.globalBackoff.initialize()
   tp.numThreads = numThreads.int32
   tp.workerQueues = allocHeapArrayAligned(Taskqueue, numThreads, alignment = 64)
   tp.workers = allocHeapArrayAligned(Thread[(Threadpool, WorkerID)], numThreads, alignment = 64)
   tp.workerSignals = allocHeapArrayAligned(Signal, numThreads, alignment = 64)
-
   # Setup master thread
   workerContext.id = 0
   workerContext.threadpool = tp
+
+  # We use kernel functions for threading and synchronization next,
+  # ensure they are loaded and static constructor procs are not removed by the linker.
+  check_lib_dependency_loader()
 
   # Start worker threads
   for i in 1 ..< numThreads:

@@ -184,9 +184,18 @@ proc releaseBuildOptions(buildMode = bmBinary): string =
                    elif forceLto: ltoFlags
                    else: ""
 
+  let osSpecific =
+    # Remove the auto __chkstk, which are: 1. slower, 2. not supported on Rust "stable-gnu" channel.
+    if defined(windows): " --passC:-mno-stack-arg-probe "
+    else: ""
+  
+  let threadLocalStorage = " --tlsEmulation=off "
+
   compiler &
     envASM & env32 &
     ltoOptions &
+    osSpecific &
+    threadLocalStorage &
     compilerFlags()
 
 proc genDynamicLib(outdir, nimcache: string) =
@@ -292,6 +301,7 @@ task test_lib, "Test C library":
   exec "mkdir -p build/test_lib"
   testLib("examples_c", "t_libctt_bls12_381", useGMP = true)
   testLib("examples_c", "ethereum_bls_signatures", useGMP = false)
+  testLib("tests"/"c_api", "t_threadpool", useGMP = false)
 
 # Test config
 # ----------------------------------------------------------------
