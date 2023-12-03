@@ -224,7 +224,7 @@ proc printWorkerMetrics(ctx: var WorkerContext) =
       c_printf("+========================================+\n")
       c_printf("|  Per-worker statistics                 |\n")
       c_printf("+========================================+\n")
-      flushFile(stdout)
+      c_fflush(stdout)
 
     ctx.calcDerivedMetrics()
     discard ctx.threadpool.barrier.wait()
@@ -233,7 +233,7 @@ proc printWorkerMetrics(ctx: var WorkerContext) =
       const (propName, propDesc) = countersDesc[i]
       c_printf("Worker %3d: counterId %2d, %10d, %-32s\n", ctx.id, i, ctx.counters.getCounter(propName), propDesc)
 
-    flushFile(stdout)
+    c_fflush(stdout)
 
 # ############################################################
 #                                                            #

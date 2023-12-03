@@ -7,12 +7,14 @@
 
 import system/ansi_c
 
+proc c_fflush*(f: File): cint {.importc: "fflush", header: "<stdio.h>", sideeffect, tags:[WriteIOEffect].}
+
 # Loggers
 # --------------------------------------------------------
 
 template log*(args: varargs[untyped]): untyped =
   c_printf(args)
-  flushFile(stdout)
+  c_fflush(stdout)
 
 template debugSplit*(body: untyped): untyped =
   when defined(CTT_THREADPOOL_DEBUG_SPLIT) or defined(CTT_THREADPOOL_DEBUG):
@@ -232,7 +234,7 @@ when defined(CTT_THREADPOOL_PROFILE):
       strUnit,
       newLit"cumulated_time")
 
-    result.add newCall(bindSym"flushFile", bindSym"stdout")
+    result.add newCall(bindSym"c_fflush", bindSym"stdout")
 
 else:
   template profileDecl*(name: untyped): untyped = discard
