@@ -3,9 +3,7 @@
 [![License: Apache](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 ![Stability: experimental](https://img.shields.io/badge/stability-experimental-orange.svg)\
-[![Github Actions CI](https://github.com/mratsim/constantine/workflows/Constantine%20CI/badge.svg)](https://github.com/mratsim/constantine/actions?query=workflow%3A%22Constantine+CI%22+branch%3Amaster)\
-[![Build Status: Travis](https://img.shields.io/travis/com/mratsim/constantine/master?label=Travis%20%28Linux%20ARM64%2FPowerPC64%29)](https://travis-ci.com/mratsim/constantine)\
-[![Build Status: Azure](https://img.shields.io/azure-devops/build/numforge/07a2a7a5-995a-45d3-acd5-f5456fe7b04d/4?label=Azure%20%28Linux%2032%2F64-bit%2C%20Windows%2032%2F64-bit%2C%20MacOS%2064-bit%29)](https://dev.azure.com/numforge/Constantine/_build?definitionId=4&branchName=master)
+[![Github Actions CI](https://github.com/mratsim/constantine/workflows/Constantine%20CI/badge.svg)](https://github.com/mratsim/constantine/actions?query=workflow%3A%22Constantine+CI%22+branch%3Amaster)
 
 > “A cryptographic system should be secure even if everything about the system, except the key, is public knowledge.”\
 >   — Auguste Kerckhoffs
@@ -22,33 +20,33 @@ The implementations are accompanied with SAGE code used as reference implementat
 <!-- TOC -->
 
 - [Constantine - Fast, compact, hardened Pairing-Based Cryptography](#constantine---fast-compact-hardened-pairing-based-cryptography)
-  - [Table of Contents](#table-of-contents)
-  - [Target audience](#target-audience)
-  - [Protocols](#protocols)
-  - [Installation](#installation)
-    - [From C](#from-c)
-    - [From Nim](#from-nim)
-  - [Dependencies & Requirements](#dependencies--requirements)
-  - [Curves supported in the backend](#curves-supported-in-the-backend)
-  - [Security](#security)
-    - [Disclaimer](#disclaimer)
-    - [Security disclosure](#security-disclosure)
-  - [Performance](#performance)
-    - [In blockchain](#in-blockchain)
-    - [In zero-knowledge proofs](#in-zero-knowledge-proofs)
-    - [Measuring performance](#measuring-performance)
-      - [Ethereum BLS signatures over BLS12-381 G2](#ethereum-bls-signatures-over-bls12-381-g2)
-      - [BLS12-381 detailed benchmarks](#bls12-381-detailed-benchmarks)
-      - [BN254-Snarks Multi-Scalar-Multiplication benchmarks](#bn254-snarks-multi-scalar-multiplication-benchmarks)
-      - [Parallelism](#parallelism)
-  - [Why Nim](#why-nim)
-  - [Compiler caveats](#compiler-caveats)
-    - [Inline assembly](#inline-assembly)
-  - [Sizes: code size, stack usage](#sizes-code-size-stack-usage)
-  - [License](#license)
+    - [Table of Contents](#table-of-contents)
+    - [Target audience](#target-audience)
+    - [Protocols](#protocols)
+    - [Installation](#installation)
+        - [From Rust](#from-rust)
+        - [From C](#from-c)
+        - [From Nim](#from-nim)
+    - [Dependencies & Requirements](#dependencies--requirements)
+    - [Curves supported in the backend](#curves-supported-in-the-backend)
+    - [Security](#security)
+        - [Disclaimer](#disclaimer)
+        - [Security disclosure](#security-disclosure)
+    - [Performance](#performance)
+        - [In blockchain](#in-blockchain)
+        - [In zero-knowledge proofs](#in-zero-knowledge-proofs)
+        - [Measuring performance](#measuring-performance)
+            - [Ethereum BLS signatures over BLS12-381 G2](#ethereum-bls-signatures-over-bls12-381-g2)
+            - [BLS12-381 detailed benchmarks](#bls12-381-detailed-benchmarks)
+            - [BN254-Snarks Multi-Scalar-Multiplication benchmarks](#bn254-snarks-multi-scalar-multiplication-benchmarks)
+            - [Parallelism](#parallelism)
+    - [Why Nim](#why-nim)
+    - [Compiler caveats](#compiler-caveats)
+        - [Inline assembly](#inline-assembly)
+    - [Sizes: code size, stack usage](#sizes-code-size-stack-usage)
+    - [License](#license)
 
 <!-- /TOC -->
-
 ## Target audience
 
 The library aims to be a fast, compact and hardened library for elliptic curve cryptography needs, in particular for blockchain protocols and zero-knowledge proofs system.
@@ -74,6 +72,32 @@ Note: some goals might be mutually exclusive, for example "plausible deniability
 
 ## Installation
 
+### From Rust
+
+1. Install a C compiler, for example:
+    - Debian/Ubuntu `sudo apt update && sudo apt install build-essential`
+    - Archlinux `pacman -S base-devel`
+
+2. Install nim, it is available in most distros package manager for Linux and Homebrew for MacOS
+   Windows binaries are on the official website: https://nim-lang.org/install_unix.html
+    - Debian/Ubuntu `sudo apt install nim`
+    - Archlinux `pacman -S nim`
+
+3. Test the experimental ZK Accel API (ZAL) for Halo2-KZG
+   with
+    ```
+    git clone https://github.com/mratsim/constantine
+    cd constantine
+    cargo test
+    cargo bench
+    ```
+
+4. Add Constantine ZAL as a dependency in Cargo.toml
+    ```toml
+    [dependencies]
+    constantine-zal-halo2kzg = { git = 'https://github.com/mratsim/constantine' }
+    ```
+
 ### From C
 
 1. Install a C compiler, for example:
@@ -85,20 +109,20 @@ Note: some goals might be mutually exclusive, for example "plausible deniability
     - Debian/Ubuntu `sudo apt install nim`
     - Archlinux `pacman -S nim`
 
-3. Compile the bindings.
+3. Compile the dynamic and static library.
     - Recommended: \
-      `CC:clang nimble bindings`
-    - or `nimble bindings_no_asm`\
+      `CC=clang nimble make_lib`
+    - or `CTT_ASM=0 nimble make_lib`\
      to compile without assembly (otherwise it autodetects support)
     - or with default compiler\
-      `nimble bindings`
+      `nimble make_lib`
 
-4. Ensure bindings work
-    - `nimble test_bindings`
+4. Ensure the libraries work
+    - `nimble test_lib`
 
-5. Bindings location
-    - The bindings are put in `constantine/lib`
-    - The headers are in [constantine/include](./include) for example [Ethereum BLS signatures](./include/constantine_ethereum_bls_signatures.h)
+5. Libraries location
+    - The librariess are put in `./lib/` folder
+    - The headers are in [./include/](./include) for example [Ethereum BLS signatures](./include/constantine/protocols/ethereum_bls_signatures.h)
 
 6. Read the examples in [examples-c](./examples-c):
    - Using the [Ethereum BLS signatures bindings from C](./examples-c/ethereum_bls_signatures.c)
@@ -121,9 +145,21 @@ The bindings currently provided are:
   - elliptic curve arithmetic:
     - on elliptic curve over Fp (EC G1) with affine, jacobian and homogenous projective coordinates
     - on elliptic curve over Fp2 (EC G2) with affine, jacobian and homogenous projective coordinates
-  - currently not exposed: \
-    scalar multiplication, multi-scalar multiplications \
-    pairings and multi-pairings \
+  - parallel multi-scalar-multiplication
+  - currently not exposed: scalar multiplication, pairings an multi-pairings
+    are implemented but not exposed
+  - _All operations are constant-time unless explicitly mentioned_ vartime
+
+- BN254 arithmetic:
+  - field arithmetic
+    - on Fr (i.e. modulo the 254-bit curve order)
+    - on Fp (i.e. modulo the 254-bit prime modulus)
+    - on Fp2
+  - elliptic curve arithmetic:
+    - on elliptic curve over Fp (EC G1) with affine, jacobian and homogenous projective coordinates
+    - on elliptic curve over Fp2 (EC G2) with affine, jacobian and homogenous projective coordinates
+  - parallel multi-scalar-multiplication
+  - currently not exposed: scalar multiplication, pairings an multi-pairings
     are implemented but not exposed
   - _All operations are constant-time unless explicitly mentioned_ vartime
 
@@ -133,9 +169,8 @@ The bindings currently provided are:
     - on Fp (i.e. modulo the 255-bit prime modulus)
   - elliptic curve arithmetic:
     - on elliptic curve over Fp (EC G1) with affine, jacobian and homogenous projective coordinates
-  - currently not exposed: \
-    scalar multiplication, multi-scalar multiplications \
-    are implemented but not exposed
+  - parallel multi-scalar-multiplication
+  - currently not exposed: scalar multiplication is implemented but not exposed
   - _All operations are constant-time unless explicitly mentioned_ vartime
 
 ### From Nim
@@ -170,7 +205,7 @@ Constantine has no dependencies, even on Nim standard library except:
   - the Nim standard library for unittesting, formatting and datetime.
   - GMP for testing against GMP
 - for benchmarking
-  - The Nim standard libreary for timing and formatting
+  - The Nim standard library for timing and formatting
 - for Nvidia GPU backend:
   - the LLVM runtime ("dev" version with headers is not needed)
   - the CUDA runtime ("dev" version with headers is not needed)
