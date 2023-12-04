@@ -185,8 +185,10 @@ proc releaseBuildOptions(buildMode = bmBinary): string =
                    else: ""
 
   let osSpecific =
-    # Remove the auto __chkstk, which are: 1. slower, 2. not supported on Rust "stable-gnu" channel.
-    if defined(windows): " --passC:-mno-stack-arg-probe "
+    if defined(windows): "" # " --passC:-mno-stack-arg-probe "
+      # Remove the auto __chkstk, which are: 1. slower, 2. not supported on Rust "stable-gnu" channel.
+      # However functions that uses a large stack like `sum_reduce_vartime` become incorrect.
+      # Hence deactivated by default.
     else: ""
   
   let threadLocalStorage = " --tlsEmulation=off "
