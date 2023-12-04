@@ -24,6 +24,7 @@ The implementations are accompanied with SAGE code used as reference implementat
     - [Target audience](#target-audience)
     - [Protocols](#protocols)
     - [Installation](#installation)
+        - [From Rust](#from-rust)
         - [From C](#from-c)
         - [From Nim](#from-nim)
     - [Dependencies & Requirements](#dependencies--requirements)
@@ -71,6 +72,32 @@ Note: some goals might be mutually exclusive, for example "plausible deniability
 
 ## Installation
 
+### From Rust
+
+1. Install a C compiler, for example:
+    - Debian/Ubuntu `sudo apt update && sudo apt install build-essential`
+    - Archlinux `pacman -S base-devel`
+
+2. Install nim, it is available in most distros package manager for Linux and Homebrew for MacOS
+   Windows binaries are on the official website: https://nim-lang.org/install_unix.html
+    - Debian/Ubuntu `sudo apt install nim`
+    - Archlinux `pacman -S nim`
+
+3. Test the experimental ZK Accel API (ZAL) for Halo2-KZG
+   with
+    ```
+    git clone https://github.com/mratsim/constantine
+    cd constantine
+    cargo test
+    cargo bench
+    ```
+
+4. Add Constantine ZAL as a dependency in Cargo.toml
+    ```toml
+    [dependencies]
+    constantine-zal-halo2kzg = { git = 'https://github.com/mratsim/constantine' }
+    ```
+
 ### From C
 
 1. Install a C compiler, for example:
@@ -82,20 +109,20 @@ Note: some goals might be mutually exclusive, for example "plausible deniability
     - Debian/Ubuntu `sudo apt install nim`
     - Archlinux `pacman -S nim`
 
-3. Compile the bindings.
+3. Compile the dynamic and static library.
     - Recommended: \
-      `CC:clang nimble bindings`
-    - or `nimble bindings_no_asm`\
+      `CC=clang nimble make_lib`
+    - or `CTT_ASM=0 nimble make_lib`\
      to compile without assembly (otherwise it autodetects support)
     - or with default compiler\
-      `nimble bindings`
+      `nimble make_lib`
 
-4. Ensure bindings work
-    - `nimble test_bindings`
+4. Ensure the libraries work
+    - `nimble test_lib`
 
-5. Bindings location
-    - The bindings are put in `constantine/lib`
-    - The headers are in [constantine/include](./include) for example [Ethereum BLS signatures](./include/constantine_ethereum_bls_signatures.h)
+5. Libraries location
+    - The librariess are put in `./lib/` folder
+    - The headers are in [./include/](./include) for example [Ethereum BLS signatures](./include/constantine/protocols/ethereum_bls_signatures.h)
 
 6. Read the examples in [examples-c](./examples-c):
    - Using the [Ethereum BLS signatures bindings from C](./examples-c/ethereum_bls_signatures.c)
@@ -118,9 +145,21 @@ The bindings currently provided are:
   - elliptic curve arithmetic:
     - on elliptic curve over Fp (EC G1) with affine, jacobian and homogenous projective coordinates
     - on elliptic curve over Fp2 (EC G2) with affine, jacobian and homogenous projective coordinates
-  - currently not exposed: \
-    scalar multiplication, multi-scalar multiplications \
-    pairings and multi-pairings \
+  - parallel multi-scalar-multiplication
+  - currently not exposed: scalar multiplication, pairings an multi-pairings
+    are implemented but not exposed
+  - _All operations are constant-time unless explicitly mentioned_ vartime
+
+- BN254 arithmetic:
+  - field arithmetic
+    - on Fr (i.e. modulo the 254-bit curve order)
+    - on Fp (i.e. modulo the 254-bit prime modulus)
+    - on Fp2
+  - elliptic curve arithmetic:
+    - on elliptic curve over Fp (EC G1) with affine, jacobian and homogenous projective coordinates
+    - on elliptic curve over Fp2 (EC G2) with affine, jacobian and homogenous projective coordinates
+  - parallel multi-scalar-multiplication
+  - currently not exposed: scalar multiplication, pairings an multi-pairings
     are implemented but not exposed
   - _All operations are constant-time unless explicitly mentioned_ vartime
 
@@ -130,9 +169,8 @@ The bindings currently provided are:
     - on Fp (i.e. modulo the 255-bit prime modulus)
   - elliptic curve arithmetic:
     - on elliptic curve over Fp (EC G1) with affine, jacobian and homogenous projective coordinates
-  - currently not exposed: \
-    scalar multiplication, multi-scalar multiplications \
-    are implemented but not exposed
+  - parallel multi-scalar-multiplication
+  - currently not exposed: scalar multiplication is implemented but not exposed
   - _All operations are constant-time unless explicitly mentioned_ vartime
 
 ### From Nim
@@ -167,7 +205,7 @@ Constantine has no dependencies, even on Nim standard library except:
   - the Nim standard library for unittesting, formatting and datetime.
   - GMP for testing against GMP
 - for benchmarking
-  - The Nim standard libreary for timing and formatting
+  - The Nim standard library for timing and formatting
 - for Nvidia GPU backend:
   - the LLVM runtime ("dev" version with headers is not needed)
   - the CUDA runtime ("dev" version with headers is not needed)
