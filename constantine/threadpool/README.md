@@ -35,4 +35,4 @@ Compared to [nim-taskpools](https://github.com/status-im), here are the tradeoff
 - Powersaving improvement, threads sleep when awaiting for a task and there is no work available.
 - Scheduling improvement, Constantine's threadpool incorporate Weave's adaptative scheduling policy with additional enhancement (leapfrogging)
 
-See also [design.md](../../docs-threadpool/design.md)
+See also [design.md](../../docs/threadpool-design.md)

@@ -100,9 +100,9 @@ Note: some goals might be mutually exclusive, for example "plausible deniability
     - The bindings are put in `constantine/lib`
     - The headers are in [constantine/include](./include) for example [Ethereum BLS signatures](./include/constantine_ethereum_bls_signatures.h)
 
-6. Read the examples in [examples_c](./examples_c):
-   - Using the [Ethereum BLS signatures bindings from C](./examples_c/ethereum_bls_signatures.c)
-   - Testing Constantine BLS12-381 vs GMP [./examples_c/t_libctt_bls12_381.c](./examples_c/t_libctt_bls12_381.c)
+6. Read the examples in [examples-c](./examples-c):
+   - Using the [Ethereum BLS signatures bindings from C](./examples-c/ethereum_bls_signatures.c)
+   - Testing Constantine BLS12-381 vs GMP [./examples-c/t_libctt_bls12_381.c](./examples-c/t_libctt_bls12_381.c)
 
 The bindings currently provided are:
 

@@ -190,7 +190,7 @@ proc releaseBuildOptions(buildMode = bmBinary): string =
       # However functions that uses a large stack like `sum_reduce_vartime` become incorrect.
       # Hence deactivated by default.
     else: ""
-  
+
   let threadLocalStorage = " --tlsEmulation=off "
 
   compiler &
@@ -294,15 +294,15 @@ proc testLib(path, testName: string, useGMP: bool) =
   echo &"\n[Test: {path}/{testName}.c] Testing static library: {staticlibName}"
   # Beware MacOS annoying linker with regards to static libraries
   # The following standard way cannot be used on MacOS
-  # exec "gcc -Iinclude -Llib -o build/t_libctt_bls12_381_sl.exe examples_c/t_libctt_bls12_381.c -lgmp -Wl,-Bstatic -lconstantine -Wl,-Bdynamic"
+  # exec "gcc -Iinclude -Llib -o build/t_libctt_bls12_381_sl.exe examples-c/t_libctt_bls12_381.c -lgmp -Wl,-Bstatic -lconstantine -Wl,-Bdynamic"
   exec &"{cc} -Iinclude -o build/test_lib/{testName}_staticlink.exe {path}/{testName}.c lib/{staticlibName} " & (if useGMP: "-lgmp" else: "")
   exec &"./build/test_lib/{testName}_staticlink.exe"
   echo ""
 
 task test_lib, "Test C library":
   exec "mkdir -p build/test_lib"
-  testLib("examples_c", "t_libctt_bls12_381", useGMP = true)
-  testLib("examples_c", "ethereum_bls_signatures", useGMP = false)
+  testLib("examples-c", "t_libctt_bls12_381", useGMP = true)
+  testLib("examples-c", "ethereum_bls_signatures", useGMP = false)
   testLib("tests"/"c_api", "t_threadpool", useGMP = false)
 
 # Test config
@@ -551,10 +551,10 @@ const testDescNvidia: seq[string] = @[
 ]
 
 const testDescThreadpool: seq[string] = @[
-  "examples_threadpool/e01_simple_tasks.nim",
-  "examples_threadpool/e02_parallel_pi.nim",
-  "examples_threadpool/e03_parallel_for.nim",
-  "examples_threadpool/e04_parallel_reduce.nim",
+  "examples-threadpool/e01_simple_tasks.nim",
+  "examples-threadpool/e02_parallel_pi.nim",
+  "examples-threadpool/e03_parallel_for.nim",
+  "examples-threadpool/e04_parallel_reduce.nim",
   # "benchmarks-threadpool/bouncing_producer_consumer/threadpool_bpc.nim", # Need timing not implemented on Windows
   "benchmarks-threadpool/dfs/threadpool_dfs.nim",
   "benchmarks-threadpool/fibonacci/threadpool_fib.nim",
