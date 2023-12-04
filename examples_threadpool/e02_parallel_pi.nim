@@ -1,8 +1,8 @@
 # Demo of API using a very inefficient π approcimation algorithm.
 
 import
-  std/[strutils, math, cpuinfo],
-  ../threadpool
+  std/[strutils, cpuinfo],
+  ../constantine/threadpool
 
 # From https://github.com/nim-lang/Nim/blob/v1.6.2/tests/parallel/tpi.nim
 # Leibniz Formula https://en.wikipedia.org/wiki/Leibniz_formula_for_%CF%80

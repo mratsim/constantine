@@ -551,21 +551,21 @@ const testDescNvidia: seq[string] = @[
 ]
 
 const testDescThreadpool: seq[string] = @[
-  "constantine/threadpool/examples/e01_simple_tasks.nim",
-  "constantine/threadpool/examples/e02_parallel_pi.nim",
-  "constantine/threadpool/examples/e03_parallel_for.nim",
-  "constantine/threadpool/examples/e04_parallel_reduce.nim",
-  # "constantine/threadpool/benchmarks/bouncing_producer_consumer/threadpool_bpc.nim", # Need timing not implemented on Windows
-  "constantine/threadpool/benchmarks/dfs/threadpool_dfs.nim",
-  "constantine/threadpool/benchmarks/fibonacci/threadpool_fib.nim",
-  "constantine/threadpool/benchmarks/heat/threadpool_heat.nim",
-  # "constantine/threadpool/benchmarks/matmul_cache_oblivious/threadpool_matmul_co.nim",
-  "constantine/threadpool/benchmarks/nqueens/threadpool_nqueens.nim",
-  # "constantine/threadpool/benchmarks/single_task_producer/threadpool_spc.nim", # Need timing not implemented on Windows
-  # "constantine/threadpool/benchmarks/black_scholes/threadpool_black_scholes.nim", # Need input file
-  "constantine/threadpool/benchmarks/matrix_transposition/threadpool_transposes.nim",
-  "constantine/threadpool/benchmarks/histogram_2D/threadpool_histogram.nim",
-  "constantine/threadpool/benchmarks/logsumexp/threadpool_logsumexp.nim",
+  "examples_threadpool/e01_simple_tasks.nim",
+  "examples_threadpool/e02_parallel_pi.nim",
+  "examples_threadpool/e03_parallel_for.nim",
+  "examples_threadpool/e04_parallel_reduce.nim",
+  # "benchmarks-threadpool/bouncing_producer_consumer/threadpool_bpc.nim", # Need timing not implemented on Windows
+  "benchmarks-threadpool/dfs/threadpool_dfs.nim",
+  "benchmarks-threadpool/fibonacci/threadpool_fib.nim",
+  "benchmarks-threadpool/heat/threadpool_heat.nim",
+  # "benchmarks-threadpool/matmul_cache_oblivious/threadpool_matmul_co.nim",
+  "benchmarks-threadpool/nqueens/threadpool_nqueens.nim",
+  # "benchmarks-threadpool/single_task_producer/threadpool_spc.nim", # Need timing not implemented on Windows
+  # "benchmarks-threadpool/black_scholes/threadpool_black_scholes.nim", # Need input file
+  "benchmarks-threadpool/matrix_transposition/threadpool_transposes.nim",
+  "benchmarks-threadpool/histogram_2D/threadpool_histogram.nim",
+  "benchmarks-threadpool/logsumexp/threadpool_logsumexp.nim",
 ]
 
 const testDescMultithreadedCrypto: seq[string] = @[

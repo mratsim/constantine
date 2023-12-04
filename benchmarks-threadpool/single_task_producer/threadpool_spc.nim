@@ -2,7 +2,7 @@ import
   # STD lib
   system/ansi_c, std/[os, strutils, cpuinfo, strformat, math],
   # Library
-  ../../threadpool,
+  ../../constantine/threadpool,
   # bench
   ../wtime, ../resources
 

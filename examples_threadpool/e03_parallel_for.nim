@@ -1,4 +1,4 @@
-import ../threadpool, ../instrumentation
+import ../constantine/[threadpool, threadpool/instrumentation]
 
 block:
   proc main() =
