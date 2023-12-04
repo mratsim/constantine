@@ -7,7 +7,7 @@
 
 import system/ansi_c
 
-proc c_fflush*(f: File): cint {.importc: "fflush", header: "<stdio.h>", sideeffect, tags:[WriteIOEffect].}
+proc c_fflush*(f: File) {.importc: "fflush", header: "<stdio.h>", sideeffect, tags:[WriteIOEffect].}
 
 # Loggers
 # --------------------------------------------------------
