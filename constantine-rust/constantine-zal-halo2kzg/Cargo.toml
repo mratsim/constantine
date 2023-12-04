@@ -22,6 +22,7 @@ rand_xorshift = "0.3"
 maybe-rayon = { version = "0.1.0", default-features = false }
 
 # Ensure we bench Halo2curves with full optimizations
+# In CI "asm" needs to be disabled as some agents don't support ADX.
 halo2curves = { git = 'https://github.com/taikoxyz/halo2curves', branch = "pr-pse-exec-engine", features = ["multicore", "asm"]}
 
 [[bench]]

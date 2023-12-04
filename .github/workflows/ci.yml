@@ -303,15 +303,17 @@ jobs:
       - name: Run Constantine as Rust library tests (with Assembly)
         if: matrix.target.BACKEND == 'ASM' && matrix.target.cpu != 'i386'
         shell: bash
+        # We need to deactivate the assembly (used by default for benches)
         run: |
           cd constantine
-          cargo test
+          cargo test --no-default-features halo2curves --features halo2curves/multicore
       - name: Run Constantine as Rust library tests (NO Assembly)
         if: matrix.target.BACKEND == 'NO_ASM' && matrix.target.cpu != 'i386'
         shell: bash
+        # We need to deactivate the assembly (used by default for benches)
         run: |
           cd constantine
-          CTT_ASM=0 cargo test
+          CTT_ASM=0 cargo test --no-default-features halo2curves --features halo2curves/multicore
 
       - name: Run Constantine in-depth tests (Unix - with GMP, with Assembly)
         if: runner.os != 'Windows' && matrix.target.BACKEND == 'ASM'
