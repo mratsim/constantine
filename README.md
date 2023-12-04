@@ -3,9 +3,7 @@
 [![License: Apache](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 ![Stability: experimental](https://img.shields.io/badge/stability-experimental-orange.svg)\
-[![Github Actions CI](https://github.com/mratsim/constantine/workflows/Constantine%20CI/badge.svg)](https://github.com/mratsim/constantine/actions?query=workflow%3A%22Constantine+CI%22+branch%3Amaster)\
-[![Build Status: Travis](https://img.shields.io/travis/com/mratsim/constantine/master?label=Travis%20%28Linux%20ARM64%2FPowerPC64%29)](https://travis-ci.com/mratsim/constantine)\
-[![Build Status: Azure](https://img.shields.io/azure-devops/build/numforge/07a2a7a5-995a-45d3-acd5-f5456fe7b04d/4?label=Azure%20%28Linux%2032%2F64-bit%2C%20Windows%2032%2F64-bit%2C%20MacOS%2064-bit%29)](https://dev.azure.com/numforge/Constantine/_build?definitionId=4&branchName=master)
+[![Github Actions CI](https://github.com/mratsim/constantine/workflows/Constantine%20CI/badge.svg)](https://github.com/mratsim/constantine/actions?query=workflow%3A%22Constantine+CI%22+branch%3Amaster)
 
 > “A cryptographic system should be secure even if everything about the system, except the key, is public knowledge.”\
 >   — Auguste Kerckhoffs
@@ -22,33 +20,32 @@ The implementations are accompanied with SAGE code used as reference implementat
 <!-- TOC -->
 
 - [Constantine - Fast, compact, hardened Pairing-Based Cryptography](#constantine---fast-compact-hardened-pairing-based-cryptography)
-  - [Table of Contents](#table-of-contents)
-  - [Target audience](#target-audience)
-  - [Protocols](#protocols)
-  - [Installation](#installation)
-    - [From C](#from-c)
-    - [From Nim](#from-nim)
-  - [Dependencies & Requirements](#dependencies--requirements)
-  - [Curves supported in the backend](#curves-supported-in-the-backend)
-  - [Security](#security)
-    - [Disclaimer](#disclaimer)
-    - [Security disclosure](#security-disclosure)
-  - [Performance](#performance)
-    - [In blockchain](#in-blockchain)
-    - [In zero-knowledge proofs](#in-zero-knowledge-proofs)
-    - [Measuring performance](#measuring-performance)
-      - [Ethereum BLS signatures over BLS12-381 G2](#ethereum-bls-signatures-over-bls12-381-g2)
-      - [BLS12-381 detailed benchmarks](#bls12-381-detailed-benchmarks)
-      - [BN254-Snarks Multi-Scalar-Multiplication benchmarks](#bn254-snarks-multi-scalar-multiplication-benchmarks)
-      - [Parallelism](#parallelism)
-  - [Why Nim](#why-nim)
-  - [Compiler caveats](#compiler-caveats)
-    - [Inline assembly](#inline-assembly)
-  - [Sizes: code size, stack usage](#sizes-code-size-stack-usage)
-  - [License](#license)
+    - [Table of Contents](#table-of-contents)
+    - [Target audience](#target-audience)
+    - [Protocols](#protocols)
+    - [Installation](#installation)
+        - [From C](#from-c)
+        - [From Nim](#from-nim)
+    - [Dependencies & Requirements](#dependencies--requirements)
+    - [Curves supported in the backend](#curves-supported-in-the-backend)
+    - [Security](#security)
+        - [Disclaimer](#disclaimer)
+        - [Security disclosure](#security-disclosure)
+    - [Performance](#performance)
+        - [In blockchain](#in-blockchain)
+        - [In zero-knowledge proofs](#in-zero-knowledge-proofs)
+        - [Measuring performance](#measuring-performance)
+            - [Ethereum BLS signatures over BLS12-381 G2](#ethereum-bls-signatures-over-bls12-381-g2)
+            - [BLS12-381 detailed benchmarks](#bls12-381-detailed-benchmarks)
+            - [BN254-Snarks Multi-Scalar-Multiplication benchmarks](#bn254-snarks-multi-scalar-multiplication-benchmarks)
+            - [Parallelism](#parallelism)
+    - [Why Nim](#why-nim)
+    - [Compiler caveats](#compiler-caveats)
+        - [Inline assembly](#inline-assembly)
+    - [Sizes: code size, stack usage](#sizes-code-size-stack-usage)
+    - [License](#license)
 
 <!-- /TOC -->
-
 ## Target audience
 
 The library aims to be a fast, compact and hardened library for elliptic curve cryptography needs, in particular for blockchain protocols and zero-knowledge proofs system.

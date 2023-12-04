@@ -15,7 +15,7 @@
 {.push warning[UnusedImport]: off.}
 
 import
-  ./lib_threadpool,
+  ../constantine/threadpool,
   ./lib_hashes,
   ./lib_curves,
   # Protocols
