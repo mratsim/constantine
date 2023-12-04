@@ -6,20 +6,10 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-# ############################################################
-#
-#                    Constantine library
-#
-# ############################################################
+import ./threadpool/[threadpool, partitioners]
+import ./zoo_exports
 
-{.push warning[UnusedImport]: off.}
+export threadpool, partitioners
 
-import
-  ./lib_threadpool,
-  ./lib_hashes,
-  ./lib_curves,
-  # Protocols
-  ../constantine/ethereum_bls_signatures,
-
-  # Ensure globals like proc from kernel32.dll are populated at library load time
-  ./lib_autoload
+proc ctt_threadpool_new*(num_threads: csize_t): Threadpool {.libPrefix: "", raises: [ResourceExhaustedError].} =
+  Threadpool.new(cast[int](numThreads))

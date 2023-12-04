@@ -20,10 +20,14 @@ import std/[strformat, strutils, os]
 # Compile-time environment variables
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
-# - CTT_ASM=0
+# - CC="clang" or "nim c --cc:clang ..."
+#       Specify the compiler.
+#       Clang is recommended for fastest performance.
+#
+# - CTT_ASM=0 or "nim c -d:CTT_ASM=0 ..."
 #        Disable assembly backend. Otherwise use ASM for supported CPUs and fallback to generic code otherwise.
 #
-# - CTT_LTO=1
+# - CTT_LTO=1 or "nim c -d:lto ..." or "nim c -d:lto_incremental ..."
 #        Enable LTO builds.
 #        By default this is:
 #        - Disabled for binaries
@@ -40,23 +44,23 @@ import std/[strformat, strutils, os]
 # Developer, debug, profiling and metrics environment variables
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #
-# - CTT_32
+# - CTT_32 or "nim c -d:CTT_32 ..."
 #        Compile Constantine with 32-bit backend. Otherwise autodetect.
 #
-# - CTT_DEBUG
+# - "nim c -d:CTT_DEBUG ..."
 #        Add preconditions, invariants and post-conditions checks.
 #        This may leak the erroring data. Do not use with secrets.
 #
-# - CTT_GENERATE_HEADERS
-# - CTT_TEST_CURVES
+# - "nim c -d:CTT_GENERATE_HEADERS ..."
+# - "nim c -d:CTT_TEST_CURVES ..."
 #
-# - CTT_THREADPOOL_ASSERTS
-# - CTT_THREADPOOL_METRICS
-# - CTT_THREADPOOL_PROFILE
+# - "nim c -d:CTT_THREADPOOL_ASSERTS ..."
+# - "nim c -d:CTT_THREADPOOL_METRICS ..."
+# - "nim c -d:CTT_THREADPOOL_PROFILE ..."
 #
-# - CTT_THREADPOOL_DEBUG
-# - CTT_THREADPOOL_DEBUG_SPLIT
-# - CTT_THREADPOOL_DEBUG_TERMINATION
+# - "nim c -d:CTT_THREADPOOL_DEBUG"
+# - "nim c -d:CTT_THREADPOOL_DEBUG_SPLIT"
+# - "nim c -d:CTT_THREADPOOL_DEBUG_TERMINATION"
 
 proc getEnvVars(): tuple[useAsmIfAble, force32, forceLto, useLtoDefault: bool] =
   if existsEnv"CTT_ASM":
@@ -168,7 +172,9 @@ proc releaseBuildOptions(buildMode = bmBinary): string =
   #   "-s -flinker-output=nolto-rel"
   #   with an extra C compiler call
   #   to consolidate all objects into one.
-  let ltoFlags = " -d:lto " # " --UseAsmSyntaxIntel --passC:-flto=auto --passL:-flto=auto "
+  let ltoFlags = " -d:lto " & # " --UseAsmSyntaxIntel --passC:-flto=auto --passL:-flto=auto "
+                 # With LTO, the GCC linker produces lots of spurious warnings when copying into openArrays/strings
+                 " --passC:-Wno-stringop-overflow --passL:-Wno-stringop-overflow "
 
   let apple = defined(macos) or defined(macox) or defined(ios)
   let ltoOptions = if useLtoDefault:
@@ -178,9 +184,20 @@ proc releaseBuildOptions(buildMode = bmBinary): string =
                    elif forceLto: ltoFlags
                    else: ""
 
+  let osSpecific =
+    if defined(windows): "" # " --passC:-mno-stack-arg-probe "
+      # Remove the auto __chkstk, which are: 1. slower, 2. not supported on Rust "stable-gnu" channel.
+      # However functions that uses a large stack like `sum_reduce_vartime` become incorrect.
+      # Hence deactivated by default.
+    else: ""
+  
+  let threadLocalStorage = " --tlsEmulation=off "
+
   compiler &
     envASM & env32 &
     ltoOptions &
+    osSpecific &
+    threadLocalStorage &
     compilerFlags()
 
 proc genDynamicLib(outdir, nimcache: string) =
@@ -190,6 +207,7 @@ proc genDynamicLib(outdir, nimcache: string) =
     exec "nim c " &
          flags &
          releaseBuildOptions(bmDynamicLib) &
+         " --threads:on " &
          " --noMain --app:lib " &
          &" --nimMainPrefix:ctt_init_ " & # Constantine is designed so that NimMain isn't needed, provided --mm:arc -d:useMalloc --panics:on -d:noSignalHandler
          &" --out:{libName} --outdir:{outdir} " &
@@ -209,17 +227,18 @@ proc genDynamicLib(outdir, nimcache: string) =
   else:
     compile "libconstantine.so"
 
-proc genStaticLib(outdir, nimcache: string, rustLib = false) =
+proc genStaticLib(outdir, nimcache: string) =
   proc compile(libName: string, flags = "") =
     echo &"Compiling static library:  {outdir}/" & libName
 
     exec "nim c " &
          flags &
          releaseBuildOptions(bmStaticLib) &
+         " --threads:on " &
          " --noMain --app:staticlib " &
          &" --nimMainPrefix:ctt_init_ " & # Constantine is designed so that NimMain isn't needed, provided --mm:arc -d:useMalloc --panics:on -d:noSignalHandler
          &" --out:{libName} --outdir:{outdir} " &
-         &" --nimcache:{nimcache}/libconstantine_static" & (if rustLib: "_rust" else: "") &
+         &" --nimcache:{nimcache}/libconstantine_static" &
          &" bindings/lib_constantine.nim"
 
   when defined(windows):
@@ -238,6 +257,7 @@ proc genStaticLib(outdir, nimcache: string, rustLib = false) =
 task make_headers, "Regenerate Constantine headers":
   exec "nim c -r -d:CTT_MAKE_HEADERS " &
        " -d:release " &
+       " --threads:on " &
        " --verbosity:0 --hints:off --warnings:off " &
        " --outdir:build/make " &
        " --nimcache:nimcache/libcurves_headers " &
@@ -250,7 +270,7 @@ task make_lib, "Build Constantine library":
 task make_lib_rust, "Build Constantine library (use within a Rust build.rs script)":
   doAssert existsEnv"OUT_DIR", "Cargo needs to set the \"OUT_DIR\" environment variable"
   let rustOutDir = getEnv"OUT_DIR"
-  genStaticLib(rustOutDir, rustOutDir/"nimcache", rustLib = true)
+  genStaticLib(rustOutDir, rustOutDir/"nimcache")
 
 proc testLib(path, testName: string, useGMP: bool) =
   let dynlibName = if defined(windows): "constantine.dll"
@@ -283,6 +303,7 @@ task test_lib, "Test C library":
   exec "mkdir -p build/test_lib"
   testLib("examples_c", "t_libctt_bls12_381", useGMP = true)
   testLib("examples_c", "ethereum_bls_signatures", useGMP = false)
+  testLib("tests"/"c_api", "t_threadpool", useGMP = false)
 
 # Test config
 # ----------------------------------------------------------------
@@ -667,11 +688,6 @@ proc test(cmd: string) =
   exec cmd
 
 proc testBatch(commands: var string, flags, path: string) =
-  # With LTO, the linker produces lots of spurious warnings when copying into openArrays/strings
-
-  let flags = if defined(gcc): flags & " --passC:-Wno-stringop-overflow --passL:-Wno-stringop-overflow "
-              else: flags
-
   commands = commands & setupTestCommand(flags, path) & '\n'
 
 proc setupBench(benchName: string, run: bool): string =
@@ -680,10 +696,6 @@ proc setupBench(benchName: string, run: bool): string =
     runFlags = runFlags & " -r "
 
   let asmStatus = if getEnvVars().useAsmIfAble: "asmIfAvailable" else: "noAsm"
-
-  if defined(gcc):
-    # With LTO, the linker produces lots of spurious warnings when copying into openArrays/strings
-    runFlags = runFlags & " --passC:-Wno-stringop-overflow --passL:-Wno-stringop-overflow "
 
   let cc = if existsEnv"CC": getEnv"CC"
            else: "defaultcompiler"

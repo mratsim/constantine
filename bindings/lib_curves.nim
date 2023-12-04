@@ -12,58 +12,11 @@
 #
 # ############################################################
 
-import ./c_curve_decls
-export c_curve_decls
-
-when not defined(CTT_MAKE_HEADERS):
-  template collectBindings(cBindingsStr: untyped, body: typed): untyped =
-    body
-else:
-  # We gate `c_typedefs` as it imports strutils
-  # which uses the {.rtl.} pragma and might compile in Nim Runtime Library procs
-  # that cannot be removed.
-  #
-  # We want to ensure its only used for header generation, not in deployment.
-  import ./c_typedefs
-  import std/[macros, strutils]
-
-  macro collectBindings(cBindingsStr: untyped, body: typed): untyped =
-    ## Collect function definitions from a generator template
-    var cBindings: string
-    for generator in body:
-      generator.expectKind(nnkStmtList)
-      for fnDef in generator:
-        if fnDef.kind notin {nnkProcDef, nnkFuncDef}:
-          continue
-
-        cBindings &= "\n"
-        # rettype name(pType0* pName0, pType1* pName1, ...);
-        cBindings &= fnDef.params[0].toCrettype()
-        cBindings &= ' '
-        cBindings &= $fnDef.name
-        cBindings &= '('
-        for i in 1 ..< fnDef.params.len:
-          if i != 1: cBindings &= ", "
-
-          let paramDef = fnDef.params[i]
-          paramDef.expectKind(nnkIdentDefs)
-          let pType = paramDef[^2]
-          # No default value
-          paramDef[^1].expectKind(nnkEmpty)
-
-          for j in 0 ..< paramDef.len - 2:
-            if j != 0: cBindings &= ", "
-            var name = $paramDef[j]
-            cBindings &= toCparam(name.split('`')[0], pType)
-
-        if fnDef.params[0].eqIdent"bool":
-          cBindings &= ") __attribute__((warn_unused_result));"
-        else:
-          cBindings &= ");"
-
-
-      result = newConstStmt(nnkPostfix.newTree(ident"*", cBindingsStr), newLit cBindings)
-
+import
+  ./macro_curves_bindings,
+  ./c_curve_decls,
+  ./c_curve_decls_parallel
+export c_curve_decls, c_curve_decls_parallel
 
 # ----------------------------------------------------------
 
@@ -71,12 +24,12 @@ type
   bls12_381_fr = Fr[BLS12_381]
   bls12_381_fp = Fp[BLS12_381]
   bls12_381_fp2 = Fp2[BLS12_381]
-  bls12_381_ec_g1_aff = ECP_ShortW_Aff[Fp[BLS12_381], G1]
-  bls12_381_ec_g1_jac = ECP_ShortW_Jac[Fp[BLS12_381], G1]
-  bls12_381_ec_g1_prj = ECP_ShortW_Prj[Fp[BLS12_381], G1]
-  bls12_381_ec_g2_aff = ECP_ShortW_Aff[Fp2[BLS12_381], G2]
-  bls12_381_ec_g2_jac = ECP_ShortW_Jac[Fp2[BLS12_381], G2]
-  bls12_381_ec_g2_prj = ECP_ShortW_Prj[Fp2[BLS12_381], G2]
+  bls12_381_g1_aff = ECP_ShortW_Aff[Fp[BLS12_381], G1]
+  bls12_381_g1_jac = ECP_ShortW_Jac[Fp[BLS12_381], G1]
+  bls12_381_g1_prj = ECP_ShortW_Prj[Fp[BLS12_381], G1]
+  bls12_381_g2_aff = ECP_ShortW_Aff[Fp2[BLS12_381], G2]
+  bls12_381_g2_jac = ECP_ShortW_Jac[Fp2[BLS12_381], G2]
+  bls12_381_g2_prj = ECP_ShortW_Prj[Fp2[BLS12_381], G2]
 
 collectBindings(cBindings_bls12_381):
   genBindingsField(bls12_381_fr)
@@ -84,25 +37,28 @@ collectBindings(cBindings_bls12_381):
   genBindingsFieldSqrt(bls12_381_fp)
   genBindingsExtField(bls12_381_fp2)
   genBindingsExtFieldSqrt(bls12_381_fp2)
-  genBindings_EC_ShortW_Affine(bls12_381_ec_g1_aff, bls12_381_fp)
-  genBindings_EC_ShortW_NonAffine(bls12_381_ec_g1_jac, bls12_381_ec_g1_aff, bls12_381_fp)
-  genBindings_EC_ShortW_NonAffine(bls12_381_ec_g1_prj, bls12_381_ec_g1_aff, bls12_381_fp)
-  genBindings_EC_ShortW_Affine(bls12_381_ec_g2_aff, bls12_381_fp2)
-  genBindings_EC_ShortW_NonAffine(bls12_381_ec_g2_jac, bls12_381_ec_g2_aff, bls12_381_fp2)
-  genBindings_EC_ShortW_NonAffine(bls12_381_ec_g2_prj, bls12_381_ec_g2_aff, bls12_381_fp2)
+  genBindings_EC_ShortW_Affine(bls12_381_g1_aff, bls12_381_fp)
+  genBindings_EC_ShortW_NonAffine(bls12_381_g1_jac, bls12_381_g1_aff)
+  genBindings_EC_ShortW_NonAffine(bls12_381_g1_prj, bls12_381_g1_aff)
+  genBindings_EC_ShortW_Affine(bls12_381_g2_aff, bls12_381_fp2)
+  genBindings_EC_ShortW_NonAffine(bls12_381_g2_jac, bls12_381_g2_aff)
+  genBindings_EC_ShortW_NonAffine(bls12_381_g2_prj, bls12_381_g2_aff)
 
+collectBindings(cBindings_bls12_381_parallel):
+  genParallelBindings_EC_ShortW_NonAffine(bls12_381_g1_jac, bls12_381_g1_aff, bls12_381_fr)
+  genParallelBindings_EC_ShortW_NonAffine(bls12_381_g1_prj, bls12_381_g1_aff, bls12_381_fr)
 # ----------------------------------------------------------
 
 type
   bn254_snarks_fr = Fr[BN254_Snarks]
   bn254_snarks_fp = Fp[BN254_Snarks]
   bn254_snarks_fp2 = Fp2[BN254_Snarks]
-  bn254_snarks_ec_g1_aff = ECP_ShortW_Aff[Fp[BN254_Snarks], G1]
-  bn254_snarks_ec_g1_jac = ECP_ShortW_Jac[Fp[BN254_Snarks], G1]
-  bn254_snarks_ec_g1_prj = ECP_ShortW_Prj[Fp[BN254_Snarks], G1]
-  bn254_snarks_ec_g2_aff = ECP_ShortW_Aff[Fp2[BN254_Snarks], G2]
-  bn254_snarks_ec_g2_jac = ECP_ShortW_Jac[Fp2[BN254_Snarks], G2]
-  bn254_snarks_ec_g2_prj = ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]
+  bn254_snarks_g1_aff = ECP_ShortW_Aff[Fp[BN254_Snarks], G1]
+  bn254_snarks_g1_jac = ECP_ShortW_Jac[Fp[BN254_Snarks], G1]
+  bn254_snarks_g1_prj = ECP_ShortW_Prj[Fp[BN254_Snarks], G1]
+  bn254_snarks_g2_aff = ECP_ShortW_Aff[Fp2[BN254_Snarks], G2]
+  bn254_snarks_g2_jac = ECP_ShortW_Jac[Fp2[BN254_Snarks], G2]
+  bn254_snarks_g2_prj = ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]
 
 collectBindings(cBindings_bn254_snarks):
   genBindingsField(bn254_snarks_fr)
@@ -110,12 +66,16 @@ collectBindings(cBindings_bn254_snarks):
   genBindingsFieldSqrt(bn254_snarks_fp)
   genBindingsExtField(bn254_snarks_fp2)
   genBindingsExtFieldSqrt(bn254_snarks_fp2)
-  genBindings_EC_ShortW_Affine(bn254_snarks_ec_g1_aff, bn254_snarks_fp)
-  genBindings_EC_ShortW_NonAffine(bn254_snarks_ec_g1_jac, bn254_snarks_ec_g1_aff, bn254_snarks_fp)
-  genBindings_EC_ShortW_NonAffine(bn254_snarks_ec_g1_prj, bn254_snarks_ec_g1_aff, bn254_snarks_fp)
-  genBindings_EC_ShortW_Affine(bn254_snarks_ec_g2_aff, bn254_snarks_fp2)
-  genBindings_EC_ShortW_NonAffine(bn254_snarks_ec_g2_jac, bn254_snarks_ec_g2_aff, bn254_snarks_fp2)
-  genBindings_EC_ShortW_NonAffine(bn254_snarks_ec_g2_prj, bn254_snarks_ec_g2_aff, bn254_snarks_fp2)
+  genBindings_EC_ShortW_Affine(bn254_snarks_g1_aff, bn254_snarks_fp)
+  genBindings_EC_ShortW_NonAffine(bn254_snarks_g1_jac, bn254_snarks_g1_aff)
+  genBindings_EC_ShortW_NonAffine(bn254_snarks_g1_prj, bn254_snarks_g1_aff)
+  genBindings_EC_ShortW_Affine(bn254_snarks_g2_aff, bn254_snarks_fp2)
+  genBindings_EC_ShortW_NonAffine(bn254_snarks_g2_jac, bn254_snarks_g2_aff)
+  genBindings_EC_ShortW_NonAffine(bn254_snarks_g2_prj, bn254_snarks_g2_aff)
+
+collectBindings(cBindings_bn254_snarks_parallel):
+  genParallelBindings_EC_ShortW_NonAffine(bn254_snarks_g1_jac, bn254_snarks_g1_aff, bn254_snarks_fr)
+  genParallelBindings_EC_ShortW_NonAffine(bn254_snarks_g1_prj, bn254_snarks_g1_aff, bn254_snarks_fr)
 
 # ----------------------------------------------------------
 
@@ -131,8 +91,12 @@ collectBindings(cBindings_pallas):
   genBindingsField(pallas_fp)
   genBindingsFieldSqrt(pallas_fp)
   genBindings_EC_ShortW_Affine(pallas_ec_aff, pallas_fp)
-  genBindings_EC_ShortW_NonAffine(pallas_ec_jac, pallas_ec_aff, pallas_fp)
-  genBindings_EC_ShortW_NonAffine(pallas_ec_prj, pallas_ec_aff, pallas_fp)
+  genBindings_EC_ShortW_NonAffine(pallas_ec_jac, pallas_ec_aff)
+  genBindings_EC_ShortW_NonAffine(pallas_ec_prj, pallas_ec_aff)
+
+collectBindings(cBindings_pallas_parallel):
+  genParallelBindings_EC_ShortW_NonAffine(pallas_ec_jac, pallas_ec_aff, pallas_fr)
+  genParallelBindings_EC_ShortW_NonAffine(pallas_ec_prj, pallas_ec_aff, pallas_fr)
 
 type
   vesta_fr = Fr[Vesta]
@@ -146,7 +110,11 @@ collectBindings(cBindings_vesta):
   genBindingsField(vesta_fp)
   genBindingsFieldSqrt(vesta_fp)
   genBindings_EC_ShortW_Affine(vesta_ec_aff, vesta_fp)
-  genBindings_EC_ShortW_NonAffine(vesta_ec_jac, vesta_ec_aff, vesta_fp)
-  genBindings_EC_ShortW_NonAffine(vesta_ec_prj, vesta_ec_aff, vesta_fp)
+  genBindings_EC_ShortW_NonAffine(vesta_ec_jac, vesta_ec_aff)
+  genBindings_EC_ShortW_NonAffine(vesta_ec_prj, vesta_ec_aff)
+
+collectBindings(cBindings_vesta_parallel):
+  genParallelBindings_EC_ShortW_NonAffine(vesta_ec_jac, vesta_ec_aff, vesta_fr)
+  genParallelBindings_EC_ShortW_NonAffine(vesta_ec_prj, vesta_ec_aff, vesta_fr)
 
 # ----------------------------------------------------------

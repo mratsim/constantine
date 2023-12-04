@@ -8,6 +8,7 @@ jobs:
       max-parallel: 20
       matrix:
         nim_version: [version-1-6] # [version-1-4, devel]
+        rust_toolchain: [stable] # [beta, nightly]
         target:
           - os: linux
             cpu: i386
@@ -157,10 +158,12 @@ jobs:
         run: |
           sudo DEBIAN_FRONTEND='noninteractive' apt-fast install \
             --no-install-recommends -yq \
-            libgmp-dev
+            libgmp-dev \
+            llvm
 
       - name: Install test dependencies (Linux i386)
         if: runner.os == 'Linux' && matrix.target.cpu == 'i386'
+        # We don't install LLVM as the Rust libraries that call Constantine are 64-bit only.
         run: |
           sudo dpkg --add-architecture i386
           sudo apt-fast update -qq
@@ -198,18 +201,20 @@ jobs:
 
         # Furthermore, Apple Clang can delete symbols when building a static library
         # in particular the hasAdxImpl bool for CPU runtime detection.
-        run: |
-          mkdir -p external/bin
-          cat << EOF > external/bin/clang
-          #!/bin/bash
-          exec $(brew --prefix llvm@15)/bin/clang "\$@"
-          EOF
-          cat << EOF > external/bin/clang++
-          #!/bin/bash
-          exec $(brew --prefix llvm@15)/bin/clang++ "\$@"
-          EOF
-          chmod 755 external/bin/{clang,clang++}
-          echo '${{ github.workspace }}/external/bin' >> $GITHUB_PATH
+
+        # run: |
+        #   mkdir -p external/bin
+        #   cat << EOF > external/bin/clang
+        #   #!/bin/bash
+        #   exec $(brew --prefix llvm@15)/bin/clang "\$@"
+        #   EOF
+        #   cat << EOF > external/bin/clang++
+        #   #!/bin/bash
+        #   exec $(brew --prefix llvm@15)/bin/clang++ "\$@"
+        #   EOF
+        #   chmod 755 external/bin/{clang,clang++}
+        #   echo '${{ github.workspace }}/external/bin' >> $GITHUB_PATH
+        run: echo "$(brew --prefix llvm@15)/bin" >> $GITHUB_PATH
 
       - name: Setup MSYS2 (Windows)
         if: runner.os == 'Windows'
@@ -223,7 +228,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: msys2 {0}
         run: |
-          pacman -S --needed --noconfirm mingw-w64-x86_64-gmp
+          pacman -S --needed --noconfirm mingw-w64-x86_64-gmp mingw-w64-x86_64-llvm
           nimble refresh --verbose -y
           nimble install --verbose -y gmp jsony asynctools yaml@1.1.0
 
@@ -234,14 +239,31 @@ jobs:
           nimble refresh --verbose -y
           nimble install --verbose -y gmp jsony asynctools yaml@1.1.0
 
-      - name: Print Nim & compiler versions
+      - name: Install Rust
         shell: bash
-        # gcc is an alias to Clang on MacOS
+        run: rustup update ${{ matrix.rust_toolchain }} && rustup default ${{ matrix.rust_toolchain }}
+
+      - name: Print Nim, Rust, LLVM versions and CPU specs.
+        shell: bash
+        # gcc is an alias to Apple Clang on MacOS
         run: |
           nim -v
           gcc -v
+          clang -v
+          rustup --version
+          if [[ '${{ matrix.target.cpu }}' != 'i386' && '${{ runner.os }}' != 'Windows' ]]; then
+            llvm-config --version
+          fi
+          if [[ '${{ runner.os }}' == 'Linux' ]]; then
+            cat /proc/cpuinfo
+          fi
+          if [[ '${{ runner.os }}' == 'macOS' ]]; then
+            sysctl -a | grep machdep.cpu
+            sysctl -a | grep hw | grep cpu
+            sysctl -a | grep hw.optional
+          fi
 
-      - name: Run Constantine tests (UNIX with Assembly)
+      - name: Run Constantine as C library tests (UNIX with Assembly)
         if: runner.os != 'Windows' && matrix.target.BACKEND == 'ASM'
         shell: bash
         run: |
@@ -249,35 +271,76 @@ jobs:
           nimble make_lib      --verbose
           nimble make_headers  --verbose
           nimble test_lib      --verbose
-          nimble test_parallel --verbose
-      - name: Run Constantine tests (UNIX no Assembly)
+      - name: Run Constantine as C library tests (UNIX no Assembly)
         if: runner.os != 'Windows' && matrix.target.BACKEND == 'NO_ASM'
         shell: bash
         run: |
           cd constantine
-          CTT_ASM=0 nimble make_lib      --verbose
-          nimble make_headers            --verbose
-          nimble test_lib                --verbose
-          CTT_ASM=0 nimble test_parallel --verbose
-      - name: Run Constantine tests (Windows with Assembly)
+          CTT_ASM=0 nimble make_lib --verbose
+          nimble make_headers       --verbose
+          nimble test_lib           --verbose
+      - name: Run Constantine as C library tests (Windows with Assembly)
         # So "test_bindings" uses C and can find GMP
         # but nim-gmp cannot find GMP on Windows CI
         if: runner.os == 'Windows' && matrix.target.BACKEND == 'ASM'
         shell: msys2 {0}
         run: |
           cd constantine
-          nimble make_lib             --verbose
-          nimble make_headers         --verbose
-          nimble test_lib             --verbose
-          nimble test_parallel_no_gmp --verbose
-      - name: Run Constantine tests (Windows no Assembly)
+          nimble make_lib     --verbose
+          nimble make_headers --verbose
+          nimble test_lib     --verbose
+      - name: Run Constantine as C library tests (Windows no Assembly)
         # So "test_bindings" uses C and can find GMP
         # but nim-gmp cannot find GMP on Windows CI
         if: runner.os == 'Windows' && matrix.target.BACKEND == 'NO_ASM'
         shell: msys2 {0}
         run: |
           cd constantine
-          CTT_ASM=0 nimble make_lib             --verbose
-          nimble make_headers                   --verbose
-          nimble test_lib                       --verbose
+          CTT_ASM=0 nimble make_lib --verbose
+          nimble make_headers       --verbose
+          nimble test_lib           --verbose
+
+      - name: Run Constantine as Rust library tests (with Assembly)
+        if: matrix.target.BACKEND == 'ASM' && matrix.target.cpu != 'i386'
+        shell: bash
+        # We need to deactivate the assembly (used by default for benches)
+        run: |
+          cd constantine
+          cargo test --no-default-features halo2curves --features halo2curves/multicore
+      - name: Run Constantine as Rust library tests (NO Assembly)
+        if: matrix.target.BACKEND == 'NO_ASM' && matrix.target.cpu != 'i386'
+        shell: bash
+        # We need to deactivate the assembly (used by default for benches)
+        run: |
+          cd constantine
+          CTT_ASM=0 cargo test --no-default-features halo2curves --features halo2curves/multicore
+
+      - name: Run Constantine in-depth tests (Unix - with GMP, with Assembly)
+        if: runner.os != 'Windows' && matrix.target.BACKEND == 'ASM'
+        shell: bash
+        run: |
+          cd constantine
+          nimble test_parallel --verbose
+      - name: Run Constantine in-depth tests (Unix - with GMP, no Assembly)
+        if: runner.os != 'Windows' && matrix.target.BACKEND == 'NO_ASM'
+        shell: bash
+        run: |
+          cd constantine
+          CTT_ASM=0 nimble test_parallel --verbose
+
+      - name: Run Constantine in-depth tests (Windows - no GMP, with Assembly)
+        # So "test_bindings" uses C and can find GMP
+        # but nim-gmp cannot find GMP on Windows CI
+        if: runner.os == 'Windows' && matrix.target.BACKEND == 'ASM'
+        shell: msys2 {0}
+        run: |
+          cd constantine
+          nimble test_parallel_no_gmp --verbose
+      - name: Run Constantine in-depth tests (Windows - no GMP, no Assembly)
+        # So "test_bindings" uses C and can find GMP
+        # but nim-gmp cannot find GMP on Windows CI
+        if: runner.os == 'Windows' && matrix.target.BACKEND == 'NO_ASM'
+        shell: msys2 {0}
+        run: |
+          cd constantine
           CTT_ASM=0 nimble test_parallel_no_gmp --verbose

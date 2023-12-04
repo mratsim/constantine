@@ -9,6 +9,11 @@
 #ifndef __CTT_H_CONSTANTINE__
 #define __CTT_H_CONSTANTINE__
 
+// Core functions
+#include "constantine/core/datatypes.h"
+#include "constantine/core/serialization.h"
+#include "constantine/core/threadpool.h"
+
 // Hash functions
 #include "constantine/hashes/sha256.h"
 
@@ -17,6 +22,11 @@
 #include "constantine/curves/bn254_snarks.h"
 #include "constantine/curves/pallas.h"
 #include "constantine/curves/vesta.h"
+
+#include "constantine/curves/bls12_381_parallel.h"
+#include "constantine/curves/bn254_snarks_parallel.h"
+#include "constantine/curves/pallas_parallel.h"
+#include "constantine/curves/vesta_parallel.h"
 
 // Protocols
 #include "constantine/protocols/ethereum_bls_signatures.h"

@@ -45,13 +45,13 @@ void        ctt_pallas_fr_square_in_place(pallas_fr* a);
 void        ctt_pallas_fr_div2(pallas_fr* a);
 void        ctt_pallas_fr_inv(pallas_fr* r, const pallas_fr* a);
 void        ctt_pallas_fr_inv_in_place(pallas_fr* a);
-void        ctt_pallas_fr_ccopy(pallas_fr* a, const pallas_fr* b, const secret_bool ctl);
-void        ctt_pallas_fr_cswap(pallas_fr* a, pallas_fr* b, const secret_bool ctl);
-void        ctt_pallas_fr_cset_zero(pallas_fr* a, const secret_bool ctl);
-void        ctt_pallas_fr_cset_one(pallas_fr* a, const secret_bool ctl);
-void        ctt_pallas_fr_cneg_in_place(pallas_fr* a, const secret_bool ctl);
-void        ctt_pallas_fr_cadd_in_place(pallas_fr* a, const pallas_fr* b, const secret_bool ctl);
-void        ctt_pallas_fr_csub_in_place(pallas_fr* a, const pallas_fr* b, const secret_bool ctl);
+void        ctt_pallas_fr_ccopy(pallas_fr* a, const pallas_fr* b, secret_bool ctl);
+void        ctt_pallas_fr_cswap(pallas_fr* a, pallas_fr* b, secret_bool ctl);
+void        ctt_pallas_fr_cset_zero(pallas_fr* a, secret_bool ctl);
+void        ctt_pallas_fr_cset_one(pallas_fr* a, secret_bool ctl);
+void        ctt_pallas_fr_cneg_in_place(pallas_fr* a, secret_bool ctl);
+void        ctt_pallas_fr_cadd_in_place(pallas_fr* a, const pallas_fr* b, secret_bool ctl);
+void        ctt_pallas_fr_csub_in_place(pallas_fr* a, const pallas_fr* b, secret_bool ctl);
 ctt_bool    ctt_pallas_fp_unmarshalBE(pallas_fp* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
 ctt_bool    ctt_pallas_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const pallas_fp* src) __attribute__((warn_unused_result));
 secret_bool ctt_pallas_fp_is_eq(const pallas_fp* a, const pallas_fp* b);
@@ -76,13 +76,13 @@ void        ctt_pallas_fp_square_in_place(pallas_fp* a);
 void        ctt_pallas_fp_div2(pallas_fp* a);
 void        ctt_pallas_fp_inv(pallas_fp* r, const pallas_fp* a);
 void        ctt_pallas_fp_inv_in_place(pallas_fp* a);
-void        ctt_pallas_fp_ccopy(pallas_fp* a, const pallas_fp* b, const secret_bool ctl);
-void        ctt_pallas_fp_cswap(pallas_fp* a, pallas_fp* b, const secret_bool ctl);
-void        ctt_pallas_fp_cset_zero(pallas_fp* a, const secret_bool ctl);
-void        ctt_pallas_fp_cset_one(pallas_fp* a, const secret_bool ctl);
-void        ctt_pallas_fp_cneg_in_place(pallas_fp* a, const secret_bool ctl);
-void        ctt_pallas_fp_cadd_in_place(pallas_fp* a, const pallas_fp* b, const secret_bool ctl);
-void        ctt_pallas_fp_csub_in_place(pallas_fp* a, const pallas_fp* b, const secret_bool ctl);
+void        ctt_pallas_fp_ccopy(pallas_fp* a, const pallas_fp* b, secret_bool ctl);
+void        ctt_pallas_fp_cswap(pallas_fp* a, pallas_fp* b, secret_bool ctl);
+void        ctt_pallas_fp_cset_zero(pallas_fp* a, secret_bool ctl);
+void        ctt_pallas_fp_cset_one(pallas_fp* a, secret_bool ctl);
+void        ctt_pallas_fp_cneg_in_place(pallas_fp* a, secret_bool ctl);
+void        ctt_pallas_fp_cadd_in_place(pallas_fp* a, const pallas_fp* b, secret_bool ctl);
+void        ctt_pallas_fp_csub_in_place(pallas_fp* a, const pallas_fp* b, secret_bool ctl);
 secret_bool ctt_pallas_fp_is_square(const pallas_fp* a);
 void        ctt_pallas_fp_invsqrt(pallas_fp* r, const pallas_fp* a);
 secret_bool ctt_pallas_fp_invsqrt_in_place(pallas_fp* r, const pallas_fp* a);
@@ -94,17 +94,17 @@ secret_bool ctt_pallas_fp_sqrt_ratio_if_square(pallas_fp* r, const pallas_fp* u,
 secret_bool ctt_pallas_ec_aff_is_eq(const pallas_ec_aff* P, const pallas_ec_aff* Q);
 secret_bool ctt_pallas_ec_aff_is_inf(const pallas_ec_aff* P);
 void        ctt_pallas_ec_aff_set_inf(pallas_ec_aff* P);
-void        ctt_pallas_ec_aff_ccopy(pallas_ec_aff* P, const pallas_ec_aff* Q, const secret_bool ctl);
+void        ctt_pallas_ec_aff_ccopy(pallas_ec_aff* P, const pallas_ec_aff* Q, secret_bool ctl);
 secret_bool ctt_pallas_ec_aff_is_on_curve(const pallas_fp* x, const pallas_fp* y);
 void        ctt_pallas_ec_aff_neg(pallas_ec_aff* P, const pallas_ec_aff* Q);
 void        ctt_pallas_ec_aff_neg_in_place(pallas_ec_aff* P);
 secret_bool ctt_pallas_ec_jac_is_eq(const pallas_ec_jac* P, const pallas_ec_jac* Q);
 secret_bool ctt_pallas_ec_jac_is_inf(const pallas_ec_jac* P);
 void        ctt_pallas_ec_jac_set_inf(pallas_ec_jac* P);
-void        ctt_pallas_ec_jac_ccopy(pallas_ec_jac* P, const pallas_ec_jac* Q, const secret_bool ctl);
+void        ctt_pallas_ec_jac_ccopy(pallas_ec_jac* P, const pallas_ec_jac* Q, secret_bool ctl);
 void        ctt_pallas_ec_jac_neg(pallas_ec_jac* P, const pallas_ec_jac* Q);
 void        ctt_pallas_ec_jac_neg_in_place(pallas_ec_jac* P);
-void        ctt_pallas_ec_jac_cneg_in_place(pallas_ec_jac* P, const secret_bool ctl);
+void        ctt_pallas_ec_jac_cneg_in_place(pallas_ec_jac* P, secret_bool ctl);
 void        ctt_pallas_ec_jac_sum(pallas_ec_jac* r, const pallas_ec_jac* P, const pallas_ec_jac* Q);
 void        ctt_pallas_ec_jac_add_in_place(pallas_ec_jac* P, const pallas_ec_jac* Q);
 void        ctt_pallas_ec_jac_diff(pallas_ec_jac* r, const pallas_ec_jac* P, const pallas_ec_jac* Q);
@@ -115,10 +115,10 @@ void        ctt_pallas_ec_jac_from_affine(pallas_ec_jac* dst, const pallas_ec_af
 secret_bool ctt_pallas_ec_prj_is_eq(const pallas_ec_prj* P, const pallas_ec_prj* Q);
 secret_bool ctt_pallas_ec_prj_is_inf(const pallas_ec_prj* P);
 void        ctt_pallas_ec_prj_set_inf(pallas_ec_prj* P);
-void        ctt_pallas_ec_prj_ccopy(pallas_ec_prj* P, const pallas_ec_prj* Q, const secret_bool ctl);
+void        ctt_pallas_ec_prj_ccopy(pallas_ec_prj* P, const pallas_ec_prj* Q, secret_bool ctl);
 void        ctt_pallas_ec_prj_neg(pallas_ec_prj* P, const pallas_ec_prj* Q);
 void        ctt_pallas_ec_prj_neg_in_place(pallas_ec_prj* P);
-void        ctt_pallas_ec_prj_cneg_in_place(pallas_ec_prj* P, const secret_bool ctl);
+void        ctt_pallas_ec_prj_cneg_in_place(pallas_ec_prj* P, secret_bool ctl);
 void        ctt_pallas_ec_prj_sum(pallas_ec_prj* r, const pallas_ec_prj* P, const pallas_ec_prj* Q);
 void        ctt_pallas_ec_prj_add_in_place(pallas_ec_prj* P, const pallas_ec_prj* Q);
 void        ctt_pallas_ec_prj_diff(pallas_ec_prj* r, const pallas_ec_prj* P, const pallas_ec_prj* Q);
@@ -127,10 +127,8 @@ void        ctt_pallas_ec_prj_double_in_place(pallas_ec_prj* P);
 void        ctt_pallas_ec_prj_affine(pallas_ec_aff* dst, const pallas_ec_prj* src);
 void        ctt_pallas_ec_prj_from_affine(pallas_ec_prj* dst, const pallas_ec_aff* src);
 
-
 #ifdef __cplusplus
 }
 #endif
 
-
-#endif
+#endif // __CTT_H_PALLAS__

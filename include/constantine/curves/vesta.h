@@ -45,13 +45,13 @@ void        ctt_vesta_fr_square_in_place(vesta_fr* a);
 void        ctt_vesta_fr_div2(vesta_fr* a);
 void        ctt_vesta_fr_inv(vesta_fr* r, const vesta_fr* a);
 void        ctt_vesta_fr_inv_in_place(vesta_fr* a);
-void        ctt_vesta_fr_ccopy(vesta_fr* a, const vesta_fr* b, const secret_bool ctl);
-void        ctt_vesta_fr_cswap(vesta_fr* a, vesta_fr* b, const secret_bool ctl);
-void        ctt_vesta_fr_cset_zero(vesta_fr* a, const secret_bool ctl);
-void        ctt_vesta_fr_cset_one(vesta_fr* a, const secret_bool ctl);
-void        ctt_vesta_fr_cneg_in_place(vesta_fr* a, const secret_bool ctl);
-void        ctt_vesta_fr_cadd_in_place(vesta_fr* a, const vesta_fr* b, const secret_bool ctl);
-void        ctt_vesta_fr_csub_in_place(vesta_fr* a, const vesta_fr* b, const secret_bool ctl);
+void        ctt_vesta_fr_ccopy(vesta_fr* a, const vesta_fr* b, secret_bool ctl);
+void        ctt_vesta_fr_cswap(vesta_fr* a, vesta_fr* b, secret_bool ctl);
+void        ctt_vesta_fr_cset_zero(vesta_fr* a, secret_bool ctl);
+void        ctt_vesta_fr_cset_one(vesta_fr* a, secret_bool ctl);
+void        ctt_vesta_fr_cneg_in_place(vesta_fr* a, secret_bool ctl);
+void        ctt_vesta_fr_cadd_in_place(vesta_fr* a, const vesta_fr* b, secret_bool ctl);
+void        ctt_vesta_fr_csub_in_place(vesta_fr* a, const vesta_fr* b, secret_bool ctl);
 ctt_bool    ctt_vesta_fp_unmarshalBE(vesta_fp* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
 ctt_bool    ctt_vesta_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const vesta_fp* src) __attribute__((warn_unused_result));
 secret_bool ctt_vesta_fp_is_eq(const vesta_fp* a, const vesta_fp* b);
@@ -76,13 +76,13 @@ void        ctt_vesta_fp_square_in_place(vesta_fp* a);
 void        ctt_vesta_fp_div2(vesta_fp* a);
 void        ctt_vesta_fp_inv(vesta_fp* r, const vesta_fp* a);
 void        ctt_vesta_fp_inv_in_place(vesta_fp* a);
-void        ctt_vesta_fp_ccopy(vesta_fp* a, const vesta_fp* b, const secret_bool ctl);
-void        ctt_vesta_fp_cswap(vesta_fp* a, vesta_fp* b, const secret_bool ctl);
-void        ctt_vesta_fp_cset_zero(vesta_fp* a, const secret_bool ctl);
-void        ctt_vesta_fp_cset_one(vesta_fp* a, const secret_bool ctl);
-void        ctt_vesta_fp_cneg_in_place(vesta_fp* a, const secret_bool ctl);
-void        ctt_vesta_fp_cadd_in_place(vesta_fp* a, const vesta_fp* b, const secret_bool ctl);
-void        ctt_vesta_fp_csub_in_place(vesta_fp* a, const vesta_fp* b, const secret_bool ctl);
+void        ctt_vesta_fp_ccopy(vesta_fp* a, const vesta_fp* b, secret_bool ctl);
+void        ctt_vesta_fp_cswap(vesta_fp* a, vesta_fp* b, secret_bool ctl);
+void        ctt_vesta_fp_cset_zero(vesta_fp* a, secret_bool ctl);
+void        ctt_vesta_fp_cset_one(vesta_fp* a, secret_bool ctl);
+void        ctt_vesta_fp_cneg_in_place(vesta_fp* a, secret_bool ctl);
+void        ctt_vesta_fp_cadd_in_place(vesta_fp* a, const vesta_fp* b, secret_bool ctl);
+void        ctt_vesta_fp_csub_in_place(vesta_fp* a, const vesta_fp* b, secret_bool ctl);
 secret_bool ctt_vesta_fp_is_square(const vesta_fp* a);
 void        ctt_vesta_fp_invsqrt(vesta_fp* r, const vesta_fp* a);
 secret_bool ctt_vesta_fp_invsqrt_in_place(vesta_fp* r, const vesta_fp* a);
@@ -94,17 +94,17 @@ secret_bool ctt_vesta_fp_sqrt_ratio_if_square(vesta_fp* r, const vesta_fp* u, co
 secret_bool ctt_vesta_ec_aff_is_eq(const vesta_ec_aff* P, const vesta_ec_aff* Q);
 secret_bool ctt_vesta_ec_aff_is_inf(const vesta_ec_aff* P);
 void        ctt_vesta_ec_aff_set_inf(vesta_ec_aff* P);
-void        ctt_vesta_ec_aff_ccopy(vesta_ec_aff* P, const vesta_ec_aff* Q, const secret_bool ctl);
+void        ctt_vesta_ec_aff_ccopy(vesta_ec_aff* P, const vesta_ec_aff* Q, secret_bool ctl);
 secret_bool ctt_vesta_ec_aff_is_on_curve(const vesta_fp* x, const vesta_fp* y);
 void        ctt_vesta_ec_aff_neg(vesta_ec_aff* P, const vesta_ec_aff* Q);
 void        ctt_vesta_ec_aff_neg_in_place(vesta_ec_aff* P);
 secret_bool ctt_vesta_ec_jac_is_eq(const vesta_ec_jac* P, const vesta_ec_jac* Q);
 secret_bool ctt_vesta_ec_jac_is_inf(const vesta_ec_jac* P);
 void        ctt_vesta_ec_jac_set_inf(vesta_ec_jac* P);
-void        ctt_vesta_ec_jac_ccopy(vesta_ec_jac* P, const vesta_ec_jac* Q, const secret_bool ctl);
+void        ctt_vesta_ec_jac_ccopy(vesta_ec_jac* P, const vesta_ec_jac* Q, secret_bool ctl);
 void        ctt_vesta_ec_jac_neg(vesta_ec_jac* P, const vesta_ec_jac* Q);
 void        ctt_vesta_ec_jac_neg_in_place(vesta_ec_jac* P);
-void        ctt_vesta_ec_jac_cneg_in_place(vesta_ec_jac* P, const secret_bool ctl);
+void        ctt_vesta_ec_jac_cneg_in_place(vesta_ec_jac* P, secret_bool ctl);
 void        ctt_vesta_ec_jac_sum(vesta_ec_jac* r, const vesta_ec_jac* P, const vesta_ec_jac* Q);
 void        ctt_vesta_ec_jac_add_in_place(vesta_ec_jac* P, const vesta_ec_jac* Q);
 void        ctt_vesta_ec_jac_diff(vesta_ec_jac* r, const vesta_ec_jac* P, const vesta_ec_jac* Q);
@@ -115,10 +115,10 @@ void        ctt_vesta_ec_jac_from_affine(vesta_ec_jac* dst, const vesta_ec_aff* 
 secret_bool ctt_vesta_ec_prj_is_eq(const vesta_ec_prj* P, const vesta_ec_prj* Q);
 secret_bool ctt_vesta_ec_prj_is_inf(const vesta_ec_prj* P);
 void        ctt_vesta_ec_prj_set_inf(vesta_ec_prj* P);
-void        ctt_vesta_ec_prj_ccopy(vesta_ec_prj* P, const vesta_ec_prj* Q, const secret_bool ctl);
+void        ctt_vesta_ec_prj_ccopy(vesta_ec_prj* P, const vesta_ec_prj* Q, secret_bool ctl);
 void        ctt_vesta_ec_prj_neg(vesta_ec_prj* P, const vesta_ec_prj* Q);
 void        ctt_vesta_ec_prj_neg_in_place(vesta_ec_prj* P);
-void        ctt_vesta_ec_prj_cneg_in_place(vesta_ec_prj* P, const secret_bool ctl);
+void        ctt_vesta_ec_prj_cneg_in_place(vesta_ec_prj* P, secret_bool ctl);
 void        ctt_vesta_ec_prj_sum(vesta_ec_prj* r, const vesta_ec_prj* P, const vesta_ec_prj* Q);
 void        ctt_vesta_ec_prj_add_in_place(vesta_ec_prj* P, const vesta_ec_prj* Q);
 void        ctt_vesta_ec_prj_diff(vesta_ec_prj* r, const vesta_ec_prj* P, const vesta_ec_prj* Q);
@@ -127,10 +127,8 @@ void        ctt_vesta_ec_prj_double_in_place(vesta_ec_prj* P);
 void        ctt_vesta_ec_prj_affine(vesta_ec_aff* dst, const vesta_ec_prj* src);
 void        ctt_vesta_ec_prj_from_affine(vesta_ec_prj* dst, const vesta_ec_aff* src);
 
-
 #ifdef __cplusplus
 }
 #endif
 
-
-#endif
+#endif // __CTT_H_VESTA__

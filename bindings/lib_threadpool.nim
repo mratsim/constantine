@@ -8,18 +8,8 @@
 
 # ############################################################
 #
-#                    Constantine library
+#                    Constantine's threadpool
 #
 # ############################################################
 
-{.push warning[UnusedImport]: off.}
-
-import
-  ./lib_threadpool,
-  ./lib_hashes,
-  ./lib_curves,
-  # Protocols
-  ../constantine/ethereum_bls_signatures,
-
-  # Ensure globals like proc from kernel32.dll are populated at library load time
-  ./lib_autoload
+import ../constantine/threadpool

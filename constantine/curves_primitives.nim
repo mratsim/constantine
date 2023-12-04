@@ -67,6 +67,9 @@ func marshalBE*(dst: var openarray[byte], src: FF): bool =
   raw.fromField(src)
   return dst.marshal(src, bigEndian)
 
+export arithmetic.fromBig
+export arithmetic.fromField
+
 export arithmetic.ccopy
 export arithmetic.cswap
 

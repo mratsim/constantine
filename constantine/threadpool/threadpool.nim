@@ -23,6 +23,8 @@ import
   ./parallel_offloading,
   ../platforms/[allocs, bithacks]
 
+import ../zoo_exports, dll_autoload
+
 export
   # flowvars
   Flowvar, isSpawned, isReady
@@ -939,7 +941,7 @@ proc wait(scopedBarrier: ptr ScopedBarrier) {.raises:[], gcsafe.} =
 # ############################################################
 
 proc new*(T: type Threadpool, numThreads = countProcessors()): T {.raises: [ResourceExhaustedError].} =
-  ## Initialize a threadpool that manages `numThreads` threads.
+  ## Initialize a threadpool that manages `num_threads` threads.
   ## Default to the number of logical processors available.
   ##
   ## A Constantine's threadpool cannot be instantiated
@@ -951,17 +953,19 @@ proc new*(T: type Threadpool, numThreads = countProcessors()): T {.raises: [Reso
 
   type TpObj = typeof(default(Threadpool)[]) # due to C import, we need a dynamic sizeof
   let tp = allocHeapUncheckedAlignedPtr(Threadpool, sizeof(TpObj), alignment = 64)
-
   tp.barrier.init(numThreads.uint32)
   tp.globalBackoff.initialize()
   tp.numThreads = numThreads.int32
   tp.workerQueues = allocHeapArrayAligned(Taskqueue, numThreads, alignment = 64)
   tp.workers = allocHeapArrayAligned(Thread[(Threadpool, WorkerID)], numThreads, alignment = 64)
   tp.workerSignals = allocHeapArrayAligned(Signal, numThreads, alignment = 64)
-
   # Setup master thread
   workerContext.id = 0
   workerContext.threadpool = tp
+
+  # We use kernel functions for threading and synchronization next,
+  # ensure they are loaded and static constructor procs are not removed by the linker.
+  check_lib_dependency_loader()
 
   # Start worker threads
   for i in 1 ..< numThreads:
@@ -993,7 +997,7 @@ proc cleanup(tp: Threadpool) {.raises: [].} =
 
   tp.freeHeapAligned()
 
-proc shutdown*(tp: Threadpool) {.raises:[].} =
+proc shutdown*(tp: Threadpool) {.raises:[], libPrefix: "ctt_threadpool_".} =
   ## Wait until all tasks are processed and then shutdown the threadpool
   preCondition: workerContext.currentTask.isRootTask()
   tp.syncAll()

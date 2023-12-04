@@ -13,6 +13,6 @@
 #  if the base LLVM versions differ.
 #  For example before LLVM 15 opaque pointers in IR triggered an error.
 
-[build]
-# https://doc.rust-lang.org/rustc/linker-plugin-lto.html
+# [build]
+# # https://doc.rust-lang.org/rustc/linker-plugin-lto.html
 # rustflags="-Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld"
