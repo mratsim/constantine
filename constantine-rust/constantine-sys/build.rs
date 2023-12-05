@@ -23,7 +23,7 @@ fn main() {
         .expect("failed to execute process");
 
     println!("cargo:rustc-link-search=native={}", out_dir.display());
-    
+
     // On windows stable channel (msvc) expects constantine.lib
     // while stable-gnu channel (gcc) expects libconstantine.a
     // hence we use +verbatim

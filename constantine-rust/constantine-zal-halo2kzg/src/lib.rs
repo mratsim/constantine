@@ -13,10 +13,17 @@ use ::core::mem::MaybeUninit;
 use constantine_sys::*;
 use halo2curves::bn256;
 use halo2curves::zal::{MsmAccel, ZalEngine};
+use halo2curves::CurveAffine;
 use std::mem;
 
 pub struct CttEngine {
     ctx: *mut ctt_threadpool,
+}
+pub struct CttMsmCoeffsDesc<'c, C: CurveAffine> {
+    raw: &'c [C::Scalar],
+}
+pub struct CttMsmBaseDesc<'b, C: CurveAffine> {
+    raw: &'b [C],
 }
 
 impl CttEngine {
@@ -49,6 +56,45 @@ impl MsmAccel<bn256::G1Affine> for CttEngine {
             );
             mem::transmute::<MaybeUninit<bn254_snarks_g1_prj>, bn256::G1>(result)
         }
+    }
+
+    // Caching API
+    // -------------------------------------------------
+
+    type CoeffsDescriptor<'c> = CttMsmCoeffsDesc<'c, bn256::G1Affine>;
+    type BaseDescriptor<'b> = CttMsmBaseDesc<'b, bn256::G1Affine>;
+
+    fn get_coeffs_descriptor<'c>(&self, coeffs: &'c [bn256::Fr]) -> Self::CoeffsDescriptor<'c> {
+        // Do expensive device/library specific preprocessing here
+        Self::CoeffsDescriptor { raw: coeffs }
+    }
+    fn get_base_descriptor<'b>(&self, base: &'b [bn256::G1Affine]) -> Self::BaseDescriptor<'b> {
+        // Do expensive device/library specific preprocessing here
+        Self::BaseDescriptor { raw: base }
+    }
+
+    fn msm_with_cached_scalars(
+        &self,
+        coeffs: &Self::CoeffsDescriptor<'_>,
+        base: &[bn256::G1Affine],
+    ) -> bn256::G1 {
+        self.msm(coeffs.raw, base)
+    }
+
+    fn msm_with_cached_base(
+        &self,
+        coeffs: &[bn256::Fr],
+        base: &Self::BaseDescriptor<'_>,
+    ) -> bn256::G1 {
+        self.msm(coeffs, base.raw)
+    }
+
+    fn msm_with_cached_inputs(
+        &self,
+        coeffs: &Self::CoeffsDescriptor<'_>,
+        base: &Self::BaseDescriptor<'_>,
+    ) -> bn256::G1 {
+        self.msm(coeffs.raw, base.raw)
     }
 }
 
@@ -98,6 +144,15 @@ mod tests {
             end_timer!(t1);
 
             assert_eq!(e0, e1);
+
+            // Caching API
+            // -----------
+            let t2 = start_timer!(|| format!("CttEngine msm cached base k={}", k));
+            let base_descriptor = engine.get_base_descriptor(points);
+            let e2 = engine.msm_with_cached_base(scalars, &base_descriptor);
+            end_timer!(t2);
+
+            assert_eq!(e0, e2)
         }
     }
 
