@@ -9,10 +9,9 @@
 import
   ../math/config/curves,
   ../math/[ec_shortweierstrass, arithmetic, extension_fields],
-  ../platforms/[abstractions, fileio],
-  ../serialization/endians,
-  ../math/constants/zoo_generators,
-  ../math/polynomials/polynomials,
+  ../platforms/[allocs, bithacks, fileio],
+  ../serialization/[codecs, codecs_status_codes, codecs_bls12_381],
+  ../math/polynomials/[polynomials, fft],
   ../math/io/io_fields
 
 # Ensure all exceptions are converted to error codes
@@ -21,8 +20,6 @@ import
 # C API prefix
 # -------------------
 import ../zoo_exports
-
-const prefix_srs = prefix_eth_kzg4844 & "trusted_setup_"
 
 # Roots of unity
 # ------------------------------------------------------------
@@ -163,18 +160,104 @@ type
   TrustedSetupFormat* = enum
     kReferenceCKzg4844
 
-proc load_ckzg4844*(ctx: ptr EthereumKZGContext, f: fileio.File): TrustedSetupStatus {.libPrefix: prefix_srs.} =
+func computeRootsOfUnity(dst: var openArray[Fr[BLS12_381]], generatorRootOfUnity: Fr[BLS12_381]) =
+  dst[0].setOne()
+  var cur = generatorRootOfUnity
+  for i in 1 ..< dst.len:
+    dst[i] = cur
+    cur *= generatorRootOfUnity
+
+proc load_ckzg4844*(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
   ## Read a trusted setup in the reference library c-kzg-4844 format
+  # Format is the following
+  # <nG1: number of G1 points>
+  # <nG2: number of G2 points>
+  # <Hex encoding of compressed G1 point: 0>
+  # ...
+  # <Hex encoding of compressed G1 point: nG1 - 1>
+  # <Hex encoding of compressed G2 point: 0>
+  # ...
+  # <Hex encoding of compressed G2 point: nG2 - 1>
+  #
+  # Each line is terminated by new line/line feed (binary byte 10)
+  #
+  # The compressed encoding of BLS12-381 points requires the first bit
+  # to be set, hence there is no omitted leading zeros to deal with:
+  # - a G1 point always takes  96 hex characters + 1 newline
+  # - a G2 point always takes 192 hex characters + 1 newline
 
-  
+  const g1Bytes = 48
+  const g2Bytes = 96
 
-proc load*(ctx: ptr EthereumKZGContext, filepath: cstring, format = kReferenceCKzg4844): TrustedSetupStatus {.libPrefix: prefix_srs.} =
+  block:
+    var num_matches: cint
+    var n: cuint
+
+    # G1 points metadata
+    num_matches = f.c_fscanf("%u\n", n.addr)
+    if num_matches != 1 or n != FIELD_ELEMENTS_PER_BLOB:
+      return tsInvalidFile
+
+    # G2 points metadata
+    num_matches = f.c_fscanf("%u\n", n.addr)
+    if num_matches != 1 or n != KZG_SETUP_G2_LENGTH:
+      return tsInvalidFile
+
+  block:
+    # G1 points - 96 characters + newline
+    var bufG1Hex {.noInit.}: array[2*g1Bytes+1, char]
+    var bufG1bytes {.noInit.}: array[g1Bytes, byte]
+    for i in 0 ..< FIELD_ELEMENTS_PER_BLOB:
+      if not f.readInto(bufG1Hex):
+        return tsInvalidFile
+      bufG1bytes.fromHex(bufG1Hex.toOpenArray(0, 2*g1Bytes-1))
+      let status = ctx.srs_lagrange_g1.evals[i].deserialize_g1_compressed(bufG1bytes)
+      if status != cttCodecEcc_Success:
+        c_printf("[Constantine Trusted Setup] Invalid G1 point on line %d: CttCodecEccStatus code %d\n", cint(2+i), status)
+        return tsInvalidFile
+
+  block:
+    # G2 points - 192 characters + newline
+    var bufG2Hex {.noInit.}: array[2*g2Bytes+1, char]
+    var bufG2bytes {.noInit.}: array[g2Bytes, byte]
+    for i in 0 ..< KZG_SETUP_G2_LENGTH:
+      if not f.readInto(bufG2Hex):
+        return tsInvalidFile
+      bufG2bytes.fromHex(bufG2Hex.toOpenArray(0, 2*g2Bytes-1))
+      let status = ctx.srs_monomial_g2.coefs[i].deserialize_g2_compressed(bufG2bytes)
+      if status != cttCodecEcc_Success:
+        c_printf("[Constantine Trusted Setup] Invalid G2 point on line %d: CttCodecEccStatus code %d\n", cint(2+FIELD_ELEMENTS_PER_BLOB+i), status)
+        return tsInvalidFile
+
+  block:
+    # Roots of Unity
+    ctx.domain.rootsOfUnity.computeRootsOfUnity(
+      generatorRootOfUnity =
+        static(
+          ctt_eth_kzg4844_fr_pow2_roots_of_unity[
+            log2_vartime(uint32 FIELD_ELEMENTS_PER_BLOB)
+          ]
+        )
+    )
+
+    # Compute the inverse of the domain degree
+    ctx.domain.invMaxDegree.fromUint(ctx.domain.rootsOfUnity.len.uint64)
+    ctx.domain.invMaxDegree.inv_vartime()
+
+  block:
+    # Bit-reversal permutations
+    ctx.srs_lagrange_g1.evals.bit_reversal_permutation()
+    ctx.domain.rootsOfUnity.bit_reversal_permutation()
+
+  return tsSuccess
+
+proc trusted_setup_load*(ctx: var ptr EthereumKZGContext, filepath: cstring, format: TrustedSetupFormat): TrustedSetupStatus {.libPrefix: prefix_eth_kzg4844.} =
   ## Load trusted setup in the TSIF format
   ## Opening and closing the file is the responsibility of the caller
 
-  static: doAssert cpuEndian == littleEndian, "Trusted setup creation is only supported on little-endian CPUs at the moment."
+  ctx = allocHeapAligned(EthereumKZGContext, alignment = 64)
 
-  var f: fileio.File
+  var f: File
   let ok = f.open(filepath, kRead)
   if not ok:
     return tsMissingOrInaccessibleFile
@@ -182,5 +265,9 @@ proc load*(ctx: ptr EthereumKZGContext, filepath: cstring, format = kReferenceCK
   assert format == kReferenceCKzg4844, "Only c-kzg-4844 .txt format is supported"
 
   let status = ctx.load_ckzg4844(f)
-  f.close()
+  fileio.close(f)
   return status
+
+proc trusted_setup_delete*(ctx: ptr EthereumKZGContext) {.libPrefix: prefix_eth_kzg4844.} =
+  if not ctx.isNil:
+    freeHeapAligned(ctx)

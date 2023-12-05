@@ -23,10 +23,6 @@
 # ------------------------------------------------------------
 
 type
-  CFile {.importc: "FILE", header: "<stdio.h>", incompleteStruct.} = object
-    ## C Filestream API
-  File* = ptr CFile
-
   FileSeekFrom {.size: sizeof(cint).} = enum
     ## SEEK_SET, SEEK_CUR and SEEK_END in stdio.h
     kAbsolute
@@ -65,6 +61,7 @@ const
 
 proc c_fopen(filepath, mode: cstring): File {.importc: "fopen", header: "<stdio.h>", sideeffect.}
 proc c_fclose(f: File): cint {.importc: "fclose", header: "<stdio.h>", sideeffect.}
+proc c_fflush*(f: File) {.importc: "fflush", header: "<stdio.h>", sideeffect, tags:[WriteIOEffect].}
 
 when defined(windows):
   proc c_fileno(f: File): cint {.importc: "_fileno", header: "<stdio.h>", sideeffect.}
@@ -109,7 +106,7 @@ else:
 # Reading files
 # ------------------------------------------------------------
 
-proc c_fread(buffer: pointer, len, count: csize_t, f: File): csize_t {.importc: "fread", header: "<stdio.h>", sideeffect.}
+proc c_fread(buffer: pointer, len, count: csize_t, f: File): csize_t {.importc: "fread", header: "<stdio.h>", sideeffect, tags:[ReadIOEffect].}
 
 proc readInto*(f: File, buffer: pointer, len: int): int =
   ## Read data into buffer, return the number of bytes read
@@ -131,14 +128,14 @@ proc read*(f: File, T: typedesc): T =
 # Parsing files
 # ------------------------------------------------------------
 
-proc c_fscanf*(f: File, format: cstring): cint{.importc:"fscanf", header: "<stdio.h>", sideeffect, varargs.}
+proc c_fscanf*(f: File, format: cstring): cint{.importc:"fscanf", header: "<stdio.h>", varargs, sideeffect, tags:[ReadIOEffect].}
   ## Note: The "format" parameter and followup arguments MUST NOT be forgotten
   ##       to not be exposed to the "format string attacks"
 
 # Formatted print
 # ------------------------------------------------------------
 
-proc c_printf*(fmt: cstring): cint {.sideeffect, importc: "printf", header: "<stdio.h>", varargs, discardable.}
+proc c_printf*(fmt: cstring): cint {.sideeffect, importc: "printf", header: "<stdio.h>", varargs, discardable, tags:[WriteIOEffect].}
 func c_snprintf*(dst: cstring, maxLen: csize_t, format: cstring): cint {.importc:"snprintf", header: "<stdio.h>", varargs.}
   ## dst is really a `var` parameter, but Nim var are lowered to pointer hence unsuitable here.
   ## Note: The "format" parameter and followup arguments MUST NOT be forgotten

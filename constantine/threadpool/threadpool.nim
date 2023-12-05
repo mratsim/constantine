@@ -30,8 +30,7 @@ export
   Flowvar, isSpawned, isReady
 
 when defined(CTT_THREADPOOL_METRICS):
-  import ../platforms/static_for
-  import system/ansi_c
+  import ../platforms/[fileio, static_for]
 
 # ############################################################
 #                                                            #

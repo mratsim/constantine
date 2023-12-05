@@ -27,6 +27,22 @@ import
 # and failure modes (subgroups, ...)
 # https://nimyaml.org/serialization.html
 
+const TrustedSetupMainnet =
+  currentSourcePath.rsplit(DirSep, 1)[0] /
+  ".." / "constantine" /
+  "trusted_setups" /
+  "trusted_setup_ethereum_kzg4844_reference.dat"
+
+proc trusted_setup*(): ptr EthereumKZGContext =
+  ## This is a convenience function for the Ethereum mainnet testing trusted setups.
+  ## It is insecure and will be replaced once the KZG ceremony is done.
+
+  var ctx: ptr EthereumKZGContext
+  let tsStatus = ctx.trusted_setup_load(TrustedSetupMainnet, kReferenceCKzg4844)
+  doAssert tsStatus == tsSuccess, "\n[Trusted Setup Error] " & $tsStatus
+  echo "Trusted Setup loaded successfully"
+  return ctx
+
 const
   TestVectorsDir =
     currentSourcePath.rsplit(DirSep, 1)[0] / "protocol_ethereum_eip4844_deneb_kzg"
@@ -57,7 +73,7 @@ template testGen*(name, testData: untyped, body: untyped): untyped {.dirty.} =
   proc `test _ name`(ctx: ptr EthereumKZGContext) =
     var count = 0 # Need to fail if walkDir doesn't return anything
     var skipped = 0
-    const testdir = TestVectorsDir / astToStr(name)/"small"
+    const testdir = TestVectorsDir / astToStr(name)/"kzg-mainnet"
     for dir, file in walkTests(testdir, skipped):
       stdout.write("       " & alignLeft(astToStr(name) & " test:", 36) & alignLeft(file, 90))
       let testData = loadVectors(dir/file)
@@ -247,7 +263,7 @@ testGen(verify_blob_kzg_proof_batch, testVector):
 
 block:
   suite "Ethereum Deneb Hardfork / EIP-4844 / Proto-Danksharding / KZG Polynomial Commitments":
-    let ctx = load_ethereum_kzg_test_trusted_setup_mainnet()
+    let ctx = trusted_setup()
 
     test "blob_to_kzg_commitment(dst: var array[48, byte], blob: ptr array[4096, byte])":
       ctx.test_blob_to_kzg_commitment()
@@ -267,4 +283,4 @@ block:
     test "verify_blob_kzg_proof_batch(blobs: ptr UncheckedArray[array[4096, byte]], commitments, proofs: ptr UncheckedArray[array[48, byte]], n: int, secureRandomBytes: array[32, byte])":
       ctx.test_verify_blob_kzg_proof_batch()
 
-    ctx.delete()
+    ctx.trusted_setup_delete()
