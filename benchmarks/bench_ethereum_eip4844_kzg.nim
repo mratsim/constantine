@@ -16,7 +16,9 @@ import
   ../constantine/platforms/primitives,
   # Helpers
   ../helpers/prng_unsafe,
-  ./bench_blueprint
+  ./bench_blueprint,
+  # Standard library
+  std/[os, strutils]
 
 proc separator*() = separator(180)
 
@@ -207,10 +209,25 @@ proc benchVerifyBlobKzgProofBatch(b: BenchSet, ctx: ptr EthereumKZGContext, iter
 
     i *= 2
 
+const TrustedSetupMainnet =
+  currentSourcePath.rsplit(DirSep, 1)[0] /
+  ".." / "constantine" /
+  "trusted_setups" /
+  "trusted_setup_ethereum_kzg4844_reference.dat"
+
+proc trusted_setup*(): ptr EthereumKZGContext =
+  ## This is a convenience function for the Ethereum mainnet testing trusted setups.
+  ## It is insecure and will be replaced once the KZG ceremony is done.
+
+  var ctx: ptr EthereumKZGContext
+  let tsStatus = ctx.trusted_setup_load(TrustedSetupMainnet, kReferenceCKzg4844)
+  doAssert tsStatus == tsSuccess, "\n[Trusted Setup Error] " & $tsStatus
+  echo "Trusted Setup loaded successfully"
+  return ctx
 
 const Iters = 100
 proc main() =
-  let ctx = load_ethereum_kzg_test_trusted_setup_mainnet()
+  let ctx = trusted_setup()
   let b = BenchSet[64].new(ctx)
   separator()
   benchBlobToKzgCommitment(b, ctx, Iters)
