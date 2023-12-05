@@ -133,7 +133,7 @@ elif defined(ios) or defined(macosx) or defined(macos):
   proc CCRandomGenerateBytes(pbuffer: pointer, len: csize_t): CCRNGStatus {.sideeffect, tags: [CSPRNG], importc, header: "<CommonCrypto/CommonRandom.h>".}
     # https://opensource.apple.com/source/CommonCrypto/CommonCrypto-60178.40.2/include/CommonRandom.h.auto.html
 
-  proc sysrand*[T](buffer: pointer, len: csize_t): bool {.libPrefix: prefix_ffi.} =
+  proc sysrand*(buffer: pointer, len: csize_t): bool {.libPrefix: prefix_ffi.} =
     ## Fills the buffer with cryptographically secure random data
     ## Returns true on success, false otherwise
     if kCCSuccess == CCRandomGenerateBytes(buffer, len):
