@@ -43,11 +43,18 @@ type
     # there is no short-circuit if they don't match
     challenge, eval_at_challenge: array[32, byte]
 
+proc randomize(rng: var RngState, blob: var Blob) =
+  for i in 0 ..< FIELD_ELEMENTS_PER_BLOB:
+    let t {.noInit.} = rng.random_unsafe(Fr[BLS12_381])
+    let offset = i*BYTES_PER_FIELD_ELEMENT
+    blob.toOpenArray(offset, offset+BYTES_PER_FIELD_ELEMENT-1)
+        .marshal(t, bigEndian)
+
 proc new(T: type BenchSet, ctx: ptr EthereumKZGContext): T =
   new(result)
   for i in 0 ..< result.N:
     let t {.noInit.} = rng.random_unsafe(Fr[BLS12_381])
-    result.blobs[i].marshal(t, bigEndian)
+    rng.randomize(result.blobs[i])
     discard ctx.blob_to_kzg_commitment(result.commitments[i], result.blobs[i].addr)
     discard ctx.compute_blob_kzg_proof(result.proofs[i], result.blobs[i].addr, result.commitments[i])
 
