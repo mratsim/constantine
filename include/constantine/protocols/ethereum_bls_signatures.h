@@ -28,26 +28,26 @@ typedef struct { struct ctt_eth_bls_fp  x, y; } ctt_eth_bls_pubkey;
 typedef struct { struct ctt_eth_bls_fp2 x, y; } ctt_eth_bls_signature;
 
 typedef enum __attribute__((__packed__)) {
-    cttEthBLS_Success,
-    cttEthBLS_VerificationFailure,
-    cttEthBLS_PointAtInfinity,
-    cttEthBLS_ZeroLengthAggregation,
-    cttEthBLS_InconsistentLengthsOfInputs,
+    cttEthBls_Success,
+    cttEthBls_VerificationFailure,
+    cttEthBls_PointAtInfinity,
+    cttEthBls_ZeroLengthAggregation,
+    cttEthBls_InconsistentLengthsOfInputs,
 } ctt_eth_bls_status;
 
 static const char* ctt_eth_bls_status_to_string(ctt_eth_bls_status status) {
   static const char* const statuses[] = {
-    "cttEthBLS_Success",
-    "cttEthBLS_VerificationFailure",
-    "cttEthBLS_PointAtInfinity",
-    "cttEthBLS_ZeroLengthAggregation",
-    "cttEthBLS_InconsistentLengthsOfInputs",
+    "cttEthBls_Success",
+    "cttEthBls_VerificationFailure",
+    "cttEthBls_PointAtInfinity",
+    "cttEthBls_ZeroLengthAggregation",
+    "cttEthBls_InconsistentLengthsOfInputs",
   };
   size_t length = sizeof statuses / sizeof *statuses;
   if (0 <= status && status < length) {
     return statuses[status];
   }
-  return "cttEthBLS_InvalidStatusCode";
+  return "cttEthBls_InvalidStatusCode";
 }
 
 // Comparisons

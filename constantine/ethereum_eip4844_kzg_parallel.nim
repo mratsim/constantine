@@ -116,14 +116,14 @@ proc blob_to_field_polynomial_parallel_async(
 # - Either we are in "HappyPath" section that shortcuts to resource cleanup on error
 # - or there are no resources to clean and we can early return from a function.
 
-func kzgifyStatus(status: CttCodecScalarStatus or CttCodecEccStatus): CttEthKzgStatus {.inline.} =
+func kzgifyStatus(status: CttCodecScalarStatus or CttCodecEccStatus): cttEthKzgStatus {.inline.} =
   checkReturn status
 
 proc blob_to_kzg_commitment_parallel*(
        tp: Threadpool,
        ctx: ptr EthereumKZGContext,
        dst: var array[48, byte],
-       blob: ptr Blob): CttEthKzgStatus =
+       blob: ptr Blob): cttEthKzgStatus =
   ## Compute a commitment to the `blob`.
   ## The commitment can be verified without needing the full `blob`
   ##
@@ -150,7 +150,7 @@ proc blob_to_kzg_commitment_parallel*(
     tp.kzg_commit_parallel(r, poly.evals, ctx.srs_lagrange_g1)
     discard dst.serialize_g1_compressed(r)
 
-    result = cttEthKZG_Success
+    result = cttEthKzg_Success
 
   freeHeapAligned(poly)
   return result
@@ -161,7 +161,7 @@ proc compute_kzg_proof_parallel*(
        proof_bytes: var array[48, byte],
        y_bytes: var array[32, byte],
        blob: ptr Blob,
-       z_bytes: array[32, byte]): CttEthKzgStatus =
+       z_bytes: array[32, byte]): cttEthKzgStatus =
   ## Generate:
   ## - A proof of correct evaluation.
   ## - y = p(z), the evaluation of p at the challenge z, with p being the Blob interpreted as a polynomial.
@@ -198,7 +198,7 @@ proc compute_kzg_proof_parallel*(
 
     discard proof_bytes.serialize_g1_compressed(proof) # cannot fail
     y_bytes.marshal(y, bigEndian) # cannot fail
-    result = cttEthKZG_Success
+    result = cttEthKzg_Success
 
   freeHeapAligned(poly)
   return result
@@ -208,7 +208,7 @@ proc compute_blob_kzg_proof_parallel*(
        ctx: ptr EthereumKZGContext,
        proof_bytes: var array[48, byte],
        blob: ptr Blob,
-       commitment_bytes: array[48, byte]): CttEthKzgStatus =
+       commitment_bytes: array[48, byte]): cttEthKzgStatus =
   ## Given a blob, return the KZG proof that is used to verify it against the commitment.
   ## This method does not verify that the commitment is correct with respect to `blob`.
 
@@ -241,7 +241,7 @@ proc compute_blob_kzg_proof_parallel*(
 
     discard proof_bytes.serialize_g1_compressed(proof) # cannot fail
 
-    result = cttEthKZG_Success
+    result = cttEthKzg_Success
 
   freeHeapAligned(poly)
   return result
@@ -251,7 +251,7 @@ proc verify_blob_kzg_proof_parallel*(
        ctx: ptr EthereumKZGContext,
        blob: ptr Blob,
        commitment_bytes: array[48, byte],
-       proof_bytes: array[48, byte]): CttEthKzgStatus =
+       proof_bytes: array[48, byte]): cttEthKzgStatus =
   ## Given a blob and a KZG proof, verify that the blob data corresponds to the provided commitment.
 
   var commitment {.noInit.}: KZGCommitment
@@ -303,9 +303,9 @@ proc verify_blob_kzg_proof_parallel*(
                           ECP_ShortW_Aff[Fp[BLS12_381], G1](proof),
                           ctx.srs_monomial_g2.coefs[1])
     if verif:
-      result =  cttEthKZG_Success
+      result =  cttEthKzg_Success
     else:
-      result = cttEthKZG_VerificationFailure
+      result = cttEthKzg_VerificationFailure
 
   freeHeapAligned(invRootsMinusZ)
   freeHeapAligned(poly)
@@ -318,7 +318,7 @@ proc verify_blob_kzg_proof_batch_parallel*(
        commitments_bytes: ptr UncheckedArray[array[48, byte]],
        proof_bytes: ptr UncheckedArray[array[48, byte]],
        n: int,
-       secureRandomBytes: array[32, byte]): CttEthKzgStatus =
+       secureRandomBytes: array[32, byte]): cttEthKzgStatus =
   ## Verify `n` (blob, commitment, proof) sets efficiently
   ##
   ## `n` is the number of verifications set
@@ -335,9 +335,9 @@ proc verify_blob_kzg_proof_batch_parallel*(
   mixin globalStatus
 
   if n < 0:
-    return cttEthKZG_VerificationFailure
+    return cttEthKzg_VerificationFailure
   if n == 0:
-    return cttEthKZG_Success
+    return cttEthKzg_Success
 
   let commitments = allocHeapArrayAligned(KZGCommitment, n, alignment = 64)
   let challenges = allocHeapArrayAligned(Fr[BLS12_381], n, alignment = 64)
@@ -355,18 +355,18 @@ proc verify_blob_kzg_proof_batch_parallel*(
                  challenges, evals_at_challenges,
                  proofs, proof_bytes,
                  invRootsMinusZs}
-      reduceInto(globalStatus: CttEthKzgStatus):
+      reduceInto(globalStatus: cttEthKzgStatus):
         prologue:
-          var workerStatus = cttEthKZG_Success
+          var workerStatus = cttEthKzg_Success
         forLoop:
           let polyStatusFut = tp.blob_to_field_polynomial_parallel_async(polys[i].addr, blobs[i].addr)
           let challengeStatusFut = tp.spawnAwaitable challenges[i].addr.fiatShamirChallenge(blobs[i].addr, commitments_bytes[i].addr)
 
           let commitmentStatus = kzgifyStatus commitments[i].bytes_to_kzg_commitment(commitments_bytes[i])
-          if workerStatus == cttEthKZG_Success:
+          if workerStatus == cttEthKzg_Success:
             workerStatus = commitmentStatus
           let polyStatus = kzgifyStatus sync(polyStatusFut)
-          if workerStatus == cttEthKZG_Success:
+          if workerStatus == cttEthKzg_Success:
             workerStatus = polyStatus
           discard sync(challengeStatusFut)
 
@@ -390,19 +390,19 @@ proc verify_blob_kzg_proof_batch_parallel*(
             evals_at_challenges[i].fromField(polys[i].evals[zIndex])
 
           let proofStatus = kzgifyStatus proofs[i].bytes_to_kzg_proof(proof_bytes[i])
-          if workerStatus == cttEthKZG_Success:
+          if workerStatus == cttEthKzg_Success:
             workerStatus = proofStatus
 
-        merge(remoteStatusFut: Flowvar[CttEthKzgStatus]):
+        merge(remoteStatusFut: Flowvar[cttEthKzgStatus]):
           let remoteStatus = sync(remoteStatusFut)
-          if workerStatus == cttEthKZG_Success:
+          if workerStatus == cttEthKzg_Success:
             workerStatus = remoteStatus
         epilogue:
           return workerStatus
 
 
     result = sync(globalStatus)
-    if result != cttEthKZG_Success:
+    if result != cttEthKzg_Success:
       break HappyPath
 
     var randomBlindingFr {.noInit.}: Fr[BLS12_381]
@@ -436,9 +436,9 @@ proc verify_blob_kzg_proof_batch_parallel*(
                   n,
                   ctx.srs_monomial_g2.coefs[1])
     if verif:
-      result =  cttEthKZG_Success
+      result =  cttEthKzg_Success
     else:
-      result = cttEthKZG_VerificationFailure
+      result = cttEthKzg_VerificationFailure
 
     freeHeapAligned(linearIndepRandNumbers)
 

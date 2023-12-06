@@ -38,7 +38,7 @@ proc batch_verify_parallel*[Msg](
         messages: ptr UncheckedArray[View[byte]],
         signatures: ptr UncheckedArray[Signature],
         len: int,
-        secureRandomBytes: array[32, byte]): CttEthBLSStatus {.libPrefix: prefix_ffi.} =
+        secureRandomBytes: array[32, byte]): cttEthBlsStatus {.libPrefix: prefix_ffi.} =
   ## Verify that all (pubkey, message, signature) triplets are valid
   ## returns `true` if all signatures are valid, `false` if at least one is invalid.
   ##
@@ -67,16 +67,16 @@ proc batch_verify_parallel*[Msg](
 
   if len == 0:
     # IETF spec precondition
-    return cttEthBLS_ZeroLengthAggregation
+    return cttEthBls_ZeroLengthAggregation
 
   # Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
   for i in 0 ..< len:
     if pubkeys[i].raw.isInf().bool:
-      return cttEthBLS_PointAtInfinity
+      return cttEthBls_PointAtInfinity
 
   for i in 0 ..< len:
     if signatures[i].raw.isInf().bool:
-      return cttEthBLS_PointAtInfinity
+      return cttEthBls_PointAtInfinity
 
   let verified = tp.batchVerify_parallel(
     pubkeys.toOpenArray(len).unwrap(),
@@ -84,8 +84,8 @@ proc batch_verify_parallel*[Msg](
     signatures.toOpenArray(len).unwrap(),
     sha256, 128, DomainSeparationTag, secureRandomBytes)
   if verified:
-    return cttEthBLS_Success
-  return cttEthBLS_VerificationFailure
+    return cttEthBls_Success
+  return cttEthBls_VerificationFailure
 
 # Nim
 proc batch_verify_parallel*[Msg](
@@ -93,7 +93,7 @@ proc batch_verify_parallel*[Msg](
         pubkeys: openArray[PublicKey],
         messages: openarray[Msg],
         signatures: openArray[Signature],
-        secureRandomBytes: array[32, byte]): CttEthBLSStatus =
+        secureRandomBytes: array[32, byte]): cttEthBlsStatus =
   ## Verify that all (pubkey, message, signature) triplets are valid
   ## returns `true` if all signatures are valid, `false` if at least one is invalid.
   ##
@@ -122,19 +122,19 @@ proc batch_verify_parallel*[Msg](
 
   if pubkeys.len == 0:
     # IETF spec precondition
-    return cttEthBLS_ZeroLengthAggregation
+    return cttEthBls_ZeroLengthAggregation
 
   if pubkeys.len != messages.len or  pubkeys.len != signatures.len:
-    return cttEthBLS_InconsistentLengthsOfInputs
+    return cttEthBls_InconsistentLengthsOfInputs
 
   # Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
   for i in 0 ..< pubkeys.len:
     if pubkeys[i].raw.isInf().bool:
-      return cttEthBLS_PointAtInfinity
+      return cttEthBls_PointAtInfinity
 
   for i in 0 ..< signatures.len:
     if signatures[i].raw.isInf().bool:
-      return cttEthBLS_PointAtInfinity
+      return cttEthBls_PointAtInfinity
 
   let verified = tp.batchVerify_parallel(
     pubkeys.unwrap(),
@@ -142,5 +142,5 @@ proc batch_verify_parallel*[Msg](
     signatures.unwrap(),
     sha256, 128, DomainSeparationTag, secureRandomBytes)
   if verified:
-    return cttEthBLS_Success
-  return cttEthBLS_VerificationFailure
+    return cttEthBls_Success
+  return cttEthBls_VerificationFailure

@@ -167,7 +167,7 @@ func computeRootsOfUnity(dst: var openArray[Fr[BLS12_381]], generatorRootOfUnity
     dst[i] = cur
     cur *= generatorRootOfUnity
 
-proc load_ckzg4844*(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
+proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
   ## Read a trusted setup in the reference library c-kzg-4844 format
   # Format is the following
   # <nG1: number of G1 points>
@@ -252,8 +252,9 @@ proc load_ckzg4844*(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
   return tsSuccess
 
 proc trusted_setup_load*(ctx: var ptr EthereumKZGContext, filepath: cstring, format: TrustedSetupFormat): TrustedSetupStatus {.libPrefix: prefix_eth_kzg4844.} =
-  ## Load trusted setup in the TSIF format
-  ## Opening and closing the file is the responsibility of the caller
+  ## Load trusted setup from path
+  ## Currently the only format supported
+  ## is from the reference implementation c-kzg-4844 text file
 
   ctx = allocHeapAligned(EthereumKZGContext, alignment = 64)
 

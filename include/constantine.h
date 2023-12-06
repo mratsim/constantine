@@ -33,6 +33,6 @@
 
 // Protocols
 #include "constantine/protocols/ethereum_bls_signatures.h"
-#include "constantine/protocols/ethereum_kzg4844.h"
+#include "constantine/protocols/ethereum_eip4844_kzg.h"
 
 #endif

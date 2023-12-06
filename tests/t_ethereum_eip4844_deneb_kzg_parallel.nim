@@ -142,7 +142,7 @@ testGen(blob_to_kzg_commitment, testVector):
   let status = tp.blob_to_kzg_commitment_parallel(ctx, commitment, blob[].addr)
   stdout.write "[" & $status & "]\n"
 
-  if status == cttEthKZG_Success:
+  if status == cttEthKzg_Success:
     parseAssign(expectedCommit, 48, testVector["output"].content)
     doAssert bool(commitment == expectedCommit[]), block:
       "\ncommitment: " & commitment.toHex() &
@@ -160,7 +160,7 @@ testGen(compute_kzg_proof, testVector):
   let status = tp.compute_kzg_proof_parallel(ctx, proof, y, blob[].addr, z[])
   stdout.write "[" & $status & "]\n"
 
-  if status == cttEthKZG_Success:
+  if status == cttEthKzg_Success:
     parseAssign(expectedEvalAtChallenge, 32, testVector["output"][1].content)
     parseAssign(expectedProof, 48, testVector["output"][0].content)
 
@@ -182,9 +182,9 @@ testGen(verify_kzg_proof, testVector):
   let status = verify_kzg_proof(ctx, commitment[], z[], y[], proof[])
   stdout.write "[" & $status & "]\n"
 
-  if status == cttEthKZG_Success:
+  if status == cttEthKzg_Success:
     doAssert testVector["output"].content == "true"
-  elif status == cttEthKZG_VerificationFailure:
+  elif status == cttEthKzg_VerificationFailure:
     doAssert testVector["output"].content == "false"
   else:
     doAssert testVector["output"].content == "null"
@@ -198,7 +198,7 @@ testGen(compute_blob_kzg_proof, testVector):
   let status = tp.compute_blob_kzg_proof_parallel(ctx, proof, blob[].addr, commitment[])
   stdout.write "[" & $status & "]\n"
 
-  if status == cttEthKZG_Success:
+  if status == cttEthKzg_Success:
     parseAssign(expectedProof, 48, testVector["output"].content)
 
     doAssert bool(proof == expectedProof[]), block:
@@ -215,9 +215,9 @@ testGen(verify_blob_kzg_proof, testVector):
   let status = tp.verify_blob_kzg_proof_parallel(ctx, blob[].addr, commitment[], proof[])
   stdout.write "[" & $status & "]\n"
 
-  if status == cttEthKZG_Success:
+  if status == cttEthKzg_Success:
     doAssert testVector["output"].content == "true"
-  elif status == cttEthKZG_VerificationFailure:
+  elif status == cttEthKzg_VerificationFailure:
     doAssert testVector["output"].content == "false"
   else:
     doAssert testVector["output"].content == "null"
@@ -255,9 +255,9 @@ testGen(verify_blob_kzg_proof_batch, testVector):
                  randomBlinding)
   stdout.write "[" & $status & "]\n"
 
-  if status == cttEthKZG_Success:
+  if status == cttEthKzg_Success:
     doAssert testVector["output"].content == "true"
-  elif status == cttEthKZG_VerificationFailure:
+  elif status == cttEthKzg_VerificationFailure:
     doAssert testVector["output"].content == "false"
   else:
     doAssert testVector["output"].content == "null"

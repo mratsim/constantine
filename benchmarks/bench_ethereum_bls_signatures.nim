@@ -159,7 +159,7 @@ proc benchVerifyMulti*(numSigs, iters: int) =
   bench("BLS verif of " & $numSigs & " msgs by "& $numSigs & " pubkeys", "BLS12_381", iters):
     for i in 0 ..< triplets.len:
       let ok = triplets[i].pubkey.verify(triplets[i].msg, triplets[i].sig)
-      doAssert ok == cttEthBLS_Success
+      doAssert ok == cttEthBls_Success
 
 proc benchVerifyBatched*(numSigs, iters: int) =
   ## Verification of N pubkeys signing for N messages
@@ -185,7 +185,7 @@ proc benchVerifyBatched*(numSigs, iters: int) =
 
   bench("BLS serial batch verify of " & $numSigs & " msgs by "& $numSigs & " pubkeys (with blinding)", "BLS12_381", iters):
     let ok = batch_verify(pubkeys, messages, signatures, secureBlindingBytes)
-    doAssert ok == cttEthBLS_Success
+    doAssert ok == cttEthBls_Success
 
 proc benchVerifyBatchedParallel*(numSigs, iters: int) =
   ## Verification of N pubkeys signing for N messages
@@ -220,7 +220,7 @@ proc benchVerifyBatchedParallel*(numSigs, iters: int) =
 
   bench("BLS parallel batch verify (" & $tp.numThreads & " threads) of " & $numSigs & " msgs by "& $numSigs & " pubkeys (with blinding)", "BLS12_381", iters):
     let ok = tp.batch_verify_parallel(pubkeys, messages, signatures, secureBlindingBytes)
-    doAssert ok == cttEthBLS_Success, "invalid status: " & $ok
+    doAssert ok == cttEthBls_Success, "invalid status: " & $ok
 
   tp.shutdown()
 
