@@ -636,7 +636,7 @@ template parallelReduceWrapper(
     block: # Merging with flowvars from remote threads
       while not this.reductionDAG.isNil:
         let reductionDagNode = this.reductionDAG
-        let remoteTaskAwaitable = cast[Flowvar[awaitableType]](reductionDagNode.task)
+        let remoteTaskAwaitable = cast[awaitableType](reductionDagNode.task)
         this.reductionDAG = reductionDagNode.next
 
         mergeLocalWithRemote

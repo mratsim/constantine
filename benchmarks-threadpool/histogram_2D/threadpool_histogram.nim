@@ -186,7 +186,7 @@ proc generateHistogramThreadpoolReduce[T](tp: Threadpool, matrix: Matrix[T], his
   # Parallel reduction
   tp.parallelFor i in 1 ..< matrix.ld-1:
     captures: {hist, matrix, boxes}
-    reduceInto(distributedMax: T):
+    reduceInto(distributedMax: Flowvar[T]):
       prologue:
         let threadHist = newHistogram(boxes)
         var max = T(-Inf)

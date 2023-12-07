@@ -200,7 +200,7 @@ proc maxThreadpoolReduce[T: SomeFloat](tp: Threadpool, M: Matrix[T]) : T =
 
   tp.parallelFor i in 0 ..< M.nrows:
     captures:{M}
-    reduceInto(globalMax: T):
+    reduceInto(globalMax: Flowvar[T]):
       prologue:
         var localMax = T(-Inf)
       forLoop:
@@ -219,7 +219,7 @@ proc logsumexpThreadpoolReduce[T: SomeFloat](tp: Threadpool, M: Matrix[T]): T =
   let alpha = tp.maxThreadpoolReduce(M)
   tp.parallelFor i in 0 ..< M.nrows:
     captures:{alpha, M}
-    reduceInto(lse: T):
+    reduceInto(lse: Flowvar[T]):
       prologue:
         var localLSE = 0.T
       forLoop:
@@ -240,7 +240,7 @@ proc maxThreadpoolCollapsed[T: SomeFloat](tp: Threadpool, M: Matrix[T]) : T =
 
   tp.parallelFor ij in 0 ..< M.nrows * M.ncols:
     captures:{M}
-    reduceInto(globalMax: T):
+    reduceInto(globalMax: Flowvar[T]):
       prologue:
         var localMax = T(-Inf)
       forLoop:
@@ -258,7 +258,7 @@ proc logsumexpThreadpoolCollapsed[T: SomeFloat](tp: Threadpool, M: Matrix[T]): T
 
   tp.parallelFor ij in 0 ..< M.nrows * M.ncols:
     captures:{alpha, M}
-    reduceInto(lse: T):
+    reduceInto(lse: Flowvar[T]):
       prologue:
         var localLSE = 0.T
       forLoop:

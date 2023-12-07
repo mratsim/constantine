@@ -8,7 +8,7 @@ block:
 
     proc sumReduce(tp: Threadpool, n: int): int64 =
       tp.parallelFor i in 0 .. n:
-        reduceInto(globalSum: int64):
+        reduceInto(globalSum: Flowvar[int64]):
           prologue:
             var localSum = 0'i64
           forLoop:

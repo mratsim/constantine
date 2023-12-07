@@ -56,7 +56,7 @@ proc blob_to_bigint_polynomial_parallel(
 
   tp.parallelFor i in 0 ..< FIELD_ELEMENTS_PER_BLOB:
     captures: {dst, view}
-    reduceInto(globalStatus: CttCodecScalarStatus):
+    reduceInto(globalStatus: Flowvar[CttCodecScalarStatus]):
       prologue:
         var workerStatus = cttCodecScalar_Success
       forLoop:
@@ -90,7 +90,7 @@ proc blob_to_field_polynomial_parallel_async(
 
   tp.parallelFor i in 0 ..< FIELD_ELEMENTS_PER_BLOB:
     captures: {dst, view}
-    reduceInto(globalStatus: CttCodecScalarStatus):
+    reduceInto(globalStatus: Flowvar[CttCodecScalarStatus]):
       prologue:
         var workerStatus = cttCodecScalar_Success
       forLoop:
@@ -355,7 +355,7 @@ proc verify_blob_kzg_proof_batch_parallel*(
                  challenges, evals_at_challenges,
                  proofs, proof_bytes,
                  invRootsMinusZs}
-      reduceInto(globalStatus: cttEthKzgStatus):
+      reduceInto(globalStatus: Flowvar[cttEthKzgStatus]):
         prologue:
           var workerStatus = cttEthKzg_Success
         forLoop:
