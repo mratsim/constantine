@@ -427,7 +427,7 @@ proc verify_blob_kzg_proof_batch_parallel*(
     linearIndepRandNumbers.computePowers(n, randomBlindingFr)
 
     type EcAffArray = ptr UncheckedArray[ECP_ShortW_Aff[Fp[BLS12_381], G1]]
-    let verif = kzg_verify_batch(
+    let verif = tp.kzg_verify_batch_parallel(
                   cast[EcAffArray](commitments),
                   challenges,
                   evals_at_challenges,
