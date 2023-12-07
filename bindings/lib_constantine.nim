@@ -15,7 +15,13 @@
 {.push warning[UnusedImport]: off.}
 
 import
+  ../constantine/threadpool,
   ./lib_hashes,
   ./lib_curves,
+  ../constantine/csprngs,
   # Protocols
-  ../constantine/ethereum_bls_signatures
+  ../constantine/ethereum_bls_signatures,
+  ../constantine/ethereum_eip4844_kzg,
+
+  # Ensure globals like proc from kernel32.dll are populated at library load time
+  ./lib_autoload

@@ -70,4 +70,4 @@ void ctt_sha256_hash(byte digest[32], const byte* message, ptrdiff_t message_len
 }
 #endif
 
-#endif
+#endif // __CTT_H_SHA256__

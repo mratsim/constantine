@@ -1,3 +1,0 @@
-[build]
-# https://doc.rust-lang.org/rustc/linker-plugin-lto.html
-rustflags="-Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld"

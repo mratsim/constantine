@@ -42,7 +42,7 @@ proc evalPolyAt_parallel*[N: static int, Field](
 
   tp.parallelFor i in 0 ..< N:
     captures: {poly, domain, invRootsMinusZ}
-    reduceInto(globalSum: Field):
+    reduceInto(globalSum: Flowvar[Field]):
       prologue:
         var workerSum {.noInit.}: Field
         workerSum.setZero()
@@ -122,7 +122,7 @@ proc differenceQuotientEvalInDomain_parallel*[N: static int, Field](
 
   tp.parallelFor i in 0 ..< N:
     captures: {r, poly, domain, invRootsMinusZ, zIndex}
-    reduceInto(evalsZindex: Field):
+    reduceInto(evalsZindex: Flowvar[Field]):
       prologue:
         var worker_ri {.noInit.}: Field
         worker_ri.setZero()

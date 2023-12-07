@@ -2,22 +2,32 @@
 resolver = "2"
 members = [
     "constantine-rust/constantine-sys",
-    "constantine-rust/ctt-curve-bls12-381",
-    "constantine-rust/ctt-curve-bn254-snarks",
-    "constantine-rust/ctt-curve-pasta",
-    "constantine-rust/ctt-proto-ethereum-bls-signatures",
+    "constantine-rust/constantine-zal-halo2kzg",
 ]
 
-# The Nim static library is compiled with ThinLTO, always enable it
-
-[profile.dev]
-lto = "thin"
-
-[profile.test]
-lto = "thin"
-
-[profile.release]
-lto = "thin"
+# If Nim static library is compiled with Clang ThinLTO, enable it on Rust side
+# and add the following to ".cargo/config.toml"
+#
+#    [build]
+#    # https://doc.rust-lang.org/rustc/linker-plugin-lto.html
+#    rustflags="-Clinker-plugin-lto -Clinker=clang -Clink-arg=-fuse-ld=lld"
+#
+#
+# [profile.dev]
+# lto = "thin"
+#
+# [profile.test]
+# lto = "thin"
+#
+# [profile.release]
+# lto = "thin"
+#
+# [profile.bench]
+# lto = "thin"
 
 [profile.bench]
-lto = "thin"
+opt-level = 3
+debug = false
+debug-assertions = false
+overflow-checks = false
+codegen-units = 1

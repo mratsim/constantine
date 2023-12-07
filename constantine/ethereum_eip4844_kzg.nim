@@ -21,7 +21,7 @@ import
   ./serialization/[codecs_status_codes, codecs_bls12_381, endians],
   ./trusted_setups/ethereum_kzg_srs
 
-export loadTrustedSetup, TrustedSetupStatus, EthereumKZGContext
+export trusted_setup_load, trusted_setup_delete, TrustedSetupFormat, TrustedSetupStatus, EthereumKZGContext
 
 ## ############################################################
 ##
@@ -43,6 +43,9 @@ export loadTrustedSetup, TrustedSetupStatus, EthereumKZGContext
 ## - Audited reference implementation
 ##   https://github.com/ethereum/c-kzg-4844
 
+const prefix_eth_kzg_4844 = "ctt_eth_kzg4844_"
+import ./zoo_exports
+
 # Constants
 # ------------------------------------------------------------
 # Spec "ENDIANNESS" for deserialization is little-endian
@@ -50,12 +53,12 @@ export loadTrustedSetup, TrustedSetupStatus, EthereumKZGContext
 
 const BYTES_PER_COMMITMENT = 48
 const BYTES_PER_PROOF = 48
-const BYTES_PER_FIELD_ELEMENT = 32
+const BYTES_PER_FIELD_ELEMENT* = 32
 
 # Presets
 # ------------------------------------------------------------
 
-const FIELD_ELEMENTS_PER_BLOB {.intdefine.} = 4096
+const FIELD_ELEMENTS_PER_BLOB* = 4096
 const FIAT_SHAMIR_PROTOCOL_DOMAIN = asBytes"FSBLOBVERIFY_V1_"
 const RANDOM_CHALLENGE_KZG_BATCH_DOMAIN = asBytes"RCKZGBATCH___V1_"
 
@@ -73,15 +76,15 @@ type
 
   KZGProof*      = distinct ECP_ShortW_Aff[Fp[BLS12_381], G1]
 
-  CttEthKzgStatus* = enum
-    cttEthKZG_Success
-    cttEthKZG_VerificationFailure
-    cttEthKZG_ScalarZero
-    cttEthKZG_ScalarLargerThanCurveOrder
-    cttEthKZG_EccInvalidEncoding
-    cttEthKZG_EccCoordinateGreaterThanOrEqualModulus
-    cttEthKZG_EccPointNotOnCurve
-    cttEthKZG_EccPointNotInSubGroup
+  cttEthKzgStatus* = enum
+    cttEthKzg_Success
+    cttEthKzg_VerificationFailure
+    cttEthKzg_ScalarZero
+    cttEthKzg_ScalarLargerThanCurveOrder
+    cttEthKzg_EccInvalidEncoding
+    cttEthKzg_EccCoordinateGreaterThanOrEqualModulus
+    cttEthKzg_EccPointNotOnCurve
+    cttEthKzg_EccPointNotInSubGroup
 
 # Fiat-Shamir challenges
 # ------------------------------------------------------------
@@ -225,7 +228,7 @@ template checkReturn(evalExpr: CttCodecScalarStatus): untyped {.dirty.} =
     case status
     of cttCodecScalar_Success:                          discard
     of cttCodecScalar_Zero:                             discard
-    of cttCodecScalar_ScalarLargerThanCurveOrder:       return cttEthKZG_ScalarLargerThanCurveOrder
+    of cttCodecScalar_ScalarLargerThanCurveOrder:       return cttEthKzg_ScalarLargerThanCurveOrder
 
 template checkReturn(evalExpr: CttCodecEccStatus): untyped {.dirty.} =
   # Translate codec status code to KZG status code
@@ -234,10 +237,10 @@ template checkReturn(evalExpr: CttCodecEccStatus): untyped {.dirty.} =
     let status = evalExpr # Ensure single evaluation
     case status
     of cttCodecEcc_Success:                             discard
-    of cttCodecEcc_InvalidEncoding:                     return cttEthKZG_EccInvalidEncoding
-    of cttCodecEcc_CoordinateGreaterThanOrEqualModulus: return cttEthKZG_EccCoordinateGreaterThanOrEqualModulus
-    of cttCodecEcc_PointNotOnCurve:                     return cttEthKZG_EccPointNotOnCurve
-    of cttCodecEcc_PointNotInSubgroup:                  return cttEthKZG_EccPointNotInSubGroup
+    of cttCodecEcc_InvalidEncoding:                     return cttEthKzg_EccInvalidEncoding
+    of cttCodecEcc_CoordinateGreaterThanOrEqualModulus: return cttEthKzg_EccCoordinateGreaterThanOrEqualModulus
+    of cttCodecEcc_PointNotOnCurve:                     return cttEthKzg_EccPointNotOnCurve
+    of cttCodecEcc_PointNotInSubgroup:                  return cttEthKzg_EccPointNotInSubGroup
     of cttCodecEcc_PointAtInfinity:                     discard
 
 template check(Section: untyped, evalExpr: CttCodecScalarStatus): untyped {.dirty.} =
@@ -248,7 +251,7 @@ template check(Section: untyped, evalExpr: CttCodecScalarStatus): untyped {.dirt
     case status
     of cttCodecScalar_Success:                          discard
     of cttCodecScalar_Zero:                             discard
-    of cttCodecScalar_ScalarLargerThanCurveOrder:       result = cttEthKZG_ScalarLargerThanCurveOrder; break Section
+    of cttCodecScalar_ScalarLargerThanCurveOrder:       result = cttEthKzg_ScalarLargerThanCurveOrder; break Section
 
 template check(Section: untyped, evalExpr: CttCodecEccStatus): untyped {.dirty.} =
   # Translate codec status code to KZG status code
@@ -257,16 +260,16 @@ template check(Section: untyped, evalExpr: CttCodecEccStatus): untyped {.dirty.}
     let status = evalExpr # Ensure single evaluation
     case status
     of cttCodecEcc_Success:                             discard
-    of cttCodecEcc_InvalidEncoding:                     result = cttEthKZG_EccInvalidEncoding; break Section
-    of cttCodecEcc_CoordinateGreaterThanOrEqualModulus: result = cttEthKZG_EccCoordinateGreaterThanOrEqualModulus; break Section
-    of cttCodecEcc_PointNotOnCurve:                     result = cttEthKZG_EccPointNotOnCurve; break Section
-    of cttCodecEcc_PointNotInSubgroup:                  result = cttEthKZG_EccPointNotInSubGroup; break Section
+    of cttCodecEcc_InvalidEncoding:                     result = cttEthKzg_EccInvalidEncoding; break Section
+    of cttCodecEcc_CoordinateGreaterThanOrEqualModulus: result = cttEthKzg_EccCoordinateGreaterThanOrEqualModulus; break Section
+    of cttCodecEcc_PointNotOnCurve:                     result = cttEthKzg_EccPointNotOnCurve; break Section
+    of cttCodecEcc_PointNotInSubgroup:                  result = cttEthKzg_EccPointNotInSubGroup; break Section
     of cttCodecEcc_PointAtInfinity:                     discard
 
 func blob_to_kzg_commitment*(
        ctx: ptr EthereumKZGContext,
        dst: var array[48, byte],
-       blob: ptr Blob): CttEthKzgStatus =
+       blob: ptr Blob): cttEthKzgStatus =
   ## Compute a commitment to the `blob`.
   ## The commitment can be verified without needing the full `blob`
   ##
@@ -293,7 +296,7 @@ func blob_to_kzg_commitment*(
     kzg_commit(r, poly.evals, ctx.srs_lagrange_g1)
     discard dst.serialize_g1_compressed(r)
 
-    result = cttEthKZG_Success
+    result = cttEthKzg_Success
 
   freeHeapAligned(poly)
   return result
@@ -303,7 +306,7 @@ func compute_kzg_proof*(
        proof_bytes: var array[48, byte],
        y_bytes: var array[32, byte],
        blob: ptr Blob,
-       z_bytes: array[32, byte]): CttEthKzgStatus {.tags:[Alloca, HeapAlloc, Vartime].} =
+       z_bytes: array[32, byte]): cttEthKzgStatus {.tags:[Alloca, HeapAlloc, Vartime].} =
   ## Generate:
   ## - A proof of correct evaluation.
   ## - y = p(z), the evaluation of p at the challenge z, with p being the Blob interpreted as a polynomial.
@@ -340,7 +343,7 @@ func compute_kzg_proof*(
 
     discard proof_bytes.serialize_g1_compressed(proof) # cannot fail
     y_bytes.marshal(y, bigEndian) # cannot fail
-    result = cttEthKZG_Success
+    result = cttEthKzg_Success
 
   freeHeapAligned(poly)
   return result
@@ -350,7 +353,7 @@ func verify_kzg_proof*(
        commitment_bytes: array[48, byte],
        z_bytes: array[32, byte],
        y_bytes: array[32, byte],
-       proof_bytes: array[48, byte]): CttEthKzgStatus {.tags:[Alloca, Vartime].} =
+       proof_bytes: array[48, byte]): cttEthKzgStatus {.tags:[Alloca, Vartime].} =
   ## Verify KZG proof that p(z) == y where p(z) is the polynomial represented by "polynomial_kzg"
 
   var commitment {.noInit.}: KZGCommitment
@@ -370,15 +373,15 @@ func verify_kzg_proof*(
                          ECP_ShortW_Aff[Fp[BLS12_381], G1](proof),
                          ctx.srs_monomial_g2.coefs[1])
   if verif:
-    return cttEthKZG_Success
+    return cttEthKzg_Success
   else:
-    return cttEthKZG_VerificationFailure
+    return cttEthKzg_VerificationFailure
 
 func compute_blob_kzg_proof*(
        ctx: ptr EthereumKZGContext,
        proof_bytes: var array[48, byte],
        blob: ptr Blob,
-       commitment_bytes: array[48, byte]): CttEthKzgStatus {.tags:[Alloca, HeapAlloc, Vartime].} =
+       commitment_bytes: array[48, byte]): cttEthKzgStatus {.tags:[Alloca, HeapAlloc, Vartime].} =
   ## Given a blob, return the KZG proof that is used to verify it against the commitment.
   ## This method does not verify that the commitment is correct with respect to `blob`.
 
@@ -408,7 +411,7 @@ func compute_blob_kzg_proof*(
 
     discard proof_bytes.serialize_g1_compressed(proof) # cannot fail
 
-    result = cttEthKZG_Success
+    result = cttEthKzg_Success
 
   freeHeapAligned(poly)
   return result
@@ -417,7 +420,7 @@ func verify_blob_kzg_proof*(
        ctx: ptr EthereumKZGContext,
        blob: ptr Blob,
        commitment_bytes: array[48, byte],
-       proof_bytes: array[48, byte]): CttEthKzgStatus {.tags:[Alloca, HeapAlloc, Vartime].} =
+       proof_bytes: array[48, byte]): cttEthKzgStatus {.tags:[Alloca, HeapAlloc, Vartime].} =
   ## Given a blob and a KZG proof, verify that the blob data corresponds to the provided commitment.
 
   var commitment {.noInit.}: KZGCommitment
@@ -465,9 +468,9 @@ func verify_blob_kzg_proof*(
                           ECP_ShortW_Aff[Fp[BLS12_381], G1](proof),
                           ctx.srs_monomial_g2.coefs[1])
     if verif:
-      result =  cttEthKZG_Success
+      result =  cttEthKzg_Success
     else:
-      result = cttEthKZG_VerificationFailure
+      result = cttEthKzg_VerificationFailure
 
   freeHeapAligned(invRootsMinusZ)
   freeHeapAligned(poly)
@@ -479,7 +482,7 @@ func verify_blob_kzg_proof_batch*(
        commitments_bytes: ptr UncheckedArray[array[48, byte]],
        proof_bytes: ptr UncheckedArray[array[48, byte]],
        n: int,
-       secureRandomBytes: array[32, byte]): CttEthKzgStatus {.tags:[Alloca, HeapAlloc, Vartime].} =
+       secureRandomBytes: array[32, byte]): cttEthKzgStatus {.tags:[Alloca, HeapAlloc, Vartime].} =
   ## Verify `n` (blob, commitment, proof) sets efficiently
   ##
   ## `n` is the number of verifications set
@@ -494,9 +497,9 @@ func verify_blob_kzg_proof_batch*(
   ## i.e. commitments that are linear combination of others and sum would be zero.
 
   if n < 0:
-    return cttEthKZG_VerificationFailure
+    return cttEthKzg_VerificationFailure
   if n == 0:
-    return cttEthKZG_Success
+    return cttEthKzg_Success
 
   let commitments = allocHeapArrayAligned(KZGCommitment, n, alignment = 64)
   let challenges = allocHeapArrayAligned(Fr[BLS12_381], n, alignment = 64)
@@ -562,9 +565,9 @@ func verify_blob_kzg_proof_batch*(
                   n,
                   ctx.srs_monomial_g2.coefs[1])
     if verif:
-      result =  cttEthKZG_Success
+      result =  cttEthKzg_Success
     else:
-      result = cttEthKZG_VerificationFailure
+      result = cttEthKzg_VerificationFailure
 
     freeHeapAligned(linearIndepRandNumbers)
 
@@ -576,31 +579,3 @@ func verify_blob_kzg_proof_batch*(
   freeHeapAligned(commitments)
 
   return result
-
-# Ethereum Trusted Setup
-# ------------------------------------------------------------
-
-# Temporary workaround, hardcoding the testing trusted setups
-
-# To be removed, no modules that use heap allocation are used at runtime
-import std/[os, strutils]
-
-const TrustedSetupMainnet =
-  currentSourcePath.rsplit(DirSep, 1)[0] /
-  "trusted_setups" /
-  "trusted_setup_ethereum_kzg_test_mainnet.tsif"
-
-proc load_ethereum_kzg_test_trusted_setup_mainnet*(): ptr EthereumKZGContext =
-  ## This is a convenience function for the Ethereum mainnet testing trusted setups.
-  ## It is insecure and will be replaced once the KZG ceremony is done.
-
-  let ctx = allocHeapAligned(EthereumKZGContext, alignment = 64)
-
-  let tsStatus = ctx.loadTrustedSetup(TrustedSetupMainnet)
-  doAssert tsStatus == tsSuccess, "\n[Trusted Setup Error] " & $tsStatus
-
-  echo "Trusted Setup loaded successfully"
-  return ctx
-
-proc delete*(ctx: ptr EthereumKZGContext) =
-  freeHeapAligned(ctx)

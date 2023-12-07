@@ -64,4 +64,4 @@ typedef uint8_t          byte;
 }
 #endif
 
-#endif
+#endif // __CTT_H_DATATYPES__

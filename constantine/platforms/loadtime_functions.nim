@@ -36,7 +36,7 @@ macro loadTime*(procAst: untyped): untyped =
     result = procAst
 
   elif defined(vcc):
-    warning "CPU feature autodetection at Constantine load time has not been tested with MSVC"
+    warning "Constantine autoloaded functions have not been tested with MSVC"
 
     template msvcInitSection(procDef: untyped): untyped =
       let procName = astToStr(def)

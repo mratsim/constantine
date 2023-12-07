@@ -309,7 +309,7 @@ template parReduceExample() {.dirty.}=
   proc parallelReduceExample(n: int): int =
     tp.parallelFor i in 0 ..< n:
       ## Declare a parallelFor or parallelForStrided loop as usual
-      reduceInto(globalSum: int64):
+      reduceInto(globalSum: Flowvar[int64]):
         ## Indicate that the loop is a reduction and declare the global reduction variable to sync with
         prologue:
           ## Declare your local reduction variable(s) here
@@ -549,7 +549,7 @@ proc generateClosure(ld: LoopDescriptor): NimNode =
           let `env` = cast[ptr `capturedTypes`](env)
         `loopFnCall`
   of kReduction:
-    let retTy = ld.awaitableType
+    let retTy = nnkDotExpr.newTree(ld.awaitableType, ident"T") # T from Flowvar[T]
 
     result = quote do:
       proc `closureName`(env: pointer) {.nimcall, gcsafe, raises: [].} =
@@ -607,14 +607,27 @@ proc generateAndScheduleLoopTask(ld: LoopDescriptor): NimNode =
               fn = `closureName`)
           `scheduleBlock`
   else:
+    if (
+        ld.awaitableType.kind != nnkBracketExpr or
+        not ld.awaitableType[0].eqIdent"Flowvar"
+       ) and (
+        ld.awaitableType.kind != nnkCall or
+        ld.awaitableType[0].kind != nnkOpenSymChoice or
+        not ld.awaitableType[0][0].eqIdent"[]" or
+        not ld.awaitableType[1].eqIdent"Flowvar"
+       ):
+      error "\nThe global reduction variable \"" & globalAwaitable.repr & "\" must be a Flowvar." &
+            "\nIt was declared \"reduceInto(" & globalAwaitable.repr & ": " & awaitableType.repr & "):\"" &
+            "\nChange its type to Flowvar[" & awaitableType.repr & "]"
+
     result = quote do:
-      var `globalAwaitable`: FlowVar[`awaitableType`]
+      var `globalAwaitable`: `awaitableType`
       block enq_deq_task: # Block for name spacing
         let start  = `start`      # Ensure single evaluation / side-effect
         let stopEx = `stopEx`
         if stopEx-start != 0:
           let taskSelfReference = cast[ptr Task](0xDEADBEEF)
-          var retValBuffer = default(`awaitableType`)
+          var retValBuffer = default(`awaitableType`.T) # T from Flowvar[T]
 
           when bool(`withCaptures`):
             let `task` = Task.newLoop(
@@ -632,7 +645,7 @@ proc generateAndScheduleLoopTask(ld: LoopDescriptor): NimNode =
               isFirstIter = true,
               fn = `closureName`,
               env = (taskSelfReference, retValBuffer))
-          `globalAwaitable` = newFlowVar(`awaitableType`, `task`)
+          `globalAwaitable` = newFlowVar(`awaitableType`.T, `task`)
           `scheduleBlock`
 
 proc generateParallelLoop(ld: LoopDescriptor): NimNode =
@@ -646,7 +659,7 @@ proc generateParallelLoop(ld: LoopDescriptor): NimNode =
   if ld.awaitableType.isNil:
     params.add newEmptyNode()
   else:
-    params.add ld.awaitableType
+    params.add nnkDotExpr.newTree(ld.awaitableType, ident"T") # T from Flowvar[T]
 
   var procBody = newStmtList()
 
@@ -734,7 +747,7 @@ proc parseReductionSection(body: NimNode):
        tuple[globalAwaitable, awaitableType, reductionBody: NimNode] =
   for i in 0 ..< body.len:
     # parallelFor i in 0 .. n:
-    #   reduceInto(globalSum: int64):
+    #   reduceInto(globalSum: Flowvar[int64]):
     #     prologue:
     #       var localSum = 0'i64
     #
@@ -744,7 +757,9 @@ proc parseReductionSection(body: NimNode):
     #         Ident "reduceInto"
     #         ExprColonExpr
     #           Ident "globalSum"
-    #           Ident "int64"
+    #           BracketExpr
+    #             Ident "Flowvar"
+    #             Ident "int64"
     #       StmtList
     #         Call
     #           Ident "prologue"
@@ -768,7 +783,7 @@ proc parseReductionSection(body: NimNode):
       return (body[i][0][1][0], body[i][0][1][1], body[i][1])
 
   printReduceExample()
-  error "Missing section \"reduceInto(globalAwaitable: awaitableType):\""
+  error "Missing section \"reduceInto(globalAwaitable: Flowvar[accumulatorType]):\""
 
 proc extractRemoteTaskMerge(ld: var LoopDescriptor, body: NimNode) =
   for i in 0 ..< body.len:

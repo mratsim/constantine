@@ -5,6 +5,7 @@ build/
 *.so.*
 *.dylib
 *.a
+*.lib
 *.la
 *.dll
 *.exe

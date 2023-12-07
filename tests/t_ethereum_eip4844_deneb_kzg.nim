@@ -27,6 +27,22 @@ import
 # and failure modes (subgroups, ...)
 # https://nimyaml.org/serialization.html
 
+const TrustedSetupMainnet =
+  currentSourcePath.rsplit(DirSep, 1)[0] /
+  ".." / "constantine" /
+  "trusted_setups" /
+  "trusted_setup_ethereum_kzg4844_reference.dat"
+
+proc trusted_setup*(): ptr EthereumKZGContext =
+  ## This is a convenience function for the Ethereum mainnet testing trusted setups.
+  ## It is insecure and will be replaced once the KZG ceremony is done.
+
+  var ctx: ptr EthereumKZGContext
+  let tsStatus = ctx.trusted_setup_load(TrustedSetupMainnet, kReferenceCKzg4844)
+  doAssert tsStatus == tsSuccess, "\n[Trusted Setup Error] " & $tsStatus
+  echo "Trusted Setup loaded successfully"
+  return ctx
+
 const
   TestVectorsDir =
     currentSourcePath.rsplit(DirSep, 1)[0] / "protocol_ethereum_eip4844_deneb_kzg"
@@ -57,7 +73,7 @@ template testGen*(name, testData: untyped, body: untyped): untyped {.dirty.} =
   proc `test _ name`(ctx: ptr EthereumKZGContext) =
     var count = 0 # Need to fail if walkDir doesn't return anything
     var skipped = 0
-    const testdir = TestVectorsDir / astToStr(name)/"small"
+    const testdir = TestVectorsDir / astToStr(name)/"kzg-mainnet"
     for dir, file in walkTests(testdir, skipped):
       stdout.write("       " & alignLeft(astToStr(name) & " test:", 36) & alignLeft(file, 90))
       let testData = loadVectors(dir/file)
@@ -125,7 +141,7 @@ testGen(blob_to_kzg_commitment, testVector):
   let status = blob_to_kzg_commitment(ctx, commitment, blob[].addr)
   stdout.write "[" & $status & "]\n"
 
-  if status == cttEthKZG_Success:
+  if status == cttEthKzg_Success:
     parseAssign(expectedCommit, 48, testVector["output"].content)
     doAssert bool(commitment == expectedCommit[]), block:
       "\ncommitment: " & commitment.toHex() &
@@ -143,7 +159,7 @@ testGen(compute_kzg_proof, testVector):
   let status = compute_kzg_proof(ctx, proof, y, blob[].addr, z[])
   stdout.write "[" & $status & "]\n"
 
-  if status == cttEthKZG_Success:
+  if status == cttEthKzg_Success:
     parseAssign(expectedEvalAtChallenge, 32, testVector["output"][1].content)
     parseAssign(expectedProof, 48, testVector["output"][0].content)
 
@@ -165,9 +181,9 @@ testGen(verify_kzg_proof, testVector):
   let status = verify_kzg_proof(ctx, commitment[], z[], y[], proof[])
   stdout.write "[" & $status & "]\n"
 
-  if status == cttEthKZG_Success:
+  if status == cttEthKzg_Success:
     doAssert testVector["output"].content == "true"
-  elif status == cttEthKZG_VerificationFailure:
+  elif status == cttEthKzg_VerificationFailure:
     doAssert testVector["output"].content == "false"
   else:
     doAssert testVector["output"].content == "null"
@@ -181,7 +197,7 @@ testGen(compute_blob_kzg_proof, testVector):
   let status = compute_blob_kzg_proof(ctx, proof, blob[].addr, commitment[])
   stdout.write "[" & $status & "]\n"
 
-  if status == cttEthKZG_Success:
+  if status == cttEthKzg_Success:
     parseAssign(expectedProof, 48, testVector["output"].content)
 
     doAssert bool(proof == expectedProof[]), block:
@@ -198,9 +214,9 @@ testGen(verify_blob_kzg_proof, testVector):
   let status = verify_blob_kzg_proof(ctx, blob[].addr, commitment[], proof[])
   stdout.write "[" & $status & "]\n"
 
-  if status == cttEthKZG_Success:
+  if status == cttEthKzg_Success:
     doAssert testVector["output"].content == "true"
-  elif status == cttEthKZG_VerificationFailure:
+  elif status == cttEthKzg_VerificationFailure:
     doAssert testVector["output"].content == "false"
   else:
     doAssert testVector["output"].content == "null"
@@ -238,16 +254,16 @@ testGen(verify_blob_kzg_proof_batch, testVector):
                  randomBlinding)
   stdout.write "[" & $status & "]\n"
 
-  if status == cttEthKZG_Success:
+  if status == cttEthKzg_Success:
     doAssert testVector["output"].content == "true"
-  elif status == cttEthKZG_VerificationFailure:
+  elif status == cttEthKzg_VerificationFailure:
     doAssert testVector["output"].content == "false"
   else:
     doAssert testVector["output"].content == "null"
 
 block:
   suite "Ethereum Deneb Hardfork / EIP-4844 / Proto-Danksharding / KZG Polynomial Commitments":
-    let ctx = load_ethereum_kzg_test_trusted_setup_mainnet()
+    let ctx = trusted_setup()
 
     test "blob_to_kzg_commitment(dst: var array[48, byte], blob: ptr array[4096, byte])":
       ctx.test_blob_to_kzg_commitment()
@@ -267,4 +283,4 @@ block:
     test "verify_blob_kzg_proof_batch(blobs: ptr UncheckedArray[array[4096, byte]], commitments, proofs: ptr UncheckedArray[array[48, byte]], n: int, secureRandomBytes: array[32, byte])":
       ctx.test_verify_blob_kzg_proof_batch()
 
-    ctx.delete()
+    ctx.trusted_setup_delete()

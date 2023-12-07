@@ -88,7 +88,7 @@ proc sum_reduce_vartime_parallelAccums[F; G: static Subgroup](
   tp.parallelFor i in 0 ..< N:
     stride: chunkSize
     captures: {ps, N}
-    reduceInto(globalAcc: ptr Acc):
+    reduceInto(globalAcc: Flowvar[ptr Acc]):
       prologue:
         var workerAcc = allocHeap(Acc)
         workerAcc[].init()

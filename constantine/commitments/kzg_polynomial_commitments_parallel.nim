@@ -120,7 +120,7 @@ proc kzg_verify_batch_parallel*[bits: static int, F2; C: static Curve](
        proofs: ptr UncheckedArray[ECP_ShortW_Aff[Fp[C], G1]],
        linearIndepRandNumbers: ptr UncheckedArray[Fr[C]],
        n: int,
-       tauG2: ECP_ShortW_Aff[F2, G2]): bool {.tags:[HeapAlloc, Alloca, Vartime].} =
+       tauG2: ECP_ShortW_Aff[F2, G2]): bool =
   ## Verify multiple KZG proofs efficiently
   ##
   ## Parameters
@@ -204,7 +204,7 @@ proc kzg_verify_batch_parallel*[bits: static int, F2; C: static Curve](
 
     commits_min_evals.batchAffine(commits_min_evals_jac, n)
     freeHeapAligned(commits_min_evals_jac)
-    tp.multiScalarMul_vartime(sum_commit_minus_evals_G1, coefs, commits_min_evals, n)
+    tp.multiScalarMul_vartime_parallel(sum_commit_minus_evals_G1, coefs, commits_min_evals, n)
     freeHeapAligned(commits_min_evals)
 
   let sum_commit_minus_evals_G1_fv = tp.spawnAwaitable tp.compute_sum_commitments_minus_evals(
@@ -228,16 +228,17 @@ proc kzg_verify_batch_parallel*[bits: static int, F2; C: static Curve](
 
     syncScope:
       tp.parallelFor i in 0 ..< n:
+        captures: {rand_coefs, rand_coefs_fr, linearIndepRandNumbers, challenges}
         rand_coefs_fr[i].prod(linearIndepRandNumbers[i], challenges[i])
         rand_coefs[i].fromField(rand_coefs_fr[i])
 
-    tp.multiScalarMul_vartime(sum_rand_challenge_proofs, rand_coefs, proofs, n)
+    tp.multiScalarMul_vartime_parallel(sum_rand_challenge_proofs, rand_coefs, proofs, n)
 
     freeHeapAligned(rand_coefs_fr)
     freeHeapAligned(rand_coefs)
 
   let sum_rand_challenge_proofs_fv = tp.spawnAwaitable tp.compute_sum_rand_challenge_proofs(
-                                                   sum_rand_challenge_proofs,
+                                                   sum_rand_challenge_proofs.addr,
                                                    linearIndepRandNumbers,
                                                    challenges,
                                                    proofs,

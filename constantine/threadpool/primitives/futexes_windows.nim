@@ -7,17 +7,26 @@
 
 # An implementation of futex using Windows primitives
 
-import std/atomics, winlean
+# We don't import winlean directly because it pollutes the library with
+# a global variable inet_ntop that stores a proc from "Ws2_32.dll"
+
+import std/atomics
 
 # OS primitives
 # ------------------------------------------------------------------------
+
+type
+  WinBool* = int32
+    ## WinBool uses opposite convention as posix, != 0 meaning success.
+
+const INFINITE = -1'i32
 
 # Contrary to the documentation, the futex related primitives are NOT in kernel32.dll
 # but in API-MS-Win-Core-Synch-l1-2-0.dll ¯\_(ツ)_/¯
 proc WaitOnAddress(
         Address: pointer, CompareAddress: pointer,
-        AddressSize: csize_t, dwMilliseconds: DWORD
-       ): WINBOOL {.importc, stdcall, dynlib: "API-MS-Win-Core-Synch-l1-2-0.dll".}
+        AddressSize: csize_t, dwMilliseconds: int32
+       ): WinBool {.importc, stdcall, dynlib: "API-MS-Win-Core-Synch-l1-2-0.dll".}
   # The Address should be volatile
 
 proc WakeByAddressSingle(Address: pointer) {.importc, stdcall, dynlib: "API-MS-Win-Core-Synch-l1-2-0.dll".}

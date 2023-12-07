@@ -303,7 +303,7 @@ template genBindings_EC_ShortW_Affine*(ECP, Field: untyped) =
 
   {.pop.}
 
-template genBindings_EC_ShortW_NonAffine*(ECP, ECP_Aff, Field: untyped) =
+template genBindings_EC_ShortW_NonAffine*(ECP, ECP_Aff: untyped) =
   when appType == "lib":
     {.push noconv, dynlib, exportc,  raises: [].} # No exceptions allowed
   else:

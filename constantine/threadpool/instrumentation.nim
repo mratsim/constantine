@@ -5,14 +5,14 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import system/ansi_c
+import ../platforms/fileio
 
 # Loggers
 # --------------------------------------------------------
 
 template log*(args: varargs[untyped]): untyped =
   c_printf(args)
-  flushFile(stdout)
+  c_fflush(stdout)
 
 template debugSplit*(body: untyped): untyped =
   when defined(CTT_THREADPOOL_DEBUG_SPLIT) or defined(CTT_THREADPOOL_DEBUG):
@@ -232,7 +232,7 @@ when defined(CTT_THREADPOOL_PROFILE):
       strUnit,
       newLit"cumulated_time")
 
-    result.add newCall(bindSym"flushFile", bindSym"stdout")
+    result.add newCall(bindSym"c_fflush", bindSym"stdout")
 
 else:
   template profileDecl*(name: untyped): untyped = discard
