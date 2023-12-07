@@ -45,7 +45,7 @@ int main(){
 
   // Verify that a signature is valid for a message under the provided public key
   bls_status = ctt_eth_bls_verify(&pubkey, message, 32, &sig);
-  if (bls_status != cttBLS_Success) {
+  if (bls_status != cttEthBls_Success) {
     printf("Signature verification failure: status %d - %s\n", bls_status, ctt_eth_bls_status_to_string(bls_status));
     exit(1);
   }

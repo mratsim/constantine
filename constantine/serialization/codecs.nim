@@ -38,7 +38,7 @@ func readHexChar(c: char): SecretWord {.inline.} =
   c = c and ssw(0xF) # Prevent overflow of invalid inputs
   return sw(c)
 
-func paddedFromHex*(output: var openArray[byte], hexStr: string, order: static[Endianness]) =
+func paddedFromHex*(output: var openArray[byte], hexStr: openArray[char], order: static[Endianness]) =
   ## Read a hex string and store it in a byte array `output`.
   ## The string may be shorter than the byte array.
   ##
@@ -75,6 +75,7 @@ func paddedFromHex*(output: var openArray[byte], hexStr: string, order: static[E
     # start with shl of 4 if length is even
     shift = 4 - (size and 1) * 4
 
+  output.setZero()
   for srcIdx in skip.int ..< hexStr.len:
     let c = hexStr[srcIdx]
     let nibble = byte(c.readHexChar() shl shift)
@@ -97,10 +98,10 @@ func toHex*(bytes: openarray[byte]): string =
     result[2 + 2*i] = hexChars.secretLookup(SecretWord bi shr 4 and 0xF)
     result[2 + 2*i+1] = hexChars.secretLookup(SecretWord bi and 0xF)
 
-func fromHex*(dst: var openArray[byte], hex: string) =
+func fromHex*(dst: var openArray[byte], hex: openArray[char]) =
   dst.paddedFromHex(hex, bigEndian)
 
-func fromHex*[N: static int](T: type array[N, byte], hex: string): T =
+func fromHex*[N: static int](T: type array[N, byte], hex: openArray[char]): T {.noInit.} =
   result.paddedFromHex(hex, bigEndian)
 
 

@@ -17,6 +17,9 @@
 type
   CSPRNG    = object
 
+const prefix_ffi = "ctt_csprng_"
+import ../zoo_exports
+
 when defined(windows):
   # There are several Windows CSPRNG APIs:
   # - CryptGenRandom
@@ -51,9 +54,10 @@ when defined(windows):
     # BOOLEAN (to not be confused with winapi BOOL)
     # is `typedef BYTE BOOLEAN;` and so has the same representation as Nim bools.
 
-  proc sysrand*[T](buffer: var T): bool {.inline.} =
+  proc sysrand*(buffer: pointer, len: csize_t): bool {.libPrefix: prefix_ffi.} =
     ## Fills the buffer with cryptographically secure random data
-    return RtlGenRandom(buffer.addr, culong sizeof(T))
+    ## Returns true on success, false otherwise
+    return RtlGenRandom(buffer, culong len)
 
 elif defined(linux):
   proc syscall(sysno: clong): cint {.importc, header:"<unistd.h>", varargs.}
@@ -75,13 +79,14 @@ elif defined(linux):
   #
   # We choose to handle partial buffer fills to limit the number of syscalls
 
-  proc urandom(pbuffer: pointer, len: int): bool {.sideeffect, tags: [CSPRNG].} =
-
-    var cur = 0
+  proc sysrand*(buffer: pointer, len: csize_t): bool {.libPrefix: prefix_ffi, sideeffect, tags: [CSPRNG].} =
+    ## Fills the buffer with cryptographically secure random data
+    ## Returns true on success, false otherwise
+    var cur = csize_t 0
     while cur < len:
-      let bytesRead = syscall(SYS_getrandom, pbuffer, len-cur, 0)
+      let bytesRead = syscall(SYS_getrandom, buffer, len-cur, 0)
       if bytesRead > 0:
-        cur += bytesRead
+        cur += csize_t bytesRead
       elif bytesRead == 0:
         # According to documentation this should never happen,
         # either we read a positive number of bytes, or we have a negative error code
@@ -95,10 +100,6 @@ elif defined(linux):
         return false
 
     return true
-
-  proc sysrand*[T](buffer: var T): bool {.inline.} =
-    ## Fills the buffer with cryptographically secure random data
-    return urandom(buffer.addr, sizeof(T))
 
 elif defined(ios) or defined(macosx) or defined(macos):
   # There are 4 APIs we can use
@@ -129,14 +130,20 @@ elif defined(ios) or defined(macosx) or defined(macos):
 
   func `==`(x, y: CCRNGStatus): bool {.borrow.}
 
-  proc CCRandomGenerateBytes(pbuffer: pointer, len: int): CCRNGStatus {.sideeffect, tags: [CSPRNG], importc, header: "<CommonCrypto/CommonRandom.h>".}
+  proc CCRandomGenerateBytes(pbuffer: pointer, len: csize_t): CCRNGStatus {.sideeffect, tags: [CSPRNG], importc, header: "<CommonCrypto/CommonRandom.h>".}
     # https://opensource.apple.com/source/CommonCrypto/CommonCrypto-60178.40.2/include/CommonRandom.h.auto.html
 
-  proc sysrand*[T](buffer: var T): bool {.inline.} =
+  proc sysrand*(buffer: pointer, len: csize_t): bool {.libPrefix: prefix_ffi.} =
     ## Fills the buffer with cryptographically secure random data
-    if kCCSuccess == CCRandomGenerateBytes(buffer.addr, sizeof(T)):
+    ## Returns true on success, false otherwise
+    if kCCSuccess == CCRandomGenerateBytes(buffer, len):
       return true
     return false
 
 else:
   {.error: "The OS '" & $hostOS & "' has no CSPRNG configured.".}
+
+proc sysrand*[T](buffer: var T): bool {.inline.} =
+  ## Fills the buffer with cryptographically secure random data
+  ## Returns true on success, false otherwise
+  return sysrand(buffer.addr, csize_t sizeof(T))

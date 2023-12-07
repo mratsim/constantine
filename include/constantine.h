@@ -17,6 +17,9 @@
 // Hash functions
 #include "constantine/hashes/sha256.h"
 
+// Cryptographically Secure Random Number Generators
+#include "constantine/csprngs/sysrand.h"
+
 // Curves
 #include "constantine/curves/bls12_381.h"
 #include "constantine/curves/bn254_snarks.h"
@@ -30,5 +33,6 @@
 
 // Protocols
 #include "constantine/protocols/ethereum_bls_signatures.h"
+#include "constantine/protocols/ethereum_eip4844_kzg.h"
 
 #endif

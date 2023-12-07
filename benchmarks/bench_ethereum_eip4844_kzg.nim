@@ -16,7 +16,9 @@ import
   ../constantine/platforms/primitives,
   # Helpers
   ../helpers/prng_unsafe,
-  ./bench_blueprint
+  ./bench_blueprint,
+  # Standard library
+  std/[os, strutils]
 
 proc separator*() = separator(180)
 
@@ -41,11 +43,18 @@ type
     # there is no short-circuit if they don't match
     challenge, eval_at_challenge: array[32, byte]
 
+proc randomize(rng: var RngState, blob: var Blob) =
+  for i in 0 ..< FIELD_ELEMENTS_PER_BLOB:
+    let t {.noInit.} = rng.random_unsafe(Fr[BLS12_381])
+    let offset = i*BYTES_PER_FIELD_ELEMENT
+    blob.toOpenArray(offset, offset+BYTES_PER_FIELD_ELEMENT-1)
+        .marshal(t, bigEndian)
+
 proc new(T: type BenchSet, ctx: ptr EthereumKZGContext): T =
   new(result)
   for i in 0 ..< result.N:
     let t {.noInit.} = rng.random_unsafe(Fr[BLS12_381])
-    result.blobs[i].marshal(t, bigEndian)
+    rng.randomize(result.blobs[i])
     discard ctx.blob_to_kzg_commitment(result.commitments[i], result.blobs[i].addr)
     discard ctx.compute_blob_kzg_proof(result.proofs[i], result.blobs[i].addr, result.commitments[i])
 
@@ -61,7 +70,7 @@ proc benchBlobToKzgCommitment(b: BenchSet, ctx: ptr EthereumKZGContext, iters: i
   block:
     bench("blob_to_kzg_commitment", "serial", iters):
       var commitment {.noInit.}: array[48, byte]
-      doAssert cttEthKZG_Success == ctx.blob_to_kzg_commitment(commitment, b.blobs[0].addr)
+      doAssert cttEthKzg_Success == ctx.blob_to_kzg_commitment(commitment, b.blobs[0].addr)
   let stopSerial = getMonotime()
 
   ## We require `tp` to be unintialized as even idle threads somehow reduce perf of serial benches
@@ -71,7 +80,7 @@ proc benchBlobToKzgCommitment(b: BenchSet, ctx: ptr EthereumKZGContext, iters: i
   block:
     bench("blob_to_kzg_commitment", $tp.numThreads & " threads", iters):
       var commitment {.noInit.}: array[48, byte]
-      doAssert cttEthKZG_Success == tp.blob_to_kzg_commitment_parallel(ctx, commitment, b.blobs[0].addr)
+      doAssert cttEthKzg_Success == tp.blob_to_kzg_commitment_parallel(ctx, commitment, b.blobs[0].addr)
   let stopParallel = getMonotime()
 
   let perfSerial = inNanoseconds((stopSerial-startSerial) div iters)
@@ -87,7 +96,7 @@ proc benchComputeKzgProof(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) 
     bench("compute_kzg_proof", "serial", iters):
       var proof {.noInit.}: array[48, byte]
       var eval_at_challenge {.noInit.}: array[32, byte]
-      doAssert cttEthKZG_Success == ctx.compute_kzg_proof(proof, eval_at_challenge, b.blobs[0].addr, b.challenge)
+      doAssert cttEthKzg_Success == ctx.compute_kzg_proof(proof, eval_at_challenge, b.blobs[0].addr, b.challenge)
   let stopSerial = getMonotime()
 
   ## We require `tp` to be unintialized as even idle threads somehow reduce perf of serial benches
@@ -98,7 +107,7 @@ proc benchComputeKzgProof(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) 
     bench("compute_kzg_proof", $tp.numThreads & " threads", iters):
       var proof {.noInit.}: array[48, byte]
       var eval_at_challenge {.noInit.}: array[32, byte]
-      doAssert cttEthKZG_Success == tp.compute_kzg_proof_parallel(ctx, proof, eval_at_challenge, b.blobs[0].addr, b.challenge)
+      doAssert cttEthKzg_Success == tp.compute_kzg_proof_parallel(ctx, proof, eval_at_challenge, b.blobs[0].addr, b.challenge)
   let stopParallel = getMonotime()
 
   let perfSerial = inNanoseconds((stopSerial-startSerial) div iters)
@@ -113,7 +122,7 @@ proc benchComputeBlobKzgProof(b: BenchSet, ctx: ptr EthereumKZGContext, iters: i
   block:
     bench("compute_blob_kzg_proof", "serial", iters):
       var proof {.noInit.}: array[48, byte]
-      doAssert cttEthKZG_Success == ctx.compute_blob_kzg_proof(proof, b.blobs[0].addr, b.commitments[0])
+      doAssert cttEthKzg_Success == ctx.compute_blob_kzg_proof(proof, b.blobs[0].addr, b.commitments[0])
   let stopSerial = getMonotime()
 
   ## We require `tp` to be unintialized as even idle threads somehow reduce perf of serial benches
@@ -123,7 +132,7 @@ proc benchComputeBlobKzgProof(b: BenchSet, ctx: ptr EthereumKZGContext, iters: i
   block:
     bench("compute_blob_kzg_proof", $tp.numThreads & " threads", iters):
       var proof {.noInit.}: array[48, byte]
-      doAssert cttEthKZG_Success == tp.compute_blob_kzg_proof_parallel(ctx, proof, b.blobs[0].addr, b.commitments[0])
+      doAssert cttEthKzg_Success == tp.compute_blob_kzg_proof_parallel(ctx, proof, b.blobs[0].addr, b.commitments[0])
   let stopParallel = getMonotime()
 
   let perfSerial = inNanoseconds((stopSerial-startSerial) div iters)
@@ -207,10 +216,25 @@ proc benchVerifyBlobKzgProofBatch(b: BenchSet, ctx: ptr EthereumKZGContext, iter
 
     i *= 2
 
+const TrustedSetupMainnet =
+  currentSourcePath.rsplit(DirSep, 1)[0] /
+  ".." / "constantine" /
+  "trusted_setups" /
+  "trusted_setup_ethereum_kzg4844_reference.dat"
+
+proc trusted_setup*(): ptr EthereumKZGContext =
+  ## This is a convenience function for the Ethereum mainnet testing trusted setups.
+  ## It is insecure and will be replaced once the KZG ceremony is done.
+
+  var ctx: ptr EthereumKZGContext
+  let tsStatus = ctx.trusted_setup_load(TrustedSetupMainnet, kReferenceCKzg4844)
+  doAssert tsStatus == tsSuccess, "\n[Trusted Setup Error] " & $tsStatus
+  echo "Trusted Setup loaded successfully"
+  return ctx
 
 const Iters = 100
 proc main() =
-  let ctx = load_ethereum_kzg_test_trusted_setup_mainnet()
+  let ctx = trusted_setup()
   let b = BenchSet[64].new(ctx)
   separator()
   benchBlobToKzgCommitment(b, ctx, Iters)
