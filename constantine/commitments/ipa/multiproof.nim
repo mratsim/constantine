@@ -46,21 +46,6 @@ func computePowersOfElem* [EC_P_Fr] (res: var openArray[EC_P_Fr], x: EC_P_Fr, de
     res[0].setOne()
     for i in 1..<degree:
         res[i].prod(res[i-1], x)
-
-# # Checking for duplicate field elements and removing them
-# func checkDedups* (points: openArray[EC_P]): bool=
-#     var seen = initTable[EC_P, bool]()
-
-#     for item in points.items():
-#         if seen.hasKey(item).bool():
-#             return true
-#         else:
-#             seen[item] = true
-#     return false
-
-# # BatchNormalize() normalizes a slice of group elements
-# func batchNormalize* [EC_P] (res: var openArray[EC_P], inp: openArray[EC_P])=
-
     
 # createMultiProof creates a multi-proof for several polynomials in the evaluation form
 # The list of triplets are as follows : (C, Fs, Z) represents each polynomial commitment
