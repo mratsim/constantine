@@ -6,9 +6,10 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 import 
+ math,
  ./helper_types,
  ../../../constantine/math/config/[type_ff, curves],
- ../../../constantine/math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
+ ../../../constantine/math/elliptic/[ec_twistededwards_projective],
  ../../../constantine/math/arithmetic/[finite_fields],
  ../../../constantine/math/arithmetic
 
@@ -117,11 +118,11 @@ func computeBarycentricCoefficients* [EC_P_Fr]( res: var openArray[EC_P_Fr], pre
 
 
 func getInvertedElement* [EC_P_Fr] ( res: var EC_P_Fr, precomp : PrecomputedWeights, element : int, is_negative: bool) =
-  var index {.noInit.}: int
+  var index: int
   index = element - 1 
 
-  if is_negative == true:
-    var midpoint = int(len(precomp.invertedDomain) / 2)
+  if is_negative:
+    var midpoint = int((len(precomp.invertedDomain) / 2))-1
     index = index + midpoint
   
   res = precomp.invertedDomain[index]
@@ -129,7 +130,7 @@ func getInvertedElement* [EC_P_Fr] ( res: var EC_P_Fr, precomp : PrecomputedWeig
 func getWeightRatios* [EC_P_Fr] (result: var EC_P_Fr, precomp: PrecomputedWeights, numerator: var int, denominator: var int)=
 
   var a = precomp.barycentricWeights[numerator]
-  var midpoint = int(len(precomp.barycentricWeights) / 2)
+  var midpoint = int((len(precomp.barycentricWeights) / 2))-1
 
   var b = precomp.barycentricWeights[denominator + midpoint]
 
@@ -137,7 +138,7 @@ func getWeightRatios* [EC_P_Fr] (result: var EC_P_Fr, precomp: PrecomputedWeight
 
 
 func getBarycentricInverseWeight* [EC_P_Fr] (res: var EC_P_Fr, precomp: PrecomputedWeights, i: int) =
-  var midpoint = uint64(256)
+  var midpoint = int((len(precomp.barycentricWeights) / 2))-1
   res = precomp.barycentricWeights[i+midpoint]
 
 func absIntChecker*[int] (res: var int, x : int) =
@@ -146,7 +147,9 @@ func absIntChecker*[int] (res: var int, x : int) =
     is_negative = true
 
   if is_negative == true:
-    res = -1*x
+    res = -x
+  else:
+    res = x
 
 
 

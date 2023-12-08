@@ -9,7 +9,7 @@
 ## IPAConfiguration contains all of the necessary information to create Pedersen + IPA proofs
 ## such as the SRS
 import
-    ./[barycentric_form,helper_types],
+    ./[helper_types],
     ../../../constantine/platforms/primitives,
     ../../math/config/[type_ff, curves],
     ../../math/elliptic/ec_twistededwards_projective,
@@ -18,7 +18,6 @@ import
     ../../../constantine/math/elliptic/ec_scalar_mul,
     ../../../constantine/math/elliptic/[ec_multi_scalar_mul, ec_multi_scalar_mul_scheduler],
     ../../../constantine/platforms/[bithacks,views],
-    ../../../constantine/math/io/[io_fields, io_ec, io_bigints],
     ../../../constantine/curves_primitives,
     ../../../constantine/serialization/[codecs_banderwagon,codecs_status_codes, endians]
 

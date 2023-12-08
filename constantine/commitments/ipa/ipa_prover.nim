@@ -189,23 +189,6 @@ func isIPAProofEqual* (res: var bool, p1: IPAProof, p2: IPAProof)=
 
 
 
-type 
-  serIPA* = object
-   lv*: Bytes
-   rv*: Bytes
-   asc*: Bytes
-
-func serialzeIPAProof* [serIPA] (res : var serIPA, proof : IPAProof)=
-  let stat1 = res.lv.serializeBatch(proof.L_vector)
-  doAssert stat1 == cttCodecEcc_Success, "Serialization Failed"
-  let stat2 = res.rv.serializeBatch(proof.R_vector)
-  doAssert stat2 == cttCodecEcc_Success, "Serialization Failed"
-
-  res.asc.serialize_scalar(proof.A_scalar)
-
-
-
-
 
 
 

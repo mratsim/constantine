@@ -152,7 +152,7 @@ func setEval* [EC_P_Fr] (res: var EC_P_Fr, x : EC_P_Fr)=
 #everywhere outside of it which is upto a 253 bit number, or 2²⁵³.
 func evalOutsideDomain* [EC_P_Fr] (res: var EC_P_Fr, precomp: PrecomputedWeights, f: openArray[EC_P_Fr], point: EC_P_Fr)=
 
-    var pointMinusDomain {.noInit.} : array[DOMAIN, EC_P_Fr]
+    var pointMinusDomain: array[DOMAIN, EC_P_Fr]
     for i in 0..<DOMAIN:
 
         var i_bg {.noInit.} : matchingOrderBigInt(Banderwagon)
@@ -168,9 +168,8 @@ func evalOutsideDomain* [EC_P_Fr] (res: var EC_P_Fr, precomp: PrecomputedWeights
 
     for x_i in 0..<pointMinusDomain.len:
         var weight: EC_P_Fr
-        var lenn : int = int(precomp.barycentricWeights.len/2)
-        weight = precomp.barycentricWeights[x_i+lenn]
-        var term {.noInit.}: EC_P_Fr
+        weight.getBarycentricInverseWeight(precomp,x_i)
+        var term: EC_P_Fr
         term.prod(weight, f[x_i])
         term.prod(term, pointMinusDomain[x_i])
 

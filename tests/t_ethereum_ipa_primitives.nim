@@ -40,12 +40,6 @@ import
 # ############################################################
 
 # Please refer to https://hackmd.io/mJeCRcawTRqr9BooVpHv5g 
-# type EC_P_Fr* = Fr[Banderwagon]
-
-# type
-#   EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
-#   Bytes* = array[32, byte]
-
 
 
 # The generator point from Banderwagon
@@ -96,9 +90,6 @@ suite "Barycentric Form Tests":
 
           var res {.noInit.}: EC_P_Fr
           res.evaluate(poly,gen_fr,2)
-          
-          echo res.toHex() 
-          echo genfr.toHex() 
 
           doAssert (res.toHex()==genfr.toHex()) == true, "Not matching!"
 
@@ -113,8 +104,6 @@ suite "Barycentric Form Tests":
             i_bg.setUint(uint64(3400))
             
             p_outside_dom.fromBig(i_bg)
-
-            echo p_outside_dom.toHex()
 
             var testVals: array[10,uint64] = [1,2,3,4,5,6,7,8,9,10] 
             
@@ -152,81 +141,15 @@ suite "Barycentric Form Tests":
             var poly_coeff : array[DOMAIN, EC_P_Fr]
             poly_coeff.interpolate(points, DOMAIN)
 
-            for i in 0..<20:
-                echo poly_coeff[i].toHex()
-
             var expected2: EC_P_Fr
             expected2.evaluate(poly_coeff, p_outside_dom, DOMAIN)
+
 
             doAssert (expected0.toHex() == "0x042d5629f4eaac570610673570658986f8a74730d3d8587e34062ac4b3c3b950").bool() == true, "Problem with Barycentric Weights!"
             doAssert (expected2.toHex() == "0x0ddd6424cdfa97f24d8de604a309e1a4eb6ce33663aa132cf87ee874a0ffe506").bool() == true, "Problem with Inner Products!"
 
         testBarycentricPrecomputeCoefficients()
 
-
-    # test "Testing Polynomial Division":
-
-    #     proc testPolynomialDiv() = 
-
-    #         var one {.noInit.} : EC_P_Fr
-    #         one.setOne()
-
-    #         var minusOne {.noInit.} : EC_P_Fr
-    #         minusOne.setMinusOne()
-
-    #         var minusTwo {.noInit.}: EC_P_Fr
-    #         minusTwo.diff(minusOne, one)
-
-    #         var minusThree {.noInit.}: EC_P_Fr
-    #         minusThree.diff(minusTwo, one)
-
-    #         var two: EC_P_Fr
-    #         two.fromHex("0x2")
-
-    #         #(X-1)(X-2) =  2 - 3X + X^2
-    #         var poly_coeff_num :array[3,EC_P_Fr] 
-    #         poly_coeff_num[0] = two
-    #         poly_coeff_num[1] = minusThree
-    #         poly_coeff_num[2] = one
-
-    #         var poly_coeff_den: array[2,EC_P_Fr] 
-    #         poly_coeff_den[0]= minusOne
-    #         poly_coeff_den[1]= one
-
-    #         var res{.noInit.} :  tuple[q,r : array[DOMAIN, EC_P_Fr], ok: bool]
-
-    #         const n1: int= 2
-    #         const n2: int = 3
-    #         res.polynomialLongDivision(poly_coeff_num, poly_coeff_den, n1, n2)
-
-    #         var quotient : array[DOMAIN,EC_P_Fr] = res.q
-    #         var rem: array[DOMAIN,EC_P_Fr] = res.r
-    #         var okay: bool = res.ok
-
-    #         doAssert okay == true, "Poly long div failed"
-
-    #         for i in 0..<rem.len:
-    #             doAssert rem[i].isZero().bool() == true, "Remainder should be 0"
-
-    #         var genfp : EC_P
-    #         genfp.fromAffine(generator)
-    #         var genfr : EC_P_Fr
-    #         genfr.mapToScalarField(genfp)
-
-    #         var got : EC_P_Fr
-    #         got.evaluate(quotient, genfr, DOMAIN)
-
-    #         var expected {.noInit.} : EC_P_Fr
-    #         expected.sum(genfr, minusTwo)
-
-    #         doAssert got.toHex()==expected.toHex() == true, "Quotient is not correct"
-
-    #     testPolynomialDiv()
-
-    #     proc testDivideOnDomain() = 
-    #         var eval_fr {.noInit.} : EC_P_Fr
-
-    #         #TODO: finishing this up later, needed mainly for stateless execution
 
 # ############################################################
 #
@@ -404,6 +327,7 @@ suite "Multiproof Tests":
       var precomp : PrecomputedWeights
       precomp.newPrecomputedWeights()
 
+      #Prover's view
       var prover_transcript: sha256
       prover_transcript.newTranscriptGen(asBytes"multiproof")
       
@@ -428,6 +352,15 @@ suite "Multiproof Tests":
       stat_create_mult.createMultiProof(multiproof,prover_transcript, ipaConfig, Cs, Fs, Zs, precomp, testGeneratedPoints)
 
       doAssert stat_create_mult.bool() == true, "Multiproof creation error!"
+
+      #Verifier's view
+      var verifier_transcript: sha256
+      verifier_transcript.newTranscriptGen(asBytes"multiproof")
+
+      var stat_verify_mult: bool
+      stat_verify_mult.verifyMultiproof(verifier_transcript,ipaConfig,multiproof,Cs,Ys,Zs)
+
+      doAssert stat_verify_mult.bool() == true, "Multiproof verification error!"
 
     testMultiproofCreationAndVerification()
 

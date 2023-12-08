@@ -12,6 +12,7 @@ import
   ../../../constantine/platforms/primitives,
   ../../../constantine/hashes,
   ../../math/config/[type_ff, curves],
+  ../../../constantine/math/elliptic/[ec_multi_scalar_mul, ec_multi_scalar_mul_scheduler],
   ../../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
   ../../../constantine/math/arithmetic,
   ../../../constantine/platforms/[views],
@@ -131,20 +132,19 @@ func createMultiProof* [MultiProof] (success: var bool, res: var MultiProof, tra
     
     var gx : array[DOMAIN, EC_P_Fr]
 
-    for idx, f in groupedFs:
-
-        if f.len == 0:
+    for idx in 0..<DOMAIN:
+        if groupedFs[idx].len == 0:
             continue
 
         var quotient: array[DOMAIN,EC_P_Fr]
         var passer : int
         passer = idx
-        quotient.divisionOnDomain(precomp, passer, f)
+        quotient.divisionOnDomain(precomp, passer, groupedFs[idx])
 
         for j in  0..<DOMAIN:
             gx[j] += quotient[j]
         
-    var D {.noInit.}: EC_P
+    var D: EC_P
     D.pedersen_commit_varbasis(basis,basis.len, gx, gx.len)
 
     transcript.pointAppend(asBytes"D", D)
@@ -160,8 +160,8 @@ func createMultiProof* [MultiProof] (success: var bool, res: var MultiProof, tra
     for i in 0..<DOMAIN:
         denInv[i].setZero()
 
-    for z,f in groupedFs:
-        if f.len == 0:
+    for z in 0..<DOMAIN:
+        if groupedFs[z].len == 0:
             continue
 
         var z_fr {.noInit.} : EC_P_Fr
@@ -181,13 +181,13 @@ func createMultiProof* [MultiProof] (success: var bool, res: var MultiProof, tra
     var hx {.noInit.}: array[DOMAIN, EC_P_Fr]
     var denInvIdx = 0
 
-    for _,f in groupedFs:
-        if f.len == 0:
+    for i in 0..<DOMAIN:
+        if groupedFs[i].len == 0:
             continue
 
         for k in 0..<DOMAIN:
             var tmp {.noInit.}: EC_P_Fr
-            tmp.prod(f[k], denInv[denInvIdx])
+            tmp.prod(groupedFs[i][k], denInv[denInvIdx])
             hx[k].sum(hx[k], tmp)
 
         denInvIdx = denInvIdx + 1
@@ -197,21 +197,21 @@ func createMultiProof* [MultiProof] (success: var bool, res: var MultiProof, tra
     for i in 0..<DOMAIN:
         hMinusg[i].diff(hx[i],gx[i])
 
-    var E {.noInit.}: EC_P
+    var E: EC_P
 
     E.pedersen_commit_varbasis(basis,basis.len, hx, hx.len)
     transcript.pointAppend(asBytes"E",E)
 
-    var EMinusD {.noInit.}: EC_P
+    var EMinusD: EC_P
 
     EMinusD.diff(E,D)
 
-    var ipaProof {.noInit.} : IPAProof
+    var ipaProof: IPAProof
 
     var checks: bool
     checks = ipaProof.createIPAProof(transcript, ipaSetting, EMinusD, hMinusg, t_fr)
 
-    debug: doAssert checks == 1, "Could not compute IPA Proof!"
+    doAssert checks == true, "Could not compute IPA Proof!"
 
     res.IPAprv = ipaProof
     res.D = D
@@ -220,7 +220,7 @@ func createMultiProof* [MultiProof] (success: var bool, res: var MultiProof, tra
 # Mutliproof verifier verifies the multiproof for several polynomials in the evaluation form
 # The list of triplets (C,Y, Z) represents each polynomial commitment, evaluation
 # result, and evaluation point in the domain 
-func verifyMultiproof* [bool] (res: var bool, transcript : sha256, ipaSettings: IPASettings, multiProof: MultiProof, Cs: openArray[EC_P], Ys: openArray[EC_P_Fr], Zs: openArray[uint8])=
+func verifyMultiproof* [bool] (res: var bool, transcript : var sha256, ipaSettings: IPASettings, multiProof: var MultiProof, Cs: openArray[EC_P], Ys: openArray[EC_P_Fr], Zs: openArray[uint8])=
     transcript.domain_separator(asBytes"multiproof")
 
     debug: doAssert Cs.len == Ys.len, "Number of commitments and the Number of output points don't match!"
@@ -235,7 +235,7 @@ func verifyMultiproof* [bool] (res: var bool, transcript : sha256, ipaSettings: 
     debug: doAssert num_queries == 0, "Number of queries is zero!"
 
     for i in 0..<num_queries:
-        transcript.pointAppend(Cs[i], asBytes"C")
+        transcript.pointAppend(asBytes"C", Cs[i])
 
         var z {.noInit.} : EC_P_Fr
         z.domainToFrElem(Zs[i])
@@ -246,13 +246,19 @@ func verifyMultiproof* [bool] (res: var bool, transcript : sha256, ipaSettings: 
     var r {.noInit.}: matchingOrderBigInt(Banderwagon)
     r.generateChallengeScalar(transcript,asBytes"r")
 
-    var powersOfr {.noInit.}: openArray[EC_P_Fr]
-    powersOfr.computePowersOfElem(r, num_queries)
+    var r_fr {.noInit.}: EC_P_Fr
+    r_fr.fromBig(r)
+
+    var powersOfr {.noInit.}: array[DOMAIN, EC_P_Fr]
+    powersOfr.computePowersOfElem(r_fr, int(num_queries))
 
     transcript.pointAppend(asBytes"D", multiProof.D)
 
     var t {.noInit.}: matchingOrderBigInt(Banderwagon)
     t.generateChallengeScalar(transcript, asBytes"t")
+
+    var t_fr {.noInit.}: EC_P_Fr
+    t_fr.fromBig(r)
 
     # Computing the polynomials in the Lagrange form grouped by evaluation point, 
     # and the needed helper scalars
@@ -263,13 +269,13 @@ func verifyMultiproof* [bool] (res: var bool, transcript : sha256, ipaSettings: 
         var z {.noInit.}: uint8
         z = Zs[i]
 
-        var r {.noInit.} : openArray[EC_P_Fr]
+        var r {.noInit.} : EC_P_Fr
         r = powersOfr[i]
 
         var scaledEvals {.noInit.}: EC_P_Fr
         scaledEvals.prod(r, Ys[i])
 
-        groupedEvals[z] += scaledEvals
+        groupedEvals[z].sum(groupedEvals[z], scaledEvals)
 
         #Calculating the helper scalar denominator, which is 1 / t - z_i
         var helperScalarDeno {.noInit.} : array[DOMAIN, EC_P_Fr]
@@ -278,52 +284,57 @@ func verifyMultiproof* [bool] (res: var bool, transcript : sha256, ipaSettings: 
             var z {.noInit.}: EC_P_Fr
             z.domainToFrElem(uint8(i))
 
-            helperScalarDeno[i].diff(t, z)
+            helperScalarDeno[i].diff(t_fr, z)
 
-        helperScalarDeno.batchInvert(helperScalarDeno)
+        var helperScalarDeno_prime: array[DOMAIN, EC_P_Fr]
+        helperScalarDeno_prime.batchInvert(helperScalarDeno)
 
         # Compute g_2(t) = SUMMATION (y_i * r^i) / (t - z_i) = SUMMATION (y_i * r) * helperScalarDeno
         var g2t {.noInit.} : EC_P_Fr
         g2t.setZero()
 
         for i in 0..<DOMAIN:
-            if groupedEvals[i].isZero():
+            var stat = groupedEvals[i].isZero()
+            if stat.bool() == true:
                 continue
 
             var tmp {.noInit.}: EC_P_Fr
-            tmp.prod(groupedEvals[i], helperScalarDeno[i])
+            tmp.prod(groupedEvals[i], helperScalarDeno_prime[i])
             g2t += tmp
 
         
         # Compute E = SUMMATION C_i * (r^i /  t - z_i) = SUMMATION C_i * MSM_SCALARS
-        var msmScalars {.noInit.}: array[Cs.len, EC_P_Fr]
+        var msmScalars {.noInit.}: array[DOMAIN, EC_P_Fr]
 
-        var Csnp {.noInit.}: array[Cs.len, EC_P]
+        var Csnp {.noInit.}: array[DOMAIN, EC_P]
 
-        for i in 0..<Cs.len:
+        for i in 0..<DOMAIN:
             Csnp[i] = Cs[i]
-
-            msmScalars[i].prod(powersOfr[i], helperScalarDeno[Zs[i]])
+            msmScalars[i].prod(powersOfr[i], helperScalarDeno_prime[Zs[i]])
         
         var E {.noInit.}: EC_P
 
+        var Csnp_aff : array[DOMAIN, EC_P_Aff]
+        for i in 0..<DOMAIN:
+            Csnp_aff[i].affine(Csnp[i])
         var checks2 {.noInit.}: bool
-        checks2 = E.multiScalarMul_reference_vartime_Prj(Csnp, msmScalars.toBig())
 
-        debug: doAssert checks2 == 1, "Could not compute E!"
+        var msmScalars_big: array[DOMAIN, matchingOrderBigInt(Banderwagon)]
 
-        transcript.pointAppend(E, asBytes"E")
+        for i in 0..<DOMAIN:
+            msmScalars_big[i] = msmScalars[i].toBig()
+        
+        E.multiScalarMul_reference_vartime(msmScalars_big, Csnp_aff)
+
+        transcript.pointAppend(asBytes"E", E)
 
         var EMinusD {.noInit.} : EC_P
         EMinusD.diff(E, multiProof.D)
 
-        res.checkIPAProof(transcript, ipaSettings, EMinusD, multiProof.IPAprv, t, g2t)
+        res.checkIPAProof(transcript, ipaSettings, EMinusD, multiProof.IPAprv, t_fr, g2t)
 
 
-# func mutliProofEquality*(res: var bool, mp: MultiProof, other: MultiProof)=
-#     if not(mp.IPAprv == other.IPAprv):
-#         res = false
-#     res = (mp.D == other.D).bool()
+
 
             
 
