@@ -124,20 +124,10 @@ suite "Barycentric Form Tests":
             var precomp {.noInit.}: PrecomputedWeights
 
             precomp.newPrecomputedWeights()
-
-            for i in 0..<10:
-                echo "Barycentric Weights"
-                echo precomp.barycentricWeights[i].toHex()
-                echo "Inverted Domain"
-                echo precomp.invertedDomain[i].toHex() 
             
             var bar_coeffs: array[256, EC_P_Fr]
 
             bar_coeffs.computeBarycentricCoefficients(precomp, p_outside_dom)
-
-            for i in 0..<10:
-                echo "Barycentric Coefficients"
-                echo bar_coeffs[i].toHex()
 
             var expected0: EC_P_Fr
 
@@ -158,18 +148,9 @@ suite "Barycentric Form Tests":
                 point.y = lagrange_values[k]
 
                 points[k]=point
-            echo "Printing the Points"
-
-            for i in 0..<10:
-                echo "X points"
-                echo points[i].x.toHex()
-                echo "Y points"
-                echo points[i].y.toHex()
 
             var poly_coeff : array[DOMAIN, EC_P_Fr]
             poly_coeff.interpolate(points, DOMAIN)
-
-            echo "Printing the Polynomial Coefficients!"
 
             for i in 0..<20:
                 echo poly_coeff[i].toHex()
@@ -177,14 +158,6 @@ suite "Barycentric Form Tests":
             var expected2: EC_P_Fr
             expected2.evaluate(poly_coeff, p_outside_dom, DOMAIN)
 
-            echo "Inner Prod Arguments value"
-            echo expected0.toHex()
-            echo "Eval outside domain value"
-            echo expected.toHex()
-            echo "Interpolation and Evalution value"
-            echo expected2.toHex()
-
-            #TODO needs better testing?
             doAssert (expected0.toHex() == "0x042d5629f4eaac570610673570658986f8a74730d3d8587e34062ac4b3c3b950").bool() == true, "Problem with Barycentric Weights!"
             doAssert (expected2.toHex() == "0x0ddd6424cdfa97f24d8de604a309e1a4eb6ce33663aa132cf87ee874a0ffe506").bool() == true, "Problem with Inner Products!"
 
@@ -253,7 +226,7 @@ suite "Barycentric Form Tests":
     #     proc testDivideOnDomain() = 
     #         var eval_fr {.noInit.} : EC_P_Fr
 
-    #         #TODO: finishing this up later
+    #         #TODO: finishing this up later, needed mainly for stateless execution
 
 # ############################################################
 #
@@ -262,7 +235,7 @@ suite "Barycentric Form Tests":
 # ############################################################
 suite "Transcript Tests":
 
-    test "Some Test Vectors 0":
+    test "Transcript Testing with different challenge scalars to test randomness":
 
         proc testVec()=
 
@@ -279,7 +252,7 @@ suite "Transcript Tests":
 
         testVec()
 
-    test "Some Test Vectors 1":
+    test "Transcript testing with same challenge scalar to test transcript correctness":
 
         proc testVec1()=
 
