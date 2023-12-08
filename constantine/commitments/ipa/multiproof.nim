@@ -64,7 +64,8 @@ func computePowersOfElem* [EC_P_Fr] (res: var openArray[EC_P_Fr], x: EC_P_Fr, de
 # createMultiProof creates a multi-proof for several polynomials in the evaluation form
 # The list of triplets are as follows : (C, Fs, Z) represents each polynomial commitment
 # and their evalutation in the domain, and the evaluating point respectively
-func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256, ipaSetting: IPASettings, Cs: openArray[EC_P], Fs: array[DOMAIN, array[DOMAIN, EC_P_Fr]], Zs: openArray[uint8], precomp: PrecomputedWeights, basis: array[DOMAIN, EC_P])=
+func createMultiProof* [MultiProof] (success: var bool, res: var MultiProof, transcript: var sha256, ipaSetting: IPASettings, Cs: openArray[EC_P], Fs: array[DOMAIN, array[DOMAIN, EC_P_Fr]], Zs: openArray[uint8], precomp: PrecomputedWeights, basis: array[DOMAIN, EC_P])=
+    success = false
     transcript.domain_separator(asBytes"multiproof")
 
     for f in Fs:
@@ -107,14 +108,18 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
     # Inorder to compute g(x), we first compute the polynomials in lagrange form grouped by evaluation points
     # then we compute g(x), this is eventually limit the numbers of divisionOnDomain calls up to the domain size 
 
-    var groupedFs {.noInit.}: array[DOMAIN, array[DOMAIN, EC_P_Fr]]
+    var groupedFs: array[DOMAIN, array[DOMAIN, EC_P_Fr]]
+    # Initialize the array with zeros
+    for i in 0..<DOMAIN:
+        for j in 0..<DOMAIN:
+            groupedFs[i][j].setZero()
+
 
     for i in 0..<num_queries:
         var z = Zs[i]
         
-        if groupedFs[z].len == 0:
-            groupedFs[z]: array[DOMAIN, EC_P_Fr]
-        
+        doAssert not(groupedFs[z].len == 0), "Length should not be 0!"
+
         var r {.noInit.}: EC_P_Fr
         r = powersOfr[i]
 
@@ -124,16 +129,16 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
             groupedFs[z][j].sum(groupedFs[z][j], scaledEvals)
         
     
-    var gx {.noInit.}: array[DOMAIN, EC_P_Fr]
+    var gx : array[DOMAIN, EC_P_Fr]
 
     for idx, f in groupedFs:
 
         if f.len == 0:
             continue
 
-        var quotient {.noInit.} : array[DOMAIN,EC_P_Fr]
+        var quotient: array[DOMAIN,EC_P_Fr]
         var passer : int
-        passer = int(idx)
+        passer = idx
         quotient.divisionOnDomain(precomp, passer, f)
 
         for j in  0..<DOMAIN:
@@ -159,11 +164,11 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
         if f.len == 0:
             continue
 
-        var z_bg {.noInit.} : matchingOrderBigInt(Banderwagon)
-        z_bg.domainToFrElem(z.toBig())
+        var z_fr {.noInit.} : EC_P_Fr
+        z_fr.domainToFrElem(uint8(z))
         var deno {.noInit.}: EC_P_Fr
 
-        deno.diff(t,z)
+        deno.diff(t_fr,z_fr)
         var idxx = 0
         denInv[idxx] = deno
         idxx = idxx + 1
@@ -210,6 +215,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
 
     res.IPAprv = ipaProof
     res.D = D
+    success = true
 
 # Mutliproof verifier verifies the multiproof for several polynomials in the evaluation form
 # The list of triplets (C,Y, Z) represents each polynomial commitment, evaluation

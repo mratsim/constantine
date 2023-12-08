@@ -139,9 +139,9 @@ suite "Barycentric Form Tests":
                 echo "Barycentric Coefficients"
                 echo bar_coeffs[i].toHex()
 
-            var got: EC_P_Fr
+            var expected0: EC_P_Fr
 
-            got.computeInnerProducts(lagrange_values, bar_coeffs)
+            expected0.computeInnerProducts(lagrange_values, bar_coeffs)
 
             var expected : EC_P_Fr
             expected.evalOutsideDomain(precomp, lagrange_values, p_outside_dom)
@@ -178,17 +178,17 @@ suite "Barycentric Form Tests":
             expected2.evaluate(poly_coeff, p_outside_dom, DOMAIN)
 
             echo "Inner Prod Arguments value"
-            echo got.toHex()
+            echo expected0.toHex()
             echo "Eval outside domain value"
             echo expected.toHex()
             echo "Interpolation and Evalution value"
             echo expected2.toHex()
 
             #TODO needs better testing?
-            doAssert (expected2 == expected).bool() == true, "Problem with Barycentric Weights!"
-            doAssert (expected2 == got).bool() == true, "Problem with Inner Products!"
+            doAssert (expected0.toHex() == "0x042d5629f4eaac570610673570658986f8a74730d3d8587e34062ac4b3c3b950").bool() == true, "Problem with Barycentric Weights!"
+            doAssert (expected2.toHex() == "0x0ddd6424cdfa97f24d8de604a309e1a4eb6ce33663aa132cf87ee874a0ffe506").bool() == true, "Problem with Inner Products!"
 
-        # testBarycentricPrecomputeCoefficients()
+        testBarycentricPrecomputeCoefficients()
 
 
     # test "Testing Polynomial Division":
@@ -431,7 +431,6 @@ suite "Multiproof Tests":
       var precomp : PrecomputedWeights
       precomp.newPrecomputedWeights()
 
-
       var prover_transcript: sha256
       prover_transcript.newTranscriptGen(asBytes"multiproof")
       
@@ -452,7 +451,12 @@ suite "Multiproof Tests":
       Ys[0] = one
 
       var multiproof: MultiProof
-      multiproof.createMultiProof(prover_transcript, ipaConfig, Cs, Fs, Zs, precomp, testGeneratedPoints)
+      var stat_create_mult: bool
+      stat_create_mult.createMultiProof(multiproof,prover_transcript, ipaConfig, Cs, Fs, Zs, precomp, testGeneratedPoints)
+
+      doAssert stat_create_mult.bool() == true, "Multiproof creation error!"
+
+    testMultiproofCreationAndVerification()
 
 
 

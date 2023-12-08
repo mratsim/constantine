@@ -146,7 +146,7 @@ func absIntChecker*[int] (res: var int, x : int) =
     is_negative = true
 
   if is_negative == true:
-    res = -x
+    res = -1*x
 
 
 
@@ -155,31 +155,30 @@ func divisionOnDomain* [EC_P_Fr](res: var array[DOMAIN,EC_P_Fr], precomp: Precom
   var y = f[index]
 
   for i in 0..<DOMAIN:
-   doAssert not(i == index).bool() == true, "i cannot be equal to index"
+   if not(i == index).bool() == true:    
+    var denominator = i - int(index)
+    var absDenominator {.noInit.}: int
+    absDenominator.absIntChecker(denominator)
 
-   var denominator = i - int(index)
-   var absDenominator {.noInit.}: int
-   absDenominator.absIntChecker(denominator)
+    if (absDenominator > 0).bool == true:
+      is_negative = false
 
-   doAssert absDenominator == denominator
-   is_negative = false
+    var denominatorInv {.noInit.} : EC_P_Fr
+    denominatorInv.getInvertedElement(precomp, absDenominator, is_negative)
 
-   var denominatorInv {.noInit.} : EC_P_Fr
-   denominatorInv.getInvertedElement(precomp, absDenominator, is_negative)
+    res[i].diff(f[i], y)
+    res[i].prod(res[i], denominatorInv)
 
-   res[i].diff(f[i], y)
-   res[i].prod(res[i], denominatorInv)
+    var weight_ratios {.noInit.}: EC_P_Fr
+    var dummy {.noInit.} : int
+    dummy = i
+    weight_ratios.getWeightRatios(precomp, index, dummy)
 
-   var weight_ratios {.noInit.}: EC_P_Fr
-   var dummy {.noInit.} : int
-   dummy = i
-   weight_ratios.getWeightRatios(precomp, index, dummy)
+    #  var weight_ratios = precomp.getWeightRatios(int(index), i)
 
-  #  var weight_ratios = precomp.getWeightRatios(int(index), i)
+    var tmp {.noInit.}: EC_P_Fr
+    tmp.prod(weight_ratios, res[i])
 
-   var tmp {.noInit.}: EC_P_Fr
-   tmp.prod(weight_ratios, res[i])
-
-   res[index].diff(res[index], tmp)
+    res[index].diff(res[index], tmp)
 
 
