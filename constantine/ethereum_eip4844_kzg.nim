@@ -43,7 +43,7 @@ export trusted_setup_load, trusted_setup_delete, TrustedSetupFormat, TrustedSetu
 ## - Audited reference implementation
 ##   https://github.com/ethereum/c-kzg-4844
 
-const prefix_eth_kzg_4844 = "ctt_eth_kzg4844_"
+const prefix_eth_kzg_4844 = "ctt_eth_kzg_"
 import ./zoo_exports
 
 # Constants
