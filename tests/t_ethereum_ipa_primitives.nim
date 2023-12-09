@@ -41,7 +41,6 @@ import
 
 # Please refer to https://hackmd.io/mJeCRcawTRqr9BooVpHv5g 
 
-
 # The generator point from Banderwagon
 var generator = Banderwagon.getGenerator()
 
@@ -122,9 +121,6 @@ suite "Barycentric Form Tests":
 
             expected0.computeInnerProducts(lagrange_values, bar_coeffs)
 
-            var expected : EC_P_Fr
-            expected.evalOutsideDomain(precomp, lagrange_values, p_outside_dom)
-
             var points: array[256, Coord]
             for k in 0..<256:
                 var x : matchingOrderBigInt(Banderwagon)
@@ -156,6 +152,8 @@ suite "Barycentric Form Tests":
 #          Test for Transcript and Challenge Scalar
 #
 # ############################################################
+
+
 suite "Transcript Tests":
 
     test "Transcript Testing with different challenge scalars to test randomness":
@@ -194,11 +192,15 @@ suite "Transcript Tests":
             doAssert (challenge1==challenge2).bool() == true , "calling ChallengeScalar twice should yield the same challenge"
 
         testVec1()
+
+
 # ############################################################
 #
 #                     Test for IPA Proofs    
 #
 # ############################################################
+
+
 suite "IPA proof tests":
   test "Test for initiating IPA proof configuration":
     proc testMain()=
@@ -297,11 +299,15 @@ suite "IPA proof tests":
 
         doAssert ok == true, "Issue in checking IPA proof!"
       testIPAProofCreateAndVerify()
+
+
 # ############################################################
 #
 #                     Test for Multiproofs    
 #
 # ############################################################
+
+
 suite "Multiproof Tests":
   test "IPA Config test for Multiproofs":
     proc testIPAConfigForMultiproofs()=

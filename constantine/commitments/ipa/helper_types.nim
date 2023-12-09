@@ -8,7 +8,7 @@
 
 # ############################################################
 #
-# All the util functions for Inner Product Arguments Prover
+# All the Helper Functions needed for Verkle Cryptography API
 #
 # ############################################################
 

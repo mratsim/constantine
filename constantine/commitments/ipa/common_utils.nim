@@ -27,8 +27,6 @@ import
 #
 # ############################################################
 
-
-
 func generate_random_points* [EC_P](points: var  openArray[EC_P] , num_points: uint64)  =
 
     var incrementer: uint64 = 0
@@ -61,7 +59,6 @@ func generate_random_points* [EC_P](points: var  openArray[EC_P] , num_points: u
         doAssert stat3 == cttCodecEcc_Success, "Deserialization Failure!"
         points[idx] = point_found
         idx=idx+1
-
 
 # ############################################################
 #
@@ -123,10 +120,9 @@ func computeNumRounds* [uint64] (res: var uint64, vectorSize: SomeUnsignedInt)=
 
     res = uint64(float64(log2_vartime(vectorSize)))
 
-
 # ############################################################
 #
-#           Pedersen Commitment for a Single Polynomial
+#                   Pedersen Commitment    
 #
 # ############################################################
 

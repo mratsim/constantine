@@ -11,6 +11,7 @@
 #         sha256 Generator for Challenge Scalars
 #
 # ############################################################
+
 import
     ./helper_types,
     ../../platforms/[primitives,abstractions],
@@ -58,7 +59,7 @@ func scalarAppend* [sha256] (res: var sha256, label: openArray[byte], scalar: ma
 
 
 
-## Generating Challenge Scalars based on the Fiat Shamir method
+# Generating Challenge Scalars based on the Fiat Shamir method
 func generateChallengeScalar* (gen: var matchingOrderBigInt(Banderwagon), transcript: var sha256, label: openArray[byte]) =
     transcript.domainSeparator(label)
 
@@ -66,9 +67,7 @@ func generateChallengeScalar* (gen: var matchingOrderBigInt(Banderwagon), transc
     transcript.finish(hash)
 
     if(gen.deserialize_scalar(hash) == cttCodecScalar_Success):
-
         transcript.clear()
-
         transcript.scalarAppend(label, gen)
 
 

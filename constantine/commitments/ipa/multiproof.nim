@@ -46,6 +46,12 @@ func computePowersOfElem* [EC_P_Fr] (res: var openArray[EC_P_Fr], x: EC_P_Fr, de
     res[0].setOne()
     for i in 1..<degree:
         res[i].prod(res[i-1], x)
+
+# ############################################################
+#
+#                   Multiproof Creation
+#
+# ############################################################
     
 # createMultiProof creates a multi-proof for several polynomials in the evaluation form
 # The list of triplets are as follows : (C, Fs, Z) represents each polynomial commitment
@@ -202,6 +208,12 @@ func createMultiProof* [MultiProof] (success: var bool, res: var MultiProof, tra
     res.D = D
     success = true
 
+# ############################################################
+#
+#                 Multiproof Verification
+#
+# ############################################################
+    
 # Mutliproof verifier verifies the multiproof for several polynomials in the evaluation form
 # The list of triplets (C,Y, Z) represents each polynomial commitment, evaluation
 # result, and evaluation point in the domain 

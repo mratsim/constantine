@@ -22,7 +22,11 @@ import
        ],
     ../../../constantine/math/arithmetic
 
-# Please refer to https://hackmd.io/mJeCRcawTRqr9BooVpHv5g 
+# ############################################################
+#
+#       All the helper functions required for testing
+#
+# ############################################################
 
 func evaluate* [EC_P_Fr] (res: var EC_P_Fr, poly: openArray[EC_P_Fr], point: EC_P_Fr,  n: static int) = 
     var powers {.noInit.}: array[n,EC_P_Fr]
@@ -224,34 +228,6 @@ func getDegreeOfPoly* [int] (res: var int, p: openArray[EC_P_Fr]) =
         else:
             res = -1
 
-# func polynomialLongDivision
-
-func polynomialLongDivision* (result: var tuple[q,r : array[DOMAIN,EC_P_Fr], ok: bool], nn, dd: var openArray[EC_P_Fr], n1: static int, n2: static int) =
-
-    var degdd {.noInit.} : int
-    degdd.getDegreeOfPoly(dd)
-
-    doAssert degdd >= 0 == true
-    var nnlen = n1
-    var nn: array[nnlen + result.r.len, EC_P_Fr]
-    for i in 0..<result.r.len:
-        nn[nnlen - result.r.len + i] = result.r[i]
-    
-    var degnn {.noInit.} : int 
-    if degnn >= degdd:
-        result.q: array[(degnn - degdd + 1),EC_P_Fr]
-        while degnn >= degdd:
-            var d: array[(degnn + 1),EC_P_Fr]
-            d[(degnn - degdd)..<d.len] = dd
-            var tmp {.noInit.}: EC_P_Fr
-            result.q[degnn - degdd] = tmp
-
-            for i in 0..<d.len:
-                d[i].prod(d[i], result.q[degnn - degdd])
-                nn[i].diff(nn[i], d[i])
-
-    result.r = nn
-    result.ok = true
 
 
 
