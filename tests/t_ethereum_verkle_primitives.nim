@@ -13,7 +13,7 @@
 # ############################################################
 
 import
-  std/unittest,
+  std/[unittest, strutils],
   ../constantine/math/config/[type_ff, curves],
   ../constantine/math/elliptic/[
     ec_twistededwards_affine,
@@ -83,6 +83,40 @@ const expected_scalar_field_elements: array[2, string] = [
   "0x0a21f7dfa8ddaf6ef6f2044f13feec50cbb963996112fa1de4e3f52dbf6b7b6d"
 ] # test data generated from go-ipa implementation
 
+## Utility function for parsing hex
+## into byte array of 32 bytes
+## This function also checks if the string is correct size
+## or not which should be ( 2 x 32 ) = 64 
+proc parseHex*(arr: var Bytes, hexString: string) : bool = 
+  let prefixBytes = 2*int(hexString.startsWith("0x"))
+  let expectedLength = 64 + prefixBytes
+  if hexString.len != expectedLength:
+    stdout.write "Incorrect Input Length\n"
+    return false
+  arr.fromHex(hexString)
+  return true
+
+## This is a test function that 
+## we call multiple times during testing
+## It deserialized the passed hex string, and checks if the 
+## status code returned is same as the status code
+## passed to the function
+## Return a bool, upon status code checking
+proc testDeserialize(hexString: string, status: CttCodecEccStatus) : bool =
+  var arr: Bytes
+  let check = arr.parseHex(hexString)
+
+  if check:
+
+  # deserialization from bits
+    var point{.noInit.}: EC
+    let stat = point.deserialize(arr)
+    return stat == status
+
+  else:
+    return false
+
+
 # ############################################################
 #
 #              Banderwagon Serialization Tests
@@ -120,8 +154,8 @@ suite "Banderwagon Serialization Tests":
       for i, bit_string in expected_bit_strings:
 
         # converts serialized value in hex to byte array
-        var arr: Bytes
-        arr.fromHex(bit_string) 
+        var arr: Bytes 
+        discard arr.parseHex(bit_string)
 
         # deserialization from expected bits
         var point{.noInit.}: EC
@@ -136,24 +170,81 @@ suite "Banderwagon Serialization Tests":
   # Check if the subgroup check is working on eliminating
   # points which don't lie on banderwagon, while 
   # deserializing from an untrusted source
-  test "Decoding Points Not on Curve":
-    proc testBadPointDeserialization(len: int) =
+  test "Decoding Points Not in Subgroup":
+    proc testBadPointDeserialization() =
       # Checks whether the bad bit string
       # get deserialized, it should return error -> cttCodecEcc_PointNotInSubgroup
       for bit_string in bad_bit_string:
-
-        # converts serialized value in hex to byte array
-        var arr: Bytes
-        arr.fromHex(bit_string)
-
-        # deserialization from bits
-        var point{.noInit.}: EC
-        let stat = point.deserialize(arr)
-
         # Assertion check for error
-        doAssert stat == cttCodecEcc_PointNotInSubgroup, "Bad point Deserialization Failed, in subgroup check"
+        doAssert testDeserialize(bit_string, cttCodecEcc_PointNotInSubgroup), "Bad point Deserialization Failed, in subgroup check"
     
-    testBadPointDeserialization(bad_bit_string.len)
+    testBadPointDeserialization()
+
+  ## Test serialization with Y lexicographically highest
+  ## on the basis of test vectors from @jsign
+  ## https://github.com/jsign/verkle-test-vectors/blob/main/crypto/003_serialize_lexicographically_highest.json
+  test "Serialize a valid point with Y lexicographically highest":
+    proc testSerializeWithYLargest() =
+      const expected_serialized_point = "0x0e7e3748db7c5c999a7bcd93d71d671f1f40090423792266f94cb27ca43fce5c"
+      var point {.noInit.}: EC
+
+      point.x.fromHex("0x0e7e3748db7c5c999a7bcd93d71d671f1f40090423792266f94cb27ca43fce5c")
+      point.y.fromHex("0x563a625521456130dc66f9fd6bda67330c7bb183b7f2223216c1c9536e1c622f")
+      point.z.setOne()
+
+      var arr: Bytes
+      let stat = arr.serialize(point)
+      
+      doAssert stat == cttCodecEcc_Success, "Serialization Failed"
+      doAssert arr.toHex() == expected_serialized_point, "Serialization Incorrect"
+
+    testSerializeWithYLargest()
+
+  ## Tests if the serialized point lies on the curve
+  ## on the basis of test vectors from @jsign
+  ## https://github.com/jsign/verkle-test-vectors/blob/main/crypto/005_deserialize_point_not_in_curve.json
+  test "Deserialize a point NOT in the curve (MUST fail) - from @ignacio":
+    proc testDeserializeNotInCurve() =
+      const bad_bit_string = "0x219e524e9587de0f88e5051a8a90301c15743ba1866e17a236c5371967f73ead"
+      # Assertion check for error
+      doAssert testDeserialize(bad_bit_string, cttCodecEcc_PointNotOnCurve), "Bad point Deserialization Failed, not in curve check"
+
+    testDeserializeNotInCurve()
+
+  ## Tests if the serialized point is part of the banderwagon subgroup
+  ## on the basis of test vectors from @jsign
+  ## https://github.com/jsign/verkle-test-vectors/blob/main/crypto/006_deserialize_point_not_in_subgroup.json
+  test "Deserialize a point NOT in the subgroup (MUST fail) - from @ignacio":
+    proc testDeserializeNotInSubgroup() =
+      const bad_bit_string = "0x219e524e9587de0f88e5051a8a90301c15743ba1866e17a236c5371967f73eae"
+      doAssert testDeserialize(bad_bit_string, cttCodecEcc_PointNotInSubgroup), "Bad point Deserialization Failed, in subgroup check"
+    
+    testDeserializeNotInSubgroup()
+
+  ## Tests if the serialized point have a X co-ordinate bigger than field
+  ## on the basis of test vectors from @jsign
+  ## https://github.com/jsign/verkle-test-vectors/blob/main/crypto/007_deserialize_point_x_bigger_than_field.json
+  test "Deserialize a valid point but with an X coordinate bigger than field (MUST fail) - from @ignacio":
+    proc testOutOfField() = 
+      const bad_bit_string = "0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000002"
+      doAssert testDeserialize(bad_bit_string, cttCodecEcc_CoordinateGreaterThanOrEqualModulus), "Bad point Deserialization Failed, in bigger than field"
+
+    testOutOfField()
+
+  ## Tests if deserialization fails if the input hex has wrong length
+  ## on the basis of test vectors from @jsign
+  ## https://github.com/jsign/verkle-test-vectors/blob/main/crypto/008_deserialize_point_x_wrong_length.json
+  test "Deserialize points with wrong length (all MUST fail) - from @ignacio":
+    proc testWrongLength() = 
+      const bad_hexs = [
+        "",
+        "0x1",
+        "0x010000307c7c28c054fce6df1717cd3df91b8109fb83ef6084e6aefffdcaaf00023552"
+      ]
+      for hex in bad_hexs:
+        doAssert not testDeserialize(hex, cttCodecEcc_InvalidEncoding), "Wrong length point deserialize failed"
+    
+    testWrongLength()
 
 
 # ############################################################
@@ -249,6 +340,26 @@ suite "Banderwagon Elements Mapping":
       doAssert expected_b.toHex() == expected_scalar_field_elements[1], "Mapping to Scalar Field Incorrect"
 
     testMultiMapToBaseField()
+
+  ## Tests if mapping from Fp to Fr 
+  ## on the basis of test vectors from @jsign
+  ## https://github.com/jsign/verkle-test-vectors/blob/main/crypto/002_map_to_field_element.json
+  test "Tests mapping of banderwagon point into a scalar field element - from @ignacio":
+    proc testMapToField() =
+      const expected_field_element = "0x038ae85a1376b72642f6694eb4238e3f1348253498e2bf4daec9e77024ae8b07"
+
+      var point {.noInit.} : EC
+      var element: Fr[Banderwagon]
+      var arr: Bytes
+      discard arr.parseHex("0x524996a95838712c4580220bb3de453d76cffd7f732f89914d4417bc8e99b513")
+
+      discard deserialize(point, arr)
+      element.mapToScalarField(point)
+
+      doAssert element.toHex() == expected_field_element, "Mapping from Fp -> Fr failed"
+      
+
+    testMapToField()
 
 # ############################################################
 #
