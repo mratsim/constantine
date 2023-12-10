@@ -115,7 +115,7 @@ const KZG_SETUP_G2_LENGTH = 65
 #   are different from multiproofs
 
 type
-  EthereumKZGContext* {.exportc: "ctt_eth_kzg4844_context".} = object
+  EthereumKZGContext* = object
     ## KZG commitment context
 
     # Trusted setup, see https://vitalik.ca/general/2022/03/14/trustedsetup.html
@@ -271,7 +271,7 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
 
   return tsSuccess
 
-proc trusted_setup_load*(ctx: var ptr EthereumKZGContext, filepath: cstring, format: TrustedSetupFormat): TrustedSetupStatus {.libPrefix: prefix_eth_kzg4844.} =
+proc trusted_setup_load*(ctx: var ptr EthereumKZGContext, filepath: cstring, format: TrustedSetupFormat): TrustedSetupStatus {.libPrefix: "ctt_eth_".} =
   ## Load trusted setup from path
   ## Currently the only format supported
   ## is from the reference implementation c-kzg-4844 text file
@@ -289,6 +289,6 @@ proc trusted_setup_load*(ctx: var ptr EthereumKZGContext, filepath: cstring, for
   fileio.close(f)
   return status
 
-proc trusted_setup_delete*(ctx: ptr EthereumKZGContext) {.libPrefix: prefix_eth_kzg4844.} =
+proc trusted_setup_delete*(ctx: ptr EthereumKZGContext) {.libPrefix: "ctt_eth_".} =
   if not ctx.isNil:
     freeHeapAligned(ctx)

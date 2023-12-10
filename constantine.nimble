@@ -174,7 +174,8 @@ proc releaseBuildOptions(buildMode = bmBinary): string =
   #   to consolidate all objects into one.
   let ltoFlags = " -d:lto " & # " --UseAsmSyntaxIntel --passC:-flto=auto --passL:-flto=auto "
                  # With LTO, the GCC linker produces lots of spurious warnings when copying into openArrays/strings
-                 " --passC:-Wno-stringop-overflow --passL:-Wno-stringop-overflow "
+                 " --passC:-Wno-stringop-overflow --passL:-Wno-stringop-overflow " &
+                 " --passC:-Wno-alloc-size-larger-than --passL:-Wno-alloc-size-larger-than "
 
   let apple = defined(macos) or defined(macox) or defined(ios)
   let ltoOptions = if useLtoDefault:

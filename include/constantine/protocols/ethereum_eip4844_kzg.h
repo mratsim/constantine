@@ -18,19 +18,13 @@ extern "C" {
 // Ethereum EIP-4844 KZG types
 // ------------------------------------------------------------------------------------------------
 
-#define BYTES_PER_COMMITMENT 48
-#define BYTES_PER_PROOF 48
-#define BYTES_PER_FIELD_ELEMENT 32
-#define FIELD_ELEMENTS_PER_BLOB 4096
-#define BYTES_PER_BLOB (FIELD_ELEMENTS_PER_BLOB * BYTES_PER_FIELD_ELEMENT)
-
 typedef struct ctt_eth_kzg_context_struct ctt_eth_kzg_context;
 
-typedef struct { byte raw[BYTES_PER_COMMITMENT]; }    ctt_eth_kzg_commitment;
-typedef struct { byte raw[BYTES_PER_PROOF]; }         ctt_eth_kzg_proof;
-typedef struct { byte raw[BYTES_PER_BLOB]; }          ctt_eth_kzg_blob;
-typedef struct { byte raw[BYTES_PER_FIELD_ELEMENT]; } ctt_eth_kzg_challenge;
-typedef struct { byte raw[BYTES_PER_FIELD_ELEMENT]; } ctt_eth_kzg_eval_at_challenge;
+typedef struct { byte raw[48]; }        ctt_eth_kzg_commitment;
+typedef struct { byte raw[48]; }        ctt_eth_kzg_proof;
+typedef struct { byte raw[4096 * 32]; } ctt_eth_kzg_blob;
+typedef struct { byte raw[32]; }        ctt_eth_kzg_challenge;
+typedef struct { byte raw[32]; }        ctt_eth_kzg_eval_at_challenge;
 
 typedef enum __attribute__((__packed__)) {
     cttEthKzg_Success,

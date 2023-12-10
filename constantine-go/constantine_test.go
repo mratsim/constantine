@@ -7,14 +7,14 @@
  *  at your option. This file may not be copied, modified, or distributed except according to those terms.
  */
 
- package constantine
+package constantine
 
- import (
-	"testing"
+import (
 	"runtime"
- )
+	"testing"
+)
 
- func TestThreadpool(t *testing.T) {
-	tp := CttThreadpoolNew(runtime.NumCPU())
+func TestThreadpool(t *testing.T) {
+	tp := ThreadpoolNew(runtime.NumCPU())
 	tp.Shutdown()
- }
+}
