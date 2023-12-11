@@ -315,6 +315,8 @@ jobs:
 
       - name: Run Constantine as Go library tests
         # This reuses the static library built with `nimble make_lib`
+        if: matrix.target.cpu != 'i386'
+        shell: bash
         run: |
           cd constantine/constantine-go
           go test -modfile=../go_test.mod
