@@ -9,6 +9,7 @@ jobs:
       matrix:
         nim_version: [version-1-6] # [version-1-4, devel]
         rust_toolchain: [stable] # [beta, nightly]
+        go_toolchain: [stable]
         target:
           - os: linux
             cpu: i386
@@ -78,21 +79,21 @@ jobs:
           access_token: ${{ github.token }}
 
       - name: Checkout constantine
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           path: constantine
 
       - name: Restore MinGW-W64 (Windows) from cache
         if: runner.os == 'Windows'
         id: windows-mingw-cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: external/mingw-${{ matrix.target.cpu }}
           key: 'mingw-${{ matrix.target.cpu }}'
       - name: Restore Nim DLLs dependencies (Windows) from cache
         if: runner.os == 'Windows'
         id: windows-dlls-cache
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: external/dlls-${{ matrix.target.cpu }}
           key: 'dlls-${{ matrix.target.cpu }}'
@@ -224,32 +225,23 @@ jobs:
           update: false
           install: base-devel git mingw-w64-x86_64-toolchain
 
-      - name: Install test dependencies (Windows)
-        if: runner.os == 'Windows'
-        shell: msys2 {0}
-        run: |
-          pacman -S --needed --noconfirm mingw-w64-x86_64-gmp mingw-w64-x86_64-llvm
-          nimble refresh --verbose -y
-          nimble install --verbose -y gmp jsony asynctools yaml@1.1.0
+      - name: Install Go [${{ matrix.go_toolchain }}]
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go_toolchain }}
 
-      - name: Install test dependencies
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          nimble refresh --verbose -y
-          nimble install --verbose -y gmp jsony asynctools yaml@1.1.0
-
-      - name: Install Rust
+      - name: Install Rust [${{ matrix.rust_toolchain }}]
         shell: bash
         run: rustup update ${{ matrix.rust_toolchain }} && rustup default ${{ matrix.rust_toolchain }}
 
-      - name: Print Nim, Rust, LLVM versions and CPU specs.
+      - name: Print Nim, Go Rust, LLVM versions and CPU specs.
         shell: bash
         # gcc is an alias to Apple Clang on MacOS
         run: |
           nim -v
           gcc -v
           clang -v
+          go version
           rustup --version
           if [[ '${{ matrix.target.cpu }}' != 'i386' && '${{ runner.os }}' != 'Windows' ]]; then
             llvm-config --version
@@ -262,6 +254,27 @@ jobs:
             sysctl -a | grep hw | grep cpu
             sysctl -a | grep hw.optional
           fi
+
+      - name: Install test dependencies (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: |
+          pacman -S --needed --noconfirm mingw-w64-x86_64-gmp mingw-w64-x86_64-llvm
+          nimble refresh --verbose -y
+          nimble install --verbose -y gmp jsony asynctools yaml@1.1.0
+
+          cd constantine
+          go mod download -modfile=go_test.mod
+
+      - name: Install test dependencies
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          nimble refresh --verbose -y
+          nimble install --verbose -y gmp jsony asynctools yaml@1.1.0
+
+          cd constantine
+          go mod download -modfile=go_test.mod
 
       - name: Run Constantine as C library tests (UNIX with Assembly)
         if: runner.os != 'Windows' && matrix.target.BACKEND == 'ASM'
@@ -299,6 +312,12 @@ jobs:
           CTT_ASM=0 nimble make_lib --verbose
           nimble make_headers       --verbose
           nimble test_lib           --verbose
+
+      - name: Run Constantine as Go library tests
+        # This reuses the static library built with `nimble make_lib`
+        run: |
+          cd constantine/constantine-go
+          go test -modfile=../go_test.mod
 
       - name: Run Constantine as Rust library tests (with Assembly)
         if: matrix.target.BACKEND == 'ASM' && matrix.target.cpu != 'i386'

@@ -183,57 +183,6 @@ func TestComputeKzgProof(t *testing.T) {
 	}
 }
 
-func TestComputeBlobKzgProof(t *testing.T) {
-	type Test struct {
-		Input struct {
-			Blob       string `yaml:"blob"`
-			Commitment string `yaml:"commitment"`
-		}
-		Output *EthKzgProof `yaml:"output"`
-	}
-
-	ctx, tsErr := EthKzgContextNew(trustedSetupFile)
-	require.NoError(t, tsErr)
-	defer ctx.Delete()
-
-	tests, err := filepath.Glob(computeBlobKZGProofTests)
-	require.NoError(t, err)
-	require.True(t, len(tests) > 0)
-
-	for _, testPath := range tests {
-		t.Run(testPath, func(t *testing.T) {
-			testFile, err := os.Open(testPath)
-			require.NoError(t, err)
-			test := Test{}
-			err = yaml.NewDecoder(testFile).Decode(&test)
-			require.NoError(t, testFile.Close())
-			require.NoError(t, err)
-
-			var blob EthBlob
-			err = blob.UnmarshalText([]byte(test.Input.Blob))
-			if err != nil {
-				require.Nil(t, test.Output)
-				return
-			}
-
-			var commitment EthKzgCommitment
-			err = commitment.UnmarshalText([]byte(test.Input.Commitment))
-			if err != nil {
-				require.Nil(t, test.Output)
-				return
-			}
-
-			proof, err := ctx.ComputeBlobKzgProof(blob, commitment)
-			if err == nil {
-				require.NotNil(t, test.Output)
-				require.Equal(t, test.Output[:], proof[:])
-			} else {
-				require.Nil(t, test.Output)
-			}
-		})
-	}
-}
-
 func TestVerifyKzgProof(t *testing.T) {
 	type Test struct {
 		Input struct {
@@ -298,6 +247,57 @@ func TestVerifyKzgProof(t *testing.T) {
 				if test.Output != nil {
 					require.Equal(t, *test.Output, valid)
 				}
+			}
+		})
+	}
+}
+
+func TestComputeBlobKzgProof(t *testing.T) {
+	type Test struct {
+		Input struct {
+			Blob       string `yaml:"blob"`
+			Commitment string `yaml:"commitment"`
+		}
+		Output *EthKzgProof `yaml:"output"`
+	}
+
+	ctx, tsErr := EthKzgContextNew(trustedSetupFile)
+	require.NoError(t, tsErr)
+	defer ctx.Delete()
+
+	tests, err := filepath.Glob(computeBlobKZGProofTests)
+	require.NoError(t, err)
+	require.True(t, len(tests) > 0)
+
+	for _, testPath := range tests {
+		t.Run(testPath, func(t *testing.T) {
+			testFile, err := os.Open(testPath)
+			require.NoError(t, err)
+			test := Test{}
+			err = yaml.NewDecoder(testFile).Decode(&test)
+			require.NoError(t, testFile.Close())
+			require.NoError(t, err)
+
+			var blob EthBlob
+			err = blob.UnmarshalText([]byte(test.Input.Blob))
+			if err != nil {
+				require.Nil(t, test.Output)
+				return
+			}
+
+			var commitment EthKzgCommitment
+			err = commitment.UnmarshalText([]byte(test.Input.Commitment))
+			if err != nil {
+				require.Nil(t, test.Output)
+				return
+			}
+
+			proof, err := ctx.ComputeBlobKzgProof(blob, commitment)
+			if err == nil {
+				require.NotNil(t, test.Output)
+				require.Equal(t, test.Output[:], proof[:])
+			} else {
+				require.Nil(t, test.Output)
 			}
 		})
 	}
@@ -439,3 +439,4 @@ func TestVerifyBlobKzgProofBatch(t *testing.T) {
 		})
 	}
 }
+
