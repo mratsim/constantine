@@ -33,7 +33,7 @@ type Threadpool struct {
 	ctx *C.ctt_threadpool
 }
 
-func ThreadpoolNew(numThreads int) (Threadpool) {
+func ThreadpoolNew(numThreads int) Threadpool {
 	return Threadpool{
 		ctx: C.ctt_threadpool_new(C.size_t(numThreads)),
 	}
@@ -47,11 +47,11 @@ func (tp Threadpool) Shutdown() {
 // -----------------------------------------------------
 
 type (
-	EthKzgCommitment		[48]byte
-	EthKzgProof				[48]byte
-	EthBlob					[4096 * 32]byte
-	EthKzgChallenge			[32]byte
-	EthKzgEvalAtChallenge	[32]byte
+	EthKzgCommitment      [48]byte
+	EthKzgProof           [48]byte
+	EthBlob               [4096 * 32]byte
+	EthKzgChallenge       [32]byte
+	EthKzgEvalAtChallenge [32]byte
 )
 
 type EthKzgContext struct {
