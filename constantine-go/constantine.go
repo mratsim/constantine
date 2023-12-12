@@ -12,7 +12,11 @@ package constantine
 /*
 #cgo CFLAGS: -I"${SRCDIR}/../include"
 #cgo !windows LDFLAGS: "${SRCDIR}/../lib/libconstantine.a"
-#cgo windows LDFLAGS: "${SRCDIR}/../lib/constantine.lib"
+// The ending in .lib is rejected, so we can't use the direct linking syntax:
+//   https://github.com/golang/go/blob/46ea4ab/src/cmd/go/internal/work/security.go#L216
+// #cgo windows LDFLAGS: "${SRCDIR}/../lib/constantine.lib"
+#cgo windows LDFLAGS: -L"${SRCDIR}/../lib" -Wl,-Bstatic -lconstantine -Wl,-Bdynamic
+
 #include <stdlib.h>
 #include <constantine.h>
 */
