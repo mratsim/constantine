@@ -156,7 +156,7 @@ func (ctx EthKzgContext) VerifyBlobKzgProof(blob EthBlob, commitment EthKzgCommi
 	return true, nil
 }
 
-func (ctx EthKzgContext) VerifyBlobKzgProofBatch(blobs []EthBlob, commitments []EthKzgCommitment, proofs []EthKzgProof, secureRandomeBytes [32]byte) (bool, error) {
+func (ctx EthKzgContext) VerifyBlobKzgProofBatch(blobs []EthBlob, commitments []EthKzgCommitment, proofs []EthKzgProof, secureRandomBytes [32]byte) (bool, error) {
 
 	if len(blobs) != len(commitments) || len(blobs) != len(proofs) {
 		return false, errors.New("VerifyBlobKzgProofBatch: Lengths of inputs do not match.")
@@ -168,7 +168,7 @@ func (ctx EthKzgContext) VerifyBlobKzgProofBatch(blobs []EthBlob, commitments []
 		*(**C.ctt_eth_kzg_commitment)(unsafe.Pointer(&commitments)),
 		*(**C.ctt_eth_kzg_proof)(unsafe.Pointer(&proofs)),
 		(C.size_t)(len(blobs)),
-		(*C.uint8_t)(unsafe.Pointer(&secureRandomeBytes)),
+		(*C.uint8_t)(unsafe.Pointer(&secureRandomBytes)),
 	)
 	if status != C.cttEthKzg_Success {
 		err := errors.New(
