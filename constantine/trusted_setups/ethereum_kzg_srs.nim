@@ -115,7 +115,7 @@ const KZG_SETUP_G2_LENGTH = 65
 #   are different from multiproofs
 
 type
-  EthereumKZGContext* {.exportc: "ctt_eth_kzg4844_context".} = object
+  EthereumKZGContext* = object
     ## KZG commitment context
 
     # Trusted setup, see https://vitalik.ca/general/2022/03/14/trustedsetup.html
@@ -221,14 +221,14 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
 
   block:
     # G1 points - 96 characters + newline
-    var bufG1Hex {.noInit.}: array[2*g1Bytes, char]
+    var bufG1Hex {.noInit.}: array[2*g1Bytes+1, char] # On MacOS, an extra byte seems to be needed for fscanf or AddressSanitizer complains
     var bufG1bytes {.noInit.}: array[g1Bytes, byte]
     var charsRead: cint
     for i in 0 ..< FIELD_ELEMENTS_PER_BLOB:
-      let num_matches = f.c_fscanf(readHexG1, bufG1Hex, charsRead.addr)
+      let num_matches = f.c_fscanf(readHexG1, bufG1Hex.addr, charsRead.addr)
       if num_matches != 1 and charsRead != 2*g1Bytes:
         return tsInvalidFile
-      bufG1bytes.fromHex(bufG1Hex)
+      bufG1bytes.fromHex(bufG1Hex.toOpenArray(0, 2*g1Bytes-1))
       let status = ctx.srs_lagrange_g1.evals[i].deserialize_g1_compressed(bufG1bytes)
       if status != cttCodecEcc_Success:
         c_printf("[Constantine Trusted Setup] Invalid G1 point on line %d: CttCodecEccStatus code %d\n", cint(2+i), status)
@@ -236,14 +236,14 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
 
   block:
     # G2 points - 192 characters + newline
-    var bufG2Hex {.noInit.}: array[2*g2Bytes, char]
+    var bufG2Hex {.noInit.}: array[2*g2Bytes+1, char] # On MacOS, an extra byte seems to be needed for fscanf or AddressSanitizer complains
     var bufG2bytes {.noInit.}: array[g2Bytes, byte]
     var charsRead: cint
     for i in 0 ..< KZG_SETUP_G2_LENGTH:
-      let num_matches = f.c_fscanf(readHexG2, bufG2Hex, charsRead.addr)
+      let num_matches = f.c_fscanf(readHexG2, bufG2Hex.addr, charsRead.addr)
       if num_matches != 1 and charsRead != 2*g2Bytes:
         return tsInvalidFile
-      bufG2bytes.fromHex(bufG2Hex)
+      bufG2bytes.fromHex(bufG2Hex.toOpenArray(0, 2*g2Bytes-1))
       let status = ctx.srs_monomial_g2.coefs[i].deserialize_g2_compressed(bufG2bytes)
       if status != cttCodecEcc_Success:
         c_printf("[Constantine Trusted Setup] Invalid G2 point on line %d: CttCodecEccStatus code %d\n", cint(2+FIELD_ELEMENTS_PER_BLOB+i), status)
@@ -271,7 +271,7 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
 
   return tsSuccess
 
-proc trusted_setup_load*(ctx: var ptr EthereumKZGContext, filepath: cstring, format: TrustedSetupFormat): TrustedSetupStatus {.libPrefix: prefix_eth_kzg4844.} =
+proc trusted_setup_load*(ctx: var ptr EthereumKZGContext, filepath: cstring, format: TrustedSetupFormat): TrustedSetupStatus {.libPrefix: "ctt_eth_".} =
   ## Load trusted setup from path
   ## Currently the only format supported
   ## is from the reference implementation c-kzg-4844 text file
@@ -289,6 +289,6 @@ proc trusted_setup_load*(ctx: var ptr EthereumKZGContext, filepath: cstring, for
   fileio.close(f)
   return status
 
-proc trusted_setup_delete*(ctx: ptr EthereumKZGContext) {.libPrefix: prefix_eth_kzg4844.} =
+proc trusted_setup_delete*(ctx: ptr EthereumKZGContext) {.libPrefix: "ctt_eth_".} =
   if not ctx.isNil:
     freeHeapAligned(ctx)
