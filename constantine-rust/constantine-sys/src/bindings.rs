@@ -3,6 +3,36 @@
 pub type secret_word = usize;
 pub type secret_bool = usize;
 pub type byte = u8;
+#[repr(u8)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq)]
+pub enum ctt_codec_scalar_status {
+    cttCodecScalar_Success = 0,
+    cttCodecScalar_Zero = 1,
+    cttCodecScalar_ScalarLargerThanCurveOrder = 2,
+}
+#[repr(u8)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq)]
+pub enum ctt_codec_ecc_status {
+    cttCodecEcc_Success = 0,
+    cttCodecEcc_InvalidEncoding = 1,
+    cttCodecEcc_CoordinateGreaterThanOrEqualModulus = 2,
+    cttCodecEcc_PointNotOnCurve = 3,
+    cttCodecEcc_PointNotInSubgroup = 4,
+    cttCodecEcc_PointAtInfinity = 5,
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct ctt_threadpool {
+    _unused: [u8; 0],
+}
+extern "C" {
+    #[doc = " Create a new threadpool that manages `num_threads` threads\n\n Initialize a threadpool that manages `num_threads` threads.\n\n A Constantine's threadpool cannot be instantiated\n on a thread managed by another Constantine's threadpool\n including the root thread.\n\n Mixing with other libraries' threadpools and runtime\n will not impact correctness but may impact performance."]
+    pub fn ctt_threadpool_new(num_threads: usize) -> *mut ctt_threadpool;
+}
+extern "C" {
+    #[doc = " Wait until all pending tasks are processed and then shutdown the threadpool"]
+    pub fn ctt_threadpool_shutdown(threadpool: *mut ctt_threadpool);
+}
 #[repr(C)]
 #[repr(align(64))]
 #[derive(Copy, Clone)]
@@ -84,6 +114,9 @@ extern "C" {
         message_len: isize,
         clear_memory: bool,
     );
+}
+extern "C" {
+    pub fn ctt_csprng_sysrand(buffer: *mut ::core::ffi::c_void, len: usize) -> bool;
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -3462,19 +3495,6 @@ extern "C" {
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
-pub struct ctt_threadpool {
-    _unused: [u8; 0],
-}
-extern "C" {
-    #[doc = " Create a new threadpool that manages `num_threads` threads\n\n Initialize a threadpool that manages `num_threads` threads.\n\n A Constantine's threadpool cannot be instantiated\n on a thread managed by another Constantine's threadpool\n including the root thread.\n\n Mixing with other libraries' threadpools and runtime\n will not impact correctness but may impact performance."]
-    pub fn ctt_threadpool_new(num_threads: usize) -> *mut ctt_threadpool;
-}
-extern "C" {
-    #[doc = " Wait until all pending tasks are processed and then shutdown the threadpool"]
-    pub fn ctt_threadpool_shutdown(threadpool: *mut ctt_threadpool);
-}
-#[repr(C)]
-#[derive(Copy, Clone)]
 pub struct big255 {
     limbs: [secret_word; 4usize],
 }
@@ -3676,23 +3696,6 @@ extern "C" {
         points: *const vesta_ec_aff,
         len: usize,
     );
-}
-#[repr(u8)]
-#[derive(Copy, Clone, Hash, PartialEq, Eq)]
-pub enum ctt_codec_scalar_status {
-    cttCodecScalar_Success = 0,
-    cttCodecScalar_Zero = 1,
-    cttCodecScalar_ScalarLargerThanCurveOrder = 2,
-}
-#[repr(u8)]
-#[derive(Copy, Clone, Hash, PartialEq, Eq)]
-pub enum ctt_codec_ecc_status {
-    cttCodecEcc_Success = 0,
-    cttCodecEcc_InvalidEncoding = 1,
-    cttCodecEcc_CoordinateGreaterThanOrEqualModulus = 2,
-    cttCodecEcc_PointNotOnCurve = 3,
-    cttCodecEcc_PointNotInSubgroup = 4,
-    cttCodecEcc_PointAtInfinity = 5,
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -4017,4 +4020,320 @@ extern "C" {
         message_len: isize,
         aggregate_sig: *const ctt_eth_bls_signature,
     ) -> ctt_eth_bls_status;
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct ctt_eth_kzg_context_struct {
+    _unused: [u8; 0],
+}
+pub type ctt_eth_kzg_context = ctt_eth_kzg_context_struct;
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct ctt_eth_kzg_commitment {
+    raw: [byte; 48usize],
+}
+#[test]
+fn bindgen_test_layout_ctt_eth_kzg_commitment() {
+    const UNINIT: ::core::mem::MaybeUninit<ctt_eth_kzg_commitment> =
+        ::core::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::core::mem::size_of::<ctt_eth_kzg_commitment>(),
+        48usize,
+        concat!("Size of: ", stringify!(ctt_eth_kzg_commitment))
+    );
+    assert_eq!(
+        ::core::mem::align_of::<ctt_eth_kzg_commitment>(),
+        1usize,
+        concat!("Alignment of ", stringify!(ctt_eth_kzg_commitment))
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).raw) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(ctt_eth_kzg_commitment),
+            "::",
+            stringify!(raw)
+        )
+    );
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct ctt_eth_kzg_proof {
+    raw: [byte; 48usize],
+}
+#[test]
+fn bindgen_test_layout_ctt_eth_kzg_proof() {
+    const UNINIT: ::core::mem::MaybeUninit<ctt_eth_kzg_proof> = ::core::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::core::mem::size_of::<ctt_eth_kzg_proof>(),
+        48usize,
+        concat!("Size of: ", stringify!(ctt_eth_kzg_proof))
+    );
+    assert_eq!(
+        ::core::mem::align_of::<ctt_eth_kzg_proof>(),
+        1usize,
+        concat!("Alignment of ", stringify!(ctt_eth_kzg_proof))
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).raw) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(ctt_eth_kzg_proof),
+            "::",
+            stringify!(raw)
+        )
+    );
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct ctt_eth_kzg_blob {
+    raw: [byte; 131072usize],
+}
+#[test]
+fn bindgen_test_layout_ctt_eth_kzg_blob() {
+    const UNINIT: ::core::mem::MaybeUninit<ctt_eth_kzg_blob> = ::core::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::core::mem::size_of::<ctt_eth_kzg_blob>(),
+        131072usize,
+        concat!("Size of: ", stringify!(ctt_eth_kzg_blob))
+    );
+    assert_eq!(
+        ::core::mem::align_of::<ctt_eth_kzg_blob>(),
+        1usize,
+        concat!("Alignment of ", stringify!(ctt_eth_kzg_blob))
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).raw) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(ctt_eth_kzg_blob),
+            "::",
+            stringify!(raw)
+        )
+    );
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct ctt_eth_kzg_challenge {
+    raw: [byte; 32usize],
+}
+#[test]
+fn bindgen_test_layout_ctt_eth_kzg_challenge() {
+    const UNINIT: ::core::mem::MaybeUninit<ctt_eth_kzg_challenge> =
+        ::core::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::core::mem::size_of::<ctt_eth_kzg_challenge>(),
+        32usize,
+        concat!("Size of: ", stringify!(ctt_eth_kzg_challenge))
+    );
+    assert_eq!(
+        ::core::mem::align_of::<ctt_eth_kzg_challenge>(),
+        1usize,
+        concat!("Alignment of ", stringify!(ctt_eth_kzg_challenge))
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).raw) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(ctt_eth_kzg_challenge),
+            "::",
+            stringify!(raw)
+        )
+    );
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct ctt_eth_kzg_eval_at_challenge {
+    raw: [byte; 32usize],
+}
+#[test]
+fn bindgen_test_layout_ctt_eth_kzg_eval_at_challenge() {
+    const UNINIT: ::core::mem::MaybeUninit<ctt_eth_kzg_eval_at_challenge> =
+        ::core::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::core::mem::size_of::<ctt_eth_kzg_eval_at_challenge>(),
+        32usize,
+        concat!("Size of: ", stringify!(ctt_eth_kzg_eval_at_challenge))
+    );
+    assert_eq!(
+        ::core::mem::align_of::<ctt_eth_kzg_eval_at_challenge>(),
+        1usize,
+        concat!("Alignment of ", stringify!(ctt_eth_kzg_eval_at_challenge))
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).raw) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(ctt_eth_kzg_eval_at_challenge),
+            "::",
+            stringify!(raw)
+        )
+    );
+}
+#[repr(u8)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq)]
+pub enum ctt_eth_kzg_status {
+    cttEthKzg_Success = 0,
+    cttEthKzg_VerificationFailure = 1,
+    cttEthKzg_ScalarZero = 2,
+    cttEthKzg_ScalarLargerThanCurveOrder = 3,
+    cttEthKzg_EccInvalidEncoding = 4,
+    cttEthKzg_EccCoordinateGreaterThanOrEqualModulus = 5,
+    cttEthKzg_EccPointNotOnCurve = 6,
+    cttEthKzg_EccPointNotInSubgroup = 7,
+}
+#[repr(u8)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq)]
+pub enum ctt_eth_trusted_setup_status {
+    cttEthTS_Success = 0,
+    cttEthTS_MissingOrInaccessibleFile = 1,
+    cttEthTS_InvalidFile = 2,
+}
+#[repr(u8)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq)]
+pub enum ctt_eth_trusted_setup_format {
+    cttEthTSFormat_ckzg4844 = 0,
+}
+extern "C" {
+    #[must_use]
+    #[doc = " Compute a commitment to the `blob`.\n  The commitment can be verified without needing the full `blob`\n\n  Mathematical description\n    commitment = [p(τ)]₁\n\n    The blob data is used as a polynomial,\n    the polynomial is evaluated at powers of tau τ, a trusted setup.\n\n    Verification can be done by verifying the relation:\n      proof.(τ - z) = p(τ)-p(z)\n    which doesn't require the full blob but only evaluations of it\n    - at τ, p(τ) is the commitment\n    - and at the verification challenge z.\n\n    with proof = [(p(τ) - p(z)) / (τ-z)]₁"]
+    pub fn ctt_eth_kzg_blob_to_kzg_commitment(
+        ctx: *const ctt_eth_kzg_context,
+        dst: *mut ctt_eth_kzg_commitment,
+        blob: *const ctt_eth_kzg_blob,
+    ) -> ctt_eth_kzg_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = " Generate:\n  - A proof of correct evaluation.\n  - y = p(z), the evaluation of p at the challenge z, with p being the Blob interpreted as a polynomial.\n\n  Mathematical description\n    [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁, with p(τ) being the commitment, i.e. the evaluation of p at the powers of τ\n    The notation [a]₁ corresponds to the scalar multiplication of a by the generator of 𝔾1\n\n    Verification can be done by verifying the relation:\n      proof.(τ - z) = p(τ)-p(z)\n    which doesn't require the full blob but only evaluations of it\n    - at τ, p(τ) is the commitment\n    - and at the verification challenge z."]
+    pub fn ctt_eth_kzg_compute_kzg_proof(
+        ctx: *const ctt_eth_kzg_context,
+        proof: *mut ctt_eth_kzg_proof,
+        y: *mut ctt_eth_kzg_eval_at_challenge,
+        blob: *const ctt_eth_kzg_blob,
+        z: *const ctt_eth_kzg_challenge,
+    ) -> ctt_eth_kzg_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = " Verify KZG proof\n  that p(z) == y where\n    - z is a random challenge\n    - y is the evaluation of the \"KZG polynomial\" p at z\n    - commitment is p(τ), the evaluation of p at the trusted setup τ,\n    - [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁, ensure that p(z) evaluation was correct\n      without needing access to the polynomial p itself."]
+    pub fn ctt_eth_kzg_verify_kzg_proof(
+        ctx: *const ctt_eth_kzg_context,
+        commitment: *const ctt_eth_kzg_commitment,
+        z: *const ctt_eth_kzg_challenge,
+        y: *const ctt_eth_kzg_eval_at_challenge,
+        proof: *const ctt_eth_kzg_proof,
+    ) -> ctt_eth_kzg_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = " Given a blob, return the KZG proof that is used to verify it against the commitment.\n  This method does not verify that the commitment is correct with respect to `blob`."]
+    pub fn ctt_eth_kzg_compute_blob_kzg_proof(
+        ctx: *const ctt_eth_kzg_context,
+        proof: *mut ctt_eth_kzg_proof,
+        blob: *const ctt_eth_kzg_blob,
+        commitment: *const ctt_eth_kzg_commitment,
+    ) -> ctt_eth_kzg_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = " Given a blob and a KZG proof, verify that the blob data corresponds to the provided commitment."]
+    pub fn ctt_eth_kzg_verify_blob_kzg_proof(
+        ctx: *const ctt_eth_kzg_context,
+        blob: *const ctt_eth_kzg_blob,
+        commitment: *const ctt_eth_kzg_commitment,
+        proof: *const ctt_eth_kzg_proof,
+    ) -> ctt_eth_kzg_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = " Verify `n` (blob, commitment, proof) sets efficiently\n\n  `n` is the number of verifications set\n  - if n is negative, this procedure returns verification failure\n  - if n is zero, this procedure returns verification success\n\n  `secure_random_bytes` random bytes must come from a cryptographically secure RNG\n  or computed through the Fiat-Shamir heuristic.\n  It serves as a random number\n  that is not in the control of a potential attacker to prevent potential\n  rogue commitments attacks due to homomorphic properties of pairings,\n  i.e. commitments that are linear combination of others and sum would be zero."]
+    pub fn ctt_eth_kzg_verify_blob_kzg_proof_batch(
+        ctx: *const ctt_eth_kzg_context,
+        blobs: *const ctt_eth_kzg_blob,
+        commitments: *const ctt_eth_kzg_commitment,
+        proofs: *const ctt_eth_kzg_proof,
+        n: usize,
+        secure_random_bytes: *const byte,
+    ) -> ctt_eth_kzg_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = " Load trusted setup from path\n  Currently the only format supported `cttEthTSFormat_ckzg4844`\n  is from the reference implementation c-kzg-4844 text file"]
+    pub fn ctt_eth_trusted_setup_load(
+        ctx: *mut *mut ctt_eth_kzg_context,
+        filepath: *const ::core::ffi::c_char,
+        format: ctt_eth_trusted_setup_format,
+    ) -> ctt_eth_trusted_setup_status;
+}
+extern "C" {
+    #[doc = " Destroy a trusted setup"]
+    pub fn ctt_eth_trusted_setup_delete(ctx: *mut ctt_eth_kzg_context);
+}
+extern "C" {
+    #[must_use]
+    #[doc = " Compute a commitment to the `blob`.\n  The commitment can be verified without needing the full `blob`\n\n  Mathematical description\n    commitment = [p(τ)]₁\n\n    The blob data is used as a polynomial,\n    the polynomial is evaluated at powers of tau τ, a trusted setup.\n\n    Verification can be done by verifying the relation:\n      proof.(τ - z) = p(τ)-p(z)\n    which doesn't require the full blob but only evaluations of it\n    - at τ, p(τ) is the commitment\n    - and at the verification challenge z.\n\n    with proof = [(p(τ) - p(z)) / (τ-z)]₁"]
+    pub fn ctt_eth_kzg_blob_to_kzg_commitment_parallel(
+        ctx: *const ctt_eth_kzg_context,
+        tp: *const ctt_threadpool,
+        dst: *mut ctt_eth_kzg_commitment,
+        blob: *const ctt_eth_kzg_blob,
+    ) -> ctt_eth_kzg_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = " Generate:\n  - A proof of correct evaluation.\n  - y = p(z), the evaluation of p at the challenge z, with p being the Blob interpreted as a polynomial.\n\n  Mathematical description\n    [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁, with p(τ) being the commitment, i.e. the evaluation of p at the powers of τ\n    The notation [a]₁ corresponds to the scalar multiplication of a by the generator of 𝔾1\n\n    Verification can be done by verifying the relation:\n      proof.(τ - z) = p(τ)-p(z)\n    which doesn't require the full blob but only evaluations of it\n    - at τ, p(τ) is the commitment\n    - and at the verification challenge z."]
+    pub fn ctt_eth_kzg_compute_kzg_proof_parallel(
+        ctx: *const ctt_eth_kzg_context,
+        tp: *const ctt_threadpool,
+        proof: *mut ctt_eth_kzg_proof,
+        y: *mut ctt_eth_kzg_eval_at_challenge,
+        blob: *const ctt_eth_kzg_blob,
+        z: *const ctt_eth_kzg_challenge,
+    ) -> ctt_eth_kzg_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = " Given a blob, return the KZG proof that is used to verify it against the commitment.\n  This method does not verify that the commitment is correct with respect to `blob`."]
+    pub fn ctt_eth_kzg_compute_blob_kzg_proof_parallel(
+        ctx: *const ctt_eth_kzg_context,
+        tp: *const ctt_threadpool,
+        proof: *mut ctt_eth_kzg_proof,
+        blob: *const ctt_eth_kzg_blob,
+        commitment: *const ctt_eth_kzg_commitment,
+    ) -> ctt_eth_kzg_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = " Given a blob and a KZG proof, verify that the blob data corresponds to the provided commitment."]
+    pub fn ctt_eth_kzg_verify_blob_kzg_proof_parallel(
+        ctx: *const ctt_eth_kzg_context,
+        tp: *const ctt_threadpool,
+        blob: *const ctt_eth_kzg_blob,
+        commitment: *const ctt_eth_kzg_commitment,
+        proof: *const ctt_eth_kzg_proof,
+    ) -> ctt_eth_kzg_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = " Verify `n` (blob, commitment, proof) sets efficiently\n\n  `n` is the number of verifications set\n  - if n is negative, this procedure returns verification failure\n  - if n is zero, this procedure returns verification success\n\n  `secure_random_bytes` random bytes must come from a cryptographically secure RNG\n  or computed through the Fiat-Shamir heuristic.\n  It serves as a random number\n  that is not in the control of a potential attacker to prevent potential\n  rogue commitments attacks due to homomorphic properties of pairings,\n  i.e. commitments that are linear combination of others and sum would be zero."]
+    pub fn ctt_eth_kzg_verify_blob_kzg_proof_batch_parallel(
+        ctx: *const ctt_eth_kzg_context,
+        tp: *const ctt_threadpool,
+        blobs: *const ctt_eth_kzg_blob,
+        commitments: *const ctt_eth_kzg_commitment,
+        proofs: *const ctt_eth_kzg_proof,
+        n: usize,
+        secure_random_bytes: *const byte,
+    ) -> ctt_eth_kzg_status;
 }
