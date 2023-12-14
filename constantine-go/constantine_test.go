@@ -438,3 +438,326 @@ func TestVerifyBlobKzgProofBatch(t *testing.T) {
 		})
 	}
 }
+
+// Ethereum EIP-4844 KZG tests - Parallel
+// ----------------------------------------------------------
+
+
+func TestBlobToKZGCommitmentParallel(t *testing.T) {
+	type Test struct {
+		Input struct {
+			Blob string `yaml:"blob"`
+		}
+		Output *EthKzgCommitment `yaml:"output"`
+	}
+
+	ctx, tsErr := EthKzgContextNew(trustedSetupFile)
+	require.NoError(t, tsErr)
+	defer ctx.Delete()
+
+	tests, err := filepath.Glob(blobToKZGCommitmentTests)
+	require.NoError(t, err)
+	require.True(t, len(tests) > 0)
+
+	for _, testPath := range tests {
+		t.Run(testPath, func(t *testing.T) {
+			testFile, err := os.Open(testPath)
+			require.NoError(t, err)
+			test := Test{}
+			err = yaml.NewDecoder(testFile).Decode(&test)
+			require.NoError(t, testFile.Close())
+			require.NoError(t, err)
+
+			var blob EthBlob
+			err = blob.UnmarshalText([]byte(test.Input.Blob))
+			if err != nil {
+				require.Nil(t, test.Output)
+				return
+			}
+
+			// Test sets are run in parallel,
+			// so the threadpool should be initialized in the inner test,
+			// to avoid multiple threadpools conflicting.
+			tp := ThreadpoolNew(runtime.NumCPU())
+			commitment, err := ctx.BlobToKZGCommitmentParallel(tp, blob)
+			tp.Shutdown()
+
+			if err == nil {
+				require.NotNil(t, test.Output)
+				require.Equal(t, test.Output[:], commitment[:])
+			} else {
+				require.Nil(t, test.Output)
+			}
+		})
+	}
+}
+
+func TestComputeKzgProofParallel(t *testing.T) {
+	type Test struct {
+		Input struct {
+			Blob string `yaml:"blob"`
+			Z    string `yaml:"z"`
+		}
+		Output *[]string `yaml:"output"`
+	}
+
+	ctx, tsErr := EthKzgContextNew(trustedSetupFile)
+	require.NoError(t, tsErr)
+	defer ctx.Delete()
+
+	tests, err := filepath.Glob(computeKZGProofTests)
+	require.NoError(t, err)
+	require.True(t, len(tests) > 0)
+
+	for _, testPath := range tests {
+		t.Run(testPath, func(t *testing.T) {
+			testFile, err := os.Open(testPath)
+			require.NoError(t, err)
+			test := Test{}
+			err = yaml.NewDecoder(testFile).Decode(&test)
+			require.NoError(t, testFile.Close())
+			require.NoError(t, err)
+
+			var blob EthBlob
+			err = blob.UnmarshalText([]byte(test.Input.Blob))
+			if err != nil {
+				require.Nil(t, test.Output)
+				return
+			}
+
+			var z EthKzgChallenge
+			err = z.UnmarshalText([]byte(test.Input.Z))
+			if err != nil {
+				require.Nil(t, test.Output)
+				return
+			}
+
+			// Test sets are run in parallel,
+			// so the threadpool should be initialized in the inner test,
+			// to avoid multiple threadpools conflicting.
+			tp := ThreadpoolNew(runtime.NumCPU())
+			proof, y, err := ctx.ComputeKzgProofParallel(tp, blob, z)
+			tp.Shutdown()
+
+			if err == nil {
+				require.NotNil(t, test.Output)
+				var expectedProof EthKzgProof
+				err = expectedProof.UnmarshalText([]byte((*test.Output)[0]))
+				require.NoError(t, err)
+				require.Equal(t, expectedProof[:], proof[:])
+				var expectedY EthKzgEvalAtChallenge
+				err = expectedY.UnmarshalText([]byte((*test.Output)[1]))
+				require.NoError(t, err)
+				require.Equal(t, expectedY[:], y[:])
+			} else {
+				require.Nil(t, test.Output)
+			}
+		})
+	}
+}
+
+func TestComputeBlobKzgProofParallel(t *testing.T) {
+	type Test struct {
+		Input struct {
+			Blob       string `yaml:"blob"`
+			Commitment string `yaml:"commitment"`
+		}
+		Output *EthKzgProof `yaml:"output"`
+	}
+
+	ctx, tsErr := EthKzgContextNew(trustedSetupFile)
+	require.NoError(t, tsErr)
+	defer ctx.Delete()
+
+	tests, err := filepath.Glob(computeBlobKZGProofTests)
+	require.NoError(t, err)
+	require.True(t, len(tests) > 0)
+
+	for _, testPath := range tests {
+		t.Run(testPath, func(t *testing.T) {
+			testFile, err := os.Open(testPath)
+			require.NoError(t, err)
+			test := Test{}
+			err = yaml.NewDecoder(testFile).Decode(&test)
+			require.NoError(t, testFile.Close())
+			require.NoError(t, err)
+
+			var blob EthBlob
+			err = blob.UnmarshalText([]byte(test.Input.Blob))
+			if err != nil {
+				require.Nil(t, test.Output)
+				return
+			}
+
+			var commitment EthKzgCommitment
+			err = commitment.UnmarshalText([]byte(test.Input.Commitment))
+			if err != nil {
+				require.Nil(t, test.Output)
+				return
+			}
+
+			// Test sets are run in parallel,
+			// so the threadpool should be initialized in the inner test,
+			// to avoid multiple threadpools conflicting.
+			tp := ThreadpoolNew(runtime.NumCPU())
+			proof, err := ctx.ComputeBlobKzgProofParallel(tp, blob, commitment)
+			tp.Shutdown()
+
+			if err == nil {
+				require.NotNil(t, test.Output)
+				require.Equal(t, test.Output[:], proof[:])
+			} else {
+				require.Nil(t, test.Output)
+			}
+		})
+	}
+}
+
+func TestVerifyBlobKzgProofParallel(t *testing.T) {
+	type Test struct {
+		Input struct {
+			Blob       string `yaml:"blob"`
+			Commitment string `yaml:"commitment"`
+			Proof      string `yaml:"proof"`
+		}
+		Output *bool `yaml:"output"`
+	}
+
+	ctx, tsErr := EthKzgContextNew(trustedSetupFile)
+	require.NoError(t, tsErr)
+	defer ctx.Delete()
+
+	tests, err := filepath.Glob(verifyBlobKZGProofTests)
+	require.NoError(t, err)
+	require.True(t, len(tests) > 0)
+
+	for _, testPath := range tests {
+		t.Run(testPath, func(t *testing.T) {
+			testFile, err := os.Open(testPath)
+			require.NoError(t, err)
+			test := Test{}
+			err = yaml.NewDecoder(testFile).Decode(&test)
+			require.NoError(t, testFile.Close())
+			require.NoError(t, err)
+
+			var blob EthBlob
+			err = blob.UnmarshalText([]byte(test.Input.Blob))
+			if err != nil {
+				require.Nil(t, test.Output)
+				return
+			}
+
+			var commitment EthKzgCommitment
+			err = commitment.UnmarshalText([]byte(test.Input.Commitment))
+			if err != nil {
+				require.Nil(t, test.Output)
+				return
+			}
+
+			var proof EthKzgProof
+			err = proof.UnmarshalText([]byte(test.Input.Proof))
+			if err != nil {
+				require.Nil(t, test.Output)
+				return
+			}
+
+			// Test sets are run in parallel,
+			// so the threadpool should be initialized in the inner test,
+			// to avoid multiple threadpools conflicting.
+			tp := ThreadpoolNew(runtime.NumCPU())
+			valid, err := ctx.VerifyBlobKzgProofParallel(tp, blob, commitment, proof)
+			tp.Shutdown()
+
+			if err == nil {
+				require.NotNil(t, test.Output)
+				require.Equal(t, *test.Output, valid)
+			} else {
+				if test.Output != nil {
+					require.Equal(t, *test.Output, valid)
+				}
+			}
+		})
+	}
+}
+
+func TestVerifyBlobKzgProofBatchParallel(t *testing.T) {
+	type Test struct {
+		Input struct {
+			Blobs       []string `yaml:"blobs"`
+			Commitments []string `yaml:"commitments"`
+			Proofs      []string `yaml:"proofs"`
+		}
+		Output *bool `yaml:"output"`
+	}
+
+	ctx, tsErr := EthKzgContextNew(trustedSetupFile)
+	require.NoError(t, tsErr)
+	defer ctx.Delete()
+
+	var secureRandomBytes [32]byte
+	_, _ = rand.Read(secureRandomBytes[:])
+
+	tests, err := filepath.Glob(verifyBlobKZGProofBatchTests)
+	require.NoError(t, err)
+	require.True(t, len(tests) > 0)
+
+	for _, testPath := range tests {
+		t.Run(testPath, func(t *testing.T) {
+			testFile, err := os.Open(testPath)
+			require.NoError(t, err)
+			test := Test{}
+			err = yaml.NewDecoder(testFile).Decode(&test)
+			require.NoError(t, testFile.Close())
+			require.NoError(t, err)
+
+			var blobs []EthBlob
+			for _, b := range test.Input.Blobs {
+				var blob EthBlob
+				err = blob.UnmarshalText([]byte(b))
+				if err != nil {
+					require.Nil(t, test.Output)
+					return
+				}
+				blobs = append(blobs, blob)
+			}
+
+			var commitments []EthKzgCommitment
+			for _, c := range test.Input.Commitments {
+				var commitment EthKzgCommitment
+				err = commitment.UnmarshalText([]byte(c))
+				if err != nil {
+					require.Nil(t, test.Output)
+					return
+				}
+				commitments = append(commitments, commitment)
+			}
+
+			var proofs []EthKzgProof
+			for _, p := range test.Input.Proofs {
+				var proof EthKzgProof
+				err = proof.UnmarshalText([]byte(p))
+				if err != nil {
+					require.Nil(t, test.Output)
+					return
+				}
+				proofs = append(proofs, proof)
+			}
+
+			// Test sets are run in parallel,
+			// so the threadpool should be initialized in the inner test,
+			// to avoid multiple threadpools conflicting.
+			tp := ThreadpoolNew(runtime.NumCPU())
+			valid, err := ctx.VerifyBlobKzgProofBatchParallel(tp, blobs, commitments, proofs, secureRandomBytes)
+			tp.Shutdown()
+
+			if err == nil {
+				require.NotNil(t, test.Output)
+				require.Equal(t, *test.Output, valid)
+			} else {
+				if test.Output != nil {
+					require.Equal(t, *test.Output, valid)
+				}
+			}
+		})
+	}
+}
