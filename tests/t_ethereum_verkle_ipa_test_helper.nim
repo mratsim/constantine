@@ -7,19 +7,18 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import 
-    ./[multiproof, barycentric_form],
-    ./helper_types,
-    ../math/config/[type_ff, curves],
-    ../math/elliptic/[
+    ../constantine/eth_verkle_ipa/[multiproof, barycentric_form, helper_types],
+    ../constantine/math/config/[type_ff, curves],
+    ../constantine/math/elliptic/[
      ec_twistededwards_affine,
      ec_twistededwards_projective
       ],
-    ../serialization/[
+    ../constantine/serialization/[
       codecs_status_codes,
       codecs_banderwagon,
       codecs
        ],
-    ../math/arithmetic
+    ../constantine/math/arithmetic
 
 # ############################################################
 #

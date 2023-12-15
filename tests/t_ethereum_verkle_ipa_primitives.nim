@@ -6,28 +6,28 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import 
-    ../constantine/eth_verkle_ipa/[
-        barycentric_form,
-        test_helper, 
-        helper_types, 
-        transcript_gen, 
-        common_utils,
-        ipa_prover,
-        ipa_verifier,
-        multiproof],
-    ../constantine/hashes,
-    std/[unittest],
-    ../constantine/math/config/[type_ff, curves],
-    ../constantine/math/elliptic/[
-     ec_twistededwards_affine,
-     ec_twistededwards_projective
-      ],
-    ../constantine/math/io/io_fields,
-    ../constantine/math/arithmetic,
-    ../constantine/math/constants/zoo_generators,
-    ../tests/math_elliptic_curves/t_ec_template,
-    ../constantine/ethereum_verkle_primitives
+import
+  ./t_ethereum_verkle_ipa_test_helper,
+  ../constantine/eth_verkle_ipa/[
+      barycentric_form,
+      helper_types, 
+      transcript_gen, 
+      common_utils,
+      ipa_prover,
+      ipa_verifier,
+      multiproof],
+  ../constantine/hashes,
+  std/[unittest],
+  ../constantine/math/config/[type_ff, curves],
+  ../constantine/math/elliptic/[
+    ec_twistededwards_affine,
+    ec_twistededwards_projective
+    ],
+  ../constantine/math/io/io_fields,
+  ../constantine/math/arithmetic,
+  ../constantine/math/constants/zoo_generators,
+  ../tests/math_elliptic_curves/t_ec_template,
+  ../constantine/ethereum_verkle_primitives
 
 
 # ############################################################
