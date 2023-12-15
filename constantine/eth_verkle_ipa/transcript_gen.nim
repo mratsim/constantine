@@ -14,14 +14,13 @@
 
 import
     ./helper_types,
-    ../../platforms/[primitives,abstractions],
-    ../../serialization/endians,
-    ../../math/config/[type_ff, curves],
-    ../../math/[extension_fields, arithmetic],
-    ../../math/elliptic/ec_twistededwards_projective,
-    ../../../constantine/hashes,
-    ../../../constantine/serialization/[codecs_banderwagon,codecs_status_codes]
-
+    ../platforms/[primitives,abstractions],
+    ../serialization/endians,
+    ../math/config/[type_ff, curves],
+    ../math/[extension_fields, arithmetic],
+    ../math/elliptic/ec_twistededwards_projective,
+    ../hashes,
+    ../serialization/[codecs_banderwagon,codecs_status_codes]
 
 
 func newTranscriptGen*[sha256](res: var sha256, label: openArray[byte]) =
@@ -69,11 +68,3 @@ func generateChallengeScalar* (gen: var matchingOrderBigInt(Banderwagon), transc
     if(gen.deserialize_scalar(hash) == cttCodecScalar_Success):
         transcript.clear()
         transcript.scalarAppend(label, gen)
-
-
-    
-
-
-
-
-

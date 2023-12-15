@@ -13,12 +13,12 @@
 # ############################################################
 
 import
-  ../../../constantine/platforms/primitives,
-  ../../math/config/[type_ff, curves],
-  ../../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_affine],
-  ../../../constantine/math/arithmetic,
-  ../../../constantine/math/io/[io_fields],
-  ../../../constantine/curves_primitives
+  ../platforms/primitives,
+  ../math/config/[type_ff, curves],
+  ../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_affine],
+  ../math/arithmetic,
+  ../math/io/[io_fields],
+  ../curves_primitives
 
 type
   EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]

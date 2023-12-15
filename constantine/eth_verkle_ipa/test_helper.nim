@@ -9,18 +9,17 @@
 import 
     ./[multiproof, barycentric_form],
     ./helper_types,
-    ../../../constantine/math/config/[type_ff, curves],
-    ../../../constantine/math/elliptic/[
+    ../math/config/[type_ff, curves],
+    ../math/elliptic/[
      ec_twistededwards_affine,
      ec_twistededwards_projective
       ],
-    ../../../constantine/math/io/io_fields,
-    ../../../constantine/serialization/[
+    ../serialization/[
       codecs_status_codes,
       codecs_banderwagon,
       codecs
        ],
-    ../../../constantine/math/arithmetic
+    ../math/arithmetic
 
 # ############################################################
 #

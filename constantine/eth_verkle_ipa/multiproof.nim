@@ -9,15 +9,15 @@
 import
   tables,
   ./[transcript_gen, common_utils, ipa_prover, barycentric_form, helper_types],
-  ../../../constantine/platforms/primitives,
-  ../../../constantine/hashes,
-  ../../math/config/[type_ff, curves],
-  ../../../constantine/math/elliptic/[ec_multi_scalar_mul, ec_multi_scalar_mul_scheduler],
-  ../../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
-  ../../../constantine/math/arithmetic,
-  ../../../constantine/platforms/[views],
-  ../../../constantine/math/io/[io_bigints,io_fields],
-  ../../../constantine/curves_primitives
+  ../platforms/primitives,
+  ../hashes,
+  ../math/config/[type_ff, curves],
+  ../math/elliptic/[ec_multi_scalar_mul, ec_multi_scalar_mul_scheduler],
+  ../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
+  ../math/arithmetic,
+  ../platforms/[views],
+  ../math/io/[io_bigints,io_fields],
+  ../curves_primitives
 
 
 # ############################################################

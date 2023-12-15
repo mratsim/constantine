@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import 
-    ../constantine/commitments/ipa/[
+    ../constantine/eth_verkle_ipa/[
         barycentric_form,
         test_helper, 
         helper_types, 
@@ -24,9 +24,6 @@ import
      ec_twistededwards_projective
       ],
     ../constantine/math/io/io_fields,
-    ../constantine/serialization/[
-      codecs
-       ],
     ../constantine/math/arithmetic,
     ../constantine/math/constants/zoo_generators,
     ../tests/math_elliptic_curves/t_ec_template,

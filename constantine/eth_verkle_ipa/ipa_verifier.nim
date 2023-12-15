@@ -7,17 +7,16 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ./[transcript_gen, common_utils, ipa_prover, barycentric_form, helper_types],
-  ../../../constantine/platforms/primitives,
-  ../../math/config/[type_ff, curves],
-  ../../../constantine/hashes,
-  ../../../constantine/math/elliptic/[ec_multi_scalar_mul, ec_multi_scalar_mul_scheduler],
-  ../../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
-  ../../../constantine/math/arithmetic,
-  ../../../constantine/math/elliptic/ec_scalar_mul, 
-  ../../../constantine/platforms/[views],
-  ../../../constantine/math/io/[io_fields],
-  ../../../constantine/curves_primitives
+  ./[transcript_gen, common_utils, barycentric_form, helper_types],
+  ../platforms/primitives,
+  ../math/config/[type_ff, curves],
+  ../hashes,
+  ../math/elliptic/[ec_multi_scalar_mul, ec_multi_scalar_mul_scheduler],
+  ../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
+  ../math/arithmetic,
+  ../math/elliptic/ec_scalar_mul, 
+  ../math/io/[io_fields],
+  ../curves_primitives
 
 # ############################################################
 #
@@ -148,7 +147,3 @@ func checkIPAProof*(r: var bool,transcript: var sha256, ic: IPASettings, commitm
         r = false
     
     r = true
-
-    
-
-        

@@ -8,10 +8,10 @@
 import 
  math,
  ./helper_types,
- ../../../constantine/math/config/[type_ff, curves],
- ../../../constantine/math/elliptic/[ec_twistededwards_projective],
- ../../../constantine/math/arithmetic/[finite_fields],
- ../../../constantine/math/arithmetic
+ ../math/config/[type_ff, curves],
+ ../math/elliptic/[ec_twistededwards_projective],
+ ../math/arithmetic/[finite_fields],
+ ../math/arithmetic
 
 # ############################################################
 #
@@ -183,5 +183,3 @@ func divisionOnDomain* [EC_P_Fr](res: var array[DOMAIN,EC_P_Fr], precomp: Precom
     tmp.prod(weight_ratios, res[i])
 
     res[index].diff(res[index], tmp)
-
-

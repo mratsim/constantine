@@ -14,15 +14,15 @@
 
 import
   ./[transcript_gen, common_utils, helper_types, barycentric_form],
-  ../../../constantine/platforms/primitives,
-  ../../../constantine/hashes,
-  ../../math/config/[type_ff, curves],
-  ../../math/elliptic/[ec_twistededwards_projective],
-  ../../../constantine/math/arithmetic,
-  ../../../constantine/math/elliptic/ec_scalar_mul, 
-  ../../../constantine/platforms/[views],
-  ../../../constantine/math/io/[io_fields],
-  ../../../constantine/curves_primitives
+  ../platforms/primitives,
+  ../hashes,
+  ../math/config/[type_ff, curves],
+  ../math/elliptic/[ec_twistededwards_projective],
+  ../math/arithmetic,
+  ../math/elliptic/ec_scalar_mul, 
+  ../platforms/[views],
+  ../math/io/[io_fields],
+  ../curves_primitives
 
 # ############################################################
 #
@@ -184,22 +184,4 @@ func isIPAProofEqual* (res: var bool, p1: IPAProof, p2: IPAProof)=
 
   else:
     res = true
-
-
-
-
-
-
-
-
-
-
-  
-
-
-
-
-  
-
-
 

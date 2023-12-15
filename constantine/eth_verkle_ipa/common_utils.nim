@@ -10,16 +10,16 @@
 ## such as the SRS
 import
     ./[helper_types],
-    ../../../constantine/platforms/primitives,
-    ../../math/config/[type_ff, curves],
-    ../../math/elliptic/ec_twistededwards_projective,
-    ../../../constantine/hashes,
-    ../../../constantine/math/arithmetic,
-    ../../../constantine/math/elliptic/ec_scalar_mul,
-    ../../../constantine/math/elliptic/[ec_multi_scalar_mul, ec_multi_scalar_mul_scheduler],
-    ../../../constantine/platforms/[bithacks,views],
-    ../../../constantine/curves_primitives,
-    ../../../constantine/serialization/[codecs_banderwagon,codecs_status_codes, endians]
+    ../platforms/primitives,
+    ../math/config/[type_ff, curves],
+    ../math/elliptic/ec_twistededwards_projective,
+    ../hashes,
+    ../math/arithmetic,
+    ../math/elliptic/ec_scalar_mul,
+    ../math/elliptic/[ec_multi_scalar_mul, ec_multi_scalar_mul_scheduler],
+    ../platforms/[bithacks,views],
+    ../curves_primitives,
+    ../serialization/[codecs_banderwagon,codecs_status_codes, endians]
 
 # ############################################################
 #
