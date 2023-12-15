@@ -21,6 +21,7 @@ import
   ../constantine/csprngs,
   # Protocols
   ../constantine/ethereum_bls_signatures,
+  ../constantine/trusted_setups/ethereum_kzg_srs,
   ../constantine/ethereum_eip4844_kzg,
 
   # Ensure globals like proc from kernel32.dll are populated at library load time
