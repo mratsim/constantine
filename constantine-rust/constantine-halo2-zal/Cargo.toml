@@ -1,5 +1,5 @@
 [package]
-name = "constantine-zal-halo2kzg"
+name = "constantine-halo2-zal"
 version = "0.1.0"
 edition = "2021"
 

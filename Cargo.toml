@@ -2,7 +2,8 @@
 resolver = "2"
 members = [
     "constantine-rust/constantine-sys",
-    "constantine-rust/constantine-zal-halo2kzg",
+    "constantine-rust/constantine-halo2-zal",
+    "constantine-rust/constantine-ethereum-kzg",
 ]
 
 # If Nim static library is compiled with Clang ThinLTO, enable it on Rust side

@@ -45,7 +45,7 @@ impl ZalEngine for CttEngine {}
 impl MsmAccel<bn256::G1Affine> for CttEngine {
     fn msm(&self, coeffs: &[bn256::Fr], bases: &[bn256::G1Affine]) -> bn256::G1 {
         assert_eq!(coeffs.len(), bases.len());
-        let mut result: MaybeUninit<bn254_snarks_g1_prj> = MaybeUninit::uninit();
+        let mut result = MaybeUninit::<bn254_snarks_g1_prj>::uninit();
         unsafe {
             ctt_bn254_snarks_g1_prj_multi_scalar_mul_fr_coefs_vartime_parallel(
                 self.ctx,
