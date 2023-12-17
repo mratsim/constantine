@@ -4,14 +4,14 @@ pub type secret_word = usize;
 pub type secret_bool = usize;
 pub type byte = u8;
 #[repr(u8)]
-#[derive(Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 pub enum ctt_codec_scalar_status {
     cttCodecScalar_Success = 0,
     cttCodecScalar_Zero = 1,
     cttCodecScalar_ScalarLargerThanCurveOrder = 2,
 }
 #[repr(u8)]
-#[derive(Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 pub enum ctt_codec_ecc_status {
     cttCodecEcc_Success = 0,
     cttCodecEcc_InvalidEncoding = 1,
@@ -21,12 +21,12 @@ pub enum ctt_codec_ecc_status {
     cttCodecEcc_PointAtInfinity = 5,
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Debug)]
 pub struct ctt_threadpool {
     _unused: [u8; 0],
 }
 extern "C" {
-    #[doc = " Create a new threadpool that manages `num_threads` threads\n\n Initialize a threadpool that manages `num_threads` threads.\n\n A Constantine's threadpool cannot be instantiated\n on a thread managed by another Constantine's threadpool\n including the root thread.\n\n Mixing with other libraries' threadpools and runtime\n will not impact correctness but may impact performance."]
+    #[doc = " Create a new threadpool that manages `num_threads` threads\n\n Initialize a threadpool that manages `num_threads` threads.\n\n A threadpool uses thread-local storage and (for external consumers)\n MUST be used from the thread that instantiated it.\n\n In particular, this means that:\n - runtime.LockOSThread() is needed from Go to avoid it allocating CGO calls to a new thread.\n - The threadpool cannot be ``Send`` in Rust or ``Clone`` (we can't deep-copy threads)\n\n 2 threadpools MUST NOT be instantiated at the same time from the same thread.\n\n Mixing with other libraries' threadpools and runtime\n will not impact correctness but may impact performance.\n"]
     pub fn ctt_threadpool_new(num_threads: usize) -> *mut ctt_threadpool;
 }
 extern "C" {
@@ -3871,7 +3871,7 @@ fn bindgen_test_layout_ctt_eth_bls_signature() {
     );
 }
 #[repr(u8)]
-#[derive(Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 pub enum ctt_eth_bls_status {
     cttEthBls_Success = 0,
     cttEthBls_VerificationFailure = 1,
@@ -4181,7 +4181,7 @@ fn bindgen_test_layout_ctt_eth_kzg_eval_at_challenge() {
     );
 }
 #[repr(u8)]
-#[derive(Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 pub enum ctt_eth_kzg_status {
     cttEthKzg_Success = 0,
     cttEthKzg_VerificationFailure = 1,
@@ -4193,14 +4193,14 @@ pub enum ctt_eth_kzg_status {
     cttEthKzg_EccPointNotInSubgroup = 7,
 }
 #[repr(u8)]
-#[derive(Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 pub enum ctt_eth_trusted_setup_status {
     cttEthTS_Success = 0,
     cttEthTS_MissingOrInaccessibleFile = 1,
     cttEthTS_InvalidFile = 2,
 }
 #[repr(u8)]
-#[derive(Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 pub enum ctt_eth_trusted_setup_format {
     cttEthTSFormat_ckzg4844 = 0,
 }

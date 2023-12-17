@@ -25,12 +25,18 @@ typedef struct ctt_threadpool ctt_threadpool;
  *
  * Initialize a threadpool that manages `num_threads` threads.
  *
- * A Constantine's threadpool cannot be instantiated
- * on a thread managed by another Constantine's threadpool
- * including the root thread.
+ * A threadpool uses thread-local storage and (for external consumers)
+ * MUST be used from the thread that instantiated it.
+ *
+ * In particular, this means that:
+ * - runtime.LockOSThread() is needed from Go to avoid it allocating CGO calls to a new thread.
+ * - The threadpool cannot be ``Send`` in Rust or ``Clone`` (we can't deep-copy threads)
+ *
+ * 2 threadpools MUST NOT be instantiated at the same time from the same thread.
  *
  * Mixing with other libraries' threadpools and runtime
  * will not impact correctness but may impact performance.
+ *
  */
 struct ctt_threadpool* ctt_threadpool_new(size_t num_threads);
 

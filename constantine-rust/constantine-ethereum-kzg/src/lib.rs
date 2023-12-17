@@ -12,6 +12,8 @@ use std::{path::Path, ffi::CString};
 
 // Threadpool
 // ------------------------------------------------------------
+
+#[derive(Debug)]
 pub struct CttThreadpool {
     ctx: *mut ctt_threadpool,
 }
@@ -33,6 +35,7 @@ impl Drop for CttThreadpool {
 // Trusted setup
 // ------------------------------------------------------------
 
+#[derive(Debug)]
 pub struct EthKzgContext {
     ctx: *const ctt_eth_kzg_context
 }

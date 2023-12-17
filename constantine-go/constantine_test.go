@@ -444,7 +444,7 @@ func TestVerifyBlobKzgProofBatch(t *testing.T) {
 
 func createTestThreadpool(t *testing.T) Threadpool {
 	// Ensure all C function are called from the same OS thread
-	// to avoid messing up the trheadpool Thread-Local-Storage.
+	// to avoid messing up the threadpool Thread-Local-Storage.
 	// Be sure to not use t.Run are subtests are run on separate goroutine as well
 	runtime.LockOSThread()
 	tp := ThreadpoolNew(runtime.NumCPU())

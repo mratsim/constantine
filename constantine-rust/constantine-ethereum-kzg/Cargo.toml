@@ -9,3 +9,11 @@ repository = "https://github.com/mratsim/constantine"
 
 [dependencies]
 constantine-sys = { path = "../constantine-sys" }
+
+[dev-dependencies]
+serde = { version = "1.0", default-features = false, features = [
+    "derive",
+] }
+serde_yaml = "0.9"
+hex = { version = "0.4", default-features = false, features = ["serde"] }
+glob = "0.3"
