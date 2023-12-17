@@ -9,7 +9,16 @@
 use constantine_sys::*;
 
 use ::core::mem::MaybeUninit;
+use core::ffi::c_void;
 use std::{ffi::CString, path::Path};
+
+// Cryptographically secure RNG
+// ------------------------------------------------------------
+
+#[inline(always)]
+pub fn csprng_sysrand(buffer: &mut [u8]) {
+    unsafe{ ctt_csprng_sysrand(buffer.as_mut_ptr() as *mut c_void, buffer.len()); }
+}
 
 // Threadpool
 // ------------------------------------------------------------
@@ -28,6 +37,7 @@ impl CttThreadpool {
 }
 
 impl Drop for CttThreadpool {
+    #[inline(always)]
     fn drop(&mut self) {
         unsafe { ctt_threadpool_shutdown(self.ctx) }
     }
@@ -42,6 +52,7 @@ pub struct EthKzgContext {
 }
 
 impl Drop for EthKzgContext {
+    #[inline(always)]
     fn drop(&mut self) {
         unsafe { ctt_eth_trusted_setup_delete(self.ctx as *mut ctt_eth_kzg_context) }
     }
@@ -89,6 +100,7 @@ impl EthKzgContext {
         }
     }
 
+    #[inline]
     pub fn blob_to_kzg_commitment(
         &self,
         blob: &[u8; 4096 * 32],
@@ -107,6 +119,7 @@ impl EthKzgContext {
         }
     }
 
+    #[inline]
     pub fn compute_kzg_proof(
         &self,
         blob: &[u8; 4096 * 32],
@@ -131,6 +144,7 @@ impl EthKzgContext {
         }
     }
 
+    #[inline]
     pub fn verify_kzg_proof(
         &self,
         commitment: &[u8; 48],
@@ -154,6 +168,7 @@ impl EthKzgContext {
         }
     }
 
+    #[inline]
     pub fn compute_blob_kzg_proof(
         &self,
         blob: &[u8; 4096 * 32],
@@ -174,6 +189,7 @@ impl EthKzgContext {
         }
     }
 
+    #[inline]
     pub fn verify_blob_kzg_proof(
         &self,
         blob: &[u8; 4096 * 32],
@@ -195,6 +211,7 @@ impl EthKzgContext {
         }
     }
 
+    #[inline]
     pub fn verify_blob_kzg_proof_batch(
         &self,
         blobs: &[[u8; 4096 * 32]],
@@ -225,6 +242,7 @@ impl EthKzgContext {
     // Parallel versions
     // --------------------------------------------------------------------
 
+    #[inline]
     pub fn blob_to_kzg_commitment_parallel(
         &self,
         tp: &CttThreadpool,
@@ -245,6 +263,7 @@ impl EthKzgContext {
         }
     }
 
+    #[inline]
     pub fn compute_kzg_proof_parallel(
         &self,
         tp: &CttThreadpool,
@@ -271,6 +290,7 @@ impl EthKzgContext {
         }
     }
 
+    #[inline]
     pub fn compute_blob_kzg_proof_parallel(
         &self,
         tp: &CttThreadpool,
@@ -293,6 +313,7 @@ impl EthKzgContext {
         }
     }
 
+    #[inline]
     pub fn verify_blob_kzg_proof_parallel(
         &self,
         tp: &CttThreadpool,
@@ -316,6 +337,7 @@ impl EthKzgContext {
         }
     }
 
+    #[inline]
     pub fn verify_blob_kzg_proof_batch_parallel(
         &self,
         tp: &CttThreadpool,
