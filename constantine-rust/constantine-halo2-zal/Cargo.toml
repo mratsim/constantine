@@ -21,10 +21,11 @@ criterion = { version = "0.3", features = ["html_reports"] }
 rand_xorshift = "0.3"
 maybe-rayon = { version = "0.1.0", default-features = false }
 
-# Ensure we bench Halo2curves with full optimizations
 # In CI "asm" needs to be disabled as some agents don't support ADX.
-halo2curves = { git = 'https://github.com/taikoxyz/halo2curves', branch = "pr-pse-exec-engine", features = ["multicore", "asm"]}
+halo2curves = { git = 'https://github.com/taikoxyz/halo2curves', branch = "pr-pse-exec-engine", features = ["multicore"]}
 
 [[bench]]
 name = "msm"
 harness = false
+# bench with `cargo bench --features halo2curves/asm -- msm`
+# to enable halo2curves with all optimizations

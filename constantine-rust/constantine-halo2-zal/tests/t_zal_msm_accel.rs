@@ -7,6 +7,7 @@
 //! at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 use constantine_halo2_zal::CttEngine;
+
 use ark_std::{end_timer, start_timer};
 use rand_core::OsRng;
 

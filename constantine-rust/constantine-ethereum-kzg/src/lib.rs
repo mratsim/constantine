@@ -6,9 +6,10 @@
 //!   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 //! at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-use ::core::mem::MaybeUninit;
 use constantine_sys::*;
-use std::{path::Path, ffi::CString};
+
+use ::core::mem::MaybeUninit;
+use std::{ffi::CString, path::Path};
 
 // Threadpool
 // ------------------------------------------------------------
@@ -37,7 +38,7 @@ impl Drop for CttThreadpool {
 
 #[derive(Debug)]
 pub struct EthKzgContext {
-    ctx: *const ctt_eth_kzg_context
+    ctx: *const ctt_eth_kzg_context,
 }
 
 impl Drop for EthKzgContext {
@@ -63,13 +64,15 @@ impl EthKzgContext {
 
         #[cfg(windows)]
         let raw_path = {
-            file_path.as_os_str()
-                     .to_str()
-                     .ok_or(cttEthTS_MissingOrInaccessibleFile)?
-                     .as_bytes()
+            file_path
+                .as_os_str()
+                .to_str()
+                .ok_or(cttEthTS_MissingOrInaccessibleFile)?
+                .as_bytes()
         };
 
-        let c_path = CString::new(raw_path).map_err(|_| ctt_eth_trusted_setup_status::cttEthTS_MissingOrInaccessibleFile)?;
+        let c_path = CString::new(raw_path)
+            .map_err(|_| ctt_eth_trusted_setup_status::cttEthTS_MissingOrInaccessibleFile)?;
 
         let mut ctx: *mut ctt_eth_kzg_context = std::ptr::null_mut();
         let ctx_ptr: *mut *mut ctt_eth_kzg_context = &mut ctx;
@@ -81,14 +84,14 @@ impl EthKzgContext {
             )
         };
         match status {
-            ctt_eth_trusted_setup_status::cttEthTS_Success => Ok(Self {ctx}),
+            ctt_eth_trusted_setup_status::cttEthTS_Success => Ok(Self { ctx }),
             _ => Err(status),
         }
     }
 
     pub fn blob_to_kzg_commitment(
         &self,
-        blob: &[u8; 4096 * 32]
+        blob: &[u8; 4096 * 32],
     ) -> Result<[u8; 48], ctt_eth_kzg_status> {
         let mut result: MaybeUninit<[u8; 48]> = MaybeUninit::uninit();
         unsafe {
@@ -107,7 +110,7 @@ impl EthKzgContext {
     pub fn compute_kzg_proof(
         &self,
         blob: &[u8; 4096 * 32],
-        z_challenge: &[u8; 32]
+        z_challenge: &[u8; 32],
     ) -> Result<([u8; 48], [u8; 32]), ctt_eth_kzg_status> {
         let mut proof = MaybeUninit::<[u8; 48]>::uninit();
         let mut y_eval = MaybeUninit::<[u8; 32]>::uninit();
@@ -120,7 +123,9 @@ impl EthKzgContext {
                 z_challenge.as_ptr() as *const ctt_eth_kzg_challenge,
             );
             match status {
-                ctt_eth_kzg_status::cttEthKzg_Success => Ok((proof.assume_init(), y_eval.assume_init())),
+                ctt_eth_kzg_status::cttEthKzg_Success => {
+                    Ok((proof.assume_init(), y_eval.assume_init()))
+                }
                 _ => Err(status),
             }
         }
@@ -145,7 +150,7 @@ impl EthKzgContext {
         match status {
             ctt_eth_kzg_status::cttEthKzg_Success => Ok(true),
             ctt_eth_kzg_status::cttEthKzg_VerificationFailure => Ok(false),
-            _ => Err(status)
+            _ => Err(status),
         }
     }
 
@@ -186,7 +191,7 @@ impl EthKzgContext {
         match status {
             ctt_eth_kzg_status::cttEthKzg_Success => Ok(true),
             ctt_eth_kzg_status::cttEthKzg_VerificationFailure => Ok(false),
-            _ => Err(status)
+            _ => Err(status),
         }
     }
 
@@ -213,7 +218,7 @@ impl EthKzgContext {
         match status {
             ctt_eth_kzg_status::cttEthKzg_Success => Ok(true),
             ctt_eth_kzg_status::cttEthKzg_VerificationFailure => Ok(false),
-            _ => Err(status)
+            _ => Err(status),
         }
     }
 
@@ -223,7 +228,7 @@ impl EthKzgContext {
     pub fn blob_to_kzg_commitment_parallel(
         &self,
         tp: &CttThreadpool,
-        blob: &[u8; 4096 * 32]
+        blob: &[u8; 4096 * 32],
     ) -> Result<[u8; 48], ctt_eth_kzg_status> {
         let mut result: MaybeUninit<[u8; 48]> = MaybeUninit::uninit();
         unsafe {
@@ -244,7 +249,7 @@ impl EthKzgContext {
         &self,
         tp: &CttThreadpool,
         blob: &[u8; 4096 * 32],
-        z_challenge: &[u8; 32]
+        z_challenge: &[u8; 32],
     ) -> Result<([u8; 48], [u8; 32]), ctt_eth_kzg_status> {
         let mut proof = MaybeUninit::<[u8; 48]>::uninit();
         let mut y_eval = MaybeUninit::<[u8; 32]>::uninit();
@@ -258,7 +263,9 @@ impl EthKzgContext {
                 z_challenge.as_ptr() as *const ctt_eth_kzg_challenge,
             );
             match status {
-                ctt_eth_kzg_status::cttEthKzg_Success => Ok((proof.assume_init(), y_eval.assume_init())),
+                ctt_eth_kzg_status::cttEthKzg_Success => {
+                    Ok((proof.assume_init(), y_eval.assume_init()))
+                }
                 _ => Err(status),
             }
         }
@@ -305,7 +312,7 @@ impl EthKzgContext {
         match status {
             ctt_eth_kzg_status::cttEthKzg_Success => Ok(true),
             ctt_eth_kzg_status::cttEthKzg_VerificationFailure => Ok(false),
-            _ => Err(status)
+            _ => Err(status),
         }
     }
 
@@ -334,7 +341,7 @@ impl EthKzgContext {
         match status {
             ctt_eth_kzg_status::cttEthKzg_Success => Ok(true),
             ctt_eth_kzg_status::cttEthKzg_VerificationFailure => Ok(false),
-            _ => Err(status)
+            _ => Err(status),
         }
     }
 }

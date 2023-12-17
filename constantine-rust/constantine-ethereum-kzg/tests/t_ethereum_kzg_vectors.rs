@@ -7,18 +7,21 @@
 //! at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 use constantine_ethereum_kzg::EthKzgContext;
-use std::path::{Path, PathBuf};
+
 use std::fs;
+use std::path::{Path, PathBuf};
+
 use glob::glob;
+use hex;
 use serde::Deserialize;
 use serde_yaml;
-use hex;
 
 #[test]
 fn t_smoke_load_trusted_setup() {
-    let _ctx = EthKzgContext::load_trusted_setup(
-        Path::new("../../constantine/trusted_setups/trusted_setup_ethereum_kzg4844_reference.dat")
-    ).expect("Trusted setup should be loaded without error.");
+    let _ctx = EthKzgContext::load_trusted_setup(Path::new(
+        "../../constantine/trusted_setups/trusted_setup_ethereum_kzg4844_reference.dat",
+    ))
+    .expect("Trusted setup should be loaded without error.");
 }
 
 // Official Ethereum test vectors
@@ -28,7 +31,9 @@ fn t_smoke_load_trusted_setup() {
 // compile-time &str ¯\_(ツ)_/¯, so we need to use macros, C-style.
 
 macro_rules! test_dir {
-    () => ( "../../tests/protocol_ethereum_eip4844_deneb_kzg/" )
+    () => {
+        "../../tests/protocol_ethereum_eip4844_deneb_kzg/"
+    };
 }
 
 const BLOB_TO_KZG_COMMITMENT_TESTS: &str = concat!(test_dir!(), "blob_to_kzg_commitment/*/*/*");
@@ -36,9 +41,11 @@ const COMPUTE_KZG_PROOF_TESTS: &str = concat!(test_dir!(), "compute_kzg_proof/*/
 const COMPUTE_BLOB_KZG_PROOF_TESTS: &str = concat!(test_dir!(), "compute_blob_kzg_proof/*/*/*");
 const VERIFY_KZG_PROOF_TESTS: &str = concat!(test_dir!(), "verify_kzg_proof/*/*/*");
 const VERIFY_BLOB_KZG_PROOF_TESTS: &str = concat!(test_dir!(), "verify_blob_kzg_proof/*/*/*");
-const VERIFY_BLOB_KZG_PROOF_BATCH_TESTS: &str = concat!(test_dir!(), "verify_blob_kzg_proof_batch/*/*/*");
+const VERIFY_BLOB_KZG_PROOF_BATCH_TESTS: &str =
+    concat!(test_dir!(), "verify_blob_kzg_proof_batch/*/*/*");
 
-const SRS_PATH: &str = "../../constantine/trusted_setups/trusted_setup_ethereum_kzg4844_reference.dat";
+const SRS_PATH: &str =
+    "../../constantine/trusted_setups/trusted_setup_ethereum_kzg4844_reference.dat";
 
 // Rust abysmal support for const generics is extremely annoying
 // See:
@@ -56,8 +63,8 @@ impl<const N: usize> hex::FromHex for OptRawBytes<N> {
     fn from_hex<T: AsRef<[u8]>>(hex: T) -> Result<Self, Self::Error> {
         let mut res = Box::new([0_; N]);
         match hex::decode_to_slice(&hex.as_ref()[2..], &mut *res as &mut [u8]) {
-            Ok(_) => Ok(OptRawBytes::<N>{0: Some(res) }),
-            Err(_) => Ok(OptRawBytes::<N>{0: None }),
+            Ok(_) => Ok(OptRawBytes::<N> { 0: Some(res) }),
+            Err(_) => Ok(OptRawBytes::<N> { 0: None }),
         }
     }
 }
@@ -66,7 +73,7 @@ impl<const N: usize> hex::FromHex for OptRawBytes<N> {
 #[serde(transparent)]
 struct OptBytes<const N: usize> {
     #[serde(deserialize_with = "hex::serde::deserialize")]
-    opt_bytes: OptRawBytes<N>
+    opt_bytes: OptRawBytes<N>,
 }
 
 #[test]
@@ -82,9 +89,8 @@ fn t_blob_to_kzg_commitment() {
         output: OptBytes<48>,
     }
 
-    let ctx = EthKzgContext::load_trusted_setup(
-        Path::new(SRS_PATH)
-    ).expect("Trusted setup should be loaded without error.");
+    let ctx = EthKzgContext::load_trusted_setup(Path::new(SRS_PATH))
+        .expect("Trusted setup should be loaded without error.");
 
     let test_files: Vec<PathBuf> = glob(BLOB_TO_KZG_COMMITMENT_TESTS)
         .unwrap()
@@ -93,12 +99,26 @@ fn t_blob_to_kzg_commitment() {
     assert!(!test_files.is_empty());
 
     for test_file in test_files {
+        let test_name = test_file.parent().unwrap().file_name().unwrap();
+        let tv = format!("    Test vector: {:<64}", test_name.to_str().unwrap());
         let unparsed = fs::read_to_string(test_file).unwrap();
         let test: Test = serde_yaml::from_str(&unparsed).unwrap();
 
         let Some(blob) = &test.input.blob.opt_bytes.0 else {
             assert!(test.output.opt_bytes.0.is_none());
+            println!("{}=> SUCCESS - expected deserialization failure", tv);
             continue;
         };
-    };
+
+        match ctx.blob_to_kzg_commitment(blob) {
+            Ok(res) => {
+                assert_eq!(res, *test.output.opt_bytes.0.unwrap());
+                println!("{}=> SUCCESS", tv);
+            }
+            Err(status) => {
+                assert!(test.output.opt_bytes.0.is_none());
+                println!("{}=> SUCCESS - expected failure {:?}", tv, status);
+            }
+        }
+    }
 }

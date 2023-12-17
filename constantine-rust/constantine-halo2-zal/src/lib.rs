@@ -9,12 +9,14 @@
 //! Implementation of the ZK Accel Layer using Constantine as a backend
 //! See https://github.com/privacy-scaling-explorations/halo2/issues/216
 
-use ::core::mem::MaybeUninit;
 use constantine_sys::*;
+
+use ::core::mem::MaybeUninit;
+use std::mem;
+
 use halo2curves::bn256;
 use halo2curves::zal::{MsmAccel, ZalEngine};
 use halo2curves::CurveAffine;
-use std::mem;
 
 #[derive(Debug)]
 pub struct CttEngine {
