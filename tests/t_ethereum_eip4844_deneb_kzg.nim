@@ -160,15 +160,15 @@ testGen(compute_kzg_proof, testVector):
   stdout.write "[" & $status & "]\n"
 
   if status == cttEthKzg_Success:
-    parseAssign(expectedEvalAtChallenge, 32, testVector["output"][1].content)
     parseAssign(expectedProof, 48, testVector["output"][0].content)
+    parseAssign(expectedEvalAtChallenge, 32, testVector["output"][1].content)
 
-    doAssert bool(y == expectedEvalAtChallenge[]), block:
-      "\ny (= p(z)): " & y.toHex() &
-      "\nexpected:   " & expectedEvalAtChallenge[].toHex() & "\n"
     doAssert bool(proof == expectedProof[]), block:
       "\nproof:    " & proof.toHex() &
       "\nexpected: " & expectedProof[].toHex() & "\n"
+    doAssert bool(y == expectedEvalAtChallenge[]), block:
+      "\ny (= p(z)): " & y.toHex() &
+      "\nexpected:   " & expectedEvalAtChallenge[].toHex() & "\n"
   else:
     doAssert testVector["output"].content == "null"
 
