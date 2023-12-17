@@ -79,6 +79,7 @@ type
   cttEthKzgStatus* = enum
     cttEthKzg_Success
     cttEthKzg_VerificationFailure
+    cttEthKzg_InputsLengthsMismatch
     cttEthKzg_ScalarZero
     cttEthKzg_ScalarLargerThanCurveOrder
     cttEthKzg_EccInvalidEncoding

@@ -17,7 +17,9 @@ use std::{ffi::CString, path::Path};
 
 #[inline(always)]
 pub fn csprng_sysrand(buffer: &mut [u8]) {
-    unsafe{ ctt_csprng_sysrand(buffer.as_mut_ptr() as *mut c_void, buffer.len()); }
+    unsafe {
+        ctt_csprng_sysrand(buffer.as_mut_ptr() as *mut c_void, buffer.len());
+    }
 }
 
 // Threadpool
@@ -219,8 +221,9 @@ impl EthKzgContext {
         proofs: &[[u8; 48]],
         secure_random_bytes: &[u8; 32],
     ) -> Result<bool, ctt_eth_kzg_status> {
-        debug_assert_eq!(blobs.len(), commitments.len());
-        debug_assert_eq!(blobs.len(), proofs.len());
+        if blobs.len() != commitments.len() || blobs.len() != proofs.len() {
+            return Err(ctt_eth_kzg_status::cttEthKzg_InputsLengthsMismatch);
+        }
 
         let status = unsafe {
             ctt_eth_kzg_verify_blob_kzg_proof_batch(

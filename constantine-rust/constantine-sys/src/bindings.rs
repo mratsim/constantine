@@ -3875,9 +3875,9 @@ fn bindgen_test_layout_ctt_eth_bls_signature() {
 pub enum ctt_eth_bls_status {
     cttEthBls_Success = 0,
     cttEthBls_VerificationFailure = 1,
-    cttEthBls_PointAtInfinity = 2,
+    cttEthBls_InputsLengthsMismatch = 2,
     cttEthBls_ZeroLengthAggregation = 3,
-    cttEthBls_InconsistentLengthsOfInputs = 4,
+    cttEthBls_PointAtInfinity = 4,
 }
 extern "C" {
     #[must_use]
@@ -4185,12 +4185,13 @@ fn bindgen_test_layout_ctt_eth_kzg_eval_at_challenge() {
 pub enum ctt_eth_kzg_status {
     cttEthKzg_Success = 0,
     cttEthKzg_VerificationFailure = 1,
-    cttEthKzg_ScalarZero = 2,
-    cttEthKzg_ScalarLargerThanCurveOrder = 3,
-    cttEthKzg_EccInvalidEncoding = 4,
-    cttEthKzg_EccCoordinateGreaterThanOrEqualModulus = 5,
-    cttEthKzg_EccPointNotOnCurve = 6,
-    cttEthKzg_EccPointNotInSubgroup = 7,
+    cttEthKzg_InputsLengthsMismatch = 2,
+    cttEthKzg_ScalarZero = 3,
+    cttEthKzg_ScalarLargerThanCurveOrder = 4,
+    cttEthKzg_EccInvalidEncoding = 5,
+    cttEthKzg_EccCoordinateGreaterThanOrEqualModulus = 6,
+    cttEthKzg_EccPointNotOnCurve = 7,
+    cttEthKzg_EccPointNotInSubgroup = 8,
 }
 #[repr(u8)]
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]

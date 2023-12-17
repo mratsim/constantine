@@ -29,6 +29,7 @@ typedef struct { byte raw[32]; }        ctt_eth_kzg_eval_at_challenge;
 typedef enum __attribute__((__packed__)) {
     cttEthKzg_Success,
     cttEthKzg_VerificationFailure,
+    cttEthKzg_InputsLengthsMismatch,
     cttEthKzg_ScalarZero,
     cttEthKzg_ScalarLargerThanCurveOrder,
     cttEthKzg_EccInvalidEncoding,
@@ -41,6 +42,7 @@ static const char* ctt_eth_kzg_status_to_string(ctt_eth_kzg_status status) {
   static const char* const statuses[] = {
     "cttEthKzg_Success",
     "cttEthKzg_VerificationFailure",
+    "cttEthKzg_InputsLengthsMismatch",
     "cttEthKzg_ScalarZero",
     "cttEthKzg_ScalarLargerThanCurveOrder",
     "cttEthKzg_EccInvalidEncoding",

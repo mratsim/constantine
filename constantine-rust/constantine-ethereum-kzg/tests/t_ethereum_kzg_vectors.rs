@@ -6,7 +6,7 @@
 //!   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 //! at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-use constantine_ethereum_kzg::{EthKzgContext, csprng_sysrand};
+use constantine_ethereum_kzg::{csprng_sysrand, EthKzgContext};
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -47,17 +47,8 @@ const VERIFY_BLOB_KZG_PROOF_BATCH_TESTS: &str =
 const SRS_PATH: &str =
     "../../constantine/trusted_setups/trusted_setup_ethereum_kzg4844_reference.dat";
 
-// Rust abysmal support for const generics is extremely annoying
-// See:
-//   - https://docs.rs/hex/0.4.3/src/hex/lib.rs.html#220
-//   - https://docs.rs/serde-hex/0.1.0/src/serde_hex/lib.rs.html#299
-//
-// And you can't implement external traits like FromHex yourself
-// because "only traits defined in the current crate can be implemented for arbitrary types"
-
 struct OptRawBytes<const N: usize>(Option<Box<[u8; N]>>);
 
-// hex still doesn't use const generics
 impl<const N: usize> hex::FromHex for OptRawBytes<N> {
     type Error = hex::FromHexError;
     fn from_hex<T: AsRef<[u8]>>(hex: T) -> Result<Self, Self::Error> {
@@ -99,10 +90,19 @@ fn t_blob_to_kzg_commitment() {
     assert!(!test_files.is_empty());
 
     for test_file in test_files {
-        let test_name = test_file.parent().unwrap().file_name().unwrap().to_str().unwrap();
+        let test_name = test_file
+            .parent()
+            .unwrap()
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap();
         let tv = format!("    Test vector: {:<88}", test_name);
         let unparsed = fs::read_to_string(&test_file).unwrap();
-        let test: Test = serde_yaml::from_str(&unparsed).expect(&format!("Formatting should be consistent for file \"{}\"", &test_name));
+        let test: Test = serde_yaml::from_str(&unparsed).expect(&format!(
+            "Formatting should be consistent for file \"{}\"",
+            &test_name
+        ));
 
         let Some(blob) = test.input.blob.opt_bytes.0 else {
             assert!(test.output.opt_bytes.0.is_none());
@@ -135,7 +135,7 @@ fn t_compute_kzg_proof() {
     struct Test {
         input: Input,
         #[serde(default)]
-        output: Option<(OptBytes<48>, OptBytes<32>)>
+        output: Option<(OptBytes<48>, OptBytes<32>)>,
     }
 
     let ctx = EthKzgContext::load_trusted_setup(Path::new(SRS_PATH))
@@ -148,12 +148,22 @@ fn t_compute_kzg_proof() {
     assert!(!test_files.is_empty());
 
     for test_file in test_files {
-        let test_name = test_file.parent().unwrap().file_name().unwrap().to_str().unwrap();
+        let test_name = test_file
+            .parent()
+            .unwrap()
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap();
         let tv = format!("    Test vector: {:<88}", test_name);
         let unparsed = fs::read_to_string(&test_file).unwrap();
-        let test: Test = serde_yaml::from_str(&unparsed).expect(&format!("Formatting should be consistent for file \"{}\"", &test_name));
+        let test: Test = serde_yaml::from_str(&unparsed).expect(&format!(
+            "Formatting should be consistent for file \"{}\"",
+            &test_name
+        ));
 
-        let (Some(blob), Some(challenge)) = (test.input.blob.opt_bytes.0, test.input.z.opt_bytes.0) else {
+        let (Some(blob), Some(challenge)) = (test.input.blob.opt_bytes.0, test.input.z.opt_bytes.0)
+        else {
             assert!(test.output.is_none());
             println!("{}=> SUCCESS - expected deserialization failure", tv);
             continue;
@@ -188,7 +198,7 @@ fn t_verify_kzg_proof() {
     struct Test {
         input: Input,
         #[serde(default)]
-        output: Option<bool>
+        output: Option<bool>,
     }
 
     let ctx = EthKzgContext::load_trusted_setup(Path::new(SRS_PATH))
@@ -201,10 +211,19 @@ fn t_verify_kzg_proof() {
     assert!(!test_files.is_empty());
 
     for test_file in test_files {
-        let test_name = test_file.parent().unwrap().file_name().unwrap().to_str().unwrap();
+        let test_name = test_file
+            .parent()
+            .unwrap()
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap();
         let tv = format!("    Test vector: {:<88}", test_name);
         let unparsed = fs::read_to_string(&test_file).unwrap();
-        let test: Test = serde_yaml::from_str(&unparsed).expect(&format!("Formatting should be consistent for file \"{}\"", &test_name));
+        let test: Test = serde_yaml::from_str(&unparsed).expect(&format!(
+            "Formatting should be consistent for file \"{}\"",
+            &test_name
+        ));
 
         let (Some(commitment), Some(z), Some(y), Some(proof)) = (
             &test.input.commitment.opt_bytes.0,
@@ -245,7 +264,7 @@ fn t_compute_blob_kzg_proof() {
     #[derive(Deserialize)]
     struct Test {
         input: Input,
-        output: OptBytes<48>
+        output: OptBytes<48>,
     }
 
     let ctx = EthKzgContext::load_trusted_setup(Path::new(SRS_PATH))
@@ -258,12 +277,24 @@ fn t_compute_blob_kzg_proof() {
     assert!(!test_files.is_empty());
 
     for test_file in test_files {
-        let test_name = test_file.parent().unwrap().file_name().unwrap().to_str().unwrap();
+        let test_name = test_file
+            .parent()
+            .unwrap()
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap();
         let tv = format!("    Test vector: {:<88}", test_name);
         let unparsed = fs::read_to_string(&test_file).unwrap();
-        let test: Test = serde_yaml::from_str(&unparsed).expect(&format!("Formatting should be consistent for file \"{}\"", &test_name));
+        let test: Test = serde_yaml::from_str(&unparsed).expect(&format!(
+            "Formatting should be consistent for file \"{}\"",
+            &test_name
+        ));
 
-        let (Some(blob), Some(commitment)) = (test.input.blob.opt_bytes.0, test.input.commitment.opt_bytes.0) else {
+        let (Some(blob), Some(commitment)) = (
+            test.input.blob.opt_bytes.0,
+            test.input.commitment.opt_bytes.0,
+        ) else {
             assert!(test.output.opt_bytes.0.is_none());
             println!("{}=> SUCCESS - expected deserialization failure", tv);
             continue;
@@ -295,7 +326,7 @@ fn t_verify_blob_kzg_proof() {
     struct Test {
         input: Input,
         #[serde(default)]
-        output: Option<bool>
+        output: Option<bool>,
     }
 
     let ctx = EthKzgContext::load_trusted_setup(Path::new(SRS_PATH))
@@ -308,12 +339,25 @@ fn t_verify_blob_kzg_proof() {
     assert!(!test_files.is_empty());
 
     for test_file in test_files {
-        let test_name = test_file.parent().unwrap().file_name().unwrap().to_str().unwrap();
+        let test_name = test_file
+            .parent()
+            .unwrap()
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap();
         let tv = format!("    Test vector: {:<88}", test_name);
         let unparsed = fs::read_to_string(&test_file).unwrap();
-        let test: Test = serde_yaml::from_str(&unparsed).expect(&format!("Formatting should be consistent for file \"{}\"", &test_name));
+        let test: Test = serde_yaml::from_str(&unparsed).expect(&format!(
+            "Formatting should be consistent for file \"{}\"",
+            &test_name
+        ));
 
-        let (Some(blob), Some(commitment), Some(proof)) = (test.input.blob.opt_bytes.0, test.input.commitment.opt_bytes.0, test.input.proof.opt_bytes.0) else {
+        let (Some(blob), Some(commitment), Some(proof)) = (
+            test.input.blob.opt_bytes.0,
+            test.input.commitment.opt_bytes.0,
+            test.input.proof.opt_bytes.0,
+        ) else {
             assert!(test.output.is_none());
             println!("{}=> SUCCESS - expected deserialization failure", tv);
             continue;
@@ -349,7 +393,7 @@ fn t_verify_blob_kzg_proof_batch() {
     struct Test {
         input: Input,
         #[serde(default)]
-        output: Option<bool>
+        output: Option<bool>,
     }
 
     let ctx = EthKzgContext::load_trusted_setup(Path::new(SRS_PATH))
@@ -366,42 +410,41 @@ fn t_verify_blob_kzg_proof_batch() {
     assert!(!test_files.is_empty());
 
     for test_file in test_files {
-        let test_name = test_file.parent().unwrap().file_name().unwrap().to_str().unwrap();
+        let test_name = test_file
+            .parent()
+            .unwrap()
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap();
         let tv = format!("    Test vector: {:<88}", test_name);
         let unparsed = fs::read_to_string(&test_file).unwrap();
-        let test: Test = serde_yaml::from_str(&unparsed).expect(&format!("Formatting should be consistent for file \"{}\"", &test_name));
+        let test: Test = serde_yaml::from_str(&unparsed).expect(&format!(
+            "Formatting should be consistent for file \"{}\"",
+            &test_name
+        ));
 
-        if test.input.blobs.len() != test.input.commitments.len() ||
-            test.input.blobs.len() != test.input.proofs.len() {
-            assert!(test.output.is_none());
-            println!("{}=> SUCCESS - batch lengths mismatch", tv);
-            continue;
-        }
-
-        let blobs: Vec<_> = test.input.blobs
+        let blobs: Vec<_> = test
+            .input
+            .blobs
             .into_iter()
-            .filter_map(|v| v.opt_bytes.0)
+            .filter_map(|v| v.opt_bytes.0) // deserialization failure will lead to length mismatch
             .map(|v| *v)
             .collect();
-        let commitments: Vec<_> = test.input.commitments
+        let commitments: Vec<_> = test
+            .input
+            .commitments
             .into_iter()
-            .filter_map(|v| v.opt_bytes.0)
+            .filter_map(|v| v.opt_bytes.0) // deserialization failure will lead to length mismatch
             .map(|v| *v)
             .collect();
-        let proofs: Vec<_> = test.input.proofs
+        let proofs: Vec<_> = test
+            .input
+            .proofs
             .into_iter()
-            .filter_map(|v| v.opt_bytes.0)
+            .filter_map(|v| v.opt_bytes.0) // deserialization failure will lead to length mismatch
             .map(|v| *v)
             .collect();
-
-        // A bit of a hack, the test vectors only do wrong deserialization on one item at a time.
-        // so if lengths are a mismatch now (and not earlier), it's a deserialization failure.
-        if blobs.len() != commitments.len() ||
-            blobs.len() != proofs.len() {
-            assert!(test.output.is_none());
-            println!("{}=> SUCCESS - expected deserialization failure", tv);
-            continue;
-        }
 
         match ctx.verify_blob_kzg_proof_batch(&blobs, &commitments, &proofs, &secure_random_bytes) {
             Ok(valid) => {
