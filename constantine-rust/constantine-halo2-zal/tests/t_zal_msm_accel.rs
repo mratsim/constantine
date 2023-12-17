@@ -9,6 +9,7 @@
 use constantine_halo2_zal::CttEngine;
 
 use ark_std::{end_timer, start_timer};
+use num_cpus;
 use rand_core::OsRng;
 
 use halo2curves::bn256;
