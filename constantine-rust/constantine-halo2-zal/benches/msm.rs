@@ -12,7 +12,7 @@
 #[macro_use]
 extern crate criterion;
 
-use constantine_zal_halo2kzg::CttEngine;
+use constantine_halo2_zal::CttEngine;
 use criterion::{BenchmarkId, Criterion};
 use halo2curves::bn256::{Fr as Scalar, G1Affine as Point};
 use halo2curves::ff::Field;

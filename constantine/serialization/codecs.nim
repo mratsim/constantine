@@ -67,7 +67,7 @@ func paddedFromHex*(output: var openArray[byte], hexStr: openArray[char], order:
   let maxStrSize = output.len * 2
   let size = hexStr.len - skip.int
 
-  doAssert size <= maxStrSize, "size: " & $size & ", maxSize: " & $maxStrSize
+  debug: doAssert size <= maxStrSize, "size: " & $size & ", maxSize: " & $maxStrSize
 
   if size < maxStrSize:
     # include extra byte if odd length

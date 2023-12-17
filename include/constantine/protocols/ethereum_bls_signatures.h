@@ -30,18 +30,18 @@ typedef struct { struct ctt_eth_bls_fp2 x, y; } ctt_eth_bls_signature;
 typedef enum __attribute__((__packed__)) {
     cttEthBls_Success,
     cttEthBls_VerificationFailure,
-    cttEthBls_PointAtInfinity,
+    cttEthBls_InputsLengthsMismatch,
     cttEthBls_ZeroLengthAggregation,
-    cttEthBls_InconsistentLengthsOfInputs,
+    cttEthBls_PointAtInfinity,
 } ctt_eth_bls_status;
 
 static const char* ctt_eth_bls_status_to_string(ctt_eth_bls_status status) {
   static const char* const statuses[] = {
     "cttEthBls_Success",
     "cttEthBls_VerificationFailure",
-    "cttEthBls_PointAtInfinity",
+    "cttEthBls_InputsLengthsMismatch",
     "cttEthBls_ZeroLengthAggregation",
-    "cttEthBls_InconsistentLengthsOfInputs",
+    "cttEthBls_PointAtInfinity",
   };
   size_t length = sizeof statuses / sizeof *statuses;
   if (0 <= status && status < length) {

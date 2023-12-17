@@ -52,7 +52,7 @@ import ./zoo_exports
 # https://github.com/ethereum/consensus-specs/blob/v1.3.0/specs/phase0/beacon-chain.md#misc
 
 const BYTES_PER_COMMITMENT = 48
-const BYTES_PER_PROOF = 48
+# const BYTES_PER_PROOF = 48
 const BYTES_PER_FIELD_ELEMENT* = 32
 
 # Presets
@@ -79,6 +79,7 @@ type
   cttEthKzgStatus* = enum
     cttEthKzg_Success
     cttEthKzg_VerificationFailure
+    cttEthKzg_InputsLengthsMismatch
     cttEthKzg_ScalarZero
     cttEthKzg_ScalarLargerThanCurveOrder
     cttEthKzg_EccInvalidEncoding
