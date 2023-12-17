@@ -80,7 +80,7 @@ impl EthKzgContext {
             file_path
                 .as_os_str()
                 .to_str()
-                .ok_or(cttEthTS_MissingOrInaccessibleFile)?
+                .ok_or(ctt_eth_trusted_setup_status::cttEthTS_MissingOrInaccessibleFile)?
                 .as_bytes()
         };
 
