@@ -53,16 +53,24 @@ Protocols are a set of routines, designed for specific goals or a combination th
 - integrity: the received message has not been tampered with
 - non-repudiation: the sender of a message cannot repudiated it
 
+**Legend**
+
+- :white_check_mark:: Full support
+- :building_construction:: Partial support:
+  - in C, some APIs not provided.
+  - in Rust, only low-level constantine-sys API available but no high-level wrapper.
+- :see_no_evil:: Missing support
+
 ### Protocols
 
 Constantine supports the following protocols in its public API.
 
 |                                              |       Nim       |     C    | Rust | Go |
 |----------------------------------------------|:------------------:|:------------------:|----------------------|:----------------------:|
-| Ethereum BLS signatures | :white_check_mark: | Partial, missing aggregation and batch verification | constantine-sys low-level API |  |
+| Ethereum BLS signatures | :white_check_mark: | :building_construction: | :building_construction: | :see_no_evil: |
 | Ethereum KZG commitments for EIP-4844 | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| Ethereum Virtual Machine Precompiles (ECADD, ECMUL, ECPAIRING, MODEXP) | :white_check_mark: | | | | |
-| Zk Accel layer for Halo2 proof system (experimental) | :white_check_mark: | N/A | :white_check_mark: | N/A |
+| Ethereum Virtual Machine Precompiles (ECADD, ECMUL, ECPAIRING, MODEXP) | :white_check_mark: | :see_no_evil: | :see_no_evil: | :see_no_evil: | :see_no_evil: |
+| Zk Accel layer for Halo2 proof system (experimental) | not applicable | not applicable | :white_check_mark: | not applicable |
 
 ### Elliptic Curves
 
@@ -70,9 +78,9 @@ Constantine supports the following curves in its public API.
 
 |                                              |       Nim       |     C    | Rust | Go |
 |----------------------------------------------|:------------------:|:------------------:|----------------------|:----------------------:|
-| BN254-Snarks | :white_check_mark: | :white_check_mark: | constantine-sys low-level API | |
-| BLS12-381 | :white_check_mark: | :white_check_mark: | constantine-sys low-level API | |
-| Pasta curves (Pallas & Vesta) | :white_check_mark: | :white_check_mark: | constantine-sys low-level API | |
+| BN254-Snarks | :white_check_mark: | :white_check_mark: | :building_construction: | :see_no_evil: |
+| BLS12-381 | :white_check_mark: | :white_check_mark: | :building_construction: | :see_no_evil: |
+| Pasta curves (Pallas & Vesta) | :white_check_mark: | :white_check_mark: | :building_construction: | :see_no_evil: |
 
 For all elliptic curves, the following arithmetic is supported
   - field arithmetic
@@ -83,12 +91,12 @@ For all elliptic curves, the following arithmetic is supported
     - on elliptic curve over Fp2 (EC G2) with affine, jacobian and homogenous projective coordinates
   - parallel multi-scalar-multiplication (MSM)
 
-Scalar multiplications are implemented but not exposed yet. _Yes, MSMs are exposed but not scalar multiplications._
+:building_construction: Scalar multiplications are implemented but not exposed yet. _Yes, MSMs are exposed but not scalar multiplications._
 
 _All operations are constant-time unless explicitly mentioned_ vartime.
 
-For pairing-friendly curves Fp2 arithmetic is also exposed.
-Pairings and multi-pairings are implemented but not exposed yet.
+For pairing-friendly curves Fp2 arithmetic is also exposed.\
+:building_construction: Pairings and multi-pairings are implemented but not exposed yet.
 
 ### General cryptography
 
@@ -96,8 +104,8 @@ Constantine supports the following hash functions and CSPRNGs in its public API.
 
 |                                              |       Nim       |     C    | Rust | Go |
 |----------------------------------------------|:------------------:|:------------------:|----------------------|:----------------------:|
-| SHA256 | :white_check_mark: | :white_check_mark: | constantine-sys low-level API | |
-| Cryptographically-secure RNG from Operating System (sysrand) | :white_check_mark: | :white_check_mark: | constantine-sys low-level API | |
+| SHA256 | :white_check_mark: | :white_check_mark: | :building_construction: | |
+| Cryptographically-secure RNG from Operating System (sysrand) | :white_check_mark: | :white_check_mark: | :building_construction: | |
 
 ### Threadpool
 
