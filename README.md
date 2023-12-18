@@ -65,10 +65,10 @@ Protocols are a set of routines, designed for specific goals or a combination th
 
 Constantine supports the following protocols in its public API.
 
-|                                              |       Nim       |     C    | Rust | Go |
-|----------------------------------------------|:------------------:|:------------------:|----------------------|:----------------------:|
-| Ethereum BLS signatures | :white_check_mark: | :building_construction: | :building_construction: | :see_no_evil: |
-| Ethereum KZG commitments for EIP-4844 | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+|                                       |        Nim         |            C            | Rust                    |         Go         |
+|---------------------------------------|:------------------:|:-----------------------:|-------------------------|:------------------:|
+| Ethereum BLS signatures               | :white_check_mark: | :building_construction: | :building_construction: |   :see_no_evil:    |
+| Ethereum KZG commitments for EIP-4844 | :white_check_mark: |   :white_check_mark:    | :white_check_mark:      | :white_check_mark: |
 | Ethereum Virtual Machine Precompiles (ECADD, ECMUL, ECPAIRING, MODEXP) | :white_check_mark: | :see_no_evil: | :see_no_evil: | :see_no_evil: | :see_no_evil: |
 | Zk Accel layer for Halo2 proof system (experimental) | not applicable | not applicable | :white_check_mark: | not applicable |
 
@@ -76,10 +76,10 @@ Constantine supports the following protocols in its public API.
 
 Constantine supports the following curves in its public API.
 
-|                                              |       Nim       |     C    | Rust | Go |
-|----------------------------------------------|:------------------:|:------------------:|----------------------|:----------------------:|
-| BN254-Snarks | :white_check_mark: | :white_check_mark: | :building_construction: | :see_no_evil: |
-| BLS12-381 | :white_check_mark: | :white_check_mark: | :building_construction: | :see_no_evil: |
+|                               |        Nim         |         C          | Rust                    |      Go       |
+|-------------------------------|:------------------:|:------------------:|-------------------------|:-------------:|
+| BN254-Snarks                  | :white_check_mark: | :white_check_mark: | :building_construction: | :see_no_evil: |
+| BLS12-381                     | :white_check_mark: | :white_check_mark: | :building_construction: | :see_no_evil: |
 | Pasta curves (Pallas & Vesta) | :white_check_mark: | :white_check_mark: | :building_construction: | :see_no_evil: |
 
 For all elliptic curves, the following arithmetic is supported
@@ -102,10 +102,10 @@ For pairing-friendly curves Fp2 arithmetic is also exposed.\
 
 Constantine supports the following hash functions and CSPRNGs in its public API.
 
-|                                              |       Nim       |     C    | Rust | Go |
-|----------------------------------------------|:------------------:|:------------------:|----------------------|:----------------------:|
-| SHA256 | :white_check_mark: | :white_check_mark: | :building_construction: | |
-| Cryptographically-secure RNG from Operating System (sysrand) | :white_check_mark: | :white_check_mark: | :building_construction: | |
+|                                                              |        Nim         |         C          | Rust                    | Go |
+|--------------------------------------------------------------|:------------------:|:------------------:|-------------------------|:--:|
+| SHA256                                                       | :white_check_mark: | :white_check_mark: | :building_construction: |    |
+| Cryptographically-secure RNG from Operating System (sysrand) | :white_check_mark: | :white_check_mark: | :building_construction: |    |
 
 ### Threadpool
 
@@ -130,8 +130,10 @@ See the following documents on the threadpool performance details, design and re
 
 ## Installation
 
-| :exclamation:  <br /> At the moment Nim v2.0 cannot compile Constantine.<br />Use nim v1.6.16 instead or Nim devel.<br />The upcoming Nim v2.0.2 will have a fix. |
-|------------------------------------------------------------------|
+|                                                                                                                                                           |
+|:---------------------------------------------------------------------------------------------------------------------------------------------------------:|
+| :exclamation: At the moment Nim v2.0 cannot compile Constantine.<br />Use nim v1.6.16 instead or Nim devel.<br />The upcoming Nim v2.0.2 will have a fix. |
+
 
 
 ### From Rust
@@ -140,16 +142,18 @@ See the following documents on the threadpool performance details, design and re
     - Debian/Ubuntu `sudo apt update && sudo apt install build-essential clang`
     - Archlinux `pacman -S base-devel clang`
 
-    | :memo:        | We require Clang as it's significantly more performant than GCC for cryptographic code, especially for ARM where Constantine has no assembly optimizations. And Rust, like Clang both rely on LLVM.<br />This can be changed to any C compiler by deleting [this line](https://github.com/mratsim/constantine/blob/8991b16/constantine-rust/constantine-sys/build.rs#L17).|
-    |---------------|:------------------------|
+    |        |                                                                                                                                                                                                                                                                                                                                                                            |
+    |:------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+    | :memo: | We require Clang as it's significantly more performant than GCC for cryptographic code, especially for ARM where Constantine has no assembly optimizations. And Rust, like Clang both rely on LLVM.<br />This can be changed to any C compiler by deleting [this line](https://github.com/mratsim/constantine/blob/8991b16/constantine-rust/constantine-sys/build.rs#L17). |
 
 2. Install nim, it is available in most distros package manager for Linux and Homebrew for MacOS
    Windows binaries are on the official website: https://nim-lang.org/install_unix.html
     - Debian/Ubuntu `sudo apt install nim`
     - Archlinux `pacman -S nim`
 
-    | :exclamation:  <br /> Until the Nim v2 situation is solved, you can use https://github.com/dom96/choosenim to install nim v1.6.16 toolchain.
+    | |
     |------------------------------------------------------------------|
+    | :exclamation:  <br /> Until the Nim v2 situation is solved, you can use https://github.com/dom96/choosenim to install nim v1.6.16 toolchain. |
 
 3. Test both:
     - the experimental ZK Accel API (ZAL) for Halo2-KZG
@@ -203,16 +207,14 @@ and modify Constantine's [`build.rs`](https://github.com/mratsim/constantine/blo
     - Debian/Ubuntu `sudo apt update && sudo apt install build-essential clang`
     - Archlinux `pacman -S base-devel clang`
 
-    | :memo:        | We require Clang as it's significantly more performant than GCC for cryptographic code, especially for ARM where Constantine has no assembly optimizations. And Rust, like Clang both rely on LLVM.<br />This can be changed to any C compiler by deleting [this line](https://github.com/mratsim/constantine/blob/8991b16/constantine-rust/constantine-sys/build.rs#L17).|
-    |---------------|:------------------------|
-
 2. Install nim, it is available in most distros package manager for Linux and Homebrew for MacOS
    Windows binaries are on the official website: https://nim-lang.org/install_unix.html
     - Debian/Ubuntu `sudo apt install nim`
     - Archlinux `pacman -S nim`
 
-    | :exclamation: <br />Until the Nim v2 situation is solved, you can use https://github.com/dom96/choosenim to install nim v1.6.16 toolchain.
+    | |
     |------------------------------------------------------------------|
+    | :exclamation:  <br /> Until the Nim v2 situation is solved, you can use https://github.com/dom96/choosenim to install nim v1.6.16 toolchain. |
 
 3. Compile Constantine as a static (and shared) library in `./include`
     ```
@@ -239,8 +241,9 @@ and modify Constantine's [`build.rs`](https://github.com/mratsim/constantine/blo
     - Debian/Ubuntu `sudo apt install nim`
     - Archlinux `pacman -S nim`
 
-    | :exclamation: <br />Until the Nim v2 situation is solved, you can use https://github.com/dom96/choosenim to install nim v1.6.16 toolchain.
+    | |
     |------------------------------------------------------------------|
+    | :exclamation:  <br /> Until the Nim v2 situation is solved, you can use https://github.com/dom96/choosenim to install nim v1.6.16 toolchain. |
 
 3. Compile the dynamic and static library.
     - Recommended: \
