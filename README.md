@@ -151,9 +151,9 @@ See the following documents on the threadpool performance details, design and re
     - Debian/Ubuntu `sudo apt install nim`
     - Archlinux `pacman -S nim`
 
-    | |
-    |------------------------------------------------------------------|
-    | :exclamation:  <br /> Until the Nim v2 situation is solved, you can use https://github.com/dom96/choosenim to install nim v1.6.16 toolchain. |
+    |                                                                                                                                       |
+    |---------------------------------------------------------------------------------------------------------------------------------------|
+    | :exclamation:  Until the Nim v2 situation is solved, you can use https://github.com/dom96/choosenim to install nim v1.6.16 toolchain. |
 
 3. Test both:
     - the experimental ZK Accel API (ZAL) for Halo2-KZG
@@ -212,9 +212,9 @@ and modify Constantine's [`build.rs`](https://github.com/mratsim/constantine/blo
     - Debian/Ubuntu `sudo apt install nim`
     - Archlinux `pacman -S nim`
 
-    | |
-    |------------------------------------------------------------------|
-    | :exclamation:  <br /> Until the Nim v2 situation is solved, you can use https://github.com/dom96/choosenim to install nim v1.6.16 toolchain. |
+    |                                                                                                                                       |
+    |---------------------------------------------------------------------------------------------------------------------------------------|
+    | :exclamation:  Until the Nim v2 situation is solved, you can use https://github.com/dom96/choosenim to install nim v1.6.16 toolchain. |
 
 3. Compile Constantine as a static (and shared) library in `./include`
     ```
@@ -227,9 +227,9 @@ and modify Constantine's [`build.rs`](https://github.com/mratsim/constantine/blo
     cd constantine-go
     go test -modfile=../go_test.mod
     ```
-    | :memo:        | Constantine uses a separate modfile for tests.<br />It has no dependencies (key to avoid supply chain attacks) except for testing. |
-    |---------------|:------------------------|
-
+    |        |                                                                                                                                    |
+    |:------:|:-----------------------------------------------------------------------------------------------------------------------------------|
+    | :memo: | Constantine uses a separate modfile for tests.<br />It has no dependencies (key to avoid supply chain attacks) except for testing. |
 ### From C
 
 1. Install a C compiler, `clang` is recommended, for example:
@@ -241,9 +241,9 @@ and modify Constantine's [`build.rs`](https://github.com/mratsim/constantine/blo
     - Debian/Ubuntu `sudo apt install nim`
     - Archlinux `pacman -S nim`
 
-    | |
-    |------------------------------------------------------------------|
-    | :exclamation:  <br /> Until the Nim v2 situation is solved, you can use https://github.com/dom96/choosenim to install nim v1.6.16 toolchain. |
+    |                                                                                                                                       |
+    |---------------------------------------------------------------------------------------------------------------------------------------|
+    | :exclamation:  Until the Nim v2 situation is solved, you can use https://github.com/dom96/choosenim to install nim v1.6.16 toolchain. |
 
 3. Compile the dynamic and static library.
     - Recommended: \
