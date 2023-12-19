@@ -43,7 +43,7 @@ proc detectNumPhysicalCoresLinux*(): int32 =
   while true:
     if i == 64:
       c_printf("[Constantine's Threadpool] The Linux topology detection fallback only supports up to 64 cores (hardware or software)\n")
-      return
+      return -1
 
     if ((logiCoresBitField shr i) and 1) != 0:
       # Core is already in the bitfield, it's an Simultaneous Multithreading siblings.
