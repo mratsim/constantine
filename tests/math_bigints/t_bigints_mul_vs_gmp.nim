@@ -61,10 +61,6 @@ proc main() =
   mpz_init(r)
   mpz_init(a)
   mpz_init(b)
-  defer:
-    mpz_clear(b)
-    mpz_clear(a)
-    mpz_clear(r)
 
   testRandomModSizes(12, rBits, aBits, bBits):
     # echo "--------------------------------------------------------------------------------"

@@ -173,8 +173,4 @@ proc main() =
       "  Constantine:    " & rCttVartime.toHex() & "\n" &
       "(Note that GMP aligns bytes left while constantine aligns bytes right)"
 
-  mpz_clear(a)
-  mpz_clear(m)
-  mpz_clear(r)
-
 main()

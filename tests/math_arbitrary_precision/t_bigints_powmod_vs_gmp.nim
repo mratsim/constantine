@@ -80,11 +80,6 @@ proc test(rng: var RngState) =
   var rWritten: csize
   discard rGMP[0].addr.mpz_export(rWritten.addr, GMP_LeastSignificantWordFirst, sizeof(SecretWord), GMP_WordNativeEndian, 0, rr)
 
-  mpz_clear(aa)
-  mpz_clear(ee)
-  mpz_clear(mm)
-  mpz_clear(rr)
-
   let
     aBits = a.getBits_LE_vartime()
     eBits = e.getBits_BE_vartime()

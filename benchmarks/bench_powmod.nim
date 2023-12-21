@@ -153,11 +153,6 @@ proc benchAll(desc: seq[BenchDesc]) =
     report("GMP", nanoseconds, ticks, desc.len)
     perfGMP = nanoseconds
 
-    mpz_clear(r)
-    mpz_clear(M)
-    mpz_clear(e)
-    mpz_clear(a)
-
   block: # Stint
     var ticks, nanoseconds: int64
 
