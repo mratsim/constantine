@@ -106,6 +106,11 @@ when X86:
 #
 # ############################################################
 
+const
+  nim_v2 = (NimMajor, NimMinor) > (1, 6)
+  noExplicitVarDeref {.used.} = defined(cpp) or nim_v2
+    ## In C++ mode or with Nim v2, emit of `var` params is auto-deref by Nim.
+
 func addC*(cOut: var Carry, sum: var Ct[uint32], a, b: Ct[uint32], cIn: Carry) {.inline.} =
   ## Addition with carry
   ## (CarryOut, Sum) <- a + b + CarryIn
@@ -141,8 +146,7 @@ func addC*(cOut: var Carry, sum: var Ct[uint64], a, b: Ct[uint64], cIn: Carry) {
       var dblPrec {.noInit.}: uint128
       {.emit:[dblPrec, " = (unsigned __int128)", a," + (unsigned __int128)", b, " + (unsigned __int128)",cIn,";"].}
 
-      # Don't forget to dereference the var param in C mode
-      when defined(cpp):
+      when noExplicitVarDeref:
         {.emit:[cOut, " = (NU64)(", dblPrec," >> ", 64'u64, ");"].}
         {.emit:[sum, " = (NU64)", dblPrec,";"].}
       else:
@@ -163,9 +167,7 @@ func subB*(bOut: var Borrow, diff: var Ct[uint64], a, b: Ct[uint64], bIn: Borrow
       var dblPrec {.noInit.}: uint128
       {.emit:[dblPrec, " = (unsigned __int128)", a," - (unsigned __int128)", b, " - (unsigned __int128)",bIn,";"].}
 
-      # Don't forget to dereference the var param in C mode
-      # On borrow the high word will be 0b1111...1111 and needs to be masked
-      when defined(cpp):
+      when noExplicitVarDeref:
         {.emit:[bOut, " = (NU64)(", dblPrec," >> ", 64'u64, ") & 1;"].}
         {.emit:[diff, " = (NU64)", dblPrec,";"].}
       else:

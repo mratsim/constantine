@@ -20,8 +20,10 @@ static:
   doAssert GCC_Compatible
   doAssert sizeof(int) == 8
 
-const noExplicitDeref = defined(cpp) or (NimMajor, NimMinor) > (1, 6)
-  ## In C++ mode or with Nim v2, emit of `var` params is auto-deref by Nim.
+const
+  nim_v2 = (NimMajor, NimMinor) > (1, 6)
+  noExplicitVarDeref {.used.} = defined(cpp) or nim_v2
+    ## In C++ mode or with Nim v2, emit of `var` params is auto-deref by Nim.
 
 func mul*(hi, lo: var Ct[uint64], a, b: Ct[uint64]) {.inline.} =
   ## Extended precision multiplication
@@ -33,7 +35,7 @@ func mul*(hi, lo: var Ct[uint64], a, b: Ct[uint64]) {.inline.} =
     var dblPrec {.noInit.}: uint128
     {.emit:[dblPrec, " = (unsigned __int128)", a," * (unsigned __int128)", b,";"].}
 
-    when noExplicitDeref:
+    when noExplicitVarDeref:
       {.emit:[hi, " = (NU64)(", dblPrec," >> ", 64'u64, ");"].}
       {.emit:[lo, " = (NU64)", dblPrec,";"].}
     else:
@@ -53,7 +55,7 @@ func muladd1*(hi, lo: var Ct[uint64], a, b, c: Ct[uint64]) {.inline.} =
     var dblPrec {.noInit.}: uint128
     {.emit:[dblPrec, " = (unsigned __int128)", a," * (unsigned __int128)", b, " + (unsigned __int128)",c,";"].}
 
-    when noExplicitDeref:
+    when noExplicitVarDeref:
       {.emit:[hi, " = (NU64)(", dblPrec," >> ", 64'u64, ");"].}
       {.emit:[lo, " = (NU64)", dblPrec,";"].}
     else:
@@ -75,7 +77,7 @@ func muladd2*(hi, lo: var Ct[uint64], a, b, c1, c2: Ct[uint64]) {.inline.}=
                " + (unsigned __int128)",c1," + (unsigned __int128)",c2,";"
     ].}
 
-    when noExplicitDeref:
+    when noExplicitVarDeref:
       {.emit:[hi, " = (NU64)(", dblPrec," >> ", 64'u64, ");"].}
       {.emit:[lo, " = (NU64)", dblPrec,";"].}
     else:
@@ -96,7 +98,7 @@ func smul*(hi, lo: var Ct[uint64], a, b: Ct[uint64]) {.inline.} =
     # We need to cast to int64 then sign-extended to int128
     {.emit:[dblPrec, " = (__int128)", cast[int64](a)," * (__int128)", cast[int64](b),";"].}
 
-    when noExplicitDeref:
+    when noExplicitVarDeref:
       {.emit:[hi, " = (NU64)(", dblPrec," >> ", 64'u64, ");"].}
       {.emit:[lo, " = (NU64)", dblPrec,";"].}
     else:

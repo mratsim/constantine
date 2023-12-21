@@ -53,7 +53,7 @@ func ccopy_fallback[T](ctl: CTBool[T], x: var T, y: T) {.inline.}=
 
 const
   nim_v2 = (NimMajor, NimMinor) > (1, 6)
-  noExplicitPtrDeref = defined(cpp) or nim_v2
+  noExplicitVarDeref = defined(cpp) or nim_v2
 
 template mux_x86_impl() {.dirty.} =
   static: doAssert(X86)
@@ -112,7 +112,7 @@ func ccopy_x86[T](ctl: CTBool[T], x: var T, y: T) {.inline.}=
   static: doAssert(GCC_Compatible)
 
   when UseAsmSyntaxIntel:
-    when noExplicitPtrDeref:
+    when noExplicitVarDeref:
       asm """
         test %[ctl], %[ctl]
         cmovnz %[x], %[y]
@@ -130,7 +130,7 @@ func ccopy_x86[T](ctl: CTBool[T], x: var T, y: T) {.inline.}=
       """
   else:
     when sizeof(T) == 8:
-      when noExplicitPtrDeref:
+      when noExplicitVarDeref:
         asm """
           testq %[ctl], %[ctl]
           cmovnzq %[y], %[x]
@@ -147,7 +147,7 @@ func ccopy_x86[T](ctl: CTBool[T], x: var T, y: T) {.inline.}=
           : "cc"
         """
     else:
-      when noExplicitPtrDeref:
+      when noExplicitVarDeref:
         asm """
           testl %[ctl], %[ctl]
           cmovnzl %[y], %[x]
