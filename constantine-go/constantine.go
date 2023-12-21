@@ -178,3 +178,91 @@ func (ctx EthKzgContext) VerifyBlobKzgProofBatch(blobs []EthBlob, commitments []
 	}
 	return true, nil
 }
+
+// Ethereum EIP-4844 KZG API - Parallel
+// -----------------------------------------------------
+
+
+func (ctx EthKzgContext) BlobToKZGCommitmentParallel(tp Threadpool, blob EthBlob) (commitment EthKzgCommitment, err error) {
+	status := C.ctt_eth_kzg_blob_to_kzg_commitment_parallel(
+		ctx.cCtx, tp.ctx,
+		(*C.ctt_eth_kzg_commitment)(unsafe.Pointer(&commitment)),
+		(*C.ctt_eth_kzg_blob)(unsafe.Pointer(&blob)),
+	)
+	if status != C.cttEthKzg_Success {
+		err = errors.New(
+			C.GoString(C.ctt_eth_kzg_status_to_string(status)),
+		)
+	}
+	return commitment, err
+}
+
+func (ctx EthKzgContext) ComputeKzgProofParallel(tp Threadpool, blob EthBlob, z EthKzgChallenge) (proof EthKzgProof, y EthKzgEvalAtChallenge, err error) {
+	status := C.ctt_eth_kzg_compute_kzg_proof_parallel(
+		ctx.cCtx, tp.ctx,
+		(*C.ctt_eth_kzg_proof)(unsafe.Pointer(&proof)),
+		(*C.ctt_eth_kzg_eval_at_challenge)(unsafe.Pointer(&y)),
+		(*C.ctt_eth_kzg_blob)(unsafe.Pointer(&blob)),
+		(*C.ctt_eth_kzg_challenge)(unsafe.Pointer(&z)),
+	)
+	if status != C.cttEthKzg_Success {
+		err = errors.New(
+			C.GoString(C.ctt_eth_kzg_status_to_string(status)),
+		)
+	}
+	return proof, y, err
+}
+
+func (ctx EthKzgContext) ComputeBlobKzgProofParallel(tp Threadpool, blob EthBlob, commitment EthKzgCommitment) (proof EthKzgProof, err error) {
+	status := C.ctt_eth_kzg_compute_blob_kzg_proof_parallel(
+		ctx.cCtx, tp.ctx,
+		(*C.ctt_eth_kzg_proof)(unsafe.Pointer(&proof)),
+		(*C.ctt_eth_kzg_blob)(unsafe.Pointer(&blob)),
+		(*C.ctt_eth_kzg_commitment)(unsafe.Pointer(&commitment)),
+	)
+	if status != C.cttEthKzg_Success {
+		err = errors.New(
+			C.GoString(C.ctt_eth_kzg_status_to_string(status)),
+		)
+	}
+	return proof, err
+}
+
+func (ctx EthKzgContext) VerifyBlobKzgProofParallel(tp Threadpool, blob EthBlob, commitment EthKzgCommitment, proof EthKzgProof) (bool, error) {
+	status := C.ctt_eth_kzg_verify_blob_kzg_proof_parallel(
+		ctx.cCtx, tp.ctx,
+		(*C.ctt_eth_kzg_blob)(unsafe.Pointer(&blob)),
+		(*C.ctt_eth_kzg_commitment)(unsafe.Pointer(&commitment)),
+		(*C.ctt_eth_kzg_proof)(unsafe.Pointer(&proof)),
+	)
+	if status != C.cttEthKzg_Success {
+		err := errors.New(
+			C.GoString(C.ctt_eth_kzg_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (ctx EthKzgContext) VerifyBlobKzgProofBatchParallel(tp Threadpool, blobs []EthBlob, commitments []EthKzgCommitment, proofs []EthKzgProof, secureRandomBytes [32]byte) (bool, error) {
+
+	if len(blobs) != len(commitments) || len(blobs) != len(proofs) {
+		return false, errors.New("VerifyBlobKzgProofBatch: Lengths of inputs do not match.")
+	}
+
+	status := C.ctt_eth_kzg_verify_blob_kzg_proof_batch_parallel(
+		ctx.cCtx, tp.ctx,
+		*(**C.ctt_eth_kzg_blob)(unsafe.Pointer(&blobs)),
+		*(**C.ctt_eth_kzg_commitment)(unsafe.Pointer(&commitments)),
+		*(**C.ctt_eth_kzg_proof)(unsafe.Pointer(&proofs)),
+		(C.size_t)(len(blobs)),
+		(*C.uint8_t)(unsafe.Pointer(&secureRandomBytes)),
+	)
+	if status != C.cttEthKzg_Success {
+		err := errors.New(
+			C.GoString(C.ctt_eth_kzg_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}

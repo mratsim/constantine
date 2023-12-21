@@ -103,9 +103,9 @@ type
   cttEthBlsStatus* = enum
     cttEthBls_Success
     cttEthBls_VerificationFailure
-    cttEthBls_PointAtInfinity
+    cttEthBls_InputsLengthsMismatch
     cttEthBls_ZeroLengthAggregation
-    cttEthBls_InconsistentLengthsOfInputs
+    cttEthBls_PointAtInfinity
 
 # Comparisons
 # ------------------------------------------------------------------------------------------------
@@ -392,7 +392,7 @@ func aggregate_verify*[Msg](pubkeys: openArray[PublicKey], messages: openArray[M
     return cttEthBls_ZeroLengthAggregation
 
   if pubkeys.len != messages.len:
-    return cttEthBls_InconsistentLengthsOfInputs
+    return cttEthBls_InputsLengthsMismatch
 
   # Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
   if aggregate_sig.raw.isInf().bool:
@@ -491,7 +491,7 @@ func batch_verify*[Msg](pubkeys: openArray[PublicKey], messages: openarray[Msg],
     return cttEthBls_ZeroLengthAggregation
 
   if pubkeys.len != messages.len or  pubkeys.len != signatures.len:
-    return cttEthBls_InconsistentLengthsOfInputs
+    return cttEthBls_InputsLengthsMismatch
 
   # Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
   for i in 0 ..< pubkeys.len:

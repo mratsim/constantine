@@ -125,7 +125,7 @@ proc batch_verify_parallel*[Msg](
     return cttEthBls_ZeroLengthAggregation
 
   if pubkeys.len != messages.len or  pubkeys.len != signatures.len:
-    return cttEthBls_InconsistentLengthsOfInputs
+    return cttEthBls_InputsLengthsMismatch
 
   # Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
   for i in 0 ..< pubkeys.len:
