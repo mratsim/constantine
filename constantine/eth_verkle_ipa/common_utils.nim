@@ -9,7 +9,7 @@
 ## IPAConfiguration contains all of the necessary information to create Pedersen + IPA proofs
 ## such as the SRS
 import
-    ./[helper_types],
+    ./[eth_verkle_constants],
     ../platforms/primitives,
     ../math/config/[type_ff, curves],
     ../math/elliptic/ec_twistededwards_projective,
@@ -67,7 +67,7 @@ func generate_random_points* [EC_P](points: var  openArray[EC_P] , num_points: u
 # ############################################################
 
 func computeInnerProducts* [EC_P_Fr] (res: var EC_P_Fr, a,b : openArray[EC_P_Fr])=
-  doAssert (a.len == b.len).bool() == true, "Scalar lengths don't match!"
+  debug: doAssert (a.len == b.len).bool() == true, "Scalar lengths don't match!"
   res.setZero()
   for i in 0..<b.len:
     var tmp : EC_P_Fr 
@@ -75,7 +75,7 @@ func computeInnerProducts* [EC_P_Fr] (res: var EC_P_Fr, a,b : openArray[EC_P_Fr]
     res.sum(res,tmp)
 
 func computeInnerProducts* [EC_P_Fr] (res: var EC_P_Fr, a,b: StridedView[EC_P_Fr])=
-  doAssert (a.len == b.len).bool() == true, "Scalar lengths don't match!"
+  debug: doAssert (a.len == b.len).bool() == true, "Scalar lengths don't match!"
   res.setZero()
   for i in 0..<b.len:
     var tmp : EC_P_Fr 
@@ -90,7 +90,7 @@ func computeInnerProducts* [EC_P_Fr] (res: var EC_P_Fr, a,b: StridedView[EC_P_Fr
 
 func foldScalars* [EC_P_Fr] (res: var openArray[EC_P_Fr], a,b : openArray[EC_P_Fr], x: EC_P_Fr)=
     
-    doAssert a.len == b.len , "Lengths should be equal!"
+    debug: doAssert a.len == b.len , "Lengths should be equal!"
 
     for i in 0..<a.len:
         var bx {.noInit.}: EC_P_Fr
@@ -100,7 +100,7 @@ func foldScalars* [EC_P_Fr] (res: var openArray[EC_P_Fr], a,b : openArray[EC_P_F
 
 func foldPoints* [EC_P] (res: var openArray[EC_P], a,b : var openArray[EC_P], x: EC_P_Fr)=
     
-    doAssert a.len == b.len , "Should have equal lengths!"
+    debug: doAssert a.len == b.len , "Should have equal lengths!"
 
     for i in 0..<a.len:
         var bx {.noInit.}: EC_P
@@ -110,15 +110,15 @@ func foldPoints* [EC_P] (res: var openArray[EC_P], a,b : var openArray[EC_P], x:
         res[i].sum(bx, a[i])
 
 
-func computeNumRounds* [uint64] (res: var uint64, vectorSize: SomeUnsignedInt)= 
+func computeNumRounds*(res: var uint32, vectorSize: SomeUnsignedInt)= 
 
-    doAssert (vectorSize == uint64(0)).bool() == false, "Zero is not a valid input!"
+    debug: doAssert (vectorSize == uint64(0)).bool() == false, "Zero is not a valid input!"
 
     var isP2 : bool = isPowerOf2_vartime(vectorSize)
 
-    doAssert isP2 == true, "not a power of 2, hence not a valid inputs"
+    debug: doAssert isP2 == true, "not a power of 2, hence not a valid inputs"
 
-    res = uint64(float64(log2_vartime(vectorSize)))
+    res = uint32(log2_vartime(vectorSize))
 
 # ############################################################
 #
@@ -132,7 +132,7 @@ func computeNumRounds* [uint64] (res: var uint64, vectorSize: SomeUnsignedInt)=
 # Further reference refer to this https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
 
 func pedersen_commit_varbasis*[EC_P] (res: var EC_P, groupPoints: openArray[EC_P], g: int,  polynomial: openArray[EC_P_Fr], n: int)=
-  doAssert groupPoints.len == polynomial.len, "Group Elements and Polynomials should be having the same length!"
+  debug: doAssert groupPoints.len == polynomial.len, "Group Elements and Polynomials should be having the same length!"
   var poly_big = newSeq[matchingOrderBigInt(Banderwagon)](n)
   for i in 0..<n:
     poly_big[i] = polynomial[i].toBig()

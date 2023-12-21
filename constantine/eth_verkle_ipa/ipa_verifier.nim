@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ./[transcript_gen, common_utils, barycentric_form, helper_types],
+  ./[transcript_gen, common_utils, barycentric_form, eth_verkle_constants],
   ../platforms/primitives,
   ../math/config/[type_ff, curves],
   ../hashes,
@@ -34,16 +34,18 @@ func generateChallengesForIPA*(res: var openArray[matchingOrderBigInt(Banderwago
 # Check IPA proof verifier a IPA proof for a committed polynomial in evaluation form
 # It verifies whether the proof is valid for the given polynomial at the evaluation `evalPoint`
 # and cross-checking it with `result`
-func checkIPAProof*(r: var bool,transcript: var sha256, ic: IPASettings, commitment: var EC_P, proof: IPAProof, evalPoint: EC_P_Fr, res: EC_P_Fr) =
+func checkIPAProof* (ic: IPASettings, transcript: var sha256, commitment: var EC_P, proof: IPAProof, evalPoint: EC_P_Fr, res: EC_P_Fr) : bool = 
+
+    var r {.noInit.} : bool
 
     transcript.domain_separator(asBytes"ipa")
 
-    doAssert (proof.L_vector.len == proof.R_vector.len), "Proof lengths unequal!"
+    debug: doAssert (proof.L_vector.len == proof.R_vector.len), "Proof lengths unequal!"
 
-    doAssert (proof.L_vector.len == int(ic.numRounds)), "Proof length and num round unequal!"
+    debug: doAssert (proof.L_vector.len == int(ic.numRounds)), "Proof length and num round unequal!"
 
 
-    var b {.noInit.}: array[DOMAIN, EC_P_Fr]
+    var b {.noInit.}: array[VerkleDomain, EC_P_Fr]
     b.computeBarycentricCoefficients(ic.precompWeights,evalPoint)
 
     transcript.pointAppend(asBytes"C", commitment)
@@ -94,7 +96,7 @@ func checkIPAProof*(r: var bool,transcript: var sha256, ic: IPASettings, commitm
 
         commitment.pedersen_commit_varbasis(p11, p11.len, p22, p22.len)
 
-    var g {.noInit.}: array[DOMAIN, EC_P]
+    var g {.noInit.}: array[VerkleDomain, EC_P]
     g = ic.SRS
     
     var foldingScalars {.noInit.}: array[g.len, EC_P_Fr]
@@ -114,12 +116,12 @@ func checkIPAProof*(r: var bool,transcript: var sha256, ic: IPASettings, commitm
     
     var foldingScalars_big {.noInit.} : array[g.len,matchingOrderBigInt(Banderwagon)]
     
-    for i in 0..<DOMAIN:
+    for i in 0..<VerkleDomain:
         foldingScalars_big[i] = foldingScalars[i].toBig()
 
-    var g_aff {.noInit.} : array[DOMAIN, EC_P_Aff]
+    var g_aff {.noInit.} : array[VerkleDomain, EC_P_Aff]
 
-    for i in 0..<DOMAIN:
+    for i in 0..<VerkleDomain:
         g_aff[i].affine(g[i])
  
     g0.multiScalarMul_reference_vartime(foldingScalars_big, g_aff)
@@ -147,3 +149,6 @@ func checkIPAProof*(r: var bool,transcript: var sha256, ic: IPASettings, commitm
         r = false
     
     r = true
+    return r
+
+

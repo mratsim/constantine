@@ -13,7 +13,7 @@
 # ############################################################
 
 import
-    ./helper_types,
+    ./eth_verkle_constants,
     ../platforms/[primitives,abstractions],
     ../serialization/endians,
     ../math/config/[type_ff, curves],

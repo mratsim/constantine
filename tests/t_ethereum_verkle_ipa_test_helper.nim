@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import 
-    ../constantine/eth_verkle_ipa/[multiproof, barycentric_form, helper_types],
+    ../constantine/eth_verkle_ipa/[multiproof, barycentric_form, eth_verkle_constants],
     ../constantine/math/config/[type_ff, curves],
     ../constantine/math/elliptic/[
      ec_twistededwards_affine,
@@ -26,8 +26,8 @@ import
 #
 # ############################################################
 
-func evaluate* [EC_P_Fr] (res: var EC_P_Fr, poly: openArray[EC_P_Fr], point: EC_P_Fr,  n: static int) = 
-    var powers {.noInit.}: array[n,EC_P_Fr]
+func ipaEvaluate* [Fr] (res: var Fr, poly: openArray[Fr], point: Fr,  n: static int) = 
+    var powers {.noInit.}: array[n,Fr]
     powers.computePowersOfElem(point, poly.len)
 
     res.setZero()
@@ -37,10 +37,6 @@ func evaluate* [EC_P_Fr] (res: var EC_P_Fr, poly: openArray[EC_P_Fr], point: EC_
         tmp.prod(powers[i], poly[i])
         res.sum(res,tmp)
 
-func evaluateSeq* [EC_P_Fr] (res: var EC_P_Fr, poly: openArray[EC_P_Fr], point: EC_P_Fr) = 
-    var powers : seq[EC_P_Fr]
-    powers.computePowersOfElem(point, poly.len)
-
     res.setZero()
 
     for i in 0..<poly.len:
@@ -48,11 +44,11 @@ func evaluateSeq* [EC_P_Fr] (res: var EC_P_Fr, poly: openArray[EC_P_Fr], point: 
         tmp.prod(powers[i], poly[i])
         res.sum(res,tmp)
 
-func truncate* [EC_P_Fr] (res: var openArray[EC_P_Fr], s: openArray[EC_P_Fr], to: int, n: static int)=
+func truncate* [Fr] (res: var openArray[Fr], s: openArray[Fr], to: int, n: static int)=
     for i in 0..<to:
         res[i] = s[i]
 
-func interpolate* [EC_P_Fr] (res: var openArray[EC_P_Fr], points: openArray[Coord], n: static int) =
+func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: static int) =
     
     var one : EC_P_Fr
     one.setOne()
@@ -130,19 +126,19 @@ func interpolate* [EC_P_Fr] (res: var openArray[EC_P_Fr], points: openArray[Coor
 
         
 #Initiating evaluation points z in the FiniteField (253)
-func setEval* [EC_P_Fr] (res: var EC_P_Fr, x : EC_P_Fr)=
+func setEval* [Fr] (res: var Fr, x : Fr)=
 
-    var tmp_a {.noInit.} : EC_P_Fr
+    var tmp_a {.noInit.} : Fr
 
-    var one {.noInit.}: EC_P_Fr
+    var one {.noInit.}: Fr
     one.setOne()
 
     tmp_a.diff(x, one)
 
-    var tmp_b : EC_P_Fr
+    var tmp_b : Fr
     tmp_b.sum(x, one)
 
-    var tmp_c : EC_P_Fr = one
+    var tmp_c : Fr = one
 
     for i in 0..<253:
         tmp_c.prod(tmp_c,x) 
@@ -150,28 +146,28 @@ func setEval* [EC_P_Fr] (res: var EC_P_Fr, x : EC_P_Fr)=
     res.prod(tmp_a, tmp_b)
     res.prod(res,tmp_c)
 
-#Evaluating the point z outside of DOMAIN, here the DOMAIN is 0-256, whereas the FieldSize is
+#Evaluating the point z outside of VerkleDomain, here the VerkleDomain is 0-256, whereas the FieldSize is
 #everywhere outside of it which is upto a 253 bit number, or 2²⁵³.
-func evalOutsideDomain* [EC_P_Fr] (res: var EC_P_Fr, precomp: PrecomputedWeights, f: openArray[EC_P_Fr], point: EC_P_Fr)=
+func evalOutsideDomain* [Fr] (res: var Fr, precomp: PrecomputedWeights, f: openArray[Fr], point: Fr)=
 
-    var pointMinusDomain: array[DOMAIN, EC_P_Fr]
-    for i in 0..<DOMAIN:
+    var pointMinusDomain: array[VerkleDomain, Fr]
+    for i in 0..<VerkleDomain:
 
         var i_bg {.noInit.} : matchingOrderBigInt(Banderwagon)
         i_bg.setUint(uint64(i))
-        var i_fr {.noInit.} : EC_P_Fr
+        var i_fr {.noInit.} : Fr
         i_fr.fromBig(i_bg)
 
         pointMinusDomain[i].diff(point, i_fr)
         pointMinusDomain[i].inv(pointMinusDomain[i])
 
-    var summand: EC_P_Fr
+    var summand: Fr
     summand.setZero()
 
     for x_i in 0..<pointMinusDomain.len:
-        var weight: EC_P_Fr
+        var weight: Fr
         weight.getBarycentricInverseWeight(precomp,x_i)
-        var term: EC_P_Fr
+        var term: Fr
         term.prod(weight, f[x_i])
         term.prod(term, pointMinusDomain[x_i])
 
@@ -179,20 +175,20 @@ func evalOutsideDomain* [EC_P_Fr] (res: var EC_P_Fr, precomp: PrecomputedWeights
 
     res.setOne()
 
-    for i in 0..<DOMAIN:
+    for i in 0..<VerkleDomain:
 
         var i_bg: matchingOrderBigInt(Banderwagon)
         i_bg.setUint(uint64(i))
-        var i_fr : EC_P_Fr
+        var i_fr : Fr
         i_fr.fromBig(i_bg)
 
-        var tmp : EC_P_Fr
+        var tmp : Fr
         tmp.diff(point, i_fr)
         res.prod(res, tmp)
 
     res.prod(res,summand)
 
-func testPoly256* [EC_P_Fr] (res: var openArray[EC_P_Fr], polynomialUint: openArray[uint64])=
+func testPoly256* [Fr] (res: var openArray[Fr], polynomialUint: openArray[uint64])=
 
     var n = polynomialUint.len
     doAssert (polynomialUint.len <= 256) == true, "Cannot exceed 256 coeffs!"
@@ -218,7 +214,7 @@ func isScalarEqHex*(scalar: matchingOrderBigInt(Banderwagon), expected: string) 
     if scalar_bytes.serialize_scalar(scalar) == cttCodecScalar_Success:
         doAssert (scalar_bytes.toHex() == expected).bool() == true, "Scalar does not equal to the expected hex value!"
 
-func getDegreeOfPoly* [int] (res: var int, p: openArray[EC_P_Fr]) = 
+func getDegreeOfPoly*(res: var int, p: openArray[EC_P_Fr]) = 
     for d in countdown(p.len - 1, 0):
         if not(p[d].isZero().bool()):
             res = d

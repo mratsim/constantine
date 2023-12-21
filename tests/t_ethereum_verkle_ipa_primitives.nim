@@ -10,7 +10,7 @@ import
   ./t_ethereum_verkle_ipa_test_helper,
   ../constantine/eth_verkle_ipa/[
       barycentric_form,
-      helper_types, 
+      eth_verkle_constants, 
       transcript_gen, 
       common_utils,
       ipa_prover,
@@ -20,7 +20,6 @@ import
   std/[unittest],
   ../constantine/math/config/[type_ff, curves],
   ../constantine/math/elliptic/[
-    ec_twistededwards_affine,
     ec_twistededwards_projective
     ],
   ../constantine/math/io/io_fields,
@@ -85,7 +84,7 @@ suite "Barycentric Form Tests":
           genfr.mapToScalarField(genfp)
 
           var res {.noInit.}: EC_P_Fr
-          res.evaluate(poly,gen_fr,2)
+          res.ipaEvaluate(poly,gen_fr,2)
 
           doAssert (res.toHex()==genfr.toHex()) == true, "Not matching!"
 
@@ -131,11 +130,11 @@ suite "Barycentric Form Tests":
 
                 points[k]=point
 
-            var poly_coeff : array[DOMAIN, EC_P_Fr]
-            poly_coeff.interpolate(points, DOMAIN)
+            var poly_coeff : array[VerkleDomain, EC_P_Fr]
+            poly_coeff.interpolate(points, VerkleDomain)
 
             var expected2: EC_P_Fr
-            expected2.evaluate(poly_coeff, p_outside_dom, DOMAIN)
+            expected2.ipaEvaluate(poly_coeff, p_outside_dom, VerkleDomain)
 
 
             doAssert (expected0.toHex() == "0x042d5629f4eaac570610673570658986f8a74730d3d8587e34062ac4b3c3b950").bool() == true, "Problem with Barycentric Weights!"
@@ -240,7 +239,7 @@ suite "IPA proof tests":
         doAssert stat22 == true, "Problem creating IPA proof 2"
 
         var stat33: bool
-        stat33.isIPAProofEqual(ipaProof1,ipaProof2)
+        stat33 = ipaProof1.isIPAProofEqual(ipaProof2)
         doAssert stat33 == true, "IPA proofs aren't equal"
 
     testIPAProofEquality()
@@ -277,7 +276,7 @@ suite "IPA proof tests":
         var precomp : PrecomputedWeights
 
         precomp.newPrecomputedWeights()
-        var lagrange_coeffs : array[DOMAIN, EC_P_Fr]
+        var lagrange_coeffs : array[VerkleDomain, EC_P_Fr]
 
         lagrange_coeffs.computeBarycentricCoefficients(precomp, point)
 
@@ -292,7 +291,7 @@ suite "IPA proof tests":
         verifier_transcript.newTranscriptGen(asBytes"ipa")
 
         var ok: bool
-        ok.checkIPAProof(verifier_transcript, ipaConfig, verifier_comm, ipaProof, point, innerProd)
+        ok = ipaConfig.checkIPAProof(verifier_transcript, verifier_comm, ipaProof, point, innerProd)
 
         doAssert ok == true, "Issue in checking IPA proof!"
       testIPAProofCreateAndVerify()
@@ -340,10 +339,10 @@ suite "Multiproof Tests":
       var one : EC_P_Fr
       one.setOne()
 
-      var Cs : array[DOMAIN, EC_P]
-      var Fs : array[DOMAIN, array[DOMAIN, EC_P_Fr]]
-      var Zs : array[DOMAIN, uint8]
-      var Ys : array[DOMAIN, EC_P_Fr]
+      var Cs : array[VerkleDomain, EC_P]
+      var Fs : array[VerkleDomain, array[VerkleDomain, EC_P_Fr]]
+      var Zs : array[VerkleDomain, uint8]
+      var Ys : array[VerkleDomain, EC_P_Fr]
 
       Cs[0] = prover_comm
       Fs[0] = poly
@@ -352,7 +351,7 @@ suite "Multiproof Tests":
 
       var multiproof: MultiProof
       var stat_create_mult: bool
-      stat_create_mult.createMultiProof(multiproof,prover_transcript, ipaConfig, Cs, Fs, Zs, precomp, testGeneratedPoints)
+      stat_create_mult = multiproof.createMultiProof(prover_transcript, ipaConfig, Cs, Fs, Zs, precomp, testGeneratedPoints)
 
       doAssert stat_create_mult.bool() == true, "Multiproof creation error!"
 
@@ -361,7 +360,7 @@ suite "Multiproof Tests":
       verifier_transcript.newTranscriptGen(asBytes"multiproof")
 
       var stat_verify_mult: bool
-      stat_verify_mult.verifyMultiproof(verifier_transcript,ipaConfig,multiproof,Cs,Ys,Zs)
+      stat_verify_mult = multiproof.verifyMultiproof(verifier_transcript,ipaConfig,Cs,Ys,Zs)
 
       doAssert stat_verify_mult.bool() == true, "Multiproof verification error!"
 

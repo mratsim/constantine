@@ -13,7 +13,7 @@
 # ############################################################
 
 import
-  ./[transcript_gen, common_utils, helper_types, barycentric_form],
+  ./[transcript_gen, common_utils, eth_verkle_constants, barycentric_form],
   ../platforms/primitives,
   ../hashes,
   ../math/config/[type_ff, curves],
@@ -37,15 +37,15 @@ import
 
 # Initiates a new IPASetting
 func genIPAConfig*(res: var IPASettings) : bool {.inline.}=
-  res.SRS.generate_random_points(uint64(DOMAIN))
+  res.SRS.generate_random_points(uint64(VerkleDomain))
   res.Q_val.fromAffine(Banderwagon.getGenerator())
   res.precompWeights.newPrecomputedWeights()
-  res.numRounds.computeNumRounds(uint64(DOMAIN))
+  res.numRounds.computeNumRounds(uint64(VerkleDomain))
   return true
 
 func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: IPASettings, commitment: EC_P, a: var openArray[EC_P_Fr], evalPoint: EC_P_Fr ) : bool {.inline.}=
   transcript.domain_separator(asBytes"ipa")
-  var b {.noInit.}: array[DOMAIN, EC_P_Fr]
+  var b {.noInit.}: array[VerkleDomain, EC_P_Fr]
   
   b.computeBarycentricCoefficients(ic.precompWeights,evalPoint)
   var innerProd {.noInit.}: EC_P_Fr
@@ -63,7 +63,7 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
   q = ic.Q_val
   q.scalarMul(w)
 
-  var current_basis {.noInit.}: array[DOMAIN, EC_P]
+  var current_basis {.noInit.}: array[VerkleDomain, EC_P]
   current_basis = ic.SRS
 
   var num_rounds = ic.numRounds
@@ -141,7 +141,7 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
 
     current_basis.foldPoints(G_L.toOpenArray(), G_R.toOpenArray(), xInv)
 
-  doAssert not(a.len == 1), "Length of `a` should be 1 at the end of the reduction"
+  debug: doAssert not(a.len == 1), "Length of `a` should be 1 at the end of the reduction"
 
   res.L_vector = L
   res.R_vector = R
@@ -154,7 +154,8 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
 #
 # ############################################################
 
-func isIPAProofEqual* (res: var bool, p1: IPAProof, p2: IPAProof)=
+func isIPAProofEqual* (p1: IPAProof, p2: IPAProof) : bool =
+  var res {.noInit.}: bool
   const num_rounds = 8
   res = true
   if p1.L_vector.len != p2.R_vector.len:
@@ -184,4 +185,4 @@ func isIPAProofEqual* (res: var bool, p1: IPAProof, p2: IPAProof)=
 
   else:
     res = true
-
+  return res

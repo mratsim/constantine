@@ -7,9 +7,9 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 import 
  math,
- ./helper_types,
+ ./eth_verkle_constants,
  ../math/config/[type_ff, curves],
- ../math/elliptic/[ec_twistededwards_projective],
+ ../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
  ../math/arithmetic/[finite_fields],
  ../math/arithmetic
 
@@ -34,16 +34,15 @@ func newPrecomputedWeights* [PrecomputedWeights] (res: var PrecomputedWeights)=
   res.barycentricWeights[i] = weights
   res.barycentricWeights[i+midpoint] = inverseWeights
 
-  midpoint = uint64(DOMAIN) - 1
+  midpoint = uint64(VerkleDomain) - 1
 
-  for i in 1..<DOMAIN:
+  for i in 1..<VerkleDomain:
    var k {.noInit.}: EC_P_Fr
    var i_bg {.noInit.} : matchingOrderBigInt(Banderwagon)
    i_bg.setUint(uint64(i))
    k.fromBig(i_bg)
 
    k.inv(k)
-
 
    var neg_k : EC_P_Fr
    var zero : EC_P_Fr
@@ -54,7 +53,7 @@ func newPrecomputedWeights* [PrecomputedWeights] (res: var PrecomputedWeights)=
 
 
 func computeBarycentricWeights* [EC_P_Fr] (res: var EC_P_Fr, element : uint64) = 
- if element <= uint64(DOMAIN):
+ if element <= uint64(VerkleDomain):
 
   var domain_element_Fr: EC_P_Fr
   var bigndom : matchingOrderBigInt(Banderwagon)
@@ -63,7 +62,7 @@ func computeBarycentricWeights* [EC_P_Fr] (res: var EC_P_Fr, element : uint64) =
 
   res.setOne()
 
-  for i in uint64(0)..<uint64(DOMAIN):
+  for i in uint64(0)..<uint64(VerkleDomain):
     if i==element:
       continue
 
@@ -76,15 +75,12 @@ func computeBarycentricWeights* [EC_P_Fr] (res: var EC_P_Fr, element : uint64) =
     var temp: EC_P_Fr
     temp.diff(domain_element_Fr,i_Fr)
     res.prod(res, temp)
-  
-
-# func BatchInversion(points : seq[EC_P_Fr]) : seq[EC_P_Fr] =
-#  var result : array[len(points),EC_P_Fr]
 
 
+func computeBarycentricCoefficients* [EC_P_Fr]( res_inv: var openArray[EC_P_Fr], precomp: PrecomputedWeights, point : EC_P_Fr) =
 
-func computeBarycentricCoefficients* [EC_P_Fr]( res: var openArray[EC_P_Fr], precomp: PrecomputedWeights, point : EC_P_Fr) =
-  for i in 0..<DOMAIN:
+  var res {.noInit.}: array[VerkleDomain, EC_P_Fr]
+  for i in 0..<VerkleDomain:
     var weight: EC_P_Fr
     weight = precomp.barycentricWeights[i]
     var i_bg: matchingOrderBigInt(Banderwagon)
@@ -98,7 +94,7 @@ func computeBarycentricCoefficients* [EC_P_Fr]( res: var openArray[EC_P_Fr], pre
   var totalProd: EC_P_Fr
   totalProd.setOne()
 
-  for i in 0..<DOMAIN:
+  for i in 0..<VerkleDomain:
     var i_bg: matchingOrderBigInt(Banderwagon)
     i_bg.setUint(uint64(i))
     var i_fr: EC_P_Fr
@@ -109,12 +105,10 @@ func computeBarycentricCoefficients* [EC_P_Fr]( res: var openArray[EC_P_Fr], pre
 
     totalProd.prod(totalProd, tmp)
 
-  for i in 0..<DOMAIN:
-    res[i].inv(res[i])
-    #not using batch inversion for now
+  res_inv.batchInvert(res)
 
-  for i in 0..<DOMAIN:
-    res[i].prod(res[i], totalprod)
+  for i in 0..<VerkleDomain:
+    res_inv[i].prod(res_inv[i], totalprod)
 
 
 func getInvertedElement* [EC_P_Fr] ( res: var EC_P_Fr, precomp : PrecomputedWeights, element : int, is_negative: bool) =
@@ -153,11 +147,11 @@ func absIntChecker*[int] (res: var int, x : int) =
 
 
 
-func divisionOnDomain* [EC_P_Fr](res: var array[DOMAIN,EC_P_Fr], precomp: PrecomputedWeights, index:  var int, f:  openArray[EC_P_Fr])=
+func divisionOnDomain* [EC_P_Fr](res: var array[VerkleDomain,EC_P_Fr], precomp: PrecomputedWeights, index:  var int, f:  openArray[EC_P_Fr])=
   var is_negative : bool = true
   var y = f[index]
 
-  for i in 0..<DOMAIN:
+  for i in 0..<VerkleDomain:
    if not(i == index).bool() == true:    
     var denominator = i - int(index)
     var absDenominator {.noInit.}: int

@@ -37,7 +37,7 @@ type
      D*: EC_P
 
 const
- DOMAIN*: int = 256
+ VerkleDomain*: int = 256
 
 type 
  PrecomputedWeights* = object
@@ -46,10 +46,10 @@ type
 
 type
    IPASettings* = object
-    SRS*: array[DOMAIN,EC_P]
+    SRS*: array[VerkleDomain,EC_P]
     Q_val*: EC_P
     precompWeights*: PrecomputedWeights
-    numRounds*: uint64
+    numRounds*: uint32
 
 const seed* = asBytes"eth_verkle_oct_2021"
 
