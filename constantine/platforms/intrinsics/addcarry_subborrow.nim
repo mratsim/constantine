@@ -27,7 +27,10 @@ import
 # On other CPU architectures inline assembly might be desirable.
 # A compiler proof-of-concept is available in the "research" folder.
 #
-# See https://gcc.godbolt.org/z/2h768y
+# See https://gcc.godbolt.org/z/2h768y (Mar 2020 compilers)
+#     https://gcc.godbolt.org/z/WP38PzsMs
+#    (Dec 2023 compilers improved but __builtin_addcll leads to very poor GCC codegen)
+#
 # ```C
 # #include <stdint.h>
 # #include <x86intrin.h>
