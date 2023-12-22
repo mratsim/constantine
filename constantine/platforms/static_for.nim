@@ -67,5 +67,3 @@ macro staticFor*(ident: untyped{nkIdent}, choices: typed, body: untyped): untype
     result.add nnkBlockStmt.newTree(
       nnkAccQuoted.newTree(ident, ident("_"), choice),
       body.replaceNodes(ident, choice))
-
-  debugEcho result.toStrLit
