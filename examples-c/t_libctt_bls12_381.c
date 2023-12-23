@@ -260,6 +260,11 @@ int main(){
   // }
   // printf(" SUCCESS square root\n");
 
+  mpz_clear(r);
+  mpz_clear(p);
+  mpz_clear(b);
+  mpz_clear(a);
+
   return 0;
 
 }

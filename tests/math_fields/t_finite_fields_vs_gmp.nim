@@ -240,6 +240,11 @@ template testSetup {.dirty.} =
   mpz_init(b)
   mpz_init(p)
   mpz_init(r)
+  defer:
+    mpz_clear(r)
+    mpz_clear(p)
+    mpz_clear(b)
+    mpz_clear(a)
 
 proc mainMul() =
   testSetup()

@@ -103,6 +103,11 @@ for i in 0 ..< 5:
     echo "  r GMP:               ", r.toHex()
     echo "  elapsed GMP:         ", elapsedGMP, " ns"
 
+    mpz_clear(rr)
+    mpz_clear(mm)
+    mpz_clear(ee)
+    mpz_clear(aa)
+
   # echo &"\n  ratio Stint/Constantine: {float64(elapsedStint)/float64(elapsedCtt):.3f}x"
   echo &"  ratio GMP/Constantine: {float64(elapsedGMP)/float64(elapsedCtt):.3f}x"
   echo "---------------------------------------------------------"
