@@ -876,6 +876,12 @@ task test_nvidia, "Run all tests for Nvidia GPUs":
 task bench_powmod, "Run modular exponentiation benchmark with your CC compiler":
   runBench("bench_powmod")
 
+task bench_gmp_modmul, "Run modular multiplication benchmarks vs GMP":
+  runBench("bench_gmp_modmul")
+
+task bench_gmp_modexp, "Run modular exponentiation benchmarks vs GMP":
+  runBench("bench_gmp_modexp")
+
 # Finite field 𝔽p
 # ------------------------------------------
 

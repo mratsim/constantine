@@ -53,7 +53,7 @@ func ccopy_fallback[T](ctl: CTBool[T], x: var T, y: T) {.inline.}=
 
 const
   nim_v2 = (NimMajor, NimMinor) > (1, 6)
-  noExplicitPtrDeref = defined(cpp) or nim_v2
+  noExplicitVarDeref = defined(cpp) or nim_v2
 
 template mux_x86_impl() {.dirty.} =
   static: doAssert(X86)
@@ -111,58 +111,73 @@ func ccopy_x86[T](ctl: CTBool[T], x: var T, y: T) {.inline.}=
   static: doAssert(X86)
   static: doAssert(GCC_Compatible)
 
+  # Due to https://github.com/nim-lang/Nim/issues/23114
+  # We don't use asm statement with `var` param
+
   when UseAsmSyntaxIntel:
-    when noExplicitPtrDeref:
-      asm """
-        test %[ctl], %[ctl]
-        cmovnz %[x], %[y]
-        : [x] "+r" (`x`)
-        : [ctl] "r" (`ctl`), [y] "r" (`y`)
-        : "cc"
-      """
+    when noExplicitVarDeref:
+      {.emit:[
+        """
+        asm volatile(
+          "test %[ctl], %[ctl]\n"
+          "cmovnz %[x], %[y]\n"
+          : [x] "+r" (""", x, """)
+          : [ctl] "r" (""", ctl, """), [y] "r" (""", y, """)
+          : "cc"
+        );"""].}
     else:
-      asm """
-        test %[ctl], %[ctl]
-        cmovnz %[x], %[y]
-        : [x] "+r" (*`x`)
-        : [ctl] "r" (`ctl`), [y] "r" (`y`)
-        : "cc"
-      """
+      {.emit:[
+        """
+        asm volatile(
+          "test %[ctl], %[ctl]\n"
+          "cmovnz %[x], %[y]\n"
+          : [x] "+r" (*""", x, """)
+          : [ctl] "r" (""", ctl, """), [y] "r" (""", y, """)
+          : "cc"
+        );"""].}
   else:
     when sizeof(T) == 8:
-      when noExplicitPtrDeref:
-        asm """
-          testq %[ctl], %[ctl]
-          cmovnzq %[y], %[x]
-          : [x] "+r" (`x`)
-          : [ctl] "r" (`ctl`), [y] "r" (`y`)
-          : "cc"
-        """
+      when noExplicitVarDeref:
+        {.emit:[
+          """
+          asm volatile(
+            "testq %[ctl], %[ctl]\n"
+            "cmovnzq %[y], %[x]\n"
+            : [x] "+r" (""", x, """)
+            : [ctl] "r" (""", ctl, """), [y] "r" (""", y, """)
+            : "cc"
+          );"""].}
       else:
-        asm """
-          testq %[ctl], %[ctl]
-          cmovnzq %[y], %[x]
-          : [x] "+r" (*`x`)
-          : [ctl] "r" (`ctl`), [y] "r" (`y`)
-          : "cc"
-        """
+        {.emit:[
+          """
+          asm volatile(
+            "testq %[ctl], %[ctl]\n"
+            "cmovnzq %[y], %[x]\n"
+            : [x] "+r" (*""", x, """)
+            : [ctl] "r" (""", ctl, """), [y] "r" (""", y, """)
+            : "cc"
+          );"""].}
     else:
-      when noExplicitPtrDeref:
-        asm """
-          testl %[ctl], %[ctl]
-          cmovnzl %[y], %[x]
-          : [x] "+r" (`x`)
-          : [ctl] "r" (`ctl`), [y] "r" (`y`)
-          : "cc"
-        """
+      when noExplicitVarDeref:
+        {.emit:[
+          """
+          asm volatile(
+            "testl %[ctl], %[ctl]\n"
+            "cmovnzl %[y], %[x]\n"
+            : [x] "+r" (""", x, """)
+            : [ctl] "r" (""", ctl, """), [y] "r" (""", y, """)
+            : "cc"
+          );"""].}
       else:
-        asm """
-          testl %[ctl], %[ctl]
-          cmovnzl %[y], %[x]
-          : [x] "+r" (*`x`)
-          : [ctl] "r" (`ctl`), [y] "r" (`y`)
-          : "cc"
-        """
+        {.emit:[
+          """
+          asm volatile(
+            "testl %[ctl], %[ctl]\n"
+            "cmovnzl %[y], %[x]\n"
+            : [x] "+r" (*""", x, """)
+            : [ctl] "r" (""", ctl, """), [y] "r" (""", y, """)
+            : "cc"
+          );"""].}
 
 # Public functions
 # ------------------------------------------------------------

@@ -212,7 +212,7 @@ func mulMont_CIOS_sparebit(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipF
     discard t.csub(M, not(t < M))
   r = t
 
-func mulMont_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) {.used.} =
+func mulMont_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipFinalSub: static bool = false) {.used.} =
   ## Montgomery Multiplication using Coarse Grained Operand Scanning (CIOS)
   # - Analyzing and Comparing Montgomery Multiplication Algorithms
   #   Cetin Kaya Koc and Tolga Acar and Burton S. Kaliski Jr.
@@ -257,7 +257,8 @@ func mulMont_CIOS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType) {.used.} =
   # t[N+1] can only be non-zero in the intermediate computation
   # since it is immediately reduce to t[N] at the end of each "i" iteration
   # However if t[N] is non-zero we have t > M
-  discard t.csub(M, tN.isNonZero() or not(t < M)) # TODO: (t >= M) is unnecessary for prime in the form (2^64)ʷ
+  when not skipFinalSub:
+    discard t.csub(M, tN.isNonZero() or not(t < M)) # TODO: (t >= M) is unnecessary for prime in the form (2^64)ʷ
   r = t
 
 func mulMont_FIPS(r: var Limbs, a, b, M: Limbs, m0ninv: BaseType, skipFinalSub: static bool = false) =
@@ -721,7 +722,7 @@ func powMontSquarings(
     else: # Drained all exponent bits
       k = acc_len
 
-  let bits = (acc shr (acc_len - k)) and ((1'u32 shl k) - 1)
+  let bits = (acc shr (acc_len - k)) and ((1'u shl k) - 1)
   acc_len -= k
 
   # We have k bits and can do k squaring

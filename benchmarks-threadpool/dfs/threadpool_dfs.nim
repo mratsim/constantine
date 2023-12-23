@@ -17,7 +17,7 @@ when not defined(windows):
 
 var tp: Threadpool
 
-proc dfs(depth, breadth: int): uint32 {.gcsafe.} =
+proc dfs(depth, breadth: int): uint32 {.gcsafe, raises: [].} =
   if depth == 0:
     return 1
 

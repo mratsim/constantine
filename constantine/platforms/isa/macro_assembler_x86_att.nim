@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  std/[macros, strutils, sets, hashes, algorithm],
+  std/[macros, strutils, sets, hashes, algorithm, sequtils],
   ../config
 
 # A compile-time inline assembler
@@ -103,8 +103,8 @@ type
     nimSymbol: NimNode     # a   - Nim nimSymbol
     rm: RM
     constraint: Constraint
-    constraintString: string          # C emit for example a->limbs
-    memClobbered: seq[(MemIndirectAccess, string)]
+    constraintDesc: seq[NimNode] # C emit for example `[a] "r" (a->limbs)`
+    memClobbered: seq[(MemIndirectAccess, seq[NimNode])]
 
   OperandArray* = object
     nimSymbol: NimNode
@@ -176,42 +176,78 @@ func init*(T: type Assembler_x86, Word: typedesc[SomeUnsignedInt]): Assembler_x8
   result.wordSize = sizeof(Word)
   result.wordBitWidth = result.wordSize * 8
 
-func setConstraintString(desc: OperandDesc, symbolString: string) =
+func escapeConstraint(asmDesc: string, symbol: NimNode): seq[NimNode] =
+  # Input:
+  # The assembly symbol + constraint + opening '(' + modifiers like reference/dereference/array-ranges
+  # The Nim symbol
+  #
+  # The closing ')' is automatically appended.
+  @[
+    newLit(asmDesc),
+    symbol,
+    newLit ")",
+  ]
+
+func setConstraintDesc(desc: OperandDesc, symbol: NimNode) =
   # [a] "rbx" (`a`) for specific registers
   # [a] "+r" (`*a_ptr`) for pointer to memory
   # [a] "+r" (`a[0]`) for array cells
-  desc.constraintString = desc.asmId & "\"" & $desc.constraint & $desc.rm & "\"" &
-          " (`" & symbolString & "`)"
+  desc.constraintDesc = escapeConstraint(
+    desc.asmId & "\"" & $desc.constraint & $desc.rm & "\"" & " (",
+    symbol
+  )
 
-func genMemClobber(nimSymbol: NimNode, len: int, memIndirect: MemIndirectAccess): string =
+func setConstraintDesc(desc: OperandDesc, modifier: string, symbol: NimNode) =
+  # [a] "rbx" (`a`) for specific registers
+  # [a] "+r" (`*a_ptr`) for pointer to memory
+  # [a] "+r" (`a[0]`) for array cells
+  desc.constraintDesc = escapeConstraint(
+    desc.asmId & "\"" & $desc.constraint & $desc.rm & "\"" & " (" & modifier,
+    symbol
+  )
+
+func genRawMemClobber(nimSymbol: NimNode, len: int, memIndirect: MemIndirectAccess): seq[NimNode] =
+  ## Create a raw memory clobber, for use in clobber list
   let baseType = nimSymbol.getTypeImpl()[2].getTypeImpl()[0]
   let cBaseType = if baseType.sameType(getType(uint64)): "NU64"
                   else: "NU32"
 
-  let symStr = nimSymbol.toString()
+  case memIndirect
+  of memRead:
+    return escapeConstraint("\"o\" (*(const " & cBaseType & " (*)[" & $len & "]) ", nimSymbol)
+  of memWrite:
+    return escapeConstraint("\"=o\" (*(" & cBaseType & " (*)[" & $len & "]) ", nimSymbol)
+  of memReadWrite:
+    return escapeConstraint("\"+o\" (*(" & cBaseType & " (*)[" & $len & "]) ", nimSymbol)
+  else:
+    doAssert false, "Indirect access kind not specified"
+
+func genConstraintMemClobber(asmSymbol: string, nimSymbol: NimNode, len: int, memIndirect: MemIndirectAccess): seq[NimNode] =
+  ## Create a constraint memory clobber, for use in constraint list
+  let baseType = nimSymbol.getTypeImpl()[2].getTypeImpl()[0]
+  let cBaseType = if baseType.sameType(getType(uint64)): "NU64"
+                  else: "NU32"
 
   case memIndirect
   of memRead:
-    return "\"o\" (`*(const " & cBaseType & " (*)[" & $len & "]) " & symStr & "`)"
+    return escapeConstraint("[" & asmSymbol & "] \"o\" (*(const " & cBaseType & " (*)[" & $len & "]) ", nimSymbol)
   of memWrite:
-    return "\"=o\" (`*(" & cBaseType & " (*)[" & $len & "]) " & symStr & "`)"
+    return escapeConstraint("[" & asmSymbol & "] \"=o\" (*(" & cBaseType & " (*)[" & $len & "]) ", nimSymbol)
   of memReadWrite:
-    return "\"+o\" (`*(" & cBaseType & " (*)[" & $len & "]) " & symStr & "`)"
+    return escapeConstraint("[" & asmSymbol & "] \"+o\" (*(" & cBaseType & " (*)[" & $len & "]) ", nimSymbol)
   else:
     doAssert false, "Indirect access kind not specified"
 
 func asmValue*(nimSymbol: NimNode, rm: RM, constraint: Constraint): Operand =
-  let symStr = $nimSymbol
-
   let desc = OperandDesc(
-        asmId: "[" & symStr & "]",
+        asmId: "[" & $nimSymbol & "]",
         nimSymbol: nimSymbol,
         rm: rm,
         constraint: constraint)
   if rm in {Mem, MemOffsettable}:
-    desc.setConstraintString("*&" & symStr)
+    desc.setConstraintDesc("*&", nimSymbol)
   else:
-    desc.setConstraintString(symStr)
+    desc.setConstraintDesc(nimSymbol)
   return Operand(desc: desc)
 
 func asmArray*(nimSymbol: NimNode, len: int, rm: RM, constraint: Constraint, memIndirect = memNoAccess): OperandArray =
@@ -229,8 +265,8 @@ func asmArray*(nimSymbol: NimNode, len: int, rm: RM, constraint: Constraint, mem
                   nimSymbol: nimSymbol,
                   rm: rm,
                   constraint: constraint,
-                  memClobbered: @[(memIndirect, genMemClobber(nimSymbol, len, memIndirect))])
-    desc.setConstraintString(symStr)
+                  memClobbered: @[(memIndirect, genRawMemClobber(nimSymbol, len, memIndirect))])
+    desc.setConstraintDesc(nimSymbol)
 
     for i in 0 ..< len:
       result.buf[i] = Operand(
@@ -256,7 +292,7 @@ func asmArray*(nimSymbol: NimNode, len: int, rm: RM, constraint: Constraint, mem
                   nimSymbol: nimSymbol,
                   rm: rm,
                   constraint: constraint,
-                  constraintString: "[" & symStr & "] " & genMemClobber(nimSymbol, len, memIndirect))
+                  constraintDesc: genConstraintMemClobber(symStr, nimSymbol, len, memIndirect))
 
     for i in 0 ..< len:
       # let desc = OperandDesc(
@@ -280,7 +316,7 @@ func asmArray*(nimSymbol: NimNode, len: int, rm: RM, constraint: Constraint, mem
                   nimSymbol: ident(symStr & $i),
                   rm: rm,
                   constraint: constraint)
-      desc.setConstraintString(symStr & "[" & $i & "]")
+      desc.setConstraintDesc(nnkBracketExpr.newTree(nimSymbol, newLit i))
       result.buf[i] = Operand(
         desc: desc,
         kind: kRegister)
@@ -293,7 +329,7 @@ func asArrayAddr*(op: Operand, memPointer: NimNode, len: int, memIndirect: MemIn
     desc: nil,
     buf: newSeq[Operand](len))
 
-  op.desc.memClobbered.add (memIndirect, genMemClobber(memPointer, len, memIndirect))
+  op.desc.memClobbered.add (memIndirect, genRawMemClobber(memPointer, len, memIndirect))
 
   for i in 0 ..< len:
     result.buf[i] = Operand(
@@ -313,7 +349,7 @@ func asArrayAddr*(op: Register, memPointer: NimNode, len: int, memIndirect: MemI
         rm: ClobberedReg,
         constraint: asmClobberedRegister)
 
-  desc.memClobbered = @[(memIndirect, genMemClobber(memPointer, len, memIndirect))]
+  desc.memClobbered = @[(memIndirect, genRawMemClobber(memPointer, len, memIndirect))]
 
   for i in 0 ..< len:
     result.buf[i] = Operand(
@@ -330,7 +366,7 @@ func as2dArrayAddr*(op: Operand, memPointer: NimNode, rows, cols: int, memIndire
     dims: [rows, cols],
     buf2d: newSeq[Operand](rows*cols))
 
-  op.desc.memClobbered.add (memIndirect, genMemClobber(memPointer, rows*cols, memIndirect))
+  op.desc.memClobbered.add (memIndirect, genRawMemClobber(memPointer, rows*cols, memIndirect))
 
   for i in 0 ..< rows*cols:
     result.buf2d[i] = Operand(
@@ -354,7 +390,7 @@ func setToCarryFlag*(a: var Assembler_x86, carry: NimNode) =
     nimSymbol: ident(symStr),
     rm: CarryFlag,
     constraint: asmOutputOverwrite)
-  desc.setConstraintString(symStr)
+  desc.setConstraintDesc(nimSymbol)
   a.operands.incl(desc)
 
 func generate*(a: Assembler_x86): NimNode =
@@ -362,15 +398,15 @@ func generate*(a: Assembler_x86): NimNode =
   ## the desired instruction
 
   var
-    outOperands: seq[string]
-    inOperands: seq[string]
+    outOperands: seq[seq[NimNode]]
+    inOperands: seq[seq[NimNode]]
     memClobbered = false
 
   for odesc in a.operands.items():
     if odesc.constraint in {asmInput, asmInputCommutative}:
-      inOperands.add odesc.constraintString
+      inOperands.add odesc.constraintDesc
     else:
-      outOperands.add odesc.constraintString
+      outOperands.add odesc.constraintDesc
 
     for (memIndirect, memDesc) in odesc.memClobbered:
       # TODO: precise clobbering.
@@ -387,9 +423,9 @@ func generate*(a: Assembler_x86): NimNode =
       # else:
       #   outOperands.add memDesc
 
-  var params: string
-  params.add ": " & outOperands.join(", ") & '\n'
-  params.add ": " & inOperands.join(", ") & '\n'
+  var params: seq[NimNode]
+  params.add newLit(": ") & outOperands.foldl(a & newLit(", ") & b) & newLit("\n")
+  params.add newLit(": ") &  inOperands.foldl(a & newLit(", ") & b) & newLit("\n")
 
   let clobbers = [(a.isStackClobbered, "sp"),
                   (a.areFlagsClobbered, "cc"),
@@ -408,7 +444,7 @@ func generate*(a: Assembler_x86): NimNode =
     else:
       clobberList.add ", \"" & $reg & '\"'
 
-  params.add clobberList
+  params.add newLit(clobberList)
 
   # GCC will optimize ASM away if there are no
   # memory operand or volatile + memory clobber
@@ -422,12 +458,20 @@ func generate*(a: Assembler_x86): NimNode =
   var asmStmt = "\"" & a.code.replace("\n", "\\n\"\n\"")
   asmStmt.setLen(asmStmt.len - 1) # drop the last quote
 
+  var emitStmt = nnkBracket.newTree(
+        newLit("\nasm volatile(\n"),
+        newLit(asmStmt),
+  )
+
+  for node in params:
+    emitStmt.add node
+
+  emitStmt.add newLit(");")
+
   result = nnkPragma.newTree(
     nnkExprColonExpr.newTree(
       ident"emit",
-      newLit(
-        "asm volatile(\n" & asmStmt & params & ");"
-      )
+      emitStmt
     )
   )
   result = nnkBlockStmt.newTree(

@@ -61,6 +61,11 @@ proc main() =
   mpz_init(rMod)
   mpz_init(a)
   mpz_init(b)
+  defer:
+    mpz_clear(b)
+    mpz_clear(a)
+    mpz_clear(rMod)
+    mpz_clear(r)
 
   testSizes(rBits, aBits, bBits):
     # echo "--------------------------------------------------------------------------------"

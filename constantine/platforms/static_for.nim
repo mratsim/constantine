@@ -43,6 +43,8 @@ macro staticForCountdown*(idx: untyped{nkIdent}, start, stopIncl: static int, bo
 
 {.experimental: "dynamicBindSym".}
 
+const nim_v2 = (NimMajor, NimMinor) > (1, 6)
+
 macro staticFor*(ident: untyped{nkIdent}, choices: typed, body: untyped): untyped =
   ## matches
   ##   staticFor(curve, TestCurves):
@@ -51,7 +53,11 @@ macro staticFor*(ident: untyped{nkIdent}, choices: typed, body: untyped): untype
 
   let choices = if choices.kind == nnkSym:
                   # Unpack symbol
-                  choices.getImpl()
+                  let impl = choices.getImpl()
+                  when nim_v2:
+                    impl[2] # nnkConstDef
+                  else:
+                    impl
                 else:
                   choices.expectKind(nnkBracket)
                   choices
@@ -59,5 +65,5 @@ macro staticFor*(ident: untyped{nkIdent}, choices: typed, body: untyped): untype
   result = newStmtList()
   for choice in choices:
     result.add nnkBlockStmt.newTree(
-      ident($ident & "_" & $choice.intVal),
+      nnkAccQuoted.newTree(ident, ident("_"), choice),
       body.replaceNodes(ident, choice))

@@ -322,7 +322,7 @@ func clear*(ctx: var Poly1305_CTX) =
   ctx.bufIdx = 0
 
 func mac*(
-       _: type poly1305,
+       T: type poly1305,
        tag: var array[16, byte],
        message: openArray[byte],
        nonReusedKey: array[32, byte],
@@ -339,7 +339,7 @@ func mac*(
     ctx.clear()
 
 func mac*(
-       _: type poly1305,
+       T: type poly1305,
        message: openArray[byte],
        nonReusedKey: array[32, byte],
        clearMem = false): array[16, byte]{.noInit, genCharAPI.}=

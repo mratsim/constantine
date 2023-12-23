@@ -92,7 +92,7 @@ func powSquarings[F](
     else: # Drained all exponent bits
       k = acc_len
 
-  let bits = (acc shr (acc_len - k)) and ((1'u32 shl k) - 1)
+  let bits = (acc shr (acc_len - k)) and ((1'u shl k) - 1)
   acc_len -= k
 
   # We have k bits and can do k squaring

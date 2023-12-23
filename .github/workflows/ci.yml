@@ -7,7 +7,7 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        nim_version: [version-1-6] # [version-1-4, devel]
+        nim_version: [version-1-6, version-2-0] # devel
         rust_toolchain: [stable] # [beta, nightly]
         go_toolchain: [stable]
         target:
@@ -261,7 +261,7 @@ jobs:
         run: |
           pacman -S --needed --noconfirm mingw-w64-x86_64-gmp mingw-w64-x86_64-llvm
           nimble refresh --verbose -y
-          nimble install --verbose -y gmp jsony asynctools yaml@1.1.0
+          nimble install --verbose -y gmp@#head jsony asynctools yaml@1.1.0
 
           cd constantine
           go mod download -modfile=go_test.mod
@@ -271,7 +271,7 @@ jobs:
         shell: bash
         run: |
           nimble refresh --verbose -y
-          nimble install --verbose -y gmp jsony asynctools yaml@1.1.0
+          nimble install --verbose -y gmp@#head jsony asynctools yaml@1.1.0
 
           cd constantine
           go mod download -modfile=go_test.mod
@@ -352,16 +352,26 @@ jobs:
       - name: Run Constantine in-depth tests (Windows - no GMP, with Assembly)
         # So "test_bindings" uses C and can find GMP
         # but nim-gmp cannot find GMP on Windows CI
+        # Also need to workaround asynctools not being able to create pipes https://github.com/nim-lang/Nim/issues/23118
         if: runner.os == 'Windows' && matrix.target.BACKEND == 'ASM'
         shell: msys2 {0}
         run: |
           cd constantine
-          nimble test_parallel_no_gmp --verbose
+          if [[ '${{  matrix.nim_version }}' == 'version-2-0' ]]; then
+            nimble test_no_gmp --verbose
+          else
+            nimble test_parallel_no_gmp --verbose
+          fi
       - name: Run Constantine in-depth tests (Windows - no GMP, no Assembly)
         # So "test_bindings" uses C and can find GMP
         # but nim-gmp cannot find GMP on Windows CI
+        # Also need to workaround asynctools not being able to create pipes https://github.com/nim-lang/Nim/issues/23118
         if: runner.os == 'Windows' && matrix.target.BACKEND == 'NO_ASM'
         shell: msys2 {0}
         run: |
           cd constantine
-          CTT_ASM=0 nimble test_parallel_no_gmp --verbose
+          if [[ '${{  matrix.nim_version }}' == 'version-2-0' ]]; then
+            CTT_ASM=0 nimble test_no_gmp --verbose
+          else
+            CTT_ASM=0 nimble test_parallel_no_gmp --verbose
+          fi
