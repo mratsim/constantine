@@ -6,11 +6,6 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-type
-  CFile {.importc: "FILE", header: "<stdio.h>",
-          incompleteStruct.} = object
-  File = ptr CFile
-
 proc c_printf(fmt: cstring): cint {.sideeffect, importc: "printf", header: "<stdio.h>", varargs, discardable.}
 func c_snprintf(dst: cstring, maxLen: csize_t, format: cstring): cint {.importc:"snprintf", header: "<stdio.h>", varargs.}
   ## dst is really a `var` parameter, but Nim var are lowered to pointer hence unsuitable here.
