@@ -370,20 +370,3 @@ suite "Multiproof Tests":
       doAssert stat_verify_mult.bool() == true, "Multiproof verification error!"
 
     testMultiproofCreationAndVerification()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
