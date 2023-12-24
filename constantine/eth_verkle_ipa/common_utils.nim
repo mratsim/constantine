@@ -9,7 +9,7 @@
 ## IPAConfiguration contains all of the necessary information to create Pedersen + IPA proofs
 ## such as the SRS
 import
-    ./[eth_verkle_constants],
+    ./[eth_verkle_constants, transcript_gen],
     ../platforms/primitives,
     ../math/config/[type_ff, curves],
     ../math/elliptic/ec_twistededwards_projective,
@@ -27,20 +27,18 @@ import
 #
 # ############################################################
 
-func generate_random_points* [EC_P](points: var  openArray[EC_P] , num_points: uint64)  =
+func generate_random_points* [EC_P](points: var openArray[EC_P], ipaTranscript: var IpaTranscript, num_points: uint64)  =
 
     var incrementer: uint64 = 0
     var idx: int = 0
     while uint64(len(points)) !=  num_points:
 
-        var digest : sha256
+        var digest : IpaTranscript.H
         digest.init()
         digest.update(seed)
 
         digest.update(incrementer.toBytes(bigEndian))
-
-        var hash {.noInit.} : array[32, byte]
-
+        var hash {.noInit.} : array[IpaTranscript.H.digestSize(), byte]
         digest.finish(hash)
 
         var x {.noInit.}:  EC_P
@@ -49,7 +47,7 @@ func generate_random_points* [EC_P](points: var  openArray[EC_P] , num_points: u
         doAssert stat1 == cttCodecEcc_Success, "Deserialization Failure!"
         incrementer=incrementer+1
 
-        var x_as_Bytes {.noInit.} : array[32, byte]
+        var x_as_Bytes {.noInit.} : array[IpaTranscript.H.digestSize(), byte]
         let stat2 = x_as_Bytes.serialize(x)
         doAssert stat2  == cttCodecEcc_Success, "Serialization Failure!"
 
@@ -66,19 +64,19 @@ func generate_random_points* [EC_P](points: var  openArray[EC_P] , num_points: u
 #
 # ############################################################
 
-func computeInnerProducts* [EC_P_Fr] (res: var EC_P_Fr, a,b : openArray[EC_P_Fr])=
+func computeInnerProducts* [Fr] (res: var Fr, a,b : openArray[Fr])=
   debug: doAssert (a.len == b.len).bool() == true, "Scalar lengths don't match!"
   res.setZero()
   for i in 0..<b.len:
-    var tmp : EC_P_Fr 
+    var tmp : Fr 
     tmp.prod(a[i], b[i])
     res.sum(res,tmp)
 
-func computeInnerProducts* [EC_P_Fr] (res: var EC_P_Fr, a,b: StridedView[EC_P_Fr])=
+func computeInnerProducts* [Fr] (res: var Fr, a,b : StridedView[Fr])=
   debug: doAssert (a.len == b.len).bool() == true, "Scalar lengths don't match!"
   res.setZero()
   for i in 0..<b.len:
-    var tmp : EC_P_Fr 
+    var tmp : Fr 
     tmp.prod(a[i], b[i])
     res.sum(res,tmp)
   
@@ -88,17 +86,17 @@ func computeInnerProducts* [EC_P_Fr] (res: var EC_P_Fr, a,b: StridedView[EC_P_Fr
 #
 # ############################################################
 
-func foldScalars* [EC_P_Fr] (res: var openArray[EC_P_Fr], a,b : openArray[EC_P_Fr], x: EC_P_Fr)=
+func foldScalars* [Fr] (res: var openArray[Fr], a,b : openArray[Fr], x: Fr)=
     
     debug: doAssert a.len == b.len , "Lengths should be equal!"
 
     for i in 0..<a.len:
-        var bx {.noInit.}: EC_P_Fr
+        var bx {.noInit.}: Fr
         bx.prod(x, b[i])
         res[i].sum(bx, a[i])
 
 
-func foldPoints* [EC_P] (res: var openArray[EC_P], a,b : var openArray[EC_P], x: EC_P_Fr)=
+func foldPoints* [EC_P] (res: var openArray[EC_P], a,b : var openArray[EC_P], x: Fr)=
     
     debug: doAssert a.len == b.len , "Should have equal lengths!"
 
@@ -131,7 +129,7 @@ func computeNumRounds*(res: var uint32, vectorSize: SomeUnsignedInt)=
 
 # Further reference refer to this https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
 
-func pedersen_commit_varbasis*[EC_P] (res: var EC_P, groupPoints: openArray[EC_P], g: int,  polynomial: openArray[EC_P_Fr], n: int)=
+func pedersen_commit_varbasis*[EC_P] (res: var EC_P, groupPoints: openArray[EC_P], g: int,  polynomial: openArray[Fr], n: int)=
   debug: doAssert groupPoints.len == polynomial.len, "Group Elements and Polynomials should be having the same length!"
   var poly_big = newSeq[matchingOrderBigInt(Banderwagon)](n)
   for i in 0..<n:

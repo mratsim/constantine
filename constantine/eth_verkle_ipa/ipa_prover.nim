@@ -36,8 +36,8 @@ import
 # Further reference refer to this https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
 
 # Initiates a new IPASetting
-func genIPAConfig*(res: var IPASettings) : bool {.inline.}=
-  res.SRS.generate_random_points(uint64(VerkleDomain))
+func genIPAConfig*(res: var IPASettings, ipaTranscript: var IpaTranscript[sha256, 32]) : bool {.inline.}=
+  res.SRS.generate_random_points(ipaTranscript, uint64(VerkleDomain))
   res.Q_val.fromAffine(Banderwagon.getGenerator())
   res.precompWeights.newPrecomputedWeights()
   res.numRounds.computeNumRounds(uint64(VerkleDomain))

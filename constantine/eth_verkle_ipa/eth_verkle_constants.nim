@@ -18,6 +18,7 @@ import
   ../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_affine],
   ../math/arithmetic,
   ../math/io/[io_fields],
+  ../hashes,
   ../curves_primitives
 
 type
@@ -54,6 +55,10 @@ type
 const seed* = asBytes"eth_verkle_oct_2021"
 
 type Bytes* = array[32, byte]
+
+type IpaTranscript* [H: CryptoHash, N: static int] = object
+  ctx*: H
+  label*: array[N, byte]
 
 type
     Coord* = object 

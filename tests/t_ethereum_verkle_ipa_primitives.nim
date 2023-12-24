@@ -201,7 +201,8 @@ suite "IPA proof tests":
   test "Test for initiating IPA proof configuration":
     proc testMain()=
         var ipaConfig: IPASettings
-        let stat1 = ipaConfig.genIPAConfig()
+        var ipaTranscript: IpaTranscript[sha256, 32]
+        let stat1 = ipaConfig.genIPAConfig(ipaTranscript)
         doAssert stat1 == true, "Could not generate new IPA Config properly!"
     testMain()
 
@@ -209,10 +210,11 @@ suite "IPA proof tests":
     proc testIPAProofEquality()=
         var point: EC_P_Fr
         var ipaConfig: IPASettings
-        let stat1 = ipaConfig.genIPAConfig()
+        var ipaTranscript: IpaTranscript[sha256, 32]
+        let stat1 = ipaConfig.genIPAConfig(ipaTranscript)
 
         var testGeneratedPoints: array[256, EC_P]
-        testGeneratedPoints.generate_random_points(256)
+        testGeneratedPoints.generate_random_points(ipaTranscript, 256)
 
         var prover_transcript: sha256
         prover_transcript.newTranscriptGen(asBytes"ipa")
@@ -248,10 +250,11 @@ suite "IPA proof tests":
       proc testIPAProofCreateAndVerify()=
         var point : EC_P_Fr
         var ipaConfig: IPASettings
-        let stat1 = ipaConfig.genIPAConfig()
+        var ipaTranscript: IpaTranscript[sha256, 32]
+        let stat1 = ipaConfig.genIPAConfig(ipaTranscript)
 
         var testGeneratedPoints: array[256,EC_P]
-        testGeneratedPoints.generate_random_points(256)
+        testGeneratedPoints.generate_random_points(ipaTranscript,256)
 
         # from a shared view
         var i_bg : matchingOrderBigInt(Banderwagon)
@@ -308,7 +311,8 @@ suite "Multiproof Tests":
   test "IPA Config test for Multiproofs":
     proc testIPAConfigForMultiproofs()=
       var ipaConfig: IPASettings
-      let stat1 = ipaConfig.genIPAConfig()
+      var ipaTranscript: IpaTranscript[sha256, 32]
+      let stat1 = ipaConfig.genIPAConfig(ipaTranscript)
       doAssert stat1 == true, "Could not initialise new IPA config for multiproofs!"
     testIPAConfigForMultiproofs()
   
@@ -316,10 +320,11 @@ suite "Multiproof Tests":
     proc testMultiproofCreationAndVerification()=
 
       var ipaConfig: IPASettings
-      let stat1 = ipaConfig.genIPAConfig()
+      var ipaTranscript: IpaTranscript[sha256, 32]
+      let stat1 = ipaConfig.genIPAConfig(ipaTranscript)
 
       var testGeneratedPoints: array[256, EC_P]
-      testGeneratedPoints.generate_random_points(256)
+      testGeneratedPoints.generate_random_points(ipaTranscript, 256)
 
       var testVals: array[14, uint64] = [1,1,1,4,5,6,7,8,9,10,11,12,13,14]
       var poly : array[256, EC_P_Fr]

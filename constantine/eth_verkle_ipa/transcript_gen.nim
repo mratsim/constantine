@@ -8,7 +8,7 @@
 
 # ############################################################
 #
-#         sha256 Generator for Challenge Scalars
+#         CryptoHash Generator for Challenge Scalars
 #
 # ############################################################
 
@@ -22,44 +22,37 @@ import
     ../hashes,
     ../serialization/[codecs_banderwagon,codecs_status_codes]
 
-
-func newTranscriptGen*[sha256](res: var sha256, label: openArray[byte]) =
+func newTranscriptGen*(res: var CryptoHash, label: openArray[byte]) =
     res.init()
     res.update(label)
 
-
-func messageAppend* [sha256]( res: var sha256, message: openArray[byte], label: openArray[byte]) =
+func messageAppend*( res: var CryptoHash, message: openArray[byte], label: openArray[byte]) =
     res.init()
     res.update(label)
     res.update(message)
 
-
-func messageAppend_u64* [sha256](res: var sha256, label: openArray[byte], num_value: uint64) = 
+func messageAppend_u64*(res: var CryptoHash, label: openArray[byte], num_value: uint64) = 
     res.init()
     res.update(label)
     res.update(num_value.toBytes(bigEndian))
 
-func domainSeparator* [sha256](res: var sha256, label: openArray[byte]) =
-    var state {.noInit.} : sha256
+func domainSeparator*(res: var CryptoHash, label: openArray[byte]) =
+    var state {.noInit.} : CryptoHash
     state.update(label)
 
-
-func pointAppend* [sha256] (res: var sha256, label: openArray[byte], point: EC_P) =
+func pointAppend*(res: var CryptoHash, label: openArray[byte], point: EC_P) =
     var bytes {.noInit.}: array[32, byte]
     if(bytes.serialize(point) == cttCodecEcc_Success):
         res.messageAppend(bytes, label)
 
-
-func scalarAppend* [sha256] (res: var sha256, label: openArray[byte], scalar: matchingOrderBigInt(Banderwagon)) =
+func scalarAppend*(res: var CryptoHash, label: openArray[byte], scalar: matchingOrderBigInt(Banderwagon)) =
     var bytes {.noInit.}: array[32, byte]
 
     if(bytes.serialize_scalar(scalar) == cttCodecScalar_Success):
         res.messageAppend(bytes, label)
 
-
-
 # Generating Challenge Scalars based on the Fiat Shamir method
-func generateChallengeScalar* (gen: var matchingOrderBigInt(Banderwagon), transcript: var sha256, label: openArray[byte]) =
+func generateChallengeScalar*(gen: var matchingOrderBigInt(Banderwagon), transcript: var CryptoHash, label: openArray[byte]) =
     transcript.domainSeparator(label)
 
     var hash: array[32, byte]
