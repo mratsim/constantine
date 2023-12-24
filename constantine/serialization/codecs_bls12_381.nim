@@ -49,15 +49,18 @@ import
     ./codecs_status_codes
 
 type
-  Scalar* = matchingOrderBigInt(BLS12_381)
-  G1P* = ECP_ShortW_Aff[Fp[BLS12_381], G1]
-  G2P* = ECP_ShortW_Aff[Fp2[BLS12_381], G2]
+  Scalar = matchingOrderBigInt(BLS12_381)
+  G1P = ECP_ShortW_Aff[Fp[BLS12_381], G1]
+  G2P = ECP_ShortW_Aff[Fp2[BLS12_381], G2]
 
+
+const pre = "ctt_bls12_381_"
+import ../zoo_exports
 
 # Input validation
 # ------------------------------------------------------------------------------------------------
 
-func validate_scalar*(scalar: matchingOrderBigInt(BLS12_381)): CttCodecScalarStatus =
+func validate_scalar*(scalar: Scalar): CttCodecScalarStatus {.libPrefix: pre.} =
   ## Validate a scalar
   ## Regarding timing attacks, this will leak information
   ## if the scalar is 0 or larger than the curve order.
@@ -67,7 +70,7 @@ func validate_scalar*(scalar: matchingOrderBigInt(BLS12_381)): CttCodecScalarSta
     return cttCodecScalar_ScalarLargerThanCurveOrder
   return cttCodecScalar_Success
 
-func validate_g1*(g1Point: G1P): CttCodecEccStatus =
+func validate_g1*(g1Point: G1P): CttCodecEccStatus {.libPrefix: pre.} =
   ## Validate a G1 point
   ## This is an expensive operation that can be cached
   if g1Point.isInf().bool():
@@ -78,7 +81,7 @@ func validate_g1*(g1Point: G1P): CttCodecEccStatus =
     return cttCodecEcc_PointNotInSubgroup
   return cttCodecEcc_Success
 
-func validate_g2*(g2Point: G2P): CttCodecEccStatus =
+func validate_g2*(g2Point: G2P): CttCodecEccStatus {.libPrefix: pre.} =
   ## Validate a G2 point.
   ## This is an expensive operation that can be cached
   if g2Point.isInf().bool():
@@ -92,13 +95,13 @@ func validate_g2*(g2Point: G2P): CttCodecEccStatus =
 # Codecs
 # ------------------------------------------------------------------------------------------------
 
-func serialize_scalar*(dst: var array[32, byte], scalar: matchingOrderBigInt(BLS12_381)): CttCodecScalarStatus =
+func serialize_scalar*(dst: var array[32, byte], scalar: Scalar): CttCodecScalarStatus {.libPrefix: pre.} =
   ## Serialize a scalar
   ## Returns cttCodecScalar_Success if successful
   dst.marshal(scalar, bigEndian)
   return cttCodecScalar_Success
 
-func deserialize_scalar*(dst: var matchingOrderBigInt(BLS12_381), src: array[32, byte]): CttCodecScalarStatus =
+func deserialize_scalar*(dst: var Scalar, src: array[32, byte]): CttCodecScalarStatus {.libPrefix: pre.} =
   ## Deserialize a scalar
   ## Also validates the scalar range
   ##
@@ -115,7 +118,7 @@ func deserialize_scalar*(dst: var matchingOrderBigInt(BLS12_381), src: array[32,
   return cttCodecScalar_Success
 
 
-func serialize_g1_compressed*(dst: var array[48, byte], g1Point: G1P): CttCodecEccStatus =
+func serialize_g1_compressed*(dst: var array[48, byte], g1Point: G1P): CttCodecEccStatus {.libPrefix: pre.} =
   ## Serialize a BLS12-381 G1 point in compressed (Zcash) format
   ##
   ## Returns cttCodecEcc_Success if successful
@@ -138,7 +141,7 @@ func serialize_g1_compressed*(dst: var array[48, byte], g1Point: G1P): CttCodecE
 
   return cttCodecEcc_Success
 
-func deserialize_g1_compressed_unchecked*(dst: var G1P, src: array[48, byte]): CttCodecEccStatus =
+func deserialize_g1_compressed_unchecked*(dst: var G1P, src: array[48, byte]): CttCodecEccStatus {.libPrefix: pre.} =
   ## Deserialize a BLS12-381 G1 point in compressed (Zcash) format.
   ##
   ## Warning ⚠:
@@ -182,7 +185,7 @@ func deserialize_g1_compressed_unchecked*(dst: var G1P, src: array[48, byte]): C
 
   return cttCodecEcc_Success
 
-func deserialize_g1_compressed*(dst: var G1P, src: array[48, byte]): CttCodecEccStatus =
+func deserialize_g1_compressed*(dst: var G1P, src: array[48, byte]): CttCodecEccStatus {.libPrefix: pre.} =
   ## Deserialize a BLS12-381 G1 point in compressed (Zcash) format
   ## This also validates the G1 point
   ##
@@ -198,7 +201,7 @@ func deserialize_g1_compressed*(dst: var G1P, src: array[48, byte]): CttCodecEcc
   return cttCodecEcc_Success
 
 
-func serialize_g2_compressed*(dst: var array[96, byte], g2Point: G2P): CttCodecEccStatus =
+func serialize_g2_compressed*(dst: var array[96, byte], g2Point: G2P): CttCodecEccStatus {.libPrefix: pre.} =
   ## Serialize a BLS12-381 G2 point in compressed (Zcash) format
   ##
   ## Returns cttCodecEcc_Success if successful
@@ -220,7 +223,7 @@ func serialize_g2_compressed*(dst: var array[96, byte], g2Point: G2P): CttCodecE
 
   return cttCodecEcc_Success
 
-func deserialize_g2_compressed_unchecked*(dst: var G2P, src: array[96, byte]): CttCodecEccStatus =
+func deserialize_g2_compressed_unchecked*(dst: var G2P, src: array[96, byte]): CttCodecEccStatus {.libPrefix: pre.} =
   ## Deserialize a BLS12-381 G2 point in compressed (Zcash) format.
   ##
   ## Warning ⚠:
@@ -275,7 +278,7 @@ func deserialize_g2_compressed_unchecked*(dst: var G2P, src: array[96, byte]): C
 
   return cttCodecEcc_Success
 
-func deserialize_g2_compressed*(dst: var G2P, src: array[96, byte]): CttCodecEccStatus =
+func deserialize_g2_compressed*(dst: var G2P, src: array[96, byte]): CttCodecEccStatus {.libPrefix: pre.} =
   ## Deserialize a BLS12-381 G2 point in compressed (Zcash) format
   ##
   ## Returns cttCodecEcc_Success if successful

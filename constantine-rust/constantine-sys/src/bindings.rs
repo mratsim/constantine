@@ -3554,6 +3554,85 @@ fn bindgen_test_layout_big254() {
     );
 }
 extern "C" {
+    #[must_use]
+    #[doc = " Validate a scalar\n  Regarding timing attacks, this will leak information\n  if the scalar is 0 or larger than the curve order."]
+    pub fn ctt_bls12_381_validate_scalar(scalar: *const big255) -> ctt_codec_scalar_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = " Validate a G1 point\n  This is an expensive operation that can be cached"]
+    pub fn ctt_bls12_381_validate_g1(point: *const bls12_381_g1_aff) -> ctt_codec_ecc_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = " Validate a G2 point\n  This is an expensive operation that can be cached"]
+    pub fn ctt_bls12_381_validate_g2(point: *const bls12_381_g2_aff) -> ctt_codec_ecc_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = " Serialize a scalar\n  Returns cttCodecScalar_Success if successful"]
+    pub fn ctt_bls12_381_serialize_scalar(
+        dst: *mut byte,
+        scalar: *const big255,
+    ) -> ctt_codec_scalar_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = " Deserialize a scalar\n  Also validates the scalar range\n\n  This is protected against side-channel unless the scalar is invalid.\n  In that case it will leak whether it's all zeros or larger than the curve order.\n\n  This special-cases (and leaks) 0 scalar as this is a special-case in most protocols\n  or completely invalid (for secret keys)."]
+    pub fn ctt_bls12_381_deserialize_scalar(
+        dst: *mut big255,
+        src: *const byte,
+    ) -> ctt_codec_scalar_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = " Serialize a BLS12-381 G1 point in compressed (Zcash) format\n\n  Returns cttCodecEcc_Success if successful"]
+    pub fn ctt_bls12_381_serialize_g1_compressed(
+        dst: *mut byte,
+        src: *const bls12_381_g1_aff,
+    ) -> ctt_codec_ecc_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = " Deserialize a BLS12-381 G1 point in compressed (Zcash) format.\n\n  Warning ⚠:\n    This procedure skips the very expensive subgroup checks.\n    Not checking subgroup exposes a protocol to small subgroup attacks."]
+    pub fn ctt_bls12_381_deserialize_g1_compressed_unchecked(
+        dst: *mut bls12_381_g1_aff,
+        src: *const byte,
+    ) -> ctt_codec_ecc_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = " Deserialize a BLS12-381 G1 point in compressed (Zcash) format\n  This also validates the G1 point"]
+    pub fn ctt_bls12_381_deserialize_g1_compressed(
+        dst: *mut bls12_381_g1_aff,
+        src: *const byte,
+    ) -> ctt_codec_ecc_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = " Serialize a BLS12-381 G2 point in compressed (Zcash) format\n\n  Returns cttCodecEcc_Success if successful"]
+    pub fn ctt_bls12_381_serialize_g2_compressed(
+        dst: *mut byte,
+        src: *const bls12_381_g2_aff,
+    ) -> ctt_codec_ecc_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = " Deserialize a BLS12-381 G2 point in compressed (Zcash) format.\n\n  Warning ⚠:\n    This procedure skips the very expensive subgroup checks.\n    Not checking subgroup exposes a protocol to small subgroup attacks."]
+    pub fn ctt_bls12_381_deserialize_g2_compressed_unchecked(
+        dst: *mut bls12_381_g2_aff,
+        src: *const byte,
+    ) -> ctt_codec_ecc_status;
+}
+extern "C" {
+    #[must_use]
+    #[doc = " Deserialize a BLS12-381 G2 point in compressed (Zcash) format\n  This also validates the G2 point"]
+    pub fn ctt_bls12_381_deserialize_g2_compressed(
+        dst: *mut bls12_381_g2_aff,
+        src: *const byte,
+    ) -> ctt_codec_ecc_status;
+}
+extern "C" {
     pub fn ctt_bls12_381_g1_jac_multi_scalar_mul_big_coefs_vartime_parallel(
         tp: *const ctt_threadpool,
         r: *mut bls12_381_g1_jac,
