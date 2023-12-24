@@ -150,5 +150,3 @@ func checkIPAProof* (ic: IPASettings, transcript: var sha256, commitment: var EC
     
     r = true
     return r
-
-
