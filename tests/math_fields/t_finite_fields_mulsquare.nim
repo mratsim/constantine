@@ -107,7 +107,9 @@ proc mainSelectCases() =
         r_mul.prod(a, a)
         r_sqr.square(a)
 
-        doAssert bool(r_mul == r_sqr)
+        doAssert bool(r_mul == r_sqr), block:
+          "\nMul: " & r_mul.toHex() &
+          "\nSqr: " & r_sqr.toHex()
 
 mainSelectCases()
 
@@ -119,7 +121,9 @@ proc randomCurve(C: static Curve) =
   r_mul.prod(a, a)
   r_sqr.square(a)
 
-  doAssert bool(r_mul == r_sqr)
+  doAssert bool(r_mul == r_sqr), block:
+    "\nMul: " & r_mul.toHex() &
+    "\nSqr: " & r_sqr.toHex()
 
 proc randomHighHammingWeight(C: static Curve) =
   let a = rng.random_highHammingWeight(Fp[C])
@@ -129,7 +133,9 @@ proc randomHighHammingWeight(C: static Curve) =
   r_mul.prod(a, a)
   r_sqr.square(a)
 
-  doAssert bool(r_mul == r_sqr)
+  doAssert bool(r_mul == r_sqr), block:
+    "\nMul: " & r_mul.toHex() &
+    "\nSqr: " & r_sqr.toHex()
 
 proc random_long01Seq(C: static Curve) =
   let a = rng.random_long01Seq(Fp[C])
@@ -139,7 +145,9 @@ proc random_long01Seq(C: static Curve) =
   r_mul.prod(a, a)
   r_sqr.square(a)
 
-  doAssert bool(r_mul == r_sqr)
+  doAssert bool(r_mul == r_sqr), block:
+    "\nMul: " & r_mul.toHex() &
+    "\nSqr: " & r_sqr.toHex()
 
 suite "Random Modular Squaring is consistent with Modular Multiplication" & " [" & $WordBitWidth & "-bit words]":
   test "Random squaring mod P-224 [FastSquaring = " & $(Fp[P224].getSpareBits() >= 2) & "]":

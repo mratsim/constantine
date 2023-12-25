@@ -130,11 +130,9 @@ See the following documents on the threadpool performance details, design and re
 
 ## Installation
 
-|                                                                                                                                                           |
-|:---------------------------------------------------------------------------------------------------------------------------------------------------------:|
-| :exclamation: At the moment Nim v2.0 cannot compile Constantine.<br />Use nim v1.6.16 instead or Nim devel.<br />The upcoming Nim v2.0.2 will have a fix. |
-
-
+|                                                                                                                               |
+|:-----------------------------------------------------------------------------------------------------------------------------:|
+| :exclamation: Constantine can be compiled by Nim v1.6.x or v2.0.2 but not Nim v2.0.0 due to a compile-time integer regression |
 
 ### From Rust
 
@@ -150,10 +148,6 @@ See the following documents on the threadpool performance details, design and re
    Windows binaries are on the official website: https://nim-lang.org/install_unix.html
     - Debian/Ubuntu `sudo apt install nim`
     - Archlinux `pacman -S nim`
-
-    |                                                                                                                                       |
-    |---------------------------------------------------------------------------------------------------------------------------------------|
-    | :exclamation:  Until the Nim v2 situation is solved, you can use https://github.com/dom96/choosenim to install nim v1.6.16 toolchain. |
 
 3. Test both:
     - the experimental ZK Accel API (ZAL) for Halo2-KZG
@@ -212,10 +206,6 @@ and modify Constantine's [`build.rs`](https://github.com/mratsim/constantine/blo
     - Debian/Ubuntu `sudo apt install nim`
     - Archlinux `pacman -S nim`
 
-    |                                                                                                                                       |
-    |---------------------------------------------------------------------------------------------------------------------------------------|
-    | :exclamation:  Until the Nim v2 situation is solved, you can use https://github.com/dom96/choosenim to install nim v1.6.16 toolchain. |
-
 3. Compile Constantine as a static (and shared) library in `./include`
     ```
     cd constantine
@@ -240,10 +230,6 @@ and modify Constantine's [`build.rs`](https://github.com/mratsim/constantine/blo
    Windows binaries are on the official website: https://nim-lang.org/install_unix.html
     - Debian/Ubuntu `sudo apt install nim`
     - Archlinux `pacman -S nim`
-
-    |                                                                                                                                       |
-    |---------------------------------------------------------------------------------------------------------------------------------------|
-    | :exclamation:  Until the Nim v2 situation is solved, you can use https://github.com/dom96/choosenim to install nim v1.6.16 toolchain. |
 
 3. Compile the dynamic and static library.
     - Recommended: \

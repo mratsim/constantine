@@ -80,7 +80,7 @@ elif not(CTT_32) and GCC_Compatible:
 
   const
     newerNim = (NimMajor, NimMinor) > (1, 6)
-    noExplicitPtrDeref = defined(cpp) or newerNim
+    noExplicitVarDeref = defined(cpp) or newerNim
 
   func div2n1n_128_vartime(q, r: var uint64, n_hi, n_lo, d: uint64) {.inline, tags:[VarTime].}=
     ## Division uint128 by uint64
@@ -91,7 +91,7 @@ elif not(CTT_32) and GCC_Compatible:
     {.emit:[dblPrec, " = (unsigned __int128)", n_hi," << 64 | (unsigned __int128)",n_lo,";"].}
 
     # Don't forget to dereference the var param in C mode
-    when noExplicitPtrDeref:
+    when noExplicitVarDeref:
       {.emit:[q, " = (NU64)(", dblPrec," / ", d, ");"].}
       {.emit:[r, " = (NU64)(", dblPrec," % ", d, ");"].}
     else:
