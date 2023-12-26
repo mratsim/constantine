@@ -6,7 +6,7 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-# Kernel
+# Kernel API
 # ---------------------------------------------------
 # Many sysctl entries are given a dynamic ID (OID_AUTO)
 # like kern.smp.cores on FreeBSD: https://github.com/freebsd/freebsd-src/blob/release/14.0.0/sys/kern/subr_smp.c#L107-L109
@@ -16,6 +16,14 @@
 proc sysctl(mib: openArray[cint], oldp: pointer, oldlenp: var csize_t, newp: openArray[byte]): cint {.sideeffect, importc, header:"<sys/sysctl.h>", noconv.}
 proc sysctlbyname(name: cstring, oldp: pointer, oldlenp: var csize_t, newp: openArray[byte]): cint {.sideeffect, importc, header:"<sys/sysctl.h>", noconv.}
 
+# Error handling
+# ---------------------------------------------------
+proc c_printf(fmt: cstring): cint {.sideeffect, importc: "printf", header: "<stdio.h>", varargs, discardable, tags:[WriteIOEffect].}
+proc strerror(errnum: cint): cstring {.importc, header:"<string.h>", noconv.}
+var errno {.importc, header: "<errno.h>".}: cint
+
+# Topology queries
+# ---------------------------------------------------
 template queryBsdKernel(arg: untyped): cint =
   block:
     var r: cint
@@ -34,16 +42,6 @@ template queryBsdKernel(arg: untyped): cint =
       c_printf("[Constantine's Threadpool] sysctl(\"%s\") invalid value: %d\n", argDesc, r)
       r = -1
     r
-
-# Error handling
-# ---------------------------------------------------
-
-proc c_printf(fmt: cstring): cint {.sideeffect, importc: "printf", header: "<stdio.h>", varargs, discardable, tags:[WriteIOEffect].}
-proc strerror(errnum: cint): cstring {.importc, header:"<string.h>", noconv.}
-var errno {.importc, header: "<errno.h>".}: cint
-
-# Topology queries
-# ---------------------------------------------------
 
 proc queryNumPhysicalCoresFreeBSD*(): cint {.inline.} =
   queryBsdKernel"kern.smp.cores"
