@@ -11,7 +11,10 @@ import ../loadtime_functions
 # CPU Query
 # ----------------------------------------------------------------------
 
-proc cpuid(eax: uint32, ecx = 0'u32): tuple[eax, ebx, ecx, edx: uint32] =
+type CpuIdRegs = object
+  eax, ebx, ecx, edx: uint32
+
+proc cpuid(eax: uint32, ecx = 0'u32): CpuIdRegs =
   ## Query the CPU
   ##
   ## CPUID is a very slow operation, 27-70 cycles, ~120 latency
