@@ -17,3 +17,15 @@ For multithreading, we want to expose the following functions:
 4. Number of cores available for this process `getNumCoresAvailableForCurrentProcess`:
     - A process can be restricted by taskset / schedaffinity
       Note: This wouldn't detect restriction based on time quotas which are more common for Docker.
+
+References:
+- x86
+    - AMD
+        - https://patchwork.kernel.org/project/kvm/patch/1523402169-113351-8-git-send-email-babu.moger@amd.com/
+        - AMD64 Architecture Programmer's Manual Volume 3: General-Purpose and System Instructions
+        June 2023
+        https://www.amd.com/content/dam/amd/en/documents/processor-tech-docs/programmer-references/24594.pdf
+        p645, section E.5 Multiple Procesor Calculation
+- OS
+    - https://github.com/llvm/llvm-project/blob/main/llvm/lib/Support/Unix/Threading.inc
+    - https://github.com/llvm/llvm-project/blob/main/llvm/lib/Support/Windows/Threading.inc

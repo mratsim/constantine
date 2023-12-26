@@ -54,7 +54,7 @@ import std/macros
 #     result = procAst
 #     result.pragma = pragmas
 
-macro libPrefix*(prefix: static string, procAst: untyped): untyped =
+macro libExport*(name: static string, procAst: untyped): untyped =
   var pragmas = procAst.pragma
   if pragmas.kind == nnkEmpty:
     pragmas = nnkPragma.newTree()
@@ -68,17 +68,20 @@ macro libPrefix*(prefix: static string, procAst: untyped): untyped =
     # extern only does name-mangling but allows for dead-code elimination.
     pragmas.add nnkExprColonExpr.newTree(
       ident"extern",
-      newLit(prefix & "$1"))
+      newLit(name))
   else:
     # exportc only does name-mangling and dead-code elimination.
     # use the OS default call convention
     pragmas.add ident"noconv"
     pragmas.add nnkExprColonExpr.newTree(
       ident"exportc",
-      newLit(prefix & "$1"))
+      newLit(name))
 
   if appType == "lib":
     pragmas.add ident"dynlib"
 
   result = procAst
   result.pragma = pragmas
+
+macro libPrefix*(prefix: static string, procAst: untyped): untyped =
+  getAst(libExport(prefix & "$1", procAst))

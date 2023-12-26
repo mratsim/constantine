@@ -12,7 +12,7 @@ proc sysctlbyname(name: cstring, oldp: pointer, oldlenp: ptr csize_t, newp: poin
 
 var errno {.importc, header: "<errno.h>".}: cint
 
-proc detectNumPhysicalCoresMacOS*(): int32 =
+proc queryNumPhysicalCoresMacOS*(): cint {.inline.} =
   # Note:
   # - hw.physicalcpu     is the number of cores available in current power management mode
   # - hw.physicalcpu_max is the max number of cores available this boot.
@@ -26,4 +26,15 @@ proc detectNumPhysicalCoresMacOS*(): int32 =
     result = -1
   elif result <= 0:
     c_printf("[Constantine's Threadpool] sysctlbyname(\"hw.physicalcpu_max\") invalid value: %d\n", result)
+    result = -1
+
+proc queryAvailableThreadsMacOS*(): cint {.inline.} =
+  var size = csize_t sizeof(result)
+
+  let ko = sysctlbyname("hw.availcpu", result.addr, size.addr, nil, 0) != 0
+  if ko:
+    c_printf("[Constantine's Threadpool] sysctlbyname(\"hw.availcpu\") failure: %s\n", strerror(errno))
+    result = -1
+  elif result <= 0:
+    c_printf("[Constantine's Threadpool] sysctlbyname(\"hw.availcpu\") invalid value: %d\n", result)
     result = -1

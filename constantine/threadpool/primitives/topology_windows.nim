@@ -98,7 +98,7 @@ func `+%>`(p: ptr or pointer, offset: SomeInteger): type(p) {.inline, noInit.}=
   ## Pointer increment by `offset` *bytes* (not elements)
   cast[typeof(p)](cast[ByteAddress](p) +% offset)
 
-proc detectNumPhysicalCoresWindows*(): int32 =
+proc queryNumPhysicalCoresWindows*(): int32 {.inline.} =
 
   result = 1
   var info: PSYSTEM_LOGICAL_PROCESSOR_INFORMATION_EX
@@ -132,3 +132,25 @@ proc detectNumPhysicalCoresWindows*(): int32 =
   else:
     c_printf("[Constantine's Threadpool] Found 0 physical cores)")
     result = -1
+
+# --------------------------------------------------------------------------------------------
+
+type
+  SystemInfo = object
+    u1: uint32
+    dwPageSize: uint32
+    lpMinimumApplicationAddress: pointer
+    lpMaximumApplicationAddress: pointer
+    dwActiveProcessorMask: ptr uint32
+    dwNumberOfProcessors: uint32
+    dwProcessorType: uint32
+    dwAllocationGranularity: uint32
+    wProcessorLevel: uint16
+    wProcessorRevision: uint16
+
+proc getSystemInfo(lpSystemInfo: var SystemInfo) {.stdcall, sideeffect, dynlib: "kernel32", importc: "GetSystemInfo".}
+
+proc queryAvailableThreadsWindows*(): cint {.inline.} =
+  var sysinfo: SystemInfo
+  sysinfo.getSystemInfo()
+  return cast[cint](sysinfo.dwNumberOfProcessors)

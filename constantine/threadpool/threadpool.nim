@@ -26,6 +26,7 @@ import
 import ../zoo_exports, dll_autoload
 
 export
+  topology,
   # flowvars
   Flowvar, isSpawned, isReady
 
@@ -191,7 +192,7 @@ type
     # -- align: 64
     globalBackoff{.align: 64.}: EventCount                       # Multi-Producer Multi-Consumer backoff
     # -- align: 64
-    numThreads*{.align: 64.}: int32                              # N regular workers
+    numThreads*{.align: 64.}: cint                               # N regular workers
     workerQueues: ptr UncheckedArray[Taskqueue]                  # size N
     workers: ptr UncheckedArray[Thread[(Threadpool, WorkerID)]]  # size N
     workerSignals: ptr UncheckedArray[Signal]                    # size N
@@ -939,22 +940,12 @@ proc wait(scopedBarrier: ptr ScopedBarrier) {.raises:[], gcsafe.} =
 #                                                            #
 # ############################################################
 
-proc new*(T: type Threadpool, numThreads = getNumPhysicalCores()): T {.raises: [ResourceExhaustedError].} =
-  ## Initialize a threadpool that manages `numThreads` threads.
-  ## Default to the number of physical processors available.
-  ##
-  ## A Constantine's threadpool cannot be instantiated
-  ## on a thread managed by another Constantine's threadpool
-  ## including the root thread.
-  ##
-  ## Mixing with other libraries' threadpools and runtime
-  ## will not impact correctness but may impact performance.
-
+proc ctt_threadpool_new*(num_threads: cint): Threadpool {.libPrefix: "", raises: [ResourceExhaustedError].} =
   type TpObj = typeof(default(Threadpool)[]) # due to C import, we need a dynamic sizeof
   let tp = allocHeapUncheckedAlignedPtr(Threadpool, sizeof(TpObj), alignment = 64)
-  tp.barrier.init(numThreads.uint32)
+  tp.barrier.init(numThreads)
   tp.globalBackoff.initialize()
-  tp.numThreads = numThreads.int32
+  tp.numThreads = numThreads
   tp.workerQueues = allocHeapArrayAligned(Taskqueue, numThreads, alignment = 64)
   tp.workers = allocHeapArrayAligned(Thread[(Threadpool, WorkerID)], numThreads, alignment = 64)
   tp.workerSignals = allocHeapArrayAligned(Signal, numThreads, alignment = 64)
@@ -980,6 +971,30 @@ proc new*(T: type Threadpool, numThreads = getNumPhysicalCores()): T {.raises: [
   discard tp.barrier.wait()
   profileStart(run_task)
   return tp
+
+proc new*(T: type Threadpool, numThreads = getNumThreadsOS()): T {.inline, raises: [ResourceExhaustedError].} =
+  ## Initialize a threadpool that manages `numThreads` threads.
+  ## Default to the number of physical processors available.
+  ##
+  ## A Constantine's threadpool cannot be instantiated
+  ## on a thread managed by another Constantine's threadpool
+  ## including the root thread.
+  ##
+  ## Mixing with other libraries' threadpools and runtime
+  ## will not impact correctness but may impact performance.
+  ctt_threadpool_new(numThreads)
+
+proc new*(T: type Threadpool, numThreads: int): T {.inline, raises: [ResourceExhaustedError].} =
+  ## Initialize a threadpool that manages `numThreads` threads.
+  ## Default to the number of physical processors available.
+  ##
+  ## A Constantine's threadpool cannot be instantiated
+  ## on a thread managed by another Constantine's threadpool
+  ## including the root thread.
+  ##
+  ## Mixing with other libraries' threadpools and runtime
+  ## will not impact correctness but may impact performance.
+  ctt_threadpool_new(cast[cint](numThreads))
 
 proc cleanup(tp: Threadpool) {.raises: [].} =
   ## Cleanup all resources allocated by the threadpool

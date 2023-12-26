@@ -9,6 +9,7 @@
 //! Implementation of the ZK Accel Layer using Constantine as a backend
 //! See https://github.com/privacy-scaling-explorations/halo2/issues/216
 
+use constantine_core::Threadpool;
 use constantine_sys::*;
 
 use ::core::mem::MaybeUninit;
@@ -19,8 +20,13 @@ use halo2curves::zal::{MsmAccel, ZalEngine};
 use halo2curves::CurveAffine;
 
 #[derive(Debug)]
-pub struct CttEngine {
-    ctx: *mut ctt_threadpool,
+pub struct CttEngine(Threadpool);
+
+impl CttEngine {
+    #[inline(always)]
+    pub fn new(num_threads: usize) -> Self {
+        Self(Threadpool::new(num_threads))
+    }
 }
 
 #[derive(Debug)]
@@ -33,20 +39,6 @@ pub struct CttMsmBaseDesc<'b, C: CurveAffine> {
     raw: &'b [C],
 }
 
-impl CttEngine {
-    #[inline(always)]
-    pub fn new(num_threads: usize) -> CttEngine {
-        let ctx = unsafe { ctt_threadpool_new(num_threads) };
-        CttEngine { ctx }
-    }
-}
-
-impl Drop for CttEngine {
-    fn drop(&mut self) {
-        unsafe { ctt_threadpool_shutdown(self.ctx) }
-    }
-}
-
 impl ZalEngine for CttEngine {}
 
 impl MsmAccel<bn256::G1Affine> for CttEngine {
@@ -55,7 +47,7 @@ impl MsmAccel<bn256::G1Affine> for CttEngine {
         let mut result = MaybeUninit::<bn254_snarks_g1_prj>::uninit();
         unsafe {
             ctt_bn254_snarks_g1_prj_multi_scalar_mul_fr_coefs_vartime_parallel(
-                self.ctx,
+                self.0.get_private_context(),
                 result.as_mut_ptr(),
                 coeffs.as_ptr() as *const bn254_snarks_fr,
                 bases.as_ptr() as *const bn254_snarks_g1_aff,

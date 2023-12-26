@@ -9,12 +9,12 @@ repository = "https://github.com/mratsim/constantine"
 
 [dependencies]
 constantine-sys = { path = "../constantine-sys" }
+constantine-core = { path = "../constantine-core" }
 halo2curves = { git = 'https://github.com/taikoxyz/halo2curves', branch = "pr-pse-exec-engine" }
 
 [dev-dependencies]
 ark-std = "0.3"
 rand_core = { version = "0.6", default-features = false }
-num_cpus = "1.16.0"
 
 # Benchmark-only dependencies
 criterion = { version = "0.3", features = ["html_reports"] }

@@ -72,33 +72,63 @@
 #   It's also recommended that applications supply a MYAPP_NUM_THREADS env variable to control
 #   the threadpool.
 
+# Naming:
+# - "query" when going through the OS
+# - "detect" when going through the CPU
+
+import ../../zoo_exports
+
 when defined(ios) or defined(macosx):
   import ./topology_macos
-
-elif defined(freebsd):
-  import ./topology_freebsd
-
+elif defined(bsd):
+  import ./topology_bsd
 elif defined(windows):
   # The following can handle Windows x86 and Windows ARM
   import ./topology_windows
-
-
-# TODO
-# elif defined(amd64) or defined(i386):
-
 elif defined(linux):
   import ./topology_linux
+else:
+  {.error: "Unsupported OS: " & hostOS.}
 
-proc getNumPhysicalCores*(): int {.inline.} =
-  when defined(ios) or defined(macosx):
-    int detectNumPhysicalCoresMacOS()
+# TODO: x86 OS-independent reads
+# if defined(amd64) or defined(i386):
+#   import ./topology_x86
+
+proc getNumCoresPhysical*(): cint =
+  when defined(ios) or defined(macos) or defined(macosx):
+    queryNumPhysicalCoresMacOS()
   elif defined(freebsd):
-    int detectNumPhysicalCoresFreeBSD()
+    queryNumPhysicalCoresFreeBSD()
   elif defined(windows):
-    int detectNumPhysicalCoresWindows()
+    queryNumPhysicalCoresWindows()
 
   # TODO
   # elif defined(amd64) or defined(i386):
 
   elif defined(linux):
-    int detectNumPhysicalCoresLinux()
+    queryNumPhysicalCoresLinux()
+
+  else:
+    {.error: "Unsupported CPU/OS configuration: " & hostCPU & "/" & hostOS.}
+
+proc getNumThreadsOS*(): cint {.libExport:"ctt_cpu_get_num_threads_os".} =
+  ## Query the number of threads available at the OS-level
+  ## to run computations.
+  ##
+  ## This takes into account cores disabled at the OS-level, for example in a VM.
+  ## However this doesn't detect restrictions based on time quotas often used for Docker
+  ## or taskset / cpuset restrictions from cgroups.
+  ##
+  ## For Simultaneous-Multithreading (SMT often call HyperThreading),
+  ## this returns the number of available logical cores.
+
+  when defined(ios) or defined(macos) or defined(macosx):
+    queryAvailableThreadsMacOS()
+  elif defined(freebsd):
+    queryAvailableThreadsBSD()
+  elif defined(windows):
+    queryAvailableThreadsWindows()
+  elif defined(linux):
+    queryAvailableThreadsLinux()
+  else:
+    {.error: "Unsupported CPU/OS configuration: " & hostCPU & "/" & hostOS.}

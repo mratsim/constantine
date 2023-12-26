@@ -14,10 +14,10 @@ when defined(windows):
 
   type SyncBarrier* = SynchronizationBarrier
 
-  proc init*(syncBarrier: var SyncBarrier, threadCount: uint32) {.inline.} =
+  proc init*(syncBarrier: var SyncBarrier, threadCount: cint) {.inline.} =
     ## Initialize a synchronization barrier that will block ``threadCount`` threads
     ## before release.
-    let err {.used.} = InitializeSynchronizationBarrier(syncBarrier, cast[int32](threadCount), -1)
+    let err {.used.} = InitializeSynchronizationBarrier(syncBarrier, threadCount, -1)
     when compileOption("assertions"):
       if err != 1:
         assert err == 0
@@ -42,7 +42,7 @@ else:
 
   type SyncBarrier* = PthreadBarrier
 
-  proc init*(syncBarrier: var SyncBarrier, threadCount: uint32) {.inline.} =
+  proc init*(syncBarrier: var SyncBarrier, threadCount: cint) {.inline.} =
     ## Initialize a synchronization barrier that will block ``threadCount`` threads
     ## before release.
     let err {.used.} = pthread_barrier_init(syncBarrier, nil, threadCount)

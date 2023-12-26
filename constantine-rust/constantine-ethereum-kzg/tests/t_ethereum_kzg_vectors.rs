@@ -6,14 +6,14 @@
 //!   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 //! at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-use constantine_ethereum_kzg::{csprng_sysrand, CttThreadpool, EthKzgContext};
+use constantine_core::{csprngs, hardware, Threadpool};
+use constantine_ethereum_kzg::EthKzgContext;
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use glob::glob;
 use hex;
-use num_cpus;
 use serde::Deserialize;
 use serde_yaml;
 
@@ -401,7 +401,7 @@ fn t_verify_blob_kzg_proof_batch() {
         .expect("Trusted setup should be loaded without error.");
 
     let mut secure_random_bytes = [0u8; 32];
-    csprng_sysrand(secure_random_bytes.as_mut_slice());
+    csprngs::sysrand(secure_random_bytes.as_mut_slice());
     assert_ne!(secure_random_bytes, [0u8; 32]);
 
     let test_files: Vec<PathBuf> = glob(VERIFY_BLOB_KZG_PROOF_BATCH_TESTS)
@@ -483,7 +483,7 @@ fn t_blob_to_kzg_commitment_parallel() {
     let ctx = EthKzgContext::load_trusted_setup(Path::new(SRS_PATH))
         .expect("Trusted setup should be loaded without error.");
 
-    let tp = CttThreadpool::new(num_cpus::get());
+    let tp = Threadpool::new(hardware::get_num_threads_os());
 
     let test_files: Vec<PathBuf> = glob(BLOB_TO_KZG_COMMITMENT_TESTS)
         .unwrap()
@@ -543,7 +543,7 @@ fn t_compute_kzg_proof_parallel() {
     let ctx = EthKzgContext::load_trusted_setup(Path::new(SRS_PATH))
         .expect("Trusted setup should be loaded without error.");
 
-    let tp = CttThreadpool::new(num_cpus::get());
+    let tp = Threadpool::new(hardware::get_num_threads_os());
 
     let test_files: Vec<PathBuf> = glob(COMPUTE_KZG_PROOF_TESTS)
         .unwrap()
@@ -605,7 +605,7 @@ fn t_compute_blob_kzg_proof_parallel() {
     let ctx = EthKzgContext::load_trusted_setup(Path::new(SRS_PATH))
         .expect("Trusted setup should be loaded without error.");
 
-    let tp = CttThreadpool::new(num_cpus::get());
+    let tp = Threadpool::new(hardware::get_num_threads_os());
 
     let test_files: Vec<PathBuf> = glob(COMPUTE_BLOB_KZG_PROOF_TESTS)
         .unwrap()
@@ -669,7 +669,7 @@ fn t_verify_blob_kzg_proof_parallel() {
     let ctx = EthKzgContext::load_trusted_setup(Path::new(SRS_PATH))
         .expect("Trusted setup should be loaded without error.");
 
-    let tp = CttThreadpool::new(num_cpus::get());
+    let tp = Threadpool::new(hardware::get_num_threads_os());
 
     let test_files: Vec<PathBuf> = glob(VERIFY_BLOB_KZG_PROOF_TESTS)
         .unwrap()
@@ -738,10 +738,10 @@ fn t_verify_blob_kzg_proof_batch_parallel() {
     let ctx = EthKzgContext::load_trusted_setup(Path::new(SRS_PATH))
         .expect("Trusted setup should be loaded without error.");
 
-    let tp = CttThreadpool::new(num_cpus::get());
+    let tp = Threadpool::new(hardware::get_num_threads_os());
 
     let mut secure_random_bytes = [0u8; 32];
-    csprng_sysrand(secure_random_bytes.as_mut_slice());
+    csprngs::sysrand(secure_random_bytes.as_mut_slice());
     assert_ne!(secure_random_bytes, [0u8; 32]);
 
     let test_files: Vec<PathBuf> = glob(VERIFY_BLOB_KZG_PROOF_BATCH_TESTS)

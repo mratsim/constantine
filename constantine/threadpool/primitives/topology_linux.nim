@@ -19,15 +19,15 @@ func c_fscanf(f: File, format: cstring): cint{.importc:"fscanf", header: "<stdio
 proc c_fopen(filename, mode: cstring): File {.importc: "fopen", header: "<stdio.h>".}
 proc c_fclose(f: File): cint {.importc: "fclose", header: "<stdio.h>".}
 
-proc detectNumPhysicalCoresLinux*(): int32 =
+proc queryNumPhysicalCoresLinux*(): cint =
   ## Detect the number of physical cores on Linux.
   ## This uses several syscalls to read from sysfs
   ## and might not be compatible with restrictions in trusted enclaves
   ## or hardened Linux installations (https://github.com/Kicksecure/security-misc/blob/master/usr/libexec/security-misc/hide-hardware-info)
   ##
   ## This can only handle up to 64 cores (logical or physical)
-  ## CPU based solution using CPUID-like instructions should be preferred.
-
+  ## CPU-based solutions using CPUID-like instructions should be preferred.
+  {.warning: "queryNumPhysicalCoresLinux: Only up to 64 cores can be handled on Linux at the moment.".}
   result = 0
 
   var logiCoresBitField = culonglong 0
@@ -70,3 +70,13 @@ proc detectNumPhysicalCoresLinux*(): int32 =
 
     i += 1
     discard c_fclose(f)
+
+proc queryAvailableThreadsLinux*(): cint {.inline.} =
+  proc get_nprocs(): cint {.importc, sideeffect, header: "<sys/sysinfo.h>", noconv.}
+
+  # TODO: we might want no dependency on glibc extensions for POSIX
+  # See BZ #28865 for files:
+  # - /sys/devices/system/cpu/online
+  # - /proc/stat enumeration
+  # - sched_getaffinity
+  get_nprocs()

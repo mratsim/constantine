@@ -6,8 +6,8 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-# TODO: debug
-import strutils
+# TODO: This is Work-in-Progress
+import strutils # debug-only import
 
 type
   CpuX86Vendor = enum
@@ -153,6 +153,5 @@ proc detectPlatform(): CpuTopology =
 
 proc main() =
   discard detectPlatform()
-
 
 main()
