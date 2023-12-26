@@ -78,9 +78,7 @@
 
 import ../../zoo_exports
 
-when defined(ios) or defined(macosx):
-  import ./topology_macos
-elif defined(bsd):
+when defined(bsd) or defined(ios) or defined(macos) or defined(macosx):
   import ./topology_bsd
 elif defined(windows):
   # The following can handle Windows x86 and Windows ARM
@@ -122,9 +120,7 @@ proc getNumThreadsOS*(): cint {.libExport:"ctt_cpu_get_num_threads_os".} =
   ## For Simultaneous-Multithreading (SMT often call HyperThreading),
   ## this returns the number of available logical cores.
 
-  when defined(ios) or defined(macos) or defined(macosx):
-    queryAvailableThreadsMacOS()
-  elif defined(freebsd):
+  when defined(bsd) or defined(ios) or defined(macos) or defined(macosx):
     queryAvailableThreadsBSD()
   elif defined(windows):
     queryAvailableThreadsWindows()
