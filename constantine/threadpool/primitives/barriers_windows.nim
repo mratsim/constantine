@@ -18,8 +18,6 @@ type
   WinBool* = int32
     ## WinBool uses opposite convention as posix, != 0 meaning success.
   SynchronizationBarrier*{.importc:"SYNCHRONIZATION_BARRIER", header:"<windows.h>".} = object
-  WinBool* = int32
-    ## WinBool uses opposite convention as posix, != 0 meaning success.
 
 let SYNCHRONIZATION_BARRIER_FLAGS_NO_DELETE* {.importc, header: "<windows.h>".}: uint32
   ## Skip expensive checks on barrier enter if a barrier is never deleted.
