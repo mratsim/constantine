@@ -21,11 +21,11 @@ type
     ## Implementation of a sense reversing barrier
     ## (The Art of Multiprocessor Programming by Maurice Herlihy & Nir Shavit)
 
-    lock: Lock                      # Alternatively spinlock on Atomic
+    lock: Lock                     # Alternatively spinlock on Atomic
     cond {.guard: lock.}: Cond
-    sense {.guard: lock.}: bool     # Choose int32 to avoid zero-expansion cost in registers?
-    left {.guard: lock.}: cuint     # Number of threads missing at the barrier before opening
-    count: cuint                    # Total number of threads that need to arrive before opening the barrier
+    sense {.guard: lock.}: bool    # Choose int32 to avoid zero-expansion cost in registers?
+    left {.guard: lock.}: cint     # Number of threads missing at the barrier before opening
+    count: cint                    # Total number of threads that need to arrive before opening the barrier
 
 const
   PTHREAD_BARRIER_SERIAL_THREAD* = Errno(1)
@@ -40,7 +40,7 @@ proc broadcast(cond: var Cond) {.inline.}=
 func pthread_barrier_init*(
         barrier: var PthreadBarrier,
         attr: ptr PthreadBarrierAttr,
-        count: cuint
+        count: cint
       ): Errno =
   barrier.lock.initLock()
   {.locks: [barrier.lock].}:
