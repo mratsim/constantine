@@ -6,10 +6,10 @@
 //!   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 //! at your option. This file may not be copied, modified, or distributed except according to those terms.
 
+use constantine_core::hardware;
 use constantine_halo2_zal::CttEngine;
 
 use ark_std::{end_timer, start_timer};
-use num_cpus;
 use rand_core::OsRng;
 
 use halo2curves::bn256;
@@ -45,7 +45,7 @@ fn run_msm_zal(min_k: usize, max_k: usize) {
         let e0 = best_multiexp(scalars, points);
         end_timer!(t0);
 
-        let engine = CttEngine::new(num_cpus::get());
+        let engine = CttEngine::new(hardware::get_num_threads_os());
         let t1 = start_timer!(|| format!("CttEngine msm k={}", k));
         let e1 = engine.msm(scalars, points);
         end_timer!(t1);

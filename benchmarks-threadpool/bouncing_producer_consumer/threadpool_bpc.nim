@@ -1,6 +1,6 @@
 import
   # STD lib
-  system/ansi_c, std/[os, strutils, cpuinfo, strformat, math],
+  std/[os, strutils, cpuinfo, strformat, math],
   # Library
   ../../constantine/threadpool,
   # bench

@@ -6,44 +6,11 @@
 //!   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 //! at your option. This file may not be copied, modified, or distributed except according to those terms.
 
+use constantine_core::Threadpool;
 use constantine_sys::*;
 
 use ::core::mem::MaybeUninit;
-use core::ffi::c_void;
 use std::{ffi::CString, path::Path};
-
-// Cryptographically secure RNG
-// ------------------------------------------------------------
-
-#[inline(always)]
-pub fn csprng_sysrand(buffer: &mut [u8]) {
-    unsafe {
-        ctt_csprng_sysrand(buffer.as_mut_ptr() as *mut c_void, buffer.len());
-    }
-}
-
-// Threadpool
-// ------------------------------------------------------------
-
-#[derive(Debug)]
-pub struct CttThreadpool {
-    ctx: *mut ctt_threadpool,
-}
-
-impl CttThreadpool {
-    #[inline(always)]
-    pub fn new(num_threads: usize) -> CttThreadpool {
-        let ctx = unsafe { ctt_threadpool_new(num_threads) };
-        CttThreadpool { ctx }
-    }
-}
-
-impl Drop for CttThreadpool {
-    #[inline(always)]
-    fn drop(&mut self) {
-        unsafe { ctt_threadpool_shutdown(self.ctx) }
-    }
-}
 
 // Trusted setup
 // ------------------------------------------------------------
@@ -248,14 +215,14 @@ impl EthKzgContext {
     #[inline]
     pub fn blob_to_kzg_commitment_parallel(
         &self,
-        tp: &CttThreadpool,
+        tp: &Threadpool,
         blob: &[u8; 4096 * 32],
     ) -> Result<[u8; 48], ctt_eth_kzg_status> {
         let mut result: MaybeUninit<[u8; 48]> = MaybeUninit::uninit();
         unsafe {
             let status = ctt_eth_kzg_blob_to_kzg_commitment_parallel(
                 self.ctx,
-                tp.ctx,
+                tp.get_private_context(),
                 result.as_mut_ptr() as *mut ctt_eth_kzg_commitment,
                 blob.as_ptr() as *const ctt_eth_kzg_blob,
             );
@@ -269,7 +236,7 @@ impl EthKzgContext {
     #[inline]
     pub fn compute_kzg_proof_parallel(
         &self,
-        tp: &CttThreadpool,
+        tp: &Threadpool,
         blob: &[u8; 4096 * 32],
         z_challenge: &[u8; 32],
     ) -> Result<([u8; 48], [u8; 32]), ctt_eth_kzg_status> {
@@ -278,7 +245,7 @@ impl EthKzgContext {
         unsafe {
             let status = ctt_eth_kzg_compute_kzg_proof_parallel(
                 self.ctx,
-                tp.ctx,
+                tp.get_private_context(),
                 proof.as_mut_ptr() as *mut ctt_eth_kzg_proof,
                 y_eval.as_mut_ptr() as *mut ctt_eth_kzg_eval_at_challenge,
                 blob.as_ptr() as *const ctt_eth_kzg_blob,
@@ -296,7 +263,7 @@ impl EthKzgContext {
     #[inline]
     pub fn compute_blob_kzg_proof_parallel(
         &self,
-        tp: &CttThreadpool,
+        tp: &Threadpool,
         blob: &[u8; 4096 * 32],
         commitment: &[u8; 48],
     ) -> Result<[u8; 48], ctt_eth_kzg_status> {
@@ -304,7 +271,7 @@ impl EthKzgContext {
         unsafe {
             let status = ctt_eth_kzg_compute_blob_kzg_proof_parallel(
                 self.ctx,
-                tp.ctx,
+                tp.get_private_context(),
                 proof.as_mut_ptr() as *mut ctt_eth_kzg_proof,
                 blob.as_ptr() as *const ctt_eth_kzg_blob,
                 commitment.as_ptr() as *const ctt_eth_kzg_commitment,
@@ -319,7 +286,7 @@ impl EthKzgContext {
     #[inline]
     pub fn verify_blob_kzg_proof_parallel(
         &self,
-        tp: &CttThreadpool,
+        tp: &Threadpool,
         blob: &[u8; 4096 * 32],
         commitment: &[u8; 48],
         proof: &[u8; 48],
@@ -327,7 +294,7 @@ impl EthKzgContext {
         let status = unsafe {
             ctt_eth_kzg_verify_blob_kzg_proof_parallel(
                 self.ctx,
-                tp.ctx,
+                tp.get_private_context(),
                 blob.as_ptr() as *const ctt_eth_kzg_blob,
                 commitment.as_ptr() as *const ctt_eth_kzg_commitment,
                 proof.as_ptr() as *const ctt_eth_kzg_proof,
@@ -343,7 +310,7 @@ impl EthKzgContext {
     #[inline]
     pub fn verify_blob_kzg_proof_batch_parallel(
         &self,
-        tp: &CttThreadpool,
+        tp: &Threadpool,
         blobs: &[[u8; 4096 * 32]],
         commitments: &[[u8; 48]],
         proofs: &[[u8; 48]],
@@ -356,7 +323,7 @@ impl EthKzgContext {
         let status = unsafe {
             ctt_eth_kzg_verify_blob_kzg_proof_batch_parallel(
                 self.ctx,
-                tp.ctx,
+                tp.get_private_context(),
                 blobs.as_ptr() as *const ctt_eth_kzg_blob,
                 commitments.as_ptr() as *const ctt_eth_kzg_commitment,
                 proofs.as_ptr() as *const ctt_eth_kzg_proof,

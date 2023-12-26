@@ -3,9 +3,7 @@ import
   ../constantine/mac/mac_poly1305,
   # Helpers
   ../helpers/prng_unsafe,
-  ./bench_blueprint,
-  # C API
-  system/ansi_c
+  ./bench_blueprint
 
 proc separator*() = separator(69)
 
