@@ -53,10 +53,20 @@ proc queryNumPhysicalCoresMacOS*(): cint {.inline.} =
   # i.e. if we may start compute from low power mode with few CPUs "available".
   queryBsdKernel"hw.physicalcpu_max"
 
+when defined(ios) or defined(macos) or defined(macosx):
+  let CTL_HW {.importc, header:"<sys/sysctl.h>".}: cint
+  let HW_AVAILCPU {.importc, header:"<sys/sysctl.h>".}: cint
+elif defined(freebsd):
+  discard
+elif defined(netbsd) or defined(openbsd):
+  let CTL_HW {.importc, header:"<sys/sysctl.h>".}: cint
+  let HW_NCPUONLINE {.importc, header:"<sys/sysctl.h>".}: cint
+else:
+  let SC_NPROCESSORS_ONLN {.importc: "_SC_NPROCESSORS_ONLN", header: "<unistd.h>".}: cint
+  proc sysconf(name: cint): cint {.importc, header: "<unistd.h>", noconv.}
+
 proc queryAvailableThreadsBSD*(): cint {.inline.} =
   when defined(ios) or defined(macos) or defined(macosx):
-    let CTL_HW {.importc, noInit, header:"<sys/sysctl.h>".}: cint
-    let HW_AVAILCPU {.importc, noInit, header:"<sys/sysctl.h>".}: cint
     queryBsdKernel([CTL_HW, HW_AVAILCPU])
   elif defined(freebsd):
     # For some reason, sysconf(SC_NPROCESSORS_ONLN) uses HW_NCPUS
@@ -68,10 +78,6 @@ proc queryAvailableThreadsBSD*(): cint {.inline.} =
     # - OpenBSD and NetBSD have HW_NCPUONLINE
     #   https://github.com/openbsd/src/blob/master/lib/libc/gen/sysconf.c#L467-L470
     #   https://github.com/NetBSD/src/blob/trunk/lib/libc/gen/sysconf.c#L372-L375
-    let CTL_HW {.importc, noInit, header:"<sys/sysctl.h>".}: cint
-    let HW_NCPUONLINE {.importc, noInit, header:"<sys/sysctl.h>".}: cint
     queryBsdKernel([CTL_HW, HW_NCPUONLINE])
   else: # libc dependency and more recent BSDs required
-    let SC_NPROCESSORS_ONLN {.importc: "_SC_NPROCESSORS_ONLN", header: "<unistd.h>".}: cint
-    proc sysconf(name: cint): cint {.importc, header: "<unistd.h>", noconv.}
-    return sysconf(SC_NPROCESSORS_ONLN)
+    sysconf(SC_NPROCESSORS_ONLN)

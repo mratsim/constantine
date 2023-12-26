@@ -14,9 +14,9 @@ type
     RusageThread = 1
 
 when defined(debug):
-  var H_RUSAGE_SELF{.importc, header:"<sys/resource.h".}: cint
-  var H_RUSAGE_CHILDREN{.importc, header:"<sys/resource.h".}: cint
-  var H_RUSAGE_THREAD{.importc, header:"<sys/resource.h".}: cint
+  let H_RUSAGE_SELF{.importc, header:"<sys/resource.h".}: cint
+  let H_RUSAGE_CHILDREN{.importc, header:"<sys/resource.h".}: cint
+  let H_RUSAGE_THREAD{.importc, header:"<sys/resource.h".}: cint
   assert H_RUSAGE_SELF == ord(RusageSelf)
   assert H_RUSAGE_CHILDREN = ord(RusageChildren)
   assert H_RUSAGE_THREAD = ord(RusageThread)
