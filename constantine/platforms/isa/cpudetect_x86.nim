@@ -124,7 +124,6 @@ proc detectCpuFeaturesX86() {.loadTime.} =
   let
     leaf1 = cpuid(eax = 1)
     leaf7 = cpuid(eax = 7)
-    # leaf8 = cpuidX86(eaxi = 0x80000001'i32, ecxi = 0)
 
   # see: https://en.wikipedia.org/wiki/CPUID#Calling_CPUID
   # see: Intel® Architecture Instruction Set Extensions and Future Features Programming Reference
@@ -145,7 +144,6 @@ proc detectCpuFeaturesX86() {.loadTime.} =
   # leaf 1, EDX
   hasSseImpl                        = leaf1.edx.test(25)
   hasSse2Impl                       = leaf1.edx.test(26)
-  # hasSimultaneousMultithreadingImpl = leaf1.edx.test(28)
 
   # leaf 7, eax
   # hasSha512Impl        = leaf7.eax.test(0)    # SHA512 - 2024 Intel Arrow Lake and Lunar Lake processor
@@ -179,13 +177,6 @@ proc detectCpuFeaturesX86() {.loadTime.} =
 
   # leaf 7, edx
   # hasAvx512vp2intersectImpl = leaf7.edx.test(8)
-
-  # leaf 8, ecx
-  # AMD specific deprecated instructions
-
-  # leaf 8, edx
-  # hasSimultaneousMultithreadingImpl = hasSimultaneousMultithreadingImpl and
-  #                                     not leaf8.edx.test(1) # AMD core multi-processing legacy mode
 
 
 # 1999 - Pentium 3, 2001 - Athlon XP
