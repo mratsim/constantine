@@ -1,6 +1,20 @@
-# Intermediate Representation
+# Constraint System Intermediate Representation
 
-This collates documentation towards an IR for polynomial constraint systems.
+<!-- TOC -->
+
+- [Deep learning compilers & computation graphs](#deep-learning-compilers--computation-graphs)
+- [Polyhedral compilers, Integer programming & constraint programming](#polyhedral-compilers-integer-programming--constraint-programming)
+- [Deep dive in deep Learning inspiration](#deep-dive-in-deep-learning-inspiration)
+    - [Code generation](#code-generation)
+    - [Alternative HPC compiler](#alternative-hpc-compiler)
+    - [Semantic pass and the expression problem](#semantic-pass-and-the-expression-problem)
+    - [Computation Graph IRs](#computation-graph-irs)
+    - [Prototype Deep-Learning DSL](#prototype-deep-learning-dsl)
+- [Deep dive in polyhedral compiler inspiration](#deep-dive-in-polyhedral-compiler-inspiration)
+
+<!-- /TOC -->
+
+This collates research ideas towards an IR for polynomial constraint systems.
 
 Cryptographic references:
 - R1CS and UltraPlonk/Plonkish: (./r1cs_bin_format.md)[./r1cs_bin_format.md]
@@ -13,11 +27,14 @@ Cryptographic references:
   - https://ethresear.ch/t/performance-improvement-for-gkr/12228
   - https://eprint.iacr.org/2022/1072
 
+## Deep learning compilers & computation graphs
+
 A cryptographic constraint system is derived from an computation graph
 whose representation is extremely similar to deep learning computation graphs.
 
 For example you can map the concept of deep learning computation graphs, addition and multiplication gates forming a circuit
 from deep learning (https://karpathy.github.io/neuralnets/) to gates and circuits in ZK proof systems.
+![kaparthy_deep_learning_circuits](./kaparthy_deep_learning_circuits.png)
 
 Hence you likely can reuse research and inspiration from deep learning ASTs and IRs to design a suitable common representation.
 
@@ -29,7 +46,20 @@ There are several approaches that have been explored in my libraries:
 
 Overview from [mratsim/Arraymancer](https://github.com/mratsim/Arraymancer), experiments from [mratsim/compute-graph-optim](https://github.com/mratsim/compute-graph-optim) and a custom deep-learning abstract syntax tree (AST) from [mratsim/laser](https://github.com/mratsim/laser) are copy-pasted below.
 
-## Arraymancer description
+## Polyhedral compilers, Integer programming & constraint programming
+
+Another domain that we can use for inspiration is operation research.
+Operation research deals with optimization problems that are often translated into [integer programming](https://en.wikipedia.org/wiki/Integer_programming), integer linear programming and [constraint programming](https://en.wikipedia.org/wiki/Constraint_programming).
+
+Integer programming problems are transformed into an inequality matrix through quasi-polynomials. In particular, the domain of polyhedral compilers has by necessity transformations between constraints -> IR -> matrix.
+
+See https://icps.u-strasbg.fr/people/bastoul/public_html/research/papers/Bas04-PACT.pdf
+![polyhedral inequality](./bastoul2004_polyhedral_inequality.png)
+and https://icps.u-strasbg.fr/people/bastoul/public_html/research/papers/Bastoul_HDR.pdf
+![bastoul2012_polynomial_multiply](./bastoul2012_polynomial_multiply.png)
+![bastoul2012_polynomial_multiply_constraint_matrix](./bastoul2012_polynomial_multiply_constraint_matrix.png)
+
+## Deep dive in deep Learning inspiration
 https://github.com/mratsim/Arraymancer/issues/347#issuecomment-461009747
 
 Some advances in my research (will find a place to store that in the future, probably in [Laser](https://github.com/numforge/laser))
@@ -79,7 +109,7 @@ In research, there are several approaches to handle that:
       - [Rewriting a Shallow DSL using a GHC extension](https://ku-fpg.github.io/files/Grebe-17-Transformations.pdf)
       - [An Image Processing Language: External and Shallow/Deep Embeddings](http://www.macs.hw.ac.uk/~rs46/papers/rwdsl2016/rwdsl-2016.pdf)
 
-## Computation Graph IRs
+### Computation Graph IRs
 
 https://github.com/mratsim/compute-graph-optim
 
@@ -88,7 +118,7 @@ https://github.com/mratsim/compute-graph-optim
 - ADTs
 - DSL compiler
 
-## Prototype Deep-Learning DSL
+### Prototype Deep-Learning DSL
 
 https://github.com/mratsim/laser/blob/master/laser/lux_compiler/core/lux_types.nim
 
@@ -221,3 +251,28 @@ type
     else:
       children*: seq[LuxNode]
 ```
+
+## Deep dive in polyhedral compiler inspiration
+
+Some intro papers
+
+- Polyhedral AST generation is more than scanning polyhedra\
+  Grosser, Verdoolaege, Cohen, 2015\
+  Slides: https://raw.githubusercontent.com/emeryberger/PLDI-2016/master/presentations/pldi16-presentation-toplas-polyhedral.pdf \
+  Paper: https://lirias.kuleuven.be/retrieve/319112
+- Presburger sets and relations:\
+  From high-level modeling to low-level implementations\
+  Sven Veroolaege, 2013\
+  http://labexcompilation.ens-lyon.fr/wp-content/uploads/2013/02/Sven-handouts.pdf
+- Contributions to High-Level Optimizations\
+  Bastoul, 2012, Habilitation Thesis
+  https://icps.u-strasbg.fr/people/bastoul/public_html/research/papers/Bastoul_HDR.pdf
+- Code Generation in the Polyhedral Model Is Easier Than You Think\
+  Cédric Bastoul, 2004\
+  https://icps.u-strasbg.fr/people/bastoul/public_html/research/papers/Bas04-PACT.pdf
+
+
+The library used in LLVM is ISL (Integer Set Library) which powers Polly:
+- https://repo.or.cz/w/isl.git
+- https://libisl.sourceforge.io/tutorial.pdf
+- https://polly.llvm.org/

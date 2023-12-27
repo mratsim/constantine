@@ -6,10 +6,10 @@
 #   Armando Faz-Hernández, Patrick Longa, Ana H. Sánchez, 2013
 #   https://eprint.iacr.org/2013/158.pdf
 
-import ../constantine/math/elliptic/ec_endomorphism_accel {.all.},
-       ../constantine/platforms/abstractions,
-       ../constantine/math/io/io_bigints,
-       ../constantine/math/arithmetic
+import ../../constantine/math/elliptic/ec_endomorphism_accel {.all.},
+       ../../constantine/platforms/abstractions,
+       ../../constantine/math/io/io_bigints,
+       ../../constantine/math/arithmetic
 
 proc toString(glvSac: GLV_SAC): string =
   for j in 0 ..< glvSac.M:
