@@ -33,7 +33,7 @@
 
 import
   # Stdlib
-  system/ansi_c, std/[strformat, os, strutils, math, cpuinfo],
+  system/ansi_c, std/[strformat, math, cpuinfo],
   std/threadpool,
   # bench
   ../wtime, ../resources

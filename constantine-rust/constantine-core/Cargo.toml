@@ -1,0 +1,11 @@
+[package]
+name = "constantine-core"
+version = "0.1.0"
+edition = "2021"
+
+authors = ["Mamy André-Ratsimbazafy"]
+license = "MIT/Apache-2.0"
+repository = "https://github.com/mratsim/constantine"
+
+[dependencies]
+constantine-sys = { path = "../constantine-sys" }

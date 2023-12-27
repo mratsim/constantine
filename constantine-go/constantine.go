@@ -35,7 +35,7 @@ type Threadpool struct {
 
 func ThreadpoolNew(numThreads int) Threadpool {
 	return Threadpool{
-		ctx: C.ctt_threadpool_new(C.size_t(numThreads)),
+		ctx: C.ctt_threadpool_new(C.int(numThreads)),
 	}
 }
 

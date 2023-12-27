@@ -26,9 +26,7 @@ proc main() =
   echo "=============================================================================================="
 
   var n = 1_000_000
-  var nthreads = countProcessors()
-
-  let tp = Threadpool.new(num_threads = nthreads) # Default to the number of hardware threads.
+  let tp = Threadpool.new() # Default to the number of hardware threads.
 
   echo formatFloat(tp.piApprox(n))
 

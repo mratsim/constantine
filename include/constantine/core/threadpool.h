@@ -38,11 +38,23 @@ typedef struct ctt_threadpool ctt_threadpool;
  * will not impact correctness but may impact performance.
  *
  */
-struct ctt_threadpool* ctt_threadpool_new(size_t num_threads);
+struct ctt_threadpool* ctt_threadpool_new(int num_threads);
 
 /** Wait until all pending tasks are processed and then shutdown the threadpool
  */
 void ctt_threadpool_shutdown(struct ctt_threadpool* threadpool);
+
+/** Query the number of threads available at the OS-level
+ *  to run computations.
+ *
+ *  This takes into account cores disabled at the OS-level, for example in a VM.
+ *  However this doesn't detect restrictions based on time quotas often used for Docker
+ *  or taskset / cpuset restrictions from cgroups.
+ *
+ *  For Simultaneous-Multithreading (SMT often call HyperThreading),
+ *  this returns the number of available logical cores.
+ */
+int ctt_cpu_get_num_threads_os(void);
 
 #ifdef __cplusplus
 }

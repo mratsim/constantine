@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "constantine-rust/constantine-sys",
+    "constantine-rust/constantine-core",
     "constantine-rust/constantine-halo2-zal",
     "constantine-rust/constantine-ethereum-kzg",
 ]

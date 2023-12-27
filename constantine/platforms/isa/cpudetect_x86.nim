@@ -11,7 +11,10 @@ import ../loadtime_functions
 # CPU Query
 # ----------------------------------------------------------------------
 
-proc cpuidX86(eaxi, ecxi: int32): tuple[eax, ebx, ecx, edx: int32] =
+type CpuIdRegs = object
+  eax, ebx, ecx, edx: uint32
+
+proc cpuid(eax: uint32, ecx = 0'u32): CpuIdRegs =
   ## Query the CPU
   ##
   ## CPUID is a very slow operation, 27-70 cycles, ~120 latency
@@ -21,27 +24,25 @@ proc cpuidX86(eaxi, ecxi: int32): tuple[eax, ebx, ecx, edx: int32] =
   ## and need to be cached if CPU capabilities are needed in a hot path
   when defined(vcc):
     # limited inline asm support in MSVC, so intrinsics, here we go:
-    proc cpuidMSVC(cpuInfo: ptr int32; functionID, subFunctionID: int32)
+    proc cpuidMSVC(cpuInfo: ptr uint32; functionID, subFunctionID: uint32)
       {.noconv, importc: "__cpuidex", header: "intrin.h".}
-    cpuidMSVC(addr result.eax, eaxi, ecxi)
+    cpuidMSVC(addr result, eax, ecx)
   else:
     # Note: https://bugs.llvm.org/show_bug.cgi?id=17907
     # AddressSanitizer + -mstackrealign might not respect RBX clobbers.
-    var (eaxr, ebxr, ecxr, edxr) = (0'i32, 0'i32, 0'i32, 0'i32)
     asm """
       cpuid
-      :"=a"(`eaxr`), "=b"(`ebxr`), "=c"(`ecxr`), "=d"(`edxr`)
-      :"a"(`eaxi`), "c"(`ecxi`)"""
-    (eaxr, ebxr, ecxr, edxr)
+      :"=a"(`result.eax`), "=b"(`result.ebx`), "=c"(`result.ecx`), "=d"(`result.edx`)
+      :"a"(`eax`), "c"(`ecx`)"""
 
 # CPU Name
 # ----------------------------------------------------------------------
 
 proc cpuName_x86*(): string =
   let leaves = cast[array[48, char]]([
-    cpuidX86(eaxi = 0x80000002'i32, ecxi = 0),
-    cpuidX86(eaxi = 0x80000003'i32, ecxi = 0),
-    cpuidX86(eaxi = 0x80000004'i32, ecxi = 0)])
+    cpuid(0x80000002'u32),
+    cpuid(0x80000003'u32),
+    cpuid(0x80000004'u32)])
   result = $cast[cstring](unsafeAddr leaves[0])
 
 # CPU Features
@@ -74,8 +75,6 @@ var
   hasSseImpl: bool
   # 2000 - Pentium 4 Willamette
   hasSse2Impl: bool
-  # 2002 - Pentium 4 Northwood
-  hasSimultaneousMultithreadingImpl: bool
   # 2004 - Pentium 4 Prescott
   hasSse3Impl: bool
   hasCas16BImpl: bool
@@ -93,7 +92,6 @@ var
   hasAvxImpl: bool
   # 2012 - Core iX-3XXX Ivy Bridge
   hasRdrandImpl: bool
-  # fs/gs access for thread-local memory through assembly
   # 2013 - Core iX-4XXX Haswell
   hasAvx2Impl: bool
   hasFma3Impl: bool
@@ -120,13 +118,12 @@ var
   hasAvx512bitalgImpl: bool    # AVX512 Bit ALgorithm
 
 proc detectCpuFeaturesX86() {.loadTime.} =
-  proc test(input, bit: int): bool =
-    ((1 shl bit) and input) != 0
+  proc test(input, bit: uint32): bool =
+    ((1'u32 shl bit) and input) != 0
 
   let
-    leaf1 = cpuidX86(eaxi = 1, ecxi = 0)
-    leaf7 = cpuidX86(eaxi = 7, ecxi = 0)
-    # leaf8 = cpuidX86(eaxi = 0x80000001'i32, ecxi = 0)
+    leaf1 = cpuid(eax = 1)
+    leaf7 = cpuid(eax = 7)
 
   # see: https://en.wikipedia.org/wiki/CPUID#Calling_CPUID
   # see: Intel® Architecture Instruction Set Extensions and Future Features Programming Reference
@@ -147,7 +144,6 @@ proc detectCpuFeaturesX86() {.loadTime.} =
   # leaf 1, EDX
   hasSseImpl                        = leaf1.edx.test(25)
   hasSse2Impl                       = leaf1.edx.test(26)
-  hasSimultaneousMultithreadingImpl = leaf1.edx.test(28)
 
   # leaf 7, eax
   # hasSha512Impl        = leaf7.eax.test(0)    # SHA512 - 2024 Intel Arrow Lake and Lunar Lake processor
@@ -182,13 +178,6 @@ proc detectCpuFeaturesX86() {.loadTime.} =
   # leaf 7, edx
   # hasAvx512vp2intersectImpl = leaf7.edx.test(8)
 
-  # leaf 8, ecx
-  # AMD specific deprecated instructions
-
-  # leaf 8, edx
-  # hasSimultaneousMultithreadingImpl = hasSimultaneousMultithreadingImpl and
-  #                                     not leaf8.edx.test(1) # AMD core multi-processing legacy mode
-
 
 # 1999 - Pentium 3, 2001 - Athlon XP
 # ------------------------------------------
@@ -199,11 +188,6 @@ proc hasSse*(): bool {.inline.} =
 # ------------------------------------------
 proc hasSse2*(): bool {.inline.} =
   return hasSse2Impl
-
-# 2002 - Pentium 4 Northwood
-# ------------------------------------------
-proc hasSimultaneousMultithreading*(): bool {.inline.} =
-  return hasSimultaneousMultithreadingImpl
 
 # 2004 - Pentium 4 Prescott
 # ------------------------------------------

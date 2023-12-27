@@ -12,16 +12,20 @@
 #[macro_use]
 extern crate criterion;
 
+use constantine_core::hardware;
 use constantine_halo2_zal::CttEngine;
-use criterion::{BenchmarkId, Criterion};
+
 use halo2curves::bn256::{Fr as Scalar, G1Affine as Point};
 use halo2curves::ff::Field;
 use halo2curves::msm::best_multiexp;
 use halo2curves::zal::MsmAccel;
+
 use maybe_rayon::current_thread_index;
 use maybe_rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use rand_core::SeedableRng;
 use rand_xorshift::XorShiftRng;
+
+use criterion::{BenchmarkId, Criterion};
 use std::time::SystemTime;
 
 const SAMPLE_SIZE: usize = 10;
@@ -95,7 +99,7 @@ fn msm(c: &mut Criterion) {
             })
             .sample_size(SAMPLE_SIZE);
 
-        let engine = CttEngine::new(num_cpus::get());
+        let engine = CttEngine::new(hardware::get_num_threads_os());
         group
             .bench_function(BenchmarkId::new("constantine", k), |b| {
                 assert!(k < 64);

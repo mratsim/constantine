@@ -7,7 +7,7 @@
 
 import
   # Stdlib
-  system/ansi_c, std/[strformat, os, strutils, cpuinfo],
+  std/[strformat, os, strutils, cpuinfo],
   # Library
   ../../constantine/threadpool
 

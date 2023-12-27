@@ -93,8 +93,8 @@ elif defined(macosx) or defined(macos) or defined(ios):
     int64(float64(stop.int64 - start.int64) * mti_f64_num / mti_f64_den)
 
 elif defined(windows):
-  proc QueryPerformanceCounter(res: var Ticks) {.importc: "QueryPerformanceCounter", stdcall, dynlib: "kernel32".}
-  proc QueryPerformanceFrequency(res: var uint64) {.importc: "QueryPerformanceFrequency", stdcall, dynlib: "kernel32".}
+  proc QueryPerformanceCounter(res: var Ticks) {.importc, stdcall, dynlib: "kernel32".}
+  proc QueryPerformanceFrequency(res: var uint64) {.importc, stdcall, dynlib: "kernel32".}
 
   # initialize performance frequency once at startup
   # https://learn.microsoft.com/en-us/windows/win32/api/profileapi/nf-profileapi-queryperformancefrequency

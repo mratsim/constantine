@@ -38,7 +38,7 @@ else:
   proc pthread_barrier_init*(
         barrier: PthreadBarrier,
         attr: ptr PthreadBarrierAttr,
-        count: cuint
+        count: cint
       ): Errno {.header: "<pthread.h>".}
     ## Initialize `barrier` with the attributes `attr`.
     ## The barrier is opened when `count` waiters arrived.

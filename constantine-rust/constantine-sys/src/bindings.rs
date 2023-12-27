@@ -27,11 +27,15 @@ pub struct ctt_threadpool {
 }
 extern "C" {
     #[doc = " Create a new threadpool that manages `num_threads` threads\n\n Initialize a threadpool that manages `num_threads` threads.\n\n A threadpool uses thread-local storage and (for external consumers)\n MUST be used from the thread that instantiated it.\n\n In particular, this means that:\n - runtime.LockOSThread() is needed from Go to avoid it allocating CGO calls to a new thread.\n - The threadpool cannot be ``Send`` in Rust or ``Clone`` (we can't deep-copy threads)\n\n 2 threadpools MUST NOT be instantiated at the same time from the same thread.\n\n Mixing with other libraries' threadpools and runtime\n will not impact correctness but may impact performance.\n"]
-    pub fn ctt_threadpool_new(num_threads: usize) -> *mut ctt_threadpool;
+    pub fn ctt_threadpool_new(num_threads: ::core::ffi::c_int) -> *mut ctt_threadpool;
 }
 extern "C" {
     #[doc = " Wait until all pending tasks are processed and then shutdown the threadpool"]
     pub fn ctt_threadpool_shutdown(threadpool: *mut ctt_threadpool);
+}
+extern "C" {
+    #[doc = " Query the number of threads available at the OS-level\n  to run computations.\n\n  This takes into account cores disabled at the OS-level, for example in a VM.\n  However this doesn't detect restrictions based on time quotas often used for Docker\n  or taskset / cpuset restrictions from cgroups.\n\n  For Simultaneous-Multithreading (SMT often call HyperThreading),\n  this returns the number of available logical cores."]
+    pub fn ctt_cpu_get_num_threads_os() -> ::core::ffi::c_int;
 }
 #[repr(C)]
 #[repr(align(64))]
