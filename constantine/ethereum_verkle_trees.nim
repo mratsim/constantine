@@ -37,7 +37,7 @@ export
     eth_verkle_constants.Coord,
     eth_verkle_constants.generator
 
-# Barycentric Formula
+# Barycentric Formula for Verkle
 # ------------------------------------------------------------
 export
     barycentric_form.newPrecomputedWeights,
