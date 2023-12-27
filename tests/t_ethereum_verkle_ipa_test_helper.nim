@@ -33,14 +33,14 @@ func ipaEvaluate* [Fr] (res: var Fr, poly: openArray[Fr], point: Fr,  n: static 
     res.setZero()
 
     for i in 0..<poly.len:
-        var tmp: EC_P_Fr
+        var tmp: Fr
         tmp.prod(powers[i], poly[i])
         res.sum(res,tmp)
 
     res.setZero()
 
     for i in 0..<poly.len:
-        var tmp {.noInit.}: EC_P_Fr
+        var tmp {.noInit.}: Fr
         tmp.prod(powers[i], poly[i])
         res.sum(res,tmp)
 
@@ -50,10 +50,10 @@ func truncate* [Fr] (res: var openArray[Fr], s: openArray[Fr], to: int, n: stati
 
 func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: static int) =
     
-    var one : EC_P_Fr
+    var one : Fr
     one.setOne()
 
-    var zero  : EC_P_Fr
+    var zero  : Fr
     zero.setZero()
 
     var max_degree_plus_one = points.len
@@ -64,13 +64,13 @@ func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: sta
         var point: Coord
         point = points[k]
 
-        var x_k : EC_P_Fr 
+        var x_k : Fr 
         x_k = point.x
-        var y_k  : EC_P_Fr 
+        var y_k  : Fr 
         y_k = point.y
 
-        var contribution : array[n,EC_P_Fr]
-        var denominator : EC_P_Fr
+        var contribution : array[n,Fr]
+        var denominator : Fr
         denominator.setOne()
 
         var max_contribution_degree : int= 0
@@ -78,7 +78,7 @@ func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: sta
         for j in 0..<points.len:
             var point : Coord 
             point = points[j]
-            var x_j : EC_P_Fr 
+            var x_j : Fr 
             x_j = point.x
 
             if j != k:
@@ -95,9 +95,9 @@ func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: sta
 
                 else:
 
-                    var mul_by_minus_x_j : array[n,EC_P_Fr]
+                    var mul_by_minus_x_j : array[n,Fr]
                     for el in 0..<contribution.len:
-                        var tmp : EC_P_Fr = contribution[el]
+                        var tmp : Fr = contribution[el]
                         tmp.prod(tmp,x_j)
                         tmp.diff(zero,tmp)
                         mul_by_minus_x_j[el] = tmp
@@ -118,7 +118,7 @@ func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: sta
         doAssert not(denominator.isZero().bool()) == true, "Denominator should not be zero!"
 
         for i in 0..<contribution.len:
-            var tmp : EC_P_Fr 
+            var tmp : Fr 
             tmp = contribution[i]
             tmp.prod(tmp,denominator)
             tmp.prod(tmp,y_k)
@@ -214,7 +214,7 @@ func isScalarEqHex*(scalar: matchingOrderBigInt(Banderwagon), expected: string) 
     if scalar_bytes.serialize_scalar(scalar) == cttCodecScalar_Success:
         doAssert (scalar_bytes.toHex() == expected).bool() == true, "Scalar does not equal to the expected hex value!"
 
-func getDegreeOfPoly*(res: var int, p: openArray[EC_P_Fr]) = 
+func getDegreeOfPoly*(res: var int, p: openArray[Fr]) = 
     for d in countdown(p.len - 1, 0):
         if not(p[d].isZero().bool()):
             res = d

@@ -34,7 +34,7 @@ func generateChallengesForIPA*(res: var openArray[matchingOrderBigInt(Banderwago
 # Check IPA proof verifier a IPA proof for a committed polynomial in evaluation form
 # It verifies whether the proof is valid for the given polynomial at the evaluation `evalPoint`
 # and cross-checking it with `result`
-func checkIPAProof* (ic: IPASettings, transcript: var sha256, commitment: var EC_P, proof: IPAProof, evalPoint: EC_P_Fr, res: EC_P_Fr) : bool = 
+func checkIPAProof* (ic: IPASettings, transcript: var sha256, commitment: var EC_P, proof: IPAProof, evalPoint: Fr[Banderwagon], res: Fr[Banderwagon]) : bool = 
 
     var r {.noInit.} : bool
 
@@ -45,7 +45,7 @@ func checkIPAProof* (ic: IPASettings, transcript: var sha256, commitment: var EC
     debug: doAssert (proof.L_vector.len == int(ic.numRounds)), "Proof length and num round unequal!"
 
 
-    var b {.noInit.}: array[VerkleDomain, EC_P_Fr]
+    var b {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
     b.computeBarycentricCoefficients(ic.precompWeights,evalPoint)
 
     transcript.pointAppend(asBytes"C", commitment)
@@ -69,11 +69,11 @@ func checkIPAProof* (ic: IPASettings, transcript: var sha256, commitment: var EC
     var challenges_big: array[8, matchingOrderBigInt(Banderwagon)]
     challenges_big.generateChallengesForIPA(transcript, proof)
 
-    var challenges: array[8,EC_P_Fr]
+    var challenges: array[8,Fr[Banderwagon]]
     for i in 0..<8:
         challenges[i].fromBig(challenges_big[i])
 
-    var challengesInv {.noInit.}: array[8,EC_P_Fr] 
+    var challengesInv {.noInit.}: array[8,Fr[Banderwagon]] 
     challengesInv.batchInvert(challenges)
 
     for i in 0..<challenges.len:
@@ -86,8 +86,8 @@ func checkIPAProof* (ic: IPASettings, transcript: var sha256, commitment: var EC
         p11[1] = L
         p11[2] = R
 
-        var p22: array[3, EC_P_Fr]
-        var one: EC_P_Fr
+        var p22: array[3, Fr[Banderwagon]]
+        var one: Fr[Banderwagon]
         one.setOne()
 
         p22[0] = one
@@ -99,10 +99,10 @@ func checkIPAProof* (ic: IPASettings, transcript: var sha256, commitment: var EC
     var g {.noInit.}: array[VerkleDomain, EC_P]
     g = ic.SRS
     
-    var foldingScalars {.noInit.}: array[g.len, EC_P_Fr]
+    var foldingScalars {.noInit.}: array[g.len, Fr[Banderwagon]]
 
     for i in 0..<g.len:
-        var scalar {.noInit.} : EC_P_Fr
+        var scalar {.noInit.} : Fr[Banderwagon]
         scalar.setOne()
 
         for challengeIndex in 0..<challenges.len:
@@ -126,7 +126,7 @@ func checkIPAProof* (ic: IPASettings, transcript: var sha256, commitment: var EC
  
     g0.multiScalarMul_reference_vartime(foldingScalars_big, g_aff)
 
-    var b0 {.noInit.} : EC_P_Fr
+    var b0 {.noInit.} : Fr[Banderwagon]
     b0.computeInnerProducts(b, foldingScalars)
 
     var got {.noInit.} : EC_P
@@ -137,7 +137,7 @@ func checkIPAProof* (ic: IPASettings, transcript: var sha256, commitment: var EC
     p1.scalarMul(proof.A_scalar.toBig())
 
     var p2 {.noInit.} : EC_P
-    var p2a {.noInit.} : EC_P_Fr
+    var p2a {.noInit.} : Fr[Banderwagon]
 
     p2a.prod(b0, proof.A_scalar)
     p2 = q

@@ -28,7 +28,7 @@ import
 
 # The multiproof is a multi-proving system for several polynomials in the evaluation form
 
-# Converts the const VERKLE_DOMAIN 256 to Fr
+# Converts the const VERKLE_DOMAIN 256 to Fr[Banderwagon]
 func domainToFrElem* (res: var Fr, inp: uint8)=
     var x {.noInit.} : Fr
     var x_big {.noInit.}: matchingOrderBigInt(Banderwagon)
@@ -36,13 +36,13 @@ func domainToFrElem* (res: var Fr, inp: uint8)=
     x.fromBig(x_big)
     res = x
 
-func domainToFrElem* [Fr] (res: var Fr, inp: matchingOrderBigInt(Banderwagon))=
-    var x {.noInit.} : Fr
+func domainToFrElem*(res: var Fr, inp: matchingOrderBigInt(Banderwagon))=
+    var x {.noInit.} : Fr[Banderwagon]
     x.fromBig(inp)
     res = x
 
-# Computes the powers of an Fr[Banderwagon] element
-func computePowersOfElem* [Fr] (res: var openArray[Fr], x: Fr, degree: SomeSignedInt)= 
+# Computes the powers of an Fr[Banderwagon][Banderwagon] element
+func computePowersOfElem*(res: var openArray[Fr], x: Fr, degree: SomeSignedInt)= 
     res[0].setOne()
     for i in 1..<degree:
         res[i].prod(res[i-1], x)
@@ -56,7 +56,7 @@ func computePowersOfElem* [Fr] (res: var openArray[Fr], x: Fr, degree: SomeSigne
 # createMultiProof creates a multi-proof for several polynomials in the evaluation form
 # The list of triplets are as follows : (C, Fs, Z) represents each polynomial commitment
 # and their evalutation in the domain, and the evaluating point respectively
-func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256, ipaSetting: IPASettings, Cs: openArray[EC_P], Fs: array[VERKLE_DOMAIN, array[VERKLE_DOMAIN, EC_P_Fr]], Zs: openArray[uint8], precomp: PrecomputedWeights, basis: array[VERKLE_DOMAIN, EC_P]) : bool =
+func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256, ipaSetting: IPASettings, Cs: openArray[EC_P], Fs: array[VERKLE_DOMAIN, array[VERKLE_DOMAIN, Fr[Banderwagon]]], Zs: openArray[uint8], precomp: PrecomputedWeights, basis: array[VERKLE_DOMAIN, EC_P]) : bool =
     var success {.noInit.} : bool
     transcript.domain_separator(asBytes"multiproof")
 
@@ -76,7 +76,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
 
     for i in 0..<num_queries:
         transcript.pointAppend(asBytes"C", Cs_prime[i])
-        var z {.noInit.} : EC_P_Fr
+        var z {.noInit.} : Fr[Banderwagon]
         z.domainToFrElem(Zs[i])
         transcript.scalarAppend(asBytes"z",z.toBig())
 
@@ -91,16 +91,16 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
     var r {.noInit.} : matchingOrderBigInt(Banderwagon)
     r.generateChallengeScalar(transcript,asBytes"r")
 
-    var r_fr {.noInit.}: EC_P_Fr
+    var r_fr {.noInit.}: Fr[Banderwagon]
     r_fr.fromBig(r)
 
-    var powersOfr {.noInit.}: array[VERKLE_DOMAIN,EC_P_Fr]
+    var powersOfr {.noInit.}: array[VERKLE_DOMAIN,Fr[Banderwagon]]
     powersOfr.computePowersOfElem(r_fr, int(num_queries))
 
     # Inorder to compute g(x), we first compute the polynomials in lagrange form grouped by evaluation points
     # then we compute g(x), this is eventually limit the numbers of divisionOnDomain calls up to the domain size 
 
-    var groupedFs: array[VERKLE_DOMAIN, array[VERKLE_DOMAIN, EC_P_Fr]]
+    var groupedFs: array[VERKLE_DOMAIN, array[VERKLE_DOMAIN, Fr[Banderwagon]]]
     # Initialize the array with zeros
     for i in 0..<VERKLE_DOMAIN:
         for j in 0..<VERKLE_DOMAIN:
@@ -112,22 +112,22 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
         
         debug: doAssert not(groupedFs[z].len == 0), "Length should not be 0!"
 
-        var r {.noInit.}: EC_P_Fr
+        var r {.noInit.}: Fr[Banderwagon]
         r = powersOfr[i]
 
         for j in 0..<VERKLE_DOMAIN:
-            var scaledEvals {.noInit.}: EC_P_Fr
+            var scaledEvals {.noInit.}: Fr[Banderwagon]
             scaledEvals.prod(r, Fs[i][j])
             groupedFs[z][j].sum(groupedFs[z][j], scaledEvals)
         
     
-    var gx : array[VERKLE_DOMAIN, EC_P_Fr]
+    var gx : array[VERKLE_DOMAIN, Fr[Banderwagon]]
 
     for idx in 0..<VERKLE_DOMAIN:
         if groupedFs[idx].len == 0:
             continue
 
-        var quotient: array[VERKLE_DOMAIN,EC_P_Fr]
+        var quotient: array[VERKLE_DOMAIN,Fr[Banderwagon]]
         var passer : int
         passer = idx
         quotient.divisionOnDomain(precomp, passer, groupedFs[idx])
@@ -143,11 +143,11 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
     var t {.noInit.}: matchingOrderBigInt(Banderwagon)
     t.generateChallengeScalar(transcript,asBytes"t")
 
-    var t_fr {.noInit.}: EC_P_Fr
+    var t_fr {.noInit.}: Fr[Banderwagon]
     t_fr.fromBig(t)
 
     # Computing the denominator inverses only for referenced evaluation points.
-    var denInv {.noInit.}: array[VERKLE_DOMAIN, EC_P_Fr]
+    var denInv {.noInit.}: array[VERKLE_DOMAIN, Fr[Banderwagon]]
     for i in 0..<VERKLE_DOMAIN:
         denInv[i].setZero()
 
@@ -155,9 +155,9 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
         if groupedFs[z].len == 0:
             continue
 
-        var z_fr {.noInit.} : EC_P_Fr
+        var z_fr {.noInit.} : Fr[Banderwagon]
         z_fr.domainToFrElem(uint8(z))
-        var deno {.noInit.}: EC_P_Fr
+        var deno {.noInit.}: Fr[Banderwagon]
 
         deno.diff(t_fr,z_fr)
         var idxx = 0
@@ -165,11 +165,11 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
         idxx = idxx + 1
 
 
-    var denInv_prime {.noInit.} : array[VERKLE_DOMAIN, EC_P_Fr]
+    var denInv_prime {.noInit.} : array[VERKLE_DOMAIN, Fr[Banderwagon]]
     denInv_prime.batchInvert(denInv)
 
     #Compute h(X) = g1(X)
-    var hx {.noInit.}: array[VERKLE_DOMAIN, EC_P_Fr]
+    var hx {.noInit.}: array[VERKLE_DOMAIN, Fr[Banderwagon]]
     var denInvIdx = 0
 
     for i in 0..<VERKLE_DOMAIN:
@@ -177,13 +177,13 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
             continue
 
         for k in 0..<VERKLE_DOMAIN:
-            var tmp {.noInit.}: EC_P_Fr
+            var tmp {.noInit.}: Fr[Banderwagon]
             tmp.prod(groupedFs[i][k], denInv[denInvIdx])
             hx[k].sum(hx[k], tmp)
 
         denInvIdx = denInvIdx + 1
 
-    var hMinusg {.noInit.}: array[VERKLE_DOMAIN, EC_P_Fr]
+    var hMinusg {.noInit.}: array[VERKLE_DOMAIN, Fr[Banderwagon]]
 
     for i in 0..<VERKLE_DOMAIN:
         hMinusg[i].diff(hx[i],gx[i])
@@ -217,9 +217,9 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
 # ############################################################
     
 # Mutliproof verifier verifies the multiproof for several polynomials in the evaluation form
-# The list of triplets (C,Y, Z) represents each polynomial commitment, evaluation
+# The list of triplets (C,Y,Z) represents each polynomial commitment, evaluation
 # result, and evaluation point in the domain 
-func verifyMultiproof*(multiProof: var MultiProof, transcript : var sha256, ipaSettings: IPASettings, Cs: openArray[EC_P], Ys: openArray[EC_P_Fr], Zs: openArray[uint8]) : bool =
+func verifyMultiproof*(multiProof: var MultiProof, transcript : var sha256, ipaSettings: IPASettings, Cs: openArray[EC_P], Ys: openArray[Fr[Banderwagon]], Zs: openArray[uint8]) : bool =
     var res {.noInit.} : bool
     transcript.domain_separator(asBytes"multiproof")
 
@@ -237,7 +237,7 @@ func verifyMultiproof*(multiProof: var MultiProof, transcript : var sha256, ipaS
     for i in 0..<num_queries:
         transcript.pointAppend(asBytes"C", Cs[i])
 
-        var z {.noInit.} : EC_P_Fr
+        var z {.noInit.} : Fr[Banderwagon]
         z.domainToFrElem(Zs[i])
 
         transcript.scalarAppend(asBytes"z", z.toBig())
@@ -246,10 +246,10 @@ func verifyMultiproof*(multiProof: var MultiProof, transcript : var sha256, ipaS
     var r {.noInit.}: matchingOrderBigInt(Banderwagon)
     r.generateChallengeScalar(transcript,asBytes"r")
 
-    var r_fr {.noInit.}: EC_P_Fr
+    var r_fr {.noInit.}: Fr[Banderwagon]
     r_fr.fromBig(r)
 
-    var powersOfr {.noInit.}: array[VERKLE_DOMAIN, EC_P_Fr]
+    var powersOfr {.noInit.}: array[VERKLE_DOMAIN, Fr[Banderwagon]]
     powersOfr.computePowersOfElem(r_fr, int(num_queries))
 
     transcript.pointAppend(asBytes"D", multiProof.D)
@@ -257,40 +257,40 @@ func verifyMultiproof*(multiProof: var MultiProof, transcript : var sha256, ipaS
     var t {.noInit.}: matchingOrderBigInt(Banderwagon)
     t.generateChallengeScalar(transcript, asBytes"t")
 
-    var t_fr {.noInit.}: EC_P_Fr
+    var t_fr {.noInit.}: Fr[Banderwagon]
     t_fr.fromBig(r)
 
     # Computing the polynomials in the Lagrange form grouped by evaluation point, 
     # and the needed helper scalars
-    var groupedEvals {.noInit.}: array[VERKLE_DOMAIN, EC_P_Fr]
+    var groupedEvals {.noInit.}: array[VERKLE_DOMAIN, Fr[Banderwagon]]
 
     for i in 0..<num_queries:
 
         var z {.noInit.}: uint8
         z = Zs[i]
 
-        var r {.noInit.} : EC_P_Fr
+        var r {.noInit.} : Fr[Banderwagon]
         r = powersOfr[i]
 
-        var scaledEvals {.noInit.}: EC_P_Fr
+        var scaledEvals {.noInit.}: Fr[Banderwagon]
         scaledEvals.prod(r, Ys[i])
 
         groupedEvals[z].sum(groupedEvals[z], scaledEvals)
 
         #Calculating the helper scalar denominator, which is 1 / t - z_i
-        var helperScalarDeno {.noInit.} : array[VERKLE_DOMAIN, EC_P_Fr]
+        var helperScalarDeno {.noInit.} : array[VERKLE_DOMAIN, Fr[Banderwagon]]
 
         for i in 0..<VERKLE_DOMAIN:
-            var z {.noInit.}: EC_P_Fr
+            var z {.noInit.}: Fr[Banderwagon]
             z.domainToFrElem(uint8(i))
 
             helperScalarDeno[i].diff(t_fr, z)
 
-        var helperScalarDeno_prime: array[VERKLE_DOMAIN, EC_P_Fr]
+        var helperScalarDeno_prime: array[VERKLE_DOMAIN, Fr[Banderwagon]]
         helperScalarDeno_prime.batchInvert(helperScalarDeno)
 
         # Compute g_2(t) = SUMMATION (y_i * r^i) / (t - z_i) = SUMMATION (y_i * r) * helperScalarDeno
-        var g2t {.noInit.} : EC_P_Fr
+        var g2t {.noInit.} : Fr[Banderwagon]
         g2t.setZero()
 
         for i in 0..<VERKLE_DOMAIN:
@@ -298,13 +298,13 @@ func verifyMultiproof*(multiProof: var MultiProof, transcript : var sha256, ipaS
             if stat.bool() == true:
                 continue
 
-            var tmp {.noInit.}: EC_P_Fr
+            var tmp {.noInit.}: Fr[Banderwagon]
             tmp.prod(groupedEvals[i], helperScalarDeno_prime[i])
             g2t += tmp
 
         
         # Compute E = SUMMATION C_i * (r^i /  t - z_i) = SUMMATION C_i * MSM_SCALARS
-        var msmScalars {.noInit.}: array[VERKLE_DOMAIN, EC_P_Fr]
+        var msmScalars {.noInit.}: array[VERKLE_DOMAIN, Fr[Banderwagon]]
 
         var Csnp {.noInit.}: array[VERKLE_DOMAIN, EC_P]
 

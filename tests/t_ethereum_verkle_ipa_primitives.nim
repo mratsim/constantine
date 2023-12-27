@@ -74,16 +74,16 @@ suite "Barycentric Form Tests":
           points[0] = point_a
           points[1] = point_b       
 
-          var poly : array[2,EC_P_Fr]
+          var poly : array[2,Fr[Banderwagon]]
 
           poly.interpolate(points,2)
 
           var genfp : EC_P
           genfp.fromAffine(generator)
-          var genfr : EC_P_Fr
+          var genfr : Fr[Banderwagon]
           genfr.mapToScalarField(genfp)
 
-          var res {.noInit.}: EC_P_Fr
+          var res {.noInit.}: Fr[Banderwagon]
           res.ipaEvaluate(poly,gen_fr,2)
 
           doAssert (res.toHex()==genfr.toHex()) == true, "Not matching!"
@@ -93,7 +93,7 @@ suite "Barycentric Form Tests":
     test "Testing Barycentric Precompute Coefficients":
         proc testBarycentricPrecomputeCoefficients()=
 
-            var p_outside_dom : EC_P_Fr
+            var p_outside_dom : Fr[Banderwagon]
 
             var i_bg : matchingOrderBigInt(Banderwagon)
             i_bg.setUint(uint64(3400))
@@ -102,18 +102,18 @@ suite "Barycentric Form Tests":
 
             var testVals: array[10,uint64] = [1,2,3,4,5,6,7,8,9,10] 
             
-            var lagrange_values : array[256,EC_P_Fr]
+            var lagrange_values : array[256,Fr[Banderwagon]]
             lagrange_values.testPoly256(testVals)
 
             var precomp {.noInit.}: PrecomputedWeights
 
             precomp.newPrecomputedWeights()
             
-            var bar_coeffs: array[256, EC_P_Fr]
+            var bar_coeffs: array[256, Fr[Banderwagon]]
 
             bar_coeffs.computeBarycentricCoefficients(precomp, p_outside_dom)
 
-            var expected0: EC_P_Fr
+            var expected0: Fr[Banderwagon]
 
             expected0.computeInnerProducts(lagrange_values, bar_coeffs)
 
@@ -121,7 +121,7 @@ suite "Barycentric Form Tests":
             for k in 0..<256:
                 var x : matchingOrderBigInt(Banderwagon)
                 x.setUint(uint64(k))
-                var x_fr : EC_P_Fr
+                var x_fr : Fr[Banderwagon]
                 x_fr.fromBig(x)
 
                 var point : Coord
@@ -130,10 +130,10 @@ suite "Barycentric Form Tests":
 
                 points[k]=point
 
-            var poly_coeff : array[VerkleDomain, EC_P_Fr]
+            var poly_coeff : array[VerkleDomain, Fr[Banderwagon]]
             poly_coeff.interpolate(points, VerkleDomain)
 
-            var expected2: EC_P_Fr
+            var expected2: Fr[Banderwagon]
             expected2.ipaEvaluate(poly_coeff, p_outside_dom, VerkleDomain)
 
 
@@ -208,7 +208,7 @@ suite "IPA proof tests":
 
   test "Test for IPA proof equality":
     proc testIPAProofEquality()=
-        var point: EC_P_Fr
+        var point: Fr[Banderwagon]
         var ipaConfig: IPASettings
         var ipaTranscript: IpaTranscript[sha256, 32]
         let stat1 = ipaConfig.genIPAConfig(ipaTranscript)
@@ -226,7 +226,7 @@ suite "IPA proof tests":
 
         #from the prover's side
         var testVals: array[5, uint64] = [1,2,3,4,5]
-        var poly: array[256, EC_P_Fr]
+        var poly: array[256, Fr[Banderwagon]]
         poly.testPoly256(testVals)
 
         var prover_comm: EC_P
@@ -248,7 +248,7 @@ suite "IPA proof tests":
 
     test "Test for IPA Proof of Creation and Verification":
       proc testIPAProofCreateAndVerify()=
-        var point : EC_P_Fr
+        var point : Fr[Banderwagon]
         var ipaConfig: IPASettings
         var ipaTranscript: IpaTranscript[sha256, 32]
         let stat1 = ipaConfig.genIPAConfig(ipaTranscript)
@@ -263,7 +263,7 @@ suite "IPA proof tests":
 
         # from the prover's side
         var testVals : array[9, uint64] = [1,2,3,4,5,6,7,8,9]
-        var poly: array[256,EC_P_Fr]
+        var poly: array[256,Fr[Banderwagon]]
         poly.testPoly256(testVals)
 
         var prover_comm : EC_P
@@ -279,11 +279,11 @@ suite "IPA proof tests":
         var precomp : PrecomputedWeights
 
         precomp.newPrecomputedWeights()
-        var lagrange_coeffs : array[VerkleDomain, EC_P_Fr]
+        var lagrange_coeffs : array[VerkleDomain, Fr[Banderwagon]]
 
         lagrange_coeffs.computeBarycentricCoefficients(precomp, point)
 
-        var innerProd : EC_P_Fr
+        var innerProd : Fr[Banderwagon]
         innerProd.computeInnerProducts(poly, lagrange_coeffs)
 
         # Verifier view 
@@ -327,7 +327,7 @@ suite "Multiproof Tests":
       testGeneratedPoints.generate_random_points(ipaTranscript, 256)
 
       var testVals: array[14, uint64] = [1,1,1,4,5,6,7,8,9,10,11,12,13,14]
-      var poly : array[256, EC_P_Fr]
+      var poly : array[256, Fr[Banderwagon]]
 
       poly.testPoly256(testVals)
 
@@ -341,13 +341,13 @@ suite "Multiproof Tests":
       var prover_comm: EC_P
       prover_comm.pedersen_commit_varbasis(testGeneratedPoints,testGeneratedPoints.len, poly, poly.len)
 
-      var one : EC_P_Fr
+      var one : Fr[Banderwagon]
       one.setOne()
 
       var Cs : array[VerkleDomain, EC_P]
-      var Fs : array[VerkleDomain, array[VerkleDomain, EC_P_Fr]]
+      var Fs : array[VerkleDomain, array[VerkleDomain, Fr[Banderwagon]]]
       var Zs : array[VerkleDomain, uint8]
-      var Ys : array[VerkleDomain, EC_P_Fr]
+      var Ys : array[VerkleDomain, Fr[Banderwagon]]
 
       Cs[0] = prover_comm
       Fs[0] = poly

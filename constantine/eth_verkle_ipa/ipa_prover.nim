@@ -35,7 +35,16 @@ import
 
 # Further reference refer to this https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
 
-# Initiates a new IPASetting
+# Initiates a new IPASettings
+# IPASettings has all the necessary information related to create an IPA proof
+# such as SRS, precomputed weights for Barycentric formula
+
+# The number of rounds for the prover and verifier must be in the IPA argument,
+# it should be log2 of the size of the input vectors for the IPA, since the vector size is halved on each round.
+
+# genIPAConfig( ) generates the SRS, Q and the precomputed weights for barycentric formula. The SRS is generated
+# as random points of the VerkleDomain where the relative discrete log is unknown between each generator.
+
 func genIPAConfig*(res: var IPASettings, ipaTranscript: var IpaTranscript[sha256, 32]) : bool {.inline.}=
   res.SRS.generate_random_points(ipaTranscript, uint64(VerkleDomain))
   res.Q_val.fromAffine(Banderwagon.getGenerator())
@@ -43,12 +52,15 @@ func genIPAConfig*(res: var IPASettings, ipaTranscript: var IpaTranscript[sha256
   res.numRounds.computeNumRounds(uint64(VerkleDomain))
   return true
 
-func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: IPASettings, commitment: EC_P, a: var openArray[EC_P_Fr], evalPoint: EC_P_Fr ) : bool {.inline.}=
+## createIPAProof creates an IPA proof for a committed polynomial in evaluation form.
+## `a` vectors are the evaluation points in the domain, and `evalPoint` represents the evaluation point.
+
+func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: IPASettings, commitment: EC_P, a: var openArray[Fr[Banderwagon]], evalPoint: Fr[Banderwagon] ) : bool {.inline.}=
   transcript.domain_separator(asBytes"ipa")
-  var b {.noInit.}: array[VerkleDomain, EC_P_Fr]
+  var b {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
   
   b.computeBarycentricCoefficients(ic.precompWeights,evalPoint)
-  var innerProd {.noInit.}: EC_P_Fr
+  var innerProd {.noInit.}: Fr[Banderwagon]
 
   innerProd.computeInnerProducts(a,b)
 
@@ -83,12 +95,12 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
 
     var (G_L, G_R) = current_basis_stri.splitMiddle()
 
-    var z_L {.noInit.}: EC_P_Fr
+    var z_L {.noInit.}: Fr[Banderwagon]
     z_L.computeInnerProducts(a_R, b_L)
 
-    var z_R {.noInit.}: EC_P_Fr
+    var z_R {.noInit.}: Fr[Banderwagon]
     z_R.computeInnerProducts(a_L, b_R)
-    var one : EC_P_Fr
+    var one : Fr[Banderwagon]
     one.setOne()
 
     var C_L_1 {.noInit.}: EC_P
@@ -98,7 +110,7 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
     fp1[0] = C_L_1
     fp1[1] = q
 
-    var fr1 : array[2, EC_P_Fr]
+    var fr1 : array[2, Fr[Banderwagon]]
     fr1[0] = one
     fr1[1] = z_L
 
@@ -114,7 +126,7 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
     fp2[0]=C_R_1
     fp2[1]=q
 
-    var fr2: array[2, EC_P_Fr]
+    var fr2: array[2, Fr[Banderwagon]]
     fr2[0]=one
     fr2[1]=z_R
 
@@ -129,10 +141,10 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
     var x_big: matchingOrderBigInt(Banderwagon)
     x_big.generateChallengeScalar(transcript, asBytes"x")
 
-    var x: EC_P_Fr
+    var x: Fr[Banderwagon]
     x.fromBig(x_big)
 
-    var xInv: EC_P_Fr
+    var xInv: Fr[Banderwagon]
     xInv.inv(x)
 
     a.foldScalars(a_L.toOpenArray(), a_R.toOpenArray(), x)

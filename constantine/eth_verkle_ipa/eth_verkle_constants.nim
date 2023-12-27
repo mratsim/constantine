@@ -23,14 +23,13 @@ import
 
 type
   EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
-  EC_P_Fr* = Fr[Banderwagon]
   EC_P_Aff* = ECP_TwEdwards_Aff[Fp[Banderwagon]]
 
 type 
     IPAProof* = object
      L_vector*: array[8,EC_P]
      R_vector*: array[8,EC_P]
-     A_scalar*: EC_P_Fr
+     A_scalar*: Fr[Banderwagon]
 
 type 
     MultiProof* = object
@@ -42,8 +41,8 @@ const
 
 type 
  PrecomputedWeights* = object
-  barycentricWeights*: array[510,EC_P_Fr]
-  invertedDomain*: array[510,EC_P_Fr]
+  barycentricWeights*: array[510,Fr[Banderwagon]]
+  invertedDomain*: array[510,Fr[Banderwagon]]
 
 type
    IPASettings* = object
@@ -52,7 +51,7 @@ type
     precompWeights*: PrecomputedWeights
     numRounds*: uint32
 
-const seed* = asBytes"eth_verkle_oct_2021"
+const VerkleSeed* = asBytes"eth_verkle_oct_2021"
 
 type Bytes* = array[32, byte]
 
@@ -62,7 +61,7 @@ type IpaTranscript* [H: CryptoHash, N: static int] = object
 
 type
     Coord* = object 
-     x*: EC_P_Fr
-     y*: EC_P_Fr
+     x*: Fr[Banderwagon]
+     y*: Fr[Banderwagon]
 
 var generator* = Banderwagon.getGenerator()

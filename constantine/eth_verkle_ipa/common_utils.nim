@@ -27,6 +27,8 @@ import
 #
 # ############################################################
 
+
+## generate_random_points generates random points on the curve with the hardcoded VerkleSeed -> VerkleSeed
 func generate_random_points* [EC_P](points: var openArray[EC_P], ipaTranscript: var IpaTranscript, num_points: uint64)  =
 
     var incrementer: uint64 = 0
@@ -35,7 +37,7 @@ func generate_random_points* [EC_P](points: var openArray[EC_P], ipaTranscript: 
 
         var digest : IpaTranscript.H
         digest.init()
-        digest.update(seed)
+        digest.update(VerkleSeed)
 
         digest.update(incrementer.toBytes(bigEndian))
         var hash {.noInit.} : array[IpaTranscript.H.digestSize(), byte]
@@ -86,6 +88,7 @@ func computeInnerProducts* [Fr] (res: var Fr, a,b : StridedView[Fr])=
 #
 # ############################################################
 
+## Computes res[i] = a[i] + b[i] * x
 func foldScalars* [Fr] (res: var openArray[Fr], a,b : openArray[Fr], x: Fr)=
     
     debug: doAssert a.len == b.len , "Lengths should be equal!"
@@ -95,7 +98,7 @@ func foldScalars* [Fr] (res: var openArray[Fr], a,b : openArray[Fr], x: Fr)=
         bx.prod(x, b[i])
         res[i].sum(bx, a[i])
 
-
+## Computes res[i] = a[i] + b[i] * x
 func foldPoints* [EC_P] (res: var openArray[EC_P], a,b : var openArray[EC_P], x: Fr)=
     
     debug: doAssert a.len == b.len , "Should have equal lengths!"
@@ -107,7 +110,8 @@ func foldPoints* [EC_P] (res: var openArray[EC_P], a,b : var openArray[EC_P], x:
         bx = b[i]
         res[i].sum(bx, a[i])
 
-
+## This method takes the log2(vectorSize), a separate checker is added to prevent 0 sized vectors
+## An additional checker is added because we also do not allow for vectors whose size is a power of 2.
 func computeNumRounds*(res: var uint32, vectorSize: SomeUnsignedInt)= 
 
     debug: doAssert (vectorSize == uint64(0)).bool() == false, "Zero is not a valid input!"
