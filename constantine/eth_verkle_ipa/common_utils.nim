@@ -46,7 +46,7 @@ func generate_random_points* [EC_P](points: var openArray[EC_P], ipaTranscript: 
 
         let stat1 =  x.deserialize(hash) 
         doAssert stat1 == cttCodecEcc_Success, "Deserialization Failure!"
-        incrementer=incrementer+1
+        incrementer = incrementer + 1
 
         var x_as_Bytes {.noInit.} : array[IpaTranscript.H.digestSize(), byte]
         let stat2 = x_as_Bytes.serialize(x)
@@ -57,7 +57,7 @@ func generate_random_points* [EC_P](points: var openArray[EC_P], ipaTranscript: 
 
         doAssert stat3 == cttCodecEcc_Success, "Deserialization Failure!"
         points[idx] = point_found
-        idx=idx+1
+        idx = idx + 1
 
 # ############################################################
 #

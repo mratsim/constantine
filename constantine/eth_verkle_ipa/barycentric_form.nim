@@ -132,7 +132,7 @@ func getInvertedElement*(res: var Fr[Banderwagon], precomp : PrecomputedWeights,
   index = element - 1 
 
   if is_negative:
-    var midpoint = int((len(precomp.invertedDomain) / 2))-1
+    var midpoint = int((len(precomp.invertedDomain) / 2)) - 1
     index = index + midpoint
   
   res = precomp.invertedDomain[index]
@@ -140,7 +140,7 @@ func getInvertedElement*(res: var Fr[Banderwagon], precomp : PrecomputedWeights,
 func getWeightRatios*(result: var Fr[Banderwagon], precomp: PrecomputedWeights, numerator: var int, denominator: var int)=
 
   var a = precomp.barycentricWeights[numerator]
-  var midpoint = int((len(precomp.barycentricWeights) / 2))-1
+  var midpoint = int((len(precomp.barycentricWeights) / 2)) - 1
 
   var b = precomp.barycentricWeights[denominator + midpoint]
 
@@ -148,7 +148,7 @@ func getWeightRatios*(result: var Fr[Banderwagon], precomp: PrecomputedWeights, 
 
 
 func getBarycentricInverseWeight*(res: var Fr[Banderwagon], precomp: PrecomputedWeights, i: int) =
-  var midpoint = int((len(precomp.barycentricWeights) / 2))-1
+  var midpoint = int((len(precomp.barycentricWeights) / 2)) - 1
   res = precomp.barycentricWeights[i+midpoint]
 
 func absIntChecker*[int] (res: var int, x : int) =
@@ -157,7 +157,7 @@ func absIntChecker*[int] (res: var int, x : int) =
     is_negative = true
 
   if is_negative == true:
-    res = -x
+    res = - x
   else:
     res = x
 
