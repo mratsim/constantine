@@ -31,11 +31,11 @@ func generateChallengesForIPA*(res: var openArray[matchingOrderBigInt(Banderwago
         res[i].generateChallengeScalar(transcript,asBytes"x")
 
 
-# Check IPA proof verifier a IPA proof for a committed polynomial in evaluation form
-# It verifies whether the proof is valid for the given polynomial at the evaluation `evalPoint`
-# and cross-checking it with `result`
-func checkIPAProof* (ic: IPASettings, transcript: var sha256, commitment: var EC_P, proof: IPAProof, evalPoint: Fr[Banderwagon], res: Fr[Banderwagon]) : bool = 
 
+func checkIPAProof* (ic: IPASettings, transcript: var sha256, commitment: var EC_P, proof: IPAProof, evalPoint: Fr[Banderwagon], res: Fr[Banderwagon]) : bool = 
+    # Check IPA proof verifier a IPA proof for a committed polynomial in evaluation form
+    # It verifies whether the proof is valid for the given polynomial at the evaluation `evalPoint`
+    # and cross-checking it with `result`
     var r {.noInit.} : bool
 
     transcript.domain_separator(asBytes"ipa")

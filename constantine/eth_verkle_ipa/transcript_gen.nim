@@ -51,8 +51,9 @@ func scalarAppend*(res: var CryptoHash, label: openArray[byte], scalar: matching
     if(bytes.serialize_scalar(scalar) == cttCodecScalar_Success):
         res.messageAppend(bytes, label)
 
-# Generating Challenge Scalars based on the Fiat Shamir method
+
 func generateChallengeScalar*(gen: var matchingOrderBigInt(Banderwagon), transcript: var CryptoHash, label: openArray[byte]) =
+    # Generating Challenge Scalars based on the Fiat Shamir method
     transcript.domainSeparator(label)
 
     var hash: array[32, byte]

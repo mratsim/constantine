@@ -21,7 +21,6 @@ import
   ../math/arithmetic,
   ../math/elliptic/ec_scalar_mul, 
   ../platforms/[views],
-  ../math/io/[io_fields],
   ../curves_primitives
 
 # ############################################################
@@ -35,27 +34,28 @@ import
 
 # Further reference refer to this https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
 
-# Initiates a new IPASettings
-# IPASettings has all the necessary information related to create an IPA proof
-# such as SRS, precomputed weights for Barycentric formula
 
-# The number of rounds for the prover and verifier must be in the IPA argument,
-# it should be log2 of the size of the input vectors for the IPA, since the vector size is halved on each round.
-
-# genIPAConfig( ) generates the SRS, Q and the precomputed weights for barycentric formula. The SRS is generated
-# as random points of the VerkleDomain where the relative discrete log is unknown between each generator.
 
 func genIPAConfig*(res: var IPASettings, ipaTranscript: var IpaTranscript[sha256, 32]) : bool {.inline.}=
+  # Initiates a new IPASettings
+  # IPASettings has all the necessary information related to create an IPA proof
+  # such as SRS, precomputed weights for Barycentric formula
+
+  # The number of rounds for the prover and verifier must be in the IPA argument,
+  # it should be log2 of the size of the input vectors for the IPA, since the vector size is halved on each round.
+
+  # genIPAConfig( ) generates the SRS, Q and the precomputed weights for barycentric formula. The SRS is generated
+  # as random points of the VerkleDomain where the relative discrete log is unknown between each generator.
   res.SRS.generate_random_points(ipaTranscript, uint64(VerkleDomain))
   res.Q_val.fromAffine(Banderwagon.getGenerator())
   res.precompWeights.newPrecomputedWeights()
   res.numRounds.computeNumRounds(uint64(VerkleDomain))
   return true
 
-## createIPAProof creates an IPA proof for a committed polynomial in evaluation form.
-## `a` vectors are the evaluation points in the domain, and `evalPoint` represents the evaluation point.
 
 func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: IPASettings, commitment: EC_P, a: var openArray[Fr[Banderwagon]], evalPoint: Fr[Banderwagon] ) : bool {.inline.}=
+  ## createIPAProof creates an IPA proof for a committed polynomial in evaluation form.
+  ## `a` vectors are the evaluation points in the domain, and `evalPoint` represents the evaluation point.
   transcript.domain_separator(asBytes"ipa")
   var b {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
   
@@ -84,16 +84,20 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
 
   var R {.noInit.}: array[8, EC_P]
 
-  var a_stri = a.toStridedView()
-  var b_stri = b.toStridedView()
-  var current_basis_stri = current_basis.toStridedView()
+  var a_view = a.toView()
+  var b_view = b.toView()
+  var current_basis_view = current_basis.toView()
 
   for i in 0..<int(num_rounds):
 
-    var (a_L, a_R) = a_stri.splitMiddle()
-    var (b_L, b_R) = b_stri.splitMiddle()
+    var a_L = a_view.chunk(0,a_view.len shr 1)
+    var a_R = a_view.chunk(a_view.len shr 1 + 1, a_view.len)
 
-    var (G_L, G_R) = current_basis_stri.splitMiddle()
+    var b_L = b_view.chunk(0,b_view.len shr 1)
+    var b_R = b_view.chunk(b_view.len shr 1 + 1, b_view.len)
+
+    var G_L = current_basis_view.chunk(0,current_basis_view.len shr 1)
+    var G_R = current_basis_view.chunk(current_basis_view.len shr 1 + 1, current_basis_view.len)
 
     var z_L {.noInit.}: Fr[Banderwagon]
     z_L.computeInnerProducts(a_R, b_L)

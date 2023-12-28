@@ -82,9 +82,6 @@ func `[]`*[T](v: var StridedView[T], idx: int): var T {.inline.} =
 func `[]=`*[T](v: var StridedView[T], idx: int, val: T) {.inline.} =
   v.data[v.offset + idx*v.stride] = val
 
-template toOpenArray*[T](v: StridedView[T]): openArray[T] =
-  v.data.toOpenArray(0, v.len-1)
-
 func toStridedView*[T](oa: openArray[T]): StridedView[T] {.inline.} =
   result.len = oa.len
   result.stride = 1

@@ -216,10 +216,11 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
 #
 # ############################################################
     
-# Mutliproof verifier verifies the multiproof for several polynomials in the evaluation form
-# The list of triplets (C,Y,Z) represents each polynomial commitment, evaluation
-# result, and evaluation point in the domain 
+
 func verifyMultiproof*(multiProof: var MultiProof, transcript : var sha256, ipaSettings: IPASettings, Cs: openArray[EC_P], Ys: openArray[Fr[Banderwagon]], Zs: openArray[uint8]) : bool =
+    # Mutliproof verifier verifies the multiproof for several polynomials in the evaluation form
+    # The list of triplets (C,Y,Z) represents each polynomial commitment, evaluation
+    # result, and evaluation point in the domain 
     var res {.noInit.} : bool
     transcript.domain_separator(asBytes"multiproof")
 

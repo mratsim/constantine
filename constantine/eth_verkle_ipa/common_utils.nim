@@ -9,7 +9,7 @@
 ## IPAConfiguration contains all of the necessary information to create Pedersen + IPA proofs
 ## such as the SRS
 import
-    ./[eth_verkle_constants, transcript_gen],
+    ./[eth_verkle_constants],
     ../platforms/primitives,
     ../math/config/[type_ff, curves],
     ../math/elliptic/ec_twistededwards_projective,
@@ -28,9 +28,8 @@ import
 # ############################################################
 
 
-## generate_random_points generates random points on the curve with the hardcoded VerkleSeed -> VerkleSeed
 func generate_random_points* [EC_P](points: var openArray[EC_P], ipaTranscript: var IpaTranscript, num_points: uint64)  =
-
+    ## generate_random_points generates random points on the curve with the hardcoded VerkleSeed -> VerkleSeed
     var incrementer: uint64 = 0
     var idx: int = 0
     while uint64(len(points)) !=  num_points:
@@ -74,7 +73,7 @@ func computeInnerProducts* [Fr] (res: var Fr, a,b : openArray[Fr])=
     tmp.prod(a[i], b[i])
     res.sum(res,tmp)
 
-func computeInnerProducts* [Fr] (res: var Fr, a,b : StridedView[Fr])=
+func computeInnerProducts* [Fr] (res: var Fr, a,b : View[Fr])=
   debug: doAssert (a.len == b.len).bool() == true, "Scalar lengths don't match!"
   res.setZero()
   for i in 0..<b.len:
@@ -88,9 +87,8 @@ func computeInnerProducts* [Fr] (res: var Fr, a,b : StridedView[Fr])=
 #
 # ############################################################
 
-## Computes res[i] = a[i] + b[i] * x
 func foldScalars* [Fr] (res: var openArray[Fr], a,b : openArray[Fr], x: Fr)=
-    
+    ## Computes res[i] = a[i] + b[i] * x
     debug: doAssert a.len == b.len , "Lengths should be equal!"
 
     for i in 0..<a.len:
@@ -98,9 +96,8 @@ func foldScalars* [Fr] (res: var openArray[Fr], a,b : openArray[Fr], x: Fr)=
         bx.prod(x, b[i])
         res[i].sum(bx, a[i])
 
-## Computes res[i] = a[i] + b[i] * x
 func foldPoints* [EC_P] (res: var openArray[EC_P], a,b : var openArray[EC_P], x: Fr)=
-    
+    ## Computes res[i] = a[i] + b[i] * x
     debug: doAssert a.len == b.len , "Should have equal lengths!"
 
     for i in 0..<a.len:
@@ -110,10 +107,10 @@ func foldPoints* [EC_P] (res: var openArray[EC_P], a,b : var openArray[EC_P], x:
         bx = b[i]
         res[i].sum(bx, a[i])
 
-## This method takes the log2(vectorSize), a separate checker is added to prevent 0 sized vectors
-## An additional checker is added because we also do not allow for vectors whose size is a power of 2.
-func computeNumRounds*(res: var uint32, vectorSize: SomeUnsignedInt)= 
 
+func computeNumRounds*(res: var uint32, vectorSize: SomeUnsignedInt)= 
+    ## This method takes the log2(vectorSize), a separate checker is added to prevent 0 sized vectors
+    ## An additional checker is added because we also do not allow for vectors whose size is a power of 2.
     debug: doAssert (vectorSize == uint64(0)).bool() == false, "Zero is not a valid input!"
 
     var isP2 : bool = isPowerOf2_vartime(vectorSize)
@@ -128,12 +125,11 @@ func computeNumRounds*(res: var uint32, vectorSize: SomeUnsignedInt)=
 #
 # ############################################################
 
-# This Pedersen Commitment function shall be used in specifically the Split scalars 
-# and Split points that are used in the IPA polynomial
-
-# Further reference refer to this https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
-
 func pedersen_commit_varbasis*[EC_P] (res: var EC_P, groupPoints: openArray[EC_P], g: int,  polynomial: openArray[Fr], n: int)=
+  # This Pedersen Commitment function shall be used in specifically the Split scalars 
+  # and Split points that are used in the IPA polynomial
+
+  # Further reference refer to this https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
   debug: doAssert groupPoints.len == polynomial.len, "Group Elements and Polynomials should be having the same length!"
   var poly_big = newSeq[matchingOrderBigInt(Banderwagon)](n)
   for i in 0..<n:

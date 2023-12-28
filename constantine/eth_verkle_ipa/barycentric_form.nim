@@ -6,7 +6,6 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 import 
- math,
  ./eth_verkle_constants,
  ../math/config/[type_ff, curves],
  ../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
@@ -22,12 +21,13 @@ import
 # Please refer to https://hackmd.io/mJeCRcawTRqr9BooVpHv5g 
 
 
-## newPrecomputedWeights generates the precomputed weights for the barycentric formula
-## Let's say we have 2 arrays of the same length and we join them together
-## This is how we shall be storing A'(x_i) and 1/A'(x_i), this midpoint is used to compute
-## the offset to wherever we need to access the 1/A'(x_i) value.
+
 func newPrecomputedWeights* [PrecomputedWeights] (res: var PrecomputedWeights)=
- 
+ ## newPrecomputedWeights generates the precomputed weights for the barycentric formula
+ ## Let's say we have 2 arrays of the same length and we join them together
+ ## This is how we shall be storing A'(x_i) and 1/A'(x_i), this midpoint is used to compute
+ ## the offset to wherever we need to access the 1/A'(x_i) value.
+
  var midpoint: uint64 = 256
  for i in uint64(0)..<midpoint:
   var weights {.noInit.}: Fr[Banderwagon]
@@ -62,10 +62,11 @@ func newPrecomputedWeights* [PrecomputedWeights] (res: var PrecomputedWeights)=
    res.invertedDomain[i-1] = k
    res.invertedDomain[(i-1) + int(midpoint)] = neg_k
 
-## Computing A'(x_j) where x_j must be an element in the domain
-## This is computed as the product of x_j - x_i where x_i is an element in the domain
-## also, where x_i != x_j
+
 func computeBarycentricWeights*(res: var Fr[Banderwagon], element : uint64)= 
+ ## Computing A'(x_j) where x_j must be an element in the domain
+ ## This is computed as the product of x_j - x_i where x_i is an element in the domain
+ ## also, where x_i != x_j
  if element <= uint64(VerkleDomain):
 
   var domain_element_Fr: Fr[Banderwagon]
@@ -89,11 +90,11 @@ func computeBarycentricWeights*(res: var Fr[Banderwagon], element : uint64)=
     temp.diff(domain_element_Fr,i_Fr)
     res.prod(res, temp)
 
-## computeBarycentricCoefficients computes the coefficients for a point `z` such that
-## when we have a polynomial `p` in Lagrange basis, the inner product of `p` and barycentric coefficients is 
-## equal to p(z). Here `z` is a point outside of the domain. We can also term this as Lagrange Coefficients L_i.
-func computeBarycentricCoefficients*( res_inv: var openArray[Fr[Banderwagon]], precomp: PrecomputedWeights, point : Fr[Banderwagon]) =
 
+func computeBarycentricCoefficients*( res_inv: var openArray[Fr[Banderwagon]], precomp: PrecomputedWeights, point : Fr[Banderwagon]) =
+  ## computeBarycentricCoefficients computes the coefficients for a point `z` such that
+  ## when we have a polynomial `p` in Lagrange basis, the inner product of `p` and barycentric coefficients is 
+  ## equal to p(z). Here `z` is a point outside of the domain. We can also term this as Lagrange Coefficients L_i.
   var res {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
   for i in 0..<VerkleDomain:
     var weight: Fr[Banderwagon]
@@ -161,8 +162,8 @@ func absIntChecker*[int] (res: var int, x : int) =
     res = x
 
 
-## Computes f(x) - f(x_i) / x - x_i using the barycentric weights, where x_i is an element in the
 func divisionOnDomain*(res: var array[VerkleDomain,Fr[Banderwagon]], precomp: PrecomputedWeights, index:  var int, f:  openArray[Fr[Banderwagon]])=
+  ## Computes f(x) - f(x_i) / x - x_i using the barycentric weights, where x_i is an element in the
   var is_negative : bool = true
   var y = f[index]
 
