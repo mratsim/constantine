@@ -29,7 +29,7 @@ func newPrecomputedWeights* [PrecomputedWeights] (res: var PrecomputedWeights)=
  ## the offset to wherever we need to access the 1/A'(x_i) value.
 
  var midpoint: uint64 = 256
- for i in uint64(0)..<midpoint:
+ for i in uint64(0) ..< midpoint:
   var weights {.noInit.}: Fr[Banderwagon]
   weights.computeBarycentricWeights(i) 
 
@@ -40,14 +40,14 @@ func newPrecomputedWeights* [PrecomputedWeights] (res: var PrecomputedWeights)=
   inverseWeights.inv(weights)
 
   res.barycentricWeights[i] = weights
-  res.barycentricWeights[i+midpoint] = inverseWeights
+  res.barycentricWeights[i + midpoint] = inverseWeights
 
   ## Computing 1/k and -1/k for k in [0,255],
   ## We have one less element because we cannot do 1/0
   ## That is, division by 0.
   midpoint = uint64(VerkleDomain) - 1
 
-  for i in 1..<VerkleDomain:
+  for i in 1 ..< VerkleDomain:
    var k {.noInit.}: Fr[Banderwagon]
    var i_bg {.noInit.} : matchingOrderBigInt(Banderwagon)
    i_bg.setUint(uint64(i))
@@ -76,8 +76,8 @@ func computeBarycentricWeights*(res: var Fr[Banderwagon], element : uint64)=
 
   res.setOne()
 
-  for i in uint64(0)..<uint64(VerkleDomain):
-    if i==element:
+  for i in uint64(0) ..< uint64(VerkleDomain):
+    if i == element:
       continue
 
     var i_Fr: Fr[Banderwagon] 
@@ -96,7 +96,7 @@ func computeBarycentricCoefficients*( res_inv: var openArray[Fr[Banderwagon]], p
   ## when we have a polynomial `p` in Lagrange basis, the inner product of `p` and barycentric coefficients is 
   ## equal to p(z). Here `z` is a point outside of the domain. We can also term this as Lagrange Coefficients L_i.
   var res {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
-  for i in 0..<VerkleDomain:
+  for i in 0 ..< VerkleDomain:
     var weight: Fr[Banderwagon]
     weight = precomp.barycentricWeights[i]
     var i_bg: matchingOrderBigInt(Banderwagon)
@@ -110,7 +110,7 @@ func computeBarycentricCoefficients*( res_inv: var openArray[Fr[Banderwagon]], p
   var totalProd: Fr[Banderwagon]
   totalProd.setOne()
 
-  for i in 0..<VerkleDomain:
+  for i in 0 ..< VerkleDomain:
     var i_bg: matchingOrderBigInt(Banderwagon)
     i_bg.setUint(uint64(i))
     var i_fr: Fr[Banderwagon]
@@ -123,7 +123,7 @@ func computeBarycentricCoefficients*( res_inv: var openArray[Fr[Banderwagon]], p
 
   res_inv.batchInvert(res)
 
-  for i in 0..<VerkleDomain:
+  for i in 0 ..< VerkleDomain:
     res_inv[i].prod(res_inv[i], totalprod)
 
 
@@ -167,7 +167,7 @@ func divisionOnDomain*(res: var array[VerkleDomain,Fr[Banderwagon]], precomp: Pr
   var is_negative : bool = true
   var y = f[index]
 
-  for i in 0..<VerkleDomain:
+  for i in 0 ..< VerkleDomain:
    if not(i == index).bool() == true:    
     var denominator = i - int(index)
     var absDenominator {.noInit.}: int

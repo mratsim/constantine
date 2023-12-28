@@ -25,7 +25,7 @@ import
 # ############################################################
 
 func generateChallengesForIPA*(res: var openArray[matchingOrderBigInt(Banderwagon)], transcript: var sha256, proof: IPAProof)=
-    for i in 0..<8:
+    for i in 0 ..< 8:
         transcript.pointAppend( asBytes"L", proof.L_vector[i])
         transcript.pointAppend( asBytes"R", proof.R_vector[i])
         res[i].generateChallengeScalar(transcript,asBytes"x")
@@ -70,13 +70,13 @@ func checkIPAProof* (ic: IPASettings, transcript: var sha256, commitment: var EC
     challenges_big.generateChallengesForIPA(transcript, proof)
 
     var challenges: array[8,Fr[Banderwagon]]
-    for i in 0..<8:
+    for i in 0 ..< 8:
         challenges[i].fromBig(challenges_big[i])
 
     var challengesInv {.noInit.}: array[8,Fr[Banderwagon]] 
     challengesInv.batchInvert(challenges)
 
-    for i in 0..<challenges.len:
+    for i in 0 ..< challenges.len:
         var x = challenges[i]
         var L = proof.L_vector[i]
         var R = proof.R_vector[i]
@@ -101,11 +101,11 @@ func checkIPAProof* (ic: IPASettings, transcript: var sha256, commitment: var EC
     
     var foldingScalars {.noInit.}: array[g.len, Fr[Banderwagon]]
 
-    for i in 0..<g.len:
+    for i in 0 ..< g.len:
         var scalar {.noInit.} : Fr[Banderwagon]
         scalar.setOne()
 
-        for challengeIndex in 0..<challenges.len:
+        for challengeIndex in 0 ..< challenges.len:
             let im = 1 shl (7 - challengeIndex)
             if ((i and im).int() > 0).bool() == true:
                 scalar.prod(scalar,challengesInv[challengeIndex])
@@ -116,12 +116,12 @@ func checkIPAProof* (ic: IPASettings, transcript: var sha256, commitment: var EC
     
     var foldingScalars_big {.noInit.} : array[g.len,matchingOrderBigInt(Banderwagon)]
     
-    for i in 0..<VerkleDomain:
+    for i in 0 ..< VerkleDomain:
         foldingScalars_big[i] = foldingScalars[i].toBig()
 
     var g_aff {.noInit.} : array[VerkleDomain, EC_P_Aff]
 
-    for i in 0..<VerkleDomain:
+    for i in 0 ..< VerkleDomain:
         g_aff[i].affine(g[i])
  
     g0.multiScalarMul_reference_vartime(foldingScalars_big, g_aff)

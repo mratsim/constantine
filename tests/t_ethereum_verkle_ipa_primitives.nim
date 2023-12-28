@@ -86,7 +86,7 @@ suite "Barycentric Form Tests":
           var res {.noInit.}: Fr[Banderwagon]
           res.ipaEvaluate(poly,gen_fr,2)
 
-          doAssert (res.toHex()==genfr.toHex()) == true, "Not matching!"
+          doAssert (res.toHex() == genfr.toHex()) == true, "Not matching!"
 
         testBasicInterpolation()
 
@@ -118,7 +118,7 @@ suite "Barycentric Form Tests":
             expected0.computeInnerProducts(lagrange_values, bar_coeffs)
 
             var points: array[256, Coord]
-            for k in 0..<256:
+            for k in 0 ..< 256:
                 var x : matchingOrderBigInt(Banderwagon)
                 x.setUint(uint64(k))
                 var x_fr : Fr[Banderwagon]
@@ -165,7 +165,7 @@ suite "Transcript Tests":
             var challenge2 {.noInit.}: matchingOrderBigInt(Banderwagon)
             challenge2.generateChallengeScalar(tr,asBytes"simple_challenge")
 
-            doAssert (challenge1==challenge2).bool() == false , "calling ChallengeScalar twice should yield two different challenges"
+            doAssert (challenge1 == challenge2).bool() == false , "calling ChallengeScalar twice should yield two different challenges"
 
         testVec()
 
@@ -185,7 +185,7 @@ suite "Transcript Tests":
             var challenge2 {.noInit.}: matchingOrderBigInt(Banderwagon)
             challenge2.generateChallengeScalar(tr2,asBytes"ethereum_challenge")
 
-            doAssert (challenge1==challenge2).bool() == true , "calling ChallengeScalar twice should yield the same challenge"
+            doAssert (challenge1 == challenge2).bool() == true , "calling ChallengeScalar twice should yield the same challenge"
 
         testVec1()
 
@@ -274,7 +274,7 @@ suite "IPA proof tests":
 
         var ipaProof: IPAProof
         let stat = ipaProof.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
-        doAssert stat==true, "Problem creating IPA proof"
+        doAssert stat == true, "Problem creating IPA proof"
 
         var precomp : PrecomputedWeights
 

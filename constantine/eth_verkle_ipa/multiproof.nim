@@ -44,7 +44,7 @@ func domainToFrElem*(res: var Fr, inp: matchingOrderBigInt(Banderwagon))=
 # Computes the powers of an Fr[Banderwagon][Banderwagon] element
 func computePowersOfElem*(res: var openArray[Fr], x: Fr, degree: SomeSignedInt)= 
     res[0].setOne()
-    for i in 1..<degree:
+    for i in 1 ..< degree:
         res[i].prod(res[i-1], x)
 
 # ############################################################
@@ -71,10 +71,10 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
     num_queries = Cs.len
 
     var Cs_prime {.noInit.} : array[VERKLE_DOMAIN, EC_P]
-    for i in 0..<VERKLE_DOMAIN:
+    for i in 0 ..< VERKLE_DOMAIN:
         Cs_prime[i] = Cs[i]
 
-    for i in 0..<num_queries:
+    for i in 0 ..< num_queries:
         transcript.pointAppend(asBytes"C", Cs_prime[i])
         var z {.noInit.} : Fr[Banderwagon]
         z.domainToFrElem(Zs[i])
@@ -102,12 +102,12 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
 
     var groupedFs: array[VERKLE_DOMAIN, array[VERKLE_DOMAIN, Fr[Banderwagon]]]
     # Initialize the array with zeros
-    for i in 0..<VERKLE_DOMAIN:
-        for j in 0..<VERKLE_DOMAIN:
+    for i in 0 ..< VERKLE_DOMAIN:
+        for j in 0 ..< VERKLE_DOMAIN:
             groupedFs[i][j].setZero()
 
 
-    for i in 0..<num_queries:
+    for i in 0 ..< num_queries:
         var z = Zs[i]
         
         debug: doAssert not(groupedFs[z].len == 0), "Length should not be 0!"
@@ -115,7 +115,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
         var r {.noInit.}: Fr[Banderwagon]
         r = powersOfr[i]
 
-        for j in 0..<VERKLE_DOMAIN:
+        for j in 0 ..< VERKLE_DOMAIN:
             var scaledEvals {.noInit.}: Fr[Banderwagon]
             scaledEvals.prod(r, Fs[i][j])
             groupedFs[z][j].sum(groupedFs[z][j], scaledEvals)
@@ -123,7 +123,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
     
     var gx : array[VERKLE_DOMAIN, Fr[Banderwagon]]
 
-    for idx in 0..<VERKLE_DOMAIN:
+    for idx in 0 ..< VERKLE_DOMAIN:
         if groupedFs[idx].len == 0:
             continue
 
@@ -132,7 +132,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
         passer = idx
         quotient.divisionOnDomain(precomp, passer, groupedFs[idx])
 
-        for j in  0..<VERKLE_DOMAIN:
+        for j in  0 ..< VERKLE_DOMAIN:
             gx[j] += quotient[j]
         
     var D: EC_P
@@ -148,10 +148,10 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
 
     # Computing the denominator inverses only for referenced evaluation points.
     var denInv {.noInit.}: array[VERKLE_DOMAIN, Fr[Banderwagon]]
-    for i in 0..<VERKLE_DOMAIN:
+    for i in 0 ..< VERKLE_DOMAIN:
         denInv[i].setZero()
 
-    for z in 0..<VERKLE_DOMAIN:
+    for z in 0 ..< VERKLE_DOMAIN:
         if groupedFs[z].len == 0:
             continue
 
@@ -172,11 +172,11 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
     var hx {.noInit.}: array[VERKLE_DOMAIN, Fr[Banderwagon]]
     var denInvIdx = 0
 
-    for i in 0..<VERKLE_DOMAIN:
+    for i in 0 ..< VERKLE_DOMAIN:
         if groupedFs[i].len == 0:
             continue
 
-        for k in 0..<VERKLE_DOMAIN:
+        for k in 0 ..< VERKLE_DOMAIN:
             var tmp {.noInit.}: Fr[Banderwagon]
             tmp.prod(groupedFs[i][k], denInv[denInvIdx])
             hx[k].sum(hx[k], tmp)
@@ -185,7 +185,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
 
     var hMinusg {.noInit.}: array[VERKLE_DOMAIN, Fr[Banderwagon]]
 
-    for i in 0..<VERKLE_DOMAIN:
+    for i in 0 ..< VERKLE_DOMAIN:
         hMinusg[i].diff(hx[i],gx[i])
 
     var E: EC_P
@@ -235,7 +235,7 @@ func verifyMultiproof*(multiProof: var MultiProof, transcript : var sha256, ipaS
 
     debug: debug: doAssert num_queries == 0, "Number of queries is zero!"
 
-    for i in 0..<num_queries:
+    for i in 0 ..< num_queries:
         transcript.pointAppend(asBytes"C", Cs[i])
 
         var z {.noInit.} : Fr[Banderwagon]
@@ -265,7 +265,7 @@ func verifyMultiproof*(multiProof: var MultiProof, transcript : var sha256, ipaS
     # and the needed helper scalars
     var groupedEvals {.noInit.}: array[VERKLE_DOMAIN, Fr[Banderwagon]]
 
-    for i in 0..<num_queries:
+    for i in 0 ..< num_queries:
 
         var z {.noInit.}: uint8
         z = Zs[i]
@@ -281,7 +281,7 @@ func verifyMultiproof*(multiProof: var MultiProof, transcript : var sha256, ipaS
         #Calculating the helper scalar denominator, which is 1 / t - z_i
         var helperScalarDeno {.noInit.} : array[VERKLE_DOMAIN, Fr[Banderwagon]]
 
-        for i in 0..<VERKLE_DOMAIN:
+        for i in 0 ..< VERKLE_DOMAIN:
             var z {.noInit.}: Fr[Banderwagon]
             z.domainToFrElem(uint8(i))
 
@@ -294,7 +294,7 @@ func verifyMultiproof*(multiProof: var MultiProof, transcript : var sha256, ipaS
         var g2t {.noInit.} : Fr[Banderwagon]
         g2t.setZero()
 
-        for i in 0..<VERKLE_DOMAIN:
+        for i in 0 ..< VERKLE_DOMAIN:
             var stat = groupedEvals[i].isZero()
             if stat.bool() == true:
                 continue
@@ -309,19 +309,19 @@ func verifyMultiproof*(multiProof: var MultiProof, transcript : var sha256, ipaS
 
         var Csnp {.noInit.}: array[VERKLE_DOMAIN, EC_P]
 
-        for i in 0..<VERKLE_DOMAIN:
+        for i in 0 ..< VERKLE_DOMAIN:
             Csnp[i] = Cs[i]
             msmScalars[i].prod(powersOfr[i], helperScalarDeno_prime[Zs[i]])
         
         var E {.noInit.}: EC_P
 
         var Csnp_aff : array[VERKLE_DOMAIN, EC_P_Aff]
-        for i in 0..<VERKLE_DOMAIN:
+        for i in 0 ..< VERKLE_DOMAIN:
             Csnp_aff[i].affine(Csnp[i])
 
         var msmScalars_big: array[VERKLE_DOMAIN, matchingOrderBigInt(Banderwagon)]
 
-        for i in 0..<VERKLE_DOMAIN:
+        for i in 0 ..< VERKLE_DOMAIN:
             msmScalars_big[i] = msmScalars[i].toBig()
         
         E.multiScalarMul_reference_vartime(msmScalars_big, Csnp_aff)

@@ -88,7 +88,7 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
   var b_view = b.toView()
   var current_basis_view = current_basis.toView()
 
-  for i in 0..<int(num_rounds):
+  for i in 0 ..< int(num_rounds):
 
     var a_L = a_view.chunk(0,a_view.len shr 1)
     var a_R = a_view.chunk(a_view.len shr 1 + 1, a_view.len)
@@ -183,7 +183,7 @@ func isIPAProofEqual* (p1: IPAProof, p2: IPAProof) : bool =
   if p1.L_vector.len != p1.R_vector.len:
     res = false
 
-  for i in 0..<num_rounds:
+  for i in 0 ..< num_rounds:
     var exp_li = p1.L_vector[i]
     var exp_ri = p1.R_vector[i]
 

@@ -32,20 +32,20 @@ func ipaEvaluate* [Fr] (res: var Fr, poly: openArray[Fr], point: Fr,  n: static 
 
     res.setZero()
 
-    for i in 0..<poly.len:
+    for i in 0 ..< poly.len:
         var tmp: Fr
         tmp.prod(powers[i], poly[i])
         res.sum(res,tmp)
 
     res.setZero()
 
-    for i in 0..<poly.len:
+    for i in 0 ..< poly.len:
         var tmp {.noInit.}: Fr
         tmp.prod(powers[i], poly[i])
         res.sum(res,tmp)
 
 func truncate* [Fr] (res: var openArray[Fr], s: openArray[Fr], to: int, n: static int)=
-    for i in 0..<to:
+    for i in 0 ..< to:
         res[i] = s[i]
 
 func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: static int) =
@@ -60,7 +60,7 @@ func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: sta
 
     doAssert (max_degree_plus_one >= 2).bool() == true, "Should be interpolating for degree >= 1!"
 
-    for k in 0..<points.len:
+    for k in 0 ..< points.len:
         var point: Coord
         point = points[k]
 
@@ -75,7 +75,7 @@ func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: sta
 
         var max_contribution_degree : int= 0
 
-        for j in 0..<points.len:
+        for j in 0 ..< points.len:
             var point : Coord 
             point = points[j]
             var x_j : Fr 
@@ -96,13 +96,13 @@ func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: sta
                 else:
 
                     var mul_by_minus_x_j : array[n,Fr]
-                    for el in 0..<contribution.len:
+                    for el in 0 ..< contribution.len:
                         var tmp : Fr = contribution[el]
                         tmp.prod(tmp,x_j)
                         tmp.diff(zero,tmp)
                         mul_by_minus_x_j[el] = tmp
 
-                    for i in 1..<contribution.len:
+                    for i in 1 ..< contribution.len:
                         contribution[i] = contribution[i-1]
                     
                     contribution[0] = zero
@@ -110,14 +110,14 @@ func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: sta
 
                     doAssert max_degree_plus_one == mul_by_minus_x_j.len == true, "Malformed mul_by_minus_x_j!"
 
-                    for i in 0..<contribution.len:
+                    for i in 0 ..< contribution.len:
                         var other = mul_by_minus_x_j[i]
                         contribution[i].sum(contribution[i],other) 
             
         denominator.inv(denominator)
         doAssert not(denominator.isZero().bool()) == true, "Denominator should not be zero!"
 
-        for i in 0..<contribution.len:
+        for i in 0 ..< contribution.len:
             var tmp : Fr 
             tmp = contribution[i]
             tmp.prod(tmp,denominator)
@@ -140,7 +140,7 @@ func setEval* [Fr] (res: var Fr, x : Fr)=
 
     var tmp_c : Fr = one
 
-    for i in 0..<253:
+    for i in 0 ..< 253:
         tmp_c.prod(tmp_c,x) 
 
     res.prod(tmp_a, tmp_b)
@@ -151,7 +151,7 @@ func setEval* [Fr] (res: var Fr, x : Fr)=
 func evalOutsideDomain* [Fr] (res: var Fr, precomp: PrecomputedWeights, f: openArray[Fr], point: Fr)=
 
     var pointMinusDomain: array[VerkleDomain, Fr]
-    for i in 0..<VerkleDomain:
+    for i in 0 ..< VerkleDomain:
 
         var i_bg {.noInit.} : matchingOrderBigInt(Banderwagon)
         i_bg.setUint(uint64(i))
@@ -164,7 +164,7 @@ func evalOutsideDomain* [Fr] (res: var Fr, precomp: PrecomputedWeights, f: openA
     var summand: Fr
     summand.setZero()
 
-    for x_i in 0..<pointMinusDomain.len:
+    for x_i in 0 ..< pointMinusDomain.len:
         var weight: Fr
         weight.getBarycentricInverseWeight(precomp,x_i)
         var term: Fr
@@ -175,7 +175,7 @@ func evalOutsideDomain* [Fr] (res: var Fr, precomp: PrecomputedWeights, f: openA
 
     res.setOne()
 
-    for i in 0..<VerkleDomain:
+    for i in 0 ..< VerkleDomain:
 
         var i_bg: matchingOrderBigInt(Banderwagon)
         i_bg.setUint(uint64(i))
@@ -193,13 +193,13 @@ func testPoly256* [Fr] (res: var openArray[Fr], polynomialUint: openArray[uint64
     var n = polynomialUint.len
     doAssert (polynomialUint.len <= 256) == true, "Cannot exceed 256 coeffs!"
 
-    for i in 0..<n:
+    for i in 0 ..< n:
         var i_bg {.noInit.} : matchingOrderBigInt(Banderwagon)
         i_bg.setUint(uint64(polynomialUint[i]))
         res[i].fromBig(i_bg)
     
     var pad = 256 - n
-    for i in n..<pad:
+    for i in n ..< pad:
         res[i].setZero()
 
 func isPointEqHex*(point: EC_P, expected: string): bool {.discardable.} =

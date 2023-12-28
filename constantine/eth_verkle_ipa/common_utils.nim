@@ -68,7 +68,7 @@ func generate_random_points* [EC_P](points: var openArray[EC_P], ipaTranscript: 
 func computeInnerProducts* [Fr] (res: var Fr, a,b : openArray[Fr])=
   debug: doAssert (a.len == b.len).bool() == true, "Scalar lengths don't match!"
   res.setZero()
-  for i in 0..<b.len:
+  for i in 0 ..< b.len:
     var tmp : Fr 
     tmp.prod(a[i], b[i])
     res.sum(res,tmp)
@@ -76,7 +76,7 @@ func computeInnerProducts* [Fr] (res: var Fr, a,b : openArray[Fr])=
 func computeInnerProducts* [Fr] (res: var Fr, a,b : View[Fr])=
   debug: doAssert (a.len == b.len).bool() == true, "Scalar lengths don't match!"
   res.setZero()
-  for i in 0..<b.len:
+  for i in 0 ..< b.len:
     var tmp : Fr 
     tmp.prod(a[i], b[i])
     res.sum(res,tmp)
@@ -91,7 +91,7 @@ func foldScalars* [Fr] (res: var openArray[Fr], a,b : openArray[Fr], x: Fr)=
     ## Computes res[i] = a[i] + b[i] * x
     debug: doAssert a.len == b.len , "Lengths should be equal!"
 
-    for i in 0..<a.len:
+    for i in 0 ..< a.len:
         var bx {.noInit.}: Fr
         bx.prod(x, b[i])
         res[i].sum(bx, a[i])
@@ -100,7 +100,7 @@ func foldPoints* [EC_P] (res: var openArray[EC_P], a,b : var openArray[EC_P], x:
     ## Computes res[i] = a[i] + b[i] * x
     debug: doAssert a.len == b.len , "Should have equal lengths!"
 
-    for i in 0..<a.len:
+    for i in 0 ..< a.len:
         var bx {.noInit.}: EC_P
 
         b[i].scalarMul(x.toBig())
@@ -132,11 +132,11 @@ func pedersen_commit_varbasis*[EC_P] (res: var EC_P, groupPoints: openArray[EC_P
   # Further reference refer to this https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
   debug: doAssert groupPoints.len == polynomial.len, "Group Elements and Polynomials should be having the same length!"
   var poly_big = newSeq[matchingOrderBigInt(Banderwagon)](n)
-  for i in 0..<n:
+  for i in 0 ..< n:
     poly_big[i] = polynomial[i].toBig()
 
   var groupPoints_aff = newSeq[EC_P_Aff](g)
-  for i in 0..<g:
+  for i in 0 ..< g:
     groupPoints_aff[i].affine(groupPoints[i])
 
   res.multiScalarMul_reference_vartime(poly_big,groupPoints)
