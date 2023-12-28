@@ -17,6 +17,12 @@
 This collates research ideas towards an IR for polynomial constraint systems.
 
 Cryptographic references:
+- R1CS is introduced in Appendix E of
+  - SNARKs for C: Verifying Program Executions Succinctly and in Zero Knowledge\
+    Eli Ben-Sasson, Alessandro Chiesa, Daniel Genkin, Eran Tromer, and Madars Virza, 2013
+    https://eprint.iacr.org/2013/507
+- Description in LeastAuthority's MoonMath manual:
+  https://leastauthority.com/community-matters/moonmath-manual/
 - R1CS and UltraPlonk/Plonkish: (./r1cs_bin_format.md)[./r1cs_bin_format.md]
 - AIR & Plonk: https://hackmd.io/@aztec-network/plonk-arithmetiization-air
 - Plonkish:
