@@ -546,6 +546,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_ethereum_eip4844_deneb_kzg_parallel.nim", false),
   ("tests/t_ethereum_verkle_primitives.nim", false),
   ("tests/t_ethereum_verkle_ipa_primitives.nim", false),
+  ("tests/t_ethereum_verkle_ipa_test_helper.nim", false),
 ]
 
 const testDescNvidia: seq[string] = @[

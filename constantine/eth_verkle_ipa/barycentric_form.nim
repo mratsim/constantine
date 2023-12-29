@@ -71,7 +71,7 @@ func computeBarycentricWeights*(res: var Fr[Banderwagon], element : uint64)=
 
   var domain_element_Fr: Fr[Banderwagon]
   var bigndom : matchingOrderBigInt(Banderwagon)
-  bigndom.setUint(uint64(element))
+  bigndom.setUint(element)
   domain_element_Fr.fromBig(bigndom)
 
   res.setOne()
