@@ -31,7 +31,7 @@ func newPrecomputedWeights* [PrecomputedWeights] (res: var PrecomputedWeights)=
  var midpoint: uint64 = 256
  for i in uint64(0) ..< midpoint:
   var weights {.noInit.}: Fr[Banderwagon]
-  weights.computeBarycentricWeights(i) 
+  weights.computeBarycentricWeights(uint64(i)) 
 
   ## Here we are storing the VerkleDomain no. of weights, but additionally we are also 
   ## storing their inverses, hence the array length for barycentric weights as well as 
