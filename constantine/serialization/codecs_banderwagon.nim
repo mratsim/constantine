@@ -32,6 +32,18 @@ type
   EC_Prj* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
   EC_Aff* = ECP_TwEdwards_Aff[Fp[Banderwagon]]
 
+# Input validation
+# ------------------------------------------------------------------------------------------------
+func validate_scalar*(scalar: matchingOrderBigInt(Banderwagon)): CttCodecScalarStatus =
+  ## Validate a scalar
+  ## Regarding timing attacks, this will leak information
+  ## if the scalar is 0 or larger than the curve order.
+  if scalar.isZero().bool():
+    return cttCodecScalar_Zero
+  if bool(scalar >= Banderwagon.getCurveOrder()):
+    return cttCodecScalar_ScalarLargerThanCurveOrder
+  return cttCodecScalar_Success
+
 func serialize*(dst: var array[32, byte], P: EC_Prj): CttCodecEccStatus =
   ## Serialize a Banderwagon point(x, y) in the format
   ## 
@@ -115,6 +127,37 @@ func deserialize*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccStatus =
 
 ## ############################################################
 ##
+##              Banderwagon Scalar Serialization
+##
+## ############################################################
+## 
+func serialize_scalar*(dst: var array[32, byte], scalar: matchingOrderBigInt(Banderwagon)): CttCodecScalarStatus =
+  ## Serialize a scalar
+  ## Returns cttCodecScalar_Success if successful
+  dst.marshal(scalar, bigEndian)
+  return cttCodecScalar_Success
+## ############################################################
+##
+##              Banderwagon Scalar Deserialization
+##
+## ############################################################
+## 
+func deserialize_scalar*(dst: var matchingOrderBigInt(Banderwagon), src: array[32, byte]): CttCodecScalarStatus =
+  ## Deserialize a scalar
+  ## Also validates the scalar range
+  ##
+  ## This is protected against side-channel unless the scalar is invalid.
+  ## In that case it will leak whether it's all zeros or larger than the curve order.
+  ##
+  ## This special-cases (and leaks) 0 scalar as this is a special-case in most protocols
+  ## or completely invalid (for secret keys).
+  dst.unmarshal(src, bigEndian)
+  let status = validate_scalar(dst)
+  if status != cttCodecScalar_Success:
+    dst.setZero()
+    return status
+  return cttCodecScalar_Success
+
 ##              Banderwagon Batch Serialization
 ##
 ## ############################################################
