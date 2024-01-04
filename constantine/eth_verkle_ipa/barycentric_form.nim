@@ -7,6 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 import 
  ./eth_verkle_constants,
+ ../math/io/io_fields,
  ../math/config/[type_ff, curves],
  ../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
  ../math/arithmetic/[finite_fields],
@@ -49,9 +50,7 @@ func newPrecomputedWeights* [PrecomputedWeights] (res: var PrecomputedWeights)=
 
   for i in 1 ..< VerkleDomain:
    var k {.noInit.}: Fr[Banderwagon]
-   var i_bg {.noInit.} : matchingOrderBigInt(Banderwagon)
-   i_bg.setUint(uint64(i))
-   k.fromBig(i_bg)
+   k.fromInt(i)
 
    k.inv(k)
 
@@ -70,21 +69,16 @@ func computeBarycentricWeights*(res: var Fr[Banderwagon], element : uint64)=
  if element <= uint64(VerkleDomain):
 
   var domain_element_Fr: Fr[Banderwagon]
-  var bigndom : matchingOrderBigInt(Banderwagon)
-  bigndom.setUint(element)
-  domain_element_Fr.fromBig(bigndom)
+  domain_element_Fr.fromInt(int(element))
 
   res.setOne()
 
-  for i in uint64(0) ..< uint64(VerkleDomain):
-    if i == element:
+  for i in 0 ..< VerkleDomain:
+    if i == int(element):
       continue
 
     var i_Fr: Fr[Banderwagon] 
-
-    var bigi:  matchingOrderBigInt(Banderwagon)
-    bigi.setUint(uint64(i))
-    i_Fr.fromBig(bigi)
+    i_Fr.fromInt(i)
   
     var temp: Fr[Banderwagon]
     temp.diff(domain_element_Fr,i_Fr)
@@ -99,10 +93,8 @@ func computeBarycentricCoefficients*( res_inv: var openArray[Fr[Banderwagon]], p
   for i in 0 ..< VerkleDomain:
     var weight: Fr[Banderwagon]
     weight = precomp.barycentricWeights[i]
-    var i_bg: matchingOrderBigInt(Banderwagon)
-    i_bg.setUint(uint64(i))
     var i_fr: Fr[Banderwagon]
-    i_fr.fromBig(i_bg)
+    i_fr.fromInt(i)
 
     res[i].diff(point, i_fr)
     res[i].prod(res[i], weight)
@@ -111,10 +103,8 @@ func computeBarycentricCoefficients*( res_inv: var openArray[Fr[Banderwagon]], p
   totalProd.setOne()
 
   for i in 0 ..< VerkleDomain:
-    var i_bg: matchingOrderBigInt(Banderwagon)
-    i_bg.setUint(uint64(i))
     var i_fr: Fr[Banderwagon]
-    i_fr.fromBig(i_bg)
+    i_fr.fromInt(i)
 
     var tmp: Fr[Banderwagon]
     tmp.diff(point, i_fr)

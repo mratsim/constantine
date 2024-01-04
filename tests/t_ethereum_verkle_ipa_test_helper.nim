@@ -9,6 +9,7 @@
 import 
     ../constantine/eth_verkle_ipa/[multiproof, barycentric_form, eth_verkle_constants],
     ../constantine/math/config/[type_ff, curves],
+    ../constantine/math/io/io_fields,
     ../constantine/math/elliptic/[
      ec_twistededwards_affine,
      ec_twistededwards_projective
@@ -152,11 +153,8 @@ func evalOutsideDomain* [Fr] (res: var Fr, precomp: PrecomputedWeights, f: openA
 
     var pointMinusDomain: array[VerkleDomain, Fr]
     for i in 0 ..< VerkleDomain:
-
-        var i_bg {.noInit.} : matchingOrderBigInt(Banderwagon)
-        i_bg.setUint(uint64(i))
         var i_fr {.noInit.} : Fr
-        i_fr.fromBig(i_bg)
+        i_fr.fromInt(i)
 
         pointMinusDomain[i].diff(point, i_fr)
         pointMinusDomain[i].inv(pointMinusDomain[i])
@@ -176,11 +174,8 @@ func evalOutsideDomain* [Fr] (res: var Fr, precomp: PrecomputedWeights, f: openA
     res.setOne()
 
     for i in 0 ..< VerkleDomain:
-
-        var i_bg: matchingOrderBigInt(Banderwagon)
-        i_bg.setUint(uint64(i))
         var i_fr : Fr
-        i_fr.fromBig(i_bg)
+        i_fr.fromInt(i)
 
         var tmp : Fr
         tmp.diff(point, i_fr)
@@ -195,8 +190,7 @@ func testPoly256* [Fr] (res: var openArray[Fr], polynomialUint: openArray[uint64
 
     for i in 0 ..< n:
         var i_bg {.noInit.} : matchingOrderBigInt(Banderwagon)
-        i_bg.setUint(uint64(polynomialUint[i]))
-        res[i].fromBig(i_bg)
+        res[i].fromInt(int(polynomialUint[i]))
     
     var pad = 256 - n
     for i in n ..< pad:
