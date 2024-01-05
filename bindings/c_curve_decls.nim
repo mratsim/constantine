@@ -9,6 +9,7 @@
 import
   ../constantine/math/config/curves,
   ../constantine/curves_primitives,
+
   ../constantine/math/extension_fields # generic sandwich
 
 export curves, curves_primitives, extension_fields
@@ -358,50 +359,54 @@ template genBindings_EC_ShortW_NonAffine*(ECP, ECP_Aff, ScalarBig, ScalarField: 
   func `ctt _ ECP _ batch_affine`(dst: ptr UncheckedArray[ECP_Aff], src: ptr UncheckedArray[ECP], n: csize_t) =
     dst.batchAffine(src, cast[int](n))
 
-  func `ctt _ ECP _ scalar_mul_big_coef`(
-    P: var ECP, scalar: ScalarBig) =
+  when ECP.G == G1:
+    # Workaround gensym issue in templates like mulCheckSparse
+    # for {.noInit.} temporaries and probably generic sandwich
 
-    P.scalarMul(scalar)
+    func `ctt _ ECP _ scalar_mul_big_coef`(
+      P: var ECP, scalar: ScalarBig) =
 
-  func `ctt _ ECP _ scalar_mul_fr_coef`(
-        P: var ECP, scalar: ScalarField) =
+      P.scalarMul(scalar)
 
-    var big {.noInit.}: ScalarBig
-    big.fromField(scalar)
-    P.scalarMul(big)
+    func `ctt _ ECP _ scalar_mul_fr_coef`(
+          P: var ECP, scalar: ScalarField) =
 
-  func `ctt _ ECP _ scalar_mul_big_coef_vartime`(
-    P: var ECP, scalar: ScalarBig) =
+      var big: ScalarBig # TODO: {.noInit.}
+      big.fromField(scalar)
+      P.scalarMul(big)
 
-    P.scalarMul_vartime(scalar)
+    func `ctt _ ECP _ scalar_mul_big_coef_vartime`(
+      P: var ECP, scalar: ScalarBig) =
 
-  func `ctt _ ECP _ scalar_mul_fr_coef_vartime`(
-        P: var ECP, scalar: ScalarField) =
+      P.scalarMul_vartime(scalar)
 
-    var big {.noInit.}: ScalarBig
-    big.fromField(scalar)
-    P.scalarMul_vartime(big)
+    func `ctt _ ECP _ scalar_mul_fr_coef_vartime`(
+          P: var ECP, scalar: ScalarField) =
 
-  proc `ctt _ ECP _ multi_scalar_mul_big_coefs_vartime`(
-          r: var ECP,
-          coefs: ptr UncheckedArray[ScalarBig],
-          points: ptr UncheckedArray[ECP_Aff],
-          len: csize_t) =
-    r.multiScalarMul_vartime(coefs, points, cast[int](len))
+      var big: ScalarBig # TODO: {.noInit.}
+      big.fromField(scalar)
+      P.scalarMul_vartime(big)
 
-  proc `ctt _ ECP _ multi_scalar_mul_fr_coefs_vartime`(
-          r: var ECP,
-          coefs: ptr UncheckedArray[ScalarField],
-          points: ptr UncheckedArray[ECP_Aff],
-          len: csize_t)=
+    func `ctt _ ECP _ multi_scalar_mul_big_coefs_vartime`(
+            r: var ECP,
+            coefs: ptr UncheckedArray[ScalarBig],
+            points: ptr UncheckedArray[ECP_Aff],
+            len: csize_t) =
+      r.multiScalarMul_vartime(coefs, points, cast[int](len))
 
-    let n = cast[int](len)
-    let coefs_fr = allocHeapArrayAligned(ScalarBig, n, alignment = 64)
+    func `ctt _ ECP _ multi_scalar_mul_fr_coefs_vartime`(
+            r: var ECP,
+            coefs: ptr UncheckedArray[ScalarField],
+            points: ptr UncheckedArray[ECP_Aff],
+            len: csize_t)=
 
-    for i in 0 ..< n:
-      coefs_fr[i].fromField(coefs[i])
-    r.multiScalarMul_vartime(coefs_fr, points, n)
+      let n = cast[int](len)
+      let coefs_fr = allocHeapArrayAligned(ScalarBig, n, alignment = 64)
 
-    freeHeapAligned(coefs_fr)
+      for i in 0 ..< n:
+        coefs_fr[i].fromField(coefs[i])
+      r.multiScalarMul_vartime(coefs_fr, points, n)
+
+      freeHeapAligned(coefs_fr)
 
   {.pop.}

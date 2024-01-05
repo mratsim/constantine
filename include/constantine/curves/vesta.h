@@ -114,12 +114,6 @@ void        ctt_vesta_ec_jac_double_in_place(vesta_ec_jac* P);
 void        ctt_vesta_ec_jac_affine(vesta_ec_aff* dst, const vesta_ec_jac* src);
 void        ctt_vesta_ec_jac_from_affine(vesta_ec_jac* dst, const vesta_ec_aff* src);
 void        ctt_vesta_ec_jac_batch_affine(const vesta_ec_aff dst[], const vesta_ec_jac src[], size_t n);
-void        ctt_vesta_ec_jac_scalar_mul_big_coef(vesta_ec_jac* P, const big255* scalar);
-void        ctt_vesta_ec_jac_scalar_mul_fr_coef(vesta_ec_jac* P, const vesta_fr* scalar);
-void        ctt_vesta_ec_jac_scalar_mul_big_coef_vartime(vesta_ec_jac* P, const big255* scalar);
-void        ctt_vesta_ec_jac_scalar_mul_fr_coef_vartime(vesta_ec_jac* P, const vesta_fr* scalar);
-void        ctt_vesta_ec_jac_multi_scalar_mul_big_coefs_vartime(vesta_ec_jac* r, const big255 coefs[], const vesta_ec_aff points[], size_t len);
-void        ctt_vesta_ec_jac_multi_scalar_mul_fr_coefs_vartime(vesta_ec_jac* r, const vesta_fr coefs[], const vesta_ec_aff points[], size_t len);
 secret_bool ctt_vesta_ec_prj_is_eq(const vesta_ec_prj* P, const vesta_ec_prj* Q);
 secret_bool ctt_vesta_ec_prj_is_inf(const vesta_ec_prj* P);
 void        ctt_vesta_ec_prj_set_inf(vesta_ec_prj* P);
@@ -135,12 +129,6 @@ void        ctt_vesta_ec_prj_double_in_place(vesta_ec_prj* P);
 void        ctt_vesta_ec_prj_affine(vesta_ec_aff* dst, const vesta_ec_prj* src);
 void        ctt_vesta_ec_prj_from_affine(vesta_ec_prj* dst, const vesta_ec_aff* src);
 void        ctt_vesta_ec_prj_batch_affine(const vesta_ec_aff dst[], const vesta_ec_prj src[], size_t n);
-void        ctt_vesta_ec_prj_scalar_mul_big_coef(vesta_ec_prj* P, const big255* scalar);
-void        ctt_vesta_ec_prj_scalar_mul_fr_coef(vesta_ec_prj* P, const vesta_fr* scalar);
-void        ctt_vesta_ec_prj_scalar_mul_big_coef_vartime(vesta_ec_prj* P, const big255* scalar);
-void        ctt_vesta_ec_prj_scalar_mul_fr_coef_vartime(vesta_ec_prj* P, const vesta_fr* scalar);
-void        ctt_vesta_ec_prj_multi_scalar_mul_big_coefs_vartime(vesta_ec_prj* r, const big255 coefs[], const vesta_ec_aff points[], size_t len);
-void        ctt_vesta_ec_prj_multi_scalar_mul_fr_coefs_vartime(vesta_ec_prj* r, const vesta_fr coefs[], const vesta_ec_aff points[], size_t len);
 
 #ifdef __cplusplus
 }
