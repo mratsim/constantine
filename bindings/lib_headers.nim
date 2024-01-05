@@ -31,7 +31,7 @@ proc writeHeader_classicCurve(filepath: string, curve: string, modBits, orderBit
   header &= curve_decls
   header &= '\n'
 
-  header = "\n" & genCpp(header)
+  header = "#include \"constantine/curves/bigints.h\"\n\n" & genCpp(header)
   header = genHeaderGuardAndInclude(curve.toUpperASCII(), header)
   header = genHeaderLicense() & header
 
@@ -63,7 +63,7 @@ proc writeHeader_pairingFriendly(filepath: string, curve: string, modBits, order
   header &= curve_decls
   header &= '\n'
 
-  header = "\n" & genCpp(header)
+  header = "#include \"constantine/curves/bigints.h\"\n\n" & genCpp(header)
   header = genHeaderGuardAndInclude(curve.toUpperASCII(), header)
   header = genHeaderLicense() & header
 

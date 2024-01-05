@@ -18,6 +18,10 @@ import
   ./c_curve_decls_parallel
 export c_curve_decls, c_curve_decls_parallel
 
+type
+  big254 = BigInt[254]
+  big255 = BigInt[255]
+
 # ----------------------------------------------------------
 
 type
@@ -38,11 +42,11 @@ collectBindings(cBindings_bls12_381):
   genBindingsExtField(bls12_381_fp2)
   genBindingsExtFieldSqrt(bls12_381_fp2)
   genBindings_EC_ShortW_Affine(bls12_381_g1_aff, bls12_381_fp)
-  genBindings_EC_ShortW_NonAffine(bls12_381_g1_jac, bls12_381_g1_aff)
-  genBindings_EC_ShortW_NonAffine(bls12_381_g1_prj, bls12_381_g1_aff)
+  genBindings_EC_ShortW_NonAffine(bls12_381_g1_jac, bls12_381_g1_aff, big255, bls12_381_fr)
+  genBindings_EC_ShortW_NonAffine(bls12_381_g1_prj, bls12_381_g1_aff, big255, bls12_381_fr)
   genBindings_EC_ShortW_Affine(bls12_381_g2_aff, bls12_381_fp2)
-  genBindings_EC_ShortW_NonAffine(bls12_381_g2_jac, bls12_381_g2_aff)
-  genBindings_EC_ShortW_NonAffine(bls12_381_g2_prj, bls12_381_g2_aff)
+  genBindings_EC_ShortW_NonAffine(bls12_381_g2_jac, bls12_381_g2_aff, big255, bls12_381_fr)
+  genBindings_EC_ShortW_NonAffine(bls12_381_g2_prj, bls12_381_g2_aff, big255, bls12_381_fr)
 
 collectBindings(cBindings_bls12_381_parallel):
   genParallelBindings_EC_ShortW_NonAffine(bls12_381_g1_jac, bls12_381_g1_aff, bls12_381_fr)
@@ -67,11 +71,11 @@ collectBindings(cBindings_bn254_snarks):
   genBindingsExtField(bn254_snarks_fp2)
   genBindingsExtFieldSqrt(bn254_snarks_fp2)
   genBindings_EC_ShortW_Affine(bn254_snarks_g1_aff, bn254_snarks_fp)
-  genBindings_EC_ShortW_NonAffine(bn254_snarks_g1_jac, bn254_snarks_g1_aff)
-  genBindings_EC_ShortW_NonAffine(bn254_snarks_g1_prj, bn254_snarks_g1_aff)
+  genBindings_EC_ShortW_NonAffine(bn254_snarks_g1_jac, bn254_snarks_g1_aff, big254, bn254_snarks_fr)
+  genBindings_EC_ShortW_NonAffine(bn254_snarks_g1_prj, bn254_snarks_g1_aff, big254, bn254_snarks_fr)
   genBindings_EC_ShortW_Affine(bn254_snarks_g2_aff, bn254_snarks_fp2)
-  genBindings_EC_ShortW_NonAffine(bn254_snarks_g2_jac, bn254_snarks_g2_aff)
-  genBindings_EC_ShortW_NonAffine(bn254_snarks_g2_prj, bn254_snarks_g2_aff)
+  genBindings_EC_ShortW_NonAffine(bn254_snarks_g2_jac, bn254_snarks_g2_aff, big254, bn254_snarks_fr)
+  genBindings_EC_ShortW_NonAffine(bn254_snarks_g2_prj, bn254_snarks_g2_aff, big254, bn254_snarks_fr)
 
 collectBindings(cBindings_bn254_snarks_parallel):
   genParallelBindings_EC_ShortW_NonAffine(bn254_snarks_g1_jac, bn254_snarks_g1_aff, bn254_snarks_fr)
@@ -91,8 +95,8 @@ collectBindings(cBindings_pallas):
   genBindingsField(pallas_fp)
   genBindingsFieldSqrt(pallas_fp)
   genBindings_EC_ShortW_Affine(pallas_ec_aff, pallas_fp)
-  genBindings_EC_ShortW_NonAffine(pallas_ec_jac, pallas_ec_aff)
-  genBindings_EC_ShortW_NonAffine(pallas_ec_prj, pallas_ec_aff)
+  genBindings_EC_ShortW_NonAffine(pallas_ec_jac, pallas_ec_aff, big255, pallas_fr)
+  genBindings_EC_ShortW_NonAffine(pallas_ec_prj, pallas_ec_aff, big255, pallas_fr)
 
 collectBindings(cBindings_pallas_parallel):
   genParallelBindings_EC_ShortW_NonAffine(pallas_ec_jac, pallas_ec_aff, pallas_fr)
@@ -110,8 +114,8 @@ collectBindings(cBindings_vesta):
   genBindingsField(vesta_fp)
   genBindingsFieldSqrt(vesta_fp)
   genBindings_EC_ShortW_Affine(vesta_ec_aff, vesta_fp)
-  genBindings_EC_ShortW_NonAffine(vesta_ec_jac, vesta_ec_aff)
-  genBindings_EC_ShortW_NonAffine(vesta_ec_prj, vesta_ec_aff)
+  genBindings_EC_ShortW_NonAffine(vesta_ec_jac, vesta_ec_aff, big255, vesta_fr)
+  genBindings_EC_ShortW_NonAffine(vesta_ec_prj, vesta_ec_aff, big255, vesta_fr)
 
 collectBindings(cBindings_vesta_parallel):
   genParallelBindings_EC_ShortW_NonAffine(vesta_ec_jac, vesta_ec_aff, vesta_fr)

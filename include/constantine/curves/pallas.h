@@ -10,6 +10,7 @@
 #define __CTT_H_PALLAS__
 
 #include "constantine/core/datatypes.h"
+#include "constantine/curves/bigints.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -112,6 +113,7 @@ void        ctt_pallas_ec_jac_double(pallas_ec_jac* r, const pallas_ec_jac* P);
 void        ctt_pallas_ec_jac_double_in_place(pallas_ec_jac* P);
 void        ctt_pallas_ec_jac_affine(pallas_ec_aff* dst, const pallas_ec_jac* src);
 void        ctt_pallas_ec_jac_from_affine(pallas_ec_jac* dst, const pallas_ec_aff* src);
+void        ctt_pallas_ec_jac_batch_affine(const pallas_ec_aff dst[], const pallas_ec_jac src[], size_t n);
 secret_bool ctt_pallas_ec_prj_is_eq(const pallas_ec_prj* P, const pallas_ec_prj* Q);
 secret_bool ctt_pallas_ec_prj_is_inf(const pallas_ec_prj* P);
 void        ctt_pallas_ec_prj_set_inf(pallas_ec_prj* P);
@@ -126,6 +128,7 @@ void        ctt_pallas_ec_prj_double(pallas_ec_prj* r, const pallas_ec_prj* P);
 void        ctt_pallas_ec_prj_double_in_place(pallas_ec_prj* P);
 void        ctt_pallas_ec_prj_affine(pallas_ec_aff* dst, const pallas_ec_prj* src);
 void        ctt_pallas_ec_prj_from_affine(pallas_ec_prj* dst, const pallas_ec_aff* src);
+void        ctt_pallas_ec_prj_batch_affine(const pallas_ec_aff dst[], const pallas_ec_prj src[], size_t n);
 
 #ifdef __cplusplus
 }

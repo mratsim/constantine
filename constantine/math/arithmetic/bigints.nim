@@ -686,7 +686,7 @@ func recode_r2l_signed_vartime*[bits: static int](
     inc i
   return i
 
-iterator recoding_r2l_signed_window_vartime*[bits: static int](a: BigInt[bits], windowLogSize: int): int {.tags:[VarTime].} =
+iterator recoding_r2l_signed_window_vartime*[bits: static int](a_in: BigInt[bits], windowLogSize: int): int {.tags:[VarTime].} =
   ## This is a minimum-Hamming-Weight right-to-left windowed recoding with the following properties
   ## 1. The most significant non-zero bit is positive.
   ## 2. Among any w consecutive digits, at most one is non-zero.
@@ -701,7 +701,7 @@ iterator recoding_r2l_signed_window_vartime*[bits: static int](a: BigInt[bits], 
   let uMax = sMax + sMax
   let mask = uMax - 1
 
-  var a {.noInit.} = a
+  var a {.noInit.} = a_in
   var zeroes = 0
 
   var j = 0
@@ -776,15 +776,17 @@ iterator recoding_r2l_signed_window_vartime*[bits: static int](a: BigInt[bits], 
         break
 
 func recode_r2l_signed_window_vartime*[bits: static int](
-       naf: var array[bits+1, SomeSignedInt], a: BigInt[bits], window: int): int {.tags:[VarTime].} =
+       naf: var array[bits+1, SomeSignedInt], a_in: BigInt[bits], window: int): int {.tags:[VarTime].} =
   ## Minimum Hamming-Weight windowed NAF recoding
   ## Output from least significant to most significant
   ## Returns the number of bits used
   ##
   ## The `naf` output is returned one digit at a time and not one window at a time
+  # a_in to workaround Nim v1.6.16 codegen issue
+  # a is shadowed but then tries to use the original input.
   type I = SomeSignedInt
   var i = 0
-  for digit in a.recoding_r2l_signed_window_vartime(window):
+  for digit in a_in.recoding_r2l_signed_window_vartime(window):
     naf[i] = I(digit)
     i += 1
   return i

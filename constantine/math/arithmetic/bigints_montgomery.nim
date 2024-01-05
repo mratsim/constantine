@@ -40,7 +40,7 @@ func getMont*(mres: var BigInt, a, N, r2modM: BigInt, m0ninv: BaseType, spareBit
   ## and R = (2^WordBitWidth)^W
   getMont(mres.limbs, a.limbs, N.limbs, r2modM.limbs, m0ninv, spareBits)
 
-func fromMont*[mBits](r: var BigInt[mBits], a, M: BigInt[mBits], m0ninv: BaseType, spareBits: static int) =
+func fromMont*(r: var BigInt, a, M: BigInt, m0ninv: BaseType, spareBits: static int) =
   ## Convert a BigInt from its Montgomery residue form
   ## to the natural representation
   ##

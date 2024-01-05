@@ -16,6 +16,10 @@ import
       constants/zoo_subgroups,
       constants/zoo_generators
     ],
+    ./math/elliptic/[
+      ec_scalar_mul_vartime,
+      ec_multi_scalar_mul
+    ],
     ./math/io/[io_bigints, io_fields],
     ./math/isogenies/frobenius,
     ./math/pairings/[
@@ -141,6 +145,8 @@ export ec_shortweierstrass.diff
 # export ec_shortweierstrass.madd
 
 export ec_shortweierstrass.scalarMul
+export ec_scalar_mul_vartime.scalarMul_vartime
+export ec_multi_scalar_mul.multiScalarMul_vartime
 
 export zoo_generators.getGenerator
 export zoo_subgroups.clearCofactor

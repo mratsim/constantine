@@ -10,6 +10,7 @@
 #define __CTT_H_BLS12_381__
 
 #include "constantine/core/datatypes.h"
+#include "constantine/curves/bigints.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -150,6 +151,7 @@ void        ctt_bls12_381_g1_jac_double(bls12_381_g1_jac* r, const bls12_381_g1_
 void        ctt_bls12_381_g1_jac_double_in_place(bls12_381_g1_jac* P);
 void        ctt_bls12_381_g1_jac_affine(bls12_381_g1_aff* dst, const bls12_381_g1_jac* src);
 void        ctt_bls12_381_g1_jac_from_affine(bls12_381_g1_jac* dst, const bls12_381_g1_aff* src);
+void        ctt_bls12_381_g1_jac_batch_affine(const bls12_381_g1_aff dst[], const bls12_381_g1_jac src[], size_t n);
 secret_bool ctt_bls12_381_g1_prj_is_eq(const bls12_381_g1_prj* P, const bls12_381_g1_prj* Q);
 secret_bool ctt_bls12_381_g1_prj_is_inf(const bls12_381_g1_prj* P);
 void        ctt_bls12_381_g1_prj_set_inf(bls12_381_g1_prj* P);
@@ -164,6 +166,7 @@ void        ctt_bls12_381_g1_prj_double(bls12_381_g1_prj* r, const bls12_381_g1_
 void        ctt_bls12_381_g1_prj_double_in_place(bls12_381_g1_prj* P);
 void        ctt_bls12_381_g1_prj_affine(bls12_381_g1_aff* dst, const bls12_381_g1_prj* src);
 void        ctt_bls12_381_g1_prj_from_affine(bls12_381_g1_prj* dst, const bls12_381_g1_aff* src);
+void        ctt_bls12_381_g1_prj_batch_affine(const bls12_381_g1_aff dst[], const bls12_381_g1_prj src[], size_t n);
 secret_bool ctt_bls12_381_g2_aff_is_eq(const bls12_381_g2_aff* P, const bls12_381_g2_aff* Q);
 secret_bool ctt_bls12_381_g2_aff_is_inf(const bls12_381_g2_aff* P);
 void        ctt_bls12_381_g2_aff_set_inf(bls12_381_g2_aff* P);
@@ -185,6 +188,7 @@ void        ctt_bls12_381_g2_jac_double(bls12_381_g2_jac* r, const bls12_381_g2_
 void        ctt_bls12_381_g2_jac_double_in_place(bls12_381_g2_jac* P);
 void        ctt_bls12_381_g2_jac_affine(bls12_381_g2_aff* dst, const bls12_381_g2_jac* src);
 void        ctt_bls12_381_g2_jac_from_affine(bls12_381_g2_jac* dst, const bls12_381_g2_aff* src);
+void        ctt_bls12_381_g2_jac_batch_affine(const bls12_381_g2_aff dst[], const bls12_381_g2_jac src[], size_t n);
 secret_bool ctt_bls12_381_g2_prj_is_eq(const bls12_381_g2_prj* P, const bls12_381_g2_prj* Q);
 secret_bool ctt_bls12_381_g2_prj_is_inf(const bls12_381_g2_prj* P);
 void        ctt_bls12_381_g2_prj_set_inf(bls12_381_g2_prj* P);
@@ -199,6 +203,7 @@ void        ctt_bls12_381_g2_prj_double(bls12_381_g2_prj* r, const bls12_381_g2_
 void        ctt_bls12_381_g2_prj_double_in_place(bls12_381_g2_prj* P);
 void        ctt_bls12_381_g2_prj_affine(bls12_381_g2_aff* dst, const bls12_381_g2_prj* src);
 void        ctt_bls12_381_g2_prj_from_affine(bls12_381_g2_prj* dst, const bls12_381_g2_aff* src);
+void        ctt_bls12_381_g2_prj_batch_affine(const bls12_381_g2_aff dst[], const bls12_381_g2_prj src[], size_t n);
 
 #ifdef __cplusplus
 }
