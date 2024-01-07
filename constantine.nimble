@@ -228,12 +228,13 @@ proc genDynamicLib(outdir, nimcache: string) =
   else:
     compile "libconstantine.so"
 
-proc genStaticLib(outdir, nimcache: string) =
+proc genStaticLib(outdir, nimcache: string, extFlags = "") =
   proc compile(libName: string, flags = "") =
     echo &"Compiling static library:  {outdir}/" & libName
 
     exec "nim c " &
          flags &
+         extFlags &
          releaseBuildOptions(bmStaticLib) &
          " --threads:on " &
          " --noMain --app:staticlib " &
@@ -271,7 +272,8 @@ task make_lib, "Build Constantine library":
 task make_lib_rust, "Build Constantine library (use within a Rust build.rs script)":
   doAssert existsEnv"OUT_DIR", "Cargo needs to set the \"OUT_DIR\" environment variable"
   let rustOutDir = getEnv"OUT_DIR"
-  genStaticLib(rustOutDir, rustOutDir/"nimcache")
+  # Compile as position independent, since rust does the same by default 
+  genStaticLib(rustOutDir, rustOutDir/"nimcache", "--passC:-fPIC")
 
 proc testLib(path, testName: string, useGMP: bool) =
   let dynlibName = if defined(windows): "constantine.dll"
