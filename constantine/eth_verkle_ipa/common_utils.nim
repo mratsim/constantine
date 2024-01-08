@@ -30,35 +30,41 @@ import
 
 
 func generate_random_points* [EC_P](points: var openArray[EC_P], ipaTranscript: var IpaTranscript, num_points: uint64)  =
-  ## generate_random_points generates random points on the curve with the hardcoded VerkleSeed -> VerkleSeed
-  var incrementer: uint64 = 0
+  ## generate_random_points generates random points on the curve with the hardcoded VerkleSeed
+  var points_found : seq[EC_P]
+  var incrementer : uint64 = 0
   var idx: int = 0
-  while uint64(len(points)) !=  num_points:
+  while true:
+    var ctx : sha256
+    ctx.init()
+    ctx.update(VerkleSeed)
+    ctx.update(incrementer.toBytes(bigEndian))
+    var hash : array[32, byte]
+    ctx.finish(hash)
+    ctx.clear()
+    
+    var x {.noInit.}:  Fp[Banderwagon]
+    var t {.noInit.}: matchingBigInt(Banderwagon)
 
-    var digest : IpaTranscript.H
-    digest.init()
-    digest.update(VerkleSeed)
+    t.unmarshal(hash, bigEndian)
+    x.fromBig(t)
 
-    digest.update(incrementer.toBytes(bigEndian))
-    var hash {.noInit.} : array[IpaTranscript.H.digestSize(), byte]
-    digest.finish(hash)
-
-    var x {.noInit.}:  EC_P
-
-    let stat1 =  x.deserialize(hash) 
-    doAssert stat1 == cttCodecEcc_Success, "Deserialization Failure!"
     incrementer = incrementer + 1
 
-    var x_as_Bytes {.noInit.} : array[IpaTranscript.H.digestSize(), byte]
-    let stat2 = x_as_Bytes.serialize(x)
-    doAssert stat2  == cttCodecEcc_Success, "Serialization Failure!"
+    var x_arr {.noInit.}: array[32, byte]
+    x_arr.marshal(x, bigEndian)
 
-    var point_found {.noInit.} : EC_P
-    let stat3 = point_found.deserialize(x_as_Bytes)
+    var x_p {.noInit.} : EC_P
+    let stat2 = x_p.deserialize(x_arr)
+    if stat2 == cttCodecEcc_Success:
+      points_found.add(x_p)
+      points[idx] = points_found[idx]
+      idx = idx + 1
 
-    doAssert stat3 == cttCodecEcc_Success, "Deserialization Failure!"
-    points[idx] = point_found
-    idx = idx + 1
+    
+    if uint64(points_found.len) ==  num_points:
+      break
+
 
 # ############################################################
 #
