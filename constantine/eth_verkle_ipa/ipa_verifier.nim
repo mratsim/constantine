@@ -24,129 +24,127 @@ import
 #
 # ############################################################
 
-func generateChallengesForIPA*(res: var openArray[matchingOrderBigInt(Banderwagon)], transcript: var sha256, proof: IPAProof)=
-    for i in 0 ..< 8:
-        transcript.pointAppend( asBytes"L", proof.L_vector[i])
-        transcript.pointAppend( asBytes"R", proof.R_vector[i])
-        res[i].generateChallengeScalar(transcript,asBytes"x")
-
-
+func generateChallengesForIPA*(res: var openArray[matchingOrderBigInt(Banderwagon)], transcript: var sha256, proof: IPAProof) =
+  for i in 0 ..< 8:
+    transcript.pointAppend( asBytes"L", proof.L_vector[i])
+    transcript.pointAppend( asBytes"R", proof.R_vector[i])
+    res[i].generateChallengeScalar(transcript,asBytes"x")
 
 func checkIPAProof* (ic: IPASettings, transcript: var sha256, commitment: var EC_P, proof: IPAProof, evalPoint: Fr[Banderwagon], res: Fr[Banderwagon]) : bool = 
-    # Check IPA proof verifier a IPA proof for a committed polynomial in evaluation form
-    # It verifies whether the proof is valid for the given polynomial at the evaluation `evalPoint`
-    # and cross-checking it with `result`
-    var r {.noInit.} : bool
+  # Check IPA proof verifier a IPA proof for a committed polynomial in evaluation form
+  # It verifies whether the proof is valid for the given polynomial at the evaluation `evalPoint`
+  # and cross-checking it with `result`
+  var r {.noInit.} : bool
 
-    transcript.domain_separator(asBytes"ipa")
+  transcript.domain_separator(asBytes"ipa")
 
-    debug: doAssert (proof.L_vector.len == proof.R_vector.len), "Proof lengths unequal!"
+  debug: doAssert (proof.L_vector.len == proof.R_vector.len), "Proof lengths unequal!"
 
-    debug: doAssert (proof.L_vector.len == int(ic.numRounds)), "Proof length and num round unequal!"
-
-
-    var b {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
-    b.computeBarycentricCoefficients(ic.precompWeights,evalPoint)
-
-    transcript.pointAppend(asBytes"C", commitment)
-    transcript.scalarAppend(asBytes"input point", evalPoint.toBig())
-    transcript.scalarAppend(asBytes"output point", res.toBig())
-
-    var w : matchingOrderBigInt(Banderwagon)
-    w.generateChallengeScalar(transcript,asBytes"w")
-
-    # Rescaling of q read https://hackmd.io/mJeCRcawTRqr9BooVpHv5g#Re-defining-the-quotient
-    var q {.noInit.}: EC_P
-    q = ic.Q_val
-    q.scalarMul(w)
-
-    var qy {.noInit.}: EC_P
-    qy = q
-    qy.scalarMul(res.toBig())
-    commitment.sum(commitment, qy)
+  debug: doAssert (proof.L_vector.len == int(ic.numRounds)), "Proof length and num round unequal!"
 
 
-    var challenges_big: array[8, matchingOrderBigInt(Banderwagon)]
-    challenges_big.generateChallengesForIPA(transcript, proof)
+  var b {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
+  b.computeBarycentricCoefficients(ic.precompWeights,evalPoint)
 
-    var challenges: array[8,Fr[Banderwagon]]
-    for i in 0 ..< 8:
-        challenges[i].fromBig(challenges_big[i])
+  transcript.pointAppend(asBytes"C", commitment)
+  transcript.scalarAppend(asBytes"input point", evalPoint.toBig())
+  transcript.scalarAppend(asBytes"output point", res.toBig())
 
-    var challengesInv {.noInit.}: array[8,Fr[Banderwagon]] 
-    challengesInv.batchInvert(challenges)
+  var w : matchingOrderBigInt(Banderwagon)
+  w.generateChallengeScalar(transcript,asBytes"w")
 
-    for i in 0 ..< challenges.len:
-        var x = challenges[i]
-        var L = proof.L_vector[i]
-        var R = proof.R_vector[i]
+  # Rescaling of q read https://hackmd.io/mJeCRcawTRqr9BooVpHv5g#Re-defining-the-quotient
+  var q {.noInit.}: EC_P
+  q = ic.Q_val
+  q.scalarMul(w)
 
-        var p11: array[3, EC_P]
-        p11[0] = commitment
-        p11[1] = L
-        p11[2] = R
+  var qy {.noInit.}: EC_P
+  qy = q
+  qy.scalarMul(res.toBig())
+  commitment.sum(commitment, qy)
 
-        var p22: array[3, Fr[Banderwagon]]
-        var one: Fr[Banderwagon]
-        one.setOne()
 
-        p22[0] = one
-        p22[1] = x
-        p22[2] = challengesInv[i]
+  var challenges_big: array[8, matchingOrderBigInt(Banderwagon)]
+  challenges_big.generateChallengesForIPA(transcript, proof)
 
-        commitment.pedersen_commit_varbasis(p11, p11.len, p22, p22.len)
+  var challenges: array[8,Fr[Banderwagon]]
+  for i in 0 ..< 8:
+    challenges[i].fromBig(challenges_big[i])
 
-    var g {.noInit.}: array[VerkleDomain, EC_P]
-    g = ic.SRS
-    
-    var foldingScalars {.noInit.}: array[g.len, Fr[Banderwagon]]
+  var challengesInv {.noInit.}: array[8,Fr[Banderwagon]] 
+  challengesInv.batchInvert(challenges)
 
-    for i in 0 ..< g.len:
-        var scalar {.noInit.} : Fr[Banderwagon]
-        scalar.setOne()
+  for i in 0 ..< challenges.len:
+    var x = challenges[i]
+    var L = proof.L_vector[i]
+    var R = proof.R_vector[i]
 
-        for challengeIndex in 0 ..< challenges.len:
-            let im = 1 shl (7 - challengeIndex)
-            if ((i and im).int() > 0).bool() == true:
-                scalar.prod(scalar,challengesInv[challengeIndex])
+    var p11: array[3, EC_P]
+    p11[0] = commitment
+    p11[1] = L
+    p11[2] = R
 
-        foldingScalars[i] = scalar
+    var p22: array[3, Fr[Banderwagon]]
+    var one: Fr[Banderwagon]
+    one.setOne()
 
-    var g0 {.noInit.}: EC_P
-    
-    var foldingScalars_big {.noInit.} : array[g.len,matchingOrderBigInt(Banderwagon)]
-    
-    for i in 0 ..< VerkleDomain:
-        foldingScalars_big[i] = foldingScalars[i].toBig()
+    p22[0] = one
+    p22[1] = x
+    p22[2] = challengesInv[i]
 
-    var g_aff {.noInit.} : array[VerkleDomain, EC_P_Aff]
+    commitment.pedersen_commit_varbasis(p11, p11.len, p22, p22.len)
 
-    for i in 0 ..< VerkleDomain:
-        g_aff[i].affine(g[i])
- 
-    g0.multiScalarMul_reference_vartime(foldingScalars_big, g_aff)
+  var g {.noInit.}: array[VerkleDomain, EC_P]
+  g = ic.SRS
 
-    var b0 {.noInit.} : Fr[Banderwagon]
-    b0.computeInnerProducts(b, foldingScalars)
+  var foldingScalars {.noInit.}: array[g.len, Fr[Banderwagon]]
 
-    var got {.noInit.} : EC_P
-    # g0 * a + (a * b) * Q
+  for i in 0 ..< g.len:
+    var scalar {.noInit.} : Fr[Banderwagon]
+    scalar.setOne()
 
-    var p1 {.noInit.}: EC_P
-    p1 = g0
-    p1.scalarMul(proof.A_scalar.toBig())
+    for challengeIndex in 0 ..< challenges.len:
+      let im = 1 shl (7 - challengeIndex)
+      if ((i and im).int() > 0).bool() == true:
+        scalar.prod(scalar,challengesInv[challengeIndex])
 
-    var p2 {.noInit.} : EC_P
-    var p2a {.noInit.} : Fr[Banderwagon]
+    foldingScalars[i] = scalar
 
-    p2a.prod(b0, proof.A_scalar)
-    p2 = q
-    p2.scalarMul(p2a.toBig())
+  var g0 {.noInit.}: EC_P
 
-    got.sum(p1, p2)
+  var foldingScalars_big {.noInit.} : array[g.len,matchingOrderBigInt(Banderwagon)]
 
-    if not(got == commitment).bool() == true:
-        r = false
-    
-    r = true
-    return r
+  for i in 0 ..< VerkleDomain:
+    foldingScalars_big[i] = foldingScalars[i].toBig()
+
+  var g_aff {.noInit.} : array[VerkleDomain, EC_P_Aff]
+
+  for i in 0 ..< VerkleDomain:
+    g_aff[i].affine(g[i])
+
+  g0.multiScalarMul_reference_vartime(foldingScalars_big, g_aff)
+
+  var b0 {.noInit.} : Fr[Banderwagon]
+  b0.computeInnerProducts(b, foldingScalars)
+
+  var got {.noInit.} : EC_P
+  # g0 * a + (a * b) * Q
+
+  var p1 {.noInit.}: EC_P
+  p1 = g0
+  p1.scalarMul(proof.A_scalar.toBig())
+
+  var p2 {.noInit.} : EC_P
+  var p2a {.noInit.} : Fr[Banderwagon]
+
+  p2a.prod(b0, proof.A_scalar)
+  p2 = q
+  p2.scalarMul(p2a.toBig())
+
+  got.sum(p1, p2)
+
+  if not(got == commitment).bool() == true:
+    r = false
+
+  r = true
+  return r

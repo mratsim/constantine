@@ -18,11 +18,16 @@ import
       multiproof],
   ../constantine/hashes,
   std/[unittest],
+  ../constantine/serialization/[
+    codecs_status_codes,
+    codecs_banderwagon,
+    codecs
+    ],
   ../constantine/math/config/[type_ff, curves],
   ../constantine/math/elliptic/[
     ec_twistededwards_projective
     ],
-  ../constantine/math/io/io_fields,
+  ../constantine/math/io/[io_fields, io_bigints],
   ../constantine/math/arithmetic,
   ../constantine/math/constants/zoo_generators,
   ../tests/math_elliptic_curves/t_ec_template,
@@ -42,106 +47,160 @@ var generator = Banderwagon.getGenerator()
 
 suite "Barycentric Form Tests":
 
-    test "Testing absolute integers":
+  test "Testing absolute integers":
 
-        proc testAbsInteger() = 
-            var abs {.noInit.} : int
-            abs.absIntChecker(-100)
-            doAssert (abs == 100).bool() == true, "Absolute value should be 100!"
-            doAssert (abs < 0).bool() == false, "Value was negative!"
+    proc testAbsInteger() = 
+        var abs {.noInit.} : int
+        abs.absIntChecker(-100)
+        doAssert (abs == 100).bool() == true, "Absolute value should be 100!"
+        doAssert (abs < 0).bool() == false, "Value was negative!"
+
+    testAbsInteger()
+    
+  # The interpolation is only needed for testing purposes,
+  # but we need to check if it's correct. It's equivalent to getting 
+  # the polynomial in coefficient form for a large number of points 
+
+  test "Testing Basic Interpolation, without precompute optimisations":
+
+    proc testBasicInterpolation() =
+
+      var point_a : Coord
+
+      point_a.x.setZero()
+      point_a.y.setZero()
+
+      var point_b : Coord
+
+      point_b.x.setOne()
+      point_b.y.setOne()
+
+      var points: array[2,Coord]
+      points[0] = point_a
+      points[1] = point_b       
+
+      var poly : array[2,Fr[Banderwagon]]
+
+      poly.interpolate(points,2)
+
+      var genfp : EC_P
+      genfp.fromAffine(generator)
+      var genfr : Fr[Banderwagon]
+      genfr.mapToScalarField(genfp)
+
+      var res {.noInit.}: Fr[Banderwagon]
+      res.ipaEvaluate(poly,gen_fr,2)
+
+      doAssert (res.toHex() == genfr.toHex()) == true, "Not matching!"
+
+    testBasicInterpolation()
+
+  test "Testing Barycentric Precompute Coefficients":
+    proc testBarycentricPrecomputeCoefficients()=
+
+        var p_outside_dom : Fr[Banderwagon]
+
+        var i_bg : matchingOrderBigInt(Banderwagon)
+        i_bg.setUint(uint64(3400))
         
-        testAbsInteger()
+        p_outside_dom.fromBig(i_bg)
+
+        var testVals: array[10,uint64] = [1,2,3,4,5,6,7,8,9,10] 
         
-    # The interpolation is only needed for testing purposes,
-    # but we need to check if it's correct. It's equivalent to getting 
-    # the polynomial in coefficient form for a large number of points 
+        var lagrange_values : array[256,Fr[Banderwagon]]
+        lagrange_values.testPoly256(testVals)
 
-    test "Testing Basic Interpolation, without precompute optimisations":
+        var precomp {.noInit.}: PrecomputedWeights
 
-        proc testBasicInterpolation() =
+        precomp.newPrecomputedWeights()
+        
+        var bar_coeffs: array[256, Fr[Banderwagon]]
 
-          var point_a : Coord
+        bar_coeffs.computeBarycentricCoefficients(precomp, p_outside_dom)
 
-          point_a.x.setZero()
-          point_a.y.setZero()
+        var expected0: Fr[Banderwagon]
 
-          var point_b : Coord
+        expected0.computeInnerProducts(lagrange_values, bar_coeffs)
 
-          point_b.x.setOne()
-          point_b.y.setOne()
+        var points: array[256, Coord]
+        for k in 0 ..< 256:
+            var x : matchingOrderBigInt(Banderwagon)
+            x.setUint(uint64(k))
+            var x_fr : Fr[Banderwagon]
+            x_fr.fromBig(x)
 
-          var points: array[2,Coord]
-          points[0] = point_a
-          points[1] = point_b       
+            var point : Coord
+            point.x = x_fr
+            point.y = lagrange_values[k]
 
-          var poly : array[2,Fr[Banderwagon]]
+            points[k]=point
 
-          poly.interpolate(points,2)
+        var poly_coeff : array[VerkleDomain, Fr[Banderwagon]]
+        poly_coeff.interpolate(points, VerkleDomain)
 
-          var genfp : EC_P
-          genfp.fromAffine(generator)
-          var genfr : Fr[Banderwagon]
-          genfr.mapToScalarField(genfp)
-
-          var res {.noInit.}: Fr[Banderwagon]
-          res.ipaEvaluate(poly,gen_fr,2)
-
-          doAssert (res.toHex() == genfr.toHex()) == true, "Not matching!"
-
-        testBasicInterpolation()
-
-    test "Testing Barycentric Precompute Coefficients":
-        proc testBarycentricPrecomputeCoefficients()=
-
-            var p_outside_dom : Fr[Banderwagon]
-
-            var i_bg : matchingOrderBigInt(Banderwagon)
-            i_bg.setUint(uint64(3400))
-            
-            p_outside_dom.fromBig(i_bg)
-
-            var testVals: array[10,uint64] = [1,2,3,4,5,6,7,8,9,10] 
-            
-            var lagrange_values : array[256,Fr[Banderwagon]]
-            lagrange_values.testPoly256(testVals)
-
-            var precomp {.noInit.}: PrecomputedWeights
-
-            precomp.newPrecomputedWeights()
-            
-            var bar_coeffs: array[256, Fr[Banderwagon]]
-
-            bar_coeffs.computeBarycentricCoefficients(precomp, p_outside_dom)
-
-            var expected0: Fr[Banderwagon]
-
-            expected0.computeInnerProducts(lagrange_values, bar_coeffs)
-
-            var points: array[256, Coord]
-            for k in 0 ..< 256:
-                var x : matchingOrderBigInt(Banderwagon)
-                x.setUint(uint64(k))
-                var x_fr : Fr[Banderwagon]
-                x_fr.fromBig(x)
-
-                var point : Coord
-                point.x = x_fr
-                point.y = lagrange_values[k]
-
-                points[k]=point
-
-            var poly_coeff : array[VerkleDomain, Fr[Banderwagon]]
-            poly_coeff.interpolate(points, VerkleDomain)
-
-            var expected2: Fr[Banderwagon]
-            expected2.ipaEvaluate(poly_coeff, p_outside_dom, VerkleDomain)
+        var expected2: Fr[Banderwagon]
+        expected2.ipaEvaluate(poly_coeff, p_outside_dom, VerkleDomain)
 
 
-            doAssert (expected0.toHex() == "0x042d5629f4eaac570610673570658986f8a74730d3d8587e34062ac4b3c3b950").bool() == true, "Problem with Barycentric Weights!"
-            doAssert (expected2.toHex() == "0x0ddd6424cdfa97f24d8de604a309e1a4eb6ce33663aa132cf87ee874a0ffe506").bool() == true, "Problem with Inner Products!"
+        doAssert (expected0.toHex() == "0x042d5629f4eaac570610673570658986f8a74730d3d8587e34062ac4b3c3b950").bool() == true, "Problem with Barycentric Weights!"
+        doAssert (expected2.toHex() == "0x0ddd6424cdfa97f24d8de604a309e1a4eb6ce33663aa132cf87ee874a0ffe506").bool() == true, "Problem with Inner Products!"
 
-        testBarycentricPrecomputeCoefficients()
+    testBarycentricPrecomputeCoefficients()
 
+# ############################################################
+#
+#      Test for Random Point Generation and CRS Consistency
+#
+# ############################################################
+
+suite "Random Elements Generation and CRS Consistency":
+  test "Test for Generating Random Points and Checking the 1st and 256th point with the Verkle Spec":
+
+    proc testGenPoints()=
+      var ipaConfig {.noInit.} : IPASettings
+      var ipaTranscript {.noInit.} : IpaTranscript[sha256, 32]
+      discard ipaConfig.genIPAConfig(ipaTranscript)
+
+      var basisPoints {.noInit.} : array[256, EC_P]
+      basisPoints.generate_random_points(ipaTranscript, 256)
+
+      var arr_byte {.noInit.} : array[256, array[32, byte]]
+      discard arr_byte.serializeBatch(basisPoints)
+
+      doAssert arr_byte[0].toHex() == "0x01587ad1336675eb912550ec2a28eb8923b824b490dd2ba82e48f14590a298a0", "Failed to generate the 1st point!"
+      doAssert arr_byte[255].toHex() == "0x3de2be346b539395b0c0de56a5ccca54a317f1b5c80107b0802af9a62276a4d8", "Failed to generate the 256th point!"
+    
+    testGenPoints()
+
+# ############################################################
+#
+#      Test for Computing the Correct Vector Commitment
+#
+# ############################################################
+
+suite "Computing the Correct Vector Commitment":
+  test "Test for Vector Commitments from Verkle Test Vectors by @Ignacio":
+    proc testVectorComm() =
+      var ipaConfig: IPASettings
+      var ipaTranscript: IpaTranscript[sha256, 32]
+      let stat1 = ipaConfig.genIPAConfig(ipaTranscript)
+
+      var basisPoints : array[256, EC_P]
+      basisPoints.generate_random_points(ipaTranscript, 256)
+
+      
+      var test_scalars {.noInit.}: array[256, Fr[Banderwagon]]
+      for i in 0 ..< 256:
+        test_scalars[i].fromHex(testScalarsHex[i])
+
+      var commitment {.noInit.} : EC_P
+      commitment.pedersen_commit_varbasis(basisPoints, basisPoints.len, test_scalars, test_scalars.len)
+
+      var arr22 {.noInit.} : Bytes
+      let stat33 = arr22.serialize(commitment)
+
+      doAssert "0x524996a95838712c4580220bb3de453d76cffd7f732f89914d4417bc8e99b513" == arr22.toHex(), "bit string does not match expected"
+    testVectorComm()
 
 # ############################################################
 #
@@ -152,43 +211,42 @@ suite "Barycentric Form Tests":
 
 suite "Transcript Tests":
 
-    test "Transcript Testing with different challenge scalars to test randomness":
+  test "Transcript Testing with different challenge scalars to test randomness":
 
-        proc testVec()=
+    proc testVec()=
 
-            var tr {.noInit.}: sha256
-            tr.newTranscriptGen(asBytes"simple_protocol")
+      var tr {.noInit.}: sha256
+      tr.newTranscriptGen(asBytes"simple_protocol")
 
-            var challenge1 {.noInit.}: matchingOrderBigInt(Banderwagon)
-            challenge1.generateChallengeScalar(tr,asBytes"simple_challenge")
+      var challenge1 {.noInit.}: matchingOrderBigInt(Banderwagon)
+      challenge1.generateChallengeScalar(tr,asBytes"simple_challenge")
 
-            var challenge2 {.noInit.}: matchingOrderBigInt(Banderwagon)
-            challenge2.generateChallengeScalar(tr,asBytes"simple_challenge")
+      var challenge2 {.noInit.}: matchingOrderBigInt(Banderwagon)
+      challenge2.generateChallengeScalar(tr,asBytes"simple_challenge")
 
-            doAssert (challenge1 == challenge2).bool() == false , "calling ChallengeScalar twice should yield two different challenges"
+      doAssert (challenge1 == challenge2).bool() == false , "calling ChallengeScalar twice should yield two different challenges"
 
-        testVec()
+    testVec()
 
-    test "Transcript testing with same challenge scalar to test transcript correctness":
+  test "Transcript testing with same challenge scalar to test transcript correctness":
 
-        proc testVec1()=
+    proc testVec1()=
 
-            var tr {.noInit.}: sha256
-            var tr2 {.noInit.}: sha256
-            tr.newTranscriptGen(asBytes"simple_protocol")
-            tr2.newTranscriptGen(asBytes"simple_protocol")
-            
+      var tr {.noInit.}: sha256
+      var tr2 {.noInit.}: sha256
+      tr.newTranscriptGen(asBytes"simple_protocol")
+      tr2.newTranscriptGen(asBytes"simple_protocol")
+      
 
-            var challenge1 {.noInit.}: matchingOrderBigInt(Banderwagon)
-            challenge1.generateChallengeScalar(tr,asBytes"ethereum_challenge")
+      var challenge1 {.noInit.}: matchingOrderBigInt(Banderwagon)
+      challenge1.generateChallengeScalar(tr,asBytes"ethereum_challenge")
 
-            var challenge2 {.noInit.}: matchingOrderBigInt(Banderwagon)
-            challenge2.generateChallengeScalar(tr2,asBytes"ethereum_challenge")
+      var challenge2 {.noInit.}: matchingOrderBigInt(Banderwagon)
+      challenge2.generateChallengeScalar(tr2,asBytes"ethereum_challenge")
 
-            doAssert (challenge1 == challenge2).bool() == true , "calling ChallengeScalar twice should yield the same challenge"
+      doAssert (challenge1 == challenge2).bool() == true , "calling ChallengeScalar twice should yield the same challenge"
 
-        testVec1()
-
+    testVec1()
 
 # ############################################################
 #
@@ -200,49 +258,49 @@ suite "Transcript Tests":
 suite "IPA proof tests":
   test "Test for initiating IPA proof configuration":
     proc testMain()=
-        var ipaConfig: IPASettings
-        var ipaTranscript: IpaTranscript[sha256, 32]
-        let stat1 = ipaConfig.genIPAConfig(ipaTranscript)
-        doAssert stat1 == true, "Could not generate new IPA Config properly!"
+      var ipaConfig: IPASettings
+      var ipaTranscript: IpaTranscript[sha256, 32]
+      let stat1 = ipaConfig.genIPAConfig(ipaTranscript)
+      doAssert stat1 == true, "Could not generate new IPA Config properly!"
     testMain()
 
   test "Test for IPA proof equality":
     proc testIPAProofEquality()=
-        var point: Fr[Banderwagon]
-        var ipaConfig: IPASettings
-        var ipaTranscript: IpaTranscript[sha256, 32]
-        let stat1 = ipaConfig.genIPAConfig(ipaTranscript)
+      var point: Fr[Banderwagon]
+      var ipaConfig: IPASettings
+      var ipaTranscript: IpaTranscript[sha256, 32]
+      let stat1 = ipaConfig.genIPAConfig(ipaTranscript)
 
-        var testGeneratedPoints: array[256, EC_P]
-        testGeneratedPoints.generate_random_points(ipaTranscript, 256)
+      var testGeneratedPoints: array[256, EC_P]
+      testGeneratedPoints.generate_random_points(ipaTranscript, 256)
 
-        var prover_transcript: sha256
-        prover_transcript.newTranscriptGen(asBytes"ipa")
+      var prover_transcript: sha256
+      prover_transcript.newTranscriptGen(asBytes"ipa")
 
-        #from a shared view
-        var i_bg: matchingOrderBigInt(Banderwagon)
-        i_bg.setUint(uint64(12345))
-        point.fromBig(i_bg)
+      #from a shared view
+      var i_bg: matchingOrderBigInt(Banderwagon)
+      i_bg.setUint(uint64(12345))
+      point.fromBig(i_bg)
 
-        #from the prover's side
-        var testVals: array[5, uint64] = [1,2,3,4,5]
-        var poly: array[256, Fr[Banderwagon]]
-        poly.testPoly256(testVals)
+      #from the prover's side
+      var testVals: array[5, uint64] = [1,2,3,4,5]
+      var poly: array[256, Fr[Banderwagon]]
+      poly.testPoly256(testVals)
 
-        var prover_comm: EC_P
-        prover_comm.pedersen_commit_varbasis(testGeneratedPoints,testGeneratedPoints.len, poly, poly.len)
+      var prover_comm: EC_P
+      prover_comm.pedersen_commit_varbasis(testGeneratedPoints,testGeneratedPoints.len, poly, poly.len)
 
-        var ipaProof1: IPAProof
-        let stat11 = ipaProof1.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
-        doAssert stat11 == true, "Problem creating IPA proof 1"
+      var ipaProof1: IPAProof
+      let stat11 = ipaProof1.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
+      doAssert stat11 == true, "Problem creating IPA proof 1"
 
-        var ipaProof2: IPAProof
-        let stat22 = ipaProof2.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
-        doAssert stat22 == true, "Problem creating IPA proof 2"
+      var ipaProof2: IPAProof
+      let stat22 = ipaProof2.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
+      doAssert stat22 == true, "Problem creating IPA proof 2"
 
-        var stat33: bool
-        stat33 = ipaProof1.isIPAProofEqual(ipaProof2)
-        doAssert stat33 == true, "IPA proofs aren't equal"
+      var stat33: bool
+      stat33 = ipaProof1.isIPAProofEqual(ipaProof2)
+      doAssert stat33 == true, "IPA proofs aren't equal"
 
     testIPAProofEquality()
 
