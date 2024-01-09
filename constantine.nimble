@@ -272,8 +272,10 @@ task make_lib, "Build Constantine library":
 task make_lib_rust, "Build Constantine library (use within a Rust build.rs script)":
   doAssert existsEnv"OUT_DIR", "Cargo needs to set the \"OUT_DIR\" environment variable"
   let rustOutDir = getEnv"OUT_DIR"
-  # Compile as position independent, since rust does the same by default 
-  genStaticLib(rustOutDir, rustOutDir/"nimcache", "--passC:-fPIC")
+  # Compile as position independent, since rust does the same by default
+  let extflags = if defined(windows): "" # Windows is fully position independent, flag is a no-op or on error depending on compiler.
+                 else: "--passC:-fPIC"
+  genStaticLib(rustOutDir, rustOutDir/"nimcache", extflags)
 
 proc testLib(path, testName: string, useGMP: bool) =
   let dynlibName = if defined(windows): "constantine.dll"
