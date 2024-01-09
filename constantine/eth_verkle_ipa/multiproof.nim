@@ -31,9 +31,7 @@ import
 # Converts the const VERKLE_DOMAIN 256 to Fr[Banderwagon]
 func domainToFrElem* (res: var Fr, inp: uint8)=
     var x {.noInit.} : Fr
-    var x_big {.noInit.}: matchingOrderBigInt(Banderwagon)
-    x_big.fromUint(inp)
-    x.fromBig(x_big)
+    x.fromInt(int(inp))
     res = x
 
 func domainToFrElem*(res: var Fr, inp: matchingOrderBigInt(Banderwagon))=

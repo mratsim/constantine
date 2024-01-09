@@ -94,11 +94,8 @@ suite "Barycentric Form Tests":
         proc testBarycentricPrecomputeCoefficients()=
 
             var p_outside_dom : Fr[Banderwagon]
-
-            var i_bg : matchingOrderBigInt(Banderwagon)
-            i_bg.setUint(uint64(3400))
             
-            p_outside_dom.fromBig(i_bg)
+            p_outside_dom.fromInt(3400)
 
             var testVals: array[10,uint64] = [1,2,3,4,5,6,7,8,9,10] 
             
@@ -119,10 +116,8 @@ suite "Barycentric Form Tests":
 
             var points: array[256, Coord]
             for k in 0 ..< 256:
-                var x : matchingOrderBigInt(Banderwagon)
-                x.setUint(uint64(k))
                 var x_fr : Fr[Banderwagon]
-                x_fr.fromBig(x)
+                x_fr.fromInt(k)
 
                 var point : Coord
                 point.x = x_fr
@@ -220,9 +215,7 @@ suite "IPA proof tests":
         prover_transcript.newTranscriptGen(asBytes"ipa")
 
         #from a shared view
-        var i_bg: matchingOrderBigInt(Banderwagon)
-        i_bg.setUint(uint64(12345))
-        point.fromBig(i_bg)
+        point.fromInt(12345)
 
         #from the prover's side
         var testVals: array[5, uint64] = [1,2,3,4,5]
@@ -257,9 +250,7 @@ suite "IPA proof tests":
         testGeneratedPoints.generate_random_points(ipaTranscript,256)
 
         # from a shared view
-        var i_bg : matchingOrderBigInt(Banderwagon)
-        i_bg.setUint(uint64(123456789))
-        point.fromBig(i_bg)
+        point.fromInt(123456789)
 
         # from the prover's side
         var testVals : array[9, uint64] = [1,2,3,4,5,6,7,8,9]
