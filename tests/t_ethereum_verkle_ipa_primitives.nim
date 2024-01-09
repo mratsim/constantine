@@ -177,6 +177,8 @@ suite "Random Elements Generation and CRS Consistency":
 #      Test for Computing the Correct Vector Commitment
 #
 # ############################################################
+## Test vectors are in this link, as bigint strings
+## https://github.com/jsign/verkle-test-vectors/blob/main/crypto/001_vector_commitment.json#L5-L261
 
 suite "Computing the Correct Vector Commitment":
   test "Test for Vector Commitments from Verkle Test Vectors by @Ignacio":
