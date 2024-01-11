@@ -22,6 +22,8 @@ typedef struct { pallas_fp x, y; } pallas_ec_aff;
 typedef struct { pallas_fp x, y, z; } pallas_ec_jac;
 typedef struct { pallas_fp x, y, z; } pallas_ec_prj;
 
+void        ctt_big255_from_pallas_fr(big255* dst, const pallas_fr* src);
+void        ctt_pallas_fr_from_big255(pallas_fr* dst, const big255* src);
 ctt_bool    ctt_pallas_fr_unmarshalBE(pallas_fr* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
 ctt_bool    ctt_pallas_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const pallas_fr* src) __attribute__((warn_unused_result));
 secret_bool ctt_pallas_fr_is_eq(const pallas_fr* a, const pallas_fr* b);
@@ -53,6 +55,8 @@ void        ctt_pallas_fr_cset_one(pallas_fr* a, secret_bool ctl);
 void        ctt_pallas_fr_cneg_in_place(pallas_fr* a, secret_bool ctl);
 void        ctt_pallas_fr_cadd_in_place(pallas_fr* a, const pallas_fr* b, secret_bool ctl);
 void        ctt_pallas_fr_csub_in_place(pallas_fr* a, const pallas_fr* b, secret_bool ctl);
+void        ctt_big255_from_pallas_fp(big255* dst, const pallas_fp* src);
+void        ctt_pallas_fp_from_big255(pallas_fp* dst, const big255* src);
 ctt_bool    ctt_pallas_fp_unmarshalBE(pallas_fp* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
 ctt_bool    ctt_pallas_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const pallas_fp* src) __attribute__((warn_unused_result));
 secret_bool ctt_pallas_fp_is_eq(const pallas_fp* a, const pallas_fp* b);

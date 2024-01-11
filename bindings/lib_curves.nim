@@ -21,6 +21,12 @@ export c_curve_decls, c_curve_decls_parallel
 type
   big254 = BigInt[254]
   big255 = BigInt[255]
+  big381 = BigInt[381]
+
+collectBindings(cBindings_big):
+  genBindingsBig(big254)
+  genBindingsBig(big255)
+  genBindingsBig(big381)
 
 # ----------------------------------------------------------
 
@@ -36,8 +42,8 @@ type
   bls12_381_g2_prj = ECP_ShortW_Prj[Fp2[BLS12_381], G2]
 
 collectBindings(cBindings_bls12_381):
-  genBindingsField(bls12_381_fr)
-  genBindingsField(bls12_381_fp)
+  genBindingsField(big255, bls12_381_fr)
+  genBindingsField(big381, bls12_381_fp)
   genBindingsFieldSqrt(bls12_381_fp)
   genBindingsExtField(bls12_381_fp2)
   genBindingsExtFieldSqrt(bls12_381_fp2)
@@ -65,8 +71,8 @@ type
   bn254_snarks_g2_prj = ECP_ShortW_Prj[Fp2[BN254_Snarks], G2]
 
 collectBindings(cBindings_bn254_snarks):
-  genBindingsField(bn254_snarks_fr)
-  genBindingsField(bn254_snarks_fp)
+  genBindingsField(big254, bn254_snarks_fr)
+  genBindingsField(big254, bn254_snarks_fp)
   genBindingsFieldSqrt(bn254_snarks_fp)
   genBindingsExtField(bn254_snarks_fp2)
   genBindingsExtFieldSqrt(bn254_snarks_fp2)
@@ -91,8 +97,8 @@ type
   pallas_ec_prj = ECP_ShortW_Prj[Fp[Pallas], G1]
 
 collectBindings(cBindings_pallas):
-  genBindingsField(pallas_fr)
-  genBindingsField(pallas_fp)
+  genBindingsField(big255, pallas_fr)
+  genBindingsField(big255, pallas_fp)
   genBindingsFieldSqrt(pallas_fp)
   genBindings_EC_ShortW_Affine(pallas_ec_aff, pallas_fp)
   genBindings_EC_ShortW_NonAffine(pallas_ec_jac, pallas_ec_aff, big255, pallas_fr)
@@ -110,8 +116,8 @@ type
   vesta_ec_prj = ECP_ShortW_Prj[Fp[Vesta], G1]
 
 collectBindings(cBindings_vesta):
-  genBindingsField(vesta_fr)
-  genBindingsField(vesta_fp)
+  genBindingsField(big255, vesta_fr)
+  genBindingsField(big255, vesta_fp)
   genBindingsFieldSqrt(vesta_fp)
   genBindings_EC_ShortW_Affine(vesta_ec_aff, vesta_fp)
   genBindings_EC_ShortW_NonAffine(vesta_ec_jac, vesta_ec_aff, big255, vesta_fr)

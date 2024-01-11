@@ -22,6 +22,8 @@ typedef struct { vesta_fp x, y; } vesta_ec_aff;
 typedef struct { vesta_fp x, y, z; } vesta_ec_jac;
 typedef struct { vesta_fp x, y, z; } vesta_ec_prj;
 
+void        ctt_big255_from_vesta_fr(big255* dst, const vesta_fr* src);
+void        ctt_vesta_fr_from_big255(vesta_fr* dst, const big255* src);
 ctt_bool    ctt_vesta_fr_unmarshalBE(vesta_fr* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
 ctt_bool    ctt_vesta_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const vesta_fr* src) __attribute__((warn_unused_result));
 secret_bool ctt_vesta_fr_is_eq(const vesta_fr* a, const vesta_fr* b);
@@ -53,6 +55,8 @@ void        ctt_vesta_fr_cset_one(vesta_fr* a, secret_bool ctl);
 void        ctt_vesta_fr_cneg_in_place(vesta_fr* a, secret_bool ctl);
 void        ctt_vesta_fr_cadd_in_place(vesta_fr* a, const vesta_fr* b, secret_bool ctl);
 void        ctt_vesta_fr_csub_in_place(vesta_fr* a, const vesta_fr* b, secret_bool ctl);
+void        ctt_big255_from_vesta_fp(big255* dst, const vesta_fp* src);
+void        ctt_vesta_fp_from_big255(vesta_fp* dst, const big255* src);
 ctt_bool    ctt_vesta_fp_unmarshalBE(vesta_fp* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
 ctt_bool    ctt_vesta_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const vesta_fp* src) __attribute__((warn_unused_result));
 secret_bool ctt_vesta_fp_is_eq(const vesta_fp* a, const vesta_fp* b);

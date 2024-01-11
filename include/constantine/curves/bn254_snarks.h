@@ -26,6 +26,8 @@ typedef struct { bn254_snarks_fp2 x, y; } bn254_snarks_g2_aff;
 typedef struct { bn254_snarks_fp2 x, y, z; } bn254_snarks_g2_jac;
 typedef struct { bn254_snarks_fp2 x, y, z; } bn254_snarks_g2_prj;
 
+void        ctt_big254_from_bn254_snarks_fr(big254* dst, const bn254_snarks_fr* src);
+void        ctt_bn254_snarks_fr_from_big254(bn254_snarks_fr* dst, const big254* src);
 ctt_bool    ctt_bn254_snarks_fr_unmarshalBE(bn254_snarks_fr* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
 ctt_bool    ctt_bn254_snarks_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const bn254_snarks_fr* src) __attribute__((warn_unused_result));
 secret_bool ctt_bn254_snarks_fr_is_eq(const bn254_snarks_fr* a, const bn254_snarks_fr* b);
@@ -57,6 +59,8 @@ void        ctt_bn254_snarks_fr_cset_one(bn254_snarks_fr* a, secret_bool ctl);
 void        ctt_bn254_snarks_fr_cneg_in_place(bn254_snarks_fr* a, secret_bool ctl);
 void        ctt_bn254_snarks_fr_cadd_in_place(bn254_snarks_fr* a, const bn254_snarks_fr* b, secret_bool ctl);
 void        ctt_bn254_snarks_fr_csub_in_place(bn254_snarks_fr* a, const bn254_snarks_fr* b, secret_bool ctl);
+void        ctt_big254_from_bn254_snarks_fp(big254* dst, const bn254_snarks_fp* src);
+void        ctt_bn254_snarks_fp_from_big254(bn254_snarks_fp* dst, const big254* src);
 ctt_bool    ctt_bn254_snarks_fp_unmarshalBE(bn254_snarks_fp* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
 ctt_bool    ctt_bn254_snarks_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const bn254_snarks_fp* src) __attribute__((warn_unused_result));
 secret_bool ctt_bn254_snarks_fp_is_eq(const bn254_snarks_fp* a, const bn254_snarks_fp* b);

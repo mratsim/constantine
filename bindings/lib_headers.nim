@@ -108,7 +108,7 @@ proc writeParallelHeader(dirPath: string, C: static Curve, curve_decls: string) 
   writeFile(relPath, header)
   echo "Generated header: ", relPath
 
-proc writeBigIntHeader(dirPath: string, bigSizes: IntSet) =
+proc writeBigIntHeader(dirPath: string, bigSizes: IntSet, big_codecs: string) =
   let relPath = dirPath/"constantine"/"curves"/"bigints.h"
 
   var header = "\n"
@@ -116,6 +116,9 @@ proc writeBigIntHeader(dirPath: string, bigSizes: IntSet) =
   for size in bigSizes:
     header &= genBigInt(size)
     header &= '\n'
+
+  header &= big_codecs
+  header &= '\n'
 
   header = "\n" & genCpp(header)
   header = genHeaderGuardAndInclude("BIGINTS", header)
@@ -151,9 +154,10 @@ proc writeCurveParallelHeaders(dir: string) =
 
   staticFor i, 0, curveMappings.len:
     writeParallelHeader(dir, curveMappings[i][0], curveMappings[i][1])
+    bigSizes.incl(curveMappings[i][0].getCurveBitWidth())
     bigSizes.incl(curveMappings[i][0].getCurveOrderBitWidth())
 
-  dir.writeBigIntHeader(bigSizes)
+  dir.writeBigIntHeader(bigSizes, cBindings_big)
 
 when isMainModule:
   proc main() {.inline.} =

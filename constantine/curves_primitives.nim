@@ -46,6 +46,19 @@ export
   abstractions,
   curves.Curve
 
+# BigInt
+# ------------------------------------------------------------
+
+func unmarshalBE*(dst: var BigInt, src: openarray[byte]): bool =
+  ## Return true on success
+  ## Return false if destination is too small compared to source
+  return dst.unmarshal(src, bigEndian)
+
+func marshalBE*(dst: var openarray[byte], src: BigInt): bool =
+  ## Return true on success
+  ## Return false if destination is too small compared to source
+  return dst.marshal(src, bigEndian)
+
 # Scalar field Fr and Prime Field Fp
 # ------------------------------------------------------------
 
@@ -69,7 +82,7 @@ func marshalBE*(dst: var openarray[byte], src: FF): bool =
   ## Return false if destination is too small compared to source
   var raw {.noInit.}: typeof src.mres
   raw.fromField(src)
-  return dst.marshal(src, bigEndian)
+  return dst.marshal(raw, bigEndian)
 
 export arithmetic.fromBig
 export arithmetic.fromField

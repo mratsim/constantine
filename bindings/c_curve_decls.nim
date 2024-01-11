@@ -19,14 +19,39 @@ export curves, curves_primitives, extension_fields
 #
 # This files provides template for C bindings generation
 
-template genBindingsField*(Field: untyped) =
+template genBindingsBig*(Big: untyped) =
   when appType == "lib":
     {.push noconv, dynlib, exportc,  raises: [].} # No exceptions allowed
   else:
     {.push noconv, exportc,  raises: [].} # No exceptions allowed
 
+  func `ctt _ Big _ unmarshalBE`(dst: var Big, src: openarray[byte]): bool =
+    unmarshalBE(dst, src)
+
+  func `ctt _ Big _ marshalBE`(dst: var openarray[byte], src: Big): bool =
+    marshalBE(dst, src)
+
+  {.pop.}
+
+template genBindingsField*(Big, Field: untyped) =
+  when appType == "lib":
+    {.push noconv, dynlib, exportc,  raises: [].} # No exceptions allowed
+  else:
+    {.push noconv, exportc,  raises: [].} # No exceptions allowed
+
+  func `ctt _ Big _ from _ Field`(dst: var Big, src: Field) =
+    fromField(dst, src)
+
+  func `ctt _ Field _ from _ Big`(dst: var Field, src: Big) =
+    ## Note: conversion will not fail if the bigint is bigger than the modulus,
+    ## It will be reduced modulo the field modulus.
+    ## For protocol that want to prevent this malleability
+    ## use `unmarchalBE` to convert directly from bytes to field elements instead of
+    ## bytes -> bigint -> field element
+    fromBig(dst, src)
+
+  # --------------------------------------------------------------------------------------
   func `ctt _ Field _ unmarshalBE`(dst: var Field, src: openarray[byte]): bool =
-    ## Deserialize
     unmarshalBE(dst, src)
 
   func `ctt _ Field _ marshalBE`(dst: var openarray[byte], src: Field): bool =

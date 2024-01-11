@@ -26,6 +26,8 @@ typedef struct { bls12_381_fp2 x, y; } bls12_381_g2_aff;
 typedef struct { bls12_381_fp2 x, y, z; } bls12_381_g2_jac;
 typedef struct { bls12_381_fp2 x, y, z; } bls12_381_g2_prj;
 
+void        ctt_big255_from_bls12_381_fr(big255* dst, const bls12_381_fr* src);
+void        ctt_bls12_381_fr_from_big255(bls12_381_fr* dst, const big255* src);
 ctt_bool    ctt_bls12_381_fr_unmarshalBE(bls12_381_fr* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
 ctt_bool    ctt_bls12_381_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const bls12_381_fr* src) __attribute__((warn_unused_result));
 secret_bool ctt_bls12_381_fr_is_eq(const bls12_381_fr* a, const bls12_381_fr* b);
@@ -57,6 +59,8 @@ void        ctt_bls12_381_fr_cset_one(bls12_381_fr* a, secret_bool ctl);
 void        ctt_bls12_381_fr_cneg_in_place(bls12_381_fr* a, secret_bool ctl);
 void        ctt_bls12_381_fr_cadd_in_place(bls12_381_fr* a, const bls12_381_fr* b, secret_bool ctl);
 void        ctt_bls12_381_fr_csub_in_place(bls12_381_fr* a, const bls12_381_fr* b, secret_bool ctl);
+void        ctt_big381_from_bls12_381_fp(big381* dst, const bls12_381_fp* src);
+void        ctt_bls12_381_fp_from_big381(bls12_381_fp* dst, const big381* src);
 ctt_bool    ctt_bls12_381_fp_unmarshalBE(bls12_381_fp* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
 ctt_bool    ctt_bls12_381_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const bls12_381_fp* src) __attribute__((warn_unused_result));
 secret_bool ctt_bls12_381_fp_is_eq(const bls12_381_fp* a, const bls12_381_fp* b);
