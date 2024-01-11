@@ -1439,12 +1439,14 @@ func mul_sparse_by_x0*(a: var QuadraticExt, sparseB: QuadraticExt) =
   ## Sparse in-place multiplication
   a.mul_sparse_by_x0(a, sparseB)
 
-template mulCheckSparse*(a: var QuadraticExt, b: QuadraticExt) =
+func mulCheckSparse*(a: var QuadraticExt, b: static QuadraticExt) {.inline.} =
   when isOne(b).bool:
     discard
   elif isMinusOne(b).bool:
     a.neg()
   elif isZero(c0(b)).bool and isOne(c1(b)).bool:
+    # TODO: raise upstream, in Nim v2 templates {.noInit.} temporaries use incorrect t`gensymXXXX
+    # hence we use an inline function with static argument
     var t {.noInit.}: type(a.c0)
     when fromComplexExtension(b):
       t.neg(a.c1)
@@ -1455,6 +1457,8 @@ template mulCheckSparse*(a: var QuadraticExt, b: QuadraticExt) =
       a.c1 = a.c0
       a.c0 = t
   elif isZero(c0(b)).bool and isMinusOne(c1(b)).bool:
+    # TODO: raise upstream, in Nim v2 templates {.noInit.} temporaries use incorrect t`gensymXXXX
+    # hence we use an inline function with static argument
     var t {.noInit.}: type(a.c0)
     when fromComplexExtension(b):
       t = a.c1

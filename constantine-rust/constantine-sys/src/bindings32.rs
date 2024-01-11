@@ -124,6 +124,36 @@ extern "C" {
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
+pub struct big381 {
+    limbs: [secret_word; 12usize],
+}
+#[test]
+fn bindgen_test_layout_big381() {
+    const UNINIT: ::core::mem::MaybeUninit<big381> = ::core::mem::MaybeUninit::uninit();
+    let ptr = UNINIT.as_ptr();
+    assert_eq!(
+        ::core::mem::size_of::<big381>(),
+        48usize,
+        concat!("Size of: ", stringify!(big381))
+    );
+    assert_eq!(
+        ::core::mem::align_of::<big381>(),
+        4usize,
+        concat!("Alignment of ", stringify!(big381))
+    );
+    assert_eq!(
+        unsafe { ::core::ptr::addr_of!((*ptr).limbs) as usize - ptr as usize },
+        0usize,
+        concat!(
+            "Offset of field: ",
+            stringify!(big381),
+            "::",
+            stringify!(limbs)
+        )
+    );
+}
+#[repr(C)]
+#[derive(Copy, Clone)]
 pub struct big255 {
     limbs: [secret_word; 8usize],
 }
@@ -181,6 +211,30 @@ fn bindgen_test_layout_big254() {
             stringify!(limbs)
         )
     );
+}
+extern "C" {
+    #[must_use]
+    pub fn ctt_big254_unmarshalBE(dst: *mut big254, src: *const byte, src_len: isize) -> bool;
+}
+extern "C" {
+    #[must_use]
+    pub fn ctt_big254_marshalBE(dst: *mut byte, dst_len: isize, src: *const big254) -> bool;
+}
+extern "C" {
+    #[must_use]
+    pub fn ctt_big255_unmarshalBE(dst: *mut big255, src: *const byte, src_len: isize) -> bool;
+}
+extern "C" {
+    #[must_use]
+    pub fn ctt_big255_marshalBE(dst: *mut byte, dst_len: isize, src: *const big255) -> bool;
+}
+extern "C" {
+    #[must_use]
+    pub fn ctt_big381_unmarshalBE(dst: *mut big381, src: *const byte, src_len: isize) -> bool;
+}
+extern "C" {
+    #[must_use]
+    pub fn ctt_big381_marshalBE(dst: *mut byte, dst_len: isize, src: *const big381) -> bool;
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -563,6 +617,12 @@ fn bindgen_test_layout_bls12_381_g2_prj() {
     );
 }
 extern "C" {
+    pub fn ctt_big255_from_bls12_381_fr(dst: *mut big255, src: *const bls12_381_fr);
+}
+extern "C" {
+    pub fn ctt_bls12_381_fr_from_big255(dst: *mut bls12_381_fr, src: *const big255);
+}
+extern "C" {
     #[must_use]
     pub fn ctt_bls12_381_fr_unmarshalBE(
         dst: *mut bls12_381_fr,
@@ -684,6 +744,12 @@ extern "C" {
         b: *const bls12_381_fr,
         ctl: secret_bool,
     );
+}
+extern "C" {
+    pub fn ctt_big381_from_bls12_381_fp(dst: *mut big381, src: *const bls12_381_fp);
+}
+extern "C" {
+    pub fn ctt_bls12_381_fp_from_big381(dst: *mut bls12_381_fp, src: *const big381);
 }
 extern "C" {
     #[must_use]
@@ -1851,6 +1917,12 @@ fn bindgen_test_layout_bn254_snarks_g2_prj() {
     );
 }
 extern "C" {
+    pub fn ctt_big254_from_bn254_snarks_fr(dst: *mut big254, src: *const bn254_snarks_fr);
+}
+extern "C" {
+    pub fn ctt_bn254_snarks_fr_from_big254(dst: *mut bn254_snarks_fr, src: *const big254);
+}
+extern "C" {
     #[must_use]
     pub fn ctt_bn254_snarks_fr_unmarshalBE(
         dst: *mut bn254_snarks_fr,
@@ -1983,6 +2055,12 @@ extern "C" {
         b: *const bn254_snarks_fr,
         ctl: secret_bool,
     );
+}
+extern "C" {
+    pub fn ctt_big254_from_bn254_snarks_fp(dst: *mut big254, src: *const bn254_snarks_fp);
+}
+extern "C" {
+    pub fn ctt_bn254_snarks_fp_from_big254(dst: *mut bn254_snarks_fp, src: *const big254);
 }
 extern "C" {
     #[must_use]
@@ -3018,6 +3096,12 @@ fn bindgen_test_layout_pallas_ec_prj() {
     );
 }
 extern "C" {
+    pub fn ctt_big255_from_pallas_fr(dst: *mut big255, src: *const pallas_fr);
+}
+extern "C" {
+    pub fn ctt_pallas_fr_from_big255(dst: *mut pallas_fr, src: *const big255);
+}
+extern "C" {
     #[must_use]
     pub fn ctt_pallas_fr_unmarshalBE(dst: *mut pallas_fr, src: *const byte, src_len: isize)
         -> bool;
@@ -3112,6 +3196,12 @@ extern "C" {
 }
 extern "C" {
     pub fn ctt_pallas_fr_csub_in_place(a: *mut pallas_fr, b: *const pallas_fr, ctl: secret_bool);
+}
+extern "C" {
+    pub fn ctt_big255_from_pallas_fp(dst: *mut big255, src: *const pallas_fp);
+}
+extern "C" {
+    pub fn ctt_pallas_fp_from_big255(dst: *mut pallas_fp, src: *const big255);
 }
 extern "C" {
     #[must_use]
@@ -3669,6 +3759,12 @@ fn bindgen_test_layout_vesta_ec_prj() {
     );
 }
 extern "C" {
+    pub fn ctt_big255_from_vesta_fr(dst: *mut big255, src: *const vesta_fr);
+}
+extern "C" {
+    pub fn ctt_vesta_fr_from_big255(dst: *mut vesta_fr, src: *const big255);
+}
+extern "C" {
     #[must_use]
     pub fn ctt_vesta_fr_unmarshalBE(dst: *mut vesta_fr, src: *const byte, src_len: isize) -> bool;
 }
@@ -3762,6 +3858,12 @@ extern "C" {
 }
 extern "C" {
     pub fn ctt_vesta_fr_csub_in_place(a: *mut vesta_fr, b: *const vesta_fr, ctl: secret_bool);
+}
+extern "C" {
+    pub fn ctt_big255_from_vesta_fp(dst: *mut big255, src: *const vesta_fp);
+}
+extern "C" {
+    pub fn ctt_vesta_fp_from_big255(dst: *mut vesta_fp, src: *const big255);
 }
 extern "C" {
     #[must_use]

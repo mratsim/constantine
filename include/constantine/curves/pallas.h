@@ -22,6 +22,8 @@ typedef struct { pallas_fp x, y; } pallas_ec_aff;
 typedef struct { pallas_fp x, y, z; } pallas_ec_jac;
 typedef struct { pallas_fp x, y, z; } pallas_ec_prj;
 
+void        ctt_big255_from_pallas_fr(big255* dst, const pallas_fr* src);
+void        ctt_pallas_fr_from_big255(pallas_fr* dst, const big255* src);
 ctt_bool    ctt_pallas_fr_unmarshalBE(pallas_fr* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
 ctt_bool    ctt_pallas_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const pallas_fr* src) __attribute__((warn_unused_result));
 secret_bool ctt_pallas_fr_is_eq(const pallas_fr* a, const pallas_fr* b);
@@ -53,6 +55,8 @@ void        ctt_pallas_fr_cset_one(pallas_fr* a, secret_bool ctl);
 void        ctt_pallas_fr_cneg_in_place(pallas_fr* a, secret_bool ctl);
 void        ctt_pallas_fr_cadd_in_place(pallas_fr* a, const pallas_fr* b, secret_bool ctl);
 void        ctt_pallas_fr_csub_in_place(pallas_fr* a, const pallas_fr* b, secret_bool ctl);
+void        ctt_big255_from_pallas_fp(big255* dst, const pallas_fp* src);
+void        ctt_pallas_fp_from_big255(pallas_fp* dst, const big255* src);
 ctt_bool    ctt_pallas_fp_unmarshalBE(pallas_fp* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
 ctt_bool    ctt_pallas_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const pallas_fp* src) __attribute__((warn_unused_result));
 secret_bool ctt_pallas_fp_is_eq(const pallas_fp* a, const pallas_fp* b);
@@ -114,6 +118,12 @@ void        ctt_pallas_ec_jac_double_in_place(pallas_ec_jac* P);
 void        ctt_pallas_ec_jac_affine(pallas_ec_aff* dst, const pallas_ec_jac* src);
 void        ctt_pallas_ec_jac_from_affine(pallas_ec_jac* dst, const pallas_ec_aff* src);
 void        ctt_pallas_ec_jac_batch_affine(const pallas_ec_aff dst[], const pallas_ec_jac src[], size_t n);
+void        ctt_pallas_ec_jac_scalar_mul_big_coef(pallas_ec_jac* P, const big255* scalar);
+void        ctt_pallas_ec_jac_scalar_mul_fr_coef(pallas_ec_jac* P, const pallas_fr* scalar);
+void        ctt_pallas_ec_jac_scalar_mul_big_coef_vartime(pallas_ec_jac* P, const big255* scalar);
+void        ctt_pallas_ec_jac_scalar_mul_fr_coef_vartime(pallas_ec_jac* P, const pallas_fr* scalar);
+void        ctt_pallas_ec_jac_multi_scalar_mul_big_coefs_vartime(pallas_ec_jac* r, const big255 coefs[], const pallas_ec_aff points[], size_t len);
+void        ctt_pallas_ec_jac_multi_scalar_mul_fr_coefs_vartime(pallas_ec_jac* r, const pallas_fr coefs[], const pallas_ec_aff points[], size_t len);
 secret_bool ctt_pallas_ec_prj_is_eq(const pallas_ec_prj* P, const pallas_ec_prj* Q);
 secret_bool ctt_pallas_ec_prj_is_inf(const pallas_ec_prj* P);
 void        ctt_pallas_ec_prj_set_inf(pallas_ec_prj* P);
@@ -129,6 +139,12 @@ void        ctt_pallas_ec_prj_double_in_place(pallas_ec_prj* P);
 void        ctt_pallas_ec_prj_affine(pallas_ec_aff* dst, const pallas_ec_prj* src);
 void        ctt_pallas_ec_prj_from_affine(pallas_ec_prj* dst, const pallas_ec_aff* src);
 void        ctt_pallas_ec_prj_batch_affine(const pallas_ec_aff dst[], const pallas_ec_prj src[], size_t n);
+void        ctt_pallas_ec_prj_scalar_mul_big_coef(pallas_ec_prj* P, const big255* scalar);
+void        ctt_pallas_ec_prj_scalar_mul_fr_coef(pallas_ec_prj* P, const pallas_fr* scalar);
+void        ctt_pallas_ec_prj_scalar_mul_big_coef_vartime(pallas_ec_prj* P, const big255* scalar);
+void        ctt_pallas_ec_prj_scalar_mul_fr_coef_vartime(pallas_ec_prj* P, const pallas_fr* scalar);
+void        ctt_pallas_ec_prj_multi_scalar_mul_big_coefs_vartime(pallas_ec_prj* r, const big255 coefs[], const pallas_ec_aff points[], size_t len);
+void        ctt_pallas_ec_prj_multi_scalar_mul_fr_coefs_vartime(pallas_ec_prj* r, const pallas_fr coefs[], const pallas_ec_aff points[], size_t len);
 
 #ifdef __cplusplus
 }

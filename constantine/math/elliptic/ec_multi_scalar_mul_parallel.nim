@@ -143,7 +143,7 @@ proc bucketAccumReduce_zeroMem[bits: static int, EC, ECaff](
   zeroMem(buckets, sizeof(EC) * numBuckets)
   bucketAccumReduce(windowSum[], buckets, bitIndex, miniMsmKind, c, coefs, points, N)
 
-proc msm_vartime_parallel*[bits: static int, EC, ECaff](
+proc msm_vartime_parallel[bits: static int, EC, ECaff](
        tp: Threadpool,
        r: ptr EC,
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[EC_aff],
@@ -321,7 +321,7 @@ proc bucketAccumReduce_parallel[bits: static int, EC, ECaff](
 # Parallel MSM Affine - window-level only
 # ---------------------------------------
 
-proc msmAffine_vartime_parallel*[bits: static int, EC, ECaff](
+proc msmAffine_vartime_parallel[bits: static int, EC, ECaff](
        tp: Threadpool,
        r: ptr EC,
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECaff],
