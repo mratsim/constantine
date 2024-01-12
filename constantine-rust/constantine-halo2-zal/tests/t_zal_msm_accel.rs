@@ -56,7 +56,7 @@ fn run_msm_zal(min_k: usize, max_k: usize) {
         // -----------
         let t2 = start_timer!(|| format!("CttEngine msm cached base k={}", k));
         let base_descriptor = engine.get_base_descriptor(points);
-        let e2 = engine.msm_with_cached_base(scalars, &base_descriptor);
+        let e2 = <CttEngine as MsmAccel<bn256::G1Affine>>::msm_with_cached_base(&engine, scalars, &base_descriptor);
         end_timer!(t2);
 
         assert_eq!(e0, e2)
