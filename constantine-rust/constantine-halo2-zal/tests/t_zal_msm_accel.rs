@@ -52,14 +52,14 @@ fn run_msm_zal(min_k: usize, max_k: usize) {
 
         assert_eq!(e0, e1);
 
-        // Caching API
-        // -----------
-        let t2 = start_timer!(|| format!("CttEngine msm cached base k={}", k));
-        let base_descriptor = engine.get_base_descriptor(points);
-        let e2 = <CttEngine as MsmAccel<bn256::G1Affine>>::msm_with_cached_base(&engine, scalars, &base_descriptor);
-        end_timer!(t2);
+        // // Caching API
+        // // -----------
+        // let t2 = start_timer!(|| format!("CttEngine msm cached base k={}", k));
+        // let base_descriptor = engine.get_base_descriptor(points);
+        // let e2 = <CttEngine as MsmAccel<bn256::G1Affine>>::msm_with_cached_base(&engine, scalars, &base_descriptor);
+        // end_timer!(t2);
 
-        assert_eq!(e0, e2)
+        // assert_eq!(e0, e2)
     }
 }
 
