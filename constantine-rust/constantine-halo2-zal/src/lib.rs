@@ -15,7 +15,7 @@ use constantine_sys::*;
 use ::core::mem::MaybeUninit;
 use std::mem;
 
-use halo2curves::{bn256, pallas, vesta};
+use halo2curves::{bn256, pasta::pallas, pasta::vesta};
 use halo2curves::zal::{MsmAccel, ZalEngine};
 use halo2curves::CurveAffine;
 
