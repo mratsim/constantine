@@ -15,7 +15,7 @@ use constantine_sys::*;
 use ::core::mem::MaybeUninit;
 use std::mem;
 
-use halo2curves::bn256;
+use halo2curves::{bn256, pallas, vesta};
 use halo2curves::zal::{MsmAccel, ZalEngine};
 use halo2curves::CurveAffine;
 
@@ -93,6 +93,118 @@ impl MsmAccel<bn256::G1Affine> for CttEngine {
         coeffs: &Self::CoeffsDescriptor<'_>,
         base: &Self::BaseDescriptor<'_>,
     ) -> bn256::G1 {
+        self.msm(coeffs.raw, base.raw)
+    }
+}
+
+impl MsmAccel<pallas::Affine> for CttEngine {
+    fn msm(&self, coeffs: &[pallas::Scalar], bases: &[pallas::Affine]) -> pallas::Point {
+        assert_eq!(coeffs.len(), bases.len());
+        let mut result = MaybeUninit::<vesta_ec_jac>::uninit();
+        unsafe {
+            ctt_vesta_ec_jac_multi_scalar_mul_fr_coefs_vartime_parallel(
+                self.0.get_private_context(),
+                result.as_mut_ptr(),
+                coeffs.as_ptr() as *const vesta_fr,
+                bases.as_ptr() as *const vesta_ec_aff,
+                bases.len(),
+            );
+            mem::transmute::<MaybeUninit<vesta_ec_jac>, pallas::Point>(result)
+        }
+    }
+
+    // Caching API
+    // -------------------------------------------------
+
+    type CoeffsDescriptor<'c> = CttMsmCoeffsDesc<'c, pallas::Affine>;
+    type BaseDescriptor<'b> = CttMsmBaseDesc<'b, pallas::Affine>;
+
+    fn get_coeffs_descriptor<'c>(&self, coeffs: &'c [pallas::Scalar]) -> Self::CoeffsDescriptor<'c> {
+        // Do expensive device/library specific preprocessing here
+        Self::CoeffsDescriptor { raw: coeffs }
+    }
+    fn get_base_descriptor<'b>(&self, base: &'b [pallas::Affine]) -> Self::BaseDescriptor<'b> {
+        // Do expensive device/library specific preprocessing here
+        Self::BaseDescriptor { raw: base }
+    }
+
+    fn msm_with_cached_scalars(
+        &self,
+        coeffs: &Self::CoeffsDescriptor<'_>,
+        base: &[pallas::Affine],
+    ) -> pallas::Point {
+        self.msm(coeffs.raw, base)
+    }
+
+    fn msm_with_cached_base(
+        &self,
+        coeffs: &[pallas::Scalar],
+        base: &Self::BaseDescriptor<'_>,
+    ) -> pallas::Point {
+        self.msm(coeffs, base.raw)
+    }
+
+    fn msm_with_cached_inputs(
+        &self,
+        coeffs: &Self::CoeffsDescriptor<'_>,
+        base: &Self::BaseDescriptor<'_>,
+    ) -> pallas::Point {
+        self.msm(coeffs.raw, base.raw)
+    }
+}
+
+impl MsmAccel<vesta::Affine> for CttEngine {
+    fn msm(&self, coeffs: &[vesta::Scalar], bases: &[vesta::Affine]) -> vesta::Point {
+        assert_eq!(coeffs.len(), bases.len());
+        let mut result = MaybeUninit::<vesta_ec_jac>::uninit();
+        unsafe {
+            ctt_vesta_ec_jac_multi_scalar_mul_fr_coefs_vartime_parallel(
+                self.0.get_private_context(),
+                result.as_mut_ptr(),
+                coeffs.as_ptr() as *const vesta_fr,
+                bases.as_ptr() as *const vesta_ec_aff,
+                bases.len(),
+            );
+            mem::transmute::<MaybeUninit<vesta_ec_jac>, vesta::Point>(result)
+        }
+    }
+
+    // Caching API
+    // -------------------------------------------------
+
+    type CoeffsDescriptor<'c> = CttMsmCoeffsDesc<'c, vesta::Affine>;
+    type BaseDescriptor<'b> = CttMsmBaseDesc<'b, vesta::Affine>;
+
+    fn get_coeffs_descriptor<'c>(&self, coeffs: &'c [vesta::Scalar]) -> Self::CoeffsDescriptor<'c> {
+        // Do expensive device/library specific preprocessing here
+        Self::CoeffsDescriptor { raw: coeffs }
+    }
+    fn get_base_descriptor<'b>(&self, base: &'b [vesta::Affine]) -> Self::BaseDescriptor<'b> {
+        // Do expensive device/library specific preprocessing here
+        Self::BaseDescriptor { raw: base }
+    }
+
+    fn msm_with_cached_scalars(
+        &self,
+        coeffs: &Self::CoeffsDescriptor<'_>,
+        base: &[vesta::Affine],
+    ) -> vesta::Point {
+        self.msm(coeffs.raw, base)
+    }
+
+    fn msm_with_cached_base(
+        &self,
+        coeffs: &[vesta::Scalar],
+        base: &Self::BaseDescriptor<'_>,
+    ) -> vesta::Point {
+        self.msm(coeffs, base.raw)
+    }
+
+    fn msm_with_cached_inputs(
+        &self,
+        coeffs: &Self::CoeffsDescriptor<'_>,
+        base: &Self::BaseDescriptor<'_>,
+    ) -> vesta::Point {
         self.msm(coeffs.raw, base.raw)
     }
 }
