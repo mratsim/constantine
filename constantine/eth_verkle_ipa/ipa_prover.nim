@@ -25,7 +25,7 @@ import
 
 # ############################################################
 #
-#     Inner Product Argument using Pedersen Commitments
+# Inner Product Argument using Pedersen Commitments
 #
 # ############################################################
 
@@ -34,9 +34,7 @@ import
 
 # Further reference refer to this https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
 
-
-
-func genIPAConfig*(res: var IPASettings, ipaTranscript: var IpaTranscript[sha256, 32]) : bool {.inline.}=
+func genIPAConfig*(res: var IPASettings, ipaTranscript: var IpaTranscript[sha256, 32]) : bool {.inline.} =
   # Initiates a new IPASettings
   # IPASettings has all the necessary information related to create an IPA proof
   # such as SRS, precomputed weights for Barycentric formula
@@ -52,24 +50,23 @@ func genIPAConfig*(res: var IPASettings, ipaTranscript: var IpaTranscript[sha256
   res.numRounds.computeNumRounds(uint64(VerkleDomain))
   return true
 
-
-func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: IPASettings, commitment: EC_P, a: var openArray[Fr[Banderwagon]], evalPoint: Fr[Banderwagon] ) : bool {.inline.}=
+func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: IPASettings, commitment: EC_P, a: var openArray[Fr[Banderwagon]], evalPoint: Fr[Banderwagon]) : bool {.inline.} =
   ## createIPAProof creates an IPA proof for a committed polynomial in evaluation form.
   ## `a` vectors are the evaluation points in the domain, and `evalPoint` represents the evaluation point.
   transcript.domain_separator(asBytes"ipa")
   var b {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
   
-  b.computeBarycentricCoefficients(ic.precompWeights,evalPoint)
+  b.computeBarycentricCoefficients(ic.precompWeights, evalPoint)
   var innerProd {.noInit.}: Fr[Banderwagon]
 
-  innerProd.computeInnerProducts(a,b)
+  innerProd.computeInnerProducts(a, b)
 
   transcript.pointAppend(asBytes"C", commitment)
   transcript.scalarAppend(asBytes"input point", evalPoint.toBig())
   transcript.scalarAppend(asBytes"output point", innerProd.toBig())
 
   var w : matchingOrderBigInt(Banderwagon)
-  w.generateChallengeScalar(transcript,asBytes"w")
+  w.generateChallengeScalar(transcript, asBytes"w")
 
   var q {.noInit.} : EC_P
   q = ic.Q_val
@@ -89,14 +86,13 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
   var current_basis_view = current_basis.toView()
 
   for i in 0 ..< int(num_rounds):
-
-    var a_L = a_view.chunk(0,a_view.len shr 1)
+    var a_L = a_view.chunk(0, a_view.len shr 1)
     var a_R = a_view.chunk(a_view.len shr 1 + 1, a_view.len)
 
-    var b_L = b_view.chunk(0,b_view.len shr 1)
+    var b_L = b_view.chunk(0, b_view.len shr 1)
     var b_R = b_view.chunk(b_view.len shr 1 + 1, b_view.len)
 
-    var G_L = current_basis_view.chunk(0,current_basis_view.len shr 1)
+    var G_L = current_basis_view.chunk(0, current_basis_view.len shr 1)
     var G_R = current_basis_view.chunk(current_basis_view.len shr 1 + 1, current_basis_view.len)
 
     var z_L {.noInit.}: Fr[Banderwagon]
@@ -108,7 +104,7 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
     one.setOne()
 
     var C_L_1 {.noInit.}: EC_P
-    C_L_1.pedersen_commit_varbasis(G_L.toOpenArray(),G_L.toOpenArray().len, a_R.toOpenArray(), a_R.len)
+    C_L_1.pedersen_commit_varbasis(G_L.toOpenArray(), G_L.toOpenArray().len, a_R.toOpenArray(), a_R.len)
 
     var fp1 : array[2, EC_P]
     fp1[0] = C_L_1
@@ -119,7 +115,7 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
     fr1[1] = z_L
 
     var C_L {.noInit.}: EC_P
-    C_L.pedersen_commit_varbasis(fp1, fp1.len,fr1, fr1.len)
+    C_L.pedersen_commit_varbasis(fp1, fp1.len, fr1, fr1.len)
 
     var C_R_1 {.noInit.}: EC_P
     C_R_1.pedersen_commit_varbasis(G_R.toOpenArray(), G_R.toOpenArray().len, a_L.toOpenArray(), a_L.len)
@@ -127,14 +123,14 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
     var C_R {.noInit.}: EC_P
 
     var fp2 : array[2, EC_P]
-    fp2[0]=C_R_1
-    fp2[1]=q
+    fp2[0] = C_R_1
+    fp2[1] = q
 
     var fr2: array[2, Fr[Banderwagon]]
-    fr2[0]=one
-    fr2[1]=z_R
+    fr2[0] = one
+    fr2[1] = z_R
 
-    C_R.pedersen_commit_varbasis(fp2,fp2.len, fr2, fr2.len)
+    C_R.pedersen_commit_varbasis(fp2, fp2.len, fr2, fr2.len)
 
     L[i] = C_L
     R[i] = C_R
@@ -166,7 +162,7 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
 
 # ############################################################
 #
-#                IPA proof equality checker
+# IPA proof equality checker
 #
 # ############################################################
 
