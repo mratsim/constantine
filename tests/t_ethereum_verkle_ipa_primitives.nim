@@ -146,6 +146,63 @@ suite "Barycentric Form Tests":
         doAssert (expected2.toHex() == "0x0ddd6424cdfa97f24d8de604a309e1a4eb6ce33663aa132cf87ee874a0ffe506").bool() == true, "Problem with Inner Products!"
 
     testBarycentricPrecomputeCoefficients()
+# ############################################################
+#
+#      Test for Random Point Generation and CRS Consistency
+#
+# ############################################################
+
+suite "Random Elements Generation and CRS Consistency":
+  test "Test for Generating Random Points and Checking the 1st and 256th point with the Verkle Spec":
+
+    proc testGenPoints()=
+      var ipaConfig {.noInit.} : IPASettings
+      var ipaTranscript {.noInit.} : IpaTranscript[sha256, 32]
+      discard ipaConfig.genIPAConfig(ipaTranscript)
+
+      var basisPoints {.noInit.} : array[256, EC_P]
+      basisPoints.generate_random_points(ipaTranscript, 256)
+
+      var arr_byte {.noInit.} : array[256, array[32, byte]]
+      discard arr_byte.serializeBatch(basisPoints)
+
+      doAssert arr_byte[0].toHex() == "0x01587ad1336675eb912550ec2a28eb8923b824b490dd2ba82e48f14590a298a0", "Failed to generate the 1st point!"
+      doAssert arr_byte[255].toHex() == "0x3de2be346b539395b0c0de56a5ccca54a317f1b5c80107b0802af9a62276a4d8", "Failed to generate the 256th point!"
+    
+    testGenPoints()
+
+# ############################################################
+#
+#      Test for Computing the Correct Vector Commitment
+#
+# ############################################################
+## Test vectors are in this link, as bigint strings
+## https://github.com/jsign/verkle-test-vectors/blob/main/crypto/001_vector_commitment.json#L5-L261
+
+suite "Computing the Correct Vector Commitment":
+  test "Test for Vector Commitments from Verkle Test Vectors by @Ignacio":
+    proc testVectorComm() =
+      var ipaConfig: IPASettings
+      var ipaTranscript: IpaTranscript[sha256, 32]
+      let stat1 = ipaConfig.genIPAConfig(ipaTranscript)
+
+      var basisPoints : array[256, EC_P]
+      basisPoints.generate_random_points(ipaTranscript, 256)
+
+      
+      var test_scalars {.noInit.}: array[256, Fr[Banderwagon]]
+      for i in 0 ..< 256:
+        test_scalars[i].fromHex(testScalarsHex[i])
+
+      var commitment {.noInit.} : EC_P
+      commitment.pedersen_commit_varbasis(basisPoints, basisPoints.len, test_scalars, test_scalars.len)
+
+      var arr22 {.noInit.} : Bytes
+      let stat33 = arr22.serialize(commitment)
+
+      doAssert "0x524996a95838712c4580220bb3de453d76cffd7f732f89914d4417bc8e99b513" == arr22.toHex(), "bit string does not match expected"
+    testVectorComm()
+
 
 # ############################################################
 #
