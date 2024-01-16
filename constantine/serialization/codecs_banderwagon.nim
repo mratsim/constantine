@@ -131,10 +131,10 @@ func deserialize*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccStatus =
 ##
 ## ############################################################
 ## 
-func serialize_scalar*(dst: var array[32, byte], scalar: matchingOrderBigInt(Banderwagon)): CttCodecScalarStatus =
+func serialize_scalar*(dst: var array[32, byte], scalar: matchingOrderBigInt(Banderwagon), order: static Endianness = bigEndian): CttCodecScalarStatus =
   ## Serialize a scalar
   ## Returns cttCodecScalar_Success if successful
-  dst.marshal(scalar, bigEndian)
+  dst.marshal(scalar, order)
   return cttCodecScalar_Success
 ## ############################################################
 ##
@@ -142,7 +142,7 @@ func serialize_scalar*(dst: var array[32, byte], scalar: matchingOrderBigInt(Ban
 ##
 ## ############################################################
 ## 
-func deserialize_scalar*(dst: var matchingOrderBigInt(Banderwagon), src: array[32, byte]): CttCodecScalarStatus =
+func deserialize_scalar*(dst: var matchingOrderBigInt(Banderwagon), src: array[32, byte], order: static Endianness = bigEndian): CttCodecScalarStatus =
   ## Deserialize a scalar
   ## Also validates the scalar range
   ##
@@ -151,7 +151,7 @@ func deserialize_scalar*(dst: var matchingOrderBigInt(Banderwagon), src: array[3
   ##
   ## This special-cases (and leaks) 0 scalar as this is a special-case in most protocols
   ## or completely invalid (for secret keys).
-  dst.unmarshal(src, bigEndian)
+  dst.unmarshal(src, order)
   let status = validate_scalar(dst)
   if status != cttCodecScalar_Success:
     dst.setZero()
