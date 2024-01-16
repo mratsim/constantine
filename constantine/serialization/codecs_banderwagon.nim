@@ -130,19 +130,22 @@ func deserialize*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccStatus =
 ##              Banderwagon Scalar Serialization
 ##
 ## ############################################################
-## Adding an optional Endianness param default at BigEndian
+## 
 func serialize_scalar*(dst: var array[32, byte], scalar: matchingOrderBigInt(Banderwagon), order: static Endianness = bigEndian): CttCodecScalarStatus =
+  ## Adding an optional Endianness param default at BigEndian
   ## Serialize a scalar
   ## Returns cttCodecScalar_Success if successful
   dst.marshal(scalar, order)
   return cttCodecScalar_Success
+
 ## ############################################################
 ##
 ##              Banderwagon Scalar Deserialization
 ##
 ## ############################################################
-## Adding an optional Endianness param default at BigEndian
+## 
 func deserialize_scalar*(dst: var matchingOrderBigInt(Banderwagon), src: array[32, byte], order: static Endianness = bigEndian): CttCodecScalarStatus =
+  ## Adding an optional Endianness param default at BigEndian
   ## Deserialize a scalar
   ## Also validates the scalar range
   ##
