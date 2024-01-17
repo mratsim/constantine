@@ -204,12 +204,71 @@ suite "Computing the Correct Vector Commitment":
     testVectorComm()
 
 
+# #######################################################################################################
+#
+#          Test for Deserializing a Scalar whose final size is bigger than the Scalar Field Size
+#
+# ########################################################################################################
+
+suite "Deserialize a proof which contains an invalid final scalar by @Ignacio":
+
+  test "Deserialize a proof which contains a final scalar bigger than the field size (MUST fail)":
+
+    proc testBiggerThanFieldSizeDeserialize() =
+      var test_big {.noInit.} : matchingOrderBigInt(Banderwagon)
+
+      var proof1_bytes = newSeq[byte](serializedProof1.len)
+      proof1_bytes.fromHex(serializedProof1)
+
+      var proof2_bytes : array[32, byte]
+
+      for i in 0 ..< 32:
+        proof2_bytes[i] = proof1_bytes[i]
+
+      let stat1 = test_big.deserialize_scalar(proof2_bytes, littleEndian)
+
+      doAssert stat1 != cttCodecScalar_Success, "This test should have FAILED"
+
+    testBiggerThanFieldSizeDeserialize()
+
+# #######################################################################################################
+#
+#          Test for Deserializing a Scalar whose final size is INVALID
+#
+# ########################################################################################################
+
+suite "Deserialize a proof which wrong lengths by @Ignacio":
+
+  test "Deserialize a proof which wrong lengths (all MUST fail)":
+
+    proc testInvalidFieldSizeDeserialize() =
+
+      var test_big {.noInit.} : array[3, matchingOrderBigInt(Banderwagon)]
+
+      var i : int = 0
+
+      while i != 3:
+        var proof_bytes = newSeq[byte](serializedProofs2[2].len)
+        proof_bytes.fromHex(serializedProofs2[i])
+
+        var proof2_bytes : array[32, byte]
+
+        for j in 0 ..< 32:
+          proof2_bytes[j] = proof_bytes[j]
+        
+        let stat = test_big[i].deserialize_scalar(proof2_bytes, littleEndian)
+
+        i = i + 1
+        doAssert stat != cttCodecScalar_Success, "This test should FAIL"
+
+
+    testInvalidFieldSizeDeserialize()
+
 # ############################################################
 #
 #          Test for Transcript and Challenge Scalar
 #
 # ############################################################
-
 
 suite "Transcript Tests":
 
