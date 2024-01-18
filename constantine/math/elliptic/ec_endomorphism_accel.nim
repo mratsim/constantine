@@ -316,7 +316,7 @@ func scalarMulEndo*[scalBits; EC](
     {.error: "Unconfigured".}
 
   # 2. Decompose scalar into mini-scalars
-  const L = scalBits.ceilDiv_vartime(M) + 1 # Alternatively, negative can be handled with an extra "+1"
+  const L = scalBits.ceilDiv_vartime(M) + 2
   var miniScalars {.noInit.}: array[M, BigInt[L]]
   var negatePoints {.noInit.}: array[M, SecretBool]
   miniScalars.decomposeEndo(negatePoints, scalar, P.F)

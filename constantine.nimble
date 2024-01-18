@@ -489,6 +489,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Edge cases highlighted by past bugs
   # ----------------------------------------------------------
   ("tests/math_elliptic_curves/t_ec_shortw_prj_edge_cases.nim", false),
+  ("tests/math_elliptic_curves/t_ec_shortw_prj_edge_case_345.nim", false),
 
   # Elliptic curve arithmetic - batch computation
   # ----------------------------------------------------------
