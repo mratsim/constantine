@@ -47,13 +47,17 @@ template decomposeEndoImpl[scalBits: static int](
   static: doAssert L >= ceilDiv_vartime(scalBits, M) + 1
   const w = F.C.getCurveOrderBitwidth().wordsRequired()
 
+  # Upstream bug:
+  #   {.noInit.} variables must be {.inject.} as well
+  #   or they'll be mangled as foo`gensym12345 instead of fooX60gensym12345 in C codegen
+
   when M == 2:
-    var alphas{.noInit.}: (
+    var alphas{.noInit, inject.}: (
       BigInt[scalBits + babai(F)[0][0].bits],
       BigInt[scalBits + babai(F)[1][0].bits]
     )
   elif M == 4:
-    var alphas{.noInit.}: (
+    var alphas{.noInit, inject.}: (
       BigInt[scalBits + babai(F)[0][0].bits],
       BigInt[scalBits + babai(F)[1][0].bits],
       BigInt[scalBits + babai(F)[2][0].bits],
@@ -72,7 +76,7 @@ template decomposeEndoImpl[scalBits: static int](
   # and     kj = 0 - 𝛼j b0j - 𝛼1 b1j ... - 𝛼m bmj
   var
     k {.inject.}: array[M, BigInt[scalBits]] # zero-init required
-    alphaB {.noInit.}: BigInt[scalBits]
+    alphaB {.noInit, inject.}: BigInt[scalBits]
   k[0] = scalar
   staticFor miniScalarIdx, 0, M:
     staticFor basisIdx, 0, M:

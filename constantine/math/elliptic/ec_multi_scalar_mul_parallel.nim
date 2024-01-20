@@ -329,7 +329,7 @@ proc msmAffine_vartime_parallel[bits: static int, EC, ECaff](
 
   # Prologue
   # --------
-  const numBuckets = 1 shl (c-1)
+  const numBuckets {.used.} = 1 shl (c-1)
   const numFullWindows = bits div c
   const numWindows = numFullWindows + 1 # Even if `bits div c` is exact, the signed recoding needs to see an extra 0 after the MSB
 
