@@ -38,39 +38,26 @@ type
   MultiScalar[M, LengthInBits: static int] = array[M, BigInt[LengthInBits]]
     ## Decomposition of a secret scalar in multiple scalars
 
-func decomposeEndo*[M, scalBits, L: static int](
-       miniScalars: var MultiScalar[M, L],
-       negatePoints: var array[M, SecretBool],
+template decomposeEndoImpl[scalBits: static int](
        scalar: BigInt[scalBits],
-       F: typedesc[Fp or Fp2]
-     ) =
-  ## Decompose a secret scalar into M mini-scalars
-  ## using a curve endomorphism(s) characteristics.
-  ##
-  ## A scalar decomposition might lead to negative miniscalar(s).
-  ## For proper handling it requires either:
-  ## 1. Negating it and then negating the corresponding curve point P
-  ## 2. Adding an extra bit to the recoding, which will do the right thing™
-  ##
-  ## For implementation solution 1 is faster:
-  ##   - Double + Add is about 5000~8000 cycles on 6 64-bits limbs (BLS12-381)
-  ##   - Conditional negate is about 10 cycles per Fp, on G2 projective we have 3 (coords) * 2 (Fp2) * 10 (cycles) ~= 60 cycles
-  ##     We need to test the mini scalar, which is 65 bits so 2 Fp so about 2 cycles
-  ##     and negate it as well.
-
+       F: typedesc[Fp or Fp2],
+       copyMiniScalarsResult: untyped) =
   static: doAssert scalBits >= L, "Cannot decompose a scalar smaller than a mini-scalar or the decomposition coefficient"
-
   # Equal when no window or no negative handling, greater otherwise
-  static: doAssert L >= scalBits.ceilDiv_vartime(M) + 1
+  static: doAssert L >= ceilDiv_vartime(scalBits, M) + 1
   const w = F.C.getCurveOrderBitwidth().wordsRequired()
 
+  # Upstream bug:
+  #   {.noInit.} variables must be {.inject.} as well
+  #   or they'll be mangled as foo`gensym12345 instead of fooX60gensym12345 in C codegen
+
   when M == 2:
-    var alphas{.noInit.}: (
+    var alphas{.noInit, inject.}: (
       BigInt[scalBits + babai(F)[0][0].bits],
       BigInt[scalBits + babai(F)[1][0].bits]
     )
   elif M == 4:
-    var alphas{.noInit.}: (
+    var alphas{.noInit, inject.}: (
       BigInt[scalBits + babai(F)[0][0].bits],
       BigInt[scalBits + babai(F)[1][0].bits],
       BigInt[scalBits + babai(F)[2][0].bits],
@@ -84,16 +71,12 @@ func decomposeEndo*[M, scalBits, L: static int](
       alphas[i].setZero()
     else:
       alphas[i].prod_high_words(babai(F)[i][0], scalar, w)
-    when babai(F)[i][1]:
-      # prod_high_words works like logical right shift
-      # When negative, we should add 1 to properly round toward -infinity
-      alphas[i] += One
 
   # We have k0 = s - 𝛼0 b00 - 𝛼1 b10 ... - 𝛼m bm0
   # and     kj = 0 - 𝛼j b0j - 𝛼1 b1j ... - 𝛼m bmj
   var
-    k: array[M, BigInt[scalBits]] # zero-init required
-    alphaB {.noInit.}: BigInt[scalBits]
+    k {.inject.}: array[M, BigInt[scalBits]] # zero-init required
+    alphaB {.noInit, inject.}: BigInt[scalBits]
   k[0] = scalar
   staticFor miniScalarIdx, 0, M:
     staticFor basisIdx, 0, M:
@@ -108,9 +91,60 @@ func decomposeEndo*[M, scalBits, L: static int](
         else:
           k[miniScalarIdx] -= alphaB
 
+    copyMiniScalarsResult
+
+func decomposeEndo*[M, scalBits, L: static int](
+       miniScalars: var MultiScalar[M, L],
+       negatePoints: var array[M, SecretBool],
+       scalar: BigInt[scalBits],
+       F: typedesc[Fp or Fp2]) =
+  ## Decompose a secret scalar into M mini-scalars
+  ## using a curve endomorphism(s) characteristics.
+  ##
+  ## A scalar decomposition might lead to negative miniscalar(s).
+  ## For proper handling it requires either:
+  ## 1. Negating it and then negating the corresponding curve point P
+  ## 2. Adding an extra bit to the recoding, which will do the right thing™
+  ##
+  ## For implementation solution 1 is faster:
+  ##   - Double + Add is about 5000~8000 cycles on 6 64-bits limbs (BLS12-381)
+  ##   - Conditional negate is about 10 cycles per Fp, on G2 projective we have 3 (coords) * 2 (Fp2) * 10 (cycles) ~= 60 cycles
+  ##     We need to test the mini scalar, which is 65 bits so 2 Fp so about 2 cycles
+  ##     and negate it as well.
+  ##
+  ## This implements solution 1.
+  decomposeEndoImpl(scalar, F):
+    # Negative miniscalars are turned positive
+    # Caller should negate the corresponding Elliptic Curve points
     let isNeg = k[miniScalarIdx].isMsbSet()
     negatePoints[miniScalarIdx] = isNeg
     k[miniScalarIdx].cneg(isNeg)
+    miniScalars[miniScalarIdx].copyTruncatedFrom(k[miniScalarIdx])
+
+func decomposeEndo*[M, scalBits, L: static int](
+       miniScalars: var MultiScalar[M, L],
+       scalar: BigInt[scalBits],
+       F: typedesc[Fp or Fp2]) =
+  ## Decompose a secret scalar into M mini-scalars
+  ## using a curve endomorphism(s) characteristics.
+  ##
+  ## A scalar decomposition might lead to negative miniscalar(s).
+  ## For proper handling it requires either:
+  ## 1. Negating it and then negating the corresponding curve point P
+  ## 2. Adding an extra bit to the recoding, which will do the right thing™
+  ##
+  ## For implementation solution 1 is faster:
+  ##   - Double + Add is about 5000~8000 cycles on 6 64-bits limbs (BLS12-381)
+  ##   - Conditional negate is about 10 cycles per Fp, on G2 projective we have 3 (coords) * 2 (Fp2) * 10 (cycles) ~= 60 cycles
+  ##     We need to test the mini scalar, which is 65 bits so 2 Fp so about 2 cycles
+  ##     and negate it as well.
+  ##
+  ## However, when dealing with scalars that do not use the full bitwidth
+  ## the extra bit avoids potential underflows.
+  ## Also for partitioned GLV-SAC (with 8-way decomposition) it is necessary.
+  ##
+  ## This implements solution 2.
+  decomposeEndoImpl(scalar, F):
     miniScalars[miniScalarIdx].copyTruncatedFrom(k[miniScalarIdx])
 
 # Secret scalar + dynamic point
@@ -184,8 +218,7 @@ proc `[]=`(recoding: var Recoded,
 
 func nDimMultiScalarRecoding[M, L: static int](
     dst: var GLV_SAC[M, L],
-    src: MultiScalar[M, L]
-  ) =
+    src: MultiScalar[M, L]) =
   ## This recodes N scalar for GLV multi-scalar multiplication
   ## with side-channel resistance.
   ##
@@ -316,7 +349,7 @@ func scalarMulEndo*[scalBits; EC](
     {.error: "Unconfigured".}
 
   # 2. Decompose scalar into mini-scalars
-  const L = scalBits.ceilDiv_vartime(M) + 1 # Alternatively, negative can be handled with an extra "+1"
+  const L = scalBits.ceilDiv_vartime(M) + 1
   var miniScalars {.noInit.}: array[M, BigInt[L]]
   var negatePoints {.noInit.}: array[M, SecretBool]
   miniScalars.decomposeEndo(negatePoints, scalar, P.F)
@@ -325,13 +358,7 @@ func scalarMulEndo*[scalBits; EC](
   # A scalar decomposition might lead to negative miniscalar.
   # For proper handling it requires either:
   # 1. Negating it and then negating the corresponding curve point P
-  # 2. Adding an extra bit to the recoding, which will do the right thing™
-  #
-  # For implementation solution 1 is faster:
-  #   - Double + Add is about 5000~8000 cycles on 6 64-bits limbs (BLS12-381)
-  #   - Conditional negate is about 10 cycles per Fp, on G2 projective we have 3 (coords) * 2 (Fp2) * 10 (cycles) ~= 60 cycles
-  #     We need to test the mini scalar, which is 65 bits so 2 Fp so about 2 cycles
-  #     and negate it as well.
+  # 2. Adding an extra bit to L for the recoding, which will do the right thing™
   block:
     P.cneg(negatePoints[0])
     staticFor i, 1, M:
@@ -401,8 +428,7 @@ func scalarMulEndo*[scalBits; EC](
 func buildLookupTable_m2w2[EC, Ecaff](
        P0: EC,
        P1: EC,
-       lut: var array[8, Ecaff],
-     ) =
+       lut: var array[8, Ecaff]) =
   ## Build a lookup table for GLV with 2-dimensional decomposition
   ## and window of size 2
 
@@ -473,10 +499,7 @@ func computeRecodedLength(bitWidth, window: int): int =
   let lw = bitWidth.ceilDiv_vartime(window) + 1
   result = (lw mod window) + lw
 
-func scalarMulGLV_m2w2*[scalBits; EC](
-       P0: var EC,
-       scalar: BigInt[scalBits]
-     ) =
+func scalarMulGLV_m2w2*[scalBits; EC](P0: var EC, scalar: BigInt[scalBits]) =
   ## Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P

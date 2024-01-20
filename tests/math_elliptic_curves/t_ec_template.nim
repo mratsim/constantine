@@ -685,6 +685,35 @@ proc run_EC_mul_vs_ref_impl*(
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Long01Sequence)
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Long01Sequence)
 
+      # Scalars that doesn't uses the full bit length
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 2, randZ = false, gen = Uniform)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 2, randZ = true, gen = Uniform)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 2, randZ = false, gen = HighHammingWeight)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 2, randZ = true, gen = HighHammingWeight)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 2, randZ = false, gen = Long01Sequence)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 2, randZ = true, gen = Long01Sequence)
+
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 4, randZ = false, gen = Uniform)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 4, randZ = true, gen = Uniform)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 4, randZ = false, gen = HighHammingWeight)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 4, randZ = true, gen = HighHammingWeight)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 4, randZ = false, gen = Long01Sequence)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 4, randZ = true, gen = Long01Sequence)
+
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 2, randZ = false, gen = Uniform)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 2, randZ = true, gen = Uniform)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 2, randZ = false, gen = HighHammingWeight)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 2, randZ = true, gen = HighHammingWeight)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 2, randZ = false, gen = Long01Sequence)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 2, randZ = true, gen = Long01Sequence)
+
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 4, randZ = false, gen = Uniform)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 4, randZ = true, gen = Uniform)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 4, randZ = false, gen = HighHammingWeight)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 4, randZ = true, gen = HighHammingWeight)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 4, randZ = false, gen = Long01Sequence)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 4, randZ = true, gen = Long01Sequence)
+
 proc run_EC_mixed_add_impl*(
        ec: typedesc,
        Iters: static int,
