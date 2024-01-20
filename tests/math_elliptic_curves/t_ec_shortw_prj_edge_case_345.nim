@@ -74,48 +74,59 @@ proc printG( pt: G ) =
 
 #-------------------------------------------------------------------------------
 
-var p : G
-var q : G
+template test(scalarProc: untyped) =
+  proc `test _ scalarProc`() =
+    var p : G
+    var q : G
 
-echo("")
-echo("sanity check: g2^r should be infinity")
-p = gen2
-p.scalarMul(r)
-printG(p)
+    echo("")
+    echo("sanity check: g2^r should be infinity")
+    p = gen2
+    p.scalarProc(r)
+    printG(p)
 
-echo("")
-echo("LHS = g2^expo")
-p = gen2
-p.scalarMul(expo)
-printG(p)
-let lhs : G = p
+    echo("")
+    echo("LHS = g2^expo")
+    p = gen2
+    p.scalarProc(expo)
+    printG(p)
+    let lhs : G = p
 
-echo("")
-echo("RHS = g2^expoA * g2^expoB, where expo = expoA + expoB")
-p = gen2
-q = gen2
-p.scalarMul(expoA)
-q.scalarMul(expoB)
-p += q
-printG(p)
-let rhs : G = p
+    echo("")
+    echo("RHS = g2^expoA * g2^expoB, where expo = expoA + expoB")
+    p = gen2
+    q = gen2
+    p.scalarProc(expoA)
+    q.scalarProc(expoB)
+    p += q
+    printG(p)
+    let rhs : G = p
 
-echo("")
-echo("reference from SageMath")
-echo("  sage x coord:")
-echo("    1 -> 17216390949661727229956939928583223226083668728437958793715435751523027888005 ")
-echo("    u -> 3082945034329785101034278215941854680789766318859358488904629243958221738137 ")
-echo("  sage y coord:")
-echo("    1 -> 20108673238932196920264801702661201943173809015346082727725783869161803474440 ")
-echo("    u -> 10405477402946058176045590740070709500904395284580129777629727895349459816649 ")
+    echo("")
+    echo("reference from SageMath")
+    echo("  sage x coord:")
+    echo("    1 -> 17216390949661727229956939928583223226083668728437958793715435751523027888005 ")
+    echo("    u -> 3082945034329785101034278215941854680789766318859358488904629243958221738137 ")
+    echo("  sage y coord:")
+    echo("    1 -> 20108673238932196920264801702661201943173809015346082727725783869161803474440 ")
+    echo("    u -> 10405477402946058176045590740070709500904395284580129777629727895349459816649 ")
 
-echo("")
-echo("LHS - RHS = ")
-p =  lhs
-p -= rhs
-printG(p)
+    echo("")
+    echo("LHS - RHS = ")
+    p =  lhs
+    p -= rhs
+    printG(p)
 
-doAssert p.isInf().bool()
+    doAssert p.isInf().bool()
+
+  `test _ scalarProc`()
+
+system.echo "issue #345 - scalarMul"
+test(scalarMul)
+system.echo "issue #345 - scalarMul_vartime"
+test(scalarMul_vartime)
+
+system.echo "SUCCESS - issue #345"
 
 #-------------------------------------------------------------------------------
 
