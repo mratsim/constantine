@@ -11,12 +11,20 @@ import
 
 # ############################################################
 #
-#               Field arithmetic on Nvidia GPU
+#               Field arithmetic on Nvidia GPUs
 #
 # ############################################################
 
 # Loads from global (kernel params) take over 100 cycles
 # https://docs.nvidia.com/cuda/parallel-thread-execution/index.html#operand-costs
+
+# Instructions cycle count:
+# - Dissecting the NVIDIA Volta GPU Architecture via Microbenchmarking
+#   Zhe Jia, Marco Maggioni, Benjamin Staiger, Daniele P. Scarpazza
+#   https://arxiv.org/pdf/1804.06826.pdf
+# - Demystifying the Nvidia Ampere Architecture through Microbenchmarking
+#   and Instruction-level Analysis
+#   https://arxiv.org/pdf/2208.11174.pdf
 
 proc finalSubMayOverflow*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field, r, a: Array) =
   ## If a >= Modulus: r <- a-M
@@ -115,3 +123,56 @@ proc field_add_gen*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field): FnDef
   bld.retVoid()
 
   return (addModTy, addModKernel)
+
+proc field_sub_gen*(asy: Assembler_LLVM, cm: CurveMetadata, field: Field): FnDef =
+  ## Generate an optimized modular substraction kernel
+  ## with parameters `a, b, modulus: Limbs -> Limbs`
+
+  let procName = cm.genSymbol(block:
+    case field
+    of fp: opFpSub
+    of fr: opFrSub)
+  let fieldTy = cm.getFieldType(field)
+  let pFieldTy = pointer_t(fieldTy)
+
+  let subModTy = function_t(asy.void_t, [pFieldTy, pFieldTy, pFieldTy])
+  let subModKernel = asy.module.addFunction(cstring procName, subModTy)
+  let blck = asy.ctx.appendBasicBlock(subModKernel, "subModBody")
+  asy.builder.positionAtEnd(blck)
+
+  let bld = asy.builder
+
+  let r = bld.asArray(subModKernel.getParam(0), fieldTy)
+  let a = bld.asArray(subModKernel.getParam(1), fieldTy)
+  let b = bld.asArray(subModKernel.getParam(2), fieldTy)
+
+  let t = bld.makeArray(fieldTy)
+  let N = cm.getNumWords(field)
+
+  t[0] = bld.sub_bo(a[0], b[0])
+  for i in 1 ..< N:
+    t[i] = bld.sub_bio(a[i], b[i])
+
+  let underflowMask = case cm.wordSize
+                      of size32: bld.sub_bi(0'u32, 0'u32)
+                      of size64: bld.sub_bi(0'u64, 0'u64)
+
+  # If underflow
+  # TODO: predicated mov instead?
+  # The number of cycles is not available in https://arxiv.org/pdf/2208.11174.pdf
+  let M = (seq[ValueRef])(cm.getModulus(field))
+  let maskedM = bld.makeArray(fieldTy)
+  for i in 0 ..< N:
+    maskedM[i] = bld.`and`(M[i], underflowMask)
+
+  block:
+    t[0] = bld.add_co(t[0], maskedM[0])
+  for i in 1 ..< N-1:
+    t[i] = bld.add_cio(t[i], maskedM[i])
+  if N > 1:
+    t[N-1] = bld.add_ci(t[N-1], maskedM[N-1])
+
+  bld.store(r, t)
+  bld.retVoid()
+
+  return (subModTy, subModKernel)

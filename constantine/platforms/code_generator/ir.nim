@@ -197,6 +197,8 @@ type
   Opcode* = enum
     opFpAdd = "fp_add"
     opFrAdd = "fr_add"
+    opFpSub = "fp_sub"
+    opFrSub = "fr_sub"
 
 proc setFieldConst(fc: var FieldConst, ctx: ContextRef, wordSize: WordSize, modBits: uint32, modulus: string) =
   let wordTy = case wordSize
