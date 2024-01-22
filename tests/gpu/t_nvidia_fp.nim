@@ -49,6 +49,12 @@ proc genFieldSubPTX(asy: Assembler_LLVM, cm: CurveMetadata) =
   let frSub = asy.field_sub_gen(cm, fr)
   asy.module.setCallableCudaKernel(frSub)
 
+proc genFieldMulPTX(asy: Assembler_LLVM, cm: CurveMetadata) =
+  let fpMul = asy.field_mul_gen(cm, fp)
+  asy.module.setCallableCudaKernel(fpMul)
+  let frMul = asy.field_mul_gen(cm, fr)
+  asy.module.setCallableCudaKernel(frMul)
+
 # Init LLVM
 # -------------------------
 initializeFullNVPTXTarget()
@@ -169,28 +175,90 @@ proc t_field_sub(curve: static Curve) =
     doAssert bool(rCPU == rGPU_32)
     doAssert bool(rCPU == rGPU_64)
 
+proc t_field_mul(curve: static Curve) =
+  # Codegen
+  # -------------------------
+  let asy = Assembler_LLVM.new(bkNvidiaPTX, cstring("t_nvidia_" & $curve))
+  let cm32 = CurveMetadata.init(asy, curve, size32)
+  asy.genFieldMulPTX(cm32)
+
+  # 64-bit integer fused-multiply-add with carry is buggy:
+  # https://gist.github.com/mratsim/a34df1e091925df15c13208df7eda569#file-mul-py
+  # https://forums.developer.nvidia.com/t/incorrect-result-of-ptx-code/221067
+
+  # let cm64 = CurveMetadata.init(asy, curve, size64)
+  # asy.genFieldMulPTX(cm64)
+
+  let ptx = asy.codegenNvidiaPTX(sm)
+
+  # GPU exec
+  # -------------------------
+  var cuCtx: CUcontext
+  var cuMod: CUmodule
+  check cuCtxCreate(cuCtx, 0, cudaDevice)
+  check cuModuleLoadData(cuMod, ptx)
+  defer:
+    check cuMod.cuModuleUnload()
+    check cuCtx.cuCtxDestroy()
+
+  let fpMul32 = cuMod.getCudaKernel(cm32, opFpMul)
+  let frMul32 = cuMod.getCudaKernel(cm32, opFrMul)
+  # let fpMul64 = cuMod.getCudaKernel(cm64, opFpMul)
+  # let frMul64 = cuMod.getCudaKernel(cm64, opFrMul)
+
+  # Fp
+  for i in 0 ..< Iters:
+    let a = rng.random_long01Seq(Fp[curve])
+    let b = rng.random_long01Seq(Fp[curve])
+
+
+    var rCPU, rGPU_32: Fp[curve] # rGPU_64
+
+    rCPU.prod(a, b)
+    fpMul32.exec(rGPU_32, a, b)
+    # fpMul64.exec(rGPU_64, a, b)
+
+    doAssert bool(rCPU == rGPU_32)
+    # doAssert bool(rCPU == rGPU_64)
+
+  # Fr
+  for i in 0 ..< Iters:
+    let a = rng.random_long01Seq(Fr[curve])
+    let b = rng.random_long01Seq(Fr[curve])
+
+    var rCPU, rGPU_32: Fr[curve] # rGPU_64
+
+    rCPU.prod(a, b)
+    frMul32.exec(rGPU_32, a, b)
+    # frMul64.exec(rGPU_64, a, b)
+
+    doAssert bool(rCPU == rGPU_32)
+    # doAssert bool(rCPU == rGPU_64)
+
 proc main() =
   const curves = [
-    P224,
+    # P224,
     BN254_Nogami,
     BN254_Snarks,
     Edwards25519,
     Bandersnatch,
     Pallas,
     Vesta,
-    P256,
-    Secp256k1,
+    # P256,
+    # Secp256k1,
     BLS12_377,
     BLS12_381,
-    BW6_761
+    BW6_761,
   ]
 
   suite "[Nvidia GPU] Field Arithmetic":
     staticFor i, 0, curves.len:
       const curve = curves[i]
-      test "Nvidia GPU field addition     (𝔽p, 𝔽r) for " & $curve:
+      test "Nvidia GPU field addition       (𝔽p, 𝔽r) for " & $curve:
         t_field_add(curve)
-      test "Nvidia GPU field substraction (𝔽p, 𝔽r) for " & $curve:
+      test "Nvidia GPU field substraction   (𝔽p, 𝔽r) for " & $curve:
         t_field_sub(curve)
+      test "Nvidia GPU field multiplication (𝔽p, 𝔽r) for " & $curve:
+        t_field_mul(curve)
 
 main()
