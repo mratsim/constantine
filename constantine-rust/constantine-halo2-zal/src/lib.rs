@@ -16,7 +16,7 @@ use ::core::mem::MaybeUninit;
 use std::mem;
 
 use halo2curves::bn256;
-use halo2curves::zal::{MsmAccel, ZalEngine};
+use halo2curves::zal::MsmAccel;
 use halo2curves::CurveAffine;
 
 #[derive(Debug)]
@@ -38,8 +38,6 @@ pub struct CttMsmCoeffsDesc<'c, C: CurveAffine> {
 pub struct CttMsmBaseDesc<'b, C: CurveAffine> {
     raw: &'b [C],
 }
-
-impl ZalEngine for CttEngine {}
 
 impl MsmAccel<bn256::G1Affine> for CttEngine {
     fn msm(&self, coeffs: &[bn256::Fr], bases: &[bn256::G1Affine]) -> bn256::G1 {
