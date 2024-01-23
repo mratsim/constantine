@@ -489,3 +489,29 @@ suite "Multiproof Tests":
       doAssert stat_verify_mult.bool() == true, "Multiproof verification error!"
 
     testMultiproofCreationAndVerification()
+
+  test "Multiproof Serialization and Deserialization (Covers IPAProof Serialization and Deserialization as well)":
+    proc testMultiproofSerDe() =
+
+      ## Pull a valid Multiproof from a valid hex test vector as used in Go-IPA https://github.com/crate-crypto/go-ipa/blob/master/multiproof_test.go#L120-L121
+      var validMultiproof_bytes {.noInit.} : VerkleMultiproofSerialized
+      validMultiproof_bytes.fromHex(validMultiproof)
+
+      var multiprv {.noInit.} : MultiProof
+
+      ## Deserialize it into the Multiproof type
+      let stat1 = multiprv.deserializeVerkleMultiproof(validMultiproof_bytes)
+      doAssert stat1 == true, "Failed to Serialize Multiproof"
+
+      discard validMultiproof_bytes
+
+      ## Serialize the Multiproof type in to a serialize Multiproof byte array
+      var validMultiproof_bytes2 {.noInit} : VerkleMultiproofSerialized
+      let stat2 = validMultiproof_bytes2.serializeVerkleMultiproof(multiprv)
+      doAssert stat2 == true, "Failed to Deserialize Multiproof"
+
+      ## Check the serialized Multiproof with the valid hex test vector
+      doAssert validMultiproof_bytes2.toHex() == validMultiproof, "Error in the Multiproof Process!"
+
+    testMultiproofSerDe()
+

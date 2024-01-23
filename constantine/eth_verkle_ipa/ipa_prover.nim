@@ -16,6 +16,10 @@ import
   ./[transcript_gen, common_utils, eth_verkle_constants, barycentric_form],
   ../platforms/primitives,
   ../hashes,
+  ../serialization/[
+    codecs_banderwagon,
+    codecs_status_codes,
+  ],
   ../math/config/[type_ff, curves],
   ../math/elliptic/[ec_twistededwards_projective],
   ../math/arithmetic,
@@ -159,6 +163,150 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: I
   res.R_vector = R
   res.A_scalar = a[0]
   return true
+
+# ############################################################
+#
+# IPA proof seriaizer
+#
+# ############################################################
+
+func serializeVerkleIPAProof* (dst: var VerkleIPAProofSerialized, src: IPAProof): bool =
+  ## IPA Proofs in Verkle consists of a Left array of 8 Base Field points, a Right array of 8 Base Field points, and a Scalar Field element
+  ## During serialization the format goes as follows:
+  ## 
+  ## L[0] (32 - byte array) L[1] (32 - byte array) .... L[7] (32 - byte array) ..... R[0] (32 - byte array) ... R[7] (32 - byte array) A (32 - byte array)
+  ## 
+  ## Which means the size of the byte array should be :
+  ## 
+  ## 32 * 8 (for Left half) + 32 * 8 (for Right half) + 32 * 1 (for Scalar) = 32 * 17 = 544 elements in the byte array.
+  ## 
+  ## ----------------------------------------------------------
+  ## 
+  ## Note that checks like Subgroup check for Banderwagon Points for Base Field elements in L and R, 
+  ## And checks for a valid scalar checking the Banderwagon scalar Curve Order is MANDATORY. They are all checked in the further low level functions
+  ## 
+  var res = false
+  var L_bytes {.noInit.} : array[8, array[32, byte]]
+  var R_bytes {.noInit.} : array[8, array[32, byte]]
+
+  let stat1 = L_bytes.serializeBatch(src.L_vector)
+  doAssert stat1 == cttCodecEcc_Success, "Batch serialization Failure!"
+
+
+  let stat2 = R_bytes.serializeBatch(src.R_vector)
+  doAssert stat2 == cttCodecEcc_Success, "Batch Serialization Failure!"
+
+  var A_bytes {.noInit.} : array[32, byte]
+  let stat3 = A_bytes.serialize_scalar(src.A_scalar.toBig(), littleEndian)
+  doAssert stat3 == cttCodecScalar_Success, "Scalar Serialization Failure!"
+
+  var idx : int = 0
+
+  for i in 0 ..< 8:
+    for j in 0 ..< 32:
+      dst[idx] = L_bytes[i][j]
+      idx = idx + 1
+
+  discard L_bytes
+
+  for i in 0 ..< 8:
+    for j in 0 ..< 32:
+      dst[idx] = R_bytes[i][j]
+      idx = idx + 1
+
+  discard R_bytes
+
+  for i in 0 ..< 32:
+    dst[idx] = A_bytes[i]
+    idx = idx + 1
+
+  discard A_bytes
+  
+  res = true
+  return res
+
+# ############################################################
+#
+# IPA proof deserializer
+#
+# ############################################################
+
+func deserializeVerkleIPAProof* (dst: var IPAProof, src: var VerkleIPAProofSerialized ): bool = 
+  ## IPA Proofs in Verkle consists of a Left array of 8 Base Field points, a Right array of 8 Base Field points, and a Scalar Field element
+  ## During deserialization the format goes as follows:
+  ## 
+  ## L[0] (32 - byte array) L[1] (32 - byte array) .... L[7] (32 - byte array) ..... R[0] (32 - byte array) ... R[7] (32 - byte array) A (32 - byte array)
+  ## 
+  ## Which means the size of the byte array should be :
+  ## 
+  ## 32 * 8 (for Left half) + 32 * 8 (for Right half) + 32 * 1 (for Scalar) = 32 * 17 = 544 elements in the byte array.
+  ## ----------------------------------------------------------
+  ## 
+  ## Note that check for Lexicographically Largest criteria for the Y - coordinate of the Twisted Edward Banderwagon point is MANDATORY
+  ## And, is pre-checked within this function from the `deserialize` function.
+  ## 
+  var res = false
+  
+  var L_bytes {.noInit.} : array[8, array[32, byte]]
+  var R_bytes {.noInit.} : array[8, array[32, byte]]
+  var A_bytes {.noInit.} : array[32, byte]
+
+  var L_side {.noInit.} : array[8, EC_P]
+  var R_side {.noInit.} : array[8, EC_P]
+
+  var A_inter {.noInit.} : matchingOrderBigInt(Banderwagon)
+  var A_fr {.noInit.} : Fr[Banderwagon]
+
+  var idx : int = 0
+
+  for i in 0 ..< 8:
+    for j in 0 ..< 32:
+      L_bytes[i][j] = src[idx]
+      idx = idx + 1
+
+  for i in 0 ..< 8:
+    for j in 0 ..< 32:
+      R_bytes[i][j] = src[idx]
+      idx = idx + 1
+
+  for i in 0 ..< 32:
+    A_bytes[i] = src[idx]
+    idx = idx + 1
+
+  var i : int = 0
+  for item in L_bytes.items():
+    let stat = L_side[i].deserialize(item)
+    doAssert stat == cttCodecEcc_Success, "Deserialization failure!"
+    i = i + 1
+
+  discard L_bytes
+
+  doAssert i == 8, "Should be 8!"
+
+  i  = 0
+  for item in R_bytes.items():
+    let stat = R_side[i].deserialize(item)
+    doAssert stat == cttCodecEcc_Success, "Deserialization failure!"
+    i = i + 1
+
+  discard R_bytes
+
+  doAssert i == 8, "Should be 8!"
+
+  let stat2 = A_inter.deserialize_scalar(A_bytes, littleEndian)
+  doAssert stat2 == cttCodecScalar_Success, "Scalar Deserialization failure!"
+
+  discard A_bytes
+
+  dst.L_vector = L_side
+  dst.R_vector = R_side
+
+  A_fr.fromBig(A_inter)
+
+  dst.A_scalar = A_fr
+
+  res = true
+  return res
 
 # ############################################################
 #

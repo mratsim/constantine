@@ -11,6 +11,10 @@ import
   ./[transcript_gen, common_utils, ipa_prover, barycentric_form, eth_verkle_constants, ipa_verifier],
   ../platforms/primitives,
   ../hashes,
+  ../serialization/[
+    codecs_banderwagon,
+    codecs_status_codes,
+  ],
   ../math/config/[type_ff, curves],
   ../math/elliptic/[ec_multi_scalar_mul, ec_multi_scalar_mul_scheduler],
   ../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
@@ -335,3 +339,99 @@ func verifyMultiproof*(multiProof: var MultiProof, transcript : var sha256, ipaS
 
     res = ipaSettings.checkIPAProof(transcript, EMinusD, multiProof.IPAprv, t_fr, g2t)
     return res
+
+# ############################################################
+#
+#                 Multiproof Serializer
+#
+# ############################################################
+
+func serializeVerkleMultiproof* (dst: var VerkleMultiproofSerialized, src: var MultiProof) : bool =
+  ##
+  ## Multiproofs in Verkle have a format of 
+  ## 
+  ## 1) The queried Base Field where the Vector Commitment `opening` is created
+  ## Consider this as the equivalent to the `Merkle Path` in usual Merkle Trees.
+  ## 
+  ## 2) The entire IPAProof which is exactly a 576 byte array, go through `serializeIPAProof` for the breakdown
+  ## 
+  ## The format of serialization is as:
+  ## 
+  ## Query Point (32 - byte array) .... IPAProof (544 - byte array) = 32 + 544 = 576 elements in the byte array
+  ## 
+  var res = false
+  var ipa_bytes {.noInit.} : array[544, byte]
+  var d_bytes {.noInit.} : array[32, byte]
+
+  let stat = ipa_bytes.serializeVerkleIPAProof(src.IPAprv)
+  doAssert stat == true, "IPA Serialization failed"
+
+  let stat2 = d_bytes.serialize(src.D)
+  doAssert stat2 == cttCodecEcc_Success, "Query point serialization failed"
+
+  var idx : int = 0
+
+  for i in 0 ..< 32:
+    dst[idx] = d_bytes[i]
+    idx = idx + 1
+
+  discard d_bytes
+
+  for i in 0 ..< 544:
+    dst[idx] = ipa_bytes[i]
+    idx = idx + 1
+
+  discard ipa_bytes
+
+  res = true
+  return res
+
+# ############################################################
+#
+#                 Multiproof Deserializer
+#
+# ############################################################
+  
+func deserializeVerkleMultiproof* (dst: var MultiProof, src: var VerkleMultiproofSerialized) :  bool =
+  ##
+  ## Multiproofs in Verkle have a format of 
+  ## 
+  ## 1) The queried Base Field where the Vector Commitment `opening` is created
+  ## Consider this as the equivalent to the `Merkle Path` in usual Merkle Trees.
+  ## 
+  ## 2) The entire IPAProof which is exactly a 576 byte array, go through `serializeIPAProof` for the breakdown
+  ## 
+  ## The format of serialization is as:
+  ## 
+  ## Query Point (32 - byte array) .... IPAProof (544 - byte array) = 32 + 544 = 576 elements in the byte array
+  ## 
+  var res = false
+  var ipa_bytes {.noInit.} : array[544, byte]
+  var d_bytes {.noInit.} : array[32, byte]
+
+  var idx : int = 0
+
+  for i in 0 ..< 32:
+    d_bytes[i] = src[idx]
+    idx = idx + 1
+
+  for i in 0 ..< 544:
+    ipa_bytes[i] = src[idx]
+    idx = idx + 1
+
+  var ipa_prv {.noInit.} : MultiProof.IPAprv
+  let stat1 = ipa_prv.deserializeVerkleIPAProof(ipa_bytes)
+  doAssert stat1 == true, "IPA Deserialization Failure!"
+
+  dst.IPAprv = ipa_prv
+  discard ipa_prv
+
+  var d_fp {.noInit.} : MultiProof.D
+  let stat2 = d_fp.deserialize(d_bytes)
+  doAssert stat2 == cttCodecEcc_Success, "Query Point Deserialization Failure!"
+
+  dst.D = d_fp
+  discard d_fp
+
+  res = true
+  return res
