@@ -33,6 +33,8 @@ export
     eth_verkle_constants.IPASettings,
     eth_verkle_constants.VerkleSeed,
     eth_verkle_constants.Bytes,
+    eth_verkle_constants.VerkleIPAProofSerialized,
+    eth_verkle_constants.VerkleMultiproofSerialized,
     eth_verkle_constants.IpaTranscript,
     eth_verkle_constants.Coord,
     eth_verkle_constants.generator
@@ -64,6 +66,8 @@ export
 export
     ipa_prover.genIPAConfig,
     ipa_prover.createIPAProof,
+    ipa_prover.serializeVerkleIPAProof,
+    ipa_prover.deserializeVerkleIPAProof,
     ipa_prover.isIPAProofEqual
 
 # IPA Verifier for Verkle
@@ -79,4 +83,6 @@ export
     multiproof.domainToFrElem,
     multiproof.computePowersOfElem,
     multiproof.createMultiProof,
-    multiproof.verifyMultiProof
+    multiproof.verifyMultiProof,
+    multiproof.serializeVerkleMultiproof,
+    multiproof.deserializeVerkleMultiproof

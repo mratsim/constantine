@@ -493,7 +493,7 @@ suite "Multiproof Tests":
   test "Multiproof Serialization and Deserialization (Covers IPAProof Serialization and Deserialization as well)":
     proc testMultiproofSerDe() =
 
-      ## Pull a valid Multiproof from a valid hex test vector as used in Go-IPA
+      ## Pull a valid Multiproof from a valid hex test vector as used in Go-IPA https://github.com/crate-crypto/go-ipa/blob/master/multiproof_test.go#L120-L121
       var validMultiproof_bytes {.noInit.} : VerkleMultiproofSerialized
       validMultiproof_bytes.fromHex(validMultiproof)
 
