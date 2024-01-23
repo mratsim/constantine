@@ -424,8 +424,14 @@ func generate*(a: Assembler_x86): NimNode =
       #   outOperands.add memDesc
 
   var params: seq[NimNode]
-  params.add newLit(": ") & outOperands.foldl(a & newLit(", ") & b) & newLit("\n")
-  params.add newLit(": ") &  inOperands.foldl(a & newLit(", ") & b) & newLit("\n")
+  if outOperands.len != 0:
+    params.add newLit(": ") & outOperands.foldl(a & newLit(", ") & b) & newLit("\n")
+  else:
+    params.add newLit(":\n")
+  if inOperands.len != 0:
+    params.add newLit(": ") &  inOperands.foldl(a & newLit(", ") & b) & newLit("\n")
+  else:
+    params.add newLit(":\n")
 
   let clobbers = [(a.isStackClobbered, "sp"),
                   (a.areFlagsClobbered, "cc"),

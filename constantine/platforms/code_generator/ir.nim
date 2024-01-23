@@ -197,6 +197,12 @@ type
   Opcode* = enum
     opFpAdd = "fp_add"
     opFrAdd = "fr_add"
+    opFpSub = "fp_sub"
+    opFrSub = "fr_sub"
+    opFpMul = "fp_mul"
+    opFrMul = "fr_mul"
+    opFpMulSkipFinalSub = "fp_mul_skip_final_sub"
+    opFrMulSkipFinalSub = "fr_mul_skip_final_sub"
 
 proc setFieldConst(fc: var FieldConst, ctx: ContextRef, wordSize: WordSize, modBits: uint32, modulus: string) =
   let wordTy = case wordSize
@@ -267,6 +273,13 @@ func getModulus*(cm: CurveMetadata, field: Field): lent seq[ConstValueRef] {.inl
     return cm.fp.modulus
   of fr:
     return cm.fr.modulus
+
+func getMontgomeryNegInverse0*(cm: CurveMetadata, field: Field): lent ConstValueRef {.inline.} =
+  case field
+  of fp:
+    return cm.fp.m0ninv
+  of fr:
+    return cm.fr.m0ninv
 
 func getSpareBits*(cm: CurveMetadata, field: Field): uint8 {.inline.} =
   if field == fp:

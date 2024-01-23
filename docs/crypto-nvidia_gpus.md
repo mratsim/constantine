@@ -4,7 +4,9 @@ This documentation references useful information for implementing and optimizing
 
 ## Integer instruction bug
 
-The instruction integer fused-multiply-ad  with carry-in may
+### Integer FMA with carry-in uint32
+
+The instruction integer fused-multiply-add  with carry-in may
 be incorrectly compiled in PTX prior to Cuda 11.5.1:
 https://forums.developer.nvidia.com/t/wrong-result-returned-by-madc-hi-u64-ptx-instruction-for-specific-operands/196094
 
@@ -54,6 +56,13 @@ int main() {
     printf("Cpu result: hi:%lx low:%lx\n", (uint64_t)((result >> 64) & 0xffffffffffffffffUL), (uint64_t)(result & 0xffffffffffffffffUL));
 }
 ```
+
+### Integer FMA with carry-in uint64
+
+https://forums.developer.nvidia.com/t/incorrect-result-of-ptx-code/221067
+
+Unfortunately it seems like we're also hit by this on uint64.
+
 
 ## The hidden XMAD instruction
 
@@ -126,7 +135,7 @@ In reality:
 ### Parameter passing:
 - https://reviews.llvm.org/D118084
   > The motivation for this change is to allow SROA to eliminate local copies in more cases. Local copies that make it to the generated PTX present a substantial performance hit, as we end up with all threads on the GPU rushing to access their own chunk of very high-latency memory.
-Direct parameter passing is easier to analyze but not worthwhile 
+Direct parameter passing is easier to analyze but not worthwhile
 for large aggregate
 
 
