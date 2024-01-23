@@ -242,7 +242,7 @@ func deserializeVerkleIPAProof* (dst: var IPAProof, src: var VerkleIPAProofSeria
   ## 32 * 8 (for Left half) + 32 * 8 (for Right half) + 32 * 1 (for Scalar) = 32 * 17 = 544 elements in the byte array.
   ## ----------------------------------------------------------
   ## 
-  ## Note that check for Lexigraphically Largest criteria for the Y - coordinate of the Twisted Edward Banderwagon point is MANDATORY
+  ## Note that check for Lexicographically Largest criteria for the Y - coordinate of the Twisted Edward Banderwagon point is MANDATORY
   ## And, is pre-checked within this function from the `deserialize` function.
   ## 
   var res = false
