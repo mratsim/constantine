@@ -39,6 +39,10 @@ type
 const
   VerkleDomain*: int = 256
 
+type VerkleIPAProofSerialized* = array[544, byte]
+
+type VerkleMultiproofSerialized* = array[576, byte]
+
 type 
   PrecomputedWeights* = object
     barycentricWeights*: array[510,Fr[Banderwagon]]
