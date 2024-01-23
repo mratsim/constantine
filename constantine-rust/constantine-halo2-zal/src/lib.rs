@@ -29,12 +29,12 @@ impl CttEngine {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct CttMsmCoeffsDesc<'c, C: CurveAffine> {
     raw: &'c [C::Scalar],
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct CttMsmBaseDesc<'b, C: CurveAffine> {
     raw: &'b [C],
 }
