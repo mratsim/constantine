@@ -8,7 +8,7 @@
 
 # ############################################################
 #
-#         CryptoHash Generator for Challenge Scalars
+#             Generator for Challenge Scalars
 #
 # ############################################################
 
