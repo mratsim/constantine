@@ -11,6 +11,7 @@ type
     cttCodecScalar_Success
     cttCodecScalar_Zero
     cttCodecScalar_ScalarLargerThanCurveOrder
+    cttCodecScalar_ScalarModCurveOrder
 
   CttCodecEccStatus* = enum
     cttCodecEcc_Success

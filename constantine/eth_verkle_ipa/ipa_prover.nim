@@ -38,7 +38,7 @@ import
 
 # Further reference refer to this https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
 
-func genIPAConfig*(res: var IPASettings, ipaTranscript: var IpaTranscript[sha256, 32]) : bool {.inline.} =
+func genIPAConfig*(res: var IPASettings, ipaTranscript: var IpaTranscript[CryptoHash, 32]) : bool {.inline.} =
   # Initiates a new IPASettings
   # IPASettings has all the necessary information related to create an IPA proof
   # such as SRS, precomputed weights for Barycentric formula
@@ -54,7 +54,7 @@ func genIPAConfig*(res: var IPASettings, ipaTranscript: var IpaTranscript[sha256
   res.numRounds.computeNumRounds(uint64(VerkleDomain))
   return true
 
-func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var sha256, ic: IPASettings, commitment: EC_P, a: var openArray[Fr[Banderwagon]], evalPoint: Fr[Banderwagon]) : bool {.inline.} =
+func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var CryptoHash, ic: IPASettings, commitment: EC_P, a: var openArray[Fr[Banderwagon]], evalPoint: Fr[Banderwagon]) : bool {.inline.} =
   ## createIPAProof creates an IPA proof for a committed polynomial in evaluation form.
   ## `a` vectors are the evaluation points in the domain, and `evalPoint` represents the evaluation point.
   transcript.domain_separator(asBytes"ipa")

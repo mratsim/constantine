@@ -24,13 +24,13 @@ import
 #
 # ############################################################
 
-func generateChallengesForIPA*(res: var openArray[matchingOrderBigInt(Banderwagon)], transcript: var sha256, proof: IPAProof) =
+func generateChallengesForIPA*(res: var openArray[matchingOrderBigInt(Banderwagon)], transcript: var CryptoHash, proof: IPAProof) =
   for i in 0 ..< 8:
     transcript.pointAppend( asBytes"L", proof.L_vector[i])
     transcript.pointAppend( asBytes"R", proof.R_vector[i])
     res[i].generateChallengeScalar(transcript,asBytes"x")
 
-func checkIPAProof* (ic: IPASettings, transcript: var sha256, commitment: var EC_P, proof: IPAProof, evalPoint: Fr[Banderwagon], res: Fr[Banderwagon]) : bool = 
+func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, commitment: var EC_P, proof: IPAProof, evalPoint: Fr[Banderwagon], res: Fr[Banderwagon]) : bool = 
   # Check IPA proof verifier a IPA proof for a committed polynomial in evaluation form
   # It verifies whether the proof is valid for the given polynomial at the evaluation `evalPoint`
   # and cross-checking it with `result`

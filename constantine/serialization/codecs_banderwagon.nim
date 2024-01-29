@@ -20,7 +20,9 @@ import
     ec_twistededwards_projective,
     ec_twistededwards_batch_ops
   ],
+  ../math/arithmetic/limbs_montgomery,
   ../math/[
+    arithmetic/bigints,
     extension_fields,
     arithmetic,
     constants/banderwagon_subgroups
@@ -43,6 +45,20 @@ func validate_scalar*(scalar: matchingOrderBigInt(Banderwagon)): CttCodecScalarS
   if bool(scalar >= Banderwagon.getCurveOrder()):
     return cttCodecScalar_ScalarLargerThanCurveOrder
   return cttCodecScalar_Success
+
+func make_scalar_mod_order*(reduced_scalar: var Fr[Banderwagon], src: array[32, byte], order: static Endianness = bigEndian): CttCodecScalarStatus =
+
+  var scalar {.noInit.}: BigInt[256]
+  scalar.unmarshal(src, order)
+
+  getMont(reduced_scalar.mres.limbs, scalar.limbs,
+        Fr[Banderwagon].fieldMod().limbs,
+        Fr[Banderwagon].getR2modP().limbs,
+        Fr[Banderwagon].getNegInvModWord(),
+        Fr[Banderwagon].getSpareBits())
+  return cttCodecScalar_ScalarModCurveOrder
+
+    
 
 func serialize*(dst: var array[32, byte], P: EC_Prj): CttCodecEccStatus =
   ## Serialize a Banderwagon point(x, y) in the format
@@ -161,10 +177,22 @@ func deserialize_scalar*(dst: var matchingOrderBigInt(Banderwagon), src: array[3
     return status
   return cttCodecScalar_Success
 
+func deserialize_scalar_mod_order* (dst: var Fr[Banderwagon], src: array[32, byte], order: static Endianness = bigEndian): CttCodecScalarStatus =
+  ## Deserialize a scalar
+  ## Take mod value of the scalar (MOD CurveOrder)
+  ## If the scalar values goes out of range
+  ## 
+  let stat = dst.make_scalar_mod_order(src, order)
+  doAssert stat == cttCodecScalar_ScalarModCurveOrder, "Issues with getting Montogomery Scalar"
+
+  return cttCodecScalar_Success
+  
+## ############################################################
+##
 ##              Banderwagon Batch Serialization
 ##
 ## ############################################################
-
+## 
 func serializeBatch*(
     dst: ptr UncheckedArray[array[32, byte]],
     points: ptr UncheckedArray[EC_Prj],
