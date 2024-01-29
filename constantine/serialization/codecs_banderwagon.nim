@@ -46,8 +46,8 @@ func validate_scalar*(scalar: matchingOrderBigInt(Banderwagon)): CttCodecScalarS
     return cttCodecScalar_ScalarLargerThanCurveOrder
   return cttCodecScalar_Success
 
-func make_scalar_mod_order*(reduced_scalar: var Fr[Banderwagon], src: array[32, byte], order: static Endianness = bigEndian): CttCodecScalarStatus =
-
+func make_scalar_mod_order*(reduced_scalar: var Fr[Banderwagon], src: array[32, byte], order: static Endianness = bigEndian): bool =
+  var res: bool = false
   var scalar {.noInit.}: BigInt[256]
   scalar.unmarshal(src, order)
 
@@ -56,7 +56,8 @@ func make_scalar_mod_order*(reduced_scalar: var Fr[Banderwagon], src: array[32, 
         Fr[Banderwagon].getR2modP().limbs,
         Fr[Banderwagon].getNegInvModWord(),
         Fr[Banderwagon].getSpareBits())
-  return cttCodecScalar_ScalarModCurveOrder
+  res = true
+  return res
 
     
 
@@ -183,7 +184,7 @@ func deserialize_scalar_mod_order* (dst: var Fr[Banderwagon], src: array[32, byt
   ## If the scalar values goes out of range
   ## 
   let stat = dst.make_scalar_mod_order(src, order)
-  doAssert stat == cttCodecScalar_ScalarModCurveOrder, "Issues with getting Montogomery Scalar"
+  doAssert stat == true, "Issues with getting Montogomery Scalar"
 
   return cttCodecScalar_Success
   
