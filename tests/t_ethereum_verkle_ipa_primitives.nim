@@ -291,7 +291,7 @@ suite "Transcript Tests":
       let stat = b1.serialize_scalar(challenge1, littleEndian)
       doAssert stat == cttCodecScalar_Success, "Serialization Failure"
 
-      # Comparing with Geth implementation
+      # Comparing with Go-IPA implementation
       doAssert b1.toHex() == "0xc2aa02607cbdf5595f00ee0dd94a2bbff0bed6a2bf8452ada9011eadb538d003", "Incorrect Value!"
 
     testVec()
@@ -344,7 +344,7 @@ suite "Transcript Tests":
       var c_bytes {.noInit.}: array[32, byte]
       discard c_bytes.serialize_scalar(challenge, littleEndian)
       
-      # Comparing with Geth Implmentation
+      # Comparing with Go-IPA Implmentation
       doAssert c_bytes.toHex() == "0x498732b694a8ae1622d4a9347535be589e4aee6999ffc0181d13fe9e4d037b0b", "Some issue in Challenge Scalar"
     
     testVec2()
@@ -360,8 +360,14 @@ suite "Transcript Tests":
 
         var one {.noInit.}: matchingOrderBigInt(Banderwagon)
         var minus_one {.noInit.}: Fr[Banderwagon]
-
+        # As scalar append and generating challenge scalars mainly deal with BigInts
+        # and BigInts usually store unsigned values, this test checks if the Transcript state
+        # generates the correct challenge scalar, even when a signed BigInt such as -1 is 
+        # appended to the transcript state.
         minus_one.setMinusOne()
+
+        # Here first `minus_one` is set to -1 MOD (Banderwagon Curve Order)
+        # and then in-place converted to BigInt while append to the transcript state.
         one.setOne()
 
         # Constructing a Compound Challenge Scalar
