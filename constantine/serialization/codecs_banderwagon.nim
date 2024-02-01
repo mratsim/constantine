@@ -47,6 +47,12 @@ func validate_scalar*(scalar: matchingOrderBigInt(Banderwagon)): CttCodecScalarS
   return cttCodecScalar_Success
 
 func make_scalar_mod_order*(reduced_scalar: var Fr[Banderwagon], src: array[32, byte], order: static Endianness = bigEndian): bool =
+  ## Convert a 32-bytes digest to a Verkle Trie protocol field element
+
+  # Which can be safely stored in a 256 BigInt
+  # Now incase of the scalar overflowing the last 3-bits
+  # it is converted from its natural representation
+  # to the Montgomery residue form
   var res: bool = false
   var scalar {.noInit.}: BigInt[256]
   scalar.unmarshal(src, order)
@@ -182,9 +188,8 @@ func deserialize_scalar_mod_order* (dst: var Fr[Banderwagon], src: array[32, byt
   ## Deserialize a scalar
   ## Take mod value of the scalar (MOD CurveOrder)
   ## If the scalar values goes out of range
-  ## 
-  let stat = dst.make_scalar_mod_order(src, order)
-  doAssert stat == true, "Issues with getting Montogomery Scalar"
+  let stat {.used.} = dst.make_scalar_mod_order(src, order)
+  debug: doAssert stat == true, "Issues with getting Montogomery Scalar"
 
   return cttCodecScalar_Success
   
@@ -193,7 +198,7 @@ func deserialize_scalar_mod_order* (dst: var Fr[Banderwagon], src: array[32, byt
 ##              Banderwagon Batch Serialization
 ##
 ## ############################################################
-## 
+
 func serializeBatch*(
     dst: ptr UncheckedArray[array[32, byte]],
     points: ptr UncheckedArray[EC_Prj],

@@ -41,42 +41,18 @@ func domainSeparator*(res: var CryptoHash, label: openArray[byte]) =
 
 func pointAppend*(res: var CryptoHash, label: openArray[byte], point: EC_P) =
   var bytes {.noInit.}: array[32, byte]
-  let stat = bytes.serialize(point) 
-  doAssert stat == cttCodecEcc_Success, "Serialization Failure!"
+
+  let status {.used.} = bytes.serialize(point)
+  debug: doAssert status == cttCodecEcc_Success, "transcript_gen.pointAppend: Serialization Failure!"
   res.messageAppend(bytes, label)
 
 func scalarAppend*(res: var CryptoHash, label: openArray[byte], scalar: matchingOrderBigInt(Banderwagon)) =
   var bytes {.noInit.}: array[32, byte]
 
-  let stat = bytes.serialize_scalar(scalar, littleEndian)
-  doAssert stat == cttCodecScalar_Success, "Issues with marshalling!"
+  let status {.used.} = bytes.serialize_scalar(scalar, littleEndian)
+
+  debug: doAssert status == cttCodecScalar_Success, "transcript_gen.scalarAppend: Serialization Failure!"
   res.messageAppend(bytes, label)
-
-func fromVerkleDigest(dst: var Fr[Banderwagon], src: array[32, byte]) : bool =
-  ## The input src byte array that we get here is 32 bytes
-  ## Which can be safely stored in a 256 BigInt
-  ## Now incase of the scalar overflowing the last 3-bits
-  ## it is converted from its natural representation
-  ## to the Montgomery residue form
-  ##
-  ## `mres` is overwritten. It's bitlength must be properly set before calling this procedure.
-  ##
-  ## Caller must take care of properly switching between
-  ## the natural and montgomery domain.
-  ## 
-  ## This is a function that can be called for added safety instead using the
-  ## `fromBig()` sequence of function calls in case of Banderwagon scalars
-  var res : bool = false
-  var scalar {.noInit.}: BigInt[256]
-  scalar.unmarshal(src, littleEndian)
-
-  getMont(dst.mres.limbs, scalar.limbs,
-          Fr[Bandersnatch].fieldMod().limbs,
-          Fr[Bandersnatch].getR2modP().limbs,
-          Fr[Bandersnatch].getNegInvModWord(),
-          Fr[Bandersnatch].getSpareBits())
-  res = true
-  return res
 
 func generateChallengeScalar*(challenge: var matchingOrderBigInt(Banderwagon), transcript: var CryptoHash, label: openArray[byte]) =
   # Generating Challenge Scalars based on the Fiat Shamir method
@@ -88,8 +64,8 @@ func generateChallengeScalar*(challenge: var matchingOrderBigInt(Banderwagon), t
 
   var interim_challenge {.noInit.}: Fr[Banderwagon]
   # Safely deserialize into the Montgomery residue form
-  let stat = interim_challenge.fromVerkleDigest(hash)
-  doAssert stat == true, "Issues with Verkle Digest!"
+  let stat {.used.}  = interim_challenge.make_scalar_mod_order(hash, littleEndian)
+  debug: doAssert stat == true, "Issues with Verkle Digest!"
 
   # Reset the Transcript state
   transcript.clear()

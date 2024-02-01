@@ -7,7 +7,6 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  system,
   ./t_ethereum_verkle_ipa_test_helper,
   ../constantine/eth_verkle_ipa/[
       barycentric_form,
