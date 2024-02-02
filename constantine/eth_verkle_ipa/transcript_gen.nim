@@ -8,7 +8,7 @@
 
 # ############################################################
 #
-#         CryptoHash Generator for Challenge Scalars
+#             Generator for Challenge Scalars
 #
 # ############################################################
 
@@ -17,6 +17,8 @@ import
   ../platforms/[primitives,abstractions],
   ../serialization/endians,
   ../math/config/[type_ff, curves],
+  ../math/io/io_bigints,
+  ../math/arithmetic/limbs_montgomery,
   ../math/[extension_fields, arithmetic],
   ../math/elliptic/ec_twistededwards_projective,
   ../hashes,
@@ -27,37 +29,48 @@ func newTranscriptGen*(res: var CryptoHash, label: openArray[byte]) =
   res.update(label)
 
 func messageAppend*(res: var CryptoHash, message: openArray[byte], label: openArray[byte]) =
-  res.init()
   res.update(label)
   res.update(message)
 
 func messageAppend_u64*(res: var CryptoHash, label: openArray[byte], num_value: uint64) = 
-  res.init()
   res.update(label)
   res.update(num_value.toBytes(bigEndian))
 
 func domainSeparator*(res: var CryptoHash, label: openArray[byte]) =
-  var state {.noInit.} : CryptoHash
-  state.update(label)
+  res.update(label)
 
 func pointAppend*(res: var CryptoHash, label: openArray[byte], point: EC_P) =
   var bytes {.noInit.}: array[32, byte]
-  if bytes.serialize(point) == cttCodecEcc_Success:
-    res.messageAppend(bytes, label)
+
+  let status {.used.} = bytes.serialize(point)
+  debug: doAssert status == cttCodecEcc_Success, "transcript_gen.pointAppend: Serialization Failure!"
+  res.messageAppend(bytes, label)
 
 func scalarAppend*(res: var CryptoHash, label: openArray[byte], scalar: matchingOrderBigInt(Banderwagon)) =
   var bytes {.noInit.}: array[32, byte]
 
-  if bytes.serialize_scalar(scalar) == cttCodecScalar_Success:
-    res.messageAppend(bytes, label)
+  let status {.used.} = bytes.serialize_scalar(scalar, littleEndian)
 
-func generateChallengeScalar*(gen: var matchingOrderBigInt(Banderwagon), transcript: var CryptoHash, label: openArray[byte]) =
+  debug: doAssert status == cttCodecScalar_Success, "transcript_gen.scalarAppend: Serialization Failure!"
+  res.messageAppend(bytes, label)
+
+func generateChallengeScalar*(challenge: var matchingOrderBigInt(Banderwagon), transcript: var CryptoHash, label: openArray[byte]) =
   # Generating Challenge Scalars based on the Fiat Shamir method
   transcript.domainSeparator(label)
 
-  var hash: array[32, byte]
+  var hash {.noInit.} : array[32, byte]
+  # Finalise the transcript state into a hash
   transcript.finish(hash)
 
-  if gen.deserialize_scalar(hash) == cttCodecScalar_Success:
-    transcript.clear()
-    transcript.scalarAppend(label, gen)
+  var interim_challenge {.noInit.}: Fr[Banderwagon]
+  # Safely deserialize into the Montgomery residue form
+  let stat {.used.}  = interim_challenge.make_scalar_mod_order(hash, littleEndian)
+  debug: doAssert stat, "transcript_gen.generateChallengeScalar: Unexpected failure"
+
+  # Reset the Transcript state
+  transcript.clear()
+  challenge = interim_challenge.toBig()
+
+  # Append the challenge into the resetted transcript
+  transcript.scalarAppend(label, challenge)
+  

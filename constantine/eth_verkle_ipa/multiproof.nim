@@ -59,7 +59,7 @@ func computePowersOfElem*(res: var openArray[Fr], x: Fr, degree: SomeSignedInt)=
 # ############################################################
     
 
-func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256, ipaSetting: IPASettings, Cs: openArray[EC_P], Fs: array[VERKLE_DOMAIN, array[VERKLE_DOMAIN, Fr[Banderwagon]]], Zs: openArray[uint8], precomp: PrecomputedWeights, basis: array[VERKLE_DOMAIN, EC_P]) : bool =
+func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var CryptoHash, ipaSetting: IPASettings, Cs: openArray[EC_P], Fs: array[VERKLE_DOMAIN, array[VERKLE_DOMAIN, Fr[Banderwagon]]], Zs: openArray[uint8], precomp: PrecomputedWeights, basis: array[VERKLE_DOMAIN, EC_P]) : bool =
   # createMultiProof creates a multi-proof for several polynomials in the evaluation form
   # The list of triplets are as follows: (C, Fs, Z) represents each polynomial commitment
   # and their evaluation in the domain, and the evaluating point respectively
@@ -223,7 +223,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
 # ############################################################
     
 
-func verifyMultiproof*(multiProof: var MultiProof, transcript : var sha256, ipaSettings: IPASettings, Cs: openArray[EC_P], Ys: openArray[Fr[Banderwagon]], Zs: openArray[uint8]) : bool =
+func verifyMultiproof*(multiProof: var MultiProof, transcript : var CryptoHash, ipaSettings: IPASettings, Cs: openArray[EC_P], Ys: openArray[Fr[Banderwagon]], Zs: openArray[uint8]) : bool =
   # Multiproof verifier verifies the multiproof for several polynomials in the evaluation form
   # The list of triplets (C,Y,Z) represents each polynomial commitment, evaluation
   # result, and evaluation point in the domain 
