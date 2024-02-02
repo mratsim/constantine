@@ -47,7 +47,7 @@ func validate_scalar*(scalar: matchingOrderBigInt(Banderwagon)): CttCodecScalarS
   return cttCodecScalar_Success
 
 func make_scalar_mod_order*(reduced_scalar: var Fr[Banderwagon], src: array[32, byte], order: static Endianness = bigEndian): bool =
-  ## Convert a 32-bytes digest to a Verkle Trie protocol field element
+  ## Convert a 32-byte array to a field element, reducing it modulo Banderwagon's curve order if necessary.
 
   # Which can be safely stored in a 256 BigInt
   # Now incase of the scalar overflowing the last 3-bits
@@ -189,7 +189,7 @@ func deserialize_scalar_mod_order* (dst: var Fr[Banderwagon], src: array[32, byt
   ## Take mod value of the scalar (MOD CurveOrder)
   ## If the scalar values goes out of range
   let stat {.used.} = dst.make_scalar_mod_order(src, order)
-  debug: doAssert stat == true, "Issues with getting Montogomery Scalar"
+  debug: doAssert stat, "transcript_gen.deserialize_scalar_mod_order: Unexpected failure"
 
   return cttCodecScalar_Success
   

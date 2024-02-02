@@ -65,7 +65,7 @@ func generateChallengeScalar*(challenge: var matchingOrderBigInt(Banderwagon), t
   var interim_challenge {.noInit.}: Fr[Banderwagon]
   # Safely deserialize into the Montgomery residue form
   let stat {.used.}  = interim_challenge.make_scalar_mod_order(hash, littleEndian)
-  debug: doAssert stat == true, "Issues with Verkle Digest!"
+  debug: doAssert stat, "transcript_gen.generateChallengeScalar: Unexpected failure"
 
   # Reset the Transcript state
   transcript.clear()
