@@ -37,7 +37,7 @@ func sqrtAlg_GetPrecomputedRootOfUnity*(target: var Fp, multiplier: int, order: 
   target = Fp.C.tonelliShanks(sqrtPrecomp_PrecomputedBlocks)[order][multiplier]
 
 
-func sqrtAlg_ComputerRelevantPowers*(z: var Fp, squareRootCandidate: var Fp, rootOfUnity: var Fp) =
+func sqrtAlg_ComputeRelevantPowers*(z: Fp, squareRootCandidate: var Fp, rootOfUnity: var Fp) =
   ## sliding window-type algorithm with window-size 5
   ## Note that we precompute and use z^255 multiple times (even though it's not size 5)
   ## and some windows actually overlap
@@ -187,9 +187,8 @@ func sqrtPrecomp*(dst: var Fp, x: Fp): SecretBool {.inline.} =
   if x.isZero().bool():
     return SecretBool(true)
   
-  var xCopy: Fp = x
   var candidate, rootOfUnity: Fp
-  sqrtAlg_ComputerRelevantPowers(xCopy, candidate, rootOfUnity)
+  sqrtAlg_ComputeRelevantPowers(x, candidate, rootOfUnity)
   if not invSqrtEqDyadic(rootOfUnity):
     return SecretBool(false)
 
