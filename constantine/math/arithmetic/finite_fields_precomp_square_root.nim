@@ -135,7 +135,7 @@ func sqrtAlg_ComputeRelevantPowers*(z: Fp, squareRootCandidate: var Fp, rootOfUn
   squareRootCandidate.prod(acc, z)
 
 
-func invSqrtEqDyadic*(z: var Fp): bool =
+func invSqrtEqDyadic*(z: var Fp): SecretBool =
   ## The algorithm works by essentially computing the dlog of z and then halving it.
   ## negExponent is intended to hold the negative of the dlog of z.
   ## We determine this 32-bit value (usually) _sqrtBlockSize many bits at a time, starting with the least-significant bits.
@@ -161,8 +161,10 @@ func invSqrtEqDyadic*(z: var Fp): bool =
   negExponent = negExponent shr Fp.C.sqrtDlog(FirstBlockUnusedBits)
 
   # if the exponent we just got is odd, there is no square root, no point in determining the other bits
-  if (negExponent and 1) == 1:
-    return false
+  # if (negExponent and 1) == 1:
+  #   return false
+
+  result = SecretBool((negExponent and 1) != 1)
 
   for i in 1..<Fp.C.sqrtDlog(Blocks):
     temp2 = powers[Fp.C.sqrtDlog(Blocks) - 1 - i]
@@ -180,18 +182,13 @@ func invSqrtEqDyadic*(z: var Fp): bool =
     sqrtAlg_GetPrecomputedRootOfUnity(temp, int((negExponent shr (i*Fp.C.sqrtDlog(BlockSize))) and Fp.C.sqrtDlog(BitMask)), uint(i))
     z.prod(z, temp)
 
-  return true
+  # return true
 
 func sqrtPrecomp*(dst: var Fp, x: Fp): SecretBool {.inline.} =
   dst.setZero()
-  if x.isZero().bool():
-    return SecretBool(true)
-  
   var candidate, rootOfUnity: Fp
   sqrtAlg_ComputeRelevantPowers(x, candidate, rootOfUnity)
-  if not invSqrtEqDyadic(rootOfUnity):
-    return SecretBool(false)
-
+  result = SecretBool(invSqrtEqDyadic(rootOfUnity))
   dst.prod(candidate, rootOfUnity)
-  return SecretBool(true)
+  
 
