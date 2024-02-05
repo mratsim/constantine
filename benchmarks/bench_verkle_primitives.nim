@@ -112,7 +112,7 @@ template bench(op: string, T: typed, iters: int, body: untyped): untyped =
 
 
 
-proc serializaBench*(T: typedesc, iters: int) =
+proc serializeBench*(T: typedesc, iters: int) =
   var bytes: array[32, byte]
   var P: Prj
   P.fromAffine(Banderwagon.getGenerator())
@@ -137,7 +137,7 @@ proc main() =
   # equalityBench(Aff, Iters)
   # equalityBench(Prj, Iters)
   separator()
-  serializaBench(Prj, Iters)
+  serializeBench(Prj, Iters)
   deserializeBench(Prj, Iters)
 
 main()
