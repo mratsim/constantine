@@ -26,15 +26,15 @@ import
 # NOTE: If x is not a root of unity as asserted, the behaviour is undefined.
 func sqrtAlg_NegDlogInSmallDyadicSubgroup*(x: Fp): int =
   let key = cast[int](x.mres.limbs[0] and SecretWord 0xFFFF)
-  if key in Fp.C.tonelliShanks(sqrtPrecomp_dlogLUT):
-    return Fp.C.tonelliShanks(sqrtPrecomp_dlogLUT)[key]
+  if key in Fp.C.sqrtDlog(dlogLUT):
+    return Fp.C.sqrtDlog(dlogLUT)[key]
   return 0
   
 # sqrtAlg_GetPrecomputedRootOfUnity sets target to g^(multiplier << (order * sqrtParam_BlockSize)), where g is the fixed primitive 2^32th root of unity.
 #
 # We assume that order 0 <= order*sqrtParam_BlockSize <= 32 and that multiplier is in [0, 1 <<sqrtParam_BlockSize)
 func sqrtAlg_GetPrecomputedRootOfUnity*(target: var Fp, multiplier: int, order: uint) =
-  target = Fp.C.tonelliShanks(sqrtPrecomp_PrecomputedBlocks)[order][multiplier]
+  target = Fp.C.sqrtDlog(PrecomputedBlocks)[order][multiplier]
 
 
 func sqrtAlg_ComputeRelevantPowers*(z: Fp, squareRootCandidate: var Fp, rootOfUnity: var Fp) {.addchain.} =
@@ -148,36 +148,36 @@ func invSqrtEqDyadic*(z: var Fp): bool =
   # set powers[i] to z^(1<< (i*blocksize))
   var powers: array[4, Fp]
   powers[0] = z
-  for i in 1..<Fp.C.tonelliShanks(sqrtParam_Blocks):
+  for i in 1..<Fp.C.sqrtDlog(Blocks):
     powers[i] = powers[i - 1]
-    for j in 0..<Fp.C.tonelliShanks(sqrtParam_BlockSize):
+    for j in 0..<Fp.C.sqrtDlog(BlockSize):
       powers[i].square(powers[i])
 
   ## looking at the dlogs, powers[i] is essentially the wanted exponent, left-shifted by i*_sqrtBlockSize and taken mod 1<<32
   ## dlogHighDyadicRootNeg essentially (up to sign) reads off the _sqrtBlockSize many most significant bits. (returned as low-order bits)
   ## 
   ## first iteration may be slightly special if BlockSize does not divide 32
-  negExponent = sqrtAlg_NegDlogInSmallDyadicSubgroup(powers[Fp.C.tonelliShanks(sqrtParam_Blocks) - 1])
-  negExponent = negExponent shr Fp.C.tonelliShanks(sqrtParam_FirstBlockUnusedBits)
+  negExponent = sqrtAlg_NegDlogInSmallDyadicSubgroup(powers[Fp.C.sqrtDlog(Blocks) - 1])
+  negExponent = negExponent shr Fp.C.sqrtDlog(FirstBlockUnusedBits)
 
   # if the exponent we just got is odd, there is no square root, no point in determining the other bits
   if (negExponent and 1) == 1:
     return false
 
-  for i in 1..<Fp.C.tonelliShanks(sqrtParam_Blocks):
-    temp2 = powers[Fp.C.tonelliShanks(sqrtParam_Blocks) - 1 - i]
+  for i in 1..<Fp.C.sqrtDlog(Blocks):
+    temp2 = powers[Fp.C.sqrtDlog(Blocks) - 1 - i]
     for j in 0..<i:
-      sqrtAlg_GetPrecomputedRootOfUnity(temp, int( (negExponent shr (j*Fp.C.tonelliShanks(sqrtParam_BlockSize))) and Fp.C.tonelliShanks(sqrtParam_BitMask) ), uint(j + Fp.C.tonelliShanks(sqrtParam_Blocks) - 1 - i))
+      sqrtAlg_GetPrecomputedRootOfUnity(temp, int( (negExponent shr (j*Fp.C.sqrtDlog(BlockSize))) and Fp.C.sqrtDlog(BitMask) ), uint(j + Fp.C.sqrtDlog(Blocks) - 1 - i))
       temp2.prod(temp2, temp)
     
     var newBits = sqrtAlg_NegDlogInSmallDyadicSubgroup(temp2)
-    negExponent = negExponent or (newBits shl ((i*Fp.C.tonelliShanks(sqrtParam_BlockSize)) - Fp.C.tonelliShanks(sqrtParam_FirstBlockUnusedBits)))
+    negExponent = negExponent or (newBits shl ((i*Fp.C.sqrtDlog(BlockSize)) - Fp.C.sqrtDlog(FirstBlockUnusedBits)))
 
   negExponent = negExponent shr 1
   z.setOne()
 
-  for i in 0..<Fp.C.tonelliShanks(sqrtParam_Blocks):
-    sqrtAlg_GetPrecomputedRootOfUnity(temp, int((negExponent shr (i*Fp.C.tonelliShanks(sqrtParam_BlockSize))) and Fp.C.tonelliShanks(sqrtParam_BitMask)), uint(i))
+  for i in 0..<Fp.C.sqrtDlog(Blocks):
+    sqrtAlg_GetPrecomputedRootOfUnity(temp, int((negExponent shr (i*Fp.C.sqrtDlog(BlockSize))) and Fp.C.sqrtDlog(BitMask)), uint(i))
     z.prod(z, temp)
 
   return true

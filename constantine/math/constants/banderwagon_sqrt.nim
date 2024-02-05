@@ -19,13 +19,13 @@ const
   Banderwagon_TonelliShanks_twoAdicity* = 32
   Banderwagon_TonelliShanks_root_of_unity* = Fp[Banderwagon].fromHex"0x212d79e5b416b6f0fd56dc8d168d6c0c4024ff270b3e0941b788f500b912f1f"
 
-  Banderwagon_TonelliShanks_sqrtParam_TotalBits* = Banderwagon_TonelliShanks_twoAdicity
-  Banderwagon_TonelliShanks_sqrtParam_BlockSize* = 8
-  Banderwagon_TonelliShanks_sqrtParam_Blocks* = 4#Banderwagon_TonelliShanks_sqrtParam_TotalBits / Banderwagon_TonelliShanks_sqrtParam_BlockSize
-  Banderwagon_TonelliShanks_sqrtParam_FirstBlockUnusedBits* = Banderwagon_TonelliShanks_sqrtParam_Blocks*Banderwagon_TonelliShanks_sqrtParam_BlockSize - Banderwagon_TonelliShanks_sqrtParam_TotalBits
-  Banderwagon_TonelliShanks_sqrtParam_BitMask* = (1 shl Banderwagon_TonelliShanks_sqrtParam_BlockSize) - 1
+  Banderwagon_SqrtDlog_TotalBits* = Banderwagon_TonelliShanks_twoAdicity
+  Banderwagon_SqrtDlog_BlockSize* = 8
+  Banderwagon_SqrtDlog_Blocks* = 4 #Banderwagon_TonelliShanks_sqrtParam_TotalBits / Banderwagon_TonelliShanks_sqrtParam_BlockSize
+  Banderwagon_SqrtDlog_FirstBlockUnusedBits* = Banderwagon_SqrtDlog_Blocks*Banderwagon_SqrtDlog_BlockSize - Banderwagon_SqrtDlog_TotalBits
+  Banderwagon_SqrtDlog_BitMask* = (1 shl Banderwagon_SqrtDlog_BlockSize) - 1
 
-  Banderwagon_TonelliShanks_sqrtPrecomp_PrimitiveDyadicRoots* = [
+  Banderwagon_SqrtDlog_PrimitiveDyadicRoots* = [
     Fp[Banderwagon].fromHex"0x16a2a19edfe81f20d09b681922c813b4b63683508c2280b93829971f439f0d2b",
     Fp[Banderwagon].fromHex"0x4b5371495990693fad1715b02e5713b5f070bb00e28a193d63e7cb4906ffc93f",
     Fp[Banderwagon].fromHex"0x2c6d4e4511657e1e1339a815da8b398fed3a181fabb30adc694341f608c9dd56",
@@ -61,9 +61,9 @@ const
     Fp[Banderwagon].fromHex"0x0000000000000000000000000000000000000000000000000000000000000001"
   ]
 
-  Banderwagon_TonelliShanks_sqrtPrecomp_ReconstructionDyadicRoot* = Fp[Banderwagon].fromHex"0x4f9b4098e2e9f12e6b368121ac0cf4ad0a0865a899e8deff4935bd2f817f694b"
+  Banderwagon_SqrtDlog_ReconstructionDyadicRoot* = Fp[Banderwagon].fromHex"0x4f9b4098e2e9f12e6b368121ac0cf4ad0a0865a899e8deff4935bd2f817f694b"
 
-  Banderwagon_TonelliShanks_sqrtPrecomp_dlogLUT* : Table[int, int] = {
+  Banderwagon_SqrtDlog_dlogLUT* : Table[int, int] = {
     13947 : 76,
     52811 : 129,
     65311 : 15,
@@ -325,7 +325,7 @@ const
   # sqrtPrecomp_PrecomputedBlocks[i][j] == g^(j << (i* BlockSize)), where g is the fixed primitive 2^32th root of unity.
   # This means that the exponent is equal to 0x00000...0000jjjjjj0000....0000, where only the i'th least significant block of size BlockSize is set
   # and that value is j.
-  Banderwagon_TonelliShanks_sqrtPrecomp_PrecomputedBlocks* = [
+  Banderwagon_SqrtDlog_PrecomputedBlocks* = [
     [ # i =0
       Fp[Banderwagon].fromHex"0x0000000000000000000000000000000000000000000000000000000000000001",
       Fp[Banderwagon].fromHex"0x16a2a19edfe81f20d09b681922c813b4b63683508c2280b93829971f439f0d2b",
