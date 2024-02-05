@@ -45,7 +45,7 @@ type VerkleMultiproofSerialized* = array[576, byte]
 
 type 
   PrecomputedWeights* = object
-    barycentricWeights*: array[510,Fr[Banderwagon]]
+    barycentricWeights*: array[512,Fr[Banderwagon]]
     invertedDomain*: array[510,Fr[Banderwagon]]
 
 type

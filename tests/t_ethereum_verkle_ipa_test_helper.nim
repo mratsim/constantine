@@ -48,32 +48,29 @@ func truncate* [Fr] (res: var openArray[Fr], s: openArray[Fr], to: int, n: stati
   for i in 0 ..< to:
     res[i] = s[i]
 
-func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: static int) =
-    
+func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: static int) = 
   var one : Fr
   one.setOne()
 
-  var zero  : Fr
+  var zero : Fr
   zero.setZero()
 
   var max_degree_plus_one = points.len
-
-  doAssert (max_degree_plus_one >= 2).bool() == true, "Should be interpolating for degree >= 1!"
+  doAssert max_degree_plus_one >= 2, "Should be interpolating for degree >= 1!"
 
   for k in 0 ..< points.len:
-    var point: Coord
+    var point : Coord
     point = points[k]
 
     var x_k : Fr 
     x_k = point.x
-    var y_k  : Fr 
+    var y_k : Fr 
     y_k = point.y
 
     var contribution : array[n,Fr]
     var denominator : Fr
     denominator.setOne()
-
-    var max_contribution_degree : int= 0
+    var max_contribution_degree = 0
 
     for j in 0 ..< points.len:
       var point : Coord 
@@ -81,48 +78,55 @@ func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: sta
       var x_j : Fr 
       x_j = point.x
 
-      if j != k:
-        var differ = x_k
-        differ.diff(differ, x_j)
+      if j == k: 
+        continue
 
-        denominator.prod(denominator,differ)
+      var differ : Fr
+      differ = x_k
+      differ -= x_j
 
-        if max_contribution_degree == 0:
+      denominator.prod(denominator,differ)
 
-          max_contribution_degree = 1
-          contribution[0].diff(contribution[0],x_j)
-          contribution[1].sum(contribution[1],one)
+      if max_contribution_degree == 0:
+        max_contribution_degree = 1
+        contribution[0] -= x_j
+        contribution[1] += one
 
-        else:
+      else:
+        var mul_by_minus_x_j : array[n,Fr]
+        for el in 0 ..< contribution.len:
+          var tmp : Fr = contribution[el]
+          tmp *= x_j
+          tmp.neg()
+          mul_by_minus_x_j[el] = tmp
 
-          var mul_by_minus_x_j : array[n,Fr]
-          for el in 0 ..< contribution.len:
-            var tmp : Fr = contribution[el]
-            tmp.prod(tmp,x_j)
-            tmp.diff(zero,tmp)
-            mul_by_minus_x_j[el] = tmp
+        for i in 1 ..< contribution.len:
+          contribution[i] = contribution[i-1]
+                  
+        contribution[0] = zero
+        # contribution.truncate(contribution, max_degree_plus_one, n)
 
-          for i in 1 ..< contribution.len:
-            contribution[i] = contribution[i-1]
-                    
-          contribution[0] = zero
-          # contribution.truncate(contribution, max_degree_plus_one, n)
+        doAssert max_degree_plus_one == mul_by_minus_x_j.len, "Malformed mul_by_minus_x_j!"
 
-          doAssert max_degree_plus_one == mul_by_minus_x_j.len == true, "Malformed mul_by_minus_x_j!"
+        for i in 0 ..< contribution.len:
+          var other {.noInit.} : Fr
+          other = mul_by_minus_x_j[i]
+          contribution[i] += other
 
-          for i in 0 ..< contribution.len:
-            var other = mul_by_minus_x_j[i]
-            contribution[i].sum(contribution[i],other) 
-            
-    denominator.inv(denominator)
-    doAssert not(denominator.isZero().bool()) == true, "Denominator should not be zero!"
+    var denominator_inv {.noInit.} : Fr       
+    denominator_inv.inv(denominator)
+
+    discard denominator
+
+    let stat = denominator_inv.isZero()
+    doAssert (stat).bool == false, "Denominator should not be zero!"
 
     for i in 0 ..< contribution.len:
-      var tmp : Fr 
+      var tmp {.noInit.} : Fr 
       tmp = contribution[i]
-      tmp.prod(tmp,denominator)
-      tmp.prod(tmp,y_k)
-      res[i].sum(res[i], tmp)
+      tmp *= denominator
+      tmp *= y_k
+      res[i] += tmp
 
         
 #Initiating evaluation points z in the FiniteField (253)
@@ -146,61 +150,51 @@ func setEval* [Fr] (res: var Fr, x : Fr)=
   res.prod(tmp_a, tmp_b)
   res.prod(res,tmp_c)
 
-#Evaluating the point z outside of VerkleDomain, here the VerkleDomain is 0-256, whereas the FieldSize is
-#everywhere outside of it which is upto a 253 bit number, or 2²⁵³.
 func evalOutsideDomain* [Fr] (res: var Fr, precomp: PrecomputedWeights, f: openArray[Fr], point: Fr)=
-
+  # Evaluating the point z outside of VerkleDomain, here the VerkleDomain is 0-256, whereas the FieldSize is
+  # everywhere outside of it which is upto a 253 bit number, or 2²⁵³.
   var pointMinusDomain: array[VerkleDomain, Fr]
+  var pointMinusDomain_inv: array[VerkleDomain, Fr]
   for i in 0 ..< VerkleDomain:
-
-    var i_bg {.noInit.} : matchingOrderBigInt(Banderwagon)
-    i_bg.setUint(uint64(i))
     var i_fr {.noInit.} : Fr
-    i_fr.fromBig(i_bg)
+    i_fr.fromInt(i)
 
     pointMinusDomain[i].diff(point, i_fr)
-    pointMinusDomain[i].inv(pointMinusDomain[i])
+    pointMinusDomain_inv[i].inv(pointMinusDomain[i])
 
   var summand: Fr
   summand.setZero()
 
-  for x_i in 0 ..< pointMinusDomain.len:
+  for x_i in 0 ..< pointMinusDomain_inv.len:
     var weight: Fr
-    weight.getBarycentricInverseWeight(precomp,x_i)
+    weight.getBarycentricInverseWeight(precomp, x_i)
     var term: Fr
     term.prod(weight, f[x_i])
-    term.prod(term, pointMinusDomain[x_i])
+    term *= pointMinusDomain_inv[x_i]
 
     summand.sum(summand,term)
 
   res.setOne()
 
   for i in 0 ..< VerkleDomain:
-
-    var i_bg: matchingOrderBigInt(Banderwagon)
-    i_bg.setUint(uint64(i))
     var i_fr : Fr
-    i_fr.fromBig(i_bg)
+    i_fr.fromInt(i)
 
     var tmp : Fr
     tmp.diff(point, i_fr)
-    res.prod(res, tmp)
+    res *= tmp
 
-  res.prod(res,summand)
+  res *= summand
 
 
-func testPoly256* [Fr] (res: var openArray[Fr], polynomialUint: openArray[uint64])=
+func testPoly256* [Fr] (res: var openArray[Fr], polynomialUint: openArray[int])=
+  doAssert polynomialUint.len <= 256, "Cannot exceed 256 coeffs!"
 
-  var n = polynomialUint.len
-  doAssert (polynomialUint.len <= 256) == true, "Cannot exceed 256 coeffs!"
-
-  for i in 0 ..< n:
-    var i_bg {.noInit.} : matchingOrderBigInt(Banderwagon)
-    i_bg.setUint(uint64(polynomialUint[i]))
-    res[i].fromBig(i_bg)
+  for i in 0 ..< polynomialUint.len:
+    res[i].fromInt(polynomialUint[i])
   
-  var pad = 256 - n
-  for i in n ..< pad:
+  var pad = 256 - polynomialUint.len
+  for i in polynomialUint.len ..< pad:
     res[i].setZero()
 
 func isPointEqHex*(point: EC_P, expected: string): bool {.discardable.} =
