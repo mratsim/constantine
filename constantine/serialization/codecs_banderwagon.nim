@@ -123,7 +123,7 @@ func deserialize_unchecked*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccS
   var x{.noInit.}: Fp[Banderwagon]
   x.fromBig(t)
 
-  let onCurve = dst.trySetFromCoordX(x)
+  let onCurve = dst.trySetFromCoordX_vartime(x) # later to be shifted to a constant time version
   if not(bool onCurve):
     return cttCodecEcc_PointNotOnCurve
 

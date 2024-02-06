@@ -84,6 +84,25 @@ func trySetFromCoordX*[F](
   P.y = Q.y
   P.z.setOne()
 
+func trySetFromCoordX_vartime*[F](
+       P: var ECP_TwEdwards_Prj[F],
+       x: F): SecretBool =
+  ## this is not in constant time
+  ## Try to create a point on the elliptic curve from X co-ordinate
+  ##   ax²+y²=1+dx²y²    (affine coordinate)
+  ##
+  ## The `Z` coordinates is set to 1
+  ##
+  ## return true and update `P` if `y` leads to a valid point
+  ## return false otherwise, in that case `P` is undefined.
+
+  var Q{.noInit.}: ECP_TwEdwards_Aff[F]
+  result = Q.trySetFromCoordX_vartime(x)
+
+  P.x = Q.x
+  P.y = Q.y
+  P.z.setOne()
+
 
 func trySetFromCoordY*[F](
        P: var ECP_TwEdwards_Prj[F],

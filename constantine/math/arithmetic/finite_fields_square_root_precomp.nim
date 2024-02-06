@@ -24,7 +24,7 @@ import
 # The returned value is only meaningful modulo 1<<sqrtParam_BlockSize and is fully reduced, i.e. in [0, 1<<sqrtParam_BlockSize )
 #
 # NOTE: If x is not a root of unity as asserted, the behaviour is undefined.
-func sqrtAlg_NegDlogInSmallDyadicSubgroup(x: Fp): int =
+func sqrtAlg_NegDlogInSmallDyadicSubgroup_vartime(x: Fp): int {.tags:[VarTime], raises: [].} =
   let key = cast[int](x.mres.limbs[0] and SecretWord 0xFFFF)
   return Fp.C.sqrtDlog(dlogLUT).getOrDefault(key, 0)
 
@@ -134,7 +134,7 @@ func sqrtAlg_ComputeRelevantPowers(z: Fp, squareRootCandidate: var Fp, rootOfUni
   squareRootCandidate.prod(acc, z)
 
 
-func invSqrtEqDyadic(z: var Fp) =
+func invSqrtEqDyadic_vartime*(z: var Fp) =
   ## The algorithm works by essentially computing the dlog of z and then halving it.
   ## negExponent is intended to hold the negative of the dlog of z.
   ## We determine this 32-bit value (usually) _sqrtBlockSize many bits at a time, starting with the least-significant bits.
@@ -147,16 +147,16 @@ func invSqrtEqDyadic(z: var Fp) =
   # set powers[i] to z^(1<< (i*blocksize))
   var powers: array[4, Fp]
   powers[0] = z
-  for i in 1..<Fp.C.sqrtDlog(Blocks):
+  for i in 1 ..< Fp.C.sqrtDlog(Blocks):
     powers[i] = powers[i - 1]
-    for j in 0..<Fp.C.sqrtDlog(BlockSize):
+    for j in 0 ..< Fp.C.sqrtDlog(BlockSize):
       powers[i].square(powers[i])
 
   ## looking at the dlogs, powers[i] is essentially the wanted exponent, left-shifted by i*_sqrtBlockSize and taken mod 1<<32
   ## dlogHighDyadicRootNeg essentially (up to sign) reads off the _sqrtBlockSize many most significant bits. (returned as low-order bits)
   ## 
   ## first iteration may be slightly special if BlockSize does not divide 32
-  negExponent = sqrtAlg_NegDlogInSmallDyadicSubgroup(powers[Fp.C.sqrtDlog(Blocks) - 1])
+  negExponent = sqrtAlg_NegDlogInSmallDyadicSubgroup_vartime(powers[Fp.C.sqrtDlog(Blocks) - 1])
   negExponent = negExponent shr Fp.C.sqrtDlog(FirstBlockUnusedBits)
 
   # if the exponent we just got is odd, there is no square root, no point in determining the other bits
@@ -165,26 +165,26 @@ func invSqrtEqDyadic(z: var Fp) =
 
   # result = SecretBool((negExponent and 1) != 1)
 
-  for i in 1..<Fp.C.sqrtDlog(Blocks):
+  for i in 1 ..< Fp.C.sqrtDlog(Blocks):
     temp2 = powers[Fp.C.sqrtDlog(Blocks) - 1 - i]
-    for j in 0..<i:
+    for j in 0 ..< i:
       sqrtAlg_GetPrecomputedRootOfUnity(temp, int( (negExponent shr (j*Fp.C.sqrtDlog(BlockSize))) and Fp.C.sqrtDlog(BitMask) ), uint(j + Fp.C.sqrtDlog(Blocks) - 1 - i))
       temp2.prod(temp2, temp)
     
-    var newBits = sqrtAlg_NegDlogInSmallDyadicSubgroup(temp2)
+    var newBits = sqrtAlg_NegDlogInSmallDyadicSubgroup_vartime(temp2)
     negExponent = negExponent or (newBits shl ((i*Fp.C.sqrtDlog(BlockSize)) - Fp.C.sqrtDlog(FirstBlockUnusedBits)))
 
   negExponent = negExponent shr 1
   z.setOne()
 
-  for i in 0..<Fp.C.sqrtDlog(Blocks):
+  for i in 0 ..< Fp.C.sqrtDlog(Blocks):
     sqrtAlg_GetPrecomputedRootOfUnity(temp, int((negExponent shr (i*Fp.C.sqrtDlog(BlockSize))) and Fp.C.sqrtDlog(BitMask)), uint(i))
     z.prod(z, temp)
 
-func inv_sqrt_precomp*(dst: var Fp, x: Fp) {.inline.} =
-  dst.setZero()
-  var candidate, rootOfUnity: Fp
+func inv_sqrt_precomp_vartime*(dst: var Fp, x: Fp) {.inline.} =
+  dst.setOne()
+  var candidate, rootOfUnity {.noInit.}: Fp
   sqrtAlg_ComputeRelevantPowers(x, candidate, rootOfUnity)
-  invSqrtEqDyadic(rootOfUnity)
+  invSqrtEqDyadic_vartime(rootOfUnity)
   dst.prod(candidate, rootOfUnity)
   dst.inv()

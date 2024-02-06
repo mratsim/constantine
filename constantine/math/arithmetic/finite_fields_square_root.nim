@@ -10,7 +10,7 @@ import
   ../../platforms/abstractions,
   ../config/curves,
   ../constants/zoo_square_roots,
-  ./finite_fields_precomp_square_root,
+  ./finite_fields_square_root_precomp,
   ./bigints, ./finite_fields, ./limbs_exgcd
 
 # ############################################################
@@ -212,9 +212,12 @@ func invsqrt*[C](r: var Fp[C], a: Fp[C]) =
   elif C.has_P_5mod8_primeModulus():
     r.invsqrt_p5mod8(a)
   elif C == Bandersnatch or C == Banderwagon:
-    r.inv_sqrt_precomp(a)
+    r.inv_sqrt_precomp_vartime(a) # should be changed
   else:
     r.invsqrt_tonelli_shanks(a)
+
+func invsqrt_vartime*[C](r: var Fp[C], a: Fp[C]) =
+  r.inv_sqrt_precomp_vartime(a)
 
 func sqrt*[C](a: var Fp[C]) =
   ## Compute the square root of ``a``
@@ -231,6 +234,14 @@ func sqrt*[C](a: var Fp[C]) =
   t.invsqrt(a)
   a *= t
 
+func sqrt_vartime*[C](a: var Fp[C]) =
+  ## This is a vartime version of sqrt
+  ## It is not constant-time
+  ## This has the precomp optimisation
+  var t {.noInit.}: Fp[C]
+  t.invsqrt_vartime(a)
+  a *= t
+
 func sqrt_invsqrt*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]) =
   ## Compute the square root and inverse square root of ``a``
   ##
@@ -244,6 +255,12 @@ func sqrt_invsqrt*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]) =
   invsqrt.invsqrt(a)
   sqrt.prod(invsqrt, a)
 
+func sqrt_invsqrt_vartime*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]) =
+  ## It is not constant-time
+  ## This has the precomp optimisation
+  invsqrt.invsqrt_vartime(a)
+  sqrt.prod(invsqrt, a)
+
 func sqrt_invsqrt_if_square*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]): SecretBool  =
   ## Compute the square root and ivnerse square root of ``a``
   ##
@@ -255,6 +272,14 @@ func sqrt_invsqrt_if_square*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]): SecretBool 
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
   sqrt_invsqrt(sqrt, invsqrt, a)
+  var test {.noInit.}: Fp[C]
+  test.square(sqrt)
+  result = test == a
+
+func sqrt_invsqrt_if_square_vartime*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]): SecretBool  =
+  ## It is not constant-time
+  ## This has the precomp optimisation
+  sqrt_invsqrt_vartime(sqrt, invsqrt, a)
   var test {.noInit.}: Fp[C]
   test.square(sqrt)
   result = test == a
@@ -281,6 +306,12 @@ func invsqrt_if_square*[C](r: var Fp[C], a: Fp[C]): SecretBool =
   ## This procedure is constant-time
   var sqrt{.noInit.}: Fp[C]
   result = sqrt_invsqrt_if_square(sqrt, r, a)
+
+func invsqrt_if_square_vartime*[C](r: var Fp[C], a: Fp[C]): SecretBool =
+  ## It is not constant-time
+  ## This has the precomp optimisation
+  var sqrt{.noInit.}: Fp[C]
+  result = sqrt_invsqrt_if_square_vartime(sqrt, r, a)
 
 # Legendre symbol / Euler's Criterion / Kronecker's symbol
 # ------------------------------------------------------------
@@ -316,6 +347,14 @@ func sqrt_ratio_if_square*(r: var Fp, u, v: Fp): SecretBool {.inline.} =
   var uv{.noInit.}: Fp
   uv.prod(u, v)                    # uv
   result = r.invsqrt_if_square(uv) # 1/√uv
+  r *= u                           # √u/√v
+
+func sqrt_ratio_if_square_vartime*(r: var Fp, u, v: Fp): SecretBool {.inline.} =
+  ## It is not constant-time
+  ## This has the precomp optimisation
+  var uv{.noInit.}: Fp
+  uv.prod(u, v)                    # uv
+  result = r.invsqrt_if_square_vartime(uv) # 1/√uv
   r *= u                           # √u/√v
 
 {.pop.} # raises no exceptions

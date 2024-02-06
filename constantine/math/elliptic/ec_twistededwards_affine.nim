@@ -10,7 +10,6 @@ import
   ../../platforms/abstractions,
   ../config/curves,
   ../arithmetic,
-  #../arithmetic/finite_fields_precomp_square_root,
   ../extension_fields,
   ../io/[io_fields, io_extfields]
 
@@ -126,6 +125,50 @@ func trySetFromCoordX*[F](P: var ECP_TwEdwards_Aff[F], x: F): SecretBool =
   P.y = t
   P.x = x
 
+func trySetFromCoordX_vartime*[F](P: var ECP_TwEdwards_Aff[F], x: F): SecretBool =
+  ## This is not in constant time
+  ## Try to create a point on the elliptic curve from X co-ordinate
+  ##   ax²+y²=1+dx²y²    (affine coordinate)
+  ## 
+  ## return true and update `P` if `y` leads to a valid point
+  ## return false otherwise, in that case `P` is undefined.
+  
+  # y² = (1 - ax²)/(1 - dx²)
+  var t {.noInit.}: F
+  var one {.noInit.}: F
+  one.setOne()
+
+  # (1 - dx²)
+  t.square(x)
+  when F.C.getCoefD() is int:
+    when F.C.getCoefD() >= 0:
+      P.y.fromUint uint F.C.getCoefD()
+    else:
+      P.y.fromUint uint -F.C.getCoefD()
+      P.y.neg()
+  else:
+    P.y = F.C.getCoefD()
+  P.y *= t
+  P.y.neg()
+  P.y += one
+
+  # (1 - ax²)
+  when F.C.getCoefA() is int:
+    when F.C.getCoefA() >= 0:
+      P.x.fromUint uint F.C.getCoefA()
+    else:
+      P.x.fromUint uint -F.C.getCoefA()
+      P.x.neg()
+  else:
+    P.x = F.C.getCoefA()
+  P.x *= t
+  P.x.neg()
+  P.x += one
+
+  # √((1 - ax²)/(1 - dx²))
+  result = sqrt_ratio_if_square_vartime(t, P.x, P.y)
+  P.y = t
+  P.x = x
 
 func trySetFromCoordY*[F](P: var ECP_TwEdwards_Aff[F], y: F): SecretBool =
   ## Try to create a point the elliptic curve
