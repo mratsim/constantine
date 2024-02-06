@@ -26,9 +26,7 @@ import
 # NOTE: If x is not a root of unity as asserted, the behaviour is undefined.
 func sqrtAlg_NegDlogInSmallDyadicSubgroup*(x: Fp): int =
   let key = cast[int](x.mres.limbs[0] and SecretWord 0xFFFF)
-  if key in Fp.C.sqrtDlog(dlogLUT):
-    return Fp.C.sqrtDlog(dlogLUT)[key]
-  return 0
+  return Fp.C.sqrtDlog(dlogLUT)[key]
   
 # sqrtAlg_GetPrecomputedRootOfUnity sets target to g^(multiplier << (order * sqrtParam_BlockSize)), where g is the fixed primitive 2^32th root of unity.
 #
@@ -188,7 +186,7 @@ func sqrtPrecomp*(dst: var Fp, x: Fp): SecretBool {.inline.} =
   dst.setZero()
   var candidate, rootOfUnity: Fp
   sqrtAlg_ComputeRelevantPowers(x, candidate, rootOfUnity)
-  result = SecretBool(invSqrtEqDyadic(rootOfUnity))
+  result = invSqrtEqDyadic(rootOfUnity)
   dst.prod(candidate, rootOfUnity)
   
 
