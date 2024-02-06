@@ -8,6 +8,7 @@
 
 import
   std/tables,
+  ../config/curves,
   ../../platforms/abstractions,
   ../constants/zoo_square_roots,
   ./bigints, ./finite_fields
@@ -24,18 +25,20 @@ import
 # The returned value is only meaningful modulo 1<<sqrtParam_BlockSize and is fully reduced, i.e. in [0, 1<<sqrtParam_BlockSize )
 #
 # NOTE: If x is not a root of unity as asserted, the behaviour is undefined.
-func sqrtAlg_NegDlogInSmallDyadicSubgroup*(x: Fp): int =
+func sqrtAlg_NegDlogInSmallDyadicSubgroup(x: Fp): int =
   let key = cast[int](x.mres.limbs[0] and SecretWord 0xFFFF)
-  return Fp.C.sqrtDlog(dlogLUT)[key]
+  if key in Fp.C.sqrtDlog(dlogLUT):
+    return Fp.C.sqrtDlog(dlogLUT)[key]
+  return 0
   
 # sqrtAlg_GetPrecomputedRootOfUnity sets target to g^(multiplier << (order * sqrtParam_BlockSize)), where g is the fixed primitive 2^32th root of unity.
 #
 # We assume that order 0 <= order*sqrtParam_BlockSize <= 32 and that multiplier is in [0, 1 <<sqrtParam_BlockSize)
-func sqrtAlg_GetPrecomputedRootOfUnity*(target: var Fp, multiplier: int, order: uint) =
+func sqrtAlg_GetPrecomputedRootOfUnity(target: var Fp, multiplier: int, order: uint) =
   target = Fp.C.sqrtDlog(PrecomputedBlocks)[order][multiplier]
 
 
-func sqrtAlg_ComputeRelevantPowers*(z: Fp, squareRootCandidate: var Fp, rootOfUnity: var Fp) {.addchain.} =
+func sqrtAlg_ComputeRelevantPowers(z: Fp, squareRootCandidate: var Fp, rootOfUnity: var Fp) {.addchain.} =
   ## sliding window-type algorithm with window-size 5
   ## Note that we precompute and use z^255 multiple times (even though it's not size 5)
   ## and some windows actually overlap
@@ -133,7 +136,7 @@ func sqrtAlg_ComputeRelevantPowers*(z: Fp, squareRootCandidate: var Fp, rootOfUn
   squareRootCandidate.prod(acc, z)
 
 
-func invSqrtEqDyadic*(z: var Fp): SecretBool =
+func invSqrtEqDyadic(z: var Fp): SecretBool =
   ## The algorithm works by essentially computing the dlog of z and then halving it.
   ## negExponent is intended to hold the negative of the dlog of z.
   ## We determine this 32-bit value (usually) _sqrtBlockSize many bits at a time, starting with the least-significant bits.
@@ -182,11 +185,22 @@ func invSqrtEqDyadic*(z: var Fp): SecretBool =
 
   # return true
 
-func sqrtPrecomp*(dst: var Fp, x: Fp): SecretBool {.inline.} =
+func inv_sqrt_precomp(dst: var Fp, x: Fp): SecretBool {.inline.} =
   dst.setZero()
   var candidate, rootOfUnity: Fp
   sqrtAlg_ComputeRelevantPowers(x, candidate, rootOfUnity)
   result = invSqrtEqDyadic(rootOfUnity)
   dst.prod(candidate, rootOfUnity)
+  dst.inv()
   
+func invsqrt_precomp_if_square*[C](dst: var Fp[C], x: Fp[C]): SecretBool {.inline.} =
+  when C == Banderwagon or C == Bandersnatch:
+    result = inv_sqrt_precomp(dst, x)
+  else:
+    result = invsqrt_if_square(dst, x)
 
+func sqrt_precomp_ratio_if_square*(r: var Fp, u, v: Fp): SecretBool {.inline.} =
+  var uv{.noInit.}: Fp
+  uv.prod(u, v)                             # uv
+  result = r.invsqrt_precomp_if_square(uv)  # 1/√uv
+  r *= u                                    # √u/√v
