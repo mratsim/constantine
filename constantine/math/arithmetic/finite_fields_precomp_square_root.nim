@@ -8,7 +8,6 @@
 
 import
   std/tables,
-  ../config/curves,
   ../../platforms/abstractions,
   ../constants/zoo_square_roots,
   ./bigints, ./finite_fields
@@ -27,9 +26,8 @@ import
 # NOTE: If x is not a root of unity as asserted, the behaviour is undefined.
 func sqrtAlg_NegDlogInSmallDyadicSubgroup(x: Fp): int =
   let key = cast[int](x.mres.limbs[0] and SecretWord 0xFFFF)
-  if key in Fp.C.sqrtDlog(dlogLUT):
-    return Fp.C.sqrtDlog(dlogLUT)[key]
-  return 0
+  return Fp.C.sqrtDlog(dlogLUT).getOrDefault(key, 0)
+
   
 # sqrtAlg_GetPrecomputedRootOfUnity sets target to g^(multiplier << (order * sqrtParam_BlockSize)), where g is the fixed primitive 2^32th root of unity.
 #
@@ -136,7 +134,7 @@ func sqrtAlg_ComputeRelevantPowers(z: Fp, squareRootCandidate: var Fp, rootOfUni
   squareRootCandidate.prod(acc, z)
 
 
-func invSqrtEqDyadic(z: var Fp): SecretBool =
+func invSqrtEqDyadic(z: var Fp) =
   ## The algorithm works by essentially computing the dlog of z and then halving it.
   ## negExponent is intended to hold the negative of the dlog of z.
   ## We determine this 32-bit value (usually) _sqrtBlockSize many bits at a time, starting with the least-significant bits.
@@ -165,7 +163,7 @@ func invSqrtEqDyadic(z: var Fp): SecretBool =
   # if (negExponent and 1) == 1:
   #   return false
 
-  result = SecretBool((negExponent and 1) != 1)
+  # result = SecretBool((negExponent and 1) != 1)
 
   for i in 1..<Fp.C.sqrtDlog(Blocks):
     temp2 = powers[Fp.C.sqrtDlog(Blocks) - 1 - i]
@@ -183,24 +181,10 @@ func invSqrtEqDyadic(z: var Fp): SecretBool =
     sqrtAlg_GetPrecomputedRootOfUnity(temp, int((negExponent shr (i*Fp.C.sqrtDlog(BlockSize))) and Fp.C.sqrtDlog(BitMask)), uint(i))
     z.prod(z, temp)
 
-  # return true
-
-func inv_sqrt_precomp(dst: var Fp, x: Fp): SecretBool {.inline.} =
+func inv_sqrt_precomp*(dst: var Fp, x: Fp) {.inline.} =
   dst.setZero()
   var candidate, rootOfUnity: Fp
   sqrtAlg_ComputeRelevantPowers(x, candidate, rootOfUnity)
-  result = invSqrtEqDyadic(rootOfUnity)
+  invSqrtEqDyadic(rootOfUnity)
   dst.prod(candidate, rootOfUnity)
   dst.inv()
-  
-func invsqrt_precomp_if_square*[C](dst: var Fp[C], x: Fp[C]): SecretBool {.inline.} =
-  when C == Banderwagon or C == Bandersnatch:
-    result = inv_sqrt_precomp(dst, x)
-  else:
-    result = invsqrt_if_square(dst, x)
-
-func sqrt_precomp_ratio_if_square*(r: var Fp, u, v: Fp): SecretBool {.inline.} =
-  var uv{.noInit.}: Fp
-  uv.prod(u, v)                             # uv
-  result = r.invsqrt_precomp_if_square(uv)  # 1/√uv
-  r *= u                                    # √u/√v

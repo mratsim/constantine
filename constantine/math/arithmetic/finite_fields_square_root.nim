@@ -10,6 +10,7 @@ import
   ../../platforms/abstractions,
   ../config/curves,
   ../constants/zoo_square_roots,
+  ./finite_fields_precomp_square_root,
   ./bigints, ./finite_fields, ./limbs_exgcd
 
 # ############################################################
@@ -210,6 +211,8 @@ func invsqrt*[C](r: var Fp[C], a: Fp[C]) =
     r.invsqrt_p3mod4(a)
   elif C.has_P_5mod8_primeModulus():
     r.invsqrt_p5mod8(a)
+  elif C == Bandersnatch or C == Banderwagon:
+    r.inv_sqrt_precomp(a)
   else:
     r.invsqrt_tonelli_shanks(a)
 

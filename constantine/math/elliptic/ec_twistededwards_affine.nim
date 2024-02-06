@@ -10,7 +10,7 @@ import
   ../../platforms/abstractions,
   ../config/curves,
   ../arithmetic,
-  ../arithmetic/finite_fields_precomp_square_root,
+  #../arithmetic/finite_fields_precomp_square_root,
   ../extension_fields,
   ../io/[io_fields, io_extfields]
 
@@ -122,7 +122,7 @@ func trySetFromCoordX*[F](P: var ECP_TwEdwards_Aff[F], x: F): SecretBool =
   P.x += one
 
   # √((1 - ax²)/(1 - dx²))
-  result = sqrt_precomp_ratio_if_square(t, P.x, P.y)
+  result = sqrt_ratio_if_square(t, P.x, P.y)
   P.y = t
   P.x = x
 
