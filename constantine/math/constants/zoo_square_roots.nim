@@ -47,7 +47,7 @@ macro tonelliShanks*(C: static Curve, value: untyped): untyped =
   return bindSym($C & "_TonelliShanks_" & $value)
 
 func hasTonelliShanksAddchain*(C: static Curve): static bool =
-  when C in {BLS12_377}:
+  when C in {Bandersnatch, Banderwagon, BLS12_377}:
     true
   else:
     false

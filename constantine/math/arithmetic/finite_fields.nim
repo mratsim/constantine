@@ -567,7 +567,7 @@ macro addchain*(fn: untyped): untyped =
   var body = newStmtList()
 
   for i, statement in fn[^1]:
-    statement.expectKind({nnkCommentStmt, nnkVarSection, nnkCall, nnkInfix})
+    statement.expectKind({nnkCommentStmt, nnkLetSection, nnkVarSection, nnkCall, nnkInfix})
 
     var s = statement.copyNimTree()
     if i + 1 != result[^1].len:
