@@ -211,13 +211,28 @@ func invsqrt*[C](r: var Fp[C], a: Fp[C]) =
     r.invsqrt_p3mod4(a)
   elif C.has_P_5mod8_primeModulus():
     r.invsqrt_p5mod8(a)
-  elif C == Bandersnatch or C == Banderwagon:
-    r.inv_sqrt_precomp_vartime(a) # should be changed
   else:
     r.invsqrt_tonelli_shanks(a)
 
 func invsqrt_vartime*[C](r: var Fp[C], a: Fp[C]) =
-  r.inv_sqrt_precomp_vartime(a)
+  ## Compute the inverse square root of ``a``
+  ##
+  ## This requires ``a`` to be a square
+  ##
+  ## The result is undefined otherwise
+  ##
+  ## The square root, if it exist is multivalued,
+  ## i.e. both x² == (-x)²
+  ## This procedure returns a deterministic result
+  ## This procedure is NOT constant-time
+  when C.has_P_3mod4_primeModulus():
+    r.invsqrt_p3mod4(a)
+  elif C.has_P_5mod8_primeModulus():
+    r.invsqrt_p5mod8(a)
+  elif C == Bandersnatch or C == Banderwagon:
+    r.inv_sqrt_precomp_vartime(a)
+  else:
+    r.invsqrt_tonelli_shanks(a)
 
 func sqrt*[C](a: var Fp[C]) =
   ## Compute the square root of ``a``

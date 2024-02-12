@@ -10,6 +10,15 @@ import
   ../io/[io_bigints, io_fields],
   ../arithmetic/finite_fields
 
+const
+  # with e = 2adicity
+  # p == s * 2^e + 1
+  # root_of_unity = smallest_quadratic_nonresidue^s
+  # exponent = (p-1-2^e)/2^e / 2
+  Bandersnatch_TonelliShanks_exponent* = BigInt[222].fromHex"0x39f6d3a994cebea4199cec0404d0ec02a9ded2017fff2dff7fffffff"
+  Bandersnatch_TonelliShanks_twoAdicity* = 32
+  Bandersnatch_TonelliShanks_root_of_unity* = Fp[Bandersnatch].fromHex"0x212d79e5b416b6f0fd56dc8d168d6c0c4024ff270b3e0941b788f500b912f1f"
+
 # ############################################################
 #
 #       Specialized Tonelli-Shanks for Bandersnatch
@@ -148,15 +157,14 @@ func precompute_tonelli_shanks_addchain*(
   r.square()
   r *= a
 
-const
-  # with e = 2adicity
-  # p == s * 2^e + 1
-  # root_of_unity = smallest_quadratic_nonresidue^s
-  # exponent = (p-1-2^e)/2^e / 2
-  Bandersnatch_TonelliShanks_exponent* = BigInt[222].fromHex"0x39f6d3a994cebea4199cec0404d0ec02a9ded2017fff2dff7fffffff"
-  Bandersnatch_TonelliShanks_twoAdicity* = 32
-  Bandersnatch_TonelliShanks_root_of_unity* = Fp[Bandersnatch].fromHex"0x212d79e5b416b6f0fd56dc8d168d6c0c4024ff270b3e0941b788f500b912f1f"
 
+# ############################################################  
+#  
+#       Optimized square-root via Discrete Log lookup tables  
+#  
+# ############################################################
+
+const
   Bandersnatch_SqrtDlog_TotalBits* = Bandersnatch_TonelliShanks_twoAdicity
   Bandersnatch_SqrtDlog_BlockSize* = 8
   Bandersnatch_SqrtDlog_Blocks* = 4 #Bandersnatch_TonelliShanks_sqrtParam_TotalBits / Bandersnatch_TonelliShanks_sqrtParam_BlockSize

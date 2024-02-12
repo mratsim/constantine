@@ -1497,3 +1497,4 @@ func precompute_tonelli_shanks_addchain*(
   r *= x11111111
   r.square()
   r *= a
+
