@@ -39,7 +39,6 @@ func newPrecomputedWeights* [PrecomputedWeights] (res: var PrecomputedWeights) =
     inverseWeights.inv(weights)
 
     res.barycentricWeights[i] = weights
-    discard weights
     res.barycentricWeights[i + midpoint] = inverseWeights
 
   ## Computing 1/k and -1/k for k in [0,255],
@@ -49,13 +48,11 @@ func newPrecomputedWeights* [PrecomputedWeights] (res: var PrecomputedWeights) =
   for i in 1 ..< VerkleDomain:
     var k {.noInit.}: Fr[Banderwagon]
     k.fromInt(i)
-    var k_inv {.noInit.} : Fr[Banderwagon]
+    var k_inv {.noInit.}: Fr[Banderwagon]
     k_inv.inv(k)
 
-    discard k
-
-    var neg_k {.noInit.} : Fr[Banderwagon]
-    var zero {.noInit.} : Fr[Banderwagon]
+    var neg_k {.noInit.}: Fr[Banderwagon]
+    var zero {.noInit.}: Fr[Banderwagon]
     zero.setZero()
     neg_k.neg(k_inv)
     res.invertedDomain[i-1] = k_inv
@@ -67,7 +64,7 @@ func computeBarycentricWeights*(res: var Fr[Banderwagon], element: int) =
   ## This is computed as the product of x_j - x_i where x_i is an element in the domain
   ## also, where x_i != x_j
   doAssert element <= VerkleDomain, "Element should be lesser than the Verkle Domain"
-  var domain_element_Fr {.noInit.} : Fr[Banderwagon]
+  var domain_element_Fr {.noInit.}: Fr[Banderwagon]
   domain_element_Fr.fromInt(element)
 
   res.setOne()
@@ -76,10 +73,10 @@ func computeBarycentricWeights*(res: var Fr[Banderwagon], element: int) =
     if i == element:
       continue
 
-    var i_Fr {.noInit.} : Fr[Banderwagon] 
+    var i_Fr {.noInit.}: Fr[Banderwagon] 
     i_Fr.fromInt(i)
 
-    var temp {.noInit.} : Fr[Banderwagon]
+    var temp {.noInit.}: Fr[Banderwagon]
     temp.diff(domain_element_Fr,i_Fr)
     res *= temp
 
@@ -90,22 +87,22 @@ func computeBarycentricCoefficients*(res_inv: var openArray[Fr[Banderwagon]], pr
   ## equal to p(z). Here `z` is a point outside of the domain. We can also term this as Lagrange Coefficients L_i.
   var res {.noInit.} : array[VerkleDomain, Fr[Banderwagon]]
   for i in 0 ..< VerkleDomain:
-    var weight {.noInit.} : Fr[Banderwagon]
-    var i_fr {.noInit.} : Fr[Banderwagon]
+    var weight {.noInit.}: Fr[Banderwagon]
+    var i_fr {.noInit.}: Fr[Banderwagon]
     weight = precomp.barycentricWeights[i]
     i_fr.fromInt(i)
 
     res[i].diff(point, i_fr)
     res[i] *= weight
 
-  var totalProd {.noInit.} : Fr[Banderwagon]
+  var totalProd {.noInit.}: Fr[Banderwagon]
   totalProd.setOne()
 
   for i in 0 ..< VerkleDomain:
-    var i_fr {.noInit.} : Fr[Banderwagon]
+    var i_fr {.noInit.}: Fr[Banderwagon]
     i_fr.fromInt(i)
 
-    var tmp {.noInit.} : Fr[Banderwagon]
+    var tmp {.noInit.}: Fr[Banderwagon]
     tmp.diff(point, i_fr)
 
     totalProd *= tmp
@@ -121,20 +118,20 @@ func getInvertedElement*(res: var Fr[Banderwagon], precomp : PrecomputedWeights,
   index = element - 1 
 
   if is_negative:
-    var midpoint = int((len(precomp.invertedDomain) / 2))
+    var midpoint = precomp.invertedDomain.len div 2
     index = index + midpoint
 
   res = precomp.invertedDomain[index]
 
 func getWeightRatios*(result: var Fr[Banderwagon], precomp: PrecomputedWeights, numerator: var int, denominator: var int) =
   var a = precomp.barycentricWeights[numerator]
-  var midpoint = int((len(precomp.barycentricWeights) / 2))
+  var midpoint = precomp.barycentricWeights.len div 2
   var b = precomp.barycentricWeights[denominator + midpoint]
   result.prod(a, b)
 
 
 func getBarycentricInverseWeight*(res: var Fr[Banderwagon], precomp: PrecomputedWeights, i: int) =
-  var midpoint = int((len(precomp.barycentricWeights) / 2))
+  var midpoint = precomp.barycentricWeights.len div 2
   res = precomp.barycentricWeights[i+midpoint]
 
 
@@ -157,14 +154,14 @@ func divisionOnDomain*(res: var array[VerkleDomain,Fr[Banderwagon]], precomp: Pr
   for i in 0 ..< VerkleDomain:
     if i != index:    
       var denominator = i - index
-      var absDenominator {.noInit.} : int
+      var absDenominator {.noInit.}: int
       absDenominator.absIntChecker(denominator)
 
       if absDenominator > 0:
         is_negative = false
 
 
-      var denominatorInv {.noInit.} : Fr[Banderwagon]
+      var denominatorInv {.noInit.}: Fr[Banderwagon]
       denominatorInv.getInvertedElement(precomp, absDenominator, is_negative)
 
       res[i].diff(f[i], y)

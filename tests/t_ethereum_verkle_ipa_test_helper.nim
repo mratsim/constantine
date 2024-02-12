@@ -59,33 +59,33 @@ func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: sta
   doAssert max_degree_plus_one >= 2, "Should be interpolating for degree >= 1!"
 
   for k in 0 ..< points.len:
-    var point : Coord
+    var point: Coord
     point = points[k]
 
-    var x_k : Fr 
+    var x_k: Fr 
     x_k = point.x
-    var y_k : Fr 
+    var y_k: Fr 
     y_k = point.y
 
-    var contribution : array[n,Fr]
-    var denominator : Fr
+    var contribution: array[n,Fr]
+    var denominator: Fr
     denominator.setOne()
     var max_contribution_degree = 0
 
     for j in 0 ..< points.len:
-      var point : Coord 
+      var point: Coord 
       point = points[j]
-      var x_j : Fr 
+      var x_j: Fr 
       x_j = point.x
 
       if j == k: 
         continue
 
-      var differ : Fr
+      var differ: Fr
       differ = x_k
       differ -= x_j
 
-      denominator.prod(denominator,differ)
+      denominator *= differ
 
       if max_contribution_degree == 0:
         max_contribution_degree = 1
@@ -93,9 +93,9 @@ func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: sta
         contribution[1] += one
 
       else:
-        var mul_by_minus_x_j : array[n,Fr]
+        var mul_by_minus_x_j: array[n,Fr]
         for el in 0 ..< contribution.len:
-          var tmp : Fr = contribution[el]
+          var tmp: Fr = contribution[el]
           tmp *= x_j
           tmp.neg()
           mul_by_minus_x_j[el] = tmp
@@ -109,11 +109,11 @@ func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: sta
         doAssert max_degree_plus_one == mul_by_minus_x_j.len, "Malformed mul_by_minus_x_j!"
 
         for i in 0 ..< contribution.len:
-          var other {.noInit.} : Fr
+          var other {.noInit.}: Fr
           other = mul_by_minus_x_j[i]
           contribution[i] += other
 
-    var denominator_inv {.noInit.} : Fr       
+    var denominator_inv {.noInit.}: Fr       
     denominator_inv.inv(denominator)
 
     discard denominator
@@ -122,7 +122,7 @@ func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: sta
     doAssert (stat).bool == false, "Denominator should not be zero!"
 
     for i in 0 ..< contribution.len:
-      var tmp {.noInit.} : Fr 
+      var tmp {.noInit.}: Fr 
       tmp = contribution[i]
       tmp *= denominator
       tmp *= y_k
@@ -132,17 +132,17 @@ func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: sta
 #Initiating evaluation points z in the FiniteField (253)
 func setEval* [Fr] (res: var Fr, x : Fr)=
 
-  var tmp_a {.noInit.} : Fr
+  var tmp_a {.noInit.}: Fr
 
   var one {.noInit.}: Fr
   one.setOne()
 
   tmp_a.diff(x, one)
 
-  var tmp_b : Fr
+  var tmp_b: Fr
   tmp_b.sum(x, one)
 
-  var tmp_c : Fr = one
+  var tmp_c: Fr = one
 
   for i in 0 ..< 253:
     tmp_c.prod(tmp_c,x) 
@@ -156,7 +156,7 @@ func evalOutsideDomain* [Fr] (res: var Fr, precomp: PrecomputedWeights, f: openA
   var pointMinusDomain: array[VerkleDomain, Fr]
   var pointMinusDomain_inv: array[VerkleDomain, Fr]
   for i in 0 ..< VerkleDomain:
-    var i_fr {.noInit.} : Fr
+    var i_fr {.noInit.}: Fr
     i_fr.fromInt(i)
 
     pointMinusDomain[i].diff(point, i_fr)
@@ -177,10 +177,10 @@ func evalOutsideDomain* [Fr] (res: var Fr, precomp: PrecomputedWeights, f: openA
   res.setOne()
 
   for i in 0 ..< VerkleDomain:
-    var i_fr : Fr
+    var i_fr: Fr
     i_fr.fromInt(i)
 
-    var tmp : Fr
+    var tmp: Fr
     tmp.diff(point, i_fr)
     res *= tmp
 
@@ -199,13 +199,13 @@ func testPoly256* [Fr] (res: var openArray[Fr], polynomialUint: openArray[int])=
 
 func isPointEqHex*(point: EC_P, expected: string): bool {.discardable.} =
 
-  var point_bytes {.noInit.} : Bytes
+  var point_bytes {.noInit.}: Bytes
   if point_bytes.serialize(point) == cttCodecEcc_Success:
     doAssert (point_bytes.toHex() == expected).bool() == true, "Point does not equal to the expected hex value!"
 
 func isScalarEqHex*(scalar: matchingOrderBigInt(Banderwagon), expected: string) : bool {.discardable.} =
 
-  var scalar_bytes {.noInit.} : Bytes
+  var scalar_bytes {.noInit.}: Bytes
   if scalar_bytes.serialize_scalar(scalar) == cttCodecScalar_Success:
     doAssert (scalar_bytes.toHex() == expected).bool() == true, "Scalar does not equal to the expected hex value!"
 
