@@ -66,12 +66,12 @@ suite "Barycentric Form Tests":
 
     proc testBasicInterpolation() =
 
-      var point_a : Coord
+      var point_a: Coord
 
       point_a.x.setZero()
       point_a.y.setZero()
 
-      var point_b : Coord
+      var point_b: Coord
 
       point_b.x.setOne()
       point_b.y.setOne()
@@ -84,9 +84,9 @@ suite "Barycentric Form Tests":
 
       poly.interpolate(points,2)
 
-      var genfp : EC_P
+      var genfp: EC_P
       genfp.fromAffine(generator)
-      var genfr : Fr[Banderwagon]
+      var genfr: Fr[Banderwagon]
       genfr.mapToScalarField(genfp)
 
       var res {.noInit.}: Fr[Banderwagon]
@@ -98,53 +98,43 @@ suite "Barycentric Form Tests":
 
   test "Testing Barycentric Precompute Coefficients":
     proc testBarycentricPrecomputeCoefficients()=
-
         var p_outside_dom : Fr[Banderwagon]
+        p_outside_dom.fromInt(3400)
 
-        var i_bg : matchingOrderBigInt(Banderwagon)
-        i_bg.setUint(uint64(3400))
+        var testVals: array[10, int] = [1,2,3,4,5,6,7,8,9,10] 
         
-        p_outside_dom.fromBig(i_bg)
-
-        var testVals: array[10,uint64] = [1,2,3,4,5,6,7,8,9,10] 
-        
-        var lagrange_values : array[256,Fr[Banderwagon]]
+        var lagrange_values: array[256, Fr[Banderwagon]]
         lagrange_values.testPoly256(testVals)
 
         var precomp {.noInit.}: PrecomputedWeights
-
         precomp.newPrecomputedWeights()
         
-        var bar_coeffs: array[256, Fr[Banderwagon]]
-
+        var bar_coeffs {.noInit.}: array[256, Fr[Banderwagon]]
         bar_coeffs.computeBarycentricCoefficients(precomp, p_outside_dom)
 
         var expected0: Fr[Banderwagon]
-
         expected0.computeInnerProducts(lagrange_values, bar_coeffs)
 
-        var points: array[256, Coord]
-        for k in 0 ..< 256:
-            var x : matchingOrderBigInt(Banderwagon)
-            x.setUint(uint64(k))
-            var x_fr : Fr[Banderwagon]
-            x_fr.fromBig(x)
+        var expected1: Fr[Banderwagon]
+        expected1.evalOutsideDomain(precomp, lagrange_values, p_outside_dom)
 
-            var point : Coord
+        var points: array[VerkleDomain, Coord]
+        for k in 0 ..< 256:
+            var x_fr: Fr[Banderwagon]
+            x_fr.fromInt(k)
+
+            var point {.noInit.}: Coord
             point.x = x_fr
             point.y = lagrange_values[k]
 
-            points[k]=point
+            discard x_fr
+            points[k] = point
 
-        var poly_coeff : array[VerkleDomain, Fr[Banderwagon]]
-        poly_coeff.interpolate(points, VerkleDomain)
+        discard lagrange_values
 
-        var expected2: Fr[Banderwagon]
-        expected2.ipaEvaluate(poly_coeff, p_outside_dom, VerkleDomain)
-
-
-        doAssert (expected0.toHex() == "0x042d5629f4eaac570610673570658986f8a74730d3d8587e34062ac4b3c3b950").bool() == true, "Problem with Barycentric Weights!"
-        doAssert (expected2.toHex() == "0x0ddd6424cdfa97f24d8de604a309e1a4eb6ce33663aa132cf87ee874a0ffe506").bool() == true, "Problem with Inner Products!"
+        # testing with a no-precompute optimized Lagrange Interpolation value from Go-IPA
+        doAssert expected0.toHex(littleEndian) == "0x50b9c3b3c42a06347e58d8d33047a7f8868965703567100657aceaf429562d04", "Barycentric Precompute and Lagrange should NOT give different values"
+        doAssert expected0.toHex(littleEndian) == expected1.toHex(littleEndian), "Issue Barycentric Precomputes"
 
     testBarycentricPrecomputeCoefficients()
 # ############################################################
@@ -157,14 +147,14 @@ suite "Random Elements Generation and CRS Consistency":
   test "Test for Generating Random Points and Checking the 1st and 256th point with the Verkle Spec":
 
     proc testGenPoints()=
-      var ipaConfig {.noInit.} : IPASettings
-      var ipaTranscript {.noInit.} : IpaTranscript[sha256, 32]
+      var ipaConfig {.noInit.}: IPASettings
+      var ipaTranscript {.noInit.}: IpaTranscript[sha256, 32]
       discard ipaConfig.genIPAConfig(ipaTranscript)
 
-      var basisPoints {.noInit.} : array[256, EC_P]
+      var basisPoints {.noInit.}: array[256, EC_P]
       basisPoints.generate_random_points(ipaTranscript, 256)
 
-      var arr_byte {.noInit.} : array[256, array[32, byte]]
+      var arr_byte {.noInit.}: array[256, array[32, byte]]
       discard arr_byte.serializeBatch(basisPoints)
 
       doAssert arr_byte[0].toHex() == "0x01587ad1336675eb912550ec2a28eb8923b824b490dd2ba82e48f14590a298a0", "Failed to generate the 1st point!"
@@ -187,7 +177,7 @@ suite "Computing the Correct Vector Commitment":
       var ipaTranscript: IpaTranscript[sha256, 32]
       let stat1 = ipaConfig.genIPAConfig(ipaTranscript)
 
-      var basisPoints : array[256, EC_P]
+      var basisPoints: array[256, EC_P]
       basisPoints.generate_random_points(ipaTranscript, 256)
 
       
@@ -195,10 +185,10 @@ suite "Computing the Correct Vector Commitment":
       for i in 0 ..< 256:
         test_scalars[i].fromHex(testScalarsHex[i])
 
-      var commitment {.noInit.} : EC_P
+      var commitment {.noInit.}: EC_P
       commitment.pedersen_commit_varbasis(basisPoints, basisPoints.len, test_scalars, test_scalars.len)
 
-      var arr22 {.noInit.} : Bytes
+      var arr22 {.noInit.}: Bytes
       let stat33 = arr22.serialize(commitment)
 
       doAssert "0x524996a95838712c4580220bb3de453d76cffd7f732f89914d4417bc8e99b513" == arr22.toHex(), "bit string does not match expected"
@@ -216,12 +206,12 @@ suite "Deserialize a proof which contains an invalid final scalar by @Ignacio":
   test "Deserialize a proof which contains a final scalar bigger than the field size (MUST fail)":
 
     proc testBiggerThanFieldSizeDeserialize() =
-      var test_big {.noInit.} : matchingOrderBigInt(Banderwagon)
+      var test_big {.noInit.}: matchingOrderBigInt(Banderwagon)
 
       var proof1_bytes = newSeq[byte](serializedProof1.len)
       proof1_bytes.fromHex(serializedProof1)
 
-      var proof2_bytes : array[32, byte]
+      var proof2_bytes: array[32, byte]
 
       for i in 0 ..< 32:
         proof2_bytes[i] = proof1_bytes[i]
@@ -244,15 +234,15 @@ suite "Deserialize a proof which wrong lengths by @Ignacio":
 
     proc testInvalidFieldSizeDeserialize() =
 
-      var test_big {.noInit.} : array[3, matchingOrderBigInt(Banderwagon)]
+      var test_big {.noInit.}: array[3, matchingOrderBigInt(Banderwagon)]
 
-      var i : int = 0
+      var i: int = 0
 
       while i != 3:
         var proof_bytes = newSeq[byte](serializedProofs2[2].len)
         proof_bytes.fromHex(serializedProofs2[i])
 
-        var proof2_bytes : array[32, byte]
+        var proof2_bytes: array[32, byte]
 
         for j in 0 ..< 32:
           proof2_bytes[j] = proof_bytes[j]
@@ -286,7 +276,7 @@ suite "Transcript Tests":
       var challenge1 {.noInit.}: matchingOrderBigInt(Banderwagon)
       challenge1.generateChallengeScalar(tr,asBytes"simple_challenge")
 
-      var b1 {.noInit.} : array[32, byte]
+      var b1 {.noInit.}: array[32, byte]
       let stat = b1.serialize_scalar(challenge1, littleEndian)
       doAssert stat == cttCodecScalar_Success, "Serialization Failure"
 
@@ -415,12 +405,10 @@ suite "IPA proof tests":
       prover_transcript.newTranscriptGen(asBytes"ipa")
 
       #from a shared view
-      var i_bg: matchingOrderBigInt(Banderwagon)
-      i_bg.setUint(uint64(12345))
-      point.fromBig(i_bg)
+      point.fromInt(12345)
 
       #from the prover's side
-      var testVals: array[5, uint64] = [1,2,3,4,5]
+      var testVals: array[5, int] = [1,2,3,4,5]
       var poly: array[256, Fr[Banderwagon]]
       poly.testPoly256(testVals)
 
@@ -452,12 +440,10 @@ suite "IPA proof tests":
         testGeneratedPoints.generate_random_points(ipaTranscript,256)
 
         # from a shared view
-        var i_bg : matchingOrderBigInt(Banderwagon)
-        i_bg.setUint(uint64(123456789))
-        point.fromBig(i_bg)
+        point.fromInt(123456789)
 
         # from the prover's side
-        var testVals : array[9, uint64] = [1,2,3,4,5,6,7,8,9]
+        var testVals : array[9, int] = [1,2,3,4,5,6,7,8,9]
         var poly: array[256,Fr[Banderwagon]]
         poly.testPoly256(testVals)
 
@@ -521,7 +507,7 @@ suite "Multiproof Tests":
       var testGeneratedPoints: array[256, EC_P]
       testGeneratedPoints.generate_random_points(ipaTranscript, 256)
 
-      var testVals: array[14, uint64] = [1,1,1,4,5,6,7,8,9,10,11,12,13,14]
+      var testVals: array[14, int] = [1,1,1,4,5,6,7,8,9,10,11,12,13,14]
       var poly : array[256, Fr[Banderwagon]]
 
       poly.testPoly256(testVals)
