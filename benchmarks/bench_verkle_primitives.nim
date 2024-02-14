@@ -21,34 +21,14 @@ import
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
-    ec_scalar_mul, ec_endomorphism_accel,
     ec_twistededwards_affine,
     ec_twistededwards_projective],
   ../constantine/math/constants/zoo_generators,
-  ../constantine/math/pairings/[
-    cyclotomic_subgroups,
-    pairings_bls12,
-    pairings_bn
-  ],
   ../constantine/math/io/io_fields,
-  ../constantine/math/constants/zoo_pairings,
-  ../constantine/hashes,
   ../constantine/hash_to_curve/hash_to_curve,
-  ../constantine/serialization/[
-    codecs_status_codes, 
-    codecs_banderwagon
-  ],
+  ../constantine/serialization/codecs_banderwagon,
   # Helpers
-  ../helpers/prng_unsafe,
   ./bench_blueprint
-
-export
-  ec_shortweierstrass_projective,
-  ec_shortweierstrass_jacobian
-
-export abstractions # generic sandwich on SecretBool and SecretBool in Jacobian sum
-export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11225
-export notes
 
 type
   Prj* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
@@ -62,9 +42,9 @@ proc report(op, domain: string, start, stop: MonoTime, startClk, stopClk: int64,
   let ns = inNanoseconds((stop-start) div iters)
   let throughput = 1e9 / float64(ns)
   when SupportsGetTicks:
-    echo &"{op:<35} {domain:<40} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
+    echo &"{op:<60} {domain:<15} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
   else:
-    echo &"{op:<35} {domain:<40} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
+    echo &"{op:<60} {domain:<15} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
 
 macro fixEllipticDisplay(T: typedesc): untyped =
   # At compile-time, enums are integers and their display is buggy
@@ -99,17 +79,16 @@ template bench(op: string, T: typed, iters: int, body: untyped): untyped =
   measure(iters, startTime, stopTime, startClk, stopClk, body)
   report(op, fixDisplay(T), startTime, stopTime, startClk, stopClk, iters)
 
-# proc equalityBench*(T: typedesc, iters: int) =
-#   when T is Aff:
-#     let P = Banderwagon.getGenerator()
-#     let Q = Banderwagon.getGenerator()
-#   else:
-#     var P, Q: Prj
-#     P.fromAffine(Banderwagon.getGenerator())
-#     Q.fromAffine(Banderwagon.getGenerator())
-#   bench("Banderwagon Equality ", T, iters):
-#     assert (P == Q).bool()
-
+proc equalityBench*(T: typedesc, iters: int) =
+  when T is Aff:
+    let P = Banderwagon.getGenerator()
+    let Q = Banderwagon.getGenerator()
+  else:
+    var P, Q: Prj
+    P.fromAffine(Banderwagon.getGenerator())
+    Q.fromAffine(Banderwagon.getGenerator())
+  bench("Banderwagon Equality ", T, iters):
+    assert (P == Q).bool()
 
 
 proc serializeBench*(T: typedesc, iters: int) =
@@ -131,14 +110,46 @@ proc deserializeBench*(T: typedesc, iters: int) =
   bench("Banderwagon Deserialization", T, iters):
     discard P.deserialize(bytes)
 
+proc deserializeBenchUnchecked*(T: typedesc, iters: int) =
+  var bytes: array[32, byte]
+  var P: Prj
+  P.fromAffine(Banderwagon.getGenerator())
+  for i in 0 ..< 6:
+    P.double()
+  discard bytes.serialize(P)
+  bench("Banderwagon Deserialization Unchecked", T, iters):
+    discard P.deserialize_unchecked(bytes)
+
+proc deserializeBench_vartime*(T: typedesc, iters: int) =
+  var bytes: array[32, byte]
+  var P: Prj
+  P.fromAffine(Banderwagon.getGenerator())
+  for i in 0 ..< 6:
+    P.double()
+  discard bytes.serialize(P)
+  bench("Banderwagon Deserialization Vartime (Precomp)", T, iters):
+    discard P.deserialize_vartime(bytes)
+
+proc deserializeBenchUnchecked_vartime*(T: typedesc, iters: int) =
+  var bytes: array[32, byte]
+  var P: Prj
+  P.fromAffine(Banderwagon.getGenerator())
+  for i in 0 ..< 6:
+    P.double()
+  discard bytes.serialize(P)
+  bench("Banderwagon Deserialization Unchecked Vartime (Precomp)", T, iters):
+    discard P.deserialize_unchecked_vartime(bytes)
+
 
 proc main() =
-  # separator()
-  # equalityBench(Aff, Iters)
-  # equalityBench(Prj, Iters)
+  equalityBench(Prj, Iters)
   separator()
   serializeBench(Prj, Iters)
   deserializeBench(Prj, Iters)
+  deserializeBenchUnchecked(Prj, Iters)
+  separator()
+  deserializeBench_vartime(Prj, Iters)
+  deserializeBenchUnchecked_vartime(Prj, Iters)
 
 main()
 notes()
