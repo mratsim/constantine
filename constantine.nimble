@@ -613,7 +613,8 @@ const benchDesc = [
   "bench_ethereum_eip4844_kzg",
   "bench_evm_modexp_dos",
   "bench_gmp_modexp",
-  "bench_gmp_modmul"
+  "bench_gmp_modmul",
+  "bench_verkle_primitives"
 ]
 
 # For temporary (hopefully) investigation that can only be reproduced in CI
@@ -1036,3 +1037,6 @@ task bench_ethereum_bls_signatures, "Run Ethereum BLS signatures benchmarks - CC
 # ------------------------------------------
 task bench_ethereum_eip4844_kzg, "Run Ethereum EIP4844 KZG Polynomial commitment - CC compiler":
   runBench("bench_ethereum_eip4844_kzg")
+
+task bench_verkle, "Run benchmarks for Banderwagon":
+  runBench("bench_verkle_primitives")

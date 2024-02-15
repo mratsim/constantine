@@ -132,6 +132,43 @@ func deserialize_unchecked*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccS
 
   return cttCodecEcc_Success
 
+func deserialize_unchecked_vartime*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccStatus =
+  ## This is not in constant-time
+  ## Deserialize a Banderwagon point (x, y) in format
+  ## 
+  ## if y is not lexicographically largest
+  ## set y -> -y
+  ## 
+  ## Returns cttCodecEcc_Success if successful
+  ## https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Serialisation
+  # If infinity, src must be all zeros
+  var check: bool = true
+  for i in 0 ..< src.len:
+    if src[i] != byte 0:
+      check = false
+      break
+  if check:
+    dst.setInf()
+    return cttCodecEcc_PointAtInfinity
+  
+  var t{.noInit.}: matchingBigInt(Banderwagon)
+  t.unmarshal(src, bigEndian)
+
+  if bool(t >= Banderwagon.Mod()):
+    return cttCodecEcc_CoordinateGreaterThanOrEqualModulus
+
+  var x{.noInit.}: Fp[Banderwagon]
+  x.fromBig(t)
+
+  let onCurve = dst.trySetFromCoordX_vartime(x)
+  if not(bool onCurve):
+    return cttCodecEcc_PointNotOnCurve
+
+  let isLexicographicallyLargest = dst.y.toBig() >= Fp[Banderwagon].getPrimeMinus1div2()
+  dst.y.cneg(not isLexicographicallyLargest)
+
+  return cttCodecEcc_Success
+
 func deserialize*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccStatus =
   ## Deserialize a Banderwagon point (x, y) in format
   ## 
@@ -140,6 +177,22 @@ func deserialize*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccStatus =
   ## Returns cttCodecEcc_Success if successful
   ## Returns cttCodecEcc_PointNotInSubgroup if doesn't lie in subgroup
   result = deserialize_unchecked(dst, src)
+  if result != cttCodecEcc_Success:
+    return result
+
+  if not(bool dst.isInSubgroup()):
+    return cttCodecEcc_PointNotInSubgroup
+
+  return cttCodecEcc_Success
+
+func deserialize_vartime*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccStatus =
+  ## Deserialize a Banderwagon point (x, y) in format
+  ## 
+  ## Also checks if the point lies in the banderwagon scheme subgroup
+  ## 
+  ## Returns cttCodecEcc_Success if successful
+  ## Returns cttCodecEcc_PointNotInSubgroup if doesn't lie in subgroup
+  result = deserialize_unchecked_vartime(dst, src)
   if result != cttCodecEcc_Success:
     return result
 

@@ -166,6 +166,27 @@ suite "Banderwagon Serialization Tests":
         doAssert (point == points[i]).bool(), "Decoded Element is different from expected element"
 
     testDeserialization(expected_bit_strings.len)
+
+  ## Check decoding if it is as expected or not ( vartime impl )
+  test "vartime - Decoding Each bit string":
+    proc testDeserialization_vartime(len: int) =
+      # Checks if the point serialized in the previous
+      # tests matches with the deserialization of expected strings 
+      for i, bit_string in expected_bit_strings:
+
+        # converts serialized value in hex to byte array
+        var arr: Bytes 
+        discard arr.parseHex(bit_string)
+
+        # deserialization from expected bits
+        var point{.noInit.}: EC
+        let stat = point.deserialize_vartime(arr) 
+
+        # Assertion check for the Deserialization Success & correctness
+        doAssert stat == cttCodecEcc_Success, "Deserialization Failed"
+        doAssert (point == points[i]).bool(), "Decoded Element is different from expected element"
+
+    testDeserialization_vartime(expected_bit_strings.len)
   
   # Check if the subgroup check is working on eliminating
   # points which don't lie on banderwagon, while 
