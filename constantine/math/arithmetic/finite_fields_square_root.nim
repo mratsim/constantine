@@ -224,6 +224,7 @@ func invsqrt_vartime*[C](r: var Fp[C], a: Fp[C]) =
   ## The square root, if it exist is multivalued,
   ## i.e. both x² == (-x)²
   ## This procedure returns a deterministic result
+  ##
   ## This procedure is NOT constant-time
   when C.has_P_3mod4_primeModulus():
     r.invsqrt_p3mod4(a)
@@ -250,9 +251,13 @@ func sqrt*[C](a: var Fp[C]) =
   a *= t
 
 func sqrt_vartime*[C](a: var Fp[C]) =
-  ## This is a vartime version of sqrt
-  ## It is not constant-time
-  ## This has the precomp optimisation
+  ## Compute the square root of ``a``
+  ##
+  ## This requires ``a`` to be a square
+  ##
+  ## The result is undefined otherwise
+  ##
+  ## This is NOT constant-time
   var t {.noInit.}: Fp[C]
   t.invsqrt_vartime(a)
   a *= t
@@ -271,8 +276,13 @@ func sqrt_invsqrt*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]) =
   sqrt.prod(invsqrt, a)
 
 func sqrt_invsqrt_vartime*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]) =
-  ## It is not constant-time
-  ## This has the precomp optimisation
+  ## Compute the square root of ``a`` and inverse square root of ``a``
+  ##
+  ## This requires ``a`` to be a square
+  ##
+  ## The result is undefined otherwise
+  ##
+  ## This is NOT constant-time
   invsqrt.invsqrt_vartime(a)
   sqrt.prod(invsqrt, a)
 
@@ -292,8 +302,13 @@ func sqrt_invsqrt_if_square*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]): SecretBool 
   result = test == a
 
 func sqrt_invsqrt_if_square_vartime*[C](sqrt, invsqrt: var Fp[C], a: Fp[C]): SecretBool  =
-  ## It is not constant-time
-  ## This has the precomp optimisation
+  ## Compute the square root and ivnerse square root of ``a``
+  ##
+  ## This returns true if ``a`` is square and sqrt/invsqrt contains the square root/inverse square root
+  ##
+  ## The result is undefined otherwise
+  ##
+  ## This is NOT constant-time
   sqrt_invsqrt_vartime(sqrt, invsqrt, a)
   var test {.noInit.}: Fp[C]
   test.square(sqrt)
@@ -311,6 +326,19 @@ func sqrt_if_square*[C](a: var Fp[C]): SecretBool =
   result = sqrt_invsqrt_if_square(sqrt, invsqrt, a)
   a = sqrt
 
+func sqrt_if_square_vartime*[C](a: var Fp[C]): SecretBool =
+  ## If ``a`` is a square, compute the square root of ``a``
+  ## if not, ``a`` is undefined.
+  ##
+  ## The square root, if it exist is multivalued,
+  ## i.e. both x² == (-x)²
+  ## This procedure returns a deterministic result
+  ##
+  ## This is NOT constant-time
+  var sqrt{.noInit.}, invsqrt{.noInit.}: Fp[C]
+  result = sqrt_invsqrt_if_square_vartime(sqrt, invsqrt, a)
+  a = sqrt
+
 func invsqrt_if_square*[C](r: var Fp[C], a: Fp[C]): SecretBool =
   ## If ``a`` is a square, compute the inverse square root of ``a``
   ## if not, ``a`` is undefined.
@@ -323,8 +351,10 @@ func invsqrt_if_square*[C](r: var Fp[C], a: Fp[C]): SecretBool =
   result = sqrt_invsqrt_if_square(sqrt, r, a)
 
 func invsqrt_if_square_vartime*[C](r: var Fp[C], a: Fp[C]): SecretBool =
-  ## It is not constant-time
-  ## This has the precomp optimisation
+  ## If ``a`` is a square, compute the inverse square root of ``a``
+  ## if not, ``a`` is undefined.
+  ##
+  ## This procedure is NOT constant-time
   var sqrt{.noInit.}: Fp[C]
   result = sqrt_invsqrt_if_square_vartime(sqrt, r, a)
 
@@ -365,8 +395,12 @@ func sqrt_ratio_if_square*(r: var Fp, u, v: Fp): SecretBool {.inline.} =
   r *= u                           # √u/√v
 
 func sqrt_ratio_if_square_vartime*(r: var Fp, u, v: Fp): SecretBool {.inline.} =
-  ## It is not constant-time
-  ## This has the precomp optimisation
+  ## If u/v is a square, compute √(u/v)
+  ## if not, the result is undefined
+  ##
+  ## r must not alias u or v
+  ##
+  ## This is NOT constant-time
   var uv{.noInit.}: Fp
   uv.prod(u, v)                    # uv
   result = r.invsqrt_if_square_vartime(uv) # 1/√uv

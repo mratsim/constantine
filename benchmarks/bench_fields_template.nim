@@ -199,6 +199,33 @@ proc sqrtRatioBench*(T: typedesc, iters: int) =
   bench("Fused SquareRoot+Division+isSquare sqrt(u/v)", T, iters):
     let isSquare = r.sqrt_ratio_if_square(u, v)
 
+proc sqrtVartimeBench*(T: typedesc, iters: int) =
+  let x = rng.random_unsafe(T)
+
+  const algoType = block:
+    when T.C.has_P_3mod4_primeModulus():
+      "p ≡ 3 (mod 4)"
+    elif T.C.has_P_5mod8_primeModulus():
+      "p ≡ 5 (mod 8)"
+    else:
+      "Tonelli-Shanks"
+  const addchain = block:
+    when T.C.hasSqrtAddchain() or T.C.hasTonelliShanksAddchain():
+      "with addition chain"
+    else:
+      "without addition chain"
+  const desc = "Square Root (vartime " & algoType & " " & addchain & ")"
+  bench(desc, T, iters):
+    var r = x
+    discard r.sqrt_if_square_vartime()
+
+proc sqrtRatioVartimeBench*(T: typedesc, iters: int) =
+  var r: T
+  let u = rng.random_unsafe(T)
+  let v = rng.random_unsafe(T)
+  bench("Fused SquareRoot+Division+isSquare sqrt_vartime(u/v)", T, iters):
+    let isSquare = r.sqrt_ratio_if_square_vartime(u, v)
+
 proc powBench*(T: typedesc, iters: int) =
   let x = rng.random_unsafe(T)
   let exponent = rng.random_unsafe(BigInt[T.C.getCurveOrderBitwidth()])

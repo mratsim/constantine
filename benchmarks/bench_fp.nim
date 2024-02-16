@@ -65,6 +65,9 @@ proc main() =
     isSquareBench(Fp[curve], ExponentIters)
     sqrtBench(Fp[curve], ExponentIters)
     sqrtRatioBench(Fp[curve], ExponentIters)
+    when curve == Bandersnatch:
+      sqrtVartimeBench(Fp[curve], ExponentIters)
+      sqrtRatioVartimeBench(Fp[curve], ExponentIters)
     # Exponentiation by a "secret" of size ~the curve order
     powBench(Fp[curve], ExponentIters)
     powUnsafeBench(Fp[curve], ExponentIters)
