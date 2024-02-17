@@ -158,10 +158,10 @@ func precompute_tonelli_shanks_addchain*(
   r *= a
 
 
-# ############################################################  
-#  
-#       Optimized square-root via Discrete Log lookup tables  
-#  
+# ############################################################
+#
+#       Optimized square-root via Discrete Log lookup tables
+#
 # ############################################################
 
 const
