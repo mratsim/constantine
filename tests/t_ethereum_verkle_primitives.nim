@@ -267,6 +267,23 @@ suite "Banderwagon Serialization Tests":
     
     testWrongLength()
 
+  ## Tests for Uncompressed point serialization
+  test "Uncompressed Point Serialization":
+    proc testUncompressedSerialization() =
+      var point, point_regen {.noInit.}: EC
+      point.fromAffine(generator)
+
+      var arr: array[64, byte]
+      let stat = arr.serializeUncompressed(point)
+
+      doAssert stat == cttCodecEcc_Success, "Uncompressed Serialization Failed"
+      
+      let stat2 = point_regen.deserializeUncompressed(arr)
+      doAssert stat2 == cttCodecEcc_Success, "Uncompressed Deserialization Failed"
+      doAssert (point == point_regen).bool(), "Uncompressed SerDe Inconsistent"
+
+    testUncompressedSerialization()
+
 
 # ############################################################
 #
