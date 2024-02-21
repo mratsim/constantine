@@ -315,7 +315,7 @@ func serializeUncompressed*(dst: var array[64, byte], P: EC_Prj): CttCodecEccSta
 
 func deserializeUncompressed_unchecked*(dst: var EC_Prj, src: array[64, byte]): CttCodecEccStatus =
   ## Deserialize a Banderwagon point (x, y) in format
-  ## 
+  ## Doesn't check if the point is in the banderwagon scheme subgroup
   ## Returns cttCodecEcc_Success if successful
   var xSerialized: array[32, byte]
   var ySerialized: array[32, byte]

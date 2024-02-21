@@ -140,6 +140,35 @@ proc deserializeBenchUnchecked_vartime*(T: typedesc, iters: int) =
   bench("Banderwagon Deserialization Unchecked Vartime (Precomp)", T, iters):
     discard P.deserialize_unchecked_vartime(bytes)
 
+proc serializeUncompressedBench*(T: typedesc, iters: int) =
+  var bytes: array[64, byte]
+  var P: Prj
+  P.fromAffine(Banderwagon.getGenerator())
+  for i in 0 ..< 6:
+    P.double()
+  bench("Banderwagon Serialization Uncompressed", T, iters):
+    discard bytes.serializeUncompressed(P)
+
+proc deserializeUncompressedBench*(T: typedesc, iters: int) =
+  var bytes: array[64, byte]
+  var P: Prj
+  P.fromAffine(Banderwagon.getGenerator())
+  for i in 0 ..< 6:
+    P.double()
+  discard bytes.serializeUncompressed(P)
+  bench("Banderwagon Deserialization Uncompressed", T, iters):
+    discard P.deserializeUncompressed(bytes)
+
+proc deserializeUncompressedBenchUnchecked*(T: typedesc, iters: int) =
+  var bytes: array[64, byte]
+  var P: Prj
+  P.fromAffine(Banderwagon.getGenerator())
+  for i in 0 ..< 6:
+    P.double()
+  discard bytes.serializeUncompressed(P)
+  bench("Banderwagon Deserialization Uncompressed Unchecked", T, iters):
+    discard P.deserializeUncompressed_unchecked(bytes)
+
 
 proc main() =
   equalityBench(Prj, Iters)
@@ -150,6 +179,10 @@ proc main() =
   separator()
   deserializeBench_vartime(Prj, Iters)
   deserializeBenchUnchecked_vartime(Prj, Iters)
+  separator()
+  serializeUncompressedBench(Prj, Iters)
+  deserializeUncompressedBench(Prj, Iters)
+  deserializeUncompressedBenchUnchecked(Prj, Iters)
 
 main()
 notes()
