@@ -281,6 +281,47 @@ func serializeBatch*(
 
   return cttCodecEcc_Success
 
+## Batch Serialization of Banderwagon Points
+## In uncompressed format
+## serialize = [ bigEndian( x ) , bigEndian( y ) ]
+## Returns cttCodecEcc_Success if successful
+func serializeBatchUncompressed*(
+    dst: ptr UncheckedArray[array[64, byte]],
+    points: ptr UncheckedArray[EC_Prj],
+    N: int,
+  ) : CttCodecEccStatus {.noInline.} =
+
+  # collect all the z coordinates
+  var zs = allocStackArray(Fp[Banderwagon], N)
+  var zs_inv = allocStackArray(Fp[Banderwagon], N)
+  for i in 0 ..< N:
+    zs[i] = points[i].z
+
+  zs_inv.batchInvert(zs, N)
+  
+  for i in 0 ..< N:
+    var X: Fp[Banderwagon]
+    var Y: Fp[Banderwagon]
+
+    X.prod(points[i].x, zs_inv[i])
+    Y.prod(points[i].y, zs_inv[i])
+
+    var xSerialized: array[32, byte]
+    xSerialized.marshal(X, bigEndian)
+    var ySerialized: array[32, byte]
+    ySerialized.marshal(Y, bigEndian)
+
+    for j in 0 ..< 32:
+      dst[i][j] = xSerialized[j]
+      dst[i][j + 32] = ySerialized[j]
+
+  return cttCodecEcc_Success
+
+func serializeBatchUncompressed*[N: static int](
+        dst: var array[N, array[64, byte]],
+        points: array[N, EC_Prj]): CttCodecEccStatus {.inline.} =
+  return serializeBatchUncompressed(dst.asUnchecked(), points.asUnchecked(), N)
+
 func serializeBatch*[N: static int](
         dst: var array[N, array[32, byte]],
         points: array[N, EC_Prj]): CttCodecEccStatus {.inline.} =

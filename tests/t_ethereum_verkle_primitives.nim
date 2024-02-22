@@ -514,3 +514,26 @@ suite "Batch Operations on Banderwagon":
         doAssert expected_bit_strings[i] == arr[i].toHex(), "bit string does not match expected"
 
     testBatchSerialize(expected_bit_strings.len)
+
+  ## Check batch Uncompressed encoding
+  test "Batch Uncompressed Point Serialization":
+    proc testBatchUncompressedSerialization() =
+      var points: array[10, EC]
+      var point, point_regen {.noInit.}: EC
+      point.fromAffine(generator)
+
+      for i in 0 ..< 10:
+        points[i] = point
+        point.double()
+
+      var arr: array[10, array[64, byte]]
+      let stat = arr.serializeBatchUncompressed(points)
+
+      doAssert stat == cttCodecEcc_Success, "Uncompressed Serialization Failed"
+      
+      for i in 0 ..< 10:
+        let stat2 = point_regen.deserializeUncompressed(arr[i])
+        doAssert stat2 == cttCodecEcc_Success, "Uncompressed Deserialization Failed"
+        doAssert (points[i] == point_regen).bool(), "Uncompressed SerDe Inconsistent"
+
+    testBatchUncompressedSerialization()
