@@ -285,3 +285,66 @@ func serializeBatch*[N: static int](
         dst: var array[N, array[32, byte]],
         points: array[N, EC_Prj]): CttCodecEccStatus {.inline.} =
   return serializeBatch(dst.asUnchecked(), points.asUnchecked(), N)
+
+
+## ############################################################
+##
+##       Banderwagon Point Uncompressed Serialization
+##
+## ############################################################
+
+func serializeUncompressed*(dst: var array[64, byte], P: EC_Prj): CttCodecEccStatus =
+  ## Serialize a Banderwagon point(x, y) in the format
+  ## 
+  ## serialize = [ bigEndian( x ) , bigEndian( y ) ]
+  ## 
+  ## Returns cttCodecEcc_Success if successful
+  var aff {.noInit.}: EC_Aff
+  aff.affine(P)
+
+  var xSerialized: array[32, byte]
+  xSerialized.marshal(aff.x, bigEndian)
+  var ySerialized: array[32, byte]
+  ySerialized.marshal(aff.y, bigEndian)
+
+  for i in 0 ..< 32:
+    dst[i] = xSerialized[i]
+    dst[i + 32] = ySerialized[i]
+
+  return cttCodecEcc_Success
+
+func deserializeUncompressed_unchecked*(dst: var EC_Prj, src: array[64, byte]): CttCodecEccStatus =
+  ## Deserialize a Banderwagon point (x, y) in format
+  ## Doesn't check if the point is in the banderwagon scheme subgroup
+  ## Returns cttCodecEcc_Success if successful
+  var xSerialized: array[32, byte]
+  var ySerialized: array[32, byte]
+
+  for i in 0 ..< 32:
+    xSerialized[i] = src[i]
+    ySerialized[i] = src[i + 32]
+
+  var t{.noInit.}: matchingBigInt(Banderwagon)
+  t.unmarshal(xSerialized, bigEndian)
+
+  if bool(t >= Banderwagon.Mod()):
+    return cttCodecEcc_CoordinateGreaterThanOrEqualModulus
+
+  dst.x.fromBig(t)
+
+  t.unmarshal(ySerialized, bigEndian)
+  if bool(t >= Banderwagon.Mod()):
+    return cttCodecEcc_CoordinateGreaterThanOrEqualModulus
+
+  dst.y.fromBig(t)
+  return cttCodecEcc_Success
+
+func deserializeUncompressed*(dst: var EC_Prj, src: array[64, byte]): CttCodecEccStatus =
+  ## Deserialize a Banderwagon point (x, y) in format
+  ## 
+  ## Also checks if the point lies in the banderwagon scheme subgroup
+  ## 
+  ## Returns cttCodecEcc_Success if successful
+  result = dst.deserializeUncompressed_unchecked(src)
+  if not(bool dst.isInSubgroup()):
+    return cttCodecEcc_PointNotInSubgroup
