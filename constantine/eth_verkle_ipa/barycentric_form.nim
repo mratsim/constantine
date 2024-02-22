@@ -29,7 +29,7 @@ func newPrecomputedWeights* [PrecomputedWeights] (res: var PrecomputedWeights) =
 
   var midpoint = VerkleDomain
   for i in 0 ..< midpoint:
-    var weights {.noInit.}: Fr[Banderwagon]
+    var weights: Fr[Banderwagon]
     weights.computeBarycentricWeights(i) 
 
     ## Here we are storing the VerkleDomain no. of weights, but additionally we are also 
@@ -115,7 +115,7 @@ func computeBarycentricCoefficients*(res_inv: var openArray[Fr[Banderwagon]], pr
 
 func getInvertedElement*(res: var Fr[Banderwagon], precomp : PrecomputedWeights, element : int, is_negative: bool) =
   var index: int
-  index = element - 1 
+  index = element - 1
 
   if is_negative:
     var midpoint = precomp.invertedDomain.len div 2
@@ -136,30 +136,29 @@ func getBarycentricInverseWeight*(res: var Fr[Banderwagon], precomp: Precomputed
 
 
 func absIntChecker*[int] (res: var int, x : int) =
-  var is_negative {.noInit.}: bool
+  var is_negative = false
   if x < 0:
     is_negative = true
-
-  if is_negative == true:
-    res = - x
+    if is_negative == true:
+      res = -x
   else:
-    res = x
+     res = x
 
 
-func divisionOnDomain*(res: var array[VerkleDomain,Fr[Banderwagon]], precomp: PrecomputedWeights, index:  var int, f:  openArray[Fr[Banderwagon]]) =
+func divisionOnDomain*(res: var array[VerkleDomain,Fr[Banderwagon]], precomp: PrecomputedWeights, index:  var uint8, f: openArray[Fr[Banderwagon]]) =
   ## Computes f(x) - f(x_i) / x - x_i using the barycentric weights, where x_i is an element in the
   var is_negative = true
-  var y = f[index]
+  var y = f[int(index)]
 
   for i in 0 ..< VerkleDomain:
-    if i != index:    
-      var denominator = i - index
+    if i != int(index):
+
+      var denominator = i - int(index)
       var absDenominator {.noInit.}: int
       absDenominator.absIntChecker(denominator)
 
-      if absDenominator > 0:
-        is_negative = false
-
+      doAssert absDenominator > 0, "Absolute Denominator should be greater than 0!"
+      is_negative = false
 
       var denominatorInv {.noInit.}: Fr[Banderwagon]
       denominatorInv.getInvertedElement(precomp, absDenominator, is_negative)
@@ -170,9 +169,10 @@ func divisionOnDomain*(res: var array[VerkleDomain,Fr[Banderwagon]], precomp: Pr
       var weight_ratios {.noInit.}: Fr[Banderwagon]
       var dummy {.noInit.} : int
       dummy = i
-      weight_ratios.getWeightRatios(precomp, index, dummy)
+      var dummy2 = int(index)
+      weight_ratios.getWeightRatios(precomp, dummy2, dummy)
 
       var tmp {.noInit.}: Fr[Banderwagon]
       tmp.prod(weight_ratios, res[i])
+      res[int(index)] -= tmp
 
-      res[index] -= tmp

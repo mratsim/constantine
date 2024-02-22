@@ -9,7 +9,7 @@
 ## IPAConfiguration contains all of the necessary information to create Pedersen + IPA proofs
 ## such as the SRS
 import
-  ./[eth_verkle_constants],
+  ./[eth_verkle_constants, barycentric_form],
   ../platforms/primitives,
   ../math/config/[type_ff, curves],
   ../math/elliptic/ec_twistededwards_projective,
@@ -29,13 +29,13 @@ import
 # ############################################################
 
 
-func generate_random_points* [EC_P](points: var openArray[EC_P], ipaTranscript: var IpaTranscript, num_points: uint64)  =
+func generate_random_points* [EC_P](points: var openArray[EC_P], num_points: uint64)  =
   ## generate_random_points generates random points on the curve with the hardcoded VerkleSeed
   var points_found : seq[EC_P]
   var incrementer : uint64 = 0
   var idx: int = 0
   while true:
-    var ctx : sha256
+    var ctx {.noInit.}: sha256
     ctx.init()
     ctx.update(VerkleSeed)
     ctx.update(incrementer.toBytes(bigEndian))
@@ -75,7 +75,7 @@ func computeInnerProducts* [Fr] (res: var Fr, a,b : openArray[Fr])=
   for i in 0 ..< b.len:
     var tmp : Fr 
     tmp.prod(a[i], b[i])
-    res.sum(res,tmp)
+    res += tmp
 
 func computeInnerProducts* [Fr] (res: var Fr, a,b : View[Fr])=
   debug: doAssert (a.len == b.len).bool() == true, "Scalar lengths don't match!"
@@ -91,25 +91,26 @@ func computeInnerProducts* [Fr] (res: var Fr, a,b : View[Fr])=
 #
 # ############################################################
 
-func foldScalars* [Fr] (res: var openArray[Fr], a,b : openArray[Fr], x: Fr)=
+func foldScalars*(res: var openArray[Fr[Banderwagon]], a,b : openArray[Fr[Banderwagon]], x: Fr[Banderwagon])=
   ## Computes res[i] = a[i] + b[i] * x
-  debug: doAssert a.len == b.len , "Lengths should be equal!"
+  doAssert a.len == b.len , "Lengths should be equal!"
 
   for i in 0 ..< a.len:
-    var bx {.noInit.}: Fr
-    bx.prod(x, b[i])
-    res[i].sum(bx, a[i])
+    var bx {.noInit.}: Fr[Banderwagon]
+    bx.prod(b[i], x)
+    res[i].sum(a[i], bx)
 
-func foldPoints* [EC_P] (res: var openArray[EC_P], a,b : var openArray[EC_P], x: Fr)=
+func foldPoints*(res: var openArray[EC_P], a,b : openArray[EC_P], x: Fr[Banderwagon])=
   ## Computes res[i] = a[i] + b[i] * x
-  debug: doAssert a.len == b.len , "Should have equal lengths!"
+  doAssert a.len == b.len , "Should have equal lengths!"
 
   for i in 0 ..< a.len:
     var bx {.noInit.}: EC_P
-
-    b[i].scalarMul(x.toBig())
     bx = b[i]
-    res[i].sum(bx, a[i])
+    var x_big {.noInit.}: matchingOrderBigInt(Banderwagon)
+    x_big = x.toBig()
+    bx.scalarMul(x_big)
+    res[i].sum(a[i],bx)
 
 
 func computeNumRounds*(res: var uint32, vectorSize: SomeUnsignedInt)= 
@@ -117,7 +118,7 @@ func computeNumRounds*(res: var uint32, vectorSize: SomeUnsignedInt)=
   ## An additional checker is added because we also do not allow for vectors whose size is a power of 2.
   debug: doAssert (vectorSize == uint64(0)).bool() == false, "Zero is not a valid input!"
 
-  var isP2 : bool = isPowerOf2_vartime(vectorSize)
+  let isP2 = isPowerOf2_vartime(vectorSize)
 
   debug: doAssert isP2 == true, "not a power of 2, hence not a valid inputs"
 
@@ -143,5 +144,41 @@ func pedersen_commit_varbasis*[EC_P] (res: var EC_P, groupPoints: openArray[EC_P
   for i in 0 ..< g:
     groupPoints_aff[i].affine(groupPoints[i])
 
-  res.multiScalarMul_reference_vartime(poly_big,groupPoints)
+  res.multiScalarMul_reference_vartime(poly_big, groupPoints_aff)
+
+func evalOutsideDomain* [Fr] (res: var Fr, precomp: PrecomputedWeights, f: openArray[Fr], point: Fr)=
+# Evaluating the point z outside of VerkleDomain, here the VerkleDomain is 0-256, whereas the FieldSize is
+# everywhere outside of it which is upto a 253 bit number, or 2²⁵³.
+  var pointMinusDomain: array[VerkleDomain, Fr]
+  var pointMinusDomain_inv: array[VerkleDomain, Fr]
+  for i in 0 ..< VerkleDomain:
+    var i_fr {.noInit.}: Fr
+    i_fr.fromInt(i)
+
+    pointMinusDomain[i].diff(point, i_fr)
+    pointMinusDomain_inv[i].inv(pointMinusDomain[i])
+
+  var summand: Fr
+  summand.setZero()
+
+  for x_i in 0 ..< pointMinusDomain_inv.len:
+    var weight: Fr
+    weight.getBarycentricInverseWeight(precomp, x_i)
+    var term: Fr
+    term.prod(weight, f[x_i])
+    term *= pointMinusDomain_inv[x_i]
+
+    summand.sum(summand,term)
+
+  res.setOne()
+
+  for i in 0 ..< VerkleDomain:
+    var i_fr: Fr
+    i_fr.fromInt(i)
+
+    var tmp: Fr
+    tmp.diff(point, i_fr)
+    res *= tmp
+
+  res *= summand
   

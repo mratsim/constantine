@@ -31,6 +31,10 @@ func newTranscriptGen*(res: var CryptoHash, label: openArray[byte]) =
 func messageAppend*(res: var CryptoHash, message: openArray[byte], label: openArray[byte]) =
   res.update(label)
   res.update(message)
+  # var hash {.noInit.}: array[32, byte]
+  # res.finish(hash)
+  # res.update(hash)
+
 
 func messageAppend_u64*(res: var CryptoHash, label: openArray[byte], num_value: uint64) = 
   res.update(label)
@@ -58,7 +62,7 @@ func generateChallengeScalar*(challenge: var matchingOrderBigInt(Banderwagon), t
   # Generating Challenge Scalars based on the Fiat Shamir method
   transcript.domainSeparator(label)
 
-  var hash {.noInit.} : array[32, byte]
+  var hash {.noInit.}: array[32, byte]
   # Finalise the transcript state into a hash
   transcript.finish(hash)
 
@@ -68,9 +72,9 @@ func generateChallengeScalar*(challenge: var matchingOrderBigInt(Banderwagon), t
   debug: doAssert stat, "transcript_gen.generateChallengeScalar: Unexpected failure"
 
   # Reset the Transcript state
-  transcript.clear()
+  transcript.init()
   challenge = interim_challenge.toBig()
 
   # Append the challenge into the resetted transcript
   transcript.scalarAppend(label, challenge)
-  
+    

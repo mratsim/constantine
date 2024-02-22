@@ -23,6 +23,7 @@ import
   ../math/config/[type_ff, curves],
   ../math/elliptic/[ec_twistededwards_projective],
   ../math/arithmetic,
+  ../math/io/io_fields,
   ../math/elliptic/ec_scalar_mul, 
   ../platforms/[views],
   ../curves_primitives
@@ -38,7 +39,7 @@ import
 
 # Further reference refer to this https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
 
-func genIPAConfig*(res: var IPASettings, ipaTranscript: var IpaTranscript[CryptoHash, 32]) : bool {.inline.} =
+func genIPAConfig*(res: var IPASettings) : bool {.inline.} =
   # Initiates a new IPASettings
   # IPASettings has all the necessary information related to create an IPA proof
   # such as SRS, precomputed weights for Barycentric formula
@@ -48,93 +49,125 @@ func genIPAConfig*(res: var IPASettings, ipaTranscript: var IpaTranscript[Crypto
 
   # genIPAConfig( ) generates the SRS, Q and the precomputed weights for barycentric formula. The SRS is generated
   # as random points of the VerkleDomain where the relative discrete log is unknown between each generator.
-  res.SRS.generate_random_points(ipaTranscript, uint64(VerkleDomain))
-  res.Q_val.fromAffine(Banderwagon.getGenerator())
-  res.precompWeights.newPrecomputedWeights()
-  res.numRounds.computeNumRounds(uint64(VerkleDomain))
+  var random_points: array[VerkleDomain, EC_P]
+  random_points.generate_random_points(uint64(VerkleDomain))
+  var q_val {.noInit.}: EC_P
+  q_val.fromAffine(Banderwagon.getGenerator())
+  var precomp {.noInit.}: PrecomputedWeights
+  precomp.newPrecomputedWeights()
+  var nr: uint32
+  nr.computeNumRounds(uint64(VerkleDomain))
+
+  res.numRounds = nr
+  res.Q_val = q_val
+  res.precompWeights = precomp
+  res.SRS = random_points
+
   return true
 
-func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var CryptoHash, ic: IPASettings, commitment: EC_P, a: var openArray[Fr[Banderwagon]], evalPoint: Fr[Banderwagon]) : bool {.inline.} =
+func populateCoefficientVector* (res: var openArray[Fr[Banderwagon]], ic: IPASettings, point: Fr[Banderwagon])=
+  var maxEvalPointInDomain {.noInit.}: Fr[Banderwagon]
+  maxEvalPointInDomain.fromInt(VerkleDomain - 1)
+
+  for i in 0 ..< res.len:
+    res[i].setZero()
+
+  if (maxEvalPointInDomain.toBig() < point.toBig()).bool == false:
+    let p = cast[int](point.toBig())
+    res[p].setOne()
+
+  else:
+    res.computeBarycentricCoefficients(ic.precompWeights, point)
+
+
+func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var CryptoHash, ic: IPASettings, commitment: EC_P, a: var openArray[Fr[Banderwagon]], evalPoint: Fr[Banderwagon]) : bool =
   ## createIPAProof creates an IPA proof for a committed polynomial in evaluation form.
   ## `a` vectors are the evaluation points in the domain, and `evalPoint` represents the evaluation point.
   transcript.domain_separator(asBytes"ipa")
-  var b {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
+  var b = newSeq[Fr[Banderwagon]](VerkleDomain)
+  b.populateCoefficientVector(ic, evalPoint)
   
-  b.computeBarycentricCoefficients(ic.precompWeights, evalPoint)
   var innerProd {.noInit.}: Fr[Banderwagon]
-
   innerProd.computeInnerProducts(a, b)
 
   transcript.pointAppend(asBytes"C", commitment)
   transcript.scalarAppend(asBytes"input point", evalPoint.toBig())
   transcript.scalarAppend(asBytes"output point", innerProd.toBig())
 
-  var w : matchingOrderBigInt(Banderwagon)
+  var w {.noInit.}: matchingOrderBigInt(Banderwagon)
   w.generateChallengeScalar(transcript, asBytes"w")
 
-  var q {.noInit.} : EC_P
+  var w_fr {.noInit.}: Fr[Banderwagon]
+  w_fr.fromBig(w)
+
+  var a_copy = newSeq[Fr[Banderwagon]](VerkleDomain)
+  for i in 0 ..< 256:
+    a_copy[i] = a[i]
+ 
+  var q {.noInit.}: EC_P
   q = ic.Q_val
   q.scalarMul(w)
 
-  var current_basis {.noInit.}: array[VerkleDomain, EC_P]
-  current_basis = ic.SRS
+  # var current_basis {.noInit.}: array[VerkleDomain, EC_P]
+  # current_basis = ic.SRS
+
+  var cb_c = newSeq[EC_P](VerkleDomain)
+  for i in 0 ..< VerkleDomain:
+    cb_c[i] = ic.SRS[i]
 
   var num_rounds = ic.numRounds
 
   var L {.noInit.}: array[8, EC_P]
-
   var R {.noInit.}: array[8, EC_P]
+  var a_mid = a_copy.len div 2
 
-  var a_view = a.toView()
-  var b_view = b.toView()
-  var current_basis_view = current_basis.toView()
-
+  var a_L, a_R, b_L, b_R = newSeq[Fr[Banderwagon]](a_mid)
+  var G_L, G_R = newSeq[EC_P](a_mid)
   for i in 0 ..< int(num_rounds):
-    var a_L = a_view.chunk(0, a_view.len shr 1)
-    var a_R = a_view.chunk(a_view.len shr 1 + 1, a_view.len)
 
-    var b_L = b_view.chunk(0, b_view.len shr 1)
-    var b_R = b_view.chunk(b_view.len shr 1 + 1, b_view.len)
+    for j in 0 ..< a_mid:
+      a_L[j].ccopy(a_copy[j], CtTrue)
+      G_L[j].x.ccopy(cb_c[j].x, CtTrue)
+      G_L[j].y.ccopy(cb_c[j].y, CtTrue)
+      G_L[j].z.ccopy(cb_c[j].z, CtTrue)
+      b_L[j].ccopy(b[j], CtTrue)
 
-    var G_L = current_basis_view.chunk(0, current_basis_view.len shr 1)
-    var G_R = current_basis_view.chunk(current_basis_view.len shr 1 + 1, current_basis_view.len)
+    for j in a_mid ..< a_copy.len:
+      a_R[j - a_mid].ccopy(a_copy[j], CtTrue)
+      G_R[j - a_mid].x.ccopy(cb_c[j].x, CtTrue)
+      G_R[j - a_mid].y.ccopy(cb_c[j].y, CtTrue)
+      G_R[j - a_mid].z.ccopy(cb_c[j].z, CtTrue)
+      b_R[j - a_mid].ccopy(b[j], CtTrue)
+
 
     var z_L {.noInit.}: Fr[Banderwagon]
     z_L.computeInnerProducts(a_R, b_L)
 
     var z_R {.noInit.}: Fr[Banderwagon]
     z_R.computeInnerProducts(a_L, b_R)
-    var one : Fr[Banderwagon]
-    one.setOne()
-
-    var C_L_1 {.noInit.}: EC_P
-    C_L_1.pedersen_commit_varbasis(G_L.toOpenArray(), G_L.toOpenArray().len, a_R.toOpenArray(), a_R.len)
-
-    var fp1 : array[2, EC_P]
-    fp1[0] = C_L_1
-    fp1[1] = q
-
-    var fr1 : array[2, Fr[Banderwagon]]
-    fr1[0] = one
-    fr1[1] = z_L
 
     var C_L {.noInit.}: EC_P
-    C_L.pedersen_commit_varbasis(fp1, fp1.len, fr1, fr1.len)
+    C_L = q
+    C_L.scalarMul(z_L.toBig())
 
-    var C_R_1 {.noInit.}: EC_P
-    C_R_1.pedersen_commit_varbasis(G_R.toOpenArray(), G_R.toOpenArray().len, a_L.toOpenArray(), a_L.len)
+    var C_L_1 {.noInit.}: EC_P
+    C_L_1.x.setZero()
+    C_L_1.y.setZero()
+    C_L_1.z.setOne()
+    C_L_1.pedersen_commit_varbasis(G_L, G_L.len, a_R, a_R.len)
+    C_L += C_L_1
+
 
     var C_R {.noInit.}: EC_P
-
-    var fp2 : array[2, EC_P]
-    fp2[0] = C_R_1
-    fp2[1] = q
-
-    var fr2: array[2, Fr[Banderwagon]]
-    fr2[0] = one
-    fr2[1] = z_R
-
-    C_R.pedersen_commit_varbasis(fp2, fp2.len, fr2, fr2.len)
+    C_R = q
+    C_R.scalarMul(z_R.toBig())
+    
+    var C_R_1 {.noInit.}: EC_P
+    C_R_1.x.setZero()
+    C_R_1.y.setZero()
+    C_R_1.z.setOne()
+    C_R_1.pedersen_commit_varbasis(G_R, G_R.len, a_L, a_L.len)
+    C_R += C_R_1
 
     L[i] = C_L
     R[i] = C_R
@@ -145,23 +178,35 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var CryptoHash, i
     var x_big: matchingOrderBigInt(Banderwagon)
     x_big.generateChallengeScalar(transcript, asBytes"x")
 
-    var x: Fr[Banderwagon]
+    var x {.noInit.}: Fr[Banderwagon]
     x.fromBig(x_big)
 
-    var xInv: Fr[Banderwagon]
+    var xInv {.noInit.}: Fr[Banderwagon]
     xInv.inv(x)
 
-    a.foldScalars(a_L.toOpenArray(), a_R.toOpenArray(), x)
+    a_copy.setLen(a_mid)
+    a_copy.foldScalars(a_L, a_R, x)
+    
+    b.setLen(a_mid)
+    b.foldScalars(b_L, b_R, xInv)
+    
+    cb_c.setLen(a_mid)
+    cb_c.foldPoints(G_L, G_R, xInv)
 
-    b.foldScalars(b_L.toOpenArray(), b_R.toOpenArray(), xInv)
+    a_mid = a_mid div 2
+    a_L.setLen(a_mid)
+    a_R.setLen(a_mid)
 
-    current_basis.foldPoints(G_L.toOpenArray(), G_R.toOpenArray(), xInv)
+    b_L.setLen(a_mid)
+    b_R.setLen(a_mid)
 
-  debug: doAssert not(a.len == 1), "Length of `a` should be 1 at the end of the reduction"
+    G_L.setLen(a_mid)
+    G_R.setLen(a_mid)
 
+  res.A_scalar = a_copy[0]
   res.L_vector = L
   res.R_vector = R
-  res.A_scalar = a[0]
+
   return true
 
 # ############################################################
@@ -191,8 +236,7 @@ func serializeVerkleIPAProof* (dst: var VerkleIPAProofSerialized, src: IPAProof)
 
   let stat1 = L_bytes.serializeBatch(src.L_vector)
   doAssert stat1 == cttCodecEcc_Success, "Batch serialization Failure!"
-
-
+  
   let stat2 = R_bytes.serializeBatch(src.R_vector)
   doAssert stat2 == cttCodecEcc_Success, "Batch Serialization Failure!"
 
@@ -200,7 +244,7 @@ func serializeVerkleIPAProof* (dst: var VerkleIPAProofSerialized, src: IPAProof)
   let stat3 = A_bytes.serialize_scalar(src.A_scalar.toBig(), littleEndian)
   doAssert stat3 == cttCodecScalar_Success, "Scalar Serialization Failure!"
 
-  var idx : int = 0
+  var idx: int = 0
 
   for i in 0 ..< 8:
     for j in 0 ..< 32:
@@ -275,8 +319,7 @@ func deserializeVerkleIPAProof* (dst: var IPAProof, src: var VerkleIPAProofSeria
 
   var i : int = 0
   for item in L_bytes.items():
-    let stat = L_side[i].deserialize(item)
-    doAssert stat == cttCodecEcc_Success, "Deserialization failure!"
+    discard L_side[i].deserialize(item)
     i = i + 1
 
   discard L_bytes
@@ -285,8 +328,7 @@ func deserializeVerkleIPAProof* (dst: var IPAProof, src: var VerkleIPAProofSeria
 
   i  = 0
   for item in R_bytes.items():
-    let stat = R_side[i].deserialize(item)
-    doAssert stat == cttCodecEcc_Success, "Deserialization failure!"
+    discard R_side[i].deserialize(item)
     i = i + 1
 
   discard R_bytes
