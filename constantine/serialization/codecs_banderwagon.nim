@@ -281,16 +281,16 @@ func serializeBatch*(
 
   return cttCodecEcc_Success
 
-## Batch Serialization of Banderwagon Points
-## In uncompressed format
-## serialize = [ bigEndian( x ) , bigEndian( y ) ]
-## Returns cttCodecEcc_Success if successful
 func serializeBatchUncompressed*(
     dst: ptr UncheckedArray[array[64, byte]],
     points: ptr UncheckedArray[EC_Prj],
     N: int,
   ) : CttCodecEccStatus {.noInline.} =
-
+  ## Batch Serialization of Banderwagon Points
+  ## In uncompressed format
+  ## serialize = [ bigEndian( x ) , bigEndian( y ) ]
+  ## Returns cttCodecEcc_Success if successful
+  
   # collect all the z coordinates
   var zs = allocStackArray(Fp[Banderwagon], N)
   var zs_inv = allocStackArray(Fp[Banderwagon], N)
