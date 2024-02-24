@@ -108,9 +108,6 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var CryptoHash, i
   q = ic.Q_val
   q.scalarMul(w)
 
-  # var current_basis {.noInit.}: array[VerkleDomain, EC_P]
-  # current_basis = ic.SRS
-
   var cb_c = newSeq[EC_P](VerkleDomain)
   for i in 0 ..< VerkleDomain:
     cb_c[i] = ic.SRS[i]

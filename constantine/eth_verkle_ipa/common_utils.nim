@@ -108,7 +108,7 @@ func foldPoints*(res: var openArray[EC_P], a,b : openArray[EC_P], x: Fr[Banderwa
     var bx {.noInit.}: EC_P
     bx = b[i]
     var x_big {.noInit.}: matchingOrderBigInt(Banderwagon)
-    x_big = x.toBig()
+    x_big.fromField(x)
     bx.scalarMul(x_big)
     res[i].sum(a[i],bx)
 

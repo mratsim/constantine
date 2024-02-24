@@ -70,7 +70,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
 
   for i in 0 ..< num_queries:
     transcript.pointAppend(asBytes"C", Cs[i])
-    var z: Fr[Banderwagon]
+    var z {.noInit.}: Fr[Banderwagon]
     z.fromInt(Zs[i])
     transcript.scalarAppend(asBytes"z",z.toBig())
 
@@ -257,7 +257,7 @@ func verifyMultiproof*(multiProof: var MultiProof, transcript : var CryptoHash, 
 
     groupedEvals[z] += scaledEvals
 
-  #Calculating the helper scalar denominator, which is 1 / t - z_i
+  # Calculating the helper scalar denominator, which is 1 / t - z_i
   var helperScalarDeno {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
   for i in 0 ..< VerkleDomain:
     helperScalarDeno[i].setZero()

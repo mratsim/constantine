@@ -29,7 +29,7 @@ func newPrecomputedWeights* [PrecomputedWeights] (res: var PrecomputedWeights) =
 
   var midpoint = VerkleDomain
   for i in 0 ..< midpoint:
-    var weights: Fr[Banderwagon]
+    var weights {.noInit.}: Fr[Banderwagon]
     weights.computeBarycentricWeights(i) 
 
     ## Here we are storing the VerkleDomain no. of weights, but additionally we are also 
@@ -148,7 +148,8 @@ func absIntChecker*[int] (res: var int, x : int) =
 func divisionOnDomain*(res: var array[VerkleDomain,Fr[Banderwagon]], precomp: PrecomputedWeights, index:  var uint8, f: openArray[Fr[Banderwagon]]) =
   ## Computes f(x) - f(x_i) / x - x_i using the barycentric weights, where x_i is an element in the
   var is_negative = true
-  var y = f[int(index)]
+  let index = int(index)
+  var y = f[index]
 
   for i in 0 ..< VerkleDomain:
     if i != int(index):
