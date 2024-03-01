@@ -471,7 +471,7 @@ suite "IPA proof tests":
 
       var ok: bool
       var got {.noInit.}: EC_P
-      ok = ipaConfig.checkIPAProof(got, tr, commitment, proof, evalPoint, evaluationResultFr)
+      ok = ipaConfig.checkIPAProof(tr, got, commitment, proof, evalPoint, evaluationResultFr)
 
       doAssert ok == true, "ipaConfig.checkIPAProof: Unexpected Failure!"
 
@@ -634,7 +634,7 @@ suite "IPA proof tests":
 
         var ok: bool
         var got {.noInit.}: EC_P
-        ok = ipaConfig.checkIPAProof(got, verifier_transcript, verifier_comm, ipaProof, point, innerProd)
+        ok = ipaConfig.checkIPAProof(verifier_transcript, got, verifier_comm, ipaProof, point, innerProd)
 
         doAssert ok == true, "Issue in checking IPA proof!"
       testIPAProofCreateAndVerify()
