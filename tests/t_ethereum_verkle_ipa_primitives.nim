@@ -611,7 +611,7 @@ suite "IPA proof tests":
         var prover_transcript {.noInit.}: sha256
         prover_transcript.newTranscriptGen(asBytes"ipa")
 
-        var ipaProof {.noInit.}: IPAProof
+        var ipaProof: IPAProof
         let stat = ipaProof.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
         doAssert stat == true, "Problem creating IPA proof"
 

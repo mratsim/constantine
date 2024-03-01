@@ -17,7 +17,8 @@ import
   ../math/arithmetic,
   ../math/elliptic/ec_scalar_mul,
   ../math/elliptic/[ec_multi_scalar_mul, ec_multi_scalar_mul_scheduler],
-  ../platforms/[bithacks,views],
+  ../platforms/[bithacks],
+  ../../research/kzg/strided_views,
   ../curves_primitives,
   ../math/io/[io_bigints, io_fields],
   ../serialization/[codecs_banderwagon,codecs_status_codes, endians]
@@ -91,7 +92,7 @@ func computeInnerProducts* [Fr] (res: var Fr, a,b : View[Fr])=
 #
 # ############################################################
 
-func foldScalars*(res: var openArray[Fr[Banderwagon]], a,b : openArray[Fr[Banderwagon]], x: Fr[Banderwagon])=
+func foldScalars*(res: var openArray[Fr[Banderwagon]], a,b : View[Fr[Banderwagon]], x: Fr[Banderwagon])=
   ## Computes res[i] = a[i] + b[i] * x
   doAssert a.len == b.len , "Lengths should be equal!"
 
@@ -100,7 +101,7 @@ func foldScalars*(res: var openArray[Fr[Banderwagon]], a,b : openArray[Fr[Bander
     bx.prod(b[i], x)
     res[i].sum(a[i], bx)
 
-func foldPoints*(res: var openArray[EC_P], a,b : openArray[EC_P], x: Fr[Banderwagon])=
+func foldPoints*(res: var openArray[EC_P], a,b : View[EC_P], x: Fr[Banderwagon])=
   ## Computes res[i] = a[i] + b[i] * x
   doAssert a.len == b.len , "Should have equal lengths!"
 

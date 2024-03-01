@@ -25,7 +25,8 @@ import
   ../math/arithmetic,
   ../math/io/io_fields,
   ../math/elliptic/ec_scalar_mul, 
-  ../platforms/[views],
+  ../../research/kzg/strided_views,
+  # ../platforms/[views],
   ../curves_primitives
 
 # ############################################################
@@ -80,11 +81,80 @@ func populateCoefficientVector* (res: var openArray[Fr[Banderwagon]], ic: IPASet
     res.computeBarycentricCoefficients(ic.precompWeights, point)
 
 
+func coverIPARounds*(res: var IPAProof, transcript: var CryptoHash, ic: IPASettings, a: var openArray[Fr[Banderwagon]], b: var openArray[Fr[Banderwagon]], cb_c: var openArray[EC_P], q: EC_P, idx, rounds: var int): bool =
+
+  var a_view = a.toView()
+  var b_view = b.toView()
+  var cur_view = cb_c.toView()
+
+  var (a_L, a_R) = a_view.splitMiddle()
+  var (b_L, b_R) = b_view.splitMiddle()
+  var (G_L, G_R) = cur_view.splitMiddle()
+
+  var z_L {.noInit.}: Fr[Banderwagon]
+  z_L.computeInnerProducts(a_R.toOpenArray(), b_L.toOpenArray())
+
+  var z_R {.noInit.}: Fr[Banderwagon]
+  z_R.computeInnerProducts(a_L.toOpenArray(), b_R.toOpenArray())
+
+  var C_L {.noInit.}: EC_P
+  C_L = q
+  C_L.scalarMul(z_L.toBig())
+
+  var C_L_1 {.noInit.}: EC_P
+  C_L_1.x.setZero()
+  C_L_1.y.setZero()
+  C_L_1.z.setOne()
+  C_L_1.pedersen_commit_varbasis(G_L.toOpenArray(), G_L.len, a_R.toOpenArray(), a_R.len)
+  C_L += C_L_1
+
+  var C_R {.noInit.}: EC_P
+  C_R = q
+  C_R.scalarMul(z_R.toBig())
+  
+  var C_R_1 {.noInit.}: EC_P
+  C_R_1.x.setZero()
+  C_R_1.y.setZero()
+  C_R_1.z.setOne()
+  C_R_1.pedersen_commit_varbasis(G_R.toOpenArray(), G_R.len, a_L.toOpenArray(), a_L.len)
+  C_R += C_R_1
+
+  res.L_vector[idx] = C_L
+  res.R_vector[idx] = C_R
+  idx = idx + 1
+
+  transcript.pointAppend(asBytes"L", C_L)
+  transcript.pointAppend(asBytes"R", C_R)
+
+  var x_big: matchingOrderBigInt(Banderwagon)
+  x_big.generateChallengeScalar(transcript, asBytes"x")
+
+  var x {.noInit.}: Fr[Banderwagon]
+  x.fromBig(x_big)
+
+  var xInv {.noInit.}: Fr[Banderwagon]
+  xInv.inv(x)
+
+  var ai, bi = newSeq[Fr[Banderwagon]](a_L.len)
+  var gi = newSeq[EC_P](a_L.len)
+
+  ai.foldScalars(a_L, a_R, x)
+  bi.foldScalars(b_L, b_R, xInv)
+  gi.foldPoints(G_L, G_R, xInv)
+
+  res.A_scalar = a_L[0]
+
+  if idx == 7:
+    return true
+
+  coverIPARounds(res, transcript, ic, ai, bi, gi, q, idx, rounds)
+
+
 func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var CryptoHash, ic: IPASettings, commitment: EC_P, a: var openArray[Fr[Banderwagon]], evalPoint: Fr[Banderwagon]) : bool =
   ## createIPAProof creates an IPA proof for a committed polynomial in evaluation form.
   ## `a` vectors are the evaluation points in the domain, and `evalPoint` represents the evaluation point.
   transcript.domain_separator(asBytes"ipa")
-  var b = newSeq[Fr[Banderwagon]](VerkleDomain)
+  var b: array[VerkleDomain, Fr[Banderwagon]]
   b.populateCoefficientVector(ic, evalPoint)
   
   var innerProd {.noInit.}: Fr[Banderwagon]
@@ -100,109 +170,113 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var CryptoHash, i
   var w_fr {.noInit.}: Fr[Banderwagon]
   w_fr.fromBig(w)
 
-  var a_copy = newSeq[Fr[Banderwagon]](VerkleDomain)
-  for i in 0 ..< 256:
-    a_copy[i] = a[i]
+  # var a_copy = newSeq[Fr[Banderwagon]](VerkleDomain)
+  # for i in 0 ..< 256:
+  #   a_copy[i] = a[i]
  
   var q {.noInit.}: EC_P
   q = ic.Q_val
   q.scalarMul(w)
 
-  var cb_c = newSeq[EC_P](VerkleDomain)
+  var cb_c: array[VerkleDomain, EC_P]
   for i in 0 ..< VerkleDomain:
     cb_c[i] = ic.SRS[i]
 
-  var num_rounds = ic.numRounds
+  var idx = 0
+  var num_rounds = 8
+  # 0-indexed
 
-  var L {.noInit.}: array[8, EC_P]
-  var R {.noInit.}: array[8, EC_P]
-  var a_mid = a_copy.len div 2
+  discard coverIPARounds(res, transcript, ic, a, b, cb_c, q, idx, num_rounds)
 
-  var a_L, a_R, b_L, b_R = newSeq[Fr[Banderwagon]](a_mid)
-  var G_L, G_R = newSeq[EC_P](a_mid)
-  for i in 0 ..< int(num_rounds):
+  # var L {.noInit.}: array[8, EC_P]
+  # var R {.noInit.}: array[8, EC_P]
+  # var a_mid = a_copy.len div 2
 
-    for j in 0 ..< a_mid:
-      a_L[j].ccopy(a_copy[j], CtTrue)
-      G_L[j].x.ccopy(cb_c[j].x, CtTrue)
-      G_L[j].y.ccopy(cb_c[j].y, CtTrue)
-      G_L[j].z.ccopy(cb_c[j].z, CtTrue)
-      b_L[j].ccopy(b[j], CtTrue)
+  # var a_L, a_R, b_L, b_R = newSeq[Fr[Banderwagon]](a_mid)
+  # var G_L, G_R = newSeq[EC_P](a_mid)
+  # for i in 0 ..< int(num_rounds):
 
-    for j in a_mid ..< a_copy.len:
-      a_R[j - a_mid].ccopy(a_copy[j], CtTrue)
-      G_R[j - a_mid].x.ccopy(cb_c[j].x, CtTrue)
-      G_R[j - a_mid].y.ccopy(cb_c[j].y, CtTrue)
-      G_R[j - a_mid].z.ccopy(cb_c[j].z, CtTrue)
-      b_R[j - a_mid].ccopy(b[j], CtTrue)
+  #   for j in 0 ..< a_mid:
+  #     a_L[j].ccopy(a_copy[j], CtTrue)
+  #     G_L[j].x.ccopy(cb_c[j].x, CtTrue)
+  #     G_L[j].y.ccopy(cb_c[j].y, CtTrue)
+  #     G_L[j].z.ccopy(cb_c[j].z, CtTrue)
+  #     b_L[j].ccopy(b[j], CtTrue)
 
-
-    var z_L {.noInit.}: Fr[Banderwagon]
-    z_L.computeInnerProducts(a_R, b_L)
-
-    var z_R {.noInit.}: Fr[Banderwagon]
-    z_R.computeInnerProducts(a_L, b_R)
-
-    var C_L {.noInit.}: EC_P
-    C_L = q
-    C_L.scalarMul(z_L.toBig())
-
-    var C_L_1 {.noInit.}: EC_P
-    C_L_1.x.setZero()
-    C_L_1.y.setZero()
-    C_L_1.z.setOne()
-    C_L_1.pedersen_commit_varbasis(G_L, G_L.len, a_R, a_R.len)
-    C_L += C_L_1
+  #   for j in a_mid ..< a_copy.len:
+  #     a_R[j - a_mid].ccopy(a_copy[j], CtTrue)
+  #     G_R[j - a_mid].x.ccopy(cb_c[j].x, CtTrue)
+  #     G_R[j - a_mid].y.ccopy(cb_c[j].y, CtTrue)
+  #     G_R[j - a_mid].z.ccopy(cb_c[j].z, CtTrue)
+  #     b_R[j - a_mid].ccopy(b[j], CtTrue)
 
 
-    var C_R {.noInit.}: EC_P
-    C_R = q
-    C_R.scalarMul(z_R.toBig())
+  #   var z_L {.noInit.}: Fr[Banderwagon]
+  #   z_L.computeInnerProducts(a_R, b_L)
+
+  #   var z_R {.noInit.}: Fr[Banderwagon]
+  #   z_R.computeInnerProducts(a_L, b_R)
+
+  #   var C_L {.noInit.}: EC_P
+  #   C_L = q
+  #   C_L.scalarMul(z_L.toBig())
+
+    # var C_L_1 {.noInit.}: EC_P
+    # C_L_1.x.setZero()
+    # C_L_1.y.setZero()
+    # C_L_1.z.setOne()
+    # C_L_1.pedersen_commit_varbasis(G_L, G_L.len, a_R, a_R.len)
+    # C_L += C_L_1
+
+
+    # var C_R {.noInit.}: EC_P
+    # C_R = q
+    # C_R.scalarMul(z_R.toBig())
     
-    var C_R_1 {.noInit.}: EC_P
-    C_R_1.x.setZero()
-    C_R_1.y.setZero()
-    C_R_1.z.setOne()
-    C_R_1.pedersen_commit_varbasis(G_R, G_R.len, a_L, a_L.len)
-    C_R += C_R_1
+    # var C_R_1 {.noInit.}: EC_P
+    # C_R_1.x.setZero()
+    # C_R_1.y.setZero()
+    # C_R_1.z.setOne()
+    # C_R_1.pedersen_commit_varbasis(G_R, G_R.len, a_L, a_L.len)
+    # C_R += C_R_1
 
-    L[i] = C_L
-    R[i] = C_R
+    # L[i] = C_L
+    # R[i] = C_R
 
-    transcript.pointAppend(asBytes"L", C_L)
-    transcript.pointAppend(asBytes"R", C_R)
+    # transcript.pointAppend(asBytes"L", C_L)
+    # transcript.pointAppend(asBytes"R", C_R)
 
-    var x_big: matchingOrderBigInt(Banderwagon)
-    x_big.generateChallengeScalar(transcript, asBytes"x")
+    # var x_big: matchingOrderBigInt(Banderwagon)
+    # x_big.generateChallengeScalar(transcript, asBytes"x")
 
-    var x {.noInit.}: Fr[Banderwagon]
-    x.fromBig(x_big)
+    # var x {.noInit.}: Fr[Banderwagon]
+    # x.fromBig(x_big)
 
-    var xInv {.noInit.}: Fr[Banderwagon]
-    xInv.inv(x)
+    # var xInv {.noInit.}: Fr[Banderwagon]
+    # xInv.inv(x)
 
-    a_copy.setLen(a_mid)
-    a_copy.foldScalars(a_L, a_R, x)
+    # a_copy.setLen(a_mid)
+    # a_copy.foldScalars(a_L, a_R, x)
     
-    b.setLen(a_mid)
-    b.foldScalars(b_L, b_R, xInv)
+    # b.setLen(a_mid)
+    # b.foldScalars(b_L, b_R, xInv)
     
-    cb_c.setLen(a_mid)
-    cb_c.foldPoints(G_L, G_R, xInv)
+    # cb_c.setLen(a_mid)
+    # cb_c.foldPoints(G_L, G_R, xInv)
 
-    a_mid = a_mid div 2
-    a_L.setLen(a_mid)
-    a_R.setLen(a_mid)
+    # a_mid = a_mid div 2
+    # a_L.setLen(a_mid)
+    # a_R.setLen(a_mid)
 
-    b_L.setLen(a_mid)
-    b_R.setLen(a_mid)
+    # b_L.setLen(a_mid)
+    # b_R.setLen(a_mid)
 
-    G_L.setLen(a_mid)
-    G_R.setLen(a_mid)
+    # G_L.setLen(a_mid)
+    # G_R.setLen(a_mid)
 
-  res.A_scalar = a_copy[0]
-  res.L_vector = L
-  res.R_vector = R
+  # res.A_scalar = a_copy[0]
+  # res.L_vector = L
+  # res.R_vector = R
 
   return true
 
