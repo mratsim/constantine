@@ -315,7 +315,7 @@ func verifyMultiproof*(multiProof: var MultiProof, transcript : var CryptoHash, 
   EMinusD.diff(E, multiProof.D)
 
   var got {.noInit.}: EC_P
-  res = got.checkIPAProof(ipaSettings, transcript, EMinusD, multiProof.IPAprv, t_fr, g2t)
+  res = ipaSettings.checkIPAProof(got, transcript, EMinusD, multiProof.IPAprv, t_fr, g2t)
   if res == false:
     return res
 

@@ -30,7 +30,7 @@ func generateChallengesForIPA*(res: var openArray[matchingOrderBigInt(Banderwago
     transcript.pointAppend( asBytes"R", proof.R_vector[i])
     res[i].generateChallengeScalar(transcript,asBytes"x")
 
-func checkIPAProof* (got: var EC_P, ic: IPASettings, transcript: var CryptoHash, commitment: var EC_P, proof: IPAProof, evalPoint: Fr[Banderwagon], res: Fr[Banderwagon]) : bool = 
+func checkIPAProof* (ic: IPASettings, got: var EC_P, transcript: var CryptoHash, commitment: var EC_P, proof: IPAProof, evalPoint: Fr[Banderwagon], res: Fr[Banderwagon]) : bool = 
   # Check IPA proof verifier a IPA proof for a committed polynomial in evaluation form
   # It verifies whether the proof is valid for the given polynomial at the evaluation `evalPoint`
   # and cross-checking it with `result`
