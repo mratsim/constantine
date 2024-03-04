@@ -31,10 +31,6 @@ func newTranscriptGen*(res: var CryptoHash, label: openArray[byte]) =
 func messageAppend*(res: var CryptoHash, message: openArray[byte], label: openArray[byte]) =
   res.update(label)
   res.update(message)
-  # var hash {.noInit.}: array[32, byte]
-  # res.finish(hash)
-  # res.update(hash)
-
 
 func messageAppend_u64*(res: var CryptoHash, label: openArray[byte], num_value: uint64) = 
   res.update(label)
