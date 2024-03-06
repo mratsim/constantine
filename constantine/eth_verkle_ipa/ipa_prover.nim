@@ -169,10 +169,6 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var CryptoHash, i
 
   var w_fr {.noInit.}: Fr[Banderwagon]
   w_fr.fromBig(w)
-
-  # var a_copy = newSeq[Fr[Banderwagon]](VerkleDomain)
-  # for i in 0 ..< 256:
-  #   a_copy[i] = a[i]
  
   var q {.noInit.}: EC_P
   q = ic.Q_val
