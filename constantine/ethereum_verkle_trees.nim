@@ -95,5 +95,4 @@ export
   transcript_gen.newTranscriptGen,
   transcript_gen.messageAppend,
   transcript_gen.pointAppend,
-  transcript_gen.scalarAppend,
-  transcript_gen.generateChallengeScalar
+  transcript_gen.scalarAppend
