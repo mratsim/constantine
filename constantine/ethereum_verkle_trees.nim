@@ -26,6 +26,8 @@ import
 # ------------------------------------------------------------
 export
   eth_verkle_constants.EC_P,
+  eth_verkle_constants.Point,
+  eth_verkle_constants.Field,
   eth_verkle_constants.EC_P_Aff,
   eth_verkle_constants.IPAProof,
   eth_verkle_constants.MultiProof,
