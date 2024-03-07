@@ -88,3 +88,14 @@ export
   multiproof.serializeVerkleMultiproof,
   multiproof.deserializeVerkleMultiproof
 
+
+# Transcript Utils for Verkle
+# ------------------------------------------------------------
+export 
+  transcript_gen.newTranscriptGen,
+  transcript_gen.messageAppend,
+  transcript_gen.messageAppend_u64,
+  transcript_gen.domainSeparator,
+  transcript_gen.pointAppend,
+  transcript_gen.scalarAppend,
+  transcript_gen.generateChallengeScalar
