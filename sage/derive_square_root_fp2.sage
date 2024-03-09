@@ -132,7 +132,7 @@ if __name__ == "__main__":
   else:
     sqrt = genSqrtFp2Constants(curve, Curves)
 
-    with open(f'{curve.lower()}_square_root.nim', 'w') as f:
+    with open(f'{curve.lower()}_sqrt_fp2.nim', 'w') as f:
       f.write(copyright())
       f.write('\n\n')
 
@@ -145,4 +145,4 @@ if __name__ == "__main__":
       f.write('\n\n')
       f.write(sqrt)
 
-    print(f'Successfully created {curve}_sqrt_fp2.nim')
+    print(f'Successfully created {curve.lower()}_sqrt_fp2.nim')
