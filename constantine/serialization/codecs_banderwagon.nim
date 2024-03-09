@@ -65,8 +65,6 @@ func make_scalar_mod_order*(reduced_scalar: var Fr[Banderwagon], src: array[32, 
   res = true
   return res
 
-    
-
 func serialize*(dst: var array[32, byte], P: EC_Prj): CttCodecEccStatus =
   ## Serialize a Banderwagon point(x, y) in the format
   ## 

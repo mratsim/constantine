@@ -37,6 +37,9 @@ func `[]=`*[T](v: var View[T], idx: int, val: T) {.inline.} =
   # Experimental views indeed ...
   cast[ptr UncheckedArray[T]](v.data)[v.offset + idx*v.stride] = val
 
+template toOpenArray*[T](v: View[T]): openArray[T] =
+  v.data.toOpenArray(0, v.len-1)
+
 func toView*[T](oa: openArray[T]): View[T] {.inline.} =
   result.len = oa.len
   result.stride = 1

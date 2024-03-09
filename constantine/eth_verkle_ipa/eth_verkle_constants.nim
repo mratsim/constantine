@@ -25,6 +25,12 @@ type
   EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
   EC_P_Aff* = ECP_TwEdwards_Aff[Fp[Banderwagon]]
 
+type Bytes* = array[32, byte]
+
+type 
+  Point* = EC_P
+  Field* = Fr[Banderwagon]
+
 type 
   IPAProof* = object
     L_vector*: array[8,EC_P]
@@ -56,8 +62,6 @@ type
     numRounds*: uint32
 
 const VerkleSeed* = asBytes"eth_verkle_oct_2021"
-
-type Bytes* = array[32, byte]
 
 type IpaTranscript* [H: CryptoHash, N: static int] = object
   ctx*: H

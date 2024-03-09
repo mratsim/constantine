@@ -44,6 +44,22 @@ func ipaEvaluate* [Fr] (res: var Fr, poly: openArray[Fr], point: Fr,  n: static 
     tmp.prod(powers[i], poly[i])
     res.sum(res,tmp)
 
+func evalFunc* (res: var Fr[Banderwagon], x: Fr[Banderwagon])=
+  var tmpa {.noInit.}: Fr[Banderwagon]
+  var one {.noInit.}: Fr[Banderwagon]
+  one.setOne()
+  tmpa.diff(x, one)
+
+  var tmpb {.noInit.}: Fr[Banderwagon]
+  tmpb.sum(x, one)
+
+  var tmpc = one
+  for i in 0 ..< 253:
+    tmpc *= x
+
+  res.prod(tmpa, tmpb)
+  res *= tmpc
+  
 func truncate* [Fr] (res: var openArray[Fr], s: openArray[Fr], to: int, n: static int)=
   for i in 0 ..< to:
     res[i] = s[i]
@@ -150,42 +166,6 @@ func setEval* [Fr] (res: var Fr, x : Fr)=
   res.prod(tmp_a, tmp_b)
   res.prod(res,tmp_c)
 
-func evalOutsideDomain* [Fr] (res: var Fr, precomp: PrecomputedWeights, f: openArray[Fr], point: Fr)=
-  # Evaluating the point z outside of VerkleDomain, here the VerkleDomain is 0-256, whereas the FieldSize is
-  # everywhere outside of it which is upto a 253 bit number, or 2²⁵³.
-  var pointMinusDomain: array[VerkleDomain, Fr]
-  var pointMinusDomain_inv: array[VerkleDomain, Fr]
-  for i in 0 ..< VerkleDomain:
-    var i_fr {.noInit.}: Fr
-    i_fr.fromInt(i)
-
-    pointMinusDomain[i].diff(point, i_fr)
-    pointMinusDomain_inv[i].inv(pointMinusDomain[i])
-
-  var summand: Fr
-  summand.setZero()
-
-  for x_i in 0 ..< pointMinusDomain_inv.len:
-    var weight: Fr
-    weight.getBarycentricInverseWeight(precomp, x_i)
-    var term: Fr
-    term.prod(weight, f[x_i])
-    term *= pointMinusDomain_inv[x_i]
-
-    summand.sum(summand,term)
-
-  res.setOne()
-
-  for i in 0 ..< VerkleDomain:
-    var i_fr: Fr
-    i_fr.fromInt(i)
-
-    var tmp: Fr
-    tmp.diff(point, i_fr)
-    res *= tmp
-
-  res *= summand
-
 
 func testPoly256* [Fr] (res: var openArray[Fr], polynomialUint: openArray[int])=
   doAssert polynomialUint.len <= 256, "Cannot exceed 256 coeffs!"
@@ -217,6 +197,28 @@ func getDegreeOfPoly*(res: var int, p: openArray[Fr]) =
     else:
       res = -1
 
+######################################################################
+##
+##
+##  Test Vector for Verifying Multiproof in all Domain Ranges but one
+## 
+##
+#######################################################################
+const MultiProofPedersenCommitment*: string = "0x5532395cf72b9d6b2252d968cf7fd8923262d3d17fce836a93144a1dc1b59e31"
+const MultiProofEvaluationPoint*: int = 8
+const MultiProofEvaluationResult*: string = "0x0000000000000000000000000000000000000000000000000000000000000009"
+const MultiProofSerializedVec*: string = "0x61f191c5ad8217b10318ad49f6c43b08a78f4f2788738b5c0fe11eac1878868667750c4fecfbf562628deed76a86982a5bbc3884b92017f71352e976fc5724502513b175a9d55787d58a18e8d21b3f7f7f41f7a0773bf81c957377c5a1de261635d11fe5ff83e8cca5d15aec75683fa1140755066b3972e0d9145e18a4bca26d3490dd54ae955df0caa17e93a788a42cb653ecb5a04c766328c457fe473e5365362dfff36827ced93127cd489364e6884dfc8a8f9ce9e15e27de49ac0827c00e6999c18d4b6966951eec028dc8d74b9a0057e51e97535cd43368f714b2c284c22c3ee5fc99d2ea22115444e0ee543283fbab1e6da03bc3ec7fe1a3dc4cd05d5c515cf783163a9a9ede3878d8f21187cbd2935b75893a2e5611a47ba11b5c69a417c24319b7ccbe43c71c12db43400816b22c749b48d5df0e9fd599801aa515277039062d9987d6ad2e91f96fd261b5f6bf6abf1e1905eb414ad91d17a234809750646e029b2e3ead9c22bd859fb9087ee77d37f3db6663136e81ef971782b99f30a05daa505542ce074b9ba1772b41b3c789a454f726455b95b8fb21af14e4da1262a48536037c0f7b8e9320f83d4cf144b22329e463ceaaf234c51f469965c54463f51dbce440583deca338451b981e9f4534da4e4f417a5844d71be57fa89748440255d9a76a2350cde4f454a8325d348522e81649e9980a204a2435ad0de5566ed7afd2aa250bf5ee0dc56e416a6a84876d979aa52753d9eec97137482113c9e5e42ee6365896f671e6932b1e5bf66b70001f1fef440d730a2844071b8b14"
+###################################################################
+##
+##
+##     Test Vector for Verifying IPA Proof inside the Domain
+## 
+##
+###################################################################
+const IPAPedersenCommitment*: string = "0x68a798550a3e2ea3a2a91e1307e4ef06fb35d8df543f903ce9ea4edd75de7706"
+const IPAEvaluationPoint*: int = 13
+const IPAEvaluationResultFr*: string = "0x000000000000000000000000000000000000000000000000000000000000000e"
+const IPASerializedProofVec*: string = "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002d3e383cf2ca36482707617daf4230f2261cff2abeb98a7d1e139cf386970f7a67cea4e0dcf8c437e5cd9852d95613a255ef625412a3ac7fb1a0d27227a32a7c1292f14b7c189f033c91217f02b34c7832958afc7ae3bb498b29ca08277dc60d1c53bb5f07280c16238a7f99c059cbbdbbc933bef4b74d604721a09b526aac1751a4bdf0df2d303418e7e5642ac4aacc730625514c87a4bcce5369cc4c1e1d2a1ee9125e09db763e7d99fa857928fabeb94ba822d5cf1cc8f5be372683ee7089082c0ca302a243f0124cc25319d069e0c689f03e4cb32e266fffd4b8c9a5e1cb2c708dc7960531ecea4331e376d7f6604228fc0606a08bda95ee3350c8bca83f37b23160af7bae3db95f0c66ed4535fc5397b43dcdc1d09c1e3a0376a6705d916d96cb64feb47d00ebf1ddbad7eaf3b5d8c381d31098c5c8a909793bd6063c2f0450320af78de387938261eba3e984271f31c3f71a55b33631b90505f8209b384aa55feb1c1c72a5e2abce15f24eb18715a309f5517ac3079c64c8ff157d3e35d5bad17b86f9599b1e34f1f4b7c6600a83913261645a0811fba0ad1ed104fe0c"
 ###################################################################
 ##
 ##

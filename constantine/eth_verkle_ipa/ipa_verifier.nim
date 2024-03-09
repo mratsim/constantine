@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ./[transcript_gen, common_utils, barycentric_form, eth_verkle_constants],
+  ./[transcript_gen, common_utils, barycentric_form, eth_verkle_constants, ipa_prover],
   ../platforms/primitives,
   ../math/config/[type_ff, curves],
   ../hashes,
@@ -30,7 +30,7 @@ func generateChallengesForIPA*(res: var openArray[matchingOrderBigInt(Banderwago
     transcript.pointAppend( asBytes"R", proof.R_vector[i])
     res[i].generateChallengeScalar(transcript,asBytes"x")
 
-func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, commitment: var EC_P, proof: IPAProof, evalPoint: Fr[Banderwagon], res: Fr[Banderwagon]) : bool = 
+func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, got: var EC_P, commitment: var EC_P, proof: IPAProof, evalPoint: Fr[Banderwagon], res: Fr[Banderwagon]) : bool = 
   # Check IPA proof verifier a IPA proof for a committed polynomial in evaluation form
   # It verifies whether the proof is valid for the given polynomial at the evaluation `evalPoint`
   # and cross-checking it with `result`
@@ -44,7 +44,8 @@ func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, commitment: va
 
 
   var b {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
-  b.computeBarycentricCoefficients(ic.precompWeights,evalPoint)
+  # b.computeBarycentricCoefficients(ic.precompWeights,evalPoint)
+  b.populateCoefficientVector(ic, evalPoint)
 
   transcript.pointAppend(asBytes"C", commitment)
   transcript.scalarAppend(asBytes"input point", evalPoint.toBig())
@@ -61,13 +62,13 @@ func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, commitment: va
   var qy {.noInit.}: EC_P
   qy = q
   qy.scalarMul(res.toBig())
-  commitment.sum(commitment, qy)
+  commitment += qy
 
 
-  var challenges_big: array[8, matchingOrderBigInt(Banderwagon)]
+  var challenges_big {.noInit.}: array[8, matchingOrderBigInt(Banderwagon)]
   challenges_big.generateChallengesForIPA(transcript, proof)
 
-  var challenges: array[8,Fr[Banderwagon]]
+  var challenges {.noInit.}: array[8,Fr[Banderwagon]]
   for i in 0 ..< 8:
     challenges[i].fromBig(challenges_big[i])
 
@@ -79,13 +80,13 @@ func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, commitment: va
     var L = proof.L_vector[i]
     var R = proof.R_vector[i]
 
-    var p11: array[3, EC_P]
+    var p11 {.noInit.}: array[3, EC_P]
     p11[0] = commitment
     p11[1] = L
     p11[2] = R
 
-    var p22: array[3, Fr[Banderwagon]]
-    var one: Fr[Banderwagon]
+    var p22 {.noInit.}: array[3, Fr[Banderwagon]]
+    var one {.noInit.}: Fr[Banderwagon]
     one.setOne()
 
     p22[0] = one
@@ -106,7 +107,7 @@ func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, commitment: va
     for challengeIndex in 0 ..< challenges.len:
       let im = 1 shl (7 - challengeIndex)
       if ((i and im).int() > 0).bool() == true:
-        scalar.prod(scalar,challengesInv[challengeIndex])
+        scalar *= challengesInv[challengeIndex]
 
     foldingScalars[i] = scalar
 
@@ -127,7 +128,6 @@ func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, commitment: va
   var b0 {.noInit.} : Fr[Banderwagon]
   b0.computeInnerProducts(b, foldingScalars)
 
-  var got {.noInit.} : EC_P
   # g0 * a + (a * b) * Q
 
   var p1 {.noInit.}: EC_P
@@ -145,6 +145,7 @@ func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, commitment: va
 
   if not(got == commitment).bool() == true:
     r = false
+    return r
 
   r = true
   return r
