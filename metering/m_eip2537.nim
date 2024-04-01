@@ -73,7 +73,7 @@ proc g1mulCTMeter() =
   var r = P
   let n = k.toBig()
   resetMetering()
-  r.scalarMul_vartime(n)
+  r.scalarMul(n)
 
 proc g1mulVartimeMeter() =
   let
