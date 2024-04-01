@@ -43,7 +43,7 @@ func millerLoopAddchain*(
        f: var Fp12[BLS12_381],
        Q: ECP_ShortW_Aff[Fp2[BLS12_381], G2],
        P: ECP_ShortW_Aff[Fp[BLS12_381], G1]
-     ) =
+     ) {.meter.} =
   ## Miller Loop for BLS12-381 curve
   ## Computes f{u,Q}(P) with u the BLS curve parameter
 
@@ -64,7 +64,7 @@ func millerLoopAddchain*(
        Qs: ptr UncheckedArray[ECP_ShortW_Aff[Fp2[BLS12_381], G2]],
        Ps: ptr UncheckedArray[ECP_ShortW_Aff[Fp[BLS12_381], G1]],
        N: int
-     ) {.noInline.} =
+     ) {.noInline, meter.} =
   ## Generic Miller Loop for BLS12 curve
   ## Computes f{u,Q}(P) with u the BLS curve parameter
 
@@ -83,7 +83,7 @@ func millerLoopAddchain*(
 
 func cycl_exp_by_curve_param_div2*(
        r: var Fp12[BLS12_381], a: Fp12[BLS12_381],
-       invert = BLS12_381_pairing_ate_param_isNeg) =
+       invert = BLS12_381_pairing_ate_param_isNeg) {.meter.} =
   ## f^(x/2) with x the curve parameter
   ## For BLS12_381 f^-0xd201000000010000 = 0b1101001000000001000000000000000000000000000000010000000000000000
 
@@ -103,7 +103,7 @@ func cycl_exp_by_curve_param_div2*(
 
 func cycl_exp_by_curve_param*(
        r: var Fp12[BLS12_381], a: Fp12[BLS12_381],
-       invert = BLS12_381_pairing_ate_param_isNeg) =
+       invert = BLS12_381_pairing_ate_param_isNeg) {.meter.} =
   ## f^x with x the curve parameter
   ## For BLS12_381 f^-0xd201000000010000
 
@@ -121,7 +121,7 @@ func cycl_exp_by_curve_param*(
   if invert:
     r.cyclotomic_inv()
 
-func isInPairingSubgroup*(a: Fp12[BLS12_381]): SecretBool =
+func isInPairingSubgroup*(a: Fp12[BLS12_381]): SecretBool {.meter.} =
   ## Returns true if a is in GT subgroup, i.e. a is an element of order r
   ## Warning ⚠: Assumes that a is in the cyclotomic subgroup
   # Implementation: Scott, https://eprint.iacr.org/2021/1130.pdf

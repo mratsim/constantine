@@ -24,11 +24,9 @@ proc reportCli*(metrics: seq[Metadata], flags: string) =
     # https://www.agner.org/optimize/blog/read.php?i=838
     echo "The CPU Cycle Count is indicative only. It cannot be used to compare across systems, works at your CPU nominal frequency and is sensitive to overclocking, throttling and frequency scaling (powersaving and Turbo Boost)."
 
-    const lineSep = &"""|{'-'.repeat(60)}|{'-'.repeat(14)}|{'-'.repeat(20)}|{'-'.repeat(15)}|{'-'.repeat(17)}|{'-'.repeat(26)}|{'-'.repeat(26)}|"""
+    const lineSep = &"""|{'-'.repeat(60)}|{'-'.repeat(14)}|{'-'.repeat(20)}|{'-'.repeat(18)}|{'-'.repeat(18)}|{'-'.repeat(15)}|{'-'.repeat(15)}|"""
     echo "\n"
-    # echo lineSep
-    echo &"""|{"Procedures":^60}|{"# of Calls":^14}|{"Throughput (ops/s)":^20}|{"Time (10⁻⁶s)":^15}|{"Avg Time (10⁻⁶s)":^17}|{"CPU cycles (in thousands)":^26}|{"Avg cycles (in thousands)":^26}|"""
-    # echo &"""|{flags:^60}|{' '.repeat(14)}|{' '.repeat(20)}|{' '.repeat(15)}|{' '.repeat(17)}|{"indicative only":^26}|{"indicative only":^26}|"""
+    echo &"""|{"Procedures":^60}|{"# of Calls":^14}|{"Throughput (ops/s)":^20}|{"Time (10⁻⁶s)":^18}|{"Avg Time (10⁻⁶s)":^18}|{"CPU 10³cycles":^15}|{"Avg 10³cycles":^15}|"""
     echo lineSep
     for m in metrics:
       if m.numCalls == 0:
@@ -45,15 +43,13 @@ proc reportCli*(metrics: seq[Metadata], flags: string) =
       let throughput = 1e6 / avgTimeUs
       let cumulCyclesThousands = m.cumulatedCycles.float64 * 1e-3
       let avgCyclesThousands = cumulCyclesThousands.float64 / m.numCalls.float64
-      echo &"""|{shortname:<60}|{m.numCalls:>14}|{throughput:>20.3f}|{cumulTimeUs:>15.3f}|{avgTimeUs:>17.3f}|{cumulCyclesThousands:>12.3f}|{avgCyclesThousands:>12.3f}|"""
+      echo &"""|{shortname:<60}|{m.numCalls:>14}|{throughput:>20.3f}|{cumulTimeUs:>18.3f}|{avgTimeUs:>18.3f}|{cumulCyclesThousands:>15.3f}|{avgCyclesThousands:>15.3f}|"""
     # echo lineSep
 
   else:
-    const lineSep = &"""|{'-'.repeat(60)}|{'-'.repeat(14)}|{'-'.repeat(20)}|{'-'.repeat(15)}|{'-'.repeat(17)}|"""
+    const lineSep = &"""|{'-'.repeat(60)}|{'-'.repeat(14)}|{'-'.repeat(20)}|{'-'.repeat(18)}|{'-'.repeat(18)}|"""
     echo "\n"
-    # echo lineSep
-    echo &"""|{"Procedures":^60}|{"# of Calls":^14}|{"Throughput (ops/s)":^20}|{"Time (µs)":^15}|{"Avg Time (µs)":^17}|"""
-    # echo &"""|{flags:^60}|{' '.repeat(14)}|{' '.repeat(20)}|{' '.repeat(15)}|{' '.repeat(17)}|"""
+    echo &"""|{"Procedures":^60}|{"# of Calls":^14}|{"Throughput (ops/s)":^20}|{"Time (µs)":^18}|{"Avg Time (µs)":^18}|"""
     echo lineSep
     for m in metrics:
       if m.numCalls == 0:
@@ -68,5 +64,5 @@ proc reportCli*(metrics: seq[Metadata], flags: string) =
       let cumulTimeUs = m.cumulatedTimeNs.float64 * 1e-3
       let avgTimeUs = cumulTimeUs / m.numCalls.float64
       let throughput = 1e6 / avgTimeUs
-      echo &"""|{shortname:<60}|{m.numCalls:>14}|{throughput:>20.3f}|{cumulTimeUs:>15.3f}|{avgTimeUs:>17.3f}|"""
+      echo &"""|{shortname:<60}|{m.numCalls:>14}|{throughput:>20.3f}|{cumulTimeUs:>18.3f}|{avgTimeUs:>18.3f}|"""
     # echo lineSep

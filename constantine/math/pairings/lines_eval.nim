@@ -9,7 +9,7 @@
 import
   std/typetraits,
   ../config/curves,
-  ../../platforms/primitives,
+  ../../platforms/abstractions,
   ../arithmetic,
   ../extension_fields,
   ../elliptic/[
@@ -335,7 +335,7 @@ func line_eval_fused_add[Field](
 func line_double*[F1, F2](
        line: var Line[F2],
        T: var ECP_ShortW_Prj[F2, G2],
-       P: ECP_ShortW_Aff[F1, G1]) =
+       P: ECP_ShortW_Aff[F1, G1]) {.meter.} =
   ## Doubling step of the Miller loop
   ## T in G2, P in G1
   ##
@@ -348,7 +348,7 @@ func line_add*[F1, F2](
        line: var Line[F2],
        T: var ECP_ShortW_Prj[F2, G2],
        Q: ECP_ShortW_Aff[F2, G2],
-       P: ECP_ShortW_Aff[F1, G1]) =
+       P: ECP_ShortW_Aff[F1, G1]) {.meter.} =
   ## Addition step of the Miller loop
   ## T and Q in G2, P in G1
   ##
@@ -1344,7 +1344,7 @@ func mul_sparse_by_abcdefghij00_cube_over_quad*[Fpk](
 # Dispatch
 # ------------------------------------------------------------
 
-func mul_by_line*[Fpk, Fpkdiv6](f: var Fpk, line: Line[Fpkdiv6]) {.inline.} =
+func mul_by_line*[Fpk, Fpkdiv6](f: var Fpk, line: Line[Fpkdiv6]) {.inline, meter.} =
   ## Multiply an element of Fp12 by a sparse line function
   when Fpk.C.getSexticTwist() == D_Twist:
     when f is CubicExt:
@@ -1359,7 +1359,7 @@ func mul_by_line*[Fpk, Fpkdiv6](f: var Fpk, line: Line[Fpkdiv6]) {.inline.} =
   else:
     {.error: "A line function assumes that the curve has a twist".}
 
-func prod_from_2_lines*[Fpk, Fpkdiv6](f: var Fpk, line0, line1: Line[Fpkdiv6]) {.inline.} =
+func prod_from_2_lines*[Fpk, Fpkdiv6](f: var Fpk, line0, line1: Line[Fpkdiv6]) {.inline, meter.} =
   ## Multiply 2 lines function
   ## and store the result in f
   ## f is overwritten
@@ -1376,7 +1376,7 @@ func prod_from_2_lines*[Fpk, Fpkdiv6](f: var Fpk, line0, line1: Line[Fpkdiv6]) {
   else:
     {.error: "A line function assumes that the curve has a twist".}
 
-func mul_by_prod_of_2_lines*[Fpk](f: var Fpk, g: Fpk) {.inline.} =
+func mul_by_prod_of_2_lines*[Fpk](f: var Fpk, g: Fpk) {.inline, meter.} =
   ## Multiply f by the somewhat sparse product of 2 lines
   when Fpk.C.getSexticTwist() == D_Twist:
     when f is CubicExt:
@@ -1391,7 +1391,7 @@ func mul_by_prod_of_2_lines*[Fpk](f: var Fpk, g: Fpk) {.inline.} =
   else:
     {.error: "A line function assumes that the curve has a twist".}
 
-func mul_by_2_lines*[Fpk, Fpkdiv6](f: var Fpk, line0, line1: Line[Fpkdiv6]) {.inline.} =
+func mul_by_2_lines*[Fpk, Fpkdiv6](f: var Fpk, line0, line1: Line[Fpkdiv6]) {.inline, meter.} =
   ## Multiply f*line0*line1 with lines
   ## f is updated with the result
   var t{.noInit.}: Fpk
