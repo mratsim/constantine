@@ -28,7 +28,7 @@ proc reportCli*(metrics: seq[Metadata], flags: string) =
     echo "\n"
     echo lineSep
     echo &"""|{"Procedures":^150}|{"# of Calls":^14}|{"Throughput (ops/s)":^20}|{"Time (µs)":^15}|{"Avg Time (µs)":^17}|{"CPU cycles (in billions)":^26}|{"Avg cycles (in billions)":^26}|"""
-    echo &"""|{flags:^150}|{' '.repeat(14)}|{' '.repeat(20)}|{' '.repeat(15)}|{' '.repeat(17)}|{"indicative only":^26}|{"indicative only":^26}|"""
+    # echo &"""|{flags:^150}|{' '.repeat(14)}|{' '.repeat(20)}|{' '.repeat(15)}|{' '.repeat(17)}|{"indicative only":^26}|{"indicative only":^26}|"""
     echo lineSep
     for m in metrics:
       if m.numCalls == 0:
@@ -46,14 +46,14 @@ proc reportCli*(metrics: seq[Metadata], flags: string) =
       let cumulCyclesBillions = m.cumulatedCycles.float64 * 1e-9
       let avgCyclesBillions = cumulCyclesBillions / m.numCalls.float64
       echo &"""|{shortname:<150}|{m.numCalls:>14}|{throughput:>20.3f}|{cumulTimeUs:>15.3f}|{avgTimeUs:>17.3f}|"""
-    echo lineSep
+    # echo lineSep
 
   else:
     const lineSep = &"""|{'-'.repeat(150)}|{'-'.repeat(14)}|{'-'.repeat(20)}|{'-'.repeat(15)}|{'-'.repeat(17)}|"""
     echo "\n"
     echo lineSep
     echo &"""|{"Procedures":^150}|{"# of Calls":^14}|{"Throughput (ops/s)":^20}|{"Time (µs)":^15}|{"Avg Time (µs)":^17}|"""
-    echo &"""|{flags:^150}|{' '.repeat(14)}|{' '.repeat(20)}|{' '.repeat(15)}|{' '.repeat(17)}|"""
+    # echo &"""|{flags:^150}|{' '.repeat(14)}|{' '.repeat(20)}|{' '.repeat(15)}|{' '.repeat(17)}|"""
     echo lineSep
     for m in metrics:
       if m.numCalls == 0:
@@ -69,4 +69,4 @@ proc reportCli*(metrics: seq[Metadata], flags: string) =
       let avgTimeUs = cumulTimeUs / m.numCalls.float64
       let throughput = 1e6 / avgTimeUs
       echo &"""|{shortname:<150}|{m.numCalls:>14}|{throughput:>20.3f}|{cumulTimeUs:>15.3f}|{avgTimeUs:>17.3f}|"""
-    echo lineSep
+    # echo lineSep

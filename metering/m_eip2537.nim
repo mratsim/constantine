@@ -120,37 +120,30 @@ proc pairingMeter() =
 const flags = if UseASM_X86_64 or UseASM_X86_32: "UseAssembly" else: "NoAssembly"
 resetMetering()
 
-echo "\n\nG1 add - constant-time"
-echo "========================================="
+echo "\n\n## G1 add - constant-time"
 g1addMeter()
 reportCli(Metrics, flags)
 
-echo "\n\nG1 mul - constant-time"
-echo "========================================="
+echo "\n\n## G1 mul - constant-time"
 g1mulCTMeter()
 reportCli(Metrics, flags)
 
-echo "\n\nG1 mul - variable-time"
-echo "========================================="
+echo "\n\n## G1 mul - variable-time"
 g1mulVartimeMeter()
 reportCli(Metrics, flags)
 
-echo "\n\nG2 add - constant-time"
-echo "========================================="
+echo "\n\n## G2 add - constant-time"
 g2addMeter()
 reportCli(Metrics, flags)
 
-echo "\n\nG2 mul - constant-time"
-echo "========================================="
+echo "\n\n## G2 mul - constant-time"
 g2mulCTMeter()
 reportCli(Metrics, flags)
 
-echo "\n\nG2 mul - variable-time"
-echo "========================================="
+echo "\n\n## G2 mul - variable-time"
 g2mulVartimeMeter()
 reportCli(Metrics, flags)
 
-echo "\n\nPairing"
-echo "========================================="
+echo "\n\n## Pairing"
 pairingMeter()
 reportCli(Metrics, flags)
