@@ -21,7 +21,7 @@ import
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
-    ec_scalar_mul, ec_endomorphism_accel],
+    ec_scalar_mul, ec_scalar_mul_vartime, ec_endomorphism_accel],
   ../constantine/math/constants/zoo_subgroups,
   ../constantine/math/pairings/[
     cyclotomic_subgroups,
@@ -130,8 +130,12 @@ proc addBench*(T: typedesc, iters: int) =
   var r {.noInit.}: T
   let P = rng.random_unsafe(T)
   let Q = rng.random_unsafe(T)
-  bench("EC Add " & G1_or_G2, T, iters):
-    r.sum(P, Q)
+  block:
+    bench("EC Add         " & G1_or_G2, T, iters):
+      r.sum(P, Q)
+  block:
+    bench("EC Add vartime " & G1_or_G2, T, iters):
+      r.sum_vartime(P, Q)
 
 proc mixedAddBench*(T: typedesc, iters: int) =
   const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
@@ -140,8 +144,12 @@ proc mixedAddBench*(T: typedesc, iters: int) =
   let Q = rng.random_unsafe(T)
   var Qaff: ECP_ShortW_Aff[T.F, T.G]
   Qaff.affine(Q)
-  bench("EC Mixed Addition " & G1_or_G2, T, iters):
-    r.madd(P, Qaff)
+  block:
+    bench("EC Mixed Addition " & G1_or_G2, T, iters):
+      r.madd(P, Qaff)
+  block:
+    bench("EC Mixed Addition vartime " & G1_or_G2, T, iters):
+      r.madd_vartime(P, Qaff)
 
 proc doublingBench*(T: typedesc, iters: int) =
   const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
@@ -158,12 +166,14 @@ proc scalarMulBench*(T: typedesc, iters: int) =
   let P = rng.random_unsafe(T) # TODO: clear cofactor
   let exponent = rng.random_unsafe(BigInt[bits])
 
-  bench("EC ScalarMul " & $bits & "-bit " & G1_or_G2, T, iters):
-    r = P
-    when T.F is Fp:
-      r.scalarMulGLV_m2w2(exponent)
-    else:
-      r.scalarMulEndo(exponent)
+  block:
+    bench("EC ScalarMul         " & $bits & "-bit " & G1_or_G2, T, iters):
+      r = P
+      r.scalarMul(exponent)
+  block:
+    bench("EC ScalarMul vartime " & $bits & "-bit " & G1_or_G2, T, iters):
+      r = P
+      r.scalarMul_vartime(exponent)
 
 proc millerLoopBLS12Bench*(C: static Curve, iters: int) =
   let
@@ -246,7 +256,6 @@ proc hashToCurveBLS12381G2Bench*(iters: int) =
       message = msg,
       domainSepTag = dst
     )
-
 
 proc hashToCurveBN254SnarksG1Bench*(iters: int) =
   # Hardcode BN254_Snarks
