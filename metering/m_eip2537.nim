@@ -36,38 +36,40 @@ func random_point*(rng: var RngState, EC: typedesc[ECP_ShortW_Aff]): EC {.noInit
   jac.clearCofactor()
   result.affine(jac)
 
-func random_point*(rng: var RngState, EC: typedesc[ECP_ShortW_Jac]): EC {.noInit.} =
-  var jac = rng.random_unsafe(EC)
-  jac.clearCofactor()
-  result = jac
+func random_point*(rng: var RngState, EC: typedesc[ECP_ShortW_Jac or ECP_ShortW_Prj]): EC {.noInit.} =
+  var P = rng.random_unsafe(EC)
+  P.clearCofactor()
+  result = P
 
 type
   G1aff = ECP_ShortW_Aff[Fp[BLS12_381], G1]
   G2aff = ECP_ShortW_Aff[Fp2[BLS12_381], G2]
   G1jac = ECP_ShortW_Jac[Fp[BLS12_381], G1]
   G2jac = ECP_ShortW_Jac[Fp2[BLS12_381], G2]
+  G1prj = ECP_ShortW_Prj[Fp[BLS12_381], G1]
+  G2prj = ECP_ShortW_Prj[Fp2[BLS12_381], G2]
 
-proc g1addMeter() =
+proc g1addMeter(EC: typedesc) =
   let
-    P = rng.random_point(G1jac)
-    Q = rng.random_point(G1jac)
+    P = rng.random_point(EC)
+    Q = rng.random_point(EC)
 
-  var r: G1jac
+  var r: EC
   resetMetering()
   r.sum(P, Q)
 
-proc g2addMeter() =
+proc g2addMeter(EC: typedesc) =
   let
-    P = rng.random_point(G2jac)
-    Q = rng.random_point(G2jac)
+    P = rng.random_point(EC)
+    Q = rng.random_point(EC)
 
-  var r: G2jac
+  var r: EC
   resetMetering()
   r.sum(P, Q)
 
-proc g1mulCTMeter() =
+proc g1mulCTMeter(EC: typedesc) =
   let
-    P = rng.random_point(G1jac)
+    P = rng.random_point(EC)
     k = rng.random_unsafe(Fr[BLS12_381])
 
   var r = P
@@ -75,9 +77,9 @@ proc g1mulCTMeter() =
   resetMetering()
   r.scalarMul(n)
 
-proc g1mulVartimeMeter() =
+proc g1mulVartimeMeter(EC: typedesc) =
   let
-    P = rng.random_point(G1jac)
+    P = rng.random_point(EC)
     k = rng.random_unsafe(Fr[BLS12_381])
 
   var r = P
@@ -85,9 +87,9 @@ proc g1mulVartimeMeter() =
   resetMetering()
   r.scalarMul_vartime(n)
 
-proc g2mulCTMeter() =
+proc g2mulCTMeter(EC: typedesc) =
   let
-    P = rng.random_point(G2jac)
+    P = rng.random_point(EC)
     k = rng.random_unsafe(Fr[BLS12_381])
 
   var r = P
@@ -95,9 +97,9 @@ proc g2mulCTMeter() =
   resetMetering()
   r.scalarMul(n)
 
-proc g2mulVartimeMeter() =
+proc g2mulVartimeMeter(EC: typedesc) =
   let
-    P = rng.random_point(G2jac)
+    P = rng.random_point(EC)
     k = rng.random_unsafe(Fr[BLS12_381])
 
   var r = P
@@ -120,29 +122,63 @@ proc pairingMeter() =
 const flags = if UseASM_X86_64 or UseASM_X86_32: "UseAssembly" else: "NoAssembly"
 resetMetering()
 
-echo "\n\n## G1 add - constant-time"
-g1addMeter()
+#################################################
+
+echo "\n\n## G1 add jacobian - constant-time"
+g1addMeter(G1jac)
 reportCli(Metrics, flags)
 
-echo "\n\n## G1 mul - constant-time"
-g1mulCTMeter()
+echo "\n\n## G1 add projective - constant-time"
+g1addMeter(G1prj)
 reportCli(Metrics, flags)
 
-echo "\n\n## G1 mul - variable-time"
-g1mulVartimeMeter()
+#################################################
+
+echo "\n\n## G1 mul jacobian - constant-time"
+g1mulCTMeter(G1jac)
 reportCli(Metrics, flags)
 
-echo "\n\n## G2 add - constant-time"
-g2addMeter()
+echo "\n\n## G1 mul projective - constant-time"
+g1mulCTMeter(G1prj)
 reportCli(Metrics, flags)
 
-echo "\n\n## G2 mul - constant-time"
-g2mulCTMeter()
+echo "\n\n## G1 mul jacobian - variable-time"
+g1mulVartimeMeter(G1jac)
 reportCli(Metrics, flags)
 
-echo "\n\n## G2 mul - variable-time"
-g2mulVartimeMeter()
+echo "\n\n## G1 mul projective - variable-time"
+g1mulVartimeMeter(G1prj)
 reportCli(Metrics, flags)
+
+#################################################
+
+echo "\n\n## G2 add jacobian - constant-time"
+g2addMeter(G2jac)
+reportCli(Metrics, flags)
+
+echo "\n\n## G2 add projective - constant-time"
+g2addMeter(G2prj)
+reportCli(Metrics, flags)
+
+#################################################
+
+echo "\n\n## G2 mul jacobian - constant-time"
+g2mulCTMeter(G2jac)
+reportCli(Metrics, flags)
+
+echo "\n\n## G2 mul projective - constant-time"
+g2mulCTMeter(G2prj)
+reportCli(Metrics, flags)
+
+echo "\n\n## G2 mul jacobian - variable-time"
+g2mulVartimeMeter(G2jac)
+reportCli(Metrics, flags)
+
+echo "\n\n## G2 mul projective - variable-time"
+g2mulVartimeMeter(G2prj)
+reportCli(Metrics, flags)
+
+#################################################
 
 echo "\n\n## Pairing"
 pairingMeter()
