@@ -26,7 +26,7 @@ proc reportCli*(metrics: seq[Metadata], flags: string) =
 
     const lineSep = &"""|{'-'.repeat(150)}|{'-'.repeat(14)}|{'-'.repeat(20)}|{'-'.repeat(15)}|{'-'.repeat(17)}|{'-'.repeat(26)}|{'-'.repeat(26)}|"""
     echo "\n"
-    echo lineSep
+    # echo lineSep
     echo &"""|{"Procedures":^150}|{"# of Calls":^14}|{"Throughput (ops/s)":^20}|{"Time (µs)":^15}|{"Avg Time (µs)":^17}|{"CPU cycles (in billions)":^26}|{"Avg cycles (in billions)":^26}|"""
     # echo &"""|{flags:^150}|{' '.repeat(14)}|{' '.repeat(20)}|{' '.repeat(15)}|{' '.repeat(17)}|{"indicative only":^26}|{"indicative only":^26}|"""
     echo lineSep
@@ -51,7 +51,7 @@ proc reportCli*(metrics: seq[Metadata], flags: string) =
   else:
     const lineSep = &"""|{'-'.repeat(150)}|{'-'.repeat(14)}|{'-'.repeat(20)}|{'-'.repeat(15)}|{'-'.repeat(17)}|"""
     echo "\n"
-    echo lineSep
+    # echo lineSep
     echo &"""|{"Procedures":^150}|{"# of Calls":^14}|{"Throughput (ops/s)":^20}|{"Time (µs)":^15}|{"Avg Time (µs)":^17}|"""
     # echo &"""|{flags:^150}|{' '.repeat(14)}|{' '.repeat(20)}|{' '.repeat(15)}|{' '.repeat(17)}|"""
     echo lineSep
