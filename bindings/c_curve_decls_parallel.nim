@@ -15,6 +15,8 @@ import
 export curves_primitives_parallel
 
 template genParallelBindings_EC_ShortW_NonAffine*(ECP, ECP_Aff, ScalarField: untyped) =
+  # TODO: remove the need of explicit ScalarField
+
   # For some unknown reason {.push noconv.}
   # would overwrite the threadpool {.nimcall.}
   # in the parallel for-loop `generateClosure`

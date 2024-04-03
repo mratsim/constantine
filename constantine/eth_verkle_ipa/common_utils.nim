@@ -9,17 +9,19 @@
 ## IPAConfiguration contains all of the necessary information to create Pedersen + IPA proofs
 ## such as the SRS
 import
-    ./[eth_verkle_constants],
-    ../platforms/primitives,
-    ../math/config/[type_ff, curves],
-    ../math/elliptic/ec_twistededwards_projective,
-    ../hashes,
-    ../math/arithmetic,
-    ../math/elliptic/ec_scalar_mul,
-    ../math/elliptic/[ec_multi_scalar_mul, ec_multi_scalar_mul_scheduler],
-    ../platforms/[bithacks,views],
-    ../curves_primitives,
-    ../serialization/[codecs_banderwagon,codecs_status_codes, endians]
+  ./[eth_verkle_constants, barycentric_form],
+  ../platforms/primitives,
+  ../math/config/[type_ff, curves],
+  ../math/elliptic/ec_twistededwards_projective,
+  ../hashes,
+  ../math/arithmetic,
+  ../math/elliptic/ec_scalar_mul,
+  ../math/elliptic/[ec_multi_scalar_mul, ec_multi_scalar_mul_scheduler],
+  ../platforms/[bithacks],
+  ../../research/kzg/strided_views,
+  ../curves_primitives,
+  ../math/io/[io_bigints, io_fields],
+  ../serialization/[codecs_banderwagon,codecs_status_codes, endians]
 
 # ############################################################
 #
@@ -28,37 +30,40 @@ import
 # ############################################################
 
 
-func generate_random_points* [EC_P](points: var openArray[EC_P], ipaTranscript: var IpaTranscript, num_points: uint64)  =
-    ## generate_random_points generates random points on the curve with the hardcoded VerkleSeed -> VerkleSeed
-    var incrementer: uint64 = 0
-    var idx: int = 0
-    while uint64(len(points)) !=  num_points:
+func generate_random_points* [EC_P](points: var openArray[EC_P], num_points: uint64)  =
+  ## generate_random_points generates random points on the curve with the hardcoded VerkleSeed
+  var points_found : seq[EC_P]
+  var incrementer : uint64 = 0
+  var idx: int = 0
+  while true:
+    var ctx {.noInit.}: sha256
+    ctx.init()
+    ctx.update(VerkleSeed)
+    ctx.update(incrementer.toBytes(bigEndian))
+    var hash : array[32, byte]
+    ctx.finish(hash)
+    ctx.clear()
+    
+    var x {.noInit.}:  Fp[Banderwagon]
+    var t {.noInit.}: matchingBigInt(Banderwagon)
 
-        var digest : IpaTranscript.H
-        digest.init()
-        digest.update(VerkleSeed)
+    t.unmarshal(hash, bigEndian)
+    x.fromBig(t)
 
-        digest.update(incrementer.toBytes(bigEndian))
-        var hash {.noInit.} : array[IpaTranscript.H.digestSize(), byte]
-        digest.finish(hash)
+    incrementer = incrementer + 1
 
-        var x {.noInit.}:  EC_P
+    var x_arr {.noInit.}: array[32, byte]
+    x_arr.marshal(x, bigEndian)
 
-        let stat1 =  x.deserialize(hash) 
-        doAssert stat1 == cttCodecEcc_Success, "Deserialization Failure!"
-        incrementer = incrementer + 1
-
-        var x_as_Bytes {.noInit.} : array[IpaTranscript.H.digestSize(), byte]
-        let stat2 = x_as_Bytes.serialize(x)
-        doAssert stat2  == cttCodecEcc_Success, "Serialization Failure!"
-
-        var point_found {.noInit.} : EC_P
-        let stat3 = point_found.deserialize(x_as_Bytes)
-
-        doAssert stat3 == cttCodecEcc_Success, "Deserialization Failure!"
-        points[idx] = point_found
-        idx = idx + 1
-
+    var x_p {.noInit.} : EC_P
+    let stat2 = x_p.deserialize(x_arr)
+    if stat2 == cttCodecEcc_Success:
+      points_found.add(x_p)
+      points[idx] = points_found[idx]
+      idx = idx + 1
+  
+    if uint64(points_found.len) ==  num_points:
+      break
 # ############################################################
 #
 #                       Inner Products
@@ -71,7 +76,7 @@ func computeInnerProducts* [Fr] (res: var Fr, a,b : openArray[Fr])=
   for i in 0 ..< b.len:
     var tmp : Fr 
     tmp.prod(a[i], b[i])
-    res.sum(res,tmp)
+    res += tmp
 
 func computeInnerProducts* [Fr] (res: var Fr, a,b : View[Fr])=
   debug: doAssert (a.len == b.len).bool() == true, "Scalar lengths don't match!"
@@ -87,37 +92,38 @@ func computeInnerProducts* [Fr] (res: var Fr, a,b : View[Fr])=
 #
 # ############################################################
 
-func foldScalars* [Fr] (res: var openArray[Fr], a,b : openArray[Fr], x: Fr)=
-    ## Computes res[i] = a[i] + b[i] * x
-    debug: doAssert a.len == b.len , "Lengths should be equal!"
+func foldScalars*(res: var openArray[Fr[Banderwagon]], a,b : View[Fr[Banderwagon]], x: Fr[Banderwagon])=
+  ## Computes res[i] = a[i] + b[i] * x
+  doAssert a.len == b.len , "Lengths should be equal!"
 
-    for i in 0 ..< a.len:
-        var bx {.noInit.}: Fr
-        bx.prod(x, b[i])
-        res[i].sum(bx, a[i])
+  for i in 0 ..< a.len:
+    var bx {.noInit.}: Fr[Banderwagon]
+    bx.prod(b[i], x)
+    res[i].sum(a[i], bx)
 
-func foldPoints* [EC_P] (res: var openArray[EC_P], a,b : var openArray[EC_P], x: Fr)=
-    ## Computes res[i] = a[i] + b[i] * x
-    debug: doAssert a.len == b.len , "Should have equal lengths!"
+func foldPoints*(res: var openArray[EC_P], a,b : View[EC_P], x: Fr[Banderwagon])=
+  ## Computes res[i] = a[i] + b[i] * x
+  doAssert a.len == b.len , "Should have equal lengths!"
 
-    for i in 0 ..< a.len:
-        var bx {.noInit.}: EC_P
-
-        b[i].scalarMul(x.toBig())
-        bx = b[i]
-        res[i].sum(bx, a[i])
+  for i in 0 ..< a.len:
+    var bx {.noInit.}: EC_P
+    bx = b[i]
+    var x_big {.noInit.}: matchingOrderBigInt(Banderwagon)
+    x_big.fromField(x)
+    bx.scalarMul(x_big)
+    res[i].sum(a[i],bx)
 
 
 func computeNumRounds*(res: var uint32, vectorSize: SomeUnsignedInt)= 
-    ## This method takes the log2(vectorSize), a separate checker is added to prevent 0 sized vectors
-    ## An additional checker is added because we also do not allow for vectors whose size is a power of 2.
-    debug: doAssert (vectorSize == uint64(0)).bool() == false, "Zero is not a valid input!"
+  ## This method takes the log2(vectorSize), a separate checker is added to prevent 0 sized vectors
+  ## An additional checker is added because we also do not allow for vectors whose size is a power of 2.
+  debug: doAssert (vectorSize == uint64(0)).bool() == false, "Zero is not a valid input!"
 
-    var isP2 : bool = isPowerOf2_vartime(vectorSize)
+  let isP2 = isPowerOf2_vartime(vectorSize)
 
-    debug: doAssert isP2 == true, "not a power of 2, hence not a valid inputs"
+  debug: doAssert isP2 == true, "not a power of 2, hence not a valid inputs"
 
-    res = uint32(log2_vartime(vectorSize))
+  res = uint32(log2_vartime(vectorSize))
 
 # ############################################################
 #
@@ -139,4 +145,41 @@ func pedersen_commit_varbasis*[EC_P] (res: var EC_P, groupPoints: openArray[EC_P
   for i in 0 ..< g:
     groupPoints_aff[i].affine(groupPoints[i])
 
-  res.multiScalarMul_reference_vartime(poly_big,groupPoints)
+  res.multiScalarMul_reference_vartime(poly_big, groupPoints_aff)
+
+func evalOutsideDomain* [Fr] (res: var Fr, precomp: PrecomputedWeights, f: openArray[Fr], point: Fr)=
+# Evaluating the point z outside of VerkleDomain, here the VerkleDomain is 0-256, whereas the FieldSize is
+# everywhere outside of it which is upto a 253 bit number, or 2²⁵³.
+  var pointMinusDomain: array[VerkleDomain, Fr]
+  var pointMinusDomain_inv: array[VerkleDomain, Fr]
+  for i in 0 ..< VerkleDomain:
+    var i_fr {.noInit.}: Fr
+    i_fr.fromInt(i)
+
+    pointMinusDomain[i].diff(point, i_fr)
+    pointMinusDomain_inv[i].inv(pointMinusDomain[i])
+
+  var summand: Fr
+  summand.setZero()
+
+  for x_i in 0 ..< pointMinusDomain_inv.len:
+    var weight: Fr
+    weight.getBarycentricInverseWeight(precomp, x_i)
+    var term: Fr
+    term.prod(weight, f[x_i])
+    term *= pointMinusDomain_inv[x_i]
+
+    summand.sum(summand,term)
+
+  res.setOne()
+
+  for i in 0 ..< VerkleDomain:
+    var i_fr: Fr
+    i_fr.fromInt(i)
+
+    var tmp: Fr
+    tmp.diff(point, i_fr)
+    res *= tmp
+
+  res *= summand
+  

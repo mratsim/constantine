@@ -10,6 +10,7 @@
 #define __CTT_H_VESTA__
 
 #include "constantine/core/datatypes.h"
+#include "constantine/curves/bigints.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -21,6 +22,8 @@ typedef struct { vesta_fp x, y; } vesta_ec_aff;
 typedef struct { vesta_fp x, y, z; } vesta_ec_jac;
 typedef struct { vesta_fp x, y, z; } vesta_ec_prj;
 
+void        ctt_big255_from_vesta_fr(big255* dst, const vesta_fr* src);
+void        ctt_vesta_fr_from_big255(vesta_fr* dst, const big255* src);
 ctt_bool    ctt_vesta_fr_unmarshalBE(vesta_fr* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
 ctt_bool    ctt_vesta_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const vesta_fr* src) __attribute__((warn_unused_result));
 secret_bool ctt_vesta_fr_is_eq(const vesta_fr* a, const vesta_fr* b);
@@ -52,6 +55,8 @@ void        ctt_vesta_fr_cset_one(vesta_fr* a, secret_bool ctl);
 void        ctt_vesta_fr_cneg_in_place(vesta_fr* a, secret_bool ctl);
 void        ctt_vesta_fr_cadd_in_place(vesta_fr* a, const vesta_fr* b, secret_bool ctl);
 void        ctt_vesta_fr_csub_in_place(vesta_fr* a, const vesta_fr* b, secret_bool ctl);
+void        ctt_big255_from_vesta_fp(big255* dst, const vesta_fp* src);
+void        ctt_vesta_fp_from_big255(vesta_fp* dst, const big255* src);
 ctt_bool    ctt_vesta_fp_unmarshalBE(vesta_fp* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
 ctt_bool    ctt_vesta_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const vesta_fp* src) __attribute__((warn_unused_result));
 secret_bool ctt_vesta_fp_is_eq(const vesta_fp* a, const vesta_fp* b);
@@ -112,6 +117,13 @@ void        ctt_vesta_ec_jac_double(vesta_ec_jac* r, const vesta_ec_jac* P);
 void        ctt_vesta_ec_jac_double_in_place(vesta_ec_jac* P);
 void        ctt_vesta_ec_jac_affine(vesta_ec_aff* dst, const vesta_ec_jac* src);
 void        ctt_vesta_ec_jac_from_affine(vesta_ec_jac* dst, const vesta_ec_aff* src);
+void        ctt_vesta_ec_jac_batch_affine(const vesta_ec_aff dst[], const vesta_ec_jac src[], size_t n);
+void        ctt_vesta_ec_jac_scalar_mul_big_coef(vesta_ec_jac* P, const big255* scalar);
+void        ctt_vesta_ec_jac_scalar_mul_fr_coef(vesta_ec_jac* P, const vesta_fr* scalar);
+void        ctt_vesta_ec_jac_scalar_mul_big_coef_vartime(vesta_ec_jac* P, const big255* scalar);
+void        ctt_vesta_ec_jac_scalar_mul_fr_coef_vartime(vesta_ec_jac* P, const vesta_fr* scalar);
+void        ctt_vesta_ec_jac_multi_scalar_mul_big_coefs_vartime(vesta_ec_jac* r, const big255 coefs[], const vesta_ec_aff points[], size_t len);
+void        ctt_vesta_ec_jac_multi_scalar_mul_fr_coefs_vartime(vesta_ec_jac* r, const vesta_fr coefs[], const vesta_ec_aff points[], size_t len);
 secret_bool ctt_vesta_ec_prj_is_eq(const vesta_ec_prj* P, const vesta_ec_prj* Q);
 secret_bool ctt_vesta_ec_prj_is_inf(const vesta_ec_prj* P);
 void        ctt_vesta_ec_prj_set_inf(vesta_ec_prj* P);
@@ -126,6 +138,13 @@ void        ctt_vesta_ec_prj_double(vesta_ec_prj* r, const vesta_ec_prj* P);
 void        ctt_vesta_ec_prj_double_in_place(vesta_ec_prj* P);
 void        ctt_vesta_ec_prj_affine(vesta_ec_aff* dst, const vesta_ec_prj* src);
 void        ctt_vesta_ec_prj_from_affine(vesta_ec_prj* dst, const vesta_ec_aff* src);
+void        ctt_vesta_ec_prj_batch_affine(const vesta_ec_aff dst[], const vesta_ec_prj src[], size_t n);
+void        ctt_vesta_ec_prj_scalar_mul_big_coef(vesta_ec_prj* P, const big255* scalar);
+void        ctt_vesta_ec_prj_scalar_mul_fr_coef(vesta_ec_prj* P, const vesta_fr* scalar);
+void        ctt_vesta_ec_prj_scalar_mul_big_coef_vartime(vesta_ec_prj* P, const big255* scalar);
+void        ctt_vesta_ec_prj_scalar_mul_fr_coef_vartime(vesta_ec_prj* P, const vesta_fr* scalar);
+void        ctt_vesta_ec_prj_multi_scalar_mul_big_coefs_vartime(vesta_ec_prj* r, const big255 coefs[], const vesta_ec_aff points[], size_t len);
+void        ctt_vesta_ec_prj_multi_scalar_mul_fr_coefs_vartime(vesta_ec_prj* r, const vesta_fr coefs[], const vesta_ec_aff points[], size_t len);
 
 #ifdef __cplusplus
 }

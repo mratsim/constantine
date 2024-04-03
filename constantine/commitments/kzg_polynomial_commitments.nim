@@ -107,14 +107,14 @@ import
 ##   srs_g1: [[1]₁, [τ]₁, [τ²]₁, ... [τⁿ⁻¹]₁] also called powers of tau, with a bounded degree n-1
 ##   srs_g2: [[1]₂, [τ]₂]
 ##
-## τ and its powers are secrets that no one know, we only work with [τⁱ]₁ and [τ]₂
+## τ and its powers are secrets that no one knows, we only work with [τⁱ]₁ and [τ]₂
 ## not with τ directly. (τ cannot be deduced due to the elliptic curve discrete logarithm problem)
 ##
 ## Info
 ##   τ and its powers are created through a secure multi-party computation (MPC) ceremony
-##   called powers of tau. Each participant contribute randomness.
+##   called powers of tau. Each participant contributes randomness.
 ##   Only one honest participant (who ensures that the randomness created cannot be recreated)
-##   is necessary for the ceremony success.
+##   is necessary for the success of the ceremony.
 ##
 ## Protocol
 ##
@@ -122,7 +122,7 @@ import
 ##    corresponding to a polynomial p(x) = blob₀ + blob₁ x + blob₂ x² + ... + blobₙ₋₁ xⁿ⁻¹
 ##                                  p(x) = ∑₀ⁿ⁻¹ blobᵢ xⁱ
 ##
-##    So we can commit/prove up to 4096*log₂(r) bits of data
+##    So we can commit/prove up to n*log₂(r) bits of data
 ##    For Ethereum, n = 4096 and log₂(r) = 255 bits
 ##    so 130.560kB of transaction data committed per 48B proof stored in the blockchain
 ##

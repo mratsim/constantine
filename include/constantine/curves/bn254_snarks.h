@@ -10,6 +10,7 @@
 #define __CTT_H_BN254_SNARKS__
 
 #include "constantine/core/datatypes.h"
+#include "constantine/curves/bigints.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -25,6 +26,8 @@ typedef struct { bn254_snarks_fp2 x, y; } bn254_snarks_g2_aff;
 typedef struct { bn254_snarks_fp2 x, y, z; } bn254_snarks_g2_jac;
 typedef struct { bn254_snarks_fp2 x, y, z; } bn254_snarks_g2_prj;
 
+void        ctt_big254_from_bn254_snarks_fr(big254* dst, const bn254_snarks_fr* src);
+void        ctt_bn254_snarks_fr_from_big254(bn254_snarks_fr* dst, const big254* src);
 ctt_bool    ctt_bn254_snarks_fr_unmarshalBE(bn254_snarks_fr* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
 ctt_bool    ctt_bn254_snarks_fr_marshalBE(byte dst[], ptrdiff_t dst_len, const bn254_snarks_fr* src) __attribute__((warn_unused_result));
 secret_bool ctt_bn254_snarks_fr_is_eq(const bn254_snarks_fr* a, const bn254_snarks_fr* b);
@@ -56,6 +59,8 @@ void        ctt_bn254_snarks_fr_cset_one(bn254_snarks_fr* a, secret_bool ctl);
 void        ctt_bn254_snarks_fr_cneg_in_place(bn254_snarks_fr* a, secret_bool ctl);
 void        ctt_bn254_snarks_fr_cadd_in_place(bn254_snarks_fr* a, const bn254_snarks_fr* b, secret_bool ctl);
 void        ctt_bn254_snarks_fr_csub_in_place(bn254_snarks_fr* a, const bn254_snarks_fr* b, secret_bool ctl);
+void        ctt_big254_from_bn254_snarks_fp(big254* dst, const bn254_snarks_fp* src);
+void        ctt_bn254_snarks_fp_from_big254(bn254_snarks_fp* dst, const big254* src);
 ctt_bool    ctt_bn254_snarks_fp_unmarshalBE(bn254_snarks_fp* dst, const byte src[], ptrdiff_t src_len) __attribute__((warn_unused_result));
 ctt_bool    ctt_bn254_snarks_fp_marshalBE(byte dst[], ptrdiff_t dst_len, const bn254_snarks_fp* src) __attribute__((warn_unused_result));
 secret_bool ctt_bn254_snarks_fp_is_eq(const bn254_snarks_fp* a, const bn254_snarks_fp* b);
@@ -150,6 +155,13 @@ void        ctt_bn254_snarks_g1_jac_double(bn254_snarks_g1_jac* r, const bn254_s
 void        ctt_bn254_snarks_g1_jac_double_in_place(bn254_snarks_g1_jac* P);
 void        ctt_bn254_snarks_g1_jac_affine(bn254_snarks_g1_aff* dst, const bn254_snarks_g1_jac* src);
 void        ctt_bn254_snarks_g1_jac_from_affine(bn254_snarks_g1_jac* dst, const bn254_snarks_g1_aff* src);
+void        ctt_bn254_snarks_g1_jac_batch_affine(const bn254_snarks_g1_aff dst[], const bn254_snarks_g1_jac src[], size_t n);
+void        ctt_bn254_snarks_g1_jac_scalar_mul_big_coef(bn254_snarks_g1_jac* P, const big254* scalar);
+void        ctt_bn254_snarks_g1_jac_scalar_mul_fr_coef(bn254_snarks_g1_jac* P, const bn254_snarks_fr* scalar);
+void        ctt_bn254_snarks_g1_jac_scalar_mul_big_coef_vartime(bn254_snarks_g1_jac* P, const big254* scalar);
+void        ctt_bn254_snarks_g1_jac_scalar_mul_fr_coef_vartime(bn254_snarks_g1_jac* P, const bn254_snarks_fr* scalar);
+void        ctt_bn254_snarks_g1_jac_multi_scalar_mul_big_coefs_vartime(bn254_snarks_g1_jac* r, const big254 coefs[], const bn254_snarks_g1_aff points[], size_t len);
+void        ctt_bn254_snarks_g1_jac_multi_scalar_mul_fr_coefs_vartime(bn254_snarks_g1_jac* r, const bn254_snarks_fr coefs[], const bn254_snarks_g1_aff points[], size_t len);
 secret_bool ctt_bn254_snarks_g1_prj_is_eq(const bn254_snarks_g1_prj* P, const bn254_snarks_g1_prj* Q);
 secret_bool ctt_bn254_snarks_g1_prj_is_inf(const bn254_snarks_g1_prj* P);
 void        ctt_bn254_snarks_g1_prj_set_inf(bn254_snarks_g1_prj* P);
@@ -164,6 +176,13 @@ void        ctt_bn254_snarks_g1_prj_double(bn254_snarks_g1_prj* r, const bn254_s
 void        ctt_bn254_snarks_g1_prj_double_in_place(bn254_snarks_g1_prj* P);
 void        ctt_bn254_snarks_g1_prj_affine(bn254_snarks_g1_aff* dst, const bn254_snarks_g1_prj* src);
 void        ctt_bn254_snarks_g1_prj_from_affine(bn254_snarks_g1_prj* dst, const bn254_snarks_g1_aff* src);
+void        ctt_bn254_snarks_g1_prj_batch_affine(const bn254_snarks_g1_aff dst[], const bn254_snarks_g1_prj src[], size_t n);
+void        ctt_bn254_snarks_g1_prj_scalar_mul_big_coef(bn254_snarks_g1_prj* P, const big254* scalar);
+void        ctt_bn254_snarks_g1_prj_scalar_mul_fr_coef(bn254_snarks_g1_prj* P, const bn254_snarks_fr* scalar);
+void        ctt_bn254_snarks_g1_prj_scalar_mul_big_coef_vartime(bn254_snarks_g1_prj* P, const big254* scalar);
+void        ctt_bn254_snarks_g1_prj_scalar_mul_fr_coef_vartime(bn254_snarks_g1_prj* P, const bn254_snarks_fr* scalar);
+void        ctt_bn254_snarks_g1_prj_multi_scalar_mul_big_coefs_vartime(bn254_snarks_g1_prj* r, const big254 coefs[], const bn254_snarks_g1_aff points[], size_t len);
+void        ctt_bn254_snarks_g1_prj_multi_scalar_mul_fr_coefs_vartime(bn254_snarks_g1_prj* r, const bn254_snarks_fr coefs[], const bn254_snarks_g1_aff points[], size_t len);
 secret_bool ctt_bn254_snarks_g2_aff_is_eq(const bn254_snarks_g2_aff* P, const bn254_snarks_g2_aff* Q);
 secret_bool ctt_bn254_snarks_g2_aff_is_inf(const bn254_snarks_g2_aff* P);
 void        ctt_bn254_snarks_g2_aff_set_inf(bn254_snarks_g2_aff* P);
@@ -185,6 +204,13 @@ void        ctt_bn254_snarks_g2_jac_double(bn254_snarks_g2_jac* r, const bn254_s
 void        ctt_bn254_snarks_g2_jac_double_in_place(bn254_snarks_g2_jac* P);
 void        ctt_bn254_snarks_g2_jac_affine(bn254_snarks_g2_aff* dst, const bn254_snarks_g2_jac* src);
 void        ctt_bn254_snarks_g2_jac_from_affine(bn254_snarks_g2_jac* dst, const bn254_snarks_g2_aff* src);
+void        ctt_bn254_snarks_g2_jac_batch_affine(const bn254_snarks_g2_aff dst[], const bn254_snarks_g2_jac src[], size_t n);
+void        ctt_bn254_snarks_g2_jac_scalar_mul_big_coef(bn254_snarks_g2_jac* P, const big254* scalar);
+void        ctt_bn254_snarks_g2_jac_scalar_mul_fr_coef(bn254_snarks_g2_jac* P, const bn254_snarks_fr* scalar);
+void        ctt_bn254_snarks_g2_jac_scalar_mul_big_coef_vartime(bn254_snarks_g2_jac* P, const big254* scalar);
+void        ctt_bn254_snarks_g2_jac_scalar_mul_fr_coef_vartime(bn254_snarks_g2_jac* P, const bn254_snarks_fr* scalar);
+void        ctt_bn254_snarks_g2_jac_multi_scalar_mul_big_coefs_vartime(bn254_snarks_g2_jac* r, const big254 coefs[], const bn254_snarks_g2_aff points[], size_t len);
+void        ctt_bn254_snarks_g2_jac_multi_scalar_mul_fr_coefs_vartime(bn254_snarks_g2_jac* r, const bn254_snarks_fr coefs[], const bn254_snarks_g2_aff points[], size_t len);
 secret_bool ctt_bn254_snarks_g2_prj_is_eq(const bn254_snarks_g2_prj* P, const bn254_snarks_g2_prj* Q);
 secret_bool ctt_bn254_snarks_g2_prj_is_inf(const bn254_snarks_g2_prj* P);
 void        ctt_bn254_snarks_g2_prj_set_inf(bn254_snarks_g2_prj* P);
@@ -199,6 +225,13 @@ void        ctt_bn254_snarks_g2_prj_double(bn254_snarks_g2_prj* r, const bn254_s
 void        ctt_bn254_snarks_g2_prj_double_in_place(bn254_snarks_g2_prj* P);
 void        ctt_bn254_snarks_g2_prj_affine(bn254_snarks_g2_aff* dst, const bn254_snarks_g2_prj* src);
 void        ctt_bn254_snarks_g2_prj_from_affine(bn254_snarks_g2_prj* dst, const bn254_snarks_g2_aff* src);
+void        ctt_bn254_snarks_g2_prj_batch_affine(const bn254_snarks_g2_aff dst[], const bn254_snarks_g2_prj src[], size_t n);
+void        ctt_bn254_snarks_g2_prj_scalar_mul_big_coef(bn254_snarks_g2_prj* P, const big254* scalar);
+void        ctt_bn254_snarks_g2_prj_scalar_mul_fr_coef(bn254_snarks_g2_prj* P, const bn254_snarks_fr* scalar);
+void        ctt_bn254_snarks_g2_prj_scalar_mul_big_coef_vartime(bn254_snarks_g2_prj* P, const big254* scalar);
+void        ctt_bn254_snarks_g2_prj_scalar_mul_fr_coef_vartime(bn254_snarks_g2_prj* P, const bn254_snarks_fr* scalar);
+void        ctt_bn254_snarks_g2_prj_multi_scalar_mul_big_coefs_vartime(bn254_snarks_g2_prj* r, const big254 coefs[], const bn254_snarks_g2_aff points[], size_t len);
+void        ctt_bn254_snarks_g2_prj_multi_scalar_mul_fr_coefs_vartime(bn254_snarks_g2_prj* r, const bn254_snarks_fr coefs[], const bn254_snarks_g2_aff points[], size_t len);
 
 #ifdef __cplusplus
 }

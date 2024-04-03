@@ -213,10 +213,7 @@ macro genInstr(body: untyped): untyped =
         asmString = `asmString`,
         constraints = `constraints`,
         # All carry instructions have sideffect on carry flag and can't be reordered
-        # However, function calls can't be reordered and
-        # by default on NVPTX load/stores, comparisons and arithmetic operations don't affect carry
-        # flags so it's fine for the compiler to intersperse them.
-        hasSideEffects = LlvmBool(0),
+        hasSideEffects = LlvmBool(1),
         isAlignStack = LlvmBool(0),
         dialect = InlineAsmDialectATT,
         canThrow = LlvmBool(0))
@@ -340,16 +337,20 @@ genInstr():
   op sub_bo:       ("sub.cc",     "$0, $1, $2;",     "=rl,rln,rln",   [lhs, rhs])
   op sub_bi:       ("subc",       "$0, $1, $2;",     "=rl,rln,rln",   [lhs, rhs])
   op sub_bio:      ("subc.cc",    "$0, $1, $2;",     "=rl,rln,rln",   [lhs, rhs])
+  # r <- a * b
+  op mullo_co:     ("mul.lo.cc",  "$0, $1, $2;",     "=rl,rln,rln",   [lhs, rhs])
   # r <- a * b >> 32
   op mulhi:        ("mul.hi",     "$0, $1, $2;",     "=rl,rln,rln",   [lhs, rhs])
   # r <- a * b + c
   op mulloadd:     ("mad.lo",     "$0, $1, $2, $3;", "=rl,rln,rln,rln", [lmul, rmul, addend])
   op mulloadd_co:  ("mad.lo.cc",  "$0, $1, $2, $3;", "=rl,rln,rln,rln", [lmul, rmul, addend])
+  op mulloadd_ci:  ("madc.lo",    "$0, $1, $2, $3;", "=rl,rln,rln,rln", [lmul, rmul, addend])
   op mulloadd_cio: ("madc.lo.cc", "$0, $1, $2, $3;", "=rl,rln,rln,rln", [lmul, rmul, addend])
   # r <- (a * b) >> 32 + c
   # r <- (a * b) >> 64 + c
   op mulhiadd:     ("mad.hi",     "$0, $1, $2, $3;", "=rl,rln,rln,rln", [lmul, rmul, addend])
   op mulhiadd_co:  ("mad.hi.cc",  "$0, $1, $2, $3;", "=rl,rln,rln,rln", [lmul, rmul, addend])
+  op mulhiadd_ci:  ("madc.hi",    "$0, $1, $2, $3;", "=rl,rln,rln,rln", [lmul, rmul, addend])
   op mulhiadd_cio: ("madc.hi.cc", "$0, $1, $2, $3;", "=rl,rln,rln,rln", [lmul, rmul, addend])
 
   # Conditional mov / select

@@ -8,23 +8,50 @@
 
 import
   ../constantine/math/config/curves,
-  ../constantine/curves_primitives
+  ../constantine/curves_primitives,
 
-export curves, curves_primitives
+  ../constantine/math/extension_fields # generic sandwich
+
+export curves, curves_primitives, extension_fields
 
 # Overview
 # ------------------------------------------------------------
 #
 # This files provides template for C bindings generation
 
-template genBindingsField*(Field: untyped) =
+template genBindingsBig*(Big: untyped) =
   when appType == "lib":
     {.push noconv, dynlib, exportc,  raises: [].} # No exceptions allowed
   else:
     {.push noconv, exportc,  raises: [].} # No exceptions allowed
 
+  func `ctt _ Big _ unmarshalBE`(dst: var Big, src: openarray[byte]): bool =
+    unmarshalBE(dst, src)
+
+  func `ctt _ Big _ marshalBE`(dst: var openarray[byte], src: Big): bool =
+    marshalBE(dst, src)
+
+  {.pop.}
+
+template genBindingsField*(Big, Field: untyped) =
+  when appType == "lib":
+    {.push noconv, dynlib, exportc,  raises: [].} # No exceptions allowed
+  else:
+    {.push noconv, exportc,  raises: [].} # No exceptions allowed
+
+  func `ctt _ Big _ from _ Field`(dst: var Big, src: Field) =
+    fromField(dst, src)
+
+  func `ctt _ Field _ from _ Big`(dst: var Field, src: Big) =
+    ## Note: conversion will not fail if the bigint is bigger than the modulus,
+    ## It will be reduced modulo the field modulus.
+    ## For protocol that want to prevent this malleability
+    ## use `unmarchalBE` to convert directly from bytes to field elements instead of
+    ## bytes -> bigint -> field element
+    fromBig(dst, src)
+
+  # --------------------------------------------------------------------------------------
   func `ctt _ Field _ unmarshalBE`(dst: var Field, src: openarray[byte]): bool =
-    ## Deserialize
     unmarshalBE(dst, src)
 
   func `ctt _ Field _ marshalBE`(dst: var openarray[byte], src: Field): bool =
@@ -303,7 +330,9 @@ template genBindings_EC_ShortW_Affine*(ECP, Field: untyped) =
 
   {.pop.}
 
-template genBindings_EC_ShortW_NonAffine*(ECP, ECP_Aff: untyped) =
+template genBindings_EC_ShortW_NonAffine*(ECP, ECP_Aff, ScalarBig, ScalarField: untyped) =
+  # TODO: remove the need of explicit ScalarBig and ScalarField
+
   when appType == "lib":
     {.push noconv, dynlib, exportc,  raises: [].} # No exceptions allowed
   else:
@@ -351,5 +380,54 @@ template genBindings_EC_ShortW_NonAffine*(ECP, ECP_Aff: untyped) =
 
   func `ctt _ ECP _ from_affine`(dst: var ECP, src: ECP_Aff) =
     dst.fromAffine(src)
+
+  func `ctt _ ECP _ batch_affine`(dst: ptr UncheckedArray[ECP_Aff], src: ptr UncheckedArray[ECP], n: csize_t) =
+    dst.batchAffine(src, cast[int](n))
+
+  func `ctt _ ECP _ scalar_mul_big_coef`(
+    P: var ECP, scalar: ScalarBig) =
+
+    P.scalarMul(scalar)
+
+  func `ctt _ ECP _ scalar_mul_fr_coef`(
+        P: var ECP, scalar: ScalarField) =
+
+    var big: ScalarBig # TODO: {.noInit.}
+    big.fromField(scalar)
+    P.scalarMul(big)
+
+  func `ctt _ ECP _ scalar_mul_big_coef_vartime`(
+    P: var ECP, scalar: ScalarBig) =
+
+    P.scalarMul_vartime(scalar)
+
+  func `ctt _ ECP _ scalar_mul_fr_coef_vartime`(
+        P: var ECP, scalar: ScalarField) =
+
+    var big: ScalarBig # TODO: {.noInit.}
+    big.fromField(scalar)
+    P.scalarMul_vartime(big)
+
+  func `ctt _ ECP _ multi_scalar_mul_big_coefs_vartime`(
+          r: var ECP,
+          coefs: ptr UncheckedArray[ScalarBig],
+          points: ptr UncheckedArray[ECP_Aff],
+          len: csize_t) =
+    r.multiScalarMul_vartime(coefs, points, cast[int](len))
+
+  func `ctt _ ECP _ multi_scalar_mul_fr_coefs_vartime`(
+          r: var ECP,
+          coefs: ptr UncheckedArray[ScalarField],
+          points: ptr UncheckedArray[ECP_Aff],
+          len: csize_t)=
+
+    let n = cast[int](len)
+    let coefs_fr = allocHeapArrayAligned(ScalarBig, n, alignment = 64)
+
+    for i in 0 ..< n:
+      coefs_fr[i].fromField(coefs[i])
+    r.multiScalarMul_vartime(coefs_fr, points, n)
+
+    freeHeapAligned(coefs_fr)
 
   {.pop.}

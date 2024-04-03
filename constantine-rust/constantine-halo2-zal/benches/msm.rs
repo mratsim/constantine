@@ -20,8 +20,8 @@ use halo2curves::ff::Field;
 use halo2curves::msm::best_multiexp;
 use halo2curves::zal::MsmAccel;
 
-use maybe_rayon::current_thread_index;
-use maybe_rayon::prelude::{IntoParallelIterator, ParallelIterator};
+use rayon::current_thread_index;
+use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 use rand_core::SeedableRng;
 use rand_xorshift::XorShiftRng;
 

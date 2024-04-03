@@ -76,11 +76,11 @@ Constantine supports the following protocols in its public API.
 
 Constantine supports the following curves in its public API.
 
-|                               |        Nim         |         C          | Rust                    |      Go       |
-|-------------------------------|:------------------:|:------------------:|-------------------------|:-------------:|
-| BN254-Snarks                  | :white_check_mark: | :white_check_mark: | :building_construction: | :see_no_evil: |
-| BLS12-381                     | :white_check_mark: | :white_check_mark: | :building_construction: | :see_no_evil: |
-| Pasta curves (Pallas & Vesta) | :white_check_mark: | :white_check_mark: | :building_construction: | :see_no_evil: |
+|                               |        Nim         |         C          | Rust               |      Go       |
+|-------------------------------|:------------------:|:------------------:|--------------------|:-------------:|
+| BN254-Snarks                  | :white_check_mark: | :white_check_mark: | :white_check_mark: | :see_no_evil: |
+| BLS12-381                     | :white_check_mark: | :white_check_mark: | :white_check_mark: | :see_no_evil: |
+| Pasta curves (Pallas & Vesta) | :white_check_mark: | :white_check_mark: | :white_check_mark: | :see_no_evil: |
 
 For all elliptic curves, the following arithmetic is supported
   - field arithmetic
@@ -89,9 +89,7 @@ For all elliptic curves, the following arithmetic is supported
   - elliptic curve arithmetic:
     - on elliptic curve over Fp (EC G1) with affine, jacobian and homogenous projective coordinates
     - on elliptic curve over Fp2 (EC G2) with affine, jacobian and homogenous projective coordinates
-  - parallel multi-scalar-multiplication (MSM)
-
-:building_construction: Scalar multiplications are implemented but not exposed yet. _Yes, MSMs are exposed but not scalar multiplications._
+    - including scalar multiplication, multi-scalar-multiplication (MSM) and parallel MSM
 
 _All operations are constant-time unless explicitly mentioned_ vartime.
 
@@ -102,10 +100,10 @@ For pairing-friendly curves Fp2 arithmetic is also exposed.\
 
 Constantine supports the following hash functions and CSPRNGs in its public API.
 
-|                                                              |        Nim         |         C          | Rust                    | Go |
-|--------------------------------------------------------------|:------------------:|:------------------:|-------------------------|:--:|
-| SHA256                                                       | :white_check_mark: | :white_check_mark: | :building_construction: |    |
-| Cryptographically-secure RNG from Operating System (sysrand) | :white_check_mark: | :white_check_mark: | :building_construction: |    |
+|                                                              |        Nim         |         C          | Rust                    |         Go         |
+|--------------------------------------------------------------|:------------------:|:------------------:|-------------------------|:------------------:|
+| SHA256                                                       | :white_check_mark: | :white_check_mark: | :building_construction: |                    |
+| Cryptographically-secure RNG from Operating System (sysrand) | :white_check_mark: | :white_check_mark: | :white_check_mark:      | :white_check_mark: |
 
 ### Threadpool
 
@@ -117,6 +115,10 @@ Constantine also exposes a high-performance threadpool for Nim that inherits per
         - `parallelFor` supports arbitrarily complex reduction.
         Constantine uses it extensively for parallel elliptic curve sum reductions.
     - `isSpawned` and `isReady`
+- CPU Topology - Query the number of threads available at the OS/VM-level to run computations:
+  - `ctt_cpu_get_num_threads_os` in C
+  - `getNumThreadsOS` in Nim
+  - `constantine_core::hardware::get_num_threads_os` in Rust
 
 - https://github.com/mratsim/weave
 - https://github.com/status-im/nim-taskpools

@@ -143,7 +143,7 @@ proc bucketAccumReduce_zeroMem[bits: static int, EC, ECaff](
   zeroMem(buckets, sizeof(EC) * numBuckets)
   bucketAccumReduce(windowSum[], buckets, bitIndex, miniMsmKind, c, coefs, points, N)
 
-proc msm_vartime_parallel*[bits: static int, EC, ECaff](
+proc msm_vartime_parallel[bits: static int, EC, ECaff](
        tp: Threadpool,
        r: ptr EC,
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[EC_aff],
@@ -321,7 +321,7 @@ proc bucketAccumReduce_parallel[bits: static int, EC, ECaff](
 # Parallel MSM Affine - window-level only
 # ---------------------------------------
 
-proc msmAffine_vartime_parallel*[bits: static int, EC, ECaff](
+proc msmAffine_vartime_parallel[bits: static int, EC, ECaff](
        tp: Threadpool,
        r: ptr EC,
        coefs: ptr UncheckedArray[BigInt[bits]], points: ptr UncheckedArray[ECaff],
@@ -329,7 +329,7 @@ proc msmAffine_vartime_parallel*[bits: static int, EC, ECaff](
 
   # Prologue
   # --------
-  const numBuckets = 1 shl (c-1)
+  const numBuckets {.used.} = 1 shl (c-1)
   const numFullWindows = bits div c
   const numWindows = numFullWindows + 1 # Even if `bits div c` is exact, the signed recoding needs to see an extra 0 after the MSB
 

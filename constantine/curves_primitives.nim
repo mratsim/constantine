@@ -16,6 +16,10 @@ import
       constants/zoo_subgroups,
       constants/zoo_generators
     ],
+    ./math/elliptic/[
+      ec_scalar_mul_vartime,
+      ec_multi_scalar_mul
+    ],
     ./math/io/[io_bigints, io_fields],
     ./math/isogenies/frobenius,
     ./math/pairings/[
@@ -42,6 +46,19 @@ export
   abstractions,
   curves.Curve
 
+# BigInt
+# ------------------------------------------------------------
+
+func unmarshalBE*(dst: var BigInt, src: openarray[byte]): bool =
+  ## Return true on success
+  ## Return false if destination is too small compared to source
+  return dst.unmarshal(src, bigEndian)
+
+func marshalBE*(dst: var openarray[byte], src: BigInt): bool =
+  ## Return true on success
+  ## Return false if destination is too small compared to source
+  return dst.marshal(src, bigEndian)
+
 # Scalar field Fr and Prime Field Fp
 # ------------------------------------------------------------
 
@@ -65,7 +82,7 @@ func marshalBE*(dst: var openarray[byte], src: FF): bool =
   ## Return false if destination is too small compared to source
   var raw {.noInit.}: typeof src.mres
   raw.fromField(src)
-  return dst.marshal(src, bigEndian)
+  return dst.marshal(raw, bigEndian)
 
 export arithmetic.fromBig
 export arithmetic.fromField
@@ -141,6 +158,8 @@ export ec_shortweierstrass.diff
 # export ec_shortweierstrass.madd
 
 export ec_shortweierstrass.scalarMul
+export ec_scalar_mul_vartime.scalarMul_vartime
+export ec_multi_scalar_mul.multiScalarMul_vartime
 
 export zoo_generators.getGenerator
 export zoo_subgroups.clearCofactor

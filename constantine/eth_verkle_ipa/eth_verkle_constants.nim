@@ -25,27 +25,37 @@ type
   EC_P* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
   EC_P_Aff* = ECP_TwEdwards_Aff[Fp[Banderwagon]]
 
-type 
-    IPAProof* = object
-     L_vector*: array[8,EC_P]
-     R_vector*: array[8,EC_P]
-     A_scalar*: Fr[Banderwagon]
+type Bytes* = array[32, byte]
 
 type 
-    MultiProof* = object
-     IPAprv*: IPAProof
-     D*: EC_P
+  Point* = EC_P
+  Field* = Fr[Banderwagon]
+
+type 
+  IPAProof* = object
+    L_vector*: array[8,EC_P]
+    R_vector*: array[8,EC_P]
+    A_scalar*: Fr[Banderwagon]
+
+type 
+  MultiProof* = object
+    IPAprv*: IPAProof
+    D*: EC_P
 
 const
- VerkleDomain*: int = 256
+  VerkleDomain*: int = 256
+
+type VerkleIPAProofSerialized* = array[544, byte]
+
+type VerkleMultiproofSerialized* = array[576, byte]
 
 type 
- PrecomputedWeights* = object
-  barycentricWeights*: array[510,Fr[Banderwagon]]
-  invertedDomain*: array[510,Fr[Banderwagon]]
+  PrecomputedWeights* = object
+    barycentricWeights*: array[512,Fr[Banderwagon]]
+    invertedDomain*: array[510,Fr[Banderwagon]]
 
 type
-   IPASettings* = object
+  IPASettings* = object
     SRS*: array[VerkleDomain,EC_P]
     Q_val*: EC_P
     precompWeights*: PrecomputedWeights
@@ -53,15 +63,13 @@ type
 
 const VerkleSeed* = asBytes"eth_verkle_oct_2021"
 
-type Bytes* = array[32, byte]
-
 type IpaTranscript* [H: CryptoHash, N: static int] = object
   ctx*: H
   label*: array[N, byte]
 
 type
-    Coord* = object 
-     x*: Fr[Banderwagon]
-     y*: Fr[Banderwagon]
+  Coord* = object 
+    x*: Fr[Banderwagon]
+    y*: Fr[Banderwagon]
 
 var generator* = Banderwagon.getGenerator()

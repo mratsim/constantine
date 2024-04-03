@@ -57,6 +57,13 @@ export
 # Unfortunately, there is no easy programmatic way to retrieve the PTX ISA version supported
 # only the Cuda/Compiler version (https://docs.nvidia.com/cuda/ptx-compiler-api/index.html#group__versioning)
 # Hence it's likely easier to ask users to update Cuda in case of ISA incompatibility.
+#
+#  Due to the following bug on 32-bit fused multiply-add with carry
+#    https://forums.developer.nvidia.com/t/wrong-result-returned-by-madc-hi-u64-ptx-instruction-for-specific-operands/196094
+#  We require Cuda 12 at minimum.
+#  Requirement will be bumped when 64-bit fused multiply-add with carry
+#    https://forums.developer.nvidia.com/t/incorrect-result-of-ptx-code/221067
+#  is also fixed.
 
 # Cuda Driver API
 # ------------------------------------------------------------

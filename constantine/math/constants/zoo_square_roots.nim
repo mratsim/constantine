@@ -46,8 +46,12 @@ macro tonelliShanks*(C: static Curve, value: untyped): untyped =
   ## Get Square Root via Tonelli-Shanks related constants
   return bindSym($C & "_TonelliShanks_" & $value)
 
+macro sqrtDlog*(C: static Curve, value: untyped): untyped =
+  ## Get Square Root via Square Root Dlog related constants
+  return bindSym($C & "_SqrtDlog_" & $value)
+
 func hasTonelliShanksAddchain*(C: static Curve): static bool =
-  when C in {BLS12_377}:
+  when C in {Bandersnatch, Banderwagon, BLS12_377}:
     true
   else:
     false

@@ -228,12 +228,13 @@ proc genDynamicLib(outdir, nimcache: string) =
   else:
     compile "libconstantine.so"
 
-proc genStaticLib(outdir, nimcache: string) =
+proc genStaticLib(outdir, nimcache: string, extFlags = "") =
   proc compile(libName: string, flags = "") =
     echo &"Compiling static library:  {outdir}/" & libName
 
     exec "nim c " &
          flags &
+         extFlags &
          releaseBuildOptions(bmStaticLib) &
          " --threads:on " &
          " --noMain --app:staticlib " &
@@ -271,7 +272,10 @@ task make_lib, "Build Constantine library":
 task make_lib_rust, "Build Constantine library (use within a Rust build.rs script)":
   doAssert existsEnv"OUT_DIR", "Cargo needs to set the \"OUT_DIR\" environment variable"
   let rustOutDir = getEnv"OUT_DIR"
-  genStaticLib(rustOutDir, rustOutDir/"nimcache")
+  # Compile as position independent, since rust does the same by default
+  let extflags = if defined(windows): "" # Windows is fully position independent, flag is a no-op or on error depending on compiler.
+                 else: "--passC:-fPIC"
+  genStaticLib(rustOutDir, rustOutDir/"nimcache", extflags)
 
 proc testLib(path, testName: string, useGMP: bool) =
   let dynlibName = if defined(windows): "constantine.dll"
@@ -485,6 +489,7 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # Edge cases highlighted by past bugs
   # ----------------------------------------------------------
   ("tests/math_elliptic_curves/t_ec_shortw_prj_edge_cases.nim", false),
+  ("tests/math_elliptic_curves/t_ec_shortw_prj_edge_case_345.nim", false),
 
   # Elliptic curve arithmetic - batch computation
   # ----------------------------------------------------------
@@ -609,7 +614,8 @@ const benchDesc = [
   "bench_ethereum_eip4844_kzg",
   "bench_evm_modexp_dos",
   "bench_gmp_modexp",
-  "bench_gmp_modmul"
+  "bench_gmp_modmul",
+  "bench_verkle_primitives"
 ]
 
 # For temporary (hopefully) investigation that can only be reproduced in CI
@@ -1032,3 +1038,6 @@ task bench_ethereum_bls_signatures, "Run Ethereum BLS signatures benchmarks - CC
 # ------------------------------------------
 task bench_ethereum_eip4844_kzg, "Run Ethereum EIP4844 KZG Polynomial commitment - CC compiler":
   runBench("bench_ethereum_eip4844_kzg")
+
+task bench_verkle, "Run benchmarks for Banderwagon":
+  runBench("bench_verkle_primitives")

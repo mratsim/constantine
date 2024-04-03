@@ -8,9 +8,14 @@
 
 import
   tables,
+  sequtils,
   ./[transcript_gen, common_utils, ipa_prover, barycentric_form, eth_verkle_constants, ipa_verifier],
   ../platforms/primitives,
   ../hashes,
+  ../serialization/[
+    codecs_banderwagon,
+    codecs_status_codes,
+  ],
   ../math/config/[type_ff, curves],
   ../math/elliptic/[ec_multi_scalar_mul, ec_multi_scalar_mul_scheduler],
   ../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
@@ -26,24 +31,18 @@ import
 #
 # ############################################################
 
-# The multiproof is a multi-proving system for several polynomials in the evaluation form
-
-# Converts the const VERKLE_DOMAIN 256 to Fr[Banderwagon]
-func domainToFrElem* (res: var Fr, inp: uint8)=
-    var x {.noInit.} : Fr
-    x.fromInt(int(inp))
-    res = x
 
 func domainToFrElem*(res: var Fr, inp: matchingOrderBigInt(Banderwagon))=
-    var x {.noInit.} : Fr[Banderwagon]
-    x.fromBig(inp)
-    res = x
+  var x {.noInit.} : Fr[Banderwagon]
+  x.fromBig(inp)
+  res = x
 
 # Computes the powers of an Fr[Banderwagon][Banderwagon] element
 func computePowersOfElem*(res: var openArray[Fr], x: Fr, degree: SomeSignedInt)= 
-    res[0].setOne()
-    for i in 1 ..< degree:
-        res[i].prod(res[i-1], x)
+  res[0].setOne()
+  for i in 1 ..< degree:
+    res[i].prod(res[i-1], x)
+
 
 # ############################################################
 #
@@ -51,162 +50,152 @@ func computePowersOfElem*(res: var openArray[Fr], x: Fr, degree: SomeSignedInt)=
 #
 # ############################################################
     
-# createMultiProof creates a multi-proof for several polynomials in the evaluation form
-# The list of triplets are as follows : (C, Fs, Z) represents each polynomial commitment
-# and their evalutation in the domain, and the evaluating point respectively
-func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256, ipaSetting: IPASettings, Cs: openArray[EC_P], Fs: array[VERKLE_DOMAIN, array[VERKLE_DOMAIN, Fr[Banderwagon]]], Zs: openArray[uint8], precomp: PrecomputedWeights, basis: array[VERKLE_DOMAIN, EC_P]) : bool =
-    var success {.noInit.} : bool
-    transcript.domain_separator(asBytes"multiproof")
 
-    for f in Fs:
-        debug: debug: doAssert f.len == VERKLE_DOMAIN, "Polynomial length does not match with the VERKLE_DOMAIN length!"
+func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var CryptoHash, ipaSetting: IPASettings, Cs: openArray[EC_P], Fs: array[VerkleDomain, array[VerkleDomain, Fr[Banderwagon]]], Zs: openArray[int]) : bool =
+  # createMultiProof creates a multi-proof for several polynomials in the evaluation form
+  # The list of triplets are as follows: (C, Fs, Z) represents each polynomial commitment
+  # and their evaluation in the domain, and the evaluating point respectively
+  var success {.noInit.} : bool
+  transcript.domain_separator(asBytes"multiproof")
+
+  for f in Fs:
+    debug: doAssert f.len == VerkleDomain, "Polynomial length does not match with the VerkleDomain length!"
     
-    debug: debug: doAssert Cs.len == Fs.len, "Number of commitments is NOT same as number of Functions"
+  debug: doAssert Cs.len == Fs.len, "Number of commitments is NOT same as number of Functions"
 
-    debug: debug: doAssert Cs.len == Zs.len, "Number of commitments is NOT same as number of Points"
+  debug: doAssert Cs.len == Zs.len, "Number of commitments is NOT same as the number of Points"
 
-    var num_queries {.noInit.} : int
-    num_queries = Cs.len
+  var num_queries {.noInit.}: int
+  num_queries = Cs.len
 
-    var Cs_prime {.noInit.} : array[VERKLE_DOMAIN, EC_P]
-    for i in 0 ..< VERKLE_DOMAIN:
-        Cs_prime[i] = Cs[i]
+  for i in 0 ..< num_queries:
+    transcript.pointAppend(asBytes"C", Cs[i])
+    var z {.noInit.}: Fr[Banderwagon]
+    z.fromInt(Zs[i])
+    transcript.scalarAppend(asBytes"z",z.toBig())
 
-    for i in 0 ..< num_queries:
-        transcript.pointAppend(asBytes"C", Cs_prime[i])
-        var z {.noInit.} : Fr[Banderwagon]
-        z.domainToFrElem(Zs[i])
-        transcript.scalarAppend(asBytes"z",z.toBig())
+    # deducing the `y` value
 
-        # deducing the `y` value
+    var f = Fs[i]
+    var y = f[Zs[i]]
+    transcript.scalarAppend(asBytes"y", y.toBig())
 
-        var f = Fs[i]
+  var r {.noInit.} : matchingOrderBigInt(Banderwagon)
+  r.generateChallengeScalar(transcript,asBytes"r")
 
-        var y = f[int(Zs[i])]
+  var r_fr {.noInit.}: Fr[Banderwagon]
+  r_fr.fromBig(r)
 
-        transcript.scalarAppend(asBytes"y", y.toBig())
+  var powersOfr {.noInit.} = newSeq[Fr[Banderwagon]](int(num_queries))
+  powersOfr.computePowersOfElem(r_fr, int(num_queries))
 
-    var r {.noInit.} : matchingOrderBigInt(Banderwagon)
-    r.generateChallengeScalar(transcript,asBytes"r")
+  # In order to compute g(x), we first compute the polynomials in lagrange form grouped by evaluation points
+  # then we compute g(x), this is eventually limit the numbers of divisionOnDomain calls up to the domain size 
 
-    var r_fr {.noInit.}: Fr[Banderwagon]
-    r_fr.fromBig(r)
+  var groupedFs: array[VerkleDomain, array[VerkleDomain, Fr[Banderwagon]]]
+  for i in 0 ..< VerkleDomain:
+    for j in 0 ..< VerkleDomain:
+      groupedFs[i][j].setZero()
 
-    var powersOfr {.noInit.}: array[VERKLE_DOMAIN,Fr[Banderwagon]]
-    powersOfr.computePowersOfElem(r_fr, int(num_queries))
+  for i in 0 ..< num_queries:
+    var z = Zs[i]
+    var r {.noInit.}: Fr[Banderwagon]
+    r = powersOfr[i]
 
-    # Inorder to compute g(x), we first compute the polynomials in lagrange form grouped by evaluation points
-    # then we compute g(x), this is eventually limit the numbers of divisionOnDomain calls up to the domain size 
+    for j in 0 ..< VerkleDomain:
+      var scaledEvals {.noInit.}: Fr[Banderwagon]
+      scaledEvals.prod(r, Fs[i][j])
+      groupedFs[z][j] += scaledEvals
+  
+  var gx {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
+  for i in 0 ..< VerkleDomain:
+    gx[i].setZero()
 
-    var groupedFs: array[VERKLE_DOMAIN, array[VERKLE_DOMAIN, Fr[Banderwagon]]]
-    # Initialize the array with zeros
-    for i in 0 ..< VERKLE_DOMAIN:
-        for j in 0 ..< VERKLE_DOMAIN:
-            groupedFs[i][j].setZero()
+  for i in 0 ..< VerkleDomain:
+    let check = groupedFs[i][0].isZero()
+    if check.bool() == true:
+      continue
 
-
-    for i in 0 ..< num_queries:
-        var z = Zs[i]
-        
-        debug: doAssert not(groupedFs[z].len == 0), "Length should not be 0!"
-
-        var r {.noInit.}: Fr[Banderwagon]
-        r = powersOfr[i]
-
-        for j in 0 ..< VERKLE_DOMAIN:
-            var scaledEvals {.noInit.}: Fr[Banderwagon]
-            scaledEvals.prod(r, Fs[i][j])
-            groupedFs[z][j].sum(groupedFs[z][j], scaledEvals)
-        
+    var quotient {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
+    var passer = uint8(i)
+    quotient.divisionOnDomain(ipaSetting.precompWeights, passer, groupedFs[i])
     
-    var gx : array[VERKLE_DOMAIN, Fr[Banderwagon]]
+    for j in  0 ..< VerkleDomain:
+      gx[j] += quotient[j]
 
-    for idx in 0 ..< VERKLE_DOMAIN:
-        if groupedFs[idx].len == 0:
-            continue
+  var D {.noInit.}: EC_P
+  D.pedersen_commit_varbasis(ipaSetting.SRS,ipaSetting.SRS.len, gx, gx.len)
 
-        var quotient: array[VERKLE_DOMAIN,Fr[Banderwagon]]
-        var passer : int
-        passer = idx
-        quotient.divisionOnDomain(precomp, passer, groupedFs[idx])
+  transcript.pointAppend(asBytes"D", D)
 
-        for j in  0 ..< VERKLE_DOMAIN:
-            gx[j] += quotient[j]
-        
-    var D: EC_P
-    D.pedersen_commit_varbasis(basis,basis.len, gx, gx.len)
+  var t {.noInit.}: matchingOrderBigInt(Banderwagon)
+  t.generateChallengeScalar(transcript,asBytes"t")
 
-    transcript.pointAppend(asBytes"D", D)
+  var t_fr {.noInit.}: Fr[Banderwagon]
+  t_fr.fromBig(t)
 
-    var t {.noInit.}: matchingOrderBigInt(Banderwagon)
-    t.generateChallengeScalar(transcript,asBytes"t")
+  # Computing the denominator inverses only for referenced evaluation points.
+  var denInv {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
 
-    var t_fr {.noInit.}: Fr[Banderwagon]
-    t_fr.fromBig(t)
+  var idxx = 0
+  for i in 0 ..< VerkleDomain:
+    let check = groupedFs[i][0].isZero()
+    if check.bool() == true:
+      continue
 
-    # Computing the denominator inverses only for referenced evaluation points.
-    var denInv {.noInit.}: array[VERKLE_DOMAIN, Fr[Banderwagon]]
-    for i in 0 ..< VERKLE_DOMAIN:
-        denInv[i].setZero()
-
-    for z in 0 ..< VERKLE_DOMAIN:
-        if groupedFs[z].len == 0:
-            continue
-
-        var z_fr {.noInit.} : Fr[Banderwagon]
-        z_fr.domainToFrElem(uint8(z))
-        var deno {.noInit.}: Fr[Banderwagon]
-
-        deno.diff(t_fr,z_fr)
-        var idxx = 0
-        denInv[idxx] = deno
-        idxx = idxx + 1
+    var z_fr {.noInit.}: Fr[Banderwagon]
+    z_fr.fromInt(i)
+    var deno {.noInit.}: Fr[Banderwagon]
+    deno.diff(t_fr, z_fr)
+    
+    denInv[idxx] = deno
+    idxx = idxx + 1
 
 
-    var denInv_prime {.noInit.} : array[VERKLE_DOMAIN, Fr[Banderwagon]]
-    denInv_prime.batchInvert(denInv)
+  var denInv_prime {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
+  denInv_prime.batchInvert(denInv)
 
-    #Compute h(X) = g1(X)
-    var hx {.noInit.}: array[VERKLE_DOMAIN, Fr[Banderwagon]]
-    var denInvIdx = 0
+  #Compute h(X) = g1(X)
+  var hx {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
+  var denInvIdx = 0
 
-    for i in 0 ..< VERKLE_DOMAIN:
-        if groupedFs[i].len == 0:
-            continue
+  for i in 0 ..< VerkleDomain:
+    let check = groupedFs[i][0].isZero()
+    if check.bool() == true:
+      continue
 
-        for k in 0 ..< VERKLE_DOMAIN:
-            var tmp {.noInit.}: Fr[Banderwagon]
-            tmp.prod(groupedFs[i][k], denInv[denInvIdx])
-            hx[k].sum(hx[k], tmp)
+    for k in 0 ..< VerkleDomain:
+      var tmp {.noInit.}: Fr[Banderwagon]
+      tmp.prod(groupedFs[i][k], denInv_prime[denInvIdx])
+      hx[k] += tmp
 
-        denInvIdx = denInvIdx + 1
+    denInvIdx = denInvIdx + 1
 
-    var hMinusg {.noInit.}: array[VERKLE_DOMAIN, Fr[Banderwagon]]
+  var hMinusg {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
 
-    for i in 0 ..< VERKLE_DOMAIN:
-        hMinusg[i].diff(hx[i],gx[i])
+  for i in 0 ..< VerkleDomain:
+    hMinusg[i].diff(hx[i],gx[i])
 
-    var E: EC_P
+  var E {.noInit.}: EC_P
 
-    E.pedersen_commit_varbasis(basis,basis.len, hx, hx.len)
-    transcript.pointAppend(asBytes"E",E)
+  E.pedersen_commit_varbasis(ipaSetting.SRS, ipaSetting.SRS.len, hx, hx.len)
+  transcript.pointAppend(asBytes"E",E)
 
-    var EMinusD: EC_P
+  var EMinusD {.noInit.}: EC_P
+  EMinusD.diff(E,D)
 
-    EMinusD.diff(E,D)
+  var ipaProof {.noInit.}: IPAProof
 
-    var ipaProof: IPAProof
+  var checks: bool
+  checks = ipaProof.createIPAProof(transcript, ipaSetting, EMinusD, hMinusg, t_fr)
 
-    var checks: bool
-    checks = ipaProof.createIPAProof(transcript, ipaSetting, EMinusD, hMinusg, t_fr)
+  doAssert checks == true, "Could not compute IPA Proof!"
 
-    debug: doAssert checks == true, "Could not compute IPA Proof!"
+  res.IPAprv = ipaProof
+  res.D = D
+  success = true
 
-    res.IPAprv = ipaProof
-    res.D = D
-    success = true
-
-    return success
+  return success
 
 # ############################################################
 #
@@ -215,119 +204,215 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var sha256
 # ############################################################
     
 
-func verifyMultiproof*(multiProof: var MultiProof, transcript : var sha256, ipaSettings: IPASettings, Cs: openArray[EC_P], Ys: openArray[Fr[Banderwagon]], Zs: openArray[uint8]) : bool =
-    # Mutliproof verifier verifies the multiproof for several polynomials in the evaluation form
-    # The list of triplets (C,Y,Z) represents each polynomial commitment, evaluation
-    # result, and evaluation point in the domain 
-    var res {.noInit.} : bool
-    transcript.domain_separator(asBytes"multiproof")
+func verifyMultiproof*(multiProof: var MultiProof, transcript : var CryptoHash, ipaSettings: IPASettings, Cs: openArray[EC_P], Ys: openArray[Fr[Banderwagon]], Zs: openArray[int]) : bool =
+  # Multiproof verifier verifies the multiproof for several polynomials in the evaluation form
+  # The list of triplets (C,Y,Z) represents each polynomial commitment, evaluation
+  # result, and evaluation point in the domain 
+  var res {.noInit.} : bool
+  transcript.domain_separator(asBytes"multiproof")
 
-    debug: debug: doAssert Cs.len == Ys.len, "Number of commitments and the Number of output points don't match!"
+  debug: doAssert Cs.len == Ys.len, "Number of commitments and the Number of output points don't match!"
 
-    debug: debug: doAssert Cs.len == Zs.len, "Number of commitments and the Number of input points don't match!"
+  debug: doAssert Cs.len == Zs.len, "Number of commitments and the Number of input points don't match!"
 
-    var num_queries = Cs.len
+  var num_queries = Cs.len
 
-    var checker {.noInit.}: bool
-    checker = num_queries == 0
+  for i in 0 ..< num_queries:
+    transcript.pointAppend(asBytes"C", Cs[i])
+    var z {.noInit.} : Fr[Banderwagon]
+    z.fromInt(Zs[i])
 
-    debug: debug: doAssert num_queries == 0, "Number of queries is zero!"
+    transcript.scalarAppend(asBytes"z", z.toBig())
+    transcript.scalarAppend(asBytes"y", Ys[i].toBig())
 
-    for i in 0 ..< num_queries:
-        transcript.pointAppend(asBytes"C", Cs[i])
+  var r {.noInit.}: matchingOrderBigInt(Banderwagon)
+  r.generateChallengeScalar(transcript,asBytes"r")
 
-        var z {.noInit.} : Fr[Banderwagon]
-        z.domainToFrElem(Zs[i])
+  var r_fr {.noInit.}: Fr[Banderwagon]
+  r_fr.fromBig(r)
 
-        transcript.scalarAppend(asBytes"z", z.toBig())
-        transcript.scalarAppend(asBytes"y", Ys[i].toBig())
+  var powersOfr {.noInit.} = newSeq[Fr[Banderwagon]](int(num_queries))
+  powersOfr.computePowersOfElem(r_fr, int(num_queries))
 
-    var r {.noInit.}: matchingOrderBigInt(Banderwagon)
-    r.generateChallengeScalar(transcript,asBytes"r")
+  transcript.pointAppend(asBytes"D", multiProof.D)
 
-    var r_fr {.noInit.}: Fr[Banderwagon]
-    r_fr.fromBig(r)
+  var t {.noInit.}: matchingOrderBigInt(Banderwagon)
+  t.generateChallengeScalar(transcript, asBytes"t")
 
-    var powersOfr {.noInit.}: array[VERKLE_DOMAIN, Fr[Banderwagon]]
-    powersOfr.computePowersOfElem(r_fr, int(num_queries))
+  var t_fr {.noInit.}: Fr[Banderwagon]
+  t_fr.fromBig(t)
 
-    transcript.pointAppend(asBytes"D", multiProof.D)
+  # Computing the polynomials in the Lagrange form grouped by evaluation point, 
+  # and the needed helper scalars
+  var groupedEvals {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
+  for i in 0 ..< VerkleDomain:
+    groupedEvals[i].setZero()
 
-    var t {.noInit.}: matchingOrderBigInt(Banderwagon)
-    t.generateChallengeScalar(transcript, asBytes"t")
+  for i in 0 ..< num_queries:
+    var z = Zs[i]
+    var r {.noInit.} : Fr[Banderwagon]
+    r = powersOfr[i]
+    var scaledEvals {.noInit.}: Fr[Banderwagon]
+    scaledEvals.prod(r, Ys[i])
 
-    var t_fr {.noInit.}: Fr[Banderwagon]
-    t_fr.fromBig(r)
+    groupedEvals[z] += scaledEvals
 
-    # Computing the polynomials in the Lagrange form grouped by evaluation point, 
-    # and the needed helper scalars
-    var groupedEvals {.noInit.}: array[VERKLE_DOMAIN, Fr[Banderwagon]]
+  # Calculating the helper scalar denominator, which is 1 / t - z_i
+  var helperScalarDeno {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
+  for i in 0 ..< VerkleDomain:
+    helperScalarDeno[i].setZero()
 
-    for i in 0 ..< num_queries:
+  for i in 0 ..< VerkleDomain:
+    var z {.noInit.}: Fr[Banderwagon]
+    z.fromInt(i)
+    helperScalarDeno[i].diff(t_fr, z)
 
-        var z {.noInit.}: uint8
-        z = Zs[i]
+  var helperScalarDeno_prime {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
+  helperScalarDeno_prime.batchInvert(helperScalarDeno)
 
-        var r {.noInit.} : Fr[Banderwagon]
-        r = powersOfr[i]
+  # Compute g_2(t) = SUMMATION (y_i * r^i) / (t - z_i) = SUMMATION (y_i * r) * helperScalarDeno
+  var g2t {.noInit.}: Fr[Banderwagon]
 
-        var scaledEvals {.noInit.}: Fr[Banderwagon]
-        scaledEvals.prod(r, Ys[i])
+  for i in 0 ..< VerkleDomain:
+    let stat = groupedEvals[i].isZero()
+    if stat.bool() == true:
+      continue
 
-        groupedEvals[z].sum(groupedEvals[z], scaledEvals)
+    var tmp {.noInit.}: Fr[Banderwagon]
+    tmp.prod(groupedEvals[i], helperScalarDeno_prime[i])
+    g2t += tmp
 
-        #Calculating the helper scalar denominator, which is 1 / t - z_i
-        var helperScalarDeno {.noInit.} : array[VERKLE_DOMAIN, Fr[Banderwagon]]
+  
+  # Compute E = SUMMATION C_i * (r^i /  t - z_i) = SUMMATION C_i * MSM_SCALARS
+  var msmScalars {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
+  for i in 0 ..< VerkleDomain:
+    msmScalars[i].setZero()
 
-        for i in 0 ..< VERKLE_DOMAIN:
-            var z {.noInit.}: Fr[Banderwagon]
-            z.domainToFrElem(uint8(i))
+  var Csnp {.noInit.}: array[VerkleDomain, EC_P]
+  for i in 0 ..< VerkleDomain:
+    Csnp[i].setInf()
 
-            helperScalarDeno[i].diff(t_fr, z)
+  for i in 0 ..< Cs.len:
+    Csnp[i] = Cs[i]
+    msmScalars[i].prod(powersOfr[i], helperScalarDeno_prime[Zs[i]])
+  
+  var E {.noInit.}: EC_P
 
-        var helperScalarDeno_prime: array[VERKLE_DOMAIN, Fr[Banderwagon]]
-        helperScalarDeno_prime.batchInvert(helperScalarDeno)
+  var Csnp_aff {.noInit.}: array[VerkleDomain, EC_P_Aff]
+  for i in 0 ..< Cs.len:
+    Csnp_aff[i].affine(Csnp[i])
 
-        # Compute g_2(t) = SUMMATION (y_i * r^i) / (t - z_i) = SUMMATION (y_i * r) * helperScalarDeno
-        var g2t {.noInit.} : Fr[Banderwagon]
-        g2t.setZero()
+  var msmScalars_big {.noInit.}: array[VerkleDomain, matchingOrderBigInt(Banderwagon)]
 
-        for i in 0 ..< VERKLE_DOMAIN:
-            var stat = groupedEvals[i].isZero()
-            if stat.bool() == true:
-                continue
+  for i in 0 ..< VerkleDomain:
+    msmScalars_big[i] = msmScalars[i].toBig()
+  
+  E.multiScalarMul_reference_vartime(msmScalars_big, Csnp_aff)
 
-            var tmp {.noInit.}: Fr[Banderwagon]
-            tmp.prod(groupedEvals[i], helperScalarDeno_prime[i])
-            g2t += tmp
+  transcript.pointAppend(asBytes"E", E)
 
-        
-        # Compute E = SUMMATION C_i * (r^i /  t - z_i) = SUMMATION C_i * MSM_SCALARS
-        var msmScalars {.noInit.}: array[VERKLE_DOMAIN, Fr[Banderwagon]]
+  var EMinusD {.noInit.} : EC_P
+  EMinusD.diff(E, multiProof.D)
 
-        var Csnp {.noInit.}: array[VERKLE_DOMAIN, EC_P]
+  var got {.noInit.}: EC_P
+  res = ipaSettings.checkIPAProof(transcript, got, EMinusD, multiProof.IPAprv, t_fr, g2t)
+  if res == false:
+    return res
 
-        for i in 0 ..< VERKLE_DOMAIN:
-            Csnp[i] = Cs[i]
-            msmScalars[i].prod(powersOfr[i], helperScalarDeno_prime[Zs[i]])
-        
-        var E {.noInit.}: EC_P
+  return res
 
-        var Csnp_aff : array[VERKLE_DOMAIN, EC_P_Aff]
-        for i in 0 ..< VERKLE_DOMAIN:
-            Csnp_aff[i].affine(Csnp[i])
+# ############################################################
+#
+#                 Multiproof Serializer
+#
+# ############################################################
 
-        var msmScalars_big: array[VERKLE_DOMAIN, matchingOrderBigInt(Banderwagon)]
+func serializeVerkleMultiproof* (dst: var VerkleMultiproofSerialized, src: var MultiProof) : bool =
+  ##
+  ## Multiproofs in Verkle have a format of 
+  ## 
+  ## 1) The queried Base Field where the Vector Commitment `opening` is created
+  ## Consider this as the equivalent to the `Merkle Path` in usual Merkle Trees.
+  ## 
+  ## 2) The entire IPAProof which is exactly a 576 byte array, go through `serializeIPAProof` for the breakdown
+  ## 
+  ## The format of serialization is as:
+  ## 
+  ## Query Point (32 - byte array) .... IPAProof (544 - byte array) = 32 + 544 = 576 elements in the byte array
+  ## 
+  var res = false
+  var ipa_bytes {.noInit.} : array[544, byte]
+  var d_bytes {.noInit.} : array[32, byte]
 
-        for i in 0 ..< VERKLE_DOMAIN:
-            msmScalars_big[i] = msmScalars[i].toBig()
-        
-        E.multiScalarMul_reference_vartime(msmScalars_big, Csnp_aff)
+  let stat = ipa_bytes.serializeVerkleIPAProof(src.IPAprv)
+  doAssert stat == true, "IPA Serialization failed"
 
-        transcript.pointAppend(asBytes"E", E)
+  let stat2 = d_bytes.serialize(src.D)
+  doAssert stat2 == cttCodecEcc_Success, "Query point serialization failed"
 
-        var EMinusD {.noInit.} : EC_P
-        EMinusD.diff(E, multiProof.D)
+  var idx : int = 0
 
-        res = ipaSettings.checkIPAProof(transcript, EMinusD, multiProof.IPAprv, t_fr, g2t)
-        return res
+  for i in 0 ..< 32:
+    dst[idx] = d_bytes[i]
+    idx = idx + 1
+
+  discard d_bytes
+
+  for i in 0 ..< 544:
+    dst[idx] = ipa_bytes[i]
+    idx = idx + 1
+
+  discard ipa_bytes
+
+  res = true
+  return res
+
+# ############################################################
+#
+#                 Multiproof Deserializer
+#
+# ############################################################
+  
+func deserializeVerkleMultiproof* (dst: var MultiProof, src: var VerkleMultiproofSerialized) :  bool =
+  ##
+  ## Multiproofs in Verkle have a format of 
+  ## 
+  ## 1) The queried Base Field where the Vector Commitment `opening` is created
+  ## Consider this as the equivalent to the `Merkle Path` in usual Merkle Trees.
+  ## 
+  ## 2) The entire IPAProof which is exactly a 576 byte array, go through `serializeIPAProof` for the breakdown
+  ## 
+  ## The format of serialization is as:
+  ## 
+  ## Query Point (32 - byte array) .... IPAProof (544 - byte array) = 32 + 544 = 576 elements in the byte array
+  ## 
+  var res = false
+  var ipa_bytes {.noInit.} : array[544, byte]
+  var d_bytes {.noInit.} : array[32, byte]
+
+  var idx : int = 0
+
+  for i in 0 ..< 32:
+    d_bytes[i] = src[idx]
+    idx = idx + 1
+
+  for i in 0 ..< 544:
+    ipa_bytes[i] = src[idx]
+    idx = idx + 1
+
+  var ipa_prv {.noInit.} : MultiProof.IPAprv
+  let stat1 = ipa_prv.deserializeVerkleIPAProof(ipa_bytes)
+  doAssert stat1 == true, "IPA Deserialization Failure!"
+
+  dst.IPAprv = ipa_prv
+  discard ipa_prv
+
+  var d_fp {.noInit.} : MultiProof.D
+  let stat2 = d_fp.deserialize(d_bytes)
+  doAssert stat2 == cttCodecEcc_Success, "Query Point Deserialization Failure!"
+
+  dst.D = d_fp
+  discard d_fp
+
+  res = true
+  return res
