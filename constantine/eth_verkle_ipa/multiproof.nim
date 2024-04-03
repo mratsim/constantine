@@ -204,7 +204,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
 # ############################################################
     
 
-func verifyMultiproof*(multiProof: var MultiProof, transcript : var CryptoHash, ipaSettings: IPASettings, Cs: openArray[EC_P], Ys: openArray[Fr[Banderwagon]], Zs: openArray[int]) : bool =
+func verifyMultiproof*[MultiProof](multiProof: var MultiProof, transcript : var CryptoHash, ipaSettings: IPASettings, Cs: openArray[EC_P], Ys: openArray[Fr[Banderwagon]], Zs: openArray[int]) : bool =
   # Multiproof verifier verifies the multiproof for several polynomials in the evaluation form
   # The list of triplets (C,Y,Z) represents each polynomial commitment, evaluation
   # result, and evaluation point in the domain 
