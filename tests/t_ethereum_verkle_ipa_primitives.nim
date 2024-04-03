@@ -696,6 +696,7 @@ suite "Multiproof Tests":
       var multiproof {.noInit.}: MultiProof
       var stat_create_mult: bool
       stat_create_mult = multiproof.createMultiProof(prover_transcript, ipaConfig, Cs, Fs, Zs)
+      discard Fs
 
       doAssert stat_create_mult.bool() == true, "Multiproof creation error!"
 
