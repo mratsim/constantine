@@ -15,9 +15,7 @@ import
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian],
   # Helpers
-  ./bench_elliptic_template,
-  # Standard library
-  std/strutils
+  ./bench_elliptic_template
 
 # ############################################################
 #
@@ -29,7 +27,7 @@ import
 
 
 const Iters = 10_000
-const MulIters = 500
+const MulIters = 100
 const AvailableCurves = [
   # P224,
   BN254_Nogami,

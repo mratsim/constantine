@@ -615,7 +615,8 @@ const benchDesc = [
   "bench_evm_modexp_dos",
   "bench_gmp_modexp",
   "bench_gmp_modmul",
-  "bench_verkle_primitives"
+  "bench_verkle_primitives",
+  "bench_eip2537_subgroup_checks_impact"
 ]
 
 # For temporary (hopefully) investigation that can only be reproduced in CI
@@ -1044,3 +1045,8 @@ task bench_ethereum_eip4844_kzg, "Run Ethereum EIP4844 KZG Polynomial commitment
 
 task bench_verkle, "Run benchmarks for Banderwagon":
   runBench("bench_verkle_primitives")
+
+# EIP 2537 - BLS12-381 precompiles
+# ------------------------------------------
+task bench_eip2537_subgroup_checks_impact, "Run EIP2537 subgroup checks impact benchmark - CC compiler":
+  runBench("bench_eip2537_subgroup_checks_impact")
