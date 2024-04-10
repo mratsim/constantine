@@ -594,6 +594,7 @@ const benchDesc = [
   "bench_ec_msm_bandersnatch",
   "bench_ec_msm_bn254_snarks_g1",
   "bench_ec_msm_bls12_381_g1",
+  "bench_ec_msm_bls12_381_g2",
   "bench_ec_msm_pasta",
   "bench_ec_g2",
   "bench_ec_g2_scalar_mul",
@@ -953,6 +954,9 @@ task bench_ec_msm_bn254_snarks_g1, "Run benchmark: Multi-Scalar-Mul for BN254-Sn
 
 task bench_ec_msm_bls12_381_g1, "Run benchmark: Multi-Scalar-Mul for BLS12-381 𝔾1 - CC compiler":
   runBench("bench_ec_msm_bls12_381_g1")
+
+task bench_ec_msm_bls12_381_g2, "Run benchmark: Multi-Scalar-Mul for BLS12-381 𝔾2 - CC compiler":
+  runBench("bench_ec_msm_bls12_381_g2")
 
 task bench_ec_msm_bandersnatch, "Run benchmark: Multi-Scalar-Mul for Bandersnatch - CC compiler":
   runBench("bench_ec_msm_bandersnatch")
