@@ -15,5 +15,5 @@ def sqrtPrecomp_PrimitiveDyadicRoots:
     for i in range(1, BaseField2Adicity+1):
         ret[i] = Fp(ret[i-1]^2)
 
-flag = hex(ret[BaseField2Adicity-1]) == 0x0000000000000000000000000000000000000000000000000000000000000001 
+flag = hex(ret[BaseField2Adicity-1]) == 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000000 
 #flag should be true unless something is wrong with the dyadic roots of unity
