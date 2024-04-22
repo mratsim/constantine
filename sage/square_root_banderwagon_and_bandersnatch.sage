@@ -6,8 +6,6 @@ ret[0] = 10238227357739495823651030575849232062558860180284477541189508159991286
 # hex(ret[0]) should be equal to "0x16a2a19edfe81f20d09b681922c813b4b63683508c2280b93829971f439f0d2b" (see https://github.com/mratsim/constantine/blob/master/constantine/math/constants/banderwagon_sqrt.nim#L175)
 
 print('p  : ' + p.hex())
-print('a  : ' + a.hex())
-print('d  : ' + d.hex())
 
 def sqrtPrecomp_PrimitiveDyadicRoots:
     for i in range(1, BaseField2Adicity+1):
