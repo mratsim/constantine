@@ -8,6 +8,7 @@ Fp = GF(p)
 
 print('p  : ' + p.hex())
 
+# function sqrtPrecomp_PrimitiveDyadicRoots:
 ret_0 = 10238227357739495823651030575849232062558860180284477541189508159991286009131
 print('ret_0  : ' + hex(ret_0))
 ret_1 = Fp(ret_0^2)
