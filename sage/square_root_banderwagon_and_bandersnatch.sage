@@ -8,10 +8,12 @@ Fp = GF(p)
 a = 10238227357739495823651030575849232062558860180284477541189508159991286009131
 
 print('p  : ' + p.hex())
-print(hex(a))
 
+print('\n\nPrimitive Dyadic Roots:\n')
 # function sqrtPrecomp_PrimitiveDyadicRoots:
+print(hex(a))
 for i in range(0, 32):
     temp = Fp(a^2)
     print(hex(temp))
     a = temp
+
