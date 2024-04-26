@@ -3,17 +3,28 @@ p = 5243587517512619047944774050818596583769055250052763782260365869993858118451
 Fp = GF(p)
 
 # BaseField2Adicity = 32  #see https://github.com/crate-crypto/go-ipa/blob/408dbffb2041271c95979a3fb79d98b268bf2880/bandersnatch/fp/sqrt.go#L22
-# ret[] is an array of size BaseField2Adicity + 1. Instead of using an array in sage we work with a variable "a" and "temp" and updating them as required 
-# a should be equal to 10238227357739495823651030575849232062558860180284477541189508159991286009131 (see https://github.com/crate-crypto/go-ipa/blob/408dbffb2041271c95979a3fb79d98b268bf2880/bandersnatch/fp/sqrt.go#L46)
-a = 10238227357739495823651030575849232062558860180284477541189508159991286009131
+# ret[] is an array of size BaseField2Adicity + 1.
+# ret[0] should be equal to 10238227357739495823651030575849232062558860180284477541189508159991286009131 (see https://github.com/crate-crypto/go-ipa/blob/408dbffb2041271c95979a3fb79d98b268bf2880/bandersnatch/fp/sqrt.go#L46)
+ret = {}
+ret[0] = 10238227357739495823651030575849232062558860180284477541189508159991286009131
 
 print('p  : ' + p.hex())
 
 print('\n\nPrimitive Dyadic Roots:\n')
 # function sqrtPrecomp_PrimitiveDyadicRoots:
-print(hex(a))
+print(hex(ret[0]))
 for i in range(0, 32):
-    temp = Fp(a^2)
-    print(hex(temp))
-    a = temp
+    ret[i+1] = Fp(ret[i]^2)
+    print(hex(ret[i+1]))
+
+
+# function sqrtPrecomp_PrecomputedBlocks:
+block = {}
+print('\n\nPrecomputed Blocks:\n')
+for i in range (0, 4):
+    block[i] = {}
+    block[i][0] = 1
+    for j in range (1, 256):
+        block[i][j] = Fp(block[i][j-1] * ret[i * 8])
+        print(hex(block[i][j]))
 
