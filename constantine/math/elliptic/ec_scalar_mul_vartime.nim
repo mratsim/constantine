@@ -325,10 +325,7 @@ func scalarMulEndo_minHammingWeight_windowed_vartime*[scalBits: static int; EC](
       else:
         isInit = P.initNAF(tab[m], tabNaf[m], NafLen, i)
 
-func scalarMul_vartime*[scalBits; EC](
-       P: var EC,
-       scalar: BigInt[scalBits]
-     ) =
+func scalarMul_vartime*[scalBits; EC](P: var EC, scalar: BigInt[scalBits]) {.meter.} =
   ## Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P
@@ -375,3 +372,19 @@ func scalarMul_vartime*[scalBits; EC](
     P.scalarMul_doubleAdd_vartime(scalar)
   else:
     P.scalarMul_addchain_4bit_vartime(scalar)
+
+func scalarMul_vartime*[EC](P: var EC, scalar: Fr) =
+  ## Elliptic Curve Scalar Multiplication
+  ##
+  ##   P <- [k] P
+  ##
+  ## This select the best algorithm depending on heuristics
+  ## and the scalar being multiplied.
+  ## The scalar MUST NOT be a secret as this does not use side-channel countermeasures
+  ##
+  ## This may use endomorphism acceleration.
+  ## As endomorphism acceleration requires:
+  ## - Cofactor to be cleared
+  ## - 0 <= scalar < curve order
+  ## Those conditions will be assumed.
+  P.scalarMul_vartime(scalar.toBig())

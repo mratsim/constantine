@@ -202,7 +202,7 @@ func eth_evm_ecmul*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStat
                 Fr[BN254_Snarks].getR2modP().limbs,
                 Fr[BN254_Snarks].getNegInvModWord(),
                 Fr[BN254_Snarks].getSpareBits())
-    P.scalarMul_vartime(smod.toBig())
+    P.scalarMul_vartime(smod)
   else:
     P.scalarMul_vartime(s)
 

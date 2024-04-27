@@ -392,9 +392,7 @@ template genBindings_EC_ShortW_NonAffine*(ECP, ECP_Aff, ScalarBig, ScalarField: 
   func `ctt _ ECP _ scalar_mul_fr_coef`(
         P: var ECP, scalar: ScalarField) =
 
-    var big: ScalarBig # TODO: {.noInit.}
-    big.fromField(scalar)
-    P.scalarMul(big)
+    P.scalarMul(scalar)
 
   func `ctt _ ECP _ scalar_mul_big_coef_vartime`(
     P: var ECP, scalar: ScalarBig) =
@@ -404,9 +402,7 @@ template genBindings_EC_ShortW_NonAffine*(ECP, ECP_Aff, ScalarBig, ScalarField: 
   func `ctt _ ECP _ scalar_mul_fr_coef_vartime`(
         P: var ECP, scalar: ScalarField) =
 
-    var big: ScalarBig # TODO: {.noInit.}
-    big.fromField(scalar)
-    P.scalarMul_vartime(big)
+    P.scalarMul_vartime(scalar)
 
   func `ctt _ ECP _ multi_scalar_mul_big_coefs_vartime`(
           r: var ECP,
