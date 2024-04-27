@@ -79,6 +79,9 @@ proc main() =
     hashToCurveBN254SnarksG1Bench(Iters)
     hashToCurveBN254SnarksG2Bench(Iters)
     separator()
+    subgroupCheckBench(ECP_ShortW_Jac[Fp[curve], G1], Iters)
+    subgroupCheckBench(ECP_ShortW_Jac[Fp2[curve], G2], Iters)
+    separator()
 
 main()
 notes()

@@ -290,3 +290,10 @@ proc hashToCurveBN254SnarksG2Bench*(iters: int) =
       message = msg,
       domainSepTag = dst
     )
+
+proc subgroupCheckBench*(EC: typedesc, iters: int) =
+  var P = rng.random_unsafe(EC)
+  P.clearCofactor()
+
+  bench("Subgroup check", EC, iters):
+    discard P.isInSubgroup()
