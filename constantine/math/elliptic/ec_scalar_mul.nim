@@ -227,10 +227,7 @@ func scalarMulGeneric*[EC](P: var EC, scalar: BigInt, window: static int = 5) =
   scalarCanonicalBE.marshal(scalar, bigEndian)                     # Export is constant-time
   P.scalarMulGeneric(scalarCanonicalBE, scratchSpace)
 
-func scalarMul*[EC](
-       P: var EC,
-       scalar: BigInt
-     ) {.inline.} =
+func scalarMul*[EC](P: var EC, scalar: BigInt) {.inline, meter.} =
   ## Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P
@@ -251,3 +248,15 @@ func scalarMul*[EC](
       {.error: "Unreachable".}
   else:
     scalarMulGeneric(P, scalar)
+
+func scalarMul*[EC](P: var EC, scalar: Fr) {.inline.} =
+  ## Elliptic Curve Scalar Multiplication
+  ##
+  ##   P <- [k] P
+  ##
+  ## This use endomorphism acceleration by default if available
+  ## Endomorphism acceleration requires:
+  ## - Cofactor to be cleared
+  ## - 0 <= scalar < curve order
+  ## Those will be assumed to maintain constant-time property
+  P.scalarMul(scalar.toBig())

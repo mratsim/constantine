@@ -33,7 +33,7 @@ func linear_combination*(
   r.setInf()
   for i in 0 ..< points.len:
     var tmp = points[i]
-    tmp.scalarMul(coefs[i].toBig())
+    tmp.scalarMul(coefs[i])
     r += tmp
 
 func pair_verify*(

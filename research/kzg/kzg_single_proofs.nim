@@ -66,14 +66,14 @@ proc checkProofSingle(
   var xG2, g2: G2
   g2.fromAffine(Generator2)
   xG2 = g2
-  xG2.scalarMul(x.toBig())
+  xG2.scalarMul(x)
 
   var s_minus_x: G2 # s is a secret coefficient from the trusted setup (? to be confirmed)
   s_minus_x.diff(kzg.secretG2[1], xG2)
 
   var yG1: G1
   yG1.fromAffine(Generator1)
-  yG1.scalarMul(y.toBig())
+  yG1.scalarMul(y)
 
   var commitment_minus_y: G1
   commitment_minus_y.diff(commitment, yG1)
