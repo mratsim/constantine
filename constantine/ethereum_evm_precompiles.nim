@@ -190,41 +190,8 @@ func parseRawUint[C: static Curve](
   dst.fromBig(big)
   return cttEVM_Success
 
-func fromRawCoords(
-       dst: var ECP_ShortW_Aff[Fp[BN254_Snarks], G1],
-       x, y: openarray[byte],
-       checkSubgroup: bool): CttEVMStatus =
-
-  # Deserialization
-  # ----------------------
-  # Encoding spec https://eips.ethereum.org/EIPS/eip-196
-
-  let status_x = dst.x.parseRawUint(x)
-  if status_x != cttEVM_Success:
-    return status_x
-  let status_y = dst.y.parseRawUint(y)
-  if status_y != cttEVM_Success:
-    return status_y
-
-  # Handle point at infinity
-  if dst.x.isZero().bool and dst.y.isZero().bool:
-    return cttEVM_Success
-
-  # Deserialization checks
-  # ----------------------
-
-  # Point on curve
-  if not bool(isOnCurve(dst.x, dst.y, G1)):
-    return cttEVM_PointNotOnCurve
-
-  if checkSubgroup:
-    if not bool dst.isInSubgroup():
-      return cttEVM_PointNotInSubgroup
-
-  return cttEVM_Success
-
-func fromRawCoords[C: static Curve](
-       dst: var ECP_ShortW_Jac[Fp[C], G1],
+func fromRawCoords[C: static Curve, G: static Subgroup](
+       dst: var ECP_ShortW_Aff[Fp[C], G],
        x, y: openarray[byte],
        checkSubgroup: bool): CttEVMStatus =
 
@@ -242,32 +209,30 @@ func fromRawCoords[C: static Curve](
 
   # Handle point at infinity
   if dst.x.isZero().bool and dst.y.isZero().bool:
-    dst.setInf()
     return cttEVM_Success
-
-  # Otherwise regular point
-  dst.z.setOne()
 
   # Deserialization checks
   # ----------------------
 
   # Point on curve
-  if not bool(isOnCurve(dst.x, dst.y, G1)):
+  if not bool(isOnCurve(dst.x, dst.y, G)):
     return cttEVM_PointNotOnCurve
 
   if checkSubgroup:
-    if not dst.isInSubgroup():
+    if not dst.isInSubgroup().bool:
       return cttEVM_PointNotInSubgroup
 
   return cttEVM_Success
 
-func fromRawCoords(
-       dst: var ECP_ShortW_Aff[Fp2[BN254_Snarks], G2],
-       x0, x1, y0, y1: openarray[byte]): CttEVMStatus =
+func fromRawCoords[C: static Curve](
+       dst: var ECP_ShortW_Aff[Fp2[C], G2],
+       x0, x1, y0, y1: openarray[byte],
+       checkSubgroup: bool): CttEVMStatus =
 
   # Deserialization
   # ----------------------
-  # Encoding spec https://eips.ethereum.org/EIPS/eip-196
+  # Encoding spec BN254: https://eips.ethereum.org/EIPS/eip-196
+  #           BLS12-381: https://eips.ethereum.org/EIPS/eip-2537
 
   let status_x0 = dst.x.c0.parseRawUint(x0)
   if status_x0 != cttEVM_Success:
@@ -294,10 +259,33 @@ func fromRawCoords(
   if not bool(isOnCurve(dst.x, dst.y, G2)):
     return cttEVM_PointNotOnCurve
 
-  if not subgroupCheck(dst):
-    return cttEVM_PointNotInSubgroup
+  if checkSubgroup:
+    if not dst.isInSubgroup().bool:
+      return cttEVM_PointNotInSubgroup
 
   return cttEVM_Success
+
+func fromRawCoords[C: static Curve, G: static Subgroup](
+       dst: var ECP_ShortW_Jac[Fp[C], G],
+       x, y: openarray[byte],
+       checkSubgroup: bool): CttEVMStatus =
+
+  var aff{.noInit.}: ECP_ShortW_Aff[Fp[C], G]
+  let status = aff.fromRawCoords(x, y, checkSubgroup)
+  if status != cttEVM_Success:
+    return status
+  dst.fromAffine(aff)
+
+func fromRawCoords[C: static Curve, G: static Subgroup](
+       dst: var ECP_ShortW_Jac[Fp2[C], G],
+       x0, x1, y0, y1: openarray[byte],
+       checkSubgroup: bool): CttEVMStatus =
+
+  var aff{.noInit.}: ECP_ShortW_Aff[Fp2[C], G]
+  let status = aff.fromRawCoords(x0, x1, y0, y1, checkSubgroup)
+  if status != cttEVM_Success:
+    return status
+  dst.fromAffine(aff)
 
 func eth_evm_bn254_ecadd*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus =
   ## Elliptic Curve addition on BN254_Snarks
@@ -310,16 +298,17 @@ func eth_evm_bn254_ecadd*(r: var openArray[byte], inputs: openarray[byte]): CttE
   ## - A G1 point P with coordinates (Px, Py)
   ## - A G1 point Q with coordinates (Qx, Qy)
   ##
-  ## Each coordinate is a 32-bit bigEndian integer
+  ## Each coordinate is a 32-byte bigEndian integer
   ## They are serialized concatenated in a byte array [Px, Py, Qx, Qy]
   ## If the length is less than 128 bytes, input is virtually padded with zeros.
   ## If the length is greater than 128 bytes, input is truncated to 128 bytes.
   ##
   ## Output
   ## - Output buffer MUST be of length 64 bytes
-  ## - A G1 point R with coordinates (Px + Qx, Py + Qy)
+  ## - A G1 point R = P+Q with coordinates (Rx, Ry)
   ## - Status code:
   ##   cttEVM_Success
+  ##   cttEVM_InvalidOutputSize
   ##   cttEVM_IntLargerThanModulus
   ##   cttEVM_PointNotOnCurve
   ##
@@ -336,12 +325,15 @@ func eth_evm_bn254_ecadd*(r: var openArray[byte], inputs: openarray[byte]): CttE
 
   let statusP = P.fromRawCoords(
     x = padded.toOpenArray(0, 31),
-    y = padded.toOpenArray(32, 63))
+    y = padded.toOpenArray(32, 63),
+    checkSubgroup = false) # Note: BN254 G1 cofactor is 1, there is no subgroup
   if statusP != cttEVM_Success:
     return statusP
+
   let statusQ = Q.fromRawCoords(
     x = padded.toOpenArray(64, 95),
-    y = padded.toOpenArray(96, 127))
+    y = padded.toOpenArray(96, 127),
+    checkSubgroup = false) # Note: BN254 G1 cofactor is 1, there is no subgroup
   if statusQ != cttEVM_Success:
     return statusQ
 
@@ -364,7 +356,7 @@ func eth_evm_bn254_ecmul*(r: var openArray[byte], inputs: openarray[byte]): CttE
   ## - A G1 point P with coordinates (Px, Py)
   ## - A scalar s in 0 ..< 2²⁵⁶
   ##
-  ## Each coordinate is a 32-bit bigEndian integer
+  ## Each coordinate is a 32-byte bigEndian integer
   ## They are serialized concatenated in a byte array [Px, Py, r]
   ## If the length is less than 96 bytes, input is virtually padded with zeros.
   ## If the length is greater than 96 bytes, input is truncated to 96 bytes.
@@ -390,7 +382,8 @@ func eth_evm_bn254_ecmul*(r: var openArray[byte], inputs: openarray[byte]): CttE
 
   let statusP = P.fromRawCoords(
     x = padded.toOpenArray(0, 31),
-    y = padded.toOpenArray(32, 63))
+    y = padded.toOpenArray(32, 63),
+    checkSubgroup = false) # Note: BN254 G1 cofactor is 1, there is no subgroup
   if statusP != cttEVM_Success:
     return statusP
 
@@ -470,7 +463,8 @@ func eth_evm_bn254_ecpairingcheck*(
 
     let statusP = P.fromRawCoords(
       x = inputs.toOpenArray(pos, pos+31),
-      y = inputs.toOpenArray(pos+32, pos+63))
+      y = inputs.toOpenArray(pos+32, pos+63),
+      checkSubgroup = false) # Note: BN254 G1 cofactor is 1, there is no subgroup
 
     if statusP != cttEVM_Success:
       return statusP
@@ -481,7 +475,8 @@ func eth_evm_bn254_ecpairingcheck*(
       x1 = inputs.toOpenArray(pos+64, pos+95),
       x0 = inputs.toOpenArray(pos+96, pos+127),
       y1 = inputs.toOpenArray(pos+128, pos+159),
-      y0 = inputs.toOpenArray(pos+160, pos+191))
+      y0 = inputs.toOpenArray(pos+160, pos+191),
+      checkSubgroup = true)
 
     if statusQ != cttEVM_Success:
       return statusQ
@@ -502,4 +497,130 @@ func eth_evm_bn254_ecpairingcheck*(
   zeroMem(r[0].addr, r.len)
   if gt.isOne().bool:
     r[r.len-1] = byte 1
+  return cttEVM_Success
+
+func eth_evm_bls12381_ecadd_g1*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus =
+  ## Elliptic Curve addition on BLS12-381 G1
+  ##
+  ## Name: BLS12_G1ADD
+  ##
+  ## Inputs:
+  ## - A G1 point P with coordinates (Px, Py)
+  ## - A G1 point Q with coordinates (Qx, Qy)
+  ##
+  ## Each coordinate is a 64-byte bigEndian integer
+  ## They are serialized concatenated in a byte array [Px, Py, Qx, Qy]
+  ##
+  ## Inputs are NOT subgroup-checked.
+  ##
+  ## Output
+  ## - Input buffer MUST be 256 bytes
+  ## - Output buffer MUST be of length 128 bytes
+  ## - A G1 point R=P+Q with coordinates (Rx, Ry)
+  ## - Status code:
+  ##   cttEVM_Success
+  ##   cttEVM_InvalidInputSize
+  ##   cttEVM_InvalidOutputSize
+  ##   cttEVM_IntLargerThanModulus
+  ##   cttEVM_PointNotOnCurve
+  ##
+  ## Spec https://eips.ethereum.org/EIPS/eip-2537
+  if inputs.len != 256:
+    return cttEVM_InvalidInputSize
+
+  if r.len != 128:
+    return cttEVM_InvalidOutputSize
+
+  # The spec mandates no subgroup check for EC addition.
+  # Note that it has not been confirmed whether the complete formulas for projective coordinates
+  # return correct result if input is NOT in the correct subgroup.
+  # Hence we use the Jacobian vartime formulas.
+  var P{.noInit.}, Q{.noInit.}, R{.noInit.}: ECP_ShortW_Jac[Fp[BLS12_381], G1]
+
+  let statusP = P.fromRawCoords(
+    x = inputs.toOpenArray( 0,  64-1),
+    y = inputs.toOpenArray(64, 128-1),
+    checkSubgroup = false)
+  if statusP != cttEVM_Success:
+    return statusP
+
+  let statusQ = Q.fromRawCoords(
+    x = inputs.toOpenArray(128, 192-1),
+    y = inputs.toOpenArray(192, 256-1),
+    checkSubgroup = false)
+  if statusQ != cttEVM_Success:
+    return statusQ
+
+  R.sum_vartime(P, Q)
+  var aff{.noInit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1]
+  aff.affine(R)
+
+  r.toOpenArray(0, 64-1).marshal(aff.x, bigEndian)
+  r.toOpenArray(64, 128-1).marshal(aff.y, bigEndian)
+  return cttEVM_Success
+
+func eth_evm_bls12381_ecadd_g2*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus =
+  ## Elliptic Curve addition on BLS12-381 G2
+  ##
+  ## Name: BLS12_G2ADD
+  ##
+  ## Inputs:
+  ## - A G2 point P with coordinates (Px, Py)
+  ## - A G2 point Q with coordinates (Qx, Qy)
+  ##
+  ## Each coordinate is a 128-byte bigEndian integer pair (a+𝑖b) with 𝑖 = √-1
+  ## They are serialized concatenated in a byte array [Px, Py, Qx, Qy]
+  ##
+  ## Inputs are NOT subgroup-checked.
+  ##
+  ## Output
+  ## - Input buffer MUST be 512 bytes
+  ## - Output buffer MUST be of length 256 bytes
+  ## - A G2 point R=P+Q with coordinates (Rx, Ry)
+  ## - Status code:
+  ##   cttEVM_Success
+  ##   cttEVM_InvalidInputSize
+  ##   cttEVM_InvalidOutputSize
+  ##   cttEVM_IntLargerThanModulus
+  ##   cttEVM_PointNotOnCurve
+  ##
+  ## Spec https://eips.ethereum.org/EIPS/eip-2537
+  if inputs.len != 512:
+    return cttEVM_InvalidInputSize
+
+  if r.len != 256:
+    return cttEVM_InvalidOutputSize
+
+  # The spec mandates no subgroup check for EC addition.
+  # Note that it has not been confirmed whether the complete formulas for projective coordinates
+  # return correct result if input is NOT in the correct subgroup.
+  # Hence we use the Jacobian vartime formulas.
+  var P{.noInit.}, Q{.noInit.}, R{.noInit.}: ECP_ShortW_Jac[Fp2[BLS12_381], G2]
+
+  let statusP = P.fromRawCoords(
+    x0 = inputs.toOpenArray(  0,  64-1),
+    x1 = inputs.toOpenArray( 64, 128-1),
+    y0 = inputs.toOpenArray(128, 192-1),
+    y1 = inputs.toOpenArray(192, 256-1),
+    checkSubgroup = false)
+  if statusP != cttEVM_Success:
+    return statusP
+
+  let statusQ = Q.fromRawCoords(
+    x0 = inputs.toOpenArray(256, 320-1),
+    x1 = inputs.toOpenArray(320, 384-1),
+    y0 = inputs.toOpenArray(384, 448-1),
+    y1 = inputs.toOpenArray(448, 512-1),
+    checkSubgroup = false)
+  if statusQ != cttEVM_Success:
+    return statusQ
+
+  R.sum_vartime(P, Q)
+  var aff{.noInit.}: ECP_ShortW_Aff[Fp2[BLS12_381], G2]
+  aff.affine(R)
+
+  r.toOpenArray(  0,  64-1).marshal(aff.x.c0, bigEndian)
+  r.toOpenArray( 64, 128-1).marshal(aff.x.c1, bigEndian)
+  r.toOpenArray(128, 192-1).marshal(aff.y.c0, bigEndian)
+  r.toOpenArray(192, 256-1).marshal(aff.y.c1, bigEndian)
   return cttEVM_Success
