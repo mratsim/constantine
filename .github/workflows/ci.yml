@@ -39,11 +39,11 @@ jobs:
             BACKEND: ASM
 
           - os: macos
-            cpu: amd64
+            cpu: arm64
             TEST_LANG: c
             BACKEND: NO_ASM
           - os: macos
-            cpu: amd64
+            cpu: arm64
             TEST_LANG: c
             BACKEND: ASM
         include:
