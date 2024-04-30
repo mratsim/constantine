@@ -7,7 +7,7 @@ jobs:
       fail-fast: false
       max-parallel: 20
       matrix:
-        nim_version: [version-1-6, version-2-0] # devel
+        nim_version: [version-1-6] # version-2-0 has a regression: https://github.com/nim-lang/Nim/issues/23547
         rust_toolchain: [stable] # [beta, nightly]
         go_toolchain: [stable]
         target:
@@ -38,14 +38,15 @@ jobs:
             TEST_LANG: c
             BACKEND: ASM
 
-          - os: macos
-            cpu: amd64
-            TEST_LANG: c
-            BACKEND: NO_ASM
-          - os: macos
-            cpu: amd64
-            TEST_LANG: c
-            BACKEND: ASM
+          # MacOS Github agents are now using ARM and we need Nim ARM nightlies: https://github.com/mratsim/constantine/issues/372
+          # - os: macos
+          #   cpu: amd64
+          #   TEST_LANG: c
+          #   BACKEND: NO_ASM
+          # - os: macos
+          #   cpu: amd64
+          #   TEST_LANG: c
+          #   BACKEND: ASM
         include:
           - target:
               os: linux
