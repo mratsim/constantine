@@ -17,7 +17,8 @@ import
   ./math/pairings/[pairings_generic, miller_accumulators],
   ./math/constants/zoo_subgroups,
   ./math/io/[io_bigints, io_fields],
-  ./math_arbitrary_precision/arithmetic/bigints_views
+  ./math_arbitrary_precision/arithmetic/bigints_views,
+  ./hash_to_curve/hash_to_curve
 
 # ############################################################
 #
@@ -921,6 +922,115 @@ func eth_evm_bls12381_g2msm*(r: var openArray[byte], inputs: openarray[byte]): C
 
   freeHeapAligned(points)
   freeHeapAligned(coefs_big)
+
+  var aff{.noInit.}: ECP_ShortW_Aff[Fp2[BLS12_381], G2]
+  aff.affine(R)
+
+  r.toOpenArray(  0,  64-1).marshal(aff.x.c0, bigEndian)
+  r.toOpenArray( 64, 128-1).marshal(aff.x.c1, bigEndian)
+  r.toOpenArray(128, 192-1).marshal(aff.y.c0, bigEndian)
+  r.toOpenArray(192, 256-1).marshal(aff.y.c1, bigEndian)
+  return cttEVM_Success
+
+func eth_evm_bls12381_map_fp_to_g1*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.meter.} =
+  ## Map a field element to G1
+  ##
+  ## Name: BLS12_MAP_FP_TO_G1
+  ##
+  ## Input:
+  ## - A field element in 0 ..< p, p the prime field of BLS12-381
+  ## - The length MUST be a 48-byte (381-bit) number serialized in 64-byte big-endian number
+  ##
+  ## Output
+  ## - Output buffer MUST be of length 64 bytes
+  ## - A G1 point R with coordinates (Rx, Ry)
+  ## - Status code:
+  ##   cttEVM_Success
+  ##   cttEVM_InvalidInputSize
+  ##   cttEVM_InvalidOutputSize
+  ##   cttEVM_IntLargerThanModulus
+  ##
+  ## Spec https://eips.ethereum.org/EIPS/eip-2537
+
+  if inputs.len != 64:
+    return cttEVM_InvalidInputSize
+
+  if r.len != 128:
+    return cttEVM_InvalidOutputSize
+
+  var u_big {.noInit.}: BigInt[381]
+  # Input is 64 bytes, with lower 48 used.
+  for i in 0 ..< 16:
+    if inputs[i] != 0:
+      return cttEVM_IntLargerThanModulus
+  discard u_big.unmarshal(inputs.toOpenArray(16, 64-1), bigEndian)
+  if bool(u_big >= BLS12_381.Mod()):
+    return cttEVM_IntLargerThanModulus
+
+  var u {.noInit.}: Fp[BLS12_381]
+  var R {.noInit.}: ECP_ShortW_Jac[Fp[BLS12_381], G1]
+
+  u.fromBig(u_big)
+  R.mapToCurve_sswu(u)
+  R.clearCofactor()
+
+  var aff{.noInit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1]
+  aff.affine(R)
+
+  r.toOpenArray( 0,  64-1).marshal(aff.x, bigEndian)
+  r.toOpenArray(64, 128-1).marshal(aff.y, bigEndian)
+  return cttEVM_Success
+
+func eth_evm_bls12381_map_fp2_to_g2*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.meter.} =
+  ## Map an Fp2 extension field element to G1
+  ##
+  ## Name: BLS12_MAP_FP2_TO_G2
+  ##
+  ## Input:
+  ## - An extension field element in (0, 0) ..< (p, p), p the prime field of BLS12-381
+  ## - The length MUST be a tuple of 48-byte (381-bit) number serialized in tuple of 64-byte big-endian numbers
+  ##
+  ## Output
+  ## - Output buffer MUST be of length 128 bytes
+  ## - A G2 point R with coordinates (Rx, Ry)
+  ## - Status code:
+  ##   cttEVM_Success
+  ##   cttEVM_InvalidInputSize
+  ##   cttEVM_InvalidOutputSize
+  ##   cttEVM_IntLargerThanModulus
+  ##
+  ## Spec https://eips.ethereum.org/EIPS/eip-2537
+
+  if inputs.len != 128:
+    return cttEVM_InvalidInputSize
+
+  if r.len != 256:
+    return cttEVM_InvalidOutputSize
+
+  var u {.noInit.}: Fp2[BLS12_381]
+  var t {.noInit.}: BigInt[381]
+
+  # Input is 64 bytes, with lower 48 used.
+  for i in 0 ..< 16:
+    if inputs[i] != 0:
+      return cttEVM_IntLargerThanModulus
+  discard t.unmarshal(inputs.toOpenArray(16, 64-1), bigEndian)
+  if bool(t >= BLS12_381.Mod()):
+    return cttEVM_IntLargerThanModulus
+  u.c0.fromBig(t)
+
+  for i in 64 ..< 64+16:
+    if inputs[i] != 0:
+      return cttEVM_IntLargerThanModulus
+  discard t.unmarshal(inputs.toOpenArray(64+16, 64+64-1), bigEndian)
+  if bool(t >= BLS12_381.Mod()):
+    return cttEVM_IntLargerThanModulus
+  u.c1.fromBig(t)
+
+  var R {.noInit.}: ECP_ShortW_Jac[Fp2[BLS12_381], G2]
+
+  R.mapToCurve_sswu(u)
+  R.clearCofactor()
 
   var aff{.noInit.}: ECP_ShortW_Aff[Fp2[BLS12_381], G2]
   aff.affine(R)

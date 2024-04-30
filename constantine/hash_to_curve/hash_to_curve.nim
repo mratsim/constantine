@@ -140,6 +140,27 @@ func mapToCurve_svdw_fusedAdd[F; G: static Subgroup](
   r.fromAffine(Q0)
   r += Q1
 
+func mapToCurve_sswu*[F; G: static Subgroup](r: var ECP_ShortW_Jac[F, G], u: F) =
+  ## Map an element of the finite or extension field F to an elliptic curve E
+  when F.C.getCoefA() * F.C.getCoefB() == 0:
+    # https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-6.6.3
+    # Simplified Shallue-van de Woestijne-Ulas method for AB == 0
+
+    # 1. Map to E' isogenous to E
+    when F is Fp and F.C.has_P_3mod4_primeModulus():
+      # 1. Map to E'1 isogenous to E1
+      r.mapToIsoCurve_sswuG1_opt3mod4(u)
+    elif F is Fp2 and F.C.has_Psquare_9mod16_primePower():
+      # 1. Map to E'2 isogenous to E2
+      r.mapToIsoCurve_sswuG2_opt9mod16(u)
+    else:
+      {.error: "Not implemented".}
+
+    # 2. Map from E'2 to E2
+    r.h2c_isogeny_map(r)
+  else:
+    {.error: "Not implemented".}
+
 func mapToCurve_sswu_fusedAdd[F; G: static Subgroup](
        r: var ECP_ShortW_Jac[F, G],
        u0, u1: F) =
