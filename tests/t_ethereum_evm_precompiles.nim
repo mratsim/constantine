@@ -69,8 +69,8 @@ template runPrecompileTests(filename: string, funcname: untyped) =
 
     `PrecompileTestrunner _ funcname`()
 
-runPrecompileTests("bn256Add.json", eth_evm_ecadd)
-runPrecompileTests("bn256mul.json", eth_evm_ecmul)
-runPrecompileTests("pairing.json", eth_evm_ecpairing)
+runPrecompileTests("bn256Add.json", eth_evm_bn254_ecadd)
+runPrecompileTests("bn256mul.json", eth_evm_bn254_ecmul)
+runPrecompileTests("pairing.json", eth_evm_bn254_ecpairingcheck)
 runPrecompileTests("modexp.json", eth_evm_modexp)
 runPrecompileTests("modexp_eip2565.json", eth_evm_modexp)
