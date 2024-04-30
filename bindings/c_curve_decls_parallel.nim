@@ -44,4 +44,4 @@ template genParallelBindings_EC_ShortW_NonAffine*(ECP, ECP_Aff, ScalarField: unt
           coefs: ptr UncheckedArray[ScalarField],
           points: ptr UncheckedArray[ECP_Aff],
           len: csize_t) {.libExport.} =
-    tp.multiScalarMul_vartime_parallel(r.addr, coefs_fr, points, n)
+    tp.multiScalarMul_vartime_parallel(r.addr, coefs, points, cast[int](len))

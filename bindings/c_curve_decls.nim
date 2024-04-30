@@ -416,6 +416,6 @@ template genBindings_EC_ShortW_NonAffine*(ECP, ECP_Aff, ScalarBig, ScalarField: 
           coefs: ptr UncheckedArray[ScalarField],
           points: ptr UncheckedArray[ECP_Aff],
           len: csize_t)=
-    r.multiScalarMul_vartime(coefs_fr, points, n)
+    r.multiScalarMul_vartime(coefs, points, cast[int](len))
 
   {.pop.}
