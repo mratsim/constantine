@@ -43,7 +43,7 @@ func generate_random_points* [EC_P](points: var openArray[EC_P], num_points: uin
     var hash : array[32, byte]
     ctx.finish(hash)
     ctx.clear()
-    
+
     var x {.noInit.}:  Fp[Banderwagon]
     var t {.noInit.}: matchingBigInt(Banderwagon)
 
@@ -61,7 +61,7 @@ func generate_random_points* [EC_P](points: var openArray[EC_P], num_points: uin
       points_found.add(x_p)
       points[idx] = points_found[idx]
       idx = idx + 1
-  
+
     if uint64(points_found.len) ==  num_points:
       break
 # ############################################################
@@ -74,7 +74,7 @@ func computeInnerProducts* [Fr] (res: var Fr, a,b : openArray[Fr])=
   debug: doAssert (a.len == b.len).bool() == true, "Scalar lengths don't match!"
   res.setZero()
   for i in 0 ..< b.len:
-    var tmp : Fr 
+    var tmp : Fr
     tmp.prod(a[i], b[i])
     res += tmp
 
@@ -82,10 +82,10 @@ func computeInnerProducts* [Fr] (res: var Fr, a,b : View[Fr])=
   debug: doAssert (a.len == b.len).bool() == true, "Scalar lengths don't match!"
   res.setZero()
   for i in 0 ..< b.len:
-    var tmp : Fr 
+    var tmp : Fr
     tmp.prod(a[i], b[i])
     res.sum(res,tmp)
-  
+
 # ############################################################
 #
 #                    Folding functions
@@ -108,13 +108,11 @@ func foldPoints*(res: var openArray[EC_P], a,b : View[EC_P], x: Fr[Banderwagon])
   for i in 0 ..< a.len:
     var bx {.noInit.}: EC_P
     bx = b[i]
-    var x_big {.noInit.}: matchingOrderBigInt(Banderwagon)
-    x_big.fromField(x)
-    bx.scalarMul(x_big)
+    bx.scalarMul_vartime(x)
     res[i].sum(a[i],bx)
 
 
-func computeNumRounds*(res: var uint32, vectorSize: SomeUnsignedInt)= 
+func computeNumRounds*(res: var uint32, vectorSize: SomeUnsignedInt)=
   ## This method takes the log2(vectorSize), a separate checker is added to prevent 0 sized vectors
   ## An additional checker is added because we also do not allow for vectors whose size is a power of 2.
   debug: doAssert (vectorSize == uint64(0)).bool() == false, "Zero is not a valid input!"
@@ -127,12 +125,12 @@ func computeNumRounds*(res: var uint32, vectorSize: SomeUnsignedInt)=
 
 # ############################################################
 #
-#                   Pedersen Commitment    
+#                   Pedersen Commitment
 #
 # ############################################################
 
 func pedersen_commit_varbasis*[EC_P] (res: var EC_P, groupPoints: openArray[EC_P], g: int,  polynomial: openArray[Fr], n: int)=
-  # This Pedersen Commitment function shall be used in specifically the Split scalars 
+  # This Pedersen Commitment function shall be used in specifically the Split scalars
   # and Split points that are used in the IPA polynomial
 
   # Further reference refer to this https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
@@ -182,4 +180,3 @@ func evalOutsideDomain* [Fr] (res: var Fr, precomp: PrecomputedWeights, f: openA
     res *= tmp
 
   res *= summand
-  

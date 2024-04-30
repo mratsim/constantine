@@ -24,7 +24,7 @@ import
   ../math/elliptic/[ec_twistededwards_projective],
   ../math/arithmetic,
   ../math/io/io_fields,
-  ../math/elliptic/ec_scalar_mul, 
+  ../math/elliptic/ec_scalar_mul,
   ../../research/kzg/strided_views,
   # ../platforms/[views],
   ../curves_primitives
@@ -35,7 +35,7 @@ import
 #
 # ############################################################
 
-# This Pedersen Commitment function shall be used in specifically the Split scalars 
+# This Pedersen Commitment function shall be used in specifically the Split scalars
 # and Split points that are used in the IPA polynomial
 
 # Further reference refer to this https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
@@ -97,9 +97,8 @@ func coverIPARounds*(res: var IPAProof, transcript: var CryptoHash, ic: IPASetti
   var z_R {.noInit.}: Fr[Banderwagon]
   z_R.computeInnerProducts(a_L.toOpenArray(), b_R.toOpenArray())
 
-  var C_L {.noInit.}: EC_P
-  C_L = q
-  C_L.scalarMul(z_L.toBig())
+  var C_L {.noInit.} = q
+  C_L.scalarMul_vartime(z_L)
 
   var C_L_1 {.noInit.}: EC_P
   C_L_1.x.setZero()
@@ -108,10 +107,9 @@ func coverIPARounds*(res: var IPAProof, transcript: var CryptoHash, ic: IPASetti
   C_L_1.pedersen_commit_varbasis(G_L.toOpenArray(), G_L.len, a_R.toOpenArray(), a_R.len)
   C_L += C_L_1
 
-  var C_R {.noInit.}: EC_P
-  C_R = q
-  C_R.scalarMul(z_R.toBig())
-  
+  var C_R {.noInit.} = q
+  C_R.scalarMul_vartime(z_R)
+
   var C_R_1 {.noInit.}: EC_P
   C_R_1.x.setZero()
   C_R_1.y.setZero()
@@ -156,7 +154,7 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var CryptoHash, i
   transcript.domain_separator(asBytes"ipa")
   var b: array[VerkleDomain, Fr[Banderwagon]]
   b.populateCoefficientVector(ic, evalPoint)
-  
+
   var innerProd {.noInit.}: Fr[Banderwagon]
   innerProd.computeInnerProducts(a, b)
 
@@ -167,12 +165,9 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var CryptoHash, i
   var w {.noInit.}: matchingOrderBigInt(Banderwagon)
   w.generateChallengeScalar(transcript, asBytes"w")
 
-  var w_fr {.noInit.}: Fr[Banderwagon]
-  w_fr.fromBig(w)
- 
   var q {.noInit.}: EC_P
   q = ic.Q_val
-  q.scalarMul(w)
+  q.scalarMul_vartime(w)
 
   var cb_c: array[VerkleDomain, EC_P]
   for i in 0 ..< VerkleDomain:
@@ -195,25 +190,25 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var CryptoHash, i
 func serializeVerkleIPAProof* (dst: var VerkleIPAProofSerialized, src: IPAProof): bool =
   ## IPA Proofs in Verkle consists of a Left array of 8 Base Field points, a Right array of 8 Base Field points, and a Scalar Field element
   ## During serialization the format goes as follows:
-  ## 
+  ##
   ## L[0] (32 - byte array) L[1] (32 - byte array) .... L[7] (32 - byte array) ..... R[0] (32 - byte array) ... R[7] (32 - byte array) A (32 - byte array)
-  ## 
+  ##
   ## Which means the size of the byte array should be :
-  ## 
+  ##
   ## 32 * 8 (for Left half) + 32 * 8 (for Right half) + 32 * 1 (for Scalar) = 32 * 17 = 544 elements in the byte array.
-  ## 
+  ##
   ## ----------------------------------------------------------
-  ## 
-  ## Note that checks like Subgroup check for Banderwagon Points for Base Field elements in L and R, 
+  ##
+  ## Note that checks like Subgroup check for Banderwagon Points for Base Field elements in L and R,
   ## And checks for a valid scalar checking the Banderwagon scalar Curve Order is MANDATORY. They are all checked in the further low level functions
-  ## 
+  ##
   var res = false
   var L_bytes {.noInit.} : array[8, array[32, byte]]
   var R_bytes {.noInit.} : array[8, array[32, byte]]
 
   let stat1 = L_bytes.serializeBatch(src.L_vector)
   doAssert stat1 == cttCodecEcc_Success, "Batch serialization Failure!"
-  
+
   let stat2 = R_bytes.serializeBatch(src.R_vector)
   doAssert stat2 == cttCodecEcc_Success, "Batch Serialization Failure!"
 
@@ -242,7 +237,7 @@ func serializeVerkleIPAProof* (dst: var VerkleIPAProofSerialized, src: IPAProof)
     idx = idx + 1
 
   discard A_bytes
-  
+
   res = true
   return res
 
@@ -252,22 +247,22 @@ func serializeVerkleIPAProof* (dst: var VerkleIPAProofSerialized, src: IPAProof)
 #
 # ############################################################
 
-func deserializeVerkleIPAProof* (dst: var IPAProof, src: var VerkleIPAProofSerialized ): bool = 
+func deserializeVerkleIPAProof* (dst: var IPAProof, src: var VerkleIPAProofSerialized ): bool =
   ## IPA Proofs in Verkle consists of a Left array of 8 Base Field points, a Right array of 8 Base Field points, and a Scalar Field element
   ## During deserialization the format goes as follows:
-  ## 
+  ##
   ## L[0] (32 - byte array) L[1] (32 - byte array) .... L[7] (32 - byte array) ..... R[0] (32 - byte array) ... R[7] (32 - byte array) A (32 - byte array)
-  ## 
+  ##
   ## Which means the size of the byte array should be :
-  ## 
+  ##
   ## 32 * 8 (for Left half) + 32 * 8 (for Right half) + 32 * 1 (for Scalar) = 32 * 17 = 544 elements in the byte array.
   ## ----------------------------------------------------------
-  ## 
+  ##
   ## Note that check for Lexicographically Largest criteria for the Y - coordinate of the Twisted Edward Banderwagon point is MANDATORY
   ## And, is pre-checked within this function from the `deserialize` function.
-  ## 
+  ##
   var res = false
-  
+
   var L_bytes {.noInit.} : array[8, array[32, byte]]
   var R_bytes {.noInit.} : array[8, array[32, byte]]
   var A_bytes {.noInit.} : array[32, byte]
