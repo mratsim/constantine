@@ -619,3 +619,36 @@ proc multiScalarMul_vartime_parallel*[bits: static int, EC, ECaff](
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
   ## This function can be nested in another parallel function
   tp.multiScalarMul_dispatch_vartime_parallel(r, coefs, points, len)
+
+func multiScalarMul_vartime_parallel*[bits: static int, EC, ECaff](
+       tp: Threadpool,
+       r: var EC,
+       coefs: ptr UncheckedArray[Fr],
+       points: ptr UncheckedArray[ECaff],
+       len: int) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
+  ## Multiscalar multiplication:
+  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
+
+  let n = cast[int](len)
+  let coefs_fr = allocHeapArrayAligned(Fr, n, alignment = 64)
+
+  syncScope:
+    tp.parallelFor i in 0 ..< n:
+      captures: {coefs, coefs_fr}
+      coefs_fr[i].fromField(coefs[i])
+  tp.multiScalarMul_vartime_parallel(r.addr, coefs_fr, points, n)
+
+  freeHeapAligned(coefs_fr)
+
+func multiScalarMul_vartime_parallel*[bits: static int, EC, ECaff](
+       tp: Threadpool,
+       r: var EC,
+       coefs: openArray[Fr],
+       points: openArray[ECaff]) {.tags:[VarTime, Alloca, HeapAlloc], inline.} =
+  ## Multiscalar multiplication:
+  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
+
+  debug: doAssert coefs.len == points.len
+  let N = points.len
+
+  tp.multiScalarMul_vartime_parallel(r.addr, coefs.asUnchecked(), points.asUnchecked(), N)

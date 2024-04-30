@@ -416,14 +416,6 @@ template genBindings_EC_ShortW_NonAffine*(ECP, ECP_Aff, ScalarBig, ScalarField: 
           coefs: ptr UncheckedArray[ScalarField],
           points: ptr UncheckedArray[ECP_Aff],
           len: csize_t)=
-
-    let n = cast[int](len)
-    let coefs_fr = allocHeapArrayAligned(ScalarBig, n, alignment = 64)
-
-    for i in 0 ..< n:
-      coefs_fr[i].fromField(coefs[i])
     r.multiScalarMul_vartime(coefs_fr, points, n)
-
-    freeHeapAligned(coefs_fr)
 
   {.pop.}
