@@ -287,7 +287,7 @@ func fromRawCoords[C: static Curve, G: static Subgroup](
     return status
   dst.fromAffine(aff)
 
-func eth_evm_bn254_ecadd*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus =
+func eth_evm_bn254_g1add*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.meter.} =
   ## Elliptic Curve addition on BN254_Snarks
   ## (also called alt_bn128 in Ethereum specs
   ##  and bn256 in Ethereum tests)
@@ -345,7 +345,7 @@ func eth_evm_bn254_ecadd*(r: var openArray[byte], inputs: openarray[byte]): CttE
   r.toOpenArray(32, 63).marshal(aff.y, bigEndian)
   return cttEVM_Success
 
-func eth_evm_bn254_ecmul*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus =
+func eth_evm_bn254_g1mul*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.meter.} =
   ## Elliptic Curve multiplication on BN254_Snarks
   ## (also called alt_bn128 in Ethereum specs
   ##  and bn256 in Ethereum tests)
@@ -357,6 +357,7 @@ func eth_evm_bn254_ecmul*(r: var openArray[byte], inputs: openarray[byte]): CttE
   ## - A scalar s in 0 ..< 2²⁵⁶
   ##
   ## Each coordinate is a 32-byte bigEndian integer
+  ## r is a 32-byte bigEndian integer
   ## They are serialized concatenated in a byte array [Px, Py, r]
   ## If the length is less than 96 bytes, input is virtually padded with zeros.
   ## If the length is greater than 96 bytes, input is truncated to 96 bytes.
@@ -364,7 +365,7 @@ func eth_evm_bn254_ecmul*(r: var openArray[byte], inputs: openarray[byte]): CttE
   ## Output
   ## - Output buffer MUST be of length 64 bytes
   ## - A G1 point R = [s]P
-  ## - Status code:
+  ## - Status codes:
   ##   cttEVM_Success
   ##   cttEVM_IntLargerThanModulus
   ##   cttEVM_PointNotOnCurve
@@ -417,7 +418,7 @@ func eth_evm_bn254_ecmul*(r: var openArray[byte], inputs: openarray[byte]): CttE
   return cttEVM_Success
 
 func eth_evm_bn254_ecpairingcheck*(
-      r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus =
+      r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.meter.} =
   ## Elliptic Curve pairing on BN254_Snarks
   ## (also called alt_bn128 in Ethereum specs
   ##  and bn256 in Ethereum tests)
@@ -430,7 +431,7 @@ func eth_evm_bn254_ecpairingcheck*(
   ## Output
   ## - Output buffer MUST be of length 32 bytes
   ## - 0 or 1 in uint256 BigEndian representation
-  ## - Status code:
+  ## - Status codes:
   ##   cttEVM_Success
   ##   cttEVM_IntLargerThanModulus
   ##   cttEVM_PointNotOnCurve
@@ -499,7 +500,7 @@ func eth_evm_bn254_ecpairingcheck*(
     r[r.len-1] = byte 1
   return cttEVM_Success
 
-func eth_evm_bls12381_ecadd_g1*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus =
+func eth_evm_bls12381_g1add*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.meter.} =
   ## Elliptic Curve addition on BLS12-381 G1
   ##
   ## Name: BLS12_G1ADD
@@ -507,6 +508,7 @@ func eth_evm_bls12381_ecadd_g1*(r: var openArray[byte], inputs: openarray[byte])
   ## Inputs:
   ## - A G1 point P with coordinates (Px, Py)
   ## - A G1 point Q with coordinates (Qx, Qy)
+  ## - Input buffer MUST be 256 bytes
   ##
   ## Each coordinate is a 64-byte bigEndian integer
   ## They are serialized concatenated in a byte array [Px, Py, Qx, Qy]
@@ -514,10 +516,9 @@ func eth_evm_bls12381_ecadd_g1*(r: var openArray[byte], inputs: openarray[byte])
   ## Inputs are NOT subgroup-checked.
   ##
   ## Output
-  ## - Input buffer MUST be 256 bytes
   ## - Output buffer MUST be of length 128 bytes
   ## - A G1 point R=P+Q with coordinates (Rx, Ry)
-  ## - Status code:
+  ## - Status codes:
   ##   cttEVM_Success
   ##   cttEVM_InvalidInputSize
   ##   cttEVM_InvalidOutputSize
@@ -559,7 +560,7 @@ func eth_evm_bls12381_ecadd_g1*(r: var openArray[byte], inputs: openarray[byte])
   r.toOpenArray(64, 128-1).marshal(aff.y, bigEndian)
   return cttEVM_Success
 
-func eth_evm_bls12381_ecadd_g2*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus =
+func eth_evm_bls12381_g2add*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.meter.} =
   ## Elliptic Curve addition on BLS12-381 G2
   ##
   ## Name: BLS12_G2ADD
@@ -567,6 +568,7 @@ func eth_evm_bls12381_ecadd_g2*(r: var openArray[byte], inputs: openarray[byte])
   ## Inputs:
   ## - A G2 point P with coordinates (Px, Py)
   ## - A G2 point Q with coordinates (Qx, Qy)
+  ## - Input buffer MUST be 512 bytes
   ##
   ## Each coordinate is a 128-byte bigEndian integer pair (a+𝑖b) with 𝑖 = √-1
   ## They are serialized concatenated in a byte array [Px, Py, Qx, Qy]
@@ -574,10 +576,9 @@ func eth_evm_bls12381_ecadd_g2*(r: var openArray[byte], inputs: openarray[byte])
   ## Inputs are NOT subgroup-checked.
   ##
   ## Output
-  ## - Input buffer MUST be 512 bytes
   ## - Output buffer MUST be of length 256 bytes
   ## - A G2 point R=P+Q with coordinates (Rx, Ry)
-  ## - Status code:
+  ## - Status codes:
   ##   cttEVM_Success
   ##   cttEVM_InvalidInputSize
   ##   cttEVM_InvalidOutputSize
@@ -618,6 +619,146 @@ func eth_evm_bls12381_ecadd_g2*(r: var openArray[byte], inputs: openarray[byte])
   R.sum_vartime(P, Q)
   var aff{.noInit.}: ECP_ShortW_Aff[Fp2[BLS12_381], G2]
   aff.affine(R)
+
+  r.toOpenArray(  0,  64-1).marshal(aff.x.c0, bigEndian)
+  r.toOpenArray( 64, 128-1).marshal(aff.x.c1, bigEndian)
+  r.toOpenArray(128, 192-1).marshal(aff.y.c0, bigEndian)
+  r.toOpenArray(192, 256-1).marshal(aff.y.c1, bigEndian)
+  return cttEVM_Success
+
+func eth_evm_bls12381_g1mul*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.meter.} =
+  ## Elliptic Curve addition on BLS12-381 G1
+  ##
+  ## Name: BLS12_G1MUL
+  ##
+  ## Inputs:
+  ## - A G1 point P with coordinates (Px, Py)
+  ## - A scalar s in 0 ..< 2²⁵⁶
+  ## - Input buffer MUST be 160 bytes
+  ##
+  ## Each coordinate is a 64-byte bigEndian integer
+  ## r is a 32-byte bigEndian integer
+  ## They are serialized concatenated in a byte array [Px, Py, r]
+  ##
+  ## Output
+  ## - Output buffer MUST be of length 128 bytes
+  ## - A G1 point R=P+Q with coordinates (Rx, Ry)
+  ## - Status code:
+  ##   cttEVM_Success
+  ##   cttEVM_InvalidInputSize
+  ##   cttEVM_InvalidOutputSize
+  ##   cttEVM_IntLargerThanModulus
+  ##   cttEVM_PointNotOnCurve
+  ##
+  ## Spec https://eips.ethereum.org/EIPS/eip-2537
+  if inputs.len != 256:
+    return cttEVM_InvalidInputSize
+
+  if r.len != 128:
+    return cttEVM_InvalidOutputSize
+
+  var P{.noInit.}, Q{.noInit.}, R{.noInit.}: ECP_ShortW_Jac[Fp[BLS12_381], G1]
+
+  let statusP = P.fromRawCoords(
+    x = inputs.toOpenArray( 0,  64-1),
+    y = inputs.toOpenArray(64, 128-1),
+    checkSubgroup = true)
+  if statusP != cttEVM_Success:
+    return statusP
+
+  var smod{.noInit.}: Fr[BLS12_381]
+  var s{.noInit.}: BigInt[256]
+  s.unmarshal(inputs.toOpenArray(128, 160-1), bigEndian)
+
+  when true:
+    # The spec allows s to be bigger than the curve order r and the field modulus p.
+    # As, elliptic curve are a cyclic group mod r, we can reduce modulo r and get the same result.
+    # This allows to use windowed endomorphism acceleration
+    # at the low cost of a modular reduction.
+
+    # Due to mismatch between the BigInt[256] input and the rest being BigInt[255]
+    # we use the low-level getMont instead of 'fromBig'
+    getMont(smod.mres.limbs, s.limbs,
+                Fr[BLS12_381].fieldMod().limbs,
+                Fr[BLS12_381].getR2modP().limbs,
+                Fr[BLS12_381].getNegInvModWord(),
+                Fr[BLS12_381].getSpareBits())
+    P.scalarMul_vartime(smod.toBig())
+  else:
+    P.scalarMul_vartime(s)
+
+  var aff{.noInit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1]
+  aff.affine(P)
+
+  r.toOpenArray( 0,  64-1).marshal(aff.x, bigEndian)
+  r.toOpenArray(64, 128-1).marshal(aff.y, bigEndian)
+  return cttEVM_Success
+
+func eth_evm_bls12381_g2mul*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.meter.} =
+  ## Elliptic Curve addition on BLS12-381 G2
+  ##
+  ## Name: BLS12_G2MUL
+  ##
+  ## Inputs:
+  ## - A G2 point P with coordinates (Px, Py)
+  ## - A scalar s in 0 ..< 2²⁵⁶
+  ## - Input buffer MUST be 288 bytes
+  ##
+  ## Each coordinate is a 128-byte bigEndian integer pair (a+𝑖b) with 𝑖 = √-1
+  ## r is a 32-byte bigEndian integer
+  ## They are serialized concatenated in a byte array [Px, Py, r]
+  ##
+  ## Output
+  ## - Output buffer MUST be of length 256 bytes
+  ## - A G2 point R=P+Q with coordinates (Rx, Ry)
+  ## - Status code:
+  ##   cttEVM_Success
+  ##   cttEVM_InvalidInputSize
+  ##   cttEVM_InvalidOutputSize
+  ##   cttEVM_IntLargerThanModulus
+  ##   cttEVM_PointNotOnCurve
+  ##
+  ## Spec https://eips.ethereum.org/EIPS/eip-2537
+  if inputs.len != 288:
+    return cttEVM_InvalidInputSize
+
+  if r.len != 256:
+    return cttEVM_InvalidOutputSize
+
+  var P{.noInit.}, Q{.noInit.}, R{.noInit.}: ECP_ShortW_Jac[Fp2[BLS12_381], G2]
+
+  let statusP = P.fromRawCoords(
+    x0 = inputs.toOpenArray(  0,  64-1),
+    x1 = inputs.toOpenArray( 64, 128-1),
+    y0 = inputs.toOpenArray(128, 192-1),
+    y1 = inputs.toOpenArray(192, 256-1),
+    checkSubgroup = true)
+  if statusP != cttEVM_Success:
+    return statusP
+
+  var smod{.noInit.}: Fr[BLS12_381]
+  var s{.noInit.}: BigInt[256]
+  s.unmarshal(inputs.toOpenArray(256, 288-1), bigEndian)
+
+  when true:
+    # The spec allows s to be bigger than the curve order r and the field modulus p.
+    # As, elliptic curve are a cyclic group mod r, we can reduce modulo r and get the same result.
+    # This allows to use windowed endomorphism acceleration
+    # at the low cost of a modular reduction.
+
+    # Due to mismatch between the BigInt[256] input and the rest being BigInt[255]
+    # we use the low-level getMont instead of 'fromBig'
+    getMont(smod.mres.limbs, s.limbs,
+                Fr[BLS12_381].fieldMod().limbs,
+                Fr[BLS12_381].getR2modP().limbs,
+                Fr[BLS12_381].getNegInvModWord(),
+                Fr[BLS12_381].getSpareBits())
+    P.scalarMul_vartime(smod.toBig())
+  else:
+    P.scalarMul_vartime(s)
+
+  var aff{.noInit.}: ECP_ShortW_Aff[Fp2[BLS12_381], G2]
+  aff.affine(P)
 
   r.toOpenArray(  0,  64-1).marshal(aff.x.c0, bigEndian)
   r.toOpenArray( 64, 128-1).marshal(aff.x.c1, bigEndian)
