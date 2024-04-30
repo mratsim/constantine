@@ -15,12 +15,11 @@ import
   ../constantine/serialization/codecs,
   ../constantine/ethereum_evm_precompiles
 
-type
-  PrecompileTests = object
-    `func`: string
-    fork: string
-    data: seq[PrecompileTest]
+# Test vector source:
+# - https://github.com/ethereum/go-ethereum/tree/release/1.14/core/vm/testdata/precompiles
+# - https://github.com/ethereum/EIPs/tree/3b5fcad/assets/eip-2537
 
+type
   HexString = string
 
   PrecompileTest = object
@@ -41,10 +40,10 @@ proc loadVectors(TestType: typedesc, filename: string): TestType =
 template runPrecompileTests(filename: string, funcname: untyped) =
   block:
     proc `PrecompileTestrunner _ funcname`() =
-      let vec = loadVectors(PrecompileTests, filename)
+      let vec = seq[PrecompileTest].loadVectors(filename)
       echo "Running ", filename
 
-      for test in vec.data:
+      for test in vec:
         stdout.write "    Testing " & test.Name & " ... "
 
         # Length: 2 hex characters -> 1 byte
@@ -69,8 +68,24 @@ template runPrecompileTests(filename: string, funcname: untyped) =
 
     `PrecompileTestrunner _ funcname`()
 
-runPrecompileTests("bn256Add.json", eth_evm_bn254_g1add)
-runPrecompileTests("bn256mul.json", eth_evm_bn254_g1mul)
-runPrecompileTests("pairing.json", eth_evm_bn254_ecpairingcheck)
 runPrecompileTests("modexp.json", eth_evm_modexp)
 runPrecompileTests("modexp_eip2565.json", eth_evm_modexp)
+
+runPrecompileTests("bn256Add.json", eth_evm_bn254_g1add)
+runPrecompileTests("bn256ScalarMul.json", eth_evm_bn254_g1mul)
+runPrecompileTests("bn256Pairing.json", eth_evm_bn254_ecpairingcheck)
+
+runPrecompileTests("eip-2537/add_G1_bls.json", eth_evm_bls12381_g1add)
+runPrecompileTests("eip-2537/fail-add_G1_bls.json", eth_evm_bls12381_g1add)
+runPrecompileTests("eip-2537/add_G2_bls.json", eth_evm_bls12381_g2add)
+runPrecompileTests("eip-2537/fail-add_G2_bls.json", eth_evm_bls12381_g2add)
+
+runPrecompileTests("eip-2537/mul_G1_bls.json", eth_evm_bls12381_g1mul)
+runPrecompileTests("eip-2537/fail-mul_G1_bls.json", eth_evm_bls12381_g1mul)
+runPrecompileTests("eip-2537/mul_G2_bls.json", eth_evm_bls12381_g2mul)
+runPrecompileTests("eip-2537/fail-mul_G2_bls.json", eth_evm_bls12381_g2mul)
+
+runPrecompileTests("eip-2537/multiexp_G1_bls.json", eth_evm_bls12381_g1msm)
+runPrecompileTests("eip-2537/fail-multiexp_G1_bls.json", eth_evm_bls12381_g1msm)
+runPrecompileTests("eip-2537/multiexp_G2_bls.json", eth_evm_bls12381_g2msm)
+runPrecompileTests("eip-2537/fail-multiexp_G2_bls.json", eth_evm_bls12381_g2msm)
