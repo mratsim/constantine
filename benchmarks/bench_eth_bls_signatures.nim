@@ -25,9 +25,9 @@ proc report(op, curve: string, startTime, stopTime: MonoTime, startClk, stopClk:
   let ns = inNanoseconds((stopTime-startTime) div iters)
   let throughput = 1e9 / float64(ns)
   when SupportsGetTicks:
-    echo &"{op:<88} {curve:<15} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
+    echo &"{op:<88} {curve:<15} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {:>9} CPU cycles (approx)"
   else:
-    echo &"{op:<8} {curve:<15} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
+    echo &"{op:<88} {curve:<15} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
 
 template bench(op: string, curve: string, iters: int, body: untyped): untyped =
   measure(iters, startTime, stopTime, startClk, stopClk, body)

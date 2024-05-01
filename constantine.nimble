@@ -617,6 +617,7 @@ const benchDesc = [
   "bench_eth_evm_modexp_dos",
   "bench_eth_eip2537_subgroup_checks_impact",
   "bench_verkle_primitives",
+  "bench_eth_evm_precompiles",
 ]
 
 # For temporary (hopefully) investigation that can only be reproduced in CI
@@ -1050,3 +1051,8 @@ task bench_verkle, "Run benchmarks for Banderwagon":
 # ------------------------------------------
 task bench_eth_eip2537_subgroup_checks_impact, "Run EIP2537 subgroup checks impact benchmark - CC compiler":
   runBench("bench_eth_eip2537_subgroup_checks_impact")
+
+# EVM
+# ------------------------------------------
+task bench_eth_evm_precompiles, "Run Ethereum EVM precompiles - CC compiler":
+  runBench("bench_eth_evm_precompiles")
