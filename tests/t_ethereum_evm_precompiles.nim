@@ -90,6 +90,9 @@ runPrecompileTests("eip-2537/fail-multiexp_G1_bls.json", eth_evm_bls12381_g1msm)
 runPrecompileTests("eip-2537/multiexp_G2_bls.json", eth_evm_bls12381_g2msm)
 runPrecompileTests("eip-2537/fail-multiexp_G2_bls.json", eth_evm_bls12381_g2msm)
 
+runPrecompileTests("eip-2537/pairing_check_bls.json", eth_evm_bls12381_pairingcheck)
+runPrecompileTests("eip-2537/fail-pairing_check_bls.json", eth_evm_bls12381_pairingcheck)
+
 runPrecompileTests("eip-2537/map_fp_to_G1_bls.json", eth_evm_bls12381_map_fp_to_g1)
 runPrecompileTests("eip-2537/fail-map_fp_to_G1_bls.json", eth_evm_bls12381_map_fp_to_g1)
 runPrecompileTests("eip-2537/map_fp2_to_G2_bls.json", eth_evm_bls12381_map_fp2_to_g2)

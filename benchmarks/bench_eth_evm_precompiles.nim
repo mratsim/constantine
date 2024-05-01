@@ -56,6 +56,9 @@ func gasBls12Msm(length: int, baseCost: int): int =
   const multiplier = 1000
   return length * baseCost * discount[min(length, discount.high)] div multiplier
 
+func gasBls12PairingCheck(length: int): int =
+  return 43000*length + 65000
+
 proc benchBls12G1Add*(iters: int) =
   var inputs = newSeq[byte](256)
   var output = newSeq[byte](128)
@@ -114,6 +117,42 @@ proc benchBls12MapToG2*(iters: int) =
   bench(opName, gasSchedule[opName], iters):
     discard output.eth_evm_bls12381_map_fp2_to_g2(inputs)
 
+func clearCofactor[F; G: static Subgroup](ec: var ECP_ShortW_Aff[F, G]) =
+  # For now we don't have any affine operation defined
+  var t {.noInit.}: ECP_ShortW_Prj[F, G]
+  t.fromAffine(ec)
+  t.clearCofactor()
+  ec.affine(t)
+
+proc createPairingInputs(length: int): seq[byte] =
+  var buf64: array[64, byte]
+  for _ in 0 ..< length:
+    var P = rng.random_unsafe(ECP_ShortW_Aff[Fp[BLS12_381], G1])
+    P.clearCofactor()
+    var Q = rng.random_unsafe(ECP_ShortW_Aff[Fp2[BLS12_381], G2])
+    Q.clearCofactor()
+
+    buf64.marshal(P.x, bigEndian)
+    result.add buf64
+    buf64.marshal(P.y, bigEndian)
+    result.add buf64
+
+    buf64.marshal(Q.x.c0, bigEndian)
+    result.add buf64
+    buf64.marshal(Q.x.c1, bigEndian)
+    result.add buf64
+    buf64.marshal(Q.y.c0, bigEndian)
+    result.add buf64
+    buf64.marshal(Q.y.c1, bigEndian)
+    result.add buf64
+
+proc benchBls12PairingCheck(pairingCtx: seq[byte], size, iters: int) =
+  var inputs = @(pairingCtx.toOpenArray(0, 384*size-1))
+  var output = newSeq[byte](32)
+
+  bench(&"BLS12_PAIRINGCHECK {size:>3}", gasBls12PairingCheck(size), iters):
+    discard output.eth_evm_bls12381_pairingcheck(inputs)
+
 proc createMsmInputs(EC: typedesc, length: int): seq[byte] =
   var P: affine(EC)
   var buf64: array[64, byte]
@@ -156,8 +195,9 @@ proc benchBls12MsmG2*(msmCtx: seq[byte], size, iters: int) =
   bench(&"BLS12_G2MSM {size:>3}", gasBls12Msm(size, gasSchedule["BLS12_G2MUL"]), iters):
     discard output.eth_evm_bls12381_g2msm(inputs)
 
-const Iters =  1000
-const ItersMsm = 10
+const Iters        =  1000
+const ItersPairing =    10
+const ItersMsm     =    10
 proc main() =
   separator()
   benchBls12G1Add(Iters)
@@ -166,6 +206,11 @@ proc main() =
   benchBls12G2Mul(Iters)
   benchBls12MapToG1(Iters)
   benchBls12MapToG2(Iters)
+  separator()
+  let pairingCtx = createPairingInputs(8)
+  for i in 1..8:
+    pairingCtx.benchBls12PairingCheck(i, ItersPairing)
+  separator()
   let msmG1Ctx = createMsmInputs(ECP_ShortW_Jac[Fp[BLS12_381], G1], 128)
   msmG1Ctx.benchBls12MsmG1(  2, ItersMsm)
   msmG1Ctx.benchBls12MsmG1(  4, ItersMsm)
@@ -174,6 +219,7 @@ proc main() =
   msmG1Ctx.benchBls12MsmG1( 32, ItersMsm)
   msmG1Ctx.benchBls12MsmG1( 64, ItersMsm)
   msmG1Ctx.benchBls12MsmG1(128, ItersMsm)
+  separator()
   let msmG2Ctx = createMsmInputs(ECP_ShortW_Jac[Fp2[BLS12_381], G2], 128)
   msmG2Ctx.benchBls12MsmG2(  2, ItersMsm)
   msmG2Ctx.benchBls12MsmG2(  4, ItersMsm)

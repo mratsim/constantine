@@ -421,7 +421,7 @@ func eth_evm_bn254_g1mul*(r: var openArray[byte], inputs: openarray[byte]): CttE
 
 func eth_evm_bn254_ecpairingcheck*(
       r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.meter.} =
-  ## Elliptic Curve pairing on BN254_Snarks
+  ## Elliptic Curve pairing check on BN254_Snarks
   ## (also called alt_bn128 in Ethereum specs
   ##  and bn256 in Ethereum tests)
   ##
@@ -435,9 +435,11 @@ func eth_evm_bn254_ecpairingcheck*(
   ## - 0 or 1 in uint256 BigEndian representation
   ## - Status codes:
   ##   cttEVM_Success
+  ##   cttEVM_InvalidInputSize
+  ##   cttEVM_InvalidOutputSize
   ##   cttEVM_IntLargerThanModulus
   ##   cttEVM_PointNotOnCurve
-  ##   cttEVM_InvalidInputSize
+  ##   cttEVM_PointNotInSubgroup
   ##
   ## Specs https://eips.ethereum.org/EIPS/eip-197
   ##       https://eips.ethereum.org/EIPS/eip-1108
@@ -930,6 +932,85 @@ func eth_evm_bls12381_g2msm*(r: var openArray[byte], inputs: openarray[byte]): C
   r.toOpenArray( 64, 128-1).marshal(aff.x.c1, bigEndian)
   r.toOpenArray(128, 192-1).marshal(aff.y.c0, bigEndian)
   r.toOpenArray(192, 256-1).marshal(aff.y.c1, bigEndian)
+  return cttEVM_Success
+
+func eth_evm_bls12381_pairingcheck*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.meter.} =
+  ## Elliptic curve pairing check on BLS12-381
+  ##
+  ## Name: BLS12_PAIRINGCHECK
+  ##
+  ## Inputs:
+  ## - An array of [(P0, Q0), (P1, Q1), ... (Pk, Qk)] points in (G1, G2)
+  ##
+  ## Output
+  ## - Output buffer MUST be of length 32 bytes
+  ## - 0 or 1 in uint256 BigEndian representation
+  ## - Status codes:
+  ##   cttEVM_Success
+  ##   cttEVM_InvalidInputSize
+  ##   cttEVM_InvalidOutputSize
+  ##   cttEVM_IntLargerThanModulus
+  ##   cttEVM_PointNotOnCurve
+  ##   cttEVM_PointNotInSubgroup
+  ##
+  ## specs https://eips.ethereum.org/EIPS/eip-2537
+  if r.len != 32:
+    return cttEVM_InvalidOutputSize
+
+  let N = inputs.len div 384
+  if inputs.len mod 384 != 0:
+    return cttEVM_InvalidInputSize
+
+  if N == 0:
+    # Spec doesn't allow empty inputs
+    return cttEVM_InvalidInputSize
+
+  var P{.noInit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1]
+  var Q{.noInit.}: ECP_ShortW_Aff[Fp2[BLS12_381], G2]
+
+  var acc {.noInit.}: MillerAccumulator[Fp[BLS12_381], Fp2[BLS12_381], Fp12[BLS12_381]]
+  acc.init()
+  var foundInfinity = false
+
+  for i in 0 ..< N:
+    let pos = i*384
+
+    let statusP = P.fromRawCoords(
+      x = inputs.toOpenArray(pos     , pos +  64-1),
+      y = inputs.toOpenArray(pos + 64, pos + 128-1),
+      checkSubgroup = true)
+
+    if statusP != cttEVM_Success:
+      return statusP
+
+    # Encoding order:
+    # Fp2 (a, b) <=> a+𝑖b (contrary to EIP-197)
+    let statusQ = Q.fromRawCoords(
+      x0 = inputs.toOpenArray(pos+128, pos+192-1),
+      x1 = inputs.toOpenArray(pos+192, pos+256-1),
+      y0 = inputs.toOpenArray(pos+256, pos+320-1),
+      y1 = inputs.toOpenArray(pos+320, pos+384-1),
+      checkSubgroup = true)
+
+    if statusQ != cttEVM_Success:
+      return statusQ
+
+    let regular = acc.update(P, Q)
+    if not regular:
+      foundInfinity = true
+
+  if foundInfinity: # pairing with infinity returns 1, hence no need to compute the following
+    zeroMem(r[0].addr, r.len-1)
+    r[r.len-1] = byte 1
+    return cttEVM_Success
+
+  var gt {.noinit.}: Fp12[BLS12_381]
+  acc.finish(gt)
+  gt.finalExp()
+
+  zeroMem(r[0].addr, r.len)
+  if gt.isOne().bool:
+    r[r.len-1] = byte 1
   return cttEVM_Success
 
 func eth_evm_bls12381_map_fp_to_g1*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.meter.} =
