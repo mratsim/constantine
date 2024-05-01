@@ -69,6 +69,7 @@ proc main() =
     separator()
     scalarMulBench(ECP_ShortW_Prj[Fp[curve], G1], Iters)
     scalarMulBench(ECP_ShortW_Jac[Fp[curve], G1], Iters)
+    separator()
     scalarMulBench(ECP_ShortW_Prj[Fp2[curve], G2], Iters)
     scalarMulBench(ECP_ShortW_Jac[Fp2[curve], G2], Iters)
     separator()
@@ -78,6 +79,9 @@ proc main() =
     separator()
     hashToCurveBLS12381G1Bench(Iters)
     hashToCurveBLS12381G2Bench(Iters)
+    separator()
+    subgroupCheckBench(ECP_ShortW_Jac[Fp[curve], G1], Iters)
+    subgroupCheckBench(ECP_ShortW_Jac[Fp2[curve], G2], Iters)
     separator()
 
 main()

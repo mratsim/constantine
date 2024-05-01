@@ -594,6 +594,7 @@ const benchDesc = [
   "bench_ec_msm_bandersnatch",
   "bench_ec_msm_bn254_snarks_g1",
   "bench_ec_msm_bls12_381_g1",
+  "bench_ec_msm_bls12_381_g2",
   "bench_ec_msm_pasta",
   "bench_ec_g2",
   "bench_ec_g2_scalar_mul",
@@ -609,12 +610,14 @@ const benchDesc = [
   "bench_poly1305",
   "bench_sha256",
   "bench_hash_to_curve",
-  "bench_ethereum_bls_signatures",
-  "bench_ethereum_eip4844_kzg",
-  "bench_evm_modexp_dos",
   "bench_gmp_modexp",
   "bench_gmp_modmul",
-  "bench_verkle_primitives"
+  "bench_eth_bls_signatures",
+  "bench_eth_eip4844_kzg",
+  "bench_eth_evm_modexp_dos",
+  "bench_eth_eip2537_subgroup_checks_impact",
+  "bench_verkle_primitives",
+  "bench_eth_evm_precompiles",
 ]
 
 # For temporary (hopefully) investigation that can only be reproduced in CI
@@ -954,6 +957,9 @@ task bench_ec_msm_bn254_snarks_g1, "Run benchmark: Multi-Scalar-Mul for BN254-Sn
 task bench_ec_msm_bls12_381_g1, "Run benchmark: Multi-Scalar-Mul for BLS12-381 𝔾1 - CC compiler":
   runBench("bench_ec_msm_bls12_381_g1")
 
+task bench_ec_msm_bls12_381_g2, "Run benchmark: Multi-Scalar-Mul for BLS12-381 𝔾2 - CC compiler":
+  runBench("bench_ec_msm_bls12_381_g2")
+
 task bench_ec_msm_bandersnatch, "Run benchmark: Multi-Scalar-Mul for Bandersnatch - CC compiler":
   runBench("bench_ec_msm_bandersnatch")
 
@@ -1030,13 +1036,23 @@ task bench_hash_to_curve, "Run Hash-to-Curve benchmarks":
 
 # BLS signatures
 # ------------------------------------------
-task bench_ethereum_bls_signatures, "Run Ethereum BLS signatures benchmarks - CC compiler":
-  runBench("bench_ethereum_bls_signatures")
+task bench_eth_bls_signatures, "Run Ethereum BLS signatures benchmarks - CC compiler":
+  runBench("bench_eth_bls_signatures")
 
 # EIP 4844 - KZG Polynomial Commitments
 # ------------------------------------------
-task bench_ethereum_eip4844_kzg, "Run Ethereum EIP4844 KZG Polynomial commitment - CC compiler":
-  runBench("bench_ethereum_eip4844_kzg")
+task bench_eth_eip4844_kzg, "Run Ethereum EIP4844 KZG Polynomial commitment - CC compiler":
+  runBench("bench_eth_eip4844_kzg")
 
 task bench_verkle, "Run benchmarks for Banderwagon":
   runBench("bench_verkle_primitives")
+
+# EIP 2537 - BLS12-381 precompiles
+# ------------------------------------------
+task bench_eth_eip2537_subgroup_checks_impact, "Run EIP2537 subgroup checks impact benchmark - CC compiler":
+  runBench("bench_eth_eip2537_subgroup_checks_impact")
+
+# EVM
+# ------------------------------------------
+task bench_eth_evm_precompiles, "Run Ethereum EVM precompiles - CC compiler":
+  runBench("bench_eth_evm_precompiles")

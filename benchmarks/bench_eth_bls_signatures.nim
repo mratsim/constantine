@@ -24,10 +24,11 @@ proc separator*() = separator(180)
 proc report(op, curve: string, startTime, stopTime: MonoTime, startClk, stopClk: int64, iters: int) =
   let ns = inNanoseconds((stopTime-startTime) div iters)
   let throughput = 1e9 / float64(ns)
+  let cycles = (stopClk - startClk) div iters
   when SupportsGetTicks:
-    echo &"{op:<88} {curve:<15} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {(stopClk - startClk) div iters:>9} CPU cycles (approx)"
+    echo &"{op:<88} {curve:<15} {throughput:>15.3f} ops/s     {ns:>9} ns/op     {cycles:>9} CPU cycles (approx)"
   else:
-    echo &"{op:<8} {curve:<15} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
+    echo &"{op:<88} {curve:<15} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
 
 template bench(op: string, curve: string, iters: int, body: untyped): untyped =
   measure(iters, startTime, stopTime, startClk, stopClk, body)
@@ -156,7 +157,7 @@ proc benchVerifyMulti*(numSigs, iters: int) =
     sig.sign(sk, hashedMsg)
     triplets.add (pk, hashedMsg, sig)
 
-  bench("BLS verif of " & $numSigs & " msgs by "& $numSigs & " pubkeys", "BLS12_381", iters):
+  bench("BLS verif of " & $numSigs & " msgs by " & $numSigs & " pubkeys", "BLS12_381", iters):
     for i in 0 ..< triplets.len:
       let ok = triplets[i].pubkey.verify(triplets[i].msg, triplets[i].sig)
       doAssert ok == cttEthBls_Success

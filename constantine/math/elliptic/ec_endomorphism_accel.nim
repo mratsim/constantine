@@ -313,7 +313,7 @@ func secretLookup[T](dst: var T, table: openArray[T], index: SecretWord) =
 
 func scalarMulEndo*[scalBits; EC](
        P: var EC,
-       scalar: BigInt[scalBits]) =
+       scalar: BigInt[scalBits]) {.meter.} =
   ## Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P
@@ -499,7 +499,7 @@ func computeRecodedLength(bitWidth, window: int): int =
   let lw = bitWidth.ceilDiv_vartime(window) + 1
   result = (lw mod window) + lw
 
-func scalarMulGLV_m2w2*[scalBits; EC](P0: var EC, scalar: BigInt[scalBits]) =
+func scalarMulGLV_m2w2*[scalBits; EC](P0: var EC, scalar: BigInt[scalBits]) {.meter.} =
   ## Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P

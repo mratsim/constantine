@@ -6,10 +6,12 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import ./ec_multi_scalar_mul_scheduler,
+import ../config/curves,
+       ./ec_multi_scalar_mul_scheduler,
        ./ec_multi_scalar_mul,
        ./ec_endomorphism_accel,
        ../extension_fields,
+       ../isogenies/frobenius,
        ../constants/zoo_endomorphisms,
        ../../threadpool/[threadpool, partitioners]
 export bestBucketBitSize
@@ -597,6 +599,17 @@ proc multiScalarMul_dispatch_vartime_parallel[bits: static int, F](
 
 proc multiScalarMul_vartime_parallel*[bits: static int, EC, ECaff](
        tp: Threadpool,
+       r: ptr EC,
+       coefs: ptr UncheckedArray[BigInt[bits]],
+       points: ptr UncheckedArray[ECaff],
+       len: int) {.meter, inline.} =
+  ## Multiscalar multiplication:
+  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
+  ## This function can be nested in another parallel function
+  tp.multiScalarMul_dispatch_vartime_parallel(r, coefs, points, len)
+
+proc multiScalarMul_vartime_parallel*[bits: static int, EC, ECaff](
+       tp: Threadpool,
        r: var EC,
        coefs: openArray[BigInt[bits]],
        points: openArray[ECaff]) {.meter, inline.} =
@@ -608,13 +621,35 @@ proc multiScalarMul_vartime_parallel*[bits: static int, EC, ECaff](
 
   tp.multiScalarMul_dispatch_vartime_parallel(r.addr, coefs.asUnchecked(), points.asUnchecked(), N)
 
-proc multiScalarMul_vartime_parallel*[bits: static int, EC, ECaff](
+proc multiScalarMul_vartime_parallel*[F, EC, ECaff](
        tp: Threadpool,
        r: ptr EC,
-       coefs: ptr UncheckedArray[BigInt[bits]],
+       coefs: ptr UncheckedArray[F],
        points: ptr UncheckedArray[ECaff],
-       len: int) {.meter, inline.} =
+       len: int) {.meter.} =
   ## Multiscalar multiplication:
-  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
-  ## This function can be nested in another parallel function
-  tp.multiScalarMul_dispatch_vartime_parallel(r, coefs, points, len)
+  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
+
+  let n = cast[int](len)
+  let coefs_big = allocHeapArrayAligned(matchingOrderBigInt(F.C), n, alignment = 64)
+
+  syncScope:
+    tp.parallelFor i in 0 ..< n:
+      captures: {coefs, coefs_big}
+      coefs_big[i].fromField(coefs[i])
+  tp.multiScalarMul_vartime_parallel(r, coefs_big, points, n)
+
+  freeHeapAligned(coefs_big)
+
+proc multiScalarMul_vartime_parallel*[EC, ECaff](
+       tp: Threadpool,
+       r: var EC,
+       coefs: openArray[Fr],
+       points: openArray[ECaff]) {.inline.} =
+  ## Multiscalar multiplication:
+  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
+
+  debug: doAssert coefs.len == points.len
+  let N = points.len
+
+  tp.multiScalarMul_vartime_parallel(r.addr, coefs.asUnchecked(), points.asUnchecked(), N)

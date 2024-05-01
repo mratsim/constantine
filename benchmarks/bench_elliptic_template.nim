@@ -46,7 +46,12 @@ macro fixEllipticDisplay(EC: typedesc): untyped =
   var name = $instantiated[1][0] # EllipticEquationFormCoordinates
   let fieldName = $instantiated[1][1][0]
   let curveName = $Curve(instantiated[1][1][1].intVal)
-  name.add "[" & fieldName & "[" & curveName & "]]"
+  name.add "[" &
+      fieldName & "[" & curveName & "]" &
+      (if family(Curve(instantiated[1][1][1].intVal)) != NoFamily:
+        ", " & $Subgroup(instantiated[1][2].intVal)
+      else: "") &
+      "]"
   result = newLit name
 
 proc report(op, elliptic: string, start, stop: MonoTime, startClk, stopClk: int64, iters: int) =
@@ -155,7 +160,7 @@ proc scalarMulGenericBench*(EC: typedesc, bits, window: static int, iters: int) 
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
-  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (window-" & $window & ", generic)", EC, iters):
+  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (window-" & $window & ", constant-time)", EC, iters):
     r = P
     r.scalarMulGeneric(exponent, window)
 
@@ -166,7 +171,7 @@ proc scalarMulEndo*(EC: typedesc, bits: static int, iters: int) =
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
-  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (endomorphism accelerated)", EC, iters):
+  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (constant-time, endomorphism)", EC, iters):
     r = P
     r.scalarMulEndo(exponent)
 
@@ -177,7 +182,7 @@ proc scalarMulEndoWindow*(EC: typedesc, bits: static int, iters: int) =
 
   let exponent = rng.random_unsafe(BigInt[bits])
 
-  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (window-2, endomorphism accelerated)", EC, iters):
+  bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (constant-time, window-2, endomorphism)", EC, iters):
     r = P
     when EC.F is Fp:
       r.scalarMulGLV_m2w2(exponent)
@@ -226,6 +231,25 @@ proc scalarMulVartimeEndoWNAFBench*(EC: typedesc, bits, window: static int, iter
 
   bench("EC ScalarMul " & $bits & "-bit " & $EC.G & " (vartime endomorphism + wNAF-" & $window & ")", EC, iters):
     r = P
+    r.scalarMulEndo_minHammingWeight_windowed_vartime(exponent, window)
+
+proc subgroupCheckBench*(EC: typedesc, iters: int) =
+  var P = rng.random_unsafe(EC)
+  P.clearCofactor()
+
+  bench("Subgroup check", EC, iters):
+    discard P.isInSubgroup()
+
+proc subgroupCheckScalarMulVartimeEndoWNAFBench*(EC: typedesc, bits, window: static int, iters: int) =
+  var r {.noInit.}: EC
+  var P = rng.random_unsafe(EC)
+  P.clearCofactor()
+
+  let exponent = rng.random_unsafe(BigInt[bits])
+
+  bench("EC subgroup check + ScalarMul " & $bits & "-bit " & $EC.G & " (vartime endo + wNAF-" & $window & ")", EC, iters):
+    r = P
+    discard r.isInSubgroup()
     r.scalarMulEndo_minHammingWeight_windowed_vartime(exponent, window)
 
 proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int) =

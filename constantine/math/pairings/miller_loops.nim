@@ -7,6 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  ../../platforms/abstractions,
   ../config/curves,
   ../elliptic/[
     ec_shortweierstrass_affine,
@@ -43,7 +44,7 @@ func basicMillerLoop*[FT, F1, F2](
        T: var ECP_ShortW_Prj[F2, G2],
        P: ECP_ShortW_Aff[F1, G1],
        Q: ECP_ShortW_Aff[F2, G2],
-       ate_param: static BigInt) =
+       ate_param: static BigInt) {.meter.} =
   ## Basic Miller loop iterations
   ##
   ## Multiplications by constants in the Miller loop is eliminated by final exponentiation
@@ -92,7 +93,7 @@ func millerCorrectionBN*[FT, F1, F2](
        f: var FT,
        T: var ECP_ShortW_Prj[F2, G2],
        Q: ECP_ShortW_Aff[F2, G2],
-       P: ECP_ShortW_Aff[F1, G1]) =
+       P: ECP_ShortW_Aff[F1, G1]) {.meter.} =
   ## Ate pairing for BN curves need adjustment after basic Miller loop
   ## If `ate_param_isNeg` f must be cyclotomic inverted/conjugated
   ## and T must be negated by the caller.
@@ -146,7 +147,7 @@ func miller_init_double_then_add*[FT, F1, F2](
        T: var ECP_ShortW_Prj[F2, G2],
        Q: ECP_ShortW_Aff[F2, G2],
        P: ECP_ShortW_Aff[F1, G1],
-       numDoublings: static int) =
+       numDoublings: static int) {.meter.} =
   ## Start a Miller Loop with
   ## - `numDoubling` doublings
   ## - 1 add
@@ -185,7 +186,7 @@ func miller_accum_double_then_add*[FT, F1, F2](
        T: var ECP_ShortW_Prj[F2, G2],
        Q: ECP_ShortW_Aff[F2, G2],
        P: ECP_ShortW_Aff[F1, G1],
-       numDoublings: int, add = true) =
+       numDoublings: int, add = true) {.meter.} =
   ## Continue a Miller Loop with
   ## - `numDoubling` doublings
   ## - 1 add
@@ -288,7 +289,7 @@ func basicMillerLoop*[FT, F1, F2](
        Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
        Qs: ptr UncheckedArray[ECP_ShortW_Aff[F2, G2]],
        N: int,
-       ate_param: static Bigint) =
+       ate_param: static Bigint) {.meter.} =
   ## Basic Miller loop iterations
   ##
   ## Multiplications by constants in the Miller loop is eliminated by final exponentiation
@@ -366,7 +367,7 @@ func miller_accum_double_then_add*[FT, F1, F2](
        Qs: ptr UncheckedArray[ECP_ShortW_Aff[F2, G2]],
        Ps: ptr UncheckedArray[ECP_ShortW_Aff[F1, G1]],
        N: int,
-       numDoublings: int, add = true) =
+       numDoublings: int, add = true) {.meter.} =
   ## Continue a Miller Loop with
   ## - `numDoubling` doublings
   ## - 1 add
