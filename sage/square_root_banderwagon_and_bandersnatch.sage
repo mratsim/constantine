@@ -17,7 +17,7 @@ for i in range(0, 32):
     sqrtPrecomp_PrimitiveDyadicRoots[i+1] = Fp(sqrtPrecomp_PrimitiveDyadicRoots[i]^2)
     print(hex(sqrtPrecomp_PrimitiveDyadicRoots[i+1]))
 
-sqrtPrecomp_ReconstructionDyadicRoot = sqrtPrecomp_PrimitiveDyadicRoots[24]
+sqrtPrecomp_ReconstructionDyadicRoot = int(sqrtPrecomp_PrimitiveDyadicRoots[24])
 
 # function sqrtPrecomp_PrecomputedBlocks:
 block = {}
@@ -35,15 +35,16 @@ for i in range (0, 4):
 LUTSize = 256
 sqrtPrecomp_dlogLUT = {}
 
-rootOfUnity = 1
+rootOfUnity = int(1)
 
 print('\n\nsqrtPrecomp_ReconstructionDyadicRoot = ' + hex(sqrtPrecomp_ReconstructionDyadicRoot) + '\n')
 
 for i in range(LUTSize):
     mask = LUTSize - 1
-    sqrtPrecomp_dlogLUT[rootOfUnity & 0xFFFF] = (-i) & mask
+    minus_i = -i % sqrtPrecomp_ReconstructionDyadicRoot
+    sqrtPrecomp_dlogLUT[rootOfUnity & 0xFFFF] = int(minus_i & mask)
+    print(str(rootOfUnity & 0xFFFF) + ' : ' + str(sqrtPrecomp_dlogLUT[rootOfUnity & 0xFFFF]) + '\n')
     rootOfUnity = rootOfUnity * sqrtPrecomp_ReconstructionDyadicRoot
 
-for i in sqrtPrecomp_dlogLUT:
-    print(i + ' : ' + sqrtPrecomp_dlogLUT[i])
+
 
