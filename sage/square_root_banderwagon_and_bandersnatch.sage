@@ -24,6 +24,7 @@ print('\n\nPrecomputed Blocks:\n')
 for i in range (0, 4):
     block[i] = {}
     block[i][0] = 1
+    print("For i = " + i)
     for j in range (1, 256):
         block[i][j] = Fp(block[i][j-1] * sqrtPrecomp_PrimitiveDyadicRoots[i * 8])
         print(hex(block[i][j]))
