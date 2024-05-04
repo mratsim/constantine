@@ -46,7 +46,7 @@ for i in range(len(rootOfUnity_limbs)):
     rootOfUnity += rootOfUnity_limbs[i] * (2^64)^i
 
 print('\n\nsqrtPrecomp_ReconstructionDyadicRoot = ' + hex(sqrtPrecomp_ReconstructionDyadicRoot) + '\n')
-
+print("Banderwagon_SqrtDlog_dlogLUT : ")
 for i in range(LUTSize):
     mask = LUTSize - 1
     minus_i = -i 
