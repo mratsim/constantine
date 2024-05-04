@@ -35,20 +35,21 @@ for i in range (0, 4):
 LUTSize = 256
 sqrtPrecomp_dlogLUT = {}
 
-rootOfUnity = {}
-rootOfUnity[0] = 8589934590
-rootOfUnity[1] = 6378425256633387010
-rootOfUnity[2] = 11064306276430008309
-rootOfUnity[3] = 1739710354780652911
+rootOfUnity_limbs = {}
+rootOfUnity_limbs[0] = 8589934590
+rootOfUnity_limbs[1] = 6378425256633387010
+rootOfUnity_limbs[2] = 11064306276430008309
+rootOfUnity_limbs[3] = 1739710354780652911
+rootOfUnity = 0
+
+for i in range(len(rootOfUnity_limbs)):
+    rootOfUnity += rootOfUnity_limbs[i] * (2^64)^i
 
 print('\n\nsqrtPrecomp_ReconstructionDyadicRoot = ' + hex(sqrtPrecomp_ReconstructionDyadicRoot) + '\n')
 
 for i in range(LUTSize):
     mask = LUTSize - 1
-    minus_i = -i % sqrtPrecomp_ReconstructionDyadicRoot
-    sqrtPrecomp_dlogLUT[rootOfUnity[0] & 0xFFFF] = int(minus_i & mask)
-    print(str(rootOfUnity[0] & 0xFFFF) + ' : ' + str(sqrtPrecomp_dlogLUT[rootOfUnity[0] & 0xFFFF]) + '\n')
+    minus_i = -i 
+    sqrtPrecomp_dlogLUT[(rootOfUnity % 2^64) & 0xFFFF] = int(minus_i & mask)
+    print(str((rootOfUnity % 2^64) & 0xFFFF) + ' : ' + str(sqrtPrecomp_dlogLUT[(rootOfUnity % 2^64) & 0xFFFF]) + '\n')
     rootOfUnity = (rootOfUnity * sqrtPrecomp_ReconstructionDyadicRoot) % p
-
-
-
