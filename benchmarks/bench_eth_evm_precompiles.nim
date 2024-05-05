@@ -23,7 +23,7 @@ import
 # For EIP-2537, we use the worst case vectors:
 #   https://eips.ethereum.org/assets/eip-2537/bench_vectors
 
-proc separator() = separator(116)
+proc separator() = separator(128)
 
 proc report(op: string, gas: int, startTime, stopTime: MonoTime, startClk, stopClk: int64, iters: int) =
   let ns = inNanoseconds((stopTime-startTime) div iters)
@@ -31,9 +31,9 @@ proc report(op: string, gas: int, startTime, stopTime: MonoTime, startClk, stopC
   let throughputMGas = throughput * 1e-6 * float64(gas)
   let cycles = (stopClk - startClk) div iters
   when SupportsGetTicks:
-    echo &"{op:<28} {throughputMGas:>6.2f} MGas/s {throughput:>15.3f} ops/s {ns:>12} ns/op {cycles:>12} CPU cycles (approx)"
+    echo &"{op:<24} {gas:>7} gas {throughputMGas:>10.2f} MGas/s {throughput:>15.3f} ops/s {ns:>12} ns/op {cycles:>12} CPU cycles (approx)"
   else:
-    echo &"{op:<28} {throughputMGas:>6.2f} MGas/s {throughput:>15.3f} ops/s {ns:>12} ns/op"
+    echo &"{op:<24} {gas:>7} gas {throughputMGas:>10.2f} MGas/s {throughput:>15.3f} ops/s {ns:>12} ns/op"
 
 template bench(op: string, gas: int, iters: int, body: untyped): untyped =
   measure(iters, startTime, stopTime, startClk, stopClk, body)
@@ -43,6 +43,7 @@ template bench(op: string, gas: int, iters: int, body: untyped): untyped =
 # -----------------------------------------------------------------------------------------------------
 
 const gasSchedule = {
+  "SHA256":                 -1,
   # EIP-196 and 197, gas cost from EIP-1108
   "BN254_G1ADD":           150,
   "BN254_G1MUL":          6000,
@@ -58,6 +59,10 @@ const gasSchedule = {
   "BLS12_MAP_FP_TO_G1":   5500,
   "BLS12_MAP_FP2_TO_G2": 75000,
 }.toTable()
+
+func gasSha256(length: int): int =
+  # 60 gas + 12 gas per 32 byte word
+  return 60 + 12 * ((length+31) div 32)
 
 func gasBN254PairingCheck(length: int): int =
   return 34000*length + 45000
@@ -130,6 +135,18 @@ proc createPairingInputsBLS12381(length: int): seq[byte] =
     buf.marshal(Q.y.c1, bigEndian)
     result.add buf
 
+# SHA256
+# -----------------------------------------------------------------------------------------------------
+
+proc benchSha256(words, iters: int) =
+  let length = words*32
+  var inputs = rng.random_byte_seq(length)
+  var output = newSeq[byte](32)
+
+  let opName = &"SHA256 - {length:>3} bytes"
+  bench(opName, gasSha256(length), iters):
+    discard output.eth_evm_sha256(inputs)
+
 # EIP-196 & EIP-197
 # -----------------------------------------------------------------------------------------------------
 
@@ -155,7 +172,7 @@ proc benchBN254PairingCheck(pairingCtx: seq[byte], size, iters: int) =
   var inputs = @(pairingCtx.toOpenArray(0, 192*size-1))
   var output = newSeq[byte](32)
 
-  bench(&"BN254_PAIRINGCHECK {size:>3}", gasBN254PairingCheck(size), iters):
+  bench(&"BN254_PAIRINGCHECK {size:>1}", gasBN254PairingCheck(size), iters):
     discard output.eth_evm_bn254_ecpairingcheck(inputs)
 
 # EIP-2537
@@ -223,7 +240,7 @@ proc benchBls12PairingCheck(pairingCtx: seq[byte], size, iters: int) =
   var inputs = @(pairingCtx.toOpenArray(0, 384*size-1))
   var output = newSeq[byte](32)
 
-  bench(&"BLS12_PAIRINGCHECK {size:>3}", gasBls12PairingCheck(size), iters):
+  bench(&"BLS12_PAIRINGCHECK {size:>1}", gasBls12PairingCheck(size), iters):
     discard output.eth_evm_bls12381_pairingcheck(inputs)
 
 proc createMsmInputs(EC: typedesc, length: int): seq[byte] =
@@ -272,6 +289,9 @@ const Iters        =  1000
 const ItersPairing =    10
 const ItersMsm     =    10
 proc main() =
+  separator()
+  for words in 1..8:
+    benchSha256(words, Iters)
   separator()
   benchBn254G1Add(Iters)
   benchBn254G1Mul(Iters)
