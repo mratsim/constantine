@@ -35,15 +35,7 @@ for i in range (0, 4):
 LUTSize = 256
 sqrtPrecomp_dlogLUT = {}
 
-rootOfUnity_limbs = {}
-rootOfUnity_limbs[0] = 8589934590
-rootOfUnity_limbs[1] = 6378425256633387010
-rootOfUnity_limbs[2] = 11064306276430008309
-rootOfUnity_limbs[3] = 1739710354780652911
-rootOfUnity = 0
-
-for i in range(len(rootOfUnity_limbs)):
-    rootOfUnity += rootOfUnity_limbs[i] * (2^64)^i
+rootOfUnity = 10920338887063814464675503992315976177888879664585288394250266608035967270910
 
 print('\n\nsqrtPrecomp_ReconstructionDyadicRoot = ' + hex(sqrtPrecomp_ReconstructionDyadicRoot) + '\n')
 print("Banderwagon_SqrtDlog_dlogLUT : ")
