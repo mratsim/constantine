@@ -7,6 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
+  ./hashes,
   ./platforms/abstractions,
   ./serialization/io_limbs,
   ./math/config/curves,
@@ -37,6 +38,24 @@ type
     cttEVM_IntLargerThanModulus
     cttEVM_PointNotOnCurve
     cttEVM_PointNotInSubgroup
+
+func eth_evm_sha256*(r: var openArray[byte], inputs: openArray[byte]): CttEVMStatus {.meter.} =
+  ## SHA256
+  ##
+  ## Inputs:
+  ## - Message to hash
+  ##
+  ## Output:
+  ## - 32-byte digest
+  ## - status code:
+  ##   cttEVM_Success
+  ##   cttEVM_InvalidOutputSize
+
+  if r.len != 32:
+    return cttEVM_InvalidOutputSize
+
+  sha256.hash(cast[ptr array[32, byte]](r[0].addr)[], inputs)
+  return cttEVM_Success
 
 func eth_evm_modexp*(r: var openArray[byte], inputs: openArray[byte]): CttEVMStatus {.noInline, tags:[Alloca, Vartime], meter.} =
   ## Modular exponentiation
