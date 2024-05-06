@@ -16,7 +16,7 @@ use ::core::mem::MaybeUninit;
 use std::mem;
 
 use halo2curves::bn256;
-use halo2curves::zal::MsmAccel;
+use halo2_middleware::zal::traits::MsmAccel;
 use halo2curves::CurveAffine;
 
 #[derive(Debug)]

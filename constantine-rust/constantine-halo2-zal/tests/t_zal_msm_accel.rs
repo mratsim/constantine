@@ -17,7 +17,7 @@ use halo2curves::ff::Field;
 use halo2curves::group::prime::PrimeCurveAffine;
 use halo2curves::group::{Curve, Group};
 use halo2curves::msm::best_multiexp;
-use halo2curves::zal::MsmAccel;
+use halo2_middleware::zal::traits::MsmAccel;
 
 #[test]
 fn t_threadpool() {
