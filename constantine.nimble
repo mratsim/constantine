@@ -425,6 +425,12 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/math_elliptic_curves/t_ec_twedwards_prj_mul_sanity", false),
   ("tests/math_elliptic_curves/t_ec_twedwards_prj_mul_distri", false),
 
+  # ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_mul_endomorphism_bls12_381", false),
+  # ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_mul_endomorphism_bls12_381", false),
+  # ("tests/math_elliptic_curves/t_ec_shortw_jac_g1_mul_endomorphism_bn254_snarks", false),
+  # ("tests/math_elliptic_curves/t_ec_shortw_prj_g1_mul_endomorphism_bn254_snarks", false),
+  # ("tests/math_elliptic_curves/t_ec_twedwards_mul_endomorphism_bandersnatch", false),
+
 
   # Elliptic curve arithmetic G2
   # ----------------------------------------------------------
@@ -475,6 +481,11 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   # ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_mul_distri_bw6_761.nim", false),
   ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_mul_vs_ref_bw6_761.nim", false),
   # ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_mixed_add_bw6_761.nim", false),
+
+  # ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_mul_endomorphism_bls12_381", false),
+  # ("tests/math_elliptic_curves/t_ec_shortw_prj_g2_mul_endomorphism_bls12_381", false),
+  # ("tests/math_elliptic_curves/t_ec_shortw_jac_g2_mul_endomorphism_bn254_snarks", false),
+  # ("tests/math_elliptic_curves/t_ec_shortw_prj_g2_mul_endomorphism_bn254_snarks", false),
 
   # Elliptic curve arithmetic vs Sagemath
   # ----------------------------------------------------------

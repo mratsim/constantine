@@ -18,8 +18,10 @@ import
   ./ec_shortweierstrass_affine,
   ./ec_shortweierstrass_jacobian,
   ./ec_shortweierstrass_projective,
+  ./ec_twistededwards_affine,
   ./ec_twistededwards_projective,
-  ./ec_shortweierstrass_batch_ops
+  ./ec_shortweierstrass_batch_ops,
+  ./ec_twistededwards_batch_ops
 
 # ############################################################
 #

@@ -28,12 +28,14 @@ import
     ec_twistededwards_affine,
     ec_twistededwards_projective,
     ec_scalar_mul,
-    ec_multi_scalar_mul],
+    ec_multi_scalar_mul,
+    ec_endomorphism_accel],
   ../../constantine/math/io/[io_bigints, io_fields, io_ec],
-  ../../constantine/math/constants/zoo_subgroups,
+  ../../constantine/math/constants/[zoo_subgroups, zoo_endomorphisms],
   # Test utilities
   ../../helpers/prng_unsafe,
-  ../../constantine/math/elliptic/ec_scalar_mul_vartime
+  ../../constantine/math/elliptic/ec_scalar_mul_vartime,
+  ../../constantine/math_arbitrary_precision/arithmetic/limbs_divmod_vartime
 
 export unittest, abstractions, arithmetic # Generic sandwich
 
@@ -522,15 +524,15 @@ proc run_EC_mul_sanity_tests*(
         for _ in 0 ..< ItersMul:
           let a = rng.random_point(EC, randZ, gen)
 
-          var exponent{.noInit.}: BigInt[bits]
-          exponent.setOne()
+          var scalar{.noInit.}: BigInt[bits]
+          scalar.setOne()
 
           var
             impl = a
             reference = a
 
-          impl.scalarMulGeneric(exponent)
-          reference.scalarMul_doubleAdd_vartime(exponent)
+          impl.scalarMulGeneric(scalar)
+          reference.scalarMul_doubleAdd_vartime(scalar)
 
           check:
             bool(impl == a)
@@ -551,14 +553,14 @@ proc run_EC_mul_sanity_tests*(
           var doubleA{.noInit.}: EC
           doubleA.double(a)
 
-          let exponent = BigInt[bits].fromUint(2)
+          let scalar = BigInt[bits].fromUint(2)
 
           var
             impl = a
             reference = a
 
-          impl.scalarMulGeneric(exponent)
-          reference.scalarMul_doubleAdd_vartime(exponent)
+          impl.scalarMulGeneric(scalar)
+          reference.scalarMul_doubleAdd_vartime(scalar)
 
           check:
             bool(impl == doubleA)
@@ -592,7 +594,7 @@ proc run_EC_mul_distributive_tests*(
           let a = rng.random_point(EC, randZ, gen)
           let b = rng.random_point(EC, randZ, gen)
 
-          let exponent = rng.random_unsafe(BigInt[bits])
+          let scalar = rng.random_unsafe(BigInt[bits])
 
           # [k](a + b) - Factorized
           var
@@ -602,21 +604,21 @@ proc run_EC_mul_distributive_tests*(
           fImpl.sum(a, b)
           fReference.sum(a, b)
 
-          fImpl.scalarMulGeneric(exponent)
-          fReference.scalarMul_doubleAdd_vartime(exponent)
+          fImpl.scalarMulGeneric(scalar)
+          fReference.scalarMul_doubleAdd_vartime(scalar)
 
           # [k]a + [k]b - Distributed
           var kaImpl = a
           var kaRef = a
 
-          kaImpl.scalarMulGeneric(exponent)
-          kaRef.scalarMul_doubleAdd_vartime(exponent)
+          kaImpl.scalarMulGeneric(scalar)
+          kaRef.scalarMul_doubleAdd_vartime(scalar)
 
           var kbImpl = b
           var kbRef = b
 
-          kbImpl.scalarMulGeneric(exponent)
-          kbRef.scalarMul_doubleAdd_vartime(exponent)
+          kbImpl.scalarMulGeneric(scalar)
+          kbRef.scalarMul_doubleAdd_vartime(scalar)
 
           var kakbImpl{.noInit.}, kakbRef{.noInit.}: EC
           kakbImpl.sum(kaImpl, kbImpl)
@@ -651,32 +653,138 @@ proc run_EC_mul_vs_ref_impl*(
     test "EC " & $ec.G & " mul constant-time is equivalent to a simple double-and-add and recoded algorithms":
       proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< ItersMul:
-          let a = rng.random_point(EC, randZ, gen)
+          let P = rng.random_point(EC, randZ, gen)
 
           # We want to test how window methods handles unbalanced 0/1
-          let exponent = rng.random_long01Seq(BigInt[bits])
+          let scalar = rng.random_long01Seq(BigInt[bits])
 
           var
-            impl = a
-            reference = a
-            refMinWeight = a
+            impl = P
+            reference = P
+            refMinWeight = P
 
-          impl.scalarMulGeneric(exponent)
-          reference.scalarMul_doubleAdd_vartime(exponent)
-          refMinWeight.scalarMul_minHammingWeight_vartime(exponent)
+          impl.scalarMulGeneric(scalar)
+          reference.scalarMul_doubleAdd_vartime(scalar)
+          refMinWeight.scalarMul_minHammingWeight_vartime(scalar)
 
           check:
             bool(impl == reference)
             bool(impl == refMinWeight)
 
           proc refWNaf(w: static int) = # workaround staticFor symbol visibility
-            var refWNAF = a
-            refWNAF.scalarMul_minHammingWeight_windowed_vartime(exponent, window = w)
+            var refWNAF = P
+            refWNAF.scalarMul_minHammingWeight_windowed_vartime(scalar, window = w)
             check: bool(impl == refWNAF)
 
           refWNaf(2)
           refWNaf(3)
           refWNaf(5)
+
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Uniform)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = HighHammingWeight)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = HighHammingWeight)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Long01Sequence)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Long01Sequence)
+
+      # Scalars that doesn't uses the full bit length
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 2, randZ = false, gen = Uniform)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 2, randZ = true, gen = Uniform)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 2, randZ = false, gen = HighHammingWeight)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 2, randZ = true, gen = HighHammingWeight)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 2, randZ = false, gen = Long01Sequence)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 2, randZ = true, gen = Long01Sequence)
+
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 4, randZ = false, gen = Uniform)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 4, randZ = true, gen = Uniform)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 4, randZ = false, gen = HighHammingWeight)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 4, randZ = true, gen = HighHammingWeight)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 4, randZ = false, gen = Long01Sequence)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 4, randZ = true, gen = Long01Sequence)
+
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 2, randZ = false, gen = Uniform)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 2, randZ = true, gen = Uniform)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 2, randZ = false, gen = HighHammingWeight)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 2, randZ = true, gen = HighHammingWeight)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 2, randZ = false, gen = Long01Sequence)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 2, randZ = true, gen = Long01Sequence)
+
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 4, randZ = false, gen = Uniform)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 4, randZ = true, gen = Uniform)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 4, randZ = false, gen = HighHammingWeight)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 4, randZ = true, gen = HighHammingWeight)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 4, randZ = false, gen = Long01Sequence)
+      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 4, randZ = true, gen = Long01Sequence)
+
+proc run_EC_mul_endomorphism_impl*(
+       ec: typedesc,
+       ItersMul: static int,
+       moduleName: string) =
+  # Random seed for reproducibility
+  var rng: RngState
+  let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32
+  rng.seed(seed)
+  echo "\n------------------------------------------------------\n"
+  echo moduleName, " xoshiro512** seed: ", seed
+
+  const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
+
+  suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
+    test "EC " & $ec.G & " multiplication with endomorphism":
+      proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
+        for _ in 0 ..< ItersMul:
+          var P = rng.random_point(EC, randZ, gen)
+          P.clearCofactor() # Endomorphism acceleration is only valid if in the prime order subgroup
+
+          # We want to test how window methods handles unbalanced 0/1
+          let scalarUnreduced = rng.random_long01Seq(BigInt[bits])
+          # Ensure scalar is smaller than curve order
+          var scalar {.noInit.}: BigInt[bits]
+          discard scalar.limbs.reduce_vartime(scalarUnreduced.limbs, EC.F.C.getCurveOrder().limbs)
+
+          proc diagnostic(expected, computed: EC): string =
+            return "Type: " & $EC & "\n" &
+                   "Point:  " & P.toHex() & "\n" &
+                   "scalar: " & scalar.toHex() & "\n" &
+                   "expected: " & expected.toHex() & "\n" &
+                   "computed: " & computed.toHex()
+
+          var
+            impl = P
+            reference = P
+            refMinWeight = P
+
+          impl.scalarMulGeneric(scalar)
+          reference.scalarMul_doubleAdd_vartime(scalar)
+          refMinWeight.scalarMul_minHammingWeight_vartime(scalar)
+
+          check:
+            bool(impl == reference)
+            bool(impl == refMinWeight)
+
+          proc refWNaf(w: static int) = # workaround staticFor symbol visibility
+            var refWNAF = P
+            refWNAF.scalarMul_minHammingWeight_windowed_vartime(scalar, window = w)
+            check: bool(impl == refWNAF)
+
+          refWNaf(2)
+          refWNaf(3)
+          refWNaf(5)
+
+          when bits >= EndomorphismThreshold: # All endomorphisms constants are below this threshold
+            var endo = P
+            endo.scalarMulEndo(scalar)
+            doAssert bool(impl == endo), diagnostic(impl, endo)
+
+            when EC.F is Fp: # Test windowed endomorphism acceleration
+              var endoW = P
+              endoW.scalarMulGLV_m2w2(scalar)
+              doAssert bool(impl == endoW), diagnostic(impl, endoW)
+
+            staticFor w, 2, 5:
+              var endoWNAF = P
+              endoWNAF.scalarMulEndo_minHammingWeight_windowed_vartime(scalar, window = w)
+              doAssert bool(impl == endoWNAF), diagnostic(impl, endoWNAF)
 
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Uniform)

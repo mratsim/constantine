@@ -252,25 +252,13 @@ func scalarMulEndo_minHammingWeight_windowed_vartime*[scalBits: static int; EC](
   const precompSize = 1 shl (window - 2)
   static: doAssert window < 8, "Window is too large and precomputation would use " & $(precompSize * sizeof(EC)) & " stack space."
 
-  when P.F is Fp:
-    const M = 2
-    # 1. Compute endomorphisms
-    var endomorphisms {.noInit.}: array[M-1, EC]
-    when P.G == G1:
-      endomorphisms[0] = P
-      endomorphisms[0].x *= EC.F.C.getCubicRootOfUnity_mod_p()
-    else:
-      endomorphisms[0].frobenius_psi(P, 2)
+  # 1. Compute endomorphisms
+  const M = when P.F is Fp:  2
+            elif P.F is Fp2: 4
+            else: {.error: "Unconfigured".}
 
-  elif P.F is Fp2:
-    const M = 4
-    # 1. Compute endomorphisms
-    var endomorphisms {.noInit.}: array[M-1, EC]
-    endomorphisms[0].frobenius_psi(P)
-    endomorphisms[1].frobenius_psi(P, 2)
-    endomorphisms[2].frobenius_psi(P, 3)
-  else:
-    {.error: "Unconfigured".}
+  var endos {.noInit.}: array[M-1, EC]
+  endos.computeEndomorphisms(P)
 
   # 2. Decompose scalar into mini-scalars
   const L = scalBits.ceilDiv_vartime(M) + 1
@@ -283,7 +271,7 @@ func scalarMulEndo_minHammingWeight_windowed_vartime*[scalBits: static int; EC](
     P.neg()
   for m in 1 ..< M:
     if negatePoints[m].bool:
-      endomorphisms[m-1].neg()
+      endos[m-1].neg()
 
   # 4. EC precomputed table
   var tabEC {.noinit.}: array[M, array[precompSize, EC]]
@@ -293,8 +281,8 @@ func scalarMulEndo_minHammingWeight_windowed_vartime*[scalBits: static int; EC](
       tabEC[0][0] = P
       P2.double(P)
     else:
-      tabEC[m][0] = endomorphisms[m-1]
-      P2.double(endomorphisms[m-1])
+      tabEC[m][0] = endos[m-1]
+      P2.double(endos[m-1])
     for i in 1 ..< tabEC[m].len:
       tabEC[m][i].sum_vartime(tabEC[m][i-1], P2)
 

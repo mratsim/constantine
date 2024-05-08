@@ -44,6 +44,13 @@ func setInf*(P: var ECP_TwEdwards_Aff) {.inline.} =
   P.x.setZero()
   P.y.setOne()
 
+func ccopy*(P: var ECP_TwEdwards_Aff, Q: ECP_TwEdwards_Aff, ctl: SecretBool) {.inline.} =
+  ## Constant-time conditional copy
+  ## If ctl is true: Q is copied into P
+  ## if ctl is false: Q is not copied and P is unmodified
+  ## Time and memory accesses are the same whether a copy occurs or not
+  for fP, fQ in fields(P, Q):
+    ccopy(fP, fQ, ctl)
 
 func isOnCurve*[F](x, y: F): SecretBool =
   ## Returns true if the (x, y) coordinates
@@ -52,7 +59,7 @@ func isOnCurve*[F](x, y: F): SecretBool =
   var t0{.noInit.}, t1{.noInit.}, t2{.noInit.}: F
   t0.square(x)
   t1.square(y)
-  
+
   # ax²+y²
   when F.C.getCoefA() is int:
     when F.C.getCoefA() == -1:
@@ -84,10 +91,10 @@ func isOnCurve*[F](x, y: F): SecretBool =
 func trySetFromCoordX*[F](P: var ECP_TwEdwards_Aff[F], x: F): SecretBool =
   ## Try to create a point on the elliptic curve from X co-ordinate
   ##   ax²+y²=1+dx²y²    (affine coordinate)
-  ## 
+  ##
   ## return true and update `P` if `y` leads to a valid point
   ## return false otherwise, in that case `P` is undefined.
-  
+
   # y² = (1 - ax²)/(1 - dx²)
   var t {.noInit.}: F
   var one {.noInit.}: F
@@ -129,10 +136,10 @@ func trySetFromCoordX_vartime*[F](P: var ECP_TwEdwards_Aff[F], x: F): SecretBool
   ## This is not in constant time
   ## Try to create a point on the elliptic curve from X co-ordinate
   ##   ax²+y²=1+dx²y²    (affine coordinate)
-  ## 
+  ##
   ## return true and update `P` if `y` leads to a valid point
   ## return false otherwise, in that case `P` is undefined.
-  
+
   # y² = (1 - ax²)/(1 - dx²)
   var t {.noInit.}: F
   var one {.noInit.}: F
@@ -180,7 +187,7 @@ func trySetFromCoordY*[F](P: var ECP_TwEdwards_Aff[F], y: F): SecretBool =
   ##
   ## Note: Dedicated robust procedures for hashing-to-curve
   ##       will be provided, this is intended for testing purposes.
-  ## 
+  ##
   ##       For **test case generation only**,
   ##       this is preferred to generating random point
   ##       via random scalar multiplication of the curve generator
@@ -252,9 +259,9 @@ func `==`*(P, Q: ECP_TwEdwards_Aff[Fp[Banderwagon]]): SecretBool =
   ## Equality check for points in the Banderwagon Group
   ## The equality check is optimized for the quotient group
   ## see: https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Equality-check
-  ## 
+  ##
   ## Check for the (0,0) point, which is possible
-  ## 
+  ##
   ## This is a costly operation
 
   var lhs{.noInit.}, rhs{.noInit.}: typeof(P).F
