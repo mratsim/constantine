@@ -18,7 +18,6 @@ import
   ../extension_fields,
   ../io/io_bigints,
   ../constants/zoo_endomorphisms,
-  ../isogenies/frobenius,
   ../../platforms/abstractions,
   ../../math_arbitrary_precision/arithmetic/limbs_views
 

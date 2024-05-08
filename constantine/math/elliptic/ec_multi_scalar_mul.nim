@@ -10,7 +10,6 @@ import ../config/curves,
        ./ec_multi_scalar_mul_scheduler,
        ./ec_endomorphism_accel,
        ../extension_fields,
-       ../isogenies/frobenius,
        ../constants/zoo_endomorphisms
 export bestBucketBitSize
 

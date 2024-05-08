@@ -742,8 +742,9 @@ proc run_EC_mul_endomorphism_impl*(
           var scalar {.noInit.}: BigInt[bits]
           discard scalar.limbs.reduce_vartime(scalarUnreduced.limbs, EC.F.C.getCurveOrder().limbs)
 
-          proc diagnostic(expected, computed: EC): string =
-            return "Type: " & $EC & "\n" &
+          proc diagnostic(expected, computed: EC): string {.used.} =
+            return "\n" &
+                   "Type: " & $EC & "\n" &
                    "Point:  " & P.toHex() & "\n" &
                    "scalar: " & scalar.toHex() & "\n" &
                    "expected: " & expected.toHex() & "\n" &
@@ -785,6 +786,8 @@ proc run_EC_mul_endomorphism_impl*(
               var endoWNAF = P
               endoWNAF.scalarMulEndo_minHammingWeight_windowed_vartime(scalar, window = w)
               doAssert bool(impl == endoWNAF), diagnostic(impl, endoWNAF)
+
+          stdout.write '.'
 
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
       test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Uniform)
