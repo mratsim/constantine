@@ -167,11 +167,11 @@ with open(f'bandersnatch_endomorphisms.nim', 'w') as f:
 
     f.write('\n\n')
     f.write(dumpConst(
-    f'Bandersnatch_Lattice',
+    f'Bandersnatch_Lattice_G1',
     dumpLattice(lattice)
     ))
     f.write('\n')
     f.write(dumpConst(
-    f'Bandersnatch_Babai',
+    f'Bandersnatch_Babai_G1',
     dumpBabai(babai)
     ))

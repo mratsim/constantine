@@ -332,25 +332,14 @@ func scalarMulEndo*[scalBits; EC](
   mixin affine
   const C = P.F.Name # curve
   static: doAssert scalBits <= EC.getScalarField().bits(), "Do not use endomorphism to multiply beyond the curve order"
-  when P.F is Fp:
-    const M = 2
-    # 1. Compute endomorphisms
-    var endomorphisms {.noInit.}: array[M-1, EC]
-    when P.G == G1:
-      endomorphisms[0] = P
-      endomorphisms[0].x *= C.getCubicRootOfUnity_mod_p()
-    else:
-      endomorphisms[0].frobenius_psi(P, 2)
 
-  elif P.F is Fp2:
-    const M = 4
-    # 1. Compute endomorphisms
-    var endomorphisms {.noInit.}: array[M-1, EC]
-    endomorphisms[0].frobenius_psi(P)
-    endomorphisms[1].frobenius_psi(P, 2)
-    endomorphisms[2].frobenius_psi(P, 3)
-  else:
-    {.error: "Unconfigured".}
+  # 1. Compute endomorphisms
+  const M = when P.F is Fp:  2
+            elif P.F is Fp2: 4
+            else: {.error: "Unconfigured".}
+
+  var endos {.noInit.}: array[M-1, EC]
+  endos.computeEndomorphisms(P)
 
   # 2. Decompose scalar into mini-scalars
   const L = scalBits.ceilDiv_vartime(M) + 1
@@ -366,11 +355,11 @@ func scalarMulEndo*[scalBits; EC](
   block:
     P.cneg(negatePoints[0])
     staticFor i, 1, M:
-      endomorphisms[i-1].cneg(negatePoints[i])
+      endos[i-1].cneg(negatePoints[i])
 
   # 4. Precompute lookup table
   var lut {.noInit.}: array[1 shl (M-1), affine(EC)]
-  buildLookupTable(P, endomorphisms, lut)
+  buildLookupTable(P, endos, lut)
 
   # 5. Recode the miniscalars
   #    we need the base miniscalar (that encodes the sign)
@@ -521,12 +510,8 @@ func scalarMulGLV_m2w2*[scalBits; EC](P0: var EC, scalar: BigInt[scalBits]) {.me
   static: doAssert: scalBits <= EC.getScalarField().bits()
 
   # 1. Compute endomorphisms
-  when P0.G == G1:
-    var P1 = P0
-    P1.x *= C.getCubicRootOfUnity_mod_p()
-  else:
-    var P1 {.noInit.}: EC
-    P1.frobenius_psi(P0, 2)
+  var P1 {.noInit.}: EC
+  P1.computeEndomorphism(P0)
 
   # 2. Decompose scalar into mini-scalars
   const L = computeRecodedLength(EC.getScalarField().bits(), 2)
