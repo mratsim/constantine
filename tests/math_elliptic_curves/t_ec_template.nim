@@ -742,8 +742,9 @@ proc run_EC_mul_endomorphism_impl*(
           var scalar {.noInit.}: BigInt[bits]
           discard scalar.limbs.reduce_vartime(scalarUnreduced.limbs, EC.F.Name.scalarFieldModulus().limbs)
 
-          proc diagnostic(expected, computed: EC): string =
-            return "Type: " & $EC & "\n" &
+          proc diagnostic(expected, computed: EC): string {.used.} =
+            return "\n" &
+                   "Type: " & $EC & "\n" &
                    "Point:  " & P.toHex() & "\n" &
                    "scalar: " & scalar.toHex() & "\n" &
                    "expected: " & expected.toHex() & "\n" &

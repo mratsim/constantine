@@ -61,11 +61,14 @@ def pretty_print_babai(Basis):
       print(f'  𝛼\u0305{i}:  0x{Integer(int(v)).hex()}')
 
 def derive_lattice(r, lambdaR, m):
-  lat = Matrix(matrix.identity(m))
-  lat[0, 0] = r
-  for i in range(1, m):
-     lat[i, 0] = -lambdaR^i
-
+  # Note:
+  # - There are 2 solutions to sqrt(-2), each corresponding to a different endomorphism
+  # We derive the lattice decomposition for Bandersnatch according
+  # to the reference Python implementation instead as what we use for the other curves.
+  # For the other short weierstrass curves we can easily test
+  # the correspondance Qendo = lambdaR * P
+  # but SageMath does not implement Twisted Edwards curves.
+  lat = Matrix([[-lambdaR,1], [r,0]])
   return lat.LLL()
 
 def derive_babai(r, lattice, m):
@@ -85,19 +88,22 @@ r = Integer('0x1cfb69d4ca675f520cce760202687600ff8f87007419047174fd06b52876e7e1'
 Fr = GF(r)
 
 sol = [Integer(root) for root in Fr(-2).nth_root(2, all=True) if root != 1]
+print([x.hex() for x in sol])
 
 # Paper: https://eprint.iacr.org/2021/1152.pdf
 #  - https://ethresear.ch/t/introducing-bandersnatch-a-fast-elliptic-curve-built-over-the-bls12-381-scalar-field/9957
 #  - https://github.com/asanso/Bandersnatch/
-L = Integer('0x13b4f3dc4a39a493edf849562b38c72bcfc49db970a5056ed13d21408783df05')
-assert L in sol
+lambda1 = Integer('0x13b4f3dc4a39a493edf849562b38c72bcfc49db970a5056ed13d21408783df05')
+lambda2 = Integer(-Fr(lambda1))
+assert lambda1 in sol
+assert lambda2 in sol
 
 print('Deriving Lattice')
-lattice = derive_lattice(r, L, 2)
+lattice = derive_lattice(r, lambda1, 2)
 pretty_print_lattice(lattice)
 
 print('Deriving Babai basis')
-babai = derive_babai(r, L, 2)
+babai = derive_babai(r, lattice, 2)
 pretty_print_babai(babai)
 
 

@@ -17,10 +17,9 @@ import
   constantine/math/arithmetic,
   constantine/math/extension_fields,
   constantine/math/io/io_bigints,
-  constantine/named/zoo_endomorphisms,
-  constantine/math/isogenies/frobenius,
   constantine/platforms/abstractions,
-  constantine/math_arbitrary_precision/arithmetic/limbs_views
+  constantine/math_arbitrary_precision/arithmetic/limbs_views,
+  constantine/named/zoo_endomorphisms
 
 {.push raises: [].} # No exceptions allowed in core cryptographic operations
 {.push checks: off.} # No defects due to array bound checking or signed integer overflow allowed

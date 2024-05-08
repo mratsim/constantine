@@ -85,7 +85,7 @@ func computeEndomorphism*[EC](endo: var EC, P: EC) =
   elif P.G == G1:
     endo.x.prod(P.x, C.getCubicRootOfUnity_mod_p())
     endo.y = P.y
-    when P isnot ECP_ShortW_Aff:
+    when P isnot EC_ShortW_Aff:
       endo.z = P.z
   else: # For BW6-761, both G1 and G2 are on Fp
     endo.frobenius_psi(P, 2)
