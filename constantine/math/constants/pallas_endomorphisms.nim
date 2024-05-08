@@ -31,5 +31,3 @@ const Pallas_Babai_G1* = (
   (BigInt[129].fromHex"0x1279a745902a2654e32c49e4bffffffff", true),
   (BigInt[129].fromHex"0x1279a745903c12455ff2b871c00000003", false)
 )
-
-

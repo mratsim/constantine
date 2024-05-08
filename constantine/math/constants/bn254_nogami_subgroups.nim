@@ -89,7 +89,7 @@ func clearCofactorFast*(P: var ECP_ShortW[Fp[BN254_Nogami], G1]) {.inline.} =
 # BN G2
 # ------------------------------------------------------------
 #
-# Implementation 
+# Implementation
 # Fuentes-Castaneda et al, "Fast Hashing to G2 on Pairing-Friendly Curves", https://doi.org/10.1007/978-3-642-28496-0_25*
 
 func clearCofactorFast*(P: var ECP_ShortW[Fp2[BN254_Nogami], G2]) {.inline.} =
@@ -100,8 +100,8 @@ func clearCofactorFast*(P: var ECP_ShortW[Fp2[BN254_Nogami], G2]) {.inline.} =
 
   xP.pow_BN254_Nogami_u(P) # xP = [x]P
   t.frobenius_psi(P, 3)    # t  = ψ³(P)
-  P.double(xP)    
-  P += xP                  
+  P.double(xP)
+  P += xP
   P.frobenius_psi(P)       # P  = [3x]ψ(P)
   P += t                   # P  = [3x]ψ(P) + ψ³(P)
   t.frobenius_psi(xP, 2)   # t  = [x]ψ²(P)
@@ -119,7 +119,7 @@ func isInSubgroup*(P: ECP_ShortW[Fp[BN254_Nogami], G1]): SecretBool {.inline.} =
   ## A point may be on a curve but not on the prime order r subgroup.
   ## Not checking subgroup exposes a protocol to small subgroup attacks.
   ## This is a no-op as on G1, all points are in the correct subgroup.
-  ## 
+  ##
   ## Warning ⚠: Assumes that P is on curve
   return CtTrue
 
@@ -131,22 +131,22 @@ func isInSubgroup*(P: ECP_ShortW_Jac[Fp2[BN254_Nogami], G2] or ECP_ShortW_Prj[Fp
   #   A note on group membership tests for G1, G2 and GT
   #   on BLS pairing-friendly curves
   #
-  #   The condition to apply the optimized endomorphism check on G₂ 
+  #   The condition to apply the optimized endomorphism check on G₂
   #   is gcd(h₁, h₂) == 1 with h₁ and h₂ the cofactors on G₁ and G₂.
   #   In that case [p]Q == [t-1]Q as r = p+1-t and [r]Q = 0
   #   For BN curves h₁ = 1, hence Scott group membership tests can be used for BN curves
-  #   
+  #
   #   p the prime modulus: 36u⁴ + 36u³ + 24u² + 6u + 1
   #   r the prime order:   36u⁴ + 36u³ + 18u² + 6u + 1
   #   t the trace:         6u² + 1
   var t0{.noInit.}, t1{.noInit.}: typeof(P)
-  
+
   t0.pow_BN254_Nogami_u(P)  # [u]P
   t1.pow_BN254_Nogami_u(t0) # [u²]P
   t0.double(t1)             # [2u²]P
   t0 += t1                  # [3u²]P
   t0.double()               # [6u²]P
-  
+
   t1.frobenius_psi(P)       # ψ(P)
 
   return t0 == t1
@@ -155,7 +155,7 @@ func isInSubgroup*(P: ECP_ShortW_Aff[Fp2[BN254_Nogami], G2]): SecretBool =
   ## Returns true if P is in 𝔾2 subgroup, i.e. P is a point of order r.
   ## A point may be on a curve but not on the prime order r subgroup.
   ## Not checking subgroup exposes a protocol to small subgroup attacks.
-  ## 
+  ##
   ## Warning ⚠: Assumes that P is on curve
   var t{.noInit.}: ECP_ShortW_Jac[Fp2[BN254_Nogami], G2]
   t.fromAffine(P)

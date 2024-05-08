@@ -11,10 +11,10 @@ import
     ../arithmetic,
     ../io/[io_bigints, io_fields]
 
-# Bandersnatch
+# Banderwagon
 # ------------------------------------------------------------
 
-const Bandersnatch_Lattice_G1* = (
+const Banderwagon_Lattice_G1* = (
   # (BigInt, isNeg)
   ((BigInt[127].fromHex"0x555fe2004be6928e4b02f94a9789181f", true),
    (BigInt[124].fromHex"0x814b3eee55e8f5df8e2591a23d61f44", true)),
@@ -22,7 +22,7 @@ const Bandersnatch_Lattice_G1* = (
    (BigInt[127].fromHex"0x555fe2004be6928e4b02f94a9789181f", true))
 )
 
-const Bandersnatch_Babai_G1* = (
+const Banderwagon_Babai_G1* = (
   # (BigInt, isNeg)
   (BigInt[4].fromHex"0xc", false),
   (BigInt[1].fromHex"0x0", false)
