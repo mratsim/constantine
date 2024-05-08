@@ -10,7 +10,6 @@ import constantine/named/algebras,
        ./ec_multi_scalar_mul_scheduler,
        ./ec_endomorphism_accel,
        constantine/math/extension_fields,
-       constantine/math/isogenies/frobenius,
        constantine/named/zoo_endomorphisms
 export bestBucketBitSize
 
@@ -411,17 +410,10 @@ proc applyEndomorphism[bits: static int, ECaff](
     else:
       endoBasis[i][0] = points[i]
 
-    when ECaff.F is Fp:
-      endoBasis[i][1].x.prod(points[i].x, ECaff.F.Name.getCubicRootOfUnity_mod_p())
-      if negatePoints[1].bool:
-        endoBasis[i][1].y.neg(points[i].y)
-      else:
-        endoBasis[i][1].y = points[i].y
-    else:
-      staticFor m, 1, M:
-        endoBasis[i][m].frobenius_psi(points[i], m)
-        if negatePoints[m].bool:
-          endoBasis[i][m].neg()
+    cast[ptr array[M-1, ECaff]](endoBasis[i][1].addr)[].computeEndomorphisms(points[i])
+    for m in 1 ..< M:
+      if negatePoints[m].bool:
+        endoBasis[i][m].neg()
 
   let endoCoefs = cast[ptr UncheckedArray[BigInt[L]]](splitCoefs)
   let endoPoints  = cast[ptr UncheckedArray[ECaff]](endoBasis)

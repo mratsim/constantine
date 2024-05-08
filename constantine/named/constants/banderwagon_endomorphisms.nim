@@ -7,9 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-    ../config/curves,
-    ../arithmetic,
-    ../io/[io_bigints, io_fields]
+    constantine/math/io/io_bigints
 
 # Banderwagon
 # ------------------------------------------------------------
