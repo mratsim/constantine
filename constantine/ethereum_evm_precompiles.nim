@@ -1085,7 +1085,7 @@ func eth_evm_bls12381_map_fp_to_g1*(r: var openArray[byte], inputs: openarray[by
   return cttEVM_Success
 
 func eth_evm_bls12381_map_fp2_to_g2*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
-  ## Map an Fp2 extension field element to G1
+  ## Map an Fp2 extension field element to G2
   ##
   ## Name: BLS12_MAP_FP2_TO_G2
   ##

@@ -432,7 +432,7 @@ ctt_evm_status ctt_eth_evm_bls12381_map_fp_to_g1(
 ) __attribute__((warn_unused_result));
 
 /**
-  *  Map an Fp2 extension field element to G1
+  *  Map an Fp2 extension field element to G2
   *
   *  Name: BLS12_MAP_FP2_TO_G2
   *
