@@ -49,7 +49,6 @@ int main(){
     printf("Signature verification failure: status %d - %s\n", bls_status, ctt_eth_bls_status_to_string(bls_status));
     exit(1);
   }
-
   printf("Example BLS signature/verification protocol completed successfully\n");
 
 
@@ -73,5 +72,26 @@ int main(){
   }
 
   printf("Example BLS batch verification completed successfully\n");
+
+  // ------------------------------
+  // Batch verification, parallel
+  // ------------------------------
+
+  // and now try to use a threadpool and do the same in parallel
+
+  struct ctt_threadpool* tp = ctt_threadpool_new(4);
+  printf("Constantine: Threadpool init successful.\n");
+  bls_status = ctt_eth_bls_batch_verify_parallel(tp, pkeys, messages, sigs, 3, srb);
+  if (bls_status != cttEthBls_Success) {
+    printf("Batch verification failure: status %d - %s\n", bls_status, ctt_eth_bls_status_to_string(bls_status));
+    exit(1);
+  }
+  printf("Example parallel BLS batch verification completed successfully\n");
+
+  ctt_threadpool_shutdown(tp);
+  printf("Constantine: Threadpool shutdown successful.\n");
+
+
+
   return 0;
 }
