@@ -475,7 +475,7 @@ func update*[Pubkey, Sig: ECP_ShortW_Aff](
        pubkey: Pubkey,
        message: View[byte],
        signature: Sig): bool {.inline.} =
-  ctx.update(pubkey, message, signature)
+  ctx.update(pubkey, message.toOpenArray(), signature)
 
 func handover*(ctx: var BLSBatchSigAccumulator) {.inline.} =
   ## Prepare accumulator for cheaper merging.
