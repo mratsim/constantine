@@ -233,7 +233,7 @@ jobs:
 
       - name: Install Rust [${{ matrix.rust_toolchain }}]
         shell: bash
-        run: rustup update ${{ matrix.rust_toolchain }} && rustup default ${{ matrix.rust_toolchain }}
+        run: rustup default ${{ matrix.rust_toolchain }}
 
       - name: Print Nim, Go Rust, LLVM versions and CPU specs.
         shell: bash
