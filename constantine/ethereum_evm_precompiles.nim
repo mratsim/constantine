@@ -27,6 +27,9 @@ import
 #
 # ############################################################
 
+import ./zoo_exports
+const prefix_ffi = "ctt_" # all funcs already have an `eth_evm` prefix in Nim
+
 # No exceptions for the EVM API
 {.push raises: [].}
 
@@ -39,7 +42,7 @@ type
     cttEVM_PointNotOnCurve
     cttEVM_PointNotInSubgroup
 
-func eth_evm_sha256*(r: var openArray[byte], inputs: openArray[byte]): CttEVMStatus {.meter.} =
+func eth_evm_sha256*(r: var openArray[byte], inputs: openArray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
   ## SHA256
   ##
   ## Inputs:
@@ -57,7 +60,7 @@ func eth_evm_sha256*(r: var openArray[byte], inputs: openArray[byte]): CttEVMSta
   sha256.hash(cast[ptr array[32, byte]](r[0].addr)[], inputs)
   return cttEVM_Success
 
-func eth_evm_modexp*(r: var openArray[byte], inputs: openArray[byte]): CttEVMStatus {.noInline, tags:[Alloca, Vartime], meter.} =
+func eth_evm_modexp*(r: var openArray[byte], inputs: openArray[byte]): CttEVMStatus {.noInline, tags:[Alloca, Vartime], libPrefix: prefix_ffi, meter.} =
   ## Modular exponentiation
   ##
   ## Name: MODEXP
@@ -308,7 +311,7 @@ func fromRawCoords[C: static Curve, G: static Subgroup](
     return status
   dst.fromAffine(aff)
 
-func eth_evm_bn254_g1add*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.meter.} =
+func eth_evm_bn254_g1add*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
   ## Elliptic Curve addition on BN254_Snarks
   ## (also called alt_bn128 in Ethereum specs
   ##  and bn256 in Ethereum tests)
@@ -366,7 +369,7 @@ func eth_evm_bn254_g1add*(r: var openArray[byte], inputs: openarray[byte]): CttE
   r.toOpenArray(32, 63).marshal(aff.y, bigEndian)
   return cttEVM_Success
 
-func eth_evm_bn254_g1mul*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.meter.} =
+func eth_evm_bn254_g1mul*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
   ## Elliptic Curve multiplication on BN254_Snarks
   ## (also called alt_bn128 in Ethereum specs
   ##  and bn256 in Ethereum tests)
@@ -439,7 +442,7 @@ func eth_evm_bn254_g1mul*(r: var openArray[byte], inputs: openarray[byte]): CttE
   return cttEVM_Success
 
 func eth_evm_bn254_ecpairingcheck*(
-      r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.meter.} =
+      r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
   ## Elliptic Curve pairing check on BN254_Snarks
   ## (also called alt_bn128 in Ethereum specs
   ##  and bn256 in Ethereum tests)
@@ -523,7 +526,7 @@ func eth_evm_bn254_ecpairingcheck*(
     r[r.len-1] = byte 1
   return cttEVM_Success
 
-func eth_evm_bls12381_g1add*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.meter.} =
+func eth_evm_bls12381_g1add*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
   ## Elliptic Curve addition on BLS12-381 G1
   ##
   ## Name: BLS12_G1ADD
@@ -583,7 +586,7 @@ func eth_evm_bls12381_g1add*(r: var openArray[byte], inputs: openarray[byte]): C
   r.toOpenArray(64, 128-1).marshal(aff.y, bigEndian)
   return cttEVM_Success
 
-func eth_evm_bls12381_g2add*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.meter.} =
+func eth_evm_bls12381_g2add*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
   ## Elliptic Curve addition on BLS12-381 G2
   ##
   ## Name: BLS12_G2ADD
@@ -649,7 +652,7 @@ func eth_evm_bls12381_g2add*(r: var openArray[byte], inputs: openarray[byte]): C
   r.toOpenArray(192, 256-1).marshal(aff.y.c1, bigEndian)
   return cttEVM_Success
 
-func eth_evm_bls12381_g1mul*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.meter.} =
+func eth_evm_bls12381_g1mul*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
   ## Elliptic Curve scalar multiplication on BLS12-381 G1
   ##
   ## Name: BLS12_G1MUL
@@ -717,7 +720,7 @@ func eth_evm_bls12381_g1mul*(r: var openArray[byte], inputs: openarray[byte]): C
   r.toOpenArray(64, 128-1).marshal(aff.y, bigEndian)
   return cttEVM_Success
 
-func eth_evm_bls12381_g2mul*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.meter.} =
+func eth_evm_bls12381_g2mul*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
   ## Elliptic Curve scalar multiplication on BLS12-381 G2
   ##
   ## Name: BLS12_G2MUL
@@ -789,7 +792,7 @@ func eth_evm_bls12381_g2mul*(r: var openArray[byte], inputs: openarray[byte]): C
   r.toOpenArray(192, 256-1).marshal(aff.y.c1, bigEndian)
   return cttEVM_Success
 
-func eth_evm_bls12381_g1msm*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.meter.} =
+func eth_evm_bls12381_g1msm*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
   ## Elliptic Curve addition on BLS12-381 G1
   ##
   ## Name: BLS12_G1MSM
@@ -869,7 +872,7 @@ func eth_evm_bls12381_g1msm*(r: var openArray[byte], inputs: openarray[byte]): C
   r.toOpenArray(64, 128-1).marshal(aff.y, bigEndian)
   return cttEVM_Success
 
-func eth_evm_bls12381_g2msm*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.meter.} =
+func eth_evm_bls12381_g2msm*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
   ## Elliptic Curve addition on BLS12-381 G2
   ##
   ## Name: BLS12_G2MSM
@@ -953,7 +956,7 @@ func eth_evm_bls12381_g2msm*(r: var openArray[byte], inputs: openarray[byte]): C
   r.toOpenArray(192, 256-1).marshal(aff.y.c1, bigEndian)
   return cttEVM_Success
 
-func eth_evm_bls12381_pairingcheck*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.meter.} =
+func eth_evm_bls12381_pairingcheck*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
   ## Elliptic curve pairing check on BLS12-381
   ##
   ## Name: BLS12_PAIRINGCHECK
@@ -1032,7 +1035,7 @@ func eth_evm_bls12381_pairingcheck*(r: var openArray[byte], inputs: openarray[by
     r[r.len-1] = byte 1
   return cttEVM_Success
 
-func eth_evm_bls12381_map_fp_to_g1*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.meter.} =
+func eth_evm_bls12381_map_fp_to_g1*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
   ## Map a field element to G1
   ##
   ## Name: BLS12_MAP_FP_TO_G1
@@ -1081,7 +1084,7 @@ func eth_evm_bls12381_map_fp_to_g1*(r: var openArray[byte], inputs: openarray[by
   r.toOpenArray(64, 128-1).marshal(aff.y, bigEndian)
   return cttEVM_Success
 
-func eth_evm_bls12381_map_fp2_to_g2*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.meter.} =
+func eth_evm_bls12381_map_fp2_to_g2*(r: var openArray[byte], inputs: openarray[byte]): CttEVMStatus {.libPrefix: prefix_ffi, meter.} =
   ## Map an Fp2 extension field element to G1
   ##
   ## Name: BLS12_MAP_FP2_TO_G2
