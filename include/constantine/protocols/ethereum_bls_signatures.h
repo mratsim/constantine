@@ -50,6 +50,13 @@ static const char* ctt_eth_bls_status_to_string(ctt_eth_bls_status status) {
   return "cttEthBls_InvalidStatusCode";
 }
 
+// Wrapper of the View[T] Nim type for the common case of View[byte]
+//
+// type View*[byte] = object # with T = byte
+//  data: ptr UncheckedArray[byte] # 8 bytes
+//  len*: int                      # 8 bytes (Nim `int` is a 64bit int type)
+typedef struct { byte* data; size_t len; } ByteView;
+
 // Comparisons
 // ------------------------------------------------------------------------------------------------
 
@@ -227,6 +234,64 @@ ctt_eth_bls_status ctt_eth_bls_verify(const ctt_eth_bls_pubkey* pubkey,
 ctt_eth_bls_status ctt_eth_bls_fast_aggregate_verify(const ctt_eth_bls_pubkey pubkeys[], ptrdiff_t pubkeys_len,
                                                      const byte* message, ptrdiff_t message_len,
                                                      const ctt_eth_bls_signature* aggregate_sig) __attribute__((warn_unused_result));
+
+
+/** Verify the aggregated signature of multiple (pubkey, message) pairs
+ *  returns `true` if the signature is valid, `false` otherwise.
+ *
+ *  For message domain separation purpose, the tag is `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_`
+ *
+ *  Input:
+ *  - Public keys initialized by one of the key derivation or deserialization procedure.
+ *    Or validated via validate_pubkey
+ *  - Messages
+ *  - `len`: Number of elements in the `pubkeys` and `messages` arrays.
+ *  - a signature initialized by one of the key derivation or deserialization procedure.
+ *    Or validated via validate_signature
+ *
+ *  In particular, the public keys and signature are assumed to be on curve subgroup checked.
+ *
+ *  To avoid splitting zeros and rogue keys attack:
+ *  1. Public keys signing the same message MUST be aggregated and checked for 0 before calling this function.
+ *  2. Augmentation or Proof of possessions must used for each public keys.
+ */
+ctt_eth_bls_status aggregate_verify(const ctt_eth_bls_pubkey* pubkeys,
+				    const ByteView messages[],
+				    ptrdiff_t len,
+				    const ctt_eth_bls_signature* aggregate_sig) __attribute__((warn_unused_result));
+
+
+/** Verify that all (pubkey, message, signature) triplets are valid
+ *  returns `true` if all signatures are valid, `false` if at least one is invalid.
+ *
+ *  For message domain separation purpose, the tag is `BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_`
+ *
+ *  Input:
+ *  - Public keys initialized by one of the key derivation or deserialization procedure.
+ *    Or validated via validate_pubkey
+ *  - Messages
+ *  - Signatures initialized by one of the key derivation or deserialization procedure.
+ *    Or validated via validate_signature
+ *
+ *  In particular, the public keys and signature are assumed to be on curve subgroup checked.
+ *
+ *  To avoid splitting zeros and rogue keys attack:
+ *  1. Cryptographically-secure random bytes must be provided.
+ *  2. Augmentation or Proof of possessions must used for each public keys.
+ *
+ *  The secureRandomBytes will serve as input not under the attacker control to foil potential splitting zeros inputs.
+ *  The scheme assumes that the attacker cannot
+ *  resubmit 2^64 times forged (publickey, message, signature) triplets
+ *  against the same `secureRandomBytes`
+ */
+
+ctt_eth_bls_status ctt_eth_bls_batch_verify(const ctt_eth_bls_pubkey pubkeys[],
+					    //const struct { byte* data; size_t len; } messages[],
+					    const ByteView messages[],
+					    const ctt_eth_bls_signature signatures[],
+					    ptrdiff_t len,
+					    const byte secure_random_bytes[32]
+    ) __attribute__((warn_unused_result));
 
 #ifdef __cplusplus
 }
