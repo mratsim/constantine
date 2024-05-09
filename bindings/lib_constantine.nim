@@ -21,6 +21,7 @@ import
   ../constantine/csprngs,
   # Protocols
   ../constantine/ethereum_bls_signatures,
+  ../constantine/ethereum_bls_signatures_parallel,
   ../constantine/trusted_setups/ethereum_kzg_srs,
   ../constantine/ethereum_eip4844_kzg,
   ../constantine/ethereum_eip4844_kzg_parallel,
