@@ -58,7 +58,7 @@ int main(){
     evm_status = ctt_eth_evm_sha256(result, 32, txt, strlen(txt));
     if (evm_status != cttEVM_Success) {
 	printf(
-	    "SHA256 hash calc from input failed",
+	    "SHA256 hash calc from input failed %d - %s\n",
 	    evm_status,
 	    ctt_evm_status_to_string(evm_status)
 	    );
@@ -75,7 +75,7 @@ int main(){
     evm_status = ctt_eth_evm_bls12381_map_fp2_to_g2(g2Res, 256, input, 128);
     if(evm_status != cttEVM_Success){
 	printf(
-	    "Mapping input from Fp2 to G2 failed.",
+	    "Mapping input from Fp2 to G2 failed %d - %s\n",
 	    evm_status,
 	    ctt_evm_status_to_string(evm_status)
 	    );
@@ -85,7 +85,7 @@ int main(){
     evm_status = compare_binary(g2Res, 256, expected, 256);
     if(evm_status != cttEVM_Success){
 	printf(
-	    "Unexpected output from Fp2 to G2 mapping..",
+	    "Unexpected output from Fp2 to G2 mapping %d - %s\n",
 	    evm_status,
 	    ctt_evm_status_to_string(evm_status)
 	    );
