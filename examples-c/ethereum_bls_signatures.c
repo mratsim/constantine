@@ -58,7 +58,7 @@ int main(){
 
   // try to use batch verify; We just reuse the data from above 3 times
   const ctt_eth_bls_pubkey pkeys[3] = { pubkey, pubkey, pubkey };
-  ByteView messages[3] = { // already hashed message, reuse 3 times
+  ctt_span messages[3] = { // already hashed message, reuse 3 times
       { message, 32 },
       { message, 32 },
       { message, 32 }

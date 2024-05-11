@@ -55,7 +55,8 @@ static const char* ctt_eth_bls_status_to_string(ctt_eth_bls_status status) {
 // type View*[byte] = object # with T = byte
 //  data: ptr UncheckedArray[byte] # 8 bytes
 //  len*: int                      # 8 bytes (Nim `int` is a 64bit int type)
-typedef struct { byte* data; size_t len; } ByteView;
+// `span` naming following C++20 std::span<T>
+typedef struct { byte* data; size_t len; } ctt_span;
 
 // Comparisons
 // ------------------------------------------------------------------------------------------------
@@ -256,7 +257,7 @@ ctt_eth_bls_status ctt_eth_bls_fast_aggregate_verify(const ctt_eth_bls_pubkey pu
  *  2. Augmentation or Proof of possessions must used for each public keys.
  */
 ctt_eth_bls_status aggregate_verify(const ctt_eth_bls_pubkey* pubkeys,
-				    const ByteView messages[],
+				    const ctt_span messages[],
 				    ptrdiff_t len,
 				    const ctt_eth_bls_signature* aggregate_sig) __attribute__((warn_unused_result));
 
@@ -286,8 +287,7 @@ ctt_eth_bls_status aggregate_verify(const ctt_eth_bls_pubkey* pubkeys,
  */
 
 ctt_eth_bls_status ctt_eth_bls_batch_verify(const ctt_eth_bls_pubkey pubkeys[],
-					    //const struct { byte* data; size_t len; } messages[],
-					    const ByteView messages[],
+					    const ctt_span messages[],
 					    const ctt_eth_bls_signature signatures[],
 					    ptrdiff_t len,
 					    const byte secure_random_bytes[32]

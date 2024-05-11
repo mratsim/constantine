@@ -50,7 +50,7 @@ extern "C" {
 ctt_eth_bls_status ctt_eth_bls_batch_verify_parallel(
         const ctt_threadpool* tp,
         const ctt_eth_bls_pubkey pubkey[],
-	const ByteView messages[],
+	const ctt_span messages[],
         const ctt_eth_bls_signature sig[],
         ptrdiff_t len,
         const byte secure_random_bytes[32]
