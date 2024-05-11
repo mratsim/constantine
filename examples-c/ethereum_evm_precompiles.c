@@ -46,9 +46,9 @@ int main(){
 
     // just attempt to compute the sha256 hash of some text
     byte result[32] = {0};
-    const byte* txt = "Foo, Bar and Baz are all friends.";
+    const char txt[] = "Foo, Bar and Baz are all friends.";
 
-    evm_status = ctt_eth_evm_sha256(result, 32, txt, strlen(txt));
+    evm_status = ctt_eth_evm_sha256(result, 32, (const byte*)txt, sizeof(txt));
     if (evm_status != cttEVM_Success) {
 	printf(
 	    "SHA256 hash calc from input failed %d - %s\n",
@@ -59,10 +59,10 @@ int main(){
     }
 
     // Random test case from `map_fp2_to_G2_bls.json` to see if generally the API seems to work
-    const char* inputStr = "0000000000000000000000000000000003f80ce4ff0ca2f576d797a3660e3f65b274285c054feccc3215c879e2c0589d376e83ede13f93c32f05da0f68fd6a1000000000000000000000000000000000006488a837c5413746d868d1efb7232724da10eca410b07d8b505b9363bdccf0a1fc0029bad07d65b15ccfe6dd25e20d";
-    const char* expectedStr = "000000000000000000000000000000000ea4e7c33d43e17cc516a72f76437c4bf81d8f4eac69ac355d3bf9b71b8138d55dc10fd458be115afa798b55dac34be1000000000000000000000000000000001565c2f625032d232f13121d3cfb476f45275c303a037faa255f9da62000c2c864ea881e2bcddd111edc4a3c0da3e88d00000000000000000000000000000000043b6f5fe4e52c839148dc66f2b3751e69a0f6ebb3d056d6465d50d4108543ecd956e10fa1640dfd9bc0030cc2558d28000000000000000000000000000000000f8991d2a1ad662e7b6f58ab787947f1fa607fce12dde171bc17903b012091b657e15333e11701edcf5b63ba2a561247";
-    byte    input[128]; hexStringToBytes(inputStr, input);
-    byte expected[256]; hexStringToBytes(expectedStr, expected);
+    const char input_str[] = "0000000000000000000000000000000003f80ce4ff0ca2f576d797a3660e3f65b274285c054feccc3215c879e2c0589d376e83ede13f93c32f05da0f68fd6a1000000000000000000000000000000000006488a837c5413746d868d1efb7232724da10eca410b07d8b505b9363bdccf0a1fc0029bad07d65b15ccfe6dd25e20d";
+    const char expected_str[] = "000000000000000000000000000000000ea4e7c33d43e17cc516a72f76437c4bf81d8f4eac69ac355d3bf9b71b8138d55dc10fd458be115afa798b55dac34be1000000000000000000000000000000001565c2f625032d232f13121d3cfb476f45275c303a037faa255f9da62000c2c864ea881e2bcddd111edc4a3c0da3e88d00000000000000000000000000000000043b6f5fe4e52c839148dc66f2b3751e69a0f6ebb3d056d6465d50d4108543ecd956e10fa1640dfd9bc0030cc2558d28000000000000000000000000000000000f8991d2a1ad662e7b6f58ab787947f1fa607fce12dde171bc17903b012091b657e15333e11701edcf5b63ba2a561247";
+    byte    input[128]; from_hex(input, 128, input_str, 256);
+    byte expected[256]; from_hex(expected, 256, expected_str, 512);
     byte    g2Res[256];
 
     evm_status = ctt_eth_evm_bls12381_map_fp2_to_g2(g2Res, 256, input, 128);
