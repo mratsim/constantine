@@ -317,10 +317,6 @@ func Sha256Hash(digest *[32]byte, message []byte, clearMemory bool) (bool, error
 // Ethereum BLS signatures
 // -----------------------------------------------------
 
-//type EthBlsSecKey struct {
-//	[48]byte
-//}
-
 type EthBlsSecKey struct {
 	cSec C.ctt_eth_bls_seckey
 }
@@ -332,25 +328,6 @@ type EthBlsPubKey struct {
 type EthBlsSignature struct {
 	cSig C.ctt_eth_bls_signature
 }
-
-//func EthBlsSecKey() (sec EthBlsSecKey, err error) {
-//	var secKey C.ctt_eth_bls_seckey
-//	ctx :=
-//
-//	cFile := C.CString(trustedSetupFile)
-//	defer C.free(unsafe.Pointer(cFile))
-//	status := C.ctt_eth_trusted_setup_load(
-//		&ctx.cCtx,
-//		cFile,
-//		C.cttEthTSFormat_ckzg4844,
-//	)
-//	if status != C.cttEthTS_Success {
-//		err = errors.New(
-//			C.GoString(C.ctt_eth_trusted_setup_status_to_string(status)),
-//		)
-//	}
-//	return ctx, err
-//}
 
 func (pub EthBlsPubKey) PubKeyIsZero() (bool, error) {
 	status := C.ctt_eth_bls_pubkey_is_zero(&pub.cPub)
