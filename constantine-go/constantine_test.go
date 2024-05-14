@@ -18,9 +18,11 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"fmt"
 
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
+	"encoding/json"
 )
 
 // Threadpool smoke test
@@ -749,5 +751,803 @@ func TestVerifyBlobKzgProofBatchParallel(t *testing.T) {
 				require.Equal(t, *test.Output, valid)
 			}
 		}
+	}
+}
+
+// To be removed. This is the C example ported
+func TestExampleCBlsSig(t *testing.T) {
+	var secKey EthBlsSecKey
+	str := "Security pb becomes key mgmt pb!"
+	var rawSecKey [32]byte
+	copy(rawSecKey[:], str)
+	status, err := secKey.DeserializeSecKey(rawSecKey)
+	fmt.Println("deserialized: Status: ", status, " err = ", err)
+
+	// Derive the matching public key
+	var pubKey EthBlsPubKey
+	pubKey.DerivePubKey(secKey)
+
+	// Sign a message
+	var message [32]byte
+	Sha256Hash(&message, []byte("Mr F was here"), false)
+	fmt.Println("message: ", message)
+	var sig EthBlsSignature
+	status, err = sig.Sign(secKey, message[:])
+	fmt.Println("signed: status", status, " err = ", err)
+
+	// Verify that a signature is valid for a message under the provided public key
+	status, err = pubKey.Verify(message[:], sig)
+	fmt.Println("verified: status", status, " err = ", err)
+
+	// try to use batch verify; We just reuse the data from above 3 times
+	pkeys := []EthBlsPubKey{pubKey, pubKey, pubKey}
+	msgs := [][]byte{message[:], message[:], message[:]}
+	sigs := []EthBlsSignature{sig, sig, sig}
+	var srb [32]byte // leave zero
+	status, err = BatchVerify(pkeys, msgs, sigs, srb)
+	fmt.Println("batchverified: Status ", status, " err = ", err)
+}
+
+var (
+	testDirBls                      = "../tests/protocol_blssig_pop_on_bls12381_g2_test_vectors_v0.1.1"
+	aggregate_verifyTests		= filepath.Join(testDirBls, "aggregate_verify/*")
+	aggregateTests			= filepath.Join(testDirBls, "aggregate/*")
+	deserialization_G1Tests		= filepath.Join(testDirBls, "deserialization_G1/*")
+	batch_verifyTests		= filepath.Join(testDirBls, "batch_verify/*")
+	fast_aggregate_verifyTests	= filepath.Join(testDirBls, "fast_aggregate_verify/*")
+	hash_to_G2Tests			= filepath.Join(testDirBls, "hash_to_G2/*")
+	deserialization_G2Tests		= filepath.Join(testDirBls, "deserialization_G2/*")
+	verifyTests			= filepath.Join(testDirBls, "verify/*")
+	signTests			= filepath.Join(testDirBls, "sign/*")
+)
+
+type (
+	EthBlsPubKeyRaw    [48]byte
+	EthBlsSignatureRaw [96]byte
+	EthBlsSecKeyRaw    [32]byte
+	EthBlsMessage      [32]byte
+	EthBlsTestOutput   [96]byte
+)
+
+func (dst *EthBlsPubKeyRaw) UnmarshalText(input []byte) error {
+	return fromHexImpl(dst[:], input)
+}
+
+func (dst *EthBlsSignatureRaw) UnmarshalText(input []byte) error {
+	return fromHexImpl(dst[:], input)
+}
+
+func (dst *EthBlsSecKeyRaw) UnmarshalText(input []byte) error {
+	return fromHexImpl(dst[:], input)
+}
+
+func (dst *EthBlsMessage) UnmarshalText(input []byte) error {
+	return fromHexImpl(dst[:], input)
+}
+
+func (dst *EthBlsTestOutput) UnmarshalText(input []byte) error {
+	return fromHexImpl(dst[:], input)
+}
+
+func TestDeserializeG1(t *testing.T) {
+	type Test struct {
+		Input struct {
+			PubKey string `json:"pubkey"`
+
+		} `json:"input"`
+		Output bool `json:"output"`
+	}
+
+	tests, _ := filepath.Glob(deserialization_G1Tests)
+	for _, testPath := range tests {
+		t.Run(testPath, func(t *testing.T) {
+			testFile, err := os.Open(testPath)
+			test := Test{}
+			err = json.NewDecoder(testFile).Decode(&test)
+
+			var rawPk EthBlsPubKeyRaw
+			var pk EthBlsPubKey
+			var status bool
+			err = rawPk.UnmarshalText([]byte(test.Input.PubKey))
+			if strings.HasSuffix(testPath, "deserialization_fails_too_few_bytes.json") {
+				require.NotNil(t, test.Output)
+			} else if strings.HasSuffix(testPath, "deserialization_fails_too_many_bytes.json") {
+				require.NotNil(t, test.Output)
+			} else if err != nil {
+				require.Nil(t, test.Output)
+				return
+			}
+			status, err = pk.DeserializeCompressed(rawPk)
+
+			if status {
+				var s [48]byte
+				status, err = pk.SerializeCompressed(&s)
+				if err != nil {
+					require.Nil(t, test.Output)
+				}
+				require.True(t, status)
+				require.Equal(t, s[:], rawPk[:])
+				// The status now must be the same as the expected output
+				require.Equal(t, status, test.Output)
+			} else {
+				// sanity check the output matches status
+				require.Equal(t, status, test.Output)
+			}
+		})
+	}
+}
+
+/*
+  var sig{.noInit.}: Signature
+
+  let status = sig.deserialize_signature_compressed(testVector.input.signature)
+  let success = status == cttCodecEcc_Success or status == cttCodecEcc_PointAtInfinity
+
+  doAssert success == testVector.output, block:
+    "\nDeserialization differs from expected \n" &
+    "   deserializable? " & $success & " (" & $status & ")\n" &
+    "   expected: " & $testVector.output
+
+  if success: # Roundtrip
+    var s{.noInit.}: array[96, byte]
+
+    let status2 = s.serialize_signature_compressed(sig)
+    doAssert status2 == cttCodecEcc_Success
+    doAssert s == testVector.input.signature, block:
+      "\nSerialization roundtrip differs from expected \n" &
+      "   serialized: 0x" & $s.toHex() & " (" & $status2 & ")\n" &
+      "   expected:   0x" & $testVector.input.signature.toHex()
+*/
+func TestDeserializeG2(t *testing.T) {
+	type Test struct {
+		Input struct {
+			Signature string `json:"signature"`
+
+		} `json:"input"`
+		Output bool `json:"output"`
+	}
+
+	tests, _ := filepath.Glob(deserialization_G2Tests)
+	for _, testPath := range tests {
+		t.Run(testPath, func(t *testing.T) {
+			testFile, err := os.Open(testPath)
+			test := Test{}
+			err = json.NewDecoder(testFile).Decode(&test)
+
+			var rawSig EthBlsSignatureRaw
+			var sig EthBlsSignature
+			var status bool
+			err = rawSig.UnmarshalText([]byte(test.Input.Signature))
+			if strings.HasSuffix(testPath, "deserialization_fails_too_few_bytes.json") {
+				require.NotNil(t, test.Output)
+			} else if strings.HasSuffix(testPath, "deserialization_fails_too_many_bytes.json") {
+				require.NotNil(t, test.Output)
+			} else if err != nil {
+				require.Nil(t, test.Output)
+				return
+			}
+			status, err = sig.DeserializeCompressed(rawSig)
+
+			if status {
+				var s [96]byte
+				status, err = sig.SerializeCompressed(&s)
+				if err != nil {
+					require.Nil(t, test.Output)
+				}
+				require.True(t, status)
+				require.Equal(t, s[:], rawSig[:])
+				// The status now must be the same as the expected output
+				require.Equal(t, status, test.Output)
+			} else {
+				// sanity check the output matches status
+				require.Equal(t, status, test.Output)
+			}
+		})
+	}
+}
+
+func TestSign(t *testing.T) {
+	type Test struct {
+		Input struct {
+			PrivKey string `json:"privkey"`
+			Message string `json:"message"`
+
+		} `json:"input"`
+		Output string `json:"output"`
+	}
+
+	tests, _ := filepath.Glob(signTests)
+	for _, testPath := range tests {
+		t.Run(testPath, func(t *testing.T) {
+			testFile, err := os.Open(testPath)
+			test := Test{}
+			err = json.NewDecoder(testFile).Decode(&test)
+
+			var rawSecKey EthBlsSecKeyRaw
+			var msg EthBlsMessage
+			var sig EthBlsSignature
+			var secKey EthBlsSecKey
+			var tOut EthBlsTestOutput
+			var status bool
+			err = rawSecKey.UnmarshalText([]byte(test.Input.PrivKey))
+			if err != nil {
+				require.Nil(t, test.Output)
+				return
+			}
+			err = msg.UnmarshalText([]byte(test.Input.Message))
+			if err != nil {
+				require.Nil(t, test.Output)
+				return
+			}
+			err = tOut.UnmarshalText([]byte(test.Output))
+			if strings.HasSuffix(testPath, "sign_case_zero_privkey.json") {
+				require.Equal(t, test.Output, "")
+				//require.Nil(t, test.Output)
+			} else if err != nil {
+				require.Nil(t, test.Output)
+				return
+
+			}
+			/*
+			var seckey{.noInit.}: SecretKey
+			var sig{.noInit.}: Signature
+
+			let status = seckey.deserialize_seckey(testVector.input.privkey)
+			*/
+			status, err = secKey.DeserializeSecKey(rawSecKey)
+			if !status {
+				// Nim
+				//if status != cttCodecScalar_Success:
+    				//doAssert testVector.output == default(array[96, byte])
+    				//sig.sign(seckey, testVector.input.message)
+
+				// sanity check the output matches status
+				require.Equal(t, test.Output, "") // one file: has `null` JSON value
+				//require.Equal(t, status, test.Output)
+				sig.Sign(secKey, msg[:])
+			} else {
+				/*
+				else:
+				  sig.sign(seckey, testVector.input.message)
+				*/
+
+				// sign the message
+				sig.Sign(secKey, msg[:])
+				{ // deserialiaze output for extra codec testing
+					/*
+  					block: # deserialize the output for extra codec testing
+  					  var output{.noInit.}: Signature
+  					  let status2 = output.deserialize_signature_compressed(testVector.output)
+  					  doAssert status2 == cttCodecEcc_Success
+					*/
+					var output EthBlsSignature
+					status, err = output.DeserializeCompressed(tOut)
+					if err != nil {
+						require.Nil(t, test.Output)
+						return
+					}
+					status, err = sig.SignaturesAreEqual(output)
+					if err != nil {
+						/*
+  					        doAssert signatures_are_equal(sig, output), block:
+  					          var sig_bytes{.noInit.}: array[96, byte]
+  					          var roundtrip{.noInit.}: array[96, byte]
+  					          let sb_status = sig_bytes.serialize_signature_compressed(sig)
+  					          let rt_status = roundtrip.serialize_signature_compressed(output)
+
+  					          "\nResult signature differs from expected \n" &
+  					          "   computed:  0x" & $sig_bytes.toHex() & " (" & $sb_status & ")\n" &
+  					          "   roundtrip: 0x" & $roundtrip.toHex() & " (" & $rt_status & ")\n" &
+  					          "   expected:  0x" & $testVector.output.toHex()
+						*/
+						// WRITEME
+						var sigBytes  [96]byte
+						var roundTrip [96]byte
+						sb_status, _ := sig.SerializeCompressed(&sigBytes)
+						rt_status, _ := output.SerializeCompressed(&roundTrip)
+						fmt.Println("\nResult signature differs from expected \n",
+							"   computed:  0x", sigBytes, " (", sb_status, ")\n",
+							"   roundtrip: 0x", roundTrip, " (", rt_status, ")\n",
+							"   expected:  0x", test.Output,
+						)
+						require.True(t, false) // fail the test case
+						return
+					}
+
+				}
+				{ // serialize result for extra codec testing
+					/*
+            				block: # serialize the result for extra codec testing
+            				  var sig_bytes{.noInit.}: array[96, byte]
+            				  let status2 = sig_bytes.serialize_signature_compressed(sig)
+            				  doAssert status2 == cttCodecEcc_Success
+            				  doAssert sig_bytes == testVector.output, block:
+            				     "\nResult signature differs from expected \n" &
+            				     "   computed: 0x" & $sig_bytes.toHex() & " (" & $status2 & ")\n" &
+            				     "   expected: 0x" & $testVector.output.toHex()
+					*/
+					var sigBytes [96]byte
+					status, err = sig.SerializeCompressed(&sigBytes)
+					if err != nil {
+						require.Nil(t, test.Output)
+						return
+					}
+					require.Equal(t, sigBytes[:], tOut[:])
+					// TODO: else
+					// fmt.Println("\nResult signature differs from expected \n",
+					// "   computed: 0x", sig_bytes, " (", status2, ")\n",
+					// "   expected: 0x", test.Output,
+					// )
+					return
+				}
+			}
+		})
+	}
+}
+
+func TestVerify(t *testing.T) {
+	type Test struct {
+		Input struct {
+			PubKey string `json:"pubkey"`
+			Message string `json:"message"`
+			Signature string `json:"signature"`
+
+		} `json:"input"`
+		Output bool `json:"output"`
+	}
+
+	tests, _ := filepath.Glob(verifyTests)
+	for _, testPath := range tests {
+		t.Run(testPath, func(t *testing.T) {
+			testFile, err := os.Open(testPath)
+			test := Test{}
+			err = json.NewDecoder(testFile).Decode(&test)
+
+			/*
+			  var
+			    pubkey{.noInit.}: PublicKey
+			    signature{.noInit.}: Signature
+			    status = (cttEthBls_VerificationFailure, cttCodecEcc_InvalidEncoding)
+			*/
+			var rawPk EthBlsPubKeyRaw
+			var rawSig EthBlsSignatureRaw
+			var pk EthBlsPubKey
+			var msg EthBlsMessage
+			var sig EthBlsSignature
+			var status bool
+			err = rawPk.UnmarshalText([]byte(test.Input.PubKey))
+			if err != nil {
+				require.Nil(t, test.Output)
+				return
+			}
+			err = rawSig.UnmarshalText([]byte(test.Input.Signature))
+			if err != nil {
+				require.Nil(t, test.Output)
+				return
+			}
+			{ // testChecks
+                /*  block testChecks:
+                    status[1] = pubkey.deserialize_pubkey_compressed(testVector.input.pubkey)
+                    if status[1] notin {cttCodecEcc_Success, cttCodecEcc_PointAtInfinity}:
+                      # For point at infinity, we want to make sure that "verify" itself handles them.
+                      break testChecks
+                    status[1] = signature.deserialize_signature_compressed(testVector.input.signature)
+                    if status[1] notin {cttCodecEcc_Success, cttCodecEcc_PointAtInfinity}:
+                      # For point at infinity, we want to make sure that "verify" itself handles them.
+                      break testChecks
+
+                    status[0] = pubkey.verify(testVector.input.message, signature)
+				*/
+				status, err = pk.DeserializeCompressed(rawPk)
+				if err != nil {
+					require.Nil(t, test.Output)
+					return
+				}
+				status, err = sig.DeserializeCompressed(rawSig)
+				if err != nil { // expected this verification fails?
+					require.Equal(t, status, test.Output)
+					return
+				}
+				err = msg.UnmarshalText([]byte(test.Input.Message))
+				if err != nil {
+					require.Nil(t, test.Output)
+					return
+				}
+				status, err = pk.Verify(msg[:], sig)
+
+				if err != nil { // expected this verification fails?
+					require.Equal(t, status, test.Output)
+					return
+				}
+			}
+			if status != test.Output {
+				/*
+				  doAssert success == testVector.output, block:
+				    "Verification differs from expected \n" &
+				    "   valid sig? " & $success & " (" & $status & ")\n" &
+				    "   expected: " & $testVector.output
+
+				*/
+				fmt.Println("Verification differs from expected \n",
+				    "   valid sig? ", status, "\n",
+				    "   expected: ", test.Output,
+				)
+				require.True(t, false)
+				return
+			} else if status {
+				/*
+				  if success: # Extra codec testing
+				    block:
+				      var output{.noInit.}: array[48, byte]
+				      let s = output.serialize_pubkey_compressed(pubkey)
+				      doAssert s == cttCodecEcc_Success
+				      doAssert output == testVector.input.pubkey
+
+				    block:
+				      var output{.noInit.}: array[96, byte]
+				      let s = output.serialize_signature_compressed(signature)
+				      doAssert s == cttCodecEcc_Success
+				      doAssert output == testVector.input.signature
+				*/
+				{
+					var output [48]byte
+					status, err = pk.SerializeCompressed(&output)
+					if err != nil {
+						require.Nil(t, test.Output)
+						return
+					}
+					require.Equal(t, output[:], rawPk[:])
+					return
+				}
+				{
+					var output [96]byte
+					status, err = sig.SerializeCompressed(&output)
+					if err != nil {
+						require.Nil(t, test.Output)
+						return
+					}
+					require.Equal(t, output[:], rawSig[:])
+					return
+				}
+			}
+		})
+	}
+}
+
+func TestFastAggregateVerify(t *testing.T) {
+	type Test struct {
+		Input struct {
+			PubKeys []string `json:"pubkeys"`
+			Message string `json:"message"`
+			Signature string `json:"signature"`
+
+		} `json:"input"`
+		Output bool `json:"output"`
+	}
+
+	tests, _ := filepath.Glob(fast_aggregate_verifyTests)
+	for _, testPath := range tests {
+		t.Run(testPath, func(t *testing.T) {
+			testFile, err := os.Open(testPath)
+			test := Test{}
+			err = json.NewDecoder(testFile).Decode(&test)
+
+			/*
+			  var
+			    pubkeys = newSeq[PublicKey](testVector.input.pubkeys.len)
+			    signature{.noInit.}: Signature
+			    status = (cttEthBls_VerificationFailure, cttCodecEcc_InvalidEncoding)
+			*/
+			var rawPks []EthBlsPubKeyRaw
+			var rawSig EthBlsSignatureRaw
+			var pks []EthBlsPubKey
+			var msg EthBlsMessage
+			var sig EthBlsSignature
+			var status bool
+			for _, s := range test.Input.PubKeys {
+				var rawPk EthBlsPubKeyRaw
+				err = rawPk.UnmarshalText([]byte(s))
+				if err != nil {
+					require.Nil(t, test.Output)
+					return
+				}
+				rawPks = append(rawPks, rawPk)
+			}
+			err = rawSig.UnmarshalText([]byte(test.Input.Signature))
+			if err != nil {
+				require.Nil(t, test.Output)
+				return
+			}
+			{ // testChecks
+                /*
+				     block testChecks:
+					    for i in 0 ..< testVector.input.pubkeys.len:
+					      status[1] = pubkeys[i].deserialize_pubkey_compressed(testVector.input.pubkeys[i])
+					      if status[1] notin {cttCodecEcc_Success, cttCodecEcc_PointAtInfinity}:
+					        # For point at infinity, we want to make sure that "verify" itself handles them.
+					        break testChecks
+
+					    status[1] = signature.deserialize_signature_compressed(testVector.input.signature)
+					    if status[1] notin {cttCodecEcc_Success, cttCodecEcc_PointAtInfinity}:
+					      # For point at infinity, we want to make sure that "verify" itself handles them.
+					      break testChecks
+
+					    status[0] = pubkeys.fast_aggregate_verify(testVector.input.message, signature)
+				*/
+				for _, rawPk := range rawPks {
+					var pk EthBlsPubKey
+					status, err = pk.DeserializeCompressed(rawPk)
+					if err != nil {
+						require.Equal(t, status, test.Output)
+						return
+					}
+					pks = append(pks, pk)
+				}
+				status, err = sig.DeserializeCompressed(rawSig)
+				if err != nil {
+					require.Equal(t, status, test.Output)
+					return
+				}
+				err = msg.UnmarshalText([]byte(test.Input.Message))
+				if err != nil {
+					require.Nil(t, test.Output)
+					return
+				}
+				status, err = FastAggregateVerify(pks, msg[:], sig)
+			}
+			/*
+			  let success = status == (cttEthBls_Success, cttCodecEcc_Success)
+			  doAssert success == testVector.output, block:
+			*/
+			require.Equal(t, status, test.Output)
+			if status != test.Output {
+				// TODO: else
+				fmt.Println("Verification differs from expected \n",
+				    "   valid sig? ", status, "\n",
+				    "   expected: ", test.Output,
+				)
+				return
+			}
+		})
+	}
+}
+
+func TestAggregateVerify(t *testing.T) {
+	type Test struct {
+		Input struct {
+			PubKeys []string `json:"pubkeys"`
+			Messages []string `json:"messages"`
+			Signature string `json:"signature"`
+
+		} `json:"input"`
+		Output bool `json:"output"`
+	}
+
+	tests, _ := filepath.Glob(aggregate_verifyTests)
+	for _, testPath := range tests {
+		t.Run(testPath, func(t *testing.T) {
+			testFile, err := os.Open(testPath)
+			test := Test{}
+			err = json.NewDecoder(testFile).Decode(&test)
+
+			/*
+			  var
+			    pubkeys = newSeq[PublicKey](testVector.input.pubkeys.len)
+			    signature{.noInit.}: Signature
+			    status = (cttEthBls_VerificationFailure, cttCodecEcc_InvalidEncoding)
+			*/
+			var rawPks []EthBlsPubKeyRaw
+			var rawSig EthBlsSignatureRaw
+			var pks []EthBlsPubKey
+			var msgs [][]byte
+			var sig EthBlsSignature
+			var status bool
+			for _, s := range test.Input.PubKeys {
+				var rawPk EthBlsPubKeyRaw
+				err = rawPk.UnmarshalText([]byte(s))
+				if err != nil {
+					require.Nil(t, test.Output)
+					return
+				}
+				rawPks = append(rawPks, rawPk)
+			}
+			err = rawSig.UnmarshalText([]byte(test.Input.Signature))
+			if err != nil {
+				require.False(t, test.Output) // tampered signaure test
+				return
+			}
+			{ // testChecks
+                /*
+					  block testChecks:
+					    for i in 0 ..< testVector.input.pubkeys.len:
+					      status[1] = pubkeys[i].deserialize_pubkey_compressed(testVector.input.pubkeys[i])
+					      if status[1] notin {cttCodecEcc_Success, cttCodecEcc_PointAtInfinity}:
+					        # For point at infinity, we want to make sure that "verify" itself handles them.
+					        break testChecks
+
+					    status[1] = signature.deserialize_signature_compressed(testVector.input.signature)
+					    if status[1] notin {cttCodecEcc_Success, cttCodecEcc_PointAtInfinity}:
+					      # For point at infinity, we want to make sure that "verify" itself handles them.
+					      break testChecks
+
+					    status[0] = pubkeys.aggregate_verify(testVector.input.messages, signature)
+				*/
+				for _, rawPk := range rawPks {
+					var pk EthBlsPubKey
+					status, err = pk.DeserializeCompressed(rawPk)
+					if err != nil {
+						require.Equal(t, status, test.Output)
+						return
+					}
+					pks = append(pks, pk)
+				}
+				status, err = sig.DeserializeCompressed(rawSig)
+				if err != nil {
+					require.Equal(t, status, test.Output)
+					return
+				}
+				for _, rawMsg := range test.Input.Messages {
+					var msg EthBlsMessage
+					err = msg.UnmarshalText([]byte(rawMsg))
+					if err != nil {
+						require.Nil(t, test.Output)
+						return
+					}
+					msgs = append(msgs, msg[:])
+				}
+				status, err = AggregateVerify(pks, msgs[:], sig)
+			}
+			/*
+			  let success = status == (cttEthBls_Success, cttCodecEcc_Success)
+			  doAssert success == testVector.output, block:
+			    "Verification differs from expected \n" &
+			    "   valid sig? " & $success & " (" & $status & ")\n" &
+			    "   expected: " & $testVector.output
+			*/
+			require.Equal(t, status, test.Output)
+			if status != test.Output {
+				fmt.Println("Verification differs from expected \n",
+				    "   valid sig? ", status, "\n",
+				    "   expected: ", test.Output,
+				)
+				return
+			}
+		})
+	}
+}
+
+func TestBatchVerify(t *testing.T) {
+	type Test struct {
+		Input struct {
+			PubKeys []string `json:"pubkeys"`
+			Messages []string `json:"messages"`
+			Signatures []string `json:"signatures"`
+
+		} `json:"input"`
+		Output bool `json:"output"`
+	}
+
+	tests, _ := filepath.Glob(batch_verifyTests)
+	for _, testPath := range tests {
+		t.Run(testPath, func(t *testing.T) {
+			testFile, err := os.Open(testPath)
+			test := Test{}
+			err = json.NewDecoder(testFile).Decode(&test)
+
+			/*
+			  var
+			    pubkeys = newSeq[PublicKey](testVector.input.pubkeys.len)
+			    signatures = newSeq[Signature](testVector.input.signatures.len)
+			    status = (cttEthBls_VerificationFailure, cttCodecEcc_InvalidEncoding)
+			*/
+			var rawPks []EthBlsPubKeyRaw
+			var rawSigs []EthBlsSignatureRaw
+			var pks []EthBlsPubKey
+			var msgs [][]byte
+			var sigs []EthBlsSignature
+			var status bool
+			for _, s := range test.Input.PubKeys {
+				var rawPk EthBlsPubKeyRaw
+				err = rawPk.UnmarshalText([]byte(s))
+				if err != nil {
+					require.Nil(t, test.Output)
+					return
+				}
+				rawPks = append(rawPks, rawPk)
+			}
+			for _, s := range test.Input.Signatures {
+				var rawSig EthBlsSignatureRaw
+				err = rawSig.UnmarshalText([]byte(s))
+				if err != nil {
+					require.Nil(t, test.Output)
+					return
+				}
+				rawSigs = append(rawSigs, rawSig)
+			}
+			{ // testChecks
+                /*
+				  block testChecks:
+				    for i in 0 ..< testVector.input.pubkeys.len:
+				      status[1] = pubkeys[i].deserialize_pubkey_compressed(testVector.input.pubkeys[i])
+				      if status[1] notin {cttCodecEcc_Success, cttCodecEcc_PointAtInfinity}:
+				        # For point at infinity, we want to make sure that "verify" itself handles them.
+				        break testChecks
+
+				    for i in 0 ..< testVector.input.signatures.len:
+				      status[1] = signatures[i].deserialize_signature_compressed(testVector.input.signatures[i])
+				      if status[1] notin {cttCodecEcc_Success, cttCodecEcc_PointAtInfinity}:
+				        # For point at infinity, we want to make sure that "verify" itself handles them.
+				        break testChecks
+
+				    let randomBytes = sha256.hash("totally non-secure source of entropy")
+
+				    status[0] = pubkeys.batch_verify(testVector.input.messages, signatures, randomBytes)
+
+				    let tp = Threadpool.new(numThreads = 4)
+				    let parallelStatus = tp.batch_verify_parallel(pubkeys, testVector.input.messages, signatures, randomBytes)
+				    doAssert status[0] == parallelStatus, block:
+				      "\nSerial status:   " & $status[0] &
+				      "\nParallel status: " & $parallelStatus & '\n'
+				    tp.shutdown()
+				*/
+				for _, rawPk := range rawPks {
+					var pk EthBlsPubKey
+					status, err = pk.DeserializeCompressed(rawPk)
+					if err != nil {
+						require.Equal(t, status, test.Output)
+						return
+					}
+					pks = append(pks, pk)
+				}
+				for _, rawSig := range rawSigs {
+					var sig EthBlsSignature
+					status, err = sig.DeserializeCompressed(rawSig)
+					if err != nil {
+						require.Equal(t, status, test.Output)
+						return
+					}
+					sigs = append(sigs, sig)
+				}
+				for _, rawMsg := range test.Input.Messages {
+					var msg EthBlsMessage
+					err = msg.UnmarshalText([]byte(rawMsg))
+					if err != nil {
+						require.Nil(t, test.Output)
+						return
+					}
+					msgs = append(msgs, msg[:])
+				}
+				var randomBytes [32]byte
+				Sha256Hash(&randomBytes, []byte("totally non-secure source of entropy"), false)
+
+				status, err = BatchVerify(pks, msgs[:], sigs, randomBytes)
+
+				/*
+				    doAssert status[0] == parallelStatus, block:
+				      "\nSerial status:   " & $status[0] &
+				      "\nParallel status: " & $parallelStatus & '\n'
+				    tp.shutdown()
+				*/
+				//tp := createTestThreadpool(t)
+				//parallelStatus, errTp := BatchVerifyParallel(tp,
+				//tp.Shutdown()
+			}
+			/*
+			  let success = status == (cttEthBls_Success, cttCodecEcc_Success)
+			  doAssert success == testVector.output, block:
+			    "Verification differs from expected \n" &
+			    "   valid sig? " & $success & " (" & $status & ")\n" &
+			    "   expected: " & $testVector.output
+			*/
+
+			require.Equal(t, status, test.Output)
+			if status != test.Output {
+				fmt.Println("Verification differs from expected \n",
+				    "   valid sig? ", status, "\n",
+				    "   expected: ", test.Output,
+				)
+				return
+			}
+		})
 	}
 }
