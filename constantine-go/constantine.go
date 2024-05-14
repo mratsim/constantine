@@ -19,6 +19,8 @@ package constantine
 
 #include <stdlib.h>
 #include <constantine.h>
+#include <string.h> // for memcpy
+
 */
 import "C"
 import (
@@ -182,7 +184,6 @@ func (ctx EthKzgContext) VerifyBlobKzgProofBatch(blobs []EthBlob, commitments []
 // Ethereum EIP-4844 KZG API - Parallel
 // -----------------------------------------------------
 
-
 func (ctx EthKzgContext) BlobToKZGCommitmentParallel(tp Threadpool, blob EthBlob) (commitment EthKzgCommitment, err error) {
 	status := C.ctt_eth_kzg_blob_to_kzg_commitment_parallel(
 		ctx.cCtx, tp.ctx,
@@ -313,3 +314,379 @@ func Sha256Hash(digest *[32]byte, message []byte, clearMemory bool) (bool, error
 	return true, nil
 }
 
+// Ethereum BLS signatures
+// -----------------------------------------------------
+
+//type EthBlsSecKey struct {
+//	[48]byte
+//}
+
+type EthBlsSecKey struct {
+	cSec C.ctt_eth_bls_seckey
+}
+
+type EthBlsPubKey struct {
+	cPub C.ctt_eth_bls_pubkey
+}
+
+type EthBlsSignature struct {
+	cSig C.ctt_eth_bls_signature
+}
+
+//func EthBlsSecKey() (sec EthBlsSecKey, err error) {
+//	var secKey C.ctt_eth_bls_seckey
+//	ctx :=
+//
+//	cFile := C.CString(trustedSetupFile)
+//	defer C.free(unsafe.Pointer(cFile))
+//	status := C.ctt_eth_trusted_setup_load(
+//		&ctx.cCtx,
+//		cFile,
+//		C.cttEthTSFormat_ckzg4844,
+//	)
+//	if status != C.cttEthTS_Success {
+//		err = errors.New(
+//			C.GoString(C.ctt_eth_trusted_setup_status_to_string(status)),
+//		)
+//	}
+//	return ctx, err
+//}
+
+func (pub EthBlsPubKey) PubKeyIsZero() (bool, error) {
+	status := C.ctt_eth_bls_pubkey_is_zero(&pub.cPub)
+	return bool(status), nil
+}
+
+func (sec *EthBlsSecKey) DeserializeSecKey(src [32]byte) (bool, error) {
+	status := C.ctt_eth_bls_deserialize_seckey(&sec.cSec,
+		(*C.byte)(unsafe.Pointer(&src[0])))
+	if status != C.cttCodecScalar_Success {
+		err := errors.New(
+			C.GoString(C.ctt_codec_scalar_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (pub *EthBlsPubKey) DerivePubKey(sec EthBlsSecKey) (bool, error) {
+	C.ctt_eth_bls_derive_pubkey(&pub.cPub, &sec.cSec)
+	return true, nil
+}
+
+func (pub *EthBlsPubKey) Verify(message []byte, sig EthBlsSignature) (bool, error) {
+	status := C.ctt_eth_bls_verify(&pub.cPub,
+		(*C.byte)(unsafe.Pointer(&message[0])),
+		(C.ptrdiff_t)(len(message)),
+		&sig.cSig,
+	)
+	if status != C.cttEthBls_Success {
+		err := errors.New(
+			C.GoString(C.ctt_eth_bls_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (sig EthBlsSignature) SignatureIsZero() (bool, error) {
+	status := C.ctt_eth_bls_signature_is_zero(&sig.cSig)
+	return bool(status), nil
+}
+
+func (pub1 EthBlsPubKey) PubKeysAreEqual(pub2 EthBlsPubKey) (bool, error) {
+	status := C.ctt_eth_bls_pubkeys_are_equal(&pub1.cPub, &pub2.cPub)
+	return bool(status), nil
+}
+
+func (sig1 EthBlsSignature) SignaturesAreEqual(sig2 EthBlsSignature) (bool, error) {
+	status := C.ctt_eth_bls_signatures_are_equal(&sig1.cSig, &sig2.cSig)
+	return bool(status), nil
+}
+
+func (sec *EthBlsSecKey) Validate() (bool, error) {
+	status := C.ctt_eth_bls_validate_seckey(&sec.cSec)
+	if status != C.cttCodecScalar_Success {
+		err := errors.New(
+			C.GoString(C.ctt_codec_scalar_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (pub *EthBlsPubKey) Validate() (bool, error) {
+	status := C.ctt_eth_bls_validate_pubkey(&pub.cPub)
+	if status != C.cttCodecEcc_Success {
+		err := errors.New(
+			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (sig *EthBlsSignature) Validate() (bool, error) {
+	status := C.ctt_eth_bls_validate_signature(&sig.cSig)
+	if status != C.cttCodecEcc_Success {
+		err := errors.New(
+			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (sec *EthBlsSecKey) Serialize(dst *[32]byte) (bool, error) {
+	status := C.ctt_eth_bls_serialize_seckey((*C.byte)(unsafe.Pointer(dst)), // TODO: or rather `&(*dst)[0])`?
+		&sec.cSec,
+	)
+	if status != C.cttCodecScalar_Success {
+		err := errors.New(
+			C.GoString(C.ctt_codec_scalar_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (pub *EthBlsPubKey) SerializeCompressed(dst *[48]byte) (bool, error) {
+	status := C.ctt_eth_bls_serialize_pubkey_compressed((*C.byte)(unsafe.Pointer(dst)),
+		&pub.cPub,
+	)
+	if status != C.cttCodecEcc_Success {
+		err := errors.New(
+			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (sig *EthBlsSignature) SerializeCompressed(dst *[96]byte) (bool, error) {
+	status := C.ctt_eth_bls_serialize_signature_compressed((*C.byte)(unsafe.Pointer(dst)),
+		&sig.cSig,
+	)
+	if status != C.cttCodecEcc_Success {
+		err := errors.New(
+			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (pub *EthBlsPubKey) DeserializeCompressedUnchecked(src [48]byte) (bool, error) {
+	status := C.ctt_eth_bls_deserialize_pubkey_compressed_unchecked(&pub.cPub,
+		(*C.byte)(unsafe.Pointer(&src[0])),
+	)
+	if status != C.cttCodecEcc_Success {
+		err := errors.New(
+			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (sig *EthBlsSignature) DeserializeCompressedUnchecked(src [96]byte) (bool, error) {
+	status := C.ctt_eth_bls_deserialize_signature_compressed_unchecked(&sig.cSig,
+		(*C.byte)(unsafe.Pointer(&src[0])),
+	)
+	if status != C.cttCodecEcc_Success {
+		err := errors.New(
+			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (pub *EthBlsPubKey) DeserializeCompressed(src [48]byte) (bool, error) {
+	status := C.ctt_eth_bls_deserialize_pubkey_compressed(&pub.cPub,
+		(*C.byte)(unsafe.Pointer(&src[0])),
+	)
+	if status != C.cttCodecEcc_Success && status != C.cttCodecEcc_PointAtInfinity {
+		err := errors.New(
+			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (sig *EthBlsSignature) DeserializeCompressed(src [96]byte) (bool, error) {
+	status := C.ctt_eth_bls_deserialize_signature_compressed(&sig.cSig,
+		(*C.byte)(unsafe.Pointer(&src[0])),
+	)
+	if status != C.cttCodecEcc_Success && status != C.cttCodecEcc_PointAtInfinity {
+		err := errors.New(
+			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (sig *EthBlsSignature) Sign(sec EthBlsSecKey, message []byte) (bool, error) {
+	C.ctt_eth_bls_sign(&sig.cSig, &sec.cSec,
+		(*C.byte)(unsafe.Pointer(&message[0])),
+		(C.ptrdiff_t)(len(message)),
+	)
+	return true, nil
+}
+
+func FastAggregateVerify(pubkeys []EthBlsPubKey, message []byte, aggregate_sig EthBlsSignature) (bool, error) {
+	// TODO: If we had `EthBlsPubKey` just be
+	// type EthBlsPubKey C.ctt_eth_bls_pubkey
+	// we could just pass it directly, no? But I guess that leaks out
+	// the C types into users' modules?
+	if len(pubkeys) == 0 {
+		err := errors.New(
+			"No public keys given.",
+		)
+		return false, err
+	}
+	var cpkeys []C.ctt_eth_bls_pubkey
+	cpkeys = make([]C.ctt_eth_bls_pubkey, len(pubkeys), len(pubkeys))
+	for i, pk := range pubkeys {
+		cpkeys[i] = pk.cPub
+	}
+	status := C.ctt_eth_bls_fast_aggregate_verify((*C.ctt_eth_bls_pubkey)(unsafe.Pointer(&cpkeys[0])),
+		(C.ptrdiff_t)(len(pubkeys)),
+		(*C.byte)(unsafe.Pointer(&message[0])),
+		(C.ptrdiff_t)(len(message)),
+		&aggregate_sig.cSig,
+	)
+	if status != C.cttEthBls_Success {
+		err := errors.New(
+			C.GoString(C.ctt_eth_bls_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+type CttSpan struct {
+	data *C.byte
+	len  C.size_t
+}
+
+// NOTE: this does not work, because it would end up with us having a
+// Go pointer we pass to C, which points to Go pointers.
+func toSpan(data *[]byte) (span C.ctt_span) { //CttSpan) {
+	span = C.ctt_span{data: (*C.byte)(unsafe.Pointer(&(*data)[0])), len: C.size_t(len(*data))} // in place span
+	return span
+}
+
+// TODO: Use CttSpan from Go side or use directly the C struct?
+
+//func newSpans(data [][]byte) (spans []C.ctt_span) {
+func newSpans(data [][]byte) (spans []CttSpan) {
+	//spans = make([]C.ctt_span, len(data), len(data))
+	spans = make([]CttSpan, len(data), len(data))
+	// TODO: this is ugly, but due to Go's rules about not allowing to
+	// pass a Go pointer, which itself contains a Go pointer, we cannot
+	// pass the data of each `message` to C... So gotta malloc and copy
+	for i, msg := range data {
+		mem := C.malloc(C.ulong(len(msg)))
+		C.memcpy(mem, unsafe.Pointer(&msg[0]), C.ulong(len(msg)))
+		//spans[i] = C.ctt_span{data: (*C.byte)(mem), len: C.size_t(len(msg))}
+		spans[i] = CttSpan{data: (*C.byte)(mem), len: C.size_t(len(msg))}
+		println("Element at 5 : ", (*mem)[5])
+	}
+	return spans
+}
+
+//func freeSpans(spans []C.ctt_span){
+func freeSpans(spans []CttSpan){
+	// frees the malloc'd memory of the given spans
+	for _, msg := range spans {
+		C.free(unsafe.Pointer(msg.data))
+	}
+}
+
+
+func AggregateVerify(pubkeys []EthBlsPubKey, messages [][]byte, aggregate_sig EthBlsSignature) (bool, error) {
+	// TODO: If we had `EthBlsPubKey` just be
+	// type EthBlsPubKey C.ctt_eth_bls_pubkey
+	// we could just pass it directly, no? But I guess that leaks out
+	// the C types into users' modules?
+	if len(pubkeys) == 0 {
+		err := errors.New(
+			"No public keys given.",
+		)
+		return false, err
+	}
+	//else if len(messages) == 0 {
+	//	return true, nil // TODO: ???
+	//}
+
+	// TODO: type of `messages` is wrong! Needs to be a slice of slices
+	var cpkeys []C.ctt_eth_bls_pubkey
+	cpkeys = make([]C.ctt_eth_bls_pubkey, len(pubkeys), len(pubkeys))
+	for i, pk := range pubkeys {
+		cpkeys[i] = pk.cPub
+	}
+
+	// copy messages to CttSpan type array
+	spans := newSpans(messages)
+	defer freeSpans(spans) // make sure to free after
+	status := C.ctt_eth_bls_aggregate_verify((*C.ctt_eth_bls_pubkey)(unsafe.Pointer(&cpkeys[0])),
+		(*C.ctt_span)(unsafe.Pointer(&spans[0])),
+		(C.ptrdiff_t)(len(pubkeys)),
+		&aggregate_sig.cSig,
+	)
+	if status != C.cttEthBls_Success {
+		err := errors.New(
+			C.GoString(C.ctt_eth_bls_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func BatchVerify(pubkeys []EthBlsPubKey, messages [][]byte, signatures []EthBlsSignature, secureRandomBytes [32]byte) (bool, error) {
+	// TODO: If we had `EthBlsPubKey` just be
+	// type EthBlsPubKey C.ctt_eth_bls_pubkey
+	// we could just pass it directly, no? But I guess that leaks out
+	// the C types into users' modules?
+	if len(pubkeys) != len(messages) {
+		err := errors.New("Number of public keys must match number of messages.")
+		return false, err
+	} else if len(pubkeys) != len(signatures) {
+		err := errors.New("Number of public keys must match number of signatures.")
+		return false, err
+	}
+
+	// TODO: type of messages is wrong!
+	var cpkeys []C.ctt_eth_bls_pubkey
+	var csigs []C.ctt_eth_bls_signature
+	cpkeys = make([]C.ctt_eth_bls_pubkey, len(pubkeys), len(pubkeys))
+	csigs = make([]C.ctt_eth_bls_signature, len(pubkeys), len(pubkeys))
+	for i, pk := range pubkeys {
+		cpkeys[i] = pk.cPub
+		csigs[i] = signatures[i].cSig
+	}
+
+	// copy messages to CttSpan type array
+	spans := newSpans(messages)
+	defer freeSpans(spans) // make sure to free after!
+
+	status := C.ctt_eth_bls_batch_verify((*C.ctt_eth_bls_pubkey)(unsafe.Pointer(&cpkeys[0])),
+		(*C.ctt_span)(unsafe.Pointer(&spans[0])),
+		(*C.ctt_eth_bls_signature)(unsafe.Pointer(&csigs[0])),
+		(C.ptrdiff_t)(len(pubkeys)),
+		(*C.byte)(unsafe.Pointer(&secureRandomBytes[0])),
+	)
+	if status != C.cttEthBls_Success {
+		err := errors.New(
+			C.GoString(C.ctt_eth_bls_status_to_string(status)),
+		)
+		return false, err
+	}
+
+	return true, nil
+}
+
+// TODO: BatchVerifyParallel
