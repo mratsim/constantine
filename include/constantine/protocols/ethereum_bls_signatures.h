@@ -256,10 +256,10 @@ ctt_eth_bls_status ctt_eth_bls_fast_aggregate_verify(const ctt_eth_bls_pubkey pu
  *  1. Public keys signing the same message MUST be aggregated and checked for 0 before calling this function.
  *  2. Augmentation or Proof of possessions must used for each public keys.
  */
-ctt_eth_bls_status aggregate_verify(const ctt_eth_bls_pubkey* pubkeys,
-				    const ctt_span messages[],
-				    ptrdiff_t len,
-				    const ctt_eth_bls_signature* aggregate_sig) __attribute__((warn_unused_result));
+ctt_eth_bls_status ctt_eth_bls_aggregate_verify(const ctt_eth_bls_pubkey* pubkeys,
+						const ctt_span messages[],
+						ptrdiff_t len,
+						const ctt_eth_bls_signature* aggregate_sig) __attribute__((warn_unused_result));
 
 
 /** Verify that all (pubkey, message, signature) triplets are valid
