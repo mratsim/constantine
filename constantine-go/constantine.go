@@ -266,3 +266,50 @@ func (ctx EthKzgContext) VerifyBlobKzgProofBatchParallel(tp Threadpool, blobs []
 	}
 	return true, nil
 }
+
+// Constantine's SHA256 API
+
+type Sha256Context struct {
+	cCtx C.ctt_sha256_context
+}
+
+func Sha256ContextNew() (ctx Sha256Context, err error) {
+	var cCtx C.ctt_sha256_context
+	ctx = Sha256Context{cCtx: cCtx}
+	return ctx, nil
+}
+
+func (ctx *Sha256Context) Sha256ContextInit() (bool, error) {
+	C.ctt_sha256_init(&ctx.cCtx)
+	return true, nil
+}
+
+func (ctx *Sha256Context) Sha256ContextUpdate(data []byte) (bool, error) {
+	C.ctt_sha256_update(&ctx.cCtx,
+		(*C.byte)(unsafe.Pointer(&data[0])),
+		(C.ptrdiff_t)(len(data)),
+	)
+	return true, nil
+}
+
+func (ctx *Sha256Context) Sha256ContextFinish(data [32]byte) (bool, error) {
+	C.ctt_sha256_finish(&ctx.cCtx,
+		(*C.byte)(unsafe.Pointer(&data[0])),
+	)
+	return true, nil
+}
+
+func (ctx *Sha256Context) Sha256ContextClear() (bool, error) {
+	C.ctt_sha256_clear(&ctx.cCtx)
+	return true, nil
+}
+
+func Sha256Hash(digest *[32]byte, message []byte, clearMemory bool) (bool, error) {
+	C.ctt_sha256_hash((*C.byte)(unsafe.Pointer(digest)),
+		(*C.byte)(unsafe.Pointer(&message[0])),
+		(C.ptrdiff_t)(len(message)),
+		(C.ctt_bool)(clearMemory),
+	)
+	return true, nil
+}
+
