@@ -415,7 +415,7 @@ func (sig *EthBlsSignature) Validate() (bool, error) {
 }
 
 func (sec *EthBlsSecKey) Serialize(dst *[32]byte) (bool, error) {
-	status := C.ctt_eth_bls_serialize_seckey((*C.byte)(unsafe.Pointer(dst)), // TODO: or rather `&(*dst)[0])`?
+	status := C.ctt_eth_bls_serialize_seckey((*C.byte)(unsafe.Pointer(dst)),
 		&sec.cSec,
 	)
 	if status != C.cttCodecScalar_Success {
@@ -544,6 +544,7 @@ func FastAggregateVerify(pubkeys []EthBlsPubKey, message []byte, aggregate_sig E
 	return true, nil
 }
 
+// Go wrapper of the `ctt_span` type of the C API
 type CttSpan struct {
 	data *C.byte
 	len  C.size_t
@@ -556,32 +557,25 @@ func toSpan(data *[]byte) (span C.ctt_span) { //CttSpan) {
 	return span
 }
 
-// TODO: Use CttSpan from Go side or use directly the C struct?
-
-//func newSpans(data [][]byte) (spans []C.ctt_span) {
 func newSpans(data [][]byte) (spans []CttSpan) {
-	//spans = make([]C.ctt_span, len(data), len(data))
-	spans = make([]CttSpan, len(data), len(data))
 	// TODO: this is ugly, but due to Go's rules about not allowing to
 	// pass a Go pointer, which itself contains a Go pointer, we cannot
 	// pass the data of each `message` to C... So gotta malloc and copy
+	spans = make([]CttSpan, len(data), len(data))
 	for i, msg := range data {
 		mem := C.malloc(C.ulong(len(msg)))
 		C.memcpy(mem, unsafe.Pointer(&msg[0]), C.ulong(len(msg)))
-		//spans[i] = C.ctt_span{data: (*C.byte)(mem), len: C.size_t(len(msg))}
 		spans[i] = CttSpan{data: (*C.byte)(mem), len: C.size_t(len(msg))}
 	}
 	return spans
 }
 
-//func freeSpans(spans []C.ctt_span){
 func freeSpans(spans []CttSpan){
 	// frees the malloc'd memory of the given spans
 	for _, msg := range spans {
 		C.free(unsafe.Pointer(msg.data))
 	}
 }
-
 
 func AggregateVerify(pubkeys []EthBlsPubKey, messages [][]byte, aggregate_sig EthBlsSignature) (bool, error) {
 	// TODO: If we had `EthBlsPubKey` just be
@@ -594,11 +588,7 @@ func AggregateVerify(pubkeys []EthBlsPubKey, messages [][]byte, aggregate_sig Et
 		)
 		return false, err
 	}
-	//else if len(messages) == 0 {
-	//	return true, nil // TODO: ???
-	//}
 
-	// TODO: type of `messages` is wrong! Needs to be a slice of slices
 	var cpkeys []C.ctt_eth_bls_pubkey
 	cpkeys = make([]C.ctt_eth_bls_pubkey, len(pubkeys), len(pubkeys))
 	for i, pk := range pubkeys {
@@ -607,7 +597,7 @@ func AggregateVerify(pubkeys []EthBlsPubKey, messages [][]byte, aggregate_sig Et
 
 	// copy messages to CttSpan type array
 	spans := newSpans(messages)
-	defer freeSpans(spans) // make sure to free after
+	defer freeSpans(spans) // make sure to free after!
 	status := C.ctt_eth_bls_aggregate_verify((*C.ctt_eth_bls_pubkey)(unsafe.Pointer(&cpkeys[0])),
 		(*C.ctt_span)(unsafe.Pointer(&spans[0])),
 		(C.ptrdiff_t)(len(pubkeys)),
@@ -635,7 +625,6 @@ func BatchVerify(pubkeys []EthBlsPubKey, messages [][]byte, signatures []EthBlsS
 		return false, err
 	}
 
-	// TODO: type of messages is wrong!
 	var cpkeys []C.ctt_eth_bls_pubkey
 	var csigs []C.ctt_eth_bls_signature
 	cpkeys = make([]C.ctt_eth_bls_pubkey, len(pubkeys), len(pubkeys))
