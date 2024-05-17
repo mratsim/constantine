@@ -64,7 +64,14 @@ int main(){
       { message, 32 }
   };
   const ctt_eth_bls_signature sigs[3] = { sig, sig, sig };
-  byte srb[32] = {0}; // just a bunch of zeros as random "secure" bytes.
+
+  // Use constantine's `sysrand` to fill the secure random bytes
+  byte srb[32];
+  if(!ctt_csprng_sysrand(srb, 32)){
+      printf("Failed to fill `srb` using `sysrand`\n");
+      exit(1);
+  }
+
   bls_status = ctt_eth_bls_batch_verify(pkeys, messages, sigs, 3, srb);
   if (bls_status != cttEthBls_Success) {
     printf("Batch verification failure: status %d - %s\n", bls_status, ctt_eth_bls_status_to_string(bls_status));
