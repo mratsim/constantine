@@ -17,11 +17,11 @@ int from_hex(byte *dst, size_t dst_len, const char *hex_src, size_t src_len) {
     // converts the given `hex_src` to a byte buffer. `buffer` must already be
     // allocated to len(hex_src) // 2!
     if (src_len % 2 != 0) return -1; // Length must be even
-    else if(dst_len * 2 != src_len) return -2; // dest length must be half src len
+    else if(dst_len * 2 != src_len) return -1; // dest length must be half src len
 
     for (size_t i = 0; i < dst_len; i++) {
         if (sscanf(&hex_src[i * 2], "%2hhx", &dst[i]) != 1) {
-            return -(i+3); // Failed to convert hex to byte
+            return -(i+1); // Failed to convert hex to byte
         }
     }
     return 0; // Success
@@ -34,7 +34,7 @@ int compare_binary(const byte* buf1, size_t len1, const byte* buf2, size_t len2)
     }
     for(size_t i = 0; i < len1; i++){
 	if(buf1[i] != buf2[i]){
-	    return -(i+2); // found a mismatched byte
+	    return -(i+1); // found a mismatched byte
 	}
     }
     return 0; // success
