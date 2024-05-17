@@ -570,7 +570,6 @@ func newSpans(data [][]byte) (spans []CttSpan) {
 		C.memcpy(mem, unsafe.Pointer(&msg[0]), C.ulong(len(msg)))
 		//spans[i] = C.ctt_span{data: (*C.byte)(mem), len: C.size_t(len(msg))}
 		spans[i] = CttSpan{data: (*C.byte)(mem), len: C.size_t(len(msg))}
-		println("Element at 5 : ", (*mem)[5])
 	}
 	return spans
 }
