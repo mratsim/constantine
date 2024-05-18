@@ -10,7 +10,7 @@ repository = "https://github.com/mratsim/constantine"
 [dependencies]
 constantine-sys = { path = "../constantine-sys" }
 constantine-core = { path = "../constantine-core" }
-halo2curves = { git = 'https://github.com/taikoxyz/halo2curves', branch = "pr-pse-exec-engine" }
+halo2_middleware = { git = 'https://github.com/privacy-scaling-explorations/halo2' }
 
 [dev-dependencies]
 ark-std = "0.3"
@@ -22,7 +22,7 @@ rand_xorshift = "0.3"
 rayon = "1.8"
 
 # In CI "asm" needs to be disabled as some agents don't support ADX.
-halo2curves = { git = 'https://github.com/taikoxyz/halo2curves', branch = "pr-pse-exec-engine" }
+# halo2curves = { git = 'https://github.com/taikoxyz/halo2curves', branch = "pr-pse-exec-engine" }
 
 [[bench]]
 name = "msm"
