@@ -32,7 +32,7 @@ import
 {.push checks: off.}
 
 # C FFI
-proc batch_verify_parallel*[Msg](
+proc batch_verify_parallel*(
         tp: Threadpool,
         pubkeys: ptr UncheckedArray[PublicKey],
         messages: ptr UncheckedArray[View[byte]],
@@ -80,7 +80,7 @@ proc batch_verify_parallel*[Msg](
 
   let verified = tp.batchVerify_parallel(
     pubkeys.toOpenArray(len).unwrap(),
-    messages,
+    messages.toOpenArray(len),
     signatures.toOpenArray(len).unwrap(),
     sha256, 128, DomainSeparationTag, secureRandomBytes)
   if verified:

@@ -411,11 +411,11 @@ func aggregate_verify*[Msg](pubkeys: openArray[PublicKey], messages: openArray[M
   return cttEthBls_VerificationFailure
 
 # C FFI
-func batch_verify*[Msg](pubkeys: ptr UncheckedArray[PublicKey],
-                        messages: ptr UncheckedArray[View[byte]],
-                        signatures: ptr UncheckedArray[Signature],
-                        len: int,
-                        secureRandomBytes: array[32, byte]): cttEthBlsStatus {.libPrefix: prefix_ffi.} =
+func batch_verify*(pubkeys: ptr UncheckedArray[PublicKey],
+                   messages: ptr UncheckedArray[View[byte]],
+                   signatures: ptr UncheckedArray[Signature],
+                   len: int,
+                   secureRandomBytes: array[32, byte]): cttEthBlsStatus {.libPrefix: prefix_ffi.} =
   ## Verify that all (pubkey, message, signature) triplets are valid
   ## returns `true` if all signatures are valid, `false` if at least one is invalid.
   ##
@@ -454,7 +454,7 @@ func batch_verify*[Msg](pubkeys: ptr UncheckedArray[PublicKey],
 
   let verified = batchVerify(
     pubkeys.toOpenArray(len).unwrap(),
-    messages,
+    messages.toOpenArray(len),
     signatures.toOpenArray(len).unwrap(),
     sha256, 128, DomainSeparationTag, secureRandomBytes)
   if verified:
