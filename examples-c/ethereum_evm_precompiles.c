@@ -84,7 +84,7 @@ int main(){
 	    );
 	exit(1);
     }
-    printf("EVM precompiles example ran successfully .\n");
+    printf("EVM precompiles example ran successfully.\n");
 
     return 0;
 }
