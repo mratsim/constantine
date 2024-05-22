@@ -543,8 +543,8 @@ func newSpans(data [][]byte) (spans []CttSpan) {
 	// pass the data of each `message` to C... So gotta malloc and copy
 	spans = make([]CttSpan, len(data), len(data))
 	for i, msg := range data {
-		mem := C.malloc(C.ulong(len(msg)))
-		C.memcpy(mem, unsafe.Pointer(&msg[0]), C.ulong(len(msg)))
+		mem := C.malloc(C.uint64_t(len(msg)))
+		C.memcpy(mem, unsafe.Pointer(&msg[0]), C.uint64_t(len(msg)))
 		spans[i] = CttSpan{data: (*C.byte)(mem), len: C.size_t(len(msg))}
 	}
 	return spans
