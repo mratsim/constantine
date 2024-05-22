@@ -760,7 +760,7 @@ func TestExampleCBlsSig(t *testing.T) {
 	str := "Security pb becomes key mgmt pb!"
 	var rawSecKey [32]byte
 	copy(rawSecKey[:], str)
-	status, err := secKey.DeserializeSecKey(rawSecKey)
+	status, err := secKey.Deserialize(rawSecKey)
 	fmt.Println("deserialized: Status: ", status, " err = ", err)
 
 	// Derive the matching public key
@@ -970,7 +970,7 @@ func TestSign(t *testing.T) {
 
 			var secKey EthBlsSecKey
 			var status bool
-			status, err = secKey.DeserializeSecKey(rawSecKey)
+			status, err = secKey.Deserialize(rawSecKey)
 			var sig EthBlsSignature
 			if !status {
 				// sanity check the output matches status
@@ -987,7 +987,7 @@ func TestSign(t *testing.T) {
 						require.Nil(t, test.Output)
 						return
 					}
-					status, err = sig.SignaturesAreEqual(output)
+					status, err = sig.AreEqual(output)
 					if err != nil {
 						var sigBytes  [96]byte
 						var roundTrip [96]byte
