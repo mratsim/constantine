@@ -503,10 +503,6 @@ func (sig *EthBlsSignature) Sign(sec EthBlsSecKey, message []byte) (bool, error)
 }
 
 func FastAggregateVerify(pubkeys []EthBlsPubKey, message []byte, aggregate_sig EthBlsSignature) (bool, error) {
-	// TODO: If we had `EthBlsPubKey` just be
-	// type EthBlsPubKey C.ctt_eth_bls_pubkey
-	// we could just pass it directly, no? But I guess that leaks out
-	// the C types into users' modules?
 	if len(pubkeys) == 0 {
 		err := errors.New(
 			"No public keys given.",
@@ -562,10 +558,6 @@ func freeSpans(spans []CttSpan){
 }
 
 func AggregateVerify(pubkeys []EthBlsPubKey, messages [][]byte, aggregate_sig EthBlsSignature) (bool, error) {
-	// TODO: If we had `EthBlsPubKey` just be
-	// type EthBlsPubKey C.ctt_eth_bls_pubkey
-	// we could just pass it directly, no? But I guess that leaks out
-	// the C types into users' modules?
 	if len(pubkeys) == 0 {
 		err := errors.New(
 			"No public keys given.",
@@ -591,10 +583,6 @@ func AggregateVerify(pubkeys []EthBlsPubKey, messages [][]byte, aggregate_sig Et
 }
 
 func BatchVerify(pubkeys []EthBlsPubKey, messages [][]byte, signatures []EthBlsSignature, secureRandomBytes [32]byte) (bool, error) {
-	// TODO: If we had `EthBlsPubKey` just be
-	// type EthBlsPubKey C.ctt_eth_bls_pubkey
-	// we could just pass it directly, no? But I guess that leaks out
-	// the C types into users' modules?
 	if len(pubkeys) != len(messages) {
 		err := errors.New("Number of public keys must match number of messages.")
 		return false, err
@@ -623,4 +611,32 @@ func BatchVerify(pubkeys []EthBlsPubKey, messages [][]byte, signatures []EthBlsS
 	return true, nil
 }
 
-// TODO: BatchVerifyParallel
+func BatchVerifyParallel(tp Threadpool, pubkeys []EthBlsPubKey, messages [][]byte, signatures []EthBlsSignature, secureRandomBytes [32]byte) (bool, error) {
+	if len(pubkeys) != len(messages) {
+		err := errors.New("Number of public keys must match number of messages.")
+		return false, err
+	} else if len(pubkeys) != len(signatures) {
+		err := errors.New("Number of public keys must match number of signatures.")
+		return false, err
+	}
+
+	// copy messages to CttSpan type array
+	spans := newSpans(messages)
+	defer freeSpans(spans) // make sure to free after!
+
+	status := C.ctt_eth_bls_batch_verify_parallel(tp.ctx,
+		(*C.ctt_eth_bls_pubkey)(unsafe.Pointer(&pubkeys[0])),
+		(*C.ctt_span)(unsafe.Pointer(&spans[0])),
+		(*C.ctt_eth_bls_signature)(unsafe.Pointer(&signatures[0])),
+		(C.ptrdiff_t)(len(pubkeys)),
+		(*C.byte)(unsafe.Pointer(&secureRandomBytes[0])),
+	)
+	if status != C.cttEthBls_Success {
+		err := errors.New(
+			C.GoString(C.ctt_eth_bls_status_to_string(status)),
+		)
+		return false, err
+	}
+
+	return true, nil
+}

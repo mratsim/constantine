@@ -1276,89 +1276,85 @@ func TestBatchVerify(t *testing.T) {
 		Output bool `json:"output"`
 	}
 
+	// for BatchVerifyParallel
+	tp := createTestThreadpool(t)
+
 	tests, _ := filepath.Glob(batch_verifyTests)
 	for _, testPath := range tests {
-		t.Run(testPath, func(t *testing.T) {
-			testFile, err := os.Open(testPath)
-			test := Test{}
-			err = json.NewDecoder(testFile).Decode(&test)
+		// Don't use t.Run() with parallel C code to not mess up thread-local storage
+		testFile, err := os.Open(testPath)
+		test := Test{}
+		err = json.NewDecoder(testFile).Decode(&test)
 
-			var rawPks []EthBlsPubKeyRaw
-			for _, s := range test.Input.PubKeys {
-				var rawPk EthBlsPubKeyRaw
-				err = rawPk.UnmarshalText([]byte(s))
-				if err != nil {
-					require.Nil(t, test.Output)
-					return
-				}
-				rawPks = append(rawPks, rawPk)
-			}
-			var rawSigs []EthBlsSignatureRaw
-			for _, s := range test.Input.Signatures {
-				var rawSig EthBlsSignatureRaw
-				err = rawSig.UnmarshalText([]byte(s))
-				if err != nil {
-					require.Nil(t, test.Output)
-					return
-				}
-				rawSigs = append(rawSigs, rawSig)
-			}
-
-			var status bool
-			{ // testChecks
-				var pks []EthBlsPubKey
-				for _, rawPk := range rawPks {
-					var pk EthBlsPubKey
-					status, err = pk.DeserializeCompressed(rawPk)
-					if err != nil {
-						require.Equal(t, status, test.Output)
-						return
-					}
-					pks = append(pks, pk)
-				}
-				var sigs []EthBlsSignature
-				for _, rawSig := range rawSigs {
-					var sig EthBlsSignature
-					status, err = sig.DeserializeCompressed(rawSig)
-					if err != nil {
-						require.Equal(t, status, test.Output)
-						return
-					}
-					sigs = append(sigs, sig)
-				}
-				var msgs [][]byte
-				for _, rawMsg := range test.Input.Messages {
-					var msg EthBlsMessage
-					err = msg.UnmarshalText([]byte(rawMsg))
-					if err != nil {
-						require.Nil(t, test.Output)
-						return
-					}
-					msgs = append(msgs, msg[:])
-				}
-				var randomBytes [32]byte
-				Sha256Hash(&randomBytes, []byte("totally non-secure source of entropy"), false)
-
-				status, err = BatchVerify(pks, msgs[:], sigs, randomBytes)
-
-				/*
-				    doAssert status[0] == parallelStatus, block:
-				      "\nSerial status:   " & $status[0] &
-				      "\nParallel status: " & $parallelStatus & '\n'
-				    tp.shutdown()
-				*/
-				//tp := createTestThreadpool(t)
-				//parallelStatus, errTp := BatchVerifyParallel(tp,
-				//tp.Shutdown()
-			}
-			require.Equal(t, status, test.Output)
-			if status != test.Output {
-				fmt.Println("Verification differs from expected \n",
-				    "   valid sig? ", status, "\n",
-				    "   expected: ", test.Output,
-				)
+		var rawPks []EthBlsPubKeyRaw
+		for _, s := range test.Input.PubKeys {
+			var rawPk EthBlsPubKeyRaw
+			err = rawPk.UnmarshalText([]byte(s))
+			if err != nil {
+				require.Nil(t, test.Output)
 				return
 			}
-		})
+			rawPks = append(rawPks, rawPk)
+		}
+		var rawSigs []EthBlsSignatureRaw
+		for _, s := range test.Input.Signatures {
+			var rawSig EthBlsSignatureRaw
+			err = rawSig.UnmarshalText([]byte(s))
+			if err != nil {
+				require.Nil(t, test.Output)
+				return
+			}
+			rawSigs = append(rawSigs, rawSig)
+		}
+
+		var status bool
+		{ // testChecks
+			var pks []EthBlsPubKey
+			for _, rawPk := range rawPks {
+				var pk EthBlsPubKey
+				status, err = pk.DeserializeCompressed(rawPk)
+				if err != nil {
+					require.Equal(t, status, test.Output)
+					return
+				}
+				pks = append(pks, pk)
+			}
+			var sigs []EthBlsSignature
+			for _, rawSig := range rawSigs {
+				var sig EthBlsSignature
+				status, err = sig.DeserializeCompressed(rawSig)
+				if err != nil {
+					require.Equal(t, status, test.Output)
+					return
+				}
+				sigs = append(sigs, sig)
+			}
+			var msgs [][]byte
+			for _, rawMsg := range test.Input.Messages {
+				var msg EthBlsMessage
+				err = msg.UnmarshalText([]byte(rawMsg))
+				if err != nil {
+					require.Nil(t, test.Output)
+					return
+				}
+				msgs = append(msgs, msg[:])
+			}
+			var randomBytes [32]byte
+			Sha256Hash(&randomBytes, []byte("totally non-secure source of entropy"), false)
+
+			status, err = BatchVerify(pks, msgs[:], sigs, randomBytes)
+
+			// and parallel API
+			parallelStatus, _ := BatchVerifyParallel(tp, pks, msgs[:], sigs, randomBytes)
+			require.Equal(t, parallelStatus, test.Output)
+		}
+		require.Equal(t, status, test.Output)
+		if status != test.Output {
+			fmt.Println("Verification differs from expected \n",
+			    "   valid sig? ", status, "\n",
+			    "   expected: ", test.Output,
+			)
+			return
+		}
 	}
 }
