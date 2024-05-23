@@ -283,7 +283,7 @@ func (pub EthBlsPubKey) IsZero() bool {
 
 func (sec *EthBlsSecKey) Deserialize(src [32]byte) (bool, error) {
 	status := C.ctt_eth_bls_deserialize_seckey((*C.ctt_eth_bls_seckey)(sec),
-		(*C.byte)(unsafe.Pointer(&src[0])))
+		(*C.byte)(&src[0]))
 	if status != C.cttCodecScalar_Success {
 		err := errors.New(
 			C.GoString(C.ctt_codec_scalar_status_to_string(status)),
@@ -299,7 +299,7 @@ func (pub *EthBlsPubKey) DerivePubKey(sec EthBlsSecKey) {
 
 func (pub *EthBlsPubKey) Verify(message []byte, sig EthBlsSignature) (bool, error) {
 	status := C.ctt_eth_bls_verify((*C.ctt_eth_bls_pubkey)(pub),
-		(*C.byte)(unsafe.Pointer(&message[0])),
+		(*C.byte)(getAddr(message)),
 		(C.ptrdiff_t)(len(message)),
 		(*C.ctt_eth_bls_signature)(&sig),
 	)
@@ -401,7 +401,7 @@ func (sig *EthBlsSignature) SerializeCompressed(dst *[96]byte) (bool, error) {
 
 func (pub *EthBlsPubKey) DeserializeCompressedUnchecked(src [48]byte) (bool, error) {
 	status := C.ctt_eth_bls_deserialize_pubkey_compressed_unchecked((*C.ctt_eth_bls_pubkey)(pub),
-		(*C.byte)(unsafe.Pointer(&src[0])),
+		(*C.byte)(&src[0]),
 	)
 	if status != C.cttCodecEcc_Success {
 		err := errors.New(
@@ -414,7 +414,7 @@ func (pub *EthBlsPubKey) DeserializeCompressedUnchecked(src [48]byte) (bool, err
 
 func (sig *EthBlsSignature) DeserializeCompressedUnchecked(src [96]byte) (bool, error) {
 	status := C.ctt_eth_bls_deserialize_signature_compressed_unchecked((*C.ctt_eth_bls_signature)(sig),
-		(*C.byte)(unsafe.Pointer(&src[0])),
+		(*C.byte)(&src[0]),
 	)
 	if status != C.cttCodecEcc_Success {
 		err := errors.New(
@@ -427,7 +427,7 @@ func (sig *EthBlsSignature) DeserializeCompressedUnchecked(src [96]byte) (bool, 
 
 func (pub *EthBlsPubKey) DeserializeCompressed(src [48]byte) (bool, error) {
 	status := C.ctt_eth_bls_deserialize_pubkey_compressed((*C.ctt_eth_bls_pubkey)(pub),
-		(*C.byte)(unsafe.Pointer(&src[0])),
+		(*C.byte)(&src[0]),
 	)
 	if status != C.cttCodecEcc_Success && status != C.cttCodecEcc_PointAtInfinity {
 		err := errors.New(
@@ -440,7 +440,7 @@ func (pub *EthBlsPubKey) DeserializeCompressed(src [48]byte) (bool, error) {
 
 func (sig *EthBlsSignature) DeserializeCompressed(src [96]byte) (bool, error) {
 	status := C.ctt_eth_bls_deserialize_signature_compressed((*C.ctt_eth_bls_signature)(sig),
-		(*C.byte)(unsafe.Pointer(&src[0])),
+		(*C.byte)(&src[0]),
 	)
 	if status != C.cttCodecEcc_Success && status != C.cttCodecEcc_PointAtInfinity {
 		err := errors.New(
@@ -453,7 +453,7 @@ func (sig *EthBlsSignature) DeserializeCompressed(src [96]byte) (bool, error) {
 
 func (sig *EthBlsSignature) Sign(sec EthBlsSecKey, message []byte) {
 	C.ctt_eth_bls_sign((*C.ctt_eth_bls_signature)(sig), (*C.ctt_eth_bls_seckey)(&sec),
-		(*C.byte)(unsafe.Pointer(&message[0])),
+		(*C.byte)(getAddr(message)),
 		(C.ptrdiff_t)(len(message)),
 	)
 }
@@ -465,9 +465,9 @@ func FastAggregateVerify(pubkeys []EthBlsPubKey, message []byte, aggregate_sig E
 		)
 		return false, err
 	}
-	status := C.ctt_eth_bls_fast_aggregate_verify((*C.ctt_eth_bls_pubkey)(unsafe.Pointer(&pubkeys[0])),
+	status := C.ctt_eth_bls_fast_aggregate_verify((*C.ctt_eth_bls_pubkey)(getAddr(pubkeys)),
 		(C.ptrdiff_t)(len(pubkeys)),
-		(*C.byte)(unsafe.Pointer(&message[0])),
+		(*C.byte)(getAddr(message)),
 		(C.ptrdiff_t)(len(message)),
 		(*C.ctt_eth_bls_signature)(&aggregate_sig),
 	)
@@ -528,6 +528,7 @@ func BatchVerifySoA(pubkeys []EthBlsPubKey, messages [][]byte, signatures []EthB
 			),
 		)
 		return false, err
+
 	} else if len(pubkeys) != len(messages) {
 		err := errors.New("Number of public keys must match number of messages.")
 		return false, err
