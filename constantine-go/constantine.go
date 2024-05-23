@@ -622,3 +622,217 @@ func BatchVerifyAoS(triplets []BatchVerifyTriplet, secureRandomBytes [32]byte) (
 
 	return accum.finalVerify(), nil
 }
+
+// --------------------------------
+// ------- EVM precompiles --------
+// --------------------------------
+
+func EvmSha256(result *[32]byte, inputs []byte) (bool, error) {
+	status := C.ctt_eth_evm_sha256((*C.byte)(&result[0]),
+		(C.ptrdiff_t)(len(result)),
+		(*C.byte)(getAddr(inputs)),
+		(C.ptrdiff_t)(len(inputs)),
+	)
+	if status != C.cttEVM_Success {
+		err := errors.New(
+			C.GoString(C.ctt_evm_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func EvmModexp(result []byte, inputs []byte) (bool, error) {
+	status := C.ctt_eth_evm_modexp((*C.byte)(getAddr(result)),
+		(C.ptrdiff_t)(len(result)),
+		(*C.byte)(getAddr(inputs)),
+		(C.ptrdiff_t)(len(inputs)),
+	)
+	if status != C.cttEVM_Success {
+		err := errors.New(
+			C.GoString(C.ctt_evm_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func EvmBn254G1Add(result []byte, inputs []byte) (bool, error) {
+	status := C.ctt_eth_evm_bn254_g1add((*C.byte)(getAddr(result)),
+		(C.ptrdiff_t)(len(result)),
+		(*C.byte)(getAddr(inputs)),
+		(C.ptrdiff_t)(len(inputs)),
+	)
+	if status != C.cttEVM_Success {
+		err := errors.New(
+			C.GoString(C.ctt_evm_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func EvmBn254G1Mul(result []byte, inputs []byte) (bool, error) {
+	status := C.ctt_eth_evm_bn254_g1mul((*C.byte)(getAddr(result)),
+		(C.ptrdiff_t)(len(result)),
+		(*C.byte)(getAddr(inputs)),
+		(C.ptrdiff_t)(len(inputs)),
+	)
+	if status != C.cttEVM_Success {
+		err := errors.New(
+			C.GoString(C.ctt_evm_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func EvmBn254G1EcPairingCheck(result []byte, inputs []byte) (bool, error) {
+	status := C.ctt_eth_evm_bn254_ecpairingcheck((*C.byte)(getAddr(result)),
+		(C.ptrdiff_t)(len(result)),
+		(*C.byte)(getAddr(inputs)),
+		(C.ptrdiff_t)(len(inputs)),
+	)
+	if status != C.cttEVM_Success {
+		err := errors.New(
+			C.GoString(C.ctt_evm_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func EvmBls12381G1Add(result []byte, inputs []byte) (bool, error) {
+	status := C.ctt_eth_evm_bls12381_g1add((*C.byte)(getAddr(result)),
+		(C.ptrdiff_t)(len(result)),
+		(*C.byte)(getAddr(inputs)),
+		(C.ptrdiff_t)(len(inputs)),
+	)
+	if status != C.cttEVM_Success {
+		err := errors.New(
+			C.GoString(C.ctt_evm_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func EvmBls12381G1Mul(result []byte, inputs []byte) (bool, error) {
+	status := C.ctt_eth_evm_bls12381_g1mul((*C.byte)(getAddr(result)),
+		(C.ptrdiff_t)(len(result)),
+		(*C.byte)(getAddr(inputs)),
+		(C.ptrdiff_t)(len(inputs)),
+	)
+	if status != C.cttEVM_Success {
+		err := errors.New(
+			C.GoString(C.ctt_evm_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func EvmBls12381G1Msm(result []byte, inputs []byte) (bool, error) {
+	status := C.ctt_eth_evm_bls12381_g1msm((*C.byte)(getAddr(result)),
+		(C.ptrdiff_t)(len(result)),
+		(*C.byte)(getAddr(inputs)),
+		(C.ptrdiff_t)(len(inputs)),
+	)
+	if status != C.cttEVM_Success {
+		err := errors.New(
+			C.GoString(C.ctt_evm_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func EvmBls12381G2Add(result []byte, inputs []byte) (bool, error) {
+	status := C.ctt_eth_evm_bls12381_g2add((*C.byte)(getAddr(result)),
+		(C.ptrdiff_t)(len(result)),
+		(*C.byte)(getAddr(inputs)),
+		(C.ptrdiff_t)(len(inputs)),
+	)
+	if status != C.cttEVM_Success {
+		err := errors.New(
+			C.GoString(C.ctt_evm_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func EvmBls12381G2Mul(result []byte, inputs []byte) (bool, error) {
+	status := C.ctt_eth_evm_bls12381_g2mul((*C.byte)(getAddr(result)),
+		(C.ptrdiff_t)(len(result)),
+		(*C.byte)(getAddr(inputs)),
+		(C.ptrdiff_t)(len(inputs)),
+	)
+	if status != C.cttEVM_Success {
+		err := errors.New(
+			C.GoString(C.ctt_evm_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func EvmBls12381G2Msm(result []byte, inputs []byte) (bool, error) {
+	status := C.ctt_eth_evm_bls12381_g2msm((*C.byte)(getAddr(result)),
+		(C.ptrdiff_t)(len(result)),
+		(*C.byte)(getAddr(inputs)),
+		(C.ptrdiff_t)(len(inputs)),
+	)
+	if status != C.cttEVM_Success {
+		err := errors.New(
+			C.GoString(C.ctt_evm_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func EvmBls12381PairingCheck(result []byte, inputs []byte) (bool, error) {
+	status := C.ctt_eth_evm_bls12381_pairingcheck((*C.byte)(getAddr(result)),
+		(C.ptrdiff_t)(len(result)),
+		(*C.byte)(getAddr(inputs)),
+		(C.ptrdiff_t)(len(inputs)),
+	)
+	if status != C.cttEVM_Success {
+		err := errors.New(
+			C.GoString(C.ctt_evm_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func EvmBls12381MapFpToG1(result []byte, inputs []byte) (bool, error) {
+	status := C.ctt_eth_evm_bls12381_map_fp_to_g1((*C.byte)(getAddr(result)),
+		(C.ptrdiff_t)(len(result)),
+		(*C.byte)(getAddr(inputs)),
+		(C.ptrdiff_t)(len(inputs)),
+	)
+	if status != C.cttEVM_Success {
+		err := errors.New(
+			C.GoString(C.ctt_evm_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func EvmBls12381MapFp2ToG2(result []byte, inputs []byte) (bool, error) {
+	status := C.ctt_eth_evm_bls12381_map_fp2_to_g2((*C.byte)(getAddr(result)),
+		(C.ptrdiff_t)(len(result)),
+		(*C.byte)(getAddr(inputs)),
+		(C.ptrdiff_t)(len(inputs)),
+	)
+	if status != C.cttEVM_Success {
+		err := errors.New(
+			C.GoString(C.ctt_evm_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
