@@ -40,7 +40,7 @@ int main(){
   // Sign a message
   byte message[32];
   ctt_eth_bls_signature sig;
-  ctt_sha256_hash(message, "Mr F was here", 13, /* clear_memory = */ 0);
+  ctt_sha256_hash(message, (const byte*)"Mr F was here", 13, /* clear_memory = */ 0);
   ctt_eth_bls_sign(&sig, &seckey, message, 32);
 
   // Verify that a signature is valid for a message under the provided public key
