@@ -9,10 +9,6 @@
 use constantine_core::Threadpool;
 use constantine_sys::*;
 
-use ::core::mem::MaybeUninit;
-use std::{ffi::CString, path::Path};
-
-
 // Create type aliases for the C types
 pub type EthBlsSecKey = ctt_eth_bls_seckey;
 pub type EthBlsPubKey = ctt_eth_bls_pubkey;
@@ -250,13 +246,11 @@ pub struct CttSpan {
 fn to_span(vec: &mut Vec<Vec<u8>>) -> Vec<CttSpan> {
     let mut spans = Vec::with_capacity(vec.len());
     for v in vec {
-        unsafe {
-            let span = CttSpan{
-                data: v.as_mut_ptr() as *mut byte,
-                len: v.len(),
-            };
-            spans.push(span);
-        }
+        let span = CttSpan{
+            data: v.as_mut_ptr() as *mut byte,
+            len: v.len(),
+        };
+        spans.push(span);
     }
     return spans;
 }

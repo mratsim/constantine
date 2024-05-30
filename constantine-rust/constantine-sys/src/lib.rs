@@ -15,7 +15,6 @@ impl std::fmt::Display for ctt_eth_bls_status {
             ctt_eth_bls_status::cttEthBls_InputsLengthsMismatch => "cttEthBls_InputsLengthsMismatch",
             ctt_eth_bls_status::cttEthBls_ZeroLengthAggregation => "cttEthBls_ZeroLengthAggregation",
             ctt_eth_bls_status::cttEthBls_PointAtInfinity => "cttEthBls_PointAtInfinity",
-            _ => "cttEthBls_InvalidStatusCode",
         };
         write!(f, "{}", s)
     }
@@ -27,7 +26,6 @@ impl std::fmt::Display for ctt_codec_scalar_status {
             ctt_codec_scalar_status::cttCodecScalar_Success => "cttCodecScalar_Success",
             ctt_codec_scalar_status::cttCodecScalar_Zero => "cttCodecScalar_Zero",
             ctt_codec_scalar_status::cttCodecScalar_ScalarLargerThanCurveOrder => "cttCodecScalar_ScalarLargerThanCurveOrder",
-            _ => "cttCodecScalar_InvalidStatusCode",
         };
         write!(f, "{}", s)
     }
@@ -42,7 +40,6 @@ impl std::fmt::Display for ctt_codec_ecc_status {
             ctt_codec_ecc_status::cttCodecEcc_PointNotOnCurve => "cttCodecEcc_PointNotOnCurve",
             ctt_codec_ecc_status::cttCodecEcc_PointNotInSubgroup => "cttCodecEcc_PointNotInSubgroup",
             ctt_codec_ecc_status::cttCodecEcc_PointAtInfinity => "cttCodecEcc_PointAtInfinity",
-            _ => "cttCodecEcc_InvalidStatusCode",
         };
         write!(f, "{}", s)
     }
