@@ -5,6 +5,7 @@ members = [
     "constantine-rust/constantine-core",
     "constantine-rust/constantine-halo2-zal",
     "constantine-rust/constantine-ethereum-kzg",
+    "constantine-rust/constantine-ethereum-bls-sig",
 ]
 
 # If Nim static library is compiled with Clang ThinLTO, enable it on Rust side
