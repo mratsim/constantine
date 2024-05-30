@@ -988,7 +988,7 @@ func TestSign(t *testing.T) {
 						return
 					}
 					status, err = sig.AreEqual(output)
-					if err != nil {
+					if !status { // signatures mismatch
 						var sigBytes  [96]byte
 						var roundTrip [96]byte
 						sb_status, _ := sig.SerializeCompressed(&sigBytes)
