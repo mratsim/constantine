@@ -44,3 +44,17 @@ impl std::fmt::Display for ctt_codec_ecc_status {
         write!(f, "{}", s)
     }
 }
+
+impl std::fmt::Display for ctt_evm_status {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let s = match self {
+            ctt_evm_status::cttEVM_Success => "cttEVM_Success",
+            ctt_evm_status::cttEVM_InvalidInputSize => "cttEVM_InvalidInputSize",
+            ctt_evm_status::cttEVM_InvalidOutputSize => "cttEVM_InvalidOutputSize",
+            ctt_evm_status::cttEVM_IntLargerThanModulus => "cttEVM_IntLargerThanModulus",
+            ctt_evm_status::cttEVM_PointNotOnCurve => "cttEVM_PointNotOnCurve",
+            ctt_evm_status::cttEVM_PointNotInSubgroup => "cttEVM_PointNotInSubgroup",
+        };
+        write!(f, "{}", s)
+    }
+}
