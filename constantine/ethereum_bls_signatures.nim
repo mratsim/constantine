@@ -514,6 +514,15 @@ func batch_verify*[Msg](pubkeys: openArray[PublicKey], messages: openarray[Msg],
     return cttEthBls_Success
   return cttEthBls_VerificationFailure
 
+func alloc_batch_sig_accumulator*(): ptr BatchSigAccumulator {.libPrefix: prefix_ffi.} =
+  ## Allocates using `alloc0` for a `BatchSigAccumulator`
+  ## so that it can remain an incomplete struct in the C header.
+  result = cast[ptr BatchSigAccumulator](alloc0(sizeof(BatchSigAccumulator)))
+
+proc free_batch_sig_accumulator*(p: ptr BatchSigAccumulator) {.libPrefix: prefix_ffi.} =
+  ## Frees previously `alloc`'d into `buf`
+  dealloc p
+
 func init_batch_sig_accumulator*(
   ctx: var BatchSigAccumulator,
   #domainSepTag: ptr UncheckedArray[byte],
