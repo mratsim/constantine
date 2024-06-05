@@ -271,42 +271,37 @@ func (ctx EthKzgContext) VerifyBlobKzgProofBatchParallel(tp Threadpool, blobs []
 // Constantine's SHA256 API
 type Sha256Context C.ctt_sha256_context
 
-func Sha256ContextNew() (ctx Sha256Context, err error) {
-	return ctx, nil
+func Sha256ContextNew() (ctx Sha256Context) {
+	return ctx
 }
 
-func (ctx *Sha256Context) Sha256ContextInit() (bool, error) {
+func (ctx *Sha256Context) Init() {
 	C.ctt_sha256_init((*C.ctt_sha256_context)(ctx))
-	return true, nil
 }
 
-func (ctx *Sha256Context) Sha256ContextUpdate(data []byte) (bool, error) {
+func (ctx *Sha256Context) Update(data []byte) {
 	C.ctt_sha256_update((*C.ctt_sha256_context)(ctx),
 		(*C.byte)(unsafe.Pointer(&data[0])),
 		(C.ptrdiff_t)(len(data)),
 	)
-	return true, nil
 }
 
-func (ctx *Sha256Context) Sha256ContextFinish(data [32]byte) (bool, error) {
+func (ctx *Sha256Context) Finish(data [32]byte) {
 	C.ctt_sha256_finish((*C.ctt_sha256_context)(ctx),
 		(*C.byte)(unsafe.Pointer(&data[0])),
 	)
-	return true, nil
 }
 
-func (ctx *Sha256Context) Sha256ContextClear() (bool, error) {
+func (ctx *Sha256Context) Clear() {
 	C.ctt_sha256_clear((*C.ctt_sha256_context)(ctx))
-	return true, nil
 }
 
-func Sha256Hash(digest *[32]byte, message []byte, clearMemory bool) (bool, error) {
+func Sha256Hash(digest *[32]byte, message []byte, clearMemory bool) {
 	C.ctt_sha256_hash((*C.byte)(unsafe.Pointer(digest)),
 		(*C.byte)(unsafe.Pointer(&message[0])),
 		(C.ptrdiff_t)(len(message)),
 		(C.ctt_bool)(clearMemory),
 	)
-	return true, nil
 }
 
 // Ethereum BLS signatures
