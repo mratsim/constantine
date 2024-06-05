@@ -27,6 +27,81 @@ typedef struct { byte raw[32]; } ctt_eth_bls_seckey;
 typedef struct { struct ctt_eth_bls_fp  x, y; } ctt_eth_bls_pubkey;
 typedef struct { struct ctt_eth_bls_fp2 x, y; } ctt_eth_bls_signature;
 
+// Definition of all the types we need to have `ctt_eth_bls_batch_sig_accumulator`
+// not be an incomplete struct. Ouch. These are of course just from the generated
+// C code by the Nim compiler. If we intend to keep it, we can rename them to nicer names.
+typedef struct tyObject_BigInt__FnwHESUKImA69a9bFUOmSzYA tyObject_BigInt__FnwHESUKImA69a9bFUOmSzYA;
+typedef struct tyObject_ECP_ShortW_Aff__J6sn3qsP58MwFxyNbKnlaw tyObject_ECP_ShortW_Aff__J6sn3qsP58MwFxyNbKnlaw;
+typedef struct tyObject_Fp__vrvLqXUDlDlEQlcPGaZ9bow tyObject_Fp__vrvLqXUDlDlEQlcPGaZ9bow;
+typedef struct tyObject_BigInt__sM3jxB09cf3TTCV9c2FlezGQ tyObject_BigInt__sM3jxB09cf3TTCV9c2FlezGQ;
+typedef struct tyObject_ECP_ShortW_Aff__PsaqpnE5319aHWnTfW9aeNdA tyObject_ECP_ShortW_Aff__PsaqpnE5319aHWnTfW9aeNdA;
+typedef struct tyObject_QuadraticExt__i9caeGEFQh1UB3EAcz5Oywg tyObject_QuadraticExt__i9caeGEFQh1UB3EAcz5Oywg;
+typedef struct ctt_eth_bls_batch_sig_accumulator ctt_eth_bls_batch_sig_accumulator;
+typedef struct tyObject_BLSBatchSigAccumulator__aHtVysSyj5Wu6HnABqtpig tyObject_BLSBatchSigAccumulator__aHtVysSyj5Wu6HnABqtpig;
+typedef struct tyObject_MillerAccumulator__gDOWmAfsk9bW2QFkNZ0FkHw tyObject_MillerAccumulator__gDOWmAfsk9bW2QFkNZ0FkHw;
+typedef struct tyObject_CubicExt__R7tZ9c7N6k9cwH0uQG4r9bVtw tyObject_CubicExt__R7tZ9c7N6k9cwH0uQG4r9bVtw;
+typedef struct tyObject_QuadraticExt__ta06ybtJyZ6nKbZzES7B1Q tyObject_QuadraticExt__ta06ybtJyZ6nKbZzES7B1Q;
+typedef struct tyObject_ECP_ShortW_Jac__HbUWyfG6rUbZH2jXx9balyA tyObject_ECP_ShortW_Jac__HbUWyfG6rUbZH2jXx9balyA;
+
+typedef uint64_t tyArray__WOK9agWVIFrysHjlc69b06uA[4];
+struct tyObject_BigInt__FnwHESUKImA69a9bFUOmSzYA {
+	tyArray__WOK9agWVIFrysHjlc69b06uA limbs;
+};
+typedef uint64_t tyArray__4RmROn7lE6QlXejY1MVycQ[6];
+struct tyObject_BigInt__sM3jxB09cf3TTCV9c2FlezGQ {
+	tyArray__4RmROn7lE6QlXejY1MVycQ limbs;
+};
+struct tyObject_Fp__vrvLqXUDlDlEQlcPGaZ9bow {
+	tyObject_BigInt__sM3jxB09cf3TTCV9c2FlezGQ mres;
+};
+struct tyObject_ECP_ShortW_Aff__J6sn3qsP58MwFxyNbKnlaw {
+	tyObject_Fp__vrvLqXUDlDlEQlcPGaZ9bow x;
+	tyObject_Fp__vrvLqXUDlDlEQlcPGaZ9bow y;
+};
+typedef tyObject_Fp__vrvLqXUDlDlEQlcPGaZ9bow tyArray__n1b8wqXQsSH1rQfvW9bByMw[2];
+struct tyObject_QuadraticExt__i9caeGEFQh1UB3EAcz5Oywg {
+	tyArray__n1b8wqXQsSH1rQfvW9bByMw coords;
+};
+struct tyObject_ECP_ShortW_Aff__PsaqpnE5319aHWnTfW9aeNdA {
+	tyObject_QuadraticExt__i9caeGEFQh1UB3EAcz5Oywg x;
+	tyObject_QuadraticExt__i9caeGEFQh1UB3EAcz5Oywg y;
+};
+typedef tyObject_QuadraticExt__i9caeGEFQh1UB3EAcz5Oywg tyArray__023A8JmmaKUigEa7xfIORw[2];
+struct tyObject_QuadraticExt__ta06ybtJyZ6nKbZzES7B1Q {
+	tyArray__023A8JmmaKUigEa7xfIORw coords;
+};
+typedef tyObject_QuadraticExt__ta06ybtJyZ6nKbZzES7B1Q tyArray__B4tN7HxHBoy9a2qi9bHGg9bwA[3];
+struct tyObject_CubicExt__R7tZ9c7N6k9cwH0uQG4r9bVtw {
+	tyArray__B4tN7HxHBoy9a2qi9bHGg9bwA coords;
+};
+typedef tyObject_ECP_ShortW_Aff__J6sn3qsP58MwFxyNbKnlaw tyArray__G9c2TZYvC7C8fwzg2d08Duw[8];
+typedef tyObject_ECP_ShortW_Aff__PsaqpnE5319aHWnTfW9aeNdA tyArray__8LVR9cAE3g9beIdSEwM6SDTg[8];
+struct tyObject_MillerAccumulator__gDOWmAfsk9bW2QFkNZ0FkHw {
+	tyObject_CubicExt__R7tZ9c7N6k9cwH0uQG4r9bVtw accum;
+	tyArray__G9c2TZYvC7C8fwzg2d08Duw Ps;
+	tyArray__8LVR9cAE3g9beIdSEwM6SDTg Qs;
+	uint32_t len;
+	uint8_t accOnce;
+};
+struct tyObject_ECP_ShortW_Jac__HbUWyfG6rUbZH2jXx9balyA {
+	tyObject_QuadraticExt__i9caeGEFQh1UB3EAcz5Oywg x;
+	tyObject_QuadraticExt__i9caeGEFQh1UB3EAcz5Oywg y;
+	tyObject_QuadraticExt__i9caeGEFQh1UB3EAcz5Oywg z;
+};
+typedef uint8_t tyArray__mBgZ66fmX79bqQHEjcZjrwA[255];
+typedef uint8_t tyArray__vEOa9c5qaE9ajWxR5R4zwfQg[32];
+struct tyObject_BLSBatchSigAccumulator__aHtVysSyj5Wu6HnABqtpig {
+	tyObject_MillerAccumulator__gDOWmAfsk9bW2QFkNZ0FkHw millerAccum;
+	tyObject_ECP_ShortW_Jac__HbUWyfG6rUbZH2jXx9balyA aggSig;
+        uint8_t aggSigOnce;
+ 	tyArray__mBgZ66fmX79bqQHEjcZjrwA domainSepTag;
+	uint8_t dst_len;
+ 	tyArray__vEOa9c5qaE9ajWxR5R4zwfQg secureBlinding;
+};
+struct ctt_eth_bls_batch_sig_accumulator {
+	tyObject_BLSBatchSigAccumulator__aHtVysSyj5Wu6HnABqtpig raw;
+};
+
 typedef enum __attribute__((__packed__)) {
     cttEthBls_Success,
     cttEthBls_VerificationFailure,
