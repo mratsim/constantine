@@ -107,6 +107,9 @@ type
     cttEthBls_ZeroLengthAggregation
     cttEthBls_PointAtInfinity
 
+  BatchSigAccumulator* {.byref, exportc: prefix_ffi & "batch_sig_accumulator".} = object
+    raw: BLSBatchSigAccumulator[Sha256Context, Fp[BLS12_381], Fp2[BLS12_381], Fp12[BLS12_381], ECP_ShortW_Jac[Fp2[BLS12_381], G2], 128]
+
 # Comparisons
 # ------------------------------------------------------------------------------------------------
 
@@ -510,3 +513,53 @@ func batch_verify*[Msg](pubkeys: openArray[PublicKey], messages: openarray[Msg],
   if verified:
     return cttEthBls_Success
   return cttEthBls_VerificationFailure
+
+func init_batch_sig_accumulator*(
+  ctx: var BatchSigAccumulator,
+  #domainSepTag: ptr UncheckedArray[byte],
+  #domainSepTagLen: int,
+  secureRandomBytes: array[32, byte],
+  #accumSepTag: ptr UncheckedArray[byte],
+  #accumSepTagLen: int
+     ) {.libPrefix: prefix_ffi.} =
+  ## Initializes a Batch BLS Signature accumulator context.
+  ##
+  ## This requires cryptographically secure random bytes
+  ## to defend against forged signatures that would not
+  ## verify individually but would verify while aggregated
+  ## https://ethresear.ch/t/fast-verification-of-multiple-bls-signatures/5407/14
+  ##
+  ## An optional accumulator separation tag can be added
+  ## so that from a single source of randomness
+  ## each accumulatpr is seeded with a different state.
+  ## This is useful in multithreaded context.
+
+  # TODO: The domain separation tag and accumSepTag are both hardcoded in constantine
+  # Just drop them in the arguments here and fill here?
+
+  ctx.raw.init(DomainSeparationTag,#toOpenArray(domainSepTag, 0, domainSepTagLen-1),
+               secureRandomBytes,
+               "serial") #toOpenArray(accumSepTag, 0, accumSepTagLen-1))
+
+func update_batch_sig_accumulator*(
+  ctx: var BatchSigAccumulator,
+  pubkey: PublicKey,
+  message: ptr UncheckedArray[byte],
+  messageLen: int,
+  signature: Signature
+     ): bool {.libPrefix: prefix_ffi.} =
+  ## Add a (public key, message, signature) triplet
+  ## to a BLS signature accumulator
+  ##
+  ## Assumes that the public key and signature
+  ## have been group checked
+  ##
+  ## Returns false if pubkey or signatures are the infinity points
+  ctx.raw.update(pubkey.raw, toOpenArray(message, 0, messageLen-1), signature.raw)
+
+func final_verify_batch_sig_accumulator*(ctx: var BatchSigAccumulator): bool {.libPrefix: prefix_ffi.} =
+  ## Finish batch and/or aggregate signature verification and returns the final result.
+  ##
+  ## Returns false if nothing was accumulated
+  ## Rteturns false on verification failure
+  ctx.raw.finalVerify()
