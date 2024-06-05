@@ -597,3 +597,88 @@ func BatchVerifyParallel(tp Threadpool, pubkeys []EthBlsPubKey, messages [][]byt
 
 	return true, nil
 }
+
+type EthBlsBatchSigAccumulator C.ctt_eth_bls_batch_sig_accumulator
+
+func EthBlsBatchSigAccumulatorNew() (accum EthBlsBatchSigAccumulator) {
+	// Stack allocated, no need to initialize. On Nim side we use `{.noinit.}`
+	return accum
+}
+
+func (accum *EthBlsBatchSigAccumulator) Init(secureRandomBytes [32]byte) {
+	C.ctt_eth_bls_init_batch_sig_accumulator((*C.ctt_eth_bls_batch_sig_accumulator)(accum),
+		(*C.byte)(unsafe.Pointer(&secureRandomBytes[0])),
+	)
+}
+
+func (accum *EthBlsBatchSigAccumulator) Update(pub EthBlsPubKey, message []byte, sig EthBlsSignature) bool {
+	status := C.ctt_eth_bls_update_batch_sig_accumulator((*C.ctt_eth_bls_batch_sig_accumulator)(accum),
+		(*C.ctt_eth_bls_pubkey)(&pub),
+		(*C.byte)(unsafe.Pointer(&message[0])),
+		(C.ptrdiff_t)(len(message)),
+		(*C.ctt_eth_bls_signature)(&sig),
+	)
+	return bool(status)
+}
+
+func (accum *EthBlsBatchSigAccumulator) FinalVerify() bool {
+	status := C.ctt_eth_bls_final_verify_batch_sig_accumulator(
+		(*C.ctt_eth_bls_batch_sig_accumulator)(accum),
+	)
+	return bool(status)
+}
+
+func BatchVerifyGo(pubkeys []EthBlsPubKey, messages [][]byte, signatures []EthBlsSignature, secureRandomBytes [32]byte) (bool, error) {
+	if len(pubkeys) == 0 {
+		err := errors.New(
+			C.GoString(
+				C.ctt_eth_bls_status_to_string(C.cttEthBls_ZeroLengthAggregation),
+			),
+		)
+		return false, err
+	} else if len(pubkeys) != len(messages) {
+		err := errors.New("Number of public keys must match number of messages.")
+		return false, err
+	} else if len(pubkeys) != len(signatures) {
+		err := errors.New("Number of public keys must match number of signatures.")
+		return false, err
+	}
+
+	// Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
+	for _, pub := range pubkeys {
+		if pub.IsZero() {
+			err := errors.New(
+				C.GoString(
+					C.ctt_eth_bls_status_to_string(C.cttEthBls_PointAtInfinity),
+				),
+			)
+			return false, err
+		}
+	}
+	for _, sig := range signatures {
+		if sig.IsZero() {
+			err := errors.New(
+				C.GoString(
+					C.ctt_eth_bls_status_to_string(C.cttEthBls_PointAtInfinity),
+				),
+			)
+			return false, err
+		}
+	}
+
+	var accum EthBlsBatchSigAccumulator
+	accum.Init(secureRandomBytes)
+
+	for i, pub := range pubkeys {
+		if !accum.Update(pub, messages[i], signatures[i]) {
+			err := errors.New(
+				C.GoString(
+					C.ctt_eth_bls_status_to_string(C.cttEthBls_VerificationFailure),
+				),
+			)
+			return false, err
+		}
+	}
+
+	return accum.FinalVerify(), nil
+}

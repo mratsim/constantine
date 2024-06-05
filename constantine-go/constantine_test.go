@@ -1348,6 +1348,9 @@ func TestBatchVerify(t *testing.T) {
 
 			status, err = BatchVerify(pks, msgs[:], sigs, randomBytes)
 
+			// Now batch verify using Go "native" API
+			status, err = BatchVerifyGo(pks, msgs[:], sigs, randomBytes)
+
 			// and parallel API
 			parallelStatus, _ := BatchVerifyParallel(tp, pks, msgs[:], sigs, randomBytes)
 			require.Equal(t, parallelStatus, test.Output)
