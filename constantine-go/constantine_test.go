@@ -772,7 +772,7 @@ func TestExampleCBlsSig(t *testing.T) {
 	Sha256Hash(&message, []byte("Mr F was here"), false)
 	fmt.Println("message: ", message)
 	var sig EthBlsSignature
-	status, err = sig.Sign(secKey, message[:])
+	sig.Sign(secKey, message[:])
 	fmt.Println("signed: status", status, " err = ", err)
 
 	// Verify that a signature is valid for a message under the provided public key
@@ -987,7 +987,7 @@ func TestSign(t *testing.T) {
 						require.Nil(t, test.Output)
 						return
 					}
-					status, err = sig.AreEqual(output)
+					status = sig.AreEqual(output)
 					if !status { // signatures mismatch
 						var sigBytes  [96]byte
 						var roundTrip [96]byte

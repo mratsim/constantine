@@ -313,9 +313,9 @@ type (
 	EthBlsSignature C.ctt_eth_bls_signature
 )
 
-func (pub EthBlsPubKey) IsZero() (bool, error) {
+func (pub EthBlsPubKey) IsZero() bool {
 	status := C.ctt_eth_bls_pubkey_is_zero((*C.ctt_eth_bls_pubkey)(&pub))
-	return bool(status), nil
+	return bool(status)
 }
 
 func (sec *EthBlsSecKey) Deserialize(src [32]byte) (bool, error) {
@@ -330,9 +330,8 @@ func (sec *EthBlsSecKey) Deserialize(src [32]byte) (bool, error) {
 	return true, nil
 }
 
-func (pub *EthBlsPubKey) DerivePubKey(sec EthBlsSecKey) (bool, error) {
+func (pub *EthBlsPubKey) DerivePubKey(sec EthBlsSecKey) {
 	C.ctt_eth_bls_derive_pubkey((*C.ctt_eth_bls_pubkey)(pub), (*C.ctt_eth_bls_seckey)(&sec))
-	return true, nil
 }
 
 func (pub *EthBlsPubKey) Verify(message []byte, sig EthBlsSignature) (bool, error) {
@@ -350,19 +349,19 @@ func (pub *EthBlsPubKey) Verify(message []byte, sig EthBlsSignature) (bool, erro
 	return true, nil
 }
 
-func (sig EthBlsSignature) IsZero() (bool, error) {
+func (sig EthBlsSignature) IsZero() bool {
 	status := C.ctt_eth_bls_signature_is_zero((*C.ctt_eth_bls_signature)(&sig))
-	return bool(status), nil
+	return bool(status)
 }
 
-func (pub1 EthBlsPubKey) AreEqual(pub2 EthBlsPubKey) (bool, error) {
+func (pub1 EthBlsPubKey) AreEqual(pub2 EthBlsPubKey) bool {
 	status := C.ctt_eth_bls_pubkeys_are_equal((*C.ctt_eth_bls_pubkey)(&pub1), (*C.ctt_eth_bls_pubkey)(&pub2))
-	return bool(status), nil
+	return bool(status)
 }
 
-func (sig1 EthBlsSignature) AreEqual(sig2 EthBlsSignature) (bool, error) {
+func (sig1 EthBlsSignature) AreEqual(sig2 EthBlsSignature) bool {
 	status := C.ctt_eth_bls_signatures_are_equal((*C.ctt_eth_bls_signature)(&sig1), (*C.ctt_eth_bls_signature)(&sig2))
-	return bool(status), nil
+	return bool(status)
 }
 
 func (sec *EthBlsSecKey) Validate() (bool, error) {
@@ -489,12 +488,11 @@ func (sig *EthBlsSignature) DeserializeCompressed(src [96]byte) (bool, error) {
 	return true, nil
 }
 
-func (sig *EthBlsSignature) Sign(sec EthBlsSecKey, message []byte) (bool, error) {
+func (sig *EthBlsSignature) Sign(sec EthBlsSecKey, message []byte) {
 	C.ctt_eth_bls_sign((*C.ctt_eth_bls_signature)(sig), (*C.ctt_eth_bls_seckey)(&sec),
 		(*C.byte)(unsafe.Pointer(&message[0])),
 		(C.ptrdiff_t)(len(message)),
 	)
-	return true, nil
 }
 
 func FastAggregateVerify(pubkeys []EthBlsPubKey, message []byte, aggregate_sig EthBlsSignature) (bool, error) {
