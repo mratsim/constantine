@@ -674,7 +674,7 @@ func BatchVerifyGo(pubkeys []EthBlsPubKey, messages [][]byte, signatures []EthBl
 	}
 
 	// NOTE: We *must* use the New / Free functions!
-	accum := EthBlsBatchSigAccumulatorNew()
+	accum := EthBlsBatchSigAccumulatorAlloc()
 	defer EthBlsBatchSigAccumulatorFree(accum)
 	accum.Init(secureRandomBytes)
 
