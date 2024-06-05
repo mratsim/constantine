@@ -268,42 +268,6 @@ func (ctx EthKzgContext) VerifyBlobKzgProofBatchParallel(tp Threadpool, blobs []
 	return true, nil
 }
 
-// Constantine's SHA256 API
-type Sha256Context C.ctt_sha256_context
-
-func Sha256ContextNew() (ctx Sha256Context) {
-	return ctx
-}
-
-func (ctx *Sha256Context) Init() {
-	C.ctt_sha256_init((*C.ctt_sha256_context)(ctx))
-}
-
-func (ctx *Sha256Context) Update(data []byte) {
-	C.ctt_sha256_update((*C.ctt_sha256_context)(ctx),
-		(*C.byte)(unsafe.Pointer(&data[0])),
-		(C.ptrdiff_t)(len(data)),
-	)
-}
-
-func (ctx *Sha256Context) Finish(data [32]byte) {
-	C.ctt_sha256_finish((*C.ctt_sha256_context)(ctx),
-		(*C.byte)(unsafe.Pointer(&data[0])),
-	)
-}
-
-func (ctx *Sha256Context) Clear() {
-	C.ctt_sha256_clear((*C.ctt_sha256_context)(ctx))
-}
-
-func Sha256Hash(digest *[32]byte, message []byte, clearMemory bool) {
-	C.ctt_sha256_hash((*C.byte)(unsafe.Pointer(digest)),
-		(*C.byte)(unsafe.Pointer(&message[0])),
-		(C.ptrdiff_t)(len(message)),
-		(C.ctt_bool)(clearMemory),
-	)
-}
-
 // Ethereum BLS signatures
 // -----------------------------------------------------
 

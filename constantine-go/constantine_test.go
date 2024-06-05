@@ -23,7 +23,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 	"encoding/json"
+
+	"github.com/mratsim/constantine/constantine-go/sha256"
 )
+
 
 // Threadpool smoke test
 // ----------------------------------------------------------
@@ -769,7 +772,8 @@ func TestExampleCBlsSig(t *testing.T) {
 
 	// Sign a message
 	var message [32]byte
-	Sha256Hash(&message, []byte("Mr F was here"), false)
+	sha256.Hash(&message, []byte("Mr F was here"), false)
+
 	fmt.Println("message: ", message)
 	var sig EthBlsSignature
 	sig.Sign(secKey, message[:])
@@ -1340,7 +1344,7 @@ func TestBatchVerify(t *testing.T) {
 				msgs = append(msgs, msg[:])
 			}
 			var randomBytes [32]byte
-			Sha256Hash(&randomBytes, []byte("totally non-secure source of entropy"), false)
+			sha256.Hash(&randomBytes, []byte("totally non-secure source of entropy"), false)
 
 			status, err = BatchVerify(pks, msgs[:], sigs, randomBytes)
 
