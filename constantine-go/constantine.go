@@ -19,7 +19,6 @@ package constantine
 
 #include <stdlib.h>
 #include <constantine.h>
-#include <string.h> // for memcpy
 
 */
 import "C"
