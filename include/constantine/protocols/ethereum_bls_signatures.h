@@ -328,9 +328,9 @@ void ctt_eth_bls_init_batch_sig_accumulator(
     ctt_eth_bls_batch_sig_accumulator* ctx,
     //const byte domain_sep_tag[],
     //ptrdiff_t domain_sep_tag_len,
-    const byte secure_random_bytes[32]
-    //const byte accum_sep_tag[],
-    //ptrdiff_t accum_sep_tag_len
+    const byte secure_random_bytes[32],
+    const byte accum_sep_tag[],
+    ptrdiff_t accum_sep_tag_len
     );
 
 /**

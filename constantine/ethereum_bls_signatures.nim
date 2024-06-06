@@ -525,11 +525,9 @@ proc free_batch_sig_accumulator*(p: ptr BatchSigAccumulator) {.libPrefix: prefix
 
 func init_batch_sig_accumulator*(
   ctx: var BatchSigAccumulator,
-  #domainSepTag: ptr UncheckedArray[byte],
-  #domainSepTagLen: int,
   secureRandomBytes: array[32, byte],
-  #accumSepTag: ptr UncheckedArray[byte],
-  #accumSepTagLen: int
+  accumSepTag: ptr UncheckedArray[byte],
+  accumSepTagLen: int
      ) {.libPrefix: prefix_ffi.} =
   ## Initializes a Batch BLS Signature accumulator context.
   ##
@@ -543,12 +541,9 @@ func init_batch_sig_accumulator*(
   ## each accumulatpr is seeded with a different state.
   ## This is useful in multithreaded context.
 
-  # TODO: The domain separation tag and accumSepTag are both hardcoded in constantine
-  # Just drop them in the arguments here and fill here?
-
-  ctx.raw.init(DomainSeparationTag,#toOpenArray(domainSepTag, 0, domainSepTagLen-1),
+  ctx.raw.init(DomainSeparationTag,
                secureRandomBytes,
-               "serial") #toOpenArray(accumSepTag, 0, accumSepTagLen-1))
+               toOpenArray(accumSepTag, 0, accumSepTagLen-1))
 
 func update_batch_sig_accumulator*(
   ctx: var BatchSigAccumulator,
