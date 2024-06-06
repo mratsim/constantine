@@ -732,5 +732,3 @@ func BatchVerifyAoS(triplets []BatchVerifyTriplet, secureRandomBytes [32]byte) (
 
 	return accum.finalVerify(), nil
 }
-
-}
