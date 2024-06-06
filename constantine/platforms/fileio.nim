@@ -112,7 +112,7 @@ proc readInto*(f: File, buffer: pointer, len: int): int {.inline.} =
   ## Read data into buffer, return the number of bytes read
   cast[int](c_fread(buffer, 1, cast[csize_t](len), f))
 
-proc readInto*[T](f: File, buf: var T): bool {.inline.} =
+proc readInto*[T: not seq](f: File, buf: var T): bool {.inline.} =
   ## Read data into buffer,
   ## return true if the number of bytes read
   ## matches the output type size
