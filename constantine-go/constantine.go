@@ -487,13 +487,6 @@ type CttSpan struct {
 	len  C.size_t
 }
 
-// NOTE: this does not work, because it would end up with us having a
-// Go pointer we pass to C, which points to Go pointers.
-func toSpan(data *[]byte) (span C.ctt_span) { //CttSpan) {
-	span = C.ctt_span{data: (*C.byte)(unsafe.Pointer(&(*data)[0])), len: C.size_t(len(*data))} // in place span
-	return span
-}
-
 func newSpans(data [][]byte) (spans []CttSpan) {
 	// TODO: this is ugly, but due to Go's rules about not allowing to
 	// pass a Go pointer, which itself contains a Go pointer, we cannot
