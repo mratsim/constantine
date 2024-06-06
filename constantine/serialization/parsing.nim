@@ -16,7 +16,7 @@ template `?`*(parseCall: bool): untyped =
   if not parseCall:
     return false
 
-proc parseInt*(f: File, v: var SomeInteger, endianness: static Endianness): ParseBool =
+proc parseInt*(f: File, v: var SomeInteger, endianness: static Endianness): bool =
   when endianness == cpuEndian:
     return f.readInto(v)
   else:
