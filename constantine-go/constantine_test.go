@@ -1353,6 +1353,13 @@ func TestBatchVerify(t *testing.T) {
 			status, err = BatchVerifySoA(pks, msgs[:], sigs, randomBytes)
 			require.Equal(t, status, test.Output)
 
+			// Finally produce triplets of the data and use `BatchVerifyAoS`
+			trp := make([]BatchVerifyTriplet, len(pks), len(pks))
+			for i, _ := range trp {
+				trp[i] = BatchVerifyTriplet{pub: pks[i], message: msgs[i], sig: sigs[i]}
+			}
+			status, err = BatchVerifyAoS(trp, randomBytes)
+			require.Equal(t, status, test.Output)
 
 			// and parallel API
 			parallelStatus, _ := BatchVerifyParallel(tp, pks, msgs[:], sigs, randomBytes)

@@ -688,4 +688,49 @@ func BatchVerifySoA(pubkeys []EthBlsPubKey, messages [][]byte, signatures []EthB
 	return accum.finalVerify(), nil
 }
 
+type BatchVerifyTriplet struct {
+	pub EthBlsPubKey
+	message []byte
+	sig EthBlsSignature
+}
+
+func BatchVerifyAoS(triplets []BatchVerifyTriplet, secureRandomBytes [32]byte) (bool, error) {
+	if len(triplets) == 0 {
+		err := errors.New(
+			C.GoString(
+				C.ctt_eth_bls_status_to_string(C.cttEthBls_ZeroLengthAggregation),
+			),
+		)
+		return false, err
+	}
+	// Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
+	for _, trp := range triplets {
+		if trp.pub.IsZero() || trp.sig.IsZero() {
+			err := errors.New(
+				C.GoString(
+					C.ctt_eth_bls_status_to_string(C.cttEthBls_PointAtInfinity),
+				),
+			)
+			return false, err
+		}
+	}
+	// NOTE: We *must* use the New / Free functions!
+	accum := ethBlsBatchSigAccumulatorAlloc()
+	defer ethBlsBatchSigAccumulatorFree(accum)
+	accum.init(secureRandomBytes, []byte("serial"))
+
+	for _, trp := range triplets {
+		if !accum.update(trp.pub, trp.message, trp.sig) {
+			err := errors.New(
+				C.GoString(
+					C.ctt_eth_bls_status_to_string(C.cttEthBls_VerificationFailure),
+				),
+			)
+			return false, err
+		}
+	}
+
+	return accum.finalVerify(), nil
+}
+
 }
