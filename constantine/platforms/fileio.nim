@@ -92,6 +92,9 @@ proc open*(f: var File, filepath: cstring, mode = kRead): bool =
 
   return true
 
+proc open*(filepath: string, mode = kRead): File =
+  doAssert open(result, filepath.cstring, mode), "Failed to open file " & $filepath & " for " & $mode
+
 
 # Navigating files
 # ------------------------------------------------------------
