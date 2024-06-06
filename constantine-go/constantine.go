@@ -19,6 +19,7 @@ package constantine
 
 #include <stdlib.h>
 #include <constantine.h>
+
 */
 import "C"
 import (
@@ -182,7 +183,6 @@ func (ctx EthKzgContext) VerifyBlobKzgProofBatch(blobs []EthBlob, commitments []
 // Ethereum EIP-4844 KZG API - Parallel
 // -----------------------------------------------------
 
-
 func (ctx EthKzgContext) BlobToKZGCommitmentParallel(tp Threadpool, blob EthBlob) (commitment EthKzgCommitment, err error) {
 	status := C.ctt_eth_kzg_blob_to_kzg_commitment_parallel(
 		ctx.cCtx, tp.ctx,
@@ -265,4 +265,359 @@ func (ctx EthKzgContext) VerifyBlobKzgProofBatchParallel(tp Threadpool, blobs []
 		return false, err
 	}
 	return true, nil
+}
+
+// Ethereum BLS signatures
+// -----------------------------------------------------
+
+type (
+	EthBlsSecKey    C.ctt_eth_bls_seckey
+	EthBlsPubKey    C.ctt_eth_bls_pubkey
+	EthBlsSignature C.ctt_eth_bls_signature
+)
+
+func (pub EthBlsPubKey) IsZero() bool {
+	status := C.ctt_eth_bls_pubkey_is_zero((*C.ctt_eth_bls_pubkey)(&pub))
+	return bool(status)
+}
+
+func (sec *EthBlsSecKey) Deserialize(src [32]byte) (bool, error) {
+	status := C.ctt_eth_bls_deserialize_seckey((*C.ctt_eth_bls_seckey)(sec),
+		(*C.byte)(unsafe.Pointer(&src[0])))
+	if status != C.cttCodecScalar_Success {
+		err := errors.New(
+			C.GoString(C.ctt_codec_scalar_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (pub *EthBlsPubKey) DerivePubKey(sec EthBlsSecKey) {
+	C.ctt_eth_bls_derive_pubkey((*C.ctt_eth_bls_pubkey)(pub), (*C.ctt_eth_bls_seckey)(&sec))
+}
+
+func (pub *EthBlsPubKey) Verify(message []byte, sig EthBlsSignature) (bool, error) {
+	status := C.ctt_eth_bls_verify((*C.ctt_eth_bls_pubkey)(pub),
+		(*C.byte)(unsafe.Pointer(&message[0])),
+		(C.ptrdiff_t)(len(message)),
+		(*C.ctt_eth_bls_signature)(&sig),
+	)
+	if status != C.cttEthBls_Success {
+		err := errors.New(
+			C.GoString(C.ctt_eth_bls_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (sig EthBlsSignature) IsZero() bool {
+	status := C.ctt_eth_bls_signature_is_zero((*C.ctt_eth_bls_signature)(&sig))
+	return bool(status)
+}
+
+func (pub1 EthBlsPubKey) AreEqual(pub2 EthBlsPubKey) bool {
+	status := C.ctt_eth_bls_pubkeys_are_equal((*C.ctt_eth_bls_pubkey)(&pub1), (*C.ctt_eth_bls_pubkey)(&pub2))
+	return bool(status)
+}
+
+func (sig1 EthBlsSignature) AreEqual(sig2 EthBlsSignature) bool {
+	status := C.ctt_eth_bls_signatures_are_equal((*C.ctt_eth_bls_signature)(&sig1), (*C.ctt_eth_bls_signature)(&sig2))
+	return bool(status)
+}
+
+func (sec *EthBlsSecKey) Validate() (bool, error) {
+	status := C.ctt_eth_bls_validate_seckey((*C.ctt_eth_bls_seckey)(sec))
+	if status != C.cttCodecScalar_Success {
+		err := errors.New(
+			C.GoString(C.ctt_codec_scalar_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (pub *EthBlsPubKey) Validate() (bool, error) {
+	status := C.ctt_eth_bls_validate_pubkey((*C.ctt_eth_bls_pubkey)(pub))
+	if status != C.cttCodecEcc_Success {
+		err := errors.New(
+			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (sig *EthBlsSignature) Validate() (bool, error) {
+	status := C.ctt_eth_bls_validate_signature((*C.ctt_eth_bls_signature)(sig))
+	if status != C.cttCodecEcc_Success {
+		err := errors.New(
+			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (sec *EthBlsSecKey) Serialize(dst *[32]byte) (bool, error) {
+	status := C.ctt_eth_bls_serialize_seckey((*C.byte)(unsafe.Pointer(dst)),
+		(*C.ctt_eth_bls_seckey)(sec),
+	)
+	if status != C.cttCodecScalar_Success {
+		err := errors.New(
+			C.GoString(C.ctt_codec_scalar_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (pub *EthBlsPubKey) SerializeCompressed(dst *[48]byte) (bool, error) {
+	status := C.ctt_eth_bls_serialize_pubkey_compressed((*C.byte)(unsafe.Pointer(dst)),
+		(*C.ctt_eth_bls_pubkey)(pub),
+	)
+	if status != C.cttCodecEcc_Success {
+		err := errors.New(
+			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (sig *EthBlsSignature) SerializeCompressed(dst *[96]byte) (bool, error) {
+	status := C.ctt_eth_bls_serialize_signature_compressed((*C.byte)(unsafe.Pointer(dst)),
+		(*C.ctt_eth_bls_signature)(sig),
+	)
+	if status != C.cttCodecEcc_Success {
+		err := errors.New(
+			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (pub *EthBlsPubKey) DeserializeCompressedUnchecked(src [48]byte) (bool, error) {
+	status := C.ctt_eth_bls_deserialize_pubkey_compressed_unchecked((*C.ctt_eth_bls_pubkey)(pub),
+		(*C.byte)(unsafe.Pointer(&src[0])),
+	)
+	if status != C.cttCodecEcc_Success {
+		err := errors.New(
+			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (sig *EthBlsSignature) DeserializeCompressedUnchecked(src [96]byte) (bool, error) {
+	status := C.ctt_eth_bls_deserialize_signature_compressed_unchecked((*C.ctt_eth_bls_signature)(sig),
+		(*C.byte)(unsafe.Pointer(&src[0])),
+	)
+	if status != C.cttCodecEcc_Success {
+		err := errors.New(
+			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (pub *EthBlsPubKey) DeserializeCompressed(src [48]byte) (bool, error) {
+	status := C.ctt_eth_bls_deserialize_pubkey_compressed((*C.ctt_eth_bls_pubkey)(pub),
+		(*C.byte)(unsafe.Pointer(&src[0])),
+	)
+	if status != C.cttCodecEcc_Success && status != C.cttCodecEcc_PointAtInfinity {
+		err := errors.New(
+			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (sig *EthBlsSignature) DeserializeCompressed(src [96]byte) (bool, error) {
+	status := C.ctt_eth_bls_deserialize_signature_compressed((*C.ctt_eth_bls_signature)(sig),
+		(*C.byte)(unsafe.Pointer(&src[0])),
+	)
+	if status != C.cttCodecEcc_Success && status != C.cttCodecEcc_PointAtInfinity {
+		err := errors.New(
+			C.GoString(C.ctt_codec_ecc_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+func (sig *EthBlsSignature) Sign(sec EthBlsSecKey, message []byte) {
+	C.ctt_eth_bls_sign((*C.ctt_eth_bls_signature)(sig), (*C.ctt_eth_bls_seckey)(&sec),
+		(*C.byte)(unsafe.Pointer(&message[0])),
+		(C.ptrdiff_t)(len(message)),
+	)
+}
+
+func FastAggregateVerify(pubkeys []EthBlsPubKey, message []byte, aggregate_sig EthBlsSignature) (bool, error) {
+	if len(pubkeys) == 0 {
+		err := errors.New(
+			"No public keys given.",
+		)
+		return false, err
+	}
+	status := C.ctt_eth_bls_fast_aggregate_verify((*C.ctt_eth_bls_pubkey)(unsafe.Pointer(&pubkeys[0])),
+		(C.ptrdiff_t)(len(pubkeys)),
+		(*C.byte)(unsafe.Pointer(&message[0])),
+		(C.ptrdiff_t)(len(message)),
+		(*C.ctt_eth_bls_signature)(&aggregate_sig),
+	)
+	if status != C.cttEthBls_Success {
+		err := errors.New(
+			C.GoString(C.ctt_eth_bls_status_to_string(status)),
+		)
+		return false, err
+	}
+	return true, nil
+}
+
+// NOTE: C.ctt_eth_bls_batch_sig_accumulator is an incomplete struct. Therefore
+// we use 2 functions on the Nim side to (de)allocate storage for the struct.
+type ethBlsBatchSigAccumulator struct {
+	ctx *C.ctt_eth_bls_batch_sig_accumulator
+}
+func ethBlsBatchSigAccumulatorAlloc() (accum ethBlsBatchSigAccumulator) {
+	accum.ctx = C.ctt_eth_bls_alloc_batch_sig_accumulator()
+	return accum
+}
+
+func ethBlsBatchSigAccumulatorFree(accum ethBlsBatchSigAccumulator) {
+	C.ctt_eth_bls_free_batch_sig_accumulator(accum.ctx)
+}
+
+func (accum ethBlsBatchSigAccumulator) init(secureRandomBytes [32]byte, accumSepTag []byte) {
+	C.ctt_eth_bls_init_batch_sig_accumulator((*C.ctt_eth_bls_batch_sig_accumulator)(accum.ctx),
+		(*C.byte)(unsafe.Pointer(&secureRandomBytes[0])),
+		(*C.byte)(unsafe.Pointer(&accumSepTag[0])),
+		(C.ptrdiff_t)(len(accumSepTag)),
+	)
+}
+
+func (accum ethBlsBatchSigAccumulator) update(pub EthBlsPubKey, message []byte, sig EthBlsSignature) bool {
+	status := C.ctt_eth_bls_update_batch_sig_accumulator((*C.ctt_eth_bls_batch_sig_accumulator)(accum.ctx),
+		(*C.ctt_eth_bls_pubkey)(&pub),
+		(*C.byte)(unsafe.Pointer(&message[0])),
+		(C.ptrdiff_t)(len(message)),
+		(*C.ctt_eth_bls_signature)(&sig),
+	)
+	return bool(status)
+}
+
+func (accum ethBlsBatchSigAccumulator) finalVerify() bool {
+	status := C.ctt_eth_bls_final_verify_batch_sig_accumulator(
+		(*C.ctt_eth_bls_batch_sig_accumulator)(accum.ctx),
+	)
+	return bool(status)
+}
+
+
+func BatchVerifySoA(pubkeys []EthBlsPubKey, messages [][]byte, signatures []EthBlsSignature, secureRandomBytes [32]byte) (bool, error) {
+	if len(pubkeys) == 0 {
+		err := errors.New(
+			C.GoString(
+				C.ctt_eth_bls_status_to_string(C.cttEthBls_ZeroLengthAggregation),
+			),
+		)
+		return false, err
+	} else if len(pubkeys) != len(messages) {
+		err := errors.New("Number of public keys must match number of messages.")
+		return false, err
+	} else if len(pubkeys) != len(signatures) {
+		err := errors.New("Number of public keys must match number of signatures.")
+		return false, err
+	}
+
+	// Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
+	for _, pub := range pubkeys {
+		if pub.IsZero() {
+			err := errors.New(
+				C.GoString(
+					C.ctt_eth_bls_status_to_string(C.cttEthBls_PointAtInfinity),
+				),
+			)
+			return false, err
+		}
+	}
+	for _, sig := range signatures {
+		if sig.IsZero() {
+			err := errors.New(
+				C.GoString(
+					C.ctt_eth_bls_status_to_string(C.cttEthBls_PointAtInfinity),
+				),
+			)
+			return false, err
+		}
+	}
+
+	// NOTE: We *must* use the New / Free functions!
+	accum := ethBlsBatchSigAccumulatorAlloc()
+	defer ethBlsBatchSigAccumulatorFree(accum)
+	accum.init(secureRandomBytes, []byte("serial"))
+
+	for i, pub := range pubkeys {
+		if !accum.update(pub, messages[i], signatures[i]) {
+			err := errors.New(
+				C.GoString(
+					C.ctt_eth_bls_status_to_string(C.cttEthBls_VerificationFailure),
+				),
+			)
+			return false, err
+		}
+	}
+
+	return accum.finalVerify(), nil
+}
+
+type BatchVerifyTriplet struct {
+	pub EthBlsPubKey
+	message []byte
+	sig EthBlsSignature
+}
+
+func BatchVerifyAoS(triplets []BatchVerifyTriplet, secureRandomBytes [32]byte) (bool, error) {
+	if len(triplets) == 0 {
+		err := errors.New(
+			C.GoString(
+				C.ctt_eth_bls_status_to_string(C.cttEthBls_ZeroLengthAggregation),
+			),
+		)
+		return false, err
+	}
+	// Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
+	for _, trp := range triplets {
+		if trp.pub.IsZero() || trp.sig.IsZero() {
+			err := errors.New(
+				C.GoString(
+					C.ctt_eth_bls_status_to_string(C.cttEthBls_PointAtInfinity),
+				),
+			)
+			return false, err
+		}
+	}
+	// NOTE: We *must* use the New / Free functions!
+	accum := ethBlsBatchSigAccumulatorAlloc()
+	defer ethBlsBatchSigAccumulatorFree(accum)
+	accum.init(secureRandomBytes, []byte("serial"))
+
+	for _, trp := range triplets {
+		if !accum.update(trp.pub, trp.message, trp.sig) {
+			err := errors.New(
+				C.GoString(
+					C.ctt_eth_bls_status_to_string(C.cttEthBls_VerificationFailure),
+				),
+			)
+			return false, err
+		}
+	}
+
+	return accum.finalVerify(), nil
 }

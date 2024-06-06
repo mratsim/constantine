@@ -27,6 +27,11 @@ typedef struct { byte raw[32]; } ctt_eth_bls_seckey;
 typedef struct { struct ctt_eth_bls_fp  x, y; } ctt_eth_bls_pubkey;
 typedef struct { struct ctt_eth_bls_fp2 x, y; } ctt_eth_bls_signature;
 
+// We keep the batch sig accumulator as an incomplete struct. For that to work
+// we also need an alloc/dealloc function below, which takes care of allocating
+// the right amount of storage for the struct on the Go side.
+typedef struct ctt_eth_bls_batch_sig_accumulator ctt_eth_bls_batch_sig_accumulator;
+
 typedef enum __attribute__((__packed__)) {
     cttEthBls_Success,
     cttEthBls_VerificationFailure,
@@ -292,6 +297,67 @@ ctt_eth_bls_status ctt_eth_bls_batch_verify(const ctt_eth_bls_pubkey pubkeys[],
 					    ptrdiff_t len,
 					    const byte secure_random_bytes[32]
     ) __attribute__((warn_unused_result));
+
+
+/**
+ * Allocator function for the incomplete struct of the batch sig accumulator.
+ * Users of the C API *must* use this.
+ */
+ctt_eth_bls_batch_sig_accumulator* ctt_eth_bls_alloc_batch_sig_accumulator();
+
+/**
+ * Function to free the storage allocated by the above.
+ * Users of the C API *must* use this.
+ */
+void ctt_eth_bls_free_batch_sig_accumulator(ctt_eth_bls_batch_sig_accumulator *ptr);
+
+/**
+ *  Initializes a Batch BLS Signature accumulator context.
+ *
+ *  This requires cryptographically secure random bytes
+ *  to defend against forged signatures that would not
+ *  verify individually but would verify while aggregated
+ *  https://ethresear.ch/t/fast-verification-of-multiple-bls-signatures/5407/14
+ *
+ *  An optional accumulator separation tag can be added
+ *  so that from a single source of randomness
+ *  each accumulatpr is seeded with a different state.
+ *  This is useful in multithreaded context.
+ */
+void ctt_eth_bls_init_batch_sig_accumulator(
+    ctt_eth_bls_batch_sig_accumulator* ctx,
+    //const byte domain_sep_tag[],
+    //ptrdiff_t domain_sep_tag_len,
+    const byte secure_random_bytes[32],
+    const byte accum_sep_tag[],
+    ptrdiff_t accum_sep_tag_len
+    );
+
+/**
+ *  Add a (public key, message, signature) triplet
+ *  to a BLS signature accumulator
+ *
+ *  Assumes that the public key and signature
+ *  have been group checked
+ *
+ *  Returns false if pubkey or signatures are the infinity points
+ *
+ */
+ctt_bool ctt_eth_bls_update_batch_sig_accumulator(
+    ctt_eth_bls_batch_sig_accumulator* ctx,
+    const ctt_eth_bls_pubkey* pubkey,
+    const byte* message, ptrdiff_t message_len,
+    const ctt_eth_bls_signature* signature
+    ) __attribute__((warn_unused_result));
+
+/**
+ *  Finish batch and/or aggregate signature verification and returns the final result.
+ *
+ *  Returns false if nothing was accumulated
+ *  Rteturns false on verification failure
+ */
+ctt_bool ctt_eth_bls_final_verify_batch_sig_accumulator(ctt_eth_bls_batch_sig_accumulator* ctx) __attribute__((warn_unused_result));
+
 
 #ifdef __cplusplus
 }
