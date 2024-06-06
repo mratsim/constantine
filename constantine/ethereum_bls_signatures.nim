@@ -58,7 +58,7 @@ export hashes # generic sandwich on sha256
 # ------------------------------------------------------------------------------------------------
 
 import
-    ./platforms/[abstractions, views],
+    ./platforms/[abstractions, views, allocs],
     ./math/config/curves,
     ./math/[
       ec_shortweierstrass,
@@ -517,11 +517,11 @@ func batch_verify*[Msg](pubkeys: openArray[PublicKey], messages: openarray[Msg],
 func alloc_batch_sig_accumulator*(): ptr BatchSigAccumulator {.libPrefix: prefix_ffi.} =
   ## Allocates using `alloc0` for a `BatchSigAccumulator`
   ## so that it can remain an incomplete struct in the C header.
-  result = cast[ptr BatchSigAccumulator](alloc0(sizeof(BatchSigAccumulator)))
+  result = cast[ptr BatchSigAccumulator](allocHeapAligned(BatchSigAccumulator, alignment = 64))
 
 proc free_batch_sig_accumulator*(p: ptr BatchSigAccumulator) {.libPrefix: prefix_ffi.} =
   ## Frees previously `alloc`'d into `buf`
-  dealloc p
+  freeHeapAligned p
 
 func init_batch_sig_accumulator*(
   ctx: var BatchSigAccumulator,
