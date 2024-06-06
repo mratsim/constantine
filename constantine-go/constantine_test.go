@@ -1192,18 +1192,103 @@ func TestFastAggregateVerify(t *testing.T) {
 	}
 }
 
-func TestAggregateVerify(t *testing.T) {
+// NOTE: The aggregate verify test case is currently not used, because at the moment
+// we don't wrap aggregate test. It requires to expose the `BLSAggregateSigAccumulator`
+// type from Nim to C similarly to the batch sig accumulator. Once we have done so
+// we'll add back the test.
+
+//func TestAggregateVerify(t *testing.T) {
+//	type Test struct {
+//		Input struct {
+//			PubKeys []string `json:"pubkeys"`
+//			Messages []string `json:"messages"`
+//			Signature string `json:"signature"`
+//
+//		} `json:"input"`
+//		Output bool `json:"output"`
+//	}
+//
+//	tests, _ := filepath.Glob(aggregate_verifyTests)
+//	for _, testPath := range tests {
+//		t.Run(testPath, func(t *testing.T) {
+//			testFile, err := os.Open(testPath)
+//			test := Test{}
+//			err = json.NewDecoder(testFile).Decode(&test)
+//
+//			var rawPks []EthBlsPubKeyRaw
+//			for _, s := range test.Input.PubKeys {
+//				var rawPk EthBlsPubKeyRaw
+//				err = rawPk.UnmarshalText([]byte(s))
+//				if err != nil {
+//					require.Nil(t, test.Output)
+//					return
+//				}
+//				rawPks = append(rawPks, rawPk)
+//			}
+//			var rawSig EthBlsSignatureRaw
+//			err = rawSig.UnmarshalText([]byte(test.Input.Signature))
+//			if err != nil {
+//				require.False(t, test.Output) // tampered signaure test
+//				return
+//			}
+//
+//			var status bool
+//			{ // testChecks
+//				var pks []EthBlsPubKey
+//				for _, rawPk := range rawPks {
+//					var pk EthBlsPubKey
+//					status, err = pk.DeserializeCompressed(rawPk)
+//					if err != nil {
+//						require.Equal(t, status, test.Output)
+//						return
+//					}
+//					pks = append(pks, pk)
+//				}
+//				var sig EthBlsSignature
+//				status, err = sig.DeserializeCompressed(rawSig)
+//				if err != nil {
+//					require.Equal(t, status, test.Output)
+//					return
+//				}
+//				var msgs [][]byte
+//				for _, rawMsg := range test.Input.Messages {
+//					var msg EthBlsMessage
+//					err = msg.UnmarshalText([]byte(rawMsg))
+//					if err != nil {
+//						require.Nil(t, test.Output)
+//						return
+//					}
+//					msgs = append(msgs, msg[:])
+//				}
+//				status, err = AggregateVerify(pks, msgs[:], sig)
+//
+//				// And now the Go version
+//				status, err = AggregateVerifyGo(pks, msgs[:], sig)
+//			}
+//			require.Equal(t, status, test.Output)
+//			if status != test.Output {
+//				fmt.Println("Verification differs from expected \n",
+//				    "   valid sig? ", status, "\n",
+//				    "   expected: ", test.Output,
+//				)
+//				return
+//			}
+//		})
+//	}
+//}
+
+func TestBatchVerify(t *testing.T) {
 	type Test struct {
 		Input struct {
 			PubKeys []string `json:"pubkeys"`
 			Messages []string `json:"messages"`
-			Signature string `json:"signature"`
+			Signatures []string `json:"signatures"`
 
 		} `json:"input"`
 		Output bool `json:"output"`
 	}
 
-	tests, _ := filepath.Glob(aggregate_verifyTests)
+	tests, _ := filepath.Glob(batch_verifyTests)
 	for _, testPath := range tests {
 		t.Run(testPath, func(t *testing.T) {
 			testFile, err := os.Open(testPath)
@@ -1220,11 +1305,15 @@ func TestAggregateVerify(t *testing.T) {
 				}
 				rawPks = append(rawPks, rawPk)
 			}
-			var rawSig EthBlsSignatureRaw
-			err = rawSig.UnmarshalText([]byte(test.Input.Signature))
-			if err != nil {
-				require.False(t, test.Output) // tampered signaure test
-				return
+			var rawSigs []EthBlsSignatureRaw
+			for _, s := range test.Input.Signatures {
+				var rawSig EthBlsSignatureRaw
+				err = rawSig.UnmarshalText([]byte(s))
+				if err != nil {
+					require.Nil(t, test.Output)
+					return
+				}
+				rawSigs = append(rawSigs, rawSig)
 			}
 
 			var status bool
@@ -1239,11 +1328,15 @@ func TestAggregateVerify(t *testing.T) {
 					}
 					pks = append(pks, pk)
 				}
-				var sig EthBlsSignature
-				status, err = sig.DeserializeCompressed(rawSig)
-				if err != nil {
-					require.Equal(t, status, test.Output)
-					return
+				var sigs []EthBlsSignature
+				for _, rawSig := range rawSigs {
+					var sig EthBlsSignature
+					status, err = sig.DeserializeCompressed(rawSig)
+					if err != nil {
+						require.Equal(t, status, test.Output)
+						return
+					}
+					sigs = append(sigs, sig)
 				}
 				var msgs [][]byte
 				for _, rawMsg := range test.Input.Messages {
@@ -1255,123 +1348,34 @@ func TestAggregateVerify(t *testing.T) {
 					}
 					msgs = append(msgs, msg[:])
 				}
-				status, err = AggregateVerify(pks, msgs[:], sig)
+				var randomBytes [32]byte
+				sha256.Hash(&randomBytes, []byte("totally non-secure source of entropy"), false)
+
+				// Now batch verify using SoA API
+				status, err = BatchVerifySoA(pks, msgs[:], sigs, randomBytes)
+				require.Equal(t, status, test.Output)
+
+				// And using triplets of the data and use `BatchVerifyAoS`
+				trp := make([]BatchVerifyTriplet, len(pks), len(pks))
+				for i, _ := range trp {
+					trp[i] = BatchVerifyTriplet{pub: pks[i], message: msgs[i], sig: sigs[i]}
+				}
+				status, err = BatchVerifyAoS(trp, randomBytes)
+				require.Equal(t, status, test.Output)
+
+				// TODO: The parallel API needs to be reimplemented using parallelism on the Go side
+				// and parallel API
+				// parallelStatus, _ := BatchVerifyParallel(tp, pks, msgs[:], sigs, randomBytes)
+				// require.Equal(t, parallelStatus, test.Output)
 			}
 			require.Equal(t, status, test.Output)
 			if status != test.Output {
 				fmt.Println("Verification differs from expected \n",
-				    "   valid sig? ", status, "\n",
-				    "   expected: ", test.Output,
+					"   valid sig? ", status, "\n",
+					"   expected: ", test.Output,
 				)
 				return
 			}
 		})
-	}
-}
-
-func TestBatchVerify(t *testing.T) {
-	type Test struct {
-		Input struct {
-			PubKeys []string `json:"pubkeys"`
-			Messages []string `json:"messages"`
-			Signatures []string `json:"signatures"`
-
-		} `json:"input"`
-		Output bool `json:"output"`
-	}
-
-	// for BatchVerifyParallel
-	tp := createTestThreadpool(t)
-
-	tests, _ := filepath.Glob(batch_verifyTests)
-	for _, testPath := range tests {
-		// Don't use t.Run() with parallel C code to not mess up thread-local storage
-		testFile, err := os.Open(testPath)
-		test := Test{}
-		err = json.NewDecoder(testFile).Decode(&test)
-
-		var rawPks []EthBlsPubKeyRaw
-		for _, s := range test.Input.PubKeys {
-			var rawPk EthBlsPubKeyRaw
-			err = rawPk.UnmarshalText([]byte(s))
-			if err != nil {
-				require.Nil(t, test.Output)
-				return
-			}
-			rawPks = append(rawPks, rawPk)
-		}
-		var rawSigs []EthBlsSignatureRaw
-		for _, s := range test.Input.Signatures {
-			var rawSig EthBlsSignatureRaw
-			err = rawSig.UnmarshalText([]byte(s))
-			if err != nil {
-				require.Nil(t, test.Output)
-				return
-			}
-			rawSigs = append(rawSigs, rawSig)
-		}
-
-		var status bool
-		{ // testChecks
-			var pks []EthBlsPubKey
-			for _, rawPk := range rawPks {
-				var pk EthBlsPubKey
-				status, err = pk.DeserializeCompressed(rawPk)
-				if err != nil {
-					require.Equal(t, status, test.Output)
-					return
-				}
-				pks = append(pks, pk)
-			}
-			var sigs []EthBlsSignature
-			for _, rawSig := range rawSigs {
-				var sig EthBlsSignature
-				status, err = sig.DeserializeCompressed(rawSig)
-				if err != nil {
-					require.Equal(t, status, test.Output)
-					return
-				}
-				sigs = append(sigs, sig)
-			}
-			var msgs [][]byte
-			for _, rawMsg := range test.Input.Messages {
-				var msg EthBlsMessage
-				err = msg.UnmarshalText([]byte(rawMsg))
-				if err != nil {
-					require.Nil(t, test.Output)
-					return
-				}
-				msgs = append(msgs, msg[:])
-			}
-			var randomBytes [32]byte
-			sha256.Hash(&randomBytes, []byte("totally non-secure source of entropy"), false)
-
-			status, err = BatchVerify(pks, msgs[:], sigs, randomBytes)
-			require.Equal(t, status, test.Output)
-
-			// Now batch verify using Go "native" API
-			status, err = BatchVerifySoA(pks, msgs[:], sigs, randomBytes)
-			require.Equal(t, status, test.Output)
-
-			// Finally produce triplets of the data and use `BatchVerifyAoS`
-			trp := make([]BatchVerifyTriplet, len(pks), len(pks))
-			for i, _ := range trp {
-				trp[i] = BatchVerifyTriplet{pub: pks[i], message: msgs[i], sig: sigs[i]}
-			}
-			status, err = BatchVerifyAoS(trp, randomBytes)
-			require.Equal(t, status, test.Output)
-
-			// and parallel API
-			parallelStatus, _ := BatchVerifyParallel(tp, pks, msgs[:], sigs, randomBytes)
-			require.Equal(t, parallelStatus, test.Output)
-		}
-		require.Equal(t, status, test.Output)
-		if status != test.Output {
-			fmt.Println("Verification differs from expected \n",
-			    "   valid sig? ", status, "\n",
-			    "   expected: ", test.Output,
-			)
-			return
-		}
 	}
 }
