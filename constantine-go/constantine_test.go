@@ -788,7 +788,7 @@ func TestExampleCBlsSig(t *testing.T) {
 	msgs := [][]byte{message[:], message[:], message[:]}
 	sigs := []EthBlsSignature{sig, sig, sig}
 	var srb [32]byte // leave zero
-	status, err = BatchVerify(pkeys, msgs, sigs, srb)
+	status, err = BatchVerifySoA(pkeys, msgs, sigs, srb)
 	fmt.Println("batchverified: Status ", status, " err = ", err)
 }
 
