@@ -1347,9 +1347,12 @@ func TestBatchVerify(t *testing.T) {
 			sha256.Hash(&randomBytes, []byte("totally non-secure source of entropy"), false)
 
 			status, err = BatchVerify(pks, msgs[:], sigs, randomBytes)
+			require.Equal(t, status, test.Output)
 
 			// Now batch verify using Go "native" API
-			status, err = BatchVerifyGo(pks, msgs[:], sigs, randomBytes)
+			status, err = BatchVerifySoA(pks, msgs[:], sigs, randomBytes)
+			require.Equal(t, status, test.Output)
+
 
 			// and parallel API
 			parallelStatus, _ := BatchVerifyParallel(tp, pks, msgs[:], sigs, randomBytes)

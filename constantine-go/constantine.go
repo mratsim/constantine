@@ -593,25 +593,27 @@ func BatchVerifyParallel(tp Threadpool, pubkeys []EthBlsPubKey, messages [][]byt
 
 // NOTE: C.ctt_eth_bls_batch_sig_accumulator is an incomplete struct. Therefore
 // we use 2 functions on the Nim side to (de)allocate storage for the struct.
-type EthBlsBatchSigAccumulator struct {
+type ethBlsBatchSigAccumulator struct {
 	ctx *C.ctt_eth_bls_batch_sig_accumulator
 }
-func EthBlsBatchSigAccumulatorAlloc() (accum EthBlsBatchSigAccumulator) {
+func ethBlsBatchSigAccumulatorAlloc() (accum ethBlsBatchSigAccumulator) {
 	accum.ctx = C.ctt_eth_bls_alloc_batch_sig_accumulator()
 	return accum
 }
 
-func EthBlsBatchSigAccumulatorFree(accum EthBlsBatchSigAccumulator) {
+func ethBlsBatchSigAccumulatorFree(accum ethBlsBatchSigAccumulator) {
 	C.ctt_eth_bls_free_batch_sig_accumulator(accum.ctx)
 }
 
-func (accum EthBlsBatchSigAccumulator) Init(secureRandomBytes [32]byte) {
+func (accum ethBlsBatchSigAccumulator) init(secureRandomBytes [32]byte, accumSepTag []byte) {
 	C.ctt_eth_bls_init_batch_sig_accumulator((*C.ctt_eth_bls_batch_sig_accumulator)(accum.ctx),
 		(*C.byte)(unsafe.Pointer(&secureRandomBytes[0])),
+		(*C.byte)(unsafe.Pointer(&accumSepTag[0])),
+		(C.ptrdiff_t)(len(accumSepTag)),
 	)
 }
 
-func (accum EthBlsBatchSigAccumulator) Update(pub EthBlsPubKey, message []byte, sig EthBlsSignature) bool {
+func (accum ethBlsBatchSigAccumulator) update(pub EthBlsPubKey, message []byte, sig EthBlsSignature) bool {
 	status := C.ctt_eth_bls_update_batch_sig_accumulator((*C.ctt_eth_bls_batch_sig_accumulator)(accum.ctx),
 		(*C.ctt_eth_bls_pubkey)(&pub),
 		(*C.byte)(unsafe.Pointer(&message[0])),
@@ -621,14 +623,15 @@ func (accum EthBlsBatchSigAccumulator) Update(pub EthBlsPubKey, message []byte, 
 	return bool(status)
 }
 
-func (accum EthBlsBatchSigAccumulator) FinalVerify() bool {
+func (accum ethBlsBatchSigAccumulator) finalVerify() bool {
 	status := C.ctt_eth_bls_final_verify_batch_sig_accumulator(
 		(*C.ctt_eth_bls_batch_sig_accumulator)(accum.ctx),
 	)
 	return bool(status)
 }
 
-func BatchVerifyGo(pubkeys []EthBlsPubKey, messages [][]byte, signatures []EthBlsSignature, secureRandomBytes [32]byte) (bool, error) {
+
+func BatchVerifySoA(pubkeys []EthBlsPubKey, messages [][]byte, signatures []EthBlsSignature, secureRandomBytes [32]byte) (bool, error) {
 	if len(pubkeys) == 0 {
 		err := errors.New(
 			C.GoString(
@@ -667,12 +670,12 @@ func BatchVerifyGo(pubkeys []EthBlsPubKey, messages [][]byte, signatures []EthBl
 	}
 
 	// NOTE: We *must* use the New / Free functions!
-	accum := EthBlsBatchSigAccumulatorAlloc()
-	defer EthBlsBatchSigAccumulatorFree(accum)
-	accum.Init(secureRandomBytes)
+	accum := ethBlsBatchSigAccumulatorAlloc()
+	defer ethBlsBatchSigAccumulatorFree(accum)
+	accum.init(secureRandomBytes, []byte("serial"))
 
 	for i, pub := range pubkeys {
-		if !accum.Update(pub, messages[i], signatures[i]) {
+		if !accum.update(pub, messages[i], signatures[i]) {
 			err := errors.New(
 				C.GoString(
 					C.ctt_eth_bls_status_to_string(C.cttEthBls_VerificationFailure),
@@ -682,5 +685,7 @@ func BatchVerifyGo(pubkeys []EthBlsPubKey, messages [][]byte, signatures []EthBl
 		}
 	}
 
-	return accum.FinalVerify(), nil
+	return accum.finalVerify(), nil
+}
+
 }
