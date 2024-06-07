@@ -531,11 +531,11 @@ suite "IPA proof tests":
       var prover_transcript {.noInit.}: sha256
       prover_transcript.newTranscriptGen(asBytes"ipa")
 
-      #from a shared view
+      # from a shared view
       var point: Fr[Banderwagon]
       point.fromInt(123456789)
 
-      #from the prover's side
+      # from the prover's side
       var testVals: array[14, int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
       var poly: array[256, Fr[Banderwagon]]
       poly.testPoly256(testVals)
@@ -671,7 +671,7 @@ suite "Multiproof Tests":
       var prover_comm: EC_P
       prover_comm.pedersen_commit_varbasis(ipaConfig.SRS, ipaConfig.SRS.len, poly, poly.len)
 
-      #Prover's view
+      # Prover's view
       var prover_transcript {.noInit.}: sha256
       prover_transcript.newTranscriptGen(asBytes"multiproof")
 
@@ -679,7 +679,10 @@ suite "Multiproof Tests":
       one.setOne()
 
       var Cs: seq[EC_P]
-      var Fs = new array[VerkleDomain, array[VerkleDomain, Fr[Banderwagon]]]
+      # Large array, need heap allocation.
+      # However using a ref array here makes the test fail. TODO.
+      # expecially with address-sanitizer to reliably trigger the failure.
+      var Fs: array[VerkleDomain, array[VerkleDomain, Fr[Banderwagon]]]
 
       for i in 0 ..< VerkleDomain:
         for j in 0 ..< VerkleDomain:
@@ -697,13 +700,11 @@ suite "Multiproof Tests":
 
       var multiproof {.noInit.}: MultiProof
       var stat_create_mult: bool
-      stat_create_mult = multiproof.createMultiProof(prover_transcript, ipaConfig, Cs, Fs[], Zs)
-      discard Fs
+      stat_create_mult = multiproof.createMultiProof(prover_transcript, ipaConfig, Cs, Fs, Zs)
 
       doAssert stat_create_mult.bool() == true, "Multiproof creation error!"
 
-
-      #Verifier's view
+      # Verifier's view
       var verifier_transcript: sha256
       verifier_transcript.newTranscriptGen(asBytes"multiproof")
 
