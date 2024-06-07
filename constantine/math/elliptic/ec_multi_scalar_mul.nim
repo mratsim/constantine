@@ -94,15 +94,14 @@ func multiScalarMulImpl_reference_vartime[bits: static int, EC, ECaff](
   buckets.freeHeap()
   miniMSMs.freeHeap()
 
-func multiScalarMul_reference_vartime*[EC, ECaff](r: var EC, coefs: openArray[BigInt], points: openArray[ECaff]) {.tags:[VarTime, HeapAlloc].} =
+func multiScalarMul_reference_dispatch_vartime[bits: static int, EC, ECaff](
+       r: var EC,
+       coefs: ptr UncheckedArray[BigInt[bits]],
+       points: ptr UncheckedArray[ECaff],
+       N: int) {.tags:[VarTime, HeapAlloc].} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
-  debug: doAssert coefs.len == points.len
-
-  let N = points.len
-  let coefs = coefs.asUnchecked()
-  let points = points.asUnchecked()
-  let c = bestBucketBitSize(N, BigInt.bits, useSignedBuckets = false, useManualTuning = false)
+  let c = bestBucketBitSize(N, bits, useSignedBuckets = false, useManualTuning = false)
 
   case c
   of  2: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c =  2)
@@ -123,6 +122,48 @@ func multiScalarMul_reference_vartime*[EC, ECaff](r: var EC, coefs: openArray[Bi
   of 16..20: multiScalarMulImpl_reference_vartime(r, coefs, points, N, c = 16)
   else:
     unreachable()
+
+func multiScalarMul_reference_vartime*[bits: static int, EC, ECaff](
+       r: var EC,
+       coefs: ptr UncheckedArray[BigInt[bits]],
+       points: ptr UncheckedArray[ECaff],
+       N: int) {.tags:[VarTime, HeapAlloc].} =
+  ## Multiscalar multiplication:
+  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
+  multiScalarMul_reference_dispatch_vartime(r, coefs, points, len)
+
+func multiScalarMul_reference_vartime*[EC, ECaff](r: var EC, coefs: openArray[BigInt], points: openArray[ECaff]) {.tags:[VarTime, HeapAlloc].} =
+  ## Multiscalar multiplication:
+  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
+  debug: doAssert coefs.len == points.len
+  let N = points.len
+  multiScalarMul_reference_dispatch_vartime(r, coefs.asUnchecked(), points.asUnchecked(), N)
+
+func multiScalarMul_reference_vartime*[F, EC, ECaff](
+       r: var EC,
+       coefs: ptr UncheckedArray[F],
+       points: ptr UncheckedArray[ECaff],
+       len: int) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
+  ## Multiscalar multiplication:
+  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
+  let n = cast[int](len)
+  let coefs_big = allocHeapArrayAligned(matchingOrderBigInt(F.C), n, alignment = 64)
+
+  for i in 0 ..< n:
+    coefs_big[i].fromField(coefs[i])
+  r.multiScalarMul_reference_vartime(coefs_big, points, n)
+
+  freeHeapAligned(coefs_big)
+
+func multiScalarMul_reference_vartime*[EC, ECaff](
+       r: var EC,
+       coefs: openArray[Fr],
+       points: openArray[ECaff]) {.tags:[VarTime, Alloca, HeapAlloc], inline.} =
+  ## Multiscalar multiplication:
+  ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
+  debug: doAssert coefs.len == points.len
+  let N = points.len
+  multiScalarMul_reference_vartime(r, coefs.asUnchecked(), points.asUnchecked(), N)
 
 # ########################################################### #
 #                                                             #
@@ -487,10 +528,8 @@ func multiScalarMul_vartime*[bits: static int, EC, ECaff](
        points: openArray[ECaff]) {.tags:[VarTime, Alloca, HeapAlloc], meter.} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
-
   debug: doAssert coefs.len == points.len
   let N = points.len
-
   multiScalarMul_dispatch_vartime(r, coefs.asUnchecked(), points.asUnchecked(), N)
 
 func multiScalarMul_vartime*[F, EC, ECaff](
@@ -516,8 +555,6 @@ func multiScalarMul_vartime*[EC, ECaff](
        points: openArray[ECaff]) {.tags:[VarTime, Alloca, HeapAlloc], inline.} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
-
   debug: doAssert coefs.len == points.len
   let N = points.len
-
   multiScalarMul_vartime(r, coefs.asUnchecked(), points.asUnchecked(), N)
