@@ -270,6 +270,16 @@ func (ctx EthKzgContext) VerifyBlobKzgProofBatchParallel(tp Threadpool, blobs []
 // Ethereum BLS signatures
 // -----------------------------------------------------
 
+func getAddr[T any](arg []T) (unsafe.Pointer) {
+	// Makes sure to not access a non existant 0 element if the slice is empty
+	if len(arg) > 0 {
+		return unsafe.Pointer(&arg[0])
+	} else {
+		return nil
+	}
+}
+
+
 type (
 	EthBlsSecKey    C.ctt_eth_bls_seckey
 	EthBlsPubKey    C.ctt_eth_bls_pubkey
@@ -283,7 +293,8 @@ func (pub EthBlsPubKey) IsZero() bool {
 
 func (sec *EthBlsSecKey) Deserialize(src [32]byte) (bool, error) {
 	status := C.ctt_eth_bls_deserialize_seckey((*C.ctt_eth_bls_seckey)(sec),
-		(*C.byte)(&src[0]))
+		(*C.byte)(&src[0]),
+	)
 	if status != C.cttCodecScalar_Success {
 		err := errors.New(
 			C.GoString(C.ctt_codec_scalar_status_to_string(status)),
@@ -496,8 +507,8 @@ func ethBlsBatchSigAccumulatorFree(accum ethBlsBatchSigAccumulator) {
 
 func (accum ethBlsBatchSigAccumulator) init(secureRandomBytes [32]byte, accumSepTag []byte) {
 	C.ctt_eth_bls_init_batch_sig_accumulator((*C.ctt_eth_bls_batch_sig_accumulator)(accum.ctx),
-		(*C.byte)(unsafe.Pointer(&secureRandomBytes[0])),
-		(*C.byte)(unsafe.Pointer(&accumSepTag[0])),
+		(*C.byte)(&secureRandomBytes[0]),
+		(*C.byte)(getAddr(accumSepTag)),
 		(C.ptrdiff_t)(len(accumSepTag)),
 	)
 }
@@ -505,7 +516,7 @@ func (accum ethBlsBatchSigAccumulator) init(secureRandomBytes [32]byte, accumSep
 func (accum ethBlsBatchSigAccumulator) update(pub EthBlsPubKey, message []byte, sig EthBlsSignature) bool {
 	status := C.ctt_eth_bls_update_batch_sig_accumulator((*C.ctt_eth_bls_batch_sig_accumulator)(accum.ctx),
 		(*C.ctt_eth_bls_pubkey)(&pub),
-		(*C.byte)(unsafe.Pointer(&message[0])),
+		(*C.byte)(getAddr(message)),
 		(C.ptrdiff_t)(len(message)),
 		(*C.ctt_eth_bls_signature)(&sig),
 	)
