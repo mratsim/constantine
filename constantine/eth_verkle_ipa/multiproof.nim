@@ -8,7 +8,6 @@
 
 import
   tables,
-  sequtils,
   ./[transcript_gen, common_utils, ipa_prover, barycentric_form, eth_verkle_constants, ipa_verifier],
   ../platforms/primitives,
   ../hashes,
@@ -75,10 +74,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
     transcript.scalarAppend(asBytes"z",z.toBig())
 
     # deducing the `y` value
-
-    var f = Fs[i]
-    var y = f[Zs[i]]
-    transcript.scalarAppend(asBytes"y", y.toBig())
+    transcript.scalarAppend(asBytes"y", Fs[i][Zs[i]].toBig())
 
   var r {.noInit.} : matchingOrderBigInt(Banderwagon)
   r.generateChallengeScalar(transcript,asBytes"r")
@@ -92,7 +88,8 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
   # In order to compute g(x), we first compute the polynomials in lagrange form grouped by evaluation points
   # then we compute g(x), this is eventually limit the numbers of divisionOnDomain calls up to the domain size
 
-  var groupedFs: array[VerkleDomain, array[VerkleDomain, Fr[Banderwagon]]]
+  # Large array, need heap allocation. TODO: don't use Nim allocs.
+  var groupedFs = new array[VerkleDomain, array[VerkleDomain, Fr[Banderwagon]]]
   for i in 0 ..< VerkleDomain:
     for j in 0 ..< VerkleDomain:
       groupedFs[i][j].setZero()
@@ -184,7 +181,9 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
   var EMinusD {.noInit.}: EC_P
   EMinusD.diff(E,D)
 
-  var ipaProof {.noInit.}: IPAProof
+  # TODO: for some result IPAProof must be zero-init beforehand
+  #       hence we need to investigate why initialization may be incomplete.
+  var ipaProof: IPAProof
 
   var checks: bool
   checks = ipaProof.createIPAProof(transcript, ipaSetting, EMinusD, hMinusg, t_fr)
@@ -204,7 +203,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
 # ############################################################
 
 
-func verifyMultiproof*(multiProof: var MultiProof, transcript : var CryptoHash, ipaSettings: IPASettings, Cs: openArray[EC_P], Ys: openArray[Fr[Banderwagon]], Zs: openArray[int]) : bool =
+func verifyMultiproof*[MultiProof](multiProof: var MultiProof, transcript : var CryptoHash, ipaSettings: IPASettings, Cs: openArray[EC_P], Ys: openArray[Fr[Banderwagon]], Zs: openArray[int]) : bool =
   # Multiproof verifier verifies the multiproof for several polynomials in the evaluation form
   # The list of triplets (C,Y,Z) represents each polynomial commitment, evaluation
   # result, and evaluation point in the domain

@@ -442,7 +442,7 @@ suite "IPA proof tests":
       doAssert stat1 == true, "Could not generate new IPA Config properly!"
     testMain()
 
-  test "Verfify IPA Proof inside the domain by @Ignacio":
+  test "Verify IPA Proof inside the domain by @Ignacio":
     proc testIPAProofInDomain()=
 
       var commitmentBytes {.noInit.} : array[32, byte]
@@ -531,11 +531,11 @@ suite "IPA proof tests":
       var prover_transcript {.noInit.}: sha256
       prover_transcript.newTranscriptGen(asBytes"ipa")
 
-      #from a shared view
+      # from a shared view
       var point: Fr[Banderwagon]
       point.fromInt(123456789)
 
-      #from the prover's side
+      # from the prover's side
       var testVals: array[14, int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
       var poly: array[256, Fr[Banderwagon]]
       poly.testPoly256(testVals)
@@ -646,6 +646,8 @@ suite "IPA proof tests":
 #
 # ############################################################
 
+# Note: large arrays should be heap allocated with new/ref
+#       to not incur stack overflow on Windows as its stack size is 1MB per default compared to UNIXes 8MB.
 
 suite "Multiproof Tests":
   test "IPA Config test for Multiproofs":
@@ -669,7 +671,7 @@ suite "Multiproof Tests":
       var prover_comm: EC_P
       prover_comm.pedersen_commit_varbasis(ipaConfig.SRS, ipaConfig.SRS.len, poly, poly.len)
 
-      #Prover's view
+      # Prover's view
       var prover_transcript {.noInit.}: sha256
       prover_transcript.newTranscriptGen(asBytes"multiproof")
 
@@ -677,7 +679,8 @@ suite "Multiproof Tests":
       one.setOne()
 
       var Cs: seq[EC_P]
-      var Fs: array[VerkleDomain, array[VerkleDomain, Fr[Banderwagon]]]
+      # Large array, need heap allocation.
+      var Fs = new array[VerkleDomain, array[VerkleDomain, Fr[Banderwagon]]]
 
       for i in 0 ..< VerkleDomain:
         for j in 0 ..< VerkleDomain:
@@ -695,17 +698,16 @@ suite "Multiproof Tests":
 
       var multiproof {.noInit.}: MultiProof
       var stat_create_mult: bool
-      stat_create_mult = multiproof.createMultiProof(prover_transcript, ipaConfig, Cs, Fs, Zs)
+      stat_create_mult = multiproof.createMultiProof(prover_transcript, ipaConfig, Cs, Fs[], Zs)
 
       doAssert stat_create_mult.bool() == true, "Multiproof creation error!"
 
-
-      #Verifier's view
+      # Verifier's view
       var verifier_transcript: sha256
       verifier_transcript.newTranscriptGen(asBytes"multiproof")
 
       var stat_verify_mult: bool
-      stat_verify_mult = multiproof.verifyMultiproof(verifier_transcript,ipaConfig,Cs,Ys,Zs)
+      stat_verify_mult = multiproof.verifyMultiproof(verifier_transcript, ipaConfig, Cs, Ys,Zs)
 
       doAssert stat_verify_mult.bool() == true, "Multiproof verification error!"
 
