@@ -93,7 +93,7 @@ export
 
 # Transcript Utils for Verkle
 # ------------------------------------------------------------
-export 
+export
   transcript_gen.newTranscriptGen,
   transcript_gen.messageAppend,
   transcript_gen.messageAppend_u64,

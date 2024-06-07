@@ -10,8 +10,8 @@ import
   ./t_ethereum_verkle_ipa_test_helper,
   ../constantine/eth_verkle_ipa/[
       barycentric_form,
-      eth_verkle_constants, 
-      transcript_gen, 
+      eth_verkle_constants,
+      transcript_gen,
       common_utils,
       ipa_prover,
       ipa_verifier,
@@ -41,7 +41,7 @@ import
 #
 # ############################################################
 
-# Please refer to https://hackmd.io/mJeCRcawTRqr9BooVpHv5g 
+# Please refer to https://hackmd.io/mJeCRcawTRqr9BooVpHv5g
 
 # The generator point from Banderwagon
 var generator = Banderwagon.getGenerator()
@@ -50,17 +50,17 @@ suite "Barycentric Form Tests":
 
   test "Testing absolute integers":
 
-    proc testAbsInteger() = 
+    proc testAbsInteger() =
         var abs {.noInit.} : int
         abs.absIntChecker(-100)
         doAssert (abs == 100).bool() == true, "Absolute value should be 100!"
         doAssert (abs < 0).bool() == false, "Value was negative!"
 
     testAbsInteger()
-    
+
   # The interpolation is only needed for testing purposes,
-  # but we need to check if it's correct. It's equivalent to getting 
-  # the polynomial in coefficient form for a large number of points 
+  # but we need to check if it's correct. It's equivalent to getting
+  # the polynomial in coefficient form for a large number of points
 
   test "Testing Basic Interpolation, without precompute optimisations":
 
@@ -78,7 +78,7 @@ suite "Barycentric Form Tests":
 
       var points: array[2,Coord]
       points[0] = point_a
-      points[1] = point_b       
+      points[1] = point_b
 
       var poly : array[2,Fr[Banderwagon]]
 
@@ -101,14 +101,14 @@ suite "Barycentric Form Tests":
         var p_outside_dom : Fr[Banderwagon]
         p_outside_dom.fromInt(3400)
 
-        var testVals: array[10, int] = [1,2,3,4,5,6,7,8,9,10] 
-        
+        var testVals: array[10, int] = [1,2,3,4,5,6,7,8,9,10]
+
         var lagrange_values: array[256, Fr[Banderwagon]]
         lagrange_values.testPoly256(testVals)
 
         var precomp {.noInit.}: PrecomputedWeights
-        precomp.newPrecomputedWeights()      
-        
+        precomp.newPrecomputedWeights()
+
         var bar_coeffs {.noInit.}: array[256, Fr[Banderwagon]]
         bar_coeffs.computeBarycentricCoefficients(precomp, p_outside_dom)
 
@@ -169,7 +169,7 @@ suite "Barycentric Form Tests":
       testDivideOnDomain()
 
 
-        
+
 
 # ############################################################
 #
@@ -192,7 +192,7 @@ suite "Random Elements Generation and CRS Consistency":
 
       doAssert arr_byte[0].toHex() == "0x01587ad1336675eb912550ec2a28eb8923b824b490dd2ba82e48f14590a298a0", "Failed to generate the 1st point!"
       doAssert arr_byte[255].toHex() == "0x3de2be346b539395b0c0de56a5ccca54a317f1b5c80107b0802af9a62276a4d8", "Failed to generate the 256th point!"
-    
+
     testGenPoints()
 
 # ############################################################
@@ -212,7 +212,7 @@ suite "Computing the Correct Vector Commitment":
       var basisPoints: array[256, EC_P]
       basisPoints.generate_random_points(256)
 
-      
+
       var test_scalars {.noInit.}: array[256, Fr[Banderwagon]]
       for i in 0 ..< 256:
         test_scalars[i].fromHex(testScalarsHex[i])
@@ -278,7 +278,7 @@ suite "Deserialize a proof which wrong lengths by @Ignacio":
 
         for j in 0 ..< 32:
           proof2_bytes[j] = proof_bytes[j]
-        
+
         let stat = test_big[i].deserialize_scalar(proof2_bytes, littleEndian)
 
         i = i + 1
@@ -328,7 +328,7 @@ suite "Transcript Tests":
       # Generating 2 new labels into 2 separate transcripts
       tr.newTranscriptGen(asBytes"simple_protocol")
       tr2.newTranscriptGen(asBytes"simple_protocol")
-      
+
       # Generating Challenge Scalar for Transcript 1
       var challenge1 {.noInit.}: matchingOrderBigInt(Banderwagon)
       challenge1.generateChallengeScalar(tr,asBytes"ethereum_challenge")
@@ -364,18 +364,18 @@ suite "Transcript Tests":
 
       var c_bytes {.noInit.}: array[32, byte]
       discard c_bytes.serialize_scalar(challenge, littleEndian)
-      
+
       # Comparing with Go-IPA Implmentation
       doAssert c_bytes.toHex() == "0x498732b694a8ae1622d4a9347535be589e4aee6999ffc0181d13fe9e4d037b0b", "Some issue in Challenge Scalar"
-    
+
     testVec2()
 
     test "Transcript testing with +1 and -1, appending them to be a compound challenge scalar":
-      proc testVec3() = 
+      proc testVec3() =
 
         # Initializing a new transcript state
         var tr {.noInit.}: sha256
-  
+
         # Generating with a new label
         tr.newTranscriptGen(asBytes"simple_protocol")
 
@@ -383,7 +383,7 @@ suite "Transcript Tests":
         var minus_one {.noInit.}: Fr[Banderwagon]
         # As scalar append and generating challenge scalars mainly deal with BigInts
         # and BigInts usually store unsigned values, this test checks if the Transcript state
-        # generates the correct challenge scalar, even when a signed BigInt such as -1 is 
+        # generates the correct challenge scalar, even when a signed BigInt such as -1 is
         # appended to the transcript state.
         minus_one.setMinusOne()
 
@@ -413,7 +413,7 @@ suite "Transcript Tests":
 
         # Initializing a new transcript state
         var tr {.noInit.}: sha256
-  
+
         # Generating with a new label
         tr.newTranscriptGen(asBytes"simple_protocol")
 
@@ -430,7 +430,7 @@ suite "Transcript Tests":
 
 # ############################################################
 #
-#                     Test for IPA Proofs    
+#                     Test for IPA Proofs
 #
 # ############################################################
 
@@ -521,7 +521,7 @@ suite "IPA proof tests":
       var op_point: Fr[Banderwagon]
       op_point.computeInnerProducts(lagrange_coeffs, poly)
 
-      
+
       doAssert op_point.toHex(littleEndian) == "0x4a353e70b03c89f161de002e8713beec0d740a5e20722fd5bd68b30540a33208", "Issue with computing commitment"
 
     testIPAProofConsistency()
@@ -567,7 +567,7 @@ suite "IPA proof tests":
 
       var testGeneratedPoints2: array[256, EC_P]
       testGeneratedPoints2.generate_random_points(256)
-      
+
       var prover_transcript2 {.noInit.}: sha256
       prover_transcript2.newTranscriptGen(asBytes"ipa")
 
@@ -625,7 +625,7 @@ suite "IPA proof tests":
         var innerProd : Fr[Banderwagon]
         innerProd.computeInnerProducts(poly, lagrange_coeffs)
 
-        # Verifier view 
+        # Verifier view
         var verifier_comm : EC_P
         verifier_comm = prover_comm
 
@@ -642,7 +642,7 @@ suite "IPA proof tests":
 
 # ############################################################
 #
-#                     Test for Multiproofs    
+#                     Test for Multiproofs
 #
 # ############################################################
 
@@ -654,7 +654,7 @@ suite "Multiproof Tests":
       let stat1 = ipaConfig.genIPAConfig()
       doAssert stat1 == true, "Could not initialise new IPA config for multiproofs!"
     testIPAConfigForMultiproofs()
-  
+
   test "Multiproof Creation and Verification":
     proc testMultiproofCreationAndVerification()=
 
@@ -665,7 +665,7 @@ suite "Multiproof Tests":
       var poly: array[256, Fr[Banderwagon]]
 
       poly.testPoly256(testVals)
-      
+
       var prover_comm: EC_P
       prover_comm.pedersen_commit_varbasis(ipaConfig.SRS, ipaConfig.SRS.len, poly, poly.len)
 
@@ -682,12 +682,12 @@ suite "Multiproof Tests":
       for i in 0 ..< VerkleDomain:
         for j in 0 ..< VerkleDomain:
           Fs[i][j].setZero()
-    
+
       var Zs: seq[int]
       var Ys: seq[Fr[Banderwagon]]
 
       Cs.add(prover_comm)
-      
+
       Fs[0] = poly
 
       Zs.add(0)
@@ -710,7 +710,7 @@ suite "Multiproof Tests":
       doAssert stat_verify_mult.bool() == true, "Multiproof verification error!"
 
     testMultiproofCreationAndVerification()
-  
+
   test "Verify Multiproof in all Domain and Ranges but one by @Ignacio":
     proc testVerifyMultiproofVec()=
 
@@ -735,7 +735,7 @@ suite "Multiproof Tests":
       var Cs: array[VerkleDomain, EC_P]
       var Zs: array[VerkleDomain, int]
       var Ys: array[VerkleDomain, Fr[Banderwagon]]
-      
+
       Cs[0] = commitment
       Ys[0] = evaluationResultFr
 
@@ -775,4 +775,3 @@ suite "Multiproof Tests":
       doAssert validMultiproof_bytes2.toHex() == validMultiproof, "Error in the Multiproof Process!"
 
     testMultiproofSerDe()
-

@@ -6,7 +6,7 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
-import 
+import
   ../constantine/eth_verkle_ipa/[multiproof, barycentric_form, eth_verkle_constants],
   ../constantine/math/config/[type_ff, curves],
   ../constantine/math/elliptic/[
@@ -26,7 +26,7 @@ import
 #
 # ############################################################
 
-func ipaEvaluate* [Fr] (res: var Fr, poly: openArray[Fr], point: Fr,  n: static int) = 
+func ipaEvaluate* [Fr] (res: var Fr, poly: openArray[Fr], point: Fr,  n: static int) =
   var powers {.noInit.}: array[n,Fr]
   powers.computePowersOfElem(point, poly.len)
 
@@ -59,12 +59,12 @@ func evalFunc* (res: var Fr[Banderwagon], x: Fr[Banderwagon])=
 
   res.prod(tmpa, tmpb)
   res *= tmpc
-  
+
 func truncate* [Fr] (res: var openArray[Fr], s: openArray[Fr], to: int, n: static int)=
   for i in 0 ..< to:
     res[i] = s[i]
 
-func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: static int) = 
+func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: static int) =
   var one : Fr
   one.setOne()
 
@@ -78,9 +78,9 @@ func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: sta
     var point: Coord
     point = points[k]
 
-    var x_k: Fr 
+    var x_k: Fr
     x_k = point.x
-    var y_k: Fr 
+    var y_k: Fr
     y_k = point.y
 
     var contribution: array[n,Fr]
@@ -89,12 +89,12 @@ func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: sta
     var max_contribution_degree = 0
 
     for j in 0 ..< points.len:
-      var point: Coord 
+      var point: Coord
       point = points[j]
-      var x_j: Fr 
+      var x_j: Fr
       x_j = point.x
 
-      if j == k: 
+      if j == k:
         continue
 
       var differ: Fr
@@ -118,7 +118,7 @@ func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: sta
 
         for i in 1 ..< contribution.len:
           contribution[i] = contribution[i-1]
-                  
+
         contribution[0] = zero
         # contribution.truncate(contribution, max_degree_plus_one, n)
 
@@ -129,7 +129,7 @@ func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: sta
           other = mul_by_minus_x_j[i]
           contribution[i] += other
 
-    var denominator_inv {.noInit.}: Fr       
+    var denominator_inv {.noInit.}: Fr
     denominator_inv.inv(denominator)
 
     discard denominator
@@ -138,13 +138,13 @@ func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: sta
     doAssert (stat).bool == false, "Denominator should not be zero!"
 
     for i in 0 ..< contribution.len:
-      var tmp {.noInit.}: Fr 
+      var tmp {.noInit.}: Fr
       tmp = contribution[i]
       tmp *= denominator
       tmp *= y_k
       res[i] += tmp
 
-        
+
 #Initiating evaluation points z in the FiniteField (253)
 func setEval* [Fr] (res: var Fr, x : Fr)=
 
@@ -161,7 +161,7 @@ func setEval* [Fr] (res: var Fr, x : Fr)=
   var tmp_c: Fr = one
 
   for i in 0 ..< 253:
-    tmp_c.prod(tmp_c,x) 
+    tmp_c.prod(tmp_c,x)
 
   res.prod(tmp_a, tmp_b)
   res.prod(res,tmp_c)
@@ -172,7 +172,7 @@ func testPoly256* [Fr] (res: var openArray[Fr], polynomialUint: openArray[int])=
 
   for i in 0 ..< polynomialUint.len:
     res[i].fromInt(polynomialUint[i])
-  
+
   var pad = 256 - polynomialUint.len
   for i in polynomialUint.len ..< pad:
     res[i].setZero()
@@ -189,11 +189,11 @@ func isScalarEqHex*(scalar: matchingOrderBigInt(Banderwagon), expected: string) 
   if scalar_bytes.serialize_scalar(scalar) == cttCodecScalar_Success:
     doAssert (scalar_bytes.toHex() == expected).bool() == true, "Scalar does not equal to the expected hex value!"
 
-func getDegreeOfPoly*(res: var int, p: openArray[Fr]) = 
+func getDegreeOfPoly*(res: var int, p: openArray[Fr]) =
   for d in countdown(p.len - 1, 0):
     if not(p[d].isZero().bool()):
       res = d
-    
+
     else:
       res = -1
 
@@ -201,7 +201,7 @@ func getDegreeOfPoly*(res: var int, p: openArray[Fr]) =
 ##
 ##
 ##  Test Vector for Verifying Multiproof in all Domain Ranges but one
-## 
+##
 ##
 #######################################################################
 const MultiProofPedersenCommitment*: string = "0x5532395cf72b9d6b2252d968cf7fd8923262d3d17fce836a93144a1dc1b59e31"
@@ -212,7 +212,7 @@ const MultiProofSerializedVec*: string = "0x61f191c5ad8217b10318ad49f6c43b08a78f
 ##
 ##
 ##     Test Vector for Verifying IPA Proof inside the Domain
-## 
+##
 ##
 ###################################################################
 const IPAPedersenCommitment*: string = "0x68a798550a3e2ea3a2a91e1307e4ef06fb35d8df543f903ce9ea4edd75de7706"
@@ -223,7 +223,7 @@ const IPASerializedProofVec*: string = "0x00000000000000000000000000000000000000
 ##
 ##
 ##        Test Vector for Valid Multiproof Hex
-## 
+##
 ##
 ###################################################################
 
@@ -233,7 +233,7 @@ const validMultiproof* : string = "0x4f53588244efaf07a370ee3f9c467f933eed360d4fb
 ##
 ##
 ##    Test Vector for Incorrect Deserialization 1
-## 
+##
 ##      (Length is bigger than the Field Size)
 ##
 ##
@@ -245,7 +245,7 @@ const serializedProof1* : string = "0x323041383230303130623231376132423730416230
 ##
 ##
 ##    Test Vector for Incorrect Deserialization 2
-## 
+##
 ##       (Scalars that are of invalid length)
 ##
 ##
@@ -522,4 +522,3 @@ const testScalarsHex* : array[256, string] = [
 "0xf6efc0c898593e455d1eb64cf235bc5738497f0042e862329b275acb60b8834",
 "0x1766a671c6f443bb248ca226789b7afbcc39b51219e248a630baa28a57be31ff",
 "0xf9f17f85bc58b51265fd01c595cd6200d21e273e1aa38f55b7804186cb43c1d",]
-
