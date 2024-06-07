@@ -121,7 +121,8 @@ func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, got: var EC_P,
   for i in 0 ..< VerkleDomain:
     g_aff[i].affine(g[i])
 
-  g0.multiScalarMul_vartime(foldingScalars_big, g_aff)
+  # TODO, use optimized MSM - pending fix for https://github.com/mratsim/constantine/issues/390
+  g0.multiScalarMul_reference_vartime(foldingScalars_big, g_aff)
 
   var b0 {.noInit.} : Fr[Banderwagon]
   b0.computeInnerProducts(b, foldingScalars)

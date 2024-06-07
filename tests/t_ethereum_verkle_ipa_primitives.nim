@@ -442,7 +442,7 @@ suite "IPA proof tests":
       doAssert stat1 == true, "Could not generate new IPA Config properly!"
     testMain()
 
-  test "Verfify IPA Proof inside the domain by @Ignacio":
+  test "Verify IPA Proof inside the domain by @Ignacio":
     proc testIPAProofInDomain()=
 
       var commitmentBytes {.noInit.} : array[32, byte]
