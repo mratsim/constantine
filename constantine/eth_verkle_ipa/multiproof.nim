@@ -8,7 +8,6 @@
 
 import
   tables,
-  sequtils,
   ./[transcript_gen, common_utils, ipa_prover, barycentric_form, eth_verkle_constants, ipa_verifier],
   ../platforms/primitives,
   ../hashes,
@@ -75,10 +74,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
     transcript.scalarAppend(asBytes"z",z.toBig())
 
     # deducing the `y` value
-
-    var f = Fs[i]
-    var y = f[Zs[i]]
-    transcript.scalarAppend(asBytes"y", y.toBig())
+    transcript.scalarAppend(asBytes"y", Fs[i][Zs[i]].toBig())
 
   var r {.noInit.} : matchingOrderBigInt(Banderwagon)
   r.generateChallengeScalar(transcript,asBytes"r")
@@ -185,7 +181,9 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
   var EMinusD {.noInit.}: EC_P
   EMinusD.diff(E,D)
 
-  var ipaProof {.noInit.}: IPAProof
+  # TODO: for some result IPAProof must be zero-init beforehand
+  #       hence we need to investigate why initialization may be incomplete.
+  var ipaProof: IPAProof
 
   var checks: bool
   checks = ipaProof.createIPAProof(transcript, ipaSetting, EMinusD, hMinusg, t_fr)

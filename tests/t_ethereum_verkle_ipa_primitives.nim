@@ -680,9 +680,7 @@ suite "Multiproof Tests":
 
       var Cs: seq[EC_P]
       # Large array, need heap allocation.
-      # However using a ref array here makes the test fail. TODO.
-      # expecially with address-sanitizer to reliably trigger the failure.
-      var Fs: array[VerkleDomain, array[VerkleDomain, Fr[Banderwagon]]]
+      var Fs = new array[VerkleDomain, array[VerkleDomain, Fr[Banderwagon]]]
 
       for i in 0 ..< VerkleDomain:
         for j in 0 ..< VerkleDomain:
@@ -700,7 +698,7 @@ suite "Multiproof Tests":
 
       var multiproof {.noInit.}: MultiProof
       var stat_create_mult: bool
-      stat_create_mult = multiproof.createMultiProof(prover_transcript, ipaConfig, Cs, Fs, Zs)
+      stat_create_mult = multiproof.createMultiProof(prover_transcript, ipaConfig, Cs, Fs[], Zs)
 
       doAssert stat_create_mult.bool() == true, "Multiproof creation error!"
 

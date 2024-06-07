@@ -151,6 +151,10 @@ func coverIPARounds*(res: var IPAProof, transcript: var CryptoHash, ic: IPASetti
 func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var CryptoHash, ic: IPASettings, commitment: EC_P, a: var openArray[Fr[Banderwagon]], evalPoint: Fr[Banderwagon]) : bool =
   ## createIPAProof creates an IPA proof for a committed polynomial in evaluation form.
   ## `a` vectors are the evaluation points in the domain, and `evalPoint` represents the evaluation point.
+
+  # TODO: for some result IPAProof must be zero-init beforehand
+  #       hence we need to investigate why initialization may be incomplete.
+
   transcript.domain_separator(asBytes"ipa")
   var b: array[VerkleDomain, Fr[Banderwagon]]
   b.populateCoefficientVector(ic, evalPoint)
