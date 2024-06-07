@@ -92,7 +92,8 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
   # In order to compute g(x), we first compute the polynomials in lagrange form grouped by evaluation points
   # then we compute g(x), this is eventually limit the numbers of divisionOnDomain calls up to the domain size
 
-  var groupedFs: array[VerkleDomain, array[VerkleDomain, Fr[Banderwagon]]]
+  # Large array, need heap allocation. TODO: don't use Nim allocs.
+  var groupedFs = new array[VerkleDomain, array[VerkleDomain, Fr[Banderwagon]]]
   for i in 0 ..< VerkleDomain:
     for j in 0 ..< VerkleDomain:
       groupedFs[i][j].setZero()

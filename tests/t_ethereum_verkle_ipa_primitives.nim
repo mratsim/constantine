@@ -646,6 +646,8 @@ suite "IPA proof tests":
 #
 # ############################################################
 
+# Note: large arrays should be heap allocated with new/ref
+#       to not incur stack overflow on Windows as its stack size is 1MB per default compared to UNIXes 8MB.
 
 suite "Multiproof Tests":
   test "IPA Config test for Multiproofs":
@@ -677,7 +679,7 @@ suite "Multiproof Tests":
       one.setOne()
 
       var Cs: seq[EC_P]
-      var Fs: array[VerkleDomain, array[VerkleDomain, Fr[Banderwagon]]]
+      var Fs = new array[VerkleDomain, array[VerkleDomain, Fr[Banderwagon]]]
 
       for i in 0 ..< VerkleDomain:
         for j in 0 ..< VerkleDomain:
@@ -695,7 +697,7 @@ suite "Multiproof Tests":
 
       var multiproof {.noInit.}: MultiProof
       var stat_create_mult: bool
-      stat_create_mult = multiproof.createMultiProof(prover_transcript, ipaConfig, Cs, Fs, Zs)
+      stat_create_mult = multiproof.createMultiProof(prover_transcript, ipaConfig, Cs, Fs[], Zs)
       discard Fs
 
       doAssert stat_create_mult.bool() == true, "Multiproof creation error!"
@@ -706,7 +708,7 @@ suite "Multiproof Tests":
       verifier_transcript.newTranscriptGen(asBytes"multiproof")
 
       var stat_verify_mult: bool
-      stat_verify_mult = multiproof.verifyMultiproof(verifier_transcript,ipaConfig,Cs,Ys,Zs)
+      stat_verify_mult = multiproof.verifyMultiproof(verifier_transcript, ipaConfig, Cs, Ys,Zs)
 
       doAssert stat_verify_mult.bool() == true, "Multiproof verification error!"
 
