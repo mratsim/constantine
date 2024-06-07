@@ -32,7 +32,7 @@ func messageAppend*(res: var CryptoHash, message: openArray[byte], label: openAr
   res.update(label)
   res.update(message)
 
-func messageAppend_u64*(res: var CryptoHash, label: openArray[byte], num_value: uint64) = 
+func messageAppend_u64*(res: var CryptoHash, label: openArray[byte], num_value: uint64) =
   res.update(label)
   res.update(num_value.toBytes(bigEndian))
 
@@ -73,4 +73,3 @@ func generateChallengeScalar*(challenge: var matchingOrderBigInt(Banderwagon), t
 
   # Append the challenge into the resetted transcript
   transcript.scalarAppend(label, challenge)
-    

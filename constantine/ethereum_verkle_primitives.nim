@@ -21,30 +21,30 @@ import
     ],
   ./math/io/[io_bigints, io_fields],
   ./curves_primitives
-  
+
 
 func mapToBaseField*(dst: var Fp[Banderwagon],p: ECP_TwEdwards_Prj[Fp[Banderwagon]]) =
   ## The mapping chosen for the Banderwagon Curve is x/y
-  ## 
+  ##
   ## This function takes a Banderwagon element & then
   ## computes the x/y value and returns as an Fp element
-  ## 
+  ##
   ## Spec : https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Map-To-Field
-  
+
   var invY: Fp[Banderwagon]
   invY.inv(p.y)             # invY = 1/Y
   dst.prod(p.x, invY)       # dst = (X) * (1/Y)
 
 func mapToScalarField*(res: var Fr[Banderwagon], p: ECP_TwEdwards_Prj[Fp[Banderwagon]]): bool {.discardable.} =
-  ## This function takes the x/y value from the above function as Fp element 
-  ## and convert that to bytes in Big Endian, 
+  ## This function takes the x/y value from the above function as Fp element
+  ## and convert that to bytes in Big Endian,
   ## and then load that to a Fr element
-  ## 
+  ##
   ## Spec : https://hackmd.io/wliPP_RMT4emsucVuCqfHA?view#MapToFieldElement
 
   var baseField: Fp[Banderwagon]
   var baseFieldBytes: array[32, byte]
-  
+
   baseField.mapToBaseField(p)   # compute the defined mapping
 
   let check1 = baseFieldBytes.marshalBE(baseField)  # Fp -> bytes
@@ -58,18 +58,18 @@ func mapToScalarField*(res: var Fr[Banderwagon], p: ECP_TwEdwards_Prj[Fp[Banderw
 ##
 ## ############################################################
 func batchMapToScalarField*(
-      res: var openArray[Fr[Banderwagon]], 
+      res: var openArray[Fr[Banderwagon]],
       points: openArray[ECP_TwEdwards_Prj[Fp[Banderwagon]]]): bool {.discardable.} =
   ## This function performs the `mapToScalarField` operation
   ## on a batch of points
-  ## 
+  ##
   ## The batch inversion used in this using
   ## the montogomenry trick, makes is faster than
-  ## just iterating of over the array of points and 
+  ## just iterating of over the array of points and
   ## converting the curve points to field elements
-  ## 
+  ##
   ## Spec : https://hackmd.io/wliPP_RMT4emsucVuCqfHA?view#MapToFieldElement
-  
+
   var check: bool = true
   check = check and (res.len == points.len)
 
@@ -80,7 +80,7 @@ func batchMapToScalarField*(
 
   for i in 0 ..< N:
     ys[i] = points[i].y
-  
+
   ys_inv.batchInvert(ys, N)
 
   for i in 0 ..< N:
@@ -91,4 +91,4 @@ func batchMapToScalarField*(
     check = bytes.marshalBE(mappedElement)
     check = check and res[i].unmarshalBE(bytes)
 
-  return check  
+  return check

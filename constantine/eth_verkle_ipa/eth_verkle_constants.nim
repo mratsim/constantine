@@ -27,17 +27,17 @@ type
 
 type Bytes* = array[32, byte]
 
-type 
+type
   Point* = EC_P
   Field* = Fr[Banderwagon]
 
-type 
+type
   IPAProof* = object
     L_vector*: array[8,EC_P]
     R_vector*: array[8,EC_P]
     A_scalar*: Fr[Banderwagon]
 
-type 
+type
   MultiProof* = object
     IPAprv*: IPAProof
     D*: EC_P
@@ -49,7 +49,7 @@ type VerkleIPAProofSerialized* = array[544, byte]
 
 type VerkleMultiproofSerialized* = array[576, byte]
 
-type 
+type
   PrecomputedWeights* = object
     barycentricWeights*: array[512,Fr[Banderwagon]]
     invertedDomain*: array[510,Fr[Banderwagon]]
@@ -68,7 +68,7 @@ type IpaTranscript* [H: CryptoHash, N: static int] = object
   label*: array[N, byte]
 
 type
-  Coord* = object 
+  Coord* = object
     x*: Fr[Banderwagon]
     y*: Fr[Banderwagon]
 

@@ -38,7 +38,7 @@ func domainToFrElem*(res: var Fr, inp: matchingOrderBigInt(Banderwagon))=
   res = x
 
 # Computes the powers of an Fr[Banderwagon][Banderwagon] element
-func computePowersOfElem*(res: var openArray[Fr], x: Fr, degree: SomeSignedInt)= 
+func computePowersOfElem*(res: var openArray[Fr], x: Fr, degree: SomeSignedInt)=
   res[0].setOne()
   for i in 1 ..< degree:
     res[i].prod(res[i-1], x)
@@ -49,7 +49,7 @@ func computePowersOfElem*(res: var openArray[Fr], x: Fr, degree: SomeSignedInt)=
 #                   Multiproof Creation
 #
 # ############################################################
-    
+
 
 func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var CryptoHash, ipaSetting: IPASettings, Cs: openArray[EC_P], Fs: array[VerkleDomain, array[VerkleDomain, Fr[Banderwagon]]], Zs: openArray[int]) : bool =
   # createMultiProof creates a multi-proof for several polynomials in the evaluation form
@@ -60,7 +60,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
 
   for f in Fs:
     debug: doAssert f.len == VerkleDomain, "Polynomial length does not match with the VerkleDomain length!"
-    
+
   debug: doAssert Cs.len == Fs.len, "Number of commitments is NOT same as number of Functions"
 
   debug: doAssert Cs.len == Zs.len, "Number of commitments is NOT same as the number of Points"
@@ -90,7 +90,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
   powersOfr.computePowersOfElem(r_fr, int(num_queries))
 
   # In order to compute g(x), we first compute the polynomials in lagrange form grouped by evaluation points
-  # then we compute g(x), this is eventually limit the numbers of divisionOnDomain calls up to the domain size 
+  # then we compute g(x), this is eventually limit the numbers of divisionOnDomain calls up to the domain size
 
   var groupedFs: array[VerkleDomain, array[VerkleDomain, Fr[Banderwagon]]]
   for i in 0 ..< VerkleDomain:
@@ -106,7 +106,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
       var scaledEvals {.noInit.}: Fr[Banderwagon]
       scaledEvals.prod(r, Fs[i][j])
       groupedFs[z][j] += scaledEvals
-  
+
   var gx {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
   for i in 0 ..< VerkleDomain:
     gx[i].setZero()
@@ -119,7 +119,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
     var quotient {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
     var passer = uint8(i)
     quotient.divisionOnDomain(ipaSetting.precompWeights, passer, groupedFs[i])
-    
+
     for j in  0 ..< VerkleDomain:
       gx[j] += quotient[j]
 
@@ -147,7 +147,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
     z_fr.fromInt(i)
     var deno {.noInit.}: Fr[Banderwagon]
     deno.diff(t_fr, z_fr)
-    
+
     denInv[idxx] = deno
     idxx = idxx + 1
 
@@ -202,12 +202,12 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
 #                 Multiproof Verification
 #
 # ############################################################
-    
+
 
 func verifyMultiproof*(multiProof: var MultiProof, transcript : var CryptoHash, ipaSettings: IPASettings, Cs: openArray[EC_P], Ys: openArray[Fr[Banderwagon]], Zs: openArray[int]) : bool =
   # Multiproof verifier verifies the multiproof for several polynomials in the evaluation form
   # The list of triplets (C,Y,Z) represents each polynomial commitment, evaluation
-  # result, and evaluation point in the domain 
+  # result, and evaluation point in the domain
   var res {.noInit.} : bool
   transcript.domain_separator(asBytes"multiproof")
 
@@ -242,7 +242,7 @@ func verifyMultiproof*(multiProof: var MultiProof, transcript : var CryptoHash, 
   var t_fr {.noInit.}: Fr[Banderwagon]
   t_fr.fromBig(t)
 
-  # Computing the polynomials in the Lagrange form grouped by evaluation point, 
+  # Computing the polynomials in the Lagrange form grouped by evaluation point,
   # and the needed helper scalars
   var groupedEvals {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
   for i in 0 ..< VerkleDomain:
@@ -282,7 +282,7 @@ func verifyMultiproof*(multiProof: var MultiProof, transcript : var CryptoHash, 
     tmp.prod(groupedEvals[i], helperScalarDeno_prime[i])
     g2t += tmp
 
-  
+
   # Compute E = SUMMATION C_i * (r^i /  t - z_i) = SUMMATION C_i * MSM_SCALARS
   var msmScalars {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
   for i in 0 ..< VerkleDomain:
@@ -295,7 +295,7 @@ func verifyMultiproof*(multiProof: var MultiProof, transcript : var CryptoHash, 
   for i in 0 ..< Cs.len:
     Csnp[i] = Cs[i]
     msmScalars[i].prod(powersOfr[i], helperScalarDeno_prime[Zs[i]])
-  
+
   var E {.noInit.}: EC_P
 
   var Csnp_aff {.noInit.}: array[VerkleDomain, EC_P_Aff]
@@ -306,7 +306,7 @@ func verifyMultiproof*(multiProof: var MultiProof, transcript : var CryptoHash, 
 
   for i in 0 ..< VerkleDomain:
     msmScalars_big[i] = msmScalars[i].toBig()
-  
+
   E.multiScalarMul_reference_vartime(msmScalars_big, Csnp_aff)
 
   transcript.pointAppend(asBytes"E", E)
@@ -329,17 +329,17 @@ func verifyMultiproof*(multiProof: var MultiProof, transcript : var CryptoHash, 
 
 func serializeVerkleMultiproof* (dst: var VerkleMultiproofSerialized, src: var MultiProof) : bool =
   ##
-  ## Multiproofs in Verkle have a format of 
-  ## 
+  ## Multiproofs in Verkle have a format of
+  ##
   ## 1) The queried Base Field where the Vector Commitment `opening` is created
   ## Consider this as the equivalent to the `Merkle Path` in usual Merkle Trees.
-  ## 
+  ##
   ## 2) The entire IPAProof which is exactly a 576 byte array, go through `serializeIPAProof` for the breakdown
-  ## 
+  ##
   ## The format of serialization is as:
-  ## 
+  ##
   ## Query Point (32 - byte array) .... IPAProof (544 - byte array) = 32 + 544 = 576 elements in the byte array
-  ## 
+  ##
   var res = false
   var ipa_bytes {.noInit.} : array[544, byte]
   var d_bytes {.noInit.} : array[32, byte]
@@ -372,20 +372,20 @@ func serializeVerkleMultiproof* (dst: var VerkleMultiproofSerialized, src: var M
 #                 Multiproof Deserializer
 #
 # ############################################################
-  
+
 func deserializeVerkleMultiproof* (dst: var MultiProof, src: var VerkleMultiproofSerialized) :  bool =
   ##
-  ## Multiproofs in Verkle have a format of 
-  ## 
+  ## Multiproofs in Verkle have a format of
+  ##
   ## 1) The queried Base Field where the Vector Commitment `opening` is created
   ## Consider this as the equivalent to the `Merkle Path` in usual Merkle Trees.
-  ## 
+  ##
   ## 2) The entire IPAProof which is exactly a 576 byte array, go through `serializeIPAProof` for the breakdown
-  ## 
+  ##
   ## The format of serialization is as:
-  ## 
+  ##
   ## Query Point (32 - byte array) .... IPAProof (544 - byte array) = 32 + 544 = 576 elements in the byte array
-  ## 
+  ##
   var res = false
   var ipa_bytes {.noInit.} : array[544, byte]
   var d_bytes {.noInit.} : array[32, byte]
