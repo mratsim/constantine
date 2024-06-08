@@ -24,7 +24,6 @@ import
   ../math/elliptic/[ec_twistededwards_projective],
   ../math/arithmetic,
   ../math/io/io_fields,
-  ../math/elliptic/ec_scalar_mul,
   ../../research/kzg/strided_views,
   # ../platforms/[views],
   ../curves_primitives
@@ -187,7 +186,7 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var CryptoHash, i
 
 # ############################################################
 #
-# IPA proof seriaizer
+# IPA proof serializer
 #
 # ############################################################
 
