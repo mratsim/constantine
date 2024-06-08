@@ -188,7 +188,7 @@ func kzg_prove*[N: static int, C: static Curve](
        proof: var ECP_ShortW_Aff[Fp[C], G1],
        eval_at_challenge: var Fr[C],
        poly: PolynomialEval[N, Fr[C]],
-       domain: PolyDomainEval[N, Fr[C]],
+       domain: PolyRootsDomainEval[N, Fr[C]],
        challenge: Fr[C],
        powers_of_tau: PolynomialEval[N, G1aff[C]],
        isBitReversedDomain: static bool) {.tags:[Alloca, HeapAlloc, Vartime].} =

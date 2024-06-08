@@ -38,8 +38,9 @@ type
     ## https://en.wikipedia.org/wiki/Lagrange_polynomial#Barycentric_form
     evals*{.align: 64.}: array[N, Group]
 
-  PolyDomainEval*[N: static int, Field] = object
+  PolyRootsDomainEval*[N: static int, Field] = object
     ## Metadata for polynomial in Lagrange basis (evaluation form)
+    ## with evaluation points at roots of unity.
     ##
     ## Note on inverses
     ##   1/ωⁱ (mod N) = ωⁿ⁻ⁱ (mod N)
@@ -50,7 +51,7 @@ type
 
 func inverseRootsMinusZ_vartime*[N: static int, Field](
        invRootsMinusZ: var array[N, Field],
-       domain: PolyDomainEval[N, Field],
+       domain: PolyRootsDomainEval[N, Field],
        z: Field,
        earlyReturnOnZero: static bool): int =
   ## Compute 1/(ωⁱ-z) for i in [0, N)
@@ -111,7 +112,7 @@ func evalPolyAt*[N: static int, Field](
        poly: PolynomialEval[N, Field],
        z: Field,
        invRootsMinusZ: array[N, Field],
-       domain: PolyDomainEval[N, Field]) =
+       domain: PolyRootsDomainEval[N, Field]) =
   ## Evaluate a polynomial in evaluation form
   ## at the point z
   ## z MUST NOT be one of the roots of unity
@@ -159,7 +160,7 @@ func differenceQuotientEvalInDomain*[N: static int, Field](
        poly: PolynomialEval[N, Field],
        zIndex: uint32,
        invRootsMinusZ: array[N, Field],
-       domain: PolyDomainEval[N, Field],
+       domain: PolyRootsDomainEval[N, Field],
        isBitReversedDomain: static bool) =
   ## Compute r(x) = (p(x) - p(z)) / (x - z)
   ##

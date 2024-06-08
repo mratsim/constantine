@@ -45,7 +45,7 @@ proc kzg_prove_parallel*[N: static int, C: static Curve](
        proof: var ECP_ShortW_Aff[Fp[C], G1],
        eval_at_challenge: var Fr[C],
        poly: ptr PolynomialEval[N, Fr[C]],
-       domain: ptr PolyDomainEval[N, Fr[C]],
+       domain: ptr PolyRootsDomainEval[N, Fr[C]],
        challenge: ptr Fr[C],
        powers_of_tau: PolynomialEval[N, G1aff[C]],
        isBitReversedDomain: static bool) =
