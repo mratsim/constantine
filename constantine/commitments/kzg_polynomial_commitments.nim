@@ -167,8 +167,6 @@ import
 ##   [(ω⁰, p(ω⁰)), (ω¹, p(ω¹)), (ω², p(ω²)), ..., (ωⁿ⁻¹, p(ωⁿ⁻¹))]
 ##   with ω ∈ 𝔽r a root of unity of order n, i.e. ωⁿ = 1
 
-type G1aff[C: static Curve] = ECP_ShortW_Aff[Fp[C], G1]
-
 # KZG - Prover - Lagrange basis
 # ------------------------------------------------------------
 #
@@ -178,7 +176,7 @@ type G1aff[C: static Curve] = ECP_ShortW_Aff[Fp[C], G1]
 func kzg_commit*[N: static int, C: static Curve](
        commitment: var ECP_ShortW_Aff[Fp[C], G1],
        poly_evals: array[N, BigInt],
-       powers_of_tau: PolynomialEval[N, G1aff[C]]) {.tags:[Alloca, HeapAlloc, Vartime].} =
+       powers_of_tau: PolynomialEval[N, ECP_ShortW_Aff[Fp[C], G1]]) {.tags:[Alloca, HeapAlloc, Vartime].} =
 
   var commitmentJac {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
   commitmentJac.multiScalarMul_vartime(poly_evals, powers_of_tau.evals)
@@ -188,9 +186,9 @@ func kzg_prove*[N: static int, C: static Curve](
        proof: var ECP_ShortW_Aff[Fp[C], G1],
        eval_at_challenge: var Fr[C],
        poly: PolynomialEval[N, Fr[C]],
-       domain: PolyRootsDomainEval[N, Fr[C]],
+       domain: PolyEvalRootsDomain[N, Fr[C]],
        challenge: Fr[C],
-       powers_of_tau: PolynomialEval[N, G1aff[C]],
+       powers_of_tau: PolynomialEval[N, ECP_ShortW_Aff[Fp[C], G1]],
        isBitReversedDomain: static bool) {.tags:[Alloca, HeapAlloc, Vartime].} =
 
   # Note:

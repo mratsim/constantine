@@ -28,7 +28,7 @@ proc evalPolyAt_parallel*[N: static int, Field](
        poly: ptr PolynomialEval[N, Field],
        z: ptr Field,
        invRootsMinusZ: ptr array[N, Field],
-       domain: ptr PolyRootsDomainEval[N, Field]) =
+       domain: ptr PolyEvalRootsDomain[N, Field]) =
   ## Evaluate a polynomial in evaluation form
   ## at the point z
   ## z MUST NOT be one of the roots of unity
@@ -100,7 +100,7 @@ proc differenceQuotientEvalInDomain_parallel*[N: static int, Field](
        poly: ptr PolynomialEval[N, Field],
        zIndex: uint32,
        invRootsMinusZ: ptr array[N, Field],
-       domain: ptr PolyRootsDomainEval[N, Field],
+       domain: ptr PolyEvalRootsDomain[N, Field],
        isBitReversedDomain: static bool) =
   ## Compute r(x) = (p(x) - p(z)) / (x - z)
   ##

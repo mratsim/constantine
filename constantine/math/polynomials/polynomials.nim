@@ -9,7 +9,8 @@
 import
   ../config/curves,
   ../arithmetic,
-  ../../platforms/bithacks
+  ../io/io_fields,
+  ../../platforms/[bithacks, static_for]
 
 ## ############################################################
 ##
@@ -20,7 +21,8 @@ import
 type
   PolynomialCoef*[N: static int, Group] = object
     ## A polynomial in monomial basis
-    ## [a₀, a₁, a₂, ..., aₙ]
+    ## [a₀, a₁, a₂, ..., aₙ₋₁]
+    ## of degree N-1
     ##
     ## mapping to the canonical formula
     ## p(x) = a₀ + a₁ x + a₂ x² + ... + aₙ₋₁ xⁿ⁻¹
@@ -28,17 +30,23 @@ type
 
   PolynomialEval*[N: static int, Group] = object
     ## A polynomial in Lagrange basis (evaluation form)
-    ## [f(0), f(ω), ..., f(ωⁿ⁻¹)]
-    ## with n < 2³² and ω a root of unity
     ##
-    ## mapping to the barycentric Lagrange formula
-    ## p(z) = (1-zⁿ)/n ∑ ωⁱ/(ωⁱ-z) . p(ωⁱ)
+    ## The evaluation points must be specified either with
+    ## - PolyEvalRootsDomain for evaluation over roots of unity
+    ##    [f(0), f(ω), ..., f(ωⁿ⁻¹)]
+    ##    with n < 2ᵗ, t the prime 2-adicity and ω a root of unity
     ##
-    ## https://ethresear.ch/t/kate-commitments-from-the-lagrange-basis-without-ffts/6950
-    ## https://en.wikipedia.org/wiki/Lagrange_polynomial#Barycentric_form
+    ##    mapping to the barycentric Lagrange formula
+    ##    p(z) = (1-zⁿ)/n ∑ ωⁱ/(ωⁱ-z) . p(ωⁱ)
+    ##
+    ##    https://ethresear.ch/t/kate-commitments-from-the-lagrange-basis-without-ffts/6950
+    ##    https://en.wikipedia.org/wiki/Lagrange_polynomial#Barycentric_form
+    ##
+    ## - or PolyEvalDomain for evaluation over generic points
+    ##   for example [f(0), f(1), ..., f(n-1)]
     evals*{.align: 64.}: array[N, Group]
 
-  PolyRootsDomainEval*[N: static int, Field] = object
+  PolyEvalRootsDomain*[N: static int, Field] = object
     ## Metadata for polynomial in Lagrange basis (evaluation form)
     ## with evaluation points at roots of unity.
     ##
@@ -49,9 +57,66 @@ type
     rootsOfUnity*{.align: 64.}: array[N, Field]
     invMaxDegree*: Field
 
+  PolyEvalDomain*[N: static int, Field] = object
+    ## Metadata for polynomial in Lagrange basis (evaluation form)
+    ## with generic evaluation points
+
+    domain*{.align: 64.}: array[N, Field]     # Evaluation domain for a polynomial in Lagrange basis
+    domain_inv*{.align: 64.}: array[N, Field] # Multiplicative inverse of evaluation domain
+
+    vanishing_poly*{.align: 64.}: PolynomialCoef[N, Field]       # A(X)
+    vanishing_deriv_poly*{.align: 64.}: PolynomialCoef[N, Field] # A'(X)
+
+    vanishing_deriv_poly_eval*{.align: 64.}: PolynomialEval[N, Field]     # A'(X) evaluated on domain
+    vanishing_deriv_poly_eval_inv*{.align: 64.}: PolynomialEval[N, Field] # A'(X) evaluated on domain and inverted
+
+func evalPolyAt*[N: static int, Field](
+       r: var Field,
+       poly: PolynomialCoef[N, Field],
+       z: Field) =
+  ## Evaluate a polynomial p at z: r <- p(z)
+  # Implementation using the Horner's method
+  r = poly.coefs[poly.coefs.len-1]
+  for i in countdown(poly.coefs.len-2, 0):
+    r *= z
+    r += poly.coefs[i]
+
+func evalPolyAndDerivAt*[N: static int, Field](
+       r: var Field, rprime: var Field,
+       poly: PolynomialCoef[N, Field],
+       z: Field) =
+  ## Evaluate a polynomial p and its formal derivative p'
+  ## at z:
+  ##  r  <- p(z)
+  ##  r' <- p'(z)
+  # Implementation using the Horner's method
+  r = poly.coefs[poly.coefs.len-1]
+  rprime.setZero()
+  for i in countdown(poly.coefs.len-1, 1):
+    rprime *= z
+    rprime += r
+    r *= z
+    r += poly.coefs[i-1]
+
+func formal_derivative*[N, M: static int, Field](
+       polyprime: var PolynomialCoef[N, Field],
+       poly: PolynomialCoef[M, Field]) =
+  ## Compute P'(x), the formal derivative of the polynomial P(x)
+  ## The derivative of aₙ.xⁿ is n.aₙ.xⁿ⁻¹
+  ## Hence the degree of P'(X) is one less than P(X)
+  static: doAssert N == M-1, "N was " & $N & " and M was " & $M
+
+  # For the part lesser or equal 12, we use addition chains
+  staticFor i, 1, min(13, poly.coefs.len):
+    polyprime.coefs[i-1].prod(poly.coefs[i], i)
+  for i in 13 ..< poly.coefs.len:
+    var degree {.noinit.}: Field
+    degree.fromInt(i)
+    polyprime.coefs[i-1].prod(poly.coefs[i], degree)
+
 func inverseRootsMinusZ_vartime*[N: static int, Field](
        invRootsMinusZ: var array[N, Field],
-       domain: PolyRootsDomainEval[N, Field],
+       domain: PolyEvalRootsDomain[N, Field],
        z: Field,
        earlyReturnOnZero: static bool): int =
   ## Compute 1/(ωⁱ-z) for i in [0, N)
@@ -112,7 +177,7 @@ func evalPolyAt*[N: static int, Field](
        poly: PolynomialEval[N, Field],
        z: Field,
        invRootsMinusZ: array[N, Field],
-       domain: PolyRootsDomainEval[N, Field]) =
+       domain: PolyEvalRootsDomain[N, Field]) =
   ## Evaluate a polynomial in evaluation form
   ## at the point z
   ## z MUST NOT be one of the roots of unity
@@ -160,7 +225,7 @@ func differenceQuotientEvalInDomain*[N: static int, Field](
        poly: PolynomialEval[N, Field],
        zIndex: uint32,
        invRootsMinusZ: array[N, Field],
-       domain: PolyRootsDomainEval[N, Field],
+       domain: PolyEvalRootsDomain[N, Field],
        isBitReversedDomain: static bool) =
   ## Compute r(x) = (p(x) - p(z)) / (x - z)
   ##
@@ -220,3 +285,80 @@ func differenceQuotientEvalInDomain*[N: static int, Field](
     #   We could also cache either ωⁿ⁻ⁱ or a map i' = brp(n - brp(i))
     #   in non-brp order but cache misses are expensive
     #   and brp can benefits from instruction-level parallelism
+
+func vanishingPoly*[N, M: static int, Field](
+      r: var PolynomialCoef[N, Field],
+      roots: array[M, Field]) =
+  ## Build a polynomial that returns 0 at all evaluation points,
+  ## i.e. the specified polynomial roots.
+  ## The polynomial is in coefficient form.
+  ##
+  ## The polynomial has M+1 coefficients (i.e. is degree M)
+  ## with M the number of roots.
+  ## Hence N == M+1
+  static: doAssert N == M+1, "N was " & $N & " and M was " & $M
+  zeroMem(r.addr, sizeof(r))
+  r.coefs[r.coefs.len-1].setOne()
+  for i in 0 ..< roots.len:
+    for j in r.coefs.len-2-i ..< r.coefs.len-1:
+      var t {.noInit.}: Field
+      t.prod(r.coefs[j+1], roots[i])
+      r.coefs[j] -= t
+
+func evalVanishingPolyAt*[N: static int, Field](
+      r: var Field,
+      roots: array[N, Field],
+      z: Field) =
+  ## Evaluate the vanishing polynomial
+  ## specified by "roots" at z
+  # The vanishing polynomial is A(X) = (X-x₀)(X-x₁)...(X-xₙ)
+  r.diff(z, roots[0])
+  for i in 1 ..< N:
+    var t {.noInit.}: Field
+    t.diff(z, roots[i])
+    r *= t
+
+func evalVanishingPolyDerivativeAtRoot*[N: static int, Field](
+      r: var Field,
+      roots: array[N, Field],
+      root_index: int) =
+  ## Evaluate the derivative of vanishing polynomial
+  ## at a specified root
+  # The vanishing polynomial is A(X) = (X-x₀)(X-x₁)(X-x₂)...(X-xₙ)
+  # With z the root we evaluate A'(X) at.
+  #
+  #   A'(z) = lim X->z (A(X) - A(z)) / (X - z)
+  #
+  # z is a root, hence A(z) = 0.
+  # A(X) = (X-x₀)(X-x₁)(X-x₂)...(X-xₙ)
+  # so (X-z) is a divisor of A(X)
+  #
+  # For example A'(x₁) = lim X->x₁ (X-x₀)(X-x₂)...(X-xₙ)
+  let z {.noInit.} = roots[root_index]
+  r.setOne()
+  for i in 0 ..< N:
+    if i != root_index:
+      var t {.noInit.}: Field
+      t.diff(z, roots[i])
+      r *= t
+
+func areStrictlyIncreasing[Field](a: openArray[Field]): bool =
+  if a.len == 0:
+    return false
+
+  var prev = a[0].toBig()
+  for i in 1 ..< a.len:
+    let cur = a[i].toBig()
+    if bool(cur <= prev):
+      return false
+  return true
+
+func setupEvaluationDomain*[N: static int, Field](
+      dom: var PolyEvalDomain[N, Field],
+      evaluation_points: array[N, Field]) =
+  ## Configure an evaluation domain
+  ## for computation with polynomials in barycentric Lagrange form
+  ##
+  ## evaluation points must be strictly increasing.
+
+  doAssert evaluation_points.areStrictlyIncreasing()

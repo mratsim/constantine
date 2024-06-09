@@ -541,6 +541,10 @@ const testDesc: seq[tuple[path: string, useGMP: bool]] = @[
   ("tests/t_hash_to_curve_random.nim", false),
   ("tests/t_hash_to_curve.nim", false),
 
+  # Polynomials
+  # ----------------------------------------------------------
+  ("tests/math_polynomials/t_polynomials.nim", false),
+
   # Protocols
   # ----------------------------------------------------------
   ("tests/t_ethereum_evm_modexp.nim", false),
