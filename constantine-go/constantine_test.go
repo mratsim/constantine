@@ -42,7 +42,7 @@ func TestThreadpool(t *testing.T) {
 // Source: https://github.com/ethereum/c-kzg-4844
 
 var (
-	trustedSetupFile             = "../constantine/trusted_setups/trusted_setup_ethereum_kzg4844_reference.dat"
+	trustedSetupFile             = "../constantine/commitments_setups/trusted_setup_ethereum_kzg4844_reference.dat"
 	testDir                      = "../tests/protocol_ethereum_eip4844_deneb_kzg"
 	blobToKZGCommitmentTests     = filepath.Join(testDir, "blob_to_kzg_commitment/*/*/*")
 	computeKZGProofTests         = filepath.Join(testDir, "compute_kzg_proof/*/*/*")

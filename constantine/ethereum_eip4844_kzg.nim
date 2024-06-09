@@ -19,7 +19,7 @@ import
   ./hashes,
   ./platforms/[abstractions, allocs],
   ./serialization/[codecs_status_codes, codecs_bls12_381, endians],
-  ./trusted_setups/ethereum_kzg_srs
+  ./commitments_setups/ethereum_kzg_srs
 
 export trusted_setup_load, trusted_setup_delete, TrustedSetupFormat, TrustedSetupStatus, EthereumKZGContext
 

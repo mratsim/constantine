@@ -1,6 +1,6 @@
-# Trusted Setups
+# Reference Strings & Trusted Setups
 
-This folder holds code and data related to trusted setups necessary
+This folder holds code and data related to Common Reference Strings, Structured Reference Strings and trusted setups necessary
 for implemented protocols.
 
 It also holds a spec proposal for an efficient trusted setup format,
