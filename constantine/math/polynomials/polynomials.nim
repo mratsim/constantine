@@ -10,7 +10,7 @@ import
   ../config/curves,
   ../arithmetic,
   ../io/io_fields,
-  ../../platforms/[bithacks, static_for]
+  ../../platforms/[allocs, bithacks, static_for]
 
 ## ############################################################
 ##
@@ -61,14 +61,23 @@ type
     ## Metadata for polynomial in Lagrange basis (evaluation form)
     ## with generic evaluation points
 
-    domain*{.align: 64.}: array[N, Field]     # Evaluation domain for a polynomial in Lagrange basis
-    domain_inv*{.align: 64.}: array[N, Field] # Multiplicative inverse of evaluation domain
+    domain{.align: 64.}: array[N, Field]     # Evaluation domain for a polynomial in Lagrange basis
 
-    vanishing_poly*{.align: 64.}: PolynomialCoef[N, Field]       # A(X)
-    vanishing_deriv_poly*{.align: 64.}: PolynomialCoef[N, Field] # A'(X)
+    vanishing_deriv_poly_eval{.align: 64.}: PolynomialEval[N, Field]     # A'(X) evaluated on domain
+    vanishing_deriv_poly_eval_inv{.align: 64.}: PolynomialEval[N, Field] # 1/A'(X) evaluated on domain
 
-    vanishing_deriv_poly_eval*{.align: 64.}: PolynomialEval[N, Field]     # A'(X) evaluated on domain
-    vanishing_deriv_poly_eval_inv*{.align: 64.}: PolynomialEval[N, Field] # A'(X) evaluated on domain and inverted
+  PolyEvalLinearDomain*[N: static int, Field] = object
+    ## Metadata for polynomial in Lagrange basis (evaluation form)
+    ## with evaluation points linear in [0, ..., n-1]
+    ##
+    # This allows more efficient polynomial division on the domain.
+    # has we can precompute the inverses 1/(xᵢ-z) with xᵢ,z ∈ [0, ..., n-1]
+    # The first element is 1/0 and unused.
+    dom{.align: 64.}: PolyEvalDomain[N, Field]
+    domain_inverses{.align: 64.}: array[N, Field]
+
+# Polynomials in coefficient form
+# ------------------------------------------------------
 
 func evalPolyAt*[N: static int, Field](
        r: var Field,
@@ -114,48 +123,76 @@ func formal_derivative*[N, M: static int, Field](
     degree.fromInt(i)
     polyprime.coefs[i-1].prod(poly.coefs[i], degree)
 
-func inverseRootsMinusZ_vartime*[N: static int, Field](
-       invRootsMinusZ: var array[N, Field],
-       domain: PolyEvalRootsDomain[N, Field],
+# Polynomials in evaluation/Lagrange form
+# ------------------------------------------------------
+
+func areStrictlyIncreasing[Field](a: openArray[Field]): bool {.used.} =
+  ## Check whether points in the domain are ordered
+  if a.len == 0:
+    return false
+
+  var prev = a[0].toBig()
+  for i in 1 ..< a.len:
+    let cur = a[i].toBig()
+    if bool(cur <= prev):
+      return false
+  return true
+
+type InvDiffArrayKind* = enum
+  kArrayMinusZ
+  kZminusArray
+
+func inverseDifferenceArrayZ*[N: static int, Field](
+       r: var array[N, Field],
+       w: array[N, Field],
        z: Field,
+       differenceKind: static InvDiffArrayKind,
        earlyReturnOnZero: static bool): int =
-  ## Compute 1/(ωⁱ-z) for i in [0, N)
+  ## Compute 1/(wᵢ-z) or 1/(z-wᵢ) for i in [0, N)
   ##
-  ## Returns -1 if z ∉ {1, ω, ω², ... , ωⁿ⁻¹}
-  ## Returns the index of ωⁱ==z otherwise
+  ## Returns -1 if z ∉ {w₀, ω₁, ω₂, ... , wₙ₋₁}
+  ## Returns the index of wᵢ==z otherwise
   ##
-  ## If ωⁱ-z == 0 AND earlyReturnOnZero is false
+  ## If wᵢ-z == 0 AND earlyReturnOnZero is false
   ##   the other inverses are still computed
   ##   and 0 is returned at that index
-  ## If ωⁱ-z == 0 AND earlyReturnOnZero is true
-  ##   the index of ωⁱ==z is returned
-  ##   the content of invRootsMinusZ is undefined
+  ## If wᵢ-z == 0 AND earlyReturnOnZero is true
+  ##   the index of wᵢ==z is returned
+  ##   the content of the result r is undefined
+  ##
+  ## The wᵢ must be unique
+  ## so that wᵢ == 0 can happen only once.
+  ##
+  ## **variable-time**:
+  ## This leaks whether z is in the domain or not.
 
   # Mongomery's batch inversion
-  # ω is a root of unity of order N,
-  # so if ωⁱ-z == 0, it can only happen in one place
+  # The wᵢ are unique
+  # so if wᵢ-z == 0, it can only happen in one place
   var accInv{.noInit.}: Field
-  var rootsMinusZ{.noInit.}: array[N, Field]
+  var diffs{.noInit.}: array[N, Field]
 
   accInv.setOne()
   var index0 = -1
 
-  when earlyReturnOnZero: # Split computation in 2 phases
-    for i in 0 ..< N:
-      rootsMinusZ[i].diff(domain.rootsOfUnity[i], z)
-      if rootsMinusZ[i].isZero().bool():
+  for i in 0 ..< N:
+    when differenceKind == kArrayMinusZ:
+      diffs[i].diff(w[i], z)
+    else:
+      diffs[i].diff(z, w[i])
+
+    if diffs[i].isZero().bool():
+      when earlyReturnOnZero:
         return i
+      else:
+        index0 = i
 
   for i in 0 ..< N:
-    when not earlyReturnOnZero: # Fused substraction and batch inversion
-      rootsMinusZ[i].diff(domain.rootsOfUnity[i], z)
-      if rootsMinusZ[i].isZero().bool():
-        index0 = i
-        invRootsMinusZ[i].setZero()
-        continue
-
-    invRootsMinusZ[i] = accInv
-    accInv *= rootsMinusZ[i]
+    if i != index0:
+      r[i] = accInv
+      accInv *= diffs[i]
+    else:
+      r[i].setZero()
 
   accInv.inv_vartime()
 
@@ -163,16 +200,44 @@ func inverseRootsMinusZ_vartime*[N: static int, Field](
     if i == index0:
       continue
 
-    invRootsMinusZ[i] *= accInv
-    accInv *= rootsMinusZ[i]
+    r[i] *= accInv
+    accInv *= diffs[i]
 
   if index0 == 0:
-    invRootsMinusZ[0].setZero()
+    r[0].setZero()
   else: # invRootsMinusZ[0] was init to accInv=1
-    invRootsMinusZ[0] = accInv
+    r[0] = accInv
   return index0
 
-func evalPolyAt*[N: static int, Field](
+func differenceQuotientEvalOffDomain*[N: static int, Field](
+       r: var PolynomialEval[N, Field],
+       poly: PolynomialEval[N, Field],
+       pZ: Field,
+       invDomainMinusZ: array[N, Field]) =
+  ## Compute r(x) = (p(x) - p(z)) / (x - z)
+  ##
+  ## for z not in evaluation domain
+  ##
+  ## (x-z) MUST be a factor of p(x) - p(z)
+  ## or the result is undefined.
+  ## This can be used to implement a "Quotient check"
+  ## in proof systems.
+  ##
+  ## Input:
+  ##   - invDomainMinusZ:  1/(xᵢ-z)
+  ##   - poly:             p(x) a polynomial in evaluation form as an array of p(ωⁱ)
+  ##   - p(z)
+  for i in 0 ..< N:
+    # qᵢ = (p(xᵢ) - p(z))/(xᵢ-z)
+    var qi {.noinit.}: Field
+    qi.diff(poly.evals[i], pZ)
+    r.evals[i].prod(qi, invDomainMinusZ[i])
+
+# Polynomials in evaluation/Lagrange form
+#   Domain = roots of unity
+# ------------------------------------------------------
+
+func evalPolyOffDomainAt*[N: static int, Field](
        r: var Field,
        poly: PolynomialEval[N, Field],
        z: Field,
@@ -199,26 +264,6 @@ func evalPolyAt*[N: static int, Field](
   t.diff(Field(mres: Field.getMontyOne()), t) # TODO: refactor getMontyOne to getOne and return a field element.
   r *= t
   r *= domain.invMaxDegree
-
-func differenceQuotientEvalOffDomain*[N: static int, Field](
-       r: var PolynomialEval[N, Field],
-       poly: PolynomialEval[N, Field],
-       pZ: Field,
-       invRootsMinusZ: array[N, Field]) =
-  ## Compute r(x) = (p(x) - p(z)) / (x - z)
-  ##
-  ## for z != ωⁱ a power of a root of unity
-  ##
-  ## Input:
-  ##   - invRootsMinusZ:  1/(ωⁱ-z)
-  ##   - poly:            p(x) a polynomial in evaluation form as an array of p(ωⁱ)
-  ##   - rootsOfUnity:    ωⁱ
-  ##   - p(z)
-  for i in 0 ..< N:
-    # qᵢ = (p(ωⁱ) - p(z))/(ωⁱ-z)
-    var qi {.noinit.}: Field
-    qi.diff(poly.evals[i], pZ)
-    r.evals[i].prod(qi, invRootsMinusZ[i])
 
 func differenceQuotientEvalInDomain*[N: static int, Field](
        r: var PolynomialEval[N, Field],
@@ -247,6 +292,11 @@ func differenceQuotientEvalInDomain*[N: static int, Field](
     if i == zIndex:
       # https://dankradfeist.de/ethereum/2021/06/18/pcs-multiproofs.html
       # section "Dividing when one of the points is zero".
+      #
+      # Due to qᵢ = 0/0, we can't directly compute
+      # the polynomial evaluation at i == zIndex.
+      # However we can rewrite it as a sum that depends
+      # on all other evaluations.
       continue
 
     # qᵢ = (p(ωⁱ) - p(z))/(ωⁱ-z)
@@ -254,19 +304,19 @@ func differenceQuotientEvalInDomain*[N: static int, Field](
     qi.diff(poly.evals[i], poly.evals[zIndex])
     r.evals[i].prod(qi, invRootsMinusZ[i])
 
-    # q'ᵢ = -qᵢ * ωⁱ/z
-    # q'idx = ∑ q'ᵢ
+    # Compute contribution of qᵢ to qz which can't be computed directly
+    # qz = - ∑ q'ᵢ * ωⁱ/z
     var ri {.noinit.}: Field
-    ri.neg(r.evals[i])                                  # -qᵢ
     when isBitReversedDomain:
       const logN = log2_vartime(uint32 N)
       let invZidx = N - reverseBits(uint32 zIndex, logN)
       let canonI = reverseBits(i, logN)
       let idx = reverseBits((canonI + invZidx) and (N-1), logN)
-      ri *= domain.rootsOfUnity[idx]                    # -qᵢ * ωⁱ/z  (explanation at the bottom)
+      ri.prod(r.evals[i], domain.rootsOfUnity[idx])        # qᵢ * ωⁱ/z  (explanation at the bottom)
     else:
-      ri *= domain.rootsOfUnity[(i+N-zIndex) and (N-1)] # -qᵢ * ωⁱ/z  (explanation at the bottom)
-    r.evals[zIndex] += ri                               # r[zIndex] = ∑ -qᵢ * ωⁱ/z
+      ri.prod(r.evals[i],
+              domain.rootsOfUnity[(i+N-zIndex) and (N-1)]) # qᵢ * ωⁱ/z  (explanation at the bottom)
+    r.evals[zIndex] -= ri                                  # r[zIndex] = - ∑ qᵢ * ωⁱ/z
 
     # * 1/z computation detail
     #    from ωⁿ = 1 and z = ωⁱᵈˣ
@@ -285,6 +335,10 @@ func differenceQuotientEvalInDomain*[N: static int, Field](
     #   We could also cache either ωⁿ⁻ⁱ or a map i' = brp(n - brp(i))
     #   in non-brp order but cache misses are expensive
     #   and brp can benefits from instruction-level parallelism
+
+# Polynomials in evaluation/Lagrange form
+#   Domain = generic
+# ------------------------------------------------------
 
 func vanishingPoly*[N, M: static int, Field](
       r: var PolynomialCoef[N, Field],
@@ -342,23 +396,196 @@ func evalVanishingPolyDerivativeAtRoot*[N: static int, Field](
       t.diff(z, roots[i])
       r *= t
 
-func areStrictlyIncreasing[Field](a: openArray[Field]): bool =
-  if a.len == 0:
-    return false
+func evalPolyAt*[N: static int, Field](
+       r: var Field,
+       poly: PolynomialEval[N, Field],
+       domain: PolyEvalDomain[N, Field],
+       z: Field) =
+  ## Evaluate a polynomial p at z: r <- p(z)
+  ##
+  ## **variable-time**:
+  ## This leaks whether z is in the domain or not.
+  #
+  # With A(X) the vanishing polynomial
+  # that evaluates to 0 for each point xᵢ of the domain.
+  # - https://dankradfeist.de/ethereum/2021/06/18/pcs-multiproofs.html#evaluating-a-polynomial-in-evaluation-form-on-a-point-outside-the-domain
+  #
+  #   p(z) = A(z) ∑ᵢ p(xᵢ).1/A'(xᵢ).1/(z-xᵢ)
+  #
+  # Wikipedia notation: https://en.wikipedia.org/wiki/Lagrange_polynomial#Barycentric_form
+  #
+  #   L(z) = l(z) ∑ⱼ ωⱼ/(z-xⱼ).yⱼ
+  #
+  #   with l(z) = A(z)
+  #        ωⱼ   = 1/A'(xᵢ)
+  #        yⱼ   = p(xᵢ)
+  let invZminusDomain = allocHeapAligned(array[N, Field], alignment = 64)
+  let zIndex = invZminusDomain[].inverseDifferenceArrayZ(
+    domain.domain,
+    z,
+    differenceKind = kZminusArray,
+    earlyReturnOnZero = true
+  )
 
-  var prev = a[0].toBig()
-  for i in 1 ..< a.len:
-    let cur = a[i].toBig()
-    if bool(cur <= prev):
-      return false
-  return true
+  if zIndex == -1:
+    r.setZero()
+    for i in 0 ..< N:
+      # p(xᵢ).1/A'(xᵢ).1/(z-xᵢ)
+      var t {.noInit.}: Field
+      t.prod(poly.evals[i], domain.vanishing_deriv_poly_eval_inv.evals[i])
+      t *= invZminusDomain[i]
+
+    var az {.noInit.}: Field
+    az.evalVanishingPolyAt(domain.domain, z)
+    r *= az
+  else:
+    # We're on one of point of the domain
+    r = poly.evals[zIndex]
+
+  freeHeapAligned(invZminusDomain)
+
+func evalLagrangeBasisPolysAt*[N: static int, Field](
+      lagrangePolys: var array[N, Field],
+      domain: PolyEvalDomain[N, Field],
+      z: Field) =
+  ## A polynomial p(X) in evaluation form
+  ## is represented by its evaluations
+  ##   [f(0), f(1), ..., f(n-1)]
+  ## over predefined points called a domain
+  ##   [x₀, x₁, ..., xₙ₋₁]
+  ##
+  ## The representation is also called a polynomial in Lagrange form or Lagrange basis.
+  ##
+  ## p(x) = ∑ⱼ lⱼ.f(j)
+  ##
+  ## with lⱼ a Lagrange basis polynomial that
+  ## - takes value 1 for j
+  ## - takes 0 for all other points in the domain.
+  ##
+  ## - https://en.wikipedia.org/wiki/Lagrange_polynomial
+  ## - Barycentric Lagrange Interpolation
+  ##   Jean-Paul Berrutt & Lloyd N. Trefethen, 2004
+  ##   https://people.maths.ox.ac.uk/trefethen/barycentric.pdf
+  ##   DOI. 10.1137/S0036144502417715
+  ##
+  ## That representation is an inner product and so
+  ## can be used to commit to a polynomial in Lagrange form
+  ## and build an Inner Product Argument.
+  ##
+  ## - Inner Product Argument
+  ##   Dankrad Feist, 2021
+  ##   https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
+  ##
+  ## **variable-time**:
+  ## This leaks whether z is in the domain or not.
+
+  let invZminusDomain = allocHeapAligned(array[N, Field], alignment = 64)
+  let zIndex = invZminusDomain[].inverseDifferenceArrayZ(
+    domain.domain,
+    z,
+    differenceKind = kZminusArray,
+    earlyReturnOnZero = true
+  )
+
+  if zIndex == -1:
+    var az {.noInit.}: Field
+    az.evalVanishingPolyAt(domain.domain, z)
+
+    for i in 0 ..< N:
+      # A(z).1/A'(xᵢ).1/(z-xᵢ)
+      var t {.noInit.}: Field
+      lagrangePolys.prod(az, invZminusDomain[i])
+      lagrangePolys *= domain.vanishing_deriv_poly_eval_inv.evals[i]
+  else:
+    # We're on one of point of the domain
+    # All lagrange basis polynomials are 0 except one that is 1.
+    for i in 0 ..< N:
+      if zIndex != i:
+        lagrangePolys.setZero()
+      else:
+        lagrangePolys.setOne()
+
+  freeHeapAligned(invZminusDomain)
+
+# Polynomials in evaluation/Lagrange form
+#   Domain = linear [0, 1, ..., N-1]
+# ------------------------------------------------------
+
+func differenceQuotientEvalInDomain*[N: static int, Field](
+       r: var PolynomialEval[N, Field],
+       poly: PolynomialEval[N, Field],
+       zIndex: uint32,
+       lindom: PolyEvalDomain[N, Field]) =
+  ## Compute r(x) = (p(x) - p(z)) / (x - z)
+  ##
+  ## for z = xᵢ, one of the element in the domain.
+  ## The domain MUST be linearly spaced [0, 1, ..., n-1]
+  ##
+  ## Input:
+  ##   - poly:            p(x) a polynomial in evaluation form as an array of p(xᵢ)
+  ##   - zIndex:          the index i of xᵢ that matches z = xᵢ
+  ##   - domain           the array of evaluation points [0, 1, ..., n-1]
+  ##                      and related precomputed constants like
+  ##                      vanishing polynomial, its derivative and inverse.
+  #
+  # - https://dankradfeist.de/ethereum/2021/06/18/pcs-multiproofs.html
+  #   section "Dividing when one of the points is zero".
+  # - https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/B1FWLgtD9
+
+  r.evals[zIndex].setZero()
+
+  for i in 0'u32 ..< N:
+    if i == zIndex:
+      # https://dankradfeist.de/ethereum/2021/06/18/pcs-multiproofs.html
+      # section "Dividing when one of the points is zero".
+      #
+      # Due to qᵢ = 0/0, we can't directly compute
+      # the polynomial evaluation at i == zIndex.
+      # However we can rewrite it as a sum that depends
+      # on all other evaluations.
+      continue
+
+    # qᵢ = (p(xᵢ) - p(z))/(xᵢ-z)
+    var qi {.noinit.}: Field
+    if i > zIndex:
+      qi.diff(poly.evals[i], poly.evals[zIndex])
+      # 1/(xᵢ-z) does not need division as xᵢ, z ∈ [0, 1, ..., n-1]
+      # and we can precompute [1/0, 1/1, ..., 1/(n-1)]
+      # Since i != zIndex, 1/0 is actually unused and is just padding.
+      r.evals[i].prod(qi, lindom.domain_inverses[i-zIndex])
+    else:
+      # We only precompute the positive inverses [1/1, ..., 1/(n-1)]
+      # so we negate numerator and denominator.
+      # qᵢ = (p(z) - p(xᵢ))/(z-xᵢ)
+      qi.diff(poly.evals[zIndex], poly.evals[i])
+      r.evals[i].prod(qi, lindom.domain_inverses[zIndex-i])
+
+    # Compute contribution of qᵢ to qz which can't be computed directly
+    # qz = - ∑ A'(z)/A'(xᵢ) qᵢ
+    var ri {.noinit.}: Field
+    ri.prod(
+      lindom.dom.vanishing_deriv_poly_eval.evals[zIndex],
+      lindom.dom.vanishing_deriv_poly_eval_inv.evals[i]
+    )
+    r.evals[zIndex] -= ri
 
 func setupEvaluationDomain*[N: static int, Field](
-      dom: var PolyEvalDomain[N, Field],
-      evaluation_points: array[N, Field]) =
-  ## Configure an evaluation domain
+      lindom: var PolyEvalLinearDomain[N, Field]) =
+  ## Configure a linear evaluation domain [0, ..., n-1]
   ## for computation with polynomials in barycentric Lagrange form
-  ##
-  ## evaluation points must be strictly increasing.
 
-  doAssert evaluation_points.areStrictlyIncreasing()
+  for i in 0'u32 ..< N:
+    lindom.dom.domain.fromInt(i)
+
+  for i in 0'u32 ..< N:
+    lindom.dom.vanishing_deriv_poly_eval
+              .evalVanishingPolyDerivativeAtRoot(
+                lindom.dom.domain,
+                i
+              )
+
+  lindom.domain_inverses
+    .batchInv_vartime(lindom.dom.domain)
+
+  lindom.dom.vanishing_deriv_poly_eval_inv
+    .batchInv_vartime(lindom.dom.vanishing_deriv_poly_eval)

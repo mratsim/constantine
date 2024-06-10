@@ -193,7 +193,7 @@ func kzg_prove*[N: static int, C: static Curve](
 
   # Note:
   #   The order of inputs in
-  #  `kzg_prove`, `evalPolyAt`, `differenceQuotientEvalOffDomain`, `differenceQuotientEvalInDomain`
+  #  `kzg_prove`, `evalPolyOffDomainAt`, `differenceQuotientEvalOffDomain`, `differenceQuotientEvalInDomain`
   #  minimizes register changes when parameter passing.
   #
   # z = challenge in the following code
@@ -203,13 +203,14 @@ func kzg_prove*[N: static int, C: static Curve](
 
   # Compute 1/(ωⁱ - z) with ω a root of unity, i in [0, N).
   # zIndex = i if ωⁱ - z == 0 (it is the i-th root of unity) and -1 otherwise.
-  let zIndex = invRootsMinusZ[].inverseRootsMinusZ_vartime(
-                                  domain, challenge,
+  let zIndex = invRootsMinusZ[].inverseDifferenceArrayZ(
+                                  domain.rootsOfUnity, challenge,
+                                  differenceKind = kArrayMinusZ,
                                   earlyReturnOnZero = false)
 
   if zIndex == -1:
     # p(z)
-    eval_at_challenge.evalPolyAt(
+    eval_at_challenge.evalPolyOffDomainAt(
       poly, challenge,
       invRootsMinusZ[],
       domain)

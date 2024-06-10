@@ -448,14 +448,15 @@ func verify_blob_kzg_proof*(
     # ------------------------------
     # 1. Compute 1/(ωⁱ - z) with ω a root of unity, i in [0, N).
     #    zIndex = i if ωⁱ - z == 0 (it is the i-th root of unity) and -1 otherwise.
-    let zIndex = invRootsMinusZ[].inverseRootsMinusZ_vartime(
-                                    ctx.domain, challengeFr,
+    let zIndex = invRootsMinusZ[].inverseDifferenceArrayZ(
+                                    ctx.domain.rootsOfUnity, challengeFr,
+                                    differenceKind = kArrayMinusZ,
                                     earlyReturnOnZero = true)
 
     # 2. Actual evaluation
     if zIndex == -1:
       var eval_at_challenge_fr{.noInit.}: Fr[BLS12_381]
-      eval_at_challenge_fr.evalPolyAt(
+      eval_at_challenge_fr.evalPolyOffDomainAt(
         poly[], challengeFr,
         invRootsMinusZ[],
         ctx.domain)
@@ -520,13 +521,14 @@ func verify_blob_kzg_proof_batch*(
       # ------------------------------
       # 1. Compute 1/(ωⁱ - z) with ω a root of unity, i in [0, N).
       #    zIndex = i if ωⁱ - z == 0 (it is the i-th root of unity) and -1 otherwise.
-      let zIndex = invRootsMinusZ[].inverseRootsMinusZ_vartime(
-                                      ctx.domain, challenges[i],
+      let zIndex = invRootsMinusZ[].inverseDifferenceArrayZ(
+                                      ctx.domain.rootsOfUnity, challenges[i],
+                                      differenceKind = kArrayMinusZ,
                                       earlyReturnOnZero = true)
       # 2. Actual evaluation
       if zIndex == -1:
         var eval_at_challenge_fr{.noInit.}: Fr[BLS12_381]
-        eval_at_challenge_fr.evalPolyAt(
+        eval_at_challenge_fr.evalPolyOffDomainAt(
           poly[], challenges[i],
           invRootsMinusZ[],
           ctx.domain)

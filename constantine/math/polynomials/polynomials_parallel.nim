@@ -22,7 +22,7 @@ import
 ##
 ## ############################################################
 
-proc evalPolyAt_parallel*[N: static int, Field](
+proc evalPolyOffDomainAt_parallel*[N: static int, Field](
        tp: Threadpool,
        r: var Field,
        poly: ptr PolynomialEval[N, Field],
