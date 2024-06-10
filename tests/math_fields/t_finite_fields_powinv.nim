@@ -8,7 +8,7 @@
 
 import
   # Standard library
-  std/[unittest, times],
+  std/[unittest, times, strutils],
   # Internal
   ../../constantine/platforms/abstractions,
   ../../constantine/math/arithmetic,
@@ -328,6 +328,84 @@ proc main() =
     testRandomInv Bandersnatch
     testRandomInv Pallas
     testRandomInv Vesta
+
+  suite "Batch inversion over prime fields" & " [" & $WordBitWidth & "-bit words]":
+
+    proc testRandomBatchInv(curve: static Curve) =
+      const N = 10
+
+      var a: array[N, Fp[curve]]
+      rng.random_unsafe(a)
+
+      test "Batch inversion: " & alignLeft("random testing", 22) & $Curve(curve):
+        var r{.noInit.}, r1{.noInit.}, r2{.noInit.}: array[N, Fp[curve]]
+        r1.batchInv(a)
+        r2.batchInv_vartime(a)
+        for i in 0 ..< N:
+          r[i].inv_vartime(a[i])
+          doAssert bool(r[i] == r1[i])
+          doAssert bool(r[i] == r2[i])
+
+      test "Batch inversion: " & alignLeft("zero value in middle", 22) & $Curve(curve):
+        var r{.noInit.}, r1{.noInit.}, r2{.noInit.}: array[N, Fp[curve]]
+        var b = a
+        b[N div 2].setZero()
+        r1.batchInv(b)
+        r2.batchInv_vartime(b)
+        for i in 0 ..< N:
+          r[i].inv_vartime(b[i])
+          doAssert bool(r[i] == r1[i])
+          doAssert bool(r[i] == r2[i])
+
+      test "Batch inversion: " & alignLeft("zero value at start", 22) & $Curve(curve):
+        var r{.noInit.}, r1{.noInit.}, r2{.noInit.}: array[N, Fp[curve]]
+        var b = a
+        b[0].setZero()
+        r1.batchInv(b)
+        r2.batchInv_vartime(b)
+        for i in 0 ..< N:
+          r[i].inv_vartime(b[i])
+          doAssert bool(r[i] == r1[i])
+          doAssert bool(r[i] == r2[i])
+
+      test "Batch inversion: " & alignLeft("zero value at end", 22) & $Curve(curve):
+        var r{.noInit.}, r1{.noInit.}, r2{.noInit.}: array[N, Fp[curve]]
+        var b = a
+        b[N-1].setZero()
+        r1.batchInv(b)
+        r2.batchInv_vartime(b)
+        for i in 0 ..< N:
+          r[i].inv_vartime(b[i])
+          doAssert bool(r[i] == r1[i])
+          doAssert bool(r[i] == r2[i])
+
+      test "Batch inversion: " & alignLeft("multiple zero values", 22) & $Curve(curve):
+        var r{.noInit.}, r1{.noInit.}, r2{.noInit.}: array[N, Fp[curve]]
+        var b = a
+        block:
+          static: doAssert N < sizeof(rng.next()) * 8, "There are only " & $sizeof(rng.next() * 8) & " bits produced."
+          var randomness = rng.next()
+          for i in 0 ..< N:
+            if bool(randomness and 1):
+              b[i].setZero()
+        r1.batchInv(b)
+        r2.batchInv_vartime(b)
+        for i in 0 ..< N:
+          r[i].inv_vartime(b[i])
+          doAssert bool(r[i] == r1[i])
+          doAssert bool(r[i] == r2[i])
+
+    testRandomBatchInv P224
+    testRandomBatchInv BN254_Nogami
+    testRandomBatchInv BN254_Snarks
+    testRandomBatchInv Edwards25519
+    testRandomBatchInv P256
+    testRandomBatchInv Secp256k1
+    testRandomBatchInv BLS12_377
+    testRandomBatchInv BLS12_381
+    testRandomBatchInv Bandersnatch
+    testRandomBatchInv Pallas
+    testRandomBatchInv Vesta
 
 main()
 

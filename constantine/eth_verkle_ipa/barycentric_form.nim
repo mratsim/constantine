@@ -107,7 +107,7 @@ func computeBarycentricCoefficients*(res_inv: var openArray[Fr[Banderwagon]], pr
 
     totalProd *= tmp
 
-  res_inv.batchInvert(res)
+  res_inv.batchInv_vartime(res)
 
   for i in 0 ..< VerkleDomain:
     res_inv[i] *= totalProd

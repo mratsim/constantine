@@ -71,7 +71,7 @@ func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, got: var EC_P,
     challenges[i].fromBig(challenges_big[i])
 
   var challengesInv {.noInit.}: array[8,Fr[Banderwagon]]
-  challengesInv.batchInvert(challenges)
+  challengesInv.batchInv_vartime(challenges)
 
   for i in 0 ..< challenges.len:
     var x = challenges[i]

@@ -15,10 +15,7 @@
 import
   ./math/config/[type_ff, curves],
   ./math/arithmetic,
-  ./math/elliptic/[
-    ec_twistededwards_projective,
-    ec_twistededwards_batch_ops
-    ],
+  ./math/elliptic/ec_twistededwards_projective,
   ./math/io/[io_bigints, io_fields],
   ./curves_primitives
 
@@ -81,7 +78,7 @@ func batchMapToScalarField*(
   for i in 0 ..< N:
     ys[i] = points[i].y
 
-  ys_inv.batchInvert(ys, N)
+  ys_inv.batchInv_vartime(ys, N)
 
   for i in 0 ..< N:
     var mappedElement: Fp[Banderwagon]

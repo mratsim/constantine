@@ -150,7 +150,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
 
 
   var denInv_prime {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
-  denInv_prime.batchInvert(denInv)
+  denInv_prime.batchInv_vartime(denInv)
 
   #Compute h(X) = g1(X)
   var hx {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
@@ -267,7 +267,7 @@ func verifyMultiproof*[MultiProof](multiProof: var MultiProof, transcript : var 
     helperScalarDeno[i].diff(t_fr, z)
 
   var helperScalarDeno_prime {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
-  helperScalarDeno_prime.batchInvert(helperScalarDeno)
+  helperScalarDeno_prime.batchInv_vartime(helperScalarDeno)
 
   # Compute g_2(t) = SUMMATION (y_i * r^i) / (t - z_i) = SUMMATION (y_i * r) * helperScalarDeno
   var g2t {.noInit.}: Fr[Banderwagon]

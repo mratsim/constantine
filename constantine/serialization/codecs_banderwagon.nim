@@ -67,12 +67,12 @@ func make_scalar_mod_order*(reduced_scalar: var Fr[Banderwagon], src: array[32, 
 
 func serialize*(dst: var array[32, byte], P: EC_Prj): CttCodecEccStatus =
   ## Serialize a Banderwagon point(x, y) in the format
-  ## 
+  ##
   ## serialize = bigEndian( sign(y) * x )
   ## If y is not lexicographically largest
   ## set x -> -x
   ## then serialize
-  ## 
+  ##
   ## Returns cttCodecEcc_Success if successful
   ## Spec: https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Serialisation
 
@@ -81,7 +81,7 @@ func serialize*(dst: var array[32, byte], P: EC_Prj): CttCodecEccStatus =
     for i in 0 ..< dst.len:
       dst[i] = byte 0
     return cttCodecEcc_Success
-  
+
   # Convert the projective points into affine format before encoding
   var aff {.noInit.}: EC_Aff
   aff.affine(P)
@@ -96,10 +96,10 @@ func serialize*(dst: var array[32, byte], P: EC_Prj): CttCodecEccStatus =
 
 func deserialize_unchecked*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccStatus =
   ## Deserialize a Banderwagon point (x, y) in format
-  ## 
+  ##
   ## if y is not lexicographically largest
   ## set y -> -y
-  ## 
+  ##
   ## Returns cttCodecEcc_Success if successful
   ## https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Serialisation
   # If infinity, src must be all zeros
@@ -111,7 +111,7 @@ func deserialize_unchecked*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccS
   if check:
     dst.setInf()
     return cttCodecEcc_PointAtInfinity
-  
+
   var t{.noInit.}: matchingBigInt(Banderwagon)
   t.unmarshal(src, bigEndian)
 
@@ -133,10 +133,10 @@ func deserialize_unchecked*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccS
 func deserialize_unchecked_vartime*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccStatus =
   ## This is not in constant-time
   ## Deserialize a Banderwagon point (x, y) in format
-  ## 
+  ##
   ## if y is not lexicographically largest
   ## set y -> -y
-  ## 
+  ##
   ## Returns cttCodecEcc_Success if successful
   ## https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Serialisation
   # If infinity, src must be all zeros
@@ -148,7 +148,7 @@ func deserialize_unchecked_vartime*(dst: var EC_Prj, src: array[32, byte]): CttC
   if check:
     dst.setInf()
     return cttCodecEcc_PointAtInfinity
-  
+
   var t{.noInit.}: matchingBigInt(Banderwagon)
   t.unmarshal(src, bigEndian)
 
@@ -169,9 +169,9 @@ func deserialize_unchecked_vartime*(dst: var EC_Prj, src: array[32, byte]): CttC
 
 func deserialize*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccStatus =
   ## Deserialize a Banderwagon point (x, y) in format
-  ## 
+  ##
   ## Also checks if the point lies in the banderwagon scheme subgroup
-  ## 
+  ##
   ## Returns cttCodecEcc_Success if successful
   ## Returns cttCodecEcc_PointNotInSubgroup if doesn't lie in subgroup
   result = deserialize_unchecked(dst, src)
@@ -185,9 +185,9 @@ func deserialize*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccStatus =
 
 func deserialize_vartime*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccStatus =
   ## Deserialize a Banderwagon point (x, y) in format
-  ## 
+  ##
   ## Also checks if the point lies in the banderwagon scheme subgroup
-  ## 
+  ##
   ## Returns cttCodecEcc_Success if successful
   ## Returns cttCodecEcc_PointNotInSubgroup if doesn't lie in subgroup
   result = deserialize_unchecked_vartime(dst, src)
@@ -204,7 +204,7 @@ func deserialize_vartime*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccSta
 ##              Banderwagon Scalar Serialization
 ##
 ## ############################################################
-## 
+##
 func serialize_scalar*(dst: var array[32, byte], scalar: matchingOrderBigInt(Banderwagon), order: static Endianness = bigEndian): CttCodecScalarStatus =
   ## Adding an optional Endianness param default at BigEndian
   ## Serialize a scalar
@@ -217,7 +217,7 @@ func serialize_scalar*(dst: var array[32, byte], scalar: matchingOrderBigInt(Ban
 ##              Banderwagon Scalar Deserialization
 ##
 ## ############################################################
-## 
+##
 func deserialize_scalar*(dst: var matchingOrderBigInt(Banderwagon), src: array[32, byte], order: static Endianness = bigEndian): CttCodecScalarStatus =
   ## Adding an optional Endianness param default at BigEndian
   ## Deserialize a scalar
@@ -243,7 +243,7 @@ func deserialize_scalar_mod_order* (dst: var Fr[Banderwagon], src: array[32, byt
   debug: doAssert stat, "transcript_gen.deserialize_scalar_mod_order: Unexpected failure"
 
   return cttCodecScalar_Success
-  
+
 ## ############################################################
 ##
 ##              Banderwagon Batch Serialization
@@ -262,8 +262,8 @@ func serializeBatch*(
   for i in 0 ..< N:
     zs[i] = points[i].z
 
-  zs_inv.batchInvert(zs, N)
-  
+  zs_inv.batchInv_vartime(zs, N)
+
   for i in 0 ..< N:
     var X: Fp[Banderwagon]
     var Y: Fp[Banderwagon]
@@ -288,15 +288,15 @@ func serializeBatchUncompressed*(
   ## In uncompressed format
   ## serialize = [ bigEndian( x ) , bigEndian( y ) ]
   ## Returns cttCodecEcc_Success if successful
-  
+
   # collect all the z coordinates
   var zs = allocStackArray(Fp[Banderwagon], N)
   var zs_inv = allocStackArray(Fp[Banderwagon], N)
   for i in 0 ..< N:
     zs[i] = points[i].z
 
-  zs_inv.batchInvert(zs, N)
-  
+  zs_inv.batchInv_vartime(zs, N)
+
   for i in 0 ..< N:
     var X: Fp[Banderwagon]
     var Y: Fp[Banderwagon]
@@ -334,9 +334,9 @@ func serializeBatch*[N: static int](
 
 func serializeUncompressed*(dst: var array[64, byte], P: EC_Prj): CttCodecEccStatus =
   ## Serialize a Banderwagon point(x, y) in the format
-  ## 
+  ##
   ## serialize = [ bigEndian( x ) , bigEndian( y ) ]
-  ## 
+  ##
   ## Returns cttCodecEcc_Success if successful
   var aff {.noInit.}: EC_Aff
   aff.affine(P)
@@ -380,9 +380,9 @@ func deserializeUncompressed_unchecked*(dst: var EC_Prj, src: array[64, byte]): 
 
 func deserializeUncompressed*(dst: var EC_Prj, src: array[64, byte]): CttCodecEccStatus =
   ## Deserialize a Banderwagon point (x, y) in format
-  ## 
+  ##
   ## Also checks if the point lies in the banderwagon scheme subgroup
-  ## 
+  ##
   ## Returns cttCodecEcc_Success if successful
   result = dst.deserializeUncompressed_unchecked(src)
   if not(bool dst.isInSubgroup()):

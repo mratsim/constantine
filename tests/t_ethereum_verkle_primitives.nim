@@ -436,33 +436,6 @@ suite "Batch Operations on Banderwagon":
 
     testbatch(1000)
 
-  ## Tests to check if the Motgomery Batch Inversion
-  ## Check if the Batch Inversion is consistent with
-  ## it's respective sigular inversion operation of field elements
-  test "Batch Inversion":
-    proc batchInvert(n: static int) =
-      var one, two: EC
-      var arr_fp: array[n, Fp[Banderwagon]]   # array for Fp field elements
-
-      one.fromAffine(generator)   # setting the 1st generator point
-      two.fromAffine(generator)   # setting the 2nd generator point
-
-      for i in 0 ..< n:
-        arr_fp[i] = one.x
-        one.double()
-
-      var arr_fp_inv: array[n, Fp[Banderwagon]]
-      arr_fp_inv.batchInvert(arr_fp)
-
-      # Checking the correspondence with singular element inversion
-      for i in 0 ..< n:
-        var temp: Fp[Banderwagon]
-        temp.inv(two.x)
-        doAssert (arr_fp_inv[i] == temp).bool(), "Batch Inversion in consistent"
-        two.double()
-
-    batchInvert(10)
-
   ## Tests to check if the Batch Map to Scalar Field
   ## is consistent with it's respective singular operation
   ## of mapping from Fp to Fr
