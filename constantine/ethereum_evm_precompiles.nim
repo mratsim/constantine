@@ -668,7 +668,7 @@ func eth_evm_bls12381_g1mul*(r: var openArray[byte], inputs: openarray[byte]): C
   ##
   ## Output
   ## - Output buffer MUST be of length 128 bytes
-  ## - A G1 point R=P+Q with coordinates (Rx, Ry)
+  ## - A G1 point R = [s]P
   ## - Status code:
   ##   cttEVM_Success
   ##   cttEVM_InvalidInputSize
@@ -736,7 +736,7 @@ func eth_evm_bls12381_g2mul*(r: var openArray[byte], inputs: openarray[byte]): C
   ##
   ## Output
   ## - Output buffer MUST be of length 256 bytes
-  ## - A G2 point R=P+Q with coordinates (Rx, Ry)
+  ## - A G2 point R = [s]P
   ## - Status code:
   ##   cttEVM_Success
   ##   cttEVM_InvalidInputSize
@@ -810,7 +810,7 @@ func eth_evm_bls12381_g1msm*(r: var openArray[byte], inputs: openarray[byte]): C
   ##
   ## Output
   ## - Output buffer MUST be of length 128 bytes
-  ## - A G1 point R=P+Q with coordinates (Rx, Ry)
+  ## - A G1 point R = ∑[sᵢ]Pᵢ
   ## - Status code:
   ##   cttEVM_Success
   ##   cttEVM_InvalidInputSize
@@ -890,7 +890,7 @@ func eth_evm_bls12381_g2msm*(r: var openArray[byte], inputs: openarray[byte]): C
   ##
   ## Output
   ## - Output buffer MUST be of length 512 bytes
-  ## - A G2 point R=P+Q with coordinates (Rx, Ry)
+  ## - A G2 point R = ∑[sᵢ]Pᵢ
   ## - Status code:
   ##   cttEVM_Success
   ##   cttEVM_InvalidInputSize
