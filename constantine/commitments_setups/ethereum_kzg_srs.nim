@@ -150,7 +150,7 @@ type
     # For most schemes (Marlin, Plonk, Sonic, Ethereum's Deneb), only [τ]H is needed
     # but Ethereum's sharding will need 64 (65 with the generator H)
 
-    domain*{.align: 64.}: PolyDomainEval[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]]
+    domain*{.align: 64.}: PolyEvalRootsDomain[FIELD_ELEMENTS_PER_BLOB, Fr[BLS12_381]]
 
   TrustedSetupStatus* = enum
     tsSuccess

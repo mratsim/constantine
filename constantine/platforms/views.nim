@@ -82,6 +82,12 @@ func `[]`*[T](v: var StridedView[T], idx: int): var T {.inline.} =
 func `[]=`*[T](v: var StridedView[T], idx: int, val: T) {.inline.} =
   v.data[v.offset + idx*v.stride] = val
 
+template toOpenArray*[T](v: StridedView[T]): openArray[T] =
+  ## This casts the view to a linear openArray.
+  ## This is an error of the stride is not 1.
+  doAssert v.stride == 1, "Cannot cast to an openArray if the view does not have an unit stride."
+  v.data.toOpenArray(v.offset, v.offset+v.len-1)
+
 func toStridedView*[T](oa: openArray[T]): StridedView[T] {.inline.} =
   result.len = oa.len
   result.stride = 1

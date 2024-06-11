@@ -228,7 +228,7 @@ proc benchVerifyBlobKzgProofBatch(b: BenchSet, ctx: ptr EthereumKZGContext, iter
 const TrustedSetupMainnet =
   currentSourcePath.rsplit(DirSep, 1)[0] /
   ".." / "constantine" /
-  "trusted_setups" /
+  "commitments_setups" /
   "trusted_setup_ethereum_kzg4844_reference.dat"
 
 proc trusted_setup*(): ptr EthereumKZGContext =

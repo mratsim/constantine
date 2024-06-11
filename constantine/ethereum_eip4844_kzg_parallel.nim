@@ -281,8 +281,9 @@ proc verify_blob_kzg_proof_parallel*(
     # ------------------------------
     # 1. Compute 1/(ωⁱ - z) with ω a root of unity, i in [0, N).
     #    zIndex = i if ωⁱ - z == 0 (it is the i-th root of unity) and -1 otherwise.
-    let zIndex = invRootsMinusZ[].inverseRootsMinusZ_vartime(
-                                    ctx.domain, challengeFr,
+    let zIndex = invRootsMinusZ[].inverseDifferenceArrayZ(
+                                    ctx.domain.rootsOfUnity, challengeFr,
+                                    differenceKind = kArrayMinusZ,
                                     earlyReturnOnZero = true)
 
     # Await conversion to field polynomial
@@ -291,7 +292,7 @@ proc verify_blob_kzg_proof_parallel*(
     # 2. Actual evaluation
     if zIndex == -1:
       var eval_at_challenge_fr{.noInit.}: Fr[BLS12_381]
-      tp.evalPolyAt_parallel(
+      tp.evalPolyOffDomainAt_parallel(
         eval_at_challenge_fr,
         poly, challengeFr.addr,
         invRootsMinusZ,
@@ -377,13 +378,14 @@ proc verify_blob_kzg_proof_batch_parallel*(
           # ------------------------------
           # 1. Compute 1/(ωⁱ - z) with ω a root of unity, i in [0, N).
           #    zIndex = i if ωⁱ - z == 0 (it is the i-th root of unity) and -1 otherwise.
-          let zIndex = invRootsMinusZs[i].inverseRootsMinusZ_vartime(
-                                          ctx.domain, challenges[i],
+          let zIndex = invRootsMinusZs[i].inverseDifferenceArrayZ(
+                                          ctx.domain.rootsOfUnity, challenges[i],
+                                          differenceKind = kArrayMinusZ,
                                           earlyReturnOnZero = true)
           # 2. Actual evaluation
           if zIndex == -1:
             var eval_at_challenge_fr{.noInit.}: Fr[BLS12_381]
-            tp.evalPolyAt_parallel(
+            tp.evalPolyOffDomainAt_parallel(
               eval_at_challenge_fr,
               polys[i].addr, challenges[i].addr,
               invRootsMinusZs[i].addr,

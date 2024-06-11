@@ -614,3 +614,95 @@ func inv_vartime*(a: var FF) {.tags: [VarTime].} =
   ## to convert Jacobian and Projective coordinates
   ## to affine for elliptic curve
   a.inv_vartime(a)
+
+# ############################################################
+#
+#                   Batch operations
+#
+# ############################################################
+
+func batchInv*[F](
+        dst: ptr UncheckedArray[F],
+        elements: ptr UncheckedArray[F],
+        N: int,
+        useVartime: static bool = false
+      ) {.noInline.} =
+  ## Batch inversion
+  ## If an element is 0, the inverse stored will be 0.
+  var zeros = allocStackArray(SecretBool, N)
+  zeroMem(zeros, N)
+
+  var acc: F
+  acc.setOne()
+
+  for i in 0 ..< N:
+    # Skip zeros
+    zeros[i] = elements[i].isZero()
+    var z = elements[i]
+    z.csetOne(zeros[i])
+
+    dst[i] = acc
+    if i != N-1:
+      acc.prod(acc, z, skipFinalSub = true)
+    else:
+      acc.prod(acc, z, skipFinalSub = false)
+
+  acc.inv()
+
+  for i in countdown(N-1, 0):
+    # Extract 1/elemᵢ
+    dst[i] *= acc
+    dst[i].csetZero(zeros[i])
+
+    # next iteration
+    var eli = elements[i]
+    eli.csetOne(zeros[i])
+    acc.prod(acc, eli, skipFinalSub = true)
+
+func batchInv_vartime*[F](
+        dst: ptr UncheckedArray[F],
+        elements: ptr UncheckedArray[F],
+        N: int,
+        useVartime: static bool = false
+      ) {.noInline.} =
+  ## Batch inversion
+  ## If an element is 0, the inverse stored will be 0.
+  var zeros = allocStackArray(bool, N)
+  zeroMem(zeros, N)
+
+  var acc: F
+  acc.setOne()
+
+  for i in 0 ..< N:
+    if elements[i].isZero().bool():
+      zeros[i] = true
+      dst[i].setZero()
+      continue
+
+    dst[i] = acc
+    if i != N-1:
+      acc.prod(acc, elements[i], skipFinalSub = true)
+    else:
+      acc.prod(acc, elements[i], skipFinalSub = false)
+
+  acc.inv_vartime()
+
+  for i in countdown(N-1, 0):
+    if zeros[i] == true:
+      continue
+    dst[i] *= acc
+    acc.prod(acc, elements[i], skipFinalSub = true)
+
+func batchInv*[F](dst: var openArray[F], source: openArray[F]) {.inline.} =
+  debug: doAssert dst.len == source.len
+  batchInv(dst.asUnchecked(), source.asUnchecked(), dst.len)
+
+func batchInv*[N: static int, F](dst: var array[N, F], src: array[N, F]) =
+  batchInv(dst.asUnchecked(), src.asUnchecked(), N)
+
+func batchInv_vartime*[F](dst: var openArray[F], source: openArray[F]) {.inline.} =
+  debug: doAssert dst.len == source.len
+  batchInv_vartime(dst.asUnchecked(), source.asUnchecked(), dst.len)
+
+func batchInv_vartime*[N: static int, F](dst: var array[N, F], src: array[N, F]) =
+  batchInv_vartime(dst.asUnchecked(), src.asUnchecked(), N)

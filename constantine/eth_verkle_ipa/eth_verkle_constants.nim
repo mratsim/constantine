@@ -17,7 +17,7 @@ import
   ../math/config/[type_ff, curves],
   ../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_affine],
   ../math/arithmetic,
-  ../math/io/[io_fields],
+  ../math/polynomials/polynomials,
   ../hashes,
   ../curves_primitives
 
@@ -43,22 +43,16 @@ type
     D*: EC_P
 
 const
-  VerkleDomain*: int = 256
+  EthVerkleDomain*: int = 256
 
 type VerkleIPAProofSerialized* = array[544, byte]
 
 type VerkleMultiproofSerialized* = array[576, byte]
 
 type
-  PrecomputedWeights* = object
-    barycentricWeights*: array[512,Fr[Banderwagon]]
-    invertedDomain*: array[510,Fr[Banderwagon]]
-
-type
   IPASettings* = object
-    SRS*: array[VerkleDomain,EC_P]
-    Q_val*: EC_P
-    precompWeights*: PrecomputedWeights
+    crs*: array[EthVerkleDomain, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+    domain*: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]]
     numRounds*: uint32
 
 const VerkleSeed* = asBytes"eth_verkle_oct_2021"
@@ -71,5 +65,3 @@ type
   Coord* = object
     x*: Fr[Banderwagon]
     y*: Fr[Banderwagon]
-
-var generator* = Banderwagon.getGenerator()

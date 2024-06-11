@@ -438,6 +438,12 @@ func random_long01Seq_with_randZ*(rng: var RngState, T: typedesc[ECP_ext]): T =
   ## Skewed towards long bitstrings of 0 or 1
   rng.random_long01Seq_with_randZ(result)
 
+func random_unsafe*[T](rng: var RngState, a: var openArray[T]) =
+  ## Initialize an array or sequence of T
+  ## with random values
+  for elem in a.mitems():
+    elem = rng.random_unsafe(typeof(elem))
+
 # Byte sequences
 # ------------------------------------------------------------
 
