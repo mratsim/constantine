@@ -8,7 +8,7 @@
 
 import
   tables,
-  ./[transcript_gen, common_utils, ipa_prover, barycentric_form, eth_verkle_constants, ipa_verifier],
+  ./[transcript_gen, ipa_prover, eth_verkle_constants, ipa_verifier],
   ../platforms/primitives,
   ../hashes,
   ../serialization/[
@@ -17,8 +17,9 @@ import
   ],
   ../math/config/[type_ff, curves],
   ../math/elliptic/[ec_multi_scalar_mul, ec_multi_scalar_mul_scheduler],
-  ../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
+  ../math/elliptic/ec_twistededwards_projective,
   ../math/arithmetic,
+  ../math/polynomials/polynomials,
   ../platforms/[views],
   ../math/io/[io_bigints,io_fields],
   ../curves_primitives
@@ -50,7 +51,7 @@ func computePowersOfElem*(res: var openArray[Fr], x: Fr, degree: SomeSignedInt)=
 # ############################################################
 
 
-func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var CryptoHash, ipaSetting: IPASettings, Cs: openArray[EC_P], Fs: array[VerkleDomain, array[VerkleDomain, Fr[Banderwagon]]], Zs: openArray[int]) : bool =
+func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var CryptoHash, ipaSetting: IPASettings, Cs: openArray[EC_P], Fs: array[EthVerkleDomain, array[EthVerkleDomain, Fr[Banderwagon]]], Zs: openArray[int]) : bool =
   # createMultiProof creates a multi-proof for several polynomials in the evaluation form
   # The list of triplets are as follows: (C, Fs, Z) represents each polynomial commitment
   # and their evaluation in the domain, and the evaluating point respectively
@@ -58,7 +59,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
   transcript.domain_separator(asBytes"multiproof")
 
   for f in Fs:
-    debug: doAssert f.len == VerkleDomain, "Polynomial length does not match with the VerkleDomain length!"
+    debug: doAssert f.len == EthVerkleDomain, "Polynomial length does not match with the EthVerkleDomain length!"
 
   debug: doAssert Cs.len == Fs.len, "Number of commitments is NOT same as number of Functions"
 
@@ -89,39 +90,38 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
   # then we compute g(x), this is eventually limit the numbers of divisionOnDomain calls up to the domain size
 
   # Large array, need heap allocation. TODO: don't use Nim allocs.
-  var groupedFs = new array[VerkleDomain, array[VerkleDomain, Fr[Banderwagon]]]
-  for i in 0 ..< VerkleDomain:
-    for j in 0 ..< VerkleDomain:
-      groupedFs[i][j].setZero()
+  var groupedFs = new array[EthVerkleDomain, PolynomialEval[EthVerkleDomain, Fr[Banderwagon]]]
+  for i in 0 ..< EthVerkleDomain:
+    for j in 0 ..< EthVerkleDomain:
+      groupedFs[i].evals[j].setZero()
 
   for i in 0 ..< num_queries:
     var z = Zs[i]
     var r {.noInit.}: Fr[Banderwagon]
     r = powersOfr[i]
 
-    for j in 0 ..< VerkleDomain:
+    for j in 0 ..< EthVerkleDomain:
       var scaledEvals {.noInit.}: Fr[Banderwagon]
       scaledEvals.prod(r, Fs[i][j])
-      groupedFs[z][j] += scaledEvals
+      groupedFs[z].evals[j] += scaledEvals
 
-  var gx {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
-  for i in 0 ..< VerkleDomain:
+  var gx {.noInit.}: array[EthVerkleDomain, Fr[Banderwagon]]
+  for i in 0 ..< EthVerkleDomain:
     gx[i].setZero()
 
-  for i in 0 ..< VerkleDomain:
-    let check = groupedFs[i][0].isZero()
+  for i in 0'u32 ..< EthVerkleDomain:
+    let check = groupedFs[i].evals[0].isZero()
     if check.bool() == true:
       continue
 
-    var quotient {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
-    var passer = uint8(i)
-    quotient.divisionOnDomain(ipaSetting.precompWeights, passer, groupedFs[i])
+    var quotient {.noInit.}: PolynomialEval[EthVerkleDomain, Fr[Banderwagon]]
+    quotient.differenceQuotientEvalInDomain(groupedFs[i], i, ipaSetting.domain)
 
-    for j in  0 ..< VerkleDomain:
-      gx[j] += quotient[j]
+    for j in  0 ..< EthVerkleDomain:
+      gx[j] += quotient.evals[j]
 
   var D {.noInit.}: EC_P
-  D.pedersen_commit_varbasis(ipaSetting.SRS,ipaSetting.SRS.len, gx, gx.len)
+  D.pedersen_commit(gx, ipaSetting.crs)
 
   transcript.pointAppend(asBytes"D", D)
 
@@ -132,11 +132,11 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
   t_fr.fromBig(t)
 
   # Computing the denominator inverses only for referenced evaluation points.
-  var denInv {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
+  var denInv {.noInit.}: array[EthVerkleDomain, Fr[Banderwagon]]
 
   var idxx = 0
-  for i in 0 ..< VerkleDomain:
-    let check = groupedFs[i][0].isZero()
+  for i in 0 ..< EthVerkleDomain:
+    let check = groupedFs[i].evals[0].isZero()
     if check.bool() == true:
       continue
 
@@ -149,33 +149,33 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
     idxx = idxx + 1
 
 
-  var denInv_prime {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
+  var denInv_prime {.noInit.}: array[EthVerkleDomain, Fr[Banderwagon]]
   denInv_prime.batchInv_vartime(denInv)
 
-  #Compute h(X) = g1(X)
-  var hx {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
+  # Compute h(X) = g1(X)
+  var hx {.noInit.}: array[EthVerkleDomain, Fr[Banderwagon]]
   var denInvIdx = 0
 
-  for i in 0 ..< VerkleDomain:
-    let check = groupedFs[i][0].isZero()
+  for i in 0 ..< EthVerkleDomain:
+    let check = groupedFs[i].evals[0].isZero()
     if check.bool() == true:
       continue
 
-    for k in 0 ..< VerkleDomain:
+    for k in 0 ..< EthVerkleDomain:
       var tmp {.noInit.}: Fr[Banderwagon]
-      tmp.prod(groupedFs[i][k], denInv_prime[denInvIdx])
+      tmp.prod(groupedFs[i].evals[k], denInv_prime[denInvIdx])
       hx[k] += tmp
 
     denInvIdx = denInvIdx + 1
 
-  var hMinusg {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
+  var hMinusg {.noInit.}: array[EthVerkleDomain, Fr[Banderwagon]]
 
-  for i in 0 ..< VerkleDomain:
+  for i in 0 ..< EthVerkleDomain:
     hMinusg[i].diff(hx[i],gx[i])
 
   var E {.noInit.}: EC_P
 
-  E.pedersen_commit_varbasis(ipaSetting.SRS, ipaSetting.SRS.len, hx, hx.len)
+  E.pedersen_commit(hx, ipaSetting.crs)
   transcript.pointAppend(asBytes"E",E)
 
   var EMinusD {.noInit.}: EC_P
@@ -243,8 +243,8 @@ func verifyMultiproof*[MultiProof](multiProof: var MultiProof, transcript : var 
 
   # Computing the polynomials in the Lagrange form grouped by evaluation point,
   # and the needed helper scalars
-  var groupedEvals {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
-  for i in 0 ..< VerkleDomain:
+  var groupedEvals {.noInit.}: array[EthVerkleDomain, Fr[Banderwagon]]
+  for i in 0 ..< EthVerkleDomain:
     groupedEvals[i].setZero()
 
   for i in 0 ..< num_queries:
@@ -257,22 +257,22 @@ func verifyMultiproof*[MultiProof](multiProof: var MultiProof, transcript : var 
     groupedEvals[z] += scaledEvals
 
   # Calculating the helper scalar denominator, which is 1 / t - z_i
-  var helperScalarDeno {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
-  for i in 0 ..< VerkleDomain:
+  var helperScalarDeno {.noInit.}: array[EthVerkleDomain, Fr[Banderwagon]]
+  for i in 0 ..< EthVerkleDomain:
     helperScalarDeno[i].setZero()
 
-  for i in 0 ..< VerkleDomain:
+  for i in 0 ..< EthVerkleDomain:
     var z {.noInit.}: Fr[Banderwagon]
     z.fromInt(i)
     helperScalarDeno[i].diff(t_fr, z)
 
-  var helperScalarDeno_prime {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
+  var helperScalarDeno_prime {.noInit.}: array[EthVerkleDomain, Fr[Banderwagon]]
   helperScalarDeno_prime.batchInv_vartime(helperScalarDeno)
 
   # Compute g_2(t) = SUMMATION (y_i * r^i) / (t - z_i) = SUMMATION (y_i * r) * helperScalarDeno
   var g2t {.noInit.}: Fr[Banderwagon]
 
-  for i in 0 ..< VerkleDomain:
+  for i in 0 ..< EthVerkleDomain:
     let stat = groupedEvals[i].isZero()
     if stat.bool() == true:
       continue
@@ -283,12 +283,12 @@ func verifyMultiproof*[MultiProof](multiProof: var MultiProof, transcript : var 
 
 
   # Compute E = SUMMATION C_i * (r^i /  t - z_i) = SUMMATION C_i * MSM_SCALARS
-  var msmScalars {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
-  for i in 0 ..< VerkleDomain:
+  var msmScalars {.noInit.}: array[EthVerkleDomain, Fr[Banderwagon]]
+  for i in 0 ..< EthVerkleDomain:
     msmScalars[i].setZero()
 
-  var Csnp {.noInit.}: array[VerkleDomain, EC_P]
-  for i in 0 ..< VerkleDomain:
+  var Csnp {.noInit.}: array[EthVerkleDomain, EC_P]
+  for i in 0 ..< EthVerkleDomain:
     Csnp[i].setInf()
 
   for i in 0 ..< Cs.len:
@@ -297,13 +297,13 @@ func verifyMultiproof*[MultiProof](multiProof: var MultiProof, transcript : var 
 
   var E {.noInit.}: EC_P
 
-  var Csnp_aff {.noInit.}: array[VerkleDomain, EC_P_Aff]
+  var Csnp_aff {.noInit.}: array[EthVerkleDomain, EC_P_Aff]
   for i in 0 ..< Cs.len:
     Csnp_aff[i].affine(Csnp[i])
 
-  var msmScalars_big {.noInit.}: array[VerkleDomain, matchingOrderBigInt(Banderwagon)]
+  var msmScalars_big {.noInit.}: array[EthVerkleDomain, matchingOrderBigInt(Banderwagon)]
 
-  for i in 0 ..< VerkleDomain:
+  for i in 0 ..< EthVerkleDomain:
     msmScalars_big[i] = msmScalars[i].toBig()
 
   E.multiScalarMul_reference_vartime(msmScalars_big, Csnp_aff)
@@ -314,11 +314,7 @@ func verifyMultiproof*[MultiProof](multiProof: var MultiProof, transcript : var 
   EMinusD.diff(E, multiProof.D)
 
   var got {.noInit.}: EC_P
-  res = ipaSettings.checkIPAProof(transcript, got, EMinusD, multiProof.IPAprv, t_fr, g2t)
-  if res == false:
-    return res
-
-  return res
+  return ipaSettings.checkIPAProof(transcript, got, EMinusD, multiProof.IPAprv, t_fr, g2t)
 
 # ############################################################
 #

@@ -8,7 +8,9 @@
 
 import
   ../math/[ec_shortweierstrass, arithmetic],
-  ../math/elliptic/ec_multi_scalar_mul
+  ../math/elliptic/ec_multi_scalar_mul,
+  ../platforms/views
+
 
 ## ############################################################
 ##
@@ -19,11 +21,39 @@ import
 func pedersen_commit*[EC, ECaff](
       r: var EC,
       messages: openArray[Fr],
+      public_generators: openArray[ECaff]) {.inline.} =
+  ## Vector Pedersen Commitment with elliptic curves
+  ##
+  ## Inputs
+  ## - messages m=(m₀,...,mₙ₋₁)
+  ## - public generators G=(G₀,...,Gₙ₋₁)
+  ##
+  ## Computes: Commit(m, r) := ∑[mᵢ]Gᵢ
+  r.multiScalarMul_reference_vartime(messages, public_generators)
+
+func pedersen_commit*[EC, ECaff, F](
+      r: var EC,
+      messages: StridedView[F],
+      public_generators: StridedView[ECaff]) =
+  ## Vector Pedersen Commitment with elliptic curves
+  ##
+  ## Inputs
+  ## - messages m=(m₀,...,mₙ₋₁)
+  ## - public generators G=(G₀,...,Gₙ₋₁)
+  ##
+  ## Computes: Commit(m, r) := ∑[mᵢ]Gᵢ
+  r.pedersen_commit(messages.toOpenArray(), public_generators.toOpenArray())
+
+func pedersen_commit*[EC, ECaff](
+      r: var EC,
+      messages: openArray[Fr],
       public_generators: openArray[ECaff],
       blinding_factor: Fr,
       hiding_generator: ECaff) =
   ## Blinded Vector Pedersen Commitment with elliptic curves
-  ## - messages m=(m₀,...,mₙ₋₁)
+  ##
+  ## Inputs
+  ## - messages m=(m₀,...,mₙ₋₁)=(G₀,...,Gₙ₋₁)
   ## - public generators G
   ## - blinding factor r
   ## - hiding generator H
@@ -46,7 +76,7 @@ func pedersen_commit*[EC, ECaff](
   #
   # - https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
 
-  r.multiScalarMul_reference_vartime(messages, public_generators)
+  r.pedersen_commit(messages, public_generators)
 
   # We could run the following in MSM, but that would require extra alloc and copy
   var rH {.noInit.}: EC

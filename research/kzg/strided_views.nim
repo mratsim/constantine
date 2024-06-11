@@ -38,7 +38,10 @@ func `[]=`*[T](v: var View[T], idx: int, val: T) {.inline.} =
   cast[ptr UncheckedArray[T]](v.data)[v.offset + idx*v.stride] = val
 
 template toOpenArray*[T](v: View[T]): openArray[T] =
-  v.data.toOpenArray(0, v.len-1)
+  ## This casts the view to a linear openArray.
+  ## This is an error of the stride is not 1.
+  doAssert v.stride == 1, "Cannot cast to an openArray if the view does not have an unit stride."
+  v.data.toOpenArray(v.offset, v.offset+v.len-1)
 
 func toView*[T](oa: openArray[T]): View[T] {.inline.} =
   result.len = oa.len

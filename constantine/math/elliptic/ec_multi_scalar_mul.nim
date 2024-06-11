@@ -130,7 +130,7 @@ func multiScalarMul_reference_vartime*[bits: static int, EC, ECaff](
        N: int) {.tags:[VarTime, HeapAlloc].} =
   ## Multiscalar multiplication:
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ]Pₙ
-  multiScalarMul_reference_dispatch_vartime(r, coefs, points, len)
+  multiScalarMul_reference_dispatch_vartime(r, coefs, points, N)
 
 func multiScalarMul_reference_vartime*[EC, ECaff](r: var EC, coefs: openArray[BigInt], points: openArray[ECaff]) {.tags:[VarTime, HeapAlloc].} =
   ## Multiscalar multiplication:

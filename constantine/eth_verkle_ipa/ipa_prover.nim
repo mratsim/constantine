@@ -13,19 +13,20 @@
 # ############################################################
 
 import
-  ./[transcript_gen, common_utils, eth_verkle_constants, barycentric_form],
+  ./[transcript_gen, common_utils, eth_verkle_constants],
   ../platforms/primitives,
   ../hashes,
   ../serialization/[
     codecs_banderwagon,
     codecs_status_codes,
   ],
+  ../commitments/pedersen_commitments,
   ../math/config/[type_ff, curves],
-  ../math/elliptic/[ec_twistededwards_projective],
+  ../math/elliptic/[ec_twistededwards_affine, ec_twistededwards_projective],
+  ../math/polynomials/polynomials,
   ../math/arithmetic,
   ../math/io/io_fields,
-  ../../research/kzg/strided_views,
-  # ../platforms/[views],
+  ../platforms/views,
   ../curves_primitives
 
 # ############################################################
@@ -39,62 +40,44 @@ import
 
 # Further reference refer to this https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
 
-func genIPAConfig*(res: var IPASettings) : bool {.inline.} =
+func genIPAConfig*(res: var IPASettings) =
   # Initiates a new IPASettings
   # IPASettings has all the necessary information related to create an IPA proof
-  # such as SRS, precomputed weights for Barycentric formula
+  # such as crs, precomputed weights for Barycentric formula
 
   # The number of rounds for the prover and verifier must be in the IPA argument,
   # it should be log2 of the size of the input vectors for the IPA, since the vector size is halved on each round.
 
-  # genIPAConfig( ) generates the SRS, Q and the precomputed weights for barycentric formula. The SRS is generated
-  # as random points of the VerkleDomain where the relative discrete log is unknown between each generator.
-  var random_points: array[VerkleDomain, EC_P]
-  random_points.generate_random_points(uint64(VerkleDomain))
-  var q_val {.noInit.}: EC_P
-  q_val.fromAffine(Banderwagon.getGenerator())
-  var precomp {.noInit.}: PrecomputedWeights
-  precomp.newPrecomputedWeights()
-  var nr: uint32
-  nr.computeNumRounds(uint64(VerkleDomain))
+  # genIPAConfig( ) generates the crs, Q and the precomputed weights for barycentric formula. The crs is generated
+  # as random points of the EthVerkleDomain where the relative discrete log is unknown between each generator.
+  res.numRounds.computeNumRounds(uint64(EthVerkleDomain))
+  res.crs.generate_random_points()
+  res.domain.setupLinearEvaluationDomain()
 
-  res.numRounds = nr
-  res.Q_val = q_val
-  res.precompWeights = precomp
-  res.SRS = random_points
+func coverIPARounds*(
+      res: var IPAProof,
+      transcript: var CryptoHash,
+      ic: IPASettings,
+      a: openArray[Fr[Banderwagon]],
+      b: openArray[Fr[Banderwagon]],
+      cb_c: openArray[ECP_TwEdwards_Aff[Fp[Banderwagon]]],
+      q: EC_P,
+      idx: var int,
+      rounds: int): bool =
 
-  return true
+  let a_view = a.toStridedView()
+  let b_view = b.toStridedView()
+  let cur_view = cb_c.toStridedView()
 
-func populateCoefficientVector* (res: var openArray[Fr[Banderwagon]], ic: IPASettings, point: Fr[Banderwagon])=
-  var maxEvalPointInDomain {.noInit.}: Fr[Banderwagon]
-  maxEvalPointInDomain.fromInt(VerkleDomain - 1)
-
-  for i in 0 ..< res.len:
-    res[i].setZero()
-
-  if (maxEvalPointInDomain.toBig() < point.toBig()).bool == false:
-    let p = cast[int](point.toBig())
-    res[p].setOne()
-
-  else:
-    res.computeBarycentricCoefficients(ic.precompWeights, point)
-
-
-func coverIPARounds*(res: var IPAProof, transcript: var CryptoHash, ic: IPASettings, a: var openArray[Fr[Banderwagon]], b: var openArray[Fr[Banderwagon]], cb_c: var openArray[EC_P], q: EC_P, idx, rounds: var int): bool =
-
-  var a_view = a.toView()
-  var b_view = b.toView()
-  var cur_view = cb_c.toView()
-
-  var (a_L, a_R) = a_view.splitMiddle()
-  var (b_L, b_R) = b_view.splitMiddle()
-  var (G_L, G_R) = cur_view.splitMiddle()
+  let (a_L, a_R) = a_view.splitMiddle()
+  let (b_L, b_R) = b_view.splitMiddle()
+  let (G_L, G_R) = cur_view.splitMiddle()
 
   var z_L {.noInit.}: Fr[Banderwagon]
-  z_L.computeInnerProducts(a_R.toOpenArray(), b_L.toOpenArray())
+  z_L.computeInnerProducts(a_R, b_L)
 
   var z_R {.noInit.}: Fr[Banderwagon]
-  z_R.computeInnerProducts(a_L.toOpenArray(), b_R.toOpenArray())
+  z_R.computeInnerProducts(a_L, b_R)
 
   var C_L {.noInit.} = q
   C_L.scalarMul_vartime(z_L)
@@ -103,7 +86,7 @@ func coverIPARounds*(res: var IPAProof, transcript: var CryptoHash, ic: IPASetti
   C_L_1.x.setZero()
   C_L_1.y.setZero()
   C_L_1.z.setOne()
-  C_L_1.pedersen_commit_varbasis(G_L.toOpenArray(), G_L.len, a_R.toOpenArray(), a_R.len)
+  C_L_1.pedersen_commit(a_R, G_L)
   C_L += C_L_1
 
   var C_R {.noInit.} = q
@@ -113,7 +96,7 @@ func coverIPARounds*(res: var IPAProof, transcript: var CryptoHash, ic: IPASetti
   C_R_1.x.setZero()
   C_R_1.y.setZero()
   C_R_1.z.setOne()
-  C_R_1.pedersen_commit_varbasis(G_R.toOpenArray(), G_R.len, a_L.toOpenArray(), a_L.len)
+  C_R_1.pedersen_commit(a_L, G_R)
   C_R += C_R_1
 
   res.L_vector[idx] = C_L
@@ -133,7 +116,7 @@ func coverIPARounds*(res: var IPAProof, transcript: var CryptoHash, ic: IPASetti
   xInv.inv(x)
 
   var ai, bi = newSeq[Fr[Banderwagon]](a_L.len)
-  var gi = newSeq[EC_P](a_L.len)
+  var gi = newSeq[ECP_TwEdwards_Aff[Fp[Banderwagon]]](a_L.len)
 
   ai.foldScalars(a_L, a_R, x)
   bi.foldScalars(b_L, b_R, xInv)
@@ -147,7 +130,13 @@ func coverIPARounds*(res: var IPAProof, transcript: var CryptoHash, ic: IPASetti
   coverIPARounds(res, transcript, ic, ai, bi, gi, q, idx, rounds)
 
 
-func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var CryptoHash, ic: IPASettings, commitment: EC_P, a: var openArray[Fr[Banderwagon]], evalPoint: Fr[Banderwagon]) : bool =
+func createIPAProof*[IPAProof](
+      res: var IPAProof,
+      transcript: var CryptoHash,
+      ic: IPASettings,
+      commitment: EC_P,
+      a: var openArray[Fr[Banderwagon]],
+      evalPoint: Fr[Banderwagon]) : bool =
   ## createIPAProof creates an IPA proof for a committed polynomial in evaluation form.
   ## `a` vectors are the evaluation points in the domain, and `evalPoint` represents the evaluation point.
 
@@ -155,8 +144,8 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var CryptoHash, i
   #       hence we need to investigate why initialization may be incomplete.
 
   transcript.domain_separator(asBytes"ipa")
-  var b: array[VerkleDomain, Fr[Banderwagon]]
-  b.populateCoefficientVector(ic, evalPoint)
+  var b: array[EthVerkleDomain, Fr[Banderwagon]]
+  b.getLagrangeBasisPolysAt(ic.domain, evalPoint)
 
   var innerProd {.noInit.}: Fr[Banderwagon]
   innerProd.computeInnerProducts(a, b)
@@ -168,19 +157,15 @@ func createIPAProof*[IPAProof] (res: var IPAProof, transcript: var CryptoHash, i
   var w {.noInit.}: matchingOrderBigInt(Banderwagon)
   w.generateChallengeScalar(transcript, asBytes"w")
 
-  var q {.noInit.}: EC_P
-  q = ic.Q_val
+  var q {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+  q.fromAffine(Banderwagon.getGenerator())
   q.scalarMul_vartime(w)
-
-  var cb_c: array[VerkleDomain, EC_P]
-  for i in 0 ..< VerkleDomain:
-    cb_c[i] = ic.SRS[i]
 
   var idx = 0
   var num_rounds = 8
   # 0-indexed
 
-  discard coverIPARounds(res, transcript, ic, a, b, cb_c, q, idx, num_rounds)
+  discard coverIPARounds(res, transcript, ic, a, b, ic.crs, q, idx, num_rounds)
 
   return true
 
@@ -331,7 +316,7 @@ func deserializeVerkleIPAProof* (dst: var IPAProof, src: var VerkleIPAProofSeria
 #
 # ############################################################
 
-func isIPAProofEqual* (p1: IPAProof, p2: IPAProof) : bool =
+func `==`* (p1: IPAProof, p2: IPAProof) : bool =
   var res {.noInit.}: bool
   const num_rounds = 8
   res = true

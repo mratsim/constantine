@@ -17,9 +17,7 @@ import
   ../math/config/curves,
   ../math/elliptic/[
     ec_twistededwards_affine,
-    ec_twistededwards_projective,
-    ec_twistededwards_batch_ops
-  ],
+    ec_twistededwards_projective],
   ../math/arithmetic/limbs_montgomery,
   ../math/[
     arithmetic/bigints,
@@ -29,10 +27,6 @@ import
   ],
   ../math/io/[io_bigints, io_fields],
   ./codecs_status_codes
-
-type
-  EC_Prj* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
-  EC_Aff* = ECP_TwEdwards_Aff[Fp[Banderwagon]]
 
 # Input validation
 # ------------------------------------------------------------------------------------------------
@@ -65,7 +59,7 @@ func make_scalar_mod_order*(reduced_scalar: var Fr[Banderwagon], src: array[32, 
   res = true
   return res
 
-func serialize*(dst: var array[32, byte], P: EC_Prj): CttCodecEccStatus =
+func serialize*(dst: var array[32, byte], P: ECP_TwEdwards_Aff[Fp[Banderwagon]]): CttCodecEccStatus =
   ## Serialize a Banderwagon point(x, y) in the format
   ##
   ## serialize = bigEndian( sign(y) * x )
@@ -82,19 +76,30 @@ func serialize*(dst: var array[32, byte], P: EC_Prj): CttCodecEccStatus =
       dst[i] = byte 0
     return cttCodecEcc_Success
 
-  # Convert the projective points into affine format before encoding
-  var aff {.noInit.}: EC_Aff
-  aff.affine(P)
-
-  let lexicographicallyLargest = aff.y.toBig() >= Fp[Banderwagon].getPrimeMinus1div2()
-
-  if not lexicographicallyLargest.bool():
-    aff.x.neg()
-
-  dst.marshal(aff.x, bigEndian)
+  let lexicographicallyLargest = P.y.toBig() >= Fp[Banderwagon].getPrimeMinus1div2()
+  var X = P.x
+  X.cneg(not lexicographicallyLargest)
+  dst.marshal(X, bigEndian)
   return cttCodecEcc_Success
 
-func deserialize_unchecked*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccStatus =
+func serialize*(dst: var array[32, byte], P: ECP_TwEdwards_Prj[Fp[Banderwagon]]): CttCodecEccStatus =
+  ## Serialize a Banderwagon point(x, y) in the format
+  ##
+  ## serialize = bigEndian( sign(y) * x )
+  ## If y is not lexicographically largest
+  ## set x -> -x
+  ## then serialize
+  ##
+  ## Returns cttCodecEcc_Success if successful
+  ## Spec: https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Serialisation
+
+  # Convert the projective points into affine format before encoding
+  var aff {.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+  aff.affine(P)
+
+  return dst.serialize(aff)
+
+func deserialize_unchecked*(dst: var ECP_TwEdwards_Prj[Fp[Banderwagon]], src: array[32, byte]): CttCodecEccStatus =
   ## Deserialize a Banderwagon point (x, y) in format
   ##
   ## if y is not lexicographically largest
@@ -130,7 +135,7 @@ func deserialize_unchecked*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccS
 
   return cttCodecEcc_Success
 
-func deserialize_unchecked_vartime*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccStatus =
+func deserialize_unchecked_vartime*(dst: var ECP_TwEdwards_Prj[Fp[Banderwagon]], src: array[32, byte]): CttCodecEccStatus =
   ## This is not in constant-time
   ## Deserialize a Banderwagon point (x, y) in format
   ##
@@ -167,7 +172,7 @@ func deserialize_unchecked_vartime*(dst: var EC_Prj, src: array[32, byte]): CttC
 
   return cttCodecEcc_Success
 
-func deserialize*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccStatus =
+func deserialize*(dst: var ECP_TwEdwards_Prj[Fp[Banderwagon]], src: array[32, byte]): CttCodecEccStatus =
   ## Deserialize a Banderwagon point (x, y) in format
   ##
   ## Also checks if the point lies in the banderwagon scheme subgroup
@@ -183,7 +188,7 @@ func deserialize*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccStatus =
 
   return cttCodecEcc_Success
 
-func deserialize_vartime*(dst: var EC_Prj, src: array[32, byte]): CttCodecEccStatus =
+func deserialize_vartime*(dst: var ECP_TwEdwards_Prj[Fp[Banderwagon]], src: array[32, byte]): CttCodecEccStatus =
   ## Deserialize a Banderwagon point (x, y) in format
   ##
   ## Also checks if the point lies in the banderwagon scheme subgroup
@@ -252,7 +257,7 @@ func deserialize_scalar_mod_order* (dst: var Fr[Banderwagon], src: array[32, byt
 
 func serializeBatch*(
     dst: ptr UncheckedArray[array[32, byte]],
-    points: ptr UncheckedArray[EC_Prj],
+    points: ptr UncheckedArray[ECP_TwEdwards_Prj[Fp[Banderwagon]]],
     N: int,
   ) : CttCodecEccStatus {.noInline.} =
 
@@ -281,9 +286,8 @@ func serializeBatch*(
 
 func serializeBatchUncompressed*(
     dst: ptr UncheckedArray[array[64, byte]],
-    points: ptr UncheckedArray[EC_Prj],
-    N: int,
-  ) : CttCodecEccStatus {.noInline.} =
+    points: ptr UncheckedArray[ECP_TwEdwards_Prj[Fp[Banderwagon]]],
+    N: int) : CttCodecEccStatus {.noInline.} =
   ## Batch Serialization of Banderwagon Points
   ## In uncompressed format
   ## serialize = [ bigEndian( x ) , bigEndian( y ) ]
@@ -317,12 +321,12 @@ func serializeBatchUncompressed*(
 
 func serializeBatchUncompressed*[N: static int](
         dst: var array[N, array[64, byte]],
-        points: array[N, EC_Prj]): CttCodecEccStatus {.inline.} =
+        points: array[N, ECP_TwEdwards_Prj[Fp[Banderwagon]]]): CttCodecEccStatus {.inline.} =
   return serializeBatchUncompressed(dst.asUnchecked(), points.asUnchecked(), N)
 
 func serializeBatch*[N: static int](
         dst: var array[N, array[32, byte]],
-        points: array[N, EC_Prj]): CttCodecEccStatus {.inline.} =
+        points: array[N, ECP_TwEdwards_Prj[Fp[Banderwagon]]]): CttCodecEccStatus {.inline.} =
   return serializeBatch(dst.asUnchecked(), points.asUnchecked(), N)
 
 
@@ -332,13 +336,13 @@ func serializeBatch*[N: static int](
 ##
 ## ############################################################
 
-func serializeUncompressed*(dst: var array[64, byte], P: EC_Prj): CttCodecEccStatus =
+func serializeUncompressed*(dst: var array[64, byte], P: ECP_TwEdwards_Prj[Fp[Banderwagon]]): CttCodecEccStatus =
   ## Serialize a Banderwagon point(x, y) in the format
   ##
   ## serialize = [ bigEndian( x ) , bigEndian( y ) ]
   ##
   ## Returns cttCodecEcc_Success if successful
-  var aff {.noInit.}: EC_Aff
+  var aff {.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
   aff.affine(P)
 
   var xSerialized: array[32, byte]
@@ -352,7 +356,7 @@ func serializeUncompressed*(dst: var array[64, byte], P: EC_Prj): CttCodecEccSta
 
   return cttCodecEcc_Success
 
-func deserializeUncompressed_unchecked*(dst: var EC_Prj, src: array[64, byte]): CttCodecEccStatus =
+func deserializeUncompressed_unchecked*(dst: var ECP_TwEdwards_Prj[Fp[Banderwagon]], src: array[64, byte]): CttCodecEccStatus =
   ## Deserialize a Banderwagon point (x, y) in format
   ## Doesn't check if the point is in the banderwagon scheme subgroup
   ## Returns cttCodecEcc_Success if successful
@@ -378,7 +382,7 @@ func deserializeUncompressed_unchecked*(dst: var EC_Prj, src: array[64, byte]): 
   dst.y.fromBig(t)
   return cttCodecEcc_Success
 
-func deserializeUncompressed*(dst: var EC_Prj, src: array[64, byte]): CttCodecEccStatus =
+func deserializeUncompressed*(dst: var ECP_TwEdwards_Prj[Fp[Banderwagon]], src: array[64, byte]): CttCodecEccStatus =
   ## Deserialize a Banderwagon point (x, y) in format
   ##
   ## Also checks if the point lies in the banderwagon scheme subgroup

@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ./[transcript_gen, common_utils, barycentric_form, eth_verkle_constants, ipa_prover],
+  ./[transcript_gen, common_utils, eth_verkle_constants, ipa_prover],
   ../platforms/primitives,
   ../math/config/[type_ff, curves],
   ../hashes,
@@ -43,9 +43,9 @@ func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, got: var EC_P,
   debug: doAssert (proof.L_vector.len == int(ic.numRounds)), "Proof length and num round unequal!"
 
 
-  var b {.noInit.}: array[VerkleDomain, Fr[Banderwagon]]
+  var b {.noInit.}: array[EthVerkleDomain, Fr[Banderwagon]]
   # b.computeBarycentricCoefficients(ic.precompWeights,evalPoint)
-  b.populateCoefficientVector(ic, evalPoint)
+  b.getLagrangeBasisPolysAt(ic.domain, evalPoint)
 
   transcript.pointAppend(asBytes"C", commitment)
   transcript.scalarAppend(asBytes"input point", evalPoint.toBig())
@@ -55,7 +55,8 @@ func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, got: var EC_P,
   w.generateChallengeScalar(transcript,asBytes"w")
 
   # Rescaling of q read https://hackmd.io/mJeCRcawTRqr9BooVpHv5g#Re-defining-the-quotient
-  var q {.noInit.} = ic.Q_val
+  var q {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+  q.fromAffine(Banderwagon.getGenerator())
   q.scalarMul_vartime(w)
 
   var qy {.noInit.} = q
@@ -91,14 +92,11 @@ func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, got: var EC_P,
     p22[1] = x
     p22[2] = challengesInv[i]
 
-    commitment.pedersen_commit_varbasis(p11, p11.len, p22, p22.len)
+    commitment.pedersen_commit(p22, p11)
 
-  var g {.noInit.}: array[VerkleDomain, EC_P]
-  g = ic.SRS
+  var foldingScalars {.noInit.}: array[EthVerkleDomain, Fr[Banderwagon]]
 
-  var foldingScalars {.noInit.}: array[g.len, Fr[Banderwagon]]
-
-  for i in 0 ..< g.len:
+  for i in 0 ..< EthVerkleDomain:
     var scalar {.noInit.} : Fr[Banderwagon]
     scalar.setOne()
 
@@ -111,18 +109,13 @@ func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, got: var EC_P,
 
   var g0 {.noInit.}: EC_P
 
-  var foldingScalars_big {.noInit.} : array[g.len,matchingOrderBigInt(Banderwagon)]
+  var foldingScalars_big {.noInit.} : array[EthVerkleDomain, matchingOrderBigInt(Banderwagon)]
 
-  for i in 0 ..< VerkleDomain:
+  for i in 0 ..< EthVerkleDomain:
     foldingScalars_big[i] = foldingScalars[i].toBig()
 
-  var g_aff {.noInit.} : array[VerkleDomain, EC_P_Aff]
-
-  for i in 0 ..< VerkleDomain:
-    g_aff[i].affine(g[i])
-
   # TODO, use optimized MSM - pending fix for https://github.com/mratsim/constantine/issues/390
-  g0.multiScalarMul_reference_vartime(foldingScalars_big, g_aff)
+  g0.multiScalarMul_reference_vartime(foldingScalars_big, ic.crs)
 
   var b0 {.noInit.} : Fr[Banderwagon]
   b0.computeInnerProducts(b, foldingScalars)

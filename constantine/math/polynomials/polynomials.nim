@@ -434,6 +434,7 @@ func evalPolyAt*[N: static int, Field](
       var t {.noInit.}: Field
       t.prod(poly.evals[i], domain.vanishing_deriv_poly_eval_inv.evals[i])
       t *= invZminusDomain[i]
+      r += t
 
     var az {.noInit.}: Field
     az.evalVanishingPolyAt(domain.domain, z)
@@ -444,7 +445,7 @@ func evalPolyAt*[N: static int, Field](
 
   freeHeapAligned(invZminusDomain)
 
-func evalLagrangeBasisPolysAt*[N: static int, Field](
+func getLagrangeBasisPolysAt*[N: static int, Field](
       lagrangePolys: var array[N, Field],
       domain: PolyEvalDomain[N, Field],
       z: Field) =
@@ -493,17 +494,16 @@ func evalLagrangeBasisPolysAt*[N: static int, Field](
 
     for i in 0 ..< N:
       # A(z).1/A'(xᵢ).1/(z-xᵢ)
-      var t {.noInit.}: Field
-      lagrangePolys.prod(az, invZminusDomain[i])
-      lagrangePolys *= domain.vanishing_deriv_poly_eval_inv.evals[i]
+      lagrangePolys[i].prod(az, invZminusDomain[i])
+      lagrangePolys[i] *= domain.vanishing_deriv_poly_eval_inv.evals[i]
   else:
     # We're on one of point of the domain
     # All lagrange basis polynomials are 0 except one that is 1.
     for i in 0 ..< N:
       if zIndex != i:
-        lagrangePolys.setZero()
+        lagrangePolys[i].setZero()
       else:
-        lagrangePolys.setOne()
+        lagrangePolys[i].setOne()
 
   freeHeapAligned(invZminusDomain)
 
@@ -511,11 +511,24 @@ func evalLagrangeBasisPolysAt*[N: static int, Field](
 #   Domain = linear [0, 1, ..., N-1]
 # ------------------------------------------------------
 
+func evalPolyAt*[N: static int, Field](
+       r: var Field,
+       poly: PolynomialEval[N, Field],
+       lindom: PolyEvalLinearDomain[N, Field],
+       z: Field) =
+  r.evalPolyAt(poly, lindom.dom, z)
+
+func getLagrangeBasisPolysAt*[N: static int, Field](
+      lagrangePolys: var array[N, Field],
+      lindom: PolyEvalLinearDomain[N, Field],
+      z: Field) =
+  lagrangePolys.getLagrangeBasisPolysAt(lindom.dom, z)
+
 func differenceQuotientEvalInDomain*[N: static int, Field](
        r: var PolynomialEval[N, Field],
        poly: PolynomialEval[N, Field],
        zIndex: uint32,
-       lindom: PolyEvalDomain[N, Field]) =
+       lindom: PolyEvalLinearDomain[N, Field]) =
   ## Compute r(x) = (p(x) - p(z)) / (x - z)
   ##
   ## for z = xᵢ, one of the element in the domain.
@@ -569,23 +582,22 @@ func differenceQuotientEvalInDomain*[N: static int, Field](
     )
     r.evals[zIndex] -= ri
 
-func setupEvaluationDomain*[N: static int, Field](
+func setupLinearEvaluationDomain*[N: static int, Field](
       lindom: var PolyEvalLinearDomain[N, Field]) =
   ## Configure a linear evaluation domain [0, ..., n-1]
   ## for computation with polynomials in barycentric Lagrange form
 
   for i in 0'u32 ..< N:
-    lindom.dom.domain.fromInt(i)
+    lindom.dom.domain[i].fromInt(i)
 
-  for i in 0'u32 ..< N:
-    lindom.dom.vanishing_deriv_poly_eval
+  for i in 0 ..< N:
+    lindom.dom.vanishing_deriv_poly_eval.evals[i]
               .evalVanishingPolyDerivativeAtRoot(
                 lindom.dom.domain,
-                i
-              )
+                i)
 
   lindom.domain_inverses
     .batchInv_vartime(lindom.dom.domain)
 
-  lindom.dom.vanishing_deriv_poly_eval_inv
-    .batchInv_vartime(lindom.dom.vanishing_deriv_poly_eval)
+  lindom.dom.vanishing_deriv_poly_eval_inv.evals
+    .batchInv_vartime(lindom.dom.vanishing_deriv_poly_eval.evals)

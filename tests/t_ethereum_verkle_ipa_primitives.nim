@@ -9,7 +9,6 @@
 import
   ./t_ethereum_verkle_ipa_test_helper,
   ../constantine/eth_verkle_ipa/[
-      barycentric_form,
       eth_verkle_constants,
       transcript_gen,
       common_utils,
@@ -25,11 +24,13 @@ import
     ],
   ../constantine/math/config/[type_ff, curves],
   ../constantine/math/elliptic/[
-    ec_twistededwards_projective
-    ],
+    ec_twistededwards_affine,
+    ec_twistededwards_projective],
   ../constantine/math/io/[io_fields, io_bigints],
   ../constantine/math/arithmetic,
+  ../constantine/math/polynomials/polynomials,
   ../constantine/math/constants/zoo_generators,
+  ../constantine/commitments/pedersen_commitments,
   ../tests/math_elliptic_curves/t_ec_template,
   ../constantine/ethereum_verkle_primitives,
   ../constantine/platforms/abstractions
@@ -47,17 +48,6 @@ import
 var generator = Banderwagon.getGenerator()
 
 suite "Barycentric Form Tests":
-
-  test "Testing absolute integers":
-
-    proc testAbsInteger() =
-        var abs {.noInit.} : int
-        abs.absIntChecker(-100)
-        doAssert (abs == 100).bool() == true, "Absolute value should be 100!"
-        doAssert (abs < 0).bool() == false, "Value was negative!"
-
-    testAbsInteger()
-
   # The interpolation is only needed for testing purposes,
   # but we need to check if it's correct. It's equivalent to getting
   # the polynomial in coefficient form for a large number of points
@@ -103,34 +93,20 @@ suite "Barycentric Form Tests":
 
         var testVals: array[10, int] = [1,2,3,4,5,6,7,8,9,10]
 
-        var lagrange_values: array[256, Fr[Banderwagon]]
-        lagrange_values.testPoly256(testVals)
+        var lagrange_values: PolynomialEval[256, Fr[Banderwagon]]
+        lagrange_values.evals.testPoly256(testVals)
 
-        var precomp {.noInit.}: PrecomputedWeights
-        precomp.newPrecomputedWeights()
+        var lindom: PolyEvalLinearDomain[256, Fr[Banderwagon]]
+        lindom.setupLinearEvaluationDomain()
 
         var bar_coeffs {.noInit.}: array[256, Fr[Banderwagon]]
-        bar_coeffs.computeBarycentricCoefficients(precomp, p_outside_dom)
+        bar_coeffs.getLagrangeBasisPolysAt(lindom, p_outside_dom)
 
         var expected0: Fr[Banderwagon]
-        expected0.computeInnerProducts(lagrange_values, bar_coeffs)
+        expected0.computeInnerProducts(lagrange_values.evals, bar_coeffs)
 
         var expected1: Fr[Banderwagon]
-        expected1.evalOutsideDomain(precomp, lagrange_values, p_outside_dom)
-
-        var points: array[VerkleDomain, Coord]
-        for k in 0 ..< 256:
-            var x_fr: Fr[Banderwagon]
-            x_fr.fromInt(k)
-
-            var point {.noInit.}: Coord
-            point.x = x_fr
-            point.y = lagrange_values[k]
-
-            discard x_fr
-            points[k] = point
-
-        discard lagrange_values
+        expected1.evalPolyAt(lagrange_values, lindom, p_outside_dom)
 
         # testing with a no-precompute optimized Lagrange Interpolation value from Go-IPA
         doAssert expected0.toHex(littleEndian) == "0x50b9c3b3c42a06347e58d8d33047a7f8868965703567100657aceaf429562d04", "Barycentric Precompute and Lagrange should NOT give different values"
@@ -142,29 +118,42 @@ suite "Barycentric Form Tests":
 
       proc testDivideOnDomain()=
 
-        var points: array[VerkleDomain, Coord]
-        for k in 0 ..< VerkleDomain:
+        func eval_f(x: Fr[Banderwagon]): Fr[Banderwagon] =
+          # f is (X-1)(X+1)(X^253)
+          var tmpa {.noInit.}: Fr[Banderwagon]
+          var one {.noInit.}: Fr[Banderwagon]
+          one.setOne()
+          tmpa.diff(x, one)
+
+          var tmpb {.noInit.}: Fr[Banderwagon]
+          tmpb.sum(x, one)
+
+          var tmpc = one
+          for i in 0 ..< 253:
+            tmpc *= x
+
+          result.prod(tmpa, tmpb)
+          result *= tmpc
+
+        var points: array[EthVerkleDomain, Coord]
+        for k in 0 ..< EthVerkleDomain:
           var x: Fr[Banderwagon]
           x.fromInt(k)
 
           points[k].x = x
-          var res: Fr[Banderwagon]
-          res.evalFunc(x)
-          points[k].y = res
+          points[k].y = eval_f(x)
 
-        var precomp {.noInit.}: PrecomputedWeights
-        precomp.newPrecomputedWeights()
+        var lindom: PolyEvalLinearDomain[256, Fr[Banderwagon]]
+        lindom.setupLinearEvaluationDomain()
 
-        var indx = uint8(1)
+        var evaluations: PolynomialEval[EthVerkleDomain, Fr[Banderwagon]]
+        for i in 0 ..< EthVerkleDomain:
+          evaluations.evals[i] = points[i].y
 
-        var evaluations: array[VerkleDomain, Fr[Banderwagon]]
-        for i in 0 ..< VerkleDomain:
-          evaluations[i] = points[i].y
+        var quotient: PolynomialEval[EthVerkleDomain, Fr[Banderwagon]]
+        quotient.differenceQuotientEvalInDomain(evaluations, zIndex = 1, lindom)
 
-        var quotient: array[VerkleDomain, Fr[Banderwagon]]
-        quotient.divisionOnDomain(precomp, indx, evaluations)
-
-        doAssert quotient[255].toHex(littleEndian) == "0x616b0e203a877177e2090013a77ce4ea8726941aac613b532002f3653d54250b", "Issue with Divide on Domain using Barycentric Precomputes!"
+        doAssert quotient.evals[255].toHex(littleEndian) == "0x616b0e203a877177e2090013a77ce4ea8726941aac613b532002f3653d54250b", "Issue with Divide on Domain using Barycentric Precomputes!"
 
       testDivideOnDomain()
 
@@ -182,16 +171,17 @@ suite "Random Elements Generation and CRS Consistency":
 
     proc testGenPoints()=
       var ipaConfig {.noInit.}: IPASettings
-      discard ipaConfig.genIPAConfig()
+      ipaConfig.genIPAConfig()
 
-      var basisPoints {.noInit.}: array[256, EC_P]
-      basisPoints.generate_random_points(256)
+      var basisPoints {.noInit.}: array[256, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+      basisPoints.generate_random_points()
 
-      var arr_byte {.noInit.}: array[256, array[32, byte]]
-      discard arr_byte.serializeBatch(basisPoints)
+      var p0 {.noInit.}, p255 {.noInit.}: array[32, byte]
+      discard p0.serialize(ipaConfig.crs[0])
+      discard p255.serialize(ipaConfig.crs[255])
 
-      doAssert arr_byte[0].toHex() == "0x01587ad1336675eb912550ec2a28eb8923b824b490dd2ba82e48f14590a298a0", "Failed to generate the 1st point!"
-      doAssert arr_byte[255].toHex() == "0x3de2be346b539395b0c0de56a5ccca54a317f1b5c80107b0802af9a62276a4d8", "Failed to generate the 256th point!"
+      doAssert p0.toHex() == "0x01587ad1336675eb912550ec2a28eb8923b824b490dd2ba82e48f14590a298a0", "Failed to generate the 1st point!"
+      doAssert p255.toHex() == "0x3de2be346b539395b0c0de56a5ccca54a317f1b5c80107b0802af9a62276a4d8", "Failed to generate the 256th point!"
 
     testGenPoints()
 
@@ -207,10 +197,10 @@ suite "Computing the Correct Vector Commitment":
   test "Test for Vector Commitments from Verkle Test Vectors by @Ignacio":
     proc testVectorComm() =
       var ipaConfig: IPASettings
-      discard ipaConfig.genIPAConfig()
+      ipaConfig.genIPAConfig()
 
-      var basisPoints: array[256, EC_P]
-      basisPoints.generate_random_points(256)
+      var basisPoints: array[256, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+      basisPoints.generate_random_points()
 
 
       var test_scalars {.noInit.}: array[256, Fr[Banderwagon]]
@@ -218,7 +208,7 @@ suite "Computing the Correct Vector Commitment":
         test_scalars[i].fromHex(testScalarsHex[i])
 
       var commitment {.noInit.}: EC_P
-      commitment.pedersen_commit_varbasis(basisPoints, basisPoints.len, test_scalars, test_scalars.len)
+      commitment.pedersen_commit(test_scalars, basisPoints)
 
       var arr22 {.noInit.}: Bytes
       discard arr22.serialize(commitment)
@@ -343,7 +333,7 @@ suite "Transcript Tests":
 
     testVec1()
 
-  test "Transcript testing with repititive append of scalars, thereby a compound challenge scalar":
+  test "Transcript testing with repetitive append of scalars, thereby a compound challenge scalar":
     proc testVec2()=
 
       # Initializing a new transcript state
@@ -435,13 +425,6 @@ suite "Transcript Tests":
 # ############################################################
 
 suite "IPA proof tests":
-  test "Test for initiating IPA proof configuration":
-    proc testMain()=
-      var ipaConfig: IPASettings
-      let stat1 = ipaConfig.genIPAConfig()
-      doAssert stat1 == true, "Could not generate new IPA Config properly!"
-    testMain()
-
   test "Verify IPA Proof inside the domain by @Ignacio":
     proc testIPAProofInDomain()=
 
@@ -464,7 +447,7 @@ suite "IPA proof tests":
       discard proof.deserializeVerkleIPAProof(serializedIPAProof)
 
       var ipaConfig: IPASettings
-      discard ipaConfig.genIPAConfig()
+      ipaConfig.genIPAConfig()
 
       var tr {.noInit.}: sha256
       tr.newTranscriptGen(asBytes"ipa")
@@ -498,13 +481,13 @@ suite "IPA proof tests":
       poly.testPoly256(testVals)
 
       var ipaConfig {.noInit.}: IPASettings
-      discard ipaConfig.genIPAConfig()
+      ipaConfig.genIPAConfig()
 
       var prover_transcript {.noInit.}: sha256
       prover_transcript.newTranscriptGen(asBytes"test")
 
       var prover_comm: EC_P
-      prover_comm.pedersen_commit_varbasis(ipaConfig.SRS, ipaConfig.SRS.len, poly, poly.len)
+      prover_comm.pedersen_commit(poly, ipaConfig.crs)
 
       var pcb {.noInit.}: array[32, byte]
       discard pcb.serialize(prover_comm)
@@ -516,7 +499,7 @@ suite "IPA proof tests":
       doAssert stat11 == true, "Problem creating IPA proof 1"
 
       var lagrange_coeffs: array[256, Fr[Banderwagon]]
-      lagrange_coeffs.computeBarycentricCoefficients(ipaConfig.precompWeights, point)
+      lagrange_coeffs.getLagrangeBasisPolysAt(ipaConfig.domain, point)
 
       var op_point: Fr[Banderwagon]
       op_point.computeInnerProducts(lagrange_coeffs, poly)
@@ -541,16 +524,10 @@ suite "IPA proof tests":
       poly.testPoly256(testVals)
 
       var ipaConfig {.noInit.}: IPASettings
-      discard ipaConfig.genIPAConfig()
-
-      var arr_byte {.noInit.}: array[256, array[32, byte]]
-      discard arr_byte.serializeBatch(ipaConfig.SRS)
-
-      doAssert arr_byte[0].toHex() == "0x01587ad1336675eb912550ec2a28eb8923b824b490dd2ba82e48f14590a298a0", "Failed to generate the 1st point!"
-      doAssert arr_byte[255].toHex() == "0x3de2be346b539395b0c0de56a5ccca54a317f1b5c80107b0802af9a62276a4d8", "Failed to generate the 256th point!"
+      ipaConfig.genIPAConfig()
 
       var prover_comm: EC_P
-      prover_comm.pedersen_commit_varbasis(ipaConfig.SRS, ipaConfig.SRS.len, poly, poly.len)
+      prover_comm.pedersen_commit(poly, ipaConfig.crs)
 
       var ipaProof1 {.noInit.}: IPAProof
       let stat11 = ipaProof1.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
@@ -563,10 +540,7 @@ suite "IPA proof tests":
       point2.fromInt(123456789)
 
       var ipaConfig2 {.noInit.}: IPASettings
-      discard ipaConfig2.genIPAConfig()
-
-      var testGeneratedPoints2: array[256, EC_P]
-      testGeneratedPoints2.generate_random_points(256)
+      ipaConfig2.genIPAConfig()
 
       var prover_transcript2 {.noInit.}: sha256
       prover_transcript2.newTranscriptGen(asBytes"ipa")
@@ -576,15 +550,13 @@ suite "IPA proof tests":
       poly2.testPoly256(testVals2)
 
       var prover_comm2 {.noInit.}: EC_P
-      prover_comm2.pedersen_commit_varbasis(testGeneratedPoints2,testGeneratedPoints2.len, poly2, poly2.len)
+      prover_comm2.pedersen_commit(poly2, ipaConfig.crs)
 
       var ipaProof2 {.noInit.}: IPAProof
       let stat22 = ipaProof2.createIPAProof(prover_transcript2, ipaConfig, prover_comm, poly, point)
       doAssert stat22 == true, "Problem creating IPA proof 2"
 
-      var stat33 = false
-      stat33 = ipaProof1.isIPAProofEqual(ipaProof2)
-      doAssert stat33 == true, "IPA proofs aren't equal"
+      doAssert ipaProof1 == ipaProof2, "IPA proofs aren't equal"
 
     testIPAProofEquality()
 
@@ -592,10 +564,7 @@ suite "IPA proof tests":
       proc testIPAProofCreateAndVerify()=
         var point {.noInit.}: Fr[Banderwagon]
         var ipaConfig {.noInit.}: IPASettings
-        discard ipaConfig.genIPAConfig()
-
-        var testGeneratedPoints: array[256,EC_P]
-        testGeneratedPoints.generate_random_points(256)
+        ipaConfig.genIPAConfig()
 
         # from a shared view
         point.fromInt(123456789)
@@ -606,7 +575,7 @@ suite "IPA proof tests":
         poly.testPoly256(testVals)
 
         var prover_comm {.noInit.}: EC_P
-        prover_comm.pedersen_commit_varbasis(testGeneratedPoints, testGeneratedPoints.len,  poly, poly.len)
+        prover_comm.pedersen_commit(poly, ipaConfig.crs)
 
         var prover_transcript {.noInit.}: sha256
         prover_transcript.newTranscriptGen(asBytes"ipa")
@@ -615,12 +584,8 @@ suite "IPA proof tests":
         let stat = ipaProof.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
         doAssert stat == true, "Problem creating IPA proof"
 
-        var precomp {.noInit.}: PrecomputedWeights
-
-        precomp.newPrecomputedWeights()
-        var lagrange_coeffs : array[VerkleDomain, Fr[Banderwagon]]
-
-        lagrange_coeffs.computeBarycentricCoefficients(precomp, point)
+        var lagrange_coeffs : array[EthVerkleDomain, Fr[Banderwagon]]
+        lagrange_coeffs.getLagrangeBasisPolysAt(ipaConfig.domain, point)
 
         var innerProd : Fr[Banderwagon]
         innerProd.computeInnerProducts(poly, lagrange_coeffs)
@@ -650,18 +615,11 @@ suite "IPA proof tests":
 #       to not incur stack overflow on Windows as its stack size is 1MB per default compared to UNIXes 8MB.
 
 suite "Multiproof Tests":
-  test "IPA Config test for Multiproofs":
-    proc testIPAConfigForMultiproofs()=
-      var ipaConfig: IPASettings
-      let stat1 = ipaConfig.genIPAConfig()
-      doAssert stat1 == true, "Could not initialise new IPA config for multiproofs!"
-    testIPAConfigForMultiproofs()
-
   test "Multiproof Creation and Verification":
     proc testMultiproofCreationAndVerification()=
 
       var ipaConfig {.noInit.}: IPASettings
-      discard ipaConfig.genIPAConfig()
+      ipaConfig.genIPAConfig()
 
       var testVals: array[14, int] = [1,1,1,4,5,6,7,8,9,10,11,12,13,14]
       var poly: array[256, Fr[Banderwagon]]
@@ -669,7 +627,7 @@ suite "Multiproof Tests":
       poly.testPoly256(testVals)
 
       var prover_comm: EC_P
-      prover_comm.pedersen_commit_varbasis(ipaConfig.SRS, ipaConfig.SRS.len, poly, poly.len)
+      prover_comm.pedersen_commit(poly, ipaConfig.crs)
 
       # Prover's view
       var prover_transcript {.noInit.}: sha256
@@ -680,10 +638,10 @@ suite "Multiproof Tests":
 
       var Cs: seq[EC_P]
       # Large array, need heap allocation.
-      var Fs = new array[VerkleDomain, array[VerkleDomain, Fr[Banderwagon]]]
+      var Fs = new array[EthVerkleDomain, array[EthVerkleDomain, Fr[Banderwagon]]]
 
-      for i in 0 ..< VerkleDomain:
-        for j in 0 ..< VerkleDomain:
+      for i in 0 ..< EthVerkleDomain:
+        for j in 0 ..< EthVerkleDomain:
           Fs[i][j].setZero()
 
       var Zs: seq[int]
@@ -732,16 +690,16 @@ suite "Multiproof Tests":
       discard multiproof.deserializeVerkleMultiproof(serializeVerkleMultiproof)
 
       var ipaConfig {.noInit.}: IPASettings
-      discard ipaConfig.genIPAConfig()
+      ipaConfig.genIPAConfig()
 
-      var Cs: array[VerkleDomain, EC_P]
-      var Zs: array[VerkleDomain, int]
-      var Ys: array[VerkleDomain, Fr[Banderwagon]]
+      var Cs: array[EthVerkleDomain, EC_P]
+      var Zs: array[EthVerkleDomain, int]
+      var Ys: array[EthVerkleDomain, Fr[Banderwagon]]
 
       Cs[0] = commitment
       Ys[0] = evaluationResultFr
 
-      for i in 0 ..< VerkleDomain:
+      for i in 0 ..< EthVerkleDomain:
         var tr {.noInit.}: sha256
         tr.newTranscriptGen(asBytes"multiproof")
         Zs[0] = i

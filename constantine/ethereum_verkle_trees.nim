@@ -31,7 +31,7 @@ export
   eth_verkle_constants.EC_P_Aff,
   eth_verkle_constants.IPAProof,
   eth_verkle_constants.MultiProof,
-  eth_verkle_constants.VerkleDomain,
+  eth_verkle_constants.EthVerkleDomain,
   eth_verkle_constants.PrecomputedWeights,
   eth_verkle_constants.IPASettings,
   eth_verkle_constants.VerkleSeed,
@@ -71,7 +71,7 @@ export
   ipa_prover.createIPAProof,
   ipa_prover.serializeVerkleIPAProof,
   ipa_prover.deserializeVerkleIPAProof,
-  ipa_prover.isIPAProofEqual
+  ipa_prover.`==`
 
 # IPA Verifier for Verkle
 # ------------------------------------------------------------

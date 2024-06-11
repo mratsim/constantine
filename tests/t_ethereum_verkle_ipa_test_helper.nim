@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../constantine/eth_verkle_ipa/[multiproof, barycentric_form, eth_verkle_constants],
+  ../constantine/eth_verkle_ipa/[multiproof, eth_verkle_constants],
   ../constantine/math/config/[type_ff, curves],
   ../constantine/math/elliptic/[
     ec_twistededwards_affine,
@@ -43,22 +43,6 @@ func ipaEvaluate* [Fr] (res: var Fr, poly: openArray[Fr], point: Fr,  n: static 
     var tmp {.noInit.}: Fr
     tmp.prod(powers[i], poly[i])
     res.sum(res,tmp)
-
-func evalFunc* (res: var Fr[Banderwagon], x: Fr[Banderwagon])=
-  var tmpa {.noInit.}: Fr[Banderwagon]
-  var one {.noInit.}: Fr[Banderwagon]
-  one.setOne()
-  tmpa.diff(x, one)
-
-  var tmpb {.noInit.}: Fr[Banderwagon]
-  tmpb.sum(x, one)
-
-  var tmpc = one
-  for i in 0 ..< 253:
-    tmpc *= x
-
-  res.prod(tmpa, tmpb)
-  res *= tmpc
 
 func truncate* [Fr] (res: var openArray[Fr], s: openArray[Fr], to: int, n: static int)=
   for i in 0 ..< to:
