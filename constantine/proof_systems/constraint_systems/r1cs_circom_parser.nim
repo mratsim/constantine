@@ -33,11 +33,12 @@ type
     kCustomGatesList        = 4
     kCustomGatesApplication = 5
 
-  Factor* = tuple[index: int32, value: seq[BaseType]]
-  #Factor = tuple[index: int32, value: seq[byte]]
+  # Note: We parse the `value` of the `Factor` into a `seq[byte]` to be platform
+  # independent (32 vs 64bit), because `BaseType` depends on the platform
+  Factor = tuple[index: int32, value: seq[byte]]
   LinComb* = seq[Factor]
     # A struct-of-arrays (SoA) is more efficient than seq[Constraint] array-of-structs (AoS)
-    # but at the moment we use a seq[BaseType] indirection for field elements
+    # but at the moment we use a seq[byte] indirection for field elements
     # so data access will occur a cache-miss anyway.
     # And we optimize for simplicity, so we use the same format as .r1cs files.
     # For heavy processing, constraints/linear combinations should use an AoS data structure.
@@ -132,16 +133,14 @@ proc parseLinComb(f: File, lincomb: var LinComb, fieldSize: int32): bool =
 
   var last = low(int32)
   # fieldSize is in bytes!
-  let len = (fieldSize * 8).ceilDiv_vartime(WordBitWidth)
   var buf = newSeq[byte](fieldSize)
 
   for i in 0 ..< nnz:
     ?f.parseInt(lincomb[i].index, littleEndian) # wireID of the factor
     ?(last < lincomb[i].index)                  # The factors MUST be sorted in ascending order.
     last = lincomb[i].index
-    lincomb[i].value.setLen(len)                # many allocations
     ?f.readInto(buf)                            # value of the factor
-    ?lincomb[i].value.unmarshal(buf, WordBitWidth, littleEndian)
+    lincomb[i].value = buf                      # copy!
 
   return true
 

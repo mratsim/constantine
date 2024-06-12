@@ -12,15 +12,16 @@ suite "R1CS binary file parser":
     const path = TestDir / "r1cs_test_files/example.r1cs"
     let r1cs = parseR1csFile(path)
 
-    ## XXX: On 32bit systems `seq[BaseType]` should have twice as many elements
-    ## in the `expABCs` below as `value` arguments!
-
     # For expected data see also the JS test case in the repo where the example
     # file is from:
     # https://github.com/iden3/r1csfile/blob/master/test/r1csfile.js
+    # Note: The `value` fields of the `LinComb` `Factor` fields is here given in
+    # raw bytes, same as the `prime` field of the `Header` in contrast to the JS
+    # test. That's why the numbers "differ".
+    let expFieldSize = 32'u32
     let expHeader = Section(
       size: 64, sectionType: kHeader,
-      header: Header(fieldSize: 32,
+      header: Header(fieldSize: expFieldSize,
                      prime: @[1, 0, 0, 240, 147, 245, 225, 67, 145, 112, 185,
                               121, 72, 232, 51, 40, 93, 88, 129, 129, 182, 69,
                               80, 184, 41, 160, 49, 225, 114, 78, 100, 48],
@@ -32,24 +33,30 @@ suite "R1CS binary file parser":
                      nConstraints: 3
       )
     )
-    let expABCs = @[(A: @[(index: int32 5, value: @[uint64 3, 0, 0, 0]),
-                          (index: int32 6, value: @[uint64 8, 0, 0, 0])],
-                     B: @[(index: int32 0, value: @[uint64 2, 0, 0, 0]),
-                          (index: int32 2, value: @[uint64 20, 0, 0, 0]),
-                          (index: int32 3, value: @[uint64 12, 0, 0, 0])],
-                     C: @[(index: int32 0, value: @[uint64 5,0, 0, 0]),
-                          (index: int32 2, value: @[uint64 7, 0, 0, 0])]),
-                    (A: @[(index: int32 1, value: @[uint64 4, 0, 0, 0]),
-                          (index: int32 4, value: @[uint64 8, 0, 0, 0]),
-                          (index: int32 5, value: @[uint64 3, 0, 0, 0])],
-                     B: @[(index: int32 3, value: @[uint64 44, 0, 0, 0]),
-                          (index: int32 6, value: @[uint64 6, 0, 0, 0])],
+
+    template setVals(args: varargs[byte]): untyped =
+      var res = newSeq[byte](expFieldSize)
+      for i, x in @args:
+        res[i] = x
+      res
+    let expABCs = @[(A: @[(index: int32 5, value: setVals 3),
+                          (index: int32 6, value: setVals 8)],
+                     B: @[(index: int32 0, value: setVals 2),
+                          (index: int32 2, value: setVals 20),
+                          (index: int32 3, value: setVals 12)],
+                     C: @[(index: int32 0, value: setVals 5),
+                          (index: int32 2, value: setVals 7)]),
+                    (A: @[(index: int32 1, value: setVals 4),
+                          (index: int32 4, value: setVals 8),
+                          (index: int32 5, value: setVals 3)],
+                     B: @[(index: int32 3, value: setVals 44),
+                          (index: int32 6, value: setVals 6)],
                      C: @[]),
-                    (A: @[(index: int32 6, value: @[uint64 4, 0, 0, 0])],
-                     B: @[(index: int32 0, value: @[uint64 6, 0, 0, 0]),
-                          (index: int32 2, value: @[uint64 11, 0, 0, 0]),
-                          (index: int32 3, value: @[uint64 5, 0, 0, 0])],
-                     C: @[(index: int32 6, value: @[uint64 600, 0, 0, 0])])]
+                    (A: @[(index: int32 6, value: setVals 4)],
+                     B: @[(index: int32 0, value: setVals 6),
+                          (index: int32 2, value: setVals 11),
+                          (index: int32 3, value: setVals 5)],
+                     C: @[(index: int32 6, value: setVals(88, 2))])]
     let expConstraints = Section(
       size: 648, sectionType: kConstraints,
       constraints: expABCs
