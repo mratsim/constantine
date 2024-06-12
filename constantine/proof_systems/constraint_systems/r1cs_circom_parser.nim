@@ -231,7 +231,7 @@ proc parseR1csFile*(path: string): R1csBin =
 
   result.sections = newSeq[Section](result.numberSections)
   # 1. determine the section kind, size & file position for each section in the file
-  var pos = newSeq[(R1csSectionKind, uint64, int)](result.numberSections)
+  var pos = newSeq[(R1csSectionKind, uint64, int64)](result.numberSections)
   let fp = f.getFilePosition()
   for i in 0 ..< result.numberSections:
     var kind: R1csSectionKind
@@ -240,7 +240,7 @@ proc parseR1csFile*(path: string): R1csBin =
     doAssert f.parseInt(size, littleEndian), "Failed to read section size in section " & $i
     # compute position of next section
     pos[i] = (kind, size, f.getFilePosition())
-    let np = f.getFilePosition() + size.int # compute beginning of next section header
+    let np = f.getFilePosition() + size.int64 # compute beginning of next section header
     # set file pos to after
     doAssert f.setFilePosition(np) == 0, "Failed to set file position to " & $np
 
