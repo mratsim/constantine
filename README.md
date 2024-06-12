@@ -67,9 +67,9 @@ Constantine supports the following protocols in its public API.
 
 |                                                                        | Nim                | C                  | Rust                    | Go                 |
 |------------------------------------------------------------------------|:------------------:|:------------------:|-------------------------|:------------------:|
-| Ethereum BLS signatures                                                | :white_check_mark: | :white_check_mark: | :building_construction: | :see_no_evil:      |
+| Ethereum BLS signatures                                                | :white_check_mark: | :white_check_mark: | :building_construction: | :white_check_mark: |
 | Ethereum KZG commitments for EIP-4844                                  | :white_check_mark: | :white_check_mark: | :white_check_mark:      | :white_check_mark: |
-| Ethereum Virtual Machine Precompiles (ECADD, ECMUL, ECPAIRING, MODEXP) | :white_check_mark: | :white_check_mark: | :see_no_evil:           | :see_no_evil:      |
+| Ethereum Virtual Machine Precompiles (ECADD, ECMUL, ECPAIRING, MODEXP) | :white_check_mark: | :white_check_mark: | :see_no_evil:           | :white_check_mark: |
 | Zk Accel layer for Halo2 proof system (experimental)                   | not applicable     | not applicable     | :white_check_mark:      | not applicable     |
 
 ### Elliptic Curves

@@ -1379,3 +1379,232 @@ func TestBatchVerify(t *testing.T) {
 		})
 	}
 }
+
+
+
+// --------------------------------
+// ------- EVM precompiles --------
+// --------------------------------
+
+func TestSha256(t *testing.T) {
+	input := "38d18acb67d25c8bb9942764b62f18e17054f66a817bd4295423adf9ed98873e000000000000000000000000000000000000000000000000000000000000001b38d18acb67d25c8bb9942764b62f18e17054f66a817bd4295423adf9ed98873e789d1dd423d25f0772d2748d60f7e4b81bb14d086eba8e8e8efb6dcff8a4ae02"
+	expected := "811c7003375852fabd0d362e40e68607a12bdabae61a7d068fe5fdd1dbbf2a5d"
+	fmt.Println("Running SHA256 tests")
+
+	var inputBytes []byte
+	inputBytes = make([]byte, len(input) / 2, len(input) / 2)
+	var expectedBytes []byte
+	expectedBytes = make([]byte, len(expected) / 2, len(expected) / 2)
+
+	err := fromHexImpl(inputBytes[:], []byte(input))
+	if err != nil {
+		require.True(t, false)
+	}
+	err = fromHexImpl(expectedBytes[:], []byte(expected))
+	if err != nil {
+		require.True(t, false)
+	}
+
+	var r [32]byte
+
+	status, err := EvmSha256(&r, inputBytes)
+	if status != true {
+		require.True(t, false)
+	}
+
+	require.Equal(t, r[:], expectedBytes[:])
+	fmt.Println("Success")
+}
+
+var (
+	testDirEvm						= "../tests/protocol_ethereum_evm_precompiles/"
+
+	modexp_tests					= filepath.Join(testDirEvm, "modexp.json")
+	modexp_eip2565_tests			= filepath.Join(testDirEvm, "modexp_eip2565.json")
+
+	bn256Add_tests					= filepath.Join(testDirEvm, "bn256Add.json")
+	bn256ScalarMul_tests			= filepath.Join(testDirEvm, "bn256ScalarMul.json")
+	bn256Pairing_tests				= filepath.Join(testDirEvm, "bn256Pairing.json")
+
+	add_G1_bls_tests				= filepath.Join(testDirEvm, "eip-2537/add_G1_bls.json")
+	fail_add_G1_bls_tests			= filepath.Join(testDirEvm, "eip-2537/fail-add_G1_bls.json")
+	add_G2_bls_tests				= filepath.Join(testDirEvm, "eip-2537/add_G2_bls.json")
+	fail_add_G2_bls_tests			= filepath.Join(testDirEvm, "eip-2537/fail-add_G2_bls.json")
+
+	mul_G1_bls_tests				= filepath.Join(testDirEvm, "eip-2537/mul_G1_bls.json")
+	fail_mul_G1_bls_tests			= filepath.Join(testDirEvm, "eip-2537/fail-mul_G1_bls.json")
+	mul_G2_bls_tests				= filepath.Join(testDirEvm, "eip-2537/mul_G2_bls.json")
+	fail_mul_G2_bls_tests			= filepath.Join(testDirEvm, "eip-2537/fail-mul_G2_bls.json")
+
+	multiexp_G1_bls_tests			= filepath.Join(testDirEvm, "eip-2537/multiexp_G1_bls.json")
+	fail_multiexp_G1_bls_tests		= filepath.Join(testDirEvm, "eip-2537/fail-multiexp_G1_bls.json")
+	multiexp_G2_bls_tests			= filepath.Join(testDirEvm, "eip-2537/multiexp_G2_bls.json")
+	fail_multiexp_G2_bls_tests		= filepath.Join(testDirEvm, "eip-2537/fail-multiexp_G2_bls.json")
+
+	pairing_check_bls_tests			= filepath.Join(testDirEvm, "eip-2537/pairing_check_bls.json")
+	fail_pairing_check_bls_tests	= filepath.Join(testDirEvm, "eip-2537/fail-pairing_check_bls.json")
+
+	map_fp_to_G1_bls_tests			= filepath.Join(testDirEvm, "eip-2537/map_fp_to_G1_bls.json")
+	fail_map_fp_to_G1_bls_tests		= filepath.Join(testDirEvm, "eip-2537/fail-map_fp_to_G1_bls.json")
+	map_fp2_to_G2_bls_tests			= filepath.Join(testDirEvm, "eip-2537/map_fp2_to_G2_bls.json")
+	fail_map_fp2_to_G2_bls_tests	= filepath.Join(testDirEvm, "eip-2537/fail-map_fp2_to_G2_bls.json")
+)
+
+type HexString string
+type PrecompileTest struct {
+	Input HexString
+	Expected HexString
+	Name string
+	Gas int
+	NoBenchmark bool
+}
+
+func loadVectors(fname string) (result []PrecompileTest) {
+	var test []PrecompileTest
+
+	testFile, err := os.Open(fname)
+	err = json.NewDecoder(testFile).Decode(&test)
+	if err != nil {
+		fmt.Println("hehe")
+	}
+
+	return test
+}
+
+type TestFunction func([]byte, []byte) (bool, error)
+
+
+// Helper function to simplify the test generation. No need to duplicate test logic, all the same
+func runTest(t *testing.T, testPath string, fn TestFunction) {
+	fmt.Println("Running test for path: ", testPath)
+	tests, _ := filepath.Glob(testPath)
+	for _, testPath := range tests {
+		t.Run(testPath, func(t *testing.T) {
+			// Load from the given path
+			vectors := loadVectors(testPath)
+			for _, vec := range vectors {
+				fmt.Println("Running test case: ", vec.Name)
+
+				input := vec.Input
+				expected := vec.Expected
+
+				var inputBytes []byte
+				inputBytes = make([]byte, len(input) / 2, len(input) / 2)
+				var expectedBytes []byte
+				expectedBytes = make([]byte, len(expected) / 2, len(expected) / 2)
+
+				err := fromHexImpl(inputBytes[:], []byte(input))
+				if err != nil {
+					require.True(t, false)
+				}
+				err = fromHexImpl(expectedBytes[:], []byte(expected))
+				if err != nil {
+					require.True(t, false)
+				}
+
+				r := make([]byte, len(expected) / 2, len(expected) / 2)
+
+				// Call the test function
+				status, err := fn(r, inputBytes)
+				if status != true {
+					for i := range r { // reset to 0 (expected might be an empty array)
+						r[i] = '0'
+					}
+				}
+				require.Equal(t, r[:], expectedBytes[:])
+			}
+		})
+	}
+}
+
+func TestModexp(t *testing.T) {
+	runTest(t, modexp_tests, EvmModexp)
+}
+
+func TestModexpEip2565(t *testing.T) {
+	runTest(t, modexp_eip2565_tests, EvmModexp)
+}
+
+func TestBn256Add(t *testing.T) {
+	runTest(t, bn256Add_tests, EvmBn254G1Add)
+}
+
+func TestBn256ScalarMul(t *testing.T) {
+	runTest(t, bn256ScalarMul_tests, EvmBn254G1Mul)
+}
+
+func TestBn256Pairing(t *testing.T) {
+	runTest(t, bn256Pairing_tests, EvmBn254G1EcPairingCheck)
+}
+
+func TestAddG1Bls(t *testing.T) {
+	runTest(t, add_G1_bls_tests, EvmBls12381G1Add)
+}
+
+func TestFailAddG1Bls(t *testing.T) {
+	runTest(t, fail_add_G1_bls_tests, EvmBls12381G1Add)
+}
+
+func TestAddG2Bls(t *testing.T) {
+	runTest(t, add_G2_bls_tests, EvmBls12381G2Add)
+}
+
+func TestFailAddG2Bls(t *testing.T) {
+	runTest(t, fail_add_G2_bls_tests, EvmBls12381G2Add)
+}
+
+func TestMulG1Bls(t *testing.T) {
+	runTest(t, mul_G1_bls_tests, EvmBls12381G1Mul)
+}
+
+func TestFailMulG1Bls(t *testing.T) {
+	runTest(t, fail_mul_G1_bls_tests, EvmBls12381G1Mul)
+}
+
+func TestMulG2Bls(t *testing.T) {
+	runTest(t, mul_G2_bls_tests, EvmBls12381G2Mul)
+}
+
+func TestFailMulG2Bls(t *testing.T) {
+	runTest(t, fail_mul_G2_bls_tests, EvmBls12381G2Mul)
+}
+
+func TestMsmG1Bls(t *testing.T) {
+	runTest(t, multiexp_G1_bls_tests, EvmBls12381G1Msm)
+}
+
+func TestFailMsmG1Bls(t *testing.T) {
+	runTest(t, fail_multiexp_G1_bls_tests, EvmBls12381G1Msm)
+}
+
+func TestMsmG2Bls(t *testing.T) {
+	runTest(t, multiexp_G2_bls_tests, EvmBls12381G2Msm)
+}
+
+func TestFailMsmG2Bls(t *testing.T) {
+	runTest(t, fail_multiexp_G2_bls_tests, EvmBls12381G2Msm)
+}
+
+func TestPairingCheckBls(t *testing.T) {
+	runTest(t, pairing_check_bls_tests, EvmBls12381PairingCheck)
+}
+
+func TestFailPairingCheckBls(t *testing.T) {
+	runTest(t, fail_pairing_check_bls_tests, EvmBls12381PairingCheck)
+}
+
+func TestMapFpToG1Bls(t *testing.T) {
+	runTest(t, map_fp_to_G1_bls_tests, EvmBls12381MapFpToG1)
+}
+
+func TestFailMapFpToG1Bls(t *testing.T) {
+	runTest(t, fail_map_fp_to_G1_bls_tests, EvmBls12381MapFpToG1)
+}
+
+func TestMapFp2ToG2Bls(t *testing.T) {
+	runTest(t, map_fp2_to_G2_bls_tests, EvmBls12381MapFp2ToG2)
+}
+
+func TestFailMapFp2ToG2Bls(t *testing.T) {
+	runTest(t, fail_map_fp2_to_G2_bls_tests, EvmBls12381MapFp2ToG2)
+}
