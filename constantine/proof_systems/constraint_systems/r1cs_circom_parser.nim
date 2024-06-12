@@ -25,12 +25,13 @@ import
 from std / algorithm import sortedByIt
 
 type
-  R1csSectionKind = enum        # Actual values according to spec in comments. To use it as discriminator in  variant object
-    kHeader                 = 0 # 1
-    kConstraints            = 1 # 2
-    kWire2LabelId           = 2 # 3
-    kCustomGatesList        = 3 # 4
-    kCustomGatesApplication = 4 # 5
+  R1csSectionKind = enum # `kInvalid` used to indicate unset & to make the enum work as field discriminator
+    kInvalid                = 0
+    kHeader                 = 1
+    kConstraints            = 2
+    kWire2LabelId           = 3
+    kCustomGatesList        = 4
+    kCustomGatesApplication = 5
 
   Factor = tuple[index: int32, value: seq[BaseType]]
   #Factor = tuple[index: int32, value: seq[byte]]
@@ -96,6 +97,7 @@ type
                  # But we cannot map this with a variant type in Nim (without using different
                  # names for each variant branch)
     case sectionType: R1csSectionKind
+    of kInvalid: discard
     of kHeader: header: Header
     of kConstraints: constraints: seq[Constraint]
     of kWire2LabelId: w2l: Wire2Label
@@ -169,8 +171,7 @@ proc parseMagicHeader(f: File, mh: var array[4, char]): bool =
 proc parseSectionKind(f: File, v: var R1csSectionKind): bool =
   var val: uint32
   result = f.parseInt(val, littleEndian)
-  # convert from uint32 value and correct for -1 in definition of enum
-  v = R1csSectionKind(val.int - 1)
+  v = R1csSectionKind(val.int)
 
 proc parseHeader(f: File, h: var Header): bool =
   ?f.parseInt(h.fieldSize, littleEndian) # byte size of the prime number
@@ -218,6 +219,7 @@ proc parseSection(f: File, s: var Section, kind: R1csSectionKind, size: uint64, 
   of kWire2LabelId:           ?f.parseWire2Label(s.w2l, size)
   of kCustomGatesList:        ?f.parseCustomGatesList(s.cGatesList)
   of kCustomGatesApplication: ?f.parseCustomGatesApplication(s.cGatesApp)
+  of kInvalid: return false
 
   result = true # would have returned otherwise due to `?`
 
