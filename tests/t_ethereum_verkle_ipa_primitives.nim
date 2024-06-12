@@ -100,13 +100,13 @@ suite "Barycentric Form Tests":
         lindom.setupLinearEvaluationDomain()
 
         var bar_coeffs {.noInit.}: array[256, Fr[Banderwagon]]
-        bar_coeffs.getLagrangeBasisPolysAt(lindom, p_outside_dom)
+        lindom.getLagrangeBasisPolysAt(bar_coeffs, p_outside_dom)
 
         var expected0: Fr[Banderwagon]
         expected0.computeInnerProducts(lagrange_values.evals, bar_coeffs)
 
         var expected1: Fr[Banderwagon]
-        expected1.evalPolyAt(lagrange_values, lindom, p_outside_dom)
+        lindom.evalPolyAt(expected1, lagrange_values, p_outside_dom)
 
         # testing with a no-precompute optimized Lagrange Interpolation value from Go-IPA
         doAssert expected0.toHex(littleEndian) == "0x50b9c3b3c42a06347e58d8d33047a7f8868965703567100657aceaf429562d04", "Barycentric Precompute and Lagrange should NOT give different values"
@@ -151,7 +151,7 @@ suite "Barycentric Form Tests":
           evaluations.evals[i] = points[i].y
 
         var quotient: PolynomialEval[EthVerkleDomain, Fr[Banderwagon]]
-        quotient.differenceQuotientEvalInDomain(evaluations, zIndex = 1, lindom)
+        lindom.differenceQuotientEvalInDomain(quotient, evaluations, zIndex = 1)
 
         doAssert quotient.evals[255].toHex(littleEndian) == "0x616b0e203a877177e2090013a77ce4ea8726941aac613b532002f3653d54250b", "Issue with Divide on Domain using Barycentric Precomputes!"
 
@@ -499,7 +499,7 @@ suite "IPA proof tests":
       doAssert stat11 == true, "Problem creating IPA proof 1"
 
       var lagrange_coeffs: array[256, Fr[Banderwagon]]
-      lagrange_coeffs.getLagrangeBasisPolysAt(ipaConfig.domain, point)
+      ipaConfig.domain.getLagrangeBasisPolysAt(lagrange_coeffs, point)
 
       var op_point: Fr[Banderwagon]
       op_point.computeInnerProducts(lagrange_coeffs, poly)
@@ -585,7 +585,7 @@ suite "IPA proof tests":
         doAssert stat == true, "Problem creating IPA proof"
 
         var lagrange_coeffs : array[EthVerkleDomain, Fr[Banderwagon]]
-        lagrange_coeffs.getLagrangeBasisPolysAt(ipaConfig.domain, point)
+        ipaConfig.domain.getLagrangeBasisPolysAt(lagrange_coeffs, point)
 
         var innerProd : Fr[Banderwagon]
         innerProd.computeInnerProducts(poly, lagrange_coeffs)

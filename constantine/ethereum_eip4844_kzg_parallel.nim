@@ -123,8 +123,8 @@ func kzgifyStatus(status: CttCodecScalarStatus or CttCodecEccStatus): cttEthKzgS
   checkReturn status
 
 proc blob_to_kzg_commitment_parallel*(
-       ctx: ptr EthereumKZGContext,
        tp: Threadpool,
+       ctx: ptr EthereumKZGContext,
        dst: var array[48, byte],
        blob: ptr Blob): cttEthKzgStatus {.libPrefix: prefix_eth_kzg4844.} =
   ## Compute a commitment to the `blob`.
@@ -150,7 +150,7 @@ proc blob_to_kzg_commitment_parallel*(
     check HappyPath, tp.blob_to_bigint_polynomial_parallel(poly, blob)
 
     var r {.noinit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1]
-    tp.kzg_commit_parallel(r, poly.evals, ctx.srs_lagrange_g1)
+    tp.kzg_commit_parallel(ctx.srs_lagrange_g1, r, poly.evals)
     discard dst.serialize_g1_compressed(r)
 
     result = cttEthKzg_Success
@@ -159,8 +159,8 @@ proc blob_to_kzg_commitment_parallel*(
   return result
 
 proc compute_kzg_proof_parallel*(
-       ctx: ptr EthereumKZGContext,
        tp: Threadpool,
+       ctx: ptr EthereumKZGContext,
        proof_bytes: var array[48, byte],
        y_bytes: var array[32, byte],
        blob: ptr Blob,
@@ -194,10 +194,11 @@ proc compute_kzg_proof_parallel*(
     var proof {.noInit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
 
     tp.kzg_prove_parallel(
+      ctx.srs_lagrange_g1,
+      ctx.domain.addr,
       proof, y,
-      poly, ctx.domain.addr,
-      z.addr, ctx.srs_lagrange_g1,
-      isBitReversedDomain = true)
+      poly,
+      z.addr)
 
     discard proof_bytes.serialize_g1_compressed(proof) # cannot fail
     y_bytes.marshal(y, bigEndian) # cannot fail
@@ -207,8 +208,8 @@ proc compute_kzg_proof_parallel*(
   return result
 
 proc compute_blob_kzg_proof_parallel*(
-       ctx: ptr EthereumKZGContext,
        tp: Threadpool,
+       ctx: ptr EthereumKZGContext,
        proof_bytes: var array[48, byte],
        blob: ptr Blob,
        commitment_bytes: array[48, byte]): cttEthKzgStatus {.libPrefix: prefix_eth_kzg4844.} =
@@ -237,10 +238,11 @@ proc compute_blob_kzg_proof_parallel*(
     var proof {.noInit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
 
     tp.kzg_prove_parallel(
+      ctx.srs_lagrange_g1,
+      ctx.domain.addr,
       proof, y,
-      poly, ctx.domain.addr,
-      challenge.addr, ctx.srs_lagrange_g1,
-      isBitReversedDomain = true)
+      poly,
+      challenge.addr)
 
     discard proof_bytes.serialize_g1_compressed(proof) # cannot fail
 
@@ -250,8 +252,8 @@ proc compute_blob_kzg_proof_parallel*(
   return result
 
 proc verify_blob_kzg_proof_parallel*(
-       ctx: ptr EthereumKZGContext,
        tp: Threadpool,
+       ctx: ptr EthereumKZGContext,
        blob: ptr Blob,
        commitment_bytes: array[48, byte],
        proof_bytes: array[48, byte]): cttEthKzgStatus {.libPrefix: prefix_eth_kzg4844.} =
@@ -293,10 +295,10 @@ proc verify_blob_kzg_proof_parallel*(
     if zIndex == -1:
       var eval_at_challenge_fr{.noInit.}: Fr[BLS12_381]
       tp.evalPolyOffDomainAt_parallel(
+        ctx.domain.addr,
         eval_at_challenge_fr,
         poly, challengeFr.addr,
-        invRootsMinusZ,
-        ctx.domain.addr)
+        invRootsMinusZ)
       eval_at_challenge.fromField(eval_at_challenge_fr)
     else:
       eval_at_challenge.fromField(poly.evals[zIndex])
@@ -316,8 +318,8 @@ proc verify_blob_kzg_proof_parallel*(
   return result
 
 proc verify_blob_kzg_proof_batch_parallel*(
-       ctx: ptr EthereumKZGContext,
        tp: Threadpool,
+       ctx: ptr EthereumKZGContext,
        blobs: ptr UncheckedArray[Blob],
        commitments_bytes: ptr UncheckedArray[array[48, byte]],
        proof_bytes: ptr UncheckedArray[array[48, byte]],
@@ -386,10 +388,10 @@ proc verify_blob_kzg_proof_batch_parallel*(
           if zIndex == -1:
             var eval_at_challenge_fr{.noInit.}: Fr[BLS12_381]
             tp.evalPolyOffDomainAt_parallel(
+              ctx.domain.addr,
               eval_at_challenge_fr,
               polys[i].addr, challenges[i].addr,
-              invRootsMinusZs[i].addr,
-              ctx.domain.addr)
+              invRootsMinusZs[i].addr)
             evals_at_challenges[i].fromField(eval_at_challenge_fr)
           else:
             evals_at_challenges[i].fromField(polys[i].evals[zIndex])

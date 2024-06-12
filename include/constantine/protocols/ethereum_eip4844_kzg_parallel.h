@@ -38,8 +38,8 @@ extern "C" {
  *    with proof = [(p(τ) - p(z)) / (τ-z)]₁
  */
 ctt_eth_kzg_status ctt_eth_kzg_blob_to_kzg_commitment_parallel(
-        const ctt_eth_kzg_context* ctx,
         const ctt_threadpool* tp,
+        const ctt_eth_kzg_context* ctx,
         ctt_eth_kzg_commitment* dst,
         const ctt_eth_kzg_blob* blob
 ) __attribute__((warn_unused_result));
@@ -59,8 +59,8 @@ ctt_eth_kzg_status ctt_eth_kzg_blob_to_kzg_commitment_parallel(
  *    - and at the verification challenge z.
  */
 ctt_eth_kzg_status ctt_eth_kzg_compute_kzg_proof_parallel(
-        const ctt_eth_kzg_context* ctx,
         const ctt_threadpool* tp,
+        const ctt_eth_kzg_context* ctx,
         ctt_eth_kzg_proof* proof,
         ctt_eth_kzg_eval_at_challenge* y,
         const ctt_eth_kzg_blob* blob,
@@ -71,8 +71,8 @@ ctt_eth_kzg_status ctt_eth_kzg_compute_kzg_proof_parallel(
  *  This method does not verify that the commitment is correct with respect to `blob`.
  */
 ctt_eth_kzg_status ctt_eth_kzg_compute_blob_kzg_proof_parallel(
-        const ctt_eth_kzg_context* ctx,
         const ctt_threadpool* tp,
+        const ctt_eth_kzg_context* ctx,
         ctt_eth_kzg_proof* proof,
         const ctt_eth_kzg_blob* blob,
         const ctt_eth_kzg_commitment* commitment
@@ -81,8 +81,8 @@ ctt_eth_kzg_status ctt_eth_kzg_compute_blob_kzg_proof_parallel(
 /** Given a blob and a KZG proof, verify that the blob data corresponds to the provided commitment.
  */
 ctt_eth_kzg_status ctt_eth_kzg_verify_blob_kzg_proof_parallel(
-        const ctt_eth_kzg_context* ctx,
         const ctt_threadpool* tp,
+        const ctt_eth_kzg_context* ctx,
         const ctt_eth_kzg_blob* blob,
         const ctt_eth_kzg_commitment* commitment,
         const ctt_eth_kzg_proof* proof
@@ -102,8 +102,8 @@ ctt_eth_kzg_status ctt_eth_kzg_verify_blob_kzg_proof_parallel(
  *  i.e. commitments that are linear combination of others and sum would be zero.
  */
 ctt_eth_kzg_status ctt_eth_kzg_verify_blob_kzg_proof_batch_parallel(
-        const ctt_eth_kzg_context* ctx,
         const ctt_threadpool* tp,
+        const ctt_eth_kzg_context* ctx,
         const ctt_eth_kzg_blob blobs[],
         const ctt_eth_kzg_commitment commitments[],
         const ctt_eth_kzg_proof proofs[],

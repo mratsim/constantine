@@ -13,20 +13,19 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
-	"fmt"
 
+	"encoding/json"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
-	"encoding/json"
 
 	"github.com/mratsim/constantine/constantine-go/sha256"
 )
-
 
 // Threadpool smoke test
 // ----------------------------------------------------------
@@ -456,9 +455,9 @@ func createTestThreadpool(t *testing.T) Threadpool {
 
 	// Register a cleanup function
 	t.Cleanup(func() {
-        tp.Shutdown()
+		tp.Shutdown()
 		runtime.UnlockOSThread()
-    })
+	})
 
 	return tp
 }
@@ -476,6 +475,7 @@ func TestBlobToKZGCommitmentParallel(t *testing.T) {
 	defer ctx.Delete()
 
 	tp := createTestThreadpool(t)
+	ctx.SetThreadpool(tp)
 
 	tests, err := filepath.Glob(blobToKZGCommitmentTests)
 	require.NoError(t, err)
@@ -497,7 +497,7 @@ func TestBlobToKZGCommitmentParallel(t *testing.T) {
 			continue
 		}
 
-		commitment, err := ctx.BlobToKZGCommitmentParallel(tp, blob)
+		commitment, err := ctx.BlobToKZGCommitmentParallel(blob)
 		if err == nil {
 			require.NotNil(t, test.Output)
 			require.Equal(t, test.Output[:], commitment[:])
@@ -521,6 +521,7 @@ func TestComputeKzgProofParallel(t *testing.T) {
 	defer ctx.Delete()
 
 	tp := createTestThreadpool(t)
+	ctx.SetThreadpool(tp)
 
 	tests, err := filepath.Glob(computeKZGProofTests)
 	require.NoError(t, err)
@@ -549,7 +550,7 @@ func TestComputeKzgProofParallel(t *testing.T) {
 			continue
 		}
 
-		proof, y, err := ctx.ComputeKzgProofParallel(tp, blob, z)
+		proof, y, err := ctx.ComputeKzgProofParallel(blob, z)
 		if err == nil {
 			require.NotNil(t, test.Output)
 			var expectedProof EthKzgProof
@@ -580,6 +581,7 @@ func TestComputeBlobKzgProofParallel(t *testing.T) {
 	defer ctx.Delete()
 
 	tp := createTestThreadpool(t)
+	ctx.SetThreadpool(tp)
 
 	tests, err := filepath.Glob(computeBlobKZGProofTests)
 	require.NoError(t, err)
@@ -608,7 +610,7 @@ func TestComputeBlobKzgProofParallel(t *testing.T) {
 			continue
 		}
 
-		proof, err := ctx.ComputeBlobKzgProofParallel(tp, blob, commitment)
+		proof, err := ctx.ComputeBlobKzgProofParallel(blob, commitment)
 		if err == nil {
 			require.NotNil(t, test.Output)
 			require.Equal(t, test.Output[:], proof[:])
@@ -633,6 +635,7 @@ func TestVerifyBlobKzgProofParallel(t *testing.T) {
 	defer ctx.Delete()
 
 	tp := createTestThreadpool(t)
+	ctx.SetThreadpool(tp)
 
 	tests, err := filepath.Glob(verifyBlobKZGProofTests)
 	require.NoError(t, err)
@@ -668,7 +671,7 @@ func TestVerifyBlobKzgProofParallel(t *testing.T) {
 			continue
 		}
 
-		valid, err := ctx.VerifyBlobKzgProofParallel(tp, blob, commitment, proof)
+		valid, err := ctx.VerifyBlobKzgProofParallel(blob, commitment, proof)
 		if err == nil {
 			require.NotNil(t, test.Output)
 			require.Equal(t, *test.Output, valid)
@@ -695,6 +698,7 @@ func TestVerifyBlobKzgProofBatchParallel(t *testing.T) {
 	defer ctx.Delete()
 
 	tp := createTestThreadpool(t)
+	ctx.SetThreadpool(tp)
 
 	var secureRandomBytes [32]byte
 	_, _ = rand.Read(secureRandomBytes[:])
@@ -745,7 +749,7 @@ func TestVerifyBlobKzgProofBatchParallel(t *testing.T) {
 			proofs = append(proofs, proof)
 		}
 
-		valid, err := ctx.VerifyBlobKzgProofBatchParallel(tp, blobs, commitments, proofs, secureRandomBytes)
+		valid, err := ctx.VerifyBlobKzgProofBatchParallel(blobs, commitments, proofs, secureRandomBytes)
 		if err == nil {
 			require.NotNil(t, test.Output)
 			require.Equal(t, *test.Output, valid)
@@ -793,16 +797,16 @@ func TestExampleCBlsSig(t *testing.T) {
 }
 
 var (
-	testDirBls                  = "../tests/protocol_blssig_pop_on_bls12381_g2_test_vectors_v0.1.1"
-	aggregate_verifyTests		= filepath.Join(testDirBls, "aggregate_verify/*")
-	aggregateTests				= filepath.Join(testDirBls, "aggregate/*")
-	deserialization_G1Tests		= filepath.Join(testDirBls, "deserialization_G1/*")
-	batch_verifyTests			= filepath.Join(testDirBls, "batch_verify/*")
-	fast_aggregate_verifyTests	= filepath.Join(testDirBls, "fast_aggregate_verify/*")
-	hash_to_G2Tests				= filepath.Join(testDirBls, "hash_to_G2/*")
-	deserialization_G2Tests		= filepath.Join(testDirBls, "deserialization_G2/*")
-	verifyTests					= filepath.Join(testDirBls, "verify/*")
-	signTests					= filepath.Join(testDirBls, "sign/*")
+	testDirBls                 = "../tests/protocol_blssig_pop_on_bls12381_g2_test_vectors_v0.1.1"
+	aggregate_verifyTests      = filepath.Join(testDirBls, "aggregate_verify/*")
+	aggregateTests             = filepath.Join(testDirBls, "aggregate/*")
+	deserialization_G1Tests    = filepath.Join(testDirBls, "deserialization_G1/*")
+	batch_verifyTests          = filepath.Join(testDirBls, "batch_verify/*")
+	fast_aggregate_verifyTests = filepath.Join(testDirBls, "fast_aggregate_verify/*")
+	hash_to_G2Tests            = filepath.Join(testDirBls, "hash_to_G2/*")
+	deserialization_G2Tests    = filepath.Join(testDirBls, "deserialization_G2/*")
+	verifyTests                = filepath.Join(testDirBls, "verify/*")
+	signTests                  = filepath.Join(testDirBls, "sign/*")
 )
 
 // These types correspond to the serialized pub/sec keys / signatures
@@ -836,12 +840,10 @@ func (dst *EthBlsTestOutput) UnmarshalText(input []byte) error {
 	return fromHexImpl(dst[:], input)
 }
 
-
 func TestDeserializeG1(t *testing.T) {
 	type Test struct {
 		Input struct {
 			PubKey string `json:"pubkey"`
-
 		} `json:"input"`
 		Output bool `json:"output"`
 	}
@@ -889,7 +891,6 @@ func TestDeserializeG2(t *testing.T) {
 	type Test struct {
 		Input struct {
 			Signature string `json:"signature"`
-
 		} `json:"input"`
 		Output bool `json:"output"`
 	}
@@ -938,7 +939,6 @@ func TestSign(t *testing.T) {
 		Input struct {
 			PrivKey string `json:"privkey"`
 			Message string `json:"message"`
-
 		} `json:"input"`
 		Output string `json:"output"`
 	}
@@ -993,7 +993,7 @@ func TestSign(t *testing.T) {
 					}
 					status = sig.AreEqual(output)
 					if !status { // signatures mismatch
-						var sigBytes  [96]byte
+						var sigBytes [96]byte
 						var roundTrip [96]byte
 						sb_status, _ := sig.SerializeCompressed(&sigBytes)
 						rt_status, _ := output.SerializeCompressed(&roundTrip)
@@ -1030,10 +1030,9 @@ func TestSign(t *testing.T) {
 func TestVerify(t *testing.T) {
 	type Test struct {
 		Input struct {
-			PubKey string `json:"pubkey"`
-			Message string `json:"message"`
+			PubKey    string `json:"pubkey"`
+			Message   string `json:"message"`
 			Signature string `json:"signature"`
-
 		} `json:"input"`
 		Output bool `json:"output"`
 	}
@@ -1044,7 +1043,6 @@ func TestVerify(t *testing.T) {
 			testFile, err := os.Open(testPath)
 			test := Test{}
 			err = json.NewDecoder(testFile).Decode(&test)
-
 
 			var rawPk EthBlsPubKeyRaw
 			err = rawPk.UnmarshalText([]byte(test.Input.PubKey))
@@ -1088,8 +1086,8 @@ func TestVerify(t *testing.T) {
 			}
 			if status != test.Output {
 				fmt.Println("Verification differs from expected \n",
-				    "   valid sig? ", status, "\n",
-				    "   expected: ", test.Output,
+					"   valid sig? ", status, "\n",
+					"   expected: ", test.Output,
 				)
 				require.True(t, false)
 				return
@@ -1122,10 +1120,9 @@ func TestVerify(t *testing.T) {
 func TestFastAggregateVerify(t *testing.T) {
 	type Test struct {
 		Input struct {
-			PubKeys []string `json:"pubkeys"`
-			Message string `json:"message"`
-			Signature string `json:"signature"`
-
+			PubKeys   []string `json:"pubkeys"`
+			Message   string   `json:"message"`
+			Signature string   `json:"signature"`
 		} `json:"input"`
 		Output bool `json:"output"`
 	}
@@ -1183,8 +1180,8 @@ func TestFastAggregateVerify(t *testing.T) {
 			require.Equal(t, status, test.Output)
 			if status != test.Output {
 				fmt.Println("Verification differs from expected \n",
-				    "   valid sig? ", status, "\n",
-				    "   expected: ", test.Output,
+					"   valid sig? ", status, "\n",
+					"   expected: ", test.Output,
 				)
 				return
 			}
@@ -1280,10 +1277,9 @@ func TestFastAggregateVerify(t *testing.T) {
 func TestBatchVerify(t *testing.T) {
 	type Test struct {
 		Input struct {
-			PubKeys []string `json:"pubkeys"`
-			Messages []string `json:"messages"`
+			PubKeys    []string `json:"pubkeys"`
+			Messages   []string `json:"messages"`
 			Signatures []string `json:"signatures"`
-
 		} `json:"input"`
 		Output bool `json:"output"`
 	}
@@ -1380,8 +1376,6 @@ func TestBatchVerify(t *testing.T) {
 	}
 }
 
-
-
 // --------------------------------
 // ------- EVM precompiles --------
 // --------------------------------
@@ -1392,9 +1386,9 @@ func TestSha256(t *testing.T) {
 	fmt.Println("Running SHA256 tests")
 
 	var inputBytes []byte
-	inputBytes = make([]byte, len(input) / 2, len(input) / 2)
+	inputBytes = make([]byte, len(input)/2, len(input)/2)
 	var expectedBytes []byte
-	expectedBytes = make([]byte, len(expected) / 2, len(expected) / 2)
+	expectedBytes = make([]byte, len(expected)/2, len(expected)/2)
 
 	err := fromHexImpl(inputBytes[:], []byte(input))
 	if err != nil {
@@ -1417,45 +1411,45 @@ func TestSha256(t *testing.T) {
 }
 
 var (
-	testDirEvm						= "../tests/protocol_ethereum_evm_precompiles/"
+	testDirEvm = "../tests/protocol_ethereum_evm_precompiles/"
 
-	modexp_tests					= filepath.Join(testDirEvm, "modexp.json")
-	modexp_eip2565_tests			= filepath.Join(testDirEvm, "modexp_eip2565.json")
+	modexp_tests         = filepath.Join(testDirEvm, "modexp.json")
+	modexp_eip2565_tests = filepath.Join(testDirEvm, "modexp_eip2565.json")
 
-	bn256Add_tests					= filepath.Join(testDirEvm, "bn256Add.json")
-	bn256ScalarMul_tests			= filepath.Join(testDirEvm, "bn256ScalarMul.json")
-	bn256Pairing_tests				= filepath.Join(testDirEvm, "bn256Pairing.json")
+	bn256Add_tests       = filepath.Join(testDirEvm, "bn256Add.json")
+	bn256ScalarMul_tests = filepath.Join(testDirEvm, "bn256ScalarMul.json")
+	bn256Pairing_tests   = filepath.Join(testDirEvm, "bn256Pairing.json")
 
-	add_G1_bls_tests				= filepath.Join(testDirEvm, "eip-2537/add_G1_bls.json")
-	fail_add_G1_bls_tests			= filepath.Join(testDirEvm, "eip-2537/fail-add_G1_bls.json")
-	add_G2_bls_tests				= filepath.Join(testDirEvm, "eip-2537/add_G2_bls.json")
-	fail_add_G2_bls_tests			= filepath.Join(testDirEvm, "eip-2537/fail-add_G2_bls.json")
+	add_G1_bls_tests      = filepath.Join(testDirEvm, "eip-2537/add_G1_bls.json")
+	fail_add_G1_bls_tests = filepath.Join(testDirEvm, "eip-2537/fail-add_G1_bls.json")
+	add_G2_bls_tests      = filepath.Join(testDirEvm, "eip-2537/add_G2_bls.json")
+	fail_add_G2_bls_tests = filepath.Join(testDirEvm, "eip-2537/fail-add_G2_bls.json")
 
-	mul_G1_bls_tests				= filepath.Join(testDirEvm, "eip-2537/mul_G1_bls.json")
-	fail_mul_G1_bls_tests			= filepath.Join(testDirEvm, "eip-2537/fail-mul_G1_bls.json")
-	mul_G2_bls_tests				= filepath.Join(testDirEvm, "eip-2537/mul_G2_bls.json")
-	fail_mul_G2_bls_tests			= filepath.Join(testDirEvm, "eip-2537/fail-mul_G2_bls.json")
+	mul_G1_bls_tests      = filepath.Join(testDirEvm, "eip-2537/mul_G1_bls.json")
+	fail_mul_G1_bls_tests = filepath.Join(testDirEvm, "eip-2537/fail-mul_G1_bls.json")
+	mul_G2_bls_tests      = filepath.Join(testDirEvm, "eip-2537/mul_G2_bls.json")
+	fail_mul_G2_bls_tests = filepath.Join(testDirEvm, "eip-2537/fail-mul_G2_bls.json")
 
-	multiexp_G1_bls_tests			= filepath.Join(testDirEvm, "eip-2537/multiexp_G1_bls.json")
-	fail_multiexp_G1_bls_tests		= filepath.Join(testDirEvm, "eip-2537/fail-multiexp_G1_bls.json")
-	multiexp_G2_bls_tests			= filepath.Join(testDirEvm, "eip-2537/multiexp_G2_bls.json")
-	fail_multiexp_G2_bls_tests		= filepath.Join(testDirEvm, "eip-2537/fail-multiexp_G2_bls.json")
+	multiexp_G1_bls_tests      = filepath.Join(testDirEvm, "eip-2537/multiexp_G1_bls.json")
+	fail_multiexp_G1_bls_tests = filepath.Join(testDirEvm, "eip-2537/fail-multiexp_G1_bls.json")
+	multiexp_G2_bls_tests      = filepath.Join(testDirEvm, "eip-2537/multiexp_G2_bls.json")
+	fail_multiexp_G2_bls_tests = filepath.Join(testDirEvm, "eip-2537/fail-multiexp_G2_bls.json")
 
-	pairing_check_bls_tests			= filepath.Join(testDirEvm, "eip-2537/pairing_check_bls.json")
-	fail_pairing_check_bls_tests	= filepath.Join(testDirEvm, "eip-2537/fail-pairing_check_bls.json")
+	pairing_check_bls_tests      = filepath.Join(testDirEvm, "eip-2537/pairing_check_bls.json")
+	fail_pairing_check_bls_tests = filepath.Join(testDirEvm, "eip-2537/fail-pairing_check_bls.json")
 
-	map_fp_to_G1_bls_tests			= filepath.Join(testDirEvm, "eip-2537/map_fp_to_G1_bls.json")
-	fail_map_fp_to_G1_bls_tests		= filepath.Join(testDirEvm, "eip-2537/fail-map_fp_to_G1_bls.json")
-	map_fp2_to_G2_bls_tests			= filepath.Join(testDirEvm, "eip-2537/map_fp2_to_G2_bls.json")
-	fail_map_fp2_to_G2_bls_tests	= filepath.Join(testDirEvm, "eip-2537/fail-map_fp2_to_G2_bls.json")
+	map_fp_to_G1_bls_tests       = filepath.Join(testDirEvm, "eip-2537/map_fp_to_G1_bls.json")
+	fail_map_fp_to_G1_bls_tests  = filepath.Join(testDirEvm, "eip-2537/fail-map_fp_to_G1_bls.json")
+	map_fp2_to_G2_bls_tests      = filepath.Join(testDirEvm, "eip-2537/map_fp2_to_G2_bls.json")
+	fail_map_fp2_to_G2_bls_tests = filepath.Join(testDirEvm, "eip-2537/fail-map_fp2_to_G2_bls.json")
 )
 
 type HexString string
 type PrecompileTest struct {
-	Input HexString
-	Expected HexString
-	Name string
-	Gas int
+	Input       HexString
+	Expected    HexString
+	Name        string
+	Gas         int
 	NoBenchmark bool
 }
 
@@ -1473,7 +1467,6 @@ func loadVectors(fname string) (result []PrecompileTest) {
 
 type TestFunction func([]byte, []byte) (bool, error)
 
-
 // Helper function to simplify the test generation. No need to duplicate test logic, all the same
 func runTest(t *testing.T, testPath string, fn TestFunction) {
 	fmt.Println("Running test for path: ", testPath)
@@ -1489,9 +1482,9 @@ func runTest(t *testing.T, testPath string, fn TestFunction) {
 				expected := vec.Expected
 
 				var inputBytes []byte
-				inputBytes = make([]byte, len(input) / 2, len(input) / 2)
+				inputBytes = make([]byte, len(input)/2, len(input)/2)
 				var expectedBytes []byte
-				expectedBytes = make([]byte, len(expected) / 2, len(expected) / 2)
+				expectedBytes = make([]byte, len(expected)/2, len(expected)/2)
 
 				err := fromHexImpl(inputBytes[:], []byte(input))
 				if err != nil {
@@ -1502,7 +1495,7 @@ func runTest(t *testing.T, testPath string, fn TestFunction) {
 					require.True(t, false)
 				}
 
-				r := make([]byte, len(expected) / 2, len(expected) / 2)
+				r := make([]byte, len(expected)/2, len(expected)/2)
 
 				// Call the test function
 				status, err := fn(r, inputBytes)

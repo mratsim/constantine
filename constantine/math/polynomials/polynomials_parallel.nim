@@ -24,11 +24,11 @@ import
 
 proc evalPolyOffDomainAt_parallel*[N: static int, Field](
        tp: Threadpool,
+       domain: ptr PolyEvalRootsDomain[N, Field],
        r: var Field,
        poly: ptr PolynomialEval[N, Field],
        z: ptr Field,
-       invRootsMinusZ: ptr array[N, Field],
-       domain: ptr PolyEvalRootsDomain[N, Field]) =
+       invRootsMinusZ: ptr array[N, Field]) =
   ## Evaluate a polynomial in evaluation form
   ## at the point z
   ## z MUST NOT be one of the roots of unity
@@ -96,12 +96,11 @@ proc differenceQuotientEvalOffDomain_parallel*[N: static int, Field](
 
 proc differenceQuotientEvalInDomain_parallel*[N: static int, Field](
        tp: Threadpool,
+       domain: ptr PolyEvalRootsDomain[N, Field],
        r: ptr PolynomialEval[N, Field],
        poly: ptr PolynomialEval[N, Field],
        zIndex: uint32,
-       invRootsMinusZ: ptr array[N, Field],
-       domain: ptr PolyEvalRootsDomain[N, Field],
-       isBitReversedDomain: static bool) =
+       invRootsMinusZ: ptr array[N, Field]) =
   ## Compute r(x) = (p(x) - p(z)) / (x - z)
   ##
   ## for z = ωⁱ a power of a root of unity
@@ -139,14 +138,14 @@ proc differenceQuotientEvalInDomain_parallel*[N: static int, Field](
           # q'ᵢ = -qᵢ * ωⁱ/z
           # q'idx = ∑ q'ᵢ
           iter_ri.neg(r.evals[i])                                  # -qᵢ
-          when isBitReversedDomain:
+          if domain.isBitReversed:
             const logN = log2_vartime(uint32 N)
             let invZidx = N - reverseBits(uint32 zIndex, logN)
             let canonI = reverseBits(uint32 i, logN)
             let idx = reverseBits((canonI + invZidx) and (N-1), logN)
             iter_ri *= domain.rootsOfUnity[idx]                    # -qᵢ * ωⁱ/z  (explanation at the bottom of serial impl)
           else:
-            iter_ri *= domain.rootsOfUnity[(i+N-zIndex) and (N-1)] # -qᵢ * ωⁱ/z  (explanation at the bottom of serial impl)
+            iter_ri *= domain.rootsOfUnity[(i+N-int(zIndex)) and (N-1)] # -qᵢ * ωⁱ/z  (explanation at the bottom of serial impl)
           worker_ri += iter_ri
       merge(remote_ri: Flowvar[Field]):
         worker_ri += sync(remote_ri)

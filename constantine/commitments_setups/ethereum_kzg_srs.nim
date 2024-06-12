@@ -268,6 +268,7 @@ proc load_ckzg4844(ctx: ptr EthereumKZGContext, f: File): TrustedSetupStatus =
     # Bit-reversal permutations
     ctx.srs_lagrange_g1.evals.bit_reversal_permutation()
     ctx.domain.rootsOfUnity.bit_reversal_permutation()
+    ctx.domain.isBitReversed = true
 
   return tsSuccess
 

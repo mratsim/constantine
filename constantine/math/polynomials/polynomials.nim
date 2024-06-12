@@ -56,6 +56,7 @@ type
     ## This translates into rootsOfUnity[brp((N-brp(i)) and (N-1))] when bit-reversal permuted
     rootsOfUnity*{.align: 64.}: array[N, Field]
     invMaxDegree*: Field
+    isBitReversed*: bool
 
   PolyEvalDomain*[N: static int, Field] = object
     ## Metadata for polynomial in Lagrange basis (evaluation form)
@@ -238,11 +239,11 @@ func differenceQuotientEvalOffDomain*[N: static int, Field](
 # ------------------------------------------------------
 
 func evalPolyOffDomainAt*[N: static int, Field](
+       domain: PolyEvalRootsDomain[N, Field],
        r: var Field,
        poly: PolynomialEval[N, Field],
        z: Field,
-       invRootsMinusZ: array[N, Field],
-       domain: PolyEvalRootsDomain[N, Field]) =
+       invRootsMinusZ: array[N, Field]) =
   ## Evaluate a polynomial in evaluation form
   ## at the point z
   ## z MUST NOT be one of the roots of unity
@@ -266,12 +267,11 @@ func evalPolyOffDomainAt*[N: static int, Field](
   r *= domain.invMaxDegree
 
 func differenceQuotientEvalInDomain*[N: static int, Field](
+       domain: PolyEvalRootsDomain[N, Field],
        r: var PolynomialEval[N, Field],
        poly: PolynomialEval[N, Field],
        zIndex: uint32,
-       invRootsMinusZ: array[N, Field],
-       domain: PolyEvalRootsDomain[N, Field],
-       isBitReversedDomain: static bool) =
+       invRootsMinusZ: array[N, Field]) =
   ## Compute r(x) = (p(x) - p(z)) / (x - z)
   ##
   ## for z = ωⁱ a power of a root of unity
@@ -307,7 +307,7 @@ func differenceQuotientEvalInDomain*[N: static int, Field](
     # Compute contribution of qᵢ to qz which can't be computed directly
     # qz = - ∑ q'ᵢ * ωⁱ/z
     var ri {.noinit.}: Field
-    when isBitReversedDomain:
+    if domain.isBitReversed:
       const logN = log2_vartime(uint32 N)
       let invZidx = N - reverseBits(uint32 zIndex, logN)
       let canonI = reverseBits(i, logN)
@@ -397,9 +397,9 @@ func evalVanishingPolyDerivativeAtRoot*[N: static int, Field](
       r *= t
 
 func evalPolyAt*[N: static int, Field](
+       domain: PolyEvalDomain[N, Field],
        r: var Field,
        poly: PolynomialEval[N, Field],
-       domain: PolyEvalDomain[N, Field],
        z: Field) =
   ## Evaluate a polynomial p at z: r <- p(z)
   ##
@@ -446,8 +446,8 @@ func evalPolyAt*[N: static int, Field](
   freeHeapAligned(invZminusDomain)
 
 func getLagrangeBasisPolysAt*[N: static int, Field](
-      lagrangePolys: var array[N, Field],
       domain: PolyEvalDomain[N, Field],
+      lagrangePolys: var array[N, Field],
       z: Field) =
   ## A polynomial p(X) in evaluation form
   ## is represented by its evaluations
@@ -512,23 +512,23 @@ func getLagrangeBasisPolysAt*[N: static int, Field](
 # ------------------------------------------------------
 
 func evalPolyAt*[N: static int, Field](
+       lindom: PolyEvalLinearDomain[N, Field],
        r: var Field,
        poly: PolynomialEval[N, Field],
-       lindom: PolyEvalLinearDomain[N, Field],
        z: Field) =
-  r.evalPolyAt(poly, lindom.dom, z)
+  lindom.dom.evalPolyAt(r, poly, z)
 
 func getLagrangeBasisPolysAt*[N: static int, Field](
-      lagrangePolys: var array[N, Field],
       lindom: PolyEvalLinearDomain[N, Field],
+      lagrangePolys: var array[N, Field],
       z: Field) =
-  lagrangePolys.getLagrangeBasisPolysAt(lindom.dom, z)
+  lindom.dom.getLagrangeBasisPolysAt(lagrangePolys, z)
 
 func differenceQuotientEvalInDomain*[N: static int, Field](
+       lindom: PolyEvalLinearDomain[N, Field],
        r: var PolynomialEval[N, Field],
        poly: PolynomialEval[N, Field],
-       zIndex: uint32,
-       lindom: PolyEvalLinearDomain[N, Field]) =
+       zIndex: uint32) =
   ## Compute r(x) = (p(x) - p(z)) / (x - z)
   ##
   ## for z = xᵢ, one of the element in the domain.

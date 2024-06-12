@@ -174,22 +174,21 @@ import
 # as the powers of τ
 
 func kzg_commit*[N: static int, C: static Curve](
+       powers_of_tau: PolynomialEval[N, ECP_ShortW_Aff[Fp[C], G1]],
        commitment: var ECP_ShortW_Aff[Fp[C], G1],
-       poly_evals: array[N, BigInt],
-       powers_of_tau: PolynomialEval[N, ECP_ShortW_Aff[Fp[C], G1]]) {.tags:[Alloca, HeapAlloc, Vartime].} =
+       poly_evals: array[N, BigInt]) {.tags:[Alloca, HeapAlloc, Vartime].} =
 
   var commitmentJac {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
   commitmentJac.multiScalarMul_vartime(poly_evals, powers_of_tau.evals)
   commitment.affine(commitmentJac)
 
 func kzg_prove*[N: static int, C: static Curve](
+       powers_of_tau: PolynomialEval[N, ECP_ShortW_Aff[Fp[C], G1]],
+       domain: PolyEvalRootsDomain[N, Fr[C]],
        proof: var ECP_ShortW_Aff[Fp[C], G1],
        eval_at_challenge: var Fr[C],
        poly: PolynomialEval[N, Fr[C]],
-       domain: PolyEvalRootsDomain[N, Fr[C]],
-       challenge: Fr[C],
-       powers_of_tau: PolynomialEval[N, ECP_ShortW_Aff[Fp[C], G1]],
-       isBitReversedDomain: static bool) {.tags:[Alloca, HeapAlloc, Vartime].} =
+       challenge: Fr[C]) {.tags:[Alloca, HeapAlloc, Vartime].} =
 
   # Note:
   #   The order of inputs in
@@ -210,10 +209,10 @@ func kzg_prove*[N: static int, C: static Curve](
 
   if zIndex == -1:
     # p(z)
-    eval_at_challenge.evalPolyOffDomainAt(
+    domain.evalPolyOffDomainAt(
+      eval_at_challenge,
       poly, challenge,
-      invRootsMinusZ[],
-      domain)
+      invRootsMinusZ[])
 
     # q(x) = (p(x) - p(z)) / (x - z)
     diffQuotientPolyFr[].differenceQuotientEvalOffDomain(
@@ -224,8 +223,9 @@ func kzg_prove*[N: static int, C: static Curve](
     eval_at_challenge = poly.evals[zIndex]
 
     # q(x) = (p(x) - p(z)) / (x - z)
-    diffQuotientPolyFr[].differenceQuotientEvalInDomain(
-      poly, uint32 zIndex, invRootsMinusZ[], domain, isBitReversedDomain)
+    domain.differenceQuotientEvalInDomain(
+      diffQuotientPolyFr[],
+      poly, uint32 zIndex, invRootsMinusZ[])
 
   freeHeapAligned(invRootsMinusZ)
 

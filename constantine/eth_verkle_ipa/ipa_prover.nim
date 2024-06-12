@@ -145,7 +145,7 @@ func createIPAProof*[IPAProof](
 
   transcript.domain_separator(asBytes"ipa")
   var b: array[EthVerkleDomain, Fr[Banderwagon]]
-  b.getLagrangeBasisPolysAt(ic.domain, evalPoint)
+  ic.domain.getLagrangeBasisPolysAt(b, evalPoint)
 
   var innerProd {.noInit.}: Fr[Banderwagon]
   innerProd.computeInnerProducts(a, b)

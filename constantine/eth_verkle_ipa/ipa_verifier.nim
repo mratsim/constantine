@@ -45,7 +45,7 @@ func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, got: var EC_P,
 
   var b {.noInit.}: array[EthVerkleDomain, Fr[Banderwagon]]
   # b.computeBarycentricCoefficients(ic.precompWeights,evalPoint)
-  b.getLagrangeBasisPolysAt(ic.domain, evalPoint)
+  ic.domain.getLagrangeBasisPolysAt(b, evalPoint)
 
   transcript.pointAppend(asBytes"C", commitment)
   transcript.scalarAppend(asBytes"input point", evalPoint.toBig())
