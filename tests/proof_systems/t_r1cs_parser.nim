@@ -3,12 +3,13 @@ import
   ../../constantine/proof_systems/constraint_systems/r1cs_circom_parser
 
 
+const TestDir = currentSourcePath.rsplit(DirSep, 1)[0]
 suite "R1CS binary file parser":
 
   test "Parse basic example R1CS file":
     # Note: The example test file used here is from:
     # https://github.com/iden3/r1csfile/tree/master/test/testutils
-    const path = "r1cs_test_files/example.r1cs"
+    const path = TestDir / "r1cs_test_files/example.r1cs"
     let r1cs = parseR1csFile(path)
 
     ## XXX: On 32bit systems `seq[BaseType]` should have twice as many elements
