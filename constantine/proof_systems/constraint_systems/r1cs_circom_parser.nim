@@ -25,7 +25,7 @@ import
 from std / algorithm import sortedByIt
 
 type
-  R1csSectionKind = enum # `kInvalid` used to indicate unset & to make the enum work as field discriminator
+  R1csSectionKind* = enum # `kInvalid` used to indicate unset & to make the enum work as field discriminator
     kInvalid                = 0
     kHeader                 = 1
     kConstraints            = 2
@@ -33,9 +33,9 @@ type
     kCustomGatesList        = 4
     kCustomGatesApplication = 5
 
-  Factor = tuple[index: int32, value: seq[BaseType]]
+  Factor* = tuple[index: int32, value: seq[BaseType]]
   #Factor = tuple[index: int32, value: seq[byte]]
-  LinComb = seq[Factor]
+  LinComb* = seq[Factor]
     # A struct-of-arrays (SoA) is more efficient than seq[Constraint] array-of-structs (AoS)
     # but at the moment we use a seq[BaseType] indirection for field elements
     # so data access will occur a cache-miss anyway.
@@ -43,7 +43,7 @@ type
     # For heavy processing, constraints/linear combinations should use an AoS data structure.
     #
     # Data-structure wise, this is a sparse vector
-  Constraint = tuple[A, B, C: LinComb]
+  Constraint* = tuple[A, B, C: LinComb]
     # A .* B = C with .* pointwise/elementwise mul (Hadamard Product)
 
   #[
@@ -73,15 +73,15 @@ type
      ┃ 32 │   01 00 00 00   ┃               mConstraints
      ┗━━━━┻━━━━━━━━━━━━━━━━━┛
   ]#
-  Header = object
-    fieldSize: uint32 # field size in bytes (fs)
-    prime: seq[byte] # XXX: What type to use with RT size info?
-    nWires: uint32
-    nPubOut: uint32
-    nPubIn: uint32
-    nPrvIn: uint32
-    nLabels: uint64
-    nConstraints: uint32
+  Header* = object
+    fieldSize*: uint32 # field size in bytes (fs)
+    prime*: seq[byte] # XXX: What type to use with RT size info?
+    nWires*: uint32
+    nPubOut*: uint32
+    nPubIn*: uint32
+    nPrvIn*: uint32
+    nLabels*: uint64
+    nConstraints*: uint32
 
   #[
   Wire 2 Label section example
@@ -89,36 +89,36 @@ type
   ┃ 64  │ labelId of Wire_0      ┃ 64  │ labelId of Wire_1      ┃ ... ┃ 64 │      labelId of Wire_n ┃
   ┗━━━━┻━━━━━━━━━━━━━━━━━━━┻━━━━┻━━━━━━━━━━━━━━━━━━━┛     ┗━━━━┻━━━━━━━━━━━━━━━━━━━┛
   ]#
-  Wire2Label = object
-    wireIds: seq[uint64]
+  Wire2Label* = object
+    wireIds*: seq[uint64]
 
-  Section = object
-    size: uint64 # NOTE: in the real file the section type is *FIRST* and then the size
+  Section* = object
+    size*: uint64 # NOTE: in the real file the section type is *FIRST* and then the size
                  # But we cannot map this with a variant type in Nim (without using different
                  # names for each variant branch)
-    case sectionType: R1csSectionKind
+    case sectionType*: R1csSectionKind
     of kInvalid: discard
-    of kHeader: header: Header
-    of kConstraints: constraints: seq[Constraint]
-    of kWire2LabelId: w2l: Wire2Label
-    of kCustomGatesList: cGatesList: R1csCustomGatesList
-    of kCustomGatesApplication: cGatesApp: R1csCustomGatesApp
+    of kHeader: header*: Header
+    of kConstraints: constraints*: seq[Constraint]
+    of kWire2LabelId: w2l*: Wire2Label
+    of kCustomGatesList: cGatesList*: R1csCustomGatesList
+    of kCustomGatesApplication: cGatesApp*: R1csCustomGatesApp
 
   ## `R1csBin` is binary compatible with an R1CS binary file. Meaning it follows the structure
   ## of the file (almost) exactly. The only difference is in the section header. The size comes
   ## *after* the kind, which we don't reproduce in `Section` above
-  R1csBin = object
-    magic: array[4, char]
-    version: uint32
-    numberSections: uint32
-    sections: seq[Section] # Note: Because of the unordered nature of the sections
+  R1csBin* = object
+    magic*: array[4, char]
+    version*: uint32
+    numberSections*: uint32
+    sections*: seq[Section] # Note: Because of the unordered nature of the sections
                            # the `sections` seq won't follow the binary order of
                            # the data in the file. Instead, we first record (kind, file position)
                            # of each different section in the file and then parse them in increasing
                            # order of the section types
 
-  R1csCustomGatesList = object
-  R1csCustomGatesApp = object
+  R1csCustomGatesList* = object
+  R1csCustomGatesApp* = object
 
 proc initSection(kind: R1csSectionKind, size: uint64): Section =
   result = Section(sectionType: kind, size: size)
@@ -223,7 +223,7 @@ proc parseSection(f: File, s: var Section, kind: R1csSectionKind, size: uint64, 
 
   result = true # would have returned otherwise due to `?`
 
-proc parseR1csFile(path: string): R1csBin =
+proc parseR1csFile*(path: string): R1csBin =
   var f = fileio.open(path, kRead)
 
   doAssert f.parseMagicHeader(result.magic), "Failed to read magic header"
@@ -257,11 +257,3 @@ proc parseR1csFile(path: string): R1csBin =
       doAssert kind == kHeader
 
   fileio.close(f)
-  echo result
-
-when isMainModule:
-  # let's try to parse a files
-  const path = "/t/example.r1cs"
-  #const path = "/t/circuitCG.r1cs"
-
-  let r1cs = parseR1csFile(path)
