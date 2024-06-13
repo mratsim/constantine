@@ -13,14 +13,16 @@
 # ############################################################
 
 import
-  ./[transcript_gen, common_utils, eth_verkle_constants],
+  ./[common_utils, eth_verkle_constants],
   ../platforms/primitives,
   ../hashes,
   ../serialization/[
     codecs_banderwagon,
     codecs_status_codes,
   ],
-  ../commitments/pedersen_commitments,
+  ../commitments/[
+    pedersen_commitments,
+    eth_verkle_transcripts],
   ../math/config/[type_ff, curves],
   ../math/elliptic/[ec_twistededwards_affine, ec_twistededwards_projective],
   ../math/polynomials/polynomials,
@@ -103,14 +105,11 @@ func coverIPARounds*(
   res.R_vector[idx] = C_R
   idx = idx + 1
 
-  transcript.pointAppend(asBytes"L", C_L)
-  transcript.pointAppend(asBytes"R", C_R)
-
-  var x_big: matchingOrderBigInt(Banderwagon)
-  x_big.generateChallengeScalar(transcript, asBytes"x")
+  transcript.absorb("L", C_L)
+  transcript.absorb("R", C_R)
 
   var x {.noInit.}: Fr[Banderwagon]
-  x.fromBig(x_big)
+  transcript.squeezeChallenge("x", x)
 
   var xInv {.noInit.}: Fr[Banderwagon]
   xInv.inv(x)
@@ -143,19 +142,19 @@ func createIPAProof*[IPAProof](
   # TODO: for some result IPAProof must be zero-init beforehand
   #       hence we need to investigate why initialization may be incomplete.
 
-  transcript.domain_separator(asBytes"ipa")
+  transcript.domain_separator("ipa")
   var b: array[EthVerkleDomain, Fr[Banderwagon]]
   ic.domain.getLagrangeBasisPolysAt(b, evalPoint)
 
   var innerProd {.noInit.}: Fr[Banderwagon]
   innerProd.computeInnerProducts(a, b)
 
-  transcript.pointAppend(asBytes"C", commitment)
-  transcript.scalarAppend(asBytes"input point", evalPoint.toBig())
-  transcript.scalarAppend(asBytes"output point", innerProd.toBig())
+  transcript.absorb("C", commitment)
+  transcript.absorb("input point", evalPoint)
+  transcript.absorb("output point", innerProd)
 
   var w {.noInit.}: matchingOrderBigInt(Banderwagon)
-  w.generateChallengeScalar(transcript, asBytes"w")
+  transcript.squeezeChallenge("w", w)
 
   var q {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
   q.fromAffine(Banderwagon.getGenerator())

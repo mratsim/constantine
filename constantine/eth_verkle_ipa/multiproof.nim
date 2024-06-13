@@ -8,7 +8,7 @@
 
 import
   tables,
-  ./[transcript_gen, ipa_prover, eth_verkle_constants, ipa_verifier],
+  ./[ipa_prover, eth_verkle_constants, ipa_verifier],
   ../platforms/primitives,
   ../hashes,
   ../serialization/[
@@ -55,8 +55,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
   # createMultiProof creates a multi-proof for several polynomials in the evaluation form
   # The list of triplets are as follows: (C, Fs, Z) represents each polynomial commitment
   # and their evaluation in the domain, and the evaluating point respectively
-  var success {.noInit.} : bool
-  transcript.domain_separator(asBytes"multiproof")
+  transcript.domain_separator("multiproof")
 
   for f in Fs:
     debug: doAssert f.len == EthVerkleDomain, "Polynomial length does not match with the EthVerkleDomain length!"
@@ -69,22 +68,19 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
   num_queries = Cs.len
 
   for i in 0 ..< num_queries:
-    transcript.pointAppend(asBytes"C", Cs[i])
+    transcript.absorb("C", Cs[i])
     var z {.noInit.}: Fr[Banderwagon]
     z.fromInt(Zs[i])
-    transcript.scalarAppend(asBytes"z",z.toBig())
+    transcript.absorb("z",z)
 
     # deducing the `y` value
-    transcript.scalarAppend(asBytes"y", Fs[i][Zs[i]].toBig())
+    transcript.absorb("y", Fs[i][Zs[i]])
 
-  var r {.noInit.} : matchingOrderBigInt(Banderwagon)
-  r.generateChallengeScalar(transcript,asBytes"r")
-
-  var r_fr {.noInit.}: Fr[Banderwagon]
-  r_fr.fromBig(r)
+  var r {.noInit.} : Fr[Banderwagon]
+  transcript.squeezeChallenge("r", r)
 
   var powersOfr {.noInit.} = newSeq[Fr[Banderwagon]](int(num_queries))
-  powersOfr.computePowersOfElem(r_fr, int(num_queries))
+  powersOfr.computePowersOfElem(r, int(num_queries))
 
   # In order to compute g(x), we first compute the polynomials in lagrange form grouped by evaluation points
   # then we compute g(x), this is eventually limit the numbers of divisionOnDomain calls up to the domain size
@@ -123,13 +119,10 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
   var D {.noInit.}: EC_P
   D.pedersen_commit(gx, ipaSetting.crs)
 
-  transcript.pointAppend(asBytes"D", D)
+  transcript.absorb("D", D)
 
-  var t {.noInit.}: matchingOrderBigInt(Banderwagon)
-  t.generateChallengeScalar(transcript,asBytes"t")
-
-  var t_fr {.noInit.}: Fr[Banderwagon]
-  t_fr.fromBig(t)
+  var t {.noInit.}: Fr[Banderwagon]
+  transcript.squeezeChallenge("t", t)
 
   # Computing the denominator inverses only for referenced evaluation points.
   var denInv {.noInit.}: array[EthVerkleDomain, Fr[Banderwagon]]
@@ -143,7 +136,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
     var z_fr {.noInit.}: Fr[Banderwagon]
     z_fr.fromInt(i)
     var deno {.noInit.}: Fr[Banderwagon]
-    deno.diff(t_fr, z_fr)
+    deno.diff(t, z_fr)
 
     denInv[idxx] = deno
     idxx = idxx + 1
@@ -157,8 +150,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
   var denInvIdx = 0
 
   for i in 0 ..< EthVerkleDomain:
-    let check = groupedFs[i].evals[0].isZero()
-    if check.bool() == true:
+    if groupedFs[i].evals[0].isZero().bool():
       continue
 
     for k in 0 ..< EthVerkleDomain:
@@ -166,7 +158,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
       tmp.prod(groupedFs[i].evals[k], denInv_prime[denInvIdx])
       hx[k] += tmp
 
-    denInvIdx = denInvIdx + 1
+    denInvIdx += 1
 
   var hMinusg {.noInit.}: array[EthVerkleDomain, Fr[Banderwagon]]
 
@@ -176,7 +168,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
   var E {.noInit.}: EC_P
 
   E.pedersen_commit(hx, ipaSetting.crs)
-  transcript.pointAppend(asBytes"E",E)
+  transcript.absorb("E",E)
 
   var EMinusD {.noInit.}: EC_P
   EMinusD.diff(E,D)
@@ -185,16 +177,13 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
   #       hence we need to investigate why initialization may be incomplete.
   var ipaProof: IPAProof
 
-  var checks: bool
-  checks = ipaProof.createIPAProof(transcript, ipaSetting, EMinusD, hMinusg, t_fr)
-
-  doAssert checks == true, "Could not compute IPA Proof!"
+  let checks = ipaProof.createIPAProof(transcript, ipaSetting, EMinusD, hMinusg, t)
+  if not checks:
+    return false
 
   res.IPAprv = ipaProof
   res.D = D
-  success = true
-
-  return success
+  return true
 
 # ############################################################
 #
@@ -202,44 +191,35 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
 #
 # ############################################################
 
-
 func verifyMultiproof*[MultiProof](multiProof: var MultiProof, transcript : var CryptoHash, ipaSettings: IPASettings, Cs: openArray[EC_P], Ys: openArray[Fr[Banderwagon]], Zs: openArray[int]) : bool =
   # Multiproof verifier verifies the multiproof for several polynomials in the evaluation form
   # The list of triplets (C,Y,Z) represents each polynomial commitment, evaluation
   # result, and evaluation point in the domain
-  var res {.noInit.} : bool
-  transcript.domain_separator(asBytes"multiproof")
+  transcript.domain_separator("multiproof")
 
   debug: doAssert Cs.len == Ys.len, "Number of commitments and the Number of output points don't match!"
-
   debug: doAssert Cs.len == Zs.len, "Number of commitments and the Number of input points don't match!"
 
   var num_queries = Cs.len
 
   for i in 0 ..< num_queries:
-    transcript.pointAppend(asBytes"C", Cs[i])
+    transcript.absorb("C", Cs[i])
     var z {.noInit.} : Fr[Banderwagon]
     z.fromInt(Zs[i])
 
-    transcript.scalarAppend(asBytes"z", z.toBig())
-    transcript.scalarAppend(asBytes"y", Ys[i].toBig())
+    transcript.absorb("z", z)
+    transcript.absorb("y", Ys[i])
 
-  var r {.noInit.}: matchingOrderBigInt(Banderwagon)
-  r.generateChallengeScalar(transcript,asBytes"r")
-
-  var r_fr {.noInit.}: Fr[Banderwagon]
-  r_fr.fromBig(r)
+  var r {.noInit.}: Fr[Banderwagon]
+  transcript.squeezeChallenge("r", r)
 
   var powersOfr {.noInit.} = newSeq[Fr[Banderwagon]](int(num_queries))
-  powersOfr.computePowersOfElem(r_fr, int(num_queries))
+  powersOfr.computePowersOfElem(r, int(num_queries))
 
-  transcript.pointAppend(asBytes"D", multiProof.D)
+  transcript.absorb("D", multiProof.D)
 
-  var t {.noInit.}: matchingOrderBigInt(Banderwagon)
-  t.generateChallengeScalar(transcript, asBytes"t")
-
-  var t_fr {.noInit.}: Fr[Banderwagon]
-  t_fr.fromBig(t)
+  var t {.noInit.}: Fr[Banderwagon]
+  transcript.squeezeChallenge("t", t)
 
   # Computing the polynomials in the Lagrange form grouped by evaluation point,
   # and the needed helper scalars
@@ -249,10 +229,8 @@ func verifyMultiproof*[MultiProof](multiProof: var MultiProof, transcript : var 
 
   for i in 0 ..< num_queries:
     var z = Zs[i]
-    var r {.noInit.} : Fr[Banderwagon]
-    r = powersOfr[i]
     var scaledEvals {.noInit.}: Fr[Banderwagon]
-    scaledEvals.prod(r, Ys[i])
+    scaledEvals.prod(powersOfr[i], Ys[i])
 
     groupedEvals[z] += scaledEvals
 
@@ -264,7 +242,7 @@ func verifyMultiproof*[MultiProof](multiProof: var MultiProof, transcript : var 
   for i in 0 ..< EthVerkleDomain:
     var z {.noInit.}: Fr[Banderwagon]
     z.fromInt(i)
-    helperScalarDeno[i].diff(t_fr, z)
+    helperScalarDeno[i].diff(t, z)
 
   var helperScalarDeno_prime {.noInit.}: array[EthVerkleDomain, Fr[Banderwagon]]
   helperScalarDeno_prime.batchInv_vartime(helperScalarDeno)
@@ -273,8 +251,7 @@ func verifyMultiproof*[MultiProof](multiProof: var MultiProof, transcript : var 
   var g2t {.noInit.}: Fr[Banderwagon]
 
   for i in 0 ..< EthVerkleDomain:
-    let stat = groupedEvals[i].isZero()
-    if stat.bool() == true:
+    if groupedEvals[i].isZero().bool() == true:
       continue
 
     var tmp {.noInit.}: Fr[Banderwagon]
@@ -301,20 +278,15 @@ func verifyMultiproof*[MultiProof](multiProof: var MultiProof, transcript : var 
   for i in 0 ..< Cs.len:
     Csnp_aff[i].affine(Csnp[i])
 
-  var msmScalars_big {.noInit.}: array[EthVerkleDomain, matchingOrderBigInt(Banderwagon)]
+  E.multiScalarMul_reference_vartime(msmScalars, Csnp_aff)
 
-  for i in 0 ..< EthVerkleDomain:
-    msmScalars_big[i] = msmScalars[i].toBig()
-
-  E.multiScalarMul_reference_vartime(msmScalars_big, Csnp_aff)
-
-  transcript.pointAppend(asBytes"E", E)
+  transcript.absorb("E", E)
 
   var EMinusD {.noInit.} : EC_P
   EMinusD.diff(E, multiProof.D)
 
   var got {.noInit.}: EC_P
-  return ipaSettings.checkIPAProof(transcript, got, EMinusD, multiProof.IPAprv, t_fr, g2t)
+  return ipaSettings.checkIPAProof(transcript, got, EMinusD, multiProof.IPAprv, t, g2t)
 
 # ############################################################
 #

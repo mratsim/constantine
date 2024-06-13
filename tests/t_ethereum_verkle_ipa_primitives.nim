@@ -10,7 +10,6 @@ import
   ./t_ethereum_verkle_ipa_test_helper,
   ../constantine/eth_verkle_ipa/[
       eth_verkle_constants,
-      transcript_gen,
       common_utils,
       ipa_prover,
       ipa_verifier,
@@ -30,7 +29,9 @@ import
   ../constantine/math/arithmetic,
   ../constantine/math/polynomials/polynomials,
   ../constantine/math/constants/zoo_generators,
-  ../constantine/commitments/pedersen_commitments,
+  ../constantine/commitments/[
+    pedersen_commitments,
+    eth_verkle_transcripts],
   ../tests/math_elliptic_curves/t_ec_template,
   ../constantine/ethereum_verkle_primitives,
   ../constantine/platforms/abstractions
@@ -177,8 +178,8 @@ suite "Random Elements Generation and CRS Consistency":
       basisPoints.generate_random_points()
 
       var p0 {.noInit.}, p255 {.noInit.}: array[32, byte]
-      discard p0.serialize(ipaConfig.crs[0])
-      discard p255.serialize(ipaConfig.crs[255])
+      p0.serialize(ipaConfig.crs[0])
+      p255.serialize(ipaConfig.crs[255])
 
       doAssert p0.toHex() == "0x01587ad1336675eb912550ec2a28eb8923b824b490dd2ba82e48f14590a298a0", "Failed to generate the 1st point!"
       doAssert p255.toHex() == "0x3de2be346b539395b0c0de56a5ccca54a317f1b5c80107b0802af9a62276a4d8", "Failed to generate the 256th point!"
@@ -211,7 +212,7 @@ suite "Computing the Correct Vector Commitment":
       commitment.pedersen_commit(test_scalars, basisPoints)
 
       var arr22 {.noInit.}: Bytes
-      discard arr22.serialize(commitment)
+      arr22.serialize(commitment)
 
       doAssert "0x524996a95838712c4580220bb3de453d76cffd7f732f89914d4417bc8e99b513" == arr22.toHex(), "bit string does not match expected"
     testVectorComm()
@@ -288,19 +289,15 @@ suite "Transcript Tests":
   test "Transcript Testing with different challenge scalars to test randomness":
 
     proc testVec()=
-
-      # Initializing a new transcript state
       var tr {.noInit.}: sha256
-      # Generating with a new label
-      tr.newTranscriptGen(asBytes"simple_protocol")
+      tr.initTranscript("simple_protocol")
 
       # Generating Challenge Scalar
-      var challenge1 {.noInit.}: matchingOrderBigInt(Banderwagon)
-      challenge1.generateChallengeScalar(tr,asBytes"simple_challenge")
+      var challenge1 {.noInit.}: Fr[Banderwagon]
+      tr.squeezeChallenge("simple_challenge", challenge1)
 
       var b1 {.noInit.}: array[32, byte]
-      let stat = b1.serialize_scalar(challenge1, littleEndian)
-      doAssert stat == cttCodecScalar_Success, "Serialization Failure"
+      b1.serialize_fr(challenge1, littleEndian)
 
       # Comparing with Go-IPA implementation
       doAssert b1.toHex() == "0xc2aa02607cbdf5595f00ee0dd94a2bbff0bed6a2bf8452ada9011eadb538d003", "Incorrect Value!"
@@ -310,22 +307,21 @@ suite "Transcript Tests":
   test "Transcript testing with same challenge scalar to test transcript correctness":
 
     proc testVec1()=
-
       # Initializing 2 new transcript states
       var tr {.noInit.}: sha256
       var tr2 {.noInit.}: sha256
 
       # Generating 2 new labels into 2 separate transcripts
-      tr.newTranscriptGen(asBytes"simple_protocol")
-      tr2.newTranscriptGen(asBytes"simple_protocol")
+      tr.initTranscript("simple_protocol")
+      tr2.initTranscript("simple_protocol")
 
       # Generating Challenge Scalar for Transcript 1
-      var challenge1 {.noInit.}: matchingOrderBigInt(Banderwagon)
-      challenge1.generateChallengeScalar(tr,asBytes"ethereum_challenge")
+      var challenge1 {.noInit.}: Fr[Banderwagon]
+      tr.squeezeChallenge("ethereum_challenge", challenge1)
 
       # Generating Challenge Scalar for Transcript 2
-      var challenge2 {.noInit.}: matchingOrderBigInt(Banderwagon)
-      challenge2.generateChallengeScalar(tr2,asBytes"ethereum_challenge")
+      var challenge2 {.noInit.}: Fr[Banderwagon]
+      tr2.squeezeChallenge("ethereum_challenge", challenge2)
 
       # Challenge 1 should be equal to Challenge 2 as both are coming from different transcript
       # states that are being handled similarly
@@ -335,25 +331,21 @@ suite "Transcript Tests":
 
   test "Transcript testing with repetitive append of scalars, thereby a compound challenge scalar":
     proc testVec2()=
-
-      # Initializing a new transcript state
       var tr {.noInit.}: sha256
+      tr.initTranscript("simple_protocol")
 
-      # Generating with a new label
-      tr.newTranscriptGen(asBytes"simple_protocol")
-
-      var five {.noInit.} : matchingOrderBigInt(Banderwagon)
+      var five {.noInit.} : Fr[Banderwagon]
       five.fromUint(uint64(5))
 
       # Appending some scalars to the transcript state
-      tr.scalarAppend(asBytes"five", five)
-      tr.scalarAppend(asBytes"five again", five)
+      tr.absorb("five", five)
+      tr.absorb("five again", five)
 
-      var challenge {.noInit.}: matchingOrderBigInt(Banderwagon)
-      challenge.generateChallengeScalar(tr, asBytes"simple_challenge")
+      var challenge {.noInit.}: Fr[Banderwagon]
+      tr.squeezeChallenge("simple_challenge", challenge)
 
       var c_bytes {.noInit.}: array[32, byte]
-      discard c_bytes.serialize_scalar(challenge, littleEndian)
+      c_bytes.serialize_fr(challenge, littleEndian)
 
       # Comparing with Go-IPA Implmentation
       doAssert c_bytes.toHex() == "0x498732b694a8ae1622d4a9347535be589e4aee6999ffc0181d13fe9e4d037b0b", "Some issue in Challenge Scalar"
@@ -363,57 +355,48 @@ suite "Transcript Tests":
     test "Transcript testing with +1 and -1, appending them to be a compound challenge scalar":
       proc testVec3() =
 
-        # Initializing a new transcript state
-        var tr {.noInit.}: sha256
-
-        # Generating with a new label
-        tr.newTranscriptGen(asBytes"simple_protocol")
-
-        var one {.noInit.}: matchingOrderBigInt(Banderwagon)
-        var minus_one {.noInit.}: Fr[Banderwagon]
-        # As scalar append and generating challenge scalars mainly deal with BigInts
-        # and BigInts usually store unsigned values, this test checks if the Transcript state
+        # As scalar absorb and squeeze mainly deal with BigInts
+        # and BigInts store unsigned values, this test checks if the Transcript state
         # generates the correct challenge scalar, even when a signed BigInt such as -1 is
         # appended to the transcript state.
-        minus_one.setMinusOne()
 
-        # Here first `minus_one` is set to -1 MOD (Banderwagon Curve Order)
-        # and then in-place converted to BigInt while append to the transcript state.
+        var tr {.noInit.}: sha256
+        tr.initTranscript("simple_protocol")
+
+        var one {.noInit.}: Fr[Banderwagon]
+        var minus_one {.noInit.}: Fr[Banderwagon]
+        minus_one.setMinusOne()
         one.setOne()
 
         # Constructing a Compound Challenge Scalar
-        tr.scalarAppend(asBytes"-1", minus_one.toBig())
-        tr.domainSeparator(asBytes"separate me")
-        tr.scalarAppend(asBytes"-1 again", minus_one.toBig())
-        tr.domainSeparator(asBytes"separate me again")
-        tr.scalarAppend(asBytes"now 1", one)
+        tr.absorb("-1", minus_one)
+        tr.domainSeparator("separate me")
+        tr.absorb("-1 again", minus_one)
+        tr.domainSeparator("separate me again")
+        tr.absorb("now 1", one)
 
         var challenge {.noInit.}: matchingOrderBigInt(Banderwagon)
-        challenge.generateChallengeScalar(tr, asBytes"simple_challenge")
+        tr.squeezeChallenge("simple_challenge", challenge)
 
-        var c_bytes {.noInit.}: array[32, byte]
-        discard c_bytes.serialize_scalar(challenge, littleEndian)
+        var bytes {.noInit.}: array[32, byte]
+        bytes.serialize_scalar(challenge, littleEndian)
 
-        doAssert c_bytes.toHex() == "0x14f59938e9e9b1389e74311a464f45d3d88d8ac96adf1c1129ac466de088d618", "Computed challenge is incorrect!"
+        doAssert bytes.toHex() == "0x14f59938e9e9b1389e74311a464f45d3d88d8ac96adf1c1129ac466de088d618", "Computed challenge is incorrect!"
 
       testVec3()
 
     test "Transcript testing with point append":
       proc testVec4()=
-
-        # Initializing a new transcript state
         var tr {.noInit.}: sha256
+        tr.initTranscript("simple_protocol")
 
-        # Generating with a new label
-        tr.newTranscriptGen(asBytes"simple_protocol")
-
-        var gen {.noInit.}: EC_P
+        var gen {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
         gen.fromAffine(Banderwagon.getGenerator())
 
-        tr.pointAppend(asBytes"generator", gen)
+        tr.absorb("generator", gen)
 
-        var challenge {.noInit.}: matchingOrderBigInt(Banderwagon)
-        challenge.generateChallengeScalar(tr, asBytes"simple_challenge")
+        var challenge {.noInit.}: Fr[Banderwagon]
+        tr.squeezeChallenge("simple_challenge", challenge)
 
         doAssert challenge.toHex(littleEndian) == "0x8c2dafe7c0aabfa9ed542bb2cbf0568399ae794fc44fdfd7dff6cc0e6144921c", "Issue with pointAppend"
       testVec4()
@@ -450,7 +433,7 @@ suite "IPA proof tests":
       ipaConfig.genIPAConfig()
 
       var tr {.noInit.}: sha256
-      tr.newTranscriptGen(asBytes"ipa")
+      tr.initTranscript("ipa")
 
       var ok: bool
       var got {.noInit.}: EC_P
@@ -484,7 +467,7 @@ suite "IPA proof tests":
       ipaConfig.genIPAConfig()
 
       var prover_transcript {.noInit.}: sha256
-      prover_transcript.newTranscriptGen(asBytes"test")
+      prover_transcript.initTranscript("test")
 
       var prover_comm: EC_P
       prover_comm.pedersen_commit(poly, ipaConfig.crs)
@@ -512,7 +495,7 @@ suite "IPA proof tests":
   test "Test for IPA proof equality":
     proc testIPAProofEquality()=
       var prover_transcript {.noInit.}: sha256
-      prover_transcript.newTranscriptGen(asBytes"ipa")
+      prover_transcript.initTranscript("ipa")
 
       # from a shared view
       var point: Fr[Banderwagon]
@@ -543,7 +526,7 @@ suite "IPA proof tests":
       ipaConfig2.genIPAConfig()
 
       var prover_transcript2 {.noInit.}: sha256
-      prover_transcript2.newTranscriptGen(asBytes"ipa")
+      prover_transcript2.initTranscript("ipa")
 
       var testVals2: array[14, int] = [1,2,3,4,5,6,7,8,9,10,11,12,13,14]
       var poly2: array[256, Fr[Banderwagon]]
@@ -578,7 +561,7 @@ suite "IPA proof tests":
         prover_comm.pedersen_commit(poly, ipaConfig.crs)
 
         var prover_transcript {.noInit.}: sha256
-        prover_transcript.newTranscriptGen(asBytes"ipa")
+        prover_transcript.initTranscript("ipa")
 
         var ipaProof: IPAProof
         let stat = ipaProof.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
@@ -595,7 +578,7 @@ suite "IPA proof tests":
         verifier_comm = prover_comm
 
         var verifier_transcript: sha256
-        verifier_transcript.newTranscriptGen(asBytes"ipa")
+        verifier_transcript.initTranscript("ipa")
 
         var ok: bool
         var got {.noInit.}: EC_P
@@ -631,7 +614,7 @@ suite "Multiproof Tests":
 
       # Prover's view
       var prover_transcript {.noInit.}: sha256
-      prover_transcript.newTranscriptGen(asBytes"multiproof")
+      prover_transcript.initTranscript("multiproof")
 
       var one: Fr[Banderwagon]
       one.setOne()
@@ -662,7 +645,7 @@ suite "Multiproof Tests":
 
       # Verifier's view
       var verifier_transcript: sha256
-      verifier_transcript.newTranscriptGen(asBytes"multiproof")
+      verifier_transcript.initTranscript("multiproof")
 
       var stat_verify_mult: bool
       stat_verify_mult = multiproof.verifyMultiproof(verifier_transcript, ipaConfig, Cs, Ys,Zs)
@@ -701,7 +684,7 @@ suite "Multiproof Tests":
 
       for i in 0 ..< EthVerkleDomain:
         var tr {.noInit.}: sha256
-        tr.newTranscriptGen(asBytes"multiproof")
+        tr.initTranscript("multiproof")
         Zs[0] = i
         var ok: bool
         ok = multiproof.verifyMultiproof(tr, ipaConfig, Cs, Ys, Zs)

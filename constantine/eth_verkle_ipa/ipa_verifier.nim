@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ./[transcript_gen, common_utils, eth_verkle_constants, ipa_prover],
+  ./[common_utils, eth_verkle_constants, ipa_prover],
   ../platforms/primitives,
   ../math/config/[type_ff, curves],
   ../hashes,
@@ -25,10 +25,10 @@ import
 # ############################################################
 
 func generateChallengesForIPA*(res: var openArray[matchingOrderBigInt(Banderwagon)], transcript: var CryptoHash, proof: IPAProof) =
-  for i in 0 ..< 8:
-    transcript.pointAppend( asBytes"L", proof.L_vector[i])
-    transcript.pointAppend( asBytes"R", proof.R_vector[i])
-    res[i].generateChallengeScalar(transcript,asBytes"x")
+  for i in 0 ..< 8: # TODO 8 is hardcoded
+    transcript.absorb("L", proof.L_vector[i])
+    transcript.absorb("R", proof.R_vector[i])
+    transcript.squeezeChallenge("x", res[i])
 
 func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, got: var EC_P, commitment: var EC_P, proof: IPAProof, evalPoint: Fr[Banderwagon], res: Fr[Banderwagon]) : bool =
   # Check IPA proof verifier a IPA proof for a committed polynomial in evaluation form
@@ -36,23 +36,20 @@ func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, got: var EC_P,
   # and cross-checking it with `result`
   var r {.noInit.} : bool
 
-  transcript.domain_separator(asBytes"ipa")
+  transcript.domain_separator("ipa")
 
   debug: doAssert (proof.L_vector.len == proof.R_vector.len), "Proof lengths unequal!"
-
   debug: doAssert (proof.L_vector.len == int(ic.numRounds)), "Proof length and num round unequal!"
 
-
   var b {.noInit.}: array[EthVerkleDomain, Fr[Banderwagon]]
-  # b.computeBarycentricCoefficients(ic.precompWeights,evalPoint)
   ic.domain.getLagrangeBasisPolysAt(b, evalPoint)
 
-  transcript.pointAppend(asBytes"C", commitment)
-  transcript.scalarAppend(asBytes"input point", evalPoint.toBig())
-  transcript.scalarAppend(asBytes"output point", res.toBig())
+  transcript.absorb("C", commitment)
+  transcript.absorb("input point", evalPoint)
+  transcript.absorb("output point", res)
 
   var w : matchingOrderBigInt(Banderwagon)
-  w.generateChallengeScalar(transcript,asBytes"w")
+  transcript.squeezeChallenge("w", w)
 
   # Rescaling of q read https://hackmd.io/mJeCRcawTRqr9BooVpHv5g#Re-defining-the-quotient
   var q {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
@@ -63,13 +60,11 @@ func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, got: var EC_P,
   qy.scalarMul_vartime(res)
   commitment += qy
 
-
-  var challenges_big {.noInit.}: array[8, matchingOrderBigInt(Banderwagon)]
-  challenges_big.generateChallengesForIPA(transcript, proof)
-
   var challenges {.noInit.}: array[8,Fr[Banderwagon]]
   for i in 0 ..< 8:
-    challenges[i].fromBig(challenges_big[i])
+    transcript.absorb("L", proof.L_vector[i])
+    transcript.absorb("R", proof.R_vector[i])
+    transcript.squeezeChallenge("x", challenges[i])
 
   var challengesInv {.noInit.}: array[8,Fr[Banderwagon]]
   challengesInv.batchInv_vartime(challenges)

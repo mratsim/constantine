@@ -40,26 +40,7 @@ func validate_scalar*(scalar: matchingOrderBigInt(Banderwagon)): CttCodecScalarS
     return cttCodecScalar_ScalarLargerThanCurveOrder
   return cttCodecScalar_Success
 
-func make_scalar_mod_order*(reduced_scalar: var Fr[Banderwagon], src: array[32, byte], order: static Endianness = bigEndian): bool =
-  ## Convert a 32-byte array to a field element, reducing it modulo Banderwagon's curve order if necessary.
-
-  # Which can be safely stored in a 256 BigInt
-  # Now incase of the scalar overflowing the last 3-bits
-  # it is converted from its natural representation
-  # to the Montgomery residue form
-  var res: bool = false
-  var scalar {.noInit.}: BigInt[256]
-  scalar.unmarshal(src, order)
-
-  getMont(reduced_scalar.mres.limbs, scalar.limbs,
-        Fr[Banderwagon].fieldMod().limbs,
-        Fr[Banderwagon].getR2modP().limbs,
-        Fr[Banderwagon].getNegInvModWord(),
-        Fr[Banderwagon].getSpareBits())
-  res = true
-  return res
-
-func serialize*(dst: var array[32, byte], P: ECP_TwEdwards_Aff[Fp[Banderwagon]]): CttCodecEccStatus =
+func serialize*(dst: var array[32, byte], P: ECP_TwEdwards_Aff[Fp[Banderwagon]]): CttCodecEccStatus {.discardable.} =
   ## Serialize a Banderwagon point(x, y) in the format
   ##
   ## serialize = bigEndian( sign(y) * x )
@@ -82,7 +63,7 @@ func serialize*(dst: var array[32, byte], P: ECP_TwEdwards_Aff[Fp[Banderwagon]])
   dst.marshal(X, bigEndian)
   return cttCodecEcc_Success
 
-func serialize*(dst: var array[32, byte], P: ECP_TwEdwards_Prj[Fp[Banderwagon]]): CttCodecEccStatus =
+func serialize*(dst: var array[32, byte], P: ECP_TwEdwards_Prj[Fp[Banderwagon]]): CttCodecEccStatus {.discardable.} =
   ## Serialize a Banderwagon point(x, y) in the format
   ##
   ## serialize = bigEndian( sign(y) * x )
@@ -209,22 +190,31 @@ func deserialize_vartime*(dst: var ECP_TwEdwards_Prj[Fp[Banderwagon]], src: arra
 ##              Banderwagon Scalar Serialization
 ##
 ## ############################################################
-##
-func serialize_scalar*(dst: var array[32, byte], scalar: matchingOrderBigInt(Banderwagon), order: static Endianness = bigEndian): CttCodecScalarStatus =
-  ## Adding an optional Endianness param default at BigEndian
+
+func serialize_scalar*(
+      dst: var array[32, byte],
+      scalar: matchingOrderBigInt(Banderwagon),
+      order: static Endianness = bigEndian): CttCodecScalarStatus {.discardable.} =
   ## Serialize a scalar
   ## Returns cttCodecScalar_Success if successful
   dst.marshal(scalar, order)
   return cttCodecScalar_Success
+
+func serialize_fr*(
+      dst: var array[32, byte],
+      scalar: Fr[Banderwagon],
+      order: static Endianness = bigEndian): CttCodecScalarStatus {.discardable.} =
+  ## Serialize a scalar
+  ## Returns cttCodecScalar_Success if successful
+  return dst.serialize_scalar(scalar.toBig(), order)
 
 ## ############################################################
 ##
 ##              Banderwagon Scalar Deserialization
 ##
 ## ############################################################
-##
+
 func deserialize_scalar*(dst: var matchingOrderBigInt(Banderwagon), src: array[32, byte], order: static Endianness = bigEndian): CttCodecScalarStatus =
-  ## Adding an optional Endianness param default at BigEndian
   ## Deserialize a scalar
   ## Also validates the scalar range
   ##
@@ -240,12 +230,20 @@ func deserialize_scalar*(dst: var matchingOrderBigInt(Banderwagon), src: array[3
     return status
   return cttCodecScalar_Success
 
-func deserialize_scalar_mod_order* (dst: var Fr[Banderwagon], src: array[32, byte], order: static Endianness = bigEndian): CttCodecScalarStatus =
+func deserialize_fr*(
+      dst: var Fr[Banderwagon],
+      src: array[32, byte],
+      order: static Endianness = bigEndian): CttCodecScalarStatus {.discardable.} =
   ## Deserialize a scalar
-  ## Take mod value of the scalar (MOD CurveOrder)
-  ## If the scalar values goes out of range
-  let stat {.used.} = dst.make_scalar_mod_order(src, order)
-  debug: doAssert stat, "transcript_gen.deserialize_scalar_mod_order: Unexpected failure"
+  ## Reduce the value of the scalar (modulo the curve order)
+  var scalar {.noInit.}: BigInt[256]
+  scalar.unmarshal(src, order)
+
+  getMont(dst.mres.limbs, scalar.limbs,
+        Fr[Banderwagon].fieldMod().limbs,
+        Fr[Banderwagon].getR2modP().limbs,
+        Fr[Banderwagon].getNegInvModWord(),
+        Fr[Banderwagon].getSpareBits())
 
   return cttCodecScalar_Success
 
