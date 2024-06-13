@@ -74,7 +74,7 @@ else:
   proc c_fileno(f: File): cint {.importc: "fileno", header: "<fcntl.h>", sideeffect.}
   proc c_fstat(a1: cint, a2: var Stat): cint {.importc: "fstat", header: "<sys/stat.h>", sideeffect.}
 
-proc close*(f: File) =
+proc close*(f: File) {.inline.} =
   if not f.isNil:
     discard f.c_fclose()
 
@@ -92,6 +92,9 @@ proc open*(f: var File, filepath: cstring, mode = kRead): bool =
 
   return true
 
+proc open*(filepath: string, mode = kRead): File =
+  doAssert open(result, filepath.cstring, mode), "Failed to open file " & $filepath & " for " & $mode
+
 
 # Navigating files
 # ------------------------------------------------------------
@@ -108,17 +111,23 @@ else:
 
 proc c_fread(buffer: pointer, len, count: csize_t, f: File): csize_t {.importc: "fread", header: "<stdio.h>", sideeffect, tags:[ReadIOEffect].}
 
-proc readInto*(f: File, buffer: pointer, len: int): int =
+proc readInto*(f: File, buffer: pointer, len: int): int {.inline.} =
   ## Read data into buffer, return the number of bytes read
   cast[int](c_fread(buffer, 1, cast[csize_t](len), f))
 
-proc readInto*[T](f: File, buf: var T): bool =
+proc readInto*[T: not seq](f: File, buf: var T): bool {.inline.} =
   ## Read data into buffer,
   ## return true if the number of bytes read
   ## matches the output type size
   return f.readInto(buf.addr, sizeof(buf)) == sizeof(T)
 
-proc read*(f: File, T: typedesc): T =
+proc readInto*[T](f: File, buf: var openArray[T]): bool {.inline.} =
+  ## Read data into buffer,
+  ## return true if the number of bytes read
+  ## matches the output type size
+  return f.readInto(buf[0].addr, sizeof(T) * buf.len) == sizeof(T) * buf.len
+
+proc read*(f: File, T: typedesc): T {.inline.} =
   ## Interpret next bytes as type `T`
   ## Panics if the number of bytes read does not match
   ## the size of `T`
