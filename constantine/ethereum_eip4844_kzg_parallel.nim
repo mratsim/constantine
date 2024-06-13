@@ -14,7 +14,7 @@ import
   ./math/[ec_shortweierstrass, arithmetic, extension_fields],
   ./math/polynomials/polynomials_parallel,
   ./hashes,
-  ./commitments/kzg_polynomial_commitments_parallel,
+  ./commitments/kzg_parallel,
   ./serialization/[codecs_status_codes, codecs_bls12_381],
   ./math/io/io_fields,
   ./platforms/[abstractions, allocs],
@@ -140,7 +140,7 @@ proc blob_to_kzg_commitment_parallel*(
   ##     proof.(τ - z) = p(τ)-p(z)
   ##   which doesn't require the full blob but only evaluations of it
   ##   - at τ, p(τ) is the commitment
-  ##   - and at the verification challenge z.
+  ##   - and at the opening challenge z.
   ##
   ##   with proof = [(p(τ) - p(z)) / (τ-z)]₁
 
@@ -167,7 +167,7 @@ proc compute_kzg_proof_parallel*(
        z_bytes: array[32, byte]): cttEthKzgStatus {.libPrefix: prefix_eth_kzg4844.} =
   ## Generate:
   ## - A proof of correct evaluation.
-  ## - y = p(z), the evaluation of p at the challenge z, with p being the Blob interpreted as a polynomial.
+  ## - y = p(z), the evaluation of p at the opening challenge z, with p being the Blob interpreted as a polynomial.
   ##
   ## Mathematical description
   ##   [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁, with p(τ) being the commitment, i.e. the evaluation of p at the powers of τ
@@ -177,7 +177,7 @@ proc compute_kzg_proof_parallel*(
   ##     proof.(τ - z) = p(τ)-p(z)
   ##   which doesn't require the full blob but only evaluations of it
   ##   - at τ, p(τ) is the commitment
-  ##   - and at the verification challenge z.
+  ##   - and at the opening challenge z.
 
   # Random or Fiat-Shamir challenge
   var z {.noInit.}: Fr[BLS12_381]
@@ -227,14 +227,14 @@ proc compute_blob_kzg_proof_parallel*(
     let convStatus = tp.blob_to_field_polynomial_parallel_async(poly, blob)
 
     # Fiat-Shamir challenge
-    var challenge {.noInit.}: Fr[BLS12_381]
-    challenge.addr.fiatShamirChallenge(blob, commitment_bytes.unsafeAddr)
+    var opening_challenge {.noInit.}: Fr[BLS12_381]
+    opening_challenge.addr.fiatShamirChallenge(blob, commitment_bytes.unsafeAddr)
 
     # Await conversion to field polynomial
     check HappyPath, sync(convStatus)
 
     # KZG Prove
-    var y {.noInit.}: Fr[BLS12_381]                         # y = p(z), eval at challenge z
+    var y {.noInit.}: Fr[BLS12_381]                         # y = p(z), eval at opening challenge z
     var proof {.noInit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
 
     tp.kzg_prove_parallel(
@@ -242,7 +242,7 @@ proc compute_blob_kzg_proof_parallel*(
       ctx.domain.addr,
       proof, y,
       poly,
-      challenge.addr)
+      opening_challenge.addr)
 
     discard proof_bytes.serialize_g1_compressed(proof) # cannot fail
 
@@ -273,18 +273,16 @@ proc verify_blob_kzg_proof_parallel*(
     let convStatus = tp.blob_to_field_polynomial_parallel_async(poly, blob)
 
     # Fiat-Shamir challenge
-    var challengeFr {.noInit.}: Fr[BLS12_381]
-    challengeFr.addr.fiatShamirChallenge(blob, commitment_bytes.unsafeAddr)
-
-    var challenge, eval_at_challenge {.noInit.}: matchingOrderBigInt(BLS12_381)
-    challenge.fromField(challengeFr)
+    var opening_challenge {.noInit.}: Fr[BLS12_381]
+    var eval_at_challenge {.noInit.}: Fr[BLS12_381]
+    opening_challenge.addr.fiatShamirChallenge(blob, commitment_bytes.unsafeAddr)
 
     # Lagrange Polynomial evaluation
     # ------------------------------
     # 1. Compute 1/(ωⁱ - z) with ω a root of unity, i in [0, N).
     #    zIndex = i if ωⁱ - z == 0 (it is the i-th root of unity) and -1 otherwise.
     let zIndex = invRootsMinusZ[].inverseDifferenceArrayZ(
-                                    ctx.domain.rootsOfUnity, challengeFr,
+                                    ctx.domain.rootsOfUnity, opening_challenge,
                                     differenceKind = kArrayMinusZ,
                                     earlyReturnOnZero = true)
 
@@ -293,19 +291,17 @@ proc verify_blob_kzg_proof_parallel*(
 
     # 2. Actual evaluation
     if zIndex == -1:
-      var eval_at_challenge_fr{.noInit.}: Fr[BLS12_381]
       tp.evalPolyOffDomainAt_parallel(
         ctx.domain.addr,
-        eval_at_challenge_fr,
-        poly, challengeFr.addr,
+        eval_at_challenge,
+        poly, opening_challenge.addr,
         invRootsMinusZ)
-      eval_at_challenge.fromField(eval_at_challenge_fr)
     else:
-      eval_at_challenge.fromField(poly.evals[zIndex])
+      eval_at_challenge = poly.evals[zIndex]
 
     # KZG verification
     let verif = kzg_verify(ECP_ShortW_Aff[Fp[BLS12_381], G1](commitment),
-                          challenge, eval_at_challenge,
+                          opening_challenge.toBig(), eval_at_challenge.toBig(),
                           ECP_ShortW_Aff[Fp[BLS12_381], G1](proof),
                           ctx.srs_monomial_g2.coefs[1])
     if verif:
@@ -346,7 +342,7 @@ proc verify_blob_kzg_proof_batch_parallel*(
     return cttEthKzg_Success
 
   let commitments = allocHeapArrayAligned(KZGCommitment, n, alignment = 64)
-  let challenges = allocHeapArrayAligned(Fr[BLS12_381], n, alignment = 64)
+  let opening_challenges = allocHeapArrayAligned(Fr[BLS12_381], n, alignment = 64)
   let evals_at_challenges = allocHeapArrayAligned(matchingOrderBigInt(BLS12_381), n, alignment = 64)
   let proofs = allocHeapArrayAligned(KZGProof, n, alignment = 64)
 
@@ -358,7 +354,7 @@ proc verify_blob_kzg_proof_batch_parallel*(
       captures: {tp, ctx,
                  commitments, commitments_bytes,
                  polys, blobs,
-                 challenges, evals_at_challenges,
+                 opening_challenges, evals_at_challenges,
                  proofs, proof_bytes,
                  invRootsMinusZs}
       reduceInto(globalStatus: Flowvar[cttEthKzgStatus]):
@@ -366,7 +362,7 @@ proc verify_blob_kzg_proof_batch_parallel*(
           var workerStatus = cttEthKzg_Success
         forLoop:
           let polyStatusFut = tp.blob_to_field_polynomial_parallel_async(polys[i].addr, blobs[i].addr)
-          let challengeStatusFut = tp.spawnAwaitable challenges[i].addr.fiatShamirChallenge(blobs[i].addr, commitments_bytes[i].addr)
+          let challengeStatusFut = tp.spawnAwaitable opening_challenges[i].addr.fiatShamirChallenge(blobs[i].addr, commitments_bytes[i].addr)
 
           let commitmentStatus = kzgifyStatus commitments[i].bytes_to_kzg_commitment(commitments_bytes[i])
           if workerStatus == cttEthKzg_Success:
@@ -381,7 +377,7 @@ proc verify_blob_kzg_proof_batch_parallel*(
           # 1. Compute 1/(ωⁱ - z) with ω a root of unity, i in [0, N).
           #    zIndex = i if ωⁱ - z == 0 (it is the i-th root of unity) and -1 otherwise.
           let zIndex = invRootsMinusZs[i].inverseDifferenceArrayZ(
-                                          ctx.domain.rootsOfUnity, challenges[i],
+                                          ctx.domain.rootsOfUnity, opening_challenges[i],
                                           differenceKind = kArrayMinusZ,
                                           earlyReturnOnZero = true)
           # 2. Actual evaluation
@@ -390,7 +386,7 @@ proc verify_blob_kzg_proof_batch_parallel*(
             tp.evalPolyOffDomainAt_parallel(
               ctx.domain.addr,
               eval_at_challenge_fr,
-              polys[i].addr, challenges[i].addr,
+              polys[i].addr, opening_challenges[i].addr,
               invRootsMinusZs[i].addr)
             evals_at_challenges[i].fromField(eval_at_challenge_fr)
           else:
@@ -419,11 +415,11 @@ proc verify_blob_kzg_proof_batch_parallel*(
         if secureRandomBytes[i] != byte 0:
           randomBlindingFr.fromDigest(secureRandomBytes)
           break blinding
-      # 2. If it's 0 (how?!), we just hash all the Fiat-Shamir challenges
+      # 2. If it's 0 (how?!), we just hash all the Fiat-Shamir opening_challenges
       var transcript: sha256
       transcript.init()
       transcript.update(RANDOM_CHALLENGE_KZG_BATCH_DOMAIN)
-      transcript.update(cast[ptr UncheckedArray[byte]](challenges).toOpenArray(0, n*sizeof(Fr[BLS12_381])-1))
+      transcript.update(cast[ptr UncheckedArray[byte]](opening_challenges).toOpenArray(0, n*sizeof(Fr[BLS12_381])-1))
 
       var blindingBytes {.noInit.}: array[32, byte]
       transcript.finish(blindingBytes)
@@ -436,7 +432,7 @@ proc verify_blob_kzg_proof_batch_parallel*(
     type EcAffArray = ptr UncheckedArray[ECP_ShortW_Aff[Fp[BLS12_381], G1]]
     let verif = tp.kzg_verify_batch_parallel(
                   cast[EcAffArray](commitments),
-                  challenges,
+                  opening_challenges,
                   evals_at_challenges,
                   cast[EcAffArray](proofs),
                   linearIndepRandNumbers,
@@ -453,7 +449,7 @@ proc verify_blob_kzg_proof_batch_parallel*(
   freeHeapAligned(polys)
   freeHeapAligned(proofs)
   freeHeapAligned(evals_at_challenges)
-  freeHeapAligned(challenges)
+  freeHeapAligned(opening_challenges)
   freeHeapAligned(commitments)
 
   return result

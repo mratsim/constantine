@@ -163,14 +163,14 @@ fn t_compute_kzg_proof() {
             &test_name
         ));
 
-        let (Some(blob), Some(challenge)) = (test.input.blob.opt_bytes.0, test.input.z.opt_bytes.0)
+        let (Some(blob), Some(opening_challenge)) = (test.input.blob.opt_bytes.0, test.input.z.opt_bytes.0)
         else {
             assert!(test.output.is_none());
             println!("{}=> SUCCESS - expected deserialization failure", tv);
             continue;
         };
 
-        match ctx.compute_kzg_proof(&*blob, &*challenge) {
+        match ctx.compute_kzg_proof(&*blob, &*opening_challenge) {
             Ok((proof, eval)) => {
                 let (true_proof, true_eval) = test.output.unwrap();
                 assert_eq!(proof, *true_proof.opt_bytes.0.unwrap());
@@ -572,14 +572,14 @@ fn t_compute_kzg_proof_parallel() {
             &test_name
         ));
 
-        let (Some(blob), Some(challenge)) = (test.input.blob.opt_bytes.0, test.input.z.opt_bytes.0)
+        let (Some(blob), Some(opening_challenge)) = (test.input.blob.opt_bytes.0, test.input.z.opt_bytes.0)
         else {
             assert!(test.output.is_none());
             println!("{}=> SUCCESS - expected deserialization failure", tv);
             continue;
         };
 
-        match ctx.compute_kzg_proof_parallel(&*blob, &*challenge) {
+        match ctx.compute_kzg_proof_parallel(&*blob, &*opening_challenge) {
             Ok((proof, eval)) => {
                 let (true_proof, true_eval) = test.output.unwrap();
                 assert_eq!(proof, *true_proof.opt_bytes.0.unwrap());

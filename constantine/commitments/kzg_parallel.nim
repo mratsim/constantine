@@ -16,8 +16,8 @@ import
   ../platforms/[abstractions, views],
   ../threadpool/threadpool
 
-import ./kzg_polynomial_commitments {.all.}
-export kzg_polynomial_commitments
+import ./kzg {.all.}
+export kzg
 
 ## ############################################################
 ##
@@ -48,7 +48,7 @@ proc kzg_prove_parallel*[N: static int, C: static Curve](
        proof: var ECP_ShortW_Aff[Fp[C], G1],
        eval_at_challenge: var Fr[C],
        poly: ptr PolynomialEval[N, Fr[C]],
-       challenge: ptr Fr[C]) =
+       opening_challenge: ptr Fr[C]) =
   ## KZG prove commitment to a polynomial in Lagrange / Evaluation form
   ##
   ## Outputs:
@@ -61,7 +61,7 @@ proc kzg_prove_parallel*[N: static int, C: static Curve](
   #  `kzg_prove`, `evalPolyOffDomainAt`, `differenceQuotientEvalOffDomain`, `differenceQuotientEvalInDomain`
   #  minimizes register changes when parameter passing.
   #
-  # z = challenge in the following code
+  # z = opening_challenge in the following code
 
   let diffQuotientPolyFr = allocHeapAligned(PolynomialEval[N, Fr[C]], alignment = 64)
   let invRootsMinusZ = allocHeapAligned(array[N, Fr[C]], alignment = 64)
@@ -69,7 +69,7 @@ proc kzg_prove_parallel*[N: static int, C: static Curve](
   # Compute 1/(ωⁱ - z) with ω a root of unity, i in [0, N).
   # zIndex = i if ωⁱ - z == 0 (it is the i-th root of unity) and -1 otherwise.
   let zIndex = invRootsMinusZ[].inverseDifferenceArrayZ(
-                                  domain.rootsOfUnity, challenge[],
+                                  domain.rootsOfUnity, opening_challenge[],
                                   differenceKind = kArrayMinusZ,
                                   earlyReturnOnZero = false)
 
@@ -78,7 +78,7 @@ proc kzg_prove_parallel*[N: static int, C: static Curve](
     tp.evalPolyOffDomainAt_parallel(
       domain,
       eval_at_challenge,
-      poly, challenge,
+      poly, opening_challenge,
       invRootsMinusZ)
 
     # q(x) = (p(x) - p(z)) / (x - z)
@@ -87,7 +87,7 @@ proc kzg_prove_parallel*[N: static int, C: static Curve](
       poly, eval_at_challenge.addr, invRootsMinusZ)
   else:
     # p(z)
-    # But the challenge z is equal to one of the roots of unity (how likely is that?)
+    # But the opening_challenge z is equal to one of the roots of unity (how likely is that?)
     eval_at_challenge = poly.evals[zIndex]
 
     # q(x) = (p(x) - p(z)) / (x - z)
@@ -117,7 +117,7 @@ proc kzg_prove_parallel*[N: static int, C: static Curve](
 proc kzg_verify_batch_parallel*[bits: static int, F2; C: static Curve](
        tp: Threadpool,
        commitments: ptr UncheckedArray[ECP_ShortW_Aff[Fp[C], G1]],
-       challenges: ptr UncheckedArray[Fr[C]],
+       opening_challenges: ptr UncheckedArray[Fr[C]],
        evals_at_challenges: ptr UncheckedArray[BigInt[bits]],
        proofs: ptr UncheckedArray[ECP_ShortW_Aff[Fp[C], G1]],
        linearIndepRandNumbers: ptr UncheckedArray[Fr[C]],
@@ -136,7 +136,7 @@ proc kzg_verify_batch_parallel*[bits: static int, F2; C: static Curve](
   ##   [a]₁ corresponds to the scalar multiplication [a]G by the generator G of the group 𝔾1
   ##
   ## - `commitments`: `n` commitments [commitmentᵢ]₁
-  ## - `challenges`: `n` challenges zᵢ
+  ## - `opening_challenges`: `n` opening_challenges zᵢ
   ## - `evals_at_challenges`: `n` evaluation yᵢ = pᵢ(zᵢ)
   ## - `proofs`: `n` [proof]₁
   ## - `linearIndepRandNumbers`: `n` linearly independant numbers that are not in control
@@ -221,7 +221,7 @@ proc kzg_verify_batch_parallel*[bits: static int, F2; C: static Curve](
   proc compute_sum_rand_challenge_proofs(tp: Threadpool,
                                          sum_rand_challenge_proofs: ptr ECP_ShortW_Jac[Fp[C], G1],
                                          linearIndepRandNumbers: ptr UncheckedArray[Fr[C]],
-                                         challenges: ptr UncheckedArray[Fr[C]],
+                                         opening_challenges: ptr UncheckedArray[Fr[C]],
                                          proofs: ptr UncheckedArray[ECP_ShortW_Aff[Fp[C], G1]],
                                          n: int) {.nimcall.} =
 
@@ -230,8 +230,8 @@ proc kzg_verify_batch_parallel*[bits: static int, F2; C: static Curve](
 
     syncScope:
       tp.parallelFor i in 0 ..< n:
-        captures: {rand_coefs, rand_coefs_fr, linearIndepRandNumbers, challenges}
-        rand_coefs_fr[i].prod(linearIndepRandNumbers[i], challenges[i])
+        captures: {rand_coefs, rand_coefs_fr, linearIndepRandNumbers, opening_challenges}
+        rand_coefs_fr[i].prod(linearIndepRandNumbers[i], opening_challenges[i])
         rand_coefs[i].fromField(rand_coefs_fr[i])
 
     tp.multiScalarMul_vartime_parallel(sum_rand_challenge_proofs, rand_coefs, proofs, n)
@@ -242,7 +242,7 @@ proc kzg_verify_batch_parallel*[bits: static int, F2; C: static Curve](
   let sum_rand_challenge_proofs_fv = tp.spawnAwaitable tp.compute_sum_rand_challenge_proofs(
                                                    sum_rand_challenge_proofs.addr,
                                                    linearIndepRandNumbers,
-                                                   challenges,
+                                                   opening_challenges,
                                                    proofs,
                                                    n)
 

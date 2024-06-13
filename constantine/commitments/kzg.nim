@@ -128,26 +128,26 @@ import
 ##
 ## 1. commit(srs_g1, blob) -> commitment C = ∑ blobᵢ.srs_g1ᵢ = ∑ [blobᵢ.τⁱ]₁ = [p(τ)]₁
 ##
-## 2. The verifier chooses a random challenge `z` in 𝔽r that the prover does not control.
+## 2. The verifier chooses a random opening_challenge `z` in 𝔽r that the prover does not control.
 ##    To make the protocol non-interactive, z may be computed via the Fiat-Shamir heuristic.
 ##
-## 3. compute_proof(blob, [commitment]₁, challenge) -> (eval_at_challenge, [proof]₁)
+## 3. compute_proof(blob, [commitment]₁, opening_challenge) -> (eval_at_challenge, [proof]₁)
 ##      blob: p(x)
 ##      [commitment]₁: [p(τ)]₁
-##      challenge: z
+##      opening_challenge: z
 ##      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##      -> The prover needs to provide a proof that it knows a polynomial p(x)
 ##         such that p(z) = y. With the proof, the verifier doesn't need access to the polynomial to verify the claim.
 ##      -> Compute a witness polynomial w(x, z) = (p(x) - p(z)) / (x-z)
-##         We can evaluate it at τ from the public SRS and challenge point `z` chosen by the verifier (indifferentiable from random).
+##         We can evaluate it at τ from the public SRS and opening_challenge point `z` chosen by the verifier (indifferentiable from random).
 ##         We don't know τ, but we know [τ]₁ so we transport the problem from 𝔽r to 𝔾1
-##      => The proof is the evaluation of the witness polynomial for a challenge `z` of the verifier choosing.
+##      => The proof is the evaluation of the witness polynomial for a opening_challenge `z` of the verifier choosing.
 ##         w(τ, z) = proof
 ##         We output [proof]₁ = [proof]G₁
 ##
-## 4. verify_commitment([commitment]₁, challenge, eval_at_challenge, [proof]₁) -> bool
+## 4. verify_commitment([commitment]₁, opening_challenge, eval_at_challenge, [proof]₁) -> bool
 ##      [commitment]₁: [p(τ)]₁
-##      challenge: z
+##      opening_challenge: z
 ##      eval_at_challenge: p(z) = y
 ##      [proof]₁: [(p(τ) - p(z)) / (τ-z)]₁
 ##      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -188,14 +188,14 @@ func kzg_prove*[N: static int, C: static Curve](
        proof: var ECP_ShortW_Aff[Fp[C], G1],
        eval_at_challenge: var Fr[C],
        poly: PolynomialEval[N, Fr[C]],
-       challenge: Fr[C]) {.tags:[Alloca, HeapAlloc, Vartime].} =
+       opening_challenge: Fr[C]) {.tags:[Alloca, HeapAlloc, Vartime].} =
 
   # Note:
   #   The order of inputs in
   #  `kzg_prove`, `evalPolyOffDomainAt`, `differenceQuotientEvalOffDomain`, `differenceQuotientEvalInDomain`
   #  minimizes register changes when parameter passing.
   #
-  # z = challenge in the following code
+  # z = opening_challenge in the following code
 
   let diffQuotientPolyFr = allocHeapAligned(PolynomialEval[N, Fr[C]], alignment = 64)
   let invRootsMinusZ = allocHeapAligned(array[N, Fr[C]], alignment = 64)
@@ -203,7 +203,7 @@ func kzg_prove*[N: static int, C: static Curve](
   # Compute 1/(ωⁱ - z) with ω a root of unity, i in [0, N).
   # zIndex = i if ωⁱ - z == 0 (it is the i-th root of unity) and -1 otherwise.
   let zIndex = invRootsMinusZ[].inverseDifferenceArrayZ(
-                                  domain.rootsOfUnity, challenge,
+                                  domain.rootsOfUnity, opening_challenge,
                                   differenceKind = kArrayMinusZ,
                                   earlyReturnOnZero = false)
 
@@ -211,7 +211,7 @@ func kzg_prove*[N: static int, C: static Curve](
     # p(z)
     domain.evalPolyOffDomainAt(
       eval_at_challenge,
-      poly, challenge,
+      poly, opening_challenge,
       invRootsMinusZ[])
 
     # q(x) = (p(x) - p(z)) / (x - z)
@@ -219,7 +219,7 @@ func kzg_prove*[N: static int, C: static Curve](
       poly, eval_at_challenge, invRootsMinusZ[])
   else:
     # p(z)
-    # But the challenge z is equal to one of the roots of unity (how likely is that?)
+    # But the opening_challenge z is equal to one of the roots of unity (how likely is that?)
     eval_at_challenge = poly.evals[zIndex]
 
     # q(x) = (p(x) - p(z)) / (x - z)
@@ -249,23 +249,23 @@ func kzg_prove*[N: static int, C: static Curve](
 
 func kzg_verify*[F2; C: static Curve](
        commitment: ECP_ShortW_Aff[Fp[C], G1],
-       challenge: BigInt, # matchingOrderBigInt(C),
+       opening_challenge: BigInt, # matchingOrderBigInt(C),
        eval_at_challenge: BigInt, # matchingOrderBigInt(C),
        proof: ECP_ShortW_Aff[Fp[C], G1],
        tauG2: ECP_ShortW_Aff[F2, G2]): bool {.tags:[Alloca, Vartime].} =
-  ## Verify a short KZG proof that ``p(challenge) = eval_at_challenge``
-  ## without doing the whole p(challenge) computation
+  ## Verify a short KZG proof that ``p(opening_challenge) = eval_at_challenge``
+  ## without doing the whole p(opening_challenge) computation
   #
   # Scalar inputs
-  #   challenge
-  #   eval_at_challenge = p(challenge)
+  #   opening_challenge
+  #   eval_at_challenge = p(opening_challenge)
   #
   # Group inputs
   #   [commitment]₁ = [p(τ)]G
   #   [proof]₁ = [proof]G
   #   [τ]₂ = [τ]H in the trusted setup
   #
-  # With z = challenge, we want to verify
+  # With z = opening_challenge, we want to verify
   #   proof.(τ - z) = p(τ)-p(z)
   #
   # However τ is a secret from the trusted setup that cannot be used raw.
@@ -275,7 +275,7 @@ func kzg_verify*[F2; C: static Curve](
   # e([proof]₁, [τ]₂ - [z]₂) . e([p(τ)]₁ - [p(z)]₁, [-1]₂) = 1
   #
   # Finally
-  #   e([proof]₁, [τ]₂ - [challenge]₂) . e([commitment]₁ - [eval_at_challenge]₁, [-1]₂) = 1
+  #   e([proof]₁, [τ]₂ - [opening_challenge]₂) . e([commitment]₁ - [eval_at_challenge]₁, [-1]₂) = 1
   var
     tau_minus_challenge_G2 {.noInit.}: ECP_ShortW_Jac[F2, G2]
     commitment_minus_eval_at_challenge_G1 {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
@@ -290,7 +290,7 @@ func kzg_verify*[F2; C: static Curve](
   tauG2Jac.fromAffine(tauG2)
   commitmentJac.fromAffine(commitment)
 
-  tau_minus_challenge_G2.scalarMul_vartime(challenge)
+  tau_minus_challenge_G2.scalarMul_vartime(opening_challenge)
   tau_minus_challenge_G2.diff(tauG2Jac, tau_minus_challenge_G2)
 
   commitment_minus_eval_at_challenge_G1.scalarMul_vartime(eval_at_challenge)
@@ -301,7 +301,7 @@ func kzg_verify*[F2; C: static Curve](
   tmzG2.affine(tau_minus_challenge_G2)
   cmyG1.affine(commitment_minus_eval_at_challenge_G1)
 
-  # e([proof]₁, [τ]₂ - [challenge]₂) * e([commitment]₁ - [eval_at_challenge]₁, [-1]₂)
+  # e([proof]₁, [τ]₂ - [opening_challenge]₂) * e([commitment]₁ - [eval_at_challenge]₁, [-1]₂)
   var gt {.noInit.}: C.getGT()
   gt.pairing([proof, cmyG1], [tmzG2, negG2])
 
