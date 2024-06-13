@@ -5010,8 +5010,8 @@ extern "C" {
     #[must_use]
     #[doc = " Compute a commitment to the `blob`.\n  The commitment can be verified without needing the full `blob`\n\n  Mathematical description\n    commitment = [p(τ)]₁\n\n    The blob data is used as a polynomial,\n    the polynomial is evaluated at powers of tau τ, a trusted setup.\n\n    Verification can be done by verifying the relation:\n      proof.(τ - z) = p(τ)-p(z)\n    which doesn't require the full blob but only evaluations of it\n    - at τ, p(τ) is the commitment\n    - and at the verification challenge z.\n\n    with proof = [(p(τ) - p(z)) / (τ-z)]₁"]
     pub fn ctt_eth_kzg_blob_to_kzg_commitment_parallel(
-        ctx: *const ctt_eth_kzg_context,
         tp: *const ctt_threadpool,
+        ctx: *const ctt_eth_kzg_context,
         dst: *mut ctt_eth_kzg_commitment,
         blob: *const ctt_eth_kzg_blob,
     ) -> ctt_eth_kzg_status;
@@ -5020,8 +5020,8 @@ extern "C" {
     #[must_use]
     #[doc = " Generate:\n  - A proof of correct evaluation.\n  - y = p(z), the evaluation of p at the challenge z, with p being the Blob interpreted as a polynomial.\n\n  Mathematical description\n    [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁, with p(τ) being the commitment, i.e. the evaluation of p at the powers of τ\n    The notation [a]₁ corresponds to the scalar multiplication of a by the generator of 𝔾1\n\n    Verification can be done by verifying the relation:\n      proof.(τ - z) = p(τ)-p(z)\n    which doesn't require the full blob but only evaluations of it\n    - at τ, p(τ) is the commitment\n    - and at the verification challenge z."]
     pub fn ctt_eth_kzg_compute_kzg_proof_parallel(
-        ctx: *const ctt_eth_kzg_context,
         tp: *const ctt_threadpool,
+        ctx: *const ctt_eth_kzg_context,
         proof: *mut ctt_eth_kzg_proof,
         y: *mut ctt_eth_kzg_eval_at_challenge,
         blob: *const ctt_eth_kzg_blob,
@@ -5032,8 +5032,8 @@ extern "C" {
     #[must_use]
     #[doc = " Given a blob, return the KZG proof that is used to verify it against the commitment.\n  This method does not verify that the commitment is correct with respect to `blob`."]
     pub fn ctt_eth_kzg_compute_blob_kzg_proof_parallel(
-        ctx: *const ctt_eth_kzg_context,
         tp: *const ctt_threadpool,
+        ctx: *const ctt_eth_kzg_context,
         proof: *mut ctt_eth_kzg_proof,
         blob: *const ctt_eth_kzg_blob,
         commitment: *const ctt_eth_kzg_commitment,
@@ -5043,8 +5043,8 @@ extern "C" {
     #[must_use]
     #[doc = " Given a blob and a KZG proof, verify that the blob data corresponds to the provided commitment."]
     pub fn ctt_eth_kzg_verify_blob_kzg_proof_parallel(
-        ctx: *const ctt_eth_kzg_context,
         tp: *const ctt_threadpool,
+        ctx: *const ctt_eth_kzg_context,
         blob: *const ctt_eth_kzg_blob,
         commitment: *const ctt_eth_kzg_commitment,
         proof: *const ctt_eth_kzg_proof,
@@ -5054,8 +5054,8 @@ extern "C" {
     #[must_use]
     #[doc = " Verify `n` (blob, commitment, proof) sets efficiently\n\n  `n` is the number of verifications set\n  - if n is negative, this procedure returns verification failure\n  - if n is zero, this procedure returns verification success\n\n  `secure_random_bytes` random bytes must come from a cryptographically secure RNG\n  or computed through the Fiat-Shamir heuristic.\n  It serves as a random number\n  that is not in the control of a potential attacker to prevent potential\n  rogue commitments attacks due to homomorphic properties of pairings,\n  i.e. commitments that are linear combination of others and sum would be zero."]
     pub fn ctt_eth_kzg_verify_blob_kzg_proof_batch_parallel(
-        ctx: *const ctt_eth_kzg_context,
         tp: *const ctt_threadpool,
+        ctx: *const ctt_eth_kzg_context,
         blobs: *const ctt_eth_kzg_blob,
         commitments: *const ctt_eth_kzg_commitment,
         proofs: *const ctt_eth_kzg_proof,

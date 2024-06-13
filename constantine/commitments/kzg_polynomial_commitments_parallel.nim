@@ -31,9 +31,10 @@ export kzg_polynomial_commitments
 
 proc kzg_commit_parallel*[N: static int, C: static Curve](
        tp: Threadpool,
+       powers_of_tau: PolynomialEval[N, ECP_ShortW_Aff[Fp[C], G1]],
        commitment: var ECP_ShortW_Aff[Fp[C], G1],
        poly_evals: array[N, BigInt],
-       powers_of_tau: PolynomialEval[N, ECP_ShortW_Aff[Fp[C], G1]]) =
+) =
   ## KZG Commit to a polynomial in Lagrange / Evaluation form
   ## Parallelism: This only returns when computation is fully done
   var commitmentJac {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
@@ -42,13 +43,12 @@ proc kzg_commit_parallel*[N: static int, C: static Curve](
 
 proc kzg_prove_parallel*[N: static int, C: static Curve](
        tp: Threadpool,
+       powers_of_tau: PolynomialEval[N, ECP_ShortW_Aff[Fp[C], G1]],
+       domain: ptr PolyEvalRootsDomain[N, Fr[C]],
        proof: var ECP_ShortW_Aff[Fp[C], G1],
        eval_at_challenge: var Fr[C],
        poly: ptr PolynomialEval[N, Fr[C]],
-       domain: ptr PolyEvalRootsDomain[N, Fr[C]],
-       challenge: ptr Fr[C],
-       powers_of_tau: PolynomialEval[N, ECP_ShortW_Aff[Fp[C], G1]],
-       isBitReversedDomain: static bool) =
+       challenge: ptr Fr[C]) =
   ## KZG prove commitment to a polynomial in Lagrange / Evaluation form
   ##
   ## Outputs:
@@ -76,10 +76,10 @@ proc kzg_prove_parallel*[N: static int, C: static Curve](
   if zIndex == -1:
     # p(z)
     tp.evalPolyOffDomainAt_parallel(
+      domain,
       eval_at_challenge,
       poly, challenge,
-      invRootsMinusZ,
-      domain)
+      invRootsMinusZ)
 
     # q(x) = (p(x) - p(z)) / (x - z)
     tp.differenceQuotientEvalOffDomain_parallel(
@@ -92,8 +92,9 @@ proc kzg_prove_parallel*[N: static int, C: static Curve](
 
     # q(x) = (p(x) - p(z)) / (x - z)
     tp.differenceQuotientEvalInDomain_parallel(
+      domain,
       diffQuotientPolyFr,
-      poly, uint32 zIndex, invRootsMinusZ, domain, isBitReversedDomain)
+      poly, uint32 zIndex, invRootsMinusZ)
 
   freeHeapAligned(invRootsMinusZ)
 

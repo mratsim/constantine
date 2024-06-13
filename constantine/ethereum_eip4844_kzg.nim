@@ -294,7 +294,7 @@ func blob_to_kzg_commitment*(
     check HappyPath, poly.blob_to_bigint_polynomial(blob)
 
     var r {.noinit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1]
-    kzg_commit(r, poly.evals, ctx.srs_lagrange_g1)
+    kzg_commit(ctx.srs_lagrange_g1, r, poly.evals)
     discard dst.serialize_g1_compressed(r)
 
     result = cttEthKzg_Success
@@ -337,10 +337,11 @@ func compute_kzg_proof*(
     var proof {.noInit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
 
     kzg_prove(
+      ctx.srs_lagrange_g1,
+      ctx.domain,
       proof, y,
-      poly[], ctx.domain,
-      z, ctx.srs_lagrange_g1,
-      isBitReversedDomain = true)
+      poly[],
+      z)
 
     discard proof_bytes.serialize_g1_compressed(proof) # cannot fail
     y_bytes.marshal(y, bigEndian) # cannot fail
@@ -405,10 +406,11 @@ func compute_blob_kzg_proof*(
     var proof {.noInit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1] # [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁
 
     kzg_prove(
+      ctx.srs_lagrange_g1,
+      ctx.domain,
       proof, y,
-      poly[], ctx.domain,
-      challenge, ctx.srs_lagrange_g1,
-      isBitReversedDomain = true)
+      poly[],
+      challenge)
 
     discard proof_bytes.serialize_g1_compressed(proof) # cannot fail
 
@@ -456,10 +458,10 @@ func verify_blob_kzg_proof*(
     # 2. Actual evaluation
     if zIndex == -1:
       var eval_at_challenge_fr{.noInit.}: Fr[BLS12_381]
-      eval_at_challenge_fr.evalPolyOffDomainAt(
+      ctx.domain.evalPolyOffDomainAt(
+        eval_at_challenge_fr,
         poly[], challengeFr,
-        invRootsMinusZ[],
-        ctx.domain)
+        invRootsMinusZ[])
       eval_at_challenge.fromField(eval_at_challenge_fr)
     else:
       eval_at_challenge.fromField(poly.evals[zIndex])
@@ -528,10 +530,10 @@ func verify_blob_kzg_proof_batch*(
       # 2. Actual evaluation
       if zIndex == -1:
         var eval_at_challenge_fr{.noInit.}: Fr[BLS12_381]
-        eval_at_challenge_fr.evalPolyOffDomainAt(
+        ctx.domain.evalPolyOffDomainAt(
+          eval_at_challenge_fr,
           poly[], challenges[i],
-          invRootsMinusZ[],
-          ctx.domain)
+          invRootsMinusZ[])
         evals_at_challenges[i].fromField(eval_at_challenge_fr)
       else:
         evals_at_challenges[i].fromField(poly.evals[zIndex])
