@@ -4595,6 +4595,11 @@ fn bindgen_test_layout_ctt_eth_bls_signature() {
         )
     );
 }
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct ctt_eth_bls_batch_sig_accumulator {
+    _unused: [u8; 0],
+}
 #[repr(u8)]
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 pub enum ctt_eth_bls_status {
@@ -4807,6 +4812,41 @@ extern "C" {
         len: isize,
         secure_random_bytes: *const byte,
     ) -> ctt_eth_bls_status;
+}
+extern "C" {
+    #[doc = " Allocator function for the incomplete struct of the batch sig accumulator.\n Users of the C API *must* use this."]
+    pub fn ctt_eth_bls_alloc_batch_sig_accumulator() -> *mut ctt_eth_bls_batch_sig_accumulator;
+}
+extern "C" {
+    #[doc = " Function to free the storage allocated by the above.\n Users of the C API *must* use this."]
+    pub fn ctt_eth_bls_free_batch_sig_accumulator(ptr: *mut ctt_eth_bls_batch_sig_accumulator);
+}
+extern "C" {
+    #[doc = "  Initializes a Batch BLS Signature accumulator context.\n\n  This requires cryptographically secure random bytes\n  to defend against forged signatures that would not\n  verify individually but would verify while aggregated\n  https://ethresear.ch/t/fast-verification-of-multiple-bls-signatures/5407/14\n\n  An optional accumulator separation tag can be added\n  so that from a single source of randomness\n  each accumulatpr is seeded with a different state.\n  This is useful in multithreaded context."]
+    pub fn ctt_eth_bls_init_batch_sig_accumulator(
+        ctx: *mut ctt_eth_bls_batch_sig_accumulator,
+        secure_random_bytes: *const byte,
+        accum_sep_tag: *const byte,
+        accum_sep_tag_len: isize,
+    );
+}
+extern "C" {
+    #[must_use]
+    #[doc = "  Add a (public key, message, signature) triplet\n  to a BLS signature accumulator\n\n  Assumes that the public key and signature\n  have been group checked\n\n  Returns false if pubkey or signatures are the infinity points\n"]
+    pub fn ctt_eth_bls_update_batch_sig_accumulator(
+        ctx: *mut ctt_eth_bls_batch_sig_accumulator,
+        pubkey: *const ctt_eth_bls_pubkey,
+        message: *const byte,
+        message_len: isize,
+        signature: *const ctt_eth_bls_signature,
+    ) -> bool;
+}
+extern "C" {
+    #[must_use]
+    #[doc = "  Finish batch and/or aggregate signature verification and returns the final result.\n\n  Returns false if nothing was accumulated\n  Rteturns false on verification failure"]
+    pub fn ctt_eth_bls_final_verify_batch_sig_accumulator(
+        ctx: *mut ctt_eth_bls_batch_sig_accumulator,
+    ) -> bool;
 }
 extern "C" {
     #[must_use]
