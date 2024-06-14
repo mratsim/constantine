@@ -14,7 +14,8 @@ import
   ../math/constants/zoo_generators,
   ../math/polynomials/polynomials,
   ../platforms/[abstractions, views],
-  ../threadpool/threadpool
+  ../threadpool/threadpool,
+  ./protocol_quotient_check_parallel
 
 import ./kzg {.all.}
 export kzg
@@ -44,11 +45,11 @@ proc kzg_commit_parallel*[N: static int, C: static Curve](
 proc kzg_prove_parallel*[N: static int, C: static Curve](
        tp: Threadpool,
        powers_of_tau: PolynomialEval[N, ECP_ShortW_Aff[Fp[C], G1]],
-       domain: ptr PolyEvalRootsDomain[N, Fr[C]],
+       domain: PolyEvalRootsDomain[N, Fr[C]],
        proof: var ECP_ShortW_Aff[Fp[C], G1],
        eval_at_challenge: var Fr[C],
-       poly: ptr PolynomialEval[N, Fr[C]],
-       opening_challenge: ptr Fr[C]) =
+       poly: PolynomialEval[N, Fr[C]],
+       opening_challenge: Fr[C]) =
   ## KZG prove commitment to a polynomial in Lagrange / Evaluation form
   ##
   ## Outputs:
@@ -58,61 +59,23 @@ proc kzg_prove_parallel*[N: static int, C: static Curve](
   ## Parallelism: This only returns when computation is fully done
   # Note:
   #   The order of inputs in
-  #  `kzg_prove`, `evalPolyOffDomainAt`, `differenceQuotientEvalOffDomain`, `differenceQuotientEvalInDomain`
+  #  `kzg_prove`, `evalPolyOffDomainAt`, `getQuotientPolyOffDomain`, `getQuotientPolyInDomain`
   #  minimizes register changes when parameter passing.
   #
   # z = opening_challenge in the following code
 
-  let diffQuotientPolyFr = allocHeapAligned(PolynomialEval[N, Fr[C]], alignment = 64)
-  let invRootsMinusZ = allocHeapAligned(array[N, Fr[C]], alignment = 64)
-
-  # Compute 1/(ωⁱ - z) with ω a root of unity, i in [0, N).
-  # zIndex = i if ωⁱ - z == 0 (it is the i-th root of unity) and -1 otherwise.
-  let zIndex = invRootsMinusZ[].inverseDifferenceArrayZ(
-                                  domain.rootsOfUnity, opening_challenge[],
-                                  differenceKind = kArrayMinusZ,
-                                  earlyReturnOnZero = false)
-
-  if zIndex == -1:
-    # p(z)
-    tp.evalPolyOffDomainAt_parallel(
-      domain,
-      eval_at_challenge,
-      poly, opening_challenge,
-      invRootsMinusZ)
-
-    # q(x) = (p(x) - p(z)) / (x - z)
-    tp.differenceQuotientEvalOffDomain_parallel(
-      diffQuotientPolyFr,
-      poly, eval_at_challenge.addr, invRootsMinusZ)
-  else:
-    # p(z)
-    # But the opening_challenge z is equal to one of the roots of unity (how likely is that?)
-    eval_at_challenge = poly.evals[zIndex]
-
-    # q(x) = (p(x) - p(z)) / (x - z)
-    tp.differenceQuotientEvalInDomain_parallel(
-      domain,
-      diffQuotientPolyFr,
-      poly, uint32 zIndex, invRootsMinusZ)
-
-  freeHeapAligned(invRootsMinusZ)
-
-  const orderBits = C.getCurveOrderBitwidth()
-  let diffQuotientPolyBigInt = allocHeapAligned(array[N, BigInt[orderBits]], alignment = 64)
-
-  syncScope:
-    tp.parallelFor i in 0 ..< N:
-      captures: {diffQuotientPolyBigInt, diffQuotientPolyFr}
-      diffQuotientPolyBigInt[i].fromField(diffQuotientPolyFr.evals[i])
-
-  freeHeapAligned(diffQuotientPolyFr)
+  let quotientPoly = allocHeapAligned(PolynomialEval[N, Fr[C]], alignment = 64)
+  tp.getQuotientPoly_parallel(
+    domain,
+    quotientPoly[], eval_at_challenge,
+    poly, opening_challenge
+  )
 
   var proofJac {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
-  tp.multiScalarMul_vartime_parallel(proofJac, diffQuotientPolyBigInt[], powers_of_tau.evals)
+  tp.multiScalarMul_vartime_parallel(proofJac, quotientPoly.evals, powers_of_tau.evals)
   proof.affine(proofJac)
 
-  freeHeapAligned(diffQuotientPolyBigInt)
+  freeHeapAligned(quotientPoly)
 
 proc kzg_verify_batch_parallel*[bits: static int, F2; C: static Curve](
        tp: Threadpool,

@@ -111,7 +111,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
       continue
 
     var quotient {.noInit.}: PolynomialEval[EthVerkleDomain, Fr[Banderwagon]]
-    ipaSetting.domain.differenceQuotientEvalInDomain(quotient, groupedFs[i], i)
+    ipaSetting.domain.getQuotientPolyInDomain(quotient, groupedFs[i], i)
 
     for j in  0 ..< EthVerkleDomain:
       gx[j] += quotient.evals[j]

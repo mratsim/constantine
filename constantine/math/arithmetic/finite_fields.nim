@@ -62,7 +62,7 @@ func fromBig*[C: static Curve](T: type FF[C], src: BigInt): FF[C] {.noInit.} =
   ## Convert a BigInt to its Montgomery form
   result.fromBig(src)
 
-func fromField*(dst: var BigInt, src: FF) {.noInit, inline.} =
+func fromField*(dst: var BigInt, src: FF) {.inline.} =
   ## Convert a finite-field element to a BigInt in natural representation
   dst.fromMont(src.mres, FF.fieldMod(), FF.getNegInvModWord(), FF.getSpareBits())
 
@@ -548,6 +548,28 @@ template mulCheckSparse*(a: var Fp, b: Fp) =
     a.neg()
   else:
     a *= b
+
+func batchFromField*[N, C](
+      dst: ptr UncheckedArray[BigInt[N]],
+      src: ptr UncheckedArray[FF[C]],
+      len: int) {.inline.} =
+  for i in 0 ..< len:
+    dst[i].fromField(src[i])
+
+func computePowers*[C](dst: ptr UncheckedArray[FF[C]], len: int, base: FF[C]) =
+  ## We need linearly independent random numbers
+  ## for batch proof sampling.
+  ## Powers are linearly independent.
+  ## It's also likely faster than calling a fast RNG + modular reduction
+  ## to be in 0 < number < curve_order
+  ## since modular reduction needs modular multiplication or a division anyway.
+  let N = len
+  if N >= 1:
+    dst[0].setOne()
+  if N >= 2:
+    dst[1] = base
+  for i in 2 ..< N:
+    dst[i].prod(dst[i-1], base)
 
 # ############################################################
 #

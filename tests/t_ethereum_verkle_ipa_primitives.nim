@@ -31,7 +31,8 @@ import
   ../constantine/math/constants/zoo_generators,
   ../constantine/commitments/[
     pedersen_commitments,
-    eth_verkle_transcripts],
+    eth_verkle_transcripts,
+    protocol_quotient_check],
   ../tests/math_elliptic_curves/t_ec_template,
   ../constantine/ethereum_verkle_primitives,
   ../constantine/platforms/abstractions
@@ -152,7 +153,7 @@ suite "Barycentric Form Tests":
           evaluations.evals[i] = points[i].y
 
         var quotient: PolynomialEval[EthVerkleDomain, Fr[Banderwagon]]
-        lindom.differenceQuotientEvalInDomain(quotient, evaluations, zIndex = 1)
+        lindom.getQuotientPolyInDomain(quotient, evaluations, zIndex = 1)
 
         doAssert quotient.evals[255].toHex(littleEndian) == "0x616b0e203a877177e2090013a77ce4ea8726941aac613b532002f3653d54250b", "Issue with Divide on Domain using Barycentric Precomputes!"
 

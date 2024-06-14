@@ -138,7 +138,7 @@ testGen(blob_to_kzg_commitment, testVector):
 
   var commitment: array[48, byte]
 
-  let status = blob_to_kzg_commitment(ctx, commitment, blob[].addr)
+  let status = blob_to_kzg_commitment(ctx, commitment, blob[])
   stdout.write "[" & $status & "]\n"
 
   if status == cttEthKzg_Success:
@@ -156,7 +156,7 @@ testGen(compute_kzg_proof, testVector):
   var proof: array[48, byte]
   var y: array[32, byte]
 
-  let status = compute_kzg_proof(ctx, proof, y, blob[].addr, z[])
+  let status = compute_kzg_proof(ctx, proof, y, blob[], z[])
   stdout.write "[" & $status & "]\n"
 
   if status == cttEthKzg_Success:
@@ -194,7 +194,7 @@ testGen(compute_blob_kzg_proof, testVector):
 
   var proof: array[48, byte]
 
-  let status = compute_blob_kzg_proof(ctx, proof, blob[].addr, commitment[])
+  let status = compute_blob_kzg_proof(ctx, proof, blob[], commitment[])
   stdout.write "[" & $status & "]\n"
 
   if status == cttEthKzg_Success:
@@ -211,7 +211,7 @@ testGen(verify_blob_kzg_proof, testVector):
   parseAssign(commitment, 48, testVector["input"]["commitment"].content)
   parseAssign(proof,      48, testVector["input"]["proof"].content)
 
-  let status = verify_blob_kzg_proof(ctx, blob[].addr, commitment[], proof[])
+  let status = verify_blob_kzg_proof(ctx, blob[], commitment[], proof[])
   stdout.write "[" & $status & "]\n"
 
   if status == cttEthKzg_Success:

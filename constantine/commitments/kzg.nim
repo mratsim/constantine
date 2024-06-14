@@ -13,7 +13,8 @@ import
   ../math/pairings/pairings_generic,
   ../math/constants/zoo_generators,
   ../math/polynomials/polynomials,
-  ../platforms/[abstractions, views]
+  ../platforms/[abstractions, views],
+  ./protocol_quotient_check
 
 ## ############################################################
 ##
@@ -190,59 +191,18 @@ func kzg_prove*[N: static int, C: static Curve](
        poly: PolynomialEval[N, Fr[C]],
        opening_challenge: Fr[C]) {.tags:[Alloca, HeapAlloc, Vartime].} =
 
-  # Note:
-  #   The order of inputs in
-  #  `kzg_prove`, `evalPolyOffDomainAt`, `differenceQuotientEvalOffDomain`, `differenceQuotientEvalInDomain`
-  #  minimizes register changes when parameter passing.
-  #
-  # z = opening_challenge in the following code
+  let quotientPoly = allocHeapAligned(PolynomialEval[N, Fr[C]], alignment = 64)
 
-  let diffQuotientPolyFr = allocHeapAligned(PolynomialEval[N, Fr[C]], alignment = 64)
-  let invRootsMinusZ = allocHeapAligned(array[N, Fr[C]], alignment = 64)
-
-  # Compute 1/(ωⁱ - z) with ω a root of unity, i in [0, N).
-  # zIndex = i if ωⁱ - z == 0 (it is the i-th root of unity) and -1 otherwise.
-  let zIndex = invRootsMinusZ[].inverseDifferenceArrayZ(
-                                  domain.rootsOfUnity, opening_challenge,
-                                  differenceKind = kArrayMinusZ,
-                                  earlyReturnOnZero = false)
-
-  if zIndex == -1:
-    # p(z)
-    domain.evalPolyOffDomainAt(
-      eval_at_challenge,
-      poly, opening_challenge,
-      invRootsMinusZ[])
-
-    # q(x) = (p(x) - p(z)) / (x - z)
-    diffQuotientPolyFr[].differenceQuotientEvalOffDomain(
-      poly, eval_at_challenge, invRootsMinusZ[])
-  else:
-    # p(z)
-    # But the opening_challenge z is equal to one of the roots of unity (how likely is that?)
-    eval_at_challenge = poly.evals[zIndex]
-
-    # q(x) = (p(x) - p(z)) / (x - z)
-    domain.differenceQuotientEvalInDomain(
-      diffQuotientPolyFr[],
-      poly, uint32 zIndex, invRootsMinusZ[])
-
-  freeHeapAligned(invRootsMinusZ)
-
-  const orderBits = C.getCurveOrderBitwidth()
-  let diffQuotientPolyBigInt = allocHeapAligned(array[N, BigInt[orderBits]], alignment = 64)
-
-  for i in 0 ..< N:
-    diffQuotientPolyBigInt[i].fromField(diffQuotientPolyFr.evals[i])
-
-  freeHeapAligned(diffQuotientPolyFr)
+  domain.getQuotientPoly(
+    quotientPoly[], eval_at_challenge,
+    poly, opening_challenge
+  )
 
   var proofJac {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
-  proofJac.multiScalarMul_vartime(diffQuotientPolyBigInt[], powers_of_tau.evals)
+  proofJac.multiScalarMul_vartime(quotientPoly.evals, powers_of_tau.evals)
   proof.affine(proofJac)
 
-  freeHeapAligned(diffQuotientPolyBigInt)
-
+  freeHeapAligned(quotientPoly)
 
 # KZG - Verifier
 # ------------------------------------------------------------
@@ -366,9 +326,7 @@ func kzg_verify_batch*[bits: static int, F2; C: static Curve](
   # ∑ [rᵢ][proofᵢ]₁
   # ---------------
   let coefs = allocHeapArrayAligned(matchingOrderBigInt(C), n, alignment = 64)
-  for i in 0 ..< n:
-    coefs[i].fromField(linearIndepRandNumbers[i])
-
+  coefs.batchFromField(linearIndepRandNumbers, n)
   sum_rand_proofs.multiScalarMul_vartime(coefs, proofs, n)
 
   # ∑[rᵢ]([commitmentᵢ]₁ - [eval_at_challengeᵢ]₁)

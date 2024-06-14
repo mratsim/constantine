@@ -54,3 +54,7 @@ However, even if we generalize the transcript API,
 unfortunately the labeling differ (if any) and the absorb/challenge sequences and what is absorbed in the transcript are very different.
 
 So the commitments have to be protocol-specific.
+
+## Protocols
+
+- quotient check
