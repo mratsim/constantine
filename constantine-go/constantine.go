@@ -85,7 +85,7 @@ func (ctx EthKzgContext) Delete() {
 	C.ctt_eth_trusted_setup_delete(ctx.cCtx)
 }
 
-func (ctx EthKzgContext) BlobToKZGCommitment(blob EthBlob) (commitment EthKzgCommitment, err error) {
+func (ctx EthKzgContext) BlobToKzgCommitment(blob EthBlob) (commitment EthKzgCommitment, err error) {
 	status := C.ctt_eth_kzg_blob_to_kzg_commitment(
 		ctx.cCtx,
 		(*C.ctt_eth_kzg_commitment)(unsafe.Pointer(&commitment)),
@@ -189,9 +189,9 @@ func (ctx EthKzgContext) VerifyBlobKzgProofBatch(blobs []EthBlob, commitments []
 // Ethereum EIP-4844 KZG API - Parallel
 // -----------------------------------------------------
 
-func (ctx EthKzgContext) BlobToKZGCommitmentParallel(blob EthBlob) (commitment EthKzgCommitment, err error) {
+func (ctx EthKzgContext) BlobToKzgCommitmentParallel(blob EthBlob) (commitment EthKzgCommitment, err error) {
 	if ctx.threadpool.ctx == nil {
-		return commitment, errors.New("BlobToKZGCommitmentParallel: The threadpool is not configured.")
+		return commitment, errors.New("BlobToKzgCommitmentParallel: The threadpool is not configured.")
 	}
 	status := C.ctt_eth_kzg_blob_to_kzg_commitment_parallel(
 		ctx.threadpool.ctx, ctx.cCtx,

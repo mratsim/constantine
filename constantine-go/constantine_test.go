@@ -85,7 +85,7 @@ func (dst *EthKzgEvalAtChallenge) UnmarshalText(input []byte) error {
 	return fromHexImpl(dst[:], input)
 }
 
-func TestBlobToKZGCommitment(t *testing.T) {
+func TestBlobToKzgCommitment(t *testing.T) {
 	type Test struct {
 		Input struct {
 			Blob string `yaml:"blob"`
@@ -117,7 +117,7 @@ func TestBlobToKZGCommitment(t *testing.T) {
 				return
 			}
 
-			commitment, err := ctx.BlobToKZGCommitment(blob)
+			commitment, err := ctx.BlobToKzgCommitment(blob)
 			if err == nil {
 				require.NotNil(t, test.Output)
 				require.Equal(t, test.Output[:], commitment[:])
@@ -462,7 +462,7 @@ func createTestThreadpool(t *testing.T) Threadpool {
 	return tp
 }
 
-func TestBlobToKZGCommitmentParallel(t *testing.T) {
+func TestBlobToKzgCommitmentParallel(t *testing.T) {
 	type Test struct {
 		Input struct {
 			Blob string `yaml:"blob"`
@@ -497,7 +497,7 @@ func TestBlobToKZGCommitmentParallel(t *testing.T) {
 			continue
 		}
 
-		commitment, err := ctx.BlobToKZGCommitmentParallel(blob)
+		commitment, err := ctx.BlobToKzgCommitmentParallel(blob)
 		if err == nil {
 			require.NotNil(t, test.Output)
 			require.Equal(t, test.Output[:], commitment[:])
