@@ -41,9 +41,9 @@ extern "C" {
 #[repr(align(64))]
 #[derive(Copy, Clone)]
 pub struct ctt_sha256_context {
-    message_schedule: [u32; 16usize],
-    buf: [byte; 64usize],
-    msgLen: u64,
+    pub message_schedule: [u32; 16usize],
+    pub buf: [byte; 64usize],
+    pub msgLen: u64,
 }
 #[test]
 fn bindgen_test_layout_ctt_sha256_context() {
@@ -90,6 +90,15 @@ fn bindgen_test_layout_ctt_sha256_context() {
         )
     );
 }
+impl Default for ctt_sha256_context {
+    fn default() -> Self {
+        let mut s = ::core::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::core::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 extern "C" {
     #[doc = " Initialize or reinitialize a Sha256 context."]
     pub fn ctt_sha256_init(ctx: *mut ctt_sha256_context);
@@ -123,9 +132,9 @@ extern "C" {
     pub fn ctt_csprng_sysrand(buffer: *mut ::core::ffi::c_void, len: usize) -> bool;
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct big381 {
-    limbs: [secret_word; 12usize],
+    pub limbs: [secret_word; 12usize],
 }
 #[test]
 fn bindgen_test_layout_big381() {
@@ -153,9 +162,9 @@ fn bindgen_test_layout_big381() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct big255 {
-    limbs: [secret_word; 8usize],
+    pub limbs: [secret_word; 8usize],
 }
 #[test]
 fn bindgen_test_layout_big255() {
@@ -183,9 +192,9 @@ fn bindgen_test_layout_big255() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct big254 {
-    limbs: [secret_word; 8usize],
+    pub limbs: [secret_word; 8usize],
 }
 #[test]
 fn bindgen_test_layout_big254() {
@@ -237,9 +246,9 @@ extern "C" {
     pub fn ctt_big381_marshalBE(dst: *mut byte, dst_len: isize, src: *const big381) -> bool;
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bls12_381_fr {
-    limbs: [secret_word; 8usize],
+    pub limbs: [secret_word; 8usize],
 }
 #[test]
 fn bindgen_test_layout_bls12_381_fr() {
@@ -267,9 +276,9 @@ fn bindgen_test_layout_bls12_381_fr() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bls12_381_fp {
-    limbs: [secret_word; 12usize],
+    pub limbs: [secret_word; 12usize],
 }
 #[test]
 fn bindgen_test_layout_bls12_381_fp() {
@@ -297,9 +306,9 @@ fn bindgen_test_layout_bls12_381_fp() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bls12_381_fp2 {
-    c: [bls12_381_fp; 2usize],
+    pub c: [bls12_381_fp; 2usize],
 }
 #[test]
 fn bindgen_test_layout_bls12_381_fp2() {
@@ -327,10 +336,10 @@ fn bindgen_test_layout_bls12_381_fp2() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bls12_381_g1_aff {
-    x: bls12_381_fp,
-    y: bls12_381_fp,
+    pub x: bls12_381_fp,
+    pub y: bls12_381_fp,
 }
 #[test]
 fn bindgen_test_layout_bls12_381_g1_aff() {
@@ -368,11 +377,11 @@ fn bindgen_test_layout_bls12_381_g1_aff() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bls12_381_g1_jac {
-    x: bls12_381_fp,
-    y: bls12_381_fp,
-    z: bls12_381_fp,
+    pub x: bls12_381_fp,
+    pub y: bls12_381_fp,
+    pub z: bls12_381_fp,
 }
 #[test]
 fn bindgen_test_layout_bls12_381_g1_jac() {
@@ -420,11 +429,11 @@ fn bindgen_test_layout_bls12_381_g1_jac() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bls12_381_g1_prj {
-    x: bls12_381_fp,
-    y: bls12_381_fp,
-    z: bls12_381_fp,
+    pub x: bls12_381_fp,
+    pub y: bls12_381_fp,
+    pub z: bls12_381_fp,
 }
 #[test]
 fn bindgen_test_layout_bls12_381_g1_prj() {
@@ -472,10 +481,10 @@ fn bindgen_test_layout_bls12_381_g1_prj() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bls12_381_g2_aff {
-    x: bls12_381_fp2,
-    y: bls12_381_fp2,
+    pub x: bls12_381_fp2,
+    pub y: bls12_381_fp2,
 }
 #[test]
 fn bindgen_test_layout_bls12_381_g2_aff() {
@@ -513,11 +522,11 @@ fn bindgen_test_layout_bls12_381_g2_aff() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bls12_381_g2_jac {
-    x: bls12_381_fp2,
-    y: bls12_381_fp2,
-    z: bls12_381_fp2,
+    pub x: bls12_381_fp2,
+    pub y: bls12_381_fp2,
+    pub z: bls12_381_fp2,
 }
 #[test]
 fn bindgen_test_layout_bls12_381_g2_jac() {
@@ -565,11 +574,11 @@ fn bindgen_test_layout_bls12_381_g2_jac() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bls12_381_g2_prj {
-    x: bls12_381_fp2,
-    y: bls12_381_fp2,
-    z: bls12_381_fp2,
+    pub x: bls12_381_fp2,
+    pub y: bls12_381_fp2,
+    pub z: bls12_381_fp2,
 }
 #[test]
 fn bindgen_test_layout_bls12_381_g2_prj() {
@@ -1531,9 +1540,9 @@ extern "C" {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bn254_snarks_fr {
-    limbs: [secret_word; 8usize],
+    pub limbs: [secret_word; 8usize],
 }
 #[test]
 fn bindgen_test_layout_bn254_snarks_fr() {
@@ -1561,9 +1570,9 @@ fn bindgen_test_layout_bn254_snarks_fr() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bn254_snarks_fp {
-    limbs: [secret_word; 8usize],
+    pub limbs: [secret_word; 8usize],
 }
 #[test]
 fn bindgen_test_layout_bn254_snarks_fp() {
@@ -1591,9 +1600,9 @@ fn bindgen_test_layout_bn254_snarks_fp() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bn254_snarks_fp2 {
-    c: [bn254_snarks_fp; 2usize],
+    pub c: [bn254_snarks_fp; 2usize],
 }
 #[test]
 fn bindgen_test_layout_bn254_snarks_fp2() {
@@ -1621,10 +1630,10 @@ fn bindgen_test_layout_bn254_snarks_fp2() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bn254_snarks_g1_aff {
-    x: bn254_snarks_fp,
-    y: bn254_snarks_fp,
+    pub x: bn254_snarks_fp,
+    pub y: bn254_snarks_fp,
 }
 #[test]
 fn bindgen_test_layout_bn254_snarks_g1_aff() {
@@ -1663,11 +1672,11 @@ fn bindgen_test_layout_bn254_snarks_g1_aff() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bn254_snarks_g1_jac {
-    x: bn254_snarks_fp,
-    y: bn254_snarks_fp,
-    z: bn254_snarks_fp,
+    pub x: bn254_snarks_fp,
+    pub y: bn254_snarks_fp,
+    pub z: bn254_snarks_fp,
 }
 #[test]
 fn bindgen_test_layout_bn254_snarks_g1_jac() {
@@ -1716,11 +1725,11 @@ fn bindgen_test_layout_bn254_snarks_g1_jac() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bn254_snarks_g1_prj {
-    x: bn254_snarks_fp,
-    y: bn254_snarks_fp,
-    z: bn254_snarks_fp,
+    pub x: bn254_snarks_fp,
+    pub y: bn254_snarks_fp,
+    pub z: bn254_snarks_fp,
 }
 #[test]
 fn bindgen_test_layout_bn254_snarks_g1_prj() {
@@ -1769,10 +1778,10 @@ fn bindgen_test_layout_bn254_snarks_g1_prj() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bn254_snarks_g2_aff {
-    x: bn254_snarks_fp2,
-    y: bn254_snarks_fp2,
+    pub x: bn254_snarks_fp2,
+    pub y: bn254_snarks_fp2,
 }
 #[test]
 fn bindgen_test_layout_bn254_snarks_g2_aff() {
@@ -1811,11 +1820,11 @@ fn bindgen_test_layout_bn254_snarks_g2_aff() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bn254_snarks_g2_jac {
-    x: bn254_snarks_fp2,
-    y: bn254_snarks_fp2,
-    z: bn254_snarks_fp2,
+    pub x: bn254_snarks_fp2,
+    pub y: bn254_snarks_fp2,
+    pub z: bn254_snarks_fp2,
 }
 #[test]
 fn bindgen_test_layout_bn254_snarks_g2_jac() {
@@ -1864,11 +1873,11 @@ fn bindgen_test_layout_bn254_snarks_g2_jac() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct bn254_snarks_g2_prj {
-    x: bn254_snarks_fp2,
-    y: bn254_snarks_fp2,
-    z: bn254_snarks_fp2,
+    pub x: bn254_snarks_fp2,
+    pub y: bn254_snarks_fp2,
+    pub z: bn254_snarks_fp2,
 }
 #[test]
 fn bindgen_test_layout_bn254_snarks_g2_prj() {
@@ -2891,9 +2900,9 @@ extern "C" {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct pallas_fr {
-    limbs: [secret_word; 8usize],
+    pub limbs: [secret_word; 8usize],
 }
 #[test]
 fn bindgen_test_layout_pallas_fr() {
@@ -2921,9 +2930,9 @@ fn bindgen_test_layout_pallas_fr() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct pallas_fp {
-    limbs: [secret_word; 8usize],
+    pub limbs: [secret_word; 8usize],
 }
 #[test]
 fn bindgen_test_layout_pallas_fp() {
@@ -2951,10 +2960,10 @@ fn bindgen_test_layout_pallas_fp() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct pallas_ec_aff {
-    x: pallas_fp,
-    y: pallas_fp,
+    pub x: pallas_fp,
+    pub y: pallas_fp,
 }
 #[test]
 fn bindgen_test_layout_pallas_ec_aff() {
@@ -2992,11 +3001,11 @@ fn bindgen_test_layout_pallas_ec_aff() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct pallas_ec_jac {
-    x: pallas_fp,
-    y: pallas_fp,
-    z: pallas_fp,
+    pub x: pallas_fp,
+    pub y: pallas_fp,
+    pub z: pallas_fp,
 }
 #[test]
 fn bindgen_test_layout_pallas_ec_jac() {
@@ -3044,11 +3053,11 @@ fn bindgen_test_layout_pallas_ec_jac() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct pallas_ec_prj {
-    x: pallas_fp,
-    y: pallas_fp,
-    z: pallas_fp,
+    pub x: pallas_fp,
+    pub y: pallas_fp,
+    pub z: pallas_fp,
 }
 #[test]
 fn bindgen_test_layout_pallas_ec_prj() {
@@ -3554,9 +3563,9 @@ extern "C" {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct vesta_fr {
-    limbs: [secret_word; 8usize],
+    pub limbs: [secret_word; 8usize],
 }
 #[test]
 fn bindgen_test_layout_vesta_fr() {
@@ -3584,9 +3593,9 @@ fn bindgen_test_layout_vesta_fr() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct vesta_fp {
-    limbs: [secret_word; 8usize],
+    pub limbs: [secret_word; 8usize],
 }
 #[test]
 fn bindgen_test_layout_vesta_fp() {
@@ -3614,10 +3623,10 @@ fn bindgen_test_layout_vesta_fp() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct vesta_ec_aff {
-    x: vesta_fp,
-    y: vesta_fp,
+    pub x: vesta_fp,
+    pub y: vesta_fp,
 }
 #[test]
 fn bindgen_test_layout_vesta_ec_aff() {
@@ -3655,11 +3664,11 @@ fn bindgen_test_layout_vesta_ec_aff() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct vesta_ec_jac {
-    x: vesta_fp,
-    y: vesta_fp,
-    z: vesta_fp,
+    pub x: vesta_fp,
+    pub y: vesta_fp,
+    pub z: vesta_fp,
 }
 #[test]
 fn bindgen_test_layout_vesta_ec_jac() {
@@ -3707,11 +3716,11 @@ fn bindgen_test_layout_vesta_ec_jac() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct vesta_ec_prj {
-    x: vesta_fp,
-    y: vesta_fp,
-    z: vesta_fp,
+    pub x: vesta_fp,
+    pub y: vesta_fp,
+    pub z: vesta_fp,
 }
 #[test]
 fn bindgen_test_layout_vesta_ec_prj() {
@@ -4425,7 +4434,7 @@ extern "C" {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct ctt_eth_bls_fp {
-    raw: [byte; 48usize],
+    pub raw: [byte; 48usize],
 }
 #[test]
 fn bindgen_test_layout_ctt_eth_bls_fp() {
@@ -4452,10 +4461,19 @@ fn bindgen_test_layout_ctt_eth_bls_fp() {
         )
     );
 }
+impl Default for ctt_eth_bls_fp {
+    fn default() -> Self {
+        let mut s = ::core::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::core::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct ctt_eth_bls_fp2 {
-    coords: [ctt_eth_bls_fp; 2usize],
+    pub coords: [ctt_eth_bls_fp; 2usize],
 }
 #[test]
 fn bindgen_test_layout_ctt_eth_bls_fp2() {
@@ -4482,10 +4500,19 @@ fn bindgen_test_layout_ctt_eth_bls_fp2() {
         )
     );
 }
+impl Default for ctt_eth_bls_fp2 {
+    fn default() -> Self {
+        let mut s = ::core::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::core::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct ctt_eth_bls_seckey {
-    raw: [byte; 32usize],
+    pub raw: [byte; 32usize],
 }
 #[test]
 fn bindgen_test_layout_ctt_eth_bls_seckey() {
@@ -4515,8 +4542,8 @@ fn bindgen_test_layout_ctt_eth_bls_seckey() {
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct ctt_eth_bls_pubkey {
-    x: ctt_eth_bls_fp,
-    y: ctt_eth_bls_fp,
+    pub x: ctt_eth_bls_fp,
+    pub y: ctt_eth_bls_fp,
 }
 #[test]
 fn bindgen_test_layout_ctt_eth_bls_pubkey() {
@@ -4553,11 +4580,20 @@ fn bindgen_test_layout_ctt_eth_bls_pubkey() {
         )
     );
 }
+impl Default for ctt_eth_bls_pubkey {
+    fn default() -> Self {
+        let mut s = ::core::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::core::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct ctt_eth_bls_signature {
-    x: ctt_eth_bls_fp2,
-    y: ctt_eth_bls_fp2,
+    pub x: ctt_eth_bls_fp2,
+    pub y: ctt_eth_bls_fp2,
 }
 #[test]
 fn bindgen_test_layout_ctt_eth_bls_signature() {
@@ -4594,6 +4630,15 @@ fn bindgen_test_layout_ctt_eth_bls_signature() {
             stringify!(y)
         )
     );
+}
+impl Default for ctt_eth_bls_signature {
+    fn default() -> Self {
+        let mut s = ::core::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::core::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
 }
 #[repr(u8)]
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
@@ -4755,7 +4800,7 @@ pub type ctt_eth_kzg_context = ctt_eth_kzg_context_struct;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct ctt_eth_kzg_commitment {
-    raw: [byte; 48usize],
+    pub raw: [byte; 48usize],
 }
 #[test]
 fn bindgen_test_layout_ctt_eth_kzg_commitment() {
@@ -4783,10 +4828,19 @@ fn bindgen_test_layout_ctt_eth_kzg_commitment() {
         )
     );
 }
+impl Default for ctt_eth_kzg_commitment {
+    fn default() -> Self {
+        let mut s = ::core::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::core::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct ctt_eth_kzg_proof {
-    raw: [byte; 48usize],
+    pub raw: [byte; 48usize],
 }
 #[test]
 fn bindgen_test_layout_ctt_eth_kzg_proof() {
@@ -4813,10 +4867,19 @@ fn bindgen_test_layout_ctt_eth_kzg_proof() {
         )
     );
 }
+impl Default for ctt_eth_kzg_proof {
+    fn default() -> Self {
+        let mut s = ::core::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::core::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct ctt_eth_kzg_blob {
-    raw: [byte; 131072usize],
+    pub raw: [byte; 131072usize],
 }
 #[test]
 fn bindgen_test_layout_ctt_eth_kzg_blob() {
@@ -4843,10 +4906,19 @@ fn bindgen_test_layout_ctt_eth_kzg_blob() {
         )
     );
 }
+impl Default for ctt_eth_kzg_blob {
+    fn default() -> Self {
+        let mut s = ::core::mem::MaybeUninit::<Self>::uninit();
+        unsafe {
+            ::core::ptr::write_bytes(s.as_mut_ptr(), 0, 1);
+            s.assume_init()
+        }
+    }
+}
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct ctt_eth_kzg_challenge {
-    raw: [byte; 32usize],
+    pub raw: [byte; 32usize],
 }
 #[test]
 fn bindgen_test_layout_ctt_eth_kzg_challenge() {
@@ -4875,9 +4947,9 @@ fn bindgen_test_layout_ctt_eth_kzg_challenge() {
     );
 }
 #[repr(C)]
-#[derive(Copy, Clone)]
+#[derive(Default, Copy, Clone)]
 pub struct ctt_eth_kzg_eval_at_challenge {
-    raw: [byte; 32usize],
+    pub raw: [byte; 32usize],
 }
 #[test]
 fn bindgen_test_layout_ctt_eth_kzg_eval_at_challenge() {
