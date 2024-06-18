@@ -17,7 +17,7 @@ import
     ec_shortweierstrass_jacobian_extended,
     ec_shortweierstrass_batch_ops_parallel,
     ec_multi_scalar_mul,
-    ec_scalar_mul,
+    ec_scalar_mul, ec_scalar_mul_vartime,
     ec_multi_scalar_mul_parallel],
   ../constantine/math/constants/zoo_subgroups,
   # Threadpool
@@ -121,6 +121,17 @@ proc msmParallelBench*[EC](ctx: var BenchMsmContext[EC], numInputs: int, iters: 
       for i in 0 ..< points.len:
         tmp.fromAffine(points[i])
         tmp.scalarMul(coefs[i])
+        r += tmp
+    stopNaive = getMonotime()
+
+  if numInputs <= 100000:
+    startNaive = getMonotime()
+    bench("EC scalar muls vartime        " & align($numInputs, 10) & " (" & $bits & "-bit coefs, points)", EC, iters):
+      var tmp: EC
+      r.setInf()
+      for i in 0 ..< points.len:
+        tmp.fromAffine(points[i])
+        tmp.scalarMul_vartime(coefs[i])
         r += tmp
     stopNaive = getMonotime()
 
