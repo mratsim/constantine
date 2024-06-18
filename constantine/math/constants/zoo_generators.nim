@@ -19,7 +19,6 @@ import
 macro getGenerator*(C: static Curve, subgroup: static string = ""): untyped =
   ## Returns the curve subgroup generator.
   ## Pairing-friendly curves expect G1 or G2
-  
   if subgroup == "":
     return bindSym($C & "_generator")
   else:

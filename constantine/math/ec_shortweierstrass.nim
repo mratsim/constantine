@@ -20,7 +20,8 @@ import
     ec_shortweierstrass_projective,
     ec_shortweierstrass_batch_ops,
     ec_scalar_mul, ec_scalar_mul_vartime
-  ]
+  ],
+  ./constants/zoo_generators
 
 export ec_shortweierstrass_affine, ec_shortweierstrass_jacobian, ec_shortweierstrass_projective,
        ec_shortweierstrass_batch_ops, ec_scalar_mul, ec_scalar_mul_vartime
@@ -39,3 +40,9 @@ func double_repeated*(P: var ECP_ShortW, num: int) {.inline.} =
   ## Repeated doublings
   for _ in 0 ..< num:
     P.double()
+
+func generator*[F, G](g: var ECP_ShortW[F, G]) {.inline.} =
+  when g is ECP_ShortW_Aff:
+    g = F.C.getGenerator($G)
+  else:
+    g.fromAffine(F.C.getGenerator($G))

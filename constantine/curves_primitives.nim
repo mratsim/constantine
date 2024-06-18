@@ -142,6 +142,7 @@ export
 export ec_shortweierstrass.`==`
 export ec_shortweierstrass.isInf
 export ec_shortweierstrass.setInf
+export ec_shortweierstrass.generator
 export ec_shortweierstrass.ccopy
 export ec_shortweierstrass.isOnCurve
 export ec_shortweierstrass.neg
