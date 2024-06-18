@@ -132,9 +132,8 @@ See the following documents on the threadpool performance details, design and re
 
 ## Installation
 
-|                                                                                                                               |
-|:-----------------------------------------------------------------------------------------------------------------------------:|
-| :exclamation: Constantine can be compiled by Nim v1.6.x or v2.0.2 but not Nim v2.0.0 due to a compile-time integer regression |
+> [!IMPORTANT]
+> Constantine can be compiled by Nim v1.6.x, v2.0.2 and v2.0.4 but not Nim v2.0.0 (due to a compile-time evaluation crash)
 
 ### From Rust
 
@@ -142,9 +141,8 @@ See the following documents on the threadpool performance details, design and re
     - Debian/Ubuntu `sudo apt update && sudo apt install build-essential clang`
     - Archlinux `pacman -S base-devel clang`
 
-    |        |                                                                                                                                                                                                                                                                                                                                                                            |
-    |:------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-    | :memo: | We require Clang as it's significantly more performant than GCC for cryptographic code, especially for ARM where Constantine has no assembly optimizations. And Rust, like Clang both rely on LLVM.<br />This can be changed to any C compiler by deleting [this line](https://github.com/mratsim/constantine/blob/8991b16/constantine-rust/constantine-sys/build.rs#L17). |
+    > [!TIP]
+    > We require Clang as it's significantly more performant than GCC for cryptographic code, especially for ARM where Constantine has no assembly optimizations. And Rust, like Clang both rely on LLVM.<br />This can be changed to any C compiler by deleting [this line](https://github.com/mratsim/constantine/blob/8991b16/constantine-rust/constantine-sys/build.rs#L17).
 
 2. Install nim, it is available in most distros package manager for Linux and Homebrew for MacOS
    Windows binaries are on the official website: https://nim-lang.org/install_unix.html
@@ -219,9 +217,9 @@ and modify Constantine's [`build.rs`](https://github.com/mratsim/constantine/blo
     cd constantine-go
     go test -modfile=../go_test.mod
     ```
-    |        |                                                                                                                                    |
-    |:------:|:-----------------------------------------------------------------------------------------------------------------------------------|
-    | :memo: | Constantine uses a separate modfile for tests.<br />It has no dependencies (key to avoid supply chain attacks) except for testing. |
+    > [!IMPORTANT]
+    > Constantine uses a separate modfile for tests.<br />It has no dependencies (key to avoid supply chain attacks) except for testing.
+    
 ### From C
 
 1. Install a C compiler, `clang` is recommended, for example:

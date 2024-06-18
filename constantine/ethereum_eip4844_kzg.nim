@@ -294,7 +294,7 @@ func blob_to_kzg_commitment*(
     check HappyPath, poly.blob_to_bigint_polynomial(blob)
 
     var r {.noinit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1]
-    kzg_commit(ctx.srs_lagrange_g1, r, poly.evals)
+    kzg_commit(ctx.srs_lagrange_g1, r, poly[])
     discard dst.serialize_g1_compressed(r)
 
     result = cttEthKzg_Success
@@ -339,7 +339,7 @@ func compute_kzg_proof*(
     kzg_prove(
       ctx.srs_lagrange_g1,
       ctx.domain,
-      proof, y,
+      y, proof,
       poly[],
       z)
 
@@ -408,7 +408,7 @@ func compute_blob_kzg_proof*(
     kzg_prove(
       ctx.srs_lagrange_g1,
       ctx.domain,
-      proof, y,
+      y, proof,
       poly[],
       opening_challenge)
 

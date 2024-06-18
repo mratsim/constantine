@@ -30,24 +30,24 @@ export kzg
 # KZG - Prover - Lagrange basis
 # ------------------------------------------------------------
 
-proc kzg_commit_parallel*[N: static int, C: static Curve](
+proc kzg_commit_parallel*[N, bits: static int, C: static Curve](
        tp: Threadpool,
        powers_of_tau: PolynomialEval[N, ECP_ShortW_Aff[Fp[C], G1]],
        commitment: var ECP_ShortW_Aff[Fp[C], G1],
-       poly_evals: array[N, BigInt],
+       poly: PolynomialEval[N, BigInt[bits]],
 ) =
   ## KZG Commit to a polynomial in Lagrange / Evaluation form
   ## Parallelism: This only returns when computation is fully done
   var commitmentJac {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
-  tp.multiScalarMul_vartime_parallel(commitmentJac, poly_evals, powers_of_tau.evals)
+  tp.multiScalarMul_vartime_parallel(commitmentJac, poly.evals, powers_of_tau.evals)
   commitment.affine(commitmentJac)
 
 proc kzg_prove_parallel*[N: static int, C: static Curve](
        tp: Threadpool,
        powers_of_tau: PolynomialEval[N, ECP_ShortW_Aff[Fp[C], G1]],
        domain: PolyEvalRootsDomain[N, Fr[C]],
-       proof: var ECP_ShortW_Aff[Fp[C], G1],
        eval_at_challenge: var Fr[C],
+       proof: var ECP_ShortW_Aff[Fp[C], G1],
        poly: PolynomialEval[N, Fr[C]],
        opening_challenge: Fr[C]) =
   ## KZG prove commitment to a polynomial in Lagrange / Evaluation form
@@ -163,7 +163,7 @@ proc kzg_verify_batch_parallel*[bits: static int, F2; C: static Curve](
 
         commits_min_evals_jac[i].fromAffine(commitments[i])
         var boxed_eval {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
-        boxed_eval.fromAffine(C.getGenerator("G1"))
+        boxed_eval.generator()
         boxed_eval.scalarMul_vartime(evals_at_challenges[i])
         commits_min_evals_jac[i].diff_vartime(commits_min_evals_jac[i], boxed_eval)
 

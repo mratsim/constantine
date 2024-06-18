@@ -150,7 +150,7 @@ proc blob_to_kzg_commitment_parallel*(
     check HappyPath, tp.blob_to_bigint_polynomial_parallel(poly, blob)
 
     var r {.noinit.}: ECP_ShortW_Aff[Fp[BLS12_381], G1]
-    tp.kzg_commit_parallel(ctx.srs_lagrange_g1, r, poly.evals)
+    tp.kzg_commit_parallel(ctx.srs_lagrange_g1, r, poly[])
     discard dst.serialize_g1_compressed(r)
 
     result = cttEthKzg_Success
@@ -196,7 +196,7 @@ proc compute_kzg_proof_parallel*(
     tp.kzg_prove_parallel(
       ctx.srs_lagrange_g1,
       ctx.domain,
-      proof, y,
+      y, proof,
       poly[],
       z)
 
@@ -240,7 +240,7 @@ proc compute_blob_kzg_proof_parallel*(
     tp.kzg_prove_parallel(
       ctx.srs_lagrange_g1,
       ctx.domain,
-      proof, y,
+      y, proof,
       poly[],
       opening_challenge)
 
