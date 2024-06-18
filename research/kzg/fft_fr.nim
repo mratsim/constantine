@@ -117,7 +117,7 @@ func fft_internal[F](
 
   # Recursive Divide-and-Conquer
   let (evenVals, oddVals) = vals.splitAlternate()
-  var (outLeft, outRight) = output.splitMiddle()
+  var (outLeft, outRight) = output.splitHalf()
   let halfROI = rootsOfUnity.skipHalf()
 
   fft_internal(outLeft, evenVals, halfROI)

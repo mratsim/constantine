@@ -34,31 +34,85 @@ template toOpenArray*[T](v: View[T]): openArray[T] =
 func toView*[T](oa: openArray[T]): View[T] {.inline.} =
   View[T](data: cast[ptr UncheckedArray[T]](oa[0].unsafeAddr), len: oa.len)
 
+func toView*[N: static int, T](data: ptr array[N, T]): View[T] {.inline.} =
+  View[T](data: cast[ptr UncheckedArray[T]](data), len: N)
+
 func toView*[T](data: ptr UncheckedArray[T], len: int): View[T] {.inline.} =
   View[T](data: data, len: len)
 
 func `[]`*[T](v: View[T], idx: int): lent T {.inline.} =
   v.data[idx]
 
-func chunk*[T](v: View[T], start, len: int): View[T] {.inline.} =
+func chunk*(v: View, offset, len: int): View {.inline.} =
   ## Create a sub-chunk from a view
   debug:
-    doAssert start >= 0
-    doAssert start + len <= v.len
-  result.data = v.data +% start
+    doAssert offset >= 0
+    doAssert offset + len <= v.len
+  result.data = v.data +% offset
   result.len = len
+
+func splitHalf*(t: View): tuple[left, right: View] {.inline.} =
+  ## Split the tensor into 2
+  ## partitioning into left and right halves.
+  ## left:  indices [0, 1, 2, 3]
+  ## right: indices  [4, 5, 6, 7]
+  let half = t.len shr 1
+
+  result.left.len = half
+  result.left.data = t.data
+
+  result.right.len = t.len - half
+  result.right.data = t.data +% half
+
+func asUnchecked*[T](v: View[T]): ptr UncheckedArray[T] {.inline.} =
+  v.data
 
 type MutableView*[T] {.borrow: `.`.} = distinct View[T]
 
 template toOpenArray*[T](v: MutableView[T]): openArray[T] =
   v.data.toOpenArray(0, v.len-1)
 
-func toMutableView*[T](data: ptr UncheckedArray[T], len: int) {.inline.} =
-  View[T](data: data, len: len)
+func toMutableView*[T](data: ptr UncheckedArray[T], len: int): MutableView[T] {.inline.} =
+  MutableView[T](View[T](data: data, len: len))
+
+func toMutableView*[N: static int, T](data: ptr array[N, T]): MutableView[T] {.inline.} =
+  MutableView[T](View[T](data: cast[ptr UncheckedArray[T]](data), len: N))
+
 func `[]`*[T](v: MutableView[T], idx: int): var T {.inline.} =
   v.data[idx]
 func `[]=`*[T](v: MutableView[T], idx: int, val: T) {.inline.} =
   v.data[idx] = val
+
+func chunk*[T](v: MutableView[T], offset, len: int): MutableView[T] {.inline.} =
+  ## Create a sub-chunk from a view
+  # Upstream bug: why does {.borrow.} not work?
+  debug:
+    doAssert offset >= 0
+    doAssert offset + len <= v.len
+  result.data = v.data +% offset
+  result.len = len
+
+func splitHalf*(t: MutableView): tuple[left, right: MutableView] {.inline.} =
+  ## Split the tensor into 2
+  ## partitioning into left and right halves.
+  ## left:  indices [0, 1, 2, 3]
+  ## right: indices  [4, 5, 6, 7]
+  # Upstream bug: why does {.borrow.} not work?
+  let half = t.len shr 1
+
+  result.left.len = half
+  result.left.data = t.data
+
+  result.right.len = t.len - half
+  result.right.data = t.data +% half
+
+func copyFrom*[T](dst: MutableView[T], src: openArray[T]) {.inline.} =
+  debug: doAssert dst.len == src.len
+  for i in 0 ..< dst.len:
+    dst[i] = src[i]
+
+func asUnchecked*[T](v: MutableView[T]): ptr UncheckedArray[T] {.inline.} =
+  v.data
 
 # StridedView type
 # ---------------------------------------------------------
@@ -82,11 +136,11 @@ func `[]`*[T](v: var StridedView[T], idx: int): var T {.inline.} =
 func `[]=`*[T](v: var StridedView[T], idx: int, val: T) {.inline.} =
   v.data[v.offset + idx*v.stride] = val
 
-template toOpenArray*[T](v: StridedView[T]): openArray[T] =
-  ## This casts the view to a linear openArray.
-  ## This is an error of the stride is not 1.
-  doAssert v.stride == 1, "Cannot cast to an openArray if the view does not have an unit stride."
-  v.data.toOpenArray(v.offset, v.offset+v.len-1)
+# template toOpenArray*[T](v: StridedView[T]): openArray[T] =
+#   ## This casts the view to a linear openArray.
+#   ## This is an error of the stride is not 1.
+#   doAssert v.stride == 1, "Cannot cast to an openArray if the view does not have an unit stride."
+#   v.data.toOpenArray(v.offset, v.offset+v.len-1)
 
 func toStridedView*[T](oa: openArray[T]): StridedView[T] {.inline.} =
   result.len = oa.len
@@ -138,7 +192,7 @@ func splitAlternate*(t: StridedView): tuple[even, odd: StridedView] {.inline.} =
   ## partitioning the input every other index
   ## even: indices [0, 2, 4, ...]
   ## odd: indices [ 1, 3, 5, ...]
-  assert (t.len and 1) == 0, "The tensor must contain an even number of elements"
+  debug: doAssert (t.len and 1) == 0, "The tensor must contain an even number of elements"
 
   let half = t.len shr 1
   let skipHalf = t.stride shl 1
@@ -153,13 +207,11 @@ func splitAlternate*(t: StridedView): tuple[even, odd: StridedView] {.inline.} =
   result.odd.offset = t.offset + t.stride
   result.odd.data = t.data
 
-func splitMiddle*(t: StridedView): tuple[left, right: StridedView] {.inline.} =
+func splitHalf*(t: StridedView): tuple[left, right: StridedView] {.inline.} =
   ## Split the tensor into 2
   ## partitioning into left and right halves.
   ## left:  indices [0, 1, 2, 3]
   ## right: indices  [4, 5, 6, 7]
-  assert (t.len and 1) == 0, "The tensor must contain an even number of elements"
-
   let half = t.len shr 1
 
   result.left.len = half
@@ -167,7 +219,7 @@ func splitMiddle*(t: StridedView): tuple[left, right: StridedView] {.inline.} =
   result.left.offset = t.offset
   result.left.data = t.data
 
-  result.right.len = half
+  result.right.len = t.len-half
   result.right.stride = t.stride
   result.right.offset = t.offset + half
   result.right.data = t.data
@@ -175,7 +227,7 @@ func splitMiddle*(t: StridedView): tuple[left, right: StridedView] {.inline.} =
 func skipHalf*(t: StridedView): StridedView {.inline.} =
   ## Pick one every other indices
   ## output: [0, 2, 4, ...]
-  assert (t.len and 1) == 0, "The tensor must contain an even number of elements"
+  debug: doAssert (t.len and 1) == 0, "The tensor must contain an even number of elements"
 
   result.len = t.len shr 1
   result.stride = t.stride shl 1

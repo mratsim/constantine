@@ -646,9 +646,7 @@ func inv_vartime*(a: var FF) {.tags: [VarTime].} =
 func batchInv*[F](
         dst: ptr UncheckedArray[F],
         elements: ptr UncheckedArray[F],
-        N: int,
-        useVartime: static bool = false
-      ) {.noInline.} =
+        N: int) {.noInline.} =
   ## Batch inversion
   ## If an element is 0, the inverse stored will be 0.
   var zeros = allocStackArray(SecretBool, N)
@@ -684,9 +682,7 @@ func batchInv*[F](
 func batchInv_vartime*[F](
         dst: ptr UncheckedArray[F],
         elements: ptr UncheckedArray[F],
-        N: int,
-        useVartime: static bool = false
-      ) {.noInline.} =
+        N: int) {.noInline.} =
   ## Batch inversion
   ## If an element is 0, the inverse stored will be 0.
   var zeros = allocStackArray(bool, N)

@@ -393,10 +393,10 @@ func getLagrangeBasisPolysAt*[N: static int, Field](
   ##
   ## The representation is also called a polynomial in Lagrange form or Lagrange basis.
   ##
-  ## p(x) = ∑ⱼ lⱼ.f(j)
+  ## p(x) = ∑ⱼ f(j).lⱼ(x)
   ##
-  ## with lⱼ a Lagrange basis polynomial that
-  ## - takes value 1 for j
+  ## with lⱼ(x) a Lagrange basis polynomial that
+  ## - takes value 1 for x == j
   ## - takes 0 for all other points in the domain.
   ##
   ## - https://en.wikipedia.org/wiki/Lagrange_polynomial
