@@ -11,7 +11,7 @@ import
   ../config/curves,
   ../arithmetic,
   ../extension_fields,
-  ../elliptic/ec_twistededwards_projective
+  ../elliptic/ec_twistededwards_affine
 
 # ############################################################
 #
@@ -19,24 +19,23 @@ import
 #
 # ############################################################
 
-func isInSubGroup*(P: ECP_TwEdwards_Prj[Fp[Banderwagon]]): SecretBool =
+func isInSubgroup*(P: ECP_TwEdwards_Aff[Fp[Banderwagon]]): SecretBool =
   ## Checks if the point is in the quotient subgroup
-  ## The group law does not change because what we quotiented by was a subgroup. 
+  ## The group law does not change because what we quotiented by was a subgroup.
   ## These are still points on the bandersnatch curve and form a group under point addition.
-  ## 
+  ##
   ## This is to be used to check if the point lies in the Banderwagon
   ## while importing a point from serialized bytes
 
-  var res{.noInit.}: typeof(P).F
+  var t{.noInit.}: typeof(P).F
   var one{.noInit.}: typeof(P).F
 
   one.setOne()
-  res.setZero()
+  t.setZero()
 
-  ## Compute 1 - aX^2 and check its legendre symbol
-  res.prod(P.x, P.x)
-  res.prod(res, Banderwagon.getCoefA())
-  res.neg(res)
-  res.sum(res, one)
+  # Compute 1 - aX^2 and check its legendre symbol
+  t.square(P.x)
+  t *= Banderwagon.getCoefA()
+  t.diff(one, t)
 
-  return res.isSquare()
+  return t.isSquare()

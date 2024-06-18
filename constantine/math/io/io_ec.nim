@@ -58,7 +58,7 @@ func toHex*[EC: ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff or ECP_ShortW
 
 func toHex*[EC: ECP_TwEdwards_Aff or ECP_TwEdwards_Prj](P: EC, indent: static int = 0): string =
   ## Stringify an elliptic curve point to Hex for Twisted Edwards Curve
-  ## Note. Leading zeros are not removed.
+  ## Note, leading zeros are not removed.
   ## Result is prefixed with 0x
   ##
   ## Output will be padded with 0s to maintain constant-time.
@@ -135,3 +135,30 @@ func fromHex*[EC: ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff](
 func fromHex*[EC: ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff](
        _: type EC, x0, x1, y0, y1: string): EC =
   doAssert result.fromHex(x0, x1, y0, y1)
+
+func fromHex*(dst: var ECP_TwEdwards_Prj, x, y: string): bool =
+  ## Convert hex strings to a curve point
+  ## Returns true if point exist or if input is the point at infinity (all 0)
+  ## Returns `false` if there is no point with coordinates (`x`, `y`) on the curve
+  ## In that case, `dst` content is undefined.
+  static: doAssert dst.F is Fp, "dst must be an elliptic curve over 𝔽p"
+  dst.x.fromHex(x)
+  dst.y.fromHex(y)
+  dst.z.setOne()
+  let isInf = dst.x.isZero() and dst.y.isZero()
+  dst.z.csetZero(isInf)
+  return bool(isOnCurve(dst.x, dst.y) or isInf)
+
+func fromHex*(dst: var ECP_TwEdwards_Aff, x, y: string): bool =
+  ## Convert hex strings to a curve point
+  ## Returns true if point exist or if input is the point at infinity (all 0)
+  ## Returns `false` if there is no point with coordinates (`x`, `y`) on the curve
+  ## In that case, `dst` content is undefined.
+  static: doAssert dst.F is Fp, "dst must be an elliptic curve over 𝔽p"
+  dst.x.fromHex(x)
+  dst.y.fromHex(y)
+  return bool(isOnCurve(dst.x, dst.y) or dst.isInf())
+
+func fromHex*[EC: ECP_TwEdwards_Aff or ECP_TwEdwards_Prj](
+       _: type EC, x, y: string): EC =
+  doAssert result.fromHex(x, y)

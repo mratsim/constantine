@@ -30,6 +30,8 @@ type ECP_TwEdwards_Aff*[F] = object
 
 func `==`*(P, Q: ECP_TwEdwards_Aff): SecretBool =
   ## Constant-time equality check
+  # Isogeny-based constructions to create
+  # prime order curves overload this generic equality check.
   result = P.x == Q.x
   result = result and (P.y == Q.y)
 
@@ -37,6 +39,12 @@ func `==`*(P, Q: ECP_TwEdwards_Aff): SecretBool =
 func isInf*(P: ECP_TwEdwards_Aff): SecretBool =
   ## Returns true if P is an infinity point
   ## and false otherwise
+  # Isogeny-based constructions to create
+  # prime order curves overload this generic identity check.
+
+  # TODO: for Twisted Edwards curve, there is a point of coordinate (0, 0)
+  # on the curve, hence it's not the infinity point, so we need to rename
+  # the function
   result = P.x.isZero() and P.y.isOne()
 
 func setInf*(P: var ECP_TwEdwards_Aff) {.inline.} =
@@ -52,7 +60,7 @@ func isOnCurve*[F](x, y: F): SecretBool =
   var t0{.noInit.}, t1{.noInit.}, t2{.noInit.}: F
   t0.square(x)
   t1.square(y)
-  
+
   # ax²+y²
   when F.C.getCoefA() is int:
     when F.C.getCoefA() == -1:
@@ -84,10 +92,10 @@ func isOnCurve*[F](x, y: F): SecretBool =
 func trySetFromCoordX*[F](P: var ECP_TwEdwards_Aff[F], x: F): SecretBool =
   ## Try to create a point on the elliptic curve from X co-ordinate
   ##   ax²+y²=1+dx²y²    (affine coordinate)
-  ## 
+  ##
   ## return true and update `P` if `y` leads to a valid point
   ## return false otherwise, in that case `P` is undefined.
-  
+
   # y² = (1 - ax²)/(1 - dx²)
   var t {.noInit.}: F
   var one {.noInit.}: F
@@ -129,10 +137,10 @@ func trySetFromCoordX_vartime*[F](P: var ECP_TwEdwards_Aff[F], x: F): SecretBool
   ## This is not in constant time
   ## Try to create a point on the elliptic curve from X co-ordinate
   ##   ax²+y²=1+dx²y²    (affine coordinate)
-  ## 
+  ##
   ## return true and update `P` if `y` leads to a valid point
   ## return false otherwise, in that case `P` is undefined.
-  
+
   # y² = (1 - ax²)/(1 - dx²)
   var t {.noInit.}: F
   var one {.noInit.}: F
@@ -180,7 +188,7 @@ func trySetFromCoordY*[F](P: var ECP_TwEdwards_Aff[F], y: F): SecretBool =
   ##
   ## Note: Dedicated robust procedures for hashing-to-curve
   ##       will be provided, this is intended for testing purposes.
-  ## 
+  ##
   ##       For **test case generation only**,
   ##       this is preferred to generating random point
   ##       via random scalar multiplication of the curve generator
@@ -251,12 +259,8 @@ func cneg*(P: var ECP_TwEdwards_Aff, ctl: CTBool) =
 func `==`*(P, Q: ECP_TwEdwards_Aff[Fp[Banderwagon]]): SecretBool =
   ## Equality check for points in the Banderwagon Group
   ## The equality check is optimized for the quotient group
-  ## see: https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Equality-check
-  ## 
-  ## Check for the (0,0) point, which is possible
-  ## 
   ## This is a costly operation
-
+  # see: https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Equality-check
   var lhs{.noInit.}, rhs{.noInit.}: typeof(P).F
 
   # Check for the zero points
@@ -268,3 +272,14 @@ func `==`*(P, Q: ECP_TwEdwards_Aff[Fp[Banderwagon]]): SecretBool =
   lhs.prod(P.x, Q.y)
   rhs.prod(Q.x, P.y)
   result = result and lhs == rhs
+
+func isInf*(P: ECP_TwEdwards_Aff[Fp[Banderwagon]]): SecretBool {.inline.} =
+  ## Returns true if P is the neutral/identity element
+  ## in the Banderwagon group
+  ## and false otherwise
+  # Isogeny-based constructions to create
+  # prime order curves overload this generic identity check.
+  # see: https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Equality-check
+
+  # TODO: Rename the function
+  result = P.x.isZero()

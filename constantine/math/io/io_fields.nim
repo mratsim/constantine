@@ -23,6 +23,11 @@ export Fp
 #
 # ############################################################
 
+proc spaces*(num: int): string =
+  result = newString(num)
+  for i in 0 ..< num:
+    result[i] = ' '
+
 func fromUint*(dst: var FF,
                src: SomeUnsignedInt) =
   ## Parse a regular unsigned integer

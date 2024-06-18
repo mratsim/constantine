@@ -28,11 +28,6 @@ export towers
 #
 # ############################################################
 
-proc spaces*(num: int): string =
-  result = newString(num)
-  for i in 0 ..< num:
-    result[i] = ' '
-
 func appendHex*(accum: var string, f: ExtensionField, indent = 0, order: static Endianness = bigEndian) =
   ## Hex accumulator
   accum.add static($f.typeof.genericHead() & '(')
