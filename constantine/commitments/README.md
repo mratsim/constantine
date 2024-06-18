@@ -31,9 +31,19 @@ An important use-case missing from the Wikipedia article is:
 - https://doc-internal.dalek.rs/bulletproofs/notes/inner_product_proof/index.html
 - https://eprint.iacr.org/2019/1021
 - https://zcash.github.io/halo2/background/pc-ipa.html
+- https://raw.githubusercontent.com/daira/halographs/master/deepdive.pdf
+- https://hackmd.io/yA9DlU5YQ3WtiFxC_2LAlg
 - https://eprint.iacr.org/2020/499
 - https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
-- https://eprint.iacr.org/2023/691
+
+> [!NOTE]
+> Halo2-like IPA is slightly different from Bulletproofs
+> (https://doc-internal.dalek.rs/bulletproofs/notes/inner_product_proof/index.html)
+> see 2019/1021, 3.1, the vector b is fixed and part of the Common Reference String
+> in our case it's instantiated to the Lagrange basis polynomial.
+> Hence the vector H mentioned in
+> https://dankradfeist.de/ethereum/2021/07/27/inner-product-arguments.html
+> is not necessary as well.
 
 ## Transcripts
 
@@ -44,16 +54,18 @@ We take inspiration from
 - https://github.com/crate-crypto/verkle-trie-ref/blob/master/ipa/transcript.py
 - https://github.com/zcash/halo2/blob/halo2_proofs-0.3.0/halo2_proofs/src/transcript.rs
 - https://github.com/arkworks-rs/poly-commit/blob/12f5529/poly-commit/src/ipa_pc/mod.rs#L34-L44
-- https://eprint.iacr.org/2023/691
 
 We MUST be compatible with `verkle-trie-ref` to be used in Ethereum Verkle Tries.
 
-In summary, a transcript acts like a Cryptographic Sponge that can absorb entropy and squeeze out challenges.
+In summary, a transcript acts like a Cryptographic Sponge with duplex construction that can absorb entropy and squeeze out challenges.
 
 However, even if we generalize the transcript API,
 unfortunately the labeling differ (if any) and the absorb/challenge sequences and what is absorbed in the transcript are very different.
 
 So the commitments have to be protocol-specific.
+
+Attacks on weak Fiat-Shamir challenges are described in-depth in
+- https://eprint.iacr.org/2023/691
 
 ## Protocols
 

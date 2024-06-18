@@ -18,6 +18,9 @@ import
   ../math/io/[io_bigints, io_fields],
   ../serialization/[codecs_banderwagon, codecs_status_codes, endians]
 
+# TODO: This file is deprecated, all functionality is being replaced
+# by commitments/eth_verkle_ipa
+
 # ############################################################
 #
 #               Random Element Generator
@@ -27,9 +30,9 @@ import
 
 func generate_random_points*(r: var openArray[ECP_TwEdwards_Aff[Fp[Banderwagon]]]) =
   ## generate_random_points generates random points on the curve with the hardcoded VerkleSeed
-  let points = allocHeapArrayAligned(ECP_TwEdwards_Prj[Fp[Banderwagon]], r.len, alignment = 64)
+  let points = allocHeapArrayAligned(ECP_TwEdwards_Aff[Fp[Banderwagon]], r.len, alignment = 64)
 
-  var points_found: seq[ECP_TwEdwards_Prj[Fp[Banderwagon]]]
+  var points_found: seq[ECP_TwEdwards_Aff[Fp[Banderwagon]]]
   var incrementer: uint64 = 0
   var idx: int = 0
   while true:
@@ -52,7 +55,7 @@ func generate_random_points*(r: var openArray[ECP_TwEdwards_Aff[Fp[Banderwagon]]
     var x_arr {.noInit.}: array[32, byte]
     x_arr.marshal(x, bigEndian)
 
-    var x_p {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+    var x_p {.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
     let stat2 = x_p.deserialize(x_arr)
     if stat2 == cttCodecEcc_Success:
       points_found.add(x_p)
@@ -62,7 +65,8 @@ func generate_random_points*(r: var openArray[ECP_TwEdwards_Aff[Fp[Banderwagon]]
     if points_found.len == r.len:
       break
 
-  r.asUnchecked().batchAffine(points, r.len)
+  for i in 0 ..< r.len:
+    r[i] = points[i]
   freeHeapAligned(points)
 
 # ############################################################

@@ -15,8 +15,11 @@ import
   ../math/elliptic/[ec_twistededwards_projective, ec_twistededwards_batch_ops],
   ../math/arithmetic,
   ../math/elliptic/ec_scalar_mul,
-  ../math/io/[io_fields],
+  ../math/io/[io_fields, io_ec],
   ../curves_primitives
+
+# TODO: This file is deprecated, all functionality is being replaced
+# by commitments/eth_verkle_ipa
 
 # ############################################################
 #
@@ -24,13 +27,13 @@ import
 #
 # ############################################################
 
-func generateChallengesForIPA*(res: var openArray[matchingOrderBigInt(Banderwagon)], transcript: var CryptoHash, proof: IPAProof) =
+func generateChallengesForIPA*(res: var openArray[matchingOrderBigInt(Banderwagon)], transcript: var CryptoHash, proof: IPAProofDeprecated) =
   for i in 0 ..< 8: # TODO 8 is hardcoded
     transcript.absorb("L", proof.L_vector[i])
     transcript.absorb("R", proof.R_vector[i])
     transcript.squeezeChallenge("x", res[i])
 
-func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, got: var EC_P, commitment: var EC_P, proof: IPAProof, evalPoint: Fr[Banderwagon], res: Fr[Banderwagon]) : bool =
+func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, got: var EC_P, commitment: var EC_P_Aff, proof: IPAProofDeprecated, evalPoint: Fr[Banderwagon], res: Fr[Banderwagon]) : bool =
   # Check IPA proof verifier a IPA proof for a committed polynomial in evaluation form
   # It verifies whether the proof is valid for the given polynomial at the evaluation `evalPoint`
   # and cross-checking it with `result`
@@ -58,7 +61,11 @@ func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, got: var EC_P,
 
   var qy {.noInit.} = q
   qy.scalarMul_vartime(res)
-  commitment += qy
+
+  var C: EC_P
+  C.madd_vartime(qy, commitment)
+  var commitment {.noInit.}: EC_P_Aff
+  commitment.affine(C)
 
   var challenges {.noInit.}: array[8,Fr[Banderwagon]]
   for i in 0 ..< 8:
@@ -69,12 +76,18 @@ func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, got: var EC_P,
   var challengesInv {.noInit.}: array[8,Fr[Banderwagon]]
   challengesInv.batchInv_vartime(challenges)
 
+  debugEcho "-----------------------"
+  debugEcho "u⁻¹"
+  for i in 0 ..< 8:
+    debugEcho "  0: ", challengesInv[i].toHex()
+  debugEcho "-----------------------"
+
   for i in 0 ..< challenges.len:
     var x = challenges[i]
     var L = proof.L_vector[i]
     var R = proof.R_vector[i]
 
-    var p11 {.noInit.}: array[3, EC_P]
+    var p11 {.noInit.}: array[3, EC_P_Aff]
     p11[0] = commitment
     p11[1] = L
     p11[2] = R
@@ -87,7 +100,18 @@ func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, got: var EC_P,
     p22[1] = x
     p22[2] = challengesInv[i]
 
-    commitment.pedersen_commit(p22, p11)
+    p11.pedersen_commit(C, p22)
+    commitment.affine(C)
+
+    # debugEcho "  ", i, ": "
+    # debugEcho "    x:   ", challenges[i].toHex()
+    # debugEcho "    L:   ", proof.L_vector[i].toHex()
+    # debugEcho "    x⁻¹: ", challengesInv[i].toHex()
+    # debugEcho "    R:   ", proof.R_vector[i].toHex()
+
+  debugEcho "----"
+  debugEcho "∑ᵢ[uᵢ]Lᵢ + C' + ∑ᵢ[uᵢ⁻¹]Rᵢ: ", commitment.toHex()
+  debugEcho "----"
 
   var foldingScalars {.noInit.}: array[EthVerkleDomain, Fr[Banderwagon]]
 
@@ -111,15 +135,24 @@ func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, got: var EC_P,
 
   # TODO, use optimized MSM - pending fix for https://github.com/mratsim/constantine/issues/390
   g0.multiScalarMul_reference_vartime(foldingScalars_big, ic.crs)
+  debugEcho "----"
+  debugEcho "g0: ", g0.toHex()
+  debugEcho "----"
 
   var b0 {.noInit.} : Fr[Banderwagon]
   b0.computeInnerProducts(b, foldingScalars)
+  debugEcho "----"
+  debugEcho "b0: ", b0.toHex()
+  debugEcho "----"
 
   # g0 * a + (a * b) * Q
 
   var p1 {.noInit.}: EC_P
   p1 = g0
   p1.scalarMul_vartime(proof.A_scalar)
+  debugEcho "----"
+  debugEcho "a0g0: ", p1.toHex()
+  debugEcho "----"
 
   var p2 {.noInit.} : EC_P
   var p2a {.noInit.} : Fr[Banderwagon]
@@ -127,10 +160,14 @@ func checkIPAProof* (ic: IPASettings, transcript: var CryptoHash, got: var EC_P,
   p2a.prod(b0, proof.A_scalar)
   p2 = q
   p2.scalarMul_vartime(p2a)
+  debugEcho "----"
+  debugEcho "a0b0Q: ", p2.toHex()
+  debugEcho "----"
 
   got.sum(p1, p2)
+  C.fromAffine(commitment)
 
-  if not(got == commitment).bool() == true:
+  if not(got == C).bool() == true:
     r = false
     return r
 

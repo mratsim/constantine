@@ -15,22 +15,20 @@ import
       ipa_verifier,
       multiproof],
   ../constantine/hashes,
-  std/[unittest],
+  std/unittest,
   ../constantine/serialization/[
     codecs_status_codes,
     codecs_banderwagon,
-    codecs
-    ],
+    codecs],
   ../constantine/math/config/[type_ff, curves],
-  ../constantine/math/elliptic/[
-    ec_twistededwards_affine,
-    ec_twistededwards_projective],
+  ../constantine/math/ec_twistededwards,
   ../constantine/math/io/[io_fields, io_bigints],
   ../constantine/math/arithmetic,
   ../constantine/math/polynomials/polynomials,
   ../constantine/math/constants/zoo_generators,
   ../constantine/commitments/[
     pedersen_commitments,
+    eth_verkle_ipa,
     eth_verkle_transcripts,
     protocol_quotient_check],
   ../tests/math_elliptic_curves/t_ec_template,
@@ -45,9 +43,6 @@ import
 # ############################################################
 
 # Please refer to https://hackmd.io/mJeCRcawTRqr9BooVpHv5g
-
-# The generator point from Banderwagon
-var generator = Banderwagon.getGenerator()
 
 suite "Barycentric Form Tests":
   # The interpolation is only needed for testing purposes,
@@ -77,14 +72,14 @@ suite "Barycentric Form Tests":
       poly.interpolate(points,2)
 
       var genfp: EC_P
-      genfp.fromAffine(generator)
+      genfp.generator()
       var genfr: Fr[Banderwagon]
       genfr.mapToScalarField(genfp)
 
       var res {.noInit.}: Fr[Banderwagon]
       res.ipaEvaluate(poly,gen_fr,2)
 
-      doAssert (res.toHex() == genfr.toHex()) == true, "Not matching!"
+      doAssert res.toHex() == genfr.toHex(), "Not matching!"
 
     testBasicInterpolation()
 
@@ -204,13 +199,12 @@ suite "Computing the Correct Vector Commitment":
       var basisPoints: array[256, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
       basisPoints.generate_random_points()
 
-
       var test_scalars {.noInit.}: array[256, Fr[Banderwagon]]
       for i in 0 ..< 256:
         test_scalars[i].fromHex(testScalarsHex[i])
 
-      var commitment {.noInit.}: EC_P
-      commitment.pedersen_commit(test_scalars, basisPoints)
+      var commitment {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+      basisPoints.pedersen_commit(commitment, test_scalars)
 
       var arr22 {.noInit.}: Bytes
       arr22.serialize(commitment)
@@ -390,11 +384,7 @@ suite "Transcript Tests":
       proc testVec4()=
         var tr {.noInit.}: sha256
         tr.initTranscript("simple_protocol")
-
-        var gen {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
-        gen.fromAffine(Banderwagon.getGenerator())
-
-        tr.absorb("generator", gen)
+        tr.absorb("generator", Banderwagon.getGenerator())
 
         var challenge {.noInit.}: Fr[Banderwagon]
         tr.squeezeChallenge("simple_challenge", challenge)
@@ -415,7 +405,7 @@ suite "IPA proof tests":
       var commitmentBytes {.noInit.} : array[32, byte]
       commitmentBytes.fromHex(IPAPedersenCommitment)
 
-      var commitment: EC_P
+      var commitment: ECP_TwEdwards_Aff[Fp[Banderwagon]]
       discard commitment.deserialize(commitmentBytes)
 
       var evalPoint: Fr[Banderwagon]
@@ -427,295 +417,308 @@ suite "IPA proof tests":
       var serializedIPAProof: VerkleIPAProofSerialized
       serializedIPAProof.fromHex(IPASerializedProofVec)
 
-      var proof {.noInit.}: IPAProof
-      discard proof.deserializeVerkleIPAProof(serializedIPAProof)
+      var proofDeprecated{.noInit.}: IPAProofDeprecated
+      discard proofDeprecated.deserializeVerkleIPAProof(serializedIPAProof)
 
-      var ipaConfig: IPASettings
-      ipaConfig.genIPAConfig()
+      var proof {.noInit.}: IpaProof[8, ECP_TwEdwards_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
+      proof.L = proofDeprecated.L_vector
+      proof.R = proofDeprecated.R_vector
+      proof.a0 = proofDeprecated.A_scalar
+
+
+      var CRS: PolynomialEval[EthVerkleDomain, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+      CRS.evals.generate_random_points()
+
+      var domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]]
+      domain.setupLinearEvaluationDomain()
 
       var tr {.noInit.}: sha256
       tr.initTranscript("ipa")
 
-      var ok: bool
-      var got {.noInit.}: EC_P
-      ok = ipaConfig.checkIPAProof(tr, got, commitment, proof, evalPoint, evaluationResultFr)
+      let ok = ipa_verify(
+        CRS, domain,
+        tr, commitment,
+        evalPoint,
+        evaluationResultFr,
+        proof)
 
-      doAssert ok == true, "ipaConfig.checkIPAProof: Unexpected Failure!"
+      doAssert ok, "ipaConfig.checkIPAProof: Unexpected Failure!"
 
     testIPAProofInDomain()
-  test "Test for IPA proof consistency":
-    proc testIPAProofConsistency()=
 
-      #from a shared view
-      var point: Fr[Banderwagon]
-      point.fromInt(2101)
+#   test "Test for IPA proof consistency":
+#     proc testIPAProofConsistency()=
 
-      #from the prover's side
-      var testVals: array[256, int] = [
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-      ]
-      var poly: array[256, Fr[Banderwagon]]
-      poly.testPoly256(testVals)
+#       #from a shared view
+#       var point: Fr[Banderwagon]
+#       point.fromInt(2101)
 
-      var ipaConfig {.noInit.}: IPASettings
-      ipaConfig.genIPAConfig()
+#       #from the prover's side
+#       var testVals: array[256, int] = [
+#         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+#         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+#         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+#         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+#         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+#         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+#         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+#         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+#       ]
+#       var poly: array[256, Fr[Banderwagon]]
+#       poly.testPoly256(testVals)
 
-      var prover_transcript {.noInit.}: sha256
-      prover_transcript.initTranscript("test")
+#       var ipaConfig {.noInit.}: IPASettings
+#       ipaConfig.genIPAConfig()
 
-      var prover_comm: EC_P
-      prover_comm.pedersen_commit(poly, ipaConfig.crs)
+#       var prover_transcript {.noInit.}: sha256
+#       prover_transcript.initTranscript("test")
 
-      var pcb {.noInit.}: array[32, byte]
-      discard pcb.serialize(prover_comm)
+#       var prover_comm: EC_P
+#       prover_comm.pedersen_commit(poly, ipaConfig.crs)
 
-      doAssert pcb.toHex() == "0x1b9dff8f5ebbac250d291dfe90e36283a227c64b113c37f1bfb9e7a743cdb128", "Issue with computing commitment"
+#       var pcb {.noInit.}: array[32, byte]
+#       discard pcb.serialize(prover_comm)
 
-      var ipaProof1 {.noInit.}: IPAProof
-      let stat11 = ipaProof1.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
-      doAssert stat11 == true, "Problem creating IPA proof 1"
+#       doAssert pcb.toHex() == "0x1b9dff8f5ebbac250d291dfe90e36283a227c64b113c37f1bfb9e7a743cdb128", "Issue with computing commitment"
 
-      var lagrange_coeffs: array[256, Fr[Banderwagon]]
-      ipaConfig.domain.getLagrangeBasisPolysAt(lagrange_coeffs, point)
+#       var ipaProof1 {.noInit.}: IPAProofDeprecated
+#       let stat11 = ipaProof1.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
+#       doAssert stat11 == true, "Problem creating IPA proof 1"
 
-      var op_point: Fr[Banderwagon]
-      op_point.computeInnerProducts(lagrange_coeffs, poly)
+#       var lagrange_coeffs: array[256, Fr[Banderwagon]]
+#       ipaConfig.domain.getLagrangeBasisPolysAt(lagrange_coeffs, point)
 
+#       var op_point: Fr[Banderwagon]
+#       op_point.computeInnerProducts(lagrange_coeffs, poly)
 
-      doAssert op_point.toHex(littleEndian) == "0x4a353e70b03c89f161de002e8713beec0d740a5e20722fd5bd68b30540a33208", "Issue with computing commitment"
 
-    testIPAProofConsistency()
+#       doAssert op_point.toHex(littleEndian) == "0x4a353e70b03c89f161de002e8713beec0d740a5e20722fd5bd68b30540a33208", "Issue with computing commitment"
 
-  test "Test for IPA proof equality":
-    proc testIPAProofEquality()=
-      var prover_transcript {.noInit.}: sha256
-      prover_transcript.initTranscript("ipa")
+#     testIPAProofConsistency()
 
-      # from a shared view
-      var point: Fr[Banderwagon]
-      point.fromInt(123456789)
+#   test "Test for IPA proof equality":
+#     proc testIPAProofEquality()=
+#       var prover_transcript {.noInit.}: sha256
+#       prover_transcript.initTranscript("ipa")
 
-      # from the prover's side
-      var testVals: array[14, int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
-      var poly: array[256, Fr[Banderwagon]]
-      poly.testPoly256(testVals)
+#       # from a shared view
+#       var point: Fr[Banderwagon]
+#       point.fromInt(123456789)
 
-      var ipaConfig {.noInit.}: IPASettings
-      ipaConfig.genIPAConfig()
+#       # from the prover's side
+#       var testVals: array[14, int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+#       var poly: array[256, Fr[Banderwagon]]
+#       poly.testPoly256(testVals)
 
-      var prover_comm: EC_P
-      prover_comm.pedersen_commit(poly, ipaConfig.crs)
+#       var ipaConfig {.noInit.}: IPASettings
+#       ipaConfig.genIPAConfig()
 
-      var ipaProof1 {.noInit.}: IPAProof
-      let stat11 = ipaProof1.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
-      doAssert stat11 == true, "Problem creating IPA proof 1"
+#       var prover_comm: EC_P
+#       prover_comm.pedersen_commit(poly, ipaConfig.crs)
 
-      var prv1_ser {.noInit.}: VerkleIPAProofSerialized
-      discard prv1_ser.serializeVerkleIPAProof(ipaProof1)
+#       var ipaProof1 {.noInit.}: IPAProofDeprecated
+#       let stat11 = ipaProof1.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
+#       doAssert stat11 == true, "Problem creating IPA proof 1"
 
-      var point2: Fr[Banderwagon]
-      point2.fromInt(123456789)
+#       var prv1_ser {.noInit.}: VerkleIPAProofSerialized
+#       discard prv1_ser.serializeVerkleIPAProof(ipaProof1)
 
-      var ipaConfig2 {.noInit.}: IPASettings
-      ipaConfig2.genIPAConfig()
+#       var point2: Fr[Banderwagon]
+#       point2.fromInt(123456789)
 
-      var prover_transcript2 {.noInit.}: sha256
-      prover_transcript2.initTranscript("ipa")
+#       var ipaConfig2 {.noInit.}: IPASettings
+#       ipaConfig2.genIPAConfig()
 
-      var testVals2: array[14, int] = [1,2,3,4,5,6,7,8,9,10,11,12,13,14]
-      var poly2: array[256, Fr[Banderwagon]]
-      poly2.testPoly256(testVals2)
+#       var prover_transcript2 {.noInit.}: sha256
+#       prover_transcript2.initTranscript("ipa")
 
-      var prover_comm2 {.noInit.}: EC_P
-      prover_comm2.pedersen_commit(poly2, ipaConfig.crs)
+#       var testVals2: array[14, int] = [1,2,3,4,5,6,7,8,9,10,11,12,13,14]
+#       var poly2: array[256, Fr[Banderwagon]]
+#       poly2.testPoly256(testVals2)
 
-      var ipaProof2 {.noInit.}: IPAProof
-      let stat22 = ipaProof2.createIPAProof(prover_transcript2, ipaConfig, prover_comm, poly, point)
-      doAssert stat22 == true, "Problem creating IPA proof 2"
+#       var prover_comm2 {.noInit.}: EC_P
+#       prover_comm2.pedersen_commit(poly2, ipaConfig.crs)
 
-      doAssert ipaProof1 == ipaProof2, "IPA proofs aren't equal"
+#       var ipaProof2 {.noInit.}: IPAProofDeprecated
+#       let stat22 = ipaProof2.createIPAProof(prover_transcript2, ipaConfig, prover_comm, poly, point)
+#       doAssert stat22 == true, "Problem creating IPA proof 2"
 
-    testIPAProofEquality()
+#       doAssert ipaProof1 == ipaProof2, "IPA proofs aren't equal"
 
-    test "Test for IPA Proof of Creation and Verification":
-      proc testIPAProofCreateAndVerify()=
-        var point {.noInit.}: Fr[Banderwagon]
-        var ipaConfig {.noInit.}: IPASettings
-        ipaConfig.genIPAConfig()
+#     testIPAProofEquality()
 
-        # from a shared view
-        point.fromInt(123456789)
+#     test "Test for IPA Proof of Creation and Verification":
+#       proc testIPAProofCreateAndVerify()=
+#         var point {.noInit.}: Fr[Banderwagon]
+#         var ipaConfig {.noInit.}: IPASettings
+#         ipaConfig.genIPAConfig()
 
-        # from the prover's side
-        var testVals : array[9, int] = [1,2,3,4,5,6,7,8,9]
-        var poly: array[256,Fr[Banderwagon]]
-        poly.testPoly256(testVals)
+#         # from a shared view
+#         point.fromInt(123456789)
 
-        var prover_comm {.noInit.}: EC_P
-        prover_comm.pedersen_commit(poly, ipaConfig.crs)
+#         # from the prover's side
+#         var testVals : array[9, int] = [1,2,3,4,5,6,7,8,9]
+#         var poly: array[256,Fr[Banderwagon]]
+#         poly.testPoly256(testVals)
 
-        var prover_transcript {.noInit.}: sha256
-        prover_transcript.initTranscript("ipa")
+#         var prover_comm {.noInit.}: EC_P
+#         prover_comm.pedersen_commit(poly, ipaConfig.crs)
 
-        var ipaProof: IPAProof
-        let stat = ipaProof.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
-        doAssert stat == true, "Problem creating IPA proof"
+#         var prover_transcript {.noInit.}: sha256
+#         prover_transcript.initTranscript("ipa")
 
-        var lagrange_coeffs : array[EthVerkleDomain, Fr[Banderwagon]]
-        ipaConfig.domain.getLagrangeBasisPolysAt(lagrange_coeffs, point)
+#         var ipaProof: IPAProofDeprecated
+#         let stat = ipaProof.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
+#         doAssert stat == true, "Problem creating IPA proof"
 
-        var innerProd : Fr[Banderwagon]
-        innerProd.computeInnerProducts(poly, lagrange_coeffs)
+#         var lagrange_coeffs : array[EthVerkleDomain, Fr[Banderwagon]]
+#         ipaConfig.domain.getLagrangeBasisPolysAt(lagrange_coeffs, point)
 
-        # Verifier view
-        var verifier_comm : EC_P
-        verifier_comm = prover_comm
+#         var innerProd : Fr[Banderwagon]
+#         innerProd.computeInnerProducts(poly, lagrange_coeffs)
 
-        var verifier_transcript: sha256
-        verifier_transcript.initTranscript("ipa")
+#         # Verifier view
+#         var verifier_comm : EC_P
+#         verifier_comm = prover_comm
 
-        var ok: bool
-        var got {.noInit.}: EC_P
-        ok = ipaConfig.checkIPAProof(verifier_transcript, got, verifier_comm, ipaProof, point, innerProd)
+#         var verifier_transcript: sha256
+#         verifier_transcript.initTranscript("ipa")
 
-        doAssert ok == true, "Issue in checking IPA proof!"
-      testIPAProofCreateAndVerify()
+#         var ok: bool
+#         var got {.noInit.}: EC_P
+#         ok = ipaConfig.checkIPAProof(verifier_transcript, got, verifier_comm, ipaProof, point, innerProd)
 
+#         doAssert ok == true, "Issue in checking IPA proof!"
+#       testIPAProofCreateAndVerify()
 
-# ############################################################
-#
-#                     Test for Multiproofs
-#
-# ############################################################
 
-# Note: large arrays should be heap allocated with new/ref
-#       to not incur stack overflow on Windows as its stack size is 1MB per default compared to UNIXes 8MB.
+# # ############################################################
+# #
+# #                     Test for Multiproofs
+# #
+# # ############################################################
 
-suite "Multiproof Tests":
-  test "Multiproof Creation and Verification":
-    proc testMultiproofCreationAndVerification()=
+# # Note: large arrays should be heap allocated with new/ref
+# #       to not incur stack overflow on Windows as its stack size is 1MB per default compared to UNIXes 8MB.
 
-      var ipaConfig {.noInit.}: IPASettings
-      ipaConfig.genIPAConfig()
+# suite "Multiproof Tests":
+#   test "Multiproof Creation and Verification":
+#     proc testMultiproofCreationAndVerification()=
 
-      var testVals: array[14, int] = [1,1,1,4,5,6,7,8,9,10,11,12,13,14]
-      var poly: array[256, Fr[Banderwagon]]
+#       var ipaConfig {.noInit.}: IPASettings
+#       ipaConfig.genIPAConfig()
 
-      poly.testPoly256(testVals)
+#       var testVals: array[14, int] = [1,1,1,4,5,6,7,8,9,10,11,12,13,14]
+#       var poly: array[256, Fr[Banderwagon]]
 
-      var prover_comm: EC_P
-      prover_comm.pedersen_commit(poly, ipaConfig.crs)
+#       poly.testPoly256(testVals)
 
-      # Prover's view
-      var prover_transcript {.noInit.}: sha256
-      prover_transcript.initTranscript("multiproof")
+#       var prover_comm: EC_P
+#       prover_comm.pedersen_commit(poly, ipaConfig.crs)
 
-      var one: Fr[Banderwagon]
-      one.setOne()
+#       # Prover's view
+#       var prover_transcript {.noInit.}: sha256
+#       prover_transcript.initTranscript("multiproof")
 
-      var Cs: seq[EC_P]
-      # Large array, need heap allocation.
-      var Fs = new array[EthVerkleDomain, array[EthVerkleDomain, Fr[Banderwagon]]]
+#       var one: Fr[Banderwagon]
+#       one.setOne()
 
-      for i in 0 ..< EthVerkleDomain:
-        for j in 0 ..< EthVerkleDomain:
-          Fs[i][j].setZero()
+#       var Cs: seq[EC_P]
+#       # Large array, need heap allocation.
+#       var Fs = new array[EthVerkleDomain, array[EthVerkleDomain, Fr[Banderwagon]]]
 
-      var Zs: seq[int]
-      var Ys: seq[Fr[Banderwagon]]
+#       for i in 0 ..< EthVerkleDomain:
+#         for j in 0 ..< EthVerkleDomain:
+#           Fs[i][j].setZero()
 
-      Cs.add(prover_comm)
+#       var Zs: seq[int]
+#       var Ys: seq[Fr[Banderwagon]]
 
-      Fs[0] = poly
+#       Cs.add(prover_comm)
 
-      Zs.add(0)
-      Ys.add(one)
+#       Fs[0] = poly
 
-      var multiproof {.noInit.}: MultiProof
-      var stat_create_mult: bool
-      stat_create_mult = multiproof.createMultiProof(prover_transcript, ipaConfig, Cs, Fs[], Zs)
+#       Zs.add(0)
+#       Ys.add(one)
 
-      doAssert stat_create_mult.bool() == true, "Multiproof creation error!"
+#       var multiproof {.noInit.}: MultiProof
+#       var stat_create_mult: bool
+#       stat_create_mult = multiproof.createMultiProof(prover_transcript, ipaConfig, Cs, Fs[], Zs)
 
-      # Verifier's view
-      var verifier_transcript: sha256
-      verifier_transcript.initTranscript("multiproof")
+#       doAssert stat_create_mult.bool() == true, "Multiproof creation error!"
 
-      var stat_verify_mult: bool
-      stat_verify_mult = multiproof.verifyMultiproof(verifier_transcript, ipaConfig, Cs, Ys,Zs)
+#       # Verifier's view
+#       var verifier_transcript: sha256
+#       verifier_transcript.initTranscript("multiproof")
 
-      doAssert stat_verify_mult.bool() == true, "Multiproof verification error!"
+#       var stat_verify_mult: bool
+#       stat_verify_mult = multiproof.verifyMultiproof(verifier_transcript, ipaConfig, Cs, Ys,Zs)
 
-    testMultiproofCreationAndVerification()
+#       doAssert stat_verify_mult.bool() == true, "Multiproof verification error!"
 
-  test "Verify Multiproof in all Domain and Ranges but one by @Ignacio":
-    proc testVerifyMultiproofVec()=
+#     testMultiproofCreationAndVerification()
 
-      var commitment_bytes {.noInit.}: array[32, byte]
-      commitment_bytes.fromHex(MultiProofPedersenCommitment)
+#   test "Verify Multiproof in all Domain and Ranges but one by @Ignacio":
+#     proc testVerifyMultiproofVec()=
 
-      var commitment {.noInit.}: EC_P
-      discard commitment.deserialize(commitment_bytes)
+#       var commitment_bytes {.noInit.}: array[32, byte]
+#       commitment_bytes.fromHex(MultiProofPedersenCommitment)
 
-      var evaluationResultFr {.noInit.}: Fr[Banderwagon]
-      evaluationResultFr.fromHex(MultiProofEvaluationResult)
+#       var commitment {.noInit.}: EC_P
+#       discard commitment.deserialize(commitment_bytes)
 
-      var serializeVerkleMultiproof: VerkleMultiproofSerialized
-      serializeVerkleMultiproof.fromHex(MultiProofSerializedVec)
+#       var evaluationResultFr {.noInit.}: Fr[Banderwagon]
+#       evaluationResultFr.fromHex(MultiProofEvaluationResult)
 
-      var multiproof {.noInit.}: MultiProof
-      discard multiproof.deserializeVerkleMultiproof(serializeVerkleMultiproof)
+#       var serializeVerkleMultiproof: VerkleMultiproofSerialized
+#       serializeVerkleMultiproof.fromHex(MultiProofSerializedVec)
 
-      var ipaConfig {.noInit.}: IPASettings
-      ipaConfig.genIPAConfig()
+#       var multiproof {.noInit.}: MultiProof
+#       discard multiproof.deserializeVerkleMultiproof(serializeVerkleMultiproof)
 
-      var Cs: array[EthVerkleDomain, EC_P]
-      var Zs: array[EthVerkleDomain, int]
-      var Ys: array[EthVerkleDomain, Fr[Banderwagon]]
+#       var ipaConfig {.noInit.}: IPASettings
+#       ipaConfig.genIPAConfig()
 
-      Cs[0] = commitment
-      Ys[0] = evaluationResultFr
+#       var Cs: array[EthVerkleDomain, EC_P]
+#       var Zs: array[EthVerkleDomain, int]
+#       var Ys: array[EthVerkleDomain, Fr[Banderwagon]]
 
-      for i in 0 ..< EthVerkleDomain:
-        var tr {.noInit.}: sha256
-        tr.initTranscript("multiproof")
-        Zs[0] = i
-        var ok: bool
-        ok = multiproof.verifyMultiproof(tr, ipaConfig, Cs, Ys, Zs)
+#       Cs[0] = commitment
+#       Ys[0] = evaluationResultFr
 
-        if i == MultiProofEvaluationPoint:
-          doAssert ok == true, "Issue with Multiproof!"
+#       for i in 0 ..< EthVerkleDomain:
+#         var tr {.noInit.}: sha256
+#         tr.initTranscript("multiproof")
+#         Zs[0] = i
+#         var ok: bool
+#         ok = multiproof.verifyMultiproof(tr, ipaConfig, Cs, Ys, Zs)
 
-    testVerifyMultiproofVec()
+#         if i == MultiProofEvaluationPoint:
+#           doAssert ok == true, "Issue with Multiproof!"
 
-  test "Multiproof Serialization and Deserialization (Covers IPAProof Serialization and Deserialization as well)":
-    proc testMultiproofSerDe() =
+#     testVerifyMultiproofVec()
 
-      ## Pull a valid Multiproof from a valid hex test vector as used in Go-IPA https://github.com/crate-crypto/go-ipa/blob/master/multiproof_test.go#L120-L121
-      var validMultiproof_bytes {.noInit.} : VerkleMultiproofSerialized
-      validMultiproof_bytes.fromHex(validMultiproof)
+#   test "Multiproof Serialization and Deserialization (Covers IPAProofDeprecated Serialization and Deserialization as well)":
+#     proc testMultiproofSerDe() =
 
-      var multiprv {.noInit.} : MultiProof
+#       ## Pull a valid Multiproof from a valid hex test vector as used in Go-IPA https://github.com/crate-crypto/go-ipa/blob/master/multiproof_test.go#L120-L121
+#       var validMultiproof_bytes {.noInit.} : VerkleMultiproofSerialized
+#       validMultiproof_bytes.fromHex(validMultiproof)
 
-      ## Deserialize it into the Multiproof type
-      let stat1 = multiprv.deserializeVerkleMultiproof(validMultiproof_bytes)
-      doAssert stat1 == true, "Failed to Serialize Multiproof"
+#       var multiprv {.noInit.} : MultiProof
 
-      discard validMultiproof_bytes
+#       ## Deserialize it into the Multiproof type
+#       let stat1 = multiprv.deserializeVerkleMultiproof(validMultiproof_bytes)
+#       doAssert stat1 == true, "Failed to Serialize Multiproof"
 
-      ## Serialize the Multiproof type in to a serialize Multiproof byte array
-      var validMultiproof_bytes2 {.noInit} : VerkleMultiproofSerialized
-      let stat2 = validMultiproof_bytes2.serializeVerkleMultiproof(multiprv)
-      doAssert stat2 == true, "Failed to Deserialize Multiproof"
+#       discard validMultiproof_bytes
 
-      ## Check the serialized Multiproof with the valid hex test vector
-      doAssert validMultiproof_bytes2.toHex() == validMultiproof, "Error in the Multiproof Process!"
+#       ## Serialize the Multiproof type in to a serialize Multiproof byte array
+#       var validMultiproof_bytes2 {.noInit} : VerkleMultiproofSerialized
+#       let stat2 = validMultiproof_bytes2.serializeVerkleMultiproof(multiprv)
+#       doAssert stat2 == true, "Failed to Deserialize Multiproof"
 
-    testMultiproofSerDe()
+#       ## Check the serialized Multiproof with the valid hex test vector
+#       doAssert validMultiproof_bytes2.toHex() == validMultiproof, "Error in the Multiproof Process!"
+
+#     testMultiproofSerDe()

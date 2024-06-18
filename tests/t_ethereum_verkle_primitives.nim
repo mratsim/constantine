@@ -27,15 +27,11 @@ import
     codecs
   ],
   ../constantine/math/arithmetic,
-  ../constantine/math/constants/zoo_generators,
   ../constantine/ethereum_verkle_primitives
 
 type
   EC* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
   Bytes* = array[32, byte]
-
-# The generator point from Banderwagon
-var generator = Banderwagon.getGenerator()
 
 # serialized points which lie on Banderwagon
 const expected_bit_strings: array[16, string] = [
@@ -108,8 +104,8 @@ proc testDeserialize(hexString: string, status: CttCodecEccStatus) : bool =
 
   if check:
 
-  # deserialization from bits
-    var point{.noInit.}: EC
+    # deserialization from bits
+    var point{.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
     let stat = point.deserialize(arr)
     return stat == status
 
@@ -131,7 +127,7 @@ suite "Banderwagon Serialization Tests":
       # First the point is set to generator P
       # then with each iteration 2P, 4P, . . . doubling
       var point {.noInit.}: EC
-      point.fromAffine(generator)
+      point.generator()
 
       for i in 0 ..< len:
         var arr: Bytes
@@ -271,7 +267,7 @@ suite "Banderwagon Serialization Tests":
   test "Uncompressed Point Serialization":
     proc testUncompressedSerialization() =
       var point, point_regen {.noInit.}: EC
-      point.fromAffine(generator)
+      point.generator()
 
       var arr: array[64, byte]
       let stat = arr.serializeUncompressed(point)
@@ -298,7 +294,7 @@ suite "Banderwagon Points Tests":
   test "Test for Addition, Subtraction, Doubling":
     proc testAddSubDouble() =
       var a, b, gen_point, identity {.noInit.} : EC
-      gen_point.fromAffine(generator)
+      gen_point.generator()
 
       # Setting the identity Element
       identity.x.setZero()
@@ -328,7 +324,7 @@ suite "Banderwagon Points Tests":
       two_torsion.z.setOne()
 
       var point{.noInit.}: EC
-      point.fromAffine(generator)
+      point.generator()
 
       for i in 0 ..< 1000:
         var point_plus_torsion: EC
@@ -361,7 +357,7 @@ suite "Banderwagon Elements Mapping":
   test "Testing Map To Base Field":
     proc testMultiMapToBaseField() =
       var A, B, genPoint {.noInit.}: EC
-      genPoint.fromAffine(generator)
+      genPoint.generator()
 
       A.sum(genPoint, genPoint) # A = g+g = 2g
       B.double(genPoint)        # B = 2g
@@ -413,7 +409,7 @@ suite "Batch Operations on Banderwagon":
   test "BatchAffine and fromAffine Consistency":
     proc testbatch(n: static int) =
       var g, temp {.noInit.}: EC
-      g.fromAffine(generator)     # setting the generator point
+      g.generator()     # setting the generator point
 
       var aff{.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
       aff = generator
@@ -444,7 +440,7 @@ suite "Batch Operations on Banderwagon":
   test "Testing Batch Map to Base Field":
     proc testBatchMapToBaseField() =
       var A, B, g: EC
-      g.fromAffine(generator)
+      g.generator()
 
       A.sum(g, g)
       B.double(g)
@@ -471,7 +467,7 @@ suite "Batch Operations on Banderwagon":
       # then with each iteration 2P, 4P, . . . doubling
       var points: array[len, EC]
       var point {.noInit.}: EC
-      point.fromAffine(generator)
+      point.generator()
 
       for i in 0 ..< len:
         points[i] = point
@@ -493,7 +489,7 @@ suite "Batch Operations on Banderwagon":
     proc testBatchUncompressedSerialization() =
       var points: array[10, EC]
       var point, point_regen {.noInit.}: EC
-      point.fromAffine(generator)
+      point.generator()
 
       for i in 0 ..< 10:
         points[i] = point

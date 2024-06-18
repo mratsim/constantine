@@ -6,6 +6,9 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
+# TODO: This file is deprecated, all functionality is being replaced
+# by commitments/eth_verkle_ipa
+
 # ############################################################
 #
 # All the Helper Functions needed for Verkle Cryptography API
@@ -32,15 +35,15 @@ type
   Field* = Fr[Banderwagon]
 
 type
-  IPAProof* = object
-    L_vector*: array[8,EC_P]
-    R_vector*: array[8,EC_P]
+  IPAProofDeprecated* = object
+    L_vector*: array[8, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+    R_vector*: array[8, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
     A_scalar*: Fr[Banderwagon]
 
 type
   MultiProof* = object
-    IPAprv*: IPAProof
-    D*: EC_P
+    IPAprv*: IPAProofDeprecated
+    D*: ECP_TwEdwards_Aff[Fp[Banderwagon]]
 
 const
   EthVerkleDomain*: int = 256

@@ -21,12 +21,21 @@ import
 #
 # ############################################################
 
-# High-level transcripts designs
+# The implementation of the Ethereum Verkle Transcripts
+# is akin to a cryptographic sponge with a duplex construction.
+#
+#  - https://github.com/crate-crypto/verkle-trie-ref/blob/master/ipa/transcript.py
+#  - https://keccak.team/sponge_duplex.html
+#
+# Hence we use the absorb/squeeze names for the API.
+#
+# Otherwise, it seems like the industry is converging towards Merlin (like Jolt)
 # - https://merlin.cool/
 #   https://github.com/dalek-cryptography/merlin
-# - https://eprint.iacr.org/2023/691
+# and Plonky3 DuplexChallenger (like SP1)
+# - https://github.com/Plonky3/Plonky3/blob/33b94a8/challenger/src/duplex_challenger.rs
 #
-# Practical implementations
+# Practical implementations for IPA
 # - https://github.com/crate-crypto/verkle-trie-ref/blob/master/ipa/transcript.py
 # - https://github.com/zcash/halo2/blob/halo2_proofs-0.3.0/halo2_proofs/src/transcript.rs
 # - https://github.com/arkworks-rs/poly-commit/blob/12f5529/poly-commit/src/ipa_pc/mod.rs#L34-L44
@@ -38,41 +47,46 @@ import
 # - arkworks has no labels and does not absorb commitments
 #   https://github.com/arkworks-rs/poly-commit/issues/140
 #   which likely exposes it to Weak Fiat-Shamir attacks.
+#
+# Weak-Fiat Shamir attacks are described in depth in
+# - https://eprint.iacr.org/2023/691
 
-func initTranscript*(ctx: var CryptoHash, label: openArray[char]) =
+type EthVerkleTranscript* = CryptoHash
+
+func initTranscript*(ctx: var EthVerkleTranscript, label: openArray[char]) =
   ctx.init()
   ctx.update(label)
 
-func domainSeparator*(ctx: var CryptoHash, label: openArray[char]) =
+func domainSeparator*(ctx: var EthVerkleTranscript, label: openArray[char]) =
   # A domain separator is used to:
   # - Separate between adding elements to the transcript and squeezing elements out
   # - Separate sub-protocols
   ctx.update(label)
 
-func absorb*(ctx: var CryptoHash, label: openArray[char], message: openArray[byte]) =
+func absorb*(ctx: var EthVerkleTranscript, label: openArray[char], message: openArray[byte]) =
   ctx.update(label)
   ctx.update(message)
 
-func absorb*(ctx: var CryptoHash, label: openArray[char], v: uint64) =
+func absorb*(ctx: var EthVerkleTranscript, label: openArray[char], v: uint64) =
   ctx.update(label)
   ctx.update(v.toBytes(bigEndian))
 
-func absorb*(ctx: var CryptoHash, label: openArray[char], point: ECP_TwEdwards[Fp[Banderwagon]]) =
+func absorb*(ctx: var EthVerkleTranscript, label: openArray[char], point: ECP_TwEdwards[Fp[Banderwagon]]) =
   var bytes {.noInit.}: array[32, byte]
   bytes.serialize(point)
   ctx.absorb(label, bytes)
 
-func absorb*(ctx: var CryptoHash, label: openArray[char], scalar: Fr[Banderwagon]) =
+func absorb*(ctx: var EthVerkleTranscript, label: openArray[char], scalar: Fr[Banderwagon]) =
   var bytes {.noInit.}: array[32, byte]
   bytes.serialize_fr(scalar, littleEndian)
   ctx.absorb(label, bytes)
 
-func absorb(ctx: var CryptoHash, label: openArray[char], scalar: matchingOrderBigInt(Banderwagon)) =
+func absorb(ctx: var EthVerkleTranscript, label: openArray[char], scalar: matchingOrderBigInt(Banderwagon)) =
   var bytes {.noInit.}: array[32, byte]
   bytes.serialize_scalar(scalar, littleEndian)
   ctx.absorb(label, bytes)
 
-func squeezeChallenge*(ctx: var CryptoHash, label: openArray[char], challenge: var matchingOrderBigInt(Banderwagon)) =
+func squeezeChallenge*(ctx: var EthVerkleTranscript, label: openArray[char], challenge: var matchingOrderBigInt(Banderwagon)) =
   ## Generating a challenge based on the Fiat-Shamir transform
   ctx.domainSeparator(label)
 
@@ -88,7 +102,7 @@ func squeezeChallenge*(ctx: var CryptoHash, label: openArray[char], challenge: v
   ctx.init()
   ctx.absorb(label, challenge)
 
-func squeezeChallenge*(ctx: var CryptoHash, label: openArray[char], challenge: var Fr[Banderwagon]) =
+func squeezeChallenge*(ctx: var EthVerkleTranscript, label: openArray[char], challenge: var Fr[Banderwagon]) =
   ## Generating a challenge based on the Fiat-Shamir transform
   var big {.noInit.}: matchingOrderBigInt(Banderwagon)
   ctx.squeezeChallenge(label, big)

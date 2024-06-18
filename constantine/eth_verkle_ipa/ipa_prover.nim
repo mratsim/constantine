@@ -31,6 +31,9 @@ import
   ../platforms/views,
   ../curves_primitives
 
+# TODO: This file is deprecated, all functionality is being replaced
+# by commitments/eth_verkle_ipa
+
 # ############################################################
 #
 # Inner Product Argument using Pedersen Commitments
@@ -57,7 +60,7 @@ func genIPAConfig*(res: var IPASettings) =
   res.domain.setupLinearEvaluationDomain()
 
 func coverIPARounds*(
-      res: var IPAProof,
+      res: var IPAProofDeprecated,
       transcript: var CryptoHash,
       ic: IPASettings,
       a: openArray[Fr[Banderwagon]],
@@ -71,9 +74,9 @@ func coverIPARounds*(
   let b_view = b.toStridedView()
   let cur_view = cb_c.toStridedView()
 
-  let (a_L, a_R) = a_view.splitMiddle()
-  let (b_L, b_R) = b_view.splitMiddle()
-  let (G_L, G_R) = cur_view.splitMiddle()
+  let (a_L, a_R) = a_view.splitHalf()
+  let (b_L, b_R) = b_view.splitHalf()
+  let (G_L, G_R) = cur_view.splitHalf()
 
   var z_L {.noInit.}: Fr[Banderwagon]
   z_L.computeInnerProducts(a_R, b_L)
@@ -129,8 +132,8 @@ func coverIPARounds*(
   coverIPARounds(res, transcript, ic, ai, bi, gi, q, idx, rounds)
 
 
-func createIPAProof*[IPAProof](
-      res: var IPAProof,
+func createIPAProof*[IPAProofDeprecated](
+      res: var IPAProofDeprecated,
       transcript: var CryptoHash,
       ic: IPASettings,
       commitment: EC_P,
@@ -139,7 +142,7 @@ func createIPAProof*[IPAProof](
   ## createIPAProof creates an IPA proof for a committed polynomial in evaluation form.
   ## `a` vectors are the evaluation points in the domain, and `evalPoint` represents the evaluation point.
 
-  # TODO: for some result IPAProof must be zero-init beforehand
+  # TODO: for some result IPAProofDeprecated must be zero-init beforehand
   #       hence we need to investigate why initialization may be incomplete.
 
   transcript.domain_separator("ipa")
@@ -174,7 +177,7 @@ func createIPAProof*[IPAProof](
 #
 # ############################################################
 
-func serializeVerkleIPAProof* (dst: var VerkleIPAProofSerialized, src: IPAProof): bool =
+func serializeVerkleIPAProof* (dst: var VerkleIPAProofSerialized, src: IPAProofDeprecated): bool =
   ## IPA Proofs in Verkle consists of a Left array of 8 Base Field points, a Right array of 8 Base Field points, and a Scalar Field element
   ## During serialization the format goes as follows:
   ##
@@ -188,16 +191,15 @@ func serializeVerkleIPAProof* (dst: var VerkleIPAProofSerialized, src: IPAProof)
   ##
   ## Note that checks like Subgroup check for Banderwagon Points for Base Field elements in L and R,
   ## And checks for a valid scalar checking the Banderwagon scalar Curve Order is MANDATORY. They are all checked in the further low level functions
-  ##
-  var res = false
+
   var L_bytes {.noInit.} : array[8, array[32, byte]]
   var R_bytes {.noInit.} : array[8, array[32, byte]]
 
-  let stat1 = L_bytes.serializeBatch(src.L_vector)
-  doAssert stat1 == cttCodecEcc_Success, "Batch serialization Failure!"
+  for i in 0 ..< L_bytes.len:
+    L_bytes[i].serialize(src.L_vector[i])
 
-  let stat2 = R_bytes.serializeBatch(src.R_vector)
-  doAssert stat2 == cttCodecEcc_Success, "Batch Serialization Failure!"
+  for i in 0 ..< R_bytes.len:
+    R_bytes[i].serialize(src.R_vector[i])
 
   var A_bytes {.noInit.} : array[32, byte]
   let stat3 = A_bytes.serialize_scalar(src.A_scalar.toBig(), littleEndian)
@@ -208,25 +210,18 @@ func serializeVerkleIPAProof* (dst: var VerkleIPAProofSerialized, src: IPAProof)
   for i in 0 ..< 8:
     for j in 0 ..< 32:
       dst[idx] = L_bytes[i][j]
-      idx = idx + 1
-
-  discard L_bytes
+      idx += 1
 
   for i in 0 ..< 8:
     for j in 0 ..< 32:
       dst[idx] = R_bytes[i][j]
-      idx = idx + 1
-
-  discard R_bytes
+      idx += 1
 
   for i in 0 ..< 32:
     dst[idx] = A_bytes[i]
-    idx = idx + 1
+    idx += 1
 
-  discard A_bytes
-
-  res = true
-  return res
+  return true
 
 # ############################################################
 #
@@ -234,7 +229,7 @@ func serializeVerkleIPAProof* (dst: var VerkleIPAProofSerialized, src: IPAProof)
 #
 # ############################################################
 
-func deserializeVerkleIPAProof* (dst: var IPAProof, src: var VerkleIPAProofSerialized ): bool =
+func deserializeVerkleIPAProof* (dst: var IPAProofDeprecated, src: var VerkleIPAProofSerialized ): bool =
   ## IPA Proofs in Verkle consists of a Left array of 8 Base Field points, a Right array of 8 Base Field points, and a Scalar Field element
   ## During deserialization the format goes as follows:
   ##
@@ -254,8 +249,8 @@ func deserializeVerkleIPAProof* (dst: var IPAProof, src: var VerkleIPAProofSeria
   var R_bytes {.noInit.} : array[8, array[32, byte]]
   var A_bytes {.noInit.} : array[32, byte]
 
-  var L_side {.noInit.} : array[8, EC_P]
-  var R_side {.noInit.} : array[8, EC_P]
+  var L_side {.noInit.} : array[8, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+  var R_side {.noInit.} : array[8, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
 
   var A_inter {.noInit.} : matchingOrderBigInt(Banderwagon)
   var A_fr {.noInit.} : Fr[Banderwagon]
@@ -315,7 +310,7 @@ func deserializeVerkleIPAProof* (dst: var IPAProof, src: var VerkleIPAProofSeria
 #
 # ############################################################
 
-func `==`* (p1: IPAProof, p2: IPAProof) : bool =
+func `==`* (p1: IPAProofDeprecated, p2: IPAProofDeprecated) : bool =
   var res {.noInit.}: bool
   const num_rounds = 8
   res = true

@@ -173,9 +173,9 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
   var EMinusD {.noInit.}: EC_P
   EMinusD.diff(E,D)
 
-  # TODO: for some result IPAProof must be zero-init beforehand
+  # TODO: for some result IPAProofDeprecated must be zero-init beforehand
   #       hence we need to investigate why initialization may be incomplete.
-  var ipaProof: IPAProof
+  var ipaProof: IPAProofDeprecated
 
   let checks = ipaProof.createIPAProof(transcript, ipaSetting, EMinusD, hMinusg, t)
   if not checks:
@@ -301,11 +301,11 @@ func serializeVerkleMultiproof* (dst: var VerkleMultiproofSerialized, src: var M
   ## 1) The queried Base Field where the Vector Commitment `opening` is created
   ## Consider this as the equivalent to the `Merkle Path` in usual Merkle Trees.
   ##
-  ## 2) The entire IPAProof which is exactly a 576 byte array, go through `serializeIPAProof` for the breakdown
+  ## 2) The entire IPAProofDeprecated which is exactly a 576 byte array, go through `serializeIPAProof` for the breakdown
   ##
   ## The format of serialization is as:
   ##
-  ## Query Point (32 - byte array) .... IPAProof (544 - byte array) = 32 + 544 = 576 elements in the byte array
+  ## Query Point (32 - byte array) .... IPAProofDeprecated (544 - byte array) = 32 + 544 = 576 elements in the byte array
   ##
   var res = false
   var ipa_bytes {.noInit.} : array[544, byte]
@@ -347,11 +347,11 @@ func deserializeVerkleMultiproof* (dst: var MultiProof, src: var VerkleMultiproo
   ## 1) The queried Base Field where the Vector Commitment `opening` is created
   ## Consider this as the equivalent to the `Merkle Path` in usual Merkle Trees.
   ##
-  ## 2) The entire IPAProof which is exactly a 576 byte array, go through `serializeIPAProof` for the breakdown
+  ## 2) The entire IPAProofDeprecated which is exactly a 576 byte array, go through `serializeIPAProof` for the breakdown
   ##
   ## The format of serialization is as:
   ##
-  ## Query Point (32 - byte array) .... IPAProof (544 - byte array) = 32 + 544 = 576 elements in the byte array
+  ## Query Point (32 - byte array) .... IPAProofDeprecated (544 - byte array) = 32 + 544 = 576 elements in the byte array
   ##
   var res = false
   var ipa_bytes {.noInit.} : array[544, byte]
@@ -361,25 +361,22 @@ func deserializeVerkleMultiproof* (dst: var MultiProof, src: var VerkleMultiproo
 
   for i in 0 ..< 32:
     d_bytes[i] = src[idx]
-    idx = idx + 1
+    idx += 1
 
   for i in 0 ..< 544:
     ipa_bytes[i] = src[idx]
-    idx = idx + 1
+    idx += 1
 
   var ipa_prv {.noInit.} : MultiProof.IPAprv
   let stat1 = ipa_prv.deserializeVerkleIPAProof(ipa_bytes)
   doAssert stat1 == true, "IPA Deserialization Failure!"
 
   dst.IPAprv = ipa_prv
-  discard ipa_prv
 
   var d_fp {.noInit.} : MultiProof.D
   let stat2 = d_fp.deserialize(d_bytes)
   doAssert stat2 == cttCodecEcc_Success, "Query Point Deserialization Failure!"
 
   dst.D = d_fp
-  discard d_fp
 
-  res = true
   return res
