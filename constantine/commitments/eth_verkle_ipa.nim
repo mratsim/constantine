@@ -123,7 +123,7 @@ type IpaProof*[logN: static int, EC, F] = object
   R*{.align: 64.}: array[logN, EC] # arrays of right elements for each of the log₂(N) iterations of ipa_prove
   a0*: F                           # unique a0 coefficient after recursively
 
-func innerProduct[F](r: var F, a, b: View[F]) =
+func innerProduct[F](r: var F, a, b: distinct(View[F] or MutableView[F])) =
   ## Compute the inner product ⟨a, b⟩ = ∑aᵢ.bᵢ
   debug: doAssert a.len == b.len
   r.setZero()
@@ -149,8 +149,8 @@ func ipa_prove*[N, logN: static int, EcAff, F](
       opening_challenge: F) =
 
   static:
-    doAssert N.isPowerOf2_vartime()
-    doAssert logN == N.log2_vartime()
+    doAssert N.uint.isPowerOf2_vartime()
+    doAssert logN == N.uint.log2_vartime()
 
   when EcAff is ECP_ShortW_Aff:
     type EC = jacobian(EcAff)
@@ -159,16 +159,20 @@ func ipa_prove*[N, logN: static int, EcAff, F](
 
   # Allocs
   # -----------------------------------
-  let basisPolysOpened = allocHeapAligned(array[N, F])
-  domain.getLagrangeBasisPolysAt(basisPolysOpened[], opening_challenge)
-
-  let gprime = allocHeapArrayAligned(Ec, N div 2)
+  let aprime = allocHeapAligned(array[N, F], alignment = 64)
+  let bprime = allocHeapAligned(array[N, F], alignment = 64)
+  let gprime = allocHeapAligned(array[N, EcAff], alignment = 64)
+  let gg = allocHeapAligned(array[N div 2, Ec], alignment = 64) # Temp for batchAffine
 
   # Aliases and unowned views for zero-copy splitting
   # -------------------------------------------------
-  var a = poly.evals.toView()
-  var G = crs.evals.toView()
-  var b = basisPolysOpened[].toView()
+  var a = aprime[].toMutableView()
+  var b = bprime[].toMutableView()
+  var G = gprime[].toMutableView()
+
+  a.copyFrom(poly.evals)
+  domain.getLagrangeBasisPolysAt(bprime[], opening_challenge)
+  G.copyFrom(crs.evals)
 
   # Protocol
   # -------------------------------------------------
@@ -208,16 +212,16 @@ func ipa_prove*[N, logN: static int, EcAff, F](
     # but that's extra allocations / data movements.
     var lrAff {.noInit.}: array[2, EcAff]
     var lr    {.noInit.}: array[2, Ec]
-    gL.pedersen_commit(lr[0], aR)
-    gR.pedersen_commit(lr[1], aL)
+    gL.asView().pedersen_commit(lr[0], aR.asView())
+    gR.asView().pedersen_commit(lr[1], aL.asView())
     lr[0] ~+= aRbL_Q
     lr[1] ~+= aLbR_Q
 
     lrAff.batchAffine(lr)
     transcript.absorb("L", lrAff[0])
     transcript.absorb("R", lrAff[1])
-    proof.buf.L[i] = lrAff[0]
-    proof.buf.R[i] = lrAff[1]
+    proof.L[i] = lrAff[0]
+    proof.R[i] = lrAff[1]
 
     var x {.noInit.}, xinv {.noInit.}: F
     transcript.squeezeChallenge("x", x)
@@ -244,13 +248,14 @@ func ipa_prove*[N, logN: static int, EcAff, F](
 
     let xinvbig {.noInit.} = xinv.toBig()
     for j in 0 ..< gL.len:
-      gprime[j].fromAffine(gR[j])
-      gprime[j].scalarMul_vartime(xinvbig)
-      gprime ~+= gL[j]
+      gg[j].fromAffine(gR[j])
+      gg[j].scalarMul_vartime(xinvbig)
+      gg[j] ~+= gL[j]
 
     batchAffine(
-      gL.toOpenArray(),
-      gprime.toOpenArray(0, gL.len-1)
+      gL.asUnchecked(),
+      gg[].asUnchecked(),
+      gL.len
     )
     G = gL
 
@@ -258,8 +263,10 @@ func ipa_prove*[N, logN: static int, EcAff, F](
 
   # Deallocs
   # -----------------------------------
+  freeHeapAligned(gg)
   freeHeapAligned(gprime)
-  freeHeapAligned(b)
+  freeHeapAligned(bprime)
+  freeHeapAligned(aprime)
 
 func computeChangeOfBasisFactors[F](
       s: MutableView[F],
@@ -352,7 +359,6 @@ func ipa_verify*[N, logN: static int, EcAff, F](
   # ∑ᵢ[uᵢ]Lᵢ + ∑ᵢ[uᵢ⁻¹]R
   let (xs, xinvs) = fs.chunk(0, 2*logN).splitHalf()
   let (L, R) = ecs.chunk(0, 2*logN).splitHalf()
-
 
   # [⟨ā,b̄⟩.w]G
   let fs_abwg = fs.chunk(2*logN, 1)

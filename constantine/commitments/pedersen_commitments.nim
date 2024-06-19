@@ -48,7 +48,7 @@ func pedersen_commit*[EC, ECaff, F](
   ##
   ## Output:
   ##   Commit(m) := ∑[mᵢ]Gᵢ
-  r.pedersen_commit(messages.toOpenArray(), public_generators.toOpenArray())
+  public_generators.toOpenArray().pedersen_commit(r, messages.toOpenArray())
 
 func pedersen_commit*[EC, ECaff](
       public_generators: openArray[ECaff],

@@ -78,6 +78,12 @@ func toMutableView*[T](data: ptr UncheckedArray[T], len: int): MutableView[T] {.
 func toMutableView*[N: static int, T](data: ptr array[N, T]): MutableView[T] {.inline.} =
   MutableView[T](View[T](data: cast[ptr UncheckedArray[T]](data), len: N))
 
+func toMutableView*[N: static int, T](data: var array[N, T]): MutableView[T] {.inline.} =
+  MutableView[T](View[T](data: cast[ptr UncheckedArray[T]](data.addr), len: N))
+
+template asView*[T](v: MutableView[T]): View[T] =
+  View[T](v)
+
 func `[]`*[T](v: MutableView[T], idx: int): var T {.inline.} =
   v.data[idx]
 func `[]=`*[T](v: MutableView[T], idx: int, val: T) {.inline.} =

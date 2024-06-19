@@ -446,55 +446,56 @@ suite "IPA proof tests":
 
     testIPAProofInDomain()
 
-#   test "Test for IPA proof consistency":
-#     proc testIPAProofConsistency()=
+  test "Test for IPA proof consistency":
+    proc testIPAProofConsistency()=
 
-#       #from a shared view
-#       var point: Fr[Banderwagon]
-#       point.fromInt(2101)
+      # from a shared view
+      var opening_challenge: Fr[Banderwagon]
+      opening_challenge.fromInt(2101)
 
-#       #from the prover's side
-#       var testVals: array[256, int] = [
-#         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-#         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-#         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-#         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-#         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-#         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-#         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-#         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-#       ]
-#       var poly: array[256, Fr[Banderwagon]]
-#       poly.testPoly256(testVals)
+      # from the prover's side
+      var testVals: array[256, int] = [
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+      ]
+      var poly: PolynomialEval[256, Fr[Banderwagon]]
+      poly.evals.testPoly256(testVals)
 
-#       var ipaConfig {.noInit.}: IPASettings
-#       ipaConfig.genIPAConfig()
+      var CRS: PolynomialEval[EthVerkleDomain, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+      CRS.evals.generate_random_points()
 
-#       var prover_transcript {.noInit.}: sha256
-#       prover_transcript.initTranscript("test")
+      var domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]]
+      domain.setupLinearEvaluationDomain()
 
-#       var prover_comm: EC_P
-#       prover_comm.pedersen_commit(poly, ipaConfig.crs)
+      var tr {.noInit.}: sha256
+      tr.initTranscript("test")
 
-#       var pcb {.noInit.}: array[32, byte]
-#       discard pcb.serialize(prover_comm)
+      var commitment: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+      CRS.evals.pedersen_commit(commitment, poly.evals)
+      var comm: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+      comm.affine(commitment)
 
-#       doAssert pcb.toHex() == "0x1b9dff8f5ebbac250d291dfe90e36283a227c64b113c37f1bfb9e7a743cdb128", "Issue with computing commitment"
+      var C {.noInit.}: array[32, byte]
+      C.serialize(commitment)
+      doAssert C.toHex() == "0x1b9dff8f5ebbac250d291dfe90e36283a227c64b113c37f1bfb9e7a743cdb128", "Issue with computing commitment"
 
-#       var ipaProof1 {.noInit.}: IPAProofDeprecated
-#       let stat11 = ipaProof1.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
-#       doAssert stat11 == true, "Problem creating IPA proof 1"
+      var proof {.noInit.}: IpaProof[8, ECP_TwEdwards_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
+      var eval_at_challenge {.noInit.}: Fr[Banderwagon]
+      CRS.ipa_prove(
+        domain, tr,
+        eval_at_challenge, proof,
+        poly, comm,
+        opening_challenge)
 
-#       var lagrange_coeffs: array[256, Fr[Banderwagon]]
-#       ipaConfig.domain.getLagrangeBasisPolysAt(lagrange_coeffs, point)
+      doAssert eval_at_challenge.toHex(littleEndian) == "0x4a353e70b03c89f161de002e8713beec0d740a5e20722fd5bd68b30540a33208", "Issue with computing commitment"
 
-#       var op_point: Fr[Banderwagon]
-#       op_point.computeInnerProducts(lagrange_coeffs, poly)
-
-
-#       doAssert op_point.toHex(littleEndian) == "0x4a353e70b03c89f161de002e8713beec0d740a5e20722fd5bd68b30540a33208", "Issue with computing commitment"
-
-#     testIPAProofConsistency()
+    testIPAProofConsistency()
 
 #   test "Test for IPA proof equality":
 #     proc testIPAProofEquality()=
