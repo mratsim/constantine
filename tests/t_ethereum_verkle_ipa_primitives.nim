@@ -448,12 +448,17 @@ suite "IPA proof tests":
 
   test "Test for IPA proof consistency":
     proc testIPAProofConsistency()=
-
-      # from a shared view
+      # Common setup
       var opening_challenge: Fr[Banderwagon]
       opening_challenge.fromInt(2101)
 
-      # from the prover's side
+      var CRS: PolynomialEval[EthVerkleDomain, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+      CRS.evals.generate_random_points()
+
+      var domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]]
+      domain.setupLinearEvaluationDomain()
+
+      # Committer's side
       var testVals: array[256, int] = [
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
@@ -467,130 +472,76 @@ suite "IPA proof tests":
       var poly: PolynomialEval[256, Fr[Banderwagon]]
       poly.evals.testPoly256(testVals)
 
-      var CRS: PolynomialEval[EthVerkleDomain, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
-      CRS.evals.generate_random_points()
-
-      var domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]]
-      domain.setupLinearEvaluationDomain()
-
-      var tr {.noInit.}: sha256
-      tr.initTranscript("test")
-
-      var commitment: ECP_TwEdwards_Prj[Fp[Banderwagon]]
-      CRS.evals.pedersen_commit(commitment, poly.evals)
-      var comm: ECP_TwEdwards_Aff[Fp[Banderwagon]]
-      comm.affine(commitment)
+      var comm: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+      CRS.evals.pedersen_commit(comm, poly.evals)
+      var commitment: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+      commitment.affine(comm)
 
       var C {.noInit.}: array[32, byte]
       C.serialize(commitment)
       doAssert C.toHex() == "0x1b9dff8f5ebbac250d291dfe90e36283a227c64b113c37f1bfb9e7a743cdb128", "Issue with computing commitment"
 
+      # Prover's side
+      var prover_transcript {.noInit.}: sha256
+      prover_transcript.initTranscript("test")
+
       var proof {.noInit.}: IpaProof[8, ECP_TwEdwards_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
       var eval_at_challenge {.noInit.}: Fr[Banderwagon]
       CRS.ipa_prove(
-        domain, tr,
+        domain, prover_transcript,
         eval_at_challenge, proof,
-        poly, comm,
+        poly, commitment,
         opening_challenge)
 
       doAssert eval_at_challenge.toHex(littleEndian) == "0x4a353e70b03c89f161de002e8713beec0d740a5e20722fd5bd68b30540a33208", "Issue with computing commitment"
 
     testIPAProofConsistency()
 
-#   test "Test for IPA proof equality":
-#     proc testIPAProofEquality()=
-#       var prover_transcript {.noInit.}: sha256
-#       prover_transcript.initTranscript("ipa")
+  test "Test for IPA Proof of Creation and Verification":
+    proc testIPAProofCreateAndVerify()=
+      # Common setup
+      var opening_challenge: Fr[Banderwagon]
+      opening_challenge.fromInt(2101)
 
-#       # from a shared view
-#       var point: Fr[Banderwagon]
-#       point.fromInt(123456789)
+      var CRS: PolynomialEval[EthVerkleDomain, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+      CRS.evals.generate_random_points()
 
-#       # from the prover's side
-#       var testVals: array[14, int] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
-#       var poly: array[256, Fr[Banderwagon]]
-#       poly.testPoly256(testVals)
+      var domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]]
+      domain.setupLinearEvaluationDomain()
 
-#       var ipaConfig {.noInit.}: IPASettings
-#       ipaConfig.genIPAConfig()
+      # Committer's side
+      var testVals : array[9, int] = [1,2,3,4,5,6,7,8,9]
+      var poly: PolynomialEval[256, Fr[Banderwagon]]
+      poly.evals.testPoly256(testVals)
 
-#       var prover_comm: EC_P
-#       prover_comm.pedersen_commit(poly, ipaConfig.crs)
+      var comm: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+      CRS.evals.pedersen_commit(comm, poly.evals)
+      var commitment: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+      commitment.affine(comm)
 
-#       var ipaProof1 {.noInit.}: IPAProofDeprecated
-#       let stat11 = ipaProof1.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
-#       doAssert stat11 == true, "Problem creating IPA proof 1"
+      # Prover's side
+      var prover_transcript {.noInit.}: sha256
+      prover_transcript.initTranscript("ipa")
 
-#       var prv1_ser {.noInit.}: VerkleIPAProofSerialized
-#       discard prv1_ser.serializeVerkleIPAProof(ipaProof1)
+      var proof {.noInit.}: IpaProof[8, ECP_TwEdwards_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
+      var eval_at_challenge {.noInit.}: Fr[Banderwagon]
+      CRS.ipa_prove(
+        domain, prover_transcript,
+        eval_at_challenge, proof,
+        poly, commitment,
+        opening_challenge)
 
-#       var point2: Fr[Banderwagon]
-#       point2.fromInt(123456789)
+      # Verifier's side
+      var verifier_transcript: sha256
+      verifier_transcript.initTranscript("ipa")
 
-#       var ipaConfig2 {.noInit.}: IPASettings
-#       ipaConfig2.genIPAConfig()
-
-#       var prover_transcript2 {.noInit.}: sha256
-#       prover_transcript2.initTranscript("ipa")
-
-#       var testVals2: array[14, int] = [1,2,3,4,5,6,7,8,9,10,11,12,13,14]
-#       var poly2: array[256, Fr[Banderwagon]]
-#       poly2.testPoly256(testVals2)
-
-#       var prover_comm2 {.noInit.}: EC_P
-#       prover_comm2.pedersen_commit(poly2, ipaConfig.crs)
-
-#       var ipaProof2 {.noInit.}: IPAProofDeprecated
-#       let stat22 = ipaProof2.createIPAProof(prover_transcript2, ipaConfig, prover_comm, poly, point)
-#       doAssert stat22 == true, "Problem creating IPA proof 2"
-
-#       doAssert ipaProof1 == ipaProof2, "IPA proofs aren't equal"
-
-#     testIPAProofEquality()
-
-#     test "Test for IPA Proof of Creation and Verification":
-#       proc testIPAProofCreateAndVerify()=
-#         var point {.noInit.}: Fr[Banderwagon]
-#         var ipaConfig {.noInit.}: IPASettings
-#         ipaConfig.genIPAConfig()
-
-#         # from a shared view
-#         point.fromInt(123456789)
-
-#         # from the prover's side
-#         var testVals : array[9, int] = [1,2,3,4,5,6,7,8,9]
-#         var poly: array[256,Fr[Banderwagon]]
-#         poly.testPoly256(testVals)
-
-#         var prover_comm {.noInit.}: EC_P
-#         prover_comm.pedersen_commit(poly, ipaConfig.crs)
-
-#         var prover_transcript {.noInit.}: sha256
-#         prover_transcript.initTranscript("ipa")
-
-#         var ipaProof: IPAProofDeprecated
-#         let stat = ipaProof.createIPAProof(prover_transcript, ipaConfig, prover_comm, poly, point)
-#         doAssert stat == true, "Problem creating IPA proof"
-
-#         var lagrange_coeffs : array[EthVerkleDomain, Fr[Banderwagon]]
-#         ipaConfig.domain.getLagrangeBasisPolysAt(lagrange_coeffs, point)
-
-#         var innerProd : Fr[Banderwagon]
-#         innerProd.computeInnerProducts(poly, lagrange_coeffs)
-
-#         # Verifier view
-#         var verifier_comm : EC_P
-#         verifier_comm = prover_comm
-
-#         var verifier_transcript: sha256
-#         verifier_transcript.initTranscript("ipa")
-
-#         var ok: bool
-#         var got {.noInit.}: EC_P
-#         ok = ipaConfig.checkIPAProof(verifier_transcript, got, verifier_comm, ipaProof, point, innerProd)
-
-#         doAssert ok == true, "Issue in checking IPA proof!"
-#       testIPAProofCreateAndVerify()
+      let verif = CRS.ipa_verify(
+        domain, verifier_transcript,
+        commitment, opening_challenge,
+        eval_at_challenge, proof
+      )
+      doAssert verif, "Issue in checking IPA proof!"
+    testIPAProofCreateAndVerify()
 
 
 # # ############################################################
