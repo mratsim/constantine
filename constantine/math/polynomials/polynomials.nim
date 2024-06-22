@@ -140,12 +140,50 @@ func areStrictlyIncreasing[Field](a: openArray[Field]): bool {.used.} =
   return true
 
 type InvDiffArrayKind* = enum
-  kArrayMinusZ
-  kZminusArray
+  kArrayMinus
+  kMinusArray
 
-func inverseDifferenceArrayZ*[N: static int, Field](
-       r: var array[N, Field],
-       w: array[N, Field],
+func sum*(r: var PolynomialEval, f, g: PolynomialEval) =
+  ## Polynomial addition
+  for i in 0 ..< r.evals.len:
+    r.evals[i] = f.evals[i] + g.evals[i]
+
+func `+=`*(f: var PolynomialEval, g: PolynomialEval) =
+  ## Polynomial addition
+  for i in 0 ..< f.evals.len:
+    f.evals[i] += g.evals[i]
+
+func diff*(r: var PolynomialEval, f, g: PolynomialEval) =
+  ## Polynomial substraction
+  for i in 0 ..< r.evals.len:
+    r.evals[i].diff(f.evals[i], g.evals[i])
+
+func `-=`*(f: var PolynomialEval, g: PolynomialEval) =
+  ## Polynomial addition
+  for i in 0 ..< f.evals.len:
+    f.evals[i] -= g.evals[i]
+
+func prod*[N, F](r: var PolynomialEval[N, F], f: PolynomialEval[N, F], s: F) =
+  ## Rescale a polynomial r(X) <- s.f(X)
+  for i in 0 ..< N:
+    r.evals[i].prod(s, f.evals[i])
+
+func `*=`*[N, F](f: var PolynomialEval[N, F], s: F) =
+  ## Rescale a polynomial f(X) <- s.f(X)
+  for i in 0 ..< N:
+    f.evals[i] *= s
+
+func multiplyAccumulate*[N, F](f: var PolynomialEval[N, F], s: F, g: PolynomialEval[N, F]) =
+  ## Polynomial f(X) += s.g(X)
+  for i in 0 ..< N:
+    var t {.noInit.}: F
+    t.prod(s, g)
+    f.evals[i] += t
+
+func inverseDifferenceArray*[Field](
+       r: ptr UncheckedArray[Field],
+       w: ptr UncheckedArray[Field],
+       N: int,
        z: Field,
        differenceKind: static InvDiffArrayKind,
        earlyReturnOnZero: static bool): int =
@@ -171,19 +209,20 @@ func inverseDifferenceArrayZ*[N: static int, Field](
   # The wᵢ are unique
   # so if wᵢ-z == 0, it can only happen in one place
   var accInv{.noInit.}: Field
-  var diffs{.noInit.}: array[N, Field]
+  var diffs = allocHeapArrayAligned(Field, N, alignment = 64)
 
   accInv.setOne()
   var index0 = -1
 
   for i in 0 ..< N:
-    when differenceKind == kArrayMinusZ:
+    when differenceKind == kArrayMinus:
       diffs[i].diff(w[i], z)
     else:
       diffs[i].diff(z, w[i])
 
     if diffs[i].isZero().bool():
       when earlyReturnOnZero:
+        freeHeapAligned(diffs)
         return i
       else:
         index0 = i
@@ -208,8 +247,23 @@ func inverseDifferenceArrayZ*[N: static int, Field](
     r[0].setZero()
   else: # invRootsMinusZ[0] was init to accInv=1
     r[0] = accInv
+
+  freeHeapAligned(diffs)
   return index0
 
+func inverseDifferenceArray*[N: static int, Field](
+       r: var array[N, Field],
+       w: array[N, Field],
+       z: Field,
+       differenceKind: static InvDiffArrayKind,
+       earlyReturnOnZero: static bool): int {.inline.}=
+  inverseDifferenceArray(
+    r.asUnchecked(),
+    w.asUnchecked(),
+    N,
+    z,
+    differenceKind,
+    earlyReturnOnZero)
 
 # Polynomials in evaluation/Lagrange form
 #   Domain = roots of unity
@@ -256,9 +310,10 @@ func evalPolyAt*[N: static int, Field](
   # 1. Compute 1/(ωⁱ - z) with ω a root of unity, i in [0, N).
   #    zIndex = i if ωⁱ - z == 0 (it is the i-th root of unity) and -1 otherwise.
   let invRootsMinusZ = allocHeapAligned(array[N, Field], alignment = 64)
-  let zIndex = invRootsMinusZ[].inverseDifferenceArrayZ(
-                                  domain.rootsOfUnity, z,
-                                  differenceKind = kArrayMinusZ,
+  let zIndex = invRootsMinusZ[].inverseDifferenceArray(
+                                  domain.rootsOfUnity,
+                                  z,
+                                  differenceKind = kArrayMinus,
                                   earlyReturnOnZero = true)
 
   # 2. Actual evaluation
@@ -356,10 +411,10 @@ func evalPolyAt*[N: static int, Field](
   #        ωⱼ   = 1/A'(xᵢ)
   #        yⱼ   = p(xᵢ)
   let invZminusDomain = allocHeapAligned(array[N, Field], alignment = 64)
-  let zIndex = invZminusDomain[].inverseDifferenceArrayZ(
+  let zIndex = invZminusDomain[].inverseDifferenceArray(
     domain.domain,
     z,
-    differenceKind = kZminusArray,
+    differenceKind = kMinusArray,
     earlyReturnOnZero = true
   )
 
@@ -417,10 +472,10 @@ func getLagrangeBasisPolysAt*[N: static int, Field](
   ## This leaks whether z is in the domain or not.
 
   let invZminusDomain = allocHeapAligned(array[N, Field], alignment = 64)
-  let zIndex = invZminusDomain[].inverseDifferenceArrayZ(
+  let zIndex = invZminusDomain[].inverseDifferenceArray(
     domain.domain,
     z,
-    differenceKind = kZminusArray,
+    differenceKind = kMinusArray,
     earlyReturnOnZero = true
   )
 

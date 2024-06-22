@@ -9,10 +9,12 @@
 import
   ./pedersen_commitments,
   ./eth_verkle_transcripts,
+  ./protocol_quotient_check,
   ../math/config/[curves, type_ff],
   ../math/polynomials/polynomials,
   ../math/[arithmetic, ec_shortweierstrass, ec_twistededwards],
   ../math/elliptic/ec_multi_scalar_mul,
+  ../math/io/io_fields,
   ../platforms/[abstractions, views]
 
 ## ############################################################
@@ -102,7 +104,7 @@ import
 #
 # The prover sends to the verifier:
 # - The evaluation at the opening challenge z of the polynomial p,
-#   which is an inner product between evaluations at the evaulation domain
+#   which is an inner product between evaluations at the evaluation domain
 #   and the Lagrange basis polynomial:
 #     p(z) = ∑ⱼ f(j).lⱼ(z) = ⟨ā,b̄⟩
 # - The proof triplet: L̄, R̄, a₀
@@ -117,11 +119,13 @@ import
 #
 # Notice that Lᵢ and Rᵢ are log₂ the length of ā
 
-type IpaProof*[logN: static int, EC, F] = object
+{.push raises: [], checks: off.} # No exceptions
+
+type IpaProof*[logN: static int, EcAff, F] = object
   # Notation from https://eprint.iacr.org/2019/1021.pdf
-  L*{.align: 64.}: array[logN, EC] # arrays of left elements for each of the log₂(N) iterations of ipa_prove
-  R*{.align: 64.}: array[logN, EC] # arrays of right elements for each of the log₂(N) iterations of ipa_prove
-  a0*: F                           # unique a0 coefficient after recursively
+  L*{.align: 64.}: array[logN, EcAff] # arrays of left elements for each of the log₂(N) iterations of ipa_prove
+  R*{.align: 64.}: array[logN, EcAff] # arrays of right elements for each of the log₂(N) iterations of ipa_prove
+  a0*: F                              # unique a0 coefficient after recursively halving commitments
 
 func innerProduct[F](r: var F, a, b: distinct(View[F] or MutableView[F])) =
   ## Compute the inner product ⟨a, b⟩ = ∑aᵢ.bᵢ
@@ -148,6 +152,9 @@ func ipa_prove*[N, logN: static int, EcAff, F](
       commitment: EcAff,
       opening_challenge: F) =
 
+  # Prologue
+  # -----------------------------------
+
   static:
     doAssert N.uint.isPowerOf2_vartime()
     doAssert logN == N.uint.log2_vartime()
@@ -158,14 +165,12 @@ func ipa_prove*[N, logN: static int, EcAff, F](
     type EC = projective(EcAff)
 
   # Allocs
-  # -----------------------------------
   let aprime = allocHeapAligned(array[N, F], alignment = 64)
   let bprime = allocHeapAligned(array[N, F], alignment = 64)
   let gprime = allocHeapAligned(array[N, EcAff], alignment = 64)
   let gg = allocHeapAligned(array[N div 2, Ec], alignment = 64) # Temp for batchAffine
 
   # Aliases and unowned views for zero-copy splitting
-  # -------------------------------------------------
   var a = aprime[].toMutableView()
   var b = bprime[].toMutableView()
   var G = gprime[].toMutableView()
@@ -261,7 +266,7 @@ func ipa_prove*[N, logN: static int, EcAff, F](
 
   proof.a0 = a[0]
 
-  # Deallocs
+  # Epilogue
   # -----------------------------------
   freeHeapAligned(gg)
   freeHeapAligned(gprime)
@@ -305,7 +310,7 @@ func computeChangeOfBasisFactors[F](
   for j in countdown(u.len-1, 0):
     let L = 1 shl (u.len-1-j)
     # Number of multiplications:
-    #   ∑ⱼ₌₀ˡᵒᵍ²⁽ᵏ⁾⁻¹ 2ⁱ⁻¹ = 2ˡᵒᵍ²⁽ᵏ⁾-1 = k-1
+    #   ∑ⱼ₌₀ˡᵒᵍ²⁽ᵏ⁾⁻¹ 2ʲ⁻¹ = 2ˡᵒᵍ²⁽ᵏ⁾-1 = k-1
     #   using sum of consecutive powers of 2 formula.
     # So we're linear in the domain size
     for i in 0 ..< L:
@@ -334,6 +339,8 @@ func ipa_verify*[N, logN: static int, EcAff, F](
   # We will use a MSM check with the following terms, in this order:
   # ∑ᵢ[uᵢ]Lᵢ + ∑ᵢ[uᵢ⁻¹]Rᵢ + [⟨ā,b̄⟩.w]G - [a₀]G₀ - [a₀.b₀.w]G = -⟨ā,Ḡ⟩
 
+  # Prologue
+  # -----------------------------------
   static:
     doAssert N.uint.isPowerOf2_vartime()
     doAssert logN == N.uint.log2_vartime()
@@ -344,15 +351,11 @@ func ipa_verify*[N, logN: static int, EcAff, F](
     type EC = projective(EcAff)
 
   # Allocs
-  # -----------------------------------
   let fsBuf = allocHeapAligned(array[2*logN+2+N+1, F], alignment = 64)
   let ecsBuf = allocHeapAligned(array[2*logN+2+N+1, EcAff], alignment = 64)
-
   let b = allocHeapAligned(array[N, F], alignment = 64)
-  domain.getLagrangeBasisPolysAt(b[], opening_challenge)
 
   # Aliases
-  # -----------------------------------
   let fs  = fsBuf.toMutableView()
   let ecs = ecsBuf.toMutableView()
 
@@ -412,6 +415,7 @@ func ipa_verify*[N, logN: static int, EcAff, F](
 
   # ... - [a₀.b₀.w]G ...
   # a₀.b₀.w = a₀.w.<s̄,b̄>
+  domain.getLagrangeBasisPolysAt(b[], opening_challenge)
   fs_a0b0wG[0].innerProduct(View[F](fs_a0g0), b.toView())
   fs_a0b0wG[0] *= w
   ecs_a0b0wG[0].generator()
@@ -424,10 +428,531 @@ func ipa_verify*[N, logN: static int, EcAff, F](
   var C {.noInit.}: EC
   C.fromAffine(commitment)
   C.neg()
-  result = bool(t == C)
 
-  # Deallocs
+  # Epilogue
   # -----------------------------------
   freeHeapAligned(b)
   freeHeapAligned(ecsBuf)
   freeHeapAligned(fsBuf)
+
+  return bool(t == C)
+
+## ############################################################
+##
+##                    IPA Multiproofs
+##
+## ############################################################
+#
+# Write-ups:
+# - https://dankradfeist.de/ethereum/2021/06/18/pcs-multiproofs.html
+# - https://hackmd.io/7vIMcrgtTOKyvvtziTf0HA
+#
+# Specs:
+# - https://github.com/crate-crypto/verkle-trie-ref/blob/2332ab8/multiproof/multiproof.py
+#
+# The protocol is applicable to any univariate polynomial commitment scheme (PCS)
+# However, for PCS based on pairings like KZG, we can exploit the bilinearity of pairings
+# to be significantly more efficient and ergonomic.
+
+type IpaMultiProof*[logN: static int, EcAff, F] = object
+  g2_proof*: IpaProof[logN, EcAff, F] # A proof of a commitment to a polynomial g₂(t) constructed from all polynomials
+  D*: EcAff                           # A commitment to the combining polynomial g(t) = g₁(t) - g₂(t)
+
+func sorterByChallenge[N: static int, F](
+      challenges_counts: var array[N, uint32],
+      sortingKeys: ptr UncheckedArray[tuple[z, idx: uint32]],
+      opening_challenges_in_domain: ptr UncheckedArray[SomeInteger],
+      num_queries: uint32): uint32 =
+  ## Computes metadata necessary to group polynomials by challenge
+  ## - Returns the number of distinct opening challenges
+  ## - in-place update the count of individual challenges
+  ## - in-place update a list of polynomial indices in original array, sorted by ascending challenges
+  ##
+  ## This assumes N is small.
+
+  # Computation outline:
+  # 1. Getting quotient polynomials in-domain is *very* costly
+  #    as (p(x) - p(z)) / (x - z):
+  #      { qᵢ = (p(xᵢ) - p(z))/(xᵢ-z), i != z with 1/(xᵢ-z) precomputable
+  #      { qz = - ∑ᵢ A'(z)/A'(xᵢ) qᵢ, i == z, with A'(z)/A'(xᵢ) precomputable
+  #
+  # To solve 1, we can sum polys evaluated at the same opening challenges before hand
+  # and only then divide.
+  #
+  # 2. We want to find the polys evaluated at the same opening challenges while minimizing
+  #    - allocations
+  #    - data movement, especially polynomials should not be copied as they are big
+  #    - passes over the data, ideally O(n)
+  #
+  # To solve 2, we use counting sort
+  #    - with a time complexity O(N+num_queries), N being our domain size.
+  #    - with a space complexity of O(N+num_queries)
+  # and we modify it to sort polynomial indexes instead of polynomials themselves
+  # to save space.
+
+  # Allocs
+  # -----------------------------------
+  let cdf = allocHeapAligned(array[N, uint32], alignment = 64)
+
+  # Counting sort
+  # -----------------------------------
+  zeroMem(challenges_counts, sizeof(challenges_counts))
+  for q in 0 ..< num_queries:
+    let z = opening_challenges_in_domain[q]
+    challenges_counts[z] += 1
+
+  # Compute the cumulative distribution of opening challenges
+  cdf[0] = challenges_counts[0]
+  var distinct_challenges = uint32(challenges_counts[0] > 0)
+  for i in 1 ..< N:
+    cdf[i] = challenges_counts[i] + cdf[i-1]
+    if challenges_counts[i] > 0:
+      distinct_challenges += 1
+
+  # Deduce sorting keys
+  for q in countdown(num_queries-1, 0):
+    let z = opening_challenges_in_domain[q]
+    cdf[z] -= 1
+    sortingKeys[cdf[z]].z = uint32 z
+    sortingKeys[cdf[z]].idx = q
+
+  # Deallocs
+  # -----------------------------------
+  freeHeapAligned(cdf)
+
+  return distinct_challenges
+
+func sumPolysByChallenge[N: static int, F](
+      zs: ptr UncheckedArray[F],
+      fs: ptr UncheckedArray[PolynomialEval[N, F]],
+      challenges_counts: array[N, uint32],
+      ungrouped_polys: ptr UncheckedArray[PolynomialEval[N, F]],
+      sortingKeys: ptr UncheckedArray[tuple[z, idx: uint32]],
+      num_queries: uint32) =
+  ## Returns a sparse representation of:
+  ## - a vector of polynomials: fᵢ(X)
+  ## - a vector of corresponding challenges zⁱ
+  ## sorted by ascending zⁱ.
+  ##
+  ## The original polynomials are
+  ## summed if evaluated on the same challenge zⁱ
+  ## to form fᵢ(X)
+  ##
+  ## Those are necessary precompute for:
+  ##   g(X) = r⁰(f₀(X)-y₀)/(X-z₀) + r¹(f₁(X)-y₁)/(X-z₁) + ... + rⁿ⁻¹(fₙ₋₁(X)-yₙ₋₁)/(X-zₙ₋₁)
+  ##        = ∑rⁱ.(fᵢ(X)-fᵢ(zᵢ)/(X-zᵢ))
+  ##   g₁(t) = ∑rⁱ.fᵢ(t)/(t-zᵢ)
+  ## for polynomials in evaluation form, evaluated at a linear domain [0, N)
+  ##
+  ## Outputs zs anbd fs are arrays of length the number of distinct challenges
+  ## This is implicit from challenges_counts
+  ##
+  ## Inputs are arrays of length num_queries
+
+  # TODO: do we need proper SparseVector data structures?
+
+  var q = 0
+  var idx = 0
+  while q < num_queries:
+    let z = sortingKeys[q].z
+    zs[idx] = z
+    let count = challenges_counts[z]
+    if count == 1:
+      fs[idx] = ungrouped_polys[sortingKeys[q].idx]
+    else:
+      fs[idx].sum(
+        ungrouped_polys[sortingKeys[q].idx],
+        ungrouped_polys[sortingKeys[q+1].idx])
+      for i in 2 ..< count:
+        fs[idx] += ungrouped_polys[sortingKeys[i].idx]
+
+    q += count
+    idx += 1
+
+func sumCommitmentsAndEvalsByChallenge[N: static int, F, ECaff](
+      zs: ptr UncheckedArray[F],
+      comms_by_challenges: ptr UncheckedArray[ECaff],
+      evals_by_challenges: ptr UncheckedArray[F],
+      challenges_counts: array[N, uint32],
+      ungrouped_comms: ptr UncheckedArray[ECaff],
+      ungrouped_evals: ptr UncheckedArray[SomeInteger],
+      sortingKeys: ptr UncheckedArray[tuple[z, idx: uint32]],
+      num_queries: uint32) =
+  ## Returns a sparse representation of:
+  ## - a vector of evaluations: fᵢ(zᵢ)
+  ## - a vector of corresponding challenges zᵢ
+  ## sorted by ascending zⁱ.
+  ##
+  ## The original evaluations are
+  ## summed if evaluated on the same challenge zⁱ
+  ## to form fᵢ(zᵢ)
+  ##
+  ## Outputs zs and evals_by_challenges are arrays of length the number of distinct challenges
+  ## This is implicit from challenges_counts
+  ##
+  ## Inputs are arrays of length num_queries
+
+  # TODO: do we need proper SparseVector data structures?
+
+
+  var affNeeded = 0
+
+  block: # Group evals, and check how much to allocate for batch inversion
+    var q = 0
+    var eidx = 0
+    while q < num_queries:
+      let z = sortingKeys[q].z
+      zs[eidx] = z
+      let count = challenges_counts[z]
+      if count == 1:
+        evals_by_challenges[eidx] = ungrouped_evals[sortingKeys[q].eidx]
+      else:
+        affNeeded += 1
+        evals_by_challenges[eidx].sum(
+          ungrouped_evals[sortingKeys[q].eidx],
+          ungrouped_evals[sortingKeys[q+1].eidx])
+        for i in 2 ..< count:
+          evals_by_challenges[eidx] += ungrouped_evals[sortingKeys[i].eidx]
+
+      q += count
+      eidx += 1
+
+  when EcAff is ECP_ShortW_Aff:
+    type EC = jacobian(EcAff)
+  else: # Twisted Edwards
+    type EC = projective(EcAff)
+
+  # ! affNeeded may be zero, in that case the pointers MUST not be dereferenced.
+  let idxmap = allocHeapArrayAligned(uint32, affNeeded, alignment = 64)
+  let tmpAff = allocHeapArrayAligned(ECaff, affNeeded, alignment = 64)
+  let tmp = allocHeapArrayAligned(EC, affNeeded, alignment = 64)
+
+  block: # Group commitments
+    var q = 0
+    var cidx = 0
+    var tidx = 0
+    while q < num_queries:
+      let z = sortingKeys[q].z
+      let count = challenges_counts[z]
+      if count == 1:
+        comms_by_challenges[cidx] = ungrouped_comms[sortingKeys[q].idx]
+      else:
+        tmp[tidx].fromAffine(ungrouped_comms[sortingKeys[q].idx])
+        for i in 1 ..< count:
+          tmp[tidx] ~+= ungrouped_comms[sortingKeys[i].idx]
+        tidx += 1
+
+      q += count
+      cidx += 1
+
+  tmpAff.batchInv_vartime(tmp, affNeeded)
+  for i in 0 ..< affNeeded:
+    comms_by_challenges[idxmap[i]] = tmpAff[i]
+
+  freeHeapAligned(tmp)
+  freeHeapAligned(tmpAff)
+  freeHeapAligned(idxmap)
+
+func ipa_multi_prove*[N, logN: static int, EcAff, F](
+      crs: PolynomialEval[N, EcAff],
+      domain: PolyEvalLinearDomain[N, F],
+      transcript: var EthVerkleTranscript,
+      proof: var IpaMultiProof[logN, EcAff, F],
+      polys: openArray[PolynomialEval[N, F]],
+      commitments: openArray[EcAff],
+      opening_challenges_in_domain: openArray[SomeInteger]) =
+  ## Create a combined proof that
+  ## allow verifying the list of triplets
+  ##    (polynomial, commitment, opening challenge)
+  ## with
+  ##    (commitment, opening challenge, eval at challenge)
+
+  # Prologue
+  # -----------------------------------
+
+  debug:
+    doAssert polys.len == commitments.len, "Polynomials and commitments inputs must be of the same length"
+    doAssert polys.len == opening_challenges_in_domain.len, "Polynomials and opening challenges inputs must be of the same length"
+
+  when EcAff is ECP_ShortW_Aff:
+    type EC = jacobian(EcAff)
+  else: # Twisted Edwards
+    type EC = projective(EcAff)
+
+  let num_queries = polys.len # Number of queries to convince a verifier that we indeed committed to all polynomials
+
+  let challenges_counts = allocHeapAligned(array[N, F], alignment = 64)
+  let sortingKeys = allocHeapArrayAligned(F, num_queries, alignment = 64)
+
+  let num_distinct_challenges =
+    sorterByChallenge(
+      challenges_counts,
+      sortingKeys,
+      opening_challenges_in_domain.asUnchecked(),
+      num_queries)
+
+  # Sparse data by distinct challenges
+  let sparse_challenges = allocHeapArrayAligned(uint32, num_distinct_challenges, alignment = 64)
+  let polys_by_challenges = allocHeapArrayAligned(PolynomialEval[N, F], num_distinct_challenges, alignment = 64)
+
+  # Compute the sparse challenges and the summed polys
+  sparse_challenges.sumPolysByChallenge(
+    polys_by_challenges,
+    challenges_counts,
+    polys,
+    sortingKeys,
+    num_queries)
+
+  # It is stressing the allocator to not free in reverse of allocation
+  # But we have many allocations afterwards
+  freeHeapAligned(sortingKeys)
+  freeHeapAligned(challenges_counts)
+
+  let g2 = allocHeapAligned(PolynomialEval[N, F], alignment = 64)
+  let g1 = allocHeapAligned(PolynomialEval[N, F], alignment = 64)
+  let g = allocHeapAligned( PolynomialEval[N, F], alignment = 64)
+  let invTminusChallenges = allocHeapArrayAligned(F, num_distinct_challenges, alignment = 64)
+  let rpowers = allocHeapArrayAligned(F, num_distinct_challenges, alignment = 64)
+
+  # Protocol
+  # -------------------------------------------------
+  for i in 0 ..< num_queries:
+    transcript.absorb("C", commitments[i])
+    transcript.absorb("z", F.fromUint(opening_challenges_in_domain[i]))
+    transcript.absorb("y", polys[i].evals[opening_challenges_in_domain[i]])
+
+  # Random r via Fiat-Shamir that the prover cannot manipulate
+  # to compute an IPA proof to
+  #   g(X) = r⁰(f₀(X)-y₀)/(X-z₀) + r¹(f₁(X)-y₁)/(X-z₁) + ... + rⁿ⁻¹(fₙ₋₁(X)-yₙ₋₁)/(X-zₙ₋₁)
+  # with
+  #   fᵢ being polys[i]
+  #   zᵢ being the opening challenges, in domain i.e. in [0, N)
+  #   yᵢ being the corresponding evaluations, as we are in evaluation form it's polys[i][zᵢ]
+  var r {.noInit.} : F
+  transcript.squeezeChallenge("r", r)
+
+  # We need linearly independent numbers for batch proof sampling.
+  # The Ethereum Verkle protocol mandates powers of r.
+  rpowers.computeSparsePowers_vartime(r, sparse_challenges)
+
+  # Compute rⁱ.fᵢ(X)
+  for i in 0 ..< num_distinct_challenges:
+    polys_by_challenges[i] *= rpowers[i]
+  freeHeapAligned(rpowers)
+
+  # Compute combining polynomial
+  #   g(X) = ∑rⁱ.(fᵢ(X)-yᵢ)/(X-zᵢ) = r⁰(f₀(X)-y₀)/(X-z₀) + r¹(f₁(X)-y₁)/(X-z₁) + ... + rⁿ⁻¹(fₙ₋₁(X)-yₙ₋₁)/(X-zₙ₋₁)
+  # As yᵢ = fᵢ(zᵢ)
+  #   quotient_poly(rⁱfᵢ(X), zᵢ) == rⁱ.quotient_poly(fᵢ(X), zᵢ)
+  block:
+    domain.getQuotientPolyInDomain(
+      g[],
+      polys_by_challenges[0],
+      sparse_challenges[0])
+
+    let t = g2 # We use g2 as temporary
+    t.zeroMem(sizeof(t[]))
+    for i in 1 ..< num_distinct_challenges:
+      domain.getQuotientPolyInDomain(
+        t[],
+        polys_by_challenges[i],
+        sparse_challenges[i])
+      g[] += t
+
+  # Commit to the combining polynomial g(X) = ∑rⁱ.(fᵢ(X)-yᵢ)/(X-zᵢ)
+  var D {.noInit.}: EC
+  crs.pedersen_commit(D, g[])
+  proof.D.affine(D)
+  transcript.absorb("D", proof.D)
+
+  # Evaluate at random t: g(t) = ∑rⁱ.(fᵢ(t)-yᵢ)/(t-zᵢ)
+  var t {.noinit.}: F
+  transcript.squeezeChallenge(t)
+
+  # And split g(t) = ∑rⁱ.fᵢ(t)/(t-zᵢ) - ∑rⁱ.yᵢ/(t-zᵢ)
+  # g(t) = g₁(t) - g₂(t)
+  # g₂(t) can be recomputed by the verifier
+  # g₁(t) cannot as it depends on the polynomials fᵢ
+  # but we will instead send commitments to g(t) and g₁(t)
+  # and a proof to a commitment to g₂(t)
+  # The verifier can recompute the g₂(t) commitment on their own
+  # and verify the proof.
+
+  # Compute 1/(t-zᵢ)
+  discard invTminusChallenges[].inverseDifferenceArray(
+    sparse_challenges, num_distinct_challenges,
+    t,
+    differenceKind = kMinusArray,
+    earlyReturnOnZero = false)
+
+  # Compute g₁ = ∑rⁱ.fᵢ(t)/(t-zᵢ)
+  g1.prod(polys_by_challenges[0], invTminusChallenges[0])
+  for i in 1 ..< num_distinct_challenges:
+    g1.multiplyAccumulate(polys_by_challenges[i], invTminusChallenges[i])
+
+  # Reclaim some memory
+  freeHeapAligned(invTminusChallenges)
+  freeHeapAligned(sparse_challenges)
+
+  # Commit to g₁ and update transcript,
+  # PCSs are additively homomorphic, verifier can recompute from D - <g₁(t), CRS>
+  var E {.noInit.}: EC
+  crs.pedersen_commit(E, g1[])
+  var Eaff {.noInit.}: ECaff
+  Eaff.affine(E)
+  transcript.absorb("E", Eaff)
+
+  # Compute g₂(t) and a commitment to it
+  g2.diff(g[], g1[])
+  var comm_g2 {.noInit.}: EC
+  var comm_g2_aff {.noInit.}: ECaff
+  comm_g2.fromAffine(proof.D)
+  comm_g2 ~-= Eaff
+  comm_g2_aff.affine(comm_g2)
+
+  # Reclaim some memory
+  freeHeapAligned(g)
+  freeHeapAligned(g1)
+
+  # Compute a proof to g₂(t) commitment
+  var eval_at_t {.noInit.}: F
+  crs.ipa_prove(
+    domain,
+    transcript,
+    eval_at_t,
+    proof.g2_proof,
+    g2[],
+    comm_g2_aff,
+    t)
+
+func ipa_multi_verify*[N, logN: static int, EcAff, F](
+      crs: PolynomialEval[N, EcAff],
+      domain: PolyEvalLinearDomain[N, F],
+      transcript: var EthVerkleTranscript,
+      commitments: openArray[EcAff],
+      opening_challenges_in_domain: openArray[SomeInteger],
+      evals_at_challenges: openArray[F],
+      proof: IpaMultiProof[logN, EcAff, F]) =
+  ## Batch verification of commitments to multiple polynomials
+  ## using a single multiproof
+
+  # Prologue
+  # -----------------------------------
+
+  debug:
+    doAssert commitments.len == opening_challenges.len, "Commitments and opening challenges inputs must be of the same length"
+    doAssert commitments.len == evals_at_challenges.len, "Commitments and evaluations at challenges inputs must be of the same length"
+
+  when EcAff is ECP_ShortW_Aff:
+    type EC = jacobian(EcAff)
+  else: # Twisted Edwards
+    type EC = projective(EcAff)
+
+  let num_queries = commitments.len
+
+  let challenges_counts = allocHeapAligned(array[N, F], alignment = 64)
+  let sortingKeys = allocHeapArrayAligned(F, num_queries, alignment = 64)
+
+  let num_distinct_challenges =
+    sorterByChallenge(
+      challenges_counts,
+      sortingKeys,
+      opening_challenges_in_domain.asUnchecked(),
+      num_queries)
+
+  # Sparse data by distinct challenges
+  let comms_by_challenges = allocHeapArrayAligned(EcAff, num_distinct_challenges, alignment = 64)
+  let evals_by_challenges = allocHeapArrayAligned(F, num_distinct_challenges, alignment = 64)
+  let sparse_challenges = allocHeapArrayAligned(uint32, num_distinct_challenges, alignment = 64)
+
+  # Compute the sparse challenges and the summed poly evaluations
+  sparse_challenges.sumEvalsAndCommitmentsByChallenge(
+    comms_by_challenges,
+    evals_by_challenges,
+    challenges_counts,
+    commitments,
+    evals_at_challenges,
+    sortingKeys,
+    num_queries)
+
+  # It is stressing the allocator to not free in reverse of allocation
+  # But we have many allocations afterwards
+  freeHeapAligned(sortingKeys)
+  freeHeapAligned(challenges_counts)
+
+  let invTminusChallenges = allocHeapArrayAligned(F, num_distinct_challenges, alignment = 64)
+  let rpowers = allocHeapArrayAligned(F, num_distinct_challenges, alignment = 64)
+
+  # Protocol
+  # -------------------------------------------------
+  for i in 0 ..< num_queries:
+    transcript.absorb("C", commitments[i])
+    transcript.absorb("z", F.fromUint(opening_challenges_in_domain[i]))
+    transcript.absorb("y", evals_at_challenges[i])
+
+  # Random r via Fiat-Shamir that the prover cannot manipulate
+  var r {.noInit.} : F
+  transcript.squeezeChallenge("r", r)
+
+  # We need linearly independent numbers for batch proof sampling.
+  # The Ethereum Verkle protocol mandates powers of r.
+  rpowers.computeSparsePowers_vartime(r, sparse_challenges)
+
+  # Add the commit to the combining polynomial g(X) to transcript
+  transcript.absorb("D", proof.D)
+
+  # Evaluate at random t: g(t) = ∑rⁱ.(fᵢ(t)-yᵢ)/(t-zᵢ)
+  var t {.noinit.}: F
+  transcript.squeezeChallenge(t)
+
+  # And split g(t) = ∑rⁱ.fᵢ(t)/(t-zᵢ) - ∑rⁱ.yᵢ/(t-zᵢ)
+  # g(t) = g₁(t) - g₂(t)
+  # g₂(t) can be recomputed including the commitment
+  # g₁(t) cannot but we can deduce its commitment
+  # as we have the commitment D from g and PCSs are homomorphic
+
+  # Compute 1/(t-zᵢ)
+  discard invTminusChallenges[].inverseDifferenceArray(
+    sparse_challenges, num_distinct_challenges,
+    t,
+    differenceKind = kMinusArray,
+    earlyReturnOnZero = false)
+  freeHeapAligned(sparse_challenges)
+
+  # Compute rⁱ/(t-zᵢ)
+  for i in 0 ..< num_distinct_challenges:
+    invTminusChallenges[i] *= rpowers[i]
+  freeHeapAligned(rpowers)
+
+  # Compute g₂(t) = ∑rⁱ.yᵢ/(t-zᵢ)
+  var g2t {.noInit.}: F
+
+  for i in 0 ..< num_distinct_challenges:
+    var tmp {.noInit.}: Fr[Banderwagon]
+    tmp.prod(evals_by_challenges[i], invTminusChallenges[i])
+    g2t += tmp
+  freeHeapAligned(evals_by_challenges)
+
+  # Compute E, a commitment to g₁ = ∑rⁱ.fᵢ(t)/(t-zᵢ)
+  # E = ∑rⁱ.Cᵢ/(t-zᵢ)
+  var E {.noInit.}: EC
+  var Eaff {.noInit.}: EcAff
+  E.multiScalarMul_reference_vartime(invTminusChallenges, comms_by_challenges, num_distinct_challenges)
+  Eaff.affine(E)
+  transcript.absorb(Eaff)
+  freeHeapAligned(invTminusChallenges)
+  freeHeapAligned(comms_by_challenges)
+
+  # Deduce the commitment to g₂ from the homomorphic commitment property
+  var comm_g2 {.noInit.}: EC
+  var comm_g2_aff {.noInit.}: ECaff
+  comm_g2.fromAffine(proof.D)
+  comm_g2 ~-= Eaff
+  comm_g2_aff.affine(comm_g2)
+
+  # Verify the commitment to g₂ which verifies commitment to g
+  # and so all combined polynomials
+  return crs.ipa_verify(
+    domain, transcript,
+    comm_g2_aff, t,
+    g2t, proof.g2_proof)

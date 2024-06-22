@@ -67,7 +67,7 @@ func scalarMul_addchain_4bit_vartime[EC](P: var EC, scalar: BigInt) {.tags:[VarT
   of 0:
     P.setInf()
   of 1:
-    return
+    discard
   of 2:
     P.double()
   of 3:

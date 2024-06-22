@@ -143,9 +143,10 @@ proc getQuotientPoly_parallel*[N: static int, Field](
   # Compute 1/(ωⁱ - z) with ω a root of unity, i in [0, N).
   # zIndex = i if ωⁱ - z == 0 (it is the i-th root of unity) and -1 otherwise.
   let invRootsMinusZ = allocHeapAligned(array[N, Field], alignment = 64)
-  let zIndex = invRootsMinusZ[].inverseDifferenceArrayZ(
-                                  domain.rootsOfUnity, opening_challenge,
-                                  differenceKind = kArrayMinusZ,
+  let zIndex = invRootsMinusZ[].inverseDifferenceArray(
+                                  domain.rootsOfUnity,
+                                  opening_challenge,
+                                  differenceKind = kArrayMinus,
                                   earlyReturnOnZero = false)
 
   if zIndex == -1:

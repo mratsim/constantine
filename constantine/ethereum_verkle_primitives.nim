@@ -56,7 +56,7 @@ func mapToScalarField*(res: var Fr[Banderwagon], p: ECP_TwEdwards_Prj[Fp[Banderw
 ## ############################################################
 func batchMapToScalarField*(
       res: var openArray[Fr[Banderwagon]],
-      points: openArray[ECP_TwEdwards_Prj[Fp[Banderwagon]]]): bool {.discardable.} =
+      points: openArray[ECP_TwEdwards_Prj[Fp[Banderwagon]]]): bool {.discardable, noinline.} =
   ## This function performs the `mapToScalarField` operation
   ## on a batch of points
   ##

@@ -9,6 +9,7 @@
 import
   ../math/[ec_shortweierstrass, arithmetic],
   ../math/elliptic/ec_multi_scalar_mul,
+  ../math/polynomials/polynomials,
   ../platforms/views
 
 
@@ -18,7 +19,7 @@ import
 ##
 ## ############################################################
 
-func pedersen_commit*[EC, ECaff](
+func pedersen_commit[EC, ECaff](
       public_generators: openArray[ECaff],
       r: var EC,
       messages: openArray[Fr]) {.inline.} =
@@ -34,10 +35,26 @@ func pedersen_commit*[EC, ECaff](
   ##   Commit(m) := ∑[mᵢ]Gᵢ
   r.multiScalarMul_reference_vartime(messages, public_generators)
 
+func pedersen_commit*[N: static int, EC, ECaff, F](
+      crs: PolynomialEval[N, EcAff],
+      r: var EC,
+      messages: PolynomialEval[N, F]) {.inline.} =
+  ## Vector Pedersen Commitment with elliptic curves
+  ##
+  ## Context
+  ## - public generators G=(G₀,...,Gₙ₋₁)
+  ##
+  ## Inputs
+  ## - messages m=(m₀,...,mₙ₋₁)
+  ##
+  ## Output:
+  ##   Commit(m) := ∑[mᵢ]Gᵢ
+  r.multiScalarMul_reference_vartime(messages.evals, crs.evals)
+
 func pedersen_commit*[EC, ECaff, F](
       public_generators: View[ECaff],
       r: var EC,
-      messages: View[F]) =
+      messages: View[F]) {.inline.} =
   ## Vector Pedersen Commitment with elliptic curves
   ##
   ## Context

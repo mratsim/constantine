@@ -340,75 +340,23 @@ func inv*(a: var FF) =
   ## to affine for elliptic curve
   a.inv(a)
 
-# ############################################################
-#
-#               Field arithmetic exponentiation
-#
-# ############################################################
-#
-# Internally those procedures will allocate extra scratchspace on the stack
-
-func pow*(a: var FF, exponent: BigInt) =
-  ## Exponentiation modulo p
-  ## ``a``: a field element to be exponentiated
-  ## ``exponent``: a big integer
-  const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.powMont(
-    exponent,
-    FF.fieldMod(), FF.getMontyOne(),
-    FF.getNegInvModWord(), windowSize,
-    FF.getSpareBits()
-  )
-
-func pow*(a: var FF, exponent: openarray[byte]) =
-  ## Exponentiation modulo p
-  ## ``a``: a field element to be exponentiated
-  ## ``exponent``: a big integer in canonical big endian representation
-  const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.powMont(
-    exponent,
-    FF.fieldMod(), FF.getMontyOne(),
-    FF.getNegInvModWord(), windowSize,
-    FF.getSpareBits()
-  )
-
-func pow_vartime*(a: var FF, exponent: BigInt) =
-  ## Exponentiation modulo p
-  ## ``a``: a field element to be exponentiated
-  ## ``exponent``: a big integer
+func inv_vartime*(r: var FF, a: FF) {.tags: [VarTime].} =
+  ## Variable-time Inversion modulo p
   ##
-  ## Warning ⚠️ :
-  ## This is an optimization for public exponent
-  ## Otherwise bits of the exponent can be retrieved with:
-  ## - memory access analysis
-  ## - power analysis
-  ## - timing analysis
-  const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.powMont_vartime(
-    exponent,
-    FF.fieldMod(), FF.getMontyOne(),
-    FF.getNegInvModWord(), windowSize,
-    FF.getSpareBits()
-  )
+  ## The inverse of 0 is 0.
+  ## Incidentally this avoids extra check
+  ## to convert Jacobian and Projective coordinates
+  ## to affine for elliptic curve
+  r.mres.invmod_vartime(a.mres, FF.getR2modP(), FF.fieldMod())
 
-func pow_vartime*(a: var FF, exponent: openarray[byte]) =
-  ## Exponentiation modulo p
-  ## ``a``: a field element to be exponentiated
-  ## ``exponent``: a big integer a big integer in canonical big endian representation
+func inv_vartime*(a: var FF) {.tags: [VarTime].} =
+  ## Variable-time Inversion modulo p
   ##
-  ## Warning ⚠️ :
-  ## This is an optimization for public exponent
-  ## Otherwise bits of the exponent can be retrieved with:
-  ## - memory access analysis
-  ## - power analysis
-  ## - timing analysis
-  const windowSize = 5 # TODO: find best window size for each curves
-  a.mres.powMont_vartime(
-    exponent,
-    FF.fieldMod(), FF.getMontyOne(),
-    FF.getNegInvModWord(), windowSize,
-    FF.getSpareBits()
-  )
+  ## The inverse of 0 is 0.
+  ## Incidentally this avoids extra check
+  ## to convert Jacobian and Projective coordinates
+  ## to affine for elliptic curve
+  a.inv_vartime(a)
 
 # ############################################################
 #
@@ -549,14 +497,209 @@ template mulCheckSparse*(a: var Fp, b: Fp) =
   else:
     a *= b
 
-func batchFromField*[N, C](
-      dst: ptr UncheckedArray[BigInt[N]],
-      src: ptr UncheckedArray[FF[C]],
-      len: int) {.inline.} =
-  for i in 0 ..< len:
-    dst[i].fromField(src[i])
+# ############################################################
+#
+#               Field arithmetic exponentiation
+#
+# ############################################################
+#
+# Internally those procedures will allocate extra scratchspace on the stack
 
-func computePowers*[C](dst: ptr UncheckedArray[FF[C]], len: int, base: FF[C]) =
+func pow*(a: var FF, exponent: BigInt) =
+  ## Exponentiation modulo p
+  ## ``a``: a field element to be exponentiated
+  ## ``exponent``: a big integer
+  const windowSize = 5 # TODO: find best window size for each curves
+  a.mres.powMont(
+    exponent,
+    FF.fieldMod(), FF.getMontyOne(),
+    FF.getNegInvModWord(), windowSize,
+    FF.getSpareBits()
+  )
+
+func pow*(a: var FF, exponent: openarray[byte]) =
+  ## Exponentiation modulo p
+  ## ``a``: a field element to be exponentiated
+  ## ``exponent``: a big integer in canonical big endian representation
+  const windowSize = 5 # TODO: find best window size for each curves
+  a.mres.powMont(
+    exponent,
+    FF.fieldMod(), FF.getMontyOne(),
+    FF.getNegInvModWord(), windowSize,
+    FF.getSpareBits()
+  )
+
+func pow_vartime*(a: var FF, exponent: BigInt) =
+  ## Exponentiation modulo p
+  ## ``a``: a field element to be exponentiated
+  ## ``exponent``: a big integer
+  ##
+  ## Warning ⚠️ :
+  ## This is an optimization for public exponent
+  ## Otherwise bits of the exponent can be retrieved with:
+  ## - memory access analysis
+  ## - power analysis
+  ## - timing analysis
+  const windowSize = 5 # TODO: find best window size for each curves
+  a.mres.powMont_vartime(
+    exponent,
+    FF.fieldMod(), FF.getMontyOne(),
+    FF.getNegInvModWord(), windowSize,
+    FF.getSpareBits()
+  )
+
+func pow_vartime*(a: var FF, exponent: openarray[byte]) =
+  ## Exponentiation modulo p
+  ## ``a``: a field element to be exponentiated
+  ## ``exponent``: a big integer a big integer in canonical big endian representation
+  ##
+  ## Warning ⚠️ :
+  ## This is an optimization for public exponent
+  ## Otherwise bits of the exponent can be retrieved with:
+  ## - memory access analysis
+  ## - power analysis
+  ## - timing analysis
+  const windowSize = 5 # TODO: find best window size for each curves
+  a.mres.powMont_vartime(
+    exponent,
+    FF.fieldMod(), FF.getMontyOne(),
+    FF.getNegInvModWord(), windowSize,
+    FF.getSpareBits()
+  )
+
+func pow_squareMultiply_vartime(a: var FF, exponent: SomeUnsignedInt) {.tags:[VarTime], meter.} =
+  ## **Variable-time** Exponentiation
+  ##
+  ##   a <- aᵉ (mod p)
+  ##
+  ## This uses the square-and-multiply algorithm
+  ## This MUST NOT be used with secret data.
+  ##
+  ## This is highly VULNERABLE to timing attacks and power analysis attacks.
+
+  if exponent == 0:
+    a.setOne()
+    return
+  if exponent == 1:
+    return
+
+  let aa {.noInit.} = a # Original a
+
+  # We use the fact that we can skip the final substraction
+  # because montgomery squaring and multiple
+  # can accept inputs in [0, 2p) and outputs in [0, 2p).
+
+  let eBytes = exponent.toBytes(bigEndian)
+  for e in 0 ..< eBytes.len-1:
+    let e = eBytes[e]
+    for i in countdown(7, 0):
+      a.square(skipFinalSub = true)
+      let bit = bool((e shr i) and 1)
+      if bit:
+        a.prod(aa, skipFinalSub = true)
+
+  let e = eBytes[eBytes.len-1]
+  block: # Epilogue, byte-level
+    for i in countdown(7, 1):
+          a.square(skipFinalSub = true)
+          let bit = bool((e shr i) and 1)
+          if bit:
+            a.prod(aa, skipFinalSub = true)
+
+  block: # Epilogue, bit-level
+    # for the very last bit we can't skip final substraction
+    let bit = bool(e and 1)
+    if bit:
+      a.square(skipFinalSub = true)
+      a.prod(a, skipFinalSub = false)
+    else:
+      a.square(skipFinalSub = false)
+
+func pow_addchain_4bit_vartime(a: var FF, exponent: SomeUnsignedInt) {.tags:[VarTime], meter.} =
+  ## **Variable-time** Exponentiation
+  ## This can only handle for small scalars up to 2⁴ = 16 excluded
+  case exponent
+  of 0:
+    a.setOne()
+  of 1:
+    discard
+  of 2:
+    a.square()
+  of 3:
+    var t {.noInit.}: typeof(a)
+    t.square(a, skipFinalSub = true)
+    a *= t
+  of 4:
+    a.square_repeated(2)
+  of 5:
+    var t {.noInit.}: typeof(a)
+    t.square_repeated(a, 2, skipFinalSub = true)
+    a *= t
+  of 6:
+    var t {.noInit.}: typeof(a)
+    t.square(a, skipFinalSub = true)
+    t.prod(a, skipFinalSub = true) # 3
+    a.square(t)
+  of 7:
+    var t {.noInit.}: typeof(a)
+    t.double(a, skipFinalSub = true)
+    a.prod(t, skipFinalSub = true) # 3
+    t.double(skipFinalSub = true)  # 4
+    a *= t
+  of 8:
+    a.square_repeated(3)
+  of 9:
+    var t {.noInit.}: typeof(a)
+    t.square_repeated(a, 3, skipFinalSub = true)
+    a *= t
+  of 10:
+    var t {.noInit.}: typeof(a)
+    t.square_repeated(a, 2, skipFinalSub = true)  # 4
+    a.prod(a, t, skipFinalSub = true)             # 5
+    a.square()
+  of 11:
+    var t {.noInit.}: typeof(a)
+    t.square_repeated(a, 2, skipFinalSub = true)  # 4
+    t.prod(t, a, skipFinalSub = true)             # 5
+    t.square(skipFinalSub = true)                 # 10
+    a *= t
+  of 12:
+    var t {.noInit.}: typeof(a)
+    t.square(a, skipFinalSub = true)
+    t.prod(a, skipFinalSub = true)  # 3
+    t.square(skipFinalSub = true)   # 6
+    a.square(t)                     # 12
+  of 15:
+    var t {.noInit.}: typeof(a)
+    t.square(a, skipFinalSub = true)
+    t.prod(a, skipFinalSub = true)               # 3
+    a.square_repeated(t, 2, skipFinalSub = true) # 12
+    a *= t                                       # 15
+  else:
+    {.error: "exponentiation by this small int not implemented".}
+
+func pow_vartime(a: var FF, exponent: SomeUnsignedInt) {.tags:[VarTime], meter.} =
+  let usedBits = log2_vartime(exponent)
+  if usedBits <= 4:
+    a.pow_addchain_4bit_vartime(exponent)
+  else:
+    a.pow_squareMultiply_vartime(exponent)
+
+func computeSparsePowers_vartime*[C](
+      dst: ptr UncheckedArray[FF[C]],
+      base: FF[C],
+      sparsePowers: ptr UncheckedArray[SomeUnsignedInt],
+      len: uint32) =
+  ## Compute sparse powers of base
+  ## sparsePowers MUST be ordered in ascending powers.
+  ## Both `dst` and sparsePowers are of length `len`
+  if len >= 1:
+    dst[0].pow_vartime(min)
+  for i in 1 ..< len:
+    dst[i] = dst[i-1]
+    dst[i].pow_vartime(sparsePowers[i]-sparsePowers[i-1])
+
+func computePowers*[C](dst: ptr UncheckedArray[FF[C]], base: FF[C], len: int) =
   ## We need linearly independent random numbers
   ## for batch proof sampling.
   ## Powers are linearly independent.
@@ -615,33 +758,16 @@ macro addchain*(fn: untyped): untyped =
 
 # ############################################################
 #
-#                   **Variable-Time**
-#
-# ############################################################
-
-func inv_vartime*(r: var FF, a: FF) {.tags: [VarTime].} =
-  ## Variable-time Inversion modulo p
-  ##
-  ## The inverse of 0 is 0.
-  ## Incidentally this avoids extra check
-  ## to convert Jacobian and Projective coordinates
-  ## to affine for elliptic curve
-  r.mres.invmod_vartime(a.mres, FF.getR2modP(), FF.fieldMod())
-
-func inv_vartime*(a: var FF) {.tags: [VarTime].} =
-  ## Variable-time Inversion modulo p
-  ##
-  ## The inverse of 0 is 0.
-  ## Incidentally this avoids extra check
-  ## to convert Jacobian and Projective coordinates
-  ## to affine for elliptic curve
-  a.inv_vartime(a)
-
-# ############################################################
-#
 #                   Batch operations
 #
 # ############################################################
+
+func batchFromField*[N, C](
+      dst: ptr UncheckedArray[BigInt[N]],
+      src: ptr UncheckedArray[FF[C]],
+      len: int) {.inline.} =
+  for i in 0 ..< len:
+    dst[i].fromField(src[i])
 
 func batchInv*[F](
         dst: ptr UncheckedArray[F],
@@ -685,6 +811,13 @@ func batchInv_vartime*[F](
         N: int) {.noInline.} =
   ## Batch inversion
   ## If an element is 0, the inverse stored will be 0.
+
+  if N == 0:
+    return
+  if N == 1:
+    dst[0].inv_vartime(elements[0])
+    return
+
   var zeros = allocStackArray(bool, N)
   zeroMem(zeros, N)
 

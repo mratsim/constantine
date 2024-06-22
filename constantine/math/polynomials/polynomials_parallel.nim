@@ -79,9 +79,10 @@ proc evalPolyAt_parallel*[N: static int, Field](
   # 1. Compute 1/(ωⁱ - z) with ω a root of unity, i in [0, N).
   #    zIndex = i if ωⁱ - z == 0 (it is the i-th root of unity) and -1 otherwise.
   let invRootsMinusZ = allocHeapAligned(array[N, Field], alignment = 64)
-  let zIndex = invRootsMinusZ[].inverseDifferenceArrayZ(
-                                  domain.rootsOfUnity, z,
-                                  differenceKind = kArrayMinusZ,
+  let zIndex = invRootsMinusZ[].inverseDifferenceArray(
+                                  domain.rootsOfUnity,
+                                  z,
+                                  differenceKind = kArrayMinus,
                                   earlyReturnOnZero = true)
 
   # 2. Actual evaluation

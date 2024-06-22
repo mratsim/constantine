@@ -521,7 +521,7 @@ func verify_blob_kzg_proof_batch*(
       randomBlindingFr.fromDigest(blindingBytes)
 
     let linearIndepRandNumbers = allocHeapArrayAligned(Fr[BLS12_381], n, alignment = 64)
-    linearIndepRandNumbers.computePowers(n, randomBlindingFr)
+    linearIndepRandNumbers.computePowers(randomBlindingFr, n)
 
     type EcAffArray = ptr UncheckedArray[ECP_ShortW_Aff[Fp[BLS12_381], G1]]
     let verif = kzg_verify_batch(

@@ -280,7 +280,7 @@ proc verify_blob_kzg_proof_parallel*(
     check HappyPath, sync(convStatus)
 
     # Technically we could interleavethe blob_to_field_polynomial_parallel_async
-    # and the first part of evalPolyAt_parallel: inverseDifferenceArrayZ
+    # and the first part of evalPolyAt_parallel: inverseDifferenceArray
     # but performance cost should be minimal compared to readability.
     tp.evalPolyAt_parallel(ctx.domain, eval_at_challenge, poly[], opening_challenge)
 
@@ -396,7 +396,7 @@ proc verify_blob_kzg_proof_batch_parallel*(
 
     # TODO: use parallel prefix product for parallel powers compute
     let linearIndepRandNumbers = allocHeapArrayAligned(Fr[BLS12_381], n, alignment = 64)
-    linearIndepRandNumbers.computePowers(n, randomBlindingFr)
+    linearIndepRandNumbers.computePowers(randomBlindingFr, n)
 
     type EcAffArray = ptr UncheckedArray[ECP_ShortW_Aff[Fp[BLS12_381], G1]]
     let verif = tp.kzg_verify_batch_parallel(

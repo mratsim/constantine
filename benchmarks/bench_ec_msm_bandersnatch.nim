@@ -30,8 +30,7 @@ const AvailableCurves = [
 ]
 
 # const testNumPoints = [10, 100, 1000, 10000, 100000]
-# const testNumPoints = [64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072]
-const testNumPoints = [2, 1 shl 8, 1 shl 9, 1 shl 10, 1 shl 11, 1 shl 12, 1 shl 13, 1 shl 14, 1 shl 15, 1 shl 16, 1 shl 17, 1 shl 22]
+const testNumPoints = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072]
 
 proc main() =
   separator()

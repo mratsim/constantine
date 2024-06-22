@@ -8,6 +8,7 @@
 
 import
   ./t_ethereum_verkle_ipa_test_helper,
+  ../constantine/ethereum_verkle_ipa,
   ../constantine/eth_verkle_ipa/[
       eth_verkle_constants,
       common_utils,
@@ -196,12 +197,12 @@ suite "Computing the Correct Vector Commitment":
       var ipaConfig: IPASettings
       ipaConfig.genIPAConfig()
 
-      var basisPoints: array[256, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
-      basisPoints.generate_random_points()
+      var basisPoints: PolynomialEval[256, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+      basisPoints.evals.generate_random_points()
 
-      var test_scalars {.noInit.}: array[256, Fr[Banderwagon]]
+      var test_scalars {.noInit.}: PolynomialEval[256, Fr[Banderwagon]]
       for i in 0 ..< 256:
-        test_scalars[i].fromHex(testScalarsHex[i])
+        test_scalars.evals[i].fromHex(testScalarsHex[i])
 
       var commitment {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
       basisPoints.pedersen_commit(commitment, test_scalars)
@@ -398,6 +399,8 @@ suite "Transcript Tests":
 #
 # ############################################################
 
+# TODO: missing serialization proof tests
+
 suite "IPA proof tests":
   test "Verify IPA Proof inside the domain by @Ignacio":
     proc testIPAProofInDomain()=
@@ -421,10 +424,8 @@ suite "IPA proof tests":
       discard proofDeprecated.deserializeVerkleIPAProof(serializedIPAProof)
 
       var proof {.noInit.}: IpaProof[8, ECP_TwEdwards_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
-      proof.L = proofDeprecated.L_vector
-      proof.R = proofDeprecated.R_vector
-      proof.a0 = proofDeprecated.A_scalar
-
+      let status = proof.deserialize(serializedIPAProof)
+      doAssert status == cttEthVerkleIpa_Success
 
       var CRS: PolynomialEval[EthVerkleDomain, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
       CRS.evals.generate_random_points()
@@ -473,7 +474,7 @@ suite "IPA proof tests":
       poly.evals.testPoly256(testVals)
 
       var comm: ECP_TwEdwards_Prj[Fp[Banderwagon]]
-      CRS.evals.pedersen_commit(comm, poly.evals)
+      CRS.pedersen_commit(comm, poly)
       var commitment: ECP_TwEdwards_Aff[Fp[Banderwagon]]
       commitment.affine(comm)
 
@@ -515,7 +516,7 @@ suite "IPA proof tests":
       poly.evals.testPoly256(testVals)
 
       var comm: ECP_TwEdwards_Prj[Fp[Banderwagon]]
-      CRS.evals.pedersen_commit(comm, poly.evals)
+      CRS.pedersen_commit(comm, poly)
       var commitment: ECP_TwEdwards_Aff[Fp[Banderwagon]]
       commitment.affine(comm)
 
@@ -544,16 +545,16 @@ suite "IPA proof tests":
     testIPAProofCreateAndVerify()
 
 
-# # ############################################################
-# #
-# #                     Test for Multiproofs
-# #
-# # ############################################################
+# ############################################################
+#
+#                     Test for Multiproofs
+#
+# ############################################################
 
 # # Note: large arrays should be heap allocated with new/ref
 # #       to not incur stack overflow on Windows as its stack size is 1MB per default compared to UNIXes 8MB.
 
-# suite "Multiproof Tests":
+suite "Multiproof Tests":
 #   test "Multiproof Creation and Verification":
 #     proc testMultiproofCreationAndVerification()=
 
@@ -650,27 +651,29 @@ suite "IPA proof tests":
 
 #     testVerifyMultiproofVec()
 
-#   test "Multiproof Serialization and Deserialization (Covers IPAProofDeprecated Serialization and Deserialization as well)":
-#     proc testMultiproofSerDe() =
+  test "Multiproof Serialization and Deserialization (Covers IPAProof Serialization and Deserialization as well)":
+    proc testMultiproofSerDe() =
 
-#       ## Pull a valid Multiproof from a valid hex test vector as used in Go-IPA https://github.com/crate-crypto/go-ipa/blob/master/multiproof_test.go#L120-L121
-#       var validMultiproof_bytes {.noInit.} : VerkleMultiproofSerialized
-#       validMultiproof_bytes.fromHex(validMultiproof)
+      ## Pull a valid Multiproof from a valid hex test vector as used in Go-IPA https://github.com/crate-crypto/go-ipa/blob/master/multiproof_test.go#L120-L121
+      var validMultiproof_bytes {.noInit.}: EthVerkleIpaMultiProofBytes
+      validMultiproof_bytes.fromHex(validMultiproof)
 
-#       var multiprv {.noInit.} : MultiProof
+      ## Deserialize it into the Multiproof type
+      var multiproof {.noInit.}: IpaMultiProof[8, ECP_TwEdwards_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
+      let s1 = multiproof.deserialize(validMultiproof_bytes)
+      doAssert s1 == cttEthVerkleIpa_Success, "Failed to deserialize Multiproof"
 
-#       ## Deserialize it into the Multiproof type
-#       let stat1 = multiprv.deserializeVerkleMultiproof(validMultiproof_bytes)
-#       doAssert stat1 == true, "Failed to Serialize Multiproof"
+      ## Serialize the Multiproof type in to a serialize Multiproof byte array
+      var validMultiproof_bytes2 {.noInit} : EthVerkleIpaMultiProofBytes
+      validMultiproof_bytes2.serialize(multiproof)
+      doAssert validMultiproof_bytes2.toHex() == validMultiproof, "Error in the multiproof serialization!\n" & (block:
+        "  expected: " & validMultiproof & "\n" &
+        "  computed: " & validMultiproof_bytes2.toHex()
+      )
 
-#       discard validMultiproof_bytes
+    testMultiproofSerDe()
 
-#       ## Serialize the Multiproof type in to a serialize Multiproof byte array
-#       var validMultiproof_bytes2 {.noInit} : VerkleMultiproofSerialized
-#       let stat2 = validMultiproof_bytes2.serializeVerkleMultiproof(multiprv)
-#       doAssert stat2 == true, "Failed to Deserialize Multiproof"
-
-#       ## Check the serialized Multiproof with the valid hex test vector
-#       doAssert validMultiproof_bytes2.toHex() == validMultiproof, "Error in the Multiproof Process!"
-
-#     testMultiproofSerDe()
+# TODO - missing tests from:
+# - https://github.com/crate-crypto/verkle-trie-ref/blob/2332ab8/multiproof/multiproof_test.py
+# - https://github.com/crate-crypto/go-ipa/blob/b1e8a79/multiproof_test.go
+# - https://github.com/crate-crypto/rust-verkle/blob/442174e/ipa-multipoint/src/multiproof.rs

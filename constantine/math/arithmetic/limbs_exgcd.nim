@@ -849,6 +849,14 @@ func invmod_vartime*(
   ##
   ## M MUST be odd, M does not need to be prime.
   ## ``a`` MUST be less than M.
+
+  if a.isZero().bool:
+    r.setZero()
+    return
+  if a.isOne().bool:
+    r.setOne()
+    return
+
   const Excess = 2
   const k = WordBitWidth - Excess
   const NumUnsatWords = bits.ceilDiv_vartime(k)
@@ -875,6 +883,13 @@ func invmod_vartime*(
   ##
   ## M MUST be odd, M does not need to be prime.
   ## ``a`` MUST be less than M.
+
+  if a.isZero().bool:
+    r.setZero()
+    return
+  if a.isOne().bool:
+    r.setOne()
+    return
 
   const Excess = 2
   const k = WordBitWidth - Excess
