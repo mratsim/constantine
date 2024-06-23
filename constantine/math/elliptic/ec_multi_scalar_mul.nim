@@ -9,11 +9,6 @@
 import ../config/curves,
        ./ec_multi_scalar_mul_scheduler,
        ./ec_endomorphism_accel,
-       ./ec_shortweierstrass_affine,
-       ./ec_shortweierstrass_jacobian,
-       ./ec_shortweierstrass_projective,
-       ./ec_twistededwards_affine,
-       ./ec_twistededwards_projective,
        ../extension_fields,
        ../isogenies/frobenius,
        ../constants/zoo_endomorphisms
