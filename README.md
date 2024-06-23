@@ -65,12 +65,15 @@ Protocols are a set of routines, designed for specific goals or a combination th
 
 Constantine supports the following protocols in its public API.
 
-|                                                                        | Nim                | C                  | Rust                    | Go                 |
-|------------------------------------------------------------------------|:------------------:|:------------------:|-------------------------|:------------------:|
-| Ethereum BLS signatures                                                | :white_check_mark: | :white_check_mark: | :building_construction: | :white_check_mark: |
-| Ethereum KZG commitments for EIP-4844                                  | :white_check_mark: | :white_check_mark: | :white_check_mark:      | :white_check_mark: |
-| Ethereum Virtual Machine Precompiles (ECADD, ECMUL, ECPAIRING, MODEXP) | :white_check_mark: | :white_check_mark: | :see_no_evil:           | :white_check_mark: |
-| Zk Accel layer for Halo2 proof system (experimental)                   | not applicable     | not applicable     | :white_check_mark:      | not applicable     |
+|                                                                        |           Nim           |         C          | Rust               |         Go         |
+|------------------------------------------------------------------------|:-----------------------:|:------------------:|--------------------|:------------------:|
+| Ethereum BLS signatures                                                |   :white_check_mark:    | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Ethereum KZG commitments for EIP-4844                                  |   :white_check_mark:    | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Ethereum IPA commitments for Verkle Tries                              | :building_construction: |   :see_no_evil:    | :see_no_evil:      |   :see_no_evil:    |
+| Ethereum Virtual Machine BN254 Precompiles ECADD, ECMUL, ECPAIRING     |   :white_check_mark:    | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| EVM BLS12-381 precompiles (EIP-2537)                                   |   :white_check_mark:    | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| EVM Misc: SHA256, modexp                                               |   :white_check_mark:    | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Zk Accel layer for Halo2 proof system (experimental)                   |     not applicable      |   not applicable   | :white_check_mark: |   not applicable   |
 
 ### Elliptic Curves
 
@@ -102,7 +105,7 @@ Constantine supports the following hash functions and CSPRNGs in its public API.
 
 |                                                              |        Nim         |         C          | Rust                    |         Go         |
 |--------------------------------------------------------------|:------------------:|:------------------:|-------------------------|:------------------:|
-| SHA256                                                       | :white_check_mark: | :white_check_mark: | :building_construction: |                    |
+| SHA256                                                       | :white_check_mark: | :white_check_mark: | :white_check_mark:      | :white_check_mark: |
 | Cryptographically-secure RNG from Operating System (sysrand) | :white_check_mark: | :white_check_mark: | :white_check_mark:      | :white_check_mark: |
 
 ### Threadpool
