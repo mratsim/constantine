@@ -173,9 +173,9 @@ func deserialize*(dst: var EthVerkleIpaProof,
   const fpb = sizeof(Fp[Banderwagon])
   const frb = sizeof(Fr[Banderwagon])
 
-  let L = cast[ptr array[8, array[fpb, byte]]](src.addr)
-  let R = cast[ptr array[8, array[fpb, byte]]](src[8 * fpb].addr)
-  let a0 = cast[ptr array[frb, byte]](src[2 * 8 * fpb].addr)
+  let L = cast[ptr array[8, array[fpb, byte]]](src.unsafeAddr)
+  let R = cast[ptr array[8, array[fpb, byte]]](src[8 * fpb].unsafeAddr)
+  let a0 = cast[ptr array[frb, byte]](src[2 * 8 * fpb].unsafeAddr)
 
   for i in 0 ..< 8:
     checkReturn dst.L[i].deserialize_vartime(L[i])
@@ -203,8 +203,8 @@ func deserialize*(dst: var EthVerkleIpaMultiProof,
                   ): cttEthVerkleIpaStatus =
 
   const frb = sizeof(Fr[Banderwagon])
-  let D = cast[ptr array[frb, byte]](src.addr)
-  let g2Proof = cast[ptr EthVerkleIpaProofBytes](src[frb].addr)
+  let D = cast[ptr array[frb, byte]](src.unsafeAddr)
+  let g2Proof = cast[ptr EthVerkleIpaProofBytes](src[frb].unsafeAddr)
 
   checkReturn dst.D.deserialize_vartime(D[])
   return dst.g2_proof.deserialize(g2Proof[])
