@@ -186,7 +186,7 @@ func blob_to_bigint_polynomial(
     doAssert sizeof(dst[]) == sizeof(Blob)
     doAssert sizeof(array[FIELD_ELEMENTS_PER_BLOB, array[32, byte]]) == sizeof(Blob)
 
-  let view = cast[ptr array[FIELD_ELEMENTS_PER_BLOB, array[32, byte]]](blob.addr)
+  let view = cast[ptr array[FIELD_ELEMENTS_PER_BLOB, array[32, byte]]](blob.unsafeAddr)
 
   for i in 0 ..< FIELD_ELEMENTS_PER_BLOB:
     let status = dst.evals[i].bytes_to_bls_bigint(view[i])
@@ -204,7 +204,7 @@ func blob_to_field_polynomial(
     doAssert sizeof(dst[]) == sizeof(Blob)
     doAssert sizeof(array[FIELD_ELEMENTS_PER_BLOB, array[32, byte]]) == sizeof(Blob)
 
-  let view = cast[ptr array[FIELD_ELEMENTS_PER_BLOB, array[32, byte]]](blob.addr)
+  let view = cast[ptr array[FIELD_ELEMENTS_PER_BLOB, array[32, byte]]](blob.unsafeAddr)
 
   for i in 0 ..< FIELD_ELEMENTS_PER_BLOB:
     let status = dst.evals[i].bytes_to_bls_field(view[i])

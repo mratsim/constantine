@@ -55,7 +55,7 @@ proc blob_to_bigint_polynomial_parallel(
     doAssert sizeof(dst[]) == sizeof(Blob)
     doAssert sizeof(array[FIELD_ELEMENTS_PER_BLOB, array[32, byte]]) == sizeof(Blob)
 
-  let view = cast[ptr array[FIELD_ELEMENTS_PER_BLOB, array[32, byte]]](blob.addr)
+  let view = cast[ptr array[FIELD_ELEMENTS_PER_BLOB, array[32, byte]]](blob.unsafeAddr)
 
   tp.parallelFor i in 0 ..< FIELD_ELEMENTS_PER_BLOB:
     captures: {dst, view}
@@ -89,7 +89,7 @@ proc blob_to_field_polynomial_parallel_async(
     doAssert sizeof(dst[]) == sizeof(Blob)
     doAssert sizeof(array[FIELD_ELEMENTS_PER_BLOB, array[32, byte]]) == sizeof(Blob)
 
-  let view = cast[ptr array[FIELD_ELEMENTS_PER_BLOB, array[32, byte]]](blob.addr)
+  let view = cast[ptr array[FIELD_ELEMENTS_PER_BLOB, array[32, byte]]](blob.unsafeAddr)
 
   tp.parallelFor i in 0 ..< FIELD_ELEMENTS_PER_BLOB:
     captures: {dst, view}

@@ -152,15 +152,15 @@ proc getQuotientPoly_parallel*[N: static int, Field](
   if zIndex == -1:
     # p(z)
     tp.evalPolyOffDomainAt_parallel(
-      domain.addr,
+      domain.unsafeAddr,
       eval_at_challenge,
-      poly.addr, opening_challenge.addr,
+      poly.unsafeAddr, opening_challenge.unsafeAddr,
       invRootsMinusZ)
 
     # q(x) = (p(x) - p(z)) / (x - z)
     tp.getQuotientPolyOffDomain_parallel(
       quotientPoly.addr,
-      poly.addr, eval_at_challenge.addr, invRootsMinusZ)
+      poly.unsafeAddr, eval_at_challenge.unsafeAddr, invRootsMinusZ)
   else:
     # p(z)
     # But the opening_challenge z is equal to one of the roots of unity (how likely is that?)
@@ -168,8 +168,8 @@ proc getQuotientPoly_parallel*[N: static int, Field](
 
     # q(x) = (p(x) - p(z)) / (x - z)
     tp.getQuotientPolyInDomain_parallel(
-      domain.addr,
+      domain.unsafeAddr,
       quotientPoly.addr,
-      poly.addr, uint32 zIndex, invRootsMinusZ)
+      poly.unsafeAddr, uint32 zIndex, invRootsMinusZ)
 
   freeHeapAligned(invRootsMinusZ)

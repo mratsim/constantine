@@ -88,9 +88,9 @@ proc evalPolyAt_parallel*[N: static int, Field](
   # 2. Actual evaluation
   if zIndex == -1:
     tp.evalPolyOffDomainAt_parallel(
-      domain.addr,
+      domain.unsafeAddr,
       r,
-      poly.addr, z.addr,
+      poly.unsafeAddr, z.unsafeAddr,
       invRootsMinusZ)
   else:
     r = poly.evals[zIndex]
