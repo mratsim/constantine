@@ -725,9 +725,8 @@ func powMontSquarings(
   acc_len -= k
 
   # We have k bits and can do k squaring, skip final substraction for first k-1 ones.
-  for i in 0 ..< k-1:
-    a.squareMont(a, M, m0ninv, spareBits, skipFinalSub = true)
-  a.squareMont(a, M, m0ninv, spareBits, skipFinalSub = false)
+  for i in 0 ..< k:
+    a.squareMont(a, M, m0ninv, spareBits) # TODO: skipFinalSub
 
   return (k, bits)
 
