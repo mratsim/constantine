@@ -12,6 +12,59 @@ import
   ./math/config/curves,
   ./serialization/[codecs_status_codes, codecs_banderwagon]
 
+# ------------------------------------------------------------
+# TODO: finish refactoring generate_random_points
+import
+  ./platforms/allocs,
+  ./hashes,
+  ./serialization/endians,
+  ./math/io/[io_bigints, io_fields]
+
+const EthVerkleSeed* = "eth_verkle_oct_2021"
+
+func generate_random_points*(r: var openArray[ECP_TwEdwards_Aff[Fp[Banderwagon]]]) =
+  ## generate_random_points generates random points on the curve with the hardcoded EthVerkleSeed
+  let points = allocHeapArrayAligned(ECP_TwEdwards_Aff[Fp[Banderwagon]], r.len, alignment = 64)
+
+  var points_found: seq[ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+  var incrementer: uint64 = 0
+  var idx: int = 0
+  while true:
+    var ctx {.noInit.}: sha256
+    ctx.init()
+    ctx.update(EthVerkleSeed)
+    ctx.update(incrementer.toBytes(bigEndian))
+    var hash : array[32, byte]
+    ctx.finish(hash)
+    ctx.clear()
+
+    var x {.noInit.}:  Fp[Banderwagon]
+    var t {.noInit.}: matchingBigInt(Banderwagon)
+
+    t.unmarshal(hash, bigEndian)
+    x.fromBig(t)
+
+    incrementer = incrementer + 1
+
+    var x_arr {.noInit.}: array[32, byte]
+    x_arr.marshal(x, bigEndian)
+
+    var x_p {.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+    let stat2 = x_p.deserialize(x_arr)
+    if stat2 == cttCodecEcc_Success:
+      points_found.add(x_p)
+      points[idx] = points_found[idx]
+      idx = idx + 1
+
+    if points_found.len == r.len:
+      break
+
+  for i in 0 ..< r.len:
+    r[i] = points[i]
+  freeHeapAligned(points)
+
+# ------------------------------------------------------------
+
 # Ethereum Verkle IPA public API
 # ------------------------------------------------------------
 #
@@ -19,6 +72,8 @@ import
 # and have 2 different checks:
 # - Either we are in "HappyPath" section that shortcuts to resource cleanup on error
 # - or there are no resources to clean and we can early return from a function.
+
+const EthVerkleDomain* = 256
 
 type
   cttEthVerkleIpaStatus* = enum
@@ -77,6 +132,9 @@ template check(Section: untyped, evalExpr: CttCodecEccStatus): untyped {.dirty.}
     of cttCodecEcc_PointNotOnCurve:                     result = cttEthVerkleIpa_EccPointNotOnCurve; break Section
     of cttCodecEcc_PointNotInSubgroup:                  result = cttEthVerkleIpa_EccPointNotInSubGroup; break Section
     of cttCodecEcc_PointAtInfinity:                     discard
+
+# Serialization
+# ------------------------------------------------------------------------------------
 
 type
   EthVerkleIpaProofBytes* = array[544, byte]
@@ -150,3 +208,85 @@ func deserialize*(dst: var EthVerkleIpaMultiProof,
 
   checkReturn dst.D.deserialize(D[])
   return dst.g2_proof.deserialize(g2Proof[])
+
+# Mapping EC to scalars
+# ------------------------------------------------------------------------------------
+
+# TODO: refactor, this shouldn't use curves_primitives but internal functions
+import ./curves_primitives
+
+func mapToBaseField*(dst: var Fp[Banderwagon],p: ECP_TwEdwards[Fp[Banderwagon]]) =
+  ## The mapping chosen for the Banderwagon Curve is x/y
+  ##
+  ## This function takes a Banderwagon element & then
+  ## computes the x/y value and returns as an Fp element
+  ##
+  ## Spec : https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Map-To-Field
+
+  var invY: Fp[Banderwagon]
+  invY.inv(p.y)             # invY = 1/Y
+  dst.prod(p.x, invY)       # dst = (X) * (1/Y)
+
+func mapToScalarField*(res: var Fr[Banderwagon], p: ECP_TwEdwards[Fp[Banderwagon]]): bool {.discardable.} =
+  ## This function takes the x/y value from the above function as Fp element
+  ## and convert that to bytes in Big Endian,
+  ## and then load that to a Fr element
+  ##
+  ## Spec : https://hackmd.io/wliPP_RMT4emsucVuCqfHA?view#MapToFieldElement
+
+  var baseField: Fp[Banderwagon]
+  var baseFieldBytes: array[32, byte]
+
+  baseField.mapToBaseField(p)   # compute the defined mapping
+
+  let check1 = baseFieldBytes.marshalBE(baseField)  # Fp -> bytes
+  let check2 = res.unmarshalBE(baseFieldBytes)      # bytes -> Fr
+
+  return check1 and check2
+
+func batchMapToScalarField*(
+      res: var openArray[Fr[Banderwagon]],
+      points: openArray[ECP_TwEdwards[Fp[Banderwagon]]]): bool {.discardable, noinline.} =
+  ## This function performs the `mapToScalarField` operation
+  ## on a batch of points
+  ##
+  ## The batch inversion used in this using
+  ## the montogomenry trick, makes is faster than
+  ## just iterating of over the array of points and
+  ## converting the curve points to field elements
+  ##
+  ## Spec : https://hackmd.io/wliPP_RMT4emsucVuCqfHA?view#MapToFieldElement
+
+  var check: bool = true
+  check = check and (res.len == points.len)
+
+  let N = res.len
+  var ys = allocStackArray(Fp[Banderwagon], N)
+  var ys_inv = allocStackArray(Fp[Banderwagon], N)
+
+
+  for i in 0 ..< N:
+    ys[i] = points[i].y
+
+  ys_inv.batchInv_vartime(ys, N)
+
+  for i in 0 ..< N:
+    var mappedElement: Fp[Banderwagon]
+    var bytes: array[32, byte]
+
+    mappedElement.prod(points[i].x, ys_inv[i])
+    check = bytes.marshalBE(mappedElement)
+    check = check and res[i].unmarshalBE(bytes)
+
+  return check
+
+# Inner Product Argument
+# ------------------------------------------------------------------------------------
+# TODO: proper IPA wrapper for https://github.com/status-im/nim-eth-verkle
+#
+# For now we reexport
+# - eth_verkle_ipa
+# - sha256 for transcripts
+
+export eth_verkle_ipa
+export hashes

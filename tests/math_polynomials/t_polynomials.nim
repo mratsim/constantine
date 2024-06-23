@@ -13,11 +13,9 @@ import
   ../../constantine/math/arithmetic,
   ../../constantine/math/config/curves,
   ../../constantine/math/polynomials/polynomials,
+  ../../constantine/math/io/io_fields,
   # Test utilities
   ../../helpers/prng_unsafe
-
-# debug
-import ../../constantine/math/io/io_fields
 
 const Degree = 42
 const NumCoefs = Degree+1

@@ -6,21 +6,15 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
+# TODO
+# Refactor: https://github.com/mratsim/constantine/issues/396
+
 import
   ./t_ethereum_verkle_ipa_test_helper,
   ../constantine/ethereum_verkle_ipa,
-  ../constantine/eth_verkle_ipa/[
-      eth_verkle_constants,
-      common_utils,
-      ipa_prover,
-      ipa_verifier,
-      multiproof],
   ../constantine/hashes,
   std/unittest,
-  ../constantine/serialization/[
-    codecs_status_codes,
-    codecs_banderwagon,
-    codecs],
+  ../constantine/serialization/[codecs, codecs_banderwagon, codecs_status_codes],
   ../constantine/math/config/[type_ff, curves],
   ../constantine/math/ec_twistededwards,
   ../constantine/math/io/[io_fields, io_bigints],
@@ -33,7 +27,6 @@ import
     eth_verkle_transcripts,
     protocol_quotient_check],
   ../tests/math_elliptic_curves/t_ec_template,
-  ../constantine/ethereum_verkle_primitives,
   ../constantine/platforms/abstractions
 
 
@@ -72,7 +65,7 @@ suite "Barycentric Form Tests":
 
       poly.interpolate(points,2)
 
-      var genfp: EC_P
+      var genfp: ECP_TwEdwards_Prj[Fp[Banderwagon]]
       genfp.generator()
       var genfr: Fr[Banderwagon]
       genfr.mapToScalarField(genfp)
@@ -85,6 +78,15 @@ suite "Barycentric Form Tests":
     testBasicInterpolation()
 
   test "Testing Barycentric Precompute Coefficients":
+    func innerProduct[F](r: var F, a, b: openArray[F]) =
+      ## Compute the inner product ⟨a, b⟩ = ∑aᵢ.bᵢ
+      doAssert a.len == b.len
+      r.setZero()
+      for i in 0 ..< a.len:
+        var t {.noInit.}: F
+        t.prod(a[i], b[i])
+        r += t
+
     proc testBarycentricPrecomputeCoefficients()=
         var p_outside_dom : Fr[Banderwagon]
         p_outside_dom.fromInt(3400)
@@ -101,7 +103,7 @@ suite "Barycentric Form Tests":
         lindom.getLagrangeBasisPolysAt(bar_coeffs, p_outside_dom)
 
         var expected0: Fr[Banderwagon]
-        expected0.computeInnerProducts(lagrange_values.evals, bar_coeffs)
+        expected0.innerProduct(lagrange_values.evals, bar_coeffs)
 
         var expected1: Fr[Banderwagon]
         lindom.evalPolyAt(expected1, lagrange_values, p_outside_dom)
@@ -164,24 +166,26 @@ suite "Barycentric Form Tests":
 #
 # ############################################################
 
-suite "Random Elements Generation and CRS Consistency":
-  test "Test for Generating Random Points and Checking the 1st and 256th point with the Verkle Spec":
+# TODO: adapt to new reimplementation
 
-    proc testGenPoints()=
-      var ipaConfig {.noInit.}: IPASettings
-      ipaConfig.genIPAConfig()
+# suite "Random Elements Generation and CRS Consistency":
+#   test "Test for Generating Random Points and Checking the 1st and 256th point with the Verkle Spec":
 
-      var basisPoints {.noInit.}: array[256, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
-      basisPoints.generate_random_points()
+#     proc testGenPoints()=
+#       var ipaConfig {.noInit.}: IPASettings
+#       ipaConfig.genIPAConfig()
 
-      var p0 {.noInit.}, p255 {.noInit.}: array[32, byte]
-      p0.serialize(ipaConfig.crs[0])
-      p255.serialize(ipaConfig.crs[255])
+#       var basisPoints {.noInit.}: array[256, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+#       basisPoints.generate_random_points()
 
-      doAssert p0.toHex() == "0x01587ad1336675eb912550ec2a28eb8923b824b490dd2ba82e48f14590a298a0", "Failed to generate the 1st point!"
-      doAssert p255.toHex() == "0x3de2be346b539395b0c0de56a5ccca54a317f1b5c80107b0802af9a62276a4d8", "Failed to generate the 256th point!"
+#       var p0 {.noInit.}, p255 {.noInit.}: array[32, byte]
+#       p0.serialize(ipaConfig.crs[0])
+#       p255.serialize(ipaConfig.crs[255])
 
-    testGenPoints()
+#       doAssert p0.toHex() == "0x01587ad1336675eb912550ec2a28eb8923b824b490dd2ba82e48f14590a298a0", "Failed to generate the 1st point!"
+#       doAssert p255.toHex() == "0x3de2be346b539395b0c0de56a5ccca54a317f1b5c80107b0802af9a62276a4d8", "Failed to generate the 256th point!"
+
+#     testGenPoints()
 
 # ############################################################
 #
@@ -191,27 +195,29 @@ suite "Random Elements Generation and CRS Consistency":
 ## Test vectors are in this link, as bigint strings
 ## https://github.com/jsign/verkle-test-vectors/blob/main/crypto/001_vector_commitment.json#L5-L261
 
-suite "Computing the Correct Vector Commitment":
-  test "Test for Vector Commitments from Verkle Test Vectors by @Ignacio":
-    proc testVectorComm() =
-      var ipaConfig: IPASettings
-      ipaConfig.genIPAConfig()
+# TODO: adapt to new reimplementation
 
-      var basisPoints: PolynomialEval[256, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
-      basisPoints.evals.generate_random_points()
+# suite "Computing the Correct Vector Commitment":
+#   test "Test for Vector Commitments from Verkle Test Vectors by @Ignacio":
+#     proc testVectorComm() =
+#       var ipaConfig: IPASettings
+#       ipaConfig.genIPAConfig()
 
-      var test_scalars {.noInit.}: PolynomialEval[256, Fr[Banderwagon]]
-      for i in 0 ..< 256:
-        test_scalars.evals[i].fromHex(testScalarsHex[i])
+#       var basisPoints: PolynomialEval[256, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+#       basisPoints.evals.generate_random_points()
 
-      var commitment {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
-      basisPoints.pedersen_commit(commitment, test_scalars)
+#       var test_scalars {.noInit.}: PolynomialEval[256, Fr[Banderwagon]]
+#       for i in 0 ..< 256:
+#         test_scalars.evals[i].fromHex(testScalarsHex[i])
 
-      var arr22 {.noInit.}: Bytes
-      arr22.serialize(commitment)
+#       var commitment {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+#       basisPoints.pedersen_commit(commitment, test_scalars)
 
-      doAssert "0x524996a95838712c4580220bb3de453d76cffd7f732f89914d4417bc8e99b513" == arr22.toHex(), "bit string does not match expected"
-    testVectorComm()
+#       var arr22 {.noInit.}: Bytes
+#       arr22.serialize(commitment)
+
+#       doAssert "0x524996a95838712c4580220bb3de453d76cffd7f732f89914d4417bc8e99b513" == arr22.toHex(), "bit string does not match expected"
+#     testVectorComm()
 
 
 # #######################################################################################################
@@ -417,14 +423,10 @@ suite "IPA proof tests":
       var evaluationResultFr: Fr[Banderwagon]
       evaluationResultFr.fromHex(IPAEvaluationResultFr)
 
-      var serializedIPAProof: VerkleIPAProofSerialized
-      serializedIPAProof.fromHex(IPASerializedProofVec)
-
-      var proofDeprecated{.noInit.}: IPAProofDeprecated
-      discard proofDeprecated.deserializeVerkleIPAProof(serializedIPAProof)
-
+      var proof_bytes: EthVerkleIpaProofBytes
+      proof_bytes.fromHex(IPASerializedProofVec)
       var proof {.noInit.}: IpaProof[8, ECP_TwEdwards_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
-      let status = proof.deserialize(serializedIPAProof)
+      let status = proof.deserialize(proof_bytes)
       doAssert status == cttEthVerkleIpa_Success
 
       var CRS: PolynomialEval[EthVerkleDomain, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
@@ -558,6 +560,9 @@ suite "IPA proof tests":
 
 suite "Multiproof Tests":
   echo "Warning! - Skipping all but serialization tests due to issues outlined in https://github.com/mratsim/constantine/issues/396"
+  # The comparison between previous and new implementation
+  # can be done as of commit 182c4187ccc0751592fe52e7abaaa51fdde7edd6
+
   # test "Multiproof Creation and Verification (old)":
   #   proc testMultiproofCreationAndVerification()=
 

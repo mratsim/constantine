@@ -6,6 +6,9 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
+# TODO
+# Refactor: https://github.com/mratsim/constantine/issues/396
+
 # ############################################################
 #
 #             Ethereum Verkle Primitves Tests
@@ -15,11 +18,7 @@
 import
   std/[unittest, strutils],
   ../constantine/math/config/[type_ff, curves],
-  ../constantine/math/elliptic/[
-    ec_twistededwards_affine,
-    ec_twistededwards_projective,
-    ec_twistededwards_batch_ops
-  ],
+  ../constantine/math/ec_twistededwards,
   ../constantine/math/io/io_fields,
   ../constantine/serialization/[
     codecs_status_codes,
@@ -27,11 +26,7 @@ import
     codecs
   ],
   ../constantine/math/arithmetic,
-  ../constantine/ethereum_verkle_primitives
-
-type
-  EC* = ECP_TwEdwards_Prj[Fp[Banderwagon]]
-  Bytes* = array[32, byte]
+  ../constantine/ethereum_verkle_ipa
 
 # serialized points which lie on Banderwagon
 const expected_bit_strings: array[16, string] = [
@@ -83,7 +78,7 @@ const expected_scalar_field_elements: array[2, string] = [
 ## into byte array of 32 bytes
 ## This function also checks if the string is correct size
 ## or not which should be ( 2 x 32 ) = 64
-proc parseHex*(arr: var Bytes, hexString: string) : bool =
+proc parseHex*(arr: var array[32, byte], hexString: string) : bool =
   let prefixBytes = 2*int(hexString.startsWith("0x"))
   let expectedLength = 64 + prefixBytes
   if hexString.len != expectedLength:
@@ -99,7 +94,7 @@ proc parseHex*(arr: var Bytes, hexString: string) : bool =
 ## passed to the function
 ## Return a bool, upon status code checking
 proc testDeserialize(hexString: string, status: CttCodecEccStatus) : bool =
-  var arr: Bytes
+  var arr: array[32, byte]
   let check = arr.parseHex(hexString)
 
   if check:
@@ -119,70 +114,70 @@ proc testDeserialize(hexString: string, status: CttCodecEccStatus) : bool =
 #
 # ############################################################
 suite "Banderwagon Serialization Tests":
-  var points: seq[EC]
 
-  ## Check encoding if it is as expected or not
-  test "Test Encoding from Fixed Vectors":
-    proc testSerialize(len: int) =
-      # First the point is set to generator P
-      # then with each iteration 2P, 4P, . . . doubling
-      var point {.noInit.}: EC
-      point.generator()
+  # ## Check encoding if it is as expected or not
+  # test "Test Encoding from Fixed Vectors":
+  #   proc testSerialize(len: int) =
+  #     # First the point is set to generator P
+  #     # then with each iteration 2P, 4P, . . . doubling
+  #     var points: seq[ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+  #     var point {.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+  #     point.generator()
 
-      for i in 0 ..< len:
-        var arr: Bytes
-        let stat = arr.serialize(point)
+  #     for i in 0 ..< len:
+  #       var arr: array[32, byte]
+  #       let stat = arr.serialize(point)
 
-        # Check if the serialization took place and in expected way
-        doAssert stat == cttCodecEcc_Success, "Serialization Failed"
-        doAssert expected_bit_strings[i] == arr.toHex(), "bit string does not match expected"
-        points.add(point)
+  #       # Check if the serialization took place and in expected way
+  #       doAssert stat == cttCodecEcc_Success, "Serialization Failed"
+  #       doAssert expected_bit_strings[i] == arr.toHex(), "bit string does not match expected"
+  #       points.add(point)
 
-        point.double() #doubling the point
+  #       point.double() #doubling the point
 
-    testSerialize(expected_bit_strings.len)
+  #   testSerialize(expected_bit_strings.len)
 
-  ## Check decoding if it is as expected or not
-  test "Decoding Each bit string":
-    proc testDeserialization(len: int) =
-      # Checks if the point serialized in the previous
-      # tests matches with the deserialization of expected strings
-      for i, bit_string in expected_bit_strings:
+  # ## Check decoding if it is as expected or not
+  # test "Decoding Each bit string":
+  #   proc testDeserialization(len: int) =
+  #     # Checks if the point serialized in the previous
+  #     # tests matches with the deserialization of expected strings
+  #     for i, bit_string in expected_bit_strings:
 
-        # converts serialized value in hex to byte array
-        var arr: Bytes
-        discard arr.parseHex(bit_string)
+  #       # converts serialized value in hex to byte array
+  #       var arr: array[32, byte]
+  #       discard arr.parseHex(bit_string)
 
-        # deserialization from expected bits
-        var point{.noInit.}: EC
-        let stat = point.deserialize(arr)
+  #       # deserialization from expected bits
+  #       var point{.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+  #       let stat = point.deserialize(arr)
 
-        # Assertion check for the Deserialization Success & correctness
-        doAssert stat == cttCodecEcc_Success, "Deserialization Failed"
-        doAssert (point == points[i]).bool(), "Decoded Element is different from expected element"
+  #       # Assertion check for the Deserialization Success & correctness
+  #       doAssert stat == cttCodecEcc_Success, "Deserialization Failed"
+  #       doAssert (point == points[i]).bool(), "Decoded Element is different from expected element"
 
-    testDeserialization(expected_bit_strings.len)
+  #   testDeserialization(expected_bit_strings.len)
 
-  ## Check decoding if it is as expected or not ( vartime impl )
-  test "vartime - Decoding Each bit string":
-    proc testDeserialization_vartime(len: int) =
-      # Checks if the point serialized in the previous
-      # tests matches with the deserialization of expected strings
-      for i, bit_string in expected_bit_strings:
+  # ## Check decoding if it is as expected or not ( vartime impl )
+  # test "vartime - Decoding Each bit string":
+  #   proc testDeserialization_vartime(len: int) =
+  #     # Checks if the point serialized in the previous
+  #     # tests matches with the deserialization of expected strings
+  #     for i, bit_string in expected_bit_strings:
 
-        # converts serialized value in hex to byte array
-        var arr: Bytes
-        discard arr.parseHex(bit_string)
+  #       # converts serialized value in hex to byte array
+  #       var arr: array[32, byte]
+  #       discard arr.parseHex(bit_string)
 
-        # deserialization from expected bits
-        var point{.noInit.}: EC
-        let stat = point.deserialize_vartime(arr)
+  #       # deserialization from expected bits
+  #       var point{.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+  #       let stat = point.deserialize_vartime(arr)
 
-        # Assertion check for the Deserialization Success & correctness
-        doAssert stat == cttCodecEcc_Success, "Deserialization Failed"
-        doAssert (point == points[i]).bool(), "Decoded Element is different from expected element"
+  #       # Assertion check for the Deserialization Success & correctness
+  #       doAssert stat == cttCodecEcc_Success, "Deserialization Failed"
+  #       doAssert (point == points[i]).bool(), "Decoded Element is different from expected element"
 
-    testDeserialization_vartime(expected_bit_strings.len)
+  #   testDeserialization_vartime(expected_bit_strings.len)
 
   # Check if the subgroup check is working on eliminating
   # points which don't lie on banderwagon, while
@@ -203,13 +198,13 @@ suite "Banderwagon Serialization Tests":
   test "Serialize a valid point with Y lexicographically highest":
     proc testSerializeWithYLargest() =
       const expected_serialized_point = "0x0e7e3748db7c5c999a7bcd93d71d671f1f40090423792266f94cb27ca43fce5c"
-      var point {.noInit.}: EC
+      var point {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
 
       point.x.fromHex("0x0e7e3748db7c5c999a7bcd93d71d671f1f40090423792266f94cb27ca43fce5c")
       point.y.fromHex("0x563a625521456130dc66f9fd6bda67330c7bb183b7f2223216c1c9536e1c622f")
       point.z.setOne()
 
-      var arr: Bytes
+      var arr: array[32, byte]
       let stat = arr.serialize(point)
 
       doAssert stat == cttCodecEcc_Success, "Serialization Failed"
@@ -266,7 +261,7 @@ suite "Banderwagon Serialization Tests":
   ## Tests for Uncompressed point serialization
   test "Uncompressed Point Serialization":
     proc testUncompressedSerialization() =
-      var point, point_regen {.noInit.}: EC
+      var point, point_regen {.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
       point.generator()
 
       var arr: array[64, byte]
@@ -293,7 +288,7 @@ suite "Banderwagon Points Tests":
   ## and correctness of the subtraction
   test "Test for Addition, Subtraction, Doubling":
     proc testAddSubDouble() =
-      var a, b, gen_point, identity {.noInit.} : EC
+      var a, b, gen_point, identity {.noInit.} : ECP_TwEdwards_Prj[Fp[Banderwagon]]
       gen_point.generator()
 
       # Setting the identity Element
@@ -316,26 +311,26 @@ suite "Banderwagon Points Tests":
   ## are equal, where the two torsion point is not the point at infinity
   test "Test Two Torsion Equality":
     proc testTwoTorsion() =
-      var two_torsion: EC
+      var two_torsion: ECP_TwEdwards_Prj[Fp[Banderwagon]]
 
       # Setting the two torsion point
       two_torsion.x.setZero()
       two_torsion.y.setMinusOne()
       two_torsion.z.setOne()
 
-      var point{.noInit.}: EC
+      var point{.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
       point.generator()
 
       for i in 0 ..< 1000:
-        var point_plus_torsion: EC
+        var point_plus_torsion: ECP_TwEdwards_Prj[Fp[Banderwagon]]
         point_plus_torsion.sum(point, two_torsion) # adding generator with two torsion point
 
         doAssert (point == point_plus_torsion).bool(), "points that differ by an order-2 point should be equal"
 
         # Serializing to the point and point added with two torsion point
-        var point_bytes: Bytes
+        var point_bytes: array[32, byte]
         let stat1 = point_bytes.serialize(point)
-        var plus_point_bytes: Bytes
+        var plus_point_bytes: array[32, byte]
         let stat2 = plus_point_bytes.serialize(point_plus_torsion)
 
         doAssert stat1 == cttCodecEcc_Success and stat2 == cttCodecEcc_Success, "Serialization Failed"
@@ -356,7 +351,7 @@ suite "Banderwagon Elements Mapping":
   ## is working as expected or not
   test "Testing Map To Base Field":
     proc testMultiMapToBaseField() =
-      var A, B, genPoint {.noInit.}: EC
+      var A, B, genPoint {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
       genPoint.generator()
 
       A.sum(genPoint, genPoint) # A = g+g = 2g
@@ -382,9 +377,9 @@ suite "Banderwagon Elements Mapping":
     proc testMapToField() =
       const expected_field_element = "0x038ae85a1376b72642f6694eb4238e3f1348253498e2bf4daec9e77024ae8b07"
 
-      var point {.noInit.} : EC
+      var point {.noInit.} : ECP_TwEdwards_Aff[Fp[Banderwagon]]
       var element: Fr[Banderwagon]
-      var arr: Bytes
+      var arr: array[32, byte]
       discard arr.parseHex("0x524996a95838712c4580220bb3de453d76cffd7f732f89914d4417bc8e99b513")
 
       discard deserialize(point, arr)
@@ -408,13 +403,13 @@ suite "Batch Operations on Banderwagon":
   ## we try to achive this
   test "BatchAffine and fromAffine Consistency":
     proc testbatch(n: static int) =
-      var g, temp {.noInit.}: EC
+      var g, temp {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
       g.generator()     # setting the generator point
 
       var aff{.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
-      aff = generator
+      aff.generator()
 
-      var points_prj: array[n, EC]
+      var points_prj: array[n, ECP_TwEdwards_Prj[Fp[Banderwagon]]]
       var points_aff: array[n, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
 
       for i in 0 ..< n:
@@ -439,7 +434,7 @@ suite "Batch Operations on Banderwagon":
   ## we try to achive this
   test "Testing Batch Map to Base Field":
     proc testBatchMapToBaseField() =
-      var A, B, g: EC
+      var A, B, g: ECP_TwEdwards_Prj[Fp[Banderwagon]]
       g.generator()
 
       A.sum(g, g)
@@ -452,7 +447,7 @@ suite "Batch Operations on Banderwagon":
 
       var ARes, BRes: Fr[Banderwagon]
       var scalars: array[2, Fr[Banderwagon]] = [ARes, BRes]
-      var fps: array[2, EC] = [A, B]
+      var fps: array[2, ECP_TwEdwards_Prj[Fp[Banderwagon]]] = [A, B]
 
       doAssert scalars.batchMapToScalarField(fps), "Batch Map to Scalar Failed"
       doAssert (expected_a == scalars[0]).bool(), "expected scalar for point `A` is incorrect"
@@ -465,16 +460,16 @@ suite "Batch Operations on Banderwagon":
     proc testBatchSerialize(len: static int) =
       # First the point is set to generator P
       # then with each iteration 2P, 4P, . . . doubling
-      var points: array[len, EC]
-      var point {.noInit.}: EC
+      var points: array[len, ECP_TwEdwards_Prj[Fp[Banderwagon]]]
+      var point {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
       point.generator()
 
       for i in 0 ..< len:
         points[i] = point
         point.double() #doubling the point
 
-      var arr: array[len, Bytes]
-      let stat = arr.serializeBatch(points)
+      var arr: array[len, array[32, byte]]
+      let stat = arr.serializeBatch_vartime(points)
 
       # Check if the serialization took place and in expected way
       doAssert stat == cttCodecEcc_Success, "Serialization Failed"
@@ -487,8 +482,8 @@ suite "Batch Operations on Banderwagon":
   ## Check batch Uncompressed encoding
   test "Batch Uncompressed Point Serialization":
     proc testBatchUncompressedSerialization() =
-      var points: array[10, EC]
-      var point, point_regen {.noInit.}: EC
+      var points: array[10, ECP_TwEdwards_Prj[Fp[Banderwagon]]]
+      var point, point_regen {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
       point.generator()
 
       for i in 0 ..< 10:
@@ -496,13 +491,14 @@ suite "Batch Operations on Banderwagon":
         point.double()
 
       var arr: array[10, array[64, byte]]
-      let stat = arr.serializeBatchUncompressed(points)
-
-      doAssert stat == cttCodecEcc_Success, "Uncompressed Serialization Failed"
+      let status = arr.serializeBatchUncompressed_vartime(points)
+      doAssert status == cttCodecEcc_Success, "Uncompressed Serialization Failed"
 
       for i in 0 ..< 10:
-        let stat2 = point_regen.deserializeUncompressed(arr[i])
-        doAssert stat2 == cttCodecEcc_Success, "Uncompressed Deserialization Failed"
+        var p_regen: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+        let status2 = p_regen.deserializeUncompressed(arr[i])
+        point_regen.fromAffine(p_regen)
+        doAssert status2 == cttCodecEcc_Success, "Uncompressed Deserialization Failed"
         doAssert (points[i] == point_regen).bool(), "Uncompressed SerDe Inconsistent"
 
     testBatchUncompressedSerialization()

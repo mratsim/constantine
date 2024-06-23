@@ -17,9 +17,6 @@ import
   ../math/io/io_fields,
   ../platforms/[abstractions, views]
 
-# Debug - canonicalization
-import ../serialization/codecs_banderwagon
-
 ## ############################################################
 ##
 ##                 Inner Product Arguments
@@ -187,10 +184,6 @@ func ipa_prove*[N, logN: static int, EcAff, F](
   transcript.domainSeparator("ipa")
 
   eval_at_challenge.innerProduct(a, b)
-  debugEcho "<a,b>: ", eval_at_challenge.toHex()
-
-  debugEcho "C: ", commitment.toHex()
-  debugEcho "z: ", opening_challenge.toHex()
 
   # Feed the transcript entropy pool so that the prover
   # cannot forge special scalars, b is fixed so no need to feed it.
@@ -203,7 +196,6 @@ func ipa_prove*[N, logN: static int, EcAff, F](
   var Q {.noInit.}: EC
   Q.generator()
   transcript.squeezeChallenge("w", w)
-  debugEcho "w: ", w.toHex()
   Q.scalarMul_vartime(w)
 
   # log₂(N) round of recursive proof compression
@@ -238,7 +230,6 @@ func ipa_prove*[N, logN: static int, EcAff, F](
 
     var x {.noInit.}, xinv {.noInit.}: F
     transcript.squeezeChallenge("x", x)
-    debugEcho "x", i, ": ", x.toHex()
     xinv.inv(x)
 
     # Change of basis for next round
@@ -274,7 +265,6 @@ func ipa_prove*[N, logN: static int, EcAff, F](
     G = gL
 
   proof.a0 = a[0]
-  debugEcho "a0: ", a[0].toHex()
 
   # Epilogue
   # -----------------------------------
@@ -604,7 +594,6 @@ func sumCommitmentsAndEvalsByChallenge[N: static int, F, ECaff](
 
   # TODO: do we need proper SparseVector data structures?
 
-
   var affNeeded = 0
 
   block: # Group evals, and check how much to allocate for batch inversion
@@ -825,21 +814,6 @@ func ipa_multi_prove*[N, logN: static int, EcAff, F](
   comm_g2 ~-= proof.D
   comm_g2_aff.affine(comm_g2)
 
-  debugEcho "E-D: ", comm_g2_aff.toHex()
-  debugEcho "t: ", t.toHex()
-  debugEcho "g[0] : ", g.evals[0].toHex()
-  debugEcho "g1[0]: ", g1.evals[0].toHex()
-  debugEcho "g2[0]: ", g2.evals[0].toHex()
-  debugEcho "g2[8]: ", g2.evals[8].toHex()
-  debugEcho "g2[255]: ", g2.evals[255].toHex()
-  debugEcho "------"
-  block:
-    var tr2 = transcript
-    var t2: Fr[Banderwagon]
-    tr2.squeezeChallenge("state", t2)
-    debugEcho "transcript state: ", t2.toHex()
-  debugEcho "------\n"
-
   # Reclaim some memory
   freeHeapAligned(g)
   freeHeapAligned(g1)
@@ -867,6 +841,8 @@ func ipa_multi_verify*[N, logN: static int, EcAff, F](
       proof: IpaMultiProof[logN, EcAff, F]): bool =
   ## Batch verification of commitments to multiple polynomials
   ## using a single multiproof
+  ##
+  ## TODO: The implementation is currently incomplete!
 
   # Prologue
   # -----------------------------------
@@ -985,17 +961,6 @@ func ipa_multi_verify*[N, logN: static int, EcAff, F](
   comm_g2.fromAffine(Eaff)
   comm_g2 ~-= proof.D
   comm_g2_aff.affine(comm_g2)
-
-  debugEcho "E-D: ", comm_g2_aff.toHex()
-  debugEcho "t: ", t.toHex()
-  debugEcho "g2t: ", g2t.toHex()
-  debugEcho "------"
-  block:
-    var tr2 = transcript
-    var t2: Fr[Banderwagon]
-    tr2.squeezeChallenge("state", t2)
-    debugEcho "transcript state: ", t2.toHex()
-  debugEcho "------\n"
 
   # Verify the commitment to g₂ which verifies commitment to g
   # and so all combined polynomials

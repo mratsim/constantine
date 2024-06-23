@@ -6,8 +6,14 @@
 #   * Apache v2 license (license terms in the root directory or at http://www.apache.org/licenses/LICENSE-2.0).
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
+# TODO
+# Refactor: https://github.com/mratsim/constantine/issues/396
+# The constants should be json files from  https://github.com/jsign/verkle-test-vectors
+# or hardcoded in test files to prevent variable name confusion.
+# Lagrange interpolation should be in polynomials.nim
+# and the whole file should be deleted
+
 import
-  ../constantine/eth_verkle_ipa/[multiproof, eth_verkle_constants],
   ../constantine/math/config/[type_ff, curves],
   ../constantine/math/elliptic/[
     ec_twistededwards_affine,
@@ -29,7 +35,7 @@ import
 
 func ipaEvaluate* [Fr] (res: var Fr, poly: openArray[Fr], point: Fr,  n: static int) =
   var powers {.noInit.}: array[n,Fr]
-  powers.computePowersOfElem(point, poly.len)
+  powers.asUnchecked().computePowers(point, poly.len)
 
   res.setZero()
 
@@ -48,6 +54,11 @@ func ipaEvaluate* [Fr] (res: var Fr, poly: openArray[Fr], point: Fr,  n: static 
 func truncate* [Fr] (res: var openArray[Fr], s: openArray[Fr], to: int, n: static int)=
   for i in 0 ..< to:
     res[i] = s[i]
+
+type
+  Coord* = object
+    x*: Fr[Banderwagon]
+    y*: Fr[Banderwagon]
 
 func interpolate* [Fr] (res: var openArray[Fr], points: openArray[Coord], n: static int) =
   var one : Fr
@@ -162,15 +173,15 @@ func testPoly256* [Fr] (res: var openArray[Fr], polynomialUint: openArray[int])=
   for i in polynomialUint.len ..< pad:
     res[i].setZero()
 
-func isPointEqHex*(point: EC_P, expected: string): bool {.discardable.} =
+func isPointEqHex*(point: ECP_TwEdwards_Prj[Fp[Banderwagon]], expected: string): bool {.discardable.} =
 
-  var point_bytes {.noInit.}: Bytes
+  var point_bytes {.noInit.}: array[32, byte]
   if point_bytes.serialize(point) == cttCodecEcc_Success:
     doAssert (point_bytes.toHex() == expected).bool() == true, "Point does not equal to the expected hex value!"
 
 func isScalarEqHex*(scalar: matchingOrderBigInt(Banderwagon), expected: string) : bool {.discardable.} =
 
-  var scalar_bytes {.noInit.}: Bytes
+  var scalar_bytes {.noInit.}: array[32, byte]
   if scalar_bytes.serialize_scalar(scalar) == cttCodecScalar_Success:
     doAssert (scalar_bytes.toHex() == expected).bool() == true, "Scalar does not equal to the expected hex value!"
 
