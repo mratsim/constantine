@@ -13,7 +13,8 @@ import
   ../math/pairings/pairings_generic,
   ../math/constants/zoo_generators,
   ../math/polynomials/polynomials,
-  ../platforms/[abstractions, views]
+  ../platforms/[abstractions, views],
+  ./protocol_quotient_check
 
 ## ############################################################
 ##
@@ -128,26 +129,26 @@ import
 ##
 ## 1. commit(srs_g1, blob) -> commitment C = ∑ blobᵢ.srs_g1ᵢ = ∑ [blobᵢ.τⁱ]₁ = [p(τ)]₁
 ##
-## 2. The verifier chooses a random challenge `z` in 𝔽r that the prover does not control.
+## 2. The verifier chooses a random opening_challenge `z` in 𝔽r that the prover does not control.
 ##    To make the protocol non-interactive, z may be computed via the Fiat-Shamir heuristic.
 ##
-## 3. compute_proof(blob, [commitment]₁, challenge) -> (eval_at_challenge, [proof]₁)
+## 3. compute_proof(blob, [commitment]₁, opening_challenge) -> (eval_at_challenge, [proof]₁)
 ##      blob: p(x)
 ##      [commitment]₁: [p(τ)]₁
-##      challenge: z
+##      opening_challenge: z
 ##      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##      -> The prover needs to provide a proof that it knows a polynomial p(x)
 ##         such that p(z) = y. With the proof, the verifier doesn't need access to the polynomial to verify the claim.
 ##      -> Compute a witness polynomial w(x, z) = (p(x) - p(z)) / (x-z)
-##         We can evaluate it at τ from the public SRS and challenge point `z` chosen by the verifier (indifferentiable from random).
+##         We can evaluate it at τ from the public SRS and opening_challenge point `z` chosen by the verifier (indifferentiable from random).
 ##         We don't know τ, but we know [τ]₁ so we transport the problem from 𝔽r to 𝔾1
-##      => The proof is the evaluation of the witness polynomial for a challenge `z` of the verifier choosing.
+##      => The proof is the evaluation of the witness polynomial for a opening_challenge `z` of the verifier choosing.
 ##         w(τ, z) = proof
 ##         We output [proof]₁ = [proof]G₁
 ##
-## 4. verify_commitment([commitment]₁, challenge, eval_at_challenge, [proof]₁) -> bool
+## 4. verify_commitment([commitment]₁, opening_challenge, eval_at_challenge, [proof]₁) -> bool
 ##      [commitment]₁: [p(τ)]₁
-##      challenge: z
+##      opening_challenge: z
 ##      eval_at_challenge: p(z) = y
 ##      [proof]₁: [(p(τ) - p(z)) / (τ-z)]₁
 ##      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -173,99 +174,57 @@ import
 # For now we assume that the input polynomial always has the same degree
 # as the powers of τ
 
-func kzg_commit*[N: static int, C: static Curve](
+func kzg_commit*[N, bits: static int, C: static Curve](
        powers_of_tau: PolynomialEval[N, ECP_ShortW_Aff[Fp[C], G1]],
        commitment: var ECP_ShortW_Aff[Fp[C], G1],
-       poly_evals: array[N, BigInt]) {.tags:[Alloca, HeapAlloc, Vartime].} =
-
+       poly: PolynomialEval[N, BigInt[bits]]) {.tags:[Alloca, HeapAlloc, Vartime].} =
   var commitmentJac {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
-  commitmentJac.multiScalarMul_vartime(poly_evals, powers_of_tau.evals)
+  commitmentJac.multiScalarMul_vartime(poly.evals, powers_of_tau.evals)
   commitment.affine(commitmentJac)
 
 func kzg_prove*[N: static int, C: static Curve](
        powers_of_tau: PolynomialEval[N, ECP_ShortW_Aff[Fp[C], G1]],
        domain: PolyEvalRootsDomain[N, Fr[C]],
-       proof: var ECP_ShortW_Aff[Fp[C], G1],
        eval_at_challenge: var Fr[C],
+       proof: var ECP_ShortW_Aff[Fp[C], G1],
        poly: PolynomialEval[N, Fr[C]],
-       challenge: Fr[C]) {.tags:[Alloca, HeapAlloc, Vartime].} =
+       opening_challenge: Fr[C]) {.tags:[Alloca, HeapAlloc, Vartime].} =
 
-  # Note:
-  #   The order of inputs in
-  #  `kzg_prove`, `evalPolyOffDomainAt`, `differenceQuotientEvalOffDomain`, `differenceQuotientEvalInDomain`
-  #  minimizes register changes when parameter passing.
-  #
-  # z = challenge in the following code
+  let quotientPoly = allocHeapAligned(PolynomialEval[N, Fr[C]], alignment = 64)
 
-  let diffQuotientPolyFr = allocHeapAligned(PolynomialEval[N, Fr[C]], alignment = 64)
-  let invRootsMinusZ = allocHeapAligned(array[N, Fr[C]], alignment = 64)
-
-  # Compute 1/(ωⁱ - z) with ω a root of unity, i in [0, N).
-  # zIndex = i if ωⁱ - z == 0 (it is the i-th root of unity) and -1 otherwise.
-  let zIndex = invRootsMinusZ[].inverseDifferenceArrayZ(
-                                  domain.rootsOfUnity, challenge,
-                                  differenceKind = kArrayMinusZ,
-                                  earlyReturnOnZero = false)
-
-  if zIndex == -1:
-    # p(z)
-    domain.evalPolyOffDomainAt(
-      eval_at_challenge,
-      poly, challenge,
-      invRootsMinusZ[])
-
-    # q(x) = (p(x) - p(z)) / (x - z)
-    diffQuotientPolyFr[].differenceQuotientEvalOffDomain(
-      poly, eval_at_challenge, invRootsMinusZ[])
-  else:
-    # p(z)
-    # But the challenge z is equal to one of the roots of unity (how likely is that?)
-    eval_at_challenge = poly.evals[zIndex]
-
-    # q(x) = (p(x) - p(z)) / (x - z)
-    domain.differenceQuotientEvalInDomain(
-      diffQuotientPolyFr[],
-      poly, uint32 zIndex, invRootsMinusZ[])
-
-  freeHeapAligned(invRootsMinusZ)
-
-  const orderBits = C.getCurveOrderBitwidth()
-  let diffQuotientPolyBigInt = allocHeapAligned(array[N, BigInt[orderBits]], alignment = 64)
-
-  for i in 0 ..< N:
-    diffQuotientPolyBigInt[i].fromField(diffQuotientPolyFr.evals[i])
-
-  freeHeapAligned(diffQuotientPolyFr)
+  domain.getQuotientPoly(
+    quotientPoly[], eval_at_challenge,
+    poly, opening_challenge
+  )
 
   var proofJac {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
-  proofJac.multiScalarMul_vartime(diffQuotientPolyBigInt[], powers_of_tau.evals)
+  proofJac.multiScalarMul_vartime(quotientPoly.evals, powers_of_tau.evals)
   proof.affine(proofJac)
 
-  freeHeapAligned(diffQuotientPolyBigInt)
-
+  freeHeapAligned(quotientPoly)
 
 # KZG - Verifier
 # ------------------------------------------------------------
 
 func kzg_verify*[F2; C: static Curve](
        commitment: ECP_ShortW_Aff[Fp[C], G1],
-       challenge: BigInt, # matchingOrderBigInt(C),
+       opening_challenge: BigInt, # matchingOrderBigInt(C),
        eval_at_challenge: BigInt, # matchingOrderBigInt(C),
        proof: ECP_ShortW_Aff[Fp[C], G1],
        tauG2: ECP_ShortW_Aff[F2, G2]): bool {.tags:[Alloca, Vartime].} =
-  ## Verify a short KZG proof that ``p(challenge) = eval_at_challenge``
-  ## without doing the whole p(challenge) computation
+  ## Verify a short KZG proof that ``p(opening_challenge) = eval_at_challenge``
+  ## without doing the whole p(opening_challenge) computation
   #
   # Scalar inputs
-  #   challenge
-  #   eval_at_challenge = p(challenge)
+  #   opening_challenge
+  #   eval_at_challenge = p(opening_challenge)
   #
   # Group inputs
   #   [commitment]₁ = [p(τ)]G
   #   [proof]₁ = [proof]G
   #   [τ]₂ = [τ]H in the trusted setup
   #
-  # With z = challenge, we want to verify
+  # With z = opening_challenge, we want to verify
   #   proof.(τ - z) = p(τ)-p(z)
   #
   # However τ is a secret from the trusted setup that cannot be used raw.
@@ -275,7 +234,7 @@ func kzg_verify*[F2; C: static Curve](
   # e([proof]₁, [τ]₂ - [z]₂) . e([p(τ)]₁ - [p(z)]₁, [-1]₂) = 1
   #
   # Finally
-  #   e([proof]₁, [τ]₂ - [challenge]₂) . e([commitment]₁ - [eval_at_challenge]₁, [-1]₂) = 1
+  #   e([proof]₁, [τ]₂ - [opening_challenge]₂) . e([commitment]₁ - [eval_at_challenge]₁, [-1]₂) = 1
   var
     tau_minus_challenge_G2 {.noInit.}: ECP_ShortW_Jac[F2, G2]
     commitment_minus_eval_at_challenge_G1 {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
@@ -284,13 +243,13 @@ func kzg_verify*[F2; C: static Curve](
     tauG2Jac {.noInit.}: ECP_ShortW_Jac[F2, G2]
     commitmentJac {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
 
-  tau_minus_challenge_G2.fromAffine(C.getGenerator("G2"))
-  commitment_minus_eval_at_challenge_G1.fromAffine(C.getGenerator("G1"))
+  tau_minus_challenge_G2.generator()
+  commitment_minus_eval_at_challenge_G1.generator()
   negG2.neg(C.getGenerator("G2"))
   tauG2Jac.fromAffine(tauG2)
   commitmentJac.fromAffine(commitment)
 
-  tau_minus_challenge_G2.scalarMul_vartime(challenge)
+  tau_minus_challenge_G2.scalarMul_vartime(opening_challenge)
   tau_minus_challenge_G2.diff(tauG2Jac, tau_minus_challenge_G2)
 
   commitment_minus_eval_at_challenge_G1.scalarMul_vartime(eval_at_challenge)
@@ -301,7 +260,7 @@ func kzg_verify*[F2; C: static Curve](
   tmzG2.affine(tau_minus_challenge_G2)
   cmyG1.affine(commitment_minus_eval_at_challenge_G1)
 
-  # e([proof]₁, [τ]₂ - [challenge]₂) * e([commitment]₁ - [eval_at_challenge]₁, [-1]₂)
+  # e([proof]₁, [τ]₂ - [opening_challenge]₂) * e([commitment]₁ - [eval_at_challenge]₁, [-1]₂)
   var gt {.noInit.}: C.getGT()
   gt.pairing([proof, cmyG1], [tmzG2, negG2])
 
@@ -366,9 +325,7 @@ func kzg_verify_batch*[bits: static int, F2; C: static Curve](
   # ∑ [rᵢ][proofᵢ]₁
   # ---------------
   let coefs = allocHeapArrayAligned(matchingOrderBigInt(C), n, alignment = 64)
-  for i in 0 ..< n:
-    coefs[i].fromField(linearIndepRandNumbers[i])
-
+  coefs.batchFromField(linearIndepRandNumbers, n)
   sum_rand_proofs.multiScalarMul_vartime(coefs, proofs, n)
 
   # ∑[rᵢ]([commitmentᵢ]₁ - [eval_at_challengeᵢ]₁)
@@ -386,7 +343,7 @@ func kzg_verify_batch*[bits: static int, F2; C: static Curve](
   for i in 0 ..< n:
     commits_min_evals_jac[i].fromAffine(commitments[i])
     var boxed_eval {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
-    boxed_eval.fromAffine(C.getGenerator("G1"))
+    boxed_eval.generator()
     boxed_eval.scalarMul_vartime(evals_at_challenges[i])
     commits_min_evals_jac[i].diff_vartime(commits_min_evals_jac[i], boxed_eval)
 

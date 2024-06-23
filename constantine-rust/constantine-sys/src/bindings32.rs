@@ -4959,30 +4959,30 @@ fn bindgen_test_layout_ctt_eth_kzg_blob() {
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
-pub struct ctt_eth_kzg_challenge {
+pub struct ctt_eth_kzg_opening_challenge {
     raw: [byte; 32usize],
 }
 #[test]
-fn bindgen_test_layout_ctt_eth_kzg_challenge() {
-    const UNINIT: ::core::mem::MaybeUninit<ctt_eth_kzg_challenge> =
+fn bindgen_test_layout_ctt_eth_kzg_opening_challenge() {
+    const UNINIT: ::core::mem::MaybeUninit<ctt_eth_kzg_opening_challenge> =
         ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::core::mem::size_of::<ctt_eth_kzg_challenge>(),
+        ::core::mem::size_of::<ctt_eth_kzg_opening_challenge>(),
         32usize,
-        concat!("Size of: ", stringify!(ctt_eth_kzg_challenge))
+        concat!("Size of: ", stringify!(ctt_eth_kzg_opening_challenge))
     );
     assert_eq!(
-        ::core::mem::align_of::<ctt_eth_kzg_challenge>(),
+        ::core::mem::align_of::<ctt_eth_kzg_opening_challenge>(),
         1usize,
-        concat!("Alignment of ", stringify!(ctt_eth_kzg_challenge))
+        concat!("Alignment of ", stringify!(ctt_eth_kzg_opening_challenge))
     );
     assert_eq!(
         unsafe { ::core::ptr::addr_of!((*ptr).raw) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
-            stringify!(ctt_eth_kzg_challenge),
+            stringify!(ctt_eth_kzg_opening_challenge),
             "::",
             stringify!(raw)
         )
@@ -5046,7 +5046,7 @@ pub enum ctt_eth_trusted_setup_format {
 }
 extern "C" {
     #[must_use]
-    #[doc = " Compute a commitment to the `blob`.\n  The commitment can be verified without needing the full `blob`\n\n  Mathematical description\n    commitment = [p(τ)]₁\n\n    The blob data is used as a polynomial,\n    the polynomial is evaluated at powers of tau τ, a trusted setup.\n\n    Verification can be done by verifying the relation:\n      proof.(τ - z) = p(τ)-p(z)\n    which doesn't require the full blob but only evaluations of it\n    - at τ, p(τ) is the commitment\n    - and at the verification challenge z.\n\n    with proof = [(p(τ) - p(z)) / (τ-z)]₁"]
+    #[doc = " Compute a commitment to the `blob`.\n  The commitment can be verified without needing the full `blob`\n\n  Mathematical description\n    commitment = [p(τ)]₁\n\n    The blob data is used as a polynomial,\n    the polynomial is evaluated at powers of tau τ, a trusted setup.\n\n    Verification can be done by verifying the relation:\n      proof.(τ - z) = p(τ)-p(z)\n    which doesn't require the full blob but only evaluations of it\n    - at τ, p(τ) is the commitment\n    - and at the verification opening_challenge z.\n\n    with proof = [(p(τ) - p(z)) / (τ-z)]₁"]
     pub fn ctt_eth_kzg_blob_to_kzg_commitment(
         ctx: *const ctt_eth_kzg_context,
         dst: *mut ctt_eth_kzg_commitment,
@@ -5055,22 +5055,22 @@ extern "C" {
 }
 extern "C" {
     #[must_use]
-    #[doc = " Generate:\n  - A proof of correct evaluation.\n  - y = p(z), the evaluation of p at the challenge z, with p being the Blob interpreted as a polynomial.\n\n  Mathematical description\n    [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁, with p(τ) being the commitment, i.e. the evaluation of p at the powers of τ\n    The notation [a]₁ corresponds to the scalar multiplication of a by the generator of 𝔾1\n\n    Verification can be done by verifying the relation:\n      proof.(τ - z) = p(τ)-p(z)\n    which doesn't require the full blob but only evaluations of it\n    - at τ, p(τ) is the commitment\n    - and at the verification challenge z."]
+    #[doc = " Generate:\n  - A proof of correct evaluation.\n  - y = p(z), the evaluation of p at the opening_challenge z, with p being the Blob interpreted as a polynomial.\n\n  Mathematical description\n    [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁, with p(τ) being the commitment, i.e. the evaluation of p at the powers of τ\n    The notation [a]₁ corresponds to the scalar multiplication of a by the generator of 𝔾1\n\n    Verification can be done by verifying the relation:\n      proof.(τ - z) = p(τ)-p(z)\n    which doesn't require the full blob but only evaluations of it\n    - at τ, p(τ) is the commitment\n    - and at the verification opening_challenge z."]
     pub fn ctt_eth_kzg_compute_kzg_proof(
         ctx: *const ctt_eth_kzg_context,
         proof: *mut ctt_eth_kzg_proof,
         y: *mut ctt_eth_kzg_eval_at_challenge,
         blob: *const ctt_eth_kzg_blob,
-        z: *const ctt_eth_kzg_challenge,
+        z: *const ctt_eth_kzg_opening_challenge,
     ) -> ctt_eth_kzg_status;
 }
 extern "C" {
     #[must_use]
-    #[doc = " Verify KZG proof\n  that p(z) == y where\n    - z is a random challenge\n    - y is the evaluation of the \"KZG polynomial\" p at z\n    - commitment is p(τ), the evaluation of p at the trusted setup τ,\n    - [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁, ensure that p(z) evaluation was correct\n      without needing access to the polynomial p itself."]
+    #[doc = " Verify KZG proof\n  that p(z) == y where\n    - z is a random opening_challenge\n    - y is the evaluation of the \"KZG polynomial\" p at z\n    - commitment is p(τ), the evaluation of p at the trusted setup τ,\n    - [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁, ensure that p(z) evaluation was correct\n      without needing access to the polynomial p itself."]
     pub fn ctt_eth_kzg_verify_kzg_proof(
         ctx: *const ctt_eth_kzg_context,
         commitment: *const ctt_eth_kzg_commitment,
-        z: *const ctt_eth_kzg_challenge,
+        z: *const ctt_eth_kzg_opening_challenge,
         y: *const ctt_eth_kzg_eval_at_challenge,
         proof: *const ctt_eth_kzg_proof,
     ) -> ctt_eth_kzg_status;
@@ -5122,7 +5122,7 @@ extern "C" {
 }
 extern "C" {
     #[must_use]
-    #[doc = " Compute a commitment to the `blob`.\n  The commitment can be verified without needing the full `blob`\n\n  Mathematical description\n    commitment = [p(τ)]₁\n\n    The blob data is used as a polynomial,\n    the polynomial is evaluated at powers of tau τ, a trusted setup.\n\n    Verification can be done by verifying the relation:\n      proof.(τ - z) = p(τ)-p(z)\n    which doesn't require the full blob but only evaluations of it\n    - at τ, p(τ) is the commitment\n    - and at the verification challenge z.\n\n    with proof = [(p(τ) - p(z)) / (τ-z)]₁"]
+    #[doc = " Compute a commitment to the `blob`.\n  The commitment can be verified without needing the full `blob`\n\n  Mathematical description\n    commitment = [p(τ)]₁\n\n    The blob data is used as a polynomial,\n    the polynomial is evaluated at powers of tau τ, a trusted setup.\n\n    Verification can be done by verifying the relation:\n      proof.(τ - z) = p(τ)-p(z)\n    which doesn't require the full blob but only evaluations of it\n    - at τ, p(τ) is the commitment\n    - and at the verification opening_challenge z.\n\n    with proof = [(p(τ) - p(z)) / (τ-z)]₁"]
     pub fn ctt_eth_kzg_blob_to_kzg_commitment_parallel(
         tp: *const ctt_threadpool,
         ctx: *const ctt_eth_kzg_context,
@@ -5132,14 +5132,14 @@ extern "C" {
 }
 extern "C" {
     #[must_use]
-    #[doc = " Generate:\n  - A proof of correct evaluation.\n  - y = p(z), the evaluation of p at the challenge z, with p being the Blob interpreted as a polynomial.\n\n  Mathematical description\n    [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁, with p(τ) being the commitment, i.e. the evaluation of p at the powers of τ\n    The notation [a]₁ corresponds to the scalar multiplication of a by the generator of 𝔾1\n\n    Verification can be done by verifying the relation:\n      proof.(τ - z) = p(τ)-p(z)\n    which doesn't require the full blob but only evaluations of it\n    - at τ, p(τ) is the commitment\n    - and at the verification challenge z."]
+    #[doc = " Generate:\n  - A proof of correct evaluation.\n  - y = p(z), the evaluation of p at the opening_challenge z, with p being the Blob interpreted as a polynomial.\n\n  Mathematical description\n    [proof]₁ = [(p(τ) - p(z)) / (τ-z)]₁, with p(τ) being the commitment, i.e. the evaluation of p at the powers of τ\n    The notation [a]₁ corresponds to the scalar multiplication of a by the generator of 𝔾1\n\n    Verification can be done by verifying the relation:\n      proof.(τ - z) = p(τ)-p(z)\n    which doesn't require the full blob but only evaluations of it\n    - at τ, p(τ) is the commitment\n    - and at the verification opening_challenge z."]
     pub fn ctt_eth_kzg_compute_kzg_proof_parallel(
         tp: *const ctt_threadpool,
         ctx: *const ctt_eth_kzg_context,
         proof: *mut ctt_eth_kzg_proof,
         y: *mut ctt_eth_kzg_eval_at_challenge,
         blob: *const ctt_eth_kzg_blob,
-        z: *const ctt_eth_kzg_challenge,
+        z: *const ctt_eth_kzg_opening_challenge,
     ) -> ctt_eth_kzg_status;
 }
 extern "C" {

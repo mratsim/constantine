@@ -95,7 +95,7 @@ func validate_g2*(g2Point: G2P): CttCodecEccStatus {.libPrefix: pre.} =
 # Codecs
 # ------------------------------------------------------------------------------------------------
 
-func serialize_scalar*(dst: var array[32, byte], scalar: Scalar): CttCodecScalarStatus {.libPrefix: pre.} =
+func serialize_scalar*(dst: var array[32, byte], scalar: Scalar): CttCodecScalarStatus {.libPrefix: pre, discardable.} =
   ## Serialize a scalar
   ## Returns cttCodecScalar_Success if successful
   dst.marshal(scalar, bigEndian)
@@ -118,7 +118,7 @@ func deserialize_scalar*(dst: var Scalar, src: array[32, byte]): CttCodecScalarS
   return cttCodecScalar_Success
 
 
-func serialize_g1_compressed*(dst: var array[48, byte], g1Point: G1P): CttCodecEccStatus {.libPrefix: pre.} =
+func serialize_g1_compressed*(dst: var array[48, byte], g1Point: G1P): CttCodecEccStatus {.libPrefix: pre, discardable.} =
   ## Serialize a BLS12-381 G1 point in compressed (Zcash) format
   ##
   ## Returns cttCodecEcc_Success if successful

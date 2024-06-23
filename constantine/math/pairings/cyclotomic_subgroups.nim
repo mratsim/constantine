@@ -779,10 +779,8 @@ func cyclotomic_exp_compressed*[N: static int, Fpk](
     g0s[i].recover_g0(g1s[i], gs[i])
 
   r.asFpk(g0s[0], g1s[0], gs[0])
+  var t {.noInit.}: Fpk
   for i in 1 ..< N:
-    var t {.noInit.}: Fpk
     t.asFpk(g0s[i], g1s[i], gs[i])
     r *= t
-
-    if i+1 == N:
-      accumSquarings = t
+  accumSquarings = t

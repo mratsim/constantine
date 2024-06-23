@@ -102,7 +102,7 @@ func splitAlternate*(t: View): tuple[even, odd: View] {.inline.} =
   result.odd.offset = t.offset + t.stride
   result.odd.data = t.data
 
-func splitMiddle*(t: View): tuple[left, right: View] {.inline.} =
+func splitHalf*(t: View): tuple[left, right: View] {.inline.} =
   ## Split the tensor into 2
   ## partitioning into left and right halves.
   ## left:  indices [0, 1, 2, 3]
@@ -229,11 +229,11 @@ when isMainModule:
     echo "\nSplit middle"
     echo "----------------"
     block:
-      let (left, right) = v.splitMiddle()
+      let (left, right) = v.splitHalf()
       echo "left:  ", left
       echo "right: ", right
       block:
-        let (ll, lr) = left.splitMiddle()
+        let (ll, lr) = left.splitHalf()
         echo ""
         echo "left-left:  ", ll
         echo "left-right: ", lr
@@ -241,7 +241,7 @@ when isMainModule:
         echo "left-right rev: ", lr.reversed()
 
       block:
-        let (rl, rr) = right.splitMiddle()
+        let (rl, rr) = right.splitHalf()
         echo ""
         echo "right-left:  ", rl
         echo "right-right: ", rr

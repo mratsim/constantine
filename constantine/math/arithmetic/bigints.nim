@@ -12,7 +12,8 @@ import
   ./limbs,
   ./limbs_extmul,
   ./limbs_exgcd,
-  ../../math_arbitrary_precision/arithmetic/limbs_divmod
+  ../../math_arbitrary_precision/arithmetic/[
+    limbs_divmod, limbs_divmod_vartime]
 
 export BigInt
 
@@ -519,6 +520,11 @@ func invmod*[bits](r: var BigInt[bits], a, M: BigInt[bits]) =
 # ############################################################
 
 {.push inline.}
+
+func reduce_vartime*[aBits, mBits](r: var BigInt[mBits], a: BigInt[aBits], M: BigInt[mBits]): bool =
+  ## Reduce `a` modulo `M` and store the result in `r`
+  ## Return false if M == 0
+  return reduce_vartime(r.limbs, a.limbs, M.limbs)
 
 func invmod_vartime*[bits](
        r: var BigInt[bits],

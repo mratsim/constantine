@@ -105,7 +105,7 @@ func (ctx EthKzgContext) ComputeKzgProof(blob EthBlob, z EthKzgChallenge) (proof
 		(*C.ctt_eth_kzg_proof)(unsafe.Pointer(&proof)),
 		(*C.ctt_eth_kzg_eval_at_challenge)(unsafe.Pointer(&y)),
 		(*C.ctt_eth_kzg_blob)(unsafe.Pointer(&blob)),
-		(*C.ctt_eth_kzg_challenge)(unsafe.Pointer(&z)),
+		(*C.ctt_eth_kzg_opening_challenge)(unsafe.Pointer(&z)),
 	)
 	if status != C.cttEthKzg_Success {
 		err = errors.New(
@@ -119,7 +119,7 @@ func (ctx EthKzgContext) VerifyKzgProof(commitment EthKzgCommitment, z EthKzgCha
 	status := C.ctt_eth_kzg_verify_kzg_proof(
 		ctx.cCtx,
 		(*C.ctt_eth_kzg_commitment)(unsafe.Pointer(&commitment)),
-		(*C.ctt_eth_kzg_challenge)(unsafe.Pointer(&z)),
+		(*C.ctt_eth_kzg_opening_challenge)(unsafe.Pointer(&z)),
 		(*C.ctt_eth_kzg_eval_at_challenge)(unsafe.Pointer(&y)),
 		(*C.ctt_eth_kzg_proof)(unsafe.Pointer(&proof)),
 	)
@@ -215,7 +215,7 @@ func (ctx EthKzgContext) ComputeKzgProofParallel(blob EthBlob, z EthKzgChallenge
 		(*C.ctt_eth_kzg_proof)(unsafe.Pointer(&proof)),
 		(*C.ctt_eth_kzg_eval_at_challenge)(unsafe.Pointer(&y)),
 		(*C.ctt_eth_kzg_blob)(unsafe.Pointer(&blob)),
-		(*C.ctt_eth_kzg_challenge)(unsafe.Pointer(&z)),
+		(*C.ctt_eth_kzg_opening_challenge)(unsafe.Pointer(&z)),
 	)
 	if status != C.cttEthKzg_Success {
 		err = errors.New(

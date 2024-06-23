@@ -137,7 +137,7 @@ impl<'tp> EthKzgContext<'tp> {
                 proof.as_mut_ptr() as *mut ctt_eth_kzg_proof,
                 y_eval.as_mut_ptr() as *mut ctt_eth_kzg_eval_at_challenge,
                 blob.as_ptr() as *const ctt_eth_kzg_blob,
-                z_challenge.as_ptr() as *const ctt_eth_kzg_challenge,
+                z_challenge.as_ptr() as *const ctt_eth_kzg_opening_challenge,
             );
             match status {
                 ctt_eth_kzg_status::cttEthKzg_Success => {
@@ -160,7 +160,7 @@ impl<'tp> EthKzgContext<'tp> {
             ctt_eth_kzg_verify_kzg_proof(
                 self.ctx,
                 commitment.as_ptr() as *const ctt_eth_kzg_commitment,
-                z_challenge.as_ptr() as *const ctt_eth_kzg_challenge,
+                z_challenge.as_ptr() as *const ctt_eth_kzg_opening_challenge,
                 y_eval_at_challenge.as_ptr() as *const ctt_eth_kzg_eval_at_challenge,
                 proof.as_ptr() as *const ctt_eth_kzg_proof,
             )
@@ -282,7 +282,7 @@ impl<'tp> EthKzgContext<'tp> {
                 proof.as_mut_ptr() as *mut ctt_eth_kzg_proof,
                 y_eval.as_mut_ptr() as *mut ctt_eth_kzg_eval_at_challenge,
                 blob.as_ptr() as *const ctt_eth_kzg_blob,
-                z_challenge.as_ptr() as *const ctt_eth_kzg_challenge,
+                z_challenge.as_ptr() as *const ctt_eth_kzg_opening_challenge,
             );
             match status {
                 ctt_eth_kzg_status::cttEthKzg_Success => {

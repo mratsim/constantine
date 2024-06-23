@@ -9,13 +9,18 @@
 import
   ../../platforms/abstractions,
   ../arithmetic,
-  ../ec_shortweierstrass,
+  ./ec_shortweierstrass_affine,
+  ./ec_shortweierstrass_jacobian,
+  ./ec_shortweierstrass_projective,
   ./ec_shortweierstrass_batch_ops,
   ./ec_twistededwards_projective,
   ./ec_twistededwards_affine
 
 export abstractions, arithmetic,
-       ec_shortweierstrass,
+       ec_shortweierstrass_affine,
+       ec_shortweierstrass_jacobian,
+       ec_shortweierstrass_projective,
+       ec_shortweierstrass_batch_ops,
        ec_twistededwards_projective,
        ec_twistededwards_affine
 

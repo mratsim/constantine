@@ -41,7 +41,7 @@ type
     proofs: array[N, array[48, byte]]
     # This is only used for `verify_kzg_proof` and
     # there is no short-circuit if they don't match
-    challenge, eval_at_challenge: array[32, byte]
+    opening_challenge, eval_at_challenge: array[32, byte]
 
 proc randomize(rng: var RngState, blob: var Blob) =
   for i in 0 ..< FIELD_ELEMENTS_PER_BLOB:
@@ -54,13 +54,13 @@ proc new(T: type BenchSet, ctx: ptr EthereumKZGContext): T =
   new(result)
   for i in 0 ..< result.N:
     rng.randomize(result.blobs[i])
-    discard ctx.blob_to_kzg_commitment(result.commitments[i], result.blobs[i].addr)
-    discard ctx.compute_blob_kzg_proof(result.proofs[i], result.blobs[i].addr, result.commitments[i])
+    discard ctx.blob_to_kzg_commitment(result.commitments[i], result.blobs[i])
+    discard ctx.compute_blob_kzg_proof(result.proofs[i], result.blobs[i], result.commitments[i])
 
-  let challenge = rng.random_unsafe(Fr[BLS12_381])
+  let opening_challenge = rng.random_unsafe(Fr[BLS12_381])
   let eval_at_challenge = rng.random_unsafe(Fr[BLS12_381])
 
-  discard result.challenge.marshal(challenge, bigEndian)
+  discard result.opening_challenge.marshal(opening_challenge, bigEndian)
   discard result.eval_at_challenge.marshal(eval_at_challenge, bigEndian)
 
 proc benchBlobToKzgCommitment(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
@@ -69,7 +69,7 @@ proc benchBlobToKzgCommitment(b: BenchSet, ctx: ptr EthereumKZGContext, iters: i
   block:
     bench("blob_to_kzg_commitment", "serial", iters):
       var commitment {.noInit.}: array[48, byte]
-      doAssert cttEthKzg_Success == ctx.blob_to_kzg_commitment(commitment, b.blobs[0].addr)
+      doAssert cttEthKzg_Success == ctx.blob_to_kzg_commitment(commitment, b.blobs[0])
   let stopSerial = getMonotime()
 
   ## We require `tp` to be unintialized as even idle threads somehow reduce perf of serial benches
@@ -79,7 +79,7 @@ proc benchBlobToKzgCommitment(b: BenchSet, ctx: ptr EthereumKZGContext, iters: i
   block:
     bench("blob_to_kzg_commitment", $tp.numThreads & " threads", iters):
       var commitment {.noInit.}: array[48, byte]
-      doAssert cttEthKzg_Success == tp.blob_to_kzg_commitment_parallel(ctx, commitment, b.blobs[0].addr)
+      doAssert cttEthKzg_Success == tp.blob_to_kzg_commitment_parallel(ctx, commitment, b.blobs[0])
   let stopParallel = getMonotime()
 
   tp.shutdown()
@@ -97,7 +97,7 @@ proc benchComputeKzgProof(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) 
     bench("compute_kzg_proof", "serial", iters):
       var proof {.noInit.}: array[48, byte]
       var eval_at_challenge {.noInit.}: array[32, byte]
-      doAssert cttEthKzg_Success == ctx.compute_kzg_proof(proof, eval_at_challenge, b.blobs[0].addr, b.challenge)
+      doAssert cttEthKzg_Success == ctx.compute_kzg_proof(proof, eval_at_challenge, b.blobs[0], b.opening_challenge)
   let stopSerial = getMonotime()
 
   ## We require `tp` to be unintialized as even idle threads somehow reduce perf of serial benches
@@ -108,7 +108,7 @@ proc benchComputeKzgProof(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) 
     bench("compute_kzg_proof", $tp.numThreads & " threads", iters):
       var proof {.noInit.}: array[48, byte]
       var eval_at_challenge {.noInit.}: array[32, byte]
-      doAssert cttEthKzg_Success == tp.compute_kzg_proof_parallel(ctx, proof, eval_at_challenge, b.blobs[0].addr, b.challenge)
+      doAssert cttEthKzg_Success == tp.compute_kzg_proof_parallel(ctx, proof, eval_at_challenge, b.blobs[0], b.opening_challenge)
   let stopParallel = getMonotime()
 
   tp.shutdown()
@@ -125,7 +125,7 @@ proc benchComputeBlobKzgProof(b: BenchSet, ctx: ptr EthereumKZGContext, iters: i
   block:
     bench("compute_blob_kzg_proof", "serial", iters):
       var proof {.noInit.}: array[48, byte]
-      doAssert cttEthKzg_Success == ctx.compute_blob_kzg_proof(proof, b.blobs[0].addr, b.commitments[0])
+      doAssert cttEthKzg_Success == ctx.compute_blob_kzg_proof(proof, b.blobs[0], b.commitments[0])
   let stopSerial = getMonotime()
 
   ## We require `tp` to be unintialized as even idle threads somehow reduce perf of serial benches
@@ -135,7 +135,7 @@ proc benchComputeBlobKzgProof(b: BenchSet, ctx: ptr EthereumKZGContext, iters: i
   block:
     bench("compute_blob_kzg_proof", $tp.numThreads & " threads", iters):
       var proof {.noInit.}: array[48, byte]
-      doAssert cttEthKzg_Success == tp.compute_blob_kzg_proof_parallel(ctx, proof, b.blobs[0].addr, b.commitments[0])
+      doAssert cttEthKzg_Success == tp.compute_blob_kzg_proof_parallel(ctx, proof, b.blobs[0], b.commitments[0])
   let stopParallel = getMonotime()
 
   tp.shutdown()
@@ -149,7 +149,7 @@ proc benchComputeBlobKzgProof(b: BenchSet, ctx: ptr EthereumKZGContext, iters: i
 proc benchVerifyKzgProof(b: BenchSet, ctx: ptr EthereumKZGContext, iters: int) =
 
   bench("verify_kzg_proof", "serial", iters):
-    discard ctx.verify_kzg_proof(b.commitments[0], b.challenge, b.eval_at_challenge, b.proofs[0])
+    discard ctx.verify_kzg_proof(b.commitments[0], b.opening_challenge, b.eval_at_challenge, b.proofs[0])
 
   echo "verify_kzg_proof is always serial"
 
@@ -158,7 +158,7 @@ proc benchVerifyBlobKzgProof(b: BenchSet, ctx: ptr EthereumKZGContext, iters: in
   let startSerial = getMonotime()
   block:
     bench("verify_blob_kzg_proof", "serial", iters):
-      discard ctx.verify_blob_kzg_proof(b.blobs[0].addr, b.commitments[0], b.proofs[0])
+      discard ctx.verify_blob_kzg_proof(b.blobs[0], b.commitments[0], b.proofs[0])
   let stopSerial = getMonotime()
 
   ## We require `tp` to be unintialized as even idle threads somehow reduce perf of serial benches
@@ -167,7 +167,7 @@ proc benchVerifyBlobKzgProof(b: BenchSet, ctx: ptr EthereumKZGContext, iters: in
   let startParallel = getMonotime()
   block:
     bench("verify_blob_kzg_proof", $tp.numThreads & " threads", iters):
-      discard tp.verify_blob_kzg_proof_parallel(ctx, b.blobs[0].addr, b.commitments[0], b.proofs[0])
+      discard tp.verify_blob_kzg_proof_parallel(ctx, b.blobs[0], b.commitments[0], b.proofs[0])
   let stopParallel = getMonotime()
 
   tp.shutdown()

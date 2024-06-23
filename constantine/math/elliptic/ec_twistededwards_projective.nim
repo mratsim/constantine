@@ -37,6 +37,8 @@ func `==`*(P, Q: ECP_TwEdwards_Prj): SecretBool =
   ## Constant-time equality check
   ## This is a costly operation
   # Reminder: the representation is not unique
+  # Isogeny-based constructions to create
+  # prime order curves overload this generic equality check.
   var a{.noInit.}, b{.noInit.}: ECP_TwEdwards_Prj.F
 
   a.prod(P.x, Q.z)
@@ -50,6 +52,12 @@ func `==`*(P, Q: ECP_TwEdwards_Prj): SecretBool =
 func isInf*(P: ECP_TwEdwards_Prj): SecretBool {.inline.} =
   ## Returns true if P is an infinity point
   ## and false otherwise
+  # Isogeny-based constructions to create
+  # prime order curves overload this generic identity check.
+
+  # TODO: for Twisted Edwards curve, there is a point of coordinate (0, 0)
+  # on the curve, hence it's not the infinity point, so we need to rename
+  # the function
   result = P.x.isZero() and (P.y == P.z)
 
 func setInf*(P: var ECP_TwEdwards_Prj) {.inline.} =
@@ -430,7 +438,7 @@ template affine*[F](_: type ECP_TwEdwards_Prj[F]): typedesc =
 
 template projective*[F](_: type ECP_TwEdwards_Aff[F]): typedesc =
   ## Returns the projective type that corresponds to the affine type input
-  ECP_TwEdwards_Aff[F]
+  ECP_TwEdwards_Prj[F]
 
 func affine*[F](
        aff: var ECP_TwEdwards_Aff[F],
@@ -497,12 +505,8 @@ template `~-=`*(P: var ECP_TwEdwards_Prj, Q: ECP_TwEdwards_Aff) =
 func `==`*(P, Q: ECP_TwEdwards_Prj[Fp[Banderwagon]]): SecretBool =
   ## Equality check for points in the Banderwagon Group
   ## The equality check is optimized for the quotient group
-  ## see: https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Equality-check
-  ##
-  ## Check for the (0,0) point, which is possible
-  ##
   ## This is a costly operation
-
+  # see: https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Equality-check
   var lhs{.noInit.}, rhs{.noInit.}: typeof(P).F
 
   # Check for the zero points
@@ -514,3 +518,14 @@ func `==`*(P, Q: ECP_TwEdwards_Prj[Fp[Banderwagon]]): SecretBool =
   lhs.prod(P.x, Q.y)
   rhs.prod(Q.x, P.y)
   result = result and lhs == rhs
+
+func isInf*(P: ECP_TwEdwards_Prj[Fp[Banderwagon]]): SecretBool {.inline.} =
+  ## Returns true if P is the neutral/identity element
+  ## in the Banderwagon group
+  ## and false otherwise
+  # Isogeny-based constructions to create
+  # prime order curves overload this generic identity check.
+  # see: https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Equality-check
+
+  # TODO: Rename the function
+  result = P.x.isZero()

@@ -260,3 +260,29 @@ func scalarMul*[EC](P: var EC, scalar: Fr) {.inline.} =
   ## - 0 <= scalar < curve order
   ## Those will be assumed to maintain constant-time property
   P.scalarMul(scalar.toBig())
+
+func scalarMul*[EC](R: var EC, scalar: Fr or BigInt, P: EC) {.inline.} =
+  ## Elliptic Curve Scalar Multiplication
+  ##
+  ##   R <- [k] P
+  ##
+  ## This use endomorphism acceleration by default if available
+  ## Endomorphism acceleration requires:
+  ## - Cofactor to be cleared
+  ## - 0 <= scalar < curve order
+  ## Those will be assumed to maintain constant-time property
+  R = P
+  R.scalarMul(scalar)
+
+func scalarMul*[EC; Ecaff: not EC](R: var EC, scalar: Fr or BigInt, P: ECaff) {.inline.} =
+  ## Elliptic Curve Scalar Multiplication
+  ##
+  ##   R <- [k] P
+  ##
+  ## This use endomorphism acceleration by default if available
+  ## Endomorphism acceleration requires:
+  ## - Cofactor to be cleared
+  ## - 0 <= scalar < curve order
+  ## Those will be assumed to maintain constant-time property
+  R.fromAffine(P)
+  R.scalarMul(scalar)

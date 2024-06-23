@@ -148,9 +148,7 @@ func multiScalarMul_reference_vartime*[F, EC, ECaff](
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
   let n = cast[int](len)
   let coefs_big = allocHeapArrayAligned(matchingOrderBigInt(F.C), n, alignment = 64)
-
-  for i in 0 ..< n:
-    coefs_big[i].fromField(coefs[i])
+  coefs_big.batchFromField(coefs, n)
   r.multiScalarMul_reference_vartime(coefs_big, points, n)
 
   freeHeapAligned(coefs_big)
@@ -542,9 +540,7 @@ func multiScalarMul_vartime*[F, EC, ECaff](
 
   let n = cast[int](len)
   let coefs_big = allocHeapArrayAligned(matchingOrderBigInt(F.C), n, alignment = 64)
-
-  for i in 0 ..< n:
-    coefs_big[i].fromField(coefs[i])
+  coefs_big.batchFromField(coefs, n)
   r.multiScalarMul_vartime(coefs_big, points, n)
 
   freeHeapAligned(coefs_big)

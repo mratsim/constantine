@@ -67,7 +67,7 @@ func scalarMul_addchain_4bit_vartime[EC](P: var EC, scalar: BigInt) {.tags:[VarT
   of 0:
     P.setInf()
   of 1:
-    return
+    discard
   of 2:
     P.double()
   of 3:
@@ -373,7 +373,7 @@ func scalarMul_vartime*[scalBits; EC](P: var EC, scalar: BigInt[scalBits]) {.met
   else:
     P.scalarMul_addchain_4bit_vartime(scalar)
 
-func scalarMul_vartime*[EC](P: var EC, scalar: Fr) =
+func scalarMul_vartime*[EC](P: var EC, scalar: Fr) {.inline.} =
   ## Elliptic Curve Scalar Multiplication
   ##
   ##   P <- [k] P
@@ -388,3 +388,37 @@ func scalarMul_vartime*[EC](P: var EC, scalar: Fr) =
   ## - 0 <= scalar < curve order
   ## Those conditions will be assumed.
   P.scalarMul_vartime(scalar.toBig())
+
+func scalarMul_vartime*[EC](R: var EC, scalar: Fr or BigInt, P: EC) {.inline.} =
+  ## Elliptic Curve Scalar Multiplication
+  ##
+  ##   R <- [k] P
+  ##
+  ## This select the best algorithm depending on heuristics
+  ## and the scalar being multiplied.
+  ## The scalar MUST NOT be a secret as this does not use side-channel countermeasures
+  ##
+  ## This may use endomorphism acceleration.
+  ## As endomorphism acceleration requires:
+  ## - Cofactor to be cleared
+  ## - 0 <= scalar < curve order
+  ## Those conditions will be assumed.
+  R = P
+  R.scalarMul_vartime(scalar)
+
+func scalarMul_vartime*[EC; Ecaff: not EC](R: var EC, scalar: Fr or BigInt, P: ECaff) {.inline.} =
+  ## Elliptic Curve Scalar Multiplication
+  ##
+  ##   R <- [k] P
+  ##
+  ## This select the best algorithm depending on heuristics
+  ## and the scalar being multiplied.
+  ## The scalar MUST NOT be a secret as this does not use side-channel countermeasures
+  ##
+  ## This may use endomorphism acceleration.
+  ## As endomorphism acceleration requires:
+  ## - Cofactor to be cleared
+  ## - 0 <= scalar < curve order
+  ## Those conditions will be assumed.
+  R.fromAffine(P)
+  R.scalarMul_vartime(scalar)

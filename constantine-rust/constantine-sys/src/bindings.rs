@@ -4203,30 +4203,30 @@ fn bindgen_test_layout_ctt_eth_kzg_blob() {
 }
 #[repr(C)]
 #[derive(Copy, Clone)]
-pub struct ctt_eth_kzg_challenge {
+pub struct ctt_eth_kzg_opening_challenge {
     raw: [byte; 32usize],
 }
 #[test]
-fn bindgen_test_layout_ctt_eth_kzg_challenge() {
-    const UNINIT: ::core::mem::MaybeUninit<ctt_eth_kzg_challenge> =
+fn bindgen_test_layout_ctt_eth_kzg_opening_challenge() {
+    const UNINIT: ::core::mem::MaybeUninit<ctt_eth_kzg_opening_challenge> =
         ::core::mem::MaybeUninit::uninit();
     let ptr = UNINIT.as_ptr();
     assert_eq!(
-        ::core::mem::size_of::<ctt_eth_kzg_challenge>(),
+        ::core::mem::size_of::<ctt_eth_kzg_opening_challenge>(),
         32usize,
-        concat!("Size of: ", stringify!(ctt_eth_kzg_challenge))
+        concat!("Size of: ", stringify!(ctt_eth_kzg_opening_challenge))
     );
     assert_eq!(
-        ::core::mem::align_of::<ctt_eth_kzg_challenge>(),
+        ::core::mem::align_of::<ctt_eth_kzg_opening_challenge>(),
         1usize,
-        concat!("Alignment of ", stringify!(ctt_eth_kzg_challenge))
+        concat!("Alignment of ", stringify!(ctt_eth_kzg_opening_challenge))
     );
     assert_eq!(
         unsafe { ::core::ptr::addr_of!((*ptr).raw) as usize - ptr as usize },
         0usize,
         concat!(
             "Offset of field: ",
-            stringify!(ctt_eth_kzg_challenge),
+            stringify!(ctt_eth_kzg_opening_challenge),
             "::",
             stringify!(raw)
         )
@@ -4305,7 +4305,7 @@ extern "C" {
         proof: *mut ctt_eth_kzg_proof,
         y: *mut ctt_eth_kzg_eval_at_challenge,
         blob: *const ctt_eth_kzg_blob,
-        z: *const ctt_eth_kzg_challenge,
+        z: *const ctt_eth_kzg_opening_challenge,
     ) -> ctt_eth_kzg_status;
 }
 extern "C" {
@@ -4314,7 +4314,7 @@ extern "C" {
     pub fn ctt_eth_kzg_verify_kzg_proof(
         ctx: *const ctt_eth_kzg_context,
         commitment: *const ctt_eth_kzg_commitment,
-        z: *const ctt_eth_kzg_challenge,
+        z: *const ctt_eth_kzg_opening_challenge,
         y: *const ctt_eth_kzg_eval_at_challenge,
         proof: *const ctt_eth_kzg_proof,
     ) -> ctt_eth_kzg_status;
@@ -4383,7 +4383,7 @@ extern "C" {
         proof: *mut ctt_eth_kzg_proof,
         y: *mut ctt_eth_kzg_eval_at_challenge,
         blob: *const ctt_eth_kzg_blob,
-        z: *const ctt_eth_kzg_challenge,
+        z: *const ctt_eth_kzg_opening_challenge,
     ) -> ctt_eth_kzg_status;
 }
 extern "C" {

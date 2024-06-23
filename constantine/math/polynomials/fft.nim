@@ -73,8 +73,7 @@ func simpleFT[EC; bits: static int](
   for i in 0 ..< L:
     last = v0w0
     for j in 1 ..< L:
-      v = vals[j]
-      v.scalarMul_vartime(rootsOfUnity[(i*j) mod L])
+      v.scalarMul_vartime(rootsOfUnity[(i*j) mod L], vals[j])
       last.sum_vartime(last, v)
     output[i] = last
 
@@ -88,7 +87,7 @@ func fft_internal[EC; bits: static int](
 
   # Recursive Divide-and-Conquer
   let (evenVals, oddVals) = vals.splitAlternate()
-  var (outLeft, outRight) = output.splitMiddle()
+  var (outLeft, outRight) = output.splitHalf()
   let halfROI = rootsOfUnity.skipHalf()
 
   fft_internal(outLeft, evenVals, halfROI)
@@ -99,8 +98,7 @@ func fft_internal[EC; bits: static int](
 
   for i in 0 ..< half:
     # FFT Butterfly
-    y_times_root = output[i+half]
-    y_times_root   .scalarMul_vartime(rootsOfUnity[i])
+    y_times_root   .scalarMul_vartime(output[i+half], rootsOfUnity[i])
     output[i+half] .diff_vartime(output[i], y_times_root)
     output[i]      .sum_vartime(output[i], y_times_root)
 
@@ -355,7 +353,7 @@ when isMainModule:
     defer: fftDesc.delete()
 
     var data = newSeq[EC_G1](fftDesc.order)
-    data[0].fromAffine(BLS12_381.getGenerator("G1"))
+    data[0].generator()
     for i in 1 ..< fftDesc.order:
       data[i].madd(data[i-1], BLS12_381.getGenerator("G1"))
 
@@ -406,7 +404,7 @@ when isMainModule:
 
       let fftDesc = ECFFTDescriptor[EC_G1].new(order = 1 shl scale, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
       var data = newSeq[EC_G1](fftDesc.order)
-      data[0].fromAffine(BLS12_381.getGenerator("G1"))
+      data[0].generator()
       for i in 1 ..< fftDesc.order:
         data[i].madd(data[i-1], BLS12_381.getGenerator("G1"))
 

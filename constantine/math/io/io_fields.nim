@@ -23,12 +23,20 @@ export Fp
 #
 # ############################################################
 
+proc spaces*(num: int): string =
+  result = newString(num)
+  for i in 0 ..< num:
+    result[i] = ' '
+
 func fromUint*(dst: var FF,
                src: SomeUnsignedInt) =
   ## Parse a regular unsigned integer
   ## and store it into a Fp or Fr
   let raw {.noinit.} = (typeof dst.mres).unmarshal(cast[array[sizeof(src), byte]](src), cpuEndian)
   dst.fromBig(raw)
+
+func fromUint*(T: type FF, src: SomeUnsignedInt): T {.noInit, inline.} =
+  result.fromUint(src)
 
 func fromInt*(dst: var FF,
                src: SomeInteger) =
@@ -45,6 +53,9 @@ func fromInt*(dst: var FF,
     let raw {.noinit.} = (type dst.mres).unmarshal(cast[array[sizeof(src), byte]](src), cpuEndian)
     dst.fromBig(raw)
     dst.cneg(isNeg)
+
+func fromInt*(T: type FF, src: SomeUnsignedInt): T {.noInit, inline.} =
+  result.fromInt(src)
 
 func marshal*(dst: var openarray[byte],
                        src: FF,
