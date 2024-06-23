@@ -17,6 +17,9 @@ import
   ../math/io/io_fields,
   ../platforms/[abstractions, views]
 
+# Debug - canonicalization
+import ../serialization/codecs_banderwagon
+
 ## ############################################################
 ##
 ##                 Inner Product Arguments
@@ -184,6 +187,10 @@ func ipa_prove*[N, logN: static int, EcAff, F](
   transcript.domainSeparator("ipa")
 
   eval_at_challenge.innerProduct(a, b)
+  debugEcho "<a,b>: ", eval_at_challenge.toHex()
+
+  debugEcho "C: ", commitment.toHex()
+  debugEcho "z: ", opening_challenge.toHex()
 
   # Feed the transcript entropy pool so that the prover
   # cannot forge special scalars, b is fixed so no need to feed it.
@@ -196,6 +203,7 @@ func ipa_prove*[N, logN: static int, EcAff, F](
   var Q {.noInit.}: EC
   Q.generator()
   transcript.squeezeChallenge("w", w)
+  debugEcho "w: ", w.toHex()
   Q.scalarMul_vartime(w)
 
   # log₂(N) round of recursive proof compression
@@ -230,6 +238,7 @@ func ipa_prove*[N, logN: static int, EcAff, F](
 
     var x {.noInit.}, xinv {.noInit.}: F
     transcript.squeezeChallenge("x", x)
+    debugEcho "x", i, ": ", x.toHex()
     xinv.inv(x)
 
     # Change of basis for next round
@@ -265,6 +274,7 @@ func ipa_prove*[N, logN: static int, EcAff, F](
     G = gL
 
   proof.a0 = a[0]
+  debugEcho "a0: ", a[0].toHex()
 
   # Epilogue
   # -----------------------------------
@@ -458,11 +468,11 @@ type IpaMultiProof*[logN: static int, EcAff, F] = object
   g2_proof*: IpaProof[logN, EcAff, F] # A proof of a commitment to a polynomial g₂(t) constructed from all polynomials
   D*: EcAff                           # A commitment to the combining polynomial g(t) = g₁(t) - g₂(t)
 
-func sorterByChallenge[N: static int, F](
+func sorterByChallenge[N: static int](
       challenges_counts: var array[N, uint32],
       sortingKeys: ptr UncheckedArray[tuple[z, idx: uint32]],
       opening_challenges_in_domain: ptr UncheckedArray[SomeInteger],
-      num_queries: uint32): uint32 =
+      num_queries: int): int =
   ## Computes metadata necessary to group polynomials by challenge
   ## - Returns the number of distinct opening challenges
   ## - in-place update the count of individual challenges
@@ -496,14 +506,14 @@ func sorterByChallenge[N: static int, F](
 
   # Counting sort
   # -----------------------------------
-  zeroMem(challenges_counts, sizeof(challenges_counts))
+  zeroMem(challenges_counts.addr, sizeof(challenges_counts))
   for q in 0 ..< num_queries:
     let z = opening_challenges_in_domain[q]
     challenges_counts[z] += 1
 
   # Compute the cumulative distribution of opening challenges
   cdf[0] = challenges_counts[0]
-  var distinct_challenges = uint32(challenges_counts[0] > 0)
+  var distinct_challenges = int(challenges_counts[0] > 0) # We want int (or any integer) without exceptions
   for i in 1 ..< N:
     cdf[i] = challenges_counts[i] + cdf[i-1]
     if challenges_counts[i] > 0:
@@ -514,7 +524,7 @@ func sorterByChallenge[N: static int, F](
     let z = opening_challenges_in_domain[q]
     cdf[z] -= 1
     sortingKeys[cdf[z]].z = uint32 z
-    sortingKeys[cdf[z]].idx = q
+    sortingKeys[cdf[z]].idx = uint32 q
 
   # Deallocs
   # -----------------------------------
@@ -523,12 +533,12 @@ func sorterByChallenge[N: static int, F](
   return distinct_challenges
 
 func sumPolysByChallenge[N: static int, F](
-      zs: ptr UncheckedArray[F],
+      zs: ptr UncheckedArray[uint32],
       fs: ptr UncheckedArray[PolynomialEval[N, F]],
       challenges_counts: array[N, uint32],
       ungrouped_polys: ptr UncheckedArray[PolynomialEval[N, F]],
       sortingKeys: ptr UncheckedArray[tuple[z, idx: uint32]],
-      num_queries: uint32) =
+      num_queries: int) =
   ## Returns a sparse representation of:
   ## - a vector of polynomials: fᵢ(X)
   ## - a vector of corresponding challenges zⁱ
@@ -551,9 +561,9 @@ func sumPolysByChallenge[N: static int, F](
 
   # TODO: do we need proper SparseVector data structures?
 
-  var q = 0
+  var q = 0'u32
   var idx = 0
-  while q < num_queries:
+  while q < cast[uint32](num_queries):
     let z = sortingKeys[q].z
     zs[idx] = z
     let count = challenges_counts[z]
@@ -570,14 +580,14 @@ func sumPolysByChallenge[N: static int, F](
     idx += 1
 
 func sumCommitmentsAndEvalsByChallenge[N: static int, F, ECaff](
-      zs: ptr UncheckedArray[F],
+      zs: ptr UncheckedArray[uint32],
       comms_by_challenges: ptr UncheckedArray[ECaff],
       evals_by_challenges: ptr UncheckedArray[F],
       challenges_counts: array[N, uint32],
       ungrouped_comms: ptr UncheckedArray[ECaff],
-      ungrouped_evals: ptr UncheckedArray[SomeInteger],
+      ungrouped_evals: ptr UncheckedArray[F],
       sortingKeys: ptr UncheckedArray[tuple[z, idx: uint32]],
-      num_queries: uint32) =
+      num_queries: int) =
   ## Returns a sparse representation of:
   ## - a vector of evaluations: fᵢ(zᵢ)
   ## - a vector of corresponding challenges zᵢ
@@ -598,21 +608,21 @@ func sumCommitmentsAndEvalsByChallenge[N: static int, F, ECaff](
   var affNeeded = 0
 
   block: # Group evals, and check how much to allocate for batch inversion
-    var q = 0
+    var q = 0'u32
     var eidx = 0
-    while q < num_queries:
+    while q < cast[uint32](num_queries):
       let z = sortingKeys[q].z
       zs[eidx] = z
       let count = challenges_counts[z]
       if count == 1:
-        evals_by_challenges[eidx] = ungrouped_evals[sortingKeys[q].eidx]
+        evals_by_challenges[eidx] = ungrouped_evals[sortingKeys[q].idx]
       else:
         affNeeded += 1
         evals_by_challenges[eidx].sum(
-          ungrouped_evals[sortingKeys[q].eidx],
-          ungrouped_evals[sortingKeys[q+1].eidx])
+          ungrouped_evals[sortingKeys[q].idx],
+          ungrouped_evals[sortingKeys[q+1].idx])
         for i in 2 ..< count:
-          evals_by_challenges[eidx] += ungrouped_evals[sortingKeys[i].eidx]
+          evals_by_challenges[eidx] += ungrouped_evals[sortingKeys[i].idx]
 
       q += count
       eidx += 1
@@ -628,15 +638,16 @@ func sumCommitmentsAndEvalsByChallenge[N: static int, F, ECaff](
   let tmp = allocHeapArrayAligned(EC, affNeeded, alignment = 64)
 
   block: # Group commitments
-    var q = 0
-    var cidx = 0
-    var tidx = 0
-    while q < num_queries:
+    var q = 0'u32
+    var cidx = 0'u32
+    var tidx = 0'u32
+    while q < cast[uint32](num_queries):
       let z = sortingKeys[q].z
       let count = challenges_counts[z]
       if count == 1:
         comms_by_challenges[cidx] = ungrouped_comms[sortingKeys[q].idx]
       else:
+        idxmap[tidx] = cidx
         tmp[tidx].fromAffine(ungrouped_comms[sortingKeys[q].idx])
         for i in 1 ..< count:
           tmp[tidx] ~+= ungrouped_comms[sortingKeys[i].idx]
@@ -645,9 +656,10 @@ func sumCommitmentsAndEvalsByChallenge[N: static int, F, ECaff](
       q += count
       cidx += 1
 
-  tmpAff.batchInv_vartime(tmp, affNeeded)
-  for i in 0 ..< affNeeded:
-    comms_by_challenges[idxmap[i]] = tmpAff[i]
+  if affNeeded > 0:
+    tmpAff.batchAffine(tmp, affNeeded) # TODO: introduce batchAffine_vartime
+    for i in 0 ..< affNeeded:
+      comms_by_challenges[idxmap[i]] = tmpAff[i]
 
   freeHeapAligned(tmp)
   freeHeapAligned(tmpAff)
@@ -660,7 +672,7 @@ func ipa_multi_prove*[N, logN: static int, EcAff, F](
       proof: var IpaMultiProof[logN, EcAff, F],
       polys: openArray[PolynomialEval[N, F]],
       commitments: openArray[EcAff],
-      opening_challenges_in_domain: openArray[SomeInteger]) =
+      opening_challenges_in_domain: openArray[SomeUnsignedInt]) =
   ## Create a combined proof that
   ## allow verifying the list of triplets
   ##    (polynomial, commitment, opening challenge)
@@ -681,12 +693,12 @@ func ipa_multi_prove*[N, logN: static int, EcAff, F](
 
   let num_queries = polys.len # Number of queries to convince a verifier that we indeed committed to all polynomials
 
-  let challenges_counts = allocHeapAligned(array[N, F], alignment = 64)
-  let sortingKeys = allocHeapArrayAligned(F, num_queries, alignment = 64)
+  let challenges_counts = allocHeapAligned(array[N, uint32], alignment = 64)
+  let sortingKeys = allocHeapArrayAligned(tuple[z, idx: uint32], num_queries, alignment = 64)
 
   let num_distinct_challenges =
     sorterByChallenge(
-      challenges_counts,
+      challenges_counts[],
       sortingKeys,
       opening_challenges_in_domain.asUnchecked(),
       num_queries)
@@ -698,8 +710,8 @@ func ipa_multi_prove*[N, logN: static int, EcAff, F](
   # Compute the sparse challenges and the summed polys
   sparse_challenges.sumPolysByChallenge(
     polys_by_challenges,
-    challenges_counts,
-    polys,
+    challenges_counts[],
+    polys.asUnchecked(),
     sortingKeys,
     num_queries)
 
@@ -716,6 +728,8 @@ func ipa_multi_prove*[N, logN: static int, EcAff, F](
 
   # Protocol
   # -------------------------------------------------
+  transcript.domain_separator("multiproof")
+
   for i in 0 ..< num_queries:
     transcript.absorb("C", commitments[i])
     transcript.absorb("z", F.fromUint(opening_challenges_in_domain[i]))
@@ -733,7 +747,7 @@ func ipa_multi_prove*[N, logN: static int, EcAff, F](
 
   # We need linearly independent numbers for batch proof sampling.
   # The Ethereum Verkle protocol mandates powers of r.
-  rpowers.computeSparsePowers_vartime(r, sparse_challenges)
+  rpowers.computeSparsePowers_vartime(r, sparse_challenges, num_distinct_challenges)
 
   # Compute rⁱ.fᵢ(X)
   for i in 0 ..< num_distinct_challenges:
@@ -757,7 +771,7 @@ func ipa_multi_prove*[N, logN: static int, EcAff, F](
         t[],
         polys_by_challenges[i],
         sparse_challenges[i])
-      g[] += t
+      g[] += t[]
 
   # Commit to the combining polynomial g(X) = ∑rⁱ.(fᵢ(X)-yᵢ)/(X-zᵢ)
   var D {.noInit.}: EC
@@ -767,7 +781,7 @@ func ipa_multi_prove*[N, logN: static int, EcAff, F](
 
   # Evaluate at random t: g(t) = ∑rⁱ.(fᵢ(t)-yᵢ)/(t-zᵢ)
   var t {.noinit.}: F
-  transcript.squeezeChallenge(t)
+  transcript.squeezeChallenge("t", t)
 
   # And split g(t) = ∑rⁱ.fᵢ(t)/(t-zᵢ) - ∑rⁱ.yᵢ/(t-zᵢ)
   # g(t) = g₁(t) - g₂(t)
@@ -779,19 +793,20 @@ func ipa_multi_prove*[N, logN: static int, EcAff, F](
   # and verify the proof.
 
   # Compute 1/(t-zᵢ)
-  discard invTminusChallenges[].inverseDifferenceArray(
+  discard invTminusChallenges.inverseDifferenceArray(
     sparse_challenges, num_distinct_challenges,
     t,
     differenceKind = kMinusArray,
     earlyReturnOnZero = false)
 
   # Compute g₁ = ∑rⁱ.fᵢ(t)/(t-zᵢ)
-  g1.prod(polys_by_challenges[0], invTminusChallenges[0])
+  g1[].prod(invTminusChallenges[0], polys_by_challenges[0])
   for i in 1 ..< num_distinct_challenges:
-    g1.multiplyAccumulate(polys_by_challenges[i], invTminusChallenges[i])
+    g1[].multiplyAccumulate(invTminusChallenges[i], polys_by_challenges[i])
 
   # Reclaim some memory
   freeHeapAligned(invTminusChallenges)
+  freeHeapAligned(polys_by_challenges)
   freeHeapAligned(sparse_challenges)
 
   # Commit to g₁ and update transcript,
@@ -803,12 +818,27 @@ func ipa_multi_prove*[N, logN: static int, EcAff, F](
   transcript.absorb("E", Eaff)
 
   # Compute g₂(t) and a commitment to it
-  g2.diff(g[], g1[])
+  g2[].diff(g1[], g[])
   var comm_g2 {.noInit.}: EC
   var comm_g2_aff {.noInit.}: ECaff
-  comm_g2.fromAffine(proof.D)
-  comm_g2 ~-= Eaff
+  comm_g2.fromAffine(Eaff)
+  comm_g2 ~-= proof.D
   comm_g2_aff.affine(comm_g2)
+
+  debugEcho "E-D: ", comm_g2_aff.toHex()
+  debugEcho "t: ", t.toHex()
+  debugEcho "g[0] : ", g.evals[0].toHex()
+  debugEcho "g1[0]: ", g1.evals[0].toHex()
+  debugEcho "g2[0]: ", g2.evals[0].toHex()
+  debugEcho "g2[8]: ", g2.evals[8].toHex()
+  debugEcho "g2[255]: ", g2.evals[255].toHex()
+  debugEcho "------"
+  block:
+    var tr2 = transcript
+    var t2: Fr[Banderwagon]
+    tr2.squeezeChallenge("state", t2)
+    debugEcho "transcript state: ", t2.toHex()
+  debugEcho "------\n"
 
   # Reclaim some memory
   freeHeapAligned(g)
@@ -825,14 +855,16 @@ func ipa_multi_prove*[N, logN: static int, EcAff, F](
     comm_g2_aff,
     t)
 
+  freeHeapAligned(g2)
+
 func ipa_multi_verify*[N, logN: static int, EcAff, F](
       crs: PolynomialEval[N, EcAff],
       domain: PolyEvalLinearDomain[N, F],
       transcript: var EthVerkleTranscript,
       commitments: openArray[EcAff],
-      opening_challenges_in_domain: openArray[SomeInteger],
+      opening_challenges_in_domain: openArray[SomeUnsignedInt],
       evals_at_challenges: openArray[F],
-      proof: IpaMultiProof[logN, EcAff, F]) =
+      proof: IpaMultiProof[logN, EcAff, F]): bool =
   ## Batch verification of commitments to multiple polynomials
   ## using a single multiproof
 
@@ -850,12 +882,12 @@ func ipa_multi_verify*[N, logN: static int, EcAff, F](
 
   let num_queries = commitments.len
 
-  let challenges_counts = allocHeapAligned(array[N, F], alignment = 64)
-  let sortingKeys = allocHeapArrayAligned(F, num_queries, alignment = 64)
+  let challenges_counts = allocHeapAligned(array[N, uint32], alignment = 64)
+  let sortingKeys = allocHeapArrayAligned(tuple[z, idx: uint32], num_queries, alignment = 64)
 
   let num_distinct_challenges =
     sorterByChallenge(
-      challenges_counts,
+      challenges_counts[],
       sortingKeys,
       opening_challenges_in_domain.asUnchecked(),
       num_queries)
@@ -866,12 +898,12 @@ func ipa_multi_verify*[N, logN: static int, EcAff, F](
   let sparse_challenges = allocHeapArrayAligned(uint32, num_distinct_challenges, alignment = 64)
 
   # Compute the sparse challenges and the summed poly evaluations
-  sparse_challenges.sumEvalsAndCommitmentsByChallenge(
+  sparse_challenges.sumCommitmentsAndEvalsByChallenge(
     comms_by_challenges,
     evals_by_challenges,
-    challenges_counts,
-    commitments,
-    evals_at_challenges,
+    challenges_counts[],
+    commitments.asUnchecked(),
+    evals_at_challenges.asUnchecked(),
     sortingKeys,
     num_queries)
 
@@ -885,9 +917,11 @@ func ipa_multi_verify*[N, logN: static int, EcAff, F](
 
   # Protocol
   # -------------------------------------------------
+  transcript.domain_separator("multiproof")
+
   for i in 0 ..< num_queries:
     transcript.absorb("C", commitments[i])
-    transcript.absorb("z", F.fromUint(opening_challenges_in_domain[i]))
+    transcript.absorb("z", F.fromUint(cast[uint](opening_challenges_in_domain[i])))
     transcript.absorb("y", evals_at_challenges[i])
 
   # Random r via Fiat-Shamir that the prover cannot manipulate
@@ -896,14 +930,14 @@ func ipa_multi_verify*[N, logN: static int, EcAff, F](
 
   # We need linearly independent numbers for batch proof sampling.
   # The Ethereum Verkle protocol mandates powers of r.
-  rpowers.computeSparsePowers_vartime(r, sparse_challenges)
+  rpowers.computeSparsePowers_vartime(r, sparse_challenges, num_distinct_challenges)
 
   # Add the commit to the combining polynomial g(X) to transcript
   transcript.absorb("D", proof.D)
 
   # Evaluate at random t: g(t) = ∑rⁱ.(fᵢ(t)-yᵢ)/(t-zᵢ)
   var t {.noinit.}: F
-  transcript.squeezeChallenge(t)
+  transcript.squeezeChallenge("t", t)
 
   # And split g(t) = ∑rⁱ.fᵢ(t)/(t-zᵢ) - ∑rⁱ.yᵢ/(t-zᵢ)
   # g(t) = g₁(t) - g₂(t)
@@ -912,7 +946,7 @@ func ipa_multi_verify*[N, logN: static int, EcAff, F](
   # as we have the commitment D from g and PCSs are homomorphic
 
   # Compute 1/(t-zᵢ)
-  discard invTminusChallenges[].inverseDifferenceArray(
+  discard invTminusChallenges.inverseDifferenceArray(
     sparse_challenges, num_distinct_challenges,
     t,
     differenceKind = kMinusArray,
@@ -924,6 +958,8 @@ func ipa_multi_verify*[N, logN: static int, EcAff, F](
     invTminusChallenges[i] *= rpowers[i]
   freeHeapAligned(rpowers)
 
+  # TODO: Incomplete
+  #   g₂(t) disagrees with <a, b> inner product in ipa_multi_prove
   # Compute g₂(t) = ∑rⁱ.yᵢ/(t-zᵢ)
   var g2t {.noInit.}: F
 
@@ -939,16 +975,27 @@ func ipa_multi_verify*[N, logN: static int, EcAff, F](
   var Eaff {.noInit.}: EcAff
   E.multiScalarMul_reference_vartime(invTminusChallenges, comms_by_challenges, num_distinct_challenges)
   Eaff.affine(E)
-  transcript.absorb(Eaff)
+  transcript.absorb("E", Eaff)
   freeHeapAligned(invTminusChallenges)
   freeHeapAligned(comms_by_challenges)
 
   # Deduce the commitment to g₂ from the homomorphic commitment property
   var comm_g2 {.noInit.}: EC
   var comm_g2_aff {.noInit.}: ECaff
-  comm_g2.fromAffine(proof.D)
-  comm_g2 ~-= Eaff
+  comm_g2.fromAffine(Eaff)
+  comm_g2 ~-= proof.D
   comm_g2_aff.affine(comm_g2)
+
+  debugEcho "E-D: ", comm_g2_aff.toHex()
+  debugEcho "t: ", t.toHex()
+  debugEcho "g2t: ", g2t.toHex()
+  debugEcho "------"
+  block:
+    var tr2 = transcript
+    var t2: Fr[Banderwagon]
+    tr2.squeezeChallenge("state", t2)
+    debugEcho "transcript state: ", t2.toHex()
+  debugEcho "------\n"
 
   # Verify the commitment to g₂ which verifies commitment to g
   # and so all combined polynomials

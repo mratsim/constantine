@@ -70,9 +70,9 @@ func coverIPARounds*(
       idx: var int,
       rounds: int): bool =
 
-  let a_view = a.toStridedView()
-  let b_view = b.toStridedView()
-  let cur_view = cb_c.toStridedView()
+  let a_view = a.toView()
+  let b_view = b.toView()
+  let cur_view = cb_c.toView()
 
   let (a_L, a_R) = a_view.splitHalf()
   let (b_L, b_R) = b_view.splitHalf()
@@ -91,7 +91,7 @@ func coverIPARounds*(
   C_L_1.x.setZero()
   C_L_1.y.setZero()
   C_L_1.z.setOne()
-  C_L_1.pedersen_commit(a_R, G_L)
+  C_L_1.multiScalarMul_reference_vartime(a_R.toOpenArray(), G_L.toOpenArray())
   C_L += C_L_1
 
   var C_R {.noInit.} = q
@@ -101,18 +101,18 @@ func coverIPARounds*(
   C_R_1.x.setZero()
   C_R_1.y.setZero()
   C_R_1.z.setOne()
-  C_R_1.pedersen_commit(a_L, G_R)
+  C_R_1.multiScalarMul_reference_vartime(a_L.toOpenArray(), G_R.toOpenArray())
   C_R += C_R_1
 
-  res.L_vector[idx] = C_L
-  res.R_vector[idx] = C_R
-  idx = idx + 1
+  res.L_vector[idx].affine(C_L)
+  res.R_vector[idx].affine(C_R)
 
   transcript.absorb("L", C_L)
   transcript.absorb("R", C_R)
 
   var x {.noInit.}: Fr[Banderwagon]
   transcript.squeezeChallenge("x", x)
+  debugEcho "x", idx, ": ", x.toHex()
 
   var xInv {.noInit.}: Fr[Banderwagon]
   xInv.inv(x)
@@ -126,7 +126,8 @@ func coverIPARounds*(
 
   res.A_scalar = a_L[0]
 
-  if idx == 7:
+  idx = idx + 1
+  if idx == 8:
     return true
 
   coverIPARounds(res, transcript, ic, ai, bi, gi, q, idx, rounds)
@@ -151,6 +152,10 @@ func createIPAProof*[IPAProofDeprecated](
 
   var innerProd {.noInit.}: Fr[Banderwagon]
   innerProd.computeInnerProducts(a, b)
+  debugEcho "<a,b>: ", innerProd.toHex()
+
+  debugEcho "C: ", commitment.toHex()
+  debugEcho "z: ", evalPoint.toHex()
 
   transcript.absorb("C", commitment)
   transcript.absorb("input point", evalPoint)
@@ -158,6 +163,7 @@ func createIPAProof*[IPAProofDeprecated](
 
   var w {.noInit.}: matchingOrderBigInt(Banderwagon)
   transcript.squeezeChallenge("w", w)
+  debugEcho "w: ", w.toHex()
 
   var q {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
   q.fromAffine(Banderwagon.getGenerator())
@@ -168,6 +174,7 @@ func createIPAProof*[IPAProofDeprecated](
   # 0-indexed
 
   discard coverIPARounds(res, transcript, ic, a, b, ic.crs, q, idx, num_rounds)
+  debugEcho "a0: ", res.A_scalar.toHex()
 
   return true
 

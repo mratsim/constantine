@@ -117,7 +117,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
       gx[j] += quotient.evals[j]
 
   var D {.noInit.}: EC_P
-  D.pedersen_commit(gx, ipaSetting.crs)
+  D.multiScalarMul_reference_vartime(gx, ipaSetting.crs)
 
   transcript.absorb("D", D)
 
@@ -167,7 +167,7 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
 
   var E {.noInit.}: EC_P
 
-  E.pedersen_commit(hx, ipaSetting.crs)
+  E.multiScalarMul_reference_vartime(hx, ipaSetting.crs)
   transcript.absorb("E",E)
 
   var EMinusD {.noInit.}: EC_P
@@ -177,12 +177,27 @@ func createMultiProof* [MultiProof] (res: var MultiProof, transcript: var Crypto
   #       hence we need to investigate why initialization may be incomplete.
   var ipaProof: IPAProofDeprecated
 
+  debugEcho "E-D: ", EMinusD.toHex()
+  debugEcho "t: ", t.toHex()
+  debugEcho "g[0] : ", gx[0].toHex()
+  debugEcho "g1[0]: ", hx[0].toHex()
+  debugEcho "g2[0]: ", hMinusg[0].toHex()
+  debugEcho "g2[8]: ", hMinusg[8].toHex()
+  debugEcho "g2[255]: ", hMinusg[255].toHex()
+  debugEcho "------"
+  block:
+    var tr2 = transcript
+    var t2: Fr[Banderwagon]
+    tr2.squeezeChallenge("state", t2)
+    debugEcho "transcript state: ", t2.toHex()
+  debugEcho "------\n"
+
   let checks = ipaProof.createIPAProof(transcript, ipaSetting, EMinusD, hMinusg, t)
   if not checks:
     return false
 
   res.IPAprv = ipaProof
-  res.D = D
+  res.D.affine(D)
   return true
 
 # ############################################################
@@ -283,10 +298,13 @@ func verifyMultiproof*[MultiProof](multiProof: var MultiProof, transcript : var 
   transcript.absorb("E", E)
 
   var EMinusD {.noInit.} : EC_P
-  EMinusD.diff(E, multiProof.D)
+  EMinusD.msub(E, multiProof.D)
+
+  var EMinusDaff {.noInit.}: EC_P_Aff
+  EMinusDaff.affine(EMinusD)
 
   var got {.noInit.}: EC_P
-  return ipaSettings.checkIPAProof(transcript, got, EMinusD, multiProof.IPAprv, t, g2t)
+  return ipaSettings.checkIPAProof(transcript, got, EMinusDaff, multiProof.IPAprv, t, g2t)
 
 # ############################################################
 #

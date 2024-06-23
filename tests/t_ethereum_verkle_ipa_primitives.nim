@@ -551,65 +551,120 @@ suite "IPA proof tests":
 #
 # ############################################################
 
-# # Note: large arrays should be heap allocated with new/ref
-# #       to not incur stack overflow on Windows as its stack size is 1MB per default compared to UNIXes 8MB.
+# Note: large arrays should be heap allocated with new/ref
+#       to not incur stack overflow on Windows as its stack size is 1MB per default compared to UNIXes 8MB.
+
+# TODO: refactor completely the tests - https://github.com/mratsim/constantine/issues/396
 
 suite "Multiproof Tests":
-#   test "Multiproof Creation and Verification":
-#     proc testMultiproofCreationAndVerification()=
+  echo "Warning! - Skipping all but serialization tests due to issues outlined in https://github.com/mratsim/constantine/issues/396"
+  # test "Multiproof Creation and Verification (old)":
+  #   proc testMultiproofCreationAndVerification()=
 
-#       var ipaConfig {.noInit.}: IPASettings
-#       ipaConfig.genIPAConfig()
+  #     var ipaConfig {.noInit.}: IPASettings
+  #     ipaConfig.genIPAConfig()
 
-#       var testVals: array[14, int] = [1,1,1,4,5,6,7,8,9,10,11,12,13,14]
-#       var poly: array[256, Fr[Banderwagon]]
+  #     var testVals: array[14, int] = [1,1,1,4,5,6,7,8,9,10,11,12,13,14]
+  #     var poly: array[256, Fr[Banderwagon]]
 
-#       poly.testPoly256(testVals)
+  #     poly.testPoly256(testVals)
 
-#       var prover_comm: EC_P
-#       prover_comm.pedersen_commit(poly, ipaConfig.crs)
+  #     var prover_comm: EC_P
+  #     prover_comm.multiScalarMul_reference_vartime(poly, ipaConfig.crs)
 
-#       # Prover's view
-#       var prover_transcript {.noInit.}: sha256
-#       prover_transcript.initTranscript("multiproof")
+  #     # Prover's view
+  #     var prover_transcript {.noInit.}: sha256
+  #     prover_transcript.initTranscript("multiproof")
 
-#       var one: Fr[Banderwagon]
-#       one.setOne()
+  #     var one: Fr[Banderwagon]
+  #     one.setOne()
 
-#       var Cs: seq[EC_P]
-#       # Large array, need heap allocation.
-#       var Fs = new array[EthVerkleDomain, array[EthVerkleDomain, Fr[Banderwagon]]]
+  #     var Cs: seq[EC_P]
+  #     # Large array, need heap allocation.
+  #     var Fs = new array[EthVerkleDomain, array[EthVerkleDomain, Fr[Banderwagon]]]
 
-#       for i in 0 ..< EthVerkleDomain:
-#         for j in 0 ..< EthVerkleDomain:
-#           Fs[i][j].setZero()
+  #     # TODO: Fs should be of size 1.
+  #     for i in 0 ..< EthVerkleDomain:
+  #       for j in 0 ..< EthVerkleDomain:
+  #         Fs[i][j].setZero()
 
-#       var Zs: seq[int]
-#       var Ys: seq[Fr[Banderwagon]]
+  #     var Zs: seq[int]
+  #     var Ys: seq[Fr[Banderwagon]]
 
-#       Cs.add(prover_comm)
+  #     Cs.add(prover_comm)
 
-#       Fs[0] = poly
+  #     Fs[0] = poly
 
-#       Zs.add(0)
-#       Ys.add(one)
+  #     Zs.add(0)
+  #     Ys.add(one)
 
-#       var multiproof {.noInit.}: MultiProof
-#       var stat_create_mult: bool
-#       stat_create_mult = multiproof.createMultiProof(prover_transcript, ipaConfig, Cs, Fs[], Zs)
+  #     var multiproof {.noInit.}: MultiProof
+  #     var stat_create_mult: bool
+  #     stat_create_mult = multiproof.createMultiProof(prover_transcript, ipaConfig, Cs, Fs[], Zs)
 
-#       doAssert stat_create_mult.bool() == true, "Multiproof creation error!"
+  #     doAssert stat_create_mult.bool() == true, "Multiproof creation error!"
 
-#       # Verifier's view
-#       var verifier_transcript: sha256
-#       verifier_transcript.initTranscript("multiproof")
+  #     var hexproof: VerkleMultiproofSerialized
+  #     discard hexproof.serializeVerkleMultiproof(multiproof)
+  #     debugEcho "hexproof: ", hexproof.toHex()
 
-#       var stat_verify_mult: bool
-#       stat_verify_mult = multiproof.verifyMultiproof(verifier_transcript, ipaConfig, Cs, Ys,Zs)
+  #     # Verifier's view
+  #     var verifier_transcript: sha256
+  #     verifier_transcript.initTranscript("multiproof")
 
-#       doAssert stat_verify_mult.bool() == true, "Multiproof verification error!"
+  #     var stat_verify_mult: bool
+  #     stat_verify_mult = multiproof.verifyMultiproof(verifier_transcript, ipaConfig, Cs, Ys,Zs)
 
-#     testMultiproofCreationAndVerification()
+  #     doAssert stat_verify_mult.bool() == true, "Multiproof verification error!"
+
+  #   testMultiproofCreationAndVerification()
+
+  # test "Multiproof Creation and Verification (new)":
+  #   proc testMultiproofCreationAndVerification()=
+
+  #     var CRS: PolynomialEval[EthVerkleDomain, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
+  #     CRS.evals.generate_random_points()
+
+  #     var domain: PolyEvalLinearDomain[EthVerkleDomain, Fr[Banderwagon]]
+  #     domain.setupLinearEvaluationDomain()
+
+  #     var testVals: array[14, int] = [1,1,1,4,5,6,7,8,9,10,11,12,13,14]
+  #     var poly: PolynomialEval[256, Fr[Banderwagon]]
+  #     poly.evals.testPoly256(testVals)
+
+  #     var prover_comm: ECP_TwEdwards_Prj[Fp[Banderwagon]]
+  #     CRS.pedersen_commit(prover_comm, poly)
+  #     var C: ECP_TwEdwards_Aff[Fp[Banderwagon]]
+  #     C.affine(prover_comm)
+
+  #     # Prover's view
+  #     var prover_transcript {.noInit.}: sha256
+  #     prover_transcript.initTranscript("multiproof")
+
+  #     var multiproof {.noInit.}: IpaMultiProof[8, ECP_TwEdwards_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
+  #     CRS.ipa_multi_prove(
+  #       domain, prover_transcript,
+  #       multiproof, [poly], [C], [0'u32]
+  #     )
+
+  #     var hexproof: EthVerkleIpaMultiProofBytes
+  #     hexproof.serialize(multiproof)
+  #     debugEcho "hexproof: ", hexproof.toHex()
+
+  #     # Verifier's view
+  #     var verifier_transcript: sha256
+  #     verifier_transcript.initTranscript("multiproof")
+
+  #     let ok = CRS.ipa_multi_verify(domain, verifier_transcript, [C], [0'u32], [Fr[Banderwagon].fromUint(1'u32)], multiproof)
+
+  #     doAssert ok, "Multiproof verification error!"
+
+  #   testMultiproofCreationAndVerification()
+
+# TODO: the following test, extracted from test011 in
+#       https://github.com/jsign/verkle-test-vectors/blob/735b7d6/crypto/clients/go-ipa/crypto_test.go#L320-L326
+#       is incomplete as it does not do negative testing.
+#       but does seems like multiproof verification always return true.
 
 #   test "Verify Multiproof in all Domain and Ranges but one by @Ignacio":
 #     proc testVerifyMultiproofVec()=
