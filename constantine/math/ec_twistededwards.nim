@@ -17,12 +17,14 @@ import
     ec_twistededwards_affine,
     ec_twistededwards_projective,
     ec_twistededwards_batch_ops,
-    ec_scalar_mul, ec_scalar_mul_vartime
+    ec_scalar_mul, ec_scalar_mul_vartime,
+    ec_multi_scalar_mul,
   ],
   ./constants/zoo_generators
 
 export ec_twistededwards_affine, ec_twistededwards_projective,
-       ec_twistededwards_batch_ops, ec_scalar_mul, ec_scalar_mul_vartime
+       ec_twistededwards_batch_ops, ec_scalar_mul, ec_scalar_mul_vartime,
+       ec_multi_scalar_mul
 
 type ECP_TwEdwards*[F] = ECP_TwEdwards_Aff[F] | ECP_TwEdwards_Prj[F]
 

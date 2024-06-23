@@ -28,6 +28,7 @@
 
 import
   ../../platforms/abstractions,
+  ../../serialization/endians,
   ../config/[type_ff, curves_prop_field_core, curves_prop_field_derived],
   ./bigints, ./bigints_montgomery
 
@@ -596,7 +597,7 @@ func pow_squareMultiply_vartime(a: var FF, exponent: SomeUnsignedInt) {.tags:[Va
       a.square(skipFinalSub = true)
       let bit = bool((e shr i) and 1)
       if bit:
-        a.prod(aa, skipFinalSub = true)
+        a.prod(a, aa, skipFinalSub = true)
 
   let e = eBytes[eBytes.len-1]
   block: # Epilogue, byte-level
@@ -604,20 +605,20 @@ func pow_squareMultiply_vartime(a: var FF, exponent: SomeUnsignedInt) {.tags:[Va
           a.square(skipFinalSub = true)
           let bit = bool((e shr i) and 1)
           if bit:
-            a.prod(aa, skipFinalSub = true)
+            a.prod(a, aa, skipFinalSub = true)
 
   block: # Epilogue, bit-level
     # for the very last bit we can't skip final substraction
     let bit = bool(e and 1)
     if bit:
       a.square(skipFinalSub = true)
-      a.prod(a, skipFinalSub = false)
+      a.prod(a, aa, skipFinalSub = false)
     else:
       a.square(skipFinalSub = false)
 
 func pow_addchain_4bit_vartime(a: var FF, exponent: SomeUnsignedInt) {.tags:[VarTime], meter.} =
   ## **Variable-time** Exponentiation
-  ## This can only handle for small scalars up to 2⁴ = 16 excluded
+  ## This can only handle for small scalars up to 2⁴ = 16 included
   case exponent
   of 0:
     a.setOne()
@@ -638,13 +639,13 @@ func pow_addchain_4bit_vartime(a: var FF, exponent: SomeUnsignedInt) {.tags:[Var
   of 6:
     var t {.noInit.}: typeof(a)
     t.square(a, skipFinalSub = true)
-    t.prod(a, skipFinalSub = true) # 3
+    t.prod(t, a, skipFinalSub = true) # 3
     a.square(t)
   of 7:
     var t {.noInit.}: typeof(a)
-    t.double(a, skipFinalSub = true)
-    a.prod(t, skipFinalSub = true) # 3
-    t.double(skipFinalSub = true)  # 4
+    t.square(a, skipFinalSub = true)
+    a.prod(a, t, skipFinalSub = true) # 3
+    t.square(skipFinalSub = true)  # 4
     a *= t
   of 8:
     a.square_repeated(3)
@@ -666,21 +667,35 @@ func pow_addchain_4bit_vartime(a: var FF, exponent: SomeUnsignedInt) {.tags:[Var
   of 12:
     var t {.noInit.}: typeof(a)
     t.square(a, skipFinalSub = true)
-    t.prod(a, skipFinalSub = true)  # 3
-    t.square(skipFinalSub = true)   # 6
-    a.square(t)                     # 12
+    t.prod(t, a, skipFinalSub = true)  # 3
+    t.square(skipFinalSub = true)      # 6
+    a.square(t)                        # 12
+  of 13:
+    var t1 {.noInit.}, t2 {.noInit.}: typeof(a)
+    t1.square_repeated(a, 2, skipFinalSub = true) # 4
+    t2.square(t1, skipFinalSub = true)            # 8
+    t1.prod(t1, t2, skipFinalSub = true)          # 12
+    a *= t1                                       # 13
+  of 14:
+    var t {.noInit.}: typeof(a)
+    t.square(a, skipFinalSub = true)   # 2
+    a *= t                             # 3
+    t.square_repeated(2, skipFinalSub = true) # 8
+    a.square(skipFinalSub = true)      # 6
+    a *= t                             # 14
   of 15:
     var t {.noInit.}: typeof(a)
     t.square(a, skipFinalSub = true)
-    t.prod(a, skipFinalSub = true)               # 3
+    t.prod(t, a, skipFinalSub = true)            # 3
     a.square_repeated(t, 2, skipFinalSub = true) # 12
     a *= t                                       # 15
+  of 16:
+    a.square_repeated(4, skipFinalSub = true)
   else:
-    {.error: "exponentiation by this small int not implemented".}
+    doAssert false, "exponentiation by this small int '" & $exponent & "' is not implemented"
 
 func pow_vartime(a: var FF, exponent: SomeUnsignedInt) {.tags:[VarTime], meter.} =
-  let usedBits = log2_vartime(exponent)
-  if usedBits <= 4:
+  if exponent <= 16:
     a.pow_addchain_4bit_vartime(exponent)
   else:
     a.pow_squareMultiply_vartime(exponent)
@@ -689,12 +704,12 @@ func computeSparsePowers_vartime*[C](
       dst: ptr UncheckedArray[FF[C]],
       base: FF[C],
       sparsePowers: ptr UncheckedArray[SomeUnsignedInt],
-      len: uint32) =
+      len: int) =
   ## Compute sparse powers of base
   ## sparsePowers MUST be ordered in ascending powers.
   ## Both `dst` and sparsePowers are of length `len`
   if len >= 1:
-    dst[0].pow_vartime(min)
+    dst[0].pow_vartime(sparsePowers[0])
   for i in 1 ..< len:
     dst[i] = dst[i-1]
     dst[i].pow_vartime(sparsePowers[i]-sparsePowers[i-1])

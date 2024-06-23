@@ -83,7 +83,7 @@ func computeInnerProducts* [Fr] (res: var Fr, a,b : openArray[Fr])=
     tmp.prod(a[i], b[i])
     res += tmp
 
-func computeInnerProducts* [Fr] (res: var Fr, a,b : StridedView[Fr])=
+func computeInnerProducts* [Fr] (res: var Fr, a,b : View[Fr])=
   debug: doAssert (a.len == b.len).bool() == true, "Scalar lengths don't match!"
   res.setZero()
   for i in 0 ..< b.len:
@@ -97,7 +97,7 @@ func computeInnerProducts* [Fr] (res: var Fr, a,b : StridedView[Fr])=
 #
 # ############################################################
 
-func foldScalars*(res: var openArray[Fr[Banderwagon]], a,b : StridedView[Fr[Banderwagon]], x: Fr[Banderwagon])=
+func foldScalars*(res: var openArray[Fr[Banderwagon]], a,b : View[Fr[Banderwagon]], x: Fr[Banderwagon])=
   ## Computes res[i] = a[i] + b[i] * x
   doAssert a.len == b.len , "Lengths should be equal!"
 
@@ -106,7 +106,7 @@ func foldScalars*(res: var openArray[Fr[Banderwagon]], a,b : StridedView[Fr[Band
     bx.prod(b[i], x)
     res[i].sum(a[i], bx)
 
-func foldPoints*(res: var openArray[ECP_TwEdwards_Aff[Fp[Banderwagon]]], a,b : StridedView[ECP_TwEdwards_Aff[Fp[Banderwagon]]], x: Fr[Banderwagon])=
+func foldPoints*(res: var openArray[ECP_TwEdwards_Aff[Fp[Banderwagon]]], a,b : View[ECP_TwEdwards_Aff[Fp[Banderwagon]]], x: Fr[Banderwagon])=
   ## Computes res[i] = a[i] + b[i] * x
   doAssert a.len == b.len , "Should have equal lengths!"
 

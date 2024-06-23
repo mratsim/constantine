@@ -146,7 +146,7 @@ type InvDiffArrayKind* = enum
 func sum*(r: var PolynomialEval, f, g: PolynomialEval) =
   ## Polynomial addition
   for i in 0 ..< r.evals.len:
-    r.evals[i] = f.evals[i] + g.evals[i]
+    r.evals[i].sum(f.evals[i], g.evals[i])
 
 func `+=`*(f: var PolynomialEval, g: PolynomialEval) =
   ## Polynomial addition
@@ -163,7 +163,7 @@ func `-=`*(f: var PolynomialEval, g: PolynomialEval) =
   for i in 0 ..< f.evals.len:
     f.evals[i] -= g.evals[i]
 
-func prod*[N, F](r: var PolynomialEval[N, F], f: PolynomialEval[N, F], s: F) =
+func prod*[N, F](r: var PolynomialEval[N, F], s: F, f: PolynomialEval[N, F]) =
   ## Rescale a polynomial r(X) <- s.f(X)
   for i in 0 ..< N:
     r.evals[i].prod(s, f.evals[i])
@@ -177,12 +177,12 @@ func multiplyAccumulate*[N, F](f: var PolynomialEval[N, F], s: F, g: PolynomialE
   ## Polynomial f(X) += s.g(X)
   for i in 0 ..< N:
     var t {.noInit.}: F
-    t.prod(s, g)
+    t.prod(s, g.evals[i])
     f.evals[i] += t
 
-func inverseDifferenceArray*[Field](
+func inverseDifferenceArray*[Field, W](
        r: ptr UncheckedArray[Field],
-       w: ptr UncheckedArray[Field],
+       w: ptr UncheckedArray[W],
        N: int,
        z: Field,
        differenceKind: static InvDiffArrayKind,
@@ -214,11 +214,18 @@ func inverseDifferenceArray*[Field](
   accInv.setOne()
   var index0 = -1
 
+  template toF(w: W): Field =
+    when W is Field: w
+    elif W is SomeUnsignedInt: Field.fromUint(w)
+    elif W is SomeSignedInt: Field.fromInt(w)
+    else:
+      {.error: "Unsupported input type for w: " & $W.}
+
   for i in 0 ..< N:
     when differenceKind == kArrayMinus:
-      diffs[i].diff(w[i], z)
+      diffs[i].diff(toF(w[i]), z)
     else:
-      diffs[i].diff(z, w[i])
+      diffs[i].diff(z, toF(w[i]))
 
     if diffs[i].isZero().bool():
       when earlyReturnOnZero:

@@ -35,6 +35,9 @@ func fromUint*(dst: var FF,
   let raw {.noinit.} = (typeof dst.mres).unmarshal(cast[array[sizeof(src), byte]](src), cpuEndian)
   dst.fromBig(raw)
 
+func fromUint*(T: type FF, src: SomeUnsignedInt): T {.noInit, inline.} =
+  result.fromUint(src)
+
 func fromInt*(dst: var FF,
                src: SomeInteger) =
   ## Parse a regular signed integer
@@ -50,6 +53,9 @@ func fromInt*(dst: var FF,
     let raw {.noinit.} = (type dst.mres).unmarshal(cast[array[sizeof(src), byte]](src), cpuEndian)
     dst.fromBig(raw)
     dst.cneg(isNeg)
+
+func fromInt*(T: type FF, src: SomeUnsignedInt): T {.noInit, inline.} =
+  result.fromInt(src)
 
 func marshal*(dst: var openarray[byte],
                        src: FF,
