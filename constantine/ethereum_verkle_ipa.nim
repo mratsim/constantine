@@ -50,7 +50,7 @@ func generate_random_points*(r: var openArray[ECP_TwEdwards_Aff[Fp[Banderwagon]]
     x_arr.marshal(x, bigEndian)
 
     var x_p {.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
-    let stat2 = x_p.deserialize(x_arr)
+    let stat2 = x_p.deserialize_vartime(x_arr)
     if stat2 == cttCodecEcc_Success:
       points_found.add(x_p)
       points[idx] = points_found[idx]
@@ -178,10 +178,10 @@ func deserialize*(dst: var EthVerkleIpaProof,
   let a0 = cast[ptr array[frb, byte]](src[2 * 8 * fpb].addr)
 
   for i in 0 ..< 8:
-    checkReturn dst.L[i].deserialize(L[i])
+    checkReturn dst.L[i].deserialize_vartime(L[i])
 
   for i in 0 ..< 8:
-    checkReturn dst.R[i].deserialize(R[i])
+    checkReturn dst.R[i].deserialize_vartime(R[i])
 
   checkReturn dst.a0.deserialize_fr(a0[], littleEndian)
   return cttEthVerkleIpa_Success
@@ -206,7 +206,7 @@ func deserialize*(dst: var EthVerkleIpaMultiProof,
   let D = cast[ptr array[frb, byte]](src.addr)
   let g2Proof = cast[ptr EthVerkleIpaProofBytes](src[frb].addr)
 
-  checkReturn dst.D.deserialize(D[])
+  checkReturn dst.D.deserialize_vartime(D[])
   return dst.g2_proof.deserialize(g2Proof[])
 
 # Mapping EC to scalars

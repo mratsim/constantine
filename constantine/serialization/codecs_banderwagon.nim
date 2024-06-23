@@ -145,7 +145,7 @@ func serialize*(dst: var array[32, byte], P: ECP_TwEdwards_Prj[Fp[Banderwagon]])
 
   return dst.serialize(aff)
 
-func deserialize_unchecked*(dst: var ECP_TwEdwards_Aff[Fp[Banderwagon]], src: array[32, byte]): CttCodecEccStatus =
+func deserialize_unchecked_vartime*(dst: var ECP_TwEdwards_Aff[Fp[Banderwagon]], src: array[32, byte]): CttCodecEccStatus =
   ## Deserialize a Banderwagon point (x, y) in format
   ##
   ## if y is not lexicographically largest
@@ -157,7 +157,9 @@ func deserialize_unchecked*(dst: var ECP_TwEdwards_Aff[Fp[Banderwagon]], src: ar
   ## This leaks:
   ##   - if input was infinity
   ##   - if input was invalid: coordinater larger than base prime field
-  ##   - if inoput was invalid: point is not on the curve
+  ##   - if input was invalid: point is not on the curve
+  ##
+  ## This uses a Banderwagon specific "precomputed discrete log" optimization
   # If infinity, src must be all zeros
   var allZeros = byte(0)
   for i in 0 ..< src.len:
@@ -184,14 +186,16 @@ func deserialize_unchecked*(dst: var ECP_TwEdwards_Aff[Fp[Banderwagon]], src: ar
 
   return cttCodecEcc_Success
 
-func deserialize*(dst: var ECP_TwEdwards_Aff[Fp[Banderwagon]], src: array[32, byte]): CttCodecEccStatus =
+func deserialize_vartime*(dst: var ECP_TwEdwards_Aff[Fp[Banderwagon]], src: array[32, byte]): CttCodecEccStatus =
   ## Deserialize a Banderwagon point (x, y) in format
   ##
   ## Also checks if the point lies in the banderwagon scheme subgroup
   ##
   ## Returns cttCodecEcc_Success if successful
   ## Returns cttCodecEcc_PointNotInSubgroup if doesn't lie in subgroup
-  result = deserialize_unchecked(dst, src)
+  ##
+  ## This uses a Banderwagon specific "precomputed discrete log" optimization
+  result = deserialize_unchecked_vartime(dst, src)
   if result != cttCodecEcc_Success:
     return result
 

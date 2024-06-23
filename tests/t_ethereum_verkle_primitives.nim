@@ -101,7 +101,7 @@ proc testDeserialize(hexString: string, status: CttCodecEccStatus) : bool =
 
     # deserialization from bits
     var point{.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
-    let stat = point.deserialize(arr)
+    let stat = point.deserialize_vartime(arr)
     return stat == status
 
   else:
@@ -382,7 +382,7 @@ suite "Banderwagon Elements Mapping":
       var arr: array[32, byte]
       discard arr.parseHex("0x524996a95838712c4580220bb3de453d76cffd7f732f89914d4417bc8e99b513")
 
-      discard deserialize(point, arr)
+      discard deserialize_vartime(point, arr)
       element.mapToScalarField(point)
 
       doAssert element.toHex() == expected_field_element, "Mapping from Fp -> Fr failed"
