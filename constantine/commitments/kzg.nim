@@ -243,8 +243,8 @@ func kzg_verify*[F2; C: static Curve](
     tauG2Jac {.noInit.}: ECP_ShortW_Jac[F2, G2]
     commitmentJac {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
 
-  tau_minus_challenge_G2.generator()
-  commitment_minus_eval_at_challenge_G1.generator()
+  tau_minus_challenge_G2.setGenerator()
+  commitment_minus_eval_at_challenge_G1.setGenerator()
   negG2.neg(C.getGenerator("G2"))
   tauG2Jac.fromAffine(tauG2)
   commitmentJac.fromAffine(commitment)
@@ -343,7 +343,7 @@ func kzg_verify_batch*[bits: static int, F2; C: static Curve](
   for i in 0 ..< n:
     commits_min_evals_jac[i].fromAffine(commitments[i])
     var boxed_eval {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
-    boxed_eval.generator()
+    boxed_eval.setGenerator()
     boxed_eval.scalarMul_vartime(evals_at_challenges[i])
     commits_min_evals_jac[i].diff_vartime(commits_min_evals_jac[i], boxed_eval)
 

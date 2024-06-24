@@ -66,7 +66,7 @@ suite "Barycentric Form Tests":
       poly.interpolate(points,2)
 
       var genfp: ECP_TwEdwards_Prj[Fp[Banderwagon]]
-      genfp.generator()
+      genfp.setGenerator()
       var genfr: Fr[Banderwagon]
       genfr.mapToScalarField(genfp)
 

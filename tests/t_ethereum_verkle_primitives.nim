@@ -122,7 +122,7 @@ suite "Banderwagon Serialization Tests":
   #     # then with each iteration 2P, 4P, . . . doubling
   #     var points: seq[ECP_TwEdwards_Aff[Fp[Banderwagon]]]
   #     var point {.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
-  #     point.generator()
+  #     point.setGenerator()
 
   #     for i in 0 ..< len:
   #       var arr: array[32, byte]
@@ -262,7 +262,7 @@ suite "Banderwagon Serialization Tests":
   test "Uncompressed Point Serialization":
     proc testUncompressedSerialization() =
       var point, point_regen {.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
-      point.generator()
+      point.setGenerator()
 
       var arr: array[64, byte]
       let stat = arr.serializeUncompressed(point)
@@ -289,7 +289,7 @@ suite "Banderwagon Points Tests":
   test "Test for Addition, Subtraction, Doubling":
     proc testAddSubDouble() =
       var a, b, gen_point, identity {.noInit.} : ECP_TwEdwards_Prj[Fp[Banderwagon]]
-      gen_point.generator()
+      gen_point.setGenerator()
 
       # Setting the identity Element
       identity.x.setZero()
@@ -319,7 +319,7 @@ suite "Banderwagon Points Tests":
       two_torsion.z.setOne()
 
       var point{.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
-      point.generator()
+      point.setGenerator()
 
       for i in 0 ..< 1000:
         var point_plus_torsion: ECP_TwEdwards_Prj[Fp[Banderwagon]]
@@ -352,7 +352,7 @@ suite "Banderwagon Elements Mapping":
   test "Testing Map To Base Field":
     proc testMultiMapToBaseField() =
       var A, B, genPoint {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
-      genPoint.generator()
+      genPoint.setGenerator()
 
       A.sum(genPoint, genPoint) # A = g+g = 2g
       B.double(genPoint)        # B = 2g
@@ -404,10 +404,10 @@ suite "Batch Operations on Banderwagon":
   test "BatchAffine and fromAffine Consistency":
     proc testbatch(n: static int) =
       var g, temp {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
-      g.generator()     # setting the generator point
+      g.setGenerator()     # setting the generator point
 
       var aff{.noInit.}: ECP_TwEdwards_Aff[Fp[Banderwagon]]
-      aff.generator()
+      aff.setGenerator()
 
       var points_prj: array[n, ECP_TwEdwards_Prj[Fp[Banderwagon]]]
       var points_aff: array[n, ECP_TwEdwards_Aff[Fp[Banderwagon]]]
@@ -435,7 +435,7 @@ suite "Batch Operations on Banderwagon":
   test "Testing Batch Map to Base Field":
     proc testBatchMapToBaseField() =
       var A, B, g: ECP_TwEdwards_Prj[Fp[Banderwagon]]
-      g.generator()
+      g.setGenerator()
 
       A.sum(g, g)
       B.double(g)
@@ -462,7 +462,7 @@ suite "Batch Operations on Banderwagon":
       # then with each iteration 2P, 4P, . . . doubling
       var points: array[len, ECP_TwEdwards_Prj[Fp[Banderwagon]]]
       var point {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
-      point.generator()
+      point.setGenerator()
 
       for i in 0 ..< len:
         points[i] = point
@@ -484,7 +484,7 @@ suite "Batch Operations on Banderwagon":
     proc testBatchUncompressedSerialization() =
       var points: array[10, ECP_TwEdwards_Prj[Fp[Banderwagon]]]
       var point, point_regen {.noInit.}: ECP_TwEdwards_Prj[Fp[Banderwagon]]
-      point.generator()
+      point.setGenerator()
 
       for i in 0 ..< 10:
         points[i] = point

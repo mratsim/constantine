@@ -44,7 +44,7 @@ func derivePubkey*[Pubkey, SecKey](pubkey: var Pubkey, seckey: SecKey) =
   const EC = Field.C
 
   var pk {.noInit.}: ECP_ShortW_Jac[Field, Group]
-  pk.generator()
+  pk.setGenerator()
   pk.scalarMul(seckey)
   pubkey.affine(pk)
 

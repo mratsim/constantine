@@ -194,7 +194,7 @@ func ipa_prove*[N, logN: static int, EcAff, F](
   # "Random" basis for challenging the inner product proof.
   var w {.noInit.}: matchingOrderBigInt(F.C)
   var Q {.noInit.}: EC
-  Q.generator()
+  Q.setGenerator()
   transcript.squeezeChallenge("w", w)
   Q.scalarMul_vartime(w)
 
@@ -404,7 +404,7 @@ func ipa_verify*[N, logN: static int, EcAff, F](
 
   # ... + [⟨ā,b̄⟩.w]G ...
   fs_abwg[0].prod(eval_at_challenge, w)
-  ecs_abwg[0].generator()
+  ecs_abwg[0].setGenerator()
 
   # ... - [a₀]G₀ ...
   # [a₀]G₀ = [a₀]<s̄, Ḡ>
@@ -418,7 +418,7 @@ func ipa_verify*[N, logN: static int, EcAff, F](
   domain.getLagrangeBasisPolysAt(b[], opening_challenge)
   fs_a0b0wG[0].innerProduct(View[F](fs_a0g0), b.toView())
   fs_a0b0wG[0] *= w
-  ecs_a0b0wG[0].generator()
+  ecs_a0b0wG[0].setGenerator()
 
   # ∑ᵢ[uᵢ]Lᵢ + ∑ᵢ[uᵢ⁻¹]Rᵢ + [⟨ā,b̄⟩.w]G - [a₀]G₀ - [a₀.b₀.w]G
   var t {.noInit.}: EC

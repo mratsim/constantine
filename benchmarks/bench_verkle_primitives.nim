@@ -76,8 +76,8 @@ proc equalityBench*(T: typedesc, iters: int) =
     let Q = Banderwagon.getGenerator()
   else:
     var P, Q: ECP_TwEdwards_Prj[Fp[Banderwagon]]
-    P.generator()
-    Q.generator()
+    P.setGenerator()
+    Q.setGenerator()
   bench("Banderwagon Equality ", T, iters):
     assert (P == Q).bool()
 
@@ -85,7 +85,7 @@ proc equalityBench*(T: typedesc, iters: int) =
 proc serializeBench*(T: typedesc, iters: int) =
   var bytes: array[32, byte]
   var P: ECP_TwEdwards_Prj[Fp[Banderwagon]]
-  P.generator()
+  P.setGenerator()
   for i in 0 ..< 9:
     P.double()
   bench("Banderwagon Serialization", T, iters):
@@ -94,7 +94,7 @@ proc serializeBench*(T: typedesc, iters: int) =
 proc deserializeBench_vartime*(T: typedesc, iters: int) =
   var bytes: array[32, byte]
   var P: ECP_TwEdwards_Prj[Fp[Banderwagon]]
-  P.generator()
+  P.setGenerator()
   for i in 0 ..< 6:
     P.double()
   discard bytes.serialize(P)
@@ -106,7 +106,7 @@ proc deserializeBench_vartime*(T: typedesc, iters: int) =
 proc deserializeBenchUnchecked_vartime*(T: typedesc, iters: int) =
   var bytes: array[32, byte]
   var P: ECP_TwEdwards_Prj[Fp[Banderwagon]]
-  P.generator()
+  P.setGenerator()
   for i in 0 ..< 6:
     P.double()
   discard bytes.serialize(P)
@@ -118,7 +118,7 @@ proc deserializeBenchUnchecked_vartime*(T: typedesc, iters: int) =
 proc serializeUncompressedBench*(T: typedesc, iters: int) =
   var bytes: array[64, byte]
   var P: ECP_TwEdwards_Prj[Fp[Banderwagon]]
-  P.generator()
+  P.setGenerator()
   for i in 0 ..< 6:
     P.double()
 
@@ -130,7 +130,7 @@ proc serializeUncompressedBench*(T: typedesc, iters: int) =
 proc deserializeUncompressedBench*(T: typedesc, iters: int) =
   var bytes: array[64, byte]
   var P: ECP_TwEdwards_Prj[Fp[Banderwagon]]
-  P.generator()
+  P.setGenerator()
   for i in 0 ..< 6:
     P.double()
 
@@ -143,7 +143,7 @@ proc deserializeUncompressedBench*(T: typedesc, iters: int) =
 proc deserializeUncompressedBenchUnchecked*(T: typedesc, iters: int) =
   var bytes: array[64, byte]
   var P: ECP_TwEdwards_Prj[Fp[Banderwagon]]
-  P.generator()
+  P.setGenerator()
   for i in 0 ..< 6:
     P.double()
 
