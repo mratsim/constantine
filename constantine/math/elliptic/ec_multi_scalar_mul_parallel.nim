@@ -194,7 +194,7 @@ proc msm_vartime_parallel[bits: static int, EC, ECaff](
         bitIndex = top, kTopWindow, c,
         coefs, points, N)
     else:
-      r[].setInf()
+      r[].setNeutral()
 
   # 3. Final reduction, r initialized to what would be miniMSMsReady[numWindows-1]
   when excess != 0:
@@ -287,7 +287,7 @@ proc bucketAccumReduce_parallel[bits: static int, EC, ECaff](
     elif kNonAffine in buckets.status[numBuckets-1]:
       accumBuckets = buckets.pt[numBuckets-1]
     else:
-      accumBuckets.setInf()
+      accumBuckets.setNeutral()
     windowSum = accumBuckets
     buckets.reset(numBuckets-1)
 
@@ -380,7 +380,7 @@ proc msmAffine_vartime_parallel[bits: static int, EC, ECaff](
                                 coefs, points, N)
       buckets.freeHeap()
     else:
-      r[].setInf()
+      r[].setNeutral()
 
   # 2. Final reduction with latency hiding, r initialized to what would be miniMSMsReady[numWindows-1]
   when excess != 0:

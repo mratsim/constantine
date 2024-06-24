@@ -49,19 +49,18 @@ func `==`*(P, Q: ECP_TwEdwards_Prj): SecretBool =
   b.prod(Q.y, P.z)
   result = result and a == b
 
-func isInf*(P: ECP_TwEdwards_Prj): SecretBool {.inline.} =
-  ## Returns true if P is an infinity point
-  ## and false otherwise
+func isNeutral*(P: ECP_TwEdwards_Prj): SecretBool {.inline.} =
+  ## Returns true if P is the neutral element / identity element
+  ## and false otherwise, i.e. ∀Q, P+Q == Q
+  ## Contrary to Short Weierstrass curve, the neutral element is on the curve
   # Isogeny-based constructions to create
   # prime order curves overload this generic identity check.
-
-  # TODO: for Twisted Edwards curve, there is a point of coordinate (0, 0)
-  # on the curve, hence it's not the infinity point, so we need to rename
-  # the function
   result = P.x.isZero() and (P.y == P.z)
 
-func setInf*(P: var ECP_TwEdwards_Prj) {.inline.} =
-  ## Set ``P`` to infinity
+func setNeutral*(P: var ECP_TwEdwards_Prj) {.inline.} =
+  ## Set P to the neutral element / identity element
+  ## i.e. ∀Q, P+Q == Q.
+  ## Contrary to Short Weierstrass curve, the neutral element is on the curve
   P.x.setZero()
   P.y.setOne()
   P.z.setOne()
@@ -519,7 +518,7 @@ func `==`*(P, Q: ECP_TwEdwards_Prj[Fp[Banderwagon]]): SecretBool =
   rhs.prod(Q.x, P.y)
   result = result and lhs == rhs
 
-func isInf*(P: ECP_TwEdwards_Prj[Fp[Banderwagon]]): SecretBool {.inline.} =
+func isNeutral*(P: ECP_TwEdwards_Prj[Fp[Banderwagon]]): SecretBool {.inline.} =
   ## Returns true if P is the neutral/identity element
   ## in the Banderwagon group
   ## and false otherwise

@@ -30,7 +30,7 @@ func linear_combination*(
   ## TODO: multi scalar mul
   doAssert points.len == coefs.len
 
-  r.setInf()
+  r.setNeutral()
   for i in 0 ..< points.len:
     var tmp = points[i]
     tmp.scalarMul(coefs[i])

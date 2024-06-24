@@ -43,13 +43,16 @@ func `==`*(P, Q: ECP_ShortW_Aff): SecretBool =
   result = P.x == Q.x
   result = result and (P.y == Q.y)
 
-func isInf*(P: ECP_ShortW_Aff): SecretBool =
-  ## Returns true if P is an infinity point
-  ## and false otherwise
+func isNeutral*(P: ECP_ShortW_Aff): SecretBool =
+  ## Returns true if P is the neutral element / identity element
+  ## and false otherwise, i.e. ∀Q, P+Q == Q
+  ## For Short Weierstrass curves, this is the infinity point.
   result = P.x.isZero() and P.y.isZero()
 
-func setInf*(P: var ECP_ShortW_Aff) =
-  ## Set P to the infinity point
+func setNeutral*(P: var ECP_ShortW_Aff) =
+  ## Set P to the neutral element / identity element
+  ## i.e. ∀Q, P+Q == Q
+  ## For Short Weierstrass curves, this is the infinity point.
   P.x.setZero()
   P.y.setZero()
 
@@ -105,7 +108,7 @@ func trySetFromCoordX*[F, G](
   ##
   ## Note: Dedicated robust procedures for hashing-to-curve
   ##       will be provided, this is intended for testing purposes.
-  ## 
+  ##
   ##       For **test case generation only**,
   ##       this is preferred to generating random point
   ##       via random scalar multiplication of the curve generator

@@ -71,11 +71,11 @@ proc batch_verify_parallel*(
 
   # Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
   for i in 0 ..< len:
-    if pubkeys[i].raw.isInf().bool:
+    if pubkeys[i].raw.isNeutral().bool:
       return cttEthBls_PointAtInfinity
 
   for i in 0 ..< len:
-    if signatures[i].raw.isInf().bool:
+    if signatures[i].raw.isNeutral().bool:
       return cttEthBls_PointAtInfinity
 
   let verified = tp.batchVerify_parallel(
@@ -129,11 +129,11 @@ proc batch_verify_parallel*[Msg](
 
   # Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
   for i in 0 ..< pubkeys.len:
-    if pubkeys[i].raw.isInf().bool:
+    if pubkeys[i].raw.isNeutral().bool:
       return cttEthBls_PointAtInfinity
 
   for i in 0 ..< signatures.len:
-    if signatures[i].raw.isInf().bool:
+    if signatures[i].raw.isNeutral().bool:
       return cttEthBls_PointAtInfinity
 
   let verified = tp.batchVerify_parallel(

@@ -115,11 +115,11 @@ type
 
 func pubkey_is_zero*(pubkey: PublicKey): bool {.libPrefix: prefix_ffi.} =
   ## Returns true if input is 0
-  bool(pubkey.raw.isInf())
+  bool(pubkey.raw.isNeutral())
 
 func signature_is_zero*(sig: Signature): bool {.libPrefix: prefix_ffi.} =
   ## Returns true if input is 0
-  bool(sig.raw.isInf())
+  bool(sig.raw.isNeutral())
 
 func pubkeys_are_equal*(a, b: PublicKey): bool {.libPrefix: prefix_ffi.} =
   ## Returns true if inputs are equal
@@ -256,7 +256,7 @@ func verify*(public_key: PublicKey, message: openArray[byte], signature: Signatu
   ## In particular, the public key and signature are assumed to be on curve and subgroup-checked.
 
   # Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
-  if bool(public_key.raw.isInf() or signature.raw.isInf()):
+  if bool(public_key.raw.isNeutral() or signature.raw.isNeutral()):
     return cttEthBls_PointAtInfinity
 
   let verified = coreVerify(public_key.raw, message, signature.raw, sha256, 128, augmentation = "", DomainSeparationTag)
@@ -275,7 +275,7 @@ func aggregate_pubkeys_unstable_api*(aggregate_pubkey: var PublicKey, pubkeys: o
   #
   # TODO: Return a bool or status code or nothing?
   if pubkeys.len == 0:
-    aggregate_pubkey.raw.setInf()
+    aggregate_pubkey.raw.setNeutral()
     return
   aggregate_pubkey.raw.aggregate(pubkeys.unwrap())
 
@@ -286,7 +286,7 @@ func aggregate_signatures_unstable_api*(aggregate_sig: var Signature, signatures
   #
   # TODO: Return a bool or status code or nothing?
   if signatures.len == 0:
-    aggregate_sig.raw.setInf()
+    aggregate_sig.raw.setNeutral()
     return
   aggregate_sig.raw.aggregate(signatures.unwrap())
 
@@ -311,11 +311,11 @@ func fast_aggregate_verify*(pubkeys: openArray[PublicKey], message: openArray[by
     return cttEthBls_ZeroLengthAggregation
 
   # Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
-  if aggregate_sig.raw.isInf().bool:
+  if aggregate_sig.raw.isNeutral().bool:
     return cttEthBls_PointAtInfinity
 
   for i in 0 ..< pubkeys.len:
-    if pubkeys[i].raw.isInf().bool:
+    if pubkeys[i].raw.isNeutral().bool:
       return cttEthBls_PointAtInfinity
 
   let verified = fastAggregateVerify(
@@ -354,11 +354,11 @@ func aggregate_verify*(pubkeys: ptr UncheckedArray[PublicKey],
     return cttEthBls_ZeroLengthAggregation
 
   # Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
-  if aggregate_sig.raw.isInf().bool:
+  if aggregate_sig.raw.isNeutral().bool:
     return cttEthBls_PointAtInfinity
 
   for i in 0 ..< len:
-    if pubkeys[i].raw.isInf().bool:
+    if pubkeys[i].raw.isNeutral().bool:
       return cttEthBls_PointAtInfinity
 
   let verified = aggregateVerify(
@@ -398,11 +398,11 @@ func aggregate_verify*[Msg](pubkeys: openArray[PublicKey], messages: openArray[M
     return cttEthBls_InputsLengthsMismatch
 
   # Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
-  if aggregate_sig.raw.isInf().bool:
+  if aggregate_sig.raw.isNeutral().bool:
     return cttEthBls_PointAtInfinity
 
   for i in 0 ..< pubkeys.len:
-    if pubkeys[i].raw.isInf().bool:
+    if pubkeys[i].raw.isNeutral().bool:
       return cttEthBls_PointAtInfinity
 
   let verified = aggregateVerify(
@@ -448,11 +448,11 @@ func batch_verify*(pubkeys: ptr UncheckedArray[PublicKey],
 
   # Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
   for i in 0 ..< len:
-    if pubkeys[i].raw.isInf().bool:
+    if pubkeys[i].raw.isNeutral().bool:
       return cttEthBls_PointAtInfinity
 
   for i in 0 ..< len:
-    if signatures[i].raw.isInf().bool:
+    if signatures[i].raw.isNeutral().bool:
       return cttEthBls_PointAtInfinity
 
   let verified = batchVerify(
@@ -498,11 +498,11 @@ func batch_verify*[Msg](pubkeys: openArray[PublicKey], messages: openarray[Msg],
 
   # Deal with cases were pubkey or signature were mistakenly zero-init, due to a generic aggregation tentative for example
   for i in 0 ..< pubkeys.len:
-    if pubkeys[i].raw.isInf().bool:
+    if pubkeys[i].raw.isNeutral().bool:
       return cttEthBls_PointAtInfinity
 
   for i in 0 ..< signatures.len:
-    if signatures[i].raw.isInf().bool:
+    if signatures[i].raw.isNeutral().bool:
       return cttEthBls_PointAtInfinity
 
   let verified = batchVerify(

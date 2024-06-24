@@ -117,7 +117,7 @@ template test(scalarProc: untyped) =
     p -= rhs
     printG(p)
 
-    doAssert p.isInf().bool()
+    doAssert p.isNeutral().bool()
 
   `test _ scalarProc`()
 

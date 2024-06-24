@@ -44,17 +44,17 @@ func scalarMul_doubleAdd_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[VarTime
   var Paff {.noinit.}: affine(EC)
   Paff.affine(P)
 
-  P.setInf()
-  var isInf = true
+  P.setNeutral()
+  var isNeutral = true
 
   for scalarByte in scalarCanonical:
     for bit in unpackBE(scalarByte):
-      if not isInf:
+      if not isNeutral:
         P.double()
       if bit:
-        if isInf:
+        if isNeutral:
           P.fromAffine(Paff)
-          isInf = false
+          isNeutral = false
         else:
           P ~+= Paff
 
@@ -65,7 +65,7 @@ func scalarMul_addchain_4bit_vartime[EC](P: var EC, scalar: BigInt) {.tags:[VarT
 
   case s
   of 0:
-    P.setInf()
+    P.setNeutral()
   of 1:
     discard
   of 2:
@@ -159,7 +159,7 @@ func scalarMul_minHammingWeight_vartime*[EC](P: var EC, scalar: BigInt) {.tags:[
   var Paff {.noinit.}: affine(EC)
   Paff.affine(P)
 
-  P.setInf()
+  P.setNeutral()
   for bit in recoding_l2r_signed_vartime(scalar):
     P.double()
     if bit == 1:
@@ -182,7 +182,7 @@ func initNAF[precompSize, NafMax: static int, EC, ECaff](
     P.neg()
     return true
   else:
-    P.setInf()
+    P.setNeutral()
     return false
 
 func accumNAF[precompSize, NafMax: static int, EC, ECaff](

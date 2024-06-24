@@ -91,7 +91,7 @@ func update*[FF1, FF2, FpK](ctx: var MillerAccumulator[FF1, FF2, FpK], P: ECP_Sh
   ##
   ## ⚠️: This reveals if a point is infinity through timing side-channels
 
-  if P.isInf().bool or Q.isInf().bool:
+  if P.isNeutral().bool or Q.isNeutral().bool:
     return false
 
   if ctx.len == MillerAccumMax:

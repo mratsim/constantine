@@ -297,7 +297,7 @@ suite "ψ²(P) - [t]ψ(P) + [p]P = Inf" & " [" & $WordBitWidth & "-bit words]":
       r.diff(psi2, tpsi)
       r += pP
 
-      doAssert bool(r.isInf())
+      doAssert bool(r.isNeutral())
 
   proc testAll(EC: typedesc) =
     test "ψ²(P) - [t]ψ(P) + [p]P = Inf for " & $EC:
@@ -328,7 +328,7 @@ suite "ψ⁴(P) - ψ²(P) + P = Inf (k-th cyclotomic polynomial with embedding d
       r.diff(psi4, psi2)
       r += P
 
-      doAssert bool(r.isInf())
+      doAssert bool(r.isNeutral())
 
   proc testAll(EC: typedesc) =
     test "ψ⁴(P) - ψ²(P) + P = Inf for " & $EC:
@@ -358,7 +358,7 @@ suite "ψ²(P) - ψ(P) + P = Inf (k-th cyclotomic polynomial with embedding degr
       r.diff(psi2, psi)
       r += P
 
-      doAssert bool(r.isInf())
+      doAssert bool(r.isNeutral())
 
   proc testAll(EC: typedesc) =
     test "ψ²(P) - ψ(P) + P = Inf " & $EC:

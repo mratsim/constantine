@@ -574,7 +574,7 @@ func fastAggregateVerify*[Pubkey, Sig](
   var aggPubkey {.noinit.}: Pubkey
   aggPubkey.aggregate(pubkeys)
 
-  if bool(aggPubkey.isInf()):
+  if bool(aggPubkey.isNeutral()):
     return false
 
   aggPubkey.coreVerify(message, aggregateSignature, H, k, augmentation = "", domainSepTag)

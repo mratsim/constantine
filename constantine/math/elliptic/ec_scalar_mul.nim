@@ -81,7 +81,7 @@ func scalarMulPrologue[EC](
       scratchspace[k+1].sum(scratchspace[k], P)
 
   # Set a to infinity
-  P.setInf()
+  P.setNeutral()
 
 func scalarMulDoubling[EC](
        P: var EC,

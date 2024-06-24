@@ -140,8 +140,8 @@ export
   ec_shortweierstrass.ECP_ShortW
 
 export ec_shortweierstrass.`==`
-export ec_shortweierstrass.isInf
-export ec_shortweierstrass.setInf
+export ec_shortweierstrass.isNeutral
+export ec_shortweierstrass.setNeutral
 export ec_shortweierstrass.setGenerator
 export ec_shortweierstrass.ccopy
 export ec_shortweierstrass.isOnCurve

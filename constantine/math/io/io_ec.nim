@@ -91,9 +91,9 @@ func fromHex*(dst: var (ECP_ShortW_Prj or ECP_ShortW_Jac), x, y: string): bool =
   dst.x.fromHex(x)
   dst.y.fromHex(y)
   dst.z.setOne()
-  let isInf = dst.x.isZero() and dst.y.isZero()
-  dst.z.csetZero(isInf)
-  return bool(isOnCurve(dst.x, dst.y, dst.G) or isInf)
+  let isNeutral = dst.x.isZero() and dst.y.isZero()
+  dst.z.csetZero(isNeutral)
+  return bool(isOnCurve(dst.x, dst.y, dst.G) or isNeutral)
 
 func fromHex*(dst: var (ECP_ShortW_Prj or ECP_ShortW_Jac), x0, x1, y0, y1: string): bool =
   ## Convert hex strings to a G2 curve point
@@ -104,9 +104,9 @@ func fromHex*(dst: var (ECP_ShortW_Prj or ECP_ShortW_Jac), x0, x1, y0, y1: strin
   dst.x.fromHex(x0, x1)
   dst.y.fromHex(y0, y1)
   dst.z.setOne()
-  let isInf = dst.x.isZero() and dst.y.isZero()
-  dst.z.csetZero(isInf)
-  return bool(isOnCurve(dst.x, dst.y, dst.G) or isInf)
+  let isNeutral = dst.x.isZero() and dst.y.isZero()
+  dst.z.csetZero(isNeutral)
+  return bool(isOnCurve(dst.x, dst.y, dst.G) or isNeutral)
 
 func fromHex*(dst: var ECP_ShortW_Aff, x, y: string): bool =
   ## Convert hex strings to a G1 curve point
@@ -116,7 +116,7 @@ func fromHex*(dst: var ECP_ShortW_Aff, x, y: string): bool =
   static: doAssert dst.F is Fp, "dst must be on G1, an elliptic curve over 𝔽p"
   dst.x.fromHex(x)
   dst.y.fromHex(y)
-  return bool(isOnCurve(dst.x, dst.y, dst.G) or dst.isInf())
+  return bool(isOnCurve(dst.x, dst.y, dst.G) or dst.isNeutral())
 
 func fromHex*(dst: var ECP_ShortW_Aff, x0, x1, y0, y1: string): bool =
   ## Convert hex strings to a G2 curve point
@@ -126,7 +126,7 @@ func fromHex*(dst: var ECP_ShortW_Aff, x0, x1, y0, y1: string): bool =
   static: doAssert dst.F is Fp2, "dst must be on G2, an elliptic curve over 𝔽p2"
   dst.x.fromHex(x0, x1)
   dst.y.fromHex(y0, y1)
-  return bool(isOnCurve(dst.x, dst.y, dst.G) or dst.isInf())
+  return bool(isOnCurve(dst.x, dst.y, dst.G) or dst.isNeutral())
 
 func fromHex*[EC: ECP_ShortW_Prj or ECP_ShortW_Jac or ECP_ShortW_Aff](
        _: type EC, x, y: string): EC =
@@ -145,9 +145,9 @@ func fromHex*(dst: var ECP_TwEdwards_Prj, x, y: string): bool =
   dst.x.fromHex(x)
   dst.y.fromHex(y)
   dst.z.setOne()
-  let isInf = dst.x.isZero() and dst.y.isZero()
-  dst.z.csetZero(isInf)
-  return bool(isOnCurve(dst.x, dst.y) or isInf)
+  let isNeutral = dst.x.isZero() and dst.y.isZero()
+  dst.z.csetZero(isNeutral)
+  return bool(isOnCurve(dst.x, dst.y) or isNeutral)
 
 func fromHex*(dst: var ECP_TwEdwards_Aff, x, y: string): bool =
   ## Convert hex strings to a curve point
@@ -157,7 +157,7 @@ func fromHex*(dst: var ECP_TwEdwards_Aff, x, y: string): bool =
   static: doAssert dst.F is Fp, "dst must be an elliptic curve over 𝔽p"
   dst.x.fromHex(x)
   dst.y.fromHex(y)
-  return bool(isOnCurve(dst.x, dst.y) or dst.isInf())
+  return bool(isOnCurve(dst.x, dst.y) or dst.isNeutral())
 
 func fromHex*[EC: ECP_TwEdwards_Aff or ECP_TwEdwards_Prj](
        _: type EC, x, y: string): EC =

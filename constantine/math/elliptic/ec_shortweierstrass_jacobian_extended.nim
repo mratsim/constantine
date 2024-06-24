@@ -41,13 +41,16 @@ type ECP_ShortW_JacExt*[F; G: static Subgroup] = object
 
 func fromAffine*[F; G](jacext: var ECP_ShortW_JacExt[F, G], aff: ECP_ShortW_Aff[F, G]) {.inline.}
 
-func isInf*(P: ECP_ShortW_JacExt): SecretBool {.inline, meter.} =
-  ## Returns true if P is an infinity point
-  ## and false otherwise
+func isNeutral*(P: ECP_ShortW_JacExt): SecretBool {.inline, meter.} =
+  ## Returns true if P is the neutral element / identity element
+  ## and false otherwise, i.e. ∀Q, P+Q == Q
+  ## For Short Weierstrass curves, this is the infinity point.
   result = P.zz.isZero()
 
-func setInf*(P: var ECP_ShortW_JacExt) {.inline.} =
-  ## Set ``P`` to infinity
+func setNeutral*(P: var ECP_ShortW_JacExt) {.inline.} =
+  ## Set P to the neutral element / identity element
+  ## i.e. ∀Q, P+Q == Q
+  ## For Short Weierstrass curves, this is the infinity point.
   P.x.setOne()
   P.y.setOne()
   P.zz.setZero()
@@ -70,7 +73,7 @@ func `==`*(P, Q: ECP_ShortW_JacExt): SecretBool {.meter.} =
   result = result and a == b
 
   # Ensure a zero-init point doesn't propagate 0s and match any
-  result = result and not(P.isInf() xor Q.isInf())
+  result = result and not(P.isNeutral() xor Q.isNeutral())
 
 func trySetFromCoordsXandZ*[F; G](
        P: var ECP_ShortW_JacExt[F, G],
@@ -175,10 +178,10 @@ func sum_vartime*[F; G: static Subgroup](
   ## This is highly VULNERABLE to timing attacks and power analysis attacks.
   # https://www.hyperelliptic.org/EFD/g1p/auto-shortw-xyzz.html#addition-add-2008-s
 
-  if p.isInf().bool:
+  if p.isNeutral().bool:
     r = q
     return
-  if q.isInf().bool:
+  if q.isNeutral().bool:
     r = p
     return
 
@@ -197,7 +200,7 @@ func sum_vartime*[F; G: static Subgroup](
       r.double(q)
       return
     else:               # case P = -Q
-      r.setInf()
+      r.setNeutral()
       return
 
   var PPP{.noInit.}, Q{.noInit.}: F
@@ -261,10 +264,10 @@ func madd_vartime*[F; G: static Subgroup](
   ## This is highly VULNERABLE to timing attacks and power analysis attacks.
   # https://www.hyperelliptic.org/EFD/g1p/auto-shortw-xyzz.html#addition-add-2008-s
 
-  if p.isInf().bool:
+  if p.isNeutral().bool:
     r.fromAffine(q)
     return
-  if q.isInf().bool:
+  if q.isNeutral().bool:
     r = p
     return
 
@@ -281,7 +284,7 @@ func madd_vartime*[F; G: static Subgroup](
       r.mdouble(q)
       return
     else:               # case P = -Q
-      r.setInf()
+      r.setNeutral()
       return
 
   var PP{.noInit.}, PPP{.noInit.}, Q{.noInit.}: F
@@ -340,7 +343,7 @@ func fromAffine*[F; G](
   jacext.zz.setOne()
   jacext.zzz.setOne()
 
-  let inf = aff.isInf()
+  let inf = aff.isNeutral()
   jacext.zz.csetZero(inf)
   jacext.zzz.csetZero(inf)
 
@@ -351,8 +354,8 @@ func fromJacobianExtended_vartime*[F; G](
   # Jacobian extended (xZ², yZ³, Z², Z³)
   # Projective        (xZ', yZ', Z')
   # We can choose Z' = Z⁵
-  if jacext.isInf().bool:
-    prj.setInf()
+  if jacext.isNeutral().bool:
+    prj.setNeutral()
     return
   prj.z.prod(jacext.zz, jacext.zzz)
   prj.x.prod(jacext.x, jacext.zzz)
@@ -365,8 +368,8 @@ func fromJacobianExtended_vartime*[F; G](
   # Jacobian extended (xZ²,  yZ³,  Z², Z³)
   # Jacobian          (xZ'², yZ'³, Z')
   # We can choose Z' = Z²
-  if jacext.isInf().bool:
-    jac.setInf()
+  if jacext.isNeutral().bool:
+    jac.setNeutral()
     return
   jac.x.prod(jacext.x, jacext.zz)
   jac.y.prod(jacext.y, jacext.zzz)

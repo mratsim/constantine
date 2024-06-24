@@ -311,10 +311,10 @@ template genBindings_EC_ShortW_Affine*(ECP, Field: untyped) =
     P == Q
 
   func `ctt _ ECP _ is_inf`(P: ECP): SecretBool =
-    P.isInf()
+    P.isNeutral()
 
   func `ctt _ ECP _ set_inf`(P: var ECP) =
-    P.setInf()
+    P.setNeutral()
 
   func `ctt _ ECP _ ccopy`(P: var ECP, Q: ECP, ctl: SecretBool) =
     P.ccopy(Q, ctl)
@@ -343,10 +343,10 @@ template genBindings_EC_ShortW_NonAffine*(ECP, ECP_Aff, ScalarBig, ScalarField: 
     P == Q
 
   func `ctt _ ECP _ is_inf`(P: ECP): SecretBool =
-    P.isInf()
+    P.isNeutral()
 
   func `ctt _ ECP _ set_inf`(P: var ECP) =
-    P.setInf()
+    P.setNeutral()
 
   func `ctt _ ECP _ ccopy`(P: var ECP, Q: ECP, ctl: SecretBool) =
     P.ccopy(Q, ctl)
