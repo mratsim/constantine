@@ -117,7 +117,7 @@ func serialize*(dst: var array[32, byte], P: ECP_TwEdwards_Aff[Fp[Banderwagon]])
   ## Spec: https://hackmd.io/@6iQDuIePQjyYBqDChYw_jg/BJBNcv9fq#Serialisation
 
   # Setting all bits to 0 for the point of infinity
-  if P.isInf().bool():
+  if P.isNeutral().bool():
     for i in 0 ..< dst.len:
       dst[i] = byte 0
     return cttCodecEcc_Success
@@ -165,7 +165,7 @@ func deserialize_unchecked_vartime*(dst: var ECP_TwEdwards_Aff[Fp[Banderwagon]],
   for i in 0 ..< src.len:
     allZeros = allZeros or src[i]
   if allZeros == 0:
-    dst.setInf()
+    dst.setNeutral()
     return cttCodecEcc_PointAtInfinity
 
   var t{.noInit.}: matchingBigInt(Banderwagon)

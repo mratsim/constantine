@@ -28,7 +28,7 @@ export ec_twistededwards_affine, ec_twistededwards_projective,
 
 type ECP_TwEdwards*[F] = ECP_TwEdwards_Aff[F] | ECP_TwEdwards_Prj[F]
 
-func generator*[F](g: var ECP_TwEdwards[F]) {.inline.} =
+func setGenerator*[F](g: var ECP_TwEdwards[F]) {.inline.} =
   when g is ECP_TwEdwards_Aff:
     g = F.C.getGenerator()
   else:

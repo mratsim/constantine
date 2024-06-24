@@ -37,20 +37,22 @@ type ECP_ShortW_Jac*[F; G: static Subgroup] = object
   ## Note that jacobian coordinates are not unique
   x*, y*, z*: F
 
-func isInf*(P: ECP_ShortW_Jac): SecretBool {.inline.} =
-  ## Returns true if P is an infinity point
-  ## and false otherwise
-  ##
-  ## Note: the jacobian coordinates equation is
-  ##       Y² = X³ + aXZ⁴ + bZ⁶
-  ##
-  ## When Z = 0 in the equation, it reduces to
-  ## Y² = X³
-  ## (yZ³)² = (xZ²)³ which is true for any x, y coordinates
+func isNeutral*(P: ECP_ShortW_Jac): SecretBool {.inline.} =
+  ## Returns true if P is the neutral element / identity element
+  ## and false otherwise, i.e. ∀Q, P+Q == Q
+  ## For Short Weierstrass curves, this is the infinity point.
+  # The jacobian coordinates equation is
+  #       Y² = X³ + aXZ⁴ + bZ⁶
+  #
+  # When Z = 0 in the equation, it reduces to
+  # Y² = X³
+  # (yZ³)² = (xZ²)³ which is true for any x, y coordinates
   result = P.z.isZero()
 
-func setInf*(P: var ECP_ShortW_Jac) {.inline.} =
-  ## Set ``P`` to infinity
+func setNeutral*(P: var ECP_ShortW_Jac) {.inline.} =
+  ## Set P to the neutral element / identity element
+  ## i.e. ∀Q, P+Q == Q
+  ## For Short Weierstrass curves, this is the infinity point.
   P.x.setOne()
   P.y.setOne()
   P.z.setZero()
@@ -78,7 +80,7 @@ func `==`*(P, Q: ECP_ShortW_Jac): SecretBool {.meter.} =
   result = result and a == b
 
   # Ensure a zero-init point doesn't propagate 0s and match any
-  result = result and not(P.isInf() xor Q.isInf())
+  result = result and not(P.isNeutral() xor Q.isNeutral())
 
 func ccopy*(P: var ECP_ShortW_Jac, Q: ECP_ShortW_Jac, ctl: SecretBool) {.inline.} =
   ## Constant-time conditional copy
@@ -328,8 +330,8 @@ template sumImpl[F; G: static Subgroup](
 
   # if P or R were infinity points they would have spread 0 with Z₁Z₂
   block: # Infinity points
-    o.ccopy(Q, P.isInf())
-    o.ccopy(P, Q.isInf())
+    o.ccopy(Q, P.isNeutral())
+    o.ccopy(P, Q.isNeutral())
 
   r = o
 
@@ -547,11 +549,11 @@ func madd*[F; G: static Subgroup](
     o.z.ccopy(t, isDbl)                # Z₁Z₂H (add) or Y₁Z₁ (dbl)
 
   block: # Infinity points
-    o.x.ccopy(Q.x, P.isInf())
-    o.y.ccopy(Q.y, P.isInf())
-    o.z.csetOne(P.isInf())
+    o.x.ccopy(Q.x, P.isNeutral())
+    o.y.ccopy(Q.y, P.isNeutral())
+    o.z.csetOne(P.isNeutral())
 
-    o.ccopy(P, Q.isInf())
+    o.ccopy(P, Q.isNeutral())
 
   r = o
 
@@ -671,7 +673,7 @@ func fromAffine*[F; G](
   jac.x = aff.x
   jac.y = aff.y
   jac.z.setOne()
-  jac.z.csetZero(aff.isInf())
+  jac.z.csetZero(aff.isNeutral())
 
 # Variable-time
 # -------------
@@ -690,10 +692,10 @@ func sum_vartime*[F; G: static Subgroup](
   ##
   ## This is highly VULNERABLE to timing attacks and power analysis attacks.
 
-  if p.isInf().bool:
+  if p.isNeutral().bool:
     r = q
     return
-  if q.isInf().bool:
+  if q.isNeutral().bool:
     r = p
     return
 
@@ -762,7 +764,7 @@ func sum_vartime*[F; G: static Subgroup](
       r.double(p)
       return
     else:                                  # case P = -Q
-      r.setInf()
+      r.setNeutral()
       return
 
   var HHH{.noInit.}: F
@@ -808,10 +810,10 @@ func madd_vartime*[F; G: static Subgroup](
   ##
   ## This is highly VULNERABLE to timing attacks and power analysis attacks.
 
-  if p.isInf().bool:
+  if p.isNeutral().bool:
     r.fromAffine(q)
     return
-  if q.isInf().bool:
+  if q.isNeutral().bool:
     r = p
     return
 
@@ -869,7 +871,7 @@ func madd_vartime*[F; G: static Subgroup](
       r.double(p)
       return
     else:                                  # case P = -Q
-      r.setInf()
+      r.setNeutral()
       return
 
   var HHH{.noInit.}: F

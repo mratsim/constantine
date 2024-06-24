@@ -265,7 +265,7 @@ proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int)
       r.sum_reduce_vartime(points)
   else:
     bench("EC Multi Mixed-Add unbatched          " & $EC.G & " (" & $numPoints & " points)", EC, iters):
-      r.setInf()
+      r.setNeutral()
       for i in 0 ..< numPoints:
         r += points[i]
 
@@ -288,7 +288,7 @@ proc msmBench*(EC: typedesc, numPoints: int, iters: int) =
     bench("EC scalar muls                " & align($numPoints, 7) & " (scalars " & $bits & "-bit, points) pairs ", EC, iters):
       startNaive = getMonotime()
       var tmp: EC
-      r.setInf()
+      r.setNeutral()
       for i in 0 ..< points.len:
         tmp.fromAffine(points[i])
         tmp.scalarMul(scalars[i])

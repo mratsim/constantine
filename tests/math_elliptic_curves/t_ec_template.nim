@@ -109,8 +109,8 @@ proc run_EC_addition_tests*(
     test "The infinity point is the neutral element w.r.t. to EC " & " addition":
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         var inf {.noInit.}: EC
-        inf.setInf()
-        check: bool inf.isInf()
+        inf.setNeutral()
+        check: bool inf.isNeutral()
 
         for _ in 0 ..< Iters:
           var r{.noInit.}: EC
@@ -127,7 +127,7 @@ proc run_EC_addition_tests*(
           r += inf
           check: bool(r == P)
 
-          r.setInf()
+          r.setNeutral()
           r += P
           check: bool(r == P)
 
@@ -142,9 +142,9 @@ proc run_EC_addition_tests*(
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         var affInf {.noInit.}: affine(EC)
         var inf {.noInit.}: EC
-        affInf.setInf()
+        affInf.setNeutral()
         inf.fromAffine(affInf)
-        check: bool inf.isInf()
+        check: bool inf.isNeutral()
 
         for _ in 0 ..< Iters:
           var r{.noInit.}: EC
@@ -181,10 +181,10 @@ proc run_EC_addition_tests*(
           Q.neg()
 
           r.sum(P, Q)
-          check: bool r.isInf()
+          check: bool r.isNeutral()
 
           r.sum(Q, P)
-          check: bool r.isInf()
+          check: bool r.isNeutral()
 
       test(ec, randZ = false, gen = Uniform)
       test(ec, randZ = true, gen = Uniform)
@@ -296,8 +296,8 @@ proc run_EC_addition_vartime_tests*(
     test "The infinity point is the neutral element w.r.t. to EC " & $ec.G & " addition (vartime)":
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         var inf {.noInit.}: EC
-        inf.setInf()
-        check: bool inf.isInf()
+        inf.setNeutral()
+        check: bool inf.isNeutral()
 
         for _ in 0 ..< Iters:
           var r{.noInit.}: EC
@@ -314,7 +314,7 @@ proc run_EC_addition_vartime_tests*(
           r.sum_vartime(r, inf)
           check: bool(r == P)
 
-          r.setInf()
+          r.setNeutral()
           r.sum_vartime(r, P)
           check: bool(r == P)
 
@@ -329,9 +329,9 @@ proc run_EC_addition_vartime_tests*(
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         var affInf {.noInit.}: affine(EC)
         var inf {.noInit.}: EC
-        affInf.setInf()
+        affInf.setNeutral()
         inf.fromAffine(affInf)
-        check: bool inf.isInf()
+        check: bool inf.isNeutral()
 
         for _ in 0 ..< Iters:
           var r{.noInit.}: EC
@@ -348,7 +348,7 @@ proc run_EC_addition_vartime_tests*(
           r.sum_vartime(r, inf)
           check: bool(r == P)
 
-          r.setInf()
+          r.setNeutral()
           r.sum_vartime(r, P)
           check: bool(r == P)
 
@@ -368,10 +368,10 @@ proc run_EC_addition_vartime_tests*(
           Q.neg()
 
           r.sum_vartime(P, Q)
-          check: bool r.isInf()
+          check: bool r.isNeutral()
 
           r.sum_vartime(Q, P)
-          check: bool r.isInf()
+          check: bool r.isNeutral()
 
       test(ec, randZ = false, gen = Uniform)
       test(ec, randZ = true, gen = Uniform)
@@ -495,14 +495,14 @@ proc run_EC_mul_sanity_tests*(
           refMinWeight.scalarMul_minHammingWeight_vartime(BigInt[bits]())
 
           check:
-            bool(impl.isInf())
-            bool(reference.isInf())
-            bool(refMinWeight.isInf())
+            bool(impl.isNeutral())
+            bool(reference.isNeutral())
+            bool(refMinWeight.isNeutral())
 
           proc refWNaf(bits, w: static int) = # workaround staticFor symbol visibility
             var refWNAF = a
             refWNAF.scalarMul_minHammingWeight_windowed_vartime(BigInt[bits](), window = w)
-            check: bool(refWNAF.isInf())
+            check: bool(refWNAF.isNeutral())
 
           refWNaf(bits, w = 2)
           refWNaf(bits, w = 3)
@@ -807,7 +807,7 @@ proc run_EC_mixed_add_impl*(
       proc test(EC: typedesc, randZ: bool, gen: RandomGen) =
         for _ in 0 ..< Iters:
           var a{.noInit.}: EC
-          a.setInf()
+          a.setNeutral()
           let bAff = rng.random_point(ECP_ShortW_Aff[EC.F, EC.G], randZ = false, gen)
 
           var r_mixed{.noInit.}: EC
@@ -828,7 +828,7 @@ proc run_EC_mixed_add_impl*(
           var b: EC
           b.fromAffine(bAff)
 
-          a.setInf()
+          a.setNeutral()
           r_vartime.sum_vartime(a, b)
           r_vartime2.madd_vartime(a, bAff)
 
@@ -837,9 +837,9 @@ proc run_EC_mixed_add_impl*(
             bool(r_vartime2 == r_mixed)
 
           # Aliasing
-          r_vartime.setInf()
+          r_vartime.setNeutral()
           r_vartime.sum_vartime(r_vartime, b)
-          r_vartime2.setInf()
+          r_vartime2.setNeutral()
           r_vartime2.sum_vartime(r_vartime2, b)
 
           check:
@@ -855,7 +855,7 @@ proc run_EC_mixed_add_impl*(
         for _ in 0 ..< Iters:
           let a = rng.random_point(EC, randZ, gen)
           var bAff{.noInit.}: ECP_ShortW_Aff[EC.F, EC.G]
-          bAff.setInf()
+          bAff.setNeutral()
 
           var r{.noInit.}: EC
           r.madd(a, bAff)
@@ -906,12 +906,12 @@ proc run_EC_mixed_add_impl*(
           var r{.noInit.}: EC
           r.madd(a, naAff)
 
-          check: r.isInf().bool
+          check: r.isNeutral().bool
 
           # Aliasing
           r = a
           r += naAff
-          check: r.isInf().bool
+          check: r.isNeutral().bool
 
           # vartime
           var r_vartime, r_vartime2: EC
@@ -984,7 +984,7 @@ proc run_EC_subgroups_cofactors_impl*(
           let P = rng.random_point(EC, randZ, gen)
           var rP = P
           rP.scalarMulGeneric(EC.F.C.getCurveOrder())
-          if bool rP.isInf():
+          if bool rP.isNeutral():
             inSubgroup += 1
             doAssert bool P.isInSubgroup(), "Subgroup check issue on " & $EC & " with P: " & P.toHex()
           else:
@@ -996,7 +996,7 @@ proc run_EC_subgroups_cofactors_impl*(
           Q.clearCofactor()
           rQ = Q
           rQ.scalarMulGeneric(EC.F.C.getCurveOrder())
-          doAssert bool rQ.isInf(), "Cofactor clearing issue on " & $EC & " with Q: " & Q.toHex()
+          doAssert bool rQ.isNeutral(), "Cofactor clearing issue on " & $EC & " with Q: " & Q.toHex()
           doAssert bool Q.isInSubgroup(), "Subgroup check issue on " & $EC & " with Q: " & Q.toHex()
 
           stdout.write '.'
@@ -1198,7 +1198,7 @@ proc run_EC_batch_add_impl*[N: static int](
 
           var r_batch{.noinit.}, r_ref{.noInit.}: EC
 
-          r_ref.setInf()
+          r_ref.setNeutral()
           for i in 0 ..< n:
             r_ref += points[i]
 
@@ -1233,7 +1233,7 @@ proc run_EC_batch_add_impl*[N: static int](
 
           var r_batch{.noinit.}, r_ref{.noInit.}: EC
 
-          r_ref.setInf()
+          r_ref.setNeutral()
           for i in 0 ..< n:
             r_ref += points[i]
 
@@ -1273,7 +1273,7 @@ proc run_EC_multi_scalar_mul_impl*[N: static int](
             coefs[i] = rng.random_unsafe(BigInt[EC.F.C.getCurveOrderBitwidth()])
 
           var naive, naive_tmp: EC
-          naive.setInf()
+          naive.setNeutral()
           for i in 0 ..< n:
             naive_tmp.fromAffine(points[i])
             naive_tmp.scalarMul(coefs[i])

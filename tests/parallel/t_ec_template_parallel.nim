@@ -95,7 +95,7 @@ proc run_EC_batch_add_parallel_impl*[N: static int](
 
           var r_batch{.noinit.}, r_ref{.noInit.}: EC
 
-          r_ref.setInf()
+          r_ref.setNeutral()
           for i in 0 ..< n:
             r_ref += points[i]
 
@@ -133,7 +133,7 @@ proc run_EC_batch_add_parallel_impl*[N: static int](
 
           var r_batch{.noinit.}, r_ref{.noInit.}: EC
 
-          r_ref.setInf()
+          r_ref.setNeutral()
           for i in 0 ..< n:
             r_ref += points[i]
 
@@ -176,7 +176,7 @@ proc run_EC_multi_scalar_mul_parallel_impl*[N: static int](
             coefs[i] = rng.random_unsafe(BigInt[EC.F.C.getCurveOrderBitwidth()])
 
           var naive, naive_tmp: EC
-          naive.setInf()
+          naive.setNeutral()
           for i in 0 ..< n:
             naive_tmp.fromAffine(points[i])
             naive_tmp.scalarMul(coefs[i])

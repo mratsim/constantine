@@ -52,8 +52,8 @@ suite "Order checks on BN254_Snarks":
         reference.scalarMul_doubleAdd_vartime(exponent)
 
         check:
-          bool(impl.isInf())
-          bool(reference.isInf())
+          bool(impl.isNeutral())
+          bool(reference.isNeutral())
 
     test(ECP_ShortW_Prj[Fp[BN254_Snarks], G1], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = false)
     test(ECP_ShortW_Prj[Fp[BN254_Snarks], G1], bits = BN254_Snarks.getCurveOrderBitwidth(), randZ = true)

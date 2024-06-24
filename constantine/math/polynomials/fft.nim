@@ -353,7 +353,7 @@ when isMainModule:
     defer: fftDesc.delete()
 
     var data = newSeq[EC_G1](fftDesc.order)
-    data[0].generator()
+    data[0].setGenerator()
     for i in 1 ..< fftDesc.order:
       data[i].madd(data[i-1], BLS12_381.getGenerator("G1"))
 
@@ -404,7 +404,7 @@ when isMainModule:
 
       let fftDesc = ECFFTDescriptor[EC_G1].new(order = 1 shl scale, ctt_eth_kzg_fr_pow2_roots_of_unity[scale])
       var data = newSeq[EC_G1](fftDesc.order)
-      data[0].generator()
+      data[0].setGenerator()
       for i in 1 ..< fftDesc.order:
         data[i].madd(data[i-1], BLS12_381.getGenerator("G1"))
 

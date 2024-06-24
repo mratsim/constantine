@@ -287,7 +287,7 @@ func accum_half_vartime[F; G: static Subgroup](
 
     # Special case 1: infinity points have affine coordinates (0, 0) by convention
     #                 it doesn't match the y²=x³+ax+b equation so slope formula need special handling
-    if points[p].isInf().bool() or points[q].isInf().bool():
+    if points[p].isNeutral().bool() or points[q].isNeutral().bool():
       markSpecialCase()
       continue
 
@@ -320,12 +320,12 @@ func accum_half_vartime[F; G: static Subgroup](
     # As Qy is used as an accumulator, we saved Qy in λᵢ_num
     # For special cases handling, restore it.
     points[q].y = lambdas[i].num
-    if points[p].isInf().bool():
+    if points[p].isNeutral().bool():
       points[i] = points[q]
     elif points[q].x.isZero().bool() and lambdas[i].num.isZero().bool():
       discard "points[q] is infinity => point[p] unchanged"
     else:
-      points[i].setInf()
+      points[i].setNeutral()
 
   for i in countdown(N-1, 1):
     let p = i
@@ -441,7 +441,7 @@ func sum_reduce_vartime*[F; G: static Subgroup](
        points: ptr UncheckedArray[ECP_ShortW_Aff[F, G]], pointsLen: int) {.inline, tags:[VarTime, Alloca].} =
   ## Batch addition of `points` into `r`
   ## `r` is overwritten
-  r.setInf()
+  r.setNeutral()
   if pointsLen == 0:
     return
   r.accum_batch_vartime(points, pointsLen)
@@ -473,7 +473,7 @@ type EcAddAccumulator_vartime*[EC, F; G: static Subgroup; AccumMax: static int] 
 
 func init*(ctx: var EcAddAccumulator_vartime) =
   static: doAssert EcAddAccumulator_vartime.AccumMax >= 16, "There is no point in a EcAddBatchAccumulator if the batch size is too small"
-  ctx.accum.setInf()
+  ctx.accum.setNeutral()
   ctx.len = 0
 
 func consumeBuffer[EC, F; G: static Subgroup; AccumMax: static int](
@@ -488,7 +488,7 @@ func update*[EC, F, G; AccumMax: static int](
         ctx: var EcAddAccumulator_vartime[EC, F, G, AccumMax],
         P: ECP_ShortW_Aff[F, G]) =
 
-  if P.isInf().bool:
+  if P.isNeutral().bool:
     return
 
   if ctx.len == AccumMax:

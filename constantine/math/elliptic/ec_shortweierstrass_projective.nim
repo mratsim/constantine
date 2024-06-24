@@ -37,18 +37,20 @@ type ECP_ShortW_Prj*[F; G: static Subgroup] = object
   ## Note that projective coordinates are not unique
   x*, y*, z*: F
 
-func isInf*(P: ECP_ShortW_Prj): SecretBool {.inline.} =
-  ## Returns true if P is an infinity point
-  ## and false otherwise
-  ##
-  ## Note: the projective coordinates equation is
-  ##       Y²Z = X³ + aXZ² + bZ³
-  ## A "zero" point is any point with coordinates X and Z = 0
-  ## Y can be anything
+func isNeutral*(P: ECP_ShortW_Prj): SecretBool {.inline.} =
+  ## Returns true if P is the neutral element / identity element
+  ## and false otherwise, i.e. ∀Q, P+Q == Q
+  ## For Short Weierstrass curves, this is the infinity point.
+  # The projective coordinates equation is
+  #       Y²Z = X³ + aXZ² + bZ³
+  # A "zero" point is any point with coordinates X and Z = 0
+  # Y can be anything
   result = P.x.isZero() and P.z.isZero()
 
-func setInf*(P: var ECP_ShortW_Prj) {.inline.} =
-  ## Set ``P`` to infinity
+func setNeutral*(P: var ECP_ShortW_Prj) {.inline.} =
+  ## Set P to the neutral element / identity element
+  ## i.e. ∀Q, P+Q == Q
+  ## For Short Weierstrass curves, this is the infinity point.
   P.x.setZero()
   P.y.setOne()
   P.z.setZero()
@@ -70,7 +72,7 @@ func `==`*(P, Q: ECP_ShortW_Prj): SecretBool =
   result = result and a == b
 
   # Ensure a zero-init point doesn't propagate 0s and match any
-  result = result and not(P.isInf() xor Q.isInf())
+  result = result and not(P.isNeutral() xor Q.isNeutral())
 
 func ccopy*(P: var ECP_ShortW_Prj, Q: ECP_ShortW_Prj, ctl: SecretBool) {.inline.} =
   ## Constant-time conditional copy
@@ -315,7 +317,7 @@ func madd*[F; G: static Subgroup](
     z3 += t0                  # 33. Z₃ <- Z₃ + t₀, Z₃ = (Y₁ + Y₂Z₁)(Y₁Y₂ + 3bZ₁) + 3X₁X₂ (X₁Y₂ + X₂Y₁)
 
     # Deal with infinity point. r and P might alias.
-    let inf = Q.isInf()
+    let inf = Q.isNeutral()
     x3.ccopy(P.x, inf)
     y3.ccopy(P.y, inf)
     z3.ccopy(P.z, inf)
@@ -458,7 +460,7 @@ func fromAffine*[F, G](
   proj.y = aff.y
   proj.z.setOne()
 
-  let inf = aff.isInf()
+  let inf = aff.isNeutral()
   proj.x.csetZero(inf)
   proj.y.csetOne(inf)
   proj.z.csetZero(inf)
@@ -480,10 +482,10 @@ func sum_vartime*[F; G: static Subgroup](
   ##
   ## This is highly VULNERABLE to timing attacks and power analysis attacks.
 
-  if p.isInf().bool:
+  if p.isNeutral().bool:
     r = q
     return
-  if q.isInf().bool:
+  if q.isNeutral().bool:
     r = p
     return
 
@@ -531,7 +533,7 @@ func sum_vartime*[F; G: static Subgroup](
       r.double(p)
       return
     else:
-      r.setInf()         # case P = -Q
+      r.setNeutral()         # case P = -Q
       return
 
   var VVV{.noInit.}: F
@@ -582,10 +584,10 @@ func madd_vartime*[F; G: static Subgroup](
   ##
   ## This is highly VULNERABLE to timing attacks and power analysis attacks.
 
-  if p.isInf().bool:
+  if p.isNeutral().bool:
     r.fromAffine(q)
     return
-  if q.isInf().bool:
+  if q.isNeutral().bool:
     r = p
     return
 
@@ -629,7 +631,7 @@ func madd_vartime*[F; G: static Subgroup](
       r.double(p)
       return
     else:
-      r.setInf()         # case P = -Q
+      r.setNeutral()         # case P = -Q
       return
 
   var VVV{.noInit.}: F

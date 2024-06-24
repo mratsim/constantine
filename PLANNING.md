@@ -44,10 +44,9 @@ Internal API breakage, which might leak to others using internal APIs.
     - "named_math/fields_and_curves"
     - matchingOrderBigInt -> BigInt[foo.getOrder()]
     - Delete Mod*(), replace by fieldMod
+- In the future there will likely be named ciphersuites or other high-level protocols
 
-- Twisted Edwards identity/neutral element are on the curve
-  and are NOT point at infinity, though they are named like that.
-    - isInf -> isNeutral
+
 
 ### Ethereum Consensus Track
 

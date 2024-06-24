@@ -454,10 +454,10 @@ func sparseVectorAddition[ECaff](
 
     # Special cases 1: infinity points have affine coordinates (0, 0) by convention
     #                  it doesn't match the y²=x³+ax+b equation so slope formula need special handling
-    if (kAffine notin bucketStatuses[sps[i].bucket]) or buckets[sps[i].bucket].isInf().bool:
+    if (kAffine notin bucketStatuses[sps[i].bucket]) or buckets[sps[i].bucket].isNeutral().bool:
       specialCases[i] = kInfLhs
       skipSpecialCase()
-    elif points[sps[i].pointID].isInf().bool:
+    elif points[sps[i].pointID].isNeutral().bool:
       specialCases[i] = kInfRhs
       skipSpecialCase()
 
@@ -510,7 +510,7 @@ func sparseVectorAddition[ECaff](
     elif specialCases[i] == kInfRhs:
       continue
     elif specialCases[i] == kOpposite:
-      buckets[sps[i].bucket].setInf()
+      buckets[sps[i].bucket].setNeutral()
       bucketStatuses[sps[i].bucket].excl(kAffine)
       continue
 
@@ -538,7 +538,7 @@ func sparseVectorAddition[ECaff](
     elif specialCases[0] == kInfRhs:
       discard
     elif specialCases[0] == kOpposite:
-      buckets[sps[0].bucket].setInf()
+      buckets[sps[0].bucket].setNeutral()
       bucketStatuses[sps[0].bucket].excl(kAffine)
     else:
       # Compute lambda
@@ -565,7 +565,7 @@ func bucketReduce*[N, EC, ECaff](
   elif kNonAffine in buckets.status[N-1]:
     accumBuckets = buckets.pt[N-1]
   else:
-    accumBuckets.setInf()
+    accumBuckets.setNeutral()
   r = accumBuckets
   buckets.reset(N-1)
 

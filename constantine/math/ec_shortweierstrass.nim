@@ -43,7 +43,7 @@ func double_repeated*(P: var ECP_ShortW, num: int) {.inline.} =
   for _ in 0 ..< num:
     P.double()
 
-func generator*[F, G](g: var ECP_ShortW[F, G]) {.inline.} =
+func setGenerator*[F, G](g: var ECP_ShortW[F, G]) {.inline.} =
   when g is ECP_ShortW_Aff:
     g = F.C.getGenerator($G)
   else:

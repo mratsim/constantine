@@ -73,7 +73,7 @@ func validate_scalar*(scalar: Scalar): CttCodecScalarStatus {.libPrefix: pre.} =
 func validate_g1*(g1Point: G1P): CttCodecEccStatus {.libPrefix: pre.} =
   ## Validate a G1 point
   ## This is an expensive operation that can be cached
-  if g1Point.isInf().bool():
+  if g1Point.isNeutral().bool():
     return cttCodecEcc_PointAtInfinity
   if not isOnCurve(g1Point.x, g1Point.y, G1).bool():
     return cttCodecEcc_PointNotOnCurve
@@ -84,7 +84,7 @@ func validate_g1*(g1Point: G1P): CttCodecEccStatus {.libPrefix: pre.} =
 func validate_g2*(g2Point: G2P): CttCodecEccStatus {.libPrefix: pre.} =
   ## Validate a G2 point.
   ## This is an expensive operation that can be cached
-  if g2Point.isInf().bool():
+  if g2Point.isNeutral().bool():
     return cttCodecEcc_PointAtInfinity
   if not isOnCurve(g2Point.x, g2Point.y, G2).bool():
     return cttCodecEcc_PointNotOnCurve
@@ -122,7 +122,7 @@ func serialize_g1_compressed*(dst: var array[48, byte], g1Point: G1P): CttCodecE
   ## Serialize a BLS12-381 G1 point in compressed (Zcash) format
   ##
   ## Returns cttCodecEcc_Success if successful
-  if g1Point.isInf().bool():
+  if g1Point.isNeutral().bool():
     for i in 0 ..< dst.len:
       dst[i] = byte 0
     dst[0] = byte 0b11000000 # Compressed + Infinity
@@ -161,7 +161,7 @@ func deserialize_g1_compressed_unchecked*(dst: var G1P, src: array[48, byte]): C
     for i in 1 ..< src.len:
       if src[i] != byte 0:
         return cttCodecEcc_InvalidEncoding
-    dst.setInf()
+    dst.setNeutral()
     return cttCodecEcc_PointAtInfinity
 
   # General case
@@ -205,7 +205,7 @@ func serialize_g2_compressed*(dst: var array[96, byte], g2Point: G2P): CttCodecE
   ## Serialize a BLS12-381 G2 point in compressed (Zcash) format
   ##
   ## Returns cttCodecEcc_Success if successful
-  if g2Point.isInf().bool():
+  if g2Point.isNeutral().bool():
     for i in 0 ..< dst.len:
       dst[i] = byte 0
     dst[0] = byte 0b11000000 # Compressed + Infinity
@@ -243,7 +243,7 @@ func deserialize_g2_compressed_unchecked*(dst: var G2P, src: array[96, byte]): C
     for i in 1 ..< src.len:
       if src[i] != byte 0:
         return cttCodecEcc_InvalidEncoding
-    dst.setInf()
+    dst.setNeutral()
     return cttCodecEcc_PointAtInfinity
 
   # General case

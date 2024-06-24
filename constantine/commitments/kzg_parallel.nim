@@ -163,7 +163,7 @@ proc kzg_verify_batch_parallel*[bits: static int, F2; C: static Curve](
 
         commits_min_evals_jac[i].fromAffine(commitments[i])
         var boxed_eval {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
-        boxed_eval.generator()
+        boxed_eval.setGenerator()
         boxed_eval.scalarMul_vartime(evals_at_challenges[i])
         commits_min_evals_jac[i].diff_vartime(commits_min_evals_jac[i], boxed_eval)
 

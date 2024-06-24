@@ -58,7 +58,7 @@ func multiScalarMulImpl_reference_vartime[bits: static int, EC, ECaff](
     # Place our points in a bucket corresponding to
     # how many times their bit pattern in the current window of size c
     for i in 0 ..< numBuckets:
-      buckets[i].setInf()
+      buckets[i].setNeutral()
 
     # 1. Bucket accumulation.                            Cost: n - (2ᶜ-1) => n points in 2ᶜ-1 buckets, first point per bucket is just copied
     for j in 0 ..< N:
@@ -189,12 +189,12 @@ func bucketReduce[EC](r: var EC, buckets: ptr UncheckedArray[EC], numBuckets: st
   var accumBuckets{.noInit.}: typeof(r)
   accumBuckets = buckets[numBuckets-1]
   r = buckets[numBuckets-1]
-  buckets[numBuckets-1].setInf()
+  buckets[numBuckets-1].setNeutral()
 
   for k in countdown(numBuckets-2, 0):
     accumBuckets ~+= buckets[k]
     r ~+= accumBuckets
-    buckets[k].setInf()
+    buckets[k].setNeutral()
 
 type MiniMsmKind* = enum
   kTopWindow
@@ -272,7 +272,7 @@ func multiScalarMul_vartime*[bits: static int, EC, ECaff](
   const excess = bits mod c
   const top = bits - excess
   var w = top
-  r.setInf()
+  r.setNeutral()
 
   when top != 0:      # Prologue
     when excess != 0:
@@ -280,7 +280,7 @@ func multiScalarMul_vartime*[bits: static int, EC, ECaff](
       w -= c
     else:
       # If c divides bits exactly, the signed windowed recoding still needs to see an extra 0
-      # Since we did r.setInf() earlier, this is a no-op
+      # Since we did r.setNeutral() earlier, this is a no-op
       w -= c
 
   while w != 0:       # Steady state
@@ -362,7 +362,7 @@ func multiScalarMulAffine_vartime[bits: static int, EC, ECaff](
   const excess = bits mod c
   const top = bits - excess
   var w = top
-  r.setInf()
+  r.setNeutral()
 
   when top != 0:      # Prologue
     when excess != 0:
@@ -372,7 +372,7 @@ func multiScalarMulAffine_vartime[bits: static int, EC, ECaff](
       w -= c
     else:
       # If c divides bits exactly, the signed windowed recoding still needs to see an extra 0
-      # Since we did r.setInf() earlier, this is a no-op
+      # Since we did r.setNeutral() earlier, this is a no-op
       w -= c
 
   while w != 0:       # Steady state

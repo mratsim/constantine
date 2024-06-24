@@ -44,7 +44,7 @@ func derivePubkey*[Pubkey, SecKey](pubkey: var Pubkey, seckey: SecKey) =
   const EC = Field.C
 
   var pk {.noInit.}: ECP_ShortW_Jac[Field, Group]
-  pk.generator()
+  pk.setGenerator()
   pk.scalarMul(seckey)
   pubkey.affine(pk)
 
@@ -574,7 +574,7 @@ func fastAggregateVerify*[Pubkey, Sig](
   var aggPubkey {.noinit.}: Pubkey
   aggPubkey.aggregate(pubkeys)
 
-  if bool(aggPubkey.isInf()):
+  if bool(aggPubkey.isNeutral()):
     return false
 
   aggPubkey.coreVerify(message, aggregateSignature, H, k, augmentation = "", domainSepTag)

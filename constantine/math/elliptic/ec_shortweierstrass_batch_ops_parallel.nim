@@ -49,7 +49,7 @@ proc sum_reduce_vartime_parallelChunks[F; G: static Subgroup](
       proc sum_reduce_chunk_vartime_wrapper(res: ptr, p: ptr, pLen: int) {.nimcall.} =
         # The borrow checker prevents capturing `var` and `openArray`
         # so we capture pointers instead.
-        res[].setInf()
+        res[].setNeutral()
         res[].accumSum_chunk_vartime(p, pLen)
 
       tp.spawn partialResults[iter.chunkID].addr.sum_reduce_chunk_vartime_wrapper(
@@ -58,7 +58,7 @@ proc sum_reduce_vartime_parallelChunks[F; G: static Subgroup](
 
   const minChunkSizeSerial = 32
   if chunkDesc.numChunks < minChunkSizeSerial:
-    r.setInf()
+    r.setNeutral()
     for i in 0 ..< chunkDesc.numChunks:
       r.sum_vartime(r, partialResults[i])
   else:
@@ -115,7 +115,7 @@ proc sum_reduce_vartime_parallel*[F; G: static Subgroup](
   ## `r` is overwritten
 
   if points.len < 256:
-    r.setInf()
+    r.setNeutral()
     r.accumSum_chunk_vartime(points.asUnchecked(), points.len)
   elif points.len < 8192:
     tp.sum_reduce_vartime_parallelAccums(r, points)

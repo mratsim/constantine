@@ -117,7 +117,7 @@ proc msmParallelBench*[EC](ctx: var BenchMsmContext[EC], numInputs: int, iters: 
     startNaive = getMonotime()
     bench("EC scalar muls                " & align($numInputs, 10) & " (" & $bits & "-bit coefs, points)", EC, iters):
       var tmp: EC
-      r.setInf()
+      r.setNeutral()
       for i in 0 ..< points.len:
         tmp.fromAffine(points[i])
         tmp.scalarMul(coefs[i])
@@ -128,7 +128,7 @@ proc msmParallelBench*[EC](ctx: var BenchMsmContext[EC], numInputs: int, iters: 
     startNaive = getMonotime()
     bench("EC scalar muls vartime        " & align($numInputs, 10) & " (" & $bits & "-bit coefs, points)", EC, iters):
       var tmp: EC
-      r.setInf()
+      r.setNeutral()
       for i in 0 ..< points.len:
         tmp.fromAffine(points[i])
         tmp.scalarMul_vartime(coefs[i])
