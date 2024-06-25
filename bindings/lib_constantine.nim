@@ -15,18 +15,18 @@
 {.push warning[UnusedImport]: off.}
 
 import
-  ../constantine/threadpool,
+  constantine/threadpool,
   ./lib_hashes,
   ./lib_curves,
-  ../constantine/csprngs,
+  constantine/csprngs,
   # Protocols
-  ../constantine/ethereum_bls_signatures,
-  ../constantine/ethereum_bls_signatures_parallel,
-  ../constantine/commitments_setups/ethereum_kzg_srs,
-  ../constantine/ethereum_eip4844_kzg,
-  ../constantine/ethereum_eip4844_kzg_parallel,
+  constantine/ethereum_bls_signatures,
+  constantine/ethereum_bls_signatures_parallel,
+  constantine/commitments_setups/ethereum_kzg_srs,
+  constantine/ethereum_eip4844_kzg,
+  constantine/ethereum_eip4844_kzg_parallel,
 
-  ../constantine/ethereum_evm_precompiles,
+  constantine/ethereum_evm_precompiles,
 
   # Ensure globals like proc from kernel32.dll are populated at library load time
   ./lib_autoload

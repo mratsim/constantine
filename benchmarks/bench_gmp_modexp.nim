@@ -1,11 +1,10 @@
 import
-  ../constantine/math/arithmetic,
-  ../constantine/math/io/[io_bigints, io_fields],
-  ../constantine/math_arbitrary_precision/arithmetic/[bigints_views, limbs_views, limbs_montgomery, limbs_mod2k],
-  ../constantine/math/config/[type_bigint, curves, precompute],
-  ../constantine/platforms/abstractions,
-  ../constantine/serialization/codecs,
-  ../helpers/prng_unsafe,
+  constantine/math/arithmetic,
+  constantine/math/io/io_bigints,
+  constantine/math_arbitrary_precision/arithmetic/bigints_views,
+  constantine/platforms/abstractions,
+  constantine/serialization/codecs,
+  helpers/prng_unsafe,
   std/[times, monotimes, strformat]
 
 import gmp

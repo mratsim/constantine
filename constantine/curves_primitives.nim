@@ -8,26 +8,21 @@
 
 import
     ./platforms/abstractions,
-    ./math/config/[curves, type_ff],
+    ./named/algebra,
+    ./named/[zoo_subgroups, zoo_generators, zoo_pairings],
     ./math/[
       ec_shortweierstrass,
       extension_fields,
-      arithmetic,
-      constants/zoo_subgroups,
-      constants/zoo_generators
-    ],
+      arithmetic],
     ./math/elliptic/[
       ec_scalar_mul_vartime,
-      ec_multi_scalar_mul
-    ],
+      ec_multi_scalar_mul],
     ./math/io/[io_bigints, io_fields],
     ./math/isogenies/frobenius,
     ./math/pairings/[
       cyclotomic_subgroups,
       lines_eval,
-      pairings_generic
-    ],
-    ./math/constants/zoo_pairings,
+      pairings_generic],
     ./hash_to_curve/hash_to_curve
 
 # ############################################################
@@ -44,7 +39,7 @@ import
 
 export
   abstractions,
-  curves.Curve
+  algebra.Curve
 
 # BigInt
 # ------------------------------------------------------------
@@ -63,9 +58,9 @@ func marshalBE*(dst: var openarray[byte], src: BigInt): bool =
 # ------------------------------------------------------------
 
 export
-  type_ff.Fp,
-  type_ff.Fr,
-  type_ff.FF
+  algebra.Fp,
+  algebra.Fr,
+  algebra.FF
 
 func unmarshalBE*(dst: var FF, src: openarray[byte]): bool =
   ## Return true on success

@@ -8,9 +8,9 @@
 
 import
   # Internals
-  ../constantine/math/config/curves,
-  ../constantine/math/arithmetic,
-  ../constantine/math/elliptic/[
+  constantine/named/algebra,
+  constantine/math/arithmetic,
+  constantine/math/elliptic/[
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian],
   # Helpers

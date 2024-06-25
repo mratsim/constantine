@@ -10,7 +10,7 @@ import
   ../hashes,
   ../serialization/[endians, codecs_banderwagon],
   ../math/[arithmetic, ec_twistededwards],
-  ../math/config/curves,
+  constantine/named/algebra,
   ../math/io/io_bigints,
   ../math_arbitrary_precision/arithmetic/limbs_divmod_vartime,
   ../platforms/primitives

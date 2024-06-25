@@ -10,7 +10,7 @@ import
   # Standard library
   std/macros,
   # Internal
-  ../../../platforms/abstractions,
+  constantine/platforms/abstractions,
   ./limbs_asm_modular_x86,
   ./limbs_asm_redc_mont_x86_adx_bmi2,
   ./limbs_asm_mul_x86_adx_bmi2

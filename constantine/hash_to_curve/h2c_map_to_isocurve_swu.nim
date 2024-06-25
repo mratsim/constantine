@@ -9,9 +9,9 @@
 import
   # Internals
   ../platforms/abstractions,
-  ../math/config/curves,
+  constantine/named/algebra,
   ../math/[arithmetic, extension_fields],
-  ../math/constants/zoo_hash_to_curve,
+  ../named/zoo_hash_to_curve,
   ./h2c_utilities
 
 # ############################################################

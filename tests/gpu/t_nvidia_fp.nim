@@ -11,14 +11,14 @@ import
   # Standard library
   std/[unittest, times],
   # Internal
-  ../../constantine/platforms/code_generator/[llvm, nvidia, ir],
-  ../../constantine/platforms/static_for,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/io/io_bigints,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math_codegen/fields_nvidia,
+  constantine/platforms/code_generator/[llvm, nvidia, ir],
+  constantine/platforms/static_for,
+  constantine/named/algebra,
+  constantine/math/io/io_bigints,
+  constantine/math/arithmetic,
+  constantine/math_compiler/fields_nvidia,
   # Test utilities
-  ../../helpers/prng_unsafe
+  helpers/prng_unsafe
 
 var rng: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32

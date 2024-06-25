@@ -10,15 +10,15 @@ import
   # Standard library
   std/[unittest, times],
   # Internals
-  ../constantine/math/config/curves,
-  ../constantine/math/extension_fields,
-  ../constantine/math/ec_shortweierstrass,
-  ../constantine/hash_to_curve/hash_to_curve,
-  ../constantine/hashes,
-  ../constantine/math/constants/zoo_subgroups,
-  ../constantine/math/io/io_ec,
+  constantine/named/algebra,
+  constantine/named/zoo_subgroups,
+  constantine/math/extension_fields,
+  constantine/math/ec_shortweierstrass,
+  constantine/math/io/io_ec,
+  constantine/hash_to_curve/hash_to_curve,
+  constantine/hashes,
   # Test utilities
-  ../helpers/prng_unsafe
+  helpers/prng_unsafe
 
 const Iters = 6
 

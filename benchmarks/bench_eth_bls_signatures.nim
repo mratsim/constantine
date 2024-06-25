@@ -8,15 +8,15 @@
 
 import
   # Internals
-  ../constantine/[
+  constantine/[
     ethereum_bls_signatures_parallel,
     ethereum_eip2333_bls12381_key_derivation],
-  ../constantine/math/arithmetic,
-  ../constantine/threadpool/threadpool,
+  constantine/math/arithmetic,
+  constantine/threadpool/threadpool,
   # Std
   std/[os, cpuinfo],
   # Helpers
-  ../helpers/prng_unsafe,
+  helpers/prng_unsafe,
   ./bench_blueprint
 
 proc separator*() = separator(180)

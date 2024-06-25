@@ -10,12 +10,12 @@ import
   # Standard library
   std/[times, unittest, algorithm],
   # Internals
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/polynomials/polynomials,
-  ../../constantine/math/io/io_fields,
+  constantine/math/arithmetic,
+  constantine/named/algebra,
+  constantine/math/polynomials/polynomials,
+  constantine/math/io/io_fields,
   # Test utilities
-  ../../helpers/prng_unsafe
+  helpers/prng_unsafe
 
 const Degree = 42
 const NumCoefs = Degree+1

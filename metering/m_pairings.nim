@@ -8,14 +8,14 @@
 
 import
   std/times,
-  ../constantine/platforms/metering/[reports, tracer],
-  ../constantine/math/config/curves,
-  ../constantine/math/[arithmetic, extension_fields, ec_shortweierstrass],
-  ../constantine/math/constants/zoo_subgroups,
-  ../constantine/math/pairings/pairings_generic,
-  ../constantine/platforms/abstractions,
+  constantine/platforms/metering/[reports, tracer],
+  constantine/named/algebra,
+  constantine/math/[arithmetic, extension_fields, ec_shortweierstrass],
+  constantine/named/zoo_subgroups,
+  constantine/math/pairings/pairings_generic,
+  constantine/platforms/abstractions,
   # Helpers
-  ../helpers/prng_unsafe
+  helpers/prng_unsafe
 
 var rng*: RngState
 let seed = uint32(getTime().toUnix() and (1'i64 shl 32 - 1)) # unixTime mod 2^32

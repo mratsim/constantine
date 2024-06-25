@@ -35,7 +35,7 @@ import
   # Stdlib
   system/ansi_c, std/[strformat, os, strutils, math, cpuinfo],
   # Library
-  ../../constantine/threadpool
+  constantine/threadpool
 when not defined(windows):
   # bench
   import ../wtime, ../resources

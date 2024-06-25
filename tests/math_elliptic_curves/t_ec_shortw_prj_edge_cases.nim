@@ -16,12 +16,12 @@ import
   # Standard library
   std/unittest,
   # Internals
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/extension_fields,
-  ../../constantine/math/io/[io_bigints, io_fields, io_extfields],
-  ../../constantine/math/elliptic/ec_shortweierstrass_projective
+  constantine/platforms/abstractions,
+  constantine/named/algebra,
+  constantine/math/arithmetic,
+  constantine/math/extension_fields,
+  constantine/math/io/[io_bigints, io_fields, io_extfields],
+  constantine/math/elliptic/ec_shortweierstrass_projective
 
 func testAddAssociativity[EC](a, b, c: EC) =
   var tmp1{.noInit.}, tmp2{.noInit.}: ECP_ShortW_Prj[Fp2[BLS12_381], G2]

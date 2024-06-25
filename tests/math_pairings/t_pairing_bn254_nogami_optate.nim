@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../constantine/math/pairings/pairings_bn,
+  constantine/math/pairings/pairings_bn,
   # Test utilities
   ./t_pairing_template
 

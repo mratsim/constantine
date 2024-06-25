@@ -39,7 +39,7 @@ import
   # Stdlib
   system/ansi_c, std/[strformat, os, strutils, cpuinfo],
   # library
-  ../../constantine/threadpool
+  constantine/threadpool
 
 when not defined(windows):
   # bench

@@ -8,7 +8,7 @@
 
 import
   # Internals
-  ../../constantine/math/config/curves,
+  constantine/named/algebra,
   # Test utilities
   ./t_fp_tower_template
 

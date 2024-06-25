@@ -1,11 +1,11 @@
 # From issue #241
 
 import
-  ../../constantine/math/[
+  constantine/math/[
     arithmetic,
     io/io_bigints],
-  ../../constantine/math_arbitrary_precision/arithmetic/limbs_divmod_vartime,
-  ../../constantine/platforms/abstractions
+  constantine/math_arbitrary_precision/arithmetic/limbs_divmod_vartime,
+  constantine/platforms/abstractions
 
 let a = BigInt[64].fromUint(0xa0e5cb56a1c08396'u64)
 let M = BigInt[64].fromUint(0xae57180eceb0206f'u64)

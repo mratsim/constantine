@@ -11,8 +11,8 @@
 
 import
   std/tables,
-  ../../platforms/abstractions,
-  ../constants/zoo_square_roots,
+  constantine/platforms/abstractions,
+  constantine/named/zoo_square_roots,
   ./bigints, ./finite_fields
 
 # ############################################################

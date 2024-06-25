@@ -7,11 +7,11 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../math/config/curves,
+  constantine/named/algebra,
   ../math/[ec_shortweierstrass, arithmetic, extension_fields],
   ../math/elliptic/[ec_multi_scalar_mul, ec_shortweierstrass_batch_ops],
   ../math/pairings/pairings_generic,
-  ../math/constants/zoo_generators,
+  ../named/zoo_generators,
   ../math/polynomials/polynomials,
   ../platforms/[abstractions, views],
   ./protocol_quotient_check

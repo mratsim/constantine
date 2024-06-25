@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../constantine/math/pairings/pairings_bw6_761,
+  constantine/math/pairings/pairings_bw6_761,
   # Test utilities
   ./t_pairing_template
 

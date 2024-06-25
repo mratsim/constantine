@@ -20,7 +20,7 @@ import
     ec_scalar_mul, ec_scalar_mul_vartime,
     ec_multi_scalar_mul,
   ],
-  ./constants/zoo_generators
+  ../named/zoo_generators
 
 export ec_twistededwards_affine, ec_twistededwards_projective,
        ec_twistededwards_batch_ops, ec_scalar_mul, ec_scalar_mul_vartime,

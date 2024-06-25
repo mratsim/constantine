@@ -11,23 +11,23 @@
 
 import
   ./t_ethereum_verkle_ipa_test_helper,
-  ../constantine/ethereum_verkle_ipa,
-  ../constantine/hashes,
+  constantine/ethereum_verkle_ipa,
+  constantine/hashes,
   std/unittest,
-  ../constantine/serialization/[codecs, codecs_banderwagon, codecs_status_codes],
-  ../constantine/math/config/[type_ff, curves],
-  ../constantine/math/ec_twistededwards,
-  ../constantine/math/io/[io_fields, io_bigints],
-  ../constantine/math/arithmetic,
-  ../constantine/math/polynomials/polynomials,
-  ../constantine/math/constants/zoo_generators,
-  ../constantine/commitments/[
+  constantine/serialization/[codecs, codecs_banderwagon, codecs_status_codes],
+  constantine/named/algebra,
+  constantine/math/ec_twistededwards,
+  constantine/math/io/[io_fields, io_bigints],
+  constantine/math/arithmetic,
+  constantine/math/polynomials/polynomials,
+  constantine/named/zoo_generators,
+  constantine/commitments/[
     pedersen_commitments,
     eth_verkle_ipa,
     eth_verkle_transcripts,
     protocol_quotient_check],
   ../tests/math_elliptic_curves/t_ec_template,
-  ../constantine/platforms/abstractions
+  constantine/platforms/abstractions
 
 
 # ############################################################

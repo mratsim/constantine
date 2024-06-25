@@ -10,17 +10,17 @@ import
   # Standard library
   std/unittest, times,
   # Internals
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/extension_fields,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
-  ../../constantine/math/constants/[zoo_subgroups, zoo_pairings],
-  ../../constantine/math/pairings/cyclotomic_subgroups,
-  ../../constantine/math/io/io_extfields,
+  constantine/platforms/abstractions,
+  constantine/math/arithmetic,
+  constantine/math/extension_fields,
+  constantine/named/algebra,
+  constantine/named/zoo_subgroups,
+  constantine/math/elliptic/[ec_shortweierstrass_affine, ec_shortweierstrass_projective],
+  constantine/math/pairings/cyclotomic_subgroups,
+  constantine/math/io/io_extfields,
 
   # Test utilities
-  ../../helpers/prng_unsafe
+  helpers/prng_unsafe
 
 export
   prng_unsafe, times, unittest,
@@ -28,7 +28,7 @@ export
   arithmetic, extension_fields,
   io_extfields,
   cyclotomic_subgroups,
-  abstractions, curves
+  abstractions, algebra
 
 type
   RandomGen* = enum

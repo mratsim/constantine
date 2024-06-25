@@ -7,12 +7,11 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/abstractions,
-  ../config/type_bigint,
+  constantine/platforms/abstractions,
   ./limbs,
   ./limbs_extmul,
   ./limbs_exgcd,
-  ../../math_arbitrary_precision/arithmetic/[
+  constantine/math_arbitrary_precision/arithmetic/[
     limbs_divmod, limbs_divmod_vartime]
 
 export BigInt

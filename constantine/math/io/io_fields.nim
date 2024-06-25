@@ -8,8 +8,8 @@
 
 import
   ./io_bigints,
-  ../../platforms/abstractions,
-  ../arithmetic/finite_fields
+  constantine/platforms/abstractions,
+  constantine/math/arithmetic/finite_fields
 
 export Fp
 

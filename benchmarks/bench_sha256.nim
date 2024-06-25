@@ -1,8 +1,8 @@
 import
   # Internals
-  ../constantine/hashes,
+  constantine/hashes,
   # Helpers
-  ../helpers/prng_unsafe,
+  helpers/prng_unsafe,
   ./bench_blueprint
 
 proc separator*() = separator(69)

@@ -8,7 +8,7 @@
 
 import
   std/unittest,
-  ../constantine/csprngs/sysrand
+  constantine/csprngs/sysrand
 
 suite "[CSPRNG] sysrand":
   test "Non-nil initialization":

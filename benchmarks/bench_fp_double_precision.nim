@@ -14,12 +14,12 @@
 
 import
   # Internals
-  ../constantine/platforms/abstractions,
-  ../constantine/math/config/curves,
-  ../constantine/math/arithmetic,
-  ../constantine/math/extension_fields,
+  constantine/platforms/abstractions,
+  constantine/named/algebra,
+  constantine/math/arithmetic,
+  constantine/math/extension_fields,
   # Helpers
-  ../helpers/prng_unsafe,
+  helpers/prng_unsafe,
   ./platforms,
   # Standard library
   std/[monotimes, times, strformat, strutils]

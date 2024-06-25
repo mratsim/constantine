@@ -10,15 +10,15 @@ import
   # Standard library
   std/[unittest, times],
   # Internals
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/extension_fields,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/io/[io_bigints, io_extfields],
-  ../../constantine/math/pairings/cyclotomic_subgroups,
-  ../../constantine/math/isogenies/frobenius,
+  constantine/platforms/abstractions,
+  constantine/math/arithmetic,
+  constantine/math/extension_fields,
+  constantine/named/algebra,
+  constantine/math/io/[io_bigints, io_extfields],
+  constantine/math/pairings/cyclotomic_subgroups,
+  constantine/math/isogenies/frobenius,
   # Test utilities
-  ../../helpers/prng_unsafe
+  helpers/prng_unsafe
 
 const
   Iters = 4

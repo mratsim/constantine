@@ -7,12 +7,12 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../constantine/platforms/primitives,
-  ../../constantine/math/config/curves,
-  ../../constantine/math/arithmetic,
-  ../../constantine/math/ec_shortweierstrass,
-  ../../constantine/math/elliptic/ec_scalar_mul_vartime,
-  ../../constantine/math/io/[io_fields, io_ec, io_bigints],
+  constantine/platforms/primitives,
+  constantine/named/algebra,
+  constantine/math/arithmetic,
+  constantine/math/ec_shortweierstrass,
+  constantine/math/elliptic/ec_scalar_mul_vartime,
+  constantine/math/io/[io_fields, io_ec, io_bigints],
   # Research
   ./strided_views,
   ./fft_lut
@@ -206,7 +206,7 @@ proc init*(T: type FFTDescriptor, maxScale: uint8): T =
 when isMainModule:
   import
     std/[times, monotimes, strformat],
-    ../../helpers/prng_unsafe
+    helpers/prng_unsafe
 
   type EC_G1 = ECP_ShortW_Prj[Fp[BLS12_381], G1]
   var Generator1: ECP_ShortW_Aff[Fp[BLS12_381], G1]

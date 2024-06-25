@@ -1,8 +1,8 @@
 import
-  ../constantine/ethereum_evm_precompiles,
-  ../constantine/math/arithmetic,
-  ../constantine/math/io/io_bigints,
-  ../constantine/platforms/abstractions,
+  constantine/ethereum_evm_precompiles,
+  constantine/math/arithmetic,
+  constantine/math/io/io_bigints,
+  constantine/platforms/abstractions,
   ./bench_blueprint
 
 proc report(op: string, elapsedNs: int64, elapsedCycles: int64, iters: int) =

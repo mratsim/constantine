@@ -7,11 +7,11 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/primitives,
+  constantine/platforms/primitives,
   ./io_bigints, ./io_fields, ./io_extfields,
-  ../arithmetic,
-  ../extension_fields,
-  ../elliptic/[
+  constantine/math/arithmetic,
+  constantine/math/extension_fields,
+  constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,

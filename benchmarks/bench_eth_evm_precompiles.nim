@@ -8,17 +8,17 @@
 
 import
   # Internals
-  ../constantine/ethereum_evm_precompiles,
-  ../constantine/serialization/codecs,
-  ../constantine/math/config/curves,
-  ../constantine/math/[arithmetic, ec_shortweierstrass, extension_fields],
-  ../constantine/math/io/[io_bigints, io_fields],
-  ../constantine/math/constants/zoo_subgroups,
+  constantine/ethereum_evm_precompiles,
+  constantine/serialization/codecs,
+  constantine/named/algebra,
+  constantine/math/[arithmetic, ec_shortweierstrass, extension_fields],
+  constantine/math/io/[io_bigints, io_fields],
+  constantine/named/zoo_subgroups,
   # Stdlib
   std/tables,
   # Helpers
   ./bench_blueprint,
-  ../helpers/prng_unsafe
+  helpers/prng_unsafe
 
 # For EIP-2537, we use the worst case vectors:
 #   https://eips.ethereum.org/assets/eip-2537/bench_vectors

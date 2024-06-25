@@ -7,12 +7,12 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/abstractions,
-  ../config/curves,
-  ../arithmetic,
-  ../extension_fields,
-  ../io/io_bigints,
-  ../constants/zoo_endomorphisms,
+  constantine/platforms/abstractions,
+  constantine/named/algebra,
+  constantine/math/arithmetic,
+  constantine/math/extension_fields,
+  constantine/math/io/io_bigints,
+  constantine/named/zoo_endomorphisms,
   ./ec_endomorphism_accel
 
 # ############################################################

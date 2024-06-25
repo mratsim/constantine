@@ -7,11 +7,11 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/abstractions,
+  constantine/platforms/abstractions,
   ./towers,
-  ../arithmetic,
-  ../config/curves,
-  ../constants/zoo_square_roots_fp2
+  constantine/math/arithmetic,
+  constantine/named/algebra,
+  constantine/named/zoo_square_roots_fp2
 
 # Square root
 # -----------------------------------------------------------

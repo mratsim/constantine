@@ -8,13 +8,13 @@
 
 import
   # Internals
-  ../constantine/math/config/curves,
-  ../constantine/math/extension_fields,
-  ../constantine/math/elliptic/[
+  constantine/named/algebra,
+  constantine/math/extension_fields,
+  constantine/math/elliptic/[
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian],
   # Helpers
-  ../helpers/prng_unsafe,
+  helpers/prng_unsafe,
   ./bench_elliptic_parallel_template
 
 # ############################################################

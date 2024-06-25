@@ -8,10 +8,10 @@
 
 import
   # Internal
-  ../../../platforms/abstractions,
-  ../../config/curves,
-  ../../arithmetic,
-  ../../arithmetic/assembly/[
+  constantine/platforms/abstractions,
+  constantine/named/algebra,
+  constantine/math/arithmetic,
+  constantine/math/arithmetic/assembly/[
     limbs_asm_mul_x86_adx_bmi2,
     limbs_asm_mul_mont_x86_adx_bmi2,
     limbs_asm_redc_mont_x86_adx_bmi2

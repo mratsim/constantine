@@ -17,16 +17,16 @@
 
 import
   std/[unittest, strutils],
-  ../constantine/math/config/[type_ff, curves],
-  ../constantine/math/ec_twistededwards,
-  ../constantine/math/io/io_fields,
-  ../constantine/serialization/[
+  constantine/named/algebra,
+  constantine/math/ec_twistededwards,
+  constantine/math/io/io_fields,
+  constantine/serialization/[
     codecs_status_codes,
     codecs_banderwagon,
     codecs
   ],
-  ../constantine/math/arithmetic,
-  ../constantine/ethereum_verkle_ipa
+  constantine/math/arithmetic,
+  constantine/ethereum_verkle_ipa
 
 # serialized points which lie on Banderwagon
 const expected_bit_strings: array[16, string] = [

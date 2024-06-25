@@ -92,8 +92,8 @@ if __name__ == "__main__":
     f.write('\n\n')
     f.write(inspect.cleandoc(f"""
       import
-        ../config/curves,
-        ../io/io_bigints
+        constantine/named/algebra,
+        constantine/math/io/io_bigints
 
       # Roots of unity
       # ------------------------------------------------------------

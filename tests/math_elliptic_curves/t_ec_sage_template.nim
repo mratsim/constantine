@@ -12,18 +12,18 @@ import
   # 3rd party
   pkg/jsony,
   # Internals
-  ../../constantine/platforms/abstractions,
-  ../../constantine/math/[arithmetic, extension_fields],
-  ../../constantine/math/io/[io_bigints, io_ec],
-  ../../constantine/math/elliptic/[
+  constantine/platforms/abstractions,
+  constantine/math/[arithmetic, extension_fields],
+  constantine/math/io/[io_bigints, io_ec],
+  constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
     ec_scalar_mul,
     ec_endomorphism_accel],
-  ../../constantine/math/constants/zoo_endomorphisms,
+  constantine/named/zoo_endomorphisms,
   # Test utilities
-  ../../constantine/math/elliptic/ec_scalar_mul_vartime
+  constantine/math/elliptic/ec_scalar_mul_vartime
 
 export unittest, abstractions, arithmetic # Generic sandwich
 

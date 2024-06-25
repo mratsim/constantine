@@ -14,9 +14,9 @@
 
 import
   # Internal
-  ../constantine/platforms/abstractions,
+  constantine/platforms/abstractions,
   # Helpers
-  ../helpers/prng_unsafe,
+  helpers/prng_unsafe,
   ./platforms,
   # Standard library
   std/[monotimes, times, strformat, strutils, macros]

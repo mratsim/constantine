@@ -8,16 +8,16 @@
 
 import
   std/typetraits,
-  ../config/curves,
-  ../../platforms/abstractions,
-  ../arithmetic,
-  ../extension_fields,
-  ../elliptic/[
+  constantine/named/algebra,
+  constantine/platforms/abstractions,
+  constantine/math/arithmetic,
+  constantine/math/extension_fields,
+  constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective
   ],
-  ../io/io_extfields,
-  ../constants/zoo_constants
+  constantine/math/io/io_extfields,
+  constantine/named/zoo_constants
 
 # No exceptions allowed
 {.push raises: [].}

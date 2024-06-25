@@ -8,8 +8,9 @@
 
 import
   # Internals
-  ../../constantine/math/config/[type_ff, curves],
-  ../../constantine/math/elliptic/ec_shortweierstrass_projective,
+  constantine/named/algebra,
+  constantine/platforms/type_ff,
+  constantine/math/elliptic/ec_shortweierstrass_projective,
   # Test utilities
   ./t_ec_template
 

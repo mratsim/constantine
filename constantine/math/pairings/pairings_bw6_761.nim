@@ -7,15 +7,15 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../config/curves,
-  ../arithmetic,
-  ../extension_fields,
-  ../elliptic/[
+  constantine/named/algebra,
+  constantine/math/arithmetic,
+  constantine/math/extension_fields,
+  constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective
   ],
-  ../isogenies/frobenius,
-  ../constants/zoo_pairings,
+  constantine/math/isogenies/frobenius,
+  constantine/named/zoo_pairings,
   ./lines_eval,
   ./miller_loops
 

@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/abstractions,
+  constantine/platforms/abstractions,
   ../../threadpool/[threadpool, partitioners],
   ./ec_shortweierstrass_affine,
   ./ec_shortweierstrass_jacobian,

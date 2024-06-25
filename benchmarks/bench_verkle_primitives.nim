@@ -14,14 +14,14 @@
 
 import
   # Internals
-  ../constantine/platforms/abstractions,
-  ../constantine/math/config/curves,
-  ../constantine/math/[arithmetic, extension_fields],
-  ../constantine/math/ec_twistededwards,
-  ../constantine/math/constants/zoo_generators,
-  ../constantine/math/io/io_fields,
-  ../constantine/hash_to_curve/hash_to_curve,
-  ../constantine/serialization/codecs_banderwagon,
+  constantine/platforms/abstractions,
+  constantine/named/algebra,
+  constantine/math/[arithmetic, extension_fields],
+  constantine/math/ec_twistededwards,
+  constantine/named/zoo_generators,
+  constantine/math/io/io_fields,
+  constantine/hash_to_curve/hash_to_curve,
+  constantine/serialization/codecs_banderwagon,
   # Helpers
   ./bench_blueprint
 

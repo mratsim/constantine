@@ -7,8 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../platforms/abstractions,
-  ../arithmetic,
+  constantine/platforms/abstractions,
+  constantine/math/arithmetic,
   ./ec_twistededwards_affine,
   ./ec_twistededwards_projective
 

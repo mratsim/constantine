@@ -10,12 +10,12 @@ import
   # Standard Library
   std/typetraits,
   # Internal
-  ../../platforms/abstractions,
-  ../config/[curves, type_bigint],
-  ../constants/zoo_endomorphisms,
-  ../arithmetic,
-  ../extension_fields,
-  ../isogenies/frobenius,
+  constantine/platforms/abstractions,
+  constantine/named/algebra,
+  constantine/named/zoo_endomorphisms,
+  constantine/math/arithmetic,
+  constantine/math/extension_fields,
+  constantine/math/isogenies/frobenius,
   ./ec_shortweierstrass_affine,
   ./ec_shortweierstrass_batch_ops
 

@@ -14,25 +14,25 @@
 
 import
   # Internals
-  ../constantine/platforms/abstractions,
-  ../constantine/math/config/curves,
-  ../constantine/math/[arithmetic, extension_fields],
-  ../constantine/math/elliptic/[
+  constantine/platforms/abstractions,
+  constantine/named/algebra,
+  constantine/math/[arithmetic, extension_fields],
+  constantine/math/elliptic/[
     ec_shortweierstrass_affine,
     ec_shortweierstrass_projective,
     ec_shortweierstrass_jacobian,
     ec_scalar_mul, ec_scalar_mul_vartime, ec_endomorphism_accel],
-  ../constantine/math/constants/zoo_subgroups,
-  ../constantine/math/pairings/[
+  constantine/named/zoo_subgroups,
+  constantine/math/pairings/[
     cyclotomic_subgroups,
     pairings_bls12,
     pairings_bn
   ],
-  ../constantine/math/constants/zoo_pairings,
-  ../constantine/hashes,
-  ../constantine/hash_to_curve/hash_to_curve,
+  constantine/named/zoo_pairings,
+  constantine/hashes,
+  constantine/hash_to_curve/hash_to_curve,
   # Helpers
-  ../helpers/prng_unsafe,
+  helpers/prng_unsafe,
   ./bench_blueprint
 
 export

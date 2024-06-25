@@ -7,8 +7,8 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../../math/config/[curves, precompute],
-  ../../math/io/io_bigints,
+  constantine/math/config/[curves, precompute],
+  constantine/math/io/io_bigints,
   ../primitives, ../bithacks,
   ../../serialization/[endians, codecs, io_limbs],
   ./llvm

@@ -7,7 +7,7 @@
 # at your option. This file may not be copied, modified, or distributed except according to those terms.
 
 import
-  ../constantine/ethereum_evm_precompiles,
+  constantine/ethereum_evm_precompiles,
   std/unittest
 
 suite "EVM ModExp precompile (EIP-198)":

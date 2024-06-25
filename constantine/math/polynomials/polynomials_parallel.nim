@@ -10,9 +10,9 @@ import ./polynomials {.all.}
 export polynomials
 
 import
-  ../config/curves,
-  ../arithmetic,
-  ../../platforms/[allocs, bithacks],
+  constantine/named/algebra,
+  constantine/math/arithmetic,
+  constantine/platforms/[allocs, bithacks],
   ../../threadpool/threadpool
 
 ## ############################################################

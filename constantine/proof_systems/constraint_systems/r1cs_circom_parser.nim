@@ -18,7 +18,7 @@
 
 import
   ../../serialization/[io_limbs, parsing],
-  ../../platforms/[fileio, abstractions]
+  constantine/platforms/[fileio, abstractions]
 
 # We use `sortedByIt` to sort the different sections in the file by their
 # `R1csSectionKind`
