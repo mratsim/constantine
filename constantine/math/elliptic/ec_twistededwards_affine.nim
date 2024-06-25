@@ -61,28 +61,28 @@ func isOnCurve*[F](x, y: F): SecretBool =
   t1.square(y)
 
   # ax²+y²
-  when F.C.getCoefA() is int:
-    when F.C.getCoefA() == -1:
+  when F.Name.getCoefA() is int:
+    when F.Name.getCoefA() == -1:
       t2.diff(t1, t0)
     else:
-      t2.prod(t0, F.C.getCoefA())
+      t2.prod(t0, F.Name.getCoefA())
       t2 += t1
   else:
-    t2.prod(F.C.getCoefA(), t0)
+    t2.prod(F.Name.getCoefA(), t0)
     t2 += t1
 
   # dx²y²
   t0 *= t1
-  when F.C.getCoefD() is int:
-    when F.C.getCoefD >= 0:
-      t1.fromUint uint F.C.getCoefD()
+  when F.Name.getCoefD() is int:
+    when F.Name.getCoefD >= 0:
+      t1.fromUint uint F.Name.getCoefD()
       t0 *= t1
     else:
-      t1.fromUint uint F.C.getCoefD()
+      t1.fromUint uint F.Name.getCoefD()
       t0 *= t1
       t0.neg()
   else:
-    t0 *= F.C.getCoefD()
+    t0 *= F.Name.getCoefD()
 
   # ax²+y² - dx²y² =? 1
   t2 -= t0
@@ -102,27 +102,27 @@ func trySetFromCoordX*[F](P: var ECP_TwEdwards_Aff[F], x: F): SecretBool =
 
   # (1 - dx²)
   t.square(x)
-  when F.C.getCoefD() is int:
-    when F.C.getCoefD() >= 0:
-      P.y.fromUint uint F.C.getCoefD()
+  when F.Name.getCoefD() is int:
+    when F.Name.getCoefD() >= 0:
+      P.y.fromUint uint F.Name.getCoefD()
     else:
-      P.y.fromUint uint -F.C.getCoefD()
+      P.y.fromUint uint -F.Name.getCoefD()
       P.y.neg()
   else:
-    P.y = F.C.getCoefD()
+    P.y = F.Name.getCoefD()
   P.y *= t
   P.y.neg()
   P.y += one
 
   # (1 - ax²)
-  when F.C.getCoefA() is int:
-    when F.C.getCoefA() >= 0:
-      P.x.fromUint uint F.C.getCoefA()
+  when F.Name.getCoefA() is int:
+    when F.Name.getCoefA() >= 0:
+      P.x.fromUint uint F.Name.getCoefA()
     else:
-      P.x.fromUint uint -F.C.getCoefA()
+      P.x.fromUint uint -F.Name.getCoefA()
       P.x.neg()
   else:
-    P.x = F.C.getCoefA()
+    P.x = F.Name.getCoefA()
   P.x *= t
   P.x.neg()
   P.x += one
@@ -147,27 +147,27 @@ func trySetFromCoordX_vartime*[F](P: var ECP_TwEdwards_Aff[F], x: F): SecretBool
 
   # (1 - dx²)
   t.square(x)
-  when F.C.getCoefD() is int:
-    when F.C.getCoefD() >= 0:
-      P.y.fromUint uint F.C.getCoefD()
+  when F.Name.getCoefD() is int:
+    when F.Name.getCoefD() >= 0:
+      P.y.fromUint uint F.Name.getCoefD()
     else:
-      P.y.fromUint uint -F.C.getCoefD()
+      P.y.fromUint uint -F.Name.getCoefD()
       P.y.neg()
   else:
-    P.y = F.C.getCoefD()
+    P.y = F.Name.getCoefD()
   P.y *= t
   P.y.neg()
   P.y += one
 
   # (1 - ax²)
-  when F.C.getCoefA() is int:
-    when F.C.getCoefA() >= 0:
-      P.x.fromUint uint F.C.getCoefA()
+  when F.Name.getCoefA() is int:
+    when F.Name.getCoefA() >= 0:
+      P.x.fromUint uint F.Name.getCoefA()
     else:
-      P.x.fromUint uint -F.C.getCoefA()
+      P.x.fromUint uint -F.Name.getCoefA()
       P.x.neg()
   else:
-    P.x = F.C.getCoefA()
+    P.x = F.Name.getCoefA()
   P.x *= t
   P.x.neg()
   P.x += one
@@ -204,27 +204,27 @@ func trySetFromCoordY*[F](P: var ECP_TwEdwards_Aff[F], y: F): SecretBool =
   t.square(y)
 
   # (dy² − a)
-  when F.C.getCoefD() is int:
-    when F.C.getCoefD() >= 0:
-      P.y.fromUint uint F.C.getCoefD()
+  when F.Name.getCoefD() is int:
+    when F.Name.getCoefD() >= 0:
+      P.y.fromUint uint F.Name.getCoefD()
     else:
-      P.y.fromUint uint -F.C.getCoefD()
+      P.y.fromUint uint -F.Name.getCoefD()
       P.y.neg()
   else:
-    P.y = F.C.getCoefD()
+    P.y = F.Name.getCoefD()
   P.y *= t
-  when F.C.getCoefA() is int:
-    when F.C.getCoefA == -1:
+  when F.Name.getCoefA() is int:
+    when F.Name.getCoefA == -1:
       P.x.setOne()
       P.y += P.x
-    elif F.C.getCoefA >= 0:
-      P.x.fromUint uint F.C.getCoefA()
+    elif F.Name.getCoefA >= 0:
+      P.x.fromUint uint F.Name.getCoefA()
       P.y -= P.x
     else:
-      P.x.fromUint uint -F.C.getCoefA()
+      P.x.fromUint uint -F.Name.getCoefA()
       P.y += P.x
   else:
-    P.y -= F.C.getCoefA()
+    P.y -= F.Name.getCoefA()
 
   # y² − 1
   P.x.setMinusOne()

@@ -113,7 +113,7 @@ proc run_hash_to_curve_test(
     const G1_or_G2 = "G2"
   let vec = loadVectors(HashToCurveTest[ECP_ShortW_Aff[EC.F, EC.G]], filename)
 
-  let testSuiteDesc = "Hash to Curve " & $EC.F.C & " " & G1_or_G2 & " - official specs " & spec_version & " test vectors"
+  let testSuiteDesc = "Hash to Curve " & $EC.F.Name & " " & G1_or_G2 & " - official specs " & spec_version & " test vectors"
 
   suite testSuiteDesc & " [" & $WordBitWidth & "-bit words]":
 
@@ -148,7 +148,7 @@ proc run_hash_to_curve_svdw_test(
     const G1_or_G2 = "G2"
   let vec = loadVectors(HashToCurveTest[ECP_ShortW_Aff[EC.F, EC.G]], filename)
 
-  let testSuiteDesc = "Hash to Curve " & $EC.F.C & " " & G1_or_G2 & " - official specs " & spec_version & " test vectors"
+  let testSuiteDesc = "Hash to Curve " & $EC.F.Name & " " & G1_or_G2 & " - official specs " & spec_version & " test vectors"
 
   suite testSuiteDesc & " [" & $WordBitWidth & "-bit words]":
 

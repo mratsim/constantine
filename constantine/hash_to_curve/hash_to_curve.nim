@@ -51,29 +51,29 @@ func mapToCurve_svdw[F, G](
     gx1{.noInit.}, gx2{.noInit.}: F
 
   tv1.square(u)
-  tv1 *= h2cConst(F.C, svdw, G, curve_eq_rhs_Z)
+  tv1 *= h2cConst(F.Name, svdw, G, curve_eq_rhs_Z)
   tv2 = tv1
   when F is Fp:
     tv2 += F(mres: F.getMontyOne())
     tv1.diff(F(mres: F.getMontyOne()), tv1)
   else:
-    tv2.c0 += Fp[F.F.C](mres: Fp[F.F.C].getMontyOne())
-    tv1.c0.diff(Fp[F.F.C](mres: Fp[F.F.C].getMontyOne()), tv1.c0)
+    tv2.c0 += Fp[F.F.Name](mres: Fp[F.F.Name].getMontyOne())
+    tv1.c0.diff(Fp[F.F.Name](mres: Fp[F.F.Name].getMontyOne()), tv1.c0)
     tv1.c1.neg()
   tv3.prod(tv1, tv2)
   tv3.inv()
 
   tv4.prod(u, tv1)
   tv4 *= tv3
-  tv4.mulCheckSparse(h2cConst(F.C, svdw, G, z3))
+  tv4.mulCheckSparse(h2cConst(F.Name, svdw, G, z3))
 
-  x1.diff(h2cConst(F.C, svdw, G, minus_Z_div_2), tv4)
-  x2.sum(h2cConst(F.C, svdw, G, minus_Z_div_2), tv4)
+  x1.diff(h2cConst(F.Name, svdw, G, minus_Z_div_2), tv4)
+  x2.sum(h2cConst(F.Name, svdw, G, minus_Z_div_2), tv4)
   r.x.square(tv2)
   r.x *= tv3
   r.x.square()
-  r.x *= h2cConst(F.C, svdw, G, z4)
-  r.x += h2cConst(F.C, svdw, G, Z)
+  r.x *= h2cConst(F.Name, svdw, G, z4)
+  r.x += h2cConst(F.Name, svdw, G, Z)
 
   # x³+ax+b
   gx1.curve_eq_rhs(x1, G)
@@ -142,15 +142,15 @@ func mapToCurve_svdw_fusedAdd[F; G: static Subgroup](
 
 func mapToCurve_sswu*[F; G: static Subgroup](r: var ECP_ShortW_Jac[F, G], u: F) =
   ## Map an element of the finite or extension field F to an elliptic curve E
-  when F.C.getCoefA() * F.C.getCoefB() == 0:
+  when F.Name.getCoefA() * F.Name.getCoefB() == 0:
     # https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-6.6.3
     # Simplified Shallue-van de Woestijne-Ulas method for AB == 0
 
     # 1. Map to E' isogenous to E
-    when F is Fp and F.C.has_P_3mod4_primeModulus():
+    when F is Fp and F.Name.has_P_3mod4_primeModulus():
       # 1. Map to E'1 isogenous to E1
       r.mapToIsoCurve_sswuG1_opt3mod4(u)
-    elif F is Fp2 and F.C.has_Psquare_9mod16_primePower():
+    elif F is Fp2 and F.Name.has_Psquare_9mod16_primePower():
       # 1. Map to E'2 isogenous to E2
       r.mapToIsoCurve_sswuG2_opt9mod16(u)
     else:
@@ -181,23 +181,23 @@ func mapToCurve_sswu_fusedAdd[F; G: static Subgroup](
   # unlike the complete projective formulae which heavily depends on it
   # So we use jacobian coordinates for computation on isogenies.
 
-  when F.C.getCoefA() * F.C.getCoefB() == 0:
+  when F.Name.getCoefA() * F.Name.getCoefB() == 0:
     # https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-hash-to-curve-11#section-6.6.3
     # Simplified Shallue-van de Woestijne-Ulas method for AB == 0
 
     var Q0{.noInit.}, Q1{.noInit.}: ECP_ShortW_Jac[F, G]
 
     # 1. Map to E' isogenous to E
-    when F is Fp and F.C.has_P_3mod4_primeModulus():
+    when F is Fp and F.Name.has_P_3mod4_primeModulus():
       # 1. Map to E'1 isogenous to E1
       Q0.mapToIsoCurve_sswuG1_opt3mod4(u0)
       Q1.mapToIsoCurve_sswuG1_opt3mod4(u1)
-      Q0.sum(Q0, Q1, h2CConst(F.C, sswu, G1, Aprime_E1))
-    elif F is Fp2 and F.C.has_Psquare_9mod16_primePower():
+      Q0.sum(Q0, Q1, h2CConst(F.Name, sswu, G1, Aprime_E1))
+    elif F is Fp2 and F.Name.has_Psquare_9mod16_primePower():
       # 1. Map to E'2 isogenous to E2
       Q0.mapToIsoCurve_sswuG2_opt9mod16(u0)
       Q1.mapToIsoCurve_sswuG2_opt9mod16(u1)
-      Q0.sum(Q0, Q1, h2CConst(F.C, sswu, G2, Aprime_E2))
+      Q0.sum(Q0, Q1, h2CConst(F.Name, sswu, G2, Aprime_E2))
     else:
       {.error: "Not implemented".}
 
@@ -313,10 +313,10 @@ func hashToCurve*[F; G: static Subgroup](
   ##   and `CoreVerify(PK, PK || message, signature)`
   ## - `message` is the message to hash
   ## - `domainSepTag` is the protocol domain separation tag (DST).
-  when F.C == BLS12_381:
+  when F.Name == BLS12_381:
     hashToCurve_sswu(H, k, output,
       augmentation, message, domainSepTag)
-  elif F.C == BN254_Snarks:
+  elif F.Name == BN254_Snarks:
     hashToCurve_svdw(H, k, output,
       augmentation, message, domainSepTag)
   else:

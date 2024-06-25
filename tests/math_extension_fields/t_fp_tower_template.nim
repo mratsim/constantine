@@ -29,7 +29,7 @@ export unittest # Generic sandwich
 
 echo "\n------------------------------------------------------\n"
 
-template ExtField(degree: static int, curve: static Curve): untyped =
+template ExtField(degree: static int, name: static Algebra): untyped =
   when degree == 2:
     Fp2[curve]
   elif degree == 4:

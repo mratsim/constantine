@@ -478,7 +478,7 @@ proc applyEndomorphism_parallel[bits: static int, ECaff](
         endoBasis[i][0] = points[i]
 
       when ECaff.F is Fp:
-        endoBasis[i][1].x.prod(points[i].x, ECaff.F.C.getCubicRootOfUnity_mod_p())
+        endoBasis[i][1].x.prod(points[i].x, ECaff.F.Name.getCubicRootOfUnity_mod_p())
         if negatePoints[1].bool:
           endoBasis[i][1].y.neg(points[i].y)
         else:
@@ -501,7 +501,7 @@ template withEndo[bits: static int, EC, ECaff](
            coefs: ptr UncheckedArray[BigInt[bits]],
            points: ptr UncheckedArray[ECaff],
            N: int, c: static int) =
-  when bits <= EC.F.C.getCurveOrderBitwidth() and hasEndomorphismAcceleration(EC.F.C):
+  when bits <= EC.F.Name.getCurveOrderBitwidth() and hasEndomorphismAcceleration(EC.F.Name):
     let (endoCoefs, endoPoints, endoN) = applyEndomorphism_parallel(tp, coefs, points, N)
     # Given that bits and N changed, we are able to use a bigger `c`
     # but it has no significant impact on performance
@@ -518,7 +518,7 @@ template withEndo[bits: static int, EC, ECaff](
            coefs: ptr UncheckedArray[BigInt[bits]],
            points: ptr UncheckedArray[ECaff],
            N: int, c: static int, useParallelBuckets: static bool) =
-  when bits <= EC.F.C.getCurveOrderBitwidth() and hasEndomorphismAcceleration(EC.F.C):
+  when bits <= EC.F.Name.getCurveOrderBitwidth() and hasEndomorphismAcceleration(EC.F.Name):
     let (endoCoefs, endoPoints, endoN) = applyEndomorphism_parallel(tp, coefs, points, N)
     # Given that bits and N changed, we are able to use a bigger `c`
     # but it has no significant impact on performance
@@ -631,7 +631,7 @@ proc multiScalarMul_vartime_parallel*[F, EC, ECaff](
   ##   r <- [a₀]P₀ + [a₁]P₁ + ... + [aₙ₋₁]Pₙ₋₁
 
   let n = cast[int](len)
-  let coefs_big = allocHeapArrayAligned(matchingOrderBigInt(F.C), n, alignment = 64)
+  let coefs_big = allocHeapArrayAligned(matchingOrderBigInt(F.Name), n, alignment = 64)
 
   syncScope:
     tp.parallelFor i in 0 ..< n:

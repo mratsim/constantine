@@ -28,7 +28,7 @@ import
 # See ./multi-pairing.md for 2 approaches to a miller loop accumulator:
 #
 # - Software Implementation, Algorithm 11.2 & 11.3
-#   Aranha, Dominguez Perez, A. Mrabet, Schwabe,
+#   Aranha, Dominguez Perez, Name. Mrabet, Schwabe,
 #   Guide to Pairing-Based Cryptography, 2015
 #
 # - Pairing Implementation Revisited

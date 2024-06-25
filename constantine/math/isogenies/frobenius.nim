@@ -53,30 +53,30 @@ func frobenius_map*(r: var Fp2, a: Fp2, k: static int = 1) {.inline.} =
 # Frobenius map - on extension fields
 # -----------------------------------------------------------------
 
-func frobenius_map*[C](r: var Fp4[C], a: Fp4[C], k: static int = 1) {.inline.} =
+func frobenius_map*[Name](r: var Fp4[Name], a: Fp4[Name], k: static int = 1) {.inline.} =
   ## Computes a^(pᵏ)
   ## The p-power frobenius automorphism on 𝔽p4
   r.c0.frobenius_map(a.c0, k)
   r.c1.frobenius_map(a.c1, k)
-  r.c1.mulCheckSparse frobMapConst(C, 3, k)
+  r.c1.mulCheckSparse frobMapConst(Name, 3, k)
 
-func frobenius_map*[C](r: var Fp6[C], a: Fp6[C], k: static int = 1) {.inline.} =
+func frobenius_map*[Name](r: var Fp6[Name], a: Fp6[Name], k: static int = 1) {.inline.} =
   ## Computes a^(pᵏ)
   ## The p-power frobenius automorphism on 𝔽p6
   r.c0.frobenius_map(a.c0, k)
   r.c1.frobenius_map(a.c1, k)
   r.c2.frobenius_map(a.c2, k)
 
-  when C.getEmbeddingDegree == 12:
-    r.c1.mulCheckSparse frobMapConst(C, 2, k)
-    r.c2.mulCheckSparse frobMapConst(C, 4, k)
-  elif C.getEmbeddingDegree == 6:
-    r.c1.mulCheckSparse frobMapConst(C, 1, k)
-    r.c2.mulCheckSparse frobMapConst(C, 2, k)
+  when Name.getEmbeddingDegree() == 12:
+    r.c1.mulCheckSparse frobMapConst(Name, 2, k)
+    r.c2.mulCheckSparse frobMapConst(Name, 4, k)
+  elif Name.getEmbeddingDegree() == 6:
+    r.c1.mulCheckSparse frobMapConst(Name, 1, k)
+    r.c2.mulCheckSparse frobMapConst(Name, 2, k)
   else:
     {.error: "Not Implemented".}
 
-func frobenius_map*[C](r: var Fp12[C], a: Fp12[C], k: static int = 1) {.inline.} =
+func frobenius_map*[Name](r: var Fp12[Name], a: Fp12[Name], k: static int = 1) {.inline.} =
   ## Computes a^(pᵏ)
   ## The p-power frobenius automorphism on 𝔽p12
   staticFor i, 0, r.coords.len:
@@ -84,19 +84,19 @@ func frobenius_map*[C](r: var Fp12[C], a: Fp12[C], k: static int = 1) {.inline.}
       r.coords[i].coords[j].frobenius_map(a.coords[i].coords[j], k)
 
   when r.c0 is Fp4:
-    r.c0.c0.mulCheckSparse frobMapConst(C, 0, k)
-    r.c0.c1.mulCheckSparse frobMapConst(C, 3, k)
-    r.c1.c0.mulCheckSparse frobMapConst(C, 1, k)
-    r.c1.c1.mulCheckSparse frobMapConst(C, 4, k)
-    r.c2.c0.mulCheckSparse frobMapConst(C, 2, k)
-    r.c2.c1.mulCheckSparse frobMapConst(C, 5, k)
+    r.c0.c0.mulCheckSparse frobMapConst(Name, 0, k)
+    r.c0.c1.mulCheckSparse frobMapConst(Name, 3, k)
+    r.c1.c0.mulCheckSparse frobMapConst(Name, 1, k)
+    r.c1.c1.mulCheckSparse frobMapConst(Name, 4, k)
+    r.c2.c0.mulCheckSparse frobMapConst(Name, 2, k)
+    r.c2.c1.mulCheckSparse frobMapConst(Name, 5, k)
   else:
-    r.c0.c0.mulCheckSparse frobMapConst(C, 0, k)
-    r.c0.c1.mulCheckSparse frobMapConst(C, 2, k)
-    r.c0.c2.mulCheckSparse frobMapConst(C, 4, k)
-    r.c1.c0.mulCheckSparse frobMapConst(C, 1, k)
-    r.c1.c1.mulCheckSparse frobMapConst(C, 3, k)
-    r.c1.c2.mulCheckSparse frobMapConst(C, 5, k)
+    r.c0.c0.mulCheckSparse frobMapConst(Name, 0, k)
+    r.c0.c1.mulCheckSparse frobMapConst(Name, 2, k)
+    r.c0.c2.mulCheckSparse frobMapConst(Name, 4, k)
+    r.c1.c0.mulCheckSparse frobMapConst(Name, 1, k)
+    r.c1.c1.mulCheckSparse frobMapConst(Name, 3, k)
+    r.c1.c2.mulCheckSparse frobMapConst(Name, 5, k)
 
 # ψ (Psi) - Untwist-Frobenius-Twist Endomorphisms on twisted curves
 # -----------------------------------------------------------------
@@ -112,5 +112,5 @@ func frobenius_psi*[PointG2](r: var PointG2, P: PointG2, k: static int = 1) =
   for coordR, coordP in fields(r, P):
     coordR.frobenius_map(coordP, k)
 
-  r.x.mulCheckSparse frobPsiConst(PointG2.F.C, psipow=k, coefpow=2)
-  r.y.mulCheckSparse frobPsiConst(PointG2.F.C, psipow=k, coefpow=3)
+  r.x.mulCheckSparse frobPsiConst(PointG2.F.Name, psipow=k, coefpow=2)
+  r.y.mulCheckSparse frobPsiConst(PointG2.F.Name, psipow=k, coefpow=3)

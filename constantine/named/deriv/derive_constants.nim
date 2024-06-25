@@ -46,7 +46,7 @@ macro genDerivedConstants*(mode: static DerivedConstantMode): untyped =
   let ff = if mode == kModulus: "_Fp" else: "_Fr"
 
 
-  for curveSym in low(Curve) .. high(Curve):
+  for curveSym in low(Algebra) .. high(Algebra):
     let curve = $curveSym
     let M = if mode == kModulus: bindSym(curve & "_Modulus")
             else: bindSym(curve & "_Order")

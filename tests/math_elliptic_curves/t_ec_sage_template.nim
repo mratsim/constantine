@@ -121,7 +121,7 @@ proc parseHook*(src: string, pos: var int, value: var ECP_ShortW_Aff) =
 proc loadVectors(TestType: typedesc): TestType =
   const group = when TestType.EC.G == G1: "G1"
                 else: "G2"
-  const filename = "tv_" & $TestType.EC.F.C & "_scalar_mul_" & group & "_" & $TestType.bits & "bit.json"
+  const filename = "tv_" & $TestType.EC.F.Name & "_scalar_mul_" & group & "_" & $TestType.bits & "bit.json"
   echo "Loading: ", filename
   let content = readFile(TestVectorsDir/filename)
   result = content.fromJson(TestType)
@@ -146,7 +146,7 @@ proc run_scalar_mul_test_vs_sage*(
   const coord = when EC is ECP_ShortW_Prj: " Projective coordinates "
                 elif EC is ECP_ShortW_Jac: " Jacobian coordinates "
 
-  const testSuiteDesc = "Scalar Multiplication " & $EC.F.C & " " & G1_or_G2 & " " & coord & " vs SageMath - " & $bits & "-bit scalar"
+  const testSuiteDesc = "Scalar Multiplication " & $EC.F.Name & " " & G1_or_G2 & " " & coord & " vs SageMath - " & $bits & "-bit scalar"
 
   suite testSuiteDesc & " [" & $WordBitWidth & "-bit words]":
     for i in 0 ..< vec.vectors.len:

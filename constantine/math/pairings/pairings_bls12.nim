@@ -51,41 +51,41 @@ export zoo_pairings # generic sandwich https://github.com/nim-lang/Nim/issues/11
 # Generic pairing implementation
 # ----------------------------------------------------------------
 
-func millerLoopGenericBLS12*[C](
-       f: var Fp12[C],
-       Q: ECP_ShortW_Aff[Fp2[C], G2],
-       P: ECP_ShortW_Aff[Fp[C], G1]
+func millerLoopGenericBLS12*[Name](
+       f: var Fp12[Name],
+       Q: ECP_ShortW_Aff[Fp2[Name], G2],
+       P: ECP_ShortW_Aff[Fp[Name], G1]
      ) {.meter.} =
   ## Generic Miller Loop for BLS12 curve
   ## Computes f{u,Q}(P) with u the BLS curve parameter
-  var T {.noInit.}: ECP_ShortW_Prj[Fp2[C], G2]
+  var T {.noInit.}: ECP_ShortW_Prj[Fp2[Name], G2]
   T.fromAffine(Q)
 
-  basicMillerLoop(f, T, P, Q, pairing(C, ate_param))
+  basicMillerLoop(f, T, P, Q, pairing(Name, ate_param))
 
-func millerLoopGenericBLS12*[C](
-       f: var Fp12[C],
-       Qs: ptr UncheckedArray[ECP_ShortW_Aff[Fp2[C], G2]],
-       Ps: ptr UncheckedArray[ECP_ShortW_Aff[Fp[C], G1]],
+func millerLoopGenericBLS12*[Name](
+       f: var Fp12[Name],
+       Qs: ptr UncheckedArray[ECP_ShortW_Aff[Fp2[Name], G2]],
+       Ps: ptr UncheckedArray[ECP_ShortW_Aff[Fp[Name], G1]],
        N: int
      ) {.noinline, tags:[Alloca], meter.} =
   ## Generic Miller Loop for BLS12 curve
   ## Computes f{u,Q}(P) with u the BLS curve parameter
-  var Ts = allocStackArray(ECP_ShortW_Prj[Fp2[C], G2], N)
+  var Ts = allocStackArray(ECP_ShortW_Prj[Fp2[Name], G2], N)
   for i in 0 ..< N:
     Ts[i].fromAffine(Qs[i])
 
-  basicMillerLoop(f, Ts, Ps, Qs, N, pairing(C, ate_param))
+  basicMillerLoop(f, Ts, Ps, Qs, N, pairing(Name, ate_param))
 
-func finalExpGeneric[C: static Curve](f: var Fp12[C]) =
+func finalExpGeneric[Name: static Algebra](f: var Fp12[Name]) =
   ## A generic and slow implementation of final exponentiation
   ## for sanity checks purposes.
-  f.pow_vartime(C.pairing(finalexponent), window = 3)
+  f.pow_vartime(Name.pairing(finalexponent), window = 3)
 
-func pairing_bls12_reference*[C](
-       gt: var Fp12[C],
-       P: ECP_ShortW_Aff[Fp[C], G1],
-       Q: ECP_ShortW_Aff[Fp2[C], G2]) =
+func pairing_bls12_reference*[Name](
+       gt: var Fp12[Name],
+       P: ECP_ShortW_Aff[Fp[Name], G1],
+       Q: ECP_ShortW_Aff[Fp2[Name], G2]) =
   ## Compute the optimal Ate Pairing for BLS12 curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
@@ -97,7 +97,7 @@ func pairing_bls12_reference*[C](
 # Optimized pairing implementation
 # ----------------------------------------------------------------
 
-func finalExpHard_BLS12*[C](f: var Fp12[C]) {.meter.} =
+func finalExpHard_BLS12*[Name](f: var Fp12[Name]) {.meter.} =
   ## Hard part of the final exponentiation
   ## Specialized for BLS12 curves
   ##
@@ -117,13 +117,13 @@ func finalExpHard_BLS12*[C](f: var Fp12[C]) {.meter.} =
   # - S₁₂ being cyclotomic squaring
   # - Fₙ being n Frobenius applications
 
-  var v0 {.noInit.}, v1 {.noInit.}, v2 {.noInit.}: Fp12[C]
+  var v0 {.noInit.}, v1 {.noInit.}, v2 {.noInit.}: Fp12[Name]
 
   # Save for f³ and (x−1)²
   v2.cyclotomic_square(f)      # v2 = f²
 
   # (x−1)²
-  when C.pairing(ate_param).isEven().bool:
+  when Name.pairing(ate_param).isEven().bool:
     v0.cycl_exp_by_curve_param_div2(v2) # v0 = (f²)^(x/2) = f^x
   else:
     v0.cycl_exp_by_curve_param(f)
@@ -152,10 +152,10 @@ func finalExpHard_BLS12*[C](f: var Fp12[C]) {.meter.} =
   # (x−1)².(x+p).(x²+p²−1) + 3
   f *= v0
 
-func pairing_bls12*[C](
-       gt: var Fp12[C],
-       P: ECP_ShortW_Aff[Fp[C], G1],
-       Q: ECP_ShortW_Aff[Fp2[C], G2]) {.meter.} =
+func pairing_bls12*[Name](
+       gt: var Fp12[Name],
+       P: ECP_ShortW_Aff[Fp[Name], G1],
+       Q: ECP_ShortW_Aff[Fp2[Name], G2]) {.meter.} =
   ## Compute the optimal Ate Pairing for BLS12 curves
   ## Input: P ∈ G1, Q ∈ G2
   ## Output: e(P, Q) ∈ Gt
@@ -163,10 +163,10 @@ func pairing_bls12*[C](
   gt.finalExpEasy()
   gt.finalExpHard_BLS12()
 
-func pairing_bls12*[N: static int, C](
-       gt: var Fp12[C],
-       Ps: array[N, ECP_ShortW_Aff[Fp[C], G1]],
-       Qs: array[N, ECP_ShortW_Aff[Fp2[C], G2]]) {.meter.} =
+func pairing_bls12*[N: static int, Name](
+       gt: var Fp12[Name],
+       Ps: array[N, ECP_ShortW_Aff[Fp[Name], G1]],
+       Qs: array[N, ECP_ShortW_Aff[Fp2[Name], G2]]) {.meter.} =
   ## Compute the optimal Ate Pairing for BLS12 curves
   ## Input: an array of Ps ∈ G1 and Qs ∈ G2
   ## Output:

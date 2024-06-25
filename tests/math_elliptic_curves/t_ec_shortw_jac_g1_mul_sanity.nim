@@ -43,7 +43,7 @@ suite "Order checks on BN254_Snarks":
         else:
           let a = rng.random_unsafe(EC)
 
-        let exponent = EC.F.C.getCurveOrder()
+        let exponent = EC.F.Name.getCurveOrder()
 
         var
           impl = a

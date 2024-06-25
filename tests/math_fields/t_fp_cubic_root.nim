@@ -14,7 +14,7 @@ import  std/unittest,
 
 echo "\n------------------------------------------------------\n"
 
-proc checkCubeRootOfUnity(curve: static Curve) =
+proc checkCubeRootOfUnity(name: static Algebra) =
   test $curve & " cube root of unity (mod p)":
     var cru = curve.getCubicRootOfUnity_mod_p()
     cru.square()

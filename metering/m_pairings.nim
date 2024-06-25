@@ -27,12 +27,12 @@ func random_point*(rng: var RngState, EC: typedesc[ECP_ShortW_Aff]): EC {.noInit
   jac.clearCofactor()
   result.affine(jac)
 
-proc pairingBLS12Meter*(C: static Curve) =
+proc pairingBLS12Meter*(Name: static Algebra) =
   let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[C], G2])
+    P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
+    Q = rng.random_point(ECP_ShortW_Aff[Fp2[Name], G2])
 
-  var f: Fp12[C]
+  var f: Fp12[Name]
 
   resetMetering()
   f.pairing(P, Q)

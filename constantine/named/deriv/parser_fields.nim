@@ -303,9 +303,9 @@ proc genFieldsConstants(defs: seq[CurveParams]): NimNode =
   result = newStmtList()
 
   # type Curve = enum
-  let Curve = ident"Curve"
+  let Algebra = ident"Algebra"
   result.add newEnum(
-    name = Curve,
+    name = Algebra,
     fields = Curves,
     public = true,
     pure = false

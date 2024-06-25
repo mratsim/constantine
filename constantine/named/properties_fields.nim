@@ -14,7 +14,7 @@ import
   ./config_fields_and_curves,
   ./deriv/derive_constants
 
-export Curve
+export Algebra
 
 # ############################################################
 #
@@ -22,46 +22,46 @@ export Curve
 #
 # ############################################################
 
-template matchingBigInt*(C: static Curve): untyped =
+template matchingBigInt(Name: static Algebra): untyped =
   ## BigInt type necessary to store the prime field Fp
   # Workaround: https://github.com/nim-lang/Nim/issues/16774
-  BigInt[CurveBitWidth[C]]
+  BigInt[CurveBitWidth[Name]]
 
-template matchingOrderBigInt*(C: static Curve): untyped =
+template matchingOrderBigInt(Name: static Algebra): untyped =
   ## BigInt type necessary to store the scalar field Fr
   # Workaround: https://github.com/nim-lang/Nim/issues/16774
-  BigInt[CurveOrderBitWidth[C]]
+  BigInt[CurveOrderBitWidth[Name]]
 
 type
-  Fp*[C: static Curve] = object
+  Fp*[Name: static Algebra] = object
     ## All operations on a Fp field are modulo P
     ## P being the prime modulus of the Curve C
     ## Internally, data is stored in Montgomery n-residue form
     ## with the magic constant chosen for convenient division (a power of 2 depending on P bitsize)
     # TODO, pseudo mersenne primes like 2²⁵⁵-19 have very fast modular reduction
     #       and don't need Montgomery representation
-    mres*: matchingBigInt(C)
+    mres*: matchingBigInt(Name)
 
-  Fr*[C: static Curve] = object
+  Fr*[Name: static Algebra] = object
     ## All operations on a field are modulo `r`
     ## `r` being the prime curve order or subgroup order
     ## Internally, data is stored in Montgomery n-residue form
     ## with the magic constant chosen for convenient division (a power of 2 depending on P bitsize)
-    mres*: matchingOrderBigInt(C)
+    mres*: matchingOrderBigInt(Name)
 
-  FF*[C: static Curve] = Fp[C] or Fr[C]
+  FF*[Name: static Algebra] = Fp[Name] or Fr[Name]
 
 debug:
   # Those MUST not be enabled in production to avoiding the compiler auto-conversion and printing SecretWord by mistake, for example in crash logs.
 
-  func `$`*[C: static Curve](a: Fp[C]): string =
-    result = "Fp[" & $C
+  func `$`*[Name: static Algebra](a: Fp[Name]): string =
+    result = "Fp[" & $Name
     result.add "]("
     result.add $a.mres
     result.add ')'
 
-  func `$`*[C: static Curve](a: Fr[C]): string =
-    result = "Fr[" & $C
+  func `$`*[Name: static Algebra](a: Fr[Name]): string =
+    result = "Fr[" & $Name
     result.add "]("
     result.add $a.mres
     result.add ')'
@@ -77,29 +77,29 @@ debug:
 export matchingBigInt
 export matchingOrderBigInt
 
-macro Mod*(C: static Curve): untyped =
+macro Mod*(Name: static Algebra): untyped =
   ## Get the Modulus associated to a curve
-  result = bindSym($C & "_Modulus")
+  result = bindSym($Name & "_Modulus")
 
-template matchingLimbs2x*(C: Curve): untyped =
-  const N2 = wordsRequired(CurveBitWidth[C]) * 2 # TODO upstream, not precomputing N2 breaks semcheck
+template matchingLimbs2x*(Name: static Algebra): untyped =
+  const N2 = wordsRequired(CurveBitWidth[Name]) * 2 # TODO upstream, not precomputing N2 breaks semcheck
   array[N2, SecretWord] # TODO upstream, using Limbs[N2] breaks semcheck
 
-func has_P_3mod4_primeModulus*(C: static Curve): static bool =
+func has_P_3mod4_primeModulus*(Name: static Algebra): static bool =
   ## Returns true iff p ≡ 3 (mod 4)
-  (BaseType(C.Mod.limbs[0]) and 3) == 3
+  (BaseType(Name.Mod.limbs[0]) and 3) == 3
 
-func has_P_5mod8_primeModulus*(C: static Curve): static bool =
+func has_P_5mod8_primeModulus*(Name: static Algebra): static bool =
   ## Returns true iff p ≡ 5 (mod 8)
-  (BaseType(C.Mod.limbs[0]) and 7) == 5
+  (BaseType(Name.Mod.limbs[0]) and 7) == 5
 
-func has_P_9mod16_primeModulus*(C: static Curve): static bool =
+func has_P_9mod16_primeModulus*(Name: static Algebra): static bool =
   ## Returns true iff p ≡ 9 (mod 16)
-  (BaseType(C.Mod.limbs[0]) and 15) == 9
+  (BaseType(Name.Mod.limbs[0]) and 15) == 9
 
-func has_Psquare_9mod16_primePower*(C: static Curve): static bool =
+func has_Psquare_9mod16_primePower*(Name: static Algebra): static bool =
   ## Returns true iff p² ≡ 9 (mod 16)
-  ((BaseType(C.Mod.limbs[0]) * BaseType(C.Mod.limbs[0])) and 15) == 9
+  ((BaseType(Name.Mod.limbs[0]) * BaseType(Name.Mod.limbs[0])) and 15) == 9
 
 # ############################################################
 #
@@ -113,7 +113,7 @@ genDerivedConstants(kOrder)
 
 proc bindConstant(ff: NimNode, property: string): NimNode =
   # Need to workaround https://github.com/nim-lang/Nim/issues/14021
-  # which prevents checking if a type FF[C] = Fp[C] or Fr[C]
+  # which prevents checking if a type FF[Name] = Fp[Name] or Fr[Name]
   # was instantiated with Fp or Fr.
   # getTypeInst only returns FF and sameType doesn't work.
   # so quote do + when checks.
@@ -125,7 +125,7 @@ proc bindConstant(ff: NimNode, property: string): NimNode =
     if T[1].kind == nnkBracketExpr: # typedesc[Fp[BLS12_381]] as used internally
       # doAssert T[1][0].eqIdent"Fp" or T[1][0].eqIdent"Fr", "Found ident: '" & $T[1][0] & "' instead of 'Fp' or 'Fr'"
       T[1][1].expectKind(nnkIntLit) # static enum are ints in the VM
-      $Curve(T[1][1].intVal)
+      $Algebra(T[1][1].intVal)
     else: # typedesc[bls12381_fp] alias as used for C exports
       let T1 = getTypeInst(T[1].getImpl()[2])
       if T1.kind != nnkBracketExpr or
@@ -135,7 +135,7 @@ proc bindConstant(ff: NimNode, property: string): NimNode =
         echo getTypeInst(T1).treerepr()
         error "getTypeInst didn't return the full instantiation." &
           " Dealing with types in macros is hard, complain at https://github.com/nim-lang/RFCs/issues/44"
-      $Curve(T1[1].intVal)
+      $Algebra(T1[1].intVal)
 
   let curve_fp = bindSym(curve & "_Fp_" & property)
   let curve_fr = bindSym(curve & "_Fr_" & property)
@@ -149,9 +149,9 @@ proc bindConstant(ff: NimNode, property: string): NimNode =
 
 template fieldMod*(Field: type FF): auto =
   when Field is Fp:
-    Mod(Field.C)
+    Mod(Field.Name)
   else:
-    getCurveOrder(Field.C)
+    getCurveOrder(Field.Name)
 
 macro getSpareBits*(ff: type FF): untyped =
   ## Returns the number of extra bits
@@ -211,7 +211,7 @@ macro getPrimeMinus5div8_BE*(ff: type FF): untyped =
 # ############################################################
 
 macro debugConsts(): untyped {.used.} =
-  let curves = bindSym("Curve")
+  let curves = bindSym("Algebra")
   let E = curves.getImpl[2]
 
   result = newStmtList()
@@ -223,7 +223,7 @@ macro debugConsts(): untyped {.used.} =
     let negInvModWord = bindSym(curveName & "_Fp_NegInvModWord")
 
     result.add quote do:
-      echo "Curve ", `curveName`,':'
+      echo "Algebra ", `curveName`,':'
       echo "  Field Modulus:                 ", `modulus`
       echo "  Montgomery R² (mod P):         ", `r2modp`
       echo "  Montgomery -1/P[0] (mod 2^", WordBitWidth, "): ", `negInvModWord`

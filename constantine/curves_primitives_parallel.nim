@@ -29,7 +29,7 @@ export threadpool.shutdown
 # Base types
 # ------------------------------------------------------------
 
-export algebras.Curve
+export algebras.Algebra
 export abstractions.BigInt
 export
   algebras.Fp,

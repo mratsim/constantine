@@ -14,7 +14,7 @@ import
   ../properties_fields,
   ./parser_fields
 
-export CurveFamily, Curve, SexticTwist
+export Algebra, CurveFamily, SexticTwist
 
 # ############################################################
 #

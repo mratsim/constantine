@@ -249,26 +249,26 @@ suite "ψ - psi(psi(P)) == psi2(P) - (Untwist-Frobenius-Twist Endomorphism)" & "
 
 suite "ψ²(P) - [t]ψ(P) + [p]P = Inf" & " [" & $WordBitWidth & "-bit words]":
   const Iters = 10
-  proc trace(C: static Curve): auto =
+  proc trace(Name: static Algebra): auto =
     # Returns (abs(trace), isNegativeSign)
-    when C == BN254_Snarks:
+    when Name == BN254_Snarks:
       # x = "0x44E992B44A6909F1"
       # t = 6x²+1
       return (BigInt[127].fromHex"0x6f4d8248eeb859fbf83e9682e87cfd47", false)
-    elif C == BN254_Nogami:
+    elif Name == BN254_Nogami:
       # x = "-0x4080000000000001"
       # t = 6x²+1
       return (BigInt[127].fromHex"0x61818000000000030600000000000007", false)
-    elif C == BLS12_377:
+    elif Name == BLS12_377:
       # x = 3 * 2^46 * (7 * 13 * 499) + 1
       # x = 0x8508c00000000001
       # t = x+1
       return (BigInt[64].fromHex"8508c00000000002", false)
-    elif C == BLS12_381:
+    elif Name == BLS12_381:
       # x = "-(2^63 + 2^62 + 2^60 + 2^57 + 2^48 + 2^16)"
       # t = x+1
       return (BigInt[64].fromHex"0xd20100000000ffff", true)
-    elif C == BW6_761:
+    elif Name == BW6_761:
       # x = 3 * 2^46 * (7 * 13 * 499) + 1
       # x = 0x8508c00000000001
       # t = x^5 - 3*x^4 + 3*x^3 - x + 3 + cofactor_trace*r
@@ -278,7 +278,7 @@ suite "ψ²(P) - [t]ψ(P) + [p]P = Inf" & " [" & $WordBitWidth & "-bit words]":
       {.error: "Not implemented".}
 
   proc test(EC: typedesc, randZ: static bool, gen: static RandomGen) =
-    let trace = trace(EC.F.C)
+    let trace = trace(EC.F.Name)
 
     for i in 0 ..< Iters:
       let P = rng.random_point(EC, randZ, gen)
@@ -291,7 +291,7 @@ suite "ψ²(P) - [t]ψ(P) + [p]P = Inf" & " [" & $WordBitWidth & "-bit words]":
       if trace[1]: # negative trace
         tpsi.neg()
       pP = P
-      pP.scalarMulGeneric(EC.F.C.Mod) # Multiply beyond curve order, invalid for GLS
+      pP.scalarMulGeneric(EC.F.Name.Mod) # Multiply beyond curve order, invalid for GLS
 
       # ψ²(P) - [t]ψ(P) + [p]P = InfinityPoint
       r.diff(psi2, tpsi)

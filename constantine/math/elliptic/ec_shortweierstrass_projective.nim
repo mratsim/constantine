@@ -190,10 +190,10 @@ func sum*[F; G: static Subgroup](
   #
   # Cost: 12M + 3 mul(a) + 2 mul(3b) + 23 a
 
-  when F.C.getCoefA() == 0:
+  when F.Name.getCoefA() == 0:
     var t0 {.noInit.}, t1 {.noInit.}, t2 {.noInit.}, t3 {.noInit.}, t4 {.noInit.}: F
     var x3 {.noInit.}, y3 {.noInit.}, z3 {.noInit.}: F
-    const b3 = 3 * F.C.getCoefB()
+    const b3 = 3 * F.Name.getCoefB()
 
     # Algorithm 7 for curves: y² = x³ + b
     # 12M + 2 mul(3b) + 19A
@@ -211,32 +211,32 @@ func sum*[F; G: static Subgroup](
     t3 *= t4                  # 6.  t₃ <- t₃ * t₄
     t4.sum(t0, t1)            # 7.  t₄ <- t₀ + t₁
     t3 -= t4                  # 8.  t₃ <- t₃ - t₄   t₃ = (X₁ + Y₁)(X₂ + Y₂) - (X₁X₂ + Y₁Y₂) = X₁Y₂ + X₂Y₁
-    when G == G2 and F.C.getSexticTwist() == D_Twist:
+    when G == G2 and F.Name.getSexticTwist() == D_Twist:
       t3 *= SexticNonResidue
     t4.sum(P.y, P.z)          # 9.  t₄ <- Y₁ + Z₁
     x3.sum(Q.y, Q.z)          # 10. X₃ <- Y₂ + Z₂
     t4 *= x3                  # 11. t₄ <- t₄ X₃
     x3.sum(t1, t2)            # 12. X₃ <- t₁ + t₂   X₃ = Y₁Y₂ + Z₁Z₂
     t4 -= x3                  # 13. t₄ <- t₄ - X₃   t₄ = (Y₁ + Z₁)(Y₂ + Z₂) - (Y₁Y₂ + Z₁Z₂) = Y₁Z₂ + Y₂Z₁
-    when G == G2 and F.C.getSexticTwist() == D_Twist:
+    when G == G2 and F.Name.getSexticTwist() == D_Twist:
       t4 *= SexticNonResidue
     x3.sum(P.x, P.z)          # 14. X₃ <- X₁ + Z₁
     y3.sum(Q.x, Q.z)          # 15. Y₃ <- X₂ + Z₂
     x3 *= y3                  # 16. X₃ <- X₃ Y₃     X₃ = (X₁+Z₁)(X₂+Z₂)
     y3.sum(t0, t2)            # 17. Y₃ <- t₀ + t₂   Y₃ = X₁ X₂ + Z₁ Z₂
     y3.diff(x3, y3)           # 18. Y₃ <- X₃ - Y₃   Y₃ = (X₁ + Z₁)(X₂ + Z₂) - (X₁ X₂ + Z₁ Z₂) = X₁Z₂ + X₂Z₁
-    when G == G2 and F.C.getSexticTwist() == D_Twist:
+    when G == G2 and F.Name.getSexticTwist() == D_Twist:
       t0 *= SexticNonResidue
       t1 *= SexticNonResidue
     x3.double(t0)             # 19. X₃ <- t₀ + t₀   X₃ = 2 X₁X₂
     t0 += x3                  # 20. t₀ <- X₃ + t₀   t₀ = 3 X₁X₂
     t2 *= b3                  # 21. t₂ <- 3b t₂     t₂ = 3bZ₁Z₂
-    when G == G2 and F.C.getSexticTwist() == M_Twist:
+    when G == G2 and F.Name.getSexticTwist() == M_Twist:
       t2 *= SexticNonResidue
     z3.sum(t1, t2)            # 22. Z₃ <- t₁ + t₂   Z₃ = Y₁Y₂ + 3bZ₁Z₂
     t1 -= t2                  # 23. t₁ <- t₁ - t₂   t₁ = Y₁Y₂ - 3bZ₁Z₂
     y3 *= b3                  # 24. Y₃ <- 3b Y₃     Y₃ = 3b(X₁Z₂ + X₂Z₁)
-    when G == G2 and F.C.getSexticTwist() == M_Twist:
+    when G == G2 and F.Name.getSexticTwist() == M_Twist:
       y3 *= SexticNonResidue
     x3.prod(t4, y3)           # 25. X₃ <- t₄ Y₃     X₃ = 3b(Y₁Z₂ + Y₂Z₁)(X₁Z₂ + X₂Z₁)
     t2.prod(t3, t1)           # 26. t₂ <- t₃ t₁     t₂ = (X₁Y₂ + X₂Y₁) (Y₁Y₂ - 3bZ₁Z₂)
@@ -262,10 +262,10 @@ func madd*[F; G: static Subgroup](
   ##
   ## ``r`` may alias P
 
-  when F.C.getCoefA() == 0:
+  when F.Name.getCoefA() == 0:
     var t0 {.noInit.}, t1 {.noInit.}, t2 {.noInit.}, t3 {.noInit.}, t4 {.noInit.}: F
     var x3 {.noInit.}, y3 {.noInit.}, z3 {.noInit.}: F
-    const b3 = 3 * F.C.getCoefB()
+    const b3 = 3 * F.Name.getCoefB()
 
     # Algorithm 8 for curves: y² = x³ + b
     # X₃ = (X₁Y₂ + X₂Y₁)(Y₁Y₂ − 3bZ₁)
@@ -284,27 +284,27 @@ func madd*[F; G: static Subgroup](
     t3 *= t4                  # 5.  t₃ <- t₃ * t₄
     t4.sum(t0, t1)            # 6.  t₄ <- t₀ + t₁
     t3 -= t4                  # 7.  t₃ <- t₃ - t₄, t₃ = (X₁ + Y₁)(X₂ + Y₂) - (X₁ X₂ + Y₁ Y₂) = X₁Y₂ + X₂Y₁
-    when G == G2 and F.C.getSexticTwist() == D_Twist:
+    when G == G2 and F.Name.getSexticTwist() == D_Twist:
       t3 *= SexticNonResidue
     t4.prod(Q.y, P.z)         # 8.  t₄ <- Y₂ Z₁
     t4 += P.y                 # 9.  t₄ <- t₄ + Y₁, t₄ = Y₁+Y₂Z₁
-    when G == G2 and F.C.getSexticTwist() == D_Twist:
+    when G == G2 and F.Name.getSexticTwist() == D_Twist:
       t4 *= SexticNonResidue
     y3.prod(Q.x, P.z)         # 10. Y₃ <- X₂ Z₁
     y3 += P.x                 # 11. Y₃ <- Y₃ + X₁, Y₃ = X₁ + X₂Z₁
-    when G == G2 and F.C.getSexticTwist() == D_Twist:
+    when G == G2 and F.Name.getSexticTwist() == D_Twist:
       t0 *= SexticNonResidue
       t1 *= SexticNonResidue
     x3.double(t0)             # 12. X₃ <- t₀ + t₀
     t0 += x3                  # 13. t₀ <- X₃ + t₀, t₀ = 3X₁X₂
     t2 = P.z
     t2 *= b3                  # 14. t₂ <- 3bZ₁
-    when G == G2 and F.C.getSexticTwist() == M_Twist:
+    when G == G2 and F.Name.getSexticTwist() == M_Twist:
       t2 *= SexticNonResidue
     z3.sum(t1, t2)            # 15. Z₃ <- t₁ + t₂, Z₃ = Y₁Y₂ + 3bZ₁
     t1 -= t2                  # 16. t₁ <- t₁ - t₂, t₁ = Y₁Y₂ - 3bZ₁
     y3 *= b3                  # 17. Y₃ <- 3bY₃,    Y₃ = 3b(X₁ + X₂Z₁)
-    when G == G2 and F.C.getSexticTwist() == M_Twist:
+    when G == G2 and F.Name.getSexticTwist() == M_Twist:
       y3 *= SexticNonResidue
     x3.prod(t4, y3)           # 18. X₃ <- t₄ Y₃,   X₃ = (Y₁ + Y₂Z₁) 3b(X₁ + X₂Z₁)
     t2.prod(t3, t1)           # 19. t₂ <- t₃ t₁,   t₂ = (X₁Y₂ + X₂Y₁)(Y₁Y₂ - 3bZ₁)
@@ -365,10 +365,10 @@ func double*[F; G: static Subgroup](
   #
   # Cost: 8M + 3S + 3 mul(a) + 2 mul(3b) + 15a
 
-  when F.C.getCoefA() == 0:
+  when F.Name.getCoefA() == 0:
     var t0 {.noInit.}, t1 {.noInit.}, t2 {.noInit.}: F
     var x3 {.noInit.}, y3 {.noInit.}, z3 {.noInit.}: F
-    const b3 = 3 * F.C.getCoefB()
+    const b3 = 3 * F.Name.getCoefB()
 
     # Algorithm 9 for curves:
     # 6M + 2S + 1 mul(3b) + 9a
@@ -376,7 +376,7 @@ func double*[F; G: static Subgroup](
     # X₃ = 2XY(Y² - 9bZ²)
     # Y₃ = (Y² - 9bZ²)(Y² + 3bZ²) + 24bY²Z²
     # Z₃ = 8Y³Z
-    when G == G2 and F.C.getSexticTwist() == D_Twist:
+    when G == G2 and F.Name.getSexticTwist() == D_Twist:
       var snrY {.noInit.}: F
       snrY.prod(P.y, SexticNonResidue)
       t0.square(P.y)
@@ -390,7 +390,7 @@ func double*[F; G: static Subgroup](
     t1.prod(snrY, P.z)        # 5.  t₁ <- Y Z
     t2.square(P.z)            # 6.  t₂ <- Z Z
     t2 *= b3                  # 7.  t₂ <- 3b t₂
-    when G == G2 and F.C.getSexticTwist() == M_Twist:
+    when G == G2 and F.Name.getSexticTwist() == M_Twist:
       t2 *= SexticNonResidue
     x3.prod(t2, z3)           # 8.  X₃ <- t₂ Z₃
     y3.sum(t0, t2)            # 9.  Y₃ <- t₀ + t₂

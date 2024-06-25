@@ -32,9 +32,9 @@ func random_point*(rng: var RngState, EC: typedesc): EC {.noInit.} =
   result = rng.random_unsafe(EC)
   result.clearCofactor()
 
-proc pairingBLS12Meter*(C: static Curve) =
+proc pairingBLS12Meter*(A: NamedAlgebra) =
   let
-    P = rng.random_point(ECP_ShortW_Prj[Fp[C], G1])
+    P = rng.random_point(ECP_ShortW_Prj[Fp[A], G1])
     Q = rng.random_point(ECP_ShortW_Prj[Fp2[C], G2])
 
   var f: Fp12[C]

@@ -237,8 +237,8 @@ func scalarMul*[EC](P: var EC, scalar: BigInt) {.inline, meter.} =
   ## - Cofactor to be cleared
   ## - 0 <= scalar < curve order
   ## Those will be assumed to maintain constant-time property
-  when BigInt.bits <= EC.F.C.getCurveOrderBitwidth() and
-       EC.F.C.hasEndomorphismAcceleration():
+  when BigInt.bits <= EC.F.Name.getCurveOrderBitwidth() and
+       EC.F.Name.hasEndomorphismAcceleration():
     # TODO, min amount of bits for endomorphisms?
     when EC.F is Fp:
       P.scalarMulGLV_m2w2(scalar)

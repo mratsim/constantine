@@ -656,7 +656,7 @@ suite "Multiproof Tests":
   #     var multiproof {.noInit.}: IpaMultiProof[8, ECP_TwEdwards_Aff[Fp[Banderwagon]], Fr[Banderwagon]]
   #     CRS.ipa_multi_prove(
   #       domain, prover_transcript,
-  #       multiproof, [poly], [C], [0'u32]
+  #       multiproof, [poly], [Name], [0'u32]
   #     )
 
   #     var hexproof: EthVerkleIpaMultiProofBytes
@@ -667,7 +667,7 @@ suite "Multiproof Tests":
   #     var verifier_transcript: sha256
   #     verifier_transcript.initTranscript("multiproof")
 
-  #     let ok = CRS.ipa_multi_verify(domain, verifier_transcript, [C], [0'u32], [Fr[Banderwagon].fromUint(1'u32)], multiproof)
+  #     let ok = CRS.ipa_multi_verify(domain, verifier_transcript, [Name], [0'u32], [Fr[Banderwagon].fromUint(1'u32)], multiproof)
 
   #     doAssert ok, "Multiproof verification error!"
 

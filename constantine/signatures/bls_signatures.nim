@@ -41,7 +41,7 @@ func derivePubkey*[Pubkey, SecKey](pubkey: var Pubkey, seckey: SecKey) =
   ## 0 is INVALID
   const Group = Pubkey.G
   type Field = Pubkey.F
-  const EC = Field.C
+  const EC = Field.Name
 
   var pk {.noInit.}: ECP_ShortW_Jac[Field, Group]
   pk.setGenerator()
@@ -103,13 +103,13 @@ func coreVerify*[Pubkey, Sig](
   var Q {.noInit.}: ECP_ShortW_Aff[Sig.F, Sig.G]
   var negG {.noInit.}: ECP_ShortW_Aff[Pubkey.F, Pubkey.G]
 
-  negG.neg(Pubkey.F.C.getGenerator($Pubkey.G))
+  negG.neg(Pubkey.F.Name.getGenerator($Pubkey.G))
   H.hashToCurve(k, Q, augmentation, message, domainSepTag)
 
-  when Sig.F.C.getEmbeddingDegree() == 12:
-    var gt {.noInit.}: Fp12[Sig.F.C]
+  when Sig.F.Name.getEmbeddingDegree() == 12:
+    var gt {.noInit.}: Fp12[Sig.F.Name]
   else:
-    {.error: "Not implemented: signature on k=" & $Sig.F.C.getEmbeddingDegree() & " for curve " & $$Sig.F.C.}
+    {.error: "Not implemented: signature on k=" & $Sig.F.Name.getEmbeddingDegree() & " for curve " & $$Sig.F.Name.}
 
   # e(PK, H(msg))*e(sig, -G) == 1
   when Sig.G == G2:
@@ -245,7 +245,7 @@ func finalVerify*[F, G](ctx: var BLSAggregateSigAccumulator, aggregateSignature:
     type PubKey = ECP_ShortW_Aff[FF2, G2]
 
   var negG {.noInit.}: Pubkey
-  negG.neg(Pubkey.F.C.getGenerator($Pubkey.G))
+  negG.neg(Pubkey.F.Name.getGenerator($Pubkey.G))
 
   when G == G2:
     if not ctx.millerAccum.update(negG, aggregateSignature):
@@ -528,7 +528,7 @@ func finalVerify*(ctx: var BLSBatchSigAccumulator): bool =
     type PubKey = ECP_ShortW_Aff[FF2, G2]
 
   var negG {.noInit.}: Pubkey
-  negG.neg(Pubkey.F.C.getGenerator($Pubkey.G))
+  negG.neg(Pubkey.F.Name.getGenerator($Pubkey.G))
 
   var aggSig {.noInit.}: ctx.aggSig.typeof().affine()
   aggSig.affine(ctx.aggSig)
@@ -601,7 +601,7 @@ func aggregateVerify*[Msg, Pubkey, Sig](
 
   type FF1 = Pubkey.F
   type FF2 = Sig.F
-  type FpK = Sig.F.C.getGT()
+  type FpK = Sig.F.Name.getGT()
 
   var accum {.noinit.}: BLSAggregateSigAccumulator[H, FF1, FF2, Fpk, k]
   accum.init(domainSepTag)
@@ -644,7 +644,7 @@ func batchVerify*[Msg, Pubkey, Sig](
 
   type FF1 = Pubkey.F
   type FF2 = Sig.F
-  type FpK = Sig.F.C.getGT()
+  type FpK = Sig.F.Name.getGT()
 
   var accum {.noinit.}: BLSBatchSigAccumulator[H, FF1, FF2, Fpk, ECP_ShortW_Jac[Sig.F, Sig.G], k]
   accum.init(domainSepTag, secureRandomBytes, accumSepTag = "serial")

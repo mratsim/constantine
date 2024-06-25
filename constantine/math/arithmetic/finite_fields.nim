@@ -59,7 +59,7 @@ func fromBig*(dst: var FF, src: BigInt) =
   else:
     dst.mres.getMont(src, FF.fieldMod(), FF.getR2modP(), FF.getNegInvModWord(), FF.getSpareBits())
 
-func fromBig*[C: static Curve](T: type FF[C], src: BigInt): FF[C] {.noInit.} =
+func fromBig*[Name: static Algebra](T: type FF[Name], src: BigInt): FF[Name] {.noInit.} =
   ## Convert a BigInt to its Montgomery form
   result.fromBig(src)
 
@@ -700,9 +700,9 @@ func pow_vartime(a: var FF, exponent: SomeUnsignedInt) {.tags:[VarTime], meter.}
   else:
     a.pow_squareMultiply_vartime(exponent)
 
-func computeSparsePowers_vartime*[C](
-      dst: ptr UncheckedArray[FF[C]],
-      base: FF[C],
+func computeSparsePowers_vartime*[Name](
+      dst: ptr UncheckedArray[FF[Name]],
+      base: FF[Name],
       sparsePowers: ptr UncheckedArray[SomeUnsignedInt],
       len: int) =
   ## Compute sparse powers of base
@@ -714,7 +714,7 @@ func computeSparsePowers_vartime*[C](
     dst[i] = dst[i-1]
     dst[i].pow_vartime(sparsePowers[i]-sparsePowers[i-1])
 
-func computePowers*[C](dst: ptr UncheckedArray[FF[C]], base: FF[C], len: int) =
+func computePowers*[Name](dst: ptr UncheckedArray[FF[Name]], base: FF[Name], len: int) =
   ## We need linearly independent random numbers
   ## for batch proof sampling.
   ## Powers are linearly independent.
@@ -777,9 +777,9 @@ macro addchain*(fn: untyped): untyped =
 #
 # ############################################################
 
-func batchFromField*[N, C](
+func batchFromField*[N, Name](
       dst: ptr UncheckedArray[BigInt[N]],
-      src: ptr UncheckedArray[FF[C]],
+      src: ptr UncheckedArray[FF[Name]],
       len: int) {.inline.} =
   for i in 0 ..< len:
     dst[i].fromField(src[i])

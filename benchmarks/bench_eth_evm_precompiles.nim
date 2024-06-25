@@ -87,11 +87,11 @@ func clearCofactor[F; G: static Subgroup](ec: var ECP_ShortW_Aff[F, G]) =
 
 proc createPairingInputsBN254(length: int): seq[byte] =
   var buf: array[32, byte]
-  const C = BN254_Snarks
+  const Name = BN254_Snarks
   for _ in 0 ..< length:
-    var P = rng.random_unsafe(ECP_ShortW_Aff[Fp[C], G1])
+    var P = rng.random_unsafe(ECP_ShortW_Aff[Fp[Name], G1])
     P.clearCofactor()
-    var Q = rng.random_unsafe(ECP_ShortW_Aff[Fp2[C], G2])
+    var Q = rng.random_unsafe(ECP_ShortW_Aff[Fp2[Name], G2])
     Q.clearCofactor()
 
     buf.marshal(P.x, bigEndian)
@@ -114,11 +114,11 @@ proc createPairingInputsBN254(length: int): seq[byte] =
 
 proc createPairingInputsBLS12381(length: int): seq[byte] =
   var buf: array[64, byte]
-  const C = BLS12_381
+  const Name = BLS12_381
   for _ in 0 ..< length:
-    var P = rng.random_unsafe(ECP_ShortW_Aff[Fp[C], G1])
+    var P = rng.random_unsafe(ECP_ShortW_Aff[Fp[Name], G1])
     P.clearCofactor()
-    var Q = rng.random_unsafe(ECP_ShortW_Aff[Fp2[C], G2])
+    var Q = rng.random_unsafe(ECP_ShortW_Aff[Fp2[Name], G2])
     Q.clearCofactor()
 
     buf.marshal(P.x, bigEndian)

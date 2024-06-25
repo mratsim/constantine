@@ -79,7 +79,7 @@ func copyWords*(
        a: LimbsViewMut, startA: int,
        b: LimbsViewAny, startB: int,
        numWords: int) {.inline.} =
-  ## Copy a slice of B into A. This properly deals
+  ## Copy a slice of B into Name. This properly deals
   ## with overlaps when A and B are slices of the same buffer
   if startA > startB:
     for i in countdown(numWords-1, 0):
@@ -93,7 +93,7 @@ func ccopyWords*(
        b: LimbsViewAny, startB: int,
        ctl: SecretBool,
        numWords: int) {.inline.} =
-  ## Copy a slice of B into A. This properly deals
+  ## Copy a slice of B into Name. This properly deals
   ## with overlaps when A and B are slices of the same buffer
   if startA > startB:
     for i in countdown(numWords-1, 0):

@@ -103,7 +103,7 @@ proc run_EC_addition_tests*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
+  const testSuiteDesc = "Elliptic curve in " & $ec.F.Name.getEquationForm() & " form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     test "The infinity point is the neutral element w.r.t. to EC " & " addition":
@@ -290,7 +290,7 @@ proc run_EC_addition_vartime_tests*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
+  const testSuiteDesc = "Elliptic curve in " & $ec.F.Name.getEquationForm() & " form"
 
   suite testSuiteDesc & " - " & $ec & " (vartime) - [" & $WordBitWidth & "-bit mode]":
     test "The infinity point is the neutral element w.r.t. to EC " & $ec.G & " addition (vartime)":
@@ -477,7 +477,7 @@ proc run_EC_mul_sanity_tests*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
+  const testSuiteDesc = "Elliptic curve in " & $ec.F.Name.getEquationForm() & " form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     test "EC " & " mul [0]P == Inf":
@@ -510,12 +510,12 @@ proc run_EC_mul_sanity_tests*(
           # refWNaf(bits, w = 8)
           # refWNaf(bits, w = 13)
 
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Uniform)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = HighHammingWeight)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = HighHammingWeight)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Long01Sequence)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Long01Sequence)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = true, gen = Uniform)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = false, gen = HighHammingWeight)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = true, gen = HighHammingWeight)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = false, gen = Long01Sequence)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = true, gen = Long01Sequence)
 
     test "EC " & " mul [1]P == P":
       proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
@@ -536,12 +536,12 @@ proc run_EC_mul_sanity_tests*(
             bool(impl == a)
             bool(reference == a)
 
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Uniform)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = HighHammingWeight)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = HighHammingWeight)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Long01Sequence)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Long01Sequence)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = true, gen = Uniform)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = false, gen = HighHammingWeight)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = true, gen = HighHammingWeight)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = false, gen = Long01Sequence)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = true, gen = Long01Sequence)
 
     test "EC " & " mul [2]P == P.double()":
       proc test(EC: typedesc, bits: static int, randZ: bool, gen: RandomGen) =
@@ -564,12 +564,12 @@ proc run_EC_mul_sanity_tests*(
             bool(impl == doubleA)
             bool(reference == doubleA)
 
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Uniform)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = HighHammingWeight)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = HighHammingWeight)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Long01Sequence)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Long01Sequence)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = true, gen = Uniform)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = false, gen = HighHammingWeight)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = true, gen = HighHammingWeight)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = false, gen = Long01Sequence)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = true, gen = Long01Sequence)
 
 proc run_EC_mul_distributive_tests*(
        ec: typedesc,
@@ -582,7 +582,7 @@ proc run_EC_mul_distributive_tests*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
+  const testSuiteDesc = "Elliptic curve in " & $ec.F.Name.getEquationForm() & " form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
 
@@ -627,12 +627,12 @@ proc run_EC_mul_distributive_tests*(
             bool(fReference == kakbRef)
             bool(fImpl == fReference)
 
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Uniform)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = HighHammingWeight)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = HighHammingWeight)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Long01Sequence)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Long01Sequence)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = true, gen = Uniform)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = false, gen = HighHammingWeight)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = true, gen = HighHammingWeight)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = false, gen = Long01Sequence)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = true, gen = Long01Sequence)
 
 proc run_EC_mul_vs_ref_impl*(
        ec: typedesc,
@@ -645,7 +645,7 @@ proc run_EC_mul_vs_ref_impl*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
+  const testSuiteDesc = "Elliptic curve in " & $ec.F.Name.getEquationForm() & " form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     test "EC " & $ec.G & " mul constant-time is equivalent to a simple double-and-add and recoded algorithms":
@@ -678,41 +678,41 @@ proc run_EC_mul_vs_ref_impl*(
           refWNaf(3)
           refWNaf(5)
 
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Uniform)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = HighHammingWeight)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = HighHammingWeight)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = false, gen = Long01Sequence)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth(), randZ = true, gen = Long01Sequence)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = false, gen = Uniform)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = true, gen = Uniform)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = false, gen = HighHammingWeight)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = true, gen = HighHammingWeight)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = false, gen = Long01Sequence)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth(), randZ = true, gen = Long01Sequence)
 
       # Scalars that doesn't uses the full bit length
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 2, randZ = false, gen = Uniform)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 2, randZ = true, gen = Uniform)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 2, randZ = false, gen = HighHammingWeight)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 2, randZ = true, gen = HighHammingWeight)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 2, randZ = false, gen = Long01Sequence)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 2, randZ = true, gen = Long01Sequence)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth() - 2, randZ = false, gen = Uniform)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth() - 2, randZ = true, gen = Uniform)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth() - 2, randZ = false, gen = HighHammingWeight)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth() - 2, randZ = true, gen = HighHammingWeight)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth() - 2, randZ = false, gen = Long01Sequence)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth() - 2, randZ = true, gen = Long01Sequence)
 
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 4, randZ = false, gen = Uniform)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 4, randZ = true, gen = Uniform)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 4, randZ = false, gen = HighHammingWeight)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 4, randZ = true, gen = HighHammingWeight)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 4, randZ = false, gen = Long01Sequence)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth() - 4, randZ = true, gen = Long01Sequence)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth() - 4, randZ = false, gen = Uniform)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth() - 4, randZ = true, gen = Uniform)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth() - 4, randZ = false, gen = HighHammingWeight)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth() - 4, randZ = true, gen = HighHammingWeight)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth() - 4, randZ = false, gen = Long01Sequence)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth() - 4, randZ = true, gen = Long01Sequence)
 
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 2, randZ = false, gen = Uniform)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 2, randZ = true, gen = Uniform)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 2, randZ = false, gen = HighHammingWeight)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 2, randZ = true, gen = HighHammingWeight)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 2, randZ = false, gen = Long01Sequence)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 2, randZ = true, gen = Long01Sequence)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth() div 2, randZ = false, gen = Uniform)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth() div 2, randZ = true, gen = Uniform)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth() div 2, randZ = false, gen = HighHammingWeight)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth() div 2, randZ = true, gen = HighHammingWeight)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth() div 2, randZ = false, gen = Long01Sequence)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth() div 2, randZ = true, gen = Long01Sequence)
 
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 4, randZ = false, gen = Uniform)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 4, randZ = true, gen = Uniform)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 4, randZ = false, gen = HighHammingWeight)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 4, randZ = true, gen = HighHammingWeight)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 4, randZ = false, gen = Long01Sequence)
-      test(ec, bits = ec.F.C.getCurveOrderBitwidth() div 4, randZ = true, gen = Long01Sequence)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth() div 4, randZ = false, gen = Uniform)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth() div 4, randZ = true, gen = Uniform)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth() div 4, randZ = false, gen = HighHammingWeight)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth() div 4, randZ = true, gen = HighHammingWeight)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth() div 4, randZ = false, gen = Long01Sequence)
+      test(ec, bits = ec.F.Name.getCurveOrderBitwidth() div 4, randZ = true, gen = Long01Sequence)
 
 proc run_EC_mixed_add_impl*(
        ec: typedesc,
@@ -983,7 +983,7 @@ proc run_EC_subgroups_cofactors_impl*(
         for _ in 0 ..< ItersMul:
           let P = rng.random_point(EC, randZ, gen)
           var rP = P
-          rP.scalarMulGeneric(EC.F.C.getCurveOrder())
+          rP.scalarMulGeneric(EC.F.Name.getCurveOrder())
           if bool rP.isNeutral():
             inSubgroup += 1
             doAssert bool P.isInSubgroup(), "Subgroup check issue on " & $EC & " with P: " & P.toHex()
@@ -995,7 +995,7 @@ proc run_EC_subgroups_cofactors_impl*(
           var rQ: typeof(rP)
           Q.clearCofactor()
           rQ = Q
-          rQ.scalarMulGeneric(EC.F.C.getCurveOrder())
+          rQ.scalarMulGeneric(EC.F.Name.getCurveOrder())
           doAssert bool rQ.isNeutral(), "Cofactor clearing issue on " & $EC & " with Q: " & Q.toHex()
           doAssert bool Q.isInSubgroup(), "Subgroup check issue on " & $EC & " with Q: " & Q.toHex()
 
@@ -1024,7 +1024,7 @@ proc run_EC_affine_conversion*(
   echo "\n------------------------------------------------------\n"
   echo moduleName, " xoshiro512** seed: ", seed
 
-  const testSuiteDesc = "Elliptic curve in " & $ec.F.C.getEquationForm() & " form"
+  const testSuiteDesc = "Elliptic curve in " & $ec.F.Name.getEquationForm() & " form"
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     test "EC " & $ec.G & " batchAffine is consistent with single affine conversion":
@@ -1260,17 +1260,17 @@ proc run_EC_multi_scalar_mul_impl*[N: static int](
 
   suite testSuiteDesc & " - " & $ec & " - [" & $WordBitWidth & "-bit mode]":
     for n in numPoints:
-      let bucketBits = bestBucketBitSize(n, ec.F.C.getCurveOrderBitwidth(), useSignedBuckets = false, useManualTuning = false)
+      let bucketBits = bestBucketBitSize(n, ec.F.Name.getCurveOrderBitwidth(), useSignedBuckets = false, useManualTuning = false)
       test $ec & " Multi-scalar-mul (N=" & $n & ", bucket bits: " & $bucketBits & ")":
         proc test(EC: typedesc, gen: RandomGen) =
           var points = newSeq[affine(EC)](n)
-          var coefs = newSeq[BigInt[EC.F.C.getCurveOrderBitwidth()]](n)
+          var coefs = newSeq[BigInt[EC.F.Name.getCurveOrderBitwidth()]](n)
 
           for i in 0 ..< n:
             var tmp = rng.random_unsafe(EC)
             tmp.clearCofactor()
             points[i].affine(tmp)
-            coefs[i] = rng.random_unsafe(BigInt[EC.F.C.getCurveOrderBitwidth()])
+            coefs[i] = rng.random_unsafe(BigInt[EC.F.Name.getCurveOrderBitwidth()])
 
           var naive, naive_tmp: EC
           naive.setNeutral()

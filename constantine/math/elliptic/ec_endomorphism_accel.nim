@@ -45,7 +45,7 @@ template decomposeEndoImpl[scalBits: static int](
   static: doAssert scalBits >= L, "Cannot decompose a scalar smaller than a mini-scalar or the decomposition coefficient"
   # Equal when no window or no negative handling, greater otherwise
   static: doAssert L >= ceilDiv_vartime(scalBits, M) + 1
-  const w = F.C.getCurveOrderBitwidth().wordsRequired()
+  const w = F.Name.getCurveOrderBitwidth().wordsRequired()
 
   # Upstream bug:
   #   {.noInit.} variables must be {.inject.} as well
@@ -326,7 +326,7 @@ func scalarMulEndo*[scalBits; EC](
   ## - Cofactor to be cleared
   ## - 0 <= scalar < curve order
   mixin affine
-  const C = P.F.C # curve
+  const C = P.F.Name # curve
   static: doAssert scalBits <= C.getCurveOrderBitwidth(), "Do not use endomorphism to multiply beyond the curve order"
   when P.F is Fp:
     const M = 2
@@ -513,7 +513,7 @@ func scalarMulGLV_m2w2*[scalBits; EC](P0: var EC, scalar: BigInt[scalBits]) {.me
   ## - Cofactor to be cleared
   ## - 0 <= scalar < curve order
   mixin affine
-  const C = P0.F.C # curve
+  const C = P0.F.Name # curve
   static: doAssert: scalBits <= C.getCurveOrderBitwidth()
 
   # 1. Compute endomorphisms

@@ -45,6 +45,6 @@ func double_repeated*(P: var ECP_ShortW, num: int) {.inline.} =
 
 func setGenerator*[F, G](g: var ECP_ShortW[F, G]) {.inline.} =
   when g is ECP_ShortW_Aff:
-    g = F.C.getGenerator($G)
+    g = F.Name.getGenerator($G)
   else:
-    g.fromAffine(F.C.getGenerator($G))
+    g.fromAffine(F.Name.getGenerator($G))

@@ -28,7 +28,7 @@ echo "test_nvidia_fp xoshiro512** seed: ", seed
 
 const Iters = 10
 
-proc init(T: type CurveMetadata, asy: Assembler_LLVM, curve: static Curve, wordSize: WordSize): T =
+proc init(T: type CurveMetadata, asy: Assembler_LLVM, name: static Algebra, wordSize: WordSize): T =
   CurveMetadata.init(
       asy.ctx,
       $curve & "_", wordSize,
@@ -67,7 +67,7 @@ var sm: tuple[major, minor: int32]
 check cuDeviceGetAttribute(sm.major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, cudaDevice)
 check cuDeviceGetAttribute(sm.minor, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, cudaDevice)
 
-proc t_field_add(curve: static Curve) =
+proc t_field_add(name: static Algebra) =
   # Codegen
   # -------------------------
   let asy = Assembler_LLVM.new(bkNvidiaPTX, cstring("t_nvidia_" & $curve))
@@ -121,7 +121,7 @@ proc t_field_add(curve: static Curve) =
     doAssert bool(rCPU == rGPU_32)
     doAssert bool(rCPU == rGPU_64)
 
-proc t_field_sub(curve: static Curve) =
+proc t_field_sub(name: static Algebra) =
   # Codegen
   # -------------------------
   let asy = Assembler_LLVM.new(bkNvidiaPTX, cstring("t_nvidia_" & $curve))
@@ -175,7 +175,7 @@ proc t_field_sub(curve: static Curve) =
     doAssert bool(rCPU == rGPU_32)
     doAssert bool(rCPU == rGPU_64)
 
-proc t_field_mul(curve: static Curve) =
+proc t_field_mul(name: static Algebra) =
   # Codegen
   # -------------------------
   let asy = Assembler_LLVM.new(bkNvidiaPTX, cstring("t_nvidia_" & $curve))

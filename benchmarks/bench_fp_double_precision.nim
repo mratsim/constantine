@@ -219,8 +219,8 @@ proc reduce2x*(T: typedesc, iters: int) =
 
 proc reduce2xViaDivision*(T: typedesc, iters: int) =
 
-  const bits2x = 2 * T.C.getCurveBitWidth()
-  var r: matchingBigInt(T.C)
+  const bits2x = 2 * T.Name.getCurveBitWidth()
+  var r: matchingBigInt(T.Name)
   let t = rng.random_unsafe(BigInt[bits2x])
 
   bench("Reduction via division", $T & " <- " & $doublePrec(T), iters):

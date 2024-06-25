@@ -30,6 +30,6 @@ type ECP_TwEdwards*[F] = ECP_TwEdwards_Aff[F] | ECP_TwEdwards_Prj[F]
 
 func setGenerator*[F](g: var ECP_TwEdwards[F]) {.inline.} =
   when g is ECP_TwEdwards_Aff:
-    g = F.C.getGenerator()
+    g = F.Name.getGenerator()
   else:
-    g.fromAffine(F.C.getGenerator())
+    g.fromAffine(F.Name.getGenerator())

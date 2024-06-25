@@ -59,14 +59,14 @@ func random_point*(rng: var RngState, EC: typedesc, randZ: bool, gen: RandomGen)
     result = rng.random_long01Seq(EC)
     result.clearCofactor()
 
-template runPairingTests*(Iters: static int, C: static Curve, G1, G2, GT: typedesc, pairing_fn: untyped): untyped {.dirty.}=
+template runPairingTests*(Iters: static int, Name: static Algebra, G1, G2, GT: typedesc, pairing_fn: untyped): untyped {.dirty.}=
   bind affineType
 
   var rng: RngState
   let timeseed = uint32(toUnix(getTime()) and (1'i64 shl 32 - 1)) # unixTime mod 2^32
   seed(rng, timeseed)
   echo "\n------------------------------------------------------\n"
-  echo "test_pairing_",$C,"_optate xoshiro512** seed: ", timeseed
+  echo "test_pairing_",$Name,"_optate xoshiro512** seed: ", timeseed
 
   proc test_bilinearity_double_impl(randZ: bool, gen: RandomGen) =
     for _ in 0 ..< Iters:
@@ -99,7 +99,7 @@ template runPairingTests*(Iters: static int, C: static Curve, G1, G2, GT: typede
       doAssert bool(r == r3)
       doAssert bool(r2 == r3)
 
-  suite "Pairing - Optimal Ate on " & $C & " [" & $WordBitWidth & "-bit words]":
+  suite "Pairing - Optimal Ate on " & $Name & " [" & $WordBitWidth & "-bit words]":
     test "Bilinearity e([2]P, Q) = e(P, [2]Q) = e(P, Q)^2":
       test_bilinearity_double_impl(randZ = false, gen = Uniform)
       test_bilinearity_double_impl(randZ = false, gen = HighHammingWeight)
@@ -120,7 +120,7 @@ template runGTsubgroupTests*(Iters: static int, GT: typedesc, finalExpHard_fn: u
   let timeseed = uint32(toUnix(getTime()) and (1'i64 shl 32 - 1)) # unixTime mod 2^32
   seed(rng, timeseed)
   echo "\n------------------------------------------------------\n"
-  echo "test_pairing_",$GT.C,"_gt xoshiro512** seed: ", timeseed
+  echo "test_pairing_",$GT.Name,"_gt xoshiro512** seed: ", timeseed
 
   proc test_gt_impl(gen: RandomGen) =
     stdout.write "    "
@@ -139,7 +139,7 @@ template runGTsubgroupTests*(Iters: static int, GT: typedesc, finalExpHard_fn: u
 
     stdout.write '\n'
 
-  suite "Pairing - GT subgroup " & $GT.C & " [" & $WordBitWidth & "-bit words]":
+  suite "Pairing - GT subgroup " & $GT.Name & " [" & $WordBitWidth & "-bit words]":
     test "Final Exponentiation and GT-subgroup membership":
       test_gt_impl(gen = Uniform)
       test_gt_impl(gen = HighHammingWeight)

@@ -23,7 +23,7 @@ rng.seed(seed)
 echo "bench xoshiro512** seed: ", seed
 
 proc msmMeter*(EC: typedesc, numPoints: int) =
-  const bits = EC.F.C.getCurveOrderBitwidth()
+  const bits = EC.F.Name.getCurveOrderBitwidth()
   var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](numPoints)
   var scalars = newSeq[BigInt[bits]](numPoints)
 

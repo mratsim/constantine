@@ -13,25 +13,25 @@ import
   constantine/math/extension_fields,
   constantine/named/zoo_pairings
 
-func pairing*[C](gt: var Fp12[C], P, Q: auto) {.inline.} =
-  when family(C) == BarretoNaehrig:
+func pairing*[Name](gt: var Fp12[Name], P, Q: auto) {.inline.} =
+  when family(Name) == BarretoNaehrig:
     pairing_bn(gt, P, Q)
-  elif family(C) == BarretoLynnScott:
+  elif family(Name) == BarretoLynnScott:
     pairing_bls12(gt, P, Q)
   else:
-    {.error: "Pairing not implemented for " & $C.}
+    {.error: "Pairing not implemented for " & $Name.}
 
-func millerLoop*[C](gt: var Fp12[C], Q, P: auto, n: int) {.inline.} =
-  when C == BN254_Snarks:
+func millerLoop*[Name](gt: var Fp12[Name], Q, P: auto, n: int) {.inline.} =
+  when Name == BN254_Snarks:
     gt.millerLoopGenericBN(Q, P, n)
   else:
     gt.millerLoopAddchain(Q, P, n)
 
-func finalExp*[C](gt: var Fp12[C]){.inline.} =
+func finalExp*[Name](gt: var Fp12[Name]){.inline.} =
   gt.finalExpEasy()
-  when family(C) == BarretoNaehrig:
+  when family(Name) == BarretoNaehrig:
     gt.finalExpHard_BN()
-  elif family(C) == BarretoLynnScott:
+  elif family(Name) == BarretoLynnScott:
     gt.finalExpHard_BLS12()
   else:
-    {.error: "Final Exponentiation not implemented for " & $C.}
+    {.error: "Final Exponentiation not implemented for " & $Name.}

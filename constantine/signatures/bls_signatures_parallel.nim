@@ -104,7 +104,7 @@ proc batchVerify_parallel*[Msg, Pubkey, Sig](
 
   type FF1 = Pubkey.F
   type FF2 = Sig.F
-  type FpK = Sig.F.C.getGT()
+  type FpK = Sig.F.Name.getGT()
 
   # Stage 0a: Setup per-thread accumulators
   debug: doAssert pubkeys.len <= 1 shl 32

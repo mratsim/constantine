@@ -379,7 +379,7 @@ func sum*[F; G: static Subgroup](
   ## that P == Q or P == -Q or P or Q are the infinity points
   ## to simple side-channel attacks (SCA)
   ## This is done by using a "complete" or "exception-free" addition law.
-  r.sumImpl(P, Q, F.C.getCoefA())
+  r.sumImpl(P, Q, F.Name.getCoefA())
 
 func madd*[F; G: static Subgroup](
        r: var ECP_ShortW_Jac[F, G],
@@ -434,7 +434,7 @@ func madd*[F; G: static Subgroup](
 
   # "when" static evaluation doesn't shortcut booleans :/
   # which causes issues when CoefA isn't an int but Fp or Fp2
-  const CoefA = F.C.getCoefA()
+  const CoefA = F.Name.getCoefA()
   when CoefA is int:
     const CoefA_eq_zero = CoefA == 0
     const CoefA_eq_minus3 {.used.} = CoefA == -3
@@ -570,7 +570,7 @@ func double*[F; G: static Subgroup](r: var ECP_ShortW_Jac[F, G], P: ECP_ShortW_J
   ## ``r`` is initialized/overwritten with the sum
   ##
   ## Implementation is constant-time.
-  when F.C.getCoefA() == 0:
+  when F.Name.getCoefA() == 0:
     # "dbl-2009-l" doubling formula - https://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#doubling-dbl-2009-l
     #
     #     Cost: 2M + 5S + 6add + 3*2 + 1*3 + 1*8.

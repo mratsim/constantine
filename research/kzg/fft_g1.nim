@@ -62,9 +62,9 @@ type
   FFTDescriptor*[EC] = object
     ## Metadata for FFT on Elliptic Curve
     maxWidth: int
-    rootOfUnity: matchingOrderBigInt(EC.F.C)
+    rootOfUnity: matchingOrderBigInt(EC.F.Name)
       ## The root of unity that generates all roots
-    expandedRootsOfUnity: seq[matchingOrderBigInt(EC.F.C)]
+    expandedRootsOfUnity: seq[matchingOrderBigInt(EC.F.Name)]
       ## domain, starting and ending with 1
 
 func expandRootOfUnity[F](rootOfUnity: F): auto {.noInit.} =
@@ -77,7 +77,7 @@ func expandRootOfUnity[F](rootOfUnity: F): auto {.noInit.} =
   # so embrace heap (re-)allocations.
   # Figuring out how to do to right size the buffers
   # in production will be fun.
-  var r: seq[matchingOrderBigInt(F.C)]
+  var r: seq[matchingOrderBigInt(F.Name)]
   r.setLen(2)
   r[0].setOne()
   r[1] = rootOfUnity.toBig()
@@ -176,7 +176,7 @@ func ifft_vartime*[EC](
   var voutput = output.toView()
   fft_internal(voutput, vals.toView(), rootz)
 
-  var invLen {.noInit.}: Fr[EC.F.C]
+  var invLen {.noInit.}: Fr[EC.F.Name]
   invLen.fromUint(vals.len.uint64)
   invLen.inv_vartime()
   let inv = invLen.toBig()
@@ -192,7 +192,7 @@ func ifft_vartime*[EC](
 proc init*(T: type FFTDescriptor, maxScale: uint8): T =
   result.maxWidth = 1 shl maxScale
 
-  let root = scaleToRootOfUnity(T.EC.F.C)[maxScale]
+  let root = scaleToRootOfUnity(T.EC.F.Name)[maxScale]
   result.rootOfUnity = root.toBig()
   result.expandedRootsOfUnity = root.expandRootOfUnity()
     # Aren't you tired of reading about unity?

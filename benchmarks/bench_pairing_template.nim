@@ -44,9 +44,9 @@ proc report(op, curve: string, startTime, stopTime: MonoTime, startClk, stopClk:
   else:
     echo &"{op:<40} {curve:<15} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
 
-template bench(op: string, C: static Curve, iters: int, body: untyped): untyped =
+template bench(op: string, Name: static Algebra, iters: int, body: untyped): untyped =
   measure(iters, startTime, stopTime, startClk, stopClk, body)
-  report(op, $C, startTime, stopTime, startClk, stopClk, iters)
+  report(op, $Name, startTime, stopTime, startClk, stopClk, iters)
 
 func clearCofactor[F; G: static Subgroup](
        ec: var ECP_ShortW_Aff[F, G]) =
@@ -60,192 +60,192 @@ func random_point*(rng: var RngState, EC: typedesc): EC {.noInit.} =
   result = rng.random_unsafe(EC)
   result.clearCofactor()
 
-proc lineDoubleBench*(C: static Curve, iters: int) =
-  var line: Line[Fp2[C]]
-  var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], G2])
-  let P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
-  bench("Line double", C, iters):
+proc lineDoubleBench*(Name: static Algebra, iters: int) =
+  var line: Line[Fp2[Name]]
+  var T = rng.random_point(ECP_ShortW_Prj[Fp2[Name], G2])
+  let P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
+  bench("Line double", Name, iters):
     line.line_double(T, P)
 
-proc lineAddBench*(C: static Curve, iters: int) =
-  var line: Line[Fp2[C]]
-  var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], G2])
+proc lineAddBench*(Name: static Algebra, iters: int) =
+  var line: Line[Fp2[Name]]
+  var T = rng.random_point(ECP_ShortW_Prj[Fp2[Name], G2])
   let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[C], G2])
-  bench("Line add", C, iters):
+    P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
+    Q = rng.random_point(ECP_ShortW_Aff[Fp2[Name], G2])
+  bench("Line add", Name, iters):
     line.line_add(T, Q, P)
 
-proc mulFp12byLine_Bench*(C: static Curve, iters: int) =
-  var line: Line[Fp2[C]]
-  var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], G2])
-  let P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
+proc mulFp12byLine_Bench*(Name: static Algebra, iters: int) =
+  var line: Line[Fp2[Name]]
+  var T = rng.random_point(ECP_ShortW_Prj[Fp2[Name], G2])
+  let P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
   line.line_double(T, P)
-  var f = rng.random_unsafe(Fp12[C])
+  var f = rng.random_unsafe(Fp12[Name])
 
-  bench("Mul 𝔽p12 by line", C, iters):
+  bench("Mul 𝔽p12 by line", Name, iters):
     f.mul_by_line(line)
 
-proc mulLinebyLine_Bench*(C: static Curve, iters: int) =
-  var l0, l1: Line[Fp2[C]]
-  var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], G2])
-  let P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
+proc mulLinebyLine_Bench*(Name: static Algebra, iters: int) =
+  var l0, l1: Line[Fp2[Name]]
+  var T = rng.random_point(ECP_ShortW_Prj[Fp2[Name], G2])
+  let P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
   l0.line_double(T, P)
   l1.line_double(T, P)
-  var f {.noInit.}: Fp12[C]
+  var f {.noInit.}: Fp12[Name]
 
-  bench("Mul line by line", C, iters):
+  bench("Mul line by line", Name, iters):
     f.prod_from_2_lines(l0, l1)
 
-proc mulFp12by_prod2lines_Bench*(C: static Curve, iters: int) =
-  var f = rng.random_unsafe(Fp12[C])
-  let g = rng.random_unsafe(Fp12[C])
+proc mulFp12by_prod2lines_Bench*(Name: static Algebra, iters: int) =
+  var f = rng.random_unsafe(Fp12[Name])
+  let g = rng.random_unsafe(Fp12[Name])
 
-  bench("Mul 𝔽p12 by product of 2 lines", C, iters):
+  bench("Mul 𝔽p12 by product of 2 lines", Name, iters):
     f.mul_by_prod_of_2_lines(g)
 
-proc mulFp12_by_2lines_v1_Bench*(C: static Curve, iters: int) =
-  var l0, l1: Line[Fp2[C]]
-  var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], G2])
-  let P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
+proc mulFp12_by_2lines_v1_Bench*(Name: static Algebra, iters: int) =
+  var l0, l1: Line[Fp2[Name]]
+  var T = rng.random_point(ECP_ShortW_Prj[Fp2[Name], G2])
+  let P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
   l0.line_double(T, P)
   l1.line_double(T, P)
-  var f = rng.random_unsafe(Fp12[C])
+  var f = rng.random_unsafe(Fp12[Name])
 
-  bench("mulFp12 by 2 lines v1", C, iters):
+  bench("mulFp12 by 2 lines v1", Name, iters):
     f.mul_by_line(l0)
     f.mul_by_line(l1)
 
-proc mulFp12_by_2lines_v2_Bench*(C: static Curve, iters: int) =
-  var l0, l1: Line[Fp2[C]]
-  var T = rng.random_point(ECP_ShortW_Prj[Fp2[C], G2])
-  let P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
+proc mulFp12_by_2lines_v2_Bench*(Name: static Algebra, iters: int) =
+  var l0, l1: Line[Fp2[Name]]
+  var T = rng.random_point(ECP_ShortW_Prj[Fp2[Name], G2])
+  let P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
   l0.line_double(T, P)
   l1.line_double(T, P)
-  var f = rng.random_unsafe(Fp12[C])
+  var f = rng.random_unsafe(Fp12[Name])
 
-  bench("mulFp12 by 2 lines v2", C, iters):
-    var f2 {.noInit.}: Fp12[C]
+  bench("mulFp12 by 2 lines v2", Name, iters):
+    var f2 {.noInit.}: Fp12[Name]
     f2.prod_from_2_lines(l0, l1)
     f.mul_by_prod_of_2_lines(f2)
 
-proc mulBench*(C: static Curve, iters: int) =
-  var r: Fp12[C]
-  let x = rng.random_unsafe(Fp12[C])
-  let y = rng.random_unsafe(Fp12[C])
+proc mulBench*(Name: static Algebra, iters: int) =
+  var r: Fp12[Name]
+  let x = rng.random_unsafe(Fp12[Name])
+  let y = rng.random_unsafe(Fp12[Name])
   preventOptimAway(r)
-  bench("Multiplication 𝔽p12", C, iters):
+  bench("Multiplication 𝔽p12", Name, iters):
     r.prod(x, y)
 
-proc sqrBench*(C: static Curve, iters: int) =
-  var r: Fp12[C]
-  let x = rng.random_unsafe(Fp12[C])
+proc sqrBench*(Name: static Algebra, iters: int) =
+  var r: Fp12[Name]
+  let x = rng.random_unsafe(Fp12[Name])
   preventOptimAway(r)
-  bench("Squaring  𝔽p12", C, iters):
+  bench("Squaring  𝔽p12", Name, iters):
     r.square(x)
 
-proc cyclotomicSquare_Bench*(C: static Curve, iters: int) =
-  var f = rng.random_unsafe(Fp12[C])
+proc cyclotomicSquare_Bench*(Name: static Algebra, iters: int) =
+  var f = rng.random_unsafe(Fp12[Name])
 
-  bench("Squaring 𝔽p12 in cyclotomic subgroup", C, iters):
+  bench("Squaring 𝔽p12 in cyclotomic subgroup", Name, iters):
     f.cyclotomic_square()
 
-proc expCurveParamBench*(C: static Curve, iters: int) =
-  var f = rng.random_unsafe(Fp12[C])
+proc expCurveParamBench*(Name: static Algebra, iters: int) =
+  var f = rng.random_unsafe(Fp12[Name])
 
-  bench("Cyclotomic Exp by curve parameter", C, iters):
+  bench("Cyclotomic Exp by curve parameter", Name, iters):
     f.cycl_exp_by_curve_param(f)
 
-proc cyclotomicSquareCompressed_Bench*(C: static Curve, iters: int) =
-  var f = rng.random_unsafe(Fp12[C])
-  var g: G2345[Fp2[C]]
+proc cyclotomicSquareCompressed_Bench*(Name: static Algebra, iters: int) =
+  var f = rng.random_unsafe(Fp12[Name])
+  var g: G2345[Fp2[Name]]
   g.fromFpk(f)
 
-  bench("Cyclotomic Compressed Squaring 𝔽p12", C, iters):
+  bench("Cyclotomic Compressed Squaring 𝔽p12", Name, iters):
     g.cyclotomic_square_compressed()
 
-proc cyclotomicDecompression_Bench*(C: static Curve, iters: int) =
-  var f = rng.random_unsafe(Fp12[C])
-  var gs: array[1, G2345[Fp2[C]]]
+proc cyclotomicDecompression_Bench*(Name: static Algebra, iters: int) =
+  var f = rng.random_unsafe(Fp12[Name])
+  var gs: array[1, G2345[Fp2[Name]]]
   gs[0].fromFpk(f)
 
-  var g1s_ratio: array[1, tuple[g1_num, g1_den: Fp2[C]]]
-  var g0s, g1s: array[1, Fp2[C]]
+  var g1s_ratio: array[1, tuple[g1_num, g1_den: Fp2[Name]]]
+  var g0s, g1s: array[1, Fp2[Name]]
 
-  bench("Cyclotomic Decompression 𝔽p12", C, iters):
+  bench("Cyclotomic Decompression 𝔽p12", Name, iters):
     recover_g1(g1s_ratio[0].g1_num, g1s_ratio[0].g1_den, gs[0])
     g1s.batch_ratio_g1s(g1s_ratio)
     g0s[0].recover_g0(g1s[0], gs[0])
 
-proc millerLoopBLS12Bench*(C: static Curve, iters: int) =
+proc millerLoopBLS12Bench*(Name: static Algebra, iters: int) =
   let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[C], G2])
+    P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
+    Q = rng.random_point(ECP_ShortW_Aff[Fp2[Name], G2])
 
-  var f: Fp12[C]
-  bench("Miller Loop BLS12", C, iters):
+  var f: Fp12[Name]
+  bench("Miller Loop BLS12", Name, iters):
     f.millerLoopGenericBLS12(Q, P)
 
-proc millerLoopBNBench*(C: static Curve, iters: int) =
+proc millerLoopBNBench*(Name: static Algebra, iters: int) =
   let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[C], G2])
+    P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
+    Q = rng.random_point(ECP_ShortW_Aff[Fp2[Name], G2])
 
-  var f: Fp12[C]
-  bench("Miller Loop BN", C, iters):
+  var f: Fp12[Name]
+  bench("Miller Loop BN", Name, iters):
     f.millerLoopGenericBN(Q, P)
 
-proc finalExpEasyBench*(C: static Curve, iters: int) =
-  var r = rng.random_unsafe(Fp12[C])
-  bench("Final Exponentiation Easy", C, iters):
+proc finalExpEasyBench*(Name: static Algebra, iters: int) =
+  var r = rng.random_unsafe(Fp12[Name])
+  bench("Final Exponentiation Easy", Name, iters):
     r.finalExpEasy()
 
-proc finalExpHardBLS12Bench*(C: static Curve, iters: int) =
-  var r = rng.random_unsafe(Fp12[C])
+proc finalExpHardBLS12Bench*(Name: static Algebra, iters: int) =
+  var r = rng.random_unsafe(Fp12[Name])
   r.finalExpEasy()
-  bench("Final Exponentiation Hard BLS12", C, iters):
+  bench("Final Exponentiation Hard BLS12", Name, iters):
     r.finalExpHard_BLS12()
 
-proc finalExpHardBNBench*(C: static Curve, iters: int) =
-  var r = rng.random_unsafe(Fp12[C])
+proc finalExpHardBNBench*(Name: static Algebra, iters: int) =
+  var r = rng.random_unsafe(Fp12[Name])
   r.finalExpEasy()
-  bench("Final Exponentiation Hard BN", C, iters):
+  bench("Final Exponentiation Hard BN", Name, iters):
     r.finalExpHard_BN()
 
-proc finalExpBLS12Bench*(C: static Curve, iters: int) =
-  var r = rng.random_unsafe(Fp12[C])
-  bench("Final Exponentiation BLS12", C, iters):
+proc finalExpBLS12Bench*(Name: static Algebra, iters: int) =
+  var r = rng.random_unsafe(Fp12[Name])
+  bench("Final Exponentiation BLS12", Name, iters):
     r.finalExpEasy()
     r.finalExpHard_BLS12()
 
-proc finalExpBNBench*(C: static Curve, iters: int) =
-  var r = rng.random_unsafe(Fp12[C])
-  bench("Final Exponentiation BN", C, iters):
+proc finalExpBNBench*(Name: static Algebra, iters: int) =
+  var r = rng.random_unsafe(Fp12[Name])
+  bench("Final Exponentiation BN", Name, iters):
     r.finalExpEasy()
     r.finalExpHard_BN()
 
-proc pairingBLS12Bench*(C: static Curve, iters: int) =
+proc pairingBLS12Bench*(Name: static Algebra, iters: int) =
   let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[C], G2])
+    P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
+    Q = rng.random_point(ECP_ShortW_Aff[Fp2[Name], G2])
 
-  var f: Fp12[C]
-  bench("Pairing BLS12", C, iters):
+  var f: Fp12[Name]
+  bench("Pairing BLS12", Name, iters):
     f.pairing_bls12(P, Q)
 
-proc pairing_multisingle_BLS12Bench*(C: static Curve, N: static int, iters: int) =
+proc pairing_multisingle_BLS12Bench*(Name: static Algebra, N: static int, iters: int) =
   var
-    Ps {.noInit.}: array[N, ECP_ShortW_Aff[Fp[C], G1]]
-    Qs {.noInit.}: array[N, ECP_ShortW_Aff[Fp2[C], G2]]
+    Ps {.noInit.}: array[N, ECP_ShortW_Aff[Fp[Name], G1]]
+    Qs {.noInit.}: array[N, ECP_ShortW_Aff[Fp2[Name], G2]]
 
-    GTs {.noInit.}: array[N, Fp12[C]]
+    GTs {.noInit.}: array[N, Fp12[Name]]
 
   for i in 0 ..< N:
     Ps[i] = rng.random_unsafe(typeof(Ps[0]))
     Qs[i] = rng.random_unsafe(typeof(Qs[0]))
 
-  var f: Fp12[C]
-  bench("Pairing BLS12 non-batched: " & $N, C, iters):
+  var f: Fp12[Name]
+  bench("Pairing BLS12 non-batched: " & $N, Name, iters):
     for i in 0 ..< N:
       GTs[i].pairing_bls12(Ps[i], Qs[i])
 
@@ -253,41 +253,41 @@ proc pairing_multisingle_BLS12Bench*(C: static Curve, N: static int, iters: int)
     for i in 1 ..< N:
       f *= GTs[i]
 
-proc pairing_multipairing_BLS12Bench*(C: static Curve, N: static int, iters: int) =
+proc pairing_multipairing_BLS12Bench*(Name: static Algebra, N: static int, iters: int) =
   var
-    Ps {.noInit.}: array[N, ECP_ShortW_Aff[Fp[C], G1]]
-    Qs {.noInit.}: array[N, ECP_ShortW_Aff[Fp2[C], G2]]
+    Ps {.noInit.}: array[N, ECP_ShortW_Aff[Fp[Name], G1]]
+    Qs {.noInit.}: array[N, ECP_ShortW_Aff[Fp2[Name], G2]]
 
   for i in 0 ..< N:
     Ps[i] = rng.random_unsafe(typeof(Ps[0]))
     Qs[i] = rng.random_unsafe(typeof(Qs[0]))
 
-  var f: Fp12[C]
-  bench("Pairing BLS12 batched:     " & $N, C, iters):
+  var f: Fp12[Name]
+  bench("Pairing BLS12 batched:     " & $N, Name, iters):
     f.pairing_bls12(Ps, Qs)
 
-proc pairingBNBench*(C: static Curve, iters: int) =
+proc pairingBNBench*(Name: static Algebra, iters: int) =
   let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[C], G2])
+    P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
+    Q = rng.random_point(ECP_ShortW_Aff[Fp2[Name], G2])
 
-  var f: Fp12[C]
-  bench("Pairing BN", C, iters):
+  var f: Fp12[Name]
+  bench("Pairing BN", Name, iters):
     f.pairing_bn(P, Q)
 
-proc pairing_multisingle_BNBench*(C: static Curve, N: static int, iters: int) =
+proc pairing_multisingle_BNBench*(Name: static Algebra, N: static int, iters: int) =
   var
-    Ps {.noInit.}: array[N, ECP_ShortW_Aff[Fp[C], G1]]
-    Qs {.noInit.}: array[N, ECP_ShortW_Aff[Fp2[C], G2]]
+    Ps {.noInit.}: array[N, ECP_ShortW_Aff[Fp[Name], G1]]
+    Qs {.noInit.}: array[N, ECP_ShortW_Aff[Fp2[Name], G2]]
 
-    GTs {.noInit.}: array[N, Fp12[C]]
+    GTs {.noInit.}: array[N, Fp12[Name]]
 
   for i in 0 ..< N:
     Ps[i] = rng.random_unsafe(typeof(Ps[0]))
     Qs[i] = rng.random_unsafe(typeof(Qs[0]))
 
-  var f: Fp12[C]
-  bench("Pairing BN non-batched: " & $N, C, iters):
+  var f: Fp12[Name]
+  bench("Pairing BN non-batched: " & $N, Name, iters):
     for i in 0 ..< N:
       GTs[i].pairing_bn(Ps[i], Qs[i])
 
@@ -295,15 +295,15 @@ proc pairing_multisingle_BNBench*(C: static Curve, N: static int, iters: int) =
     for i in 1 ..< N:
       f *= GTs[i]
 
-proc pairing_multipairing_BNBench*(C: static Curve, N: static int, iters: int) =
+proc pairing_multipairing_BNBench*(Name: static Algebra, N: static int, iters: int) =
   var
-    Ps {.noInit.}: array[N, ECP_ShortW_Aff[Fp[C], G1]]
-    Qs {.noInit.}: array[N, ECP_ShortW_Aff[Fp2[C], G2]]
+    Ps {.noInit.}: array[N, ECP_ShortW_Aff[Fp[Name], G1]]
+    Qs {.noInit.}: array[N, ECP_ShortW_Aff[Fp2[Name], G2]]
 
   for i in 0 ..< N:
     Ps[i] = rng.random_unsafe(typeof(Ps[0]))
     Qs[i] = rng.random_unsafe(typeof(Qs[0]))
 
-  var f: Fp12[C]
-  bench("Pairing BN batched:     " & $N, C, iters):
+  var f: Fp12[Name]
+  bench("Pairing BN batched:     " & $N, Name, iters):
     f.pairing_bn(Ps, Qs)

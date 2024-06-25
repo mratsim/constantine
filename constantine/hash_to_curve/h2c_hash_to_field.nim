@@ -196,7 +196,7 @@ func hashToField*[Field; count: static int](
   ##   it is recommended to cache the reduced DST.
 
   const
-    L = ceilDiv_vartime(Field.C.getCurveBitwidth() + k, 8)
+    L = ceilDiv_vartime(Field.Name.getCurveBitwidth() + k, 8)
     m = block:
       when Field is Fp: 1
       elif Field is Fp2: 2
@@ -217,7 +217,7 @@ func hashToField*[Field; count: static int](
       let elm_offset = L * (j + i * m)
       template tv: untyped = uniform_bytes.toOpenArray(elm_offset, elm_offset + L-1)
 
-      var big2x {.noInit.}: BigInt[2 * getCurveBitwidth(Field.C)]
+      var big2x {.noInit.}: BigInt[2 * getCurveBitwidth(Field.Name)]
       big2x.unmarshal(tv, bigEndian)
 
       # Reduces modulo p and output in Montgomery domain
@@ -225,12 +225,12 @@ func hashToField*[Field; count: static int](
         output[i].redc2x(big2x)
         output[i].mres.mulMont(
           output[i].mres,
-          Fp[Field.C].getR3ModP(),
-          Fp[Field.C])
+          Fp[Field.Name].getR3ModP(),
+          Fp[Field.Name])
 
       else:
         output[i].coords[j].redc2x(big2x)
         output[i].coords[j].mres.mulMont(
           output[i].coords[j].mres,
-          Fp[Field.C].getR3ModP(),
-          Fp[Field.C])
+          Fp[Field.Name].getR3ModP(),
+          Fp[Field.Name])

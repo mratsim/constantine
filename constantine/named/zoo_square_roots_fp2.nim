@@ -14,6 +14,6 @@ import
   ./constants/bn254_snarks_sqrt_fp2
 
 {.experimental: "dynamicBindSym".}
-macro sqrt_fp2*(C: static Curve, value: untyped): untyped =
+macro sqrt_fp2*(Name: static Algebra, value: untyped): untyped =
   ## Get square_root constants
-  return bindSym($C & "_sqrt_fp2_" & $value)
+  return bindSym($Name & "_sqrt_fp2_" & $value)

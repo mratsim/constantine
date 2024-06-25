@@ -40,8 +40,8 @@ import
 # Test vector generator
 # - https://github.com/cfrg/draft-irtf-cfrg-hash-to-curve/blob/f7dd3761/poc/sswu_generic.sage
 
-func invsqrt_if_square[C: static Curve](
-       r: var Fp2[C], a: Fp2[C]): SecretBool =
+func invsqrt_if_square[Name: static Algebra](
+       r: var Fp2[Name], a: Fp2[Name]): SecretBool =
   ## If ``a`` is a square, compute the inverse square root of ``a``
   ## and store it in r
   ## if not, ``r`` is unmodified.
@@ -63,8 +63,8 @@ func invsqrt_if_square[C: static Curve](
   # See discussion and optimization with Andy Polyakov
   # https://github.com/supranational/blst/issues/2#issuecomment-686656784
 
-  var t1{.noInit.}, t2{.noInit.}, t3{.noInit.}: Fp[C]
-  var inp{.noInit.}: Fp2[C]
+  var t1{.noInit.}, t2{.noInit.}, t3{.noInit.}: Fp[Name]
+  var inp{.noInit.}: Fp2[Name]
 
   t1.square(a.c0) #     a0²
   t2.square(a.c1) # - β a1² with β = 𝑖² in a complex extension field
@@ -77,13 +77,13 @@ func invsqrt_if_square[C: static Curve](
   result = t3.invsqrt_if_square(t1)    # 1/sqrt(a0² - β a1²)
 
   # If input is not a square in Fp2, multiply by 1/Z³
-  inp.prod(a, h2cConst(C, sswu, G2, inv_Z3)) # inp = a / Z³
+  inp.prod(a, h2cConst(Name, sswu, G2, inv_Z3)) # inp = a / Z³
   block: # Adjust t1 and t3 accordingly
-    var t0{.noInit.}: Fp[C]
-    t0.prod(t1, h2cConst(C, sswu, G2, squared_norm_inv_Z3)) # (a0² - β a1²) * ||1/Z³||²
+    var t0{.noInit.}: Fp[Name]
+    t0.prod(t1, h2cConst(Name, sswu, G2, squared_norm_inv_Z3)) # (a0² - β a1²) * ||1/Z³||²
     t1.ccopy(t0, not result)
 
-    t0.prod(t3, h2cConst(C, sswu, G2, inv_norm_inv_Z3))     # 1/sqrt(a0² - β a1²) * 1/||1/Z³||
+    t0.prod(t3, h2cConst(Name, sswu, G2, inv_norm_inv_Z3))     # 1/sqrt(a0² - β a1²) * 1/||1/Z³||
     t3.ccopy(t0, not result)
 
   inp.ccopy(a, result)
@@ -113,9 +113,9 @@ func invsqrt_if_square[C: static Curve](
 
   # return result
 
-func mapToIsoCurve_sswuG2_opt9mod16*[C: static Curve](
-       xn, xd, yn: var Fp2[C],
-       u: Fp2[C], xd3: var Fp2[C]) =
+func mapToIsoCurve_sswuG2_opt9mod16*[Name: static Algebra](
+       xn, xd, yn: var Fp2[Name],
+       u: Fp2[Name], xd3: var Fp2[Name]) =
   ## Given G2, the target prime order subgroup of E2 we want to hash to,
   ## this function maps any field element of Fp2 to E'2
   ## a curve isogenous to E2 using the Simplified Shallue-van de Woestijne method.
@@ -139,9 +139,9 @@ func mapToIsoCurve_sswuG2_opt9mod16*[C: static Curve](
   # Formal verification: https://github.com/GaloisInc/BLST-Verification/blob/8e2efde4/spec/implementation/HashToG2.cry
 
   var
-    uu {.noInit.}, tv2 {.noInit.}: Fp2[C]
-    tv4 {.noInit.}, x2n {.noInit.}, gx1 {.noInit.}: Fp2[C]
-    y2 {.noInit.}: Fp2[C]
+    uu {.noInit.}, tv2 {.noInit.}: Fp2[Name]
+    tv4 {.noInit.}, x2n {.noInit.}, gx1 {.noInit.}: Fp2[Name]
+    y2 {.noInit.}: Fp2[Name]
     e1, e2: SecretBool
 
   # Aliases
@@ -153,27 +153,27 @@ func mapToIsoCurve_sswuG2_opt9mod16*[C: static Curve](
 
   # x numerators
   uu.square(u)                                 # uu = u²
-  Zuu.prod(uu, h2cConst(C, sswu, G2, Z))       # Zuu = Z * uu
+  Zuu.prod(uu, h2cConst(Name, sswu, G2, Z))       # Zuu = Z * uu
   tv2.square(Zuu)                              # tv2 = Zuu²
   tv2 += Zuu                                   # tv2 = tv2 + Zuu
   x1n.setOne()
   x1n += tv2                                   # x1n = tv2 + 1
-  x1n *= h2cConst(C, sswu, G2, Bprime_E2)      # x1n = x1n * B'
+  x1n *= h2cConst(Name, sswu, G2, Bprime_E2)      # x1n = x1n * B'
   x2n.prod(Zuu, x1n)                           # x2n = Zuu * x1n
 
   # x denumerator
-  xd.prod(tv2, h2cConst(C, sswu, G2, minus_A)) # xd = -A * tv2
+  xd.prod(tv2, h2cConst(Name, sswu, G2, minus_A)) # xd = -A * tv2
   e1 = xd.isZero()                             # e1 = xd == 0
-  xd.ccopy(h2cConst(C, sswu, G2, ZmulA), e1)   # If xd == 0, set xd = Z*A
+  xd.ccopy(h2cConst(Name, sswu, G2, ZmulA), e1)   # If xd == 0, set xd = Z*A
 
   # y numerators
   tv2.square(xd)
   gxd.prod(xd, tv2)                            # gxd = xd³
-  tv2.mulCheckSparse(h2CConst(C, sswu, G2, Aprime_E2))
+  tv2.mulCheckSparse(h2CConst(Name, sswu, G2, Aprime_E2))
   gx1.square(x1n)
   gx1 += tv2                                   # x1n² + A * xd²
   gx1 *= x1n                                   # x1n³ + A * x1n * xd²
-  tv2.prod(gxd, h2cConst(C, sswu, G2, Bprime_E2))
+  tv2.prod(gxd, h2cConst(Name, sswu, G2, Bprime_E2))
   gx1 += tv2                                   # gx1 = x1n³ + A * x1n * xd² + B * xd³
   tv4.square(gxd)                              # tv4 = gxd²
   tv2.prod(gx1, gxd)                           # tv2 = gx1 * gxd
@@ -195,9 +195,9 @@ func mapToIsoCurve_sswuG2_opt9mod16*[C: static Curve](
 
   # yd.setOne()
 
-func mapToIsoCurve_sswuG1_opt3mod4*[C: static Curve](
-       xn, xd, yn: var Fp[C],
-       u: Fp[C], xd3: var Fp[C]) =
+func mapToIsoCurve_sswuG1_opt3mod4*[Name: static Algebra](
+       xn, xd, yn: var Fp[Name],
+       u: Fp[Name], xd3: var Fp[Name]) =
   ## Given G1, the target prime order subgroup of E1 we want to hash to,
   ## this function maps any field element of Fp to E'1
   ## a curve isogenous to E1 using the Simplified Shallue-van de Woestijne method.
@@ -221,9 +221,9 @@ func mapToIsoCurve_sswuG1_opt3mod4*[C: static Curve](
   # Formal verification: https://github.com/GaloisInc/BLST-Verification/blob/8e2efde4/spec/implementation/HashToG1.cry
 
   var
-    uu {.noInit.}, tv2 {.noInit.}: Fp[C]
-    tv4 {.noInit.}, x2n {.noInit.}, gx1 {.noInit.}: Fp[C]
-    y2 {.noInit.}: Fp[C]
+    uu {.noInit.}, tv2 {.noInit.}: Fp[Name]
+    tv4 {.noInit.}, x2n {.noInit.}, gx1 {.noInit.}: Fp[Name]
+    y2 {.noInit.}: Fp[Name]
     e1, e2: SecretBool
 
   # Aliases
@@ -235,27 +235,27 @@ func mapToIsoCurve_sswuG1_opt3mod4*[C: static Curve](
 
   # x numerators
   uu.square(u)                            # uu = u²
-  Zuu.prod(uu, h2cConst(C, sswu, G1, Z))  # Zuu = Z * uu
+  Zuu.prod(uu, h2cConst(Name, sswu, G1, Z))  # Zuu = Z * uu
   tv2.square(Zuu)                         # tv2 = Zuu²
   tv2 += Zuu                              # tv2 = tv2 + Zuu
   x1n.setOne()
   x1n += tv2                              # x1n = tv2 + 1
-  x1n *= h2cConst(C, sswu, G1, Bprime_E1) # x1n = x1n * B'
+  x1n *= h2cConst(Name, sswu, G1, Bprime_E1) # x1n = x1n * B'
   x2n.prod(Zuu, x1n)                      # x2n = Zuu * x1n
 
   # x denumerator
-  xd.prod(tv2, h2cConst(C, sswu, G1, minus_A)) # xd = -A * tv2
+  xd.prod(tv2, h2cConst(Name, sswu, G1, minus_A)) # xd = -A * tv2
   e1 = xd.isZero()                             # e1 = xd == 0
-  xd.ccopy(h2cConst(C, sswu, G1, ZmulA), e1)   # If xd == 0, set xd = Z*A
+  xd.ccopy(h2cConst(Name, sswu, G1, ZmulA), e1)   # If xd == 0, set xd = Z*A
 
   # y numerators
   tv2.square(xd)
   gxd.prod(xd, tv2)                         # gxd = xd³
-  tv2 *= h2cConst(C, sswu, G1, Aprime_E1)
+  tv2 *= h2cConst(Name, sswu, G1, Aprime_E1)
   gx1.square(x1n)
   gx1 += tv2                                # x1n² + A * xd²
   gx1 *= x1n                                # x1n³ + A * x1n * xd²
-  tv2.prod(gxd, h2cConst(C, sswu, G1, Bprime_E1))
+  tv2.prod(gxd, h2cConst(Name, sswu, G1, Bprime_E1))
   gx1 += tv2                                # gx1 = x1n³ + A * x1n * xd² + B * xd³
   tv4.square(gxd)                           # tv4 = gxd²
   tv2.prod(gx1, gxd)                        # tv2 = gx1 * gxd
@@ -264,7 +264,7 @@ func mapToIsoCurve_sswuG1_opt3mod4*[C: static Curve](
   # Start searching for sqrt(gx1)
   e2 = y1.invsqrt_if_square(tv4)            # y1 = tv4^c1 = (gx1 * gxd³)^((p²-9)/16)
   y1 *= tv2                                 # y1 *= gx1*gxd
-  y2.prod(y1, h2cConst(C, sswu, G1, sqrt_minus_Z3))
+  y2.prod(y1, h2cConst(Name, sswu, G1, sqrt_minus_Z3))
   y2 *= uu
   y2 *= u
 

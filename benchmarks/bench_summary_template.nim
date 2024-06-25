@@ -58,7 +58,7 @@ macro fixEllipticDisplay(T: typedesc): untyped =
   let instantiated = T.getTypeInst()
   var name = $instantiated[1][0] # EllipticEquationFormCoordinates
   let fieldName = $instantiated[1][1][0]
-  let curveName = $Curve(instantiated[1][1][1].intVal)
+  let curveName = $Algebra(instantiated[1][1][1].intVal)
   name.add "[" & fieldName & "[" & curveName & "]]"
   result = newLit name
 
@@ -67,7 +67,7 @@ macro fixFieldDisplay(T: typedesc): untyped =
   # we get the Curve ID instead of the curve name.
   let instantiated = T.getTypeInst()
   var name = $instantiated[1][0] # Fp
-  name.add "[" & $Curve(instantiated[1][1].intVal) & "]"
+  name.add "[" & $Algebra(instantiated[1][1].intVal) & "]"
   result = newLit name
 
 func fixDisplay(T: typedesc): string =
@@ -78,7 +78,7 @@ func fixDisplay(T: typedesc): string =
   else:
     $T
 
-func fixDisplay(T: Curve): string =
+func fixDisplay(T: Algebra): string =
   $T
 
 template bench(op: string, T: typed, iters: int, body: untyped): untyped =
@@ -159,7 +159,7 @@ proc doublingBench*(T: typedesc, iters: int) =
     r.double(P)
 
 proc scalarMulBench*(T: typedesc, iters: int) =
-  const bits = T.F.C.getCurveOrderBitwidth()
+  const bits = T.F.Name.getCurveOrderBitwidth()
   const G1_or_G2 = when T.F is Fp: "G1" else: "G2"
 
   var r {.noInit.}: T
@@ -175,52 +175,52 @@ proc scalarMulBench*(T: typedesc, iters: int) =
       r = P
       r.scalarMul_vartime(exponent)
 
-proc millerLoopBLS12Bench*(C: static Curve, iters: int) =
+proc millerLoopBLS12Bench*(Name: static Algebra, iters: int) =
   let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[C], G2])
+    P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
+    Q = rng.random_point(ECP_ShortW_Aff[Fp2[Name], G2])
 
-  var f: Fp12[C]
-  bench("Miller Loop BLS12", C, iters):
+  var f: Fp12[Name]
+  bench("Miller Loop BLS12", Name, iters):
     f.millerLoopGenericBLS12(Q, P)
 
-proc millerLoopBNBench*(C: static Curve, iters: int) =
+proc millerLoopBNBench*(Name: static Algebra, iters: int) =
   let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[C], G2])
+    P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
+    Q = rng.random_point(ECP_ShortW_Aff[Fp2[Name], G2])
 
-  var f: Fp12[C]
-  bench("Miller Loop BN", C, iters):
+  var f: Fp12[Name]
+  bench("Miller Loop BN", Name, iters):
     f.millerLoopGenericBN(Q, P)
 
-proc finalExpBLS12Bench*(C: static Curve, iters: int) =
-  var r = rng.random_unsafe(Fp12[C])
-  bench("Final Exponentiation BLS12", C, iters):
+proc finalExpBLS12Bench*(Name: static Algebra, iters: int) =
+  var r = rng.random_unsafe(Fp12[Name])
+  bench("Final Exponentiation BLS12", Name, iters):
     r.finalExpEasy()
     r.finalExpHard_BLS12()
 
-proc finalExpBNBench*(C: static Curve, iters: int) =
-  var r = rng.random_unsafe(Fp12[C])
-  bench("Final Exponentiation BN", C, iters):
+proc finalExpBNBench*(Name: static Algebra, iters: int) =
+  var r = rng.random_unsafe(Fp12[Name])
+  bench("Final Exponentiation BN", Name, iters):
     r.finalExpEasy()
     r.finalExpHard_BN()
 
-proc pairingBLS12Bench*(C: static Curve, iters: int) =
+proc pairingBLS12Bench*(Name: static Algebra, iters: int) =
   let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[C], G2])
+    P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
+    Q = rng.random_point(ECP_ShortW_Aff[Fp2[Name], G2])
 
-  var f: Fp12[C]
-  bench("Pairing BLS12", C, iters):
+  var f: Fp12[Name]
+  bench("Pairing BLS12", Name, iters):
     f.pairing_bls12(P, Q)
 
-proc pairingBNBench*(C: static Curve, iters: int) =
+proc pairingBNBench*(Name: static Algebra, iters: int) =
   let
-    P = rng.random_point(ECP_ShortW_Aff[Fp[C], G1])
-    Q = rng.random_point(ECP_ShortW_Aff[Fp2[C], G2])
+    P = rng.random_point(ECP_ShortW_Aff[Fp[Name], G1])
+    Q = rng.random_point(ECP_ShortW_Aff[Fp2[Name], G2])
 
-  var f: Fp12[C]
-  bench("Pairing BN", C, iters):
+  var f: Fp12[Name]
+  bench("Pairing BN", Name, iters):
     f.pairing_bn(P, Q)
 
 proc hashToCurveBLS12381G1Bench*(iters: int) =

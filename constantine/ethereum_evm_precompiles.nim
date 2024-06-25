@@ -196,8 +196,8 @@ func eth_evm_modexp*(r: var openArray[byte], inputs: openArray[byte]): CttEVMSta
 # Elliptic Curves
 # ----------------------------------------------------------------
 
-func parseRawUint[C: static Curve](
-       dst: var Fp[C],
+func parseRawUint[Name: static Algebra](
+       dst: var Fp[Name],
        src: openarray[byte]): CttEVMStatus =
   ## Parse an unsigned integer from its canonical
   ## big-endian or little-endian unsigned representation
@@ -205,17 +205,17 @@ func parseRawUint[C: static Curve](
   ##
   ## Return false if the integer is larger than the field modulus.
   ## Returns true on success.
-  var big {.noInit.}: matchingBigInt(C)
+  var big {.noInit.}: matchingBigInt(Name)
   big.unmarshal(src, bigEndian)
 
-  if not bool(big < Mod(C)):
+  if not bool(big < Mod(Name)):
     return cttEVM_IntLargerThanModulus
 
   dst.fromBig(big)
   return cttEVM_Success
 
-func fromRawCoords[C: static Curve, G: static Subgroup](
-       dst: var ECP_ShortW_Aff[Fp[C], G],
+func fromRawCoords[Name: static Algebra, G: static Subgroup](
+       dst: var ECP_ShortW_Aff[Fp[Name], G],
        x, y: openarray[byte],
        checkSubgroup: bool): CttEVMStatus =
 
@@ -248,8 +248,8 @@ func fromRawCoords[C: static Curve, G: static Subgroup](
 
   return cttEVM_Success
 
-func fromRawCoords[C: static Curve](
-       dst: var ECP_ShortW_Aff[Fp2[C], G2],
+func fromRawCoords[Name: static Algebra](
+       dst: var ECP_ShortW_Aff[Fp2[Name], G2],
        x0, x1, y0, y1: openarray[byte],
        checkSubgroup: bool): CttEVMStatus =
 
@@ -289,23 +289,23 @@ func fromRawCoords[C: static Curve](
 
   return cttEVM_Success
 
-func fromRawCoords[C: static Curve, G: static Subgroup](
-       dst: var ECP_ShortW_Jac[Fp[C], G],
+func fromRawCoords[Name: static Algebra, G: static Subgroup](
+       dst: var ECP_ShortW_Jac[Fp[Name], G],
        x, y: openarray[byte],
        checkSubgroup: bool): CttEVMStatus =
 
-  var aff{.noInit.}: ECP_ShortW_Aff[Fp[C], G]
+  var aff{.noInit.}: ECP_ShortW_Aff[Fp[Name], G]
   let status = aff.fromRawCoords(x, y, checkSubgroup)
   if status != cttEVM_Success:
     return status
   dst.fromAffine(aff)
 
-func fromRawCoords[C: static Curve, G: static Subgroup](
-       dst: var ECP_ShortW_Jac[Fp2[C], G],
+func fromRawCoords[Name: static Algebra, G: static Subgroup](
+       dst: var ECP_ShortW_Jac[Fp2[Name], G],
        x0, x1, y0, y1: openarray[byte],
        checkSubgroup: bool): CttEVMStatus =
 
-  var aff{.noInit.}: ECP_ShortW_Aff[Fp2[C], G]
+  var aff{.noInit.}: ECP_ShortW_Aff[Fp2[Name], G]
   let status = aff.fromRawCoords(x0, x1, y0, y1, checkSubgroup)
   if status != cttEVM_Success:
     return status

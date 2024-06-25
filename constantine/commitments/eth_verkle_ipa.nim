@@ -192,7 +192,7 @@ func ipa_prove*[N, logN: static int, EcAff, F](
   transcript.absorb("output point", eval_at_challenge)
 
   # "Random" basis for challenging the inner product proof.
-  var w {.noInit.}: matchingOrderBigInt(F.C)
+  var w {.noInit.}: matchingOrderBigInt(F.Name)
   var Q {.noInit.}: EC
   Q.setGenerator()
   transcript.squeezeChallenge("w", w)

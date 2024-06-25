@@ -45,10 +45,11 @@ macro fixEllipticDisplay(EC: typedesc): untyped =
   let instantiated = EC.getTypeInst()
   var name = $instantiated[1][0] # EllipticEquationFormCoordinates
   let fieldName = $instantiated[1][1][0]
-  let curveName = $Curve(instantiated[1][1][1].intVal)
+  let curve = Algebra(instantiated[1][1][1].intVal)
+  let curveName = $curve
   name.add "[" &
       fieldName & "[" & curveName & "]" &
-      (if family(Curve(instantiated[1][1][1].intVal)) != NoFamily:
+      (if family(curve) != NoFamily:
         ", " & $Subgroup(instantiated[1][2].intVal)
       else: "") &
       "]"
@@ -271,7 +272,7 @@ proc multiAddBench*(EC: typedesc, numPoints: int, useBatching: bool, iters: int)
 
 
 proc msmBench*(EC: typedesc, numPoints: int, iters: int) =
-  const bits = EC.F.C.getCurveOrderBitwidth()
+  const bits = EC.F.Name.getCurveOrderBitwidth()
   var points = newSeq[ECP_ShortW_Aff[EC.F, EC.G]](numPoints)
   var scalars = newSeq[BigInt[bits]](numPoints)
 

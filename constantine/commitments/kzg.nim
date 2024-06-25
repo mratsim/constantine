@@ -174,30 +174,30 @@ import
 # For now we assume that the input polynomial always has the same degree
 # as the powers of τ
 
-func kzg_commit*[N, bits: static int, C: static Curve](
-       powers_of_tau: PolynomialEval[N, ECP_ShortW_Aff[Fp[C], G1]],
-       commitment: var ECP_ShortW_Aff[Fp[C], G1],
+func kzg_commit*[N, bits: static int, Name: static Algebra](
+       powers_of_tau: PolynomialEval[N, ECP_ShortW_Aff[Fp[Name], G1]],
+       commitment: var ECP_ShortW_Aff[Fp[Name], G1],
        poly: PolynomialEval[N, BigInt[bits]]) {.tags:[Alloca, HeapAlloc, Vartime].} =
-  var commitmentJac {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
+  var commitmentJac {.noInit.}: ECP_ShortW_Jac[Fp[Name], G1]
   commitmentJac.multiScalarMul_vartime(poly.evals, powers_of_tau.evals)
   commitment.affine(commitmentJac)
 
-func kzg_prove*[N: static int, C: static Curve](
-       powers_of_tau: PolynomialEval[N, ECP_ShortW_Aff[Fp[C], G1]],
-       domain: PolyEvalRootsDomain[N, Fr[C]],
-       eval_at_challenge: var Fr[C],
-       proof: var ECP_ShortW_Aff[Fp[C], G1],
-       poly: PolynomialEval[N, Fr[C]],
-       opening_challenge: Fr[C]) {.tags:[Alloca, HeapAlloc, Vartime].} =
+func kzg_prove*[N: static int, Name: static Algebra](
+       powers_of_tau: PolynomialEval[N, ECP_ShortW_Aff[Fp[Name], G1]],
+       domain: PolyEvalRootsDomain[N, Fr[Name]],
+       eval_at_challenge: var Fr[Name],
+       proof: var ECP_ShortW_Aff[Fp[Name], G1],
+       poly: PolynomialEval[N, Fr[Name]],
+       opening_challenge: Fr[Name]) {.tags:[Alloca, HeapAlloc, Vartime].} =
 
-  let quotientPoly = allocHeapAligned(PolynomialEval[N, Fr[C]], alignment = 64)
+  let quotientPoly = allocHeapAligned(PolynomialEval[N, Fr[Name]], alignment = 64)
 
   domain.getQuotientPoly(
     quotientPoly[], eval_at_challenge,
     poly, opening_challenge
   )
 
-  var proofJac {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
+  var proofJac {.noInit.}: ECP_ShortW_Jac[Fp[Name], G1]
   proofJac.multiScalarMul_vartime(quotientPoly.evals, powers_of_tau.evals)
   proof.affine(proofJac)
 
@@ -206,11 +206,11 @@ func kzg_prove*[N: static int, C: static Curve](
 # KZG - Verifier
 # ------------------------------------------------------------
 
-func kzg_verify*[F2; C: static Curve](
-       commitment: ECP_ShortW_Aff[Fp[C], G1],
+func kzg_verify*[F2; Name: static Algebra](
+       commitment: ECP_ShortW_Aff[Fp[Name], G1],
        opening_challenge: BigInt, # matchingOrderBigInt(C),
        eval_at_challenge: BigInt, # matchingOrderBigInt(C),
-       proof: ECP_ShortW_Aff[Fp[C], G1],
+       proof: ECP_ShortW_Aff[Fp[Name], G1],
        tauG2: ECP_ShortW_Aff[F2, G2]): bool {.tags:[Alloca, Vartime].} =
   ## Verify a short KZG proof that ``p(opening_challenge) = eval_at_challenge``
   ## without doing the whole p(opening_challenge) computation
@@ -237,15 +237,15 @@ func kzg_verify*[F2; C: static Curve](
   #   e([proof]₁, [τ]₂ - [opening_challenge]₂) . e([commitment]₁ - [eval_at_challenge]₁, [-1]₂) = 1
   var
     tau_minus_challenge_G2 {.noInit.}: ECP_ShortW_Jac[F2, G2]
-    commitment_minus_eval_at_challenge_G1 {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
+    commitment_minus_eval_at_challenge_G1 {.noInit.}: ECP_ShortW_Jac[Fp[Name], G1]
     negG2 {.noInit.}: ECP_ShortW_Aff[F2, G2]
 
     tauG2Jac {.noInit.}: ECP_ShortW_Jac[F2, G2]
-    commitmentJac {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
+    commitmentJac {.noInit.}: ECP_ShortW_Jac[Fp[Name], G1]
 
   tau_minus_challenge_G2.setGenerator()
   commitment_minus_eval_at_challenge_G1.setGenerator()
-  negG2.neg(C.getGenerator("G2"))
+  negG2.neg(Name.getGenerator("G2"))
   tauG2Jac.fromAffine(tauG2)
   commitmentJac.fromAffine(commitment)
 
@@ -256,22 +256,22 @@ func kzg_verify*[F2; C: static Curve](
   commitment_minus_eval_at_challenge_G1.diff(commitmentJac, commitment_minus_eval_at_challenge_G1)
 
   var tmzG2 {.noInit.}: ECP_ShortW_Aff[F2, G2]
-  var cmyG1 {.noInit.}: ECP_ShortW_Aff[Fp[C], G1]
+  var cmyG1 {.noInit.}: ECP_ShortW_Aff[Fp[Name], G1]
   tmzG2.affine(tau_minus_challenge_G2)
   cmyG1.affine(commitment_minus_eval_at_challenge_G1)
 
   # e([proof]₁, [τ]₂ - [opening_challenge]₂) * e([commitment]₁ - [eval_at_challenge]₁, [-1]₂)
-  var gt {.noInit.}: C.getGT()
+  var gt {.noInit.}: Name.getGT()
   gt.pairing([proof, cmyG1], [tmzG2, negG2])
 
   return gt.isOne().bool()
 
-func kzg_verify_batch*[bits: static int, F2; C: static Curve](
-       commitments: ptr UncheckedArray[ECP_ShortW_Aff[Fp[C], G1]],
-       challenges: ptr UncheckedArray[Fr[C]],
+func kzg_verify_batch*[bits: static int, F2; Name: static Algebra](
+       commitments: ptr UncheckedArray[ECP_ShortW_Aff[Fp[Name], G1]],
+       challenges: ptr UncheckedArray[Fr[Name]],
        evals_at_challenges: ptr UncheckedArray[BigInt[bits]],
-       proofs: ptr UncheckedArray[ECP_ShortW_Aff[Fp[C], G1]],
-       linearIndepRandNumbers: ptr UncheckedArray[Fr[C]],
+       proofs: ptr UncheckedArray[ECP_ShortW_Aff[Fp[Name], G1]],
+       linearIndepRandNumbers: ptr UncheckedArray[Fr[Name]],
        n: int,
        tauG2: ECP_ShortW_Aff[F2, G2]): bool {.tags:[HeapAlloc, Alloca, Vartime].} =
   ## Verify multiple KZG proofs efficiently
@@ -315,16 +315,16 @@ func kzg_verify_batch*[bits: static int, F2; C: static Curve](
   #   https://eprint.iacr.org/2023/033
   # - https://alinush.github.io/2021/06/17/Feist-Khovratovich-technique-for-computing-KZG-proofs-fast.html
 
-  static: doAssert BigInt[bits] is matchingOrderBigInt(C)
+  static: doAssert BigInt[bits] is matchingOrderBigInt(Name)
 
-  var sums_jac {.noInit.}: array[2, ECP_ShortW_Jac[Fp[C], G1]]
+  var sums_jac {.noInit.}: array[2, ECP_ShortW_Jac[Fp[Name], G1]]
   template sum_rand_proofs: untyped = sums_jac[0]
   template sum_commit_minus_evals_G1: untyped = sums_jac[1]
-  var sum_rand_challenge_proofs {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
+  var sum_rand_challenge_proofs {.noInit.}: ECP_ShortW_Jac[Fp[Name], G1]
 
   # ∑ [rᵢ][proofᵢ]₁
   # ---------------
-  let coefs = allocHeapArrayAligned(matchingOrderBigInt(C), n, alignment = 64)
+  let coefs = allocHeapArrayAligned(matchingOrderBigInt(Name), n, alignment = 64)
   coefs.batchFromField(linearIndepRandNumbers, n)
   sum_rand_proofs.multiScalarMul_vartime(coefs, proofs, n)
 
@@ -337,12 +337,12 @@ func kzg_verify_batch*[bits: static int, F2; C: static Curve](
   # but it's more important to minimize memory usage especially if we want to commit with 2^26+ points
   #
   # We dealloc in reverse alloc order, to avoid leaving holes in the allocator pages.
-  let commits_min_evals = allocHeapArrayAligned(ECP_ShortW_Aff[Fp[C], G1], n, alignment = 64)
-  let commits_min_evals_jac = allocHeapArrayAligned(ECP_ShortW_Jac[Fp[C], G1], n, alignment = 64)
+  let commits_min_evals = allocHeapArrayAligned(ECP_ShortW_Aff[Fp[Name], G1], n, alignment = 64)
+  let commits_min_evals_jac = allocHeapArrayAligned(ECP_ShortW_Jac[Fp[Name], G1], n, alignment = 64)
 
   for i in 0 ..< n:
     commits_min_evals_jac[i].fromAffine(commitments[i])
-    var boxed_eval {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
+    var boxed_eval {.noInit.}: ECP_ShortW_Jac[Fp[Name], G1]
     boxed_eval.setGenerator()
     boxed_eval.scalarMul_vartime(evals_at_challenges[i])
     commits_min_evals_jac[i].diff_vartime(commits_min_evals_jac[i], boxed_eval)
@@ -354,7 +354,7 @@ func kzg_verify_batch*[bits: static int, F2; C: static Curve](
 
   # ∑[rᵢ][zᵢ][proofᵢ]₁
   # ------------------
-  var tmp {.noInit.}: Fr[C]
+  var tmp {.noInit.}: Fr[Name]
   for i in 0 ..< n:
     tmp.prod(linearIndepRandNumbers[i], challenges[i])
     coefs[i].fromField(tmp)
@@ -368,13 +368,13 @@ func kzg_verify_batch*[bits: static int, F2; C: static Curve](
 
   sum_of_sums.sum_vartime(sum_commit_minus_evals_G1, sum_rand_challenge_proofs)
 
-  var sums {.noInit.}: array[2, ECP_ShortW_Aff[Fp[C], G1]]
+  var sums {.noInit.}: array[2, ECP_ShortW_Aff[Fp[Name], G1]]
   sums.batchAffine(sums_jac)
 
   var negG2 {.noInit.}: ECP_ShortW_Aff[F2, G2]
-  negG2.neg(C.getGenerator("G2"))
+  negG2.neg(Name.getGenerator("G2"))
 
-  var gt {.noInit.}: C.getGT()
+  var gt {.noInit.}: Name.getGT()
   gt.pairing(sums, [tauG2, negG2])
 
   return gt.isOne().bool()

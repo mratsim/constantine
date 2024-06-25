@@ -153,7 +153,7 @@ func double*[F; G: static Subgroup](r: var ECP_ShortW_JacExt[F, G], P: ECP_Short
   S.prod(P.x, V)
   M.square(P.x)
   M *= 3
-  when F.C.getCoefA() != 0:
+  when F.Name.getCoefA() != 0:
     {.error: "Not implemented.".}
 
   # aliasing, we don't use P.x and U anymore
@@ -238,7 +238,7 @@ func mdouble*[F; G: static Subgroup](r: var ECP_ShortW_JacExt[F, G], P: ECP_Shor
   S.prod(P.x, V)
   M.square(P.x)
   M *= 3
-  when F.C.getCoefA() != 0:
+  when F.Name.getCoefA() != 0:
     {.error: "Not implemented.".}
 
   # aliasing, we don't use P.x and U anymore

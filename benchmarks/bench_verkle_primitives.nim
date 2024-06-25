@@ -43,7 +43,7 @@ macro fixEllipticDisplay(T: typedesc): untyped =
   let instantiated = T.getTypeInst()
   var name = $instantiated[1][0] # EllipticEquationFormCoordinates
   let fieldName = $instantiated[1][1][0]
-  let curveName = $Curve(instantiated[1][1][1].intVal)
+  let curveName = $Algebra(instantiated[1][1][1].intVal)
   name.add "[" & fieldName & "[" & curveName & "]]"
   result = newLit name
 
@@ -52,7 +52,7 @@ macro fixFieldDisplay(T: typedesc): untyped =
   # we get the Curve ID instead of the curve name.
   let instantiated = T.getTypeInst()
   var name = $instantiated[1][0] # Fp
-  name.add "[" & $Curve(instantiated[1][1].intVal) & "]"
+  name.add "[" & $Algebra(instantiated[1][1].intVal) & "]"
   result = newLit name
 
 func fixDisplay(T: typedesc): string =
@@ -63,7 +63,7 @@ func fixDisplay(T: typedesc): string =
   else:
     $T
 
-func fixDisplay(T: Curve): string =
+func fixDisplay(T: Algebra): string =
   $T
 
 template bench(op: string, T: typed, iters: int, body: untyped): untyped =

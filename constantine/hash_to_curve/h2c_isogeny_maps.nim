@@ -92,10 +92,10 @@ func h2c_isogeny_map[F](
 
   # xd^e with e in [1, N], for example [xd, xd², xd³]
   const maxdegree = max([
-    h2cIsomapPoly(F.C, sswu, G, xnum).len,
-    h2cIsomapPoly(F.C, sswu, G, xden).len,
-    h2cIsomapPoly(F.C, sswu, G, ynum).len,
-    h2cIsomapPoly(F.C, sswu, G, yden).len,
+    h2cIsomapPoly(F.Name, sswu, G, xnum).len,
+    h2cIsomapPoly(F.Name, sswu, G, xden).len,
+    h2cIsomapPoly(F.Name, sswu, G, ynum).len,
+    h2cIsomapPoly(F.Name, sswu, G, yden).len,
   ])
   var xd_pow{.noInit.}: array[maxdegree, F]
   xd_pow[0] = xd
@@ -103,28 +103,28 @@ func h2c_isogeny_map[F](
   for i in 2 ..< xd_pow.len:
     xd_pow[i].prod(xd_pow[i-1], xd_pow[0])
 
-  const xnLen = h2cIsomapPoly(F.C, sswu, G, xnum).len
-  const ynLen = h2cIsomapPoly(F.C, sswu, G, ynum).len
+  const xnLen = h2cIsomapPoly(F.Name, sswu, G, xnum).len
+  const ynLen = h2cIsomapPoly(F.Name, sswu, G, ynum).len
 
   rxn.poly_eval_horner_scaled(
     xn, xd_pow,
-    h2cIsomapPoly(F.C, sswu, G, xnum),
+    h2cIsomapPoly(F.Name, sswu, G, xnum),
     xnLen
   )
   rxd.poly_eval_horner_scaled(
     xn, xd_pow,
-    h2cIsomapPoly(F.C, sswu, G, xden),
+    h2cIsomapPoly(F.Name, sswu, G, xden),
     xnLen
   )
 
   ryn.poly_eval_horner_scaled(
     xn, xd_pow,
-    h2cIsomapPoly(F.C, sswu, G, ynum),
+    h2cIsomapPoly(F.Name, sswu, G, ynum),
     ynLen
   )
   ryd.poly_eval_horner_scaled(
     xn, xd_pow,
-    h2cIsomapPoly(F.C, sswu, G, yden),
+    h2cIsomapPoly(F.Name, sswu, G, yden),
     ynLen
   )
 
@@ -224,10 +224,10 @@ func h2c_isogeny_map*[F; G: static Subgroup](
 
   # Z²^e with e in [1, N], for example [Z², Z⁴, Z⁶]
   const maxdegree = max([
-    h2cIsomapPoly(F.C, sswu, G, xnum).len,
-    h2cIsomapPoly(F.C, sswu, G, xden).len,
-    h2cIsomapPoly(F.C, sswu, G, ynum).len,
-    h2cIsomapPoly(F.C, sswu, G, yden).len,
+    h2cIsomapPoly(F.Name, sswu, G, xnum).len,
+    h2cIsomapPoly(F.Name, sswu, G, xden).len,
+    h2cIsomapPoly(F.Name, sswu, G, ynum).len,
+    h2cIsomapPoly(F.Name, sswu, G, yden).len,
   ])
   var ZZpow{.noInit.}: array[maxdegree, F]
   ZZpow[0].square(P.z)
@@ -241,28 +241,28 @@ func h2c_isogeny_map*[F; G: static Subgroup](
     else:
       ZZpow[i].prod(ZZpow[(i-1) shr 1], ZZpow[((i-1) shr 1) + 1])
 
-  const xnLen = h2cIsomapPoly(F.C, sswu, G, xnum).len
-  const ynLen = h2cIsomapPoly(F.C, sswu, G, ynum).len
+  const xnLen = h2cIsomapPoly(F.Name, sswu, G, xnum).len
+  const ynLen = h2cIsomapPoly(F.Name, sswu, G, ynum).len
 
   xn.poly_eval_horner_scaled(
     P.x, ZZpow,
-    h2cIsomapPoly(F.C, sswu, G, xnum),
+    h2cIsomapPoly(F.Name, sswu, G, xnum),
     xnLen
   )
   xd.poly_eval_horner_scaled(
     P.x, ZZpow,
-    h2cIsomapPoly(F.C, sswu, G, xden),
+    h2cIsomapPoly(F.Name, sswu, G, xden),
     xnLen
   )
 
   yn.poly_eval_horner_scaled(
     P.x, ZZpow,
-    h2cIsomapPoly(F.C, sswu, G, ynum),
+    h2cIsomapPoly(F.Name, sswu, G, ynum),
     ynLen
   )
   yd.poly_eval_horner_scaled(
     P.x, ZZpow,
-    h2cIsomapPoly(F.C, sswu, G, yden),
+    h2cIsomapPoly(F.Name, sswu, G, yden),
     ynLen
   )
 

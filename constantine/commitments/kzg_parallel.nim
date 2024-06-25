@@ -30,26 +30,26 @@ export kzg
 # KZG - Prover - Lagrange basis
 # ------------------------------------------------------------
 
-proc kzg_commit_parallel*[N, bits: static int, C: static Curve](
+proc kzg_commit_parallel*[N, bits: static int, Name: static Algebra](
        tp: Threadpool,
-       powers_of_tau: PolynomialEval[N, ECP_ShortW_Aff[Fp[C], G1]],
-       commitment: var ECP_ShortW_Aff[Fp[C], G1],
+       powers_of_tau: PolynomialEval[N, ECP_ShortW_Aff[Fp[Name], G1]],
+       commitment: var ECP_ShortW_Aff[Fp[Name], G1],
        poly: PolynomialEval[N, BigInt[bits]],
 ) =
   ## KZG Commit to a polynomial in Lagrange / Evaluation form
   ## Parallelism: This only returns when computation is fully done
-  var commitmentJac {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
+  var commitmentJac {.noInit.}: ECP_ShortW_Jac[Fp[Name], G1]
   tp.multiScalarMul_vartime_parallel(commitmentJac, poly.evals, powers_of_tau.evals)
   commitment.affine(commitmentJac)
 
-proc kzg_prove_parallel*[N: static int, C: static Curve](
+proc kzg_prove_parallel*[N: static int, Name: static Algebra](
        tp: Threadpool,
-       powers_of_tau: PolynomialEval[N, ECP_ShortW_Aff[Fp[C], G1]],
-       domain: PolyEvalRootsDomain[N, Fr[C]],
-       eval_at_challenge: var Fr[C],
-       proof: var ECP_ShortW_Aff[Fp[C], G1],
-       poly: PolynomialEval[N, Fr[C]],
-       opening_challenge: Fr[C]) =
+       powers_of_tau: PolynomialEval[N, ECP_ShortW_Aff[Fp[Name], G1]],
+       domain: PolyEvalRootsDomain[N, Fr[Name]],
+       eval_at_challenge: var Fr[Name],
+       proof: var ECP_ShortW_Aff[Fp[Name], G1],
+       poly: PolynomialEval[N, Fr[Name]],
+       opening_challenge: Fr[Name]) =
   ## KZG prove commitment to a polynomial in Lagrange / Evaluation form
   ##
   ## Outputs:
@@ -64,26 +64,26 @@ proc kzg_prove_parallel*[N: static int, C: static Curve](
   #
   # z = opening_challenge in the following code
 
-  let quotientPoly = allocHeapAligned(PolynomialEval[N, Fr[C]], alignment = 64)
+  let quotientPoly = allocHeapAligned(PolynomialEval[N, Fr[Name]], alignment = 64)
   tp.getQuotientPoly_parallel(
     domain,
     quotientPoly[], eval_at_challenge,
     poly, opening_challenge
   )
 
-  var proofJac {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
+  var proofJac {.noInit.}: ECP_ShortW_Jac[Fp[Name], G1]
   tp.multiScalarMul_vartime_parallel(proofJac, quotientPoly.evals, powers_of_tau.evals)
   proof.affine(proofJac)
 
   freeHeapAligned(quotientPoly)
 
-proc kzg_verify_batch_parallel*[bits: static int, F2; C: static Curve](
+proc kzg_verify_batch_parallel*[bits: static int, F2; Name: static Algebra](
        tp: Threadpool,
-       commitments: ptr UncheckedArray[ECP_ShortW_Aff[Fp[C], G1]],
-       opening_challenges: ptr UncheckedArray[Fr[C]],
+       commitments: ptr UncheckedArray[ECP_ShortW_Aff[Fp[Name], G1]],
+       opening_challenges: ptr UncheckedArray[Fr[Name]],
        evals_at_challenges: ptr UncheckedArray[BigInt[bits]],
-       proofs: ptr UncheckedArray[ECP_ShortW_Aff[Fp[C], G1]],
-       linearIndepRandNumbers: ptr UncheckedArray[Fr[C]],
+       proofs: ptr UncheckedArray[ECP_ShortW_Aff[Fp[Name], G1]],
+       linearIndepRandNumbers: ptr UncheckedArray[Fr[Name]],
        n: int,
        tauG2: ECP_ShortW_Aff[F2, G2]): bool =
   ## Verify multiple KZG proofs efficiently
@@ -121,16 +121,16 @@ proc kzg_verify_batch_parallel*[bits: static int, F2; C: static Curve](
   ##
   ## Parallelism: This only returns when computation is fully done
 
-  static: doAssert BigInt[bits] is matchingOrderBigInt(C)
+  static: doAssert BigInt[bits] is matchingOrderBigInt(Name)
 
-  var sums_jac {.noInit.}: array[2, ECP_ShortW_Jac[Fp[C], G1]]
+  var sums_jac {.noInit.}: array[2, ECP_ShortW_Jac[Fp[Name], G1]]
   template sum_rand_proofs: untyped = sums_jac[0]
   template sum_commit_minus_evals_G1: untyped = sums_jac[1]
-  var sum_rand_challenge_proofs {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
+  var sum_rand_challenge_proofs {.noInit.}: ECP_ShortW_Jac[Fp[Name], G1]
 
   # ∑ [rᵢ][proofᵢ]₁
   # ---------------
-  let coefs = allocHeapArrayAligned(matchingOrderBigInt(C), n, alignment = 64)
+  let coefs = allocHeapArrayAligned(matchingOrderBigInt(Name), n, alignment = 64)
 
   syncScope:
     tp.parallelFor i in 0 ..< n:
@@ -149,20 +149,20 @@ proc kzg_verify_batch_parallel*[bits: static int, F2; C: static Curve](
   #
   # We dealloc in reverse alloc order, to avoid leaving holes in the allocator pages.
   proc compute_sum_commitments_minus_evals(tp: Threadpool,
-                                           sum_commit_minus_evals_G1: ptr ECP_ShortW_Jac[Fp[C], G1],
-                                           commitments: ptr UncheckedArray[ECP_ShortW_Aff[Fp[C], G1]],
+                                           sum_commit_minus_evals_G1: ptr ECP_ShortW_Jac[Fp[Name], G1],
+                                           commitments: ptr UncheckedArray[ECP_ShortW_Aff[Fp[Name], G1]],
                                            evals_at_challenges: ptr UncheckedArray[BigInt[bits]],
                                            coefs: ptr UncheckedArray[BigInt[bits]],
                                            n: int) {.nimcall.} =
-    let commits_min_evals = allocHeapArrayAligned(ECP_ShortW_Aff[Fp[C], G1], n, alignment = 64)
-    let commits_min_evals_jac = allocHeapArrayAligned(ECP_ShortW_Jac[Fp[C], G1], n, alignment = 64)
+    let commits_min_evals = allocHeapArrayAligned(ECP_ShortW_Aff[Fp[Name], G1], n, alignment = 64)
+    let commits_min_evals_jac = allocHeapArrayAligned(ECP_ShortW_Jac[Fp[Name], G1], n, alignment = 64)
 
     syncScope:
       tp.parallelFor i in 0 ..< n:
         captures: {commits_min_evals_jac, commitments, evals_at_challenges}
 
         commits_min_evals_jac[i].fromAffine(commitments[i])
-        var boxed_eval {.noInit.}: ECP_ShortW_Jac[Fp[C], G1]
+        var boxed_eval {.noInit.}: ECP_ShortW_Jac[Fp[Name], G1]
         boxed_eval.setGenerator()
         boxed_eval.scalarMul_vartime(evals_at_challenges[i])
         commits_min_evals_jac[i].diff_vartime(commits_min_evals_jac[i], boxed_eval)
@@ -182,14 +182,14 @@ proc kzg_verify_batch_parallel*[bits: static int, F2; C: static Curve](
   # ∑[rᵢ][zᵢ][proofᵢ]₁
   # ------------------
   proc compute_sum_rand_challenge_proofs(tp: Threadpool,
-                                         sum_rand_challenge_proofs: ptr ECP_ShortW_Jac[Fp[C], G1],
-                                         linearIndepRandNumbers: ptr UncheckedArray[Fr[C]],
-                                         opening_challenges: ptr UncheckedArray[Fr[C]],
-                                         proofs: ptr UncheckedArray[ECP_ShortW_Aff[Fp[C], G1]],
+                                         sum_rand_challenge_proofs: ptr ECP_ShortW_Jac[Fp[Name], G1],
+                                         linearIndepRandNumbers: ptr UncheckedArray[Fr[Name]],
+                                         opening_challenges: ptr UncheckedArray[Fr[Name]],
+                                         proofs: ptr UncheckedArray[ECP_ShortW_Aff[Fp[Name], G1]],
                                          n: int) {.nimcall.} =
 
-    let rand_coefs = allocHeapArrayAligned(matchingOrderBigInt(C), n, alignment = 64)
-    let rand_coefs_fr = allocHeapArrayAligned(Fr[C], n, alignment = 64)
+    let rand_coefs = allocHeapArrayAligned(matchingOrderBigInt(Name), n, alignment = 64)
+    let rand_coefs_fr = allocHeapArrayAligned(Fr[Name], n, alignment = 64)
 
     syncScope:
       tp.parallelFor i in 0 ..< n:
@@ -221,13 +221,13 @@ proc kzg_verify_batch_parallel*[bits: static int, F2; C: static Curve](
   discard sync sum_rand_proofs_fv
   freeHeapAligned(coefs)
 
-  var sums {.noInit.}: array[2, ECP_ShortW_Aff[Fp[C], G1]]
+  var sums {.noInit.}: array[2, ECP_ShortW_Aff[Fp[Name], G1]]
   sums.batchAffine(sums_jac)
 
   var negG2 {.noInit.}: ECP_ShortW_Aff[F2, G2]
-  negG2.neg(C.getGenerator("G2"))
+  negG2.neg(Name.getGenerator("G2"))
 
-  var gt {.noInit.}: C.getGT()
+  var gt {.noInit.}: Name.getGT()
   gt.pairing(sums, [tauG2, negG2])
 
   return gt.isOne().bool()

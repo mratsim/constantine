@@ -226,8 +226,8 @@ func lambdaDouble*[F; G: static Subgroup](lambda_num, lambda_den: var F, P: ECP_
   ## Compute the tangent at P
   lambda_num.square(P.x)
   lambda_num *= 3
-  when F.C.getCoefA() != 0:
-    t += F.C.getCoefA()
+  when F.Name.getCoefA() != 0:
+    t += F.Name.getCoefA()
 
   lambda_den.double(P.y)
 

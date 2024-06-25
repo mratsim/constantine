@@ -29,9 +29,9 @@ proc report(op, curve: string, startTime, stopTime: MonoTime, startClk, stopClk:
   else:
     echo &"{op:<40} {curve:<15} {throughput:>15.3f} ops/s     {ns:>9} ns/op"
 
-template bench(op: string, C: static Curve, iters: int, body: untyped): untyped =
+template bench(op: string, Name: static Algebra, iters: int, body: untyped): untyped =
   measure(iters, startTime, stopTime, startClk, stopClk, body)
-  report(op, $C, startTime, stopTime, startClk, stopClk, iters)
+  report(op, $Name, startTime, stopTime, startClk, stopClk, iters)
 
 proc bench_BLS12_381_hash_to_G1(iters: int) =
   const dst = "BLS_SIG_BLS12381G1-SHA256-SSWU-RO_POP_"

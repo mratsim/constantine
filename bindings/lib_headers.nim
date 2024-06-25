@@ -69,24 +69,24 @@ proc writeHeader_pairingFriendly(filepath: string, curve: string, modBits, order
 
   writeFile(filepath, header)
 
-proc writeHeader(dirPath: string, C: static Curve, curve_decls: string) =
-  const modBits = C.getCurveBitWidth()
-  const orderBits = C.getCurveOrderBitWidth()
-  let curve = ($C).toLowerASCII()
+proc writeHeader(dirPath: string, Name: static Algebra, curve_decls: string) =
+  const modBits = Name.getCurveBitWidth()
+  const orderBits = Name.getCurveOrderBitWidth()
+  let curve = ($Name).toLowerASCII()
   let relPath = dirPath/"constantine"/"curves"/curve & ".h"
 
-  when C.family() == NoFamily:
+  when Name.family() == NoFamily:
     relPath.writeHeader_classicCurve(curve, modBits, orderBits, curve_decls)
   else:
-    const g2_extfield = C.getEmbeddingDegree() div 6 # All pairing-friendly curves use a sextic twist
+    const g2_extfield = Name.getEmbeddingDegree() div 6 # All pairing-friendly curves use a sextic twist
     relPath.writeHeader_pairingFriendly(curve, modBits, orderBits, curve_decls, g2_extfield)
 
   echo "Generated header: ", relPath
 
-proc writeParallelHeader(dirPath: string, C: static Curve, curve_decls: string) =
-  const modBits = C.getCurveBitWidth()
-  const orderBits = C.getCurveOrderBitWidth()
-  let curve = ($C).toLowerASCII()
+proc writeParallelHeader(dirPath: string, Name: static Algebra, curve_decls: string) =
+  const modBits = Name.getCurveBitWidth()
+  const orderBits = Name.getCurveOrderBitWidth()
+  let curve = ($Name).toLowerASCII()
   let relPath = dirPath/"constantine"/"curves"/curve & "_parallel.h"
 
   var includes: string

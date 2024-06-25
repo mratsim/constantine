@@ -39,7 +39,7 @@ import
 
 export
   abstractions,
-  algebras.Curve
+  algebras.Algebra
 
 # BigInt
 # ------------------------------------------------------------

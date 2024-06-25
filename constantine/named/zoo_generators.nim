@@ -16,10 +16,10 @@ import
 
 {.experimental: "dynamicbindsym".}
 
-macro getGenerator*(C: static Curve, subgroup: static string = ""): untyped =
+macro getGenerator*(Name: static Algebra, subgroup: static string = ""): untyped =
   ## Returns the curve subgroup generator.
   ## Pairing-friendly curves expect G1 or G2
   if subgroup == "":
-    return bindSym($C & "_generator")
+    return bindSym($Name & "_generator")
   else:
-    return bindSym($C & "_generator_" & subgroup)
+    return bindSym($Name & "_generator_" & subgroup)

@@ -570,7 +570,7 @@ func invmod_vartime*[bits](r: var BigInt[bits], a, M: BigInt[bits]) {.tags: [Var
 #   Blake, Seroussi, Smart, 1999
 #
 # - Efficient Arithmetic on Koblitz Curves
-#   Jerome A. Solinas, 2000
+#   Jerome Name. Solinas, 2000
 #   https://decred.org/research/solinas2000.pdf
 #
 # - Optimal Left-to-Right Binary Signed-Digit Recoding

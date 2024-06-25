@@ -226,15 +226,15 @@ func sum*[F](
   C.prod(P.x, Q.x)
   D.prod(P.y, Q.y)
   E.prod(C, D)
-  when F.C.getCoefD() is int:
+  when F.Name.getCoefD() is int:
     # conversion at compile-time
     const coefD = block:
       var d: F
-      d.fromInt F.C.getCoefD()
+      d.fromInt F.Name.getCoefD()
       d
     E *= coefD
   else:
-    E *= F.C.getCoefD()
+    E *= F.Name.getCoefD()
   F.diff(B, E)
   G.sum(B, E)
 
@@ -248,10 +248,10 @@ func sum*[F](
   E.sum(C, D)     # E = C+D
 
   # Y3 = A*G*(D-a*C)
-  when F.C.getCoefA() == -1:
+  when F.Name.getCoefA() == -1:
     r.y = E       # (D-a*C) = D+C
   else:
-    r.y.prod(C, F.C.getCoefA())
+    r.y.prod(C, F.Name.getCoefA())
     r.y.diff(D, r.y)
   r.y *= A
   r.y *= G
@@ -305,15 +305,15 @@ func madd*[F](
   C.prod(P.x, Q.x)
   D.prod(P.y, Q.y)
   E.prod(C, D)
-  when F.C.getCoefD() is int:
+  when F.Name.getCoefD() is int:
     # conversion at compile-time
     const coefD = block:
       var d: F
-      d.fromInt F.C.getCoefD()
+      d.fromInt F.Name.getCoefD()
       d
     E *= coefD
   else:
-    E *= F.C.getCoefD()
+    E *= F.Name.getCoefD()
   F.diff(B, E)
   G.sum(B, E)
 
@@ -327,10 +327,10 @@ func madd*[F](
   E.sum(C, D)     # E = C+D
 
   # Y3 = A*G*(D-a*C)
-  when F.C.getCoefA() == -1:
+  when F.Name.getCoefA() == -1:
     r.y = E       # (D-a*C) = D+C
   else:
-    r.y.prod(C, F.C.getCoefA())
+    r.y.prod(C, F.Name.getCoefA())
     r.y.diff(D, r.y)
   r.y *= P.z
   r.y *= G
@@ -385,7 +385,7 @@ func double*[F](r: var ECP_TwEdwards_Prj[F], P: ECP_TwEdwards_Prj[F]) =
   r.x.double()
 
   D.square(P.y)
-  E *= F.C.getCoefA()
+  E *= F.Name.getCoefA()
 
   r.y.sum(E, D)    # Ry stores F = E+D
   H.square(P.z)

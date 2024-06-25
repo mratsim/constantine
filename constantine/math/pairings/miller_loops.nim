@@ -54,8 +54,8 @@ func basicMillerLoop*[FT, F1, F2](
   ## in the general case.
   ## If further processing is required, `ate_param_isNeg` must be taken into account by the caller.
   static:
-    doAssert FT.C == F1.C
-    doAssert FT.C == F2.C
+    doAssert FT.Name == F1.Name
+    doAssert FT.Name == F2.Name
 
   const naf = ate_param.recodeNafForPairing()
   var line0 {.noInit.}, line1 {.noInit.}: Line[F2]
@@ -98,9 +98,9 @@ func millerCorrectionBN*[FT, F1, F2](
   ## If `ate_param_isNeg` f must be cyclotomic inverted/conjugated
   ## and T must be negated by the caller.
   static:
-    doAssert FT.C == F1.C
-    doAssert FT.C == F2.C
-    doAssert FT.C.family() == BarretoNaehrig
+    doAssert FT.Name == F1.Name
+    doAssert FT.Name == F2.Name
+    doAssert FT.Name.family() == BarretoNaehrig
 
   var V {.noInit.}: typeof(Q)
   var line1 {.noInit.}, line2 {.noInit.}: Line[F2]
@@ -121,7 +121,7 @@ func millerCorrectionBN*[FT, F1, F2](
 # ############################################################
 #
 # - Software Implementation, Algorithm 11.2 & 11.3
-#   Aranha, Dominguez Perez, A. Mrabet, Schwabe,
+#   Aranha, Dominguez Perez, Name. Mrabet, Schwabe,
 #   Guide to Pairing-Based Cryptography, 2015
 #
 # - Physical Attacks,

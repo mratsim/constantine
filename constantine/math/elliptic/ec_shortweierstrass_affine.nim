@@ -72,19 +72,19 @@ func curve_eq_rhs*[F](y2: var F, x: F, G: static Subgroup) =
 
   var t{.noInit.}: F
   t.square(x)
-  when F.C.getCoefA() != 0:
-    t += F.C.getCoefA()
+  when F.Name.getCoefA() != 0:
+    t += F.Name.getCoefA()
   t *= x
 
   when G == G1:
-    when F.C.getCoefB() >= 0:
-      y2.fromUint uint F.C.getCoefB()
+    when F.Name.getCoefB() >= 0:
+      y2.fromUint uint F.Name.getCoefB()
       y2 += t
     else:
-      y2.fromUint uint -F.C.getCoefB()
+      y2.fromUint uint -F.Name.getCoefB()
       y2.diff(t, y2)
   else:
-    y2.sum(F.C.getCoefB_G2(), t)
+    y2.sum(F.Name.getCoefB_G2(), t)
 
 func isOnCurve*[F](x, y: F, G: static Subgroup): SecretBool =
   ## Returns true if the (x, y) coordinates
