@@ -27,8 +27,8 @@
 #     which requires a prime
 
 import
-  constantine/platforms/[abstractions, type_ff],
-  ../../serialization/endians,
+  constantine/platforms/abstractions,
+  constantine/serialization/endians,
   constantine/named/properties_fields,
   ./bigints, ./bigints_montgomery
 

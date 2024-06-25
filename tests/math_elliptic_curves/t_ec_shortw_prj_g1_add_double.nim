@@ -9,7 +9,6 @@
 import
   # Internals
   constantine/named/algebras,
-  constantine/platforms/type_ff,
   constantine/math/elliptic/ec_shortweierstrass_projective,
   # Test utilities
   ./t_ec_template
